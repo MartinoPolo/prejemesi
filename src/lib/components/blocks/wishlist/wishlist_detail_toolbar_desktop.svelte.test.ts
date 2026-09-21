@@ -235,6 +235,33 @@ describe('WishlistDetailToolbar consolidated desktop display (#359)', () => {
 		},
 	);
 
+	it.each([
+		{ label: 'gift data is pending', overrides: { giftDataReady: false } },
+		{ label: 'the wishlist is archived', overrides: { isArchived: true } },
+		{ label: 'the view is compact', overrides: { viewMode: GIFT_VIEW_MODES.compact } },
+		{
+			label: 'the viewer is not a manager',
+			overrides: { canManage: false, role: WISHLIST_ROLES.visitor },
+		},
+	])('hides reorder when $label', async ({ overrides }) => {
+		const screen = await renderToolbar(
+			{
+				canManage: true,
+				role: WISHLIST_ROLES.moderator,
+				...overrides,
+			},
+			1280,
+		);
+		const moreTrigger = screen.getByTestId('desktop-more-trigger');
+		if (moreTrigger.elements().length > 0) {
+			await moreTrigger.click();
+			await expect
+				.element(page.getByRole('menuitem', { name: m.gift_reorder_action(), exact: true }))
+				.not.toBeInTheDocument();
+		}
+		await screen.unmount();
+	});
+
 	it('enters and exits desktop reorder with a dedicated visible Done action', async () => {
 		const onreordermodechange = vi.fn();
 		const onviewmodechange = vi.fn();
@@ -279,6 +306,32 @@ describe('WishlistDetailToolbar consolidated desktop display (#359)', () => {
 		);
 		await done.click();
 		expect(onreordermodechange).toHaveBeenLastCalledWith(false);
+		await screen.unmount();
+	});
+
+	it.each([
+		{
+			label: 'save',
+			overrides: { reorderDonePending: true },
+			accessibleName: m.gift_reorder_saving(),
+		},
+		{
+			label: 'authoritative recovery',
+			overrides: { reorderRecoveryPending: true },
+			accessibleName: m.gift_reorder_recovering(),
+		},
+	])('disables Done and describes the pending $label', async ({ overrides, accessibleName }) => {
+		const screen = await renderToolbar(
+			{
+				canManage: true,
+				role: WISHLIST_ROLES.moderator,
+				reorderMode: true,
+				...overrides,
+			},
+			1280,
+		);
+		const done = screen.getByRole('button', { name: accessibleName, exact: true });
+		await expect.element(done).toBeDisabled();
 		await screen.unmount();
 	});
 

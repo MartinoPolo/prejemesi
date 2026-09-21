@@ -67,9 +67,12 @@
 		categoryFilterOptions: GiftFilterOption<GiftCategoryFilterValue>[];
 		priorityFilterOptions: GiftFilterOption<GiftPriorityFilterValue>[];
 		reorderMode: boolean;
+		reorderDonePending?: boolean;
+		reorderRecoveryPending?: boolean;
+		giftDataReady?: boolean;
 		recipientViewPreview: boolean;
 		onrecipientviewpreviewchange: (active: boolean) => void;
-		onreordermodechange: (active: boolean) => void;
+		onreordermodechange: (active: boolean) => void | Promise<void>;
 		onviewmodechange: (mode: GiftViewMode) => void;
 		onsortchange: (sort: GiftSortOption) => void;
 		onfilterchange: (filters: GiftFilters) => void;
@@ -94,6 +97,9 @@
 		categoryFilterOptions,
 		priorityFilterOptions,
 		reorderMode,
+		reorderDonePending = false,
+		reorderRecoveryPending = false,
+		giftDataReady = true,
 		recipientViewPreview,
 		onrecipientviewpreviewchange,
 		onreordermodechange,
@@ -126,8 +132,17 @@
 		canManage &&
 			(role === WISHLIST_ROLES.recipient || role === WISHLIST_ROLES.moderator) &&
 			!isArchived &&
+			giftDataReady &&
 			(viewMode === 'card' || viewMode === 'list'),
 	);
+	const reorderDoneLabel = $derived(
+		reorderRecoveryPending
+			? m.gift_reorder_recovering()
+			: reorderDonePending
+				? m.gift_reorder_saving()
+				: m.gift_reorder_done(),
+	);
+	const reorderDoneDisabled = $derived(reorderDonePending || reorderRecoveryPending);
 	const showLikedFilter = $derived(
 		isAuthenticated && role !== WISHLIST_ROLES.recipient && !recipientViewPreview,
 	);
@@ -406,18 +421,18 @@
 
 	async function changeDesktopReorderMode(active: boolean) {
 		const scrollPosition = { x: window.scrollX, y: window.scrollY };
-		onreordermodechange(active);
+		await onreordermodechange(active);
 		await tick();
-		const focusTarget = active ? desktopReorderDoneButton : desktopMoreTrigger;
+		const focusTarget = reorderMode ? desktopReorderDoneButton : desktopMoreTrigger;
 		focusTarget?.focus({ preventScroll: true });
 		window.scrollTo(scrollPosition.x, scrollPosition.y);
 	}
 
 	async function changeMobileReorderMode(active: boolean) {
 		const scrollPosition = { x: window.scrollX, y: window.scrollY };
-		onreordermodechange(active);
+		await onreordermodechange(active);
 		await tick();
-		const focusTarget = active ? mobileReorderDoneButton : mobileMoreTrigger;
+		const focusTarget = reorderMode ? mobileReorderDoneButton : mobileMoreTrigger;
 		focusTarget?.focus({ preventScroll: true });
 		window.scrollTo(scrollPosition.x, scrollPosition.y);
 	}
@@ -676,7 +691,8 @@
 			intent="primary"
 			class="mobile-reorder-done"
 			surfaceClass="px-1"
-			aria-label={m.gift_reorder_done()}
+			disabled={reorderDoneDisabled}
+			aria-label={reorderDoneLabel}
 			onclick={() => changeMobileReorderMode(false)}
 		>
 			<CheckIcon
@@ -684,7 +700,7 @@
 				data-toolbar-icon="reorder-done"
 				data-lucide="check"
 			/>
-			<span>{m.gift_reorder_done()}</span>
+			<span>{reorderDoneLabel}</span>
 		</Button>
 	</div>
 {/snippet}
@@ -1053,10 +1069,12 @@
 									<Button
 										bind:ref={desktopReorderDoneButton}
 										intent="primary"
+										disabled={reorderDoneDisabled}
+										aria-label={reorderDoneLabel}
 										onclick={() => changeDesktopReorderMode(false)}
 									>
 										<CheckIcon data-icon="inline-start" />
-										<span>{m.gift_reorder_done()}</span>
+										<span>{reorderDoneLabel}</span>
 									</Button>
 									{#if showManagementActions}
 										<Button

@@ -4,6 +4,17 @@ export function createLatestAsyncQueue<T>(
 ) {
 	let pending: T | null = null;
 	let running = false;
+	let activeDrainSucceeded = true;
+	let idleWaiters: Array<(succeeded: boolean) => void> = [];
+
+	function settleIdleWaiters() {
+		const waiters = idleWaiters;
+		idleWaiters = [];
+		const succeeded = activeDrainSucceeded;
+		for (const resolve of waiters) {
+			resolve(succeeded);
+		}
+	}
 
 	async function drain() {
 		running = true;
@@ -17,6 +28,7 @@ export function createLatestAsyncQueue<T>(
 					// Discard work queued before this failure. Values enqueued during recovery
 					// remain pending and start only after recovery has settled.
 					pending = null;
+					activeDrainSucceeded = false;
 					await onError(error);
 					return;
 				}
@@ -25,6 +37,8 @@ export function createLatestAsyncQueue<T>(
 			running = false;
 			if (pending !== null) {
 				void drain();
+			} else {
+				settleIdleWaiters();
 			}
 		}
 	}
@@ -33,8 +47,15 @@ export function createLatestAsyncQueue<T>(
 		enqueue(value: T) {
 			pending = value;
 			if (!running) {
+				activeDrainSucceeded = true;
 				void drain();
 			}
+		},
+		whenIdle(): Promise<boolean> {
+			if (!running && pending === null) {
+				return Promise.resolve(activeDrainSucceeded);
+			}
+			return new Promise((resolve) => idleWaiters.push(resolve));
 		},
 	};
 }

@@ -27,7 +27,10 @@
 	import WishlistSettingsModal from '$lib/components/blocks/wishlist/WishlistSettingsModal.svelte';
 	import EditRecipientDialog from '$lib/components/blocks/wishlist/EditRecipientDialog.svelte';
 	import * as Dialog from '$lib/components/base/dialog/index.js';
+	import * as Alert from '$lib/components/base/alert/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
+	import InfoIcon from '@lucide/svelte/icons/info';
+	import TriangleAlertIcon from '@lucide/svelte/icons/triangle-alert';
 	import {
 		WISHLIST_SETTINGS_TABS,
 		isWishlistSettingsTab,
@@ -143,7 +146,7 @@
 		resetPriorityLevelLoaderForWishlistChange,
 		settlePriorityLevelLoad,
 	} from './priority_level_loader.js';
-	import { GIFT_VIEW_MODES } from '$lib/modules/gifts/types.js';
+	import { GIFT_GROUPING_OPTIONS, GIFT_VIEW_MODES } from '$lib/modules/gifts/types.js';
 	import type {
 		GiftFilters,
 		GiftSortOption,
@@ -155,6 +158,15 @@
 		GiftViewMode,
 		GiftGroupingOption,
 	} from '$lib/modules/gifts/types.js';
+
+	const REORDER_BASELINE_STATUS = {
+		verified: 'verified',
+		recovered: 'recovered',
+		refreshing: 'refreshing',
+		unresolved: 'unresolved',
+	} as const;
+	type ReorderBaselineStatus =
+		(typeof REORDER_BASELINE_STATUS)[keyof typeof REORDER_BASELINE_STATUS];
 
 	let { data } = $props();
 
@@ -425,6 +437,46 @@
 
 	let reorderMode = $state(false);
 	let reorderActiveIds = $state<string[] | null>(null);
+	let reorderDonePending = $state(false);
+	let reorderBaselineStatus = $state<ReorderBaselineStatus>(REORDER_BASELINE_STATUS.verified);
+	const reorderBaselineVerified = $derived(
+		reorderBaselineStatus === REORDER_BASELINE_STATUS.verified ||
+			reorderBaselineStatus === REORDER_BASELINE_STATUS.recovered,
+	);
+
+	async function refreshReorderBaseline(): Promise<boolean> {
+		reorderBaselineStatus = REORDER_BASELINE_STATUS.refreshing;
+		giftsContext.clearReorderOverride();
+		try {
+			const authoritativeQuery = getGiftsByWishlistShortId(shortId);
+			await authoritativeQuery.refresh();
+			const authoritativeResult = authoritativeQuery.current;
+			if (authoritativeResult === undefined) {
+				throw new Error('Gift order refresh completed without authoritative data.');
+			}
+			reorderActiveIds = activeGiftsInOwnerOrder(authoritativeResult.gifts).map(
+				(giftItem) => giftItem.id,
+			);
+			reorderBaselineStatus = REORDER_BASELINE_STATUS.recovered;
+			return true;
+		} catch (refreshError) {
+			console.error('Failed to refresh gifts after reorder failure:', refreshError);
+			reorderBaselineStatus = REORDER_BASELINE_STATUS.unresolved;
+			return false;
+		}
+	}
+
+	async function retryReorderBaselineRefresh() {
+		if (reorderBaselineStatus !== REORDER_BASELINE_STATUS.unresolved) {
+			return;
+		}
+		if (await refreshReorderBaseline()) {
+			toastSuccess(m.gift_reorder_recovery_success());
+		} else {
+			toastError(m.gift_reorder_save_error_unresolved());
+		}
+	}
+
 	const reorderPersistenceQueue = createLatestAsyncQueue<string[]>(
 		async (orderedIds) => {
 			await reorderGifts(
@@ -436,9 +488,12 @@
 		},
 		async (thrown) => {
 			console.error('Failed to reorder gifts:', thrown);
-			giftsContext.clearReorderOverride();
-			await getGiftsByWishlistShortId(shortId).refresh();
-			reorderActiveIds = activeGiftsInOwnerOrder(gifts).map((giftItem) => giftItem.id);
+			const baselineRecovered = await refreshReorderBaseline();
+			toastError(
+				baselineRecovered
+					? m.gift_reorder_save_error_recovered()
+					: m.gift_reorder_save_error_unresolved(),
+			);
 		},
 	);
 	const viewMode = $derived(giftsContext.viewMode.current);
@@ -1073,15 +1128,34 @@
 		settingsModalOpen = true;
 	}
 
-	function handleReorderModeChange(active: boolean) {
+	async function handleReorderModeChange(active: boolean) {
 		if (active) {
-			if (!canManage || isArchived || (viewMode !== 'card' && viewMode !== 'list')) {
+			if (
+				isGiftDataLoading ||
+				wishlist.shortId !== shortId ||
+				!reorderBaselineVerified ||
+				!canManage ||
+				isArchived ||
+				(viewMode !== 'card' && viewMode !== 'list')
+			) {
 				return;
 			}
 			reorderActiveIds = activeGiftsInOwnerOrder(giftsContext.effectiveGifts.current).map(
 				(giftItem) => giftItem.id,
 			);
 			reorderMode = true;
+			return;
+		}
+		if (!reorderMode || reorderDonePending) {
+			return;
+		}
+		reorderDonePending = true;
+		const savesSucceeded = await reorderPersistenceQueue.whenIdle();
+		reorderDonePending = false;
+		if (
+			!reorderBaselineVerified ||
+			(!savesSucceeded && reorderBaselineStatus !== REORDER_BASELINE_STATUS.recovered)
+		) {
 			return;
 		}
 		reorderMode = false;
@@ -1393,22 +1467,29 @@
 	}
 
 	function handleReorderPreview(orderedIds: string[]) {
-		if (reorderMode && isExactActiveGiftOrder(orderedIds)) {
+		if (reorderMode && reorderBaselineVerified && isExactActiveGiftOrder(orderedIds)) {
 			reorderActiveIds = [...orderedIds];
 		}
 	}
 
 	function handleReorderCancel(orderedIds: string[]) {
-		if (reorderMode && isExactActiveGiftOrder(orderedIds)) {
+		if (reorderMode && reorderBaselineVerified && isExactActiveGiftOrder(orderedIds)) {
 			reorderActiveIds = [...orderedIds];
 		}
 	}
 
 	function handleReorderCommit(orderedIds: string[]) {
-		if (!reorderMode || !canManage || isArchived || !isExactActiveGiftOrder(orderedIds)) {
+		if (
+			!reorderMode ||
+			!reorderBaselineVerified ||
+			!canManage ||
+			isArchived ||
+			!isExactActiveGiftOrder(orderedIds)
+		) {
 			return;
 		}
 
+		reorderBaselineStatus = REORDER_BASELINE_STATUS.verified;
 		reorderActiveIds = [...orderedIds];
 		giftsContext.setActiveGiftOrder(orderedIds);
 		reorderPersistenceQueue.enqueue([...orderedIds]);
@@ -1659,6 +1740,9 @@
 			categoryFilterOptions={giftsContext.categoryFilterOptions.current}
 			priorityFilterOptions={giftsContext.priorityFilterOptions.current}
 			{reorderMode}
+			{reorderDonePending}
+			reorderRecoveryPending={reorderBaselineStatus === REORDER_BASELINE_STATUS.refreshing}
+			giftDataReady={!isGiftDataLoading && wishlist.shortId === shortId}
 			{recipientViewPreview}
 			onrecipientviewpreviewchange={handleRecipientViewPreviewChange}
 			onreordermodechange={handleReorderModeChange}
@@ -1672,6 +1756,29 @@
 			onselectionstart={() => enterSelection()}
 			selectionContent={giftSelection.active ? selectionToolbar : undefined}
 		/>
+
+		{#if reorderMode && !reorderBaselineVerified}
+			<Alert.Root tone="warning" data-testid="gift-reorder-recovery-notice">
+				<TriangleAlertIcon />
+				<Alert.Description>
+					{reorderBaselineStatus === REORDER_BASELINE_STATUS.refreshing
+						? m.gift_reorder_recovering()
+						: m.gift_reorder_save_error_unresolved()}
+				</Alert.Description>
+				{#if reorderBaselineStatus === REORDER_BASELINE_STATUS.unresolved}
+					<Alert.Action>
+						<Button size="sm" intent="secondary" onclick={retryReorderBaselineRefresh}>
+							{m.gift_reorder_recovery_retry()}
+						</Button>
+					</Alert.Action>
+				{/if}
+			</Alert.Root>
+		{:else if reorderMode}
+			<Alert.Root data-testid="gift-reorder-temporary-notice">
+				<InfoIcon />
+				<Alert.Description>{m.gift_reorder_temporary_explanation()}</Alert.Description>
+			</Alert.Root>
+		{/if}
 
 		{#snippet contextActions()}
 			{#if contextActionGift !== null}
@@ -1721,7 +1828,9 @@
 		{/snippet}
 		<WishlistGiftDisplay
 			sections={giftSections}
-			grouping={giftsContext.effectiveGrouping.current}
+			grouping={reorderMode
+				? GIFT_GROUPING_OPTIONS.none
+				: giftsContext.effectiveGrouping.current}
 			{role}
 			{isArchived}
 			{hideReservationState}
@@ -1730,6 +1839,7 @@
 			{isEmpty}
 			{isFilteredEmpty}
 			{reorderMode}
+			reorderInteractionEnabled={reorderBaselineVerified}
 			selectionMode={giftSelection.active}
 			selectedIds={selectionSnapshot.selectedIds}
 			onselectiontoggle={(giftId) => giftSelection.toggle(giftId)}
