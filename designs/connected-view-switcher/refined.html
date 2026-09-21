@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="cs" data-palette="sky" data-depth="ink">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>Finální přepínač zobrazení</title>
+		<link rel="stylesheet" href="../tokens.css" />
+		<link rel="stylesheet" href="app-reference.css" />
+		<link rel="stylesheet" href="review.css" />
+		<script defer src="review.js"></script>
+	</head>
+	<body class="review-page">
+		<header class="review-header">
+			<p>FINÁLNÍ NÁVRH · STATICKÝ PŘEPÍNAČ</p>
+			<h1>Spojený přepínač zobrazení</h1>
+			<p>
+				Vybraná možnost má čtvercový obrys okolních tlačítek. Neaktivní možnost zůstává bez
+				obrysu a celý přepínač používá jeden klidový stín.
+			</p>
+			<nav class="review-navigation" aria-label="Zařízení">
+				<a href="?device=mobile" data-device-link="mobile">Mobil</a>
+				<a href="?device=desktop" data-device-link="desktop">Desktop</a>
+			</nav>
+			<div class="review-controls">
+				<label
+					>Šířka náhledu
+					<select data-width-control></select></label
+				><label
+					>Hloubka
+					<select data-depth-control>
+						<option value="soft">Měkká</option>
+						<option value="ink" selected>Inkoustová</option>
+						<option value="black">Černá</option>
+					</select></label
+				><button type="button" data-mode-control aria-pressed="false">Tmavý režim</button>
+			</div>
+			<p class="review-note">
+				Měřítko 1:1, bez zmenšování. Přepínač funguje; ostatní akce jsou pouze kontext.
+			</p>
+		</header>
+		<div class="review-viewport">
+			<iframe title="Finální přepínač v reálné liště"></iframe>
+		</div>
+	</body>
+</html>

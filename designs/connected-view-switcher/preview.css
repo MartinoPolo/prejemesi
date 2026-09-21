@@ -1,0 +1,93 @@
+* {
+	box-sizing: border-box;
+}
+body {
+	min-width: 320px;
+	margin: 0;
+	background: var(--background);
+	color: var(--foreground);
+	font-family: var(--font-body);
+	font-synthesis: none;
+	-webkit-font-smoothing: antialiased;
+}
+.preview-page {
+	max-width: var(--content-max-width);
+	margin-inline: auto;
+	padding-block: 24px 40px;
+}
+.toolbar-scene {
+	width: 100%;
+	max-width: var(--content-max-width);
+	margin-inline: auto;
+	padding-inline: 16px;
+}
+.toolbar-mount,
+.toolbar-mount > [data-testid='wishlist-toolbar'] {
+	width: 100%;
+}
+[data-switcher] {
+	position: relative;
+	background: transparent !important;
+}
+[data-switcher] > button {
+	background: transparent !important;
+	outline: none !important;
+}
+[data-switcher] > button > .elevation-surface {
+	visibility: hidden;
+}
+[data-switcher] > button:focus-visible {
+	z-index: 1;
+	outline: 2px solid var(--ring) !important;
+	outline-offset: 2px !important;
+}
+[data-proposal-surface] {
+	position: absolute;
+	z-index: 0;
+	inset: 0;
+	box-shadow: var(--elevation-ordinary) !important;
+	pointer-events: none;
+	scale: 1 !important;
+	translate: 0 !important;
+	transition: none !important;
+}
+[data-proposal-surface]::before,
+[data-proposal-surface] > [data-state='off']::before {
+	content: none;
+}
+[data-proposal-surface] > div {
+	pointer-events: none;
+}
+[data-proposal-surface] > [data-state='on'] {
+	isolation: isolate;
+	background: transparent;
+	outline: none;
+}
+[data-proposal-surface] > [data-state='on']::before {
+	box-sizing: border-box;
+	position: absolute;
+	z-index: -1;
+	inset: 0;
+	border: 2.5px solid var(--ink);
+	border-radius: var(--radius-btn);
+	background: var(--card);
+	content: '';
+}
+@media (min-width: 640px) {
+	[data-proposal-surface]:has(> :first-child[data-state='on']) {
+		inset-inline-start: 1px;
+		padding-inline-start: 0;
+	}
+	[data-proposal-surface]:has(> :last-child[data-state='on']) {
+		inset-inline-end: 1px;
+		padding-inline-end: 0;
+	}
+}
+@media (max-width: 639px) {
+	[data-proposal-surface] > [data-state='on']::before {
+		inset: -1px;
+	}
+	.toolbar-scene {
+		padding-inline: 12px;
+	}
+}
