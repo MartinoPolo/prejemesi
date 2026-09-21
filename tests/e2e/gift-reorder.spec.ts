@@ -4,6 +4,7 @@ import { registerAndGetPage } from './fixtures/auth-helpers.js';
 import {
 	createWishlistAndNavigate,
 	addGift,
+	openDesktopDisplaySubmenu,
 	startGiftReorder,
 } from './fixtures/wishlist-helpers.js';
 
@@ -28,6 +29,266 @@ function giftItem(page: Page, name: string) {
 		has: page.getByRole('heading', { name, exact: true, level: 3 }),
 	});
 }
+
+async function chooseDisplayOption(page: Page, section: RegExp, option: RegExp) {
+	const submenu = await openDesktopDisplaySubmenu(page, section);
+	const item = submenu.getByRole('menuitemradio', { name: option });
+	await item.focus();
+	await item.press('Enter');
+	await page.keyboard.press('Escape');
+	await page.keyboard.press('Escape');
+}
+
+async function enableWithLinkFilter(page: Page) {
+	const submenu = await openDesktopDisplaySubmenu(page, /^Filtrovat|^Filter/);
+	const item = submenu.getByRole('menuitemcheckbox', {
+		name: /S odkazem|With link/,
+		exact: true,
+	});
+	await item.focus();
+	await item.press('Enter');
+	await page.keyboard.press('Escape');
+	await page.keyboard.press('Escape');
+}
+
+test('grouped, sorted, and filtered browsing is temporarily flattened and restored across desktop and mobile', async ({
+	browser,
+	request,
+	baseURL,
+}) => {
+	const user = createTestUser('gift-reorder-grouped-presentation');
+	const page = await registerAndGetPage(browser, request, baseURL!, user);
+	const context = page.context();
+	try {
+		await createWishlistAndNavigate(page, 'Gift Reorder Grouped Presentation');
+		const ownerOrder = ['Zeta Gift', 'Alpha Gift', 'Mu Gift'];
+		await addGift(page, ownerOrder[0], {
+			primaryLink: 'https://example.com/zeta',
+			priority: 'Vysoká',
+			category: 'Knihy',
+		});
+		await addGift(page, ownerOrder[1], { priority: 'Nízká' });
+		await addGift(page, ownerOrder[2], {
+			primaryLink: 'https://example.com/mu',
+			priority: 'Vysoká',
+			category: 'Knihy',
+		});
+		await addGift(page, 'Received Gift', { priority: 'Střední' });
+		await giftItem(page, 'Received Gift')
+			.getByRole('button', { name: 'Označit jako přijatý', exact: true })
+			.click();
+		await expect(giftItem(page, 'Received Gift')).toBeVisible();
+
+		await expect(page.getByRole('heading', { level: 2, name: 'Vysoká' })).toBeVisible();
+		await startGiftReorder(page);
+		await expect(page.getByTestId('gift-reorder-temporary-notice')).toContainText(
+			'dočasně zobrazujeme všechny aktivní dárky bez seskupení, řazení a filtrů',
+		);
+		await expect.poll(() => visibleGiftNames(page)).toEqual(ownerOrder);
+		await expect(page.getByRole('heading', { level: 2, name: 'Vysoká' })).toHaveCount(0);
+		await page.getByRole('button', { name: 'Hotovo', exact: true }).click();
+		await expect(page.getByRole('heading', { level: 2, name: 'Vysoká' })).toBeVisible();
+
+		await chooseDisplayOption(page, /Seskupení|Grouping/, /Podle kategorie|By category/);
+		await chooseDisplayOption(page, /Řadit podle|Sort by/, /^Název$|^Name$/);
+		await enableWithLinkFilter(page);
+		await expect.poll(() => visibleGiftNames(page, 2)).toEqual(['Mu Gift', 'Zeta Gift']);
+		await expect(page.getByRole('heading', { level: 2, name: 'Knihy' })).toBeVisible();
+
+		await startGiftReorder(page);
+		await expect.poll(() => visibleGiftNames(page)).toEqual(ownerOrder);
+		await expect(page.getByRole('heading', { level: 2, name: 'Knihy' })).toHaveCount(0);
+		const zetaHandle = giftItem(page, ownerOrder[0]).getByRole('button', {
+			name: REORDER_HANDLE,
+			exact: true,
+		});
+		const save = page.waitForResponse(isSuccessfulRemoteMutation, { timeout: 15_000 });
+		await zetaHandle.focus();
+		await zetaHandle.press('ArrowDown');
+		await save;
+		const updatedOwnerOrder = ['Alpha Gift', 'Zeta Gift', 'Mu Gift'];
+		await expect.poll(() => visibleGiftNames(page)).toEqual(updatedOwnerOrder);
+		await page.getByRole('radio', { name: 'Seznam', exact: true }).click();
+		await page.getByRole('button', { name: 'Hotovo', exact: true }).click();
+		await expect(page.locator('[data-wishlist-gift-collection]')).toHaveAttribute(
+			'data-view-mode',
+			'list',
+		);
+		await expect.poll(() => visibleGiftNames(page, 2)).toEqual(['Mu Gift', 'Zeta Gift']);
+		await expect(page.getByRole('heading', { level: 2, name: 'Knihy' })).toBeVisible();
+		await expect(page.getByTestId('desktop-display-trigger')).toHaveAccessibleName(
+			/Aktivní filtry: 2/,
+		);
+
+		await page.setViewportSize({ width: 390, height: 844 });
+		await startGiftReorder(page);
+		await expect(page.getByTestId('gift-reorder-temporary-notice')).toBeVisible();
+		await expect.poll(() => visibleGiftNames(page)).toEqual(updatedOwnerOrder);
+		await expect(giftItem(page, 'Received Gift')).toHaveCount(0);
+		await page.getByRole('button', { name: 'Hotovo', exact: true }).click();
+		await expect.poll(() => visibleGiftNames(page, 2)).toEqual(['Mu Gift', 'Zeta Gift']);
+
+		await page.reload();
+		await expect(page.getByRole('heading', { level: 2, name: 'Knihy' })).toBeVisible();
+		await expect
+			.poll(() => visibleGiftNames(page))
+			.toEqual(['Mu Gift', 'Zeta Gift', 'Alpha Gift']);
+		await expect(giftItem(page, 'Zeta Gift').getByTestId('gift-category-badge')).toHaveText(
+			'Knihy',
+		);
+		await expect(giftItem(page, 'Zeta Gift').getByTestId('gift-priority-badge')).toHaveText(
+			'Vysoká',
+		);
+		await expect(giftItem(page, 'Alpha Gift').getByTestId('gift-category-badge')).toHaveCount(
+			0,
+		);
+		await expect(giftItem(page, 'Alpha Gift').getByTestId('gift-priority-badge')).toHaveText(
+			'Nízká',
+		);
+
+		await page.setViewportSize({ width: 390, height: 844 });
+		await startGiftReorder(page);
+		await expect.poll(() => visibleGiftNames(page)).toEqual(updatedOwnerOrder);
+		await page.getByRole('button', { name: 'Hotovo', exact: true }).click();
+		await expect(page.getByRole('heading', { level: 2, name: 'Knihy' })).toBeVisible();
+		await expect
+			.poll(() => visibleGiftNames(page))
+			.toEqual(['Mu Gift', 'Zeta Gift', 'Alpha Gift']);
+	} finally {
+		await context.close();
+	}
+});
+
+test('an ambiguous reorder failure exits only after authoritative refresh confirms server order', async ({
+	browser,
+	request,
+	baseURL,
+}) => {
+	const user = createTestUser('gift-reorder-ambiguous-failure');
+	const page = await registerAndGetPage(browser, request, baseURL!, user);
+	const context = page.context();
+	try {
+		await createWishlistAndNavigate(page, 'Gift Reorder Ambiguous Failure');
+		const originalOrder = ['Failure Gift A', 'Failure Gift B', 'Failure Gift C'];
+		for (const name of originalOrder) {
+			await addGift(page, name);
+		}
+		await startGiftReorder(page);
+
+		let signalMutationCommitted!: () => void;
+		const mutationCommitted = new Promise<void>((resolve) => {
+			signalMutationCommitted = resolve;
+		});
+		let releaseLostResponse!: () => void;
+		const lostResponseGate = new Promise<void>((resolve) => {
+			releaseLostResponse = resolve;
+		});
+		await page.route('**/_app/remote/**/reorderGifts', async (route) => {
+			const committedResponse = await route.fetch();
+			expect(committedResponse.ok()).toBe(true);
+			signalMutationCommitted();
+			await lostResponseGate;
+			await route.fulfill({
+				status: 500,
+				contentType: 'application/json',
+				body: JSON.stringify({ message: 'simulated lost mutation response' }),
+			});
+		});
+
+		const firstHandle = giftItem(page, originalOrder[0]).getByRole('button', {
+			name: REORDER_HANDLE,
+			exact: true,
+		});
+		await firstHandle.focus();
+		await firstHandle.press('ArrowDown');
+		await mutationCommitted;
+		await page.getByRole('button', { name: 'Hotovo', exact: true }).click();
+		await expect(page.getByRole('button', { name: 'Ukládání…', exact: true })).toBeDisabled();
+		releaseLostResponse();
+
+		const committedOrder = ['Failure Gift B', 'Failure Gift A', 'Failure Gift C'];
+		await expect(page.getByText(/Načetli jsme aktuální pořadí ze serveru/)).toBeVisible();
+		await expect(page.getByTestId('gift-reorder-temporary-notice')).toHaveCount(0);
+		await page.unroute('**/_app/remote/**/reorderGifts');
+		await startGiftReorder(page);
+		await expect.poll(() => visibleGiftNames(page)).toEqual(committedOrder);
+	} finally {
+		await context.close();
+	}
+});
+
+test('failed recovery stays unresolved and blocks reorder commits until explicit retry succeeds', async ({
+	browser,
+	request,
+	baseURL,
+}) => {
+	const user = createTestUser('gift-reorder-refresh-failure');
+	const page = await registerAndGetPage(browser, request, baseURL!, user);
+	const context = page.context();
+	try {
+		await createWishlistAndNavigate(page, 'Gift Reorder Refresh Failure');
+		const originalOrder = ['Refresh Gift A', 'Refresh Gift B', 'Refresh Gift C'];
+		for (const name of originalOrder) {
+			await addGift(page, name);
+		}
+		await startGiftReorder(page);
+
+		let reorderRequests = 0;
+		await page.route('**/_app/remote/**/reorderGifts', async (route) => {
+			reorderRequests += 1;
+			await route.fulfill({
+				status: 500,
+				contentType: 'application/json',
+				body: JSON.stringify({ message: 'simulated reorder failure' }),
+			});
+		});
+		let allowAuthoritativeRefresh = false;
+		await page.route('**/_app/remote/**/getGiftsByWishlistShortId*', async (route) => {
+			if (allowAuthoritativeRefresh) {
+				await route.continue();
+				return;
+			}
+			await route.fulfill({
+				status: 500,
+				contentType: 'application/json',
+				body: JSON.stringify({ message: 'simulated refresh failure' }),
+			});
+		});
+
+		const firstHandle = giftItem(page, originalOrder[0]).getByRole('button', {
+			name: REORDER_HANDLE,
+			exact: true,
+		});
+		await firstHandle.focus();
+		await firstHandle.press('ArrowDown');
+
+		const recoveryNotice = page.getByTestId('gift-reorder-recovery-notice');
+		await expect(recoveryNotice).toContainText('Nemůžeme ověřit, zda se pořadí uložilo');
+		await expect(page.getByRole('button', { name: REORDER_HANDLE, exact: true })).toHaveCount(
+			0,
+		);
+		await page.getByRole('button', { name: 'Hotovo', exact: true }).click();
+		await expect(recoveryNotice).toBeVisible();
+		expect(reorderRequests).toBe(1);
+
+		allowAuthoritativeRefresh = true;
+		await recoveryNotice.getByRole('button', { name: 'Načíst pořadí znovu' }).click();
+		await expect(recoveryNotice).toHaveCount(0);
+		await expect(page.getByRole('button', { name: REORDER_HANDLE, exact: true })).toHaveCount(
+			3,
+		);
+		await expect.poll(() => visibleGiftNames(page)).toEqual(originalOrder);
+		await page.getByRole('button', { name: 'Hotovo', exact: true }).click();
+		await expect(page.getByTestId('gift-reorder-temporary-notice')).toHaveCount(0);
+
+		await page.unroute('**/_app/remote/**/reorderGifts');
+		await page.unroute('**/_app/remote/**/getGiftsByWishlistShortId*');
+		await startGiftReorder(page);
+		await expect.poll(() => visibleGiftNames(page)).toEqual(originalOrder);
+	} finally {
+		await context.close();
+	}
+});
 
 test('card drag preview stays stable while the pointer rests on a gift boundary', async ({
 	browser,

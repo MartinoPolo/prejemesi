@@ -30,6 +30,7 @@
 		isEmpty: boolean;
 		isFilteredEmpty: boolean;
 		reorderMode: boolean;
+		reorderInteractionEnabled?: boolean;
 		onedit: (gift: GiftByRole) => void;
 		onreserve: (gift: GiftForVisitor) => void;
 		onunreserve: (gift: GiftForVisitor) => void;
@@ -64,6 +65,7 @@
 		isEmpty,
 		isFilteredEmpty,
 		reorderMode,
+		reorderInteractionEnabled = true,
 		onedit,
 		onreserve,
 		onunreserve,
@@ -244,6 +246,7 @@
 							{isArchived}
 							hideReservationState={reservationStateHidden}
 							reorderEnabled={reorderMode &&
+								reorderInteractionEnabled &&
 								canManage &&
 								!isArchived &&
 								!selectionMode}
@@ -270,6 +273,7 @@
 							{isArchived}
 							hideReservationState={reservationStateHidden}
 							reorderEnabled={reorderMode &&
+								reorderInteractionEnabled &&
 								canManage &&
 								!isArchived &&
 								!selectionMode}

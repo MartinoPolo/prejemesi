@@ -99,13 +99,15 @@ interface GiftDraftOptions {
 	description?: string;
 	price?: string;
 	primaryLink?: string;
+	priority?: string;
+	category?: string;
 }
 
 /** Add a gift with the supplied details to the currently open wishlist detail page. */
 export async function addGift(
 	page: Page,
 	name: string,
-	{ description, price, primaryLink }: GiftDraftOptions = {},
+	{ description, price, primaryLink, priority, category }: GiftDraftOptions = {},
 ): Promise<void> {
 	await page
 		.getByRole('button', { name: /Přidat/ })
@@ -124,6 +126,14 @@ export async function addGift(
 	if (primaryLink !== undefined) {
 		await dialog.getByRole('button', { name: 'Přidat odkaz' }).click();
 		await dialog.getByTestId('gift-link-url').fill(primaryLink);
+	}
+	if (priority !== undefined) {
+		await dialog.getByRole('button', { name: 'Bez priority' }).click();
+		await page.getByRole('option', { name: priority, exact: true }).click();
+	}
+	if (category !== undefined) {
+		await dialog.getByRole('button', { name: 'Bez kategorie' }).click();
+		await page.getByRole('option', { name: category, exact: true }).click();
 	}
 	await dialog.getByRole('button', { name: 'Přidat dárek' }).click();
 

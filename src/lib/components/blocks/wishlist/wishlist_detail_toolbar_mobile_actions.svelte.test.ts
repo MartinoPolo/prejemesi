@@ -275,6 +275,37 @@ describe('WishlistDetailToolbar mobile actions (#340)', () => {
 		await screen.unmount();
 	});
 
+	it.each([GIFT_GROUPING_OPTIONS.priority, GIFT_GROUPING_OPTIONS.category])(
+		'keeps mobile reorder available while grouped by %s',
+		async (grouping) => {
+			const onreordermodechange = vi.fn();
+			const screen = await renderToolbar({
+				canManage: true,
+				role: WISHLIST_ROLES.recipient,
+				grouping,
+				groupingAvailability: { priority: true, category: true },
+				onreordermodechange,
+			});
+			await screen.getByTestId('mobile-more-trigger').click();
+			await screen.getByRole('button', { name: m.gift_reorder_action() }).click();
+			expect(onreordermodechange).toHaveBeenCalledWith(true);
+			await screen.unmount();
+		},
+	);
+
+	it('does not offer mobile reorder before gift data is ready', async () => {
+		const screen = await renderToolbar({
+			canManage: true,
+			role: WISHLIST_ROLES.recipient,
+			giftDataReady: false,
+		});
+		await screen.getByTestId('mobile-more-trigger').click();
+		await expect
+			.element(screen.getByRole('button', { name: m.gift_reorder_action() }))
+			.not.toBeInTheDocument();
+		await screen.unmount();
+	});
+
 	it('keeps the mobile layout switcher enabled in reorder without overflowing at 320px', async () => {
 		const onreordermodechange = vi.fn();
 		const onviewmodechange = vi.fn();
