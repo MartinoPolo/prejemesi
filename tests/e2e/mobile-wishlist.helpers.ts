@@ -2,6 +2,7 @@ import { expect, type Locator, type Page, type TestInfo } from '@playwright/test
 import { mkdir } from 'node:fs/promises';
 import {
 	addGift,
+	createWishlistAndNavigate,
 	createWishlistForSomeoneAndNavigate,
 	shareWishlist,
 } from './fixtures/wishlist-helpers.js';
@@ -13,11 +14,7 @@ import {
 export const MOBILE_HEIGHT = 844;
 export const WIDTHS = [320, 360, 390] as const;
 
-export async function createManagerWishlist(
-	page: Page,
-	title = 'Mobilní seznam pro Aničku',
-): Promise<string> {
-	await createWishlistForSomeoneAndNavigate(page, { title, recipientName: 'Anička' });
+async function populateAndShareMobileWishlist(page: Page): Promise<string> {
 	await addGift(page, 'Dlouhý název dárku který se musí bezpečně vejít na přesně dva řádky', {
 		price: '1299',
 	});
@@ -31,6 +28,22 @@ export async function createManagerWishlist(
 	await page.setViewportSize({ width: 390, height: MOBILE_HEIGHT });
 	await dismissToasts(page);
 	return new URL(page.url()).pathname;
+}
+
+export async function createRecipientWishlist(
+	page: Page,
+	title = 'Mobilní seznam přání',
+): Promise<string> {
+	await createWishlistAndNavigate(page, title);
+	return populateAndShareMobileWishlist(page);
+}
+
+export async function createManagerWishlist(
+	page: Page,
+	title = 'Mobilní seznam pro Aničku',
+): Promise<string> {
+	await createWishlistForSomeoneAndNavigate(page, { title, recipientName: 'Anička' });
+	return populateAndShareMobileWishlist(page);
 }
 
 export async function addQuantityGift(page: Page, name: string, quantity: number) {
