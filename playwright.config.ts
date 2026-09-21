@@ -1,7 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 import { loadEnv } from 'vite';
 import { resolveDatabaseUrl } from './src/lib/config/runtime_environment.js';
-import { sharedChromeLaunchOptions } from './scripts/browser-automation.mjs';
+import { sharedBrowserTestLaunchOptions } from './scripts/browser-automation.mjs';
 import { resolvePlaywrightServer } from './scripts/playwright-environment.mjs';
 
 const environment = { ...loadEnv('development', process.cwd(), ''), ...process.env };
@@ -23,7 +23,7 @@ export default defineConfig({
 	expect: { timeout: 10_000 },
 	workers: 2,
 	use: {
-		...sharedChromeLaunchOptions,
+		...sharedBrowserTestLaunchOptions,
 		baseURL: server.origin,
 		trace: 'on-first-retry',
 		actionTimeout: 15_000,

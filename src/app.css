@@ -625,7 +625,7 @@
 	height: calc(var(--elevation-ordinary-offset) + 1px);
 	content: '';
 	background: rgb(0 0 0 / 0.1%);
-	pointer-events: auto;
+	pointer-events: inherit;
 }
 
 .elevation-owner-raised > .elevation-surface {
@@ -656,10 +656,6 @@
 	pointer-events: none;
 }
 
-.elevation-owner-raised:is(:disabled, [aria-disabled='true'], [data-disabled])::after {
-	pointer-events: none;
-}
-
 .elevation-owner.elevation-owner-raised:is(:disabled, [aria-disabled='true'], [data-disabled])
 	> .elevation-surface {
 	box-shadow: none;
@@ -667,7 +663,9 @@
 	scale: 1;
 }
 
-.elevation-owner-raised:not(:disabled, [aria-disabled='true'], [data-disabled]):active
+.elevation-owner-raised:not(:disabled, [aria-disabled='true'], [data-disabled]):active:not(
+		.gift-card-root:has(> .elevation-surface :is(a, button, input, textarea, select):active)
+	)
 	> .elevation-surface {
 	box-shadow: var(--elevation-pressed);
 	translate: 0;

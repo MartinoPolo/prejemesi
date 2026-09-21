@@ -155,7 +155,7 @@
 
 			{#if !contextualMode}
 				<div
-					class="gift-card-top-overlays pointer-events-none absolute top-2 right-2 left-2 z-20 flex items-start gap-2"
+					class="gift-card-top-overlays absolute top-2 right-2 left-2 z-20 flex items-start gap-2"
 					data-gift-card-top-overlays
 				>
 					{#if gift.category != null}
@@ -168,7 +168,7 @@
 							giftId={gift.id}
 							giftName={gift.name}
 							likeCount={visitorGift.likeCount}
-							class="pointer-events-auto ml-auto"
+							class="ml-auto"
 						/>
 					{/if}
 				</div>

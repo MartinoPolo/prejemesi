@@ -1,6 +1,6 @@
 import '../../../../app.css';
 import { describe, expect, it, vi } from 'vitest';
-import { page } from 'vitest/browser';
+import { page, userEvent } from 'vitest/browser';
 import { render } from 'vitest-browser-svelte';
 import { WISHLIST_ROLES } from '$lib/modules/wishlists/types.js';
 import * as m from '$lib/paraglide/messages.js';
@@ -20,6 +20,56 @@ async function settleActionPlacement() {
 }
 
 describe('GiftListItem approved action geometry (issue #350)', () => {
+	it('keeps nested action hover paint independent from the flat list row', async () => {
+		await page.viewport(800, 900);
+		const host = document.createElement('div');
+		host.style.width = '720px';
+		document.body.appendChild(host);
+		await render(
+			GiftListItemTestHost,
+			{
+				gift: makeVisitorGift({
+					links: [{ url: 'https://example.com/gift', label: 'Obchod' }],
+					myReservationId: null,
+					reservedCount: 0,
+				}),
+				role: WISHLIST_ROLES.moderator,
+				onreserve: () => {},
+				onreceived: () => {},
+				onmore: () => {},
+			},
+			{ baseElement: host },
+		);
+
+		const title = host.querySelector<HTMLElement>('h3')!;
+		const more = host.querySelector<HTMLButtonElement>('[data-testid="gift-more-actions"]')!;
+		const received = host.querySelector<HTMLButtonElement>(
+			'[data-testid="gift-received-toggle"]',
+		)!;
+		const sourceLink = host.querySelector<HTMLAnchorElement>('a[target="_blank"]')!;
+		const moreSurface = more.querySelector<HTMLElement>(':scope > .elevation-surface')!;
+		const receivedSurface = received.querySelector<HTMLElement>(':scope > .elevation-surface')!;
+		const sourceSurface = sourceLink.querySelector<HTMLElement>(':scope > .elevation-surface')!;
+		const restingPaint = [moreSurface, receivedSurface, sourceSurface].map(
+			(element) => getComputedStyle(element).backgroundColor,
+		);
+
+		await userEvent.hover(title);
+		await expect
+			.poll(() =>
+				[moreSurface, receivedSurface, sourceSurface].map(
+					(element) => getComputedStyle(element).backgroundColor,
+				),
+			)
+			.toEqual(restingPaint);
+
+		await userEvent.hover(more);
+		await expect
+			.poll(() => getComputedStyle(moreSurface).backgroundColor)
+			.not.toBe(restingPaint[0]);
+		host.remove();
+	});
+
 	it('omits the action area when More is only a latent overflow callback', async () => {
 		const host = document.createElement('div');
 		document.body.appendChild(host);

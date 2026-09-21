@@ -216,7 +216,7 @@
 		data-testid="gift-list-item"
 		use:restingShadowNesting
 		class={cn(
-			'gift-list-item resting-shadow-nesting group relative grid items-start gap-0 rounded-panel border-2 border-ink bg-card shadow-sticker',
+			'gift-list-item resting-shadow-nesting relative grid items-start gap-0 rounded-panel border-2 border-ink bg-card shadow-sticker',
 			hasReceivedPrimary &&
 				reserverLine !== null &&
 				reserverLine !== '' &&

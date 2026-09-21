@@ -137,6 +137,14 @@ email/password auth. Parallel app instances share database/data unless separatel
 
 ### Testing
 
+Install Playwright's bundled Chromium before running Vitest browser tests or Playwright E2E tests:
+
+```sh
+pnpm exec playwright install chromium
+```
+
+On Windows, use `pnpm.cmd` instead of `pnpm`.
+
 | Script                      | Description                                                    |
 | --------------------------- | -------------------------------------------------------------- |
 | `pnpm run test`             | Unit tests with Vitest                                         |
@@ -266,6 +274,7 @@ Built with `@sveltejs/adapter-cloudflare` for **Cloudflare Workers**, backed by 
 Configuration is in `wrangler.jsonc`; add Cloudflare bindings (KV, D1, R2) in `src/app.d.ts` under
 `App.Platform`.
 
-`.github/workflows/ci.yml` runs the full check suite, unit tests with coverage, and Playwright E2E
-on every PR and push to `dev`/`main`. Connect the repo to Cloudflare Pages/Workers for automatic
-deploys and PR preview environments.
+`.github/workflows/checks.yml` defines the full check suite, unit tests with coverage, and
+Playwright E2E. `.github/workflows/ci.yml` invokes it for pull requests and pushes to `dev`;
+`.github/workflows/deploy.yml` invokes it for production deployments. Connect the repo to Cloudflare
+Pages/Workers for automatic deploys and PR preview environments.
