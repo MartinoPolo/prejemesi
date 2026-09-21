@@ -100,7 +100,9 @@ test.describe('Home overview (issue #225)', () => {
 		await expect(visibleCard).toBeVisible();
 		const cardName = await visibleCard.getAttribute('aria-label');
 		expect(cardName).toBeTruthy();
-		const namedCard = overflowingRow.getByLabel(cardName!, { exact: true });
+		const namedCard = overflowingRow
+			.getByTestId('wishlist-card')
+			.and(page.getByLabel(cardName!, { exact: true }));
 		const viewportBox = await viewport.boundingBox();
 		const cardBox = await namedCard.boundingBox();
 		expect(viewportBox).not.toBeNull();
