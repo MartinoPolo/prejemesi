@@ -497,6 +497,16 @@
 		},
 	);
 	const viewMode = $derived(giftsContext.viewMode.current);
+	const reorderLayoutSupported = $derived(
+		viewMode === GIFT_VIEW_MODES.card || viewMode === GIFT_VIEW_MODES.list,
+	);
+	const canMaintainReorderMode = $derived(canManage && !isArchived && reorderLayoutSupported);
+	const canEnterReorderMode = $derived(
+		!isGiftDataLoading &&
+			wishlist.shortId === shortId &&
+			reorderBaselineVerified &&
+			canMaintainReorderMode,
+	);
 	const reorderModeGifts = $derived(
 		reorderActiveIds === null
 			? activeGiftsInOwnerOrder(giftsContext.effectiveGifts.current)
@@ -997,10 +1007,7 @@
 	}
 
 	$effect(() => {
-		if (
-			reorderMode &&
-			(!canManage || isArchived || (viewMode !== 'card' && viewMode !== 'list'))
-		) {
+		if (reorderMode && !canMaintainReorderMode) {
 			reorderMode = false;
 			reorderActiveIds = null;
 		}
@@ -1128,38 +1135,43 @@
 		settingsModalOpen = true;
 	}
 
-	async function handleReorderModeChange(active: boolean) {
-		if (active) {
-			if (
-				isGiftDataLoading ||
-				wishlist.shortId !== shortId ||
-				!reorderBaselineVerified ||
-				!canManage ||
-				isArchived ||
-				(viewMode !== 'card' && viewMode !== 'list')
-			) {
-				return;
-			}
-			reorderActiveIds = activeGiftsInOwnerOrder(giftsContext.effectiveGifts.current).map(
-				(giftItem) => giftItem.id,
-			);
-			reorderMode = true;
+	function enterReorderMode() {
+		if (!canEnterReorderMode) {
 			return;
 		}
+		reorderActiveIds = activeGiftsInOwnerOrder(giftsContext.effectiveGifts.current).map(
+			(giftItem) => giftItem.id,
+		);
+		reorderMode = true;
+	}
+
+	function canFinishReorderMode(savesSucceeded: boolean): boolean {
+		return (
+			reorderBaselineVerified &&
+			(savesSucceeded || reorderBaselineStatus === REORDER_BASELINE_STATUS.recovered)
+		);
+	}
+
+	async function finishReorderMode() {
 		if (!reorderMode || reorderDonePending) {
 			return;
 		}
 		reorderDonePending = true;
 		const savesSucceeded = await reorderPersistenceQueue.whenIdle();
 		reorderDonePending = false;
-		if (
-			!reorderBaselineVerified ||
-			(!savesSucceeded && reorderBaselineStatus !== REORDER_BASELINE_STATUS.recovered)
-		) {
+		if (!canFinishReorderMode(savesSucceeded)) {
 			return;
 		}
 		reorderMode = false;
 		reorderActiveIds = null;
+	}
+
+	async function handleReorderModeChange(active: boolean) {
+		if (active) {
+			enterReorderMode();
+			return;
+		}
+		await finishReorderMode();
 	}
 
 	function handleViewModeChange(mode: GiftViewMode) {
@@ -1482,8 +1494,7 @@
 		if (
 			!reorderMode ||
 			!reorderBaselineVerified ||
-			!canManage ||
-			isArchived ||
+			!canMaintainReorderMode ||
 			!isExactActiveGiftOrder(orderedIds)
 		) {
 			return;
