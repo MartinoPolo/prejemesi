@@ -355,8 +355,8 @@
 		gap: var(--gift-context-control-gap);
 	}
 
-	/* Selection follows the gift surface, excluding the desktop List checkbox gutter. */
-	[data-gift-item][data-selected] :global([data-testid='gift-card-surface'])::before,
+	/* Selection follows the moving Card paint and the flat List surface. */
+	[data-gift-item][data-selected] :global(.gift-card-painted-surface)::before,
 	[data-gift-item][data-selected] :global([data-testid='gift-list-item'])::before {
 		position: absolute;
 		z-index: 30;
@@ -367,8 +367,9 @@
 		pointer-events: none;
 	}
 
-	[data-gift-item][data-selected] :global([data-testid='gift-card-surface'])::before {
-		border-radius: inherit;
+	[data-gift-item][data-selected] :global(.gift-card-painted-surface)::before {
+		border-radius: max(0px, calc(var(--radius-panel) - var(--nested-border-inline, 2.5px))) /
+			max(0px, calc(var(--radius-panel) - var(--nested-border-block, 2.5px)));
 	}
 
 	/* Absolute children start at the padding edge; subtract the List surface's 2px border. */

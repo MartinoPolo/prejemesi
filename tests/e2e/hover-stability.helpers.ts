@@ -137,7 +137,7 @@ export async function stationaryLowerEdge(
 	controlName: string,
 ): Promise<StationaryEvidence> {
 	await prepareRestingControl(page, control);
-	const box = await control.boundingBox();
+	let box = await control.boundingBox();
 	expect(box).not.toBeNull();
 	const restingAfter = await control.evaluate((element) => {
 		const after = getComputedStyle(element, '::after');
@@ -152,6 +152,12 @@ export async function stationaryLowerEdge(
 			getComputedStyle(element).getPropertyValue('--elevation-ordinary-offset'),
 		),
 	);
+	const viewportHeight = await page.evaluate(() => window.innerHeight);
+	if (box!.y < 0 || box!.y + box!.height + ordinaryShadowOffset >= viewportHeight) {
+		await control.evaluate((element) => element.scrollIntoView({ block: 'center' }));
+		box = await control.boundingBox();
+		expect(box).not.toBeNull();
+	}
 	const coordinate = {
 		x: box!.x + box!.width / 2,
 		// This is the reported lower edge of the resting hard shadow, not merely
@@ -215,11 +221,21 @@ export async function stationaryLowerEdge(
 		}
 	});
 
-	const lowerBoundaryReachable = await control.evaluate((element, point) => {
+	const lowerBoundaryProbe = await control.evaluate((element, point) => {
 		const target = document.elementFromPoint(point.x, point.y);
-		return target !== null && (target === element || element.contains(target));
+		return {
+			reachable: target !== null && (target === element || element.contains(target)),
+			target:
+				target instanceof Element
+					? `${target.tagName.toLowerCase()}${target.id ? `#${target.id}` : ''}.${Array.from(target.classList).join('.')}`
+					: null,
+		};
 	}, coordinate);
-	expect(lowerBoundaryReachable, `${controlName} resting lower boundary is reachable`).toBe(true);
+	const lowerBoundaryReachable = lowerBoundaryProbe.reachable;
+	expect(
+		lowerBoundaryReachable,
+		`${controlName} resting lower boundary is reachable; hit ${lowerBoundaryProbe.target}`,
+	).toBe(true);
 	await page.mouse.move(coordinate.x, coordinate.y);
 	const measurement = await control.evaluate(async (element, point) => {
 		type ProbeState = HoverEventEvidence & { startedAt: number };

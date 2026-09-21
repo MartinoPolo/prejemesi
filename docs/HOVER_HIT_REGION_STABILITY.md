@@ -17,8 +17,9 @@ A raised interaction has two explicit layers:
 - Its direct `.elevation-surface` child owns border, background, shadow, and motion.
 - `.elevation-owner-raised::after` is a static transparent hit strip contiguous with the owner's
   lower border box and covering the resting ordinary-shadow offset. It never transforms or animates.
-- Complex cards use an empty, absolute, `aria-hidden` surface plate. Interactive descendants remain
-  outside that moving plate.
+- Gift cards put all visible card content, overlays, and nested actions inside the direct moving
+  surface. Nested semantic actions move with that surface while keeping their own hit targets
+  aligned.
 
 Hover lifts only the surface by 2 px. Active feedback returns it to zero translation, scales it to
 0.98, and uses the pressed shadow. Anchored-open triggers rest at zero translation. Disabled

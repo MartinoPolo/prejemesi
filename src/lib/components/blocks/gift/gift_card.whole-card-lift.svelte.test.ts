@@ -1,62 +1,116 @@
 import '../../../../app.css';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
+import { userEvent } from 'vitest/browser';
 import { WISHLIST_ROLES } from '$lib/modules/wishlists/types.js';
-import { GiftCardTestHost, cleanupCardHosts, makeVisitorGift } from './gift_card.test_fixtures.js';
+import {
+	GiftCardTestHost,
+	IMAGE_URL,
+	cleanupCardHosts,
+	makeVisitorGift,
+} from './gift_card.test_fixtures.js';
 
-afterEach(cleanupCardHosts);
+afterEach(() => {
+	cleanupCardHosts();
+	document.querySelector('[data-testid="pointer-rest-target"]')?.remove();
+});
 
 describe('GiftCard whole-card elevation', () => {
-	it('moves one painted surface containing the image, content, overlays, and actions', async () => {
+	it('moves the rendered image, title, price, overlays, and working actions as one surface', async () => {
+		const onmore = vi.fn();
 		const screen = await render(GiftCardTestHost, {
-			gift: makeVisitorGift(),
-			role: WISHLIST_ROLES.recipient,
-			onreceived: () => {},
-			onmore: () => {},
+			gift: makeVisitorGift({ imageUrl: IMAGE_URL, price: 1299, currency: 'CZK' }),
+			role: WISHLIST_ROLES.visitor,
+			onmore,
 		});
 
 		const owner = document.querySelector<HTMLElement>('[data-testid="gift-card-surface"]')!;
 		const paintedSurface = owner.querySelector<HTMLElement>(
 			':scope > [data-slot="elevation-surface"]',
 		)!;
-		const image = owner.querySelector<HTMLElement>('[data-testid="gift-card-image-frame"]')!;
-		const title = owner.querySelector<HTMLElement>('[data-gift-card-track="title"]')!;
-		const actions = owner.querySelector<HTMLElement>('[data-testid="gift-card-footer"]')!;
-		const actionOwner = actions.querySelector<HTMLElement>('[data-slot="button"]')!;
+		const renderedImage = owner.querySelector<HTMLImageElement>(
+			'[data-testid="gift-card-image-frame"] img',
+		)!;
+		const title = owner.querySelector<HTMLElement>('h3')!;
+		const price = owner.querySelector<HTMLElement>('[data-testid="gift-card-price"] > span')!;
+		const like = owner
+			.querySelector<HTMLButtonElement>('[data-like-heart]')!
+			.closest('button')!;
+		const actionOwner = owner.querySelector<HTMLButtonElement>(
+			'[data-testid="gift-more-actions"]',
+		)!;
 
 		expect(owner.classList.contains('elevation-owner-raised')).toBe(true);
-		expect(paintedSurface).toBeTruthy();
-		expect(paintedSurface.contains(image)).toBe(true);
-		expect(paintedSurface.contains(title)).toBe(true);
-		expect(paintedSurface.contains(actions)).toBe(true);
-		const actionSurface = actionOwner.querySelector<HTMLElement>(
-			':scope > [data-slot="elevation-surface"]',
-		)!;
-		expect(actionSurface).toBeTruthy();
+		for (const content of [renderedImage, title, price, like, actionOwner]) {
+			expect(paintedSurface.contains(content)).toBe(true);
+		}
 		expect(getComputedStyle(owner).transform).toBe('none');
 
+		const pointerRestTarget = document.createElement('span');
+		pointerRestTarget.dataset.testid = 'pointer-rest-target';
+		pointerRestTarget.style.cssText =
+			'position:fixed;top:10px;left:10px;width:10px;height:10px;z-index:2147483647';
+		document.body.append(pointerRestTarget);
+		await userEvent.hover(pointerRestTarget);
+		await expect
+			.poll(
+				() =>
+					paintedSurface
+						.getAnimations()
+						.filter((animation) => animation.playState === 'running').length,
+			)
+			.toBe(0);
+		const trackedElements = [renderedImage, title, price, like, actionOwner];
 		const ownerBefore = owner.getBoundingClientRect();
 		const paintedBefore = paintedSurface.getBoundingClientRect();
-		const actionOwnerBefore = actionOwner.getBoundingClientRect();
-		const actionSurfaceBefore = actionSurface.getBoundingClientRect();
+		const offsetsBefore = trackedElements.map((element) => {
+			const bounds = element.getBoundingClientRect();
+			return { x: bounds.x - paintedBefore.x, y: bounds.y - paintedBefore.y };
+		});
+
 		await screen.getByTestId('gift-card-surface').hover();
-		await new Promise((resolve) => setTimeout(resolve, 300));
+		await expect.poll(() => getComputedStyle(paintedSurface).translate).toBe('0px -2px');
+		await expect
+			.poll(
+				() =>
+					paintedSurface
+						.getAnimations()
+						.filter((animation) => animation.playState === 'running').length,
+			)
+			.toBe(0);
 		const ownerAfter = owner.getBoundingClientRect();
 		const paintedAfter = paintedSurface.getBoundingClientRect();
-		const actionOwnerAfter = actionOwner.getBoundingClientRect();
-		const actionSurfaceAfter = actionSurface.getBoundingClientRect();
 
 		expect(ownerAfter.top).toBeCloseTo(ownerBefore.top, 1);
 		expect(paintedAfter.top).toBeCloseTo(paintedBefore.top - 2, 1);
-		expect(actionOwnerAfter.top - paintedAfter.top).toBeCloseTo(
-			actionOwnerBefore.top - paintedBefore.top,
-			1,
+		for (const [index, element] of trackedElements.entries()) {
+			const bounds = element.getBoundingClientRect();
+			expect(bounds.x - paintedAfter.x).toBeCloseTo(offsetsBefore[index]!.x, 1);
+			expect(bounds.y - paintedAfter.y).toBeCloseTo(offsetsBefore[index]!.y, 1);
+		}
+
+		await userEvent.hover(pointerRestTarget);
+		await expect
+			.poll(() => paintedSurface.getBoundingClientRect().top)
+			.toBeCloseTo(paintedBefore.top, 1);
+		await userEvent.click(actionOwner);
+		expect(onmore).toHaveBeenCalledOnce();
+		actionOwner.focus();
+		expect(document.activeElement).toBe(actionOwner);
+		actionOwner.dispatchEvent(
+			new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true }),
 		);
-		expect(actionSurfaceAfter.top - actionOwnerAfter.top).toBeCloseTo(
-			actionSurfaceBefore.top - actionOwnerBefore.top,
-			1,
-		);
-		await new Promise((resolve) => setTimeout(resolve, 100));
-		expect(paintedSurface.getBoundingClientRect().top).toBeCloseTo(paintedAfter.top, 1);
+		expect(onmore).toHaveBeenCalledTimes(2);
+	});
+
+	it('does not make a dimmed card a raised owner', async () => {
+		await render(GiftCardTestHost, {
+			gift: makeVisitorGift({ isFullyReserved: true, reservedCount: 1 }),
+			role: WISHLIST_ROLES.visitor,
+		});
+
+		const owner = document.querySelector<HTMLElement>('[data-testid="gift-card-surface"]')!;
+		expect(owner.classList.contains('elevation-owner')).toBe(false);
+		expect(owner.classList.contains('elevation-owner-raised')).toBe(false);
 	});
 });
