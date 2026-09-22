@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { asc, eq, inArray } from 'drizzle-orm';
 
 const databaseUrl = process.env.DATABASE_URL ?? '';
@@ -102,7 +102,7 @@ type BulkUpdateGiftsHandler = (
 ) => Promise<{ updatedIds: string[] }>;
 const callBulkUpdateGifts = bulkUpdateGifts as unknown as BulkUpdateGiftsHandler;
 
-describe.skipIf(!DB_READY)('createGift remote boundary [real DB]', () => {
+describe.skipIf(!DB_READY)('bulkUpdateGifts remote boundary [real DB]', () => {
 	beforeAll(async () => {
 		const database = getDb();
 		await database.insert(user).values([
@@ -164,146 +164,168 @@ describe.skipIf(!DB_READY)('createGift remote boundary [real DB]', () => {
 		await closeDb();
 	});
 
-	it('persists shared-list bulk mutations for one and multiple selected gifts in and after grace', async () => {
-		const database = getDb();
-		const createdBeforeSharing = new Date(Date.now() - 24 * 60 * 60 * 1000);
+	describe('shared-list bulk mutations', () => {
 		const bulkGiftIds = [BULK_GIFT_ONE_ID, BULK_GIFT_TWO_ID, BULK_GIFT_UNSELECTED_ID];
-		await database.insert(gift).values([
+		const selectedGiftCases = [
+			{ selectionDescription: 'one selected gift', selectedGiftIds: [BULK_GIFT_ONE_ID] },
 			{
-				id: BULK_GIFT_ONE_ID,
-				wishlistId: WISHLIST_ID,
-				name: 'Bulk gift one',
-				received: false,
-				sortOrder: 20,
-				createdAt: createdBeforeSharing,
-			},
-			{
-				id: BULK_GIFT_TWO_ID,
-				wishlistId: WISHLIST_ID,
-				name: 'Bulk gift two',
-				received: false,
-				sortOrder: 21,
-				createdAt: createdBeforeSharing,
-			},
-			{
-				id: BULK_GIFT_UNSELECTED_ID,
-				wishlistId: WISHLIST_ID,
-				name: 'Bulk gift unselected',
-				received: false,
-				sortOrder: 22,
-				createdAt: createdBeforeSharing,
-			},
-		]);
-
-		const presentationActions = [
-			{
-				input: { action: 'priority' as const, priorityLevelId: PRIORITY_ID },
-				assertPersisted: (row: typeof gift.$inferSelect) =>
-					expect(row.priorityLevelId).toBe(PRIORITY_ID),
-			},
-			{
-				input: { action: 'category' as const, categoryId: CATEGORY_ID },
-				assertPersisted: (row: typeof gift.$inferSelect) =>
-					expect(row.categoryId).toBe(CATEGORY_ID),
-			},
-			{
-				input: { action: 'imageFit' as const, fit: 'fit' as const },
-				assertPersisted: (row: typeof gift.$inferSelect) =>
-					expect(row.imageMeta?.fitMode).toBe('contain-padded'),
-			},
-			{
-				input: { action: 'imageBackground' as const, background: '#000000' as const },
-				assertPersisted: (row: typeof gift.$inferSelect) =>
-					expect(row.imageMeta?.bgColor).toBe('#000000'),
+				selectionDescription: 'multiple selected gifts',
+				selectedGiftIds: [BULK_GIFT_ONE_ID, BULK_GIFT_TWO_ID],
 			},
 		];
 
-		try {
-			for (const graceOpen of [true, false]) {
-				await database
-					.update(wishlist)
-					.set({ sharedAt: new Date(Date.now() - (graceOpen ? 30_000 : 3 * 60_000)) })
-					.where(eq(wishlist.id, WISHLIST_ID));
-
-				for (const selectedGiftIds of [
-					[BULK_GIFT_ONE_ID],
-					[BULK_GIFT_ONE_ID, BULK_GIFT_TWO_ID],
-				]) {
-					for (const { input, assertPersisted } of presentationActions) {
-						await database
-							.update(gift)
-							.set({
-								priorityLevelId: null,
-								categoryId: null,
-								imageMeta: null,
-								editedAfterShareAt: null,
-								preEditShareSnapshot: null,
-							})
-							.where(inArray(gift.id, bulkGiftIds));
-
-						const result = await callBulkUpdateGifts(
-							{ user: { id: ACTOR_ID } },
-							{ wishlistId: WISHLIST_ID, giftIds: selectedGiftIds, ...input },
-						);
-						expect(result.updatedIds).toHaveLength(selectedGiftIds.length);
-						expect(result.updatedIds).toEqual(expect.arrayContaining(selectedGiftIds));
-
-						const stored = await database
-							.select()
-							.from(gift)
-							.where(inArray(gift.id, bulkGiftIds));
-						for (const row of stored) {
-							if (selectedGiftIds.includes(row.id)) {
-								assertPersisted(row);
-								expect(row.editedAfterShareAt).toBeInstanceOf(Date);
-								expect(row.preEditShareSnapshot === null).toBe(!graceOpen);
-							} else {
-								expect(row).toMatchObject({
-									priorityLevelId: null,
-									categoryId: null,
-									imageMeta: null,
-									editedAfterShareAt: null,
-									preEditShareSnapshot: null,
-								});
-							}
-						}
-					}
-				}
-			}
-
-			for (const selectedGiftIds of [
-				[BULK_GIFT_ONE_ID],
-				[BULK_GIFT_ONE_ID, BULK_GIFT_TWO_ID],
-			]) {
-				await database
-					.update(gift)
-					.set({ received: false, editedAfterShareAt: null, preEditShareSnapshot: null })
-					.where(inArray(gift.id, bulkGiftIds));
-				await callBulkUpdateGifts(
-					{ user: { id: ACTOR_ID } },
+		beforeEach(async () => {
+			const createdBeforeSharing = new Date(Date.now() - 24 * 60 * 60 * 1000);
+			await getDb()
+				.insert(gift)
+				.values([
 					{
+						id: BULK_GIFT_ONE_ID,
 						wishlistId: WISHLIST_ID,
-						giftIds: selectedGiftIds,
-						action: 'received',
-						received: true,
+						name: 'Bulk gift one',
+						received: false,
+						sortOrder: 20,
+						createdAt: createdBeforeSharing,
 					},
-				);
-				const stored = await database
-					.select()
-					.from(gift)
-					.where(inArray(gift.id, bulkGiftIds));
-				for (const row of stored) {
-					expect(row.received).toBe(selectedGiftIds.includes(row.id));
-					expect(row.editedAfterShareAt).toBeNull();
-				}
-			}
-		} finally {
+					{
+						id: BULK_GIFT_TWO_ID,
+						wishlistId: WISHLIST_ID,
+						name: 'Bulk gift two',
+						received: false,
+						sortOrder: 21,
+						createdAt: createdBeforeSharing,
+					},
+					{
+						id: BULK_GIFT_UNSELECTED_ID,
+						wishlistId: WISHLIST_ID,
+						name: 'Bulk gift unselected',
+						received: false,
+						sortOrder: 22,
+						createdAt: createdBeforeSharing,
+					},
+				]);
+		});
+
+		afterEach(async () => {
+			const database = getDb();
 			await database.delete(gift).where(inArray(gift.id, bulkGiftIds));
 			await database
 				.update(wishlist)
 				.set({ sharedAt: null })
 				.where(eq(wishlist.id, WISHLIST_ID));
-		}
+		});
+
+		describe('presentation actions', () => {
+			const presentationActions = [
+				{
+					actionDescription: 'priority',
+					input: { action: 'priority' as const, priorityLevelId: PRIORITY_ID },
+					assertPersisted: (row: typeof gift.$inferSelect) =>
+						expect(row.priorityLevelId).toBe(PRIORITY_ID),
+				},
+				{
+					actionDescription: 'category',
+					input: { action: 'category' as const, categoryId: CATEGORY_ID },
+					assertPersisted: (row: typeof gift.$inferSelect) =>
+						expect(row.categoryId).toBe(CATEGORY_ID),
+				},
+				{
+					actionDescription: 'image fit',
+					input: { action: 'imageFit' as const, fit: 'fit' as const },
+					assertPersisted: (row: typeof gift.$inferSelect) =>
+						expect(row.imageMeta?.fitMode).toBe('contain-padded'),
+				},
+				{
+					actionDescription: 'image background',
+					input: { action: 'imageBackground' as const, background: '#000000' as const },
+					assertPersisted: (row: typeof gift.$inferSelect) =>
+						expect(row.imageMeta?.bgColor).toBe('#000000'),
+				},
+			];
+			const presentationCases = [
+				{ graceDescription: 'during grace', graceOpen: true },
+				{ graceDescription: 'after grace', graceOpen: false },
+			].flatMap((graceCase) =>
+				selectedGiftCases.flatMap((selectedGiftCase) =>
+					presentationActions.map((presentationAction) => ({
+						...graceCase,
+						...selectedGiftCase,
+						...presentationAction,
+					})),
+				),
+			);
+
+			it.each(presentationCases)(
+				'$graceDescription updates $actionDescription for $selectionDescription',
+				async ({ graceOpen, selectedGiftIds, input, assertPersisted }) => {
+					const database = getDb();
+					await database
+						.update(wishlist)
+						.set({ sharedAt: new Date(Date.now() - (graceOpen ? 30_000 : 3 * 60_000)) })
+						.where(eq(wishlist.id, WISHLIST_ID));
+
+					const result = await callBulkUpdateGifts(
+						{ user: { id: ACTOR_ID } },
+						{ wishlistId: WISHLIST_ID, giftIds: selectedGiftIds, ...input },
+					);
+					expect(result.updatedIds).toHaveLength(selectedGiftIds.length);
+					expect(result.updatedIds).toEqual(expect.arrayContaining(selectedGiftIds));
+
+					const stored = await database
+						.select()
+						.from(gift)
+						.where(inArray(gift.id, bulkGiftIds));
+					expect(stored.map((row) => row.id).sort()).toEqual([...bulkGiftIds].sort());
+					for (const row of stored) {
+						if (selectedGiftIds.includes(row.id)) {
+							assertPersisted(row);
+							expect(row.editedAfterShareAt).toBeInstanceOf(Date);
+							expect(row.preEditShareSnapshot === null).toBe(!graceOpen);
+						} else {
+							expect(row).toMatchObject({
+								priorityLevelId: null,
+								categoryId: null,
+								imageMeta: null,
+								editedAfterShareAt: null,
+								preEditShareSnapshot: null,
+							});
+						}
+					}
+				},
+			);
+		});
+
+		describe('received action', () => {
+			it.each(selectedGiftCases)(
+				'marks $selectionDescription as received without post-share edit metadata',
+				async ({ selectedGiftIds }) => {
+					const database = getDb();
+					await database
+						.update(wishlist)
+						.set({ sharedAt: new Date(Date.now() - 3 * 60_000) })
+						.where(eq(wishlist.id, WISHLIST_ID));
+					await callBulkUpdateGifts(
+						{ user: { id: ACTOR_ID } },
+						{
+							wishlistId: WISHLIST_ID,
+							giftIds: selectedGiftIds,
+							action: 'received',
+							received: true,
+						},
+					);
+					const stored = await database
+						.select()
+						.from(gift)
+						.where(inArray(gift.id, bulkGiftIds));
+					expect(stored.map((row) => row.id).sort()).toEqual([...bulkGiftIds].sort());
+					for (const row of stored) {
+						expect(row.received).toBe(selectedGiftIds.includes(row.id));
+						expect(row.editedAfterShareAt).toBeNull();
+						expect(row.preEditShareSnapshot).toBeNull();
+					}
+				},
+			);
+		});
 	});
 
 	it('rolls back every shared-list presentation update when one locked gift disappears', async () => {
