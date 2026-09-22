@@ -316,48 +316,62 @@
 		}
 	}
 
-	const dirty = $derived.by(() => {
-		const ordinaryFieldsChanged =
-			name.trim() !== (gift?.name ?? '').trim() ||
+	const giftDetailsChanged = $derived(
+		name.trim() !== (gift?.name ?? '').trim() ||
 			(!descriptionFrozen && description.trim() !== (gift?.description ?? '').trim()) ||
 			!valuesEqual(normalizeGiftLinks(links), normalizeGiftLinks(gift?.links ?? [])) ||
-			finalizeGiftPrice(price) !== finalizeGiftPrice(gift?.price ?? null) ||
+			priorityLevelId !== (gift?.priorityLevelId ?? '') ||
+			categoryId !== (gift?.categoryId ?? ''),
+	);
+	const giftPriceChanged = $derived(
+		finalizeGiftPrice(price) !== finalizeGiftPrice(gift?.price ?? null) ||
 			isPriceRange !== ((gift?.priceMax ?? null) !== null) ||
 			(isPriceRange &&
 				finalizeGiftPrice(priceMax) !== finalizeGiftPrice(gift?.priceMax ?? null)) ||
-			currency !== ((gift?.currency as GiftCurrency) ?? 'CZK') ||
-			finalizeGiftQuantity(quantity) !== finalizeGiftQuantity(gift?.quantity ?? 1) ||
-			priorityLevelId !== (gift?.priorityLevelId ?? '') ||
-			categoryId !== (gift?.categoryId ?? '');
-		const descriptionDraftChanged =
-			descriptionAppendText.trim() !== '' ||
+			currency !== ((gift?.currency as GiftCurrency) ?? 'CZK'),
+	);
+	const giftQuantityChanged = $derived(
+		finalizeGiftQuantity(quantity) !== finalizeGiftQuantity(gift?.quantity ?? 1),
+	);
+	const descriptionDraftChanged = $derived(
+		descriptionAppendText.trim() !== '' ||
 			(editingAppendIndex !== null &&
 				editingAppendText.trim() !==
-					(gift?.descriptionAppends[editingAppendIndex]?.text.trim() ?? ''));
-		const initialFillWasCentered =
-			(gift?.imageMeta?.cropRect ?? null) === null &&
+					(gift?.descriptionAppends[editingAppendIndex]?.text.trim() ?? '')),
+	);
+	const initialFillWasCentered = $derived(
+		(gift?.imageMeta?.cropRect ?? null) === null &&
 			(gift?.imageMeta?.focal?.x ?? 50) === 50 &&
 			(gift?.imageMeta?.focal?.y ?? 50) === 50 &&
-			(gift?.imageMeta?.zoom ?? 1) === 1;
-		const imageModeChanged =
-			legacyFitMode === IMAGE_FIT_MODES.auto
-				? modeDirty
-				: editorMode !== initialEditorMode ||
+			(gift?.imageMeta?.zoom ?? 1) === 1,
+	);
+	// A different source invalidates the persisted geometry: crops and focal points
+	// target the old pixels, so a replaced image starts from the automatic framing.
+	const imageReplaced = $derived(
+		imageUrl.trim() !== initialImageUrl || imageKey !== initialImageKey,
+	);
+	const imageModeChanged = $derived(
+		legacyFitMode === IMAGE_FIT_MODES.auto
+			? modeDirty
+			: editorMode !== initialEditorMode ||
 					(modeDirty &&
 						editorMode === IMAGE_EDITOR_MODES.fill &&
-						!initialFillWasCentered);
-		const imagePresentationChanged =
-			hasImage &&
+						!initialFillWasCentered),
+	);
+	const imagePresentationChanged = $derived(
+		hasImage &&
 			(imageModeChanged ||
 				bgColor !== initialBgColor ||
-				(editorMode === IMAGE_EDITOR_MODES.manual && dirtyTargets.size > 0));
-		return (
-			ordinaryFieldsChanged ||
+				(editorMode === IMAGE_EDITOR_MODES.manual && dirtyTargets.size > 0)),
+	);
+	const dirty = $derived(
+		giftDetailsChanged ||
+			giftPriceChanged ||
+			giftQuantityChanged ||
 			descriptionDraftChanged ||
 			imageReplaced ||
-			imagePresentationChanged
-		);
-	});
+			imagePresentationChanged,
+	);
 
 	$effect(() => {
 		ondirtychange?.(dirty);
@@ -367,12 +381,6 @@
 		resolveGiftImageUrl(imageUrl.trim() === '' ? null : imageUrl.trim(), imageKey),
 	);
 	const isCropMode = $derived(editorMode === IMAGE_EDITOR_MODES.manual);
-
-	// A different source invalidates the persisted geometry: crops and focal points
-	// target the old pixels, so a replaced image starts from the automatic framing.
-	const imageReplaced = $derived(
-		imageUrl.trim() !== initialImageUrl || imageKey !== initialImageKey,
-	);
 
 	// The fitMode a save would persist: legacy rows keep their stored value (incl.
 	// `auto`) until the user touches the mode or replaces the image (REQ-8).
