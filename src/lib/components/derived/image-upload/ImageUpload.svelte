@@ -23,6 +23,8 @@
 		maxSize?: number;
 		/** Component size variant. */
 		size?: ImageUploadSize;
+		/** Prevents starting, replacing, or removing an upload. */
+		disabled?: boolean;
 		/** Optional visible and accessible label for compact upload actions. */
 		label?: string;
 		/** Existing image shown as the initial preview (edit mode); replaced on upload. */
@@ -44,6 +46,7 @@
 		accept = ALLOWED_CONTENT_TYPES.join(','),
 		maxSize,
 		size = 'medium',
+		disabled = false,
 		label,
 		initialPreviewUrl,
 		onUpload,
@@ -82,6 +85,9 @@
 
 	function handleDragOver(event: DragEvent) {
 		event.preventDefault();
+		if (disabled) {
+			return;
+		}
 		isDragOver = true;
 	}
 
@@ -92,7 +98,7 @@
 	function handleDrop(event: DragEvent) {
 		event.preventDefault();
 		isDragOver = false;
-		if (isUploadPending) {
+		if (disabled || isUploadPending) {
 			return;
 		}
 		const file = event.dataTransfer?.files[0];
@@ -102,7 +108,7 @@
 	}
 
 	function handleClick() {
-		if (!isUploadPending) {
+		if (!disabled && !isUploadPending) {
 			fileInputElement?.click();
 		}
 	}
@@ -131,7 +137,7 @@
 
 	async function processFile(file: File) {
 		// Keep one operation responsible for the pending lifecycle and preview at a time.
-		if (isUploadPending) {
+		if (disabled || isUploadPending) {
 			return;
 		}
 
@@ -177,7 +183,7 @@
 
 	function handleRemove(event: MouseEvent) {
 		event.stopPropagation();
-		if (isUploadPending) {
+		if (disabled || isUploadPending) {
 			return;
 		}
 		if (previewUrl != null) {
@@ -209,7 +215,8 @@
 	class={cn(styles.root(), size === 'compact' && RESPONSIVE_CONTROL_SIZE_CLASSES, className)}
 	role="button"
 	aria-label={label ?? m.image_upload_aria()}
-	tabindex={isUploadPending ? -1 : 0}
+	aria-disabled={disabled}
+	tabindex={disabled || isUploadPending ? -1 : 0}
 	ondragover={handleDragOver}
 	ondragleave={handleDragLeave}
 	ondrop={handleDrop}
@@ -221,6 +228,7 @@
 		type="file"
 		{accept}
 		class="sr-only"
+		{disabled}
 		onchange={handleFileSelect}
 		tabindex={-1}
 	/>
@@ -242,6 +250,7 @@
 				surfaceClass={styles.removeButtonSurface()}
 				onclick={handleRemove}
 				aria-label={m.image_upload_remove()}
+				{disabled}
 			>
 				<XIcon data-icon="solo" />
 			</Button>

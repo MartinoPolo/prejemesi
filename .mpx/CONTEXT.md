@@ -178,9 +178,11 @@ unimplemented.
   custom-theme JavaScript pipeline.
 - Wishlist settings use one staged draft for details, categories, palette, and image/crops. One
   global Save persists all dirty domains and closes only on complete success; every exit/action
-  surface guards unsaved changes. Import/export and danger operations remain immediate workflows.
-  Interactive gift mutations refresh affected category usage counts in the same command response so
-  category-removal confirmations reflect current assignments.
+  surface guards unsaved changes. Gift editors likewise guard actual unsaved fields/image changes on
+  every exit, with mobile fields and image source before the single inline crop workshop while
+  desktop keeps image-left/details-right placement. Import/export and danger operations remain
+  immediate workflows. Interactive gift mutations refresh affected category usage counts in the same
+  command response so category-removal confirmations reflect current assignments.
 - Global language switcher is available in both the logged-in app header and landing header, next to
   the color-mode toggle. It uses drawn flag icons, not emoji flags, so Windows does not fall back to
   country-code letters. Locale changes use client-side SvelteKit navigation after updating

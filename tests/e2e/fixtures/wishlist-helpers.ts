@@ -176,12 +176,25 @@ export async function openDesktopDisplaySubmenu(
 	page: Page,
 	accessibleName: RegExp,
 ): Promise<Locator> {
+	// Cascading layers remain visible during exit animations and can intercept the next lookup.
+	await expect(
+		page.locator('[data-slot="dropdown-menu-sub-content"][data-state="closed"]:visible'),
+	).toHaveCount(0);
+	const openRoot = page.locator('[data-slot="dropdown-menu-content"][data-state="open"]:visible');
+	if ((await openRoot.count()) > 0) {
+		await page.keyboard.press('Escape');
+	}
+	await expect(
+		page.locator('[data-slot="dropdown-menu-content"][data-state="closed"]:visible'),
+	).toHaveCount(0);
 	// Keep the pointer outside the cascading layers while following the keyboard path.
 	await page.mouse.move(0, 0);
 	const trigger = page.getByTestId('desktop-display-trigger').filter({ visible: true });
 	await trigger.focus();
 	await trigger.press('Enter');
-	const root = page.locator('[data-slot="dropdown-menu-content"]:visible').last();
+	const root = page
+		.locator('[data-slot="dropdown-menu-content"][data-state="open"]:visible')
+		.last();
 	await expect(root).toBeVisible({ timeout: 5_000 });
 	await expect(root.getByRole('menuitem').first()).toBeFocused();
 	const subTrigger = root.getByRole('menuitem', { name: accessibleName });

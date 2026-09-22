@@ -63,9 +63,9 @@
 		authPromptOpen: boolean;
 		// Callbacks
 		ongiftmodalclose: () => void;
-		oncreate: (input: CreateGiftInput) => void;
-		onupdate: (input: UpdateGiftInput) => void;
-		ondelete: (giftId: string) => void;
+		oncreate: (input: CreateGiftInput) => boolean | void | Promise<boolean | void>;
+		onupdate: (input: UpdateGiftInput) => boolean | void | Promise<boolean | void>;
+		ondelete: (giftId: string) => void | Promise<void>;
 		/** Gift detail modal's inline reserve action (issue #165): opens the reserve
 		 *  modal for quantity/anonymous identity input, distinct from `onreserve`
 		 *  below (the reserve modal's own submit handler). */

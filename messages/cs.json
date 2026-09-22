@@ -408,6 +408,7 @@
 	"gift_add_title": "Přidat dárek",
 	"gift_edit_description": "Formulář pro úpravu dárku",
 	"gift_add_description": "Formulář pro přidání nového dárku",
+	"gift_unsaved_description": "Změny zahoďte, nebo pokračujte v úpravách.",
 	"gift_detail_view_title": "Detail dárku",
 	"gift_detail_view_description": "Detail dárku",
 	"gift_open_detail_aria": "Zobrazit detail dárku: {name}",

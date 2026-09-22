@@ -28,6 +28,8 @@
 		tokenScope?: ImageTokenScope;
 		/** Force the loading skeleton across every tile. */
 		loading?: boolean;
+		/** Prevents crop-target selection while a gift mutation is pending. */
+		disabled?: boolean;
 		class?: string;
 	}
 
@@ -39,6 +41,7 @@
 		onTileSelect,
 		tokenScope = IMAGE_TOKEN_SCOPES.wishlist,
 		loading = false,
+		disabled = false,
 		class: className,
 	}: Props = $props();
 
@@ -121,6 +124,7 @@
 				<button
 					type="button"
 					onclick={() => onTileSelect?.(tile.target)}
+					{disabled}
 					aria-pressed={activeTarget === tile.target}
 					aria-describedby={tile.target === 'thumb' ? thumbnailHelpId : undefined}
 					data-testid="gift-preview-tile-{tile.key}"
