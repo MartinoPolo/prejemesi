@@ -147,6 +147,7 @@ test.describe('Elevated interaction behavior', () => {
 		await expect
 			.poll(() => surface.evaluate((element) => getComputedStyle(element).translate))
 			.toBe('none');
+		await owner.scrollIntoViewIfNeeded();
 		const resting = await giftGeometry(owner, surface, content);
 		const point = {
 			x: resting.owner.x + resting.owner.width / 2,
