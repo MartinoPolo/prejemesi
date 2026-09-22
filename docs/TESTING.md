@@ -20,17 +20,43 @@ secret. R2 variables are intentionally absent, so uploads use the local in-memor
 `PLAYWRIGHT_BASE_URL=http://localhost:8300` by default. Every automation server uses that exact port
 with Vite strict-port mode, preventing a test from attaching to a different process.
 
-Parallel agents must choose distinct explicit origins, for example:
+When the default port is occupied, choose an explicit free origin rather than reusing that server:
 
 ```bash
 PLAYWRIGHT_BASE_URL=http://localhost:8301 pnpm run test:e2e
 ```
 
-Any valid loopback port is accepted. Port isolation does not isolate PostgreSQL data: concurrent
-full suites must use distinct prepared local databases through `DATABASE_URL`, while focused runs
-that do not mutate the same fixtures may share the ordinary seeded database. Concurrent browser-mode
-Vitest processes must likewise set distinct `VITEST_CLIENT_PORT` and `VITEST_STORYBOOK_PORT` values;
-their ports remain strict so collisions fail visibly.
+## Parallel work and browser ownership
+
+Default to **one browser-heavy workflow at a time on this machine**, coordinated by the agents;
+there is no automatic queue. Reads and independent Node-only tests can continue in parallel.
+Vite/Vitest port and worker settings apply to one process, not all active checkouts.
+
+- Different ports do not isolate data. Checkouts share the `prejemesi` Compose database/volume by
+  default, and some tests mutate seeded rows. Do not reseed, migrate, or interact with shared test
+  data during verification. Concurrent app runs require separately prepared databases, not just
+  fresh browser contexts.
+- Do not run builds, code generation, or another Vite/Vitest process against the same checkout's
+  `.svelte-kit` and generated files while verification is using them. Stop the owned server first.
+- For deliberately concurrent runs in separate checkouts, assign distinct app ports and
+  `VITEST_CLIENT_PORT` / `VITEST_STORYBOOK_PORT` values. The existing strict-port settings reject
+  collisions; retain Playwright's `reuseExistingServer: false` default. External-server mode
+  requires manually confirming that the exact origin serves the intended checkout and local
+  database.
+- Raw Playwright launches own separate processes/profiles; contexts isolate cookies/storage, not
+  backend data. Localhost cookies are not port-isolated within a shared context. Never share an
+  MCP/CDP-controlled page or personal browser profile; close only browsers this run launched.
+- Screenshots require an explicit origin and get unique filenames, even with `--name`. Confirm the
+  server's checkout yourself; there is no identity endpoint or automatic server discovery:
+
+    ```bash
+    MSYS_NO_PATHCONV=1 node scripts/shot.mjs /my-lists --base http://localhost:8300 --user martin
+    ```
+
+Keep reports checkout-local and runs in that checkout sequential. After cancellation, confirm the
+owned browser/server has stopped before starting the next workflow; never kill all Chrome or Node
+processes. These are operating rules, not enforced isolation. Port changes alone cannot provide safe
+shared-database concurrency or prevent laptop overload.
 
 The setup project allows extra navigation time for cold Vite compilation without relaxing the warmed
 application's navigation limits. Interaction tests must await actual readiness: opening autofocus

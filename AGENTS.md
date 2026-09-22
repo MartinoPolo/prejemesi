@@ -59,11 +59,12 @@ sub-agent pointing at the cloned source in `C:\_MP_github_cloned\` **Available**
 - **Default to raw Playwright** via the project's own installed `playwright` dependency — it has no
   MCP layer, so it works in every session:
     - Quick screenshot / crawl / click:
-      `node scripts/shot.mjs <route> [--user martin|jana|petr|eva|tomas] [--mobile] [--dark] [--full] [--wait <sel>]`.
+      `node scripts/shot.mjs <route> --base <origin> [--user martin|jana|petr|eva|tomas] [--mobile] [--dark] [--full] [--wait <sel>]`.
       Prints the PNG path; Read it back to view. Run from **PowerShell** (Git Bash mangles
       leading-slash args; from Bash prefix `MSYS_NO_PATHCONV=1`).
     - Repeatable verification: a `tests/e2e/*.spec.ts` with `@playwright/test`, reusing
       `tests/e2e/fixtures/{auth,wishlist}-helpers.ts`.
+- Coordinate parallel sessions using `docs/TESTING.md#parallel-work-and-browser-ownership`.
 - Prereqs: dev server (`pnpm run dev`) + seeded DB (`pnpm db:seed`). Authed routes are under the
   `(app)` group: `/my-lists`, `/followed`, `/moderated`, `/settings`, `/w/<id>`.
 - Prefer explicit `waitForSelector` over `waitUntil: 'networkidle'` (networkidle hangs on
