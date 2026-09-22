@@ -61,13 +61,21 @@
 		if (onreceived === undefined || isPending) {
 			return;
 		}
+		const initiatingAction = action;
+		const initiatedWithActionFocus = document.activeElement === initiatingAction;
 		localPending = true;
 		try {
 			await onreceived(giftId, !received);
 		} finally {
 			localPending = false;
 			await tick();
-			focusTarget()?.focus({ preventScroll: true });
+			const activeElement = document.activeElement;
+			if (
+				activeElement === initiatingAction ||
+				(initiatedWithActionFocus && activeElement === document.body)
+			) {
+				focusTarget()?.focus({ preventScroll: true });
+			}
 		}
 	}
 </script>

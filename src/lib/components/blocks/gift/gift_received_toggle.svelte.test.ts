@@ -162,16 +162,42 @@ describe('GiftReceivedToggle', () => {
 			onreceived,
 		});
 		const action = page.getByRole('button', { name: m.gift_mark_received() });
-		const unrelated = document.createElement('button');
-		document.body.append(unrelated);
 
 		await action.click();
 		await expect.element(action).toBeDisabled();
-		unrelated.focus();
+		action.element().blur();
+		expect(document.activeElement).toBe(document.body);
 		rejectMutation(new Error('mutation failed'));
 
 		await expect.element(action).toBeEnabled();
 		await expect.element(action).toHaveFocus();
+	});
+
+	it('does not restore focus when the user moves to another control while pending', async () => {
+		let settle!: () => void;
+		const onreceived = vi.fn(
+			() =>
+				new Promise<void>((resolve) => {
+					settle = resolve;
+				}),
+		);
+		await render(GiftReceivedToggle, {
+			giftId: 'gift-1',
+			received: false,
+			role: WISHLIST_ROLES.recipient,
+			onreceived,
+		});
+		const action = page.getByRole('button', { name: m.gift_mark_received() });
+		const nextControl = document.createElement('button');
+		document.body.append(nextControl);
+
+		await action.click();
+		await expect.element(action).toBeDisabled();
+		nextControl.focus();
+		settle();
+
+		await expect.element(action).toBeEnabled();
+		expect(document.activeElement).toBe(nextControl);
 	});
 
 	it('restores focus to the matching action after relocation disconnects its source', async () => {
