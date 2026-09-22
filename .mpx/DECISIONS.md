@@ -444,6 +444,9 @@ sections for UI work. Historical reconciliation and review notes are in
   face-relative; use rendered borders and shared radius/offset tokens. Keep semantic interaction
   owners stationary and toolbar faces aligned, with no hover-driven padding or control-height
   changes. This does not adopt the experiment's mobile Like relocation or wrapped action lanes.
+- 2026-09-21: The gift view switcher uses a scoped connected accent backing with one ordinary
+  resting shadow and a Button face only on the selected segment. Keep the switcher static on hover
+  and press; preserve default segmented-toggle presentation for other consumers.
 
 ## Images & cropping
 

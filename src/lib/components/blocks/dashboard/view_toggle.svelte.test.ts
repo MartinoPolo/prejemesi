@@ -51,4 +51,18 @@ describe('ViewToggle toggle selection (fixes: re-click deselects both items)', (
 		await expect.element(listItem).toHaveAttribute('aria-checked', 'true');
 		await screen.unmount();
 	});
+
+	it('keeps the default segmented presentation unchanged', async () => {
+		const screen = await render(ViewToggle, { value: 'grid' });
+		const grid = screen.getByRole('radio', { name: m.dashboard_view_grid() }).element();
+		const root = grid.parentElement!;
+		const selectedSurface = grid.querySelector('.elevation-surface')!;
+
+		expect(root.classList.contains('segmented-toggle-connected')).toBe(false);
+		expect(getComputedStyle(root).backgroundColor).not.toBe('rgba(0, 0, 0, 0)');
+		expect(getComputedStyle(root, '::before').content).toBe('none');
+		expect(parseFloat(getComputedStyle(selectedSurface).borderWidth)).toBe(0);
+		expect(getComputedStyle(grid).outlineStyle).toBe('solid');
+		await screen.unmount();
+	});
 });

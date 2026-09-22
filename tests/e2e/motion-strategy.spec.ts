@@ -343,6 +343,253 @@ test.describe('issue #269 integrated motion strategy', () => {
 		await page.context().close();
 	});
 
+	test('connected view switcher preserves geometry, depth, and stationary interaction paint', async ({
+		browser,
+		request,
+		baseURL,
+	}) => {
+		const page = await registerAndGetPage(
+			browser,
+			request,
+			baseURL!,
+			createTestUser('motion-strategy-connected-switcher'),
+		);
+		const errors = collectBrowserErrors(page);
+		await createWishlistAndNavigate(page, 'Connected view switcher');
+
+		await page.setViewportSize({ width: 1280, height: 800 });
+		const card = page.getByTestId('gift-view-card');
+		const list = page.getByTestId('gift-view-list');
+		const switcher = page.getByTestId('gift-view-switcher');
+		const switcherPaint = () =>
+			switcher.evaluate((root) => {
+				const items = [
+					...root.querySelectorAll<HTMLElement>('[data-slot="toggle-group-item"]'),
+				];
+				const selected = root.querySelector<HTMLElement>('[data-state="on"]');
+				const itemSurfaces = items.map((item) =>
+					item.querySelector<HTMLElement>('.elevation-surface'),
+				);
+				const selectedSurface = selected?.querySelector<HTMLElement>('.elevation-surface');
+				const selectedIcon = selected?.querySelector<SVGElement>('svg');
+				if (
+					!selected ||
+					!selectedSurface ||
+					!selectedIcon ||
+					items.length !== 2 ||
+					itemSurfaces.some((surface) => surface === null)
+				) {
+					throw new Error('Missing connected view switcher paint regions');
+				}
+				const rectangle = (element: Element) => element.getBoundingClientRect().toJSON();
+				const rootStyle = getComputedStyle(root);
+				const backingStyle = getComputedStyle(root, '::before');
+				return {
+					root: rectangle(root),
+					items: items.map(rectangle),
+					itemSurfacePaint: itemSurfaces.map((surface) => {
+						const style = getComputedStyle(surface!);
+						return { backgroundColor: style.backgroundColor, color: style.color };
+					}),
+					selected: rectangle(selected),
+					selectedSurface: rectangle(selectedSurface),
+					selectedIcon: rectangle(selectedIcon),
+					selectedValue: selected.dataset.value,
+					rootBorderWidth: Number.parseFloat(rootStyle.borderWidth),
+					rootShadow: rootStyle.boxShadow,
+					backing: {
+						left: Number.parseFloat(backingStyle.left),
+						right: Number.parseFloat(backingStyle.right),
+						width: Number.parseFloat(backingStyle.width),
+						shadow: backingStyle.boxShadow,
+					},
+					selectedSurfaceStyle: {
+						borderWidth: Number.parseFloat(
+							getComputedStyle(selectedSurface).borderWidth,
+						),
+						boxShadow: getComputedStyle(selectedSurface).boxShadow,
+						translate: getComputedStyle(selectedSurface).translate,
+						scale: getComputedStyle(selectedSurface).scale,
+					},
+				};
+			});
+		const switcherButtonParity = (neighborTestId: string) =>
+			switcher.evaluate((root, testId) => {
+				const selectedSurface = root
+					.querySelector<HTMLElement>('[data-state="on"]')
+					?.querySelector<HTMLElement>('.elevation-surface');
+				const neighborSurface = document
+					.querySelector<HTMLElement>(`[data-testid="${testId}"]`)
+					?.querySelector<HTMLElement>('.elevation-surface');
+				if (!selectedSurface || !neighborSurface) {
+					throw new Error(`Missing switcher or neighboring Button surface: ${testId}`);
+				}
+				const visibleBoxShadowLayers = (boxShadow: string) =>
+					boxShadow === 'none'
+						? []
+						: boxShadow
+								.split(/,(?![^()]*\))/)
+								.map((layer) => layer.trim())
+								.filter((layer) => !/^rgba\([^)]*,\s*0(?:\.0+)?\)/.test(layer));
+				const facePaint = (surface: HTMLElement) => {
+					const style = getComputedStyle(surface);
+					return {
+						borderWidths: [
+							style.borderTopWidth,
+							style.borderRightWidth,
+							style.borderBottomWidth,
+							style.borderLeftWidth,
+						],
+						borderRadii: [
+							style.borderTopLeftRadius,
+							style.borderTopRightRadius,
+							style.borderBottomRightRadius,
+							style.borderBottomLeftRadius,
+						],
+						boxShadow: style.boxShadow,
+						visibleBoxShadowLayers: visibleBoxShadowLayers(style.boxShadow),
+					};
+				};
+				const backingShadow = getComputedStyle(root, '::before').boxShadow;
+				return {
+					selectedFace: facePaint(selectedSurface),
+					backingShadow,
+					visibleBackingShadowLayers: visibleBoxShadowLayers(backingShadow),
+					neighborFace: facePaint(neighborSurface),
+				};
+			}, neighborTestId);
+		const expectSwitcherMatchesNeighborButton = async (neighborTestId: string) => {
+			const contextualPaint = new Set<string>();
+			for (const dark of [false, true]) {
+				await page.locator('html').evaluate((root, enabled) => {
+					root.classList.toggle('dark', enabled);
+				}, dark);
+				for (const depth of ['soft', 'ink', 'black']) {
+					await page.locator('html').evaluate((root, value) => {
+						root.dataset.depth = value;
+					}, depth);
+					await page.evaluate(
+						async ({ switcherTestId, neighborTestId: testId }) => {
+							await new Promise(requestAnimationFrame);
+							const elements = [
+								document.querySelector<HTMLElement>(
+									`[data-testid="${switcherTestId}"]`,
+								),
+								document.querySelector<HTMLElement>(`[data-testid="${testId}"]`),
+							].filter((element): element is HTMLElement => element !== null);
+							await Promise.all(
+								elements.flatMap((element) =>
+									element
+										.getAnimations({ subtree: true })
+										.map((animation) => animation.finished),
+								),
+							);
+						},
+						{ switcherTestId: 'gift-view-switcher', neighborTestId },
+					);
+					const paint = await switcherButtonParity(neighborTestId);
+					expect(paint.selectedFace.borderWidths).toEqual(
+						paint.neighborFace.borderWidths,
+					);
+					expect(paint.selectedFace.borderRadii).toEqual(paint.neighborFace.borderRadii);
+					expect(paint.selectedFace.visibleBoxShadowLayers).toEqual([]);
+					expect(paint.visibleBackingShadowLayers).not.toEqual([]);
+					expect(paint.visibleBackingShadowLayers).toEqual(
+						paint.neighborFace.visibleBoxShadowLayers,
+					);
+					contextualPaint.add(paint.visibleBackingShadowLayers.join(','));
+				}
+			}
+			expect(contextualPaint.size).toBeGreaterThan(1);
+		};
+
+		await card.click();
+		const desktopCard = await switcherPaint();
+		expect(desktopCard.root.width).toBe(67);
+		expect(desktopCard.root.height).toBe(32);
+		expect(desktopCard.items.map(({ width, height }) => [width, height])).toEqual([
+			[32, 32],
+			[32, 32],
+		]);
+		expect(desktopCard.selectedSurface.width).toBe(32);
+		expect(desktopCard.selectedSurface.height).toBe(32);
+		expect(desktopCard.selectedIcon.width).toBe(16);
+		expect(desktopCard.selectedIcon.height).toBe(16);
+		expect(desktopCard.selectedIcon.x + desktopCard.selectedIcon.width / 2).toBeCloseTo(
+			desktopCard.selected.x + desktopCard.selected.width / 2,
+			1,
+		);
+		expect(desktopCard.selectedIcon.y + desktopCard.selectedIcon.height / 2).toBeCloseTo(
+			desktopCard.selected.y + desktopCard.selected.height / 2,
+			1,
+		);
+		expect(desktopCard.backing.width).toBe(66);
+		expect(desktopCard.backing.left).toBe(1);
+		expect(desktopCard.backing.right).toBe(0);
+		expect(desktopCard.rootBorderWidth).toBe(0);
+		expect(desktopCard.selectedSurfaceStyle.boxShadow).toBe('none');
+		await expect(page.getByTestId('desktop-more-trigger')).toBeVisible();
+		await expectSwitcherMatchesNeighborButton('desktop-more-trigger');
+		const desktopDisplayBounds = await page
+			.getByTestId('desktop-display-trigger')
+			.evaluate((element) => element.getBoundingClientRect().toJSON());
+		expect(desktopDisplayBounds.x - desktopCard.root.x - desktopCard.root.width).toBe(12);
+
+		await list.click();
+		const desktopList = await switcherPaint();
+		expect(desktopList.selectedValue).toBe('list');
+		expect(desktopList.root).toEqual(desktopCard.root);
+		expect(desktopList.items).toEqual(desktopCard.items);
+		expect(desktopList.backing.width).toBe(66);
+		expect(desktopList.backing.left).toBe(0);
+		expect(desktopList.backing.right).toBe(1);
+
+		const stationaryBefore = await switcherPaint();
+		expect(stationaryBefore.selectedValue).toBe('list');
+		await card.hover();
+		expect(await switcherPaint()).toEqual(stationaryBefore);
+		await page.mouse.down();
+		expect(await switcherPaint()).toEqual(stationaryBefore);
+		await page.mouse.up();
+
+		await page.emulateMedia({ reducedMotion: 'reduce' });
+		await page.mouse.move(0, 0);
+		const reducedMotionBefore = await switcherPaint();
+		await list.hover();
+		expect(await switcherPaint()).toEqual(reducedMotionBefore);
+		await page.mouse.down();
+		expect(await switcherPaint()).toEqual(reducedMotionBefore);
+		await page.mouse.up();
+
+		await page.setViewportSize({ width: 390, height: 844 });
+		await expect(switcher).toBeVisible();
+		await expect(page.getByTestId('mobile-display-trigger')).toBeVisible();
+		await expectSwitcherMatchesNeighborButton('mobile-display-trigger');
+		const mobileList = await switcherPaint();
+		expect(mobileList.root.width).toBe(79);
+		expect(mobileList.root.height).toBe(40);
+		expect(mobileList.items.map(({ width, height }) => [width, height])).toEqual([
+			[38, 38],
+			[38, 38],
+		]);
+		expect(mobileList.selectedSurface.width).toBe(40);
+		expect(mobileList.selectedSurface.height).toBe(40);
+		expect(mobileList.selectedSurface.x + mobileList.selectedSurface.width).toBe(
+			mobileList.root.x + mobileList.root.width,
+		);
+		const mobileDisplayBounds = await page
+			.getByTestId('mobile-display-trigger')
+			.evaluate((element) => element.getBoundingClientRect().toJSON());
+		expect(mobileDisplayBounds.x - mobileList.root.x - mobileList.root.width).toBe(11);
+		await card.click();
+		const mobileCard = await switcherPaint();
+		expect(mobileCard.selectedSurface.x).toBe(mobileCard.root.x);
+		expect(mobileCard.root).toEqual(mobileList.root);
+		expect(mobileCard.items).toEqual(mobileList.items);
+		expect(errors).toEqual([]);
+		await page.context().close();
+	});
+
 	test('rapid card/list switching commits the latest mode and reduced motion skips transforms', async ({
 		browser,
 		request,
