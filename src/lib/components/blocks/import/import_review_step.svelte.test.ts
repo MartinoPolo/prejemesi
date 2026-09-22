@@ -4,8 +4,10 @@ import { page } from 'vitest/browser';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import * as m from '$lib/paraglide/messages.js';
 import type { ValidatedGiftDraft } from '$lib/modules/gifts/gift_draft.js';
+import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
 import { WIZARD_MODE } from './import_wizard_types.js';
 
+const { expectPixelsNear } = createPixelAssertions(expect);
 vi.mock('$env/dynamic/public', () => ({ env: {} }));
 
 const { default: ImportReviewStep } = await import('./ImportReviewStep.svelte');
@@ -63,12 +65,12 @@ describe('ImportReviewStep readiness', () => {
 
 		await page.viewport(390, 720);
 		for (const trigger of triggers) {
-			expect(trigger.getBoundingClientRect().height).toBe(40);
+			expectPixelsNear(trigger.getBoundingClientRect().height, 40);
 		}
 
 		await page.viewport(1280, 720);
 		for (const trigger of triggers) {
-			expect(trigger.getBoundingClientRect().height).toBe(32);
+			expectPixelsNear(trigger.getBoundingClientRect().height, 32);
 		}
 	});
 	it('clears previously ready drafts when a later selected edit blocks the batch', async () => {

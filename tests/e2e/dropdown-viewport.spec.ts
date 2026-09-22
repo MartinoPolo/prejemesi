@@ -5,7 +5,9 @@ import {
 	waitForAppHydration,
 } from './fixtures/auth-helpers.js';
 import { openDesktopDisplaySubmenu } from './fixtures/wishlist-helpers.js';
+import { createPixelAssertions, DEFAULT_PIXEL_TOLERANCE } from '../helpers/pixel-assertions.mjs';
 
+const { expectPixelsAtLeast, expectPixelsAtMost, expectPixelsNear } = createPixelAssertions(expect);
 const VIEWPORT_PADDING = 8;
 
 async function openSeedWishlist(
@@ -20,8 +22,8 @@ async function openSeedWishlist(
 	await page.context().addCookies(parseCookiesForContext(cookies, baseURL));
 	await page.goto('/w/xmas2026', { waitUntil: 'domcontentloaded' });
 	await expect(page.getByTestId('wishlist-toolbar')).toBeVisible();
-	await expect(page.locator('[data-gift-item]').first()).toBeVisible();
 	await waitForAppHydration(page);
+	await expect(page.locator('[data-gift-item]').first()).toBeVisible();
 }
 
 async function pinTrigger(trigger: Locator, top: number, left: number) {
@@ -80,21 +82,24 @@ async function expectInsideViewport(menu: Locator, width: number, height: number
 	await expect
 		.poll(async () => {
 			const rect = await menu.boundingBox();
-			return (
-				rect !== null &&
-				rect.x >= VIEWPORT_PADDING - 1 &&
-				rect.y >= VIEWPORT_PADDING - 1 &&
-				rect.x + rect.width <= width - VIEWPORT_PADDING + 1 &&
-				rect.y + rect.height <= height - VIEWPORT_PADDING + 1
+			if (rect === null) {
+				return Number.POSITIVE_INFINITY;
+			}
+			return Math.max(
+				0,
+				VIEWPORT_PADDING - rect.x,
+				VIEWPORT_PADDING - rect.y,
+				rect.x + rect.width - (width - VIEWPORT_PADDING),
+				rect.y + rect.height - (height - VIEWPORT_PADDING),
 			);
 		})
-		.toBe(true);
+		.toBeLessThanOrEqual(DEFAULT_PIXEL_TOLERANCE);
 	const rect = await menu.boundingBox();
 	expect(rect).not.toBeNull();
-	expect(rect!.x).toBeGreaterThanOrEqual(VIEWPORT_PADDING - 1);
-	expect(rect!.y).toBeGreaterThanOrEqual(VIEWPORT_PADDING - 1);
-	expect(rect!.x + rect!.width).toBeLessThanOrEqual(width - VIEWPORT_PADDING + 1);
-	expect(rect!.y + rect!.height).toBeLessThanOrEqual(height - VIEWPORT_PADDING + 1);
+	expectPixelsAtLeast(rect!.x, VIEWPORT_PADDING);
+	expectPixelsAtLeast(rect!.y, VIEWPORT_PADDING);
+	expectPixelsAtMost(rect!.x + rect!.width, width - VIEWPORT_PADDING);
+	expectPixelsAtMost(rect!.y + rect!.height, height - VIEWPORT_PADDING);
 }
 
 async function openDisplaySubmenu(page: Page, name: RegExp) {
@@ -178,10 +183,10 @@ test.describe('issue #364 dropdown viewport placement', () => {
 		await expectInsideViewport(menu, 1000, 600);
 		expect(evidence.clientHeight).toBe(evidence.scrollHeight);
 		expect(new Set(evidence.samples.map((sample) => sample.side)).size).toBe(1);
-		expect(
-			Math.max(...evidence.samples.map((sample) => sample.y)) -
-				Math.min(...evidence.samples.map((sample) => sample.y)),
-		).toBeLessThan(1);
+		expectPixelsNear(
+			Math.max(...evidence.samples.map((sample) => sample.y)),
+			Math.min(...evidence.samples.map((sample) => sample.y)),
+		);
 		await attachScreenshot(page, testInfo, 'stationary-constrained-filter.png');
 	});
 
@@ -213,7 +218,7 @@ test.describe('issue #364 dropdown viewport placement', () => {
 			}
 			return samples;
 		});
-		expect(Math.max(...scrollSamples) - Math.min(...scrollSamples)).toBeLessThan(1);
+		expectPixelsNear(Math.max(...scrollSamples), Math.min(...scrollSamples));
 
 		await closeDropdownHierarchy(page);
 		await pinTrigger(trigger, 12, 12);

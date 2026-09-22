@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { page } from 'vitest/browser';
 import { render } from 'vitest-browser-svelte';
+import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
 import { WISHLIST_ROLES } from '$lib/modules/wishlists/types.js';
 import * as m from '$lib/paraglide/messages.js';
 import {
@@ -11,6 +12,8 @@ import {
 	makeVisitorGift,
 	renderCardInGridColumn,
 } from './gift_card.test_fixtures.js';
+
+const { expectPixelsNear, expectPixelsAtLeast, expectPixelsAtMost } = createPixelAssertions(expect);
 
 afterEach(cleanupCardHosts);
 
@@ -38,7 +41,7 @@ describe('GiftCard reservation-action layout (issue #211)', () => {
 		expect(reserve.getBoundingClientRect().width).toBeLessThan(
 			actions.getBoundingClientRect().width,
 		);
-		expect(reserve.getBoundingClientRect().height).toBeCloseTo(40, 0);
+		expectPixelsNear(reserve.getBoundingClientRect().height, 40);
 	});
 
 	it('keeps an onmore-only archived recipient footer available on desktop and mobile', async () => {
@@ -97,8 +100,8 @@ describe('GiftCard reservation-action layout (issue #211)', () => {
 		const reserveRect = reserveButtonEl.getBoundingClientRect();
 		const purchasedRect = purchasedButtonEl.getBoundingClientRect();
 
-		expect(reserveRect.top).toBeCloseTo(purchasedRect.top, 0);
-		expect(purchasedRect.right).toBeLessThanOrEqual(reserveRect.left);
+		expectPixelsNear(reserveRect.top, purchasedRect.top);
+		expectPixelsAtMost(purchasedRect.right, reserveRect.left);
 		expect(reserveRect.width).not.toBeCloseTo(purchasedRect.width, 1);
 		expect(purchasedButtonEl.closest('[inert]')).toBeNull();
 		expect(purchasedButtonEl.getAttribute('aria-hidden')).not.toBe('true');
@@ -154,11 +157,11 @@ describe('GiftCard reservation-action layout (issue #211)', () => {
 		) as HTMLButtonElement;
 		expect(directAction).toBeTruthy();
 		expect(more).toBeTruthy();
-		expect(directAction.getBoundingClientRect().height).toBeCloseTo(40, 0);
-		expect(more.getBoundingClientRect().width).toBeCloseTo(40, 0);
-		expect(more.getBoundingClientRect().height).toBeCloseTo(
+		expectPixelsNear(directAction.getBoundingClientRect().height, 40);
+		expectPixelsNear(more.getBoundingClientRect().width, 40);
+		expectPixelsNear(
+			more.getBoundingClientRect().height,
 			directAction.getBoundingClientRect().height,
-			0,
 		);
 		const labelNode = firstNonBlankTextNode(
 			directAction.querySelector(':scope > .elevation-surface') as HTMLElement,
@@ -169,8 +172,8 @@ describe('GiftCard reservation-action layout (issue #211)', () => {
 		const cardRect = (
 			directAction.closest('[class*="rounded-panel"]') as HTMLElement
 		).getBoundingClientRect();
-		expect(labelRect.left).toBeGreaterThanOrEqual(cardRect.left);
-		expect(labelRect.right).toBeLessThanOrEqual(cardRect.right);
+		expectPixelsAtLeast(labelRect.left, cardRect.left);
+		expectPixelsAtMost(labelRect.right, cardRect.right);
 	});
 
 	it('contains the rendered manager action label inside its button at the real 390px grid width', async () => {
@@ -242,12 +245,12 @@ describe('GiftCard reservation-action layout (issue #211)', () => {
 
 		expect(visibleButtons).toHaveLength(3);
 		for (const { button, label } of paintedLabels) {
-			expect(label.left).toBeGreaterThanOrEqual(button.left);
-			expect(label.right).toBeLessThanOrEqual(button.right);
+			expectPixelsAtLeast(label.left, button.left);
+			expectPixelsAtMost(label.right, button.right);
 		}
-		expect(firstAction.scrollWidth).toBeLessThanOrEqual(firstAction.clientWidth);
-		expect(actionRect.right).toBeLessThanOrEqual(moreRect.left);
-		expect(moreRect.right).toBeLessThanOrEqual(secondCardRect.left - 8);
+		expectPixelsAtMost(firstAction.scrollWidth, firstAction.clientWidth);
+		expectPixelsAtMost(actionRect.right, moreRect.left);
+		expectPixelsAtMost(moreRect.right, secondCardRect.left - 8);
 	});
 
 	it('keeps the manager action label visible and clear of More in a realistic two-column card', async () => {
@@ -285,16 +288,16 @@ describe('GiftCard reservation-action layout (issue #211)', () => {
 			directAction.closest('[class*="rounded-panel"]') as HTMLElement
 		).getBoundingClientRect();
 
-		expect(actionRect.height).toBeCloseTo(40, 0);
-		expect(moreRect.width).toBeCloseTo(40, 0);
-		expect(moreRect.height).toBeCloseTo(40, 0);
-		expect(labelRect.left).toBeGreaterThanOrEqual(actionRect.left);
-		expect(labelRect.right).toBeLessThanOrEqual(actionRect.right);
-		expect(labelRect.top).toBeGreaterThanOrEqual(actionRect.top);
-		expect(labelRect.bottom).toBeLessThanOrEqual(actionRect.bottom);
-		expect(labelRect.right).toBeLessThanOrEqual(moreRect.left);
-		expect(actionRect.bottom).toBeLessThanOrEqual(cardRect.bottom);
-		expect(moreRect.bottom).toBeLessThanOrEqual(cardRect.bottom);
+		expectPixelsNear(actionRect.height, 40);
+		expectPixelsNear(moreRect.width, 40);
+		expectPixelsNear(moreRect.height, 40);
+		expectPixelsAtLeast(labelRect.left, actionRect.left);
+		expectPixelsAtMost(labelRect.right, actionRect.right);
+		expectPixelsAtLeast(labelRect.top, actionRect.top);
+		expectPixelsAtMost(labelRect.bottom, actionRect.bottom);
+		expectPixelsAtMost(labelRect.right, moreRect.left);
+		expectPixelsAtMost(actionRect.bottom, cardRect.bottom);
+		expectPixelsAtMost(moreRect.bottom, cardRect.bottom);
 	});
 
 	it('keeps the footer within the rendered card width, even with a long name', async () => {
@@ -314,8 +317,9 @@ describe('GiftCard reservation-action layout (issue #211)', () => {
 		// before it, the unstacked button pair's min-content width dragged the footer
 		// wider than the card (clipped invisibly by that pre-existing `overflow-hidden`,
 		// but still a real layout defect internally).
-		expect(footerEl.getBoundingClientRect().width).toBeLessThanOrEqual(
-			cardEl.getBoundingClientRect().width + 0.5,
+		expectPixelsAtMost(
+			footerEl.getBoundingClientRect().width,
+			cardEl.getBoundingClientRect().width,
 		);
 	});
 });

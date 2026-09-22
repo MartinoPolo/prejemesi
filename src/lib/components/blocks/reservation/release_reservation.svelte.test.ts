@@ -10,7 +10,9 @@ import {
 	RESERVATION_RELEASE_CAPABILITY,
 	type ReservationReleaseCapability,
 } from '$lib/modules/wishlists/wishlist_capabilities.js';
+import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
 
+const { expectPixelsAtMost } = createPixelAssertions(expect);
 vi.mock('$env/dynamic/public', () => ({ env: {} }));
 
 const { default: ReleaseReservationTestHost } = await import('./ReleaseReservationTestHost.svelte');
@@ -273,8 +275,9 @@ describe('release picker (issue #213 REQ-4)', () => {
 		expect(nameEl.textContent).toBe(HOSTILE_GIFTER_NAME);
 		expect(contentEl.querySelector('img')).toBeNull();
 		// …and the unbreakable 60-char run cannot drag the row past the dialog's own box.
-		expect(nameEl.getBoundingClientRect().right).toBeLessThanOrEqual(
-			contentEl.getBoundingClientRect().right + 0.5,
+		expectPixelsAtMost(
+			nameEl.getBoundingClientRect().right,
+			contentEl.getBoundingClientRect().right,
 		);
 	});
 });

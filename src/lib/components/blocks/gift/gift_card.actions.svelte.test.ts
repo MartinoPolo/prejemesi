@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { page } from 'vitest/browser';
 import { render } from 'vitest-browser-svelte';
+import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
 import { WISHLIST_ROLES } from '$lib/modules/wishlists/types.js';
 import {
 	GiftCardTestHost,
@@ -8,6 +9,8 @@ import {
 	fixedHosts,
 	makeVisitorGift,
 } from './gift_card.test_fixtures.js';
+
+const { expectPixelsNear } = createPixelAssertions(expect);
 
 afterEach(cleanupCardHosts);
 
@@ -136,9 +139,10 @@ describe('GiftCard footer alignment', () => {
 				footer.getBoundingClientRect().right - parseFloat(footerStyle.paddingRight);
 			const actions = Array.from(footer.querySelectorAll<HTMLElement>('button'));
 			expect(actions.length).toBeGreaterThan(0);
-			expect(
+			expectPixelsNear(
 				Math.max(...actions.map((action) => action.getBoundingClientRect().right)),
-			).toBeCloseTo(rightEdge, 1);
+				rightEdge,
+			);
 		},
 	);
 });

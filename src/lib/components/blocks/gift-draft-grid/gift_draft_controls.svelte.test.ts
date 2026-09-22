@@ -3,8 +3,11 @@ import { render } from 'vitest-browser-svelte';
 import { describe, expect, it, vi } from 'vitest';
 import * as m from '$lib/paraglide/messages.js';
 import { DRAFT_PRIORITY } from '$lib/modules/gifts/types.js';
+import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
 import GiftDraftLinksCell from './GiftDraftLinksCell.svelte';
 import GiftDraftPriorityCell from './GiftDraftPriorityCell.svelte';
+
+const { expectPixelsNear } = createPixelAssertions(expect);
 
 describe('gift draft dense controls', () => {
 	it('toggles priority through an accessible shared-size control', async () => {
@@ -18,7 +21,7 @@ describe('gift draft dense controls', () => {
 			name: m.draft_grid_priority_toggle({ name: 'Kniha' }),
 		});
 
-		expect(priority.element().getBoundingClientRect().height).toBe(26);
+		expectPixelsNear(priority.element().getBoundingClientRect().height, 26);
 		await expect.element(priority).toHaveAttribute('aria-checked', 'false');
 		await priority.click();
 		expect(onchange).toHaveBeenCalledWith(DRAFT_PRIORITY.high);
@@ -35,8 +38,8 @@ describe('gift draft dense controls', () => {
 			name: m.draft_grid_remove_link({ label: 'Kniha' }),
 		});
 
-		expect(openLink.element().getBoundingClientRect().height).toBe(26);
-		expect(removeLink.element().getBoundingClientRect().height).toBe(26);
+		expectPixelsNear(openLink.element().getBoundingClientRect().height, 26);
+		expectPixelsNear(removeLink.element().getBoundingClientRect().height, 26);
 		await expect.element(openLink).toHaveAttribute('href', 'https://example.com/kniha');
 		await removeLink.click();
 		expect(links).toHaveLength(0);

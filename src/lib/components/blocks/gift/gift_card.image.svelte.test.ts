@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { page } from 'vitest/browser';
 import { render } from 'vitest-browser-svelte';
+import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
 import { WISHLIST_ROLES } from '$lib/modules/wishlists/types.js';
 import * as m from '$lib/paraglide/messages.js';
 import {
@@ -8,6 +9,7 @@ import {
 	GiftCardTestHost,
 	cleanupCardHosts,
 	contrastRatio,
+	expectRectanglesSeparated,
 	fixedHosts,
 	imageMeta,
 	makeVisitorGift,
@@ -17,6 +19,8 @@ import {
 } from './gift_card.test_fixtures.js';
 
 const { default: WishlistGiftDisplay } = await import('../wishlist/WishlistGiftDisplay.svelte');
+
+const { expectPixelsNear, expectPixelsAtLeast, expectPixelsAtMost } = createPixelAssertions(expect);
 
 afterEach(cleanupCardHosts);
 
@@ -85,10 +89,10 @@ describe('GiftCard saved composition containment', () => {
 					const contentRight =
 						frameRect.right - Number.parseFloat(style.borderRightWidth);
 					expect(compositionRect.width / compositionRect.height).toBeCloseTo(4 / 3, 2);
-					expect(compositionRect.top).toBeGreaterThanOrEqual(contentTop);
-					expect(compositionRect.bottom).toBeLessThanOrEqual(contentBottom);
-					expect(compositionRect.left).toBeGreaterThanOrEqual(contentLeft);
-					expect(compositionRect.right).toBeLessThanOrEqual(contentRight);
+					expectPixelsAtLeast(compositionRect.top, contentTop);
+					expectPixelsAtMost(compositionRect.bottom, contentBottom);
+					expectPixelsAtLeast(compositionRect.left, contentLeft);
+					expectPixelsAtMost(compositionRect.right, contentRight);
 				}
 			}
 		},
@@ -146,7 +150,7 @@ describe('GiftCard category badge (issue #265)', () => {
 			) as HTMLElement;
 			expect(badge).toBeTruthy();
 			expect(imageFrame).toBeTruthy();
-			expect(host.getBoundingClientRect().width).toBeCloseTo(280, 1);
+			expectPixelsNear(host.getBoundingClientRect().width, 280);
 			expect(badge.title).toBe(label);
 			const style = getComputedStyle(badge);
 			expect(style.backgroundColor).toBe(expectedBackground);
@@ -155,7 +159,7 @@ describe('GiftCard category badge (issue #265)', () => {
 				contrastRatio(parseCssRgb(style.backgroundColor), parseCssRgb(style.color)),
 			).toBeGreaterThanOrEqual(4.5);
 			expect(style.webkitLineClamp).toBe('none');
-			expect(badge.scrollHeight).toBeLessThanOrEqual(badge.clientHeight);
+			expectPixelsAtMost(badge.scrollHeight, badge.clientHeight);
 			expect(style.rotate).not.toBe('none');
 			expect(Number.parseFloat(style.rotate)).toBeLessThan(0);
 
@@ -171,12 +175,10 @@ describe('GiftCard category badge (issue #265)', () => {
 				host.querySelectorAll<HTMLElement>('[data-testid="gift-state-overlay"] > span'),
 				(pill) => pill.getBoundingClientRect(),
 			);
-			const overlaps = (a: DOMRect, b: DOMRect) =>
-				a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
-			expect(badgeRect.left).toBeGreaterThanOrEqual(imageFrameRect.left);
-			expect(badgeRect.top).toBeGreaterThanOrEqual(imageFrameRect.top);
-			expect(badgeRect.right).toBeLessThanOrEqual(imageFrameRect.right);
-			expect(badgeRect.bottom).toBeLessThanOrEqual(imageFrameRect.bottom);
+			expectPixelsAtLeast(badgeRect.left, imageFrameRect.left);
+			expectPixelsAtLeast(badgeRect.top, imageFrameRect.top);
+			expectPixelsAtMost(badgeRect.right, imageFrameRect.right);
+			expectPixelsAtMost(badgeRect.bottom, imageFrameRect.bottom);
 			expect(badgeRect.left + badgeRect.width / 2).toBeLessThan(
 				imageFrameRect.left + imageFrameRect.width / 2,
 			);
@@ -184,7 +186,7 @@ describe('GiftCard category badge (issue #265)', () => {
 				imageFrameRect.top + imageFrameRect.height / 2,
 			);
 			for (const overlayRect of overlayRects) {
-				expect(overlaps(badgeRect, overlayRect)).toBe(false);
+				expectRectanglesSeparated(badgeRect, overlayRect);
 			}
 		},
 	);
@@ -296,14 +298,14 @@ describe('GiftCard image background fill (issue #252)', () => {
 			const cropRect = cropComposition.getBoundingClientRect();
 			const frameRect = frame.getBoundingClientRect();
 			expect(cropRect.width / cropRect.height).toBeCloseTo(4 / 3, 2);
-			expect(frameRect.width).toBeCloseTo(cropRect.width, 0);
-			expect(frameRect.height).toBeCloseTo(cropRect.height, 0);
+			expectPixelsNear(frameRect.width, cropRect.width);
+			expectPixelsNear(frameRect.height, cropRect.height);
 			const visibleContentCenter =
 				outerRect.top +
 				(outerRect.height -
 					Number.parseFloat(getComputedStyle(outerFrame).borderBottomWidth)) /
 					2;
-			expect(cropRect.top + cropRect.height / 2).toBeCloseTo(visibleContentCenter, 0);
+			expectPixelsNear(cropRect.top + cropRect.height / 2, visibleContentCenter);
 		};
 
 		expect(getComputedStyle(image).padding).toBe('0px');

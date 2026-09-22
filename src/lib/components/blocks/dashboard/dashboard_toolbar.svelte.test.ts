@@ -3,8 +3,10 @@ import { render } from 'vitest-browser-svelte';
 import { page, userEvent } from 'vitest/browser';
 import { afterEach, describe, expect, it } from 'vitest';
 import * as m from '$lib/paraglide/messages.js';
+import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
 import DashboardToolbar from './DashboardToolbar.svelte';
 
+const { expectPixelsNear } = createPixelAssertions(expect);
 afterEach(async () => page.viewport(1280, 720));
 
 describe('DashboardToolbar unified filters (issue #161)', () => {
@@ -21,12 +23,12 @@ describe('DashboardToolbar unified filters (issue #161)', () => {
 
 		await page.viewport(320, 720);
 		for (const control of controls) {
-			expect(control.getBoundingClientRect().height).toBe(40);
+			expectPixelsNear(control.getBoundingClientRect().height, 40);
 		}
 
 		await page.viewport(1280, 720);
 		for (const control of controls) {
-			expect(control.getBoundingClientRect().height).toBe(32);
+			expectPixelsNear(control.getBoundingClientRect().height, 32);
 		}
 	});
 	it('keeps both active filters visible and accessible while the menu is open', async () => {

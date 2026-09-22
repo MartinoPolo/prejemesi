@@ -1,7 +1,10 @@
 import '../../../../app.css';
 import { render } from 'vitest-browser-svelte';
 import { describe, expect, it } from 'vitest';
+import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
 import WishlistProgress from './WishlistProgress.svelte';
+
+const { expectPixelsNear, expectPixelsAtLeast } = createPixelAssertions(expect);
 
 describe('WishlistProgress dashboard presentation', () => {
 	it('renders baseline rounded track, gradient indicator, and native semantics', async () => {
@@ -18,11 +21,11 @@ describe('WishlistProgress dashboard presentation', () => {
 		expect(track.getAttribute('role')).toBe('progressbar');
 		expect(track.getAttribute('aria-valuenow')).toBe('2');
 		expect(track.getAttribute('aria-valuemax')).toBe('4');
-		expect(track.getBoundingClientRect().height).toBe(14);
+		expectPixelsNear(track.getBoundingClientRect().height, 14);
 		expect(trackStyle.borderTopWidth).toBe('2px');
-		expect(Number.parseFloat(trackStyle.borderRadius)).toBeGreaterThanOrEqual(7);
+		expectPixelsAtLeast(Number.parseFloat(trackStyle.borderRadius), 7);
 		expect(indicatorStyle.backgroundImage).toContain('linear-gradient');
-		expect(Number.parseFloat(indicatorStyle.borderRadius)).toBeGreaterThanOrEqual(7);
+		expectPixelsAtLeast(Number.parseFloat(indicatorStyle.borderRadius), 7);
 		expect(indicator.style.transform).toBe('translateX(-50%)');
 		await screen.unmount();
 	});

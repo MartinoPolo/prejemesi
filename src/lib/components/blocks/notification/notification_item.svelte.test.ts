@@ -8,7 +8,9 @@ import {
 	getNewGiftDigestDisplay,
 	type NewGiftDigestPayload,
 } from '$lib/modules/notifications/new_gift_digest.js';
+import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
 
+const { expectPixelsAtMost } = createPixelAssertions(expect);
 const navigation = vi.hoisted(() => ({ goto: vi.fn() }));
 vi.mock('$app/navigation', () => ({ goto: navigation.goto }));
 
@@ -108,7 +110,7 @@ describe('NotificationItem new-gift digests', () => {
 		const button = screen.getByRole('button');
 
 		await expect.element(screen.getByText(longMessage)).toBeVisible();
-		expect(button.element().scrollHeight).toBeLessThanOrEqual(button.element().clientHeight);
+		expectPixelsAtMost(button.element().scrollHeight, button.element().clientHeight);
 		await button.click();
 		expect(onMarkAsRead).toHaveBeenCalledWith('notification-1');
 

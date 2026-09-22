@@ -1,5 +1,8 @@
 import { test, expect, type Locator, type Page } from '@playwright/test';
 import { waitForAppHydration } from './fixtures/auth-helpers.js';
+import { createPixelAssertions } from '../helpers/pixel-assertions.mjs';
+
+const { expectPixelsAtLeast, expectPixelsAtMost } = createPixelAssertions(expect);
 
 const DESKTOP_VIEWPORT = { width: 1280, height: 800 } as const;
 const MOBILE_VIEWPORT = { width: 375, height: 812 } as const;
@@ -133,12 +136,11 @@ test.describe('Landing demo likes', () => {
 			expect(heartBox).not.toBeNull();
 			expect(giftCardBox).not.toBeNull();
 			expect(contentBox).not.toBeNull();
-			expect(popupBox!.x).toBeGreaterThanOrEqual(contentBox!.x);
-			expect(popupBox!.x + popupBox!.width).toBeLessThanOrEqual(
-				giftCardBox!.x + giftCardBox!.width,
-			);
-			expect(popupBox!.y).toBeGreaterThanOrEqual(heartBox!.y + heartBox!.height);
-			expect(popupBox!.y + popupBox!.height).toBeLessThanOrEqual(
+			expectPixelsAtLeast(popupBox!.x, contentBox!.x);
+			expectPixelsAtMost(popupBox!.x + popupBox!.width, giftCardBox!.x + giftCardBox!.width);
+			expectPixelsAtLeast(popupBox!.y, heartBox!.y + heartBox!.height);
+			expectPixelsAtMost(
+				popupBox!.y + popupBox!.height,
 				giftCardBox!.y + giftCardBox!.height,
 			);
 

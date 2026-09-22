@@ -1,8 +1,10 @@
 <script module lang="ts">
 	import { defineMeta } from '@storybook/addon-svelte-csf';
 	import { expect, fn, userEvent, within } from 'storybook/test';
+	import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
 	import { BUTTON_INTENTS, BUTTON_SIZES, Button } from './index.js';
 
+	const { expectPixelsNear } = createPixelAssertions(expect);
 	const { Story } = defineMeta({
 		title: 'Base/Button',
 		component: Button,
@@ -43,9 +45,8 @@
 		const iconButtons = iconGrid.querySelectorAll<HTMLElement>('[data-slot="button"]');
 		await expect(iconButtons).toHaveLength(BUTTON_INTENTS.length * BUTTON_SIZES.length);
 		for (const button of iconButtons) {
-			await expect(button.getBoundingClientRect().width).toBe(
-				button.getBoundingClientRect().height,
-			);
+			const bounds = button.getBoundingClientRect();
+			await expectPixelsNear(bounds.width, bounds.height);
 		}
 	};
 

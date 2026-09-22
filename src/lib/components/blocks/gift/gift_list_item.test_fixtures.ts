@@ -1,5 +1,6 @@
 import { render } from 'vitest-browser-svelte';
 import { expect, vi } from 'vitest';
+import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
 import type { GiftForVisitor } from '$lib/modules/gifts/types.js';
 import type { WISHLIST_ROLES } from '$lib/modules/wishlists/types.js';
 import { IMAGE_FIT_MODES, type ImageMetadata } from '$lib/modules/images/index.js';
@@ -7,6 +8,8 @@ import { IMAGE_FIT_MODES, type ImageMetadata } from '$lib/modules/images/index.j
 vi.mock('$env/dynamic/public', () => ({ env: {} }));
 
 export const { default: GiftListItemTestHost } = await import('./GiftListItemTestHost.svelte');
+
+const { expectPixelsAtLeast, expectPixelsAtMost } = createPixelAssertions(expect);
 
 export const REALISTIC_LONG_NAME =
 	'Bezdrátová herní myš s RGB podsvícením a vyměnitelnými tlačítky pro praváky i leváky';
@@ -75,13 +78,14 @@ export async function renderItem(
 	return host;
 }
 
-export function rectanglesIntersect(first: DOMRect, second: DOMRect): boolean {
-	return (
-		first.left < second.right &&
-		first.right > second.left &&
-		first.top < second.bottom &&
-		first.bottom > second.top
+export function expectRectanglesSeparated(first: DOMRect, second: DOMRect, message?: string): void {
+	const greatestAxisSeparation = Math.max(
+		second.left - first.right,
+		first.left - second.right,
+		second.top - first.bottom,
+		first.top - second.bottom,
 	);
+	expectPixelsAtLeast(greatestAxisSeparation, 0, message);
 }
 
 export function hasVisibleBoxShadow(element: Element): boolean {
@@ -127,6 +131,6 @@ export function expectRaisedActionShadowInside(action: HTMLElement, boundary: HT
 
 	expect(surfaceStyle.boxShadow).not.toBe('none');
 	expect(shadowOffset).toBeGreaterThan(0);
-	expect(surfaceRect.right + shadowOffset).toBeLessThanOrEqual(innerRight + 0.5);
-	expect(surfaceRect.bottom + shadowOffset).toBeLessThanOrEqual(innerBottom + 0.5);
+	expectPixelsAtMost(surfaceRect.right + shadowOffset, innerRight);
+	expectPixelsAtMost(surfaceRect.bottom + shadowOffset, innerBottom);
 }

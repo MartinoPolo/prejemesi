@@ -12,6 +12,7 @@
 import { chromium } from 'playwright';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
+import { DEFAULT_PIXEL_TOLERANCE } from '../tests/helpers/pixel-assertions.mjs';
 
 const args = process.argv.slice(2);
 const arg = (name) => {
@@ -40,13 +41,15 @@ await mkdir(outDir, { recursive: true });
 
 const WIDTHS = [390, 320];
 const HEIGHT = 844;
-const TOLERANCE = 0.8;
 const records = [];
 const diagnostics = [];
 let activeRecord = null;
 
-function near(actual, expected, tolerance = TOLERANCE) {
+function near(actual, expected, tolerance = DEFAULT_PIXEL_TOLERANCE) {
 	return Math.abs(actual - expected) <= tolerance;
+}
+function atLeast(actual, expected, tolerance = DEFAULT_PIXEL_TOLERANCE) {
+	return actual >= expected - tolerance;
 }
 function recordCheck(condition, message) {
 	if (!condition) {
@@ -264,7 +267,7 @@ async function captureSheet(page, options) {
 			`bottom border ${metrics.border.bottom}px != 0px`,
 		);
 		recordCheck(
-			metrics.radius.topLeft >= 12 && metrics.radius.topRight >= 12,
+			atLeast(metrics.radius.topLeft, 12) && atLeast(metrics.radius.topRight, 12),
 			`top corners are not rounded (${metrics.radius.topLeft}/${metrics.radius.topRight}px)`,
 		);
 		recordCheck(
@@ -322,7 +325,7 @@ async function captureSheet(page, options) {
 				recordCheck(menu.rows.length > 0, 'action menu has no rows');
 				for (const [index, row] of menu.rows.entries()) {
 					recordCheck(
-						row.height >= 47.5,
+						atLeast(row.height, 48),
 						`row ${index + 1} height ${row.height}px < 48px`,
 					);
 					recordCheck(row.hasSurface, `row ${index + 1} lacks inner elevation surface`);
@@ -346,11 +349,11 @@ async function captureSheet(page, options) {
 					const iconXs = iconRows.map((row) => row.iconX);
 					const labelXs = iconRows.map((row) => row.label.x);
 					recordCheck(
-						Math.max(...iconXs) - Math.min(...iconXs) <= 1,
+						near(Math.max(...iconXs), Math.min(...iconXs)),
 						`icon column varies by ${Math.max(...iconXs) - Math.min(...iconXs)}px`,
 					);
 					recordCheck(
-						Math.max(...labelXs) - Math.min(...labelXs) <= 1,
+						near(Math.max(...labelXs), Math.min(...labelXs)),
 						`label column varies by ${Math.max(...labelXs) - Math.min(...labelXs)}px`,
 					);
 				}

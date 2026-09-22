@@ -8,6 +8,9 @@ import {
 	createRecipientWishlist,
 	waitForGiftAnimationsToSettle,
 } from './mobile-wishlist.helpers.js';
+import { createPixelAssertions, DEFAULT_PIXEL_TOLERANCE } from '../helpers/pixel-assertions.mjs';
+
+const { expectPixelsNear } = createPixelAssertions(expect);
 
 const COLOR_MODES = ['light', 'dark'] as const;
 
@@ -37,8 +40,12 @@ test.describe('mobile wishlist acceptance', () => {
 				element.scrollTop = top;
 			}, scrollTop);
 			await expect
-				.poll(() => appScroller.evaluate((element) => element.scrollTop))
-				.toBeCloseTo(scrollTop, 0);
+				.poll(async () =>
+					Math.abs(
+						(await appScroller.evaluate((element) => element.scrollTop)) - scrollTop,
+					),
+				)
+				.toBeLessThanOrEqual(DEFAULT_PIXEL_TOLERANCE);
 			await page.evaluate(
 				() =>
 					new Promise<void>((resolve) =>
@@ -70,7 +77,7 @@ test.describe('mobile wishlist acceptance', () => {
 			),
 		]);
 		const normalFlowGap = initialToolbarBox.y - (initialHeroBox.y + initialHeroBox.height);
-		expect(normalFlowGap).toBeCloseTo(12, 1);
+		expectPixelsNear(normalFlowGap, 12);
 
 		const boundaryClip = {
 			x: initialHeroBox.x,
@@ -116,9 +123,9 @@ test.describe('mobile wishlist acceptance', () => {
 			element.classList.remove('dark');
 		});
 		const initialMaskBox = await box(toolbarMask);
-		expect(initialMaskBox.y - (initialHeroBox.y + initialHeroBox.height)).toBeCloseTo(
+		expectPixelsNear(
+			initialMaskBox.y - (initialHeroBox.y + initialHeroBox.height),
 			ordinaryShadowOffset,
-			1,
 		);
 
 		const heroBoundaryClipScrollTop =
@@ -137,13 +144,13 @@ test.describe('mobile wishlist acceptance', () => {
 			partialHeroBox.y + partialHeroBox.height + ordinaryShadowOffset,
 			'the hero boundary remains visible during an ordinary partial scroll',
 		).toBeGreaterThan(initialScrollportBox.y);
-		expect(partialToolbarBox.y - (partialHeroBox.y + partialHeroBox.height)).toBeCloseTo(
+		expectPixelsNear(
+			partialToolbarBox.y - (partialHeroBox.y + partialHeroBox.height),
 			normalFlowGap,
-			1,
 		);
-		expect(partialMaskBox.y - (partialHeroBox.y + partialHeroBox.height)).toBeCloseTo(
+		expectPixelsNear(
+			partialMaskBox.y - (partialHeroBox.y + partialHeroBox.height),
 			ordinaryShadowOffset,
-			1,
 		);
 
 		const stickyThreshold = initialToolbarBox.y - initialScrollportBox.y - mobileStickyTop;
@@ -179,14 +186,16 @@ test.describe('mobile wishlist acceptance', () => {
 				box(toolbar),
 				box(toolbarMask),
 			]);
-			expect(
+			expectPixelsNear(
 				transitionToolbarBox.y - initialScrollportBox.y,
+				position.expectedToolbarTop,
 				`${position.name} threshold: toolbar position relative to its scrollport`,
-			).toBeCloseTo(position.expectedToolbarTop, 1);
-			expect(
+			);
+			expectPixelsNear(
 				transitionMaskBox.y - initialScrollportBox.y,
+				position.expectedMaskTop,
 				`${position.name} threshold: mask position relative to its scrollport`,
-			).toBeCloseTo(position.expectedMaskTop, 1);
+			);
 			if (!position.stuck) {
 				expect(
 					transitionHeroBox.y + transitionHeroBox.height,
@@ -219,9 +228,9 @@ test.describe('mobile wishlist acceptance', () => {
 			box(toolbarMask),
 			box(firstGift),
 		]);
-		expect(toolbarBox.y - initialScrollportBox.y).toBeCloseTo(mobileStickyTop, 1);
-		expect(maskBox.y).toBeCloseTo(initialScrollportBox.y, 1);
-		expect(toolbarBox.y - maskBox.y).toBeCloseTo(mobileStickyTop, 1);
+		expectPixelsNear(toolbarBox.y - initialScrollportBox.y, mobileStickyTop);
+		expectPixelsNear(maskBox.y, initialScrollportBox.y);
+		expectPixelsNear(toolbarBox.y - maskBox.y, mobileStickyTop);
 
 		const triggerBox = await box(trigger);
 		const triggerCenter = {
@@ -310,17 +319,14 @@ test.describe('mobile wishlist acceptance', () => {
 					Number.parseFloat(getComputedStyle(element).top),
 				),
 			]);
-		expect(desktopStickyTop).toBe(12);
+		expectPixelsNear(desktopStickyTop, 12);
 		const desktopGeometry = {
 			headerGap: desktopToolbarBox.y - (desktopHeaderBox.y + desktopHeaderBox.height),
 			toolbarTop: desktopToolbarBox.y,
 			maskTop: desktopMaskBox.y,
 		};
-		expect(desktopGeometry.headerGap).toBeCloseTo(24, 1);
-		expect(desktopGeometry.toolbarTop - desktopGeometry.maskTop).toBeCloseTo(
-			desktopStickyTop,
-			1,
-		);
+		expectPixelsNear(desktopGeometry.headerGap, 24);
+		expectPixelsNear(desktopGeometry.toolbarTop - desktopGeometry.maskTop, desktopStickyTop);
 		for (const colorMode of COLOR_MODES) {
 			for (const depth of DEPTH_STYLES) {
 				await page.locator('html').evaluate(
@@ -332,17 +338,20 @@ test.describe('mobile wishlist acceptance', () => {
 				);
 				const [appearanceHeaderBox, appearanceToolbarBox, appearanceMaskBox] =
 					await Promise.all([box(desktopHeader), box(toolbar), box(toolbarMask)]);
-				expect(
+				expectPixelsNear(
 					appearanceToolbarBox.y - (appearanceHeaderBox.y + appearanceHeaderBox.height),
+					desktopGeometry.headerGap,
 					`${colorMode}/${depth}: desktop header-to-toolbar geometry`,
-				).toBeCloseTo(desktopGeometry.headerGap, 1);
-				expect(
+				);
+				expectPixelsNear(
 					appearanceToolbarBox.y,
+					desktopGeometry.toolbarTop,
 					`${colorMode}/${depth}: desktop toolbar top`,
-				).toBeCloseTo(desktopGeometry.toolbarTop, 1);
-				expect(appearanceMaskBox.y, `${colorMode}/${depth}: desktop mask top`).toBeCloseTo(
+				);
+				expectPixelsNear(
+					appearanceMaskBox.y,
 					desktopGeometry.maskTop,
-					1,
+					`${colorMode}/${depth}: desktop mask top`,
 				);
 			}
 		}

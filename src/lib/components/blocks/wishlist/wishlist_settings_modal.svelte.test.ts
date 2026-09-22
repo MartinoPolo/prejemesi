@@ -1,6 +1,7 @@
 import { cleanup, render } from 'vitest-browser-svelte';
 import { userEvent } from 'vitest/browser';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
 import type { ComponentProps } from 'svelte';
 import * as m from '$lib/paraglide/messages.js';
 import { REVERT_CAPABILITY } from '$lib/modules/wishlists/wishlist_capabilities.js';
@@ -29,6 +30,8 @@ vi.mock('$lib/modules/gift-categories/gift_categories.remote.js', () => ({
 }));
 
 import WishlistSettingsModal from './WishlistSettingsModal.svelte';
+
+const { expectPixelsNear, expectPixelsAtLeast, expectPixelsAtMost } = createPixelAssertions(expect);
 
 afterEach(() => {
 	cleanup();
@@ -300,18 +303,18 @@ describe('WishlistSettingsModal import and export tab', () => {
 		await expect.element(danger).toHaveAttribute('aria-selected', 'true');
 		let tablistRect = tablist.getBoundingClientRect();
 		const dangerRect = danger.element().getBoundingClientRect();
-		expect(dangerRect.left).toBeGreaterThanOrEqual(tablistRect.left);
-		expect(dangerRect.right).toBeLessThanOrEqual(tablistRect.right);
-		expect(dialog.scrollTop).toBe(dialogScrollTop);
-		expect(window.scrollY).toBe(pageScrollY);
+		expectPixelsAtLeast(dangerRect.left, tablistRect.left);
+		expectPixelsAtMost(dangerRect.right, tablistRect.right);
+		expectPixelsNear(dialog.scrollTop, dialogScrollTop);
+		expectPixelsNear(window.scrollY, pageScrollY);
 
 		await userEvent.keyboard('{Home}');
 		await expect.element(details).toHaveFocus();
 		tablistRect = tablist.getBoundingClientRect();
 		const detailsRect = details.element().getBoundingClientRect();
-		expect(detailsRect.left).toBeGreaterThanOrEqual(tablistRect.left);
-		expect(detailsRect.right).toBeLessThanOrEqual(tablistRect.right);
-		expect(dialog.scrollTop).toBe(dialogScrollTop);
-		expect(window.scrollY).toBe(pageScrollY);
+		expectPixelsAtLeast(detailsRect.left, tablistRect.left);
+		expectPixelsAtMost(detailsRect.right, tablistRect.right);
+		expectPixelsNear(dialog.scrollTop, dialogScrollTop);
+		expectPixelsNear(window.scrollY, pageScrollY);
 	});
 });

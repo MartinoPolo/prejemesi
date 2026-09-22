@@ -6,6 +6,7 @@ import '../../../../app.css';
 import { render } from 'vitest-browser-svelte';
 import { userEvent } from 'vitest/browser';
 import { describe, expect, it, vi } from 'vitest';
+import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
 import * as m from '$lib/paraglide/messages.js';
 import type { GiftByRole } from '$lib/modules/gifts/types.js';
 import { IMAGE_FIT_MODES, type ImageMetadata } from '$lib/modules/images/index.js';
@@ -19,6 +20,8 @@ import type { ManagedGiftCategory } from '$lib/modules/gift-categories/types.js'
 vi.mock('$env/dynamic/public', () => ({ env: { PUBLIC_R2_URL: '/' } }));
 
 const { default: GiftDetailForm } = await import('./GiftDetailForm.svelte');
+
+const { expectPixelsAtLeast, expectPixelsAtMost } = createPixelAssertions(expect);
 
 /** Minimal GiftForRecipient fixture (a GiftByRole member) for edit-mode rendering. */
 function makeGift(overrides: Partial<GiftByRole> = {}): GiftByRole {
@@ -146,8 +149,8 @@ describe('GiftDetailForm categories', () => {
 		});
 		viewport.scrollIntoView({ block: 'center' });
 		const rect = viewport.getBoundingClientRect();
-		expect(rect.top).toBeGreaterThanOrEqual(0);
-		expect(rect.bottom).toBeLessThanOrEqual(window.innerHeight);
+		expectPixelsAtLeast(rect.top, 0);
+		expectPixelsAtMost(rect.bottom, window.innerHeight);
 
 		await userEvent.keyboard('{End}');
 		const finalOption = screen.getByRole('option', { name: 'Category 30' }).element();
@@ -155,8 +158,8 @@ describe('GiftDetailForm categories', () => {
 			expect(viewport.scrollTop).toBeGreaterThan(0);
 			const viewportRect = viewport.getBoundingClientRect();
 			const optionRect = finalOption.getBoundingClientRect();
-			expect(optionRect.top).toBeGreaterThanOrEqual(viewportRect.top);
-			expect(optionRect.bottom).toBeLessThanOrEqual(viewportRect.bottom + 1);
+			expectPixelsAtLeast(optionRect.top, viewportRect.top);
+			expectPixelsAtMost(optionRect.bottom, viewportRect.bottom);
 		});
 		await userEvent.keyboard('{Enter}');
 		await expect.element(screen.getByRole('button', { name: 'Category 30' })).toBeVisible();

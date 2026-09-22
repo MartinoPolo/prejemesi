@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { page } from 'vitest/browser';
+import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
 import type { GiftForVisitor } from '$lib/modules/gifts/types.js';
 import { WISHLIST_ROLES } from '$lib/modules/wishlists/types.js';
 import * as m from '$lib/paraglide/messages.js';
@@ -9,7 +10,7 @@ import {
 	fixedHosts,
 	hasVisibleBoxShadow,
 	makeVisitorGift,
-	rectanglesIntersect,
+	expectRectanglesSeparated,
 	renderCardInGridColumn,
 	textOutsideOverlay,
 } from './gift_card.test_fixtures.js';
@@ -17,6 +18,7 @@ import { render } from 'vitest-browser-svelte';
 import { giftCardCollectionLayout } from '$lib/components/blocks/wishlist/gift_card_collection_layout.js';
 
 const collectionLayouts = new Set<ReturnType<typeof giftCardCollectionLayout>>();
+const { expectPixelsNear, expectPixelsAtLeast, expectPixelsAtMost } = createPixelAssertions(expect);
 
 afterEach(() => {
 	for (const layout of collectionLayouts) {
@@ -135,8 +137,14 @@ describe('GiftCard unified state presentation (issues #328 and #330)', () => {
 				cardHeight: host.firstElementChild!.getBoundingClientRect().height,
 			};
 		});
+		const baseline = snapshots[0]!;
 		for (const snapshot of snapshots.slice(1)) {
-			expect(snapshot).toEqual(snapshots[0]);
+			expect(snapshot.html).toBe(baseline.html);
+			expectPixelsNear(snapshot.left, baseline.left);
+			expectPixelsNear(snapshot.top, baseline.top);
+			expectPixelsNear(snapshot.width, baseline.width);
+			expectPixelsNear(snapshot.height, baseline.height);
+			expectPixelsNear(snapshot.cardHeight, baseline.cardHeight);
 		}
 	});
 
@@ -297,21 +305,19 @@ describe('GiftCard unified state presentation (issues #328 and #330)', () => {
 			const likeButton = host.querySelector('[data-like-heart]')
 				?.parentElement as HTMLElement;
 
-			expect(host.getBoundingClientRect().width).toBeCloseTo(179, 0);
+			expectPixelsNear(host.getBoundingClientRect().width, 179);
 			for (const requiredLabel of requiredLabels) {
 				expect(overlay.textContent).toContain(requiredLabel);
 			}
-			expect(likeButton.getBoundingClientRect().width).toBeGreaterThanOrEqual(40);
+			expectPixelsAtLeast(likeButton.getBoundingClientRect().width, 40);
 			for (const pill of overlay.querySelectorAll<HTMLElement>(':scope > span')) {
 				for (const likePart of likeButton.querySelectorAll<HTMLElement>(
 					'[data-like-heart], [data-like-count]',
 				)) {
-					expect(
-						rectanglesIntersect(
-							pill.getBoundingClientRect(),
-							likePart.getBoundingClientRect(),
-						),
-					).toBe(false);
+					expectRectanglesSeparated(
+						pill.getBoundingClientRect(),
+						likePart.getBoundingClientRect(),
+					);
 				}
 			}
 		},
@@ -338,10 +344,11 @@ describe('GiftCard unified state presentation (issues #328 and #330)', () => {
 		await expect
 			.element(page.getByRole('button', { name: /Přidat do oblíbených/ }))
 			.toBeVisible();
-		expect(likeButton.getBoundingClientRect().width).toBeCloseTo(40, 0);
-		expect(
-			rectanglesIntersect(badge.getBoundingClientRect(), likeButton.getBoundingClientRect()),
-		).toBe(false);
+		expectPixelsNear(likeButton.getBoundingClientRect().width, 40);
+		expectRectanglesSeparated(
+			badge.getBoundingClientRect(),
+			likeButton.getBoundingClientRect(),
+		);
 	});
 
 	it.each([
@@ -446,11 +453,12 @@ describe('GiftCard approved Like geometry (issue #357)', () => {
 			expect(cropCompositionRect.width / cropCompositionRect.height).toBeCloseTo(4 / 3, 2);
 			const cardRect = card.getBoundingClientRect();
 			expect(likeRect.top).toBeLessThan(imageRect.top + imageRect.height / 2);
-			expect(likeRect.right).toBeLessThanOrEqual(cardRect.right);
-			expect(likeRect.top).toBeGreaterThanOrEqual(imageRect.top);
-			expect(likeRect.bottom).toBeLessThanOrEqual(imageRect.bottom);
+			expectPixelsAtMost(likeRect.right, cardRect.right);
+			expectPixelsAtLeast(likeRect.top, imageRect.top);
+			expectPixelsAtMost(likeRect.bottom, imageRect.bottom);
 			expect(countNode.textContent).toBe(String(count));
-			expect(heart.getBoundingClientRect().right).toBeLessThanOrEqual(
+			expectPixelsAtMost(
+				heart.getBoundingClientRect().right,
 				countNode.getBoundingClientRect().left,
 			);
 			expect(hasVisibleBoxShadow(like.querySelector('.elevation-surface')!)).toBe(false);

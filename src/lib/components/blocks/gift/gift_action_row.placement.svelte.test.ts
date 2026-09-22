@@ -1,7 +1,10 @@
 import '../../../../app.css';
 import { describe, expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
+import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
 import GiftActionRowTestHost from './GiftActionRowTestHost.svelte';
+
+const { expectPixelsNear } = createPixelAssertions(expect);
 
 async function settlePlacement() {
 	await new Promise<void>((resolve) =>
@@ -21,10 +24,7 @@ describe('GiftActionRow intrinsic placement', () => {
 		const row = screen.getByTestId('gift-action-row').element() as HTMLElement;
 		const reserve = screen.getByTestId('reserve-action').element() as HTMLElement;
 		const received = screen.getByTestId('received-action').element() as HTMLElement;
-		expect(received.getBoundingClientRect().top).toBeCloseTo(
-			reserve.getBoundingClientRect().top,
-			0,
-		);
+		expectPixelsNear(received.getBoundingClientRect().top, reserve.getBoundingClientRect().top);
 		expect(row.querySelector('[data-testid="gift-more-actions"]')).toHaveProperty(
 			'inert',
 			true,
@@ -42,14 +42,11 @@ describe('GiftActionRow intrinsic placement', () => {
 		expect(onplacementchange).toHaveBeenLastCalledWith(['received']);
 		const narrowReserve = screen.getByTestId('reserve-action').element() as HTMLElement;
 		const more = screen.getByTestId('gift-more-actions').element() as HTMLElement;
-		expect(narrowReserve.getBoundingClientRect().top).toBeCloseTo(
+		expectPixelsNear(
+			narrowReserve.getBoundingClientRect().top,
 			more.getBoundingClientRect().top,
-			0,
 		);
-		expect(more.getBoundingClientRect().right).toBeCloseTo(
-			row.getBoundingClientRect().right,
-			0,
-		);
+		expectPixelsNear(more.getBoundingClientRect().right, row.getBoundingClientRect().right);
 
 		await screen.rerender({ contentWidth: 260, onplacementchange });
 		await settlePlacement();

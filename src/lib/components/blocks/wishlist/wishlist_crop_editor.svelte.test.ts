@@ -1,6 +1,7 @@
 import '../../../../app.css';
 import { render } from 'vitest-browser-svelte';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
 import { page } from 'vitest/browser';
 import * as m from '$lib/paraglide/messages.js';
 import { createDefaultWishlistSlots } from '$lib/modules/images/index.js';
@@ -8,6 +9,7 @@ import { createDefaultWishlistSlots } from '$lib/modules/images/index.js';
 vi.mock('$env/dynamic/public', () => ({ env: { PUBLIC_R2_URL: '/' } }));
 
 const { default: WishlistCropEditor } = await import('./WishlistCropEditor.svelte');
+const { expectPixelsNear } = createPixelAssertions(expect);
 
 afterEach(async () => page.viewport(1280, 720));
 
@@ -65,11 +67,11 @@ describe('WishlistCropEditor loaded image', () => {
 		const remove = screen.getByRole('button', { name: m.wishlist_image_remove() });
 
 		await page.viewport(390, 720);
-		expect(change.element().getBoundingClientRect().height).toBe(40);
-		expect(remove.element().getBoundingClientRect().height).toBe(40);
+		expectPixelsNear(change.element().getBoundingClientRect().height, 40);
+		expectPixelsNear(remove.element().getBoundingClientRect().height, 40);
 		await page.viewport(1280, 720);
-		expect(change.element().getBoundingClientRect().height).toBe(32);
-		expect(remove.element().getBoundingClientRect().height).toBe(32);
+		expectPixelsNear(change.element().getBoundingClientRect().height, 32);
+		expectPixelsNear(remove.element().getBoundingClientRect().height, 32);
 	});
 
 	it('returns to clean when an image setting is restored to its baseline', async () => {

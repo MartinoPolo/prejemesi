@@ -2,7 +2,10 @@ import '../../../../app.css';
 import { userEvent } from 'vitest/browser';
 import { render } from 'vitest-browser-svelte';
 import { describe, expect, it, vi } from 'vitest';
+import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
 import ChoiceRowTestHarness from './ChoiceRowTestHarness.svelte';
+
+const { expectPixelsNear } = createPixelAssertions(expect);
 
 describe('ChoiceRow', () => {
 	it('keeps a compact label on one line and grows when the label wraps', async () => {
@@ -16,7 +19,7 @@ describe('ChoiceRow', () => {
 		const button = screen.getByRole('button', { name: 'Selected choice' });
 		await expect.element(button).toBeVisible();
 		const compactRect = button.element().getBoundingClientRect();
-		expect(compactRect.width).toBeCloseTo(176, 0);
+		expectPixelsNear(compactRect.width, 176);
 		expect(compactRect.height).toBeLessThan(40);
 		await expect.element(screen.getByTestId('leading')).toBeVisible();
 
@@ -31,7 +34,7 @@ describe('ChoiceRow', () => {
 			name: 'A compact choice with a long wrapping label',
 		});
 		const wrappedRect = wrapped.element().getBoundingClientRect();
-		expect(wrappedRect.width).toBeCloseTo(144, 0);
+		expectPixelsNear(wrappedRect.width, 144);
 		expect(wrappedRect.height).toBeGreaterThan(compactRect.height);
 	});
 

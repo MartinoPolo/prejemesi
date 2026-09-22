@@ -2,10 +2,12 @@ import '../../../../app.css';
 import { render } from 'vitest-browser-svelte';
 import { describe, expect, it, vi } from 'vitest';
 import { tick } from 'svelte';
+import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
 import ActiveFilterPillsTestHost from './ActiveFilterPillsTestHost.svelte';
 import FilterMenu from './FilterMenu.svelte';
 import type { FilterDefinition, FilterFacetGroup } from './filter_menu_types.js';
 
+const { expectPixelsNear, expectPixelsAtLeast, expectPixelsAtMost } = createPixelAssertions(expect);
 vi.mock('$env/dynamic/public', () => ({ env: {} }));
 
 function baseProps() {
@@ -104,9 +106,9 @@ describe('FilterMenu facets', () => {
 		const content = document.querySelector<HTMLElement>('[data-slot="dropdown-menu-content"]');
 		expect(content).not.toBeNull();
 		const rect = content!.getBoundingClientRect();
-		expect(rect.top).toBeGreaterThanOrEqual(7);
-		expect(rect.bottom).toBeLessThanOrEqual(window.innerHeight - 7);
-		expect(content!.clientHeight).toBe(content!.scrollHeight);
+		expectPixelsAtLeast(rect.top, 7);
+		expectPixelsAtMost(rect.bottom, window.innerHeight - 7);
+		expectPixelsNear(content!.clientHeight, content!.scrollHeight);
 	});
 
 	it('counts each selected facet value as one active filter and renders a pill', async () => {

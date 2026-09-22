@@ -1,8 +1,11 @@
 import '../../../../app.css';
 import { render } from 'vitest-browser-svelte';
 import { describe, expect, it, vi } from 'vitest';
+import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
 import { PALETTES, PALETTE_LABELS } from '$lib/theme/palettes.js';
 import WishlistPalettePicker from './WishlistPalettePicker.svelte';
+
+const { expectPixelsNear, expectPixelsAtMost } = createPixelAssertions(expect);
 
 describe('WishlistPalettePicker', () => {
 	it('renders compact, consistently sized choices in a centered bounded group', async () => {
@@ -15,10 +18,12 @@ describe('WishlistPalettePicker', () => {
 		const buttons = Array.from(group.element().querySelectorAll<HTMLButtonElement>('button'));
 		expect(buttons.length).toBeGreaterThan(1);
 		const widths = buttons.map((button) => button.getBoundingClientRect().width);
-		expect(new Set(widths.map(Math.round))).toEqual(new Set([128]));
-		expect(Math.max(...widths)).toBeLessThan(groupRect.width / 2);
-		expect(groupRect.width).toBeLessThanOrEqual(720);
-		expect(groupRect.left + groupRect.width / 2).toBeCloseTo(window.innerWidth / 2, 0);
+		for (const width of widths) {
+			expectPixelsNear(width, 128);
+		}
+		expectPixelsAtMost(Math.max(...widths), groupRect.width / 2);
+		expectPixelsAtMost(groupRect.width, 720);
+		expectPixelsNear(groupRect.left + groupRect.width / 2, window.innerWidth / 2);
 
 		const sky = screen.getByRole('button', { name: PALETTE_LABELS.sky });
 		const mint = screen.getByRole('button', { name: PALETTE_LABELS.mint });
@@ -40,10 +45,10 @@ describe('WishlistPalettePicker', () => {
 		group.style.width = '112px';
 
 		await new Promise((resolve) => requestAnimationFrame(resolve));
-		expect(group.scrollWidth).toBeLessThanOrEqual(group.clientWidth);
+		expectPixelsAtMost(group.scrollWidth, group.clientWidth);
 		for (const palette of PALETTES) {
 			const choice = screen.getByRole('button', { name: PALETTE_LABELS[palette] }).element();
-			expect(choice.getBoundingClientRect().width).toBeLessThanOrEqual(group.clientWidth);
+			expectPixelsAtMost(choice.getBoundingClientRect().width, group.clientWidth);
 		}
 	});
 });

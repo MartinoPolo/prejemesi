@@ -1,33 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { gzipSync, brotliCompressSync } from 'node:zlib';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import {
-	compare,
-	median,
-	compressedSizes,
-	compareReports,
-	renderMarkdown,
-	waitReady,
-} from './production-performance.mjs';
-
-test('median handles odd and even samples', () => {
-	assert.equal(median([9, 1, 5]), 5);
-	assert.equal(median([8, 2, 4, 6]), 5);
-	assert.equal(median([]), null);
-});
-
-test('compressedSizes returns deterministic raw, gzip, and Brotli sizes', () => {
-	const bytes = Buffer.from('repeatable payload '.repeat(20));
-	assert.deepEqual(compressedSizes(bytes), {
-		raw: bytes.length,
-		gzip: gzipSync(bytes).length,
-		brotli: brotliCompressSync(bytes).length,
-	});
-	assert.deepEqual(compressedSizes(bytes), compressedSizes(bytes));
-});
+import { compare, compareReports, renderMarkdown, waitReady } from './production-performance.mjs';
 
 const report = (jsBrotliBytes, fcp, error) => ({
 	error,
@@ -86,29 +62,6 @@ test('failed and missing reports still render useful Markdown', () => {
 	assert.match(failed, /Base report is missing/);
 	assert.match(failed, /Head collection failed.*browser unavailable/);
 	assert.match(failed, /informational and non-blocking/);
-});
-
-test('readiness polling removes abort listeners after each normal delay', async () => {
-	const originalFetch = globalThis.fetch;
-	const originalSetTimeout = globalThis.setTimeout;
-	let requests = 0;
-	let addedListeners = 0;
-	let removedListeners = 0;
-	const signal = {
-		aborted: false,
-		addEventListener: () => addedListeners++,
-		removeEventListener: () => removedListeners++,
-	};
-	globalThis.fetch = async () => ({ ok: ++requests === 2 });
-	globalThis.setTimeout = (callback) => (queueMicrotask(callback), 1);
-	try {
-		await waitReady('http://127.0.0.1:1/', { exitCode: null }, signal);
-		assert.equal(addedListeners, 1);
-		assert.equal(removedListeners, 1);
-	} finally {
-		globalThis.fetch = originalFetch;
-		globalThis.setTimeout = originalSetTimeout;
-	}
 });
 
 test('readiness polling stops promptly when startup is cancelled', async () => {

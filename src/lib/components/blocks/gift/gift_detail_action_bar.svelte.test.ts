@@ -2,6 +2,7 @@ import '../../../../app.css';
 import { render } from 'vitest-browser-svelte';
 import { page } from 'vitest/browser';
 import { describe, expect, it, vi } from 'vitest';
+import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
 import * as m from '$lib/paraglide/messages.js';
 import type { GiftForVisitor } from '$lib/modules/gifts/types.js';
 import type { ReservationForModerator } from '$lib/modules/reservations/types.js';
@@ -10,6 +11,8 @@ vi.mock('$env/dynamic/public', () => ({ env: {} }));
 
 const { default: GiftDetailActionBarTestHost } =
 	await import('./GiftDetailActionBarTestHost.svelte');
+
+const { expectPixelsNear, expectPixelsAtLeast, expectPixelsAtMost } = createPixelAssertions(expect);
 
 const gift: GiftForVisitor = {
 	id: 'gift-detail-action-bar',
@@ -105,7 +108,7 @@ describe('GiftDetailActionBar responsive action geometry', () => {
 			] as const) {
 				await page.viewport(viewportWidth, 720);
 				for (const action of actionElements()) {
-					expect(action.getBoundingClientRect().height).toBe(expectedHeight);
+					expectPixelsNear(action.getBoundingClientRect().height, expectedHeight);
 				}
 
 				if (role === 'admin') {
@@ -117,11 +120,9 @@ describe('GiftDetailActionBar responsive action geometry', () => {
 						m.reserve_release_button(),
 					);
 
-					expect(releaseRectangle.left - reserveRectangle.right).toBeCloseTo(8, 0);
-					expect(releaseLabelRectangle.left).toBeGreaterThanOrEqual(
-						releaseRectangle.left,
-					);
-					expect(releaseLabelRectangle.right).toBeLessThanOrEqual(releaseRectangle.right);
+					expectPixelsNear(releaseRectangle.left - reserveRectangle.right, 8);
+					expectPixelsAtLeast(releaseLabelRectangle.left, releaseRectangle.left);
+					expectPixelsAtMost(releaseLabelRectangle.right, releaseRectangle.right);
 					expect(releaseLabelRectangle.height).toBeLessThan(releaseRectangle.height);
 				}
 			}

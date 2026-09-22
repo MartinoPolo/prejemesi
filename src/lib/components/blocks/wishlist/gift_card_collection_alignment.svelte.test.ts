@@ -2,6 +2,10 @@ import '../../../../app.css';
 import { render } from 'vitest-browser-svelte';
 import { page } from 'vitest/browser';
 import { describe, expect, it, vi } from 'vitest';
+import {
+	createPixelAssertions,
+	DEFAULT_PIXEL_TOLERANCE,
+} from '../../../../../tests/helpers/pixel-assertions.mjs';
 import type { ComponentProps } from 'svelte';
 import type { GiftForVisitor } from '$lib/modules/gifts/types.js';
 import { GIFT_SECTION_KINDS, type GiftSection } from '$lib/modules/gifts/gift_ordering.js';
@@ -12,6 +16,7 @@ vi.mock('$env/dynamic/public', () => ({ env: {} }));
 const { default: WishlistGiftDisplay } = await import('./WishlistGiftDisplay.svelte');
 const { default: WishlistGiftDisplayTestHost } =
 	await import('./WishlistGiftDisplayTestHost.svelte');
+const { expectPixelsNear, expectPixelsAtMost } = createPixelAssertions(expect);
 
 function gift(overrides: Partial<GiftForVisitor> = {}): GiftForVisitor {
 	return {
@@ -157,7 +162,7 @@ describe('GiftCard collection alignment', () => {
 		for (const track of ['title', 'description', 'links', 'price', 'actions']) {
 			const rects = trackRects(track);
 			expect(rects).toHaveLength(2);
-			expect(rects[1]!.height).toBeCloseTo(rects[0]!.height, 0);
+			expectPixelsNear(rects[1]!.height, rects[0]!.height);
 		}
 		const cards = Array.from(
 			document.querySelectorAll<HTMLElement>('[data-testid="gift-card-surface"]'),
@@ -174,7 +179,9 @@ describe('GiftCard collection alignment', () => {
 					.querySelector<HTMLElement>(`[data-gift-card-track="${track}"]`)!
 					.getBoundingClientRect().top - cards[1]!.getBoundingClientRect().top,
 		);
-		expect(secondOffsets).toEqual(firstOffsets.map((offset) => expect.closeTo(offset, 0)));
+		for (const [index, offset] of secondOffsets.entries()) {
+			expectPixelsNear(offset, firstOffsets[index]!);
+		}
 		expect(getComputedStyle(cards[0]!.querySelector('h3')!).fontSize).toBe('24px');
 		expect(cards[0]!.querySelector('[data-testid="gift-card-footer"]')).toBeTruthy();
 		expect(
@@ -218,10 +225,8 @@ describe('GiftCard collection alignment', () => {
 		);
 		expect(getComputedStyle(title).fontSize).toBe('24px');
 		expect(title.getBoundingClientRect().height).toBeGreaterThan(titleLineHeight);
-		expect(title.getBoundingClientRect().height).toBeLessThanOrEqual(titleLineHeight * 2 + 0.5);
-		expect(description.getBoundingClientRect().height).toBeLessThanOrEqual(
-			descriptionLineHeight + 2.5,
-		);
+		expectPixelsAtMost(title.getBoundingClientRect().height, titleLineHeight * 2);
+		expectPixelsAtMost(description.getBoundingClientRect().height, descriptionLineHeight + 2);
 		expect(getComputedStyle(descriptionParagraph).webkitLineClamp).toBe('1');
 		await screen.unmount();
 	});
@@ -268,9 +273,7 @@ describe('GiftCard collection alignment', () => {
 			expect(preview.textContent).toContain('Nejnovější velmi dlouhé doplnění');
 			expect(preview.textContent).not.toContain('Původní popis');
 			expect(track.querySelector('button')).toBeNull();
-			expect(preview.getBoundingClientRect().height).toBeLessThanOrEqual(
-				lineHeight * 2 + 0.5,
-			);
+			expectPixelsAtMost(preview.getBoundingClientRect().height, lineHeight * 2);
 			await screen.unmount();
 		} finally {
 			document.documentElement.style.fontSize = previousFontSize;
@@ -315,17 +318,18 @@ describe('GiftCard collection alignment', () => {
 		);
 		for (const track of ['title', 'description', 'links', 'price', 'actions']) {
 			const rects = trackRects(track);
-			expect(rects[1]!.height).toBeCloseTo(rects[0]!.height, 0);
+			expectPixelsNear(rects[1]!.height, rects[0]!.height);
 		}
 		const title = cards[1]!.querySelector<HTMLElement>('h3')!;
 		const description = cards[1]!.querySelector<HTMLElement>(
 			'[data-gift-card-track="description"]',
 		)!;
 		expect(getComputedStyle(title).fontSize).toBe('16px');
-		expect(title.getBoundingClientRect().height).toBeLessThanOrEqual(
-			Number.parseFloat(getComputedStyle(title).lineHeight) * 2 + 0.5,
+		expectPixelsAtMost(
+			title.getBoundingClientRect().height,
+			Number.parseFloat(getComputedStyle(title).lineHeight) * 2,
 		);
-		expect(description.getBoundingClientRect().height).toBeLessThanOrEqual(42);
+		expectPixelsAtMost(description.getBoundingClientRect().height, 42);
 		await screen.unmount();
 	});
 
@@ -366,9 +370,9 @@ describe('GiftCard collection alignment', () => {
 			await nextLayout();
 
 			const cards = Array.from(document.querySelectorAll<HTMLElement>('[data-gift-item]'));
-			expect(cards[1]!.getBoundingClientRect().top).toBeCloseTo(
+			expectPixelsNear(
+				cards[1]!.getBoundingClientRect().top,
 				cards[0]!.getBoundingClientRect().top,
-				0,
 			);
 			const crowdedImage = cards[0]!.querySelector<HTMLElement>(
 				'[data-testid="gift-card-image-frame"]',
@@ -391,18 +395,20 @@ describe('GiftCard collection alignment', () => {
 			].map((element) => element.getBoundingClientRect());
 
 			expect(imageRect.height).toBeGreaterThan(imageRect.width * 0.75);
-			expect(peerImage.getBoundingClientRect().height).toBeCloseTo(imageRect.height, 0);
+			expectPixelsNear(peerImage.getBoundingClientRect().height, imageRect.height);
 			expect(cropRect.width / cropRect.height).toBeCloseTo(4 / 3, 2);
-			expect(cropRect.width).toBeCloseTo(imageRect.width, 0);
+			expectPixelsNear(cropRect.width, imageRect.width);
 			for (let first = 0; first < boxes.length; first += 1) {
 				for (let second = first + 1; second < boxes.length; second += 1) {
 					const a = boxes[first]!;
 					const b = boxes[second]!;
+					const separatedOnAnAxis =
+						a.right <= b.left + DEFAULT_PIXEL_TOLERANCE ||
+						b.right <= a.left + DEFAULT_PIXEL_TOLERANCE ||
+						a.bottom <= b.top + DEFAULT_PIXEL_TOLERANCE ||
+						b.bottom <= a.top + DEFAULT_PIXEL_TOLERANCE;
 					expect(
-						a.right <= b.left ||
-							b.right <= a.left ||
-							a.bottom <= b.top ||
-							b.bottom <= a.top,
+						separatedOnAnAxis,
 						`overlay boxes ${first} and ${second} overlap: ${JSON.stringify(a.toJSON())} / ${JSON.stringify(b.toJSON())}`,
 					).toBe(true);
 				}
@@ -480,11 +486,12 @@ describe('GiftCard collection alignment', () => {
 			});
 			await nextLayout();
 			expect(collection.getBoundingClientRect().height).toBeLessThan(longHeight);
-			expect(
+			expectPixelsNear(
 				collection
 					.querySelector<HTMLElement>('[data-gift-card-track="description"]')!
 					.getBoundingClientRect().height,
-			).toBe(0);
+				0,
+			);
 		} finally {
 			if (scrollHeightDescriptor === undefined) {
 				Reflect.deleteProperty(HTMLElement.prototype, 'scrollHeight');

@@ -2,6 +2,7 @@ import '../../../../app.css';
 import { render } from 'vitest-browser-svelte';
 import { page, userEvent } from 'vitest/browser';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
 import type { ComponentProps } from 'svelte';
 import * as m from '$lib/paraglide/messages.js';
 import { GIFT_SORT_KEYS } from '$lib/components/blocks/gift/gift_sort_options.js';
@@ -12,6 +13,8 @@ import {
 } from '$lib/modules/gifts/types.js';
 import { WISHLIST_ROLES } from '$lib/modules/wishlists/types.js';
 import WishlistDetailToolbar from './WishlistDetailToolbar.svelte';
+
+const { expectPixelsNear, expectPixelsAtLeast, expectPixelsAtMost } = createPixelAssertions(expect);
 
 const defaultFilters = {
 	availableOnly: false,
@@ -110,7 +113,7 @@ function expectBottomSheet(dialog: Element) {
 	const rect = dialog.getBoundingClientRect();
 	const style = getComputedStyle(dialog);
 	expect(style.bottom).toBe('0px');
-	expect(rect.left).toBeCloseTo(window.innerWidth - rect.right, 1);
+	expectPixelsNear(rect.left, window.innerWidth - rect.right);
 	expect(rect.left).toBeGreaterThan(0);
 	expect(style.borderLeftWidth).toBe(style.borderRightWidth);
 	expect(style.borderLeftWidth).toBe(style.borderTopWidth);
@@ -118,15 +121,15 @@ function expectBottomSheet(dialog: Element) {
 	expect(parseFloat(style.borderTopLeftRadius)).toBeGreaterThan(0);
 	const header = dialog.querySelector<HTMLElement>('[data-slot="sheet-header"]')!;
 	const headerStyle = getComputedStyle(header);
-	expect(header.getBoundingClientRect().width).toBeCloseTo(
+	expectPixelsNear(
+		header.getBoundingClientRect().width,
 		rect.width - parseFloat(style.borderLeftWidth) - parseFloat(style.borderRightWidth),
-		1,
 	);
 	expect(headerStyle.paddingLeft).toBe('16px');
 	expect(headerStyle.paddingRight).toBe('56px');
 	expect(headerStyle.paddingTop).toBe('12px');
 	expect(headerStyle.paddingBottom).toBe('12px');
-	expect(parseFloat(headerStyle.borderBottomWidth)).toBeCloseTo(1, 1);
+	expectPixelsNear(parseFloat(headerStyle.borderBottomWidth), 1);
 	const body = header.nextElementSibling as HTMLElement;
 	const bodyStyle = getComputedStyle(body);
 	expect(bodyStyle.paddingLeft).toBe('8px');
@@ -161,13 +164,14 @@ describe('WishlistDetailToolbar mobile command surfaces (#340)', () => {
 				const toolbar = screen.getByTestId('wishlist-toolbar').element() as HTMLElement;
 				const rows = toolbar.querySelectorAll('[data-mobile-toolbar-row]');
 				expect(rows).toHaveLength(1);
-				expect(toolbar.scrollWidth).toBeLessThanOrEqual(toolbar.clientWidth);
-				expect((rows[0] as HTMLElement).scrollWidth).toBeLessThanOrEqual(
+				expectPixelsAtMost(toolbar.scrollWidth, toolbar.clientWidth);
+				expectPixelsAtMost(
+					(rows[0] as HTMLElement).scrollWidth,
 					(rows[0] as HTMLElement).clientWidth,
 				);
 				for (const button of visibleButtons(toolbar)) {
 					if (!button.closest('[data-testid="gift-view-switcher"]')) {
-						expect(button.getBoundingClientRect().height).toBeCloseTo(40, 0);
+						expectPixelsNear(button.getBoundingClientRect().height, 40);
 					}
 				}
 				await screen.unmount();
@@ -187,13 +191,15 @@ describe('WishlistDetailToolbar mobile command surfaces (#340)', () => {
 				tray.querySelectorAll<HTMLElement>('[data-slot="toggle-group-item"]'),
 			);
 
-			expect(tray.getBoundingClientRect().height).toBe(expectedSize);
+			expectPixelsNear(tray.getBoundingClientRect().height, expectedSize);
 			expect(items).toHaveLength(2);
 			for (const item of items) {
-				expect(item.getBoundingClientRect().width).toBe(
+				expectPixelsNear(
+					item.getBoundingClientRect().width,
 					viewportWidth < 640 ? expectedSize - 2 : expectedSize,
 				);
-				expect(item.getBoundingClientRect().height).toBe(
+				expectPixelsNear(
+					item.getBoundingClientRect().height,
 					viewportWidth < 640 ? expectedSize - 2 : expectedSize,
 				);
 			}
@@ -294,10 +300,10 @@ describe('WishlistDetailToolbar mobile command surfaces (#340)', () => {
 		const row = checkbox.parentElement!;
 		const rowStyle = getComputedStyle(row);
 		expect(rowStyle.minHeight).toBe('40px');
-		expect(row.getBoundingClientRect().height).toBeGreaterThanOrEqual(40);
+		expectPixelsAtLeast(row.getBoundingClientRect().height, 40);
 		expect(rowStyle.paddingTop).toBe('4px');
 		expect(rowStyle.paddingBottom).toBe('4px');
-		expect(scroll.scrollHeight).toBeLessThanOrEqual(scroll.clientHeight);
+		expectPixelsAtMost(scroll.scrollHeight, scroll.clientHeight);
 
 		await userEvent.click(row.querySelector('span')!);
 		expect(onfilterchange).toHaveBeenLastCalledWith({
@@ -342,12 +348,12 @@ describe('WishlistDetailToolbar mobile command surfaces (#340)', () => {
 			screen.getByTestId('mobile-sheet-filter-switch'),
 		];
 		const initialHeight = dialog.getBoundingClientRect().height;
-		expect(initialHeight).toBeLessThan(window.innerHeight * 0.8);
+		expectPixelsAtMost(initialHeight, window.innerHeight * 0.8);
 
 		for (const sectionButton of sectionButtons.slice(1)) {
 			await sectionButton.click();
 			await frames(1);
-			expect(dialog.getBoundingClientRect().height).toBeCloseTo(initialHeight, 1);
+			expectPixelsNear(dialog.getBoundingClientRect().height, initialHeight);
 		}
 
 		const expandedCategories = Array.from({ length: 8 }, (_, index) => ({
@@ -362,12 +368,12 @@ describe('WishlistDetailToolbar mobile command surfaces (#340)', () => {
 		await frames();
 		const expandedHeight = dialog.getBoundingClientRect().height;
 		expect(expandedHeight).toBeGreaterThan(initialHeight);
-		expect(expandedHeight).toBeLessThanOrEqual(window.innerHeight * 0.8 + 1);
+		expectPixelsAtMost(expandedHeight, window.innerHeight * 0.8);
 
 		for (const sectionButton of sectionButtons.slice(0, 2)) {
 			await sectionButton.click();
 			await frames(1);
-			expect(dialog.getBoundingClientRect().height).toBeCloseTo(expandedHeight, 1);
+			expectPixelsNear(dialog.getBoundingClientRect().height, expandedHeight);
 		}
 		await screen.unmount();
 	});
@@ -414,35 +420,31 @@ describe('WishlistDetailToolbar mobile command surfaces (#340)', () => {
 			const dialogBounds = dialog.getBoundingClientRect();
 			const bottomSafeArea = parseFloat(getComputedStyle(dialog).paddingBottom);
 
-			expect(dialogBounds.height).toBeCloseTo(400, 0);
+			expectPixelsNear(dialogBounds.height, 400);
 			expect(
 				scroll.compareDocumentPosition(switcher) & Node.DOCUMENT_POSITION_FOLLOWING,
 			).toBeTruthy();
 			expect(getComputedStyle(scroll).overflowY).toBe('auto');
 			expect(scroll.scrollHeight).toBeGreaterThan(scroll.clientHeight);
-			expect(scroll.getBoundingClientRect().bottom).toBeLessThanOrEqual(
-				switcherBounds.top + 1,
-			);
-			expect(switcherBounds.bottom).toBeLessThanOrEqual(
-				dialogBounds.bottom - bottomSafeArea + 1,
-			);
+			expectPixelsAtMost(scroll.getBoundingClientRect().bottom, switcherBounds.top);
+			expectPixelsAtMost(switcherBounds.bottom, dialogBounds.bottom - bottomSafeArea);
 
 			scroll.scrollTop = scroll.scrollHeight;
 			await frames(1);
 			const scrolledSwitcherBounds = switcher.getBoundingClientRect();
-			expect(scrolledSwitcherBounds.x).toBeCloseTo(switcherBounds.x, 1);
-			expect(scrolledSwitcherBounds.y).toBeCloseTo(switcherBounds.y, 1);
-			expect(scrolledSwitcherBounds.width).toBeCloseTo(switcherBounds.width, 1);
-			expect(scrolledSwitcherBounds.height).toBeCloseTo(switcherBounds.height, 1);
+			expectPixelsNear(scrolledSwitcherBounds.x, switcherBounds.x);
+			expectPixelsNear(scrolledSwitcherBounds.y, switcherBounds.y);
+			expectPixelsNear(scrolledSwitcherBounds.width, switcherBounds.width);
+			expectPixelsNear(scrolledSwitcherBounds.height, switcherBounds.height);
 
 			for (const sectionButton of sectionButtons.slice(1)) {
 				await sectionButton.click();
 				await frames(1);
 				const currentBounds = switcher.getBoundingClientRect();
-				expect(currentBounds.x).toBeCloseTo(switcherBounds.x, 1);
-				expect(currentBounds.y).toBeCloseTo(switcherBounds.y, 1);
-				expect(currentBounds.width).toBeCloseTo(switcherBounds.width, 1);
-				expect(currentBounds.height).toBeCloseTo(switcherBounds.height, 1);
+				expectPixelsNear(currentBounds.x, switcherBounds.x);
+				expectPixelsNear(currentBounds.y, switcherBounds.y);
+				expectPixelsNear(currentBounds.width, switcherBounds.width);
+				expectPixelsNear(currentBounds.height, switcherBounds.height);
 				expect(
 					sectionButtons.filter(
 						(button) => button.element().getAttribute('aria-pressed') === 'true',
@@ -467,7 +469,7 @@ describe('WishlistDetailToolbar mobile command surfaces (#340)', () => {
 				screen.getByTestId('mobile-sheet-grouping-switch').element() as HTMLButtonElement
 			).focus();
 			await expect.element(screen.getByTestId('mobile-sheet-grouping-switch')).toHaveFocus();
-			expect(switcher.getBoundingClientRect().bottom).toBeLessThanOrEqual(window.innerHeight);
+			expectPixelsAtMost(switcher.getBoundingClientRect().bottom, window.innerHeight);
 			await screen.unmount();
 		}
 	});

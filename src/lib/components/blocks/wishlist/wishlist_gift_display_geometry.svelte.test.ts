@@ -2,6 +2,10 @@ import '../../../../app.css';
 import { render } from 'vitest-browser-svelte';
 import { page } from 'vitest/browser';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import {
+	createPixelAssertions,
+	DEFAULT_PIXEL_TOLERANCE,
+} from '../../../../../tests/helpers/pixel-assertions.mjs';
 import type { ComponentProps } from 'svelte';
 import type { GiftForVisitor } from '$lib/modules/gifts/types.js';
 import { GIFT_SECTION_KINDS, type GiftSection } from '$lib/modules/gifts/gift_ordering.js';
@@ -13,6 +17,7 @@ vi.mock('$env/dynamic/public', () => ({ env: {} }));
 const { default: WishlistGiftDisplay } = await import('./WishlistGiftDisplay.svelte');
 const { default: WishlistGiftDisplayTestHost } =
 	await import('./WishlistGiftDisplayTestHost.svelte');
+const { expectPixelsNear, expectPixelsAtLeast, expectPixelsAtMost } = createPixelAssertions(expect);
 
 function visitorGift(): GiftForVisitor {
 	return {
@@ -111,8 +116,8 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 		const card = document.querySelector<HTMLElement>('[data-gift-item]')!;
 		const gap = card.getBoundingClientRect().top - heading.getBoundingClientRect().bottom;
 
-		expect(gap).toBeGreaterThanOrEqual(8);
-		expect(gap).toBeLessThanOrEqual(12);
+		expectPixelsAtLeast(gap, 8);
+		expectPixelsAtMost(gap, 12);
 		await screen.unmount();
 	});
 
@@ -136,7 +141,7 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 		expect(reserveButton).toBeDefined();
 		expect(reserveButton!.closest('[inert], [aria-hidden="true"]')).toBeNull();
 		expect(reserveButton!.getBoundingClientRect().width).toBeGreaterThan(0);
-		expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(390);
+		expectPixelsAtMost(document.documentElement.scrollWidth, 390);
 
 		for (const width of [600, 639]) {
 			await page.viewport(width, 720);
@@ -144,10 +149,10 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 			cards = Array.from(document.querySelectorAll<HTMLElement>('[data-gift-item]'));
 			const firstRect = cards[0]!.getBoundingClientRect();
 			const secondRect = cards[1]!.getBoundingClientRect();
-			expect(secondRect.top).toBeCloseTo(firstRect.top, 0);
-			expect(secondRect.width).toBeCloseTo(firstRect.width, 0);
-			expect(secondRect.left - firstRect.right).toBeCloseTo(8, 0);
-			expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(width);
+			expectPixelsNear(secondRect.top, firstRect.top);
+			expectPixelsNear(secondRect.width, firstRect.width);
+			expectPixelsNear(secondRect.left - firstRect.right, 8);
+			expectPixelsAtMost(document.documentElement.scrollWidth, width);
 		}
 		await screen.unmount();
 	});
@@ -188,10 +193,10 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 			const linkRect = link.getBoundingClientRect();
 			const priceRect = price.getBoundingClientRect();
 
-			expect(linkRect.width).toBeGreaterThanOrEqual(100);
-			expect(priceRect.top).toBeGreaterThanOrEqual(linkRect.bottom);
-			expect(priceRect.right).toBeLessThanOrEqual(metadataRect.right + 0.5);
-			expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(320);
+			expectPixelsAtLeast(linkRect.width, 100);
+			expectPixelsAtLeast(priceRect.top, linkRect.bottom);
+			expectPixelsAtMost(priceRect.right, metadataRect.right);
+			expectPixelsAtMost(document.documentElement.scrollWidth, 320);
 			await screen.unmount();
 		},
 	);
@@ -227,7 +232,7 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 
 			expect(columns).toHaveLength(expectedColumnCount);
 			for (const column of columns) {
-				expect(parseFloat(column)).toBeGreaterThanOrEqual(280);
+				expectPixelsAtLeast(parseFloat(column), 280);
 			}
 			await screen.unmount();
 		}
@@ -268,12 +273,12 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 			const rightmostEdge = Math.max(...cardRects.map((rect) => rect.right));
 			const bottomEdge = Math.max(...cardRects.map((rect) => rect.bottom));
 
-			expect(gridRect.right - rightmostEdge).toBeCloseTo(0, 0);
-			expect(gridRect.bottom - bottomEdge).toBeCloseTo(viewportWidth >= 640 ? 20 : 0, 0);
+			expectPixelsNear(gridRect.right - rightmostEdge, 0);
+			expectPixelsNear(gridRect.bottom - bottomEdge, viewportWidth >= 640 ? 20 : 0);
 			expect(getComputedStyle(grid).overflowX).toBe('visible');
 			expect(getComputedStyle(grid).overflowY).toBe('visible');
 			expect(getComputedStyle(collection).zIndex).toBe('0');
-			expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(viewportWidth);
+			expectPixelsAtMost(document.documentElement.scrollWidth, viewportWidth);
 			await screen.unmount();
 		}
 	});
@@ -331,8 +336,8 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 			expect(getComputedStyle(wrapper).outlineStyle).toBe('none');
 			expect(selectionPaint.position).toBe('absolute');
 			expect(selectionPaint.inset).toBe('0px');
-			expect(parseFloat(selectionPaint.width)).toBeCloseTo(expectedPaddingWidth, 0);
-			expect(parseFloat(selectionPaint.height)).toBeCloseTo(expectedPaddingHeight, 0);
+			expectPixelsNear(parseFloat(selectionPaint.width), expectedPaddingWidth);
+			expectPixelsNear(parseFloat(selectionPaint.height), expectedPaddingHeight);
 			if (expectFractionalWidth === true) {
 				expect(Number.isInteger(expectedPaddingWidth)).toBe(false);
 				expect(expectedPaddingWidth).not.toBe(selectedSurface.clientWidth);
@@ -347,8 +352,8 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 				const horizontalInset = parseFloat(surfaceStyle[horizontalBorderProperty]);
 				const selectedRadii = selectionPaint[radiusProperty].split(' ').map(parseFloat);
 
-				expect(selectedRadii[0]).toBeCloseTo(outerRadius - horizontalInset, 5);
-				expect(selectedRadii.at(-1)).toBeCloseTo(outerRadius - verticalInset, 5);
+				expectPixelsNear(selectedRadii[0]!, outerRadius - horizontalInset);
+				expectPixelsNear(selectedRadii.at(-1)!, outerRadius - verticalInset);
 			}
 			expect(selectionPaint.boxShadow).toContain('inset');
 			expect(selectionPaint.boxShadow).toContain('3px');
@@ -366,12 +371,9 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 
 				expect(ownerSelectionPaint.content).toBe('none');
 				expect(hoverBridge.position).toBe('absolute');
-				expect(parseFloat(hoverBridge.top)).toBeCloseTo(interactionOwner.clientHeight, 0);
-				expect(parseFloat(hoverBridge.height)).toBeCloseTo(ordinaryOffset + 1, 5);
-				expect(parseFloat(hoverBridge.bottom)).toBeCloseTo(
-					-parseFloat(hoverBridge.height),
-					5,
-				);
+				expectPixelsNear(parseFloat(hoverBridge.top), interactionOwner.clientHeight);
+				expectPixelsNear(parseFloat(hoverBridge.height), ordinaryOffset + 1);
+				expectPixelsNear(parseFloat(hoverBridge.bottom), -parseFloat(hoverBridge.height));
 				expect(hoverBridge.pointerEvents).toBe('auto');
 			}
 
@@ -379,7 +381,7 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 				const wrapperRect = wrapper.getBoundingClientRect();
 				const interactionRect = interactionOwner.getBoundingClientRect();
 				expect(interactionRect.left).toBeGreaterThan(wrapperRect.left);
-				expect(interactionRect.right).toBeCloseTo(wrapperRect.right, 0);
+				expectPixelsNear(interactionRect.right, wrapperRect.right);
 			}
 
 			wrapper.focus();
@@ -448,17 +450,16 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 						const pillRect = pill.getBoundingClientRect();
 						expect(pillRect.width).toBeGreaterThan(0);
 						expect(pillRect.height).toBeGreaterThan(0);
-						const overlapWidth =
-							Math.min(gripRect.right, pillRect.right) -
-							Math.max(gripRect.left, pillRect.left);
-						const overlapHeight =
-							Math.min(gripRect.bottom, pillRect.bottom) -
-							Math.max(gripRect.top, pillRect.top);
+						const separatedOnAnAxis =
+							gripRect.right <= pillRect.left + DEFAULT_PIXEL_TOLERANCE ||
+							pillRect.right <= gripRect.left + DEFAULT_PIXEL_TOLERANCE ||
+							gripRect.bottom <= pillRect.top + DEFAULT_PIXEL_TOLERANCE ||
+							pillRect.bottom <= gripRect.top + DEFAULT_PIXEL_TOLERANCE;
 
 						expect(
-							overlapWidth > 0 && overlapHeight > 0,
+							separatedOnAnAxis,
 							`${viewMode} ${width}px ${mode} control ${JSON.stringify(gripRect.toJSON())}, badge ${JSON.stringify(pillRect.toJSON())}`,
-						).toBe(false);
+						).toBe(true);
 					}
 				}
 				await screen.unmount();
@@ -491,13 +492,13 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 				'[data-slot="checkbox-surface"]',
 			)!;
 
-			expect(controlRect.width).toBeCloseTo(40, 0);
-			expect(controlRect.height).toBeCloseTo(40, 0);
-			expect(controlRect.left - wrapperRect.left).toBeCloseTo(9, 0);
-			expect(controlRect.top - wrapperRect.top).toBeCloseTo(9, 0);
-			expect(controlRect.left - imageRect.left).toBeCloseTo(7, 0);
-			expect(controlRect.right).toBeLessThanOrEqual(imageRect.right);
-			expect(controlRect.right).toBeLessThanOrEqual(contentRect.left);
+			expectPixelsNear(controlRect.width, 40);
+			expectPixelsNear(controlRect.height, 40);
+			expectPixelsNear(controlRect.left - wrapperRect.left, 9);
+			expectPixelsNear(controlRect.top - wrapperRect.top, 9);
+			expectPixelsNear(controlRect.left - imageRect.left, 7);
+			expectPixelsAtMost(controlRect.right, imageRect.right);
+			expectPixelsAtMost(controlRect.right, contentRect.left);
 			expect(getComputedStyle(control).borderRadius).toBe(
 				getComputedStyle(checkboxSurface).borderRadius,
 			);
@@ -521,10 +522,10 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 			const surfaceRect = surface.getBoundingClientRect();
 			const controlRect = control.getBoundingClientRect();
 
-			expect(controlRect.width).toBeCloseTo(32, 0);
-			expect(controlRect.height).toBeCloseTo(32, 0);
-			expect(surfaceRect.left - wrapperRect.left).toBeCloseTo(40, 0);
-			expect(surfaceRect.left - controlRect.right).toBeCloseTo(8, 0);
+			expectPixelsNear(controlRect.width, 32);
+			expectPixelsNear(controlRect.height, 32);
+			expectPixelsNear(surfaceRect.left - wrapperRect.left, 40);
+			expectPixelsNear(surfaceRect.left - controlRect.right, 8);
 			await screen.unmount();
 		}
 	});
@@ -602,12 +603,13 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 			const links = card.querySelector<HTMLElement>('[data-testid="gift-card-links"]')!;
 			const price = card.querySelector<HTMLElement>('[data-testid="gift-card-price"]')!;
 			const footer = card.querySelector<HTMLElement>('[data-testid="gift-card-footer"]')!;
-			expect(price.getBoundingClientRect().top).toBeGreaterThanOrEqual(
+			expectPixelsAtLeast(
+				price.getBoundingClientRect().top,
 				links.getBoundingClientRect().bottom,
 			);
-			expect(price.getBoundingClientRect().left).toBeCloseTo(
+			expectPixelsNear(
+				price.getBoundingClientRect().left,
 				links.getBoundingClientRect().left,
-				0,
 			);
 			expect(getComputedStyle(footer).borderTopWidth).toBe('0px');
 		}
@@ -649,12 +651,12 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 		);
 
 		expect(badges.map((badge) => badge.dataset.priority)).toEqual(['Vysoka', 'Nizka']);
-		expect(badges[0]!.getBoundingClientRect().top).toBeCloseTo(
+		expectPixelsNear(
+			badges[0]!.getBoundingClientRect().top,
 			badges[1]!.getBoundingClientRect().top,
-			0,
 		);
-		expect(links[1]!.top).toBeCloseTo(links[0]!.top, 0);
-		expect(links[2]!.top).toBeCloseTo(links[0]!.top, 0);
+		expectPixelsNear(links[1]!.top, links[0]!.top);
+		expectPixelsNear(links[2]!.top, links[0]!.top);
 		await screen.unmount();
 	});
 
@@ -710,10 +712,10 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 				.getBoundingClientRect(),
 		);
 
-		expect(footers[1]!.top).toBeCloseTo(footers[0]!.top, 0);
-		expect(footers[2]!.top).toBeCloseTo(footers[0]!.top, 0);
-		expect(footers[1]!.bottom).toBeCloseTo(footers[0]!.bottom, 0);
-		expect(footers[2]!.bottom).toBeCloseTo(footers[0]!.bottom, 0);
+		expectPixelsNear(footers[1]!.top, footers[0]!.top);
+		expectPixelsNear(footers[2]!.top, footers[0]!.top);
+		expectPixelsNear(footers[1]!.bottom, footers[0]!.bottom);
+		expectPixelsNear(footers[2]!.bottom, footers[0]!.bottom);
 		await screen.unmount();
 	});
 
@@ -755,11 +757,11 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 		).map((wrapper) => wrapper.firstElementChild!.getBoundingClientRect());
 		const cardRects = cards.map((card) => card.getBoundingClientRect());
 
-		expect(cardRects[2]!.top - cardRects[0]!.bottom).toBeCloseTo(20, 0);
-		expect(headers[1]!.top - cardRects[2]!.bottom).toBeCloseTo(20, 0);
-		expect(cardRects[0]!.top - headers[0]!.bottom).toBeCloseTo(20, 0);
-		expect(cardRects[4]!.top - headers[1]!.bottom).toBeCloseTo(20, 0);
-		expect(grid.getBoundingClientRect().bottom - cardRects[5]!.bottom).toBeCloseTo(20, 0);
+		expectPixelsNear(cardRects[2]!.top - cardRects[0]!.bottom, 20);
+		expectPixelsNear(headers[1]!.top - cardRects[2]!.bottom, 20);
+		expectPixelsNear(cardRects[0]!.top - headers[0]!.bottom, 20);
+		expectPixelsNear(cardRects[4]!.top - headers[1]!.bottom, 20);
+		expectPixelsNear(grid.getBoundingClientRect().bottom - cardRects[5]!.bottom, 20);
 		expect(getComputedStyle(grid).overflowY).toBe('visible');
 		await screen.unmount();
 	});
@@ -784,9 +786,9 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 			const first = cards[0]!.getBoundingClientRect();
 			const nextBand = cards
 				.map((card) => card.getBoundingClientRect())
-				.find((rect) => rect.top > first.top + 0.5);
+				.find((rect) => rect.top > first.top + DEFAULT_PIXEL_TOLERANCE);
 			expect(nextBand).toBeDefined();
-			expect(nextBand!.top - first.bottom).toBeCloseTo(expectedGap, 0);
+			expectPixelsNear(nextBand!.top - first.bottom, expectedGap);
 			await screen.unmount();
 		}
 	});
@@ -881,31 +883,27 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 				card.querySelector('[data-testid="gift-list-image"]') as HTMLElement
 			).getBoundingClientRect(),
 		);
-		expect(imageRects[1]!.width).toBeCloseTo(imageRects[0]!.width, 0);
+		expectPixelsNear(imageRects[1]!.width, imageRects[0]!.width);
 		for (const [index, imageRect] of imageRects.entries()) {
 			const item = cards[index]!.querySelector<HTMLElement>(
 				'[data-testid="gift-list-item"]',
 			)!;
 			const box = item.getBoundingClientRect();
 			const style = getComputedStyle(item);
-			expect(imageRect.width).toBeCloseTo(Math.min(item.clientWidth * 0.35, 152), 0);
-			expect(imageRect.top).toBeCloseTo(box.top + parseFloat(style.borderTopWidth), 0);
-			expect(imageRect.bottom).toBeCloseTo(
-				box.bottom - parseFloat(style.borderBottomWidth),
-				0,
-			);
+			expectPixelsNear(imageRect.width, Math.min(item.clientWidth * 0.35, 152));
+			expectPixelsNear(imageRect.top, box.top + parseFloat(style.borderTopWidth));
+			expectPixelsNear(imageRect.bottom, box.bottom - parseFloat(style.borderBottomWidth));
 		}
 		const description = cards[1]!.querySelector<HTMLElement>('.gift-list-description')!;
 		const actions = cards[1]!.querySelector<HTMLElement>('[data-testid="gift-list-actions"]');
-		expect(description.getBoundingClientRect().top).toBeGreaterThanOrEqual(
+		expectPixelsAtLeast(
+			description.getBoundingClientRect().top,
 			cards[1]!.querySelector('h3')!.getBoundingClientRect().bottom,
 		);
 		if (actions !== null) {
-			expect(actions.getBoundingClientRect().bottom).toBeLessThanOrEqual(
-				cardRects[1]!.bottom,
-			);
+			expectPixelsAtMost(actions.getBoundingClientRect().bottom, cardRects[1]!.bottom);
 		}
-		expect(cardRects[1]!.top - cardRects[0]!.bottom).toBeCloseTo(10, 0);
+		expectPixelsNear(cardRects[1]!.top - cardRects[0]!.bottom, 10);
 		await screen.unmount();
 	});
 });

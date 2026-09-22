@@ -2,8 +2,11 @@ import '../../../../app.css';
 import { render } from 'vitest-browser-svelte';
 import { page, userEvent } from 'vitest/browser';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
 import WishlistSelectionToolbar from './WishlistSelectionToolbar.svelte';
 import * as m from '$lib/paraglide/messages.js';
+
+const { expectPixelsNear, expectPixelsAtLeast, expectPixelsAtMost } = createPixelAssertions(expect);
 
 function createProps() {
 	return {
@@ -58,15 +61,15 @@ describe('WishlistSelectionToolbar mobile bulk surface (#340)', () => {
 			const shadowOffset = Number.parseFloat(
 				getComputedStyle(row).getPropertyValue('--elevation-ordinary-offset'),
 			);
-			expect(Number.parseFloat(getComputedStyle(row).gap) - shadowOffset).toBe(8);
+			expectPixelsNear(Number.parseFloat(getComputedStyle(row).gap) - shadowOffset, 8);
 			const actions = row.querySelector('.mobile-selection-actions') as HTMLElement;
-			expect(Number.parseFloat(getComputedStyle(actions).gap) - shadowOffset).toBe(8);
+			expectPixelsNear(Number.parseFloat(getComputedStyle(actions).gap) - shadowOffset, 8);
 			for (const target of row.querySelectorAll<HTMLElement>(
 				'button, [data-slot="checkbox"]',
 			)) {
-				expect(target.getBoundingClientRect().height).toBe(40);
+				expectPixelsNear(target.getBoundingClientRect().height, 40);
 			}
-			expect(row.scrollWidth).toBeLessThanOrEqual(row.clientWidth);
+			expectPixelsAtMost(row.scrollWidth, row.clientWidth);
 			await screen.unmount();
 		}
 	});
@@ -99,8 +102,8 @@ describe('WishlistSelectionToolbar mobile bulk surface (#340)', () => {
 		const shellRect = shell.getBoundingClientRect();
 		const style = getComputedStyle(shell);
 		expect(style.bottom).toBe('0px');
-		expect(parseFloat(style.maxHeight)).toBeCloseTo(window.innerHeight * 0.8, 1);
-		expect(shellRect.left).toBeCloseTo(window.innerWidth - shellRect.right, 1);
+		expectPixelsNear(parseFloat(style.maxHeight), window.innerHeight * 0.8);
+		expectPixelsNear(shellRect.left, window.innerWidth - shellRect.right);
 		expect(shellRect.left).toBeGreaterThan(0);
 		expect(style.borderLeftWidth).toBe(style.borderRightWidth);
 		expect(style.borderLeftWidth).toBe(style.borderTopWidth);
@@ -108,17 +111,17 @@ describe('WishlistSelectionToolbar mobile bulk surface (#340)', () => {
 		expect(parseFloat(style.borderTopLeftRadius)).toBeGreaterThan(0);
 		const header = shell.querySelector<HTMLElement>('[data-slot="sheet-header"]')!;
 		const headerStyle = getComputedStyle(header);
-		expect(header.getBoundingClientRect().width).toBeCloseTo(
+		expectPixelsNear(
+			header.getBoundingClientRect().width,
 			shellRect.width -
 				parseFloat(style.borderLeftWidth) -
 				parseFloat(style.borderRightWidth),
-			1,
 		);
 		expect(headerStyle.paddingLeft).toBe('16px');
 		expect(headerStyle.paddingRight).toBe('80px');
 		expect(headerStyle.paddingTop).toBe('16px');
 		expect(headerStyle.paddingBottom).toBe('16px');
-		expect(parseFloat(headerStyle.borderBottomWidth)).toBeCloseTo(1, 1);
+		expectPixelsNear(parseFloat(headerStyle.borderBottomWidth), 1);
 		const actions = screen.getByTestId('selection-bulk-sheet-actions').element();
 		const rows = Array.from(
 			actions.querySelectorAll<HTMLButtonElement>('[data-mobile-bulk-action]'),
@@ -137,7 +140,7 @@ describe('WishlistSelectionToolbar mobile bulk surface (#340)', () => {
 		expect(bodyStyle.paddingTop).toBe('8px');
 		expect(bodyStyle.paddingBottom).toBe('8px');
 		for (const row of rows) {
-			expect(row.getBoundingClientRect().height).toBeGreaterThanOrEqual(48);
+			expectPixelsAtLeast(row.getBoundingClientRect().height, 48);
 			expect(row.textContent?.trim()).not.toBe('');
 		}
 		await screen.unmount();
@@ -165,26 +168,36 @@ describe('WishlistSelectionToolbar mobile bulk surface (#340)', () => {
 				const closeRect = close.getBoundingClientRect();
 				const selectedLabel = m.gift_selection_count({ count: selectedCount });
 
-				expect(headerRect.height).toBeGreaterThanOrEqual(72);
-				expect(countRect.left).toBeGreaterThanOrEqual(titleRect.right);
-				expect(countRect.right).toBeLessThanOrEqual(closeRect.left);
-				expect(closeRect.width).toBeGreaterThanOrEqual(40);
-				expect(closeRect.height).toBeGreaterThanOrEqual(40);
-				expect(closeRect.top - headerRect.top).toBeCloseTo(
+				expectPixelsAtLeast(headerRect.height, 72);
+				expectPixelsAtLeast(countRect.left, titleRect.right);
+				expectPixelsAtMost(countRect.right, closeRect.left);
+				expectPixelsAtLeast(closeRect.width, 40);
+				expectPixelsAtLeast(closeRect.height, 40);
+				expectPixelsNear(
+					closeRect.top - headerRect.top,
 					headerRect.bottom - closeRect.bottom,
-					1,
 				);
-				const closeCenter = closeRect.top + closeRect.height / 2;
-				expect(
-					Math.abs(titleRect.top + titleRect.height / 2 - closeCenter),
-				).toBeLessThanOrEqual(1);
-				expect(
-					Math.abs(countRect.top + countRect.height / 2 - closeCenter),
-				).toBeLessThanOrEqual(1);
+				const headerStyle = getComputedStyle(header);
+				// Flex content centers inside the header border; the close target spans its outer box.
+				const contentCenter =
+					headerRect.top +
+					(headerRect.height +
+						parseFloat(headerStyle.borderTopWidth) -
+						parseFloat(headerStyle.borderBottomWidth)) /
+						2;
+				expectPixelsNear(titleRect.top + titleRect.height / 2, contentCenter);
+				expectPixelsNear(countRect.top + countRect.height / 2, contentCenter);
 				expect(header.textContent?.split(selectedLabel)).toHaveLength(2);
 				expect(shell.textContent?.split(selectedLabel)).toHaveLength(2);
-				expect(header.scrollWidth).toBeLessThanOrEqual(header.clientWidth);
+				expectPixelsAtMost(header.scrollWidth, header.clientWidth);
 
+				await expect
+					.element(
+						shell.querySelector<HTMLButtonElement>(
+							'[data-mobile-bulk-action="priority"]',
+						)!,
+					)
+					.toHaveFocus();
 				close.focus();
 				await userEvent.keyboard('{Enter}');
 				await expect.element(trigger).toHaveFocus();
@@ -514,7 +527,7 @@ describe('WishlistSelectionToolbar mobile bulk surface (#340)', () => {
 		await new Promise(requestAnimationFrame);
 		await new Promise(requestAnimationFrame);
 		expect(document.activeElement).toBe(trigger);
-		expect(window.scrollY).toBe(scrollBefore);
+		expectPixelsNear(window.scrollY, scrollBefore);
 		await screen.getByRole('button', { name: m.cancel() }).click();
 		expect(props.ondone).toHaveBeenCalledOnce();
 		await screen.unmount();

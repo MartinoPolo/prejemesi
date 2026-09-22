@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { page } from 'vitest/browser';
 import { render } from 'vitest-browser-svelte';
+import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
 import { WISHLIST_ROLES } from '$lib/modules/wishlists/types.js';
 import * as m from '$lib/paraglide/messages.js';
 import { overwriteGetLocale } from '$lib/paraglide/runtime.js';
@@ -12,6 +13,8 @@ import {
 	fixedHosts,
 	makeVisitorGift,
 } from './gift_card.test_fixtures.js';
+
+const { expectPixelsNear } = createPixelAssertions(expect);
 
 afterEach(cleanupCardHosts);
 
@@ -84,10 +87,7 @@ describe('GiftCard responsive action placement', () => {
 		expect(received.closest('[aria-hidden="true"]')?.hasAttribute('inert')).toBe(true);
 		expect(more.getAttribute('aria-hidden')).toBe('false');
 		expect(row.dataset.overflowActions).toBe('received');
-		expect(reserve.getBoundingClientRect().top).toBeCloseTo(
-			more.getBoundingClientRect().top,
-			0,
-		);
+		expectPixelsNear(reserve.getBoundingClientRect().top, more.getBoundingClientRect().top);
 		reserve.click();
 		expect(onreserve).toHaveBeenCalledOnce();
 
@@ -156,10 +156,7 @@ describe('GiftCard responsive action placement', () => {
 			const more = row.querySelector<HTMLElement>('[data-testid="gift-more-actions"]')!;
 			expect(primary.closest('[aria-hidden="true"]')).toBeNull();
 			expect(more.closest('[aria-hidden="true"]')).toBeNull();
-			expect(primary.getBoundingClientRect().top).toBeCloseTo(
-				more.getBoundingClientRect().top,
-				0,
-			);
+			expectPixelsNear(primary.getBoundingClientRect().top, more.getBoundingClientRect().top);
 		},
 	);
 
@@ -187,7 +184,10 @@ describe('GiftCard responsive action placement', () => {
 		const actions = Array.from(row.querySelectorAll<HTMLElement>('button'));
 		expect(actions).toHaveLength(3);
 		expect(row.querySelector('[data-testid="gift-more-actions"]')).toBeTruthy();
-		expect(new Set(actions.map((action) => action.getBoundingClientRect().top)).size).toBe(1);
+		const actionTops = actions.map((action) => action.getBoundingClientRect().top);
+		for (const actionTop of actionTops.slice(1)) {
+			expectPixelsNear(actionTop, actionTops[0]!);
+		}
 	});
 });
 
@@ -234,7 +234,7 @@ describe('GiftCard approved action geometry (issue #350)', () => {
 			expect(primary).toBeTruthy();
 			expect(more).toBeTruthy();
 			for (const action of actions) {
-				expect(action.getBoundingClientRect().height).toBeCloseTo(expectedControlSize, 0);
+				expectPixelsNear(action.getBoundingClientRect().height, expectedControlSize);
 				expectRaisedActionShadowInside(action, card);
 			}
 			if (role === WISHLIST_ROLES.recipient) {
@@ -251,7 +251,7 @@ describe('GiftCard approved action geometry (issue #350)', () => {
 				const widths = actions.map((action) => action.getBoundingClientRect().width);
 				expect(widths[0]).toBeGreaterThan(expectedControlSize);
 				expect(widths[1]).toBeGreaterThan(expectedControlSize);
-				expect(widths[2]).toBeCloseTo(expectedControlSize, 0);
+				expectPixelsNear(widths[2]!, expectedControlSize);
 			}
 		},
 	);
@@ -301,7 +301,7 @@ describe('GiftCard approved action geometry (issue #350)', () => {
 					(action) => action.closest('[aria-hidden="true"]') === null,
 				);
 				for (const action of visibleActions) {
-					expect(action.getBoundingClientRect().height).toBeCloseTo(40, 0);
+					expectPixelsNear(action.getBoundingClientRect().height, 40);
 					expectRaisedActionShadowInside(action, card);
 				}
 				expect(reserve.closest('[aria-hidden="true"]')).toBeNull();
@@ -309,9 +309,9 @@ describe('GiftCard approved action geometry (issue #350)', () => {
 					host.querySelector('[data-testid="gift-card-image-frame"]')?.contains(reserve),
 				).toBe(false);
 				if (primary.closest('[aria-hidden="true"]') === null) {
-					expect(primary.getBoundingClientRect().top).toBeCloseTo(
+					expectPixelsNear(
+						primary.getBoundingClientRect().top,
 						more.getBoundingClientRect().top,
-						0,
 					);
 				} else {
 					expect(primary.closest('[aria-hidden="true"]')?.hasAttribute('inert')).toBe(
@@ -351,9 +351,9 @@ describe('GiftCard approved action geometry (issue #350)', () => {
 			const card = host.firstElementChild as HTMLElement;
 			const primary = host.querySelector('[data-testid="reserve-button"]') as HTMLElement;
 			const more = host.querySelector('[data-testid="gift-more-actions"]') as HTMLElement;
-			expect(primary.getBoundingClientRect().height).toBeCloseTo(
+			expectPixelsNear(
+				primary.getBoundingClientRect().height,
 				more.getBoundingClientRect().height,
-				0,
 			);
 			expectRaisedActionShadowInside(primary, card);
 			expectRaisedActionShadowInside(more, card);

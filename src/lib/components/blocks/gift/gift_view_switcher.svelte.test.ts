@@ -2,8 +2,11 @@ import '../../../../app.css';
 import { render } from 'vitest-browser-svelte';
 import { page, userEvent } from 'vitest/browser';
 import { describe, expect, it, vi } from 'vitest';
+import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
 import { GIFT_VIEW_MODES } from '$lib/modules/gifts/types.js';
 import GiftViewSwitcher from './GiftViewSwitcher.svelte';
+
+const { expectPixelsNear } = createPixelAssertions(expect);
 
 function hasVisibleBoxShadow(element: Element): boolean {
 	const boxShadow = getComputedStyle(element).boxShadow;
@@ -28,6 +31,13 @@ function requireHTMLElement(element: Element | null): HTMLElement {
 		throw new TypeError('Expected an HTML element in the rendered switcher');
 	}
 	return element;
+}
+
+function expectRectangleNear(actual: DOMRect, expected: DOMRect): void {
+	expectPixelsNear(actual.x, expected.x);
+	expectPixelsNear(actual.y, expected.y);
+	expectPixelsNear(actual.width, expected.width);
+	expectPixelsNear(actual.height, expected.height);
 }
 
 async function renderDefaultCardSwitcher() {
@@ -87,20 +97,20 @@ function expectSelectedFaceGeometry(
 	const selectedBounds = selected.getBoundingClientRect();
 	const backingStyle = getComputedStyle(group, '::before');
 
-	expect(selectedSurfaceBounds.width).toBe(expected.size);
-	expect(selectedSurfaceBounds.height).toBe(expected.size);
-	expect(selectedSurfaceBounds.x + selectedSurfaceBounds.width / 2).toBeCloseTo(
+	expectPixelsNear(selectedSurfaceBounds.width, expected.size);
+	expectPixelsNear(selectedSurfaceBounds.height, expected.size);
+	expectPixelsNear(
+		selectedSurfaceBounds.x + selectedSurfaceBounds.width / 2,
 		selectedBounds.x + selectedBounds.width / 2,
-		1,
 	);
-	expect(selectedSurfaceBounds.y + selectedSurfaceBounds.height / 2).toBeCloseTo(
+	expectPixelsNear(
+		selectedSurfaceBounds.y + selectedSurfaceBounds.height / 2,
 		selectedBounds.y + selectedBounds.height / 2,
-		1,
 	);
-	expect(parseFloat(backingStyle.width)).toBe(expected.backingWidth);
+	expectPixelsNear(parseFloat(backingStyle.width), expected.backingWidth);
 	if (backingPosition) {
-		expect(parseFloat(backingStyle.left)).toBe(backingPosition.left);
-		expect(parseFloat(backingStyle.right)).toBe(backingPosition.right);
+		expectPixelsNear(parseFloat(backingStyle.left), backingPosition.left);
+		expectPixelsNear(parseFloat(backingStyle.right), backingPosition.right);
 	}
 }
 
@@ -230,17 +240,19 @@ describe('GiftViewSwitcher toggle selection (fixes: re-click deselects both item
 
 			try {
 				const trayBounds = group.getBoundingClientRect();
-				expect(trayBounds.width).toBe(expected.rootWidth);
-				expect(trayBounds.height).toBe(expected.size);
+				expectPixelsNear(trayBounds.width, expected.rootWidth);
+				expectPixelsNear(trayBounds.height, expected.size);
 				for (const item of [card, list]) {
-					expect(item.getBoundingClientRect().width).toBe(expected.segment);
-					expect(item.getBoundingClientRect().height).toBe(expected.segment);
-					expect(
+					expectPixelsNear(item.getBoundingClientRect().width, expected.segment);
+					expectPixelsNear(item.getBoundingClientRect().height, expected.segment);
+					expectPixelsNear(
 						requireElement(item.querySelector('svg')).getBoundingClientRect().width,
-					).toBe(16);
-					expect(
+						16,
+					);
+					expectPixelsNear(
 						requireElement(item.querySelector('svg')).getBoundingClientRect().height,
-					).toBe(16);
+						16,
+					);
 				}
 
 				expectSelectedFaceGeometry(group, card, expected, backingPositions?.card);
@@ -270,9 +282,9 @@ describe('GiftViewSwitcher toggle selection (fixes: re-click deselects both item
 					const backingStyle = getComputedStyle(group, '::before');
 
 					expect(groupStyle.backgroundColor).toBe('rgba(0, 0, 0, 0)');
-					expect(parseFloat(groupStyle.borderWidth)).toBe(0);
+					expectPixelsNear(parseFloat(groupStyle.borderWidth), 0);
 					expect(hasVisibleBoxShadow(group)).toBe(false);
-					expect(parseFloat(groupStyle.paddingLeft)).toBe(1);
+					expectPixelsNear(parseFloat(groupStyle.paddingLeft), 1);
 					expect(groupStyle.paddingLeft).toBe(groupStyle.paddingRight);
 					expect(groupStyle.paddingTop).toBe(groupStyle.paddingBottom);
 					expect(backingStyle.backgroundColor).toBe('rgb(11, 22, 33)');
@@ -281,28 +293,26 @@ describe('GiftViewSwitcher toggle selection (fixes: re-click deselects both item
 					expect(backingStyle.boxShadow).not.toContain('inset');
 					expect(cardStyle.backgroundColor).toBe('rgba(0, 0, 0, 0)');
 					expect(listStyle.backgroundColor).toBe('rgba(0, 0, 0, 0)');
-					expect(parseFloat(cardStyle.borderWidth)).toBe(0);
-					expect(parseFloat(listStyle.borderWidth)).toBe(0);
-					expect(parseFloat(groupStyle.getPropertyValue('--border-w'))).toBe(2.5);
+					expectPixelsNear(parseFloat(cardStyle.borderWidth), 0);
+					expectPixelsNear(parseFloat(listStyle.borderWidth), 0);
+					expectPixelsNear(parseFloat(groupStyle.getPropertyValue('--border-w')), 2.5);
 					const selectedBorderWidth = getComputedStyle(cardSurface).borderWidth;
 					expect(parseFloat(selectedBorderWidth)).toBeGreaterThan(0);
 					expect(getComputedStyle(cardSurface).borderColor).toBe('rgb(77, 88, 99)');
 					expect(getComputedStyle(cardSurface).backgroundColor).toBe('rgb(44, 55, 66)');
 					expect(hasVisibleBoxShadow(cardSurface)).toBe(false);
-					expect(parseFloat(getComputedStyle(listSurface).borderWidth)).toBe(0);
+					expectPixelsNear(parseFloat(getComputedStyle(listSurface).borderWidth), 0);
 					expect(getComputedStyle(listSurface).backgroundColor).toBe('rgba(0, 0, 0, 0)');
 					expect(cardStyle.outlineStyle).not.toBe('solid');
 					expect(listStyle.outlineStyle).not.toBe('solid');
-					expect(
+					expectPixelsNear(
 						requireElement(card.querySelector('svg')).getBoundingClientRect().y,
-					).toBeCloseTo(
 						requireElement(list.querySelector('svg')).getBoundingClientRect().y,
-						1,
 					);
 
 					await list.click();
 
-					expect(parseFloat(getComputedStyle(cardSurface).borderWidth)).toBe(0);
+					expectPixelsNear(parseFloat(getComputedStyle(cardSurface).borderWidth), 0);
 					expect(getComputedStyle(cardSurface).backgroundColor).toBe('rgba(0, 0, 0, 0)');
 					expect(getComputedStyle(listSurface).borderWidth).toBe(selectedBorderWidth);
 					expect(getComputedStyle(listSurface).backgroundColor).toBe('rgb(44, 55, 66)');
@@ -370,13 +380,13 @@ describe('GiftViewSwitcher toggle selection (fixes: re-click deselects both item
 			expect(contextualPaint.size).toBeGreaterThan(3);
 
 			const beforeHover = {
-				owner: card.getBoundingClientRect().toJSON(),
-				surface: cardSurface.getBoundingClientRect().toJSON(),
+				owner: card.getBoundingClientRect(),
+				surface: cardSurface.getBoundingClientRect(),
 				shadow: getComputedStyle(group, '::before').boxShadow,
 			};
 			await userEvent.hover(card);
-			expect(card.getBoundingClientRect().toJSON()).toEqual(beforeHover.owner);
-			expect(cardSurface.getBoundingClientRect().toJSON()).toEqual(beforeHover.surface);
+			expectRectangleNear(card.getBoundingClientRect(), beforeHover.owner);
+			expectRectangleNear(cardSurface.getBoundingClientRect(), beforeHover.surface);
 			expect(getComputedStyle(group, '::before').boxShadow).toBe(beforeHover.shadow);
 			expect(getComputedStyle(cardSurface).translate).toBe('0px');
 			expect(getComputedStyle(cardSurface).scale).toBe('1');

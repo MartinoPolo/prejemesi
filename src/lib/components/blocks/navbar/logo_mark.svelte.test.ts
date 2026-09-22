@@ -2,8 +2,11 @@ import '../../../../app.css';
 import { render } from 'vitest-browser-svelte';
 import { page } from 'vitest/browser';
 import { afterEach, describe, expect, it } from 'vitest';
-import LogoMark from './LogoMark.svelte';
 import * as m from '$lib/paraglide/messages.js';
+import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
+import LogoMark from './LogoMark.svelte';
+
+const { expectPixelsAtMost } = createPixelAssertions(expect);
 
 describe('LogoMark mobile app bar treatment (#340)', () => {
 	afterEach(async () => page.viewport(1280, 720));
@@ -20,7 +23,7 @@ describe('LogoMark mobile app bar treatment (#340)', () => {
 			expect(getComputedStyle(mark).transform).not.toBe('none');
 			expect(getComputedStyle(wordmark).display).not.toBe('none');
 			expect(wordmark).toHaveTextContent('přejeme si');
-			expect(logo.scrollWidth).toBeLessThanOrEqual(logo.clientWidth);
+			expectPixelsAtMost(logo.scrollWidth, logo.clientWidth);
 			await screen.unmount();
 		}
 	});

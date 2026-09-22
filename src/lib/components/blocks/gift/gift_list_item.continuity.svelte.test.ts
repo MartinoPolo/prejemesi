@@ -2,6 +2,7 @@ import '../../../../app.css';
 import { describe, expect, it } from 'vitest';
 import { page } from 'vitest/browser';
 import { render } from 'vitest-browser-svelte';
+import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
 import { WISHLIST_ROLES } from '$lib/modules/wishlists/types.js';
 import * as m from '$lib/paraglide/messages.js';
 import {
@@ -11,6 +12,8 @@ import {
 	makeVisitorGift,
 	GiftListItemTestHost,
 } from './gift_list_item.test_fixtures.js';
+
+const { expectPixelsNear, expectPixelsAtLeast, expectPixelsAtMost } = createPixelAssertions(expect);
 
 describe('GiftListItem image continuity', () => {
 	it.each([
@@ -119,24 +122,22 @@ describe('GiftListItem image continuity', () => {
 			const innerBottom = itemRect.bottom - Number.parseFloat(itemStyle.borderBottomWidth);
 
 			expect(getComputedStyle(item).display).toBe('grid');
-			expect(imageRect.top).toBeCloseTo(innerTop, 0);
-			expect(imageRect.bottom).toBeCloseTo(innerBottom, 0);
-			expect(frameRect.top).toBeCloseTo(innerTop, 0);
-			expect(frameRect.bottom).toBeCloseTo(innerBottom, 0);
+			expectPixelsNear(imageRect.top, innerTop);
+			expectPixelsNear(imageRect.bottom, innerBottom);
+			expectPixelsNear(frameRect.top, innerTop);
+			expectPixelsNear(frameRect.bottom, innerBottom);
 			if (width >= 640) {
-				expect(imageRect.width).toBeCloseTo(imageRect.height, 0);
+				expectPixelsNear(imageRect.width, imageRect.height);
 			} else {
 				expect(imageRect.width).toBeLessThan(imageRect.height);
 			}
 			const contentRect = content.getBoundingClientRect();
-			expect(contentRect.left).toBeCloseTo(imageRect.right, 0);
+			expectPixelsNear(contentRect.left, imageRect.right);
 			const visibleActions = Array.from(
 				host.querySelectorAll<HTMLElement>('[data-testid="gift-list-actions"] button'),
 			).filter((action) => action.closest('[aria-hidden="true"]') === null);
 			for (const action of visibleActions) {
-				expect(action.getBoundingClientRect().left).toBeGreaterThanOrEqual(
-					contentRect.left,
-				);
+				expectPixelsAtLeast(action.getBoundingClientRect().left, contentRect.left);
 			}
 			host.remove();
 		},
@@ -191,17 +192,17 @@ describe('GiftListItem desktop bordered card geometry (issue #360)', () => {
 			expect(itemStyle.backgroundColor).not.toBe('rgba(0, 0, 0, 0)');
 			expect(itemStyle.boxShadow).not.toBe('none');
 			if (item.clientWidth >= 640) {
-				expect(imageRect.width).toBeCloseTo(imageRect.height, 0);
+				expectPixelsNear(imageRect.width, imageRect.height);
 			} else {
 				expect(imageRect.width).toBeLessThan(imageRect.height);
 			}
-			expect(imageRect.top).toBeCloseTo(itemRect.top + 2, 0);
+			expectPixelsNear(imageRect.top, itemRect.top + 2);
 			expect(itemStyle.display).toBe('grid');
-			expect(imageRect.bottom).toBeLessThanOrEqual(itemRect.bottom - 2);
-			expect(contentRect.left).toBeCloseTo(imageRect.right, 0);
+			expectPixelsAtMost(imageRect.bottom, itemRect.bottom - 2);
+			expectPixelsNear(contentRect.left, imageRect.right);
 			expect(Number.parseFloat(getComputedStyle(content).paddingRight)).toBeGreaterThan(0);
-			expect(item.scrollWidth).toBeLessThanOrEqual(item.clientWidth);
-			expect(item.scrollHeight).toBeLessThanOrEqual(item.clientHeight);
+			expectPixelsAtMost(item.scrollWidth, item.clientWidth);
+			expectPixelsAtMost(item.scrollHeight, item.clientHeight);
 			expect(host.textContent).toContain(REALISTIC_LONG_NAME);
 			expect(host.textContent).toContain('alza.cz');
 			expect(host.textContent).toContain('Babička');
@@ -215,9 +216,9 @@ describe('GiftListItem desktop bordered card geometry (issue #360)', () => {
 			).filter((action) => action.closest('[aria-hidden="true"]') === null);
 			for (const action of visibleActions) {
 				const actionRect = action.getBoundingClientRect();
-				expect(actionRect.left).toBeGreaterThanOrEqual(contentRect.left);
-				expect(actionRect.right).toBeLessThanOrEqual(itemRect.right - 2);
-				expect(actionRect.bottom + 3).toBeLessThanOrEqual(itemRect.bottom - 2);
+				expectPixelsAtLeast(actionRect.left, contentRect.left);
+				expectPixelsAtMost(actionRect.right, itemRect.right - 2);
+				expectPixelsAtMost(actionRect.bottom + 3, itemRect.bottom - 2);
 			}
 			host.remove();
 		},
@@ -248,8 +249,8 @@ describe('GiftListItem reservation-action layout (issue #211)', () => {
 		const reserveRect = reserveButtonEl.getBoundingClientRect();
 		const purchasedRect = purchasedButtonEl.getBoundingClientRect();
 
-		expect(reserveRect.top).toBeCloseTo(purchasedRect.top, 0);
-		expect(reserveRect.height).toBeCloseTo(purchasedRect.height, 0);
+		expectPixelsNear(reserveRect.top, purchasedRect.top);
+		expectPixelsNear(reserveRect.height, purchasedRect.height);
 		expect(purchasedButtonEl.textContent?.trim()).toBe(m.gift_bought());
 	});
 });

@@ -7,6 +7,9 @@ import {
 	waitForGiftAnimationsToSettle,
 } from './mobile-wishlist.helpers.js';
 import { expectReceivedActionReachable, setGiftReceived } from './fixtures/gift-actions-helpers.js';
+import { createPixelAssertions } from '../helpers/pixel-assertions.mjs';
+
+const { expectPixelsAtLeast, expectPixelsAtMost, expectPixelsNear } = createPixelAssertions(expect);
 
 async function visibleColumnCount(page: Page): Promise<number> {
 	const positions = await page
@@ -40,10 +43,10 @@ async function expectPrimaryActionReachable(action: Locator): Promise<void> {
 	if (geometry === null) {
 		throw new Error('Primary action has no owning gift card');
 	}
-	expect(geometry.action.left).toBeGreaterThanOrEqual(geometry.card.left - 1);
-	expect(geometry.action.right).toBeLessThanOrEqual(geometry.card.right + 1);
-	expect(geometry.action.top).toBeGreaterThanOrEqual(geometry.card.top - 1);
-	expect(geometry.action.bottom).toBeLessThanOrEqual(geometry.card.bottom + 1);
+	expectPixelsAtLeast(geometry.action.left, geometry.card.left);
+	expectPixelsAtMost(geometry.action.right, geometry.card.right);
+	expectPixelsAtLeast(geometry.action.top, geometry.card.top);
+	expectPixelsAtMost(geometry.action.bottom, geometry.card.bottom);
 	expect(geometry.hitTestable).toBe(true);
 }
 
@@ -108,7 +111,7 @@ test.describe('mobile wishlist acceptance', () => {
 		await page.setViewportSize({ width: 1280, height: 900 });
 		const desktopImageBox = await mobileImage.boundingBox();
 		expect(desktopImageBox).not.toBeNull();
-		expect(desktopImageBox!.width).toBeCloseTo(desktopImageBox!.height, 0);
+		expectPixelsNear(desktopImageBox!.width, desktopImageBox!.height);
 		await expectPrimaryActionReachable(primaryAction);
 
 		await page.context().close();

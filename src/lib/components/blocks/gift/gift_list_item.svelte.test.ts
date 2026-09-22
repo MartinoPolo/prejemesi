@@ -1,7 +1,8 @@
 import '../../../../app.css';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { page } from 'vitest/browser';
 import { render } from 'vitest-browser-svelte';
+import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
 import type { GiftForVisitor } from '$lib/modules/gifts/types.js';
 import { WISHLIST_ROLES } from '$lib/modules/wishlists/types.js';
 import * as m from '$lib/paraglide/messages.js';
@@ -10,10 +11,12 @@ import {
 	imageMeta,
 	makeVisitorGift,
 	renderItem,
-	rectanglesIntersect,
+	expectRectanglesSeparated,
 	textOutsideOverlay,
 	GiftListItemTestHost,
 } from './gift_list_item.test_fixtures.js';
+
+const { expectPixelsNear, expectPixelsAtLeast, expectPixelsAtMost } = createPixelAssertions(expect);
 
 describe('GiftListItem centralized state overlay parity (issue #224 REQ-7)', () => {
 	it('previews the latest post-share description append instead of stale base text', async () => {
@@ -87,18 +90,14 @@ describe('GiftListItem centralized state overlay parity (issue #224 REQ-7)', () 
 		);
 
 		for (const overlayItem of overlayItems) {
-			expect(
-				rectanglesIntersect(
-					category.getBoundingClientRect(),
-					overlayItem.getBoundingClientRect(),
-				),
-			).toBe(false);
-			expect(
-				rectanglesIntersect(
-					priority.getBoundingClientRect(),
-					overlayItem.getBoundingClientRect(),
-				),
-			).toBe(false);
+			expectRectanglesSeparated(
+				category.getBoundingClientRect(),
+				overlayItem.getBoundingClientRect(),
+			);
+			expectRectanglesSeparated(
+				priority.getBoundingClientRect(),
+				overlayItem.getBoundingClientRect(),
+			);
 		}
 		host.remove();
 	});
@@ -129,9 +128,7 @@ describe('GiftListItem centralized state overlay parity (issue #224 REQ-7)', () 
 				null,
 				320,
 			);
-			await new Promise<void>((resolve) =>
-				requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
-			);
+			await document.fonts.ready;
 			const category = host.querySelector(
 				'[data-testid="gift-category-badge"]',
 			) as HTMLElement;
@@ -143,21 +140,20 @@ describe('GiftListItem centralized state overlay parity (issue #224 REQ-7)', () 
 			);
 
 			expect(category.textContent?.trim()).toBe(categoryLabel);
-			expect(category.scrollHeight).toBeLessThanOrEqual(category.clientHeight);
-			for (const overlayItem of overlayItems) {
-				expect(
-					rectanglesIntersect(
+			// Enlarged text needs the ResizeObserver-driven clearance layout to settle.
+			await vi.waitFor(() => {
+				expectPixelsAtMost(category.scrollHeight, category.clientHeight);
+				for (const overlayItem of overlayItems) {
+					expectRectanglesSeparated(
 						category.getBoundingClientRect(),
 						overlayItem.getBoundingClientRect(),
-					),
-				).toBe(false);
-				expect(
-					rectanglesIntersect(
+					);
+					expectRectanglesSeparated(
 						priority.getBoundingClientRect(),
 						overlayItem.getBoundingClientRect(),
-					),
-				).toBe(false);
-			}
+					);
+				}
+			});
 			host.remove();
 		} finally {
 			document.documentElement.style.fontSize = previousFontSize;
@@ -416,8 +412,14 @@ describe('GiftListItem unified state presentation (issue #328)', () => {
 				rowHeight: host.firstElementChild!.getBoundingClientRect().height,
 			};
 		});
+		const baseline = snapshots[0]!;
 		for (const snapshot of snapshots.slice(1)) {
-			expect(snapshot).toEqual(snapshots[0]);
+			expect(snapshot.html).toBe(baseline.html);
+			expectPixelsNear(snapshot.left, baseline.left);
+			expectPixelsNear(snapshot.top, baseline.top);
+			expectPixelsNear(snapshot.width, baseline.width);
+			expectPixelsNear(snapshot.height, baseline.height);
+			expectPixelsNear(snapshot.rowHeight, baseline.rowHeight);
 		}
 	});
 
@@ -483,19 +485,17 @@ describe('GiftListItem unified state presentation (issue #328)', () => {
 				?.parentElement as HTMLElement;
 
 			const imageRect = image.getBoundingClientRect();
-			expect(imageRect.width).toBeCloseTo(item.clientWidth * 0.35, 0);
+			expectPixelsNear(imageRect.width, item.clientWidth * 0.35);
 			expect(imageRect.width).toBeLessThan(imageRect.height);
 			for (const requiredLabel of requiredLabels) {
 				expect(overlay.textContent).toContain(requiredLabel);
 			}
-			expect(likeButton.getBoundingClientRect().width).toBeGreaterThanOrEqual(40);
+			expectPixelsAtLeast(likeButton.getBoundingClientRect().width, 40);
 			for (const pill of overlay.querySelectorAll<HTMLElement>(':scope > span')) {
-				expect(
-					rectanglesIntersect(
-						pill.getBoundingClientRect(),
-						likeButton.getBoundingClientRect(),
-					),
-				).toBe(false);
+				expectRectanglesSeparated(
+					pill.getBoundingClientRect(),
+					likeButton.getBoundingClientRect(),
+				);
 			}
 		},
 	);
@@ -527,12 +527,13 @@ describe('GiftListItem unified state presentation (issue #328)', () => {
 			.element(page.getByRole('button', { name: /Přidat do oblíbených/ }))
 			.toBeVisible();
 		const imageRect = image.getBoundingClientRect();
-		expect(imageRect.width).toBeCloseTo(item.clientWidth * 0.35, 0);
+		expectPixelsNear(imageRect.width, item.clientWidth * 0.35);
 		expect(imageRect.width).toBeLessThan(imageRect.height);
-		expect(likeButton.getBoundingClientRect().width).toBeGreaterThanOrEqual(40);
-		expect(
-			rectanglesIntersect(badge.getBoundingClientRect(), likeButton.getBoundingClientRect()),
-		).toBe(false);
+		expectPixelsAtLeast(likeButton.getBoundingClientRect().width, 40);
+		expectRectanglesSeparated(
+			badge.getBoundingClientRect(),
+			likeButton.getBoundingClientRect(),
+		);
 	});
 
 	it.each([

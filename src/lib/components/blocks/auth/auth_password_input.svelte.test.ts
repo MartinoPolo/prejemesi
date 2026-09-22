@@ -2,15 +2,18 @@ import '../../../../app.css';
 import { render } from 'vitest-browser-svelte';
 import { describe, expect, it, vi } from 'vitest';
 import * as m from '$lib/paraglide/messages.js';
+import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
 import AuthPasswordInput from './AuthPasswordInput.svelte';
+
+const { expectPixelsNear } = createPixelAssertions(expect);
 
 describe('AuthPasswordInput reveal control', () => {
 	it('matches the large field with a size-driven reveal surface', async () => {
 		const screen = await render(AuthPasswordInput, { fieldId: 'password', value: '' });
 		const reveal = screen.getByRole('button', { name: m.show_password() }).element();
 		const surface = reveal.querySelector('.elevation-surface');
-		expect(surface?.getBoundingClientRect().height).toBe(40);
-		expect(reveal.getBoundingClientRect().width).toBe(40);
+		expectPixelsNear(surface?.getBoundingClientRect().height ?? Number.NaN, 40);
+		expectPixelsNear(reveal.getBoundingClientRect().width, 40);
 	});
 
 	it('is keyboard-focusable and toggles the input type, label, and pressed state', async () => {

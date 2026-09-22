@@ -45,3 +45,11 @@ uses local Wrangler, which simulates this binding from `wrangler.jsonc`. The nor
 server remains supported for application tests, but intentionally has no Workers binding; if
 ingestion credentials are configured there, ingestion fails closed with HTTP 503 rather than
 bypassing the limit.
+
+## Rendered geometry assertions
+
+Use `tests/helpers/pixel-assertions.mjs` with the current runner's `expect` for rendered pixel
+sizes, positions, alignment, and containment. Its near/minimum/maximum helpers allow 0.5 CSS pixels
+by default. Preserve polling and animation readiness; tolerance is not a substitute for either. Keep
+design-token strings, counts, dimensionless ratios, and pure calculations exact or under their own
+meaningful precision. Explicit tolerance overrides require a requirement-specific reason.

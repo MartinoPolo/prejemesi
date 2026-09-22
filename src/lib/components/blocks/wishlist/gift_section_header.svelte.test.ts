@@ -2,11 +2,14 @@ import '../../../../app.css';
 import { render } from 'vitest-browser-svelte';
 import { page } from 'vitest/browser';
 import { describe, expect, it } from 'vitest';
+import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
 import * as m from '$lib/paraglide/messages.js';
 import { overwriteGetLocale } from '$lib/paraglide/runtime.js';
 import { GIFT_SECTION_KINDS, type GiftSection } from '$lib/modules/gifts/gift_ordering.js';
 import type { PriorityKey } from '$lib/modules/gifts/gift_display.js';
 import GiftSectionHeader from './GiftSectionHeader.svelte';
+
+const { expectPixelsNear, expectPixelsAtLeast } = createPixelAssertions(expect);
 
 function section(
 	kind: GiftSection['kind'],
@@ -32,10 +35,10 @@ describe('GiftSectionHeader selection', () => {
 			const checkboxRect = checkbox.getBoundingClientRect();
 			const ownerRect = owner.getBoundingClientRect();
 
-			expect(checkboxRect.width).toBeCloseTo(expectedSize, 0);
-			expect(checkboxRect.height).toBeCloseTo(expectedSize, 0);
-			expect(ownerRect.width).toBeCloseTo(expectedSize, 0);
-			expect(ownerRect.height).toBeGreaterThanOrEqual(checkboxRect.height);
+			expectPixelsNear(checkboxRect.width, expectedSize);
+			expectPixelsNear(checkboxRect.height, expectedSize);
+			expectPixelsNear(ownerRect.width, expectedSize);
+			expectPixelsAtLeast(ownerRect.height, checkboxRect.height);
 			await screen.unmount();
 		}
 	});

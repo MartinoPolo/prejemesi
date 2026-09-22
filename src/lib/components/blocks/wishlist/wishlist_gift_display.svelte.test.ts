@@ -2,6 +2,10 @@ import '../../../../app.css';
 import { render } from 'vitest-browser-svelte';
 import { page, userEvent } from 'vitest/browser';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import {
+	createPixelAssertions,
+	DEFAULT_PIXEL_TOLERANCE,
+} from '../../../../../tests/helpers/pixel-assertions.mjs';
 import type { ComponentProps } from 'svelte';
 import type { GiftForVisitor } from '$lib/modules/gifts/types.js';
 import { GIFT_SECTION_KINDS, type GiftSection } from '$lib/modules/gifts/gift_ordering.js';
@@ -11,6 +15,7 @@ import * as m from '$lib/paraglide/messages.js';
 vi.mock('$env/dynamic/public', () => ({ env: {} }));
 
 const { default: WishlistGiftDisplay } = await import('./WishlistGiftDisplay.svelte');
+const { expectPixelsNear, expectPixelsAtLeast, expectPixelsAtMost } = createPixelAssertions(expect);
 
 function visitorGift(): GiftForVisitor {
 	return {
@@ -124,12 +129,13 @@ function expectNoContextualCardActions(gift: Element) {
 }
 
 function rectanglesIntersect(first: DOMRect, second: DOMRect): boolean {
-	return (
-		first.left < second.right &&
-		first.right > second.left &&
-		first.top < second.bottom &&
-		first.bottom > second.top
-	);
+	const horizontallySeparated =
+		first.right <= second.left + DEFAULT_PIXEL_TOLERANCE ||
+		second.right <= first.left + DEFAULT_PIXEL_TOLERANCE;
+	const verticallySeparated =
+		first.bottom <= second.top + DEFAULT_PIXEL_TOLERANCE ||
+		second.bottom <= first.top + DEFAULT_PIXEL_TOLERANCE;
+	return !horizontallySeparated && !verticallySeparated;
 }
 
 function expectContextualOverlayClearOf(gift: Element, controls: readonly HTMLElement[]): void {
@@ -180,8 +186,8 @@ describe('WishlistGiftDisplay contextual gift presentation', () => {
 			) as HTMLElement;
 
 			expect(checkboxSurface).toBeTruthy();
-			expect(checkboxSurface.getBoundingClientRect().width).toBeCloseTo(40, 0);
-			expect(checkboxSurface.getBoundingClientRect().height).toBeCloseTo(40, 0);
+			expectPixelsNear(checkboxSurface.getBoundingClientRect().width, 40);
+			expectPixelsNear(checkboxSurface.getBoundingClientRect().height, 40);
 			expect(checkboxSurface.querySelector('[data-slot="checkbox"]')).toBeNull();
 			const imageRegion = gift.querySelector(
 				viewMode === 'card'
@@ -191,10 +197,10 @@ describe('WishlistGiftDisplay contextual gift presentation', () => {
 			const checkboxRect = checkboxSurface.getBoundingClientRect();
 			const imageRect = imageRegion.getBoundingClientRect();
 			const giftRect = gift.getBoundingClientRect();
-			expect(checkboxRect.top).toBeGreaterThanOrEqual(giftRect.top + 4 - 0.5);
-			expect(checkboxRect.right).toBeLessThanOrEqual(giftRect.right - 4 + 0.5);
-			expect(checkboxRect.right).toBeLessThanOrEqual(imageRect.right);
-			expect(checkboxRect.bottom).toBeLessThan(imageRect.bottom);
+			expectPixelsAtLeast(checkboxRect.top, giftRect.top + 4);
+			expectPixelsAtMost(checkboxRect.right, giftRect.right - 4);
+			expectPixelsAtMost(checkboxRect.right, imageRect.right);
+			expectPixelsAtMost(checkboxRect.bottom, imageRect.bottom);
 			expectNoContextualCardActions(gift);
 			expectContextualOverlayClearOf(gift, [checkboxSurface]);
 			expect(gift.querySelectorAll('button, a, input, textarea, select')).toHaveLength(0);
@@ -238,8 +244,8 @@ describe('WishlistGiftDisplay contextual gift presentation', () => {
 			) as HTMLButtonElement;
 
 			expect(grip).toBeTruthy();
-			expect(grip.getBoundingClientRect().width).toBeCloseTo(60, 0);
-			expect(grip.getBoundingClientRect().height).toBeCloseTo(60, 0);
+			expectPixelsNear(grip.getBoundingClientRect().width, 60);
+			expectPixelsNear(grip.getBoundingClientRect().height, 60);
 			expect(moveUp).toBeTruthy();
 			expect(moveDown).toBeTruthy();
 			const directionalActions = moveUp.parentElement as HTMLElement;
@@ -247,17 +253,17 @@ describe('WishlistGiftDisplay contextual gift presentation', () => {
 				!directionalControlsVisible,
 			);
 			if (directionalControlsVisible) {
-				expect(moveUp.getBoundingClientRect().width).toBeCloseTo(40, 0);
-				expect(moveUp.getBoundingClientRect().height).toBeCloseTo(40, 0);
-				expect(moveDown.getBoundingClientRect().width).toBeCloseTo(40, 0);
-				expect(moveDown.getBoundingClientRect().height).toBeCloseTo(40, 0);
+				expectPixelsNear(moveUp.getBoundingClientRect().width, 40);
+				expectPixelsNear(moveUp.getBoundingClientRect().height, 40);
+				expectPixelsNear(moveDown.getBoundingClientRect().width, 40);
+				expectPixelsNear(moveDown.getBoundingClientRect().height, 40);
 				expect(moveUp.disabled).toBe(true);
 				expect(moveDown.disabled).toBe(true);
 			}
 			expectNoContextualCardActions(gift);
 			const gripSurface = grip.firstElementChild as HTMLElement;
-			expect(gripSurface.getBoundingClientRect().width).toBeCloseTo(40, 0);
-			expect(gripSurface.getBoundingClientRect().height).toBeCloseTo(40, 0);
+			expectPixelsNear(gripSurface.getBoundingClientRect().width, 40);
+			expectPixelsNear(gripSurface.getBoundingClientRect().height, 40);
 			expectContextualOverlayClearOf(
 				gift,
 				directionalControlsVisible ? [gripSurface, moveUp, moveDown] : [gripSurface],
@@ -305,8 +311,8 @@ describe('WishlistGiftDisplay recipient privacy structure (issue #336)', () => {
 			});
 
 			expect(privatelyReserved.html).toBe(available.html);
-			expect(privatelyReserved.width).toBeCloseTo(available.width, 0);
-			expect(privatelyReserved.height).toBeCloseTo(available.height, 0);
+			expectPixelsNear(privatelyReserved.width, available.width);
+			expectPixelsNear(privatelyReserved.height, available.height);
 			expect(privatelyReserved.text).not.toMatch(/rezerv|koupen|Soukromá osoba|9/i);
 		},
 	);

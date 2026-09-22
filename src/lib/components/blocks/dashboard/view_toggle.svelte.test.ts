@@ -2,8 +2,11 @@ import '../../../../app.css';
 import { render } from 'vitest-browser-svelte';
 import { describe, expect, it } from 'vitest';
 import * as m from '$lib/paraglide/messages.js';
+import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
 import ViewToggle from './ViewToggle.svelte';
 import ViewToggleTestHarness from './ViewToggleTestHarness.svelte';
+
+const { expectPixelsNear } = createPixelAssertions(expect);
 
 describe('ViewToggle toggle selection (fixes: re-click deselects both items)', () => {
 	it('updates the parent-owned bound mode', async () => {
@@ -61,7 +64,7 @@ describe('ViewToggle toggle selection (fixes: re-click deselects both items)', (
 		expect(root.classList.contains('segmented-toggle-connected')).toBe(false);
 		expect(getComputedStyle(root).backgroundColor).not.toBe('rgba(0, 0, 0, 0)');
 		expect(getComputedStyle(root, '::before').content).toBe('none');
-		expect(parseFloat(getComputedStyle(selectedSurface).borderWidth)).toBe(0);
+		expectPixelsNear(parseFloat(getComputedStyle(selectedSurface).borderWidth), 0);
 		expect(getComputedStyle(grid).outlineStyle).toBe('solid');
 		await screen.unmount();
 	});

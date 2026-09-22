@@ -5,6 +5,7 @@ import { tick } from 'svelte';
 import '../../../../app.css';
 import * as m from '$lib/paraglide/messages.js';
 import type { DepthStyle } from '$lib/theme/depth_styles.js';
+import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
 import { PALETTES } from '$lib/theme/palettes.js';
 
 const { persistDepthMock, persistPaletteMock, updatePreferredLocaleMock, setModeMock } = vi.hoisted(
@@ -33,6 +34,8 @@ const { default: SettingsAppearanceSection } =
 const { default: AppearanceMenu } =
 	await import('$lib/components/derived/appearance-menu/AppearanceMenu.svelte');
 const { default: MobileNav } = await import('$lib/components/blocks/navbar/MobileNav.svelte');
+
+const { expectPixelsNear, expectPixelsAtLeast } = createPixelAssertions(expect);
 
 function deferredPromise() {
 	let resolve!: () => void;
@@ -174,10 +177,11 @@ describe('DepthStyleSwitcher', () => {
 
 		for (const label of Object.values(depthLabels)) {
 			const choice = screen.getByRole('radio', { name: label });
-			expect(
+			expectPixelsAtLeast(
 				choice.element().getBoundingClientRect().height,
+				48,
 				`${label} radio height`,
-			).toBeGreaterThanOrEqual(48);
+			);
 		}
 		await screen.unmount();
 	});
@@ -198,7 +202,21 @@ describe('DepthStyleSwitcher', () => {
 		const baseline = choices.map((choice) => boundary(choice.element()));
 		for (const choice of choices) {
 			await choice.click();
-			expect(choices.map((option) => boundary(option.element()))).toEqual(baseline);
+			for (const [index, option] of choices.entries()) {
+				const current = boundary(option.element());
+				const expected = baseline[index]!;
+				expect({
+					borderColor: current.borderColor,
+					borderWidth: current.borderWidth,
+					borderRadius: current.borderRadius,
+				}).toEqual({
+					borderColor: expected.borderColor,
+					borderWidth: expected.borderWidth,
+					borderRadius: expected.borderRadius,
+				});
+				expectPixelsNear(current.width, expected.width);
+				expectPixelsNear(current.height, expected.height);
+			}
 		}
 		await screen.unmount();
 	});
@@ -236,10 +254,11 @@ describe('DepthStyleSwitcher', () => {
 					expect(indicator, `${context} selected indicator`).not.toBeNull();
 					const indicatorColor = getComputedStyle(indicator!, '::after').backgroundColor;
 
-					expect(
+					expectPixelsAtLeast(
 						choiceElement.getBoundingClientRect().height,
+						48,
 						`${context} selected radio height`,
-					).toBeGreaterThanOrEqual(48);
+					);
 					expect(
 						contrastRatio(choiceStyle.color, choiceStyle.backgroundColor),
 						`${context} selected text/background contrast`,

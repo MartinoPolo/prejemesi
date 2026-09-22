@@ -2,6 +2,7 @@ import '../../../../app.css';
 import { render } from 'vitest-browser-svelte';
 import { page, userEvent } from 'vitest/browser';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
 import type { ComponentProps } from 'svelte';
 import * as m from '$lib/paraglide/messages.js';
 import {
@@ -11,6 +12,8 @@ import {
 } from '$lib/modules/gifts/types.js';
 import { WISHLIST_ROLES } from '$lib/modules/wishlists/types.js';
 import WishlistDetailToolbar from './WishlistDetailToolbar.svelte';
+
+const { expectPixelsNear, expectPixelsAtLeast, expectPixelsAtMost } = createPixelAssertions(expect);
 
 const defaultFilters = {
 	availableOnly: false,
@@ -80,7 +83,7 @@ function expectBottomSheet(dialog: Element) {
 	const rect = dialog.getBoundingClientRect();
 	const style = getComputedStyle(dialog);
 	expect(style.bottom).toBe('0px');
-	expect(rect.left).toBeCloseTo(window.innerWidth - rect.right, 1);
+	expectPixelsNear(rect.left, window.innerWidth - rect.right);
 	expect(rect.left).toBeGreaterThan(0);
 	expect(style.borderLeftWidth).toBe(style.borderRightWidth);
 	expect(style.borderLeftWidth).toBe(style.borderTopWidth);
@@ -88,15 +91,15 @@ function expectBottomSheet(dialog: Element) {
 	expect(parseFloat(style.borderTopLeftRadius)).toBeGreaterThan(0);
 	const header = dialog.querySelector<HTMLElement>('[data-slot="sheet-header"]')!;
 	const headerStyle = getComputedStyle(header);
-	expect(header.getBoundingClientRect().width).toBeCloseTo(
+	expectPixelsNear(
+		header.getBoundingClientRect().width,
 		rect.width - parseFloat(style.borderLeftWidth) - parseFloat(style.borderRightWidth),
-		1,
 	);
 	expect(headerStyle.paddingLeft).toBe('16px');
 	expect(headerStyle.paddingRight).toBe('56px');
 	expect(headerStyle.paddingTop).toBe('12px');
 	expect(headerStyle.paddingBottom).toBe('12px');
-	expect(parseFloat(headerStyle.borderBottomWidth)).toBeCloseTo(1, 1);
+	expectPixelsNear(parseFloat(headerStyle.borderBottomWidth), 1);
 	const body = header.nextElementSibling as HTMLElement;
 	const bodyStyle = getComputedStyle(body);
 	expect(bodyStyle.paddingLeft).toBe('8px');
@@ -214,7 +217,7 @@ describe('WishlistDetailToolbar mobile actions (#340)', () => {
 			more.getByRole('button', { name: m.recipient_view_preview_turn_on() }).element(),
 			batchAdd.element(),
 		]) {
-			expect(action.getBoundingClientRect().height).toBeGreaterThanOrEqual(48);
+			expectPixelsAtLeast(action.getBoundingClientRect().height, 48);
 			const surface = action.querySelector<HTMLElement>(':scope > .elevation-surface')!;
 			expect(surface).toBeTruthy();
 			expect(getComputedStyle(surface).justifyContent).toBe('flex-start');
@@ -259,7 +262,7 @@ describe('WishlistDetailToolbar mobile actions (#340)', () => {
 		await frames(1);
 		const before = toolbar.getBoundingClientRect();
 		const scrollBefore = window.scrollY;
-		expect(scrollBefore).toBe(17);
+		expectPixelsNear(scrollBefore, 17);
 		await trigger.click();
 		const dialog = screen.getByRole('dialog', { name: m.gift_display_options() });
 		await userEvent.keyboard('{Tab}');
@@ -267,11 +270,14 @@ describe('WishlistDetailToolbar mobile actions (#340)', () => {
 		await userEvent.keyboard('{Escape}');
 		await frames(5);
 		expect(document.activeElement).toBe(trigger);
-		expect(window.scrollY).toBe(scrollBefore);
+		expectPixelsNear(window.scrollY, scrollBefore);
 		const after = toolbar.getBoundingClientRect();
-		expect(after.width).toBeCloseTo(before.width, 1);
-		expect(after.height).toBeCloseTo(before.height, 1);
-		expect(document.documentElement.scrollWidth).toBe(document.documentElement.clientWidth);
+		expectPixelsNear(after.width, before.width);
+		expectPixelsNear(after.height, before.height);
+		expectPixelsNear(
+			document.documentElement.scrollWidth,
+			document.documentElement.clientWidth,
+		);
 		await screen.unmount();
 	});
 
@@ -328,15 +334,12 @@ describe('WishlistDetailToolbar mobile actions (#340)', () => {
 		expect(listMode.element()).not.toBeDisabled();
 		await listMode.click();
 		expect(onviewmodechange).toHaveBeenCalledWith(GIFT_VIEW_MODES.list);
-		expect(row.scrollWidth).toBeLessThanOrEqual(row.clientWidth);
+		expectPixelsAtMost(row.scrollWidth, row.clientWidth);
 		const done = screen
 			.getByRole('button', { name: m.gift_reorder_done() })
 			.element() as HTMLButtonElement;
-		expect(done.getBoundingClientRect().height).toBeCloseTo(40, 0);
-		expect(done.getBoundingClientRect().right).toBeCloseTo(
-			row.getBoundingClientRect().right,
-			1,
-		);
+		expectPixelsNear(done.getBoundingClientRect().height, 40);
+		expectPixelsNear(done.getBoundingClientRect().right, row.getBoundingClientRect().right);
 		await done.click();
 		expect(onreordermodechange).toHaveBeenCalledWith(false);
 		await screen.unmount();

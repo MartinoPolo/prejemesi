@@ -1,6 +1,9 @@
 import '../../../../app.css';
 import { describe, expect, it } from 'vitest';
+import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
 import { createGiftPointerReorderController } from './gift_pointer_reorder.svelte.js';
+
+const { expectPixelsNear } = createPixelAssertions(expect);
 
 describe('gift pointer reorder controller (#239)', () => {
 	function createItems() {
@@ -167,7 +170,12 @@ describe('gift pointer reorder controller (#239)', () => {
 		const overlay = document.querySelector<HTMLElement>('[data-gift-reorder-overlay]')!;
 
 		try {
-			expect(relativeLayout(overlay)).toEqual(sourceLayout);
+			const overlayLayout = relativeLayout(overlay);
+			expect(overlayLayout).toHaveLength(sourceLayout.length);
+			for (const [index, overlayPart] of overlayLayout.entries()) {
+				expectPixelsNear(overlayPart.top, sourceLayout[index]!.top);
+				expectPixelsNear(overlayPart.height, sourceLayout[index]!.height);
+			}
 			expect(getComputedStyle(overlay).gridTemplateRows).not.toContain('subgrid');
 		} finally {
 			controller.destroy();

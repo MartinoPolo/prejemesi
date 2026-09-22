@@ -1,7 +1,9 @@
 import '../../app.css';
 import { afterEach, expect, it } from 'vitest';
+import { createPixelAssertions } from '../../../tests/helpers/pixel-assertions.mjs';
 import { restingShadowNesting } from './resting_shadow_nesting.js';
 
+const { expectPixelsNear } = createPixelAssertions(expect);
 const cleanups: (() => void)[] = [];
 afterEach(() => {
 	for (const cleanup of cleanups.splice(0)) {
@@ -27,8 +29,8 @@ it('derives a concentric resting contour from the rendered border, not its fract
 	const border = parseFloat(getComputedStyle(panel).borderRightWidth);
 	const faceInset = parseFloat(getComputedStyle(control).marginLeft);
 	const shadowInset = border + faceInset - 4;
-	expect(shadowInset + 7).toBeCloseTo(16, 5);
-	expect(parseFloat(getComputedStyle(control).marginTop)).toBe(faceInset);
+	expectPixelsNear(shadowInset + 7, 16);
+	expectPixelsNear(parseFloat(getComputedStyle(control).marginTop), faceInset);
 });
 
 it('measures an explicit painted border and restores owner styles on teardown', () => {

@@ -2,8 +2,11 @@ import '../../../../app.css';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 import { page } from 'vitest/browser';
+import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
 import WishlistHeaderActions from './WishlistHeaderActions.svelte';
 import * as m from '$lib/paraglide/messages.js';
+
+const { expectPixelsNear, expectPixelsAtLeast } = createPixelAssertions(expect);
 
 const callbacks = {
 	onshare: vi.fn(),
@@ -83,8 +86,8 @@ describe('WishlistHeaderActions', () => {
 				)
 				.element() as HTMLElement;
 			expect(getComputedStyle(actions).gap).toBe('8px');
-			expect(settings.getBoundingClientRect().height).toBe(expectedSize);
-			expect(more.getBoundingClientRect().height).toBe(expectedSize);
+			expectPixelsNear(settings.getBoundingClientRect().height, expectedSize);
+			expectPixelsNear(more.getBoundingClientRect().height, expectedSize);
 		}
 		await screen.unmount();
 	});
@@ -124,7 +127,7 @@ describe('WishlistHeaderActions', () => {
 		const shell = sheet.element() as HTMLElement;
 		const shellRect = shell.getBoundingClientRect();
 		const shellStyle = getComputedStyle(shell);
-		expect(shellRect.left).toBeCloseTo(window.innerWidth - shellRect.right, 1);
+		expectPixelsNear(shellRect.left, window.innerWidth - shellRect.right);
 		expect(shellRect.left).toBeGreaterThan(0);
 		expect(shellStyle.borderLeftWidth).toBe(shellStyle.borderRightWidth);
 		expect(shellStyle.borderLeftWidth).toBe(shellStyle.borderTopWidth);
@@ -132,17 +135,17 @@ describe('WishlistHeaderActions', () => {
 		expect(parseFloat(shellStyle.borderTopLeftRadius)).toBeGreaterThan(0);
 		const header = shell.querySelector<HTMLElement>('[data-slot="sheet-header"]')!;
 		const headerStyle = getComputedStyle(header);
-		expect(header.getBoundingClientRect().width).toBeCloseTo(
+		expectPixelsNear(
+			header.getBoundingClientRect().width,
 			shellRect.width -
 				parseFloat(shellStyle.borderLeftWidth) -
 				parseFloat(shellStyle.borderRightWidth),
-			1,
 		);
 		expect(headerStyle.paddingLeft).toBe('16px');
 		expect(headerStyle.paddingRight).toBe('56px');
 		expect(headerStyle.paddingTop).toBe('12px');
 		expect(headerStyle.paddingBottom).toBe('12px');
-		expect(parseFloat(headerStyle.borderBottomWidth)).toBeCloseTo(1, 1);
+		expectPixelsNear(parseFloat(headerStyle.borderBottomWidth), 1);
 		const body = header.nextElementSibling as HTMLElement;
 		const bodyStyle = getComputedStyle(body);
 		expect(bodyStyle.paddingLeft).toBe('8px');
@@ -152,7 +155,7 @@ describe('WishlistHeaderActions', () => {
 		const shareAction = sheet
 			.getByRole('button', { name: m.wishlist_share_button() })
 			.element();
-		expect(shareAction.getBoundingClientRect().height).toBeGreaterThanOrEqual(48);
+		expectPixelsAtLeast(shareAction.getBoundingClientRect().height, 48);
 		expect(
 			getComputedStyle(shareAction.querySelector<HTMLElement>(':scope > .elevation-surface')!)
 				.justifyContent,

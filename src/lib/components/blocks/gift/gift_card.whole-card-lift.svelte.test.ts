@@ -2,6 +2,10 @@ import '../../../../app.css';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 import { userEvent } from 'vitest/browser';
+import {
+	createPixelAssertions,
+	DEFAULT_PIXEL_TOLERANCE,
+} from '../../../../../tests/helpers/pixel-assertions.mjs';
 import { WISHLIST_ROLES } from '$lib/modules/wishlists/types.js';
 import {
 	GiftCardTestHost,
@@ -9,6 +13,8 @@ import {
 	cleanupCardHosts,
 	makeVisitorGift,
 } from './gift_card.test_fixtures.js';
+
+const { expectPixelsNear } = createPixelAssertions(expect);
 
 afterEach(() => {
 	cleanupCardHosts();
@@ -81,18 +87,18 @@ describe('GiftCard whole-card elevation', () => {
 		const ownerAfter = owner.getBoundingClientRect();
 		const paintedAfter = paintedSurface.getBoundingClientRect();
 
-		expect(ownerAfter.top).toBeCloseTo(ownerBefore.top, 1);
-		expect(paintedAfter.top).toBeCloseTo(paintedBefore.top - 2, 1);
+		expectPixelsNear(ownerAfter.top, ownerBefore.top);
+		expectPixelsNear(paintedAfter.top, paintedBefore.top - 2);
 		for (const [index, element] of trackedElements.entries()) {
 			const bounds = element.getBoundingClientRect();
-			expect(bounds.x - paintedAfter.x).toBeCloseTo(offsetsBefore[index]!.x, 1);
-			expect(bounds.y - paintedAfter.y).toBeCloseTo(offsetsBefore[index]!.y, 1);
+			expectPixelsNear(bounds.x - paintedAfter.x, offsetsBefore[index]!.x);
+			expectPixelsNear(bounds.y - paintedAfter.y, offsetsBefore[index]!.y);
 		}
 
 		await userEvent.hover(pointerRestTarget);
 		await expect
-			.poll(() => paintedSurface.getBoundingClientRect().top)
-			.toBeCloseTo(paintedBefore.top, 1);
+			.poll(() => Math.abs(paintedSurface.getBoundingClientRect().top - paintedBefore.top))
+			.toBeLessThanOrEqual(DEFAULT_PIXEL_TOLERANCE);
 		await userEvent.click(actionOwner);
 		expect(onmore).toHaveBeenCalledOnce();
 		actionOwner.focus();

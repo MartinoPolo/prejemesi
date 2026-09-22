@@ -1,8 +1,10 @@
 import { render } from 'vitest-browser-svelte';
 import { describe, expect, it, vi } from 'vitest';
 import * as m from '$lib/paraglide/messages.js';
+import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
 import { DRAFT_GRID_CONTEXT, type DraftGridChange } from './gift_draft_grid_model.js';
 
+const { expectPixelsNear } = createPixelAssertions(expect);
 vi.mock('$env/dynamic/public', () => ({ env: {} }));
 
 const { default: GiftDraftGrid } = await import('./GiftDraftGrid.svelte');
@@ -219,7 +221,7 @@ describe('GiftDraftGrid row motion', () => {
 		);
 
 		const exit = animations.find(({ options }) => options.duration === 440);
-		expect(survivor.getBoundingClientRect().top).toBe(survivorTopBefore);
+		expectPixelsNear(survivor.getBoundingClientRect().top, survivorTopBefore);
 		expect(exit?.element).toBe(removed);
 		expect(exit?.keyframes).toEqual([
 			{

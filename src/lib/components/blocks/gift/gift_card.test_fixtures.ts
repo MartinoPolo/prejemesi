@@ -3,6 +3,7 @@
 import '../../../../app.css';
 import { render } from 'vitest-browser-svelte';
 import { expect, vi } from 'vitest';
+import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
 import type { GiftForVisitor } from '$lib/modules/gifts/types.js';
 import { WISHLIST_ROLES, type WishlistRole } from '$lib/modules/wishlists/types.js';
 import { IMAGE_FIT_MODES, type ImageMetadata } from '$lib/modules/images/index.js';
@@ -13,6 +14,8 @@ import { IMAGE_FIT_MODES, type ImageMetadata } from '$lib/modules/images/index.j
 vi.mock('$env/dynamic/public', () => ({ env: {} }));
 
 export const { default: GiftCardTestHost } = await import('./GiftCardTestHost.svelte');
+
+const { expectPixelsAtLeast, expectPixelsAtMost } = createPixelAssertions(expect);
 
 // Realistic long multi-word Czech name (issue #211 REQ-2 fixture) – long enough to stress
 // the footer/name rows in a way that mirrors real content. (An unbroken 90-char run is
@@ -67,13 +70,14 @@ export function contrastRatio(
 	);
 }
 
-export function rectanglesIntersect(first: DOMRect, second: DOMRect): boolean {
-	return (
-		first.left < second.right &&
-		first.right > second.left &&
-		first.top < second.bottom &&
-		first.bottom > second.top
+export function expectRectanglesSeparated(first: DOMRect, second: DOMRect, message?: string): void {
+	const greatestAxisSeparation = Math.max(
+		second.left - first.right,
+		first.left - second.right,
+		second.top - first.bottom,
+		first.top - second.bottom,
 	);
+	expectPixelsAtLeast(greatestAxisSeparation, 0, message);
 }
 
 export function hasVisibleBoxShadow(element: Element): boolean {
@@ -118,8 +122,8 @@ export function expectRaisedActionShadowInside(action: HTMLElement, boundary: HT
 
 	expect(surfaceStyle.boxShadow).not.toBe('none');
 	expect(shadowOffset).toBeGreaterThan(0);
-	expect(surfaceRect.right + shadowOffset).toBeLessThanOrEqual(boundaryRect.right + 0.5);
-	expect(surfaceRect.bottom + shadowOffset).toBeLessThanOrEqual(boundaryRect.bottom + 0.5);
+	expectPixelsAtMost(surfaceRect.right + shadowOffset, boundaryRect.right);
+	expectPixelsAtMost(surfaceRect.bottom + shadowOffset, boundaryRect.bottom);
 }
 
 export function makeVisitorGift(overrides: Partial<GiftForVisitor> = {}): GiftForVisitor {

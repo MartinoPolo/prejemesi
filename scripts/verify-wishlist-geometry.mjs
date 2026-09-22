@@ -9,6 +9,7 @@
 import { chromium } from 'playwright';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
+import { DEFAULT_PIXEL_TOLERANCE } from '../tests/helpers/pixel-assertions.mjs';
 
 const args = process.argv.slice(2);
 const arg = (name) => {
@@ -60,6 +61,12 @@ const check = (condition, message) => {
 		failures.add(message);
 	}
 };
+const pixelsNear = (actual, expected, tolerance = DEFAULT_PIXEL_TOLERANCE) =>
+	Math.abs(actual - expected) <= tolerance;
+const pixelsAtLeast = (actual, expected, tolerance = DEFAULT_PIXEL_TOLERANCE) =>
+	actual >= expected - tolerance;
+const pixelsAtMost = (actual, expected, tolerance = DEFAULT_PIXEL_TOLERANCE) =>
+	actual <= expected + tolerance;
 const box = async (locator) => {
 	const value = await locator.boundingBox();
 	if (!value) {
@@ -180,20 +187,20 @@ async function assertActionGeometry(page, label, mobile) {
 			const surfaceBox = await box(surface);
 			actionGeometryStats.visibleSurfaces += 1;
 			check(
-				Math.abs(surfaceBox.height - 32) <= 0.75,
+				pixelsNear(surfaceBox.height, 32),
 				`${label}: action surface is ${surfaceBox.height}px, expected 32px`,
 			);
 			const icon = surface.locator('svg').first();
 			if (await icon.count()) {
 				const iconBox = await box(icon);
 				check(
-					iconBox.width <= 16.75 && iconBox.height <= 16.75,
+					pixelsAtMost(iconBox.width, 16) && pixelsAtMost(iconBox.height, 16),
 					`${label}: action icon exceeds 16px`,
 				);
 			}
 			if (mobile) {
 				const ownerBox = await box(owner);
-				const hitRegion = await owner.evaluate((element) => {
+				const hitRegion = await owner.evaluate((element, pixelTolerance) => {
 					const rect = element
 						.querySelector(':scope > .elevation-surface')
 						?.getBoundingClientRect();
@@ -205,7 +212,7 @@ async function assertActionGeometry(page, label, mobile) {
 						before.content !== 'none' &&
 						before.position === 'absolute' &&
 						['top', 'right', 'bottom', 'left'].every(
-							(side) => Math.abs(parseFloat(before[side]) + 4) <= 0.1,
+							(side) => Math.abs(parseFloat(before[side]) + 4) <= pixelTolerance,
 						);
 					// Sample safely inside the 4px pseudo-element extension. At 3.5px, Chromium's
 					// device-pixel hit-test rounding can choose the adjacent target where two
@@ -220,7 +227,7 @@ async function assertActionGeometry(page, label, mobile) {
 						return hitNode === element || element.contains(hitNode);
 					});
 					return { expanded, hits };
-				});
+				}, DEFAULT_PIXEL_TOLERANCE);
 				actionGeometryStats.mobileTargets += 1;
 				if (hitRegion.expanded && hitRegion.hits) {
 					actionGeometryStats.touchExtensionPasses += 1;
@@ -251,7 +258,8 @@ async function assertActionGeometry(page, label, mobile) {
 						Math.min(a.right + 4, b.right + 4) - Math.max(a.x - 4, b.x - 4);
 					const expandedY =
 						Math.min(a.bottom + 4, b.bottom + 4) - Math.max(a.y - 4, b.y - 4);
-					const overlaps = expandedX > 0.25 && expandedY > 0.25;
+					const overlaps =
+						expandedX > DEFAULT_PIXEL_TOLERANCE && expandedY > DEFAULT_PIXEL_TOLERANCE;
 					actionGeometryStats.targetPairsChecked += 1;
 					if (overlaps) {
 						actionGeometryStats.targetOverlaps += 1;
@@ -272,7 +280,7 @@ async function assertActionGeometry(page, label, mobile) {
 			const right = itemBox.x + itemBox.width - (actionBox.x + actionBox.width);
 			const bottom = itemBox.y + itemBox.height - (actionBox.y + actionBox.height);
 			check(
-				Math.abs(right - bottom) <= 1.25,
+				pixelsNear(right, bottom),
 				`${label}: visible right/bottom insets differ (${right.toFixed(1)} vs ${bottom.toFixed(1)})`,
 			);
 		}
@@ -289,13 +297,13 @@ async function assertControlContinuity(page, label) {
 		const surfaceBox = await box(surface);
 		const icon = surface.locator('svg').first();
 		check(
-			Math.abs(surfaceBox.height - 32) <= 0.75,
+			pixelsNear(surfaceBox.height, 32),
 			`${label}: More surface is ${surfaceBox.height.toFixed(1)}px, expected shared md 32px`,
 		);
 		if (await icon.count()) {
 			const iconBox = await box(icon);
 			check(
-				Math.abs(iconBox.width - 16) <= 0.75 && Math.abs(iconBox.height - 16) <= 0.75,
+				pixelsNear(iconBox.width, 16) && pixelsNear(iconBox.height, 16),
 				`${label}: More icon is ${iconBox.width.toFixed(1)}x${iconBox.height.toFixed(1)}, expected 16x16px`,
 			);
 		}
@@ -318,11 +326,11 @@ async function assertControlContinuity(page, label) {
 				toolbarBox.width -
 				Math.max(...boxes.map((value) => value.x + value.width));
 			check(
-				Math.abs(top - bottom) <= 2,
+				pixelsNear(top, bottom),
 				`${label}: toolbar visible vertical insets differ (${top.toFixed(1)} vs ${bottom.toFixed(1)}px)`,
 			);
 			check(
-				right >= top - 1 && right <= top + 10,
+				pixelsAtLeast(right, top) && pixelsAtMost(right, top + 10),
 				`${label}: toolbar right inset ${right.toFixed(1)}px is unbalanced against vertical ${top.toFixed(1)}px`,
 			);
 		}
@@ -339,13 +347,13 @@ async function assertLikeGeometry(page, label) {
 	const top = likeBox.y - itemBox.y;
 	const right = itemBox.x + itemBox.width - likeBox.x - likeBox.width;
 	check(
-		Math.abs(top - right) <= 1.25,
+		pixelsNear(top, right),
 		`${label}: Like visible top/right insets differ (${top.toFixed(1)} vs ${right.toFixed(1)})`,
 	);
 	if (await item.getByTestId('gift-list-item').count()) {
 		const thumb = await box(item.getByTestId('gift-list-image'));
 		check(
-			likeBox.x >= thumb.x + thumb.width,
+			pixelsAtLeast(likeBox.x, thumb.x + thumb.width),
 			`${label}: list Like is anchored to thumbnail rather than full item`,
 		);
 	}
@@ -369,17 +377,18 @@ async function assertStableList(page, label) {
 			};
 		});
 		check(
-			Math.abs(imageBox.width - imageBox.height) <= 1,
+			pixelsNear(imageBox.width, imageBox.height),
 			`${label}: row ${i + 1} image is not square`,
 		);
 		check(
-			Math.abs(imageBox.y - rowBox.y - geometry.borderTop) <= 1,
+			pixelsNear(imageBox.y, rowBox.y + geometry.borderTop),
 			`${label}: row ${i + 1} image misses the inner top edge`,
 		);
 		check(
-			Math.abs(
-				imageBox.y + imageBox.height - (rowBox.y + rowBox.height - geometry.borderBottom),
-			) <= 1,
+			pixelsNear(
+				imageBox.y + imageBox.height,
+				rowBox.y + rowBox.height - geometry.borderBottom,
+			),
 			`${label}: row ${i + 1} image misses the inner bottom edge`,
 		);
 		check(geometry.display === 'grid', `${label}: row ${i + 1} is not horizontal grid layout`);
@@ -396,12 +405,13 @@ async function assertOverlaySeparation(page, label) {
 			continue;
 		}
 		const [likeBox, overlayBox] = await Promise.all([box(visibleSurface(like)), box(overlay)]);
-		const overlaps = !(
-			likeBox.x + likeBox.width <= overlayBox.x ||
-			overlayBox.x + overlayBox.width <= likeBox.x ||
-			likeBox.y + likeBox.height <= overlayBox.y ||
-			overlayBox.y + overlayBox.height <= likeBox.y
-		);
+		const overlapX =
+			Math.min(likeBox.x + likeBox.width, overlayBox.x + overlayBox.width) -
+			Math.max(likeBox.x, overlayBox.x);
+		const overlapY =
+			Math.min(likeBox.y + likeBox.height, overlayBox.y + overlayBox.height) -
+			Math.max(likeBox.y, overlayBox.y);
+		const overlaps = overlapX > DEFAULT_PIXEL_TOLERANCE && overlapY > DEFAULT_PIXEL_TOLERANCE;
 		check(
 			!overlaps,
 			`${label}: Like overlaps centered state overlay (Like ${likeBox.x.toFixed(1)},${likeBox.y.toFixed(1)},${likeBox.width.toFixed(1)}x${likeBox.height.toFixed(1)}; overlay ${overlayBox.x.toFixed(1)},${overlayBox.y.toFixed(1)},${overlayBox.width.toFixed(1)}x${overlayBox.height.toFixed(1)})`,
@@ -420,7 +430,7 @@ async function assertStableReceivedWidth(page, label) {
 	}
 	if (widths.length > 1) {
 		check(
-			Math.max(...widths) - Math.min(...widths) <= 1,
+			pixelsNear(Math.max(...widths), Math.min(...widths)),
 			`${label}: Received visible width changes by state/siblings (${Math.min(...widths).toFixed(1)}�${Math.max(...widths).toFixed(1)}px)`,
 		);
 	}
@@ -445,8 +455,7 @@ async function assertMoreParity(page, label) {
 			box(visibleSurface(reserve)),
 		]);
 		check(
-			Math.abs(moreBox.height - reserveBox.height) <= 0.75 &&
-				Math.abs(moreBox.height - 32) <= 0.75,
+			pixelsNear(moreBox.height, reserveBox.height) && pixelsNear(moreBox.height, 32),
 			`${label}: More/Reserve visible heights diverge (${moreBox.height.toFixed(1)} vs ${reserveBox.height.toFixed(1)}px; expected 32px)`,
 		);
 	}
@@ -505,7 +514,7 @@ async function captureForced144Card(page) {
 	});
 	const firstWidth = (await box(firstItem)).width;
 	check(
-		Math.abs(firstWidth - 144) <= 0.75,
+		pixelsNear(firstWidth, 144),
 		`forced-144/card: test cell is ${firstWidth.toFixed(1)}px, expected 144px`,
 	);
 	await assertOverlaySeparation(page, 'forced-144/card');
@@ -555,16 +564,20 @@ async function captureSheets(page) {
 		await sheet.waitFor({ state: 'hidden' });
 	}
 	check(
-		JSON.stringify(samples[0]) === JSON.stringify(samples[1]),
+		pixelsNear(samples[0].x, samples[1].x) &&
+			pixelsNear(samples[0].width, samples[1].width) &&
+			samples[0].borderRadius === samples[1].borderRadius &&
+			samples[0].borderTop === samples[1].borderTop &&
+			samples[0].borderBottom === samples[1].borderBottom,
 		'Hero and toolbar sheets do not share WishlistBottomSheet geometry',
 	);
 	for (const [index, sample] of samples.entries()) {
 		check(
-			sample.x >= 8 && sample.x + sample.width <= 382,
+			pixelsAtLeast(sample.x, 8) && pixelsAtMost(sample.x + sample.width, 382),
 			`Sheet ${index + 1} is not horizontally inset within 8px`,
 		);
 		check(
-			parseFloat(sample.borderRadius) >= 12,
+			pixelsAtLeast(parseFloat(sample.borderRadius), 12),
 			`Sheet ${index + 1} lacks rounded surface corners (${sample.borderRadius})`,
 		);
 		check(
@@ -601,7 +614,7 @@ async function captureDropdown(page) {
 	}
 	const menuBox = await box(menu);
 	check(
-		menuBox.x >= 8 && menuBox.x + menuBox.width <= 1272,
+		pixelsAtLeast(menuBox.x, 8) && pixelsAtMost(menuBox.x + menuBox.width, 1272),
 		'Dropdown escapes the 8px viewport collision boundary',
 	);
 	await page.screenshot({ path: resolve(outDir, 'desktop-more-dropdown.png'), fullPage: true });
@@ -613,7 +626,7 @@ async function captureDropdown(page) {
 	});
 	const narrowBox = await box(menu);
 	check(
-		narrowBox.x >= 8 && narrowBox.x + narrowBox.width <= 632,
+		pixelsAtLeast(narrowBox.x, 8) && pixelsAtMost(narrowBox.x + narrowBox.width, 632),
 		`Dropdown narrow fallback escapes viewport (${narrowBox.x.toFixed(1)}..${(narrowBox.x + narrowBox.width).toFixed(1)})`,
 	);
 	for (let i = 0; i < (await rows.count()); i += 1) {

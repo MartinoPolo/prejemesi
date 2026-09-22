@@ -1,8 +1,10 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
 import { render } from 'vitest-browser-svelte';
+import { createPixelAssertions } from '../../../../tests/helpers/pixel-assertions.mjs';
 import ComposedControlIconsTestFixture from './composed_control_icons_test_fixture.svelte';
 
+const { expectPixelsNear } = createPixelAssertions(expect);
 const expectedIconSizes = { sm: 14, md: 16, lg: 16, xl: 20 } as const;
 
 function iconIn(selector: string): SVGElement {
@@ -13,9 +15,10 @@ function iconIn(selector: string): SVGElement {
 	return icon;
 }
 
-function iconDimensions(icon: SVGElement): readonly [number, number] {
+function expectIconDimensions(icon: SVGElement, expectedSize: number): void {
 	const bounds = icon.getBoundingClientRect();
-	return [bounds.width, bounds.height];
+	expectPixelsNear(bounds.width, expectedSize);
+	expectPixelsNear(bounds.height, expectedSize);
 }
 
 function labeledIcon(label: string): SVGElement {
@@ -38,13 +41,11 @@ describe('composed field icon sizing', () => {
 		render(ComposedControlIconsTestFixture);
 
 		for (const [size, expectedIconSize] of Object.entries(expectedIconSizes)) {
-			const expectedDimensions = [expectedIconSize, expectedIconSize];
-			expect(iconDimensions(labeledIcon(`Button peer ${size}`))).toEqual(expectedDimensions);
-			expect(iconDimensions(searchFieldIcon(`Search field ${size}`))).toEqual(
-				expectedDimensions,
-			);
-			expect(iconDimensions(iconIn(`[data-testid="Input group addon ${size}"]`))).toEqual(
-				expectedDimensions,
+			expectIconDimensions(labeledIcon(`Button peer ${size}`), expectedIconSize);
+			expectIconDimensions(searchFieldIcon(`Search field ${size}`), expectedIconSize);
+			expectIconDimensions(
+				iconIn(`[data-testid="Input group addon ${size}"]`),
+				expectedIconSize,
 			);
 		}
 
@@ -63,22 +64,15 @@ describe('composed field icon sizing', () => {
 
 		for (const viewportWidth of [390, 1280]) {
 			await page.viewport(viewportWidth, 720);
-			const expectedDimensions = [16, 16] as const;
-			expect(iconDimensions(labeledIcon('Responsive button peer'))).toEqual(
-				expectedDimensions,
-			);
-			expect(iconDimensions(searchFieldIcon('Responsive search field'))).toEqual(
-				expectedDimensions,
-			);
-			expect(iconDimensions(iconIn('[data-testid="Responsive input group addon"]'))).toEqual(
-				expectedDimensions,
-			);
+			expectIconDimensions(labeledIcon('Responsive button peer'), 16);
+			expectIconDimensions(searchFieldIcon('Responsive search field'), 16);
+			expectIconDimensions(iconIn('[data-testid="Responsive input group addon"]'), 16);
 		}
 	});
 
 	it('keeps a nested small button icon independent from an extra-large input group', () => {
 		render(ComposedControlIconsTestFixture);
-		expect(iconDimensions(labeledIcon('Nested button xl'))).toEqual([14, 14]);
+		expectIconDimensions(labeledIcon('Nested button xl'), 14);
 	});
 
 	it('preserves composed input labels and values', () => {

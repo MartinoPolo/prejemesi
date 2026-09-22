@@ -2,10 +2,13 @@ import '../../../../app.css';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 import { page } from 'vitest/browser';
+import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
 import WishlistHeader from './WishlistHeader.svelte';
 import * as m from '$lib/paraglide/messages.js';
 
 vi.mock('$env/dynamic/public', () => ({ env: {} }));
+
+const { expectPixelsNear, expectPixelsAtLeast, expectPixelsAtMost } = createPixelAssertions(expect);
 
 const baseProps = {
 	title: 'Velmi dlouhý název narozeninového seznamu přání pro naši Aničku',
@@ -35,6 +38,16 @@ afterEach(async () => {
 	await page.viewport(1280, 720);
 });
 
+function expectRectanglesSeparated(first: DOMRect, second: DOMRect): void {
+	const greatestAxisSeparation = Math.max(
+		second.left - first.right,
+		first.left - second.right,
+		second.top - first.bottom,
+		first.top - second.bottom,
+	);
+	expectPixelsAtLeast(greatestAxisSeparation, 0);
+}
+
 function computedRotation(element: HTMLElement) {
 	const transform = getComputedStyle(element).transform;
 	if (transform === 'none') {
@@ -53,14 +66,12 @@ describe('WishlistHeader responsive presentation', () => {
 		const heroBox = await hero.element().getBoundingClientRect();
 		const photoBox = await photo.element().getBoundingClientRect();
 
-		expect(heroBox.height).toBeGreaterThanOrEqual(104);
-		expect(heroBox.height).toBeLessThanOrEqual(120);
-		expect(photoBox.width).toBeGreaterThanOrEqual(84);
-		expect(photoBox.width).toBeLessThanOrEqual(96);
-		expect(Math.abs(photoBox.width - photoBox.height)).toBeLessThanOrEqual(1);
-		expect(
-			Math.abs(photoBox.left - heroBox.left - (photoBox.top - heroBox.top)),
-		).toBeLessThanOrEqual(1);
+		expectPixelsAtLeast(heroBox.height, 104);
+		expectPixelsAtMost(heroBox.height, 120);
+		expectPixelsAtLeast(photoBox.width, 84);
+		expectPixelsAtMost(photoBox.width, 96);
+		expectPixelsNear(photoBox.width, photoBox.height);
+		expectPixelsNear(photoBox.left - heroBox.left, photoBox.top - heroBox.top);
 		await expect.element(screen.getByTestId('wishlist-banner')).not.toBeVisible();
 		await expect
 			.element(screen.getByRole('button', { name: m.gift_more_actions() }))
@@ -77,8 +88,8 @@ describe('WishlistHeader responsive presentation', () => {
 		const style = getComputedStyle(dialog);
 
 		expect(dialog).toHaveAttribute('data-side', 'bottom');
-		expect(rect.left).toBeCloseTo(8, 0);
-		expect(rect.right).toBeCloseTo(382, 0);
+		expectPixelsNear(rect.left, 8);
+		expectPixelsNear(rect.right, 382);
 		expect(style.bottom).toBe('0px');
 		expect(parseFloat(style.borderTopLeftRadius)).toBeGreaterThan(0);
 		expect(parseFloat(style.borderTopWidth)).toBeGreaterThan(0);
@@ -118,12 +129,7 @@ describe('WishlistHeader responsive presentation', () => {
 		const actionsBox = actions.getBoundingClientRect();
 		for (const content of [title, recipient]) {
 			const box = content.getBoundingClientRect();
-			const overlaps =
-				box.left < actionsBox.right &&
-				box.right > actionsBox.left &&
-				box.top < actionsBox.bottom &&
-				box.bottom > actionsBox.top;
-			expect(overlaps).toBe(false);
+			expectRectanglesSeparated(box, actionsBox);
 		}
 		await screen.unmount();
 	});
@@ -218,8 +224,8 @@ describe('WishlistHeader responsive presentation', () => {
 				assertHorizontal();
 
 				const bounds = notice.getBoundingClientRect();
-				expect(bounds.left).toBeGreaterThanOrEqual(0);
-				expect(bounds.right).toBeLessThanOrEqual(width);
+				expectPixelsAtLeast(bounds.left, 0);
+				expectPixelsAtMost(bounds.right, width);
 				expect(parseFloat(getComputedStyle(notice).borderTopWidth)).toBeGreaterThan(0);
 
 				const archive = screen.getByRole('button', { name: m.wishlist_archive_button() });

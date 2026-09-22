@@ -2,9 +2,12 @@ import '../../../../app.css';
 import { render } from 'vitest-browser-svelte';
 import { page } from 'vitest/browser';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
 import GiftContextActions from './GiftContextActions.svelte';
 import GiftContextActionsTestHost from './GiftContextActionsTestHost.svelte';
 import * as m from '$lib/paraglide/messages.js';
+
+const { expectPixelsNear, expectPixelsAtLeast } = createPixelAssertions(expect);
 
 const managerProps = {
 	sessionId: 1,
@@ -173,11 +176,11 @@ describe('GiftContextActions mobile Sheet', () => {
 			expect(chevron).toBeTruthy();
 			expect(surface.lastElementChild).toBe(chevron);
 			const surfaceStyle = getComputedStyle(surface);
-			expect(chevron!.getBoundingClientRect().right).toBeCloseTo(
+			expectPixelsNear(
+				chevron!.getBoundingClientRect().right,
 				surface.getBoundingClientRect().right -
 					parseFloat(surfaceStyle.borderRightWidth) -
 					parseFloat(surfaceStyle.paddingRight),
-				1,
 			);
 		}
 		await screen.unmount();
@@ -224,7 +227,7 @@ describe('GiftContextActions mobile Sheet', () => {
 		const dialogRect = dialog.getBoundingClientRect();
 		const dialogStyle = getComputedStyle(dialog);
 
-		expect(dialogRect.left).toBeCloseTo(window.innerWidth - dialogRect.right, 1);
+		expectPixelsNear(dialogRect.left, window.innerWidth - dialogRect.right);
 		expect(dialogRect.left).toBeGreaterThan(0);
 		expect(parseFloat(dialogStyle.borderLeftWidth)).toBeGreaterThan(0);
 		expect(dialogStyle.borderLeftWidth).toBe(dialogStyle.borderRightWidth);
@@ -234,17 +237,17 @@ describe('GiftContextActions mobile Sheet', () => {
 
 		const header = dialog.querySelector<HTMLElement>('[data-slot="sheet-header"]')!;
 		const headerStyle = getComputedStyle(header);
-		expect(header.getBoundingClientRect().width).toBeCloseTo(
+		expectPixelsNear(
+			header.getBoundingClientRect().width,
 			dialogRect.width -
 				parseFloat(dialogStyle.borderLeftWidth) -
 				parseFloat(dialogStyle.borderRightWidth),
-			1,
 		);
 		expect(headerStyle.paddingLeft).toBe('16px');
 		expect(headerStyle.paddingRight).toBe('56px');
 		expect(headerStyle.paddingTop).toBe('12px');
 		expect(headerStyle.paddingBottom).toBe('12px');
-		expect(parseFloat(headerStyle.borderBottomWidth)).toBeCloseTo(1, 1);
+		expectPixelsNear(parseFloat(headerStyle.borderBottomWidth), 1);
 
 		const body = header.nextElementSibling as HTMLElement;
 		const bodyStyle = getComputedStyle(body);
@@ -256,7 +259,7 @@ describe('GiftContextActions mobile Sheet', () => {
 		const iconRow = screen.getByRole('button', { name: m.gift_context_edit() }).element();
 		const textOnlyRow = screen.getByRole('button', { name: m.gift_priority_label() }).element();
 		for (const row of [iconRow, textOnlyRow]) {
-			expect(row.getBoundingClientRect().height).toBeGreaterThanOrEqual(48);
+			expectPixelsAtLeast(row.getBoundingClientRect().height, 48);
 			const surface = row.querySelector<HTMLElement>(':scope > .elevation-surface')!;
 			expect(surface).toBeTruthy();
 			expect(getComputedStyle(surface).justifyContent).toBe('flex-start');
@@ -282,7 +285,7 @@ describe('GiftContextActions mobile Sheet', () => {
 			range.selectNodeContents(node);
 			return range.getBoundingClientRect().left;
 		};
-		expect(textLeft(textOnlyText)).toBeCloseTo(textLeft(iconText), 1);
+		expectPixelsNear(textLeft(textOnlyText), textLeft(iconText));
 		await screen.unmount();
 	});
 

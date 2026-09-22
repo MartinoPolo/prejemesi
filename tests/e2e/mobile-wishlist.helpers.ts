@@ -10,6 +10,9 @@ import {
 	expectReceivedActionReachable,
 	visibleDirectReceivedAction,
 } from './fixtures/gift-actions-helpers.js';
+import { createPixelAssertions } from '../helpers/pixel-assertions.mjs';
+
+const { expectPixelsAtLeast, expectPixelsAtMost, expectPixelsNear } = createPixelAssertions(expect);
 
 export const MOBILE_HEIGHT = 844;
 export const WIDTHS = [320, 360, 390] as const;
@@ -112,8 +115,8 @@ export async function box(locator: Locator) {
 
 export async function expectInsideViewport(locator: Locator, width: number) {
 	const bounds = await box(locator);
-	expect(bounds.x).toBeGreaterThanOrEqual(12);
-	expect(bounds.x + bounds.width).toBeLessThanOrEqual(width - 12 + 0.5);
+	expectPixelsAtLeast(bounds.x, 12);
+	expectPixelsAtMost(bounds.x + bounds.width, width - 12);
 }
 
 export async function expectContainedReceivedActions(
@@ -180,18 +183,20 @@ export async function expectContainedReceivedActions(
 		const commandCenterY =
 			visibleCommandGeometry.commands[0]!.y + visibleCommandGeometry.commands[0]!.height / 2;
 		for (const [index, command] of visibleCommandGeometry.commands.entries()) {
-			expect(command.y + command.height / 2).toBeCloseTo(commandCenterY, 0);
-			expect(command.x).toBeGreaterThanOrEqual(itemBox.x - 0.5);
-			expect(command.y).toBeGreaterThanOrEqual(itemBox.y - 0.5);
-			expect(
+			expectPixelsNear(command.y + command.height / 2, commandCenterY);
+			expectPixelsAtLeast(command.x, itemBox.x);
+			expectPixelsAtLeast(command.y, itemBox.y);
+			expectPixelsAtMost(
 				command.x + command.width + visibleCommandGeometry.restingOffset,
-			).toBeLessThanOrEqual(itemBox.x + itemBox.width + 0.5);
-			expect(
+				itemBox.x + itemBox.width,
+			);
+			expectPixelsAtMost(
 				command.y + command.height + visibleCommandGeometry.restingOffset,
-			).toBeLessThanOrEqual(itemBox.y + itemBox.height + 0.5);
+				itemBox.y + itemBox.height,
+			);
 			if (index > 0) {
 				const previous = visibleCommandGeometry.commands[index - 1]!;
-				expect(command.x).toBeGreaterThanOrEqual(previous.x + previous.width);
+				expectPixelsAtLeast(command.x, previous.x + previous.width);
 			}
 		}
 
@@ -221,14 +226,12 @@ export async function expectContainedReceivedActions(
 				};
 			}),
 		]);
-		expect(actionBox.width).toBeGreaterThanOrEqual(32);
-		expect(actionBox.height).toBeGreaterThanOrEqual(32);
-		expect(actionBox.x).toBeGreaterThanOrEqual(itemBox.x - 0.5);
-		expect(actionBox.x + actionBox.width).toBeLessThanOrEqual(itemBox.x + itemBox.width + 0.5);
-		expect(actionBox.y).toBeGreaterThanOrEqual(itemBox.y - 0.5);
-		expect(actionBox.y + actionBox.height).toBeLessThanOrEqual(
-			itemBox.y + itemBox.height + 0.5,
-		);
+		expectPixelsAtLeast(actionBox.width, 32);
+		expectPixelsAtLeast(actionBox.height, 32);
+		expectPixelsAtLeast(actionBox.x, itemBox.x);
+		expectPixelsAtMost(actionBox.x + actionBox.width, itemBox.x + itemBox.width);
+		expectPixelsAtLeast(actionBox.y, itemBox.y);
+		expectPixelsAtMost(actionBox.y + actionBox.height, itemBox.y + itemBox.height);
 		expect(
 			Math.abs(
 				labelBox.contentX -

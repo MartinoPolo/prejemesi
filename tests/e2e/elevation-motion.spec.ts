@@ -8,6 +8,9 @@ import {
 	shareWishlist,
 } from './fixtures/wishlist-helpers.js';
 import { visibleDirectReceivedAction } from './fixtures/gift-actions-helpers.js';
+import { createPixelAssertions } from '../helpers/pixel-assertions.mjs';
+
+const { expectPixelsNear } = createPixelAssertions(expect);
 
 interface RectSnapshot {
 	x: number;
@@ -35,7 +38,7 @@ async function rect(locator: Locator): Promise<RectSnapshot> {
 
 function expectSameRect(actual: RectSnapshot, expected: RectSnapshot) {
 	for (const key of ['x', 'y', 'width', 'height'] as const) {
-		expect(Math.abs(actual[key] - expected[key])).toBeLessThan(0.25);
+		expectPixelsNear(actual[key], expected[key]);
 	}
 }
 
@@ -128,10 +131,10 @@ function expectContentTranslatedWithSurface(
 	};
 	for (const [index, actualContent] of actual.content.entries()) {
 		const restingContent = resting.content[index]!;
-		expect(actualContent.x - restingContent.x).toBeCloseTo(surfaceDelta.x, 1);
-		expect(actualContent.y - restingContent.y).toBeCloseTo(surfaceDelta.y, 1);
-		expect(actualContent.width).toBeCloseTo(restingContent.width, 1);
-		expect(actualContent.height).toBeCloseTo(restingContent.height, 1);
+		expectPixelsNear(actualContent.x - restingContent.x, surfaceDelta.x);
+		expectPixelsNear(actualContent.y - restingContent.y, surfaceDelta.y);
+		expectPixelsNear(actualContent.width, restingContent.width);
+		expectPixelsNear(actualContent.height, restingContent.height);
 	}
 }
 
@@ -479,7 +482,7 @@ test.describe('Elevated interaction behavior', () => {
 			.toBe('0px -2px');
 		const hovered = await giftGeometry(owner, surface, content);
 		expectSameRect(hovered.owner, resting.owner);
-		expect(hovered.surface.y - resting.surface.y).toBeCloseTo(-2, 1);
+		expectPixelsNear(hovered.surface.y - resting.surface.y, -2);
 		expectContentTranslatedWithSurface(hovered, resting);
 		expectContentGeometryWithinSurface(hovered, resting);
 
@@ -493,7 +496,7 @@ test.describe('Elevated interaction behavior', () => {
 				.toBe('0.98');
 			const active = await giftGeometry(owner, surface, content);
 			expectSameRect(active.owner, resting.owner);
-			expect(active.surface.width).toBeCloseTo(resting.surface.width * 0.98, 1);
+			expectPixelsNear(active.surface.width, resting.surface.width * 0.98);
 			expectContentGeometryWithinSurface(active, resting);
 		} finally {
 			await page.mouse.up();

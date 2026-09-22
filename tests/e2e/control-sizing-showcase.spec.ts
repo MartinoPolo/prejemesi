@@ -1,4 +1,7 @@
 import { expect, test } from '@playwright/test';
+import { createPixelAssertions, DEFAULT_PIXEL_TOLERANCE } from '../helpers/pixel-assertions.mjs';
+
+const { expectPixelsNear } = createPixelAssertions(expect);
 
 const CONTROL_SIZES = {
 	sm: 26,
@@ -21,17 +24,26 @@ test('playground presents every explicit control size with compatible real peers
 
 		for (const peer of await row.locator('[data-control-peer]').all()) {
 			await expect
-				.poll(() => peer.evaluate((element) => element.getBoundingClientRect().height))
-				.toBe(expectedHeight);
+				.poll(async () =>
+					Math.abs(
+						(await peer.evaluate((element) => element.getBoundingClientRect().height)) -
+							expectedHeight,
+					),
+				)
+				.toBeLessThanOrEqual(DEFAULT_PIXEL_TOLERANCE);
 			await expect(peer).not.toHaveAttribute('style', /height|radius|shadow/i);
 		}
 
 		for (const shellTrigger of await row.locator('[data-shell-peers] button').all()) {
 			await expect
-				.poll(() =>
-					shellTrigger.evaluate((element) => element.getBoundingClientRect().height),
+				.poll(async () =>
+					Math.abs(
+						(await shellTrigger.evaluate(
+							(element) => element.getBoundingClientRect().height,
+						)) - expectedHeight,
+					),
 				)
-				.toBe(expectedHeight);
+				.toBeLessThanOrEqual(DEFAULT_PIXEL_TOLERANCE);
 		}
 
 		for (const peerGroup of await row.locator('[data-peer-group], [data-shell-peers]').all()) {
@@ -43,7 +55,7 @@ test('playground presents every explicit control size with compatible real peers
 		const iconWidths = await row
 			.locator('[data-peer-group="core"] [data-icon]')
 			.evaluateAll((icons) => icons.map((icon) => icon.getBoundingClientRect().width));
-		expect(new Set(iconWidths).size).toBe(1);
+		expectPixelsNear(Math.max(...iconWidths), Math.min(...iconWidths));
 	}
 });
 
@@ -74,10 +86,14 @@ test('every explicit size row compares every button treatment in text and icon f
 			).toBeVisible();
 			for (const button of await buttons.all()) {
 				await expect
-					.poll(() =>
-						button.evaluate((element) => element.getBoundingClientRect().height),
+					.poll(async () =>
+						Math.abs(
+							(await button.evaluate(
+								(element) => element.getBoundingClientRect().height,
+							)) - expectedHeight,
+						),
 					)
-					.toBe(expectedHeight);
+					.toBeLessThanOrEqual(DEFAULT_PIXEL_TOLERANCE);
 			}
 			await expect
 				.poll(() => treatment.evaluate((element) => getComputedStyle(element).columnGap))
@@ -87,7 +103,7 @@ test('every explicit size row compares every button treatment in text and icon f
 		const iconWidths = await sizeRow
 			.locator('[data-button-intent] button[aria-label$="icon treatment"] svg')
 			.evaluateAll((icons) => icons.map((icon) => icon.getBoundingClientRect().width));
-		expect(new Set(iconWidths).size).toBe(1);
+		expectPixelsNear(Math.max(...iconWidths), Math.min(...iconWidths));
 	}
 });
 
@@ -105,17 +121,26 @@ test('default controls respond by breakpoint and the showcase does not overflow'
 		await page.setViewportSize({ width, height: 900 });
 		for (const peer of await responsivePeers.all()) {
 			await expect
-				.poll(() => peer.evaluate((element) => element.getBoundingClientRect().height))
-				.toBe(expectedHeight);
+				.poll(async () =>
+					Math.abs(
+						(await peer.evaluate((element) => element.getBoundingClientRect().height)) -
+							expectedHeight,
+					),
+				)
+				.toBeLessThanOrEqual(DEFAULT_PIXEL_TOLERANCE);
 		}
 		for (const shellTrigger of await responsiveRow
 			.locator('[data-responsive-shell] button')
 			.all()) {
 			await expect
-				.poll(() =>
-					shellTrigger.evaluate((element) => element.getBoundingClientRect().height),
+				.poll(async () =>
+					Math.abs(
+						(await shellTrigger.evaluate(
+							(element) => element.getBoundingClientRect().height,
+						)) - expectedHeight,
+					),
 				)
-				.toBe(expectedHeight);
+				.toBeLessThanOrEqual(DEFAULT_PIXEL_TOLERANCE);
 		}
 		await expect(
 			responsiveRow.getByRole('group', { name: 'Default segmented toggle' }),

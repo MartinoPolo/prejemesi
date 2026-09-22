@@ -2,8 +2,11 @@ import '../../../../app.css';
 import { render } from 'vitest-browser-svelte';
 import { page, userEvent } from 'vitest/browser';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
 import GiftBulkCopyDialog from './GiftBulkCopyDialog.svelte';
 import * as m from '$lib/paraglide/messages.js';
+
+const { expectPixelsNear, expectPixelsAtMost } = createPixelAssertions(expect);
 
 const destinations = [
 	{
@@ -41,14 +44,14 @@ describe('GiftBulkCopyDialog', () => {
 		const destinationTrigger = dialog.getByLabelText(m.gift_bulk_copy_destination());
 		await expect.element(destinationTrigger).toHaveAttribute('id', 'bulk-copy-destination');
 		await vi.waitFor(() => {
-			expect(destinationTrigger.element().getBoundingClientRect().height).toBeCloseTo(38, 0);
+			expectPixelsNear(destinationTrigger.element().getBoundingClientRect().height, 38);
 		});
 		const desktopTriggerWidth = destinationTrigger.element().getBoundingClientRect().width;
 		const desktopConfirmWidth = dialog
 			.getByRole('button', { name: m.gift_bulk_copy_confirm() })
 			.element()
 			.getBoundingClientRect().width;
-		expect(desktopConfirmWidth).toBeLessThan(desktopTriggerWidth);
+		expectPixelsAtMost(desktopConfirmWidth, desktopTriggerWidth);
 		await destinationTrigger.click();
 		await screen.getByRole('option', { name: 'Narozeniny · Jana' }).click();
 		expect(handlers.ondestinationchange).toHaveBeenCalledWith('destination');
@@ -103,8 +106,8 @@ describe('GiftBulkCopyDialog', () => {
 		const shellRect = shell.getBoundingClientRect();
 		const shellStyle = getComputedStyle(shell);
 		expect(shellStyle.bottom).toBe('0px');
-		expect(parseFloat(shellStyle.maxHeight)).toBeCloseTo(window.innerHeight * 0.8, 1);
-		expect(shellRect.left).toBeCloseTo(window.innerWidth - shellRect.right, 1);
+		expectPixelsNear(parseFloat(shellStyle.maxHeight), window.innerHeight * 0.8);
+		expectPixelsNear(shellRect.left, window.innerWidth - shellRect.right);
 		expect(shellRect.left).toBeGreaterThan(0);
 		expect(shellStyle.borderLeftWidth).toBe(shellStyle.borderRightWidth);
 		expect(shellStyle.borderLeftWidth).toBe(shellStyle.borderTopWidth);
@@ -112,17 +115,17 @@ describe('GiftBulkCopyDialog', () => {
 		expect(parseFloat(shellStyle.borderTopLeftRadius)).toBeGreaterThan(0);
 		const header = shell.querySelector<HTMLElement>('[data-slot="sheet-header"]')!;
 		const headerStyle = getComputedStyle(header);
-		expect(header.getBoundingClientRect().width).toBeCloseTo(
+		expectPixelsNear(
+			header.getBoundingClientRect().width,
 			shellRect.width -
 				parseFloat(shellStyle.borderLeftWidth) -
 				parseFloat(shellStyle.borderRightWidth),
-			1,
 		);
 		expect(headerStyle.paddingLeft).toBe('16px');
 		expect(headerStyle.paddingRight).toBe('56px');
 		expect(headerStyle.paddingTop).toBe('12px');
 		expect(headerStyle.paddingBottom).toBe('12px');
-		expect(parseFloat(headerStyle.borderBottomWidth)).toBeCloseTo(1, 1);
+		expectPixelsNear(parseFloat(headerStyle.borderBottomWidth), 1);
 		const body = header.nextElementSibling as HTMLElement;
 		const bodyStyle = getComputedStyle(body);
 		expect(bodyStyle.paddingLeft).toBe('8px');
@@ -139,10 +142,10 @@ describe('GiftBulkCopyDialog', () => {
 			.getByRole('button', { name: m.gift_bulk_copy_confirm() })
 			.element()
 			.getBoundingClientRect();
-		expect(backRect.width).toBeCloseTo(triggerRect.width, 1);
-		expect(confirmRect.width).toBeCloseTo(triggerRect.width, 1);
-		expect(backRect.left).toBeCloseTo(triggerRect.left, 1);
-		expect(confirmRect.left).toBeCloseTo(triggerRect.left, 1);
+		expectPixelsNear(backRect.width, triggerRect.width);
+		expectPixelsNear(confirmRect.width, triggerRect.width);
+		expectPixelsNear(backRect.left, triggerRect.left);
+		expectPixelsNear(confirmRect.left, triggerRect.left);
 		await backButton.click();
 		expect(onback).toHaveBeenCalledOnce();
 		await screen.unmount();

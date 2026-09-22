@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { page } from 'vitest/browser';
 import { render } from 'vitest-browser-svelte';
 import { SvelteMap } from 'svelte/reactivity';
+import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
 import * as m from '$lib/paraglide/messages.js';
 
 const mocks = vi.hoisted(() => ({
@@ -19,6 +20,8 @@ vi.mock('$lib/modules/likes/likes.remote.js', () => ({
 }));
 
 const { default: LikeButton } = await import('./LikeButton.svelte');
+
+const { expectPixelsNear, expectPixelsAtLeast, expectPixelsAtMost } = createPixelAssertions(expect);
 
 function deferred<T>() {
 	let resolve!: (value: T) => void;
@@ -100,9 +103,9 @@ describe('LikeButton approved image treatment (issue #357)', () => {
 			[800, 32],
 		] as const) {
 			await page.viewport(viewportWidth, 720);
-			expect(button.getBoundingClientRect().height).toBe(expectedHeight);
-			expect(icon.getBoundingClientRect().width).toBe(16);
-			expect(icon.getBoundingClientRect().height).toBe(16);
+			expectPixelsNear(button.getBoundingClientRect().height, expectedHeight);
+			expectPixelsNear(icon.getBoundingClientRect().width, 16);
+			expectPixelsNear(icon.getBoundingClientRect().height, 16);
 		}
 		await screen.unmount();
 	});
@@ -128,9 +131,9 @@ describe('LikeButton approved image treatment (issue #357)', () => {
 				const button = screen.getByRole('button').element() as HTMLElement;
 				const icon = button.querySelector('svg') as SVGElement;
 
-				expect(button.getBoundingClientRect().height).toBe(expectedHeight);
-				expect(icon.getBoundingClientRect().width).toBe(expectedIconSize);
-				expect(icon.getBoundingClientRect().height).toBe(expectedIconSize);
+				expectPixelsNear(button.getBoundingClientRect().height, expectedHeight);
+				expectPixelsNear(icon.getBoundingClientRect().width, expectedIconSize);
+				expectPixelsNear(icon.getBoundingClientRect().height, expectedIconSize);
 				await screen.unmount();
 			}
 		},
@@ -157,11 +160,11 @@ describe('LikeButton approved image treatment (issue #357)', () => {
 			const surfaceStyle = getComputedStyle(surface);
 
 			expect(count.textContent).toBe(String(likeCount));
-			expect(heartRect.right).toBeLessThanOrEqual(countRect.left);
+			expectPixelsAtMost(heartRect.right, countRect.left);
 			expect(buttonElement.getAttribute('aria-describedby')).toBe(count.id);
 			await expect.element(button).toHaveAttribute('aria-pressed', 'true');
-			expect(buttonRect.width).toBeGreaterThanOrEqual(32);
-			expect(buttonRect.height).toBe(32);
+			expectPixelsAtLeast(buttonRect.width, 32);
+			expectPixelsNear(buttonRect.height, 32);
 			expect(surfaceStyle.backgroundColor).toBe('rgba(0, 0, 0, 0)');
 			const shadowAlphas = Array.from(
 				surfaceStyle.boxShadow.matchAll(/rgba\([^)]*, ([\d.]+)\)/g),

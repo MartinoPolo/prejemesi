@@ -5,6 +5,9 @@ import {
 	createWishlistAndNavigate,
 	waitForDialogMotionToSettle,
 } from './fixtures/wishlist-helpers.js';
+import { createPixelAssertions } from '../helpers/pixel-assertions.mjs';
+
+const { expectPixelsAtMost, expectPixelsNear } = createPixelAssertions(expect);
 
 test.describe('Wishlist settings – controls and draft lifecycle', () => {
 	test('real gift numeric fields suppress spinners and wheel only while focused', async ({
@@ -94,7 +97,10 @@ test.describe('Wishlist settings – controls and draft lifecycle', () => {
 		const tabBoxes = await tablist
 			.getByRole('tab')
 			.evaluateAll((tabs) => tabs.map((tab) => tab.getBoundingClientRect()));
-		expect(new Set(tabBoxes.map((box) => Math.round(box.y))).size).toBe(1);
+		expectPixelsNear(
+			Math.max(...tabBoxes.map((box) => box.y)),
+			Math.min(...tabBoxes.map((box) => box.y)),
+		);
 
 		await waitForDialogMotionToSettle(dialog);
 		const initialTablistBox = await tablist.boundingBox();
@@ -128,9 +134,9 @@ test.describe('Wishlist settings – controls and draft lifecycle', () => {
 
 		const scrolledTablistBox = await tablist.boundingBox();
 		const scrolledFooterBox = await footer.boundingBox();
-		expect(Math.abs(scrolledTablistBox!.y - initialTablistBox!.y)).toBeLessThanOrEqual(1);
-		expect(Math.abs(scrolledFooterBox!.y - initialFooterBox!.y)).toBeLessThanOrEqual(1);
-		expect(scrolledFooterBox!.y + scrolledFooterBox!.height).toBeLessThanOrEqual(360);
+		expectPixelsNear(scrolledTablistBox!.y, initialTablistBox!.y);
+		expectPixelsNear(scrolledFooterBox!.y, initialFooterBox!.y);
+		expectPixelsAtMost(scrolledFooterBox!.y + scrolledFooterBox!.height, 360);
 		await expect(saveButton).toBeVisible();
 
 		await page.context().close();

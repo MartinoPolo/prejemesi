@@ -2,6 +2,7 @@ import '../../../../app.css';
 import { describe, expect, it, vi } from 'vitest';
 import { page } from 'vitest/browser';
 import { render } from 'vitest-browser-svelte';
+import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
 import { WISHLIST_ROLES } from '$lib/modules/wishlists/types.js';
 import { IMAGE_FIT_MODES, type ImageMetadata } from '$lib/modules/images/index.js';
 import * as m from '$lib/paraglide/messages.js';
@@ -15,6 +16,8 @@ import {
 	hasVisibleBoxShadow,
 	GiftListItemTestHost,
 } from './gift_list_item.test_fixtures.js';
+
+const { expectPixelsNear, expectPixelsAtLeast, expectPixelsAtMost } = createPixelAssertions(expect);
 
 describe('GiftListItem responsive image dimensions (issues #328 and #336)', () => {
 	it.each([320, 480, 600])(
@@ -37,14 +40,14 @@ describe('GiftListItem responsive image dimensions (issues #328 and #336)', () =
 				Number.parseFloat(itemStyle.borderTopWidth) +
 				Number.parseFloat(itemStyle.borderBottomWidth);
 			const imageRect = image.getBoundingClientRect();
-			expect(imageRect.width).toBeCloseTo(
+			expectPixelsNear(
+				imageRect.width,
 				Math.min(item.clientWidth * 0.35, 9.5 * rootFontSize),
-				0,
 			);
 			expect(imageRect.height).toBeGreaterThan(imageRect.width);
-			expect(item.getBoundingClientRect().height).toBeCloseTo(
+			expectPixelsNear(
+				item.getBoundingClientRect().height,
 				Math.max(9 * rootFontSize, imageRect.width + borders + 1),
-				0,
 			);
 			host.remove();
 		},
@@ -60,12 +63,9 @@ describe('GiftListItem responsive image dimensions (issues #328 and #336)', () =
 		const imageRegion = host.querySelector('[data-testid="gift-list-image"]') as HTMLElement;
 
 		expect(getComputedStyle(image).padding).toBe('0px');
-		expect(frame.getBoundingClientRect().width).toBeCloseTo(
-			frame.getBoundingClientRect().height,
-			0,
-		);
+		expectPixelsNear(frame.getBoundingClientRect().width, frame.getBoundingClientRect().height);
 		expect(frame.getBoundingClientRect().width).toBeGreaterThan(imageRegion.clientWidth);
-		expect(frame.getBoundingClientRect().height).toBeCloseTo(imageRegion.clientHeight, 0);
+		expectPixelsNear(frame.getBoundingClientRect().height, imageRegion.clientHeight);
 		await page.viewport(800, 720);
 		expect(getComputedStyle(image).padding).toBe('8px');
 		host.remove();
@@ -84,9 +84,9 @@ describe('GiftListItem responsive image dimensions (issues #328 and #336)', () =
 			Number.parseFloat(itemStyle.borderTopWidth) -
 			Number.parseFloat(itemStyle.borderBottomWidth);
 
-		expect(imageRect.width).toBeGreaterThanOrEqual(128);
-		expect(imageRect.width).toBeCloseTo(imageRect.height, 0);
-		expect(imageRect.height).toBeCloseTo(innerHeight, 0);
+		expectPixelsAtLeast(imageRect.width, 128);
+		expectPixelsNear(imageRect.width, imageRect.height);
+		expectPixelsNear(imageRect.height, innerHeight);
 		host.remove();
 	});
 
@@ -119,12 +119,12 @@ describe('GiftListItem responsive image dimensions (issues #328 and #336)', () =
 		const frameRect = squareFrame.getBoundingClientRect();
 
 		expect(getComputedStyle(viewport).overflow).toBe('hidden');
-		expect(frameRect.width).toBeCloseTo(frameRect.height, 0);
-		expect(frameRect.height).toBeCloseTo(viewportRect.height, 0);
+		expectPixelsNear(frameRect.width, frameRect.height);
+		expectPixelsNear(frameRect.height, viewportRect.height);
 		expect(frameRect.width).toBeGreaterThan(viewportRect.width);
-		expect(frameRect.left + frameRect.width / 2).toBeCloseTo(
+		expectPixelsNear(
+			frameRect.left + frameRect.width / 2,
 			viewportRect.left + viewport.clientLeft + viewport.clientWidth / 2,
-			0,
 		);
 		expect(getComputedStyle(renderedImage).objectPosition).toBe('23% 67%');
 		expect(renderedImage.style.transform).toContain('scale(1.8)');
@@ -153,10 +153,10 @@ describe('GiftListItem responsive image dimensions (issues #328 and #336)', () =
 				Number.parseFloat(itemStyle.borderBottomWidth);
 			const expectedWidth = Math.min(item.clientWidth * 0.35, 152);
 
-			expect(imageRect.width).toBeCloseTo(expectedWidth, 0);
-			expect(imageRect.height).toBeCloseTo(innerHeight, 0);
+			expectPixelsNear(imageRect.width, expectedWidth);
+			expectPixelsNear(imageRect.height, innerHeight);
 			expect(imageRect.width).toBeLessThan(imageRect.height);
-			expect(content.getBoundingClientRect().left).toBeCloseTo(imageRect.right, 0);
+			expectPixelsNear(content.getBoundingClientRect().left, imageRect.right);
 			expect(host.querySelectorAll('[data-testid="gift-state-overlay"]')).toHaveLength(1);
 			expect(host.querySelector('[data-testid="gift-reserved-sticker"]')).toBeNull();
 			host.remove();
@@ -194,12 +194,9 @@ describe('GiftListItem responsive image dimensions (issues #328 and #336)', () =
 		expect(image.querySelector('[data-testid="reserve-button"]')).toBeNull();
 		expect(content.contains(reserve)).toBe(true);
 		expect(getComputedStyle(item).display).toBe('grid');
-		expect(content.getBoundingClientRect().left).toBeCloseTo(
-			image.getBoundingClientRect().right,
-			0,
-		);
+		expectPixelsNear(content.getBoundingClientRect().left, image.getBoundingClientRect().right);
 		for (const action of [reserve, received, more]) {
-			expect(action.getBoundingClientRect().height).toBeCloseTo(40, 0);
+			expectPixelsNear(action.getBoundingClientRect().height, 40);
 		}
 		reserve.click();
 		received.click();
@@ -286,13 +283,14 @@ describe('GiftListItem content hierarchy (issue #377)', () => {
 		const price = host.querySelector('[data-testid="gift-list-price"]') as HTMLElement;
 		const content = host.querySelector('[data-testid="gift-list-content"]') as HTMLElement;
 
-		expect(price.getBoundingClientRect().top).toBeGreaterThanOrEqual(
+		expectPixelsAtLeast(
+			price.getBoundingClientRect().top,
 			links.getBoundingClientRect().bottom,
 		);
-		expect(price.getBoundingClientRect().left).toBeCloseTo(
+		expectPixelsNear(
+			price.getBoundingClientRect().left,
 			content.getBoundingClientRect().left +
 				Number.parseFloat(getComputedStyle(content).paddingLeft),
-			0,
 		);
 		host.remove();
 	});
@@ -320,7 +318,7 @@ describe('GiftListItem content hierarchy (issue #377)', () => {
 		);
 
 		expect(getComputedStyle(actionRow).flexWrap).toBe('nowrap');
-		expect(Math.max(...actionTops) - Math.min(...actionTops)).toBeLessThanOrEqual(1);
+		expectPixelsAtMost(Math.max(...actionTops) - Math.min(...actionTops), 0);
 		host.remove();
 	});
 });
@@ -374,7 +372,7 @@ describe('GiftListItem title hierarchy (issue #377)', () => {
 			const title = host.querySelector('.gift-list-title') as HTMLElement;
 			const style = getComputedStyle(title);
 
-			expect(Number.parseFloat(style.fontSize)).toBeCloseTo(expectedSize, 0);
+			expectPixelsNear(Number.parseFloat(style.fontSize), expectedSize);
 			expect(style.webkitLineClamp).toBe(expectedLines);
 			expect(style.overflowWrap).toBe('anywhere');
 			expect(title.title).toBe(title.textContent?.trim());
@@ -416,13 +414,15 @@ describe('GiftListItem approved Like geometry (issue #357)', () => {
 			expect(image.contains(like)).toBe(false);
 			expect(content.contains(like)).toBe(true);
 			expect(content.contains(title)).toBe(true);
-			expect(imageRect.width).toBeCloseTo(imageRect.height, 0);
-			expect(
+			expectPixelsNear(imageRect.width, imageRect.height);
+			expectPixelsNear(
 				like.getBoundingClientRect().top + like.getBoundingClientRect().height / 2,
-			).toBeCloseTo(titleRect.top + titleLineHeight / 2, 1);
+				titleRect.top + titleLineHeight / 2,
+			);
 			expect(countNode.textContent).toBe(String(count));
 			expect(getComputedStyle(countNode).display).not.toBe('none');
-			expect(heart.getBoundingClientRect().right).toBeLessThanOrEqual(
+			expectPixelsAtMost(
+				heart.getBoundingClientRect().right,
 				countNode.getBoundingClientRect().left,
 			);
 			expect(hasVisibleBoxShadow(like.querySelector('.elevation-surface')!)).toBe(false);

@@ -2,6 +2,10 @@ import '../../../../app.css';
 import { describe, expect, it, vi } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
 import { render } from 'vitest-browser-svelte';
+import {
+	createPixelAssertions,
+	DEFAULT_PIXEL_TOLERANCE,
+} from '../../../../../tests/helpers/pixel-assertions.mjs';
 import { WISHLIST_ROLES } from '$lib/modules/wishlists/types.js';
 import * as m from '$lib/paraglide/messages.js';
 import { overwriteGetLocale } from '$lib/paraglide/runtime.js';
@@ -12,6 +16,8 @@ import {
 	expectRaisedActionShadowInside,
 	GiftListItemTestHost,
 } from './gift_list_item.test_fixtures.js';
+
+const { expectPixelsNear, expectPixelsAtLeast, expectPixelsAtMost } = createPixelAssertions(expect);
 
 async function settleActionPlacement() {
 	await new Promise<void>((resolve) =>
@@ -176,26 +182,26 @@ describe('GiftListItem approved action geometry (issue #350)', () => {
 			const itemRect = item.getBoundingClientRect();
 			const descriptionRect = description.getBoundingClientRect();
 			expect(getComputedStyle(description).display).not.toBe('none');
-			expect(descriptionRect.top).toBeGreaterThanOrEqual(itemRect.top);
-			expect(descriptionRect.bottom).toBeLessThanOrEqual(itemRect.bottom);
+			expectPixelsAtLeast(descriptionRect.top, itemRect.top);
+			expectPixelsAtMost(descriptionRect.bottom, itemRect.bottom);
 			const imageRect = image.getBoundingClientRect();
 			const itemStyle = getComputedStyle(item);
 			const innerHeight =
 				itemRect.height -
 				Number.parseFloat(itemStyle.borderTopWidth) -
 				Number.parseFloat(itemStyle.borderBottomWidth);
-			expect(imageRect.width).toBeCloseTo(Math.min(item.clientWidth * 0.35, 152), 0);
-			expect(imageRect.height).toBeCloseTo(innerHeight, 0);
-			expect(item.scrollWidth).toBeLessThanOrEqual(item.clientWidth);
-			expect(item.scrollHeight).toBeLessThanOrEqual(item.clientHeight);
+			expectPixelsNear(imageRect.width, Math.min(item.clientWidth * 0.35, 152));
+			expectPixelsNear(imageRect.height, innerHeight);
+			expectPixelsAtMost(item.scrollWidth, item.clientWidth);
+			expectPixelsAtMost(item.scrollHeight, item.clientHeight);
 			for (const action of host.querySelectorAll<HTMLElement>(
 				'[data-testid="gift-list-actions"] button',
 			)) {
 				const actionRect = action.getBoundingClientRect();
-				expect(actionRect.height).toBeCloseTo(40, 0);
-				expect(actionRect.left).toBeGreaterThanOrEqual(itemRect.left);
-				expect(actionRect.right).toBeLessThanOrEqual(itemRect.right);
-				expect(actionRect.bottom).toBeLessThanOrEqual(itemRect.bottom);
+				expectPixelsNear(actionRect.height, 40);
+				expectPixelsAtLeast(actionRect.left, itemRect.left);
+				expectPixelsAtMost(actionRect.right, itemRect.right);
+				expectPixelsAtMost(actionRect.bottom, itemRect.bottom);
 			}
 			host.remove();
 		},
@@ -230,9 +236,9 @@ describe('GiftListItem approved action geometry (issue #350)', () => {
 		expect(received.closest('[aria-hidden="true"]')).toBeTruthy();
 		expect(row.dataset.overflowActions?.split(' ')).toContain('received');
 		expect(getComputedStyle(row).flexWrap).toBe('nowrap');
-		expect(reserveRect.top).toBeCloseTo(moreRect.top, 0);
-		expect(reserveRect.right).toBeLessThanOrEqual(moreRect.left);
-		expect(moreRect.right).toBeCloseTo(rowRect.right, 0);
+		expectPixelsNear(reserveRect.top, moreRect.top);
+		expectPixelsAtMost(reserveRect.right, moreRect.left);
+		expectPixelsNear(moreRect.right, rowRect.right);
 		host.remove();
 	});
 
@@ -264,12 +270,12 @@ describe('GiftListItem approved action geometry (issue #350)', () => {
 		);
 
 		for (const actionRect of actionRects) {
-			expect(actionRect.top).toBeCloseTo(actionRects[0]!.top, 0);
-			expect(actionRect.left).toBeGreaterThanOrEqual(rowRect.left);
-			expect(actionRect.right).toBeLessThanOrEqual(rowRect.right);
+			expectPixelsNear(actionRect.top, actionRects[0]!.top);
+			expectPixelsAtLeast(actionRect.left, rowRect.left);
+			expectPixelsAtMost(actionRect.right, rowRect.right);
 		}
 		expect(getComputedStyle(row).flexWrap).toBe('nowrap');
-		expect(more.getBoundingClientRect().right).toBeCloseTo(rowRect.right, 0);
+		expectPixelsNear(more.getBoundingClientRect().right, rowRect.right);
 		host.remove();
 	});
 
@@ -318,26 +324,26 @@ describe('GiftListItem approved action geometry (issue #350)', () => {
 			const contentRect = content.getBoundingClientRect();
 			for (const action of actions) {
 				const actionRect = action.getBoundingClientRect();
-				expect(actionRect.height).toBeCloseTo(expectedControlSize, 0);
-				expect(actionRect.left).toBeGreaterThanOrEqual(contentRect.left);
-				expect(actionRect.right).toBeLessThanOrEqual(contentRect.right);
+				expectPixelsNear(actionRect.height, expectedControlSize);
+				expectPixelsAtLeast(actionRect.left, contentRect.left);
+				expectPixelsAtMost(actionRect.right, contentRect.right);
 			}
 			const primaryRect = primary.getBoundingClientRect();
 			const moreRect = more.getBoundingClientRect();
-			if (primaryRect.top === moreRect.top) {
-				expect(primaryRect.right).toBeLessThanOrEqual(moreRect.left);
+			if (Math.abs(primaryRect.top - moreRect.top) <= DEFAULT_PIXEL_TOLERANCE) {
+				expectPixelsAtMost(primaryRect.right, moreRect.left);
 			} else {
-				expect(primaryRect.bottom).toBeLessThanOrEqual(moreRect.top);
-				expect(primaryRect.right).toBeCloseTo(row.getBoundingClientRect().right, 0);
-				expect(moreRect.right).toBeCloseTo(row.getBoundingClientRect().right, 0);
+				expectPixelsAtMost(primaryRect.bottom, moreRect.top);
+				expectPixelsNear(primaryRect.right, row.getBoundingClientRect().right);
+				expectPixelsNear(moreRect.right, row.getBoundingClientRect().right);
 			}
 			const surface = primary.querySelector(':scope > .elevation-surface') as HTMLElement;
 			const textRange = document.createRange();
 			textRange.selectNodeContents(firstNonBlankTextNode(surface));
 			const textRect = textRange.getBoundingClientRect();
 			const surfaceRect = surface.getBoundingClientRect();
-			expect(textRect.left).toBeGreaterThanOrEqual(surfaceRect.left + 2);
-			expect(textRect.right).toBeLessThanOrEqual(surfaceRect.right - 2);
+			expectPixelsAtLeast(textRect.left, surfaceRect.left + 2);
+			expectPixelsAtMost(textRect.right, surfaceRect.right - 2);
 			expectRaisedActionShadowInside(primary, item);
 			expectRaisedActionShadowInside(more, item);
 			if (viewport < 640) {
@@ -348,12 +354,12 @@ describe('GiftListItem approved action geometry (issue #350)', () => {
 					itemRect.height -
 					Number.parseFloat(itemStyle.borderTopWidth) -
 					Number.parseFloat(itemStyle.borderBottomWidth);
-				expect(imageRect.width).toBeCloseTo(Math.min(item.clientWidth * 0.35, 152), 0);
-				expect(imageRect.height).toBeCloseTo(innerHeight, 0);
-				expect(content.getBoundingClientRect().left).toBeCloseTo(imageRect.right, 0);
-				expect(imageRect.top).toBeCloseTo(
+				expectPixelsNear(imageRect.width, Math.min(item.clientWidth * 0.35, 152));
+				expectPixelsNear(imageRect.height, innerHeight);
+				expectPixelsNear(content.getBoundingClientRect().left, imageRect.right);
+				expectPixelsNear(
+					imageRect.top,
 					itemRect.top + Number.parseFloat(itemStyle.borderTopWidth),
-					0,
 				);
 				const imageFrame = image.querySelector(
 					'[data-testid="image-frame"]',
@@ -361,9 +367,10 @@ describe('GiftListItem approved action geometry (issue #350)', () => {
 				const expectedInnerRadius =
 					Number.parseFloat(itemStyle.borderTopLeftRadius) -
 					Number.parseFloat(itemStyle.borderLeftWidth);
-				expect(
+				expectPixelsNear(
 					Number.parseFloat(getComputedStyle(imageFrame).borderTopLeftRadius),
-				).toBeCloseTo(expectedInnerRadius, 0);
+					expectedInnerRadius,
+				);
 			}
 			if (role === WISHLIST_ROLES.moderator) {
 				const reserve = host.querySelector('[data-testid="reserve-button"]') as HTMLElement;
@@ -372,7 +379,7 @@ describe('GiftListItem approved action geometry (issue #350)', () => {
 				const widths = actions.map((action) => action.getBoundingClientRect().width);
 				expect(widths[0]).toBeGreaterThan(expectedControlSize);
 				expect(widths[1]).toBeGreaterThan(expectedControlSize);
-				expect(widths[2]).toBeCloseTo(expectedControlSize, 0);
+				expectPixelsNear(widths[2]!, expectedControlSize);
 			}
 			if (role === WISHLIST_ROLES.recipient) {
 				expect(host.querySelector('[data-like-heart]')).toBeNull();
@@ -428,15 +435,15 @@ describe('GiftListItem approved action geometry (issue #350)', () => {
 				const more = host.querySelector('[data-testid="gift-more-actions"]') as HTMLElement;
 				const reserve = host.querySelector('[data-testid="reserve-button"]') as HTMLElement;
 				expect(getComputedStyle(item).display).toBe('grid');
-				expect(content.getBoundingClientRect().left).toBeCloseTo(
+				expectPixelsNear(
+					content.getBoundingClientRect().left,
 					(
 						host.querySelector('[data-testid="gift-list-image"]') as HTMLElement
 					).getBoundingClientRect().right,
-					0,
 				);
-				expect(item.scrollWidth).toBeLessThanOrEqual(item.clientWidth);
-				expect(item.scrollHeight).toBeLessThanOrEqual(item.clientHeight);
-				expect(content.scrollWidth).toBeLessThanOrEqual(content.clientWidth);
+				expectPixelsAtMost(item.scrollWidth, item.clientWidth);
+				expectPixelsAtMost(item.scrollHeight, item.clientHeight);
+				expectPixelsAtMost(content.scrollWidth, content.clientWidth);
 				expect(reserve.getAttribute('aria-label')).toBe(
 					m.reserve_button_cancel_aria({ name: REALISTIC_LONG_NAME }),
 				);
@@ -448,9 +455,9 @@ describe('GiftListItem approved action geometry (issue #350)', () => {
 				const actions = [reserve, more];
 				const actionRects = actions.map((action) => action.getBoundingClientRect());
 				for (const [index, action] of actions.entries()) {
-					expect(actionRects[index]!.height).toBeCloseTo(32, 0);
+					expectPixelsNear(actionRects[index]!.height, 32);
 					if (index === actions.length - 1) {
-						expect(actionRects[index]!.width).toBeCloseTo(32, 0);
+						expectPixelsNear(actionRects[index]!.width, 32);
 					} else {
 						expect(actionRects[index]!.width).toBeGreaterThan(32);
 					}
@@ -505,9 +512,9 @@ describe('GiftListItem approved action geometry (issue #350)', () => {
 			const contentRect = content.getBoundingClientRect();
 			expect(getComputedStyle(item).display).toBe('grid');
 			expect(item.hasAttribute('data-list-image-stacked')).toBe(false);
-			expect(imageRect.width).toBeCloseTo(Math.min(item.clientWidth * 0.35, 152), 0);
+			expectPixelsNear(imageRect.width, Math.min(item.clientWidth * 0.35, 152));
 			expect(imageRect.width).toBeLessThan(imageRect.height);
-			expect(contentRect.left).toBeCloseTo(imageRect.right, 0);
+			expectPixelsNear(contentRect.left, imageRect.right);
 			expect(getComputedStyle(row).flexWrap).toBe('nowrap');
 			expect(primary.closest('[data-testid="gift-action-primary-group"]')).toBeTruthy();
 			expect(primary.closest('[data-testid="gift-action-secondary"]')).toBeNull();
@@ -518,14 +525,11 @@ describe('GiftListItem approved action geometry (issue #350)', () => {
 			expect(document.activeElement).toBe(primary);
 			primary.click();
 			expect(onunreserve).toHaveBeenCalledOnce();
-			expect(primary.getBoundingClientRect().top).toBeCloseTo(
-				more.getBoundingClientRect().top,
-				0,
-			);
+			expectPixelsNear(primary.getBoundingClientRect().top, more.getBoundingClientRect().top);
 			expectRaisedActionShadowInside(primary, item);
 			expectRaisedActionShadowInside(more, item);
-			expect(item.scrollWidth).toBeLessThanOrEqual(item.clientWidth);
-			expect(item.scrollHeight).toBeLessThanOrEqual(item.clientHeight);
+			expectPixelsAtMost(item.scrollWidth, item.clientWidth);
+			expectPixelsAtMost(item.scrollHeight, item.clientHeight);
 		} finally {
 			document.documentElement.style.fontSize = previousFontSize;
 			host.remove();
@@ -559,16 +563,16 @@ describe('GiftListItem approved action geometry (issue #350)', () => {
 		const row = host.querySelector('[data-testid="gift-action-row"]') as HTMLElement;
 		const imageRect = image.getBoundingClientRect();
 		expect(getComputedStyle(item).display).toBe('grid');
-		expect(imageRect.width).toBeCloseTo(item.clientWidth * 0.35, 0);
+		expectPixelsNear(imageRect.width, item.clientWidth * 0.35);
 		expect(imageRect.width).toBeLessThan(imageRect.height);
-		expect(content.getBoundingClientRect().left).toBeCloseTo(imageRect.right, 0);
+		expectPixelsNear(content.getBoundingClientRect().left, imageRect.right);
 		expect(host.querySelector('[data-testid="gift-more-actions"]')).toBeTruthy();
 		expect(getComputedStyle(row).flexWrap).toBe('nowrap');
 		const reserve = host.querySelector('[data-testid="reserve-button"]');
 		if (reserve === null) {
 			expect(row.dataset.overflowActions).toContain('reserve');
 		}
-		expect(item.scrollWidth).toBeLessThanOrEqual(item.clientWidth);
+		expectPixelsAtMost(item.scrollWidth, item.clientWidth);
 		host.remove();
 	});
 });

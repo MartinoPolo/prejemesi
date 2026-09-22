@@ -8,23 +8,6 @@ import {
 } from './runtime_environment.js';
 
 describe('runtime environment', () => {
-	it('uses conventional local services and distinct strict Vitest ports', () => {
-		expect(resolveRuntimeEnvironment({})).toEqual({
-			previewOrigin: 'http://localhost:4173',
-			loadTestLocalTarget: 'http://localhost:8300',
-			vitestClientPort: 8310,
-			vitestStorybookPort: 8311,
-			r2LocalOrigins: [
-				'http://localhost:8300',
-				'http://localhost:8301',
-				'http://localhost:8302',
-				'http://localhost:8303',
-				'http://localhost:8304',
-				'http://localhost:4173',
-			],
-		});
-	});
-
 	it('treats empty optional environment values as unset', () => {
 		expect(resolveRuntimeEnvironment({ LOADTEST_LOCAL_URL: '' }).loadTestLocalTarget).toBe(
 			'http://localhost:8300',

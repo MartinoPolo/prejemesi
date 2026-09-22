@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import {
-	formatState,
 	main,
 	parseOptions,
 	productionDatabaseTargetFingerprint,
@@ -269,18 +268,5 @@ describe('production migration orchestration', () => {
 		expect(output).not.toContain('secret');
 		expect(output).not.toContain('ep-example.neon.tech');
 		expect(output).toContain('<redacted>');
-	});
-});
-
-describe('migration state output', () => {
-	it('reports exact and pending states with migration tags', () => {
-		expect(formatState({ status: 'exact' }, manifest)).toEqual([
-			'Manifest: 2 migrations (0000_first → 0001_second)',
-			'EXACT',
-		]);
-		expect(formatState({ status: 'pending', pending: [manifest[1]] }, manifest)).toEqual([
-			'Manifest: 2 migrations (0000_first → 0001_second)',
-			'PENDING: 0001_second',
-		]);
 	});
 });

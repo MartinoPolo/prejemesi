@@ -2,7 +2,10 @@ import '../../../../app.css';
 import { createRawSnippet } from 'svelte';
 import { render } from 'vitest-browser-svelte';
 import { describe, expect, it } from 'vitest';
+import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
 import WishlistBadge from './WishlistBadge.svelte';
+
+const { expectPixelsAtLeast } = createPixelAssertions(expect);
 
 function textSnippet(text: 'Badge' | 'draft' | 'active' | 'archived') {
 	return createRawSnippet(() => ({ render: () => `<span>${text}</span>` }));
@@ -32,7 +35,7 @@ describe('WishlistBadge dashboard presentations', () => {
 			expect(style.fontWeight).toBe(weight);
 			expect(style.paddingInlineStart).toBe(padding);
 			expect(style.borderTopWidth).toBe('2px');
-			expect(Number.parseFloat(style.borderRadius)).toBeGreaterThanOrEqual(12);
+			expectPixelsAtLeast(Number.parseFloat(style.borderRadius), 12);
 			await screen.unmount();
 		},
 	);

@@ -2,6 +2,7 @@ import '../../../../app.css';
 import { render } from 'vitest-browser-svelte';
 import { page } from 'vitest/browser';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
 import type { ComponentProps } from 'svelte';
 import * as m from '$lib/paraglide/messages.js';
 import {
@@ -11,6 +12,8 @@ import {
 } from '$lib/modules/gifts/types.js';
 import { WISHLIST_ROLES } from '$lib/modules/wishlists/types.js';
 import WishlistDetailToolbar from './WishlistDetailToolbar.svelte';
+
+const { expectPixelsNear, expectPixelsAtLeast, expectPixelsAtMost } = createPixelAssertions(expect);
 
 const defaultFilters = {
 	availableOnly: false,
@@ -109,14 +112,14 @@ describe('WishlistDetailToolbar consolidated desktop display (#359)', () => {
 				const top = faceBox.top - box.top - parseFloat(style.borderTopWidth);
 				const bottom =
 					box.bottom - parseFloat(style.borderBottomWidth) - faceBox.bottom - shadow;
-				expect(top).toBeCloseTo(bottom, 1);
-				expect(top).toBeGreaterThanOrEqual(8);
+				expectPixelsNear(top, bottom);
+				expectPixelsAtLeast(top, 8);
 				const viewFaceBox = viewFace.getBoundingClientRect();
-				expect(viewFaceBox.top + viewFaceBox.height / 2).toBeCloseTo(
+				expectPixelsNear(
+					viewFaceBox.top + viewFaceBox.height / 2,
 					faceBox.top + faceBox.height / 2,
-					1,
 				);
-				expect(toolbar.getBoundingClientRect().height).toBeCloseTo(initialHeight, 1);
+				expectPixelsNear(toolbar.getBoundingClientRect().height, initialHeight);
 			}
 		},
 	);
@@ -301,7 +304,8 @@ describe('WishlistDetailToolbar consolidated desktop display (#359)', () => {
 		const done = screen.getByRole('button', { name: m.gift_reorder_done(), exact: true });
 		await expect.element(done).toBeVisible();
 		expect(done.element()).toHaveTextContent(m.gift_reorder_done());
-		expect((done.element() as HTMLElement).scrollWidth).toBeLessThanOrEqual(
+		expectPixelsAtMost(
+			(done.element() as HTMLElement).scrollWidth,
 			(done.element() as HTMLElement).clientWidth,
 		);
 		await done.click();
@@ -356,11 +360,13 @@ describe('WishlistDetailToolbar consolidated desktop display (#359)', () => {
 		await page.getByRole('menuitem', { name: m.gift_reorder_action(), exact: true }).click();
 		const done = screen.getByRole('button', { name: m.gift_reorder_done(), exact: true });
 		await expect.element(done).toHaveFocus();
-		expect({ x: window.scrollX, y: window.scrollY }).toEqual(initialScroll);
+		expectPixelsNear(window.scrollX, initialScroll.x);
+		expectPixelsNear(window.scrollY, initialScroll.y);
 
 		await done.click();
 		await expect.element(screen.getByTestId('desktop-more-trigger')).toHaveFocus();
-		expect({ x: window.scrollX, y: window.scrollY }).toEqual(initialScroll);
+		expectPixelsNear(window.scrollX, initialScroll.x);
+		expectPixelsNear(window.scrollY, initialScroll.y);
 		expect(onreordermodechange.mock.calls).toEqual([[true], [false]]);
 		await screen.unmount();
 	});

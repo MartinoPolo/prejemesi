@@ -7,6 +7,24 @@ import {
 	openDesktopDisplaySubmenu,
 	startGiftReorder,
 } from './fixtures/wishlist-helpers.js';
+import { createPixelAssertions } from '../helpers/pixel-assertions.mjs';
+
+const { expectPixelsNear } = createPixelAssertions(expect);
+
+type PixelRectangle = Pick<DOMRect, 'x' | 'y' | 'width' | 'height'>;
+
+function expectPixelRectangle(actual: PixelRectangle, expected: PixelRectangle) {
+	for (const key of ['x', 'y', 'width', 'height'] as const) {
+		expectPixelsNear(actual[key], expected[key]);
+	}
+}
+
+function expectPixelRectangles(actual: PixelRectangle[], expected: PixelRectangle[]) {
+	expect(actual).toHaveLength(expected.length);
+	for (const [index, rectangle] of actual.entries()) {
+		expectPixelRectangle(rectangle, expected[index]!);
+	}
+}
 
 const giftItems = (page: Page) =>
 	page.locator('[data-gift-item][data-gift-id]:not([data-gift-reorder-overlay])');
@@ -267,6 +285,19 @@ test.describe('issue #269 integrated motion strategy', () => {
 				};
 			});
 
+		const expectDesktopGeometry = (
+			actual: Awaited<ReturnType<typeof desktopGeometry>>,
+			expected: Awaited<ReturnType<typeof desktopGeometry>>,
+		) => {
+			expectPixelsNear(actual.toolbar.width, expected.toolbar.width);
+			expectPixelsNear(actual.toolbar.height, expected.toolbar.height);
+			expectPixelRectangle(actual.controls, expected.controls);
+			expectPixelRectangle(actual.view, expected.view);
+			expectPixelRectangle(actual.display, expected.display);
+			for (const key of ['right', 'y', 'height'] as const) {
+				expectPixelsNear(actual.actionsEdge[key], expected.actionsEdge[key]);
+			}
+		};
 		const desktopBefore = await desktopGeometry();
 		await startGiftReorder(page);
 		const desktopDone = page.getByRole('button', { name: 'Hotovo', exact: true });
@@ -274,7 +305,7 @@ test.describe('issue #269 integrated motion strategy', () => {
 		await expect(
 			page.locator('[role="status"]').filter({ hasText: 'Režim změny pořadí zapnut.' }),
 		).toHaveCount(1);
-		expect(await desktopGeometry()).toEqual(desktopBefore);
+		expectDesktopGeometry(await desktopGeometry(), desktopBefore);
 		for (const control of [
 			page.getByTestId('gift-view-card'),
 			page.getByTestId('gift-view-list'),
@@ -327,7 +358,7 @@ test.describe('issue #269 integrated motion strategy', () => {
 		await expect(
 			page.locator('[role="status"]').filter({ hasText: 'Režim změny pořadí zapnut.' }),
 		).toHaveCount(1);
-		expect(await mobileGeometry()).toEqual(browseGeometry);
+		expectPixelRectangles(await mobileGeometry(), browseGeometry);
 		expect(
 			await page.evaluate(
 				() => document.documentElement.scrollWidth <= document.documentElement.clientWidth,
@@ -338,7 +369,7 @@ test.describe('issue #269 integrated motion strategy', () => {
 		await expect(
 			page.locator('[role="status"]').filter({ hasText: 'Režim změny pořadí ukončen.' }),
 		).toHaveCount(1);
-		expect(await mobileGeometry()).toEqual(browseGeometry);
+		expectPixelRectangles(await mobileGeometry(), browseGeometry);
 		expect(errors).toEqual([]);
 		await page.context().close();
 	});
@@ -413,6 +444,35 @@ test.describe('issue #269 integrated motion strategy', () => {
 					},
 				};
 			});
+		const expectSwitcherPaintEqual = (
+			actual: Awaited<ReturnType<typeof switcherPaint>>,
+			expected: Awaited<ReturnType<typeof switcherPaint>>,
+		) => {
+			expectPixelRectangle(actual.root, expected.root);
+			expectPixelRectangles(actual.items, expected.items);
+			expectPixelRectangle(actual.selected, expected.selected);
+			expectPixelRectangle(actual.selectedSurface, expected.selectedSurface);
+			expectPixelRectangle(actual.selectedIcon, expected.selectedIcon);
+			expect(actual.itemSurfacePaint).toEqual(expected.itemSurfacePaint);
+			expect(actual.selectedValue).toBe(expected.selectedValue);
+			expectPixelsNear(actual.rootBorderWidth, expected.rootBorderWidth);
+			expect(actual.rootShadow).toBe(expected.rootShadow);
+			for (const key of ['left', 'right', 'width'] as const) {
+				expectPixelsNear(actual.backing[key], expected.backing[key]);
+			}
+			expect(actual.backing.shadow).toBe(expected.backing.shadow);
+			expectPixelsNear(
+				actual.selectedSurfaceStyle.borderWidth,
+				expected.selectedSurfaceStyle.borderWidth,
+			);
+			expect(actual.selectedSurfaceStyle.boxShadow).toBe(
+				expected.selectedSurfaceStyle.boxShadow,
+			);
+			expect(actual.selectedSurfaceStyle.translate).toBe(
+				expected.selectedSurfaceStyle.translate,
+			);
+			expect(actual.selectedSurfaceStyle.scale).toBe(expected.selectedSurfaceStyle.scale);
+		};
 		const switcherButtonParity = (neighborTestId: string) =>
 			switcher.evaluate((root, testId) => {
 				const selectedSurface = root
@@ -505,60 +565,61 @@ test.describe('issue #269 integrated motion strategy', () => {
 
 		await card.click();
 		const desktopCard = await switcherPaint();
-		expect(desktopCard.root.width).toBe(67);
-		expect(desktopCard.root.height).toBe(32);
-		expect(desktopCard.items.map(({ width, height }) => [width, height])).toEqual([
-			[32, 32],
-			[32, 32],
-		]);
-		expect(desktopCard.selectedSurface.width).toBe(32);
-		expect(desktopCard.selectedSurface.height).toBe(32);
-		expect(desktopCard.selectedIcon.width).toBe(16);
-		expect(desktopCard.selectedIcon.height).toBe(16);
-		expect(desktopCard.selectedIcon.x + desktopCard.selectedIcon.width / 2).toBeCloseTo(
+		expectPixelsNear(desktopCard.root.width, 67);
+		expectPixelsNear(desktopCard.root.height, 32);
+		expect(desktopCard.items).toHaveLength(2);
+		for (const item of desktopCard.items) {
+			expectPixelsNear(item.width, 32);
+			expectPixelsNear(item.height, 32);
+		}
+		expectPixelsNear(desktopCard.selectedSurface.width, 32);
+		expectPixelsNear(desktopCard.selectedSurface.height, 32);
+		expectPixelsNear(desktopCard.selectedIcon.width, 16);
+		expectPixelsNear(desktopCard.selectedIcon.height, 16);
+		expectPixelsNear(
+			desktopCard.selectedIcon.x + desktopCard.selectedIcon.width / 2,
 			desktopCard.selected.x + desktopCard.selected.width / 2,
-			1,
 		);
-		expect(desktopCard.selectedIcon.y + desktopCard.selectedIcon.height / 2).toBeCloseTo(
+		expectPixelsNear(
+			desktopCard.selectedIcon.y + desktopCard.selectedIcon.height / 2,
 			desktopCard.selected.y + desktopCard.selected.height / 2,
-			1,
 		);
-		expect(desktopCard.backing.width).toBe(66);
-		expect(desktopCard.backing.left).toBe(1);
-		expect(desktopCard.backing.right).toBe(0);
-		expect(desktopCard.rootBorderWidth).toBe(0);
+		expectPixelsNear(desktopCard.backing.width, 66);
+		expectPixelsNear(desktopCard.backing.left, 1);
+		expectPixelsNear(desktopCard.backing.right, 0);
+		expectPixelsNear(desktopCard.rootBorderWidth, 0);
 		expect(desktopCard.selectedSurfaceStyle.boxShadow).toBe('none');
 		await expect(page.getByTestId('desktop-more-trigger')).toBeVisible();
 		await expectSwitcherMatchesNeighborButton('desktop-more-trigger');
 		const desktopDisplayBounds = await page
 			.getByTestId('desktop-display-trigger')
 			.evaluate((element) => element.getBoundingClientRect().toJSON());
-		expect(desktopDisplayBounds.x - desktopCard.root.x - desktopCard.root.width).toBe(12);
+		expectPixelsNear(desktopDisplayBounds.x - desktopCard.root.x - desktopCard.root.width, 12);
 
 		await list.click();
 		const desktopList = await switcherPaint();
 		expect(desktopList.selectedValue).toBe('list');
-		expect(desktopList.root).toEqual(desktopCard.root);
-		expect(desktopList.items).toEqual(desktopCard.items);
-		expect(desktopList.backing.width).toBe(66);
-		expect(desktopList.backing.left).toBe(0);
-		expect(desktopList.backing.right).toBe(1);
+		expectPixelRectangle(desktopList.root, desktopCard.root);
+		expectPixelRectangles(desktopList.items, desktopCard.items);
+		expectPixelsNear(desktopList.backing.width, 66);
+		expectPixelsNear(desktopList.backing.left, 0);
+		expectPixelsNear(desktopList.backing.right, 1);
 
 		const stationaryBefore = await switcherPaint();
 		expect(stationaryBefore.selectedValue).toBe('list');
 		await card.hover();
-		expect(await switcherPaint()).toEqual(stationaryBefore);
+		expectSwitcherPaintEqual(await switcherPaint(), stationaryBefore);
 		await page.mouse.down();
-		expect(await switcherPaint()).toEqual(stationaryBefore);
+		expectSwitcherPaintEqual(await switcherPaint(), stationaryBefore);
 		await page.mouse.up();
 
 		await page.emulateMedia({ reducedMotion: 'reduce' });
 		await page.mouse.move(0, 0);
 		const reducedMotionBefore = await switcherPaint();
 		await list.hover();
-		expect(await switcherPaint()).toEqual(reducedMotionBefore);
+		expectSwitcherPaintEqual(await switcherPaint(), reducedMotionBefore);
 		await page.mouse.down();
-		expect(await switcherPaint()).toEqual(reducedMotionBefore);
+		expectSwitcherPaintEqual(await switcherPaint(), reducedMotionBefore);
 		await page.mouse.up();
 
 		await page.setViewportSize({ width: 390, height: 844 });
@@ -566,26 +627,28 @@ test.describe('issue #269 integrated motion strategy', () => {
 		await expect(page.getByTestId('mobile-display-trigger')).toBeVisible();
 		await expectSwitcherMatchesNeighborButton('mobile-display-trigger');
 		const mobileList = await switcherPaint();
-		expect(mobileList.root.width).toBe(79);
-		expect(mobileList.root.height).toBe(40);
-		expect(mobileList.items.map(({ width, height }) => [width, height])).toEqual([
-			[38, 38],
-			[38, 38],
-		]);
-		expect(mobileList.selectedSurface.width).toBe(40);
-		expect(mobileList.selectedSurface.height).toBe(40);
-		expect(mobileList.selectedSurface.x + mobileList.selectedSurface.width).toBe(
+		expectPixelsNear(mobileList.root.width, 79);
+		expectPixelsNear(mobileList.root.height, 40);
+		expect(mobileList.items).toHaveLength(2);
+		for (const item of mobileList.items) {
+			expectPixelsNear(item.width, 38);
+			expectPixelsNear(item.height, 38);
+		}
+		expectPixelsNear(mobileList.selectedSurface.width, 40);
+		expectPixelsNear(mobileList.selectedSurface.height, 40);
+		expectPixelsNear(
+			mobileList.selectedSurface.x + mobileList.selectedSurface.width,
 			mobileList.root.x + mobileList.root.width,
 		);
 		const mobileDisplayBounds = await page
 			.getByTestId('mobile-display-trigger')
 			.evaluate((element) => element.getBoundingClientRect().toJSON());
-		expect(mobileDisplayBounds.x - mobileList.root.x - mobileList.root.width).toBe(11);
+		expectPixelsNear(mobileDisplayBounds.x - mobileList.root.x - mobileList.root.width, 11);
 		await card.click();
 		const mobileCard = await switcherPaint();
-		expect(mobileCard.selectedSurface.x).toBe(mobileCard.root.x);
-		expect(mobileCard.root).toEqual(mobileList.root);
-		expect(mobileCard.items).toEqual(mobileList.items);
+		expectPixelsNear(mobileCard.selectedSurface.x, mobileCard.root.x);
+		expectPixelRectangle(mobileCard.root, mobileList.root);
+		expectPixelRectangles(mobileCard.items, mobileList.items);
 		expect(errors).toEqual([]);
 		await page.context().close();
 	});

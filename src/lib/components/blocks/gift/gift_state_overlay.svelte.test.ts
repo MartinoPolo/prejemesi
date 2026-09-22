@@ -1,10 +1,13 @@
 import '../../../../app.css';
 import { render } from 'vitest-browser-svelte';
 import { describe, expect, it } from 'vitest';
+import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
 import { overwriteGetLocale } from '$lib/paraglide/runtime.js';
 import { PALETTES } from '$lib/theme/palettes.js';
 
 const { default: GiftStateOverlay } = await import('./GiftStateOverlay.svelte');
+
+const { expectPixelsNear, expectPixelsAtLeast, expectPixelsAtMost } = createPixelAssertions(expect);
 
 type Rgb = readonly [red: number, green: number, blue: number];
 
@@ -154,20 +157,14 @@ describe('GiftStateOverlay', () => {
 				const stackBottom = Math.max(...pillRects.map((rect) => rect.bottom));
 
 				expect(pills.length).toBeLessThanOrEqual(2);
-				expect((stackLeft + stackRight) / 2).toBeCloseTo(
-					hostRect.left + hostRect.width / 2,
-					1,
-				);
-				expect((stackTop + stackBottom) / 2).toBeCloseTo(
-					hostRect.top + hostRect.height / 2,
-					0,
-				);
+				expectPixelsNear((stackLeft + stackRight) / 2, hostRect.left + hostRect.width / 2);
+				expectPixelsNear((stackTop + stackBottom) / 2, hostRect.top + hostRect.height / 2);
 				for (const [index, pill] of pills.entries()) {
 					const pillRect = pillRects[index]!;
-					expect(pillRect.left).toBeGreaterThanOrEqual(hostRect.left - 0.5);
-					expect(pillRect.right).toBeLessThanOrEqual(hostRect.right + 0.5);
-					expect(pillRect.top).toBeGreaterThanOrEqual(hostRect.top - 0.5);
-					expect(pillRect.bottom).toBeLessThanOrEqual(hostRect.bottom + 0.5);
+					expectPixelsAtLeast(pillRect.left, hostRect.left);
+					expectPixelsAtMost(pillRect.right, hostRect.right);
+					expectPixelsAtLeast(pillRect.top, hostRect.top);
+					expectPixelsAtMost(pillRect.bottom, hostRect.bottom);
 					const colors = computedBadgeColors(pill);
 					if (index === 0 && background !== null) {
 						expect(colors.background).toEqual(background);
@@ -197,8 +194,8 @@ describe('GiftStateOverlay', () => {
 			expect(badge.className).toContain('bg-primary');
 			expect(badge.className).toContain('text-primary-foreground');
 			expect(badge.className).not.toContain('footer-bg');
-			expect(Number.parseFloat(style.paddingLeft)).toBeGreaterThanOrEqual(8);
-			expect(Number.parseFloat(style.paddingTop)).toBeGreaterThanOrEqual(4);
+			expectPixelsAtLeast(Number.parseFloat(style.paddingLeft), 8);
+			expectPixelsAtLeast(Number.parseFloat(style.paddingTop), 4);
 			expect(badge.getBoundingClientRect().width).toBeLessThan(
 				host.getBoundingClientRect().width / 2,
 			);

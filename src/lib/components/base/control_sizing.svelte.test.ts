@@ -1,9 +1,11 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
 import { render } from 'vitest-browser-svelte';
+import { createPixelAssertions } from '../../../../tests/helpers/pixel-assertions.mjs';
 import ControlSizingTestFixture from './control-sizing_test_fixture.svelte';
 import { Checkbox } from './checkbox/index.js';
 
+const { expectPixelsNear } = createPixelAssertions(expect);
 const expectedSizes = { sm: 26, md: 32, lg: 40, xl: 48 } as const;
 
 function height(element: Element): number {
@@ -55,8 +57,10 @@ describe('shared rendered control sizing', () => {
 				namedControl(`Switcher ${size}`),
 			];
 			for (const control of controls) {
-				expect(height(control), `${size} ${control.getAttribute('aria-label')}`).toBe(
+				expectPixelsNear(
+					height(control),
 					expectedHeight,
+					`${size} ${control.getAttribute('aria-label')}`,
 				);
 			}
 		}
@@ -76,18 +80,18 @@ describe('shared rendered control sizing', () => {
 		];
 		await page.viewport(390, 720);
 		for (const control of controls) {
-			expect(height(control), 'mobile responsive control').toBe(40);
+			expectPixelsNear(height(control), 40, 'mobile responsive control');
 		}
 		await page.viewport(1280, 720);
 		for (const control of controls) {
-			expect(height(control), 'desktop responsive control').toBe(32);
+			expectPixelsNear(height(control), 32, 'desktop responsive control');
 		}
 	});
 
 	it('applies each root size to the group height and inherited input typography', () => {
 		render(ControlSizingTestFixture);
 		for (const [size, expectedHeight] of Object.entries(expectedSizes)) {
-			expect(height(namedControl(`Input group ${size}`))).toBe(expectedHeight);
+			expectPixelsNear(height(namedControl(`Input group ${size}`)), expectedHeight);
 			const groupedInput = namedControl(`Inherited input group control ${size}`);
 			const standaloneInput = namedControl(`Standalone input group peer ${size}`);
 			expectMatchingInputTypographyAndPadding(groupedInput, standaloneInput);
@@ -104,7 +108,7 @@ describe('shared rendered control sizing', () => {
 			[1280, 32],
 		] as const) {
 			await page.viewport(viewportWidth, 720);
-			expect(height(namedControl('Responsive input group'))).toBe(expectedHeight);
+			expectPixelsNear(height(namedControl('Responsive input group')), expectedHeight);
 			expectMatchingInputTypographyAndPadding(
 				namedControl('Responsive inherited input group control'),
 				namedControl('Standalone responsive input group peer'),
@@ -114,7 +118,7 @@ describe('shared rendered control sizing', () => {
 
 	it('gives an explicit child input size precedence over its group size', () => {
 		render(ControlSizingTestFixture);
-		expect(height(namedControl('Override input group'))).toBe(expectedSizes.xl);
+		expectPixelsNear(height(namedControl('Override input group')), expectedSizes.xl);
 		expectMatchingInputTypographyAndPadding(
 			namedControl('Overridden input group control'),
 			namedControl('Standalone overridden input group peer'),
@@ -125,7 +129,7 @@ describe('shared rendered control sizing', () => {
 		render(ControlSizingTestFixture);
 		const group = namedControl('Dynamic input group');
 		const control = namedControl('Dynamic inherited input group control');
-		expect(height(group)).toBe(expectedSizes.sm);
+		expectPixelsNear(height(group), expectedSizes.sm);
 		expectMatchingInputTypographyAndPadding(
 			control,
 			namedControl('Standalone dynamic input group peer'),
@@ -133,7 +137,7 @@ describe('shared rendered control sizing', () => {
 
 		await userEvent.click(page.getByRole('button', { name: 'Change input group size' }));
 
-		expect(height(group)).toBe(expectedSizes.xl);
+		expectPixelsNear(height(group), expectedSizes.xl);
 		expectMatchingInputTypographyAndPadding(
 			control,
 			namedControl('Standalone dynamic input group peer'),
@@ -145,7 +149,7 @@ describe('shared rendered control sizing', () => {
 		for (const viewportWidth of [390, 1280]) {
 			await page.viewport(viewportWidth, 720);
 			for (const [size, expectedHeight] of Object.entries(expectedSizes)) {
-				expect(height(namedControl(`Button ${size}`))).toBe(expectedHeight);
+				expectPixelsNear(height(namedControl(`Button ${size}`)), expectedHeight);
 			}
 		}
 	});
@@ -162,8 +166,8 @@ describe('shared rendered control sizing', () => {
 				`Switcher item ${size}`,
 			]) {
 				const icon = iconIn(name);
-				expect(height(icon), name).toBe(expectedIconSize);
-				expect(width(icon), name).toBe(expectedIconSize);
+				expectPixelsNear(height(icon), expectedIconSize, name);
+				expectPixelsNear(width(icon), expectedIconSize, name);
 			}
 		}
 	});
@@ -180,8 +184,8 @@ describe('shared rendered control sizing', () => {
 			'[data-testid="nonsemantic-checkbox-owner"]',
 		)!;
 		const surface = owner.querySelector<HTMLElement>('[data-slot="checkbox-surface"]')!;
-		expect(height(owner)).toBe(32);
-		expect(height(surface)).toBe(32);
+		expectPixelsNear(height(owner), 32);
+		expectPixelsNear(height(surface), 32);
 		expect(surface.getAttribute('role')).toBeNull();
 		expect(surface.getAttribute('aria-hidden')).toBe('true');
 		expect(getComputedStyle(surface).borderRadius).toBe(getComputedStyle(owner).borderRadius);
@@ -197,7 +201,7 @@ describe('shared rendered control sizing', () => {
 		const invalidBorder = getComputedStyle(surface).borderColor;
 		owner.removeAttribute('aria-invalid');
 		expect(invalidBorder).not.toBe(getComputedStyle(surface).borderColor);
-		expect(height(owner)).toBe(32);
+		expectPixelsNear(height(owner), 32);
 	});
 
 	it('preserves checkbox keyboard, mixed, disabled, and focus states', async () => {

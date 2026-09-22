@@ -6,6 +6,7 @@ import '../../../../app.css';
 import { render } from 'vitest-browser-svelte';
 import { page, userEvent } from 'vitest/browser';
 import { describe, expect, it, vi } from 'vitest';
+import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
 import * as m from '$lib/paraglide/messages.js';
 import type { GiftByRole } from '$lib/modules/gifts/types.js';
 import { IMAGE_FIT_MODES } from '$lib/modules/images/index.js';
@@ -17,6 +18,8 @@ import { IMAGE_FIT_MODES } from '$lib/modules/images/index.js';
 vi.mock('$env/dynamic/public', () => ({ env: { PUBLIC_R2_URL: '/' } }));
 
 const { default: GiftDetailForm } = await import('./GiftDetailForm.svelte');
+
+const { expectPixelsNear } = createPixelAssertions(expect);
 
 /** Minimal GiftForRecipient fixture (a GiftByRole member) for edit-mode rendering. */
 function makeGift(overrides: Partial<GiftByRole> = {}): GiftByRole {
@@ -368,9 +371,9 @@ describe('GiftDetailForm dense control alignment (issue #159)', () => {
 		const [firstFieldRect, secondFieldRect] = fields
 			.slice(0, 2)
 			.map((field) => field.getBoundingClientRect());
-		expect(firstFieldRect.top).toBe(secondFieldRect.top);
+		expectPixelsNear(firstFieldRect.top, secondFieldRect.top);
 		expect(firstFieldRect.left).not.toBe(secondFieldRect.left);
-		expect(firstFieldRect.width).toBe(secondFieldRect.width);
+		expectPixelsNear(firstFieldRect.width, secondFieldRect.width);
 		expect(firstFieldRect.left).toBeLessThan(secondFieldRect.left);
 		expect(secondFieldRect.left - firstFieldRect.right).toBeGreaterThan(0);
 
@@ -380,9 +383,9 @@ describe('GiftDetailForm dense control alignment (issue #159)', () => {
 		expect(secondControl).not.toBeNull();
 		const firstControlRect = firstControl!.getBoundingClientRect();
 		const secondControlRect = secondControl!.getBoundingClientRect();
-		expect(firstControlRect.height).toBe(40);
-		expect(secondControlRect.height).toBe(32);
-		expect(firstControlRect.top).toBe(secondControlRect.top);
+		expectPixelsNear(firstControlRect.height, 40);
+		expectPixelsNear(secondControlRect.height, 32);
+		expectPixelsNear(firstControlRect.top, secondControlRect.top);
 		expect(firstControlRect.bottom).toBeGreaterThan(secondControlRect.bottom);
 
 		const labelRows = fields.map((field) =>
@@ -392,13 +395,13 @@ describe('GiftDetailForm dense control alignment (issue #159)', () => {
 		const [firstLabelRowRect, secondLabelRowRect] = labelRows.map((labelRow) =>
 			labelRow!.getBoundingClientRect(),
 		);
-		expect(firstLabelRowRect.top).toBe(secondLabelRowRect.top);
+		expectPixelsNear(firstLabelRowRect.top, secondLabelRowRect.top);
 
 		const [firstLabelRect, secondLabelRect] = labelRows.map((labelRow) =>
 			labelRow!.querySelector('label')!.getBoundingClientRect(),
 		);
-		expect(firstLabelRect.top).toBe(secondLabelRect.top);
-		expect(firstLabelRect.bottom).toBe(secondLabelRect.bottom);
+		expectPixelsNear(firstLabelRect.top, secondLabelRect.top);
+		expectPixelsNear(firstLabelRect.bottom, secondLabelRect.bottom);
 	}
 
 	it('aligns paired label rows while preserving responsive and explicit mobile control sizes', async () => {

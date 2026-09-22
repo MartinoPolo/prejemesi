@@ -7,7 +7,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import * as m from '$lib/paraglide/messages.js';
 import type { GiftForVisitor } from '$lib/modules/gifts/types.js';
 import { IMAGE_FIT_MODES, type ImageMetadata } from '$lib/modules/images/index.js';
+import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
 
+const { expectPixelsNear, expectPixelsAtMost } = createPixelAssertions(expect);
 vi.mock('$env/dynamic/public', () => ({ env: {} }));
 
 const { default: ReserveModal } = await import('./ReserveModal.svelte');
@@ -79,8 +81,8 @@ describe('ReserveModal contains an unbreakable gift name (issue #210)', () => {
 			.element() as HTMLButtonElement;
 
 		await page.viewport(390, 720);
-		expect(Number.parseFloat(getComputedStyle(decrease).height)).toBe(40);
-		expect(Number.parseFloat(getComputedStyle(increase).height)).toBe(40);
+		expectPixelsNear(Number.parseFloat(getComputedStyle(decrease).height), 40);
+		expectPixelsNear(Number.parseFloat(getComputedStyle(increase).height), 40);
 		expect(decrease.disabled).toBe(true);
 
 		await increase.click();
@@ -89,8 +91,8 @@ describe('ReserveModal contains an unbreakable gift name (issue #210)', () => {
 		expect(document.body.textContent).toContain('3');
 
 		await page.viewport(1280, 720);
-		expect(Number.parseFloat(getComputedStyle(decrease).height)).toBe(32);
-		expect(Number.parseFloat(getComputedStyle(increase).height)).toBe(32);
+		expectPixelsNear(Number.parseFloat(getComputedStyle(decrease).height), 32);
+		expectPixelsNear(Number.parseFloat(getComputedStyle(increase).height), 32);
 	});
 	it('paints the reservation thumbnail frame with explicit black', async () => {
 		await render(ReserveModal, {
@@ -145,7 +147,7 @@ describe('ReserveModal contains an unbreakable gift name (issue #210)', () => {
 		// fix on `body`, the unbreakable name's min-content width dragged it (and
 		// visibly, unclipped, past the dialog's edge since Dialog.Content has no
 		// `overflow-hidden`) well past `contentRect.right`.
-		expect(nameRect.right).toBeLessThanOrEqual(contentRect.right + 0.5);
+		expectPixelsAtMost(nameRect.right, contentRect.right);
 	});
 
 	it('clamps the gift name to two lines instead of a nowrap ellipsis truncation', async () => {

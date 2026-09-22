@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { page } from 'vitest/browser';
+import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
 import type { GiftForVisitor } from '$lib/modules/gifts/types.js';
 import { WISHLIST_ROLES } from '$lib/modules/wishlists/types.js';
 import {
@@ -7,9 +8,11 @@ import {
 	cleanupCardHosts,
 	fixedHosts,
 	makeVisitorGift,
-	rectanglesIntersect,
+	expectRectanglesSeparated,
 } from './gift_card.test_fixtures.js';
 import { render } from 'vitest-browser-svelte';
+
+const { expectPixelsNear, expectPixelsAtLeast, expectPixelsAtMost } = createPixelAssertions(expect);
 
 afterEach(cleanupCardHosts);
 
@@ -52,18 +55,15 @@ describe('GiftCard unified state presentation (issues #328 and #330)', () => {
 			const likeRect = like.getBoundingClientRect();
 			const imageRect = image.getBoundingClientRect();
 			const footerRect = footer.getBoundingClientRect();
-			const intersectionArea = (a: DOMRect, b: DOMRect) =>
-				Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left)) *
-				Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top));
 
-			expect(likeRect.left).toBeGreaterThanOrEqual(imageRect.left);
-			expect(likeRect.right).toBeLessThanOrEqual(imageRect.right);
-			expect(likeRect.top).toBeGreaterThanOrEqual(imageRect.top);
-			expect(likeRect.bottom).toBeLessThanOrEqual(imageRect.bottom);
-			expect(intersectionArea(likeRect, footerRect)).toBe(0);
+			expectPixelsAtLeast(likeRect.left, imageRect.left);
+			expectPixelsAtMost(likeRect.right, imageRect.right);
+			expectPixelsAtLeast(likeRect.top, imageRect.top);
+			expectPixelsAtMost(likeRect.bottom, imageRect.bottom);
+			expectRectanglesSeparated(likeRect, footerRect);
 			for (const action of footer.querySelectorAll<HTMLButtonElement>('button')) {
 				if (action !== like) {
-					expect(intersectionArea(likeRect, action.getBoundingClientRect())).toBe(0);
+					expectRectanglesSeparated(likeRect, action.getBoundingClientRect());
 				}
 			}
 		},
@@ -107,10 +107,11 @@ describe('GiftCard unified state presentation (issues #328 and #330)', () => {
 				const pillRect = pill.getBoundingClientRect();
 				for (const likePart of likeParts) {
 					const likePartRect = likePart.getBoundingClientRect();
-					expect(
-						rectanglesIntersect(likePartRect, pillRect),
+					expectRectanglesSeparated(
+						likePartRect,
+						pillRect,
 						`state ${index}; like ${JSON.stringify(likePartRect.toJSON())}; pill ${JSON.stringify(pillRect.toJSON())}`,
-					).toBe(false);
+					);
 				}
 			}
 		}
@@ -138,9 +139,9 @@ describe('GiftCard unified state presentation (issues #328 and #330)', () => {
 			{ baseElement: host },
 		);
 
-		const imageRect = host
-			.querySelector<HTMLElement>('[data-testid="gift-card-image-frame"]')!
-			.getBoundingClientRect();
+		const image = host.querySelector<HTMLElement>('[data-testid="gift-card-image-frame"]')!;
+		const imageRect = image.getBoundingClientRect();
+		const imageStyle = getComputedStyle(image);
 		const pillRects = Array.from(
 			host.querySelectorAll<HTMLElement>('[data-testid="gift-state-overlay"] > span'),
 		).map((pill) => pill.getBoundingClientRect());
@@ -155,11 +156,22 @@ describe('GiftCard unified state presentation (issues #328 and #330)', () => {
 				2,
 		};
 
-		expect(
-			Math.abs(stackCenter.x - (imageRect.left + imageRect.width / 2)),
-		).toBeLessThanOrEqual(1.5);
-		expect(
-			Math.abs(stackCenter.y - (imageRect.top + imageRect.height / 2)),
-		).toBeLessThanOrEqual(1.5);
+		// The image's painted border is outside the overlay's centering area.
+		expectPixelsNear(
+			stackCenter.x,
+			imageRect.left +
+				(imageRect.width +
+					parseFloat(imageStyle.borderLeftWidth) -
+					parseFloat(imageStyle.borderRightWidth)) /
+					2,
+		);
+		expectPixelsNear(
+			stackCenter.y,
+			imageRect.top +
+				(imageRect.height +
+					parseFloat(imageStyle.borderTopWidth) -
+					parseFloat(imageStyle.borderBottomWidth)) /
+					2,
+		);
 	});
 });

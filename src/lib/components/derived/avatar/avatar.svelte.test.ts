@@ -1,8 +1,10 @@
 import '../../../../app.css';
 import { render } from 'vitest-browser-svelte';
 import { describe, expect, it, vi } from 'vitest';
+import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
 import Avatar from './Avatar.svelte';
 
+const { expectPixelsNear, expectPixelsAtLeast } = createPixelAssertions(expect);
 vi.mock('$env/dynamic/public', () => ({ env: {} }));
 
 const IMAGE =
@@ -12,8 +14,8 @@ const IMAGE =
 function expectCircularGeometry(element: HTMLElement): void {
 	const rect = element.getBoundingClientRect();
 	const radius = Number.parseFloat(getComputedStyle(element).borderRadius);
-	expect(rect.width).toBeCloseTo(rect.height, 1);
-	expect(radius).toBeGreaterThanOrEqual(rect.width / 2 - 0.5);
+	expectPixelsNear(rect.width, rect.height);
+	expectPixelsAtLeast(radius, rect.width / 2);
 }
 
 function expectConcentric(outer: HTMLElement, inner: HTMLElement): void {
@@ -21,14 +23,8 @@ function expectConcentric(outer: HTMLElement, inner: HTMLElement): void {
 	const innerRect = inner.getBoundingClientRect();
 	expectCircularGeometry(outer);
 	expectCircularGeometry(inner);
-	expect(innerRect.left + innerRect.width / 2).toBeCloseTo(
-		outerRect.left + outerRect.width / 2,
-		1,
-	);
-	expect(innerRect.top + innerRect.height / 2).toBeCloseTo(
-		outerRect.top + outerRect.height / 2,
-		1,
-	);
+	expectPixelsNear(innerRect.left + innerRect.width / 2, outerRect.left + outerRect.width / 2);
+	expectPixelsNear(innerRect.top + innerRect.height / 2, outerRect.top + outerRect.height / 2);
 }
 
 function hasVisibleShadow(element: HTMLElement): boolean {
@@ -49,8 +45,8 @@ describe('Avatar variants', () => {
 		const fallback = root.firstElementChild as HTMLElement;
 		const rootRect = root.getBoundingClientRect();
 
-		expect(rootRect.width).toBe(32);
-		expect(rootRect.height).toBe(32);
+		expectPixelsNear(rootRect.width, 32);
+		expectPixelsNear(rootRect.height, 32);
 		expect(getComputedStyle(root).borderRadius).not.toBe('50%');
 		expect(fallback).toHaveAttribute('aria-hidden', 'true');
 		expect(fallback).toHaveTextContent('AB');
@@ -73,8 +69,9 @@ describe('Avatar variants', () => {
 		const renderedChild = root.querySelector(child) as HTMLElement;
 
 		const rootStyle = getComputedStyle(root);
-		expect(root.getBoundingClientRect().width).toBe(24);
-		expect(root.getBoundingClientRect().height).toBe(24);
+		const rootRect = root.getBoundingClientRect();
+		expectPixelsNear(rootRect.width, 24);
+		expectPixelsNear(rootRect.height, 24);
 		expect(Number.parseFloat(rootStyle.borderTopWidth)).toBeGreaterThan(0);
 		expectConcentric(root, renderedChild);
 		await screen.unmount();
@@ -96,9 +93,9 @@ describe('Avatar variants', () => {
 			const renderedChild = root.querySelector(child) as HTMLElement;
 			const rootStyle = getComputedStyle(root);
 
-			expect(root.getBoundingClientRect().width).toBe(24);
+			expectPixelsNear(root.getBoundingClientRect().width, 24);
 			expect(rootStyle.borderTopWidth).toBe('2px');
-			expect(Number.parseFloat(rootStyle.borderRadius)).toBeGreaterThanOrEqual(12);
+			expectPixelsAtLeast(Number.parseFloat(rootStyle.borderRadius), 12);
 			expect(hasVisibleShadow(root)).toBe(false);
 			expect(getComputedStyle(renderedChild).borderRadius).toBe('10px');
 			if (src === null) {

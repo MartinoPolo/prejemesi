@@ -2,6 +2,9 @@ import { expect, test, type Locator, type Page } from '@playwright/test';
 import { createTestUser } from './fixtures/test-data.js';
 import { registerAndGetPage } from './fixtures/auth-helpers.js';
 import { createWishlistAndNavigate } from './fixtures/wishlist-helpers.js';
+import { createPixelAssertions } from '../helpers/pixel-assertions.mjs';
+
+const { expectPixelsAtLeast, expectPixelsAtMost, expectPixelsNear } = createPixelAssertions(expect);
 
 const VIEWPORTS = [
 	{ width: 320, height: 900 },
@@ -50,8 +53,8 @@ test('header brand and account align with the shared app-shell content edges', a
 			page.getByRole('banner').getByRole('button', { name: accountName }),
 		);
 
-		expect(logo.left, `${viewport.width}px brand edge`).toBeCloseTo(edges.left, 0);
-		expect(account.right, `${viewport.width}px account edge`).toBeCloseTo(edges.right, 0);
+		expectPixelsNear(logo.left, edges.left, `${viewport.width}px brand edge`);
+		expectPixelsNear(account.right, edges.right, `${viewport.width}px account edge`);
 	}
 
 	await page.context().close();
@@ -74,11 +77,8 @@ test('wishlist shell uses the same content edges as the header', async ({
 			page.getByRole('banner').getByRole('button', { name: accountName }),
 		);
 
-		expect(shell.left, `${viewport.width}px wishlist left edge`).toBeCloseTo(logo.left, 0);
-		expect(shell.right, `${viewport.width}px wishlist right edge`).toBeCloseTo(
-			account.right,
-			0,
-		);
+		expectPixelsNear(shell.left, logo.left, `${viewport.width}px wishlist left edge`);
+		expectPixelsNear(shell.right, account.right, `${viewport.width}px wishlist right edge`);
 	}
 
 	await page.context().close();
@@ -101,11 +101,11 @@ test('notification and account triggers use responsive shared sizing with an 8px
 		const account = await box(header.getByRole('button', { name: accountName }));
 		const expectedSize = viewport.width < 640 ? 40 : 32;
 
-		expect(notification.width).toBe(expectedSize);
-		expect(notification.height).toBe(expectedSize);
-		expect(account.width).toBe(expectedSize);
-		expect(account.height).toBe(expectedSize);
-		expect(account.left - notification.right).toBeCloseTo(8, 0);
+		expectPixelsNear(notification.width, expectedSize);
+		expectPixelsNear(notification.height, expectedSize);
+		expectPixelsNear(account.width, expectedSize);
+		expectPixelsNear(account.height, expectedSize);
+		expectPixelsNear(account.left - notification.right, 8);
 	}
 
 	await page.context().close();
@@ -136,8 +136,8 @@ test('authenticated header keeps all controls visible, keyboard reachable, and i
 	for (const control of expectedControls) {
 		await expect(control).toBeVisible();
 		const controlBox = await box(control);
-		expect(controlBox.left).toBeGreaterThanOrEqual(0);
-		expect(controlBox.right).toBeLessThanOrEqual(viewport.width);
+		expectPixelsAtLeast(controlBox.left, 0);
+		expectPixelsAtMost(controlBox.right, viewport.width);
 	}
 	expect(
 		await visibleHeaderControls.count(),

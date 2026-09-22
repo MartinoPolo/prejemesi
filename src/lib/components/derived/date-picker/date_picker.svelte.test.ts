@@ -2,7 +2,9 @@ import '../../../../app.css';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { page } from 'vitest/browser';
 import { render } from 'vitest-browser-svelte';
+import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
 
+const { expectPixelsNear } = createPixelAssertions(expect);
 vi.mock('$env/dynamic/public', () => ({ env: {} }));
 
 const { default: DatePicker } = await import('./DatePicker.svelte');
@@ -24,11 +26,11 @@ describe('DatePicker control sizing', () => {
 		const largeTrigger = largeScreen.getByRole('button', { name: 'Large date' }).element();
 
 		await page.viewport(390, 720);
-		expect(responsiveTrigger.getBoundingClientRect().height).toBe(40);
-		expect(largeTrigger.getBoundingClientRect().height).toBe(40);
+		expectPixelsNear(responsiveTrigger.getBoundingClientRect().height, 40);
+		expectPixelsNear(largeTrigger.getBoundingClientRect().height, 40);
 
 		await page.viewport(1280, 720);
-		expect(responsiveTrigger.getBoundingClientRect().height).toBe(32);
-		expect(largeTrigger.getBoundingClientRect().height).toBe(40);
+		expectPixelsNear(responsiveTrigger.getBoundingClientRect().height, 32);
+		expectPixelsNear(largeTrigger.getBoundingClientRect().height, 40);
 	});
 });

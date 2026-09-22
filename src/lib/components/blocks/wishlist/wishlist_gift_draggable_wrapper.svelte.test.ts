@@ -1,9 +1,12 @@
 import '../../../../app.css';
 import { render } from 'vitest-browser-svelte';
 import { describe, expect, it, vi } from 'vitest';
+import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
 import { page, userEvent } from 'vitest/browser';
 import * as m from '$lib/paraglide/messages.js';
 import WishlistGiftDraggableWrapperTestHost from './WishlistGiftDraggableWrapperTestHost.svelte';
+
+const { expectPixelsNear, expectPixelsAtLeast, expectPixelsAtMost } = createPixelAssertions(expect);
 
 const baseProps = {
 	index: 0,
@@ -131,8 +134,8 @@ describe('WishlistGiftDraggableWrapper — explicit reorder mode (#239)', () => 
 		for (const control of [grip, moveUp, moveDown]) {
 			await expect.element(control).toBeInTheDocument();
 			const rect = control.element().getBoundingClientRect();
-			expect(rect.width).toBeGreaterThanOrEqual(40);
-			expect(rect.height).toBeGreaterThanOrEqual(40);
+			expectPixelsAtLeast(rect.width, 40);
+			expectPixelsAtLeast(rect.height, 40);
 		}
 		await expect.element(moveUp).toBeDisabled();
 		const wrapper = document.querySelector('[data-gift-item]') as HTMLElement;
@@ -198,12 +201,12 @@ describe('WishlistGiftDraggableWrapper — explicit reorder mode (#239)', () => 
 		expect(styles.getPropertyValue('--gift-context-shadow-inset')).not.toBe('');
 		expect(styles.getPropertyValue('--gift-context-control-gap')).not.toBe('');
 		expect(getComputedStyle(lane).display).toBe('flex');
-		expect(wrapperRect.right - laneRect.right).toBeCloseTo(shadowInset, 0);
-		expect(wrapperRect.bottom - laneRect.bottom).toBeCloseTo(shadowInset, 0);
-		expect(moveDownRect.left - moveUpRect.right).toBeCloseTo(controlGap, 0);
+		expectPixelsNear(wrapperRect.right - laneRect.right, shadowInset);
+		expectPixelsNear(wrapperRect.bottom - laneRect.bottom, shadowInset);
+		expectPixelsNear(moveDownRect.left - moveUpRect.right, controlGap);
 		for (const rect of [moveUpRect, moveDownRect]) {
-			expect(rect.right + shadowOffset).toBeLessThanOrEqual(wrapperRect.right);
-			expect(rect.bottom + shadowOffset).toBeLessThanOrEqual(wrapperRect.bottom);
+			expectPixelsAtMost(rect.right + shadowOffset, wrapperRect.right);
+			expectPixelsAtMost(rect.bottom + shadowOffset, wrapperRect.bottom);
 		}
 		expect(moveUp.disabled).toBe(true);
 		expect(moveDown.disabled).toBe(false);
@@ -320,8 +323,8 @@ describe('WishlistGiftDraggableWrapper — context actions and selection', () =>
 			) as HTMLElement;
 			const markerRect = markerOwner.getBoundingClientRect();
 
-			expect(markerRect.width).toBeCloseTo(expectedSize, 0);
-			expect(markerRect.height).toBeCloseTo(expectedSize, 0);
+			expectPixelsNear(markerRect.width, expectedSize);
+			expectPixelsNear(markerRect.height, expectedSize);
 			expect(markerSurface).toBeTruthy();
 			expect(markerSurface.getAttribute('aria-hidden')).toBe('true');
 			expect(wrapper.getAttribute('role')).toBe('checkbox');
@@ -372,11 +375,11 @@ describe('WishlistGiftDraggableWrapper — context actions and selection', () =>
 
 			expect(wrapperStyle.getPropertyValue('--gift-context-face-inset')).not.toBe('');
 			expect(wrapperStyle.getPropertyValue('--gift-context-shadow-inset')).not.toBe('');
-			expect(markerRect.left - wrapperRect.left).toBeCloseTo(faceInset, 0);
-			expect(markerRect.top - wrapperRect.top).toBeCloseTo(faceInset, 0);
-			expect(parentRadius - faceInset).toBeCloseTo(markerRadius, 0);
-			expect(markerRect.right + shadowOffset).toBeLessThanOrEqual(wrapperRect.right);
-			expect(markerRect.bottom + shadowOffset).toBeLessThanOrEqual(wrapperRect.bottom);
+			expectPixelsNear(markerRect.left - wrapperRect.left, faceInset);
+			expectPixelsNear(markerRect.top - wrapperRect.top, faceInset);
+			expectPixelsNear(parentRadius - faceInset, markerRadius);
+			expectPixelsAtMost(markerRect.right + shadowOffset, wrapperRect.right);
+			expectPixelsAtMost(markerRect.bottom + shadowOffset, wrapperRect.bottom);
 			await unmount();
 		},
 	);
@@ -397,8 +400,8 @@ describe('WishlistGiftDraggableWrapper — context actions and selection', () =>
 		const markerRect = marker.getBoundingClientRect();
 
 		expect(getComputedStyle(marker).position).toBe('static');
-		expect(markerRect.left).toBeCloseTo(wrapperRect.left, 0);
-		expect(markerRect.top - wrapperRect.top).toBeCloseTo(8, 0);
+		expectPixelsNear(markerRect.left, wrapperRect.left);
+		expectPixelsNear(markerRect.top - wrapperRect.top, 8);
 		await unmount();
 	});
 
@@ -419,15 +422,15 @@ describe('WishlistGiftDraggableWrapper — context actions and selection', () =>
 		const imageRect = image.getBoundingClientRect();
 		const controlRect = checkboxControl.getBoundingClientRect();
 
-		expect(imageRect.width).toBeCloseTo(imageRect.height, 0);
-		expect(controlRect.width).toBeCloseTo(40, 0);
-		expect(controlRect.height).toBeCloseTo(40, 0);
-		expect(controlRect.left - wrapperRect.left).toBeCloseTo(9, 0);
-		expect(controlRect.top - wrapperRect.top).toBeCloseTo(9, 0);
-		expect(controlRect.left).toBeGreaterThanOrEqual(imageRect.left);
-		expect(controlRect.top).toBeGreaterThanOrEqual(imageRect.top);
-		expect(controlRect.right).toBeLessThanOrEqual(imageRect.right);
-		expect(controlRect.bottom).toBeLessThanOrEqual(imageRect.bottom);
+		expectPixelsNear(imageRect.width, imageRect.height);
+		expectPixelsNear(controlRect.width, 40);
+		expectPixelsNear(controlRect.height, 40);
+		expectPixelsNear(controlRect.left - wrapperRect.left, 9);
+		expectPixelsNear(controlRect.top - wrapperRect.top, 9);
+		expectPixelsAtLeast(controlRect.left, imageRect.left);
+		expectPixelsAtLeast(controlRect.top, imageRect.top);
+		expectPixelsAtMost(controlRect.right, imageRect.right);
+		expectPixelsAtMost(controlRect.bottom, imageRect.bottom);
 		expect(checkboxControl.querySelector('[data-slot="checkbox"]')).toBeNull();
 		await userEvent.click(wrapper);
 		await unmount();
@@ -496,14 +499,14 @@ describe('WishlistGiftDraggableWrapper — context actions and selection', () =>
 			const gripRect = grip.getBoundingClientRect();
 			const surfaceRect = surface.getBoundingClientRect();
 
-			expect(gripRect.width).toBeCloseTo(target, 0);
-			expect(gripRect.height).toBeCloseTo(target, 0);
-			expect(surfaceRect.width).toBeCloseTo(visual, 0);
-			expect(surfaceRect.height).toBeCloseTo(visual, 0);
-			expect(gripRect.left - wrapperRect.left).toBeCloseTo(targetInset, 0);
-			expect(gripRect.top - wrapperRect.top).toBeCloseTo(targetInset, 0);
-			expect(surfaceRect.left - wrapperRect.left).toBeCloseTo(visualInset, 0);
-			expect(surfaceRect.top - wrapperRect.top).toBeCloseTo(visualInset, 0);
+			expectPixelsNear(gripRect.width, target);
+			expectPixelsNear(gripRect.height, target);
+			expectPixelsNear(surfaceRect.width, visual);
+			expectPixelsNear(surfaceRect.height, visual);
+			expectPixelsNear(gripRect.left - wrapperRect.left, targetInset);
+			expectPixelsNear(gripRect.top - wrapperRect.top, targetInset);
+			expectPixelsNear(surfaceRect.left - wrapperRect.left, visualInset);
+			expectPixelsNear(surfaceRect.top - wrapperRect.top, visualInset);
 			expect(getComputedStyle(surface).borderRadius).toBe(visualRadius);
 			expect(getComputedStyle(grip).touchAction).toBe('none');
 

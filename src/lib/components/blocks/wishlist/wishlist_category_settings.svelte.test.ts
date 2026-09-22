@@ -2,6 +2,7 @@ import '../../../../app.css';
 import { render } from 'vitest-browser-svelte';
 import { page } from 'vitest/browser';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
 import * as m from '$lib/paraglide/messages.js';
 import { GIFT_CATEGORY_PRESETS } from '$lib/modules/gift-categories/types.js';
 import type { ManagedGiftCategorySettingsRow } from '$lib/modules/gift-categories/types.js';
@@ -27,6 +28,7 @@ vi.mock('$lib/modules/gift-categories/gift_categories.remote.js', () => ({
 }));
 
 const { default: WishlistCategorySettings } = await import('./WishlistCategorySettings.svelte');
+const { expectPixelsNear, expectPixelsAtLeast } = createPixelAssertions(expect);
 const preset = GIFT_CATEGORY_PRESETS[0]!;
 
 function findInput(value: string): HTMLInputElement | undefined {
@@ -72,17 +74,19 @@ describe('WishlistCategorySettings', () => {
 
 			for (const action of actions) {
 				const rect = action.getBoundingClientRect();
-				expect(rect.width).toBeCloseTo(expectedSize, 0);
-				expect(rect.height).toBeCloseTo(expectedSize, 0);
+				expectPixelsNear(rect.width, expectedSize);
+				expectPixelsNear(rect.height, expectedSize);
 			}
-			expect(
+			expectPixelsNear(
 				actions[1]!.getBoundingClientRect().left -
 					actions[0]!.getBoundingClientRect().right,
-			).toBeCloseTo(8, 0);
-			expect(
+				8,
+			);
+			expectPixelsNear(
 				actions[2]!.getBoundingClientRect().left -
 					actions[1]!.getBoundingClientRect().right,
-			).toBeCloseTo(8, 0);
+				8,
+			);
 			await screen.unmount();
 		}
 	});
@@ -144,7 +148,8 @@ describe('WishlistCategorySettings', () => {
 		expect(counts).toHaveLength(2);
 		expect(counts[0]!.textContent).toContain('0');
 		expect(counts[1]!.textContent).toContain('3');
-		expect(counts[0]!.getBoundingClientRect().right).toBeGreaterThan(
+		expectPixelsAtLeast(
+			counts[0]!.getBoundingClientRect().right,
 			counts[0]!.parentElement!.querySelector('input')!.getBoundingClientRect().right,
 		);
 		expect(counts[1]!.parentElement?.textContent).toContain(preset.labels.cs);
