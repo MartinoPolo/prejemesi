@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
+	import { mergeProps } from 'bits-ui';
 	import { Button } from '$lib/components/base/button/index.js';
 	import * as Popover from '$lib/components/base/popover/index.js';
 	import { ChoiceRow } from '$lib/components/derived/choice-row/index.js';
@@ -96,13 +97,20 @@
 {:else}
 	<Popover.Root bind:open={isOpen}>
 		<SimpleTooltip text={m.language_toggle_tooltip()} side="bottom" disabled={isOpen}>
-			<Popover.Trigger>
-				{#snippet child({ props })}
-					<Button {...props} intent="outline" format="icon" aria-label={ariaLabel}>
-						{LOCALE_CODES[currentLocale]}
-					</Button>
-				{/snippet}
-			</Popover.Trigger>
+			{#snippet asChild(tooltipProps)}
+				<Popover.Trigger>
+					{#snippet child({ props: popoverProps })}
+						<Button
+							{...mergeProps(tooltipProps, popoverProps)}
+							intent="outline"
+							format="icon"
+							aria-label={ariaLabel}
+						>
+							{LOCALE_CODES[currentLocale]}
+						</Button>
+					{/snippet}
+				</Popover.Trigger>
+			{/snippet}
 		</SimpleTooltip>
 		<Popover.Content
 			align="end"
