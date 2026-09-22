@@ -1,6 +1,7 @@
+import '../../../../app.css';
 import { render } from 'vitest-browser-svelte';
-import { describe, expect, it, vi } from 'vitest';
-import { userEvent } from 'vitest/browser';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { page, userEvent } from 'vitest/browser';
 import type { ComponentProps } from 'svelte';
 import NotificationItem from './NotificationItem.svelte';
 import type { Notification } from '$lib/modules/notifications/types.js';
@@ -10,7 +11,7 @@ import {
 } from '$lib/modules/notifications/new_gift_digest.js';
 import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
 
-const { expectPixelsAtMost } = createPixelAssertions(expect);
+const { expectPixelsAtLeast, expectPixelsAtMost } = createPixelAssertions(expect);
 const navigation = vi.hoisted(() => ({ goto: vi.fn() }));
 vi.mock('$app/navigation', () => ({ goto: navigation.goto }));
 
@@ -39,6 +40,10 @@ async function renderItem(value: Notification) {
 	};
 	return render(NotificationItem, props);
 }
+
+afterEach(async () => {
+	await page.viewport(1280, 720);
+});
 
 const oneListPayload: NewGiftDigestPayload = {
 	version: 1,
@@ -98,25 +103,43 @@ describe('NotificationItem new-gift digests', () => {
 		expect(navigation.goto).toHaveBeenCalledWith('/followed');
 	});
 
-	it('keeps a long message readable and supports click and keyboard activation', async () => {
+	it('keeps a constrained desktop row readable and supports click and keyboard activation', async () => {
+		await page.viewport(1280, 720);
 		navigation.goto.mockClear();
 		const onMarkAsRead = vi.fn();
 		const longMessage =
 			'A very long notification message that needs to wrap across several lines without being clipped or forcing the notification row to a fixed height.';
-		const screen = render(NotificationItem, {
-			notification: notification({ message: longMessage, href: '/followed' }),
-			onMarkAsRead,
-		});
+		const host = document.createElement('div');
+		host.style.width = '320px';
+		document.body.appendChild(host);
+		const screen = render(
+			NotificationItem,
+			{
+				notification: notification({ message: longMessage, href: '/followed' }),
+				onMarkAsRead,
+			},
+			{ baseElement: host },
+		);
 		const button = screen.getByRole('button');
 
-		await expect.element(screen.getByText(longMessage)).toBeVisible();
-		expectPixelsAtMost(button.element().scrollHeight, button.element().clientHeight);
-		await button.click();
-		expect(onMarkAsRead).toHaveBeenCalledWith('notification-1');
+		try {
+			await expect.element(screen.getByText(longMessage)).toBeVisible();
+			const row = button.element();
+			const rowRect = row.getBoundingClientRect();
+			const messageRect = screen.getByText(longMessage).element().getBoundingClientRect();
+			expectPixelsAtMost(row.scrollHeight, row.clientHeight);
+			expectPixelsAtLeast(messageRect.top, rowRect.top);
+			expectPixelsAtMost(messageRect.bottom, rowRect.bottom);
+			await button.click();
+			expect(onMarkAsRead).toHaveBeenCalledWith('notification-1');
 
-		button.element().focus();
-		await userEvent.keyboard('{Enter}');
-		expect(navigation.goto).toHaveBeenCalledTimes(2);
+			button.element().focus();
+			await userEvent.keyboard('{Enter}');
+			expect(navigation.goto).toHaveBeenCalledTimes(2);
+		} finally {
+			await screen.unmount();
+			host.remove();
+		}
 	});
 
 	it('falls back for malformed or legacy rows and keeps the legacy wishlist destination', async () => {
