@@ -22,7 +22,6 @@
 	let openingValue = $state(value);
 	let hexDraft = $state(value);
 	let nativeInput: HTMLInputElement;
-	let wasOpen = false;
 	const pickerId = $props.id();
 	const validationId = `${pickerId}-validation`;
 	const styles = colorPickerVariants();
@@ -30,7 +29,14 @@
 	const changedDraft = $derived(
 		validDraft && hexDraft.toUpperCase() !== openingValue.toUpperCase(),
 	);
-	const nativeValue = $derived(validDraft ? hexDraft : openingValue);
+	const nativeValue = $derived(open ? (validDraft ? hexDraft : openingValue) : value);
+
+	function handleOpenChange(nextOpen: boolean) {
+		if (nextOpen) {
+			openingValue = value;
+		}
+		hexDraft = value;
+	}
 
 	function stage(candidate: string) {
 		if (!open || disabled) {
@@ -59,19 +65,13 @@
 
 	$effect(() => {
 		if (disabled && open) {
+			hexDraft = value;
 			open = false;
 		}
-		if (open && !wasOpen) {
-			openingValue = value;
-			hexDraft = value;
-		} else if (!open) {
-			hexDraft = value;
-		}
-		wasOpen = open;
 	});
 </script>
 
-<Popover.Root bind:open>
+<Popover.Root bind:open onOpenChange={handleOpenChange}>
 	<Popover.Trigger>
 		{#snippet child({ props })}
 			<button

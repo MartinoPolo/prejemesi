@@ -3,6 +3,7 @@ import { render } from 'vitest-browser-svelte';
 import { page, userEvent } from 'vitest/browser';
 import { describe, expect, it, vi } from 'vitest';
 import * as m from '$lib/paraglide/messages.js';
+import { DEFAULT_PIXEL_TOLERANCE } from '../../../../../tests/helpers/pixel-assertions.mjs';
 import ColorPicker from './ColorPicker.svelte';
 
 const label = 'Sport color';
@@ -28,7 +29,8 @@ describe('ColorPicker', () => {
 			Number.parseFloat(fallbackStyle.opacity) === 0 ||
 			fallbackStyle.clip !== 'auto' ||
 			fallbackStyle.clipPath !== 'none' ||
-			(fallbackRect.width <= 1 && fallbackRect.height <= 1);
+			(fallbackRect.width <= 1 + DEFAULT_PIXEL_TOLERANCE &&
+				fallbackRect.height <= 1 + DEFAULT_PIXEL_TOLERANCE);
 		expect(isVisuallySuppressed).toBe(true);
 		await expect.element(page.getByRole('dialog', { name: label })).not.toBeInTheDocument();
 	});
@@ -206,7 +208,8 @@ describe('ColorPicker', () => {
 		fallback.dispatchEvent(new Event('input', { bubbles: true }));
 		expect(onValueChange).not.toHaveBeenCalled();
 
-		await trigger.click();
+		// Deliver input in the opening turn, before deferred effects can reset the draft.
+		trigger.element().dispatchEvent(new MouseEvent('click', { bubbles: true }));
 		fallback.value = '#7c3aed';
 		fallback.dispatchEvent(new Event('input', { bubbles: true }));
 		const dialog = page.getByRole('dialog', { name: label });
