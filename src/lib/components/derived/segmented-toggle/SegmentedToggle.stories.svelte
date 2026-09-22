@@ -1,12 +1,26 @@
 <script module lang="ts">
+	import type { ComponentProps } from 'svelte';
 	import { defineMeta } from '@storybook/addon-svelte-csf';
 	import { expect, userEvent, within } from 'storybook/test';
+	import StoryKeyboardHints from '$lib/storybook/StoryKeyboardHints.svelte';
+	import KeyboardHint from '$lib/storybook/KeyboardHint.svelte';
 	import * as SegmentedToggle from './index.js';
+	import { SEGMENTED_TOGGLE_PRESENTATIONS } from './index.js';
+
+	type SegmentedToggleArgs = Partial<
+		Omit<
+			ComponentProps<typeof SegmentedToggle.Root>,
+			'children' | 'value' | 'onValueChange' | 'onReselect'
+		>
+	>;
 
 	const { Story } = defineMeta({
 		title: 'Derived/SegmentedToggle',
 		component: SegmentedToggle.Root,
 		tags: ['autodocs'],
+		argTypes: {
+			presentation: { control: 'select', options: [...SEGMENTED_TOGGLE_PRESENTATIONS] },
+		},
 	});
 
 	const playKeyboardAndFocus = async ({ canvasElement }: { canvasElement: HTMLElement }) => {
@@ -33,9 +47,42 @@
 	let responsiveValue = $state('grid');
 </script>
 
+<Story name="All Variants">
+	{#snippet template(args: SegmentedToggleArgs)}
+		<div class="flex flex-col gap-4">
+			{#each SEGMENTED_TOGGLE_PRESENTATIONS as presentation (presentation)}
+				<div class="flex flex-col items-start gap-1.5">
+					<span class="text-sm font-medium text-muted-foreground">{presentation}</span>
+					<SegmentedToggle.Root
+						{...args}
+						value="grid"
+						size="md"
+						format="icon"
+						aria-label={`${presentation} layout`}
+						{presentation}
+					>
+						<SegmentedToggle.Item value="grid" aria-label={`${presentation} grid`}>
+							<LayoutGridIcon />
+						</SegmentedToggle.Item>
+						<SegmentedToggle.Item value="list" aria-label={`${presentation} list`}>
+							<ListIcon />
+						</SegmentedToggle.Item>
+					</SegmentedToggle.Root>
+				</div>
+			{/each}
+		</div>
+	{/snippet}
+</Story>
+
 <Story name="Selected, unselected, and disabled">
-	{#snippet template()}
-		<SegmentedToggle.Root bind:value={exampleValue} size="md" format="icon" aria-label="Layout">
+	{#snippet template(args: SegmentedToggleArgs)}
+		<SegmentedToggle.Root
+			bind:value={exampleValue}
+			size="md"
+			format="icon"
+			aria-label="Layout"
+			{...args}
+		>
 			<SegmentedToggle.Item value="grid" aria-label="Grid">
 				<LayoutGridIcon />
 			</SegmentedToggle.Item>
@@ -49,13 +96,18 @@
 	{/snippet}
 </Story>
 
-<Story name="Focus and keyboard" play={playKeyboardAndFocus}>
-	{#snippet template()}
+<Story name="Focus and keyboard [play: arrow and space select]" play={playKeyboardAndFocus}>
+	{#snippet template(args: SegmentedToggleArgs)}
+		<StoryKeyboardHints>
+			<KeyboardHint keys="→" action="Move focus to the next item" />
+			<KeyboardHint keys="Space" action="Select the focused item" />
+		</StoryKeyboardHints>
 		<SegmentedToggle.Root
 			bind:value={keyboardValue}
 			size="md"
 			format="icon"
 			aria-label="Layout"
+			{...args}
 		>
 			<SegmentedToggle.Item value="grid" aria-label="Grid">
 				<LayoutGridIcon />
@@ -68,13 +120,14 @@
 </Story>
 
 <Story name="Responsive targets" parameters={{ viewport: { defaultViewport: 'mobile1' } }}>
-	{#snippet template()}
+	{#snippet template(args: SegmentedToggleArgs)}
 		<div class="max-w-full p-3">
 			<SegmentedToggle.Root
 				bind:value={responsiveValue}
 				size="md"
 				format="icon"
 				aria-label="Responsive layout"
+				{...args}
 			>
 				<SegmentedToggle.Item value="grid" aria-label="Grid">
 					<LayoutGridIcon />

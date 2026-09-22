@@ -16,6 +16,94 @@ function hasVisibleBoxShadow(element: Element): boolean {
 	return alphas.length === 0 || alphas.some((alpha) => alpha > 0);
 }
 
+function requireElement(element: Element | null): Element {
+	if (element === null) {
+		throw new TypeError('Expected an element in the rendered switcher');
+	}
+	return element;
+}
+
+function requireHTMLElement(element: Element | null): HTMLElement {
+	if (!(element instanceof HTMLElement)) {
+		throw new TypeError('Expected an HTML element in the rendered switcher');
+	}
+	return element;
+}
+
+async function renderDefaultCardSwitcher() {
+	const screen = await render(GiftViewSwitcher, {
+		value: GIFT_VIEW_MODES.card,
+		onchange: vi.fn(),
+	});
+	const group = requireHTMLElement(screen.getByTestId('gift-view-switcher').element());
+	const card = requireHTMLElement(
+		screen.getByTestId(`gift-view-${GIFT_VIEW_MODES.card}`).element(),
+	);
+	const list = requireHTMLElement(
+		screen.getByTestId(`gift-view-${GIFT_VIEW_MODES.list}`).element(),
+	);
+
+	return {
+		screen,
+		group,
+		card,
+		list,
+		cardSurface: requireHTMLElement(card.querySelector('.elevation-surface')),
+		listSurface: requireHTMLElement(list.querySelector('.elevation-surface')),
+	};
+}
+
+async function withRootTokenOverrides(
+	overrides: Readonly<Record<`--${string}`, string>>,
+	runAssertions: () => Promise<void>,
+): Promise<void> {
+	const rootStyle = document.documentElement.style;
+	const previousProperties = Object.keys(overrides).map((property) => ({
+		property,
+		value: rootStyle.getPropertyValue(property),
+		priority: rootStyle.getPropertyPriority(property),
+	}));
+	for (const [property, value] of Object.entries(overrides)) {
+		rootStyle.setProperty(property, value);
+	}
+
+	try {
+		await runAssertions();
+	} finally {
+		for (const { property, value, priority } of previousProperties) {
+			rootStyle.setProperty(property, value, priority);
+		}
+	}
+}
+
+function expectSelectedFaceGeometry(
+	group: HTMLElement,
+	selected: HTMLElement,
+	expected: Readonly<{ size: number; backingWidth: number }>,
+	backingPosition?: Readonly<{ left: number; right: number }>,
+): void {
+	const selectedSurface = requireHTMLElement(selected.querySelector('.elevation-surface'));
+	const selectedSurfaceBounds = selectedSurface.getBoundingClientRect();
+	const selectedBounds = selected.getBoundingClientRect();
+	const backingStyle = getComputedStyle(group, '::before');
+
+	expect(selectedSurfaceBounds.width).toBe(expected.size);
+	expect(selectedSurfaceBounds.height).toBe(expected.size);
+	expect(selectedSurfaceBounds.x + selectedSurfaceBounds.width / 2).toBeCloseTo(
+		selectedBounds.x + selectedBounds.width / 2,
+		1,
+	);
+	expect(selectedSurfaceBounds.y + selectedSurfaceBounds.height / 2).toBeCloseTo(
+		selectedBounds.y + selectedBounds.height / 2,
+		1,
+	);
+	expect(parseFloat(backingStyle.width)).toBe(expected.backingWidth);
+	if (backingPosition) {
+		expect(parseFloat(backingStyle.left)).toBe(backingPosition.left);
+		expect(parseFloat(backingStyle.right)).toBe(backingPosition.right);
+	}
+}
+
 describe('GiftViewSwitcher toggle selection (fixes: re-click deselects both items)', () => {
 	it('switches mode and fires onchange exactly once when clicking the inactive item', async () => {
 		const onchange = vi.fn();
@@ -120,124 +208,204 @@ describe('GiftViewSwitcher toggle selection (fixes: re-click deselects both item
 		await screen.unmount();
 	});
 
-	it('uses the shared responsive control size while keeping the tray flush with its selection', async () => {
-		await page.viewport(390, 720);
-		const screen = await render(GiftViewSwitcher, {
-			value: GIFT_VIEW_MODES.card,
-			onchange: vi.fn(),
-		});
-		const group = screen.getByTestId('gift-view-switcher').element() as HTMLElement;
-		const card = screen
-			.getByTestId(`gift-view-${GIFT_VIEW_MODES.card}`)
-			.element() as HTMLElement;
-
-		for (const [viewportWidth, expectedSize] of [
-			[390, 40],
-			[800, 32],
-		] as const) {
+	it.each([
+		{
+			viewportWidth: 390,
+			expected: { rootWidth: 79, size: 40, segment: 38, backingWidth: 79 },
+			backingPositions: undefined,
+		},
+		{
+			viewportWidth: 800,
+			expected: { rootWidth: 67, size: 32, segment: 32, backingWidth: 66 },
+			backingPositions: {
+				card: { left: 1, right: 0 },
+				list: { left: 0, right: 1 },
+			},
+		},
+	])(
+		'preserves semantic geometry while painting a flush connected backing and button face at $viewportWidth px',
+		async ({ viewportWidth, expected, backingPositions }) => {
 			await page.viewport(viewportWidth, 720);
-			const trayBounds = group.getBoundingClientRect();
-			const selectedBounds = card.getBoundingClientRect();
+			const { screen, group, card, list } = await renderDefaultCardSwitcher();
 
-			expect(trayBounds.height).toBe(expectedSize);
-			expect(selectedBounds.width).toBe(
-				viewportWidth < 640 ? expectedSize - 2 : expectedSize,
-			);
-			const trayInset = viewportWidth < 640 ? 1 : 0;
-			expect(selectedBounds.height).toBe(expectedSize - trayInset * 2);
-			expect(selectedBounds.top - trayBounds.top).toBeCloseTo(trayInset, 1);
-			expect(trayBounds.bottom - selectedBounds.bottom).toBeCloseTo(trayInset, 1);
-			// A shadow paints beyond the tray's border box, recreating the taller accent halo
-			// even when getBoundingClientRect reports the same height as the selected item.
-			expect(hasVisibleBoxShadow(group)).toBe(false);
-		}
-		await screen.unmount();
+			try {
+				const trayBounds = group.getBoundingClientRect();
+				expect(trayBounds.width).toBe(expected.rootWidth);
+				expect(trayBounds.height).toBe(expected.size);
+				for (const item of [card, list]) {
+					expect(item.getBoundingClientRect().width).toBe(expected.segment);
+					expect(item.getBoundingClientRect().height).toBe(expected.segment);
+					expect(
+						requireElement(item.querySelector('svg')).getBoundingClientRect().width,
+					).toBe(16);
+					expect(
+						requireElement(item.querySelector('svg')).getBoundingClientRect().height,
+					).toBe(16);
+				}
+
+				expectSelectedFaceGeometry(group, card, expected, backingPositions?.card);
+				await list.click();
+				expectSelectedFaceGeometry(group, list, expected, backingPositions?.list);
+			} finally {
+				await screen.unmount();
+			}
+		},
+	);
+
+	it('uses one contextual tray shadow with no frame and only a selected Button face', async () => {
+		await withRootTokenOverrides(
+			{
+				'--accent': 'rgb(11, 22, 33)',
+				'--card': 'rgb(44, 55, 66)',
+				'--ink': 'rgb(77, 88, 99)',
+			},
+			async () => {
+				const { screen, group, card, list, cardSurface, listSurface } =
+					await renderDefaultCardSwitcher();
+
+				try {
+					const groupStyle = getComputedStyle(group);
+					const cardStyle = getComputedStyle(card);
+					const listStyle = getComputedStyle(list);
+					const backingStyle = getComputedStyle(group, '::before');
+
+					expect(groupStyle.backgroundColor).toBe('rgba(0, 0, 0, 0)');
+					expect(parseFloat(groupStyle.borderWidth)).toBe(0);
+					expect(hasVisibleBoxShadow(group)).toBe(false);
+					expect(parseFloat(groupStyle.paddingLeft)).toBe(1);
+					expect(groupStyle.paddingLeft).toBe(groupStyle.paddingRight);
+					expect(groupStyle.paddingTop).toBe(groupStyle.paddingBottom);
+					expect(backingStyle.backgroundColor).toBe('rgb(11, 22, 33)');
+					expect(hasVisibleBoxShadow(group)).toBe(false);
+					expect(backingStyle.boxShadow).not.toBe('none');
+					expect(backingStyle.boxShadow).not.toContain('inset');
+					expect(cardStyle.backgroundColor).toBe('rgba(0, 0, 0, 0)');
+					expect(listStyle.backgroundColor).toBe('rgba(0, 0, 0, 0)');
+					expect(parseFloat(cardStyle.borderWidth)).toBe(0);
+					expect(parseFloat(listStyle.borderWidth)).toBe(0);
+					expect(parseFloat(groupStyle.getPropertyValue('--border-w'))).toBe(2.5);
+					const selectedBorderWidth = getComputedStyle(cardSurface).borderWidth;
+					expect(parseFloat(selectedBorderWidth)).toBeGreaterThan(0);
+					expect(getComputedStyle(cardSurface).borderColor).toBe('rgb(77, 88, 99)');
+					expect(getComputedStyle(cardSurface).backgroundColor).toBe('rgb(44, 55, 66)');
+					expect(hasVisibleBoxShadow(cardSurface)).toBe(false);
+					expect(parseFloat(getComputedStyle(listSurface).borderWidth)).toBe(0);
+					expect(getComputedStyle(listSurface).backgroundColor).toBe('rgba(0, 0, 0, 0)');
+					expect(cardStyle.outlineStyle).not.toBe('solid');
+					expect(listStyle.outlineStyle).not.toBe('solid');
+					expect(
+						requireElement(card.querySelector('svg')).getBoundingClientRect().y,
+					).toBeCloseTo(
+						requireElement(list.querySelector('svg')).getBoundingClientRect().y,
+						1,
+					);
+
+					await list.click();
+
+					expect(parseFloat(getComputedStyle(cardSurface).borderWidth)).toBe(0);
+					expect(getComputedStyle(cardSurface).backgroundColor).toBe('rgba(0, 0, 0, 0)');
+					expect(getComputedStyle(listSurface).borderWidth).toBe(selectedBorderWidth);
+					expect(getComputedStyle(listSurface).backgroundColor).toBe('rgb(44, 55, 66)');
+					expect(getComputedStyle(group, '::before').boxShadow).toBe(
+						backingStyle.boxShadow,
+					);
+				} finally {
+					await screen.unmount();
+				}
+			},
+		);
 	});
 
-	it('uses an accent tray with no strong perimeter and only a selected ink boundary', async () => {
-		const rootStyle = document.documentElement.style;
-		const properties = ['--accent', '--card', '--ink'] as const;
-		const previousProperties = properties.map((property) => ({
-			property,
-			value: rootStyle.getPropertyValue(property),
-			priority: rootStyle.getPropertyPriority(property),
-		}));
-		rootStyle.setProperty('--accent', 'rgb(11, 22, 33)');
-		rootStyle.setProperty('--card', 'rgb(44, 55, 66)');
-		rootStyle.setProperty('--ink', 'rgb(77, 88, 99)');
+	it('keeps the inactive connected surface paint static on hover', async () => {
+		await withRootTokenOverrides(
+			{
+				'--accent': 'rgb(11, 22, 33)',
+				'--foreground': 'rgb(44, 55, 66)',
+				'--muted-foreground': 'rgb(77, 88, 99)',
+			},
+			async () => {
+				const { screen, listSurface: inactiveSurface } = await renderDefaultCardSwitcher();
 
-		const screen = await render(GiftViewSwitcher, {
-			value: GIFT_VIEW_MODES.card,
-			onchange: vi.fn(),
-		});
+				try {
+					const restingPaint = {
+						backgroundColor: getComputedStyle(inactiveSurface).backgroundColor,
+						color: getComputedStyle(inactiveSurface).color,
+					};
+
+					expect(restingPaint).toEqual({
+						backgroundColor: 'rgba(0, 0, 0, 0)',
+						color: 'rgb(77, 88, 99)',
+					});
+					await userEvent.hover(inactiveSurface);
+					expect({
+						backgroundColor: getComputedStyle(inactiveSurface).backgroundColor,
+						color: getComputedStyle(inactiveSurface).color,
+					}).toEqual(restingPaint);
+				} finally {
+					await screen.unmount();
+				}
+			},
+		);
+	});
+
+	it('uses contextual light and dark depth tokens without hover motion', async () => {
+		const root = document.documentElement;
+		const previousDepth = root.dataset.depth;
+		const wasDark = root.classList.contains('dark');
+		const { screen, group, card, cardSurface } = await renderDefaultCardSwitcher();
+		const contextualPaint = new Set<string>();
 
 		try {
-			const group = screen.getByTestId('gift-view-switcher').element() as HTMLElement;
-			const card = screen
-				.getByTestId(`gift-view-${GIFT_VIEW_MODES.card}`)
-				.element() as HTMLElement;
-			const list = screen
-				.getByTestId(`gift-view-${GIFT_VIEW_MODES.list}`)
-				.element() as HTMLElement;
-			const groupStyle = getComputedStyle(group);
-			const cardStyle = getComputedStyle(card);
-			const listStyle = getComputedStyle(list);
+			for (const dark of [false, true]) {
+				root.classList.toggle('dark', dark);
+				for (const depth of ['soft', 'ink', 'black']) {
+					root.dataset.depth = depth;
+					contextualPaint.add(
+						`${getComputedStyle(group, '::before').boxShadow}|${getComputedStyle(cardSurface).backgroundColor}`,
+					);
+					expect(getComputedStyle(group, '::before').boxShadow).not.toBe('none');
+					expect(hasVisibleBoxShadow(cardSurface)).toBe(false);
+				}
+			}
+			expect(contextualPaint.size).toBeGreaterThan(3);
 
-			expect(groupStyle.backgroundColor).toBe('rgb(11, 22, 33)');
-			expect(parseFloat(groupStyle.borderWidth)).toBe(0);
-			expect(parseFloat(groupStyle.borderRadius)).toBeLessThanOrEqual(8);
-			expect(groupStyle.boxShadow).not.toContain('rgb(77, 88, 99)');
-			expect(groupStyle.boxShadow).not.toContain('inset');
-			expect(parseFloat(groupStyle.paddingLeft)).toBe(1);
-			expect(groupStyle.paddingLeft).toBe(groupStyle.paddingRight);
-			expect(groupStyle.paddingTop).toBe(groupStyle.paddingBottom);
-			expect(cardStyle.backgroundColor).toBe('rgb(44, 55, 66)');
-			expect(listStyle.backgroundColor).toBe('rgba(0, 0, 0, 0)');
-			expect(cardStyle.boxShadow).toBe(listStyle.boxShadow);
-			expect(parseFloat(cardStyle.borderWidth)).toBe(0);
-			expect(parseFloat(listStyle.borderWidth)).toBe(0);
-			const selectedSurface = card.querySelector('.elevation-surface') as HTMLElement;
-			const selectedSurfaceStyle = getComputedStyle(selectedSurface);
-			expect(parseFloat(selectedSurfaceStyle.borderWidth)).toBe(0);
-			expect(selectedSurfaceStyle.outlineStyle).toBe('none');
-			expect(selectedSurfaceStyle.backgroundColor).toBe('rgba(0, 0, 0, 0)');
-			expect(cardStyle.outlineStyle).toBe('solid');
-			expect(listStyle.outlineStyle).not.toBe('solid');
-			expect(card.querySelector('svg')!.getBoundingClientRect().y).toBeCloseTo(
-				list.querySelector('svg')!.getBoundingClientRect().y,
-				1,
-			);
-
-			await screen.getByTestId(`gift-view-${GIFT_VIEW_MODES.list}`).click();
-
-			expect(getComputedStyle(card).backgroundColor).toBe('rgba(0, 0, 0, 0)');
-			expect(getComputedStyle(list).backgroundColor).toBe('rgb(44, 55, 66)');
-			expect(getComputedStyle(card).boxShadow).toBe(getComputedStyle(list).boxShadow);
+			const beforeHover = {
+				owner: card.getBoundingClientRect().toJSON(),
+				surface: cardSurface.getBoundingClientRect().toJSON(),
+				shadow: getComputedStyle(group, '::before').boxShadow,
+			};
+			await userEvent.hover(card);
+			expect(card.getBoundingClientRect().toJSON()).toEqual(beforeHover.owner);
+			expect(cardSurface.getBoundingClientRect().toJSON()).toEqual(beforeHover.surface);
+			expect(getComputedStyle(group, '::before').boxShadow).toBe(beforeHover.shadow);
+			expect(getComputedStyle(cardSurface).translate).toBe('0px');
+			expect(getComputedStyle(cardSurface).scale).toBe('1');
 		} finally {
 			await screen.unmount();
-			for (const { property, value, priority } of previousProperties) {
-				rootStyle.setProperty(property, value, priority);
+			if (previousDepth === undefined) {
+				delete root.dataset.depth;
+			} else {
+				root.dataset.depth = previousDepth;
 			}
+			root.classList.toggle('dark', wasDark);
 		}
 	});
 
 	it('keeps the visible focus outline outside the shared tray boundary', async () => {
-		const screen = await render(GiftViewSwitcher, {
-			value: GIFT_VIEW_MODES.card,
-			onchange: vi.fn(),
-		});
-		const group = screen.getByTestId('gift-view-switcher').element() as HTMLElement;
-		const card = screen
-			.getByTestId(`gift-view-${GIFT_VIEW_MODES.card}`)
-			.element() as HTMLElement;
+		const { screen, group, card } = await renderDefaultCardSwitcher();
 
-		await userEvent.tab();
-		await expect.element(screen.getByTestId(`gift-view-${GIFT_VIEW_MODES.card}`)).toHaveFocus();
-		expect(card.matches(':focus-visible')).toBe(true);
-		expect(getComputedStyle(group).overflow).toBe('visible');
-		expect(getComputedStyle(card).outlineStyle).toBe('solid');
-		expect(parseFloat(getComputedStyle(card).outlineWidth)).toBeGreaterThan(0);
-		expect(parseFloat(getComputedStyle(card).outlineOffset)).toBeGreaterThan(0);
-		await screen.unmount();
+		try {
+			await userEvent.tab();
+			await expect
+				.element(screen.getByTestId(`gift-view-${GIFT_VIEW_MODES.card}`))
+				.toHaveFocus();
+			expect(card.matches(':focus-visible')).toBe(true);
+			expect(getComputedStyle(group).overflow).toBe('visible');
+			expect(getComputedStyle(card).outlineStyle).toBe('solid');
+			expect(parseFloat(getComputedStyle(card).outlineWidth)).toBeGreaterThan(0);
+			expect(parseFloat(getComputedStyle(card).outlineOffset)).toBeGreaterThan(0);
+		} finally {
+			await screen.unmount();
+		}
 	});
 });

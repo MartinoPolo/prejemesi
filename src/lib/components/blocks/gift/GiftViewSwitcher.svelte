@@ -60,6 +60,7 @@
 	}}
 	intent="default"
 	format="icon"
+	presentation="connected"
 	aria-label={m.gift_view_switcher_aria()}
 	onkeydown={handleArrowKey}
 	data-testid="gift-view-switcher"

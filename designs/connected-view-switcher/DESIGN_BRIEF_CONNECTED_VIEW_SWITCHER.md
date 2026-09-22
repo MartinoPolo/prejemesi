@@ -1,8 +1,8 @@
 # Connected view switcher
 
-> **Status: Approved — static variant B (2026-09-21).** [Final mockup](refined.html) ·
-> [Implementation summary](SUMMARY.md) Design selection is complete; production implementation
-> remains in [#395](https://github.com/MartinoPolo/prejemesi/issues/395).
+> **Status: Implemented — static variant B (2026-09-21).** [Final mockup](refined.html) ·
+> [Implementation summary](SUMMARY.md) The scoped production presentation is tracked by
+> [#395](https://github.com/MartinoPolo/prejemesi/issues/395).
 
 ## Desired state
 

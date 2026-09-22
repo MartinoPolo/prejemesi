@@ -6,7 +6,7 @@
 [Final mockup](refined.html) · [Approved requirements](DESIGN_BRIEF_CONNECTED_VIEW_SWITCHER.md)
 
 The user approved the non-animated design with selected-only square-button emphasis and flush
-selected-side backing. The mockup is finalized; production code is unchanged.
+selected-side backing. Production uses the scoped `connected` segmented-toggle presentation.
 
 ## Component map
 
@@ -30,8 +30,8 @@ node designs/connected-view-switcher/verify.mjs
 ```
 
 Raw Playwright verifies the requirements in the brief and writes
-`.local/connected-view-switcher/final-{mobile,desktop}[-dark].png`. These are prototype checks;
-production component and application regression tests remain part of #395.
+`.local/connected-view-switcher/final-{mobile,desktop}[-dark].png`. Production component and
+application regressions cover the scoped presentation and preserve default segmented controls.
 
 Keep `preview.html`, `preview.css`, `preview.js`, `review.css` and `review.js` as the final
 artifact's shared runtime. `reference-data.js`, `app-reference.css` and `assets/` preserve the
