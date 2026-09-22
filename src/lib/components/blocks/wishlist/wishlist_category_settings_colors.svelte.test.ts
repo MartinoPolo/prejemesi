@@ -63,6 +63,22 @@ function settingsCard(label: string): HTMLElement | null {
 	);
 }
 
+async function setColorDraft(dialog: ReturnType<typeof page.getByRole>, value: string) {
+	const textbox = dialog.getByRole('textbox', { name: m.color_picker_hex_label() });
+	const textboxElement = textbox.element();
+	if (!(textboxElement instanceof HTMLInputElement)) {
+		throw new TypeError('Expected the color picker textbox to be an HTMLInputElement');
+	}
+
+	textboxElement.value = value;
+	textboxElement.dispatchEvent(
+		new InputEvent('input', { inputType: 'insertText', data: value, bubbles: true }),
+	);
+
+	await expect.element(textbox).toHaveValue(value);
+	await expect.element(dialog.getByRole('button', { name: m.save() })).toBeEnabled();
+}
+
 beforeEach(() => {
 	remoteMocks.refresh.mockReset();
 	remoteMocks.refresh.mockResolvedValue(undefined);
@@ -174,7 +190,7 @@ describe('WishlistCategorySettings colors and drafts', () => {
 
 		await screen.getByRole('button', { name: 'Sport' }).click();
 		const dialog = page.getByRole('dialog', { name: 'Sport' });
-		await dialog.getByRole('textbox', { name: m.color_picker_hex_label() }).fill('#b91c1c');
+		await setColorDraft(dialog, '#b91c1c');
 
 		expect(getComputedStyle(settingsCard('Sport')!).borderLeftColor).toBe(
 			normalizeColor('#0369A1'),
@@ -201,7 +217,7 @@ describe('WishlistCategorySettings colors and drafts', () => {
 
 		await screen.getByRole('button', { name: preset.labels.cs }).click();
 		const dialog = page.getByRole('dialog', { name: preset.labels.cs });
-		await dialog.getByRole('textbox', { name: m.color_picker_hex_label() }).fill('#7c3aed');
+		await setColorDraft(dialog, '#7c3aed');
 
 		expect(getComputedStyle(settingsCard(preset.labels.cs)!).borderLeftColor).toBe(
 			normalizeColor('#0369A1'),
@@ -276,7 +292,7 @@ describe('WishlistCategorySettings colors and drafts', () => {
 		await screen.getByRole('checkbox', { name: preset.labels.cs }).click();
 		await screen.getByRole('button', { name: preset.labels.cs }).click();
 		const dialog = page.getByRole('dialog', { name: preset.labels.cs });
-		await dialog.getByRole('textbox', { name: m.color_picker_hex_label() }).fill('#2563eb');
+		await setColorDraft(dialog, '#2563eb');
 		expect(getComputedStyle(settingsCard(preset.labels.cs)!).borderLeftColor).toBe(
 			normalizeColor('#b91c1c'),
 		);
@@ -364,7 +380,7 @@ describe('WishlistCategorySettings colors and drafts', () => {
 
 		await screen.getByRole('button', { name: 'Sport' }).click();
 		const dialog = page.getByRole('dialog', { name: 'Sport' });
-		await dialog.getByRole('textbox', { name: m.color_picker_hex_label() }).fill('#b91c1c');
+		await setColorDraft(dialog, '#b91c1c');
 		expect(getComputedStyle(settingsCard('Sport')!).borderLeftColor).toBe(
 			normalizeColor('#0369A1'),
 		);
