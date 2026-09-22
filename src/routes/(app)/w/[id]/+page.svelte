@@ -1243,27 +1243,30 @@
 	// updates in place — no follow-up fetches, no metadata/likes/dashboard reloads
 	// (issue #108, REQ-3/4/5).
 
-	async function handleCreate(input: CreateGiftInput) {
+	async function handleCreate(input: CreateGiftInput): Promise<boolean> {
 		isSubmitting = true;
 		try {
 			await createGift(input);
-			giftModalOpen = false;
 			toastSuccess(m.toast_gift_created());
+			return true;
 		} catch (thrown) {
 			toastError(translateServerError(thrown));
+			return false;
 		} finally {
 			isSubmitting = false;
 		}
 	}
 
-	async function handleUpdate(input: UpdateGiftInput) {
+	async function handleUpdate(input: UpdateGiftInput): Promise<boolean> {
 		isSubmitting = true;
 		try {
 			await updateGiftRemote(input);
-			giftModalOpen = false;
+			selectedGift = gifts.find((giftItem) => giftItem.id === input.id) ?? selectedGift;
 			toastSuccess(m.toast_gift_updated());
+			return true;
 		} catch (thrown) {
 			toastError(translateServerError(thrown));
+			return false;
 		} finally {
 			isSubmitting = false;
 		}

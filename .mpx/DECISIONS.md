@@ -311,10 +311,6 @@ sections for UI work. Historical reconciliation and review notes are in
 
 - 2026-05-30: Wishlist creation is a quick modal, not a route or wizard: required title, optional
   event date and palette, then navigate to the wishlist; richer settings stay on the wishlist.
-- 2026-05-30: Gift viewing and create/edit use centered image-left, content-right dialogs that stack
-  on mobile; avoid separate gift routes or inline expansion. Gift forms block saving while image
-  upload authorization or upload is in progress. Auth pages are standalone branding/form split
-  screens, and the landing page uses alternating feature-showcase sections.
 - 2026-05-30: Sharing confirms consequences before method selection and success; explain current
   per-field rules, not the obsolete blanket lock. Methods use standard prefilled intent URLs such as
   WhatsApp and `mailto:`, not third-party sharing APIs. Manager invitations/revocation belong to
@@ -346,6 +342,13 @@ sections for UI work. Historical reconciliation and review notes are in
 - 2026-09-05: Keep palette choices compact and visually quiet; approval of the settings-control
   mockup covers picker behavior and save/loading/error lifecycle, not its simplified app shell,
   modal, or tabs. Keep modal action footers reachable and settings height stable across tabs.
+- 2026-09-19: Gift viewing and create/edit stay in centered dialogs, not separate routes or inline
+  expansion. Editors keep the image-left/details-right workshop on desktop; mobile puts ordinary
+  fields and image source before the same inline crop workshop. The title and 40 px close target
+  share a compact, vertically centered fixed mobile row, while Save and Cancel share a fixed footer.
+  Every editor exit guards actual unsaved fields/image changes, and saving stays blocked during
+  image authorization or upload. Auth pages remain standalone branding/form split screens, and the
+  landing page uses alternating feature-showcase sections.
 
 ## Visual design & component conventions
 

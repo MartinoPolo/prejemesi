@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="cs" data-palette="sky" data-depth="soft">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Varianta A – mobilní pole před obrázkem</title>
+  <link rel="stylesheet" href="../../tokens.css">
+  <link rel="stylesheet" href="../../../src/app.css">
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; font-family: var(--font-body); background: var(--background); color: var(--foreground); }
+    button, input, textarea, select { font: inherit; color: inherit; }
+    button { cursor: pointer; }
+    button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--ring); outline-offset: 2px; }
+    .page { width: min(var(--content-max-width), 100%); margin-inline: auto; padding: var(--space-6) var(--page-gutter) var(--space-12); }
+    .eyebrow { color: var(--brand-deep); font-size: var(--text-xs); font-weight: var(--weight-bold); letter-spacing: var(--tracking-wide); text-transform: uppercase; }
+    .page h1 { margin: var(--space-2) 0 var(--space-2); font: var(--weight-semibold) var(--text-3xl)/var(--leading-tight) var(--font-head); }
+    .intro { max-width: 68ch; margin: 0; color: var(--muted-foreground); font-size: var(--text-base); }
+    .toolbar { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; margin-block: var(--space-5); }
+    .toolbar-label { color: var(--muted-foreground); font-size: var(--text-sm); font-weight: var(--weight-semibold); }
+    .toggle { min-height: var(--size-control-lg); padding-inline: var(--space-4); border: var(--border-w) solid var(--ink); border-radius: var(--radius-btn); background: var(--card); box-shadow: var(--elevation-compact); font-weight: var(--weight-semibold); }
+    .toggle[aria-pressed="true"] { background: var(--primary); color: var(--primary-foreground); }
+    .showcase { display: grid; grid-template-columns: minmax(15rem, 23rem) auto; justify-content: center; align-items: start; gap: var(--space-8); }
+    .notes { position: sticky; top: var(--space-5); padding: var(--space-5); border: var(--border-w) solid var(--ink); border-radius: var(--radius-panel); background: var(--card); box-shadow: var(--elevation-ordinary); }
+    .notes h2 { margin: 0 0 var(--space-3); font: var(--weight-semibold) var(--text-xl)/var(--leading-snug) var(--font-head); }
+    .notes ol { margin: 0; padding-left: var(--space-5); color: var(--muted-foreground); }
+    .notes li + li { margin-top: var(--space-2); }
+    .desktop-note { margin-top: var(--space-4); padding-top: var(--space-4); border-top: 2px dashed var(--ink-faint); font-size: var(--text-sm); }
+    .desktop-diagram { display: grid; grid-template-columns: 1fr 1fr; margin-top: var(--space-2); overflow: hidden; border: var(--border-w) solid var(--ink); border-radius: var(--radius-btn); }
+    .desktop-diagram span { min-height: var(--size-control-xl); display: grid; place-items: center; background: var(--surface-2); font-weight: var(--weight-semibold); }
+    .desktop-diagram span + span { border-left: 2px dashed var(--ink-faint); background: var(--card); }
+
+    .device { position: relative; width: min(390px, calc(100vw - 2 * var(--page-gutter))); height: min(844px, calc(100dvh - var(--space-6))); min-height: 660px; overflow: hidden; border: var(--border-w) solid var(--ink); border-radius: calc(var(--radius-panel) + var(--space-3)); background: var(--card); box-shadow: var(--elevation-lifted-strong); }
+    .dialog { height: 100%; display: flex; flex-direction: column; }
+    .close-lane { flex: none; min-height: 56px; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: var(--space-3); padding: var(--space-2) var(--space-3); border-bottom: 2px dashed var(--ink-faint); background: var(--card); }
+    .header-title { min-width: 0; margin: 0; overflow-wrap: anywhere; font: var(--weight-semibold) var(--text-2xl)/var(--leading-tight) var(--font-head); }
+    .close { flex: none; width: var(--size-control-lg); height: var(--size-control-lg); display: grid; place-items: center; border: var(--border-w) solid var(--ink); border-radius: 50%; background: var(--card); box-shadow: var(--elevation-compact); font-size: var(--text-2xl); line-height: 1; }
+    .body-scroll { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: var(--space-4) var(--space-4) var(--space-8); scrollbar-gutter: stable; }
+    .dialog-help { margin: 0 0 var(--space-5); color: var(--muted-foreground); font-size: var(--text-sm); }
+    .field { display: grid; gap: var(--space-1); margin-top: var(--space-4); min-width: 0; }
+    .field:first-of-type { margin-top: 0; }
+    label, .label { font-size: var(--text-sm); font-weight: var(--weight-semibold); }
+    .control { width: 100%; min-width: 0; min-height: var(--size-control-lg); padding: var(--space-2) var(--space-3); border: var(--border-w) solid var(--ink); border-radius: var(--radius-btn); background: var(--input-surface); }
+    textarea.control { min-height: 88px; resize: vertical; line-height: var(--leading-snug); }
+    .control:focus { border-color: var(--ring); box-shadow: 0 0 0 3px var(--invalid-ring); }
+    .pair { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); }
+    .triple { display: grid; grid-template-columns: .75fr 1.2fr 1fr; gap: var(--space-2); }
+    .link-row { display: grid; grid-template-columns: 1fr var(--size-control-lg); gap: var(--space-2); }
+    .icon-button { min-height: var(--size-control-lg); border: var(--border-w) solid var(--ink); border-radius: var(--radius-btn); background: var(--card); }
+    .secondary-action { justify-self: start; min-height: var(--size-control-lg); padding-inline: var(--space-3); border: 0; border-radius: var(--radius-btn); background: transparent; color: var(--brand-deep); font-weight: var(--weight-semibold); }
+    .secondary-action:hover { background: var(--accent); }
+
+    .image-section { margin-top: var(--space-6); padding-top: var(--space-5); border-top: 2px dashed var(--ink-faint); }
+    .section-heading { margin: 0 0 var(--space-1); font: var(--weight-semibold) var(--text-xl)/var(--leading-snug) var(--font-head); }
+    .section-help { margin: 0 0 var(--space-3); color: var(--muted-foreground); font-size: var(--text-sm); }
+    .source-tabs, .modes { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--space-1); padding: var(--space-1); border: var(--border-w) solid var(--ink); border-radius: var(--radius-btn); background: var(--accent); }
+    .modes { grid-template-columns: repeat(3, 1fr); }
+    .segment { min-height: var(--size-control-lg); padding-inline: var(--space-2); border: 0; border-radius: calc(var(--radius-btn) - 2px); background: transparent; font-size: var(--text-sm); font-weight: var(--weight-semibold); }
+    .segment[aria-pressed="true"] { background: var(--card); box-shadow: var(--elevation-compact); }
+    .workshop { margin-top: var(--space-4); padding: var(--space-3); border: var(--border-w) solid var(--ink); border-radius: var(--radius-panel); background: var(--card); box-shadow: var(--elevation-ordinary); }
+    .workshop-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2); margin-bottom: var(--space-3); }
+    .workshop-title { font-size: var(--text-sm); font-weight: var(--weight-bold); }
+    .backgrounds { display: flex; gap: var(--space-1); }
+    .swatch { min-width: var(--size-control-lg); height: var(--size-control-lg); padding-inline: var(--space-2); border: var(--border-w) solid var(--ink); border-radius: var(--radius-btn); background: var(--surface-2); font-size: var(--text-xs); font-weight: var(--weight-semibold); }
+    .swatch[aria-pressed="true"] { outline: 3px solid var(--ring); outline-offset: 1px; }
+    .stage { position: relative; display: grid; place-items: center; min-height: 240px; margin-top: var(--space-3); overflow: hidden; border: var(--border-w) solid var(--ink); border-radius: var(--radius-btn); background: var(--surface-2); background-image: radial-gradient(var(--pattern-dot) 1.4px, transparent 1.5px); background-size: 18px 18px; }
+    .photo { width: 72%; aspect-ratio: 4 / 3; display: grid; place-items: center; overflow: hidden; border: var(--border-w) solid var(--card); border-radius: var(--radius-btn); background: var(--primary-soft); box-shadow: 0 0 0 999px var(--reserved-veil); }
+    .photo svg { width: 100%; height: 100%; }
+    .crop-window { position: absolute; width: 72%; aspect-ratio: 4 / 3; border: var(--border-w) solid var(--card); box-shadow: 0 0 0 2px var(--ink); pointer-events: none; }
+    .grid-lines { position: absolute; inset: 0; background: linear-gradient(90deg, transparent 33%, var(--card) 33%, var(--card) 34%, transparent 34%, transparent 66%, var(--card) 66%, var(--card) 67%, transparent 67%), linear-gradient(transparent 33%, var(--card) 33%, var(--card) 34%, transparent 34%, transparent 66%, var(--card) 66%, var(--card) 67%, transparent 67%); opacity: 0; }
+    .stage.is-manual .grid-lines { opacity: .55; }
+    .stage.is-fit .photo { width: 56%; }
+    .zoom { display: none; margin-top: var(--space-3); grid-template-columns: auto 1fr auto; gap: var(--space-2); align-items: center; font-size: var(--text-sm); }
+    .workshop.manual .zoom { display: grid; }
+    input[type="range"] { width: 100%; accent-color: var(--primary); }
+    .previews { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); margin-top: var(--space-3); }
+    .preview-button { min-width: 0; padding: var(--space-2); border: var(--border-w) solid var(--ink); border-radius: var(--radius-btn); background: var(--card); box-shadow: var(--elevation-compact); font-weight: var(--weight-semibold); }
+    .preview-art { display: grid; place-items: center; margin-bottom: var(--space-2); overflow: hidden; border-radius: calc(var(--radius-btn) - 2px); background: var(--primary-soft); aspect-ratio: 4 / 3; }
+    .preview-button:last-child .preview-art { width: 76%; margin-inline: auto; aspect-ratio: 1; }
+    .preview-art svg { width: 100%; height: 100%; }
+    .preview-note { display: block; margin-top: var(--space-1); color: var(--muted-foreground); font-size: var(--text-xs); font-weight: var(--weight-normal); }
+    .footer { flex: none; padding: var(--space-3) var(--space-4) calc(var(--space-3) + env(safe-area-inset-bottom)); border-top: 2px dashed var(--ink-faint); background: var(--card); box-shadow: 0 calc(-1 * var(--elevation-compact-offset)) 0 var(--hard-shadow); }
+    .footer-actions { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2); }
+    .cancel, .save { width: 100%; min-height: var(--size-control-lg); border: var(--border-w) solid var(--ink); border-radius: var(--radius-btn); font-weight: var(--weight-bold); }
+    .cancel { background: var(--card); box-shadow: var(--elevation-compact); }
+    .save { background: var(--primary); color: var(--primary-foreground); box-shadow: var(--elevation-ordinary); }
+    .save:active, .cancel:active, .toggle:active, .preview-button:active { box-shadow: var(--elevation-pressed); }
+    .exit-confirm { position: absolute; inset: 0; z-index: var(--z-modal); display: grid; place-items: center; padding: var(--space-4); background: color-mix(in oklab, var(--ink) 48%, transparent); }
+    .exit-confirm[hidden] { display: none; }
+    .confirm-card { width: 100%; padding: var(--space-5); border: var(--border-w) solid var(--ink); border-radius: var(--radius-panel); background: var(--card); box-shadow: var(--elevation-lifted-strong); }
+    .confirm-card h3 { margin: 0 0 var(--space-2); font: var(--weight-semibold) var(--text-2xl)/var(--leading-tight) var(--font-head); }
+    .confirm-card p { margin: 0; color: var(--muted-foreground); line-height: var(--leading-snug); }
+    .confirm-actions { display: grid; gap: var(--space-2); margin-top: var(--space-5); }
+    .confirm-actions button { min-height: var(--size-control-lg); border: var(--border-w) solid var(--ink); border-radius: var(--radius-btn); font-weight: var(--weight-bold); }
+    .continue { background: var(--primary); color: var(--primary-foreground); box-shadow: var(--elevation-ordinary); }
+    .discard { background: var(--card); color: var(--destructive); }
+
+    .device.enlarged { font-size: 125%; }
+    .device.enlarged .pair, .device.enlarged .triple { grid-template-columns: 1fr; }
+    .device.enlarged .modes { grid-template-columns: 1fr; }
+    .device.enlarged .workshop-head { align-items: flex-start; flex-direction: column; }
+    .device.enlarged .backgrounds { width: 100%; }
+    .device.enlarged .swatch { flex: 1; }
+    .device.enlarged .previews { grid-template-columns: 1fr; }
+    @media (max-width: 760px) {
+      .showcase { grid-template-columns: 1fr; }
+      .notes { position: static; order: 2; }
+      .device { margin-inline: auto; }
+    }
+    @media (max-width: 350px) {
+      .pair, .triple { grid-template-columns: 1fr; }
+      .modes { grid-template-columns: 1fr; }
+      .previews { grid-template-columns: 1fr; }
+    }
+    @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; transition: none !important; } }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <span class="eyebrow">VARIANTA A — POLE PŘED FOTODÍLNOU</span>
+    <h1>Mobilní úprava dárku</h1>
+    <p class="intro">Jedna skládaná kompozice: nejdřív údaje dárku, potom zdroj obrázku a beze změny vložená fotodílna. Zavření i patka Uložit / Zrušit leží mimo rolovaný obsah a změněný koncept chrání potvrzení.</p>
+
+    <div class="toolbar" aria-label="Náhled textu">
+      <span class="toolbar-label">Schopnost rozvržení:</span>
+      <button class="toggle" type="button" data-text="normal" aria-pressed="true">Běžný text</button>
+      <button class="toggle" type="button" data-text="large" aria-pressed="false">Zvětšený text</button>
+      <button class="toggle" type="button" data-show-confirm>Náhled potvrzení</button>
+    </div>
+
+    <div class="showcase">
+      <aside class="notes" aria-label="Mapování návrhu">
+        <h2>Jedna cesta, žádný druhý editor</h2>
+        <ol>
+          <li>Krátký titul a křížek sdílejí horní řádek mimo scroll; sloupec křížku se nezmenšuje.</li>
+          <li>Název je první běžné pole; všechna metadata jsou před obrázkem.</li>
+          <li>Zdroj a existující fotodílna tvoří jeden navazující oddíl.</li>
+          <li>Uložit a Zrušit jsou ve společné patce mimo scroll.</li>
+          <li>Křížek i Zrušit chrání změněný koncept potvrzením.</li>
+          <li>Zvětšený text skládá páry i editor do jednoho sloupce.</li>
+        </ol>
+        <div class="desktop-note">
+          <strong>Desktop: geometrie beze změny</strong>
+          <div class="desktop-diagram" aria-label="Desktop zůstává obrázek vlevo a pole vpravo">
+            <span>Obrázek vlevo</span><span>Pole vpravo</span>
+          </div>
+          <p>Schválená výjimka: stejná patka Uložit / Zrušit a ochrana změn také na desktopu.</p>
+        </div>
+      </aside>
+
+      <section class="device" aria-label="Mobilní náhled dialogu">
+        <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dialog-title">
+          <header class="close-lane">
+            <h2 class="header-title" id="dialog-title">Upravit dárek</h2>
+            <button class="close" type="button" aria-label="Zavřít dialog">×</button>
+          </header>
+
+          <div class="body-scroll" tabindex="0">
+            <p class="dialog-help">Změny se projeví všude, kde se dárek zobrazuje.</p>
+
+            <div class="field">
+              <label for="gift-name">Název *</label>
+              <input class="control" id="gift-name" value="Dřevěná vláčkodráha Brio">
+            </div>
+            <div class="field">
+              <label for="gift-description">Popis</label>
+              <textarea class="control" id="gift-description">Startovací sada s mostem a bateriovou lokomotivou. Ideálně přírodní dřevo, ne plastová varianta.</textarea>
+            </div>
+            <div class="field">
+              <span class="label">Odkazy</span>
+              <div class="link-row">
+                <input class="control" id="gift-link-url" name="gift-link-url" aria-label="Adresa odkazu" value="https://www.agatinsvet.cz/brio-vlackodraha">
+                <button class="icon-button" type="button" aria-label="Odebrat odkaz">⌫</button>
+              </div>
+              <input class="control" id="gift-link-label" name="gift-link-label" aria-label="Viditelný popisek" value="Agátin svět">
+              <button class="secondary-action" type="button">+ Přidat odkaz</button>
+            </div>
+            <div class="pair">
+              <div class="field">
+                <label for="gift-price">Cena</label>
+                <input class="control" id="gift-price" inputmode="decimal" value="1 849">
+              </div>
+              <div class="field">
+                <label for="gift-currency">Měna</label>
+                <select class="control" id="gift-currency"><option>CZK (Kč)</option><option>EUR (€)</option></select>
+              </div>
+            </div>
+            <div class="triple">
+              <div class="field">
+                <label for="gift-quantity">Počet</label>
+                <input class="control" id="gift-quantity" inputmode="numeric" value="1">
+              </div>
+              <div class="field">
+                <label for="gift-category">Kategorie</label>
+                <select class="control" id="gift-category"><option>Hračky</option></select>
+              </div>
+              <div class="field">
+                <label for="gift-priority">Priorita</label>
+                <select class="control" id="gift-priority"><option>Vysoká</option></select>
+              </div>
+            </div>
+
+            <section class="image-section" aria-labelledby="image-title">
+              <h3 class="section-heading" id="image-title">Obrázek</h3>
+              <p class="section-help">Vyberte zdroj a potom upravte stejné náhledy jako dosud.</p>
+              <div class="source-tabs" role="group" aria-label="Zdroj obrázku">
+                <button class="segment" type="button" aria-pressed="false">Nahrát</button>
+                <button class="segment" type="button" aria-pressed="true">URL</button>
+              </div>
+              <div class="field">
+                <label for="image-url">Adresa obrázku</label>
+                <input class="control" id="image-url" type="url" value="https://images.agatinsvet.cz/brio-vlackodraha.jpg">
+              </div>
+
+              <div class="workshop manual" data-workshop>
+                <div class="workshop-head">
+                  <span class="workshop-title">Fotodílna</span>
+                  <div class="backgrounds" role="group" aria-label="Pozadí obrázku">
+                    <button class="swatch" type="button" aria-pressed="false">Bílé</button>
+                    <button class="swatch" type="button" aria-pressed="false">Černé</button>
+                    <button class="swatch" type="button" aria-pressed="true">Bez</button>
+                  </div>
+                </div>
+                <div class="modes" role="group" aria-label="Zobrazení obrázku">
+                  <button class="segment mode" type="button" data-mode="fill" aria-pressed="false">Vyplnit</button>
+                  <button class="segment mode" type="button" data-mode="fit" aria-pressed="false">Přizpůsobit</button>
+                  <button class="segment mode" type="button" data-mode="manual" aria-pressed="true">Ručně</button>
+                </div>
+
+                <div class="stage is-manual" data-stage aria-label="Náhled ručního výřezu">
+                  <div class="photo">
+                    <svg viewBox="0 0 320 240" role="img" aria-label="Ilustrace dřevěné vláčkodráhy">
+                      <rect width="320" height="240" fill="var(--primary-soft)"/>
+                      <ellipse cx="160" cy="176" rx="126" ry="40" fill="var(--accent)" stroke="var(--ink)" stroke-width="7"/>
+                      <path d="M60 174c26-60 174-62 202-2" fill="none" stroke="var(--brand-deep)" stroke-width="15" stroke-linecap="round"/>
+                      <rect x="112" y="112" width="64" height="42" rx="8" fill="var(--primary)" stroke="var(--ink)" stroke-width="5"/>
+                      <rect x="176" y="125" width="54" height="29" rx="6" fill="var(--accent-loud)" stroke="var(--ink)" stroke-width="5"/>
+                      <circle cx="132" cy="160" r="14" fill="var(--card)" stroke="var(--ink)" stroke-width="6"/>
+                      <circle cx="202" cy="160" r="14" fill="var(--card)" stroke="var(--ink)" stroke-width="6"/>
+                      <path d="M76 76h44v30H76zM237 78l22 28h-44z" fill="var(--brand)" stroke="var(--ink)" stroke-width="5"/>
+                    </svg>
+                  </div>
+                  <div class="crop-window"><div class="grid-lines"></div></div>
+                </div>
+                <div class="zoom">
+                  <label for="image-zoom">Přiblížení</label><input id="image-zoom" name="image-zoom" type="range" min="100" max="300" value="138"><output for="image-zoom">138 %</output>
+                </div>
+                <div class="previews" aria-label="Náhledy výřezů">
+                  <button class="preview-button" type="button">
+                    <span class="preview-art"><svg viewBox="0 0 320 240" aria-hidden="true"><rect width="320" height="240" fill="var(--primary-soft)"/><path d="M42 174c30-64 202-64 236 0" fill="none" stroke="var(--brand-deep)" stroke-width="18"/><rect x="118" y="108" width="88" height="54" rx="8" fill="var(--primary)" stroke="var(--ink)" stroke-width="6"/></svg></span>
+                    Karta<span class="preview-note">poměr 4 : 3</span>
+                  </button>
+                  <button class="preview-button" type="button">
+                    <span class="preview-art"><svg viewBox="40 0 240 240" aria-hidden="true"><rect width="320" height="240" fill="var(--primary-soft)"/><path d="M42 174c30-64 202-64 236 0" fill="none" stroke="var(--brand-deep)" stroke-width="18"/><rect x="118" y="108" width="88" height="54" rx="8" fill="var(--primary)" stroke="var(--ink)" stroke-width="6"/></svg></span>
+                    Seznam a rezervace<span class="preview-note">čtvercový náhled</span>
+                  </button>
+                </div>
+              </div>
+            </section>
+          </div>
+
+          <footer class="footer">
+            <div class="footer-actions">
+              <button class="cancel" type="button" data-exit>Zrušit</button>
+              <button class="save" type="button">Uložit</button>
+            </div>
+          </footer>
+        </div>
+
+        <div class="exit-confirm" data-confirm hidden>
+          <div class="confirm-card" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title" aria-describedby="confirm-description">
+            <h3 id="confirm-title">Zahodit změny?</h3>
+            <p id="confirm-description">Provedené úpravy nejsou uložené. Pokud odejdete, ztratíte je.</p>
+            <div class="confirm-actions">
+              <button class="continue" type="button" data-continue>Pokračovat v úpravách</button>
+              <button class="discard" type="button" data-discard>Zahodit změny</button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    const device = document.querySelector('.device');
+    const bodyScroll = document.querySelector('.body-scroll');
+    const confirmation = document.querySelector('[data-confirm]');
+    const continueButton = document.querySelector('[data-continue]');
+    let draftChanged = false;
+
+    function openConfirmation() {
+      confirmation.hidden = false;
+      continueButton.focus();
+    }
+
+    function requestExit() {
+      if (draftChanged) openConfirmation();
+    }
+
+    bodyScroll.addEventListener('input', () => { draftChanged = true; });
+    bodyScroll.addEventListener('change', () => { draftChanged = true; });
+    bodyScroll.addEventListener('click', (event) => {
+      if (event.target.closest('button')) draftChanged = true;
+    });
+    document.querySelectorAll('[data-exit], .close').forEach((button) => button.addEventListener('click', requestExit));
+    document.querySelector('[data-show-confirm]').addEventListener('click', () => {
+      draftChanged = true;
+      openConfirmation();
+    });
+    continueButton.addEventListener('click', () => {
+      confirmation.hidden = true;
+      document.querySelector('[data-exit]').focus();
+    });
+    document.querySelector('[data-discard]').addEventListener('click', () => {
+      draftChanged = false;
+      confirmation.hidden = true;
+    });
+    document.querySelector('.save').addEventListener('click', () => { draftChanged = false; });
+    document.querySelectorAll('[data-text]').forEach((button) => {
+      button.addEventListener('click', () => {
+        const enlarged = button.dataset.text === 'large';
+        device.classList.toggle('enlarged', enlarged);
+        document.querySelectorAll('[data-text]').forEach((item) => item.setAttribute('aria-pressed', String(item === button)));
+      });
+    });
+    const workshop = document.querySelector('[data-workshop]');
+    const stage = document.querySelector('[data-stage]');
+    document.querySelectorAll('[data-mode]').forEach((button) => {
+      button.addEventListener('click', () => {
+        const mode = button.dataset.mode;
+        document.querySelectorAll('[data-mode]').forEach((item) => item.setAttribute('aria-pressed', String(item === button)));
+        workshop.classList.toggle('manual', mode === 'manual');
+        stage.className = `stage is-${mode}`;
+        stage.setAttribute('aria-label', mode === 'manual' ? 'Náhled ručního výřezu' : `Náhled režimu ${button.textContent.trim()}`);
+      });
+    });
+    document.querySelectorAll('.backgrounds .swatch').forEach((button) => {
+      button.addEventListener('click', () => document.querySelectorAll('.backgrounds .swatch').forEach((item) => item.setAttribute('aria-pressed', String(item === button))));
+    });
+  </script>
+</body>
+</html>

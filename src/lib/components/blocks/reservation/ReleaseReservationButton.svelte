@@ -11,11 +11,17 @@
 	interface ReleaseReservationButtonProps {
 		gift: GiftForVisitor;
 		size?: ControlSize;
+		disabled?: boolean;
 		/** Extra classes on the underlying Button for stacked editor/action layouts. */
 		class?: string;
 	}
 
-	let { gift, size, class: className }: ReleaseReservationButtonProps = $props();
+	let {
+		gift,
+		size,
+		disabled = false,
+		class: className,
+	}: ReleaseReservationButtonProps = $props();
 
 	const reservations = useReservations();
 
@@ -36,10 +42,15 @@
 
 	function handleOpenClick(event: MouseEvent) {
 		event.stopPropagation();
-		dialogOpen = true;
+		if (!disabled) {
+			dialogOpen = true;
+		}
 	}
 
 	async function handleRelease(reservationId: string) {
+		if (disabled || isReleasing) {
+			return;
+		}
 		isReleasing = true;
 		try {
 			const released = await reservations.release(gift.id, reservationId);
@@ -58,6 +69,7 @@
 		{size}
 		intent="danger"
 		aria-label={m.reserve_release_button_aria({ name: gift.name })}
+		{disabled}
 		onclick={handleOpenClick}
 		data-testid="release-reservation-button"
 		class={className}
@@ -70,7 +82,7 @@
 		bind:open={dialogOpen}
 		giftName={gift.name}
 		reservations={releaseLedger}
-		{isReleasing}
+		isReleasing={isReleasing || disabled}
 		onrelease={handleRelease}
 	/>
 {/if}

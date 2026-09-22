@@ -11,13 +11,16 @@ export const giftDetailModalVariants = tv({
 		// cramped in the previous 900px column.
 		content:
 			'flex flex-col sm:max-w-[1100px] max-h-[90dvh] overflow-hidden p-0 gap-0 max-w-[calc(100%-1rem)]',
+		editorHeader:
+			'flex shrink-0 items-center gap-3 border-b-2 border-dashed border-ink-faint py-2 pr-2.5 pl-5 sm:contents',
+		editorTitle: 'min-w-0 flex-1 break-words text-[1.1875rem] leading-tight sm:sr-only',
 		// Mobile: a single scrolling flex column so the image and fields share one
 		// scroll region inside the 90dvh-capped dialog (issue: mobile edit dialog UX).
 		// Desktop: restores the exact 2-col grid + its own overflow-hidden. ~50/50
 		// split (issue #183 REQ-9, revises the earlier 45/55 split). No min-height:
 		// the grid takes its height from the columns' content (form column /
 		// adaptive stage), capped at 90dvh by `content` above (#189 REQ-5).
-		body: 'flex min-h-0 flex-1 flex-col overflow-y-auto sm:grid sm:grid-cols-[50%_50%] sm:grid-rows-[minmax(0,1fr)] sm:flex-initial sm:overflow-hidden',
+		body: 'flex min-h-0 flex-1 flex-col overflow-y-auto sm:grid sm:grid-cols-[50%_50%] sm:grid-rows-[minmax(0,1fr)_auto] sm:flex-initial sm:overflow-hidden',
 		// Dotted notebook mat behind the photo (issue #102 round-2 delta): letterboxed
 		// images keep the mat visible; a dashed ink seam separates image and form columns.
 		// The mobile height fits the display-mode toggle + preview + tile row (#116 round 3).
@@ -26,7 +29,7 @@ export const giftDetailModalVariants = tv({
 		// combined with overflow-hidden, crushes/clips its content instead of letting
 		// `body` scroll (mobile edit dialog UX fix).
 		imageColumn:
-			'relative shrink-0 overflow-hidden border-b-2 border-dashed border-ink-faint bg-surface bg-[radial-gradient(var(--pattern-dot)_1.4px,transparent_1.5px)] bg-size-[18px_18px] sm:border-b-0 sm:border-r-2 h-[260px] sm:h-auto',
+			'relative shrink-0 overflow-hidden border-b-2 border-dashed border-ink-faint bg-surface bg-[radial-gradient(var(--pattern-dot)_1.4px,transparent_1.5px)] bg-size-[18px_18px] sm:col-start-1 sm:row-span-2 sm:row-start-1 sm:border-b-0 sm:border-r-2 h-[260px] sm:h-auto',
 		// Photo-workshop panel (issue #189 REQ-6): an inset sticker panel that groups
 		// the mode pill + adaptive stage + preview tiles as one designed unit on the
 		// dotted mat, visually distinct from the form column — replaces the de-seamed
@@ -45,22 +48,24 @@ export const giftDetailModalVariants = tv({
 		// column at its natural content height so `body` scrolls instead of compressing
 		// it – min-h-0 is kept for the sm: grid-cell scroll mechanism (harmless with
 		// shrink-0 on mobile, since flex-shrink:0 makes min-height moot there).
-		detailColumn: 'flex min-h-0 shrink-0 flex-col gap-0 overflow-visible sm:overflow-hidden',
+		detailColumn:
+			'flex min-h-0 shrink-0 flex-col gap-0 overflow-visible sm:col-start-2 sm:row-start-1 sm:overflow-hidden',
 		// Mobile: no own scroll region – fields flow into the body scroll. Desktop:
 		// its own scroll region, unchanged.
 		detailScroll: 'min-h-0 overflow-visible p-5 sm:flex-1 sm:overflow-y-auto sm:p-7',
 		formField: 'flex flex-col gap-1.5',
 		formLabel: 'text-sm font-medium text-foreground',
-		formRow: 'grid grid-cols-2 gap-3',
+		formRow:
+			'grid grid-cols-[repeat(auto-fit,minmax(min(100%,9rem),1fr))] gap-3 sm:grid-cols-2',
 		formLabelRow: 'flex min-h-6 items-center justify-between gap-2',
 		// Mobile: manager release/delete actions flow with the form scroll; Save
 		// itself is hidden here and rendered instead in `mobileSubmitFooter`
 		// below (see there for why). Desktop: sm:static – already pinned by flex
 		// in the right column, whole block bordered/bg as before.
 		formActions:
-			'flex flex-col gap-2 px-5 pb-4 sm:static sm:border-t-2 sm:border-dashed sm:border-ink-faint sm:bg-card sm:px-7 sm:py-4',
-		// Desktop-only Save button, grouped with the manager release/delete
-		// actions in the one pinned block (`sm:order-1` keeps Save first). Hidden
+			'flex flex-col gap-2 px-5 pb-4 sm:static sm:col-start-2 sm:row-start-2 sm:border-t-2 sm:border-dashed sm:border-ink-faint sm:bg-card sm:px-7 sm:py-4',
+		// Desktop-only Save/Cancel pair, grouped with the manager release/delete
+		// actions in the one pinned block (`sm:order-1` keeps the pair first). Hidden
 		// on mobile: a `position: sticky` copy nested this deep in the mobile
 		// scroll can't stay visible from scroll-top – sticky only re-enters view
 		// once you've scrolled down to the element's normal flow position, so on
@@ -69,16 +74,15 @@ export const giftDetailModalVariants = tv({
 		// `mobileSubmitFooter` below is the real mobile Save button instead: a
 		// true DOM sibling outside the scrolling body, always visible regardless
 		// of scroll position.
-		submitWrapper: 'hidden sm:order-1 sm:block',
-		// Mobile-only pinned Save footer (see `submitWrapper` above for why it's
+		submitWrapper: 'hidden sm:order-1 sm:flex sm:flex-wrap sm:gap-2',
+		// Mobile-only pinned Save/Cancel footer (see `submitWrapper` above for why it's
 		// a separate element): a true sibling of `body`, not nested inside its
 		// scroll, so it's always visible. Hidden on desktop, where
 		// `submitWrapper` already renders Save inline with the manager actions.
 		mobileSubmitFooter:
-			'shrink-0 border-t-2 border-dashed border-ink-faint bg-card px-5 py-4 sm:hidden',
-		// Stacked full-width buttons keep the shared sticker hover state shadow-only;
-		// the button owner never moves.
-		submitButton: 'w-full',
+			'flex shrink-0 flex-wrap gap-2 border-t-2 border-dashed border-ink-faint bg-card px-5 py-4 sm:hidden',
+		// The action pair shares a row when it fits and wraps under enlarged text.
+		submitButton: 'min-w-fit flex-1',
 		releaseButton: 'order-1 sm:order-2 w-full',
 		// order-*: DOM order is [release, delete, submit] (mobile edit modal
 		// scroll fix, see `submitWrapper`); sm:order-* restores Save-first
