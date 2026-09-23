@@ -81,7 +81,8 @@ function requiredImageHeight(card: HTMLElement): number {
 	const naturalHeight =
 		contentWidth * 0.75 +
 		Number.parseFloat(imageStyle.borderTopWidth) +
-		Number.parseFloat(imageStyle.borderBottomWidth);
+		Number.parseFloat(imageStyle.borderBottomWidth) +
+		Number.parseFloat(imageStyle.paddingBottom);
 	const topBounds = visibleChildrenBounds(
 		image.querySelector<HTMLElement>('[data-gift-card-top-overlays]'),
 	);
@@ -121,7 +122,8 @@ function applyImageHeights(collection: HTMLElement, alignAcrossCollection: boole
 		const contentHeight =
 			height -
 			Number.parseFloat(imageStyle.borderTopWidth) -
-			Number.parseFloat(imageStyle.borderBottomWidth);
+			Number.parseFloat(imageStyle.borderBottomWidth) -
+			Number.parseFloat(imageStyle.paddingBottom);
 		card.style.setProperty('--gift-card-image-track-height', `${contentHeight}px`);
 	}
 }

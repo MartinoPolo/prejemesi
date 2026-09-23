@@ -79,3 +79,15 @@ sizes, positions, alignment, and containment. Its near/minimum/maximum helpers a
 by default. Preserve polling and animation readiness; tolerance is not a substitute for either. Keep
 design-token strings, counts, dimensionless ratios, and pure calculations exact or under their own
 meaningful precision. Explicit tolerance overrides require a requirement-specific reason.
+
+For gift-card image seams, geometry assertions do not detect native-pixel paint gaps. Against an
+already-running Storybook in the intended checkout (`pnpm.cmd exec storybook dev -p 6017 --ci`),
+run:
+
+```bash
+node scripts/verify-gift-card-image-seam.mjs --base http://127.0.0.1:6017
+```
+
+Add `--output <directory>` to save screenshots. Optional `--baseline` deliberately restores the old
+layout and is expected to fail. Do not start or stop a parent- or user-owned Storybook process for
+this check.

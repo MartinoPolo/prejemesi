@@ -83,16 +83,30 @@ describe('GiftCard saved composition containment', () => {
 					const compositionRect = composition.getBoundingClientRect();
 					const style = getComputedStyle(frame);
 					const contentTop = frameRect.top + Number.parseFloat(style.borderTopWidth);
-					const contentBottom =
-						frameRect.bottom - Number.parseFloat(style.borderBottomWidth);
+					const separator = frame.querySelector<HTMLElement>(
+						'[data-testid="gift-card-image-separator"]',
+					)!;
+					const separatorTop = separator.getBoundingClientRect().top;
+					const contentBottom = separatorTop + 1;
 					const contentLeft = frameRect.left + Number.parseFloat(style.borderLeftWidth);
 					const contentRight =
 						frameRect.right - Number.parseFloat(style.borderRightWidth);
+					expect(getComputedStyle(composition).transform).toBe('none');
 					expect(compositionRect.width / compositionRect.height).toBeCloseTo(4 / 3, 2);
-					expectPixelsAtLeast(compositionRect.top, contentTop);
-					expectPixelsAtMost(compositionRect.bottom, contentBottom);
-					expectPixelsAtLeast(compositionRect.left, contentLeft);
-					expectPixelsAtMost(compositionRect.right, contentRight);
+					expect(compositionRect.width - (contentRight - contentLeft)).toBeGreaterThan(0);
+					expect(
+						compositionRect.width - (contentRight - contentLeft),
+					).toBeLessThanOrEqual(3);
+					expect(compositionRect.bottom - contentBottom).toBeGreaterThan(0);
+					expect(compositionRect.bottom - contentBottom).toBeLessThanOrEqual(2);
+					expectPixelsNear(
+						compositionRect.top + compositionRect.height / 2,
+						(contentTop + contentBottom) / 2,
+					);
+					expectPixelsAtLeast(compositionRect.top, contentTop - 2);
+					expectPixelsAtMost(compositionRect.bottom, contentBottom + 2);
+					expectPixelsAtLeast(compositionRect.left, contentLeft - 2);
+					expectPixelsAtMost(compositionRect.right, contentRight + 2);
 				}
 			}
 		},
@@ -165,11 +179,10 @@ describe('GiftCard category badge (issue #265)', () => {
 
 			const badgeRect = badge.getBoundingClientRect();
 			const imageFrameRect = imageFrame.getBoundingClientRect();
-			const imageStyle = getComputedStyle(imageFrame);
-			const contentHeight =
-				imageFrameRect.height -
-				Number.parseFloat(imageStyle.borderTopWidth) -
-				Number.parseFloat(imageStyle.borderBottomWidth);
+			const separator = imageFrame.querySelector<HTMLElement>(
+				'[data-testid="gift-card-image-separator"]',
+			)!;
+			const contentHeight = separator.getBoundingClientRect().top + 1 - imageFrameRect.top;
 			expect(imageFrameRect.width / contentHeight).toBeCloseTo(4 / 3, 2);
 			const overlayRects = Array.from(
 				host.querySelectorAll<HTMLElement>('[data-testid="gift-state-overlay"] > span'),
@@ -300,11 +313,11 @@ describe('GiftCard image background fill (issue #252)', () => {
 			expect(cropRect.width / cropRect.height).toBeCloseTo(4 / 3, 2);
 			expectPixelsNear(frameRect.width, cropRect.width);
 			expectPixelsNear(frameRect.height, cropRect.height);
+			const separator = outerFrame.querySelector<HTMLElement>(
+				'[data-testid="gift-card-image-separator"]',
+			)!;
 			const visibleContentCenter =
-				outerRect.top +
-				(outerRect.height -
-					Number.parseFloat(getComputedStyle(outerFrame).borderBottomWidth)) /
-					2;
+				(outerRect.top + separator.getBoundingClientRect().top) / 2;
 			expectPixelsNear(cropRect.top + cropRect.height / 2, visibleContentCenter);
 		};
 
