@@ -242,7 +242,7 @@
 			{/if}
 			{#if gift.category != null && !contextualMode}
 				<div class="gift-list-category absolute top-2 right-2 left-2 z-20 min-w-0">
-					<GiftCategoryBadge category={gift.category} />
+					<GiftCategoryBadge category={gift.category} {isDimmed} />
 				</div>
 			{/if}
 			<GiftStateOverlay
@@ -253,6 +253,7 @@
 			<GiftPriorityBadge
 				priorityLabel={gift.priorityLabel}
 				{showPriority}
+				{isDimmed}
 				class="absolute bottom-2 left-2 z-20 max-w-[calc(100%-1rem)]"
 			/>
 		</div>
