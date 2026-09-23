@@ -8,8 +8,10 @@ import { tv } from 'tailwind-variants';
  */
 export const wishlistCardVariants = tv({
 	slots: {
-		root: 'group/card relative isolate flex h-full cursor-pointer flex-col rounded-panel bg-card',
-		plate: 'elevation-ordinary pointer-events-none absolute inset-0 z-[1] rounded-panel border-[2.5px] border-ink bg-transparent transition-[translate,scale,box-shadow] duration-(--duration-normal) ease-(--ease-standard)',
+		root: 'group/card relative isolate flex h-full cursor-pointer flex-col rounded-panel',
+		surface:
+			'elevation-ordinary pointer-events-auto relative flex size-full flex-col rounded-panel bg-card transition-[translate,scale,box-shadow] duration-(--duration-normal) ease-(--ease-standard)',
+		border: 'pointer-events-none absolute inset-0 z-[1] rounded-panel border-[2.5px] border-ink',
 		banner: 'relative flex h-32 shrink-0 flex-col items-start justify-end overflow-hidden rounded-t-[calc(var(--radius-panel)-2.5px)] border-b-[2.5px] border-ink p-3.5',
 		/** Notebook dot pattern over the tint fallback (hidden when a real photo fills the banner). */
 		bannerPattern:
@@ -33,7 +35,8 @@ export const wishlistCardVariants = tv({
 	variants: {
 		archived: {
 			true: {
-				root: 'opacity-70 grayscale-[0.7] bg-[color-mix(in_oklab,var(--card)_82%,var(--surface))]',
+				root: 'opacity-70 grayscale-[0.7]',
+				surface: 'bg-[color-mix(in_oklab,var(--card)_82%,var(--surface))]',
 			},
 			false: { root: 'elevation-owner elevation-owner-raised' },
 		},

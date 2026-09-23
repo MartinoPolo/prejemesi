@@ -42,49 +42,51 @@
 			class={rowVariants.row()}
 			aria-label={item.wishlist.title}
 		>
-			<ElevationSurface plate class={rowVariants.plate()} />
-			<div class={rowVariants.bannerMini()}>
-				<div class="absolute inset-0">
-					<WishlistSlotImage
-						src={thumbSrc}
-						frame={thumbFrame}
-						{themeEmoji}
-						alt={item.wishlist.title}
-						variant="thumbnail"
-					/>
+			<ElevationSurface class={rowVariants.surface()}>
+				<span aria-hidden="true" class={rowVariants.border()}></span>
+				<div class={rowVariants.bannerMini()}>
+					<div class="absolute inset-0">
+						<WishlistSlotImage
+							src={thumbSrc}
+							frame={thumbFrame}
+							{themeEmoji}
+							alt={item.wishlist.title}
+							variant="thumbnail"
+						/>
+					</div>
 				</div>
-			</div>
 
-			<div class={rowVariants.info()}>
-				<span class={rowVariants.title()}>{item.wishlist.title}</span>
-				{#if item.recipientDisplayName}
-					<span class={rowVariants.subtitle()}>
-						{m.wishlist_recipient_chip({ name: item.recipientDisplayName })}
-						{#if item.reservedCount !== undefined && item.giftCount !== undefined}
-							· {m.wishlist_list_reserved_count({
-								reserved: item.reservedCount,
-								total: item.giftCount,
-							})}
-						{/if}
-					</span>
-				{/if}
-			</div>
+				<div class={rowVariants.info()}>
+					<span class={rowVariants.title()}>{item.wishlist.title}</span>
+					{#if item.recipientDisplayName}
+						<span class={rowVariants.subtitle()}>
+							{m.wishlist_recipient_chip({ name: item.recipientDisplayName })}
+							{#if item.reservedCount !== undefined && item.giftCount !== undefined}
+								· {m.wishlist_list_reserved_count({
+									reserved: item.reservedCount,
+									total: item.giftCount,
+								})}
+							{/if}
+						</span>
+					{/if}
+				</div>
 
-			<div class={rowVariants.trailing()}>
-				{#if item.giftCount !== undefined}
-					<span class={rowVariants.giftCount()}>
-						<GiftIcon class="mr-1 inline size-3 align-middle" />
-						{item.giftCount}
-					</span>
-				{/if}
-				<WishlistBadge
-					class={rowVariants.statusBadge()}
-					presentation="list-status"
-					status={item.wishlist.status}
-				>
-					{WISHLIST_STATUS_LABELS[item.wishlist.status]()}
-				</WishlistBadge>
-			</div>
+				<div class={rowVariants.trailing()}>
+					{#if item.giftCount !== undefined}
+						<span class={rowVariants.giftCount()}>
+							<GiftIcon class="mr-1 inline size-3 align-middle" />
+							{item.giftCount}
+						</span>
+					{/if}
+					<WishlistBadge
+						class={rowVariants.statusBadge()}
+						presentation="list-status"
+						status={item.wishlist.status}
+					>
+						{WISHLIST_STATUS_LABELS[item.wishlist.status]()}
+					</WishlistBadge>
+				</div>
+			</ElevationSurface>
 		</a>
 	{/each}
 </div>

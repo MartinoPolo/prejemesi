@@ -5,6 +5,9 @@ import {
 	registerAndGetPage,
 } from './fixtures/auth-helpers';
 import { createTestUser } from './fixtures/test-data';
+import { createPixelAssertions } from '../helpers/pixel-assertions.mjs';
+
+const { expectPixelsNear } = createPixelAssertions(expect);
 
 /**
  * Přehled overview at /home (issue #225).
@@ -122,6 +125,88 @@ test.describe('Home overview (issue #225)', () => {
 			.toBeLessThan(initialOffset);
 		await expect(overflowingRow.getByRole('button', { name: 'Předchozí' })).toBeEnabled();
 
+		await page.context().close();
+	});
+
+	test('wishlist surface keeps its content, shadow clearance and lower-edge navigation in a carousel', async ({
+		browser,
+		request,
+		baseURL,
+	}) => {
+		const page = await signInAs(browser, request, baseURL!, MARTIN);
+		await page.setViewportSize({ width: 390, height: 844 });
+		await page.goto('/home');
+		const viewport = shelf(page, 'Nedávné').locator('[data-slot="carousel-content"]');
+		const card = viewport.getByTestId('wishlist-card').first();
+		const surface = card.locator(':scope > [data-slot="elevation-surface"]');
+		const title = surface.locator('div.font-heading');
+		await expect(card).toBeVisible();
+		await expect
+			.poll(() =>
+				card.evaluate(
+					(element) =>
+						element
+							.getAnimations()
+							.filter((animation) => animation.playState === 'running').length,
+				),
+			)
+			.toBe(0);
+		await page.mouse.move(1, 1);
+		const ownerBefore = await card.boundingBox();
+		const surfaceBefore = await surface.boundingBox();
+		const titleBefore = await title.boundingBox();
+		expect(ownerBefore).not.toBeNull();
+		expect(surfaceBefore).not.toBeNull();
+		expect(titleBefore).not.toBeNull();
+
+		await title.hover();
+		await expect
+			.poll(() => surface.evaluate((element) => getComputedStyle(element).translate))
+			.toBe('0px -2px');
+		await expect
+			.poll(() =>
+				surface.evaluate(
+					(element) =>
+						element
+							.getAnimations()
+							.filter((animation) => animation.playState === 'running').length,
+				),
+			)
+			.toBe(0);
+		const ownerAfter = await card.boundingBox();
+		const surfaceAfter = await surface.boundingBox();
+		const titleAfter = await title.boundingBox();
+		const viewportBounds = await viewport.boundingBox();
+		expectPixelsNear(ownerAfter!.y, ownerBefore!.y);
+		expectPixelsNear(surfaceAfter!.y - surfaceBefore!.y, -2);
+		expectPixelsNear(titleAfter!.y - titleBefore!.y, surfaceAfter!.y - surfaceBefore!.y);
+		const shadowOffset = await card.evaluate((element) =>
+			Number.parseFloat(
+				getComputedStyle(element).getPropertyValue('--elevation-ordinary-offset'),
+			),
+		);
+		expect(surfaceAfter!.y).toBeGreaterThanOrEqual(viewportBounds!.y);
+		expect(surfaceAfter!.y + surfaceAfter!.height + shadowOffset).toBeLessThanOrEqual(
+			viewportBounds!.y + viewportBounds!.height,
+		);
+		const lowerEdge = {
+			x: ownerAfter!.x + ownerAfter!.width / 2,
+			y: ownerAfter!.y + ownerAfter!.height + shadowOffset - 0.25,
+		};
+		await page.mouse.move(lowerEdge.x, lowerEdge.y);
+		await expect
+			.poll(() =>
+				card.evaluate((element, point) => {
+					const hit = document.elementFromPoint(point.x, point.y);
+					return hit === element || (hit !== null && element.contains(hit));
+				}, lowerEdge),
+			)
+			.toBe(true);
+		const href = await card.getAttribute('href');
+		await page.mouse.click(lowerEdge.x, lowerEdge.y);
+		await expect(page).toHaveURL(
+			new RegExp(`${href!.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/?$`),
+		);
 		await page.context().close();
 	});
 
