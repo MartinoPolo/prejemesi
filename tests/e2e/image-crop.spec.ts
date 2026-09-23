@@ -65,8 +65,10 @@ test('uploaded manual crop reaches the gift card and restores after reload', asy
 			'true',
 		);
 		const zoomSlider = dialog.getByRole('slider');
+		await expect(zoomSlider).toBeEnabled();
 		const initialZoomValue = await zoomSlider.inputValue();
 		await zoomSlider.focus();
+		await expect(zoomSlider).toBeFocused();
 		for (let step = 0; step < 4; step += 1) {
 			await zoomSlider.press('ArrowRight');
 		}
