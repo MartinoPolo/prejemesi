@@ -15,7 +15,7 @@ export const giftCardVariants = tv({
 		card: 'gift-card-root group/gift-card-decoration relative isolate rounded-panel',
 		// Paint over fractional edge antialiasing without changing the surface's border box or hit targets.
 		surface:
-			'gift-card-painted-surface resting-shadow-nesting elevation-surface relative grid grid-rows-[auto_minmax(0,1fr)_auto] rounded-[inherit] border-[2.5px] border-ink bg-card transition-[translate,scale,box-shadow] duration-(--duration-normal) ease-(--ease-standard) after:pointer-events-none after:absolute after:inset-[-2.5px] after:z-30 after:rounded-[inherit] after:border-[3.5px] after:border-ink',
+			'gift-card-painted-surface resting-shadow-nesting elevation-surface relative grid grid-rows-[auto_minmax(0,1fr)_auto] rounded-[inherit] border-[2.5px] border-ink bg-card transition-[translate,scale,box-shadow] duration-(--duration-normal) ease-(--ease-standard) after:pointer-events-none after:absolute after:inset-0 after:z-30 after:rounded-[calc(var(--radius-panel)-2.5px)] after:border after:border-ink after:shadow-[0_0_0_2.5px_var(--ink)]',
 		// 4:3 (issue #183, revises the earlier 1:1 shape): shorter cards, same
 		// `minmax(280px, 1fr)` grid column sizing.
 		imageArea:
