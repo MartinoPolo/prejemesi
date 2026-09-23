@@ -170,7 +170,7 @@
 				>
 					{#if gift.category != null}
 						<div class="min-w-0 flex-1" data-gift-card-category-zone>
-							<GiftCategoryBadge category={gift.category} />
+							<GiftCategoryBadge category={gift.category} {isDimmed} />
 						</div>
 					{/if}
 					{#if presentation.showLike && visitorGift}
@@ -192,6 +192,7 @@
 			<GiftPriorityBadge
 				priorityLabel={gift.priorityLabel}
 				{showPriority}
+				{isDimmed}
 				class="absolute bottom-3 left-3 z-20 max-w-[calc(100%-1.5rem)]"
 			/>
 		</div>
