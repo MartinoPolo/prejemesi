@@ -16,6 +16,7 @@ vi.mock('$env/dynamic/public', () => ({ env: {} }));
 const { default: WishlistGiftDisplay } = await import('./WishlistGiftDisplay.svelte');
 const { default: WishlistGiftDisplayTestHost } =
 	await import('./WishlistGiftDisplayTestHost.svelte');
+const { IMAGE_URL, imageMeta } = await import('../gift/gift_card.test_fixtures.js');
 const { expectPixelsNear, expectPixelsAtMost } = createPixelAssertions(expect);
 
 function gift(overrides: Partial<GiftForVisitor> = {}): GiftForVisitor {
@@ -339,6 +340,8 @@ describe('GiftCard collection alignment', () => {
 		document.documentElement.style.fontSize = '32px';
 		const crowded = gift({
 			id: 'crowded',
+			imageUrl: IMAGE_URL,
+			imageMeta: imageMeta('#ffffff'),
 			categoryId: 'category-crowded',
 			category: {
 				id: 'category-crowded',
@@ -365,8 +368,24 @@ describe('GiftCard collection alignment', () => {
 				...defaultProps,
 				role: WISHLIST_ROLES.moderator,
 				hideReservationState: false,
-				sections: section([crowded, gift({ id: 'peer' })]),
+				sections: section([
+					crowded,
+					gift({ id: 'peer', imageUrl: IMAGE_URL, imageMeta: imageMeta('#ffffff') }),
+				]),
 			});
+			await expect
+				.poll(() => {
+					const images = Array.from(
+						document.querySelectorAll<HTMLImageElement>(
+							'[data-gift-item] [data-testid="gift-card-crop-composition"] img',
+						),
+					);
+					return (
+						images.length === 2 &&
+						images.every((image) => image.complete && image.naturalWidth > 0)
+					);
+				})
+				.toBe(true);
 			await nextLayout();
 
 			const cards = Array.from(document.querySelectorAll<HTMLElement>('[data-gift-item]'));
@@ -380,11 +399,7 @@ describe('GiftCard collection alignment', () => {
 			const peerImage = cards[1]!.querySelector<HTMLElement>(
 				'[data-testid="gift-card-image-frame"]',
 			)!;
-			const cropComposition = crowdedImage.querySelector<HTMLElement>(
-				'[data-testid="gift-card-crop-composition"]',
-			)!;
 			const imageRect = crowdedImage.getBoundingClientRect();
-			const cropRect = cropComposition.getBoundingClientRect();
 			const boxes = [
 				cards[0]!.querySelector<HTMLElement>('[data-testid="gift-category-badge"]')!,
 				cards[0]!.querySelector<HTMLElement>('[data-like-heart]')!.closest('button')!,
@@ -396,8 +411,35 @@ describe('GiftCard collection alignment', () => {
 
 			expect(imageRect.height).toBeGreaterThan(imageRect.width * 0.75);
 			expectPixelsNear(peerImage.getBoundingClientRect().height, imageRect.height);
-			expect(cropRect.width / cropRect.height).toBeCloseTo(4 / 3, 2);
-			expectPixelsNear(cropRect.width, imageRect.width);
+			for (const frame of [crowdedImage, peerImage]) {
+				const frameRect = frame.getBoundingClientRect();
+				const frameStyle = getComputedStyle(frame);
+				const contentTop = frameRect.top + Number.parseFloat(frameStyle.borderTopWidth);
+				const contentBottom =
+					frame
+						.querySelector<HTMLElement>('[data-testid="gift-card-image-separator"]')!
+						.getBoundingClientRect().top + 1;
+				const contentLeft = frameRect.left + Number.parseFloat(frameStyle.borderLeftWidth);
+				const contentRight =
+					frameRect.right - Number.parseFloat(frameStyle.borderRightWidth);
+				const cropRect = frame
+					.querySelector<HTMLElement>('[data-testid="gift-card-crop-composition"]')!
+					.getBoundingClientRect();
+				expect(frameStyle.backgroundColor).toBe('rgb(255, 255, 255)');
+				expect(cropRect.width / cropRect.height).toBeCloseTo(4 / 3, 2);
+				expect(cropRect.width - (contentRight - contentLeft)).toBeGreaterThan(0);
+				expect(cropRect.width - (contentRight - contentLeft)).toBeLessThanOrEqual(3);
+				expectPixelsNear(
+					cropRect.left + cropRect.width / 2,
+					(contentLeft + contentRight) / 2,
+				);
+				expectPixelsNear(
+					cropRect.top + cropRect.height / 2,
+					(contentTop + contentBottom) / 2,
+				);
+				expect(cropRect.top - contentTop).toBeGreaterThan(0);
+				expect(contentBottom - cropRect.bottom).toBeGreaterThan(0);
+			}
 			for (let first = 0; first < boxes.length; first += 1) {
 				for (let second = first + 1; second < boxes.length; second += 1) {
 					const a = boxes[first]!;
@@ -423,7 +465,11 @@ describe('GiftCard collection alignment', () => {
 				'[data-testid="wishlist-gift-card-grid"]',
 			)!.style.gridTemplateColumns = 'repeat(2, minmax(0, 1fr))';
 			await nextLayout();
-			expect(crowdedImage.clientWidth / crowdedImage.clientHeight).toBeCloseTo(4 / 3, 2);
+			expect(
+				crowdedImage.clientWidth /
+					(crowdedImage.clientHeight -
+						Number.parseFloat(getComputedStyle(crowdedImage).paddingBottom)),
+			).toBeCloseTo(4 / 3, 2);
 
 			await screen.rerender({
 				...defaultProps,
@@ -435,7 +481,11 @@ describe('GiftCard collection alignment', () => {
 			const restoredImage = document.querySelector<HTMLElement>(
 				'[data-testid="gift-card-image-frame"]',
 			)!;
-			expect(restoredImage.clientWidth / restoredImage.clientHeight).toBeCloseTo(4 / 3, 2);
+			expect(
+				restoredImage.clientWidth /
+					(restoredImage.clientHeight -
+						Number.parseFloat(getComputedStyle(restoredImage).paddingBottom)),
+			).toBeCloseTo(4 / 3, 2);
 			await screen.unmount();
 		} finally {
 			document.documentElement.style.fontSize = previousFontSize;
