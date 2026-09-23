@@ -12,8 +12,7 @@
 		{ "command": "pnpm run format", "cwd": "." },
 		{ "command": "pnpm run lint", "cwd": "." },
 		{ "command": "pnpm run typecheck", "cwd": "." },
-		{ "command": "pnpm run check:fallow", "cwd": "." },
-		{ "command": "pnpm exec vitest run", "cwd": "." }
+		{ "command": "pnpm run check:fallow", "cwd": "." }
 	],
 	"full_checks": [
 		{ "command": "pnpm run lint:eslint", "cwd": "." },
