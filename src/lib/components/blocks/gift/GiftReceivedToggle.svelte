@@ -37,6 +37,7 @@
 	const visible = $derived(canManageWishlist(role) && !isArchived && onreceived !== undefined);
 	let localPending = $state(false);
 	const isPending = $derived(pending || localPending);
+	const ActionIcon = $derived(received ? Undo2Icon : CheckIcon);
 	let action: HTMLButtonElement | HTMLAnchorElement | null = $state(null);
 
 	function focusTarget(): HTMLElement | null {
@@ -95,11 +96,7 @@
 		data-gift-received-action={giftId}
 		data-pending={isPending}
 	>
-		{#if received}
-			<Undo2Icon data-icon="inline-start" aria-hidden="true" />
-		{:else}
-			<CheckIcon data-icon="inline-start" aria-hidden="true" />
-		{/if}
+		<ActionIcon data-icon="inline-start" aria-hidden="true" />
 		{#if compactLabel}
 			{received ? m.gift_unreceived_compact() : m.gift_received_compact()}
 		{:else}
