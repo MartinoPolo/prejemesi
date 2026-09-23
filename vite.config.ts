@@ -116,6 +116,7 @@ export default defineConfig({
 			'@lucide/svelte/icons/list-filter-plus',
 			'@lucide/svelte/icons/shield',
 			'@lucide/svelte/icons/sparkles',
+			'@lucide/svelte/icons/undo-2',
 			'@lucide/svelte/icons/user-check',
 			'@lucide/svelte/icons/user-plus',
 			'better-auth/svelte',

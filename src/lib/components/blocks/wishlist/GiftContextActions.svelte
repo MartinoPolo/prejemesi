@@ -3,6 +3,7 @@
 	import CopyIcon from '@lucide/svelte/icons/copy';
 	import PencilIcon from '@lucide/svelte/icons/pencil';
 	import CheckIcon from '@lucide/svelte/icons/check';
+	import Undo2Icon from '@lucide/svelte/icons/undo-2';
 	import ChevronLeftIcon from '@lucide/svelte/icons/chevron-left';
 	import ChevronRightIcon from '@lucide/svelte/icons/chevron-right';
 	import ListChecksIcon from '@lucide/svelte/icons/list-checks';
@@ -133,6 +134,7 @@
 		]),
 	);
 	const nestedActionSurfaceClass = 'grid grid-cols-[1.25rem_minmax(0,1fr)_1.25rem]';
+	const reversalSurfaceClass = 'text-status-danger-text group-hover:text-status-danger-text';
 	let mobileScreen = $state<'main' | 'priority' | 'category'>('main');
 	let openedSessionId = $state(0);
 
@@ -187,10 +189,19 @@
 		| 'purchased',
 )}
 	{#if action === 'open'}<ExternalLinkIcon />{:else if action === 'copy'}<CopyIcon
-		/>{:else if action === 'edit'}<PencilIcon />{:else if action === 'received'}<CheckIcon
+		/>{:else if action === 'edit'}<PencilIcon
+		/>{:else if action === 'received' && received}<Undo2Icon
+			aria-hidden="true"
+		/>{:else if action === 'received'}<CheckIcon
+			aria-hidden="true"
 		/>{:else if action === 'reserve'}<BookmarkIcon
 		/>{:else if action === 'cancel-reservation'}<BookmarkXIcon
-		/>{:else if action === 'purchased'}<ShoppingBagIcon />{:else}<ListChecksIcon />{/if}
+			aria-hidden="true"
+		/>{:else if action === 'purchased' && purchased}<Undo2Icon
+			aria-hidden="true"
+		/>{:else if action === 'purchased'}<ShoppingBagIcon
+			aria-hidden="true"
+		/>{:else}<ListChecksIcon />{/if}
 {/snippet}
 
 {#if mobile}
@@ -276,6 +287,7 @@
 						>{/if}
 					{#if has('received')}<WishlistSheetAction
 							disabled={isDisabled('received')}
+							surfaceClass={received ? reversalSurfaceClass : undefined}
 							onclick={() => finish('restore-focus', onreceived)}
 							>{@render icon('received')}{received
 								? m.gift_mark_unreceived()
@@ -297,6 +309,7 @@
 						>{/if}
 					{#if has('cancel-reservation') && oncancelreservation}<WishlistSheetAction
 							disabled={isDisabled('cancel-reservation')}
+							surfaceClass={reversalSurfaceClass}
 							onclick={() => finish('restore-focus', oncancelreservation)}
 							>{@render icon(
 								'cancel-reservation',
@@ -305,9 +318,10 @@
 					{#if has('purchased') && onpurchased}<WishlistSheetAction
 							aria-pressed={purchased}
 							disabled={isDisabled('purchased')}
+							surfaceClass={purchased ? reversalSurfaceClass : undefined}
 							onclick={() => finish('restore-focus', onpurchased)}
 							>{@render icon('purchased')}{purchased
-								? m.gift_bought()
+								? m.gift_mark_unbought()
 								: m.gift_mark_bought()}</WishlistSheetAction
 						>{/if}
 				{/if}

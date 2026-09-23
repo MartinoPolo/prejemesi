@@ -9,6 +9,15 @@ import * as m from '$lib/paraglide/messages.js';
 
 const { expectPixelsNear, expectPixelsAtLeast } = createPixelAssertions(expect);
 
+function expectSemanticDangerText(surface: HTMLElement) {
+	const tokenProbe = document.createElement('span');
+	tokenProbe.style.color = 'var(--status-danger-text)';
+	surface.append(tokenProbe);
+	const expectedColor = getComputedStyle(tokenProbe).color;
+	tokenProbe.remove();
+	expect(getComputedStyle(surface).color).toBe(expectedColor);
+}
+
 const managerProps = {
 	sessionId: 1,
 	nativeOpen: false,
@@ -84,6 +93,46 @@ describe('GiftContextActions desktop ContextMenu', () => {
 		await screen.unmount();
 		trigger.remove();
 		dialogControl.remove();
+	});
+
+	it('uses full reversal labels, undo icons, and semantic red text in desktop overflow', async () => {
+		const receivedScreen = await render(GiftContextActionsTestHost, {
+			...managerProps,
+			received: true,
+			mobile: false,
+			nativeOpen: true,
+			programmaticOpen: false,
+		});
+		const received = receivedScreen
+			.getByRole('menuitem', { name: m.gift_mark_unreceived() })
+			.element();
+		expect(received.classList.contains('text-status-danger-text')).toBe(true);
+		expect(received.querySelector('.lucide-undo-2')).toBeTruthy();
+		await receivedScreen.unmount();
+
+		const purchasedScreen = await render(GiftContextActionsTestHost, {
+			...managerProps,
+			role: 'visitor' as const,
+			canReserve: true,
+			ownsReservation: true,
+			canTrackPurchased: true,
+			purchased: true,
+			oncancelreservation: vi.fn(),
+			onpurchased: vi.fn(),
+			mobile: false,
+			nativeOpen: true,
+			programmaticOpen: false,
+		});
+		const purchased = purchasedScreen
+			.getByRole('menuitem', { name: m.gift_mark_unbought() })
+			.element();
+		const cancellation = purchasedScreen
+			.getByRole('menuitem', { name: m.reserve_button_cancel() })
+			.element();
+		expect(purchased.classList.contains('text-status-danger-text')).toBe(true);
+		expect(purchased.querySelector('.lucide-undo-2')).toBeTruthy();
+		expect(cancellation.classList.contains('text-status-danger-text')).toBe(true);
+		await purchasedScreen.unmount();
 	});
 
 	it('uses menu roles and nested submenus for configured manager choices', async () => {
@@ -162,7 +211,62 @@ describe('GiftContextActions placement-aware More', () => {
 });
 
 describe('GiftContextActions mobile Sheet', () => {
-	afterEach(async () => page.viewport(1280, 720));
+	afterEach(async () => {
+		await page.viewport(1280, 720);
+		document.documentElement.classList.remove('dark');
+	});
+
+	it.each(['light', 'dark'])(
+		'keeps reversal text red on actual hover in %s mobile overflow',
+		async (mode) => {
+			document.documentElement.classList.toggle('dark', mode === 'dark');
+			const receivedScreen = await render(GiftContextActions, {
+				...managerProps,
+				received: true,
+			});
+			const receivedAction = receivedScreen.getByRole('button', {
+				name: m.gift_mark_unreceived(),
+			});
+			const received = receivedAction.element();
+			expect(received.querySelector('.text-status-danger-text')).toBeTruthy();
+			const receivedSurface = received.querySelector<HTMLElement>('.elevation-surface')!;
+			expectSemanticDangerText(receivedSurface);
+			await receivedAction.hover();
+			expectSemanticDangerText(receivedSurface);
+			expect(received.querySelector('.lucide-undo-2')).toBeTruthy();
+			await receivedScreen.unmount();
+
+			const purchasedScreen = await render(GiftContextActions, {
+				...managerProps,
+				role: 'visitor' as const,
+				canReserve: true,
+				ownsReservation: true,
+				canTrackPurchased: true,
+				purchased: true,
+				oncancelreservation: vi.fn(),
+				onpurchased: vi.fn(),
+			});
+			const purchased = purchasedScreen
+				.getByRole('button', { name: m.gift_mark_unbought() })
+				.element();
+			const cancellation = purchasedScreen
+				.getByRole('button', { name: m.reserve_button_cancel() })
+				.element();
+			expect(purchased.querySelector('.text-status-danger-text')).toBeTruthy();
+			expect(purchased.querySelector('.lucide-undo-2')).toBeTruthy();
+			expect(cancellation.querySelector('.text-status-danger-text')).toBeTruthy();
+			for (const action of [
+				purchasedScreen.getByRole('button', { name: m.gift_mark_unbought() }),
+				purchasedScreen.getByRole('button', { name: m.reserve_button_cancel() }),
+			]) {
+				const surface = action.element().querySelector<HTMLElement>('.elevation-surface')!;
+				expectSemanticDangerText(surface);
+				await action.hover();
+				expectSemanticDangerText(surface);
+			}
+			await purchasedScreen.unmount();
+		},
+	);
 
 	it('shows decorative right chevrons at the far edge of nested action rows', async () => {
 		const screen = await render(GiftContextActions, managerProps);

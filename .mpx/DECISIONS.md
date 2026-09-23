@@ -253,8 +253,7 @@ sections for UI work. Historical reconciliation and review notes are in
 - 2026-09-14: Keep applicable gift quantity outside the title clamp, aligned against the first title
   line using typography-derived slots. Grid Like uses the image/card top-right with a separate
   wrapping category lane; List Like stays beside the title. Preserve the ghost heart/count and
-  accessible targets. Received uses full ink secondary, distinct from Reserve and stronger than
-  More, through shared semantic intents.
+  accessible targets.
 - 2026-09-14: Center gift state badges and authorized identity as one combined group on the image; a
   lone state remains at its center, independent of edge badges. Category stays top-left and priority
   bottom-left, as finalized in the gift-hierarchy design approval. Its badge styling is schematic
@@ -276,8 +275,8 @@ sections for UI work. Historical reconciliation and review notes are in
   line; mobile Card titles allow two lines, desktop List one line with ellipsis, and mobile List two
   lines. Use 16 px mobile and 24 px desktop titles with full names available in detail and
   accessible naming. Keep short descriptions immediately below titles and source badges visible on
-  mobile. Place links left and compact prices right, wrapping prices below on collision; use a
-  consistent readable received-button-palette treatment rather than the previous red price styling.
+  mobile. Place links left and compact prices right, wrapping prices below on collision; keep prices
+  in readable ink rather than red action colors.
 - 2026-09-16: Desktop Card content aligns across the displayed collection, not only within each grid
   row. Titles share an adaptive height capped at two lines, reserving the second line only when a
   displayed title needs it. Descriptions share a one-line preview row, empty for gifts without
@@ -450,6 +449,9 @@ sections for UI work. Historical reconciliation and review notes are in
 - 2026-09-21: The gift view switcher uses a scoped connected accent backing with one ordinary
   resting shadow and a Button face only on the selected segment. Keep the switcher static on hover
   and press; preserve default segmented-toggle presentation for other consumers.
+- 2026-09-23: Gift actions use full ink for positive Received/Bought actions and primary for
+  Reserve. Explicit reversals use the shared red outline with readable semantic text and an undo
+  icon; Like remains neutral, and solid red remains reserved for destructive actions.
 
 ## Images & cropping
 

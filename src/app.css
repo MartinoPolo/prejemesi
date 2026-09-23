@@ -397,6 +397,7 @@
 	--status-success: #14a56f;
 	--status-warning: #efa00b;
 	--status-danger: #e4574c;
+	--status-danger-text: color-mix(in oklab, var(--status-danger) 60%, var(--ink));
 	--status-info: #1e9be9;
 	--status-dup: oklch(72% 0.175 68deg);
 
@@ -532,6 +533,7 @@
 	--status-success: #3bd598;
 	--status-warning: #ffc24b;
 	--status-danger: #f07a6e;
+	--status-danger-text: color-mix(in oklab, var(--status-danger) 90%, white);
 	--status-info: #55b9f3;
 	--status-dup: oklch(76% 0.165 68deg);
 
@@ -778,6 +780,7 @@
 	--color-status-success: var(--status-success);
 	--color-status-warning: var(--status-warning);
 	--color-status-danger: var(--status-danger);
+	--color-status-danger-text: var(--status-danger-text);
 	--color-status-info: var(--status-info);
 	--color-status-dup: var(--status-dup);
 	--color-reserved: var(--reserved);

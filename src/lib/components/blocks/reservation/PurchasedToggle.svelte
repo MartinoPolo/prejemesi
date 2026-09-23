@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Undo2Icon from '@lucide/svelte/icons/undo-2';
 	import { Button } from '$lib/components/base/button/index.js';
 	import type { ControlSize } from '$lib/components/base/control_sizing.js';
 	import { toastSuccess, toastError } from '$lib/components/base/toast/index.js';
@@ -53,13 +54,14 @@
 {#if canTrack}
 	<Button
 		{size}
-		intent="secondary-filled"
+		intent={purchased ? 'danger' : 'secondary-filled'}
 		disabled={isSaving}
 		aria-pressed={purchased}
-		aria-label={purchased ? m.gift_bought() : m.gift_mark_bought()}
+		aria-label={purchased ? m.gift_mark_unbought() : m.gift_mark_bought()}
 		onclick={handleToggle}
 		class={className}
 	>
-		{m.gift_bought()}
+		{#if purchased}<Undo2Icon data-icon="inline-start" aria-hidden="true" />{/if}
+		{purchased ? m.gift_unbought_compact() : m.gift_bought()}
 	</Button>
 {/if}

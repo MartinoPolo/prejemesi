@@ -53,7 +53,7 @@ export const buttonVariants = tv({
 			danger: {
 				owner: 'elevation-owner elevation-owner-raised elevation-owner-anchored',
 				surface:
-					'border-status-danger bg-card text-status-danger group-hover:bg-[color-mix(in_oklab,var(--status-danger)_10%,transparent)]',
+					'border-status-danger bg-card text-status-danger-text group-hover:bg-[color-mix(in_oklab,var(--status-danger)_10%,transparent)]',
 			},
 			'primary-destructive': {
 				owner: 'elevation-owner elevation-owner-raised elevation-owner-anchored',

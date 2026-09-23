@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { tick } from 'svelte';
 	import CheckIcon from '@lucide/svelte/icons/check';
+	import Undo2Icon from '@lucide/svelte/icons/undo-2';
 	import { Button } from '$lib/components/base/button/index.js';
 	import type { ControlSize } from '$lib/components/base/control_sizing.js';
 	import * as m from '$lib/paraglide/messages.js';
@@ -84,7 +85,7 @@
 	<Button
 		bind:ref={action}
 		{size}
-		intent="secondary-filled"
+		intent={received ? 'danger' : 'secondary-filled'}
 		class={className}
 		{surfaceClass}
 		onclick={handleClick}
@@ -94,7 +95,11 @@
 		data-gift-received-action={giftId}
 		data-pending={isPending}
 	>
-		<CheckIcon data-icon="inline-start" />
+		{#if received}
+			<Undo2Icon data-icon="inline-start" aria-hidden="true" />
+		{:else}
+			<CheckIcon data-icon="inline-start" aria-hidden="true" />
+		{/if}
 		{#if compactLabel}
 			{received ? m.gift_unreceived_compact() : m.gift_received_compact()}
 		{:else}
