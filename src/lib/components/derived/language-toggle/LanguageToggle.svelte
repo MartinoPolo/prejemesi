@@ -106,7 +106,7 @@
 							format="icon"
 							aria-label={ariaLabel}
 						>
-							{LOCALE_CODES[currentLocale]}
+							<span class="text-[15px]">{LOCALE_CODES[currentLocale]}</span>
 						</Button>
 					{/snippet}
 				</Popover.Trigger>
