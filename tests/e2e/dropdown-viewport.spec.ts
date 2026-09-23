@@ -5,7 +5,7 @@ import {
 	waitForAppHydration,
 } from './fixtures/auth-helpers.js';
 import { openDesktopDisplaySubmenu } from './fixtures/wishlist-helpers.js';
-import { createPixelAssertions, DEFAULT_PIXEL_TOLERANCE } from '../helpers/pixel-assertions.mjs';
+import { createPixelAssertions } from '../helpers/pixel-assertions.mjs';
 
 const { expectPixelsAtLeast, expectPixelsAtMost, expectPixelsNear } = createPixelAssertions(expect);
 const VIEWPORT_PADDING = 8;
@@ -79,27 +79,36 @@ async function expectInsideViewport(menu: Locator, width: number, height: number
 			),
 		)
 		.toBe(0);
-	await expect
-		.poll(async () => {
-			const rect = await menu.boundingBox();
-			if (rect === null) {
-				return Number.POSITIVE_INFINITY;
-			}
-			return Math.max(
-				0,
-				VIEWPORT_PADDING - rect.x,
-				VIEWPORT_PADDING - rect.y,
-				rect.x + rect.width - (width - VIEWPORT_PADDING),
-				rect.y + rect.height - (height - VIEWPORT_PADDING),
-			);
-		})
-		.toBeLessThanOrEqual(DEFAULT_PIXEL_TOLERANCE);
-	const rect = await menu.boundingBox();
-	expect(rect).not.toBeNull();
-	expectPixelsAtLeast(rect!.x, VIEWPORT_PADDING);
-	expectPixelsAtLeast(rect!.y, VIEWPORT_PADDING);
-	expectPixelsAtMost(rect!.x + rect!.width, width - VIEWPORT_PADDING);
-	expectPixelsAtMost(rect!.y + rect!.height, height - VIEWPORT_PADDING);
+	await expect(async () => {
+		const rect = await menu.boundingBox();
+		expect(rect, 'Expected dropdown to have a bounding box').not.toBeNull();
+		if (rect === null) {
+			return;
+		}
+
+		const rightEdge = rect.x + rect.width;
+		const bottomEdge = rect.y + rect.height;
+		expectPixelsAtLeast(
+			rect.x,
+			VIEWPORT_PADDING,
+			`Dropdown left edge ${rect.x}px must stay inside the viewport`,
+		);
+		expectPixelsAtLeast(
+			rect.y,
+			VIEWPORT_PADDING,
+			`Dropdown top edge ${rect.y}px must stay inside the viewport`,
+		);
+		expectPixelsAtMost(
+			rightEdge,
+			width - VIEWPORT_PADDING,
+			`Dropdown right edge ${rightEdge}px must stay inside the viewport`,
+		);
+		expectPixelsAtMost(
+			bottomEdge,
+			height - VIEWPORT_PADDING,
+			`Dropdown bottom edge ${bottomEdge}px must stay inside the viewport`,
+		);
+	}).toPass({ timeout: 10_000 });
 }
 
 async function openDisplaySubmenu(page: Page, name: RegExp) {

@@ -17,6 +17,9 @@
 		asChild?: Snippet<[Record<string, unknown>]>;
 	}
 
+	const componentId = $props.id();
+	const contentId = `${componentId}-content`;
+
 	let {
 		text,
 		side = 'top',
@@ -26,44 +29,83 @@
 		children,
 		asChild,
 	}: Props = $props();
+
+	let tooltipOpen = $state(false);
+	let acceptsOpenFromCurrentInteraction = $state(false);
+
+	function getTooltipOpen() {
+		return !disabled && tooltipOpen;
+	}
+
+	function setTooltipOpen(open: boolean) {
+		if (!open) {
+			tooltipOpen = false;
+			return;
+		}
+
+		if (!disabled && acceptsOpenFromCurrentInteraction) {
+			tooltipOpen = true;
+		}
+	}
+
+	function handleTriggerPointerEnter() {
+		if (!disabled) {
+			acceptsOpenFromCurrentInteraction = true;
+		}
+	}
+
+	function handleTriggerPointerLeave() {
+		acceptsOpenFromCurrentInteraction = false;
+	}
+
+	function handleTriggerFocus(event: FocusEvent) {
+		if (
+			!disabled &&
+			event.currentTarget instanceof HTMLElement &&
+			event.currentTarget.matches(':focus-visible')
+		) {
+			acceptsOpenFromCurrentInteraction = true;
+		}
+	}
+
+	function handleTriggerBlur() {
+		acceptsOpenFromCurrentInteraction = false;
+	}
+
+	$effect(() => {
+		if (disabled) {
+			acceptsOpenFromCurrentInteraction = false;
+			tooltipOpen = false;
+		}
+	});
 </script>
 
-{#if delayDuration !== undefined}
-	<TooltipPrimitive.Provider {delayDuration}>
-		<TooltipPrimitive.Root {disabled}>
-			<TooltipTrigger>
-				{#snippet child({ props })}
-					{#if asChild}
-						{@render asChild(props)}
-					{:else}
-						<span {...props} class="inline-flex items-center">
-							{@render children?.()}
-						</span>
-					{/if}
-				{/snippet}
-			</TooltipTrigger>
+<TooltipPrimitive.Provider {delayDuration}>
+	<TooltipPrimitive.Root bind:open={getTooltipOpen, setTooltipOpen} {disabled}>
+		<TooltipTrigger
+			onpointerenter={handleTriggerPointerEnter}
+			onpointerleave={handleTriggerPointerLeave}
+			onfocus={handleTriggerFocus}
+			onblur={handleTriggerBlur}
+		>
+			{#snippet child({ props })}
+				{@const accessibleTriggerProps = {
+					...props,
+					'aria-describedby': getTooltipOpen() ? contentId : undefined,
+				}}
+				{#if asChild}
+					{@render asChild(accessibleTriggerProps)}
+				{:else}
+					<span {...accessibleTriggerProps} class="inline-flex items-center">
+						{@render children?.()}
+					</span>
+				{/if}
+			{/snippet}
+		</TooltipTrigger>
+		{#if !disabled}
 			<TooltipContent {side} {sideOffset}>
-				{text}
+				<span id={contentId}>{text}</span>
 			</TooltipContent>
-		</TooltipPrimitive.Root>
-	</TooltipPrimitive.Provider>
-{:else}
-	<TooltipPrimitive.Provider>
-		<TooltipPrimitive.Root {disabled}>
-			<TooltipTrigger>
-				{#snippet child({ props })}
-					{#if asChild}
-						{@render asChild(props)}
-					{:else}
-						<span {...props} class="inline-flex items-center">
-							{@render children?.()}
-						</span>
-					{/if}
-				{/snippet}
-			</TooltipTrigger>
-			<TooltipContent {side} {sideOffset}>
-				{text}
-			</TooltipContent>
-		</TooltipPrimitive.Root>
-	</TooltipPrimitive.Provider>
-{/if}
+		{/if}
+	</TooltipPrimitive.Root>
+</TooltipPrimitive.Provider>

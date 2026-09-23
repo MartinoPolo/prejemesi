@@ -203,11 +203,13 @@ export async function openDesktopDisplaySubmenu(
 	let controlledSubmenuId: string | null = null;
 	await expect(async () => {
 		await subTrigger.focus();
-		await expect(subTrigger).toBeFocused();
+		expect(await subTrigger.evaluate((element) => element === document.activeElement)).toBe(
+			true,
+		);
 		if ((await subTrigger.getAttribute('aria-expanded')) !== 'true') {
 			await subTrigger.press('ArrowRight');
 		}
-		await expect(subTrigger).toHaveAttribute('aria-expanded', 'true');
+		expect(await subTrigger.getAttribute('aria-expanded')).toBe('true');
 		controlledSubmenuId = await subTrigger.getAttribute('aria-controls');
 		expect(controlledSubmenuId).toBeTruthy();
 	}).toPass({ timeout: 5_000 });

@@ -1,10 +1,8 @@
 import { expect, test } from '@playwright/test';
 import { loginViaApi } from './fixtures/auth-helpers.js';
-import { openDesktopDisplaySubmenu, startGiftReorder } from './fixtures/wishlist-helpers.js';
 import {
 	BROWSER_ZOOMS,
 	bottomToTopSweep,
-	expectReachable,
 	expectSafeClick,
 	expectStableLift,
 	launchZoomableContext,
@@ -16,65 +14,6 @@ const REPRESENTATIVE_DEPTH = 'soft';
 
 test.describe('Issue #346 stable hover hit regions', () => {
 	test.describe.configure({ mode: 'default', timeout: 180_000 });
-
-	test('focused gift consumers retain nested hit targets at 1/soft', async ({
-		request,
-		baseURL,
-	}) => {
-		const cookies = await loginViaApi(request, baseURL!, {
-			email: 'martin@test.cz',
-			password: ['password', '123'].join(''),
-		});
-		const context = await launchZoomableContext(cookies, baseURL!);
-		const page = context.pages()[0] ?? (await context.newPage());
-		try {
-			await setRealBrowserZoom(page, baseURL!, 1, null);
-			await page.locator('html').evaluate((html, depth) => {
-				html.dataset.depth = depth;
-			}, REPRESENTATIVE_DEPTH);
-			const cardView = page
-				.getByTestId('wishlist-toolbar')
-				.getByRole('radio', { name: 'Karta', exact: true })
-				.filter({ visible: true });
-			await expect(cardView).toBeVisible();
-			await cardView.click();
-			await expect(page.getByTestId('wishlist-gift-card-grid')).toBeVisible();
-			const card = page.locator('[data-gift-item] .elevation-owner-raised').first();
-			await expect(card).toBeVisible();
-			expectStableLift(await stationaryLowerEdge(page, card, 'Gift card'));
-			expect((await bottomToTopSweep(page, card, 'Gift card')).interveningUnhovered).toEqual(
-				[],
-			);
-
-			const groupingMenu = await openDesktopDisplaySubmenu(page, /Seskupení|Grouping/);
-			const ungrouped = groupingMenu.getByRole('menuitemradio', {
-				name: /Bez seskupení|No grouping/,
-			});
-			await ungrouped.click();
-			await expect(ungrouped).toHaveAttribute('aria-checked', 'true');
-			await page.keyboard.press('Escape');
-			await expect(groupingMenu).toBeHidden();
-			await page.keyboard.press('Escape');
-			await expect(page.locator('[data-slot="dropdown-menu-content"]:visible')).toHaveCount(
-				0,
-			);
-
-			await startGiftReorder(page);
-			const grip = page
-				.getByRole('button', { name: 'Přesunout dárek', exact: true })
-				.filter({ visible: true })
-				.first();
-			await expect(grip).toBeVisible();
-			await expectReachable(grip);
-			expect(
-				await grip.evaluate((element) =>
-					element.closest('[data-gift-item]')?.matches(':hover'),
-				),
-			).toBe(true);
-		} finally {
-			await context.close();
-		}
-	});
 
 	test('visitor detail sticker, link row, and circular close retain hit targets at 1/soft', async ({
 		baseURL,

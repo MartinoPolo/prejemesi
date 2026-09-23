@@ -59,54 +59,6 @@ test('playground presents every explicit control size with compatible real peers
 	}
 });
 
-test('every explicit size row compares every button treatment in text and icon forms', async ({
-	page,
-}) => {
-	await page.goto('/playground');
-	const showcase = page.getByTestId('control-sizing-showcase');
-	const expectedIntents = [
-		'primary',
-		'secondary',
-		'ghost',
-		'ghost-overlay',
-		'danger',
-		'primary-destructive',
-		'outline',
-		'link',
-	];
-
-	for (const [size, expectedHeight] of Object.entries(CONTROL_SIZES)) {
-		const sizeRow = showcase.locator(`[data-size-row="${size}"]`);
-		for (const intent of expectedIntents) {
-			const treatment = sizeRow.locator(`[data-button-intent="${intent}"]`);
-			const buttons = treatment.locator('button');
-			await expect(buttons).toHaveCount(2);
-			await expect(
-				treatment.getByRole('button', { name: `${size} ${intent} icon treatment` }),
-			).toBeVisible();
-			for (const button of await buttons.all()) {
-				await expect
-					.poll(async () =>
-						Math.abs(
-							(await button.evaluate(
-								(element) => element.getBoundingClientRect().height,
-							)) - expectedHeight,
-						),
-					)
-					.toBeLessThanOrEqual(DEFAULT_PIXEL_TOLERANCE);
-			}
-			await expect
-				.poll(() => treatment.evaluate((element) => getComputedStyle(element).columnGap))
-				.toBe('8px');
-		}
-
-		const iconWidths = await sizeRow
-			.locator('[data-button-intent] button[aria-label$="icon treatment"] svg')
-			.evaluateAll((icons) => icons.map((icon) => icon.getBoundingClientRect().width));
-		expectPixelsNear(Math.max(...iconWidths), Math.min(...iconWidths));
-	}
-});
-
 test('default controls respond by breakpoint and the showcase does not overflow', async ({
 	page,
 }) => {

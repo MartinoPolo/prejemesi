@@ -25,13 +25,33 @@ describe('GiftReceivedToggle', () => {
 	);
 
 	it.each([
-		{ locale: 'cs' as const, received: false, visible: 'Přijato' },
-		{ locale: 'cs' as const, received: true, visible: 'Vrátit zpět' },
-		{ locale: 'en' as const, received: false, visible: 'Received' },
-		{ locale: 'en' as const, received: true, visible: 'Undo' },
+		{
+			locale: 'cs' as const,
+			received: false,
+			visible: 'Přijato',
+			accessible: 'Označit jako přijatý',
+		},
+		{
+			locale: 'cs' as const,
+			received: true,
+			visible: 'Nepřijato',
+			accessible: 'Označit jako nepřijatý',
+		},
+		{
+			locale: 'en' as const,
+			received: false,
+			visible: 'Received',
+			accessible: 'Mark as received',
+		},
+		{
+			locale: 'en' as const,
+			received: true,
+			visible: 'Not received',
+			accessible: 'Mark as not received',
+		},
 	])(
 		'uses the compact $locale $visible label with the full accessible name',
-		async ({ locale, received, visible }) => {
+		async ({ locale, received, visible, accessible }) => {
 			overwriteGetLocale(() => locale);
 			try {
 				const screen = await render(GiftReceivedToggle, {
@@ -41,7 +61,6 @@ describe('GiftReceivedToggle', () => {
 					compactLabel: true,
 					onreceived: vi.fn(),
 				});
-				const accessible = received ? m.gift_mark_unreceived() : m.gift_mark_received();
 				await expect
 					.element(screen.getByRole('button', { name: accessible }))
 					.toBeVisible();
