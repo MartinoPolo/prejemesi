@@ -71,17 +71,34 @@ describe('GiftReceivedToggle', () => {
 		},
 	);
 
-	it('uses the shared filled secondary treatment', async () => {
-		await render(GiftReceivedToggle, {
-			giftId: 'gift-filled',
+	it.each([
+		{
 			received: false,
-			role: WISHLIST_ROLES.moderator,
-			onreceived: vi.fn(),
-		});
+			accessible: m.gift_mark_received(),
+			intentClass: '.bg-foreground',
+			iconClass: '.lucide-check',
+		},
+		{
+			received: true,
+			accessible: m.gift_mark_unreceived(),
+			intentClass: '.border-status-danger',
+			iconClass: '.lucide-undo-2',
+		},
+	])(
+		'uses the shared state-specific intent and action icon when received is $received',
+		async ({ received, accessible, intentClass, iconClass }) => {
+			const screen = await render(GiftReceivedToggle, {
+				giftId: 'gift-intent',
+				received,
+				role: WISHLIST_ROLES.moderator,
+				onreceived: vi.fn(),
+			});
 
-		const action = document.querySelector('[data-testid="gift-received-toggle"]')!;
-		expect(action.querySelector('.bg-foreground')).toBeTruthy();
-	});
+			const action = screen.getByRole('button', { name: accessible }).element();
+			expect(action.querySelector(intentClass)).toBeTruthy();
+			expect(action.querySelector(`${iconClass}[aria-hidden="true"]`)).toBeTruthy();
+		},
+	);
 
 	it('does not render for a visitor', async () => {
 		await render(GiftReceivedToggle, {

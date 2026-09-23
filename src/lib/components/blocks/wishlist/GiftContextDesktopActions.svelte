@@ -3,6 +3,7 @@
 	import CopyIcon from '@lucide/svelte/icons/copy';
 	import PencilIcon from '@lucide/svelte/icons/pencil';
 	import CheckIcon from '@lucide/svelte/icons/check';
+	import Undo2Icon from '@lucide/svelte/icons/undo-2';
 	import ListChecksIcon from '@lucide/svelte/icons/list-checks';
 	import BookmarkIcon from '@lucide/svelte/icons/bookmark';
 	import BookmarkXIcon from '@lucide/svelte/icons/bookmark-x';
@@ -144,8 +145,11 @@
 {/if}
 {#if has('received')}<Item
 		disabled={disabledActions.has('received')}
+		class={received ? 'text-status-danger-text' : undefined}
 		onSelect={() => onfinish('restore-focus', onreceived)}
-		><CheckIcon />{received ? m.gift_mark_unreceived() : m.gift_mark_received()}</Item
+		>{#if received}<Undo2Icon aria-hidden="true" />{:else}<CheckIcon
+				aria-hidden="true"
+			/>{/if}{received ? m.gift_mark_unreceived() : m.gift_mark_received()}</Item
 	>{/if}
 {#if has('multiselect')}<Separator /><Item
 		disabled={disabledActions.has('multiselect')}
@@ -159,11 +163,15 @@
 	>{/if}
 {#if has('cancel-reservation') && oncancelreservation}<Item
 		disabled={disabledActions.has('cancel-reservation')}
+		class="text-status-danger-text"
 		onSelect={() => onfinish('restore-focus', oncancelreservation!)}
-		><BookmarkXIcon />{m.reserve_button_cancel()}</Item
+		><BookmarkXIcon aria-hidden="true" />{m.reserve_button_cancel()}</Item
 	>{/if}
 {#if has('purchased') && onpurchased}<Item
 		disabled={disabledActions.has('purchased')}
+		class={purchased ? 'text-status-danger-text' : undefined}
 		onSelect={() => onfinish('restore-focus', onpurchased!)}
-		><ShoppingBagIcon />{purchased ? m.gift_bought() : m.gift_mark_bought()}</Item
+		>{#if purchased}<Undo2Icon aria-hidden="true" />{:else}<ShoppingBagIcon
+				aria-hidden="true"
+			/>{/if}{purchased ? m.gift_mark_unbought() : m.gift_mark_bought()}</Item
 	>{/if}

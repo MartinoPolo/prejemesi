@@ -1,8 +1,10 @@
 import { afterEach, describe, expect, it } from 'vitest';
+import { page } from 'vitest/browser';
 import '../../app.css';
 import { PALETTES } from './palettes.js';
 import { badgeVariants, BADGE_STYLES } from '../components/base/badge/badge_variants.js';
 import { avatarVariants } from '../components/derived/avatar/avatar_variants.js';
+import { buttonVariants } from '../components/base/button/button_variants.js';
 
 const originalClass = document.documentElement.className;
 const originalPalette = document.documentElement.getAttribute('data-palette');
@@ -45,6 +47,10 @@ function compositedLuminance(colors: readonly string[]): number {
 	return channels[0]! * 0.2126 + channels[1]! * 0.7152 + channels[2]! * 0.0722;
 }
 
+function contrastRatio(text: number, surface: number): number {
+	return (Math.max(text, surface) + 0.05) / (Math.min(text, surface) + 0.05);
+}
+
 const textPairs = [
 	['--foreground', '--background'],
 	['--card-foreground', '--card'],
@@ -63,6 +69,68 @@ const textPairs = [
 		surface,
 	]),
 ];
+
+describe('danger text across palette surfaces', () => {
+	it.each(PALETTES)('%s stays readable in light and dark root/nested scopes', async (palette) => {
+		const nested = document.createElement('div');
+		nested.setAttribute('data-palette', palette);
+		document.body.append(nested);
+		try {
+			for (const mode of ['light', 'dark']) {
+				document.documentElement.classList.toggle('dark', mode === 'dark');
+				document.documentElement.setAttribute('data-palette', palette);
+				for (const [scopeName, scope] of [
+					['root', document.documentElement],
+					['nested', nested],
+				] as const) {
+					for (const surfaceToken of ['--card', '--popover', '--accent']) {
+						const surface = luminance(scope, surfaceToken);
+						const text = luminance(scope, '--status-danger-text', surfaceToken);
+						const contrast = contrastRatio(text, surface);
+						expect(
+							contrast,
+							`${palette} ${mode} ${scopeName}: danger on ${surfaceToken}: ${contrast.toFixed(2)}`,
+						).toBeGreaterThanOrEqual(4.5);
+					}
+					const { owner, surface: surfaceClass } = buttonVariants({ intent: 'danger' });
+					const button = document.createElement('button');
+					button.className = owner();
+					button.dataset.testid = 'contrast-danger-button';
+					const face = document.createElement('span');
+					face.className = surfaceClass();
+					button.append(face);
+					scope.append(button);
+					try {
+						const restingBackground = getComputedStyle(face).backgroundColor;
+						await page.getByTestId('contrast-danger-button').hover();
+						const style = getComputedStyle(face);
+						expect(style.backgroundColor).not.toBe(restingBackground);
+						const card = document.createElement('span');
+						card.style.color = 'var(--card)';
+						scope.append(card);
+						const base = getComputedStyle(card).color;
+						card.remove();
+						const surface = compositedLuminance([base, style.backgroundColor]);
+						const text = compositedLuminance([
+							base,
+							style.backgroundColor,
+							style.color,
+						]);
+						const contrast = contrastRatio(text, surface);
+						expect(
+							contrast,
+							`${palette} ${mode} ${scopeName}: danger button hover: ${contrast.toFixed(2)}`,
+						).toBeGreaterThanOrEqual(4.5);
+					} finally {
+						button.remove();
+					}
+				}
+			}
+		} finally {
+			nested.remove();
+		}
+	});
+});
 
 describe('restrained dark palettes', () => {
 	it.each(PALETTES)(
