@@ -45,18 +45,27 @@ test('an ambiguous reorder failure exits only after authoritative refresh confir
 		}
 		await startGiftReorder(page);
 
-		let signalMutationCommitted!: () => void;
-		const mutationCommitted = new Promise<void>((resolve) => {
-			signalMutationCommitted = resolve;
+		let signalForwardedMutationSettled!: () => void;
+		const forwardedMutationSettled = new Promise<void>((resolve) => {
+			signalForwardedMutationSettled = resolve;
 		});
 		let releaseLostResponse!: () => void;
 		const lostResponseGate = new Promise<void>((resolve) => {
 			releaseLostResponse = resolve;
 		});
 		await page.route('**/_app/remote/**/reorderGifts', async (route) => {
-			const committedResponse = await route.fetch();
-			expect(committedResponse.ok()).toBe(true);
-			signalMutationCommitted();
+			try {
+				const forwardedResponse = await route.fetch();
+				expect(forwardedResponse.ok()).toBe(true);
+			} catch (error) {
+				if (
+					!(error instanceof Error) ||
+					!/ECONNRESET|socket hang up/i.test(error.message)
+				) {
+					throw error;
+				}
+			}
+			signalForwardedMutationSettled();
 			await lostResponseGate;
 			await route.fulfill({
 				status: 500,
@@ -71,7 +80,7 @@ test('an ambiguous reorder failure exits only after authoritative refresh confir
 		});
 		await firstHandle.focus();
 		await firstHandle.press('ArrowDown');
-		await mutationCommitted;
+		await forwardedMutationSettled;
 		await page.getByRole('button', { name: 'Hotovo', exact: true }).click();
 		await expect(page.getByRole('button', { name: 'Ukládání…', exact: true })).toBeDisabled();
 		releaseLostResponse();

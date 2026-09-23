@@ -72,9 +72,11 @@
 		trigger.focus();
 		await expect(trigger).toHaveFocus();
 		await userEvent.keyboard('{ArrowDown}');
-		await waitFor(() =>
-			expect(menuItems(canvasElement)[0]).toHaveAttribute('data-highlighted', ''),
-		);
+		await waitFor(() => {
+			const firstItem = menuItems(canvasElement)[0];
+			expect(firstItem).toHaveAttribute('data-highlighted', '');
+			expect(firstItem).toHaveFocus();
+		});
 		await userEvent.keyboard('{Enter}');
 		await waitFor(() => expectMenuClosed(canvasElement));
 	};
