@@ -1175,36 +1175,76 @@
 	}
 
 	function handleViewModeChange(mode: GiftViewMode) {
-		if (!reorderMode || mode === GIFT_VIEW_MODES.card || mode === GIFT_VIEW_MODES.list) {
+		if (
+			(!reorderMode || mode === GIFT_VIEW_MODES.card || mode === GIFT_VIEW_MODES.list) &&
+			mode !== giftsContext.viewMode.current
+		) {
+			displayLayoutMotion.cancel();
 			giftsContext.viewMode.current = mode;
 		}
 	}
 
-	function handleSortChange(sort: GiftSortOption) {
-		giftsContext.sortOption.current = sort;
-	}
-
 	let wishlistPageElement = $state<HTMLElement | null>(null);
 	let receivedAnnouncement = $state('');
-	const filterLayoutMotion = createIdentityLayoutMotion();
+	const displayLayoutMotion = createIdentityLayoutMotion();
 	const receivedGiftMotion = createGiftReceivedMotion();
 
-	async function handleFilterChange(filters: GiftFilters) {
+	async function changeDisplay(update: () => void) {
 		receivedGiftMotion.cancel();
 		const root = wishlistPageElement;
-		if (root === null) {
-			giftsContext.filters.current = filters;
+		const collection = root?.querySelector<HTMLElement>('[data-wishlist-gift-collection]');
+		if (
+			root === null ||
+			!reorderLayoutSupported ||
+			collection?.inert === true ||
+			(collection !== null &&
+				collection !== undefined &&
+				collection.dataset.viewMode !== viewMode)
+		) {
+			displayLayoutMotion.cancel();
+			update();
 			return;
 		}
 		const toolbar = root.querySelector<HTMLElement>('[data-testid="wishlist-toolbar"]');
-		const before = filterLayoutMotion.capture(root, toolbar);
-		giftsContext.filters.current = filters;
+		const before = displayLayoutMotion.capture(root, toolbar);
+		update();
 		await tick();
-		filterLayoutMotion.play(before, root, toolbar);
+		void displayLayoutMotion.play(before, root, toolbar);
+	}
+
+	function handleSortChange(sort: GiftSortOption) {
+		if (sort !== giftsContext.sortOption.current) {
+			void changeDisplay(() => {
+				giftsContext.sortOption.current = sort;
+			});
+		}
+	}
+
+	function handleFilterChange(filters: GiftFilters) {
+		const previous = giftsContext.filters.current;
+		if (
+			previous.availableOnly === filters.availableOnly &&
+			previous.withLinkOnly === filters.withLinkOnly &&
+			previous.likedOnly === filters.likedOnly &&
+			previous.showReceived === filters.showReceived &&
+			previous.categoryValues.length === filters.categoryValues.length &&
+			previous.categoryValues.every((value) => filters.categoryValues.includes(value)) &&
+			previous.priorityValues.length === filters.priorityValues.length &&
+			previous.priorityValues.every((value) => filters.priorityValues.includes(value))
+		) {
+			return;
+		}
+		void changeDisplay(() => {
+			giftsContext.filters.current = filters;
+		});
 	}
 
 	function handleGroupingChange(grouping: GiftGroupingOption) {
-		giftsContext.grouping.current = grouping;
+		if (grouping !== giftsContext.grouping.current) {
+			void changeDisplay(() => {
+				giftsContext.grouping.current = grouping;
+			});
+		}
 	}
 
 	function handleRecipientViewPreviewChange(active: boolean) {
@@ -1307,6 +1347,7 @@
 				? null
 				: receivedGiftMotion.capture(giftId, source, root);
 		const giftName = gifts.find((giftItem) => giftItem.id === giftId)?.name ?? '';
+		const receivingWishlistId = shortId;
 		receivedPendingGiftIds.add(giftId);
 		try {
 			await markGiftReceived({ giftId, received });
@@ -1319,11 +1360,14 @@
 				};
 			}
 			await tick();
-			const settled =
-				snapshot === null || root === null
-					? true
-					: await receivedGiftMotion.play(snapshot, root);
-			if (settled) {
+			if (snapshot !== null && root !== null) {
+				await receivedGiftMotion.play(snapshot, root);
+			}
+			if (
+				root?.isConnected === true &&
+				wishlistPageElement === root &&
+				shortId === receivingWishlistId
+			) {
 				receivedAnnouncement = received
 					? m.gift_received_announcement({ name: giftName })
 					: m.gift_unreceived_announcement({ name: giftName });
@@ -1606,7 +1650,7 @@
 	// ── Lifecycle: record the visit on mount ──────────────────────────────────
 
 	onDestroy(() => {
-		filterLayoutMotion.destroy();
+		displayLayoutMotion.destroy();
 		receivedGiftMotion.destroy();
 	});
 
@@ -1627,6 +1671,7 @@
 	// modal on the requested tab, then strip the marker so reload/share won't reopen it.
 	afterNavigate(() => {
 		receivedGiftMotion.cancel();
+		displayLayoutMotion.cancel();
 		const requestedTab = page.url.searchParams.get(WISHLIST_SETTINGS_QUERY_PARAM);
 		if (requestedTab === null) {
 			return;

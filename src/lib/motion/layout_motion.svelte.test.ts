@@ -82,6 +82,82 @@ describe('identity layout motion', () => {
 		document.body.replaceChildren();
 	});
 
+	it('uses the visible in-flight position when a later display change interrupts a run', () => {
+		const element = gift('stable');
+		const activeAnimation = animation();
+		const animate = vi.fn(() => activeAnimation);
+		Object.defineProperty(element, 'animate', { value: animate });
+		const motion = createIdentityLayoutMotion({ reducedMotion: () => false });
+		const first = motion.capture(document.body);
+		vi.mocked(element.getBoundingClientRect).mockReturnValue({
+			...element.getBoundingClientRect(),
+			left: 50,
+			right: 150,
+			x: 50,
+		});
+		void motion.play(first, document.body);
+		const inFlight = { ...element.getBoundingClientRect(), left: 25, right: 125, x: 25 };
+		vi.mocked(element.getBoundingClientRect).mockReturnValue(inFlight);
+		vi.mocked(activeAnimation.cancel).mockImplementation(() => {
+			vi.mocked(element.getBoundingClientRect).mockReturnValue({
+				...inFlight,
+				left: 50,
+				right: 150,
+				x: 50,
+			});
+		});
+		const next = motion.capture(document.body);
+		vi.mocked(element.getBoundingClientRect).mockReturnValue({
+			...inFlight,
+			left: 80,
+			right: 180,
+			x: 80,
+		});
+		void motion.play(next, document.body);
+		expect(animate).toHaveBeenLastCalledWith(
+			[{ transform: 'translate(-55px, 0px)' }, { transform: 'translate(0, 0)' }],
+			{ duration: 520, easing: 'cubic-bezier(0.2, 0.7, 0.3, 1)' },
+		);
+		motion.destroy();
+		document.body.replaceChildren();
+	});
+
+	it('only moves an identity with viewport-visible endpoints, including between sections', () => {
+		const firstSection = document.createElement('section');
+		const secondSection = document.createElement('section');
+		document.body.append(firstSection, secondSection);
+		const moving = gift('moving');
+		const offscreen = gift('offscreen', { top: -150, bottom: -50, y: -150 });
+		firstSection.append(moving, offscreen);
+		const movingAnimate = vi.fn(() => animation());
+		const offscreenAnimate = vi.fn(() => animation());
+		Object.defineProperty(moving, 'animate', { value: movingAnimate });
+		Object.defineProperty(offscreen, 'animate', { value: offscreenAnimate });
+		const motion = createIdentityLayoutMotion({ reducedMotion: () => false });
+		const before = motion.capture(document.body);
+		secondSection.append(moving, offscreen);
+		vi.mocked(moving.getBoundingClientRect).mockReturnValue({
+			...moving.getBoundingClientRect(),
+			top: 110,
+			bottom: 210,
+			y: 110,
+		});
+		vi.mocked(offscreen.getBoundingClientRect).mockReturnValue({
+			...offscreen.getBoundingClientRect(),
+			top: 110,
+			bottom: 210,
+			y: 110,
+		});
+		void motion.play(before, document.body);
+		expect(movingAnimate).toHaveBeenCalledWith(
+			[{ transform: 'translate(0px, -100px)' }, { transform: 'translate(0, 0)' }],
+			{ duration: 520, easing: 'cubic-bezier(0.2, 0.7, 0.3, 1)' },
+		);
+		expect(offscreenAnimate).not.toHaveBeenCalled();
+		motion.destroy();
+		document.body.replaceChildren();
+	});
+
 	it('centers the bounded capture window on a gift found by viewport hit-testing', () => {
 		const elements = Array.from({ length: LAYOUT_GIFT_MOTION_LIMIT + 100 }, (_, index) =>
 			gift(`gift-${index}`),
@@ -199,6 +275,25 @@ describe('identity layout motion', () => {
 		motion.capture(document.body);
 
 		expect(activeAnimation.cancel).toHaveBeenCalledOnce();
+		motion.destroy();
+		document.body.replaceChildren();
+	});
+
+	it('invalidates a pending display run when a view change cancels it', () => {
+		const element = gift('stable');
+		const animate = vi.fn(() => animation());
+		Object.defineProperty(element, 'animate', { value: animate });
+		const motion = createIdentityLayoutMotion({ reducedMotion: () => false });
+		const before = motion.capture(document.body);
+		vi.mocked(element.getBoundingClientRect).mockReturnValue({
+			...element.getBoundingClientRect(),
+			left: 40,
+			right: 140,
+			x: 40,
+		});
+		motion.cancel();
+		void motion.play(before, document.body);
+		expect(animate).not.toHaveBeenCalled();
 		motion.destroy();
 		document.body.replaceChildren();
 	});

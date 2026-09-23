@@ -37,6 +37,10 @@ async function enableDesktopWithLinkFilter(page: Page) {
 
 interface TransformAnimationRecorder {
 	giftIds: Record<string, true>;
+	travelStarts: Record<string, string[]>;
+	renderedTravel: Record<string, true>;
+	cancelledTravel: number;
+	extendTravel: boolean;
 	unidentifiedTarget: boolean;
 }
 
@@ -48,14 +52,22 @@ declare global {
 
 async function installTransformAnimationRecorder(page: Page) {
 	await page.evaluate(() => {
-		window.__motionTransformAnimations = { giftIds: {}, unidentifiedTarget: false };
+		window.__motionTransformAnimations = {
+			giftIds: {},
+			travelStarts: {},
+			renderedTravel: {},
+			cancelledTravel: 0,
+			extendTravel: false,
+			unidentifiedTarget: false,
+		};
 		const nativeAnimate = Element.prototype.animate;
 		Element.prototype.animate = function (keyframes, options) {
 			const hasTransform = Array.isArray(keyframes)
 				? keyframes.some((keyframe) => 'transform' in keyframe)
 				: keyframes !== null && 'transform' in keyframes;
+			let giftId: string | undefined;
 			if (hasTransform) {
-				const giftId =
+				giftId =
 					this.closest<HTMLElement>('[data-gift-item][data-gift-id]')?.dataset.giftId ??
 					(this instanceof HTMLElement ? this.dataset.giftReceivedAction : undefined) ??
 					this.querySelector<HTMLElement>('[data-gift-received-action]')?.dataset
@@ -64,16 +76,71 @@ async function installTransformAnimationRecorder(page: Page) {
 					window.__motionTransformAnimations.unidentifiedTarget = true;
 				} else {
 					window.__motionTransformAnimations.giftIds[giftId] = true;
+					if (
+						Array.isArray(keyframes) &&
+						typeof keyframes[0]?.transform === 'string' &&
+						keyframes[0].transform.startsWith('translate(')
+					) {
+						(window.__motionTransformAnimations.travelStarts[giftId] ??= []).push(
+							keyframes[0].transform,
+						);
+					}
 				}
 			}
-			return nativeAnimate.call(this, keyframes, options);
+			const travel =
+				giftId !== undefined &&
+				Array.isArray(keyframes) &&
+				typeof keyframes[0]?.transform === 'string' &&
+				keyframes[0].transform.startsWith('translate(');
+			const timing =
+				travel &&
+				window.__motionTransformAnimations.extendTravel &&
+				typeof options === 'object' &&
+				options !== null
+					? { ...options, duration: 3000 }
+					: options;
+			const animation = nativeAnimate.call(this, keyframes, timing);
+			if (travel) {
+				animation.addEventListener(
+					'cancel',
+					() => {
+						window.__motionTransformAnimations.cancelledTravel += 1;
+					},
+					{ once: true },
+				);
+			}
+			if (
+				hasTransform &&
+				giftId !== undefined &&
+				giftId !== '' &&
+				this instanceof HTMLElement
+			) {
+				requestAnimationFrame(() => {
+					const computed = getComputedStyle(this).transform;
+					const matrix = new DOMMatrixReadOnly(computed);
+					if (
+						animation.playState === 'running' &&
+						(Math.abs(matrix.m41) > 0.1 || Math.abs(matrix.m42) > 0.1)
+					) {
+						window.__motionTransformAnimations.renderedTravel[giftId] = true;
+					}
+				});
+			}
+			return animation;
 		};
 	});
 }
 
 async function clearTransformAnimationRecords(page: Page) {
 	await page.evaluate(() => {
-		window.__motionTransformAnimations = { giftIds: {}, unidentifiedTarget: false };
+		window.__motionTransformAnimations = {
+			giftIds: {},
+			travelStarts: {},
+			renderedTravel: {},
+			cancelledTravel: 0,
+			extendTravel: false,
+			unidentifiedTarget: false,
+		};
 	});
 }
 
@@ -86,6 +153,33 @@ async function expectGiftTransformAnimation(page: Page, giftId: string) {
 			),
 		)
 		.toBe(true);
+}
+
+async function expectGiftTravel(page: Page, giftId: string) {
+	await expect
+		.poll(() =>
+			page.evaluate(
+				(id) => window.__motionTransformAnimations.renderedTravel[id] === true,
+				giftId,
+			),
+		)
+		.toBe(true);
+}
+
+async function expectGiftInViewport(page: Page, name: string) {
+	const eligible = await giftItem(page, name).evaluate((element) => {
+		const rect = element.getBoundingClientRect();
+		return (
+			element.isConnected &&
+			rect.width > 0 &&
+			rect.height > 0 &&
+			rect.right > 0 &&
+			rect.bottom > 0 &&
+			rect.left < innerWidth &&
+			rect.top < innerHeight
+		);
+	});
+	expect(eligible, `${name} must have a visible endpoint inside the viewport`).toBe(true);
 }
 
 function collectBrowserErrors(page: Page) {
@@ -203,8 +297,31 @@ test.describe('issue #269 integrated motion strategy', () => {
 		await expectCleanSettlement(page);
 
 		await clearTransformAnimationRecords(page);
-		await filteredOut.getByRole('button', { name: 'Označit jako přijatý' }).click();
-		await expectGiftTransformAnimation(page, filteredOutId);
+		let releaseReceivedRequest: () => void = () => {};
+		let signalReceivedRequest: () => void = () => {};
+		const receivedRequestHeld = new Promise<void>((resolve) => {
+			signalReceivedRequest = resolve;
+		});
+		const receivedRequestReleased = new Promise<void>((resolve) => {
+			releaseReceivedRequest = resolve;
+		});
+		await page.route('**/_app/remote/*/markGiftReceived', async (route) => {
+			signalReceivedRequest();
+			await receivedRequestReleased;
+			await route.continue();
+		});
+		try {
+			await filteredOut.getByRole('button', { name: 'Označit jako přijatý' }).click();
+			await receivedRequestHeld;
+			await chooseDesktopDisplayOption(page, /^Řadit podle/, /^Název$/);
+		} finally {
+			releaseReceivedRequest();
+		}
+		await expect(
+			page.locator('[data-testid="wishlist-page-shell"] p[aria-live="polite"]'),
+		).toContainText('Dárek „Motion Gift A“ byl označen jako přijatý.');
+		await page.unroute('**/_app/remote/*/markGiftReceived');
+		await expect(page.getByTestId('desktop-display-trigger')).toBeFocused();
 		await expect(
 			filteredOut.locator('[data-state-primary][data-state-kind="received"]'),
 		).toHaveText('Přijato', { timeout: 10_000 });
@@ -229,6 +346,10 @@ test.describe('issue #269 integrated motion strategy', () => {
 		await expect(page.getByRole('heading', { name: 'Obdržené', exact: true })).toHaveCount(0);
 		await expectCleanSettlement(page);
 		expect(await filteredOut.getAttribute('data-gift-id')).toBe(filteredOutId);
+		await clearTransformAnimationRecords(page);
+		await filteredOut.getByRole('button', { name: 'Označit jako přijatý' }).click();
+		await expectGiftTransformAnimation(page, filteredOutId);
+		await expectCleanSettlement(page);
 		expect(errors).toEqual([]);
 		await page.context().close();
 	});
@@ -319,6 +440,183 @@ test.describe('issue #269 integrated motion strategy', () => {
 		await page.context().close();
 	});
 
+	for (const viewMode of ['list', 'card'] as const) {
+		test(`desktop ${viewMode} sort and cross-section grouping move visible identities`, async ({
+			browser,
+			request,
+			baseURL,
+		}) => {
+			const page = await registerAndGetPage(
+				browser,
+				request,
+				baseURL!,
+				createTestUser('motion-display-desktop'),
+			);
+			const errors = collectBrowserErrors(page);
+			await createWishlistAndNavigate(page, 'Display motion desktop');
+			await addGift(page, 'Zeta Motion', {
+				priority: 'Vysoká',
+				category: 'Knihy',
+				primaryLink: 'https://example.com/zeta-motion',
+			});
+			await addGift(page, 'Alpha Motion', { priority: 'Nízká' });
+			await addGift(page, 'Mu Motion', { priority: 'Nízká' });
+			await page.getByTestId(`gift-view-${viewMode}`).click();
+			await chooseDesktopDisplayOption(page, /^Seskupení/, /^Bez seskupení$/);
+			await expectCleanSettlement(page);
+			const zetaId = await giftItem(page, 'Zeta Motion').getAttribute('data-gift-id');
+			expect(zetaId).toBeTruthy();
+			if (zetaId === null) {
+				throw new Error('Missing stable gift identity');
+			}
+			await installTransformAnimationRecorder(page);
+			await chooseDesktopDisplayOption(page, /^Řadit podle/, /^Název$/);
+			await expectGiftTravel(page, zetaId);
+			await expect
+				.poll(() => giftItems(page).getByRole('heading', { level: 3 }).allTextContents())
+				.toEqual(['Alpha Motion', 'Mu Motion', 'Zeta Motion']);
+			await expectCleanSettlement(page);
+
+			await clearTransformAnimationRecords(page);
+			await chooseDesktopDisplayOption(page, /^Seskupení/, /^Podle kategorie$/);
+			await expectGiftTravel(page, zetaId);
+			await expect(page.getByRole('heading', { level: 2, name: 'Knihy' })).toBeVisible();
+			await expect
+				.poll(() => giftItems(page).getByRole('heading', { level: 3 }).allTextContents())
+				.toEqual(['Zeta Motion', 'Alpha Motion', 'Mu Motion']);
+			await expectCleanSettlement(page);
+
+			await clearTransformAnimationRecords(page);
+			await chooseDesktopDisplayOption(page, /^Seskupení/, /^Podle kategorie$/);
+			await page.evaluate(
+				() =>
+					new Promise<void>((resolve) =>
+						requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+					),
+			);
+			expect(
+				await page.evaluate(() => window.__motionTransformAnimations.travelStarts),
+			).toEqual({});
+			if (viewMode === 'list') {
+				await page.evaluate(() => {
+					window.__motionTransformAnimations.extendTravel = true;
+				});
+				await chooseDesktopDisplayOption(page, /^Seskupení/, /^Bez seskupení$/);
+				await expectGiftTravel(page, zetaId);
+				await chooseDesktopDisplayOption(page, /^Řadit podle/, /^Výchozí pořadí$/);
+				await enableDesktopWithLinkFilter(page);
+				await expect
+					.poll(() =>
+						page.evaluate(() => window.__motionTransformAnimations.cancelledTravel),
+					)
+					.toBeGreaterThan(0);
+				await expect(giftItems(page).getByRole('heading', { level: 3 })).toHaveText([
+					'Zeta Motion',
+				]);
+				await expectCleanSettlement(page);
+				await page.evaluate(() => {
+					window.__motionTransformAnimations.extendTravel = false;
+				});
+			} else {
+				await enableDesktopWithLinkFilter(page);
+			}
+			await expect(giftItems(page)).toHaveCount(1);
+			await page.getByTestId('desktop-more-trigger').click();
+			await page.getByRole('menuitem', { name: 'Obnovit výchozí zobrazení' }).click();
+			await expect
+				.poll(() => giftItems(page).getByRole('heading', { level: 3 }).allTextContents())
+				.toEqual(['Zeta Motion', 'Alpha Motion', 'Mu Motion']);
+			await expect(giftItems(page)).toHaveCount(3);
+			await expect(page.locator('[data-filter-count]')).toHaveCount(0);
+			await expectCleanSettlement(page);
+			expect(await giftItem(page, 'Zeta Motion').getAttribute('data-gift-id')).toBe(zetaId);
+			if (viewMode === 'list') {
+				const receivedToggle = giftItem(page, 'Zeta Motion').getByRole('button', {
+					name: 'Označit jako přijatý',
+				});
+				await receivedToggle.click();
+				await expect(
+					giftItem(page, 'Zeta Motion').locator('[data-state-kind="received"]'),
+				).toBeVisible();
+				await expectCleanSettlement(page);
+			}
+			expect(errors).toEqual([]);
+			await page.context().close();
+		});
+	}
+
+	for (const viewMode of ['card', 'list'] as const) {
+		test(`mobile ${viewMode} sort and grouping move identities, reduced motion skips travel`, async ({
+			browser,
+			request,
+			baseURL,
+		}) => {
+			const page = await registerAndGetPage(
+				browser,
+				request,
+				baseURL!,
+				createTestUser('motion-display-mobile'),
+			);
+			const errors = collectBrowserErrors(page);
+			await createWishlistAndNavigate(page, 'Display motion mobile');
+			await addGift(page, 'Zeta Mobile', { priority: 'Vysoká', category: 'Knihy' });
+			await addGift(page, 'Alpha Mobile', { priority: 'Nízká' });
+			await addGift(page, 'Mu Mobile', { priority: 'Nízká' });
+			await chooseDesktopDisplayOption(page, /^Seskupení/, /^Bez seskupení$/);
+			await page.setViewportSize({ width: 390, height: 850 });
+			await page.getByTestId(`gift-view-${viewMode}`).click();
+			await expect(page.getByTestId('mobile-display-trigger')).toBeVisible();
+			const movingName = 'Alpha Mobile';
+			const zetaId = await giftItem(page, movingName).getAttribute('data-gift-id');
+			expect(zetaId).toBeTruthy();
+			if (zetaId === null) {
+				throw new Error('Missing stable gift identity');
+			}
+			await installTransformAnimationRecorder(page);
+			const chooseMobile = async (section: 'sort' | 'grouping', option: string) => {
+				await page.getByTestId('mobile-display-trigger').click();
+				await page.getByTestId(`mobile-sheet-${section}-switch`).click();
+				await page
+					.getByRole('radiogroup', {
+						name: section === 'sort' ? 'Řadit podle' : 'Seskupení',
+					})
+					.getByText(option, { exact: true })
+					.click();
+				await expect(page.getByTestId('mobile-sheet-switcher')).toHaveCount(0);
+			};
+			await expectGiftInViewport(page, movingName);
+			await chooseMobile('sort', 'Název');
+			await expectGiftTravel(page, zetaId);
+			await expectCleanSettlement(page);
+			await expectGiftInViewport(page, movingName);
+			await clearTransformAnimationRecords(page);
+			await chooseMobile('grouping', 'Podle kategorie');
+			await expectGiftTravel(page, zetaId);
+			await expectCleanSettlement(page);
+			await expectGiftInViewport(page, movingName);
+
+			await chooseMobile('grouping', 'Bez seskupení');
+			await chooseMobile('sort', 'Výchozí pořadí');
+			await expect
+				.poll(() => giftItems(page).getByRole('heading', { level: 3 }).allTextContents())
+				.toEqual(['Zeta Mobile', 'Alpha Mobile', 'Mu Mobile']);
+
+			await expectCleanSettlement(page);
+			await page.emulateMedia({ reducedMotion: 'reduce' });
+			await clearTransformAnimationRecords(page);
+			await chooseMobile('sort', 'Název');
+			await expect
+				.poll(() => giftItems(page).getByRole('heading', { level: 3 }).allTextContents())
+				.toEqual(['Alpha Mobile', 'Mu Mobile', 'Zeta Mobile']);
+			expect(
+				await page.evaluate(() => window.__motionTransformAnimations.travelStarts),
+			).toEqual({});
+			await expectCleanSettlement(page);
+			expect(errors).toEqual([]);
+			await page.context().close();
+		});
+	}
+
 	test('rapid card/list switching commits the latest mode and reduced motion skips transforms', async ({
 		browser,
 		request,
@@ -347,6 +645,10 @@ test.describe('issue #269 integrated motion strategy', () => {
 		await expect(card).toHaveAttribute('aria-checked', 'true');
 		expect(await page.evaluate(() => window.__motionTransformAnimations)).toEqual({
 			giftIds: {},
+			travelStarts: {},
+			renderedTravel: {},
+			cancelledTravel: 0,
+			extendTravel: false,
 			unidentifiedTarget: false,
 		});
 		expect(errors).toEqual([]);
