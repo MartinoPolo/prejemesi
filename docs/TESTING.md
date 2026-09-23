@@ -2,6 +2,14 @@
 
 ## Local test environments
 
+Before database-backed verification, check `docker info`. If Docker Desktop is installed but not
+running, agents may start it (`docker desktop start`, or PowerShell `Start-Process` using its
+resolved installed path) without asking. Bound startup/readiness checks to five minutes. Once Docker
+is ready and shared verification resources are available, run `pnpm.cmd run db:start` and confirm
+Compose reports `db` healthy; verify the app's local database connection before testing. Recover
+startup failures rather than stopping at connection refused. Never reset volumes, restart another
+run's database, or change production configuration; leave shared Docker/database services running.
+
 `pnpm run test` runs all client, server, and Storybook Vitest project groups serially because
 concurrent projects race on shared SvelteKit generated state. Tests within each project remain
 parallel.
@@ -29,8 +37,11 @@ PLAYWRIGHT_BASE_URL=http://localhost:8301 pnpm run test:e2e
 ## Parallel work and browser ownership
 
 Default to **one browser-heavy workflow at a time on this machine**, coordinated by the agents;
-there is no automatic queue. Reads and independent Node-only tests can continue in parallel.
-Vite/Vitest port and worker settings apply to one process, not all active checkouts.
+there is no automatic queue. If occupied, continue independent work and recheck the owner's
+completion and resource availability every five minutes, for at most 30 minutes before reporting the
+blocker. Do not infer ownership from a port alone or kill another run's processes. Reads and
+independent Node-only tests can continue in parallel. Vite/Vitest port and worker settings apply to
+one process, not all active checkouts.
 
 - Different ports do not isolate data. Checkouts share the `prejemesi` Compose database/volume by
   default, and some tests mutate seeded rows. Do not reseed, migrate, or interact with shared test
