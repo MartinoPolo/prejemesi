@@ -20,7 +20,6 @@
 		{ "command": "pnpm run check:migrations", "cwd": "." },
 		{ "command": "pnpm run check:vykani", "cwd": "." },
 		{ "command": "pnpm run test:scripts", "cwd": "." },
-		{ "command": "pnpm run build", "cwd": "." },
-		{ "command": "pnpm run test:e2e", "cwd": "." }
+		{ "command": "pnpm run build", "cwd": "." }
 	]
 }

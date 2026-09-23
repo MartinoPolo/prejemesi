@@ -211,8 +211,9 @@ unimplemented.
   protocol/transport endpoints and the typed `/home` SSR load as exceptions; see `DECISIONS.md`.
 - BetterAuth with `better-auth/minimal` (edge-compatible); guarded remote function wrappers for
   auth-protected endpoints.
-- Fallow for dead-code detection (replaces knip); regression-gated in CI and pre-push; pre-push
-  keeps typechecking and Fallow, leaving full lint and test suites to CI.
+- Fallow for dead-code detection (replaces knip); regression-gated in local MPX checks and CI.
+  Pre-commit formats and lints staged files; full E2E runs in CI, with focused local browser checks
+  for affected behavior.
 - Component tiers: `base/` (shadcn), `derived/` (reusable wrappers), `blocks/` (feature-level). All
   new components use `tailwind-variants` pattern.
 - Domain modules at `src/lib/modules/` — each owns types, remote functions, context (`createContext`
