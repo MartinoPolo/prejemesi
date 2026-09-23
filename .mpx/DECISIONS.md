@@ -577,12 +577,12 @@ sections for UI work. Historical reconciliation and review notes are in
 - 2026-05-30: Fallow is the dead-code tool, regression-gated in local/full checks and CI; stale
   suppressions are errors. Shared project conventions come from the installed MPX instructions, not
   copied or hard-coded historical `mpx-claude-code` rule inventories.
-- 2026-09-06: Pre-commit uses lint-staged; pre-push prepares SvelteKit types then runs typechecking
-  and Fallow in parallel through `check:prepush`, targeting under a minute rather than imposing a
-  timeout. Compile Paraglide on a fresh checkout or catalog change. Full lint/tests belong to
-  explicit verification and CI, not permission to skip failed gates.
 - 2026-09-12: Feature PRs target `dev`; releases go through `dev` → `production`, exact-SHA checks,
   and production-environment approval. Follow `docs/DEPLOYMENT.md`: expand → migrate → deploy →
   contract, file migrations with Drizzle strict mode, direct production verification, explicit
   authorization for pending migrations, and EXACT before deployment; drift blocks the operation and
   production never uses `db:push`.
+- 2026-09-23: Pre-commit formats and Oxlints staged files; no pre-push hook duplicates the MPX gate.
+  Cache repository-wide Prettier and ESLint locally. MPX gates focused local checks and builds, with
+  risk-based focused E2E for affected behavior; CI gates full E2E and Vitest before merge. Compile
+  Paraglide on a fresh checkout or catalog change.

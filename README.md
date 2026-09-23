@@ -130,9 +130,9 @@ email/password auth. Parallel app instances share database/data unless separatel
 | `pnpm run check:all`    | Full suite: format + oxlint + stylelint + fallow + vykání + svelte-check + eslint |
 | `pnpm run check:vykani` | Fails if Czech copy slips into tykání (informal address)                          |
 | `pnpm run lint`         | OxLint                                                                            |
-| `pnpm run lint:eslint`  | ESLint (type-aware)                                                               |
+| `pnpm run lint:eslint`  | ESLint (type-aware, content cache)                                                |
 | `pnpm run lint:css`     | Stylelint for CSS and Svelte                                                      |
-| `pnpm run format`       | Format with Prettier                                                              |
+| `pnpm run format`       | Format with Prettier (content cache)                                              |
 | `pnpm run fallow:audit` | Fallow dead-code / boundary audit (JSON)                                          |
 
 ### Testing
@@ -148,7 +148,8 @@ On Windows, use `pnpm.cmd` instead of `pnpm`.
 | Script                      | Description                                                    |
 | --------------------------- | -------------------------------------------------------------- |
 | `pnpm run test`             | Unit tests with Vitest                                         |
-| `pnpm run test:e2e`         | Full E2E suite with Playwright (Chromium)                      |
+| `pnpm run test:scripts`     | Node tests for project scripts                                 |
+| `pnpm run test:e2e`         | Full E2E suite with Playwright (Chromium; required in CI)      |
 | `pnpm run test:e2e:changed` | E2E tests changed since or statically affected relative to dev |
 
 ### Database

@@ -64,7 +64,9 @@ sub-agent pointing at the cloned source in `C:\_MP_github_cloned\` **Available**
       leading-slash args; from Bash prefix `MSYS_NO_PATHCONV=1`).
     - Repeatable verification: a `tests/e2e/*.spec.ts` with `@playwright/test`, reusing
       `tests/e2e/fixtures/{auth,wishlist}-helpers.ts`.
-- Coordinate parallel sessions using `docs/TESTING.md#parallel-work-and-browser-ownership`.
+- Run focused local Playwright specs for affected browser behavior; leave the full E2E suite to CI.
+  Visible changes still require visual acceptance. Coordinate parallel sessions using
+  `docs/TESTING.md#parallel-work-and-browser-ownership`.
 - Prereqs: dev server (`pnpm run dev`) + seeded DB (`pnpm db:seed`). Authed routes are under the
   `(app)` group: `/my-lists`, `/followed`, `/moderated`, `/settings`, `/w/<id>`.
 - Prefer explicit `waitForSelector` over `waitUntil: 'networkidle'` (networkidle hangs on
