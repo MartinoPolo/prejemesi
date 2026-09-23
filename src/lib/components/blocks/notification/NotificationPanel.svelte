@@ -119,9 +119,9 @@
 	}
 </script>
 
-<div class="flex w-full flex-col">
+<div class="flex min-h-0 w-full flex-col overflow-hidden">
 	<!-- Header: px-4.5 keeps the title aligned with item content (6px list inset + 12px item padding) -->
-	<div class="flex items-center justify-between px-4.5 pt-3 pb-2">
+	<div class="flex shrink-0 items-center justify-between px-4.5 pt-3 pb-2">
 		<h3 class="font-heading text-sm font-semibold">{m.notification_panel_title()}</h3>
 		{#if ctx.hasUnread.current}
 			<Button intent="ghost" size="sm" onclick={handleMarkAllAsRead}>
@@ -131,36 +131,38 @@
 		{/if}
 	</div>
 
-	<Separator />
+	<Separator class="shrink-0" />
 
-	<!-- Notification list: inset so rounded item backgrounds never touch the panel border or separator -->
-	<div
-		bind:this={contentElement}
-		class="max-h-80 overflow-y-auto p-1.5"
-		data-notification-panel-content
-		aria-busy={displayedContent === 'loading'}
-	>
-		{#if displayedContent === 'loading'}
-			<!-- Loading skeleton: one animated group containing exactly three placeholder rows. -->
-			{#each [0, 1, 2] as index (index)}
-				<div data-notification-skeleton class="flex items-start gap-3 px-3 py-2.5">
-					<Skeleton class="size-8 shrink-0 rounded-full" />
-					<div class="flex flex-1 flex-col gap-1.5">
-						<Skeleton class="h-3.5 w-3/4" />
-						<Skeleton class="h-3 w-1/3" />
+	<!-- The fixed frame keeps the panel inset visible while only the inner list scrolls. -->
+	<div class="flex min-h-0 flex-1 p-1.5">
+		<div
+			bind:this={contentElement}
+			class="flex min-h-0 max-h-80 flex-1 flex-col gap-1.5 overflow-y-auto rounded-[max(0px,calc(var(--radius-panel)-2.5px-(--spacing(1.5))))]"
+			data-notification-panel-content
+			aria-busy={displayedContent === 'loading'}
+		>
+			{#if displayedContent === 'loading'}
+				<!-- Loading skeleton: one animated group containing exactly three placeholder rows. -->
+				{#each [0, 1, 2] as index (index)}
+					<div data-notification-skeleton class="flex items-start gap-3 px-3 py-2.5">
+						<Skeleton class="size-8 shrink-0 rounded-full" />
+						<div class="flex flex-1 flex-col gap-1.5">
+							<Skeleton class="h-3.5 w-3/4" />
+							<Skeleton class="h-3 w-1/3" />
+						</div>
 					</div>
+				{/each}
+			{:else if displayedContent === 'empty'}
+				<!-- Empty state -->
+				<div class="flex flex-col items-center gap-2 py-8 text-muted-foreground">
+					<BellOffIcon class="size-8 opacity-70" />
+					<p class="text-sm font-semibold">{m.notification_empty()}</p>
 				</div>
-			{/each}
-		{:else if displayedContent === 'empty'}
-			<!-- Empty state -->
-			<div class="flex flex-col items-center gap-2 py-8 text-muted-foreground">
-				<BellOffIcon class="size-8 opacity-70" />
-				<p class="text-sm font-semibold">{m.notification_empty()}</p>
-			</div>
-		{:else}
-			{#each ctx.notifications.current as notification (notification.id)}
-				<NotificationItem {notification} onMarkAsRead={handleMarkAsRead} />
-			{/each}
-		{/if}
+			{:else}
+				{#each ctx.notifications.current as notification (notification.id)}
+					<NotificationItem {notification} onMarkAsRead={handleMarkAsRead} />
+				{/each}
+			{/if}
+		</div>
 	</div>
 </div>

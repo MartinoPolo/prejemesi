@@ -49,7 +49,11 @@
 			</Button>
 		{/snippet}
 	</Popover.Trigger>
-	<Popover.Content align="end" class="w-80 p-0">
+	<Popover.Content
+		align="end"
+		collisionPadding={8}
+		class="flex w-80 max-h-[min(var(--bits-popover-content-available-height,calc(100dvh-1rem)),calc(100dvh-1rem))] flex-col overflow-hidden p-0"
+	>
 		<p class="sr-only">{m.notification_panel_title()}</p>
 		<NotificationPanel />
 	</Popover.Content>
