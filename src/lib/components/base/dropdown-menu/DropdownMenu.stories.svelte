@@ -30,6 +30,25 @@
 		return canvasElement.querySelectorAll<HTMLElement>('[role="menuitem"]');
 	}
 
+	async function waitForMenuOpening(canvasElement: HTMLElement): Promise<void> {
+		const menu = await waitFor(() => {
+			const menu = canvasElement.querySelector<HTMLElement>('[role="menu"]');
+			if (!menu) {
+				throw new Error('Dropdown menu not found');
+			}
+			return menu;
+		});
+		await waitFor(() =>
+			expect(
+				menu.getAnimations().every((animation) => animation.playState === 'finished'),
+			).toBe(true),
+		);
+		// FocusScope schedules menu autofocus in a frame; item focus follows on the next tick.
+		await new Promise<void>((resolve) =>
+			requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+		);
+	}
+
 	function findDropdownTrigger(canvasElement: HTMLElement): HTMLElement {
 		const trigger = canvasElement.querySelector(
 			'[data-dropdown-menu-trigger] [data-slot="button"]',
@@ -57,9 +76,11 @@
 		trigger.focus();
 		await expect(trigger).toHaveFocus();
 		await userEvent.keyboard('{ArrowDown}');
+		await waitForMenuOpening(canvasElement);
 		await waitFor(() => {
-			expect(canvasElement.querySelector('[role="menu"]')).toBeTruthy();
-			expect(menuItems(canvasElement)[0]).toHaveAttribute('data-highlighted', '');
+			const firstItem = menuItems(canvasElement)[0];
+			expect(firstItem).toHaveAttribute('data-highlighted', '');
+			expect(firstItem).toHaveFocus();
 		});
 		await userEvent.keyboard('{ArrowDown}');
 		await waitFor(() =>
@@ -72,6 +93,7 @@
 		trigger.focus();
 		await expect(trigger).toHaveFocus();
 		await userEvent.keyboard('{ArrowDown}');
+		await waitForMenuOpening(canvasElement);
 		await waitFor(() => {
 			const firstItem = menuItems(canvasElement)[0];
 			expect(firstItem).toHaveAttribute('data-highlighted', '');
@@ -86,7 +108,12 @@
 		trigger.focus();
 		await expect(trigger).toHaveFocus();
 		await userEvent.keyboard('{ArrowDown}');
-		await waitFor(() => expect(canvasElement.querySelector('[role="menu"]')).toBeTruthy());
+		await waitForMenuOpening(canvasElement);
+		await waitFor(() => {
+			const firstItem = menuItems(canvasElement)[0];
+			expect(firstItem).toHaveAttribute('data-highlighted', '');
+			expect(firstItem).toHaveFocus();
+		});
 		await userEvent.keyboard('{Escape}');
 		await waitFor(() => expectMenuClosed(canvasElement));
 	};
