@@ -79,7 +79,7 @@ test.describe('mobile wishlist acceptance', () => {
 		await page.context().close();
 	});
 
-	test('list view uses a portrait mobile image and square desktop image with primary actions', async ({
+	test('list view uses a portrait mobile image and a square-maximum full-height desktop image with primary actions', async ({
 		browser,
 		request,
 		baseURL,
@@ -110,8 +110,15 @@ test.describe('mobile wishlist acceptance', () => {
 
 		await page.setViewportSize({ width: 1280, height: 900 });
 		const desktopImageBox = await mobileImage.boundingBox();
+		const desktopRowBox = await firstItem.boundingBox();
 		expect(desktopImageBox).not.toBeNull();
-		expectPixelsNear(desktopImageBox!.width, desktopImageBox!.height);
+		expect(desktopRowBox).not.toBeNull();
+		expectPixelsAtMost(desktopImageBox!.width, desktopImageBox!.height);
+		expectPixelsNear(desktopImageBox!.y - desktopRowBox!.y, 2);
+		expectPixelsNear(
+			desktopRowBox!.y + desktopRowBox!.height - desktopImageBox!.y - desktopImageBox!.height,
+			2,
+		);
 		await expectPrimaryActionReachable(primaryAction);
 
 		await page.context().close();

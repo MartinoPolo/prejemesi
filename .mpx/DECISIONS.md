@@ -301,10 +301,12 @@ sections for UI work. Historical reconciliation and review notes are in
   column wherever two columns cannot fit the standard primary and More controls with their spacing.
   Restore multiple columns when usable card width permits, rather than retaining the former fixed
   mobile breakpoint. Single-column cards use natural compact flow; side-by-side cards align content.
-  Desktop List keeps square full-height images and one-line text; mobile List keeps a responsive,
-  capped portrait frame, readable content, bottom-left priority, and side-cropping of the saved
-  square composition without new crop targets.
-
+  Mobile List keeps a responsive, capped portrait frame, readable content, bottom-left priority, and
+  side-cropping of the saved square composition without new crop targets.
+- 2026-09-24: Desktop List keeps full-height images with a consistent, bounded column width driven
+  by available inline space, not row height. A square minimum-height floor favors square ordinary
+  frames; tall content or overlays may make individual frames portrait without equalizing rows
+  across gifts or groups. Desktop text stays one-line.
 - 2026-09-24: Unavailable image-bearing gifts use the approved 50% content/secondary-badge treatment
   with softened borders, shadows and image/body separators; action controls and state/authorized
   identity overlays stay crisp. Replace the image veil rather than stacking fades, preserve existing
@@ -499,10 +501,11 @@ sections for UI work. Historical reconciliation and review notes are in
   transparent/dotted mat for letterboxing, with the dotted/transparent choice as default. Do not
   revive the retired app-background theme axis to control image fill.
 
-- 2026-09-16: Mobile List fills its portrait image frame with a centered side-window of the saved
-  square `thumb` composition. The square editor preview remains exact for square List/reservation
-  consumers, but its sides may be clipped on mobile List; disclose that in the editor. Do not
-  reproject focal/zoom directly to a portrait aspect or alter persisted targets.
+- 2026-09-24: The saved square `thumb` composition anchors List/reservation imagery; its editor
+  preview is exact only in square-frame consumers. Mobile List and taller desktop List fill their
+  portrait, full-height frames with a centered side-window of that composition, which may clip its
+  sides; disclose this in the editor. Do not reproject focal/zoom to portrait or alter persisted
+  targets.
 
 ## Architecture, data & delivery
 
