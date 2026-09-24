@@ -127,7 +127,7 @@ describe('GiftListItem image continuity', () => {
 			expectPixelsNear(frameRect.top, innerTop);
 			expectPixelsNear(frameRect.bottom, innerBottom);
 			if (width >= 640) {
-				expectPixelsNear(imageRect.width, imageRect.height);
+				expectPixelsAtMost(imageRect.width, imageRect.height);
 			} else {
 				expect(imageRect.width).toBeLessThan(imageRect.height);
 			}
@@ -192,7 +192,7 @@ describe('GiftListItem desktop bordered card geometry (issue #360)', () => {
 			expect(itemStyle.backgroundColor).not.toBe('rgba(0, 0, 0, 0)');
 			expect(itemStyle.boxShadow).not.toBe('none');
 			if (item.clientWidth >= 640) {
-				expectPixelsNear(imageRect.width, imageRect.height);
+				expectPixelsAtMost(imageRect.width, imageRect.height);
 			} else {
 				expect(imageRect.width).toBeLessThan(imageRect.height);
 			}

@@ -452,7 +452,7 @@
 	"image_crop_region_label": "Crop area",
 	"gift_image_target_card": "Card",
 	"gift_image_target_thumb": "List and reservation",
-	"gift_image_thumb_portrait_hint": "Mobile List trims the sides of this square preview to fill its portrait frame.",
+	"gift_image_thumb_portrait_hint": "Portrait List frames trim the sides of this square preview.",
 	"gift_quantity_label": "Quantity (hidden when 1)",
 	"gift_priority_label": "Priority",
 	"gift_priority_none": "No priority",

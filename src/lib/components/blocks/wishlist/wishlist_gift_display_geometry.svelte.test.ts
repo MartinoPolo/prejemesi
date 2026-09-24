@@ -863,6 +863,163 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 		await screen.unmount();
 	});
 
+	it('keeps crowded grouped desktop List frames full-height, aligned, and no wider than tall', async () => {
+		const category = {
+			id: 'category-long',
+			presetKey: null,
+			customLabel: 'Výpravné ilustrované edice a kompletní sběratelské kolekce',
+			color: '#0369A1',
+			sortOrder: 0,
+		};
+		const crowdedGift = {
+			...visitorGift(),
+			id: 'crowded',
+			name: '1984 – George Orwell',
+			categoryId: category.id,
+			category,
+			priorityLabel: 'Vysoka',
+			reservedCount: 1,
+			isFullyReserved: true,
+			reserverNames: ['Jana Dvořáková'],
+		};
+		const longContentGift = {
+			...visitorGift(),
+			categoryId: category.id,
+			category,
+			id: 'tall-content',
+			name: 'Kniha s dlouhým názvem, rozsáhlým popisem a více detaily',
+			description: 'Podrobný popis dárku, který zabírá v seznamu více místa.',
+			links: [{ url: 'https://example.com/book', label: 'Knihkupectví' }],
+		};
+		await page.viewport(1280, 900);
+		const screen = await render(WishlistGiftDisplayTestHost, {
+			...defaultProps,
+			viewMode: 'list',
+			role: WISHLIST_ROLES.moderator,
+			grouping: 'category',
+			sections: [
+				{
+					kind: GIFT_SECTION_KINDS.categoryGroup,
+					key: 'category:long',
+					label: category.customLabel,
+					priorityKey: null,
+					gifts: [crowdedGift, longContentGift],
+				},
+				{
+					kind: GIFT_SECTION_KINDS.categoryGroup,
+					key: 'category:other',
+					label: 'Další knihy',
+					priorityKey: null,
+					gifts: [{ ...visitorGift(), id: 'short', name: 'Atlas' }],
+				},
+			],
+		});
+		await document.fonts.ready;
+		const crowdedRow = document.querySelector<HTMLElement>('[data-gift-id="crowded"]')!;
+		const crowdedImage = crowdedRow.querySelector<HTMLElement>(
+			'[data-testid="gift-list-image"]',
+		)!;
+		expect(crowdedImage.querySelector('[data-testid="gift-category-badge"]')).not.toBeNull();
+		expect(crowdedImage.querySelector('[data-testid="gift-priority-badge"]')).not.toBeNull();
+		expect(crowdedImage.querySelector('[data-testid="gift-state-overlay"]')).not.toBeNull();
+		expect(crowdedImage.textContent).toContain('Jana Dvořáková');
+		expect(crowdedRow.querySelector('[data-testid="gift-list-actions"]')).not.toBeNull();
+
+		const frames = () =>
+			Array.from(
+				document.querySelectorAll<HTMLElement>('[data-testid="gift-list-item"]'),
+			).map((item) => {
+				const image = item.querySelector<HTMLElement>('[data-testid="gift-list-image"]')!;
+				const itemRect = item.getBoundingClientRect();
+				const imageRect = image.getBoundingClientRect();
+				const style = getComputedStyle(item);
+				return {
+					imageWidth: imageRect.width,
+					imageHeight: imageRect.height,
+					rowHeight: itemRect.height,
+					verticalInset:
+						itemRect.height -
+						imageRect.height -
+						parseFloat(style.borderTopWidth) -
+						parseFloat(style.borderBottomWidth),
+				};
+			});
+		const verify = (measurements: ReturnType<typeof frames>) => {
+			expect(measurements).toHaveLength(3);
+			for (const frame of measurements) {
+				expectPixelsNear(frame.verticalInset, 0);
+				expectPixelsAtMost(frame.imageWidth, frame.imageHeight);
+			}
+			for (const frame of measurements.slice(1)) {
+				expectPixelsNear(frame.imageWidth, measurements[0]!.imageWidth);
+			}
+		};
+		async function sampleIdle() {
+			const samples = [frames()];
+			for (let index = 0; index < 90; index += 1) {
+				await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+				samples.push(frames());
+			}
+			for (const rowIndex of [0, 1, 2]) {
+				for (const dimension of ['imageWidth', 'imageHeight', 'rowHeight'] as const) {
+					const values = samples.map((sample) => sample[rowIndex]![dimension]);
+					const changeCount = (from: number, to: number) =>
+						values
+							.slice(from + 1, to)
+							.filter((value, index) => Math.abs(value - values[from + index]!) > 1)
+							.length;
+					expect(
+						changeCount(0, 31),
+						`${dimension} must converge after initial rendering`,
+					).toBeLessThanOrEqual(5);
+					expect(
+						changeCount(30, samples.length),
+						`${dimension} must stay stable while idle`,
+					).toBe(0);
+				}
+			}
+			for (const sample of samples.slice(-30)) {
+				verify(sample);
+			}
+		}
+		await sampleIdle();
+		const settledRows = frames();
+		expectPixelsNear(settledRows[2]!.imageWidth, settledRows[2]!.imageHeight);
+		expect(
+			Math.max(...settledRows.map((row) => row.rowHeight)) -
+				Math.min(...settledRows.map((row) => row.rowHeight)),
+		).toBeGreaterThan(8);
+		const imageRect = crowdedImage.getBoundingClientRect();
+		const categoryRect = crowdedImage
+			.querySelector<HTMLElement>('[data-testid="gift-category-badge"]')!
+			.getBoundingClientRect();
+		const priorityRect = crowdedImage
+			.querySelector<HTMLElement>('[data-testid="gift-priority-badge"]')!
+			.getBoundingClientRect();
+		const overlayItems = Array.from(
+			crowdedImage.querySelectorAll<HTMLElement>('[data-testid="gift-state-overlay"] > span'),
+		).map((item) => item.getBoundingClientRect());
+		const actionRect = crowdedRow
+			.querySelector<HTMLElement>('[data-testid="gift-list-actions"]')!
+			.getBoundingClientRect();
+		expectPixelsAtLeast(categoryRect.left, imageRect.left);
+		expectPixelsAtMost(categoryRect.right, imageRect.right);
+		expectPixelsAtLeast(overlayItems[0]!.top, categoryRect.bottom);
+		expectPixelsAtMost(overlayItems.at(-1)!.bottom, priorityRect.top);
+		expectPixelsAtMost(actionRect.bottom, crowdedRow.getBoundingClientRect().bottom);
+		const wideImageWidth = settledRows[0]!.imageWidth;
+		await page.viewport(1600, 900);
+		await sampleIdle();
+		expectPixelsNear(frames()[0]!.imageWidth, wideImageWidth);
+		await page.viewport(640, 900);
+		await sampleIdle();
+		expect(frames()[0]!.imageWidth).toBeLessThan(wideImageWidth);
+		await page.viewport(390, 900);
+		await sampleIdle();
+		expect(frames()[0]!.imageWidth).toBeLessThan(frames()[0]!.imageHeight);
+		await screen.unmount();
+	});
+
 	it('uses equal mobile list image widths for mixed content and contains the footer', async () => {
 		await page.viewport(390, 720);
 		const second = {

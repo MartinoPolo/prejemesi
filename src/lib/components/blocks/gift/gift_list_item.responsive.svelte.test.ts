@@ -72,9 +72,12 @@ describe('GiftListItem responsive image dimensions (issues #328 and #336)', () =
 		host.remove();
 	});
 
-	it('keeps the desktop image square and equal to the full inner row height', async () => {
+	it('prefers a square full-height desktop frame for an ordinary short row', async () => {
 		await page.viewport(800, 720);
-		const host = await renderItem(makeVisitorGift(), WISHLIST_ROLES.visitor);
+		const host = await renderItem(
+			makeVisitorGift({ name: 'Kniha', description: null, links: [], price: null }),
+			WISHLIST_ROLES.recipient,
+		);
 		const item = host.querySelector('[data-testid="gift-list-item"]') as HTMLElement;
 		const image = host.querySelector('[data-testid="gift-list-image"]') as HTMLElement;
 		const itemRect = item.getBoundingClientRect();
@@ -549,7 +552,7 @@ describe('GiftListItem approved Like geometry (issue #357)', () => {
 			expect(image.contains(like)).toBe(false);
 			expect(content.contains(like)).toBe(true);
 			expect(content.contains(title)).toBe(true);
-			expectPixelsNear(imageRect.width, imageRect.height);
+			expectPixelsAtMost(imageRect.width, imageRect.height);
 			expectPixelsNear(
 				like.getBoundingClientRect().top + like.getBoundingClientRect().height / 2,
 				titleRect.top + titleLineHeight / 2,

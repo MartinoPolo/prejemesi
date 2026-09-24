@@ -452,7 +452,7 @@
 	"image_crop_region_label": "Oblast výřezu",
 	"gift_image_target_card": "Karta",
 	"gift_image_target_thumb": "Seznam a rezervace",
-	"gift_image_thumb_portrait_hint": "V mobilním seznamu se strany tohoto čtvercového náhledu oříznou, aby obrázek vyplnil rámeček na výšku.",
+	"gift_image_thumb_portrait_hint": "Rámečky seznamu na výšku oříznou strany tohoto čtvercového náhledu.",
 	"gift_quantity_label": "Počet (skryto při 1)",
 	"gift_priority_label": "Priorita",
 	"gift_priority_none": "Bez priority",
