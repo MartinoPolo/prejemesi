@@ -9,11 +9,6 @@ export interface GiftPointerReorderOptions {
 	onCancelOrder: (orderedIds: string[]) => void;
 }
 
-interface ItemPosition {
-	left: number;
-	top: number;
-}
-
 interface Point {
 	x: number;
 	y: number;
@@ -24,7 +19,7 @@ function pixelValue(value: string): number {
 	return Number.isFinite(parsed) ? parsed : 0;
 }
 
-function detachedSubgridRows(element: HTMLElement): string | null {
+export function detachedSubgridRows(element: HTMLElement): string | null {
 	const elementStyle = getComputedStyle(element);
 	if (!elementStyle.gridTemplateRows.includes('subgrid')) {
 		return null;
@@ -103,60 +98,6 @@ export function createGiftPointerReorderController(options: GiftPointerReorderOp
 	let pointerOffsetX = 0;
 	let pointerOffsetY = 0;
 	let stableHitTestCenters: Point[] = [];
-	const runningAnimations = new WeakMap<HTMLElement, Animation>();
-
-	function prefersReducedMotion(): boolean {
-		return window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
-	}
-
-	function capturePositions(): Map<string, ItemPosition> {
-		// These FLIP snapshots are local and non-reactive; SvelteMap would add no behavior.
-		// eslint-disable-next-line svelte/prefer-svelte-reactivity
-		const positions = new Map<string, ItemPosition>();
-		for (const element of options.getItemElements()) {
-			const id = element.dataset.giftId;
-			if (id === undefined) {
-				continue;
-			}
-			const rect = element.getBoundingClientRect();
-			positions.set(id, { left: rect.left, top: rect.top });
-		}
-		return positions;
-	}
-
-	function animateFrom(previousPositions: Map<string, ItemPosition>) {
-		if (prefersReducedMotion()) {
-			return;
-		}
-		requestAnimationFrame(() => {
-			for (const element of options.getItemElements()) {
-				const id = element.dataset.giftId;
-				const previousPosition = id === undefined ? undefined : previousPositions.get(id);
-				if (previousPosition === undefined || id === draggedGiftId.current) {
-					continue;
-				}
-				const rect = element.getBoundingClientRect();
-				const translateX = previousPosition.left - rect.left;
-				const translateY = previousPosition.top - rect.top;
-				if (translateX === 0 && translateY === 0) {
-					continue;
-				}
-				runningAnimations.get(element)?.cancel();
-				if (typeof element.animate !== 'function') {
-					continue;
-				}
-				const animation = element.animate(
-					[
-						{ transform: `translate(${translateX}px, ${translateY}px)` },
-						{ transform: 'translate(0, 0)' },
-					],
-					{ duration: 180, easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)' },
-				);
-				runningAnimations.set(element, animation);
-			}
-		});
-	}
-
 	function captureHitTestCenters(elements: HTMLElement[]): Point[] {
 		const scrollX = window.scrollX;
 		const scrollY = window.scrollY;
@@ -235,7 +176,6 @@ export function createGiftPointerReorderController(options: GiftPointerReorderOp
 		if (targetIndex === currentIndex || targetIndex < 0 || targetIndex >= currentOrder.length) {
 			return;
 		}
-		const previousPositions = capturePositions();
 		const [movedId] = currentOrder.splice(currentIndex, 1);
 		if (movedId === undefined) {
 			return;
@@ -244,7 +184,6 @@ export function createGiftPointerReorderController(options: GiftPointerReorderOp
 		currentIndex = targetIndex;
 		dragOverGiftId.current = currentOrder[targetIndex] ?? null;
 		options.onPreviewOrder([...currentOrder]);
-		animateFrom(previousPositions);
 	}
 
 	function handlePointerMove(event: PointerEvent) {
@@ -271,6 +210,7 @@ export function createGiftPointerReorderController(options: GiftPointerReorderOp
 		overlayElement = null;
 		if (sourceElement !== null) {
 			sourceElement.style.visibility = sourceVisibility;
+			sourceElement.removeAttribute('data-gift-motion-dragging');
 		}
 		sourceElement = null;
 		sourceVisibility = '';
@@ -284,6 +224,17 @@ export function createGiftPointerReorderController(options: GiftPointerReorderOp
 		const finalOrder = [...currentOrder];
 		const rollbackOrder = [...initialOrder];
 		activePointerId = null;
+		if (sourceElement !== null && overlayElement !== null) {
+			sourceElement.dispatchEvent(
+				new CustomEvent('gift-motion-drop', {
+					bubbles: true,
+					detail: {
+						giftId: draggedGiftId.current,
+						rectangle: overlayElement.getBoundingClientRect(),
+					},
+				}),
+			);
+		}
 		cleanVisualState();
 		draggedGiftId.current = null;
 		dragOverGiftId.current = null;
@@ -343,6 +294,7 @@ export function createGiftPointerReorderController(options: GiftPointerReorderOp
 		createOverlay(element, event);
 		sourceElement = element;
 		sourceVisibility = element.style.visibility;
+		element.setAttribute('data-gift-motion-dragging', '');
 		element.style.visibility = 'hidden';
 
 		window.addEventListener('pointermove', handlePointerMove, { passive: false });
@@ -360,14 +312,12 @@ export function createGiftPointerReorderController(options: GiftPointerReorderOp
 		if (targetIndex < 0 || targetIndex >= itemIds.length) {
 			return false;
 		}
-		const previousPositions = capturePositions();
 		const [movedId] = itemIds.splice(index, 1);
 		if (movedId === undefined) {
 			return false;
 		}
 		itemIds.splice(targetIndex, 0, movedId);
 		options.onPreviewOrder([...itemIds]);
-		animateFrom(previousPositions);
 		options.onCommitOrder([...itemIds]);
 		return true;
 	}

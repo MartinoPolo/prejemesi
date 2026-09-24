@@ -3,7 +3,7 @@
 	import { page } from '$app/state';
 	import { afterNavigate, replaceState, goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import { onDestroy, onMount, tick } from 'svelte';
+	import { onMount, tick } from 'svelte';
 	import { SvelteSet } from 'svelte/reactivity';
 	import * as m from '$lib/paraglide/messages.js';
 	import { localizeInternalHref } from '$lib/i18n/locale.js';
@@ -45,11 +45,6 @@
 	import { WIZARD_MODE } from '$lib/components/blocks/import/import_wizard_types.js';
 	import { emptyGiftFilters, setGiftsContext } from '$lib/modules/gifts/gifts.context.svelte.js';
 	import { createLatestAsyncQueue } from '$lib/modules/gifts/latest_async_queue.js';
-	import { createIdentityLayoutMotion } from '$lib/motion/layout_motion.js';
-	import {
-		createGiftReceivedMotion,
-		type GiftReceivedMotionSnapshot,
-	} from '$lib/components/blocks/wishlist/gift_received_motion.js';
 	import { setLikesContext } from '$lib/modules/likes/likes.context.svelte.js';
 	import { setSharingContext } from '$lib/modules/sharing/sharing.context.svelte.js';
 	import { wishlistSocialDescription } from '$lib/modules/sharing/social_description.js';
@@ -1179,42 +1174,15 @@
 			(!reorderMode || mode === GIFT_VIEW_MODES.card || mode === GIFT_VIEW_MODES.list) &&
 			mode !== giftsContext.viewMode.current
 		) {
-			displayLayoutMotion.cancel();
 			giftsContext.viewMode.current = mode;
 		}
 	}
 
 	let wishlistPageElement = $state<HTMLElement | null>(null);
 	let receivedAnnouncement = $state('');
-	const displayLayoutMotion = createIdentityLayoutMotion();
-	const receivedGiftMotion = createGiftReceivedMotion();
-
-	async function changeDisplay(update: () => void) {
-		receivedGiftMotion.cancel();
-		const root = wishlistPageElement;
-		const collection = root?.querySelector<HTMLElement>('[data-wishlist-gift-collection]');
-		if (
-			root === null ||
-			!reorderLayoutSupported ||
-			collection?.inert === true ||
-			(collection && collection.dataset.viewMode !== viewMode)
-		) {
-			displayLayoutMotion.cancel();
-			update();
-			return;
-		}
-		const toolbar = root.querySelector<HTMLElement>('[data-testid="wishlist-toolbar"]');
-		const before = displayLayoutMotion.capture(root, toolbar);
-		update();
-		await tick();
-		void displayLayoutMotion.play(before, root, toolbar);
-	}
-
 	function handleSortChange(sort: GiftSortOption) {
 		if (sort !== giftsContext.sortOption.current) {
-			void changeDisplay(() => {
-				giftsContext.sortOption.current = sort;
-			});
+			giftsContext.sortOption.current = sort;
 		}
 	}
 
@@ -1232,16 +1200,12 @@
 		) {
 			return;
 		}
-		void changeDisplay(() => {
-			giftsContext.filters.current = filters;
-		});
+		giftsContext.filters.current = filters;
 	}
 
 	function handleGroupingChange(grouping: GiftGroupingOption) {
 		if (grouping !== giftsContext.grouping.current) {
-			void changeDisplay(() => {
-				giftsContext.grouping.current = grouping;
-			});
+			giftsContext.grouping.current = grouping;
 		}
 	}
 
@@ -1334,16 +1298,7 @@
 		return null;
 	}
 
-	function captureReceivedGift(giftId: string, root: HTMLElement | null) {
-		if (root === null) {
-			return null;
-		}
-		const source = findGiftElement(root, giftId);
-		return source === null ? null : receivedGiftMotion.capture(giftId, source, root);
-	}
-
 	function revealReceivedGift(received: boolean) {
-		// Reveal the received section within the captured layout run, not in a second filter motion.
 		if (received && !giftsContext.filters.current.showReceived) {
 			giftsContext.filters.current = {
 				...giftsContext.filters.current,
@@ -1371,15 +1326,28 @@
 
 	async function settleReceivedGift(
 		root: HTMLElement | null,
-		snapshot: GiftReceivedMotionSnapshot | null,
+		giftId: string,
+		invokingControl: Element | null,
 		receivingWishlistId: string,
 		giftName: string,
 		received: boolean,
 	) {
 		revealReceivedGift(received);
 		await tick();
-		if (snapshot !== null && root !== null) {
-			await receivedGiftMotion.play(snapshot, root);
+		if (root?.isConnected !== true || shortId !== receivingWishlistId) {
+			return;
+		}
+		if (
+			invokingControl !== null &&
+			(document.activeElement === invokingControl || document.activeElement === document.body)
+		) {
+			const destinationAction = findGiftElement(root, giftId)?.querySelector<HTMLElement>(
+				'[data-gift-received-action]',
+			);
+			const fallback = root.querySelector<HTMLElement>(
+				'[data-testid="wishlist-toolbar"] button:not(:disabled)',
+			);
+			(destinationAction ?? fallback)?.focus({ preventScroll: true });
 		}
 		announceReceivedIfCurrent(root, receivingWishlistId, giftName, received);
 	}
@@ -1389,17 +1357,23 @@
 			return;
 		}
 		const root = wishlistPageElement;
-		const snapshot = captureReceivedGift(giftId, root);
+		const source = root === null ? null : findGiftElement(root, giftId);
+		const invokingControl =
+			source?.contains(document.activeElement) === true ? document.activeElement : null;
 		const giftName = gifts.find((giftItem) => giftItem.id === giftId)?.name ?? '';
 		const receivingWishlistId = shortId;
 		receivedPendingGiftIds.add(giftId);
 		try {
 			await markGiftReceived({ giftId, received });
-			await settleReceivedGift(root, snapshot, receivingWishlistId, giftName, received);
+			await settleReceivedGift(
+				root,
+				giftId,
+				invokingControl,
+				receivingWishlistId,
+				giftName,
+				received,
+			);
 		} catch (thrown) {
-			if (snapshot !== null) {
-				receivedGiftMotion.discard(snapshot);
-			}
 			toastError(translateServerError(thrown));
 		} finally {
 			receivedPendingGiftIds.delete(giftId);
@@ -1673,11 +1647,6 @@
 
 	// ── Lifecycle: record the visit on mount ──────────────────────────────────
 
-	onDestroy(() => {
-		displayLayoutMotion.destroy();
-		receivedGiftMotion.destroy();
-	});
-
 	onMount(() => {
 		// One command per view for ANY authed user (issue #225): it upserts the visit that
 		// powers the „Nedávné" row on /home for owners and moderators too, and folds in the
@@ -1694,8 +1663,6 @@
 	// The legacy /w/<id>/settings route redirects here with ?settings=<tab>; open the
 	// modal on the requested tab, then strip the marker so reload/share won't reopen it.
 	afterNavigate(() => {
-		receivedGiftMotion.cancel();
-		displayLayoutMotion.cancel();
 		const requestedTab = page.url.searchParams.get(WISHLIST_SETTINGS_QUERY_PARAM);
 		if (requestedTab === null) {
 			return;
@@ -1910,6 +1877,7 @@
 			{/if}
 		{/snippet}
 		<WishlistGiftDisplay
+			motionKey={shortId}
 			sections={giftSections}
 			grouping={reorderMode
 				? GIFT_GROUPING_OPTIONS.none

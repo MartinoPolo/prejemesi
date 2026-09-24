@@ -91,6 +91,36 @@ function deferredAnimation() {
 }
 
 describe('WishlistGiftDisplay collection transition', () => {
+	it('captures keyed-section remounts before the DOM update without initial-load choreography', async () => {
+		const animate = vi.spyOn(HTMLElement.prototype, 'animate');
+		const first = visitorGift();
+		const second = { ...visitorGift(), id: 'gift-2', name: 'Kniha' };
+		const initialSections: GiftSection[] = [{ ...sections[0]!, gifts: [first, second] }];
+		const screen = await render(WishlistGiftDisplay, {
+			...defaultProps,
+			sections: initialSections,
+		});
+		await new Promise((resolve) => requestAnimationFrame(resolve));
+		expect(animate).not.toHaveBeenCalled();
+		const reversedSections: GiftSection[] = [{ ...sections[0]!, gifts: [second, first] }];
+		await screen.rerender({ ...defaultProps, sections: reversedSections });
+		await vi.waitFor(() =>
+			expect(
+				animate.mock.calls.some(
+					([frames]) =>
+						Array.isArray(frames) &&
+						frames.some(
+							(frame) =>
+								typeof frame === 'object' &&
+								'transform' in frame &&
+								String(frame.transform).startsWith('translate('),
+						),
+				),
+			).toBe(true),
+		);
+		await screen.unmount();
+	});
+
 	it('immediately removes the outgoing collection from interaction and the accessibility tree', async () => {
 		const exit = deferredAnimation();
 		const enter = deferredAnimation();

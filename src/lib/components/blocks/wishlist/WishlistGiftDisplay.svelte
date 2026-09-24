@@ -17,11 +17,16 @@
 	import type { GiftContextInvocation } from './gift_context_invocation.js';
 	import { WISHLIST_ROLES, type WishlistRole } from '$lib/modules/wishlists/types.js';
 	import { canManageWishlist } from '$lib/modules/wishlists/wishlist_capabilities.js';
-	import { giftCardCollectionLayout } from './gift_card_collection_layout.js';
+	import {
+		giftCardCollectionLayout,
+		measureGiftCardCollectionLayout,
+	} from './gift_card_collection_layout.js';
+	import { createGiftCollectionMotion } from '$lib/motion/gift_collection_motion.js';
 
 	interface WishlistGiftDisplayProps {
 		/** Shared display sections consumed identically by every view mode. */
 		sections: GiftSection[];
+		motionKey?: string;
 		role: WishlistRole;
 		isArchived: boolean;
 		hideReservationState: boolean;
@@ -57,6 +62,7 @@
 
 	let {
 		sections,
+		motionKey,
 		role,
 		isArchived,
 		hideReservationState,
@@ -102,9 +108,14 @@
 	const STANDARD_EASING = 'cubic-bezier(0.2, 0.7, 0.3, 1)';
 	let displayedViewMode = $state(untrack(() => viewMode));
 	let collectionElement = $state<HTMLElement | null>(null);
+	let motionHost = $state<HTMLElement | null>(null);
+	let motion: ReturnType<typeof createGiftCollectionMotion> | null = null;
+	let motionSuspended = true;
+	let previousMotionKey = untrack(() => motionKey);
 	let activeAnimation: Animation | null = null;
 	let openedNativeSessionId = $state(0);
 	let transitionRun = 0;
+	let viewTransitioning = false;
 	const collectionIsOutgoing = $derived(viewMode !== displayedViewMode);
 	const selectedIdSet = $derived(new Set(selectedIds));
 	setContext<(giftId: string) => boolean>('wishlist-gift-selection', (giftId) =>
@@ -122,6 +133,9 @@
 	}
 
 	async function transitionTo(nextViewMode: GiftViewMode) {
+		motion?.reset(true);
+		motionSuspended = true;
+		viewTransitioning = true;
 		cancelActiveTransition();
 		const run = transitionRun;
 
@@ -132,6 +146,10 @@
 			nextViewMode === 'compact'
 		) {
 			displayedViewMode = nextViewMode;
+			await tick();
+			motion?.reset(isLoading);
+			motionSuspended = isLoading;
+			viewTransitioning = false;
 			return;
 		}
 
@@ -166,14 +184,20 @@
 		if (run === transitionRun) {
 			enter.cancel();
 			activeAnimation = null;
+			motion?.reset(isLoading);
+			motionSuspended = isLoading;
+			viewTransitioning = false;
 		}
 	}
 
 	$effect(() => {
 		if (viewMode !== displayedViewMode) {
 			void transitionTo(viewMode);
-		} else if (activeAnimation !== null) {
+		} else if (viewTransitioning && activeAnimation !== null) {
 			cancelActiveTransition();
+			viewTransitioning = false;
+			motion?.reset(isLoading);
+			motionSuspended = isLoading;
 		}
 	});
 
@@ -183,7 +207,98 @@
 		}
 	});
 
-	$effect(() => () => cancelActiveTransition());
+	// Explicitly depend on both section identity and gift content before Svelte patches the DOM.
+	function readMotionInputs() {
+		for (const section of sections) {
+			void section.key;
+			for (const gift of section.gifts) {
+				void Object.values(gift);
+			}
+		}
+		void [
+			role,
+			isArchived,
+			hideReservationState,
+			grouping,
+			showPriority,
+			reorderMode,
+			selectionMode,
+			receivedPendingGiftIds,
+			isEmpty,
+			isFilteredEmpty,
+			isLoading,
+			viewMode,
+			motionKey,
+		];
+	}
+
+	$effect.pre(() => {
+		readMotionInputs();
+		if (motionKey !== previousMotionKey) {
+			previousMotionKey = motionKey;
+			motion?.reset(true);
+			motionSuspended = true;
+		} else if (viewTransitioning || viewMode !== displayedViewMode || isLoading) {
+			motion?.reset(true);
+			motionSuspended = true;
+		} else if (!motionSuspended) {
+			motion?.beforeUpdate();
+		}
+	});
+
+	$effect(() => {
+		readMotionInputs();
+		const host = motionHost;
+		if (!host) {
+			return;
+		}
+		if (!motion) {
+			motion = createGiftCollectionMotion(host);
+		}
+		if (
+			isLoading ||
+			viewTransitioning ||
+			viewMode !== displayedViewMode ||
+			collectionIsOutgoing
+		) {
+			motion.reset(true);
+			motionSuspended = true;
+			return;
+		}
+		let active = true;
+		void tick().then(() => {
+			if (
+				!active ||
+				!motion ||
+				viewTransitioning ||
+				viewMode !== displayedViewMode ||
+				isLoading
+			) {
+				return;
+			}
+			if (collectionElement) {
+				measureGiftCardCollectionLayout(collectionElement);
+			}
+			if (motionSuspended) {
+				if (activeAnimation !== null) {
+					return;
+				}
+				motion.reset(false);
+				motionSuspended = false;
+			} else {
+				motion.afterUpdate();
+			}
+		});
+		return () => {
+			active = false;
+		};
+	});
+
+	$effect(() => () => {
+		cancelActiveTransition();
+		motion?.destroy();
+		motion = null;
+	});
 </script>
 
 <ContextMenu.Root
@@ -199,115 +314,117 @@
 		}
 	}}
 >
-	{#if isLoading}
-		<div
-			class="gift-card-skeleton-grid grid grid-cols-2 gap-2 sm:gap-5 sm:[grid-template-columns:repeat(auto-fill,minmax(280px,1fr))]"
-			aria-busy="true"
-			aria-label={m.wishlist_detail_loading_gifts()}
-		>
-			{#each Array.from({ length: 6 }, (_, i) => i) as index (index)}
-				<GiftCardSkeleton />
-			{/each}
-		</div>
-	{:else if isEmpty || isFilteredEmpty}
-		<WishlistEmptyState
-			{isArchived}
-			{canManage}
-			{isFilteredEmpty}
-			{onaddgift}
-			{onclearfilters}
-		/>
-	{:else}
-		<ContextMenu.Trigger
-			disabled={displayedViewMode === 'compact' || selectionMode || collectionIsOutgoing}
-		>
-			{#snippet child({ props: triggerProps })}
-				<div
-					{...triggerProps}
-					style={undefined}
-					bind:this={collectionElement}
-					use:giftCardCollectionLayout
-					data-wishlist-gift-collection
-					data-view-mode={displayedViewMode}
-					inert={collectionIsOutgoing}
-					aria-hidden={collectionIsOutgoing ? true : undefined}
-					class="relative z-(--z-base)"
-					role={selectionMode ? 'group' : undefined}
-					aria-label={selectionMode ? m.gift_selection_listbox_label() : undefined}
-				>
-					{#if displayedViewMode === 'card'}
-						<WishlistGiftCardGrid
-							{hascontextactions}
-							{activeContextGiftId}
-							{contextSurface}
-							{sections}
-							{role}
-							{showPriority}
-							{isArchived}
-							hideReservationState={reservationStateHidden}
-							reorderEnabled={reorderMode &&
-								reorderInteractionEnabled &&
-								canManage &&
-								!isArchived &&
-								!selectionMode}
-							{selectionMode}
-							{onselectiontoggle}
-							{oncontextactions}
-							{onedit}
-							{onreserve}
-							{onunreserve}
-							{onreceived}
-							{receivedPendingGiftIds}
-							{onreorderpreview}
-							{onreordercommit}
-							{onreordercancel}
-						/>
-					{:else if displayedViewMode === 'list'}
-						<WishlistGiftListView
-							{hascontextactions}
-							{activeContextGiftId}
-							{contextSurface}
-							{sections}
-							{role}
-							{showPriority}
-							{isArchived}
-							hideReservationState={reservationStateHidden}
-							reorderEnabled={reorderMode &&
-								reorderInteractionEnabled &&
-								canManage &&
-								!isArchived &&
-								!selectionMode}
-							{selectionMode}
-							{onselectiontoggle}
-							{oncontextactions}
-							{onedit}
-							{onreserve}
-							{onunreserve}
-							{onreceived}
-							{receivedPendingGiftIds}
-							{onreorderpreview}
-							{onreordercommit}
-							{onreordercancel}
-						/>
-					{:else}
-						<WishlistGiftCompactTable
-							{sections}
-							{role}
-							{showPriority}
-							{isArchived}
-							hideReservationState={reservationStateHidden}
-							{canManage}
-							{onedit}
-							{onreserve}
-							{onunreserve}
-							{onreceived}
-							{receivedPendingGiftIds}
-						/>
-					{/if}
-				</div>
-			{/snippet}
-		</ContextMenu.Trigger>
-	{/if}
+	<div bind:this={motionHost} data-gift-motion-host>
+		{#if isLoading}
+			<div
+				class="gift-card-skeleton-grid grid grid-cols-2 gap-2 sm:gap-5 sm:[grid-template-columns:repeat(auto-fill,minmax(280px,1fr))]"
+				aria-busy="true"
+				aria-label={m.wishlist_detail_loading_gifts()}
+			>
+				{#each Array.from({ length: 6 }, (_, i) => i) as index (index)}
+					<GiftCardSkeleton />
+				{/each}
+			</div>
+		{:else if isEmpty || isFilteredEmpty}
+			<WishlistEmptyState
+				{isArchived}
+				{canManage}
+				{isFilteredEmpty}
+				{onaddgift}
+				{onclearfilters}
+			/>
+		{:else}
+			<ContextMenu.Trigger
+				disabled={displayedViewMode === 'compact' || selectionMode || collectionIsOutgoing}
+			>
+				{#snippet child({ props: triggerProps })}
+					<div
+						{...triggerProps}
+						style={undefined}
+						bind:this={collectionElement}
+						use:giftCardCollectionLayout
+						data-wishlist-gift-collection
+						data-view-mode={displayedViewMode}
+						inert={collectionIsOutgoing}
+						aria-hidden={collectionIsOutgoing ? true : undefined}
+						class="relative z-(--z-base)"
+						role={selectionMode ? 'group' : undefined}
+						aria-label={selectionMode ? m.gift_selection_listbox_label() : undefined}
+					>
+						{#if displayedViewMode === 'card'}
+							<WishlistGiftCardGrid
+								{hascontextactions}
+								{activeContextGiftId}
+								{contextSurface}
+								{sections}
+								{role}
+								{showPriority}
+								{isArchived}
+								hideReservationState={reservationStateHidden}
+								reorderEnabled={reorderMode &&
+									reorderInteractionEnabled &&
+									canManage &&
+									!isArchived &&
+									!selectionMode}
+								{selectionMode}
+								{onselectiontoggle}
+								{oncontextactions}
+								{onedit}
+								{onreserve}
+								{onunreserve}
+								{onreceived}
+								{receivedPendingGiftIds}
+								{onreorderpreview}
+								{onreordercommit}
+								{onreordercancel}
+							/>
+						{:else if displayedViewMode === 'list'}
+							<WishlistGiftListView
+								{hascontextactions}
+								{activeContextGiftId}
+								{contextSurface}
+								{sections}
+								{role}
+								{showPriority}
+								{isArchived}
+								hideReservationState={reservationStateHidden}
+								reorderEnabled={reorderMode &&
+									reorderInteractionEnabled &&
+									canManage &&
+									!isArchived &&
+									!selectionMode}
+								{selectionMode}
+								{onselectiontoggle}
+								{oncontextactions}
+								{onedit}
+								{onreserve}
+								{onunreserve}
+								{onreceived}
+								{receivedPendingGiftIds}
+								{onreorderpreview}
+								{onreordercommit}
+								{onreordercancel}
+							/>
+						{:else}
+							<WishlistGiftCompactTable
+								{sections}
+								{role}
+								{showPriority}
+								{isArchived}
+								hideReservationState={reservationStateHidden}
+								{canManage}
+								{onedit}
+								{onreserve}
+								{onunreserve}
+								{onreceived}
+								{receivedPendingGiftIds}
+							/>
+						{/if}
+					</div>
+				{/snippet}
+			</ContextMenu.Trigger>
+		{/if}
+	</div>
 	{#if contextContent}{@render contextContent()}{/if}
 </ContextMenu.Root>
 
