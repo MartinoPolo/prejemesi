@@ -5,7 +5,7 @@
 		PALETTE_SWATCHES,
 		type Palette,
 	} from '$lib/theme/palettes.js';
-	import { cn } from '$lib/utils.js';
+	import { ChoiceRow } from '$lib/components/derived/choice-row/index.js';
 
 	interface WishlistPalettePickerProps {
 		/** Currently selected palette (drives aria-pressed). */
@@ -19,29 +19,27 @@
 	let { value, onchange, disabled = false }: WishlistPalettePickerProps = $props();
 </script>
 
-<!-- Pure controlled wishlist palette picker (issue #102 REQ-5): the 10 curated
-     palettes as a 2-column swatch grid. Selection is a local settings draft; the
-     parent composite save owns persistence. -->
-<div class="grid grid-cols-2 gap-1">
+<!-- Pure controlled wishlist palette picker: selection is a local settings draft;
+     the parent composite save owns persistence. -->
+<div
+	class="mx-auto flex max-w-[45rem] flex-wrap justify-center gap-2"
+	data-testid="wishlist-palette-picker"
+>
 	{#each PALETTES as paletteOption (paletteOption)}
-		<button
-			type="button"
-			class={cn(
-				'flex cursor-pointer items-center gap-2 rounded-btn border-2 border-transparent px-2 py-1.5 text-left text-(length:--text-sm) font-semibold text-foreground transition-colors',
-				'hover:bg-accent focus-visible:bg-accent focus-visible:outline-none',
-				'disabled:cursor-not-allowed disabled:opacity-50',
-				paletteOption === value && 'border-ink bg-accent',
-			)}
-			aria-pressed={paletteOption === value}
+		<ChoiceRow
+			class="w-32 max-w-full flex-none"
+			selected={paletteOption === value}
 			{disabled}
-			onclick={() => onchange(paletteOption)}
+			onSelect={() => onchange(paletteOption)}
 		>
-			<span
-				class="size-4 shrink-0 rounded-full border-2 border-ink"
-				style:background-color={PALETTE_SWATCHES[paletteOption]}
-				aria-hidden="true"
-			></span>
+			{#snippet leading()}
+				<span
+					class="size-4 shrink-0 rounded-full border-2 border-ink"
+					style:background-color={PALETTE_SWATCHES[paletteOption]}
+					aria-hidden="true"
+				></span>
+			{/snippet}
 			{PALETTE_LABELS[paletteOption]}
-		</button>
+		</ChoiceRow>
 	{/each}
 </div>

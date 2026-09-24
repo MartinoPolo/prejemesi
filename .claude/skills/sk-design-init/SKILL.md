@@ -143,18 +143,13 @@ This file is the reference document that `sk-design-brief`, `sk-mockup`, and `sk
 
 ### Step 7: Update `.mpx/DECISIONS.md`
 
-Add entries under `## UI & Design` for every settled decision:
+Update the existing design categories with user-confirmed, date-sorted inline decisions:
 
 ```markdown
-### [Decision title]
-
-Decided: [date]
-What: [choice]
-Why: [rationale tied to app domain]
-Rejected: [alternatives considered]
+- YYYY-MM-DD: [Decision, with material rationale and explicitly rejected alternatives inline only when needed.]
 ```
 
-Typical entries: font pairing, color palette direction, density philosophy, motion approach, light/dark mode strategy.
+Replace superseded rules rather than appending contradictory versions. Do not infer rejection from choosing another option. Typical entries cover fonts, palettes, density, motion, and light/dark strategy.
 
 ### Step 8: Report
 

@@ -1,12 +1,16 @@
+import '../../../../app.css';
 import { render } from 'vitest-browser-svelte';
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { userEvent } from 'vitest/browser';
+import { describe, expect, it, vi } from 'vitest';
+import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
+import { page, userEvent } from 'vitest/browser';
 import * as m from '$lib/paraglide/messages.js';
 import WishlistGiftDraggableWrapperTestHost from './WishlistGiftDraggableWrapperTestHost.svelte';
-import { createGiftPointerReorderController } from './gift_pointer_reorder.svelte.js';
+
+const { expectPixelsNear, expectPixelsAtLeast, expectPixelsAtMost } = createPixelAssertions(expect);
 
 const baseProps = {
 	index: 0,
+	totalCount: 2,
 	giftId: 'gift-alpha',
 	draggedGiftId: null,
 	dragOverGiftId: null,
@@ -111,15 +115,103 @@ describe('WishlistGiftDraggableWrapper — gift card opening (#284)', () => {
 });
 
 describe('WishlistGiftDraggableWrapper — explicit reorder mode (#239)', () => {
-	it('renders the reorder grip while reorder mode is enabled', async () => {
+	it('renders 40px directional controls in a single-column card and makes card actions inert', async () => {
+		await page.viewport(320, 720);
+		const onreordermove = vi.fn();
 		const screen = await render(WishlistGiftDraggableWrapperTestHost, {
 			...baseProps,
 			reorderEnabled: true,
+			onreordermove,
 		});
 
-		await expect
-			.element(screen.getByRole('button', { name: m.gift_reorder_grip_label() }))
-			.toBeInTheDocument();
+		const grip = screen.getByRole('button', { name: m.gift_reorder_grip_label() });
+		const moveUp = screen.getByRole('button', {
+			name: m.gift_reorder_move_up({ name: baseProps.giftName }),
+		});
+		const moveDown = screen.getByRole('button', {
+			name: m.gift_reorder_move_down({ name: baseProps.giftName }),
+		});
+		for (const control of [grip, moveUp, moveDown]) {
+			await expect.element(control).toBeInTheDocument();
+			const rect = control.element().getBoundingClientRect();
+			expectPixelsAtLeast(rect.width, 40);
+			expectPixelsAtLeast(rect.height, 40);
+		}
+		await expect.element(moveUp).toBeDisabled();
+		const wrapper = document.querySelector('[data-gift-item]') as HTMLElement;
+		expect(wrapper).not.toHaveAttribute('role');
+		expect(wrapper).not.toHaveAttribute('tabindex');
+		expect(wrapper).not.toHaveAttribute('aria-label');
+		await userEvent.click(moveDown);
+		expect(onreordermove).toHaveBeenCalledWith(0, 1);
+		expect(document.querySelector('[data-selection-inert]')).toHaveAttribute('inert');
+		await screen.unmount();
+	});
+
+	it('hides directional card controls at two-column widths while preserving grip keyboard reorder', async () => {
+		await page.viewport(390, 720);
+		const onreordermove = vi.fn();
+		const screen = await render(WishlistGiftDraggableWrapperTestHost, {
+			...baseProps,
+			reorderEnabled: true,
+			onreordermove,
+		});
+		const grip = screen.getByRole('button', { name: m.gift_reorder_grip_label() });
+		const directionalActions = document.querySelector(
+			'[data-testid="gift-reorder-directional-actions"]',
+		) as HTMLElement;
+
+		expect(getComputedStyle(directionalActions).display).toBe('none');
+		grip.element().focus();
+		await userEvent.keyboard('{ArrowRight}');
+		expect(onreordermove).toHaveBeenCalledWith(0, 1);
+		await screen.unmount();
+	});
+
+	it('places the visible mobile directional fallback inside the bottom-right resting contour', async () => {
+		await page.viewport(320, 720);
+		const onreordermove = vi.fn();
+		const screen = await render(WishlistGiftDraggableWrapperTestHost, {
+			...baseProps,
+			reorderEnabled: true,
+			onreordermove,
+		});
+		const wrapper = document.querySelector('[data-gift-item]') as HTMLElement;
+		const lane = screen
+			.getByTestId('gift-reorder-directional-actions')
+			.element() as HTMLElement;
+		const moveUp = screen
+			.getByRole('button', { name: m.gift_reorder_move_up({ name: baseProps.giftName }) })
+			.element() as HTMLButtonElement;
+		const moveDown = screen
+			.getByRole('button', { name: m.gift_reorder_move_down({ name: baseProps.giftName }) })
+			.element() as HTMLButtonElement;
+		const wrapperRect = wrapper.getBoundingClientRect();
+		const laneRect = lane.getBoundingClientRect();
+		const moveUpRect = moveUp.getBoundingClientRect();
+		const moveDownRect = moveDown.getBoundingClientRect();
+		const styles = getComputedStyle(wrapper);
+		const shadowOffset = parseFloat(styles.getPropertyValue('--elevation-ordinary-offset'));
+		const faceInset =
+			parseFloat(styles.borderRadius) - parseFloat(getComputedStyle(moveDown).borderRadius);
+		const shadowInset = faceInset + shadowOffset;
+		const controlGap = 8 + shadowOffset;
+
+		expect(styles.getPropertyValue('--gift-context-face-inset')).not.toBe('');
+		expect(styles.getPropertyValue('--gift-context-shadow-inset')).not.toBe('');
+		expect(styles.getPropertyValue('--gift-context-control-gap')).not.toBe('');
+		expect(getComputedStyle(lane).display).toBe('flex');
+		expectPixelsNear(wrapperRect.right - laneRect.right, shadowInset);
+		expectPixelsNear(wrapperRect.bottom - laneRect.bottom, shadowInset);
+		expectPixelsNear(moveDownRect.left - moveUpRect.right, controlGap);
+		for (const rect of [moveUpRect, moveDownRect]) {
+			expectPixelsAtMost(rect.right + shadowOffset, wrapperRect.right);
+			expectPixelsAtMost(rect.bottom + shadowOffset, wrapperRect.bottom);
+		}
+		expect(moveUp.disabled).toBe(true);
+		expect(moveDown.disabled).toBe(false);
+		await userEvent.click(moveDown);
+		expect(onreordermove).toHaveBeenCalledWith(0, 1);
 		await screen.unmount();
 	});
 
@@ -133,22 +225,6 @@ describe('WishlistGiftDraggableWrapper — explicit reorder mode (#239)', () => 
 			.element(screen.getByRole('button', { name: m.gift_reorder_grip_label() }))
 			.not.toBeInTheDocument();
 		await screen.unmount();
-	});
-});
-
-describe('WishlistGiftDraggableWrapper — grip follows the card hover lift', () => {
-	it('scopes hover to the shared wrapper so the grip tracks the card lift', async () => {
-		const { container, unmount } = await render(WishlistGiftDraggableWrapperTestHost, {
-			...baseProps,
-			reorderEnabled: true,
-		});
-
-		const wrapper = container.querySelector('[data-gift-item]') as HTMLElement;
-		expect(wrapper.className).toContain('group/gift-card');
-		const grip = wrapper.querySelector('button') as HTMLElement;
-		expect(grip.className).toContain('group-hover/gift-card:-translate-y-1');
-		expect(grip.className).toContain('group-focus-within/gift-card:-translate-y-1');
-		await unmount();
 	});
 });
 
@@ -203,6 +279,253 @@ describe('WishlistGiftDraggableWrapper — context actions and selection', () =>
 		await unmount();
 	});
 
+	it('toggles selection from Space and Enter while keeping card descendants inert', async () => {
+		const toggle = vi.fn();
+		const { container, unmount } = await render(WishlistGiftDraggableWrapperTestHost, {
+			...baseProps,
+			reorderEnabled: false,
+			selectionMode: true,
+			onselectiontoggle: toggle,
+		});
+		const wrapper = container.querySelector('[data-gift-item]') as HTMLElement;
+		const innerButton = container.querySelector(
+			'[data-testid="inner-button"]',
+		) as HTMLButtonElement;
+
+		wrapper.focus();
+		await userEvent.keyboard(' ');
+		await userEvent.keyboard('{Enter}');
+
+		expect(toggle).toHaveBeenNthCalledWith(1, 'gift-alpha');
+		expect(toggle).toHaveBeenNthCalledWith(2, 'gift-alpha');
+		expect(innerButton.closest('[data-selection-inert]')).toHaveAttribute('inert');
+		await unmount();
+	});
+
+	it('uses the shared nonsemantic selection surface at responsive control dimensions', async () => {
+		for (const [width, expectedSize] of [
+			[390, 40],
+			[768, 32],
+		] as const) {
+			await page.viewport(width, 720);
+			const { container, unmount } = await render(WishlistGiftDraggableWrapperTestHost, {
+				...baseProps,
+				reorderEnabled: false,
+				selectionMode: true,
+				selected: true,
+			});
+			const wrapper = container.querySelector('[data-gift-item]') as HTMLElement;
+			const markerOwner = wrapper.querySelector(
+				'[data-testid="gift-selection-control"]',
+			) as HTMLElement;
+			const markerSurface = markerOwner.querySelector(
+				'[data-slot="checkbox-surface"]',
+			) as HTMLElement;
+			const markerRect = markerOwner.getBoundingClientRect();
+
+			expectPixelsNear(markerRect.width, expectedSize);
+			expectPixelsNear(markerRect.height, expectedSize);
+			expect(markerSurface).toBeTruthy();
+			expect(markerSurface.getAttribute('aria-hidden')).toBe('true');
+			expect(wrapper.getAttribute('role')).toBe('checkbox');
+			expect(wrapper.querySelectorAll('[role="checkbox"]')).toHaveLength(0);
+			await unmount();
+		}
+	});
+
+	it.each([
+		{
+			name: 'mobile Grid left corner',
+			width: 390,
+			layout: 'overlay' as const,
+		},
+		{
+			name: 'desktop Grid left corner',
+			width: 768,
+			layout: 'overlay' as const,
+		},
+		{
+			name: 'mobile List left corner',
+			width: 390,
+			layout: 'list' as const,
+		},
+	])(
+		'keeps the shared marker curve and resting shadow inside the $name',
+		async ({ width, layout }) => {
+			await page.viewport(width, 720);
+			const { container, unmount } = await render(WishlistGiftDraggableWrapperTestHost, {
+				...baseProps,
+				reorderEnabled: false,
+				selectionMode: true,
+				selectionLayout: layout,
+			});
+			const wrapper = container.querySelector('[data-gift-item]') as HTMLElement;
+			const marker = wrapper.querySelector(
+				'[data-testid="gift-selection-control"]',
+			) as HTMLElement;
+			const wrapperRect = wrapper.getBoundingClientRect();
+			const markerRect = marker.getBoundingClientRect();
+			const wrapperStyle = getComputedStyle(wrapper);
+			const shadowOffset = parseFloat(
+				wrapperStyle.getPropertyValue('--elevation-ordinary-offset'),
+			);
+			const parentRadius = parseFloat(wrapperStyle.borderRadius);
+			const markerRadius = parseFloat(getComputedStyle(marker).borderRadius);
+			const faceInset = parentRadius - markerRadius;
+
+			expect(wrapperStyle.getPropertyValue('--gift-context-face-inset')).not.toBe('');
+			expect(wrapperStyle.getPropertyValue('--gift-context-shadow-inset')).not.toBe('');
+			expectPixelsNear(markerRect.left - wrapperRect.left, faceInset);
+			expectPixelsNear(markerRect.top - wrapperRect.top, faceInset);
+			expectPixelsNear(parentRadius - faceInset, markerRadius);
+			expectPixelsAtMost(markerRect.right + shadowOffset, wrapperRect.right);
+			expectPixelsAtMost(markerRect.bottom + shadowOffset, wrapperRect.bottom);
+			await unmount();
+		},
+	);
+
+	it('keeps the desktop List selection control static in its top-left gutter', async () => {
+		await page.viewport(768, 720);
+		const { container, unmount } = await render(WishlistGiftDraggableWrapperTestHost, {
+			...baseProps,
+			reorderEnabled: false,
+			selectionMode: true,
+			selectionLayout: 'list',
+		});
+		const wrapper = container.querySelector('[data-gift-item]') as HTMLElement;
+		const marker = wrapper.querySelector(
+			'[data-testid="gift-selection-control"]',
+		) as HTMLElement;
+		const wrapperRect = wrapper.getBoundingClientRect();
+		const markerRect = marker.getBoundingClientRect();
+
+		expect(getComputedStyle(marker).position).toBe('static');
+		expectPixelsNear(markerRect.left, wrapperRect.left);
+		expectPixelsNear(markerRect.top - wrapperRect.top, 8);
+		await unmount();
+	});
+
+	it('anchors the 40px list selection control fully inside the mobile image top-left corner', async () => {
+		await page.viewport(390, 720);
+		const { container, unmount } = await render(WishlistGiftDraggableWrapperTestHost, {
+			...baseProps,
+			reorderEnabled: false,
+			selectionMode: true,
+			selectionLayout: 'list',
+		});
+		const wrapper = container.querySelector('[data-gift-item]') as HTMLElement;
+		const image = container.querySelector('[data-testid="image-placeholder"]') as HTMLElement;
+		const checkboxControl = wrapper.querySelector(
+			'[data-testid="gift-selection-control"]',
+		) as HTMLElement;
+		const wrapperRect = wrapper.getBoundingClientRect();
+		const imageRect = image.getBoundingClientRect();
+		const controlRect = checkboxControl.getBoundingClientRect();
+
+		expectPixelsNear(imageRect.width, imageRect.height);
+		expectPixelsNear(controlRect.width, 40);
+		expectPixelsNear(controlRect.height, 40);
+		expectPixelsNear(controlRect.left - wrapperRect.left, 9);
+		expectPixelsNear(controlRect.top - wrapperRect.top, 9);
+		expectPixelsAtLeast(controlRect.left, imageRect.left);
+		expectPixelsAtLeast(controlRect.top, imageRect.top);
+		expectPixelsAtMost(controlRect.right, imageRect.right);
+		expectPixelsAtMost(controlRect.bottom, imageRect.bottom);
+		expect(checkboxControl.querySelector('[data-slot="checkbox"]')).toBeNull();
+		await userEvent.click(wrapper);
+		await unmount();
+	});
+
+	it.each([
+		{
+			name: 'mobile Grid',
+			width: 390,
+			layout: 'overlay' as const,
+			target: 60,
+			visual: 40,
+			targetInset: 0,
+			visualInset: 4,
+			visualRadius: '12px',
+		},
+		{
+			name: 'mobile List',
+			width: 390,
+			layout: 'list' as const,
+			target: 60,
+			visual: 40,
+			targetInset: 0,
+			visualInset: 4,
+			visualRadius: '12px',
+		},
+		{
+			name: 'desktop Grid',
+			width: 768,
+			layout: 'overlay' as const,
+			target: 32,
+			visual: 24,
+			targetInset: 4,
+			visualInset: 8,
+			visualRadius: '8px',
+		},
+		{
+			name: 'desktop List',
+			width: 768,
+			layout: 'list' as const,
+			target: 32,
+			visual: 24,
+			targetInset: 4,
+			visualInset: 8,
+			visualRadius: '8px',
+		},
+	])(
+		'enlarges the $name target from the 40px/20px baseline and keeps it at top-left',
+		async ({ width, layout, target, visual, targetInset, visualInset, visualRadius }) => {
+			await page.viewport(width, 720);
+			const onreorderpointerdown = vi.fn();
+			const { container, unmount } = await render(WishlistGiftDraggableWrapperTestHost, {
+				...baseProps,
+				reorderEnabled: true,
+				selectionLayout: layout,
+				onreorderpointerdown,
+			});
+			const wrapper = container.querySelector('[data-gift-item]') as HTMLElement;
+			const grip = container.querySelector(
+				`[aria-label="${m.gift_reorder_grip_label()}"]`,
+			) as HTMLElement;
+			const surface = grip.querySelector(
+				':scope > [data-slot="elevation-surface"]',
+			) as HTMLElement;
+			const wrapperRect = wrapper.getBoundingClientRect();
+			const gripRect = grip.getBoundingClientRect();
+			const surfaceRect = surface.getBoundingClientRect();
+
+			expectPixelsNear(gripRect.width, target);
+			expectPixelsNear(gripRect.height, target);
+			expectPixelsNear(surfaceRect.width, visual);
+			expectPixelsNear(surfaceRect.height, visual);
+			expectPixelsNear(gripRect.left - wrapperRect.left, targetInset);
+			expectPixelsNear(gripRect.top - wrapperRect.top, targetInset);
+			expectPixelsNear(surfaceRect.left - wrapperRect.left, visualInset);
+			expectPixelsNear(surfaceRect.top - wrapperRect.top, visualInset);
+			expect(getComputedStyle(surface).borderRadius).toBe(visualRadius);
+			expect(getComputedStyle(grip).touchAction).toBe('none');
+
+			grip.dispatchEvent(
+				new PointerEvent('pointerdown', {
+					bubbles: true,
+					cancelable: true,
+					pointerId: 1,
+					pointerType: 'touch',
+				}),
+			);
+			expect(onreorderpointerdown).toHaveBeenCalledWith(expect.any(PointerEvent), 0);
+
+			grip.focus();
+			expect(getComputedStyle(grip).outlineStyle).toBe('solid');
+			await unmount();
+		},
+	);
+
 	it('leaves native interactive descendant context menus untouched outside selection mode', async () => {
 		const openContext = vi.fn(() => false);
 		const { container, unmount } = await render(WishlistGiftDraggableWrapperTestHost, {
@@ -237,363 +560,5 @@ describe('WishlistGiftDraggableWrapper — context actions and selection', () =>
 		expect(openContext).toHaveBeenCalledOnce();
 		expect(event.defaultPrevented).toBe(true);
 		await unmount();
-	});
-});
-
-afterEach(() => {
-	vi.useRealTimers();
-});
-
-describe('WishlistGiftDraggableWrapper — touch gestures', () => {
-	it('opens detail after a short touch tap without preventing the synthesized click', async () => {
-		const openDetail = vi.fn();
-		const { container, unmount } = await render(WishlistGiftDraggableWrapperTestHost, {
-			...baseProps,
-			reorderEnabled: false,
-			onopendetail: openDetail,
-		});
-		const wrapper = container.querySelector('[data-gift-item]') as HTMLElement;
-		const down = new PointerEvent('pointerdown', {
-			bubbles: true,
-			cancelable: true,
-			pointerId: 1,
-			pointerType: 'touch',
-			clientX: 12,
-			clientY: 18,
-		});
-
-		wrapper.dispatchEvent(down);
-		wrapper.dispatchEvent(
-			new PointerEvent('pointerup', {
-				bubbles: true,
-				cancelable: true,
-				pointerId: 1,
-				pointerType: 'touch',
-			}),
-		);
-		wrapper.click();
-
-		expect(down.defaultPrevented).toBe(false);
-		expect(openDetail).toHaveBeenCalledOnce();
-		await unmount();
-	});
-
-	it('opens context on a completed long press without opening detail behind it', async () => {
-		vi.useFakeTimers();
-		const openDetail = vi.fn();
-		const openContext = vi.fn(() => true);
-		const { container, unmount } = await render(WishlistGiftDraggableWrapperTestHost, {
-			...baseProps,
-			reorderEnabled: false,
-			onopendetail: openDetail,
-			onlongpress: openContext,
-		});
-		const wrapper = container.querySelector('[data-gift-item]') as HTMLElement;
-
-		wrapper.dispatchEvent(
-			new PointerEvent('pointerdown', {
-				bubbles: true,
-				cancelable: true,
-				pointerId: 1,
-				pointerType: 'touch',
-				clientX: 12,
-				clientY: 18,
-			}),
-		);
-		vi.advanceTimersByTime(600);
-		wrapper.dispatchEvent(
-			new PointerEvent('pointerup', {
-				bubbles: true,
-				cancelable: true,
-				pointerId: 1,
-				pointerType: 'touch',
-			}),
-		);
-		wrapper.click();
-		wrapper.click();
-
-		expect(openContext).toHaveBeenCalledOnce();
-		expect(openDetail).toHaveBeenCalledTimes(1);
-		await unmount();
-	});
-
-	it('cancels only the pending long press when touch scrolling starts', async () => {
-		vi.useFakeTimers();
-		const openContext = vi.fn(() => true);
-		const screen = await render(WishlistGiftDraggableWrapperTestHost, {
-			...baseProps,
-			reorderEnabled: false,
-			onlongpress: openContext,
-		});
-		const wrapper = document.querySelector('[data-gift-item]') as HTMLElement;
-
-		wrapper.dispatchEvent(
-			new PointerEvent('pointerdown', {
-				bubbles: true,
-				cancelable: true,
-				pointerId: 1,
-				pointerType: 'touch',
-				clientX: 12,
-				clientY: 18,
-			}),
-		);
-		document.dispatchEvent(new Event('scroll'));
-		vi.advanceTimersByTime(600);
-
-		expect(openContext).not.toHaveBeenCalled();
-		await screen.unmount();
-	});
-});
-
-describe('gift pointer reorder controller (#239)', () => {
-	function createItems() {
-		return ['a', 'b', 'c'].map((id, index) => {
-			const element = document.createElement('div');
-			element.dataset.giftId = id;
-			element.textContent = id;
-			Object.defineProperty(element, 'getBoundingClientRect', {
-				value: () => ({
-					x: index * 100,
-					y: 20,
-					left: index * 100,
-					top: 20,
-					right: index * 100 + 80,
-					bottom: 80,
-					width: 80,
-					height: 60,
-					toJSON: () => {},
-				}),
-			});
-			document.body.append(element);
-			return element;
-		});
-	}
-
-	function pointer(type: string, pointerId: number, clientX: number, clientY: number) {
-		return new PointerEvent(type, {
-			pointerId,
-			pointerType: 'pen',
-			button: 0,
-			clientX,
-			clientY,
-			bubbles: true,
-			cancelable: true,
-		});
-	}
-
-	it('keeps an exact-size overlay and commits every live previewed id', () => {
-		const items = createItems();
-		const previews: string[][] = [];
-		const commits: string[][] = [];
-		const controller = createGiftPointerReorderController({
-			getItemElements: () => items,
-			getItemIds: () => ['a', 'b', 'c'],
-			onPreviewOrder: (ids) => previews.push(ids),
-			onCommitOrder: (ids) => commits.push(ids),
-			onCancelOrder: () => {},
-		});
-
-		controller.start(pointer('pointerdown', 7, 20, 40), 0);
-		const overlay = document.querySelector<HTMLElement>('[data-gift-reorder-overlay]');
-		expect(overlay?.style.width).toBe('80px');
-		expect(overlay?.style.height).toBe('60px');
-		expect(overlay?.textContent).toBe('a');
-		expect(items[0]!.style.visibility).toBe('hidden');
-
-		window.dispatchEvent(pointer('pointermove', 7, 240, 40));
-		expect(previews).toEqual([['b', 'c', 'a']]);
-		window.dispatchEvent(pointer('pointerup', 7, 240, 40));
-		expect(commits).toEqual([['b', 'c', 'a']]);
-		expect(document.querySelector('[data-gift-reorder-overlay]')).toBeNull();
-		expect(items[0]!.style.visibility).toBe('');
-		items.forEach((item) => item.remove());
-	});
-
-	it('retains inherited wishlist theme properties and card layout in the body overlay', () => {
-		const theme = document.createElement('div');
-		theme.style.setProperty('--wishlist-surface', 'rgb(96, 24, 48)');
-		theme.style.setProperty('--frame-fill', 'rgb(244, 220, 228)');
-		const item = document.createElement('div');
-		item.dataset.giftId = 'themed';
-		item.style.display = 'grid';
-		item.style.gridTemplateRows = '40px 80px';
-		item.innerHTML =
-			'<div data-image style="background: var(--frame-fill)">Image</div><div data-body style="background: var(--wishlist-surface)"><span>Badge</span><button>Action</button></div>';
-		Object.defineProperty(item, 'getBoundingClientRect', {
-			value: () => ({
-				x: 12,
-				y: 20,
-				left: 12,
-				top: 20,
-				right: 212,
-				bottom: 140,
-				width: 200,
-				height: 120,
-				toJSON: () => {},
-			}),
-		});
-		theme.append(item);
-		document.body.append(theme);
-		const controller = createGiftPointerReorderController({
-			getItemElements: () => [item],
-			getItemIds: () => ['themed'],
-			onPreviewOrder: () => {},
-			onCommitOrder: () => {},
-			onCancelOrder: () => {},
-		});
-
-		controller.start(pointer('pointerdown', 13, 30, 40), 0);
-		const overlay = document.querySelector<HTMLElement>('[data-gift-reorder-overlay]')!;
-		const image = overlay.querySelector<HTMLElement>('[data-image]')!;
-		const body = overlay.querySelector<HTMLElement>('[data-body]')!;
-
-		expect(overlay.parentElement).toBe(document.body);
-		expect(overlay.style.width).toBe('200px');
-		expect(overlay.style.height).toBe('120px');
-		expect(overlay.style.getPropertyValue('--wishlist-surface')).toBe('rgb(96, 24, 48)');
-		expect(overlay.style.getPropertyValue('--frame-fill')).toBe('rgb(244, 220, 228)');
-		expect(getComputedStyle(body).backgroundColor).toBe('rgb(96, 24, 48)');
-		expect(getComputedStyle(image).backgroundColor).toBe('rgb(244, 220, 228)');
-		expect(Array.from(overlay.children).map((child) => child.textContent)).toEqual([
-			'Image',
-			'BadgeAction',
-		]);
-		expect(body.querySelector('span')?.textContent).toBe('Badge');
-		expect(body.querySelector('button')?.textContent).toBe('Action');
-
-		controller.destroy();
-		theme.remove();
-	});
-
-	it('preserves every subgrid row when the card overlay leaves its grid parent', () => {
-		const grid = document.createElement('div');
-		grid.style.display = 'grid';
-		grid.style.gridTemplateRows = '80px 24px 20px 18px 16px 14px 42px';
-		grid.style.rowGap = '20px';
-		const item = document.createElement('div');
-		item.dataset.giftId = 'subgrid-card';
-		item.style.display = 'grid';
-		item.style.gridRow = 'span 7';
-		item.style.gridTemplateRows = 'subgrid';
-		item.style.rowGap = '0';
-		item.innerHTML = `
-			<div style="display: grid; grid-row: span 7; grid-template-rows: subgrid">
-				<div data-layout-part style="grid-row: 1">Image</div>
-				<div data-layout-part style="display: grid; grid-row: 2 / span 5; grid-template-rows: subgrid">
-					<span data-layout-part style="grid-row: 1">Name</span>
-					<a data-layout-part style="grid-row: 4">Link</a>
-				</div>
-				<button data-layout-part style="grid-row: 7">Action</button>
-			</div>`;
-		grid.append(item);
-		document.body.append(grid);
-		const controller = createGiftPointerReorderController({
-			getItemElements: () => [item],
-			getItemIds: () => ['subgrid-card'],
-			onPreviewOrder: () => {},
-			onCommitOrder: () => {},
-			onCancelOrder: () => {},
-		});
-		const sourceRect = item.getBoundingClientRect();
-		const relativeLayout = (root: HTMLElement) => {
-			const rootRect = root.getBoundingClientRect();
-			return Array.from(root.querySelectorAll<HTMLElement>('[data-layout-part]')).map(
-				(element) => {
-					const rect = element.getBoundingClientRect();
-					return { top: rect.top - rootRect.top, height: rect.height };
-				},
-			);
-		};
-		const sourceLayout = relativeLayout(item);
-
-		controller.start(pointer('pointerdown', 13, sourceRect.left + 10, sourceRect.top + 10), 0);
-		const overlay = document.querySelector<HTMLElement>('[data-gift-reorder-overlay]')!;
-
-		try {
-			expect(relativeLayout(overlay)).toEqual(sourceLayout);
-			expect(getComputedStyle(overlay).gridTemplateRows).not.toContain('subgrid');
-		} finally {
-			controller.destroy();
-			grid.remove();
-		}
-	});
-
-	it('keeps stationary boundary hit testing anchored when preview layout shifts under it', () => {
-		let renderedIds = ['a', 'b', 'c'];
-		let shiftedByPreview = false;
-		const elementsById = new Map(
-			renderedIds.map((id) => {
-				const element = document.createElement('div');
-				element.dataset.giftId = id;
-				element.textContent = id;
-				Object.defineProperty(element, 'getBoundingClientRect', {
-					value: () => {
-						const leftById = shiftedByPreview
-							? { a: 300, b: 0, c: 200 }
-							: { a: 0, b: 100, c: 200 };
-						const left = leftById[id as keyof typeof leftById];
-
-						return {
-							x: left,
-							y: 20,
-							left,
-							top: 20,
-							right: left + 80,
-							bottom: 80,
-							width: 80,
-							height: 60,
-							toJSON: () => {},
-						};
-					},
-				});
-				document.body.append(element);
-				return [id, element] as const;
-			}),
-		);
-		const previews: string[][] = [];
-		const controller = createGiftPointerReorderController({
-			getItemElements: () => renderedIds.map((id) => elementsById.get(id)!),
-			getItemIds: () => [...renderedIds],
-			onPreviewOrder: (ids) => {
-				previews.push(ids);
-				renderedIds = [...ids];
-				shiftedByPreview = true;
-			},
-			onCommitOrder: () => {},
-			onCancelOrder: () => {},
-		});
-
-		controller.start(pointer('pointerdown', 11, 20, 40), 0);
-		window.dispatchEvent(pointer('pointermove', 11, 240, 40));
-		window.dispatchEvent(pointer('pointermove', 11, 240, 40));
-
-		expect(previews).toEqual([['b', 'c', 'a']]);
-		controller.destroy();
-		elementsById.forEach((element) => element.remove());
-	});
-
-	it.each([
-		['pointercancel', () => window.dispatchEvent(pointer('pointercancel', 9, 240, 40))],
-		['Escape', () => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))],
-	])('restores the pre-drag order on %s without committing', (_name, cancelDrag) => {
-		const items = createItems();
-		const cancellations: string[][] = [];
-		const commits: string[][] = [];
-		const controller = createGiftPointerReorderController({
-			getItemElements: () => items,
-			getItemIds: () => ['a', 'b', 'c'],
-			onPreviewOrder: () => {},
-			onCommitOrder: (ids) => commits.push(ids),
-			onCancelOrder: (ids) => cancellations.push(ids),
-		});
-
-		controller.start(pointer('pointerdown', 9, 120, 40), 1);
-		window.dispatchEvent(pointer('pointermove', 9, 240, 40));
-		cancelDrag();
-		expect(cancellations).toEqual([['a', 'b', 'c']]);
-		expect(commits).toEqual([]);
-		expect(document.querySelector('[data-gift-reorder-overlay]')).toBeNull();
-		controller.destroy();
-		items.forEach((item) => item.remove());
 	});
 });

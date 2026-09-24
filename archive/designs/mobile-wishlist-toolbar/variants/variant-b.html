@@ -1,0 +1,658 @@
+<!doctype html>
+<html lang="cs">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Varianta B · Mobilní lišta s dolním panelem</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DynaPuff:wght@400..700&family=Geist:wght@400..800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../tokens.css">
+  <style>
+    /* Palette primitives and semantic derivation mirror the live anime-sky theme. */
+    .pal-sky {
+      --p-brand: #1e9be9;
+      --p-deep: #1265a8;
+      --p-ink: #16385c;
+      --p-bright: #55b9f3;
+      --p-accent: #ffc93c;
+      --p-on-accent: #16385c;
+    }
+    .app {
+      --font-head: 'DynaPuff', ui-rounded, 'Segoe UI', sans-serif;
+      --font-body: 'Geist', 'Segoe UI', sans-serif;
+      --radius-panel: 16px;
+      --radius-btn: 7px;
+      --border-w: 2.5px;
+      --ink: var(--p-ink);
+      --ink-soft: color-mix(in oklab, var(--p-ink) 65%, transparent);
+      --ink-faint: color-mix(in oklab, var(--p-ink) 12%, transparent);
+      --background: color-mix(in oklab, var(--p-brand) 10%, white);
+      --wishlist-tint: color-mix(in oklab, #f7b7ad 23%, #fffaf2);
+      --card: #fff;
+      --popover: #fff;
+      --muted: color-mix(in oklab, var(--p-brand) 6%, white);
+      --muted-foreground: color-mix(in oklab, var(--p-ink) 62%, transparent);
+      --accent: color-mix(in oklab, var(--p-brand) 11%, white);
+      --accent-loud: var(--p-accent);
+      --primary: var(--p-brand);
+      --primary-foreground: #fff;
+      --ring: var(--p-brand);
+      --danger: #d84949;
+      --status-success: #14a56f;
+      --hard-shadow: color-mix(in oklab, var(--p-ink) 18%, transparent);
+      --shadow-sticker-sm: 2px 2px 0 var(--hard-shadow);
+      --shadow-sticker: 4px 4px 0 var(--hard-shadow);
+      --shadow-sticker-lift: 6px 6px 0 var(--hard-shadow);
+      font-family: var(--font-body);
+      color: var(--ink);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at 18% 16%, rgb(255 255 255 / .8) 0 2px, transparent 3px) 0 0 / 32px 32px,
+        color-mix(in oklab, var(--p-brand, #1e9be9) 7%, #eef1f5);
+      font-family: 'Geist', 'Segoe UI', sans-serif;
+      color: #24374b;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+    }
+    button { font: inherit; color: inherit; cursor: pointer; }
+    button:focus-visible { outline: 2px solid var(--ring, #1e9be9); outline-offset: 2px; }
+    svg { display: block; flex: none; }
+    .stage { width: min-content; }
+    .variant-eyebrow {
+      margin: 0 0 8px 4px;
+      color: #596777;
+      font-size: 11px;
+      line-height: 16px;
+      font-weight: 800;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+    }
+    .phone {
+      position: relative;
+      width: 390px;
+      height: 844px;
+      overflow: hidden;
+      background: var(--wishlist-tint);
+      border: 1px solid color-mix(in oklab, var(--ink) 18%, white);
+      border-radius: 24px;
+      box-shadow: 0 24px 64px rgb(22 56 92 / 18%), 0 5px 16px rgb(22 56 92 / 10%);
+      isolation: isolate;
+    }
+
+    /* Final app header, shown at the same scrolled position as the reference. */
+    .app-header {
+      position: absolute;
+      inset: 0 0 auto;
+      z-index: 10;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 0 12px;
+      background: var(--card);
+      border-bottom: 2.5px solid var(--ink);
+    }
+    .header-button, .avatar {
+      width: 40px;
+      height: 40px;
+      min-width: 40px;
+      display: grid;
+      place-items: center;
+      border: var(--border-w) solid var(--ink);
+      color: var(--ink);
+      background: var(--card);
+      border-radius: 10px;
+      box-shadow: var(--shadow-sticker-sm);
+      transition: transform 140ms ease, box-shadow 140ms ease, background 140ms ease;
+    }
+    .header-button:hover { background: var(--accent); transform: translateY(-1px); box-shadow: var(--shadow-sticker); }
+    .header-button:active { transform: translateY(2px); box-shadow: none; }
+    .header-button:disabled { opacity: .42; cursor: not-allowed; transform: none; box-shadow: none; }
+    .header-button.brand { background: linear-gradient(155deg, #ff795b, #ec4f2e); color: #fff; transform: rotate(-3deg); }
+    .wordmark {
+      min-width: 0;
+      flex: 1;
+      font-family: var(--font-head);
+      font-size: 17px;
+      font-weight: 700;
+      letter-spacing: -.03em;
+      white-space: nowrap;
+      color: var(--ink);
+    }
+    .wordmark small { font-family: var(--font-body); font-size: 11px; color: var(--muted-foreground); }
+    .header-create { background: #ff7557; color: #fff; }
+    .notification {
+      position: relative; width: 40px; height: 40px; display: grid; place-items: center;
+      border: 0; border-radius: 10px; background: transparent;
+      transition: transform 140ms ease, background 140ms ease;
+    }
+    .notification:hover, .avatar:hover { background-color: var(--accent); transform: translateY(-1px); }
+    .notification:active, .avatar:active { transform: translateY(1px) scale(.97); }
+    .notification:disabled, .avatar:disabled { opacity: .42; cursor: not-allowed; transform: none; }
+    .notification-badge {
+      position: absolute;
+      top: 0;
+      right: 0;
+      min-width: 18px;
+      height: 18px;
+      display: grid;
+      place-items: center;
+      padding: 0 4px;
+      border-radius: 999px;
+      background: var(--danger);
+      border: 2px solid var(--card);
+      color: #fff;
+      font-size: 10px;
+      font-weight: 800;
+    }
+    .avatar {
+      border-radius: 50%;
+      box-shadow: none;
+      background: linear-gradient(145deg, #f5d0b5 45%, #6e493b 46% 56%, #2c5f76 57%);
+      color: transparent;
+    }
+
+    .scroll-area {
+      position: absolute;
+      inset: 56px 0 0;
+      overflow: hidden;
+      background:
+        radial-gradient(color-mix(in oklab, var(--ink) 8%, transparent) 1.2px, transparent 1.3px) 0 0 / 24px 24px,
+        var(--wishlist-tint);
+    }
+    .toolbar-wrap { position: relative; z-index: 5; padding: 16px 16px 0; }
+    .toolbar {
+      height: 104px;
+      padding: 8px 9px;
+      display: grid;
+      grid-template-rows: 40px 40px;
+      gap: 8px;
+      background: var(--card);
+      border: var(--border-w) solid var(--ink);
+      border-radius: var(--radius-panel);
+      box-shadow: var(--shadow-sticker);
+    }
+    .toolbar-row { display: flex; align-items: center; gap: 6px; min-width: 0; }
+    .toolbar-row + .toolbar-row { border-top: 1.5px dashed var(--ink-faint); padding-top: 4px; margin-top: -4px; }
+    .spacer { flex: 1; min-width: 2px; }
+    .view-switcher {
+      display: flex;
+      align-items: center;
+      height: 40px;
+      padding: 2px;
+      gap: 1px;
+      background: var(--muted);
+      border: 1.5px solid var(--ink-faint);
+      border-radius: 10px;
+    }
+    .control {
+      position: relative;
+      width: 40px;
+      height: 40px;
+      min-width: 40px;
+      display: grid;
+      place-items: center;
+      border: var(--border-w) solid var(--ink);
+      border-radius: var(--radius-btn);
+      background: var(--card);
+      color: var(--ink);
+      box-shadow: var(--shadow-sticker-sm);
+      transition: transform 140ms ease, box-shadow 140ms ease, background 140ms ease, color 140ms ease;
+    }
+    .view-switcher .control { border-color: transparent; box-shadow: none; background: transparent; }
+    .view-switcher .control[aria-pressed="true"] { border-color: var(--ink); background: var(--card); box-shadow: var(--shadow-sticker-sm); color: var(--primary); }
+    .control:hover { background: var(--accent); transform: translateY(-1px); box-shadow: var(--shadow-sticker); }
+    .control:active, .control[aria-expanded="true"] { transform: translateY(2px); box-shadow: none; background: var(--accent); }
+    .control:focus-visible, .sheet-row:focus-visible, .sheet-close:focus-visible, .reset-filters:focus-visible {
+      outline: 2px solid var(--ring);
+      outline-offset: 2px;
+    }
+    .control:disabled { opacity: .38; cursor: not-allowed; transform: none; box-shadow: none; background: var(--muted); }
+    .control.primary { color: var(--primary-foreground); background: var(--primary); border-color: var(--ink); }
+    .control.primary:hover { background: color-mix(in oklab, var(--primary) 84%, white); }
+    .control.ghost { border-color: transparent; box-shadow: none; color: var(--muted-foreground); background: transparent; }
+    .control.ghost:hover { background: var(--accent); color: var(--ink); transform: none; }
+    .filter-count {
+      position: absolute;
+      top: -6px;
+      right: -6px;
+      min-width: 19px;
+      height: 19px;
+      padding: 0 4px;
+      display: grid;
+      place-items: center;
+      border-radius: 999px;
+      border: 2px solid var(--ink);
+      background: var(--accent-loud);
+      color: var(--ink);
+      font-size: 10px;
+      line-height: 1;
+      font-weight: 800;
+    }
+
+    /* Context-only gift stream. */
+    .gift-stream { display: grid; gap: 20px; padding: 18px 16px 80px; }
+    .gift-card {
+      overflow: hidden;
+      background: var(--card);
+      border: var(--border-w) solid var(--ink);
+      border-radius: var(--radius-panel);
+      box-shadow: var(--shadow-sticker);
+    }
+    .gift-image {
+      position: relative;
+      height: 210px;
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+      border-bottom: var(--border-w) solid var(--ink);
+      background: linear-gradient(145deg, #d9e9d0, #7da85b 48%, #315a3b);
+    }
+    .sun-disc { position: absolute; width: 150px; height: 150px; border-radius: 50%; background: #f4dda1; top: 18px; left: 12px; }
+    .leaf { position: absolute; width: 168px; height: 24px; border-radius: 100% 0 100% 0; background: #264d2d; transform-origin: right center; }
+    .leaf.a { left: -18px; top: 76px; transform: rotate(19deg); }
+    .leaf.b { right: -8px; top: 50px; transform: rotate(-28deg); }
+    .leaf.c { left: -10px; bottom: 30px; transform: rotate(-13deg); }
+    .bottle {
+      z-index: 1;
+      width: 102px;
+      height: 152px;
+      padding: 46px 9px 8px;
+      border: 2px solid #334a31;
+      border-radius: 7px 7px 4px 4px;
+      background: linear-gradient(95deg, #a7ca78, #e8e3a3 48%, #86b968);
+      color: #29432e;
+      text-align: center;
+      box-shadow: 5px 8px 0 rgb(22 56 92 / 20%);
+      font-size: 8px;
+      font-weight: 700;
+      line-height: 1.25;
+    }
+    .bottle::before { content: ''; position: absolute; width: 52px; height: 18px; margin: -66px 0 0 14px; background: #183627; border-radius: 5px 5px 2px 2px; }
+    .bottle b { display: block; margin-top: 5px; font-family: var(--font-head); font-size: 10px; }
+    .gift-body { padding: 14px 18px 18px; }
+    .gift-title { font-family: var(--font-head); font-size: 18px; font-weight: 650; line-height: 1.18; letter-spacing: -.02em; }
+    .gift-price { margin-top: 8px; font-size: 19px; font-weight: 800; }
+    .priority { display: inline-flex; margin-top: 10px; padding: 3px 9px; border-radius: 999px; background: var(--muted); color: var(--muted-foreground); font-size: 11px; font-weight: 750; text-transform: uppercase; }
+    .links { display: flex; gap: 6px; margin-top: 12px; }
+    .link-chip { padding: 5px 10px; border: 2px solid var(--ink); border-radius: 999px; color: #7048e8; font-size: 12px; font-weight: 750; background: var(--card); }
+    .gift-copy { margin-top: 12px; color: var(--muted-foreground); font-size: 13px; line-height: 1.45; }
+    .second-image {
+      height: 250px;
+      border-bottom: 0;
+      background:
+        linear-gradient(164deg, transparent 45%, #ee7b35 46% 49%, transparent 50%),
+        linear-gradient(22deg, #142c46 0 56%, #29425f 57% 68%, #102033 69%);
+    }
+    .second-image::before { content: '✦'; color: #ffc93c; font-size: 80px; transform: translate(-72px, 18px) rotate(-8deg); }
+
+    /* Modal Sheet, side=bottom. */
+    .overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 40;
+      display: grid;
+      align-items: end;
+      background: color-mix(in oklab, var(--ink) 48%, transparent);
+      opacity: 1;
+      transition: opacity 180ms ease;
+    }
+    .overlay[hidden] { display: none; }
+    .sheet {
+      width: 100%;
+      max-height: 78%;
+      display: flex;
+      flex-direction: column;
+      background: var(--popover);
+      border: var(--border-w) solid var(--ink);
+      border-bottom: 0;
+      border-radius: 24px 24px 0 0;
+      box-shadow: 0 -8px 0 color-mix(in oklab, var(--ink) 12%, transparent);
+      animation: sheet-in 220ms cubic-bezier(.2,.75,.25,1);
+    }
+    .drag-handle { width: 44px; height: 5px; margin: 9px auto 4px; border-radius: 999px; background: var(--ink-faint); }
+    .sheet-header { position: relative; padding: 12px 68px 14px 20px; border-bottom: 1.5px dashed var(--ink-faint); }
+    .sheet-title { font-family: var(--font-head); font-size: 21px; line-height: 1.15; letter-spacing: -.02em; font-weight: 650; }
+    .sheet-summary { margin-top: 4px; color: var(--muted-foreground); font-size: 12px; line-height: 1.45; }
+    .sheet-close {
+      position: absolute;
+      top: 8px;
+      right: 16px;
+      width: 40px;
+      height: 40px;
+      display: grid;
+      place-items: center;
+      border: var(--border-w) solid var(--ink);
+      border-radius: 50%;
+      background: var(--card);
+      box-shadow: var(--shadow-sticker-sm);
+      transition: transform 160ms ease, background 160ms ease, box-shadow 160ms ease;
+    }
+    .sheet-close:hover { transform: rotate(8deg) scale(1.04); background: var(--accent); box-shadow: var(--shadow-sticker); }
+    .sheet-close:active { transform: translateY(2px); box-shadow: none; }
+    .sheet-close:disabled { opacity: .4; cursor: not-allowed; transform: none; box-shadow: none; }
+    .sheet-scroll { overflow-y: auto; overscroll-behavior: contain; padding: 8px 12px 16px; }
+    .sheet-section + .sheet-section { margin-top: 12px; padding-top: 12px; border-top: 1.5px dashed var(--ink-faint); }
+    .section-label { padding: 0 8px 5px; color: var(--muted-foreground); font-size: 11px; line-height: 16px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+    .sheet-row {
+      width: 100%;
+      min-height: 48px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 8px;
+      border: 0;
+      border-radius: 10px;
+      background: transparent;
+      color: var(--ink);
+      text-align: left;
+      transition: background 120ms ease, transform 120ms ease;
+    }
+    .sheet-row:hover { background: var(--accent); }
+    .sheet-row:active { transform: scale(.985); background: color-mix(in oklab, var(--primary) 17%, white); }
+    .sheet-row:disabled { opacity: .42; cursor: not-allowed; transform: none; background: transparent; }
+    .selection-mark {
+      width: 24px;
+      height: 24px;
+      flex: none;
+      display: grid;
+      place-items: center;
+      border: 2px solid color-mix(in oklab, var(--ink) 32%, transparent);
+      color: transparent;
+      background: var(--card);
+    }
+    .radio .selection-mark { border-radius: 50%; }
+    .check-option .selection-mark { border-radius: 6px; }
+    .sheet-row[aria-checked="true"] .selection-mark { color: #fff; border-color: var(--ink); background: var(--primary); box-shadow: var(--shadow-sticker-sm); }
+    .row-copy { flex: 1; min-width: 0; }
+    .row-label { display: block; font-size: 14px; line-height: 20px; font-weight: 680; }
+    .row-help { display: block; color: var(--muted-foreground); font-size: 11px; line-height: 16px; }
+    .sheet-footer { padding: 8px 20px max(16px, env(safe-area-inset-bottom)); border-top: 1.5px solid var(--ink-faint); background: var(--card); }
+    .reset-filters {
+      width: 100%;
+      min-height: 44px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      border: var(--border-w) solid var(--ink);
+      border-radius: var(--radius-btn);
+      background: transparent;
+      color: var(--ink);
+      font-weight: 700;
+      box-shadow: var(--shadow-sticker-sm);
+      transition: transform 140ms ease, background 140ms ease, box-shadow 140ms ease;
+    }
+    .reset-filters:hover { background: var(--accent); box-shadow: var(--shadow-sticker); transform: translateY(-1px); }
+    .reset-filters:active { transform: translateY(2px); box-shadow: none; }
+    .reset-filters:disabled { opacity: .4; cursor: not-allowed; transform: none; box-shadow: none; }
+    @keyframes sheet-in { from { transform: translateY(100%); } to { transform: translateY(0); } }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; }
+    }
+    @media (max-width: 430px) {
+      body { padding: 0; place-items: start center; background: var(--wishlist-tint); }
+      .stage { width: 100%; }
+      .variant-eyebrow { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+      .phone { width: 100%; max-width: 390px; height: 100dvh; min-height: 700px; border: 0; border-radius: 0; }
+    }
+  </style>
+</head>
+<body class="pal-sky">
+  <main class="stage">
+    <p class="variant-eyebrow">Varianta B · modální dolní panel</p>
+    <section class="phone app pal-sky" aria-label="Mobilní náhled seznamu přání, 390 krát 844 pixelů">
+      <header class="app-header" aria-label="Hlavní navigace">
+        <button class="header-button" aria-label="Otevřít hlavní nabídku" title="Hlavní nabídka">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+        </button>
+        <button class="header-button brand" aria-label="Přejít na nástěnku" title="Nástěnka">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13M5 12v9h14v-9M7.5 8C5.8 8 5 7 5 5.6 5 4.2 6 3 7.5 3 10 3 12 8 12 8s2-5 4.5-5C18 3 19 4.2 19 5.6 19 7 18.2 8 16.5 8"/></svg>
+        </button>
+        <div class="wordmark" aria-label="Přejeme si.cz">prejemesi<small>.cz</small></div>
+        <button class="header-button header-create" aria-label="Vytvořit nový seznam" title="Vytvořit">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+        </button>
+        <button class="notification" aria-label="Oznámení, 12 nových" title="Oznámení">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M10 21h4"/></svg>
+          <span class="notification-badge">12</span>
+        </button>
+        <button class="avatar" aria-label="Účet Martina Poláka" title="Účet Martina Poláka">MP</button>
+      </header>
+
+      <div class="scroll-area">
+        <div class="toolbar-wrap">
+          <nav class="toolbar" aria-label="Nástroje seznamu přání">
+            <div class="toolbar-row">
+              <div class="view-switcher" role="group" aria-label="Zobrazení přání">
+                <button class="control view-control" data-view="cards" aria-label="Zobrazit jako karty" aria-pressed="true" title="Karty">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+                </button>
+                <button class="control view-control" data-view="list" aria-label="Zobrazit jako seznam" aria-pressed="false" title="Seznam">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6h12M9 12h12M9 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg>
+                </button>
+              </div>
+              <div class="spacer"></div>
+              <button id="sort-trigger" class="control sheet-trigger" data-sheet="sort" aria-label="Řazení: Výchozí pořadí" aria-expanded="true" aria-haspopup="dialog" title="Řazení: Výchozí pořadí">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 16-4 4-4-4M17 20V4M3 8l4-4 4 4M7 4v16"/></svg>
+              </button>
+              <button id="group-trigger" class="control sheet-trigger" data-sheet="group" aria-label="Seskupení: Bez seskupení" aria-expanded="false" aria-haspopup="dialog" title="Seskupení: Bez seskupení">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12.8 2.7 8 4a1 1 0 0 1 0 1.8l-8 4a1.8 1.8 0 0 1-1.6 0l-8-4a1 1 0 0 1 0-1.8l8-4a1.8 1.8 0 0 1 1.6 0Z"/><path d="m22 12.5-9.2 4.6a1.8 1.8 0 0 1-1.6 0L2 12.5M22 17l-9.2 4.6a1.8 1.8 0 0 1-1.6 0L2 17"/></svg>
+              </button>
+              <button id="filter-trigger" class="control sheet-trigger" data-sheet="filter" aria-label="Filtrovat, 2 aktivní filtry" aria-expanded="false" aria-haspopup="dialog" title="Filtrovat, 2 aktivní filtry">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h13M3 12h9M3 18h6M19 13v6M16 16h6"/></svg>
+                <span class="filter-count" aria-hidden="true">2</span>
+              </button>
+              <button id="toolbar-reset" class="control ghost" aria-label="Obnovit výchozí zobrazení" title="Obnovit výchozí zobrazení">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
+              </button>
+            </div>
+            <div class="toolbar-row">
+              <button id="reorder" class="control" aria-label="Změnit pořadí přání" aria-pressed="false" title="Změnit pořadí">
+                <span class="reorder-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 11V6a2 2 0 0 0-4 0v4-6a2 2 0 1 0-4 0v6-4a2 2 0 1 0-4 0v6l-1.1-1.1a2 2 0 0 0-2.8 2.8l4.3 4.3A7 7 0 0 0 11.3 20H14a6 6 0 0 0 6-6v-3a2 2 0 0 0-2-2Z"/></svg></span>
+              </button>
+              <div class="spacer"></div>
+              <button class="control" aria-label="Nastavení seznamu přání" title="Nastavení">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3A1.7 1.7 0 0 0 10 3V2.8h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1Z"/></svg>
+              </button>
+              <button class="control" aria-label="Přidat více přání" title="Přidat více přání">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h13M8 12h7M8 18h5M3 6h.01M3 12h.01M3 18h.01M19 15v6M16 18h6"/></svg>
+              </button>
+              <button class="control primary" aria-label="Přidat přání" title="Přidat přání">
+                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+              </button>
+            </div>
+          </nav>
+        </div>
+
+        <section class="gift-stream" aria-label="Přání">
+          <article class="gift-card">
+            <div class="gift-image" role="img" aria-label="Šampon Urtekram Aloe Vera">
+              <span class="sun-disc"></span><span class="leaf a"></span><span class="leaf b"></span><span class="leaf c"></span>
+              <div class="bottle">ALOE VERA<br>NORMAL HAIR<b>URTEKRAM</b>ORGANIC SHAMPOO</div>
+            </div>
+            <div class="gift-body">
+              <h2 class="gift-title">URTEKRAM Šampon Aloe Vera pro normální vlasy BIO</h2>
+              <p class="gift-price">199 Kč</p>
+              <span class="priority">Priorita · Nízká</span>
+              <div class="links"><span class="link-chip">Bioneeds</span><span class="link-chip">Alza</span><span class="link-chip">Heureka</span></div>
+              <p class="gift-copy">Přírodní BIO šampon s aloe vera a glycerinem pro hydrataci normálních vlasů.</p>
+            </div>
+          </article>
+          <article class="gift-card"><div class="gift-image second-image" role="img" aria-label="Ilustrovaný plakát nočního města"></div></article>
+        </section>
+      </div>
+
+      <div id="overlay" class="overlay" aria-hidden="false">
+        <section id="sheet" class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title" aria-describedby="sheet-summary">
+          <div class="drag-handle" aria-hidden="true"></div>
+          <header class="sheet-header">
+            <h2 id="sheet-title" class="sheet-title">Filtrovat přání</h2>
+            <p id="sheet-summary" class="sheet-summary">Aktivní jsou 2 filtry</p>
+            <button id="sheet-close" class="sheet-close" aria-label="Zavřít panel" title="Zavřít">
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            </button>
+          </header>
+          <div id="sheet-content" class="sheet-scroll"></div>
+          <footer id="sheet-footer" class="sheet-footer"></footer>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const iconCheck = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>';
+    const iconReset = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>';
+    const sheets = {
+      sort: {
+        title: 'Seřadit přání',
+        summary: () => 'Aktuálně: ' + state.sort,
+        sections: [{ label: 'Pořadí přání', type: 'radio', key: 'sort', options: [
+          ['Výchozí pořadí', 'Pořadí nastavené správcem seznamu'],
+          ['Nejnovější', 'Naposledy přidaná přání jako první'],
+          ['Cena od nejnižší', 'Od nejlevnějšího přání'],
+          ['Cena od nejvyšší', 'Od nejdražšího přání'],
+          ['Podle priority', 'Nejdůležitější přání jako první']
+        ]}]
+      },
+      group: {
+        title: 'Seskupit přání',
+        summary: () => 'Aktuálně: ' + state.group,
+        sections: [{ label: 'Způsob seskupení', type: 'radio', key: 'group', options: [
+          ['Bez seskupení', 'Všechna přání v jednom seznamu'],
+          ['Podle kategorie', 'Kosmetika, knihy, elektronika a další'],
+          ['Podle priority', 'Vysoká, střední a nízká priorita'],
+          ['Podle dostupnosti', 'Dostupná přání se zobrazí společně']
+        ]}]
+      },
+      filter: {
+        title: 'Filtrovat přání',
+        summary: () => state.filters.size ? `Aktivní jsou ${state.filters.size} filtry` : 'Nejsou vybrané žádné filtry',
+        sections: [
+          { label: 'Dostupnost', type: 'check', options: [['Pouze dostupné', 'Skryje již přijatá nebo rezervovaná přání'], ['S odkazem', 'Zobrazí přání s odkazem na obchod']] },
+          { label: 'Kategorie', type: 'check', options: [['Kosmetika a péče', '3 přání'], ['Knihy a časopisy', '2 přání'], ['Domov a zahrada', '4 přání']] },
+          { label: 'Priorita', type: 'check', options: [['Vysoká priorita', '1 přání'], ['Střední priorita', '4 přání'], ['Nízká priorita', '3 přání']] }
+        ]
+      }
+    };
+    const state = {
+      activeSheet: 'sort',
+      sort: 'Výchozí pořadí',
+      group: 'Bez seskupení',
+      filters: new Set(['Pouze dostupné', 'Kosmetika a péče']),
+      lastTrigger: document.getElementById('sort-trigger')
+    };
+    const overlay = document.getElementById('overlay');
+    const content = document.getElementById('sheet-content');
+    const footer = document.getElementById('sheet-footer');
+    const title = document.getElementById('sheet-title');
+    const summary = document.getElementById('sheet-summary');
+    const closeButton = document.getElementById('sheet-close');
+
+    function renderSheet(kind) {
+      state.activeSheet = kind;
+      const model = sheets[kind];
+      title.textContent = model.title;
+      summary.textContent = model.summary();
+      content.innerHTML = '';
+      model.sections.forEach(section => {
+        const wrap = document.createElement('section');
+        wrap.className = 'sheet-section';
+        const heading = document.createElement('h3');
+        heading.className = 'section-label';
+        heading.textContent = section.label;
+        wrap.appendChild(heading);
+        section.options.forEach(([label, help]) => {
+          const selected = section.type === 'radio' ? state[section.key] === label : state.filters.has(label);
+          const row = document.createElement('button');
+          row.className = `sheet-row ${section.type === 'radio' ? 'radio' : 'check-option'}`;
+          row.setAttribute('role', section.type === 'radio' ? 'radio' : 'checkbox');
+          row.setAttribute('aria-checked', String(selected));
+          row.innerHTML = `<span class="selection-mark">${iconCheck}</span><span class="row-copy"><span class="row-label">${label}</span><span class="row-help">${help}</span></span>`;
+          row.addEventListener('click', () => {
+            if (section.type === 'radio') state[section.key] = label;
+            else state.filters.has(label) ? state.filters.delete(label) : state.filters.add(label);
+            updateToolbar();
+            renderSheet(kind);
+          });
+          wrap.appendChild(row);
+        });
+        content.appendChild(wrap);
+      });
+      footer.hidden = kind !== 'filter';
+      footer.innerHTML = kind === 'filter' ? `<button class="reset-filters" ${state.filters.size ? '' : 'disabled'}>${iconReset} Zrušit všechny filtry</button>` : '';
+      const reset = footer.querySelector('.reset-filters');
+      if (reset) reset.addEventListener('click', () => { state.filters.clear(); updateToolbar(); renderSheet('filter'); });
+    }
+
+    function updateToolbar() {
+      const count = state.filters.size;
+      const badge = document.querySelector('.filter-count');
+      badge.textContent = count;
+      badge.hidden = count === 0;
+      const filterTrigger = document.getElementById('filter-trigger');
+      filterTrigger.setAttribute('aria-label', count ? `Filtrovat, ${count} aktivní filtry` : 'Filtrovat, žádné aktivní filtry');
+      filterTrigger.title = filterTrigger.getAttribute('aria-label');
+      const sortTrigger = document.getElementById('sort-trigger');
+      sortTrigger.setAttribute('aria-label', `Řazení: ${state.sort}`);
+      sortTrigger.title = sortTrigger.getAttribute('aria-label');
+      const groupTrigger = document.getElementById('group-trigger');
+      groupTrigger.setAttribute('aria-label', `Seskupení: ${state.group}`);
+      groupTrigger.title = groupTrigger.getAttribute('aria-label');
+      document.getElementById('toolbar-reset').hidden = count === 0 && state.sort === 'Výchozí pořadí' && state.group === 'Bez seskupení';
+    }
+
+    function openSheet(kind, trigger) {
+      document.querySelectorAll('.sheet-trigger').forEach(button => button.setAttribute('aria-expanded', String(button === trigger)));
+      state.lastTrigger = trigger;
+      overlay.hidden = false;
+      overlay.setAttribute('aria-hidden', 'false');
+      renderSheet(kind);
+      requestAnimationFrame(() => closeButton.focus());
+    }
+    function closeSheet() {
+      overlay.hidden = true;
+      overlay.setAttribute('aria-hidden', 'true');
+      document.querySelectorAll('.sheet-trigger').forEach(button => button.setAttribute('aria-expanded', 'false'));
+      state.lastTrigger?.focus();
+    }
+
+    document.querySelectorAll('.sheet-trigger').forEach(trigger => trigger.addEventListener('click', () => openSheet(trigger.dataset.sheet, trigger)));
+    closeButton.addEventListener('click', closeSheet);
+    overlay.addEventListener('click', event => { if (event.target === overlay) closeSheet(); });
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape' && !overlay.hidden) closeSheet();
+      if (event.key === 'Tab' && !overlay.hidden) {
+        const focusable = [...document.querySelectorAll('#sheet button:not(:disabled)')];
+        const first = focusable[0], last = focusable[focusable.length - 1];
+        if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+        else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+      }
+    });
+    document.querySelectorAll('.view-control').forEach(button => button.addEventListener('click', () => {
+      document.querySelectorAll('.view-control').forEach(sibling => sibling.setAttribute('aria-pressed', String(sibling === button)));
+    }));
+    document.getElementById('toolbar-reset').addEventListener('click', () => {
+      state.filters.clear(); state.sort = 'Výchozí pořadí'; state.group = 'Bez seskupení'; updateToolbar();
+    });
+    document.getElementById('reorder').addEventListener('click', event => {
+      const button = event.currentTarget;
+      const active = button.getAttribute('aria-pressed') !== 'true';
+      button.setAttribute('aria-pressed', String(active));
+      button.classList.toggle('primary', active);
+      button.setAttribute('aria-label', active ? 'Dokončit změnu pořadí' : 'Změnit pořadí přání');
+      button.innerHTML = active ? `<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>` : `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 11V6a2 2 0 0 0-4 0v4-6a2 2 0 1 0-4 0v6-4a2 2 0 1 0-4 0v6l-1.1-1.1a2 2 0 0 0-2.8 2.8l4.3 4.3A7 7 0 0 0 11.3 20H14a6 6 0 0 0 6-6v-3a2 2 0 0 0-2-2Z"/></svg>`;
+      document.querySelectorAll('.toolbar-row:first-child .control').forEach(control => { if (!control.classList.contains('view-control')) control.disabled = active; });
+    });
+
+    renderSheet('sort');
+    updateToolbar();
+  </script>
+</body>
+</html>

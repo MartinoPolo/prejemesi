@@ -1,7 +1,7 @@
 <script module lang="ts">
 	import { defineMeta } from '@storybook/addon-svelte-csf';
 	import { expect, userEvent, within } from 'storybook/test';
-	import { INPUT_STATES, Input } from './index.js';
+	import { INPUT_SIZES, INPUT_STATES, Input } from './index.js';
 	import { Label } from '$lib/components/base/label/index.js';
 
 	const { Story } = defineMeta({
@@ -9,6 +9,7 @@
 		component: Input,
 		tags: ['autodocs'],
 		argTypes: {
+			size: { control: 'select', options: [...INPUT_SIZES] },
 			state: {
 				control: 'select',
 				options: [...INPUT_STATES],
@@ -52,19 +53,22 @@
 		<div class="flex flex-col gap-6">
 			<div>
 				<div class="mb-2 text-xs font-semibold text-muted-foreground">Variants</div>
-				<div class="grid max-w-2xl grid-cols-2 gap-4">
-					{#each INPUT_STATES as state (state)}
-						<div>
-							<Label>{state}</Label>
-							<Input
-								{...args}
-								{state}
-								aria-label={state}
-								value={state === 'loading'
-									? 'resolving...'
-									: 'feat/forest-overlays'}
-							/>
-						</div>
+				<div class="grid max-w-4xl grid-cols-4 gap-4">
+					{#each INPUT_SIZES as size (size)}
+						{#each INPUT_STATES as state (state)}
+							<div>
+								<Label>{size} / {state}</Label>
+								<Input
+									{...args}
+									{size}
+									{state}
+									aria-label={`${size} ${state}`}
+									value={state === 'loading'
+										? 'resolving...'
+										: 'feat/forest-overlays'}
+								/>
+							</div>
+						{/each}
 					{/each}
 				</div>
 			</div>

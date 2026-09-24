@@ -10,6 +10,7 @@
 	import { Switch } from '$lib/components/base/switch/index.js';
 	import { Field, type FieldControlContext } from '$lib/components/derived/field/index.js';
 	import ImageUpload from '$lib/components/derived/image-upload/ImageUpload.svelte';
+	import * as SegmentedToggle from '$lib/components/derived/segmented-toggle/index.js';
 	import * as ToggleGroup from '$lib/components/base/toggle-group/index.js';
 	import { HelpText } from '$lib/components/base/help-text/index.js';
 	import { SimpleTooltip } from '$lib/components/base/tooltip/index.js';
@@ -82,6 +83,10 @@
 	} from '$lib/modules/gift-categories/types.js';
 	import { getLocale } from '$lib/paraglide/runtime.js';
 
+	type GiftSaveResult = boolean | void | Promise<boolean | void>;
+
+	const CROP_RECT_EQUALITY_EPSILON = 1e-9;
+
 	interface Props {
 		mode: GiftDetailModalMode;
 		gift: GiftByRole | null;
@@ -99,9 +104,13 @@
 		graceNow?: Date;
 		isSubmitting: boolean;
 		isDeleting: boolean;
-		oncreate?: (input: CreateGiftInput) => void;
-		onupdate?: (input: UpdateGiftInput) => void;
-		ondelete?: (giftId: string) => void;
+		oncreate?: (input: CreateGiftInput) => GiftSaveResult;
+		onupdate?: (input: UpdateGiftInput) => GiftSaveResult;
+		ondelete?: (giftId: string) => void | Promise<void>;
+		oncancel?: () => void;
+		ondirtychange?: (dirty: boolean) => void;
+		onpendingchange?: (pending: boolean) => void;
+		onsavesuccess?: () => void;
 	}
 
 	let {
@@ -122,6 +131,10 @@
 		oncreate,
 		onupdate,
 		ondelete,
+		oncancel,
+		ondirtychange,
+		onpendingchange,
+		onsavesuccess,
 	}: Props = $props();
 
 	// Intentional one-time seed from the `gift` prop: this form edits a local copy and Dialog.Content
@@ -168,11 +181,12 @@
 	// Component instance ref (issue #131): lets the image-column click-to-edit
 	// affordance open the file picker owned by the Upload-tab ImageUpload.
 	let imageUploadRef: ReturnType<typeof ImageUpload> | undefined = $state();
+	let isImageUploadPending = $state(false);
+	let isLocalMutationPending = $state(false);
 
 	// Uploads made in this form session that are not persisted yet (issue #107,
-	// REQ-6). The image key included in the last submit is kept on unmount.
+	// REQ-6). Successful saves commit the selected key; every other unmount discards all.
 	const pendingUploads = createPendingUploads();
-	let submittedImageKey: string | null = null;
 
 	// Image presentation metadata (#116 D1/D2 + follow-up). The editor offers three
 	// modes – Fill / Fit / Manual – mapped onto the persisted fitMode enum.
@@ -223,7 +237,12 @@
 	}
 
 	// svelte-ignore state_referenced_locally
-	let targetRects = $state(initTargetRects(gift?.imageMeta));
+	const initialTargetRects = initTargetRects(gift?.imageMeta);
+	let targetRects = $state(
+		Object.fromEntries(
+			Object.entries(initialTargetRects).map(([target, rect]) => [target, { ...rect }]),
+		) as Record<GiftEditorCropTarget, ImageCropRect>,
+	);
 	let activeTarget = $state<GiftEditorCropTarget>('square');
 	// Targets edited in this session; only these are (re)persisted on save.
 	const dirtyTargets = new SvelteSet<GiftEditorCropTarget>();
@@ -270,17 +289,98 @@
 	const currentQuantity = $derived(gift?.quantity ?? 1);
 	const submitLabel = $derived(isEdit ? m.save() : m.gift_add_title());
 	const hasImage = $derived(imageUrl !== '' || imageKey !== '');
+	const mutationPending = $derived(isSubmitting || isDeleting || isLocalMutationPending);
+	// svelte-ignore state_referenced_locally (one-time draft baseline)
+	const initialEditorMode = giftEditorModeFromMeta(gift?.imageMeta);
+	// svelte-ignore state_referenced_locally (one-time draft baseline)
+	const initialBgColor = normalizeFrameFill(gift?.imageMeta?.bgColor);
 
-	const previewSrc = $derived(
-		resolveGiftImageUrl(imageUrl.trim() === '' ? null : imageUrl.trim(), imageKey),
+	function valuesEqual(left: unknown, right: unknown): boolean {
+		return JSON.stringify(left) === JSON.stringify(right);
+	}
+
+	function cropRectsEqual(left: ImageCropRect, right: ImageCropRect): boolean {
+		return (
+			Math.abs(left.x - right.x) < CROP_RECT_EQUALITY_EPSILON &&
+			Math.abs(left.y - right.y) < CROP_RECT_EQUALITY_EPSILON &&
+			Math.abs(left.w - right.w) < CROP_RECT_EQUALITY_EPSILON &&
+			Math.abs(left.h - right.h) < CROP_RECT_EQUALITY_EPSILON
+		);
+	}
+
+	function handleCropChange(target: GiftEditorCropTarget, rect: ImageCropRect) {
+		if (cropRectsEqual(rect, initialTargetRects[target])) {
+			dirtyTargets.delete(target);
+		} else {
+			dirtyTargets.add(target);
+		}
+	}
+
+	const giftDetailsChanged = $derived(
+		name.trim() !== (gift?.name ?? '').trim() ||
+			(!descriptionFrozen && description.trim() !== (gift?.description ?? '').trim()) ||
+			!valuesEqual(normalizeGiftLinks(links), normalizeGiftLinks(gift?.links ?? [])) ||
+			priorityLevelId !== (gift?.priorityLevelId ?? '') ||
+			categoryId !== (gift?.categoryId ?? ''),
 	);
-	const isCropMode = $derived(editorMode === IMAGE_EDITOR_MODES.manual);
-
+	const giftPriceChanged = $derived(
+		finalizeGiftPrice(price) !== finalizeGiftPrice(gift?.price ?? null) ||
+			isPriceRange !== ((gift?.priceMax ?? null) !== null) ||
+			(isPriceRange &&
+				finalizeGiftPrice(priceMax) !== finalizeGiftPrice(gift?.priceMax ?? null)) ||
+			currency !== ((gift?.currency as GiftCurrency) ?? 'CZK'),
+	);
+	const giftQuantityChanged = $derived(
+		finalizeGiftQuantity(quantity) !== finalizeGiftQuantity(gift?.quantity ?? 1),
+	);
+	const descriptionDraftChanged = $derived(
+		descriptionAppendText.trim() !== '' ||
+			(editingAppendIndex !== null &&
+				editingAppendText.trim() !==
+					(gift?.descriptionAppends[editingAppendIndex]?.text.trim() ?? '')),
+	);
+	const initialFillWasCentered = $derived(
+		(gift?.imageMeta?.cropRect ?? null) === null &&
+			(gift?.imageMeta?.focal?.x ?? 50) === 50 &&
+			(gift?.imageMeta?.focal?.y ?? 50) === 50 &&
+			(gift?.imageMeta?.zoom ?? 1) === 1,
+	);
 	// A different source invalidates the persisted geometry: crops and focal points
 	// target the old pixels, so a replaced image starts from the automatic framing.
 	const imageReplaced = $derived(
 		imageUrl.trim() !== initialImageUrl || imageKey !== initialImageKey,
 	);
+	const imageModeChanged = $derived(
+		legacyFitMode === IMAGE_FIT_MODES.auto
+			? modeDirty
+			: editorMode !== initialEditorMode ||
+					(modeDirty &&
+						editorMode === IMAGE_EDITOR_MODES.fill &&
+						!initialFillWasCentered),
+	);
+	const imagePresentationChanged = $derived(
+		hasImage &&
+			(imageModeChanged ||
+				bgColor !== initialBgColor ||
+				(editorMode === IMAGE_EDITOR_MODES.manual && dirtyTargets.size > 0)),
+	);
+	const dirty = $derived(
+		giftDetailsChanged ||
+			giftPriceChanged ||
+			giftQuantityChanged ||
+			descriptionDraftChanged ||
+			imageReplaced ||
+			imagePresentationChanged,
+	);
+
+	$effect(() => {
+		ondirtychange?.(dirty);
+	});
+
+	const previewSrc = $derived(
+		resolveGiftImageUrl(imageUrl.trim() === '' ? null : imageUrl.trim(), imageKey),
+	);
+	const isCropMode = $derived(editorMode === IMAGE_EDITOR_MODES.manual);
 
 	// The fitMode a save would persist: legacy rows keep their stored value (incl.
 	// `auto`) until the user touches the mode or replaces the image (REQ-8).
@@ -408,6 +508,10 @@
 	const stageAspectRatio = $derived(measuredNaturalRatio ?? GIFT_CROP_TARGET_SPECS.square.aspect);
 
 	function setEditorMode(value: string) {
+		if (mutationPending) {
+			selectedEditorMode = presentedEditorMode;
+			return;
+		}
 		if (value === '') {
 			selectedEditorMode = presentedEditorMode;
 			return;
@@ -433,6 +537,10 @@
 	}
 
 	function setBgColor(value: string) {
+		if (mutationPending) {
+			selectedBgColor = bgColor ?? 'transparent';
+			return;
+		}
 		if (value === '') {
 			selectedBgColor = bgColor ?? 'transparent';
 			return;
@@ -448,6 +556,9 @@
 
 	/** A zoom attempt on the plain preview is a manual-crop intent (#116 follow-up). */
 	function promoteToManual() {
+		if (mutationPending) {
+			return;
+		}
 		if (editorMode !== IMAGE_EDITOR_MODES.manual) {
 			editorMode = IMAGE_EDITOR_MODES.manual;
 			modeDirty = true;
@@ -456,6 +567,9 @@
 
 	/** Clicking a preview tile jumps to Manual mode with that target active. */
 	function handleTileSelect(target: GiftEditorCropTarget) {
+		if (mutationPending) {
+			return;
+		}
 		activeTarget = target;
 		promoteToManual();
 	}
@@ -539,7 +653,11 @@
 		return true;
 	}
 
-	function handleSubmit() {
+	async function handleSubmit() {
+		if (mutationPending || isImageUploadPending) {
+			return;
+		}
+
 		if (!validateForm()) {
 			return;
 		}
@@ -550,43 +668,66 @@
 		const finalQuantity = finalizeGiftQuantity(quantity);
 		const normalizedLinks = normalizeGiftLinks(links);
 		const imageMeta = hasImage ? currentImageMeta : null;
-		submittedImageKey = imageKey || null;
-
-		if (mode === 'create') {
-			oncreate?.({
-				wishlistId,
-				name: name.trim(),
-				description: description.trim() || null,
-				links: normalizedLinks,
-				price: finalPrice,
-				priceMax: finalPriceMax,
-				currency,
-				imageUrl: imageUrl.trim() || null,
-				imageKey: imageKey || null,
-				imageMeta,
-				quantity: finalQuantity,
-				priorityLevelId: priorityLevelId || null,
-				categoryId: categoryId || null,
-			});
-		} else if (mode === 'edit' && gift !== null) {
-			const descriptionPayload = descriptionFrozen
-				? descriptionAppendText.trim() || null
-				: description.trim() || null;
-			onupdate?.({
-				id: gift.id,
-				name: name.trim(),
-				description: descriptionPayload,
-				links: normalizedLinks,
-				price: finalPrice,
-				priceMax: finalPriceMax,
-				currency,
-				imageUrl: imageUrl.trim() || null,
-				imageKey: imageKey || null,
-				imageMeta,
-				quantity: finalQuantity,
-				priorityLevelId: priorityLevelId || null,
-				categoryId: categoryId || null,
-			});
+		const submittedImageKey = imageKey || null;
+		const descriptionPayload = descriptionFrozen
+			? descriptionAppendText.trim() || null
+			: description.trim() || null;
+		const createInput = $state.snapshot({
+			wishlistId,
+			name: name.trim(),
+			description: description.trim() || null,
+			links: normalizedLinks,
+			price: finalPrice,
+			priceMax: finalPriceMax,
+			currency,
+			imageUrl: imageUrl.trim() || null,
+			imageKey: submittedImageKey,
+			imageMeta,
+			quantity: finalQuantity,
+			priorityLevelId: priorityLevelId || null,
+			categoryId: categoryId || null,
+		}) satisfies CreateGiftInput;
+		const updateInput =
+			gift === null
+				? null
+				: ($state.snapshot({
+						id: gift.id,
+						name: createInput.name,
+						description: descriptionPayload,
+						links: createInput.links,
+						price: createInput.price,
+						priceMax: createInput.priceMax,
+						currency: createInput.currency,
+						imageUrl: createInput.imageUrl,
+						imageKey: createInput.imageKey,
+						imageMeta: createInput.imageMeta,
+						quantity: createInput.quantity,
+						priorityLevelId: createInput.priorityLevelId,
+						categoryId: createInput.categoryId,
+					}) satisfies UpdateGiftInput);
+		let saveSucceeded = false;
+		isLocalMutationPending = true;
+		onpendingchange?.(true);
+		try {
+			let saveResult: boolean | void;
+			if (mode === 'create') {
+				saveResult = await oncreate?.(createInput);
+			} else if (mode === 'edit' && updateInput !== null) {
+				saveResult = await onupdate?.(updateInput);
+			} else {
+				return;
+			}
+			if (saveResult === false) {
+				return;
+			}
+			await pendingUploads.commit(submittedImageKey);
+			saveSucceeded = true;
+		} finally {
+			isLocalMutationPending = false;
+			onpendingchange?.(isImageUploadPending);
+		}
+		if (saveSucceeded) {
+			onsavesuccess?.();
 		}
 	}
 
@@ -600,15 +741,17 @@
 		editingAppendText = '';
 	}
 
-	function saveEditAppend(index: number) {
+	async function saveEditAppend(index: number) {
 		if (gift === null || editingAppendText.trim() === '') {
 			return;
 		}
-		onupdate?.({
+		const saveResult = await onupdate?.({
 			id: gift.id,
 			descriptionAppendEdit: { index, text: editingAppendText.trim() },
 		});
-		cancelEditAppend();
+		if (saveResult !== false) {
+			cancelEditAppend();
+		}
 	}
 
 	function deleteAppend(index: number) {
@@ -621,13 +764,23 @@
 		return labelForGiftCategory(category, getLocale().startsWith('en') ? 'en' : 'cs');
 	}
 
-	function handleDelete() {
+	async function handleDelete() {
+		if (mutationPending) {
+			return;
+		}
 		if (!showDeleteConfirm) {
 			showDeleteConfirm = true;
 			return;
 		}
 		if (gift !== null) {
-			ondelete?.(gift.id);
+			isLocalMutationPending = true;
+			onpendingchange?.(true);
+			try {
+				await ondelete?.(gift.id);
+			} finally {
+				isLocalMutationPending = false;
+				onpendingchange?.(isImageUploadPending);
+			}
 		}
 	}
 
@@ -639,6 +792,9 @@
 	}
 
 	function handleImageUpload(result: UploadResult) {
+		if (mutationPending) {
+			return;
+		}
 		imageKey = result.objectKey;
 		imageUrl = result.publicUrl;
 		pendingUploads.track(result);
@@ -646,6 +802,9 @@
 	}
 
 	function handleImageRemove() {
+		if (mutationPending) {
+			return;
+		}
 		imageKey = '';
 		imageUrl = '';
 		resetCropEditing();
@@ -655,6 +814,11 @@
 		console.error('Image upload failed:', uploadError.message);
 	}
 
+	function handleImageUploadPendingChange(pending: boolean) {
+		isImageUploadPending = pending;
+		onpendingchange?.(pending || isLocalMutationPending);
+	}
+
 	/**
 	 * Click-to-edit affordance for the image column (issue #131): switches the
 	 * right-column image field to the Upload tab and opens the native file
@@ -662,168 +826,48 @@
 	 * the picker trigger waits a tick for it to render.
 	 */
 	async function openImageEditor() {
+		if (mutationPending || isImageUploadPending) {
+			return;
+		}
 		imageMode = 'upload';
 		await tick();
 		imageUploadRef?.openFilePicker();
 	}
 
-	// Storage cleanup (issue #107, REQ-6): uploads that were replaced, removed,
-	// or abandoned before save are deleted when the form unmounts (dialog close).
-	// The submitted key survives; a pre-existing gift image is never tracked here.
+	// Storage cleanup (issue #107, REQ-6): a successful save clears the tracker
+	// before closing; cancellation and every other unmount delete all session uploads.
 	$effect(() => {
 		return () => {
-			void pendingUploads.commit(submittedImageKey);
+			void pendingUploads.discardAll();
 		};
 	});
 </script>
 
-<div class={styles.body()} data-testid="gift-detail-body">
-	<!-- Left column: the display-mode control on top, then the WYSIWYG stage below
-	     it for all three modes (issue #183: Fill/Fit now render through the same
-	     bordered stage as Manual – a static, non-interactive preview – instead of
-	     a plain unbounded ImageFrame, so switching to Manual is visually
-	     seamless). The square live preview tile sits at the column's lower edge –
-	     it doubles as the crop target switcher (round 3) – so it costs no form
-	     space. -->
-	<div
-		class={cn(
-			styles.imageColumn(),
-			// Photo-workshop treatment (issue #189 REQ-6): the inset sticker panel below
-			// supplies the framing, so the shared dashed column seam stays dropped in edit
-			// mode (issue #156); the column is just the dotted mat the panel floats on.
-			// `h-auto` + `justify-center`: the panel takes its intrinsic (photo-aspect,
-			// capped) height and centers on the mat — replacing the old fixed
-			// `h-[400px]` that clipped tall portraits (issue #189 REQ-5).
-			'flex h-auto flex-col justify-center border-none border-b-0 p-3 sm:border-r-0 sm:p-4',
-		)}
-		data-testid="gift-image-column"
+{#snippet submitActions()}
+	<Button
+		class={styles.submitButton()}
+		disabled={mutationPending || isImageUploadPending}
+		onclick={() => void handleSubmit()}
 	>
-		{#if hasImage}
-			<!-- Photo-workshop panel (issue #189 REQ-6): groups the mode pill + adaptive
-			     stage + preview tiles as one designed sticker unit on the dotted mat. -->
-			<div class={styles.modeSectionPanel()}>
-				<!-- Display-mode control (#116 round 3): lives with the preview it drives,
-				     docked on the panel's top edge. `presentedEditorMode` (#183 EXTRA)
-				     normalizes an untouched legacy `auto` row to the mode it actually
-				     renders as, so the highlighted pill never contradicts the stage below. -->
-				<div class="flex flex-none justify-center pb-2.5">
-					<ToggleGroup.Root
-						type="single"
-						bind:value={selectedEditorMode}
-						onValueChange={setEditorMode}
-						aria-label={m.image_fit_label()}
-						class="rounded-full border-2 border-ink bg-card px-1.5 py-1 shadow-[3px_3px_0_var(--hard-shadow)]"
-					>
-						<ToggleGroup.Item value={IMAGE_EDITOR_MODES.fill} class="rounded-full">
-							{m.image_fit_fill()}
-						</ToggleGroup.Item>
-						<ToggleGroup.Item value={IMAGE_EDITOR_MODES.fit} class="rounded-full">
-							{m.image_fit_fit()}
-						</ToggleGroup.Item>
-						<ToggleGroup.Item value={IMAGE_EDITOR_MODES.manual} class="rounded-full">
-							{m.image_fit_manual()}
-						</ToggleGroup.Item>
-					</ToggleGroup.Root>
-				</div>
-				<div class="flex flex-none justify-center pb-2.5">
-					<ToggleGroup.Root
-						type="single"
-						bind:value={selectedBgColor}
-						onValueChange={setBgColor}
-						aria-label={m.image_background_label()}
-						class="rounded-full border-2 border-ink bg-card px-1.5 py-1 shadow-[3px_3px_0_var(--hard-shadow)]"
-					>
-						<ToggleGroup.Item value="#ffffff" class="rounded-full">
-							{m.image_background_white()}
-						</ToggleGroup.Item>
-						<ToggleGroup.Item value="#000000" class="rounded-full">
-							{m.image_background_black()}
-						</ToggleGroup.Item>
-						<ToggleGroup.Item value="transparent" class="rounded-full">
-							{m.image_background_transparent()}
-						</ToggleGroup.Item>
-					</ToggleGroup.Root>
-				</div>
-				{#if previewSrc !== null}
-					<!-- Adaptive stage (issue #189 REQ-4/5): the whole photo renders
-					     contained and always fully visible; the box tracks the photo's
-					     natural aspect within min/max caps (portrait tall, landscape wide).
-					     Manual: interactive per-target crop. Fill/Fit: the SAME stage,
-					     non-interactive, showing exactly the cover (Fill) or letterboxed
-					     (Fit) framing; a wheel gesture still promotes to Manual. -->
-					<div
-						class="relative min-h-[220px] w-full max-h-[46dvh] sm:max-h-[440px]"
-						style="aspect-ratio: {stageAspectRatio};"
-					>
-						<ImageCropStage
-							class="size-full"
-							src={previewSrc}
-							alt={name || m.gift_image_preview()}
-							targetAspect={GIFT_CROP_TARGET_SPECS[activeTarget].aspect}
-							targetLabel={targetLabels[activeTarget]()}
-							fillColor={bgColor}
-							tokenScope={IMAGE_TOKEN_SCOPES.wishlist}
-							interactive={isCropMode}
-							containMode={!isCropMode &&
-								presentedEditorMode === IMAGE_EDITOR_MODES.fit}
-							showLabelChip={false}
-							bind:cropRect={targetRects[activeTarget]}
-							onchange={() => dirtyTargets.add(activeTarget)}
-							onWheelPromote={promoteToManual}
-						/>
-						{#if !isCropMode}
-							<!-- Click-to-edit affordance (issue #131 REQ-1): overlays the preview
-							     without wrapping it, so wheel-zoom-to-manual and the tile switcher
-							     below stay independently interactive. -->
-							<Button
-								type="button"
-								intent="ghost-overlay"
-								size="icon-sm"
-								class="absolute top-2 right-2 rounded-full bg-surface/90 shadow-sm"
-								onclick={openImageEditor}
-								aria-label={m.gift_image_replace_cta()}
-							>
-								<PencilIcon data-icon="solo" />
-							</Button>
-						{/if}
-					</div>
-					<!-- Below the stage (not overlapping: every stage pixel matters here);
-					     the tiles are the only crop-target switcher (round 3). Rendered here
-					     for every mode – Fill/Fit used to float these over the stage's lower
-					     edge, clipping into the photo on short stages (mobile edit modal
-					     scroll fix); Manual keeps the same target highlighted, Fill/Fit
-					     highlight none. -->
-					<GiftImagePreviewSlots
-						class="flex-none pt-2.5"
-						src={previewSrc}
-						alt={name || m.gift_image_preview()}
-						imageMeta={currentImageMeta}
-						activeTarget={isCropMode ? activeTarget : null}
-						onTileSelect={handleTileSelect}
-					/>
-				{/if}
-			</div>
+		{#if isSubmitting}
+			{m.saving()}
 		{:else}
-			<!-- Empty state (issue #131 REQ-2): the whole column is an explicit
-			     clickable upload placeholder, restyled as a sticker panel (issue #189
-			     REQ-6) so the empty column reads as intentional as the filled one. -->
-			<button
-				type="button"
-				class={styles.imagePlaceholder()}
-				onclick={openImageEditor}
-				aria-label={m.gift_image_upload_cta()}
-			>
-				<UploadIcon class="size-16 text-ink-faint" />
-				<span class="text-sm font-semibold text-muted-foreground">
-					{m.gift_image_upload_cta()}
-				</span>
-				<span class="text-xs text-muted-foreground">{m.gift_image_upload_hint()}</span>
-			</button>
+			{submitLabel}
 		{/if}
-	</div>
+	</Button>
+	<Button
+		intent="outline"
+		class={styles.submitButton()}
+		disabled={mutationPending || isImageUploadPending}
+		onclick={oncancel}
+	>
+		{m.cancel()}
+	</Button>
+{/snippet}
 
-	<!-- Right column: form fields scroll, the action buttons stay pinned below -->
-	<div class={styles.detailColumn()}>
+<div class={styles.body()} data-testid="gift-detail-body">
+	<!-- Fields are first in DOM order; desktop places this primary column on the right. -->
+	<div class={styles.detailColumn()} data-testid="gift-detail-column">
 		<div class={styles.detailScroll()} data-testid="gift-form-scroll">
 			<!-- Gift grace window (issue #83): communicates temporary full-edit/delete or delete-only access. -->
 			{#if graceActive && graceExpiresAt !== null}
@@ -835,7 +879,7 @@
 					/>
 				</div>
 			{/if}
-			<fieldset class="contents">
+			<fieldset class="contents" disabled={mutationPending}>
 				<!-- Name -->
 				<Field
 					fieldId="gift-name"
@@ -900,7 +944,7 @@
 										<div class="flex gap-2">
 											<Button
 												size="sm"
-												onclick={() => saveEditAppend(index)}
+												onclick={() => void saveEditAppend(index)}
 												disabled={editingAppendText.trim() === ''}
 											>
 												{m.save()}
@@ -919,7 +963,8 @@
 										class="flex w-fit gap-1 rounded-md border border-border bg-surface-2 p-1"
 									>
 										<Button
-											size="icon-sm"
+											size="sm"
+											format="icon"
 											intent="ghost"
 											aria-label={m.gift_description_append_edit_aria()}
 											onclick={() => startEditAppend(index, append.text)}
@@ -927,7 +972,8 @@
 											<PencilIcon />
 										</Button>
 										<Button
-											size="icon-sm"
+											size="sm"
+											format="icon"
 											intent="ghost"
 											aria-label={m.gift_description_append_delete_aria()}
 											onclick={() => deleteAppend(index)}
@@ -1182,30 +1228,22 @@
 				<!-- Image (last field: source input only – the display-mode control and
 			     the clickable target tiles live in the image column with the
 			     preview they drive, #116 round 3) -->
-				<div class="mt-3 {styles.formField()}">
+				<div class="mt-3 {styles.formField()}" data-testid="gift-image-source">
 					<Label>{m.gift_image_label()}</Label>
-					<div class={styles.imageTabRow()}>
-						<button
-							type="button"
-							class={giftDetailModalVariants({
-								imageTabActive: imageMode === 'upload',
-							}).imageTab()}
-							onclick={() => (imageMode = 'upload')}
-						>
-							<UploadIcon class="mr-1 inline size-3" />
+					<SegmentedToggle.Root
+						bind:value={imageMode}
+						disabled={mutationPending || isImageUploadPending}
+						aria-label={m.gift_image_label()}
+					>
+						<SegmentedToggle.Item value="upload">
+							<UploadIcon data-icon="inline-start" />
 							{m.gift_image_upload_tab()}
-						</button>
-						<button
-							type="button"
-							class={giftDetailModalVariants({
-								imageTabActive: imageMode === 'url',
-							}).imageTab()}
-							onclick={() => (imageMode = 'url')}
-						>
-							<LinkIcon class="mr-1 inline size-3" />
+						</SegmentedToggle.Item>
+						<SegmentedToggle.Item value="url">
+							<LinkIcon data-icon="inline-start" />
 							{m.gift_image_url_tab()}
-						</button>
-					</div>
+						</SegmentedToggle.Item>
+					</SegmentedToggle.Root>
 					{#if imageMode === 'url'}
 						<Input
 							bind:value={imageUrl}
@@ -1216,9 +1254,11 @@
 						<ImageUpload
 							bind:this={imageUploadRef}
 							target="gift-image"
+							disabled={mutationPending}
 							size="small"
 							initialPreviewUrl={previewSrc ?? undefined}
 							onUpload={handleImageUpload}
+							onPendingChange={handleImageUploadPendingChange}
 							onError={handleImageUploadError}
 							onRemove={handleImageRemove}
 						/>
@@ -1226,56 +1266,221 @@
 				</div>
 			</fieldset>
 		</div>
+	</div>
 
-		<!-- Manager actions scroll with the form on mobile. Save is hidden here on mobile
-		     and rendered by `mobileSubmitFooter` below; desktop keeps it in this block. -->
-		<div class={styles.formActions()}>
-			{#if isEdit && gift !== null}
-				{#if releaseGift !== null}
-					<ReleaseReservationButton
-						gift={releaseGift}
-						size="md"
-						class={styles.releaseButton()}
+	<!-- Left column: the display-mode control on top, then the WYSIWYG stage below
+	     it for all three modes (issue #183: Fill/Fit now render through the same
+	     bordered stage as Manual – a static, non-interactive preview – instead of
+	     a plain unbounded ImageFrame, so switching to Manual is visually
+	     seamless). The square live preview tile sits at the column's lower edge –
+	     it doubles as the crop target switcher (round 3) – so it costs no form
+	     space. -->
+	<div
+		class={cn(
+			styles.imageColumn(),
+			// Photo-workshop treatment (issue #189 REQ-6): the inset sticker panel below
+			// supplies the framing, so the shared dashed column seam stays dropped in edit
+			// mode (issue #156); the column is just the dotted mat the panel floats on.
+			// `h-auto` + `justify-center`: the panel takes its intrinsic (photo-aspect,
+			// capped) height and centers on the mat — replacing the old fixed
+			// `h-[400px]` that clipped tall portraits (issue #189 REQ-5).
+			'flex h-auto flex-col justify-center border-none border-b-0 p-3 sm:border-r-0 sm:p-4',
+		)}
+		data-testid="gift-image-column"
+	>
+		{#if hasImage}
+			<!-- Photo-workshop panel (issue #189 REQ-6): groups the mode pill + adaptive
+			     stage + preview tiles as one designed sticker unit on the dotted mat. -->
+			<div class={styles.modeSectionPanel()}>
+				<!-- Display-mode control (#116 round 3): lives with the preview it drives,
+				     docked on the panel's top edge. `presentedEditorMode` (#183 EXTRA)
+				     normalizes an untouched legacy `auto` row to the mode it actually
+				     renders as, so the highlighted pill never contradicts the stage below. -->
+				<div class="flex flex-none justify-center pb-2.5">
+					<ToggleGroup.Root
+						type="single"
+						bind:value={selectedEditorMode}
+						onValueChange={setEditorMode}
+						aria-label={m.image_fit_label()}
+						class="max-w-full flex-wrap justify-center rounded-full border-2 border-ink bg-card px-1.5 py-1 shadow-sticker"
+					>
+						<ToggleGroup.Item
+							value={IMAGE_EDITOR_MODES.fill}
+							class="rounded-full"
+							disabled={mutationPending}
+						>
+							{m.image_fit_fill()}
+						</ToggleGroup.Item>
+						<ToggleGroup.Item
+							value={IMAGE_EDITOR_MODES.fit}
+							class="rounded-full"
+							disabled={mutationPending}
+						>
+							{m.image_fit_fit()}
+						</ToggleGroup.Item>
+						<ToggleGroup.Item
+							value={IMAGE_EDITOR_MODES.manual}
+							class="rounded-full"
+							disabled={mutationPending}
+						>
+							{m.image_fit_manual()}
+						</ToggleGroup.Item>
+					</ToggleGroup.Root>
+				</div>
+				<div class="flex flex-none justify-center pb-2.5">
+					<ToggleGroup.Root
+						type="single"
+						bind:value={selectedBgColor}
+						onValueChange={setBgColor}
+						aria-label={m.image_background_label()}
+						class="max-w-full flex-wrap justify-center rounded-full border-2 border-ink bg-card px-1.5 py-1 shadow-sticker"
+					>
+						<ToggleGroup.Item
+							value="#ffffff"
+							class="rounded-full"
+							disabled={mutationPending}
+						>
+							{m.image_background_white()}
+						</ToggleGroup.Item>
+						<ToggleGroup.Item
+							value="#000000"
+							class="rounded-full"
+							disabled={mutationPending}
+						>
+							{m.image_background_black()}
+						</ToggleGroup.Item>
+						<ToggleGroup.Item
+							value="transparent"
+							class="rounded-full"
+							disabled={mutationPending}
+						>
+							{m.image_background_transparent()}
+						</ToggleGroup.Item>
+					</ToggleGroup.Root>
+				</div>
+				{#if previewSrc !== null}
+					<!-- Adaptive stage (issue #189 REQ-4/5): the whole photo renders
+					     contained and always fully visible; the box tracks the photo's
+					     natural aspect within min/max caps (portrait tall, landscape wide).
+					     Manual: interactive per-target crop. Fill/Fit: the SAME stage,
+					     non-interactive, showing exactly the cover (Fill) or letterboxed
+					     (Fit) framing; a wheel gesture still promotes to Manual. -->
+					<div
+						class="relative min-h-[220px] w-full max-h-[46dvh] sm:max-h-[440px]"
+						style="aspect-ratio: {stageAspectRatio};"
+					>
+						<ImageCropStage
+							class="size-full"
+							src={previewSrc}
+							alt={name || m.gift_image_preview()}
+							targetAspect={GIFT_CROP_TARGET_SPECS[activeTarget].aspect}
+							targetLabel={targetLabels[activeTarget]()}
+							fillColor={bgColor}
+							tokenScope={IMAGE_TOKEN_SCOPES.wishlist}
+							interactive={isCropMode}
+							disabled={mutationPending}
+							containMode={!isCropMode &&
+								presentedEditorMode === IMAGE_EDITOR_MODES.fit}
+							showLabelChip={false}
+							bind:cropRect={targetRects[activeTarget]}
+							onchange={(rect) => handleCropChange(activeTarget, rect)}
+							onWheelPromote={promoteToManual}
+						/>
+						{#if !isCropMode}
+							<!-- Click-to-edit affordance (issue #131 REQ-1): overlays the preview
+							     without wrapping it, so wheel-zoom-to-manual and the tile switcher
+							     below stay independently interactive. -->
+							<Button
+								type="button"
+								intent="ghost-overlay"
+								size="sm"
+								format="icon"
+								class="absolute top-2 right-2 rounded-full"
+								surfaceClass="bg-surface/90"
+								onclick={openImageEditor}
+								disabled={mutationPending}
+								aria-label={m.gift_image_replace_cta()}
+							>
+								<PencilIcon data-icon="solo" />
+							</Button>
+						{/if}
+					</div>
+					<!-- Below the stage (not overlapping: every stage pixel matters here);
+					     the tiles are the only crop-target switcher (round 3). Rendered here
+					     for every mode – Fill/Fit used to float these over the stage's lower
+					     edge, clipping into the photo on short stages (mobile edit modal
+					     scroll fix); Manual keeps the same target highlighted, Fill/Fit
+					     highlight none. -->
+					<GiftImagePreviewSlots
+						class="flex-none pt-2.5"
+						src={previewSrc}
+						alt={name || m.gift_image_preview()}
+						imageMeta={currentImageMeta}
+						activeTarget={isCropMode ? activeTarget : null}
+						onTileSelect={handleTileSelect}
+						disabled={mutationPending}
 					/>
 				{/if}
+			</div>
+		{:else}
+			<!-- Empty state (issue #131 REQ-2): the whole column is an explicit
+			     clickable upload placeholder, restyled as a sticker panel (issue #189
+			     REQ-6) so the empty column reads as intentional as the filled one. -->
+			<button
+				type="button"
+				class={styles.imagePlaceholder()}
+				disabled={mutationPending}
+				onclick={openImageEditor}
+				aria-label={m.gift_image_upload_cta()}
+			>
+				<UploadIcon class="size-16 text-ink-faint" />
+				<span class="text-sm font-semibold text-muted-foreground">
+					{m.gift_image_upload_cta()}
+				</span>
+				<span class="text-xs text-muted-foreground">{m.gift_image_upload_hint()}</span>
+			</button>
+		{/if}
+	</div>
 
-				{#if canDelete}
-					<Button
-						intent="danger"
-						class={styles.deleteButton()}
-						disabled={isDeleting}
-						onclick={handleDelete}
-					>
-						<TrashIcon data-icon="inline-start" />
-						{#if showDeleteConfirm}
-							{m.gift_delete_confirm()}
-						{:else if isDeleting}
-							{m.deleting()}
-						{:else}
-							{m.gift_delete()}
-						{/if}
-					</Button>
-				{/if}
+	<!-- Manager actions scroll with the form on mobile. Save/Cancel are hidden here on mobile
+	     and rendered by `mobileSubmitFooter` below; desktop keeps them in this block. -->
+	<div class={styles.formActions()}>
+		{#if isEdit && gift !== null}
+			{#if releaseGift !== null}
+				<ReleaseReservationButton
+					gift={releaseGift}
+					size="md"
+					disabled={mutationPending}
+					class={styles.releaseButton()}
+				/>
 			{/if}
 
-			<div class={styles.submitWrapper()}>
+			{#if canDelete}
 				<Button
-					class={styles.submitButton()}
-					disabled={isSubmitting}
-					onclick={handleSubmit}
+					intent="danger"
+					class={styles.deleteButton()}
+					disabled={mutationPending || isImageUploadPending}
+					onclick={() => void handleDelete()}
 				>
-					{#if isSubmitting}
-						{m.saving()}
+					<TrashIcon data-icon="inline-start" />
+					{#if showDeleteConfirm}
+						{m.gift_delete_confirm()}
+					{:else if isDeleting}
+						{m.deleting()}
 					{:else}
-						{submitLabel}
+						{m.gift_delete()}
 					{/if}
 				</Button>
-			</div>
+			{/if}
+		{/if}
+
+		<div class={styles.submitWrapper()}>
+			{@render submitActions()}
 		</div>
 	</div>
 </div>
 
-<!-- Mobile-only pinned Save footer (see `submitWrapper` in
+<!-- Mobile-only pinned Save/Cancel footer (see `submitWrapper` in
      gift_detail_modal_variants.ts for why this is a separate element from the
      desktop one above): a true DOM sibling OUTSIDE `body`'s scroll, so it
      stays visible regardless of scroll position – unlike a `position: sticky`
@@ -1284,11 +1489,5 @@
      where `submitWrapper` above already renders Save inline with the manager
      actions. -->
 <div class={styles.mobileSubmitFooter()} data-testid="gift-mobile-submit-footer">
-	<Button class={styles.submitButton()} disabled={isSubmitting} onclick={handleSubmit}>
-		{#if isSubmitting}
-			{m.saving()}
-		{:else}
-			{submitLabel}
-		{/if}
-	</Button>
+	{@render submitActions()}
 </div>

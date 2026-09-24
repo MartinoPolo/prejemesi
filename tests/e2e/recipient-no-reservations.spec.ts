@@ -31,7 +31,9 @@ test.describe('Recipient cannot see reservation state', () => {
 		const visitorContext = await browser.newContext();
 		const visitorPage = await visitorContext.newPage();
 		await visitorPage.goto(wishlistPath);
-		await visitorPage.waitForLoadState('networkidle');
+		await expect(
+			visitorPage.getByRole('heading', { name: TEST_GIFT.name, level: 3 }),
+		).toBeVisible();
 		// Locale-agnostic: ReserveButton's label is i18n'd (issue #154), select the
 		// card-level trigger via its stable data-testid.
 		await visitorPage.getByTestId('reserve-button').first().click();
@@ -41,7 +43,15 @@ test.describe('Recipient cannot see reservation state', () => {
 			.getByRole('textbox', { name: /Vaše jméno/i })
 			.fill(ANONYMOUS_RESERVER.name);
 		await reserveDialog.getByRole('button', { name: /Rezervovat/ }).click();
-		await expect(visitorPage.getByText(/[Rr]ezervov/).first()).toBeVisible({ timeout: 5_000 });
+		await expect(reserveDialog).toBeHidden();
+		await visitorPage.reload();
+		await expect(
+			visitorPage.getByRole('button', {
+				name: new RegExp(
+					`Zrušit rezervaci ${TEST_GIFT.name}|Cancel reservation for ${TEST_GIFT.name}`,
+				),
+			}),
+		).toBeVisible({ timeout: 5_000 });
 		await visitorContext.close();
 
 		// Recipient reloads and must NOT see reservation info

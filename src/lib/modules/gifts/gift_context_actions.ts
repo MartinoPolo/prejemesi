@@ -7,13 +7,27 @@ export type GiftContextAction =
 	| 'priority'
 	| 'category'
 	| 'received'
-	| 'multiselect';
+	| 'multiselect'
+	| 'reserve'
+	| 'cancel-reservation'
+	| 'purchased';
+
+export function hasAdditionalGiftContextActions(
+	actions: readonly GiftContextAction[],
+	visibleDirectActions: readonly GiftContextAction[],
+): boolean {
+	const directActions = new Set(visibleDirectActions);
+	return actions.some((action) => !directActions.has(action));
+}
 
 export interface GiftContextActionContext {
 	role: WishlistRole;
 	primaryUrl: string | null;
 	readOnly: boolean;
 	canEdit?: boolean;
+	canReserve?: boolean;
+	ownsReservation?: boolean;
+	canTrackPurchased?: boolean;
 }
 
 /** Central capability model shared by pointer-menu and touch-sheet renderers. */
@@ -21,13 +35,24 @@ export function giftContextActions(context: GiftContextActionContext): GiftConte
 	const actions: GiftContextAction[] = context.primaryUrl === null ? [] : ['open', 'copy'];
 	const manages =
 		context.role === WISHLIST_ROLES.recipient || context.role === WISHLIST_ROLES.moderator;
-	if (!manages || context.readOnly) {
-		return actions;
+
+	if (!context.readOnly && manages) {
+		if (context.canEdit === true) {
+			actions.push('edit');
+		}
+		actions.push('priority', 'category', 'received', 'multiselect');
 	}
 
-	if (context.canEdit === true) {
-		actions.push('edit');
+	if (context.canReserve === true) {
+		if (context.ownsReservation === true) {
+			actions.push('cancel-reservation');
+			if (!context.readOnly && context.canTrackPurchased === true) {
+				actions.push('purchased');
+			}
+		} else if (!context.readOnly) {
+			actions.push('reserve');
+		}
 	}
-	actions.push('priority', 'category', 'received', 'multiselect');
+
 	return actions;
 }

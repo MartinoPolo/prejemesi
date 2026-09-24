@@ -22,6 +22,8 @@
 		placement?: 'direct' | 'form' | 'detail';
 		role?: WishlistRole;
 		hideReservationState?: boolean;
+		isSubmitting?: boolean;
+		isDeleting?: boolean;
 	}
 
 	let {
@@ -32,6 +34,8 @@
 		placement = 'direct',
 		role = 'moderator',
 		hideReservationState = false,
+		isSubmitting = false,
+		isDeleting = false,
 	}: ReleaseReservationTestHostProps = $props();
 
 	setReservationsContext(
@@ -56,8 +60,8 @@
 		{hideReservationState}
 		postShareLocked={false}
 		canDelete={false}
-		isSubmitting={false}
-		isDeleting={false}
+		{isSubmitting}
+		{isDeleting}
 	/>
 {:else if placement === 'detail'}
 	<GiftDetailModal

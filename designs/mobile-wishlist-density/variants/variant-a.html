@@ -1,0 +1,668 @@
+<!doctype html>
+<html lang="cs">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Varianta A · Kompaktní dvousloupcové karty</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&amp;family=Noto+Sans:wght@600;700;800&amp;display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../tokens.css">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --stage-bg: #eaf0ee;
+      --stage-ink: #23394f;
+      --stage-muted: #647585;
+      --stage-panel: #f8faf9;
+      --stage-border: #bac8c8;
+      --white: #ffffff;
+    }
+    body {
+      min-height: 100vh;
+      padding: 24px;
+      display: grid;
+      place-items: center;
+      color: var(--stage-ink);
+      background: radial-gradient(circle at 20% 15%, var(--white) 0 2px, transparent 3px) 0 0 / 32px 32px, var(--stage-bg);
+      font-family: var(--font-sans);
+    }
+    button { font: inherit; }
+    svg { display: block; }
+    .prototype {
+      display: grid;
+      grid-template-columns: 184px auto;
+      align-items: start;
+      gap: 24px;
+    }
+    .inspector {
+      position: sticky;
+      top: 24px;
+      width: 184px;
+      padding: 16px;
+      border: 1.5px solid var(--stage-border);
+      border-radius: 16px;
+      background: var(--stage-panel);
+      box-shadow: 4px 4px 0 color-mix(in srgb, var(--stage-ink) 14%, transparent);
+    }
+    .inspector h2 {
+      font-family: var(--font-heading);
+      font-size: 15px;
+      line-height: 1.2;
+      letter-spacing: -.02em;
+    }
+    .inspector fieldset { margin-top: 16px; border: 0; }
+    .inspector legend {
+      margin-bottom: 8px;
+      color: var(--stage-muted);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+    }
+    .choice-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
+    .choice {
+      min-height: 40px;
+      border: 1.5px solid var(--stage-border);
+      border-radius: 8px;
+      background: var(--white);
+      color: var(--stage-ink);
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 120ms ease, background 120ms ease, box-shadow 120ms ease;
+    }
+    .choice:hover { background: #e6f5ff; }
+    .choice:active { transform: translateY(2px); box-shadow: none; }
+    .choice[aria-pressed="true"] { border-color: #16385c; background: #d5efff; box-shadow: 2px 2px 0 #16385c; }
+    .choice:focus-visible { outline: 3px solid #1e9be9; outline-offset: 2px; }
+    .stage { width: min-content; }
+    .variant-eyebrow {
+      margin: 0 0 8px 4px;
+      color: var(--stage-muted);
+      font-size: 11px;
+      line-height: 16px;
+      font-weight: 800;
+      letter-spacing: .09em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+    .app {
+      --ink: #16385c;
+      --ink-soft: #617991;
+      --ink-faint: #c6d3dd;
+      --sky: #1e9be9;
+      --sky-soft: #dff3ff;
+      --sky-bright: #55b9f3;
+      --coral: #ef6548;
+      --coral-hover: #dd4e32;
+      --coral-soft: #ffe4dd;
+      --warm: #fffaf2;
+      --warm-deep: #fff0e8;
+      --paper: #ffffff;
+      --reserved: #25845c;
+      --reserved-soft: #e1f3e9;
+      --liked: #d95045;
+      --danger: #cb4545;
+      --yellow: #ffd45a;
+      --shadow: #9aafba;
+      --phone-shadow: rgb(22 56 92 / 18%);
+      --gutter: 12px;
+      --font-body: var(--font-sans);
+      --font-title: var(--font-heading);
+      position: relative;
+      width: 390px;
+      height: 844px;
+      overflow: hidden;
+      isolation: isolate;
+      color: var(--ink);
+      background: var(--warm-deep);
+      border: 1px solid var(--ink-faint);
+      border-radius: 24px;
+      box-shadow: 0 24px 64px var(--phone-shadow), 0 5px 16px rgb(22 56 92 / 10%);
+      font-family: var(--font-body);
+    }
+    .app button { color: inherit; cursor: pointer; }
+    .app button:focus-visible, .gift-card:focus-visible {
+      outline: 3px solid var(--sky);
+      outline-offset: -4px;
+    }
+    .app-header {
+      position: absolute;
+      inset: 0 0 auto;
+      z-index: 20;
+      height: 56px;
+      padding: 0 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--paper);
+      border-bottom: 2px solid var(--ink);
+    }
+    .nav-button, .avatar, .tool-button, .view-button {
+      width: 40px;
+      height: 40px;
+      min-width: 40px;
+      display: grid;
+      place-items: center;
+      border: 2px solid var(--ink);
+      border-radius: 9px;
+      background: var(--paper);
+      box-shadow: 2px 2px 0 var(--shadow);
+      transition: transform 120ms ease, box-shadow 120ms ease, background 120ms ease;
+    }
+    .nav-button:hover, .tool-button:hover, .view-button:hover { background: var(--sky-soft); transform: translateY(-1px); }
+    .nav-button:active, .tool-button:active, .view-button:active { transform: translateY(2px); box-shadow: none; }
+    .nav-button:disabled, .tool-button:disabled, .view-button:disabled { opacity: .4; cursor: not-allowed; transform: none; box-shadow: none; }
+    .gift-shortcut { color: var(--paper) !important; background: var(--coral); transform: rotate(-3deg); }
+    .gift-shortcut:hover { background: var(--coral-hover); }
+    .wordmark {
+      min-width: 0;
+      flex: 1;
+      font-family: var(--font-title);
+      font-size: 16px;
+      font-weight: 800;
+      letter-spacing: -.03em;
+      white-space: nowrap;
+    }
+    .wordmark small { color: var(--ink-soft); font-size: 10px; }
+    .add-nav { color: var(--paper) !important; background: var(--coral); }
+    .bell { position: relative; width: 40px; height: 40px; border: 0; background: transparent; display: grid; place-items: center; }
+    .bell:hover { background: var(--sky-soft); border-radius: 9px; }
+    .bell:active { transform: scale(.94); }
+    .bell:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+    .bell-badge {
+      position: absolute;
+      top: 1px;
+      right: 0;
+      min-width: 18px;
+      height: 18px;
+      padding: 0 4px;
+      display: grid;
+      place-items: center;
+      border: 2px solid var(--paper);
+      border-radius: 99px;
+      color: var(--paper);
+      background: var(--danger);
+      font-size: 10px;
+      font-weight: 800;
+    }
+    .avatar {
+      border-radius: 50%;
+      box-shadow: none;
+      color: var(--paper) !important;
+      background: linear-gradient(145deg, #ebbd9e 0 43%, #6c473a 44% 58%, #31728d 59%);
+      font-size: 10px;
+      font-weight: 800;
+    }
+    .scroll-area {
+      position: absolute;
+      inset: 56px 0 0;
+      overflow-y: auto;
+      overflow-x: hidden;
+      scrollbar-width: thin;
+      background: radial-gradient(var(--ink-faint) 1px, transparent 1.2px) 0 0 / 24px 24px, var(--warm-deep);
+    }
+    .page-shell { padding-inline: var(--gutter); }
+    .wishlist-head { padding-block: 12px 10px; }
+    .wishlist-head h1 {
+      font-family: var(--font-title);
+      font-size: 22px;
+      line-height: 1.15;
+      letter-spacing: -.025em;
+      font-weight: 800;
+    }
+    .wishlist-meta { margin-top: 4px; color: var(--ink-soft); font-size: 12px; line-height: 16px; font-weight: 600; }
+    .wishlist-meta strong { color: var(--ink); }
+    .toolbar-wrap {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      padding-bottom: 10px;
+      background: linear-gradient(to bottom, var(--warm-deep) 0 88%, transparent);
+    }
+    .toolbar {
+      min-height: 96px;
+      padding: 6px;
+      display: grid;
+      grid-template-rows: 40px 40px;
+      gap: 4px;
+      border: 2px solid var(--ink);
+      border-radius: 14px;
+      background: var(--paper);
+      box-shadow: 3px 3px 0 var(--shadow);
+    }
+    .toolbar-row { display: flex; gap: 4px; align-items: center; min-width: 0; }
+    .toolbar-row + .toolbar-row { padding-top: 3px; border-top: 1px dashed var(--ink-faint); }
+    .toolbar-spacer { flex: 1; }
+    .view-switcher {
+      height: 40px;
+      display: flex;
+      padding: 2px;
+      gap: 1px;
+      border: 1px solid var(--ink-faint);
+      border-radius: 10px;
+      background: #f2f7f9;
+    }
+    .view-button { border-color: transparent; box-shadow: none; background: transparent; }
+    .view-button[aria-pressed="true"] { border-color: var(--ink); color: var(--sky); background: var(--sky-soft); box-shadow: 2px 2px 0 var(--shadow); }
+    .tool-button { position: relative; }
+    .tool-button.primary { color: var(--paper); background: var(--coral); }
+    .tool-button.primary:hover { background: var(--coral-hover); }
+    .filter-count {
+      position: absolute;
+      top: -5px;
+      right: -5px;
+      min-width: 18px;
+      height: 18px;
+      display: grid;
+      place-items: center;
+      border: 2px solid var(--ink);
+      border-radius: 99px;
+      background: var(--yellow);
+      font-size: 10px;
+      font-weight: 800;
+    }
+    .collection { padding-bottom: 56px; }
+    .gift-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+    .gift-card {
+      min-width: 0;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      border: 2px solid var(--ink);
+      border-radius: 12px;
+      color: var(--ink);
+      background: var(--warm);
+      box-shadow: 3px 3px 0 var(--shadow);
+      cursor: pointer;
+      transition: transform 130ms ease, box-shadow 130ms ease;
+    }
+    @media (hover: hover) {
+      .gift-card:hover { transform: translateY(-2px); box-shadow: 4px 5px 0 var(--shadow); }
+    }
+    .gift-card:active { transform: translateY(2px); box-shadow: 1px 1px 0 var(--shadow); }
+    .gift-card.is-reserved { background: #f6f2e9; }
+    .gift-image {
+      position: relative;
+      aspect-ratio: 4 / 3;
+      overflow: hidden;
+      display: grid;
+      place-items: center;
+      border-bottom: 2px solid var(--ink);
+      background: var(--sky-soft);
+    }
+    .gift-image::before, .gift-image::after { content: ''; position: absolute; border-radius: 999px; }
+    .scene-thermos { background: linear-gradient(145deg, #cae9f8, #7bc4e7); }
+    .scene-thermos::before { width: 90px; height: 90px; left: -20px; top: -25px; background: var(--yellow); }
+    .scene-lego { background: linear-gradient(145deg, #ffe7a0, #f6b443); }
+    .scene-lego::after { width: 120px; height: 30px; right: -35px; bottom: 12px; background: var(--coral); transform: rotate(-18deg); }
+    .scene-book { background: linear-gradient(145deg, #c7e8d2, #70b88b); }
+    .scene-headphones { background: linear-gradient(145deg, #dcd7ff, #8aa4df); }
+    .scene-game { background: linear-gradient(145deg, #ffd8ce, #ed8068); }
+    .scene-coffee { background: linear-gradient(145deg, #ead8bd, #af7c50); }
+    .product-art {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      place-items: center;
+      width: 64%;
+      height: 70%;
+      border: 2px solid var(--ink);
+      border-radius: 9px;
+      background: var(--paper);
+      box-shadow: 4px 5px 0 rgb(22 56 92 / 22%);
+      font-size: 38px;
+      transform: rotate(-3deg);
+    }
+    .scene-lego .product-art, .scene-game .product-art { transform: rotate(3deg); }
+    .scene-book .product-art { width: 52%; border-radius: 3px; background: #f0efe7; }
+    .scene-headphones .product-art { border-radius: 50%; background: #1f3551; }
+    .reserved .gift-image { filter: saturate(.55); opacity: .82; }
+    .state-sticker {
+      position: absolute;
+      z-index: 3;
+      left: 6px;
+      bottom: 6px;
+      padding: 3px 7px;
+      border: 1.5px solid var(--ink);
+      border-radius: 99px;
+      color: #174f39;
+      background: var(--reserved-soft);
+      font-size: 11px;
+      line-height: 16px;
+      font-weight: 800;
+      transform: rotate(-2deg);
+    }
+    .like-button {
+      position: absolute;
+      z-index: 4;
+      top: 4px;
+      right: 4px;
+      width: 40px;
+      height: 40px;
+      display: grid;
+      place-items: center;
+      border: 2px solid var(--ink);
+      border-radius: 50%;
+      color: var(--ink-soft);
+      background: var(--paper);
+      box-shadow: 2px 2px 0 var(--shadow);
+      transition: transform 120ms ease, color 120ms ease, background 120ms ease, box-shadow 120ms ease;
+    }
+    .like-button:hover { color: var(--liked); background: var(--coral-soft); transform: scale(1.06); }
+    .like-button:active { transform: translateY(2px) scale(.96); box-shadow: none; }
+    .like-button:disabled { opacity: .4; cursor: not-allowed; transform: none; box-shadow: none; }
+    .like-button[aria-pressed="true"] { color: var(--liked); background: var(--coral-soft); }
+    .like-button[aria-pressed="true"] svg { fill: currentColor; animation: heart-pop 180ms ease-out; }
+    .gift-body {
+      flex: 1;
+      min-width: 0;
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+    }
+    .gift-title {
+      min-height: 34px;
+      overflow: hidden;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      font-family: var(--font-title);
+      font-size: 13px;
+      line-height: 17px;
+      letter-spacing: -.015em;
+      font-weight: 700;
+    }
+    .gift-meta {
+      min-height: 24px;
+      padding-top: 4px;
+      display: flex;
+      align-items: center;
+      color: var(--ink-soft);
+      font-size: 12px;
+      line-height: 16px;
+      font-weight: 600;
+    }
+    .gift-price { color: var(--ink); font-size: 14px; font-weight: 800; }
+    .reserved-copy { color: var(--reserved); font-weight: 800; }
+    .reserve-button {
+      width: 100%;
+      min-height: 40px;
+      margin-top: 6px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      border: 2px solid var(--ink);
+      border-radius: 8px;
+      color: var(--paper) !important;
+      background: var(--coral);
+      box-shadow: 2px 2px 0 var(--shadow);
+      font-size: 12px;
+      font-weight: 800;
+      transition: transform 120ms ease, background 120ms ease, box-shadow 120ms ease;
+    }
+    .reserve-button:hover { background: var(--coral-hover); transform: translateY(-1px); }
+    .reserve-button:active { transform: translateY(2px); box-shadow: none; }
+    .reserve-button:disabled { color: var(--ink-soft) !important; background: #e7e4dc; opacity: .78; cursor: not-allowed; transform: none; box-shadow: none; }
+    .toast {
+      position: absolute;
+      z-index: 30;
+      left: 50%;
+      bottom: 14px;
+      max-width: calc(100% - 24px);
+      padding: 9px 12px;
+      border: 2px solid var(--ink);
+      border-radius: 9px;
+      color: var(--paper);
+      background: var(--ink);
+      box-shadow: 3px 3px 0 var(--sky-bright);
+      font-size: 12px;
+      font-weight: 700;
+      text-align: center;
+      transform: translate(-50%, 18px);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 160ms ease, transform 160ms ease;
+    }
+    .toast.is-visible { opacity: 1; transform: translate(-50%, 0); }
+    .app[data-width="320"] .gift-grid { grid-template-columns: 1fr; }
+    .app[data-width="320"] .gift-card { max-width: none; }
+    .app[data-width="320"] .gift-title { font-size: 14px; line-height: 18px; min-height: 36px; }
+    .app[data-width="320"] .gift-image { aspect-ratio: 4 / 3; }
+    @keyframes heart-pop { 50% { transform: scale(1.28) rotate(-8deg); } }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+    }
+    @media (max-width: 700px) {
+      body { padding: 12px 0; place-items: start center; }
+      .prototype { display: flex; flex-direction: column; align-items: center; gap: 12px; width: 100%; }
+      .inspector { position: static; z-index: 40; width: min(390px, calc(100% - 16px)); padding: 10px 12px; }
+      .inspector h2 { font-size: 13px; }
+      .inspector fieldset { display: inline-block; width: calc(50% - 4px); margin-top: 8px; vertical-align: top; }
+      .inspector fieldset + fieldset { margin-left: 4px; }
+      .inspector legend { margin-bottom: 4px; }
+      .choice { min-height: 40px; }
+      .variant-eyebrow { white-space: normal; padding-inline: 8px; }
+      .app { max-width: calc(100vw - 8px); height: min(844px, calc(100dvh - 166px)); min-height: 620px; border-radius: 18px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="prototype">
+    <aside class="inspector" aria-label="Ovládání prototypu">
+      <h2>Náhled hustoty</h2>
+      <fieldset>
+        <legend>Šířka telefonu</legend>
+        <div class="choice-row" data-control="width">
+          <button class="choice" type="button" data-value="320" aria-pressed="false">320</button>
+          <button class="choice" type="button" data-value="360" aria-pressed="false">360</button>
+          <button class="choice" type="button" data-value="390" aria-pressed="true">390</button>
+        </div>
+      </fieldset>
+      <fieldset>
+        <legend>Boční okraj</legend>
+        <div class="choice-row" data-control="gutter">
+          <button class="choice" type="button" data-value="0" aria-pressed="false">0</button>
+          <button class="choice" type="button" data-value="8" aria-pressed="false">8</button>
+          <button class="choice" type="button" data-value="12" aria-pressed="true">12</button>
+          <button class="choice" type="button" data-value="16" aria-pressed="false">16</button>
+        </div>
+      </fieldset>
+    </aside>
+
+    <section class="stage">
+      <p class="variant-eyebrow">VARIANTA A · KOMPAKTNÍ DVOUSLOUPCOVÉ KARTY</p>
+      <section id="phone" class="app" data-width="390" aria-label="Mobilní náhled Martinova seznamu přání, šířka 390 pixelů">
+        <header class="app-header" aria-label="Hlavní navigace">
+          <button class="nav-button" type="button" aria-label="Otevřít hlavní nabídku" title="Hlavní nabídka">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+          </button>
+          <button class="nav-button gift-shortcut" type="button" aria-label="Přejít na nástěnku" title="Nástěnka">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linejoin="round"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13M5 12v9h14v-9M7 8C5.6 8 5 7 5 5.7S6 3.2 7.5 3.2C10 3.2 12 8 12 8s2-4.8 4.5-4.8C18 3.2 19 4.4 19 5.7S18.4 8 17 8"/></svg>
+          </button>
+          <div class="wordmark" aria-label="Přejeme si.cz">přejeme si<small>.cz</small></div>
+          <button class="nav-button add-nav" type="button" aria-label="Vytvořit nový seznam" title="Vytvořit nový seznam">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+          </button>
+          <button class="bell" type="button" aria-label="Oznámení, 12 nových" title="Oznámení">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M10 21h4"/></svg><span class="bell-badge">12</span>
+          </button>
+          <button class="avatar" type="button" aria-label="Účet Martina Poláka" title="Účet Martina Poláka">MP</button>
+        </header>
+
+        <div class="scroll-area">
+          <div class="page-shell">
+            <header class="wishlist-head">
+              <h1>Martinova přání</h1>
+              <p class="wishlist-meta"><strong>Narozeniny 18. října</strong> · 8 přání</p>
+            </header>
+
+            <div class="toolbar-wrap">
+              <nav class="toolbar" aria-label="Nástroje seznamu přání">
+                <div class="toolbar-row">
+                  <div class="view-switcher" role="group" aria-label="Zobrazení přání">
+                    <button class="view-button" type="button" data-view="cards" aria-label="Zobrazit jako karty" aria-pressed="true" title="Karty">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+                    </button>
+                    <button class="view-button" type="button" data-view="list" aria-label="Zobrazit jako seznam" aria-pressed="false" title="Seznam">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6h12M9 12h12M9 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg>
+                    </button>
+                  </div>
+                  <span class="toolbar-spacer"></span>
+                  <button class="tool-button" type="button" aria-label="Řazení: výchozí pořadí" title="Řazení">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m21 16-4 4-4-4M17 20V4M3 8l4-4 4 4M7 4v16"/></svg>
+                  </button>
+                  <button class="tool-button" type="button" aria-label="Seskupení: bez seskupení" title="Seskupení">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="m12 3 9 4.5-9 4.5-9-4.5L12 3Z"/><path d="m3 12 9 4.5 9-4.5M3 16.5 12 21l9-4.5"/></svg>
+                  </button>
+                  <button class="tool-button" type="button" aria-label="Filtrovat, 2 aktivní filtry" title="Filtrovat">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h13M3 12h9M3 18h6M19 13v6M16 16h6"/></svg><span class="filter-count" aria-hidden="true">2</span>
+                  </button>
+                </div>
+                <div class="toolbar-row">
+                  <button class="tool-button" type="button" aria-label="Změnit pořadí přání" title="Změnit pořadí">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg>
+                  </button>
+                  <span class="toolbar-spacer"></span>
+                  <button class="tool-button" type="button" aria-label="Nastavení seznamu" title="Nastavení">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19 14.5v-5l-2-.7-.7-1.6.9-1.9-3.5-2-1.4 1.5h-1.8L9.1 3.3l-3.5 2 .9 1.9-.8 1.6-2 .7v5l2 .7.8 1.6-.9 1.9 3.5 2 1.4-1.5h1.8l1.4 1.5 3.5-2-.9-1.9.7-1.6 2-.7Z"/></svg>
+                  </button>
+                  <button class="tool-button" type="button" aria-label="Přidat více přání" title="Přidat více přání">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M7 6h10M7 12h6M7 18h4M3 6h.01M3 12h.01M3 18h.01M18 14v7M14.5 17.5h7"/></svg>
+                  </button>
+                  <button class="tool-button primary" type="button" aria-label="Přidat přání" title="Přidat přání">
+                    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+                  </button>
+                </div>
+              </nav>
+            </div>
+
+            <section class="collection" aria-label="Přání">
+              <div class="gift-grid">
+                <article class="gift-card" tabindex="0" data-name="Termoska Kambukka Elton" aria-label="Otevřít detail: Termoska Kambukka Elton">
+                  <div class="gift-image scene-thermos" role="img" aria-label="Modrá termoska Kambukka">
+                    <div class="product-art" aria-hidden="true">🧴</div>
+                    <button class="like-button" type="button" aria-label="Přidat Termosku Kambukka Elton mezi oblíbené" aria-pressed="false"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1.1L12 21l7.8-7.5 1.1-1.1a5.5 5.5 0 0 0-.1-7.8Z"/></svg></button>
+                  </div>
+                  <div class="gift-body"><h2 class="gift-title">Termoska Kambukka Elton 750 ml</h2><p class="gift-meta"><span class="gift-price">849 Kč</span></p><button class="reserve-button" type="button" data-reserve aria-label="Rezervovat Termosku Kambukka Elton"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><path d="M20 6 9 17l-5-5"/></svg>Rezervovat</button></div>
+                </article>
+
+                <article class="gift-card" tabindex="0" data-name="LEGO Botanicals Miniaturní orchidej" aria-label="Otevřít detail: LEGO Botanicals Miniaturní orchidej">
+                  <div class="gift-image scene-lego" role="img" aria-label="Stavebnice LEGO s miniaturní orchidejí">
+                    <div class="product-art" aria-hidden="true">🌸</div>
+                    <button class="like-button" type="button" aria-label="Odebrat LEGO Botanicals Miniaturní orchidej z oblíbených" aria-pressed="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1.1L12 21l7.8-7.5 1.1-1.1a5.5 5.5 0 0 0-.1-7.8Z"/></svg></button>
+                  </div>
+                  <div class="gift-body"><h2 class="gift-title">LEGO Botanicals Miniaturní orchidej</h2><p class="gift-meta"><span class="gift-price">699 Kč</span></p><button class="reserve-button" type="button" data-reserve aria-label="Rezervovat LEGO Botanicals Miniaturní orchidej"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><path d="M20 6 9 17l-5-5"/></svg>Rezervovat</button></div>
+                </article>
+
+                <article class="gift-card reserved is-reserved" tabindex="0" data-name="Kniha Atlas odlehlých ostrovů" aria-label="Otevřít detail: Kniha Atlas odlehlých ostrovů">
+                  <div class="gift-image scene-book" role="img" aria-label="Kniha Atlas odlehlých ostrovů">
+                    <div class="product-art" aria-hidden="true">🗺️</div><span class="state-sticker">Rezervováno</span>
+                    <button class="like-button" type="button" aria-label="Přidat knihu Atlas odlehlých ostrovů mezi oblíbené" aria-pressed="false"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1.1L12 21l7.8-7.5 1.1-1.1a5.5 5.5 0 0 0-.1-7.8Z"/></svg></button>
+                  </div>
+                  <div class="gift-body"><h2 class="gift-title">Atlas odlehlých ostrovů</h2><p class="gift-meta"><span class="reserved-copy">Plně rezervováno</span></p><button class="reserve-button" type="button" disabled aria-label="Atlas odlehlých ostrovů je rezervován">Rezervováno</button></div>
+                </article>
+
+                <article class="gift-card" tabindex="0" data-name="Bezdrátová sluchátka Marshall Major V" aria-label="Otevřít detail: Bezdrátová sluchátka Marshall Major V">
+                  <div class="gift-image scene-headphones" role="img" aria-label="Černá bezdrátová sluchátka Marshall">
+                    <div class="product-art" aria-hidden="true">🎧</div>
+                    <button class="like-button" type="button" aria-label="Přidat sluchátka Marshall Major V mezi oblíbené" aria-pressed="false"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1.1L12 21l7.8-7.5 1.1-1.1a5.5 5.5 0 0 0-.1-7.8Z"/></svg></button>
+                  </div>
+                  <div class="gift-body"><h2 class="gift-title">Bezdrátová sluchátka Marshall Major V</h2><p class="gift-meta">Cena neuvedena</p><button class="reserve-button" type="button" data-reserve aria-label="Rezervovat sluchátka Marshall Major V"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><path d="M20 6 9 17l-5-5"/></svg>Rezervovat</button></div>
+                </article>
+
+                <article class="gift-card" tabindex="0" data-name="Desková hra Ztracený ostrov Arnak" aria-label="Otevřít detail: Desková hra Ztracený ostrov Arnak">
+                  <div class="gift-image scene-game" role="img" aria-label="Desková hra Ztracený ostrov Arnak"><div class="product-art" aria-hidden="true">🗿</div><button class="like-button" type="button" aria-label="Přidat hru Ztracený ostrov Arnak mezi oblíbené" aria-pressed="false"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1.1L12 21l7.8-7.5 1.1-1.1a5.5 5.5 0 0 0-.1-7.8Z"/></svg></button></div>
+                  <div class="gift-body"><h2 class="gift-title">Desková hra Ztracený ostrov Arnak</h2><p class="gift-meta"><span class="gift-price">1 049 Kč</span></p><button class="reserve-button" type="button" data-reserve aria-label="Rezervovat deskovou hru Ztracený ostrov Arnak"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><path d="M20 6 9 17l-5-5"/></svg>Rezervovat</button></div>
+                </article>
+
+                <article class="gift-card" tabindex="0" data-name="Výběrová káva Etiopie Bensa" aria-label="Otevřít detail: Výběrová káva Etiopie Bensa">
+                  <div class="gift-image scene-coffee" role="img" aria-label="Balení výběrové kávy Etiopie Bensa"><div class="product-art" aria-hidden="true">☕</div><button class="like-button" type="button" aria-label="Přidat výběrovou kávu Etiopie Bensa mezi oblíbené" aria-pressed="false"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1.1L12 21l7.8-7.5 1.1-1.1a5.5 5.5 0 0 0-.1-7.8Z"/></svg></button></div>
+                  <div class="gift-body"><h2 class="gift-title">Výběrová káva Etiopie Bensa, 250 g</h2><p class="gift-meta"><span class="gift-price">329 Kč</span></p><button class="reserve-button" type="button" data-reserve aria-label="Rezervovat výběrovou kávu Etiopie Bensa"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><path d="M20 6 9 17l-5-5"/></svg>Rezervovat</button></div>
+                </article>
+              </div>
+            </section>
+          </div>
+        </div>
+        <div id="toast" class="toast" role="status" aria-live="polite"></div>
+      </section>
+    </section>
+  </main>
+
+  <script>
+    const phone = document.getElementById('phone');
+    const toast = document.getElementById('toast');
+    let toastTimer;
+
+    function announce(message) {
+      toast.textContent = message;
+      toast.classList.add('is-visible');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => toast.classList.remove('is-visible'), 1800);
+    }
+
+    document.querySelectorAll('[data-control]').forEach(group => {
+      group.addEventListener('click', event => {
+        const button = event.target.closest('.choice');
+        if (!button) return;
+        group.querySelectorAll('.choice').forEach(item => item.setAttribute('aria-pressed', String(item === button)));
+        if (group.dataset.control === 'width') {
+          phone.style.width = button.dataset.value + 'px';
+          phone.dataset.width = button.dataset.value;
+          phone.setAttribute('aria-label', `Mobilní náhled Martinova seznamu přání, šířka ${button.dataset.value} pixelů`);
+        } else {
+          phone.style.setProperty('--gutter', button.dataset.value + 'px');
+        }
+      });
+    });
+
+    document.querySelectorAll('.view-button').forEach(button => {
+      button.addEventListener('click', () => {
+        document.querySelectorAll('.view-button').forEach(item => item.setAttribute('aria-pressed', String(item === button)));
+        announce(button.dataset.view === 'cards' ? 'Vybrané zobrazení karet' : 'Vybrané zobrazení seznamu');
+      });
+    });
+
+    document.querySelectorAll('.like-button').forEach(button => {
+      button.addEventListener('click', event => {
+        event.stopPropagation();
+        const liked = button.getAttribute('aria-pressed') !== 'true';
+        button.setAttribute('aria-pressed', String(liked));
+        const current = button.getAttribute('aria-label');
+        button.setAttribute('aria-label', liked ? current.replace('Přidat', 'Odebrat').replace(' mezi oblíbené', ' z oblíbených') : current.replace('Odebrat', 'Přidat').replace(' z oblíbených', ' mezi oblíbené'));
+        announce(liked ? 'Přidáno mezi oblíbené' : 'Odebráno z oblíbených');
+      });
+    });
+
+    document.querySelectorAll('[data-reserve]').forEach(button => {
+      button.addEventListener('click', event => {
+        event.stopPropagation();
+        const card = button.closest('.gift-card');
+        card.classList.add('is-reserved', 'reserved');
+        const meta = card.querySelector('.gift-meta');
+        meta.innerHTML = '<span class="reserved-copy">Rezervováno vámi</span>';
+        const sticker = document.createElement('span');
+        sticker.className = 'state-sticker';
+        sticker.textContent = 'Rezervováno';
+        card.querySelector('.gift-image').appendChild(sticker);
+        button.textContent = 'Rezervováno';
+        button.disabled = true;
+        announce(`Rezervováno: ${card.dataset.name}`);
+      });
+    });
+
+    document.querySelectorAll('.gift-card').forEach(card => {
+      const openDetail = () => announce(`Detail přání: ${card.dataset.name}`);
+      card.addEventListener('click', event => { if (!event.target.closest('button')) openDetail(); });
+      card.addEventListener('keydown', event => {
+        if ((event.key === 'Enter' || event.key === ' ') && event.target === card) {
+          event.preventDefault();
+          openDetail();
+        }
+      });
+    });
+  </script>
+</body>
+</html>

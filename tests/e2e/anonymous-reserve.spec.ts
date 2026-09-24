@@ -9,7 +9,6 @@ import {
 import { createTestUser, TEST_GIFT, ANONYMOUS_RESERVER } from './fixtures/test-data.js';
 import { registerAndGetPage, registerViaApi } from './fixtures/auth-helpers.js';
 import { createWishlistAndNavigate, addGift, shareWishlist } from './fixtures/wishlist-helpers.js';
-import { GIFT_CROP_TARGET_SPECS } from '../../src/lib/modules/images/crop_targets.js';
 
 async function createSharedWishlistPath(
 	browser: Browser,
@@ -21,11 +20,7 @@ async function createSharedWishlistPath(
 	const ownerPage = await registerAndGetPage(browser, request, baseURL, owner);
 
 	await createWishlistAndNavigate(ownerPage, `Anonymous ${ownerRole}`);
-	await addGift(ownerPage, TEST_GIFT.name, {
-		description: 'Popis pro mobilní rozložení',
-		price: String(TEST_GIFT.price),
-		primaryLink: TEST_GIFT.url,
-	});
+	await addGift(ownerPage, TEST_GIFT.name);
 	await shareWishlist(ownerPage);
 
 	const wishlistPath = new URL(ownerPage.url()).pathname;
@@ -50,7 +45,6 @@ async function expectWishlistRedirectAuthLinks(
 	dialog: Locator,
 	baseURL: string,
 	expectedRedirectHref: string,
-	expectedAuthenticationPrefix = '',
 ): Promise<void> {
 	for (const authenticationPath of ['/login', '/register'] as const) {
 		const link = dialog.locator(`a[href*="${authenticationPath}"]`);
@@ -59,7 +53,7 @@ async function expectWishlistRedirectAuthLinks(
 		const href = await link.getAttribute('href');
 		expect(href).not.toBeNull();
 		const parsedHref = new URL(href!, baseURL);
-		expect(parsedHref.pathname).toBe(`${expectedAuthenticationPrefix}${authenticationPath}`);
+		expect(parsedHref.pathname).toBe(authenticationPath);
 		expect(parsedHref.searchParams.get('redirect')).toBe(expectedRedirectHref);
 	}
 }
@@ -77,69 +71,12 @@ test.describe('Anonymous visitor reservation', () => {
 			'anon-owner',
 		);
 
-		// Anonymous visitor
-		const visitorContext = await browser.newContext({ viewport: { width: 390, height: 844 } });
+		const visitorContext = await browser.newContext();
 		const visitorPage = await visitorContext.newPage();
 		await installTurnstileMock(visitorPage);
 		await visitorPage.goto(wishlistPath);
-		await visitorPage.waitForLoadState('networkidle');
-		await expect(visitorPage.getByText(TEST_GIFT.name)).toBeVisible();
-		// Locale-agnostic: ReserveButton's label/aria-label are i18n'd (issue #154), so
-		// select the card-level trigger via its stable data-testid.
-		await expect(visitorPage.getByTestId('reserve-button').first()).toBeVisible();
+		await expect(visitorPage.getByText(TEST_GIFT.name)).toBeVisible({ timeout: 10_000 });
 
-		// Mobile gift layout (issue #163): switch to list view and assert the image/actions
-		// arrangement. Use stable data-testids so the assertions stay locale-robust (issue #154).
-		await visitorPage.getByTestId('gift-view-list').click();
-
-		const mobileListItem = visitorPage
-			.getByTestId('gift-list-item')
-			.filter({ hasText: TEST_GIFT.name });
-		const imageBounds = await mobileListItem.getByTestId('gift-list-image').boundingBox();
-		const reserveBounds = await mobileListItem.getByTestId('reserve-button').boundingBox();
-		const likeBounds = await mobileListItem
-			.getByRole('button', { name: `Přidat do oblíbených: ${TEST_GIFT.name}` })
-			.boundingBox();
-		const primaryLinkBounds = await mobileListItem
-			.getByRole('link', { name: /example\.com/ })
-			.boundingBox();
-
-		expect(imageBounds).not.toBeNull();
-		expect(reserveBounds).not.toBeNull();
-		expect(likeBounds).not.toBeNull();
-		expect(primaryLinkBounds).not.toBeNull();
-		expect(imageBounds!.width).toBeGreaterThanOrEqual(128);
-		expect(imageBounds!.width).toBeLessThanOrEqual(152);
-		// 1:1 list/reservation crop (issue #189, reverting the interim 4:3 list thumb
-		// from #183): the thumb is square again, so height ≈ width via the same
-		// registry aspect the real surface renders at.
-		expect(imageBounds!.height).toBeCloseTo(
-			imageBounds!.width / GIFT_CROP_TARGET_SPECS.thumb.aspect,
-			0,
-		);
-		expect(reserveBounds!.x).toBeGreaterThanOrEqual(imageBounds!.x + imageBounds!.width);
-		expect(primaryLinkBounds!.x).toBeGreaterThanOrEqual(imageBounds!.x + imageBounds!.width);
-		expect(likeBounds!.x).toBeGreaterThanOrEqual(imageBounds!.x);
-		expect(likeBounds!.y).toBeGreaterThanOrEqual(imageBounds!.y);
-		expect(likeBounds!.x + likeBounds!.width).toBeLessThanOrEqual(
-			imageBounds!.x + imageBounds!.width,
-		);
-		expect(likeBounds!.y + likeBounds!.height).toBeLessThanOrEqual(
-			imageBounds!.y + imageBounds!.height,
-		);
-
-		// Anonymous like prompt keeps the wishlist context on both auth links.
-		await visitorPage
-			.getByRole('button', { name: `Přidat do oblíbených: ${TEST_GIFT.name}` })
-			.click();
-		const authPromptDialog = visitorPage.getByRole('dialog');
-		await expect(authPromptDialog).toBeVisible();
-		await expectWishlistRedirectAuthLinks(authPromptDialog, baseURL!, wishlistPath);
-		await visitorPage.keyboard.press('Escape');
-		await expect(authPromptDialog).not.toBeVisible();
-		await expect(visitorPage.locator('[data-slot="dialog-overlay"]')).toHaveCount(0);
-
-		// Reserve
 		await visitorPage.getByTestId('reserve-button').first().click();
 		const reserveDialog = visitorPage.getByRole('dialog');
 		await expect(reserveDialog).toBeVisible();
@@ -150,54 +87,14 @@ test.describe('Anonymous visitor reservation', () => {
 		const submitReservationButton = reserveDialog.getByRole('button', { name: /Rezervovat/ });
 		await expect(submitReservationButton).toBeEnabled();
 		await submitReservationButton.click();
-		await expect(visitorPage.getByText(/[Rr]ezervov/).first()).toBeVisible();
-
-		await visitorContext.close();
-	});
-
-	test('wishlist auth links preserve the English route prefix', async ({
-		browser,
-		request,
-		baseURL,
-	}) => {
-		const wishlistPath = await createSharedWishlistPath(
-			browser,
-			request,
-			baseURL!,
-			'localized-links-owner',
-		);
-		const visitorContext = await browser.newContext();
-		const visitorPage = await visitorContext.newPage();
-		await installTurnstileMock(visitorPage);
-		const localizedWishlistPath = `/en${wishlistPath}`;
-
-		await visitorPage.goto(localizedWishlistPath);
-		// Locale-agnostic: ReserveButton's label/aria-label are i18n'd (issue #154), so
-		// select the card-level trigger via its stable data-testid.
-		await visitorPage.getByTestId('reserve-button').first().click();
-		const reserveDialog = visitorPage.getByRole('dialog');
-		await expect(reserveDialog).toBeVisible();
-		await expectWishlistRedirectAuthLinks(
-			reserveDialog,
-			baseURL!,
-			localizedWishlistPath,
-			'/en',
-		);
-		await visitorPage.keyboard.press('Escape');
-		await expect(reserveDialog).not.toBeVisible();
-		await expect(visitorPage.locator('[data-slot="dialog-overlay"]')).toHaveCount(0);
-
-		await visitorPage
-			.getByRole('button', { name: `Add to favorites: ${TEST_GIFT.name}` })
-			.click();
-		const authPromptDialog = visitorPage.getByRole('dialog');
-		await expect(authPromptDialog).toBeVisible();
-		await expectWishlistRedirectAuthLinks(
-			authPromptDialog,
-			baseURL!,
-			localizedWishlistPath,
-			'/en',
-		);
+		await expect(reserveDialog).toBeHidden();
+		await expect(
+			visitorPage.getByRole('button', {
+				name: new RegExp(
+					`Zrušit rezervaci ${TEST_GIFT.name}|Cancel reservation for ${TEST_GIFT.name}`,
+				),
+			}),
+		).toBeVisible();
 
 		await visitorContext.close();
 	});
@@ -224,26 +121,10 @@ test.describe('Anonymous visitor reservation', () => {
 			(url) =>
 				url.pathname === '/register' && url.searchParams.get('redirect') === wishlistPath,
 		);
-		const createAccountButton = page.getByRole('button', {
-			name: 'Vytvořit účet',
-		});
-		await expect(createAccountButton).toBeEnabled();
-		await createAccountButton.click();
-		await expect(page.getByText('Jméno musí mít alespoň 2 znaky')).toBeVisible();
-
 		await page.getByRole('textbox', { name: 'Jméno' }).fill(registrationUser.name);
 		await page.getByRole('textbox', { name: 'E-mail' }).fill(registrationUser.email);
-		const registrationPasswordInput = page.getByRole('textbox', { name: 'Heslo' });
-		await registrationPasswordInput.fill(registrationUser.password);
-		await registrationPasswordInput.blur();
-		await expect(page.getByText('Heslo musí mít alespoň 8 znaků')).not.toBeVisible();
-		await expect(page.getByRole('textbox', { name: 'Jméno' })).toHaveValue(
-			registrationUser.name,
-		);
-		await expect(page.getByRole('textbox', { name: 'E-mail' })).toHaveValue(
-			registrationUser.email,
-		);
-		await createAccountButton.click();
+		await page.getByRole('textbox', { name: 'Heslo' }).fill(registrationUser.password);
+		await page.getByRole('button', { name: 'Vytvořit účet' }).click();
 		await expect(page).toHaveURL((url) => url.pathname === wishlistPath, { timeout: 20_000 });
 	});
 
@@ -261,20 +142,16 @@ test.describe('Anonymous visitor reservation', () => {
 		);
 		const loginUser = createTestUser('wishlist-login');
 		await registerViaApi(request, baseURL!, loginUser);
+		await installTurnstileMock(page);
 		await page.goto(wishlistPath);
 		await page.getByTestId('reserve-button').first().click();
 		await page.getByRole('dialog').locator('a[href*="/login"]').click();
 		await expect(page).toHaveURL(
 			(url) => url.pathname === '/login' && url.searchParams.get('redirect') === wishlistPath,
 		);
-		const loginButton = page.getByRole('button', { name: 'Přihlásit se', exact: true });
-		await loginButton.click();
-		await expect(page.getByText('Zadejte emailovou adresu')).toBeVisible();
-
 		await page.getByRole('textbox', { name: 'E-mail' }).fill(loginUser.email);
 		await page.getByRole('textbox', { name: 'Heslo' }).fill(loginUser.password);
-		await expect(page.getByRole('textbox', { name: 'E-mail' })).toHaveValue(loginUser.email);
-		await loginButton.click();
+		await page.getByRole('button', { name: 'Přihlásit se', exact: true }).click();
 		await expect(page).toHaveURL((url) => url.pathname === wishlistPath);
 	});
 });

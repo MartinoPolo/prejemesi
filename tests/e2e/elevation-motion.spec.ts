@@ -1,287 +1,443 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { createTestUser } from './fixtures/test-data.js';
-import { registerAndGetPage } from './fixtures/auth-helpers.js';
-import { createWishlistAndNavigate } from './fixtures/wishlist-helpers.js';
+import { registerAndGetPage, waitForAppHydration } from './fixtures/auth-helpers.js';
+import {
+	addGift,
+	createWishlistAndNavigate,
+	createWishlistForSomeoneAndNavigate,
+	shareWishlist,
+} from './fixtures/wishlist-helpers.js';
+import { createPixelAssertions } from '../helpers/pixel-assertions.mjs';
 
-interface SurfaceState {
-	translateY: number;
-	scale: number;
-	shadow: string;
+const { expectPixelsNear } = createPixelAssertions(expect);
+
+interface RectSnapshot {
+	x: number;
+	y: number;
+	width: number;
+	height: number;
 }
 
-interface TransitionEvidence {
-	property: string;
-	duration: number;
-	easing: string;
-	delay: number;
+interface GiftGeometrySnapshot {
+	owner: RectSnapshot;
+	surface: RectSnapshot;
+	content: RectSnapshot[];
 }
 
-async function surfaceState(surface: Locator): Promise<SurfaceState> {
-	return surface.evaluate((element) => {
-		const style = getComputedStyle(element);
-		const [, y = '0'] = style.translate.split(' ');
-		return {
-			translateY: Number.parseFloat(y) || 0,
-			scale: style.scale === 'none' ? 1 : Number.parseFloat(style.scale),
-			shadow: style.boxShadow,
-		};
+function visualSurface(owner: Locator) {
+	return owner.locator(':scope > .elevation-surface');
+}
+
+async function rect(locator: Locator): Promise<RectSnapshot> {
+	return locator.evaluate((element) => {
+		const bounds = element.getBoundingClientRect();
+		return { x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height };
 	});
 }
 
-async function installTransitionRecorder(element: Locator) {
-	await element.evaluate((node) => {
-		type RecordedNode = Element & { __elevationTransitions?: TransitionEvidence[] };
-		const recordedNode = node as RecordedNode;
-		recordedNode.__elevationTransitions = [];
-		node.addEventListener('transitionrun', (event) => {
-			const property = (event as TransitionEvent).propertyName;
-			const animation = node
-				.getAnimations()
-				.find((candidate) => (candidate as CSSTransition).transitionProperty === property);
-			if (animation === undefined) {
-				return;
-			}
-			const timing = animation.effect!.getComputedTiming();
-			recordedNode.__elevationTransitions!.push({
-				property,
-				duration: Number(timing.duration),
-				easing: timing.easing ?? '',
-				delay: timing.delay ?? 0,
-			});
-		});
-	});
+function expectSameRect(actual: RectSnapshot, expected: RectSnapshot) {
+	for (const key of ['x', 'y', 'width', 'height'] as const) {
+		expectPixelsNear(actual[key], expected[key]);
+	}
 }
 
-async function expectTransitionContract(element: Locator) {
-	const contract = await element.evaluate((node) => {
-		const style = getComputedStyle(node);
-		return {
-			properties: style.transitionProperty.split(',').map((value) => value.trim()),
-			durations: style.transitionDuration.split(',').map((value) => value.trim()),
-			easing: style.transitionTimingFunction.trim(),
-			expectedEasing: getComputedStyle(document.documentElement)
-				.getPropertyValue('--ease-standard')
-				.trim(),
-			delays: style.transitionDelay.split(',').map((value) => value.trim()),
-		};
-	});
-	expect(contract.properties).toEqual(['translate', 'scale', 'box-shadow']);
-	expect(new Set(contract.durations)).toEqual(new Set(['0.2s']));
-	expect(contract.easing).toBe(contract.expectedEasing);
-	expect(new Set(contract.delays)).toEqual(new Set(['0s']));
+async function sampleFrameRects(locator: Locator, frameCount = 12): Promise<RectSnapshot[]> {
+	return locator.evaluate(async (element, count) => {
+		const samples: RectSnapshot[] = [];
+		for (let frame = 0; frame < count; frame += 1) {
+			await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+			const bounds = element.getBoundingClientRect();
+			samples.push({ x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height });
+		}
+		return samples;
+	}, frameCount);
 }
 
-async function expectConcurrentTransitions(element: Locator, properties: string[]) {
+async function expectAnimationsSettled(locator: Locator) {
 	await expect
 		.poll(() =>
-			element.evaluate((node) => {
-				type RecordedNode = Element & { __elevationTransitions?: TransitionEvidence[] };
-				return (node as RecordedNode).__elevationTransitions ?? [];
-			}),
-		)
-		.toEqual(
-			expect.arrayContaining(
-				properties.map((property) => expect.objectContaining({ property })),
+			locator.evaluate(
+				(element) =>
+					element.getAnimations().filter((animation) => animation.playState === 'running')
+						.length,
 			),
-		);
-	const recorded = await element.evaluate((node) => {
-		type RecordedNode = Element & { __elevationTransitions?: TransitionEvidence[] };
-		return (node as RecordedNode).__elevationTransitions ?? [];
-	});
-	const evidence = recorded.filter((item) => properties.includes(item.property));
-	expect(evidence.map((item) => item.property).sort()).toEqual([...properties].sort());
-	expect(new Set(evidence.map((item) => item.duration))).toEqual(new Set([200]));
-	expect(new Set(evidence.map((item) => item.easing))).toHaveProperty('size', 1);
-	expect(new Set(evidence.map((item) => item.delay))).toEqual(new Set([0]));
-	return evidence;
+		)
+		.toBe(0);
 }
 
-async function animationCount(element: Locator) {
-	return element.evaluate((node) => node.getAnimations().length);
-}
+async function expectHeldNestedPressDoesNotMove(
+	page: Page,
+	gift: Locator,
+	control: Locator,
+	view: 'card' | 'list',
+) {
+	await control.scrollIntoViewIfNeeded();
+	await expect(control).toBeVisible();
+	const giftSurface =
+		view === 'card'
+			? gift.getByTestId('gift-card-surface').locator(':scope > .elevation-surface')
+			: gift.getByTestId('gift-list-item');
+	const controlBounds = await control.boundingBox();
+	expect(controlBounds).not.toBeNull();
+	if (controlBounds === null) {
+		throw new Error('Nested control has no bounding box');
+	}
+	await page.mouse.move(
+		controlBounds.x + controlBounds.width / 2,
+		controlBounds.y + controlBounds.height / 2,
+	);
+	await expectAnimationsSettled(giftSurface);
+	const beforePress = await rect(giftSurface);
 
-async function hoverWithEvidence(page: Page, surface: Locator) {
-	await page.mouse.move(0, 500);
-	const start = await surfaceState(surface);
-	await expectTransitionContract(surface);
-	await installTransitionRecorder(surface);
-	await surface.hover();
-	await expectConcurrentTransitions(surface, ['translate', 'box-shadow']);
-	await expect.poll(() => animationCount(surface)).toBe(0);
-	const end = await surfaceState(surface);
-	expect(end.translateY).toBeLessThan(start.translateY);
-	expect(end.shadow).not.toBe(start.shadow);
-	return { start, end };
-}
-
-async function pressWithEvidence(page: Page, surface: Locator) {
-	await page.mouse.move(0, 500);
-	await surface.hover();
-	await expect.poll(() => animationCount(surface)).toBe(0);
-	const start = await surfaceState(surface);
-	await expectTransitionContract(surface);
-	await installTransitionRecorder(surface);
 	await page.mouse.down();
-	await expectConcurrentTransitions(surface, ['translate', 'scale', 'box-shadow']);
-	await expect.poll(() => animationCount(surface)).toBe(0);
-	const end = await surfaceState(surface);
-	expect(end.translateY).not.toBe(start.translateY);
-	expect(end.scale).not.toBe(start.scale);
-	expect(end.shadow).not.toBe(start.shadow);
-	await page.mouse.up();
+	try {
+		for (const sample of await sampleFrameRects(giftSurface, 4)) {
+			expectSameRect(sample, beforePress);
+		}
+	} finally {
+		await page.mouse.move(1, 1);
+		await page.mouse.up();
+	}
+}
+
+function activeGift(page: Page, view: 'card' | 'list', name: string) {
+	return page
+		.locator(
+			`[data-wishlist-gift-collection][data-view-mode="${view}"]:not([inert]):not([aria-hidden="true"]) [data-gift-item]`,
+		)
+		.filter({ has: page.getByRole('heading', { name, exact: true }) });
+}
+
+async function giftGeometry(
+	owner: Locator,
+	surface: Locator,
+	content: readonly Locator[],
+): Promise<GiftGeometrySnapshot> {
+	return {
+		owner: await rect(owner),
+		surface: await rect(surface),
+		content: await Promise.all(content.map(rect)),
+	};
+}
+
+function expectContentTranslatedWithSurface(
+	actual: GiftGeometrySnapshot,
+	resting: GiftGeometrySnapshot,
+) {
+	const surfaceDelta = {
+		x: actual.surface.x - resting.surface.x,
+		y: actual.surface.y - resting.surface.y,
+	};
+	for (const [index, actualContent] of actual.content.entries()) {
+		const restingContent = resting.content[index]!;
+		expectPixelsNear(actualContent.x - restingContent.x, surfaceDelta.x);
+		expectPixelsNear(actualContent.y - restingContent.y, surfaceDelta.y);
+		expectPixelsNear(actualContent.width, restingContent.width);
+		expectPixelsNear(actualContent.height, restingContent.height);
+	}
+}
+
+function expectContentGeometryWithinSurface(
+	actual: GiftGeometrySnapshot,
+	resting: GiftGeometrySnapshot,
+) {
+	for (const [index, actualContent] of actual.content.entries()) {
+		const restingContent = resting.content[index]!;
+		for (const [actualValue, restingValue] of [
+			[
+				(actualContent.x - actual.surface.x) / actual.surface.width,
+				(restingContent.x - resting.surface.x) / resting.surface.width,
+			],
+			[
+				(actualContent.y - actual.surface.y) / actual.surface.height,
+				(restingContent.y - resting.surface.y) / resting.surface.height,
+			],
+			[
+				actualContent.width / actual.surface.width,
+				restingContent.width / resting.surface.width,
+			],
+			[
+				actualContent.height / actual.surface.height,
+				restingContent.height / resting.surface.height,
+			],
+		] as const) {
+			expect(actualValue).toBeCloseTo(restingValue, 2);
+		}
+	}
+}
+
+function expectSameGiftGeometry(actual: GiftGeometrySnapshot, expected: GiftGeometrySnapshot) {
+	expectSameRect(actual.owner, expected.owner);
+	expectSameRect(actual.surface, expected.surface);
+	for (const [index, contentRect] of actual.content.entries()) {
+		expectSameRect(contentRect, expected.content[index]!);
+	}
 }
 
 test.use({ viewport: { width: 1280, height: 900 } });
 
-test.describe('Coherent elevated-surface motion', () => {
-	test('normal toolbar and compact outline controls press as one rigid surface', async ({
+test.describe('Elevated interaction behavior', () => {
+	test('nested controls stay isolated across List and mobile layouts', async ({
 		browser,
 		request,
 		baseURL,
 	}) => {
-		const user = createTestUser('elevation-toolbar');
+		const user = createTestUser('elevation-nested-controls');
 		const page = await registerAndGetPage(browser, request, baseURL!, user);
-		await page.emulateMedia({ reducedMotion: 'no-preference' });
-		await page.goto('/my-lists');
+		const giftName = 'Dárek s izolovanými akcemi';
+		await createWishlistForSomeoneAndNavigate(page, {
+			title: 'Izolované akce dárku',
+			recipientName: 'Anička',
+		});
+		await addGift(page, giftName, { primaryLink: 'https://example.com/product' });
+		await shareWishlist(page);
 
-		// Exercise and close the palette surface before the create modal can overlay it.
-		const outlineButton = page.getByRole('button', { name: 'Barevná paleta' });
-		const toolbarButton = page.getByRole('button', { name: 'Vytvořit', exact: true });
-		await pressWithEvidence(page, outlineButton);
-		await page.keyboard.press('Escape');
-		await expect(page.getByRole('dialog')).not.toBeVisible();
-		await pressWithEvidence(page, toolbarButton);
+		const switchView = async (view: 'card' | 'list') => {
+			const viewControl = page.getByTestId(`gift-view-${view}`).filter({ visible: true });
+			await viewControl.click();
+			await expect(viewControl).toHaveAttribute('aria-checked', 'true');
+			const gift = activeGift(page, view, giftName);
+			await expect(gift).toBeVisible();
+			return gift;
+		};
+
+		let gift = await switchView('list');
+		let more = gift.getByTestId('gift-more-actions');
+		await expectHeldNestedPressDoesNotMove(page, gift, more, 'list');
+
+		gift = await switchView('card');
+		more = gift.getByTestId('gift-more-actions');
+		await more.click();
+		const menu = page.locator('[data-slot="dropdown-menu-content"]:visible');
+		await expect(menu).toBeVisible();
+		const headingBounds = await gift.getByRole('heading', { name: giftName }).boundingBox();
+		expect(headingBounds).not.toBeNull();
+		if (headingBounds === null) {
+			throw new Error('Gift heading has no bounding box');
+		}
+		await page.mouse.click(
+			headingBounds.x + headingBounds.width / 2,
+			headingBounds.y + headingBounds.height / 2,
+		);
+		await expect(menu).toBeHidden();
+		await expect(page.getByRole('dialog').filter({ visible: true })).toHaveCount(0);
+
+		await page.setViewportSize({ width: 390, height: 844 });
+		gift = await switchView('card');
+		more = gift.getByTestId('gift-more-actions');
+		await expectHeldNestedPressDoesNotMove(page, gift, more, 'card');
+		await more.click();
+		const sheet = page.getByRole('dialog', { name: giftName });
+		await expect(sheet).toBeVisible();
+		const sheetOverlay = page.locator('[data-slot="sheet-overlay"]:visible');
+		await expect(sheetOverlay).toBeVisible();
+		await sheetOverlay.click({ position: { x: 8, y: 8 } });
+		await expect(sheet).toBeHidden();
+		await expect(page.getByRole('dialog').filter({ visible: true })).toHaveCount(0);
 		await page.context().close();
 	});
 
-	test('open account trigger keeps its anchor fixed while shadow feedback settles coherently', async ({
-		browser,
-		request,
-		baseURL,
+	test('gift card press, release, and reduced motion keep the owner and content aligned', async ({
+		page,
 	}) => {
-		const user = createTestUser('elevation-account');
-		const page = await registerAndGetPage(browser, request, baseURL!, user);
 		await page.emulateMedia({ reducedMotion: 'no-preference' });
-		await page.goto('/my-lists');
+		await page.goto('/w/xmas2026');
+		await expect(page.getByTestId('wishlist-toolbar')).toBeVisible();
+		await page
+			.getByTestId('wishlist-toolbar')
+			.getByRole('radio', { name: 'Karta', exact: true })
+			.filter({ visible: true })
+			.click();
 
-		const account = page.getByRole('button', { name: new RegExp(user.name) });
+		const owner = page
+			.locator('[data-testid="gift-card-surface"].elevation-owner-raised')
+			.filter({
+				has: page.getByRole('heading', {
+					name: 'Kávovar DeLonghi',
+					exact: true,
+					level: 3,
+				}),
+			});
+		const surface = visualSurface(owner);
+		const content = [
+			owner.getByTestId('gift-card-image-frame'),
+			owner.getByRole('heading', { level: 3 }),
+			owner.getByTestId('gift-card-price').locator('span'),
+			owner.getByTestId('gift-more-actions'),
+		];
+		await expect(owner).toBeVisible();
+		await owner.scrollIntoViewIfNeeded();
+		for (const element of content) {
+			await expect(element).toBeVisible();
+		}
+		await content[1]!.scrollIntoViewIfNeeded();
 		await page.mouse.move(0, 500);
-		const restingBox = await account.boundingBox();
-		await hoverWithEvidence(page, account);
-		await expect(async () => {
-			if ((await account.getAttribute('aria-expanded')) !== 'true') {
-				await account.click();
-			}
-			await expect(account).toHaveAttribute('aria-expanded', 'true', { timeout: 1_000 });
-		}).toPass({ timeout: 15_000 });
-		await expect.poll(() => animationCount(account)).toBe(0);
-		const open = await surfaceState(account);
-		const openBox = await account.boundingBox();
-		expect(Math.abs(open.translateY)).toBeLessThan(0.05);
-		expect(Math.abs(openBox!.y - restingBox!.y)).toBeLessThan(0.25);
-		await page.context().close();
-	});
+		await page.mouse.move(1, 1);
+		await expect
+			.poll(() => surface.evaluate((element) => getComputedStyle(element).translate))
+			.toBe('none');
+		await owner.scrollIntoViewIfNeeded();
+		const resting = await giftGeometry(owner, surface, content);
+		const pressTarget = resting.content[1]!;
+		const point = {
+			x: pressTarget.x + pressTarget.width / 2,
+			y: pressTarget.y + pressTarget.height / 2,
+		};
 
-	test('dialog close remains top-right and its icon transitions and settles with the surface', async ({
-		browser,
-		request,
-		baseURL,
-	}) => {
-		const user = createTestUser('elevation-close');
-		const page = await registerAndGetPage(browser, request, baseURL!, user);
-		await page.emulateMedia({ reducedMotion: 'no-preference' });
-		await page.goto('/my-lists');
-		const create = page.getByRole('button', { name: 'Vytvořit', exact: true });
-		const dialog = page.getByRole('dialog');
-		await expect(async () => {
-			if (!(await dialog.isVisible())) {
-				await create.click();
-			}
-			await expect(dialog).toBeVisible({ timeout: 1_000 });
-		}).toPass({ timeout: 15_000 });
-		const close = dialog.getByRole('button', { name: 'Zavřít' });
-		const icon = close.locator('svg');
+		await page.mouse.move(point.x, point.y);
+		await expect
+			.poll(() => surface.evaluate((element) => getComputedStyle(element).translate))
+			.toBe('0px -2px');
+		const hovered = await giftGeometry(owner, surface, content);
+		expectSameRect(hovered.owner, resting.owner);
+		expectPixelsNear(hovered.surface.y - resting.surface.y, -2);
+		expectContentTranslatedWithSurface(hovered, resting);
+		expectContentGeometryWithinSurface(hovered, resting);
 
-		for (const width of [390, 1280]) {
-			await page.setViewportSize({ width, height: 800 });
-			await expect.poll(() => animationCount(dialog)).toBe(0);
-			const dialogBox = await dialog.boundingBox();
-			const closeBox = await close.boundingBox();
-			expect(
-				Math.abs(closeBox!.x + closeBox!.width - dialogBox!.x - dialogBox!.width),
-			).toBeLessThan(30);
-			expect(closeBox!.y - dialogBox!.y).toBeGreaterThanOrEqual(0);
-			expect(closeBox!.y - dialogBox!.y).toBeLessThan(30);
+		await owner.evaluate((element) => {
+			element.addEventListener('click', (event) => event.stopPropagation(), { once: true });
+		});
+		await page.mouse.down();
+		try {
+			await expect
+				.poll(() => surface.evaluate((element) => getComputedStyle(element).scale))
+				.toBe('0.98');
+			const active = await giftGeometry(owner, surface, content);
+			expectSameRect(active.owner, resting.owner);
+			expectPixelsNear(active.surface.width, resting.surface.width * 0.98);
+			expectContentGeometryWithinSurface(active, resting);
+		} finally {
+			await page.mouse.up();
 		}
 
-		await page.mouse.move(0, 500);
-		const surfaceStart = await surfaceState(close);
-		const iconStart = await icon.evaluate((element) => getComputedStyle(element).rotate);
-		await expectTransitionContract(close);
-		await installTransitionRecorder(close);
-		await installTransitionRecorder(icon);
-		await close.hover();
-		const surfaceTiming = await expectConcurrentTransitions(close, ['translate', 'box-shadow']);
-		const iconTiming = await expectConcurrentTransitions(icon, ['rotate']);
-		expect(iconTiming[0]).toMatchObject({
-			duration: surfaceTiming[0].duration,
-			easing: surfaceTiming[0].easing,
-			delay: surfaceTiming[0].delay,
-		});
-		await expect.poll(() => animationCount(close)).toBe(0);
-		await expect.poll(() => animationCount(icon)).toBe(0);
-		const surfaceEnd = await surfaceState(close);
-		const iconEnd = await icon.evaluate((element) => getComputedStyle(element).rotate);
-		expect(surfaceEnd.translateY).toBeLessThan(surfaceStart.translateY);
-		expect(surfaceEnd.shadow).not.toBe(surfaceStart.shadow);
-		expect(iconEnd).not.toBe(iconStart);
-		await page.context().close();
-	});
+		await expect
+			.poll(() => surface.evaluate((element) => getComputedStyle(element).translate))
+			.toBe('0px -2px');
+		await expect
+			.poll(() => surface.evaluate((element) => getComputedStyle(element).scale))
+			.toBe('none');
+		const released = await giftGeometry(owner, surface, content);
+		expectSameRect(released.owner, resting.owner);
+		expectContentTranslatedWithSurface(released, resting);
+		expectContentGeometryWithinSurface(released, resting);
 
-	test('cards lift coherently and reduced motion makes representative stickers immediate', async ({
-		browser,
-		request,
-		baseURL,
-	}) => {
-		const user = createTestUser('elevation-card-reduced');
-		const page = await registerAndGetPage(browser, request, baseURL!, user);
-		await createWishlistAndNavigate(page, 'Elevation card');
-		await page.emulateMedia({ reducedMotion: 'no-preference' });
-		await page.goto('/my-lists');
-		const card = page.getByTestId('wishlist-card').filter({ hasText: 'Elevation card' });
-		await hoverWithEvidence(page, card);
+		await page.mouse.move(1, 1);
+		await expect
+			.poll(() => surface.evaluate((element) => getComputedStyle(element).translate))
+			.toBe('none');
+		expectSameGiftGeometry(await giftGeometry(owner, surface, content), resting);
 
 		await page.emulateMedia({ reducedMotion: 'reduce' });
-		const toolbarButton = page.getByRole('button', { name: 'Vytvořit', exact: true });
-		const account = page.getByRole('button', { name: new RegExp(user.name) });
-		for (const surface of [toolbarButton, account, card]) {
-			await page.mouse.move(0, 500);
-			const before = await surfaceState(surface);
-			await surface.hover({ force: true });
-			const after = await surfaceState(surface);
+		await page.mouse.move(point.x, point.y);
+		for (const sample of await sampleFrameRects(surface)) {
+			expectSameRect(sample, resting.surface);
+		}
+		const reducedMotion = await giftGeometry(owner, surface, content);
+		expectSameGiftGeometry(reducedMotion, resting);
+		expectContentGeometryWithinSurface(reducedMotion, resting);
+	});
+
+	test('raised button remains reachable and stationary through a held lower-edge press', async ({
+		browser,
+		request,
+		baseURL,
+	}) => {
+		const user = createTestUser('elevation-held-press');
+		const page = await registerAndGetPage(browser, request, baseURL!, user);
+		await page.emulateMedia({ reducedMotion: 'no-preference' });
+		await page.goto('/my-lists');
+		await waitForAppHydration(page);
+
+		const button = page.getByRole('button', { name: 'Vytvořit', exact: true });
+		await expect(button).toBeVisible();
+		const resting = await rect(button);
+		const surface = visualSurface(button);
+		const restingSurface = await rect(surface);
+		const ordinaryShadowOffset = await button.evaluate((element) =>
+			Number.parseFloat(
+				getComputedStyle(element).getPropertyValue('--elevation-ordinary-offset'),
+			),
+		);
+		expect(ordinaryShadowOffset).toBeGreaterThan(0);
+		const point = {
+			x: resting.x + resting.width / 2,
+			// Exercise the visible lower shadow extension, where hit-region regressions occur.
+			y: resting.y + resting.height + ordinaryShadowOffset - 0.25,
+		};
+		await page.mouse.move(point.x, point.y);
+		await expect
+			.poll(() =>
+				button.evaluate((element, location) => {
+					const target = document.elementFromPoint(location.x, location.y);
+					return target === element || (target !== null && element.contains(target));
+				}, point),
+			)
+			.toBe(true);
+
+		await expect.poll(async () => (await rect(surface)).y).toBeLessThan(restingSurface.y);
+		const hoveredSurface = await rect(surface);
+		await page.mouse.down();
+		try {
+			const samples = await button.evaluate(async (element, location) => {
+				const evidence: Array<{ active: boolean; hit: boolean; rect: RectSnapshot }> = [];
+				for (let frame = 0; frame < 20; frame += 1) {
+					await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+					const target = document.elementFromPoint(location.x, location.y);
+					const bounds = element.getBoundingClientRect();
+					evidence.push({
+						active: element.matches(':active'),
+						hit: target === element || (target !== null && element.contains(target)),
+						rect: {
+							x: bounds.x,
+							y: bounds.y,
+							width: bounds.width,
+							height: bounds.height,
+						},
+					});
+				}
+				return evidence;
+			}, point);
+			expect(samples.every(({ active, hit }) => active && hit)).toBe(true);
+			for (const sample of samples) {
+				expectSameRect(sample.rect, resting);
+			}
 			expect(
-				await surface.evaluate((element) => getComputedStyle(element).transitionProperty),
-			).toBe('none');
-			expect(after.translateY).toBe(before.translateY);
-			expect(after.scale).toBe(before.scale);
+				(await rect(surface)).y,
+				'press feedback moves the lifted face back toward its owner',
+			).toBeGreaterThan(hoveredSurface.y);
+		} finally {
+			await page.mouse.up();
+		}
+		await expect(page.getByRole('dialog', { name: 'Nový seznam přání' })).toBeVisible();
+		await page.context().close();
+	});
+
+	test('representative elevated surfaces stay at rest with reduced motion', async ({
+		browser,
+		request,
+		baseURL,
+	}) => {
+		const user = createTestUser('elevation-reduced-motion');
+		const page = await registerAndGetPage(browser, request, baseURL!, user);
+		await createWishlistAndNavigate(page, 'Reduced motion surface');
+		await page.emulateMedia({ reducedMotion: 'reduce' });
+		await page.goto('/my-lists');
+		await waitForAppHydration(page);
+
+		const create = page.getByRole('button', { name: 'Vytvořit', exact: true });
+		const card = page
+			.getByTestId('wishlist-card')
+			.filter({ hasText: 'Reduced motion surface' });
+		for (const owner of [create, card]) {
+			const surface = visualSurface(owner);
+			const resting = await rect(surface);
+			await owner.hover({ force: true });
+			for (const sample of await sampleFrameRects(surface)) {
+				expectSameRect(sample, resting);
+			}
+			await page.mouse.move(0, 500);
 		}
 
-		const dialog = page.getByRole('dialog');
-		await expect(async () => {
-			if (!(await dialog.isVisible())) {
-				await toolbarButton.click();
-			}
-			await expect(dialog).toBeVisible({ timeout: 1_000 });
-		}).toPass({ timeout: 15_000 });
-		const close = dialog.getByRole('button', { name: 'Zavřít' });
-		await close.hover();
-		expect(
-			await close.evaluate((element) => getComputedStyle(element).transitionProperty),
-		).toBe('none');
-		expect(await close.evaluate((element) => getComputedStyle(element).translate)).toBe('0px');
-		expect(
-			await close.locator('svg').evaluate((element) => getComputedStyle(element).rotate),
-		).toBe('0deg');
 		await page.context().close();
 	});
 });

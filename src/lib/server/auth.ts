@@ -1,7 +1,6 @@
 import { betterAuth } from 'better-auth/minimal';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { sveltekitCookies } from 'better-auth/svelte-kit';
-import { magicLink } from 'better-auth/plugins/magic-link';
 import { captcha } from 'better-auth/plugins';
 import { env } from '$env/dynamic/private';
 import { getRequestEvent } from '$app/server';
@@ -10,7 +9,7 @@ import { sendEmail, renderActionEmailParts } from './email.js';
 import { getTurnstileSecretKey } from './turnstile.js';
 import type { RequestEvent } from '@sveltejs/kit';
 import { AUTH_CAPTCHA_ENDPOINTS, AUTH_IP_ADDRESS_HEADERS, authRateLimit } from './auth_security.js';
-import { resolveAuthOrigins } from '$lib/config/mpx_development.js';
+import { resolveAuthOrigins } from '$lib/config/runtime_environment.js';
 
 // Local dev has no deliverable inbox (the Resend sandbox sender only emails the
 // account owner), so verification links never arrive. Skip the verification gate
@@ -26,6 +25,7 @@ export function createAuth(event?: RequestEvent) {
 		logger: { disabled: !import.meta.env.DEV },
 		rateLimit: authRateLimit(import.meta.env.PROD),
 		advanced: {
+			trustedProxyHeaders: authOrigins.trustedProxyHeaders,
 			ipAddress: {
 				ipAddressHeaders: [...AUTH_IP_ADDRESS_HEADERS],
 			},
@@ -101,21 +101,6 @@ export function createAuth(event?: RequestEvent) {
 				endpoints: [...AUTH_CAPTCHA_ENDPOINTS],
 			}),
 			sveltekitCookies(getRequestEvent),
-			magicLink({
-				sendMagicLink: async ({ email, url }) => {
-					await sendEmail({
-						to: email,
-						subject: 'Your Přejeme si sign-in link',
-						...renderActionEmailParts({
-							heading: 'Sign in to Přejeme si',
-							body: 'Click the button below to sign in. This link expires shortly and can only be used once.',
-							buttonLabel: 'Sign in',
-							url,
-						}),
-						actionUrl: url,
-					});
-				},
-			}),
 		],
 	});
 }

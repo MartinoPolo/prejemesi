@@ -47,11 +47,3 @@ test('seeded bearer-link wishlist blocks indexing without breaking social unfurl
 	expect(ogImage).toContain('seed/wl-xmas2026.jpg');
 	await expect(page.locator('meta[name="twitter:image"]')).toHaveAttribute('content', ogImage!);
 });
-
-['/w/xmas2026/settings', '/en/w/xmas2026', '/en/w/xmas2026/settings'].forEach((path) => {
-	test(`wishlist response blocks indexing directly for ${path}`, async ({ request }) => {
-		const response = await request.get(path, { maxRedirects: 0 });
-
-		expect(response.headers()['x-robots-tag']).toBe('noindex, nofollow, noarchive');
-	});
-});

@@ -403,7 +403,7 @@
 				<button
 					type="button"
 					onclick={addRow}
-					class="flex w-full items-center justify-center gap-2.5 rounded-lg border-[1.5px] border-dashed border-border-strong px-4 py-4 text-sm font-semibold text-muted-foreground transition-colors hover:border-primary hover:bg-primary-soft hover:text-primary focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-ring"
+					class="flex w-full items-center justify-center gap-2.5 rounded-lg border-[1.5px] border-dashed border-border-strong px-4 py-4 text-sm font-semibold text-muted-foreground transition-colors hover:border-primary hover:bg-primary-soft hover:text-brand focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-ring"
 				>
 					<PlusIcon class="size-4" aria-hidden="true" />
 					{m.draft_grid_add_row()}

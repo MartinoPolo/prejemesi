@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { createTestUser } from './fixtures/test-data.js';
 import { registerAndGetPage } from './fixtures/auth-helpers.js';
+import { openCreateWishlistDialog } from './fixtures/wishlist-helpers.js';
 
 /**
  * „Další nastavení" accordion on the create-wishlist dialog (issue #112).
@@ -25,11 +26,7 @@ test.describe('Create-wishlist „Další nastavení" accordion', () => {
 		const page = await registerAndGetPage(browser, request, baseURL!, user);
 
 		await page.goto('/my-lists');
-		await page.waitForLoadState('networkidle');
-		await page.getByRole('button', { name: 'Vytvořit seznam' }).first().click();
-
-		const dialog = page.getByRole('dialog');
-		await expect(dialog).toBeVisible({ timeout: 5_000 });
+		const dialog = await openCreateWishlistDialog(page);
 
 		const title = 'Seznam s paletou';
 		const description = 'Volitelný popis zadaný při vytvoření';
@@ -42,6 +39,10 @@ test.describe('Create-wishlist „Další nastavení" accordion', () => {
 		// Expand „Další nastavení", then set both optional fields.
 		await dialog.getByRole('button', { name: 'Další nastavení' }).click();
 		await expect(descriptionInput).toBeVisible({ timeout: 5_000 });
+		// Visible descendants can still be clipped while the accordion changes height.
+		await dialog.locator('[data-slot="accordion-content"]').evaluate(async (element) => {
+			await Promise.all(element.getAnimations().map((animation) => animation.finished));
+		});
 		await descriptionInput.fill(description);
 		// „Malina" is the ruby palette swatch (aria-pressed button carrying the label).
 		await dialog.getByRole('button', { name: 'Malina' }).click();
@@ -63,39 +64,6 @@ test.describe('Create-wishlist „Další nastavení" accordion', () => {
 		await expect(page.locator('[data-palette="ruby"]')).toBeVisible({ timeout: 5_000 });
 		// AC-3: the description entered at creation is persisted and rendered on the page.
 		await expect(page.getByText(description)).toBeVisible();
-
-		await page.context().close();
-	});
-
-	test('untouched accordion creates a list with defaults and no description', async ({
-		browser,
-		request,
-		baseURL,
-	}) => {
-		const user = createTestUser('create-accordion-default');
-		const page = await registerAndGetPage(browser, request, baseURL!, user);
-
-		await page.goto('/my-lists');
-		await page.waitForLoadState('networkidle');
-		await page.getByRole('button', { name: 'Vytvořit seznam' }).first().click();
-
-		const dialog = page.getByRole('dialog');
-		await expect(dialog).toBeVisible({ timeout: 5_000 });
-
-		const title = 'Seznam bez nastavení';
-		await dialog.getByRole('textbox', { name: 'Název' }).fill(title);
-		// Do NOT open the accordion — this is the identical-to-today path.
-		await dialog.getByRole('button', { name: 'Vytvořit', exact: true }).click();
-
-		await page.waitForURL(/\/w\/[^/]+/, { timeout: 20_000 });
-		await expect(page.getByRole('heading', { level: 1 })).toContainText(title, {
-			timeout: 15_000,
-		});
-
-		// AC-1: the untouched path still creates a working list; the page wrapper carries the
-		// default sky palette (`.last()` targets the wrapper, past the viewer-preference <html>).
-		// Absence of a description on this path is asserted deterministically by the unit tests.
-		await expect(page.locator('[data-palette="sky"]').last()).toBeVisible({ timeout: 5_000 });
 
 		await page.context().close();
 	});

@@ -53,6 +53,50 @@
 	);
 
 	const isRecipientPane = $derived(role === WISHLIST_ROLES.recipient);
+
+	function synchronizeLikePopup(wrapper: HTMLElement) {
+		let animationFrame = 0;
+		const measure = () => {
+			animationFrame = 0;
+			const item = wrapper.querySelector<HTMLElement>('[data-testid="gift-list-item"]');
+			const content = wrapper.querySelector<HTMLElement>('[data-testid="gift-list-content"]');
+			const like = wrapper.querySelector<HTMLElement>('button[aria-pressed]');
+			if (item === null || content === null || like === null) {
+				return;
+			}
+
+			const wrapperBox = wrapper.getBoundingClientRect();
+			const itemBox = item.getBoundingClientRect();
+			const contentBox = content.getBoundingClientRect();
+			const likeBox = like.getBoundingClientRect();
+			wrapper.style.setProperty(
+				'--landing-like-popup-left',
+				`${contentBox.left - wrapperBox.left}px`,
+			);
+			wrapper.style.setProperty(
+				'--landing-like-popup-right',
+				`${wrapperBox.right - itemBox.right}px`,
+			);
+			wrapper.style.setProperty(
+				'--landing-like-popup-top',
+				`${likeBox.bottom - wrapperBox.top + 8}px`,
+			);
+		};
+		const schedule = () => {
+			cancelAnimationFrame(animationFrame);
+			animationFrame = requestAnimationFrame(measure);
+		};
+		const observer = new ResizeObserver(schedule);
+		observer.observe(wrapper);
+		schedule();
+
+		return {
+			destroy() {
+				cancelAnimationFrame(animationFrame);
+				observer.disconnect();
+			},
+		};
+	}
 </script>
 
 <div
@@ -69,13 +113,14 @@
 		<p class="text-(length:--text-base) leading-relaxed text-muted-foreground">{hint}</p>
 	</div>
 
-	<div class="flex min-w-0 flex-col">
+	<div class="flex min-w-0 flex-col gap-3">
 		{#each gifts as gift (gift.id)}
 			{@const isNarrated = isRecipientPane && reservedGiftIds.has(gift.id)}
 			<!-- Horizontal padding is constant so the mobile narration tint can never shift the
 			     row; the desktop split view resets the tint because the recipient pane must stay
 			     pixel-identical while the gifter pane changes (issue #218 REQ-6). -->
 			<div
+				use:synchronizeLikePopup
 				class={cn(
 					'relative -mx-2 rounded-lg px-2 transition-colors duration-300',
 					isNarrated && 'bg-tint lg:bg-transparent',
@@ -83,20 +128,18 @@
 				data-testid="landing-demo-gift-{gift.id}"
 			>
 				{#if gift.id === likePopupGiftId}
-					<!-- Absolutely positioned so the explainer can never nudge the row it
-					     comments on; anchored top-right, clear of the heart at the thumbnail's
-					     bottom-right corner. -->
+					<!-- Measure the real list content edge and place the explainer below Like, so
+					     the full-height square image and the corner action both remain uncovered. -->
 					<p
-						class="absolute -top-2 right-1 z-20 max-w-[min(380px,100%)] rounded-lg border-2 border-ink bg-note px-3 py-2 text-(length:--text-sm) leading-snug text-note-ink shadow-sticker"
+						class="absolute z-20 rounded-lg border-2 border-ink bg-note px-3 py-2 text-(length:--text-sm) leading-snug text-note-ink shadow-sticker"
+						style="left: var(--landing-like-popup-left); right: var(--landing-like-popup-right); top: var(--landing-like-popup-top);"
 						role="status"
 						data-testid="landing-demo-like-popup"
 					>
 						{m.landing_demo_like_popup()}
 					</p>
 				{/if}
-				<!-- The product hides list-row counts; the demo shows them because the live,
-				     shared counter is the whole point of its like buttons. -->
-				<GiftListItem {gift} {role} showLikeCount={true} {onreserve} {onunreserve} />
+				<GiftListItem {gift} {role} {onreserve} {onunreserve} />
 				{#if isNarrated}
 					<p
 						class="my-3 rounded-lg border-2 border-ink bg-note px-3 py-2 text-(length:--text-base) font-semibold text-note-ink lg:hidden"

@@ -37,16 +37,20 @@
 		gift,
 		role,
 		isArchived = false,
-		hideReservationState = false,
+		hideReservationState = role === 'recipient',
 		onreserve,
 		onunreserve,
 	}: Props = $props();
 
-	// Role gating single source (SUMMARY.md invariant): the recipient sees no
-	// action area, no reservation status, no like state anywhere in this view.
-	const { isVisitorOrModerator, visitorGift, isFullyReserved, reservedCount } = $derived(
-		deriveGiftDisplayState(gift, role, hideReservationState),
-	);
+	// Role gating stays centralized: an ordinary recipient sees no reservation state;
+	// a self-promoted recipient may see counts but still gets no gifter actions or identity.
+	const {
+		isVisitorOrModerator,
+		visitorGift,
+		reservationAwareGift,
+		isFullyReserved,
+		reservedCount,
+	} = $derived(deriveGiftDisplayState(gift, role, hideReservationState));
 
 	const styles = giftDetailModalVariants();
 	const imageSrc = $derived(resolveGiftImageUrl(gift.imageUrl, gift.imageKey));
@@ -59,7 +63,9 @@
 	// Dimming applies to a reservation held by someone ELSE only (SUMMARY.md state
 	// matrix): the viewer's own reservation never dims their content.
 	const isDimmed = $derived(
-		isVisitorOrModerator && isFullyReserved && (visitorGift?.myReservationId ?? null) === null,
+		reservationAwareGift !== null &&
+			isFullyReserved &&
+			(reservationAwareGift.myReservationId ?? null) === null,
 	);
 </script>
 
@@ -115,7 +121,7 @@
 				<h2 class="font-heading text-2xl font-semibold text-foreground">{gift.name}</h2>
 				<GiftPieceCount
 					quantity={gift.quantity}
-					role={hideReservationState ? 'recipient' : role}
+					role={reservationAwareGift === null ? 'recipient' : 'visitor'}
 					{reservedCount}
 					reservationAcknowledgementKey={visitorGift?.myReservationId ?? null}
 					hideWhenOne

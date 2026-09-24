@@ -42,7 +42,7 @@
 		disabled = false,
 		placeholder,
 		class: className,
-		size = 'md',
+		size,
 	}: DatePickerProps = $props();
 
 	/** Map the active app locale to a BCP-47 tag for `Calendar` and `Intl`. */
@@ -86,10 +86,10 @@
 				{...props}
 				intent="outline"
 				{size}
-				class={cn(
-					'w-full justify-start font-normal',
+				class={cn('w-full', className)}
+				surfaceClass={cn(
+					'justify-start font-normal',
 					value === null && 'text-muted-foreground',
-					className,
 				)}
 			>
 				<CalendarIcon data-icon="inline-start" />

@@ -1,6 +1,9 @@
 ---
 name: sk-mockup
-description: 'Generate HTML variant mockups from a design brief. Default: 1 mockup. Pass a number for multiple variants (e.g., sk-mockup 3). Use when: "create mockup", "design variant", "mock up", "visualize design", "mockup", "three variants"'
+description:
+    'Generate HTML variant mockups from a design brief. Default: 1 mockup. Pass a number for
+    multiple variants (e.g., sk-mockup 3). Use when: "create mockup", "design variant", "mock up",
+    "visualize design", "mockup", "three variants"'
 argument-hint: "[count] [component-name or 'all']"
 allowed-tools: Read, Write, Glob, Grep, Bash(mkdir *), Agent
 metadata:
@@ -43,20 +46,24 @@ Examples:
 
 Read `designs/DESIGN_SYSTEM.md` if it exists — available classes, component patterns, spacing.
 
-If no design system file exists, infer the design language from `src/app.css` and existing components.
+If no design system file exists, infer the design language from `src/app.css` and existing
+components.
 
 If `designs/tokens.css` exists, do **not** inline it — mockups reference it via stylesheet link.
 
 ### Step 2: Identify Target Brief
 
 - Named component: read `designs/<component-name>/DESIGN_BRIEF_<COMPONENT_NAME>.md`
-- Auto-detect: find a component folder under `designs/` that has a brief but no `variants/variant-*.html`
+- Auto-detect: find a component folder under `designs/` that has a brief but no
+  `variants/variant-*.html`
 
 ### Step 3: Discover Reusable Components
 
 Scan existing components: `ls src/lib/components/base/` and `ls src/lib/components/derived/`
 
-For missing patterns, spawn `mp-context7-docs-fetcher` to check shadcn-svelte (`/huntabyte/shadcn-svelte`) and Bits UI (`/huntabyte/bits-ui`). Defer actual installation to the refine phase.
+For missing patterns, spawn `mp-context7-docs-fetcher` to check shadcn-svelte
+(`/huntabyte/shadcn-svelte`) and Bits UI (`/huntabyte/bits-ui`). Defer actual installation to the
+refine phase.
 
 ### Step 4: Generate Mockup(s)
 
@@ -64,11 +71,13 @@ Output directory: `designs/<component-name>/variants/`
 
 **N = 1**: Generate a single mockup. Output: `designs/<component-name>/variants/variant-a.html`
 
-**N > 1**: Spawn N `mp-ui-variant-generator` agents in parallel. Output: `designs/<component-name>/variants/variant-{a,b,c,...}.html`
+**N > 1**: Spawn N `mp-ui-variant-generator` agents in parallel. Output:
+`designs/<component-name>/variants/variant-{a,b,c,...}.html`
 
 Each mockup must:
 
-- If `designs/tokens.css` exists: `<link rel="stylesheet" href="../../tokens.css">` in `<head>` — never inline tokens
+- If `designs/tokens.css` exists: `<link rel="stylesheet" href="../../tokens.css">` in `<head>` —
+  never inline tokens
 - If no tokens file: inline the project's CSS variables from `src/app.css` in a `<style>` block
 - Include font references matching the project's font stack (from tailwind config or app.css)
 - Use Tailwind utility classes and design system classes throughout
@@ -87,8 +96,11 @@ If the brief specifies a **Container Context**:
 
 ### Step 5: Open in Browser
 
-Open each variant via `file:///` URL (Chrome DevTools MCP if available). Leave tabs open for comparison.
+Open each variant via `file:///` URL (Chrome DevTools MCP if available). Leave tabs open for
+comparison.
 
 ### Step 6: Report
 
-List variants with brief descriptions and file paths. Mention that `/sk-design-refine <variant-letter> <requirements>` can be used next to produce `refined.html` and `SUMMARY.md`.
+List variants with brief descriptions and file paths. Mention that
+`/sk-design-refine <variant-letter> <requirements>` can be used next to produce `refined.html` and
+`SUMMARY.md`.

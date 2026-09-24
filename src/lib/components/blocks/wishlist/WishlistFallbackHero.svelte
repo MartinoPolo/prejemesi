@@ -26,5 +26,5 @@ re-derive per [data-palette] subtree, so the tint follows the wishlist's palette
 	role="img"
 	aria-label={label ?? emoji}
 >
-	<span class="leading-none text-primary [font-size:40cqmin]" aria-hidden="true">{emoji}</span>
+	<span class="leading-none text-brand [font-size:40cqmin]" aria-hidden="true">{emoji}</span>
 </div>

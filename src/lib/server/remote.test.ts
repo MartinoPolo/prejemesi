@@ -71,11 +71,8 @@ describe('guardedQuery', () => {
 		const handler = vi.fn();
 		const wrappedQuery = guardedQuery(handler) as () => unknown;
 
-		expect(() => wrappedQuery()).toThrow();
-		expect(() => {
-			setupUnauthenticatedEvent();
-			wrappedQuery();
-		}).toThrowError(expect.objectContaining({ status: 401 }));
+		expect(() => wrappedQuery()).toThrowError(expect.objectContaining({ status: 401 }));
+		expect(handler).not.toHaveBeenCalled();
 	});
 });
 

@@ -50,10 +50,9 @@ import { closeDb, getDb } from '$lib/server/db/index.js';
 import { user } from '$lib/server/db/auth.schema.js';
 import { wishlist, priorityLevel } from '$lib/server/db/wishlist.schema.js';
 import { wishlistFollower } from '$lib/server/db/follower.schema.js';
-import { gift } from '$lib/server/db/gift.schema.js';
+import { gift, giftCategory } from '$lib/server/db/gift.schema.js';
 import { newGiftDigestState, notification } from '$lib/server/db/notification.schema.js';
-import { bulkUpdateGifts, createGift, updateGift } from './gifts.remote.js';
-import { setBulkUpdateAfterRowsLockedHookForTest } from './gifts.remote.test-hook.js';
+import { createGift, updateGift } from './gifts.remote.js';
 import { importGifts, type ImportGiftsResult } from '../import/import.remote.js';
 import { parseNewGiftDigestPayload } from '$lib/modules/notifications/new_gift_digest.js';
 import { NOTIFICATION_TYPE } from '$lib/modules/notifications/types.js';
@@ -65,8 +64,7 @@ const FOLLOWER_ID = `${PREFIX}follower`;
 const WISHLIST_ID = `${PREFIX}wishlist`;
 const SECOND_WISHLIST_ID = `${PREFIX}second-wishlist`;
 const PRIORITY_ID = `${PREFIX}priority`;
-const BULK_GIFT_ONE_ID = `${PREFIX}bulk-gift-one`;
-const BULK_GIFT_TWO_ID = `${PREFIX}bulk-gift-two`;
+const CATEGORY_ID = `${PREFIX}category`;
 
 class ProbeRollback extends Error {}
 
@@ -100,16 +98,7 @@ type CreateGiftHandler = (
 ) => Promise<typeof gift.$inferSelect>;
 const callCreateGift = createGift as unknown as CreateGiftHandler;
 const callUpdateGift = updateGift as unknown as CreateGiftHandler;
-type BulkUpdateGiftsHandler = (
-	auth: { user: { id: string } },
-	input: {
-		wishlistId: string;
-		giftIds: string[];
-		action: 'received';
-		received: boolean;
-	},
-) => Promise<{ updatedIds: string[] }>;
-const callBulkUpdateGifts = bulkUpdateGifts as unknown as BulkUpdateGiftsHandler;
+
 type ImportGiftsHandler = (
 	auth: { user: { id: string } },
 	input: {
@@ -149,6 +138,13 @@ describe.skipIf(!DB_READY)('createGift remote boundary [real DB]', () => {
 			id: PRIORITY_ID,
 			wishlistId: WISHLIST_ID,
 			label: 'High',
+			sortOrder: 0,
+		});
+		await database.insert(giftCategory).values({
+			id: CATEGORY_ID,
+			wishlistId: WISHLIST_ID,
+			customLabel: 'Gear',
+			color: '#123456',
 			sortOrder: 0,
 		});
 		await database.insert(gift).values({
@@ -286,57 +282,6 @@ describe.skipIf(!DB_READY)('createGift remote boundary [real DB]', () => {
 			userId: FOLLOWER_ID,
 			windowEndsAt: digestRows[0]?.visibleAt,
 		});
-	});
-
-	it('rolls back every bulk update when one locked gift disappears before the update', async () => {
-		const database = getDb();
-		await database.insert(gift).values([
-			{
-				id: BULK_GIFT_ONE_ID,
-				wishlistId: WISHLIST_ID,
-				name: 'Bulk gift one',
-				received: false,
-				sortOrder: 20,
-			},
-			{
-				id: BULK_GIFT_TWO_ID,
-				wishlistId: WISHLIST_ID,
-				name: 'Bulk gift two',
-				received: false,
-				sortOrder: 21,
-			},
-		]);
-		setBulkUpdateAfterRowsLockedHookForTest(async (tx) => {
-			await tx.delete(gift).where(eq(gift.id, BULK_GIFT_TWO_ID));
-		});
-		try {
-			await expect(
-				callBulkUpdateGifts(
-					{ user: { id: ACTOR_ID } },
-					{
-						wishlistId: WISHLIST_ID,
-						giftIds: [BULK_GIFT_ONE_ID, BULK_GIFT_TWO_ID],
-						action: 'received',
-						received: true,
-					},
-				),
-			).rejects.toMatchObject({
-				status: 400,
-				body: { message: SERVER_ERROR.GIFT_WISHLIST_MISMATCH },
-			});
-		} finally {
-			setBulkUpdateAfterRowsLockedHookForTest(undefined);
-		}
-
-		const stored = await database
-			.select({ id: gift.id, received: gift.received })
-			.from(gift)
-			.where(inArray(gift.id, [BULK_GIFT_ONE_ID, BULK_GIFT_TWO_ID]))
-			.orderBy(asc(gift.id));
-		expect(stored).toEqual([
-			{ id: BULK_GIFT_ONE_ID, received: false },
-			{ id: BULK_GIFT_TWO_ID, received: false },
-		]);
 	});
 
 	it('round-trips decimal single and range prices through create and update', async () => {

@@ -1,7 +1,9 @@
+import '../../../../app.css';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { page } from 'vitest/browser';
 import { render } from 'vitest-browser-svelte';
 import { SvelteMap } from 'svelte/reactivity';
+import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
 import * as m from '$lib/paraglide/messages.js';
 
 const mocks = vi.hoisted(() => ({
@@ -18,6 +20,8 @@ vi.mock('$lib/modules/likes/likes.remote.js', () => ({
 }));
 
 const { default: LikeButton } = await import('./LikeButton.svelte');
+
+const { expectPixelsNear, expectPixelsAtLeast, expectPixelsAtMost } = createPixelAssertions(expect);
 
 function deferred<T>() {
 	let resolve!: (value: T) => void;
@@ -81,6 +85,99 @@ beforeEach(() => {
 
 afterEach(() => {
 	vi.restoreAllMocks();
+});
+
+describe('LikeButton approved image treatment (issue #357)', () => {
+	it('uses the shared responsive action and icon sizes when size is omitted', async () => {
+		likesContext();
+		const screen = await render(LikeButton, {
+			giftId: 'gift-responsive',
+			giftName: 'Responsive gift',
+			likeCount: 2,
+		});
+		const button = screen.getByRole('button').element() as HTMLElement;
+		const icon = button.querySelector('svg') as SVGElement;
+
+		for (const [viewportWidth, expectedHeight] of [
+			[390, 40],
+			[800, 32],
+		] as const) {
+			await page.viewport(viewportWidth, 720);
+			expectPixelsNear(button.getBoundingClientRect().height, expectedHeight);
+			expectPixelsNear(icon.getBoundingClientRect().width, 16);
+			expectPixelsNear(icon.getBoundingClientRect().height, 16);
+		}
+		await screen.unmount();
+	});
+
+	it.each([
+		{ size: 'sm' as const, expectedHeight: 26, expectedIconSize: 14 },
+		{ size: 'md' as const, expectedHeight: 32, expectedIconSize: 16 },
+		{ size: 'lg' as const, expectedHeight: 40, expectedIconSize: 16 },
+		{ size: 'xl' as const, expectedHeight: 48, expectedIconSize: 20 },
+	])(
+		'keeps explicit $size geometry fixed for ghost and sticker appearances',
+		async ({ size, expectedHeight, expectedIconSize }) => {
+			await page.viewport(390, 720);
+			for (const appearance of ['ghost', 'sticker'] as const) {
+				likesContext();
+				const screen = await render(LikeButton, {
+					giftId: `gift-${size}-${appearance}`,
+					giftName: 'Explicit gift',
+					likeCount: 2,
+					size,
+					appearance,
+				});
+				const button = screen.getByRole('button').element() as HTMLElement;
+				const icon = button.querySelector('svg') as SVGElement;
+
+				expectPixelsNear(button.getBoundingClientRect().height, expectedHeight);
+				expectPixelsNear(icon.getBoundingClientRect().width, expectedIconSize);
+				expectPixelsNear(icon.getBoundingClientRect().height, expectedIconSize);
+				await screen.unmount();
+			}
+		},
+	);
+
+	it.each([0, 7, 123])(
+		'renders count %d beside the heart within the shared desktop control target',
+		async (likeCount) => {
+			await page.viewport(800, 720);
+			likesContext(true);
+			await renderLikeButton(likeCount);
+
+			const button = page.getByRole('button');
+			const buttonElement = button.element() as HTMLButtonElement;
+			const surface = buttonElement.querySelector(
+				':scope > .elevation-surface',
+			) as HTMLElement;
+			const heart = buttonElement.querySelector('[data-like-heart]') as HTMLElement;
+			const icon = heart.querySelector('svg') as SVGElement;
+			const count = buttonElement.querySelector('[data-like-count]') as HTMLElement;
+			const buttonRect = buttonElement.getBoundingClientRect();
+			const heartRect = heart.getBoundingClientRect();
+			const countRect = count.getBoundingClientRect();
+			const surfaceStyle = getComputedStyle(surface);
+
+			expect(count.textContent).toBe(String(likeCount));
+			expectPixelsAtMost(heartRect.right, countRect.left);
+			expect(buttonElement.getAttribute('aria-describedby')).toBe(count.id);
+			await expect.element(button).toHaveAttribute('aria-pressed', 'true');
+			expectPixelsAtLeast(buttonRect.width, 32);
+			expectPixelsNear(buttonRect.height, 32);
+			expect(surfaceStyle.backgroundColor).toBe('rgba(0, 0, 0, 0)');
+			const shadowAlphas = Array.from(
+				surfaceStyle.boxShadow.matchAll(/rgba\([^)]*, ([\d.]+)\)/g),
+				(match) => Number(match[1]),
+			);
+			expect(
+				surfaceStyle.boxShadow === 'none' || shadowAlphas.every((alpha) => alpha === 0),
+			).toBe(true);
+			expect(surfaceStyle.borderTopWidth).toBe('0px');
+			expect(getComputedStyle(icon).fill).not.toBe('none');
+			expect(getComputedStyle(count).filter).not.toBe('none');
+		},
+	);
 });
 
 describe('LikeButton acknowledgement', () => {

@@ -8,9 +8,9 @@
  * never touch real user rows.
  */
 
-import { resolveDevelopmentEnvironment } from '../../src/lib/config/mpx_development.js';
+import { resolveRuntimeEnvironment } from '../../src/lib/config/runtime_environment.js';
 
-const development = resolveDevelopmentEnvironment(process.env);
+const runtimeEnvironment = resolveRuntimeEnvironment(process.env);
 
 export const LOADTEST_ID_PREFIX = 'loadtest-';
 
@@ -30,8 +30,8 @@ export const MAX_VIRTUAL_USERS = 100;
 export const ARENA_VIEW_GIFT_COUNT = 12;
 
 export const TARGETS = {
-	local: development.loadTestLocalTarget,
-	preview: development.previewOrigin,
+	local: runtimeEnvironment.loadTestLocalTarget,
+	preview: runtimeEnvironment.previewOrigin,
 	production: 'https://prejemesi.cz',
 } as const;
 

@@ -8,15 +8,17 @@ import { tv } from 'tailwind-variants';
 export const wishlistListViewVariants = tv({
 	slots: {
 		root: 'stagger-pop flex flex-col gap-3.5',
-		row: 'group/row flex items-center gap-3.5 rounded-panel border-[2.5px] border-ink bg-card px-4 py-3 shadow-sticker transition-[translate,scale,box-shadow] duration-(--duration-normal) ease-(--ease-standard) delay-0 motion-reduce:transition-none',
+		row: 'group/row relative isolate flex rounded-panel',
+		surface:
+			'relative flex w-full items-center gap-3.5 rounded-panel bg-card px-4 py-3 transition-[translate,scale,box-shadow] duration-(--duration-normal) ease-(--ease-standard)',
+		border: 'pointer-events-none absolute inset-0 rounded-panel border-[2.5px] border-ink',
 		bannerMini:
 			'relative flex size-11 shrink-0 -rotate-3 items-center justify-center overflow-hidden rounded-[10px] border-2 border-ink',
 		info: 'flex min-w-0 flex-1 flex-col gap-0.5',
 		title: 'truncate font-heading text-[16px] font-semibold text-foreground',
 		subtitle: 'truncate text-xs text-muted-foreground',
 		trailing: 'flex shrink-0 items-center gap-3',
-		statusBadge:
-			'inline-flex items-center whitespace-nowrap rounded-full border-2 border-ink px-2.5 py-0.5 text-[11px] font-semibold',
+		statusBadge: 'max-w-full shrink-0',
 		giftCount: 'whitespace-nowrap text-[13px] font-bold text-muted-foreground',
 	},
 	variants: {
@@ -25,7 +27,7 @@ export const wishlistListViewVariants = tv({
 				row: 'opacity-70 grayscale-[0.7]',
 			},
 			false: {
-				row: 'hover:shadow-sticker-lift focus-within:shadow-sticker-lift motion-safe:hover:-translate-y-0.5 motion-safe:focus-within:-translate-y-0.5',
+				row: 'elevation-owner elevation-owner-raised',
 			},
 		},
 	},

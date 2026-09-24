@@ -1,7 +1,7 @@
 <script module lang="ts">
 	import { defineMeta } from '@storybook/addon-svelte-csf';
 	import { expect, userEvent, within } from 'storybook/test';
-	import { Checkbox } from '$lib/components/base/checkbox/index.js';
+	import { CHECKBOX_SIZES, Checkbox } from '$lib/components/base/checkbox/index.js';
 	import { Label } from '$lib/components/base/label/index.js';
 	import StoryKeyboardHints from '$lib/storybook/StoryKeyboardHints.svelte';
 	import KeyboardHint from '$lib/storybook/KeyboardHint.svelte';
@@ -11,6 +11,7 @@
 		component: Checkbox,
 		tags: ['autodocs'],
 		argTypes: {
+			size: { control: 'select', options: [...CHECKBOX_SIZES] },
 			checked: { control: 'boolean' },
 			indeterminate: { control: 'boolean' },
 			disabled: { control: 'boolean' },
@@ -41,12 +42,16 @@
 
 		await expect(uncheckedDisabled).toBeDisabled();
 		await expect(uncheckedDisabled).toHaveAttribute('aria-checked', 'false');
-		await userEvent.click(uncheckedDisabled);
-		await expect(uncheckedDisabled).toHaveAttribute('aria-checked', 'false');
-
 		await expect(checkedDisabled).toBeDisabled();
 		await expect(checkedDisabled).toHaveAttribute('aria-checked', 'true');
-		await userEvent.click(checkedDisabled);
+
+		await userEvent.tab();
+		await expect(uncheckedDisabled).not.toHaveFocus();
+		await expect(checkedDisabled).not.toHaveFocus();
+
+		uncheckedDisabled.click();
+		checkedDisabled.click();
+		await expect(uncheckedDisabled).toHaveAttribute('aria-checked', 'false');
 		await expect(checkedDisabled).toHaveAttribute('aria-checked', 'true');
 	};
 
@@ -67,6 +72,19 @@
 
 	type CheckboxProps = ComponentProps<typeof Checkbox>;
 </script>
+
+<Story name="All Variants">
+	{#snippet template(args: CheckboxProps)}
+		<div class="flex items-end gap-4">
+			{#each CHECKBOX_SIZES as size (size)}
+				<div class="flex flex-col items-center gap-2">
+					<span class="text-xs text-muted-foreground">{size}</span>
+					<Checkbox {...args} {size} checked aria-label={`Checkbox ${size}`} />
+				</div>
+			{/each}
+		</div>
+	{/snippet}
+</Story>
 
 <Story name="All States">
 	{#snippet template(args: CheckboxProps)}

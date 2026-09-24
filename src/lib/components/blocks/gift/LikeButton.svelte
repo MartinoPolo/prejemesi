@@ -5,6 +5,7 @@
 	import * as m from '$lib/paraglide/messages.js';
 	import { useLikes } from '$lib/modules/likes/likes.context.svelte.js';
 	import { toggleLike } from '$lib/modules/likes/likes.remote.js';
+	import { ElevationSurface } from '$lib/components/base/elevation-surface/index.js';
 	import {
 		likeButtonVariants,
 		type LikeButtonSize,
@@ -20,16 +21,18 @@
 		appearance?: LikeButtonAppearance;
 		showCount?: boolean;
 		class?: string;
+		surfaceClass?: string;
 	}
 
 	let {
 		giftId,
 		giftName,
 		likeCount,
-		size = 'md',
+		size,
 		appearance = 'ghost',
 		showCount = true,
 		class: className,
+		surfaceClass,
 	}: LikeButtonProps = $props();
 
 	const likesContext = useLikes();
@@ -42,6 +45,8 @@
 	const activeAnimations = new SvelteSet<Animation>();
 
 	const styles = $derived(likeButtonVariants({ liked, size, appearance }));
+	const componentId = $props.id();
+	const countId = $derived(`like-count-${componentId}`);
 
 	// Prop refreshes normally remain authoritative. While a toggle is in flight,
 	// keep the optimistic count stable and reconcile it from that request's result.
@@ -144,13 +149,16 @@
 	aria-label={liked
 		? m.gift_like_remove_aria({ name: giftName })
 		: m.gift_like_add_aria({ name: giftName })}
+	aria-describedby={showCount ? countId : undefined}
 	aria-pressed={liked}
 	onclick={handleClick}
 >
-	<span bind:this={heartElement} data-like-heart class="inline-flex">
-		<HeartIcon class={styles.icon()} />
-	</span>
-	{#if showCount && displayCount > 0}
-		<span data-like-count class={styles.count()}>{displayCount}</span>
-	{/if}
+	<ElevationSurface class={cn(styles.surface(), surfaceClass)}>
+		<span bind:this={heartElement} data-like-heart class="inline-flex shrink-0">
+			<HeartIcon class={styles.icon()} />
+		</span>
+		{#if showCount}
+			<span id={countId} data-like-count class={styles.count()}>{displayCount}</span>
+		{/if}
+	</ElevationSurface>
 </button>

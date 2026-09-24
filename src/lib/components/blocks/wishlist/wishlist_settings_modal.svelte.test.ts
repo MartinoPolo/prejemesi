@@ -1,6 +1,7 @@
 import { cleanup, render } from 'vitest-browser-svelte';
 import { userEvent } from 'vitest/browser';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
 import type { ComponentProps } from 'svelte';
 import * as m from '$lib/paraglide/messages.js';
 import { REVERT_CAPABILITY } from '$lib/modules/wishlists/wishlist_capabilities.js';
@@ -9,6 +10,7 @@ import { GIFT_CATEGORY_PRESETS } from '$lib/modules/gift-categories/types.js';
 import { createDefaultWishlistSlots } from '$lib/modules/images/index.js';
 
 const remoteMocks = vi.hoisted(() => ({
+	refreshGiftCategorySettings: vi.fn().mockResolvedValue(undefined),
 	saveGiftCategorySettingsCommand: vi.fn(),
 	saveWishlistSettings: vi.fn(),
 }));
@@ -16,13 +18,20 @@ vi.mock('$env/dynamic/public', () => ({ env: {} }));
 vi.mock('$lib/modules/wishlists/wishlist_settings.remote.js', () => ({
 	saveWishlistSettings: remoteMocks.saveWishlistSettings,
 }));
-vi.mock('$lib/modules/gift-categories/gift_categories.remote.js', () => ({
+vi.mock('$lib/modules/gift-categories/gift_category_queries.remote.js', () => ({
 	getGiftCategories: vi.fn(() => ({ current: [] })),
-	getGiftCategorySettingsRows: vi.fn(() => ({ current: [] })),
+	getGiftCategorySettingsRows: vi.fn(() => ({
+		current: [],
+		refresh: remoteMocks.refreshGiftCategorySettings,
+	})),
+}));
+vi.mock('$lib/modules/gift-categories/gift_categories.remote.js', () => ({
 	saveGiftCategorySettingsCommand: remoteMocks.saveGiftCategorySettingsCommand,
 }));
 
 import WishlistSettingsModal from './WishlistSettingsModal.svelte';
+
+const { expectPixelsNear, expectPixelsAtLeast, expectPixelsAtMost } = createPixelAssertions(expect);
 
 afterEach(() => {
 	cleanup();
@@ -135,7 +144,7 @@ describe('WishlistSettingsModal import and export tab', () => {
 			activeTab: 'image',
 			wishlist: {
 				...wishlist,
-				imageKey: 'demo/backpack.jpg',
+				imageKey: 'demo/v1/backpack.jpg',
 				imageSlots: createDefaultWishlistSlots(),
 			},
 		});
@@ -227,14 +236,11 @@ describe('WishlistSettingsModal import and export tab', () => {
 		await expect.element(screen.getByRole('button', { name: m.save() })).toBeVisible();
 	});
 
-	it('keeps the six tabs in one horizontally scrollable row', () => {
+	it('keeps the six tabs in the required order', () => {
 		const screen = renderSettings();
 		const tablist = screen
 			.getByRole('tablist', { name: m.wishlist_settings_title() })
 			.element();
-		expect(tablist.classList).toContain('flex-nowrap');
-		expect(tablist.classList).toContain('overflow-x-auto');
-		expect(tablist.classList).not.toContain('sm:flex-col');
 		expect(
 			[...tablist.querySelectorAll('[role=tab]')].map((tab) => tab.textContent?.trim()),
 		).toEqual([
@@ -297,18 +303,18 @@ describe('WishlistSettingsModal import and export tab', () => {
 		await expect.element(danger).toHaveAttribute('aria-selected', 'true');
 		let tablistRect = tablist.getBoundingClientRect();
 		const dangerRect = danger.element().getBoundingClientRect();
-		expect(dangerRect.left).toBeGreaterThanOrEqual(tablistRect.left);
-		expect(dangerRect.right).toBeLessThanOrEqual(tablistRect.right);
-		expect(dialog.scrollTop).toBe(dialogScrollTop);
-		expect(window.scrollY).toBe(pageScrollY);
+		expectPixelsAtLeast(dangerRect.left, tablistRect.left);
+		expectPixelsAtMost(dangerRect.right, tablistRect.right);
+		expectPixelsNear(dialog.scrollTop, dialogScrollTop);
+		expectPixelsNear(window.scrollY, pageScrollY);
 
 		await userEvent.keyboard('{Home}');
 		await expect.element(details).toHaveFocus();
 		tablistRect = tablist.getBoundingClientRect();
 		const detailsRect = details.element().getBoundingClientRect();
-		expect(detailsRect.left).toBeGreaterThanOrEqual(tablistRect.left);
-		expect(detailsRect.right).toBeLessThanOrEqual(tablistRect.right);
-		expect(dialog.scrollTop).toBe(dialogScrollTop);
-		expect(window.scrollY).toBe(pageScrollY);
+		expectPixelsAtLeast(detailsRect.left, tablistRect.left);
+		expectPixelsAtMost(detailsRect.right, tablistRect.right);
+		expectPixelsNear(dialog.scrollTop, dialogScrollTop);
+		expectPixelsNear(window.scrollY, pageScrollY);
 	});
 });

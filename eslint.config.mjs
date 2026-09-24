@@ -13,6 +13,7 @@ const eslintSvelteConfig = {
 export default [
 	{
 		ignores: [
+			'.local',
 			'.svelte-kit',
 			'.wrangler',
 			'.storybook',
@@ -28,6 +29,12 @@ export default [
 			'**/*.d.ts',
 			'scripts/**',
 			'.claude/worktrees/**',
+			'.local/**',
+			'.mpx/logs/component-visual-review/**',
+			'.mpx/logs/e2e-audit/**',
+			'.test-audit/**',
+			'review/checks/**',
+			'archive/**',
 		],
 	},
 	...tseslint.configs.recommended,
@@ -137,5 +144,9 @@ export default [
 				{ ignoreMiddleExtensions: true },
 			],
 		},
+	},
+	{
+		...tseslint.configs.disableTypeChecked,
+		files: ['designs/**/*.{js,mjs}'],
 	},
 ];

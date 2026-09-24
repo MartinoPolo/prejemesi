@@ -54,7 +54,7 @@ export const shareWizardVariants = tv({
 		// Step 3
 		successHero: 'flex flex-col items-center gap-3 px-0 py-4 text-center',
 		successIconWrap:
-			'flex size-20 rotate-3 items-center justify-center rounded-2xl border-[2.5px] border-ink bg-tint text-primary shadow-sticker',
+			'flex size-20 rotate-3 items-center justify-center rounded-2xl border-[2.5px] border-ink bg-tint text-brand shadow-sticker',
 		successTitle: 'font-heading text-2xl font-semibold tracking-tight text-foreground',
 		successSub: 'max-w-[360px] text-sm leading-relaxed text-muted-foreground',
 		successLinkRow: 'flex w-full min-w-0 items-center justify-center gap-1.5',

@@ -11,7 +11,7 @@
 		"sourceMap": true,
 		"strict": true,
 		"moduleResolution": "bundler",
-		"types": ["./worker-configuration.d.ts"]
+		"types": []
 	},
 	"exclude": ["src/lib/paraglide"]
 	// Path aliases are handled by https://svelte.dev/docs/kit/configuration#alias

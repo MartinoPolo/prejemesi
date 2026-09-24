@@ -1,6 +1,7 @@
 <script lang="ts">
 	import * as m from '$lib/paraglide/messages.js';
 	import { Button } from '$lib/components/base/button/index.js';
+	import type { ControlSize } from '$lib/components/base/control_sizing.js';
 	import KeyRoundIcon from '@lucide/svelte/icons/key-round';
 	import { useReservations } from '$lib/modules/reservations/reservations.context.svelte.js';
 	import { RESERVATION_RELEASE_CAPABILITY } from '$lib/modules/wishlists/wishlist_capabilities.js';
@@ -9,12 +10,18 @@
 
 	interface ReleaseReservationButtonProps {
 		gift: GiftForVisitor;
-		size?: 'md' | 'sm';
+		size?: ControlSize;
+		disabled?: boolean;
 		/** Extra classes on the underlying Button for stacked editor/action layouts. */
 		class?: string;
 	}
 
-	let { gift, size = 'sm', class: className }: ReleaseReservationButtonProps = $props();
+	let {
+		gift,
+		size,
+		disabled = false,
+		class: className,
+	}: ReleaseReservationButtonProps = $props();
 
 	const reservations = useReservations();
 
@@ -35,10 +42,15 @@
 
 	function handleOpenClick(event: MouseEvent) {
 		event.stopPropagation();
-		dialogOpen = true;
+		if (!disabled) {
+			dialogOpen = true;
+		}
 	}
 
 	async function handleRelease(reservationId: string) {
+		if (disabled || isReleasing) {
+			return;
+		}
 		isReleasing = true;
 		try {
 			const released = await reservations.release(gift.id, reservationId);
@@ -57,6 +69,7 @@
 		{size}
 		intent="danger"
 		aria-label={m.reserve_release_button_aria({ name: gift.name })}
+		{disabled}
 		onclick={handleOpenClick}
 		data-testid="release-reservation-button"
 		class={className}
@@ -69,7 +82,7 @@
 		bind:open={dialogOpen}
 		giftName={gift.name}
 		reservations={releaseLedger}
-		{isReleasing}
+		isReleasing={isReleasing || disabled}
 		onrelease={handleRelease}
 	/>
 {/if}

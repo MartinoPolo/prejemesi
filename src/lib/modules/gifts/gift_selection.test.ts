@@ -2,6 +2,15 @@ import { describe, expect, it } from 'vitest';
 import { createGiftSelection, shouldExitGiftSelectionOnEscape } from './gift_selection.svelte.js';
 
 describe('gift selection', () => {
+	it('can enter selection mode from the toolbar without preselecting a gift', () => {
+		const selection = createGiftSelection(['a']);
+
+		selection.enter();
+
+		expect(selection.active).toBe(true);
+		expect(selection.selectedIds()).toEqual([]);
+	});
+
 	it('derives unchecked, indeterminate, and checked state for a visible domain', () => {
 		const selection = createGiftSelection(['a', 'b', 'c']);
 		selection.enter('a');

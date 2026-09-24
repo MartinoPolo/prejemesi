@@ -92,15 +92,19 @@
 				)}
 			>
 				{#if href !== null}
-					<a
+					<Button
 						{href}
 						target="_blank"
 						rel="external noopener noreferrer"
-						class="flex size-6 flex-none place-items-center rounded-sm text-primary transition-colors hover:text-foreground focus-visible:outline-3 focus-visible:outline-offset-1 focus-visible:outline-ring"
+						intent="ghost"
+						size="sm"
+						format="icon"
+						class="flex-none"
+						surfaceClass="text-brand"
 						aria-label={m.draft_grid_open_link({ label: labelOf(link) })}
 					>
-						<ExternalLinkIcon class="size-3.5" aria-hidden="true" />
-					</a>
+						<ExternalLinkIcon data-icon="solo" aria-hidden="true" />
+					</Button>
 				{:else}
 					<span
 						class={cn(
@@ -123,15 +127,14 @@
 				/>
 				<Button
 					intent="ghost"
-					size="icon-sm"
-					class={cn(
-						'size-6 flex-none text-muted-foreground',
-						DRAFT_DESTRUCTIVE_HOVER_CLASS,
-					)}
+					size="sm"
+					format="icon"
+					class="flex-none"
+					surfaceClass={cn('text-muted-foreground', DRAFT_DESTRUCTIVE_HOVER_CLASS)}
 					onclick={() => removeLink(index)}
 					aria-label={m.draft_grid_remove_link({ label: labelOf(link) })}
 				>
-					<XIcon class="size-3.5" aria-hidden="true" />
+					<XIcon data-icon="solo" aria-hidden="true" />
 				</Button>
 			</div>
 			{#if invalid}
@@ -147,7 +150,8 @@
 		<Button
 			intent="ghost"
 			size="sm"
-			class="self-start font-semibold text-muted-foreground"
+			class="self-start"
+			surfaceClass="font-semibold text-muted-foreground"
 			onclick={addLink}
 			disabled={atLimit}
 			aria-label={m.draft_grid_add_link_aria()}

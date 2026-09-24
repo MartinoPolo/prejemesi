@@ -62,7 +62,7 @@
 	const reservedGiftIds = new SvelteSet<string>();
 
 	// Loaded after hydration only, so the server-rendered landing page still needs no
-	// database. `LikeButton` hides a zero count, so the numbers just pop in when they land.
+	// database. The count updates when the client-side query lands.
 	const likesQuery = $derived(browser ? getLandingDemoLikes() : null);
 	const likeCounts = $derived<LandingDemoLikeCounts>(likesQuery?.current?.counts ?? {});
 	const likedGiftIds = $derived(
@@ -209,10 +209,12 @@
 						class="row-span-7 grid grid-rows-subgrid gap-y-0"
 						data-testid="landing-demo-pair-gifter"
 					>
+						<!-- Archived suppresses demo reservation controls while its Like remains interactive. -->
 						<GiftCard
 							gift={pairGifterGift}
 							role={WISHLIST_ROLES.visitor}
 							isArchived={true}
+							allowArchivedLike={true}
 						/>
 					</div>
 					<div
@@ -279,7 +281,7 @@
 					>
 						<div class="demo-polaroid-img">
 							<img
-								src={asset('/demo/pane-gifter.jpg')}
+								src={asset('/demo/v1/pane-gifter.webp')}
 								alt={m.landing_demo_gifter_photo_alt()}
 								loading="lazy"
 							/>
@@ -312,7 +314,7 @@
 					>
 						<div class="demo-polaroid-img">
 							<img
-								src={asset('/demo/pane-recipient.jpg')}
+								src={asset('/demo/v1/pane-recipient.webp')}
 								alt={m.landing_demo_recipient_photo_alt()}
 								loading="lazy"
 							/>
@@ -373,7 +375,7 @@
 		background: #fffdf6;
 		border: 2px solid #4a443a;
 		border-radius: 3px;
-		box-shadow: 5px 6px 0 var(--hard-shadow-strong);
+		box-shadow: var(--elevation-lifted-strong);
 	}
 
 	.demo-polaroid::before {

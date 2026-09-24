@@ -5,6 +5,7 @@
 	import { createGiftPointerReorderController } from './gift_pointer_reorder.svelte.js';
 	import { giftSectionHasHeader, type GiftSection } from '$lib/modules/gifts/gift_ordering.js';
 	import type { GiftByRole, GiftForVisitor } from '$lib/modules/gifts/types.js';
+	import type { GiftContextInvocation } from './gift_context_invocation.js';
 	import type { WishlistRole } from '$lib/modules/wishlists/types.js';
 	import * as m from '$lib/paraglide/messages.js';
 	import {
@@ -23,12 +24,17 @@
 		onreserve: (gift: GiftForVisitor) => void;
 		onunreserve: (gift: GiftForVisitor) => void;
 		onreceived: (giftId: string, received: boolean) => void;
+		receivedPendingGiftIds?: ReadonlySet<string>;
 		onreorderpreview: (orderedIds: string[]) => void;
 		onreordercommit: (orderedIds: string[]) => void;
 		onreordercancel: (orderedIds: string[]) => void;
 		selectionMode?: boolean;
 		onselectiontoggle?: (giftId: string) => void;
-		oncontextactions?: (gift: GiftByRole, event: MouseEvent | null) => boolean;
+		oncontextactions?: (gift: GiftByRole, invocation: GiftContextInvocation) => boolean;
+		hascontextactions?: (gift: GiftByRole) => boolean;
+		activeContextGiftId?: string | null;
+		contextSurface?: 'menu' | 'dialog';
+		showPriority?: boolean;
 	}
 
 	let {
@@ -41,12 +47,17 @@
 		onreserve,
 		onunreserve,
 		onreceived,
+		receivedPendingGiftIds = new Set<string>(),
 		onreorderpreview,
 		onreordercommit,
 		onreordercancel,
 		selectionMode = false,
 		onselectiontoggle,
 		oncontextactions,
+		hascontextactions,
+		activeContextGiftId = null,
+		contextSurface = 'menu',
+		showPriority = true,
 	}: WishlistGiftCardGridProps = $props();
 
 	let gridEl = $state<HTMLElement | null>(null);
@@ -96,18 +107,14 @@
 	$effect(() => () => reorder.destroy());
 </script>
 
-<!-- Each card band spans 7 rows of this grid (see gift_card_variants.ts): the wrapper and
-     card are row subgrids, so price/priority/links/footer align across cards in a row.
-     gap-5 stays between bands; inside a band the wrapper zeroes the row gap and the card
-     sections space themselves with margins. -->
 <div class="sr-only" role="status" aria-live="polite" aria-atomic="true">
 	{reorderAnnouncement}
 </div>
 
 <div
 	bind:this={gridEl}
-	class="grid gap-5"
-	style:grid-template-columns="repeat(auto-fill, minmax(280px, 1fr))"
+	data-testid="wishlist-gift-card-grid"
+	class="gift-card-grid isolate grid auto-rows-auto gap-2 [grid-template-columns:repeat(auto-fill,minmax(min(100%,280px),1fr))] sm:gap-5 sm:pb-5"
 >
 	{#each indexedSections as { section, items } (sectionRenderKey(section, items))}
 		{#if giftSectionHasHeader(section)}
@@ -120,8 +127,9 @@
 			<WishlistGiftItem
 				gift={giftItem}
 				{index}
+				totalCount={totalGiftCount}
 				{reorderEnabled}
-				class="row-span-7 grid grid-rows-subgrid gap-y-0"
+				class="h-auto! min-w-0 self-stretch"
 				draggedGiftId={reorder.draggedGiftId.current}
 				dragOverGiftId={reorder.dragOverGiftId.current}
 				dragOverStyle="ring"
@@ -138,12 +146,40 @@
 						{role}
 						{isArchived}
 						{hideReservationState}
+						{showPriority}
+						contextualMode={selectionMode || reorderEnabled}
 						{onreserve}
 						{onunreserve}
 						{onreceived}
+						receivedPending={receivedPendingGiftIds.has(giftItem.id)}
+						moreOpen={activeContextGiftId === giftItem.id}
+						moreSurface={contextSurface}
+						persistentMore={hascontextactions?.(giftItem) ?? false}
+						onmore={oncontextactions !== undefined
+							? (anchor, placementSnapshot) =>
+									oncontextactions(giftItem, {
+										kind: 'more',
+										anchor,
+										placementSnapshot,
+									})
+							: undefined}
 					/>
 				{/snippet}
 			</WishlistGiftItem>
 		{/each}
 	{/each}
 </div>
+
+<style>
+	@media (width <= 320px) {
+		.gift-card-grid {
+			grid-template-columns: minmax(0, 1fr);
+			align-items: start;
+			gap: 10px;
+		}
+
+		.gift-card-grid > :global([data-gift-item]) {
+			height: auto !important;
+		}
+	}
+</style>

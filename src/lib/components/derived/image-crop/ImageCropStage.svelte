@@ -53,6 +53,8 @@
 		 * behavior.
 		 */
 		interactive?: boolean;
+		/** Prevents user crop mutations while preserving the interactive layout. */
+		disabled?: boolean;
 		/**
 		 * Renders the ENTIRE image letterboxed (contain) inside the window instead
 		 * of the cover-cropped `cropRect` (REQ-7's Fit preview). Only meaningful
@@ -84,6 +86,7 @@
 		fillColor = null,
 		tokenScope = IMAGE_TOKEN_SCOPES.global,
 		interactive = true,
+		disabled = false,
 		containMode = false,
 		onWheelPromote,
 		showLabelChip = true,
@@ -303,7 +306,7 @@
 	}
 
 	function beginDrag(event: PointerEvent) {
-		if (!isReady || photoRect === null) {
+		if (disabled || !isReady || photoRect === null) {
 			return;
 		}
 		event.preventDefault();
@@ -313,7 +316,7 @@
 	}
 
 	function handlePointerMove(event: PointerEvent) {
-		if (!dragging || photoRect === null) {
+		if (disabled || !dragging || photoRect === null) {
 			return;
 		}
 		// The photo is fixed and fully visible; dragging moves the WINDOW over it, so
@@ -324,11 +327,13 @@
 	}
 
 	function setZoom(nextZoom: number) {
-		emit(zoomCropRect(cropRect, normAspect, nextZoom));
+		if (!disabled) {
+			emit(zoomCropRect(cropRect, normAspect, nextZoom));
+		}
 	}
 
 	function handleWheel(event: WheelEvent) {
-		if (!isReady) {
+		if (disabled || !isReady) {
 			return;
 		}
 		event.preventDefault();
@@ -336,7 +341,7 @@
 	}
 
 	function handleKeydown(event: KeyboardEvent) {
-		if (!isReady) {
+		if (disabled || !isReady) {
 			return;
 		}
 		const panX = cropRect.w * KEYBOARD_PAN_FRACTION;
@@ -361,7 +366,9 @@
 	}
 
 	function reset() {
-		emit(centeredCropRect(normAspect));
+		if (!disabled) {
+			emit(centeredCropRect(normAspect));
+		}
 	}
 
 	// A spread object (rather than per-attribute ternaries) so the a11y linter
@@ -371,7 +378,8 @@
 		interactive
 			? {
 					role: 'button',
-					tabindex: 0,
+					tabindex: disabled ? -1 : 0,
+					'aria-disabled': disabled,
 					'aria-label': `${m.image_crop_region_label()}: ${targetLabel}`,
 				}
 			: {},
@@ -429,8 +437,10 @@
 		const listener = interactive
 			? handleWheel
 			: (event: WheelEvent) => {
-					event.preventDefault();
-					onWheelPromote?.();
+					if (!disabled) {
+						event.preventDefault();
+						onWheelPromote?.();
+					}
 				};
 		el.addEventListener('wheel', listener, { passive: false });
 		return () => el.removeEventListener('wheel', listener);
@@ -542,14 +552,19 @@
 				min={sliderMinPercent}
 				max={IMAGE_ZOOM_MAX * 100}
 				step={SLIDER_STEP}
-				disabled={!isReady}
+				disabled={disabled || !isReady}
 				onValueChange={(value: number) => setZoom(value / 100)}
 				aria-label={m.image_crop_zoom_label()}
 			/>
 			<span class="w-12 text-right text-xs tabular-nums text-muted-foreground">
 				{Math.round(zoom * 100)} %
 			</span>
-			<Button intent="ghost" size="sm" disabled={!isReady || isDefaultRect} onclick={reset}>
+			<Button
+				intent="ghost"
+				size="sm"
+				disabled={disabled || !isReady || isDefaultRect}
+				onclick={reset}
+			>
 				<RotateCcwIcon data-icon="inline-start" />
 				{m.gift_image_crop_reset()}
 			</Button>

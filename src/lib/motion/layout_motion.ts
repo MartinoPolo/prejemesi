@@ -32,6 +32,16 @@ function isVisibleRectangle(element: HTMLElement, rectangle: DOMRect): boolean {
 	if (!element.isConnected || element.hidden || rectangle.width <= 0 || rectangle.height <= 0) {
 		return false;
 	}
+	const viewport = element.ownerDocument.defaultView;
+	if (
+		viewport === null ||
+		rectangle.right <= 0 ||
+		rectangle.bottom <= 0 ||
+		rectangle.left >= viewport.innerWidth ||
+		rectangle.top >= viewport.innerHeight
+	) {
+		return false;
+	}
 	const style = getComputedStyle(element);
 	return style.display !== 'none' && style.visibility !== 'hidden';
 }
@@ -130,13 +140,11 @@ export function createIdentityLayoutMotion(options: IdentityLayoutMotionOptions 
 	}
 
 	function capture(root: ParentNode, toolbar?: HTMLElement | null): LayoutMotionSnapshot {
+		const gifts = captureGifts(root).positions;
+		const toolbarHeight =
+			toolbar?.isConnected === true ? toolbar.getBoundingClientRect().height : null;
 		cancel();
-		return {
-			run,
-			gifts: captureGifts(root).positions,
-			toolbarHeight:
-				toolbar?.isConnected === true ? toolbar.getBoundingClientRect().height : null,
-		};
+		return { run, gifts, toolbarHeight };
 	}
 
 	async function play(

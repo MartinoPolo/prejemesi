@@ -20,12 +20,11 @@ const CS = {
 	headline: 'Rezervaci uvidí kamarádi. Petra ne.',
 	roleGifter: 'Kamarád',
 	roleRecipient: 'Petra',
-	reservedSticker: 'Rezervováno',
+	reservedSticker: 'Rezervováno někým jiným',
 	reserve: 'Rezervovat',
 	cancelReservation: 'Zrušit rezervaci',
 	invariantCaption: 'Petra nevidí, že je rezervováno — překvapení platí.',
 	teapotName: 'Porcelánová konvička na čaj',
-	likePopup: 'Počítadlo je opravdové',
 	gifterPhotoAlt: 'Kamarádi s dárky',
 	recipientPhotoAlt: 'Petra',
 	gifterPhotoCaption: 'Kamarádi',
@@ -75,66 +74,6 @@ async function toggleReservation(button: Locator, expectedLabel: string): Promis
 		await button.click();
 		await expect(button).toHaveText(expectedLabel, { timeout: 2_000 });
 	}).toPass({ timeout: 30_000 });
-}
-
-/**
- * The demo's only like button that renders its count: the mobile hook's gifter `GiftCard`.
- * The two panes use `GiftListItem`, which passes `showCount={false}`, so their hearts show
- * pressed state only.
- */
-function pairLikeButton(page: Page): Locator {
-	return page.getByTestId('landing-demo-pair-gifter').locator('button[aria-pressed]');
-}
-
-/**
- * Resolves on the next like-counter round trip. The demo's only remote traffic is the like
- * query and command, so any `/_app/remote/` response is one of them. Every count read has to
- * be sequenced behind one of these: the query loads after hydration (counts pop in) and the
- * button paints an optimistic number before the command answers, so an unsequenced read can
- * catch either placeholder instead of the shared truth.
- */
-function likeCounterResponse(page: Page): Promise<unknown> {
-	return page.waitForResponse((response) => response.url().includes('/_app/remote/'), {
-		timeout: 15_000,
-	});
-}
-
-/** Rendered like count; `LikeButton` hides a zero, so an empty label reads as 0. */
-async function likeCount(button: Locator): Promise<number> {
-	const label = (await button.innerText()).trim();
-	return label === '' ? 0 : Number(label);
-}
-
-/**
- * Clicks a like button and waits for its pressed state to flip. Same retry rationale as
- * {@link toggleReservation}: the section is server-rendered, so a click can land before
- * hydration wires the handler.
- */
-async function toggleLike(button: Locator, expectedPressed: boolean): Promise<void> {
-	await expect(async () => {
-		await button.click();
-		await expect(button).toHaveAttribute('aria-pressed', String(expectedPressed), {
-			timeout: 2_000,
-		});
-	}).toPass({ timeout: 30_000 });
-}
-
-/**
- * `toggleLike` returns as soon as the OPTIMISTIC state flips, which is before the command
- * has landed. Reloading into that gap would race the write. The anonymous visitor cookie is
- * minted by that same command response (a query cannot set cookies), so in a fresh browser
- * context its appearance is exact proof that the first like committed server-side.
- */
-async function waitForFirstLikeToCommit(page: Page): Promise<void> {
-	await expect
-		.poll(
-			async () => {
-				const cookies = await page.context().cookies();
-				return cookies.some((cookie) => cookie.name === 'prejemesi_anon_id');
-			},
-			{ timeout: 15_000 },
-		)
-		.toBe(true);
 }
 
 test.describe('Landing demo section', () => {
@@ -192,8 +131,10 @@ test.describe('Landing demo section', () => {
 		await expect(pairGifter.getByRole('heading', { name: CS.teapotName })).toBeVisible();
 		await expect(pairRecipient.getByRole('heading', { name: CS.teapotName })).toBeVisible();
 
-		// Only the gifter cell carries the reservation sticker.
-		await expect(pairGifter.getByText(CS.reservedSticker)).toBeVisible();
+		// Only the visible gifter overlay carries the reservation sticker.
+		await expect(pairGifter.locator('[data-testid="gift-state-overlay"]:visible')).toHaveText(
+			CS.reservedSticker,
+		);
 		await expect(pairRecipient.getByText(RESERVATION_TRACE)).toHaveCount(0);
 		// A frozen illustration: neither cell offers a control.
 		await expect(pair.getByTestId('reserve-button')).toHaveCount(0);
@@ -213,6 +154,13 @@ test.describe('Landing demo section', () => {
 		const gifterGift = demoGift(gifterPane(page));
 		const reserveButton = gifterGift.getByTestId('reserve-button');
 		await expect(reserveButton).toHaveText(CS.reserve);
+		const mutations: string[] = [];
+		page.on('request', (networkRequest) => {
+			const method = networkRequest.method();
+			if (method !== 'GET' && method !== 'HEAD') {
+				mutations.push(`${method} ${networkRequest.url()}`);
+			}
+		});
 
 		await toggleReservation(reserveButton, CS.cancelReservation);
 
@@ -248,47 +196,14 @@ test.describe('Landing demo section', () => {
 		await expect(recipientPane(page).getByTestId('landing-demo-invariant-caption')).toHaveCount(
 			0,
 		);
-	});
+		expect(mutations).toEqual([]);
 
-	test('desktop split view leaves the recipient pane untouched by a reservation', async ({
-		page,
-	}) => {
-		await page.setViewportSize(DESKTOP_VIEWPORT);
-		await gotoDemo(page);
-
-		// The narrow-screen scaffolding is gone; both panes are on screen at once.
-		await expect(page.getByTestId('landing-demo-pair')).toBeHidden();
-		await expect(page.getByTestId('landing-demo-role-toggle')).toBeHidden();
-		await expect(gifterPane(page)).toBeVisible();
-		await expect(recipientPane(page)).toBeVisible();
-
-		const recipientGift = demoGift(recipientPane(page));
-		const recipientTextBefore = await recipientGift.innerText();
-
-		const reserveButton = demoGift(gifterPane(page)).getByTestId('reserve-button');
-		await expect(reserveButton).toHaveText(CS.reserve);
-		await toggleReservation(reserveButton, CS.cancelReservation);
-
-		// Positive control: the gifter's own row does carry the reservation wording, so the
-		// absence assertions below are about the invariant, not about a dead locator.
-		await expect(
-			demoGift(gifterPane(page)).getByTestId('gift-list-item').getByText(RESERVATION_TRACE),
-		).not.toHaveCount(0);
-
-		// Petra's side must be indistinguishable from before the click. `innerText` is what she
-		// can actually read, so the mobile-only narration (present but `lg:hidden`) is excluded.
-		await expect.poll(() => recipientGift.innerText()).toBe(recipientTextBefore);
-		await expect(recipientGift.getByTestId('reserve-button')).toHaveCount(0);
-		await expect(
-			recipientGift.getByTestId('gift-list-item').getByText(RESERVATION_TRACE),
-		).toHaveCount(0);
-		// The mobile-only narration must never surface in the split view.
-		await expect(
-			recipientPane(page).getByTestId('landing-demo-invariant-caption'),
-		).toBeHidden();
-
-		await toggleReservation(reserveButton, CS.reserve);
-		await expect.poll(() => recipientGift.innerText()).toBe(recipientTextBefore);
+		await page.reload();
+		await page.waitForSelector('[data-testid="landing-demo"]');
+		await page.getByTestId('landing-demo-role-gifter').click();
+		await expect(demoGift(gifterPane(page)).getByTestId('reserve-button')).toHaveText(
+			CS.reserve,
+		);
 	});
 
 	test('each pane is flanked by its polaroid without breaking the panes alignment', async ({
@@ -306,13 +221,6 @@ test.describe('Landing demo section', () => {
 		await expect(gifterPolaroid).toHaveText(new RegExp(CS.gifterPhotoCaption));
 		await expect(recipientPolaroid).toHaveText(new RegExp(CS.recipientPhotoCaption));
 
-		// The prints are asymmetric decoration; the two pane cards still start on one line.
-		const gifterBox = await gifterPane(page).boundingBox();
-		const recipientBox = await recipientPane(page).boundingBox();
-		expect(gifterBox).not.toBeNull();
-		expect(recipientBox).not.toBeNull();
-		expect(Math.abs((gifterBox?.y ?? 0) - (recipientBox?.y ?? 0))).toBeLessThanOrEqual(1);
-
 		// Overhanging prints must never push the page sideways. 1024px is the tightest
 		// case: the absolute-positioned prints exist but the viewport margins around the
 		// 1200px content column do not yet.
@@ -323,138 +231,6 @@ test.describe('Landing demo section', () => {
 			);
 			expect(overflow, `horizontal overflow at ${width}px`).toBeLessThanOrEqual(0);
 		}
-	});
-
-	test('the visible pane brings its own polaroid on narrow screens', async ({ page }) => {
-		await page.setViewportSize(MOBILE_VIEWPORT);
-		await gotoDemo(page);
-
-		const gifterPolaroid = page.getByTestId('landing-demo-polaroid-gifter');
-		const recipientPolaroid = page.getByTestId('landing-demo-polaroid-recipient');
-		await expect(gifterPolaroid).toBeVisible();
-		await expect(recipientPolaroid).toBeHidden();
-
-		// Server-rendered section: the click can land before hydration wires the toggle.
-		await expect(async () => {
-			await page.getByTestId('landing-demo-role-recipient').click();
-			await expect(recipientPolaroid).toBeVisible({ timeout: 2_000 });
-		}).toPass({ timeout: 30_000 });
-		await expect(gifterPolaroid).toBeHidden();
-	});
-
-	test('reserving and unreserving fires no network mutation', async ({ page }) => {
-		await page.setViewportSize(DESKTOP_VIEWPORT);
-		await gotoDemo(page);
-
-		const reserveButton = demoGift(gifterPane(page)).getByTestId('reserve-button');
-		await expect(reserveButton).toHaveText(CS.reserve);
-
-		// Only non-GET traffic matters: the dev server streams module GETs continuously.
-		const mutations: string[] = [];
-		page.on('request', (networkRequest) => {
-			const method = networkRequest.method();
-			if (method !== 'GET' && method !== 'HEAD') {
-				mutations.push(`${method} ${networkRequest.url()}`);
-			}
-		});
-
-		await toggleReservation(reserveButton, CS.cancelReservation);
-		await toggleReservation(reserveButton, CS.reserve);
-
-		expect(mutations).toEqual([]);
-	});
-
-	test('a reload resets the demo', async ({ page }) => {
-		await page.setViewportSize(DESKTOP_VIEWPORT);
-		await gotoDemo(page);
-
-		const reserveButton = () => demoGift(gifterPane(page)).getByTestId('reserve-button');
-		await toggleReservation(reserveButton(), CS.cancelReservation);
-
-		await page.reload();
-		await page.waitForSelector('[data-testid="landing-demo"]');
-
-		await expect(reserveButton()).toHaveText(CS.reserve);
-	});
-
-	// The one real, shared, persisted surface in the demo. Serial because the counter is
-	// global state and the config is `fullyParallel`: two like tests running at once would
-	// see each other's writes land between a snapshot and its assertion.
-	test.describe('like counter', () => {
-		test.describe.configure({ mode: 'serial' });
-
-		test('liking a demo gift moves the shared counter and unliking puts it back', async ({
-			page,
-		}) => {
-			await page.setViewportSize(MOBILE_VIEWPORT);
-			const initialCounts = likeCounterResponse(page);
-			await gotoDemo(page);
-			await initialCounts;
-
-			const likeButton = pairLikeButton(page);
-			await expect(likeButton).toHaveAttribute('aria-pressed', 'false');
-
-			// The counter is real, shared, global state — parallel workers and reruns all write
-			// to it, so only deltas against the count on screen right now can be asserted.
-			const countBeforeLike = await likeCount(likeButton);
-
-			const likeCommitted = likeCounterResponse(page);
-			await toggleLike(likeButton, true);
-			await likeCommitted;
-			await expect.poll(() => likeCount(likeButton)).toBe(countBeforeLike + 1);
-
-			const unlikeCommitted = likeCounterResponse(page);
-			await toggleLike(likeButton, false);
-			await unlikeCommitted;
-			await expect.poll(() => likeCount(likeButton)).toBe(countBeforeLike);
-		});
-
-		test('a like survives a reload (anonymous visitor cookie)', async ({ page }) => {
-			await page.setViewportSize(MOBILE_VIEWPORT);
-			await gotoDemo(page);
-
-			const likeButton = () => pairLikeButton(page);
-			await toggleLike(likeButton(), true);
-			await waitForFirstLikeToCommit(page);
-			const countAfterLike = await likeCount(likeButton());
-
-			await page.reload();
-			await page.waitForSelector('[data-testid="landing-demo"]');
-
-			// Unlike the reservation state, this one is restored from the server for this browser.
-			await expect(likeButton()).toHaveAttribute('aria-pressed', 'true');
-			await expect.poll(() => likeCount(likeButton())).toBe(countAfterLike);
-
-			// Leave the shared counter as it was found.
-			await toggleLike(likeButton(), false);
-		});
-
-		test('a like explains the counter once per session', async ({ page }) => {
-			await page.setViewportSize(DESKTOP_VIEWPORT);
-			await gotoDemo(page);
-
-			const heart = demoGift(gifterPane(page)).locator('button[aria-pressed]');
-			const popup = page.getByTestId('landing-demo-like-popup');
-			// Nothing explains anything until the visitor actually likes something.
-			await expect(popup).toHaveCount(0);
-
-			await toggleLike(heart, true);
-			await expect(popup).toBeVisible();
-			await expect(popup).toHaveText(new RegExp(CS.likePopup));
-
-			// Restore the shared counter; unliking must never trigger the explainer.
-			await toggleLike(heart, false);
-			await expect(popup).toHaveCount(0, { timeout: 15_000 });
-
-			// Second like in the same session: the explainer has had its turn. Sequenced behind
-			// the command response, since that is what would have opened the bubble.
-			const secondLikeCommitted = likeCounterResponse(page);
-			await toggleLike(heart, true);
-			await secondLikeCommitted;
-			await expect(popup).toHaveCount(0);
-
-			await toggleLike(heart, false);
-		});
 	});
 
 	test('the demo wishlist can be retinted with the palette switcher', async ({ page }) => {

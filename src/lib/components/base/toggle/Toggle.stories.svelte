@@ -18,11 +18,9 @@
 		const canvas = within(canvasElement);
 		const toggle = canvas.getByRole('button', { name: /toggle bold/i });
 		await expect(toggle).toHaveAttribute('aria-pressed', 'false');
-		await expect(toggle).toHaveAttribute('data-state', 'off');
-		toggle.click();
+		await userEvent.click(toggle);
 		await waitFor(() => {
 			expect(toggle).toHaveAttribute('aria-pressed', 'true');
-			expect(toggle).toHaveAttribute('data-state', 'on');
 		});
 	};
 
@@ -30,10 +28,9 @@
 		const canvas = within(canvasElement);
 		const toggle = canvas.getByRole('button', { name: /toggle bold/i });
 		await expect(toggle).toHaveAttribute('aria-pressed', 'true');
-		toggle.click();
+		await userEvent.click(toggle);
 		await waitFor(() => {
 			expect(toggle).toHaveAttribute('aria-pressed', 'false');
-			expect(toggle).toHaveAttribute('data-state', 'off');
 		});
 	};
 
@@ -41,7 +38,8 @@
 		const canvas = within(canvasElement);
 		const toggle = canvas.getByRole('button', { name: /toggle bold/i });
 		await expect(toggle).toHaveAttribute('aria-pressed', 'false');
-		toggle.click();
+		await expect(toggle).toBeDisabled();
+		await userEvent.click(toggle);
 		await expect(toggle).toHaveAttribute('aria-pressed', 'false');
 	};
 
@@ -78,12 +76,8 @@
 							<div class="flex flex-col items-center gap-1">
 								<span class="text-[10px] text-muted-foreground">{size}</span>
 								<Toggle {...args} {intent} {size} aria-label="Bold">
-									{#if size === 'icon' || size === 'icon-sm'}
-										<BoldIcon data-icon="inline-start" />
-									{:else}
-										<BoldIcon data-icon="inline-start" />
-										Bold
-									{/if}
+									<BoldIcon data-icon="inline-start" />
+									Bold
 								</Toggle>
 							</div>
 						{/each}
@@ -178,7 +172,7 @@
 
 <Story name="Icon Only">
 	{#snippet template(args: ToggleProps)}
-		<Toggle {...args} size="icon" aria-label="Toggle italic">
+		<Toggle {...args} size="md" format="icon" aria-label="Toggle italic">
 			<ItalicIcon data-icon="inline-start" />
 		</Toggle>
 	{/snippet}

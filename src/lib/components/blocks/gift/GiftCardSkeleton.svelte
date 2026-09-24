@@ -4,13 +4,15 @@
 
 <!-- Mirrors the sticker gift card chrome so the loading grid doesn't jump on swap -->
 <div
-	class="flex flex-col overflow-hidden rounded-panel border-[2.5px] border-ink bg-card shadow-sticker"
+	class="grid h-[280px] grid-rows-[136px_minmax(0,1fr)] overflow-hidden rounded-panel border-[2.5px] border-ink bg-card shadow-sticker sm:flex sm:h-auto sm:flex-col"
 >
 	<!-- Image area: 4:3 (issue #183), mirrors gift_card_variants' imageArea -->
-	<Skeleton class="aspect-[4/3] w-full rounded-none border-b-[2.5px] border-ink" />
+	<Skeleton
+		class="size-full rounded-none border-b-[2.5px] border-ink sm:aspect-[4/3] sm:h-auto"
+	/>
 
 	<!-- Body -->
-	<div class="flex flex-1 flex-col gap-2 p-4">
+	<div class="flex min-h-0 flex-1 flex-col gap-2 p-2 sm:p-4">
 		<!-- Name + piece count -->
 		<div class="flex flex-wrap items-baseline gap-1.5">
 			<Skeleton class="h-5 w-3/4" />

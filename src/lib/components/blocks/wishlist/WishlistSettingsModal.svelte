@@ -41,7 +41,7 @@
 		translateServerError,
 	} from '$lib/modules/errors/translate_server_error.js';
 	import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
-	import { getGiftCategorySettingsRows } from '$lib/modules/gift-categories/gift_categories.remote.js';
+	import { getGiftCategorySettingsRows } from '$lib/modules/gift-categories/gift_category_queries.remote.js';
 	import {
 		REVERT_CAPABILITY,
 		type RevertCapability,
@@ -54,7 +54,10 @@
 		type WishlistRole,
 	} from '$lib/modules/wishlists/types.js';
 	import type { Palette } from '$lib/theme/palettes.js';
-	import { overlayCloseButtonClass } from '$lib/components/base/dialog/dialog_close_button.js';
+	import {
+		overlayCloseButtonClass,
+		overlayCloseButtonSurfaceClass,
+	} from '$lib/components/base/dialog/dialog_close_button.js';
 
 	interface WishlistSettingsModalProps {
 		open: boolean;
@@ -921,8 +924,10 @@
 
 		<Button
 			intent="ghost"
-			size="icon-sm"
+			size="sm"
+			format="icon"
 			class={overlayCloseButtonClass}
+			surfaceClass={overlayCloseButtonSurfaceClass}
 			onclick={() => handleOpenChange(false)}
 		>
 			<XIcon data-icon="inline-start" />

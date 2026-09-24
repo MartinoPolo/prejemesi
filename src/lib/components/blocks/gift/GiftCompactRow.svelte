@@ -15,8 +15,12 @@
 	} from '$lib/modules/gifts/gift_display.js';
 	import { deriveGiftDisplayState } from '$lib/modules/gifts/gift_display_state.js';
 	import { normalizeGiftUrl, getPrimaryGiftLink } from '$lib/modules/gifts/gift_url.js';
-	import { canManageWishlist } from '$lib/modules/wishlists/wishlist_capabilities.js';
+	import {
+		canManageWishlist,
+		canSeeReserverNames,
+	} from '$lib/modules/wishlists/wishlist_capabilities.js';
 	import { cn } from '$lib/utils.js';
+	import GiftPriorityBadge from './GiftPriorityBadge.svelte';
 
 	interface GiftCompactRowProps {
 		gift: GiftByRole;
@@ -27,22 +31,30 @@
 		onreserve?: (gift: GiftForVisitor) => void;
 		onunreserve?: (gift: GiftForVisitor) => void;
 		onreceived?: (giftId: string, received: boolean) => void;
+		receivedPending?: boolean;
+		showPriority?: boolean;
 	}
 
 	let {
 		gift,
 		role,
 		isArchived = false,
-		hideReservationState = false,
+		hideReservationState = role === 'recipient',
 		onclick,
 		onreserve,
 		onunreserve,
 		onreceived,
+		receivedPending = false,
+		showPriority = true,
 	}: GiftCompactRowProps = $props();
 
-	const { isVisitorOrModerator, visitorGift, isFullyReserved, reservedCount } = $derived(
-		deriveGiftDisplayState(gift, role, hideReservationState),
-	);
+	const {
+		isVisitorOrModerator,
+		visitorGift,
+		reservationAwareGift,
+		isFullyReserved,
+		reservedCount,
+	} = $derived(deriveGiftDisplayState(gift, role, hideReservationState));
 
 	const canManage = $derived(canManageWishlist(role));
 	const showActions = $derived(
@@ -53,7 +65,9 @@
 	const domain = $derived(extractGiftDomain(gift.links));
 	const safeGiftUrl = $derived(normalizeGiftUrl(primaryLink?.url ?? null));
 	const priceDisplay = $derived(formatPrice(gift.price, gift.currency, gift.priceMax));
-	const reserverLine = $derived(formatReserverLine(visitorGift?.reserverNames ?? []));
+	const reserverLine = $derived(
+		canSeeReserverNames(role) ? formatReserverLine(visitorGift?.reserverNames ?? []) : null,
+	);
 </script>
 
 <tr
@@ -74,16 +88,21 @@
 	aria-label={onclick ? m.gift_open_detail_aria({ name: gift.name }) : undefined}
 >
 	<td class="px-3 py-1.5">
-		<span class="text-sm font-medium text-foreground">
-			{gift.name}
+		<div class="flex min-w-0 flex-wrap items-center gap-1.5">
+			<span class="min-w-0 text-sm font-medium text-foreground">{gift.name}</span>
+			<GiftPriorityBadge
+				priorityLabel={gift.priorityLabel}
+				{showPriority}
+				class="text-[10px]"
+			/>
 			<GiftPieceCount
 				quantity={gift.quantity}
-				role={hideReservationState ? 'recipient' : role}
+				role={reservationAwareGift === null ? 'recipient' : 'visitor'}
 				{reservedCount}
 				reservationAcknowledgementKey={visitorGift?.myReservationId ?? null}
 				hideWhenOne
 			/>
-		</span>
+		</div>
 	</td>
 
 	<td class="px-3 py-1.5">
@@ -92,7 +111,7 @@
 				href={safeGiftUrl ?? '#'}
 				target="_blank"
 				rel="external noopener noreferrer"
-				class="inline-flex items-center gap-1 text-xs text-primary"
+				class="inline-flex items-center gap-1 text-xs text-brand"
 				onclick={(e: MouseEvent) => e.stopPropagation()}
 			>
 				<ExternalLinkIcon class="size-3" />
@@ -110,7 +129,7 @@
 
 	<td class="px-3 py-1.5 text-right">
 		{#if gift.price !== null}
-			<span class="text-sm font-semibold text-primary">{priceDisplay}</span>
+			<span class="text-sm font-semibold text-brand">{priceDisplay}</span>
 		{:else}
 			<span class="text-xs text-muted-foreground">{priceDisplay}</span>
 		{/if}
@@ -138,6 +157,7 @@
 						{isArchived}
 						size="sm"
 						{onreceived}
+						pending={receivedPending}
 					/>
 				{/if}
 				{#if isVisitorOrModerator && visitorGift}

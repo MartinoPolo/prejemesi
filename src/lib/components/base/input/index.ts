@@ -2,6 +2,7 @@ import Root from './Input.svelte';
 
 export { Root, Root as Input };
 export {
+	INPUT_SIZES,
 	INPUT_STATES,
 	type InputProps,
 	type InputSize,

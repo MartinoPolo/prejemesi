@@ -1,13 +1,14 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
+	import { mergeProps } from 'bits-ui';
 	import { Button } from '$lib/components/base/button/index.js';
 	import * as Popover from '$lib/components/base/popover/index.js';
+	import { ChoiceRow } from '$lib/components/derived/choice-row/index.js';
 	import * as m from '$lib/paraglide/messages.js';
 	import { localizeCurrentHref } from '$lib/i18n/locale.js';
 	import { updatePreferredLocale } from '$lib/modules/settings/settings.remote.js';
 	import { getLocaleForUrl, locales, setLocale, type Locale } from '$lib/paraglide/runtime.js';
-	import { cn } from '$lib/utils.js';
 	import { SimpleTooltip } from '$lib/components/base/tooltip/index.js';
 	import LanguageFlag from './LanguageFlag.svelte';
 
@@ -74,20 +75,14 @@
 	<div class="grid gap-1">
 		{#each availableLocales as locale (locale)}
 			{@const language = LOCALE_META[locale]}
-			<button
-				type="button"
-				class={cn(
-					'flex cursor-pointer items-center gap-2 rounded-btn border-2 border-transparent px-2 py-1.5 text-left text-(length:--text-sm) font-semibold text-foreground transition-colors',
-					'hover:bg-accent focus-visible:bg-accent focus-visible:outline-none',
-					locale === currentLocale && 'border-ink bg-accent',
-				)}
-				aria-pressed={locale === currentLocale}
-				aria-disabled={isSwitchingLocale ? 'true' : undefined}
-				onclick={() => handleLocaleChange(locale)}
+			<ChoiceRow
+				selected={locale === currentLocale}
+				disabled={isSwitchingLocale}
+				onSelect={() => handleLocaleChange(locale)}
 			>
-				<LanguageFlag {locale} />
-				<span class="flex-1">{language.label()}</span>
-			</button>
+				{#snippet leading()}<LanguageFlag {locale} />{/snippet}
+				{language.label()}
+			</ChoiceRow>
 		{/each}
 	</div>
 {/snippet}
@@ -102,19 +97,20 @@
 {:else}
 	<Popover.Root bind:open={isOpen}>
 		<SimpleTooltip text={m.language_toggle_tooltip()} side="bottom" disabled={isOpen}>
-			<Popover.Trigger>
-				{#snippet child({ props })}
-					<Button
-						{...props}
-						intent="outline"
-						size="icon"
-						class="text-(length:--text-base)"
-						aria-label={ariaLabel}
-					>
-						{LOCALE_CODES[currentLocale]}
-					</Button>
-				{/snippet}
-			</Popover.Trigger>
+			{#snippet asChild(tooltipProps)}
+				<Popover.Trigger>
+					{#snippet child({ props: popoverProps })}
+						<Button
+							{...mergeProps(tooltipProps, popoverProps)}
+							intent="outline"
+							format="icon"
+							aria-label={ariaLabel}
+						>
+							<span class="text-[15px]">{LOCALE_CODES[currentLocale]}</span>
+						</Button>
+					{/snippet}
+				</Popover.Trigger>
+			{/snippet}
 		</SimpleTooltip>
 		<Popover.Content
 			align="end"

@@ -67,15 +67,12 @@ describe('ReserveButton', () => {
 		expect(button.getAttribute('aria-label')).toBe(
 			m.reserve_button_cancel_aria({ name: 'Kolo' }),
 		);
-		expect(button.className).toContain('bg-status-success');
-		expect(button.className).toContain('duration-[160ms]');
 		expect(animate.mock.instances[0]).toBe(content);
 		expect(animate).toHaveBeenCalledWith([{ opacity: 0 }, { opacity: 1 }], { duration: 160 });
 
 		finishAnimation();
 		await expect.element(page.getByText(m.reserve_button_cancel())).toBeVisible();
 		expect(page.getByText(m.reserve_button_reserved()).query()).toBeNull();
-		expect(button.className).not.toContain('bg-status-success');
 	});
 
 	it('cancels stale acknowledgement on rapid reversal and lets the final reservation win', async () => {

@@ -2,10 +2,12 @@ import '../../../../app.css';
 import { render } from 'vitest-browser-svelte';
 import { describe, expect, it, vi } from 'vitest';
 import { tick } from 'svelte';
+import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
 import ActiveFilterPillsTestHost from './ActiveFilterPillsTestHost.svelte';
 import FilterMenu from './FilterMenu.svelte';
 import type { FilterDefinition, FilterFacetGroup } from './filter_menu_types.js';
 
+const { expectPixelsNear, expectPixelsAtLeast, expectPixelsAtMost } = createPixelAssertions(expect);
 vi.mock('$env/dynamic/public', () => ({ env: {} }));
 
 function baseProps() {
@@ -20,7 +22,7 @@ function baseProps() {
 }
 
 describe('FilterMenu facets', () => {
-	it('visually distinguishes non-clickable headings from clickable filter options', async () => {
+	it('exposes headings separately from selectable filter options', async () => {
 		const definitions: FilterDefinition[] = [
 			{ id: 'available', menuLabel: 'Dostupné', checked: false, onchange: () => {} },
 		];
@@ -46,17 +48,67 @@ describe('FilterMenu facets', () => {
 
 		const headings = document.querySelectorAll<HTMLElement>('[data-filter-group-heading]');
 		expect(headings).toHaveLength(2);
-		expect(getComputedStyle(headings[0]).textTransform).toBe('uppercase');
-		expect(getComputedStyle(headings[0]).pointerEvents).toBe('none');
+		expect([...headings].map((heading) => heading.textContent?.trim())).toEqual([
+			'Filtr',
+			'Kategorie',
+		]);
 		const options = document.querySelectorAll<HTMLElement>('[data-filter-option]');
 		expect(options).toHaveLength(3);
-		expect(options[0].getAttribute('role')).toBe('menuitemcheckbox');
-		expect(getComputedStyle(options[0]).cursor).toBe('pointer');
-		const uncheckedIndicator = options[0].querySelector<HTMLElement>(
-			'[data-slot="dropdown-menu-checkbox-item-indicator"]',
+		expect([...options].map((option) => option.getAttribute('role'))).toEqual([
+			'menuitemcheckbox',
+			'menuitemcheckbox',
+			'menuitemcheckbox',
+		]);
+		expect(options[1]).toHaveAttribute('aria-checked', 'false');
+		expect(options[2]).toHaveAttribute('aria-checked', 'true');
+	});
+
+	it('inherits viewport-only containment from shared dropdown content', async () => {
+		const definitions: FilterDefinition[] = [
+			{ id: 'available', menuLabel: 'Dostupné', checked: false, onchange: () => {} },
+		];
+		const host = document.createElement('div');
+		document.body.appendChild(host);
+		const screen = await render(
+			FilterMenu,
+			{ ...baseProps(), definitions },
+			{ baseElement: host },
 		);
-		expect(uncheckedIndicator).not.toBeNull();
-		expect(getComputedStyle(uncheckedIndicator!).borderStyle).toBe('solid');
+
+		await screen.getByRole('button', { name: 'Filtr' }).click();
+		const content = document.querySelector<HTMLElement>('[data-slot="dropdown-menu-content"]');
+		expect(content).not.toBeNull();
+		expect(getComputedStyle(content!).maxHeight).toBe(`${window.innerHeight - 16}px`);
+		expect(getComputedStyle(content!).overflowY).toBe('auto');
+	});
+
+	it('keeps a full-height constrained menu inside the viewport', async () => {
+		const definitions: FilterDefinition[] = Array.from({ length: 12 }, (_, index) => ({
+			id: `option-${index}`,
+			menuLabel: `Možnost ${index}`,
+			checked: false,
+			onchange: () => {},
+		}));
+		const host = document.createElement('div');
+		document.body.appendChild(host);
+		const screen = await render(
+			FilterMenu,
+			{ ...baseProps(), definitions },
+			{ baseElement: host },
+		);
+		const trigger = screen.getByRole('button', { name: 'Filtr' }).element();
+		trigger.style.position = 'fixed';
+		trigger.style.top = '50vh';
+		trigger.style.left = '50vw';
+		trigger.style.width = 'max-content';
+
+		await screen.getByRole('button', { name: 'Filtr' }).click();
+		const content = document.querySelector<HTMLElement>('[data-slot="dropdown-menu-content"]');
+		expect(content).not.toBeNull();
+		const rect = content!.getBoundingClientRect();
+		expectPixelsAtLeast(rect.top, 7);
+		expectPixelsAtMost(rect.bottom, window.innerHeight - 7);
+		expectPixelsNear(content!.clientHeight, content!.scrollHeight);
 	});
 
 	it('counts each selected facet value as one active filter and renders a pill', async () => {

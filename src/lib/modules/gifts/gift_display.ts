@@ -50,13 +50,19 @@ export const PRIORITY_DISPLAY = {
 		colorClass:
 			'bg-[oklch(0.93_0.05_75)] text-[oklch(0.50_0.12_75)] dark:bg-[oklch(0.28_0.04_75)] dark:text-[oklch(0.78_0.08_75)]',
 	},
-	Nizka: { label: () => m.gift_priority_low(), colorClass: 'bg-muted text-muted-foreground' },
+	Nizka: {
+		label: () => m.gift_priority_low(),
+		colorClass:
+			'bg-[oklch(0.93_0.06_145)] text-[oklch(0.38_0.12_145)] dark:bg-[oklch(0.27_0.05_145)] dark:text-[oklch(0.82_0.1_145)]',
+	},
 } as const;
 
 export type PriorityKey = keyof typeof PRIORITY_DISPLAY;
 
 export function getPriorityKey(label: string | null): PriorityKey | null {
-	return label !== null && label in PRIORITY_DISPLAY ? (label as PriorityKey) : null;
+	return label !== null && Object.prototype.hasOwnProperty.call(PRIORITY_DISPLAY, label)
+		? (label as PriorityKey)
+		: null;
 }
 
 export function getPriorityDisplay(
@@ -64,6 +70,21 @@ export function getPriorityDisplay(
 ): (typeof PRIORITY_DISPLAY)[PriorityKey] | null {
 	const key = getPriorityKey(label);
 	return key === null ? null : PRIORITY_DISPLAY[key];
+}
+
+/** Localize recognized built-in priority keys while preserving custom labels exactly. */
+export function getPriorityDisplayLabel(label: string | null): string {
+	return getPriorityDisplay(label)?.label() ?? label ?? '';
+}
+
+/** Build action-menu options without changing their persisted IDs or ordering. */
+export function getPriorityActionOptions<T extends { id: string; label: string | null }>(
+	levels: readonly T[],
+): Array<{ id: string; label: string }> {
+	return levels.map((level) => ({
+		id: level.id,
+		label: getPriorityDisplayLabel(level.label),
+	}));
 }
 
 /**
@@ -80,16 +101,7 @@ export function formatReserverLine(reserverNames: readonly string[]): string | n
 		return m.gift_reserved_by({ name: firstName });
 	}
 
-	let joinedNames: string;
-	try {
-		joinedNames = new Intl.ListFormat(getLocale(), {
-			style: 'long',
-			type: 'conjunction',
-		}).format(reserverNames);
-	} catch {
-		joinedNames = reserverNames.join(', ');
-	}
-	return m.gift_reserved_by_many({ names: joinedNames });
+	return m.gift_reserved_by_many();
 }
 
 /** Format an ISO timestamp from a description append as a short locale date. */

@@ -1,31 +1,47 @@
 <script lang="ts">
 	import { Button } from '$lib/components/base/button/index.js';
-	import { OUTLINE_CONTROL_SURFACE_CLASSES } from '$lib/components/base/button/button_variants.js';
 	import SimpleTooltip from '$lib/components/base/tooltip/SimpleTooltip.svelte';
-	import * as Select from '$lib/components/base/select/index.js';
+	import * as DropdownMenu from '$lib/components/base/dropdown-menu/index.js';
+	import * as Sheet from '$lib/components/base/sheet/index.js';
+	import { Checkbox } from '$lib/components/base/checkbox/index.js';
+	import * as RadioGroup from '$lib/components/base/radio-group/index.js';
 	import * as m from '$lib/paraglide/messages.js';
 	import PlusIcon from '@lucide/svelte/icons/plus';
 	import ListPlusIcon from '@lucide/svelte/icons/list-plus';
 	import EyeIcon from '@lucide/svelte/icons/eye';
 	import EyeOffIcon from '@lucide/svelte/icons/eye-off';
-	import SettingsIcon from '@lucide/svelte/icons/settings';
+	import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
 	import CheckIcon from '@lucide/svelte/icons/check';
 	import HandIcon from '@lucide/svelte/icons/hand';
 	import LayersIcon from '@lucide/svelte/icons/layers';
 	import RotateCcwIcon from '@lucide/svelte/icons/rotate-ccw';
-	import GiftSortSelect from '$lib/components/blocks/gift/GiftSortSelect.svelte';
+	import ListChecksIcon from '@lucide/svelte/icons/list-checks';
+	import ListFilterPlusIcon from '@lucide/svelte/icons/list-filter-plus';
+	import BellOffIcon from '@lucide/svelte/icons/bell-off';
+	import ArrowUpDownIcon from '@lucide/svelte/icons/arrow-up-down';
+	import SlidersHorizontalIcon from '@lucide/svelte/icons/sliders-horizontal';
+	import MoreHorizontalIcon from '@lucide/svelte/icons/ellipsis';
+	import {
+		GIFT_SORT_KEYS,
+		GIFT_SORT_LABELS,
+	} from '$lib/components/blocks/gift/gift_sort_options.js';
 	import GiftViewSwitcher from '$lib/components/blocks/gift/GiftViewSwitcher.svelte';
 	import {
 		ActiveFilterPills,
-		FilterMenu,
+		FILTER_MENU_GROUP_HEADING_CLASS,
+		FILTER_MENU_OPTION_CLASS,
 		normalizeActiveFilters,
 		type FilterDefinition,
 		type FilterFacetGroup,
 	} from '$lib/components/derived/filter-menu/index.js';
 	import { WISHLIST_ROLES, type WishlistRole } from '$lib/modules/wishlists/types.js';
-	import { cn } from '$lib/utils.js';
-	import type { Snippet } from 'svelte';
+	import { flushSync, onMount, tick, type Snippet } from 'svelte';
 	import { emptyGiftFilters } from '$lib/modules/gifts/gifts.context.svelte.js';
+	import WishlistBottomSheet from './WishlistBottomSheet.svelte';
+	import WishlistSheetAction from './WishlistSheetAction.svelte';
+	import WishlistSheetBody from './WishlistSheetBody.svelte';
+	import WishlistSheetChoice from './WishlistSheetChoice.svelte';
+	import WishlistSheetHeader from './WishlistSheetHeader.svelte';
 	import {
 		GIFT_GROUPING_OPTIONS,
 		GIFT_SORT_OPTIONS,
@@ -40,7 +56,6 @@
 
 	interface WishlistDetailToolbarProps {
 		canManage: boolean;
-		adminSettingsAvailable?: boolean;
 		role: WishlistRole;
 		isArchived: boolean;
 		isAuthenticated: boolean;
@@ -52,23 +67,25 @@
 		categoryFilterOptions: GiftFilterOption<GiftCategoryFilterValue>[];
 		priorityFilterOptions: GiftFilterOption<GiftPriorityFilterValue>[];
 		reorderMode: boolean;
+		reorderDonePending?: boolean;
+		reorderRecoveryPending?: boolean;
+		giftDataReady?: boolean;
 		recipientViewPreview: boolean;
 		onrecipientviewpreviewchange: (active: boolean) => void;
-		onreordermodechange: (active: boolean) => void;
+		onreordermodechange: (active: boolean) => void | Promise<void>;
 		onviewmodechange: (mode: GiftViewMode) => void;
 		onsortchange: (sort: GiftSortOption) => void;
 		onfilterchange: (filters: GiftFilters) => void;
 		ongroupingchange: (grouping: GiftGroupingOption) => void;
-		onsettings: () => void;
 		onunfollow: () => void;
 		onaddgift: () => void;
 		onbatchadd: () => void;
+		onselectionstart: () => void;
 		selectionContent?: Snippet;
 	}
 
 	let {
 		canManage,
-		adminSettingsAvailable = false,
 		role,
 		isArchived,
 		isAuthenticated,
@@ -80,6 +97,9 @@
 		categoryFilterOptions,
 		priorityFilterOptions,
 		reorderMode,
+		reorderDonePending = false,
+		reorderRecoveryPending = false,
+		giftDataReady = true,
 		recipientViewPreview,
 		onrecipientviewpreviewchange,
 		onreordermodechange,
@@ -87,10 +107,10 @@
 		onsortchange,
 		onfilterchange,
 		ongroupingchange,
-		onsettings,
 		onunfollow,
 		onaddgift,
 		onbatchadd,
+		onselectionstart,
 		selectionContent,
 	}: WishlistDetailToolbarProps = $props();
 
@@ -112,9 +132,17 @@
 		canManage &&
 			(role === WISHLIST_ROLES.recipient || role === WISHLIST_ROLES.moderator) &&
 			!isArchived &&
-			(viewMode === 'card' || viewMode === 'list') &&
-			grouping === GIFT_GROUPING_OPTIONS.none,
+			giftDataReady &&
+			(viewMode === 'card' || viewMode === 'list'),
 	);
+	const reorderDoneLabel = $derived(
+		reorderRecoveryPending
+			? m.gift_reorder_recovering()
+			: reorderDonePending
+				? m.gift_reorder_saving()
+				: m.gift_reorder_done(),
+	);
+	const reorderDoneDisabled = $derived(reorderDonePending || reorderRecoveryPending);
 	const showLikedFilter = $derived(
 		isAuthenticated && role !== WISHLIST_ROLES.recipient && !recipientViewPreview,
 	);
@@ -124,19 +152,19 @@
 			grouping !== GIFT_GROUPING_OPTIONS.none,
 	);
 	const showManagementActions = $derived(canManage && !isArchived);
-	const showSettingsAction = $derived(showManagementActions || adminSettingsAvailable);
 	const showUnfollowAction = $derived(!canManage && !isArchived && isAuthenticated);
-	const showActions = $derived(showManagementActions || showSettingsAction || showUnfollowAction);
+	const showActions = $derived(
+		showManagementActions || showUnfollowAction || canPreviewRecipientView || showReset,
+	);
+	const showMobileMore = $derived(
+		showReset || canPreviewRecipientView || showUnfollowAction || showManagementActions,
+	);
 
 	const GROUPING_LABELS = {
 		none: () => m.gift_grouping_none(),
 		priority: () => m.gift_grouping_priority(),
 		category: () => m.gift_grouping_category(),
 	} satisfies Record<GiftGroupingOption, () => string>;
-	const groupingCombinedLabel = $derived(
-		`${m.gift_grouping_label()}: ${GROUPING_LABELS[grouping]()}`,
-	);
-
 	function clearGiftFilters() {
 		onfilterchange(emptyGiftFilters());
 	}
@@ -152,6 +180,14 @@
 			? [...filters.categoryValues, value]
 			: filters.categoryValues.filter((selected) => selected !== value);
 		onfilterchange({ ...filters, categoryValues: [...new Set(values)] });
+	}
+
+	function isGroupingOptionAvailable(option: GiftGroupingOption) {
+		return (
+			option === GIFT_GROUPING_OPTIONS.none ||
+			(option === GIFT_GROUPING_OPTIONS.priority && groupingAvailability.priority) ||
+			(option === GIFT_GROUPING_OPTIONS.category && groupingAvailability.category)
+		);
 	}
 
 	function updatePriorityFilter(value: GiftPriorityFilterValue, checked: boolean) {
@@ -199,21 +235,206 @@
 
 	type OpenDisplayControl = 'sort' | 'grouping' | 'filter';
 
-	let filterTriggerElement = $state<HTMLButtonElement | null>(null);
-	let openDisplayControl = $state<OpenDisplayControl | null>(null);
+	let desktopDisplayTrigger = $state<HTMLButtonElement | null>(null);
+	let desktopMoreTrigger = $state<HTMLButtonElement | null>(null);
+	let desktopReorderDoneButton = $state<HTMLButtonElement | null>(null);
+	let desktopSortTrigger = $state<HTMLElement | null>(null);
+	let desktopGroupingTrigger = $state<HTMLElement | null>(null);
+	let desktopFilterTrigger = $state<HTMLElement | null>(null);
+	let desktopOpenDisplayControl = $state<OpenDisplayControl | null>(null);
+	let mobileReorderDoneButton = $state<HTMLButtonElement | null>(null);
+	let mobileDisplayTrigger = $state<HTMLButtonElement | null>(null);
+	let mobileMoreTrigger = $state<HTMLButtonElement | null>(null);
+	let mobileOpenDisplayControl = $state<OpenDisplayControl | null>(null);
+	let mobileMoreOpen = $state(false);
+	let mobileViewportMode = $state<boolean | null>(null);
+	let mobileSheetScrollPosition = $state({ x: 0, y: 0 });
+	let mobileSheetRestoreTrigger = $state<HTMLButtonElement | null>(null);
+	let mobileSheetFocusRestorationScheduled = false;
+	let mobileSheetScrollCapturedFromPointer = false;
+	let mobileSheetFocusFrame: number | null = null;
+	let mobileSheetScrollFrame: number | null = null;
+	const MOBILE_SHEET_RESTORE_FRAMES = 5;
+
+	function handleDesktopSubmenuOpenChange(control: OpenDisplayControl, open: boolean) {
+		if (open) {
+			desktopOpenDisplayControl = control;
+		} else if (desktopOpenDisplayControl === control) {
+			desktopOpenDisplayControl = null;
+		}
+	}
+
+	async function handleDesktopSubmenuEscape(control: OpenDisplayControl, event: KeyboardEvent) {
+		if (event.key !== 'Escape') {
+			return;
+		}
+		event.preventDefault();
+		event.stopPropagation();
+		desktopOpenDisplayControl = null;
+		await tick();
+		const trigger =
+			control === 'sort'
+				? desktopSortTrigger
+				: control === 'grouping'
+					? desktopGroupingTrigger
+					: desktopFilterTrigger;
+		trigger?.focus();
+	}
+
+	function resetMobileSheetState() {
+		if (mobileSheetFocusFrame !== null) {
+			cancelAnimationFrame(mobileSheetFocusFrame);
+			mobileSheetFocusFrame = null;
+		}
+		if (mobileSheetScrollFrame !== null) {
+			cancelAnimationFrame(mobileSheetScrollFrame);
+			mobileSheetScrollFrame = null;
+		}
+		mobileOpenDisplayControl = null;
+		mobileMoreOpen = false;
+		mobileSheetRestoreTrigger = null;
+		mobileSheetScrollCapturedFromPointer = false;
+		mobileSheetFocusRestorationScheduled = false;
+	}
+
+	onMount(() => {
+		const mobileViewportQuery = window.matchMedia('(max-width: 639px)');
+		const updateMobileViewportMode = (event: MediaQueryListEvent) => {
+			resetMobileSheetState();
+			mobileViewportMode = event.matches;
+		};
+
+		flushSync(() => {
+			mobileViewportMode = mobileViewportQuery.matches;
+		});
+		mobileViewportQuery.addEventListener('change', updateMobileViewportMode);
+
+		return () => {
+			mobileViewportQuery.removeEventListener('change', updateMobileViewportMode);
+			resetMobileSheetState();
+		};
+	});
 
 	$effect(() => {
 		if (reorderMode) {
-			openDisplayControl = null;
+			resetMobileSheetState();
 		}
 	});
 
-	function updateOpenDisplayControl(control: OpenDisplayControl, open: boolean) {
-		if (open) {
-			openDisplayControl = control;
-		} else if (openDisplayControl === control) {
-			openDisplayControl = null;
+	function captureMobileSheetScrollPosition() {
+		if (mobileOpenDisplayControl === null) {
+			mobileSheetScrollPosition = { x: window.scrollX, y: window.scrollY };
+			mobileSheetScrollCapturedFromPointer = true;
 		}
+	}
+
+	function cancelMobileSheetPointerCapture() {
+		mobileSheetScrollCapturedFromPointer = false;
+	}
+
+	function openMobileDisplaySheet(control: OpenDisplayControl = 'sort') {
+		if (mobileOpenDisplayControl === null) {
+			mobileMoreOpen = false;
+			mobileSheetRestoreTrigger = mobileDisplayTrigger;
+			if (!mobileSheetScrollCapturedFromPointer) {
+				mobileSheetScrollPosition = { x: window.scrollX, y: window.scrollY };
+			}
+		}
+		mobileSheetScrollCapturedFromPointer = false;
+		mobileOpenDisplayControl = control;
+	}
+
+	function handleMobileMoreOpenChange(open: boolean) {
+		mobileMoreOpen = open;
+		if (!open) {
+			requestAnimationFrame(() => mobileMoreTrigger?.focus({ preventScroll: true }));
+		}
+	}
+
+	function runMobileMoreAction(action: () => void) {
+		mobileMoreOpen = false;
+		action();
+	}
+
+	function closeMobileDisplaySheet() {
+		const trigger = mobileSheetRestoreTrigger;
+		const scrollPosition = mobileSheetScrollPosition;
+		if (mobileOpenDisplayControl === null || mobileSheetFocusRestorationScheduled) {
+			return;
+		}
+		mobileSheetFocusRestorationScheduled = true;
+		mobileOpenDisplayControl = null;
+		mobileSheetFocusFrame = requestAnimationFrame(() => {
+			mobileSheetFocusFrame = null;
+			trigger?.focus({ preventScroll: true });
+
+			let remainingFrames = MOBILE_SHEET_RESTORE_FRAMES;
+			const restoreScrollAfterTeardown = () => {
+				window.scrollTo(scrollPosition.x, scrollPosition.y);
+				remainingFrames -= 1;
+				if (remainingFrames > 0) {
+					mobileSheetScrollFrame = requestAnimationFrame(restoreScrollAfterTeardown);
+					return;
+				}
+				mobileSheetScrollFrame = null;
+				mobileSheetRestoreTrigger = null;
+				mobileSheetFocusRestorationScheduled = false;
+			};
+			restoreScrollAfterTeardown();
+		});
+	}
+
+	function handleFilterRowClick(
+		event: MouseEvent,
+		checked: boolean,
+		onchange: (checked: boolean) => void,
+	) {
+		if ((event.target as Element).closest("[data-slot='checkbox']")) {
+			return;
+		}
+		onchange(!checked);
+	}
+
+	function filterRowActivation(
+		node: HTMLElement,
+		state: { checked: boolean; onchange: (checked: boolean) => void },
+	) {
+		let currentState = state;
+		const handleClick = (event: MouseEvent) =>
+			handleFilterRowClick(event, currentState.checked, currentState.onchange);
+		node.addEventListener('click', handleClick);
+		return {
+			update(nextState: typeof state) {
+				currentState = nextState;
+			},
+			destroy() {
+				node.removeEventListener('click', handleClick);
+			},
+		};
+	}
+
+	function handleMobileSheetOpenChange(open: boolean) {
+		if (!open) {
+			closeMobileDisplaySheet();
+		}
+	}
+
+	async function changeDesktopReorderMode(active: boolean) {
+		const scrollPosition = { x: window.scrollX, y: window.scrollY };
+		await onreordermodechange(active);
+		await tick();
+		const focusTarget = reorderMode ? desktopReorderDoneButton : desktopMoreTrigger;
+		focusTarget?.focus({ preventScroll: true });
+		window.scrollTo(scrollPosition.x, scrollPosition.y);
+	}
+
+	async function changeMobileReorderMode(active: boolean) {
+		const scrollPosition = { x: window.scrollX, y: window.scrollY };
+		await onreordermodechange(active);
+		await tick();
+		const focusTarget = reorderMode ? mobileReorderDoneButton : mobileMoreTrigger;
+		focusTarget?.focus({ preventScroll: true });
+		window.scrollTo(scrollPosition.x, scrollPosition.y);
 	}
 
 	const filterFacets = $derived<FilterFacetGroup[]>([
@@ -254,140 +475,529 @@
 	});
 </script>
 
-{#snippet viewControls()}
-	<div class="toolbar-view-controls" data-testid="wishlist-toolbar-view-controls">
-		<GiftViewSwitcher value={viewMode} onchange={onviewmodechange} disabled={reorderMode} />
-		{#if canPreviewRecipientView}
-			<SimpleTooltip
-				text={recipientViewPreview
-					? m.recipient_view_preview_turn_off()
-					: m.recipient_view_preview_turn_on()}
-			>
-				<Button
-					size="icon"
-					intent="ghost"
-					aria-label={recipientViewPreview
-						? m.recipient_view_preview_turn_off()
-						: m.recipient_view_preview_turn_on()}
-					aria-pressed={recipientViewPreview}
-					disabled={reorderMode}
-					aria-describedby="recipient-view-preview-description recipient-view-preview-status"
-					onclick={() => onrecipientviewpreviewchange(!recipientViewPreview)}
-				>
-					{#if recipientViewPreview}<EyeOffIcon />{:else}<EyeIcon />{/if}
-				</Button>
-			</SimpleTooltip>
-			<span id="recipient-view-preview-description" class="sr-only">
-				{m.recipient_view_preview_description()}
-			</span>
-			<span id="recipient-view-preview-status" class="sr-only" aria-live="polite">
-				{recipientViewPreview
-					? m.recipient_view_preview_status_on()
-					: m.recipient_view_preview_status_off()}
-			</span>
-		{/if}
-	</div>
-{/snippet}
-
-{#snippet groupingControl()}
-	<Select.Root
-		type="single"
-		value={grouping}
-		disabled={reorderMode}
-		open={openDisplayControl === 'grouping'}
-		onOpenChange={(open) => updateOpenDisplayControl('grouping', open)}
-		onValueChange={(newValue) => {
-			if (Object.values(GIFT_GROUPING_OPTIONS).includes(newValue as GiftGroupingOption)) {
-				ongroupingchange(newValue as GiftGroupingOption);
+{#snippet desktopDisplayMenu()}
+	<DropdownMenu.Root
+		onOpenChange={(open) => {
+			if (open === false) {
+				desktopOpenDisplayControl = null;
 			}
 		}}
 	>
-		<Select.Trigger
-			size="md"
-			class={cn('toolbar-grouping-control min-w-0 px-3', OUTLINE_CONTROL_SURFACE_CLASSES)}
-			aria-label={groupingCombinedLabel}
-			title={groupingCombinedLabel}
+		<DropdownMenu.Trigger>
+			{#snippet child({ props })}
+				<Button
+					{...props}
+					bind:ref={desktopDisplayTrigger}
+					intent="outline"
+					data-testid="desktop-display-trigger"
+					aria-label={activeFilters.length > 0
+						? `${m.gift_display_options()}: ${m.filter_active_count({ count: activeFilters.length })}`
+						: m.gift_display_options()}
+					disabled={reorderMode}
+				>
+					<SlidersHorizontalIcon data-icon="inline-start" data-toolbar-icon="display" />
+					<span>{m.gift_display_options()}</span>
+					{#if activeFilters.length > 0}<span data-filter-count
+							>{activeFilters.length}</span
+						>{/if}
+					<ChevronDownIcon />
+				</Button>
+			{/snippet}
+		</DropdownMenu.Trigger>
+		<DropdownMenu.Content
+			class="w-72"
+			aria-label={m.gift_display_options()}
+			preventScroll={false}
 		>
-			<LayersIcon
-				class="size-4 shrink-0 text-muted-foreground"
-				data-toolbar-icon="grouping"
-			/>
-			<span class="min-w-0 truncate">{GROUPING_LABELS[grouping]()}</span>
-		</Select.Trigger>
-		<Select.Content preventScroll={false}>
-			<Select.Group>
-				<Select.GroupHeading>{m.gift_grouping_label()}</Select.GroupHeading>
-				<Select.Item value={GIFT_GROUPING_OPTIONS.none} label={m.gift_grouping_none()} />
-				<Select.Item
-					value={GIFT_GROUPING_OPTIONS.priority}
-					label={m.gift_grouping_priority()}
-					disabled={!groupingAvailability.priority}
-				/>
-				<Select.Item
-					value={GIFT_GROUPING_OPTIONS.category}
-					label={m.gift_grouping_category()}
-					disabled={!groupingAvailability.category}
-				/>
-			</Select.Group>
-		</Select.Content>
-	</Select.Root>
-{/snippet}
-
-{#snippet filterControls()}
-	<div class="toolbar-filter-controls">
-		<FilterMenu
-			class="toolbar-filter-control"
-			triggerClass="w-full justify-between"
-			bind:triggerElement={filterTriggerElement}
-			definitions={filterDefinitions}
-			disabled={reorderMode}
-			facets={filterFacets}
-			{activeFilters}
-			showActivePills={false}
-			alwaysShowClearAllInMenu
-			triggerLabel={m.gift_filter()}
-			menuHeading={m.gift_filter()}
-			clearAllLabel={m.wishlist_detail_clear_filters()}
-			onclearall={clearGiftFilters}
-			removeFilterLabel={(label) => m.filter_remove({ label })}
-			activeCountLabel={(count) => m.filter_active_count({ count })}
-			align="end"
-			open={openDisplayControl === 'filter'}
-			onopenchange={(open) => updateOpenDisplayControl('filter', open)}
-		/>
-		{#if showReset}
-			<div class="toolbar-reset-control">
-				<SimpleTooltip text={m.gift_display_reset_tooltip()}>
-					<Button
-						size="icon"
-						intent="ghost"
-						aria-label={m.gift_display_reset_aria()}
-						disabled={reorderMode}
-						onclick={resetDisplayControls}
+			<DropdownMenu.Sub
+				open={desktopOpenDisplayControl === 'sort'}
+				onOpenChange={(open) => handleDesktopSubmenuOpenChange('sort', open)}
+			>
+				<DropdownMenu.SubTrigger bind:ref={desktopSortTrigger}>
+					<ArrowUpDownIcon />
+					<span class="min-w-0 flex-1">{m.gift_sort_by()}</span>
+					<span class="text-muted-foreground">{GIFT_SORT_LABELS[sortOption]()}</span>
+				</DropdownMenu.SubTrigger>
+				<DropdownMenu.SubContent
+					class="min-w-52"
+					onkeydowncapture={(event) => handleDesktopSubmenuEscape('sort', event)}
+				>
+					<DropdownMenu.RadioGroup
+						value={sortOption}
+						onValueChange={(value) => onsortchange(value as GiftSortOption)}
 					>
-						<RotateCcwIcon data-toolbar-icon="reset" />
-					</Button>
-				</SimpleTooltip>
-			</div>
+						{#each GIFT_SORT_KEYS as option (option)}
+							<DropdownMenu.RadioItem value={option} closeOnSelect={false}
+								>{GIFT_SORT_LABELS[option]()}</DropdownMenu.RadioItem
+							>
+						{/each}
+					</DropdownMenu.RadioGroup>
+				</DropdownMenu.SubContent>
+			</DropdownMenu.Sub>
+			<DropdownMenu.Sub
+				open={desktopOpenDisplayControl === 'grouping'}
+				onOpenChange={(open) => handleDesktopSubmenuOpenChange('grouping', open)}
+			>
+				<DropdownMenu.SubTrigger bind:ref={desktopGroupingTrigger}>
+					<LayersIcon />
+					<span class="min-w-0 flex-1">{m.gift_grouping_label()}</span>
+					<span class="text-muted-foreground">{GROUPING_LABELS[grouping]()}</span>
+				</DropdownMenu.SubTrigger>
+				<DropdownMenu.SubContent
+					class="min-w-52"
+					onkeydowncapture={(event) => handleDesktopSubmenuEscape('grouping', event)}
+				>
+					<DropdownMenu.RadioGroup
+						value={grouping}
+						onValueChange={(value) => ongroupingchange(value as GiftGroupingOption)}
+					>
+						{#each Object.values(GIFT_GROUPING_OPTIONS) as option (option)}
+							<DropdownMenu.RadioItem
+								value={option}
+								disabled={!isGroupingOptionAvailable(option)}
+								closeOnSelect={false}
+								>{GROUPING_LABELS[option]()}</DropdownMenu.RadioItem
+							>
+						{/each}
+					</DropdownMenu.RadioGroup>
+				</DropdownMenu.SubContent>
+			</DropdownMenu.Sub>
+			<DropdownMenu.Sub
+				open={desktopOpenDisplayControl === 'filter'}
+				onOpenChange={(open) => handleDesktopSubmenuOpenChange('filter', open)}
+			>
+				<DropdownMenu.SubTrigger bind:ref={desktopFilterTrigger}>
+					<ListFilterPlusIcon />
+					<span class="min-w-0 flex-1">{m.gift_filter()}</span>
+					{#if activeFilters.length > 0}<span class="text-muted-foreground"
+							>{m.filter_active_count({ count: activeFilters.length })}</span
+						>{/if}
+				</DropdownMenu.SubTrigger>
+				<DropdownMenu.SubContent
+					class="w-64"
+					onkeydowncapture={(event) => handleDesktopSubmenuEscape('filter', event)}
+				>
+					{#each filterDefinitions as definition (definition.id)}
+						<DropdownMenu.CheckboxItem
+							class={FILTER_MENU_OPTION_CLASS}
+							data-filter-option
+							bind:checked={
+								() => definition.checked, (checked) => definition.onchange(checked)
+							}
+							closeOnSelect={false}>{definition.menuLabel}</DropdownMenu.CheckboxItem
+						>
+					{/each}
+					{#each filterFacets.filter((facet) => facet.options.length > 0) as facet (facet.id)}
+						<DropdownMenu.Separator />
+						<DropdownMenu.Group>
+							<DropdownMenu.GroupHeading
+								class={FILTER_MENU_GROUP_HEADING_CLASS}
+								data-filter-group-heading
+							>
+								{facet.label}
+							</DropdownMenu.GroupHeading>
+							{#each facet.options as option (option.value)}
+								<DropdownMenu.CheckboxItem
+									class={FILTER_MENU_OPTION_CLASS}
+									data-filter-option
+									bind:checked={
+										() => option.checked, (checked) => option.onchange(checked)
+									}
+									closeOnSelect={false}>{option.label}</DropdownMenu.CheckboxItem
+								>
+							{/each}
+						</DropdownMenu.Group>
+					{/each}
+					{#if activeFilters.length > 0}
+						<DropdownMenu.Separator />
+						<DropdownMenu.Item onclick={clearGiftFilters}
+							>{m.wishlist_detail_clear_filters()}</DropdownMenu.Item
+						>
+					{/if}
+				</DropdownMenu.SubContent>
+			</DropdownMenu.Sub>
+		</DropdownMenu.Content>
+	</DropdownMenu.Root>
+{/snippet}
+
+{#snippet mobileDisplayControls()}
+	<div class="mobile-browse-row" data-mobile-toolbar-row>
+		<GiftViewSwitcher value={viewMode} onchange={onviewmodechange} />
+		<SimpleTooltip text={m.gift_display_options()}>
+			<Button
+				bind:ref={mobileDisplayTrigger}
+				format="icon"
+				intent="outline"
+				class="mobile-display-trigger"
+				data-testid="mobile-display-trigger"
+				aria-label={activeFilters.length > 0
+					? `${m.gift_display_options()}: ${m.filter_active_count({ count: activeFilters.length })}`
+					: m.gift_display_options()}
+				aria-haspopup="dialog"
+				aria-expanded={mobileOpenDisplayControl !== null}
+				disabled={reorderMode}
+				onpointerdown={captureMobileSheetScrollPosition}
+				onpointercancel={cancelMobileSheetPointerCapture}
+				onclick={() => openMobileDisplaySheet()}
+			>
+				<SlidersHorizontalIcon data-toolbar-icon="display" />
+				{#if activeFilters.length > 0}
+					<span class="mobile-filter-count" data-filter-count aria-hidden="true"
+						>{activeFilters.length}</span
+					>
+				{/if}
+			</Button>
+		</SimpleTooltip>
+		<div class="mobile-browse-spacer"></div>
+		{#if showMobileMore}
+			<SimpleTooltip text={m.wishlist_more_actions()}>
+				<Button
+					bind:ref={mobileMoreTrigger}
+					format="icon"
+					intent="outline"
+					data-testid="mobile-more-trigger"
+					aria-label={m.wishlist_more_actions()}
+					aria-haspopup="dialog"
+					aria-expanded={mobileMoreOpen}
+					onclick={() => {
+						mobileOpenDisplayControl = null;
+						mobileMoreOpen = true;
+					}}
+				>
+					<MoreHorizontalIcon />
+				</Button>
+			</SimpleTooltip>
+		{/if}
+		{#if showManagementActions}
+			<Button
+				format="icon"
+				intent="primary"
+				aria-label={m.wishlist_detail_add_gift_label()}
+				title={m.wishlist_detail_add_wish()}
+				onclick={onaddgift}
+			>
+				<PlusIcon />
+			</Button>
 		{/if}
 	</div>
 {/snippet}
 
-{#snippet displayControls(includeSort = true)}
-	<div class="toolbar-display-controls" data-testid="wishlist-toolbar-display-controls">
-		{#if includeSort}
-			<GiftSortSelect
-				class="toolbar-sort-control"
-				value={sortOption}
-				disabled={reorderMode}
-				onchange={onsortchange}
-				open={openDisplayControl === 'sort'}
-				onopenchange={(open) => updateOpenDisplayControl('sort', open)}
+{#snippet mobileReorderControls()}
+	<div class="mobile-reorder-row" data-mobile-toolbar-row>
+		<GiftViewSwitcher value={viewMode} onchange={onviewmodechange} />
+		<strong class="mobile-mode-label">{m.gift_reorder_mode_label()}</strong>
+		<Button
+			bind:ref={mobileReorderDoneButton}
+			intent="primary"
+			class="mobile-reorder-done"
+			surfaceClass="px-1"
+			disabled={reorderDoneDisabled}
+			aria-label={reorderDoneLabel}
+			onclick={() => changeMobileReorderMode(false)}
+		>
+			<CheckIcon
+				data-icon="inline-start"
+				data-toolbar-icon="reorder-done"
+				data-lucide="check"
 			/>
-		{/if}
-		{@render groupingControl()}
-		{@render filterControls()}
+			<span>{reorderDoneLabel}</span>
+		</Button>
 	</div>
+{/snippet}
+
+{#snippet desktopMoreMenu()}
+	<DropdownMenu.Root>
+		<DropdownMenu.Trigger>
+			{#snippet child({ props })}
+				<Button
+					{...props}
+					bind:ref={desktopMoreTrigger}
+					format="icon"
+					intent="outline"
+					data-testid="desktop-more-trigger"
+					aria-label={m.wishlist_more_actions()}
+				>
+					<MoreHorizontalIcon />
+				</Button>
+			{/snippet}
+		</DropdownMenu.Trigger>
+		<DropdownMenu.Content
+			align="end"
+			aria-label={m.wishlist_more_actions()}
+			preventScroll={false}
+			onCloseAutoFocus={(event) => {
+				if (reorderMode) {
+					event.preventDefault();
+				}
+			}}
+		>
+			{#if showReset}
+				<DropdownMenu.Item onclick={resetDisplayControls}
+					><RotateCcwIcon />{m.gift_display_reset_tooltip()}</DropdownMenu.Item
+				>
+			{/if}
+			{#if canPreviewRecipientView}
+				<DropdownMenu.Item
+					onclick={() => onrecipientviewpreviewchange(!recipientViewPreview)}
+				>
+					{#if recipientViewPreview}<EyeOffIcon />{:else}<EyeIcon />{/if}
+					{recipientViewPreview
+						? m.recipient_view_preview_turn_off()
+						: m.recipient_view_preview_turn_on()}
+				</DropdownMenu.Item>
+			{/if}
+			{#if showUnfollowAction}
+				<DropdownMenu.Item onclick={onunfollow}
+					><BellOffIcon />{m.wishlist_detail_unfollow()}</DropdownMenu.Item
+				>
+			{/if}
+			{#if showManagementActions}
+				<DropdownMenu.Item onclick={onselectionstart}
+					><ListChecksIcon />{m.gift_selection_toolbar()}</DropdownMenu.Item
+				>
+				{#if canReorder}
+					<DropdownMenu.Item onclick={() => changeDesktopReorderMode(true)}
+						><HandIcon />{m.gift_reorder_action()}</DropdownMenu.Item
+					>
+				{/if}
+				<DropdownMenu.Item onclick={onbatchadd}
+					><ListPlusIcon />{m.batch_add_toolbar_label()}</DropdownMenu.Item
+				>
+			{/if}
+		</DropdownMenu.Content>
+	</DropdownMenu.Root>
+{/snippet}
+
+{#snippet mobileMoreSheet()}
+	<Sheet.Root open={mobileMoreOpen} onOpenChange={handleMobileMoreOpenChange}>
+		{#if mobileMoreOpen}
+			<WishlistBottomSheet portalDisabled>
+				<WishlistSheetHeader>
+					<Sheet.Title>{m.wishlist_more_actions()}</Sheet.Title>
+					<Sheet.Description>{m.wishlist_more_actions_description()}</Sheet.Description>
+				</WishlistSheetHeader>
+				<WishlistSheetBody class="flex flex-col">
+					{#if showReset}
+						<WishlistSheetAction
+							onclick={() => runMobileMoreAction(resetDisplayControls)}
+						>
+							<RotateCcwIcon
+								data-icon="inline-start"
+							/>{m.gift_display_reset_tooltip()}
+						</WishlistSheetAction>
+					{/if}
+					{#if canPreviewRecipientView}
+						<WishlistSheetAction
+							aria-pressed={recipientViewPreview}
+							onclick={() =>
+								runMobileMoreAction(() =>
+									onrecipientviewpreviewchange(!recipientViewPreview),
+								)}
+						>
+							{#if recipientViewPreview}<EyeOffIcon
+									data-icon="inline-start"
+								/>{:else}<EyeIcon data-icon="inline-start" />{/if}
+							{recipientViewPreview
+								? m.recipient_view_preview_turn_off()
+								: m.recipient_view_preview_turn_on()}
+						</WishlistSheetAction>
+					{/if}
+					{#if showUnfollowAction}
+						<WishlistSheetAction onclick={() => runMobileMoreAction(onunfollow)}>
+							<BellOffIcon data-icon="inline-start" />{m.wishlist_detail_unfollow()}
+						</WishlistSheetAction>
+					{/if}
+					{#if showManagementActions}
+						<WishlistSheetAction onclick={() => runMobileMoreAction(onselectionstart)}>
+							<ListChecksIcon data-icon="inline-start" />{m.gift_selection_toolbar()}
+						</WishlistSheetAction>
+						{#if canReorder}
+							<WishlistSheetAction
+								onclick={() =>
+									runMobileMoreAction(() => void changeMobileReorderMode(true))}
+							>
+								<HandIcon data-icon="inline-start" />{m.gift_reorder_action()}
+							</WishlistSheetAction>
+						{/if}
+						<WishlistSheetAction onclick={() => runMobileMoreAction(onbatchadd)}>
+							<ListPlusIcon data-icon="inline-start" />{m.batch_add_toolbar_label()}
+						</WishlistSheetAction>
+					{/if}
+				</WishlistSheetBody>
+			</WishlistBottomSheet>
+		{/if}
+	</Sheet.Root>
+{/snippet}
+
+{#snippet mobileDisplaySheet()}
+	<Sheet.Root open={mobileOpenDisplayControl !== null} onOpenChange={handleMobileSheetOpenChange}>
+		{#if mobileOpenDisplayControl !== null}
+			<WishlistBottomSheet
+				class="mobile-display-sheet"
+				portalDisabled
+				onCloseAutoFocus={(event) => event.preventDefault()}
+			>
+				<WishlistSheetHeader>
+					<Sheet.Title>{m.gift_display_options()}</Sheet.Title>
+					<Sheet.Description>
+						{mobileOpenDisplayControl === 'sort'
+							? `${m.gift_sort_by()}: ${GIFT_SORT_LABELS[sortOption]()}`
+							: mobileOpenDisplayControl === 'grouping'
+								? `${m.gift_grouping_label()}: ${GROUPING_LABELS[grouping]()}`
+								: `${m.gift_filter()}: ${
+										activeFilters.length > 0
+											? m.filter_active_count({ count: activeFilters.length })
+											: '0'
+									}`}
+					</Sheet.Description>
+				</WishlistSheetHeader>
+				<WishlistSheetBody class="mobile-sheet-scroll" data-testid="mobile-sheet-scroll">
+					<div class="mobile-display-sections">
+						<div
+							class="mobile-display-section"
+							class:mobile-display-section-active={mobileOpenDisplayControl ===
+								'sort'}
+							aria-hidden={mobileOpenDisplayControl !== 'sort'}
+							inert={mobileOpenDisplayControl !== 'sort'}
+						>
+							<RadioGroup.Root
+								value={sortOption}
+								aria-label={m.gift_sort_by()}
+								class="gap-0"
+								onValueChange={(option) => {
+									onsortchange(option as GiftSortOption);
+									closeMobileDisplaySheet();
+								}}
+							>
+								{#each GIFT_SORT_KEYS as option (option)}
+									<WishlistSheetChoice for={`mobile-gift-sort-${option}`}>
+										<RadioGroup.Item
+											id={`mobile-gift-sort-${option}`}
+											value={option}
+										/>
+										<span>{GIFT_SORT_LABELS[option]()}</span>
+									</WishlistSheetChoice>
+								{/each}
+							</RadioGroup.Root>
+						</div>
+						<div
+							class="mobile-display-section"
+							class:mobile-display-section-active={mobileOpenDisplayControl ===
+								'grouping'}
+							aria-hidden={mobileOpenDisplayControl !== 'grouping'}
+							inert={mobileOpenDisplayControl !== 'grouping'}
+						>
+							<RadioGroup.Root
+								value={grouping}
+								aria-label={m.gift_grouping_label()}
+								class="gap-0"
+								onValueChange={(option) => {
+									ongroupingchange(option as GiftGroupingOption);
+									closeMobileDisplaySheet();
+								}}
+							>
+								{#each Object.values(GIFT_GROUPING_OPTIONS) as option (option)}
+									<WishlistSheetChoice
+										for={`mobile-gift-grouping-${option}`}
+										disabledStyle={!isGroupingOptionAvailable(option)}
+									>
+										<RadioGroup.Item
+											id={`mobile-gift-grouping-${option}`}
+											value={option}
+											disabled={!isGroupingOptionAvailable(option)}
+										/>
+										<span>{GROUPING_LABELS[option]()}</span>
+									</WishlistSheetChoice>
+								{/each}
+							</RadioGroup.Root>
+						</div>
+						<div
+							class="mobile-display-section"
+							class:mobile-display-section-active={mobileOpenDisplayControl ===
+								'filter'}
+							aria-hidden={mobileOpenDisplayControl !== 'filter'}
+							inert={mobileOpenDisplayControl !== 'filter'}
+						>
+							{#each filterDefinitions as definition (definition.id)}
+								<div
+									class="mobile-sheet-choice"
+									use:filterRowActivation={{
+										checked: definition.checked,
+										onchange: definition.onchange,
+									}}
+								>
+									<Checkbox
+										checked={definition.checked}
+										onCheckedChange={definition.onchange}
+										aria-label={definition.menuLabel}
+									/>
+									<span>{definition.menuLabel}</span>
+								</div>
+							{/each}
+							{#each filterFacets as facet (facet.id)}
+								<section class="mobile-filter-section">
+									<h3>{facet.label}</h3>
+									{#each facet.options as option (option.value)}
+										<div
+											class="mobile-sheet-choice"
+											use:filterRowActivation={{
+												checked: option.checked,
+												onchange: option.onchange,
+											}}
+										>
+											<Checkbox
+												checked={option.checked}
+												onCheckedChange={option.onchange}
+												aria-label={option.label}
+											/>
+											<span>{option.label}</span>
+										</div>
+									{/each}
+								</section>
+							{/each}
+							{#if activeFilters.length > 0}
+								<Button
+									class="m-3"
+									intent="ghost"
+									size="lg"
+									onclick={clearGiftFilters}
+									>{m.wishlist_detail_clear_filters()}</Button
+								>
+							{/if}
+						</div>
+					</div>
+				</WishlistSheetBody>
+				<div
+					class="mobile-sheet-switcher"
+					role="group"
+					aria-label={m.gift_display_options()}
+					data-testid="mobile-sheet-switcher"
+				>
+					<Button
+						intent="ghost"
+						aria-pressed={mobileOpenDisplayControl === 'sort'}
+						data-testid="mobile-sheet-sort-switch"
+						onclick={() => openMobileDisplaySheet('sort')}
+						><ArrowUpDownIcon data-icon="inline-start" />{m.gift_sort_by()}</Button
+					>
+					<Button
+						intent="ghost"
+						aria-pressed={mobileOpenDisplayControl === 'grouping'}
+						data-testid="mobile-sheet-grouping-switch"
+						onclick={() => openMobileDisplaySheet('grouping')}
+						><LayersIcon data-icon="inline-start" />{m.gift_grouping_label()}</Button
+					>
+					<Button
+						intent="ghost"
+						aria-pressed={mobileOpenDisplayControl === 'filter'}
+						data-testid="mobile-sheet-filter-switch"
+						onclick={() => openMobileDisplaySheet('filter')}
+						><ListFilterPlusIcon data-icon="inline-start" />{m.gift_filter()}</Button
+					>
+				</div>
+			</WishlistBottomSheet>
+		{/if}
+	</Sheet.Root>
 {/snippet}
 
 {#snippet activeFilterRegion()}
@@ -400,7 +1010,7 @@
 				clearAllLabel={m.wishlist_detail_clear_filters()}
 				onclearall={clearGiftFilters}
 				removeFilterLabel={(label) => m.filter_remove({ label })}
-				triggerElement={filterTriggerElement}
+				triggerElement={desktopDisplayTrigger}
 			/>
 		</div>
 	{/if}
@@ -410,130 +1020,289 @@
 	{reorderAnnouncement}
 </div>
 
-<div
-	class="wishlist-toolbar sticky top-3 z-(--z-sticky) min-w-0 rounded-panel border-[2.5px] border-ink bg-card px-3.5 py-2.5 shadow-sticker"
-	data-testid="wishlist-toolbar"
->
-	{#if selectionContent}
-		<div class="toolbar-layout min-w-0 toolbar-layout-selection">
-			<div class="toolbar-selection-content min-w-0">{@render selectionContent()}</div>
-		</div>
-	{:else}
-		<div class="toolbar-layout min-w-0">
-			<div class="toolbar-controls min-w-0" data-testid="wishlist-toolbar-controls">
-				{@render viewControls()}
-
-				{@render displayControls()}
-
-				{#if canReorder}
-					<div class="toolbar-edit-controls" data-testid="wishlist-toolbar-edit-controls">
-						<Button
-							size="md"
-							intent={reorderMode ? 'primary' : 'outline'}
-							class="reorder-mode-action min-w-0 max-w-full"
-							title={reorderMode ? m.gift_reorder_done() : m.gift_reorder_action()}
-							aria-label={reorderMode
-								? m.gift_reorder_done()
-								: m.gift_reorder_action()}
-							onclick={() => onreordermodechange(!reorderMode)}
-						>
-							<span class="reorder-mode-icon-stack" aria-hidden="true">
-								<HandIcon
-									class={`reorder-mode-content${!reorderMode ? ' reorder-mode-content-active' : ''}`}
-									data-icon="inline-start"
-									data-toolbar-icon="reorder"
-								/>
-								<CheckIcon
-									class={`reorder-mode-content${reorderMode ? ' reorder-mode-content-active' : ''}`}
-									data-icon="inline-start"
-									data-toolbar-icon="reorder-done"
-								/>
-							</span>
-							<span class="reorder-mode-label-stack min-w-0" aria-hidden="true">
-								<span
-									class="reorder-mode-content min-w-0 truncate"
-									class:reorder-mode-content-active={!reorderMode}
-								>
-									{m.gift_reorder_action()}
-								</span>
-								<span
-									class="reorder-mode-content min-w-0 truncate"
-									class:reorder-mode-content-active={reorderMode}
-									data-reorder-mode-label
-								>
-									{m.gift_reorder_done()}
-								</span>
-							</span>
-						</Button>
-					</div>
-				{/if}
+<div class="wishlist-toolbar-sticky sticky z-(--z-sticky) min-w-0">
+	<div class="wishlist-toolbar-mask" data-testid="wishlist-toolbar-mask" aria-hidden="true"></div>
+	<div
+		class="wishlist-toolbar resting-shadow-nesting relative z-[1] min-w-0 rounded-panel border-[2.5px] border-ink bg-card shadow-sticker"
+		data-testid="wishlist-toolbar"
+	>
+		{#if selectionContent}
+			<div class="toolbar-layout min-w-0 toolbar-layout-selection">
+				<div class="toolbar-selection-content min-w-0">{@render selectionContent()}</div>
 			</div>
+		{:else}
+			<div
+				class="toolbar-responsive-carrier"
+				class:toolbar-desktop={mobileViewportMode === false}
+			>
+				<div
+					class="toolbar-layout min-w-0"
+					class:toolbar-responsive-layout={mobileViewportMode !== false}
+				>
+					<div
+						class="toolbar-controls min-w-0"
+						class:toolbar-responsive-controls={mobileViewportMode !== false}
+						data-testid={mobileViewportMode === false
+							? 'wishlist-toolbar-controls'
+							: undefined}
+					>
+						{#if mobileViewportMode === false}
+							<div class="toolbar-responsive-view-switcher">
+								<GiftViewSwitcher value={viewMode} onchange={onviewmodechange} />
+							</div>
+						{/if}
 
-			{@render activeFilterRegion()}
+						{#if mobileViewportMode === false}
+							{@render desktopDisplayMenu()}
+						{/if}
+					</div>
 
-			{#if showActions}
-				<div class="toolbar-actions min-w-0" data-testid="wishlist-toolbar-actions">
-					{#if showSettingsAction}
-						<SimpleTooltip text={m.wishlist_settings_title()}>
-							<Button
-								size="icon"
-								intent="outline"
-								aria-label={m.wishlist_settings_title()}
-								disabled={reorderMode}
-								onclick={onsettings}
+					{#if mobileViewportMode === false}
+						{@render activeFilterRegion()}
+
+						{#if reorderMode || showActions || showManagementActions}
+							<div
+								class="toolbar-actions min-w-0"
+								data-testid="wishlist-toolbar-actions"
 							>
-								<SettingsIcon />
-							</Button>
-						</SimpleTooltip>
-					{/if}
-					{#if showUnfollowAction}
-						<Button
-							size="md"
-							intent="ghost"
-							class="min-w-0 max-w-48 shrink"
-							title={m.wishlist_detail_unfollow()}
-							disabled={reorderMode}
-							onclick={onunfollow}
-						>
-							<span class="min-w-0 truncate">{m.wishlist_detail_unfollow()}</span>
-						</Button>
-					{/if}
-					{#if showManagementActions}
-						<SimpleTooltip text={m.batch_add_toolbar_label()}>
-							<Button
-								size="icon"
-								intent="outline"
-								aria-label={m.batch_add_toolbar_label()}
-								disabled={reorderMode}
-								onclick={onbatchadd}
-							>
-								<ListPlusIcon />
-							</Button>
-						</SimpleTooltip>
-						<Button
-							size="md"
-							class="min-w-0 max-w-44 shrink"
-							aria-label={m.wishlist_detail_add_gift_label()}
-							disabled={reorderMode}
-							title={m.wishlist_detail_add_wish()}
-							onclick={onaddgift}
-						>
-							<PlusIcon data-icon="inline-start" />
-							<span class="min-w-0 truncate">{m.wishlist_detail_add_wish()}</span>
-						</Button>
+								{#if reorderMode}
+									<Button
+										bind:ref={desktopReorderDoneButton}
+										intent="primary"
+										disabled={reorderDoneDisabled}
+										aria-label={reorderDoneLabel}
+										onclick={() => changeDesktopReorderMode(false)}
+									>
+										<CheckIcon data-icon="inline-start" />
+										<span>{reorderDoneLabel}</span>
+									</Button>
+									{#if showManagementActions}
+										<Button
+											aria-label={m.wishlist_detail_add_gift_label()}
+											disabled
+											title={m.wishlist_detail_add_wish()}
+										>
+											<PlusIcon data-icon="inline-start" />
+											<span>{m.wishlist_detail_add_wish()}</span>
+										</Button>
+									{/if}
+								{:else}
+									{#if showActions}{@render desktopMoreMenu()}{/if}
+									{#if showManagementActions}
+										<Button
+											aria-label={m.wishlist_detail_add_gift_label()}
+											title={m.wishlist_detail_add_wish()}
+											onclick={onaddgift}
+										>
+											<PlusIcon data-icon="inline-start" />
+											<span>{m.wishlist_detail_add_wish()}</span>
+										</Button>
+									{/if}
+								{/if}
+							</div>
+						{/if}
 					{/if}
 				</div>
+			</div>
+
+			{#if mobileViewportMode === null || mobileViewportMode}
+				<div class="toolbar-mobile" data-testid="wishlist-toolbar-mobile">
+					{#if reorderMode}
+						{@render mobileReorderControls()}
+					{:else}
+						{@render mobileDisplayControls()}
+					{/if}
+				</div>
+				{@render mobileDisplaySheet()}
+				{@render mobileMoreSheet()}
 			{/if}
-		</div>
-	{/if}
+		{/if}
+	</div>
 </div>
 
 <style>
+	.wishlist-toolbar-sticky {
+		--wishlist-toolbar-sticky-top: 0.75rem;
+
+		isolation: isolate;
+		top: var(--wishlist-toolbar-sticky-top);
+		max-width: 100%;
+	}
+
+	.wishlist-toolbar-mask {
+		position: absolute;
+		z-index: 0;
+		inset-block: calc(-1 * var(--wishlist-toolbar-sticky-top)) 0;
+		inset-inline-start: 50%;
+		inline-size: 100cqw;
+		transform: translateX(-50%);
+		background: var(--app-page-background);
+		backdrop-filter: blur(10px);
+		pointer-events: auto;
+	}
+
+	.wishlist-toolbar-mask::after {
+		position: absolute;
+		inset-block-start: 100%;
+		inset-inline: 0;
+		block-size: 1.5rem;
+		background: var(--app-page-background);
+		backdrop-filter: blur(10px);
+		content: '';
+		mask-image: linear-gradient(to bottom, #000, transparent);
+		pointer-events: none;
+	}
+
 	.wishlist-toolbar {
 		container-name: wishlist-toolbar;
 		container-type: inline-size;
 		max-width: 100%;
 		overflow: visible;
+		padding: 0.5rem calc(0.5rem + var(--elevation-ordinary-offset))
+			calc(0.5rem + var(--elevation-ordinary-offset)) 0.5rem;
+	}
+
+	.toolbar-responsive-carrier,
+	.toolbar-responsive-layout,
+	.toolbar-controls.toolbar-responsive-controls {
+		display: contents;
+	}
+
+	.toolbar-responsive-view-switcher {
+		position: absolute;
+		z-index: 1;
+		inset-block-start: 8px;
+		inset-inline-start: 8px;
+	}
+
+	.toolbar-mobile {
+		display: grid;
+		min-width: 0;
+		grid-auto-rows: minmax(var(--size-control-lg), auto);
+		gap: 8px;
+	}
+
+	.toolbar-desktop {
+		display: none;
+	}
+
+	.mobile-browse-row,
+	.mobile-reorder-row {
+		display: flex;
+		min-width: 0;
+		align-items: center;
+		gap: var(--nested-control-gap);
+		white-space: nowrap;
+	}
+
+	.mobile-reorder-row {
+		justify-content: space-between;
+	}
+
+	.mobile-reorder-row :global([data-testid='gift-view-switcher']),
+	.toolbar-mobile :global(.mobile-reorder-done) {
+		flex: 0 0 auto;
+	}
+
+	.mobile-mode-label {
+		min-width: 0;
+		flex: 1 1 auto;
+		overflow: hidden;
+		font-family: var(--font-heading);
+		font-size: var(--text-sm);
+		text-overflow: ellipsis;
+	}
+
+	.mobile-browse-spacer {
+		min-width: 0;
+		flex: 1 1 auto;
+		margin-inline-end: calc(-1 * var(--nested-control-gap));
+	}
+
+	:global(.mobile-display-trigger) {
+		position: relative;
+	}
+
+	.mobile-filter-count {
+		position: absolute;
+		top: -5px;
+		right: -5px;
+		display: grid;
+		min-width: 18px;
+		height: 18px;
+		place-items: center;
+		border: 2px solid var(--ink);
+		border-radius: 999px;
+		background: var(--status-warning);
+		color: var(--ink);
+		font-size: 0.625rem;
+		font-weight: 800;
+		line-height: 1;
+	}
+
+	.mobile-display-sections {
+		display: grid;
+	}
+
+	.mobile-display-section {
+		visibility: hidden;
+		grid-area: 1 / 1;
+		pointer-events: none;
+	}
+
+	.mobile-display-section-active {
+		visibility: visible;
+		pointer-events: auto;
+	}
+
+	.mobile-sheet-switcher {
+		display: flex;
+		min-width: 0;
+		flex: 0 0 auto;
+		gap: 0.25rem;
+		border-top: 1px solid var(--border);
+		padding: 0.5rem;
+	}
+
+	.mobile-sheet-switcher :global(button) {
+		min-width: 0;
+		min-height: 40px;
+		flex: 1 1 0;
+		padding-inline: 0.375rem;
+		font-size: 0.6875rem;
+	}
+
+	.mobile-sheet-switcher :global(button[aria-pressed='true']) {
+		outline: 2px solid var(--ink);
+		outline-offset: -2px;
+		background: var(--accent);
+	}
+
+	.mobile-sheet-choice {
+		display: flex;
+		min-height: 40px;
+		align-items: center;
+		gap: 0.75rem;
+		border-radius: var(--radius-btn);
+		padding: 0.25rem 0.75rem;
+		font-weight: 650;
+	}
+
+	.mobile-sheet-choice:hover {
+		background: var(--accent);
+	}
+
+	.mobile-filter-section {
+		border-top: 1px solid var(--border);
+		padding-top: 0.5rem;
+	}
+
+	.mobile-filter-section h3 {
+		padding: 0.25rem 0.75rem;
+		color: var(--muted-foreground);
+		font-size: 0.75rem;
+		font-weight: 800;
+		text-transform: uppercase;
 	}
 
 	.toolbar-layout {
@@ -542,15 +1311,12 @@
 		max-width: 100%;
 		flex-wrap: wrap;
 		align-items: center;
-		gap: 0.625rem;
+		gap: var(--nested-control-gap);
 	}
 
 	.toolbar-controls,
 	.toolbar-actions,
 	.toolbar-active-filters,
-	.toolbar-view-controls,
-	.toolbar-display-controls,
-	.toolbar-edit-controls,
 	.toolbar-selection-content {
 		min-width: 0;
 	}
@@ -562,41 +1328,7 @@
 		flex: 0 0 auto;
 		grid-template-columns: minmax(0, 1fr);
 		align-items: center;
-		gap: 0.625rem;
-	}
-
-	.toolbar-view-controls,
-	.toolbar-edit-controls {
-		display: flex;
-		align-items: center;
-		gap: 0.375rem;
-	}
-
-	.toolbar-display-controls {
-		display: flex;
-		min-width: 0;
-		max-width: 100%;
-		flex-wrap: wrap;
-		align-items: center;
-		gap: 0.625rem;
-	}
-
-	:global(.toolbar-sort-control),
-	:global(.toolbar-grouping-control) {
-		width: fit-content;
-		max-width: 100%;
-	}
-
-	.toolbar-filter-controls {
-		display: flex;
-		min-width: 0;
-		max-width: 100%;
-		align-items: center;
-		gap: 0.625rem;
-	}
-
-	:global(.toolbar-filter-control) {
-		width: min(9.5rem, 100%);
+		gap: var(--nested-control-gap);
 	}
 
 	.toolbar-actions {
@@ -609,7 +1341,7 @@
 		align-items: center;
 		align-self: flex-end;
 		margin-inline-start: auto;
-		gap: 0.5rem;
+		gap: var(--nested-control-gap);
 	}
 
 	.toolbar-active-filters {
@@ -622,7 +1354,7 @@
 
 	.toolbar-layout-selection {
 		align-items: stretch;
-		gap: 0.75rem;
+		gap: 0.5rem;
 	}
 
 	.toolbar-selection-content {
@@ -632,40 +1364,31 @@
 		flex: 1 1 100%;
 	}
 
-	:global(.reorder-mode-action) {
-		width: 8.5rem;
-		transition-duration: 200ms;
-	}
-
-	.reorder-mode-icon-stack,
-	.reorder-mode-label-stack {
-		display: inline-grid;
-		min-width: 0;
-	}
-
-	.reorder-mode-icon-stack {
-		width: 1rem;
-		flex: 0 0 1rem;
-	}
-
-	:global(.reorder-mode-content) {
-		grid-area: 1 / 1;
-		opacity: 0;
-		transition: opacity 200ms ease;
-	}
-
-	:global(.reorder-mode-content-active) {
-		opacity: 1;
-	}
-
-	@media (prefers-reduced-motion: reduce) {
-		:global(.reorder-mode-action),
-		:global(.reorder-mode-content) {
-			transition-duration: 0ms;
+	@media (width < 640px) {
+		.wishlist-toolbar-sticky {
+			--wishlist-toolbar-sticky-top: max(
+				0px,
+				calc(0.75rem - var(--elevation-ordinary-offset))
+			);
 		}
 	}
 
-	@container wishlist-toolbar (min-width: 40rem) {
+	@media (width >= 640px) {
+		.toolbar-responsive-view-switcher {
+			position: static;
+			flex: 0 0 auto;
+		}
+
+		.toolbar-mobile {
+			display: none;
+		}
+
+		.toolbar-desktop {
+			display: block;
+			min-width: 0;
+			flex: 1 1 auto;
+		}
+
 		.toolbar-layout-selection {
 			align-items: center;
 		}
@@ -673,28 +1396,7 @@
 		.toolbar-controls {
 			display: flex;
 			flex-wrap: wrap;
-			gap: 0.625rem 0.875rem;
-		}
-
-		.toolbar-display-controls {
-			width: max-content;
-			flex: 0 0 auto;
-			flex-wrap: nowrap;
-		}
-
-		:global(.toolbar-sort-control),
-		:global(.toolbar-grouping-control) {
-			width: 11rem;
-		}
-
-		:global(.toolbar-filter-control) {
-			width: 9.5rem;
-		}
-
-		.toolbar-edit-controls {
-			margin-inline-start: 0.25rem;
-			border-inline-start: 2px solid color-mix(in oklab, var(--ink) 25%, transparent);
-			padding-inline-start: 0.75rem;
+			gap: var(--nested-control-gap);
 		}
 
 		.toolbar-layout-selection .toolbar-selection-content {

@@ -6,6 +6,7 @@ const configDir = dirname(fileURLToPath(import.meta.url));
 
 const config: StorybookConfig = {
 	stories: ['../src/**/*.mdx', '../src/**/*.stories.@(js|ts|svelte)'],
+	staticDirs: ['../static'],
 	addons: [
 		'@storybook/addon-svelte-csf',
 		'@chromatic-com/storybook',

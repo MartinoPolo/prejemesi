@@ -419,7 +419,7 @@
 		font-size: 13.5px;
 		font-weight: 600;
 		transform: rotate(-2deg);
-		box-shadow: 4px 4px 0 var(--hard-shadow);
+		box-shadow: var(--elevation-ordinary);
 	}
 
 	@media (width < 640px) {
@@ -484,7 +484,7 @@
 		z-index: 2;
 		background: var(--accent-loud);
 		color: var(--accent-loud-foreground);
-		box-shadow: 3px 3px 0 var(--hard-shadow);
+		box-shadow: var(--elevation-ordinary);
 		opacity: 0;
 		transform: translate(-50%, 8px) rotate(-2deg) scale(0.7);
 		transition:

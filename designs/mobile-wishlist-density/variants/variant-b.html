@@ -1,0 +1,683 @@
+<!doctype html>
+<html lang="cs">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Varianta B · Adaptivní obchodní mřížka</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ctext y='25' font-size='24'%3E🎁%3C/text%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&amp;family=Noto+Sans:wght@600;700;800&amp;display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../tokens.css">
+  <style>
+    :root {
+      --sky: #56bdf2;
+      --sky-soft: #eaf7fd;
+      --sky-selected: #168dd2;
+      --sky-selected-soft: #d9f1ff;
+      --navy: #153b60;
+      --navy-muted: #587089;
+      --navy-faint: #b8c7d2;
+      --cream: #fffaf0;
+      --paper: #fffdf8;
+      --peach-wash: #fff0e8;
+      --coral: #ee674e;
+      --coral-hover: #d9503b;
+      --coral-pressed: #be4434;
+      --white: #ffffff;
+      --green: #397b58;
+      --green-soft: #e2f2e7;
+      --reserved-ink: #52616c;
+      --reserved-soft: #edf0f1;
+      --yellow: #ffd65a;
+      --shadow-ink: rgb(21 59 96 / 22%);
+      --backdrop: #e9f1f5;
+      --focus: #087bc1;
+      --phone-gutter: 12px;
+      --hard-shadow: 3px 3px 0 var(--shadow-ink);
+      --hard-shadow-small: 2px 2px 0 var(--shadow-ink);
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body {
+      min-height: 100vh;
+      padding: 24px;
+      display: grid;
+      place-items: center;
+      background:
+        radial-gradient(circle, var(--white) 0 2px, transparent 2.5px) 0 0 / 28px 28px,
+        var(--backdrop);
+      color: var(--navy);
+      font-family: var(--font-sans);
+    }
+    button, a { font: inherit; }
+    button { color: inherit; cursor: pointer; }
+    svg { display: block; }
+
+    .prototype {
+      width: max-content;
+      display: grid;
+      grid-template-columns: 390px 184px;
+      gap: 24px;
+      align-items: start;
+    }
+    .preview-column { min-width: 0; }
+    .eyebrow {
+      margin: 0 0 8px 4px;
+      font-size: 11px;
+      line-height: 16px;
+      font-weight: 800;
+      letter-spacing: .09em;
+      text-transform: uppercase;
+      color: var(--navy-muted);
+    }
+    .phone {
+      position: relative;
+      width: 390px;
+      min-width: 0;
+      max-width: 390px;
+      height: 844px;
+      overflow: hidden;
+      isolation: isolate;
+      border: 2px solid var(--navy);
+      border-radius: 24px;
+      background: var(--peach-wash);
+      box-shadow: 0 24px 64px rgb(21 59 96 / 18%);
+      transition: width var(--duration-slow) var(--ease-standard);
+    }
+
+    /* Prototype controls live outside the proposed product UI. */
+    .inspector {
+      margin-top: 24px;
+      padding: 16px;
+      border: 2px solid var(--navy);
+      border-radius: var(--radius-xl);
+      background: var(--paper);
+      box-shadow: var(--hard-shadow);
+    }
+    .inspector h2 {
+      margin: 0 0 4px;
+      font-family: var(--font-heading);
+      font-size: 15px;
+      line-height: 1.2;
+      letter-spacing: -.02em;
+    }
+    .inspector-note { margin: 0 0 16px; color: var(--navy-muted); font-size: 12px; line-height: 1.4; }
+    .control-set { margin: 0; padding: 0; border: 0; }
+    .control-set + .control-set { margin-top: 16px; }
+    .control-set legend {
+      margin-bottom: 8px;
+      font-size: 11px;
+      line-height: 16px;
+      font-weight: 800;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+    }
+    .segmented { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
+    .prototype-choice {
+      min-height: 40px;
+      border: 1.5px solid var(--navy);
+      border-radius: var(--radius-md);
+      background: transparent;
+      box-shadow: var(--hard-shadow-small);
+      font-size: 13px;
+      font-weight: 700;
+      transition: transform 120ms ease, background 120ms ease, box-shadow 120ms ease;
+    }
+    .prototype-choice:hover { background: var(--sky-soft); transform: translateY(-1px); }
+    .prototype-choice:active { transform: translate(2px, 2px); box-shadow: none; }
+    .prototype-choice[aria-pressed="true"] { color: var(--white); background: var(--sky-selected); box-shadow: none; }
+    .prototype-choice:disabled { opacity: .42; cursor: not-allowed; transform: none; box-shadow: none; }
+
+    .app-header {
+      position: absolute;
+      z-index: 10;
+      inset: 0 0 auto;
+      height: 56px;
+      padding: 0 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-bottom: 2px solid var(--navy);
+      background: var(--paper);
+    }
+    .app-icon, .avatar {
+      width: 40px;
+      height: 40px;
+      min-width: 40px;
+      display: grid;
+      place-items: center;
+      border: 2px solid var(--navy);
+      border-radius: 10px;
+      background: var(--paper);
+      box-shadow: var(--hard-shadow-small);
+      transition: transform 120ms ease, box-shadow 120ms ease, background 120ms ease;
+    }
+    .app-icon:hover, .avatar:hover { background: var(--sky-soft); transform: translateY(-1px); }
+    .app-icon:active, .avatar:active { transform: translate(2px, 2px); box-shadow: none; }
+    .app-icon:disabled, .avatar:disabled { opacity: .4; cursor: not-allowed; transform: none; box-shadow: none; }
+    .app-icon.gift { color: var(--white); background: var(--coral); transform: rotate(-3deg); }
+    .app-icon.add { color: var(--white); background: var(--coral); }
+    .wordmark {
+      flex: 1;
+      min-width: 0;
+      font-family: var(--font-heading);
+      font-size: 16px;
+      font-weight: 800;
+      letter-spacing: -.03em;
+      white-space: nowrap;
+    }
+    .wordmark small { font-family: var(--font-sans); font-size: 10px; color: var(--navy-muted); }
+    .bell { position: relative; border: 0; background: transparent; box-shadow: none; }
+    .bell::after {
+      content: '3';
+      position: absolute;
+      top: -1px;
+      right: -1px;
+      width: 17px;
+      height: 17px;
+      display: grid;
+      place-items: center;
+      border: 2px solid var(--paper);
+      border-radius: 50%;
+      color: var(--white);
+      background: var(--coral);
+      font-size: 9px;
+      font-weight: 800;
+    }
+    .avatar {
+      border-radius: 50%;
+      box-shadow: none;
+      background: linear-gradient(145deg, #f3c8a9 0 44%, #84543e 45% 57%, #4e8192 58%);
+      color: transparent;
+    }
+
+    .scroll-area {
+      position: absolute;
+      inset: 56px 0 0;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      scrollbar-width: thin;
+      background:
+        radial-gradient(circle, rgb(21 59 96 / 8%) 0 1px, transparent 1.2px) 0 0 / 20px 20px,
+        var(--peach-wash);
+    }
+    .page-content { padding-inline: var(--phone-gutter); transition: padding 160ms ease; }
+    .wishlist-heading { padding-block: 16px 12px; }
+    .heading-kicker {
+      margin: 0 0 4px;
+      color: var(--navy-muted);
+      font-size: 12px;
+      line-height: 16px;
+      font-weight: 700;
+    }
+    .wishlist-heading h1 {
+      margin: 0;
+      font-family: var(--font-heading);
+      font-size: 24px;
+      line-height: 1.15;
+      letter-spacing: -.025em;
+      font-weight: 800;
+    }
+    .heading-meta { margin: 5px 0 0; color: var(--navy-muted); font-size: 13px; line-height: 18px; }
+
+    /* Faithful compact icon toolbar context, kept subordinate to the collection. */
+    .toolbar-shell {
+      position: sticky;
+      top: 0;
+      z-index: 6;
+      padding-bottom: 12px;
+      background: linear-gradient(var(--peach-wash) 80%, transparent);
+    }
+    .toolbar {
+      min-height: 96px;
+      padding: 7px 8px;
+      display: grid;
+      grid-template-rows: 40px 40px;
+      gap: 2px;
+      border: 2px solid var(--navy);
+      border-radius: var(--radius-xl);
+      background: var(--paper);
+      box-shadow: var(--hard-shadow);
+    }
+    .toolbar-row { display: flex; align-items: center; gap: 6px; }
+    .toolbar-row + .toolbar-row { padding-top: 2px; border-top: 1px dashed var(--navy-faint); }
+    .toolbar-spacer { flex: 1; }
+    .view-switch {
+      height: 40px;
+      padding: 2px;
+      display: flex;
+      gap: 1px;
+      border: 1px solid var(--navy-faint);
+      border-radius: 10px;
+      background: var(--sky-soft);
+    }
+    .tool-button {
+      position: relative;
+      width: 40px;
+      height: 40px;
+      min-width: 40px;
+      display: grid;
+      place-items: center;
+      border: 2px solid var(--navy);
+      border-radius: 8px;
+      background: var(--paper);
+      box-shadow: var(--hard-shadow-small);
+      transition: transform 120ms ease, box-shadow 120ms ease, background 120ms ease, color 120ms ease;
+    }
+    .view-switch .tool-button { height: 34px; width: 36px; min-width: 36px; border-color: transparent; box-shadow: none; background: transparent; }
+    .view-switch .tool-button[aria-pressed="true"] { border-color: var(--navy); color: var(--sky-selected); background: var(--white); box-shadow: 1px 1px 0 var(--shadow-ink); }
+    .tool-button:hover { background: var(--sky-soft); transform: translateY(-1px); }
+    .tool-button:active { background: var(--sky-selected-soft); transform: translate(2px, 2px); box-shadow: none; }
+    .tool-button[aria-pressed="true"]:not(.view-switch *) { color: var(--white); background: var(--sky-selected); }
+    .tool-button.primary { color: var(--white); background: var(--coral); }
+    .tool-button.primary:hover { background: var(--coral-hover); }
+    .tool-button:disabled { opacity: .4; cursor: not-allowed; transform: none; box-shadow: none; }
+    .filter-count {
+      position: absolute;
+      top: -5px;
+      right: -5px;
+      min-width: 18px;
+      height: 18px;
+      padding: 0 4px;
+      display: grid;
+      place-items: center;
+      border: 2px solid var(--navy);
+      border-radius: 99px;
+      background: var(--yellow);
+      font-size: 9px;
+      font-weight: 800;
+    }
+
+    .collection {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      padding-bottom: 56px;
+    }
+    .gift-card {
+      position: relative;
+      min-width: 0;
+      overflow: hidden;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      border: 2px solid var(--navy);
+      border-radius: var(--radius-lg);
+      background: var(--cream);
+      box-shadow: var(--hard-shadow-small);
+      transition: transform 140ms var(--ease-standard), box-shadow 140ms var(--ease-standard), opacity 140ms ease;
+    }
+    .gift-card:hover { transform: translateY(-2px); box-shadow: var(--hard-shadow); }
+    .gift-card:active { transform: translate(1px, 1px); box-shadow: 1px 1px 0 var(--shadow-ink); }
+    .gift-card:has(.gift-link:focus-visible) { outline: 3px solid var(--focus); outline-offset: -4px; }
+    .gift-card.reserved { background: var(--reserved-soft); }
+    .gift-card.reserved .product-image { filter: saturate(.35) contrast(.88); }
+    .product-image {
+      position: relative;
+      height: 132px;
+      margin: 0;
+      overflow: hidden;
+      border-bottom: 2px solid var(--navy);
+      background: var(--sky-soft);
+    }
+    .product-image img { width: 100%; height: 100%; display: block; object-fit: cover; }
+    .state-sticker {
+      position: absolute;
+      left: 7px;
+      bottom: 7px;
+      padding: 3px 7px;
+      border: 1.5px solid var(--navy);
+      border-radius: 99px;
+      color: var(--reserved-ink);
+      background: var(--white);
+      box-shadow: 1px 1px 0 var(--shadow-ink);
+      font-size: 10px;
+      line-height: 14px;
+      font-weight: 800;
+      transform: rotate(-2deg);
+    }
+    .gift-info { min-width: 0; padding: 9px 9px 8px; }
+    .gift-title {
+      min-height: 35px;
+      margin: 0;
+      font-family: var(--font-heading);
+      font-size: 13px;
+      line-height: 1.3;
+      letter-spacing: -.02em;
+      font-weight: 700;
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+      overflow: hidden;
+    }
+    .gift-link { color: inherit; text-decoration: none; }
+    .gift-link::after { content: ''; position: absolute; inset: 0; z-index: 1; }
+    .gift-link:focus-visible { outline: 0; }
+    .gift-meta {
+      min-height: 18px;
+      margin: 5px 0 0;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      color: var(--navy-muted);
+      font-size: 12px;
+      line-height: 16px;
+      font-weight: 600;
+    }
+    .gift-meta strong { color: var(--navy); font-size: 14px; font-weight: 800; }
+    .gift-meta.reserved-copy { color: var(--green); font-weight: 800; }
+    .gift-actions {
+      min-height: 49px;
+      padding: 5px 7px 6px;
+      display: grid;
+      grid-template-columns: 40px minmax(0, 1fr);
+      gap: 6px;
+      align-items: center;
+      border-top: 1.5px dashed var(--navy-faint);
+      background: rgb(255 255 255 / 45%);
+    }
+    .like-button, .reserve-button {
+      position: relative;
+      z-index: 2;
+      height: 40px;
+      min-width: 40px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 2px solid var(--navy);
+      border-radius: 8px;
+      transition: transform 120ms ease, background 120ms ease, box-shadow 120ms ease, color 120ms ease;
+    }
+    .like-button { padding: 0; color: var(--navy-muted); background: transparent; }
+    .like-button:hover { color: var(--coral); background: var(--peach-wash); }
+    .like-button:active { transform: scale(.92); }
+    .like-button[aria-pressed="true"] { color: var(--white); background: var(--coral); }
+    .like-button[aria-pressed="true"] svg { fill: currentColor; animation: heart-pop 200ms var(--ease-bounce); }
+    .reserve-button {
+      padding: 0 7px;
+      color: var(--white);
+      background: var(--coral);
+      box-shadow: 2px 2px 0 var(--shadow-ink);
+      font-size: 12px;
+      line-height: 1;
+      font-weight: 800;
+    }
+    .reserve-button:hover { background: var(--coral-hover); transform: translateY(-1px); }
+    .reserve-button:active { background: var(--coral-pressed); transform: translate(2px, 2px); box-shadow: none; }
+    .reserve-button:disabled { color: var(--reserved-ink); background: var(--reserved-soft); opacity: .72; cursor: not-allowed; box-shadow: none; transform: none; }
+    button:focus-visible, a:focus-visible { outline: 3px solid var(--focus); outline-offset: -3px; }
+
+    .toast {
+      position: absolute;
+      z-index: 20;
+      left: 50%;
+      bottom: 16px;
+      width: max-content;
+      max-width: calc(100% - 24px);
+      padding: 10px 14px;
+      border: 2px solid var(--navy);
+      border-radius: var(--radius-lg);
+      color: var(--navy);
+      background: var(--paper);
+      box-shadow: var(--hard-shadow);
+      font-size: 13px;
+      font-weight: 700;
+      transform: translate(-50%, 20px);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 160ms ease, transform 160ms ease;
+    }
+    .toast.show { opacity: 1; transform: translate(-50%, 0); }
+    @keyframes heart-pop { 50% { transform: scale(1.32) rotate(-8deg); } }
+
+    /* The anatomy, not content order, transforms below 360px. */
+    .phone[data-width="320"] .app-header { gap: 4px; padding-inline: 6px; }
+    .phone[data-width="320"] .wordmark { font-size: 14px; }
+    .phone[data-width="320"] .app-icon, .phone[data-width="320"] .avatar { min-width: 38px; width: 38px; height: 40px; }
+    .phone[data-width="320"] .collection { grid-template-columns: 1fr; gap: 10px; }
+    .phone[data-width="320"] .gift-card {
+      min-height: 128px;
+      grid-template-columns: 104px minmax(0, 1fr);
+      grid-template-rows: 1fr auto;
+    }
+    .phone[data-width="320"] .product-image {
+      grid-column: 1;
+      grid-row: 1 / 3;
+      height: auto;
+      min-height: 128px;
+      border-right: 2px solid var(--navy);
+      border-bottom: 0;
+    }
+    .phone[data-width="320"] .gift-info { grid-column: 2; grid-row: 1; padding: 9px 9px 4px; }
+    .phone[data-width="320"] .gift-title { min-height: 34px; }
+    .phone[data-width="320"] .gift-actions {
+      grid-column: 2;
+      grid-row: 2;
+      min-height: 47px;
+      padding: 4px 7px 5px;
+      grid-template-columns: 40px minmax(0, 1fr);
+    }
+    .phone[data-width="320"] .state-sticker { left: 5px; bottom: 5px; }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; }
+    }
+    @media (max-width: 650px) {
+      body { padding: 12px; place-items: start center; }
+      .prototype { grid-template-columns: minmax(0, 1fr); width: min(390px, calc(100vw - 24px)); }
+      .inspector { grid-row: 1; margin: 0; width: 100%; }
+      .preview-column { grid-row: 2; width: 100%; }
+      .phone { max-width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <main class="prototype" aria-label="Návrhový prototyp hustoty mobilního seznamu přání">
+    <div class="preview-column">
+      <p class="eyebrow">VARIANTA B · ADAPTIVNÍ OBCHODNÍ MŘÍŽKA</p>
+      <section id="phone" class="phone dk-root" data-width="390" aria-label="Mobilní náhled seznamu přání, šířka 390 pixelů">
+        <header class="app-header" aria-label="Hlavní navigace">
+          <button class="app-icon" type="button" aria-label="Otevřít hlavní nabídku" title="Nabídka">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+          </button>
+          <button class="app-icon gift" type="button" aria-label="Přejít na nástěnku" title="Nástěnka">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13M5 12v9h14v-9M7 8C5.6 8 5 7 5 5.8S5.8 3.5 7.2 3.5C9.7 3.5 12 8 12 8s2.3-4.5 4.8-4.5c1.4 0 2.2 1.1 2.2 2.3S18.4 8 17 8"/></svg>
+          </button>
+          <div class="wordmark" aria-label="Přejeme si.cz">prejemesi<small>.cz</small></div>
+          <button class="app-icon add" type="button" aria-label="Přidat přání" title="Přidat přání"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
+          <button class="app-icon bell" type="button" aria-label="Oznámení, 3 nové" title="Oznámení"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M10 21h4"/></svg></button>
+          <button class="avatar" type="button" aria-label="Účet Martina Poláka" title="Účet">MP</button>
+        </header>
+
+        <div class="scroll-area">
+          <div class="page-content">
+            <header class="wishlist-heading">
+              <p class="heading-kicker">Seznam pro návštěvníky</p>
+              <h1>Martinova přání</h1>
+              <p class="heading-meta">Narozeniny · 8 přání</p>
+            </header>
+
+            <div class="toolbar-shell">
+              <nav class="toolbar" aria-label="Nástroje seznamu přání">
+                <div class="toolbar-row">
+                  <div class="view-switch" role="group" aria-label="Zobrazení přání">
+                    <button class="tool-button view-button" type="button" data-view="grid" aria-label="Zobrazit jako karty" aria-pressed="true" title="Karty">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+                    </button>
+                    <button class="tool-button view-button" type="button" data-view="list" aria-label="Zobrazit jako seznam" aria-pressed="false" title="Seznam">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6h12M9 12h12M9 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg>
+                    </button>
+                  </div>
+                  <span class="toolbar-spacer"></span>
+                  <button class="tool-button" type="button" aria-label="Seřadit přání" title="Řazení"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h14M3 12h10M3 18h6M18 10v10m0 0 3-3m-3 3-3-3"/></svg></button>
+                  <button class="tool-button" type="button" aria-label="Seskupit přání" title="Seskupení"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="m12 3 9 4.5-9 4.5-9-4.5L12 3Z"/><path d="m3 12 9 4.5 9-4.5M3 16.5 12 21l9-4.5"/></svg></button>
+                  <button class="tool-button" type="button" aria-label="Filtrovat, 2 aktivní filtry" title="Filtry"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h13M3 12h9M3 18h6M19 13v6M16 16h6"/></svg><span class="filter-count" aria-hidden="true">2</span></button>
+                </div>
+                <div class="toolbar-row">
+                  <button id="reorder" class="tool-button" type="button" aria-label="Změnit pořadí přání" aria-pressed="false" title="Změnit pořadí"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg></button>
+                  <span class="toolbar-spacer"></span>
+                  <button class="tool-button" type="button" aria-label="Nastavení seznamu" title="Nastavení"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l-2.8 2.8a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6h-4a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-2.8-2.8a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14v-4a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9l2.8-2.8a1.7 1.7 0 0 0 1.9.3A1.7 1.7 0 0 0 10 3h4a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l2.8 2.8a1.7 1.7 0 0 0-.3 1.9A1.7 1.7 0 0 0 21 10v4a1.7 1.7 0 0 0-1.6 1Z"/></svg></button>
+                  <button class="tool-button" type="button" aria-label="Přidat více přání" title="Přidat více"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h12M8 12h7M8 18h5M3 6h.01M3 12h.01M3 18h.01M19 15v6M16 18h6"/></svg></button>
+                  <button class="tool-button primary" type="button" aria-label="Přidat přání" title="Přidat přání"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
+                </div>
+              </nav>
+            </div>
+
+            <section class="collection" aria-label="Přání v adaptivní mřížce">
+              <article class="gift-card">
+                <figure class="product-image"><img src="https://images.unsplash.com/photo-1517668808822-9ebb02f2a0e6?auto=format&amp;fit=crop&amp;w=480&amp;q=80" alt="Čerstvá zrnková káva pro pákový kávovar"></figure>
+                <div class="gift-info"><h2 class="gift-title"><a class="gift-link" href="#detail-kavovar">Pákový kávovar De'Longhi Dedica</a></h2><p class="gift-meta"><strong>3 290 Kč</strong> · dostupné</p></div>
+                <footer class="gift-actions">
+                  <button class="like-button" type="button" aria-label="Odebrat Pákový kávovar z oblíbených" aria-pressed="true"><svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1.1L12 21l7.8-7.5 1.1-1.1a5.5 5.5 0 0 0-.1-7.8Z"/></svg></button>
+                  <button class="reserve-button" type="button" data-name="Pákový kávovar">Rezervovat</button>
+                </footer>
+              </article>
+
+              <article class="gift-card reserved">
+                <figure class="product-image"><img src="https://images.unsplash.com/photo-1610890716171-6b1bb98ffd09?auto=format&amp;fit=crop&amp;w=480&amp;q=80" alt="Barevná desková hra rozložená na stole"><span class="state-sticker">Rezervováno</span></figure>
+                <div class="gift-info"><h2 class="gift-title"><a class="gift-link" href="#detail-hra">Desková hra Na křídlech</a></h2><p class="gift-meta reserved-copy">Plně rezervováno</p></div>
+                <footer class="gift-actions">
+                  <button class="like-button" type="button" aria-label="Přidat Deskovou hru Na křídlech do oblíbených" aria-pressed="false"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1.1L12 21l7.8-7.5 1.1-1.1a5.5 5.5 0 0 0-.1-7.8Z"/></svg></button>
+                  <button class="reserve-button" type="button" disabled>Rezervováno</button>
+                </footer>
+              </article>
+
+              <article class="gift-card">
+                <figure class="product-image"><img src="https://images.unsplash.com/photo-1416879595882-3373a0480b5b?auto=format&amp;fit=crop&amp;w=480&amp;q=80" alt="Sada semínek a zahradnické náčiní"></figure>
+                <div class="gift-info"><h2 class="gift-title"><a class="gift-link" href="#detail-seminka">Sada semínek starých odrůd zeleniny</a></h2><p class="gift-meta">Cena neuvedena</p></div>
+                <footer class="gift-actions">
+                  <button class="like-button" type="button" aria-label="Přidat Sadu semínek do oblíbených" aria-pressed="false"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1.1L12 21l7.8-7.5 1.1-1.1a5.5 5.5 0 0 0-.1-7.8Z"/></svg></button>
+                  <button class="reserve-button" type="button" data-name="Sadu semínek">Rezervovat</button>
+                </footer>
+              </article>
+
+              <article class="gift-card">
+                <figure class="product-image"><img src="https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&amp;fit=crop&amp;w=480&amp;q=80" alt="Modrá bezdrátová sluchátka"></figure>
+                <div class="gift-info"><h2 class="gift-title"><a class="gift-link" href="#detail-sluchatka">Bezdrátová sluchátka Sony WH-CH720N</a></h2><p class="gift-meta"><strong>2 199 Kč</strong> · dostupné</p></div>
+                <footer class="gift-actions">
+                  <button class="like-button" type="button" aria-label="Přidat Sluchátka Sony do oblíbených" aria-pressed="false"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1.1L12 21l7.8-7.5 1.1-1.1a5.5 5.5 0 0 0-.1-7.8Z"/></svg></button>
+                  <button class="reserve-button" type="button" data-name="Sluchátka Sony">Rezervovat</button>
+                </footer>
+              </article>
+
+              <article class="gift-card">
+                <figure class="product-image"><img src="https://images.unsplash.com/photo-1580301762395-21ce84d00bc6?auto=format&amp;fit=crop&amp;w=480&amp;q=80" alt="Měkká hořčicová deka složená na pohovce"></figure>
+                <div class="gift-info"><h2 class="gift-title"><a class="gift-link" href="#detail-deka">Vlněná deka Klippan Gotland, hořčicová</a></h2><p class="gift-meta"><strong>1 890 Kč</strong> · dostupné</p></div>
+                <footer class="gift-actions">
+                  <button class="like-button" type="button" aria-label="Přidat Vlněnou deku do oblíbených" aria-pressed="false"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1.1L12 21l7.8-7.5 1.1-1.1a5.5 5.5 0 0 0-.1-7.8Z"/></svg></button>
+                  <button class="reserve-button" type="button" data-name="Vlněnou deku">Rezervovat</button>
+                </footer>
+              </article>
+
+              <article class="gift-card">
+                <figure class="product-image"><img src="https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&amp;fit=crop&amp;w=480&amp;q=80" alt="Kniha položená na světlém stole"></figure>
+                <div class="gift-info"><h2 class="gift-title"><a class="gift-link" href="#detail-kniha">Atlas odlehlých ostrovů · Judith Schalansky</a></h2><p class="gift-meta"><strong>549 Kč</strong> · dostupné</p></div>
+                <footer class="gift-actions">
+                  <button class="like-button" type="button" aria-label="Přidat Atlas odlehlých ostrovů do oblíbených" aria-pressed="false"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1.1L12 21l7.8-7.5 1.1-1.1a5.5 5.5 0 0 0-.1-7.8Z"/></svg></button>
+                  <button class="reserve-button" type="button" data-name="Atlas odlehlých ostrovů">Rezervovat</button>
+                </footer>
+              </article>
+            </section>
+          </div>
+        </div>
+        <div id="toast" class="toast" role="status" aria-live="polite"></div>
+      </section>
+    </div>
+
+    <aside class="inspector" aria-label="Ovládání prototypu">
+      <h2>Inspekce rozložení</h2>
+      <p class="inspector-note">Ovládání není součástí aplikace.</p>
+      <fieldset class="control-set">
+        <legend>Šířka telefonu</legend>
+        <div class="segmented">
+          <button class="prototype-choice width-choice" type="button" data-width="320" aria-pressed="false">320 px</button>
+          <button class="prototype-choice width-choice" type="button" data-width="360" aria-pressed="false">360 px</button>
+          <button class="prototype-choice width-choice" type="button" data-width="390" aria-pressed="true">390 px</button>
+        </div>
+      </fieldset>
+      <fieldset class="control-set">
+        <legend>Gutter stránky</legend>
+        <div class="segmented">
+          <button class="prototype-choice gutter-choice" type="button" data-gutter="0" aria-pressed="false">0 px</button>
+          <button class="prototype-choice gutter-choice" type="button" data-gutter="8" aria-pressed="false">8 px</button>
+          <button class="prototype-choice gutter-choice" type="button" data-gutter="12" aria-pressed="true">12 px</button>
+          <button class="prototype-choice gutter-choice" type="button" data-gutter="16" aria-pressed="false">16 px</button>
+        </div>
+      </fieldset>
+    </aside>
+  </main>
+
+  <script>
+    const phone = document.getElementById('phone');
+    const toast = document.getElementById('toast');
+    let toastTimer;
+
+    function announce(message) {
+      toast.textContent = message;
+      toast.classList.add('show');
+      window.clearTimeout(toastTimer);
+      toastTimer = window.setTimeout(() => toast.classList.remove('show'), 1900);
+    }
+
+    document.querySelectorAll('.width-choice').forEach((button) => {
+      button.addEventListener('click', () => {
+        const width = button.dataset.width;
+        phone.style.width = `${width}px`;
+        phone.dataset.width = width;
+        phone.setAttribute('aria-label', `Mobilní náhled seznamu přání, šířka ${width} pixelů`);
+        document.querySelectorAll('.width-choice').forEach((item) => item.setAttribute('aria-pressed', String(item === button)));
+      });
+    });
+
+    document.querySelectorAll('.gutter-choice').forEach((button) => {
+      button.addEventListener('click', () => {
+        phone.style.setProperty('--phone-gutter', `${button.dataset.gutter}px`);
+        document.querySelectorAll('.gutter-choice').forEach((item) => item.setAttribute('aria-pressed', String(item === button)));
+      });
+    });
+
+    document.querySelectorAll('.view-button').forEach((button) => {
+      button.addEventListener('click', () => {
+        document.querySelectorAll('.view-button').forEach((item) => item.setAttribute('aria-pressed', String(item === button)));
+        announce(button.dataset.view === 'grid' ? 'Vybráno zobrazení karet' : 'Vybráno zobrazení seznamu');
+      });
+    });
+
+    document.querySelectorAll('.like-button').forEach((button) => {
+      button.addEventListener('click', () => {
+        const liked = button.getAttribute('aria-pressed') !== 'true';
+        button.setAttribute('aria-pressed', String(liked));
+        const oldLabel = button.getAttribute('aria-label');
+        button.setAttribute('aria-label', oldLabel.replace(liked ? 'Přidat' : 'Odebrat', liked ? 'Odebrat' : 'Přidat'));
+        const svg = button.querySelector('svg');
+        svg.setAttribute('fill', liked ? 'currentColor' : 'none');
+        announce(liked ? 'Přidáno do oblíbených' : 'Odebráno z oblíbených');
+      });
+    });
+
+    document.querySelectorAll('.reserve-button:not(:disabled)').forEach((button) => {
+      button.addEventListener('click', () => {
+        button.textContent = 'Rezervováno';
+        button.disabled = true;
+        button.closest('.gift-card').querySelector('.gift-meta').innerHTML = '<span class="reserved-copy">Rezervováno vámi</span>';
+        announce(`${button.dataset.name} máte rezervováno`);
+      });
+    });
+
+    document.querySelectorAll('.gift-link').forEach((link) => {
+      link.addEventListener('click', (event) => {
+        event.preventDefault();
+        announce(`Otevírám detail: ${link.textContent}`);
+      });
+    });
+
+    document.getElementById('reorder').addEventListener('click', (event) => {
+      const button = event.currentTarget;
+      const active = button.getAttribute('aria-pressed') !== 'true';
+      button.setAttribute('aria-pressed', String(active));
+      announce(active ? 'Režim řazení zapnut' : 'Pořadí uloženo');
+    });
+  </script>
+</body>
+</html>

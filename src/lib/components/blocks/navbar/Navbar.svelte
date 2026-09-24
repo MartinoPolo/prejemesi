@@ -7,7 +7,7 @@
 	import LanguageToggle from '$lib/components/derived/language-toggle/LanguageToggle.svelte';
 	import PaletteSwitcher from '$lib/components/derived/palette-switcher/PaletteSwitcher.svelte';
 	import { CreateWishlistModal } from '$lib/components/blocks/wishlist/index.js';
-	import { ImportWizard, WIZARD_MODE } from '$lib/components/blocks/import/index.js';
+	import { LazyImportWizard, WIZARD_MODE } from '$lib/components/blocks/import/index.js';
 	import { NotificationBell } from '$lib/components/blocks/notification/index.js';
 	import LogoMark from './LogoMark.svelte';
 	import NavDropdown from './NavDropdown.svelte';
@@ -297,138 +297,143 @@
 </script>
 
 <header class="topbar">
-	<!-- Mobile hamburger -->
-	{#if user}
-		<MobileNav navLinks={MOBILE_NAV_LINKS} oncreate={() => (isCreateModalOpen = true)} />
-	{/if}
+	<div class="topbar-inner">
+		<!-- Logo -->
+		<LogoMark />
 
-	<!-- Logo -->
-	<LogoMark />
-
-	<!-- Desktop nav links with dropdowns -->
-	{#if user}
-		<nav
-			class="nav-links"
-			aria-label={m.nav_main_label()}
-			onpointerenter={requestNavDropdownData}
-			onfocusin={requestNavDropdownData}
-		>
-			{#each NAV_LINKS as link, i (link.href)}
-				<!-- svelte-ignore a11y_no_static_element_interactions (hover/focus refresh is a
-				     non-essential data prefetch; the link + dropdown inside stay fully accessible) -->
-				<div
-					class="contents"
-					onpointerenter={() => refreshNavDropdown(i)}
-					onfocusin={() => refreshNavDropdown(i)}
-				>
-					<NavDropdown
-						title={link.label}
-						viewAllHref={link.href}
-						active={isNavActive(link.href)}
-						items={navDropdownItems[i]}
-						totalCount={navDropdownTotalCounts[i]}
-						grouped={i === 2}
-						bind:open={
-							() => openNavDropdownIndex === i,
-							(isOpen) => setNavDropdownOpen(i, isOpen)
-						}
-					>
-						{#snippet footer()}
-							{#if i === 0}
-								<button
-									class="inline-flex items-center gap-1.5 border-0 bg-transparent p-0 text-sm font-medium text-primary hover:underline"
-									onclick={() => (isCreateModalOpen = true)}
-								>
-									<PlusIcon class="size-3.5" />
-									{m.nav_footer_new_list()}
-								</button>
-							{:else if i === 1}
-								<span class={dropdownFooterStatClass}>
-									<GiftIcon class="size-3.5" />
-									{m.nav_footer_reserved_stats({
-										reserved: moderatedStats.reserved,
-										total: moderatedStats.total,
-									})}
-								</span>
-							{:else}
-								<span class={dropdownFooterStatClass}>
-									<GiftIcon class="size-3.5" />
-									{followedOpenCount > 0
-										? m.nav_footer_lists_need_gift({ count: followedOpenCount })
-										: m.nav_footer_all_sorted()}
-								</span>
-							{/if}
-						{/snippet}
-					</NavDropdown>
-				</div>
-			{/each}
-		</nav>
-	{/if}
-
-	<!-- Right controls -->
-	<div data-testid="navbar-actions" class="nav-right">
+		<!-- Desktop nav links with dropdowns -->
 		{#if user}
-			<!-- Create CTA -->
-			<Button
-				intent="primary"
-				size="md"
-				class="hidden min-[1040px]:inline-flex"
-				onclick={() => (isCreateModalOpen = true)}
+			<nav
+				class="nav-links"
+				aria-label={m.nav_main_label()}
+				onpointerenter={requestNavDropdownData}
+				onfocusin={requestNavDropdownData}
 			>
-				<PlusIcon data-icon="inline-start" />
-				{m.nav_create()}
-			</Button>
-			<Button
-				intent="primary"
-				size="icon"
-				class="min-[1040px]:hidden"
-				aria-label={m.nav_create()}
-				onclick={() => (isCreateModalOpen = true)}
-			>
-				<PlusIcon />
-			</Button>
+				{#each NAV_LINKS as link, i (link.href)}
+					<!-- svelte-ignore a11y_no_static_element_interactions (hover/focus refresh is a
+				     non-essential data prefetch; the link + dropdown inside stay fully accessible) -->
+					<div
+						class="contents"
+						onpointerenter={() => refreshNavDropdown(i)}
+						onfocusin={() => refreshNavDropdown(i)}
+					>
+						<NavDropdown
+							title={link.label}
+							viewAllHref={link.href}
+							active={isNavActive(link.href)}
+							items={navDropdownItems[i]}
+							totalCount={navDropdownTotalCounts[i]}
+							grouped={i === 2}
+							bind:open={
+								() => openNavDropdownIndex === i,
+								(isOpen) => setNavDropdownOpen(i, isOpen)
+							}
+						>
+							{#snippet footer()}
+								{#if i === 0}
+									<Button
+										intent="link"
+										size="sm"
+										onclick={() => (isCreateModalOpen = true)}
+									>
+										<PlusIcon data-icon="inline-start" />
+										{m.nav_footer_new_list()}
+									</Button>
+								{:else if i === 1}
+									<span class={dropdownFooterStatClass}>
+										<GiftIcon class="size-3.5" />
+										{m.nav_footer_reserved_stats({
+											reserved: moderatedStats.reserved,
+											total: moderatedStats.total,
+										})}
+									</span>
+								{:else}
+									<span class={dropdownFooterStatClass}>
+										<GiftIcon class="size-3.5" />
+										{followedOpenCount > 0
+											? m.nav_footer_lists_need_gift({
+													count: followedOpenCount,
+												})
+											: m.nav_footer_all_sorted()}
+									</span>
+								{/if}
+							{/snippet}
+						</NavDropdown>
+					</div>
+				{/each}
+			</nav>
 		{/if}
 
-		<!-- Appearance controls. ≥1040px: three separate buttons (full desktop fits).
+		<!-- Right controls -->
+		<div data-testid="navbar-actions" class="nav-right">
+			{#if user}
+				<MobileNav
+					navLinks={MOBILE_NAV_LINKS}
+					oncreate={() => (isCreateModalOpen = true)}
+				/>
+
+				<!-- Create CTA -->
+				<Button
+					intent="primary"
+					size="md"
+					class="hidden min-[1040px]:inline-flex"
+					onclick={() => (isCreateModalOpen = true)}
+				>
+					<PlusIcon data-icon="inline-start" />
+					{m.nav_create()}
+				</Button>
+				<Button
+					intent="primary"
+					format="icon"
+					class="min-[1040px]:hidden"
+					aria-label={m.nav_create()}
+					onclick={() => (isCreateModalOpen = true)}
+				>
+					<PlusIcon />
+				</Button>
+			{/if}
+
+			<!-- Appearance controls. ≥1040px: three separate buttons (full desktop fits).
 		     768–1039px: consolidated into one AppearanceMenu button so the header does not
 		     overflow. Logged-in users below 768px get these inside the MobileNav drawer;
 		     anonymous users have no drawer, so they keep the consolidated menu below 1040px. -->
-		<div
-			data-testid="navbar-appearance-controls"
-			class="header-appearance-controls hidden items-center gap-2 min-[1040px]:flex"
-		>
-			<PaletteSwitcher />
-			<LanguageToggle variant="icon" />
-			<DarkModeToggle />
-		</div>
-		{#if user}
-			<!-- One compound range variant, not `md:block` + `min-[1040px]:hidden` as two
+			<div
+				data-testid="navbar-appearance-controls"
+				class="header-appearance-controls hidden items-center gap-2 min-[1040px]:flex"
+			>
+				<PaletteSwitcher />
+				<LanguageToggle variant="icon" />
+				<DarkModeToggle />
+			</div>
+			{#if user}
+				<!-- One compound range variant, not `md:block` + `min-[1040px]:hidden` as two
 			     separate rules: Tailwind emits the arbitrary min-[1040px] media block before
 			     the named md block regardless of pixel value, so md:block would win the
 			     cascade at >=1040px and this control would stay stuck on-screen. A single
 			     min-width+max-width range has no competing rule to lose to. Uses
 			     max-[1040px] (not 1039) because Tailwind compiles arbitrary max-[Npx] to
 			     `width < Npx` (exclusive), so 1040 is the value that still includes 1039px. -->
-			<div class="hidden md:max-[1040px]:block">
-				<AppearanceMenu />
-			</div>
-		{:else}
-			<div class="min-[1040px]:hidden">
-				<AppearanceMenu />
-			</div>
-		{/if}
+				<div class="hidden md:max-[1040px]:block">
+					<AppearanceMenu />
+				</div>
+			{:else}
+				<div class="min-[1040px]:hidden">
+					<AppearanceMenu />
+				</div>
+			{/if}
 
-		{#if user}
-			<!-- Personal cluster: notifications + account sit together at the far right,
+			{#if user}
+				<!-- Personal cluster: notifications + account sit together at the far right,
 			     apart from the square appearance buttons. The bell stays ghost so its
 			     badge never collides with a border. -->
-			<NotificationBell />
-			<UserMenu {userName} {userEmail} {userInitials} {userImage} />
-		{:else}
-			<Button intent="primary" size="md" href={localizeInternalHref(resolve('/login'))}
-				>{m.nav_login()}</Button
-			>
-		{/if}
+				<NotificationBell />
+				<UserMenu {userName} {userEmail} {userInitials} {userImage} />
+			{:else}
+				<Button intent="primary" href={localizeInternalHref(resolve('/login'))}
+					>{m.nav_login()}</Button
+				>
+			{/if}
+		</div>
 	</div>
 </header>
 
@@ -437,7 +442,7 @@
 		bind:open={isCreateModalOpen}
 		onimport={() => (isImportWizardOpen = true)}
 	/>
-	<ImportWizard
+	<LazyImportWizard
 		bind:open={isImportWizardOpen}
 		mode={WIZARD_MODE.newList}
 		onsuccess={() => void invalidate(HOME_OVERVIEW_DEPENDENCY)}
@@ -453,11 +458,18 @@
 		height: var(--nav-height);
 		background: var(--card);
 		border-bottom: var(--border-w) solid var(--ink);
+		flex-shrink: 0;
+	}
+
+	.topbar-inner {
 		display: flex;
 		align-items: center;
-		padding: 0 var(--space-6);
 		gap: var(--space-4);
-		flex-shrink: 0;
+		width: 100%;
+		max-width: var(--content-max-width);
+		height: 100%;
+		margin-inline: auto;
+		padding-inline: var(--page-gutter);
 	}
 
 	/* Desktop nav links */
@@ -481,5 +493,11 @@
 		gap: var(--space-2);
 		flex-shrink: 0;
 		margin-left: auto;
+	}
+
+	@media (width < 640px) {
+		.topbar-inner {
+			gap: 0;
+		}
 	}
 </style>

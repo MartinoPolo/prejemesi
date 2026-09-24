@@ -4,7 +4,13 @@
 	import { resolveUserImageUrl } from '$lib/modules/images/public_url.js';
 	import * as m from '$lib/paraglide/messages.js';
 	import { preloadCode } from '$app/navigation';
+	import { page } from '$app/state';
 	import { onMount } from 'svelte';
+	import {
+		authenticatedIdlePreloadRoutes,
+		shouldIdlePreloadAuthenticatedRoutes,
+		type NetworkConnectionInfo,
+	} from './idle_preload_eligibility.js';
 
 	import type { Snippet } from 'svelte';
 	import type { LayoutData } from './$types.js';
@@ -14,17 +20,6 @@
 		children: Snippet;
 	}
 
-	// Primary nav targets warmed during idle time so the first in-app navigation is
-	// instant. Only runs for authenticated users — anonymous visitors on public
-	// wishlist pages rely on hover/tap intent preloading (data-sveltekit-preload-data
-	// on <body>) instead. See docs/performance-budget.md.
-	const AUTHENTICATED_PRIMARY_ROUTES = [
-		'/home',
-		'/my-lists',
-		'/moderated',
-		'/followed',
-		'/settings',
-	];
 	const IDLE_PRELOAD_TIMEOUT_MS = 3_000;
 
 	let { data, children }: AppLayoutProps = $props();
@@ -32,6 +27,7 @@
 	const user: typeof data.user | null = $derived(
 		typeof data.user === 'object' ? data.user : null,
 	);
+	const isWishlistDetailRoute = $derived(page.route.id === '/(app)/w/[id]');
 	const userInitials = $derived.by(() => {
 		if (user !== null && typeof user.name === 'string' && user.name.length > 0) {
 			return user.name
@@ -48,12 +44,16 @@
 	setNotificationsContext(data.unreadNotificationCount);
 
 	onMount(() => {
-		if (user === null) {
+		const connection = (navigator as Navigator & { connection?: NetworkConnectionInfo })
+			.connection;
+		if (!shouldIdlePreloadAuthenticatedRoutes(user !== null, connection)) {
 			return;
 		}
 		const preloadPrimaryRouteCode = () => {
 			void Promise.allSettled(
-				AUTHENTICATED_PRIMARY_ROUTES.map((route) => preloadCode(route)),
+				authenticatedIdlePreloadRoutes(page.url.pathname).map((route) =>
+					preloadCode(route),
+				),
 			);
 		};
 		if (typeof window.requestIdleCallback === 'function') {
@@ -77,7 +77,7 @@
 		userImage={resolveUserImageUrl(user?.image)}
 	/>
 	<main class="app-content">
-		<div class="app-content-inner">
+		<div class="app-content-inner" class:wishlist-detail-content={isWishlistDetailRoute}>
 			{@render children()}
 		</div>
 	</main>
@@ -104,7 +104,13 @@
 	.app-content-inner {
 		max-width: var(--content-max-width);
 		margin-inline: auto;
-		padding-inline: var(--space-6);
+		padding-inline: var(--page-gutter);
 		padding-block: var(--space-6);
+	}
+
+	@media (width < 640px) {
+		.app-content-inner.wishlist-detail-content {
+			padding-block: 0;
+		}
 	}
 </style>

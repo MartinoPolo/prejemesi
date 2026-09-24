@@ -1,7 +1,12 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 import { createTestUser } from './fixtures/test-data.js';
 import { registerAndGetPage } from './fixtures/auth-helpers.js';
-import { addGift, createWishlistAndNavigate } from './fixtures/wishlist-helpers.js';
+import {
+	addGift,
+	createWishlistAndNavigate,
+	openDesktopDisplaySubmenu,
+	startGiftReorder,
+} from './fixtures/wishlist-helpers.js';
 
 const giftItems = (page: Page) =>
 	page.locator('[data-gift-item][data-gift-id]:not([data-gift-reorder-overlay])');
@@ -12,99 +17,188 @@ function giftItem(page: Page, name: string) {
 	});
 }
 
-interface RecordedRectangle {
-	left: number;
-	top: number;
-	width: number;
-	height: number;
+async function closeDesktopDisplaySubmenu(page: Page, submenu: Locator, section: RegExp) {
+	const root = page.locator('[data-slot="dropdown-menu-content"][data-state="open"]');
+	const subTrigger = root.getByRole('menuitem', { name: section });
+	await page.keyboard.press('Escape');
+	await expect(submenu).not.toBeVisible();
+	await expect(subTrigger).toBeFocused();
+	await page.keyboard.press('Escape');
+	const displayTrigger = page.getByTestId('desktop-display-trigger');
+	await expect(displayTrigger).toHaveAttribute('aria-expanded', 'false');
+	await expect(displayTrigger).toBeFocused();
 }
 
-interface RecordedAnimation {
-	duration: number;
-	keyframes: string[];
-	targetGiftId: string | null;
-	targetText: string;
-	targetRectangle: RecordedRectangle;
+async function chooseDesktopDisplayOption(page: Page, section: RegExp, option: RegExp) {
+	const submenu = await openDesktopDisplaySubmenu(page, section);
+	const item = submenu.getByRole('menuitemradio', { name: option });
+	await item.focus();
+	await item.press('Enter');
+	await expect(item).toHaveAttribute('aria-checked', 'true');
+	await closeDesktopDisplaySubmenu(page, submenu, section);
+}
+
+async function enableDesktopWithLinkFilter(page: Page) {
+	const submenu = await openDesktopDisplaySubmenu(page, /^Filtrovat/);
+	const item = submenu.getByRole('menuitemcheckbox', { name: 'S odkazem', exact: true });
+	await item.focus();
+	await item.press('Enter');
+	await expect(item).toHaveAttribute('aria-checked', 'true');
+	await closeDesktopDisplaySubmenu(page, submenu, /^Filtrovat/);
+}
+
+interface TransformAnimationRecorder {
+	giftIds: Record<string, true>;
+	travelStarts: Record<string, string[]>;
+	renderedTravel: Record<string, true>;
+	cancelledTravel: number;
+	extendTravel: boolean;
+	unidentifiedTarget: boolean;
 }
 
 declare global {
 	interface Window {
-		__motionAnimationRecords: RecordedAnimation[];
+		__motionTransformAnimations: TransformAnimationRecorder;
 	}
 }
 
-async function installAnimationRecorder(page: Page) {
+async function installTransformAnimationRecorder(page: Page) {
 	await page.evaluate(() => {
-		window.__motionAnimationRecords = [];
+		window.__motionTransformAnimations = {
+			giftIds: {},
+			travelStarts: {},
+			renderedTravel: {},
+			cancelledTravel: 0,
+			extendTravel: false,
+			unidentifiedTarget: false,
+		};
+		function recordTransformTarget(element: Element, travelStart: string | undefined) {
+			const giftId =
+				element.closest<HTMLElement>('[data-gift-item][data-gift-id]')?.dataset.giftId ??
+				(element instanceof HTMLElement ? element.dataset.giftReceivedAction : undefined) ??
+				element.querySelector<HTMLElement>('[data-gift-received-action]')?.dataset
+					.giftReceivedAction;
+			if (giftId === undefined || giftId === '') {
+				window.__motionTransformAnimations.unidentifiedTarget = true;
+			} else {
+				window.__motionTransformAnimations.giftIds[giftId] = true;
+				if (travelStart !== undefined) {
+					(window.__motionTransformAnimations.travelStarts[giftId] ??= []).push(
+						travelStart,
+					);
+				}
+			}
+			return giftId;
+		}
+
+		function recordRenderedTravel(element: Element, animation: Animation, giftId?: string) {
+			if (giftId === undefined || giftId === '' || !(element instanceof HTMLElement)) {
+				return;
+			}
+			requestAnimationFrame(() => {
+				const computed = getComputedStyle(element).transform;
+				const matrix = new DOMMatrixReadOnly(computed);
+				if (
+					animation.playState === 'running' &&
+					(Math.abs(matrix.m41) > 0.1 || Math.abs(matrix.m42) > 0.1)
+				) {
+					window.__motionTransformAnimations.renderedTravel[giftId] = true;
+				}
+			});
+		}
+
+		function firstTravelTranslation(keyframes: Keyframe[] | PropertyIndexedKeyframes | null) {
+			const transform = Array.isArray(keyframes) ? keyframes[0]?.transform : undefined;
+			return typeof transform === 'string' && transform.startsWith('translate(')
+				? transform
+				: undefined;
+		}
+
+		function animationTiming(
+			options: number | KeyframeAnimationOptions | undefined,
+			travel: boolean,
+		) {
+			return travel &&
+				window.__motionTransformAnimations.extendTravel &&
+				typeof options === 'object' &&
+				options !== null
+				? { ...options, duration: 3000 }
+				: options;
+		}
+
 		const nativeAnimate = Element.prototype.animate;
 		Element.prototype.animate = function (keyframes, options) {
-			const animation = nativeAnimate.call(this, keyframes, options);
-			const effect = animation.effect as KeyframeEffect | null;
-			const rectangle = this.getBoundingClientRect();
-			window.__motionAnimationRecords.push({
-				duration: Number(effect?.getTiming().duration ?? 0),
-				keyframes:
-					effect?.getKeyframes().map((frame) => String(frame.transform ?? '')) ?? [],
-				targetGiftId: this.closest<HTMLElement>('[data-gift-id]')?.dataset.giftId ?? null,
-				targetText: (this.textContent ?? '').replace(/\s+/g, ' ').trim(),
-				targetRectangle: {
-					left: rectangle.left,
-					top: rectangle.top,
-					width: rectangle.width,
-					height: rectangle.height,
-				},
-			});
+			const hasTransform = Array.isArray(keyframes)
+				? keyframes.some((keyframe) => 'transform' in keyframe)
+				: keyframes !== null && 'transform' in keyframes;
+			const firstTranslate = firstTravelTranslation(keyframes);
+			const giftId = hasTransform ? recordTransformTarget(this, firstTranslate) : undefined;
+			const travel = giftId !== undefined && firstTranslate !== undefined;
+			const animation = nativeAnimate.call(this, keyframes, animationTiming(options, travel));
+			if (travel) {
+				animation.addEventListener(
+					'cancel',
+					() => {
+						window.__motionTransformAnimations.cancelledTravel += 1;
+					},
+					{ once: true },
+				);
+			}
+			recordRenderedTravel(this, animation, giftId);
 			return animation;
 		};
 	});
 }
 
-async function recordedAnimations(page: Page): Promise<RecordedAnimation[]> {
-	return page.evaluate(() => [...window.__motionAnimationRecords]);
-}
-
-async function clearRecordedAnimations(page: Page) {
+async function clearTransformAnimationRecords(page: Page) {
 	await page.evaluate(() => {
-		window.__motionAnimationRecords.length = 0;
+		window.__motionTransformAnimations = {
+			giftIds: {},
+			travelStarts: {},
+			renderedTravel: {},
+			cancelledTravel: 0,
+			extendTravel: false,
+			unidentifiedTarget: false,
+		};
 	});
 }
 
-function translatedAnimations(animations: RecordedAnimation[], giftId: string | null) {
-	return animations.filter(
-		(animation) =>
-			animation.targetGiftId === giftId &&
-			animation.keyframes.some((keyframe) => keyframe.includes('translate')),
-	);
+async function expectGiftTransformAnimation(page: Page, giftId: string) {
+	await expect
+		.poll(() =>
+			page.evaluate(
+				(targetGiftId) => window.__motionTransformAnimations.giftIds[targetGiftId] === true,
+				giftId,
+			),
+		)
+		.toBe(true);
 }
 
-function flightEndpoint(animation: RecordedAnimation) {
-	const endpoint = animation.keyframes
-		.at(-1)
-		?.match(/translate\(([-\d.]+)px,\s*([-\d.]+)px\)\s*scale\(([-\d.]+),\s*([-\d.]+)\)/);
-	expect(endpoint, `flight endpoint keyframe: ${animation.keyframes.at(-1)}`).not.toBeNull();
-	return {
-		translateX: Number(endpoint![1]),
-		translateY: Number(endpoint![2]),
-		scaleX: Number(endpoint![3]),
-		scaleY: Number(endpoint![4]),
-	};
+async function expectGiftTravel(page: Page, giftId: string) {
+	await expect
+		.poll(() =>
+			page.evaluate(
+				(id) => window.__motionTransformAnimations.renderedTravel[id] === true,
+				giftId,
+			),
+		)
+		.toBe(true);
 }
 
-async function animationFacts(page: Page) {
-	return page.locator('body').evaluate((body) =>
-		body.getAnimations({ subtree: true }).map((animation) => {
-			const effect = animation.effect as KeyframeEffect | null;
-			return {
-				duration: Number(effect?.getTiming().duration ?? 0),
-				playState: animation.playState,
-				keyframes:
-					effect?.getKeyframes().map((frame) => String(frame.transform ?? '')) ?? [],
-				targetGiftId: (effect?.target as HTMLElement | null)?.closest<HTMLElement>(
-					'[data-gift-id]',
-				)?.dataset.giftId,
-			};
-		}),
-	);
+async function expectGiftInViewport(page: Page, name: string) {
+	const eligible = await giftItem(page, name).evaluate((element) => {
+		const rect = element.getBoundingClientRect();
+		return (
+			element.isConnected &&
+			rect.width > 0 &&
+			rect.height > 0 &&
+			rect.right > 0 &&
+			rect.bottom > 0 &&
+			rect.left < innerWidth &&
+			rect.top < innerHeight
+		);
+	});
+	expect(eligible, `${name} must have a visible endpoint inside the viewport`).toBe(true);
 }
 
 function collectBrowserErrors(page: Page) {
@@ -121,11 +215,16 @@ function collectBrowserErrors(page: Page) {
 async function expectCleanSettlement(page: Page) {
 	await expect
 		.poll(
-			async () =>
-				(await animationFacts(page)).filter((a) => a.playState === 'running').length,
-			{
-				timeout: 5_000,
-			},
+			() =>
+				page
+					.locator('body')
+					.evaluate(
+						(body) =>
+							body
+								.getAnimations({ subtree: true })
+								.filter((animation) => animation.playState === 'running').length,
+					),
+			{ timeout: 5_000 },
 		)
 		.toBe(0);
 	const integrity = await page.locator('body').evaluate(() => {
@@ -138,6 +237,8 @@ async function expectCleanSettlement(page: Page) {
 				.filter((id, index, all) => all.indexOf(id) !== index),
 			staleTransforms: gifts.filter((gift) => gift.style.transform !== '').length,
 			staleClones: document.querySelectorAll('[aria-hidden="true"][data-gift-item]').length,
+			horizontalOverflow:
+				document.documentElement.scrollWidth > document.documentElement.clientWidth,
 		};
 	});
 	expect(integrity).toEqual({
@@ -145,6 +246,7 @@ async function expectCleanSettlement(page: Page) {
 		duplicateGiftIds: [],
 		staleTransforms: 0,
 		staleClones: 0,
+		horizontalOverflow: false,
 	});
 }
 
@@ -152,7 +254,7 @@ test.describe('issue #269 integrated motion strategy', () => {
 	test.describe.configure({ mode: 'serial' });
 	test.use({ viewport: { width: 1280, height: 900 } });
 
-	test('filter insertion and received flight preserve identity and settle cleanly', async ({
+	test('filter insertion and received placement preserve identity and settle cleanly', async ({
 		browser,
 		request,
 		baseURL,
@@ -176,127 +278,102 @@ test.describe('issue #269 integrated motion strategy', () => {
 		const displacedId = await displaced.getAttribute('data-gift-id');
 		expect(filteredOutId).not.toBeNull();
 		expect(displacedId).not.toBeNull();
+		if (filteredOutId === null || displacedId === null) {
+			throw new Error('Gift motion targets must expose stable gift IDs');
+		}
 
-		await installAnimationRecorder(page);
-		await page.getByRole('button', { name: 'Filtrovat', exact: true }).click();
-		const withLinkFilter = page.getByRole('menuitemcheckbox', {
+		await installTransformAnimationRecorder(page);
+		const filterMenu = await openDesktopDisplaySubmenu(page, /^Filtrovat/);
+		const withLinkFilter = filterMenu.getByRole('menuitemcheckbox', {
 			name: 'S odkazem',
 			exact: true,
 		});
 		await expect(withLinkFilter).toHaveAttribute('aria-checked', 'false');
+		await clearTransformAnimationRecords(page);
 		await withLinkFilter.click();
-
-		await expect(
-			page.getByRole('button', {
-				name: 'Filtrovat: Aktivní filtry: 1',
-				exact: true,
-			}),
-		).toBeVisible();
+		await expectGiftTransformAnimation(page, displacedId);
+		await expect(page.getByTestId('desktop-display-trigger')).toHaveAccessibleName(
+			'Možnosti zobrazení: Aktivní filtry: 1',
+		);
 		await expect(page.locator('[data-filter-count]')).toHaveText('1');
 		await expect(withLinkFilter).toHaveAttribute('aria-checked', 'true');
 		const activeFilters = page.getByTestId('wishlist-toolbar-active-filters');
 		await expect(activeFilters.locator('[data-active-filter-pill]')).toHaveText('S odkazem');
 		await expect(filteredOut).toHaveCount(0);
 		await expect(displaced).toBeVisible();
-		await expect
-			.poll(async () => translatedAnimations(await recordedAnimations(page), displacedId))
-			.toContainEqual(expect.objectContaining({ duration: 520 }));
-
-		const filterAnimations = await recordedAnimations(page);
-		expect(translatedAnimations(filterAnimations, filteredOutId)).toEqual([]);
-		expect(
-			translatedAnimations(filterAnimations, displacedId).every(
-				(animation) => animation.duration === 520,
-			),
-		).toBe(true);
+		expect(await displaced.getAttribute('data-gift-id')).toBe(displacedId);
 
 		await page.keyboard.press('Escape');
 		await expect(withLinkFilter).not.toBeVisible();
-		await clearRecordedAnimations(page);
 		await activeFilters
 			.getByRole('button', { name: 'Odebrat filtr S odkazem', exact: true })
 			.click();
 		await expect(filteredOut).toBeVisible();
 		await expect(activeFilters).toHaveCount(0);
-		await expect(page.getByRole('button', { name: 'Filtrovat', exact: true })).toBeFocused();
-		await expect
-			.poll(async () => translatedAnimations(await recordedAnimations(page), displacedId))
-			.toContainEqual(expect.objectContaining({ duration: 520 }));
-		expect(translatedAnimations(await recordedAnimations(page), filteredOutId)).toEqual([]);
+		await expect(page.getByTestId('desktop-display-trigger')).toBeFocused();
+		expect(await filteredOut.getAttribute('data-gift-id')).toBe(filteredOutId);
+		expect(await displaced.getAttribute('data-gift-id')).toBe(displacedId);
 		await expectCleanSettlement(page);
 
-		const moving = filteredOut;
-		const movingId = await moving.getAttribute('data-gift-id');
-		const sourceRectangle = await moving.boundingBox();
-		expect(sourceRectangle).not.toBeNull();
-		await clearRecordedAnimations(page);
-		await moving.getByRole('button', { name: 'Označit jako přijatý' }).click();
-		await expect(moving.getByText('Přijato', { exact: true })).toBeVisible({ timeout: 10_000 });
-		const destinationRectangle = await moving.boundingBox();
-		expect(destinationRectangle).not.toBeNull();
-
-		const translationDistance = Math.hypot(
-			destinationRectangle!.x - sourceRectangle!.x,
-			destinationRectangle!.y - sourceRectangle!.y,
-		);
-		const expectedFlightDuration = Math.ceil(
-			Math.max(325, (translationDistance / 1500) * 1000),
-		);
-		await expect
-			.poll(async () =>
-				(await recordedAnimations(page)).find(
-					(animation) =>
-						animation.duration === expectedFlightDuration &&
-						animation.targetText.includes(names[0]!),
-				),
-			)
-			.toBeDefined();
-		const receivedAnimations = await recordedAnimations(page);
-		const flight = receivedAnimations.find(
-			(animation) =>
-				animation.duration === expectedFlightDuration &&
-				animation.targetText.includes(names[0]!),
-		)!;
-		expect(flight.targetText).not.toContain(names[1]);
-		expect(flight.targetText).not.toContain(names[2]);
-		expect(flight.targetRectangle.left).toBeCloseTo(sourceRectangle!.x, 1);
-		expect(flight.targetRectangle.top).toBeCloseTo(sourceRectangle!.y, 1);
-		expect(flight.targetRectangle.width).toBeCloseTo(sourceRectangle!.width, 1);
-		expect(flight.targetRectangle.height).toBeCloseTo(sourceRectangle!.height, 1);
-		expect(flight.keyframes[0]).toContain('translate(0px, 0px) scale(1, 1)');
-		const endpoint = flightEndpoint(flight);
-		expect(endpoint.translateX).toBeCloseTo(destinationRectangle!.x - sourceRectangle!.x, 1);
-		expect(endpoint.translateY).toBeCloseTo(destinationRectangle!.y - sourceRectangle!.y, 1);
-		expect(endpoint.scaleX).toBeCloseTo(
-			destinationRectangle!.width / sourceRectangle!.width,
-			2,
-		);
-		expect(endpoint.scaleY).toBeCloseTo(
-			destinationRectangle!.height / sourceRectangle!.height,
-			2,
-		);
-		expect(receivedAnimations.some((animation) => animation.duration === 520)).toBe(true);
-		await expectCleanSettlement(page);
+		await clearTransformAnimationRecords(page);
+		let releaseReceivedRequest: () => void = () => {};
+		let signalReceivedRequest: () => void = () => {};
+		const receivedRequestHeld = new Promise<void>((resolve) => {
+			signalReceivedRequest = resolve;
+		});
+		const receivedRequestReleased = new Promise<void>((resolve) => {
+			releaseReceivedRequest = resolve;
+		});
+		await page.route('**/_app/remote/*/markGiftReceived', async (route) => {
+			signalReceivedRequest();
+			await receivedRequestReleased;
+			await route.continue();
+		});
+		try {
+			await filteredOut.getByRole('button', { name: 'Označit jako přijatý' }).click();
+			await receivedRequestHeld;
+			await chooseDesktopDisplayOption(page, /^Řadit podle/, /^Název$/);
+		} finally {
+			releaseReceivedRequest();
+		}
 		await expect(
-			giftItems(page).filter({ has: page.getByText('Přijato', { exact: true }) }),
+			page.locator('[data-testid="wishlist-page-shell"] p[aria-live="polite"]'),
+		).toContainText('Dárek „Motion Gift A“ byl označen jako přijatý.');
+		await page.unroute('**/_app/remote/*/markGiftReceived');
+		await expect(page.getByTestId('desktop-display-trigger')).toBeFocused();
+		await expect(
+			filteredOut.locator('[data-state-primary][data-state-kind="received"]'),
+		).toHaveText('Přijato', { timeout: 10_000 });
+		await expect(page.getByRole('heading', { name: 'Obdržené', exact: true })).toBeVisible();
+		expect(await filteredOut.getAttribute('data-gift-id')).toBe(filteredOutId);
+		await expect(
+			giftItems(page).filter({
+				has: page.locator('[data-state-primary][data-state-kind="received"]'),
+			}),
 		).toHaveCount(1);
+		await expectCleanSettlement(page);
 
-		// Reverse is the idempotent cleanup and must restore focus without changing scroll.
-		const reverse = moving.getByRole('button', { name: 'Označit jako nepřijatý' });
+		const reverse = filteredOut.getByRole('button', { name: 'Označit jako nepřijatý' });
 		const scrollBefore = await page.evaluate(() => scrollY);
 		await reverse.click();
-		await expect(moving.getByRole('button', { name: 'Označit jako přijatý' })).toBeFocused({
-			timeout: 10_000,
-		});
+		await expect(filteredOut.getByRole('button', { name: 'Označit jako přijatý' })).toBeFocused(
+			{
+				timeout: 10_000,
+			},
+		);
 		expect(await page.evaluate(() => scrollY)).toBe(scrollBefore);
 		await expect(page.getByRole('heading', { name: 'Obdržené', exact: true })).toHaveCount(0);
 		await expectCleanSettlement(page);
-		expect(await moving.getAttribute('data-gift-id')).toBe(movingId);
+		expect(await filteredOut.getAttribute('data-gift-id')).toBe(filteredOutId);
+		await clearTransformAnimationRecords(page);
+		await filteredOut.getByRole('button', { name: 'Označit jako přijatý' }).click();
+		await expectGiftTransformAnimation(page, filteredOutId);
+		await expectCleanSettlement(page);
 		expect(errors).toEqual([]);
 		await page.context().close();
 	});
 
-	test('reorder mode keeps toolbar geometry and controls in place, including mobile', async ({
+	test('reorder mode temporarily bypasses and restores browse choices', async ({
 		browser,
 		request,
 		baseURL,
@@ -308,90 +385,256 @@ test.describe('issue #269 integrated motion strategy', () => {
 			createTestUser('motion-strategy-reorder'),
 		);
 		const errors = collectBrowserErrors(page);
+		const manualOrder = ['Zeta Gift', 'Alpha Gift', 'Mu Gift'];
 		await createWishlistAndNavigate(page, 'Motion strategy reorder');
-		await addGift(page, 'Motion Reorder A');
-		await addGift(page, 'Motion Reorder B');
+		await addGift(page, manualOrder[0]!, {
+			primaryLink: 'https://example.com/zeta',
+			priority: 'Vysoká',
+			category: 'Knihy',
+		});
+		await addGift(page, manualOrder[1]!, { priority: 'Nízká' });
+		await addGift(page, manualOrder[2]!, {
+			primaryLink: 'https://example.com/mu',
+			priority: 'Vysoká',
+			category: 'Knihy',
+		});
 
-		const regions = [
-			'wishlist-toolbar',
-			'wishlist-toolbar-controls',
-			'wishlist-toolbar-view-controls',
-			'wishlist-toolbar-display-controls',
-			'wishlist-toolbar-edit-controls',
-		];
-		const before = await Promise.all(regions.map((id) => page.getByTestId(id).boundingBox()));
-		const action = page.getByRole('button', { name: 'Změnit pořadí', exact: true });
-		await action.focus();
-		await action.click();
-		const done = page.getByRole('button', { name: 'Hotovo', exact: true });
-		await expect(done).toBeFocused();
+		await chooseDesktopDisplayOption(page, /^Seskupení/, /^Podle kategorie$/);
+		await chooseDesktopDisplayOption(page, /^Řadit podle/, /^Název$/);
+		await enableDesktopWithLinkFilter(page);
+
+		const browseOrder = ['Mu Gift', 'Zeta Gift'];
+		await expect
+			.poll(() => giftItems(page).getByRole('heading', { level: 3 }).allTextContents())
+			.toEqual(browseOrder);
+		await expect(page.getByRole('heading', { level: 2, name: 'Knihy' })).toBeVisible();
+
+		const desktopMore = page.getByTestId('desktop-more-trigger');
+		await startGiftReorder(page);
+		const desktopDone = page.getByRole('button', { name: 'Hotovo', exact: true });
+		await expect(desktopDone).toBeFocused();
 		await expect(
 			page.locator('[role="status"]').filter({ hasText: 'Režim změny pořadí zapnut.' }),
 		).toHaveCount(1);
-		const after = await Promise.all(regions.map((id) => page.getByTestId(id).boundingBox()));
-		expect(after).toEqual(before);
-		for (const control of [
-			page.getByTestId('gift-view-card'),
-			page.getByTestId('gift-view-list'),
-		]) {
-			await expect(control).toBeVisible();
-			await expect(control).toBeDisabled();
-		}
-		for (const control of await page
-			.getByTestId('wishlist-toolbar-display-controls')
-			.getByRole('button')
-			.all()) {
-			await expect(control).toBeVisible();
-			await expect(control).toBeDisabled();
-		}
-		await page.setViewportSize({ width: 390, height: 844 });
-		const mobileToolbarGeometry = () =>
-			page.evaluate((regionIds) => {
-				const rectangles = regionIds.map((id) => {
-					const element = document.querySelector<HTMLElement>(`[data-testid="${id}"]`);
-					if (!element) {
-						throw new Error(`Missing toolbar region: ${id}`);
-					}
-					return element.getBoundingClientRect();
-				});
-				const toolbar = rectangles[0]!;
-				return rectangles.map((rect) => ({
-					x: rect.x - toolbar.x,
-					y: rect.y - toolbar.y,
-					width: rect.width,
-					height: rect.height,
-				}));
-			}, regions);
-		// Compare each region relative to the toolbar. Focusing the entry/exit
-		// control may scroll the viewport, but must not move or resize the controls
-		// within the toolbar. Disable smooth scrolling so samples are settled.
-		await page.evaluate(() => {
-			document.documentElement.style.scrollBehavior = 'auto';
-		});
-		await done.evaluate((element) => element.scrollIntoView({ block: 'center' }));
-		const mobileAfterEntry = await mobileToolbarGeometry();
-		expect(
-			await page.evaluate(
-				() => document.documentElement.scrollWidth <= document.documentElement.clientWidth,
-			),
-		).toBe(true);
-		await expect(done).toBeFocused();
-		await done.click();
-		await expect(action).toBeFocused();
+		await expect(page.getByTestId('gift-reorder-temporary-notice')).toContainText(
+			'dočasně zobrazujeme všechny aktivní dárky bez seskupení, řazení a filtrů',
+		);
+		await expect
+			.poll(() => giftItems(page).getByRole('heading', { level: 3 }).allTextContents())
+			.toEqual(manualOrder);
+		await expect(page.getByRole('heading', { level: 2, name: 'Knihy' })).toHaveCount(0);
+		await expect(page.getByTestId('desktop-display-trigger')).toBeDisabled();
+
+		await desktopDone.click();
+		await expect(desktopMore).toBeFocused();
 		await expect(
 			page.locator('[role="status"]').filter({ hasText: 'Režim změny pořadí ukončen.' }),
 		).toHaveCount(1);
-		const mobileAfterExit = await mobileToolbarGeometry();
-		expect(mobileAfterExit).toEqual(mobileAfterEntry);
-		await action.click();
-		await expect(done).toBeFocused();
-		const mobileAfterReentry = await mobileToolbarGeometry();
-		expect(mobileAfterReentry).toEqual(mobileAfterExit);
-		await done.click();
-		await expect(action).toBeFocused();
+		await expect
+			.poll(() => giftItems(page).getByRole('heading', { level: 3 }).allTextContents())
+			.toEqual(browseOrder);
+		await expect(page.getByRole('heading', { level: 2, name: 'Knihy' })).toBeVisible();
+		await expect(page.getByTestId('desktop-display-trigger')).toHaveAccessibleName(
+			'Možnosti zobrazení: Aktivní filtry: 1',
+		);
+
+		const groupingMenu = await openDesktopDisplaySubmenu(page, /^Seskupení/);
+		await expect(
+			groupingMenu.getByRole('menuitemradio', { name: 'Podle kategorie', exact: true }),
+		).toHaveAttribute('aria-checked', 'true');
+		await page.keyboard.press('Escape');
+		await page.keyboard.press('Escape');
+		const sortingMenu = await openDesktopDisplaySubmenu(page, /^Řadit podle/);
+		await expect(
+			sortingMenu.getByRole('menuitemradio', { name: 'Název', exact: true }),
+		).toHaveAttribute('aria-checked', 'true');
+		await page.keyboard.press('Escape');
+		await page.keyboard.press('Escape');
+		const filterMenu = await openDesktopDisplaySubmenu(page, /^Filtrovat/);
+		await expect(
+			filterMenu.getByRole('menuitemcheckbox', { name: 'S odkazem', exact: true }),
+		).toHaveAttribute('aria-checked', 'true');
+
 		expect(errors).toEqual([]);
 		await page.context().close();
 	});
+
+	for (const viewMode of ['list', 'card'] as const) {
+		test(`desktop ${viewMode} sort and cross-section grouping move visible identities`, async ({
+			browser,
+			request,
+			baseURL,
+		}) => {
+			const page = await registerAndGetPage(
+				browser,
+				request,
+				baseURL!,
+				createTestUser('motion-display-desktop'),
+			);
+			const errors = collectBrowserErrors(page);
+			await createWishlistAndNavigate(page, 'Display motion desktop');
+			await addGift(page, 'Zeta Motion', {
+				priority: 'Vysoká',
+				category: 'Knihy',
+				primaryLink: 'https://example.com/zeta-motion',
+			});
+			await addGift(page, 'Alpha Motion', { priority: 'Nízká' });
+			await addGift(page, 'Mu Motion', { priority: 'Nízká' });
+			await page.getByTestId(`gift-view-${viewMode}`).click();
+			await chooseDesktopDisplayOption(page, /^Seskupení/, /^Bez seskupení$/);
+			await expectCleanSettlement(page);
+			const zetaId = await giftItem(page, 'Zeta Motion').getAttribute('data-gift-id');
+			expect(zetaId).toBeTruthy();
+			if (zetaId === null) {
+				throw new Error('Missing stable gift identity');
+			}
+			await installTransformAnimationRecorder(page);
+			await chooseDesktopDisplayOption(page, /^Řadit podle/, /^Název$/);
+			await expectGiftTravel(page, zetaId);
+			await expect
+				.poll(() => giftItems(page).getByRole('heading', { level: 3 }).allTextContents())
+				.toEqual(['Alpha Motion', 'Mu Motion', 'Zeta Motion']);
+			await expectCleanSettlement(page);
+
+			await clearTransformAnimationRecords(page);
+			await chooseDesktopDisplayOption(page, /^Seskupení/, /^Podle kategorie$/);
+			await expectGiftTravel(page, zetaId);
+			await expect(page.getByRole('heading', { level: 2, name: 'Knihy' })).toBeVisible();
+			await expect
+				.poll(() => giftItems(page).getByRole('heading', { level: 3 }).allTextContents())
+				.toEqual(['Zeta Motion', 'Alpha Motion', 'Mu Motion']);
+			await expectCleanSettlement(page);
+
+			await clearTransformAnimationRecords(page);
+			await chooseDesktopDisplayOption(page, /^Seskupení/, /^Podle kategorie$/);
+			await page.evaluate(
+				() =>
+					new Promise<void>((resolve) =>
+						requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+					),
+			);
+			expect(
+				await page.evaluate(() => window.__motionTransformAnimations.travelStarts),
+			).toEqual({});
+			if (viewMode === 'list') {
+				await page.evaluate(() => {
+					window.__motionTransformAnimations.extendTravel = true;
+				});
+				await chooseDesktopDisplayOption(page, /^Seskupení/, /^Bez seskupení$/);
+				await expectGiftTravel(page, zetaId);
+				await chooseDesktopDisplayOption(page, /^Řadit podle/, /^Výchozí pořadí$/);
+				await enableDesktopWithLinkFilter(page);
+				await expect
+					.poll(() =>
+						page.evaluate(() => window.__motionTransformAnimations.cancelledTravel),
+					)
+					.toBeGreaterThan(0);
+				await expect(giftItems(page).getByRole('heading', { level: 3 })).toHaveText([
+					'Zeta Motion',
+				]);
+				await expectCleanSettlement(page);
+				await page.evaluate(() => {
+					window.__motionTransformAnimations.extendTravel = false;
+				});
+			} else {
+				await enableDesktopWithLinkFilter(page);
+			}
+			await expect(giftItems(page)).toHaveCount(1);
+			await page.getByTestId('desktop-more-trigger').click();
+			await page.getByRole('menuitem', { name: 'Obnovit výchozí zobrazení' }).click();
+			await expect
+				.poll(() => giftItems(page).getByRole('heading', { level: 3 }).allTextContents())
+				.toEqual(['Zeta Motion', 'Alpha Motion', 'Mu Motion']);
+			await expect(giftItems(page)).toHaveCount(3);
+			await expect(page.locator('[data-filter-count]')).toHaveCount(0);
+			await expectCleanSettlement(page);
+			expect(await giftItem(page, 'Zeta Motion').getAttribute('data-gift-id')).toBe(zetaId);
+			if (viewMode === 'list') {
+				const receivedToggle = giftItem(page, 'Zeta Motion').getByRole('button', {
+					name: 'Označit jako přijatý',
+				});
+				await receivedToggle.click();
+				await expect(
+					giftItem(page, 'Zeta Motion').locator('[data-state-kind="received"]'),
+				).toBeVisible();
+				await expectCleanSettlement(page);
+			}
+			expect(errors).toEqual([]);
+			await page.context().close();
+		});
+	}
+
+	for (const viewMode of ['card', 'list'] as const) {
+		test(`mobile ${viewMode} sort and grouping move identities, reduced motion skips travel`, async ({
+			browser,
+			request,
+			baseURL,
+		}) => {
+			const page = await registerAndGetPage(
+				browser,
+				request,
+				baseURL!,
+				createTestUser('motion-display-mobile'),
+			);
+			const errors = collectBrowserErrors(page);
+			await createWishlistAndNavigate(page, 'Display motion mobile');
+			await addGift(page, 'Zeta Mobile', { priority: 'Vysoká', category: 'Knihy' });
+			await addGift(page, 'Alpha Mobile', { priority: 'Nízká' });
+			await addGift(page, 'Mu Mobile', { priority: 'Nízká' });
+			await chooseDesktopDisplayOption(page, /^Seskupení/, /^Bez seskupení$/);
+			await page.setViewportSize({ width: 390, height: 850 });
+			await page.getByTestId(`gift-view-${viewMode}`).click();
+			await expect(page.getByTestId('mobile-display-trigger')).toBeVisible();
+			const movingName = 'Alpha Mobile';
+			const zetaId = await giftItem(page, movingName).getAttribute('data-gift-id');
+			expect(zetaId).toBeTruthy();
+			if (zetaId === null) {
+				throw new Error('Missing stable gift identity');
+			}
+			await installTransformAnimationRecorder(page);
+			const chooseMobile = async (section: 'sort' | 'grouping', option: string) => {
+				await page.getByTestId('mobile-display-trigger').click();
+				await page.getByTestId(`mobile-sheet-${section}-switch`).click();
+				await page
+					.getByRole('radiogroup', {
+						name: section === 'sort' ? 'Řadit podle' : 'Seskupení',
+					})
+					.getByText(option, { exact: true })
+					.click();
+				await expect(page.getByTestId('mobile-sheet-switcher')).toHaveCount(0);
+			};
+			await expectGiftInViewport(page, movingName);
+			await chooseMobile('sort', 'Název');
+			await expectGiftTravel(page, zetaId);
+			await expectCleanSettlement(page);
+			await expectGiftInViewport(page, movingName);
+			await clearTransformAnimationRecords(page);
+			await chooseMobile('grouping', 'Podle kategorie');
+			await expectGiftTravel(page, zetaId);
+			await expectCleanSettlement(page);
+			await expectGiftInViewport(page, movingName);
+
+			await chooseMobile('grouping', 'Bez seskupení');
+			await chooseMobile('sort', 'Výchozí pořadí');
+			await expect
+				.poll(() => giftItems(page).getByRole('heading', { level: 3 }).allTextContents())
+				.toEqual(['Zeta Mobile', 'Alpha Mobile', 'Mu Mobile']);
+
+			await expectCleanSettlement(page);
+			await page.emulateMedia({ reducedMotion: 'reduce' });
+			await clearTransformAnimationRecords(page);
+			await chooseMobile('sort', 'Název');
+			await expect
+				.poll(() => giftItems(page).getByRole('heading', { level: 3 }).allTextContents())
+				.toEqual(['Alpha Mobile', 'Mu Mobile', 'Zeta Mobile']);
+			expect(
+				await page.evaluate(() => window.__motionTransformAnimations.travelStarts),
+			).toEqual({});
+			await expectCleanSettlement(page);
+			expect(errors).toEqual([]);
+			await page.context().close();
+		});
+	}
 
 	test('rapid card/list switching commits the latest mode and reduced motion skips transforms', async ({
 		browser,
@@ -407,26 +650,26 @@ test.describe('issue #269 integrated motion strategy', () => {
 		const errors = collectBrowserErrors(page);
 		await createWishlistAndNavigate(page, 'Motion strategy view switching');
 		await addGift(page, 'Motion View Gift');
-		await installAnimationRecorder(page);
 		const list = page.getByTestId('gift-view-list');
 		const card = page.getByTestId('gift-view-card');
 		await list.click();
-		await expect
-			.poll(async () => (await animationFacts(page)).map((a) => a.duration))
-			.toContain(160);
 		await card.click();
 		await list.click();
 		await expect(list).toHaveAttribute('aria-checked', 'true');
 		await expectCleanSettlement(page);
 
 		await page.emulateMedia({ reducedMotion: 'reduce' });
-		await clearRecordedAnimations(page);
+		await installTransformAnimationRecorder(page);
 		await card.click();
 		await expect(card).toHaveAttribute('aria-checked', 'true');
-		const transforms = (await recordedAnimations(page)).filter((animation) =>
-			animation.keyframes.some((frame) => /translate|scale/.test(frame)),
-		);
-		expect(transforms).toEqual([]);
+		expect(await page.evaluate(() => window.__motionTransformAnimations)).toEqual({
+			giftIds: {},
+			travelStarts: {},
+			renderedTravel: {},
+			cancelledTravel: 0,
+			extendTravel: false,
+			unidentifiedTarget: false,
+		});
 		expect(errors).toEqual([]);
 		await page.context().close();
 	});

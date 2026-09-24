@@ -142,7 +142,7 @@
 						/>
 					{:else}
 						<span
-							class="flex size-16 items-center justify-center rounded-xl bg-primary/10 text-lg font-semibold text-primary"
+							class="flex size-16 items-center justify-center rounded-xl bg-primary/10 text-lg font-semibold text-brand"
 						>
 							{getInitials(displayName)}
 						</span>
@@ -169,7 +169,9 @@
 					</div>
 				</div>
 				{#if googleError}
-					<p class="text-xs text-destructive">{m.settings_avatar_google_error()}</p>
+					<HelpText state="error" aria-live="polite">
+						{m.settings_avatar_google_error()}
+					</HelpText>
 				{/if}
 			</div>
 

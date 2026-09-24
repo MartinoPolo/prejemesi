@@ -18,6 +18,8 @@
 		onreserve: (gift: GiftForVisitor) => void;
 		onunreserve: (gift: GiftForVisitor) => void;
 		onreceived: (giftId: string, received: boolean) => void;
+		receivedPendingGiftIds?: ReadonlySet<string>;
+		showPriority?: boolean;
 	}
 
 	let {
@@ -30,6 +32,8 @@
 		onreserve,
 		onunreserve,
 		onreceived,
+		receivedPendingGiftIds = new Set<string>(),
+		showPriority = true,
 	}: WishlistGiftCompactTableProps = $props();
 
 	const showActions = $derived((canManage && !isArchived) || !hideReservationState);
@@ -86,10 +90,12 @@
 						{role}
 						{isArchived}
 						{hideReservationState}
+						{showPriority}
 						onclick={() => onedit(giftItem)}
 						{onreserve}
 						{onunreserve}
 						{onreceived}
+						receivedPending={receivedPendingGiftIds.has(giftItem.id)}
 					/>
 				{/each}
 			</tbody>

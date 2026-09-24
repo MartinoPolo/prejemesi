@@ -24,6 +24,8 @@ export class GiftCreationError extends Error {
 }
 
 export interface NormalizedGiftCreationInput {
+	/** Optional server-allocated identity for workflows that stage external resources before commit. */
+	id?: string;
 	name: string;
 	description?: string | null;
 	links?: readonly GiftLink[] | null;
@@ -103,6 +105,7 @@ export async function appendGiftsUsingTransaction(
 		const imageUrl = item.imageUrl ?? null;
 		const imageKey = item.imageKey ?? null;
 		return {
+			...(item.id === undefined ? {} : { id: item.id }),
 			wishlistId: input.wishlistId,
 			name: item.name,
 			description: item.description ?? null,

@@ -28,6 +28,8 @@
 		tokenScope?: ImageTokenScope;
 		/** Force the loading skeleton across every tile. */
 		loading?: boolean;
+		/** Prevents crop-target selection while a gift mutation is pending. */
+		disabled?: boolean;
 		class?: string;
 	}
 
@@ -39,15 +41,11 @@
 		onTileSelect,
 		tokenScope = IMAGE_TOKEN_SCOPES.wishlist,
 		loading = false,
+		disabled = false,
 		class: className,
 	}: Props = $props();
 
-	// Two live preview tiles sit under the big image-column stage (#189): „Karta"
-	// (the 4:3 card family, the `square` target – a documented misnomer) and
-	// „Seznam a rezervace" (the true 1:1 `thumb` target, the EXACT wishlist-list
-	// row + reservation-thumb preview). Each tile doubles as the crop target
-	// switcher (#116 round 3), rendering its own per-target framing so the strip
-	// never lies about how the crop will actually look.
+	const thumbnailHelpId = $props.id();
 	const TILES = [
 		{
 			key: 'square',
@@ -89,7 +87,7 @@
 				     would otherwise stretch the tile past its true aspect. -->
 				<div
 					class={cn(
-						'relative overflow-hidden rounded-md border-2 border-ink bg-card shadow-[3px_3px_0_var(--hard-shadow)]',
+						'relative overflow-hidden rounded-md border-2 border-ink bg-card shadow-sticker',
 						tile.sizing,
 						activeTarget === tile.target && 'ring-2 ring-primary',
 					)}
@@ -126,7 +124,9 @@
 				<button
 					type="button"
 					onclick={() => onTileSelect?.(tile.target)}
+					{disabled}
 					aria-pressed={activeTarget === tile.target}
+					aria-describedby={tile.target === 'thumb' ? thumbnailHelpId : undefined}
 					data-testid="gift-preview-tile-{tile.key}"
 					class="pointer-events-auto flex cursor-pointer flex-col items-center gap-1 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring"
 				>
@@ -143,3 +143,6 @@
 		</li>
 	{/each}
 </ul>
+<p id={thumbnailHelpId} class="mt-2 text-center text-xs text-muted-foreground">
+	{m.gift_image_thumb_portrait_hint()}
+</p>

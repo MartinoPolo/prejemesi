@@ -7,7 +7,10 @@
 	import XIcon from '@lucide/svelte/icons/x';
 	import { cn, type WithoutChildrenOrChild } from '$lib/utils.js';
 	import type { ComponentProps } from 'svelte';
-	import { overlayCloseButtonClass } from '$lib/components/base/dialog/dialog_close_button.js';
+	import {
+		overlayCloseButtonClass,
+		overlayCloseButtonSurfaceClass,
+	} from '$lib/components/base/dialog/dialog_close_button.js';
 	import * as m from '$lib/paraglide/messages.js';
 	import { dialogContentVariants, type DialogContentSize } from './dialog_variants.js';
 
@@ -41,8 +44,10 @@
 				{#snippet child({ props })}
 					<Button
 						intent="ghost"
-						size="icon-sm"
+						size="sm"
+						format="icon"
 						class={overlayCloseButtonClass}
+						surfaceClass={overlayCloseButtonSurfaceClass}
 						{...props}
 					>
 						<XIcon data-icon="inline-start" />

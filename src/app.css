@@ -85,6 +85,13 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Typed resolution freezes the root background color before nested wishlist palettes inherit it. */
+@property --app-page-background {
+	syntax: '<color>';
+	inherits: true;
+	initial-value: #fff;
+}
+
 /* ── Palette primitives ──────────────────────────────────────────────────
    10 curated palettes. Palettes without --p-accent inherit sky's yellow.
    `data-palette` on <html> themes the app; on any wrapper element it
@@ -166,6 +173,8 @@
 
 /* ── Non-color tokens (palette-independent) ────────────────────────────── */
 :root {
+	--app-page-background: var(--background);
+
 	/* ── Spacing (4px base) ────────────────────────────────── */
 	--space-1: 4px;
 	--space-2: 8px;
@@ -197,6 +206,7 @@
 
 	/* ── Layout ────────────────────────────────────────────── */
 	--content-max-width: 1200px;
+	--page-gutter: 12px;
 	--nav-height: 56px;
 
 	/* ── Fonts ─────────────────────────────────────────────── */
@@ -208,11 +218,15 @@
 	--radius-panel: 16px;
 	--radius-btn: 7px;
 	--border-w: 2.5px;
+	--elevation-compact-offset: 1px;
+	--elevation-ordinary-offset: 3px;
+	--elevation-lifted-offset: 4px;
+	--elevation-pressed-offset: 1px;
 
 	/* ── Size control ──────────────────────────────────────── */
 	--size-control-sm: 26px;
 	--size-control-md: 32px;
-	--size-control-lg: 38px;
+	--size-control-lg: 40px;
 	--size-control-xl: 48px;
 
 	/* ── Text sizes ────────────────────────────────────────── */
@@ -239,6 +253,33 @@
 	--leading-tight: 1.15;
 	--leading-snug: 1.3;
 	--leading-relaxed: 1.65;
+}
+
+@media (width >= 640px) {
+	:root {
+		--page-gutter: 16px;
+		--elevation-compact-offset: 2px;
+		--elevation-ordinary-offset: 4px;
+		--elevation-lifted-offset: 7px;
+		--elevation-pressed-offset: 2px;
+	}
+}
+
+.resting-shadow-nesting {
+	--gift-content-inset: max(
+		0px,
+		calc(var(--radius-panel) - var(--radius-btn) - var(--nested-border-inline, 0px))
+	);
+	--gift-content-inset-end: calc(var(--gift-content-inset) + var(--elevation-ordinary-offset));
+	--gift-content-inset-bottom: max(
+		0px,
+		calc(
+			var(--radius-panel) - var(--radius-btn) - var(--nested-border-block, 0px) +
+				var(--elevation-ordinary-offset)
+		)
+	);
+	--nested-control-gap: calc(0.5rem + var(--elevation-ordinary-offset));
+	--gift-action-gap: var(--nested-control-gap);
 }
 
 /* ── Light derivation ────────────────────────────────────────────────────
@@ -273,7 +314,8 @@
 	--tag-edited-bg: #ece5fc;
 	--like-tint: #fdecec;
 	--link-tint: #f1edfd;
-	--reserved-veil: color-mix(in oklab, var(--background) 55%, transparent);
+	--gift-overlay-own-reservation: #16834f;
+	--gift-overlay-unavailable: #163b60;
 
 	/* Notebook patterns */
 	--pattern-dot: color-mix(in oklab, var(--ink) 13%, transparent);
@@ -310,6 +352,7 @@
 	--popover: #fff;
 	--popover-foreground: var(--p-ink);
 	--primary: var(--p-brand);
+	--primary-hover: color-mix(in oklab, var(--primary) 86%, white);
 	--primary-foreground: #fff;
 	--secondary: color-mix(in oklab, var(--p-brand) 6%, white);
 	--secondary-foreground: var(--p-ink);
@@ -353,6 +396,7 @@
 	--status-success: #14a56f;
 	--status-warning: #efa00b;
 	--status-danger: #e4574c;
+	--status-danger-text: color-mix(in oklab, var(--status-danger) 60%, var(--ink));
 	--status-info: #1e9be9;
 	--status-dup: oklch(72% 0.175 68deg);
 
@@ -376,37 +420,38 @@
 }
 
 /* ── Dark derivation — „midnight notebook" ──────────────────────────────
-   Same palette hue kept saturated in the surfaces, chalk ink hue-tinted.
+   Charcoal surfaces carry restrained palette tints; color stays in small accents.
    `.dark [data-palette]` outranks the light `[data-palette]` block. */
 .dark,
 .dark [data-palette] {
 	color-scheme: dark;
 
-	--ink: color-mix(in oklab, var(--p-bright) 28%, #fdfeff);
+	--ink: color-mix(in oklab, var(--p-bright) 12%, #e6e8ec);
 	--ink-faint: color-mix(in oklab, var(--ink) 16%, transparent);
-	--brand: var(--p-bright);
+	--brand: color-mix(in oklab, var(--p-bright) 70%, #b8bec8);
 	--brand-deep: var(--p-deep);
-	--tint: color-mix(in oklab, var(--p-deep) 62%, #0a1220);
-	--panel-hover: color-mix(in oklab, var(--p-deep) 58%, #081018);
-	--accent-loud: var(--p-accent);
-	--accent-loud-foreground: var(--p-on-accent);
+	--tint: var(--accent);
+	--panel-hover: var(--secondary);
+	--accent-loud: color-mix(in oklab, var(--p-accent) 65%, #b8bec8);
+	--accent-loud-foreground: #18202b;
 	--selection-tint: color-mix(in oklab, var(--primary) 22%, var(--card));
 	--selection-image-tint: color-mix(in oklab, var(--primary) 28%, transparent);
 	--selection-ring: color-mix(in oklab, var(--primary) 75%, white);
 	--selection-on-ring: var(--primary-foreground);
-	--note-tint: #ffdd75;
-	--note-ink: #43350a;
+	--note-tint: #b9aa7e;
+	--note-ink: #24251f;
 	--link: #b39dfc;
 	--heart: #f58a94;
 	--margin-red: #f07a6e;
 	--ghost-hover: rgb(255 255 255 / 6%);
-	--fan-back-1: color-mix(in oklab, var(--p-deep) 36%, #070d16);
-	--fan-back-2: color-mix(in oklab, var(--p-deep) 52%, #0a1524);
+	--fan-back-1: color-mix(in oklab, var(--p-deep) 12%, #111318);
+	--fan-back-2: color-mix(in oklab, var(--p-deep) 18%, #171a20);
 	--tag-priority-bg: #5a4a12;
 	--tag-edited-bg: #43356e;
 	--like-tint: #57293a;
 	--link-tint: #352b60;
-	--reserved-veil: color-mix(in oklab, var(--background) 62%, transparent);
+	--gift-overlay-own-reservation: #16834f;
+	--gift-overlay-unavailable: #163b60;
 
 	/* Notebook patterns (dark) */
 	--pattern-dot: color-mix(in oklab, var(--ink) 13%, transparent);
@@ -435,19 +480,20 @@
 	--glow-soft: color-mix(in oklab, var(--p-bright) 45%, transparent);
 
 	/* ── shadcn semantic tokens (dark) ── */
-	--background: color-mix(in oklab, var(--p-deep) 30%, #060c15);
-	--foreground: color-mix(in oklab, var(--p-bright) 28%, #fdfeff);
-	--card: color-mix(in oklab, var(--p-deep) 48%, #081018);
+	--background: color-mix(in oklab, var(--p-deep) 10%, #090b0f);
+	--foreground: var(--ink);
+	--card: color-mix(in oklab, var(--p-deep) 16%, #13161c);
 	--card-foreground: var(--ink);
-	--popover: color-mix(in oklab, var(--p-deep) 48%, #081018);
+	--popover: var(--card);
 	--popover-foreground: var(--ink);
-	--primary: color-mix(in oklab, var(--p-brand) 88%, #04101c);
+	--primary: color-mix(in oklab, var(--p-brand) 60%, #202630);
+	--primary-hover: color-mix(in oklab, var(--primary) 92%, black);
 	--primary-foreground: #fff;
-	--secondary: color-mix(in oklab, var(--p-deep) 58%, #081018);
+	--secondary: color-mix(in oklab, var(--p-deep) 22%, #1c2027);
 	--secondary-foreground: var(--ink);
-	--muted: color-mix(in oklab, var(--p-deep) 40%, #0a1220);
+	--muted: color-mix(in oklab, var(--p-deep) 12%, #181b21);
 	--muted-foreground: color-mix(in oklab, var(--ink) 65%, transparent);
-	--accent: color-mix(in oklab, var(--p-deep) 62%, #0a1220);
+	--accent: color-mix(in oklab, var(--p-deep) 26%, #222630);
 	--accent-foreground: var(--ink);
 	--destructive: #f07a6e;
 	--border: color-mix(in oklab, var(--ink) 16%, transparent);
@@ -458,11 +504,11 @@
 	--chart-3: var(--p-brand);
 	--chart-4: var(--p-deep);
 	--chart-5: var(--ink);
-	--sidebar: color-mix(in oklab, var(--p-deep) 48%, #081018);
+	--sidebar: var(--card);
 	--sidebar-foreground: var(--ink);
 	--sidebar-primary: var(--p-bright);
 	--sidebar-primary-foreground: #04101c;
-	--sidebar-accent: color-mix(in oklab, var(--p-deep) 62%, #0a1220);
+	--sidebar-accent: var(--accent);
 	--sidebar-accent-foreground: var(--ink);
 	--sidebar-border: color-mix(in oklab, var(--ink) 16%, transparent);
 	--sidebar-ring: var(--p-bright);
@@ -471,7 +517,7 @@
 	--surface: var(--background);
 	--surface-2: var(--secondary);
 	--surface-3: var(--muted);
-	--surface-hover: color-mix(in oklab, var(--p-deep) 62%, #0a1220);
+	--surface-hover: var(--accent);
 
 	/* Text hierarchy (dark) */
 
@@ -479,12 +525,13 @@
 	--border-strong: color-mix(in oklab, var(--ink) 40%, transparent);
 
 	/* Primary (dark) */
-	--primary-soft: color-mix(in oklab, var(--p-bright) 22%, #081018);
+	--primary-soft: color-mix(in oklab, var(--primary) 24%, var(--card));
 
 	/* Status (dark) */
 	--status-success: #3bd598;
 	--status-warning: #ffc24b;
 	--status-danger: #f07a6e;
+	--status-danger-text: color-mix(in oklab, var(--status-danger) 90%, white);
 	--status-info: #55b9f3;
 	--status-dup: oklch(76% 0.165 68deg);
 
@@ -525,6 +572,166 @@
 [data-depth='black'] [data-palette] {
 	--hard-shadow: var(--black-shadow);
 	--hard-shadow-strong: var(--black-shadow-strong);
+}
+
+:where(:root, [data-palette]) {
+	--elevation-compact: var(--elevation-compact-offset) var(--elevation-compact-offset) 0
+		var(--hard-shadow);
+	--elevation-ordinary: var(--elevation-ordinary-offset) var(--elevation-ordinary-offset) 0
+		var(--hard-shadow);
+	--elevation-ordinary-strong: var(--elevation-ordinary-offset) var(--elevation-ordinary-offset) 0
+		var(--hard-shadow-strong);
+	--elevation-lifted: var(--elevation-lifted-offset) var(--elevation-lifted-offset) 0
+		var(--hard-shadow);
+	--elevation-lifted-strong: var(--elevation-lifted-offset) var(--elevation-lifted-offset) 0
+		var(--hard-shadow-strong);
+	--elevation-pressed: var(--elevation-pressed-offset) var(--elevation-pressed-offset) 0
+		var(--hard-shadow);
+}
+
+.elevation-compact {
+	box-shadow: var(--elevation-compact);
+}
+
+.elevation-ordinary {
+	box-shadow: var(--elevation-ordinary);
+}
+
+.elevation-ordinary-strong {
+	box-shadow: var(--elevation-ordinary-strong);
+}
+
+.elevation-lifted {
+	box-shadow: var(--elevation-lifted);
+}
+
+.elevation-lifted-strong {
+	box-shadow: var(--elevation-lifted-strong);
+}
+
+.elevation-pressed {
+	box-shadow: var(--elevation-pressed);
+}
+
+.elevation-flat {
+	box-shadow: none;
+}
+
+/* Unavailable gifts soften only frame paint; nested controls keep the shared ink and shadow tokens. */
+.gift-frame-softened {
+	--gift-frame-ink: color-mix(in oklab, var(--ink) 50%, var(--card));
+	--gift-frame-elevation: var(--elevation-ordinary-offset) var(--elevation-ordinary-offset) 0
+		color-mix(in oklab, var(--hard-shadow) 50%, transparent);
+}
+
+/* The native semantic owner is stationary; only its direct visual surface moves. */
+.elevation-owner-raised::after {
+	position: absolute;
+	inset-inline: 0;
+	top: 100%;
+	height: calc(var(--elevation-ordinary-offset) + 1px);
+	content: '';
+	background: rgb(0 0 0 / 0.1%);
+	pointer-events: inherit;
+}
+
+.elevation-owner-raised > .elevation-surface {
+	box-shadow: var(--elevation-ordinary);
+}
+
+@media (hover: hover) and (pointer: fine) {
+	.elevation-owner-raised:not(:disabled, [aria-disabled='true'], [data-disabled]):hover
+		> .elevation-surface {
+		box-shadow: var(--elevation-lifted);
+		translate: 0 -2px;
+	}
+
+	.elevation-owner-like:not(:disabled, [aria-disabled='true'], [data-disabled]):hover
+		> .elevation-surface {
+		scale: 1.08;
+	}
+}
+
+.elevation-owner-raised.elevation-owner-anchored:is([data-state='open'], [aria-expanded='true'])
+	> .elevation-surface {
+	box-shadow: var(--elevation-ordinary);
+	translate: 0;
+	scale: 1;
+}
+
+.elevation-owner-raised:is(:disabled, [aria-disabled='true'], [data-disabled]) {
+	pointer-events: none;
+}
+
+.elevation-owner.elevation-owner-raised:is(:disabled, [aria-disabled='true'], [data-disabled])
+	> .elevation-surface {
+	box-shadow: none;
+	translate: 0;
+	scale: 1;
+}
+
+.elevation-owner-raised:not(:disabled, [aria-disabled='true'], [data-disabled]):active:not(
+		.gift-card-root:has(> .elevation-surface :is(a, button, input, textarea, select):active)
+	)
+	> .elevation-surface {
+	box-shadow: var(--elevation-pressed);
+	translate: 0;
+	scale: 0.98;
+}
+
+[data-slot='dropdown-menu-content'][data-state='closed'],
+[data-slot='dropdown-menu-sub-content'][data-state='closed'],
+[data-slot='dialog-content'][data-state='closed'],
+[data-slot='dialog-overlay'][data-state='closed'],
+[data-slot='popover-content'][data-state='closed'] {
+	animation-fill-mode: forwards;
+	pointer-events: none !important;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+	.elevation-owner:hover > .dialog-close-surface svg {
+		rotate: 90deg;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	[data-slot='dropdown-menu-content'],
+	[data-slot='dropdown-menu-sub-content'],
+	[data-slot='dialog-content'],
+	[data-slot='dialog-overlay'],
+	[data-slot='popover-content'] {
+		animation: none;
+	}
+
+	.elevation-surface {
+		transition: none !important;
+	}
+
+	.elevation-owner-raised:not(:disabled, [aria-disabled='true'], [data-disabled]):is(
+			:hover,
+			:active
+		)
+		> .elevation-surface {
+		box-shadow: var(--elevation-ordinary);
+		translate: 0;
+		scale: 1;
+	}
+}
+
+.elevation-sheet[data-side='top'] {
+	box-shadow: 0 var(--elevation-ordinary-offset) 0 var(--hard-shadow);
+}
+
+.elevation-sheet[data-side='right'] {
+	box-shadow: calc(-1 * var(--elevation-ordinary-offset)) 0 0 var(--hard-shadow);
+}
+
+.elevation-sheet[data-side='bottom'] {
+	box-shadow: 0 calc(-1 * var(--elevation-ordinary-offset)) 0 var(--hard-shadow);
+}
+
+.elevation-sheet[data-side='left'] {
+	box-shadow: var(--elevation-ordinary-offset) 0 0 var(--hard-shadow);
 }
 
 @theme inline {
@@ -578,6 +785,7 @@
 	--color-status-success: var(--status-success);
 	--color-status-warning: var(--status-warning);
 	--color-status-danger: var(--status-danger);
+	--color-status-danger-text: var(--status-danger-text);
 	--color-status-info: var(--status-info);
 	--color-status-dup: var(--status-dup);
 	--color-reserved: var(--reserved);
@@ -607,14 +815,17 @@
 	--color-tag-edited: var(--tag-edited-bg);
 	--color-like-tint: var(--like-tint);
 	--color-link-tint: var(--link-tint);
-	--color-reserved-veil: var(--reserved-veil);
 	--color-ghost-hover: var(--ghost-hover);
 
-	/* Sticker shadows → shadow-sticker-* utilities */
-	--shadow-sticker-sm: 2px 2px 0 var(--hard-shadow);
-	--shadow-sticker: 4px 4px 0 var(--hard-shadow);
-	--shadow-sticker-lift: 7px 7px 0 var(--hard-shadow);
-	--shadow-sticker-strong: 4px 4px 0 var(--hard-shadow-strong);
+	/* Semantic elevation utilities plus compatibility aliases. */
+	--shadow-elevation-compact: var(--elevation-compact);
+	--shadow-elevation-ordinary: var(--elevation-ordinary);
+	--shadow-elevation-lifted: var(--elevation-lifted);
+	--shadow-elevation-pressed: var(--elevation-pressed);
+	--shadow-sticker-sm: var(--elevation-compact);
+	--shadow-sticker: var(--elevation-ordinary);
+	--shadow-sticker-lift: var(--elevation-lifted);
+	--shadow-sticker-strong: var(--elevation-ordinary-strong);
 
 	/* Motion → ease-spring / duration utilities */
 	--ease-spring: var(--ease-spring);
@@ -661,8 +872,8 @@
 	--selection-on-ring: var(--accent-loud-foreground);
 }
 
-[data-gift-item][aria-selected='true'] {
-	outline-style: solid;
+main.app-content {
+	container-type: inline-size;
 }
 
 @layer base {

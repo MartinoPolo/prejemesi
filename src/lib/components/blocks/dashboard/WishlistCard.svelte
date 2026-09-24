@@ -2,7 +2,7 @@
 	import { cn } from '$lib/utils.js';
 	import { resolve } from '$app/paths';
 	import { localizeInternalHref } from '$lib/i18n/locale.js';
-	import { wishlistCardVariants, STATUS_CHIP_CLASSES } from './wishlist_card_variants.js';
+	import { wishlistCardVariants } from './wishlist_card_variants.js';
 	import { getWishlistEmoji } from '$lib/modules/wishlists/wishlist_theme.js';
 	import { WISHLIST_STATUS_LABELS } from '$lib/modules/wishlists/dashboard_types.js';
 	import type { Wishlist } from '$lib/modules/wishlists/types.js';
@@ -14,6 +14,11 @@
 	import CheckIcon from '@lucide/svelte/icons/check';
 	import { getInitials } from '$lib/utils/initials.js';
 	import type { Snippet } from 'svelte';
+	import { ElevationSurface } from '$lib/components/base/elevation-surface/index.js';
+	import { Separator } from '$lib/components/base/separator/index.js';
+	import { Avatar } from '$lib/components/derived/avatar/index.js';
+	import { WishlistBadge } from '$lib/components/derived/wishlist-badge/index.js';
+	import { WishlistProgress } from '$lib/components/derived/wishlist-progress/index.js';
 
 	interface WishlistCardProps {
 		wishlist: Wishlist;
@@ -52,7 +57,6 @@
 	const cardFrame = $derived(wishlistSlotToFrameProps(wishlistData.imageSlots, 'card'));
 	const variants = $derived(wishlistCardVariants({ archived: isArchived }));
 	const statusLabel = $derived(WISHLIST_STATUS_LABELS[wishlistData.status]());
-	const statusChipClass = $derived(STATUS_CHIP_CLASSES[wishlistData.status]);
 
 	function formatDate(date: Date | null): string {
 		if (date === null) {
@@ -72,132 +76,143 @@
 	aria-label={wishlistData.title}
 	data-testid="wishlist-card"
 >
-	<!-- Banner: taped-notebook tint with dot pattern (photo replaces both when assigned) -->
-	<div class={variants.banner()} aria-hidden="true">
-		<div class="absolute inset-0">
-			<WishlistSlotImage
-				class="size-full rounded-none"
-				src={cardSrc}
-				frame={cardFrame}
-				{themeEmoji}
-				alt={wishlistData.title}
-				variant="card"
-			/>
-		</div>
-		{#if cardSrc === null}
-			<div class={variants.bannerPattern()}></div>
-		{/if}
-		<div class={variants.bannerTitle()}>{wishlistData.title}</div>
-		<div
-			class={cn(variants.statusBadge(), statusChipClass)}
-			aria-label={m.wishlist_status_aria({ status: statusLabel })}
-		>
-			{statusLabel}
-		</div>
-	</div>
-
-	<!-- Body -->
-	<div class={variants.body()}>
-		{#if recipientDisplayName}
-			<div class={variants.ownerRow()}>
-				<div class={variants.ownerAvatar()}>
-					{getInitials(recipientDisplayName)}
-				</div>
-				<span>{m.wishlist_recipient_chip({ name: recipientDisplayName })}</span>
+	<ElevationSurface class={variants.surface()}>
+		<span aria-hidden="true" class={variants.border()}></span>
+		<!-- Banner: taped-notebook tint with dot pattern (photo replaces both when assigned) -->
+		<div class={variants.banner()} aria-hidden="true">
+			<div class="absolute inset-0">
+				<WishlistSlotImage
+					class="size-full rounded-none"
+					src={cardSrc}
+					frame={cardFrame}
+					{themeEmoji}
+					alt={wishlistData.title}
+					variant="card"
+				/>
 			</div>
-		{/if}
+			{#if cardSrc === null}
+				<div class={variants.bannerPattern()}></div>
+			{/if}
+			<div class={variants.bannerTitle()}>{wishlistData.title}</div>
+			<WishlistBadge
+				class={variants.statusBadge()}
+				presentation="card-status"
+				status={wishlistData.status}
+				aria-label={m.wishlist_status_aria({ status: statusLabel })}
+			>
+				{statusLabel}
+			</WishlistBadge>
+		</div>
 
-		{#if reservationProgress}
-			<div class={variants.progressWrap()}>
-				<div class={variants.progressLabelRow()}>
-					<span>{m.wishlist_reservation_progress()}</span>
-					<span class={variants.progressValue()}>
-						{m.wishlist_reserved_ratio({
+		<!-- Body -->
+		<div class={variants.body()}>
+			{#if recipientDisplayName}
+				<div class={variants.ownerRow()}>
+					<Avatar
+						appearance="recipient"
+						src={null}
+						alt=""
+						initials={getInitials(recipientDisplayName)}
+					/>
+					<span>{m.wishlist_recipient_chip({ name: recipientDisplayName })}</span>
+				</div>
+			{/if}
+
+			{#if reservationProgress}
+				<div class={variants.progressWrap()}>
+					<div class={variants.progressLabelRow()}>
+						<span>{m.wishlist_reservation_progress()}</span>
+						<span class={variants.progressValue()}>
+							{m.wishlist_reserved_ratio({
+								reserved: reservationProgress.reserved,
+								total: reservationProgress.total,
+							})}
+						</span>
+					</div>
+					<WishlistProgress
+						value={reservationProgress.total === 0 ? 0 : reservationProgress.reserved}
+						max={Math.max(reservationProgress.total, 1)}
+						aria-label={m.wishlist_reservation_progress()}
+						aria-valuetext={m.wishlist_reserved_ratio({
 							reserved: reservationProgress.reserved,
 							total: reservationProgress.total,
 						})}
-					</span>
+					/>
 				</div>
-				<div class={variants.progressTrack()}>
-					<div
-						class={variants.progressFill()}
-						style:width="{reservationProgress.total > 0
-							? (reservationProgress.reserved / reservationProgress.total) * 100
-							: 0}%"
-					></div>
-				</div>
-			</div>
-		{/if}
+			{/if}
 
-		{#if availableGifts !== undefined}
-			<div class={variants.metaRow()}>
-				<span class={variants.availableCount()}>
-					<GiftIcon class="inline size-3.5 align-middle" />
-					{m.wishlist_available_gifts({ count: availableGifts })}
-				</span>
-				{#if myReservations !== undefined && myReservations > 0}
-					<span class={variants.reservationChip()}>
-						<CheckIcon class="size-3" />
-						{m.wishlist_my_reservations({ count: myReservations })}
+			{#if availableGifts !== undefined}
+				<div class={variants.metaRow()}>
+					<span class={variants.availableCount()}>
+						<GiftIcon class="inline size-3.5 align-middle" />
+						{m.wishlist_available_gifts({ count: availableGifts })}
 					</span>
-				{:else if myReservations !== undefined}
-					<span class="text-xs text-muted-foreground/60"
-						>{m.wishlist_no_my_reservations()}</span
-					>
-				{/if}
-			</div>
-		{/if}
-
-		<!-- Owner card: gift count + optional event date (owner invariant – no reservations) -->
-		{#if giftCount !== undefined}
-			<div class={variants.metaRow()}>
-				<span class={variants.metaChip()}>
-					<GiftIcon class="size-3.5" />
-					{giftCount === 1
-						? m.wishlist_gift_count_one()
-						: m.wishlist_gift_count_other({ count: giftCount })}
-				</span>
-				{#if wishlistData.eventDate}
-					<span class={variants.metaChip()}>🗓 {formatDate(wishlistData.eventDate)}</span>
-				{/if}
-			</div>
-		{/if}
-
-		<!-- Owner card: created + last-updated timestamps (own lists only) -->
-		{#if giftCount !== undefined && !reservationProgress && wishlistData.createdAt}
-			<div class={variants.metaRow()}>
-				<span class={variants.metaText()}>
-					{m.wishlist_created_at({ date: formatDate(wishlistData.createdAt) })}
-				</span>
-				{#if wishlistData.updatedAt}
-					<span class={variants.metaText()}>
-						{m.wishlist_updated_at({ date: formatDate(wishlistData.updatedAt) })}
-					</span>
-				{/if}
-			</div>
-		{/if}
-
-		{#if reservationProgress || (giftCount === undefined && wishlistData.createdAt)}
-			<div class={variants.metaRow()}>
-				<span class={variants.metaText()}>
-					{#if reservationProgress}
-						{m.wishlist_total_gifts({ count: reservationProgress.total })}
-					{:else}
-						{m.wishlist_created_at({ date: formatDate(wishlistData.createdAt) })}
+					{#if myReservations !== undefined && myReservations > 0}
+						<WishlistBadge presentation="reservation-count">
+							{#snippet icon()}<CheckIcon class="size-3" data-icon />{/snippet}
+							{m.wishlist_my_reservations({ count: myReservations })}
+						</WishlistBadge>
+					{:else if myReservations !== undefined}
+						<span class="text-xs text-muted-foreground/60"
+							>{m.wishlist_no_my_reservations()}</span
+						>
 					{/if}
-				</span>
-			</div>
-		{/if}
+				</div>
+			{/if}
 
-		{#if extraContent}
-			{@render extraContent()}
-		{/if}
+			<!-- Owner card: gift count + optional event date (owner invariant – no reservations) -->
+			{#if giftCount !== undefined}
+				<div class={variants.metaRow()}>
+					<WishlistBadge presentation="card-metadata">
+						{#snippet icon()}<GiftIcon class="size-3.5" data-icon />{/snippet}
+						{giftCount === 1
+							? m.wishlist_gift_count_one()
+							: m.wishlist_gift_count_other({ count: giftCount })}
+					</WishlistBadge>
+					{#if wishlistData.eventDate}
+						<WishlistBadge presentation="card-metadata">
+							🗓 {formatDate(wishlistData.eventDate)}
+						</WishlistBadge>
+					{/if}
+				</div>
+			{/if}
 
-		{#if actions}
-			<div class={variants.divider()}></div>
-			<div class={variants.actions()}>
-				{@render actions()}
-			</div>
-		{/if}
-	</div>
+			<!-- Owner card: created + last-updated timestamps (own lists only) -->
+			{#if giftCount !== undefined && !reservationProgress && wishlistData.createdAt}
+				<div class={variants.metaRow()}>
+					<span class={variants.metaText()}>
+						{m.wishlist_created_at({ date: formatDate(wishlistData.createdAt) })}
+					</span>
+					{#if wishlistData.updatedAt}
+						<span class={variants.metaText()}>
+							{m.wishlist_updated_at({ date: formatDate(wishlistData.updatedAt) })}
+						</span>
+					{/if}
+				</div>
+			{/if}
+
+			{#if reservationProgress || (giftCount === undefined && wishlistData.createdAt)}
+				<div class={variants.metaRow()}>
+					<span class={variants.metaText()}>
+						{#if reservationProgress}
+							{m.wishlist_total_gifts({ count: reservationProgress.total })}
+						{:else}
+							{m.wishlist_created_at({ date: formatDate(wishlistData.createdAt) })}
+						{/if}
+					</span>
+				</div>
+			{/if}
+
+			{#if extraContent}
+				{@render extraContent()}
+			{/if}
+
+			{#if actions}
+				<Separator class={variants.divider()} />
+				<div class={variants.actions()}>
+					{@render actions()}
+				</div>
+			{/if}
+		</div>
+	</ElevationSurface>
 </a>

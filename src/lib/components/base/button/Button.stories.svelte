@@ -1,8 +1,10 @@
 <script module lang="ts">
 	import { defineMeta } from '@storybook/addon-svelte-csf';
 	import { expect, fn, userEvent, within } from 'storybook/test';
+	import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
 	import { BUTTON_INTENTS, BUTTON_SIZES, Button } from './index.js';
 
+	const { expectPixelsNear } = createPixelAssertions(expect);
 	const { Story } = defineMeta({
 		title: 'Base/Button',
 		component: Button,
@@ -23,6 +25,30 @@
 			disabled: { control: 'boolean' },
 		},
 	});
+
+	const playAllVariantsMatrix = async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+		const canvas = within(canvasElement);
+		const iconSection = canvas.getByText('Icon-only buttons').parentElement;
+		const iconGrid = iconSection?.querySelector<HTMLElement>('.grid');
+		if (iconGrid == null) {
+			throw new Error('Missing icon-only button matrix');
+		}
+
+		const headerSizes = Array.from(iconGrid.children)
+			.slice(1, BUTTON_SIZES.length + 1)
+			.map((cell) => cell.textContent);
+		await expect(headerSizes).toEqual(BUTTON_SIZES);
+		await expect(getComputedStyle(iconGrid).gridTemplateColumns.split(' ')).toHaveLength(
+			BUTTON_SIZES.length + 1,
+		);
+
+		const iconButtons = iconGrid.querySelectorAll<HTMLElement>('[data-slot="button"]');
+		await expect(iconButtons).toHaveLength(BUTTON_INTENTS.length * BUTTON_SIZES.length);
+		for (const button of iconButtons) {
+			const bounds = button.getBoundingClientRect();
+			await expectPixelsNear(bounds.width, bounds.height);
+		}
+	};
 
 	const playClickCallsHandler = async ({
 		canvasElement,
@@ -49,13 +75,14 @@
 		await expect(buttons.length).toBeGreaterThan(0);
 		for (const button of buttons) {
 			await expect(button).toBeDisabled();
+			await userEvent.click(button, { pointerEventsCheck: 0 });
 		}
 		await expect(args.onclick).not.toHaveBeenCalled();
 	};
 </script>
 
 <script lang="ts">
-	import { BUTTON_TEXT_SIZES, BUTTON_ICON_SIZES, type ButtonProps } from './button_variants.js';
+	import { BUTTON_TEXT_SIZES, type ButtonProps } from './button_variants.js';
 	import { Kbd, KbdGroup } from '$lib/components/base/kbd/index.js';
 	import MailIcon from '@lucide/svelte/icons/mail';
 	import PlusIcon from '@lucide/svelte/icons/plus';
@@ -67,12 +94,15 @@
 	import CommandIcon from '@lucide/svelte/icons/command';
 </script>
 
-<Story name="All Variants">
+<Story name="All Variants [play: complete size format matrix]" play={playAllVariantsMatrix}>
 	{#snippet template(args: ButtonProps)}
 		<div class="flex flex-col gap-10 w-130">
 			<div class="flex flex-col gap-3">
 				<p class="text-sm font-medium text-muted-foreground">Text buttons</p>
-				<div class="grid grid-cols-[9rem_repeat(3,minmax(0,1fr))] items-center gap-3">
+				<div
+					class="grid items-center gap-3"
+					style:grid-template-columns={`9rem repeat(${BUTTON_SIZES.length}, minmax(0, 1fr))`}
+				>
 					<div></div>
 					{#each BUTTON_TEXT_SIZES as size (size)}
 						<div class="text-center text-xs text-muted-foreground">{size}</div>
@@ -90,16 +120,19 @@
 
 			<div class="flex flex-col gap-3">
 				<p class="text-sm font-medium text-muted-foreground">Icon-only buttons</p>
-				<div class="grid grid-cols-[9rem_repeat(2,minmax(0,1fr))] items-center gap-3">
+				<div
+					class="grid items-center gap-3"
+					style:grid-template-columns={`9rem repeat(${BUTTON_SIZES.length}, minmax(0, 1fr))`}
+				>
 					<div></div>
-					{#each BUTTON_ICON_SIZES as size (size)}
+					{#each BUTTON_SIZES as size (size)}
 						<div class="text-center text-xs text-muted-foreground">{size}</div>
 					{/each}
 					{#each BUTTON_INTENTS as intent (intent)}
 						<div class="text-xs text-muted-foreground">{intent}</div>
-						{#each BUTTON_ICON_SIZES as size (size)}
+						{#each BUTTON_SIZES as size (size)}
 							<div class="flex justify-center">
-								<Button {...args} {intent} {size}
+								<Button {...args} {intent} {size} format="icon"
 									><PlusIcon data-icon="inline-start" /></Button
 								>
 							</div>
@@ -110,7 +143,10 @@
 
 			<div class="flex flex-col gap-3">
 				<p class="text-sm font-medium text-muted-foreground">Icon + text</p>
-				<div class="grid grid-cols-[9rem_repeat(3,minmax(0,1fr))] items-center gap-3">
+				<div
+					class="grid items-center gap-3"
+					style:grid-template-columns={`9rem repeat(${BUTTON_SIZES.length}, minmax(0, 1fr))`}
+				>
 					<div></div>
 					{#each BUTTON_TEXT_SIZES as size (size)}
 						<div class="text-center text-xs text-muted-foreground">{size}</div>
@@ -130,7 +166,10 @@
 
 			<div class="flex flex-col gap-3">
 				<p class="text-sm font-medium text-muted-foreground">With keyboard shortcuts</p>
-				<div class="grid grid-cols-[9rem_repeat(3,minmax(0,1fr))] items-center gap-3">
+				<div
+					class="grid items-center gap-3"
+					style:grid-template-columns={`9rem repeat(${BUTTON_SIZES.length}, minmax(0, 1fr))`}
+				>
 					<div></div>
 					{#each BUTTON_TEXT_SIZES as size (size)}
 						<div class="text-center text-xs text-muted-foreground">{size}</div>
@@ -180,10 +219,10 @@
 			<div class="rounded-lg bg-background p-4">
 				<p class="mb-2 text-xs opacity-70">bg-background</p>
 				<div class="flex items-center gap-2">
-					<Button intent="ghost" size="icon-sm" aria-label="Mail" {...args}
+					<Button intent="ghost" size="sm" format="icon" aria-label="Mail" {...args}
 						><MailIcon data-icon="inline-start" /></Button
 					>
-					<Button intent="ghost" size="icon-sm" aria-label="Settings" {...args}
+					<Button intent="ghost" size="sm" format="icon" aria-label="Settings" {...args}
 						><SettingsIcon data-icon="inline-start" /></Button
 					>
 					<Button intent="ghost" {...args}>Action</Button>
@@ -192,10 +231,10 @@
 			<div class="rounded-lg bg-sidebar p-4">
 				<p class="mb-2 text-xs opacity-70">bg-sidebar</p>
 				<div class="flex items-center gap-2">
-					<Button intent="ghost" size="icon-sm" aria-label="Mail" {...args}
+					<Button intent="ghost" size="sm" format="icon" aria-label="Mail" {...args}
 						><MailIcon data-icon="inline-start" /></Button
 					>
-					<Button intent="ghost" size="icon-sm" aria-label="Settings" {...args}
+					<Button intent="ghost" size="sm" format="icon" aria-label="Settings" {...args}
 						><SettingsIcon data-icon="inline-start" /></Button
 					>
 					<Button intent="ghost" {...args}>Action</Button>
@@ -204,10 +243,10 @@
 			<div class="rounded-lg bg-surface p-4">
 				<p class="mb-2 text-xs opacity-70">bg-surface</p>
 				<div class="flex items-center gap-2">
-					<Button intent="ghost" size="icon-sm" aria-label="Mail" {...args}
+					<Button intent="ghost" size="sm" format="icon" aria-label="Mail" {...args}
 						><MailIcon data-icon="inline-start" /></Button
 					>
-					<Button intent="ghost" size="icon-sm" aria-label="Settings" {...args}
+					<Button intent="ghost" size="sm" format="icon" aria-label="Settings" {...args}
 						><SettingsIcon data-icon="inline-start" /></Button
 					>
 					<Button intent="ghost" {...args}>Action</Button>
@@ -216,10 +255,10 @@
 			<div class="rounded-lg bg-secondary p-4">
 				<p class="mb-2 text-xs opacity-70">bg-secondary</p>
 				<div class="flex items-center gap-2">
-					<Button intent="ghost" size="icon-sm" aria-label="Mail" {...args}
+					<Button intent="ghost" size="sm" format="icon" aria-label="Mail" {...args}
 						><MailIcon data-icon="inline-start" /></Button
 					>
-					<Button intent="ghost" size="icon-sm" aria-label="Settings" {...args}
+					<Button intent="ghost" size="sm" format="icon" aria-label="Settings" {...args}
 						><SettingsIcon data-icon="inline-start" /></Button
 					>
 					<Button intent="ghost" {...args}>Action</Button>
@@ -228,10 +267,10 @@
 			<div class="rounded-lg p-4" style="background: oklch(75% 0.12 300deg)">
 				<p class="mb-2 text-xs opacity-70">oklch(75% 0.12 300deg) – vivid lavender</p>
 				<div class="flex items-center gap-2">
-					<Button intent="ghost" size="icon-sm" aria-label="Mail" {...args}
+					<Button intent="ghost" size="sm" format="icon" aria-label="Mail" {...args}
 						><MailIcon data-icon="inline-start" /></Button
 					>
-					<Button intent="ghost" size="icon-sm" aria-label="Settings" {...args}
+					<Button intent="ghost" size="sm" format="icon" aria-label="Settings" {...args}
 						><SettingsIcon data-icon="inline-start" /></Button
 					>
 					<Button intent="ghost" {...args}>Action</Button>
@@ -240,10 +279,10 @@
 			<div class="rounded-lg p-4 text-white" style="background: oklch(50% 0.05 200deg)">
 				<p class="mb-2 text-xs opacity-70">oklch(50% 0.05 200deg) – mid-tone gray-blue</p>
 				<div class="flex items-center gap-2">
-					<Button intent="ghost" size="icon-sm" aria-label="Mail" {...args}
+					<Button intent="ghost" size="sm" format="icon" aria-label="Mail" {...args}
 						><MailIcon data-icon="inline-start" /></Button
 					>
-					<Button intent="ghost" size="icon-sm" aria-label="Settings" {...args}
+					<Button intent="ghost" size="sm" format="icon" aria-label="Settings" {...args}
 						><SettingsIcon data-icon="inline-start" /></Button
 					>
 					<Button intent="ghost" {...args}>Action</Button>
@@ -259,11 +298,19 @@
 			<div class="rounded-lg bg-primary p-4 text-primary-foreground">
 				<p class="mb-2 text-xs opacity-70">bg-primary</p>
 				<div class="flex items-center gap-2">
-					<Button intent="ghost-overlay" size="icon-sm" aria-label="Demo" {...args}
-						><MailIcon data-icon="inline-start" /></Button
+					<Button
+						intent="ghost-overlay"
+						size="sm"
+						format="icon"
+						aria-label="Demo"
+						{...args}><MailIcon data-icon="inline-start" /></Button
 					>
-					<Button intent="ghost-overlay" size="icon-sm" aria-label="Demo" {...args}
-						><SettingsIcon data-icon="inline-start" /></Button
+					<Button
+						intent="ghost-overlay"
+						size="sm"
+						format="icon"
+						aria-label="Demo"
+						{...args}><SettingsIcon data-icon="inline-start" /></Button
 					>
 					<Button intent="ghost-overlay" {...args}>Action</Button>
 				</div>
@@ -271,10 +318,10 @@
 			<div class="rounded-lg bg-accent p-4 text-accent-foreground">
 				<p class="mb-2 text-xs opacity-70">bg-accent</p>
 				<div class="flex items-center gap-2">
-					<Button intent="ghost-overlay" size="icon-sm" {...args}
+					<Button intent="ghost-overlay" size="sm" format="icon" {...args}
 						><MailIcon data-icon="inline-start" /></Button
 					>
-					<Button intent="ghost-overlay" size="icon-sm" {...args}
+					<Button intent="ghost-overlay" size="sm" format="icon" {...args}
 						><SettingsIcon data-icon="inline-start" /></Button
 					>
 					<Button intent="ghost-overlay" {...args}>Action</Button>
@@ -283,10 +330,10 @@
 			<div class="rounded-lg bg-secondary p-4 text-foreground">
 				<p class="mb-2 text-xs opacity-70">bg-secondary</p>
 				<div class="flex items-center gap-2">
-					<Button intent="ghost-overlay" size="icon-sm" {...args}
+					<Button intent="ghost-overlay" size="sm" format="icon" {...args}
 						><MailIcon data-icon="inline-start" /></Button
 					>
-					<Button intent="ghost-overlay" size="icon-sm" {...args}
+					<Button intent="ghost-overlay" size="sm" format="icon" {...args}
 						><SettingsIcon data-icon="inline-start" /></Button
 					>
 					<Button intent="ghost-overlay" {...args}>Action</Button>
@@ -295,11 +342,19 @@
 			<div class="rounded-lg bg-foreground p-4 text-background">
 				<p class="mb-2 text-xs opacity-70">bg-foreground (inverted)</p>
 				<div class="flex items-center gap-2">
-					<Button intent="ghost-overlay" size="icon-sm" aria-label="Demo" {...args}
-						><MailIcon data-icon="inline-start" /></Button
+					<Button
+						intent="ghost-overlay"
+						size="sm"
+						format="icon"
+						aria-label="Demo"
+						{...args}><MailIcon data-icon="inline-start" /></Button
 					>
-					<Button intent="ghost-overlay" size="icon-sm" aria-label="Demo" {...args}
-						><SettingsIcon data-icon="inline-start" /></Button
+					<Button
+						intent="ghost-overlay"
+						size="sm"
+						format="icon"
+						aria-label="Demo"
+						{...args}><SettingsIcon data-icon="inline-start" /></Button
 					>
 					<Button intent="ghost-overlay" {...args}>Action</Button>
 				</div>
@@ -335,22 +390,22 @@
 <Story name="Icon Only">
 	{#snippet template(args: ButtonProps)}
 		<div class="flex flex-wrap items-center gap-4">
-			<Button intent="primary" size="icon" aria-label="Demo" {...args}
+			<Button intent="primary" size="md" format="icon" aria-label="Demo" {...args}
 				><PlusIcon data-icon="inline-start" /></Button
 			>
-			<Button intent="secondary" size="icon" aria-label="Demo" {...args}
+			<Button intent="secondary" size="md" format="icon" aria-label="Demo" {...args}
 				><SettingsIcon data-icon="inline-start" /></Button
 			>
-			<Button intent="ghost" size="icon" aria-label="Demo" {...args}
+			<Button intent="ghost" size="md" format="icon" aria-label="Demo" {...args}
 				><MailIcon data-icon="inline-start" /></Button
 			>
-			<Button intent="danger" size="icon" aria-label="Demo" {...args}
+			<Button intent="danger" size="md" format="icon" aria-label="Demo" {...args}
 				><TrashIcon data-icon="inline-start" /></Button
 			>
-			<Button intent="primary" size="icon-sm" aria-label="Demo" {...args}
+			<Button intent="primary" size="sm" format="icon" aria-label="Demo" {...args}
 				><PlusIcon data-icon="inline-start" /></Button
 			>
-			<Button intent="ghost" size="icon-sm" aria-label="Demo" {...args}
+			<Button intent="ghost" size="sm" format="icon" aria-label="Demo" {...args}
 				><SettingsIcon data-icon="inline-start" /></Button
 			>
 		</div>

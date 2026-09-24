@@ -1,9 +1,23 @@
+import '../../../../app.css';
 import { render } from 'vitest-browser-svelte';
 import { describe, expect, it } from 'vitest';
 import * as m from '$lib/paraglide/messages.js';
+import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
 import ViewToggle from './ViewToggle.svelte';
+import ViewToggleTestHarness from './ViewToggleTestHarness.svelte';
+
+const { expectPixelsNear } = createPixelAssertions(expect);
 
 describe('ViewToggle toggle selection (fixes: re-click deselects both items)', () => {
+	it('updates the parent-owned bound mode', async () => {
+		const screen = await render(ViewToggleTestHarness);
+
+		await screen.getByRole('radio', { name: m.dashboard_view_list() }).click();
+
+		await expect.element(screen.getByTestId('parent-view-mode')).toHaveTextContent('list');
+		await screen.unmount();
+	});
+
 	it('switches mode when clicking the inactive item', async () => {
 		const screen = await render(ViewToggle, { value: 'grid' });
 
@@ -38,6 +52,20 @@ describe('ViewToggle toggle selection (fixes: re-click deselects both items)', (
 		const listItem = screen.getByRole('radio', { name: m.dashboard_view_list() });
 		await expect.element(gridItem).toHaveAttribute('aria-checked', 'false');
 		await expect.element(listItem).toHaveAttribute('aria-checked', 'true');
+		await screen.unmount();
+	});
+
+	it('keeps the default segmented presentation unchanged', async () => {
+		const screen = await render(ViewToggle, { value: 'grid' });
+		const grid = screen.getByRole('radio', { name: m.dashboard_view_grid() }).element();
+		const root = grid.parentElement!;
+		const selectedSurface = grid.querySelector('.elevation-surface')!;
+
+		expect(root.classList.contains('segmented-toggle-connected')).toBe(false);
+		expect(getComputedStyle(root).backgroundColor).not.toBe('rgba(0, 0, 0, 0)');
+		expect(getComputedStyle(root, '::before').content).toBe('none');
+		expectPixelsNear(parseFloat(getComputedStyle(selectedSurface).borderWidth), 0);
+		expect(getComputedStyle(grid).outlineStyle).toBe('solid');
 		await screen.unmount();
 	});
 });

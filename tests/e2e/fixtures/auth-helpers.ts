@@ -1,3 +1,4 @@
+import { expect } from '@playwright/test';
 import type {
 	Page,
 	BrowserContext,
@@ -14,6 +15,13 @@ interface TestUser {
 
 const AUTH_REQUEST_ATTEMPTS = 3;
 const TURNSTILE_TEST_TOKEN = 'XXXX.DUMMY.TOKEN.XXXX';
+
+export async function waitForAppHydration(
+	page: Page,
+	options: { timeout?: number } = {},
+): Promise<void> {
+	await expect(page.locator('html')).toHaveAttribute('data-app-hydrated', 'true', options);
+}
 
 function isTransientConnectionReset(error: unknown): boolean {
 	return error instanceof Error && /ECONNRESET|socket hang up/i.test(error.message);
@@ -113,7 +121,7 @@ export async function loginViaApi(
 	return sessionCookies(response, 'login');
 }
 
-function parseCookiesForContext(rawCookies: string[], baseURL: string) {
+export function parseCookiesForContext(rawCookies: string[], baseURL: string) {
 	const url = new URL(baseURL);
 	return rawCookies.map((raw) => {
 		const [nameValue] = raw.split(';');

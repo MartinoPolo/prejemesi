@@ -1,0 +1,100 @@
+<script lang="ts">
+	import * as m from '$lib/paraglide/messages.js';
+	import type {
+		GiftOverlayKind,
+		GiftStateOverlayModel,
+	} from '$lib/modules/gifts/gift_display_state.js';
+	import { cn } from '$lib/utils.js';
+
+	interface GiftStateOverlayProps {
+		model: GiftStateOverlayModel | null;
+		/** Compact labels only when a narrow containing image also has a top-right control. */
+		avoidTopRight?: boolean;
+		identity?: string | null;
+		class?: string;
+	}
+
+	let {
+		model,
+		avoidTopRight = false,
+		identity = null,
+		class: className,
+	}: GiftStateOverlayProps = $props();
+
+	function label(kind: GiftOverlayKind, state: GiftStateOverlayModel): string {
+		switch (kind) {
+			case 'received':
+				return m.gift_received_badge();
+			case 'own-reservation':
+				return m.gift_reserved_by_me_overlay();
+			case 'unavailable':
+				return m.gift_reserved_by_other_overlay();
+			case 'partial':
+				return m.gift_remaining_capacity({
+					remaining: state.remaining ?? 0,
+					total: state.total ?? 0,
+				});
+		}
+	}
+
+	const primaryLabel = $derived(model === null ? null : label(model.kind, model));
+	const supportLabel = $derived(
+		model?.supportKind === undefined ? null : label(model.supportKind, model),
+	);
+
+	function pillClasses(kind: GiftOverlayKind): string {
+		return cn(
+			'max-w-[calc(100%_-_0.5rem)] -rotate-1 rounded-panel border-2 border-ink px-2 py-1 text-center text-xs leading-4 font-bold shadow-sticker [overflow-wrap:anywhere]',
+			kind === 'own-reservation' && 'bg-[var(--gift-overlay-own-reservation)] text-white',
+			kind === 'unavailable' && 'bg-[var(--gift-overlay-unavailable)] text-white',
+			kind === 'partial' && 'bg-card text-foreground',
+			kind === 'received' &&
+				'bg-primary text-primary-foreground [text-shadow:0_1px_1px_var(--ink)]',
+		);
+	}
+</script>
+
+{#if model !== null}
+	<div
+		class={cn(
+			'pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center gap-1.5',
+			avoidTopRight && 'avoid-top-right',
+			className,
+		)}
+		data-testid="gift-state-overlay"
+	>
+		<span
+			class={cn(pillClasses(model.kind), 'state-pill')}
+			data-state-primary
+			data-state-kind={model.kind}>{primaryLabel}</span
+		>
+		{#if model.supportKind !== undefined && supportLabel !== null}
+			<span
+				class={cn(pillClasses(model.supportKind), 'state-pill')}
+				data-reservation-support
+				data-state-kind={model.supportKind}>{supportLabel}</span
+			>
+		{/if}
+		{#if identity !== null && identity.trim() !== ''}
+			<span
+				data-reserver-identity
+				class="max-w-[calc(100%_-_0.5rem)] rounded-md bg-card/95 px-2 py-1 text-center text-xs font-semibold text-foreground shadow-sticker [overflow-wrap:anywhere]"
+				>{identity}</span
+			>
+		{/if}
+	</div>
+{/if}
+
+<style>
+	@container (width <= 10rem) {
+		.avoid-top-right .state-pill {
+			padding-block: 0.125rem;
+			rotate: 0deg;
+		}
+
+		.avoid-top-right .state-pill[data-state-kind='received'] {
+			padding-inline: 0;
+			letter-spacing: -0.03em;
+		}
+	}
+</style>

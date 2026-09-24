@@ -4,7 +4,7 @@ import { env } from '$env/dynamic/private';
 import { getRequestEvent } from '$app/server';
 import type { RequestEvent } from '@sveltejs/kit';
 import * as schema from './schema.js';
-import { resolveDatabaseUrl } from '$lib/config/mpx_development.js';
+import { resolveDatabaseUrl } from '$lib/config/runtime_environment.js';
 
 function getHyperdriveConnectionString(event: RequestEvent | undefined): string | undefined {
 	return event?.platform?.env?.HYPERDRIVE?.connectionString as string | undefined;

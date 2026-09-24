@@ -7,16 +7,13 @@
 	import { HelpText } from '$lib/components/base/help-text/index.js';
 	import StoryKeyboardHints from '$lib/storybook/StoryKeyboardHints.svelte';
 	import KeyboardHint from '$lib/storybook/KeyboardHint.svelte';
+	import { CONTROL_SIZES } from '../control_sizing.js';
 
 	const { Story } = defineMeta({
 		title: 'Base/Select',
 		component: SelectRoot,
 		tags: ['autodocs'],
 	});
-
-	// Bits UI Select sets pointer-events:none on internal elements during
-	// open/close transitions, which blocks userEvent.click in headless Chrome.
-	const user = userEvent.setup({ pointerEventsCheck: 0 });
 
 	function getSelectTrigger(canvasElement: HTMLElement): HTMLElement {
 		return canvasElement.querySelector('[data-slot="select-trigger"]') as HTMLElement;
@@ -34,42 +31,41 @@
 		return listbox;
 	}
 
-	async function waitForStoryReady() {
-		await waitFor(() => {
-			expect(getComputedStyle(document.body).pointerEvents).not.toBe('none');
-		});
-	}
-
-	async function openSelect(trigger: HTMLElement) {
-		await waitForStoryReady();
-		await user.click(trigger);
+	async function openSelect(trigger: HTMLElement, canvasElement: HTMLElement) {
+		trigger.focus();
+		await expect(trigger).toHaveFocus();
+		await userEvent.keyboard('{ArrowDown}');
 		await waitFor(() => {
 			expect(trigger).toHaveAttribute('aria-expanded', 'true');
+			expect(getSelectListbox(canvasElement)).toBeInTheDocument();
 		});
 	}
 
 	const playOpenDropdown = async ({ canvasElement }: { canvasElement: HTMLElement }) => {
 		const trigger = getSelectTrigger(canvasElement);
 		await expect(trigger).toHaveAttribute('aria-expanded', 'false');
-		await openSelect(trigger);
+		await openSelect(trigger, canvasElement);
 		const listbox = getSelectListbox(canvasElement);
 		await expect(listbox).toBeInTheDocument();
 	};
 
 	const playSelectOption = async ({ canvasElement }: { canvasElement: HTMLElement }) => {
 		const trigger = getSelectTrigger(canvasElement);
-		await openSelect(trigger);
+		await openSelect(trigger, canvasElement);
 		const listbox = getSelectListbox(canvasElement);
 		const options = within(listbox).getAllByRole('option');
-		await user.click(options[1]);
+		await waitFor(() => {
+			expect(getComputedStyle(options[1]).pointerEvents).not.toBe('none');
+		});
+		await userEvent.click(options[1]);
 		await expect(trigger).toHaveAttribute('aria-expanded', 'false');
 		await expect(trigger).toHaveTextContent('Banana');
 	};
 
 	const playEscapeClosesDropdown = async ({ canvasElement }: { canvasElement: HTMLElement }) => {
 		const trigger = getSelectTrigger(canvasElement);
-		await openSelect(trigger);
-		await user.keyboard('{Escape}');
+		await openSelect(trigger, canvasElement);
+		await userEvent.keyboard('{Escape}');
 		await expect(trigger).toHaveAttribute('aria-expanded', 'false');
 		await expect(trigger).toHaveTextContent('Select produce');
 	};
@@ -87,10 +83,10 @@
 
 	const playKeyboardArrowDown = async ({ canvasElement }: { canvasElement: HTMLElement }) => {
 		const trigger = getSelectTrigger(canvasElement);
-		await openSelect(trigger);
+		await openSelect(trigger, canvasElement);
 		const listbox = getSelectListbox(canvasElement);
 		await expect(listbox).toBeInTheDocument();
-		await user.keyboard('{ArrowDown}');
+		await userEvent.keyboard('{ArrowDown}');
 		await waitFor(() => {
 			const options = within(listbox).getAllByRole('option');
 			const highlighted = options.find(
@@ -154,6 +150,24 @@
 
 <Story name="All Variants">
 	{#snippet template()}
+		<div class="mb-6 grid max-w-4xl grid-cols-4 gap-4">
+			{#each CONTROL_SIZES as size (size)}
+				<div class="flex flex-col gap-2">
+					<Label>{size} / default</Label>
+					<Select.Root type="single" value="apple">
+						<Select.Trigger {size}>Apple</Select.Trigger>
+					</Select.Root>
+					<Label>{size} / error</Label>
+					<Select.Root type="single">
+						<Select.Trigger {size} state="error">Select</Select.Trigger>
+					</Select.Root>
+					<Label>{size} / disabled</Label>
+					<Select.Root type="single" value="apple" disabled>
+						<Select.Trigger {size}>Apple</Select.Trigger>
+					</Select.Root>
+				</div>
+			{/each}
+		</div>
 		<div class="grid max-w-2xl grid-cols-3 gap-4">
 			<div>
 				<Label>Default</Label>

@@ -5,6 +5,7 @@
 	import { createGiftPointerReorderController } from './gift_pointer_reorder.svelte.js';
 	import { giftSectionHasHeader, type GiftSection } from '$lib/modules/gifts/gift_ordering.js';
 	import type { GiftByRole, GiftForVisitor } from '$lib/modules/gifts/types.js';
+	import type { GiftContextInvocation } from './gift_context_invocation.js';
 	import type { WishlistRole } from '$lib/modules/wishlists/types.js';
 	import * as m from '$lib/paraglide/messages.js';
 	import {
@@ -23,12 +24,17 @@
 		onreserve: (gift: GiftForVisitor) => void;
 		onunreserve: (gift: GiftForVisitor) => void;
 		onreceived: (giftId: string, received: boolean) => void;
+		receivedPendingGiftIds?: ReadonlySet<string>;
 		onreorderpreview: (orderedIds: string[]) => void;
 		onreordercommit: (orderedIds: string[]) => void;
 		onreordercancel: (orderedIds: string[]) => void;
 		selectionMode?: boolean;
 		onselectiontoggle?: (giftId: string) => void;
-		oncontextactions?: (gift: GiftByRole, event: MouseEvent | null) => boolean;
+		oncontextactions?: (gift: GiftByRole, invocation: GiftContextInvocation) => boolean;
+		hascontextactions?: (gift: GiftByRole) => boolean;
+		activeContextGiftId?: string | null;
+		contextSurface?: 'menu' | 'dialog';
+		showPriority?: boolean;
 	}
 
 	let {
@@ -41,12 +47,17 @@
 		onreserve,
 		onunreserve,
 		onreceived,
+		receivedPendingGiftIds = new Set<string>(),
 		onreorderpreview,
 		onreordercommit,
 		onreordercancel,
 		selectionMode = false,
 		onselectiontoggle,
 		oncontextactions,
+		hascontextactions,
+		activeContextGiftId = null,
+		contextSurface = 'menu',
+		showPriority = true,
 	}: WishlistGiftListViewProps = $props();
 
 	let listEl = $state<HTMLElement | null>(null);
@@ -100,7 +111,11 @@
 	{reorderAnnouncement}
 </div>
 
-<div bind:this={listEl} class="flex flex-col">
+<div
+	bind:this={listEl}
+	data-testid="wishlist-gift-list"
+	class="isolate flex flex-col gap-2.5 sm:gap-4"
+>
 	{#each indexedSections as { section, items } (sectionRenderKey(section, items))}
 		{#if giftSectionHasHeader(section)}
 			<GiftSectionHeader {section} {selectionMode} {onselectiontoggle} />
@@ -110,6 +125,7 @@
 				selectionLayout="list"
 				gift={giftItem}
 				{index}
+				totalCount={totalGiftCount}
 				{reorderEnabled}
 				draggedGiftId={reorder.draggedGiftId.current}
 				dragOverGiftId={reorder.dragOverGiftId.current}
@@ -127,9 +143,23 @@
 						{role}
 						{isArchived}
 						{hideReservationState}
+						{showPriority}
+						contextualMode={selectionMode || reorderEnabled}
 						{onreserve}
 						{onunreserve}
 						{onreceived}
+						receivedPending={receivedPendingGiftIds.has(giftItem.id)}
+						moreOpen={activeContextGiftId === giftItem.id}
+						moreSurface={contextSurface}
+						persistentMore={hascontextactions?.(giftItem) ?? false}
+						onmore={oncontextactions !== undefined
+							? (anchor, placementSnapshot) =>
+									oncontextactions(giftItem, {
+										kind: 'more',
+										anchor,
+										placementSnapshot,
+									})
+							: undefined}
 					/>
 				{/snippet}
 			</WishlistGiftItem>

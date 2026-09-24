@@ -1,11 +1,6 @@
 <script lang="ts">
-	import * as m from '$lib/paraglide/messages.js';
-	import { Badge } from '$lib/components/base/badge/index.js';
-	import ExternalLinkIcon from '@lucide/svelte/icons/external-link';
-	import CheckIcon from '@lucide/svelte/icons/check';
-	import PencilIcon from '@lucide/svelte/icons/pencil';
-	import GiftImage from '$lib/components/blocks/gift/GiftImage.svelte';
-	import GiftReservedSticker from '$lib/components/blocks/gift/GiftReservedSticker.svelte';
+	import GiftListImage from '$lib/components/blocks/gift/GiftListImage.svelte';
+	import GiftStateOverlay from '$lib/components/blocks/gift/GiftStateOverlay.svelte';
 	import GiftPieceCount from '$lib/components/blocks/gift/GiftPieceCount.svelte';
 	import LikeButton from '$lib/components/blocks/gift/LikeButton.svelte';
 	import ReserveButton from '$lib/components/blocks/reservation/ReserveButton.svelte';
@@ -13,215 +8,455 @@
 	import GiftReceivedToggle from './GiftReceivedToggle.svelte';
 	import type { GiftForVisitor, GiftByRole } from '$lib/modules/gifts/types.js';
 	import type { WishlistRole } from '$lib/modules/wishlists/types.js';
-	import {
-		formatPrice,
-		formatReserverLine,
-		extractGiftDomain,
-		getPriorityDisplay,
-	} from '$lib/modules/gifts/gift_display.js';
+	import { formatPrice, formatReserverLine } from '$lib/modules/gifts/gift_display.js';
 	import { deriveGiftDisplayState } from '$lib/modules/gifts/gift_display_state.js';
-	import { normalizeGiftUrl, getPrimaryGiftLink } from '$lib/modules/gifts/gift_url.js';
-	import { canManageWishlist } from '$lib/modules/wishlists/wishlist_capabilities.js';
+	import {
+		canLikeGift,
+		canManageWishlist,
+		canSeeReserverNames,
+	} from '$lib/modules/wishlists/wishlist_capabilities.js';
 	import { resolveGiftImageUrl } from '$lib/modules/images/public_url.js';
 	import { cn } from '$lib/utils.js';
 	import GiftDescription from './GiftDescription.svelte';
+	import GiftActionRow from './GiftActionRow.svelte';
+	import GiftPriorityBadge from './GiftPriorityBadge.svelte';
+	import GiftCategoryBadge from './GiftCategoryBadge.svelte';
+	import GiftLinkList from './GiftLinkList.svelte';
+	import { restingShadowNesting } from '$lib/utils/resting_shadow_nesting.js';
+	import type { GiftActionPlacementSnapshot } from '$lib/components/blocks/wishlist/gift_context_invocation.js';
 
 	interface GiftListItemProps {
 		gift: GiftByRole;
 		role: WishlistRole;
 		isArchived?: boolean;
 		hideReservationState?: boolean;
-		showLikeCount?: boolean;
+		contextualMode?: boolean;
 		onreserve?: (gift: GiftForVisitor) => void;
 		onunreserve?: (gift: GiftForVisitor) => void;
 		onreceived?: (giftId: string, received: boolean) => void;
+		receivedPending?: boolean;
+		onmore?: (
+			anchor: HTMLButtonElement,
+			placementSnapshot: GiftActionPlacementSnapshot,
+		) => void;
+		persistentMore?: boolean;
+		moreOpen?: boolean;
+		moreSurface?: 'menu' | 'dialog';
+		showPriority?: boolean;
 	}
 
 	let {
 		gift,
 		role,
 		isArchived = false,
-		hideReservationState = false,
-		showLikeCount = false,
+		hideReservationState = role === 'recipient',
+		contextualMode = false,
 		onreserve,
 		onunreserve,
 		onreceived,
+		receivedPending = false,
+		onmore,
+		persistentMore = onmore !== undefined,
+		moreOpen = false,
+		moreSurface = 'menu',
+		showPriority = true,
 	}: GiftListItemProps = $props();
 
-	const { isVisitorOrModerator, visitorGift, isFullyReserved, reservedCount } = $derived(
-		deriveGiftDisplayState(gift, role, hideReservationState),
+	const displayState = $derived(
+		deriveGiftDisplayState(
+			gift,
+			role,
+			hideReservationState,
+			{
+				canLike: canLikeGift(role) && !hideReservationState && !contextualMode,
+				isArchived,
+			},
+			contextualMode,
+		),
 	);
-	// Edit-icon hover affordance (issue #125 REQ-3): mirrors GiftCard's manager-only pencil icon.
-	const canManage = $derived(canManageWishlist(role));
-	// Card-parity dim (issue #224 REQ-7): "don't buy this" — fully reserved (visitor/moderator
-	// only) or received. The veil sits over the thumb; the dim moves to the content column so the
-	// reserved sticker stays crisp on top.
-	const isDimmed = $derived((isVisitorOrModerator && isFullyReserved) || gift.received);
-
-	const primaryLink = $derived(getPrimaryGiftLink(gift.links));
-	const domain = $derived(extractGiftDomain(gift.links));
-	const safeGiftUrl = $derived(normalizeGiftUrl(primaryLink?.url ?? null));
+	const { isVisitorOrModerator, visitorGift, isFullyReserved } = $derived(displayState);
+	const presentation = $derived(displayState.presentation);
+	const hasReservationAction = $derived(
+		visitorGift !== null &&
+			(visitorGift.myReservationId !== null || (!isArchived && !isFullyReserved)),
+	);
+	const canManage = $derived(canManageWishlist(role) && !contextualMode);
+	const hasReceivedPrimary = $derived(canManage && !isArchived && onreceived !== undefined);
+	const hasMultipleActions = $derived(
+		hasReceivedPrimary && isVisitorOrModerator && hasReservationAction,
+	);
+	let actionContentWidth = $state(0);
+	const isDimmed = $derived(presentation.isDimmed);
+	// Content fades per element because the title row and content column also hold actions.
+	const dimmedContentClass = $derived(cn(isDimmed && 'opacity-50'));
 	const imageSrc = $derived(resolveGiftImageUrl(gift.imageUrl, gift.imageKey));
 	const priceDisplay = $derived(formatPrice(gift.price, gift.currency, gift.priceMax));
-	const priorityInfo = $derived(getPriorityDisplay(gift.priorityLabel));
 	const reserverLine = $derived(formatReserverLine(visitorGift?.reserverNames ?? []));
+	const visibleReserverLine = $derived(
+		canSeeReserverNames(role) && reserverLine !== null && reserverLine.trim() !== ''
+			? reserverLine
+			: null,
+	);
+
+	function synchronizeListOverlayClearance(image: HTMLElement) {
+		const item = image.parentElement;
+		if (!(item instanceof HTMLElement)) {
+			return;
+		}
+		const itemStyle = item.style;
+		const wrapper = item.closest<HTMLElement>('[data-gift-item]');
+		function contextualControls() {
+			return (
+				wrapper?.querySelectorAll<HTMLElement>(
+					':scope > [data-testid="gift-selection-control"], :scope > button > .elevation-surface',
+				) ?? []
+			);
+		}
+
+		let animationFrame = 0;
+		const resizeObserver = new ResizeObserver(schedule);
+		const mutationObserver = new MutationObserver(refreshObservedElements);
+
+		function schedule() {
+			cancelAnimationFrame(animationFrame);
+			animationFrame = requestAnimationFrame(measure);
+		}
+
+		function refreshObservedElements() {
+			resizeObserver.disconnect();
+			resizeObserver.observe(image);
+			for (const control of contextualControls()) {
+				resizeObserver.observe(control);
+			}
+			for (const element of image.querySelectorAll<HTMLElement>(
+				'[data-testid="gift-category-badge"], [data-testid="gift-priority-badge"], [data-testid="gift-state-overlay"] > span',
+			)) {
+				resizeObserver.observe(element);
+			}
+			schedule();
+		}
+
+		function measure() {
+			const imageRect = image.getBoundingClientRect();
+			const category = image.querySelector<HTMLElement>(
+				'[data-testid="gift-category-badge"]',
+			);
+			const priority = image.querySelector<HTMLElement>(
+				'[data-testid="gift-priority-badge"]',
+			);
+			const overlay = image.querySelector<HTMLElement>('[data-testid="gift-state-overlay"]');
+			const overlayItems = overlay?.querySelectorAll<HTMLElement>(':scope > span') ?? [];
+			const rootFontSize = Number.parseFloat(
+				getComputedStyle(document.documentElement).fontSize,
+			);
+			const separation = rootFontSize * 0.5;
+			const categoryRect = category?.getBoundingClientRect();
+			const priorityRect = priority?.getBoundingClientRect();
+			const overlayGap = overlay
+				? Number.parseFloat(getComputedStyle(overlay).rowGap) || 0
+				: 0;
+			const overlayHeight =
+				Array.from(overlayItems).reduce(
+					(total, element) => total + element.getBoundingClientRect().height,
+					0,
+				) +
+				Math.max(0, overlayItems.length - 1) * overlayGap;
+			const contextualClearance = Math.max(
+				0,
+				...Array.from(contextualControls(), (control) => {
+					const rect = control.getBoundingClientRect();
+					return rect.right > imageRect.left && rect.left < imageRect.right
+						? rect.bottom - imageRect.top + separation
+						: 0;
+				}),
+			);
+			const startClearance = Math.max(
+				contextualClearance,
+				categoryRect
+					? categoryRect.top - imageRect.top + categoryRect.height + separation
+					: 0,
+			);
+			const endClearance = priorityRect
+				? imageRect.bottom - priorityRect.bottom + priorityRect.height + separation
+				: 0;
+			const minimumHeight = Math.ceil(startClearance + overlayHeight + endClearance);
+			const values = {
+				'--gift-list-overlay-start-clearance': `${Math.ceil(startClearance)}px`,
+				'--gift-list-overlay-end-clearance': `${Math.ceil(endClearance)}px`,
+				'--gift-list-overlay-min-height': `${minimumHeight}px`,
+			};
+			for (const [property, value] of Object.entries(values)) {
+				if (itemStyle.getPropertyValue(property) !== value) {
+					itemStyle.setProperty(property, value);
+				}
+			}
+		}
+
+		mutationObserver.observe(wrapper ?? image, {
+			childList: true,
+			subtree: true,
+			characterData: true,
+		});
+		refreshObservedElements();
+		measure();
+
+		return {
+			destroy() {
+				cancelAnimationFrame(animationFrame);
+				resizeObserver.disconnect();
+				mutationObserver.disconnect();
+				itemStyle.removeProperty('--gift-list-overlay-start-clearance');
+				itemStyle.removeProperty('--gift-list-overlay-end-clearance');
+				itemStyle.removeProperty('--gift-list-overlay-min-height');
+			},
+		};
+	}
 </script>
 
-<div
-	data-testid="gift-list-item"
-	class="group grid grid-cols-[clamp(8rem,39vw,9.5rem)_minmax(0,1fr)] items-start gap-3 border-b border-border py-3 transition-colors hover:bg-muted/50 sm:items-center sm:gap-4"
->
-	<!-- 1:1 crop (#189, reverts the interim 4:3 list thumb from #183): large thumb
-	     at every width (clamp maxes at 9.5rem for all viewports ≥ sm). -->
+<div class="gift-list-query-container w-full">
 	<div
-		data-testid="gift-list-image"
-		class="relative aspect-square w-[clamp(8rem,39vw,9.5rem)] self-start sm:self-center"
-	>
-		<GiftImage
-			class="size-full rounded-lg"
-			imageUrl={imageSrc}
-			imageMeta={gift.imageMeta}
-			target="thumb"
-			alt={gift.name}
-			variant="listThumb"
-		/>
-		{#if isDimmed}
-			<div
-				data-testid="gift-reserved-veil"
-				class="absolute inset-0 rounded-lg bg-reserved-veil"
-				aria-hidden="true"
-			></div>
-		{/if}
-		{#if canManage}
-			<!-- Edit affordance (issue #125 REQ-3): decorative, the whole row is the click target. -->
-			<span
-				class="absolute -top-1.5 -right-1.5 flex items-center justify-center rounded-full border-2 border-ink bg-card p-1 opacity-0 shadow-sticker transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100"
-				aria-hidden="true"
-			>
-				<PencilIcon class="size-3" />
-			</span>
-		{/if}
-		{#if isVisitorOrModerator && visitorGift}
-			<LikeButton
-				giftId={gift.id}
-				giftName={gift.name}
-				likeCount={visitorGift.likeCount}
-				size="md"
-				showCount={showLikeCount}
-				class={cn(
-					'absolute right-2 bottom-2 z-10 justify-center rounded-full border-2 border-ink bg-card shadow-sticker',
-					showLikeCount
-						? 'h-(--size-control-md) min-w-(--size-control-md) gap-1 px-1.5'
-						: 'size-(--size-control-md) p-0',
-				)}
-			/>
-		{/if}
-		{#if isVisitorOrModerator && isFullyReserved}
-			<!-- Reserved sticker sits above the veil, crisp (issue #224 REQ-7). Names for
-			     managers only — visitors never receive reserverNames. -->
-			<GiftReservedSticker reserverLine={canManage ? reserverLine : null} />
-		{/if}
-	</div>
-
-	<!-- Content and primary reservation action stay beside the image at every width. The dim
-	     lives here (not on the row) so the reserved sticker on the thumb stays crisp. -->
-	<div
-		data-testid="gift-list-content"
+		data-testid="gift-list-item"
+		use:restingShadowNesting
 		class={cn(
-			'flex min-w-0 flex-col gap-1 self-stretch',
-			isDimmed && 'opacity-55 grayscale-50',
+			'gift-list-item resting-shadow-nesting relative grid items-start gap-0 rounded-panel border-2 bg-card',
+			!isDimmed && 'elevation-ordinary border-ink',
+			isDimmed &&
+				'gift-frame-softened border-(--gift-frame-ink) [box-shadow:var(--gift-frame-elevation)]',
+			hasReceivedPrimary &&
+				reserverLine !== null &&
+				reserverLine !== '' &&
+				'gift-list-item-manager-dense',
+			hasMultipleActions && 'gift-list-item-multiple-actions',
+			gift.category != null &&
+				presentation.overlay !== null &&
+				'gift-list-item-crowded-overlay',
 		)}
 	>
-		<div class="flex items-start gap-1.5">
-			<h3
-				class="line-clamp-2 min-w-0 flex-1 font-heading text-base font-semibold leading-snug text-foreground"
-			>
-				{gift.name}
-			</h3>
-			<GiftPieceCount
-				quantity={gift.quantity}
-				role={hideReservationState ? 'recipient' : role}
-				{reservedCount}
-				reservationAcknowledgementKey={visitorGift?.myReservationId ?? null}
-				hideWhenOne
+		<div
+			data-testid="gift-list-image"
+			use:synchronizeListOverlayClearance
+			class={cn(
+				'gift-list-image relative self-stretch overflow-hidden border-r-2',
+				!isDimmed && 'border-ink',
+				isDimmed && 'border-(--gift-frame-ink)',
+			)}
+		>
+			<GiftListImage
+				imageUrl={imageSrc}
+				imageMeta={gift.imageMeta}
+				alt={gift.name}
+				class={dimmedContentClass}
 			/>
-			{#if gift.received}
-				<Badge tone="neutral" class="gap-1 text-[11px]">
-					<CheckIcon class="size-2.5" />
-					{m.gift_received_badge()}
-				</Badge>
+			{#if gift.category != null && !contextualMode}
+				<div class="gift-list-category absolute top-2 right-2 left-2 z-20 min-w-0">
+					<GiftCategoryBadge category={gift.category} {isDimmed} />
+				</div>
 			{/if}
+			<GiftStateOverlay
+				model={presentation.overlay}
+				identity={visibleReserverLine}
+				class={cn('gift-list-state-overlay', contextualMode && 'pt-[3.25rem]')}
+			/>
+			<GiftPriorityBadge
+				priorityLabel={gift.priorityLabel}
+				{showPriority}
+				{isDimmed}
+				class="absolute bottom-2 left-2 z-20 max-w-[calc(100%-1rem)]"
+			/>
 		</div>
 
-		<div class="flex flex-wrap items-center gap-1.5 text-sm">
-			{#if gift.price !== null}
-				<span class="font-bold text-primary">{priceDisplay}</span>
-			{:else}
-				<span class="text-muted-foreground">{priceDisplay}</span>
-			{/if}
-
-			{#if priorityInfo}
-				<Badge
-					tone="neutral"
-					badgeStyle="subtle"
-					class={cn('text-[11px]', priorityInfo.colorClass)}
-				>
-					{priorityInfo.label()}
-				</Badge>
-			{/if}
-		</div>
-
-		{#if domain}
-			<a
-				href={safeGiftUrl ?? '#'}
-				target="_blank"
-				rel="external noopener noreferrer"
-				class="inline-flex min-w-0 items-center gap-1 truncate text-xs text-primary"
-				onclick={(e: MouseEvent) => e.stopPropagation()}
+		<div
+			data-testid="gift-list-content"
+			class="gift-list-content flex min-w-0 flex-col gap-0.5 self-stretch sm:gap-1"
+		>
+			<div
+				class="flex min-w-0 items-start gap-1.5 font-heading text-[1rem] leading-[1.3] sm:text-[1.5rem]"
 			>
-				<ExternalLinkIcon class="size-3 shrink-0" />
-				<span class="truncate">{domain}</span>
-				{#if gift.links.length > 1}
-					<span class="shrink-0 text-muted-foreground"
-						>{m.gift_link_overflow({ count: gift.links.length - 1 })}</span
+				<h3
+					class={cn(
+						'gift-list-title line-clamp-2 min-w-0 flex-1 font-semibold text-foreground [overflow-wrap:anywhere] sm:line-clamp-1',
+						dimmedContentClass,
+					)}
+					title={gift.name}
+				>
+					{gift.name}
+				</h3>
+				<span class={cn('flex h-[1lh] shrink-0 items-center', dimmedContentClass)}>
+					<GiftPieceCount quantity={gift.quantity} role="recipient" hideWhenOne />
+				</span>
+				{#if !contextualMode && presentation.showLike && isVisitorOrModerator && visitorGift}
+					<span
+						class="flex h-[1lh] min-w-(--size-control-lg) shrink-0 items-center justify-center"
 					>
-				{/if}
-			</a>
-		{:else}
-			<span class="text-xs text-muted-foreground">{m.gift_link_none()}</span>
-		{/if}
-
-		<GiftDescription
-			description={gift.description}
-			descriptionAppends={gift.descriptionAppends}
-			showAppends={false}
-			descriptionClass="line-clamp-1"
-		/>
-
-		{#if (canManage && !isArchived && onreceived !== undefined) || (isVisitorOrModerator && visitorGift)}
-			<div class="mt-auto flex flex-col gap-1.5 self-end pt-2">
-				{#if canManage && onreceived !== undefined}
-					<GiftReceivedToggle
-						giftId={gift.id}
-						received={gift.received}
-						{role}
-						{isArchived}
-						{onreceived}
-						class="w-full"
-					/>
-				{/if}
-				{#if isVisitorOrModerator && visitorGift}
-					<PurchasedToggle gift={visitorGift} class="w-full" />
-					<ReserveButton
-						gift={visitorGift}
-						{isArchived}
-						size="md"
-						{onreserve}
-						{onunreserve}
-						class="w-full"
-					/>
+						<LikeButton
+							giftId={gift.id}
+							giftName={gift.name}
+							likeCount={visitorGift.likeCount}
+						/>
+					</span>
 				{/if}
 			</div>
-		{/if}
+
+			<GiftDescription
+				description={gift.description}
+				descriptionAppends={gift.descriptionAppends}
+				preview
+				class={cn('gift-list-description', dimmedContentClass)}
+				descriptionClass="line-clamp-2 sm:line-clamp-1"
+			/>
+
+			<div class={cn('mt-1.5 min-w-0', dimmedContentClass)} data-testid="gift-link-list">
+				<GiftLinkList links={gift.links} maxVisible={3} />
+			</div>
+			{#if gift.price !== null}
+				<span
+					class={cn('text-sm font-bold text-secondary-foreground', dimmedContentClass)}
+					data-testid="gift-list-price">{priceDisplay}</span
+				>
+			{:else}
+				<span
+					class={cn('text-sm text-muted-foreground italic', dimmedContentClass)}
+					data-testid="gift-list-price">{priceDisplay}</span
+				>
+			{/if}
+
+			{#if !contextualMode && (hasReceivedPrimary || (isVisitorOrModerator && hasReservationAction) || (onmore && persistentMore))}
+				<div
+					bind:clientWidth={actionContentWidth}
+					class="mt-auto flex min-w-0 flex-col gap-1.5 pt-1.5"
+					data-testid="gift-list-actions"
+				>
+					{#snippet secondaryReceivedAction()}
+						<GiftReceivedToggle
+							giftId={gift.id}
+							received={gift.received}
+							{role}
+							{isArchived}
+							{onreceived}
+							pending={receivedPending}
+							compactLabel
+						/>
+					{/snippet}
+					<GiftActionRow
+						class="gift-list-action-row"
+						{onmore}
+						{persistentMore}
+						{moreOpen}
+						{moreSurface}
+						contentWidth={actionContentWidth}
+						secondary={hasMultipleActions ? secondaryReceivedAction : undefined}
+						secondaryAction={hasMultipleActions ? 'received' : undefined}
+						primaryAction={hasReservationAction && visitorGift
+							? visitorGift.myReservationId === null
+								? 'reserve'
+								: 'cancel-reservation'
+							: hasReceivedPrimary
+								? 'received'
+								: undefined}
+						controlSizing="intrinsic"
+					>
+						{#if !canManage && isVisitorOrModerator && visitorGift && onmore === undefined}
+							<PurchasedToggle gift={visitorGift} class="w-full max-sm:hidden" />
+						{/if}
+						{#if hasMultipleActions && visitorGift}
+							<ReserveButton
+								gift={visitorGift}
+								{isArchived}
+								{onreserve}
+								{onunreserve}
+							/>
+						{:else if hasReceivedPrimary}
+							<GiftReceivedToggle
+								giftId={gift.id}
+								received={gift.received}
+								{role}
+								{isArchived}
+								{onreceived}
+								pending={receivedPending}
+								compactLabel
+							/>
+						{:else if isVisitorOrModerator && visitorGift}
+							<ReserveButton
+								gift={visitorGift}
+								{isArchived}
+								{onreserve}
+								{onunreserve}
+							/>
+						{/if}
+					</GiftActionRow>
+				</div>
+			{/if}
+		</div>
 	</div>
 </div>
+
+<style>
+	.gift-list-query-container {
+		container: gift-list / inline-size;
+	}
+
+	.gift-list-item {
+		box-sizing: border-box;
+		grid-template-columns: auto minmax(0, 1fr);
+		min-height: max(9rem, var(--gift-list-overlay-min-height, 9rem));
+	}
+
+	.gift-list-content {
+		padding-block: var(--gift-content-inset, 0.5rem)
+			var(--gift-content-inset-bottom, var(--gift-content-inset, 0.5rem));
+		padding-inline: var(--gift-content-inset, 0.5rem)
+			var(--gift-content-inset-end, var(--gift-content-inset, 0.5rem));
+	}
+
+	.gift-list-image {
+		aspect-ratio: 1;
+		height: 100%;
+		min-width: 9rem;
+		border-top-left-radius: max(
+				0px,
+				calc(var(--radius-panel) - var(--nested-border-inline, 2px))
+			)
+			max(0px, calc(var(--radius-panel) - var(--nested-border-block, 2px)));
+		border-bottom-left-radius: max(
+				0px,
+				calc(var(--radius-panel) - var(--nested-border-inline, 2px))
+			)
+			max(0px, calc(var(--radius-panel) - var(--nested-border-block, 2px)));
+	}
+
+	:global(.gift-list-state-overlay) {
+		box-sizing: border-box;
+		padding-block: var(--gift-list-overlay-start-clearance, 0)
+			var(--gift-list-overlay-end-clearance, 0);
+	}
+
+	:global(.gift-list-action-row) {
+		flex-wrap: nowrap;
+		gap: var(--gift-action-gap, 0.5rem);
+	}
+
+	:global(.gift-list-action-row > div),
+	:global(.gift-list-action-row .gift-action-slot) {
+		flex-flow: row nowrap;
+		justify-content: flex-end;
+	}
+
+	@container gift-list (width < 40rem) {
+		.gift-list-item {
+			grid-template-columns: min(35%, 9.5rem) minmax(0, 1fr);
+			min-height: max(
+				9rem,
+				var(--gift-list-overlay-min-height, 9rem),
+				calc(min(35cqw, 9.5rem) + 2 * var(--nested-border-block, 2px) + 1px)
+			);
+		}
+
+		.gift-list-image {
+			aspect-ratio: auto;
+			width: 100%;
+			height: 100%;
+			min-width: 0;
+			max-width: none;
+		}
+	}
+</style>

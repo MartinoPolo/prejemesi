@@ -7,10 +7,17 @@
 	import WishlistGiftCardGrid from './WishlistGiftCardGrid.svelte';
 	import WishlistGiftListView from './WishlistGiftListView.svelte';
 	import WishlistGiftCompactTable from './WishlistGiftCompactTable.svelte';
-	import type { GiftByRole, GiftForVisitor, GiftViewMode } from '$lib/modules/gifts/types.js';
+	import type {
+		GiftByRole,
+		GiftForVisitor,
+		GiftGroupingOption,
+		GiftViewMode,
+	} from '$lib/modules/gifts/types.js';
 	import type { GiftSection } from '$lib/modules/gifts/gift_ordering.js';
+	import type { GiftContextInvocation } from './gift_context_invocation.js';
 	import { WISHLIST_ROLES, type WishlistRole } from '$lib/modules/wishlists/types.js';
 	import { canManageWishlist } from '$lib/modules/wishlists/wishlist_capabilities.js';
+	import { giftCardCollectionLayout } from './gift_card_collection_layout.js';
 
 	interface WishlistGiftDisplayProps {
 		/** Shared display sections consumed identically by every view mode. */
@@ -23,6 +30,7 @@
 		isEmpty: boolean;
 		isFilteredEmpty: boolean;
 		reorderMode: boolean;
+		reorderInteractionEnabled?: boolean;
 		onedit: (gift: GiftByRole) => void;
 		onreserve: (gift: GiftForVisitor) => void;
 		onunreserve: (gift: GiftForVisitor) => void;
@@ -35,9 +43,16 @@
 		selectionMode?: boolean;
 		selectedIds?: readonly string[];
 		onselectiontoggle?: (giftId: string) => void;
-		oncontextactions?: (gift: GiftByRole, event: MouseEvent | null) => boolean;
+		oncontextactions?: (gift: GiftByRole, invocation: GiftContextInvocation) => boolean;
+		hascontextactions?: (gift: GiftByRole) => boolean;
 		contextContent?: Snippet;
-		contextMenuOpen?: boolean;
+		nativeContextOpen?: boolean;
+		nativeContextSessionId?: number;
+		onnativecontextcomplete?: (sessionId: number) => void;
+		activeContextGiftId?: string | null;
+		contextSurface?: 'menu' | 'dialog';
+		grouping?: GiftGroupingOption;
+		receivedPendingGiftIds?: ReadonlySet<string>;
 	}
 
 	let {
@@ -50,6 +65,7 @@
 		isEmpty,
 		isFilteredEmpty,
 		reorderMode,
+		reorderInteractionEnabled = true,
 		onedit,
 		onreserve,
 		onunreserve,
@@ -63,8 +79,15 @@
 		selectedIds = [],
 		onselectiontoggle,
 		oncontextactions,
+		hascontextactions,
 		contextContent,
-		contextMenuOpen = $bindable(false),
+		nativeContextOpen = $bindable(false),
+		nativeContextSessionId = 0,
+		onnativecontextcomplete,
+		activeContextGiftId = null,
+		contextSurface = 'menu',
+		grouping = 'none',
+		receivedPendingGiftIds = new Set<string>(),
 	}: WishlistGiftDisplayProps = $props();
 
 	// Management affordances (add/edit/reorder) open to recipient OR správce.
@@ -74,12 +97,15 @@
 	const reservationStateHidden = $derived(
 		hideReservationState || role === WISHLIST_ROLES.recipient,
 	);
+	const showPriority = $derived(grouping !== 'priority');
 
 	const STANDARD_EASING = 'cubic-bezier(0.2, 0.7, 0.3, 1)';
 	let displayedViewMode = $state(untrack(() => viewMode));
 	let collectionElement = $state<HTMLElement | null>(null);
 	let activeAnimation: Animation | null = null;
+	let openedNativeSessionId = $state(0);
 	let transitionRun = 0;
+	const collectionIsOutgoing = $derived(viewMode !== displayedViewMode);
 	const selectedIdSet = $derived(new Set(selectedIds));
 	setContext<(giftId: string) => boolean>('wishlist-gift-selection', (giftId) =>
 		selectedIdSet.has(giftId),
@@ -152,18 +178,30 @@
 	});
 
 	$effect(() => {
-		if (selectionMode && contextMenuOpen) {
-			contextMenuOpen = false;
+		if (selectionMode && nativeContextOpen === true) {
+			nativeContextOpen = false;
 		}
 	});
 
 	$effect(() => () => cancelActiveTransition());
 </script>
 
-<ContextMenu.Root bind:open={contextMenuOpen}>
+<ContextMenu.Root
+	bind:open={nativeContextOpen}
+	onOpenChange={(open) => {
+		if (open === true) {
+			openedNativeSessionId = nativeContextSessionId;
+		}
+	}}
+	onOpenChangeComplete={(open) => {
+		if (open === false) {
+			onnativecontextcomplete?.(openedNativeSessionId);
+		}
+	}}
+>
 	{#if isLoading}
 		<div
-			class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
+			class="gift-card-skeleton-grid grid grid-cols-2 gap-2 sm:gap-5 sm:[grid-template-columns:repeat(auto-fill,minmax(280px,1fr))]"
 			aria-busy="true"
 			aria-label={m.wishlist_detail_loading_gifts()}
 		>
@@ -180,24 +218,35 @@
 			{onclearfilters}
 		/>
 	{:else}
-		<ContextMenu.Trigger disabled={displayedViewMode === 'compact' || selectionMode}>
+		<ContextMenu.Trigger
+			disabled={displayedViewMode === 'compact' || selectionMode || collectionIsOutgoing}
+		>
 			{#snippet child({ props: triggerProps })}
 				<div
 					{...triggerProps}
 					style={undefined}
 					bind:this={collectionElement}
+					use:giftCardCollectionLayout
 					data-wishlist-gift-collection
 					data-view-mode={displayedViewMode}
+					inert={collectionIsOutgoing}
+					aria-hidden={collectionIsOutgoing ? true : undefined}
+					class="relative z-(--z-base)"
 					role={selectionMode ? 'group' : undefined}
 					aria-label={selectionMode ? m.gift_selection_listbox_label() : undefined}
 				>
 					{#if displayedViewMode === 'card'}
 						<WishlistGiftCardGrid
+							{hascontextactions}
+							{activeContextGiftId}
+							{contextSurface}
 							{sections}
 							{role}
+							{showPriority}
 							{isArchived}
 							hideReservationState={reservationStateHidden}
 							reorderEnabled={reorderMode &&
+								reorderInteractionEnabled &&
 								canManage &&
 								!isArchived &&
 								!selectionMode}
@@ -208,17 +257,23 @@
 							{onreserve}
 							{onunreserve}
 							{onreceived}
+							{receivedPendingGiftIds}
 							{onreorderpreview}
 							{onreordercommit}
 							{onreordercancel}
 						/>
 					{:else if displayedViewMode === 'list'}
 						<WishlistGiftListView
+							{hascontextactions}
+							{activeContextGiftId}
+							{contextSurface}
 							{sections}
 							{role}
+							{showPriority}
 							{isArchived}
 							hideReservationState={reservationStateHidden}
 							reorderEnabled={reorderMode &&
+								reorderInteractionEnabled &&
 								canManage &&
 								!isArchived &&
 								!selectionMode}
@@ -229,6 +284,7 @@
 							{onreserve}
 							{onunreserve}
 							{onreceived}
+							{receivedPendingGiftIds}
 							{onreorderpreview}
 							{onreordercommit}
 							{onreordercancel}
@@ -237,6 +293,7 @@
 						<WishlistGiftCompactTable
 							{sections}
 							{role}
+							{showPriority}
 							{isArchived}
 							hideReservationState={reservationStateHidden}
 							{canManage}
@@ -244,6 +301,7 @@
 							{onreserve}
 							{onunreserve}
 							{onreceived}
+							{receivedPendingGiftIds}
 						/>
 					{/if}
 				</div>
@@ -252,3 +310,12 @@
 	{/if}
 	{#if contextContent}{@render contextContent()}{/if}
 </ContextMenu.Root>
+
+<style>
+	@media (width <= 320px) {
+		.gift-card-skeleton-grid {
+			grid-template-columns: minmax(0, 1fr);
+			gap: 10px;
+		}
+	}
+</style>

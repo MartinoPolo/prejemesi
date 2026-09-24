@@ -7,9 +7,7 @@
 	import CalendarIcon from '@lucide/svelte/icons/calendar';
 	import HourglassIcon from '@lucide/svelte/icons/hourglass';
 	import PencilIcon from '@lucide/svelte/icons/pencil';
-	import ShareIcon from '@lucide/svelte/icons/share-2';
 	import ArchiveIcon from '@lucide/svelte/icons/archive';
-	import UsersIcon from '@lucide/svelte/icons/users';
 	import EyeIcon from '@lucide/svelte/icons/eye';
 	import TriangleAlertIcon from '@lucide/svelte/icons/triangle-alert';
 	import { WISHLIST_ROLES, type WishlistRole } from '$lib/modules/wishlists/types.js';
@@ -24,6 +22,7 @@
 	import { wishlistImageUrl, wishlistSlotToFrameProps } from '$lib/modules/images/index.js';
 	import type { WishlistImageSlots } from '$lib/modules/images/index.js';
 	import WishlistSlotImage from '$lib/components/blocks/wishlist/WishlistSlotImage.svelte';
+	import WishlistHeaderActions from './WishlistHeaderActions.svelte';
 	import { wishlistHeaderVariants } from './wishlist_header_variants.js';
 
 	interface WishlistHeaderProps {
@@ -58,6 +57,7 @@
 		giftCount: number | null;
 		/** True when the linked recipient self-promoted to also see reservation state (trust warning). */
 		recipientIsModerator: boolean;
+		adminSettingsAvailable?: boolean;
 		/**
 		 * Which heading element the title renders as. The wishlist page is the list's own
 		 * page, so the title is its `<h1>` — but on the landing page the demo header sits
@@ -69,6 +69,7 @@
 		onarchive?: () => void;
 		oneditimage?: () => void;
 		oneditrecipient?: () => void;
+		onsettings?: () => void;
 	}
 
 	let {
@@ -87,12 +88,14 @@
 		role,
 		giftCount,
 		recipientIsModerator,
+		adminSettingsAvailable = false,
 		headingLevel = 1,
 		onshare,
 		onmoderators,
 		onarchive,
 		oneditimage,
 		oneditrecipient,
+		onsettings,
 	}: WishlistHeaderProps = $props();
 
 	const styles = wishlistHeaderVariants();
@@ -105,6 +108,7 @@
 	// Management actions open to any manager — the linked recipient OR a správce (issue #99).
 	const canManage = $derived(canManageWishlist(role));
 	const isArchived = $derived(status === 'archived');
+	const settingsAvailable = $derived((canManage && !isArchived) || adminSettingsAvailable);
 	const isEventPast = $derived(eventDate !== null && new Date(eventDate) < new Date());
 	// Recipient edit pencil (issue #150): free-text lists → any manager may rename; linked
 	// lists → ONLY the linked recipient may flip to free-text (no evicting by správci).
@@ -188,9 +192,68 @@
 </script>
 
 <header class={styles.root()}>
+	<!-- Narrow screens use a standalone compact hero. The notices below intentionally remain
+	     siblings so lifecycle and reservation privacy messaging never gets clipped by it. -->
+	<div class="mobile-hero" data-testid="wishlist-mobile-hero">
+		<figure class="mobile-photo" data-testid="wishlist-mobile-photo">
+			<WishlistSlotImage
+				class="size-full rounded-none"
+				src={polaroidSrc}
+				frame={polaroidFrame}
+				{themeEmoji}
+				alt={title}
+				variant="thumbnail"
+				eagerLoading
+			/>
+		</figure>
+		<div class="mobile-copy">
+			<p class="mobile-recipient">
+				{m.wishlist_header_for_prefix()}<strong>{recipientDisplayName}</strong>
+			</p>
+			<svelte:element this={headingLevel === 1 ? 'h1' : 'h2'} class="mobile-title">
+				{title}
+			</svelte:element>
+			<p class="mobile-meta">
+				{statusLabel}{#if giftCountLabel !== null}<span aria-hidden="true">
+						·
+					</span>{giftCountLabel}{/if}
+			</p>
+		</div>
+		<WishlistHeaderActions
+			{canManage}
+			{settingsAvailable}
+			canShare={!isArchived}
+			canEditImage={!isArchived}
+			{canEditRecipient}
+			canArchive={!isArchived}
+			{onshare}
+			{onmoderators}
+			{onsettings}
+			{oneditimage}
+			{oneditrecipient}
+			{onarchive}
+		/>
+	</div>
+
 	<!-- Spiral-notebook panel: punch holes, red margin line, ruled lines -->
 	<div class="notebook" data-testid="wishlist-banner">
 		<div class="notebook-face">
+			<div class="desktop-header-actions">
+				<WishlistHeaderActions
+					{canManage}
+					{settingsAvailable}
+					canShare={!isArchived}
+					canEditImage={!isArchived}
+					{canEditRecipient}
+					canArchive={!isArchived}
+					{onshare}
+					{onmoderators}
+					{onsettings}
+					{oneditimage}
+					{oneditrecipient}
+					{onarchive}
+				/>
+			</div>
 			{#if countdownLabel !== null}
 				<!-- Sunshine sticky note pinned to the page's top-right corner (desktop only) -->
 				<div class="sticky-note" aria-hidden="true">{countdownLabel}</div>
@@ -210,7 +273,8 @@
 					/>
 					{#if canManage && !isArchived}
 						<Button
-							size="icon-sm"
+							size="sm"
+							format="icon"
 							intent="secondary"
 							class={styles.editImageButton()}
 							aria-label={m.wishlist_edit_image_label()}
@@ -225,7 +289,10 @@
 				{/if}
 			</figure>
 
-			<div class={styles.headerText()}>
+			<div
+				class={styles.headerText()}
+				class:header-text-has-actions={settingsAvailable || canManage}
+			>
 				<!-- Every list leads with „Pro: {recipient}" — colon form, prefix lighter, name bold
 				     (2026-07-14 header decision, self lists included). A `<div>`, not a `<p>`: the
 				     recipient avatar below renders ImageFrame's `<div>` root, and a div nested in a
@@ -246,7 +313,8 @@
 						<strong class={styles.recipientName()}>{recipientDisplayName}</strong>
 						{#if canEditRecipient}
 							<Button
-								size="icon-sm"
+								size="sm"
+								format="icon"
 								intent="ghost"
 								aria-label={m.wishlist_edit_recipient_label()}
 								data-testid="edit-recipient-button"
@@ -285,40 +353,6 @@
 						<span class={styles.managersLine()}>{managedByLabel}</span>
 					{/if}
 				</div>
-				{#if canManage}
-					<div class={styles.actionRow()}>
-						{#if !isArchived}
-							<Button
-								size="sm"
-								aria-label={m.wishlist_share_label()}
-								onclick={onshare}
-							>
-								<ShareIcon data-icon="inline-start" />
-								{m.wishlist_share_button()}
-							</Button>
-						{/if}
-						<Button
-							size="sm"
-							intent="secondary"
-							aria-label={m.wishlist_moderators_label()}
-							onclick={onmoderators}
-						>
-							<UsersIcon data-icon="inline-start" />
-							{m.wishlist_moderators_label()}
-						</Button>
-						{#if !isArchived}
-							<Button
-								size="sm"
-								intent="secondary"
-								aria-label={m.wishlist_archive_label()}
-								onclick={onarchive}
-							>
-								<ArchiveIcon data-icon="inline-start" />
-								{m.wishlist_archive_button()}
-							</Button>
-						{/if}
-					</div>
-				{/if}
 			</div>
 		</div>
 	</div>
@@ -344,12 +378,12 @@
 	<!-- Reservation-visibility notices (REQ-13): calm reassurance vs loud trust warning -->
 	{#if recipientIsModerator && role !== WISHLIST_ROLES.recipient}
 		<!-- Loud sticky-note warning — visitors must not miss it. NO tape (settled decision). -->
-		<Alert.Root tone="warning" class="reveal reveal-5 -rotate-[0.5deg]">
+		<Alert.Root tone="warning" class="reveal reveal-5">
 			<TriangleAlertIcon />
 			<Alert.Title>{m.wishlist_trust_warning({ name: recipientDisplayName })}</Alert.Title>
 		</Alert.Root>
 	{:else if role === WISHLIST_ROLES.moderator}
-		<Alert.Root class="reveal reveal-5 -rotate-[0.35deg]">
+		<Alert.Root class="reveal reveal-5">
 			<EyeIcon />
 			<Alert.Title
 				>{m.wishlist_moderator_sees_reservations({
@@ -361,6 +395,17 @@
 </header>
 
 <style>
+	.mobile-hero {
+		display: none;
+	}
+
+	.desktop-header-actions {
+		position: absolute;
+		z-index: 2;
+		top: 1rem;
+		right: 1rem;
+	}
+
 	/* Static „spiral notebook page": ruled lines, red margin, punch holes down the
 	   left edge. Layered backgrounds don't translate to utility classes, so the
 	   notebook motifs live here; colors come from the palette tokens in app.css. */
@@ -388,7 +433,7 @@
 		background-repeat: repeat-y, no-repeat, no-repeat;
 		border: 2.5px solid var(--ink);
 		border-radius: 14px;
-		box-shadow: 6px 6px 0 var(--hard-shadow-strong);
+		box-shadow: var(--elevation-ordinary-strong);
 	}
 
 	.notebook-face {
@@ -403,7 +448,7 @@
 	.sticky-note {
 		position: absolute;
 		top: 18px;
-		right: 34px;
+		right: 8rem;
 		z-index: 1;
 		padding: 14px 18px 12px;
 		font-family: var(--font-head);
@@ -415,7 +460,7 @@
 		border: 2.5px solid var(--accent-loud-foreground);
 		border-radius: 4px;
 		transform: rotate(4deg);
-		box-shadow: 4px 5px 0 var(--hard-shadow-strong);
+		box-shadow: var(--elevation-ordinary-strong);
 	}
 
 	/* Strip of translucent tape over the note's top edge (tape belongs on paper) */
@@ -445,7 +490,7 @@
 		border: 2px solid #4a443a;
 		border-radius: 3px;
 		transform: rotate(var(--polaroid-rotation));
-		box-shadow: 5px 6px 0 var(--hard-shadow-strong);
+		box-shadow: var(--elevation-lifted-strong);
 	}
 
 	@media (prefers-reduced-motion: no-preference) {
@@ -502,35 +547,77 @@
 		}
 	}
 
-	@media (width <= 640px) {
+	@media (width >= 640px) {
+		.header-text-has-actions {
+			padding-inline-end: 6.5rem;
+		}
+	}
+
+	@media (width < 640px) {
 		.notebook {
-			background-image:
-				radial-gradient(
-					circle at 20px 26px,
-					var(--hole-inner) 0 4.5px,
-					var(--hole-ring) 4.5px 6.5px,
-					transparent 7px
-				),
-				linear-gradient(
-					to right,
-					transparent 0 48px,
-					var(--margin-red) 48px 50px,
-					transparent 50px
-				),
-				repeating-linear-gradient(transparent 0 33px, var(--rule-line) 33px 35px);
+			display: none;
 		}
 
-		.notebook-face {
-			flex-direction: column;
-			align-items: flex-start;
-			gap: var(--space-4);
-			padding: var(--space-4) var(--space-4) var(--space-4) 66px;
+		.mobile-hero {
+			display: grid;
+			box-sizing: border-box;
+			height: 112px;
+			grid-template-columns: 92px minmax(0, 1fr) auto;
+			align-items: center;
+			gap: var(--space-2);
+			padding: var(--space-2);
+			overflow: hidden;
+			background: var(--card);
+			border: 2px solid var(--ink);
+			border-radius: var(--radius-xl);
+			box-shadow: var(--elevation-ordinary);
 		}
 
-		.polaroid {
-			--polaroid-rotation: -2deg;
+		.mobile-photo {
+			width: 92px;
+			height: 92px;
+			margin: 0;
+			overflow: hidden;
+			border: 2px solid var(--ink);
+			border-radius: var(--radius-lg);
+		}
 
-			width: 148px;
+		.mobile-copy {
+			min-width: 0;
+		}
+
+		.mobile-hero :global([data-testid='wishlist-header-actions']) {
+			align-self: start;
+		}
+
+		.mobile-recipient,
+		.mobile-meta {
+			margin: 0;
+			color: var(--muted-foreground);
+			font-size: 11px;
+			line-height: 15px;
+			font-weight: 600;
+		}
+
+		.mobile-recipient strong {
+			color: var(--ink);
+		}
+
+		.mobile-title {
+			display: -webkit-box;
+			margin: 1px 0 0;
+			overflow: hidden;
+			font-family: var(--font-heading);
+			font-size: 16px;
+			font-weight: 700;
+			line-height: 1.15;
+			-webkit-box-orient: vertical;
+			-webkit-line-clamp: 2;
+			line-clamp: 2;
+		}
+
+		.mobile-meta {
+			margin-top: var(--space-1);
 		}
 	}
 </style>

@@ -1,5 +1,8 @@
 <script lang="ts">
 	import DarkModeToggle from '$lib/components/derived/dark-mode-toggle/DarkModeToggle.svelte';
+	import { DepthStyleSwitcher } from '$lib/components/derived/depth-style-switcher/index.js';
+	import ControlSizingShowcase from './ControlSizingShowcase.svelte';
+	import { setNotificationsContext } from '$lib/modules/notifications/notifications.context.svelte.js';
 	import {
 		StatusBadge,
 		STATUS_BADGE_STATUSES,
@@ -16,11 +19,11 @@
 	import * as Alert from '$lib/components/base/alert/index.js';
 	import * as Select from '$lib/components/base/select/index.js';
 	import * as InputGroup from '$lib/components/base/input-group/index.js';
-	import MailIcon from '@lucide/svelte/icons/mail';
-	import LoaderIcon from '@lucide/svelte/icons/loader';
 	import InfoIcon from '@lucide/svelte/icons/info';
 	import TriangleAlertIcon from '@lucide/svelte/icons/triangle-alert';
 	import CircleCheckIcon from '@lucide/svelte/icons/circle-check';
+
+	setNotificationsContext();
 
 	let switchChecked = $state(false);
 	let selectValue = $state('');
@@ -28,9 +31,12 @@
 
 <main class="min-h-screen bg-background text-foreground">
 	<header class="border-b border-border">
-		<div class="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
+		<div class="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-4 px-6 py-4">
 			<h1 class="text-xl font-bold tracking-tight">Component Playground</h1>
-			<DarkModeToggle />
+			<div class="flex flex-wrap items-center gap-4">
+				<DepthStyleSwitcher />
+				<DarkModeToggle />
+			</div>
 		</div>
 	</header>
 
@@ -44,30 +50,7 @@
 
 		<Separator />
 
-		<section class="flex flex-col gap-4">
-			<h3 class="text-2xl font-semibold tracking-tight">Buttons</h3>
-			<div class="flex flex-wrap items-center gap-3">
-				<Button>Default</Button>
-				<Button intent="secondary">Secondary</Button>
-				<Button intent="outline">Outline</Button>
-				<Button intent="ghost">Ghost</Button>
-				<Button intent="link">Link</Button>
-				<Button intent="danger">Destructive</Button>
-			</div>
-			<div class="flex flex-wrap items-center gap-3">
-				<Button size="sm">Small</Button>
-				<Button size="md">Default</Button>
-				<Button size="lg">Large</Button>
-				<Button size="icon" aria-label="Send email"><MailIcon data-icon /></Button>
-			</div>
-			<div class="flex flex-wrap items-center gap-3">
-				<Button disabled>Disabled</Button>
-				<Button disabled>
-					<LoaderIcon class="animate-spin" data-icon="inline-start" />
-					Loading...
-				</Button>
-			</div>
-		</section>
+		<ControlSizingShowcase />
 
 		<Separator />
 
@@ -175,7 +158,7 @@
 						>Something went wrong. Please try again later.</Alert.Description
 					>
 				</Alert.Root>
-				<Alert.Root class="border-primary/50 text-primary [&>svg]:text-primary">
+				<Alert.Root class="border-primary/50 text-brand [&>svg]:text-brand">
 					<CircleCheckIcon size={16} />
 					<Alert.Title>Success</Alert.Title>
 					<Alert.Description>Your changes have been saved successfully.</Alert.Description

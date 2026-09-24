@@ -14,20 +14,20 @@
  * Martin + Jana) have a free-text recipient and are managed via moderatorAssignment rows.
  */
 
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { readFileSync } from 'node:fs';
 import postgres from 'postgres';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import { sql } from 'drizzle-orm';
 import { hashPassword } from 'better-auth/crypto';
 import { user, account } from './auth.schema.js';
 import { wishlist, priorityLevel } from './wishlist.schema.js';
-import { gift, reservation, giftLike } from './gift.schema.js';
+import { gift, giftCategory, reservation, giftLike } from './gift.schema.js';
 import { moderatorAssignment } from './moderator.schema.js';
 import { claimInvite } from './claim.schema.js';
 import { wishlistFollower } from './follower.schema.js';
 import { wishlistVisit } from './wishlist_visit.schema.js';
 import { notification } from './notification.schema.js';
+import { prepareSeedImages } from './seed_images.js';
 
 // ---------------------------------------------------------------------------
 // .env loader (avoids dotenv dependency)
@@ -67,87 +67,6 @@ function requireEnv(name: string): string {
 }
 
 const DATABASE_URL: string = requireEnv('DATABASE_URL');
-
-// ---------------------------------------------------------------------------
-// Seed images – fetched from Unsplash on first seed, cached in .seed-uploads/
-// ---------------------------------------------------------------------------
-const SEED_UPLOAD_DIR = join(process.cwd(), '.seed-uploads');
-
-const SEED_IMAGES: Record<string, string> = {
-	// Wishlists
-	'seed/wl-xmas2026.jpg':
-		'https://images.unsplash.com/photo-1765194493212-874b062ff31a?w=800&q=80',
-	'seed/wl-bday.jpg': 'https://images.unsplash.com/photo-1531956531700-dc0ee0f1f9a5?w=800&q=80',
-	'seed/wl-svatek.jpg': 'https://images.unsplash.com/photo-1775138386053-5766c8c10e85?w=800&q=80',
-	'seed/wl-knihy.jpg': 'https://images.unsplash.com/photo-1747913647304-9f298ff28ff4?w=800&q=80',
-	// Gifts
-	'seed/g-ps5.jpg': 'https://images.unsplash.com/photo-1622297845775-5ff3fef71d13?w=800&q=80',
-	'seed/g-bunda.jpg': 'https://images.unsplash.com/photo-1487793433179-ce0b55eda342?w=800&q=80',
-	'seed/g-sapiens.jpg': 'https://images.unsplash.com/photo-1710578472398-1edbbd348b79?w=800&q=80',
-	'seed/g-sony.jpg': 'https://images.unsplash.com/photo-1621208587196-0b2a7d2aeb03?w=800&q=80',
-	'seed/g-batoh.jpg': 'https://images.unsplash.com/photo-1503220317375-aaad61436b1b?w=800&q=80',
-	'seed/g-kytara.jpg': 'https://images.unsplash.com/photo-1589131626349-2799f057b43a?w=800&q=80',
-	'seed/g-parfem.jpg': 'https://images.unsplash.com/photo-1583545889266-55be2d76c6c5?w=800&q=80',
-	'seed/g-catan.jpg': 'https://images.unsplash.com/photo-1606733847546-db8546099013?w=800&q=80',
-	'seed/g-kindle.jpg': 'https://images.unsplash.com/photo-1455541504462-57ebb2a9cec1?w=800&q=80',
-	'seed/g-puzzle.jpg': 'https://images.unsplash.com/photo-1494059980473-813e73ee784b?w=800&q=80',
-	'seed/g-svicka.jpg': 'https://images.unsplash.com/photo-1574266742257-41460b7992ee?w=800&q=80',
-	'seed/g-kabelka.jpg': 'https://images.unsplash.com/photo-1683921470299-b8f0f3331657?w=800&q=80',
-	'seed/g-satek.jpg': 'https://images.unsplash.com/photo-1753807971479-5a51e1445b78?w=800&q=80',
-	'seed/g-lego.jpg': 'https://images.unsplash.com/photo-1587654780291-39c9404d746b?w=800&q=80',
-	'seed/g-lampicka.jpg': 'https://images.unsplash.com/photo-1547091267-6b2be403a763?w=800&q=80',
-	'seed/g-mixer.jpg': 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=800&q=80',
-	'seed/g-monstera.jpg':
-		'https://images.unsplash.com/photo-1503149779833-1de50ebe5f8a?w=800&q=80',
-	'seed/g-dune.jpg': 'https://images.unsplash.com/photo-1710578472398-1edbbd348b79?w=800&q=80',
-	'seed/g-1984.jpg': 'https://images.unsplash.com/photo-1710578472398-1edbbd348b79?w=800&q=80',
-	// Added for the long-list fixtures (issue #224) – Martin's owned / moderated / followed lists.
-	'seed/g-ponozky.jpg': 'https://images.unsplash.com/photo-1586350977771-b3b0abd50c82?w=800&q=80',
-	'seed/g-poukaz.jpg': 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800&q=80',
-	'seed/g-advent.jpg': 'https://images.unsplash.com/photo-1481391319762-47dff72954d9?w=800&q=80',
-	'seed/g-kavovar.jpg': 'https://images.unsplash.com/photo-1517668808822-9ebb02f2a0e6?w=800&q=80',
-	'seed/g-kolo.jpg': 'https://images.unsplash.com/photo-1576435728678-68d0fbf94e91?w=800&q=80',
-	'seed/g-monitor.jpg': 'https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?w=800&q=80',
-	'seed/g-stan.jpg': 'https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?w=800&q=80',
-	'seed/g-sachy.jpg': 'https://images.unsplash.com/photo-1528819622765-d6bcf132f793?w=800&q=80',
-	'seed/g-kytice.jpg': 'https://images.unsplash.com/photo-1487070183336-b863922373d4?w=800&q=80',
-	'seed/g-hodinky-d.jpg':
-		'https://images.unsplash.com/photo-1524805444758-089113d48a6d?w=800&q=80',
-	'seed/g-caj.jpg': 'https://images.unsplash.com/photo-1544787219-7f47ccb76574?w=800&q=80',
-	'seed/g-sklenice.jpg':
-		'https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?w=800&q=80',
-};
-
-async function downloadSeedImages(): Promise<void> {
-	const entries = Object.entries(SEED_IMAGES);
-	let downloaded = 0;
-	let cached = 0;
-
-	for (const [objectKey, url] of entries) {
-		const filePath = join(SEED_UPLOAD_DIR, objectKey);
-		if (existsSync(filePath)) {
-			cached++;
-			continue;
-		}
-		try {
-			const response = await fetch(url, { redirect: 'follow' });
-			if (!response.ok) {
-				console.warn(`  ⚠ Failed to fetch ${objectKey}: HTTP ${String(response.status)}`);
-				continue;
-			}
-			const buffer = Buffer.from(await response.arrayBuffer());
-			mkdirSync(dirname(filePath), { recursive: true });
-			writeFileSync(filePath, buffer);
-			downloaded++;
-		} catch (fetchError) {
-			console.warn(`  ⚠ Failed to download ${objectKey}:`, fetchError);
-		}
-	}
-
-	console.log(
-		`  ${String(downloaded)} downloaded, ${String(cached)} cached, ${String(entries.length)} total`,
-	);
-}
 
 const SEED_IMAGE_META = { fitMode: 'auto' as const, focal: { x: 50, y: 50 }, zoom: 1 };
 
@@ -192,6 +111,13 @@ const CLAIM_KLARA_TOKEN = 'seed-claim-klara-token';
 
 // Priority level suffix helpers
 const plId = (wl: string, level: 'h' | 'm' | 'l') => `seed-pl-${wl}-${level}`;
+
+// Gift categories
+const CAT_XMAS_ELECTRONICS = 'seed-cat-xmas-electronics';
+const CAT_XMAS_CLOTHING = 'seed-cat-xmas-clothing';
+const CAT_XMAS_EXPERIENCES = 'seed-cat-xmas-experiences';
+const CAT_KNIHY_BOOKS = 'seed-cat-knihy-books';
+const CAT_KNIHY_LONG = 'seed-cat-knihy-special-editions-and-collections';
 
 // Gift IDs
 const G_PS5 = 'seed-g-ps5';
@@ -256,6 +182,7 @@ const G_KN_ZAKON = 'seed-g-kn-zakon';
 const G_KN_KRONIKY = 'seed-g-kn-kroniky';
 const G_KN_STOLETI = 'seed-g-kn-stoleti';
 const G_KN_MAPY = 'seed-g-kn-mapy';
+const G_KN_CROWDED = 'seed-g-kn-crowded-long-title';
 // Přání k svátku (Jana) – Martin follows as a gifter (visitor view: full ordering-band spread)
 const G_SV_HODINKY = 'seed-g-sv-hodinky';
 const G_SV_KVETINAC = 'seed-g-sv-kvetinac';
@@ -289,6 +216,7 @@ async function cleanup(db: ReturnType<typeof drizzle>) {
 	await db.execute(sql`DELETE FROM gift_like WHERE id LIKE 'seed-%'`);
 	await db.execute(sql`DELETE FROM reservation WHERE id LIKE 'seed-%'`);
 	await db.execute(sql`DELETE FROM gift WHERE id LIKE 'seed-%'`);
+	await db.execute(sql`DELETE FROM gift_category WHERE id LIKE 'seed-%'`);
 	await db.execute(sql`DELETE FROM priority_level WHERE id LIKE 'seed-%'`);
 	// moderator_invite FKs to user have no ON DELETE action, so invites created
 	// at runtime BY seed users (non-seed ids) must be matched via FK columns or
@@ -323,6 +251,12 @@ async function cleanup(db: ReturnType<typeof drizzle>) {
 // Seed
 // ---------------------------------------------------------------------------
 async function seed() {
+	console.log('Preparing seed images...');
+	const imageResult = await prepareSeedImages();
+	console.log(
+		`  ${String(imageResult.downloaded)} downloaded, ${String(imageResult.cached)} cached, ${String(imageResult.total)} total`,
+	);
+
 	const client = postgres(DATABASE_URL, { prepare: false });
 	const db = drizzle(client);
 
@@ -728,6 +662,48 @@ async function seed() {
 		await db.insert(priorityLevel).values(priorityRows);
 
 		// ---------------------------------------------------------------
+		// Gift categories
+		// ---------------------------------------------------------------
+		console.log('Seeding gift categories...');
+		await db.insert(giftCategory).values([
+			{
+				id: CAT_XMAS_ELECTRONICS,
+				wishlistId: WL_XMAS26,
+				presetKey: 'electronics',
+				color: '#0F766E',
+				sortOrder: 0,
+			},
+			{
+				id: CAT_XMAS_CLOTHING,
+				wishlistId: WL_XMAS26,
+				presetKey: 'clothing',
+				color: '#DB2777',
+				sortOrder: 1,
+			},
+			{
+				id: CAT_XMAS_EXPERIENCES,
+				wishlistId: WL_XMAS26,
+				customLabel: 'Společné zážitky',
+				color: '#15803D',
+				sortOrder: 2,
+			},
+			{
+				id: CAT_KNIHY_BOOKS,
+				wishlistId: WL_KNIHY,
+				presetKey: 'books',
+				color: '#2563EB',
+				sortOrder: 0,
+			},
+			{
+				id: CAT_KNIHY_LONG,
+				wishlistId: WL_KNIHY,
+				customLabel: 'Výpravné ilustrované edice a kompletní sběratelské kolekce',
+				color: '#7C3AED',
+				sortOrder: 1,
+			},
+		]);
+
+		// ---------------------------------------------------------------
 		// Gifts
 		// ---------------------------------------------------------------
 		console.log('Seeding gifts...');
@@ -737,6 +713,7 @@ async function seed() {
 				id: G_PS5,
 				wishlistId: WL_XMAS26,
 				priorityLevelId: plId('xmas26', 'h'),
+				categoryId: CAT_XMAS_ELECTRONICS,
 				name: 'PlayStation 5',
 				description: 'Nejnovější verze, s mechanikou na disky',
 				links: [
@@ -754,6 +731,7 @@ async function seed() {
 				id: G_BUNDA,
 				wishlistId: WL_XMAS26,
 				priorityLevelId: plId('xmas26', 'm'),
+				categoryId: CAT_XMAS_CLOTHING,
 				name: 'Zimní bunda North Face',
 				description: 'Velikost L, černá nebo tmavě modrá',
 				links: [{ url: 'https://www.sportisimo.cz/north-face' }],
@@ -809,6 +787,7 @@ async function seed() {
 				id: G_POUKAZ,
 				wishlistId: WL_XMAS26,
 				priorityLevelId: plId('xmas26', 'm'),
+				categoryId: CAT_XMAS_EXPERIENCES,
 				name: 'Dárkový poukaz do restaurace',
 				description: 'Ideálně La Degustation nebo Alcron',
 				price: 2000,
@@ -898,6 +877,7 @@ async function seed() {
 				createdAt: d('2026-06-21T12:00:00Z'),
 				updatedAt: d('2026-06-21T12:00:00Z'),
 			},
+			// Explicit uncategorized image fixture for the ordinary recipient view.
 			{
 				id: G_XM_SACHY,
 				wishlistId: WL_XMAS26,
@@ -1260,6 +1240,7 @@ async function seed() {
 				id: G_DUNE,
 				wishlistId: WL_KNIHY,
 				priorityLevelId: plId('knihy', 'h'),
+				categoryId: CAT_KNIHY_BOOKS,
 				name: 'Dune – Frank Herbert',
 				links: [{ url: 'https://www.kosmas.cz/dune' }],
 				price: 350,
@@ -1338,6 +1319,7 @@ async function seed() {
 				...giftImage('seed/g-1984.jpg'),
 				sortOrder: 6,
 			},
+			// Explicit uncategorized fixture for the manager view.
 			{
 				id: G_KN_KRONIKY,
 				wishlistId: WL_KNIHY,
@@ -1351,6 +1333,7 @@ async function seed() {
 			{
 				id: G_KN_STOLETI,
 				wishlistId: WL_KNIHY,
+				categoryId: CAT_KNIHY_BOOKS,
 				name: 'Století – Ken Follett',
 				links: [{ url: 'https://www.kosmas.cz/stoleti' }],
 				price: 680,
@@ -1363,6 +1346,7 @@ async function seed() {
 				id: G_KN_MAPY,
 				wishlistId: WL_KNIHY,
 				priorityLevelId: plId('knihy', 'm'),
+				categoryId: CAT_KNIHY_BOOKS,
 				name: 'Mapy – Aleksandra Mizielińska',
 				description: 'Velký ilustrovaný atlas světa',
 				links: [{ url: 'https://www.kosmas.cz/mapy' }],
@@ -1370,6 +1354,18 @@ async function seed() {
 				currency: 'CZK',
 				...giftImage('seed/g-dune.jpg'),
 				sortOrder: 9,
+			},
+			{
+				id: G_KN_CROWDED,
+				wishlistId: WL_KNIHY,
+				priorityLevelId: plId('knihy', 'h'),
+				categoryId: CAT_KNIHY_LONG,
+				name: 'Kompletní ilustrované dějiny fantastických světů ve sběratelském vydání',
+				description: 'Záměrně přeplněný stav s obrázkovým zástupným symbolem.',
+				price: 2490,
+				currency: 'CZK',
+				quantity: 4,
+				sortOrder: 10,
 			},
 
 			// --- Petrovy narozeniny / Petr (3 gifts, 2 free) ---
@@ -1619,6 +1615,9 @@ async function seed() {
 			{ id: 'seed-r-31', giftId: G_KN_STOLETI, userId: EVA, quantity: 1 },
 			// Partially reserved multi-quantity (1 of 2):
 			{ id: 'seed-r-32', giftId: G_KN_ZAKON, userId: EVA, quantity: 1 },
+			// Crowded categorized placeholder, reserved by two valid gifters (2 of 4).
+			{ id: 'seed-r-kn-crowded-petr', giftId: G_KN_CROWDED, userId: PETR, quantity: 1 },
+			{ id: 'seed-r-kn-crowded-jana', giftId: G_KN_CROWDED, userId: JANA, quantity: 1 },
 
 			// Přání k svátku (issue #224) – Martin follows as a gifter, sees every band.
 			// Own reservations (beyond the existing KABELKA):
@@ -1653,6 +1652,8 @@ async function seed() {
 
 			// Tomáš – Knihy
 			{ id: 'seed-lk-10', giftId: G_DUNE, userId: JANA },
+			{ id: 'seed-lk-kn-crowded-eva', giftId: G_KN_CROWDED, userId: EVA },
+			{ id: 'seed-lk-kn-crowded-martin', giftId: G_KN_CROWDED, userId: MARTIN },
 		]);
 
 		// ---------------------------------------------------------------
@@ -1889,9 +1890,6 @@ async function seed() {
 				createdAt: d('2026-04-15T11:00:00Z'),
 			},
 		]);
-
-		console.log('Downloading seed images...');
-		await downloadSeedImages();
 
 		console.log('');
 		console.log('Seed complete! Test accounts:');

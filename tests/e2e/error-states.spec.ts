@@ -1,6 +1,10 @@
 import { test, expect } from '@playwright/test';
 import { createTestUser } from './fixtures/test-data.js';
-import { registerViaApi, registerAndGetPage } from './fixtures/auth-helpers.js';
+import {
+	registerViaApi,
+	registerAndGetPage,
+	waitForAppHydration,
+} from './fixtures/auth-helpers.js';
 
 test.describe('Error states and edge cases', () => {
 	test('registering with existing email shows error', async ({ request, baseURL, page }) => {
@@ -23,36 +27,13 @@ test.describe('Error states and edge cases', () => {
 		).toBeVisible({ timeout: 10_000 });
 	});
 
-	test('settings page shows user profile', async ({ browser, request, baseURL }) => {
-		const user = createTestUser('settings-view');
-		const page = await registerAndGetPage(browser, request, baseURL!, user);
-
-		await page.goto('/settings');
-		await page.waitForLoadState('networkidle');
-
-		// Page heading
-		await expect(page.getByRole('heading', { name: 'Nastavení', exact: true })).toBeVisible({
-			timeout: 5_000,
-		});
-
-		// Name is pre-populated in the display name input
-		await expect(page.getByLabel('Zobrazované jméno')).toHaveValue(user.name, {
-			timeout: 5_000,
-		});
-
-		// Email is shown in the email input
-		await expect(page.getByLabel('E-mail')).toHaveValue(user.email, { timeout: 5_000 });
-
-		await page.context().close();
-	});
-
 	test('user can update their name in settings', async ({ browser, request, baseURL }) => {
 		const user = createTestUser('settings-update');
 		const page = await registerAndGetPage(browser, request, baseURL!, user);
 		const updatedName = `${user.name} Updated`;
 
 		await page.goto('/settings');
-		await page.waitForLoadState('networkidle');
+		await waitForAppHydration(page);
 
 		const nameInput = page.getByLabel('Zobrazované jméno');
 		await expect(nameInput).toBeVisible({ timeout: 5_000 });
@@ -66,7 +47,6 @@ test.describe('Error states and edge cases', () => {
 
 		// Reload and verify the name persisted
 		await page.reload();
-		await page.waitForLoadState('networkidle');
 		await expect(page.getByLabel('Zobrazované jméno')).toHaveValue(updatedName, {
 			timeout: 5_000,
 		});

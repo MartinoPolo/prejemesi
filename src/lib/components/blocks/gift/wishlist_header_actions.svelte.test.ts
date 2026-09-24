@@ -1,0 +1,226 @@
+import '../../../../app.css';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { render } from 'vitest-browser-svelte';
+import { page } from 'vitest/browser';
+import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
+import WishlistHeaderActions from './WishlistHeaderActions.svelte';
+import * as m from '$lib/paraglide/messages.js';
+
+const { expectPixelsNear, expectPixelsAtLeast } = createPixelAssertions(expect);
+
+const callbacks = {
+	onshare: vi.fn(),
+	onmoderators: vi.fn(),
+	onsettings: vi.fn(),
+	oneditimage: vi.fn(),
+	oneditrecipient: vi.fn(),
+	onarchive: vi.fn(),
+};
+
+describe('WishlistHeaderActions', () => {
+	beforeEach(() => vi.clearAllMocks());
+	afterEach(async () => page.viewport(1280, 720));
+	it('renders gear-only Settings beside More and removes Settings from the management sheet', async () => {
+		const screen = await render(WishlistHeaderActions, {
+			canManage: true,
+			settingsAvailable: true,
+			canShare: true,
+			canEditImage: true,
+			canEditRecipient: true,
+			canArchive: true,
+			...callbacks,
+		});
+		const settings = screen.getByRole('button', { name: m.wishlist_settings_title() });
+		await expect.element(settings).toBeVisible();
+		expect(settings.element()).toHaveTextContent('');
+		await (
+			screen.container.querySelector('[aria-haspopup="menu"]') as HTMLButtonElement
+		).click();
+		const dialog = screen.getByRole('menu', { name: m.gift_more_actions() });
+		for (const label of [
+			m.wishlist_share_button(),
+			m.wishlist_moderators_label(),
+			m.wishlist_edit_image_label(),
+			m.wishlist_edit_recipient_label(),
+			m.wishlist_archive_button(),
+		]) {
+			await expect
+				.element(dialog.getByRole('menuitem', { name: label, exact: true }))
+				.toBeVisible();
+		}
+		await expect
+			.element(
+				dialog.getByRole('menuitem', { name: m.wishlist_settings_title(), exact: true }),
+			)
+			.not.toBeInTheDocument();
+		await screen.unmount();
+	});
+
+	it('keeps hero Settings and More at the shared responsive size with an 8px gap', async () => {
+		const screen = await render(WishlistHeaderActions, {
+			canManage: true,
+			settingsAvailable: true,
+			canShare: true,
+			canEditImage: false,
+			canEditRecipient: false,
+			canArchive: false,
+			...callbacks,
+		});
+		const actions = screen.getByTestId('wishlist-header-actions').element() as HTMLElement;
+		const settings = screen
+			.getByRole('button', {
+				name: m.wishlist_settings_title(),
+			})
+			.element() as HTMLElement;
+
+		for (const [viewportWidth, expectedSize] of [
+			[390, 40],
+			[800, 32],
+		] as const) {
+			await page.viewport(viewportWidth, 720);
+			const more = screen
+				.getByTestId(
+					viewportWidth < 640
+						? 'mobile-header-more-trigger'
+						: 'desktop-header-more-trigger',
+				)
+				.element() as HTMLElement;
+			expect(getComputedStyle(actions).gap).toBe('8px');
+			expectPixelsNear(settings.getBoundingClientRect().height, expectedSize);
+			expectPixelsNear(more.getBoundingClientRect().height, expectedSize);
+		}
+		await screen.unmount();
+	});
+
+	it('enables the accessible Settings action after mount and handles activation', async () => {
+		const screen = await render(WishlistHeaderActions, {
+			canManage: false,
+			settingsAvailable: true,
+			canShare: false,
+			canEditImage: false,
+			canEditRecipient: false,
+			canArchive: false,
+			...callbacks,
+		});
+		const settings = screen.getByRole('button', { name: m.wishlist_settings_title() });
+
+		await expect.element(settings).toBeEnabled();
+		await settings.click();
+		expect(callbacks.onsettings).toHaveBeenCalledOnce();
+		await screen.unmount();
+	});
+
+	it('opens capability-gated mobile management actions with a separate danger region', async () => {
+		await page.viewport(390, 720);
+		const screen = await render(WishlistHeaderActions, {
+			canManage: true,
+			settingsAvailable: true,
+			canShare: true,
+			canEditImage: true,
+			canEditRecipient: true,
+			canArchive: true,
+			...callbacks,
+		});
+		await screen.getByTestId('mobile-header-more-trigger').click();
+		const sheet = screen.getByRole('dialog', { name: m.gift_more_actions() });
+		await expect.element(sheet).toBeVisible();
+		const shell = sheet.element() as HTMLElement;
+		const shellRect = shell.getBoundingClientRect();
+		const shellStyle = getComputedStyle(shell);
+		expectPixelsNear(shellRect.left, window.innerWidth - shellRect.right);
+		expect(shellRect.left).toBeGreaterThan(0);
+		expect(shellStyle.borderLeftWidth).toBe(shellStyle.borderRightWidth);
+		expect(shellStyle.borderLeftWidth).toBe(shellStyle.borderTopWidth);
+		expect(shellStyle.borderTopLeftRadius).toBe(shellStyle.borderTopRightRadius);
+		expect(parseFloat(shellStyle.borderTopLeftRadius)).toBeGreaterThan(0);
+		const header = shell.querySelector<HTMLElement>('[data-slot="sheet-header"]')!;
+		const headerStyle = getComputedStyle(header);
+		expectPixelsNear(
+			header.getBoundingClientRect().width,
+			shellRect.width -
+				parseFloat(shellStyle.borderLeftWidth) -
+				parseFloat(shellStyle.borderRightWidth),
+		);
+		expect(headerStyle.paddingLeft).toBe('16px');
+		expect(headerStyle.paddingRight).toBe('56px');
+		expect(headerStyle.paddingTop).toBe('12px');
+		expect(headerStyle.paddingBottom).toBe('12px');
+		expectPixelsNear(parseFloat(headerStyle.borderBottomWidth), 1);
+		const body = header.nextElementSibling as HTMLElement;
+		const bodyStyle = getComputedStyle(body);
+		expect(bodyStyle.paddingLeft).toBe('8px');
+		expect(bodyStyle.paddingRight).toBe('8px');
+		expect(bodyStyle.paddingTop).toBe('8px');
+		expect(bodyStyle.paddingBottom).toBe('8px');
+		const shareAction = sheet
+			.getByRole('button', { name: m.wishlist_share_button() })
+			.element();
+		expectPixelsAtLeast(shareAction.getBoundingClientRect().height, 48);
+		expect(
+			getComputedStyle(shareAction.querySelector<HTMLElement>(':scope > .elevation-surface')!)
+				.justifyContent,
+		).toBe('flex-start');
+		const descriptionId = sheet.element().getAttribute('aria-describedby');
+		expect(descriptionId).toBeTruthy();
+		const description = document.getElementById(descriptionId!);
+		expect(description).toHaveTextContent(m.wishlist_more_actions_description());
+		expect(description).not.toHaveTextContent(m.wishlist_settings_title());
+		for (const label of [
+			m.wishlist_share_button(),
+			m.wishlist_moderators_label(),
+			m.wishlist_edit_image_label(),
+			m.wishlist_edit_recipient_label(),
+			m.wishlist_archive_button(),
+		]) {
+			await expect
+				.element(sheet.getByRole('button', { name: label, exact: true }))
+				.toBeVisible();
+		}
+		await expect
+			.element(sheet.getByRole('button', { name: m.wishlist_settings_title() }))
+			.not.toBeInTheDocument();
+		const danger = screen.getByTestId('wishlist-header-danger-actions').element();
+		expect(parseFloat(getComputedStyle(danger).borderTopWidth)).toBeGreaterThan(0);
+		expect(danger.querySelector('button')).toHaveTextContent(m.wishlist_archive_button());
+		await sheet.getByRole('button', { name: m.wishlist_share_button() }).click();
+		expect(callbacks.onshare).toHaveBeenCalledOnce();
+		await expect.element(sheet).not.toBeInTheDocument();
+		await screen.unmount();
+	});
+
+	it('renders no management trigger or structural sheet trace for visitors', async () => {
+		const screen = await render(WishlistHeaderActions, {
+			canManage: false,
+			settingsAvailable: false,
+			canShare: false,
+			canEditImage: false,
+			canEditRecipient: false,
+			canArchive: false,
+			...callbacks,
+		});
+		await expect
+			.element(screen.getByRole('button', { name: m.gift_more_actions() }))
+			.not.toBeInTheDocument();
+		await expect.element(screen.getByRole('dialog')).not.toBeInTheDocument();
+		await screen.unmount();
+	});
+
+	it('shows only capability-gated hero Settings when management is unavailable', async () => {
+		const screen = await render(WishlistHeaderActions, {
+			canManage: false,
+			settingsAvailable: true,
+			canShare: false,
+			canEditImage: false,
+			canEditRecipient: false,
+			canArchive: false,
+			...callbacks,
+		});
+		await expect
+			.element(screen.getByRole('button', { name: m.wishlist_settings_title() }))
+			.toBeVisible();
+		await expect
+			.element(screen.getByRole('button', { name: m.gift_more_actions() }))
+			.not.toBeInTheDocument();
+		await screen.unmount();
+	});
+});

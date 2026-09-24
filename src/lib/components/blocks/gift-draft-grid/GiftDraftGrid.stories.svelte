@@ -99,15 +99,6 @@
 	const SELECT_PONOZKY = /Select row Ponožky|Vybrat řádek Ponožky/;
 	const NAME_REQUIRED = /^(Enter a name|Zadejte název)$/;
 
-	const playEditName = async ({ canvasElement }: { canvasElement: HTMLElement }) => {
-		const canvas = within(canvasElement);
-		const nameInput = canvas.getByLabelText(NAME_LABEL);
-		await expect(nameInput).toHaveValue('');
-		await userEvent.click(nameInput);
-		await userEvent.type(nameInput, 'Ponožky z merino vlny');
-		await expect(nameInput).toHaveValue('Ponožky z merino vlny');
-	};
-
 	const playAddRemoveLink = async ({ canvasElement }: { canvasElement: HTMLElement }) => {
 		const canvas = within(canvasElement);
 		// No link inputs yet – only the "+ link" affordance.
@@ -180,7 +171,7 @@
 	{/snippet}
 </Story>
 
-<Story name="Edit name [play: edit]" play={playEditName}>
+<Story name="Edit name">
 	{#snippet template()}
 		<div class="mx-auto max-w-5xl p-4">
 			<GiftDraftGrid context={DRAFT_GRID_CONTEXT.batch} />

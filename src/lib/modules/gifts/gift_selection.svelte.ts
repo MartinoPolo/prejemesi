@@ -41,9 +41,11 @@ export function createGiftSelection(initialExistingIds: Iterable<string> = []) {
 		return selected.has(id);
 	}
 
-	function enter(triggeringGiftId: string) {
+	function enter(triggeringGiftId?: string) {
 		active = true;
-		selected.add(triggeringGiftId);
+		if (triggeringGiftId !== undefined) {
+			selected.add(triggeringGiftId);
+		}
 	}
 
 	function exit() {

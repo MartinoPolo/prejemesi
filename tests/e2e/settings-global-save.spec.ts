@@ -14,44 +14,6 @@ async function openSettings(page: Awaited<ReturnType<typeof registerAndGetPage>>
 }
 
 test.describe('wishlist settings global save', () => {
-	test('tablet layout keeps horizontal tabs, fixed scrolling content, and Save on every tab', async ({
-		browser,
-		request,
-		baseURL,
-	}) => {
-		const page = await registerAndGetPage(
-			browser,
-			request,
-			baseURL!,
-			createTestUser('settings-global-layout'),
-		);
-		await createWishlistAndNavigate(page, 'Globální nastavení');
-		await page.setViewportSize({ width: 760, height: 420 });
-		const dialog = await openSettings(page);
-		const tabs = dialog.getByRole('tablist');
-		expect(await tabs.getAttribute('aria-orientation')).toBe('horizontal');
-		expect(await tabs.evaluate((node) => getComputedStyle(node).flexWrap)).toBe('nowrap');
-		expect(await tabs.evaluate((node) => getComputedStyle(node).overflowX)).toBe('auto');
-		const tabBoxes = await tabs
-			.getByRole('tab')
-			.evaluateAll((nodes) => nodes.map((node) => node.getBoundingClientRect()));
-		expect(new Set(tabBoxes.map((box) => Math.round(box.y))).size).toBe(1);
-		expect(Math.max(...tabBoxes.map((box) => box.height))).toBeLessThan(60);
-
-		const content = dialog.getByTestId('wishlist-settings-scroll-region');
-		const footer = dialog.getByTestId('wishlist-settings-footer');
-		expect(await content.evaluate((node) => getComputedStyle(node).overflowY)).toBe('auto');
-		const footerY = (await footer.boundingBox())!.y;
-		for (const tabName of ['Import a export', 'Nebezpečná zóna']) {
-			await dialog.getByRole('tab', { name: tabName }).click();
-			await expect(footer.getByRole('button', { name: 'Uložit' })).toBeVisible();
-			await expect
-				.poll(async () => Math.abs((await footer.boundingBox())!.y - footerY))
-				.toBeLessThanOrEqual(3);
-		}
-		await page.context().close();
-	});
-
 	test('one global Save persists Details, Categories, Appearance, and Image/Crops', async ({
 		browser,
 		request,

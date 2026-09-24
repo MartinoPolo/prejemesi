@@ -4,19 +4,33 @@
 	import { afterNavigate, replaceState, goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { onDestroy, onMount, tick } from 'svelte';
+	import { SvelteSet } from 'svelte/reactivity';
 	import * as m from '$lib/paraglide/messages.js';
 	import { localizeInternalHref } from '$lib/i18n/locale.js';
 	import WishlistHeader from '$lib/components/blocks/gift/WishlistHeader.svelte';
 	import WishlistDetailToolbar from '$lib/components/blocks/wishlist/WishlistDetailToolbar.svelte';
 	import WishlistGiftDisplay from '$lib/components/blocks/wishlist/WishlistGiftDisplay.svelte';
 	import WishlistSelectionToolbar from '$lib/components/blocks/wishlist/WishlistSelectionToolbar.svelte';
+	import GiftBulkCopyDialog, {
+		type BulkCopyDestination,
+	} from '$lib/components/blocks/wishlist/GiftBulkCopyDialog.svelte';
 	import GiftContextActions from '$lib/components/blocks/wishlist/GiftContextActions.svelte';
+	import type {
+		GiftContextFinishPolicy,
+		GiftContextInvocation,
+		GiftContextSession,
+	} from '$lib/components/blocks/wishlist/gift_context_invocation.js';
+	import { resolveGiftContextFocusTarget } from '$lib/components/blocks/wishlist/gift_context_focus.js';
+	import { useNarrowViewportState } from '$lib/components/derived/narrow_viewport_state.svelte.js';
 	import WishlistPreparingNotice from '$lib/components/blocks/wishlist/WishlistPreparingNotice.svelte';
 	import WishlistModals from '$lib/components/blocks/wishlist/WishlistModals.svelte';
 	import WishlistSettingsModal from '$lib/components/blocks/wishlist/WishlistSettingsModal.svelte';
 	import EditRecipientDialog from '$lib/components/blocks/wishlist/EditRecipientDialog.svelte';
 	import * as Dialog from '$lib/components/base/dialog/index.js';
+	import * as Alert from '$lib/components/base/alert/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
+	import InfoIcon from '@lucide/svelte/icons/info';
+	import TriangleAlertIcon from '@lucide/svelte/icons/triangle-alert';
 	import {
 		WISHLIST_SETTINGS_TABS,
 		isWishlistSettingsTab,
@@ -27,7 +41,7 @@
 		WISHLIST_SETTINGS_QUERY_PARAM,
 	} from '$lib/modules/wishlists/wishlist_query_params.js';
 	import { consumeGiftDeepLink } from '$lib/modules/wishlists/gift_deep_link.js';
-	import ImportWizard from '$lib/components/blocks/import/ImportWizard.svelte';
+	import { LazyImportWizard } from '$lib/components/blocks/import/index.js';
 	import { WIZARD_MODE } from '$lib/components/blocks/import/import_wizard_types.js';
 	import { emptyGiftFilters, setGiftsContext } from '$lib/modules/gifts/gifts.context.svelte.js';
 	import { createLatestAsyncQueue } from '$lib/modules/gifts/latest_async_queue.js';
@@ -46,11 +60,12 @@
 		recordWishlistVisit,
 	} from '$lib/modules/wishlists/wishlists.remote.js';
 	import { getGiftsByWishlistShortId } from '$lib/modules/gifts/gifts.remote.js';
-	import { getGiftCategories } from '$lib/modules/gift-categories/gift_categories.remote.js';
-	import { getUserLikesForWishlist } from '$lib/modules/likes/likes.remote.js';
+	import { getGiftCategories } from '$lib/modules/gift-categories/gift_category_queries.remote.js';
+	import { getUserLikesForWishlistScoped } from '$lib/modules/likes/likes.remote.js';
 	import {
 		reserveGift,
 		unreserveGift,
+		setReservationPurchased,
 		getReservationLedgerForWishlist,
 	} from '$lib/modules/reservations/reservations.remote.js';
 	import { setReservationsContext } from '$lib/modules/reservations/reservations.context.svelte.js';
@@ -58,7 +73,7 @@
 		ReserveGiftInput,
 		ReservationForModerator,
 	} from '$lib/modules/reservations/types.js';
-	import type { WishlistRole } from '$lib/modules/wishlists/types.js';
+	import { WISHLIST_ROLES, type WishlistRole } from '$lib/modules/wishlists/types.js';
 	import {
 		canManageWishlist,
 		REVERT_CAPABILITY,
@@ -86,6 +101,8 @@
 		reorderGifts,
 		markGiftReceived,
 		bulkUpdateGifts,
+		bulkCopyGifts,
+		getBulkCopyDestinations,
 		getPriorityLevels,
 	} from '$lib/modules/gifts/gifts.remote.js';
 	import { importGifts } from '$lib/modules/import/import.remote.js';
@@ -114,8 +131,13 @@
 		createGiftSelection,
 		shouldExitGiftSelectionOnEscape,
 	} from '$lib/modules/gifts/gift_selection.svelte.js';
-	import { giftContextActions } from '$lib/modules/gifts/gift_context_actions.js';
+	import {
+		giftContextActions,
+		hasAdditionalGiftContextActions,
+		type GiftContextAction,
+	} from '$lib/modules/gifts/gift_context_actions.js';
 	import { normalizeGiftUrl } from '$lib/modules/gifts/gift_url.js';
+	import { getPriorityActionOptions } from '$lib/modules/gifts/gift_display.js';
 	import type {
 		GiftBulkAction,
 		PendingGiftBulkActionDescriptor,
@@ -124,6 +146,7 @@
 		resetPriorityLevelLoaderForWishlistChange,
 		settlePriorityLevelLoad,
 	} from './priority_level_loader.js';
+	import { GIFT_GROUPING_OPTIONS, GIFT_VIEW_MODES } from '$lib/modules/gifts/types.js';
 	import type {
 		GiftFilters,
 		GiftSortOption,
@@ -135,6 +158,15 @@
 		GiftViewMode,
 		GiftGroupingOption,
 	} from '$lib/modules/gifts/types.js';
+
+	const REORDER_BASELINE_STATUS = {
+		verified: 'verified',
+		recovered: 'recovered',
+		refreshing: 'refreshing',
+		unresolved: 'unresolved',
+	} as const;
+	type ReorderBaselineStatus =
+		(typeof REORDER_BASELINE_STATUS)[keyof typeof REORDER_BASELINE_STATUS];
 
 	let { data } = $props();
 
@@ -153,9 +185,6 @@
 	const giftsResult = $derived(giftsQuery?.current);
 	const gifts = $derived<GiftByRole[]>(giftsResult?.gifts ?? []);
 	const isGiftDataLoading = $derived(giftsResult === undefined);
-
-	const likesQuery = $derived(browser && isAuthenticated ? getUserLikesForWishlist() : null);
-	const likedGiftIds = $derived(likesQuery?.current ?? []);
 
 	// Optimistic palette: the override paints instantly on selection; the persisted
 	// value rides back via setWishlistPalette's single-flight refresh.
@@ -178,6 +207,7 @@
 			() => wishlist?.status === 'archived',
 			() => isAuthenticated,
 			() => likedGiftIds,
+			() => isGiftDataLoading || wishlist.shortId !== shortId,
 		),
 	);
 
@@ -221,6 +251,12 @@
 	const initialWishlist = await getWishlistByShortId(shortId);
 	const wishlistQuery = $derived(getWishlistByShortId(shortId));
 	const wishlist = $derived(wishlistQuery.current ?? initialWishlist);
+	const likesQuery = $derived(
+		browser && isAuthenticated
+			? getUserLikesForWishlistScoped({ wishlistId: wishlist.id })
+			: null,
+	);
+	const likedGiftIds = $derived(likesQuery?.current ?? []);
 	const role = $derived<WishlistRole>(giftsResult?.role ?? wishlist.role);
 	let filterStateWishlistId = $state<string | null>(null);
 
@@ -288,9 +324,7 @@
 	let priorityLevelsRequestedForWishlistId = $state<string | null>(null);
 	let priorityLevelsLoadPromise: Promise<void> | null = null;
 	const priorityLevelsReady = $derived(priorityLevelsWishlistId === wishlist.id);
-	const priorityActionOptions = $derived(
-		priorityLevels.map((level) => ({ id: level.id, label: level.label })),
-	);
+	const priorityActionOptions = $derived(getPriorityActionOptions(priorityLevels));
 
 	$effect(() => {
 		const nextState = resetPriorityLevelLoaderForWishlistChange(
@@ -403,6 +437,46 @@
 
 	let reorderMode = $state(false);
 	let reorderActiveIds = $state<string[] | null>(null);
+	let reorderDonePending = $state(false);
+	let reorderBaselineStatus = $state<ReorderBaselineStatus>(REORDER_BASELINE_STATUS.verified);
+	const reorderBaselineVerified = $derived(
+		reorderBaselineStatus === REORDER_BASELINE_STATUS.verified ||
+			reorderBaselineStatus === REORDER_BASELINE_STATUS.recovered,
+	);
+
+	async function refreshReorderBaseline(): Promise<boolean> {
+		reorderBaselineStatus = REORDER_BASELINE_STATUS.refreshing;
+		giftsContext.clearReorderOverride();
+		try {
+			const authoritativeQuery = getGiftsByWishlistShortId(shortId);
+			await authoritativeQuery.refresh();
+			const authoritativeResult = authoritativeQuery.current;
+			if (authoritativeResult === undefined) {
+				throw new Error('Gift order refresh completed without authoritative data.');
+			}
+			reorderActiveIds = activeGiftsInOwnerOrder(authoritativeResult.gifts).map(
+				(giftItem) => giftItem.id,
+			);
+			reorderBaselineStatus = REORDER_BASELINE_STATUS.recovered;
+			return true;
+		} catch (refreshError) {
+			console.error('Failed to refresh gifts after reorder failure:', refreshError);
+			reorderBaselineStatus = REORDER_BASELINE_STATUS.unresolved;
+			return false;
+		}
+	}
+
+	async function retryReorderBaselineRefresh() {
+		if (reorderBaselineStatus !== REORDER_BASELINE_STATUS.unresolved) {
+			return;
+		}
+		if (await refreshReorderBaseline()) {
+			toastSuccess(m.gift_reorder_recovery_success());
+		} else {
+			toastError(m.gift_reorder_save_error_unresolved());
+		}
+	}
+
 	const reorderPersistenceQueue = createLatestAsyncQueue<string[]>(
 		async (orderedIds) => {
 			await reorderGifts(
@@ -414,16 +488,29 @@
 		},
 		async (thrown) => {
 			console.error('Failed to reorder gifts:', thrown);
-			giftsContext.clearReorderOverride();
-			await getGiftsByWishlistShortId(shortId).refresh();
-			reorderActiveIds = activeGiftsInOwnerOrder(gifts).map((giftItem) => giftItem.id);
+			const baselineRecovered = await refreshReorderBaseline();
+			toastError(
+				baselineRecovered
+					? m.gift_reorder_save_error_recovered()
+					: m.gift_reorder_save_error_unresolved(),
+			);
 		},
 	);
 	const viewMode = $derived(giftsContext.viewMode.current);
+	const reorderLayoutSupported = $derived(
+		viewMode === GIFT_VIEW_MODES.card || viewMode === GIFT_VIEW_MODES.list,
+	);
+	const canMaintainReorderMode = $derived(canManage && !isArchived && reorderLayoutSupported);
+	const canEnterReorderMode = $derived(
+		!isGiftDataLoading &&
+			wishlist.shortId === shortId &&
+			reorderBaselineVerified &&
+			canMaintainReorderMode,
+	);
 	const reorderModeGifts = $derived(
 		reorderActiveIds === null
-			? activeGiftsInOwnerOrder(gifts)
-			: resolveActiveGiftOrder(gifts, reorderActiveIds),
+			? activeGiftsInOwnerOrder(giftsContext.effectiveGifts.current)
+			: resolveActiveGiftOrder(giftsContext.effectiveGifts.current, reorderActiveIds),
 	);
 	const reorderPresentationGifts = $derived(
 		recipientViewPreview ? projectGiftsForRecipient(reorderModeGifts) : reorderModeGifts,
@@ -485,59 +572,240 @@
 		commonSelectionValue(selectedGiftRows.map((giftItem) => giftItem.received)),
 	);
 	let bulkPending = $state<PendingGiftBulkActionDescriptor | null>(null);
+	let bulkCopyOpen = $state(false);
+	let bulkCopyLoading = $state(false);
+	let bulkCopySubmitting = $state(false);
+	let bulkCopyDestinationId = $state('');
+	let bulkCopyReturnToActions = $state<(() => void) | null>(null);
+	let bulkCopyDestinations = $state<BulkCopyDestination[]>([]);
 	let hiddenConfirmOpen = $state(false);
 	let deferredBulkAction = $state<GiftBulkAction | null>(null);
-	let contextGift = $state<GiftByRole | null>(null);
-	// Keep the Bits UI content component mounted before the first contextmenu event so its
-	// floating-positioning lifecycle can observe the trigger's virtual anchor.
-	const contextActionGift = $derived(contextGift ?? gifts[0] ?? null);
-	let contextAnchorPoint = $state({ x: 0, y: 0 });
-	let contextOpen = $state(false);
-	let contextMobile = $state(false);
+	let contextSession = $state<GiftContextSession<GiftByRole> | null>(null);
+	let nextContextSessionId = 0;
+	let nativeContextOpen = $state(false);
+	let programmaticOpen = $state(false);
+	let queuedContextAction = $state<{ sessionId: number; run: () => void } | null>(null);
+	const receivedPendingGiftIds = new SvelteSet<string>();
+	// Keep content hosts mounted before first invocation; a fallback supplies inert render data only.
+	const contextActionGift = $derived(
+		contextSession === null
+			? (gifts[0] ?? null)
+			: (gifts.find((giftItem) => giftItem.id === contextSession?.gift.id) ??
+					contextSession.gift),
+	);
+	const contextPlacementSnapshot = $derived.by(() => {
+		if (contextSession?.invocation.kind !== 'more') {
+			return undefined;
+		}
+		const snapshot = contextSession.invocation.placementSnapshot;
+		const receivedPending = receivedPendingGiftIds.has(contextSession.gift.id);
+		const pendingActions = snapshot.pendingActions.filter((action) => action !== 'received');
+		const disabledActions = snapshot.disabledActions.filter(
+			(action) => action !== 'received' || !snapshot.pendingActions.includes('received'),
+		);
+		return {
+			...snapshot,
+			pendingActions: receivedPending
+				? includeContextAction(pendingActions, 'received')
+				: pendingActions,
+			disabledActions,
+		};
+	});
+	const contextMobile = $derived(
+		contextSession?.invocation.kind === 'longpress' ||
+			(contextSession?.invocation.kind === 'more' &&
+				contextSession.invocation.surface === 'sheet'),
+	);
+	const contextAnchor = $derived(
+		contextSession?.invocation.kind === 'more' ? contextSession.invocation.anchor : null,
+	);
+	const contextAnchorPoint = $derived(
+		contextSession?.invocation.kind === 'native'
+			? contextSession.invocation.point
+			: { x: 0, y: 0 },
+	);
+	const narrowViewport = useNarrowViewportState();
 
 	$effect(() => giftSelection.reconcileExisting(gifts.map((giftItem) => giftItem.id)));
-
-	function openContextActions(giftItem: GiftByRole, event: MouseEvent | null): boolean {
-		if (giftSelection.active) {
-			return false;
+	$effect(() => {
+		const session = contextSession;
+		if (
+			session !== null &&
+			(!gifts.some((giftItem) => giftItem.id === session.gift.id) ||
+				giftSelection.active ||
+				narrowViewport.current !== session.viewportAtOpen)
+		) {
+			nativeContextOpen = false;
+			programmaticOpen = false;
 		}
+	});
+
+	function reservationContextFor(giftItem: GiftByRole) {
+		if (hideReservationState || !('myReservationId' in giftItem)) {
+			return {
+				canReserve: false,
+				ownsReservation: false,
+				canTrackPurchased: false,
+				purchased: false,
+			};
+		}
+		const ownsReservation = giftItem.myReservationId !== null;
+		return {
+			// This is presentation of existing domain state, not a responsive permission guess:
+			// visitors and správci receive reservation fields; recipients and preview projections do not.
+			canReserve: ownsReservation || !giftItem.isFullyReserved,
+			ownsReservation,
+			canTrackPurchased: isAuthenticated && ownsReservation,
+			purchased: giftItem.myReservationPurchasedAt !== null,
+		};
+	}
+
+	function contextActionsFor(giftItem: GiftByRole) {
 		const primaryUrl = giftItem.links?.[0]?.url ?? null;
-		const actions = giftContextActions({
+		const reservationContext = reservationContextFor(giftItem);
+		return giftContextActions({
 			role,
 			primaryUrl: normalizeGiftUrl(primaryUrl),
 			readOnly: isArchived,
 			canEdit: true,
+			...reservationContext,
 		});
-		if (actions.length === 0) {
-			contextGift = null;
-			contextOpen = false;
+	}
+
+	function visibleDirectContextActions(giftItem: GiftByRole): GiftContextAction[] {
+		const actions: GiftContextAction[] = [];
+		const reservationContext = reservationContextFor(giftItem);
+		if (
+			!isArchived &&
+			(role === WISHLIST_ROLES.recipient || role === WISHLIST_ROLES.moderator)
+		) {
+			actions.push('received');
+		}
+		if (reservationContext.canReserve) {
+			actions.push(reservationContext.ownsReservation ? 'cancel-reservation' : 'reserve');
+		}
+		return actions;
+	}
+
+	function hasAdditionalContextActions(giftItem: GiftByRole) {
+		return hasAdditionalGiftContextActions(
+			contextActionsFor(giftItem),
+			visibleDirectContextActions(giftItem),
+		);
+	}
+
+	function includeContextAction(
+		actions: readonly GiftContextAction[],
+		action: GiftContextAction,
+	): readonly GiftContextAction[] {
+		return actions.includes(action) ? actions : [...actions, action];
+	}
+
+	function openContextActions(giftItem: GiftByRole, invocation: GiftContextInvocation): boolean {
+		if (giftSelection.active || contextActionsFor(giftItem).length === 0) {
 			return false;
 		}
-		contextGift = giftItem;
-		contextMobile = event === null;
-		if (event !== null) {
-			contextAnchorPoint = { x: event.clientX, y: event.clientY };
-		}
-		// Desktop opening belongs to Bits UI's ContextMenu.Trigger. Setting the controlled root
-		// open before its contextmenu handler runs skips virtual-anchor measurement and leaves the
-		// floating content at its off-screen setup position. Long press has no Bits trigger event,
-		// so the mobile Sheet is opened directly.
-		if (contextMobile) {
-			contextOpen = true;
+		const viewportAtOpen = narrowViewport.current;
+		const id = ++nextContextSessionId;
+		const placementSnapshot =
+			invocation.kind === 'more' && receivedPendingGiftIds.has(giftItem.id)
+				? {
+						...invocation.placementSnapshot,
+						pendingActions: includeContextAction(
+							invocation.placementSnapshot.pendingActions,
+							'received',
+						),
+						disabledActions: includeContextAction(
+							invocation.placementSnapshot.disabledActions,
+							'received',
+						),
+					}
+				: invocation.kind === 'more'
+					? invocation.placementSnapshot
+					: undefined;
+		contextSession = {
+			id,
+			gift: giftItem,
+			viewportAtOpen,
+			invocation:
+				invocation.kind === 'native'
+					? invocation
+					: invocation.kind === 'longpress'
+						? { kind: 'longpress', surface: 'sheet' }
+						: {
+								kind: 'more',
+								anchor: invocation.anchor,
+								surface: viewportAtOpen ? 'sheet' : 'menu',
+								placementSnapshot:
+									placementSnapshot ?? invocation.placementSnapshot,
+							},
+		};
+		queuedContextAction = null;
+		if (invocation.kind !== 'native') {
+			programmaticOpen = true;
 		}
 		void ensurePriorityLevels();
 		return true;
+	}
+
+	function requestContextClose() {
+		nativeContextOpen = false;
+		programmaticOpen = false;
+	}
+
+	function finishContextAction(policy: GiftContextFinishPolicy, callback: () => void) {
+		const session = contextSession;
+		if (session === null) {
+			return;
+		}
+		if (policy === 'handoff') {
+			queuedContextAction = { sessionId: session.id, run: callback };
+		} else {
+			callback();
+		}
+		requestContextClose();
+	}
+
+	async function completeContextClose(sessionId = contextSession?.id) {
+		const session = contextSession;
+		if (
+			sessionId === undefined ||
+			session?.id !== sessionId ||
+			nativeContextOpen ||
+			programmaticOpen
+		) {
+			return;
+		}
+		await tick();
+		if (contextSession?.id !== sessionId || nativeContextOpen || programmaticOpen) {
+			return;
+		}
+		const queued = queuedContextAction?.sessionId === sessionId ? queuedContextAction : null;
+		if (queued !== null) {
+			queuedContextAction = null;
+			queued.run();
+		} else if (session.invocation.kind === 'more') {
+			resolveGiftContextFocusTarget(
+				session.invocation.anchor,
+				session.gift.id,
+				wishlistPageElement ?? document,
+			)?.focus({ preventScroll: true });
+		}
+		if (contextSession?.id === sessionId) {
+			contextSession = null;
+		}
 	}
 
 	async function updateContextGift(update: {
 		priorityLevelId?: string | null;
 		categoryId?: string | null;
 	}) {
-		if (contextGift === null) {
+		const gift = contextSession?.gift;
+		if (gift === undefined) {
 			return;
 		}
 		try {
-			await updateGiftRemote({ id: contextGift.id, ...update });
+			await updateGiftRemote({ id: gift.id, ...update });
 			toastSuccess(m.toast_gift_updated());
 		} catch (thrown) {
 			toastError(translateServerError(thrown));
@@ -593,7 +861,7 @@
 		return requestPromise;
 	}
 
-	function enterSelection(giftId: string) {
+	function enterSelection(giftId?: string) {
 		reorderMode = false;
 		reorderActiveIds = null;
 		giftSelection.enter(giftId);
@@ -649,6 +917,67 @@
 		}
 	}
 
+	async function openBulkCopy(returnToActions?: () => void) {
+		if (bulkCopySubmitting || selectionSnapshot.selectedIds.length === 0) {
+			return;
+		}
+		bulkCopyReturnToActions = returnToActions ?? null;
+		bulkCopyOpen = true;
+		bulkCopyLoading = true;
+		bulkCopyDestinationId = '';
+		try {
+			bulkCopyDestinations = await getBulkCopyDestinations(wishlist.id);
+			bulkCopyDestinationId = bulkCopyDestinations[0]?.id ?? '';
+		} catch (thrown) {
+			bulkCopyDestinations = [];
+			toastError(translateServerError(thrown));
+		} finally {
+			bulkCopyLoading = false;
+		}
+	}
+
+	function handleBulkCopyOpenChange(open: boolean) {
+		bulkCopyOpen = open;
+		if (!open) {
+			bulkCopyReturnToActions = null;
+		}
+	}
+
+	function returnFromBulkCopy() {
+		const returnToActions = bulkCopyReturnToActions;
+		bulkCopyOpen = false;
+		bulkCopyReturnToActions = null;
+		returnToActions?.();
+	}
+
+	async function submitBulkCopy() {
+		if (
+			bulkCopySubmitting ||
+			bulkCopyDestinationId === '' ||
+			selectionSnapshot.selectedIds.length === 0
+		) {
+			return;
+		}
+		const selectedIds = [...selectionSnapshot.selectedIds];
+		bulkCopySubmitting = true;
+		try {
+			await bulkCopyGifts({
+				sourceWishlistId: wishlist.id,
+				destinationWishlistId: bulkCopyDestinationId,
+				giftIds: selectedIds,
+			});
+			const returnToActions = bulkCopyReturnToActions;
+			toastSuccess(m.gift_bulk_copy_success({ count: selectedIds.length }));
+			bulkCopyOpen = false;
+			bulkCopyReturnToActions = null;
+			returnToActions?.();
+		} catch (thrown) {
+			toastError(translateServerError(thrown));
+		} finally {
+			bulkCopySubmitting = false;
+		}
+	}
+
 	async function restoreBulkReceived(mutatedWishlistId: string, states: Record<string, boolean>) {
 		if (bulkPending !== null) {
 			return;
@@ -678,13 +1007,7 @@
 	}
 
 	$effect(() => {
-		if (
-			reorderMode &&
-			(!canManage ||
-				isArchived ||
-				(viewMode !== 'card' && viewMode !== 'list') ||
-				giftsContext.effectiveGrouping.current !== 'none')
-		) {
+		if (reorderMode && !canMaintainReorderMode) {
 			reorderMode = false;
 			reorderActiveIds = null;
 		}
@@ -812,55 +1135,114 @@
 		settingsModalOpen = true;
 	}
 
-	function handleReorderModeChange(active: boolean) {
-		if (active) {
-			if (
-				!canManage ||
-				isArchived ||
-				(viewMode !== 'card' && viewMode !== 'list') ||
-				giftsContext.effectiveGrouping.current !== 'none'
-			) {
-				return;
-			}
-			reorderActiveIds = activeGiftsInOwnerOrder(gifts).map((giftItem) => giftItem.id);
-			reorderMode = true;
+	function enterReorderMode() {
+		if (!canEnterReorderMode) {
+			return;
+		}
+		reorderActiveIds = activeGiftsInOwnerOrder(giftsContext.effectiveGifts.current).map(
+			(giftItem) => giftItem.id,
+		);
+		reorderMode = true;
+	}
+
+	function canFinishReorderMode(savesSucceeded: boolean): boolean {
+		return (
+			reorderBaselineVerified &&
+			(savesSucceeded || reorderBaselineStatus === REORDER_BASELINE_STATUS.recovered)
+		);
+	}
+
+	async function finishReorderMode() {
+		if (!reorderMode || reorderDonePending) {
+			return;
+		}
+		reorderDonePending = true;
+		const savesSucceeded = await reorderPersistenceQueue.whenIdle();
+		reorderDonePending = false;
+		if (!canFinishReorderMode(savesSucceeded)) {
 			return;
 		}
 		reorderMode = false;
 		reorderActiveIds = null;
 	}
 
+	async function handleReorderModeChange(active: boolean) {
+		if (active) {
+			enterReorderMode();
+			return;
+		}
+		await finishReorderMode();
+	}
+
 	function handleViewModeChange(mode: GiftViewMode) {
-		if (!reorderMode) {
+		if (
+			(!reorderMode || mode === GIFT_VIEW_MODES.card || mode === GIFT_VIEW_MODES.list) &&
+			mode !== giftsContext.viewMode.current
+		) {
+			displayLayoutMotion.cancel();
 			giftsContext.viewMode.current = mode;
 		}
 	}
 
-	function handleSortChange(sort: GiftSortOption) {
-		giftsContext.sortOption.current = sort;
-	}
-
 	let wishlistPageElement = $state<HTMLElement | null>(null);
 	let receivedAnnouncement = $state('');
-	const filterLayoutMotion = createIdentityLayoutMotion();
+	const displayLayoutMotion = createIdentityLayoutMotion();
 	const receivedGiftMotion = createGiftReceivedMotion();
 
-	async function handleFilterChange(filters: GiftFilters) {
+	async function changeDisplay(update: () => void) {
 		receivedGiftMotion.cancel();
 		const root = wishlistPageElement;
-		if (root === null) {
-			giftsContext.filters.current = filters;
+		const collection = root?.querySelector<HTMLElement>('[data-wishlist-gift-collection]');
+		if (
+			root === null ||
+			!reorderLayoutSupported ||
+			collection?.inert === true ||
+			(collection && collection.dataset.viewMode !== viewMode)
+		) {
+			displayLayoutMotion.cancel();
+			update();
 			return;
 		}
 		const toolbar = root.querySelector<HTMLElement>('[data-testid="wishlist-toolbar"]');
-		const before = filterLayoutMotion.capture(root, toolbar);
-		giftsContext.filters.current = filters;
+		const before = displayLayoutMotion.capture(root, toolbar);
+		update();
 		await tick();
-		filterLayoutMotion.play(before, root, toolbar);
+		void displayLayoutMotion.play(before, root, toolbar);
+	}
+
+	function handleSortChange(sort: GiftSortOption) {
+		if (sort !== giftsContext.sortOption.current) {
+			void changeDisplay(() => {
+				giftsContext.sortOption.current = sort;
+			});
+		}
+	}
+
+	function sameFilterValues(previous: readonly string[], next: readonly string[]) {
+		return previous.length === next.length && previous.every((value) => next.includes(value));
+	}
+
+	function handleFilterChange(filters: GiftFilters) {
+		const previous = giftsContext.filters.current;
+		const scalarKeys = ['availableOnly', 'withLinkOnly', 'likedOnly', 'showReceived'] as const;
+		if (
+			scalarKeys.every((key) => previous[key] === filters[key]) &&
+			sameFilterValues(previous.categoryValues, filters.categoryValues) &&
+			sameFilterValues(previous.priorityValues, filters.priorityValues)
+		) {
+			return;
+		}
+		void changeDisplay(() => {
+			giftsContext.filters.current = filters;
+		});
 	}
 
 	function handleGroupingChange(grouping: GiftGroupingOption) {
-		giftsContext.grouping.current = grouping;
+		if (grouping !== giftsContext.grouping.current) {
+			void changeDisplay(() => {
+				giftsContext.grouping.current = grouping;
+			});
+		}
 	}
 
 	function handleRecipientViewPreviewChange(active: boolean) {
@@ -899,27 +1281,30 @@
 	// updates in place — no follow-up fetches, no metadata/likes/dashboard reloads
 	// (issue #108, REQ-3/4/5).
 
-	async function handleCreate(input: CreateGiftInput) {
+	async function handleCreate(input: CreateGiftInput): Promise<boolean> {
 		isSubmitting = true;
 		try {
 			await createGift(input);
-			giftModalOpen = false;
 			toastSuccess(m.toast_gift_created());
+			return true;
 		} catch (thrown) {
 			toastError(translateServerError(thrown));
+			return false;
 		} finally {
 			isSubmitting = false;
 		}
 	}
 
-	async function handleUpdate(input: UpdateGiftInput) {
+	async function handleUpdate(input: UpdateGiftInput): Promise<boolean> {
 		isSubmitting = true;
 		try {
 			await updateGiftRemote(input);
-			giftModalOpen = false;
+			selectedGift = gifts.find((giftItem) => giftItem.id === input.id) ?? selectedGift;
 			toastSuccess(m.toast_gift_updated());
+			return true;
 		} catch (thrown) {
 			toastError(translateServerError(thrown));
+			return false;
 		} finally {
 			isSubmitting = false;
 		}
@@ -949,39 +1334,75 @@
 		return null;
 	}
 
+	function captureReceivedGift(giftId: string, root: HTMLElement | null) {
+		if (root === null) {
+			return null;
+		}
+		const source = findGiftElement(root, giftId);
+		return source === null ? null : receivedGiftMotion.capture(giftId, source, root);
+	}
+
+	function revealReceivedGift(received: boolean) {
+		// Reveal the received section within the captured layout run, not in a second filter motion.
+		if (received && !giftsContext.filters.current.showReceived) {
+			giftsContext.filters.current = {
+				...giftsContext.filters.current,
+				showReceived: true,
+			};
+		}
+	}
+
+	function announceReceivedIfCurrent(
+		root: HTMLElement | null,
+		receivingWishlistId: string,
+		giftName: string,
+		received: boolean,
+	) {
+		if (
+			root?.isConnected === true &&
+			wishlistPageElement === root &&
+			shortId === receivingWishlistId
+		) {
+			receivedAnnouncement = received
+				? m.gift_received_announcement({ name: giftName })
+				: m.gift_unreceived_announcement({ name: giftName });
+		}
+	}
+
+	async function settleReceivedGift(
+		root: HTMLElement | null,
+		snapshot: GiftReceivedMotionSnapshot | null,
+		receivingWishlistId: string,
+		giftName: string,
+		received: boolean,
+	) {
+		revealReceivedGift(received);
+		await tick();
+		if (snapshot !== null && root !== null) {
+			await receivedGiftMotion.play(snapshot, root);
+		}
+		announceReceivedIfCurrent(root, receivingWishlistId, giftName, received);
+	}
+
 	async function handleReceived(giftId: string, received: boolean) {
+		if (receivedPendingGiftIds.has(giftId)) {
+			return;
+		}
 		const root = wishlistPageElement;
-		const source = root === null ? null : findGiftElement(root, giftId);
-		const snapshot: GiftReceivedMotionSnapshot | null =
-			root === null || source === null
-				? null
-				: receivedGiftMotion.capture(giftId, source, root);
+		const snapshot = captureReceivedGift(giftId, root);
 		const giftName = gifts.find((giftItem) => giftItem.id === giftId)?.name ?? '';
+		const receivingWishlistId = shortId;
+		receivedPendingGiftIds.add(giftId);
 		try {
 			await markGiftReceived({ giftId, received });
-			// Receiving has always revealed the received section. Keep that production semantic,
-			// but fold it into this one captured layout run rather than starting filter motion.
-			if (received && !giftsContext.filters.current.showReceived) {
-				giftsContext.filters.current = {
-					...giftsContext.filters.current,
-					showReceived: true,
-				};
-			}
-			await tick();
-			const settled =
-				snapshot === null || root === null
-					? true
-					: await receivedGiftMotion.play(snapshot, root);
-			if (settled) {
-				receivedAnnouncement = received
-					? m.gift_received_announcement({ name: giftName })
-					: m.gift_unreceived_announcement({ name: giftName });
-			}
+			await settleReceivedGift(root, snapshot, receivingWishlistId, giftName, received);
 		} catch (thrown) {
 			if (snapshot !== null) {
 				receivedGiftMotion.discard(snapshot);
 			}
 			toastError(translateServerError(thrown));
+		} finally {
+			receivedPendingGiftIds.delete(giftId);
 		}
 	}
 
@@ -1118,7 +1539,9 @@
 	// ── Reorder handler (pointer + keyboard, mouse/touch/pen) ─────────────────
 
 	function isExactActiveGiftOrder(orderedIds: readonly string[]): boolean {
-		const activeIds = activeGiftsInOwnerOrder(gifts).map((giftItem) => giftItem.id);
+		const activeIds = activeGiftsInOwnerOrder(giftsContext.effectiveGifts.current).map(
+			(giftItem) => giftItem.id,
+		);
 		return (
 			orderedIds.length === activeIds.length &&
 			new Set(orderedIds).size === activeIds.length &&
@@ -1127,22 +1550,28 @@
 	}
 
 	function handleReorderPreview(orderedIds: string[]) {
-		if (reorderMode && isExactActiveGiftOrder(orderedIds)) {
+		if (reorderMode && reorderBaselineVerified && isExactActiveGiftOrder(orderedIds)) {
 			reorderActiveIds = [...orderedIds];
 		}
 	}
 
 	function handleReorderCancel(orderedIds: string[]) {
-		if (reorderMode && isExactActiveGiftOrder(orderedIds)) {
+		if (reorderMode && reorderBaselineVerified && isExactActiveGiftOrder(orderedIds)) {
 			reorderActiveIds = [...orderedIds];
 		}
 	}
 
 	function handleReorderCommit(orderedIds: string[]) {
-		if (!reorderMode || !canManage || isArchived || !isExactActiveGiftOrder(orderedIds)) {
+		if (
+			!reorderMode ||
+			!reorderBaselineVerified ||
+			!canMaintainReorderMode ||
+			!isExactActiveGiftOrder(orderedIds)
+		) {
 			return;
 		}
 
+		reorderBaselineStatus = REORDER_BASELINE_STATUS.verified;
 		reorderActiveIds = [...orderedIds];
 		giftsContext.setActiveGiftOrder(orderedIds);
 		reorderPersistenceQueue.enqueue([...orderedIds]);
@@ -1204,6 +1633,27 @@
 		}
 	}
 
+	async function handleContextPurchased(giftItem: GiftByRole) {
+		if (
+			hideReservationState ||
+			!isAuthenticated ||
+			!('myReservationId' in giftItem) ||
+			giftItem.myReservationId === null
+		) {
+			return;
+		}
+		const purchased = giftItem.myReservationPurchasedAt === null;
+		try {
+			await setReservationPurchased({
+				reservationId: giftItem.myReservationId,
+				purchased,
+			});
+			toastSuccess(purchased ? m.toast_marked_bought() : m.toast_unmarked_bought());
+		} catch (thrown) {
+			toastError(translateServerError(thrown));
+		}
+	}
+
 	/**
 	 * Releasing SOMEONE ELSE's reservation (issue #213). The server re-checks the capability, so
 	 * this path carries no authorization of its own. Returns whether the release went through, so
@@ -1224,7 +1674,7 @@
 	// ── Lifecycle: record the visit on mount ──────────────────────────────────
 
 	onDestroy(() => {
-		filterLayoutMotion.destroy();
+		displayLayoutMotion.destroy();
 		receivedGiftMotion.destroy();
 	});
 
@@ -1245,6 +1695,7 @@
 	// modal on the requested tab, then strip the marker so reload/share won't reopen it.
 	afterNavigate(() => {
 		receivedGiftMotion.cancel();
+		displayLayoutMotion.cancel();
 		const requestedTab = page.url.searchParams.get(WISHLIST_SETTINGS_QUERY_PARAM);
 		if (requestedTab === null) {
 			return;
@@ -1302,9 +1753,10 @@
      wishlist its own per-list identity independent of the viewer's app palette. -->
 <div
 	bind:this={wishlistPageElement}
+	data-testid="wishlist-page-shell"
 	data-palette={activePalette}
 	style="overflow-anchor: none"
-	class="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-6"
+	class="mt-3 flex flex-col gap-3 pb-3 sm:mt-0 sm:gap-6 sm:py-6"
 >
 	<WishlistHeader
 		title={wishlist.title}
@@ -1321,11 +1773,13 @@
 		{role}
 		giftCount={headerGiftCount}
 		{recipientIsModerator}
+		{adminSettingsAvailable}
 		onshare={handleShareOpened}
 		onmoderators={handleModeratorsOpened}
 		onarchive={handleArchive}
 		oneditimage={handleEditImage}
 		oneditrecipient={handleEditRecipientOpened}
+		onsettings={handleSettingsOpened}
 	/>
 
 	{#if isPreparing}
@@ -1352,12 +1806,12 @@
 				oncategory={(categoryId) =>
 					void applyBulkAction({ action: 'category', categoryId })}
 				onaction={(action) => void applyBulkAction(action)}
+				oncopy={(returnToActions) => void openBulkCopy(returnToActions)}
 				ondone={() => giftSelection.exit()}
 			/>
 		{/snippet}
 		<WishlistDetailToolbar
 			{canManage}
-			{adminSettingsAvailable}
 			{role}
 			{isArchived}
 			{isAuthenticated}
@@ -1369,6 +1823,9 @@
 			categoryFilterOptions={giftsContext.categoryFilterOptions.current}
 			priorityFilterOptions={giftsContext.priorityFilterOptions.current}
 			{reorderMode}
+			{reorderDonePending}
+			reorderRecoveryPending={reorderBaselineStatus === REORDER_BASELINE_STATUS.refreshing}
+			giftDataReady={!isGiftDataLoading && wishlist.shortId === shortId}
 			{recipientViewPreview}
 			onrecipientviewpreviewchange={handleRecipientViewPreviewChange}
 			onreordermodechange={handleReorderModeChange}
@@ -1376,18 +1833,43 @@
 			onsortchange={handleSortChange}
 			onfilterchange={handleFilterChange}
 			ongroupingchange={handleGroupingChange}
-			onsettings={handleSettingsOpened}
 			onunfollow={handleUnfollow}
 			onaddgift={openCreateModal}
 			onbatchadd={openBatchAddDialog}
+			onselectionstart={() => enterSelection()}
 			selectionContent={giftSelection.active ? selectionToolbar : undefined}
 		/>
+
+		{#if reorderMode && !reorderBaselineVerified}
+			<Alert.Root tone="warning" data-testid="gift-reorder-recovery-notice">
+				<TriangleAlertIcon />
+				<Alert.Description>
+					{reorderBaselineStatus === REORDER_BASELINE_STATUS.refreshing
+						? m.gift_reorder_recovering()
+						: m.gift_reorder_save_error_unresolved()}
+				</Alert.Description>
+				{#if reorderBaselineStatus === REORDER_BASELINE_STATUS.unresolved}
+					<Alert.Action>
+						<Button size="sm" intent="secondary" onclick={retryReorderBaselineRefresh}>
+							{m.gift_reorder_recovery_retry()}
+						</Button>
+					</Alert.Action>
+				{/if}
+			</Alert.Root>
+		{:else if reorderMode}
+			<Alert.Root data-testid="gift-reorder-temporary-notice">
+				<InfoIcon />
+				<Alert.Description>{m.gift_reorder_temporary_explanation()}</Alert.Description>
+			</Alert.Root>
+		{/if}
 
 		{#snippet contextActions()}
 			{#if contextActionGift !== null}
 				<GiftContextActions
-					open={contextOpen}
+					sessionId={contextSession?.id ?? 0}
+					{programmaticOpen}
 					mobile={contextMobile}
+					desktopAnchor={contextMobile ? null : contextAnchor}
 					anchorPoint={contextAnchorPoint}
 					name={contextActionGift.name}
 					{role}
@@ -1400,13 +1882,28 @@
 					categories={categoryActionOptions}
 					priorityLevelId={contextActionGift.priorityLevelId}
 					categoryId={contextActionGift.categoryId ?? null}
-					onclose={() => (contextOpen = false)}
+					placementSnapshot={contextPlacementSnapshot}
+					{...reservationContextFor(contextActionGift)}
+					onclose={requestContextClose}
+					oncomplete={completeContextClose}
+					onfinish={finishContextAction}
 					onedit={() => void openEditModal(contextActionGift)}
 					onpriority={(priorityLevelId) => void updateContextGift({ priorityLevelId })}
 					oncategory={(categoryId) => void updateContextGift({ categoryId })}
 					onreceived={() =>
 						void handleReceived(contextActionGift.id, !contextActionGift.received)}
 					onselect={() => enterSelection(contextActionGift.id)}
+					onreserve={() => {
+						if ('myReservationId' in contextActionGift) {
+							handleOpenReserveModal(contextActionGift);
+						}
+					}}
+					oncancelreservation={() => {
+						if ('myReservationId' in contextActionGift) {
+							void handleUnreserve(contextActionGift);
+						}
+					}}
+					onpurchased={() => void handleContextPurchased(contextActionGift)}
 					oncopysuccess={() => toastSuccess(m.gift_context_copy_success())}
 					oncopyerror={() => toastError(m.gift_context_copy_error())}
 				/>
@@ -1414,6 +1911,9 @@
 		{/snippet}
 		<WishlistGiftDisplay
 			sections={giftSections}
+			grouping={reorderMode
+				? GIFT_GROUPING_OPTIONS.none
+				: giftsContext.effectiveGrouping.current}
 			{role}
 			{isArchived}
 			{hideReservationState}
@@ -1422,20 +1922,29 @@
 			{isEmpty}
 			{isFilteredEmpty}
 			{reorderMode}
+			reorderInteractionEnabled={reorderBaselineVerified}
 			selectionMode={giftSelection.active}
 			selectedIds={selectionSnapshot.selectedIds}
 			onselectiontoggle={(giftId) => giftSelection.toggle(giftId)}
 			oncontextactions={openContextActions}
+			hascontextactions={hasAdditionalContextActions}
+			activeContextGiftId={programmaticOpen && contextAnchor !== null
+				? contextSession?.gift.id
+				: null}
+			contextSurface={narrowViewport.current ? 'dialog' : 'menu'}
 			onedit={openEditModal}
 			onreserve={handleOpenReserveModal}
 			onunreserve={handleUnreserve}
 			onreceived={handleReceived}
+			{receivedPendingGiftIds}
 			onaddgift={openCreateModal}
 			onclearfilters={clearFilters}
 			onreorderpreview={handleReorderPreview}
 			onreordercommit={handleReorderCommit}
 			onreordercancel={handleReorderCancel}
-			bind:contextMenuOpen={contextOpen}
+			bind:nativeContextOpen
+			nativeContextSessionId={contextSession?.id ?? 0}
+			onnativecontextcomplete={completeContextClose}
 			contextContent={contextActions}
 		/>
 	{/if}
@@ -1447,13 +1956,26 @@
 		if (
 			shouldExitGiftSelectionOnEscape(event, {
 				selectionActive: giftSelection.active,
-				contextOpen,
+				contextOpen: nativeContextOpen || programmaticOpen,
 				hiddenConfirmOpen,
 			})
 		) {
 			giftSelection.exit();
 		}
 	}}
+/>
+
+<GiftBulkCopyDialog
+	open={bulkCopyOpen}
+	destinations={bulkCopyDestinations}
+	selectedDestinationId={bulkCopyDestinationId}
+	selectedCount={selectionSnapshot.selectedIds.length}
+	loading={bulkCopyLoading}
+	submitting={bulkCopySubmitting}
+	onopenchange={handleBulkCopyOpenChange}
+	onback={bulkCopyReturnToActions === null ? undefined : returnFromBulkCopy}
+	ondestinationchange={(id) => (bulkCopyDestinationId = id)}
+	onconfirm={() => void submitBulkCopy()}
 />
 
 <Dialog.Root bind:open={hiddenConfirmOpen}>
@@ -1575,7 +2097,7 @@
 </Dialog.Root>
 
 {#if canManage}
-	<ImportWizard
+	<LazyImportWizard
 		bind:open={importWizardOpen}
 		mode={WIZARD_MODE.append}
 		wishlistId={wishlist.id}

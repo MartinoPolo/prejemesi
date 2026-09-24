@@ -3,7 +3,7 @@
 	import { resolve } from '$app/paths';
 	import { localizeInternalHref } from '$lib/i18n/locale.js';
 	import { wishlistListViewVariants } from './wishlist_list_view_variants.js';
-	import { STATUS_CHIP_CLASSES } from './wishlist_card_variants.js';
+	import { WishlistBadge } from '$lib/components/derived/wishlist-badge/index.js';
 	import { getWishlistEmoji } from '$lib/modules/wishlists/wishlist_theme.js';
 	import { WISHLIST_STATUS_LABELS } from '$lib/modules/wishlists/dashboard_types.js';
 	import type { Wishlist } from '$lib/modules/wishlists/types.js';
@@ -11,6 +11,7 @@
 	import WishlistSlotImage from '$lib/components/blocks/wishlist/WishlistSlotImage.svelte';
 	import * as m from '$lib/paraglide/messages.js';
 	import GiftIcon from '@lucide/svelte/icons/gift';
+	import { ElevationSurface } from '$lib/components/base/elevation-surface/index.js';
 
 	interface WishlistListItem {
 		wishlist: Wishlist;
@@ -41,46 +42,51 @@
 			class={rowVariants.row()}
 			aria-label={item.wishlist.title}
 		>
-			<div class={rowVariants.bannerMini()}>
-				<div class="absolute inset-0">
-					<WishlistSlotImage
-						src={thumbSrc}
-						frame={thumbFrame}
-						{themeEmoji}
-						alt={item.wishlist.title}
-						variant="thumbnail"
-					/>
+			<ElevationSurface class={rowVariants.surface()}>
+				<span aria-hidden="true" class={rowVariants.border()}></span>
+				<div class={rowVariants.bannerMini()}>
+					<div class="absolute inset-0">
+						<WishlistSlotImage
+							src={thumbSrc}
+							frame={thumbFrame}
+							{themeEmoji}
+							alt={item.wishlist.title}
+							variant="thumbnail"
+						/>
+					</div>
 				</div>
-			</div>
 
-			<div class={rowVariants.info()}>
-				<span class={rowVariants.title()}>{item.wishlist.title}</span>
-				{#if item.recipientDisplayName}
-					<span class={rowVariants.subtitle()}>
-						{m.wishlist_recipient_chip({ name: item.recipientDisplayName })}
-						{#if item.reservedCount !== undefined && item.giftCount !== undefined}
-							· {m.wishlist_list_reserved_count({
-								reserved: item.reservedCount,
-								total: item.giftCount,
-							})}
-						{/if}
-					</span>
-				{/if}
-			</div>
-
-			<div class={rowVariants.trailing()}>
-				{#if item.giftCount !== undefined}
-					<span class={rowVariants.giftCount()}>
-						<GiftIcon class="mr-1 inline size-3 align-middle" />
-						{item.giftCount}
-					</span>
-				{/if}
-				<div
-					class={cn(rowVariants.statusBadge(), STATUS_CHIP_CLASSES[item.wishlist.status])}
-				>
-					{WISHLIST_STATUS_LABELS[item.wishlist.status]()}
+				<div class={rowVariants.info()}>
+					<span class={rowVariants.title()}>{item.wishlist.title}</span>
+					{#if item.recipientDisplayName}
+						<span class={rowVariants.subtitle()}>
+							{m.wishlist_recipient_chip({ name: item.recipientDisplayName })}
+							{#if item.reservedCount !== undefined && item.giftCount !== undefined}
+								· {m.wishlist_list_reserved_count({
+									reserved: item.reservedCount,
+									total: item.giftCount,
+								})}
+							{/if}
+						</span>
+					{/if}
 				</div>
-			</div>
+
+				<div class={rowVariants.trailing()}>
+					{#if item.giftCount !== undefined}
+						<span class={rowVariants.giftCount()}>
+							<GiftIcon class="mr-1 inline size-3 align-middle" />
+							{item.giftCount}
+						</span>
+					{/if}
+					<WishlistBadge
+						class={rowVariants.statusBadge()}
+						presentation="list-status"
+						status={item.wishlist.status}
+					>
+						{WISHLIST_STATUS_LABELS[item.wishlist.status]()}
+					</WishlistBadge>
+				</div>
+			</ElevationSurface>
 		</a>
 	{/each}
 </div>

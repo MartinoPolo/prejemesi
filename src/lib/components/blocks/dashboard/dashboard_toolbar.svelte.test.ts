@@ -1,10 +1,36 @@
+import '../../../../app.css';
 import { render } from 'vitest-browser-svelte';
-import { userEvent } from 'vitest/browser';
-import { describe, expect, it } from 'vitest';
+import { page, userEvent } from 'vitest/browser';
+import { afterEach, describe, expect, it } from 'vitest';
 import * as m from '$lib/paraglide/messages.js';
+import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
 import DashboardToolbar from './DashboardToolbar.svelte';
 
+const { expectPixelsNear } = createPixelAssertions(expect);
+afterEach(async () => page.viewport(1280, 720));
+
 describe('DashboardToolbar unified filters (issue #161)', () => {
+	it('uses touch-sized filter and sort controls only on mobile', async () => {
+		const screen = await render(DashboardToolbar, {
+			sortValue: 'lastActivity',
+			viewMode: 'grid',
+			showArchived: false,
+		});
+		const controls = [
+			screen.getByRole('button', { name: m.gift_filter() }).element(),
+			document.querySelector<HTMLElement>('[data-slot="select-trigger"]')!,
+		];
+
+		await page.viewport(320, 720);
+		for (const control of controls) {
+			expectPixelsNear(control.getBoundingClientRect().height, 40);
+		}
+
+		await page.viewport(1280, 720);
+		for (const control of controls) {
+			expectPixelsNear(control.getBoundingClientRect().height, 32);
+		}
+	});
 	it('keeps both active filters visible and accessible while the menu is open', async () => {
 		const screen = await render(DashboardToolbar, {
 			sortValue: 'lastActivity',

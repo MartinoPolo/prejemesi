@@ -58,8 +58,7 @@ export const GIFT_CROP_TARGET_SPECS = {
 		realHeight: 267,
 		realSizeText: '356 × 267 px',
 	},
-	// 1:1 list-thumbnail + reservation-thumb family (#189): the wishlist list row
-	// and ReserveModal's small square icon are EXACT consumers of this target.
+	// Mobile List clips the sides of this square composition; square consumers remain exact.
 	thumb: {
 		aspect: 1,
 		cssAspect: '1 / 1',

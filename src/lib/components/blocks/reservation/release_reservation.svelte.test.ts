@@ -10,7 +10,9 @@ import {
 	RESERVATION_RELEASE_CAPABILITY,
 	type ReservationReleaseCapability,
 } from '$lib/modules/wishlists/wishlist_capabilities.js';
+import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
 
+const { expectPixelsAtMost } = createPixelAssertions(expect);
 vi.mock('$env/dynamic/public', () => ({ env: {} }));
 
 const { default: ReleaseReservationTestHost } = await import('./ReleaseReservationTestHost.svelte');
@@ -75,6 +77,8 @@ async function renderRelease(options: {
 	placement?: 'direct' | 'form' | 'detail';
 	role?: 'recipient' | 'moderator' | 'visitor';
 	hideReservationState?: boolean;
+	isSubmitting?: boolean;
+	isDeleting?: boolean;
 }) {
 	return render(ReleaseReservationTestHost, {
 		gift: options.gift ?? makeGift(),
@@ -84,6 +88,8 @@ async function renderRelease(options: {
 		placement: options.placement,
 		role: options.role,
 		hideReservationState: options.hideReservationState,
+		isSubmitting: options.isSubmitting,
+		isDeleting: options.isDeleting,
 	});
 }
 
@@ -165,6 +171,27 @@ describe('release control placement (issue #255)', () => {
 		});
 
 		await expect.element(screen.getByTestId('release-reservation-button')).toBeVisible();
+	});
+
+	it.each([
+		{ state: 'save', isSubmitting: true, isDeleting: false },
+		{ state: 'delete', isSubmitting: false, isDeleting: true },
+	])('disables the form release control during $state', async ({ isSubmitting, isDeleting }) => {
+		const release = vi.fn(async () => true);
+		const screen = await renderRelease({
+			capability: RESERVATION_RELEASE_CAPABILITY.any,
+			reservations: [makeReservation()],
+			placement: 'form',
+			isSubmitting,
+			isDeleting,
+			release,
+		});
+
+		const releaseButton = screen.getByTestId('release-reservation-button');
+		await expect.element(releaseButton).toBeDisabled();
+		await releaseButton.click({ force: true });
+		expect(document.querySelector('[data-testid="release-reservation-confirm"]')).toBeNull();
+		expect(release).not.toHaveBeenCalled();
 	});
 });
 
@@ -273,8 +300,9 @@ describe('release picker (issue #213 REQ-4)', () => {
 		expect(nameEl.textContent).toBe(HOSTILE_GIFTER_NAME);
 		expect(contentEl.querySelector('img')).toBeNull();
 		// …and the unbreakable 60-char run cannot drag the row past the dialog's own box.
-		expect(nameEl.getBoundingClientRect().right).toBeLessThanOrEqual(
-			contentEl.getBoundingClientRect().right + 0.5,
+		expectPixelsAtMost(
+			nameEl.getBoundingClientRect().right,
+			contentEl.getBoundingClientRect().right,
 		);
 	});
 });
@@ -293,6 +321,24 @@ describe('release confirmation (issue #213 REQ-8)', () => {
 		) as HTMLElement;
 		expect(confirmEl.textContent).toContain('Petr Svoboda');
 		expect(confirmEl.textContent).toContain(GIFT_NAME);
+	});
+
+	it('blocks an open form confirmation when saving starts', async () => {
+		const release = vi.fn(async () => true);
+		const screen = await renderRelease({
+			capability: RESERVATION_RELEASE_CAPABILITY.any,
+			reservations: [makeReservation()],
+			placement: 'form',
+			release,
+		});
+		await openReleaseFlow();
+		const confirmAction = page.getByTestId('release-reservation-confirm-action');
+		await expect.element(confirmAction).toBeEnabled();
+
+		await screen.rerender({ isSubmitting: true });
+		await expect.element(confirmAction).toBeDisabled();
+		await confirmAction.click({ force: true });
+		expect(release).not.toHaveBeenCalled();
 	});
 
 	it('releases only the picked reservation once the confirmation is accepted', async () => {

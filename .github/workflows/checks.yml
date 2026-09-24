@@ -28,10 +28,13 @@ jobs:
                   node-version: 22
                   cache: pnpm
             - run: pnpm install --frozen-lockfile
+            - run: pnpm run test:scripts
             - uses: actions/cache@v4
               with:
                   path: .eslintcache
-                  key: eslint-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml', 'eslint.config.mjs') }}-${{ github.sha }}
+                  key:
+                      eslint-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml', 'eslint.config.mjs')
+                      }}-${{ github.sha }}
                   restore-keys: |
                       eslint-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml', 'eslint.config.mjs') }}-
             - run: pnpm run cf:types
@@ -73,10 +76,8 @@ jobs:
                 ports:
                     - 5432:5432
                 options: >-
-                    --health-cmd "pg_isready -U root -d local"
-                    --health-interval 5s
-                    --health-timeout 5s
-                    --health-retries 20
+                    --health-cmd "pg_isready -U root -d local" --health-interval 5s --health-timeout
+                    5s --health-retries 20
         env:
             DATABASE_URL: postgres://root:mysecretpassword@localhost:5432/local
             # CI-only secret; production uses the Cloudflare-stored secret.
@@ -90,7 +91,7 @@ jobs:
                   node-version: 22
                   cache: pnpm
             - run: pnpm install --frozen-lockfile
-            - run: pnpm exec playwright install --with-deps chromium
+            - run: pnpm exec playwright install --with-deps chrome chromium
             # Apply the committed migrations (production path) instead of
             # `db:push`, so e2e also fails when migrations lag behind schema.ts.
             - run: pnpm run db:migrate
@@ -109,7 +110,9 @@ jobs:
             # suite itself is split evenly across all four isolated PostgreSQL services.
             - if: ${{ matrix.shard == 1 }}
               run: pnpm exec vitest run --project server
-            - run: pnpm run test:e2e --shard=${{ matrix.shard }}/4
+            # The real-browser-zoom regression loads an unpacked Chromium extension,
+            # which requires headed mode; provide a virtual display on Linux CI.
+            - run: xvfb-run --auto-servernum pnpm run test:e2e --shard=${{ matrix.shard }}/4
             - uses: actions/upload-artifact@v4
               if: failure()
               with:

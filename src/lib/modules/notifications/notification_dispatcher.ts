@@ -1,4 +1,5 @@
 import { env } from '$env/dynamic/private';
+import { getRequestEvent } from '$app/server';
 import { inArray, eq } from 'drizzle-orm';
 import * as m from '$lib/paraglide/messages.js';
 import { getDb } from '$lib/server/db/index.js';
@@ -10,7 +11,7 @@ import { runAfterResponse } from '$lib/server/background.js';
 import { getAuthSigningKey } from '$lib/server/crypto/auth_signing_key.js';
 import { createNotificationPreferencesToken } from '$lib/server/crypto/notification_preferences_token.js';
 import { localizeInternalHref, type SupportedLocale } from '$lib/i18n/locale.js';
-import { resolveDevelopmentEnvironment } from '$lib/config/mpx_development.js';
+import { resolveApplicationOrigin } from '$lib/config/runtime_environment.js';
 import {
 	EMAIL_NOTIFICATION_TYPES,
 	getNotificationEmailBody,
@@ -36,8 +37,14 @@ function emailTypeSupported(type: NotificationType): boolean {
 	return EMAIL_NOTIFICATION_TYPES.includes(type);
 }
 
-function getOrigin(): string {
-	return resolveDevelopmentEnvironment(env).origin.replace(/\/$/, '');
+function captureApplicationOrigin(): string {
+	let requestUrl: string | undefined;
+	try {
+		requestUrl = getRequestEvent().url.toString();
+	} catch {
+		requestUrl = undefined;
+	}
+	return resolveApplicationOrigin(env, import.meta.env.DEV, requestUrl);
 }
 
 interface UnsubscribeFooter {
@@ -61,6 +68,7 @@ interface UnsubscribeFooter {
 async function buildUnsubscribeFooter(
 	userId: string,
 	locale: SupportedLocale,
+	origin: string,
 ): Promise<UnsubscribeFooter | undefined> {
 	let signingKey: string;
 	try {
@@ -72,7 +80,7 @@ async function buildUnsubscribeFooter(
 
 	const { token } = await createNotificationPreferencesToken(userId, signingKey);
 	const tokenQuery = new URLSearchParams({ token }).toString();
-	const unsubscribeUrl = `${getOrigin()}/unsubscribe?${tokenQuery}`;
+	const unsubscribeUrl = `${origin}/unsubscribe?${tokenQuery}`;
 
 	// Only the human `List-Unsubscribe` (GET) header is advertised. RFC 8058
 	// one-click (`List-Unsubscribe-Post` + POST to /unsubscribe/one-click) is
@@ -96,6 +104,7 @@ function getNotificationUrl(
 	wishlistShortId: string | null,
 	urlPathOverride: string | undefined,
 	locale: SupportedLocale,
+	origin: string,
 ): string {
 	const href =
 		urlPathOverride !== undefined && urlPathOverride !== ''
@@ -104,7 +113,7 @@ function getNotificationUrl(
 				? '/'
 				: `/w/${wishlistShortId}`;
 
-	return href.startsWith('/') ? `${getOrigin()}${localizeInternalHref(href, locale)}` : href;
+	return href.startsWith('/') ? `${origin}${localizeInternalHref(href, locale)}` : href;
 }
 
 function getEmailBody(input: {
@@ -164,13 +173,19 @@ async function sendNotificationEmail(params: {
 	 *  non-account emails have no user row to scope an unsubscribe token to, so
 	 *  they get no footer/List-Unsubscribe headers. */
 	userId?: string;
+	origin: string;
 }): Promise<boolean> {
 	const emailCopy = getNotificationEmailCopy(params.type, params.locale);
 	const heading = getNotificationEmailHeading(params.type, params.locale);
 	const bodyMessage = getNotificationEmailBody(params.type, params.locale, {
 		giftName: params.giftName,
 	});
-	const url = getNotificationUrl(params.wishlistShortId, params.urlPathOverride, params.locale);
+	const url = getNotificationUrl(
+		params.wishlistShortId,
+		params.urlPathOverride,
+		params.locale,
+		params.origin,
+	);
 	const body = getEmailBody({
 		bodyMessage,
 		wishlistTitle: params.wishlistTitle,
@@ -182,7 +197,7 @@ async function sendNotificationEmail(params: {
 	try {
 		const unsubscribe =
 			params.userId !== undefined
-				? await buildUnsubscribeFooter(params.userId, params.locale)
+				? await buildUnsubscribeFooter(params.userId, params.locale, params.origin)
 				: undefined;
 
 		await sendEmail({
@@ -309,6 +324,7 @@ export async function dispatchNotification(input: DispatchNotificationInput): Pr
 	// mutation never waits for Resend. A failed send is observable via the error
 	// log and the notification row's emailSent flag staying false; it never rolls
 	// back the mutation or the in-app rows committed above.
+	const origin = captureApplicationOrigin();
 	runAfterResponse(async () => {
 		for (const targetUser of emailEnabledUserRows) {
 			const notificationId = notificationIdByUserId.get(targetUser.id);
@@ -323,6 +339,7 @@ export async function dispatchNotification(input: DispatchNotificationInput): Pr
 				giftName: input.giftName,
 				notificationId,
 				userId: targetUser.id,
+				origin,
 			});
 
 			if (sent && notificationId !== undefined) {
@@ -343,6 +360,7 @@ export async function dispatchNotification(input: DispatchNotificationInput): Pr
 				urlPathOverride: input.urlPathOverride,
 				actorName: input.actorName,
 				giftName: input.giftName,
+				origin,
 			});
 		}
 	});

@@ -11,8 +11,10 @@
 
 	let {
 		class: className,
+		surfaceClass,
 		intent,
 		size,
+		format,
 		children,
 		ref = $bindable(null),
 		...restProps
@@ -22,15 +24,18 @@
 
 	const resolvedIntent = $derived(intent ?? groupContext.intent);
 	const resolvedSize = $derived(size ?? groupContext.size);
+	const resolvedFormat = $derived(format ?? groupContext.format);
 </script>
 
-<ToggleGroupPrimitive.Item bind:ref {...restProps}>
+<ToggleGroupPrimitive.Item bind:ref class="group" {...restProps}>
 	{#snippet child({ props })}
 		<Button
 			{...props}
 			intent={TOGGLE_INTENT_TO_BUTTON_INTENT[resolvedIntent]}
 			size={resolvedSize}
-			class={cn(togglePressedVariants({ intent: resolvedIntent }), className)}
+			format={resolvedFormat}
+			class={className}
+			surfaceClass={cn(togglePressedVariants({ intent: resolvedIntent }), surfaceClass)}
 			data-slot="toggle-group-item"
 		>
 			{@render children?.()}

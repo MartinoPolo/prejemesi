@@ -1,6 +1,7 @@
 import '../../../../app.css';
 import { render } from 'vitest-browser-svelte';
-import { describe, expect, it, vi } from 'vitest';
+import { page } from 'vitest/browser';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { GiftForVisitor } from '$lib/modules/gifts/types.js';
 import { WISHLIST_ROLES } from '$lib/modules/wishlists/types.js';
 import { IMAGE_FIT_MODES, type ImageMetadata } from '$lib/modules/images/index.js';
@@ -57,6 +58,10 @@ function makeReservedGift(overrides: Partial<GiftForVisitor> = {}): GiftForVisit
 }
 
 describe('recipient-view preview reservation privacy (#241)', () => {
+	beforeEach(async () => {
+		await page.viewport(800, 720);
+	});
+
 	it.each(['card', 'list', 'compact', 'detail'] as const)(
 		'hides reservation presentation and controls on the %s surface',
 		async (surface) => {
@@ -120,19 +125,58 @@ describe('recipient-view preview reservation privacy (#241)', () => {
 		},
 	);
 
-	it('restores normal reservation-aware presentation when the flag is disabled', async () => {
-		const screen = await render(RecipientViewPreviewTestHost, {
-			gift: makeReservedGift(),
-			role: WISHLIST_ROLES.moderator,
-			surface: 'card',
-			hideReservationState: false,
-		});
+	it.each(['compact', 'detail'] as const)(
+		'shows counts without identity or gifter actions to a self-promoted recipient in %s',
+		async (surface) => {
+			const screen = await render(RecipientViewPreviewTestHost, {
+				gift: makeReservedGift({ isFullyReserved: false, myReservationId: null }),
+				role: WISHLIST_ROLES.recipient,
+				surface,
+				hideReservationState: false,
+				onreceived: vi.fn(),
+			});
 
-		await expect.element(screen.getByText('Rezervováno', { exact: true })).toBeVisible();
-		await expect.element(screen.getByText('Babička')).toBeVisible();
-		await expect.element(screen.getByText('2 rezervováno', { exact: true })).toBeVisible();
-		await expect.element(screen.getByTestId('reserve-button')).toBeInTheDocument();
+			await expect.element(screen.getByText('2 rezervováno', { exact: true })).toBeVisible();
+			await expect.element(screen.getByText('Babička')).not.toBeInTheDocument();
+			await expect.element(screen.getByTestId('reserve-button')).not.toBeInTheDocument();
+			await expect
+				.element(screen.getByRole('button', { name: /oblíbených/ }))
+				.not.toBeInTheDocument();
 
-		await screen.unmount();
-	});
+			await screen.unmount();
+		},
+	);
+
+	it.each(['card', 'list'] as const)(
+		'restores exactly one reservation action without a received callback on %s',
+		async (surface) => {
+			const screen = await render(RecipientViewPreviewTestHost, {
+				gift: makeReservedGift(),
+				role: WISHLIST_ROLES.moderator,
+				surface,
+				hideReservationState: false,
+			});
+
+			const overlay = screen.getByTestId('gift-state-overlay');
+			await expect
+				.element(screen.getByText('Rezervováno vámi', { exact: true }))
+				.toBeVisible();
+			const reserverLine = screen.getByText(/Babička/);
+			await expect.element(reserverLine).toBeVisible();
+			expect(reserverLine.element().textContent).toContain('Babička');
+			expect(overlay.element().contains(reserverLine.element())).toBe(true);
+			expect(overlay.element().textContent).toContain('Babička');
+			await expect
+				.element(screen.getByText('2 rezervováno', { exact: true }))
+				.not.toBeInTheDocument();
+			expect(
+				screen.container.querySelectorAll('[data-testid="reserve-button"]'),
+			).toHaveLength(1);
+			await expect
+				.element(screen.getByTestId('gift-received-toggle'))
+				.not.toBeInTheDocument();
+
+			await screen.unmount();
+		},
+	);
 });

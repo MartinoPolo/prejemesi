@@ -1,6 +1,11 @@
+import '../../../../app.css';
 import { render } from 'vitest-browser-svelte';
-import { userEvent } from 'vitest/browser';
+import { page, userEvent } from 'vitest/browser';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import {
+	createPixelAssertions,
+	DEFAULT_PIXEL_TOLERANCE,
+} from '../../../../../tests/helpers/pixel-assertions.mjs';
 import type { ComponentProps } from 'svelte';
 import type { GiftForVisitor } from '$lib/modules/gifts/types.js';
 import { GIFT_SECTION_KINDS, type GiftSection } from '$lib/modules/gifts/gift_ordering.js';
@@ -10,6 +15,7 @@ import * as m from '$lib/paraglide/messages.js';
 vi.mock('$env/dynamic/public', () => ({ env: {} }));
 
 const { default: WishlistGiftDisplay } = await import('./WishlistGiftDisplay.svelte');
+const { expectPixelsNear, expectPixelsAtLeast, expectPixelsAtMost } = createPixelAssertions(expect);
 
 function visitorGift(): GiftForVisitor {
 	return {
@@ -77,19 +83,23 @@ afterEach(() => {
 	vi.restoreAllMocks();
 });
 
-function deferredAnimation() {
-	let finish!: () => void;
-	const finished = new Promise<void>((resolve) => {
-		finish = resolve;
-	});
-	return {
-		animation: {
-			finished,
-			cancel: vi.fn(),
-		} as unknown as Animation,
-		finish,
-	};
-}
+describe('WishlistGiftDisplay received pending state', () => {
+	it.each(['card', 'list', 'compact'] as const)(
+		'forwards the route-owned pending state through the %s view',
+		async (viewMode) => {
+			const screen = await render(WishlistGiftDisplay, {
+				...defaultProps,
+				viewMode,
+				receivedPendingGiftIds: new Set(['gift-1']),
+			});
+			const action = page.getByRole('button', { name: m.gift_mark_received() });
+
+			await expect.element(action).toBeDisabled();
+			await expect.element(action).toHaveAttribute('data-pending', 'true');
+			await screen.unmount();
+		},
+	);
+});
 
 describe('WishlistGiftDisplay selection accessibility', () => {
 	it('uses group and independently tabbable checkbox semantics', async () => {
@@ -108,6 +118,204 @@ describe('WishlistGiftDisplay selection accessibility', () => {
 		expect(gift.getAttribute('tabindex')).toBe('0');
 		await screen.unmount();
 	});
+});
+
+function expectNoContextualCardActions(gift: Element) {
+	expect(gift.querySelector('[data-like-heart]')).toBeNull();
+	expect(gift.querySelector('[data-testid="reserve-button"]')).toBeNull();
+	expect(gift.querySelector('[data-testid="gift-received-toggle"]')).toBeNull();
+	expect(gift.querySelector(`[aria-label="${m.gift_more_actions()}"]`)).toBeNull();
+	expect(gift.querySelector(`[aria-label="${m.gift_mark_bought()}"]`)).toBeNull();
+}
+
+function rectanglesIntersect(first: DOMRect, second: DOMRect): boolean {
+	const horizontallySeparated =
+		first.right <= second.left + DEFAULT_PIXEL_TOLERANCE ||
+		second.right <= first.left + DEFAULT_PIXEL_TOLERANCE;
+	const verticallySeparated =
+		first.bottom <= second.top + DEFAULT_PIXEL_TOLERANCE ||
+		second.bottom <= first.top + DEFAULT_PIXEL_TOLERANCE;
+	return !horizontallySeparated && !verticallySeparated;
+}
+
+function expectContextualOverlayClearOf(gift: Element, controls: readonly HTMLElement[]): void {
+	const overlays = gift.querySelectorAll<HTMLElement>('[data-testid="gift-state-overlay"]');
+	expect(overlays).toHaveLength(1);
+	const overlay = overlays[0]!;
+	expect(overlay.querySelector('[data-state-primary]')?.textContent).toBe(
+		m.gift_received_badge(),
+	);
+	expect(overlay.querySelector('[data-reservation-support]')?.textContent).toBe(
+		m.gift_reserved_by_other_overlay(),
+	);
+	expect(overlay.textContent).toContain('Soukromá osoba');
+
+	const badge = overlay.querySelector(':scope > span') as HTMLElement;
+	for (const control of controls) {
+		expect(
+			rectanglesIntersect(badge.getBoundingClientRect(), control.getBoundingClientRect()),
+		).toBe(false);
+	}
+}
+
+describe('WishlistGiftDisplay contextual gift presentation', () => {
+	it.each(['card', 'list'] as const)(
+		'renders only the image checkbox control in selection mode for the %s path',
+		async (viewMode) => {
+			await page.viewport(390, 720);
+			const privateGift = {
+				...visitorGift(),
+				received: true,
+				quantity: 3,
+				reservedCount: 3,
+				isFullyReserved: true,
+				myReservationId: null,
+				reserverNames: ['Soukromá osoba'],
+			};
+			const screen = await render(WishlistGiftDisplay, {
+				...defaultProps,
+				sections: [{ ...sections[0]!, gifts: [privateGift] }],
+				role: WISHLIST_ROLES.moderator,
+				viewMode,
+				selectionMode: true,
+				oncontextactions: () => true,
+			});
+			const gift = document.querySelector('[data-gift-item]')!;
+			const checkboxSurface = gift.querySelector(
+				'[data-testid="gift-selection-control"]',
+			) as HTMLElement;
+
+			expect(checkboxSurface).toBeTruthy();
+			expectPixelsNear(checkboxSurface.getBoundingClientRect().width, 40);
+			expectPixelsNear(checkboxSurface.getBoundingClientRect().height, 40);
+			expect(checkboxSurface.querySelector('[data-slot="checkbox"]')).toBeNull();
+			const imageRegion = gift.querySelector(
+				viewMode === 'card'
+					? '[data-testid="gift-card-image-frame"]'
+					: '[data-testid="gift-list-image"]',
+			) as HTMLElement;
+			const checkboxRect = checkboxSurface.getBoundingClientRect();
+			const imageRect = imageRegion.getBoundingClientRect();
+			const giftRect = gift.getBoundingClientRect();
+			expectPixelsAtLeast(checkboxRect.top, giftRect.top + 4);
+			expectPixelsAtMost(checkboxRect.right, giftRect.right - 4);
+			expectPixelsAtMost(checkboxRect.right, imageRect.right);
+			expectPixelsAtMost(checkboxRect.bottom, imageRect.bottom);
+			expectNoContextualCardActions(gift);
+			expectContextualOverlayClearOf(gift, [checkboxSurface]);
+			expect(gift.querySelectorAll('button, a, input, textarea, select')).toHaveLength(0);
+			await screen.unmount();
+		},
+	);
+
+	it.each([
+		{ viewMode: 'card' as const, directionalControlsVisible: false },
+		{ viewMode: 'list' as const, directionalControlsVisible: true },
+	])(
+		'renders layout-aware reorder controls in the $viewMode path',
+		async ({ viewMode, directionalControlsVisible }) => {
+			await page.viewport(390, 720);
+			const privateGift = {
+				...visitorGift(),
+				received: true,
+				quantity: 3,
+				reservedCount: 3,
+				isFullyReserved: true,
+				myReservationId: null,
+				reserverNames: ['Soukromá osoba'],
+			};
+			const screen = await render(WishlistGiftDisplay, {
+				...defaultProps,
+				sections: [{ ...sections[0]!, gifts: [privateGift] }],
+				role: WISHLIST_ROLES.moderator,
+				viewMode,
+				reorderMode: true,
+				oncontextactions: () => true,
+			});
+			const gift = document.querySelector('[data-gift-item]')!;
+			const grip = gift.querySelector(
+				`button[aria-label="${m.gift_reorder_grip_label()}"]`,
+			) as HTMLButtonElement;
+			const moveUp = gift.querySelector(
+				`button[aria-label="${m.gift_reorder_move_up({ name: privateGift.name })}"]`,
+			) as HTMLButtonElement;
+			const moveDown = gift.querySelector(
+				`button[aria-label="${m.gift_reorder_move_down({ name: privateGift.name })}"]`,
+			) as HTMLButtonElement;
+
+			expect(grip).toBeTruthy();
+			expectPixelsNear(grip.getBoundingClientRect().width, 60);
+			expectPixelsNear(grip.getBoundingClientRect().height, 60);
+			expect(moveUp).toBeTruthy();
+			expect(moveDown).toBeTruthy();
+			const directionalActions = moveUp.parentElement as HTMLElement;
+			expect(getComputedStyle(directionalActions).display === 'none').toBe(
+				!directionalControlsVisible,
+			);
+			if (directionalControlsVisible) {
+				expectPixelsNear(moveUp.getBoundingClientRect().width, 40);
+				expectPixelsNear(moveUp.getBoundingClientRect().height, 40);
+				expectPixelsNear(moveDown.getBoundingClientRect().width, 40);
+				expectPixelsNear(moveDown.getBoundingClientRect().height, 40);
+				expect(moveUp.disabled).toBe(true);
+				expect(moveDown.disabled).toBe(true);
+			}
+			expectNoContextualCardActions(gift);
+			const gripSurface = grip.firstElementChild as HTMLElement;
+			expectPixelsNear(gripSurface.getBoundingClientRect().width, 40);
+			expectPixelsNear(gripSurface.getBoundingClientRect().height, 40);
+			expectContextualOverlayClearOf(
+				gift,
+				directionalControlsVisible ? [gripSurface, moveUp, moveDown] : [gripSurface],
+			);
+			const visibleInteractiveElements = Array.from(
+				gift.querySelectorAll<HTMLElement>('button, a, input, textarea, select'),
+			).filter((element) => element.getClientRects().length > 0);
+			expect(visibleInteractiveElements).toHaveLength(directionalControlsVisible ? 3 : 1);
+			await screen.unmount();
+		},
+	);
+});
+
+describe('WishlistGiftDisplay recipient privacy structure (issue #336)', () => {
+	it.each(['card', 'list'] as const)(
+		'keeps reserved and unreserved recipient %s presentations structurally and geometrically identical',
+		async (viewMode) => {
+			await page.viewport(390, 720);
+			const capture = async (gift: GiftForVisitor) => {
+				const screen = await render(WishlistGiftDisplay, {
+					...defaultProps,
+					sections: [{ ...sections[0]!, gifts: [gift] }],
+					role: WISHLIST_ROLES.recipient,
+					viewMode,
+				});
+				const item = document.querySelector('[data-gift-item]') as HTMLElement;
+				const snapshot = {
+					html: item.innerHTML,
+					width: item.getBoundingClientRect().width,
+					height: item.getBoundingClientRect().height,
+					text: item.textContent ?? '',
+				};
+				await screen.unmount();
+				return snapshot;
+			};
+			const available = await capture(visitorGift());
+			const privatelyReserved = await capture({
+				...visitorGift(),
+				reservedCount: 1,
+				isFullyReserved: true,
+				myReservationId: 'private-reservation',
+				myReservationPurchasedAt: new Date('2026-01-03'),
+				reserverNames: ['Soukromá osoba'],
+				likeCount: 9,
+			});
+
+			expect(privatelyReserved.html).toBe(available.html);
+			expectPixelsNear(privatelyReserved.width, available.width);
+			expectPixelsNear(privatelyReserved.height, available.height);
+			expect(privatelyReserved.text).not.toMatch(/rezerv|koupen|Soukromá osoba|9/i);
+		},
+	);
 });
 
 describe('WishlistGiftDisplay primary-link middle click wiring', () => {
@@ -215,98 +423,4 @@ describe('WishlistGiftDisplay keyboard reorder announcements', () => {
 			await screen.unmount();
 		},
 	);
-});
-
-describe('WishlistGiftDisplay collection transition', () => {
-	it('fades the retained collection out before replacing geometry, then settles the whole collection in', async () => {
-		const exit = deferredAnimation();
-		const enter = deferredAnimation();
-		const animate = vi
-			.spyOn(HTMLElement.prototype, 'animate')
-			.mockReturnValueOnce(exit.animation)
-			.mockReturnValueOnce(enter.animation);
-		const screen = await render(WishlistGiftDisplay, defaultProps);
-		const collection = document.querySelector<HTMLElement>('[data-wishlist-gift-collection]')!;
-
-		await screen.rerender({ ...defaultProps, viewMode: 'list' });
-
-		expect(collection.dataset.viewMode).toBe('card');
-		expect(animate.mock.calls[0]).toEqual([
-			[{ opacity: 1 }, { opacity: 0 }],
-			{ duration: 160, easing: 'cubic-bezier(0.2, 0.7, 0.3, 1)', fill: 'both' },
-		]);
-
-		exit.finish();
-		await vi.waitFor(() => expect(collection.dataset.viewMode).toBe('list'));
-		await vi.waitFor(() => expect(animate).toHaveBeenCalledTimes(2));
-
-		expect(animate.mock.calls[1]).toEqual([
-			[
-				{ opacity: 0, transform: 'translateY(3px)' },
-				{ opacity: 1, transform: 'none' },
-			],
-			{ duration: 280, easing: 'cubic-bezier(0.2, 0.7, 0.3, 1)', fill: 'both' },
-		]);
-
-		enter.finish();
-		await screen.unmount();
-	});
-
-	it('cancels a stale handoff and leaves the latest rapidly requested mode rendered', async () => {
-		const staleExit = deferredAnimation();
-		const animate = vi
-			.spyOn(HTMLElement.prototype, 'animate')
-			.mockReturnValue(staleExit.animation);
-		const screen = await render(WishlistGiftDisplay, defaultProps);
-		const collection = document.querySelector<HTMLElement>('[data-wishlist-gift-collection]')!;
-
-		await screen.rerender({ ...defaultProps, viewMode: 'list' });
-		expect(animate).toHaveBeenCalledOnce();
-		await screen.rerender({ ...defaultProps, viewMode: 'card' });
-
-		expect(staleExit.animation.cancel).toHaveBeenCalledOnce();
-		expect(collection.dataset.viewMode).toBe('card');
-		await screen.unmount();
-	});
-
-	it('swaps immediately without transforms when reduced motion is requested', async () => {
-		vi.spyOn(window, 'matchMedia').mockReturnValue({ matches: true } as MediaQueryList);
-		const animate = vi.spyOn(HTMLElement.prototype, 'animate');
-		const screen = await render(WishlistGiftDisplay, defaultProps);
-		const collection = document.querySelector<HTMLElement>('[data-wishlist-gift-collection]')!;
-
-		await screen.rerender({ ...defaultProps, viewMode: 'list' });
-
-		expect(collection.dataset.viewMode).toBe('list');
-		expect(collection.style.transform).toBe('');
-		expect(animate).not.toHaveBeenCalled();
-		await screen.unmount();
-	});
-
-	it('keeps transitions into and out of compact mode immediate', async () => {
-		const animate = vi.spyOn(HTMLElement.prototype, 'animate');
-		const screen = await render(WishlistGiftDisplay, defaultProps);
-		const collection = document.querySelector<HTMLElement>('[data-wishlist-gift-collection]')!;
-
-		await screen.rerender({ ...defaultProps, viewMode: 'compact' });
-		expect(collection.dataset.viewMode).toBe('compact');
-		await screen.rerender({ ...defaultProps, viewMode: 'list' });
-
-		expect(collection.dataset.viewMode).toBe('list');
-		expect(animate).not.toHaveBeenCalled();
-		await screen.unmount();
-	});
-
-	it('cancels collection animation and leaves no inline motion styles on teardown', async () => {
-		const pending = deferredAnimation();
-		vi.spyOn(HTMLElement.prototype, 'animate').mockReturnValue(pending.animation);
-		const screen = await render(WishlistGiftDisplay, defaultProps);
-		const collection = document.querySelector<HTMLElement>('[data-wishlist-gift-collection]')!;
-
-		await screen.rerender({ ...defaultProps, viewMode: 'list' });
-		await screen.unmount();
-
-		expect(pending.animation.cancel).toHaveBeenCalledOnce();
-		expect(collection.getAttribute('style')).toBeNull();
-	});
 });

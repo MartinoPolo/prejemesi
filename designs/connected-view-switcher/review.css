@@ -1,0 +1,80 @@
+.review-page {
+	margin: 0;
+	padding: 24px;
+	font-family: var(--font-body);
+	color: var(--foreground);
+	background: var(--background);
+}
+.review-header {
+	max-width: 1200px;
+	margin: 0 auto 24px;
+}
+.review-header h1 {
+	margin: 12px 0;
+	font-family: var(--font-heading);
+	font-size: 26px;
+	font-weight: 600;
+}
+.review-header p {
+	margin: 8px 0;
+	line-height: 1.6;
+}
+.review-navigation,
+.review-controls {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 12px;
+	margin-block: 16px;
+}
+.review-navigation a {
+	color: var(--brand);
+	text-decoration: underline;
+	text-underline-offset: 3px;
+}
+.review-navigation a[aria-current='page'] {
+	font-weight: 700;
+	text-decoration-thickness: 2px;
+}
+.review-controls select,
+.review-controls button {
+	min-height: 32px;
+	padding: 4px 10px;
+	border: 1px solid var(--ink);
+	border-radius: var(--radius-btn);
+	background: var(--card);
+	color: var(--foreground);
+	font: inherit;
+}
+.review-controls :focus-visible,
+.review-navigation a:focus-visible {
+	outline: 2px solid var(--ring);
+	outline-offset: 3px;
+}
+.review-viewport {
+	overflow: auto;
+	width: max-content;
+	max-width: 100%;
+	margin-inline: auto;
+	border: 1px solid var(--border);
+	border-radius: var(--radius-panel);
+	background: var(--card);
+}
+.review-viewport iframe {
+	display: block;
+	width: var(--preview-width);
+	height: 140px;
+	border: 0;
+}
+.review-note {
+	color: var(--muted-foreground);
+	font-size: 13px;
+}
+@media (max-width: 639px) {
+	.review-page {
+		padding: 16px 12px;
+	}
+	.review-header h1 {
+		font-size: 22px;
+	}
+}

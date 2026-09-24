@@ -7,7 +7,7 @@
 	import EmptyState from '$lib/components/blocks/dashboard/EmptyState.svelte';
 	import { Button } from '$lib/components/base/button/index.js';
 	import { CreateWishlistModal } from '$lib/components/blocks/wishlist/index.js';
-	import { ImportWizard, WIZARD_MODE } from '$lib/components/blocks/import/index.js';
+	import { LazyImportWizard, WIZARD_MODE } from '$lib/components/blocks/import/index.js';
 	import WishlistCard from '$lib/components/blocks/dashboard/WishlistCard.svelte';
 	import { getMyWishlists } from '$lib/modules/wishlists/wishlists.remote.js';
 	import { getLocale } from '$lib/paraglide/runtime.js';
@@ -105,4 +105,4 @@
 {/if}
 
 <CreateWishlistModal bind:open={isCreateModalOpen} />
-<ImportWizard bind:open={isImportWizardOpen} mode={WIZARD_MODE.newList} />
+<LazyImportWizard bind:open={isImportWizardOpen} mode={WIZARD_MODE.newList} />

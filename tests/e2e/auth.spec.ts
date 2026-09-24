@@ -1,6 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { createTestUser } from './fixtures/test-data.js';
-import { registerViaApi, registerAndGetPage } from './fixtures/auth-helpers.js';
+import { registerViaApi } from './fixtures/auth-helpers.js';
 
 async function installTurnstileMock(page: Page): Promise<void> {
 	await page.addInitScript(() => {
@@ -16,19 +16,6 @@ async function installTurnstileMock(page: Page): Promise<void> {
 }
 
 test.describe('Authentication', () => {
-	test('register with valid credentials redirects to my-lists', async ({
-		browser,
-		request,
-		baseURL,
-	}) => {
-		const user = createTestUser('register');
-		const page = await registerAndGetPage(browser, request, baseURL!, user);
-		await page.goto('/my-lists');
-		await page.waitForLoadState('networkidle');
-		await expect(page.getByRole('heading', { name: 'Moje seznamy' })).toBeVisible();
-		await page.context().close();
-	});
-
 	test('login with valid credentials', async ({ page, request, baseURL }) => {
 		const user = createTestUser('login');
 		await registerViaApi(request, baseURL!, user);
@@ -66,21 +53,15 @@ test.describe('Authentication', () => {
 		await expect(page).toHaveURL(/\/login/);
 	});
 
-	test('register page shows password strength indicator', async ({ page }) => {
-		await page.goto('/register');
-		await page.getByRole('textbox', { name: 'Heslo' }).fill('abcdefgh');
-		await expect(page.getByRole('progressbar')).toBeVisible({ timeout: 5_000 });
-	});
-
-	test('magic link page accessible from login', async ({ page }) => {
-		await page.goto('/login');
-		await page.getByRole('link', { name: /odkazem/ }).click();
-		await expect(page).toHaveURL(/\/magic-link/);
-		// The anime-sky split-screen auth layout (#102, REQ-16) renders two h1s: the brand
-		// panel tagline and the form heading. Assert the form heading specifically.
-		await expect(
-			page.getByRole('heading', { level: 1, name: 'Přihlášení odkazem' }),
-		).toBeVisible();
+	test('magic-link sign-in is unavailable in either locale', async ({ page }) => {
+		for (const localePrefix of ['', '/en']) {
+			await page.goto(`${localePrefix}/login`);
+			await expect(page.getByTestId('google-login')).toBeVisible();
+			await expect(page.locator('#login-password')).toBeVisible();
+			await expect(page.locator('a[href*="magic-link"]')).toHaveCount(0);
+			const response = await page.goto(`${localePrefix}/magic-link`);
+			expect(response?.status()).toBe(404);
+		}
 	});
 
 	for (const protectedRequest of [
@@ -97,11 +78,6 @@ test.describe('Authentication', () => {
 				email: 'turnstile-register@test.cz',
 				password: 'password123',
 			},
-		},
-		{
-			name: 'magic link',
-			path: '/api/auth/sign-in/magic-link',
-			data: { email: 'turnstile-magic@test.cz', callbackURL: '/my-lists' },
 		},
 		{
 			name: 'password reset request',

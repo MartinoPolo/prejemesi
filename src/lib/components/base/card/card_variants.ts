@@ -4,7 +4,7 @@ import type { HTMLAttributes } from 'svelte/elements';
 import { tv } from 'tailwind-variants';
 
 export const cardVariants = tv({
-	base: 'relative flex flex-col gap-6 bg-card text-card-foreground border-[2.5px] border-ink rounded-panel py-6 shadow-sticker transition-[translate,scale,box-shadow] duration-(--duration-normal) ease-(--ease-standard) delay-0 motion-reduce:transition-none motion-reduce:translate-y-0 motion-reduce:scale-100 motion-reduce:rotate-0',
+	base: 'elevation-ordinary relative flex flex-col gap-6 bg-card text-card-foreground border-[2.5px] border-ink rounded-panel py-6 transition-[translate,scale,box-shadow] duration-(--duration-normal) ease-(--ease-standard) delay-0 motion-reduce:transition-none motion-reduce:translate-y-0 motion-reduce:scale-100 motion-reduce:rotate-0',
 	variants: {
 		padding: {
 			none: '',
@@ -12,15 +12,15 @@ export const cardVariants = tv({
 		},
 		state: {
 			default: '',
-			hover: '-translate-y-1 shadow-sticker-lift',
+			hover: '-translate-y-1 elevation-lifted',
 			selected: 'border-primary',
 			focus: 'outline-2 outline-solid outline-offset-2 outline-ring',
-			dragging: '-rotate-1 scale-[1.02] shadow-sticker-lift cursor-grabbing opacity-[0.92]',
+			dragging: '-rotate-1 scale-[1.02] elevation-lifted cursor-grabbing opacity-[0.92]',
 			loading: 'relative overflow-hidden',
 			error: 'border-status-danger',
 			success: 'border-status-success',
 			archived: 'opacity-55',
-			disabled: 'opacity-45 pointer-events-none',
+			disabled: 'elevation-flat opacity-45 pointer-events-none',
 		},
 	},
 	defaultVariants: {

@@ -2,6 +2,7 @@
 	import { onDestroy } from 'svelte';
 	import CheckIcon from '@lucide/svelte/icons/check';
 	import { Button } from '$lib/components/base/button/index.js';
+	import type { ControlSize } from '$lib/components/base/control_sizing.js';
 	import * as m from '$lib/paraglide/messages.js';
 	import type { GiftForVisitor } from '$lib/modules/gifts/types.js';
 	import { cn } from '$lib/utils.js';
@@ -9,10 +10,11 @@
 	interface ReserveButtonProps {
 		gift: GiftForVisitor;
 		isArchived?: boolean;
-		size?: 'md' | 'sm';
+		size?: ControlSize;
 		/** Extra classes on the underlying Button (issue #211: stacking this button
 		 *  with PurchasedToggle at equal width needs a `w-full` from the caller). */
 		class?: string;
+		surfaceClass?: string;
 		onreserve?: (gift: GiftForVisitor) => void;
 		onunreserve?: (gift: GiftForVisitor) => void;
 	}
@@ -20,8 +22,9 @@
 	let {
 		gift,
 		isArchived = false,
-		size = 'sm',
+		size,
 		class: className,
+		surfaceClass,
 		onreserve,
 		onunreserve,
 	}: ReserveButtonProps = $props();
@@ -102,12 +105,13 @@
 			: m.reserve_button_reserve_aria({ name: gift.name })}
 		onclick={hasMyReservation ? handleUnreserveClick : handleReserveClick}
 		data-testid="reserve-button"
-		class={cn(
-			className,
+		surfaceClass={cn(
+			surfaceClass,
 			'duration-[160ms]',
 			showReservationAcknowledgement &&
-				'border-ink bg-status-success text-white hover:bg-[color-mix(in_oklab,var(--status-success)_86%,white)]',
+				'border-ink bg-status-success text-white group-hover:bg-[color-mix(in_oklab,var(--status-success)_86%,white)]',
 		)}
+		class={className}
 	>
 		<span
 			bind:this={contentElement}

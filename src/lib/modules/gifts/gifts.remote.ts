@@ -1,10 +1,11 @@
 import * as v from 'valibot';
-import { eq, and, isNull, sql, count as drizzleCount, inArray } from 'drizzle-orm';
-import { error } from '@sveltejs/kit';
+import { eq, and, isNull, sql, count as drizzleCount, inArray, ne, or } from 'drizzle-orm';
+import { error, isHttpError } from '@sveltejs/kit';
 import { getDb } from '$lib/server/db/index.js';
 import { gift, giftCategory, reservation, giftLike } from '$lib/server/db/gift.schema.js';
 import { wishlist, priorityLevel } from '$lib/server/db/wishlist.schema.js';
 import { user } from '$lib/server/db/auth.schema.js';
+import { moderatorAssignment } from '$lib/server/db/moderator.schema.js';
 import {
 	publicQuery,
 	guardedCommand,
@@ -51,10 +52,12 @@ import { appendGifts } from './gift_creation_service.js';
 import { mapGiftCreationError } from './gift_creation_transport.js';
 import { bulkGiftUpdateData, isBulkPresentationAction } from './gift_bulk_update.js';
 import { runBulkUpdateAfterRowsLockedHookForTest } from './gifts.remote.test-hook.js';
+import { BulkCopyGiftsInputSchema, copyGifts } from './gift_bulk_copy.js';
 import {
 	assertActiveGiftCategoryAssignment,
 	publicGiftCategory,
 } from '$lib/modules/gift-categories/gift_categories_service.js';
+import { getGiftCategorySettingsRows } from '$lib/modules/gift-categories/gift_category_queries.remote.js';
 
 export const getGiftsByWishlistShortId = publicQuery(v.string(), async (authContext, shortId) => {
 	const database = getDb();
@@ -323,9 +326,9 @@ export const createGift = guardedCommand(CreateGiftInputSchema, async ({ user },
 		error(500, SERVER_ERROR.FAILED_TO_CREATE_GIFT);
 	}
 
-	// Single-flight refresh (issue #108, REQ-3/4): only the gift list rides back —
-	// wishlist metadata, likes, and dashboards are not invalidated by a new gift.
+	// Gift creation changes both the visible list and category assignment counts.
 	singleFlightRefresh(getGiftsByWishlistShortId, wishlistRow.shortId);
+	singleFlightRefresh(getGiftCategorySettingsRows, input.wishlistId);
 
 	return created;
 });
@@ -479,6 +482,8 @@ export const updateGift = guardedCommand(UpdateGiftInputSchema, async ({ user },
 
 	const { role, wishlistRow } = await verifyManagerAccess(user.id, giftRow.wishlistId);
 	assertWishlistMutable(wishlistRow);
+	const didCategoryChange =
+		input.categoryId !== undefined && input.categoryId !== giftRow.categoryId;
 
 	// Cross-field guard on the MERGED row (issue #155): the wire schema only validates bounds present
 	// in the same payload, so a partial update carrying one bound must not invert the persisted range.
@@ -543,6 +548,9 @@ export const updateGift = guardedCommand(UpdateGiftInputSchema, async ({ user },
 		});
 
 		singleFlightRefresh(getGiftsByWishlistShortId, wishlistRow.shortId);
+		if (didCategoryChange) {
+			singleFlightRefresh(getGiftCategorySettingsRows, giftRow.wishlistId);
+		}
 
 		return updated;
 	}
@@ -610,7 +618,7 @@ export const updateGift = guardedCommand(UpdateGiftInputSchema, async ({ user },
 	}
 
 	const updated = await database.transaction(async (tx) => {
-		if (input.categoryId !== undefined && input.categoryId !== giftRow.categoryId) {
+		if (didCategoryChange) {
 			updateData.categoryId = await assertActiveGiftCategoryAssignment(
 				tx,
 				giftRow.wishlistId,
@@ -652,8 +660,11 @@ export const updateGift = guardedCommand(UpdateGiftInputSchema, async ({ user },
 		});
 	}
 
-	// Single-flight refresh (issue #108, REQ-3/4): only the gift list rides back.
+	// Keep both gift data and category assignment counts current after category moves.
 	singleFlightRefresh(getGiftsByWishlistShortId, wishlistRow.shortId);
+	if (didCategoryChange) {
+		singleFlightRefresh(getGiftCategorySettingsRows, giftRow.wishlistId);
+	}
 
 	return updated;
 });
@@ -712,8 +723,9 @@ export const deleteGift = guardedCommand(v.string(), async ({ user }, giftId) =>
 	// once the gift is deleted (no restore path exists) – drop the object.
 	await deleteObjectsBestEffort([giftRow.imageKey]);
 
-	// Single-flight refresh (issue #108, REQ-3/4): only the gift list rides back.
+	// Deletion changes both the visible list and category assignment counts.
 	singleFlightRefresh(getGiftsByWishlistShortId, wishlistRow.shortId);
+	singleFlightRefresh(getGiftCategorySettingsRows, giftRow.wishlistId);
 });
 
 export const reorderGifts = guardedCommand(
@@ -783,7 +795,45 @@ function bulkJsonbValue(value: unknown) {
 }
 
 function bulkTimestampValue(value: Date | null) {
-	return value === null ? sql`NULL::timestamptz` : sql`${value}::timestamptz`;
+	return value === null ? sql`NULL::timestamptz` : sql`${value.toISOString()}::timestamptz`;
+}
+
+type GiftTransaction = Parameters<Parameters<ReturnType<typeof getDb>['transaction']>[0]>[0];
+
+async function verifyBulkManagerAccess(
+	transaction: GiftTransaction,
+	userId: string,
+	wishlistId: string,
+) {
+	const wishlistRows = await transaction
+		.select()
+		.from(wishlist)
+		.where(and(eq(wishlist.id, wishlistId), isNull(wishlist.deletedAt)))
+		.for('update');
+	const wishlistRow = wishlistRows[0];
+	if (wishlistRow === undefined) {
+		error(404, SERVER_ERROR.WISHLIST_NOT_FOUND);
+	}
+
+	if (wishlistRow.recipientUserId === userId) {
+		return { role: WISHLIST_ROLES.recipient, wishlistRow };
+	}
+
+	const assignments = await transaction
+		.select({ id: moderatorAssignment.id })
+		.from(moderatorAssignment)
+		.where(
+			and(
+				eq(moderatorAssignment.wishlistId, wishlistId),
+				eq(moderatorAssignment.userId, userId),
+				isNull(moderatorAssignment.deletedAt),
+			),
+		)
+		.for('update');
+	if (assignments[0] === undefined) {
+		error(403, SERVER_ERROR.ACCESS_DENIED);
+	}
+	return { role: WISHLIST_ROLES.moderator, wishlistRow };
 }
 
 export const bulkUpdateGifts = guardedCommand(
@@ -791,10 +841,14 @@ export const bulkUpdateGifts = guardedCommand(
 	async ({ user }, input) => {
 		const database = getDb();
 		const uniqueGiftIds = [...new Set(input.giftIds)];
-		const { role, wishlistRow } = await verifyManagerAccess(user.id, input.wishlistId);
-		assertWishlistMutable(wishlistRow);
 
 		const result = await database.transaction(async (tx) => {
+			const { role, wishlistRow } = await verifyBulkManagerAccess(
+				tx,
+				user.id,
+				input.wishlistId,
+			);
+			assertWishlistMutable(wishlistRow);
 			if (input.action === 'priority' && input.priorityLevelId !== null) {
 				const levels = await tx
 					.select({ id: priorityLevel.id })
@@ -805,7 +859,7 @@ export const bulkUpdateGifts = guardedCommand(
 							eq(priorityLevel.wishlistId, input.wishlistId),
 						),
 					)
-					.limit(1);
+					.for('key share');
 				if (levels[0] === undefined) {
 					error(400, SERVER_ERROR.GIFT_PRIORITY_WISHLIST_MISMATCH);
 				}
@@ -950,10 +1004,12 @@ export const bulkUpdateGifts = guardedCommand(
 				updatedIds: updatedRows.map((row) => row.id),
 				priorReceived: Object.fromEntries(rows.map((row) => [row.id, row.received])),
 				changedPresentationRows,
+				role,
+				wishlistRow,
 			};
 		});
 
-		if (role === WISHLIST_ROLES.moderator) {
+		if (result.role === WISHLIST_ROLES.moderator) {
 			await notifyReserversOfEditedGiftsBestEffort({
 				database,
 				changedGifts: result.changedPresentationRows.map((changedGift) => ({
@@ -963,11 +1019,17 @@ export const bulkUpdateGifts = guardedCommand(
 				})),
 				actorId: user.id,
 				actorName: user.name,
-				wishlist: { title: wishlistRow.title, shortId: wishlistRow.shortId },
+				wishlist: {
+					title: result.wishlistRow.title,
+					shortId: result.wishlistRow.shortId,
+				},
 			});
 		}
 
-		await singleFlightRefresh(getGiftsByWishlistShortId, wishlistRow.shortId);
+		await singleFlightRefresh(getGiftsByWishlistShortId, result.wishlistRow.shortId);
+		if (input.action === 'category') {
+			await singleFlightRefresh(getGiftCategorySettingsRows, input.wishlistId);
+		}
 		return { updatedIds: result.updatedIds, priorReceived: result.priorReceived };
 	},
 );
@@ -1005,6 +1067,59 @@ export const markGiftReceived = guardedCommand(
 		return updated;
 	},
 );
+
+/** Eligible non-archived destinations managed by the current actor. */
+export const getBulkCopyDestinations = guardedQueryWithArgs(
+	v.string(),
+	async ({ user: currentUser }, sourceWishlistId) => {
+		await verifyManagerAccess(currentUser.id, sourceWishlistId);
+		const database = getDb();
+		return database
+			.selectDistinct({
+				id: wishlist.id,
+				title: wishlist.title,
+				status: wishlist.status,
+				recipientDisplayName: sql<string>`coalesce(${wishlist.recipientName}, ${user.name})`,
+			})
+			.from(wishlist)
+			.leftJoin(user, eq(user.id, wishlist.recipientUserId))
+			.leftJoin(
+				moderatorAssignment,
+				and(
+					eq(moderatorAssignment.wishlistId, wishlist.id),
+					eq(moderatorAssignment.userId, currentUser.id),
+					isNull(moderatorAssignment.deletedAt),
+				),
+			)
+			.where(
+				and(
+					ne(wishlist.id, sourceWishlistId),
+					ne(wishlist.status, 'archived'),
+					isNull(wishlist.deletedAt),
+					or(
+						eq(wishlist.recipientUserId, currentUser.id),
+						eq(moderatorAssignment.userId, currentUser.id),
+					),
+				),
+			)
+			.orderBy(wishlist.title);
+	},
+);
+
+export const bulkCopyGifts = guardedCommand(BulkCopyGiftsInputSchema, async ({ user }, input) => {
+	try {
+		const result = await copyGifts(user.id, input);
+		singleFlightRefresh(getGiftsByWishlistShortId, result.destinationShortId);
+		singleFlightRefresh(getGiftCategorySettingsRows, input.destinationWishlistId);
+		return { createdIds: result.created.map((created) => created.id) };
+	} catch (thrown) {
+		if (isHttpError(thrown)) {
+			throw thrown;
+		}
+		console.error('[Bulk gift copy] failed', thrown);
+		error(500, SERVER_ERROR.BULK_COPY_FAILED);
+	}
+});
 
 /** Fetch priority levels for a wishlist */
 export const getPriorityLevels = guardedQueryWithArgs(v.string(), async ({ user }, wishlistId) => {
