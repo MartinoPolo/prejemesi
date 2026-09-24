@@ -298,6 +298,10 @@
 
 <header class="topbar">
 	<div class="topbar-inner">
+		{#if user}
+			<MobileNav navLinks={MOBILE_NAV_LINKS} oncreate={() => (isCreateModalOpen = true)} />
+		{/if}
+
 		<!-- Logo -->
 		<LogoMark />
 
@@ -367,11 +371,6 @@
 		<!-- Right controls -->
 		<div data-testid="navbar-actions" class="nav-right">
 			{#if user}
-				<MobileNav
-					navLinks={MOBILE_NAV_LINKS}
-					oncreate={() => (isCreateModalOpen = true)}
-				/>
-
 				<!-- Create CTA -->
 				<Button
 					intent="primary"
@@ -497,7 +496,13 @@
 
 	@media (width < 640px) {
 		.topbar-inner {
-			gap: 0;
+			gap: var(--space-2);
+		}
+	}
+
+	@media (width <= 340px) {
+		.topbar-inner {
+			gap: var(--space-1);
 		}
 	}
 </style>
