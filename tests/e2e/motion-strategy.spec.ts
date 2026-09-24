@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 import { createTestUser } from './fixtures/test-data.js';
 import { registerAndGetPage } from './fixtures/auth-helpers.js';
 import {
@@ -17,13 +17,25 @@ function giftItem(page: Page, name: string) {
 	});
 }
 
+async function closeDesktopDisplaySubmenu(page: Page, submenu: Locator, section: RegExp) {
+	const root = page.locator('[data-slot="dropdown-menu-content"][data-state="open"]');
+	const subTrigger = root.getByRole('menuitem', { name: section });
+	await page.keyboard.press('Escape');
+	await expect(submenu).not.toBeVisible();
+	await expect(subTrigger).toBeFocused();
+	await page.keyboard.press('Escape');
+	const displayTrigger = page.getByTestId('desktop-display-trigger');
+	await expect(displayTrigger).toHaveAttribute('aria-expanded', 'false');
+	await expect(displayTrigger).toBeFocused();
+}
+
 async function chooseDesktopDisplayOption(page: Page, section: RegExp, option: RegExp) {
 	const submenu = await openDesktopDisplaySubmenu(page, section);
 	const item = submenu.getByRole('menuitemradio', { name: option });
 	await item.focus();
 	await item.press('Enter');
-	await page.keyboard.press('Escape');
-	await page.keyboard.press('Escape');
+	await expect(item).toHaveAttribute('aria-checked', 'true');
+	await closeDesktopDisplaySubmenu(page, submenu, section);
 }
 
 async function enableDesktopWithLinkFilter(page: Page) {
@@ -31,8 +43,8 @@ async function enableDesktopWithLinkFilter(page: Page) {
 	const item = submenu.getByRole('menuitemcheckbox', { name: 'S odkazem', exact: true });
 	await item.focus();
 	await item.press('Enter');
-	await page.keyboard.press('Escape');
-	await page.keyboard.press('Escape');
+	await expect(item).toHaveAttribute('aria-checked', 'true');
+	await closeDesktopDisplaySubmenu(page, submenu, /^Filtrovat/);
 }
 
 interface TransformAnimationRecorder {
