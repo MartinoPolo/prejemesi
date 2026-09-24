@@ -104,9 +104,11 @@
 		hideReservationState || role === WISHLIST_ROLES.recipient,
 	);
 	const showPriority = $derived(grouping !== 'priority');
-
 	const STANDARD_EASING = 'cubic-bezier(0.2, 0.7, 0.3, 1)';
 	let displayedViewMode = $state(untrack(() => viewMode));
+	const ImageGiftView = $derived(
+		displayedViewMode === 'card' ? WishlistGiftCardGrid : WishlistGiftListView,
+	);
 	let collectionElement = $state<HTMLElement | null>(null);
 	let motionHost = $state<HTMLElement | null>(null);
 	let motion: ReturnType<typeof createGiftCollectionMotion> | null = null;
@@ -301,6 +303,71 @@
 	});
 </script>
 
+{#snippet giftCollection()}
+	<ContextMenu.Trigger
+		disabled={displayedViewMode === 'compact' || selectionMode || collectionIsOutgoing}
+	>
+		{#snippet child({ props: triggerProps })}
+			<div
+				{...triggerProps}
+				style={undefined}
+				bind:this={collectionElement}
+				use:giftCardCollectionLayout
+				data-wishlist-gift-collection
+				data-view-mode={displayedViewMode}
+				inert={collectionIsOutgoing}
+				aria-hidden={collectionIsOutgoing ? true : undefined}
+				class="relative z-(--z-base)"
+				role={selectionMode ? 'group' : undefined}
+				aria-label={selectionMode ? m.gift_selection_listbox_label() : undefined}
+			>
+				{#if displayedViewMode !== 'compact'}
+					<ImageGiftView
+						{hascontextactions}
+						{activeContextGiftId}
+						{contextSurface}
+						{sections}
+						{role}
+						{showPriority}
+						{isArchived}
+						hideReservationState={reservationStateHidden}
+						reorderEnabled={reorderMode &&
+							reorderInteractionEnabled &&
+							canManage &&
+							!isArchived &&
+							!selectionMode}
+						{selectionMode}
+						{onselectiontoggle}
+						{oncontextactions}
+						{onedit}
+						{onreserve}
+						{onunreserve}
+						{onreceived}
+						{receivedPendingGiftIds}
+						{onreorderpreview}
+						{onreordercommit}
+						{onreordercancel}
+					/>
+				{:else}
+					<WishlistGiftCompactTable
+						{sections}
+						{role}
+						{showPriority}
+						{isArchived}
+						hideReservationState={reservationStateHidden}
+						{canManage}
+						{onedit}
+						{onreserve}
+						{onunreserve}
+						{onreceived}
+						{receivedPendingGiftIds}
+					/>
+				{/if}
+			</div>
+		{/snippet}
+	</ContextMenu.Trigger>
+{/snippet}
+
 <ContextMenu.Root
 	bind:open={nativeContextOpen}
 	onOpenChange={(open) => {
@@ -334,95 +401,7 @@
 				{onclearfilters}
 			/>
 		{:else}
-			<ContextMenu.Trigger
-				disabled={displayedViewMode === 'compact' || selectionMode || collectionIsOutgoing}
-			>
-				{#snippet child({ props: triggerProps })}
-					<div
-						{...triggerProps}
-						style={undefined}
-						bind:this={collectionElement}
-						use:giftCardCollectionLayout
-						data-wishlist-gift-collection
-						data-view-mode={displayedViewMode}
-						inert={collectionIsOutgoing}
-						aria-hidden={collectionIsOutgoing ? true : undefined}
-						class="relative z-(--z-base)"
-						role={selectionMode ? 'group' : undefined}
-						aria-label={selectionMode ? m.gift_selection_listbox_label() : undefined}
-					>
-						{#if displayedViewMode === 'card'}
-							<WishlistGiftCardGrid
-								{hascontextactions}
-								{activeContextGiftId}
-								{contextSurface}
-								{sections}
-								{role}
-								{showPriority}
-								{isArchived}
-								hideReservationState={reservationStateHidden}
-								reorderEnabled={reorderMode &&
-									reorderInteractionEnabled &&
-									canManage &&
-									!isArchived &&
-									!selectionMode}
-								{selectionMode}
-								{onselectiontoggle}
-								{oncontextactions}
-								{onedit}
-								{onreserve}
-								{onunreserve}
-								{onreceived}
-								{receivedPendingGiftIds}
-								{onreorderpreview}
-								{onreordercommit}
-								{onreordercancel}
-							/>
-						{:else if displayedViewMode === 'list'}
-							<WishlistGiftListView
-								{hascontextactions}
-								{activeContextGiftId}
-								{contextSurface}
-								{sections}
-								{role}
-								{showPriority}
-								{isArchived}
-								hideReservationState={reservationStateHidden}
-								reorderEnabled={reorderMode &&
-									reorderInteractionEnabled &&
-									canManage &&
-									!isArchived &&
-									!selectionMode}
-								{selectionMode}
-								{onselectiontoggle}
-								{oncontextactions}
-								{onedit}
-								{onreserve}
-								{onunreserve}
-								{onreceived}
-								{receivedPendingGiftIds}
-								{onreorderpreview}
-								{onreordercommit}
-								{onreordercancel}
-							/>
-						{:else}
-							<WishlistGiftCompactTable
-								{sections}
-								{role}
-								{showPriority}
-								{isArchived}
-								hideReservationState={reservationStateHidden}
-								{canManage}
-								{onedit}
-								{onreserve}
-								{onunreserve}
-								{onreceived}
-								{receivedPendingGiftIds}
-							/>
-						{/if}
-					</div>
-				{/snippet}
-			</ContextMenu.Trigger>
+			{@render giftCollection()}
 		{/if}
 	</div>
 	{#if contextContent}{@render contextContent()}{/if}

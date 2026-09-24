@@ -147,11 +147,13 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 			await page.viewport(width, 720);
 			await nextLayout();
 			cards = Array.from(document.querySelectorAll<HTMLElement>('[data-gift-item]'));
-			const firstRect = cards[0]!.getBoundingClientRect();
-			const secondRect = cards[1]!.getBoundingClientRect();
-			expectPixelsNear(secondRect.top, firstRect.top);
-			expectPixelsNear(secondRect.width, firstRect.width);
-			expectPixelsNear(secondRect.left - firstRect.right, 8);
+			await vi.waitFor(() => {
+				const firstRect = cards[0]!.getBoundingClientRect();
+				const secondRect = cards[1]!.getBoundingClientRect();
+				expectPixelsNear(secondRect.top, firstRect.top);
+				expectPixelsNear(secondRect.width, firstRect.width);
+				expectPixelsNear(secondRect.left - firstRect.right, 8);
+			});
 			expectPixelsAtMost(document.documentElement.scrollWidth, width);
 		}
 		await screen.unmount();

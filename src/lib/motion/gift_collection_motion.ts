@@ -34,22 +34,26 @@ function intersectsViewport(rectangle: Rectangle, viewport: Window | null): bool
 	);
 }
 
+function clippedByAncestor(
+	rectangle: Rectangle,
+	bounds: DOMRect,
+	clipsX: boolean,
+	clipsY: boolean,
+): boolean {
+	return (
+		(clipsX &&
+			(rectangle.left + rectangle.width <= bounds.left || rectangle.left >= bounds.right)) ||
+		(clipsY &&
+			(rectangle.top + rectangle.height <= bounds.top || rectangle.top >= bounds.bottom))
+	);
+}
+
 function visible(
 	element: HTMLElement,
 	rectangle: Rectangle,
 	clipCache: Map<HTMLElement, { bounds: DOMRect; clipsX: boolean; clipsY: boolean } | null>,
 ): boolean {
-	const view = element.ownerDocument.defaultView;
-	if (
-		!element.isConnected ||
-		!view ||
-		rectangle.width <= 0 ||
-		rectangle.height <= 0 ||
-		rectangle.left + rectangle.width <= 0 ||
-		rectangle.top + rectangle.height <= 0 ||
-		rectangle.left >= view.innerWidth ||
-		rectangle.top >= view.innerHeight
-	) {
+	if (!element.isConnected || !intersectsViewport(rectangle, element.ownerDocument.defaultView)) {
 		return false;
 	}
 	const style = getComputedStyle(element);
@@ -71,14 +75,7 @@ function visible(
 		if (!clip) {
 			continue;
 		}
-		const { bounds, clipsX, clipsY } = clip;
-		if (
-			(clipsX &&
-				(rectangle.left + rectangle.width <= bounds.left ||
-					rectangle.left >= bounds.right)) ||
-			(clipsY &&
-				(rectangle.top + rectangle.height <= bounds.top || rectangle.top >= bounds.bottom))
-		) {
+		if (clippedByAncestor(rectangle, clip.bounds, clip.clipsX, clip.clipsY)) {
 			return false;
 		}
 	}
@@ -110,13 +107,21 @@ function cloneGift(element: HTMLElement): HTMLElement {
 	return clone;
 }
 
-function candidates(host: HTMLElement): HTMLElement[] {
-	const elements = [...host.querySelectorAll<HTMLElement>('[data-gift-item][data-gift-id]')];
-	const view = host.ownerDocument.defaultView;
-	if (!view || elements.length <= LAYOUT_GIFT_MOTION_LIMIT) {
-		return elements;
+function midpointIndex(elements: HTMLElement[], view: Window): number {
+	let lower = 0;
+	let upper = elements.length - 1;
+	while (lower < upper) {
+		const middle = Math.floor((lower + upper) / 2);
+		if (elements[middle]!.getBoundingClientRect().bottom < view.innerHeight / 2) {
+			lower = middle + 1;
+		} else {
+			upper = middle;
+		}
 	}
-	// Sample the viewport rather than measuring every item in an unpaginated wishlist.
+	return lower;
+}
+
+function sampledGiftIndices(host: HTMLElement, elements: HTMLElement[], view: Window): number[] {
 	const indices: number[] = [];
 	for (const y of [1 / 6, 1 / 2, 5 / 6]) {
 		for (const x of [1 / 6, 1 / 2, 5 / 6]) {
@@ -133,21 +138,18 @@ function candidates(host: HTMLElement): HTMLElement[] {
 			}
 		}
 	}
-	indices.sort((left, right) => left - right);
-	let index = indices[Math.floor(indices.length / 2)];
-	if (index === undefined) {
-		let lower = 0;
-		let upper = elements.length - 1;
-		while (lower < upper) {
-			const middle = Math.floor((lower + upper) / 2);
-			if (elements[middle]!.getBoundingClientRect().bottom < view.innerHeight / 2) {
-				lower = middle + 1;
-			} else {
-				upper = middle;
-			}
-		}
-		index = lower;
+	return indices.sort((left, right) => left - right);
+}
+
+function candidates(host: HTMLElement): HTMLElement[] {
+	const elements = [...host.querySelectorAll<HTMLElement>('[data-gift-item][data-gift-id]')];
+	const view = host.ownerDocument.defaultView;
+	if (!view || elements.length <= LAYOUT_GIFT_MOTION_LIMIT) {
+		return elements;
 	}
+	// Sample the viewport rather than measuring every item in an unpaginated wishlist.
+	const indices = sampledGiftIndices(host, elements, view);
+	const index = indices[Math.floor(indices.length / 2)] ?? midpointIndex(elements, view);
 	const start = Math.min(
 		Math.max(0, index - Math.floor(LAYOUT_GIFT_MOTION_LIMIT / 2)),
 		elements.length - LAYOUT_GIFT_MOTION_LIMIT,
@@ -249,6 +251,41 @@ export function createGiftCollectionMotion(
 		return ancestors;
 	}
 
+	function captureGifts(withClones: boolean, endpoints: boolean): Map<string, GiftPosition> {
+		const gifts = new Map<string, GiftPosition>();
+		const clipCache = new Map<
+			HTMLElement,
+			{ bounds: DOMRect; clipsX: boolean; clipsY: boolean } | null
+		>();
+		for (const element of candidates(host)) {
+			const id = element.dataset.giftId;
+			if (
+				id === undefined ||
+				id === '' ||
+				element.hasAttribute('data-gift-motion-dragging')
+			) {
+				continue;
+			}
+			const rendered = element.getBoundingClientRect();
+			const rectangle = endpoints ? layoutRectangle(element, rendered) : rendered;
+			if (!visible(element, rectangle, clipCache)) {
+				continue;
+			}
+			gifts.set(id, {
+				element,
+				rectangle: {
+					left: rectangle.left,
+					top: rectangle.top,
+					width: rectangle.width,
+					height: rectangle.height,
+				},
+				clone: withClones ? cloneGift(element) : null,
+				scrollAncestors: captureScrollAncestors(element),
+			});
+		}
+		return gifts;
+	}
+
 	function measure(withClones = false, endpoints = false): Snapshot {
 		const bar = toolbar(host);
 		const revealToolbarLayout = endpoints && toolbarAnimation !== null && bar !== null;
@@ -258,39 +295,8 @@ export function createGiftCollectionMotion(
 			bar.style.setProperty('height', 'auto', 'important');
 		}
 		try {
-			const gifts = new Map<string, GiftPosition>();
-			const clipCache = new Map<
-				HTMLElement,
-				{ bounds: DOMRect; clipsX: boolean; clipsY: boolean } | null
-			>();
-			for (const element of candidates(host)) {
-				const id = element.dataset.giftId;
-				if (
-					id === undefined ||
-					id === '' ||
-					element.hasAttribute('data-gift-motion-dragging')
-				) {
-					continue;
-				}
-				const rendered = element.getBoundingClientRect();
-				const rectangle = endpoints ? layoutRectangle(element, rendered) : rendered;
-				if (!visible(element, rectangle, clipCache)) {
-					continue;
-				}
-				gifts.set(id, {
-					element,
-					rectangle: {
-						left: rectangle.left,
-						top: rectangle.top,
-						width: rectangle.width,
-						height: rectangle.height,
-					},
-					clone: withClones ? cloneGift(element) : null,
-					scrollAncestors: captureScrollAncestors(element),
-				});
-			}
 			return {
-				gifts,
+				gifts: captureGifts(withClones, endpoints),
 				toolbarHeight:
 					bar?.isConnected === true ? bar.getBoundingClientRect().height : null,
 			};
@@ -364,10 +370,7 @@ export function createGiftCollectionMotion(
 		return clone;
 	}
 
-	function play(previous: Snapshot, next: Snapshot) {
-		if (reducedMotion() || suspended) {
-			return;
-		}
+	function animateToolbar(previous: Snapshot, next: Snapshot) {
 		const bar = toolbar(host);
 		if (
 			bar !== null &&
@@ -385,10 +388,13 @@ export function createGiftCollectionMotion(
 				giftMotionDuration(Math.abs(next.toolbarHeight - previous.toolbarHeight)),
 			);
 		}
+	}
+
+	function animateArrivals(previous: Snapshot, next: Snapshot) {
 		for (const [id, destination] of next.gifts) {
-			const source = previous.gifts.get(id);
-			const override = overrides.get(id);
-			const sourceRectangle = overrides.has(id) ? override : source?.rectangle;
+			const sourceRectangle = overrides.has(id)
+				? overrides.get(id)
+				: previous.gifts.get(id)?.rectangle;
 			const start =
 				sourceRectangle !== undefined &&
 				sourceRectangle !== null &&
@@ -439,6 +445,9 @@ export function createGiftCollectionMotion(
 				),
 			);
 		}
+	}
+
+	function animateDepartures(previous: Snapshot, next: Snapshot) {
 		for (const [id, source] of previous.gifts) {
 			if (
 				next.gifts.has(id) ||
@@ -459,6 +468,15 @@ export function createGiftCollectionMotion(
 				retained,
 			);
 		}
+	}
+
+	function play(previous: Snapshot, next: Snapshot) {
+		if (reducedMotion() || suspended) {
+			return;
+		}
+		animateToolbar(previous, next);
+		animateArrivals(previous, next);
+		animateDepartures(previous, next);
 	}
 
 	function observe() {
@@ -626,6 +644,29 @@ export function createGiftCollectionMotion(
 		queueMicrotask(schedule);
 	}
 
+	function shiftSnapshot(
+		snapshot: Snapshot | null,
+		target: HTMLElement,
+		deltaX: number,
+		deltaY: number,
+	) {
+		if (snapshot === null) {
+			return;
+		}
+		for (const [id, position] of snapshot.gifts) {
+			if (position.scrollAncestors.includes(target)) {
+				snapshot.gifts.set(id, {
+					...position,
+					rectangle: {
+						...position.rectangle,
+						left: position.rectangle.left - deltaX,
+						top: position.rectangle.top - deltaY,
+					},
+				});
+			}
+		}
+	}
+
 	function onScroll(event: Event) {
 		const target =
 			event.target === host.ownerDocument
@@ -641,23 +682,8 @@ export function createGiftCollectionMotion(
 		const deltaX = target.scrollLeft - previous.left;
 		const deltaY = target.scrollTop - previous.top;
 		scrollPositions.set(target, { left: target.scrollLeft, top: target.scrollTop });
-		for (const snapshot of [baseline, pending]) {
-			if (snapshot === null) {
-				continue;
-			}
-			for (const [id, position] of snapshot.gifts) {
-				if (position.scrollAncestors.includes(target)) {
-					snapshot.gifts.set(id, {
-						...position,
-						rectangle: {
-							...position.rectangle,
-							left: position.rectangle.left - deltaX,
-							top: position.rectangle.top - deltaY,
-						},
-					});
-				}
-			}
-		}
+		shiftSnapshot(baseline, target, deltaX, deltaY);
+		shiftSnapshot(pending, target, deltaX, deltaY);
 		if (pending === null && !suspended) {
 			const previousBaseline = baseline;
 			baseline = measure(false, true);

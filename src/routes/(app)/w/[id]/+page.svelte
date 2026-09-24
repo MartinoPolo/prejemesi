@@ -1324,6 +1324,26 @@
 		}
 	}
 
+	function restoreReceivedActionFocus(
+		root: HTMLElement,
+		giftId: string,
+		invokingControl: Element | null,
+	) {
+		if (
+			invokingControl === null ||
+			(document.activeElement !== invokingControl && document.activeElement !== document.body)
+		) {
+			return;
+		}
+		const destinationAction = findGiftElement(root, giftId)?.querySelector<HTMLElement>(
+			'[data-gift-received-action]',
+		);
+		const fallback = root.querySelector<HTMLElement>(
+			'[data-testid="wishlist-toolbar"] button:not(:disabled)',
+		);
+		(destinationAction ?? fallback)?.focus({ preventScroll: true });
+	}
+
 	async function settleReceivedGift(
 		root: HTMLElement | null,
 		giftId: string,
@@ -1337,18 +1357,7 @@
 		if (root?.isConnected !== true || shortId !== receivingWishlistId) {
 			return;
 		}
-		if (
-			invokingControl !== null &&
-			(document.activeElement === invokingControl || document.activeElement === document.body)
-		) {
-			const destinationAction = findGiftElement(root, giftId)?.querySelector<HTMLElement>(
-				'[data-gift-received-action]',
-			);
-			const fallback = root.querySelector<HTMLElement>(
-				'[data-testid="wishlist-toolbar"] button:not(:disabled)',
-			);
-			(destinationAction ?? fallback)?.focus({ preventScroll: true });
-		}
+		restoreReceivedActionFocus(root, giftId, invokingControl);
 		announceReceivedIfCurrent(root, receivingWishlistId, giftName, received);
 	}
 
