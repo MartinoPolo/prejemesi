@@ -394,10 +394,6 @@ sections for UI work. Historical reconciliation and review notes are in
   17 px, dense utility 14 px. Labels/help use 12 px muted text, with semibold labels and shared
   HelpText; `muted-foreground` is the single secondary-text role, not parallel subtle/ink-soft
   aliases.
-- 2026-08-28: Motion represents visible continuity: only attached, rendered, nonzero elements
-  visible before and after can supply travel coordinates. Filter insertion/removal appears at final
-  coordinates with at most opacity; displaced visible siblings may FLIP, and cross-section travel
-  requires the same gift visibly moving between visible sections.
 - 2026-09-05: Dropdowns/submenus use always-sticky viewport containment, an 8 px collision margin,
   viewport-only height cap, and internal scrolling. The narrow Bits UI patch flips before
   unrestricted two-axis shift only for always-sticky layers; do not change partial-sticky behavior
@@ -439,11 +435,6 @@ sections for UI work. Historical reconciliation and review notes are in
   stationary, nested controls aligned with their visible hit targets, and lower-edge hover stable.
   Preserve existing motion timing, reduced-motion handling, and eligibility; do not add whole-card
   lift to flat List/Compact or ineligible dimmed states as part of this correction.
-- 2026-09-14: Filter/sort/group changes must share the existing visible-identity reposition motion
-  in Grid and List, with stale-run cancellation and reduced-motion handling. Keep Compact updates
-  immediate and preserve the separate Grid/List crossfade, Compact view-switch behavior, drag,
-  received-gift flight, and hover effects; this enhancement does not redesign those transitions.
-
 - 2026-09-16: Dark palettes use near-charcoal page backgrounds, restrained hue-tinted surfaces, and
   darker primary fills with readable white labels; preserve light palettes and existing palette
   identities. Use `brand` for colored text/icons on dark surfaces and reserve `primary` with
@@ -460,6 +451,14 @@ sections for UI work. Historical reconciliation and review notes are in
 - 2026-09-23: Gift actions use full ink for positive Received/Bought actions and primary for
   Reserve. Explicit reversals use the shared red outline with readable semantic text and an undo
   icon; Like remains neutral, and solid red remains reserved for destructive actions.
+- 2026-09-24: Gift movement within Card, List and Compact shares visible-identity coordination for
+  actions, refreshed data, filtering/sorting/grouping, responsive reflow and reorder settling.
+  Travel requires the same gift to have rendered, viewport-visible endpoints; an unknown endpoint
+  uses a stationary fade with subtle scale, while surviving siblings move concurrently. Use the
+  shared received-flight timing: minimum 325 ms, maximum average translation speed 1500 CSS px/s, no
+  duration cap. Preserve reduced-motion handling, existing view-switch effects and hover behavior;
+  active dragging follows the pointer without a speed limit. Interrupted runs must hand off from
+  their current visual positions without leaking overlays or stealing focus.
 
 ## Images & cropping
 

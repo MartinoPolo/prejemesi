@@ -46,17 +46,14 @@ None.
   received styling unchanged.
 - Use stable gift IDs. Capture only attached, rendered elements with non-zero rectangles, update the
   Svelte state after `tick()`, then FLIP only identities with valid visible rectangles in both states.
-- Filter-only insertions and removals enter or exit at their final coordinates, with at most opacity;
-  they never receive translate/FLIP movement from a missing or zero-size rectangle.
-- The visible desktop path uses the retained gift element or an inert visual clone above the grid
-  for at least 650 ms only when the same identity moves between two visible sections. Longer routes
-  extend to keep average translation velocity at or below 750 CSS px/s, with no duration cap. Other
-  continuously visible, genuinely displaced gifts use 520 ms FLIP transforms concurrently.
-- The hidden path fades/scales the gift for 340 ms while its grid slot remains reserved, removes it,
-  then runs the 520 ms sibling FLIP. Do not insert a banner or status row.
+- The current gift-motion contract supersedes this study's original timing and view exclusions;
+  see [DECISIONS.md](../../.mpx/DECISIONS.md#visual-design--component-conventions). Within Card,
+  List and Compact, actions and layout changes share identity-based movement with distance-based
+  timing. Unknown endpoints fade with subtle scale in place; surviving siblings move concurrently.
+  Never derive travel from a missing, zero-size or offscreen endpoint.
 - Announce completion through the existing polite live region. Keep undo in a stable control area.
-- Focus the moved gift’s reverse action with `preventScroll`. If the gift is hidden, restore focus to
-  the stable scenario/action trigger.
+- Preserve focus on the initiating gift's reverse action with `preventScroll` when its control is
+  displaced; use a stable fallback if hidden. Background updates must not steal focus.
 - Card/list switching uses Variant B’s fade-out, geometry replacement after `tick()`, and fade-in
   sequence. Reservation, wizard, and like feedback use the Variant A treatment.
 - Apply the same cancel-safe and reduced-motion rules to the three approved list-motion demos:

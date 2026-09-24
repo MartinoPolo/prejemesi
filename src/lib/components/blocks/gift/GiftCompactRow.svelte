@@ -71,6 +71,8 @@
 </script>
 
 <tr
+	data-gift-item
+	data-gift-id={gift.id}
 	class={cn(
 		'h-10 border-b border-border transition-colors hover:bg-muted/50',
 		(isFullyReserved || gift.received) && 'opacity-55 grayscale-50',
