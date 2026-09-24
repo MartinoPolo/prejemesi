@@ -17,7 +17,7 @@
 	data-testid="gift-list-square-composition"
 >
 	<GiftImage
-		class="size-full rounded-l-[calc(var(--radius-panel)-var(--nested-border-inline))] rounded-r-none max-sm:[&_img]:p-0"
+		class="size-full rounded-none max-sm:[&_img]:p-0"
 		{imageUrl}
 		{imageMeta}
 		target="thumb"

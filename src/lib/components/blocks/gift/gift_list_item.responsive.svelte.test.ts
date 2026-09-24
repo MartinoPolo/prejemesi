@@ -1,6 +1,7 @@
 import '../../../../app.css';
 import { describe, expect, it, vi } from 'vitest';
 import { page } from 'vitest/browser';
+import { tick } from 'svelte';
 import { render } from 'vitest-browser-svelte';
 import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
 import { WISHLIST_ROLES } from '$lib/modules/wishlists/types.js';
@@ -129,6 +130,141 @@ describe('GiftListItem responsive image dimensions (issues #328 and #336)', () =
 		expect(getComputedStyle(renderedImage).objectPosition).toBe('23% 67%');
 		expect(renderedImage.style.transform).toContain('scale(1.8)');
 		host.remove();
+	});
+
+	it.each([390, 800])('clips list images at the bordered row corners at %d px', async (width) => {
+		await page.viewport(width, 720);
+		const opaqueImage = `data:image/svg+xml,${encodeURIComponent(
+			'<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256"><rect width="256" height="256" fill="#315b7d"/></svg>',
+		)}`;
+		for (const { label, imageUrl, isFullyReserved } of [
+			{ label: 'photo', imageUrl: opaqueImage, isFullyReserved: false },
+			{ label: 'placeholder', imageUrl: null, isFullyReserved: false },
+			{ label: 'dimmed photo', imageUrl: opaqueImage, isFullyReserved: true },
+			{ label: 'dimmed placeholder', imageUrl: null, isFullyReserved: true },
+		]) {
+			const host = await renderItem(
+				makeVisitorGift({ imageUrl, isFullyReserved, myReservationId: null }),
+				WISHLIST_ROLES.visitor,
+				null,
+				width - 24,
+			);
+			try {
+				const item = host.querySelector<HTMLElement>('[data-testid="gift-list-item"]')!;
+				const image = host.querySelector<HTMLElement>('[data-testid="gift-list-image"]')!;
+				const veil = image.querySelector('[data-testid="gift-reserved-veil"]');
+				if (imageUrl !== null) {
+					const photograph = image.querySelector('img');
+					if (!photograph) {
+						throw new Error('Photo fixture must render an image');
+					}
+					await photograph.decode();
+					await tick();
+					expect(photograph.naturalWidth).toBe(256);
+				}
+				const itemStyle = getComputedStyle(item);
+				const imageStyle = getComputedStyle(image);
+				const [outerInlineRadius, outerBlockRadius = outerInlineRadius] =
+					itemStyle.borderTopLeftRadius.split(' ').map(Number.parseFloat);
+				const expectedInlineRadius = Math.max(
+					0,
+					outerInlineRadius - Number.parseFloat(itemStyle.borderLeftWidth),
+				);
+				const expectedBlockRadius = Math.max(
+					0,
+					outerBlockRadius - Number.parseFloat(itemStyle.borderTopWidth),
+				);
+				const [inlineRadius, blockRadius = inlineRadius] = imageStyle.borderTopLeftRadius
+					.split(' ')
+					.map(Number.parseFloat);
+				const [bottomInlineRadius, bottomBlockRadius = bottomInlineRadius] =
+					imageStyle.borderBottomLeftRadius.split(' ').map(Number.parseFloat);
+				const imageRect = image.getBoundingClientRect();
+				const cornerX = imageRect.left + expectedInlineRadius / 5;
+				const cornerY = imageRect.top + expectedBlockRadius / 5;
+				const interiorX = imageRect.left + expectedInlineRadius + 2;
+				const interiorY = imageRect.top + expectedBlockRadius + 2;
+				const composition = image.querySelector(
+					'[data-testid="gift-list-square-composition"]',
+				);
+				const frame = image.querySelector('[data-testid="image-frame"]');
+				const itemRect = item.getBoundingClientRect();
+				async function capturePixels() {
+					const { base64 } = await page
+						.getByTestId('gift-list-item')
+						.screenshot({ base64: true });
+					const screenshot = new Image();
+					screenshot.src = `data:image/png;base64,${base64}`;
+					await screenshot.decode();
+					const canvas = document.createElement('canvas');
+					canvas.width = screenshot.naturalWidth;
+					canvas.height = screenshot.naturalHeight;
+					const context = canvas.getContext('2d')!;
+					context.drawImage(screenshot, 0, 0);
+					const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+					return (x: number, y: number) => {
+						// Vitest scales its iframe to fit the runner; screenshots use scaled pixels.
+						const pixelX = Math.floor(
+							((x - itemRect.left) * canvas.width) / itemRect.width,
+						);
+						const pixelY = Math.floor(
+							((y - itemRect.top) * canvas.height) / itemRect.height,
+						);
+						return Array.from(
+							pixels.slice(
+								(pixelY * canvas.width + pixelX) * 4,
+								(pixelY * canvas.width + pixelX) * 4 + 4,
+							),
+						);
+					};
+				}
+
+				expect(imageStyle.overflow, label).toBe('hidden');
+				expectPixelsNear(inlineRadius, expectedInlineRadius, `${label} inline radius`);
+				expectPixelsNear(blockRadius, expectedBlockRadius, `${label} block radius`);
+				expectPixelsNear(
+					bottomInlineRadius,
+					expectedInlineRadius,
+					`${label} bottom inline radius`,
+				);
+				expectPixelsNear(
+					bottomBlockRadius,
+					expectedBlockRadius,
+					`${label} bottom block radius`,
+				);
+				expect(composition?.parentElement, `${label} composition must be clipped`).toBe(
+					image,
+				);
+				expect(frame && image.contains(frame), `${label} frame must be clipped`).toBe(true);
+				expect(veil !== null, label).toBe(isFullyReserved);
+				if (veil) {
+					expect(veil.parentElement, `${label} veil must be clipped`).toBe(image);
+				}
+				const painted = await capturePixels();
+				if (imageUrl !== null && !isFullyReserved) {
+					expect(painted(interiorX, interiorY), 'decoded photo must be painted').toEqual([
+						49, 91, 125, 255,
+					]);
+				}
+				image.style.visibility = 'hidden';
+				const withoutImage = await capturePixels();
+				image.style.visibility = '';
+				expect(
+					painted(cornerX, imageRect.bottom - expectedBlockRadius / 5),
+					`${label} bottom corner must exclude image layers`,
+				).toEqual(withoutImage(cornerX, imageRect.bottom - expectedBlockRadius / 5));
+				expect(
+					painted(cornerX, cornerY),
+					`${label} top corner must exclude image layers`,
+				).toEqual(withoutImage(cornerX, cornerY));
+				expect(
+					painted(interiorX, interiorY),
+					`${label} interior must show image layers`,
+				).not.toEqual(withoutImage(interiorX, interiorY));
+			} finally {
+				host.remove();
+			}
+		}
 	});
 
 	it.each([320, 360])(

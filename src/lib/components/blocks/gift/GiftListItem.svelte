@@ -236,7 +236,7 @@
 			{#if isDimmed}
 				<div
 					data-testid="gift-reserved-veil"
-					class="absolute inset-0 rounded-l-[calc(var(--radius-panel)-var(--nested-border-inline))] rounded-r-none bg-reserved-veil"
+					class="absolute inset-0 bg-reserved-veil"
 					aria-hidden="true"
 				></div>
 			{/if}
@@ -401,6 +401,16 @@
 		aspect-ratio: 1;
 		height: 100%;
 		min-width: 9rem;
+		border-top-left-radius: max(
+				0px,
+				calc(var(--radius-panel) - var(--nested-border-inline, 2px))
+			)
+			max(0px, calc(var(--radius-panel) - var(--nested-border-block, 2px)));
+		border-bottom-left-radius: max(
+				0px,
+				calc(var(--radius-panel) - var(--nested-border-inline, 2px))
+			)
+			max(0px, calc(var(--radius-panel) - var(--nested-border-block, 2px)));
 	}
 
 	:global(.gift-list-state-overlay) {
