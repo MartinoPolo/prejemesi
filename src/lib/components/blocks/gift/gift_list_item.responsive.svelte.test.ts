@@ -152,7 +152,6 @@ describe('GiftListItem responsive image dimensions (issues #328 and #336)', () =
 			try {
 				const item = host.querySelector<HTMLElement>('[data-testid="gift-list-item"]')!;
 				const image = host.querySelector<HTMLElement>('[data-testid="gift-list-image"]')!;
-				const veil = image.querySelector('[data-testid="gift-reserved-veil"]');
 				if (imageUrl !== null) {
 					const photograph = image.querySelector('img');
 					if (!photograph) {
@@ -236,10 +235,10 @@ describe('GiftListItem responsive image dimensions (issues #328 and #336)', () =
 					image,
 				);
 				expect(frame && image.contains(frame), `${label} frame must be clipped`).toBe(true);
-				expect(veil !== null, label).toBe(isFullyReserved);
-				if (veil) {
-					expect(veil.parentElement, `${label} veil must be clipped`).toBe(image);
-				}
+				expect(
+					image.querySelector('[data-testid="gift-reserved-veil"]'),
+					`${label} must not render an image veil`,
+				).toBeNull();
 				const painted = await capturePixels();
 				if (imageUrl !== null && !isFullyReserved) {
 					expect(painted(interiorX, interiorY), 'decoded photo must be painted').toEqual([

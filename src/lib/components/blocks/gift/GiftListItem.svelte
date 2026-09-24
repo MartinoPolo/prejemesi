@@ -87,6 +87,8 @@
 	);
 	let actionContentWidth = $state(0);
 	const isDimmed = $derived(presentation.isDimmed);
+	// Content fades per element because the title row and content column also hold actions.
+	const dimmedContentClass = $derived(cn(isDimmed && 'opacity-50'));
 	const imageSrc = $derived(resolveGiftImageUrl(gift.imageUrl, gift.imageKey));
 	const priceDisplay = $derived(formatPrice(gift.price, gift.currency, gift.priceMax));
 	const reserverLine = $derived(formatReserverLine(visitorGift?.reserverNames ?? []));
@@ -216,7 +218,10 @@
 		data-testid="gift-list-item"
 		use:restingShadowNesting
 		class={cn(
-			'gift-list-item resting-shadow-nesting relative grid items-start gap-0 rounded-panel border-2 border-ink bg-card shadow-sticker',
+			'gift-list-item resting-shadow-nesting relative grid items-start gap-0 rounded-panel border-2 bg-card',
+			!isDimmed && 'elevation-ordinary border-ink',
+			isDimmed &&
+				'gift-frame-softened border-(--gift-frame-ink) [box-shadow:var(--gift-frame-elevation)]',
 			hasReceivedPrimary &&
 				reserverLine !== null &&
 				reserverLine !== '' &&
@@ -230,16 +235,18 @@
 		<div
 			data-testid="gift-list-image"
 			use:synchronizeListOverlayClearance
-			class="gift-list-image relative self-stretch overflow-hidden border-r-2 border-ink"
+			class={cn(
+				'gift-list-image relative self-stretch overflow-hidden border-r-2',
+				!isDimmed && 'border-ink',
+				isDimmed && 'border-(--gift-frame-ink)',
+			)}
 		>
-			<GiftListImage imageUrl={imageSrc} imageMeta={gift.imageMeta} alt={gift.name} />
-			{#if isDimmed}
-				<div
-					data-testid="gift-reserved-veil"
-					class="absolute inset-0 bg-reserved-veil"
-					aria-hidden="true"
-				></div>
-			{/if}
+			<GiftListImage
+				imageUrl={imageSrc}
+				imageMeta={gift.imageMeta}
+				alt={gift.name}
+				class={dimmedContentClass}
+			/>
 			{#if gift.category != null && !contextualMode}
 				<div class="gift-list-category absolute top-2 right-2 left-2 z-20 min-w-0">
 					<GiftCategoryBadge category={gift.category} {isDimmed} />
@@ -266,12 +273,15 @@
 				class="flex min-w-0 items-start gap-1.5 font-heading text-[1rem] leading-[1.3] sm:text-[1.5rem]"
 			>
 				<h3
-					class="gift-list-title line-clamp-2 min-w-0 flex-1 font-semibold text-foreground [overflow-wrap:anywhere] sm:line-clamp-1"
+					class={cn(
+						'gift-list-title line-clamp-2 min-w-0 flex-1 font-semibold text-foreground [overflow-wrap:anywhere] sm:line-clamp-1',
+						dimmedContentClass,
+					)}
 					title={gift.name}
 				>
 					{gift.name}
 				</h3>
-				<span class="flex h-[1lh] shrink-0 items-center">
+				<span class={cn('flex h-[1lh] shrink-0 items-center', dimmedContentClass)}>
 					<GiftPieceCount quantity={gift.quantity} role="recipient" hideWhenOne />
 				</span>
 				{#if !contextualMode && presentation.showLike && isVisitorOrModerator && visitorGift}
@@ -291,21 +301,22 @@
 				description={gift.description}
 				descriptionAppends={gift.descriptionAppends}
 				preview
-				class="gift-list-description"
+				class={cn('gift-list-description', dimmedContentClass)}
 				descriptionClass="line-clamp-2 sm:line-clamp-1"
 			/>
 
-			<div class="mt-1.5 min-w-0" data-testid="gift-link-list">
+			<div class={cn('mt-1.5 min-w-0', dimmedContentClass)} data-testid="gift-link-list">
 				<GiftLinkList links={gift.links} maxVisible={3} />
 			</div>
 			{#if gift.price !== null}
 				<span
-					class="text-sm font-bold text-secondary-foreground"
+					class={cn('text-sm font-bold text-secondary-foreground', dimmedContentClass)}
 					data-testid="gift-list-price">{priceDisplay}</span
 				>
 			{:else}
-				<span class="text-sm text-muted-foreground italic" data-testid="gift-list-price"
-					>{priceDisplay}</span
+				<span
+					class={cn('text-sm text-muted-foreground italic', dimmedContentClass)}
+					data-testid="gift-list-price">{priceDisplay}</span
 				>
 			{/if}
 

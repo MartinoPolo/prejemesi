@@ -28,7 +28,7 @@
 		class={cn(
 			'max-w-full shrink-0',
 			priorityInfo.colorClass,
-			isDimmed && 'saturate-50 opacity-90',
+			isDimmed && 'opacity-50',
 			className,
 		)}
 		data-testid="gift-priority-badge"

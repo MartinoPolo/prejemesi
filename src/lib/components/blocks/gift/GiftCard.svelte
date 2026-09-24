@@ -136,10 +136,7 @@
 			{/if}
 
 			<div class="absolute inset-x-0 top-0 bottom-[2.5px] flex items-center justify-center">
-				<div
-					class="aspect-[4/3] w-[calc(100%+3px)] shrink-0"
-					data-testid="gift-card-crop-composition"
-				>
+				<div class={styles.cropComposition()} data-testid="gift-card-crop-composition">
 					<GiftImage
 						class="size-full rounded-none bg-transparent max-sm:[&_img]:p-0"
 						imageUrl={imageSrc}
@@ -151,14 +148,10 @@
 				</div>
 			</div>
 
-			{#if isDimmed}
-				<div class={styles.imageVeil()} aria-hidden="true"></div>
-			{/if}
-
 			<!-- The photo bleeds beneath this foreground separator; clipping it at the border
 			     edge would blend the mat into a pale line at fractional device pixels. -->
 			<div
-				class="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-[3.5px] bg-ink"
+				class={styles.separator()}
 				data-testid="gift-card-image-separator"
 				aria-hidden="true"
 			></div>

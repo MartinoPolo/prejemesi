@@ -316,7 +316,6 @@
 	--link-tint: #f1edfd;
 	--gift-overlay-own-reservation: #16834f;
 	--gift-overlay-unavailable: #163b60;
-	--reserved-veil: color-mix(in oklab, var(--background) 55%, transparent);
 
 	/* Notebook patterns */
 	--pattern-dot: color-mix(in oklab, var(--ink) 13%, transparent);
@@ -453,7 +452,6 @@
 	--link-tint: #352b60;
 	--gift-overlay-own-reservation: #16834f;
 	--gift-overlay-unavailable: #163b60;
-	--reserved-veil: color-mix(in oklab, var(--background) 62%, transparent);
 
 	/* Notebook patterns (dark) */
 	--pattern-dot: color-mix(in oklab, var(--ink) 13%, transparent);
@@ -617,6 +615,13 @@
 
 .elevation-flat {
 	box-shadow: none;
+}
+
+/* Unavailable gifts soften only frame paint; nested controls keep the shared ink and shadow tokens. */
+.gift-frame-softened {
+	--gift-frame-ink: color-mix(in oklab, var(--ink) 50%, var(--card));
+	--gift-frame-elevation: var(--elevation-ordinary-offset) var(--elevation-ordinary-offset) 0
+		color-mix(in oklab, var(--hard-shadow) 50%, transparent);
 }
 
 /* The native semantic owner is stationary; only its direct visual surface moves. */
@@ -810,7 +815,6 @@
 	--color-tag-edited: var(--tag-edited-bg);
 	--color-like-tint: var(--like-tint);
 	--color-link-tint: var(--link-tint);
-	--color-reserved-veil: var(--reserved-veil);
 	--color-ghost-hover: var(--ghost-hover);
 
 	/* Semantic elevation utilities plus compatibility aliases. */
