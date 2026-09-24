@@ -459,6 +459,12 @@
 			opacity 0.45s ease;
 	}
 
+	@media (width < 640px) {
+		.demo-cursor {
+			transform: translate(0, 110px) rotate(18deg);
+		}
+	}
+
 	.demo-cursor-active .demo-cursor {
 		opacity: 1;
 		transform: translate(0, 0) rotate(0deg);

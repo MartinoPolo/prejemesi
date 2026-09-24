@@ -1,4 +1,7 @@
 import { test, expect } from '@playwright/test';
+import { createPixelAssertions } from '../helpers/pixel-assertions.mjs';
+
+const pixels = createPixelAssertions(expect);
 
 const LANDING_LOCALES = [
 	{ pathname: '/', canonicalUrl: 'https://prejemesi.cz' },
@@ -54,5 +57,27 @@ test.describe('Landing page', () => {
 		await page.goto('/');
 		await page.getByRole('link', { name: 'Přihlásit se' }).first().click();
 		await expect(page).toHaveURL(/\/login\/?$/);
+	});
+
+	test.describe('narrow viewport without JavaScript', () => {
+		test.use({ viewport: { width: 375, height: 812 }, javaScriptEnabled: false });
+
+		test('English landing page does not scroll horizontally', async ({ page }) => {
+			await page.goto('/en');
+			await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+			const widths = await page.evaluate(async () => {
+				await document.fonts.ready;
+				return {
+					scrollWidth: document.documentElement.scrollWidth,
+					viewportWidth: window.innerWidth,
+				};
+			});
+			pixels.expectPixelsAtMost(
+				widths.scrollWidth,
+				widths.viewportWidth,
+				'landing page fits the mobile viewport',
+				0,
+			);
+		});
 	});
 });
