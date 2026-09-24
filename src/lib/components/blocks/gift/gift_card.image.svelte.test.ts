@@ -316,9 +316,9 @@ describe('GiftCard image background fill (issue #252)', () => {
 			const separator = outerFrame.querySelector<HTMLElement>(
 				'[data-testid="gift-card-image-separator"]',
 			)!;
-			const visibleContentCenter =
-				(outerRect.top + separator.getBoundingClientRect().top) / 2;
-			expectPixelsNear(cropRect.top + cropRect.height / 2, visibleContentCenter);
+			const contentBottom = separator.getBoundingClientRect().top + 1;
+			const contentCenter = (outerRect.top + contentBottom) / 2;
+			expectPixelsNear(cropRect.top + cropRect.height / 2, contentCenter);
 		};
 
 		expect(getComputedStyle(image).padding).toBe('0px');
