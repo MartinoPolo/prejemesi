@@ -1,6 +1,6 @@
 import '../../../../app.css';
 import { afterEach, describe, expect, it } from 'vitest';
-import { page } from 'vitest/browser';
+import { page, userEvent } from 'vitest/browser';
 import { render } from 'vitest-browser-svelte';
 import { WISHLIST_ROLES, type WishlistRole } from '$lib/modules/wishlists/types.js';
 import type { GiftForVisitor } from '$lib/modules/gifts/types.js';
@@ -228,6 +228,34 @@ function framePaint(host: HTMLElement, view: GiftView): FramePaint {
 	};
 }
 
+async function settleRestingFrame(
+	host: HTMLElement,
+	view: GiftView,
+	pointerRestTarget: HTMLElement,
+) {
+	const pointerBounds = pointerRestTarget.getBoundingClientRect();
+	expect(
+		document.elementFromPoint(
+			pointerBounds.left + pointerBounds.width / 2,
+			pointerBounds.top + pointerBounds.height / 2,
+		),
+	).toBe(pointerRestTarget);
+	expect(host.contains(pointerRestTarget)).toBe(false);
+	await userEvent.hover(pointerRestTarget);
+	if (view === 'card') {
+		const card = element(host, '[data-testid="gift-card-surface"]');
+		expect(card.matches(':hover')).toBe(false);
+		const surface = element(host, '[data-slot="elevation-surface"]');
+		await expect
+			.poll(
+				() =>
+					surface.getAnimations().filter((animation) => animation.playState === 'running')
+						.length,
+			)
+			.toBe(0);
+	}
+}
+
 function expectSoftenedFrame(available: FramePaint, unavailable: FramePaint) {
 	expect(unavailable.borderColor).not.toBe(available.borderColor);
 	expect(unavailable.separatorColor).not.toBe(available.separatorColor);
@@ -343,6 +371,12 @@ describe('unavailable gift treatment', () => {
 		'restores available styles after reservation and received transitions in %s',
 		async (view) => {
 			const { host, screen, props } = await renderGift(view, comparisonGift('available'));
+			const pointerRestTarget = document.createElement('span');
+			pointerRestTarget.style.cssText =
+				'position:fixed;top:10px;left:10px;width:10px;height:10px;z-index:2147483647';
+			document.body.append(pointerRestTarget);
+			fixedHosts.add(pointerRestTarget);
+			await settleRestingFrame(host, view, pointerRestTarget);
 			const availablePaint = framePaint(host, view);
 
 			for (const state of [
@@ -351,11 +385,20 @@ describe('unavailable gift treatment', () => {
 				'received',
 				'available',
 			] as const) {
+				if (view === 'card' && state === 'available') {
+					await userEvent.hover(element(host, '[data-testid="gift-card-surface"]'));
+				}
 				await screen.rerender({ ...props, gift: comparisonGift(state) });
+				if (view === 'card' && state === 'available') {
+					expect(
+						element(host, '[data-testid="gift-card-surface"]').matches(':hover'),
+					).toBe(true);
+				}
+				await settleRestingFrame(host, view, pointerRestTarget);
 				const visibility = state === 'available' ? 1 : RETAINED_CONTENT_VISIBILITY;
 				expectContentVisibility(host, view, visibility);
 				expectControlsCrisp(host);
-				// The surface transitions box-shadow; wait for the settled paint.
+				// The frame's box-shadow changes across states; compare the settled paint.
 				await expect
 					.poll(() => framePaint(host, view).boxShadow === availablePaint.boxShadow)
 					.toBe(state === 'available');
