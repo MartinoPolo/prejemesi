@@ -4,9 +4,9 @@ import { tv } from 'tailwind-variants';
  * Anime-sky sticker gift card (issue #102 REQ-14): ink border, hard offset
  * shadow, coherent lift of the direct surface and all nested content on hover,
  * dotted-mat image background that brightens on hover. `dimmed` covers fully
- * reserved (visitor/moderator view) and received
- * gifts — the image is veiled and elevation stops; content, actions, and the
- * centered state overlay retain their contrast.
+ * reserved (visitor/moderator view) and received gifts: image art and body content
+ * keep half visibility, the frame paint softens without changing geometry, and
+ * elevation stops. Actions, image overlays, and the centered state overlay stay crisp.
  */
 export const giftCardVariants = tv({
 	slots: {
@@ -15,7 +15,7 @@ export const giftCardVariants = tv({
 		card: 'gift-card-root group/gift-card-decoration relative isolate rounded-panel',
 		// Paint over fractional edge antialiasing without changing the surface's border box or hit targets.
 		surface:
-			'gift-card-painted-surface resting-shadow-nesting elevation-surface relative grid grid-rows-[auto_minmax(0,1fr)_auto] rounded-[inherit] border-[2.5px] border-ink bg-card transition-[translate,scale,box-shadow] duration-(--duration-normal) ease-(--ease-standard) after:pointer-events-none after:absolute after:inset-0 after:z-30 after:rounded-[calc(var(--radius-panel)-2.5px)] after:border after:border-ink after:shadow-[0_0_0_2.5px_var(--ink)]',
+			'gift-card-painted-surface resting-shadow-nesting elevation-surface relative grid grid-rows-[auto_minmax(0,1fr)_auto] rounded-[inherit] border-[2.5px] bg-card transition-[translate,scale,box-shadow] duration-(--duration-normal) ease-(--ease-standard) after:pointer-events-none after:absolute after:inset-0 after:z-30 after:rounded-[calc(var(--radius-panel)-2.5px)] after:border',
 		// 4:3 (issue #183, revises the earlier 1:1 shape): shorter cards, same
 		// `minmax(280px, 1fr)` grid column sizing.
 		imageArea:
@@ -28,8 +28,8 @@ export const giftCardVariants = tv({
 		 */
 		imagePattern:
 			'pointer-events-none absolute inset-0 -z-[1] hidden bg-[radial-gradient(var(--pattern-dot)_1.4px,transparent_1.5px)] bg-size-[18px_18px] opacity-60 transition-opacity duration-300 group-hover/gift-card-decoration:opacity-100 group-focus-within/gift-card-decoration:opacity-100 sm:block',
-		/** Grey veil over the image of a dimmed card ("don't buy this" at first glance). */
-		imageVeil: 'absolute inset-0 bg-reserved-veil',
+		cropComposition: 'aspect-[4/3] w-[calc(100%+3px)] shrink-0',
+		separator: 'pointer-events-none absolute inset-x-0 bottom-0 z-10 h-[3.5px]',
 		body: 'row-start-2 flex min-h-0 flex-col ps-[var(--gift-content-inset,9px)] pe-[var(--gift-content-inset-end,var(--gift-content-inset,9px))] pt-2 pb-1.5 sm:py-4',
 		nameRow:
 			'flex min-w-0 items-start gap-1.5 [min-height:var(--gift-card-title-track-height,auto)]',
@@ -46,11 +46,18 @@ export const giftCardVariants = tv({
 		dimmed: {
 			true: {
 				surface:
-					'elevation-ordinary bg-[color-mix(in_oklab,var(--card)_82%,var(--surface))]',
+					'gift-frame-softened border-(--gift-frame-ink) bg-[color-mix(in_oklab,var(--card)_82%,var(--surface))] [box-shadow:var(--gift-frame-elevation)] after:border-(--gift-frame-ink) after:shadow-[0_0_0_2.5px_var(--gift-frame-ink)]',
 				imagePattern:
 					'group-hover/gift-card-decoration:opacity-60 group-focus-within/gift-card-decoration:opacity-60',
+				cropComposition: 'opacity-50',
+				separator: 'bg-(--gift-frame-ink)',
+				body: 'opacity-50',
 			},
-			false: { card: 'elevation-owner elevation-owner-raised' },
+			false: {
+				card: 'elevation-owner elevation-owner-raised',
+				surface: 'border-ink after:border-ink after:shadow-[0_0_0_2.5px_var(--ink)]',
+				separator: 'bg-ink',
+			},
 		},
 	},
 	defaultVariants: {

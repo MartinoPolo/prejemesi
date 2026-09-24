@@ -22,7 +22,7 @@
 	data-testid="gift-category-badge"
 	class={cn(
 		'inline-block max-w-full -rotate-3 rounded-md border-2 border-black px-2.5 py-0.5 text-xs leading-4 font-extrabold shadow-sticker [overflow-wrap:anywhere]',
-		isDimmed && 'saturate-50 opacity-90',
+		isDimmed && 'opacity-50',
 		className,
 	)}
 	style:background-color={category.color}

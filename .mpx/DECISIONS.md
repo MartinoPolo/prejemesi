@@ -205,7 +205,7 @@ sections for UI work. Historical reconciliation and review notes are in
   ordering never depends on reservation state; selected sorting applies inside each band, with
   received gifts final.
 - 2026-08-07: Card and list reserved overlays share the full-text “Rezervováno” sticker, crisp above
-  the image veil; správci additionally see names. Do not replace that signal with an ambiguous
+  the faded image; správci additionally see names. Do not replace that signal with an ambiguous
   check-only icon.
 - 2026-08-12: Received/unreceived is the primary manager browse action; marking received keeps the
   gift visible by enabling the received filter. Fully reserved gifts do not need a redundant
@@ -296,8 +296,7 @@ sections for UI work. Historical reconciliation and review notes are in
   accessible in detail. Mobile action lanes never wrap: move eligible secondary actions into More
   when buttons cannot fit, restoring them when space returns. Keep Reserve visible ahead of Received
   when both compete for space; overflow retains the same capabilities. Shared grid tracks measure
-  clamped text and the final single action row, not hidden text or displaced buttons. Keep body text
-  and actions at normal contrast while unavailable images retain their state veil.
+  clamped text and the final single action row, not hidden text or displaced buttons.
 - 2026-09-19: Keep primary gift actions visible at normal text size; mobile Card may switch to one
   column wherever two columns cannot fit the standard primary and More controls with their spacing.
   Restore multiple columns when usable card width permits, rather than retaining the former fixed
@@ -305,6 +304,13 @@ sections for UI work. Historical reconciliation and review notes are in
   Desktop List keeps square full-height images and one-line text; mobile List keeps a responsive,
   capped portrait frame, readable content, bottom-left priority, and side-cropping of the saved
   square composition without new crop targets.
+
+- 2026-09-24: Unavailable image-bearing gifts use the approved 50% content/secondary-badge treatment
+  with softened borders, shadows and image/body separators; action controls and state/authorized
+  identity overlays stay crisp. Replace the image veil rather than stacking fades, preserve existing
+  dimming eligibility/privacy and image-free Compact, and keep separators visible in both states.
+  The approved visual reference and implementation handoff are in
+  `designs/unavailable-gift-comparison/`; design approval is not an accessibility certification.
 
 ## Forms & settings
 

@@ -197,14 +197,14 @@ describe('GiftListItem centralized state overlay parity (issue #224 REQ-7)', () 
 		},
 	);
 
-	it('shows the full-text reservation overlay and a veil on the thumb for a fully-reserved gift', async () => {
+	it('shows the full-text reservation overlay on the thumb without an image veil for a fully-reserved gift', async () => {
 		await renderItem(
 			makeVisitorGift({ isFullyReserved: true, reservedCount: 1, myReservationId: null }),
 			WISHLIST_ROLES.visitor,
 		);
 
 		const thumb = document.querySelector('[data-testid="gift-list-image"]') as HTMLElement;
-		expect(thumb.querySelector('[data-testid="gift-reserved-veil"]')).toBeTruthy();
+		expect(thumb.querySelector('[data-testid="gift-reserved-veil"]')).toBeNull();
 
 		const overlayBadge = Array.from(document.querySelectorAll('span')).find((element) =>
 			element.textContent?.includes('Rezervováno'),
@@ -214,24 +214,23 @@ describe('GiftListItem centralized state overlay parity (issue #224 REQ-7)', () 
 		expect(thumb.contains(overlayBadge!)).toBe(true);
 	});
 
-	it('keeps reserved content colors legible while the image overlay carries state', async () => {
+	it('keeps the row and content column unfaded because they hold actions while the image overlay carries state', async () => {
 		await renderItem(
 			makeVisitorGift({ isFullyReserved: true, reservedCount: 1, myReservationId: null }),
 			WISHLIST_ROLES.visitor,
 		);
 
 		const row = document.querySelector('[data-testid="gift-list-item"]') as HTMLElement;
-		// Row root no longer carries the dim — it moved to the content column (card semantics).
-		expect(row.className).not.toContain('opacity-55');
-
-		const dimmed = document.querySelector('[data-testid="gift-list-content"]') as HTMLElement;
-		expect(dimmed.className).not.toContain('grayscale-50');
-		expect(dimmed.className).not.toContain('opacity-55');
+		const content = document.querySelector('[data-testid="gift-list-content"]') as HTMLElement;
+		for (const container of [row, content]) {
+			expect(getComputedStyle(container).opacity).toBe('1');
+			expect(getComputedStyle(container).filter).toBe('none');
+		}
 
 		const overlayBadge = Array.from(document.querySelectorAll('span')).find((element) =>
 			element.textContent?.includes('Rezervováno'),
 		);
-		expect(dimmed.contains(overlayBadge!)).toBe(false);
+		expect(content.contains(overlayBadge!)).toBe(false);
 	});
 
 	it('visitors receive no standalone reserver line', async () => {

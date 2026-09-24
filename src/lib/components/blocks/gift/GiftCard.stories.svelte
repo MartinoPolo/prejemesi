@@ -5,6 +5,12 @@
 	import type { GiftForVisitor } from '$lib/modules/gifts/types.js';
 	import { IMAGE_FIT_MODES } from '$lib/modules/images/index.js';
 	import GiftCard from './GiftCard.svelte';
+	import {
+		BASE_STORY_GIFT,
+		COMPARISON_AVAILABLE,
+		COMPARISON_RECEIVED,
+		COMPARISON_RESERVED_BY_OTHERS,
+	} from './gift_comparison_fixtures.js';
 
 	type GiftCardArgs = Partial<ComponentProps<typeof GiftCard>>;
 
@@ -31,52 +37,23 @@
 	});
 
 	// ── Fixtures ────────────────────────────────────────────────────────────
-	const baseGift: GiftForVisitor = {
-		id: 'gift-1',
-		wishlistId: 'wishlist-1',
-		name: 'Bezdrátová sluchátka',
-		description: null,
-		descriptionAppends: [],
-		editedAfterShareAt: null,
-		links: [{ url: 'https://www.alza.cz/sluchatka' }],
-		price: 1490,
-		priceMax: null,
-		currency: 'CZK',
-		imageUrl: null,
-		imageKey: null,
-		imageMeta: null,
-		quantity: 1,
-		sortOrder: 0,
-		received: false,
-		createdAt: new Date('2026-01-01T00:00:00Z'),
-		priorityLevelId: null,
-		priorityLabel: null,
-		prioritySortOrder: null,
-		likeCount: 2,
-		reservedCount: 0,
-		isFullyReserved: false,
-		reserverNames: [],
-		myReservationId: null,
-		myReservationPurchasedAt: null,
-	};
-
-	const NOT_RESERVED: GiftForVisitor = baseGift;
+	const NOT_RESERVED: GiftForVisitor = BASE_STORY_GIFT;
 
 	const RESERVED_BY_ME: GiftForVisitor = {
-		...baseGift,
+		...BASE_STORY_GIFT,
 		reservedCount: 1,
 		isFullyReserved: true,
 		myReservationId: 'reservation-1',
 	};
 
 	const RESERVED_BY_SOMEONE_ELSE: GiftForVisitor = {
-		...baseGift,
+		...BASE_STORY_GIFT,
 		reservedCount: 1,
 		isFullyReserved: true,
 	};
 
 	const PURCHASED: GiftForVisitor = {
-		...baseGift,
+		...BASE_STORY_GIFT,
 		reservedCount: 1,
 		isFullyReserved: true,
 		myReservationId: 'reservation-1',
@@ -90,7 +67,7 @@
 	};
 
 	const LOADED_IMAGE_GIFT: GiftForVisitor = {
-		...baseGift,
+		...BASE_STORY_GIFT,
 		name: 'Geometrický motiv s načteným obrázkem',
 		imageUrl: FOCAL_CROP_FIXTURE_IMAGE_URL,
 		imageMeta: {
@@ -197,6 +174,45 @@
 	{#snippet template(args: GiftCardArgs)}
 		<div class="w-72">
 			<GiftCard gift={TRANSPARENT_IMAGE_GIFT} role={WISHLIST_ROLES.visitor} {...args} />
+		</div>
+	{/snippet}
+</Story>
+
+<Story name="Unavailable comparison">
+	{#snippet template()}
+		<div class="grid w-full max-w-[37rem] grid-cols-1 gap-6 sm:grid-cols-2">
+			<div class="flex flex-col gap-2">
+				<p class="text-sm font-bold">Dostupný</p>
+				<GiftCard gift={COMPARISON_AVAILABLE} role={WISHLIST_ROLES.visitor} />
+			</div>
+			<div class="flex flex-col gap-2">
+				<p class="text-sm font-bold">Rezervovaný jiným dárcem</p>
+				<GiftCard gift={COMPARISON_RESERVED_BY_OTHERS} role={WISHLIST_ROLES.visitor} />
+			</div>
+		</div>
+	{/snippet}
+</Story>
+
+<Story name="Unavailable comparison: received">
+	{#snippet template()}
+		<div class="w-full max-w-72">
+			<GiftCard
+				gift={COMPARISON_RECEIVED}
+				role={WISHLIST_ROLES.recipient}
+				onreceived={() => {}}
+			/>
+		</div>
+	{/snippet}
+</Story>
+
+<Story name="Unavailable comparison: moderator reserver identity">
+	{#snippet template()}
+		<div class="w-full max-w-72">
+			<GiftCard
+				gift={COMPARISON_RESERVED_BY_OTHERS}
+				role={WISHLIST_ROLES.moderator}
+				onreceived={() => {}}
+			/>
 		</div>
 	{/snippet}
 </Story>
