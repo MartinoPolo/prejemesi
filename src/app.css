@@ -683,7 +683,9 @@
 [data-slot='dropdown-menu-sub-content'][data-state='closed'],
 [data-slot='dialog-content'][data-state='closed'],
 [data-slot='dialog-overlay'][data-state='closed'],
-[data-slot='popover-content'][data-state='closed'] {
+[data-slot='popover-content'][data-state='closed'],
+[data-slot='select-content'][data-state='closed'],
+[data-slot='sheet-content'][data-state='closed'] {
 	animation-fill-mode: forwards;
 	pointer-events: none !important;
 }
@@ -699,7 +701,9 @@
 	[data-slot='dropdown-menu-sub-content'],
 	[data-slot='dialog-content'],
 	[data-slot='dialog-overlay'],
-	[data-slot='popover-content'] {
+	[data-slot='popover-content'],
+	[data-slot='select-content'],
+	[data-slot='sheet-content'] {
 		animation: none;
 	}
 
