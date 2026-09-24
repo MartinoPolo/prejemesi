@@ -364,12 +364,23 @@ describe('GiftListItem approved action geometry (issue #350)', () => {
 				const imageFrame = image.querySelector(
 					'[data-testid="image-frame"]',
 				) as HTMLElement;
-				const expectedInnerRadius =
-					Number.parseFloat(itemStyle.borderTopLeftRadius) -
-					Number.parseFloat(itemStyle.borderLeftWidth);
+				const [outerInlineRadius, outerBlockRadius = outerInlineRadius] =
+					itemStyle.borderTopLeftRadius.split(' ').map(Number.parseFloat);
+				const expectedInlineRadius = Math.max(
+					0,
+					outerInlineRadius - Number.parseFloat(itemStyle.borderLeftWidth),
+				);
+				const expectedBlockRadius = Math.max(
+					0,
+					outerBlockRadius - Number.parseFloat(itemStyle.borderTopWidth),
+				);
+				const [viewportInlineRadius, viewportBlockRadius = viewportInlineRadius] =
+					getComputedStyle(image).borderTopLeftRadius.split(' ').map(Number.parseFloat);
+				expectPixelsNear(viewportInlineRadius, expectedInlineRadius);
+				expectPixelsNear(viewportBlockRadius, expectedBlockRadius);
 				expectPixelsNear(
 					Number.parseFloat(getComputedStyle(imageFrame).borderTopLeftRadius),
-					expectedInnerRadius,
+					0,
 				);
 			}
 			if (role === WISHLIST_ROLES.moderator) {
