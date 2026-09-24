@@ -123,6 +123,7 @@ const canonicalHostHandle: Handle = ({ event, resolve }) => {
 };
 
 const PUBLIC_WISHLIST_PATH_PREFIXES = ['/w/', '/en/w/'] as const;
+const LANDING_PATHS = new Set(['/', '/en', '/en/']);
 
 const BETTER_AUTH_SESSION_COOKIE_NAMES = new Set([
 	'better-auth.session_token',
@@ -306,8 +307,11 @@ const authHandle: Handle = async ({ event, resolve }) => {
 	}
 
 	if (
-		isPublicWishlistPath(event.url.pathname) &&
-		!hasBetterAuthSessionCookie(event.request.headers)
+		(event.request.method === 'GET' || event.request.method === 'HEAD') &&
+		!event.isRemoteRequest &&
+		!hasBetterAuthSessionCookie(event.request.headers) &&
+		(isPublicWishlistPath(event.url.pathname) ||
+			(!event.isDataRequest && LANDING_PATHS.has(event.url.pathname)))
 	) {
 		return resolve(event);
 	}
