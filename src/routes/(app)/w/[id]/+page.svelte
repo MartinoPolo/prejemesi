@@ -1175,36 +1175,74 @@
 	}
 
 	function handleViewModeChange(mode: GiftViewMode) {
-		if (!reorderMode || mode === GIFT_VIEW_MODES.card || mode === GIFT_VIEW_MODES.list) {
+		if (
+			(!reorderMode || mode === GIFT_VIEW_MODES.card || mode === GIFT_VIEW_MODES.list) &&
+			mode !== giftsContext.viewMode.current
+		) {
+			displayLayoutMotion.cancel();
 			giftsContext.viewMode.current = mode;
 		}
 	}
 
-	function handleSortChange(sort: GiftSortOption) {
-		giftsContext.sortOption.current = sort;
-	}
-
 	let wishlistPageElement = $state<HTMLElement | null>(null);
 	let receivedAnnouncement = $state('');
-	const filterLayoutMotion = createIdentityLayoutMotion();
+	const displayLayoutMotion = createIdentityLayoutMotion();
 	const receivedGiftMotion = createGiftReceivedMotion();
 
-	async function handleFilterChange(filters: GiftFilters) {
+	async function changeDisplay(update: () => void) {
 		receivedGiftMotion.cancel();
 		const root = wishlistPageElement;
-		if (root === null) {
-			giftsContext.filters.current = filters;
+		const collection = root?.querySelector<HTMLElement>('[data-wishlist-gift-collection]');
+		if (
+			root === null ||
+			!reorderLayoutSupported ||
+			collection?.inert === true ||
+			(collection && collection.dataset.viewMode !== viewMode)
+		) {
+			displayLayoutMotion.cancel();
+			update();
 			return;
 		}
 		const toolbar = root.querySelector<HTMLElement>('[data-testid="wishlist-toolbar"]');
-		const before = filterLayoutMotion.capture(root, toolbar);
-		giftsContext.filters.current = filters;
+		const before = displayLayoutMotion.capture(root, toolbar);
+		update();
 		await tick();
-		filterLayoutMotion.play(before, root, toolbar);
+		void displayLayoutMotion.play(before, root, toolbar);
+	}
+
+	function handleSortChange(sort: GiftSortOption) {
+		if (sort !== giftsContext.sortOption.current) {
+			void changeDisplay(() => {
+				giftsContext.sortOption.current = sort;
+			});
+		}
+	}
+
+	function sameFilterValues(previous: readonly string[], next: readonly string[]) {
+		return previous.length === next.length && previous.every((value) => next.includes(value));
+	}
+
+	function handleFilterChange(filters: GiftFilters) {
+		const previous = giftsContext.filters.current;
+		const scalarKeys = ['availableOnly', 'withLinkOnly', 'likedOnly', 'showReceived'] as const;
+		if (
+			scalarKeys.every((key) => previous[key] === filters[key]) &&
+			sameFilterValues(previous.categoryValues, filters.categoryValues) &&
+			sameFilterValues(previous.priorityValues, filters.priorityValues)
+		) {
+			return;
+		}
+		void changeDisplay(() => {
+			giftsContext.filters.current = filters;
+		});
 	}
 
 	function handleGroupingChange(grouping: GiftGroupingOption) {
-		giftsContext.grouping.current = grouping;
+		if (grouping !== giftsContext.grouping.current) {
+			void changeDisplay(() => {
+				giftsContext.grouping.current = grouping;
+			});
+		}
 	}
 
 	function handleRecipientViewPreviewChange(active: boolean) {
@@ -1296,38 +1334,68 @@
 		return null;
 	}
 
+	function captureReceivedGift(giftId: string, root: HTMLElement | null) {
+		if (root === null) {
+			return null;
+		}
+		const source = findGiftElement(root, giftId);
+		return source === null ? null : receivedGiftMotion.capture(giftId, source, root);
+	}
+
+	function revealReceivedGift(received: boolean) {
+		// Reveal the received section within the captured layout run, not in a second filter motion.
+		if (received && !giftsContext.filters.current.showReceived) {
+			giftsContext.filters.current = {
+				...giftsContext.filters.current,
+				showReceived: true,
+			};
+		}
+	}
+
+	function announceReceivedIfCurrent(
+		root: HTMLElement | null,
+		receivingWishlistId: string,
+		giftName: string,
+		received: boolean,
+	) {
+		if (
+			root?.isConnected === true &&
+			wishlistPageElement === root &&
+			shortId === receivingWishlistId
+		) {
+			receivedAnnouncement = received
+				? m.gift_received_announcement({ name: giftName })
+				: m.gift_unreceived_announcement({ name: giftName });
+		}
+	}
+
+	async function settleReceivedGift(
+		root: HTMLElement | null,
+		snapshot: GiftReceivedMotionSnapshot | null,
+		receivingWishlistId: string,
+		giftName: string,
+		received: boolean,
+	) {
+		revealReceivedGift(received);
+		await tick();
+		if (snapshot !== null && root !== null) {
+			await receivedGiftMotion.play(snapshot, root);
+		}
+		announceReceivedIfCurrent(root, receivingWishlistId, giftName, received);
+	}
+
 	async function handleReceived(giftId: string, received: boolean) {
 		if (receivedPendingGiftIds.has(giftId)) {
 			return;
 		}
 		const root = wishlistPageElement;
-		const source = root === null ? null : findGiftElement(root, giftId);
-		const snapshot: GiftReceivedMotionSnapshot | null =
-			root === null || source === null
-				? null
-				: receivedGiftMotion.capture(giftId, source, root);
+		const snapshot = captureReceivedGift(giftId, root);
 		const giftName = gifts.find((giftItem) => giftItem.id === giftId)?.name ?? '';
+		const receivingWishlistId = shortId;
 		receivedPendingGiftIds.add(giftId);
 		try {
 			await markGiftReceived({ giftId, received });
-			// Receiving has always revealed the received section. Keep that production semantic,
-			// but fold it into this one captured layout run rather than starting filter motion.
-			if (received && !giftsContext.filters.current.showReceived) {
-				giftsContext.filters.current = {
-					...giftsContext.filters.current,
-					showReceived: true,
-				};
-			}
-			await tick();
-			const settled =
-				snapshot === null || root === null
-					? true
-					: await receivedGiftMotion.play(snapshot, root);
-			if (settled) {
-				receivedAnnouncement = received
-					? m.gift_received_announcement({ name: giftName })
-					: m.gift_unreceived_announcement({ name: giftName });
-			}
+			await settleReceivedGift(root, snapshot, receivingWishlistId, giftName, received);
 		} catch (thrown) {
 			if (snapshot !== null) {
 				receivedGiftMotion.discard(snapshot);
@@ -1606,7 +1674,7 @@
 	// ── Lifecycle: record the visit on mount ──────────────────────────────────
 
 	onDestroy(() => {
-		filterLayoutMotion.destroy();
+		displayLayoutMotion.destroy();
 		receivedGiftMotion.destroy();
 	});
 
@@ -1627,6 +1695,7 @@
 	// modal on the requested tab, then strip the marker so reload/share won't reopen it.
 	afterNavigate(() => {
 		receivedGiftMotion.cancel();
+		displayLayoutMotion.cancel();
 		const requestedTab = page.url.searchParams.get(WISHLIST_SETTINGS_QUERY_PARAM);
 		if (requestedTab === null) {
 			return;
