@@ -102,3 +102,9 @@ node scripts/verify-gift-card-image-seam.mjs --base http://127.0.0.1:6017
 Add `--output <directory>` to save screenshots. Optional `--baseline` deliberately restores the old
 layout and is expected to fail. Do not start or stop a parent- or user-owned Storybook process for
 this check.
+
+For gift image corner checks, use the Grid and List stories under
+`Blocks/Wishlist/WishlistGiftDisplay`. They render the production collection with photos,
+transparent/Fit images, placeholders, state overlays, and category/priority badges. Compare
+desktop/mobile in light/dark themes; rectangular crop geometry alone does not prove that rounded
+corners clip correctly.
