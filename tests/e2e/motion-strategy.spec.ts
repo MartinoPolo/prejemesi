@@ -72,46 +72,69 @@ async function installTransformAnimationRecorder(page: Page) {
 			extendTravel: false,
 			unidentifiedTarget: false,
 		};
+		function recordTransformTarget(element: Element, travelStart: string | undefined) {
+			const giftId =
+				element.closest<HTMLElement>('[data-gift-item][data-gift-id]')?.dataset.giftId ??
+				(element instanceof HTMLElement ? element.dataset.giftReceivedAction : undefined) ??
+				element.querySelector<HTMLElement>('[data-gift-received-action]')?.dataset
+					.giftReceivedAction;
+			if (giftId === undefined || giftId === '') {
+				window.__motionTransformAnimations.unidentifiedTarget = true;
+			} else {
+				window.__motionTransformAnimations.giftIds[giftId] = true;
+				if (travelStart !== undefined) {
+					(window.__motionTransformAnimations.travelStarts[giftId] ??= []).push(
+						travelStart,
+					);
+				}
+			}
+			return giftId;
+		}
+
+		function recordRenderedTravel(element: Element, animation: Animation, giftId?: string) {
+			if (giftId === undefined || giftId === '' || !(element instanceof HTMLElement)) {
+				return;
+			}
+			requestAnimationFrame(() => {
+				const computed = getComputedStyle(element).transform;
+				const matrix = new DOMMatrixReadOnly(computed);
+				if (
+					animation.playState === 'running' &&
+					(Math.abs(matrix.m41) > 0.1 || Math.abs(matrix.m42) > 0.1)
+				) {
+					window.__motionTransformAnimations.renderedTravel[giftId] = true;
+				}
+			});
+		}
+
+		function firstTravelTranslation(keyframes: Keyframe[] | PropertyIndexedKeyframes | null) {
+			const transform = Array.isArray(keyframes) ? keyframes[0]?.transform : undefined;
+			return typeof transform === 'string' && transform.startsWith('translate(')
+				? transform
+				: undefined;
+		}
+
+		function animationTiming(
+			options: number | KeyframeAnimationOptions | undefined,
+			travel: boolean,
+		) {
+			return travel &&
+				window.__motionTransformAnimations.extendTravel &&
+				typeof options === 'object' &&
+				options !== null
+				? { ...options, duration: 3000 }
+				: options;
+		}
+
 		const nativeAnimate = Element.prototype.animate;
 		Element.prototype.animate = function (keyframes, options) {
 			const hasTransform = Array.isArray(keyframes)
 				? keyframes.some((keyframe) => 'transform' in keyframe)
 				: keyframes !== null && 'transform' in keyframes;
-			let giftId: string | undefined;
-			if (hasTransform) {
-				giftId =
-					this.closest<HTMLElement>('[data-gift-item][data-gift-id]')?.dataset.giftId ??
-					(this instanceof HTMLElement ? this.dataset.giftReceivedAction : undefined) ??
-					this.querySelector<HTMLElement>('[data-gift-received-action]')?.dataset
-						.giftReceivedAction;
-				if (giftId === undefined || giftId === '') {
-					window.__motionTransformAnimations.unidentifiedTarget = true;
-				} else {
-					window.__motionTransformAnimations.giftIds[giftId] = true;
-					if (
-						Array.isArray(keyframes) &&
-						typeof keyframes[0]?.transform === 'string' &&
-						keyframes[0].transform.startsWith('translate(')
-					) {
-						(window.__motionTransformAnimations.travelStarts[giftId] ??= []).push(
-							keyframes[0].transform,
-						);
-					}
-				}
-			}
-			const travel =
-				giftId !== undefined &&
-				Array.isArray(keyframes) &&
-				typeof keyframes[0]?.transform === 'string' &&
-				keyframes[0].transform.startsWith('translate(');
-			const timing =
-				travel &&
-				window.__motionTransformAnimations.extendTravel &&
-				typeof options === 'object' &&
-				options !== null
-					? { ...options, duration: 3000 }
-					: options;
-			const animation = nativeAnimate.call(this, keyframes, timing);
+			const firstTranslate = firstTravelTranslation(keyframes);
+			const giftId = hasTransform ? recordTransformTarget(this, firstTranslate) : undefined;
+			const travel = giftId !== undefined && firstTranslate !== undefined;
+			const animation = nativeAnimate.call(this, keyframes, animationTiming(options, travel));
 			if (travel) {
 				animation.addEventListener(
 					'cancel',
@@ -121,23 +144,7 @@ async function installTransformAnimationRecorder(page: Page) {
 					{ once: true },
 				);
 			}
-			if (
-				hasTransform &&
-				giftId !== undefined &&
-				giftId !== '' &&
-				this instanceof HTMLElement
-			) {
-				requestAnimationFrame(() => {
-					const computed = getComputedStyle(this).transform;
-					const matrix = new DOMMatrixReadOnly(computed);
-					if (
-						animation.playState === 'running' &&
-						(Math.abs(matrix.m41) > 0.1 || Math.abs(matrix.m42) > 0.1)
-					) {
-						window.__motionTransformAnimations.renderedTravel[giftId] = true;
-					}
-				});
-			}
+			recordRenderedTravel(this, animation, giftId);
 			return animation;
 		};
 	});

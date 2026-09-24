@@ -1197,9 +1197,7 @@
 			root === null ||
 			!reorderLayoutSupported ||
 			collection?.inert === true ||
-			(collection !== null &&
-				collection !== undefined &&
-				collection.dataset.viewMode !== viewMode)
+			(collection && collection.dataset.viewMode !== viewMode)
 		) {
 			displayLayoutMotion.cancel();
 			update();
@@ -1220,17 +1218,17 @@
 		}
 	}
 
+	function sameFilterValues(previous: readonly string[], next: readonly string[]) {
+		return previous.length === next.length && previous.every((value) => next.includes(value));
+	}
+
 	function handleFilterChange(filters: GiftFilters) {
 		const previous = giftsContext.filters.current;
+		const scalarKeys = ['availableOnly', 'withLinkOnly', 'likedOnly', 'showReceived'] as const;
 		if (
-			previous.availableOnly === filters.availableOnly &&
-			previous.withLinkOnly === filters.withLinkOnly &&
-			previous.likedOnly === filters.likedOnly &&
-			previous.showReceived === filters.showReceived &&
-			previous.categoryValues.length === filters.categoryValues.length &&
-			previous.categoryValues.every((value) => filters.categoryValues.includes(value)) &&
-			previous.priorityValues.length === filters.priorityValues.length &&
-			previous.priorityValues.every((value) => filters.priorityValues.includes(value))
+			scalarKeys.every((key) => previous[key] === filters[key]) &&
+			sameFilterValues(previous.categoryValues, filters.categoryValues) &&
+			sameFilterValues(previous.priorityValues, filters.priorityValues)
 		) {
 			return;
 		}
@@ -1336,42 +1334,68 @@
 		return null;
 	}
 
+	function captureReceivedGift(giftId: string, root: HTMLElement | null) {
+		if (root === null) {
+			return null;
+		}
+		const source = findGiftElement(root, giftId);
+		return source === null ? null : receivedGiftMotion.capture(giftId, source, root);
+	}
+
+	function revealReceivedGift(received: boolean) {
+		// Reveal the received section within the captured layout run, not in a second filter motion.
+		if (received && !giftsContext.filters.current.showReceived) {
+			giftsContext.filters.current = {
+				...giftsContext.filters.current,
+				showReceived: true,
+			};
+		}
+	}
+
+	function announceReceivedIfCurrent(
+		root: HTMLElement | null,
+		receivingWishlistId: string,
+		giftName: string,
+		received: boolean,
+	) {
+		if (
+			root?.isConnected === true &&
+			wishlistPageElement === root &&
+			shortId === receivingWishlistId
+		) {
+			receivedAnnouncement = received
+				? m.gift_received_announcement({ name: giftName })
+				: m.gift_unreceived_announcement({ name: giftName });
+		}
+	}
+
+	async function settleReceivedGift(
+		root: HTMLElement | null,
+		snapshot: GiftReceivedMotionSnapshot | null,
+		receivingWishlistId: string,
+		giftName: string,
+		received: boolean,
+	) {
+		revealReceivedGift(received);
+		await tick();
+		if (snapshot !== null && root !== null) {
+			await receivedGiftMotion.play(snapshot, root);
+		}
+		announceReceivedIfCurrent(root, receivingWishlistId, giftName, received);
+	}
+
 	async function handleReceived(giftId: string, received: boolean) {
 		if (receivedPendingGiftIds.has(giftId)) {
 			return;
 		}
 		const root = wishlistPageElement;
-		const source = root === null ? null : findGiftElement(root, giftId);
-		const snapshot: GiftReceivedMotionSnapshot | null =
-			root === null || source === null
-				? null
-				: receivedGiftMotion.capture(giftId, source, root);
+		const snapshot = captureReceivedGift(giftId, root);
 		const giftName = gifts.find((giftItem) => giftItem.id === giftId)?.name ?? '';
 		const receivingWishlistId = shortId;
 		receivedPendingGiftIds.add(giftId);
 		try {
 			await markGiftReceived({ giftId, received });
-			// Receiving has always revealed the received section. Keep that production semantic,
-			// but fold it into this one captured layout run rather than starting filter motion.
-			if (received && !giftsContext.filters.current.showReceived) {
-				giftsContext.filters.current = {
-					...giftsContext.filters.current,
-					showReceived: true,
-				};
-			}
-			await tick();
-			if (snapshot !== null && root !== null) {
-				await receivedGiftMotion.play(snapshot, root);
-			}
-			if (
-				root?.isConnected === true &&
-				wishlistPageElement === root &&
-				shortId === receivingWishlistId
-			) {
-				receivedAnnouncement = received
-					? m.gift_received_announcement({ name: giftName })
-					: m.gift_unreceived_announcement({ name: giftName });
-			}
+			await settleReceivedGift(root, snapshot, receivingWishlistId, giftName, received);
 		} catch (thrown) {
 			if (snapshot !== null) {
 				receivedGiftMotion.discard(snapshot);
