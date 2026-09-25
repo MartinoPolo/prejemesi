@@ -115,6 +115,32 @@ describe('WishlistHeader responsive presentation', () => {
 		await screen.unmount();
 	});
 
+	it.each([390, 1280])(
+		'centers the archive action with its resting shadow at %ipx',
+		async (width) => {
+			await page.viewport(width, 720);
+			const screen = await render(WishlistHeader, {
+				...baseProps,
+				eventDate: new Date('2020-01-01T12:00:00Z'),
+			});
+			const action = screen
+				.getByRole('button', { name: m.wishlist_archive_button() })
+				.element();
+			const alert = action.closest<HTMLElement>('[data-slot="alert"]')!;
+			const shadowOffset = parseFloat(
+				getComputedStyle(action).getPropertyValue('--elevation-ordinary-offset'),
+			);
+			const buttonBox = action.getBoundingClientRect();
+			const alertBox = alert.getBoundingClientRect();
+
+			expectPixelsNear(
+				(buttonBox.top + buttonBox.bottom + shadowOffset) / 2,
+				(alertBox.top + alertBox.bottom) / 2,
+			);
+			await screen.unmount();
+		},
+	);
+
 	it('reserves desktop copy space for hero actions at the 640px breakpoint', async () => {
 		await page.viewport(640, 720);
 		const screen = await render(WishlistHeader, baseProps);
