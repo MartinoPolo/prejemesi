@@ -72,6 +72,22 @@ controlled browser error and one authenticated Worker error, confirm both issues
 release and readable source maps, inspect the associated replay for masking, and remove the test
 trigger. Do not expose a permanent public error-generation route.
 
+## Anonymous landing CPU on Workers Free
+
+The landing page keeps its localized section heading and explanation in SSR, but loads the real
+interactive gift demo immediately after client mount. Gift fixtures, cards, and shared-like controls
+must stay out of the server-rendered subtree; a loading skeleton reserves space. A failed demo chunk
+offers a full-document reload because browsers cache failed module imports within a document. Price
+formatters are reused in a bounded locale/currency cache. Cookie-free GET/HEAD landing requests skip
+BetterAuth initialization; session-bearing, remote, and non-public requests still authenticate. Do
+not cache personalized HTML or disable error telemetry to reduce CPU.
+
+Verify a deployed change by comparing the same-route anonymous HTML Worker CPU and `exceededCpu`
+outcomes by deployment version in **Workers > Metrics**, then test signed-in root redirects and both
+localized interactive demos in a browser. A local Workerd profile with fake bindings is useful for
+relative CPU comparisons but is not a production CPU guarantee. Keep the Free plan unless measured
+optimized traffic still exceeds its limits.
+
 ## Resource-limit incident procedure
 
 1. Preserve evidence: note UTC window, deployment version, affected route, and the Cloudflare Ray ID

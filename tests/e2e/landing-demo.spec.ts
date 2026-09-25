@@ -1,4 +1,4 @@
-import { test, expect, type Locator, type Page } from '@playwright/test';
+import { test, expect, type Locator, type Page, type Route } from '@playwright/test';
 
 /**
  * Landing-page interactive demo (issue #218).
@@ -18,6 +18,8 @@ const DESKTOP_VIEWPORT = { width: 1280, height: 800 } as const;
 const CS = {
 	badge: 'Toto je ukázka',
 	headline: 'Rezervaci uvidí kamarádi. Petra ne.',
+	noJavaScript:
+		'Pro vyzkoušení interaktivní ukázky zapněte JavaScript. Kamarádi rezervace vidí, obdarovaná ne.',
 	roleGifter: 'Kamarád',
 	roleRecipient: 'Petra',
 	reservedSticker: 'Rezervováno někým jiným',
@@ -34,6 +36,8 @@ const CS = {
 const EN = {
 	badge: 'This is a demo',
 	headline: "Friends see the reservation. Petra doesn't.",
+	noJavaScript:
+		'Enable JavaScript to try the interactive demo. Friends can see reservations, but the recipient cannot.',
 	teapotName: 'Porcelain teapot',
 } as const;
 
@@ -65,9 +69,8 @@ async function gotoDemo(page: Page, path = '/'): Promise<void> {
 }
 
 /**
- * Toggles a reserve button and waits for its label to flip. The section is server-rendered,
- * so a click can land before hydration wires the handler — retry until it takes (the house
- * alternative to a `networkidle` wait, see image-crop.spec.ts).
+ * Toggles a reserve button and waits for its label to flip. Retry until the client-mounted
+ * demo accepts the action (the house alternative to a `networkidle` wait, see image-crop.spec.ts).
  */
 async function toggleReservation(button: Locator, expectedLabel: string): Promise<void> {
 	await expect(async () => {
@@ -81,18 +84,24 @@ test.describe('Landing demo section', () => {
 		page,
 		request,
 	}) => {
-		// No JS at all: the section must exist in the SSR payload.
+		// No JS at all: the shell exists without rendering the expensive gift subtree.
 		const response = await request.get('/');
 		expect(response.status()).toBe(200);
 		const html = await response.text();
 		expect(html).toContain('data-testid="landing-demo"');
 		expect(html).toContain(CS.badge);
+		expect(html).toContain(CS.headline);
+		expect(html).toContain('id="ukazka"');
+		expect(html).toContain('Pro vyzkoušení interaktivní ukázky zapněte JavaScript.');
+		expect(html).not.toContain('data-testid="landing-demo-pane-gifter"');
+		expect(html).not.toContain('data-testid="landing-demo-pair"');
 
 		for (const viewport of [MOBILE_VIEWPORT, DESKTOP_VIEWPORT]) {
 			await page.setViewportSize(viewport);
 			await gotoDemo(page);
 
 			await expect(page.getByTestId('landing-demo')).toBeVisible();
+			await expect(gifterPane(page)).toBeAttached();
 			await expect(page.getByTestId('landing-demo-badge')).toHaveText(new RegExp(CS.badge));
 			await expect(page.getByRole('heading', { name: CS.headline })).toBeVisible();
 
@@ -112,6 +121,76 @@ test.describe('Landing demo section', () => {
 				};
 			});
 			expect(order).toEqual({ demoAfterHero: true, demoBeforeHowItWorks: true });
+		}
+	});
+
+	test('reloads the document after an interactive module request fails', async ({ page }) => {
+		const interactiveModulePath =
+			'/src/lib/components/blocks/landing/LandingDemoInteractive.svelte';
+		const matchesInteractiveModule = (url: URL) => url.pathname === interactiveModulePath;
+		let failedRequests = 0;
+		const failInteractiveModule = async (route: Route) => {
+			if (failedRequests === 0) {
+				failedRequests += 1;
+				await route.abort();
+			} else {
+				await route.continue();
+			}
+		};
+		await page.route(matchesInteractiveModule, failInteractiveModule);
+		try {
+			await gotoDemo(page, '/#ukazka');
+			await expect(page.getByTestId('landing-demo').getByRole('alert')).toBeVisible();
+			expect(failedRequests).toBe(1);
+			await page.unroute(matchesInteractiveModule, failInteractiveModule);
+
+			const originalUrl = page.url();
+			const navigationRequest = page.waitForRequest(
+				(request) =>
+					request.isNavigationRequest() &&
+					request.resourceType() === 'document' &&
+					request.frame() === page.mainFrame(),
+				{ timeout: 10_000 },
+			);
+			await Promise.all([
+				navigationRequest,
+				page
+					.getByTestId('landing-demo')
+					.getByRole('button', { name: 'Načíst stránku znovu' })
+					.click(),
+			]);
+			await expect(gifterPane(page)).toBeVisible({ timeout: 15_000 });
+			expect(page.url()).toBe(originalUrl);
+		} finally {
+			await page.unroute(matchesInteractiveModule, failInteractiveModule);
+		}
+	});
+
+	test('localized shell and fallback are visible without JavaScript', async ({
+		browser,
+		request,
+	}) => {
+		const response = await request.get('/');
+		const context = await browser.newContext({
+			javaScriptEnabled: false,
+			baseURL: new URL(response.url()).origin,
+		});
+		try {
+			const noJavaScriptPage = await context.newPage();
+			for (const [path, copy] of [
+				['/', CS],
+				['/en', EN],
+			] as const) {
+				await noJavaScriptPage.goto(path);
+				const demo = noJavaScriptPage.getByTestId('landing-demo');
+				await expect(demo.getByRole('heading', { name: copy.headline })).toBeVisible();
+				await expect(demo.getByTestId('landing-demo-badge')).toContainText(copy.badge);
+				await expect(demo.getByText(copy.noJavaScript, { exact: true })).toBeVisible();
+				await expect(demo.locator('.landing-demo-pending')).toBeAttached();
+				await expect(demo.locator('.landing-demo-pending')).toBeHidden();
+			}
+		} finally {
+			await context.close();
 		}
 	});
 
@@ -241,8 +320,7 @@ test.describe('Landing demo section', () => {
 		const wrapper = page.locator('#ukazka [data-palette]');
 		await expect(wrapper).toHaveAttribute('data-palette', 'honey');
 
-		// Same retry rationale as `toggleReservation`: the section is server-rendered, so a
-		// click can land before hydration wires the handler.
+		// Same retry rationale as `toggleReservation`: the shell hydrates before the demo loads.
 		await expect(async () => {
 			await switcher.getByRole('button', { name: 'Hrozen' }).click();
 			await expect(wrapper).toHaveAttribute('data-palette', 'grape', { timeout: 2_000 });
