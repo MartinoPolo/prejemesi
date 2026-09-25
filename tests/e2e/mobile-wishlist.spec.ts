@@ -109,14 +109,21 @@ test.describe('mobile wishlist acceptance', () => {
 		await expectPrimaryActionReachable(primaryAction);
 
 		await page.setViewportSize({ width: 1280, height: 900 });
-		const desktopImageBox = await mobileImage.boundingBox();
-		const desktopRowBox = await firstItem.boundingBox();
-		expect(desktopImageBox).not.toBeNull();
-		expect(desktopRowBox).not.toBeNull();
-		expectPixelsAtMost(desktopImageBox!.width, desktopImageBox!.height);
-		expectPixelsNear(desktopImageBox!.y - desktopRowBox!.y, 2);
+		await waitForGiftAnimationsToSettle(page);
+		const { image: desktopImageBox, row: desktopRowBox } = await firstItem.evaluate((row) => {
+			const image = row.querySelector('[data-testid="gift-list-image"]');
+			if (image === null) {
+				throw new Error('List row has no image');
+			}
+			return {
+				image: image.getBoundingClientRect().toJSON(),
+				row: row.getBoundingClientRect().toJSON(),
+			};
+		});
+		expectPixelsAtMost(desktopImageBox.width, desktopImageBox.height);
+		expectPixelsNear(desktopImageBox.y - desktopRowBox.y, 2);
 		expectPixelsNear(
-			desktopRowBox!.y + desktopRowBox!.height - desktopImageBox!.y - desktopImageBox!.height,
+			desktopRowBox.y + desktopRowBox.height - desktopImageBox.y - desktopImageBox.height,
 			2,
 		);
 		await expectPrimaryActionReachable(primaryAction);

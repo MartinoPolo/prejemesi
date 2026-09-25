@@ -13,7 +13,10 @@
 <div
 	bind:this={ref}
 	data-slot="alert-action"
-	class={cn('absolute top-2.5 right-3', className)}
+	class={cn(
+		'absolute top-[calc(50%_-_var(--elevation-ordinary-offset)/2)] right-3 -translate-y-1/2',
+		className,
+	)}
 	{...restProps}
 >
 	{@render children?.()}
