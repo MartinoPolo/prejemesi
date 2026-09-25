@@ -1,10 +1,6 @@
 {
 	"language": "English",
 	"voice": "Sulafat",
-	"style": "Warm, calm and cheerful storyteller narrating a gentle hand-made paper-collage animated commercial, like a cosy picture-book narrator. A friendly smile in the voice, relaxed unhurried pacing, soft wonder, never salesy or loud. Line 1 a playful, delighted invitation. Line 2 light and bouncy, savouring each option, with small natural pauses at the commas. Line 3 warm and pleased, gently conclusive.",
-	"lines": [
-		"Make it all yours.",
-		"Try on ten colour palettes, add a cover picture cropped just right, and give each category its own colour.",
-		"Your list, your style."
-	]
+	"style": "Warm, calm and cheerful storyteller narrating a gentle hand-made paper-collage animated commercial, like a cosy picture-book narrator. A friendly smile in the voice, relaxed unhurried pacing, soft wonder, never salesy or loud. The line is a light, pleased aside, gently conclusive.",
+	"lines": ["And give your list a style that's all yours."]
 }
