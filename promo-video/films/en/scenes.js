@@ -107,8 +107,9 @@
 		context.restore();
 	};
 
-	/* An open hand that reaches in, taps a target and leaves. */
-	const tapArm = (context, time, name, [targetX, targetY], tapTimes, angle, reach = 760) => {
+	/* An open hand that reaches in, taps a target (fixed, or moving with time) and leaves. */
+	const tapArm = (context, time, name, target, tapTimes, angle, reach = 760) => {
+		const [targetX, targetY] = typeof target === 'function' ? target(time) : target;
 		const taps = [tapTimes].flat();
 		const approach = ramp(time, taps[0] - 0.45, 0.38, E.outCubic);
 		const leave = ramp(time, taps[taps.length - 1] + 0.16, 0.42, E.inCubic);
@@ -582,17 +583,59 @@
 		});
 	};
 
-	/* ---------- scene 3: a list for any occasion ---------- */
+	/* ---------- scene 3: a list for any occasion, styled your way ---------- */
 	const listCardCenter = [600, 560];
-	const listCard = () =>
-		P.sprite('list-card', 780, 640, (context) => {
-			A.part(context, S.roundRect(-370, -300, 740, 600, 36), C.white, {
+	const listPalettes = [
+		{ name: 'Sky', color: C.sky },
+		{ name: 'Mint', color: C.mint },
+		{ name: 'Peach', color: C.coral },
+		{ name: 'Grape', color: C.grape },
+		{ name: 'Sakura', color: C.sakura },
+		{ name: 'Ocean', color: '#0fa8a8' },
+		{ name: 'Honey', color: '#efa00b' },
+		{ name: 'Ruby', color: C.ruby },
+		{ name: 'Matcha', color: '#7fb023' },
+		{ name: 'Graphite', color: '#526a85' },
+	];
+	const paletteIndex = (name) => listPalettes.findIndex((palette) => palette.name === name);
+	/* No strips far left in the fan: the arm reaches in from the right and is too short to get there
+	   while its sleeve still leaves the frame. */
+	const paletteTaps = [
+		['paletteOne', 'Honey'],
+		['paletteTwo', 'Matcha'],
+		['paletteThree', 'Grape'],
+		['paletteFour', 'Ocean'],
+		['paletteFive', 'Sakura'],
+	];
+	const tappedPalettes = (time) => paletteTaps.filter(([mark]) => time >= M[mark]);
+
+	/* Like the app, the page tint and pale accents are the palette colour mixed into white. */
+	const mixWithWhite = (hex, amount) =>
+		`#${[1, 3, 5]
+			.map((start) =>
+				Math.round(255 + (parseInt(hex.slice(start, start + 2), 16) - 255) * amount)
+					.toString(16)
+					.padStart(2, '0'),
+			)
+			.join('')}`;
+	const wobble = (time, start, amount) =>
+		time >= start ? (1 - settle(time, start, 3, 8)) * amount : 0;
+
+	const listCard = (color) =>
+		P.sprite(`list-card-${color}`, 780, 640, (context) => {
+			A.part(context, S.roundRect(-370, -300, 740, 600, 36), mixWithWhite(color, 0.11), {
 				seed: 1811,
 				shade: 0,
 			});
+			const pale = mixWithWhite(color, 0.2);
 			[0, 1, 2].forEach((index) => {
 				const y = 20 + index * 88;
-				A.part(context, S.roundRect(-310, y, 64, 64, 14), C.skyPale, {
+				A.part(context, S.roundRect(-332, y - 8, 664, 80, 18), C.white, {
+					seed: 1824 + index,
+					line: 0,
+					shade: 0,
+				});
+				A.part(context, S.roundRect(-310, y, 64, 64, 14), pale, {
 					seed: 1812 + index,
 					line: 2,
 					shade: 0,
@@ -611,7 +654,7 @@
 						[-220, y + 48],
 						[-40, y + 48],
 					],
-					{ seed: 1818 + index, width: 6, color: C.skyPale, alpha: 1 },
+					{ seed: 1818 + index, width: 6, color: pale, alpha: 1 },
 				);
 			});
 		});
@@ -637,6 +680,36 @@
 			},
 			{ border: 0, variants: 2 },
 		);
+
+	/* The list wears the last tapped palette; each new tap wipes across it. */
+	const drawListPaper = (context, time, grow) => {
+		const tapped = tappedPalettes(time);
+		const colors = [C.sky, ...tapped.map(([, name]) => listPalettes[paletteIndex(name)].color)];
+		const current = colors[colors.length - 1];
+		const lastTap = tapped.at(-1);
+		const wipe = lastTap ? ramp(time, M[lastTap[0]], 0.3, E.inOutQuad) : 1;
+		const drawPaper = (color, shadowAlpha = 0.34) => {
+			P.draw(context, listCard(color), 0, 0, { time, lift: 1 - grow, shadowAlpha });
+			P.draw(context, listBand(color), 0, 0, { time, shadowAlpha: 0 });
+		};
+		if (wipe >= 1) {
+			drawPaper(current);
+			return;
+		}
+		drawPaper(colors[colors.length - 2]);
+		const edge = -420 + wipe * 880;
+		context.save();
+		P.tracePath(context, [
+			[-420, -340],
+			[edge + 50, -340],
+			[edge - 50, 340],
+			[-420, 340],
+		]);
+		context.clip();
+		drawPaper(current, 0);
+		context.restore();
+	};
+
 	const occasionTile = (label) =>
 		P.sprite(`occasion-${label}`, 300, 340, (context) => {
 			A.part(context, S.roundRect(-140, -160, 280, 320, 26), C.white, {
@@ -675,20 +748,374 @@
 			scale: 0.46,
 		},
 	];
-	const paintColors = [C.sky, C.mint, C.sun, C.coral, C.sakura];
-	const paintPivot = [1470, 1010];
-	const brushTip = (time) =>
-		along(time, [
-			[M.pickColour, 1760, 1160],
-			[M.pickColour + 0.25, 1690, 640],
-			[M.brush, 250, 330],
-			[M.brush + 0.6, 990, 350],
-			[M.brush + 1.05, 1500, -200],
-		]);
+
+	/* A swatch fan deck of the palettes, riveted at the bottom. Long strips keep each swatch wide
+	   where the fan spreads; the first strip lies on top, so every other strip shows its right side. */
+	const fanPivot = [1455, 1040];
+	const fanScale = 1.2;
+	const fanRivetY = 180;
+	const fanSwatchSpot = [24, -178];
+	const fanAngle = (index) => (index - (listPalettes.length - 1) / 2) * 0.19;
+	const paletteStrip = ({ name, color }) =>
+		P.sprite(`palette-strip-${name}`, 124, 560, (context) => {
+			A.part(context, S.roundRect(-55, -270, 110, 470, 12), C.white, {
+				seed: 1861,
+				shade: 0,
+			});
+			A.part(context, S.roundRect(-45, -258, 90, 160, 8), color, { seed: 1862, line: 2 });
+			[0.5, 0.2].forEach((amount, index) =>
+				A.part(
+					context,
+					S.roundRect(-45 + index * 48, -86, 42, 42, 6),
+					mixWithWhite(color, amount),
+					{ seed: 1863 + index, line: 1.6, shade: 0 },
+				),
+			);
+			A.text(context, name, 0, -6, { size: 30, font: P.font.hand, color: C.ink });
+			P.tracePath(context, S.ellipse(0, fanRivetY, 9, 9, 12));
+			context.fillStyle = C.creamDark;
+			context.fill();
+		});
+	const fanRivet = () =>
+		P.sprite(
+			'fan-rivet',
+			36,
+			36,
+			(context) => {
+				A.part(context, S.ellipse(0, 0, 13, 13, 16), C.kraft, { seed: 1869, line: 2.2 });
+			},
+			{ border: 0 },
+		);
+	const fanPivotAt = (time) => [
+		fanPivot[0],
+		fanPivot[1] +
+			(1 - settle(time, M.fanUp, 2.2, 7)) * 640 +
+			ramp(time, M.fanAway + 0.2, 0.4, E.inBack) * 720,
+	];
+	const fanSpread = (time, index) =>
+		settle(time, M.fanOpen + index * 0.035, 2.4, 6.5) *
+		(1 - ramp(time, M.fanAway, 0.3, E.inQuad));
+	const paletteLift = (time, index) => {
+		const tap = paletteTaps.findIndex(([, name]) => paletteIndex(name) === index);
+		if (tap < 0) {
+			return 0;
+		}
+		const next = paletteTaps[tap + 1];
+		const drop = next ? ramp(time, M[next[0]] - 0.12, 0.2) : ramp(time, M.fanAway, 0.25);
+		return ramp(time, M[paletteTaps[tap][0]] - 0.1, 0.22, E.outBack) * (1 - drop);
+	};
+	const drawPaletteFan = (context, time) => {
+		if (!between(time, M.fanUp, M.fanAway + 0.65)) {
+			return;
+		}
+		const [pivotX, pivotY] = fanPivotAt(time);
+		const order = [...listPalettes.keys()]
+			.reverse()
+			.sort((first, second) => paletteLift(time, first) - paletteLift(time, second));
+		for (const index of order) {
+			const angle = fanAngle(index) * fanSpread(time, index);
+			const lift = paletteLift(time, index);
+			const sprite = paletteStrip(listPalettes[index]);
+			P.draw(
+				context,
+				sprite,
+				pivotX + Math.sin(angle) * lift * 70,
+				pivotY - Math.cos(angle) * lift * 70,
+				{
+					scale: fanScale,
+					rotation: angle,
+					anchorY: 0.5 + fanRivetY / sprite.height,
+					lift: lift * 0.6,
+					time,
+				},
+			);
+		}
+		P.draw(context, fanRivet(), pivotX, pivotY, { time, shadowAlpha: 0.2 });
+	};
+	const paletteTapTarget = (time) =>
+		along(
+			time,
+			paletteTaps.flatMap(([mark, name]) => {
+				const angle = fanAngle(paletteIndex(name));
+				const [spotX, spotY] = [fanSwatchSpot[0], fanSwatchSpot[1] - fanRivetY];
+				const x =
+					fanPivot[0] + (spotX * Math.cos(angle) - spotY * Math.sin(angle)) * fanScale;
+				const y =
+					fanPivot[1] + (spotX * Math.sin(angle) + spotY * Math.cos(angle)) * fanScale;
+				return [
+					[M[mark] - 0.14, x, y],
+					[M[mark] + 0.1, x, y],
+				];
+			}),
+		);
+
+	/* The cover photo is painted once; the dropped print and every slot show crops of it. */
+	const coverFrame = [-280, -210, 560, 420];
+	const coverCrops = {
+		full: coverFrame,
+		card: [-175, -150, 420, 280],
+		thumbnail: [-35, -115, 230, 230],
+		sharing: [-250, -131, 500, 262],
+	};
+	const coverPicture = () =>
+		P.sprite(
+			'cover-picture',
+			coverFrame[2],
+			coverFrame[3],
+			(context) => {
+				P.tracePath(context, S.rect(...coverFrame));
+				context.clip();
+				const sky = context.createLinearGradient(0, -210, 0, 210);
+				sky.addColorStop(0, '#bfe4fb');
+				sky.addColorStop(1, '#eef8fe');
+				context.fillStyle = sky;
+				context.fillRect(...coverFrame);
+				P.draw(context, A.sun(), 215, -135, { scale: 0.42, shadowAlpha: 0 });
+				P.draw(context, A.cloud(220, 'cover'), -40, -170, { scale: 0.62, shadowAlpha: 0 });
+				for (const [color, x, y, rotation] of [
+					[C.sakura, -165, -70, -0.1],
+					[C.sun, -105, -105, 0.05],
+					[C.bright, -45, -50, 0.12],
+				]) {
+					P.draw(context, A.balloon(color), x, y, {
+						scale: 0.42,
+						rotation,
+						shadowAlpha: 0.15,
+					});
+				}
+				P.draw(context, A.hills(C.mintPale, 'cover-far', 26, 700, 220), 20, 170, {
+					shadowAlpha: 0,
+				});
+				P.draw(context, A.hills(C.leaf, 'cover-near', 20, 700, 160), -40, 230, {
+					shadowAlpha: 0,
+				});
+				P.puppet(context, 'jana', 80, 260, { expression: 'grin' }, { scale: 0.7 });
+			},
+			{ border: 0, variants: 1 },
+		);
+	const coverPrint = (crop, width) => {
+		const [cropX, cropY, cropWidth, cropHeight] = coverCrops[crop];
+		const height = (width * cropHeight) / cropWidth;
+		const margin = Math.max(8, width * 0.035);
+		return P.sprite(
+			`cover-print-${crop}-${width}`,
+			width + margin * 2,
+			height + margin * 2,
+			(context) => {
+				A.part(
+					context,
+					S.rect(
+						-width / 2 - margin,
+						-height / 2 - margin,
+						width + margin * 2,
+						height + margin * 2,
+					),
+					C.white,
+					{ seed: 1881, line: 2, shade: 0 },
+				);
+				const picture = coverPicture().frames[0];
+				const pad = (picture.width - coverFrame[2]) / 2;
+				context.drawImage(
+					picture,
+					pad + cropX - coverFrame[0],
+					pad + cropY - coverFrame[1],
+					cropWidth,
+					cropHeight,
+					-width / 2,
+					-height / 2,
+					width,
+					height,
+				);
+			},
+		);
+	};
+	const coverPrintPlace = [1480, 430];
+	const coverPrintScale = 0.8;
+	const coverSlotY = 845;
+	const coverSlots = [
+		{ mark: 'slotCard', crop: 'card', label: 'Card', width: 190, x: 1265 },
+		{ mark: 'slotThumb', crop: 'thumbnail', label: 'Thumbnail', width: 130, x: 1480 },
+		{ mark: 'slotShare', crop: 'sharing', label: 'Sharing', width: 220, x: 1705 },
+	];
+	const coverOnCard = { x: 376, y: -266, rotation: 0.08, scale: 1.12 };
+	const coverLanding = () => M.coverOn + 0.4;
+	const coverTape = (key) => A.tape(120, 'rgba(255,233,168,0.85)', key);
+
+	const drawCropBrackets = (context, [x, y, width, height], alpha) => {
+		const arm = 54;
+		for (const [cornerX, cornerY, directionX, directionY] of [
+			[x, y, 1, 1],
+			[x + width, y, -1, 1],
+			[x + width, y + height, -1, -1],
+			[x, y + height, 1, -1],
+		]) {
+			P.pencil(
+				context,
+				[
+					[cornerX + directionX * arm, cornerY],
+					[cornerX, cornerY],
+					[cornerX, cornerY + directionY * arm],
+				],
+				{
+					width: 10,
+					color: C.ink,
+					alpha,
+					seed: 61 + directionX * 3 + directionY,
+					gaps: false,
+				},
+			);
+		}
+	};
+
+	/* A photo lands, gets cropped just right, and each slot previews its own crop. */
+	const drawCoverDesk = (context, time, cardToWorld) => {
+		if (!between(time, M.coverPhoto, M.coverOn + 1.2)) {
+			return;
+		}
+		const exit = (order) => ramp(time, M.coverOn + 0.5 + order * 0.06, 0.4, E.inBack) * 900;
+		const drop = ramp(time, M.coverPhoto, 0.35, E.outBack);
+		const rotation = P.lerp(0.2, -0.03, drop);
+		context.save();
+		context.translate(coverPrintPlace[0] + exit(0), P.lerp(-320, coverPrintPlace[1], drop));
+		context.rotate(rotation);
+		context.scale(coverPrintScale, coverPrintScale);
+		P.draw(context, coverPrint('full', coverFrame[2]), 0, 0, { lift: 1 - drop, time });
+		const frameIn = ramp(time, M.cropFrame, 0.3, E.outQuad);
+		if (frameIn > 0) {
+			const tighten = ramp(time, M.cropFrame + 0.75, 0.7, E.inOutCubic);
+			const crop = coverCrops.card.map((value, index) =>
+				P.lerp(coverFrame[index], value, tighten),
+			);
+			context.save();
+			context.globalAlpha = frameIn * 0.42;
+			context.beginPath();
+			context.rect(...coverFrame);
+			context.rect(...crop);
+			context.fillStyle = C.ink;
+			context.fill('evenodd');
+			context.restore();
+			const pulse = wobble(time, M.cropSnap, 0.08);
+			drawCropBrackets(
+				context,
+				[
+					crop[0] - (crop[2] * pulse) / 2,
+					crop[1] - (crop[3] * pulse) / 2,
+					crop[2] * (1 + pulse),
+					crop[3] * (1 + pulse),
+				],
+				frameIn,
+			);
+		}
+		[-1, 1].forEach((side) =>
+			P.draw(context, coverTape(`cover-${side}`), side * 250, -222, {
+				rotation: side * 0.5,
+				scale: settle(time, M.coverPhoto + 0.35 + (side + 1) * 0.04, 3, 8),
+				time,
+				shadowAlpha: 0.1,
+			}),
+		);
+		context.restore();
+
+		coverSlots.forEach((slot, index) => {
+			const pop = popOptions(time, M[slot.mark], { rotation: (index - 1) * 0.05 });
+			if (!pop) {
+				return;
+			}
+			const flies = slot.crop === 'card' && time >= M.coverOn;
+			const x = slot.x + (flies ? 0 : exit(index + 1));
+			P.handText(context, slot.label, x, coverSlotY + 120, {
+				size: 42,
+				align: 'center',
+				color: C.inkSoft,
+				reveal: ramp(time, M[slot.mark] + 0.1, 0.35, E.outQuad),
+				alpha: flies ? 1 - ramp(time, M.coverOn, 0.2) : 1,
+				time,
+			});
+			const sprite = coverPrint(slot.crop, slot.width);
+			if (!flies) {
+				P.draw(context, sprite, x, coverSlotY, pop);
+				return;
+			}
+			if (time >= coverLanding()) {
+				return;
+			}
+			const flight = ramp(time, M.coverOn, 0.4, E.inOutQuad);
+			const [flightX, flightY] = arcPath(
+				[slot.x, coverSlotY],
+				cardToWorld([coverOnCard.x, coverOnCard.y]),
+				220,
+				flight,
+			);
+			P.draw(context, sprite, flightX, flightY, {
+				scale: P.lerp(1, coverOnCard.scale, flight),
+				rotation: P.lerp(pop.rotation, coverOnCard.rotation - 0.02, flight),
+				lift: 1,
+				time,
+			});
+		});
+	};
+
+	/* Category tabs slide out from under the list, and each row takes its category's colour. */
+	const categories = [
+		{ mark: 'tabOne', label: 'Books', color: C.sky },
+		{ mark: 'tabTwo', label: 'Garden', color: C.mint },
+		{ mark: 'tabThree', label: 'Sweets', color: C.coral },
+	];
+	const categoryTab = ({ label, color }) =>
+		P.sprite(`category-tab-${label}`, 260, 84, (context) => {
+			A.part(context, S.roundRect(-120, -38, 240, 76, 24), color, {
+				seed: 1871 + label.length,
+			});
+			A.text(context, label, 30, 2, { size: 50, font: P.font.hand, color: C.white });
+		});
+	const categorySwatch = (color) =>
+		P.sprite(
+			`category-swatch-${color}`,
+			64,
+			64,
+			(context) => {
+				A.part(context, S.roundRect(-32, -32, 64, 64, 14), mixWithWhite(color, 0.55), {
+					seed: 1875,
+					line: 2,
+					shade: 0,
+				});
+			},
+			{ border: 0 },
+		);
+	const drawCategoryTabs = (context, time) =>
+		categories.forEach((category, index) => {
+			if (time >= M[category.mark]) {
+				const slide = settle(time, M[category.mark], 2.4, 6.5);
+				P.draw(context, categoryTab(category), 242 + slide * 180, 52 + index * 88, {
+					rotation: (1 - slide) * 0.1,
+					time,
+				});
+			}
+		});
+	const drawCategorySwatches = (context, time) =>
+		categories.forEach((category, index) =>
+			drawPop(
+				context,
+				categorySwatch(category.color),
+				-278,
+				52 + index * 88,
+				time,
+				M[category.mark] + 0.1,
+				{
+					shadowAlpha: 0.15,
+				},
+			),
+		);
 
 	const drawListScene = (context, time) => {
 		drawGridPaper(context);
 		const [cardX, cardY] = listCardCenter;
+		const cardToWorld = ([x, y]) => [
+			cardX + x * Math.cos(-0.02) - y * Math.sin(-0.02),
+			cardY + x * Math.sin(-0.02) + y * Math.cos(-0.02),
+		];
+		const styleSlide = 360;
+		const styleHeart = [-372, 300];
 
 		/* "+ New list" becomes the list itself */
 		const chipPop = popOptions(time, M.newList);
@@ -712,21 +1139,19 @@
 		}
 		if (time >= M.tapNewList + 0.12) {
 			const grow = settle(time, M.tapNewList + 0.12, 2.2, 6.5);
+			const lastTap = tappedPalettes(time).at(-1);
+			const squash =
+				(lastTap ? wobble(time, M[lastTap[0]], 0.03) : 0) +
+				wobble(time, M.yourStyle + 0.42, 0.05);
+			const slide = ramp(time, M.yourStyle - 0.35, 0.7, E.inOutCubic) * styleSlide;
+			const hop = Math.sin(Math.PI * P.progress(time, M.yourStyle, 0.42)) * 46;
 			context.save();
-			context.translate(cardX, cardY);
+			context.translate(cardX + slide, cardY - hop);
 			context.rotate(-0.02 + (1 - grow) * 0.1);
-			context.scale(0.25 + grow * 0.75, 0.25 + grow * 0.75);
-			P.draw(context, listCard(), 0, 0, { time, lift: 1 - grow });
-			P.draw(context, listBand(C.sky), 0, 0, { time, shadowAlpha: 0 });
-			const brushX = brushTip(time)[0] - cardX;
-			if (time >= M.brush) {
-				context.save();
-				context.beginPath();
-				context.rect(-400, -340, brushX + 400, 700);
-				context.clip();
-				P.draw(context, listBand(C.sakura), 0, 0, { time, shadowAlpha: 0 });
-				context.restore();
-			}
+			context.scale((0.25 + grow * 0.75) * (1 + squash), (0.25 + grow * 0.75) * (1 - squash));
+			drawCategoryTabs(context, time);
+			drawListPaper(context, time, grow);
+			drawCategorySwatches(context, time);
 			P.handText(context, 'Jana’s birthday', -330, -150, {
 				size: 70,
 				font: P.font.display,
@@ -736,10 +1161,33 @@
 			});
 			if (time >= M.chooseBirthday + 0.45) {
 				drawPop(context, A.cake(), 280, -190, time, M.chooseBirthday + 0.45, {
-					scale: 0.34,
+					scale: 0.34 * shrinkAway(time, M.coverOn + 0.3),
 					rotation: 0.1,
 				});
 			}
+			if (time >= coverLanding()) {
+				P.draw(
+					context,
+					coverPrint('card', coverSlots[0].width),
+					coverOnCard.x,
+					coverOnCard.y,
+					{
+						scale: coverOnCard.scale,
+						rotation: coverOnCard.rotation,
+						lift: 1 - ramp(time, coverLanding(), 0.15),
+						time,
+					},
+				);
+				P.draw(context, coverTape('cover-card'), coverOnCard.x - 10, coverOnCard.y - 88, {
+					rotation: -0.12,
+					scale: settle(time, coverLanding() + 0.02, 3, 8) * 0.85,
+					time,
+					shadowAlpha: 0.1,
+				});
+			}
+			drawPop(context, A.heart(C.sakura, 60), ...styleHeart, time, M.styleStamp, {
+				rotation: -0.25,
+			});
 			context.restore();
 		}
 
@@ -749,7 +1197,7 @@
 			if (!pop) {
 				return;
 			}
-			const leave = ramp(time, M.colours - 0.2 + index * 0.05, 0.4, E.inBack);
+			const leave = ramp(time, M.makeYours - 0.2 + index * 0.05, 0.4, E.inBack);
 			const [x, y] = [occasion.slot[0] + leave * 900, occasion.slot[1]];
 			P.draw(context, occasionTile(occasion.label), x, y, pop);
 			P.draw(context, occasion.make(), x, y - 36, {
@@ -777,41 +1225,38 @@
 			});
 		}
 
-		/* paint chips fan out; a brush repaints the list */
-		if (time >= M.colours) {
-			paintColors.forEach((color, index) => {
-				const spread = settle(time, M.colours + index * 0.05, 2.4, 6.5);
-				const lifted = index === 4 ? ramp(time, M.pickColour, 0.25, E.outBack) : 0;
-				const angle = (-0.6 + index * 0.3) * spread;
-				const leave = ramp(time, M.brush + 0.9, 0.4, E.inBack);
-				P.draw(
-					context,
-					A.paintChip(color),
-					paintPivot[0] + Math.sin(angle) * lifted * 80,
-					paintPivot[1] - Math.cos(angle) * lifted * 80 + leave * 700,
-					{ scale: 1.3, rotation: angle, time, anchorY: 0.92, lift: lifted * 0.5 },
-				);
-			});
-		}
-		if (between(time, M.pickColour, M.brush + 1.05)) {
-			const [x, y] = brushTip(time);
-			P.draw(context, A.brush(C.sakura), x, y, {
-				flipX: true,
-				rotation: 0.55,
-				scale: 1.2,
-				time,
-				lift: 0.6,
-				anchorX: 0.5 - 200 / A.brush(C.sakura).width,
-			});
-		}
-		sparkleBurst(context, time, M.brush + 0.6, cardX, cardY - 180, {
+		/* make it yours: palettes, a cover photo, category colours */
+		drawPaletteFan(context, time);
+		drawCoverDesk(context, time, cardToWorld);
+		sparkleBurst(context, time, M.paletteFive + 0.05, cardX, cardY - 180, {
 			count: 7,
 			radius: 420,
 			seed: 43,
 			colors: [C.sakura, C.sun, C.white],
 		});
+		sparkleBurst(
+			context,
+			time,
+			M.styleStamp,
+			cardX + styleSlide + styleHeart[0],
+			cardY + styleHeart[1],
+			{
+				count: 6,
+				radius: 260,
+				seed: 47,
+				colors: [C.sakura, C.sun, C.bright],
+			},
+		);
 
 		tapArm(context, time, 'jana', [cardX + 40, cardY + 40], M.tapNewList, Math.PI - 0.5);
+		tapArm(
+			context,
+			time,
+			'jana',
+			paletteTapTarget,
+			paletteTaps.map(([mark]) => M[mark]),
+			1.25,
+		);
 	};
 
 	/* ---------- scene 4: add a wish ---------- */
@@ -880,8 +1325,7 @@
 	const drawWishScene = (context, time) => {
 		drawGridPaper(context, '#f5f9fc');
 		P.draw(context, wishHeader(), W / 2, 100, { time, shadowAlpha: 0.2 });
-		P.draw(context, A.cake(), 92, 104, {
-			scale: 0.26,
+		P.draw(context, coverPrint('thumbnail', 84), 92, 102, {
 			rotation: -0.08,
 			time,
 			shadowAlpha: 0.2,

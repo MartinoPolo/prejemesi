@@ -21,8 +21,8 @@ Run all commands from this directory. Every tool takes `--film <name>` and defau
 
 The one-off asset tools need `GEMINI_API_KEY`:
 
-- `narration.mjs <film> [voice]`: Gemini TTS from `films/<film>/narration.json`, voice Sulafat; run
-  it from the repository root.
+- `narration.mjs <film> [voice] [take] [script]`: Gemini TTS from `films/<film>/<script>.json`
+  (default `narration`), voice Sulafat; run it from the repository root.
 - `music.mjs` and `lyria-realtime.mjs`: Lyria music.
 - `sfx.mjs`: synthesised effects.
 - `beats.mjs`: beat grid.
