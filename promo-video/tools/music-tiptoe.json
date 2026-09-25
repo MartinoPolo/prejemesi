@@ -1,0 +1,25 @@
+{
+	"config": {
+		"bpm": 104,
+		"temperature": 1.0,
+		"guidance": 5.0,
+		"density": 0.4,
+		"brightness": 0.55,
+		"scale": "C_MAJOR_A_MINOR"
+	},
+	"sections": [
+		{
+			"at": 0,
+			"prompts": [
+				{
+					"text": "sneaky tiptoeing pizzicato strings and bassoon, comedic cartoon",
+					"weight": 1.0
+				},
+				{
+					"text": "playful clarinet, woodblock, quirky whimsical animation score",
+					"weight": 0.7
+				}
+			]
+		}
+	]
+}

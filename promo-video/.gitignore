@@ -1,0 +1,7 @@
+# Rebuilt by the tools: mixes by mix.mjs, stills by frames.mjs
+audio/mix/
+frames/
+
+# Listening previews and analysis plots of music takes
+audio/music/*.mp3
+audio/music/*.png
