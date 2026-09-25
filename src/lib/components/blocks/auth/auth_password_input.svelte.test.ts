@@ -8,13 +8,36 @@ import AuthPasswordInput from './AuthPasswordInput.svelte';
 const { expectPixelsNear } = createPixelAssertions(expect);
 
 describe('AuthPasswordInput reveal control', () => {
-	it('matches the large field with a size-driven reveal surface', async () => {
-		const screen = await render(AuthPasswordInput, { fieldId: 'password', value: '' });
-		const reveal = screen.getByRole('button', { name: m.show_password() }).element();
-		const surface = reveal.querySelector('.elevation-surface');
-		expectPixelsNear(surface?.getBoundingClientRect().height ?? Number.NaN, 40);
-		expectPixelsNear(reveal.getBoundingClientRect().width, 40);
-	});
+	it.each([false, true])(
+		'keeps the hovered surface inside the field border (error: %s)',
+		async (hasError) => {
+			const screen = await render(AuthPasswordInput, {
+				fieldId: 'password',
+				value: '',
+				hasError,
+			});
+			const reveal = screen.getByRole('button', { name: m.show_password() });
+			await reveal.hover();
+			const input = document.querySelector('#password');
+			const surface = reveal.element().querySelector('.elevation-surface');
+			if (!(input instanceof HTMLInputElement) || !(surface instanceof HTMLElement)) {
+				throw new Error('Password input and reveal surface must be rendered');
+			}
+			const inputBounds = input.getBoundingClientRect();
+			const surfaceBounds = surface.getBoundingClientRect();
+			const inputStyle = getComputedStyle(input);
+			const borderWidth = parseFloat(inputStyle.borderRightWidth);
+			expectPixelsNear(reveal.element().getBoundingClientRect().width, 40);
+			expectPixelsNear(reveal.element().getBoundingClientRect().height, 40);
+			expectPixelsNear(surfaceBounds.top, inputBounds.top + borderWidth);
+			expectPixelsNear(surfaceBounds.bottom, inputBounds.bottom - borderWidth);
+			expectPixelsNear(surfaceBounds.right, inputBounds.right - borderWidth);
+			expectPixelsNear(
+				parseFloat(getComputedStyle(surface).borderTopRightRadius),
+				Math.max(0, parseFloat(inputStyle.borderTopRightRadius) - borderWidth),
+			);
+		},
+	);
 
 	it('is keyboard-focusable and toggles the input type, label, and pressed state', async () => {
 		const screen = await render(AuthPasswordInput, { fieldId: 'password', value: 'secret' });
