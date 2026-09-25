@@ -478,14 +478,18 @@ describe('GiftCard collection alignment', () => {
 				sections: section([gift({ id: 'short-1' }), gift({ id: 'short-2' })]),
 			});
 			await nextLayout();
-			const restoredImage = document.querySelector<HTMLElement>(
-				'[data-testid="gift-card-image-frame"]',
-			)!;
-			expect(
-				restoredImage.clientWidth /
-					(restoredImage.clientHeight -
-						Number.parseFloat(getComputedStyle(restoredImage).paddingBottom)),
-			).toBeCloseTo(4 / 3, 2);
+			await expect
+				.poll(() => {
+					const restoredImage = document.querySelector<HTMLElement>(
+						'[data-testid="gift-card-image-frame"]',
+					)!;
+					return (
+						restoredImage.clientWidth /
+						(restoredImage.clientHeight -
+							Number.parseFloat(getComputedStyle(restoredImage).paddingBottom))
+					);
+				})
+				.toBeCloseTo(4 / 3, 2);
 			await screen.unmount();
 		} finally {
 			document.documentElement.style.fontSize = previousFontSize;

@@ -108,7 +108,28 @@ test('notification and account triggers use responsive shared sizing with an 8px
 	for (const viewport of [VIEWPORTS[1], VIEWPORTS[4]]) {
 		await page.setViewportSize(viewport);
 		const notification = await box(header.getByRole('button', { name: notificationName }));
-		const account = await box(header.getByRole('button', { name: accountName }));
+		const accountTrigger = header.getByRole('button', { name: accountName });
+		const account = await box(accountTrigger);
+		const avatarGeometry = await accountTrigger.evaluate((element) => {
+			const surface = element.querySelector('.elevation-surface')!;
+			const avatar = element.querySelector('[data-slot="avatar"]')!;
+			const surfaceRect = surface.getBoundingClientRect();
+			const avatarRect = avatar.getBoundingClientRect();
+			return {
+				border: Number.parseFloat(getComputedStyle(surface).borderLeftWidth),
+				left: avatarRect.left - surfaceRect.left,
+				top: avatarRect.top - surfaceRect.top,
+				right: surfaceRect.right - avatarRect.right,
+				bottom: surfaceRect.bottom - avatarRect.bottom,
+			};
+		});
+		for (const edge of ['left', 'top', 'right', 'bottom'] as const) {
+			expectPixelsNear(
+				avatarGeometry[edge],
+				avatarGeometry.border,
+				`avatar ${edge} meets border`,
+			);
+		}
 		const expectedSize = viewport.width < 640 ? 40 : 32;
 
 		expectPixelsNear(notification.width, expectedSize);
