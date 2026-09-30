@@ -301,10 +301,12 @@ sections for UI work. Historical reconciliation and review notes are in
   column wherever two columns cannot fit the standard primary and More controls with their spacing.
   Restore multiple columns when usable card width permits, rather than retaining the former fixed
   mobile breakpoint. Single-column cards use natural compact flow; side-by-side cards align content.
-  Desktop List keeps square full-height images and one-line text; mobile List keeps a responsive,
-  capped portrait frame, readable content, bottom-left priority, and side-cropping of the saved
-  square composition without new crop targets.
-
+  Mobile List keeps a responsive, capped portrait frame, readable content, bottom-left priority, and
+  side-cropping of the saved square composition without new crop targets.
+- 2026-09-24: Desktop List keeps full-height images with a consistent, bounded column width driven
+  by available inline space, not row height. A square minimum-height floor favors square ordinary
+  frames; tall content or overlays may make individual frames portrait without equalizing rows
+  across gifts or groups. Desktop text stays one-line.
 - 2026-09-24: Unavailable image-bearing gifts use the approved 50% content/secondary-badge treatment
   with softened borders, shadows and image/body separators; action controls and state/authorized
   identity overlays stay crisp. Replace the image veil rather than stacking fades, preserve existing
@@ -392,10 +394,6 @@ sections for UI work. Historical reconciliation and review notes are in
   17 px, dense utility 14 px. Labels/help use 12 px muted text, with semibold labels and shared
   HelpText; `muted-foreground` is the single secondary-text role, not parallel subtle/ink-soft
   aliases.
-- 2026-08-28: Motion represents visible continuity: only attached, rendered, nonzero elements
-  visible before and after can supply travel coordinates. Filter insertion/removal appears at final
-  coordinates with at most opacity; displaced visible siblings may FLIP, and cross-section travel
-  requires the same gift visibly moving between visible sections.
 - 2026-09-05: Dropdowns/submenus use always-sticky viewport containment, an 8 px collision margin,
   viewport-only height cap, and internal scrolling. The narrow Bits UI patch flips before
   unrestricted two-axis shift only for always-sticky layers; do not change partial-sticky behavior
@@ -437,11 +435,6 @@ sections for UI work. Historical reconciliation and review notes are in
   stationary, nested controls aligned with their visible hit targets, and lower-edge hover stable.
   Preserve existing motion timing, reduced-motion handling, and eligibility; do not add whole-card
   lift to flat List/Compact or ineligible dimmed states as part of this correction.
-- 2026-09-14: Filter/sort/group changes must share the existing visible-identity reposition motion
-  in Grid and List, with stale-run cancellation and reduced-motion handling. Keep Compact updates
-  immediate and preserve the separate Grid/List crossfade, Compact view-switch behavior, drag,
-  received-gift flight, and hover effects; this enhancement does not redesign those transitions.
-
 - 2026-09-16: Dark palettes use near-charcoal page backgrounds, restrained hue-tinted surfaces, and
   darker primary fills with readable white labels; preserve light palettes and existing palette
   identities. Use `brand` for colored text/icons on dark surfaces and reserve `primary` with
@@ -458,6 +451,14 @@ sections for UI work. Historical reconciliation and review notes are in
 - 2026-09-23: Gift actions use full ink for positive Received/Bought actions and primary for
   Reserve. Explicit reversals use the shared red outline with readable semantic text and an undo
   icon; Like remains neutral, and solid red remains reserved for destructive actions.
+- 2026-09-24: Gift movement within Card, List and Compact shares visible-identity coordination for
+  actions, refreshed data, filtering/sorting/grouping, responsive reflow and reorder settling.
+  Travel requires the same gift to have rendered, viewport-visible endpoints; an unknown endpoint
+  uses a stationary fade with subtle scale, while surviving siblings move concurrently. Use the
+  shared received-flight timing: minimum 325 ms, maximum average translation speed 1500 CSS px/s, no
+  duration cap. Preserve reduced-motion handling, existing view-switch effects and hover behavior;
+  active dragging follows the pointer without a speed limit. Interrupted runs must hand off from
+  their current visual positions without leaking overlays or stealing focus.
 
 ## Images & cropping
 
@@ -499,10 +500,11 @@ sections for UI work. Historical reconciliation and review notes are in
   transparent/dotted mat for letterboxing, with the dotted/transparent choice as default. Do not
   revive the retired app-background theme axis to control image fill.
 
-- 2026-09-16: Mobile List fills its portrait image frame with a centered side-window of the saved
-  square `thumb` composition. The square editor preview remains exact for square List/reservation
-  consumers, but its sides may be clipped on mobile List; disclose that in the editor. Do not
-  reproject focal/zoom directly to a portrait aspect or alter persisted targets.
+- 2026-09-24: The saved square `thumb` composition anchors List/reservation imagery; its editor
+  preview is exact only in square-frame consumers. Mobile List and taller desktop List fill their
+  portrait, full-height frames with a centered side-window of that composition, which may clip its
+  sides; disclose this in the editor. Do not reproject focal/zoom to portrait or alter persisted
+  targets.
 
 ## Architecture, data & delivery
 

@@ -50,7 +50,8 @@
 		intent="ghost"
 		size="lg"
 		format="icon"
-		class="absolute top-1/2 right-0 -translate-y-1/2"
+		class="absolute top-1/2 right-0 -translate-y-1/2 items-center justify-center"
+		surfaceClass="size-[calc(100%-5px)] rounded-[max(0px,calc(var(--radius-btn)-2.5px))]"
 		type="button"
 		aria-label={showPassword ? m.hide_password() : m.show_password()}
 		aria-pressed={showPassword}

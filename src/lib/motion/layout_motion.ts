@@ -14,7 +14,7 @@ interface Position {
 	top: number;
 }
 
-export interface LayoutMotionSnapshot {
+interface LayoutMotionSnapshot {
 	readonly run: number;
 	readonly gifts: ReadonlyMap<string, Position>;
 	readonly toolbarHeight: number | null;

@@ -14,8 +14,9 @@ metadata:
 
 Run a gated release from remote `dev` to `production`. Treat `docs/DEPLOYMENT.md`,
 `.github/workflows/deploy.yml`, and `scripts/migrate-prod.ts` as the sources of truth. Use remote
-refs and an exact-SHA clean checkout so unrelated local changes never enter the release. Never print
-credentials, connection URLs, tokens, or production data.
+refs and an exact-SHA clean tree so unrelated local changes never enter the release. Resolve the
+production SHA yourself from `origin/production` after merging or before redispatching; never ask
+the user to supply it. Never print credentials, connection URLs, tokens, or production data.
 
 ## 1. Qualify the Release
 
@@ -77,7 +78,8 @@ gh api -X PUT repos/{owner}/{repo}/pulls/{pr}/update-branch
 For a normal release:
 
 1. Merge the release PR with a merge commit; never squash.
-2. Fetch `origin/production` and record the resulting merge SHA.
+2. Fetch `origin/production`, verify it matches the PR's merge commit, and record that resulting
+   SHA. Do not request the SHA or a checkout from the user.
 
 For an explicitly requested redeploy with no source delta:
 
@@ -98,10 +100,12 @@ Then:
 
 This gate applies to schema releases, code-only hotfixes, and manual redeployments.
 
-1. Use a clean checkout at the exact production SHA. The current checkout is acceptable only if it
-   is clean and already at that SHA; otherwise use a temporary isolated checkout. Make the
-   gitignored `.env.production` available without echoing its contents, and remove any temporary
-   credential copy during cleanup.
+1. Use a clean tree at the exact production SHA. The current checkout is acceptable only if clean
+   and already at that SHA. Otherwise export that commit with `git archive` to a temporary
+   directory, install dependencies there, and run the verifier from that directory. Do not create or
+   switch worktrees. Make the gitignored `.env.production` available without echoing its contents;
+   remove any temporary credential copy immediately after verification and clean up the snapshot. If
+   a clean tree cannot be prepared safely, stop rather than verifying the wrong SHA.
 2. Confirm the file targets the direct Neon host. Never use a pooled `-pooler` URL, Hyperdrive,
    `db:push`, or seeding.
 3. Run:
@@ -165,7 +169,7 @@ required reviewer and resume only after approval.
    without retaining tokens, query strings, identities, or request data.
 5. Report the release PR or manual dispatch, production SHA, workflow URL, Worker version, migration
    result, smoke result, and rollback target.
-6. Remove temporary credential copies/checkouts and confirm the original checkout was not changed.
+6. Remove temporary credential copies/snapshots and confirm the original checkout was not changed.
 
 ## Rollback
 

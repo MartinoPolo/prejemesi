@@ -258,6 +258,18 @@ test('gift order persists after card drag and rapid list keyboard moves', async 
 
 		await expect(page.locator('[data-gift-item]')).toHaveCount(3, { timeout: 10_000 });
 		await startGiftReorder(page);
+		await expect
+			.poll(() =>
+				page
+					.locator('body')
+					.evaluate(
+						(body) =>
+							body
+								.getAnimations({ subtree: true })
+								.filter((animation) => animation.playState === 'running').length,
+					),
+			)
+			.toBe(0);
 		const aHandle = giftItem(page, names.A).getByRole('button', {
 			name: REORDER_HANDLE,
 			exact: true,

@@ -397,8 +397,14 @@
 
 	.gift-list-item {
 		box-sizing: border-box;
-		grid-template-columns: auto minmax(0, 1fr);
-		min-height: max(9rem, var(--gift-list-overlay-min-height, 9rem));
+
+		--gift-list-image-width: clamp(9rem, calc(100cqw - 31rem), 9.5rem);
+
+		grid-template-columns: var(--gift-list-image-width) minmax(0, 1fr);
+		min-height: max(
+			var(--gift-list-overlay-min-height, 9rem),
+			calc(var(--gift-list-image-width) + 2 * var(--nested-border-block, 2px))
+		);
 	}
 
 	.gift-list-content {
@@ -409,9 +415,8 @@
 	}
 
 	.gift-list-image {
-		aspect-ratio: 1;
-		height: 100%;
-		min-width: 9rem;
+		width: 100%;
+		min-width: 0;
 		border-top-left-radius: max(
 				0px,
 				calc(var(--radius-panel) - var(--nested-border-inline, 2px))
@@ -452,11 +457,7 @@
 		}
 
 		.gift-list-image {
-			aspect-ratio: auto;
-			width: 100%;
 			height: 100%;
-			min-width: 0;
-			max-width: none;
 		}
 	}
 </style>

@@ -4,6 +4,32 @@ import { extractGiftUrlDomain, getPrimaryGiftLink } from './gift_url.js';
 import { MAX_GIFT_PRICE, type GiftLink } from './types.js';
 import type { WishlistRole } from '$lib/modules/wishlists/types.js';
 
+const PRICE_FORMATTER_CACHE_LIMIT = 16;
+const priceFormatters = new Map<string, Intl.NumberFormat>();
+
+function getPriceFormatter(locale: string, currency: string): Intl.NumberFormat {
+	const key = `${locale}\0${currency}`;
+	const cached = priceFormatters.get(key);
+	if (cached !== undefined) {
+		return cached;
+	}
+
+	const formatter = new Intl.NumberFormat(locale, {
+		style: 'currency',
+		currency,
+		minimumFractionDigits: 0,
+		maximumFractionDigits: 2,
+	});
+	if (priceFormatters.size >= PRICE_FORMATTER_CACHE_LIMIT) {
+		const oldestKey = priceFormatters.keys().next().value;
+		if (oldestKey !== undefined) {
+			priceFormatters.delete(oldestKey);
+		}
+	}
+	priceFormatters.set(key, formatter);
+	return formatter;
+}
+
 /**
  * Format a price with currency symbol. When `priceMax` is a distinct, larger value, renders a
  * locale-correct range via `Intl.NumberFormat.formatRange` (currency shown once, e.g.
@@ -21,12 +47,7 @@ export function formatPrice(
 	const currencyCode = currency ?? 'CZK';
 	const isRange = priceMax !== undefined && priceMax !== null && priceMax > price;
 	try {
-		const formatter = new Intl.NumberFormat(getLocale(), {
-			style: 'currency',
-			currency: currencyCode,
-			minimumFractionDigits: 0,
-			maximumFractionDigits: 2,
-		});
+		const formatter = getPriceFormatter(getLocale(), currencyCode);
 		return isRange ? formatter.formatRange(price, priceMax) : formatter.format(price);
 	} catch {
 		return isRange ? `${price}–${priceMax} ${currencyCode}` : `${price} ${currencyCode}`;

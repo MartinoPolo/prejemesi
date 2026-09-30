@@ -160,6 +160,11 @@ test.describe('issue #364 dropdown viewport placement', () => {
 			.filter({ visible: true });
 		await pinTrigger(displayTrigger, 280, 300);
 		const { submenu: menu } = await openDisplaySubmenu(page, /Filtrovat/);
+		expect(
+			await menu.evaluate((element) =>
+				element.closest('[data-slot="dropdown-menu-content"]'),
+			),
+		).toBeNull();
 		await expectDropdownViewportCap(menu, 600);
 		await page.mouse.move(10, 580);
 		// Entrance scaling moves bounds by design; this check guards drift after opening settles.

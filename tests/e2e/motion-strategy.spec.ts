@@ -5,6 +5,7 @@ import {
 	addGift,
 	createWishlistAndNavigate,
 	openDesktopDisplaySubmenu,
+	shareWishlist,
 	startGiftReorder,
 } from './fixtures/wishlist-helpers.js';
 
@@ -15,6 +16,22 @@ function giftItem(page: Page, name: string) {
 	return giftItems(page).filter({
 		has: page.getByRole('heading', { name, exact: true, level: 3 }),
 	});
+}
+
+async function selectGiftView(page: Page, mode: 'card' | 'list' | 'compact') {
+	if (mode === 'compact') {
+		// Compact is a persisted fallback, not an option in the current two-button switcher.
+		await page.evaluate(() =>
+			localStorage.setItem('prejemesi-gift-view-mode', JSON.stringify('compact')),
+		);
+		await page.reload();
+	} else {
+		await page.getByTestId(`gift-view-${mode}`).click();
+	}
+	await expect(
+		page.locator(`[data-wishlist-gift-collection][data-view-mode=${mode}]`),
+	).toBeVisible();
+	await expectCleanSettlement(page);
 }
 
 async function closeDesktopDisplaySubmenu(page: Page, submenu: Locator, section: RegExp) {
@@ -50,6 +67,7 @@ async function enableDesktopWithLinkFilter(page: Page) {
 interface TransformAnimationRecorder {
 	giftIds: Record<string, true>;
 	travelStarts: Record<string, string[]>;
+	travelTimings: Record<string, { distance: number; duration: number }[]>;
 	renderedTravel: Record<string, true>;
 	cancelledTravel: number;
 	extendTravel: boolean;
@@ -67,6 +85,7 @@ async function installTransformAnimationRecorder(page: Page) {
 		window.__motionTransformAnimations = {
 			giftIds: {},
 			travelStarts: {},
+			travelTimings: {},
 			renderedTravel: {},
 			cancelledTravel: 0,
 			extendTravel: false,
@@ -134,6 +153,16 @@ async function installTransformAnimationRecorder(page: Page) {
 			const firstTranslate = firstTravelTranslation(keyframes);
 			const giftId = hasTransform ? recordTransformTarget(this, firstTranslate) : undefined;
 			const travel = giftId !== undefined && firstTranslate !== undefined;
+			if (travel && giftId !== undefined && firstTranslate !== undefined) {
+				const matrix = new DOMMatrixReadOnly(firstTranslate);
+				const duration = typeof options === 'number' ? options : options?.duration;
+				if (typeof duration === 'number') {
+					(window.__motionTransformAnimations.travelTimings[giftId] ??= []).push({
+						distance: Math.hypot(matrix.m41, matrix.m42),
+						duration,
+					});
+				}
+			}
 			const animation = nativeAnimate.call(this, keyframes, animationTiming(options, travel));
 			if (travel) {
 				animation.addEventListener(
@@ -155,6 +184,7 @@ async function clearTransformAnimationRecords(page: Page) {
 		window.__motionTransformAnimations = {
 			giftIds: {},
 			travelStarts: {},
+			travelTimings: {},
 			renderedTravel: {},
 			cancelledTravel: 0,
 			extendTravel: false,
@@ -185,8 +215,8 @@ async function expectGiftTravel(page: Page, giftId: string) {
 		.toBe(true);
 }
 
-async function expectGiftInViewport(page: Page, name: string) {
-	const eligible = await giftItem(page, name).evaluate((element) => {
+async function expectVisibleEndpoint(item: Locator) {
+	const eligible = await item.evaluate((element) => {
 		const rect = element.getBoundingClientRect();
 		return (
 			element.isConnected &&
@@ -198,7 +228,23 @@ async function expectGiftInViewport(page: Page, name: string) {
 			rect.top < innerHeight
 		);
 	});
-	expect(eligible, `${name} must have a visible endpoint inside the viewport`).toBe(true);
+	expect(eligible, 'Gift must have a visible endpoint inside the viewport').toBe(true);
+}
+
+async function expectGiftInViewport(page: Page, name: string) {
+	await expectVisibleEndpoint(giftItem(page, name));
+}
+
+async function expectProportionalTravel(page: Page, giftId: string) {
+	const timings = await page.evaluate(
+		(id) => window.__motionTransformAnimations.travelTimings[id] ?? [],
+		giftId,
+	);
+	expect(timings.length, 'Travel must have a measured duration').toBeGreaterThan(0);
+	for (const { distance, duration } of timings) {
+		expect(distance).toBeGreaterThan(0);
+		expect(Math.abs(duration - Math.max(325, (distance / 1500) * 1000))).toBeLessThan(2);
+	}
 }
 
 function collectBrowserErrors(page: Page) {
@@ -302,14 +348,27 @@ test.describe('issue #269 integrated motion strategy', () => {
 		await expect(filteredOut).toHaveCount(0);
 		await expect(displaced).toBeVisible();
 		expect(await displaced.getAttribute('data-gift-id')).toBe(displacedId);
+		expect(
+			await page.evaluate(
+				(id) => window.__motionTransformAnimations.travelStarts[id],
+				filteredOutId,
+			),
+		).toBeUndefined();
 
 		await page.keyboard.press('Escape');
+		await clearTransformAnimationRecords(page);
 		await expect(withLinkFilter).not.toBeVisible();
 		await activeFilters
 			.getByRole('button', { name: 'Odebrat filtr S odkazem', exact: true })
 			.click();
 		await expect(filteredOut).toBeVisible();
 		await expect(activeFilters).toHaveCount(0);
+		expect(
+			await page.evaluate(
+				(id) => window.__motionTransformAnimations.travelStarts[id],
+				filteredOutId,
+			),
+		).toBeUndefined();
 		await expect(page.getByTestId('desktop-display-trigger')).toBeFocused();
 		expect(await filteredOut.getAttribute('data-gift-id')).toBe(filteredOutId);
 		expect(await displaced.getAttribute('data-gift-id')).toBe(displacedId);
@@ -636,6 +695,165 @@ test.describe('issue #269 integrated motion strategy', () => {
 		});
 	}
 
+	for (const viewMode of ['card', 'list', 'compact'] as const) {
+		for (const viewport of [
+			{ width: 1280, height: 1100 },
+			{ width: 390, height: 1800 },
+		]) {
+			test(`${viewMode} reservation pin and unpin travel on ${viewport.width}px viewport`, async ({
+				browser,
+				request,
+				baseURL,
+			}) => {
+				const ownerPage = await registerAndGetPage(
+					browser,
+					request,
+					baseURL!,
+					createTestUser('motion-reservation-owner'),
+				);
+				await createWishlistAndNavigate(ownerPage, 'Reservation motion');
+				await addGift(ownerPage, 'Unreserved First');
+				await addGift(ownerPage, 'Pinned Second');
+				await shareWishlist(ownerPage);
+				const wishlistPath = new URL(ownerPage.url()).pathname;
+				await ownerPage.context().close();
+
+				const page = await registerAndGetPage(
+					browser,
+					request,
+					baseURL!,
+					createTestUser('motion-reservation-gifter'),
+				);
+				await page.setViewportSize(viewport);
+				await page.goto(wishlistPath);
+				await expect(page.getByText(/Unreserved First/).first()).toBeVisible();
+				await selectGiftView(page, viewMode);
+				const movingGift = giftItems(page).filter({
+					has: page.getByText('Pinned Second', { exact: true }),
+				});
+				const giftId = await movingGift.getAttribute('data-gift-id');
+				expect(giftId).toBeTruthy();
+				if (giftId === null) {
+					throw new Error('Missing stable gift identity');
+				}
+				await expectVisibleEndpoint(movingGift);
+				await installTransformAnimationRecorder(page);
+				await movingGift.getByTestId('reserve-button').click();
+				const dialog = page.getByRole('dialog');
+				await expect(dialog).toBeVisible();
+				await dialog.getByRole('button', { name: 'Rezervovat', exact: true }).click();
+				await expectGiftTravel(page, giftId);
+				await expectProportionalTravel(page, giftId);
+				await expect(movingGift.getByTestId('reserve-button')).toHaveText(
+					/Zrušit rezervaci/,
+				);
+				await expect(page.getByText('Vaše rezervace', { exact: true })).toBeVisible();
+				await page.screenshot({ path: test.info().outputPath('reservation-motion.png') });
+				await expectCleanSettlement(page);
+				await expectVisibleEndpoint(movingGift);
+				expect(await movingGift.getAttribute('data-gift-id')).toBe(giftId);
+
+				await clearTransformAnimationRecords(page);
+				await movingGift.getByTestId('reserve-button').click();
+				await expectGiftTravel(page, giftId);
+				await expectProportionalTravel(page, giftId);
+				await expect(movingGift.getByTestId('reserve-button')).toHaveText(/Rezervovat/);
+				await expect(page.getByText('Vaše rezervace', { exact: true })).toHaveCount(0);
+				await expectCleanSettlement(page);
+				await page.screenshot({ path: test.info().outputPath('unreserved-settled.png') });
+				await expectVisibleEndpoint(movingGift);
+				expect(await movingGift.getAttribute('data-gift-id')).toBe(giftId);
+				if (viewMode === 'card' && viewport.width < 640) {
+					await page.emulateMedia({ reducedMotion: 'reduce' });
+					await clearTransformAnimationRecords(page);
+					await movingGift.getByTestId('reserve-button').click();
+					await page
+						.getByRole('dialog')
+						.getByRole('button', { name: 'Rezervovat', exact: true })
+						.click();
+					await expect(movingGift.getByTestId('reserve-button')).toHaveText(
+						/Zrušit rezervaci/,
+					);
+					expect(
+						await page.evaluate(() => window.__motionTransformAnimations.travelStarts),
+					).toEqual({});
+					await expectCleanSettlement(page);
+				}
+				await page.context().close();
+			});
+		}
+	}
+
+	test('compact sort animates visible gift identity without switching views', async ({
+		browser,
+		request,
+		baseURL,
+	}) => {
+		const page = await registerAndGetPage(
+			browser,
+			request,
+			baseURL!,
+			createTestUser('motion-compact-sort'),
+		);
+		await createWishlistAndNavigate(page, 'Compact sort motion');
+		await addGift(page, 'Zeta Compact');
+		await addGift(page, 'Alpha Compact');
+		await selectGiftView(page, 'compact');
+		const movingGift = giftItems(page).filter({
+			has: page.getByText('Zeta Compact', { exact: true }),
+		});
+		const giftId = await movingGift.getAttribute('data-gift-id');
+		expect(giftId).toBeTruthy();
+		if (giftId === null) {
+			throw new Error('Missing stable gift identity');
+		}
+		await expectVisibleEndpoint(movingGift);
+		await installTransformAnimationRecorder(page);
+		await chooseDesktopDisplayOption(page, /^Řadit podle/, /^Název$/);
+		await expectGiftTravel(page, giftId);
+		await expectProportionalTravel(page, giftId);
+		await expect(giftItems(page).locator('td:first-child')).toHaveText([
+			'Alpha Compact',
+			'Zeta Compact',
+		]);
+		await expectCleanSettlement(page);
+		await expectVisibleEndpoint(movingGift);
+		await page.context().close();
+	});
+
+	test('responsive card reflow travels only when the gift remains visible', async ({
+		browser,
+		request,
+		baseURL,
+	}) => {
+		const page = await registerAndGetPage(
+			browser,
+			request,
+			baseURL!,
+			createTestUser('motion-responsive-reflow'),
+		);
+		await createWishlistAndNavigate(page, 'Responsive reflow motion');
+		await addGift(page, 'First Responsive');
+		await addGift(page, 'Second Responsive');
+		await page.getByTestId('gift-view-card').click();
+		await expectCleanSettlement(page);
+		const movingGift = giftItem(page, 'Second Responsive');
+		const giftId = await movingGift.getAttribute('data-gift-id');
+		expect(giftId).toBeTruthy();
+		if (giftId === null) {
+			throw new Error('Missing stable gift identity');
+		}
+		await expectVisibleEndpoint(movingGift);
+		await installTransformAnimationRecorder(page);
+		await page.setViewportSize({ width: 320, height: 1800 });
+		await expectGiftTravel(page, giftId);
+		await expectProportionalTravel(page, giftId);
+		await expectCleanSettlement(page);
+		await expectVisibleEndpoint(movingGift);
+		await expect(page.getByTestId('gift-view-card')).toHaveAttribute('aria-checked', 'true');
+		await page.context().close();
+	});
+
 	test('rapid card/list switching commits the latest mode and reduced motion skips transforms', async ({
 		browser,
 		request,
@@ -665,6 +883,7 @@ test.describe('issue #269 integrated motion strategy', () => {
 		expect(await page.evaluate(() => window.__motionTransformAnimations)).toEqual({
 			giftIds: {},
 			travelStarts: {},
+			travelTimings: {},
 			renderedTravel: {},
 			cancelledTravel: 0,
 			extendTravel: false,

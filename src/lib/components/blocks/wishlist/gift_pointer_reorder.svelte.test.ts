@@ -69,6 +69,47 @@ describe('gift pointer reorder controller (#239)', () => {
 		items.forEach((item) => item.remove());
 	});
 
+	it.each(['pointerup', 'pointercancel'])(
+		'hands the visible pointer position to collection settling on %s',
+		(finishEvent) => {
+			const items = createItems();
+			const settlements: unknown[] = [];
+			const controller = createGiftPointerReorderController({
+				getItemElements: () => items,
+				getItemIds: () => ['a', 'b', 'c'],
+				onPreviewOrder: () => {},
+				onCommitOrder: () => {},
+				onCancelOrder: () => {},
+			});
+			items[0]!.addEventListener('gift-motion-drop', (event) => {
+				if (event instanceof CustomEvent) {
+					settlements.push(event.detail);
+				}
+			});
+			try {
+				controller.start(pointer('pointerdown', 7, 20, 40), 0);
+				expect(items[0]!.hasAttribute('data-gift-motion-dragging')).toBe(true);
+				window.dispatchEvent(pointer('pointermove', 7, 240, 90));
+				window.dispatchEvent(pointer(finishEvent, 7, 240, 90));
+				expect(settlements).toEqual([
+					{
+						giftId: 'a',
+						rectangle: expect.objectContaining({
+							left: 220,
+							top: 70,
+							width: 80,
+							height: 60,
+						}),
+					},
+				]);
+				expect(items[0]!.hasAttribute('data-gift-motion-dragging')).toBe(false);
+			} finally {
+				controller.destroy();
+				items.forEach((item) => item.remove());
+			}
+		},
+	);
+
 	it('retains inherited wishlist theme properties and card layout in the body overlay', () => {
 		const theme = document.createElement('div');
 		theme.style.setProperty('--wishlist-surface', 'rgb(96, 24, 48)');

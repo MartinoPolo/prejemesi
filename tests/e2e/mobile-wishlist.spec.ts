@@ -79,7 +79,7 @@ test.describe('mobile wishlist acceptance', () => {
 		await page.context().close();
 	});
 
-	test('list view uses a portrait mobile image and square desktop image with primary actions', async ({
+	test('list view uses a portrait mobile image and a square-maximum full-height desktop image with primary actions', async ({
 		browser,
 		request,
 		baseURL,
@@ -109,9 +109,23 @@ test.describe('mobile wishlist acceptance', () => {
 		await expectPrimaryActionReachable(primaryAction);
 
 		await page.setViewportSize({ width: 1280, height: 900 });
-		const desktopImageBox = await mobileImage.boundingBox();
-		expect(desktopImageBox).not.toBeNull();
-		expectPixelsNear(desktopImageBox!.width, desktopImageBox!.height);
+		await waitForGiftAnimationsToSettle(page);
+		const { image: desktopImageBox, row: desktopRowBox } = await firstItem.evaluate((row) => {
+			const image = row.querySelector('[data-testid="gift-list-image"]');
+			if (image === null) {
+				throw new Error('List row has no image');
+			}
+			return {
+				image: image.getBoundingClientRect().toJSON(),
+				row: row.getBoundingClientRect().toJSON(),
+			};
+		});
+		expectPixelsAtMost(desktopImageBox.width, desktopImageBox.height);
+		expectPixelsNear(desktopImageBox.y - desktopRowBox.y, 2);
+		expectPixelsNear(
+			desktopRowBox.y + desktopRowBox.height - desktopImageBox.y - desktopImageBox.height,
+			2,
+		);
 		await expectPrimaryActionReachable(primaryAction);
 
 		await page.context().close();

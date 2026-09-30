@@ -54,10 +54,10 @@ letterbox framings — invariant `min(w, h) ≤ 1`. Not used for rendering — f
 target** — A gift consumer surface group by aspect family. Two ACTIVE, editor-offered targets (issue
 #189): `square` (4:3 gift-card-grid family — the name stays `square` for backward-compatible
 persistence despite the aspect no longer being square, issue #183) and `thumb` (true 1:1 — the
-desktop list-view image and the reservation-modal thumb, both exact square-preview consumers; mobile
-List fills a portrait frame by clipping the sides of that same square composition). Plus two retired
-legacy fallbacks kept only to parse old rows: `card` (~2.78:1) and `detail` (~0.5 — the visitor
-detail modal now shows the uncropped photo instead, see below). The 1:1 `thumb` reads
+reservation-modal thumb and the saved square List composition; full-height mobile List frames and
+taller desktop List frames show a portrait side-window of that composition). Plus two retired legacy
+fallbacks kept only to parse old rows: `card` (~2.78:1) and `detail` (~0.5 — the visitor detail
+modal now shows the uncropped photo instead, see below). The 1:1 `thumb` reads
 `targets.thumb ?? targets.square` and reprojects the same focal+zoom at render time, so pre-#183
 crops carry over with no migration. Manual crops persist per target in `image_meta.targets`; targets
 without one keep automatic center cover-fit framing. Aspect specs live in `crop_targets.ts` (single

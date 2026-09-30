@@ -128,7 +128,10 @@ function applyImageHeights(collection: HTMLElement, alignAcrossCollection: boole
 	}
 }
 
-function measureTrackHeights(collection: HTMLElement): void {
+export function measureGiftCardCollectionLayout(collection: HTMLElement): void {
+	if (collection.dataset.viewMode !== undefined && collection.dataset.viewMode !== 'card') {
+		return;
+	}
 	resetTrackHeights(collection);
 	const hasDescriptions = collection.querySelector(
 		'[data-gift-card-track="description"][data-has-content="true"]',
@@ -169,7 +172,7 @@ export function giftCardCollectionLayout(collection: HTMLElement) {
 			return;
 		}
 		cancelAnimationFrame(animationFrame);
-		animationFrame = requestAnimationFrame(() => measureTrackHeights(collection));
+		animationFrame = requestAnimationFrame(() => measureGiftCardCollectionLayout(collection));
 	}
 
 	const resizeObserver = new ResizeObserver(([entry]) => {

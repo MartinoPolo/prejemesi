@@ -131,6 +131,7 @@ vi.mock('better-auth/svelte-kit', () => ({
 }));
 
 import { handle } from './hooks.server.js';
+import { createAuth } from '$lib/server/auth.js';
 
 const SESSION_USER = { id: 'user-1', email: 'user@example.com' };
 
@@ -168,7 +169,19 @@ function createEvent({
 	const url = new URL(`https://prejemesi.cz${path}`);
 	return {
 		url,
-		request: new Request(url, { method, headers: { accept } }),
+		request: new Request(url, {
+			method,
+			headers: {
+				accept,
+				...(Object.keys(cookies).length > 0
+					? {
+							cookie: Object.entries(cookies)
+								.map(([name, value]) => `${name}=${value}`)
+								.join('; '),
+						}
+					: {}),
+			},
+		}),
 		route: { id: path },
 		cookies: { get: (name: string) => cookies[name], set: vi.fn() },
 		locals: {} as Record<string, unknown>,
@@ -213,6 +226,58 @@ beforeEach(() => {
 	mockIsDatabaseConfigured.mockReturnValue(true);
 	mockGetSession.mockResolvedValue({ session: { id: 'session-1' }, user: SESSION_USER });
 	setPreferenceRow({ preferredLocale: 'en', palette: 'grape', depthStyle: 'ink' });
+});
+
+describe('anonymous public page auth fast path', () => {
+	it.each(['/', '/en', '/en/'])(
+		'skips auth on anonymous landing %s including appearance cookies',
+		async (path) => {
+			const { html } = await runHandle(
+				createEvent({ path, cookies: { 'app-palette': 'mint', 'app-depth': 'black' } }),
+			);
+			expect(createAuth).not.toHaveBeenCalled();
+			expect(mockGetSession).not.toHaveBeenCalled();
+			expect(html).toContain('data-palette="mint"');
+		},
+	);
+
+	it('skips auth for an anonymous HEAD landing request', async () => {
+		await runHandle(createEvent({ path: '/en/', method: 'HEAD' }));
+		expect(createAuth).not.toHaveBeenCalled();
+	});
+
+	it.each<EventOptions>([
+		{ path: '/', method: 'POST' },
+		{ path: '/en', method: 'POST', isRemoteRequest: true },
+		{ path: '/', isRemoteRequest: true },
+		{ path: '/', isDataRequest: true, accept: '*/*' },
+		{ path: '/en', isDataRequest: true, accept: '*/*' },
+		{ path: '/__data.json', isDataRequest: true, accept: '*/*' },
+		{ path: '/w/public', method: 'POST' },
+		{ path: '/en/private' },
+		{ path: '/api/auth/session', accept: '*/*' },
+		{ path: '/', cookies: { 'better-auth.session_token': 'session' } },
+		{ path: '/en/', cookies: { '__Secure-better-auth.session_data': 'session' } },
+		{ path: '/', cookies: { 'better-auth-session_token': 'session' } },
+		{ path: '/', cookies: { '__Secure-better-auth.session_token': 'session' } },
+		{ path: '/en', cookies: { 'better-auth.session_data': 'session' } },
+		{ path: '/en/', cookies: { 'better-auth-session_data': 'session' } },
+		{ path: '/en', cookies: { '__Secure-better-auth-session_data': 'session' } },
+		{ path: '/en', cookies: { '__Secure-better-auth-session_token': 'session' } },
+	])('authenticates $method $path $cookies', async (options) => {
+		await runHandle(createEvent(options));
+		expect(createAuth).toHaveBeenCalledOnce();
+		expect(mockGetSession).toHaveBeenCalledOnce();
+	});
+
+	it('keeps anonymous public wishlist bypass but authenticates a signed-in wishlist', async () => {
+		await runHandle(createEvent({ path: '/w/public' }));
+		expect(createAuth).not.toHaveBeenCalled();
+		await runHandle(
+			createEvent({ path: '/w/public', cookies: { 'better-auth.session_data': 'session' } }),
+		);
+		expect(createAuth).toHaveBeenCalledOnce();
+	});
 });
 
 describe('user preference reads (issue #108, REQ-1/REQ-2)', () => {

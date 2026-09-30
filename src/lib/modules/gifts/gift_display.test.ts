@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, beforeAll, vi } from 'vitest';
 import { overwriteGetLocale } from '$lib/paraglide/runtime.js';
 import {
 	adjustGiftPriceByMagnitude,
@@ -117,6 +117,58 @@ describe('formatPrice', () => {
 
 	it('defaults to CZK when currency is null', () => {
 		expect(formatPrice(1000, null, 1500)).toContain('Kč');
+	});
+
+	it('keeps zero, arbitrary currencies, and invalid-code fallback', () => {
+		expect(normalizeSpaces(formatPrice(0, 'USD'))).toContain('0');
+		expect(formatPrice(12.25, 'JPY')).toBe(
+			new Intl.NumberFormat('cs', {
+				style: 'currency',
+				currency: 'JPY',
+				minimumFractionDigits: 0,
+				maximumFractionDigits: 2,
+			}).format(12.25),
+		);
+		expect(formatPrice(12, 'not-a-currency', 15)).toBe('12–15 not-a-currency');
+	});
+
+	it('reuses a formatter for repeated locale/currency pairs without mixing locales', () => {
+		const expectedEnglish = new Intl.NumberFormat('en', {
+			style: 'currency',
+			currency: 'USD',
+			minimumFractionDigits: 0,
+			maximumFractionDigits: 2,
+		}).format(32);
+		const czech = formatPrice(31, 'USD');
+		overwriteGetLocale(() => 'en');
+		const english = formatPrice(32, 'USD');
+		expect(english).toBe(expectedEnglish);
+		overwriteGetLocale(() => 'cs');
+		expect(czech).not.toBe(english);
+		const numberFormat = vi.spyOn(Intl, 'NumberFormat');
+		try {
+			formatPrice(32, 'USD');
+			overwriteGetLocale(() => 'en');
+			formatPrice(33, 'USD');
+			expect(numberFormat).not.toHaveBeenCalled();
+		} finally {
+			overwriteGetLocale(() => 'cs');
+			numberFormat.mockRestore();
+		}
+	});
+
+	it('bounds cached arbitrary currency formatters', () => {
+		formatPrice(1, 'USD');
+		for (let index = 0; index < 20; index++) {
+			formatPrice(1, `A${String.fromCharCode(65 + index)}A`);
+		}
+		const numberFormat = vi.spyOn(Intl, 'NumberFormat');
+		try {
+			formatPrice(2, 'USD');
+			expect(numberFormat).toHaveBeenCalledOnce();
+		} finally {
+			numberFormat.mockRestore();
+		}
 	});
 });
 
