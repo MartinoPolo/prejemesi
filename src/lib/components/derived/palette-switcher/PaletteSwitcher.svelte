@@ -105,7 +105,8 @@
 		<Popover.Content
 			role="dialog"
 			align="end"
-			class="w-66 min-w-0 p-2.5"
+			collisionPadding={8}
+			class="w-76 max-w-[calc(100vw-1rem)] min-w-0 p-2.5"
 			aria-label={m.palette_switcher_label()}
 		>
 			<Popover.Label>{m.palette_switcher_label()}</Popover.Label>
