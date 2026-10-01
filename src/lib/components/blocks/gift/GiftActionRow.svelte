@@ -311,7 +311,8 @@
 		}
 	}
 
-	.gift-action-overflow-measure,
+	/* Global so the class reaches the More <Button> root, which lacks this component's scope hash. */
+	.gift-action-row :global(.gift-action-overflow-measure),
 	.gift-action-more-measure {
 		position: fixed;
 		inset-block-start: 0;
@@ -320,7 +321,7 @@
 		pointer-events: none;
 	}
 
-	.gift-action-overflow-measure {
+	.gift-action-row :global(.gift-action-overflow-measure) {
 		inline-size: max-content;
 		max-inline-size: none;
 	}
