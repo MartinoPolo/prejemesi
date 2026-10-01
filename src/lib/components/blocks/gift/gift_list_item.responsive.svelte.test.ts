@@ -17,6 +17,7 @@ import {
 	hasVisibleBoxShadow,
 	GiftListItemTestHost,
 } from './gift_list_item.test_fixtures.js';
+import { resolvedCssLength } from './gift_action_geometry.test_fixtures.js';
 
 const { expectPixelsNear, expectPixelsAtLeast, expectPixelsAtMost } = createPixelAssertions(expect);
 
@@ -564,6 +565,39 @@ describe('GiftListItem approved Like geometry (issue #357)', () => {
 				countNode.getBoundingClientRect().left,
 			);
 			expect(hasVisibleBoxShadow(like.querySelector('.elevation-surface')!)).toBe(false);
+			host.remove();
+		},
+	);
+});
+
+describe('GiftListItem content padding (issue #420)', () => {
+	it.each([
+		{ viewport: 800, width: 720 },
+		{ viewport: 390, width: 360 },
+	])(
+		'keeps content padding on the shared nested insets at $viewport px',
+		async ({ viewport, width }) => {
+			await page.viewport(viewport, 900);
+			const host = await renderItem(makeVisitorGift(), WISHLIST_ROLES.visitor, null, width);
+			const content = host.querySelector<HTMLElement>('[data-testid="gift-list-content"]')!;
+			const contentStyle = getComputedStyle(content);
+
+			expectPixelsNear(
+				Number.parseFloat(contentStyle.paddingTop),
+				resolvedCssLength(content, 'var(--gift-content-inset)'),
+			);
+			expectPixelsNear(
+				Number.parseFloat(contentStyle.paddingBottom),
+				resolvedCssLength(content, 'var(--gift-content-inset-bottom)'),
+			);
+			expectPixelsNear(
+				Number.parseFloat(contentStyle.paddingLeft),
+				resolvedCssLength(content, 'var(--gift-content-inset)'),
+			);
+			expectPixelsNear(
+				Number.parseFloat(contentStyle.paddingRight),
+				resolvedCssLength(content, 'var(--gift-content-inset-end)'),
+			);
 			host.remove();
 		},
 	);

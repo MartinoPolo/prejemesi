@@ -191,7 +191,7 @@
 		</div>
 
 		<!-- Body -->
-		<div class={styles.body()}>
+		<div class={styles.body()} data-testid="gift-card-body">
 			<!-- Name + piece count. Edited-after-share info surfaces only as a muted line
 		     in the gift detail modal (issue #185), not on the card. -->
 			<div class={styles.nameRow()} data-gift-card-track="title">

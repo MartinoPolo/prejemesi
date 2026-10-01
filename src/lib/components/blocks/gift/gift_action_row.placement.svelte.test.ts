@@ -3,14 +3,9 @@ import { describe, expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
 import GiftActionRowTestHost from './GiftActionRowTestHost.svelte';
+import { settleActionPlacement } from './gift_action_geometry.test_fixtures.js';
 
 const { expectPixelsNear } = createPixelAssertions(expect);
-
-async function settlePlacement() {
-	await new Promise<void>((resolve) =>
-		requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
-	);
-}
 
 describe('GiftActionRow intrinsic placement', () => {
 	it('keeps one right-aligned row, overflows secondary actions, and restores them without duplicate controls', async () => {
@@ -19,7 +14,7 @@ describe('GiftActionRow intrinsic placement', () => {
 			contentWidth: 260,
 			onplacementchange,
 		});
-		await settlePlacement();
+		await settleActionPlacement();
 
 		const row = screen.getByTestId('gift-action-row').element() as HTMLElement;
 		const reserve = screen.getByTestId('reserve-action').element() as HTMLElement;
@@ -32,7 +27,7 @@ describe('GiftActionRow intrinsic placement', () => {
 		expect(row.querySelectorAll('[data-testid="received-action"]')).toHaveLength(1);
 
 		await screen.rerender({ contentWidth: 150, onplacementchange });
-		await settlePlacement();
+		await settleActionPlacement();
 		expect(row.querySelectorAll('[data-testid="received-action"]')).toHaveLength(1);
 		expect(
 			(row.querySelector('[data-testid="gift-action-secondary"]') as HTMLElement).inert,
@@ -49,7 +44,7 @@ describe('GiftActionRow intrinsic placement', () => {
 		expectPixelsNear(more.getBoundingClientRect().right, row.getBoundingClientRect().right);
 
 		await screen.rerender({ contentWidth: 260, onplacementchange });
-		await settlePlacement();
+		await settleActionPlacement();
 		expect(row.querySelectorAll('[data-testid="received-action"]')).toHaveLength(1);
 		expect(row.querySelector('[data-testid="gift-more-actions"]')).toHaveProperty(
 			'inert',
@@ -61,12 +56,12 @@ describe('GiftActionRow intrinsic placement', () => {
 	it('passes visible, pending, and disabled direct-action state to More', async () => {
 		const onmore = vi.fn();
 		const screen = await render(GiftActionRowTestHost, { contentWidth: 260, onmore });
-		await settlePlacement();
+		await settleActionPlacement();
 		(screen.getByTestId('received-action').element() as HTMLButtonElement).click();
-		await settlePlacement();
+		await settleActionPlacement();
 
 		await screen.rerender({ contentWidth: 150, onmore });
-		await settlePlacement();
+		await settleActionPlacement();
 		(screen.getByTestId('gift-more-actions').element() as HTMLButtonElement).click();
 
 		expect(onmore).toHaveBeenCalledOnce();
@@ -86,7 +81,7 @@ describe('GiftActionRow intrinsic placement', () => {
 			onplacementchange,
 			onmore,
 		});
-		await settlePlacement();
+		await settleActionPlacement();
 
 		const row = screen.getByTestId('gift-action-row').element() as HTMLElement;
 		const receivedSlot = row.querySelector(
@@ -114,18 +109,18 @@ describe('GiftActionRow intrinsic placement', () => {
 
 	it('hands focus to More when the focused direct command overflows', async () => {
 		const screen = await render(GiftActionRowTestHost, { contentWidth: 260 });
-		await settlePlacement();
+		await settleActionPlacement();
 		(screen.getByTestId('received-action').element() as HTMLElement).focus();
 
 		await screen.rerender({ contentWidth: 150 });
-		await settlePlacement();
+		await settleActionPlacement();
 
 		expect(document.activeElement).toBe(screen.getByTestId('gift-more-actions').element());
 	});
 
 	it('uses actual row content width when the caller does not supply a measurement', async () => {
 		const screen = await render(GiftActionRowTestHost, { hostWidth: 150 });
-		await settlePlacement();
+		await settleActionPlacement();
 
 		const row = screen.getByTestId('gift-action-row').element() as HTMLElement;
 		expect(row.dataset.overflowActions).toBe('received');
@@ -139,7 +134,7 @@ describe('GiftActionRow intrinsic placement', () => {
 		);
 
 		await screen.rerender({ hostWidth: 260 });
-		await settlePlacement();
+		await settleActionPlacement();
 		expect(row.dataset.overflowActions).toBe('');
 		expect(row.querySelector('[data-testid="gift-action-secondary"]')).toHaveProperty(
 			'inert',
@@ -149,15 +144,15 @@ describe('GiftActionRow intrinsic placement', () => {
 
 	it('keeps one stateful control mounted and remeasures changing hidden content', async () => {
 		const screen = await render(GiftActionRowTestHost, { contentWidth: 260 });
-		await settlePlacement();
+		await settleActionPlacement();
 		const row = screen.getByTestId('gift-action-row').element() as HTMLElement;
 		const received = screen.getByTestId('received-action').element() as HTMLButtonElement;
 		received.click();
-		await settlePlacement();
+		await settleActionPlacement();
 		expect(received.textContent).toContain('pending');
 
 		await screen.rerender({ contentWidth: 150 });
-		await settlePlacement();
+		await settleActionPlacement();
 		expect(row.querySelector('[data-testid="received-action"]')).toBe(received);
 		expect(received.closest('[data-testid="gift-action-secondary"]')).toHaveProperty(
 			'inert',
@@ -168,7 +163,7 @@ describe('GiftActionRow intrinsic placement', () => {
 			contentWidth: 260,
 			secondaryLabel: 'Received command with a substantially longer localized pending label',
 		});
-		await settlePlacement();
+		await settleActionPlacement();
 		expect(received.closest('[data-testid="gift-action-secondary"]')).toHaveProperty(
 			'inert',
 			true,
@@ -176,7 +171,7 @@ describe('GiftActionRow intrinsic placement', () => {
 		expect(received.textContent).toContain('pending');
 
 		await screen.rerender({ contentWidth: 260, secondaryLabel: 'Done' });
-		await settlePlacement();
+		await settleActionPlacement();
 		expect(row.querySelector('[data-testid="received-action"]')).toBe(received);
 		expect(received.closest('[data-testid="gift-action-secondary"]')).toHaveProperty(
 			'inert',
@@ -191,7 +186,7 @@ describe('GiftActionRow intrinsic placement', () => {
 			enableMore: false,
 			onplacementchange,
 		});
-		await settlePlacement();
+		await settleActionPlacement();
 
 		const row = screen.getByTestId('gift-action-row').element() as HTMLElement;
 		expect(row.querySelector('[data-testid="gift-more-actions"]')).toBeNull();
@@ -204,17 +199,17 @@ describe('GiftActionRow intrinsic placement', () => {
 			contentWidth: 150,
 			moreOpen: true,
 		});
-		await settlePlacement();
+		await settleActionPlacement();
 		const more = screen.getByTestId('gift-more-actions').element() as HTMLElement;
 		more.focus();
 
 		await screen.rerender({ contentWidth: 260, moreOpen: true });
-		await settlePlacement();
+		await settleActionPlacement();
 		expect(screen.getByTestId('gift-more-actions').element()).toBe(more);
 		expect(document.activeElement).toBe(more);
 
 		await screen.rerender({ contentWidth: 260, moreOpen: false });
-		await settlePlacement();
+		await settleActionPlacement();
 		expect(document.querySelector('[data-testid="gift-more-actions"]')).toHaveProperty(
 			'inert',
 			true,
@@ -224,13 +219,13 @@ describe('GiftActionRow intrinsic placement', () => {
 
 	it('does not steal focus after the user leaves the action row before a resize', async () => {
 		const screen = await render(GiftActionRowTestHost, { contentWidth: 260 });
-		await settlePlacement();
+		await settleActionPlacement();
 		(screen.getByTestId('received-action').element() as HTMLElement).focus();
 		const outside = screen.getByTestId('outside-action').element() as HTMLElement;
 		outside.focus();
 
 		await screen.rerender({ contentWidth: 150 });
-		await settlePlacement();
+		await settleActionPlacement();
 
 		expect(document.activeElement).toBe(outside);
 	});
