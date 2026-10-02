@@ -281,7 +281,9 @@
 				>
 					{gift.name}
 				</h3>
-				<span class={cn('flex h-[1lh] shrink-0 items-center', dimmedContentClass)}>
+				<span
+					class={cn('hidden h-[1lh] shrink-0 items-center sm:flex', dimmedContentClass)}
+				>
 					<GiftPieceCount quantity={gift.quantity} role="recipient" hideWhenOne />
 				</span>
 				{#if !contextualMode && presentation.showLike && isVisitorOrModerator && visitorGift}
@@ -308,17 +310,21 @@
 			<div class={cn('mt-1.5 min-w-0', dimmedContentClass)} data-testid="gift-link-list">
 				<GiftLinkList links={gift.links} maxVisible={3} />
 			</div>
-			{#if gift.price !== null}
+			<div class={cn('flex min-w-0 flex-wrap items-baseline gap-x-1.5', dimmedContentClass)}>
 				<span
-					class={cn('text-sm font-bold text-secondary-foreground', dimmedContentClass)}
+					class={cn(
+						'text-sm',
+						gift.price === null && 'text-muted-foreground italic',
+						gift.price !== null && 'font-bold text-secondary-foreground',
+					)}
 					data-testid="gift-list-price">{priceDisplay}</span
 				>
-			{:else}
 				<span
-					class={cn('text-sm text-muted-foreground italic', dimmedContentClass)}
-					data-testid="gift-list-price">{priceDisplay}</span
+					class="flex items-baseline gap-x-1.5 text-sm text-muted-foreground before:content-['·'] empty:hidden sm:hidden"
 				>
-			{/if}
+					<GiftPieceCount quantity={gift.quantity} role="recipient" hideWhenOne />
+				</span>
+			</div>
 
 			{#if !contextualMode && (hasReceivedPrimary || (isVisitorOrModerator && hasReservationAction) || (onmore && persistentMore))}
 				<div

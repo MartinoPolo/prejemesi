@@ -183,8 +183,8 @@ sections for UI work. Historical reconciliation and review notes are in
   alongside priority, price, name, and creation date with primary/secondary criteria.
 - 2026-05-30: Source links are immediately accessible in every gift view as an external-link
   affordance and readable label/domain, not hidden in detail; no-link gifts show muted “Bez odkazu”.
-  Multiple links stay with the gift content, and quantity is beside the title; only authorized
-  viewers see the reserved portion.
+  Multiple links stay with the gift content; only authorized viewers see the reserved portion of a
+  quantity.
 - 2026-07-10: The wishlist header is a spiral notebook with a taped, square polaroid and a desktop
   sticky-note countdown; narrow layouts use a countdown chip, no date hides it, and passed dates
   show “proběhlo”. Do not stack a separate full-bleed hero above it.
@@ -250,10 +250,6 @@ sections for UI work. Historical reconciliation and review notes are in
   reservers use a localized generic summary instead of listing names. Preserve server-derived
   privacy capabilities and keep Compact image-free. Validate crowded valid states in focused mockups
   before implementation.
-- 2026-09-14: Keep applicable gift quantity outside the title clamp, aligned against the first title
-  line using typography-derived slots. Grid Like uses the image/card top-right with a separate
-  wrapping category lane; List Like stays beside the title. Preserve the ghost heart/count and
-  accessible targets.
 - 2026-09-14: Center gift state badges and authorized identity as one combined group on the image; a
   lone state remains at its center, independent of edge badges. Category stays top-left and priority
   bottom-left, as finalized in the gift-hierarchy design approval. Its badge styling is schematic
@@ -316,6 +312,11 @@ sections for UI work. Historical reconciliation and review notes are in
 - 2026-10-01: Desktop Card content uses a wider inset than its footer, with equal title top and
   start padding; desktop List, mobile, and footers keep the nested-corner inset. Received stays
   adjacent to Reserve/Cancel and More (#420).
+- 2026-10-02: Keep applicable gift quantity outside the title clamp. Card and `sm`+ List align it
+  against the first title line using typography-derived slots; below `sm`, List shows it after the
+  price so narrow titles keep their room. Grid Like uses the image/card top-right with a separate
+  wrapping category lane; List Like stays beside the title. Preserve the ghost heart/count and
+  accessible targets.
 
 ## Forms & settings
 

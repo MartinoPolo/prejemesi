@@ -496,6 +496,58 @@ describe('GiftListItem title hierarchy (issue #377)', () => {
 	});
 
 	it.each([
+		{ viewport: 390, hostWidth: 360, placement: 'price' },
+		{ viewport: 800, hostWidth: 640, placement: 'title' },
+	])(
+		'shows applicable quantity beside the $placement at $viewport px',
+		async ({ viewport, hostWidth, placement }) => {
+			await page.viewport(viewport, 720);
+			const host = await renderItem(
+				makeVisitorGift({ quantity: 3, price: 1290, currency: 'CZK' }),
+				WISHLIST_ROLES.visitor,
+				null,
+				hostWidth,
+			);
+			const visibleCounts = Array.from(
+				host.querySelectorAll<HTMLElement>('[data-testid="gift-piece-count"]'),
+			).filter((count) => count.checkVisibility());
+			const title = host.querySelector('.gift-list-title') as HTMLElement;
+			const price = host.querySelector('[data-testid="gift-list-price"]') as HTMLElement;
+			const anchorRect = (placement === 'price' ? price : title).getBoundingClientRect();
+			const anchorLineHeight = Number.parseFloat(
+				getComputedStyle(placement === 'price' ? price : title).lineHeight,
+			);
+
+			expect(visibleCounts).toHaveLength(1);
+			const countRect = visibleCounts[0].getBoundingClientRect();
+			expect(visibleCounts[0].textContent?.trim()).toBe('3 kusy');
+			expectPixelsAtLeast(countRect.left, anchorRect.right);
+			expectPixelsNear(
+				countRect.top + countRect.height / 2,
+				anchorRect.top + anchorLineHeight / 2,
+			);
+			host.remove();
+		},
+	);
+
+	it('shows no mobile quantity or separator beside the price for a single piece', async () => {
+		await page.viewport(390, 720);
+		const host = await renderItem(
+			makeVisitorGift({ quantity: 1, price: 1290, currency: 'CZK' }),
+			WISHLIST_ROLES.visitor,
+			null,
+			360,
+		);
+		const price = host.querySelector('[data-testid="gift-list-price"]') as HTMLElement;
+		const priceLineText = Array.from(price.parentElement!.children)
+			.filter((element) => element.checkVisibility())
+			.map((element) => element.textContent?.trim());
+
+		expect(priceLineText).toEqual([price.textContent?.trim()]);
+		host.remove();
+	});
+
+	it.each([
 		{ viewport: 390, expectedSize: 16, expectedLines: '2' },
 		{ viewport: 800, expectedSize: 24, expectedLines: '1' },
 	])(
