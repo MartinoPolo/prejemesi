@@ -96,4 +96,27 @@ describe('createSentryClientOptions', () => {
 
 		expect(filterAndSanitizeSentryClientEvent(event)).toEqual(event);
 	});
+
+	it.each([
+		'Load failed',
+		'Load failed (prejemesi.cz)',
+		'Failed to fetch',
+		'NetworkError when attempting to fetch resource.',
+	])('reports the browser network failure "%s" as a warning', (message) => {
+		const event = {
+			level: 'error',
+			exception: { values: [{ type: 'TypeError', value: message }] },
+		};
+
+		expect(filterAndSanitizeSentryClientEvent(event)).toMatchObject({ level: 'warning' });
+	});
+
+	it('keeps application errors that mention a network failure at error level', () => {
+		const event = {
+			level: 'error',
+			exception: { values: [{ type: 'TypeError', value: 'Load failed to parse gift' }] },
+		};
+
+		expect(filterAndSanitizeSentryClientEvent(event)).toMatchObject({ level: 'error' });
+	});
 });

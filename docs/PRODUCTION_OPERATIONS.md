@@ -68,10 +68,12 @@ buffering resumes after navigation back to a safe route; regular session samplin
 next page load. Review the sampling rates and retained data before the trial ends.
 
 Configure an issue alert in Sentry for new and regressed `error` or `fatal` issues in the
-`production` environment, then verify the notification recipient. After deployment, create one
-controlled browser error and one authenticated Worker error, confirm both issues use the deployed
-release and readable source maps, inspect the associated replay for masking, and remove the test
-trigger. Do not expose a permanent public error-generation route.
+`production` environment, then verify the notification recipient. Browser fetches that never
+complete (`Load failed`, `Failed to fetch`, `NetworkError…`) are reported as `warning`, so they stay
+searchable without alerting. After deployment, create one controlled browser error and one
+authenticated Worker error, confirm both issues use the deployed release and readable source maps,
+inspect the associated replay for masking, and remove the test trigger. Do not expose a permanent
+public error-generation route.
 
 ## Anonymous landing CPU on Workers Free
 
