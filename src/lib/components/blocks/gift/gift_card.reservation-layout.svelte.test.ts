@@ -111,28 +111,54 @@ describe('GiftCard reservation-action layout (issue #211)', () => {
 		expect(purchasedButtonEl.tabIndex).toBe(0);
 	});
 
-	it('keeps Purchased off the direct mobile face and exposes its context through More', async () => {
+	it('shows Bought in the mobile action lane and moves it into More only when it cannot fit', async () => {
 		await page.viewport(390, 720);
-		const onmore = vi.fn();
-		const host = document.createElement('div');
-		document.body.appendChild(host);
-		fixedHosts.add(host);
-		await render(
-			GiftCardTestHost,
-			{ gift: makeVisitorGift(), role: WISHLIST_ROLES.visitor, onmore },
-			{ baseElement: host },
-		);
+		for (const [hostWidth, fitsDirectly] of [
+			['390px', true],
+			['165px', false],
+		] as const) {
+			const onmore = vi.fn();
+			const host = document.createElement('div');
+			host.style.width = hostWidth;
+			document.body.appendChild(host);
+			fixedHosts.add(host);
+			await render(
+				GiftCardTestHost,
+				{ gift: makeVisitorGift(), role: WISHLIST_ROLES.visitor, onmore },
+				{ baseElement: host },
+			);
 
-		const purchased = host.querySelector(
-			`[aria-label="${m.gift_mark_bought()}"]`,
-		) as HTMLButtonElement | null;
-		expect(purchased).toBeNull();
-		const more = host.querySelector(
-			`[aria-label="${m.gift_more_actions()}"]`,
-		) as HTMLButtonElement;
-		expect(more).toBeTruthy();
-		more.click();
-		expect(onmore).toHaveBeenCalledOnce();
+			const purchased = host.querySelector(
+				`[aria-label="${m.gift_mark_bought()}"]`,
+			) as HTMLButtonElement;
+			const cancel = host.querySelector(
+				`[aria-label="${m.reserve_button_cancel_aria({ name: makeVisitorGift().name })}"]`,
+			) as HTMLButtonElement;
+			const more = host.querySelector(
+				`[aria-label="${m.gift_more_actions()}"]`,
+			) as HTMLButtonElement;
+			const actionRow = host.querySelector('[data-testid="gift-action-row"]') as HTMLElement;
+			await expect.poll(() => actionRow.dataset.overflowActions !== undefined).toBe(true);
+			expect(purchased).toBeTruthy();
+			expect(cancel.closest('[inert]')).toBeNull();
+			expect(
+				host.querySelector('[data-testid="gift-card-image-frame"]')?.contains(purchased),
+			).toBe(false);
+
+			if (fitsDirectly) {
+				await expect.poll(() => purchased.closest('[inert]')).toBeNull();
+				expectPixelsNear(
+					purchased.getBoundingClientRect().top,
+					cancel.getBoundingClientRect().top,
+				);
+				expect(actionRow.dataset.overflowActions).not.toContain('purchased');
+			} else {
+				await expect.poll(() => actionRow.dataset.overflowActions).toContain('purchased');
+				expect(purchased.closest('[inert]')).not.toBeNull();
+			}
+			more.click();
+			expect(onmore).toHaveBeenCalledOnce();
+		}
 	});
 
 	it('fits the direct manager action and optional More in a compact mobile card', async () => {

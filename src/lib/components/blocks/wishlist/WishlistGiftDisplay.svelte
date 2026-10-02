@@ -30,6 +30,8 @@
 		role: WishlistRole;
 		isArchived: boolean;
 		hideReservationState: boolean;
+		/** Signed-in viewers may track their own reservation as bought. */
+		isAuthenticated?: boolean;
 		viewMode: GiftViewMode;
 		isLoading?: boolean;
 		isEmpty: boolean;
@@ -66,6 +68,7 @@
 		role,
 		isArchived,
 		hideReservationState,
+		isAuthenticated = false,
 		viewMode,
 		isLoading = false,
 		isEmpty,
@@ -331,6 +334,7 @@
 						{showPriority}
 						{isArchived}
 						hideReservationState={reservationStateHidden}
+						{isAuthenticated}
 						reorderEnabled={reorderMode &&
 							reorderInteractionEnabled &&
 							canManage &&

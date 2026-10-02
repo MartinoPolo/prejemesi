@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { setGiftsContext } from '$lib/modules/gifts/gifts.context.svelte.js';
 	import { setLikesContext } from '$lib/modules/likes/likes.context.svelte.js';
 	import { setReservationsContext } from '$lib/modules/reservations/reservations.context.svelte.js';
 	import type { GiftForVisitor } from '$lib/modules/gifts/types.js';
@@ -10,9 +11,24 @@
 		gift: GiftForVisitor;
 		role: 'visitor' | 'admin';
 		reservations?: ReservationForModerator[];
+		isAuthenticated?: boolean;
 	}
 
-	let { gift, role, reservations = [] }: GiftDetailActionBarTestHostProps = $props();
+	let {
+		gift,
+		role,
+		reservations = [],
+		isAuthenticated = true,
+	}: GiftDetailActionBarTestHostProps = $props();
+
+	setGiftsContext(
+		() => gift.wishlistId,
+		() => [gift],
+		() => 'visitor',
+		() => false,
+		() => isAuthenticated,
+		() => [],
+	);
 
 	setLikesContext(
 		() => [],
@@ -29,4 +45,4 @@
 	);
 </script>
 
-<GiftDetailActionBar {gift} placement="bar" />
+<GiftDetailActionBar {gift} />

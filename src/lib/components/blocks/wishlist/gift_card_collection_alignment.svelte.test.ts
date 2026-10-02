@@ -443,7 +443,6 @@ describe('GiftCard collection alignment', () => {
 				cards[0]!.querySelector<HTMLElement>('[data-like-heart]')!.closest('button')!,
 				cards[0]!.querySelector<HTMLElement>('[data-testid="gift-state-overlay"]')!
 					.firstElementChild as HTMLElement,
-				cards[0]!.querySelector<HTMLElement>('[data-reserver-identity]')!,
 				cards[0]!.querySelector<HTMLElement>('[data-testid="gift-priority-badge"]')!,
 			].map((element) => element.getBoundingClientRect());
 

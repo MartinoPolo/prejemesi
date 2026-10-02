@@ -3,6 +3,7 @@ import { getLocale } from '$lib/paraglide/runtime.js';
 import { extractGiftUrlDomain, getPrimaryGiftLink } from './gift_url.js';
 import { MAX_GIFT_PRICE, type GiftLink } from './types.js';
 import type { WishlistRole } from '$lib/modules/wishlists/types.js';
+import type { OtherReserverIdentity } from './gift_display_state.js';
 
 const PRICE_FORMATTER_CACHE_LIMIT = 16;
 const priceFormatters = new Map<string, Intl.NumberFormat>();
@@ -124,20 +125,16 @@ export function getPriorityActionOptions<T extends { id: string; label: string |
 }
 
 /**
- * Small line naming who reserved a gift, e.g. „rezervoval(a) Babička". Shown to
- * moderators only (issue #198) — the API already omits names for everyone else
- * (visitors, recipient), so this returns null exactly when nothing may be shown.
+ * Badge label for a reservation held by someone else. Only viewers allowed to see reserver names
+ * receive an identity; everyone else reads the anonymous label.
  */
-export function formatReserverLine(reserverNames: readonly string[]): string | null {
-	const firstName = reserverNames[0];
-	if (firstName === undefined) {
-		return null;
+export function formatOtherReservationLabel(otherReservers?: OtherReserverIdentity): string {
+	if (otherReservers === undefined) {
+		return m.gift_reserved_by_other_overlay();
 	}
-	if (reserverNames.length === 1) {
-		return m.gift_reserved_by({ name: firstName });
-	}
-
-	return m.gift_reserved_by_many();
+	return otherReservers.kind === 'single'
+		? m.gift_reserved_by_overlay({ name: otherReservers.name })
+		: m.gift_reserved_by_many();
 }
 
 /** Format an ISO timestamp from a description append as a short locale date. */

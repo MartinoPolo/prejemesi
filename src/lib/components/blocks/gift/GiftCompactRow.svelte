@@ -10,15 +10,12 @@
 	import type { WishlistRole } from '$lib/modules/wishlists/types.js';
 	import {
 		formatPrice,
-		formatReserverLine,
+		formatOtherReservationLabel,
 		extractGiftDomain,
 	} from '$lib/modules/gifts/gift_display.js';
 	import { deriveGiftDisplayState } from '$lib/modules/gifts/gift_display_state.js';
 	import { normalizeGiftUrl, getPrimaryGiftLink } from '$lib/modules/gifts/gift_url.js';
-	import {
-		canManageWishlist,
-		canSeeReserverNames,
-	} from '$lib/modules/wishlists/wishlist_capabilities.js';
+	import { canManageWishlist } from '$lib/modules/wishlists/wishlist_capabilities.js';
 	import { cn } from '$lib/utils.js';
 	import GiftPriorityBadge from './GiftPriorityBadge.svelte';
 
@@ -54,6 +51,7 @@
 		reservationAwareGift,
 		isFullyReserved,
 		reservedCount,
+		presentation,
 	} = $derived(deriveGiftDisplayState(gift, role, hideReservationState));
 
 	const canManage = $derived(canManageWishlist(role));
@@ -65,8 +63,8 @@
 	const domain = $derived(extractGiftDomain(gift.links));
 	const safeGiftUrl = $derived(normalizeGiftUrl(primaryLink?.url ?? null));
 	const priceDisplay = $derived(formatPrice(gift.price, gift.currency, gift.priceMax));
-	const reserverLine = $derived(
-		canSeeReserverNames(role) ? formatReserverLine(visitorGift?.reserverNames ?? []) : null,
+	const otherReservationLabel = $derived(
+		formatOtherReservationLabel(presentation.overlay?.otherReservers),
 	);
 </script>
 
@@ -163,16 +161,9 @@
 				{#if isVisitorOrModerator && visitorGift}
 					<PurchasedToggle gift={visitorGift} size="sm" />
 					{#if isFullyReserved && visitorGift.myReservationId === null}
-						<span class="flex flex-col items-end leading-tight">
-							<span class="text-xs font-medium text-reserved"
-								>{m.gift_reserved_overlay()}</span
-							>
-							{#if reserverLine !== null}
-								<span class="text-[10px] font-medium text-muted-foreground"
-									>{reserverLine}</span
-								>
-							{/if}
-						</span>
+						<span class="text-xs leading-tight font-medium text-reserved"
+							>{otherReservationLabel}</span
+						>
 					{:else}
 						<ReserveButton
 							gift={visitorGift}

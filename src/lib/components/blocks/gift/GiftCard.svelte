@@ -9,12 +9,11 @@
 	import GiftReceivedToggle from './GiftReceivedToggle.svelte';
 	import type { GiftForVisitor, GiftByRole } from '$lib/modules/gifts/types.js';
 	import type { WishlistRole } from '$lib/modules/wishlists/types.js';
-	import { formatPrice, formatReserverLine } from '$lib/modules/gifts/gift_display.js';
+	import { formatPrice } from '$lib/modules/gifts/gift_display.js';
 	import { deriveGiftDisplayState } from '$lib/modules/gifts/gift_display_state.js';
 	import {
 		canLikeGift,
 		canManageWishlist,
-		canSeeReserverNames,
 	} from '$lib/modules/wishlists/wishlist_capabilities.js';
 	import { resolveGiftImageUrl } from '$lib/modules/images/public_url.js';
 	import { hasExplicitFrameFill } from '$lib/components/derived/image-frame/index.js';
@@ -32,6 +31,8 @@
 		role: WishlistRole;
 		isArchived?: boolean;
 		hideReservationState?: boolean;
+		/** Signed-in viewers may track their own reservation as bought. */
+		isAuthenticated?: boolean;
 		contextualMode?: boolean;
 		allowArchivedLike?: boolean;
 		onreserve?: (gift: GiftForVisitor) => void;
@@ -53,6 +54,7 @@
 		role,
 		isArchived = false,
 		hideReservationState = role === 'recipient',
+		isAuthenticated = false,
 		contextualMode = false,
 		allowArchivedLike = false,
 		onreserve,
@@ -93,6 +95,16 @@
 	const hasMultipleActions = $derived(
 		hasReceivedPrimary && isVisitorOrModerator && hasReservationAction,
 	);
+	// Mirrors PurchasedToggle's own gate so the action lane never reserves an empty slot.
+	const hasPurchasedAction = $derived(
+		!canManage &&
+			visitorGift !== null &&
+			visitorGift.myReservationId !== null &&
+			isAuthenticated,
+	);
+	const secondaryAction = $derived(
+		hasMultipleActions ? 'received' : hasPurchasedAction ? 'purchased' : undefined,
+	);
 	let actionContentWidth = $state(0);
 
 	const isDimmed = $derived(presentation.isDimmed);
@@ -104,12 +116,6 @@
 		return hasExplicitFrameFill(fillColor) ? fillColor : null;
 	});
 	const priceDisplay = $derived(formatPrice(gift.price, gift.currency, gift.priceMax));
-	const reserverLine = $derived(formatReserverLine(visitorGift?.reserverNames ?? []));
-	const visibleReserverLine = $derived(
-		canSeeReserverNames(role) && reserverLine !== null && reserverLine.trim() !== ''
-			? reserverLine
-			: null,
-	);
 	const hasDescriptionContent = $derived(
 		(gift.description ?? '').trim() !== '' || gift.descriptionAppends.length > 0,
 	);
@@ -177,11 +183,7 @@
 				</div>
 			{/if}
 
-			<GiftStateOverlay
-				model={presentation.overlay}
-				identity={visibleReserverLine}
-				avoidTopRight
-			/>
+			<GiftStateOverlay model={presentation.overlay} avoidTopRight />
 			<GiftPriorityBadge
 				priorityLabel={gift.priorityLabel}
 				{showPriority}
@@ -250,16 +252,20 @@
 					data-testid="gift-card-reservation-actions"
 					class={styles.reservationActions()}
 				>
-					{#snippet secondaryReceivedAction()}
-						<GiftReceivedToggle
-							giftId={gift.id}
-							received={gift.received}
-							{role}
-							{isArchived}
-							{onreceived}
-							pending={receivedPending}
-							compactLabel
-						/>
+					{#snippet secondaryGiftAction()}
+						{#if secondaryAction === 'received'}
+							<GiftReceivedToggle
+								giftId={gift.id}
+								received={gift.received}
+								{role}
+								{isArchived}
+								{onreceived}
+								pending={receivedPending}
+								compactLabel
+							/>
+						{:else if secondaryAction === 'purchased' && visitorGift}
+							<PurchasedToggle gift={visitorGift} />
+						{/if}
 					{/snippet}
 					<GiftActionRow
 						{onmore}
@@ -267,8 +273,8 @@
 						{moreSurface}
 						{persistentMore}
 						contentWidth={actionContentWidth}
-						secondary={hasMultipleActions ? secondaryReceivedAction : undefined}
-						secondaryAction={hasMultipleActions ? 'received' : undefined}
+						secondary={secondaryAction === undefined ? undefined : secondaryGiftAction}
+						{secondaryAction}
 						primaryAction={hasReservationAction && visitorGift
 							? visitorGift.myReservationId === null
 								? 'reserve'
@@ -278,9 +284,6 @@
 								: undefined}
 						controlSizing="intrinsic"
 					>
-						{#if !canManage && isVisitorOrModerator && visitorGift && onmore === undefined}
-							<PurchasedToggle gift={visitorGift} class="w-full max-sm:hidden" />
-						{/if}
 						{#if hasMultipleActions && visitorGift}
 							<ReserveButton
 								gift={visitorGift}

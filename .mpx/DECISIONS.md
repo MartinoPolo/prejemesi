@@ -204,9 +204,9 @@ sections for UI work. Historical reconciliation and review notes are in
   heading; správci keep the own-reservation pin but do not sink other reservations. Recipient-only
   ordering never depends on reservation state; selected sorting applies inside each band, with
   received gifts final.
-- 2026-08-07: Card and list reserved overlays share the full-text “Rezervováno” sticker, crisp above
-  the faded image; správci additionally see names. Do not replace that signal with an ambiguous
-  check-only icon.
+- 2026-08-07: Card and list reservation states use full-text state badges, crisp above the faded
+  image; správci read a single reserver name inside the same badge. Do not replace that signal with
+  an ambiguous check-only icon.
 - 2026-08-12: Received/unreceived is the primary manager browse action; marking received keeps the
   gift visible by enabling the received filter. Fully reserved gifts do not need a redundant
   disabled reserve button; privileged release belongs in detail/editor.
@@ -243,17 +243,16 @@ sections for UI work. Historical reconciliation and review notes are in
 - 2026-09-12: Keep active mobile filter pills inside the Display sheet with Reset next to its Filter
   selector, not in another sticky toolbar row. The closed toolbar may show the count; this resolves
   the September 10 request for visible active filters without increasing sticky height.
-- 2026-09-14: Image-bearing Card/List views share eligible category, priority, received/reserved,
-  and authorized reservation-identity overlays across desktop/mobile, including image placeholders;
-  assigned categories go top-left and reservation identity stays with its state overlay, not
-  duplicated in the content column. Authorized viewers may see a single reserver's name; multiple
-  reservers use a localized generic summary instead of listing names. Preserve server-derived
-  privacy capabilities and keep Compact image-free. Validate crowded valid states in focused mockups
-  before implementation.
-- 2026-09-14: Center gift state badges and authorized identity as one combined group on the image; a
-  lone state remains at its center, independent of edge badges. Category stays top-left and priority
-  bottom-left, as finalized in the gift-hierarchy design approval. Its badge styling is schematic
-  and must not replace the actual shared badge components.
+- 2026-09-14: Image-bearing Card/List views share eligible category, priority, received/reserved
+  state badges across desktop/mobile, including image placeholders; assigned categories go top-left
+  and an authorized reserver name stays inside its state badge, not duplicated in the content
+  column. Authorized viewers may see a single reserver's name; multiple reservers use a localized
+  generic summary instead of listing names. Preserve server-derived privacy capabilities and keep
+  Compact image-free. Validate crowded valid states in focused mockups before implementation.
+- 2026-09-14: Center gift state badges, including any authorized reserver name, as one group on the
+  image; a lone state remains at its center, independent of edge badges. Category stays top-left and
+  priority bottom-left, as finalized in the gift-hierarchy design approval. Its badge styling is
+  schematic and must not replace the actual shared badge components.
 - 2026-09-14: Gift-hierarchy mockups are approved except for their broken mobile List composition;
   agents must not copy its grid-like stacking or prototype dimension script. Preserve genuine mobile
   List rows and shared crop geometry, retaining only necessary existing accessibility fallbacks for
@@ -266,11 +265,11 @@ sections for UI work. Historical reconciliation and review notes are in
   available. Retain the top-left grip's small visible surface inside its larger hit target; approved
   mockups are not evidence that persistence, dragging, or positioning defects are fixed.
 
-- 2026-09-15: List and mobile Card content follow title → description → link badges and price →
+- 2026-09-15: List and mobile Card content follow title → description → source links and price →
   bottom-right actions. Titles and descriptions flow together without reserving a blank second title
   line; mobile Card titles allow two lines, desktop List one line with ellipsis, and mobile List two
   lines. Use 16 px mobile and 24 px desktop titles with full names available in detail and
-  accessible naming. Keep short descriptions immediately below titles and source badges visible on
+  accessible naming. Keep short descriptions immediately below titles and source links visible on
   mobile. Place links left and compact prices right, wrapping prices below on collision; keep prices
   in readable ink rather than red action colors.
 - 2026-09-16: Desktop Card content aligns across the displayed collection, not only within each grid
@@ -282,7 +281,7 @@ sections for UI work. Historical reconciliation and review notes are in
 - 2026-09-16: Desktop Card secondary actions may move into More while primary actions and relevant
   Received/Bought controls stay visible, subject to existing capabilities. Price must have a stable
   position independent of link count; flowing it horizontally after source links is rejected. Put
-  price in the content directly below link badges on its own left-aligned line, above right-aligned
+  price in the content directly below source links on its own left-aligned line, above right-aligned
   actions, so its width cannot push buttons around. Image-corner overlays retain their
   geometry-specific positions. Omit the action separator. Shared card height must shrink to the
   minimum justified by current content after option changes, never retain space from previous
@@ -304,10 +303,10 @@ sections for UI work. Historical reconciliation and review notes are in
   frames; tall content or overlays may make individual frames portrait without equalizing rows
   across gifts or groups. Desktop text stays one-line.
 - 2026-09-24: Unavailable image-bearing gifts use the approved 50% content/secondary-badge treatment
-  with softened borders, shadows and image/body separators; action controls and state/authorized
-  identity overlays stay crisp. Replace the image veil rather than stacking fades, preserve existing
-  dimming eligibility/privacy and image-free Compact, and keep separators visible in both states.
-  The approved visual reference and implementation handoff are in
+  with softened borders, shadows and image/body separators; action controls and state badges stay
+  crisp. Replace the image veil rather than stacking fades, preserve existing dimming
+  eligibility/privacy and image-free Compact, and keep separators visible in both states. The
+  approved visual reference and implementation handoff are in
   `designs/unavailable-gift-comparison/`; design approval is not an accessibility certification.
 - 2026-10-01: Desktop Card content uses a wider inset than its footer, with equal title top and
   start padding; desktop List, mobile, and footers keep the nested-corner inset. Received stays

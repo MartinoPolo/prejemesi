@@ -313,6 +313,103 @@ describe('GiftStateOverlay', () => {
 		await expect.element(screen.getByText('Rezervováno někým jiným')).toBeVisible();
 	});
 
+	it('renders every state as a level, statically shadowed badge with the shared radius', async () => {
+		const screen = await render(GiftStateOverlay, {
+			model: { kind: 'received', supportKind: 'own-purchased' },
+		});
+		const badges = Array.from(
+			screen.container.querySelectorAll<HTMLElement>('[data-state-kind]'),
+		);
+
+		expect(badges).toHaveLength(2);
+		for (const badge of badges) {
+			const style = getComputedStyle(badge);
+			expect(style.transform).toBe('none');
+			expect(style.rotate).toBe('none');
+			expect(style.borderTopLeftRadius).toBe('12px');
+			expect(style.boxShadow).not.toBe('none');
+		}
+	});
+
+	it('gives each state a distinct fill with readable text in light and dark modes', async () => {
+		const root = document.documentElement;
+		const previousPalette = root.dataset.palette;
+		const wasDark = root.classList.contains('dark');
+		root.dataset.palette = 'sky';
+		const models = [
+			{ kind: 'own-reservation' },
+			{ kind: 'own-purchased' },
+			{ kind: 'unavailable' },
+			{ kind: 'received' },
+			{ kind: 'partial', remaining: 1, total: 2 },
+		] as const;
+
+		try {
+			for (const dark of [false, true]) {
+				root.classList.toggle('dark', dark);
+				const backgrounds: string[] = [];
+				for (const model of models) {
+					const screen = await render(GiftStateOverlay, { model });
+					const badge =
+						screen.container.querySelector<HTMLElement>('[data-state-primary]')!;
+					const colors = computedBadgeColors(badge);
+					backgrounds.push(colors.background.join(','));
+					if (model.kind !== 'received') {
+						expect(
+							contrast(colors.background, colors.foreground),
+							`${model.kind} in ${dark ? 'dark' : 'light'} mode`,
+						).toBeGreaterThanOrEqual(4.5);
+					}
+					await screen.unmount();
+				}
+				expect(new Set(backgrounds).size).toBe(models.length);
+			}
+		} finally {
+			restoreRootTheme(root, previousPalette, wasDark);
+		}
+	});
+
+	it('labels the viewer’s own bought reservation as Koupeno in the bought brown', async () => {
+		const screen = await render(GiftStateOverlay, { model: { kind: 'own-purchased' } });
+
+		const badge = screen.getByText('Koupeno', { exact: true }).element() as HTMLElement;
+		expect(getComputedStyle(badge).backgroundColor).toBe('rgb(122, 74, 36)');
+		expect(document.body.textContent).not.toContain('Rezervováno vámi');
+	});
+
+	it('combines an authorized reserver name into the single other-reservation badge', async () => {
+		const screen = await render(GiftStateOverlay, {
+			model: { kind: 'unavailable', otherReservers: { kind: 'single', name: 'Jana' } },
+		});
+		const overlay = screen.getByTestId('gift-state-overlay').element() as HTMLElement;
+
+		await expect.element(screen.getByText('Rezervoval(a) Jana')).toBeVisible();
+		expect(overlay.children).toHaveLength(1);
+		expect(document.body.textContent).not.toContain('Rezervováno někým jiným');
+		expect(document.querySelector('[data-reserver-identity]')).toBeNull();
+
+		await screen.rerender({
+			model: { kind: 'unavailable', otherReservers: { kind: 'multiple' } },
+		});
+		await expect.element(screen.getByText('Rezervováno více lidmi')).toBeVisible();
+	});
+
+	it('adds the navy other-reservation badge when no unavailable badge carries the identity', async () => {
+		const screen = await render(GiftStateOverlay, {
+			model: {
+				kind: 'partial',
+				remaining: 1,
+				total: 2,
+				otherReservers: { kind: 'single', name: 'Jana' },
+			},
+		});
+
+		const identity = screen.getByText('Rezervoval(a) Jana').element() as HTMLElement;
+		expect(identity.dataset.stateKind).toBe('unavailable');
+		expect(getComputedStyle(identity).backgroundColor).toBe('rgb(22, 59, 96)');
+		await expect.element(screen.getByText('Volné 1/2')).toBeVisible();
+	});
+
 	it('renders translated English state labels visibly', async () => {
 		overwriteGetLocale(() => 'en');
 		try {

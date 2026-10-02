@@ -204,3 +204,135 @@ describe('deriveGiftDisplayState presentation', () => {
 		]);
 	});
 });
+
+describe('deriveGiftDisplayState bought state', () => {
+	const purchasedAt = new Date('2026-02-01T00:00:00Z');
+
+	it('shows a reserver their own bought reservation instead of the plain reservation', () => {
+		const overlay = deriveGiftDisplayState(
+			gift({
+				reservedCount: 1,
+				isFullyReserved: true,
+				myReservationId: 'mine',
+				myReservationPurchasedAt: purchasedAt,
+			}),
+			'visitor',
+			false,
+			visitorCapabilities,
+		).presentation.overlay;
+
+		expect(overlay).toEqual({ kind: 'own-purchased' });
+	});
+
+	it('keeps remaining capacity and Received around the bought state', () => {
+		const purchased = gift({
+			quantity: 3,
+			reservedCount: 1,
+			myReservationId: 'mine',
+			myReservationPurchasedAt: purchasedAt,
+		});
+
+		expect(
+			deriveGiftDisplayState(purchased, 'moderator', false, visitorCapabilities).presentation
+				.overlay,
+		).toEqual({ kind: 'own-purchased', supportKind: 'partial', remaining: 2, total: 3 });
+		expect(
+			deriveGiftDisplayState(
+				{ ...purchased, received: true },
+				'visitor',
+				false,
+				visitorCapabilities,
+			).presentation.overlay,
+		).toEqual({ kind: 'received', supportKind: 'own-purchased' });
+	});
+
+	it('never shows purchase state to a recipient, even a self-promoted one', () => {
+		const state = deriveGiftDisplayState(
+			gift({
+				quantity: 3,
+				reservedCount: 3,
+				isFullyReserved: true,
+				myReservationId: 'private',
+				myReservationPurchasedAt: purchasedAt,
+			}),
+			'recipient',
+			false,
+			{ canLike: false },
+		);
+
+		expect(state.presentation.overlay).toEqual({ kind: 'unavailable' });
+		expect(state.reservationAwareGift?.myReservationPurchasedAt).toBeNull();
+	});
+});
+
+describe('deriveGiftDisplayState reserver identity', () => {
+	it('names a single other reserver only for viewers allowed to see names', () => {
+		const reservedByJana = gift({
+			reservedCount: 1,
+			isFullyReserved: true,
+			reserverNames: ['Jana'],
+		});
+
+		expect(
+			deriveGiftDisplayState(reservedByJana, 'moderator', false, visitorCapabilities)
+				.presentation.overlay,
+		).toEqual({ kind: 'unavailable', otherReservers: { kind: 'single', name: 'Jana' } });
+		expect(
+			deriveGiftDisplayState(reservedByJana, 'visitor', false, visitorCapabilities)
+				.presentation.overlay,
+		).toEqual({ kind: 'unavailable' });
+		expect(
+			deriveGiftDisplayState(reservedByJana, 'recipient', false, { canLike: false })
+				.presentation.overlay,
+		).toEqual({ kind: 'unavailable' });
+	});
+
+	it('summarises several other reservers without listing names', () => {
+		const overlay = deriveGiftDisplayState(
+			gift({ quantity: 3, reservedCount: 2, reserverNames: ['Jana', 'Eva'] }),
+			'moderator',
+			false,
+			visitorCapabilities,
+		).presentation.overlay;
+
+		expect(overlay).toEqual({
+			kind: 'partial',
+			remaining: 1,
+			total: 3,
+			otherReservers: { kind: 'multiple' },
+		});
+	});
+
+	it('never names the viewer to themselves', () => {
+		const ownOnly = deriveGiftDisplayState(
+			gift({
+				quantity: 3,
+				reservedCount: 1,
+				myReservationId: 'mine',
+				reserverNames: ['Petr'],
+			}),
+			'moderator',
+			false,
+			visitorCapabilities,
+		).presentation.overlay;
+		const ownAndOther = deriveGiftDisplayState(
+			gift({
+				quantity: 3,
+				reservedCount: 2,
+				myReservationId: 'mine',
+				reserverNames: ['Petr', 'Jana'],
+			}),
+			'moderator',
+			false,
+			visitorCapabilities,
+		).presentation.overlay;
+
+		expect(ownOnly).toEqual({
+			kind: 'own-reservation',
+			supportKind: 'partial',
+			remaining: 2,
+			total: 3,
+		});
+		expect(ownAndOther?.otherReservers).toEqual({ kind: 'multiple' });
+	});
+});

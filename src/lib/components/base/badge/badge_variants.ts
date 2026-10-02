@@ -57,10 +57,17 @@ export const BADGE_TONES = Object.keys(badgeVariants.variants.tone) as BadgeTone
 export const BADGE_STYLES = Object.keys(badgeVariants.variants.badgeStyle) as BadgeStyle[];
 export const BADGE_SIZES = Object.keys(badgeVariants.variants.size) as BadgeSize[];
 
+/**
+ * Flat information badge (category, priority, counts) that never carries a shadow. Gift state over
+ * an image uses `GiftStateOverlay`, whose solid badges are the elevated exception.
+ */
 export type BadgeProps = WithElementRef<HTMLAttributes<HTMLSpanElement>, HTMLSpanElement> & {
+	/** Semantic color family. */
 	tone?: BadgeTone;
+	/** `outlined` tints the fill inside an ink border, `subtle` drops the border, `solid` fills with the tone. */
 	badgeStyle?: BadgeStyle;
 	size?: BadgeSize;
+	/** Leading icon kept at its intrinsic size while the label truncates. */
 	icon?: Snippet;
 	children?: Snippet;
 };

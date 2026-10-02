@@ -1894,6 +1894,7 @@
 			{role}
 			{isArchived}
 			{hideReservationState}
+			{isAuthenticated}
 			{viewMode}
 			isLoading={isGiftDataLoading}
 			{isEmpty}

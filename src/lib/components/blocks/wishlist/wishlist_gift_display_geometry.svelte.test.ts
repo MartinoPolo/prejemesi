@@ -880,8 +880,9 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 			categoryId: category.id,
 			category,
 			priorityLabel: 'Vysoka',
+			quantity: 3,
 			reservedCount: 1,
-			isFullyReserved: true,
+			isFullyReserved: false,
 			reserverNames: ['Jana Dvořáková'],
 		};
 		const longContentGift = {

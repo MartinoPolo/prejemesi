@@ -31,4 +31,4 @@
 	);
 </script>
 
-<GiftListItem {...props} />
+<GiftListItem isAuthenticated {...props} />

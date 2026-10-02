@@ -11,12 +11,9 @@
 	interface PurchasedToggleProps {
 		gift: GiftForVisitor;
 		size?: ControlSize;
-		/** Extra classes on the underlying Button (issue #165: the gift detail
-		 *  modal's photo overlay gives the pill a sticker shadow + rotation). */
-		class?: string;
 	}
 
-	let { gift, size, class: className }: PurchasedToggleProps = $props();
+	let { gift, size }: PurchasedToggleProps = $props();
 
 	const giftsContext = useGifts();
 
@@ -59,7 +56,6 @@
 		aria-pressed={purchased}
 		aria-label={purchased ? m.gift_mark_unbought() : m.gift_mark_bought()}
 		onclick={handleToggle}
-		class={className}
 	>
 		{#if purchased}<Undo2Icon data-icon="inline-start" aria-hidden="true" />{/if}
 		{purchased ? m.gift_unbought_compact() : m.gift_bought()}

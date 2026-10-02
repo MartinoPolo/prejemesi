@@ -262,7 +262,7 @@ describe('GiftListItem centralized state overlay parity (issue #224 REQ-7)', () 
 		const content = document.querySelector('[data-testid="gift-list-content"]') as HTMLElement;
 		expect(content.textContent).not.toContain('Babička');
 		expect(image.textContent).toContain('Babička');
-		expect(image.textContent).toContain('Rezervováno');
+		expect(image.textContent).toContain('Rezervoval(a) Babička');
 
 		document.body.innerHTML = '';
 
@@ -302,7 +302,11 @@ describe('GiftListItem unified state presentation (issue #328)', () => {
 		await render(
 			GiftListItemTestHost,
 			{
-				gift: makeVisitorGift({ reserverNames: ['Babička'], isFullyReserved: true }),
+				gift: makeVisitorGift({
+					reserverNames: ['Babička'],
+					isFullyReserved: true,
+					myReservationId: null,
+				}),
 				role: WISHLIST_ROLES.moderator,
 				contextualMode: true,
 				onreceived: () => {},

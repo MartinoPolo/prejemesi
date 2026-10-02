@@ -4,22 +4,18 @@
 		GiftOverlayKind,
 		GiftStateOverlayModel,
 	} from '$lib/modules/gifts/gift_display_state.js';
+	import { formatOtherReservationLabel } from '$lib/modules/gifts/gift_display.js';
 	import { cn } from '$lib/utils.js';
+	import { giftStateBadgeVariants } from './gift_state_overlay_variants.js';
 
 	interface GiftStateOverlayProps {
 		model: GiftStateOverlayModel | null;
 		/** Compact labels only when a narrow containing image also has a top-right control. */
 		avoidTopRight?: boolean;
-		identity?: string | null;
 		class?: string;
 	}
 
-	let {
-		model,
-		avoidTopRight = false,
-		identity = null,
-		class: className,
-	}: GiftStateOverlayProps = $props();
+	let { model, avoidTopRight = false, class: className }: GiftStateOverlayProps = $props();
 
 	function label(kind: GiftOverlayKind, state: GiftStateOverlayModel): string {
 		switch (kind) {
@@ -27,8 +23,10 @@
 				return m.gift_received_badge();
 			case 'own-reservation':
 				return m.gift_reserved_by_me_overlay();
+			case 'own-purchased':
+				return m.gift_bought();
 			case 'unavailable':
-				return m.gift_reserved_by_other_overlay();
+				return formatOtherReservationLabel(state.otherReservers);
 			case 'partial':
 				return m.gift_remaining_capacity({
 					remaining: state.remaining ?? 0,
@@ -41,17 +39,15 @@
 	const supportLabel = $derived(
 		model?.supportKind === undefined ? null : label(model.supportKind, model),
 	);
-
-	function pillClasses(kind: GiftOverlayKind): string {
-		return cn(
-			'max-w-[calc(100%_-_0.5rem)] -rotate-1 rounded-panel border-2 border-ink px-2 py-1 text-center text-xs leading-4 font-bold shadow-sticker [overflow-wrap:anywhere]',
-			kind === 'own-reservation' && 'bg-[var(--gift-overlay-own-reservation)] text-white',
-			kind === 'unavailable' && 'bg-[var(--gift-overlay-unavailable)] text-white',
-			kind === 'partial' && 'bg-card text-foreground',
-			kind === 'received' &&
-				'bg-primary text-primary-foreground [text-shadow:0_1px_1px_var(--ink)]',
-		);
-	}
+	// Authorized identity joins the group as the other-reservation badge when no state badge
+	// already carries it, so names never appear as a separate chip.
+	const separateOtherReservationLabel = $derived(
+		model?.otherReservers !== undefined &&
+			model.kind !== 'unavailable' &&
+			model.supportKind !== 'unavailable'
+			? formatOtherReservationLabel(model.otherReservers)
+			: null,
+	);
 </script>
 
 {#if model !== null}
@@ -64,22 +60,22 @@
 		data-testid="gift-state-overlay"
 	>
 		<span
-			class={cn(pillClasses(model.kind), 'state-pill')}
+			class={cn(giftStateBadgeVariants({ kind: model.kind }), 'state-pill')}
 			data-state-primary
 			data-state-kind={model.kind}>{primaryLabel}</span
 		>
 		{#if model.supportKind !== undefined && supportLabel !== null}
 			<span
-				class={cn(pillClasses(model.supportKind), 'state-pill')}
+				class={cn(giftStateBadgeVariants({ kind: model.supportKind }), 'state-pill')}
 				data-reservation-support
 				data-state-kind={model.supportKind}>{supportLabel}</span
 			>
 		{/if}
-		{#if identity !== null && identity.trim() !== ''}
+		{#if separateOtherReservationLabel !== null}
 			<span
-				data-reserver-identity
-				class="max-w-[calc(100%_-_0.5rem)] rounded-md bg-card/95 px-2 py-1 text-center text-xs font-semibold text-foreground shadow-sticker [overflow-wrap:anywhere]"
-				>{identity}</span
+				class={cn(giftStateBadgeVariants({ kind: 'unavailable' }), 'state-pill')}
+				data-other-reservation
+				data-state-kind="unavailable">{separateOtherReservationLabel}</span
 			>
 		{/if}
 	</div>
@@ -87,9 +83,8 @@
 
 <style>
 	@container (width <= 10rem) {
-		.avoid-top-right .state-pill {
-			padding-block: 0.125rem;
-			rotate: 0deg;
+		.state-pill {
+			padding: 0.125rem 0.375rem;
 		}
 
 		.avoid-top-right .state-pill[data-state-kind='received'] {

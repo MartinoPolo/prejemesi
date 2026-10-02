@@ -28,4 +28,4 @@
 	);
 </script>
 
-<WishlistGiftDisplay {...props} />
+<WishlistGiftDisplay isAuthenticated {...props} />
