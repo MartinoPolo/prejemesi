@@ -30,10 +30,25 @@ function getPriceFormatter(locale: string, currency: string): Intl.NumberFormat 
 	return formatter;
 }
 
+type RangeNumberFormat = Intl.NumberFormat & {
+	formatRange(start: number, end: number): string;
+};
+
+function supportsFormatRange(formatter: Intl.NumberFormat): formatter is RangeNumberFormat {
+	return 'formatRange' in formatter && typeof formatter.formatRange === 'function';
+}
+
+function formatPriceRange(formatter: Intl.NumberFormat, price: number, priceMax: number): string {
+	return supportsFormatRange(formatter)
+		? formatter.formatRange(price, priceMax)
+		: `${formatter.format(price)}–${formatter.format(priceMax)}`;
+}
+
 /**
  * Format a price with currency symbol. When `priceMax` is a distinct, larger value, renders a
  * locale-correct range via `Intl.NumberFormat.formatRange` (currency shown once, e.g.
  * "1 200–1 500 Kč") — a non-binding hint, never an approximate/"cca" marker (issue #155).
+ * Browsers without `formatRange` get both bounds formatted individually.
  */
 export function formatPrice(
 	price: number | null,
@@ -48,7 +63,7 @@ export function formatPrice(
 	const isRange = priceMax !== undefined && priceMax !== null && priceMax > price;
 	try {
 		const formatter = getPriceFormatter(getLocale(), currencyCode);
-		return isRange ? formatter.formatRange(price, priceMax) : formatter.format(price);
+		return isRange ? formatPriceRange(formatter, price, priceMax) : formatter.format(price);
 	} catch {
 		return isRange ? `${price}–${priceMax} ${currencyCode}` : `${price} ${currencyCode}`;
 	}

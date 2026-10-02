@@ -546,6 +546,10 @@ sections for UI work. Historical reconciliation and review notes are in
 - 2026-09-01: Gift mutations also refresh affected category-usage metadata in the same response; the
   older “gift-list query only” invalidation rule must not leave category-removal confirmations using
   stale assignments.
+- 2026-10-02: Code must not depend on JavaScript built-ins newer than ES2022: production visitors
+  use browsers without them, and Vite never polyfills APIs. `tsconfig.json` restricts `lib` to
+  ES2022 for all code, making typecheck the guard; feature-detect newer APIs with a fallback rather
+  than adding polyfills or widening `lib`.
 
 ## Import, enrichment & production automation
 
@@ -594,3 +598,6 @@ sections for UI work. Historical reconciliation and review notes are in
   Cache repository-wide Prettier and ESLint locally. MPX gates focused local checks and builds, with
   risk-based focused E2E for affected behavior; CI gates full E2E and Vitest before merge. Compile
   Paraglide on a fresh checkout or catalog change.
+- 2026-10-02: Sentry error events keep the browser `User-Agent` as their only request header so
+  browser-compatibility errors can be attributed; the full data-collection policy lives in
+  `docs/PRODUCTION_OPERATIONS.md#sentry`.

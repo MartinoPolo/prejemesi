@@ -11,7 +11,10 @@
 		"sourceMap": true,
 		"strict": true,
 		"moduleResolution": "bundler",
-		"types": []
+		"types": [],
+		// Vite transpiles syntax but never polyfills built-ins; real visitors run browsers without
+		// ES2023 APIs such as Array.prototype.toSorted. Feature-detect newer APIs instead of widening.
+		"lib": ["ES2022", "DOM", "DOM.Iterable"]
 	},
 	"exclude": ["src/lib/paraglide"]
 	// Path aliases are handled by https://svelte.dev/docs/kit/configuration#alias

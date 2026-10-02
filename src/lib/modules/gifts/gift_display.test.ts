@@ -105,6 +105,19 @@ describe('formatPrice', () => {
 		expect(result).toContain('29,95');
 	});
 
+	it('formats both range bounds when the browser lacks Intl.NumberFormat.formatRange', () => {
+		const prototype = Intl.NumberFormat.prototype;
+		const formatRangeDescriptor = Object.getOwnPropertyDescriptor(prototype, 'formatRange');
+		Reflect.deleteProperty(prototype, 'formatRange');
+		try {
+			expect(normalizeSpaces(formatPrice(1200, 'CZK', 1600))).toBe('1 200 Kč–1 600 Kč');
+		} finally {
+			if (formatRangeDescriptor !== undefined) {
+				Object.defineProperty(prototype, 'formatRange', formatRangeDescriptor);
+			}
+		}
+	});
+
 	it('falls back to a single formatted price when priceMax equals price', () => {
 		expect(normalizeSpaces(formatPrice(1000, 'CZK', 1000))).toBe('1 000 Kč');
 	});
