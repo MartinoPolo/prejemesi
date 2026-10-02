@@ -13,16 +13,11 @@ import {
 	fixedHosts,
 	makeVisitorGift,
 } from './gift_card.test_fixtures.js';
+import { settleActionPlacement } from './gift_action_geometry.test_fixtures.js';
 
 const { expectPixelsNear } = createPixelAssertions(expect);
 
 afterEach(cleanupCardHosts);
-
-async function nextLayout(): Promise<void> {
-	await new Promise<void>((resolve) =>
-		requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
-	);
-}
 
 describe('GiftCard responsive action placement', () => {
 	it('omits the footer when More is only a latent overflow callback', async () => {
@@ -69,7 +64,7 @@ describe('GiftCard responsive action placement', () => {
 			},
 			{ baseElement: host },
 		);
-		await nextLayout();
+		await settleActionPlacement();
 
 		const row = host.querySelector<HTMLElement>('[data-testid="gift-action-row"]')!;
 		expect(row.querySelectorAll('[data-testid="reserve-button"]')).toHaveLength(1);
@@ -79,7 +74,7 @@ describe('GiftCard responsive action placement', () => {
 		).toBe('true');
 
 		host.style.width = '210px';
-		await nextLayout();
+		await settleActionPlacement();
 		const reserve = row.querySelector<HTMLButtonElement>('[data-testid="reserve-button"]')!;
 		const received = row.querySelector<HTMLElement>('[data-testid="gift-received-toggle"]')!;
 		const more = row.querySelector<HTMLElement>('[data-testid="gift-more-actions"]')!;
@@ -92,7 +87,7 @@ describe('GiftCard responsive action placement', () => {
 		expect(onreserve).toHaveBeenCalledOnce();
 
 		host.style.width = '296px';
-		await nextLayout();
+		await settleActionPlacement();
 		const restoredReceived = row.querySelector<HTMLButtonElement>(
 			'[data-testid="gift-received-toggle"]',
 		)!;
@@ -149,7 +144,7 @@ describe('GiftCard responsive action placement', () => {
 				},
 				{ baseElement: host },
 			);
-			await nextLayout();
+			await settleActionPlacement();
 
 			const row = host.querySelector<HTMLElement>('[data-testid="gift-action-row"]')!;
 			const primary = row.querySelector<HTMLElement>(`[data-testid="${primaryTestId}"]`)!;
@@ -178,7 +173,7 @@ describe('GiftCard responsive action placement', () => {
 			},
 			{ baseElement: host },
 		);
-		await nextLayout();
+		await settleActionPlacement();
 
 		const row = host.querySelector<HTMLElement>('[data-testid="gift-action-row"]')!;
 		const actions = Array.from(row.querySelectorAll<HTMLElement>('button'));
