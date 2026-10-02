@@ -3,6 +3,7 @@ import { eq, and, isNull } from 'drizzle-orm';
 import { error } from '@sveltejs/kit';
 import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
 import { getDb } from '$lib/server/db/index.js';
+import { rejectDemoOperation, wishlistScope } from '$lib/server/demo/scope.js';
 import { wishlist } from '$lib/server/db/wishlist.schema.js';
 import { moderatorAssignment, moderatorInvite } from '$lib/server/db/moderator.schema.js';
 import { user } from '$lib/server/db/auth.schema.js';
@@ -115,6 +116,7 @@ export const getModeratorsForWishlist = guardedQueryWithArgs(
 export const generateModeratorInviteLink = guardedCommand(
 	GenerateInviteInputSchema,
 	async ({ user: currentUser }, input) => {
+		rejectDemoOperation();
 		const database = getDb();
 		const { wishlistRow } = await verifyManagerAccess(currentUser.id, input.wishlistId);
 
@@ -195,7 +197,13 @@ export const acceptModeratorInvite = guardedCommand(
 		const wishlistRows = await database
 			.select()
 			.from(wishlist)
-			.where(and(eq(wishlist.id, invite.wishlistId), isNull(wishlist.deletedAt)))
+			.where(
+				and(
+					eq(wishlist.id, invite.wishlistId),
+					isNull(wishlist.deletedAt),
+					wishlistScope(),
+				),
+			)
 			.limit(1);
 
 		const wishlistRow = wishlistRows[0];

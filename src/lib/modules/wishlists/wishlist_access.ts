@@ -6,6 +6,7 @@ import { moderatorAssignment } from '$lib/server/db/moderator.schema.js';
 import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
 import { WISHLIST_ROLES, type WishlistRole } from './types.js';
 import { canManageWishlist } from './wishlist_capabilities.js';
+import { assertWishlistScope, wishlistScope } from '$lib/server/demo/scope.js';
 
 /** Whether the user holds an active (non-revoked) moderator assignment on the wishlist. */
 async function hasActiveModeratorAssignment(userId: string, wishlistId: string): Promise<boolean> {
@@ -35,6 +36,7 @@ export async function resolveWishlistRole(
 	authContext: { user: { id: string } } | null,
 	wishlistRow: typeof wishlist.$inferSelect,
 ): Promise<WishlistRole> {
+	assertWishlistScope(wishlistRow);
 	if (authContext === null) {
 		return WISHLIST_ROLES.visitor;
 	}
@@ -58,7 +60,7 @@ export async function requireWishlistRow(
 	const rows = await database
 		.select()
 		.from(wishlist)
-		.where(and(eq(wishlist.id, wishlistId), isNull(wishlist.deletedAt)))
+		.where(and(eq(wishlist.id, wishlistId), isNull(wishlist.deletedAt), wishlistScope()))
 		.limit(1);
 
 	const wishlistRow = rows[0];

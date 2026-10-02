@@ -58,6 +58,7 @@
 		/** True when the linked recipient self-promoted to also see reservation state (trust warning). */
 		recipientIsModerator: boolean;
 		adminSettingsAvailable?: boolean;
+		demo?: boolean;
 		/**
 		 * Which heading element the title renders as. The wishlist page is the list's own
 		 * page, so the title is its `<h1>` — but on the landing page the demo header sits
@@ -89,6 +90,7 @@
 		giftCount,
 		recipientIsModerator,
 		adminSettingsAvailable = false,
+		demo = false,
 		headingLevel = 1,
 		onshare,
 		onmoderators,
@@ -222,12 +224,12 @@
 		<WishlistHeaderActions
 			{canManage}
 			{settingsAvailable}
-			canShare={!isArchived}
-			canEditImage={!isArchived}
+			canShare={!isArchived && !demo}
+			canEditImage={!isArchived && !demo}
 			{canEditRecipient}
 			canArchive={!isArchived}
 			{onshare}
-			{onmoderators}
+			onmoderators={demo ? undefined : onmoderators}
 			{onsettings}
 			{oneditimage}
 			{oneditrecipient}
@@ -242,12 +244,12 @@
 				<WishlistHeaderActions
 					{canManage}
 					{settingsAvailable}
-					canShare={!isArchived}
-					canEditImage={!isArchived}
+					canShare={!isArchived && !demo}
+					canEditImage={!isArchived && !demo}
 					{canEditRecipient}
 					canArchive={!isArchived}
 					{onshare}
-					{onmoderators}
+					onmoderators={demo ? undefined : onmoderators}
 					{onsettings}
 					{oneditimage}
 					{oneditrecipient}

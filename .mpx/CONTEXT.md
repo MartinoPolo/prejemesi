@@ -118,43 +118,50 @@ This is a feature index, not a release checklist; implemented paths may still ha
 the Obsidian board and GitHub. In particular, anonymous-reservation account linking remains
 unimplemented.
 
-| Feature                                                             | Status        | Version     |
-| ------------------------------------------------------------------- | ------------- | ----------- |
-| Authentication (email/password, optional Google)                    | Implemented   | v1 (PRD #1) |
-| Anonymous visitor mode (display name + optional email)              | Implemented   | v1          |
-| Anonymous reservations linked to a registered account               | Unimplemented | v1 intent   |
-| Wishlist CRUD (create, edit, archive)                               | Implemented   | v1          |
-| Gift management (add, edit, remove, reorder, image fit/crop)        | Implemented   | v1          |
-| Role system (recipient, správce, visitor)                           | Implemented   | v1          |
-| Reservation system (reserve/unreserve, quantity support)            | Implemented   | v1          |
-| Like system (persistent interest indicator)                         | Implemented   | v1          |
-| Sharing (visitor links, manager invites, social buttons)            | Implemented   | v1          |
-| Notifications (critical email, in-app activity and new-gift digest) | Implemented   | v1          |
-| Section pages (Moje seznamy / Spravované / Sledované)               | Implemented   | v1          |
-| Přehled home overview (/home: Nedávné + category carousels)         | Implemented   | v1.x        |
-| Curated user/wishlist palettes and independent image-frame fill     | Implemented   | v1          |
-| i18n (Czech primary, English secondary)                             | Implemented   | v1          |
-| Profile & settings (identity, notifications, appearance)            | Implemented   | v1          |
-| Recipient surprise protection and post-share edit rules             | Implemented   | v1          |
-| Mark gift as received                                               | Implemented   | v1          |
-| Comments on gifts                                                   | Planned       | v2          |
-| Mobile app + push notifications                                     | Planned       | v2          |
-| Price tracking / price drop alerts                                  | Planned       | v2          |
-| Social features (group gifting, cost splitting)                     | Planned       | v2          |
-| Gift categories, priority/category grouping and facets              | Implemented   | v1.x        |
-| Auto-suggest products (AI/price comparison APIs)                    | Planned       | v2          |
-| CSV / Google Sheets import (3-step wizard)                          | Done          | v1.x        |
-| Bulk gift entry (shared draft grid, large dialog)                   | Done          | v1.x        |
-| Gift metadata enrichment (link → image/price/title)                 | Planned       | v1.x        |
-| Production gift ingestion (fixed-target manifest API + CLI)         | Done          | v1.x        |
-| Multiple links per gift (max 10)                                    | Done          | v1.x        |
-| List for someone else (recipient + správce role model)              | Implemented   | v1.x        |
-| Recipient account linking via claim token                           | Implemented   | v1.x        |
-| Recipient reassignment (linked → free-text flip)                    | Implemented   | v1.x        |
-| Revert shared list to draft (správce clean / admin reserved)        | Implemented   | v1.x        |
-| Release a single reservation (správce guest rows / admin any row)   | Implemented   | v1.x        |
+| Feature                                                             | Status        | Version                                                     |
+| ------------------------------------------------------------------- | ------------- | ----------------------------------------------------------- |
+| Authentication (email/password, optional Google)                    | Implemented   | v1 (PRD #1)                                                 |
+| Anonymous visitor mode (display name + optional email)              | Implemented   | v1                                                          |
+| Anonymous reservations linked to a registered account               | Unimplemented | v1 intent                                                   |
+| Wishlist CRUD (create, edit, archive)                               | Implemented   | v1                                                          |
+| Gift management (add, edit, remove, reorder, image fit/crop)        | Implemented   | v1                                                          |
+| Role system (recipient, správce, visitor)                           | Implemented   | v1                                                          |
+| Reservation system (reserve/unreserve, quantity support)            | Implemented   | v1                                                          |
+| Like system (persistent interest indicator)                         | Implemented   | v1                                                          |
+| Sharing (visitor links, manager invites, social buttons)            | Implemented   | v1                                                          |
+| Notifications (critical email, in-app activity and new-gift digest) | Implemented   | v1                                                          |
+| Section pages (Moje seznamy / Spravované / Sledované)               | Implemented   | v1                                                          |
+| Přehled home overview (/home: Nedávné + category carousels)         | Implemented   | v1.x                                                        |
+| Curated user/wishlist palettes and independent image-frame fill     | Implemented   | v1                                                          |
+| i18n (Czech primary, English secondary)                             | Implemented   | v1                                                          |
+| Profile & settings (identity, notifications, appearance)            | Implemented   | v1                                                          |
+| Recipient surprise protection and post-share edit rules             | Implemented   | v1                                                          |
+| Mark gift as received                                               | Implemented   | v1                                                          |
+| Isolated editable demo playground from landing                      | Planned       | [#433](https://github.com/MartinoPolo/prejemesi/issues/433) |
+| Comments on gifts                                                   | Planned       | v2                                                          |
+| Mobile app + push notifications                                     | Planned       | v2                                                          |
+| Price tracking / price drop alerts                                  | Planned       | v2                                                          |
+| Social features (group gifting, cost splitting)                     | Planned       | v2                                                          |
+| Gift categories, priority/category grouping and facets              | Implemented   | v1.x                                                        |
+| Auto-suggest products (AI/price comparison APIs)                    | Planned       | v2                                                          |
+| CSV / Google Sheets import (3-step wizard)                          | Done          | v1.x                                                        |
+| Bulk gift entry (shared draft grid, large dialog)                   | Done          | v1.x                                                        |
+| Gift metadata enrichment (link → image/price/title)                 | Planned       | v1.x                                                        |
+| Production gift ingestion (fixed-target manifest API + CLI)         | Done          | v1.x                                                        |
+| Multiple links per gift (max 10)                                    | Done          | v1.x                                                        |
+| List for someone else (recipient + správce role model)              | Implemented   | v1.x                                                        |
+| Recipient account linking via claim token                           | Implemented   | v1.x                                                        |
+| Recipient reassignment (linked → free-text flip)                    | Implemented   | v1.x                                                        |
+| Revert shared list to draft (správce clean / admin reserved)        | Implemented   | v1.x                                                        |
+| Release a single reservation (správce guest rows / admin any row)   | Implemented   | v1.x                                                        |
 
 ## Key Constraints
+
+- The planned public demo is an isolated, temporary playground, not a shared real account; it must
+  preserve real sessions and prevent interaction with real data or outbound notifications. Confirmed
+  content, entry, expiry, and editing scope are in
+  [Public demo playground](DECISIONS.md#public-demo-playground-planned), tracked in
+  [#433](https://github.com/MartinoPolo/prejemesi/issues/433).
 
 - Ordinary recipients receive no reservation/like data; disclosed self-promotion reveals
   state/counts, not names or reservation/admin powers. Správci see full state and may reserve.

@@ -229,7 +229,11 @@ describe('unreserveGift', () => {
 			[], // update result (unused)
 		);
 
-		mockGetDb.mockReturnValueOnce(database as unknown as ReturnType<typeof getDb>);
+		mockGetDb
+			.mockReturnValueOnce(database as unknown as ReturnType<typeof getDb>)
+			.mockReturnValueOnce(
+				createChain([makeActiveWishlistRow()]) as unknown as ReturnType<typeof getDb>,
+			);
 
 		const result = await (unreserveGift as (...args: unknown[]) => unknown)(
 			makeAuthContext(fakeVisitorUser),
@@ -269,7 +273,11 @@ describe('unreserveGift', () => {
 			],
 			[], // update result (unused)
 		);
-		mockGetDb.mockReturnValueOnce(database as unknown as ReturnType<typeof getDb>);
+		mockGetDb
+			.mockReturnValueOnce(database as unknown as ReturnType<typeof getDb>)
+			.mockReturnValueOnce(
+				createChain([makeActiveWishlistRow()]) as unknown as ReturnType<typeof getDb>,
+			);
 		mockAnonCookie('anon-token-1');
 
 		const result = await (unreserveGift as (...args: unknown[]) => unknown)(null, validInput);

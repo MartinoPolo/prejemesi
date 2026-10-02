@@ -98,9 +98,9 @@
 						{#if canShare}<DropdownMenu.Item onclick={onshare}
 								><ShareIcon />{m.wishlist_share_button()}</DropdownMenu.Item
 							>{/if}
-						<DropdownMenu.Item onclick={onmoderators}
-							><UsersIcon />{m.wishlist_moderators_label()}</DropdownMenu.Item
-						>
+						{#if onmoderators}<DropdownMenu.Item onclick={onmoderators}
+								><UsersIcon />{m.wishlist_moderators_label()}</DropdownMenu.Item
+							>{/if}
 						{#if canEditImage}<DropdownMenu.Item onclick={oneditimage}
 								><ImageIcon />{m.wishlist_edit_image_label()}</DropdownMenu.Item
 							>{/if}
@@ -147,10 +147,12 @@
 									{m.wishlist_share_button()}
 								</WishlistSheetAction>
 							{/if}
-							<WishlistSheetAction onclick={() => run(onmoderators)}>
-								<UsersIcon />
-								{m.wishlist_moderators_label()}
-							</WishlistSheetAction>
+							{#if onmoderators}<WishlistSheetAction
+									onclick={() => run(onmoderators)}
+								>
+									<UsersIcon />
+									{m.wishlist_moderators_label()}
+								</WishlistSheetAction>{/if}
 							{#if canEditImage}
 								<WishlistSheetAction onclick={() => run(oneditimage)}>
 									<ImageIcon />

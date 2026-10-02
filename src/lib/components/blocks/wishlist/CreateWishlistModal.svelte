@@ -31,9 +31,10 @@
 	interface CreateWishlistModalProps {
 		open: boolean;
 		onimport?: () => void;
+		demo?: boolean;
 	}
 
-	let { open = $bindable(false), onimport }: CreateWishlistModalProps = $props();
+	let { open = $bindable(false), onimport, demo = false }: CreateWishlistModalProps = $props();
 
 	// Typed as string (not RecipientKind) because ToggleGroup's single-select
 	// value binding is `string`; comparisons against RECIPIENT_KIND narrow it.
@@ -316,6 +317,7 @@
 					<p class="text-destructive text-sm">{errorMessage}</p>
 				{/if}
 
+				{#if demo}<p class="text-sm text-muted-foreground">{m.demo_import_limits()}</p>{/if}
 				{#if onimport}
 					<Separator class="my-1" />
 					<div class="flex items-center gap-2">

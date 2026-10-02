@@ -6,6 +6,7 @@
 	import GiftIcon from '@lucide/svelte/icons/gift';
 	import { localizeInternalHref } from '$lib/i18n/locale.js';
 	import * as m from '$lib/paraglide/messages.js';
+	import DemoStartForm from '$lib/components/blocks/demo/DemoStartForm.svelte';
 
 	type HeroDemoPhase = 'idle' | 'approach' | 'tap' | 'reserved' | 'owner' | 'return';
 
@@ -159,7 +160,8 @@
 					<GiftIcon data-icon="inline-start" />
 					{m.landing_hero_cta()}
 				</Button>
-				<Button intent="secondary" size="xl" href="#jak-to-funguje">
+				<DemoStartForm />
+				<Button intent="ghost" size="xl" href="#jak-to-funguje">
 					{m.landing_hero_how()}
 				</Button>
 				<!-- positioned via left/top + --rot (NOT transform alone) so the bob

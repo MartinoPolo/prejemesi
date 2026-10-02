@@ -1,5 +1,8 @@
 import { and, eq, isNull, sql } from 'drizzle-orm';
 import { getDb } from '$lib/server/db/index.js';
+import { wishlistScope, demoSessionId, isPreparedDemoImage } from '$lib/server/demo/scope.js';
+import { demoSession } from '$lib/server/db/auth.schema.js';
+import { error } from '@sveltejs/kit';
 import { gift } from '$lib/server/db/gift.schema.js';
 import { wishlist } from '$lib/server/db/wishlist.schema.js';
 import { normalizeGiftLinks } from './gift_url.js';
@@ -80,7 +83,7 @@ export async function appendGiftsUsingTransaction(
 			recipientUserId: wishlist.recipientUserId,
 		})
 		.from(wishlist)
-		.where(and(eq(wishlist.id, input.wishlistId), isNull(wishlist.deletedAt)))
+		.where(and(eq(wishlist.id, input.wishlistId), isNull(wishlist.deletedAt), wishlistScope()))
 		.limit(1)
 		.for('update');
 	if (wishlistRow === undefined) {
@@ -90,6 +93,28 @@ export async function appendGiftsUsingTransaction(
 		throw new GiftCreationError('wishlist-archived', 'Wishlist is archived');
 	}
 
+	const sessionId = demoSessionId();
+	if (sessionId !== null) {
+		if (input.gifts.some((item) => item.imageKey || !isPreparedDemoImage(item.imageUrl))) {
+			error(403, 'Image uploads and image URLs are unavailable in the demo');
+		}
+		const [active] = await tx
+			.select()
+			.from(demoSession)
+			.where(eq(demoSession.id, sessionId))
+			.for('update');
+		if (!active || active.expiresAt <= new Date()) {
+			error(410, 'Demo has expired');
+		}
+		const [{ count }] = await tx
+			.select({ count: sql<number>`count(*)` })
+			.from(gift)
+			.innerJoin(wishlist, eq(gift.wishlistId, wishlist.id))
+			.where(eq(wishlist.demoSessionId, sessionId));
+		if (Number(count) + input.gifts.length > 400) {
+			error(429, 'Demo gift limit reached');
+		}
+	}
 	const [maxSort] = await tx
 		.select({ maxSort: sql<number>`COALESCE(MAX(${gift.sortOrder}), -1)` })
 		.from(gift)

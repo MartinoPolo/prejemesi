@@ -1,4 +1,6 @@
 import { dev } from '$app/environment';
+import { redirect, error } from '@sveltejs/kit';
+import { resolve as resolvePath } from '$app/paths';
 import { env } from '$env/dynamic/private';
 import type { Handle, HandleServerError } from '@sveltejs/kit';
 import { sequence } from '@sveltejs/kit/hooks';
@@ -248,9 +250,11 @@ const userPreferencesHandle: Handle = async ({ event, resolve }) => {
 	}
 
 	if (event.locals.user != null && isDatabaseConfigured(event) && isHtmlDocumentRequest(event)) {
-		const wantsLocale = !hasExplicitUrlLocale(event.url) && event.url.pathname !== '/';
-		const wantsPalette = !isPalette(cookiePalette);
-		const wantsDepthStyle = !isDepthStyle(cookieDepthStyle);
+		const isDemo = event.locals.demoSession !== undefined;
+		const wantsLocale =
+			!isDemo && !hasExplicitUrlLocale(event.url) && event.url.pathname !== '/';
+		const wantsPalette = isDemo || !isPalette(cookiePalette);
+		const wantsDepthStyle = isDemo || !isDepthStyle(cookieDepthStyle);
 
 		if (wantsLocale || wantsPalette || wantsDepthStyle) {
 			try {
@@ -280,12 +284,14 @@ const userPreferencesHandle: Handle = async ({ event, resolve }) => {
 				}
 				if (wantsDepthStyle && isDepthStyle(preferences?.depthStyle)) {
 					depthStyle = preferences.depthStyle;
-					event.cookies.set(DEPTH_STYLE_COOKIE_NAME, depthStyle, {
-						path: '/',
-						maxAge: DEPTH_STYLE_COOKIE_MAX_AGE_SECONDS,
-						httpOnly: false,
-						sameSite: 'lax',
-					});
+					if (!isDemo) {
+						event.cookies.set(DEPTH_STYLE_COOKIE_NAME, depthStyle, {
+							path: '/',
+							maxAge: DEPTH_STYLE_COOKIE_MAX_AGE_SECONDS,
+							httpOnly: false,
+							sameSite: 'lax',
+						});
+					}
 				}
 			} catch (err) {
 				console.error('[userPreferencesHandle] failed to read user preferences', err);
@@ -301,6 +307,9 @@ const userPreferencesHandle: Handle = async ({ event, resolve }) => {
 
 const authHandle: Handle = async ({ event, resolve }) => {
 	rememberDatabaseBinding(event);
+	if (event.url.pathname.startsWith('/api/auth/') && event.cookies.get('prejemesi_demo')) {
+		error(403, 'Leave the demo before signing in');
+	}
 
 	if (!isDatabaseConfigured(event)) {
 		return resolve(event);
@@ -316,7 +325,7 @@ const authHandle: Handle = async ({ event, resolve }) => {
 		return resolve(event);
 	}
 
-	const { createAuth } = await import('$lib/server/auth.js');
+	const { createAuth, isReservedDemoEmail } = await import('$lib/server/auth.js');
 	const { svelteKitHandler } = await import('better-auth/svelte-kit');
 	const { building } = await import('$app/environment');
 	const auth = createAuth(event);
@@ -324,11 +333,164 @@ const authHandle: Handle = async ({ event, resolve }) => {
 	const sessionData = await auth.api.getSession({ headers: event.request.headers });
 
 	if (sessionData) {
-		event.locals.session = sessionData.session;
-		event.locals.user = sessionData.user;
+		if (!isReservedDemoEmail(sessionData.user.email)) {
+			event.locals.session = sessionData.session;
+			event.locals.user = sessionData.user;
+		}
 	}
 
 	return svelteKitHandler({ event, resolve, auth, building });
+};
+
+const demoAppPaths =
+	/^\/(?:en\/)?(?:home|my-lists|followed|moderated|settings|w\/[^/]+(?:\/settings)?)\/?$/;
+const demoLifecyclePaths = /^\/(?:en\/)?demo(?:\/(?:start|reset|exit))?\/?$/;
+
+class DemoRequestFailed extends Error {
+	constructor(readonly response: Response) {
+		super('Demo request rolled back');
+	}
+}
+
+const DEMO_CLEANUP_INTERVAL_MS = 60_000;
+let nextDemoCleanupAt = 0;
+
+async function cleanDemosOnDocumentRequest(event: Parameters<Handle>[0]['event']) {
+	if (!isHtmlDocumentRequest(event) || !isDatabaseConfigured(event)) {
+		return;
+	}
+	const now = Date.now();
+	if (now < nextDemoCleanupAt) {
+		return;
+	}
+	// Claim the interval before awaiting: concurrent documents must not launch concurrent sweeps.
+	nextDemoCleanupAt = now + DEMO_CLEANUP_INTERVAL_MS;
+	try {
+		const { cleanExpiredDemos } = await import('$lib/server/demo/session.js');
+		await cleanExpiredDemos();
+	} catch (failure) {
+		console.error('[demoHandle] expired demo cleanup failed', failure);
+	}
+}
+
+export const demoHandle: Handle = async ({ event, resolve }) => {
+	await cleanDemosOnDocumentRequest(event);
+	const token = event.cookies.get('prejemesi_demo');
+	const requestedPath = new URL(event.request.url).pathname;
+	if (
+		!token ||
+		(!event.isRemoteRequest &&
+			(requestedPath.startsWith('/demo/v1/') ||
+				requestedPath.startsWith('/demo/playground/')))
+	) {
+		return resolve(event);
+	}
+	const { digestDemoToken } = await import('$lib/server/demo/session.js');
+	const path =
+		event.isDataRequest && event.url.pathname.endsWith('/__data.json')
+			? event.url.pathname.slice(0, -'/__data.json'.length)
+			: event.url.pathname;
+	if (event.isRemoteRequest && demoLifecyclePaths.test(path)) {
+		error(403, 'This route is unavailable in the demo');
+	}
+	if (
+		!demoAppPaths.test(path) &&
+		!demoLifecyclePaths.test(path) &&
+		!(isHtmlDocumentRequest(event) && (path === '/' || path === '/en' || path === '/en/'))
+	) {
+		error(403, 'This route is unavailable in the demo');
+	}
+	if (path.endsWith('/demo/exit')) {
+		return resolve(event);
+	}
+	const { getDb, withRequestDatabaseTransaction } = await import('$lib/server/db/index.js');
+	const { demoSession, user } = await import('$lib/server/db/auth.schema.js');
+	const { eq, sql } = await import('drizzle-orm');
+	const tokenHash = digestDemoToken(token);
+	if (!tokenHash) {
+		error(403, 'Invalid demo session');
+	}
+	try {
+		return await getDb(event).transaction(async (tx) => {
+			const [session] = await tx
+				.select()
+				.from(demoSession)
+				.where(eq(demoSession.tokenHash, tokenHash))
+				.for(
+					event.request.method === 'GET' || event.request.method === 'HEAD'
+						? 'share'
+						: 'update',
+				);
+			if (!session || session.expiresAt <= new Date()) {
+				event.locals.demoExpired = true;
+				if (!/^\/(?:en\/)?demo(?:\/start)?\/?$/.test(path)) {
+					if (!isHtmlDocumentRequest(event) && !event.isDataRequest) {
+						error(410, 'Demo has expired');
+					}
+					throw redirect(303, path.startsWith('/en') ? '/en/demo' : resolvePath('/demo'));
+				}
+				return resolve(event);
+			}
+			if (path === '/' || path === '/en' || path === '/en/') {
+				throw redirect(303, path.startsWith('/en') ? '/en/home' : resolvePath('/home'));
+			}
+			return withRequestDatabaseTransaction(event, tx, async () => {
+				if (
+					event.request.method !== 'GET' &&
+					event.request.method !== 'HEAD' &&
+					!path.endsWith('/demo/start')
+				) {
+					if (
+						session.editRequests >= 120 ||
+						(path.endsWith('/demo/reset') && session.resets >= 5)
+					) {
+						error(429, 'Demo edit limit reached');
+					}
+					await tx
+						.update(demoSession)
+						.set({
+							editRequests: sql`${demoSession.editRequests} + 1`,
+							...(path.endsWith('/demo/reset')
+								? { resets: sql`${demoSession.resets} + 1` }
+								: {}),
+						})
+						.where(eq(demoSession.id, session.id));
+				}
+				const [viewer] = await tx
+					.select()
+					.from(user)
+					.where(eq(user.id, session.viewerUserId))
+					.limit(1);
+				if (!viewer || viewer.demoSessionId !== session.id) {
+					error(410, 'Demo has expired');
+				}
+				event.locals.realUser = event.locals.user;
+				event.locals.demoSession = { id: session.id, expiresAt: session.expiresAt };
+				event.locals.user = viewer;
+				event.locals.session = {
+					id: session.id,
+					token: '',
+					userId: viewer.id,
+					expiresAt: session.expiresAt,
+					createdAt: session.createdAt,
+					updatedAt: session.createdAt,
+				} as NonNullable<typeof event.locals.session>;
+				const response = await resolve(event);
+				if (response.status >= 400) {
+					throw new DemoRequestFailed(response);
+				}
+				if (session.expiresAt <= new Date()) {
+					error(410, 'Demo has expired');
+				}
+				return response;
+			});
+		});
+	} catch (failure) {
+		if (failure instanceof DemoRequestFailed) {
+			return failure.response;
+		}
+		throw failure;
+	}
 };
 
 const handles: Handle[] = [
@@ -339,6 +501,7 @@ const handles: Handle[] = [
 	canonicalHostHandle,
 	botProbeHandle,
 	authHandle,
+	demoHandle,
 	userPreferencesHandle,
 	paraglideHandle,
 ];

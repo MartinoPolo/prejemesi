@@ -89,6 +89,9 @@ function getTargetFromPath(path: string): keyof typeof UPLOAD_TARGETS | null {
 }
 
 export const PUT: RequestHandler = async ({ params, request, locals }) => {
+	if (locals.demoSession) {
+		error(403, 'Uploads are unavailable in the demo');
+	}
 	if (locals.user == null || locals.session == null) {
 		error(401, 'Authentication required');
 	}
@@ -207,6 +210,9 @@ export const GET: RequestHandler = async ({ params }) => {
 };
 
 export const DELETE: RequestHandler = async ({ params, request, locals }) => {
+	if (locals.demoSession) {
+		error(403, 'Uploads are unavailable in the demo');
+	}
 	if (locals.user == null || locals.session == null) {
 		error(401, 'Authentication required');
 	}

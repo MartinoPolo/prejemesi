@@ -18,14 +18,43 @@
 	interface UserMenuProps {
 		userName: string;
 		userEmail: string;
+		demo?: boolean;
 		userInitials: string;
 		userImage?: string | null;
 		size?: ControlSize;
 	}
 
-	let { userName, userEmail, userInitials, userImage = null, size }: UserMenuProps = $props();
+	let demoExitPending = $state(false);
+	let demoExitFailed = $state(false);
+
+	let {
+		userName,
+		userEmail,
+		userInitials,
+		userImage = null,
+		size,
+		demo = false,
+	}: UserMenuProps = $props();
 
 	async function handleSignOut() {
+		if (demo) {
+			if (demoExitPending) {
+				return;
+			}
+			demoExitPending = true;
+			demoExitFailed = false;
+			try {
+				const response = await fetch(resolve('/demo/exit'), { method: 'POST' });
+				if (!response.ok) {
+					throw new Error('Exit failed');
+				}
+				window.location.assign(response.url);
+			} catch {
+				demoExitFailed = true;
+				demoExitPending = false;
+			}
+			return;
+		}
 		try {
 			await authClient.signOut();
 		} finally {
@@ -59,7 +88,9 @@
 	<DropdownMenu.Content align="end" class="w-52">
 		<DropdownMenu.Label class="flex flex-col gap-0.5 font-normal">
 			<span class="text-sm font-semibold">{userName}</span>
-			<span class="text-xs text-muted-foreground">{userEmail}</span>
+			<span class="text-xs text-muted-foreground"
+				>{demo ? m.demo_user_label() : userEmail}</span
+			>
 		</DropdownMenu.Label>
 		<DropdownMenu.Separator />
 		<DropdownMenu.Group>
@@ -70,10 +101,17 @@
 		</DropdownMenu.Group>
 		<DropdownMenu.Separator />
 		<DropdownMenu.Group>
-			<DropdownMenu.Item variant="destructive" onclick={handleSignOut}>
+			<DropdownMenu.Item
+				variant="destructive"
+				onclick={handleSignOut}
+				disabled={demoExitPending}
+			>
 				<LogOutIcon data-icon="inline-start" />
-				{m.nav_logout()}
+				{demo ? m.demo_exit_menu() : m.nav_logout()}
 			</DropdownMenu.Item>
 		</DropdownMenu.Group>
+		{#if demoExitFailed}<p role="alert" class="p-2 text-sm text-destructive">
+				{m.demo_exit_error()}
+			</p>{/if}
 	</DropdownMenu.Content>
 </DropdownMenu.Root>

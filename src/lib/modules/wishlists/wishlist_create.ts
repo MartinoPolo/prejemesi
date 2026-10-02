@@ -4,6 +4,9 @@ import { wishlist, priorityLevel } from '$lib/server/db/wishlist.schema.js';
 import { moderatorAssignment } from '$lib/server/db/moderator.schema.js';
 import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
 import { DEFAULT_PALETTE, type Palette } from '$lib/theme/palettes.js';
+import { demoSessionId } from '$lib/server/demo/scope.js';
+import { demoSession } from '$lib/server/db/auth.schema.js';
+import { eq, sql } from 'drizzle-orm';
 import {
 	DEFAULT_PRIORITY_LEVELS,
 	DEFAULT_WISHLIST_THEME,
@@ -44,10 +47,29 @@ export async function seedNewWishlist(
 	// Normalize the optional description: trim, then collapse empty/whitespace-only to null
 	// (mirrors the settings-modal save path so both write the same shape).
 	const trimmedDescription = input.description?.trim() ?? '';
+	const sessionId = demoSessionId();
+	if (sessionId !== null) {
+		const [active] = await tx
+			.select()
+			.from(demoSession)
+			.where(eq(demoSession.id, sessionId))
+			.for('update');
+		if (!active || active.expiresAt <= new Date()) {
+			error(410, 'Demo has expired');
+		}
+		const [{ count }] = await tx
+			.select({ count: sql<number>`count(*)` })
+			.from(wishlist)
+			.where(eq(wishlist.demoSessionId, sessionId));
+		if (Number(count) >= 16) {
+			error(429, 'Demo wishlist limit reached');
+		}
+	}
 
 	const [created] = await tx
 		.insert(wishlist)
 		.values({
+			demoSessionId: sessionId,
 			recipientUserId: forSelf ? creatorUserId : null,
 			recipientName: forSelf ? null : input.recipientName,
 			title: input.title,

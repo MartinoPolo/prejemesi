@@ -1,4 +1,7 @@
 import { betterAuth } from 'better-auth/minimal';
+import { createAuthMiddleware, APIError } from 'better-auth/api';
+import { eq } from 'drizzle-orm';
+import { user as userTable } from './db/auth.schema.js';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { sveltekitCookies } from 'better-auth/svelte-kit';
 import { captcha } from 'better-auth/plugins';
@@ -16,6 +19,14 @@ import { resolveAuthOrigins } from '$lib/config/runtime_environment.js';
 // in dev – sign-up then auto-signs-in – while production still requires it.
 const requireEmailVerification = !import.meta.env.DEV;
 
+export function isReservedDemoEmail(value: unknown): boolean {
+	if (typeof value !== 'string') {
+		return false;
+	}
+	const normalized = value.normalize('NFKC').trim().toLowerCase();
+	return normalized.endsWith('@demo.invalid');
+}
+
 export function createAuth(event?: RequestEvent) {
 	const authOrigins = resolveAuthOrigins(env, import.meta.env.DEV);
 	return betterAuth({
@@ -32,6 +43,49 @@ export function createAuth(event?: RequestEvent) {
 		},
 
 		database: drizzleAdapter(getDb(event), { provider: 'pg' }),
+		hooks: {
+			before: createAuthMiddleware(async (context) => {
+				if (
+					typeof context.body === 'object' &&
+					context.body !== null &&
+					'email' in context.body &&
+					isReservedDemoEmail(context.body.email)
+				) {
+					throw new APIError('FORBIDDEN', {
+						message: 'Demo identities cannot authenticate',
+					});
+				}
+			}),
+		},
+		databaseHooks: {
+			user: {
+				create: {
+					before: async (account) => {
+						if (isReservedDemoEmail(account.email)) {
+							throw new APIError('FORBIDDEN', {
+								message: 'Demo identities cannot authenticate',
+							});
+						}
+					},
+				},
+			},
+			session: {
+				create: {
+					before: async (newSession) => {
+						const [identity] = await getDb(event)
+							.select({ demoSessionId: userTable.demoSessionId })
+							.from(userTable)
+							.where(eq(userTable.id, newSession.userId))
+							.limit(1);
+						if (!identity || identity.demoSessionId !== null) {
+							throw new APIError('FORBIDDEN', {
+								message: 'Demo identities cannot authenticate',
+							});
+						}
+					},
+				},
+			},
+		},
 
 		emailAndPassword: {
 			enabled: true,

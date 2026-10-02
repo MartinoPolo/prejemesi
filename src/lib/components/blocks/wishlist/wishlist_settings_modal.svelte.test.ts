@@ -40,6 +40,7 @@ afterEach(() => {
 
 const wishlist: Wishlist = {
 	id: 'wishlist-settings-test',
+	demoSessionId: null,
 	shortId: 'settings1',
 	recipientUserId: 'recipient-1',
 	recipientName: null,

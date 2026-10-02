@@ -2,6 +2,7 @@ import { eq, and, isNull, inArray } from 'drizzle-orm';
 import type { RequestEvent } from '@sveltejs/kit';
 import { getRequestEvent } from '$app/server';
 import { getDb } from '$lib/server/db/index.js';
+import { demoSessionId, rejectDemoOperation } from '$lib/server/demo/scope.js';
 import { createAuth } from '$lib/server/auth.js';
 import { user } from '$lib/server/db/auth.schema.js';
 import { account } from '$lib/server/db/auth.schema.js';
@@ -80,6 +81,7 @@ export const getUserProfile = guardedQuery(async ({ user: authUser }): Promise<U
 export const updateProfile = guardedCommand(
 	UpdateProfileInputSchema,
 	async ({ user: authUser }, input) => {
+		rejectDemoOperation();
 		const database = getDb();
 
 		const previousRows = await database
@@ -127,6 +129,7 @@ export type RefreshGoogleAvatarResult =
  */
 export const refreshGoogleAvatar = guardedCommandNoArgs(
 	async ({ user: authUser }): Promise<RefreshGoogleAvatarResult> => {
+		rejectDemoOperation();
 		const event = getRequestEvent();
 		const database = getDb();
 
@@ -260,12 +263,14 @@ async function persistAppearancePreference(
 	authContext: AppearanceAuthContext,
 	preference: AppearancePreference,
 ) {
-	getRequestEvent().cookies.set(preference.cookie.name, preference.cookie.value, {
-		path: '/',
-		maxAge: preference.cookie.maxAge,
-		httpOnly: false,
-		sameSite: 'lax',
-	});
+	if (demoSessionId() === null) {
+		getRequestEvent().cookies.set(preference.cookie.name, preference.cookie.value, {
+			path: '/',
+			maxAge: preference.cookie.maxAge,
+			httpOnly: false,
+			sameSite: 'lax',
+		});
+	}
 
 	if (authContext === null) {
 		return;
@@ -313,6 +318,7 @@ export const setUserDepthStyle = publicCommand(
 );
 
 export const deleteAccount = guardedCommandNoArgs(async ({ user: authUser }) => {
+	rejectDemoOperation();
 	const database = getDb();
 
 	// Collect the uploaded images this deletion makes unreachable BEFORE the

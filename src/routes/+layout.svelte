@@ -1,6 +1,6 @@
 <script lang="ts">
 	import '../app.css';
-	import { ModeWatcher } from 'mode-watcher';
+	import { ModeWatcher, modeStorageKey, setMode } from 'mode-watcher';
 	import { AppToaster } from '$lib/components/base/toast/index.js';
 	import favicon from '$lib/assets/favicon.svg';
 	import dynapuffLatinUrl from '@fontsource-variable/dynapuff/files/dynapuff-latin-wght-normal.woff2?url';
@@ -42,6 +42,22 @@
 	// so we can safely prepend without the page overwriting us again.
 	// Port is read here (browser-only) so each worktree's port is included.
 	afterNavigate(() => {
+		if (page.data.demoExpiresAt == null) {
+			const savedMode = localStorage.getItem('prejemesi-mode-before-demo');
+			if (savedMode !== null) {
+				if (savedMode === '"light"') {
+					setMode('light');
+				} else if (savedMode === '"dark"') {
+					setMode('dark');
+				} else if (savedMode === '"system"') {
+					setMode('system');
+				} else {
+					setMode('system');
+					localStorage.removeItem(modeStorageKey.current);
+				}
+				localStorage.removeItem('prejemesi-mode-before-demo');
+			}
+		}
 		window.dispatchEvent(
 			new CustomEvent(SENTRY_REPLAY_NAVIGATION_EVENT, { detail: window.location.href }),
 		);

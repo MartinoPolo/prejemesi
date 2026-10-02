@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { and, eq, isNull } from 'drizzle-orm';
 import { getDb } from '$lib/server/db/index.js';
 import { user as userTable } from '$lib/server/db/auth.schema.js';
 import {
@@ -22,7 +22,7 @@ export async function getNotificationPreferencesForUser(
 	const rows = await database
 		.select({ preferences: userTable.notificationPreferences })
 		.from(userTable)
-		.where(eq(userTable.id, userId))
+		.where(and(eq(userTable.id, userId), isNull(userTable.demoSessionId)))
 		.limit(1);
 
 	if (rows.length === 0) {
@@ -40,7 +40,7 @@ export async function setNotificationPreferencesForUser(
 	await database
 		.update(userTable)
 		.set({ notificationPreferences: preferences, updatedAt: new Date() })
-		.where(eq(userTable.id, userId));
+		.where(and(eq(userTable.id, userId), isNull(userTable.demoSessionId)));
 }
 
 /**

@@ -115,12 +115,16 @@ vi.mock('drizzle-orm', () => ({
 
 // Auth is exercised through the mocked BetterAuth surface: getSession supplies
 // `locals.user`, svelteKitHandler just resolves.
-const { mockGetSession } = vi.hoisted(() => ({
+const { mockGetSession, mockCleanExpiredDemos } = vi.hoisted(() => ({
 	mockGetSession: vi.fn(),
+	mockCleanExpiredDemos: vi.fn(),
 }));
+
+vi.mock('$lib/server/demo/session.js', () => ({ cleanExpiredDemos: mockCleanExpiredDemos }));
 
 vi.mock('$lib/server/auth.js', () => ({
 	createAuth: vi.fn(() => ({ api: { getSession: mockGetSession } })),
+	isReservedDemoEmail: vi.fn((email: string) => email.endsWith('@demo.invalid')),
 }));
 
 vi.mock('better-auth/svelte-kit', () => ({
@@ -226,6 +230,47 @@ beforeEach(() => {
 	mockIsDatabaseConfigured.mockReturnValue(true);
 	mockGetSession.mockResolvedValue({ session: { id: 'session-1' }, user: SESSION_USER });
 	setPreferenceRow({ preferredLocale: 'en', palette: 'grape', depthStyle: 'ink' });
+});
+
+describe('expired demo maintenance', () => {
+	it('sweeps on ordinary documents only when due, even without demo entry or cookie', async () => {
+		vi.useFakeTimers();
+		try {
+			vi.setSystemTime(new Date('2030-01-01T00:00:00Z'));
+			await runHandle(createEvent({ path: '/my-lists' }));
+			expect(mockCleanExpiredDemos).toHaveBeenCalledOnce();
+			await runHandle(createEvent({ path: '/en', cookies: { 'app-palette': 'mint' } }));
+			await runHandle(createEvent({ path: '/my-lists/__data.json', isDataRequest: true }));
+			await runHandle(createEvent({ path: '/api/upload/image.jpg', method: 'PUT' }));
+			expect(mockCleanExpiredDemos).toHaveBeenCalledOnce();
+			vi.advanceTimersByTime(60_000);
+			await runHandle(createEvent({ path: '/' }));
+			expect(mockCleanExpiredDemos).toHaveBeenCalledTimes(2);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it('does not fail documents if maintenance fails and retries on a later interval', async () => {
+		vi.useFakeTimers();
+		const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+		try {
+			vi.setSystemTime(new Date('2031-01-01T00:00:00Z'));
+			mockCleanExpiredDemos.mockRejectedValueOnce(new Error('database unavailable'));
+			const { response } = await runHandle(createEvent({ path: '/' }));
+			expect(response.status).toBe(200);
+			expect(consoleSpy).toHaveBeenCalledWith(
+				'[demoHandle] expired demo cleanup failed',
+				expect.any(Error),
+			);
+			vi.advanceTimersByTime(60_000);
+			await runHandle(createEvent({ path: '/' }));
+			expect(mockCleanExpiredDemos).toHaveBeenCalledTimes(2);
+		} finally {
+			consoleSpy.mockRestore();
+			vi.useRealTimers();
+		}
+	});
 });
 
 describe('anonymous public page auth fast path', () => {
