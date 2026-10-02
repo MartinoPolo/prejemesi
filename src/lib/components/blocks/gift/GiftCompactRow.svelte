@@ -1,6 +1,6 @@
 <script lang="ts">
 	import * as m from '$lib/paraglide/messages.js';
-	import ExternalLinkIcon from '@lucide/svelte/icons/external-link';
+	import { TextLink } from '$lib/components/base/text-link/index.js';
 	import GiftPieceCount from '$lib/components/blocks/gift/GiftPieceCount.svelte';
 	import LikeButton from '$lib/components/blocks/gift/LikeButton.svelte';
 	import ReserveButton from '$lib/components/blocks/reservation/ReserveButton.svelte';
@@ -109,16 +109,14 @@
 
 	<td class="px-3 py-1.5">
 		{#if domain}
-			<a
+			<TextLink
 				href={safeGiftUrl ?? '#'}
-				target="_blank"
-				rel="external noopener noreferrer"
-				class="inline-flex items-center gap-1 text-xs text-brand"
+				external
+				size="sm"
 				onclick={(e: MouseEvent) => e.stopPropagation()}
 			>
-				<ExternalLinkIcon class="size-3" />
 				{domain}
-			</a>
+			</TextLink>
 			{#if gift.links.length > 1}
 				<span class="text-xs text-muted-foreground"
 					>{m.gift_link_overflow({ count: gift.links.length - 1 })}</span

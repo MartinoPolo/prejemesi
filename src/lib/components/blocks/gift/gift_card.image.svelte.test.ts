@@ -172,10 +172,10 @@ describe('GiftCard category badge (issue #265)', () => {
 			expect(
 				contrastRatio(parseCssRgb(style.backgroundColor), parseCssRgb(style.color)),
 			).toBeGreaterThanOrEqual(4.5);
-			expect(style.webkitLineClamp).toBe('none');
-			expectPixelsAtMost(badge.scrollHeight, badge.clientHeight);
-			expect(style.rotate).not.toBe('none');
-			expect(Number.parseFloat(style.rotate)).toBeLessThan(0);
+			expect(badge.textContent?.trim()).toBe(label);
+			expect(style.webkitLineClamp).toBe('2');
+			expect(style.rotate).toBe('none');
+			expect(style.boxShadow).toBe('none');
 
 			const badgeRect = badge.getBoundingClientRect();
 			const imageFrameRect = imageFrame.getBoundingClientRect();

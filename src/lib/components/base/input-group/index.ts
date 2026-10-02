@@ -2,6 +2,7 @@ import Root from './input-group.svelte';
 import Addon from './input-group-addon.svelte';
 import Button from './input-group-button.svelte';
 import Input from './input-group-input.svelte';
+import Segment from './input-group-segment.svelte';
 import Text from './input-group-text.svelte';
 import Textarea from './input-group-textarea.svelte';
 
@@ -10,6 +11,7 @@ export {
 	Addon,
 	Button,
 	Input,
+	Segment,
 	Text,
 	Textarea,
 	//
@@ -17,6 +19,7 @@ export {
 	Addon as InputGroupAddon,
 	Button as InputGroupButton,
 	Input as InputGroupInput,
+	Segment as InputGroupSegment,
 	Text as InputGroupText,
 	Textarea as InputGroupTextarea,
 };
@@ -30,3 +33,5 @@ export {
 	inputGroupButtonVariants,
 	type InputGroupButtonSize,
 } from './input_group_button_variants.js';
+
+export { inputGroupSegmentVariants } from './input_group_segment_variants.js';

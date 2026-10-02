@@ -102,7 +102,7 @@ describe('GiftListItem centralized state overlay parity (issue #224 REQ-7)', () 
 		host.remove();
 	});
 
-	it('keeps a full long category clear of state, identity, and priority at 200% text', async () => {
+	it('keeps a clamped long category clear of state, identity, and priority at 200% text', async () => {
 		await page.viewport(344, 1000);
 		const previousFontSize = document.documentElement.style.fontSize;
 		document.documentElement.style.fontSize = '32px';
@@ -140,9 +140,15 @@ describe('GiftListItem centralized state overlay parity (issue #224 REQ-7)', () 
 			);
 
 			expect(category.textContent?.trim()).toBe(categoryLabel);
+			const categoryStyle = getComputedStyle(category);
+			const twoLineHeight =
+				2 * Number.parseFloat(categoryStyle.lineHeight) +
+				Number.parseFloat(categoryStyle.paddingTop) +
+				Number.parseFloat(categoryStyle.paddingBottom);
 			// Enlarged text needs the ResizeObserver-driven clearance layout to settle.
 			await vi.waitFor(() => {
-				expectPixelsAtMost(category.scrollHeight, category.clientHeight);
+				expectPixelsAtMost(category.clientHeight, twoLineHeight);
+				expectPixelsAtMost(category.scrollWidth, category.clientWidth);
 				for (const overlayItem of overlayItems) {
 					expectRectanglesSeparated(
 						category.getBoundingClientRect(),

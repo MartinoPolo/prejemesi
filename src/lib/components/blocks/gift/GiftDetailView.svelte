@@ -142,14 +142,9 @@
 				{/if}
 
 				{#if priorityInfo}
-					<!-- Sticker pill restyle (issue #165): outlined ink border + star icon +
-					     the long "Priorita · {label}" form, replacing the borderless tinted
-					     pill. Hue stays owned by PRIORITY_DISPLAY.colorClass. -->
-					<Badge
-						tone="neutral"
-						badgeStyle="outlined"
-						class={cn('-rotate-1', priorityInfo.colorClass)}
-					>
+					<!-- Same flat outlined priority treatment as GiftPriorityBadge, with the
+					     star icon and the long "Priorita · {label}" form. -->
+					<Badge tone="neutral" badgeStyle="outlined" class={priorityInfo.colorClass}>
 						{#snippet icon()}<StarIcon class="size-3" />{/snippet}
 						{m.gift_priority_badge_label({ label: priorityInfo.label() })}
 					</Badge>

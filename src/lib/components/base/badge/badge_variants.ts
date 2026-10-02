@@ -4,7 +4,7 @@ import type { HTMLAttributes } from 'svelte/elements';
 import { tv } from 'tailwind-variants';
 
 export const badgeVariants = tv({
-	base: 'inline-flex items-center justify-center gap-1 font-bold border-2 tracking-[0.01em] whitespace-nowrap [&_[data-icon]]:shrink-0',
+	base: 'inline-flex items-center justify-center gap-1 rounded-badge font-bold border-2 tracking-[0.01em] whitespace-nowrap [&_[data-icon]]:shrink-0',
 	variants: {
 		tone: {
 			neutral: 'bg-card text-muted-foreground border-ink',
@@ -23,15 +23,10 @@ export const badgeVariants = tv({
 			subtle: 'border-transparent',
 			solid: 'border-ink',
 		},
-		format: {
-			default: '',
-			mono: 'font-mono text-[10.5px]',
-		},
 		size: {
-			default: 'h-5 px-1.75 text-[11px] rounded-full',
-			compact: 'px-1.5 py-0.5 text-[10px] leading-tight rounded',
+			default: 'h-5 px-1.75 text-[11px]',
 			/** Matches Button `sm` metrics — for prominent chips (e.g. wishlist header meta row). */
-			lg: 'h-(--size-control-sm) gap-1.5 px-2.5 text-(length:--text-sm) rounded-full [&_[data-icon]]:size-3.5',
+			lg: 'h-(--size-control-sm) gap-1.5 px-2.5 text-(length:--text-sm) [&_[data-icon]]:size-3.5',
 		},
 	},
 	compoundVariants: [
@@ -50,31 +45,22 @@ export const badgeVariants = tv({
 	defaultVariants: {
 		tone: 'neutral',
 		badgeStyle: 'outlined',
-		format: 'default',
 		size: 'default',
 	},
 });
 
 export type BadgeTone = keyof typeof badgeVariants.variants.tone;
 export type BadgeStyle = keyof typeof badgeVariants.variants.badgeStyle;
-export type BadgeFormat = keyof typeof badgeVariants.variants.format;
 export type BadgeSize = keyof typeof badgeVariants.variants.size;
 
 export const BADGE_TONES = Object.keys(badgeVariants.variants.tone) as BadgeTone[];
 export const BADGE_STYLES = Object.keys(badgeVariants.variants.badgeStyle) as BadgeStyle[];
-export const BADGE_FORMATS = Object.keys(badgeVariants.variants.format) as BadgeFormat[];
 export const BADGE_SIZES = Object.keys(badgeVariants.variants.size) as BadgeSize[];
-
-export const BADGE_DOT_OPTIONS = ['static', 'pulsing'] as const;
-export type BadgeDot = (typeof BADGE_DOT_OPTIONS)[number];
 
 export type BadgeProps = WithElementRef<HTMLAttributes<HTMLSpanElement>, HTMLSpanElement> & {
 	tone?: BadgeTone;
 	badgeStyle?: BadgeStyle;
-	format?: BadgeFormat;
 	size?: BadgeSize;
-	collapsed?: boolean;
-	dot?: BadgeDot;
 	icon?: Snippet;
 	children?: Snippet;
 };

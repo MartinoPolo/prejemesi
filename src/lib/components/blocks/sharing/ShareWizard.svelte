@@ -3,6 +3,7 @@
 	import { translateServerError } from '$lib/modules/errors/translate_server_error.js';
 	import * as Dialog from '$lib/components/base/dialog/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
+	import * as InputGroup from '$lib/components/base/input-group/index.js';
 	import ShareMethodButton from './ShareMethodButton.svelte';
 	import { shareWizardVariants } from './share_wizard_variants.js';
 	import {
@@ -222,42 +223,25 @@
 					<!-- Copy link section -->
 					<div>
 						<div class={styles.sectionEyebrow()}>{m.share_link_eyebrow()}</div>
-						<div class={styles.copyLinkRow()}>
-							<div class={styles.linkInputWrap()}>
-								<span class={styles.linkUrlText()}>
-									<strong class={styles.linkUrlDomain()}>
-										{shareUrlDisplay.split('/w/')[0]}
-									</strong>/w/{sharing.wishlistShortId.current}
-								</span>
-							</div>
-							{#if linkCopied}
-								<Button
-									intent="primary"
-									size="xl"
-									class="flex-shrink-0"
-									aria-live="polite"
-								>
-									<CheckIcon data-icon="inline-start" />
-									{m.share_link_copied()}
-								</Button>
-							{:else}
-								<Button
-									intent="primary"
-									size="xl"
-									class="flex-shrink-0"
-									onclick={() => sharing.copyLink()}
-								>
-									<CopyIcon data-icon="inline-start" />
+						<InputGroup.Root size="xl">
+							<InputGroup.Input
+								value={shareUrlDisplay}
+								readonly
+								aria-label={m.share_link_eyebrow()}
+							/>
+							<InputGroup.Segment
+								aria-live="polite"
+								onclick={() => sharing.copyLink()}
+							>
+								{#if linkCopied}
+									<CheckIcon />
+									{m.share_copied()}
+								{:else}
+									<CopyIcon />
 									{m.share_copy()}
-								</Button>
-							{/if}
-						</div>
-						{#if linkCopied}
-							<div class={styles.copiedLabel()} aria-live="polite">
-								<CheckIcon class="size-2.5" />
-								{m.share_copied()}
-							</div>
-						{/if}
+								{/if}
+							</InputGroup.Segment>
+						</InputGroup.Root>
 					</div>
 
 					<!-- Social share buttons -->

@@ -18,10 +18,12 @@
 	const foreground = $derived(foregroundForCategoryColor(category.color));
 </script>
 
+<!-- Prefer one line, clamp at two with an ellipsis; words break only when a single word cannot
+     fit. The full label stays in the DOM for assistive technology and in the title tooltip. -->
 <span
 	data-testid="gift-category-badge"
 	class={cn(
-		'inline-block max-w-full -rotate-3 rounded-md border-2 border-black px-2.5 py-0.5 text-xs leading-4 font-extrabold shadow-sticker [overflow-wrap:anywhere]',
+		'max-w-full overflow-hidden rounded-badge border-2 border-ink px-2.5 py-0.5 text-xs leading-4 font-extrabold [display:-webkit-inline-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] [overflow-wrap:break-word]',
 		isDimmed && 'opacity-50',
 		className,
 	)}
