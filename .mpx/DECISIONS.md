@@ -287,11 +287,11 @@ sections for UI work. Historical reconciliation and review notes are in
   Received/Bought controls stay visible, subject to existing capabilities. Price must have a stable
   position independent of link count; flowing it horizontally after source links is rejected. Put
   price in the content directly below link badges on its own left-aligned line, above right-aligned
-  actions, so its width cannot push buttons around. Content and actions share horizontal card
-  insets; image-corner overlays retain their geometry-specific positions. Omit the action separator.
-  Shared card height must shrink to the minimum justified by current content after option changes,
-  never retain space from previous measurements. Role-specific overflow mappings remain illustrated
-  in `designs/gift-desktop-alignment/DESIGN_BRIEF_GIFT_DESKTOP_ALIGNMENT.md`.
+  actions, so its width cannot push buttons around. Image-corner overlays retain their
+  geometry-specific positions. Omit the action separator. Shared card height must shrink to the
+  minimum justified by current content after option changes, never retain space from previous
+  measurements. Role-specific overflow mappings remain illustrated in
+  `designs/gift-desktop-alignment/DESIGN_BRIEF_GIFT_DESKTOP_ALIGNMENT.md`.
 - 2026-09-16: Mobile Card and List titles and descriptions show at most two lines, with full text
   accessible in detail. Mobile action lanes never wrap: move eligible secondary actions into More
   when buttons cannot fit, restoring them when space returns. Keep Reserve visible ahead of Received
@@ -313,6 +313,9 @@ sections for UI work. Historical reconciliation and review notes are in
   dimming eligibility/privacy and image-free Compact, and keep separators visible in both states.
   The approved visual reference and implementation handoff are in
   `designs/unavailable-gift-comparison/`; design approval is not an accessibility certification.
+- 2026-10-01: Desktop Card content uses a wider inset than its footer, with equal title top and
+  start padding; desktop List, mobile, and footers keep the nested-corner inset. Received stays
+  adjacent to Reserve/Cancel and More (#420).
 
 ## Forms & settings
 
