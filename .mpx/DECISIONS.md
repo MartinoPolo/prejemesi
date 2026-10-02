@@ -423,12 +423,11 @@ sections for UI work. Historical reconciliation and review notes are in
   triggers share contextual height, radius, and icon sizing; selection controls use button-sized
   visible surfaces. Preserve semantic primary/outline/ghost emphasis rather than forcing identical
   intent on neighboring controls.
-- 2026-09-14: Equivalent adjacent-action groups use an 8 px gap on desktop and mobile; section
-  spacing remains distinct. Align header brand/avatar outer visible edges, shell, hero, toolbar, and
-  gift surfaces to the wishlist content container's centered max-width and 12 px mobile / 16 px
-  desktop gutters, not internal notebook/form padding or shadow extents. Keep shadow depth
-  consistent for the viewport/preference, allow additional clearance only where shadows require it,
-  and separate accessible hit areas from visible geometry; nested corners follow `AGENTS.md`.
+- 2026-09-14: Align header brand/avatar outer visible edges, shell, hero, toolbar, and gift surfaces
+  to the wishlist content container's centered max-width and 12 px mobile / 16 px desktop gutters,
+  not internal notebook/form padding or shadow extents. Keep shadow depth consistent for the
+  viewport/preference, allow additional clearance only where shadows require it, and separate
+  accessible hit areas from visible geometry; nested corners follow `AGENTS.md`.
 - 2026-09-14: Shared sizing variants own icon dimensions and consistent parent padding/insets,
   corner geometry, and shadow treatment; audit app-wide usage rather than patching individual call
   sites. Reuse shared components instead of new raw controls or one-off styling. Maintain a
@@ -444,11 +443,6 @@ sections for UI work. Historical reconciliation and review notes are in
   identities. Use `brand` for colored text/icons on dark surfaces and reserve `primary` with
   `primary-foreground` for filled controls. Tune the shared CSS derivation directly in the app
   before adding choices.
-- 2026-09-16: Use full resting-shadow allowance for gift action-container bottom/right nesting and
-  wishlist toolbar clearance across soft, ink and black depth modes. Top/left nesting remains
-  face-relative; use rendered borders and shared radius/offset tokens. Keep semantic interaction
-  owners stationary and toolbar faces aligned, with no hover-driven padding or control-height
-  changes. This does not adopt the experiment's mobile Like relocation or wrapped action lanes.
 - 2026-09-21: The gift view switcher uses a scoped connected accent backing with one ordinary
   resting shadow and a Button face only on the selected segment. Keep the switcher static on hover
   and press; preserve default segmented-toggle presentation for other consumers.
@@ -463,6 +457,10 @@ sections for UI work. Historical reconciliation and review notes are in
   duration cap. Preserve reduced-motion handling, existing view-switch effects and hover behavior;
   active dragging follows the pointer without a speed limit. Interrupted runs must hand off from
   their current visual positions without leaking overlays or stealing focus.
+- 2026-10-02: Spacing beside elevated elements is a standard gap plus a depth clearance equal to the
+  shadow offset for Ink and Black and none for Soft. Adjacent elevated controls use
+  `--nested-control-gap` in `src/app.css`; container insets add the clearance on shadowed edges
+  only, and spacing never changes on hover.
 
 ## Images & cropping
 
