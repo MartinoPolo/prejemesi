@@ -210,7 +210,7 @@ export async function coalesceNewGiftDigests(
 				normalizeNotificationPreferences(row.preferences)[NOTIFICATION_TYPE.NEW_GIFT_ADDED]
 					.inApp,
 		)
-		.toSorted((left, right) => left.userId.localeCompare(right.userId));
+		.sort((left, right) => left.userId.localeCompare(right.userId));
 	for (const target of targets) {
 		await coalesceRecipientDigest(tx, target.userId, input);
 	}

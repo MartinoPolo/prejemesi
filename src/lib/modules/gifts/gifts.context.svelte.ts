@@ -287,7 +287,7 @@ function createGiftsContext(
 		}
 
 		const options: GiftFilterOption<GiftCategoryFilterValue>[] = optionsByCategoryId
-			.toSorted((a, b) => a.sortOrder - b.sortOrder)
+			.sort((a, b) => a.sortOrder - b.sortOrder)
 			.map(({ value, label }) => ({ value, label }));
 		if (hasUncategorized) {
 			options.push({
@@ -319,7 +319,7 @@ function createGiftsContext(
 		}
 
 		const options: GiftFilterOption<GiftPriorityFilterValue>[] = optionsByPriorityId
-			.toSorted((a, b) => a.sortOrder - b.sortOrder)
+			.sort((a, b) => a.sortOrder - b.sortOrder)
 			.map(({ value, label }) => ({ value, label }));
 		if (hasNoPriority) {
 			options.push({

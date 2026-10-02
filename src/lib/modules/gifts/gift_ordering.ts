@@ -73,7 +73,7 @@ export function projectGiftsForRecipient(gifts: readonly GiftByRole[]): GiftForR
 export function activeGiftsInOwnerOrder(gifts: readonly GiftByRole[]): GiftByRole[] {
 	return gifts
 		.filter((gift) => !gift.received)
-		.toSorted((firstGift, secondGift) => firstGift.sortOrder - secondGift.sortOrder);
+		.sort((firstGift, secondGift) => firstGift.sortOrder - secondGift.sortOrder);
 }
 
 export function resolveActiveGiftOrder(

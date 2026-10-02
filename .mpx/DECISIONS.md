@@ -546,6 +546,10 @@ sections for UI work. Historical reconciliation and review notes are in
 - 2026-09-01: Gift mutations also refresh affected category-usage metadata in the same response; the
   older “gift-list query only” invalidation rule must not leave category-removal confirmations using
   stale assignments.
+- 2026-10-02: Code must not depend on JavaScript built-ins newer than ES2022: production visitors
+  use browsers without them, and Vite never polyfills APIs. `tsconfig.json` restricts `lib` to
+  ES2022 for all code, making typecheck the guard; feature-detect newer APIs with a fallback rather
+  than adding polyfills or widening `lib`.
 
 ## Import, enrichment & production automation
 
