@@ -4,8 +4,11 @@ import { render } from 'vitest-browser-svelte';
 import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
 import { WISHLIST_ROLES } from '$lib/modules/wishlists/types.js';
 import * as m from '$lib/paraglide/messages.js';
+import { resolvedCssLength } from './gift_action_geometry.test_fixtures.js';
 import {
 	GiftCardTestHost,
+	MOBILE_TWO_COLUMN_CARD_WIDTH,
+	MOBILE_VIEWPORT_WIDTH,
 	cleanupCardHosts,
 	firstNonBlankTextNode,
 	fixedHosts,
@@ -21,7 +24,7 @@ describe('GiftCard reservation-action layout (issue #211)', () => {
 	it('keeps a direct mobile Reserve action intrinsic when More is absent', async () => {
 		await page.viewport(390, 720);
 		const host = document.createElement('div');
-		host.style.width = '179px';
+		host.style.width = `${MOBILE_TWO_COLUMN_CARD_WIDTH}px`;
 		document.body.appendChild(host);
 		fixedHosts.add(host);
 		await render(
@@ -256,7 +259,7 @@ describe('GiftCard reservation-action layout (issue #211)', () => {
 	it('keeps the manager action label visible and clear of More in a realistic two-column card', async () => {
 		await page.viewport(390, 720);
 		const host = document.createElement('div');
-		host.style.width = '179px';
+		host.style.width = `${MOBILE_TWO_COLUMN_CARD_WIDTH}px`;
 		document.body.appendChild(host);
 		fixedHosts.add(host);
 		await render(
@@ -320,6 +323,87 @@ describe('GiftCard reservation-action layout (issue #211)', () => {
 		expectPixelsAtMost(
 			footerEl.getBoundingClientRect().width,
 			cardEl.getBoundingClientRect().width,
+		);
+	});
+});
+
+describe('GiftCard content inset (issue #420)', () => {
+	it.each([700, 800])(
+		'gives desktop Grid content equal title top and start insets wider than the footer inset at %i px',
+		async (viewport) => {
+			await page.viewport(viewport, 720);
+			const host = await renderCardInGridColumn(
+				makeVisitorGift({
+					description: 'Popis dárku',
+					links: [{ url: 'https://example.com/gift', label: 'Obchod' }],
+					price: 1200,
+					currency: 'CZK',
+				}),
+			);
+
+			const title = host.querySelector<HTMLElement>('[data-gift-card-track="title"]')!;
+			const body = host.querySelector<HTMLElement>('[data-testid="gift-card-body"]')!;
+			const surface = title.closest<HTMLElement>('.gift-card-painted-surface')!;
+			const footer = host.querySelector<HTMLElement>('[data-testid="gift-card-footer"]')!;
+			const titleRect = title.getBoundingClientRect();
+			const titleInsetStart =
+				titleRect.left -
+				surface.getBoundingClientRect().left -
+				Number.parseFloat(getComputedStyle(surface).borderLeftWidth);
+			const titleInsetTop = titleRect.top - body.getBoundingClientRect().top;
+			const bodyStyle = getComputedStyle(body);
+
+			expectPixelsNear(titleInsetTop, titleInsetStart);
+			expect(titleInsetStart).toBeGreaterThan(
+				resolvedCssLength(footer, 'var(--gift-content-inset)'),
+			);
+			for (const track of ['description', 'links', 'price']) {
+				const trackElement = host.querySelector<HTMLElement>(
+					`[data-gift-card-track="${track}"]`,
+				)!;
+				expectPixelsNear(trackElement.getBoundingClientRect().left, titleRect.left);
+			}
+			expectPixelsAtLeast(
+				Number.parseFloat(bodyStyle.paddingRight),
+				resolvedCssLength(footer, 'var(--gift-content-inset-end)'),
+			);
+			expectPixelsNear(
+				Number.parseFloat(bodyStyle.paddingBottom),
+				resolvedCssLength(body, '1rem'),
+			);
+		},
+	);
+
+	it('keeps mobile Card content padding on the shared nested insets', async () => {
+		await page.viewport(MOBILE_VIEWPORT_WIDTH, 720);
+		const host = document.createElement('div');
+		host.style.width = `${MOBILE_TWO_COLUMN_CARD_WIDTH}px`;
+		document.body.appendChild(host);
+		fixedHosts.add(host);
+		await render(
+			GiftCardTestHost,
+			{ gift: makeVisitorGift(), role: WISHLIST_ROLES.visitor, onreserve: () => {} },
+			{ baseElement: host },
+		);
+
+		const body = host.querySelector<HTMLElement>('[data-testid="gift-card-body"]')!;
+		const bodyStyle = getComputedStyle(body);
+
+		expectPixelsNear(
+			Number.parseFloat(bodyStyle.paddingTop),
+			resolvedCssLength(body, '0.5rem'),
+		);
+		expectPixelsNear(
+			Number.parseFloat(bodyStyle.paddingBottom),
+			resolvedCssLength(body, '0.375rem'),
+		);
+		expectPixelsNear(
+			Number.parseFloat(bodyStyle.paddingLeft),
+			resolvedCssLength(body, 'var(--gift-content-inset)'),
+		);
+		expectPixelsNear(
+			Number.parseFloat(bodyStyle.paddingRight),
+			resolvedCssLength(body, 'var(--gift-content-inset-end)'),
 		);
 	});
 });

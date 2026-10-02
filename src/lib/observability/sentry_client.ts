@@ -5,6 +5,7 @@ import {
 } from './sentry_privacy.js';
 
 interface ClientSentryEvent {
+	level?: string;
 	exception?: {
 		values?: Array<{
 			type?: string;
@@ -15,9 +16,25 @@ interface ClientSentryEvent {
 }
 
 const CLOUDFLARE_BEACON_URL = 'https://static.cloudflareinsights.com/beacon.min.js/';
+const BROWSER_NETWORK_FAILURE_PATTERN =
+	/^(Load failed|Failed to fetch|NetworkError when attempting to fetch resource\.?)( \(.+\))?$/;
 
 export function filterAndSanitizeSentryClientEvent<T>(event: T): T | null {
-	const exceptions = (event as ClientSentryEvent).exception?.values ?? [];
+	const clientEvent = event as ClientSentryEvent;
+	const exceptions = clientEvent.exception?.values ?? [];
+	const isBrowserNetworkFailure =
+		exceptions.length > 0 &&
+		exceptions.every(
+			(exception) =>
+				exception.type === 'TypeError' &&
+				BROWSER_NETWORK_FAILURE_PATTERN.test(exception.value ?? ''),
+		);
+	if (isBrowserNetworkFailure) {
+		// A request that never completed is a connectivity outcome, not an application defect;
+		// warning level keeps sustained outages visible without triggering error alerts.
+		clientEvent.level = 'warning';
+	}
+
 	const isCloudflareBeaconCompatibilityError =
 		exceptions.length > 0 &&
 		exceptions.every((exception) => {

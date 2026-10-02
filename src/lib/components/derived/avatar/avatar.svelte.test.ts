@@ -23,6 +23,9 @@ function expectConcentric(outer: HTMLElement, inner: HTMLElement): void {
 	const innerRect = inner.getBoundingClientRect();
 	expectCircularGeometry(outer);
 	expectCircularGeometry(inner);
+	const border = Number.parseFloat(getComputedStyle(outer).borderLeftWidth);
+	expectPixelsNear(innerRect.width, outerRect.width - 2 * border);
+	expectPixelsNear(innerRect.height, outerRect.height - 2 * border);
 	expectPixelsNear(innerRect.left + innerRect.width / 2, outerRect.left + outerRect.width / 2);
 	expectPixelsNear(innerRect.top + innerRect.height / 2, outerRect.top + outerRect.height / 2);
 }

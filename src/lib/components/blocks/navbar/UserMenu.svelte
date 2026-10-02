@@ -79,8 +79,8 @@
 					src={userImage}
 					alt=""
 					initials={userInitials}
-					size="sm"
-					class="size-[calc(100%-5px)] rounded-full"
+					shape="circle"
+					class="size-full"
 				/>
 			</Button>
 		{/snippet}

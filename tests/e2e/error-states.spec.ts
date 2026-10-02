@@ -53,4 +53,32 @@ test.describe('Error states and edge cases', () => {
 
 		await page.context().close();
 	});
+
+	test('unknown pages explain the missing page and link home', async ({ page }) => {
+		const response = await page.goto('/this-page-does-not-exist');
+
+		expect(response?.status()).toBe(404);
+		await expect(page.getByRole('heading', { name: 'Stránka nebyla nalezena' })).toBeVisible();
+		await expect(page.getByRole('link', { name: 'Na úvodní stránku' })).toHaveAttribute(
+			'href',
+			'/',
+		);
+		await expect(page.getByRole('button', { name: 'Zkusit znovu' })).toHaveCount(0);
+	});
+
+	test('a navigation interrupted by the network offers a working retry', async ({ page }) => {
+		await page.goto('/');
+		await waitForAppHydration(page);
+		await page.route('**/__data.json*', (route) => route.abort('internetdisconnected'));
+
+		await page.locator('a[href$="/login"]:visible').first().click();
+		await expect(
+			page.getByRole('heading', { name: 'Stránku se nepodařilo načíst' }),
+		).toBeVisible();
+
+		await page.unroute('**/__data.json*');
+		await page.getByRole('button', { name: 'Zkusit znovu' }).click();
+		await expect(page).toHaveURL(/\/login$/);
+		await expect(page.getByLabel(/E-mail/i)).toBeVisible();
+	});
 });

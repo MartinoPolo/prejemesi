@@ -139,7 +139,7 @@ describe.skipIf(!DB_READY)('appendGifts atomicity and ordering [real DB]', () =>
 				.slice(1)
 				.map(({ name }) => name)
 				.sort(),
-		).toEqual(names.toSorted());
+		).toEqual([...names].sort());
 	});
 
 	it('rolls back every row when one gift violates a foreign key', async () => {
