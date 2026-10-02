@@ -722,22 +722,6 @@
 	}
 }
 
-.elevation-sheet[data-side='top'] {
-	box-shadow: 0 var(--elevation-ordinary-offset) 0 var(--hard-shadow);
-}
-
-.elevation-sheet[data-side='right'] {
-	box-shadow: calc(-1 * var(--elevation-ordinary-offset)) 0 0 var(--hard-shadow);
-}
-
-.elevation-sheet[data-side='bottom'] {
-	box-shadow: 0 calc(-1 * var(--elevation-ordinary-offset)) 0 var(--hard-shadow);
-}
-
-.elevation-sheet[data-side='left'] {
-	box-shadow: var(--elevation-ordinary-offset) 0 0 var(--hard-shadow);
-}
-
 @theme inline {
 	--radius-sm: calc(var(--radius) - 4px);
 	--radius-md: calc(var(--radius) - 2px);
