@@ -136,19 +136,22 @@ function findUserAgent(headers: unknown): string | undefined {
 	return typeof userAgent === 'string' ? userAgent : undefined;
 }
 
+function sanitizeRequest(request: Record<string, unknown>): Record<string, unknown> {
+	const { method, url, headers } = request;
+	const userAgent = findUserAgent(headers);
+	return {
+		...(typeof method === 'string' ? { method } : {}),
+		...(typeof url === 'string' ? { url: stripUrlDetails(url) } : {}),
+		...(userAgent !== undefined ? { headers: { 'User-Agent': userAgent } } : {}),
+	};
+}
+
 export function sanitizeSentryEvent<T>(event: T): T {
 	const sanitizableEvent = event as SanitizableEvent;
 	delete sanitizableEvent.user;
 
 	if (sanitizableEvent.request !== undefined) {
-		const method = sanitizableEvent.request.method;
-		const url = sanitizableEvent.request.url;
-		const userAgent = findUserAgent(sanitizableEvent.request.headers);
-		sanitizableEvent.request = {
-			...(typeof method === 'string' ? { method } : {}),
-			...(typeof url === 'string' ? { url: stripUrlDetails(url) } : {}),
-			...(userAgent !== undefined ? { headers: { 'User-Agent': userAgent } } : {}),
-		};
+		sanitizableEvent.request = sanitizeRequest(sanitizableEvent.request);
 	}
 
 	if (sanitizableEvent.message !== undefined) {
