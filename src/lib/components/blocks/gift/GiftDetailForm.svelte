@@ -941,7 +941,7 @@
 										class="flex flex-col gap-2 rounded-md border border-border bg-surface-2 p-2"
 									>
 										<Textarea bind:value={editingAppendText} rows={2} />
-										<div class="flex gap-2">
+										<div class="flex gap-(--nested-control-gap)">
 											<Button
 												size="sm"
 												onclick={() => void saveEditAppend(index)}

@@ -19,7 +19,7 @@ export const shareWizardVariants = tv({
 		stepDotPending: 'border-ink-faint bg-surface text-muted-foreground',
 		stepLabel: 'whitespace-nowrap text-[11px] font-semibold text-muted-foreground',
 		stepLabelActive: 'whitespace-nowrap text-[11px] font-bold text-foreground',
-		actions: 'flex gap-2',
+		actions: 'flex gap-(--nested-control-gap)',
 		// Step 1
 		confirmHero: 'flex flex-col items-center gap-3 px-0 py-5 text-center',
 		warnIconWrap:
@@ -46,7 +46,7 @@ export const shareWizardVariants = tv({
 		linkUrlDomain: 'font-bold text-foreground',
 		copiedLabel:
 			'mt-1.5 inline-flex w-fit items-center gap-1.5 rounded-full border-2 border-ink bg-[color-mix(in_oklab,var(--status-success)_14%,var(--card))] px-2.5 py-0.5 text-xs font-bold text-status-success',
-		socialButtonsList: 'flex flex-col gap-2',
+		socialButtonsList: 'flex flex-col gap-(--nested-control-gap)',
 		messagePreview:
 			'rounded-[4px] border-2 border-note-ink/40 bg-note px-4 py-3 text-note-ink shadow-sticker-sm',
 		messagePreviewLabel: 'mb-1 text-[10px] font-bold uppercase tracking-wider text-note-ink/70',

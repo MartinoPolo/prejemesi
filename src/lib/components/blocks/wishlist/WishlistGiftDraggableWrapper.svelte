@@ -338,10 +338,7 @@
 <style>
 	[data-gift-item] {
 		--gift-context-face-inset: max(0px, calc(var(--radius-panel) - var(--radius-btn)));
-		--gift-context-shadow-inset: calc(
-			var(--gift-context-face-inset) + var(--elevation-ordinary-offset)
-		);
-		--gift-context-control-gap: calc(0.5rem + var(--elevation-ordinary-offset));
+		--gift-context-shadow-inset: calc(var(--gift-context-face-inset) + var(--depth-clearance));
 	}
 
 	.gift-selection-control {
@@ -352,7 +349,7 @@
 	.gift-reorder-directional-actions {
 		inset-inline-end: var(--gift-context-shadow-inset);
 		inset-block-end: var(--gift-context-shadow-inset);
-		gap: var(--gift-context-control-gap);
+		gap: var(--nested-control-gap);
 	}
 
 	/* Selection follows the moving Card paint and the flat List surface. */

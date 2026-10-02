@@ -572,7 +572,7 @@
 						</Button>
 					{/if}
 				</div>
-				<div class="flex gap-2">
+				<div class="flex gap-(--nested-control-gap)">
 					{#if commitStatus !== COMMIT_STATUS.committing}
 						<Button intent="ghost" onclick={handleClose}>
 							{m.import_wizard_cancel()}

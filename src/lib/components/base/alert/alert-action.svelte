@@ -14,7 +14,7 @@
 	bind:this={ref}
 	data-slot="alert-action"
 	class={cn(
-		'absolute top-[calc(50%_-_var(--elevation-ordinary-offset)/2)] right-3 -translate-y-1/2',
+		'absolute top-[calc(50%_-_var(--depth-clearance)/2)] right-3 -translate-y-1/2',
 		className,
 	)}
 	{...restProps}

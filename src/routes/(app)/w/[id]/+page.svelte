@@ -2058,7 +2058,7 @@
 			<Dialog.Title>{m.wishlist_archive_confirm_title()}</Dialog.Title>
 			<Dialog.Description>{m.wishlist_archive_confirm_description()}</Dialog.Description>
 		</Dialog.Header>
-		<Dialog.Footer class="flex gap-2">
+		<Dialog.Footer>
 			<Button
 				intent="outline"
 				onclick={() => (archiveConfirmOpen = false)}

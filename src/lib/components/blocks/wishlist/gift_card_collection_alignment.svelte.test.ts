@@ -192,6 +192,44 @@ describe('GiftCard collection alignment', () => {
 		await screen.unmount();
 	});
 
+	it('re-measures the action track when the depth changes', async () => {
+		await page.viewport(1100, 900);
+		const screen = await render(WishlistGiftDisplay, {
+			...defaultProps,
+			sections: [
+				{
+					kind: GIFT_SECTION_KINDS.available,
+					key: 'available',
+					label: null,
+					gifts: [gift(), gift({ id: 'peer', name: 'Druhý dárek' })],
+				},
+			],
+			hascontextactions: () => true,
+			oncontextactions: () => true,
+		});
+		try {
+			await expect
+				.poll(() => document.querySelector('[data-gift-card-tracks-aligned="true"]'))
+				.not.toBeNull();
+			const footer = document.querySelector<HTMLElement>('[data-testid="gift-card-footer"]')!;
+			const shadowOffset = Number.parseFloat(
+				getComputedStyle(footer).getPropertyValue('--elevation-ordinary-offset'),
+			);
+			document.documentElement.dataset.depth = 'black';
+			await nextLayout();
+			const blackHeight = footer.getBoundingClientRect().height;
+			document.documentElement.dataset.depth = 'soft';
+			await nextLayout();
+			expectPixelsNear(footer.getBoundingClientRect().height, blackHeight - shadowOffset);
+			for (const rect of trackRects('actions')) {
+				expectPixelsNear(rect.height, blackHeight - shadowOffset);
+			}
+		} finally {
+			delete document.documentElement.dataset.depth;
+			await screen.unmount();
+		}
+	});
+
 	it('clamps desktop titles to two painted lines and descriptions to one', async () => {
 		await page.viewport(960, 900);
 		const screen = await render(WishlistGiftDisplay, {

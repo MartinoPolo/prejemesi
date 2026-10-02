@@ -57,7 +57,7 @@
 				{m.settings_delete_confirm_description()}
 			</Dialog.Description>
 		</Dialog.Header>
-		<Dialog.Footer class="flex gap-2">
+		<Dialog.Footer>
 			<Button intent="outline" onclick={() => (deleteDialogOpen = false)} disabled={deleting}>
 				{m.cancel()}
 			</Button>

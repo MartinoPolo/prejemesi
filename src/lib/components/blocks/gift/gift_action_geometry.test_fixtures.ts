@@ -40,14 +40,14 @@ export function visibleAction(row: HTMLElement, selector: string): HTMLElement {
 	return action!;
 }
 
-/** Asserts one equal-height line of actions separated by `--gift-action-gap`, ending at `rightEdge`. */
+/** Asserts one equal-height line of actions separated by `--nested-control-gap`, ending at `rightEdge`. */
 export function expectRightAlignedAdjacentActions(
 	row: HTMLElement,
 	actions: HTMLElement[],
 	rightEdge: number,
 ): void {
 	expect(actions.length).toBeGreaterThan(0);
-	const actionGap = resolvedCssLength(row, 'var(--gift-action-gap)');
+	const actionGap = resolvedCssLength(row, 'var(--nested-control-gap)');
 	const actionRects = actions.map((action) => action.getBoundingClientRect());
 
 	for (const [index, actionRect] of actionRects.entries()) {

@@ -59,9 +59,39 @@ async function unpinTrigger(trigger: Locator) {
 }
 
 async function expectDropdownViewportCap(menu: Locator, height: number) {
+	const depthClearance = await menu.evaluate((element) =>
+		Number.parseFloat(getComputedStyle(element).getPropertyValue('--depth-clearance')),
+	);
 	await expect
 		.poll(() => menu.evaluate((element) => getComputedStyle(element).maxHeight))
-		.toBe(`${height - VIEWPORT_PADDING * 2}px`);
+		.toBe(`${height - VIEWPORT_PADDING * 2 - depthClearance}px`);
+}
+
+async function triggerMenuGeometry(trigger: Locator, menu: Locator) {
+	await expect
+		.poll(() =>
+			menu.evaluate(
+				(element) =>
+					element.getAnimations().filter((animation) => animation.playState === 'running')
+						.length,
+			),
+		)
+		.toBe(0);
+	return trigger.evaluate(
+		(element, menuElement) => {
+			const face = element.querySelector('.elevation-surface')!.getBoundingClientRect();
+			const menuRect = menuElement!.getBoundingClientRect();
+			return {
+				side: menuElement!.getAttribute('data-side'),
+				shadowOffset: Number.parseFloat(
+					getComputedStyle(element).getPropertyValue('--elevation-ordinary-offset'),
+				),
+				belowGap: menuRect.top - face.bottom,
+				aboveGap: face.top - menuRect.bottom,
+			};
+		},
+		await menu.elementHandle(),
+	);
 }
 
 async function expectInsideViewport(menu: Locator, width: number, height: number) {
@@ -148,6 +178,47 @@ async function attachScreenshot(page: Page, testInfo: TestInfo, name: string) {
 }
 
 test.describe('issue #364 dropdown viewport placement', () => {
+	test('Black depth clears the trigger shadow, follows a live depth change, and still flips at the edge', async ({
+		page,
+		request,
+		baseURL,
+	}) => {
+		const sideOffset = 4;
+		await page.setViewportSize({ width: 1000, height: 700 });
+		await openSeedWishlist(page, request, baseURL!);
+		await page.evaluate(() => {
+			document.documentElement.dataset.depth = 'black';
+		});
+		const trigger = page.getByTestId('desktop-display-trigger').filter({ visible: true });
+		await pinTrigger(trigger, 120, 300);
+		await trigger.click();
+		let menu = await visibleDropdown(page);
+		let geometry = await triggerMenuGeometry(trigger, menu);
+		expect(geometry.side).toBe('bottom');
+		expectPixelsNear(geometry.belowGap, sideOffset + geometry.shadowOffset);
+		await expectDropdownViewportCap(menu, 700);
+
+		await page.evaluate(() => {
+			document.documentElement.dataset.depth = 'soft';
+		});
+		await expect
+			.poll(async () => (await triggerMenuGeometry(trigger, menu)).belowGap)
+			.toBeCloseTo(sideOffset, 0);
+		await closeDropdownHierarchy(page);
+
+		await page.evaluate(() => {
+			document.documentElement.dataset.depth = 'black';
+		});
+		await pinTrigger(trigger, 650, 300);
+		await trigger.click();
+		menu = await visibleDropdown(page);
+		geometry = await triggerMenuGeometry(trigger, menu);
+		expect(geometry.side).toBe('top');
+		expectPixelsNear(geometry.aboveGap, sideOffset + geometry.shadowOffset);
+		await expectInsideViewport(menu, 1000, 700);
+		await closeDropdownHierarchy(page);
+	});
+
 	test('stationary constrained filter stays stable and full-height when the viewport can contain it', async ({
 		page,
 		request,

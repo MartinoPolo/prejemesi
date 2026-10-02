@@ -11,7 +11,7 @@ afterEach(() => {
 	}
 });
 
-it('derives a concentric resting contour from the rendered border, not its fractional declaration', () => {
+it('derives a concentric contour from the rendered border plus the depth clearance on shadowed edges', () => {
 	const panel = document.createElement('div');
 	panel.className = 'resting-shadow-nesting';
 	panel.style.cssText =
@@ -27,10 +27,16 @@ it('derives a concentric resting contour from the rendered border, not its fract
 		panel.remove();
 	});
 	const border = parseFloat(getComputedStyle(panel).borderRightWidth);
-	const faceInset = parseFloat(getComputedStyle(control).marginLeft);
-	const shadowInset = border + faceInset - 4;
-	expectPixelsNear(shadowInset + 7, 16);
-	expectPixelsNear(parseFloat(getComputedStyle(control).marginTop), faceInset);
+	for (const [depth, depthClearance] of [
+		['soft', 0],
+		['ink', 4],
+		['black', 4],
+	] as const) {
+		panel.dataset.depth = depth;
+		const endInset = parseFloat(getComputedStyle(control).marginLeft);
+		expectPixelsNear(border + endInset - depthClearance + 7, 16);
+		expectPixelsNear(parseFloat(getComputedStyle(control).marginTop), endInset);
+	}
 });
 
 it('measures an explicit painted border and restores owner styles on teardown', () => {

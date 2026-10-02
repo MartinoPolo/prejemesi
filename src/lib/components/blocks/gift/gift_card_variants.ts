@@ -40,9 +40,8 @@ export const giftCardVariants = tv({
 		priceEmpty: 'block text-sm text-muted-foreground italic',
 		priorityEyebrow: 'mt-2 flex min-w-0 items-center gap-1',
 		linkList: 'min-w-[min(9rem,100%)] max-w-full basis-auto',
-		footer: 'row-start-3 flex min-w-0 items-stretch justify-between gap-[var(--gift-action-gap,0.5rem)] ps-[var(--gift-content-inset,9px)] pe-[var(--gift-content-inset-end,var(--gift-content-inset,9px))] pb-[var(--gift-content-inset-bottom,var(--gift-content-inset,9px))] [min-height:var(--gift-card-actions-track-height,auto)]',
-		reservationActions:
-			'ml-auto flex min-w-0 flex-1 flex-col gap-[var(--gift-action-gap,0.5rem)]',
+		footer: 'row-start-3 flex min-w-0 items-stretch justify-between gap-(--nested-control-gap) ps-[var(--gift-content-inset,9px)] pe-[var(--gift-content-inset-end,var(--gift-content-inset,9px))] pb-[var(--gift-content-inset-bottom,var(--gift-content-inset,9px))] [min-height:var(--gift-card-actions-track-height,auto)]',
+		reservationActions: 'ml-auto flex min-w-0 flex-1 flex-col gap-(--nested-control-gap)',
 	},
 	variants: {
 		dimmed: {

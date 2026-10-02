@@ -289,7 +289,7 @@
 			<Dialog.Title>{m.wishlist_settings_unsaved_title()}</Dialog.Title>
 			<Dialog.Description>{m.gift_unsaved_description()}</Dialog.Description>
 		</Dialog.Header>
-		<Dialog.Footer class="flex flex-wrap gap-2">
+		<Dialog.Footer class="flex-wrap">
 			<Button intent="outline" onclick={continueEditing}>
 				{m.wishlist_settings_continue_editing()}
 			</Button>

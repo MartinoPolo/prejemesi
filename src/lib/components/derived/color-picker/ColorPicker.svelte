@@ -123,7 +123,7 @@
 		>
 			{m.color_picker_native_action()}
 		</Button>
-		<div class="flex justify-end gap-2">
+		<div class="flex justify-end gap-(--nested-control-gap)">
 			<Button type="button" intent="outline" size="md" onclick={cancel} {disabled}>
 				{m.cancel()}
 			</Button>

@@ -186,27 +186,35 @@ describe('WishlistGiftDraggableWrapper — explicit reorder mode (#239)', () => 
 		const moveDown = screen
 			.getByRole('button', { name: m.gift_reorder_move_down({ name: baseProps.giftName }) })
 			.element() as HTMLButtonElement;
-		const wrapperRect = wrapper.getBoundingClientRect();
-		const laneRect = lane.getBoundingClientRect();
-		const moveUpRect = moveUp.getBoundingClientRect();
-		const moveDownRect = moveDown.getBoundingClientRect();
 		const styles = getComputedStyle(wrapper);
 		const shadowOffset = parseFloat(styles.getPropertyValue('--elevation-ordinary-offset'));
 		const faceInset =
 			parseFloat(styles.borderRadius) - parseFloat(getComputedStyle(moveDown).borderRadius);
-		const shadowInset = faceInset + shadowOffset;
-		const controlGap = 8 + shadowOffset;
 
 		expect(styles.getPropertyValue('--gift-context-face-inset')).not.toBe('');
 		expect(styles.getPropertyValue('--gift-context-shadow-inset')).not.toBe('');
-		expect(styles.getPropertyValue('--gift-context-control-gap')).not.toBe('');
 		expect(getComputedStyle(lane).display).toBe('flex');
-		expectPixelsNear(wrapperRect.right - laneRect.right, shadowInset);
-		expectPixelsNear(wrapperRect.bottom - laneRect.bottom, shadowInset);
-		expectPixelsNear(moveDownRect.left - moveUpRect.right, controlGap);
-		for (const rect of [moveUpRect, moveDownRect]) {
-			expectPixelsAtMost(rect.right + shadowOffset, wrapperRect.right);
-			expectPixelsAtMost(rect.bottom + shadowOffset, wrapperRect.bottom);
+		try {
+			for (const [depth, depthClearance] of [
+				['soft', 0],
+				['ink', shadowOffset],
+				['black', shadowOffset],
+			] as const) {
+				document.documentElement.dataset.depth = depth;
+				const wrapperRect = wrapper.getBoundingClientRect();
+				const laneRect = lane.getBoundingClientRect();
+				const moveUpRect = moveUp.getBoundingClientRect();
+				const moveDownRect = moveDown.getBoundingClientRect();
+				expectPixelsNear(wrapperRect.right - laneRect.right, faceInset + depthClearance);
+				expectPixelsNear(wrapperRect.bottom - laneRect.bottom, faceInset + depthClearance);
+				expectPixelsNear(moveDownRect.left - moveUpRect.right, 8 + depthClearance);
+				for (const rect of [moveUpRect, moveDownRect]) {
+					expectPixelsAtMost(rect.right + shadowOffset, wrapperRect.right);
+					expectPixelsAtMost(rect.bottom + shadowOffset, wrapperRect.bottom);
+				}
+			}
+		} finally {
+			delete document.documentElement.dataset.depth;
 		}
 		expect(moveUp.disabled).toBe(true);
 		expect(moveDown.disabled).toBe(false);

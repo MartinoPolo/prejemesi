@@ -4,6 +4,7 @@
 	import { Button } from '$lib/components/base/button/index.js';
 	import * as m from '$lib/paraglide/messages.js';
 	import { cn } from '$lib/utils.js';
+	import { observeDepthChange } from '$lib/theme/depth_change.js';
 	import type { GiftContextAction } from '$lib/modules/gifts/gift_context_actions.js';
 	import type { GiftActionPlacementSnapshot } from '$lib/components/blocks/wishlist/gift_context_invocation.js';
 	import { placeGiftActions } from './gift_action_placement.js';
@@ -220,7 +221,9 @@
 		}
 		void tick().then(measureIntrinsicActions);
 		document.fonts?.addEventListener('loadingdone', measureIntrinsicActions);
+		const stopObservingDepth = observeDepthChange(measureIntrinsicActions);
 		return () => {
+			stopObservingDepth();
 			mounted = false;
 			focusTransferVersion += 1;
 			observer.disconnect();
@@ -329,7 +332,7 @@
 	.gift-action-row,
 	.gift-action-primary-group,
 	.gift-action-slot {
-		gap: var(--gift-action-gap, calc(0.5rem + var(--elevation-ordinary-offset)));
+		gap: var(--nested-control-gap);
 	}
 
 	.gift-action-slot :global(> [data-slot='button']) {

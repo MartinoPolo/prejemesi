@@ -23,6 +23,7 @@
 	import GiftCategoryBadge from './GiftCategoryBadge.svelte';
 	import GiftLinkList from './GiftLinkList.svelte';
 	import { restingShadowNesting } from '$lib/utils/resting_shadow_nesting.js';
+	import { observeDepthChange } from '$lib/theme/depth_change.js';
 	import type { GiftActionPlacementSnapshot } from '$lib/components/blocks/wishlist/gift_context_invocation.js';
 
 	interface GiftListItemProps {
@@ -197,6 +198,7 @@
 			subtree: true,
 			characterData: true,
 		});
+		const stopObservingDepth = observeDepthChange(schedule);
 		refreshObservedElements();
 		measure();
 
@@ -205,6 +207,7 @@
 				cancelAnimationFrame(animationFrame);
 				resizeObserver.disconnect();
 				mutationObserver.disconnect();
+				stopObservingDepth();
 				itemStyle.removeProperty('--gift-list-overlay-start-clearance');
 				itemStyle.removeProperty('--gift-list-overlay-end-clearance');
 				itemStyle.removeProperty('--gift-list-overlay-min-height');
@@ -443,7 +446,7 @@
 
 	:global(.gift-list-action-row) {
 		flex-wrap: nowrap;
-		gap: var(--gift-action-gap, 0.5rem);
+		gap: var(--nested-control-gap);
 	}
 
 	:global(.gift-list-action-row > div),
