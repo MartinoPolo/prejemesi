@@ -126,6 +126,16 @@ function sanitizeBreadcrumb(breadcrumb: SanitizableBreadcrumb): void {
 	}
 }
 
+function findUserAgent(headers: unknown): string | undefined {
+	if (headers === null || typeof headers !== 'object') {
+		return undefined;
+	}
+	const userAgent = Object.entries(headers).find(
+		([headerName]) => headerName.toLowerCase() === 'user-agent',
+	)?.[1];
+	return typeof userAgent === 'string' ? userAgent : undefined;
+}
+
 export function sanitizeSentryEvent<T>(event: T): T {
 	const sanitizableEvent = event as SanitizableEvent;
 	delete sanitizableEvent.user;
@@ -133,9 +143,11 @@ export function sanitizeSentryEvent<T>(event: T): T {
 	if (sanitizableEvent.request !== undefined) {
 		const method = sanitizableEvent.request.method;
 		const url = sanitizableEvent.request.url;
+		const userAgent = findUserAgent(sanitizableEvent.request.headers);
 		sanitizableEvent.request = {
 			...(typeof method === 'string' ? { method } : {}),
 			...(typeof url === 'string' ? { url: stripUrlDetails(url) } : {}),
+			...(userAgent !== undefined ? { headers: { 'User-Agent': userAgent } } : {}),
 		};
 	}
 

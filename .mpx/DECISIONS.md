@@ -598,3 +598,6 @@ sections for UI work. Historical reconciliation and review notes are in
   Cache repository-wide Prettier and ESLint locally. MPX gates focused local checks and builds, with
   risk-based focused E2E for affected behavior; CI gates full E2E and Vitest before merge. Compile
   Paraglide on a fresh checkout or catalog change.
+- 2026-10-02: Sentry error events keep the browser `User-Agent` as their only request header so
+  browser-compatibility errors can be attributed; the full data-collection policy lives in
+  `docs/PRODUCTION_OPERATIONS.md#sentry`.
