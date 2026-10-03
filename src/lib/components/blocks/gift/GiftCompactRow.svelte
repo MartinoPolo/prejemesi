@@ -64,7 +64,7 @@
 	const safeGiftUrl = $derived(normalizeGiftUrl(primaryLink?.url ?? null));
 	const priceDisplay = $derived(formatPrice(gift.price, gift.currency, gift.priceMax));
 	const otherReservationLabel = $derived(
-		formatOtherReservationLabel(presentation.overlay?.otherReservers),
+		formatOtherReservationLabel(presentation.otherReservers),
 	);
 </script>
 

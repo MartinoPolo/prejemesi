@@ -254,7 +254,7 @@
 				</div>
 			{/if}
 			<GiftStateOverlay
-				model={presentation.overlay}
+				entries={presentation.overlay}
 				class={cn('gift-list-state-overlay', contextualMode && 'pt-[3.25rem]')}
 			/>
 			<GiftPriorityBadge

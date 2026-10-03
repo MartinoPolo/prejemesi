@@ -3,8 +3,14 @@ import type { WithElementRef } from '$lib/utils.js';
 import type { HTMLAttributes } from 'svelte/elements';
 import { tv } from 'tailwind-variants';
 
+/** Shape shared by every badge-like chip so radius and border weight stay in one place. */
+export const badgeShape = 'rounded-badge border-2';
+
 export const badgeVariants = tv({
-	base: 'inline-flex items-center justify-center gap-1 rounded-badge font-bold border-2 tracking-[0.01em] whitespace-nowrap [&_[data-icon]]:shrink-0',
+	base: [
+		badgeShape,
+		'inline-flex items-center justify-center gap-1 font-bold tracking-[0.01em] whitespace-nowrap [&_[data-icon]]:shrink-0',
+	],
 	variants: {
 		tone: {
 			neutral: 'bg-card text-muted-foreground border-ink',

@@ -1,6 +1,6 @@
 <script module lang="ts">
 	import { defineMeta } from '@storybook/addon-svelte-csf';
-	import type { GiftStateOverlayModel } from '$lib/modules/gifts/gift_display_state.js';
+	import type { GiftOverlayEntry } from '$lib/modules/gifts/gift_display_state.js';
 	import GiftStateOverlay from './GiftStateOverlay.svelte';
 
 	const { Story } = defineMeta({
@@ -9,24 +9,41 @@
 		tags: ['autodocs'],
 	});
 
-	const STATE_MODELS: GiftStateOverlayModel[] = [
-		{ kind: 'own-reservation' },
-		{ kind: 'own-purchased' },
-		{ kind: 'unavailable' },
-		{ kind: 'unavailable', otherReservers: { kind: 'single', name: 'Jana' } },
-		{ kind: 'unavailable', otherReservers: { kind: 'multiple' } },
-		{ kind: 'partial', remaining: 2, total: 3 },
-		{ kind: 'partial', supportKind: 'own-reservation', remaining: 1, total: 3 },
-		{ kind: 'received', supportKind: 'unavailable' },
+	const STATE_GROUPS: GiftOverlayEntry[][] = [
+		[{ kind: 'own-reservation', role: 'primary' }],
+		[{ kind: 'own-purchased', role: 'primary' }],
+		[{ kind: 'unavailable', role: 'primary' }],
+		[
+			{
+				kind: 'unavailable',
+				otherReservers: { kind: 'single', name: 'Jana' },
+				role: 'primary',
+			},
+		],
+		[{ kind: 'unavailable', otherReservers: { kind: 'multiple' }, role: 'primary' }],
+		[{ kind: 'partial', remaining: 2, total: 3, role: 'primary' }],
+		[
+			{ kind: 'own-reservation', role: 'primary' },
+			{ kind: 'partial', remaining: 1, total: 3, role: 'support' },
+			{
+				kind: 'unavailable',
+				otherReservers: { kind: 'multiple' },
+				role: 'other-reservation',
+			},
+		],
+		[
+			{ kind: 'received', role: 'primary' },
+			{ kind: 'unavailable', role: 'support' },
+		],
 	];
 </script>
 
 <Story name="All States">
 	{#snippet template()}
 		<div class="grid grid-cols-2 gap-4 sm:grid-cols-4">
-			{#each STATE_MODELS as model, index (index)}
+			{#each STATE_GROUPS as entries, index (index)}
 				<div class="relative aspect-square rounded-panel border-2 border-ink bg-muted">
-					<GiftStateOverlay {model} />
+					<GiftStateOverlay {entries} />
 				</div>
 			{/each}
 		</div>
@@ -38,7 +55,12 @@
 		<div
 			class="relative aspect-square w-36 rounded-panel border-2 border-ink bg-muted @container"
 		>
-			<GiftStateOverlay model={{ kind: 'received', supportKind: 'own-purchased' }} />
+			<GiftStateOverlay
+				entries={[
+					{ kind: 'received', role: 'primary' },
+					{ kind: 'own-purchased', role: 'support' },
+				]}
+			/>
 		</div>
 	{/snippet}
 </Story>

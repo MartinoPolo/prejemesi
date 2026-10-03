@@ -183,7 +183,7 @@
 				</div>
 			{/if}
 
-			<GiftStateOverlay model={presentation.overlay} avoidTopRight />
+			<GiftStateOverlay entries={presentation.overlay} avoidTopRight />
 			<GiftPriorityBadge
 				priorityLabel={gift.priorityLabel}
 				{showPriority}

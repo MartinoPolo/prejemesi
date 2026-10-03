@@ -19,27 +19,26 @@ export interface GiftDisplayCapabilities {
 	isArchived?: boolean;
 }
 
-export type GiftOverlayKind =
-	| 'received'
-	| 'own-reservation'
-	| 'own-purchased'
-	| 'unavailable'
-	| 'partial';
-
 /** Who else holds a reservation; several reservers are summarised rather than listed. */
 export type OtherReserverIdentity = { kind: 'single'; name: string } | { kind: 'multiple' };
 
-export interface GiftStateOverlayModel {
-	kind: GiftOverlayKind;
-	supportKind?: Exclude<GiftOverlayKind, 'received'>;
-	remaining?: number;
-	total?: number;
-	/** Present only for viewers allowed to see reserver names, never naming the viewer. */
-	otherReservers?: OtherReserverIdentity;
-}
+type GiftOverlayState =
+	| { kind: 'received' | 'own-reservation' | 'own-purchased' }
+	/** `otherReservers` is present only for viewers allowed to see names, never naming the viewer. */
+	| { kind: 'unavailable'; otherReservers?: OtherReserverIdentity }
+	| { kind: 'partial'; remaining: number; total: number };
+
+export type GiftOverlayKind = GiftOverlayState['kind'];
+
+/** Where a badge sits in the overlay group: the leading state, its support, or another reserver. */
+export type GiftOverlayEntryRole = 'primary' | 'support' | 'other-reservation';
+
+export type GiftOverlayEntry = GiftOverlayState & { role: GiftOverlayEntryRole };
 
 export interface GiftPresentation {
-	overlay: GiftStateOverlayModel | null;
+	/** Ordered state badges; empty when the gift shows no state. */
+	overlay: readonly GiftOverlayEntry[];
+	otherReservers: OtherReserverIdentity | undefined;
 	isDimmed: boolean;
 	showLike: boolean;
 }
@@ -60,10 +59,10 @@ export interface GiftDisplayState {
 function otherReserverIdentity(
 	reserverNames: readonly string[],
 	ownsReservation: boolean,
-): OtherReserverIdentity | null {
+): OtherReserverIdentity | undefined {
 	const otherReserverCount = reserverNames.length - (ownsReservation ? 1 : 0);
 	if (otherReserverCount <= 0) {
-		return null;
+		return undefined;
 	}
 	const [onlyReserverName] = reserverNames;
 	return reserverNames.length === 1 && onlyReserverName !== undefined
@@ -100,45 +99,45 @@ export function deriveGiftDisplayState(
 	const quantity = reservationAwareGift?.quantity;
 	const remaining = quantity == null ? undefined : Math.max(0, quantity - reservedCount);
 	const ownsReservation = reservationAwareGift?.myReservationId != null;
-	const reservationKind: Exclude<GiftOverlayKind, 'received'> | null = ownsReservation
-		? reservationAwareGift?.myReservationPurchasedAt != null
-			? 'own-purchased'
-			: 'own-reservation'
-		: isFullyReserved
-			? 'unavailable'
-			: quantity != null && reservedCount > 0 && remaining! > 0
-				? 'partial'
-				: null;
-	const reservationPill =
-		reservationKind === null
-			? {}
-			: {
-					supportKind: reservationKind,
-					...(reservationKind === 'partial' ? { remaining, total: quantity! } : {}),
-				};
-	const remainingCapacityPill =
-		ownsReservation && remaining !== undefined && remaining > 0
-			? { supportKind: 'partial' as const, remaining, total: quantity! }
-			: {};
 	const otherReservers = otherReserverIdentity(
 		canSeeReserverNames(role) ? (reservationAwareGift?.reserverNames ?? []) : [],
 		ownsReservation,
 	);
-	const otherReserversPill = otherReservers === null ? {} : { otherReservers };
-	const overlay: GiftStateOverlayModel | null = gift.received
+	const reservationState: GiftOverlayState | null = ownsReservation
 		? {
-				kind: 'received',
-				...reservationPill,
-				...otherReserversPill,
+				kind:
+					reservationAwareGift?.myReservationPurchasedAt != null
+						? 'own-purchased'
+						: 'own-reservation',
 			}
-		: reservationKind === null
-			? null
-			: {
-					kind: reservationKind,
-					...(reservationKind === 'partial' ? { remaining, total: quantity! } : {}),
-					...remainingCapacityPill,
-					...otherReserversPill,
-				};
+		: isFullyReserved
+			? otherReservers === undefined
+				? { kind: 'unavailable' }
+				: { kind: 'unavailable', otherReservers }
+			: quantity != null && reservedCount > 0 && remaining! > 0
+				? { kind: 'partial', remaining: remaining!, total: quantity }
+				: null;
+	const remainingCapacityState: GiftOverlayState | null =
+		ownsReservation && remaining !== undefined && remaining > 0
+			? { kind: 'partial', remaining, total: quantity! }
+			: null;
+	const overlayStates = (
+		gift.received
+			? [{ kind: 'received' } as const, reservationState]
+			: [reservationState, reservationState === null ? null : remainingCapacityState]
+	).filter((state) => state !== null);
+	const overlay: GiftOverlayEntry[] = overlayStates.map((state, index) => ({
+		...state,
+		role: index === 0 ? 'primary' : 'support',
+	}));
+	// Authorized identity joins the group as its own badge when no state badge already names it.
+	if (
+		overlay.length > 0 &&
+		otherReservers !== undefined &&
+		reservationState?.kind !== 'unavailable'
+	) {
+		overlay.push({ kind: 'unavailable', otherReservers, role: 'other-reservation' });
+	}
 	const isArchived = capabilities.isArchived ?? false;
 	return {
 		isVisitorOrModerator,
@@ -148,6 +147,7 @@ export function deriveGiftDisplayState(
 		reservedCount,
 		presentation: {
 			overlay,
+			otherReservers,
 			isDimmed: !hidePresentationState && (gift.received || isFullyReserved),
 			showLike: capabilities.canLike && !isArchived,
 		},

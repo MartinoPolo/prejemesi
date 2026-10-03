@@ -75,7 +75,7 @@
 	     once here through the shared state badges, never in the action bar. -->
 	<div class={styles.viewMedia()} data-testid="gift-detail-view-image-column">
 		<div class={styles.viewPhotoFrame()}>
-			<GiftStateOverlay model={presentation.overlay} />
+			<GiftStateOverlay entries={presentation.overlay} />
 			<div class={styles.viewPhoto({ viewDimmed: isDimmed })}>
 				<div
 					class={cn(

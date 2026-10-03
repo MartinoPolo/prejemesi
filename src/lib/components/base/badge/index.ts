@@ -2,6 +2,7 @@ import Root from './Badge.svelte';
 export { Root, Root as Badge };
 export {
 	badgeVariants,
+	badgeShape,
 	BADGE_TONES,
 	BADGE_STYLES,
 	BADGE_SIZES,
