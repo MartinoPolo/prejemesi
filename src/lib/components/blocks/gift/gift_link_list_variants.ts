@@ -7,17 +7,17 @@ import { tv } from 'tailwind-variants';
  */
 export const giftLinkListVariants = tv({
 	slots: {
-		root: 'flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1',
-		link: '',
+		root: 'flex min-w-0',
 		domain: 'hidden',
 		overflow: 'text-xs font-semibold text-muted-foreground',
 	},
 	variants: {
 		display: {
-			chip: {},
+			chip: {
+				root: 'flex-wrap items-center gap-x-3 gap-y-1',
+			},
 			row: {
-				root: 'flex-col items-start gap-y-0',
-				link: 'min-h-(--size-control-lg)',
+				root: 'flex-col items-start *:[a]:min-h-(--size-control-lg)',
 				domain: 'inline-block font-normal text-muted-foreground',
 			},
 		},

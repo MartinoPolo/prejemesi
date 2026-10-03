@@ -35,7 +35,6 @@
 						href={safeUrl ?? '#'}
 						external
 						size={display === 'row' ? 'md' : 'sm'}
-						class={styles.link()}
 						onclick={(e: MouseEvent) => e.stopPropagation()}
 					>
 						{link.label ?? domain ?? link.url}

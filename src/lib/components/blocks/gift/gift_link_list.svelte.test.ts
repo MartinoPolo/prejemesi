@@ -67,6 +67,24 @@ describe('GiftLinkList source links (issue #442)', () => {
 		},
 	);
 
+	it('stacks detail row links with touch-sized hit areas and the domain beside a label', async () => {
+		const links = [{ url: 'https://www.alza.cz/sluchatka', label: 'Alza' }];
+		const rowHost = await renderLinks({ links, display: 'row' });
+		const chipHost = await renderLinks({ links, display: 'chip' });
+		const rowAnchor = rowHost.querySelector<HTMLAnchorElement>('a')!;
+		const probe = document.createElement('div');
+		probe.style.height = 'var(--size-control-lg)';
+		rowHost.append(probe);
+		const touchTarget = probe.getBoundingClientRect().height;
+		probe.remove();
+
+		expect(touchTarget).toBeGreaterThan(0);
+		expect(rowAnchor.getBoundingClientRect().height).toBeGreaterThanOrEqual(touchTarget);
+		expect(rowAnchor.textContent).toContain('(alza.cz)');
+		expect(rowAnchor.querySelector('span span')!.checkVisibility()).toBe(true);
+		expect(chipHost.querySelector('a span span')!.checkVisibility()).toBe(false);
+	});
+
 	it('keeps the muted no-link copy for gifts without links', async () => {
 		const host = await renderLinks({ links: [] });
 		expect(host.querySelector('a')).toBeNull();
