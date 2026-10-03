@@ -462,6 +462,7 @@
 	--tag-priority-bg: #5a4a12;
 	--tag-edited-bg: #43356e;
 	--like-tint: #57293a;
+
 	/* Calmer green and brown, lifted navy: each separates from the dark card and keeps white text at AA. */
 	--gift-overlay-own-reservation: #13704a;
 	--gift-overlay-unavailable: #2b5d91;
