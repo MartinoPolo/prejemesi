@@ -24,7 +24,7 @@
 	 * eventual natural size is unknown until the image decodes, so there is no
 	 * "real" size to skeleton toward.
 	 */
-	const NATURAL_PLACEHOLDER_CLASS = 'aspect-square w-full max-w-[280px]';
+	const NATURAL_PLACEHOLDER_CLASS = 'aspect-square w-[280px] max-w-full';
 
 	interface Props {
 		/** Image source. Null/empty renders the themed fallback. */

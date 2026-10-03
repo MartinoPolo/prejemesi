@@ -471,8 +471,8 @@ describe('GiftDetailModal read-only state badges (issue #442)', () => {
 		};
 	}
 
-	async function renderReadOnly(gift: GiftForVisitor, role: WishlistRole) {
-		await page.viewport(1280, 800);
+	async function renderReadOnly(gift: GiftForVisitor, role: WishlistRole, viewportWidth = 1280) {
+		await page.viewport(viewportWidth, 800);
 		await render(GiftDetailModalTestHost, {
 			...baseProps,
 			mode: 'edit' as const,
@@ -522,5 +522,59 @@ describe('GiftDetailModal read-only state badges (issue #442)', () => {
 		expect(overlay?.textContent ?? '').not.toContain(m.gift_reserved_by_me_overlay());
 		expect(dialog.textContent).not.toContain(m.gift_bought());
 		expect(dialog.textContent).not.toContain('Petr Svoboda');
+	});
+
+	/** The badge label renders as one line box and the badge stays inside `bounds`. */
+	function expectSingleLineBadgeWithin(badge: HTMLElement, bounds: DOMRect): void {
+		const labelRange = document.createRange();
+		labelRange.selectNodeContents(badge);
+		expect(labelRange.getClientRects()).toHaveLength(1);
+		const badgeRect = badge.getBoundingClientRect();
+		expect(badgeRect.left).toBeGreaterThanOrEqual(bounds.left);
+		expect(badgeRect.right).toBeLessThanOrEqual(bounds.right);
+		expect(badgeRect.top).toBeGreaterThanOrEqual(bounds.top);
+		expect(badgeRect.bottom).toBeLessThanOrEqual(bounds.bottom);
+	}
+
+	it.each([1280, 390])(
+		'keeps Koupeno on one line inside the no-photo placeholder at %d px',
+		async (viewportWidth) => {
+			const { overlay } = await renderReadOnly(
+				makeReservedGift({ myReservationPurchasedAt: new Date('2026-09-01T00:00:00Z') }),
+				'visitor',
+				viewportWidth,
+			);
+			const placeholder = page.getByTestId('gift-detail-image-frame').element();
+
+			expectSingleLineBadgeWithin(
+				overlay!.querySelector<HTMLElement>('[data-state-primary]')!,
+				placeholder.getBoundingClientRect(),
+			);
+		},
+	);
+
+	it('keeps Koupeno on one line inside a narrow photo', async () => {
+		const narrowPhotoWidth = 48;
+		const narrowPhoto =
+			'data:image/svg+xml,' +
+			encodeURIComponent(
+				`<svg xmlns="http://www.w3.org/2000/svg" width="${narrowPhotoWidth}" height="480"><rect width="100%" height="100%" fill="#cbd5e1"/></svg>`,
+			);
+		const { overlay } = await renderReadOnly(
+			makeReservedGift({
+				imageUrl: narrowPhoto,
+				myReservationPurchasedAt: new Date('2026-09-01T00:00:00Z'),
+			}),
+			'visitor',
+		);
+		// The tilted photo sticker inflates its bounding box, so wait on the level overlay.
+		await expect
+			.poll(() => overlay!.getBoundingClientRect().width)
+			.toBeLessThan(narrowPhotoWidth * 2);
+
+		expectSingleLineBadgeWithin(
+			overlay!.querySelector<HTMLElement>('[data-state-primary]')!,
+			overlay!.getBoundingClientRect(),
+		);
 	});
 });

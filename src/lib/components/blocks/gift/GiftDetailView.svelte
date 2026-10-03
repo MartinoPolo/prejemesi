@@ -75,7 +75,9 @@
 	     once here through the shared state badges, never in the action bar. -->
 	<div class={styles.viewMedia()} data-testid="gift-detail-view-image-column">
 		<div class={styles.viewPhotoFrame()}>
-			<GiftStateOverlay entries={presentation.overlay} />
+			<!-- The shrink-wrapped photo frame cannot be a size container, so the inset overlay
+			     queries its own width to choose compact badges on narrow photos. -->
+			<GiftStateOverlay entries={presentation.overlay} class="@container" />
 			<div class={styles.viewPhoto({ viewDimmed: isDimmed })}>
 				<div
 					class={cn(

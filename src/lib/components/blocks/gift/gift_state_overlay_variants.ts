@@ -17,7 +17,7 @@ const giftStateBadgeKinds = {
 export const giftStateBadgeVariants = tv({
 	base: [
 		badgeShape,
-		'max-w-[calc(100%_-_0.5rem)] border-ink px-2 py-1 text-center text-xs leading-4 font-bold shadow-sticker [overflow-wrap:anywhere] sm:px-3 sm:py-1.5',
+		'max-w-[calc(100%_-_0.5rem)] border-ink px-2 py-1 text-center text-xs leading-4 font-bold shadow-sticker break-words sm:px-3 sm:py-1.5',
 	],
 	variants: {
 		kind: giftStateBadgeKinds,
