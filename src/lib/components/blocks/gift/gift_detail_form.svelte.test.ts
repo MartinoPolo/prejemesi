@@ -4,8 +4,8 @@
 // (only `.storybook/preview.ts` imports app.css). Mirror that import here.
 import '../../../../app.css';
 import { render } from 'vitest-browser-svelte';
-import { userEvent } from 'vitest/browser';
-import { describe, expect, it, vi } from 'vitest';
+import { page, userEvent } from 'vitest/browser';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
 import * as m from '$lib/paraglide/messages.js';
 import type { GiftByRole } from '$lib/modules/gifts/types.js';
@@ -21,7 +21,7 @@ vi.mock('$env/dynamic/public', () => ({ env: { PUBLIC_R2_URL: '/' } }));
 
 const { default: GiftDetailForm } = await import('./GiftDetailForm.svelte');
 
-const { expectPixelsAtLeast, expectPixelsAtMost } = createPixelAssertions(expect);
+const { expectPixelsAtLeast, expectPixelsAtMost, expectPixelsNear } = createPixelAssertions(expect);
 
 /** Minimal GiftForRecipient fixture (a GiftByRole member) for edit-mode rendering. */
 function makeGift(overrides: Partial<GiftByRole> = {}): GiftByRole {
@@ -199,6 +199,65 @@ describe('GiftDetailForm actions (issue #255)', () => {
 			await render(GiftDetailForm, { ...baseProps, role, gift: makeGift() });
 
 			expect(document.querySelector('[data-testid="gift-received-toggle"]')).toBeNull();
+		},
+	);
+});
+
+describe('GiftDetailForm edit footer depth clearance (#442)', () => {
+	const STANDARD_CONTROL_GAP = 8;
+
+	afterEach(() => {
+		delete document.documentElement.dataset.depth;
+	});
+
+	function visibleButtonNamed(name: string): HTMLElement {
+		const button = Array.from(document.querySelectorAll<HTMLElement>('button')).find(
+			(candidate) =>
+				candidate.textContent?.trim() === name && candidate.getClientRects().length > 0,
+		);
+		expect(button, `Expected a visible ${name} button`).toBeDefined();
+		return button!;
+	}
+
+	async function renderEditFooterAtDepth(depth: 'soft' | 'black'): Promise<number> {
+		document.documentElement.dataset.depth = depth;
+		await render(GiftDetailForm, { ...baseProps, canDelete: true, gift: makeGift() });
+		const shadowOffset = Number.parseFloat(
+			getComputedStyle(document.documentElement).getPropertyValue(
+				'--elevation-ordinary-offset',
+			),
+		);
+		expect(shadowOffset).toBeGreaterThan(0);
+		return STANDARD_CONTROL_GAP + (depth === 'soft' ? 0 : shadowOffset);
+	}
+
+	it.each([
+		{ viewport: 1280, depth: 'soft' as const },
+		{ viewport: 1280, depth: 'black' as const },
+		{ viewport: 390, depth: 'soft' as const },
+		{ viewport: 390, depth: 'black' as const },
+	])(
+		'separates Save and Cancel by the nested control gap at $depth depth and $viewport px',
+		async ({ viewport, depth }) => {
+			await page.viewport(viewport, 900);
+			const expectedGap = await renderEditFooterAtDepth(depth);
+
+			const save = visibleButtonNamed(m.save()).getBoundingClientRect();
+			const cancel = visibleButtonNamed(m.cancel()).getBoundingClientRect();
+			expectPixelsNear(save.top, cancel.top);
+			expectPixelsNear(cancel.left - save.right, expectedGap);
+		},
+	);
+
+	it.each(['soft', 'black'] as const)(
+		'separates the desktop Save row and Delete by the nested control gap at %s depth',
+		async (depth) => {
+			await page.viewport(1280, 900);
+			const expectedGap = await renderEditFooterAtDepth(depth);
+
+			const save = visibleButtonNamed(m.save()).getBoundingClientRect();
+			const deleteAction = visibleButtonNamed(m.gift_delete()).getBoundingClientRect();
+			expectPixelsNear(deleteAction.top - save.bottom, expectedGap);
 		},
 	);
 });
