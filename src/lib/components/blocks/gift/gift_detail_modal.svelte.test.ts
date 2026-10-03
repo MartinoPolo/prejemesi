@@ -504,10 +504,9 @@ describe('GiftDetailModal read-only state badges (issue #442)', () => {
 			expect(overlay).not.toBeNull();
 			expect(overlay!.querySelector('[data-state-primary]')?.textContent).toBe(badge);
 			expect(imageColumn.querySelector('button')).toBeNull();
+			const purchaseToggleLabels: string[] = [m.gift_mark_bought(), m.gift_mark_unbought()];
 			const purchaseToggle = [...dialog.querySelectorAll('button')].find((button) =>
-				[m.gift_mark_bought(), m.gift_mark_unbought()].includes(
-					button.getAttribute('aria-label') ?? '',
-				),
+				purchaseToggleLabels.includes(button.getAttribute('aria-label') ?? ''),
 			);
 			expect(purchaseToggle).toBeDefined();
 			expect(imageColumn.contains(purchaseToggle!)).toBe(false);
