@@ -231,13 +231,6 @@
 			!isDimmed && 'elevation-ordinary border-ink',
 			isDimmed &&
 				'gift-frame-softened border-(--gift-frame-ink) [box-shadow:var(--gift-frame-elevation)]',
-			hasReceivedPrimary &&
-				presentation.overlay?.otherReservers !== undefined &&
-				'gift-list-item-manager-dense',
-			hasMultipleActions && 'gift-list-item-multiple-actions',
-			gift.category != null &&
-				presentation.overlay !== null &&
-				'gift-list-item-crowded-overlay',
 		)}
 	>
 		<div
