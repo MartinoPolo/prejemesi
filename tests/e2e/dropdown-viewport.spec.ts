@@ -9,6 +9,7 @@ import { createPixelAssertions } from '../helpers/pixel-assertions.mjs';
 
 const { expectPixelsAtLeast, expectPixelsAtMost, expectPixelsNear } = createPixelAssertions(expect);
 const VIEWPORT_PADDING = 8;
+const ROUNDED_FLOATING_EDGE_TOLERANCE = 1;
 
 async function openSeedWishlist(
 	page: Page,
@@ -214,7 +215,14 @@ test.describe('issue #364 dropdown viewport placement', () => {
 		menu = await visibleDropdown(page);
 		geometry = await triggerMenuGeometry(trigger, menu);
 		expect(geometry.side).toBe('top');
-		expectPixelsNear(geometry.aboveGap, sideOffset + geometry.shadowOffset);
+		// Bits UI rounds the floating y to whole device pixels, so a fractional-height menu placed
+		// above can land up to half a pixel from the exact gap, plus measurement noise.
+		expectPixelsNear(
+			geometry.aboveGap,
+			sideOffset + geometry.shadowOffset,
+			undefined,
+			ROUNDED_FLOATING_EDGE_TOLERANCE,
+		);
 		await expectInsideViewport(menu, 1000, 700);
 		await closeDropdownHierarchy(page);
 	});
