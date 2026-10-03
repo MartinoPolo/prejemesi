@@ -106,14 +106,16 @@ describe('PurchasedToggle', () => {
 	);
 
 	it.each([
-		{ isAuthenticated: false, reservationId: 'reservation-1' },
-		{ isAuthenticated: true, reservationId: null },
+		{ isAuthenticated: false, isArchived: false, reservationId: 'reservation-1' },
+		{ isAuthenticated: true, isArchived: false, reservationId: null },
+		{ isAuthenticated: true, isArchived: true, reservationId: 'reservation-1' },
 	])(
-		'requires authentication and an owned reservation',
-		async ({ isAuthenticated, reservationId }) => {
+		'requires authentication, an owned reservation, and an active list',
+		async ({ isAuthenticated, isArchived, reservationId }) => {
 			await render(PurchasedToggleTestHost, {
 				gift: makeGift({ myReservationId: reservationId }),
 				isAuthenticated,
+				isArchived,
 			});
 
 			expect(document.querySelector('[aria-pressed]')).toBeNull();

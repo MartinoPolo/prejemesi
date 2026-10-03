@@ -7,21 +7,22 @@
 	import { observeDepthChange } from '$lib/theme/depth_change.js';
 	import type { GiftContextAction } from '$lib/modules/gifts/gift_context_actions.js';
 	import type { GiftActionPlacementSnapshot } from '$lib/components/blocks/wishlist/gift_context_invocation.js';
-	import { placeGiftActions } from './gift_action_placement.js';
+	import { placeGiftActions, type GiftActionPlacement } from './gift_action_placement.js';
 	import { giftActionRowVariants } from './gift_action_row_variants.js';
 
 	interface Props {
 		children?: Snippet;
-		secondary?: Snippet;
+		/** Renders the control for one secondary action. */
+		secondary?: Snippet<[GiftContextAction]>;
 		onmore?: (
 			anchor: HTMLButtonElement,
 			placementSnapshot: GiftActionPlacementSnapshot,
 		) => void;
 		moreOpen?: boolean;
 		moreSurface?: 'menu' | 'dialog';
-		controlSizing?: 'fill' | 'intrinsic';
 		contentWidth?: number;
-		secondaryAction?: GiftContextAction;
+		/** Ordered left to right; the leftmost overflows into More first. */
+		secondaryActions?: readonly GiftContextAction[];
 		primaryAction?: GiftContextAction;
 		persistentMore?: boolean;
 		onplacementchange?: (overflowActions: readonly GiftContextAction[]) => void;
@@ -34,22 +35,23 @@
 		onmore,
 		moreOpen = false,
 		moreSurface = 'menu',
-		controlSizing = 'fill',
 		contentWidth,
-		secondaryAction,
+		secondaryActions = [],
 		primaryAction,
 		persistentMore = onmore !== undefined,
 		onplacementchange,
 		class: className,
 	}: Props = $props();
 
+	const styles = giftActionRowVariants();
+
 	let rowElement = $state<HTMLDivElement | null>(null);
-	let secondaryElement = $state<HTMLDivElement | null>(null);
+	const secondaryElements = $state<Partial<Record<GiftContextAction, HTMLDivElement | null>>>({});
 	let primaryElement = $state<HTMLDivElement | null>(null);
 	let moreElement = $state<HTMLElement | null>(null);
 	let moreMeasureElement = $state<HTMLSpanElement | null>(null);
 	let observedContentWidth = $state(0);
-	let secondaryWidth = $state(0);
+	let secondaryWidths = $state<Partial<Record<GiftContextAction, number>>>({});
 	let primaryWidth = $state(0);
 	let moreWidth = $state(0);
 	let actionGap = $state(0);
@@ -57,24 +59,24 @@
 	let focusTransferVersion = 0;
 	let mounted = false;
 
+	const renderedSecondaryActions = $derived(secondary === undefined ? [] : secondaryActions);
 	const responsivePlacement = $derived(
 		onmore !== undefined &&
-			controlSizing === 'intrinsic' &&
-			(secondaryAction !== undefined || primaryAction !== undefined),
+			(renderedSecondaryActions.length > 0 || primaryAction !== undefined),
 	);
 	const availableContentWidth = $derived(contentWidth ?? observedContentWidth);
-	const placement = $derived(
+	const placement: GiftActionPlacement = $derived(
 		responsivePlacement &&
 			availableContentWidth > 0 &&
-			(secondaryAction === undefined || secondaryWidth > 0) &&
+			renderedSecondaryActions.every((action) => (secondaryWidths[action] ?? 0) > 0) &&
 			(primaryAction === undefined || primaryWidth > 0) &&
 			moreWidth > 0
 			? placeGiftActions({
 					contentWidth: availableContentWidth,
-					secondary:
-						secondaryAction === undefined
-							? undefined
-							: { id: secondaryAction, width: secondaryWidth },
+					secondary: renderedSecondaryActions.map((action) => ({
+						id: action,
+						width: secondaryWidths[action] ?? 0,
+					})),
 					primary:
 						primaryAction === undefined
 							? undefined
@@ -84,19 +86,16 @@
 					persistentMore: persistentMore || moreOpen,
 				})
 			: {
-					showSecondary: secondary !== undefined,
+					visibleSecondaryActions: renderedSecondaryActions,
 					showPrimary: true,
 					showMore: onmore !== undefined && persistentMore,
-					overflowActions: [] as GiftContextAction[],
+					overflowActions: [],
 				},
 	);
-	const styles = $derived(
-		giftActionRowVariants({
-			withMore: placement.showMore,
-			withSecondary: placement.showSecondary,
-			controlSizing,
-		}),
-	);
+
+	function secondaryIsVisible(action: GiftContextAction): boolean {
+		return placement.visibleSecondaryActions.includes(action);
+	}
 
 	function measureIntrinsicActions() {
 		if (rowElement !== null) {
@@ -106,9 +105,14 @@
 		if (!responsivePlacement) {
 			return;
 		}
-		if (secondaryElement !== null && secondaryElement.isConnected) {
-			secondaryWidth = secondaryElement.getBoundingClientRect().width;
+		const measuredSecondaryWidths: Partial<Record<GiftContextAction, number>> = {};
+		for (const action of renderedSecondaryActions) {
+			const element = secondaryElements[action];
+			if (element?.isConnected === true) {
+				measuredSecondaryWidths[action] = element.getBoundingClientRect().width;
+			}
 		}
+		secondaryWidths = measuredSecondaryWidths;
 		if (primaryElement !== null && primaryElement.isConnected) {
 			primaryWidth = primaryElement.getBoundingClientRect().width;
 		}
@@ -117,11 +121,11 @@
 		}
 	}
 
-	function firstAction(element: HTMLElement | null): HTMLElement | null {
+	function firstAction(element: HTMLElement | null | undefined): HTMLElement | null {
 		return element?.querySelector<HTMLElement>('button, a, input, select, textarea') ?? null;
 	}
 
-	function actionIsDisabled(element: HTMLElement | null): boolean {
+	function actionIsDisabled(element: HTMLElement | null | undefined): boolean {
 		const action = firstAction(element);
 		return (
 			(action instanceof HTMLButtonElement && action.disabled) ||
@@ -129,7 +133,7 @@
 		);
 	}
 
-	function actionIsPending(element: HTMLElement | null): boolean {
+	function actionIsPending(element: HTMLElement | null | undefined): boolean {
 		const action = firstAction(element);
 		return (
 			action?.getAttribute('data-pending') === 'true' ||
@@ -141,13 +145,23 @@
 		const visibleDirectActions: GiftContextAction[] = [];
 		const disabledActions: GiftContextAction[] = [];
 		const pendingActions: GiftContextAction[] = [];
-		for (const [action, element, visible] of [
-			[secondaryAction, secondaryElement, placement.showSecondary],
-			[primaryAction, primaryElement, placement.showPrimary],
-		] as const) {
-			if (action === undefined) {
-				continue;
-			}
+		const directActions = [
+			...renderedSecondaryActions.map((action) => ({
+				action,
+				element: secondaryElements[action],
+				visible: secondaryIsVisible(action),
+			})),
+			...(primaryAction === undefined
+				? []
+				: [
+						{
+							action: primaryAction,
+							element: primaryElement,
+							visible: placement.showPrimary,
+						},
+					]),
+		];
+		for (const { action, element, visible } of directActions) {
 			if (visible && firstAction(element) !== null) {
 				visibleDirectActions.push(action);
 			}
@@ -162,10 +176,14 @@
 	}
 
 	$effect.pre(() => {
-		const { showSecondary, showPrimary, showMore } = placement;
+		const { showPrimary, showMore } = placement;
 		const activeElement = document.activeElement;
 		const hiddenFocusedAction =
-			(!showSecondary && secondaryElement?.contains(activeElement) === true) ||
+			renderedSecondaryActions.some(
+				(action) =>
+					!secondaryIsVisible(action) &&
+					secondaryElements[action]?.contains(activeElement) === true,
+			) ||
 			(!showPrimary && primaryElement?.contains(activeElement) === true);
 		const hiddenFocusedMore = !showMore && moreElement?.contains(activeElement) === true;
 		if (!hiddenFocusedAction && !hiddenFocusedMore) {
@@ -184,11 +202,16 @@
 			) {
 				return;
 			}
+			const lastVisibleSecondary = placement.visibleSecondaryActions.at(-1);
 			const focusTarget = hiddenFocusedAction
 				? moreElement
 				: showPrimary
 					? firstAction(primaryElement)
-					: firstAction(secondaryElement);
+					: firstAction(
+							lastVisibleSecondary === undefined
+								? null
+								: secondaryElements[lastVisibleSecondary],
+						);
 			if (focusTarget !== null) {
 				focusTarget.focus({ preventScroll: true });
 			}
@@ -204,21 +227,24 @@
 		}
 	});
 
+	// Re-subscribes whenever a measured control mounts or unmounts, such as Bought appearing after
+	// the viewer reserves.
+	$effect(() => {
+		const observedElements = [
+			rowElement,
+			primaryElement,
+			moreMeasureElement,
+			...renderedSecondaryActions.map((action) => secondaryElements[action]),
+		].filter((element): element is HTMLElement => element != null);
+		const observer = new ResizeObserver(measureIntrinsicActions);
+		for (const element of observedElements) {
+			observer.observe(element);
+		}
+		return () => observer.disconnect();
+	});
+
 	onMount(() => {
 		mounted = true;
-		const observer = new ResizeObserver(measureIntrinsicActions);
-		if (rowElement !== null) {
-			observer.observe(rowElement);
-		}
-		if (secondaryElement !== null) {
-			observer.observe(secondaryElement);
-		}
-		if (primaryElement !== null) {
-			observer.observe(primaryElement);
-		}
-		if (moreMeasureElement !== null) {
-			observer.observe(moreMeasureElement);
-		}
 		void tick().then(measureIntrinsicActions);
 		document.fonts?.addEventListener('loadingdone', measureIntrinsicActions);
 		const stopObservingDepth = observeDepthChange(measureIntrinsicActions);
@@ -226,7 +252,6 @@
 			stopObservingDepth();
 			mounted = false;
 			focusTransferVersion += 1;
-			observer.disconnect();
 			document.fonts?.removeEventListener('loadingdone', measureIntrinsicActions);
 		};
 	});
@@ -247,18 +272,21 @@
 	}}
 >
 	{#if secondary}
-		<div
-			bind:this={secondaryElement}
-			class={cn(
-				styles.secondary(),
-				!placement.showSecondary && 'gift-action-overflow-measure',
-			)}
-			data-testid="gift-action-secondary"
-			inert={!placement.showSecondary}
-			aria-hidden={!placement.showSecondary}
-		>
-			{@render secondary()}
-		</div>
+		{#each renderedSecondaryActions as action (action)}
+			<div
+				bind:this={secondaryElements[action]}
+				class={cn(
+					styles.secondary(),
+					!secondaryIsVisible(action) && 'gift-action-overflow-measure',
+				)}
+				data-testid="gift-action-secondary"
+				data-gift-secondary-action={action}
+				inert={!secondaryIsVisible(action)}
+				aria-hidden={!secondaryIsVisible(action)}
+			>
+				{@render secondary(action)}
+			</div>
+		{/each}
 	{/if}
 	<span
 		bind:this={moreMeasureElement}

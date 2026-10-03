@@ -18,7 +18,8 @@ import {
 	textOutsideOverlay,
 } from './gift_card.test_fixtures.js';
 
-const { default: WishlistGiftDisplay } = await import('../wishlist/WishlistGiftDisplay.svelte');
+const { default: WishlistGiftDisplayTestHost } =
+	await import('../wishlist/WishlistGiftDisplayTestHost.svelte');
 
 const { expectPixelsNear, expectPixelsAtLeast, expectPixelsAtMost } = createPixelAssertions(expect);
 
@@ -35,7 +36,7 @@ describe('GiftCard saved composition containment', () => {
 			document.body.appendChild(collection);
 			fixedHosts.add(collection);
 			await render(
-				WishlistGiftDisplay,
+				WishlistGiftDisplayTestHost,
 				{
 					sections: [
 						{

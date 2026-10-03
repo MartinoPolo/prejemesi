@@ -14,7 +14,6 @@ import * as m from '$lib/paraglide/messages.js';
 
 vi.mock('$env/dynamic/public', () => ({ env: {} }));
 
-const { default: WishlistGiftDisplay } = await import('./WishlistGiftDisplay.svelte');
 const { default: WishlistGiftDisplayTestHost } =
 	await import('./WishlistGiftDisplayTestHost.svelte');
 const { expectPixelsNear, expectPixelsAtLeast, expectPixelsAtMost } = createPixelAssertions(expect);
@@ -67,7 +66,7 @@ async function nextLayout(): Promise<void> {
 	);
 }
 
-const defaultProps: ComponentProps<typeof WishlistGiftDisplay> = {
+const defaultProps: ComponentProps<typeof WishlistGiftDisplayTestHost> = {
 	sections,
 	role: WISHLIST_ROLES.recipient,
 	isArchived: false,
@@ -107,7 +106,7 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 		},
 	])('keeps a short $kind heading close to its first card on mobile', async (section) => {
 		await page.viewport(390, 720);
-		const screen = await render(WishlistGiftDisplay, {
+		const screen = await render(WishlistGiftDisplayTestHost, {
 			...defaultProps,
 			sections: [{ ...section, gifts: [visitorGift()] }],
 			viewMode: 'card',
@@ -175,7 +174,7 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 				priceMax: 987654321,
 				currency: 'CZK' as const,
 			};
-			const screen = await render(WishlistGiftDisplay, {
+			const screen = await render(WishlistGiftDisplayTestHost, {
 				...defaultProps,
 				sections: [{ ...sections[0]!, gifts: [gift] }],
 				viewMode,
@@ -217,7 +216,7 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 			{ viewportWidth: 1280, collectionWidth: 1152 },
 		]) {
 			await page.viewport(viewportWidth, 900);
-			const screen = await render(WishlistGiftDisplay, {
+			const screen = await render(WishlistGiftDisplayTestHost, {
 				...defaultProps,
 				sections: [{ ...sections[0]!, gifts }],
 				viewMode: 'card',
@@ -255,7 +254,7 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 			{ viewportWidth: 1280, collectionWidth: 1152 },
 		]) {
 			await page.viewport(viewportWidth, 900);
-			const screen = await render(WishlistGiftDisplay, {
+			const screen = await render(WishlistGiftDisplayTestHost, {
 				...defaultProps,
 				sections: [{ ...sections[0]!, gifts }],
 				viewMode: 'card',
@@ -300,7 +299,7 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 		'traces the real $viewMode surface at $width px while leaving focus distinct',
 		async ({ viewMode, width, surfaceTestId, expectFractionalWidth }) => {
 			await page.viewport(width, 720);
-			const screen = await render(WishlistGiftDisplay, {
+			const screen = await render(WishlistGiftDisplayTestHost, {
 				...defaultProps,
 				viewMode,
 				selectionMode: true,
@@ -414,7 +413,7 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 				{ viewMode: 'list' as const, width: 768 },
 			]) {
 				await page.viewport(width, 720);
-				const screen = await render(WishlistGiftDisplay, {
+				const screen = await render(WishlistGiftDisplayTestHost, {
 					...defaultProps,
 					sections: [{ ...sections[0]!, gifts: [receivedReservedGift] }],
 					role: WISHLIST_ROLES.moderator,
@@ -472,7 +471,7 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 	it('keeps the mobile List selection control inside the image and the desktop control in its gutter', async () => {
 		for (const width of [320, 390]) {
 			await page.viewport(width, 720);
-			const screen = await render(WishlistGiftDisplay, {
+			const screen = await render(WishlistGiftDisplayTestHost, {
 				...defaultProps,
 				viewMode: 'list',
 				selectionMode: true,
@@ -509,7 +508,7 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 
 		for (const width of [640, 768]) {
 			await page.viewport(width, 720);
-			const screen = await render(WishlistGiftDisplay, {
+			const screen = await render(WishlistGiftDisplayTestHost, {
 				...defaultProps,
 				viewMode: 'list',
 				selectionMode: true,
@@ -545,7 +544,7 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 			await page.viewport(width, 720);
 			const high = { ...visitorGift(), id: 'gift-high', priorityLabel: 'Vysoka' };
 			const low = { ...visitorGift(), id: 'gift-low', priorityLabel: 'Nizka' };
-			const screen = await render(WishlistGiftDisplay, {
+			const screen = await render(WishlistGiftDisplayTestHost, {
 				...defaultProps,
 				sections: [{ ...sections[0]!, gifts: [high, low] }],
 				viewMode,
@@ -592,7 +591,7 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 				links: [{ url: 'https://example.com/kniha', label: 'Kniha' }],
 			},
 		];
-		const screen = await render(WishlistGiftDisplay, {
+		const screen = await render(WishlistGiftDisplayTestHost, {
 			...defaultProps,
 			sections: [{ ...sections[0]!, gifts }],
 			viewMode: 'card',
@@ -627,7 +626,7 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 			currency: 'CZK' as const,
 			links: [{ url: 'https://example.com/darek', label: 'Dárek' }],
 		};
-		const screen = await render(WishlistGiftDisplay, {
+		const screen = await render(WishlistGiftDisplayTestHost, {
 			...defaultProps,
 			sections: [
 				{
@@ -694,7 +693,7 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 				isFullyReserved: true,
 			},
 		];
-		const screen = await render(WishlistGiftDisplay, {
+		const screen = await render(WishlistGiftDisplayTestHost, {
 			...defaultProps,
 			sections: [{ ...sections[0]!, gifts }],
 			role: WISHLIST_ROLES.moderator,
@@ -744,7 +743,7 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 				gifts: gifts.slice(4),
 			},
 		];
-		const screen = await render(WishlistGiftDisplay, {
+		const screen = await render(WishlistGiftDisplayTestHost, {
 			...defaultProps,
 			sections: groupedSections,
 			viewMode: 'card',
@@ -779,7 +778,7 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 			{ width: 600, expectedGap: 8 },
 		]) {
 			await page.viewport(width, 1000);
-			const screen = await render(WishlistGiftDisplay, {
+			const screen = await render(WishlistGiftDisplayTestHost, {
 				...defaultProps,
 				sections: [{ ...sections[0]!, gifts }],
 				viewMode: 'card',
@@ -797,7 +796,7 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 
 	it('does not render an empty card priority spacing element for hidden or unrecognized priorities', async () => {
 		const unknown = { ...visitorGift(), priorityLabel: 'Neznama' };
-		const screen = await render(WishlistGiftDisplay, {
+		const screen = await render(WishlistGiftDisplayTestHost, {
 			...defaultProps,
 			sections: [{ ...sections[0]!, gifts: [unknown] }],
 			viewMode: 'card',
@@ -822,7 +821,7 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 
 	it('shows priority for category grouping, hides it for priority grouping, and reacts to changes', async () => {
 		const high = { ...visitorGift(), priorityLabel: 'Vysoka' };
-		const screen = await render(WishlistGiftDisplay, {
+		const screen = await render(WishlistGiftDisplayTestHost, {
 			...defaultProps,
 			sections: [{ ...sections[0]!, gifts: [high] }],
 			grouping: 'category',
@@ -849,7 +848,7 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 
 	it('keeps manager priority badges outside the action lane', async () => {
 		await page.viewport(390, 720);
-		const screen = await render(WishlistGiftDisplay, {
+		const screen = await render(WishlistGiftDisplayTestHost, {
 			...defaultProps,
 			role: WISHLIST_ROLES.moderator,
 			hideReservationState: true,
@@ -1031,7 +1030,7 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 			name: 'Mimořádně dlouhý název dárku přes dva řádky',
 			description: 'Krátký náhled popisu patří hned pod název.',
 		};
-		const screen = await render(WishlistGiftDisplay, {
+		const screen = await render(WishlistGiftDisplayTestHost, {
 			...defaultProps,
 			sections: [{ ...sections[0]!, gifts: [visitorGift(), second] }],
 			viewMode: 'list',

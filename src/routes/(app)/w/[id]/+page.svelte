@@ -127,6 +127,7 @@
 		shouldExitGiftSelectionOnEscape,
 	} from '$lib/modules/gifts/gift_selection.svelte.js';
 	import {
+		canTrackPurchase,
 		giftContextActions,
 		hasAdditionalGiftContextActions,
 		type GiftContextAction,
@@ -650,7 +651,7 @@
 			// visitors and správci receive reservation fields; recipients and preview projections do not.
 			canReserve: ownsReservation || !giftItem.isFullyReserved,
 			ownsReservation,
-			canTrackPurchased: isAuthenticated && ownsReservation,
+			canTrackPurchased: canTrackPurchase({ isAuthenticated, isArchived, ownsReservation }),
 			purchased: giftItem.myReservationPurchasedAt !== null,
 		};
 	}
@@ -678,6 +679,9 @@
 		}
 		if (reservationContext.canReserve) {
 			actions.push(reservationContext.ownsReservation ? 'cancel-reservation' : 'reserve');
+		}
+		if (reservationContext.canTrackPurchased) {
+			actions.push('purchased');
 		}
 		return actions;
 	}
@@ -1894,7 +1898,6 @@
 			{role}
 			{isArchived}
 			{hideReservationState}
-			{isAuthenticated}
 			{viewMode}
 			isLoading={isGiftDataLoading}
 			{isEmpty}

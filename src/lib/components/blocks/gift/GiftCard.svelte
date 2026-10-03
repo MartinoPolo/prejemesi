@@ -4,17 +4,13 @@
 	import GiftLinkList from '$lib/components/blocks/gift/GiftLinkList.svelte';
 	import GiftStateOverlay from '$lib/components/blocks/gift/GiftStateOverlay.svelte';
 	import LikeButton from '$lib/components/blocks/gift/LikeButton.svelte';
-	import ReserveButton from '$lib/components/blocks/reservation/ReserveButton.svelte';
-	import PurchasedToggle from '$lib/components/blocks/reservation/PurchasedToggle.svelte';
-	import GiftReceivedToggle from './GiftReceivedToggle.svelte';
 	import type { GiftForVisitor, GiftByRole } from '$lib/modules/gifts/types.js';
 	import type { WishlistRole } from '$lib/modules/wishlists/types.js';
 	import { formatPrice } from '$lib/modules/gifts/gift_display.js';
 	import { deriveGiftDisplayState } from '$lib/modules/gifts/gift_display_state.js';
-	import {
-		canLikeGift,
-		canManageWishlist,
-	} from '$lib/modules/wishlists/wishlist_capabilities.js';
+	import { canLikeGift } from '$lib/modules/wishlists/wishlist_capabilities.js';
+	import { deriveGiftBrowseActions } from '$lib/modules/gifts/gift_browse_actions.js';
+	import { useGifts } from '$lib/modules/gifts/gifts.context.svelte.js';
 	import { resolveGiftImageUrl } from '$lib/modules/images/public_url.js';
 	import { hasExplicitFrameFill } from '$lib/components/derived/image-frame/index.js';
 	import { cn } from '$lib/utils.js';
@@ -22,7 +18,7 @@
 	import GiftDescription from './GiftDescription.svelte';
 	import GiftCategoryBadge from './GiftCategoryBadge.svelte';
 	import GiftPriorityBadge from './GiftPriorityBadge.svelte';
-	import GiftActionRow from './GiftActionRow.svelte';
+	import GiftBrowseActions from './GiftBrowseActions.svelte';
 	import { restingShadowNesting } from '$lib/utils/resting_shadow_nesting.js';
 	import type { GiftActionPlacementSnapshot } from '$lib/components/blocks/wishlist/gift_context_invocation.js';
 
@@ -31,8 +27,6 @@
 		role: WishlistRole;
 		isArchived?: boolean;
 		hideReservationState?: boolean;
-		/** Signed-in viewers may track their own reservation as bought. */
-		isAuthenticated?: boolean;
 		contextualMode?: boolean;
 		allowArchivedLike?: boolean;
 		onreserve?: (gift: GiftForVisitor) => void;
@@ -54,7 +48,6 @@
 		role,
 		isArchived = false,
 		hideReservationState = role === 'recipient',
-		isAuthenticated = false,
 		contextualMode = false,
 		allowArchivedLike = false,
 		onreserve,
@@ -67,6 +60,8 @@
 		moreSurface = 'menu',
 		showPriority = true,
 	}: GiftCardProps = $props();
+
+	const giftsContext = useGifts();
 
 	const displayState = $derived(
 		deriveGiftDisplayState(
@@ -84,26 +79,18 @@
 			contextualMode,
 		),
 	);
-	const { isVisitorOrModerator, visitorGift, isFullyReserved } = $derived(displayState);
+	const { visitorGift, isFullyReserved } = $derived(displayState);
 	const presentation = $derived(displayState.presentation);
-	const hasReservationAction = $derived(
-		visitorGift !== null &&
-			(visitorGift.myReservationId !== null || (!isArchived && !isFullyReserved)),
-	);
-	const canManage = $derived(canManageWishlist(role) && !contextualMode);
-	const hasReceivedPrimary = $derived(canManage && !isArchived && onreceived !== undefined);
-	const hasMultipleActions = $derived(
-		hasReceivedPrimary && isVisitorOrModerator && hasReservationAction,
-	);
-	// Mirrors PurchasedToggle's own gate so the action lane never reserves an empty slot.
-	const hasPurchasedAction = $derived(
-		!canManage &&
-			visitorGift !== null &&
-			visitorGift.myReservationId !== null &&
-			isAuthenticated,
-	);
-	const secondaryAction = $derived(
-		hasMultipleActions ? 'received' : hasPurchasedAction ? 'purchased' : undefined,
+	const browseActions = $derived(
+		deriveGiftBrowseActions({
+			role,
+			visitorGift,
+			isFullyReserved,
+			isArchived,
+			isAuthenticated: giftsContext.isAuthenticated.current,
+			contextualMode,
+			canMarkReceived: onreceived !== undefined,
+		}),
 	);
 	let actionContentWidth = $state(0);
 
@@ -241,7 +228,7 @@
 			</div>
 		</div>
 
-		{#if !contextualMode && (hasReceivedPrimary || (isVisitorOrModerator && hasReservationAction) || (onmore && persistentMore))}
+		{#if !contextualMode && (browseActions.primaryAction !== undefined || (onmore && persistentMore))}
 			<div
 				class={styles.footer()}
 				data-gift-card-track="actions"
@@ -252,64 +239,22 @@
 					data-testid="gift-card-reservation-actions"
 					class={styles.reservationActions()}
 				>
-					{#snippet secondaryGiftAction()}
-						{#if secondaryAction === 'received'}
-							<GiftReceivedToggle
-								giftId={gift.id}
-								received={gift.received}
-								{role}
-								{isArchived}
-								{onreceived}
-								pending={receivedPending}
-								compactLabel
-							/>
-						{:else if secondaryAction === 'purchased' && visitorGift}
-							<PurchasedToggle gift={visitorGift} />
-						{/if}
-					{/snippet}
-					<GiftActionRow
+					<GiftBrowseActions
+						{gift}
+						{visitorGift}
+						{role}
+						{isArchived}
+						actions={browseActions}
+						contentWidth={actionContentWidth}
+						{onreserve}
+						{onunreserve}
+						{onreceived}
+						{receivedPending}
 						{onmore}
+						{persistentMore}
 						{moreOpen}
 						{moreSurface}
-						{persistentMore}
-						contentWidth={actionContentWidth}
-						secondary={secondaryAction === undefined ? undefined : secondaryGiftAction}
-						{secondaryAction}
-						primaryAction={hasReservationAction && visitorGift
-							? visitorGift.myReservationId === null
-								? 'reserve'
-								: 'cancel-reservation'
-							: hasReceivedPrimary
-								? 'received'
-								: undefined}
-						controlSizing="intrinsic"
-					>
-						{#if hasMultipleActions && visitorGift}
-							<ReserveButton
-								gift={visitorGift}
-								{isArchived}
-								{onreserve}
-								{onunreserve}
-							/>
-						{:else if hasReceivedPrimary}
-							<GiftReceivedToggle
-								giftId={gift.id}
-								received={gift.received}
-								{role}
-								{isArchived}
-								{onreceived}
-								pending={receivedPending}
-								compactLabel
-							/>
-						{:else if isVisitorOrModerator && visitorGift}
-							<ReserveButton
-								gift={visitorGift}
-								{isArchived}
-								{onreserve}
-								{onunreserve}
-							/>
-						{/if}
-					</GiftActionRow>
+					/>
 				</div>
 			</div>
 		{/if}

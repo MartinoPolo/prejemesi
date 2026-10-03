@@ -46,4 +46,4 @@
 	);
 </script>
 
-<GiftCard isAuthenticated {...props} />
+<GiftCard {...props} />

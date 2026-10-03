@@ -13,7 +13,6 @@ import { WISHLIST_ROLES } from '$lib/modules/wishlists/types.js';
 
 vi.mock('$env/dynamic/public', () => ({ env: {} }));
 
-const { default: WishlistGiftDisplay } = await import('./WishlistGiftDisplay.svelte');
 const { default: WishlistGiftDisplayTestHost } =
 	await import('./WishlistGiftDisplayTestHost.svelte');
 const { IMAGE_URL, imageMeta } = await import('../gift/gift_card.test_fixtures.js');
@@ -53,7 +52,7 @@ function gift(overrides: Partial<GiftForVisitor> = {}): GiftForVisitor {
 	};
 }
 
-const defaultProps: ComponentProps<typeof WishlistGiftDisplay> = {
+const defaultProps: ComponentProps<typeof WishlistGiftDisplayTestHost> = {
 	sections: [],
 	role: WISHLIST_ROLES.recipient,
 	isArchived: false,
@@ -97,7 +96,7 @@ describe('GiftCard collection alignment', () => {
 				sortOrder: 0,
 			},
 		});
-		const screen = await render(WishlistGiftDisplay, {
+		const screen = await render(WishlistGiftDisplayTestHost, {
 			...defaultProps,
 			hideReservationState: true,
 			sections: [
@@ -152,7 +151,7 @@ describe('GiftCard collection alignment', () => {
 				],
 			},
 		];
-		const screen = await render(WishlistGiftDisplay, {
+		const screen = await render(WishlistGiftDisplayTestHost, {
 			...defaultProps,
 			sections,
 			hascontextactions: () => true,
@@ -194,7 +193,7 @@ describe('GiftCard collection alignment', () => {
 
 	it('re-measures the action track when the depth changes', async () => {
 		await page.viewport(1100, 900);
-		const screen = await render(WishlistGiftDisplay, {
+		const screen = await render(WishlistGiftDisplayTestHost, {
 			...defaultProps,
 			sections: [
 				{
@@ -232,7 +231,7 @@ describe('GiftCard collection alignment', () => {
 
 	it('clamps desktop titles to two painted lines and descriptions to one', async () => {
 		await page.viewport(960, 900);
-		const screen = await render(WishlistGiftDisplay, {
+		const screen = await render(WishlistGiftDisplayTestHost, {
 			...defaultProps,
 			sections: [
 				{
@@ -275,7 +274,7 @@ describe('GiftCard collection alignment', () => {
 		const previousFontSize = document.documentElement.style.fontSize;
 		document.documentElement.style.fontSize = '32px';
 		try {
-			const screen = await render(WishlistGiftDisplay, {
+			const screen = await render(WishlistGiftDisplayTestHost, {
 				...defaultProps,
 				sections: [
 					{
@@ -337,7 +336,7 @@ describe('GiftCard collection alignment', () => {
 			},
 		];
 		await page.viewport(320, 1000);
-		const screen = await render(WishlistGiftDisplay, {
+		const screen = await render(WishlistGiftDisplayTestHost, {
 			...defaultProps,
 			sections: mobileSections,
 		});
@@ -552,7 +551,7 @@ describe('GiftCard collection alignment', () => {
 				gifts: items,
 			},
 		];
-		const screen = await render(WishlistGiftDisplay, {
+		const screen = await render(WishlistGiftDisplayTestHost, {
 			...defaultProps,
 			sections: section([longGift, gift({ id: 'peer' })]),
 		});

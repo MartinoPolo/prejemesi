@@ -5,6 +5,7 @@
 	import { toastSuccess, toastError } from '$lib/components/base/toast/index.js';
 	import * as m from '$lib/paraglide/messages.js';
 	import { useGifts } from '$lib/modules/gifts/gifts.context.svelte.js';
+	import { canTrackPurchase } from '$lib/modules/gifts/gift_context_actions.js';
 	import { setReservationPurchased } from '$lib/modules/reservations/reservations.remote.js';
 	import type { GiftForVisitor } from '$lib/modules/gifts/types.js';
 
@@ -17,9 +18,12 @@
 
 	const giftsContext = useGifts();
 
-	// Optional, gifter-private self-tracking – only for authenticated reservers holding a reservation.
 	const canTrack = $derived(
-		giftsContext.isAuthenticated.current && gift.myReservationId !== null,
+		canTrackPurchase({
+			isAuthenticated: giftsContext.isAuthenticated.current,
+			isArchived: giftsContext.archived.current,
+			ownsReservation: gift.myReservationId !== null,
+		}),
 	);
 
 	// Optimistic override wins until the fresh gift data rides back on the command's

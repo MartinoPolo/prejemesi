@@ -14,7 +14,8 @@ import * as m from '$lib/paraglide/messages.js';
 
 vi.mock('$env/dynamic/public', () => ({ env: {} }));
 
-const { default: WishlistGiftDisplay } = await import('./WishlistGiftDisplay.svelte');
+const { default: WishlistGiftDisplayTestHost } =
+	await import('./WishlistGiftDisplayTestHost.svelte');
 const { expectPixelsNear, expectPixelsAtLeast, expectPixelsAtMost } = createPixelAssertions(expect);
 
 function visitorGift(): GiftForVisitor {
@@ -59,7 +60,7 @@ const sections: GiftSection[] = [
 	},
 ];
 
-const defaultProps: ComponentProps<typeof WishlistGiftDisplay> = {
+const defaultProps: ComponentProps<typeof WishlistGiftDisplayTestHost> = {
 	sections,
 	role: WISHLIST_ROLES.recipient,
 	isArchived: false,
@@ -87,7 +88,7 @@ describe('WishlistGiftDisplay received pending state', () => {
 	it.each(['card', 'list', 'compact'] as const)(
 		'forwards the route-owned pending state through the %s view',
 		async (viewMode) => {
-			const screen = await render(WishlistGiftDisplay, {
+			const screen = await render(WishlistGiftDisplayTestHost, {
 				...defaultProps,
 				viewMode,
 				receivedPendingGiftIds: new Set(['gift-1']),
@@ -103,7 +104,7 @@ describe('WishlistGiftDisplay received pending state', () => {
 
 describe('WishlistGiftDisplay selection accessibility', () => {
 	it('uses group and independently tabbable checkbox semantics', async () => {
-		const screen = await render(WishlistGiftDisplay, {
+		const screen = await render(WishlistGiftDisplayTestHost, {
 			...defaultProps,
 			selectionMode: true,
 			selectedIds: ['gift-1'],
@@ -171,7 +172,7 @@ describe('WishlistGiftDisplay contextual gift presentation', () => {
 				myReservationId: null,
 				reserverNames: ['Soukromá osoba'],
 			};
-			const screen = await render(WishlistGiftDisplay, {
+			const screen = await render(WishlistGiftDisplayTestHost, {
 				...defaultProps,
 				sections: [{ ...sections[0]!, gifts: [privateGift] }],
 				role: WISHLIST_ROLES.moderator,
@@ -223,7 +224,7 @@ describe('WishlistGiftDisplay contextual gift presentation', () => {
 				myReservationId: null,
 				reserverNames: ['Soukromá osoba'],
 			};
-			const screen = await render(WishlistGiftDisplay, {
+			const screen = await render(WishlistGiftDisplayTestHost, {
 				...defaultProps,
 				sections: [{ ...sections[0]!, gifts: [privateGift] }],
 				role: WISHLIST_ROLES.moderator,
@@ -282,7 +283,7 @@ describe('WishlistGiftDisplay recipient privacy structure (issue #336)', () => {
 		async (viewMode) => {
 			await page.viewport(390, 720);
 			const capture = async (gift: GiftForVisitor) => {
-				const screen = await render(WishlistGiftDisplay, {
+				const screen = await render(WishlistGiftDisplayTestHost, {
 					...defaultProps,
 					sections: [{ ...sections[0]!, gifts: [gift] }],
 					role: WISHLIST_ROLES.recipient,
@@ -332,7 +333,7 @@ describe('WishlistGiftDisplay primary-link middle click wiring', () => {
 					gifts: [giftWithPrimaryLink],
 				},
 			];
-			const screen = await render(WishlistGiftDisplay, {
+			const screen = await render(WishlistGiftDisplayTestHost, {
 				...defaultProps,
 				sections: linkedSections,
 				viewMode,
@@ -358,7 +359,7 @@ describe('WishlistGiftDisplay keyboard reorder announcements', () => {
 			const first = visitorGift();
 			const second = { ...visitorGift(), id: 'gift-2', name: 'Kávovar', sortOrder: 1 };
 			const reorderSections: GiftSection[] = [{ ...sections[0]!, gifts: [first, second] }];
-			const screen = await render(WishlistGiftDisplay, {
+			const screen = await render(WishlistGiftDisplayTestHost, {
 				...defaultProps,
 				sections: reorderSections,
 				viewMode,
@@ -375,7 +376,7 @@ describe('WishlistGiftDisplay keyboard reorder announcements', () => {
 				);
 			await screen.unmount();
 
-			const boundaryScreen = await render(WishlistGiftDisplay, {
+			const boundaryScreen = await render(WishlistGiftDisplayTestHost, {
 				...defaultProps,
 				sections: reorderSections,
 				viewMode,
@@ -396,7 +397,7 @@ describe('WishlistGiftDisplay keyboard reorder announcements', () => {
 		async (viewMode) => {
 			const first = visitorGift();
 			const second = { ...visitorGift(), id: 'gift-2', name: 'Kávovar', sortOrder: 1 };
-			const screen = await render(WishlistGiftDisplay, {
+			const screen = await render(WishlistGiftDisplayTestHost, {
 				...defaultProps,
 				sections: [{ ...sections[0]!, gifts: [first, second] }],
 				viewMode,

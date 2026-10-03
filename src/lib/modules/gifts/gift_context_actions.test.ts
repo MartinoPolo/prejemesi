@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { giftContextActions, hasAdditionalGiftContextActions } from './gift_context_actions.js';
+import {
+	canTrackPurchase,
+	giftContextActions,
+	hasAdditionalGiftContextActions,
+} from './gift_context_actions.js';
 
 describe('gift contextual actions', () => {
 	it('offers visitors link actions only and no menu at all without a primary link', () => {
@@ -67,5 +71,16 @@ describe('gift contextual actions', () => {
 				canTrackPurchased: true,
 			}),
 		).toEqual(['open', 'copy', 'cancel-reservation']);
+	});
+});
+
+describe('canTrackPurchase', () => {
+	it('lets only a signed-in viewer holding a reservation on an active list track Bought', () => {
+		const active = { isAuthenticated: true, isArchived: false, ownsReservation: true };
+
+		expect(canTrackPurchase(active)).toBe(true);
+		expect(canTrackPurchase({ ...active, isAuthenticated: false })).toBe(false);
+		expect(canTrackPurchase({ ...active, isArchived: true })).toBe(false);
+		expect(canTrackPurchase({ ...active, ownsReservation: false })).toBe(false);
 	});
 });

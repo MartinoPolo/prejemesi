@@ -272,7 +272,8 @@ describe('GiftCard reservation-action layout (issue #211)', () => {
 			];
 		});
 
-		expect(visibleButtons).toHaveLength(3);
+		// A manager holding their own reservation gets Bought, Received, Cancel and More.
+		expect(visibleButtons).toHaveLength(4);
 		for (const { button, label } of paintedLabels) {
 			expectPixelsAtLeast(label.left, button.left);
 			expectPixelsAtMost(label.right, button.right);

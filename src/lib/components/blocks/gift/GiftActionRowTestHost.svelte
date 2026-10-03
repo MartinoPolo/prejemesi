@@ -10,6 +10,7 @@
 		persistentMore?: boolean;
 		enableMore?: boolean;
 		moreOpen?: boolean;
+		secondaryActions?: readonly GiftContextAction[];
 		secondaryLabel?: string;
 		primaryLabel?: string;
 		onplacementchange?: (overflowActions: readonly GiftContextAction[]) => void;
@@ -22,6 +23,7 @@
 		persistentMore = false,
 		enableMore = true,
 		moreOpen = false,
+		secondaryActions = ['received'],
 		secondaryLabel = 'Received',
 		primaryLabel = 'Reserve',
 		onplacementchange,
@@ -32,27 +34,30 @@
 
 <button data-testid="outside-action">Outside</button>
 <div style:width={`${hostWidth}px`}>
-	{#snippet received()}
-		<Button
-			data-testid="received-action"
-			size="md"
-			onclick={() => (secondaryActivated = true)}
-			disabled={secondaryActivated}
-			data-pending={secondaryActivated}
-		>
-			{secondaryLabel}{secondaryActivated ? ' pending' : ''}
-		</Button>
+	{#snippet secondary(action: GiftContextAction)}
+		{#if action === 'purchased'}
+			<Button data-testid="purchased-action" size="md">Bought</Button>
+		{:else}
+			<Button
+				data-testid="received-action"
+				size="md"
+				onclick={() => (secondaryActivated = true)}
+				disabled={secondaryActivated}
+				data-pending={secondaryActivated}
+			>
+				{secondaryLabel}{secondaryActivated ? ' pending' : ''}
+			</Button>
+		{/if}
 	{/snippet}
 	<GiftActionRow
 		{contentWidth}
 		{persistentMore}
-		secondary={received}
-		secondaryAction="received"
+		{secondary}
+		{secondaryActions}
 		primaryAction="reserve"
 		onmore={enableMore ? (onmore ?? (() => {})) : undefined}
 		{moreOpen}
 		{onplacementchange}
-		controlSizing="intrinsic"
 	>
 		<Button data-testid="reserve-action" size="md">{primaryLabel}</Button>
 	</GiftActionRow>

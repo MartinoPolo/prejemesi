@@ -19,7 +19,6 @@
 		role: WishlistRole;
 		isArchived: boolean;
 		hideReservationState: boolean;
-		isAuthenticated?: boolean;
 		reorderEnabled: boolean;
 		onedit: (gift: GiftByRole) => void;
 		onreserve: (gift: GiftForVisitor) => void;
@@ -43,7 +42,6 @@
 		role,
 		isArchived,
 		hideReservationState,
-		isAuthenticated = false,
 		reorderEnabled,
 		onedit,
 		onreserve,
@@ -145,7 +143,6 @@
 						{role}
 						{isArchived}
 						{hideReservationState}
-						{isAuthenticated}
 						{showPriority}
 						contextualMode={selectionMode || reorderEnabled}
 						{onreserve}
