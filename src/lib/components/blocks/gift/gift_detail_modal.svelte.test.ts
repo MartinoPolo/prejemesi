@@ -3,7 +3,8 @@ import { render } from 'vitest-browser-svelte';
 import { page, userEvent } from 'vitest/browser';
 import { describe, expect, it, vi } from 'vitest';
 import * as m from '$lib/paraglide/messages.js';
-import type { GiftByRole } from '$lib/modules/gifts/types.js';
+import type { GiftByRole, GiftForVisitor } from '$lib/modules/gifts/types.js';
+import type { WishlistRole } from '$lib/modules/wishlists/types.js';
 import { IMAGE_FIT_MODES } from '$lib/modules/images/index.js';
 import { getLocale, setLocale, type Locale } from '$lib/paraglide/runtime.js';
 
@@ -12,6 +13,7 @@ import { getLocale, setLocale, type Locale } from '$lib/paraglide/runtime.js';
 vi.mock('$env/dynamic/public', () => ({ env: {} }));
 
 const { default: GiftDetailModal } = await import('./GiftDetailModal.svelte');
+const { default: GiftDetailModalTestHost } = await import('./GiftDetailModalTestHost.svelte');
 
 function makeGift(overrides: Partial<GiftByRole> = {}): GiftByRole {
 	return {
@@ -452,5 +454,74 @@ describe('GiftDetailModal form identity (2026-08-04 data-corruption incident)', 
 			id: 'gift-1',
 			name: 'Ledové království',
 		});
+	});
+});
+
+describe('GiftDetailModal read-only state badges (issue #442)', () => {
+	function makeReservedGift(overrides: Partial<GiftForVisitor> = {}): GiftForVisitor {
+		return {
+			...(makeGift() as GiftForVisitor),
+			likeCount: 0,
+			reservedCount: 1,
+			isFullyReserved: true,
+			reserverNames: ['Petr Svoboda'],
+			myReservationId: 'reservation-1',
+			myReservationPurchasedAt: null,
+			...overrides,
+		};
+	}
+
+	async function renderReadOnly(gift: GiftForVisitor, role: WishlistRole) {
+		await page.viewport(1280, 800);
+		await render(GiftDetailModalTestHost, {
+			...baseProps,
+			mode: 'edit' as const,
+			readOnly: true,
+			gift,
+			role,
+		});
+		const dialog = page.getByRole('dialog');
+		await expect.element(dialog).toBeVisible();
+		const imageColumn = page.getByTestId('gift-detail-view-image-column').element();
+		return {
+			dialog: dialog.element() as HTMLElement,
+			overlay: imageColumn.querySelector<HTMLElement>('[data-testid="gift-state-overlay"]'),
+			imageColumn,
+		};
+	}
+
+	it.each([
+		{ state: 'reserved', purchasedAt: null, badge: m.gift_reserved_by_me_overlay() },
+		{ state: 'bought', purchasedAt: new Date('2026-09-01T00:00:00Z'), badge: m.gift_bought() },
+	])(
+		'shows the $state reservation as the shared photo badge with Koupeno in the actions',
+		async ({ purchasedAt, badge }) => {
+			const { dialog, overlay, imageColumn } = await renderReadOnly(
+				makeReservedGift({ myReservationPurchasedAt: purchasedAt }),
+				'visitor',
+			);
+
+			expect(overlay).not.toBeNull();
+			expect(overlay!.querySelector('[data-state-primary]')?.textContent).toBe(badge);
+			expect(imageColumn.querySelector('button')).toBeNull();
+			const purchaseToggle = [...dialog.querySelectorAll('button')].find((button) =>
+				[m.gift_mark_bought(), m.gift_mark_unbought()].includes(
+					button.getAttribute('aria-label') ?? '',
+				),
+			);
+			expect(purchaseToggle).toBeDefined();
+			expect(imageColumn.contains(purchaseToggle!)).toBe(false);
+		},
+	);
+
+	it('shows the recipient no own reservation, purchase state or reserver name', async () => {
+		const { dialog, overlay } = await renderReadOnly(
+			makeReservedGift({ myReservationPurchasedAt: new Date('2026-09-01T00:00:00Z') }),
+			'recipient',
+		);
+
+		expect(overlay?.textContent ?? '').not.toContain(m.gift_reserved_by_me_overlay());
+		expect(dialog.textContent).not.toContain(m.gift_bought());
+		expect(dialog.textContent).not.toContain('Petr Svoboda');
 	});
 });
