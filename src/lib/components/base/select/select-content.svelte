@@ -1,7 +1,10 @@
 <script lang="ts">
 	import { Select as SelectPrimitive } from 'bits-ui';
 	import SelectPortal from './select-portal.svelte';
-	import { floatingDepthClearance } from '../floating_depth_clearance.js';
+	import {
+		floatingAvailableSizeCap,
+		floatingDepthClearance,
+	} from '../floating_depth_clearance.js';
 	import { cn, type WithoutChild } from '$lib/utils.js';
 	import type { ComponentProps } from 'svelte';
 	import type { WithoutChildrenOrChild } from '$lib/utils.js';
@@ -30,8 +33,9 @@
 		{preventScroll}
 		data-slot="select-content"
 		class={cn(
-			'bg-popover text-popover-foreground data-open:animate-in data-closed:animate-out data-closed:fade-out-0 data-open:fade-in-0 data-closed:zoom-out-95 data-open:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 min-w-36 rounded-panel border-[2.5px] border-ink p-1 shadow-sticker duration-100 data-[side=inline-start]:slide-in-from-right-2 data-[side=inline-end]:slide-in-from-left-2 relative isolate z-(--z-modal) flex max-h-[calc(var(--bits-select-content-available-height)-var(--depth-clearance))] flex-col overflow-x-hidden',
+			'bg-popover text-popover-foreground data-open:animate-in data-closed:animate-out data-closed:fade-out-0 data-open:fade-in-0 data-closed:zoom-out-95 data-open:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 min-w-36 rounded-panel border-[2.5px] border-ink p-1 shadow-sticker duration-100 data-[side=inline-start]:slide-in-from-right-2 data-[side=inline-end]:slide-in-from-left-2 relative isolate z-(--z-modal) flex flex-col overflow-x-hidden',
 			floatingDepthClearance,
+			floatingAvailableSizeCap,
 			className,
 		)}
 		{...restProps}

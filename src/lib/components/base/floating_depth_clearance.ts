@@ -5,3 +5,7 @@
  */
 export const floatingDepthClearance =
 	'data-[side=bottom]:mt-(--depth-clearance) data-[side=top]:mb-(--depth-clearance) data-[side=left]:mr-(--depth-clearance) data-[side=right]:ml-(--depth-clearance)';
+
+/** Caps floating content on both axes to the space Floating UI reports, minus that margin. */
+export const floatingAvailableSizeCap =
+	'max-h-[calc(var(--bits-floating-available-height)-var(--depth-clearance))] max-w-[calc(var(--bits-floating-available-width)-var(--depth-clearance))]';
