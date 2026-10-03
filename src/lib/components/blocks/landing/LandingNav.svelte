@@ -36,11 +36,14 @@
 			{/each}
 		</div>
 
-		<div data-testid="landing-nav-actions" class="ml-auto flex items-center gap-2">
+		<div
+			data-testid="landing-nav-actions"
+			class="ml-auto flex items-center gap-(--nested-control-gap)"
+		>
 			<!-- ≥768px: separate controls; below: one consolidated popover (DECISIONS.md). -->
 			<div
 				data-testid="landing-appearance-controls"
-				class="hidden items-center gap-2 md:flex"
+				class="hidden items-center gap-(--nested-control-gap) md:flex"
 			>
 				<PaletteSwitcher />
 				<LanguageToggle variant="icon" />

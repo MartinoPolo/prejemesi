@@ -231,7 +231,7 @@
 		isDragOver && dragOverStyle === 'bg' && 'bg-primary/5',
 		selectionMode &&
 			selectionLayout === 'list' &&
-			'sm:grid sm:grid-cols-[var(--size-control-md)_minmax(0,1fr)] sm:gap-2',
+			'sm:grid sm:grid-cols-[var(--size-control-md)_minmax(0,1fr)] sm:gap-(--nested-control-gap)',
 		longPressPending && 'ring-2 ring-inset ring-primary/35',
 	)}
 	data-selected={selectionMode && selected ? true : undefined}

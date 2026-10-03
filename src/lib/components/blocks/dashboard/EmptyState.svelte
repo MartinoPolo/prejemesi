@@ -22,7 +22,7 @@
 	<h2 class={variants.title()}>{title}</h2>
 	<p class={variants.description()}>{description}</p>
 	{#if actions}
-		<div class="mt-1.5 flex flex-wrap items-center justify-center gap-2">
+		<div class="mt-1.5 flex flex-wrap items-center justify-center gap-(--nested-control-gap)">
 			{@render actions()}
 		</div>
 	{/if}

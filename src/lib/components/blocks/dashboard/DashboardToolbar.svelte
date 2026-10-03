@@ -56,7 +56,7 @@
 	}
 </script>
 
-<div class={cn('flex w-full flex-wrap items-center gap-2', className)}>
+<div class={cn('flex w-full flex-wrap items-center gap-(--nested-control-gap)', className)}>
 	<FilterMenu
 		class="order-first grow"
 		definitions={filterDefinitions}
