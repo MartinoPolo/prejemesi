@@ -7,6 +7,7 @@
 	import ArrowLeftIcon from '@lucide/svelte/icons/arrow-left';
 	import CopyIcon from '@lucide/svelte/icons/copy';
 	import { Checkbox } from '$lib/components/base/checkbox/index.js';
+	import { Badge } from '$lib/components/base/badge/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
 	import * as RadioGroup from '$lib/components/base/radio-group/index.js';
 	import * as DropdownMenu from '$lib/components/base/dropdown-menu/index.js';
@@ -732,11 +733,10 @@
 		/>
 		<strong class="selection-count whitespace-nowrap text-sm"
 			>{m.gift_selection_count({ count: selectedCount })}</strong
-		>{#if hiddenCount > 0}<span
-				class="hidden-selection-count inline-flex items-center gap-1 rounded-full bg-warning-soft px-2 py-1 text-xs font-bold text-warning-foreground"
-				><EyeOffIcon class="size-3.5" />{m.gift_selection_hidden_count({
+		>{#if hiddenCount > 0}<Badge tone="warning" size="lg"
+				>{#snippet icon()}<EyeOffIcon data-icon />{/snippet}{m.gift_selection_hidden_count({
 					count: hiddenCount,
-				})}</span
+				})}</Badge
 			>{/if}
 	</div>
 	<div class="selection-actions">
