@@ -29,6 +29,10 @@ describe('InputGroup.Segment (issue #442)', () => {
 		expect(segmentStyle.boxShadow).toBe('none');
 		expect(segmentStyle.borderLeftWidth).toBe(fieldStyle.borderTopWidth);
 		expect(segmentStyle.borderLeftColor).toBe(fieldStyle.borderTopColor);
+		expectPixelsNear(
+			Number.parseFloat(segmentStyle.borderTopRightRadius),
+			Number.parseFloat(fieldStyle.borderTopRightRadius) - fieldBorder,
+		);
 		expect(segmentStyle.backgroundColor).not.toBe(fieldStyle.backgroundColor);
 		for (const descendant of segment.querySelectorAll<HTMLElement>('*')) {
 			expect(getComputedStyle(descendant).boxShadow).toBe('none');
