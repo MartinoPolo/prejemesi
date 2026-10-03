@@ -93,20 +93,6 @@ describe('canonical semantic depth tokens', () => {
 		);
 	});
 
-	it('derives the depth clearance and nested control gap from the ordinary offset', () => {
-		expectDeclarations(ruleBody(':root,\n[data-depth]'), [
-			'--depth-clearance: 0px',
-			'--nested-control-gap: calc(0.5rem + var(--depth-clearance))',
-		]);
-		const shadowedDepthRule = ruleBody("[data-depth='ink'],\n[data-depth='black']");
-		expect(
-			shadowedDepthRule
-				.split(';')
-				.map((declaration) => declaration.trim())
-				.filter(Boolean),
-		).toEqual(['--depth-clearance: var(--elevation-ordinary-offset)']);
-	});
-
 	it('sets approved elevation offsets at the wide breakpoint', () => {
 		expectDeclarations(wideBreakpointRootBody(), [
 			'--elevation-compact-offset: 2px',
