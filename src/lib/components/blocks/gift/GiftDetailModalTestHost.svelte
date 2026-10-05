@@ -11,7 +11,7 @@
 
 	setGiftsContext(
 		() => props.wishlistId,
-		() => (props.gift ? [props.gift] : []),
+		() => (props.gift != null ? [props.gift] : []),
 		() => props.role ?? 'visitor',
 		() => props.isArchived ?? false,
 		() => true,

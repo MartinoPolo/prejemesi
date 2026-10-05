@@ -23,6 +23,8 @@ const { default: GiftDetailForm } = await import('./GiftDetailForm.svelte');
 
 const { expectPixelsAtLeast, expectPixelsAtMost, expectPixelsNear } = createPixelAssertions(expect);
 
+const STANDARD_CONTROL_GAP = 8;
+
 /** Minimal GiftForRecipient fixture (a GiftByRole member) for edit-mode rendering. */
 function makeGift(overrides: Partial<GiftByRole> = {}): GiftByRole {
 	return {
@@ -204,8 +206,6 @@ describe('GiftDetailForm actions (issue #255)', () => {
 });
 
 describe('GiftDetailForm edit footer depth clearance (#442)', () => {
-	const STANDARD_CONTROL_GAP = 8;
-
 	afterEach(() => {
 		delete document.documentElement.dataset.depth;
 	});

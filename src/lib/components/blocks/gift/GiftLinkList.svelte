@@ -38,7 +38,7 @@
 						onclick={(e: MouseEvent) => e.stopPropagation()}
 					>
 						{link.label ?? domain ?? link.url}
-						{#if link.label && domain}
+						{#if link.label != null && link.label !== '' && domain != null && domain !== ''}
 							<span class={styles.domain()}>({domain})</span>
 						{/if}
 					</TextLink>
