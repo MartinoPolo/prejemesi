@@ -1156,6 +1156,8 @@
 	"demo_expired_new": "Start a new demo",
 	"demo_new_title": "Explore the playground",
 	"demo_new_description": "Your private sample lasts 24 hours. Edits do not transfer to a real account.",
+	"demo_live_title": "Your demo is still running",
+	"demo_live_description": "Pick up where you left off, or exit the demo to sign in to a real account.",
 	"demo_account_limits": "Only appearance can be changed in this demo. Account security, profile images, notifications and account deletion require a real account.",
 	"demo_list_limits": "Sharing, invitations, uploads, image URLs, import and external enrichment are unavailable in the demo. Prepared photos and product links still work.",
 	"demo_image_limits": "New images cannot be added in the demo. Prepared photos remain visible.",

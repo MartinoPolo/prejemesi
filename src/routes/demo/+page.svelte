@@ -4,8 +4,12 @@
 	import { Button } from '$lib/components/base/button/index.js';
 	import DemoStartForm from '$lib/components/blocks/demo/DemoStartForm.svelte';
 	import * as m from '$lib/paraglide/messages.js';
+	import type { PageProps } from './$types';
+
+	let { data }: PageProps = $props();
 	let pending = $state(false);
 	let error = $state(false);
+	let title = $derived(data.hasLiveDemo ? m.demo_live_title() : m.demo_new_title());
 
 	async function exit() {
 		if (pending) {
@@ -28,11 +32,13 @@
 	}
 </script>
 
-<svelte:head><title>{m.demo_new_title()}</title></svelte:head>
+<svelte:head><title>{title}</title></svelte:head>
 <main class="mx-auto flex max-w-xl flex-col items-center gap-4 p-6 text-center">
-	<h1 class="text-2xl font-semibold">{m.demo_new_title()}</h1>
-	<p class="text-muted-foreground">{m.demo_new_description()}</p>
-	<DemoStartForm label={m.demo_start_new} intent="primary" />
+	<h1 class="text-2xl font-semibold">{title}</h1>
+	<p class="text-muted-foreground">
+		{data.hasLiveDemo ? m.demo_live_description() : m.demo_new_description()}
+	</p>
+	<DemoStartForm label={data.hasLiveDemo ? m.demo_continue : m.demo_start_new} intent="primary" />
 	<Button intent="ghost" disabled={pending} onclick={exit}>{m.demo_exit()}</Button>
 	{#if error}<p role="alert" class="text-sm text-destructive">{m.demo_exit_error()}</p>{/if}
 </main>

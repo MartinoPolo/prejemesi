@@ -10,6 +10,7 @@ import { getRequestEvent } from '$app/server';
 import { getDb } from './db/index.js';
 import { sendEmail, renderActionEmailParts } from './email.js';
 import { getTurnstileSecretKey } from './turnstile.js';
+import { isDemoEmailAddress } from './demo/constants.js';
 import type { RequestEvent } from '@sveltejs/kit';
 import { AUTH_CAPTCHA_ENDPOINTS, AUTH_IP_ADDRESS_HEADERS, authRateLimit } from './auth_security.js';
 import { resolveAuthOrigins } from '$lib/config/runtime_environment.js';
@@ -24,7 +25,7 @@ export function isReservedDemoEmail(value: unknown): boolean {
 		return false;
 	}
 	const normalized = value.normalize('NFKC').trim().toLowerCase();
-	return normalized.endsWith('@demo.invalid');
+	return isDemoEmailAddress(normalized);
 }
 
 export function createAuth(event?: RequestEvent) {
@@ -77,7 +78,7 @@ export function createAuth(event?: RequestEvent) {
 							.from(userTable)
 							.where(eq(userTable.id, newSession.userId))
 							.limit(1);
-						if (!identity || identity.demoSessionId !== null) {
+						if (identity === undefined || identity.demoSessionId !== null) {
 							throw new APIError('FORBIDDEN', {
 								message: 'Demo identities cannot authenticate',
 							});

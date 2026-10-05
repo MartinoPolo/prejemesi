@@ -1,13 +1,13 @@
 import { dev } from '$app/environment';
-import { redirect, error } from '@sveltejs/kit';
-import { resolve as resolvePath } from '$app/paths';
+import { error } from '@sveltejs/kit';
 import { env } from '$env/dynamic/private';
 import type { Handle, HandleServerError } from '@sveltejs/kit';
 import { sequence } from '@sveltejs/kit/hooks';
 import * as Sentry from '@sentry/sveltekit';
 import { paraglideMiddleware } from '$lib/paraglide/server';
 import { cookieName, getTextDirection, type Locale } from '$lib/paraglide/runtime';
-import { isDatabaseConfigured, rememberDatabaseBinding } from '$lib/server/db/index.js';
+import { getDb, isDatabaseConfigured, rememberDatabaseBinding } from '$lib/server/db/index.js';
+import { DEMO_CLEANUP_INTERVAL_MS, DEMO_COOKIE_NAME } from '$lib/server/demo/constants.js';
 import { SITE_URL, WWW_HOSTNAME } from '$lib/config/site.js';
 import { ROBOTS_NOINDEX_CONTENT, shouldNoindexPath } from '$lib/seo/robots.js';
 import { requestTelemetryHandle } from '$lib/server/request_telemetry.js';
@@ -307,13 +307,12 @@ const userPreferencesHandle: Handle = async ({ event, resolve }) => {
 
 const authHandle: Handle = async ({ event, resolve }) => {
 	rememberDatabaseBinding(event);
-	if (event.url.pathname.startsWith('/api/auth/') && event.cookies.get('prejemesi_demo')) {
-		error(403, 'Leave the demo before signing in');
-	}
 
 	if (!isDatabaseConfigured(event)) {
 		return resolve(event);
 	}
+
+	const staleDemoCookie = await rejectLiveDemoAuthentication(event);
 
 	if (
 		(event.request.method === 'GET' || event.request.method === 'HEAD') &&
@@ -339,20 +338,43 @@ const authHandle: Handle = async ({ event, resolve }) => {
 		}
 	}
 
-	return svelteKitHandler({ event, resolve, auth, building });
+	const response = await svelteKitHandler({ event, resolve, auth, building });
+	return staleDemoCookie ? withDeletedDemoCookie(response, event) : response;
 };
 
-const demoAppPaths =
-	/^\/(?:en\/)?(?:home|my-lists|followed|moderated|settings|w\/[^/]+(?:\/settings)?)\/?$/;
-const demoLifecyclePaths = /^\/(?:en\/)?demo(?:\/(?:start|reset|exit))?\/?$/;
-
-class DemoRequestFailed extends Error {
-	constructor(readonly response: Response) {
-		super('Demo request rolled back');
+/** Returns whether the demo cookie is stale and must be deleted from the auth response. */
+async function rejectLiveDemoAuthentication(
+	event: Parameters<Handle>[0]['event'],
+): Promise<boolean> {
+	const demoToken = event.cookies.get(DEMO_COOKIE_NAME);
+	if (
+		!event.url.pathname.startsWith('/api/auth/') ||
+		demoToken === undefined ||
+		demoToken === ''
+	) {
+		return false;
 	}
+	const { findDemoSession } = await import('$lib/server/demo/session.js');
+	if (await findDemoSession(demoToken)) {
+		error(403, 'Leave the demo before signing in');
+	}
+	return true;
 }
 
-const DEMO_CLEANUP_INTERVAL_MS = 60_000;
+/** Auth API responses bypass SvelteKit's resolve, so `event.cookies` changes would not reach them. */
+function withDeletedDemoCookie(response: Response, event: Parameters<Handle>[0]['event']) {
+	const headers = new Headers(response.headers);
+	headers.append(
+		'set-cookie',
+		event.cookies.serialize(DEMO_COOKIE_NAME, '', { path: '/', maxAge: 0 }),
+	);
+	return new Response(response.body, {
+		status: response.status,
+		statusText: response.statusText,
+		headers,
+	});
+}
+
 let nextDemoCleanupAt = 0;
 
 async function cleanDemosOnDocumentRequest(event: Parameters<Handle>[0]['event']) {
@@ -365,132 +387,35 @@ async function cleanDemosOnDocumentRequest(event: Parameters<Handle>[0]['event']
 	}
 	// Claim the interval before awaiting: concurrent documents must not launch concurrent sweeps.
 	nextDemoCleanupAt = now + DEMO_CLEANUP_INTERVAL_MS;
-	try {
-		const { cleanExpiredDemos } = await import('$lib/server/demo/session.js');
-		await cleanExpiredDemos();
-	} catch (failure) {
-		console.error('[demoHandle] expired demo cleanup failed', failure);
+	// Captured before demoHandle can install this request's demo transaction on the event.
+	const database = getDb(event);
+	const cleanup = import('$lib/server/demo/session.js')
+		.then(({ cleanExpiredDemos }) => cleanExpiredDemos(database))
+		.catch((failure: unknown) => {
+			console.error('[demoHandle] expired demo cleanup failed', failure);
+		});
+	if (event.platform?.ctx) {
+		event.platform.ctx.waitUntil(cleanup);
+		return;
 	}
+	await cleanup;
 }
 
 export const demoHandle: Handle = async ({ event, resolve }) => {
 	await cleanDemosOnDocumentRequest(event);
-	const token = event.cookies.get('prejemesi_demo');
+	const token = event.cookies.get(DEMO_COOKIE_NAME);
 	const requestedPath = new URL(event.request.url).pathname;
 	if (
-		!token ||
+		token === undefined ||
+		token === '' ||
 		(!event.isRemoteRequest &&
 			(requestedPath.startsWith('/demo/v1/') ||
 				requestedPath.startsWith('/demo/playground/')))
 	) {
 		return resolve(event);
 	}
-	const { digestDemoToken } = await import('$lib/server/demo/session.js');
-	const path =
-		event.isDataRequest && event.url.pathname.endsWith('/__data.json')
-			? event.url.pathname.slice(0, -'/__data.json'.length)
-			: event.url.pathname;
-	if (event.isRemoteRequest && demoLifecyclePaths.test(path)) {
-		error(403, 'This route is unavailable in the demo');
-	}
-	if (
-		!demoAppPaths.test(path) &&
-		!demoLifecyclePaths.test(path) &&
-		!(isHtmlDocumentRequest(event) && (path === '/' || path === '/en' || path === '/en/'))
-	) {
-		error(403, 'This route is unavailable in the demo');
-	}
-	if (path.endsWith('/demo/exit')) {
-		return resolve(event);
-	}
-	const { getDb, withRequestDatabaseTransaction } = await import('$lib/server/db/index.js');
-	const { demoSession, user } = await import('$lib/server/db/auth.schema.js');
-	const { eq, sql } = await import('drizzle-orm');
-	const tokenHash = digestDemoToken(token);
-	if (!tokenHash) {
-		error(403, 'Invalid demo session');
-	}
-	try {
-		return await getDb(event).transaction(async (tx) => {
-			const [session] = await tx
-				.select()
-				.from(demoSession)
-				.where(eq(demoSession.tokenHash, tokenHash))
-				.for(
-					event.request.method === 'GET' || event.request.method === 'HEAD'
-						? 'share'
-						: 'update',
-				);
-			if (!session || session.expiresAt <= new Date()) {
-				event.locals.demoExpired = true;
-				if (!/^\/(?:en\/)?demo(?:\/start)?\/?$/.test(path)) {
-					if (!isHtmlDocumentRequest(event) && !event.isDataRequest) {
-						error(410, 'Demo has expired');
-					}
-					throw redirect(303, path.startsWith('/en') ? '/en/demo' : resolvePath('/demo'));
-				}
-				return resolve(event);
-			}
-			if (path === '/' || path === '/en' || path === '/en/') {
-				throw redirect(303, path.startsWith('/en') ? '/en/home' : resolvePath('/home'));
-			}
-			return withRequestDatabaseTransaction(event, tx, async () => {
-				if (
-					event.request.method !== 'GET' &&
-					event.request.method !== 'HEAD' &&
-					!path.endsWith('/demo/start')
-				) {
-					if (
-						session.editRequests >= 120 ||
-						(path.endsWith('/demo/reset') && session.resets >= 5)
-					) {
-						error(429, 'Demo edit limit reached');
-					}
-					await tx
-						.update(demoSession)
-						.set({
-							editRequests: sql`${demoSession.editRequests} + 1`,
-							...(path.endsWith('/demo/reset')
-								? { resets: sql`${demoSession.resets} + 1` }
-								: {}),
-						})
-						.where(eq(demoSession.id, session.id));
-				}
-				const [viewer] = await tx
-					.select()
-					.from(user)
-					.where(eq(user.id, session.viewerUserId))
-					.limit(1);
-				if (!viewer || viewer.demoSessionId !== session.id) {
-					error(410, 'Demo has expired');
-				}
-				event.locals.realUser = event.locals.user;
-				event.locals.demoSession = { id: session.id, expiresAt: session.expiresAt };
-				event.locals.user = viewer;
-				event.locals.session = {
-					id: session.id,
-					token: '',
-					userId: viewer.id,
-					expiresAt: session.expiresAt,
-					createdAt: session.createdAt,
-					updatedAt: session.createdAt,
-				} as NonNullable<typeof event.locals.session>;
-				const response = await resolve(event);
-				if (response.status >= 400) {
-					throw new DemoRequestFailed(response);
-				}
-				if (session.expiresAt <= new Date()) {
-					error(410, 'Demo has expired');
-				}
-				return response;
-			});
-		});
-	} catch (failure) {
-		if (failure instanceof DemoRequestFailed) {
-			return failure.response;
-		}
-		throw failure;
-	}
+	const { handleDemoRequest } = await import('$lib/server/demo/request.js');
+	return handleDemoRequest(event, resolve, token);
 };
 
 const handles: Handle[] = [

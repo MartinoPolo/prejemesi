@@ -5,7 +5,7 @@ product inventory or live prices. The Czech and English copy is selected when th
 resets the playground; interface language changes do not translate existing gifts. CZK estimates are
 illustrative. Outbound Heureka URLs search for the gift category or type, **not an exact pictured
 SKU**; merchants and prices may change. Automated HEAD requests to Heureka returned 403, so
-individual shopping-result availability was not verified by this pass.
+individual shopping-result availability is unverified.
 
 Images under `static/demo/playground/` are locally hosted, resized copies of photos from the
 existing development seed image manifest (`src/lib/server/db/seed_images.ts`), covered by the

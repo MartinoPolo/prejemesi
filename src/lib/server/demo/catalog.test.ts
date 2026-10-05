@@ -39,8 +39,15 @@ for (const locale of ['cs', 'en'] as const) {
 				75,
 			);
 			expect(gifts.filter(({ state }) => state === 'available').length).toBeGreaterThan(90);
-			expect(gifts.some(({ state }) => state === 'reserved')).toBe(true);
-			expect(gifts.some(({ state }) => state === 'received')).toBe(true);
+			expect(gifts.some(({ priority }) => priority === 'high')).toBe(true);
+			expect(gifts.some(({ priority }) => priority === 'low')).toBe(true);
+			for (const role of ['managed', 'followed'] as const) {
+				const visibleGifts = wishlists
+					.filter((wishlist) => wishlist.role === role && wishlist.status !== 'draft')
+					.flatMap(({ gifts }) => gifts);
+				expect(visibleGifts.some(({ state }) => state === 'reserved')).toBe(true);
+				expect(visibleGifts.some(({ state }) => state === 'received')).toBe(true);
+			}
 			const imageSubjects = new Map<string, string>();
 			for (const gift of gifts) {
 				const previousSubject = imageSubjects.get(gift.imageUrl);
@@ -68,17 +75,19 @@ it('localizes curated copy without changing identities and returns independent e
 	const czech = getDemoCatalog('cs');
 	const english = getDemoCatalog('en');
 	expect(czech.map(({ key }) => key)).toEqual(english.map(({ key }) => key));
-	expect(czech.map(({ title }) => title)).not.toEqual(english.map(({ title }) => title));
-	for (let index = 0; index < czech.length; index += 1) {
-		const csList = czech[index]!;
+	for (const [index, csList] of czech.entries()) {
 		const enList = english[index]!;
+		expect(csList.title).not.toBe(enList.title);
+		expect(csList.description).not.toBe(enList.description);
 		expect(csList.recipientName).toBe(enList.recipientName);
 		expect(csList.gifts.map(({ imageUrl }) => imageUrl)).toEqual(
 			enList.gifts.map(({ imageUrl }) => imageUrl),
 		);
-		expect(csList.gifts.map(({ description }) => description)).not.toEqual(
-			enList.gifts.map(({ description }) => description),
-		);
+		for (const [giftIndex, csGift] of csList.gifts.entries()) {
+			const enGift = enList.gifts[giftIndex]!;
+			expect(csGift.name).not.toBe(enGift.name);
+			expect(csGift.description).not.toBe(enGift.description);
+		}
 	}
 	czech[0]!.gifts[0]!.name = 'Edited';
 	czech[0]!.gifts.pop();

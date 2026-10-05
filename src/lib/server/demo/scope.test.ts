@@ -7,10 +7,18 @@ import {
 	demoSessionId,
 	isPreparedDemoImage,
 	rejectDemoOperation,
-	wishlistScope,
 } from './scope.js';
 
 const requestEvent = vi.mocked(getRequestEvent);
+
+function thrownBy(operation: () => void): unknown {
+	try {
+		operation();
+	} catch (failure) {
+		return failure;
+	}
+	throw new Error('Expected the operation to throw');
+}
 
 describe('demo wishlist boundary', () => {
 	beforeEach(() => requestEvent.mockReset());
@@ -19,8 +27,9 @@ describe('demo wishlist boundary', () => {
 		requestEvent.mockReturnValue({ locals: {} } as ReturnType<typeof getRequestEvent>);
 		expect(demoSessionId()).toBeNull();
 		expect(() => assertWishlistScope({ demoSessionId: null })).not.toThrow();
-		expect(() => assertWishlistScope({ demoSessionId: 'visitor-a' })).toThrow();
-		expect(wishlistScope()).toBeDefined();
+		expect(thrownBy(() => assertWishlistScope({ demoSessionId: 'visitor-a' }))).toMatchObject({
+			status: 404,
+		});
 	});
 
 	it('cannot read another visitor or real wishlist, and blocks external actions', () => {
@@ -29,9 +38,13 @@ describe('demo wishlist boundary', () => {
 		>);
 		expect(demoSessionId()).toBe('visitor-a');
 		expect(() => assertWishlistScope({ demoSessionId: 'visitor-a' })).not.toThrow();
-		expect(() => assertWishlistScope({ demoSessionId: 'visitor-b' })).toThrow();
-		expect(() => assertWishlistScope({ demoSessionId: null })).toThrow();
-		expect(() => rejectDemoOperation()).toThrow();
+		expect(thrownBy(() => assertWishlistScope({ demoSessionId: 'visitor-b' }))).toMatchObject({
+			status: 404,
+		});
+		expect(thrownBy(() => assertWishlistScope({ demoSessionId: null }))).toMatchObject({
+			status: 404,
+		});
+		expect(thrownBy(() => rejectDemoOperation())).toMatchObject({ status: 403 });
 	});
 
 	it('allows only exact reviewed image assets, never arbitrary relative or remote URLs', () => {

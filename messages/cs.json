@@ -1156,6 +1156,8 @@
 	"demo_expired_new": "Spustit nové demo",
 	"demo_new_title": "Prozkoumejte demo",
 	"demo_new_description": "Vaše soukromé demo trvá 24 hodin. Úpravy se do skutečného účtu nepřenášejí.",
+	"demo_live_title": "Vaše demo stále běží",
+	"demo_live_description": "Pokračujte tam, kde jste skončili, nebo demo ukončete a přihlaste se ke skutečnému účtu.",
 	"demo_account_limits": "V demu můžete změnit jen vzhled. Zabezpečení účtu, profilové obrázky, oznámení a smazání účtu vyžadují skutečný účet.",
 	"demo_list_limits": "V demu nejsou dostupné sdílení, pozvánky, nahrávání, URL obrázků, import ani externí doplňování. Připravené fotografie a odkazy na produkty fungují.",
 	"demo_image_limits": "Nové obrázky nelze v demu přidávat. Připravené fotografie zůstávají viditelné.",

@@ -1,4 +1,4 @@
-import type { getDb } from '$lib/server/db/index.js';
+import type { DatabaseTransaction } from '$lib/server/db/index.js';
 import { user } from '$lib/server/db/auth.schema.js';
 import { wishlist, priorityLevel } from '$lib/server/db/wishlist.schema.js';
 import { gift, giftCategory, reservation } from '$lib/server/db/gift.schema.js';
@@ -11,11 +11,10 @@ import {
 	isGiftCategoryPresetKey,
 } from '$lib/modules/gift-categories/presets.js';
 import { getDemoCatalog } from './catalog.js';
-
-type Transaction = Parameters<Parameters<ReturnType<typeof getDb>['transaction']>[0]>[0];
+import { demoEmailAddress } from './constants.js';
 
 export async function provisionDemoCatalog(
-	tx: Transaction,
+	tx: DatabaseTransaction,
 	sessionId: string,
 	viewerUserId: string,
 	locale: 'cs' | 'en',
@@ -29,7 +28,7 @@ export async function provisionDemoCatalog(
 				id: otherUserId,
 				demoSessionId: sessionId,
 				name: entry.recipientName,
-				email: `${otherUserId}@demo.invalid`,
+				email: demoEmailAddress(otherUserId),
 			});
 		}
 		const eventDate =
@@ -73,7 +72,7 @@ export async function provisionDemoCatalog(
 				eventDate,
 			})
 			.returning({ id: wishlist.id });
-		if (!created) {
+		if (created === undefined) {
 			throw new Error('Failed to create demo wishlist');
 		}
 		if (entry.role === 'managed') {

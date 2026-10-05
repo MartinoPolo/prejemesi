@@ -2,13 +2,13 @@
 
 The demo cookie contains an opaque secret; the database stores only its SHA-256 digest. A session's
 `expires_at` is fixed at creation and Reset does not update it. Expired sessions are inaccessible;
-creation and throttled ordinary HTML document traffic remove bounded batches of expired
-`demo_session` rows without waiting on active edits. Maintenance failures are logged without failing
-page loads. Reads hold a shared session lock through the response; edits and Reset hold an exclusive
-lock so expiry and reset remain consistent. Cleanup removes reservations before cascading tagged
-fictional users and wishlists, avoiding conflicting foreign-key cascades. The fixed lifetime also
-bounds edit and reset requests. Curated images in `static/demo/` are shared static files and must
-not be deleted.
+creation and, off the response path, throttled ordinary HTML document traffic remove bounded batches
+of expired `demo_session` rows without waiting on active edits. Maintenance failures are logged
+without failing page loads. Reads hold a shared session lock through the response; edits and Reset
+hold an exclusive lock so expiry and reset remain consistent. Cleanup removes reservations before
+cascading tagged fictional users and wishlists, avoiding conflicting foreign-key cascades.
+Per-session budgets in `src/lib/server/demo/constants.ts` bound edit and reset requests, including
+failed ones. Curated images in `static/demo/` are shared static files and must not be deleted.
 
 If traffic is absent for prolonged periods, an optional operator-managed scheduler may run this
 bounded SQL against the application database with least-privilege credentials. Repeat until no rows

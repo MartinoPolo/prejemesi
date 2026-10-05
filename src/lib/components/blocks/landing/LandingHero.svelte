@@ -155,39 +155,43 @@
 				{m.landing_hero_description()}
 			</p>
 
-			<div class="reveal reveal-4 relative flex flex-wrap items-center gap-4">
+			<div
+				class="reveal reveal-4 flex flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4"
+			>
 				<Button size="xl" href={localizeInternalHref(resolve('/register'))}>
 					<GiftIcon data-icon="inline-start" />
 					{m.landing_hero_cta()}
 				</Button>
 				<DemoStartForm />
-				<Button intent="ghost" size="xl" href="#jak-to-funguje">
-					{m.landing_hero_how()}
-				</Button>
-				<!-- positioned via left/top + --rot (NOT transform alone) so the bob
-				     animation, which overwrites the transform, keeps the rotation -->
-				<svg
-					class="pointer-events-none absolute -top-1.5 left-[450px] hidden w-[90px] rotate-[12deg] text-brand lg:block motion-safe:animate-bob"
-					style:--rot="12deg"
-					viewBox="0 0 100 60"
-					aria-hidden="true"
-				>
-					<path
-						d="M92 8 C 70 38, 40 50, 12 46"
-						fill="none"
-						stroke="currentColor"
-						stroke-width="3.5"
-						stroke-linecap="round"
-					/>
-					<path
-						d="M24 38 L 11 46 L 22 55"
-						fill="none"
-						stroke="currentColor"
-						stroke-width="3.5"
-						stroke-linecap="round"
-						stroke-linejoin="round"
-					/>
-				</svg>
+				<span class="relative flex">
+					<Button intent="ghost" size="xl" href="#jak-to-funguje" class="w-full">
+						{m.landing_hero_how()}
+					</Button>
+					<!-- positioned via left/top + --rot (NOT transform alone) so the bob
+					     animation, which overwrites the transform, keeps the rotation -->
+					<svg
+						class="pointer-events-none absolute -top-3 left-full hidden w-[90px] rotate-[12deg] text-brand lg:block motion-safe:animate-bob"
+						style:--rot="12deg"
+						viewBox="0 0 100 60"
+						aria-hidden="true"
+					>
+						<path
+							d="M92 8 C 70 38, 40 50, 12 46"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="3.5"
+							stroke-linecap="round"
+						/>
+						<path
+							d="M24 38 L 11 46 L 22 55"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="3.5"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+						/>
+					</svg>
+				</span>
 			</div>
 
 			<p

@@ -7,44 +7,40 @@ import {
 	createAuthenticatedContext,
 } from './fixtures/auth-helpers.js';
 import { createTestUser } from './fixtures/test-data.js';
+import { DEMO_COOKIE_NAME } from '../../src/lib/server/demo/constants.js';
+import { resolveIsolatedDemoTestDatabaseUrl } from '../../src/lib/server/demo/isolated_test_database.js';
 
-// A separate migrated local database is required. The opt-in never relaxes the application's rate limit.
-const databaseUrl = process.env.DEMO_TEST_DATABASE_URL;
-let localDatabase = false;
-try {
-	const url = new URL(databaseUrl ?? '');
-	localDatabase =
-		['localhost', '127.0.0.1', '::1'].includes(url.hostname) &&
-		url.pathname.length > 1 &&
-		url.pathname !== '/local';
-} catch {
-	// A database opt-in without a valid local URL cannot access fixtures.
-}
-const isolatedDatabase = process.env.DEMO_TEST_ISOLATED_DATABASE === '1' && localDatabase;
+// Cleanup must target the application server's database, which in CI is the disposable `local`
+// service database. The opt-in never relaxes the rate limit.
+const databaseUrl = resolveIsolatedDemoTestDatabaseUrl('DATABASE_URL', {
+	allowSharedDevelopmentDatabase: true,
+});
+const isolatedDatabase = databaseUrl !== null;
 test.skip(
 	!isolatedDatabase,
-	'Set DEMO_TEST_ISOLATED_DATABASE=1 and a local DEMO_TEST_DATABASE_URL',
+	'Set DEMO_TEST_ISOLATED_DATABASE=1 and the server’s local DATABASE_URL',
 );
-test.describe.configure({ mode: 'serial' });
+// A serial retry would rerun every demo creation and hit the per-client creation throttle.
+test.describe.configure({ mode: 'serial', retries: 0 });
 
 const ownedTokenHashes = new Set<string>();
 const ownedRealEmails = new Set<string>();
 const suiteStartedAt = new Date();
 async function rememberDemoSession(context: BrowserContext) {
 	const token = (await context.cookies()).find(
-		(cookie) => cookie.name === 'prejemesi_demo',
+		(cookie) => cookie.name === DEMO_COOKIE_NAME,
 	)?.value;
-	if (!token || !/^[a-f0-9]{64}$/.test(token)) {
+	if (token === undefined || !/^[a-f0-9]{64}$/.test(token)) {
 		throw new Error('Demo cookie was not issued');
 	}
 	ownedTokenHashes.add(createHash('sha256').update(token).digest('hex'));
 }
 
 test.afterAll(async () => {
-	if (!isolatedDatabase || (ownedTokenHashes.size === 0 && ownedRealEmails.size === 0)) {
+	if (databaseUrl === null || (ownedTokenHashes.size === 0 && ownedRealEmails.size === 0)) {
 		return;
 	}
-	const database = postgres(databaseUrl!, { max: 1, connect_timeout: 5 });
+	const database = postgres(databaseUrl, { max: 1, connect_timeout: 5 });
 	try {
 		const hashes = [...ownedTokenHashes];
 		let ownedSessions: { client_hash: string }[] = [];
@@ -121,10 +117,17 @@ for (const locale of ['cs', 'en'] as const) {
 		await page.unroute('**/demo/start');
 		await entry.click();
 		await expect(page).toHaveURL(/\/home$/);
+		await waitForAppHydration(page);
 		await rememberDemoSession(page.context());
 		const notice = page.getByTestId('demo-notice');
 		await expect(notice).toContainText(english ? 'left' : 'zbývá');
 		await expect(page.getByTestId('home-shelf').first()).toBeVisible();
+		await expect(notice).toBeVisible();
+		for (const action of english
+			? ['Reset', 'Exit', 'Register']
+			: ['Obnovit', 'Odejít', 'Registrovat se']) {
+			await expect(notice.getByRole('button', { name: action, exact: true })).toBeVisible();
+		}
 		await page.setViewportSize(desktop);
 		await expect(notice).toBeVisible();
 
@@ -142,10 +145,12 @@ for (const locale of ['cs', 'en'] as const) {
 		await expect(page).toHaveURL(/\/w\//);
 		await expect(page.getByRole('heading', { name: `Demo test ${locale}` })).toBeVisible();
 		await page.reload();
+		await waitForAppHydration(page);
 		await expect(page.getByRole('heading', { name: `Demo test ${locale}` })).toBeVisible();
 		if (english) {
 			const wishlistPath = new URL(page.url()).pathname;
 			await page.goto('/en/settings');
+			await waitForAppHydration(page);
 			await page
 				.getByRole('group', { name: 'Language' })
 				.getByRole('button', { name: 'Čeština' })
@@ -153,13 +158,17 @@ for (const locale of ['cs', 'en'] as const) {
 			await expect(page).toHaveURL(/\/settings$/);
 			await page.goto(wishlistPath.replace('/en/w/', '/w/'));
 			await expect(page.getByRole('heading', { name: `Demo test ${locale}` })).toBeVisible();
+			await page.goto('/my-lists');
+			await expect(page.getByRole('link', { name: 'Little everyday joys' })).toBeVisible();
 			await page.goto('/settings');
+			await waitForAppHydration(page);
 			await page
 				.getByRole('group', { name: 'Jazyk' })
 				.getByRole('button', { name: 'English' })
 				.click();
 			await expect(page).toHaveURL(/\/en\/settings$/);
 			await page.goto(wishlistPath);
+			await waitForAppHydration(page);
 		}
 		await notice.getByRole('button', { name: english ? 'Reset' : 'Obnovit' }).click();
 		const dialog = page.getByRole('dialog');
@@ -169,7 +178,7 @@ for (const locale of ['cs', 'en'] as const) {
 
 		await notice.getByRole('button', { name: english ? 'Reset' : 'Obnovit' }).click();
 		if (english) {
-			await dialog.getByRole('combobox').click();
+			await dialog.getByRole('button', { name: 'Sample content language' }).click();
 			await page.getByRole('option', { name: 'Čeština' }).click();
 		}
 		let failedOnce = false;
@@ -194,10 +203,16 @@ for (const locale of ['cs', 'en'] as const) {
 		await page.goto(english ? '/en/my-lists' : '/my-lists');
 		await expect(page.getByRole('link', { name: 'Malé radosti' })).toBeVisible();
 		if (english) {
+			// The Czech sample catalog stays Czech under the English interface.
 			await expect(page.getByRole('heading', { name: 'My lists' })).toBeVisible();
+			await page.getByRole('link', { name: 'Malé radosti' }).first().click();
+			await expect(page).toHaveURL(/\/en\/w\//);
+			await expect(page.getByText('Keramická konvička').first()).toBeVisible();
+			await expect(page.getByText('Ceramic teapot')).toHaveCount(0);
 		}
 		await page.goto(english ? '/en' : '/');
 		await expect(page).toHaveURL(english ? /\/en\/home$/ : /\/home$/);
+		await waitForAppHydration(page);
 
 		if (english) {
 			await notice.getByRole('button', { name: 'Register' }).click();
@@ -206,9 +221,14 @@ for (const locale of ['cs', 'en'] as const) {
 			await notice.getByRole('button', { name: 'Register' }).click();
 			await page.getByRole('dialog').getByRole('button', { name: 'Continue' }).click();
 			await expect(page).toHaveURL(/\/en\/register$/);
+			await expect(
+				page
+					.context()
+					.cookies()
+					.then((cookies) => cookies.map((cookie) => cookie.name)),
+			).resolves.not.toContain(DEMO_COOKIE_NAME);
 			await page.goto('/en/home');
-			await notice.getByRole('button', { name: 'Exit' }).click();
-			await expect(page).toHaveURL(/\/en$/);
+			await expect(notice).toHaveCount(0);
 		} else {
 			await page.clock.fastForward(24 * 60 * 60 * 1000 + 60_000);
 			await expect(page.getByTestId('demo-expired')).toBeVisible();
@@ -228,7 +248,7 @@ test('exit restores the independently signed-in real session', async ({
 	request,
 	baseURL,
 }) => {
-	if (!baseURL) {
+	if (baseURL === undefined || baseURL === '') {
 		throw new Error('Playwright baseURL is required');
 	}
 	const realUser = createTestUser('demo-real-session');
@@ -246,11 +266,13 @@ test('exit restores the independently signed-in real session', async ({
 		expect(start.ok()).toBe(true);
 		await rememberDemoSession(context);
 		await page.goto('/home');
+		await waitForAppHydration(page);
 		await expect(page.getByTestId('demo-notice')).toBeVisible();
 		await expect(page.getByTestId('home-shelf').first()).toBeVisible();
 		await page.getByTestId('demo-notice').getByRole('button', { name: 'Odejít' }).click();
 		await expect(page).toHaveURL(/\/home$/);
 		await expect(page.getByTestId('demo-notice')).toHaveCount(0);
+		await waitForAppHydration(page);
 		await page.getByRole('button', { name: new RegExp(realUser.name) }).click();
 		await expect(page.getByText(realUser.email)).toBeVisible();
 	} finally {

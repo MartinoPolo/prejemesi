@@ -1,15 +1,28 @@
 import { createHash, randomBytes } from 'node:crypto';
-import { and, eq, inArray, lte, lt, sql } from 'drizzle-orm';
+import { and, eq, inArray, lte, lt, or, sql } from 'drizzle-orm';
 import { error, type RequestEvent } from '@sveltejs/kit';
-import { getDb } from '$lib/server/db/index.js';
+import { getDb, type DatabaseTransaction } from '$lib/server/db/index.js';
 import { demoClientThrottle, demoSession, user } from '$lib/server/db/auth.schema.js';
 import { wishlist } from '$lib/server/db/wishlist.schema.js';
 import { gift, reservation } from '$lib/server/db/gift.schema.js';
+import { claimInvite } from '$lib/server/db/claim.schema.js';
+import { giftIngestionItem, giftIngestionRun } from '$lib/server/db/ingestion.schema.js';
+import { moderatorInvite } from '$lib/server/db/moderator.schema.js';
+import { notification } from '$lib/server/db/notification.schema.js';
 import { generateId } from '$lib/server/db/id.js';
+import type { SupportedLocale } from '$lib/i18n/locale.js';
 import { provisionDemoCatalog } from './provision.js';
-
-export const DEMO_COOKIE = 'prejemesi_demo';
-const LIFETIME_MS = 24 * 60 * 60 * 1000;
+import {
+	DEMO_CLEANUP_BATCH_SIZE,
+	DEMO_CLIENT_WINDOW_MS,
+	DEMO_COOKIE_MAX_AGE_SECONDS,
+	DEMO_COOKIE_NAME,
+	DEMO_CREATION_ADVISORY_LOCK_KEY,
+	DEMO_CREATIONS_PER_CLIENT_WINDOW,
+	DEMO_LIFETIME_MS,
+	DEMO_SESSION_CAPACITY,
+	demoEmailAddress,
+} from './constants.js';
 
 const digest = (value: string) => createHash('sha256').update(value).digest('hex');
 export function digestDemoToken(token: string): string | null {
@@ -17,7 +30,11 @@ export function digestDemoToken(token: string): string | null {
 }
 
 export function clearDemoCookie(event: RequestEvent): void {
-	event.cookies.delete(DEMO_COOKIE, { path: '/' });
+	event.cookies.delete(DEMO_COOKIE_NAME, { path: '/' });
+}
+
+export function parseDemoCatalogLocale(value: FormDataEntryValue | null): SupportedLocale {
+	return value === 'en' ? 'en' : 'cs';
 }
 
 function clientHash(event: RequestEvent): string {
@@ -28,58 +45,98 @@ function clientHash(event: RequestEvent): string {
 	);
 }
 
-async function deleteDemoReservations(
-	tx: Parameters<Parameters<ReturnType<typeof getDb>['transaction']>[0]>[0],
-	sessionIds: string[],
-) {
+/**
+ * Clears rows that reference demo users, wishlists, or gifts without a cascade. Ordinary demo flows
+ * never create most of them, but one stray row would otherwise fail every sweep of the oldest
+ * expired batch. Rows owned by real records are detached rather than deleted.
+ */
+async function releaseDemoDependents(transaction: DatabaseTransaction, sessionIds: string[]) {
 	if (sessionIds.length === 0) {
 		return;
 	}
-	const ownedWishlists = tx
+	const demoWishlists = transaction
 		.select({ id: wishlist.id })
 		.from(wishlist)
 		.where(inArray(wishlist.demoSessionId, sessionIds));
-	const ownedGifts = tx
+	const demoGifts = transaction
 		.select({ id: gift.id })
 		.from(gift)
-		.where(inArray(gift.wishlistId, ownedWishlists));
-	await tx.delete(reservation).where(inArray(reservation.giftId, ownedGifts));
+		.where(inArray(gift.wishlistId, demoWishlists));
+	const demoUsers = transaction
+		.select({ id: user.id })
+		.from(user)
+		.where(inArray(user.demoSessionId, sessionIds));
+	await transaction.delete(reservation).where(inArray(reservation.giftId, demoGifts));
+	await transaction
+		.delete(moderatorInvite)
+		.where(
+			or(
+				inArray(moderatorInvite.wishlistId, demoWishlists),
+				inArray(moderatorInvite.createdByUserId, demoUsers),
+			),
+		);
+	await transaction
+		.update(moderatorInvite)
+		.set({ usedByUserId: null })
+		.where(inArray(moderatorInvite.usedByUserId, demoUsers));
+	await transaction
+		.delete(claimInvite)
+		.where(
+			or(
+				inArray(claimInvite.wishlistId, demoWishlists),
+				inArray(claimInvite.createdByUserId, demoUsers),
+			),
+		);
+	await transaction
+		.update(claimInvite)
+		.set({ usedByUserId: null })
+		.where(inArray(claimInvite.usedByUserId, demoUsers));
+	await transaction
+		.update(notification)
+		.set({ actorId: null })
+		.where(inArray(notification.actorId, demoUsers));
+	await transaction
+		.update(giftIngestionItem)
+		.set({ createdGiftId: null })
+		.where(inArray(giftIngestionItem.createdGiftId, demoGifts));
+	await transaction
+		.delete(giftIngestionRun)
+		.where(inArray(giftIngestionRun.wishlistId, demoWishlists));
 }
 
-export async function cleanExpiredDemos(): Promise<void> {
-	await getDb().transaction(async (tx) => {
+/** Callers outside a request's own demo transaction pass the database they captured before it began. */
+export async function cleanExpiredDemos(database = getDb()): Promise<void> {
+	await database.transaction(async (transaction) => {
 		// SKIP LOCKED avoids waiting behind a visitor's edit/reset transaction.
-		const expired = await tx
+		const expiredSessions = await transaction
 			.select({ id: demoSession.id })
 			.from(demoSession)
 			.where(lte(demoSession.expiresAt, new Date()))
 			.orderBy(demoSession.expiresAt)
-			.limit(5)
+			.limit(DEMO_CLEANUP_BATCH_SIZE)
 			.for('update', { skipLocked: true });
-		if (expired.length) {
-			await deleteDemoReservations(
-				tx,
-				expired.map((row) => row.id),
-			);
-			await tx.delete(demoSession).where(
-				sql`${demoSession.id} IN (${sql.join(
-					expired.map((row) => sql`${row.id}`),
-					sql`, `,
-				)})`,
-			);
+		if (expiredSessions.length) {
+			const expiredSessionIds = expiredSessions.map((row) => row.id);
+			await releaseDemoDependents(transaction, expiredSessionIds);
+			await transaction.delete(demoSession).where(inArray(demoSession.id, expiredSessionIds));
 		}
-		const oldClients = await tx
+		const staleClients = await transaction
 			.select({ clientHash: demoClientThrottle.clientHash })
 			.from(demoClientThrottle)
-			.where(lt(demoClientThrottle.windowStartedAt, new Date(Date.now() - LIFETIME_MS * 2)))
-			.limit(5)
+			.where(
+				lt(
+					demoClientThrottle.windowStartedAt,
+					new Date(Date.now() - DEMO_CLIENT_WINDOW_MS * 2),
+				),
+			)
+			.limit(DEMO_CLEANUP_BATCH_SIZE)
 			.for('update', { skipLocked: true });
-		if (oldClients.length) {
-			await tx.delete(demoClientThrottle).where(
-				sql`${demoClientThrottle.clientHash} IN (${sql.join(
-					oldClients.map((row) => sql`${row.clientHash}`),
-					sql`, `,
-				)})`,
+		if (staleClients.length) {
+			await transaction.delete(demoClientThrottle).where(
+				inArray(
+					demoClientThrottle.clientHash,
+					staleClients.map((row) => row.clientHash),
+				),
 			);
 		}
 	});
@@ -95,52 +152,60 @@ export async function findDemoSession(token: string) {
 		.from(demoSession)
 		.where(eq(demoSession.tokenHash, tokenHash))
 		.limit(1);
-	return row && row.expiresAt > new Date() ? row : null;
+	return row !== undefined && row.expiresAt > new Date() ? row : null;
 }
 
-export async function createDemo(event: RequestEvent, locale: 'cs' | 'en') {
-	await cleanExpiredDemos();
+export async function createDemo(event: RequestEvent, locale: SupportedLocale) {
+	try {
+		await cleanExpiredDemos();
+	} catch (failure) {
+		console.error('[createDemo] expired demo cleanup failed', failure);
+	}
 	const database = getDb();
 	const now = new Date();
-	const expiresAt = new Date(now.getTime() + LIFETIME_MS);
+	const expiresAt = new Date(now.getTime() + DEMO_LIFETIME_MS);
 	const id = generateId(24);
 	const viewerUserId = generateId(24);
 	const token = randomBytes(32).toString('hex');
 	const fingerprint = clientHash(event);
-	await database.transaction(async (tx) => {
+	await database.transaction(async (transaction) => {
 		// A locked durable counter bounds concurrent public creation across Workers.
-		await tx
+		await transaction
 			.insert(demoClientThrottle)
 			.values({ clientHash: fingerprint, windowStartedAt: now })
 			.onConflictDoNothing();
-		const [throttle] = await tx
+		const [throttle] = await transaction
 			.select()
 			.from(demoClientThrottle)
 			.where(eq(demoClientThrottle.clientHash, fingerprint))
 			.for('update');
-		if (!throttle) {
+		if (throttle === undefined) {
 			error(503, 'Demo is temporarily unavailable');
 		}
 		const creations =
-			throttle.windowStartedAt.getTime() < now.getTime() - LIFETIME_MS
+			throttle.windowStartedAt.getTime() < now.getTime() - DEMO_CLIENT_WINDOW_MS
 				? 0
 				: throttle.creations;
-		if (creations >= 3) {
+		if (creations >= DEMO_CREATIONS_PER_CLIENT_WINDOW) {
 			error(429, 'Please try the demo later');
 		}
-		await tx
+		await transaction
 			.update(demoClientThrottle)
 			.set({
 				windowStartedAt: creations === 0 ? now : throttle.windowStartedAt,
 				creations: creations + 1,
 			})
 			.where(eq(demoClientThrottle.clientHash, fingerprint));
-		await tx.execute(sql`select pg_advisory_xact_lock(433)`);
-		const [{ count }] = await tx.select({ count: sql<number>`count(*)` }).from(demoSession);
-		if (Number(count) >= 500) {
+		await transaction.execute(
+			sql`select pg_advisory_xact_lock(${sql.raw(String(DEMO_CREATION_ADVISORY_LOCK_KEY))})`,
+		);
+		const [{ count }] = await transaction
+			.select({ count: sql<number>`count(*)` })
+			.from(demoSession);
+		if (Number(count) >= DEMO_SESSION_CAPACITY) {
 			error(503, 'Demo is temporarily unavailable');
 		}
-		await tx.insert(demoSession).values({
+		await transaction.insert(demoSession).values({
 			id,
 			tokenHash: digest(token),
 			viewerUserId,
@@ -148,41 +213,47 @@ export async function createDemo(event: RequestEvent, locale: 'cs' | 'en') {
 			createdAt: now,
 			expiresAt,
 		});
-		await tx.insert(user).values({
+		await transaction.insert(user).values({
 			id: viewerUserId,
 			name: 'Tereza Novotná',
-			email: `${viewerUserId}@demo.invalid`,
+			email: demoEmailAddress(viewerUserId),
 			demoSessionId: id,
 		});
-		await provisionDemoCatalog(tx, id, viewerUserId, locale, now);
+		await provisionDemoCatalog(transaction, id, viewerUserId, locale, now);
 	});
-	event.cookies.set(DEMO_COOKIE, token, {
+	event.cookies.set(DEMO_COOKIE_NAME, token, {
 		path: '/',
 		httpOnly: true,
 		secure: !import.meta.env.DEV,
 		sameSite: 'lax',
-		maxAge: (LIFETIME_MS / 1000) * 2,
+		maxAge: DEMO_COOKIE_MAX_AGE_SECONDS,
 	});
 	return { id, viewerUserId, expiresAt };
 }
 
-export async function resetDemo(sessionId: string, locale: 'cs' | 'en') {
-	await getDb().transaction(async (tx) => {
-		const [session] = await tx
+export async function resetDemo(sessionId: string, locale: SupportedLocale) {
+	await getDb().transaction(async (transaction) => {
+		const [session] = await transaction
 			.select()
 			.from(demoSession)
 			.where(eq(demoSession.id, sessionId))
 			.for('update');
-		if (!session || session.expiresAt <= new Date()) {
+		if (session === undefined || session.expiresAt <= new Date()) {
 			error(410, 'Demo has expired');
 		}
-		await deleteDemoReservations(tx, [session.id]);
-		await tx.delete(wishlist).where(eq(wishlist.demoSessionId, session.id));
-		await tx
+		await releaseDemoDependents(transaction, [session.id]);
+		await transaction.delete(wishlist).where(eq(wishlist.demoSessionId, session.id));
+		await transaction
 			.delete(user)
 			.where(
 				and(eq(user.demoSessionId, session.id), sql`${user.id} <> ${session.viewerUserId}`),
 			);
-		await provisionDemoCatalog(tx, session.id, session.viewerUserId, locale, new Date());
+		await provisionDemoCatalog(
+			transaction,
+			session.id,
+			session.viewerUserId,
+			locale,
+			new Date(),
+		);
 	});
 }

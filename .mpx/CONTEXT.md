@@ -137,7 +137,7 @@ unimplemented.
 | Profile & settings (identity, notifications, appearance)            | Implemented   | v1                                                          |
 | Recipient surprise protection and post-share edit rules             | Implemented   | v1                                                          |
 | Mark gift as received                                               | Implemented   | v1                                                          |
-| Isolated editable demo playground from landing                      | Planned       | [#433](https://github.com/MartinoPolo/prejemesi/issues/433) |
+| Isolated editable demo playground from landing                      | Implemented   | [#433](https://github.com/MartinoPolo/prejemesi/issues/433) |
 | Comments on gifts                                                   | Planned       | v2                                                          |
 | Mobile app + push notifications                                     | Planned       | v2                                                          |
 | Price tracking / price drop alerts                                  | Planned       | v2                                                          |
@@ -157,10 +157,10 @@ unimplemented.
 
 ## Key Constraints
 
-- The planned public demo is an isolated, temporary playground, not a shared real account; it must
-  preserve real sessions and prevent interaction with real data or outbound notifications. Confirmed
-  content, entry, expiry, and editing scope are in
-  [Public demo playground](DECISIONS.md#public-demo-playground-planned), tracked in
+- The public demo is an isolated, temporary playground, not a shared real account; it must preserve
+  real sessions and prevent interaction with real data or outbound notifications. Confirmed content,
+  entry, expiry, and editing scope are in
+  [Public demo playground](DECISIONS.md#public-demo-playground), tracked in
   [#433](https://github.com/MartinoPolo/prejemesi/issues/433).
 
 - Ordinary recipients receive no reservation/like data; disclosed self-promotion reveals

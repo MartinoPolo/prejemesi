@@ -151,7 +151,7 @@ sections for UI work. Historical reconciliation and review notes are in
   sessions, and shared verification storage; former magic-link users establish a password through
   reset.
 
-## Public demo playground (planned)
+## Public demo playground
 
 - 2026-09-25: Offer a private, editable playground per visitor, not a shared demo account. Start on
   Přehled as one fictional person with own, managed, and followed wishlists, without a persona
@@ -185,6 +185,13 @@ sections for UI work. Historical reconciliation and review notes are in
   returns signed-in users to their real dashboard and anonymous visitors to the landing page.
   Registration starts a clean real account with explicit notice that fictional data and demo edits
   do not transfer.
+- 2026-10-02: Bound public demo cost on the free tier with per-client creation throttling, a global
+  live-session cap, per-session edit/reset budgets that count failed requests, and per-session
+  wishlist/gift caps; values live in `src/lib/server/demo/constants.ts`. Expired sessions are swept
+  opportunistically from document traffic, off the response path.
+- 2026-10-02: The demo cookie outlives the session so a returning visitor sees the fresh-start page;
+  a stale cookie never blocks sign-in, registration, shared wishlist links, or other real routes,
+  while a live demo must be exited before signing in.
 
 ## Navigation & overview
 

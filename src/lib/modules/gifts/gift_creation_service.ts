@@ -1,6 +1,7 @@
 import { and, eq, isNull, sql } from 'drizzle-orm';
 import { getDb } from '$lib/server/db/index.js';
 import { wishlistScope, demoSessionId, isPreparedDemoImage } from '$lib/server/demo/scope.js';
+import { DEMO_GIFT_LIMIT } from '$lib/server/demo/constants.js';
 import { demoSession } from '$lib/server/db/auth.schema.js';
 import { error } from '@sveltejs/kit';
 import { gift } from '$lib/server/db/gift.schema.js';
@@ -95,7 +96,13 @@ export async function appendGiftsUsingTransaction(
 
 	const sessionId = demoSessionId();
 	if (sessionId !== null) {
-		if (input.gifts.some((item) => item.imageKey || !isPreparedDemoImage(item.imageUrl))) {
+		if (
+			input.gifts.some(
+				(item) =>
+					(item.imageKey != null && item.imageKey !== '') ||
+					!isPreparedDemoImage(item.imageUrl),
+			)
+		) {
 			error(403, 'Image uploads and image URLs are unavailable in the demo');
 		}
 		const [active] = await tx
@@ -103,7 +110,7 @@ export async function appendGiftsUsingTransaction(
 			.from(demoSession)
 			.where(eq(demoSession.id, sessionId))
 			.for('update');
-		if (!active || active.expiresAt <= new Date()) {
+		if (active === undefined || active.expiresAt <= new Date()) {
 			error(410, 'Demo has expired');
 		}
 		const [{ count }] = await tx
@@ -111,7 +118,7 @@ export async function appendGiftsUsingTransaction(
 			.from(gift)
 			.innerJoin(wishlist, eq(gift.wishlistId, wishlist.id))
 			.where(eq(wishlist.demoSessionId, sessionId));
-		if (Number(count) + input.gifts.length > 400) {
+		if (Number(count) + input.gifts.length > DEMO_GIFT_LIMIT) {
 			error(429, 'Demo gift limit reached');
 		}
 	}
