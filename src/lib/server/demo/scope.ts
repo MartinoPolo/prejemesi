@@ -34,3 +34,23 @@ export function rejectDemoOperation(): void {
 		error(403, 'This action is unavailable in the demo');
 	}
 }
+
+export function rejectDemoImageUpload(imageKey: string | null | undefined): void {
+	if (demoSessionId() !== null && (imageKey ?? '') !== '') {
+		error(403, 'Image uploads are unavailable in the demo');
+	}
+}
+
+/** Demo gifts may only show the prepared catalog images, never uploads or arbitrary URLs. */
+export function rejectDemoGiftImages(
+	images: ReadonlyArray<{ imageKey?: string | null; imageUrl?: string | null }>,
+): void {
+	if (
+		demoSessionId() !== null &&
+		images.some(
+			(image) => (image.imageKey ?? '') !== '' || !isPreparedDemoImage(image.imageUrl),
+		)
+	) {
+		error(403, 'Image uploads and image URLs are unavailable in the demo');
+	}
+}

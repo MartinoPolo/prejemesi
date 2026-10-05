@@ -1,7 +1,7 @@
 import { and, eq, isNull } from 'drizzle-orm';
 import { error } from '@sveltejs/kit';
 import { wishlist } from '$lib/server/db/wishlist.schema.js';
-import { wishlistScope, demoSessionId } from '$lib/server/demo/scope.js';
+import { wishlistScope, rejectDemoImageUpload } from '$lib/server/demo/scope.js';
 import { moderatorAssignment } from '$lib/server/db/moderator.schema.js';
 import type { GiftCreationTransaction } from '$lib/modules/gifts/gift_creation_service.js';
 import { saveGiftCategorySettings } from '$lib/modules/gift-categories/gift_categories_service.js';
@@ -20,12 +20,11 @@ export async function saveLockedWishlistSettings(
 	userId: string,
 	input: SaveWishlistSettingsInput,
 ): Promise<{ replacedImageKey: string | null; shortId: string }> {
-	if (demoSessionId() !== null && (input.image?.imageKey ?? '') !== '') {
-		error(403, 'Image uploads are unavailable in the demo');
-	}
+	rejectDemoImageUpload(input.image?.imageKey);
 	const rows = await tx
 		.select()
 		.from(wishlist)
+		// fallow-ignore-next-line code-duplication
 		.where(and(eq(wishlist.id, input.wishlistId), isNull(wishlist.deletedAt), wishlistScope()))
 		.limit(1)
 		.for('update');

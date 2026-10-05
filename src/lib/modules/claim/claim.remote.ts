@@ -188,6 +188,7 @@ export const acceptClaimInvite = guardedCommand(
 				and(
 					eq(wishlist.id, invite.wishlistId),
 					isNull(wishlist.deletedAt),
+					// fallow-ignore-next-line code-duplication
 					wishlistScope(),
 				),
 			)

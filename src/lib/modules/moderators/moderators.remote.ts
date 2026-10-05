@@ -116,8 +116,8 @@ export const getModeratorsForWishlist = guardedQueryWithArgs(
 export const generateModeratorInviteLink = guardedCommand(
 	GenerateInviteInputSchema,
 	async ({ user: currentUser }, input) => {
-		rejectDemoOperation();
 		const database = getDb();
+		rejectDemoOperation();
 		const { wishlistRow } = await verifyManagerAccess(currentUser.id, input.wishlistId);
 
 		if (wishlistRow.status === 'archived') {

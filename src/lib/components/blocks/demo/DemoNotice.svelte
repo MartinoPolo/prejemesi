@@ -22,6 +22,10 @@
 	const expired = $derived(now >= expiryTime);
 	const hoursLeft = $derived(Math.max(0, Math.ceil((expiryTime - now) / 3_600_000)));
 	const english = $derived(getLocale() === 'en');
+	const expiryDateLabel = $derived(
+		new Date(expiresAt).toLocaleString(english ? 'en-GB' : 'cs-CZ'),
+	);
+	const catalogLocaleLabel = $derived(catalogLocale === 'cs' ? 'Čeština' : 'English');
 
 	$effect(() => {
 		const delay = Math.max(0, expiryTime - Date.now());
@@ -85,6 +89,31 @@
 			error = 'exit';
 		}
 	}
+
+	// A pending reset or exit navigates away, so its dialog must not be dismissed mid-request.
+	function keepOpenWhilePending(event: Event) {
+		if (pending) {
+			event.preventDefault();
+		}
+	}
+
+	function changeCatalogLocale(value: string) {
+		if (value === 'cs' || value === 'en') {
+			catalogLocale = value;
+		}
+	}
+
+	function changeResetOpen(open: boolean) {
+		if (!pending) {
+			resetOpen = open;
+		}
+	}
+
+	function changeRegisterOpen(open: boolean) {
+		if (!pending) {
+			registerOpen = open;
+		}
+	}
 </script>
 
 {#if !expired}
@@ -93,7 +122,7 @@
 			<p class="min-w-0 text-sm text-foreground">
 				<strong>{m.demo_private()}</strong>
 				· {m.demo_ends({
-					date: new Date(expiresAt).toLocaleString(english ? 'en-GB' : 'cs-CZ'),
+					date: expiryDateLabel,
 					hours: String(hoursLeft),
 				})}
 			</p>
@@ -127,21 +156,12 @@
 		</div>
 	</div>
 
-	<Dialog.Root
-		bind:open={resetOpen}
-		onOpenChange={(open) => {
-			if (!pending) resetOpen = open;
-		}}
-	>
+	<Dialog.Root bind:open={resetOpen} onOpenChange={changeResetOpen}>
 		<Dialog.Content
 			size="lg"
 			showCloseButton={!pending}
-			onEscapeKeydown={(event) => {
-				if (pending) event.preventDefault();
-			}}
-			onInteractOutside={(event) => {
-				if (pending) event.preventDefault();
-			}}
+			onEscapeKeydown={keepOpenWhilePending}
+			onInteractOutside={keepOpenWhilePending}
 		>
 			<Dialog.Header>
 				<Dialog.Title>{m.demo_reset_title()}</Dialog.Title>
@@ -150,15 +170,9 @@
 			<label for="demo-catalog-language" class="text-sm font-semibold"
 				>{m.demo_catalog_language()}</label
 			>
-			<Select.Root
-				type="single"
-				value={catalogLocale}
-				onValueChange={(value) => {
-					if (value === 'cs' || value === 'en') catalogLocale = value;
-				}}
-			>
+			<Select.Root type="single" value={catalogLocale} onValueChange={changeCatalogLocale}>
 				<Select.Trigger id="demo-catalog-language" size="lg" disabled={pending}>
-					{catalogLocale === 'cs' ? 'Čeština' : 'English'}
+					{catalogLocaleLabel}
 				</Select.Trigger>
 				<Select.Content
 					><Select.Group>
@@ -185,21 +199,12 @@
 		</Dialog.Content>
 	</Dialog.Root>
 
-	<Dialog.Root
-		bind:open={registerOpen}
-		onOpenChange={(open) => {
-			if (!pending) registerOpen = open;
-		}}
-	>
+	<Dialog.Root bind:open={registerOpen} onOpenChange={changeRegisterOpen}>
 		<Dialog.Content
 			size="lg"
 			showCloseButton={!pending}
-			onEscapeKeydown={(event) => {
-				if (pending) event.preventDefault();
-			}}
-			onInteractOutside={(event) => {
-				if (pending) event.preventDefault();
-			}}
+			onEscapeKeydown={keepOpenWhilePending}
+			onInteractOutside={keepOpenWhilePending}
 		>
 			<Dialog.Header>
 				<Dialog.Title>{m.demo_register_title()}</Dialog.Title>

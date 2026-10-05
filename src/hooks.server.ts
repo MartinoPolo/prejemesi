@@ -224,6 +224,39 @@ function isHtmlDocumentRequest(event: Parameters<Handle>[0]['event']): boolean {
 }
 
 /**
+ * Decides which preferences need the authenticated user-row fallback. A demo always reads its
+ * persona's palette and depth from the database (the visitor's cookies belong to their real
+ * account) and keeps the visitor's current locale.
+ */
+function preferenceFallbacksFor(
+	event: Parameters<Handle>[0]['event'],
+	cookiePalette: string | undefined,
+	cookieDepthStyle: string | undefined,
+): { wantsLocale: boolean; wantsPalette: boolean; wantsDepthStyle: boolean } {
+	if (event.locals.demoSession !== undefined) {
+		return { wantsLocale: false, wantsPalette: true, wantsDepthStyle: true };
+	}
+	return {
+		wantsLocale: !hasExplicitUrlLocale(event.url) && event.url.pathname !== '/',
+		wantsPalette: !isPalette(cookiePalette),
+		wantsDepthStyle: !isDepthStyle(cookieDepthStyle),
+	};
+}
+
+/** The cookie mirror must keep reflecting the visitor's real account, never a demo persona. */
+function mirrorDepthStyleCookie(event: Parameters<Handle>[0]['event'], depthStyle: DepthStyle) {
+	if (event.locals.demoSession !== undefined) {
+		return;
+	}
+	event.cookies.set(DEPTH_STYLE_COOKIE_NAME, depthStyle, {
+		path: '/',
+		maxAge: DEPTH_STYLE_COOKIE_MAX_AGE_SECONDS,
+		httpOnly: false,
+		sameSite: 'lax',
+	});
+}
+
+/**
  * Resolves the viewer's locale, app palette, and depth style for HTML document
  * loads only. Locale starts from the request cookie and an authenticated account
  * preference can override it; palette and depth use their cookie mirrors as fast
@@ -250,11 +283,11 @@ const userPreferencesHandle: Handle = async ({ event, resolve }) => {
 	}
 
 	if (event.locals.user != null && isDatabaseConfigured(event) && isHtmlDocumentRequest(event)) {
-		const isDemo = event.locals.demoSession !== undefined;
-		const wantsLocale =
-			!isDemo && !hasExplicitUrlLocale(event.url) && event.url.pathname !== '/';
-		const wantsPalette = isDemo || !isPalette(cookiePalette);
-		const wantsDepthStyle = isDemo || !isDepthStyle(cookieDepthStyle);
+		const { wantsLocale, wantsPalette, wantsDepthStyle } = preferenceFallbacksFor(
+			event,
+			cookiePalette,
+			cookieDepthStyle,
+		);
 
 		if (wantsLocale || wantsPalette || wantsDepthStyle) {
 			try {
@@ -284,14 +317,7 @@ const userPreferencesHandle: Handle = async ({ event, resolve }) => {
 				}
 				if (wantsDepthStyle && isDepthStyle(preferences?.depthStyle)) {
 					depthStyle = preferences.depthStyle;
-					if (!isDemo) {
-						event.cookies.set(DEPTH_STYLE_COOKIE_NAME, depthStyle, {
-							path: '/',
-							maxAge: DEPTH_STYLE_COOKIE_MAX_AGE_SECONDS,
-							httpOnly: false,
-							sameSite: 'lax',
-						});
-					}
+					mirrorDepthStyleCookie(event, depthStyle);
 				}
 			} catch (err) {
 				console.error('[userPreferencesHandle] failed to read user preferences', err);

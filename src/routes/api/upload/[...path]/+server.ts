@@ -88,13 +88,18 @@ function getTargetFromPath(path: string): keyof typeof UPLOAD_TARGETS | null {
 	return null;
 }
 
-export const PUT: RequestHandler = async ({ params, request, locals }) => {
+function requireUploadUserId(locals: App.Locals): string {
 	if (locals.demoSession) {
 		error(403, 'Uploads are unavailable in the demo');
 	}
 	if (locals.user == null || locals.session == null) {
 		error(401, 'Authentication required');
 	}
+	return locals.user.id;
+}
+
+export const PUT: RequestHandler = async ({ params, request, locals }) => {
+	const userId = requireUploadUserId(locals);
 
 	const objectKey = params.path;
 	if (!objectKey) {
@@ -102,7 +107,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 	}
 
 	const tokenPayload = await extractAndVerifyToken(request);
-	validateTokenBinding(tokenPayload, locals.user.id, objectKey, TOKEN_PURPOSES.upload);
+	validateTokenBinding(tokenPayload, userId, objectKey, TOKEN_PURPOSES.upload);
 
 	const target = getTargetFromPath(objectKey);
 	if (!target) {
@@ -210,12 +215,7 @@ export const GET: RequestHandler = async ({ params }) => {
 };
 
 export const DELETE: RequestHandler = async ({ params, request, locals }) => {
-	if (locals.demoSession) {
-		error(403, 'Uploads are unavailable in the demo');
-	}
-	if (locals.user == null || locals.session == null) {
-		error(401, 'Authentication required');
-	}
+	const userId = requireUploadUserId(locals);
 
 	const objectKey = params.path;
 	if (!objectKey) {
@@ -223,7 +223,7 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 	}
 
 	const tokenPayload = await extractAndVerifyToken(request);
-	validateTokenBinding(tokenPayload, locals.user.id, objectKey, TOKEN_PURPOSES.delete);
+	validateTokenBinding(tokenPayload, userId, objectKey, TOKEN_PURPOSES.delete);
 
 	if (isR2Available()) {
 		try {

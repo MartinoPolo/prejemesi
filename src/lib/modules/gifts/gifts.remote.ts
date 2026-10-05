@@ -2,7 +2,7 @@ import * as v from 'valibot';
 import { eq, and, isNull, sql, count as drizzleCount, inArray, ne, or } from 'drizzle-orm';
 import { error, isHttpError } from '@sveltejs/kit';
 import { getDb } from '$lib/server/db/index.js';
-import { wishlistScope, demoSessionId, isPreparedDemoImage } from '$lib/server/demo/scope.js';
+import { wishlistScope, rejectDemoGiftImages } from '$lib/server/demo/scope.js';
 import { gift, giftCategory, reservation, giftLike } from '$lib/server/db/gift.schema.js';
 import { wishlist, priorityLevel } from '$lib/server/db/wishlist.schema.js';
 import { user } from '$lib/server/db/auth.schema.js';
@@ -467,12 +467,7 @@ async function notifyReserversOfEditedGiftsBestEffort(
 }
 
 export const updateGift = guardedCommand(UpdateGiftInputSchema, async ({ user }, input) => {
-	if (
-		demoSessionId() !== null &&
-		((input.imageKey ?? '') !== '' || !isPreparedDemoImage(input.imageUrl))
-	) {
-		error(403, 'Image uploads and image URLs are unavailable in the demo');
-	}
+	rejectDemoGiftImages([input]);
 	const database = getDb();
 
 	// Find the gift

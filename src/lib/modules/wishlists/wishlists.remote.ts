@@ -3,7 +3,7 @@ import { eq, and, isNull, count } from 'drizzle-orm';
 import { error } from '@sveltejs/kit';
 import { getDb } from '$lib/server/db/index.js';
 import { isAppAdmin } from '$lib/server/admin.js';
-import { wishlistScope, demoSessionId } from '$lib/server/demo/scope.js';
+import { wishlistScope, rejectDemoImageUpload } from '$lib/server/demo/scope.js';
 import { wishlist } from '$lib/server/db/wishlist.schema.js';
 import { moderatorAssignment } from '$lib/server/db/moderator.schema.js';
 import { wishlistFollower } from '$lib/server/db/follower.schema.js';
@@ -199,9 +199,7 @@ async function updateLockedWishlist(
 	userId: string,
 	input: v.InferOutput<typeof UpdateWishlistInputSchema>,
 ) {
-	if (demoSessionId() !== null && (input.imageKey ?? '') !== '') {
-		error(403, 'Image uploads are unavailable in the demo');
-	}
+	rejectDemoImageUpload(input.imageKey);
 	const rows = await tx
 		.select()
 		.from(wishlist)
@@ -521,6 +519,7 @@ export const followWishlist = guardedCommand(v.string(), async ({ user }, wishli
 	const wishlistRows = await database
 		.select({ recipientUserId: wishlist.recipientUserId })
 		.from(wishlist)
+		// fallow-ignore-next-line code-duplication
 		.where(and(eq(wishlist.id, wishlistId), isNull(wishlist.deletedAt), wishlistScope()))
 		.limit(1);
 

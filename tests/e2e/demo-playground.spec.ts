@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import postgres from 'postgres';
-import { test, expect, type BrowserContext } from '@playwright/test';
+import { test, expect, type BrowserContext, type Locator, type Page } from '@playwright/test';
 import {
 	waitForAppHydration,
 	registerViaApi,
@@ -80,166 +80,206 @@ test.afterAll(async () => {
 const desktop = { width: 1280, height: 800 };
 const mobile = { width: 390, height: 844 };
 
+type DemoLocale = 'cs' | 'en';
+
+async function enterPlaygroundFromLanding(page: Page, english: boolean) {
+	await page.setViewportSize(desktop);
+	await page.goto(english ? '/en' : '/');
+	await waitForAppHydration(page);
+	await expect(page.getByTestId('landing-demo')).toBeVisible();
+	await expect(page.getByTestId('landing-demo-pane-gifter')).toBeAttached();
+	await expect(
+		page.locator(`a[href$="${english ? '/en/register' : '/register'}"]`).first(),
+	).toBeVisible();
+	const heroEntry = page.getByRole('button', {
+		name: english ? 'Try demo' : 'Vyzkoušet demo',
+		exact: true,
+	});
+	const exampleEntry = page.getByRole('button', {
+		name: english ? 'Try the full demo' : 'Vyzkoušet celé demo',
+	});
+	await expect(heroEntry).toBeVisible();
+	await expect(exampleEntry).toBeVisible();
+	await page.setViewportSize(mobile);
+	await expect(page.getByTestId('landing-demo')).toBeVisible();
+	await expect(heroEntry).toBeVisible();
+	await expect(exampleEntry).toBeVisible();
+
+	// A rejected start stays on the landing page and can be retried; only the retry creates a session.
+	const entry = english ? exampleEntry : heroEntry;
+	await page.route('**/demo/start', async (route) => {
+		await route.fulfill({ status: 503, body: 'Unavailable' });
+	});
+	await entry.click();
+	await expect(entry.locator('..').getByRole('alert')).toBeVisible();
+	await page.unroute('**/demo/start');
+	await entry.click();
+	await expect(page).toHaveURL(/\/home$/);
+	await waitForAppHydration(page);
+	await rememberDemoSession(page.context());
+	const notice = page.getByTestId('demo-notice');
+	await expect(notice).toContainText(english ? 'left' : 'zbývá');
+	await expect(page.getByTestId('home-shelf').first()).toBeVisible();
+	await expect(notice).toBeVisible();
+	for (const action of english
+		? ['Reset', 'Exit', 'Register']
+		: ['Obnovit', 'Odejít', 'Registrovat se']) {
+		await expect(notice.getByRole('button', { name: action, exact: true })).toBeVisible();
+	}
+	await page.setViewportSize(desktop);
+	await expect(notice).toBeVisible();
+	return notice;
+}
+
+async function createPrivateWishlist(page: Page, locale: DemoLocale) {
+	const english = locale === 'en';
+	await page
+		.getByRole('button', { name: english ? /create/i : /vytvořit/i })
+		.first()
+		.click();
+	await page.locator('#wishlist-title').fill(`Demo test ${locale}`);
+	await page
+		.getByRole('dialog')
+		.getByRole('button', { name: english ? /create/i : /vytvořit/i })
+		.last()
+		.click();
+	await expect(page).toHaveURL(/\/w\//);
+	await expect(page.getByRole('heading', { name: `Demo test ${locale}` })).toBeVisible();
+	await page.reload();
+	await waitForAppHydration(page);
+	await expect(page.getByRole('heading', { name: `Demo test ${locale}` })).toBeVisible();
+}
+
+async function switchInterfaceLanguageWithinDemo(page: Page, locale: DemoLocale) {
+	const wishlistPath = new URL(page.url()).pathname;
+	await page.goto('/en/settings');
+	await waitForAppHydration(page);
+	await page
+		.getByRole('group', { name: 'Language' })
+		.getByRole('button', { name: 'Čeština' })
+		.click();
+	await expect(page).toHaveURL(/\/settings$/);
+	await page.goto(wishlistPath.replace('/en/w/', '/w/'));
+	await expect(page.getByRole('heading', { name: `Demo test ${locale}` })).toBeVisible();
+	await page.goto('/my-lists');
+	await expect(page.getByRole('link', { name: 'Little everyday joys' })).toBeVisible();
+	await page.goto('/settings');
+	await waitForAppHydration(page);
+	await page
+		.getByRole('group', { name: 'Jazyk' })
+		.getByRole('button', { name: 'English' })
+		.click();
+	await expect(page).toHaveURL(/\/en\/settings$/);
+	await page.goto(wishlistPath);
+	await waitForAppHydration(page);
+}
+
+async function cancelReset(page: Page, notice: Locator, locale: DemoLocale) {
+	const english = locale === 'en';
+	await notice.getByRole('button', { name: english ? 'Reset' : 'Obnovit' }).click();
+	const dialog = page.getByRole('dialog');
+	await expect(dialog).toContainText(english ? 'edits' : 'úpravy');
+	await dialog.getByRole('button', { name: english ? 'Cancel' : 'Zrušit' }).click();
+	await expect(page.getByRole('heading', { name: `Demo test ${locale}` })).toBeVisible();
+}
+
+async function resetAfterOneFailedAttempt(page: Page, notice: Locator, locale: DemoLocale) {
+	const english = locale === 'en';
+	const dialog = page.getByRole('dialog');
+	await notice.getByRole('button', { name: english ? 'Reset' : 'Obnovit' }).click();
+	if (english) {
+		await dialog.getByRole('button', { name: 'Sample content language' }).click();
+		await page.getByRole('option', { name: 'Čeština' }).click();
+	}
+	await failFirstResetRequest(page);
+	const confirm = dialog.getByRole('button', {
+		name: english ? 'Reset demo' : 'Obnovit demo',
+	});
+	await confirm.click();
+	await expect(dialog.getByRole('alert')).toContainText(english ? 'retry' : 'Zkuste');
+	await expect(page.getByRole('heading', { name: `Demo test ${locale}` })).toBeVisible();
+	await confirm.click();
+	await expect(page).toHaveURL(english ? /\/en\/home$/ : /\/home$/);
+	await expect(page.getByRole('heading', { name: `Demo test ${locale}` })).toHaveCount(0);
+	await page.unroute('**/demo/reset');
+}
+
+async function failFirstResetRequest(page: Page) {
+	let failedOnce = false;
+	await page.route('**/demo/reset', async (route) => {
+		if (route.request().method() === 'POST' && !failedOnce) {
+			failedOnce = true;
+			await route.fulfill({ status: 503, body: 'Unavailable' });
+		} else {
+			await route.continue();
+		}
+	});
+}
+
+async function expectCzechSampleCatalogAfterReset(page: Page, english: boolean) {
+	await page.goto(english ? '/en/my-lists' : '/my-lists');
+	await expect(page.getByRole('link', { name: 'Malé radosti' })).toBeVisible();
+	if (english) {
+		// The Czech sample catalog stays Czech under the English interface.
+		await expect(page.getByRole('heading', { name: 'My lists' })).toBeVisible();
+		await page.getByRole('link', { name: 'Malé radosti' }).first().click();
+		await expect(page).toHaveURL(/\/en\/w\//);
+		await expect(page.getByText('Keramická konvička').first()).toBeVisible();
+		await expect(page.getByText('Ceramic teapot')).toHaveCount(0);
+	}
+	await page.goto(english ? '/en' : '/');
+	await expect(page).toHaveURL(english ? /\/en\/home$/ : /\/home$/);
+	await waitForAppHydration(page);
+}
+
+async function leaveForRegistration(page: Page, notice: Locator) {
+	await notice.getByRole('button', { name: 'Register' }).click();
+	await expect(page.getByRole('dialog')).toContainText('will not transfer');
+	await page.getByRole('dialog').getByRole('button', { name: 'Cancel' }).click();
+	await notice.getByRole('button', { name: 'Register' }).click();
+	await page.getByRole('dialog').getByRole('button', { name: 'Continue' }).click();
+	await expect(page).toHaveURL(/\/en\/register$/);
+	await expect(
+		page
+			.context()
+			.cookies()
+			.then((cookies) => cookies.map((cookie) => cookie.name)),
+	).resolves.not.toContain(DEMO_COOKIE_NAME);
+	await page.goto('/en/home');
+	await expect(notice).toHaveCount(0);
+}
+
+async function expirePlayground(page: Page) {
+	await page.clock.fastForward(24 * 60 * 60 * 1000 + 60_000);
+	await expect(page.getByTestId('demo-expired')).toBeVisible();
+	await expect(page.getByRole('heading', { name: 'Platnost dema skončila' })).toBeFocused();
+	await expect(page.locator('.topbar')).toHaveCount(0);
+	await expect(page.locator('.app-content')).toHaveCount(0);
+	await page.getByTestId('demo-expired').getByRole('button', { name: 'Odejít' }).click();
+	await expect(page).toHaveURL(/\/$/);
+}
+
 for (const locale of ['cs', 'en'] as const) {
 	test(`landing entry and playground lifecycle in ${locale}`, async ({ page }) => {
 		const english = locale === 'en';
 		if (!english) {
 			await page.clock.install();
 		}
-		await page.setViewportSize(desktop);
-		await page.goto(english ? '/en' : '/');
-		await waitForAppHydration(page);
-		await expect(page.getByTestId('landing-demo')).toBeVisible();
-		await expect(page.getByTestId('landing-demo-pane-gifter')).toBeAttached();
-		await expect(
-			page.locator(`a[href$="${english ? '/en/register' : '/register'}"]`).first(),
-		).toBeVisible();
-		const heroEntry = page.getByRole('button', {
-			name: english ? 'Try demo' : 'Vyzkoušet demo',
-			exact: true,
-		});
-		const exampleEntry = page.getByRole('button', {
-			name: english ? 'Try the full demo' : 'Vyzkoušet celé demo',
-		});
-		await expect(heroEntry).toBeVisible();
-		await expect(exampleEntry).toBeVisible();
-		await page.setViewportSize(mobile);
-		await expect(page.getByTestId('landing-demo')).toBeVisible();
-		await expect(heroEntry).toBeVisible();
-		await expect(exampleEntry).toBeVisible();
-
-		// A rejected start stays on the landing page and can be retried; only the retry creates a session.
-		const entry = english ? exampleEntry : heroEntry;
-		await page.route('**/demo/start', async (route) => {
-			await route.fulfill({ status: 503, body: 'Unavailable' });
-		});
-		await entry.click();
-		await expect(entry.locator('..').getByRole('alert')).toBeVisible();
-		await page.unroute('**/demo/start');
-		await entry.click();
-		await expect(page).toHaveURL(/\/home$/);
-		await waitForAppHydration(page);
-		await rememberDemoSession(page.context());
-		const notice = page.getByTestId('demo-notice');
-		await expect(notice).toContainText(english ? 'left' : 'zbývá');
-		await expect(page.getByTestId('home-shelf').first()).toBeVisible();
-		await expect(notice).toBeVisible();
-		for (const action of english
-			? ['Reset', 'Exit', 'Register']
-			: ['Obnovit', 'Odejít', 'Registrovat se']) {
-			await expect(notice.getByRole('button', { name: action, exact: true })).toBeVisible();
-		}
-		await page.setViewportSize(desktop);
-		await expect(notice).toBeVisible();
+		const notice = await enterPlaygroundFromLanding(page, english);
 
 		// An ordinary new list is private and survives a reload; cancelling Reset preserves it.
-		await page
-			.getByRole('button', { name: english ? /create/i : /vytvořit/i })
-			.first()
-			.click();
-		await page.locator('#wishlist-title').fill(`Demo test ${locale}`);
-		await page
-			.getByRole('dialog')
-			.getByRole('button', { name: english ? /create/i : /vytvořit/i })
-			.last()
-			.click();
-		await expect(page).toHaveURL(/\/w\//);
-		await expect(page.getByRole('heading', { name: `Demo test ${locale}` })).toBeVisible();
-		await page.reload();
-		await waitForAppHydration(page);
-		await expect(page.getByRole('heading', { name: `Demo test ${locale}` })).toBeVisible();
+		await createPrivateWishlist(page, locale);
 		if (english) {
-			const wishlistPath = new URL(page.url()).pathname;
-			await page.goto('/en/settings');
-			await waitForAppHydration(page);
-			await page
-				.getByRole('group', { name: 'Language' })
-				.getByRole('button', { name: 'Čeština' })
-				.click();
-			await expect(page).toHaveURL(/\/settings$/);
-			await page.goto(wishlistPath.replace('/en/w/', '/w/'));
-			await expect(page.getByRole('heading', { name: `Demo test ${locale}` })).toBeVisible();
-			await page.goto('/my-lists');
-			await expect(page.getByRole('link', { name: 'Little everyday joys' })).toBeVisible();
-			await page.goto('/settings');
-			await waitForAppHydration(page);
-			await page
-				.getByRole('group', { name: 'Jazyk' })
-				.getByRole('button', { name: 'English' })
-				.click();
-			await expect(page).toHaveURL(/\/en\/settings$/);
-			await page.goto(wishlistPath);
-			await waitForAppHydration(page);
+			await switchInterfaceLanguageWithinDemo(page, locale);
 		}
-		await notice.getByRole('button', { name: english ? 'Reset' : 'Obnovit' }).click();
-		const dialog = page.getByRole('dialog');
-		await expect(dialog).toContainText(english ? 'edits' : 'úpravy');
-		await dialog.getByRole('button', { name: english ? 'Cancel' : 'Zrušit' }).click();
-		await expect(page.getByRole('heading', { name: `Demo test ${locale}` })).toBeVisible();
-
-		await notice.getByRole('button', { name: english ? 'Reset' : 'Obnovit' }).click();
-		if (english) {
-			await dialog.getByRole('button', { name: 'Sample content language' }).click();
-			await page.getByRole('option', { name: 'Čeština' }).click();
-		}
-		let failedOnce = false;
-		await page.route('**/demo/reset', async (route) => {
-			if (route.request().method() === 'POST' && !failedOnce) {
-				failedOnce = true;
-				await route.fulfill({ status: 503, body: 'Unavailable' });
-			} else {
-				await route.continue();
-			}
-		});
-		const confirm = dialog.getByRole('button', {
-			name: english ? 'Reset demo' : 'Obnovit demo',
-		});
-		await confirm.click();
-		await expect(dialog.getByRole('alert')).toContainText(english ? 'retry' : 'Zkuste');
-		await expect(page.getByRole('heading', { name: `Demo test ${locale}` })).toBeVisible();
-		await confirm.click();
-		await expect(page).toHaveURL(english ? /\/en\/home$/ : /\/home$/);
-		await expect(page.getByRole('heading', { name: `Demo test ${locale}` })).toHaveCount(0);
-		await page.unroute('**/demo/reset');
-		await page.goto(english ? '/en/my-lists' : '/my-lists');
-		await expect(page.getByRole('link', { name: 'Malé radosti' })).toBeVisible();
-		if (english) {
-			// The Czech sample catalog stays Czech under the English interface.
-			await expect(page.getByRole('heading', { name: 'My lists' })).toBeVisible();
-			await page.getByRole('link', { name: 'Malé radosti' }).first().click();
-			await expect(page).toHaveURL(/\/en\/w\//);
-			await expect(page.getByText('Keramická konvička').first()).toBeVisible();
-			await expect(page.getByText('Ceramic teapot')).toHaveCount(0);
-		}
-		await page.goto(english ? '/en' : '/');
-		await expect(page).toHaveURL(english ? /\/en\/home$/ : /\/home$/);
-		await waitForAppHydration(page);
+		await cancelReset(page, notice, locale);
+		await resetAfterOneFailedAttempt(page, notice, locale);
+		await expectCzechSampleCatalogAfterReset(page, english);
 
 		if (english) {
-			await notice.getByRole('button', { name: 'Register' }).click();
-			await expect(page.getByRole('dialog')).toContainText('will not transfer');
-			await page.getByRole('dialog').getByRole('button', { name: 'Cancel' }).click();
-			await notice.getByRole('button', { name: 'Register' }).click();
-			await page.getByRole('dialog').getByRole('button', { name: 'Continue' }).click();
-			await expect(page).toHaveURL(/\/en\/register$/);
-			await expect(
-				page
-					.context()
-					.cookies()
-					.then((cookies) => cookies.map((cookie) => cookie.name)),
-			).resolves.not.toContain(DEMO_COOKIE_NAME);
-			await page.goto('/en/home');
-			await expect(notice).toHaveCount(0);
+			await leaveForRegistration(page, notice);
 		} else {
-			await page.clock.fastForward(24 * 60 * 60 * 1000 + 60_000);
-			await expect(page.getByTestId('demo-expired')).toBeVisible();
-			await expect(
-				page.getByRole('heading', { name: 'Platnost dema skončila' }),
-			).toBeFocused();
-			await expect(page.locator('.topbar')).toHaveCount(0);
-			await expect(page.locator('.app-content')).toHaveCount(0);
-			await page.getByTestId('demo-expired').getByRole('button', { name: 'Odejít' }).click();
-			await expect(page).toHaveURL(/\/$/);
+			await expirePlayground(page);
 		}
 	});
 }

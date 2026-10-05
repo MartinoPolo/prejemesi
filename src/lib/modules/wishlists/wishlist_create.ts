@@ -5,9 +5,7 @@ import { moderatorAssignment } from '$lib/server/db/moderator.schema.js';
 import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
 import { DEFAULT_PALETTE, type Palette } from '$lib/theme/palettes.js';
 import { demoSessionId } from '$lib/server/demo/scope.js';
-import { DEMO_WISHLIST_LIMIT } from '$lib/server/demo/constants.js';
-import { demoSession } from '$lib/server/db/auth.schema.js';
-import { eq, sql } from 'drizzle-orm';
+import { enforceDemoWishlistLimit } from '$lib/server/demo/limits.js';
 import {
 	DEFAULT_PRIORITY_LEVELS,
 	DEFAULT_WISHLIST_THEME,
@@ -50,21 +48,7 @@ export async function seedNewWishlist(
 	const trimmedDescription = input.description?.trim() ?? '';
 	const sessionId = demoSessionId();
 	if (sessionId !== null) {
-		const [active] = await tx
-			.select()
-			.from(demoSession)
-			.where(eq(demoSession.id, sessionId))
-			.for('update');
-		if (active === undefined || active.expiresAt <= new Date()) {
-			error(410, 'Demo has expired');
-		}
-		const [{ count }] = await tx
-			.select({ count: sql<number>`count(*)` })
-			.from(wishlist)
-			.where(eq(wishlist.demoSessionId, sessionId));
-		if (Number(count) >= DEMO_WISHLIST_LIMIT) {
-			error(429, 'Demo wishlist limit reached');
-		}
+		await enforceDemoWishlistLimit(tx, sessionId);
 	}
 
 	const [created] = await tx

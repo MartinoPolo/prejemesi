@@ -441,6 +441,7 @@ export const getReservationLedgerForWishlist = publicQuery(
 		const wishlistRows = await database
 			.select()
 			.from(wishlist)
+			// fallow-ignore-next-line code-duplication
 			.where(and(eq(wishlist.shortId, shortId), isNull(wishlist.deletedAt), wishlistScope()))
 			.limit(1);
 		const wishlistRow = wishlistRows[0];

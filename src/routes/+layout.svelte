@@ -38,25 +38,31 @@
 		};
 	});
 
+	const modesSavedBeforeDemo = new Map<string, 'light' | 'dark' | 'system'>([
+		['"light"', 'light'],
+		['"dark"', 'dark'],
+		['"system"', 'system'],
+	]);
+
+	function restoreModeSavedBeforeDemo() {
+		const savedMode = localStorage.getItem('prejemesi-mode-before-demo');
+		if (savedMode === null) {
+			return;
+		}
+		const restoredMode = modesSavedBeforeDemo.get(savedMode);
+		setMode(restoredMode ?? 'system');
+		if (restoredMode === undefined) {
+			localStorage.removeItem(modeStorageKey.current);
+		}
+		localStorage.removeItem('prejemesi-mode-before-demo');
+	}
+
 	// afterNavigate fires after SvelteKit applies <svelte:head><title> from the page,
 	// so we can safely prepend without the page overwriting us again.
 	// Port is read here (browser-only) so each worktree's port is included.
 	afterNavigate(() => {
 		if (page.data.demoExpiresAt == null) {
-			const savedMode = localStorage.getItem('prejemesi-mode-before-demo');
-			if (savedMode !== null) {
-				if (savedMode === '"light"') {
-					setMode('light');
-				} else if (savedMode === '"dark"') {
-					setMode('dark');
-				} else if (savedMode === '"system"') {
-					setMode('system');
-				} else {
-					setMode('system');
-					localStorage.removeItem(modeStorageKey.current);
-				}
-				localStorage.removeItem('prejemesi-mode-before-demo');
-			}
+			restoreModeSavedBeforeDemo();
 		}
 		window.dispatchEvent(
 			new CustomEvent(SENTRY_REPLAY_NAVIGATION_EVENT, { detail: window.location.href }),
