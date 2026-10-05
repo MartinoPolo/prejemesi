@@ -20,7 +20,7 @@ export async function saveLockedWishlistSettings(
 	userId: string,
 	input: SaveWishlistSettingsInput,
 ): Promise<{ replacedImageKey: string | null; shortId: string }> {
-	if (demoSessionId() !== null && input.image?.imageKey) {
+	if (demoSessionId() !== null && (input.image?.imageKey ?? '') !== '') {
 		error(403, 'Image uploads are unavailable in the demo');
 	}
 	const rows = await tx

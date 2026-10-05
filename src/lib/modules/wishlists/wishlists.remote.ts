@@ -199,7 +199,7 @@ async function updateLockedWishlist(
 	userId: string,
 	input: v.InferOutput<typeof UpdateWishlistInputSchema>,
 ) {
-	if (demoSessionId() !== null && input.imageKey) {
+	if (demoSessionId() !== null && (input.imageKey ?? '') !== '') {
 		error(403, 'Image uploads are unavailable in the demo');
 	}
 	const rows = await tx

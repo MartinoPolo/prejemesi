@@ -467,7 +467,10 @@ async function notifyReserversOfEditedGiftsBestEffort(
 }
 
 export const updateGift = guardedCommand(UpdateGiftInputSchema, async ({ user }, input) => {
-	if (demoSessionId() !== null && (input.imageKey || !isPreparedDemoImage(input.imageUrl))) {
+	if (
+		demoSessionId() !== null &&
+		((input.imageKey ?? '') !== '' || !isPreparedDemoImage(input.imageUrl))
+	) {
 		error(403, 'Image uploads and image URLs are unavailable in the demo');
 	}
 	const database = getDb();

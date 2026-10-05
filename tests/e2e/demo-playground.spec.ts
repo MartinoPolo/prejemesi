@@ -43,7 +43,7 @@ test.afterAll(async () => {
 	const database = postgres(databaseUrl, { max: 1, connect_timeout: 5 });
 	try {
 		const hashes = [...ownedTokenHashes];
-		let ownedSessions: { client_hash: string }[] = [];
+		let ownedSessions: { clientHash: string }[] = [];
 		if (hashes.length > 0) {
 			await database`
 				delete from reservation where gift_id in (
@@ -52,13 +52,14 @@ test.afterAll(async () => {
 					where s.token_hash in ${database(hashes)}
 				)
 			`;
-			ownedSessions = await database<{ client_hash: string }[]>`
-				delete from demo_session where token_hash in ${database(hashes)} returning client_hash
+			ownedSessions = await database<{ clientHash: string }[]>`
+				delete from demo_session where token_hash in ${database(hashes)}
+				returning client_hash as "clientHash"
 			`;
 		}
 		const ownedCounts = new Map<string, number>();
-		for (const { client_hash } of ownedSessions) {
-			ownedCounts.set(client_hash, (ownedCounts.get(client_hash) ?? 0) + 1);
+		for (const { clientHash } of ownedSessions) {
+			ownedCounts.set(clientHash, (ownedCounts.get(clientHash) ?? 0) + 1);
 		}
 		for (const [clientHash, count] of ownedCounts) {
 			await database`

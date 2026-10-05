@@ -16,18 +16,18 @@ vi.mock('$env/dynamic/private', () => ({
 	},
 }));
 vi.mock('$app/server', () => {
-	const remote = (type: string, handler: (...arguments_: never[]) => unknown) => {
-		const callable = (...arguments_: never[]) => handler(...arguments_);
+	const remote = (type: string, handler: (...handlerArguments: never[]) => unknown) => {
+		const callable = (...handlerArguments: never[]) => handler(...handlerArguments);
 		Object.assign(callable, { __: { type } });
 		return callable;
 	};
 	return {
 		getRequestEvent: vi.fn(),
-		query: vi.fn((...arguments_: unknown[]) =>
-			remote('query', arguments_.at(-1) as (...arguments_: never[]) => unknown),
+		query: vi.fn((...handlerArguments: unknown[]) =>
+			remote('query', handlerArguments.at(-1) as (...handlerArguments: never[]) => unknown),
 		),
-		command: vi.fn((...arguments_: unknown[]) =>
-			remote('command', arguments_.at(-1) as (...arguments_: never[]) => unknown),
+		command: vi.fn((...handlerArguments: unknown[]) =>
+			remote('command', handlerArguments.at(-1) as (...handlerArguments: never[]) => unknown),
 		),
 	};
 });

@@ -9,7 +9,9 @@ export const POST: RequestHandler = async (event) => {
 	throw redirect(
 		303,
 		localizeInternalHref(
-			(event.locals.realUser ?? event.locals.user) ? resolve('/home') : resolve('/'),
+			event.locals.realUser !== undefined || event.locals.user !== undefined
+				? resolve('/home')
+				: resolve('/'),
 			getActiveLocaleForUrl(event.url),
 		),
 	);

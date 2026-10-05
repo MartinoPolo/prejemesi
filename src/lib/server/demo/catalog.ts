@@ -21,15 +21,18 @@ export interface DemoCatalogWishlist {
 	}>;
 }
 
-type Localized = { cs: string; en: string };
-type CatalogItem = {
+interface Localized {
+	cs: string;
+	en: string;
+}
+interface CatalogItem {
 	image: string;
 	name: Localized;
 	description: Localized;
 	category: Localized;
 	price: number;
 	search: string;
-};
+}
 
 const categories = {
 	books: { cs: 'Knihy', en: 'Books' },
