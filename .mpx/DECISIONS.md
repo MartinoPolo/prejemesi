@@ -225,8 +225,8 @@ sections for UI work. Historical reconciliation and review notes are in
   alongside priority, price, name, and creation date with primary/secondary criteria.
 - 2026-05-30: Source links are immediately accessible in every gift view as an external-link
   affordance and readable label/domain, not hidden in detail; no-link gifts show muted “Bez odkazu”.
-  Multiple links stay with the gift content, and quantity is beside the title; only authorized
-  viewers see the reserved portion.
+  Multiple links stay with the gift content; only authorized viewers see the reserved portion of a
+  quantity.
 - 2026-07-10: The wishlist header is a spiral notebook with a taped, square polaroid and a desktop
   sticky-note countdown; narrow layouts use a countdown chip, no date hides it, and passed dates
   show “proběhlo”. Do not stack a separate full-bleed hero above it.
@@ -246,9 +246,9 @@ sections for UI work. Historical reconciliation and review notes are in
   heading; správci keep the own-reservation pin but do not sink other reservations. Recipient-only
   ordering never depends on reservation state; selected sorting applies inside each band, with
   received gifts final.
-- 2026-08-07: Card and list reserved overlays share the full-text “Rezervováno” sticker, crisp above
-  the faded image; správci additionally see names. Do not replace that signal with an ambiguous
-  check-only icon.
+- 2026-08-07: Card and list reservation states use full-text state badges, crisp above the faded
+  image; správci read a single reserver name inside the same badge. Do not replace that signal with
+  an ambiguous check-only icon.
 - 2026-08-12: Received/unreceived is the primary manager browse action; marking received keeps the
   gift visible by enabling the received filter. Fully reserved gifts do not need a redundant
   disabled reserve button; privileged release belongs in detail/editor.
@@ -285,21 +285,16 @@ sections for UI work. Historical reconciliation and review notes are in
 - 2026-09-12: Keep active mobile filter pills inside the Display sheet with Reset next to its Filter
   selector, not in another sticky toolbar row. The closed toolbar may show the count; this resolves
   the September 10 request for visible active filters without increasing sticky height.
-- 2026-09-14: Image-bearing Card/List views share eligible category, priority, received/reserved,
-  and authorized reservation-identity overlays across desktop/mobile, including image placeholders;
-  assigned categories go top-left and reservation identity stays with its state overlay, not
-  duplicated in the content column. Authorized viewers may see a single reserver's name; multiple
-  reservers use a localized generic summary instead of listing names. Preserve server-derived
-  privacy capabilities and keep Compact image-free. Validate crowded valid states in focused mockups
-  before implementation.
-- 2026-09-14: Keep applicable gift quantity outside the title clamp, aligned against the first title
-  line using typography-derived slots. Grid Like uses the image/card top-right with a separate
-  wrapping category lane; List Like stays beside the title. Preserve the ghost heart/count and
-  accessible targets.
-- 2026-09-14: Center gift state badges and authorized identity as one combined group on the image; a
-  lone state remains at its center, independent of edge badges. Category stays top-left and priority
-  bottom-left, as finalized in the gift-hierarchy design approval. Its badge styling is schematic
-  and must not replace the actual shared badge components.
+- 2026-09-14: Image-bearing Card/List views share eligible category, priority, received/reserved
+  state badges across desktop/mobile, including image placeholders; assigned categories go top-left
+  and an authorized reserver name stays inside its state badge, not duplicated in the content
+  column. Authorized viewers may see a single reserver's name; multiple reservers use a localized
+  generic summary instead of listing names. Preserve server-derived privacy capabilities and keep
+  Compact image-free. Validate crowded valid states in focused mockups before implementation.
+- 2026-09-14: Center gift state badges, including any authorized reserver name, as one group on the
+  image; a lone state remains at its center, independent of edge badges. Category stays top-left and
+  priority bottom-left, as finalized in the gift-hierarchy design approval. Its badge styling is
+  schematic and must not replace the actual shared badge components.
 - 2026-09-14: Gift-hierarchy mockups are approved except for their broken mobile List composition;
   agents must not copy its grid-like stacking or prototype dimension script. Preserve genuine mobile
   List rows and shared crop geometry, retaining only necessary existing accessibility fallbacks for
@@ -312,11 +307,11 @@ sections for UI work. Historical reconciliation and review notes are in
   available. Retain the top-left grip's small visible surface inside its larger hit target; approved
   mockups are not evidence that persistence, dragging, or positioning defects are fixed.
 
-- 2026-09-15: List and mobile Card content follow title → description → link badges and price →
+- 2026-09-15: List and mobile Card content follow title → description → source links and price →
   bottom-right actions. Titles and descriptions flow together without reserving a blank second title
   line; mobile Card titles allow two lines, desktop List one line with ellipsis, and mobile List two
   lines. Use 16 px mobile and 24 px desktop titles with full names available in detail and
-  accessible naming. Keep short descriptions immediately below titles and source badges visible on
+  accessible naming. Keep short descriptions immediately below titles and source links visible on
   mobile. Place links left and compact prices right, wrapping prices below on collision; keep prices
   in readable ink rather than red action colors.
 - 2026-09-16: Desktop Card content aligns across the displayed collection, not only within each grid
@@ -328,12 +323,12 @@ sections for UI work. Historical reconciliation and review notes are in
 - 2026-09-16: Desktop Card secondary actions may move into More while primary actions and relevant
   Received/Bought controls stay visible, subject to existing capabilities. Price must have a stable
   position independent of link count; flowing it horizontally after source links is rejected. Put
-  price in the content directly below link badges on its own left-aligned line, above right-aligned
-  actions, so its width cannot push buttons around. Content and actions share horizontal card
-  insets; image-corner overlays retain their geometry-specific positions. Omit the action separator.
-  Shared card height must shrink to the minimum justified by current content after option changes,
-  never retain space from previous measurements. Role-specific overflow mappings remain illustrated
-  in `designs/gift-desktop-alignment/DESIGN_BRIEF_GIFT_DESKTOP_ALIGNMENT.md`.
+  price in the content directly below source links on its own left-aligned line, above right-aligned
+  actions, so its width cannot push buttons around. Image-corner overlays retain their
+  geometry-specific positions. Omit the action separator. Shared card height must shrink to the
+  minimum justified by current content after option changes, never retain space from previous
+  measurements. Role-specific overflow mappings remain illustrated in
+  `designs/gift-desktop-alignment/DESIGN_BRIEF_GIFT_DESKTOP_ALIGNMENT.md`.
 - 2026-09-16: Mobile Card and List titles and descriptions show at most two lines, with full text
   accessible in detail. Mobile action lanes never wrap: move eligible secondary actions into More
   when buttons cannot fit, restoring them when space returns. Keep Reserve visible ahead of Received
@@ -350,11 +345,19 @@ sections for UI work. Historical reconciliation and review notes are in
   frames; tall content or overlays may make individual frames portrait without equalizing rows
   across gifts or groups. Desktop text stays one-line.
 - 2026-09-24: Unavailable image-bearing gifts use the approved 50% content/secondary-badge treatment
-  with softened borders, shadows and image/body separators; action controls and state/authorized
-  identity overlays stay crisp. Replace the image veil rather than stacking fades, preserve existing
-  dimming eligibility/privacy and image-free Compact, and keep separators visible in both states.
-  The approved visual reference and implementation handoff are in
+  with softened borders, shadows and image/body separators; action controls and state badges stay
+  crisp. Replace the image veil rather than stacking fades, preserve existing dimming
+  eligibility/privacy and image-free Compact, and keep separators visible in both states. The
+  approved visual reference and implementation handoff are in
   `designs/unavailable-gift-comparison/`; design approval is not an accessibility certification.
+- 2026-10-01: Desktop Card content uses a wider inset than its footer, with equal title top and
+  start padding; desktop List, mobile, and footers keep the nested-corner inset. Received stays
+  adjacent to Reserve/Cancel and More (#420).
+- 2026-10-02: Keep applicable gift quantity outside the title clamp. Card and `sm`+ List align it
+  against the first title line using typography-derived slots; below `sm`, List shows it after the
+  price so narrow titles keep their room. Grid Like uses the image/card top-right with a separate
+  wrapping category lane; List Like stays beside the title. Preserve the ghost heart/count and
+  accessible targets.
 
 ## Forms & settings
 
@@ -461,12 +464,11 @@ sections for UI work. Historical reconciliation and review notes are in
   triggers share contextual height, radius, and icon sizing; selection controls use button-sized
   visible surfaces. Preserve semantic primary/outline/ghost emphasis rather than forcing identical
   intent on neighboring controls.
-- 2026-09-14: Equivalent adjacent-action groups use an 8 px gap on desktop and mobile; section
-  spacing remains distinct. Align header brand/avatar outer visible edges, shell, hero, toolbar, and
-  gift surfaces to the wishlist content container's centered max-width and 12 px mobile / 16 px
-  desktop gutters, not internal notebook/form padding or shadow extents. Keep shadow depth
-  consistent for the viewport/preference, allow additional clearance only where shadows require it,
-  and separate accessible hit areas from visible geometry; nested corners follow `AGENTS.md`.
+- 2026-09-14: Align header brand/avatar outer visible edges, shell, hero, toolbar, and gift surfaces
+  to the wishlist content container's centered max-width and 12 px mobile / 16 px desktop gutters,
+  not internal notebook/form padding or shadow extents. Keep shadow depth consistent for the
+  viewport/preference, allow additional clearance only where shadows require it, and separate
+  accessible hit areas from visible geometry; nested corners follow `AGENTS.md`.
 - 2026-09-14: Shared sizing variants own icon dimensions and consistent parent padding/insets,
   corner geometry, and shadow treatment; audit app-wide usage rather than patching individual call
   sites. Reuse shared components instead of new raw controls or one-off styling. Maintain a
@@ -482,11 +484,6 @@ sections for UI work. Historical reconciliation and review notes are in
   identities. Use `brand` for colored text/icons on dark surfaces and reserve `primary` with
   `primary-foreground` for filled controls. Tune the shared CSS derivation directly in the app
   before adding choices.
-- 2026-09-16: Use full resting-shadow allowance for gift action-container bottom/right nesting and
-  wishlist toolbar clearance across soft, ink and black depth modes. Top/left nesting remains
-  face-relative; use rendered borders and shared radius/offset tokens. Keep semantic interaction
-  owners stationary and toolbar faces aligned, with no hover-driven padding or control-height
-  changes. This does not adopt the experiment's mobile Like relocation or wrapped action lanes.
 - 2026-09-21: The gift view switcher uses a scoped connected accent backing with one ordinary
   resting shadow and a Button face only on the selected segment. Keep the switcher static on hover
   and press; preserve default segmented-toggle presentation for other consumers.
@@ -501,6 +498,10 @@ sections for UI work. Historical reconciliation and review notes are in
   duration cap. Preserve reduced-motion handling, existing view-switch effects and hover behavior;
   active dragging follows the pointer without a speed limit. Interrupted runs must hand off from
   their current visual positions without leaking overlays or stealing focus.
+- 2026-10-02: Spacing beside elevated elements is a standard gap plus a depth clearance equal to the
+  shadow offset for Ink and Black and none for Soft. Adjacent elevated controls use
+  `--nested-control-gap` in `src/app.css`; container insets add the clearance on shadowed edges
+  only, and spacing never changes on hover.
 
 ## Images & cropping
 

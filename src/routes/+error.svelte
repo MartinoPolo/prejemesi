@@ -25,7 +25,7 @@
 </svelte:head>
 
 <AuthFormCard title={heading} subtitle={description}>
-	<div class="flex flex-wrap gap-2">
+	<div class="flex flex-wrap gap-(--nested-control-gap)">
 		{#if !isNotFound}
 			<Button onclick={reloadPage}>{m.error_page_retry()}</Button>
 		{/if}

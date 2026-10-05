@@ -21,6 +21,7 @@ import {
 } from './gift_card.test_fixtures.js';
 
 const DESKTOP_CARD_HOST_WIDTH = 360;
+const WIDE_CARD_HOST_WIDTH = 560;
 const MOBILE_CARD_HOST_WIDTH = 296;
 const NARROW_OVERFLOW_CARD_HOST_WIDTH = 210;
 
@@ -153,9 +154,14 @@ describe('GiftCard footer alignment (issues #255, #420)', () => {
 			expectedActions: [MORE_ACTION_SELECTOR],
 		},
 		{
-			name: 'desktop archived visitor Bought and Cancel reservation',
-			props: { gift: makeVisitorGift(), role: WISHLIST_ROLES.visitor, isArchived: true },
+			name: 'desktop visitor Bought and Cancel reservation',
+			props: { gift: makeVisitorGift(), role: WISHLIST_ROLES.visitor },
 			expectedActions: [bought, RESERVE_ACTION_SELECTOR],
+		},
+		{
+			name: 'desktop archived visitor Cancel reservation without Bought',
+			props: { gift: makeVisitorGift(), role: WISHLIST_ROLES.visitor, isArchived: true },
+			expectedActions: [RESERVE_ACTION_SELECTOR],
 		},
 		{
 			name: 'desktop visitor Reserve and More',
@@ -172,13 +178,25 @@ describe('GiftCard footer alignment (issues #255, #420)', () => {
 			],
 		},
 		{
-			name: 'desktop manager Received, Cancel reservation and More',
+			name: 'wide manager Bought, Received, Cancel reservation and More',
+			width: WIDE_CARD_HOST_WIDTH,
+			props: { gift: makeVisitorGift(), role: WISHLIST_ROLES.moderator, onmore: noop },
+			expectedActions: [
+				bought,
+				RECEIVED_ACTION_SELECTOR,
+				RESERVE_ACTION_SELECTOR,
+				MORE_ACTION_SELECTOR,
+			],
+		},
+		{
+			name: 'desktop manager Received, Cancel reservation and More with Bought overflowed',
 			props: { gift: makeVisitorGift(), role: WISHLIST_ROLES.moderator, onmore: noop },
 			expectedActions: [
 				RECEIVED_ACTION_SELECTOR,
 				RESERVE_ACTION_SELECTOR,
 				MORE_ACTION_SELECTOR,
 			],
+			expectedOverflow: 'purchased',
 		},
 		{
 			name: 'desktop manager Received and Reserve without More',
@@ -204,7 +222,13 @@ describe('GiftCard footer alignment (issues #255, #420)', () => {
 		},
 	])(
 		'right-aligns adjacent footer actions: $name',
-		async ({ viewport = 800, width = DESKTOP_CARD_HOST_WIDTH, props, expectedActions }) => {
+		async ({
+			viewport = 800,
+			width = DESKTOP_CARD_HOST_WIDTH,
+			props,
+			expectedActions,
+			expectedOverflow = '',
+		}) => {
 			await page.viewport(viewport, 900);
 			const host = document.createElement('div');
 			host.style.width = `${width}px`;
@@ -220,7 +244,7 @@ describe('GiftCard footer alignment (issues #255, #420)', () => {
 			await expect.poll(() => visibleActions(row).length).toBe(expectedActions.length);
 			const footer = host.querySelector<HTMLElement>('[data-testid="gift-card-footer"]')!;
 
-			expect(row.dataset.overflowActions).toBe('');
+			expect(row.dataset.overflowActions).toBe(expectedOverflow);
 			expectRightAlignedAdjacentActions(
 				row,
 				expectedActions.map((selector) => visibleAction(row, selector)),

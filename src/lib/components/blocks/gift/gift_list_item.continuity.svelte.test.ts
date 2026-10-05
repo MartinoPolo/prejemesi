@@ -166,6 +166,7 @@ describe('GiftListItem desktop bordered card geometry (issue #360)', () => {
 						currency: 'CZK',
 						quantity: 3,
 						reservedCount: 1,
+						myReservationId: null,
 						reserverNames: ['Babička'],
 					}),
 					role: WISHLIST_ROLES.moderator,
@@ -239,8 +240,8 @@ describe('GiftListItem reservation-action layout (issue #211)', () => {
 		);
 
 		const reserveButtonEl = host.querySelector('[data-testid="reserve-button"]') as HTMLElement;
-		const purchasedButtonEl = reserveButtonEl.parentElement!.querySelector(
-			'button:not([data-testid])',
+		const purchasedButtonEl = host.querySelector(
+			`[aria-label="${m.gift_mark_bought()}"]`,
 		) as HTMLElement;
 
 		expect(reserveButtonEl).toBeTruthy();

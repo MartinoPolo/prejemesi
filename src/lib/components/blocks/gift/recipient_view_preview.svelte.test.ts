@@ -4,6 +4,7 @@ import { page } from 'vitest/browser';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { GiftForVisitor } from '$lib/modules/gifts/types.js';
 import { WISHLIST_ROLES } from '$lib/modules/wishlists/types.js';
+import * as m from '$lib/paraglide/messages.js';
 import { IMAGE_FIT_MODES, type ImageMetadata } from '$lib/modules/images/index.js';
 
 vi.mock('$env/dynamic/public', () => ({ env: {} }));
@@ -50,7 +51,7 @@ function makeReservedGift(overrides: Partial<GiftForVisitor> = {}): GiftForVisit
 		likeCount: 4,
 		reservedCount: 2,
 		isFullyReserved: true,
-		reserverNames: ['Babička'],
+		reserverNames: ['Babička', 'Martin'],
 		myReservationId: 'reservation-mine',
 		myReservationPurchasedAt: new Date('2026-01-02T00:00:00Z'),
 		...overrides,
@@ -158,14 +159,10 @@ describe('recipient-view preview reservation privacy (#241)', () => {
 			});
 
 			const overlay = screen.getByTestId('gift-state-overlay');
-			await expect
-				.element(screen.getByText('Rezervováno vámi', { exact: true }))
-				.toBeVisible();
-			const reserverLine = screen.getByText(/Babička/);
-			await expect.element(reserverLine).toBeVisible();
-			expect(reserverLine.element().textContent).toContain('Babička');
-			expect(overlay.element().contains(reserverLine.element())).toBe(true);
-			expect(overlay.element().textContent).toContain('Babička');
+			await expect.element(overlay.getByText(m.gift_bought(), { exact: true })).toBeVisible();
+			const otherReservation = screen.getByText('Rezervováno více lidmi', { exact: true });
+			await expect.element(otherReservation).toBeVisible();
+			expect(overlay.element().contains(otherReservation.element())).toBe(true);
 			await expect
 				.element(screen.getByText('2 rezervováno', { exact: true }))
 				.not.toBeInTheDocument();

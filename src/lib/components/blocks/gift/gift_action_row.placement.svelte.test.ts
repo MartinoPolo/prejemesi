@@ -53,6 +53,45 @@ describe('GiftActionRow intrinsic placement', () => {
 		expect(onplacementchange).toHaveBeenLastCalledWith([]);
 	});
 
+	it('keeps Bought beside Received while space allows and moves Bought into More first', async () => {
+		const onplacementchange = vi.fn();
+		const onmore = vi.fn();
+		const screen = await render(GiftActionRowTestHost, {
+			contentWidth: 480,
+			secondaryActions: ['purchased', 'received'],
+			onplacementchange,
+			onmore,
+		});
+		await settleActionPlacement();
+
+		const row = screen.getByTestId('gift-action-row').element() as HTMLElement;
+		const slot = (action: string) =>
+			row.querySelector<HTMLElement>(`[data-gift-secondary-action="${action}"]`)!;
+		expect(slot('purchased').inert).toBe(false);
+		expect(slot('received').inert).toBe(false);
+		expect(row.dataset.overflowActions).toBe('');
+
+		const bought = screen.getByTestId('purchased-action').element() as HTMLElement;
+		const reserve = screen.getByTestId('reserve-action').element() as HTMLElement;
+		const directActionsWidth =
+			reserve.getBoundingClientRect().right - bought.getBoundingClientRect().left;
+
+		// One pixel short of every direct action; the freed Bought width still fits More.
+		await screen.rerender({
+			contentWidth: Math.floor(directActionsWidth) - 1,
+			secondaryActions: ['purchased', 'received'],
+			onplacementchange,
+			onmore,
+		});
+		await settleActionPlacement();
+		expect(slot('purchased').inert).toBe(true);
+		expect(slot('received').inert).toBe(false);
+		expect(onplacementchange).toHaveBeenLastCalledWith(['purchased']);
+
+		(screen.getByTestId('gift-more-actions').element() as HTMLButtonElement).click();
+		expect(onmore.mock.lastCall?.[1].visibleDirectActions).toEqual(['received', 'reserve']);
+	});
+
 	it('passes visible, pending, and disabled direct-action state to More', async () => {
 		const onmore = vi.fn();
 		const screen = await render(GiftActionRowTestHost, { contentWidth: 260, onmore });

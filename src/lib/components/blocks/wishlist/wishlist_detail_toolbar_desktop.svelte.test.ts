@@ -88,7 +88,7 @@ describe('WishlistDetailToolbar consolidated desktop display (#359)', () => {
 	});
 
 	it.each([390, 1280])(
-		'balances resting shadow clearance without changing faces at %ipx',
+		'adds the depth clearance only below and after toolbar controls at %ipx',
 		async (width) => {
 			const screen = await renderToolbar({}, width);
 			await frames();
@@ -101,25 +101,39 @@ describe('WishlistDetailToolbar consolidated desktop display (#359)', () => {
 				.getByTestId('gift-view-card')
 				.element()
 				.querySelector('.elevation-surface')!;
-			const initialHeight = toolbar.getBoundingClientRect().height;
-			for (const depth of ['soft', 'ink', 'black']) {
-				toolbar.setAttribute('data-depth', depth);
-				await frames();
-				const box = toolbar.getBoundingClientRect();
-				const faceBox = face.getBoundingClientRect();
-				const style = getComputedStyle(toolbar);
-				const shadow = parseFloat(style.getPropertyValue('--elevation-ordinary-offset'));
-				const top = faceBox.top - box.top - parseFloat(style.borderTopWidth);
-				const bottom =
-					box.bottom - parseFloat(style.borderBottomWidth) - faceBox.bottom - shadow;
-				expectPixelsNear(top, bottom);
-				expectPixelsAtLeast(top, 8);
-				const viewFaceBox = viewFace.getBoundingClientRect();
-				expectPixelsNear(
-					viewFaceBox.top + viewFaceBox.height / 2,
-					faceBox.top + faceBox.height / 2,
-				);
-				expectPixelsNear(toolbar.getBoundingClientRect().height, initialHeight);
+			const shadowOffset = parseFloat(
+				getComputedStyle(toolbar).getPropertyValue('--elevation-ordinary-offset'),
+			);
+			let softHeight = 0;
+			try {
+				for (const [depth, depthClearance] of [
+					['soft', 0],
+					['ink', shadowOffset],
+					['black', shadowOffset],
+				] as const) {
+					document.documentElement.dataset.depth = depth;
+					await frames();
+					const box = toolbar.getBoundingClientRect();
+					const faceBox = face.getBoundingClientRect();
+					const style = getComputedStyle(toolbar);
+					const top = faceBox.top - box.top - parseFloat(style.borderTopWidth);
+					const bottom =
+						box.bottom - parseFloat(style.borderBottomWidth) - faceBox.bottom;
+					expectPixelsNear(bottom - top, depthClearance);
+					expectPixelsAtLeast(top, 8);
+					const viewFaceBox = viewFace.getBoundingClientRect();
+					expectPixelsNear(
+						viewFaceBox.top + viewFaceBox.height / 2,
+						faceBox.top + faceBox.height / 2,
+					);
+					if (depth === 'soft') {
+						softHeight = box.height;
+					} else {
+						expectPixelsNear(box.height, softHeight + depthClearance);
+					}
+				}
+			} finally {
+				delete document.documentElement.dataset.depth;
 			}
 		},
 	);

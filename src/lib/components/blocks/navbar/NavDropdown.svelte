@@ -273,10 +273,11 @@
 					</span>
 				</span>
 				{#if item.badgeLabel}
+					<!-- The subtle tint matches the focused row's --accent; the card fill keeps it visible. -->
 					<Badge
 						tone={item.badgeVariant === 'shared' ? 'primary' : 'neutral'}
 						badgeStyle="subtle"
-						size="compact"
+						class="shrink-0 group-focus:bg-card"
 					>
 						{item.badgeLabel}
 					</Badge>

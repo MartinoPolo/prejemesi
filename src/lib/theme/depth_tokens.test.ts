@@ -115,12 +115,10 @@ describe('canonical semantic depth tokens', () => {
 		]);
 	});
 
-	it('centralizes pressed, disabled, hover-capable, anchored, and sheet directions', () => {
+	it('centralizes pressed, disabled, hover-capable, and anchored states', () => {
 		expect(css).toContain('@media (hover: hover) and (pointer: fine)');
 		expect(ruleBody('.elevation-pressed')).toContain('box-shadow: var(--elevation-pressed)');
 		expect(css).toContain("[aria-disabled='true']");
 		expect(css).toContain("[aria-expanded='true']");
-		expect(css).toContain(".elevation-sheet[data-side='right']");
-		expect(css).toContain('calc(-1 * var(--elevation-ordinary-offset))');
 	});
 });

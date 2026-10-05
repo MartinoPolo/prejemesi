@@ -1,6 +1,5 @@
 <script lang="ts">
 	import * as m from '$lib/paraglide/messages.js';
-	import CheckIcon from '@lucide/svelte/icons/check';
 	import StarIcon from '@lucide/svelte/icons/star';
 	import { Badge } from '$lib/components/base/badge/index.js';
 	import { cn } from '$lib/utils.js';
@@ -13,6 +12,7 @@
 	import GiftLinkList from '$lib/components/blocks/gift/GiftLinkList.svelte';
 	import GiftDescription from '$lib/components/blocks/gift/GiftDescription.svelte';
 	import GiftDetailActionBar from './GiftDetailActionBar.svelte';
+	import GiftStateOverlay from './GiftStateOverlay.svelte';
 	import { giftDetailModalVariants } from './gift_detail_modal_variants.js';
 	import type { GiftByRole, GiftForVisitor } from '$lib/modules/gifts/types.js';
 	import type { WishlistRole } from '$lib/modules/wishlists/types.js';
@@ -50,6 +50,7 @@
 		reservationAwareGift,
 		isFullyReserved,
 		reservedCount,
+		presentation,
 	} = $derived(deriveGiftDisplayState(gift, role, hideReservationState));
 
 	const styles = giftDetailModalVariants();
@@ -70,20 +71,13 @@
 </script>
 
 <div class={styles.viewGrid()}>
-	<!-- Media column: square photo sticker on the dotted mat; ALL reservation status
-	     (own + others') renders once here as a photo overlay, never in the action
-	     bar (REQ-3). -->
+	<!-- Media column: photo sticker on the dotted mat; received and reservation state render
+	     once here through the shared state badges, never in the action bar. -->
 	<div class={styles.viewMedia()} data-testid="gift-detail-view-image-column">
 		<div class={styles.viewPhotoFrame()}>
-			{#if isVisitorOrModerator && visitorGift}
-				<GiftDetailActionBar
-					placement="overlay"
-					gift={visitorGift}
-					{isArchived}
-					{onreserve}
-					{onunreserve}
-				/>
-			{/if}
+			<!-- The shrink-wrapped photo frame cannot be a size container, so the inset overlay
+			     queries its own width to choose compact badges on narrow photos. -->
+			<GiftStateOverlay entries={presentation.overlay} class="@container" />
 			<div class={styles.viewPhoto({ viewDimmed: isDimmed })}>
 				<div
 					class={cn(
@@ -126,12 +120,6 @@
 					reservationAcknowledgementKey={visitorGift?.myReservationId ?? null}
 					hideWhenOne
 				/>
-				{#if gift.received}
-					<Badge tone="neutral" class="gap-1 text-[11px]">
-						<CheckIcon class="size-2.5" />
-						{m.gift_received_badge()}
-					</Badge>
-				{/if}
 			</div>
 
 			<div class="flex flex-wrap items-center gap-2">
@@ -142,14 +130,9 @@
 				{/if}
 
 				{#if priorityInfo}
-					<!-- Sticker pill restyle (issue #165): outlined ink border + star icon +
-					     the long "Priorita · {label}" form, replacing the borderless tinted
-					     pill. Hue stays owned by PRIORITY_DISPLAY.colorClass. -->
-					<Badge
-						tone="neutral"
-						badgeStyle="outlined"
-						class={cn('-rotate-1', priorityInfo.colorClass)}
-					>
+					<!-- Same flat outlined priority treatment as GiftPriorityBadge, with the
+					     star icon and the long "Priorita · {label}" form. -->
+					<Badge tone="neutral" badgeStyle="outlined" class={priorityInfo.colorClass}>
 						{#snippet icon()}<StarIcon class="size-3" />{/snippet}
 						{m.gift_priority_badge_label({ label: priorityInfo.label() })}
 					</Badge>
@@ -182,7 +165,6 @@
 	     entirely for the recipient. -->
 	{#if isVisitorOrModerator && visitorGift}
 		<GiftDetailActionBar
-			placement="bar"
 			gift={visitorGift}
 			{isArchived}
 			{onreserve}

@@ -10,8 +10,14 @@ not duplicated component scales.
 - Omitted size uses `lg` below the `sm` breakpoint and `md` from that breakpoint.
 - Text and icon-only formats share size-driven icon geometry. Consumers choose variants instead of
   overriding icon dimensions or control height.
-- Equivalent adjacent actions use an 8 px gap on desktop and mobile. Section spacing and shadow
-  clearance are separate concerns.
+- Adjacent elevated controls use `--nested-control-gap`: an 8 px base plus `--depth-clearance`,
+  which equals the shadow offset at Ink and Black depth and is zero at Soft. Container insets add
+  the clearance only on shadowed edges; spacing never changes on hover. Floating layers add it to
+  their offset and subtract it from their available size via
+  [`floating_depth_clearance.ts`](../src/lib/components/base/floating_depth_clearance.ts).
+- Badge-like chips reuse `Badge` (`tone`, `badgeStyle` `outlined`/`subtle`/`solid`, `size`
+  `default`/`lg` matching Button `sm`, optional leading `icon` snippet) or its exported
+  `badgeShape`, never a local pill radius or border.
 - Toolbar, category-group, and gift-card selection surfaces normally follow the responsive default.
   Visible checkbox geometry is separate from the semantic owner and accessible hit target.
 - Shared shell surfaces use the centered wishlist maximum width and 12 px mobile / 16 px desktop
@@ -53,8 +59,8 @@ review results belong to the issue's PR rather than a frozen pass count here.
   responsive geometry, icons, InputGroup inheritance, checkbox states, and focus.
 - [Showcase browser tests](../tests/e2e/control-sizing-showcase.spec.ts): all button treatments,
   compatible peers, interactive Select, real depth preferences, and keyboard focus.
-- [Shell alignment](../tests/e2e/header-control-spacing.spec.ts) and
-  [form heights](../tests/e2e/control-heights.spec.ts): narrow and centered desktop layouts.
+- [Shell alignment](../tests/e2e/header-control-spacing.spec.ts): narrow and centered desktop
+  layouts.
 - Gift/wishlist component tests cover action geometry, role-dependent states, selection, wrapping,
   and real card/list overlay clearance. The synthetic wrapper fixture does not offset status badges
   to manufacture clearance; collision assertions use the production display components.

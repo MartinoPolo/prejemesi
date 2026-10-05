@@ -4,6 +4,7 @@ import { page, userEvent } from 'vitest/browser';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import WishlistSelectionToolbar from './WishlistSelectionToolbar.svelte';
 import * as m from '$lib/paraglide/messages.js';
+import { resolvedCssLength } from '../gift/gift_action_geometry.test_fixtures.js';
 
 function createProps() {
 	return {
@@ -165,6 +166,22 @@ describe('WishlistSelectionToolbar consolidated desktop actions (#353)', () => {
 		await page.getByRole('menuitem', { name: m.gift_bulk_copy_choose() }).click();
 		expect(props.oncopy).toHaveBeenCalledOnce();
 		await expect.element(screen.getByRole('button', { name: m.done() })).toBeVisible();
+		await screen.unmount();
+	});
+
+	it('marks hidden selected gifts with the shared warning badge', async () => {
+		const screen = await render(WishlistSelectionToolbar, { ...createProps(), hiddenCount: 2 });
+		const label = screen.getByText(m.gift_selection_hidden_count({ count: 2 }));
+		await expect.element(label).toBeVisible();
+		const badge = label.element().closest<HTMLElement>('[data-slot="badge"]');
+		expect(badge).not.toBeNull();
+		const badgeStyle = getComputedStyle(badge!);
+
+		expect(Number.parseFloat(badgeStyle.borderTopLeftRadius)).toBeCloseTo(
+			resolvedCssLength(badge!, 'var(--radius-badge)'),
+		);
+		expect(badgeStyle.backgroundColor).not.toBe('rgba(0, 0, 0, 0)');
+		expect(badge!.querySelector('[data-badge-icon] svg')).not.toBeNull();
 		await screen.unmount();
 	});
 });

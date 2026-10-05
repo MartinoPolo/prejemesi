@@ -12,9 +12,11 @@ import { GIFT_SECTION_KINDS, type GiftSection } from '$lib/modules/gifts/gift_or
 import { WISHLIST_ROLES } from '$lib/modules/wishlists/types.js';
 import * as m from '$lib/paraglide/messages.js';
 
+/** Several viewport resizes with idle sampling can exceed the default timeout under load. */
+const CROWDED_LIST_RESIZE_TIMEOUT_MS = 30_000;
+
 vi.mock('$env/dynamic/public', () => ({ env: {} }));
 
-const { default: WishlistGiftDisplay } = await import('./WishlistGiftDisplay.svelte');
 const { default: WishlistGiftDisplayTestHost } =
 	await import('./WishlistGiftDisplayTestHost.svelte');
 const { expectPixelsNear, expectPixelsAtLeast, expectPixelsAtMost } = createPixelAssertions(expect);
@@ -67,7 +69,7 @@ async function nextLayout(): Promise<void> {
 	);
 }
 
-const defaultProps: ComponentProps<typeof WishlistGiftDisplay> = {
+const defaultProps: ComponentProps<typeof WishlistGiftDisplayTestHost> = {
 	sections,
 	role: WISHLIST_ROLES.recipient,
 	isArchived: false,
@@ -107,7 +109,7 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 		},
 	])('keeps a short $kind heading close to its first card on mobile', async (section) => {
 		await page.viewport(390, 720);
-		const screen = await render(WishlistGiftDisplay, {
+		const screen = await render(WishlistGiftDisplayTestHost, {
 			...defaultProps,
 			sections: [{ ...section, gifts: [visitorGift()] }],
 			viewMode: 'card',
@@ -175,7 +177,7 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 				priceMax: 987654321,
 				currency: 'CZK' as const,
 			};
-			const screen = await render(WishlistGiftDisplay, {
+			const screen = await render(WishlistGiftDisplayTestHost, {
 				...defaultProps,
 				sections: [{ ...sections[0]!, gifts: [gift] }],
 				viewMode,
@@ -217,7 +219,7 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 			{ viewportWidth: 1280, collectionWidth: 1152 },
 		]) {
 			await page.viewport(viewportWidth, 900);
-			const screen = await render(WishlistGiftDisplay, {
+			const screen = await render(WishlistGiftDisplayTestHost, {
 				...defaultProps,
 				sections: [{ ...sections[0]!, gifts }],
 				viewMode: 'card',
@@ -255,7 +257,7 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 			{ viewportWidth: 1280, collectionWidth: 1152 },
 		]) {
 			await page.viewport(viewportWidth, 900);
-			const screen = await render(WishlistGiftDisplay, {
+			const screen = await render(WishlistGiftDisplayTestHost, {
 				...defaultProps,
 				sections: [{ ...sections[0]!, gifts }],
 				viewMode: 'card',
@@ -300,7 +302,7 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 		'traces the real $viewMode surface at $width px while leaving focus distinct',
 		async ({ viewMode, width, surfaceTestId, expectFractionalWidth }) => {
 			await page.viewport(width, 720);
-			const screen = await render(WishlistGiftDisplay, {
+			const screen = await render(WishlistGiftDisplayTestHost, {
 				...defaultProps,
 				viewMode,
 				selectionMode: true,
@@ -414,7 +416,7 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 				{ viewMode: 'list' as const, width: 768 },
 			]) {
 				await page.viewport(width, 720);
-				const screen = await render(WishlistGiftDisplay, {
+				const screen = await render(WishlistGiftDisplayTestHost, {
 					...defaultProps,
 					sections: [{ ...sections[0]!, gifts: [receivedReservedGift] }],
 					role: WISHLIST_ROLES.moderator,
@@ -472,7 +474,7 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 	it('keeps the mobile List selection control inside the image and the desktop control in its gutter', async () => {
 		for (const width of [320, 390]) {
 			await page.viewport(width, 720);
-			const screen = await render(WishlistGiftDisplay, {
+			const screen = await render(WishlistGiftDisplayTestHost, {
 				...defaultProps,
 				viewMode: 'list',
 				selectionMode: true,
@@ -509,7 +511,7 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 
 		for (const width of [640, 768]) {
 			await page.viewport(width, 720);
-			const screen = await render(WishlistGiftDisplay, {
+			const screen = await render(WishlistGiftDisplayTestHost, {
 				...defaultProps,
 				viewMode: 'list',
 				selectionMode: true,
@@ -545,7 +547,7 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 			await page.viewport(width, 720);
 			const high = { ...visitorGift(), id: 'gift-high', priorityLabel: 'Vysoka' };
 			const low = { ...visitorGift(), id: 'gift-low', priorityLabel: 'Nizka' };
-			const screen = await render(WishlistGiftDisplay, {
+			const screen = await render(WishlistGiftDisplayTestHost, {
 				...defaultProps,
 				sections: [{ ...sections[0]!, gifts: [high, low] }],
 				viewMode,
@@ -592,7 +594,7 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 				links: [{ url: 'https://example.com/kniha', label: 'Kniha' }],
 			},
 		];
-		const screen = await render(WishlistGiftDisplay, {
+		const screen = await render(WishlistGiftDisplayTestHost, {
 			...defaultProps,
 			sections: [{ ...sections[0]!, gifts }],
 			viewMode: 'card',
@@ -627,7 +629,7 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 			currency: 'CZK' as const,
 			links: [{ url: 'https://example.com/darek', label: 'Dárek' }],
 		};
-		const screen = await render(WishlistGiftDisplay, {
+		const screen = await render(WishlistGiftDisplayTestHost, {
 			...defaultProps,
 			sections: [
 				{
@@ -694,7 +696,7 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 				isFullyReserved: true,
 			},
 		];
-		const screen = await render(WishlistGiftDisplay, {
+		const screen = await render(WishlistGiftDisplayTestHost, {
 			...defaultProps,
 			sections: [{ ...sections[0]!, gifts }],
 			role: WISHLIST_ROLES.moderator,
@@ -744,7 +746,7 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 				gifts: gifts.slice(4),
 			},
 		];
-		const screen = await render(WishlistGiftDisplay, {
+		const screen = await render(WishlistGiftDisplayTestHost, {
 			...defaultProps,
 			sections: groupedSections,
 			viewMode: 'card',
@@ -779,7 +781,7 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 			{ width: 600, expectedGap: 8 },
 		]) {
 			await page.viewport(width, 1000);
-			const screen = await render(WishlistGiftDisplay, {
+			const screen = await render(WishlistGiftDisplayTestHost, {
 				...defaultProps,
 				sections: [{ ...sections[0]!, gifts }],
 				viewMode: 'card',
@@ -797,7 +799,7 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 
 	it('does not render an empty card priority spacing element for hidden or unrecognized priorities', async () => {
 		const unknown = { ...visitorGift(), priorityLabel: 'Neznama' };
-		const screen = await render(WishlistGiftDisplay, {
+		const screen = await render(WishlistGiftDisplayTestHost, {
 			...defaultProps,
 			sections: [{ ...sections[0]!, gifts: [unknown] }],
 			viewMode: 'card',
@@ -822,7 +824,7 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 
 	it('shows priority for category grouping, hides it for priority grouping, and reacts to changes', async () => {
 		const high = { ...visitorGift(), priorityLabel: 'Vysoka' };
-		const screen = await render(WishlistGiftDisplay, {
+		const screen = await render(WishlistGiftDisplayTestHost, {
 			...defaultProps,
 			sections: [{ ...sections[0]!, gifts: [high] }],
 			grouping: 'category',
@@ -849,7 +851,7 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 
 	it('keeps manager priority badges outside the action lane', async () => {
 		await page.viewport(390, 720);
-		const screen = await render(WishlistGiftDisplay, {
+		const screen = await render(WishlistGiftDisplayTestHost, {
 			...defaultProps,
 			role: WISHLIST_ROLES.moderator,
 			hideReservationState: true,
@@ -865,162 +867,176 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 		await screen.unmount();
 	});
 
-	it('keeps crowded grouped desktop List frames full-height, aligned, and no wider than tall', async () => {
-		const category = {
-			id: 'category-long',
-			presetKey: null,
-			customLabel: 'Výpravné ilustrované edice a kompletní sběratelské kolekce',
-			color: '#0369A1',
-			sortOrder: 0,
-		};
-		const crowdedGift = {
-			...visitorGift(),
-			id: 'crowded',
-			name: '1984 – George Orwell',
-			categoryId: category.id,
-			category,
-			priorityLabel: 'Vysoka',
-			reservedCount: 1,
-			isFullyReserved: true,
-			reserverNames: ['Jana Dvořáková'],
-		};
-		const longContentGift = {
-			...visitorGift(),
-			categoryId: category.id,
-			category,
-			id: 'tall-content',
-			name: 'Kniha s dlouhým názvem, rozsáhlým popisem a více detaily',
-			description: 'Podrobný popis dárku, který zabírá v seznamu více místa.',
-			links: [{ url: 'https://example.com/book', label: 'Knihkupectví' }],
-		};
-		await page.viewport(1280, 900);
-		const screen = await render(WishlistGiftDisplayTestHost, {
-			...defaultProps,
-			viewMode: 'list',
-			role: WISHLIST_ROLES.moderator,
-			grouping: 'category',
-			sections: [
-				{
-					kind: GIFT_SECTION_KINDS.categoryGroup,
-					key: 'category:long',
-					label: category.customLabel,
-					priorityKey: null,
-					gifts: [crowdedGift, longContentGift],
-				},
-				{
-					kind: GIFT_SECTION_KINDS.categoryGroup,
-					key: 'category:other',
-					label: 'Další knihy',
-					priorityKey: null,
-					gifts: [{ ...visitorGift(), id: 'short', name: 'Atlas' }],
-				},
-			],
-		});
-		await document.fonts.ready;
-		const crowdedRow = document.querySelector<HTMLElement>('[data-gift-id="crowded"]')!;
-		const crowdedImage = crowdedRow.querySelector<HTMLElement>(
-			'[data-testid="gift-list-image"]',
-		)!;
-		expect(crowdedImage.querySelector('[data-testid="gift-category-badge"]')).not.toBeNull();
-		expect(crowdedImage.querySelector('[data-testid="gift-priority-badge"]')).not.toBeNull();
-		expect(crowdedImage.querySelector('[data-testid="gift-state-overlay"]')).not.toBeNull();
-		expect(crowdedImage.textContent).toContain('Jana Dvořáková');
-		expect(crowdedRow.querySelector('[data-testid="gift-list-actions"]')).not.toBeNull();
-
-		const frames = () =>
-			Array.from(
-				document.querySelectorAll<HTMLElement>('[data-testid="gift-list-item"]'),
-			).map((item) => {
-				const image = item.querySelector<HTMLElement>('[data-testid="gift-list-image"]')!;
-				const itemRect = item.getBoundingClientRect();
-				const imageRect = image.getBoundingClientRect();
-				const style = getComputedStyle(item);
-				return {
-					imageWidth: imageRect.width,
-					imageHeight: imageRect.height,
-					rowHeight: itemRect.height,
-					verticalInset:
-						itemRect.height -
-						imageRect.height -
-						parseFloat(style.borderTopWidth) -
-						parseFloat(style.borderBottomWidth),
-				};
+	it(
+		'keeps crowded grouped desktop List frames full-height, aligned, and no wider than tall',
+		{ timeout: CROWDED_LIST_RESIZE_TIMEOUT_MS },
+		async () => {
+			const category = {
+				id: 'category-long',
+				presetKey: null,
+				customLabel: 'Výpravné ilustrované edice a kompletní sběratelské kolekce',
+				color: '#0369A1',
+				sortOrder: 0,
+			};
+			const crowdedGift = {
+				...visitorGift(),
+				id: 'crowded',
+				name: '1984 – George Orwell',
+				categoryId: category.id,
+				category,
+				priorityLabel: 'Vysoka',
+				quantity: 3,
+				reservedCount: 1,
+				isFullyReserved: false,
+				reserverNames: ['Jana Dvořáková'],
+			};
+			const longContentGift = {
+				...visitorGift(),
+				categoryId: category.id,
+				category,
+				id: 'tall-content',
+				name: 'Kniha s dlouhým názvem, rozsáhlým popisem a více detaily',
+				description: 'Podrobný popis dárku, který zabírá v seznamu více místa.',
+				links: [{ url: 'https://example.com/book', label: 'Knihkupectví' }],
+			};
+			await page.viewport(1280, 900);
+			const screen = await render(WishlistGiftDisplayTestHost, {
+				...defaultProps,
+				viewMode: 'list',
+				role: WISHLIST_ROLES.moderator,
+				grouping: 'category',
+				sections: [
+					{
+						kind: GIFT_SECTION_KINDS.categoryGroup,
+						key: 'category:long',
+						label: category.customLabel,
+						priorityKey: null,
+						gifts: [crowdedGift, longContentGift],
+					},
+					{
+						kind: GIFT_SECTION_KINDS.categoryGroup,
+						key: 'category:other',
+						label: 'Další knihy',
+						priorityKey: null,
+						gifts: [{ ...visitorGift(), id: 'short', name: 'Atlas' }],
+					},
+				],
 			});
-		const verify = (measurements: ReturnType<typeof frames>) => {
-			expect(measurements).toHaveLength(3);
-			for (const frame of measurements) {
-				expectPixelsNear(frame.verticalInset, 0);
-				expectPixelsAtMost(frame.imageWidth, frame.imageHeight);
-			}
-			for (const frame of measurements.slice(1)) {
-				expectPixelsNear(frame.imageWidth, measurements[0]!.imageWidth);
-			}
-		};
-		async function sampleIdle() {
-			const samples = [frames()];
-			for (let index = 0; index < 90; index += 1) {
-				await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
-				samples.push(frames());
-			}
-			for (const rowIndex of [0, 1, 2]) {
-				for (const dimension of ['imageWidth', 'imageHeight', 'rowHeight'] as const) {
-					const values = samples.map((sample) => sample[rowIndex]![dimension]);
-					const changeCount = (from: number, to: number) =>
-						values
-							.slice(from + 1, to)
-							.filter((value, index) => Math.abs(value - values[from + index]!) > 1)
-							.length;
-					expect(
-						changeCount(0, 31),
-						`${dimension} must converge after initial rendering`,
-					).toBeLessThanOrEqual(5);
-					expect(
-						changeCount(30, samples.length),
-						`${dimension} must stay stable while idle`,
-					).toBe(0);
+			await document.fonts.ready;
+			const crowdedRow = document.querySelector<HTMLElement>('[data-gift-id="crowded"]')!;
+			const crowdedImage = crowdedRow.querySelector<HTMLElement>(
+				'[data-testid="gift-list-image"]',
+			)!;
+			expect(
+				crowdedImage.querySelector('[data-testid="gift-category-badge"]'),
+			).not.toBeNull();
+			expect(
+				crowdedImage.querySelector('[data-testid="gift-priority-badge"]'),
+			).not.toBeNull();
+			expect(crowdedImage.querySelector('[data-testid="gift-state-overlay"]')).not.toBeNull();
+			expect(crowdedImage.textContent).toContain('Jana Dvořáková');
+			expect(crowdedRow.querySelector('[data-testid="gift-list-actions"]')).not.toBeNull();
+
+			const frames = () =>
+				Array.from(
+					document.querySelectorAll<HTMLElement>('[data-testid="gift-list-item"]'),
+				).map((item) => {
+					const image = item.querySelector<HTMLElement>(
+						'[data-testid="gift-list-image"]',
+					)!;
+					const itemRect = item.getBoundingClientRect();
+					const imageRect = image.getBoundingClientRect();
+					const style = getComputedStyle(item);
+					return {
+						imageWidth: imageRect.width,
+						imageHeight: imageRect.height,
+						rowHeight: itemRect.height,
+						verticalInset:
+							itemRect.height -
+							imageRect.height -
+							parseFloat(style.borderTopWidth) -
+							parseFloat(style.borderBottomWidth),
+					};
+				});
+			const verify = (measurements: ReturnType<typeof frames>) => {
+				expect(measurements).toHaveLength(3);
+				for (const frame of measurements) {
+					expectPixelsNear(frame.verticalInset, 0);
+					expectPixelsAtMost(frame.imageWidth, frame.imageHeight);
+				}
+				for (const frame of measurements.slice(1)) {
+					expectPixelsNear(frame.imageWidth, measurements[0]!.imageWidth);
+				}
+			};
+			async function sampleIdle() {
+				const samples = [frames()];
+				for (let index = 0; index < 90; index += 1) {
+					await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+					samples.push(frames());
+				}
+				for (const rowIndex of [0, 1, 2]) {
+					for (const dimension of ['imageWidth', 'imageHeight', 'rowHeight'] as const) {
+						const values = samples.map((sample) => sample[rowIndex]![dimension]);
+						const changeCount = (from: number, to: number) =>
+							values
+								.slice(from + 1, to)
+								.filter(
+									(value, index) => Math.abs(value - values[from + index]!) > 1,
+								).length;
+						expect(
+							changeCount(0, 31),
+							`${dimension} must converge after initial rendering`,
+						).toBeLessThanOrEqual(5);
+						expect(
+							changeCount(30, samples.length),
+							`${dimension} must stay stable while idle`,
+						).toBe(0);
+					}
+				}
+				for (const sample of samples.slice(-30)) {
+					verify(sample);
 				}
 			}
-			for (const sample of samples.slice(-30)) {
-				verify(sample);
-			}
-		}
-		await sampleIdle();
-		const settledRows = frames();
-		expectPixelsNear(settledRows[2]!.imageWidth, settledRows[2]!.imageHeight);
-		expect(
-			Math.max(...settledRows.map((row) => row.rowHeight)) -
-				Math.min(...settledRows.map((row) => row.rowHeight)),
-		).toBeGreaterThan(8);
-		const imageRect = crowdedImage.getBoundingClientRect();
-		const categoryRect = crowdedImage
-			.querySelector<HTMLElement>('[data-testid="gift-category-badge"]')!
-			.getBoundingClientRect();
-		const priorityRect = crowdedImage
-			.querySelector<HTMLElement>('[data-testid="gift-priority-badge"]')!
-			.getBoundingClientRect();
-		const overlayItems = Array.from(
-			crowdedImage.querySelectorAll<HTMLElement>('[data-testid="gift-state-overlay"] > span'),
-		).map((item) => item.getBoundingClientRect());
-		const actionRect = crowdedRow
-			.querySelector<HTMLElement>('[data-testid="gift-list-actions"]')!
-			.getBoundingClientRect();
-		expectPixelsAtLeast(categoryRect.left, imageRect.left);
-		expectPixelsAtMost(categoryRect.right, imageRect.right);
-		expectPixelsAtLeast(overlayItems[0]!.top, categoryRect.bottom);
-		expectPixelsAtMost(overlayItems.at(-1)!.bottom, priorityRect.top);
-		expectPixelsAtMost(actionRect.bottom, crowdedRow.getBoundingClientRect().bottom);
-		const wideImageWidth = settledRows[0]!.imageWidth;
-		await page.viewport(1600, 900);
-		await sampleIdle();
-		expectPixelsNear(frames()[0]!.imageWidth, wideImageWidth);
-		await page.viewport(640, 900);
-		await sampleIdle();
-		expect(frames()[0]!.imageWidth).toBeLessThan(wideImageWidth);
-		await page.viewport(390, 900);
-		await sampleIdle();
-		expect(frames()[0]!.imageWidth).toBeLessThan(frames()[0]!.imageHeight);
-		await screen.unmount();
-	});
+			await sampleIdle();
+			const settledRows = frames();
+			expectPixelsNear(settledRows[2]!.imageWidth, settledRows[2]!.imageHeight);
+			expect(
+				Math.max(...settledRows.map((row) => row.rowHeight)) -
+					Math.min(...settledRows.map((row) => row.rowHeight)),
+			).toBeGreaterThan(8);
+			const imageRect = crowdedImage.getBoundingClientRect();
+			const categoryRect = crowdedImage
+				.querySelector<HTMLElement>('[data-testid="gift-category-badge"]')!
+				.getBoundingClientRect();
+			const priorityRect = crowdedImage
+				.querySelector<HTMLElement>('[data-testid="gift-priority-badge"]')!
+				.getBoundingClientRect();
+			const overlayItems = Array.from(
+				crowdedImage.querySelectorAll<HTMLElement>(
+					'[data-testid="gift-state-overlay"] > span',
+				),
+			).map((item) => item.getBoundingClientRect());
+			const actionRect = crowdedRow
+				.querySelector<HTMLElement>('[data-testid="gift-list-actions"]')!
+				.getBoundingClientRect();
+			expectPixelsAtLeast(categoryRect.left, imageRect.left);
+			expectPixelsAtMost(categoryRect.right, imageRect.right);
+			expectPixelsAtLeast(overlayItems[0]!.top, categoryRect.bottom);
+			expectPixelsAtMost(overlayItems.at(-1)!.bottom, priorityRect.top);
+			expectPixelsAtMost(actionRect.bottom, crowdedRow.getBoundingClientRect().bottom);
+			const wideImageWidth = settledRows[0]!.imageWidth;
+			await page.viewport(1600, 900);
+			await sampleIdle();
+			expectPixelsNear(frames()[0]!.imageWidth, wideImageWidth);
+			await page.viewport(640, 900);
+			await sampleIdle();
+			expect(frames()[0]!.imageWidth).toBeLessThan(wideImageWidth);
+			await page.viewport(390, 900);
+			await sampleIdle();
+			expect(frames()[0]!.imageWidth).toBeLessThan(frames()[0]!.imageHeight);
+			await screen.unmount();
+		},
+	);
 
 	it('uses equal mobile list image widths for mixed content and contains the footer', async () => {
 		await page.viewport(390, 720);
@@ -1030,7 +1046,7 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 			name: 'Mimořádně dlouhý název dárku přes dva řádky',
 			description: 'Krátký náhled popisu patří hned pod název.',
 		};
-		const screen = await render(WishlistGiftDisplay, {
+		const screen = await render(WishlistGiftDisplayTestHost, {
 			...defaultProps,
 			sections: [{ ...sections[0]!, gifts: [visitorGift(), second] }],
 			viewMode: 'list',

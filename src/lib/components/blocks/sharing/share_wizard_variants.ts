@@ -19,7 +19,7 @@ export const shareWizardVariants = tv({
 		stepDotPending: 'border-ink-faint bg-surface text-muted-foreground',
 		stepLabel: 'whitespace-nowrap text-[11px] font-semibold text-muted-foreground',
 		stepLabelActive: 'whitespace-nowrap text-[11px] font-bold text-foreground',
-		actions: 'flex gap-2',
+		actions: 'flex gap-(--nested-control-gap)',
 		// Step 1
 		confirmHero: 'flex flex-col items-center gap-3 px-0 py-5 text-center',
 		warnIconWrap:
@@ -33,22 +33,14 @@ export const shareWizardVariants = tv({
 		previewName: 'font-heading text-sm font-semibold text-foreground',
 		previewMeta: 'mt-0.5 text-xs text-muted-foreground',
 		previewBadge:
-			'flex-shrink-0 rounded-full border-2 border-ink bg-card px-2.5 py-0.5 text-[11px] font-semibold text-foreground',
+			'flex-shrink-0 rounded-badge border-2 border-ink bg-card px-2.5 py-0.5 text-[11px] font-semibold text-foreground',
 		// Step 2
 		shareHeader: 'pt-2',
 		shareTitle: 'font-heading text-lg font-semibold tracking-tight text-foreground',
 		shareSub: 'mt-0.5 text-xs text-muted-foreground',
 		sectionEyebrow: 'mb-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground',
-		copyLinkRow: 'flex items-stretch gap-2',
-		linkInputWrap:
-			'flex h-(--size-control-xl) flex-1 items-center overflow-hidden rounded-[10px] border-2 border-ink bg-surface px-3',
-		linkUrlText: 'truncate text-sm text-muted-foreground',
-		linkUrlDomain: 'font-bold text-foreground',
-		copiedLabel:
-			'mt-1.5 inline-flex w-fit items-center gap-1.5 rounded-full border-2 border-ink bg-[color-mix(in_oklab,var(--status-success)_14%,var(--card))] px-2.5 py-0.5 text-xs font-bold text-status-success',
-		socialButtonsList: 'flex flex-col gap-2',
-		messagePreview:
-			'rounded-[4px] border-2 border-note-ink/40 bg-note px-4 py-3 text-note-ink shadow-sticker-sm',
+		socialButtonsList: 'flex flex-col gap-(--nested-control-gap)',
+		messagePreview: 'rounded-badge border-2 border-ink bg-note px-4 py-3 text-note-ink',
 		messagePreviewLabel: 'mb-1 text-[10px] font-bold uppercase tracking-wider text-note-ink/70',
 		messagePreviewText: 'font-heading text-sm text-note-ink',
 		// Step 3
@@ -57,8 +49,7 @@ export const shareWizardVariants = tv({
 			'flex size-20 rotate-3 items-center justify-center rounded-2xl border-[2.5px] border-ink bg-tint text-brand shadow-sticker',
 		successTitle: 'font-heading text-2xl font-semibold tracking-tight text-foreground',
 		successSub: 'max-w-[360px] text-sm leading-relaxed text-muted-foreground',
-		successLinkRow: 'flex w-full min-w-0 items-center justify-center gap-1.5',
-		successLinkText: 'min-w-0 truncate text-sm font-bold text-foreground',
+		successLinkField: 'w-full min-w-0 text-start',
 		permissionsCard: 'rounded-panel border-[2.5px] border-ink bg-tint px-5 py-4',
 		permissionsCardLabel:
 			'mb-3 text-[11px] font-bold uppercase tracking-wider text-muted-foreground',

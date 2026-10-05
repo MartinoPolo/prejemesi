@@ -1,6 +1,6 @@
 <script lang="ts">
 	import * as m from '$lib/paraglide/messages.js';
-	import ExternalLinkIcon from '@lucide/svelte/icons/external-link';
+	import { TextLink } from '$lib/components/base/text-link/index.js';
 	import GiftPieceCount from '$lib/components/blocks/gift/GiftPieceCount.svelte';
 	import LikeButton from '$lib/components/blocks/gift/LikeButton.svelte';
 	import ReserveButton from '$lib/components/blocks/reservation/ReserveButton.svelte';
@@ -10,15 +10,12 @@
 	import type { WishlistRole } from '$lib/modules/wishlists/types.js';
 	import {
 		formatPrice,
-		formatReserverLine,
+		formatOtherReservationLabel,
 		extractGiftDomain,
 	} from '$lib/modules/gifts/gift_display.js';
 	import { deriveGiftDisplayState } from '$lib/modules/gifts/gift_display_state.js';
 	import { normalizeGiftUrl, getPrimaryGiftLink } from '$lib/modules/gifts/gift_url.js';
-	import {
-		canManageWishlist,
-		canSeeReserverNames,
-	} from '$lib/modules/wishlists/wishlist_capabilities.js';
+	import { canManageWishlist } from '$lib/modules/wishlists/wishlist_capabilities.js';
 	import { cn } from '$lib/utils.js';
 	import GiftPriorityBadge from './GiftPriorityBadge.svelte';
 
@@ -54,6 +51,7 @@
 		reservationAwareGift,
 		isFullyReserved,
 		reservedCount,
+		presentation,
 	} = $derived(deriveGiftDisplayState(gift, role, hideReservationState));
 
 	const canManage = $derived(canManageWishlist(role));
@@ -65,8 +63,8 @@
 	const domain = $derived(extractGiftDomain(gift.links));
 	const safeGiftUrl = $derived(normalizeGiftUrl(primaryLink?.url ?? null));
 	const priceDisplay = $derived(formatPrice(gift.price, gift.currency, gift.priceMax));
-	const reserverLine = $derived(
-		canSeeReserverNames(role) ? formatReserverLine(visitorGift?.reserverNames ?? []) : null,
+	const otherReservationLabel = $derived(
+		formatOtherReservationLabel(presentation.otherReservers),
 	);
 </script>
 
@@ -109,16 +107,14 @@
 
 	<td class="px-3 py-1.5">
 		{#if domain}
-			<a
+			<TextLink
 				href={safeGiftUrl ?? '#'}
-				target="_blank"
-				rel="external noopener noreferrer"
-				class="inline-flex items-center gap-1 text-xs text-brand"
+				external
+				size="sm"
 				onclick={(e: MouseEvent) => e.stopPropagation()}
 			>
-				<ExternalLinkIcon class="size-3" />
 				{domain}
-			</a>
+			</TextLink>
 			{#if gift.links.length > 1}
 				<span class="text-xs text-muted-foreground"
 					>{m.gift_link_overflow({ count: gift.links.length - 1 })}</span
@@ -165,16 +161,9 @@
 				{#if isVisitorOrModerator && visitorGift}
 					<PurchasedToggle gift={visitorGift} size="sm" />
 					{#if isFullyReserved && visitorGift.myReservationId === null}
-						<span class="flex flex-col items-end leading-tight">
-							<span class="text-xs font-medium text-reserved"
-								>{m.gift_reserved_overlay()}</span
-							>
-							{#if reserverLine !== null}
-								<span class="text-[10px] font-medium text-muted-foreground"
-									>{reserverLine}</span
-								>
-							{/if}
-						</span>
+						<span class="text-xs leading-tight font-medium text-reserved"
+							>{otherReservationLabel}</span
+						>
 					{:else}
 						<ReserveButton
 							gift={visitorGift}

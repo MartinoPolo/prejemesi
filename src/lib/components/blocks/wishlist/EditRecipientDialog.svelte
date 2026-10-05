@@ -125,7 +125,7 @@
 				/>
 				<RecipientPreview name={nameDraft} />
 			</div>
-			<Dialog.Footer class="flex gap-2">
+			<Dialog.Footer>
 				<Button
 					type="button"
 					intent="outline"

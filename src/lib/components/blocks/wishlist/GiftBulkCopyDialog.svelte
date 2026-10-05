@@ -118,7 +118,7 @@
 
 {#snippet actions()}
 	<div
-		class="flex shrink-0 flex-col-reverse gap-2 px-6 pb-3 sm:flex-row sm:justify-end sm:px-0 sm:pb-0"
+		class="flex shrink-0 flex-col-reverse gap-(--nested-control-gap) px-6 pb-3 sm:flex-row sm:justify-end sm:px-0 sm:pb-0"
 	>
 		<Button
 			intent="outline"

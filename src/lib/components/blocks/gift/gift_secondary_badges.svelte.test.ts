@@ -347,8 +347,9 @@ describe('unavailable gift treatment', () => {
 			const { host } = await renderGift(view, comparisonGift('reservedByOthers'), {
 				role: WISHLIST_ROLES.moderator,
 			});
-			const identity = element(host, '[data-reserver-identity]');
-			expect(identity.textContent).toContain('Babička');
+			const identity = element(host, '[data-state-primary]');
+			expect(identity.textContent).toBe('Rezervoval(a) Babička');
+			expect(host.querySelector('[data-reserver-identity]')).toBeNull();
 			expectContentVisibility(host, view, RETAINED_CONTENT_VISIBILITY);
 			expectStateCrisp(host);
 			expectControlsCrisp(host);

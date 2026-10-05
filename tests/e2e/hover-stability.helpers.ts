@@ -305,7 +305,17 @@ export async function stationaryLowerEdge(
 	};
 }
 
-export async function bottomToTopSweep(page: Page, control: Locator, controlName: string) {
+export interface BottomToTopSweepOptions {
+	/** Flat controls cast no resting shadow, so the sweep starts at their own lower edge. */
+	restingShadow?: boolean;
+}
+
+export async function bottomToTopSweep(
+	page: Page,
+	control: Locator,
+	controlName: string,
+	{ restingShadow = true }: BottomToTopSweepOptions = {},
+) {
 	await prepareRestingControl(page, control);
 	const box = await control.boundingBox();
 	expect(box).not.toBeNull();
@@ -313,13 +323,15 @@ export async function bottomToTopSweep(page: Page, control: Locator, controlName
 		const style = getComputedStyle(element, '::after');
 		return style.content === 'none' ? 0 : Number.parseFloat(style.height) || 0;
 	});
-	const ordinaryOffset = await control.evaluate((element) =>
-		Number.parseFloat(
-			getComputedStyle(element).getPropertyValue('--elevation-ordinary-offset'),
-		),
-	);
+	const restingShadowOffset = restingShadow
+		? await control.evaluate((element) =>
+				Number.parseFloat(
+					getComputedStyle(element).getPropertyValue('--elevation-ordinary-offset'),
+				),
+			)
+		: 0;
 	const x = box!.x + box!.width / 2;
-	const lowerBoundary = box!.y + box!.height + ordinaryOffset - 0.25;
+	const lowerBoundary = box!.y + box!.height + restingShadowOffset - 0.25;
 	const lowerBoundaryReachable = await control.evaluate(
 		(element, point) => {
 			const target = document.elementFromPoint(point.x, point.y);

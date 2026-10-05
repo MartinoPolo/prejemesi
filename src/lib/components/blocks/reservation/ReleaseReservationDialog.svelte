@@ -79,7 +79,7 @@
 						})}
 					</Dialog.Description>
 				</Dialog.Header>
-				<Dialog.Footer class="flex gap-2">
+				<Dialog.Footer>
 					<Button
 						intent="outline"
 						disabled={isReleasing}

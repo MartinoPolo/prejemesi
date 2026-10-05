@@ -53,7 +53,7 @@
 					role="alert"
 				>
 					<p>{m.error_generic()}</p>
-					<div class="flex gap-2">
+					<div class="flex gap-(--nested-control-gap)">
 						<Button size="sm" onclick={() => (loadFailed = false)}>
 							{m.import_wizard_retry()}
 						</Button>

@@ -11,7 +11,7 @@ import {
 	getPriorityActionOptions,
 	getPriorityDisplayLabel,
 	getPriorityKey,
-	formatReserverLine,
+	formatOtherReservationLabel,
 } from './gift_display.js';
 
 beforeAll(() => {
@@ -59,18 +59,23 @@ describe('priority display labels (issue #351)', () => {
 	});
 });
 
-describe('formatReserverLine', () => {
+describe('formatOtherReservationLabel', () => {
 	it.each([
-		['cs', 'Rezervováno více lidmi'],
-		['en', 'Reserved by multiple people'],
-	] as const)('hides every identity when multiple people reserved in %s', (locale, expected) => {
-		overwriteGetLocale(() => locale);
-		try {
-			expect(formatReserverLine(['Jana', 'Petr', 'Eva'])).toBe(expected);
-		} finally {
-			overwriteGetLocale(() => 'cs');
-		}
-	});
+		['cs', 'Rezervoval(a) Jana', 'Rezervováno více lidmi', 'Rezervováno někým jiným'],
+		['en', 'Reserved by Jana', 'Reserved by multiple people', 'Reserved by someone else'],
+	] as const)(
+		'names one reserver, summarises several and stays anonymous without identity in %s',
+		(locale, single, multiple, anonymous) => {
+			overwriteGetLocale(() => locale);
+			try {
+				expect(formatOtherReservationLabel({ kind: 'single', name: 'Jana' })).toBe(single);
+				expect(formatOtherReservationLabel({ kind: 'multiple' })).toBe(multiple);
+				expect(formatOtherReservationLabel()).toBe(anonymous);
+			} finally {
+				overwriteGetLocale(() => 'cs');
+			}
+		},
+	);
 });
 
 describe('formatPrice', () => {

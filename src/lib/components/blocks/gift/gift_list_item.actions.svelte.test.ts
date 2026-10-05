@@ -58,15 +58,14 @@ describe('GiftListItem approved action geometry (issue #350)', () => {
 		const sourceLink = host.querySelector<HTMLAnchorElement>('a[target="_blank"]')!;
 		const moreSurface = more.querySelector<HTMLElement>(':scope > .elevation-surface')!;
 		const receivedSurface = received.querySelector<HTMLElement>(':scope > .elevation-surface')!;
-		const sourceSurface = sourceLink.querySelector<HTMLElement>(':scope > .elevation-surface')!;
-		const restingPaint = [moreSurface, receivedSurface, sourceSurface].map(
+		const restingPaint = [moreSurface, receivedSurface, sourceLink].map(
 			(element) => getComputedStyle(element).backgroundColor,
 		);
 
 		await userEvent.hover(title);
 		await expect
 			.poll(() =>
-				[moreSurface, receivedSurface, sourceSurface].map(
+				[moreSurface, receivedSurface, sourceLink].map(
 					(element) => getComputedStyle(element).backgroundColor,
 				),
 			)
@@ -350,7 +349,7 @@ describe('GiftListItem approved action geometry (issue #350)', () => {
 				'[data-testid="gift-received-toggle"], [data-testid="reserve-button"]',
 			) as HTMLElement;
 			const expectedControlSize = viewport < 640 ? 40 : 32;
-			const actions = Array.from(row.querySelectorAll<HTMLElement>('button'));
+			const actions = visibleActions(row);
 			expect(primary).toBeTruthy();
 			expect(more).toBeTruthy();
 			const contentRect = content.getBoundingClientRect();

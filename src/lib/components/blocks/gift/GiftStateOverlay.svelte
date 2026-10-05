@@ -1,60 +1,39 @@
 <script lang="ts">
 	import * as m from '$lib/paraglide/messages.js';
-	import type {
-		GiftOverlayKind,
-		GiftStateOverlayModel,
-	} from '$lib/modules/gifts/gift_display_state.js';
+	import type { GiftOverlayEntry } from '$lib/modules/gifts/gift_display_state.js';
+	import { formatOtherReservationLabel } from '$lib/modules/gifts/gift_display.js';
 	import { cn } from '$lib/utils.js';
+	import { giftStateBadgeVariants } from './gift_state_overlay_variants.js';
 
 	interface GiftStateOverlayProps {
-		model: GiftStateOverlayModel | null;
+		entries: readonly GiftOverlayEntry[];
 		/** Compact labels only when a narrow containing image also has a top-right control. */
 		avoidTopRight?: boolean;
-		identity?: string | null;
 		class?: string;
 	}
 
-	let {
-		model,
-		avoidTopRight = false,
-		identity = null,
-		class: className,
-	}: GiftStateOverlayProps = $props();
+	let { entries, avoidTopRight = false, class: className }: GiftStateOverlayProps = $props();
 
-	function label(kind: GiftOverlayKind, state: GiftStateOverlayModel): string {
-		switch (kind) {
+	function label(entry: GiftOverlayEntry): string {
+		switch (entry.kind) {
 			case 'received':
 				return m.gift_received_badge();
 			case 'own-reservation':
 				return m.gift_reserved_by_me_overlay();
+			case 'own-purchased':
+				return m.gift_bought();
 			case 'unavailable':
-				return m.gift_reserved_by_other_overlay();
+				return formatOtherReservationLabel(entry.otherReservers);
 			case 'partial':
 				return m.gift_remaining_capacity({
-					remaining: state.remaining ?? 0,
-					total: state.total ?? 0,
+					remaining: entry.remaining,
+					total: entry.total,
 				});
 		}
 	}
-
-	const primaryLabel = $derived(model === null ? null : label(model.kind, model));
-	const supportLabel = $derived(
-		model?.supportKind === undefined ? null : label(model.supportKind, model),
-	);
-
-	function pillClasses(kind: GiftOverlayKind): string {
-		return cn(
-			'max-w-[calc(100%_-_0.5rem)] -rotate-1 rounded-panel border-2 border-ink px-2 py-1 text-center text-xs leading-4 font-bold shadow-sticker [overflow-wrap:anywhere]',
-			kind === 'own-reservation' && 'bg-[var(--gift-overlay-own-reservation)] text-white',
-			kind === 'unavailable' && 'bg-[var(--gift-overlay-unavailable)] text-white',
-			kind === 'partial' && 'bg-card text-foreground',
-			kind === 'received' &&
-				'bg-primary text-primary-foreground [text-shadow:0_1px_1px_var(--ink)]',
-		);
-	}
 </script>
 
-{#if model !== null}
+{#if entries.length > 0}
 	<div
 		class={cn(
 			'pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center gap-1.5',
@@ -63,33 +42,22 @@
 		)}
 		data-testid="gift-state-overlay"
 	>
-		<span
-			class={cn(pillClasses(model.kind), 'state-pill')}
-			data-state-primary
-			data-state-kind={model.kind}>{primaryLabel}</span
-		>
-		{#if model.supportKind !== undefined && supportLabel !== null}
+		{#each entries as entry, index (index)}
 			<span
-				class={cn(pillClasses(model.supportKind), 'state-pill')}
-				data-reservation-support
-				data-state-kind={model.supportKind}>{supportLabel}</span
+				class={cn(giftStateBadgeVariants({ kind: entry.kind }), 'state-pill')}
+				data-state-primary={entry.role === 'primary' ? '' : undefined}
+				data-reservation-support={entry.role === 'support' ? '' : undefined}
+				data-other-reservation={entry.role === 'other-reservation' ? '' : undefined}
+				data-state-kind={entry.kind}>{label(entry)}</span
 			>
-		{/if}
-		{#if identity !== null && identity.trim() !== ''}
-			<span
-				data-reserver-identity
-				class="max-w-[calc(100%_-_0.5rem)] rounded-md bg-card/95 px-2 py-1 text-center text-xs font-semibold text-foreground shadow-sticker [overflow-wrap:anywhere]"
-				>{identity}</span
-			>
-		{/if}
+		{/each}
 	</div>
 {/if}
 
 <style>
 	@container (width <= 10rem) {
-		.avoid-top-right .state-pill {
-			padding-block: 0.125rem;
-			rotate: 0deg;
+		.state-pill {
+			padding: 0.125rem 0.375rem;
 		}
 
 		.avoid-top-right .state-pill[data-state-kind='received'] {
