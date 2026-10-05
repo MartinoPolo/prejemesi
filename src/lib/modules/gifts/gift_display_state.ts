@@ -158,8 +158,6 @@ export function deriveGiftDisplayState(
 	};
 }
 
-// Browse actions sit with display state because the public landing demo renders the real gift
-// views and may load only presentation modules (docs/performance-budget.md).
 export interface PurchaseTrackingContext {
 	isAuthenticated: boolean;
 	isArchived: boolean;
