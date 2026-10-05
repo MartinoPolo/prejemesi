@@ -144,7 +144,7 @@
 			</Card.Content>
 
 			{#if !isAuthenticated}
-				<Card.Footer class="flex flex-col gap-3">
+				<Card.Footer class="flex flex-col gap-(--nested-control-gap)">
 					<Button class="w-full" href={registerHref}>
 						{m.invite_register_and_accept()}
 					</Button>
@@ -153,7 +153,7 @@
 					</Button>
 				</Card.Footer>
 			{:else}
-				<Card.Footer class="flex justify-center gap-3">
+				<Card.Footer class="flex justify-center gap-(--nested-control-gap)">
 					<Button
 						intent="outline"
 						onclick={() =>

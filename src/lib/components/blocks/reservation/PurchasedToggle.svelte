@@ -5,24 +5,25 @@
 	import { toastSuccess, toastError } from '$lib/components/base/toast/index.js';
 	import * as m from '$lib/paraglide/messages.js';
 	import { useGifts } from '$lib/modules/gifts/gifts.context.svelte.js';
+	import { canTrackPurchase } from '$lib/modules/gifts/gift_display_state.js';
 	import { setReservationPurchased } from '$lib/modules/reservations/reservations.remote.js';
 	import type { GiftForVisitor } from '$lib/modules/gifts/types.js';
 
 	interface PurchasedToggleProps {
 		gift: GiftForVisitor;
 		size?: ControlSize;
-		/** Extra classes on the underlying Button (issue #165: the gift detail
-		 *  modal's photo overlay gives the pill a sticker shadow + rotation). */
-		class?: string;
 	}
 
-	let { gift, size, class: className }: PurchasedToggleProps = $props();
+	let { gift, size }: PurchasedToggleProps = $props();
 
 	const giftsContext = useGifts();
 
-	// Optional, gifter-private self-tracking – only for authenticated reservers holding a reservation.
 	const canTrack = $derived(
-		giftsContext.isAuthenticated.current && gift.myReservationId !== null,
+		canTrackPurchase({
+			isAuthenticated: giftsContext.isAuthenticated.current,
+			isArchived: giftsContext.archived.current,
+			ownsReservation: gift.myReservationId !== null,
+		}),
 	);
 
 	// Optimistic override wins until the fresh gift data rides back on the command's
@@ -59,7 +60,6 @@
 		aria-pressed={purchased}
 		aria-label={purchased ? m.gift_mark_unbought() : m.gift_mark_bought()}
 		onclick={handleToggle}
-		class={className}
 	>
 		{#if purchased}<Undo2Icon data-icon="inline-start" aria-hidden="true" />{/if}
 		{purchased ? m.gift_unbought_compact() : m.gift_bought()}

@@ -63,7 +63,7 @@ export const giftDetailModalVariants = tv({
 		// below (see there for why). Desktop: sm:static – already pinned by flex
 		// in the right column, whole block bordered/bg as before.
 		formActions:
-			'flex flex-col gap-2 px-5 pb-4 sm:static sm:col-start-2 sm:row-start-2 sm:border-t-2 sm:border-dashed sm:border-ink-faint sm:bg-card sm:px-7 sm:py-4',
+			'flex flex-col gap-(--nested-control-gap) px-5 pb-4 sm:static sm:col-start-2 sm:row-start-2 sm:border-t-2 sm:border-dashed sm:border-ink-faint sm:bg-card sm:px-7 sm:py-4',
 		// Desktop-only Save/Cancel pair, grouped with the manager release/delete
 		// actions in the one pinned block (`sm:order-1` keeps the pair first). Hidden
 		// on mobile: a `position: sticky` copy nested this deep in the mobile
@@ -74,13 +74,13 @@ export const giftDetailModalVariants = tv({
 		// `mobileSubmitFooter` below is the real mobile Save button instead: a
 		// true DOM sibling outside the scrolling body, always visible regardless
 		// of scroll position.
-		submitWrapper: 'hidden sm:order-1 sm:flex sm:flex-wrap sm:gap-2',
+		submitWrapper: 'hidden sm:order-1 sm:flex sm:flex-wrap sm:gap-(--nested-control-gap)',
 		// Mobile-only pinned Save/Cancel footer (see `submitWrapper` above for why it's
 		// a separate element): a true sibling of `body`, not nested inside its
 		// scroll, so it's always visible. Hidden on desktop, where
 		// `submitWrapper` already renders Save inline with the manager actions.
 		mobileSubmitFooter:
-			'flex shrink-0 flex-wrap gap-2 border-t-2 border-dashed border-ink-faint bg-card px-5 py-4 sm:hidden',
+			'flex shrink-0 flex-wrap gap-(--nested-control-gap) border-t-2 border-dashed border-ink-faint bg-card px-5 py-4 sm:hidden',
 		// The action pair shares a row when it fits and wraps under enlarged text.
 		submitButton: 'min-w-fit flex-1',
 		releaseButton: 'order-1 sm:order-2 w-full',

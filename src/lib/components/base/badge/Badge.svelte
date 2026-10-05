@@ -6,39 +6,22 @@
 		class: className,
 		tone = 'neutral',
 		badgeStyle = 'outlined',
-		format = 'default',
 		size = 'default',
-		collapsed = false,
-		dot,
 		icon,
 		ref = $bindable(null),
 		children,
 		...restProps
 	}: BadgeProps = $props();
-
-	const BADGE_TRANSITION = [
-		'padding var(--duration-normal) linear',
-		'gap var(--duration-normal) linear',
-		'background-color var(--duration-normal) var(--ease-standard)',
-		'color var(--duration-normal) var(--ease-standard)',
-		'border-color var(--duration-normal) var(--ease-standard)',
-	].join(', ');
-
-	const TEXT_TRANSITION = [
-		'opacity var(--duration-normal) var(--ease-standard)',
-		'max-width var(--duration-normal) var(--ease-standard)',
-	].join(', ');
 </script>
 
 <span
 	bind:this={ref}
 	data-slot="badge"
 	class={cn(
-		badgeVariants({ tone, badgeStyle, format, size }),
-		collapsed && 'min-w-5 px-1 gap-0 rounded-full',
+		badgeVariants({ tone, badgeStyle, size }),
+		'transition-colors duration-(--duration-normal) ease-(--ease-standard)',
 		className,
 	)}
-	style:transition={BADGE_TRANSITION}
 	{...restProps}
 >
 	{#if icon}
@@ -46,21 +29,10 @@
 			{@render icon()}
 		</span>
 	{/if}
-	{#if dot}
-		<span
-			class={cn(
-				'size-1.5 shrink-0 rounded-full bg-current',
-				dot === 'pulsing' && 'animate-badge-pulse',
-			)}
-		></span>
-	{/if}
 	{#if children}
 		<span
 			data-badge-text
-			class="inline-flex items-center gap-[inherit] overflow-hidden whitespace-nowrap"
-			style:opacity={collapsed ? '0' : '1'}
-			style:max-width={collapsed ? '0px' : '200px'}
-			style:transition={TEXT_TRANSITION}
+			class="inline-flex min-w-0 items-center gap-[inherit] overflow-hidden whitespace-nowrap"
 		>
 			{@render children()}
 		</span>

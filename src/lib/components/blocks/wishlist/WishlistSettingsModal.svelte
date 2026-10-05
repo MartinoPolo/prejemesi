@@ -743,7 +743,7 @@
 						<p class="text-sm text-muted-foreground">
 							{m.wishlist_settings_data_hint()}
 						</p>
-						<div class="flex flex-wrap gap-2">
+						<div class="flex flex-wrap gap-(--nested-control-gap)">
 							<Button type="button" intent="outline" size="sm" onclick={handleImport}>
 								<FileUpIcon data-icon="inline-start" />
 								{m.import_toolbar_label()}
@@ -942,7 +942,7 @@
 			<Dialog.Title>{m.wishlist_settings_unsaved_title()}</Dialog.Title>
 			<Dialog.Description>{m.wishlist_settings_unsaved_description()}</Dialog.Description>
 		</Dialog.Header>
-		<Dialog.Footer class="flex flex-wrap gap-2">
+		<Dialog.Footer class="flex-wrap">
 			<Button intent="outline" onclick={continueEditing}>
 				{m.wishlist_settings_continue_editing()}
 			</Button>
@@ -964,7 +964,7 @@
 			>
 			<Dialog.Description>{m.wishlist_delete_confirm_description()}</Dialog.Description>
 		</Dialog.Header>
-		<Dialog.Footer class="flex gap-2">
+		<Dialog.Footer>
 			<Button
 				intent="outline"
 				onclick={() => (deleteConfirmOpen = false)}
@@ -991,7 +991,7 @@
 					: m.wishlist_revert_confirm_clean_description()}
 			</Dialog.Description>
 		</Dialog.Header>
-		<Dialog.Footer class="flex gap-2">
+		<Dialog.Footer>
 			<Button
 				intent="outline"
 				onclick={() => (revertConfirmOpen = false)}

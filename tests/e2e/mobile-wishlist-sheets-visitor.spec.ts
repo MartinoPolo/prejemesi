@@ -44,6 +44,11 @@ test.describe('mobile wishlist visitor acceptance', () => {
 		await reservationDialog.getByRole('button', { name: /Rezervovat/, exact: true }).click();
 		await expect(reservationDialog).toBeHidden();
 		await expect(reservedGift.getByText('Rezervováno vámi', { exact: true })).toBeVisible();
+		await expect(
+			reservedGift
+				.getByTestId('gift-action-row')
+				.getByRole('button', { name: m.gift_mark_bought() }),
+		).toBeVisible();
 
 		await owner.setViewportSize({ width: 800, height: MOBILE_HEIGHT });
 		await archiveWishlist(owner);
@@ -56,10 +61,8 @@ test.describe('mobile wishlist visitor acceptance', () => {
 		await expect(cancel).toHaveAccessibleName(/Zrušit rezervaci/i);
 		await expect(archivedGift.getByTestId('gift-received-toggle')).toHaveCount(0);
 		await expect(
-			archivedGift.getByRole('button', {
-				name: /Označit jako koupené|Zakoupeno|Mark as bought|Purchased/i,
-			}),
-		).not.toBeVisible();
+			archivedGift.getByRole('button', { name: m.gift_mark_bought(), includeHidden: true }),
+		).toHaveCount(0);
 		await expect(
 			visitor.getByRole('button', { name: /Přidat dárek|Změnit pořadí/i }),
 		).toHaveCount(0);

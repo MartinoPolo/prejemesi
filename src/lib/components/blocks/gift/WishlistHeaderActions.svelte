@@ -59,7 +59,10 @@
 </script>
 
 {#if settingsAvailable || canManage}
-	<div class="flex shrink-0 items-center gap-2" data-testid="wishlist-header-actions">
+	<div
+		class="flex shrink-0 items-center gap-(--nested-control-gap)"
+		data-testid="wishlist-header-actions"
+	>
 		{#if settingsAvailable}
 			<Button
 				format="icon"

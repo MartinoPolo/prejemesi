@@ -38,7 +38,11 @@ describe('GiftCard unified state presentation (issues #328 and #330)', () => {
 	it('groups an authorized reserver identity with reservation state on the image', async () => {
 		await page.viewport(800, 720);
 		const host = await renderCardInGridColumn(
-			makeVisitorGift({ reserverNames: ['Babička'], isFullyReserved: true }),
+			makeVisitorGift({
+				reserverNames: ['Babička'],
+				isFullyReserved: true,
+				myReservationId: null,
+			}),
 			WISHLIST_ROLES.moderator,
 		);
 		const imageOverlay = host.querySelector(
@@ -212,7 +216,11 @@ describe('GiftCard unified state presentation (issues #328 and #330)', () => {
 		await render(
 			GiftCardTestHost,
 			{
-				gift: makeVisitorGift({ reserverNames: ['Babička'], isFullyReserved: true }),
+				gift: makeVisitorGift({
+					reserverNames: ['Babička'],
+					isFullyReserved: true,
+					myReservationId: null,
+				}),
 				role: WISHLIST_ROLES.moderator,
 				contextualMode: true,
 				onreceived: () => {},

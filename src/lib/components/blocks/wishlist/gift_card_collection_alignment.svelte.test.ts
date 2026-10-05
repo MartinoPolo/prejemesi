@@ -13,7 +13,6 @@ import { WISHLIST_ROLES } from '$lib/modules/wishlists/types.js';
 
 vi.mock('$env/dynamic/public', () => ({ env: {} }));
 
-const { default: WishlistGiftDisplay } = await import('./WishlistGiftDisplay.svelte');
 const { default: WishlistGiftDisplayTestHost } =
 	await import('./WishlistGiftDisplayTestHost.svelte');
 const { IMAGE_URL, imageMeta } = await import('../gift/gift_card.test_fixtures.js');
@@ -53,7 +52,7 @@ function gift(overrides: Partial<GiftForVisitor> = {}): GiftForVisitor {
 	};
 }
 
-const defaultProps: ComponentProps<typeof WishlistGiftDisplay> = {
+const defaultProps: ComponentProps<typeof WishlistGiftDisplayTestHost> = {
 	sections: [],
 	role: WISHLIST_ROLES.recipient,
 	isArchived: false,
@@ -97,7 +96,7 @@ describe('GiftCard collection alignment', () => {
 				sortOrder: 0,
 			},
 		});
-		const screen = await render(WishlistGiftDisplay, {
+		const screen = await render(WishlistGiftDisplayTestHost, {
 			...defaultProps,
 			hideReservationState: true,
 			sections: [
@@ -152,7 +151,7 @@ describe('GiftCard collection alignment', () => {
 				],
 			},
 		];
-		const screen = await render(WishlistGiftDisplay, {
+		const screen = await render(WishlistGiftDisplayTestHost, {
 			...defaultProps,
 			sections,
 			hascontextactions: () => true,
@@ -192,9 +191,47 @@ describe('GiftCard collection alignment', () => {
 		await screen.unmount();
 	});
 
+	it('re-measures the action track when the depth changes', async () => {
+		await page.viewport(1100, 900);
+		const screen = await render(WishlistGiftDisplayTestHost, {
+			...defaultProps,
+			sections: [
+				{
+					kind: GIFT_SECTION_KINDS.available,
+					key: 'available',
+					label: null,
+					gifts: [gift(), gift({ id: 'peer', name: 'Druhý dárek' })],
+				},
+			],
+			hascontextactions: () => true,
+			oncontextactions: () => true,
+		});
+		try {
+			await expect
+				.poll(() => document.querySelector('[data-gift-card-tracks-aligned="true"]'))
+				.not.toBeNull();
+			const footer = document.querySelector<HTMLElement>('[data-testid="gift-card-footer"]')!;
+			const shadowOffset = Number.parseFloat(
+				getComputedStyle(footer).getPropertyValue('--elevation-ordinary-offset'),
+			);
+			document.documentElement.dataset.depth = 'black';
+			await nextLayout();
+			const blackHeight = footer.getBoundingClientRect().height;
+			document.documentElement.dataset.depth = 'soft';
+			await nextLayout();
+			expectPixelsNear(footer.getBoundingClientRect().height, blackHeight - shadowOffset);
+			for (const rect of trackRects('actions')) {
+				expectPixelsNear(rect.height, blackHeight - shadowOffset);
+			}
+		} finally {
+			delete document.documentElement.dataset.depth;
+			await screen.unmount();
+		}
+	});
+
 	it('clamps desktop titles to two painted lines and descriptions to one', async () => {
 		await page.viewport(960, 900);
-		const screen = await render(WishlistGiftDisplay, {
+		const screen = await render(WishlistGiftDisplayTestHost, {
 			...defaultProps,
 			sections: [
 				{
@@ -237,7 +274,7 @@ describe('GiftCard collection alignment', () => {
 		const previousFontSize = document.documentElement.style.fontSize;
 		document.documentElement.style.fontSize = '32px';
 		try {
-			const screen = await render(WishlistGiftDisplay, {
+			const screen = await render(WishlistGiftDisplayTestHost, {
 				...defaultProps,
 				sections: [
 					{
@@ -299,7 +336,7 @@ describe('GiftCard collection alignment', () => {
 			},
 		];
 		await page.viewport(320, 1000);
-		const screen = await render(WishlistGiftDisplay, {
+		const screen = await render(WishlistGiftDisplayTestHost, {
 			...defaultProps,
 			sections: mobileSections,
 		});
@@ -405,7 +442,6 @@ describe('GiftCard collection alignment', () => {
 				cards[0]!.querySelector<HTMLElement>('[data-like-heart]')!.closest('button')!,
 				cards[0]!.querySelector<HTMLElement>('[data-testid="gift-state-overlay"]')!
 					.firstElementChild as HTMLElement,
-				cards[0]!.querySelector<HTMLElement>('[data-reserver-identity]')!,
 				cards[0]!.querySelector<HTMLElement>('[data-testid="gift-priority-badge"]')!,
 			].map((element) => element.getBoundingClientRect());
 
@@ -515,7 +551,7 @@ describe('GiftCard collection alignment', () => {
 				gifts: items,
 			},
 		];
-		const screen = await render(WishlistGiftDisplay, {
+		const screen = await render(WishlistGiftDisplayTestHost, {
 			...defaultProps,
 			sections: section([longGift, gift({ id: 'peer' })]),
 		});

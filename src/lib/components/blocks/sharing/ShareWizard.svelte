@@ -3,6 +3,7 @@
 	import { translateServerError } from '$lib/modules/errors/translate_server_error.js';
 	import * as Dialog from '$lib/components/base/dialog/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
+	import * as InputGroup from '$lib/components/base/input-group/index.js';
 	import ShareMethodButton from './ShareMethodButton.svelte';
 	import { shareWizardVariants } from './share_wizard_variants.js';
 	import {
@@ -118,6 +119,22 @@
 	}
 </script>
 
+{#snippet copyLinkField()}
+	<InputGroup.Root size="xl">
+		<InputGroup.Input value={shareUrlDisplay} readonly aria-label={m.share_link_eyebrow()} />
+		<InputGroup.Segment onclick={() => sharing.copyLink()}>
+			{#if linkCopied}
+				<CheckIcon />
+				{m.share_copied()}
+			{:else}
+				<CopyIcon />
+				{m.share_copy()}
+			{/if}
+		</InputGroup.Segment>
+	</InputGroup.Root>
+	<p class="sr-only" role="status">{linkCopied ? m.share_copied() : ''}</p>
+{/snippet}
+
 <Dialog.Root open={isOpen} onOpenChange={handleOpenChange}>
 	<Dialog.Content class="flex max-h-[85dvh] flex-col gap-0 overflow-hidden p-0 sm:max-w-[35rem]">
 		<Dialog.Title class="sr-only">{m.share_dialog_title()}</Dialog.Title>
@@ -222,42 +239,7 @@
 					<!-- Copy link section -->
 					<div>
 						<div class={styles.sectionEyebrow()}>{m.share_link_eyebrow()}</div>
-						<div class={styles.copyLinkRow()}>
-							<div class={styles.linkInputWrap()}>
-								<span class={styles.linkUrlText()}>
-									<strong class={styles.linkUrlDomain()}>
-										{shareUrlDisplay.split('/w/')[0]}
-									</strong>/w/{sharing.wishlistShortId.current}
-								</span>
-							</div>
-							{#if linkCopied}
-								<Button
-									intent="primary"
-									size="xl"
-									class="flex-shrink-0"
-									aria-live="polite"
-								>
-									<CheckIcon data-icon="inline-start" />
-									{m.share_link_copied()}
-								</Button>
-							{:else}
-								<Button
-									intent="primary"
-									size="xl"
-									class="flex-shrink-0"
-									onclick={() => sharing.copyLink()}
-								>
-									<CopyIcon data-icon="inline-start" />
-									{m.share_copy()}
-								</Button>
-							{/if}
-						</div>
-						{#if linkCopied}
-							<div class={styles.copiedLabel()} aria-live="polite">
-								<CheckIcon class="size-2.5" />
-								{m.share_copied()}
-							</div>
-						{/if}
+						{@render copyLinkField()}
 					</div>
 
 					<!-- Social share buttons -->
@@ -379,23 +361,8 @@
 						<p class={styles.successSub()}>
 							{m.share_success_body({ title: wishlistTitle })}
 						</p>
-						<div class={styles.successLinkRow()}>
-							<span class={styles.successLinkText()}>{shareUrlDisplay}</span>
-							<Button
-								intent={linkCopied ? 'primary' : 'outline'}
-								size="sm"
-								format="icon"
-								class="flex-shrink-0"
-								aria-label={linkCopied ? m.share_link_copied() : m.share_copy()}
-								aria-live="polite"
-								onclick={() => sharing.copyLink()}
-							>
-								{#if linkCopied}
-									<CheckIcon />
-								{:else}
-									<CopyIcon />
-								{/if}
-							</Button>
+						<div class={styles.successLinkField()}>
+							{@render copyLinkField()}
 						</div>
 					</div>
 

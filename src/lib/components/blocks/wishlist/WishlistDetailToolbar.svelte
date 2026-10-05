@@ -1158,8 +1158,8 @@
 		container-type: inline-size;
 		max-width: 100%;
 		overflow: visible;
-		padding: 0.5rem calc(0.5rem + var(--elevation-ordinary-offset))
-			calc(0.5rem + var(--elevation-ordinary-offset)) 0.5rem;
+		padding: 0.5rem calc(0.5rem + var(--depth-clearance)) calc(0.5rem + var(--depth-clearance))
+			0.5rem;
 	}
 
 	.toolbar-responsive-carrier,
@@ -1179,7 +1179,7 @@
 		display: grid;
 		min-width: 0;
 		grid-auto-rows: minmax(var(--size-control-lg), auto);
-		gap: 8px;
+		gap: var(--nested-control-gap);
 	}
 
 	.toolbar-desktop {
@@ -1354,7 +1354,7 @@
 
 	.toolbar-layout-selection {
 		align-items: stretch;
-		gap: 0.5rem;
+		gap: var(--nested-control-gap);
 	}
 
 	.toolbar-selection-content {

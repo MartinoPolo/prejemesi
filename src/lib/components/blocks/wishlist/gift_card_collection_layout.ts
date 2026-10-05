@@ -1,3 +1,5 @@
+import { observeDepthChange } from '$lib/theme/depth_change.js';
+
 const GIFT_CARD_TRACKS = ['title', 'description', 'links', 'price', 'actions'] as const;
 
 type GiftCardTrack = (typeof GIFT_CARD_TRACKS)[number];
@@ -197,6 +199,7 @@ export function giftCardCollectionLayout(collection: HTMLElement) {
 	const fonts = document.fonts;
 	fonts?.addEventListener('loadingdone', scheduleMeasurement);
 	window.addEventListener('resize', scheduleMeasurement);
+	const stopObservingDepth = observeDepthChange(scheduleMeasurement);
 	void fonts?.ready.then(scheduleMeasurement);
 	scheduleMeasurement();
 
@@ -211,6 +214,7 @@ export function giftCardCollectionLayout(collection: HTMLElement) {
 			mutationObserver.disconnect();
 			fonts?.removeEventListener('loadingdone', scheduleMeasurement);
 			window.removeEventListener('resize', scheduleMeasurement);
+			stopObservingDepth();
 			resetTrackHeights(collection);
 			delete collection.dataset.giftCardHasDescriptions;
 		},

@@ -131,3 +131,48 @@ describe('GiftDetailActionBar responsive action geometry', () => {
 		}
 	});
 });
+
+describe('GiftDetailActionBar Bought placement', () => {
+	it('keeps Bought in the action bar beside Cancel for a signed-in reserver', async () => {
+		const ownReservation = { ...gift, myReservationId: 'reservation-own' };
+		const screen = await render(GiftDetailActionBarTestHost, {
+			gift: ownReservation,
+			role: 'visitor',
+		});
+
+		const bought = screen.getByRole('button', { name: m.gift_mark_bought() });
+		const cancel = screen.getByRole('button', {
+			name: m.reserve_button_cancel_aria({ name: gift.name }),
+		});
+		await expect.element(bought).toBeVisible();
+		await expect.element(cancel).toBeVisible();
+
+		const bar = (bought.element() as HTMLElement).parentElement as HTMLElement;
+		expect(bar.contains(cancel.element())).toBe(true);
+		const boughtRectangle = bought.element().getBoundingClientRect();
+		const cancelRectangle = cancel.element().getBoundingClientRect();
+		expectPixelsNear(boughtRectangle.height, cancelRectangle.height);
+		expectPixelsNear(cancelRectangle.left - boughtRectangle.right, 8);
+
+		await screen.unmount();
+	});
+
+	it('omits Bought for anonymous reservers', async () => {
+		const screen = await render(GiftDetailActionBarTestHost, {
+			gift: { ...gift, myReservationId: 'reservation-own' },
+			role: 'visitor',
+			isAuthenticated: false,
+		});
+
+		await expect
+			.element(
+				screen.getByRole('button', {
+					name: m.reserve_button_cancel_aria({ name: gift.name }),
+				}),
+			)
+			.toBeVisible();
+		expect(document.body.textContent).not.toContain(m.gift_bought());
+
+		await screen.unmount();
+	});
+});

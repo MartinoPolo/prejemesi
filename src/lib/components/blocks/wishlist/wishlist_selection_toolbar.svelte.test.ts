@@ -61,9 +61,25 @@ describe('WishlistSelectionToolbar mobile bulk surface (#340)', () => {
 			const shadowOffset = Number.parseFloat(
 				getComputedStyle(row).getPropertyValue('--elevation-ordinary-offset'),
 			);
-			expectPixelsNear(Number.parseFloat(getComputedStyle(row).gap) - shadowOffset, 8);
 			const actions = row.querySelector('.mobile-selection-actions') as HTMLElement;
-			expectPixelsNear(Number.parseFloat(getComputedStyle(actions).gap) - shadowOffset, 8);
+			try {
+				for (const [depth, depthClearance] of [
+					['soft', 0],
+					['black', shadowOffset],
+				] as const) {
+					document.documentElement.dataset.depth = depth;
+					expectPixelsNear(
+						Number.parseFloat(getComputedStyle(row).gap),
+						8 + depthClearance,
+					);
+					expectPixelsNear(
+						Number.parseFloat(getComputedStyle(actions).gap),
+						8 + depthClearance,
+					);
+				}
+			} finally {
+				delete document.documentElement.dataset.depth;
+			}
 			for (const target of row.querySelectorAll<HTMLElement>(
 				'button, [data-slot="checkbox"]',
 			)) {

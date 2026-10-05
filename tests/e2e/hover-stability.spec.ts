@@ -43,11 +43,16 @@ test.describe('Issue #346 stable hover hit regions', () => {
 			).toEqual([]);
 			await expectSafeClick(page, like);
 
-			const link = dialog.locator('a.elevation-owner-raised[target="_blank"]').first();
+			// Source links are flat text links (#442): the whole row target stays hovered.
+			const link = dialog.getByRole('link').and(dialog.locator('[target="_blank"]')).first();
 			await expect(link).toBeVisible();
 			await expect(link).toHaveAttribute('href', /^https?:\/\//);
 			expect(
-				(await bottomToTopSweep(page, link, 'Gift link row')).interveningUnhovered,
+				(
+					await bottomToTopSweep(page, link, 'Gift link row', {
+						restingShadow: false,
+					})
+				).interveningUnhovered,
 			).toEqual([]);
 			await expectSafeClick(page, link);
 

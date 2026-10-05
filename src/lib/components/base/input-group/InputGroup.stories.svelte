@@ -105,12 +105,27 @@
 	{#snippet template()}
 		<div class="w-80">
 			<InputGroup.Root>
-				<InputGroup.Input value="https://prejemesi.cz/w/birthday" readonly />
-				<InputGroup.Addon align="inline-end">
-					<InputGroup.Button intent="ghost" size="icon-xs" aria-label="Copy">
-						<CopyIcon />
-					</InputGroup.Button>
-				</InputGroup.Addon>
+				<InputGroup.Input
+					value="https://prejemesi.cz/w/birthday"
+					readonly
+					aria-label="Share link"
+				/>
+				<InputGroup.Segment>
+					<CopyIcon />
+					Copy
+				</InputGroup.Segment>
+			</InputGroup.Root>
+		</div>
+	{/snippet}
+</Story>
+
+<!-- Decorative look-alike (e.g. landing demo): no focusable control and no exposed action. -->
+<Story name="Decorative URL Field">
+	{#snippet template()}
+		<div class="w-80">
+			<InputGroup.Root aria-hidden="true" inert>
+				<InputGroup.Input value="prejemesi.cz/w/birthday" readonly tabindex={-1} />
+				<InputGroup.Segment decorative>Copy</InputGroup.Segment>
 			</InputGroup.Root>
 		</div>
 	{/snippet}

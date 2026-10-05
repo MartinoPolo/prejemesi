@@ -4,18 +4,15 @@
 	import GiftLinkList from '$lib/components/blocks/gift/GiftLinkList.svelte';
 	import GiftStateOverlay from '$lib/components/blocks/gift/GiftStateOverlay.svelte';
 	import LikeButton from '$lib/components/blocks/gift/LikeButton.svelte';
-	import ReserveButton from '$lib/components/blocks/reservation/ReserveButton.svelte';
-	import PurchasedToggle from '$lib/components/blocks/reservation/PurchasedToggle.svelte';
-	import GiftReceivedToggle from './GiftReceivedToggle.svelte';
 	import type { GiftForVisitor, GiftByRole } from '$lib/modules/gifts/types.js';
 	import type { WishlistRole } from '$lib/modules/wishlists/types.js';
-	import { formatPrice, formatReserverLine } from '$lib/modules/gifts/gift_display.js';
-	import { deriveGiftDisplayState } from '$lib/modules/gifts/gift_display_state.js';
+	import { formatPrice } from '$lib/modules/gifts/gift_display.js';
 	import {
-		canLikeGift,
-		canManageWishlist,
-		canSeeReserverNames,
-	} from '$lib/modules/wishlists/wishlist_capabilities.js';
+		deriveGiftBrowseActions,
+		deriveGiftDisplayState,
+	} from '$lib/modules/gifts/gift_display_state.js';
+	import { canLikeGift } from '$lib/modules/wishlists/wishlist_capabilities.js';
+	import { useGifts } from '$lib/modules/gifts/gifts.context.svelte.js';
 	import { resolveGiftImageUrl } from '$lib/modules/images/public_url.js';
 	import { hasExplicitFrameFill } from '$lib/components/derived/image-frame/index.js';
 	import { cn } from '$lib/utils.js';
@@ -23,7 +20,7 @@
 	import GiftDescription from './GiftDescription.svelte';
 	import GiftCategoryBadge from './GiftCategoryBadge.svelte';
 	import GiftPriorityBadge from './GiftPriorityBadge.svelte';
-	import GiftActionRow from './GiftActionRow.svelte';
+	import GiftBrowseActions from './GiftBrowseActions.svelte';
 	import { restingShadowNesting } from '$lib/utils/resting_shadow_nesting.js';
 	import type { GiftActionPlacementSnapshot } from '$lib/components/blocks/wishlist/gift_context_invocation.js';
 
@@ -66,6 +63,8 @@
 		showPriority = true,
 	}: GiftCardProps = $props();
 
+	const giftsContext = useGifts();
+
 	const displayState = $derived(
 		deriveGiftDisplayState(
 			gift,
@@ -82,16 +81,18 @@
 			contextualMode,
 		),
 	);
-	const { isVisitorOrModerator, visitorGift, isFullyReserved } = $derived(displayState);
+	const { visitorGift, isFullyReserved } = $derived(displayState);
 	const presentation = $derived(displayState.presentation);
-	const hasReservationAction = $derived(
-		visitorGift !== null &&
-			(visitorGift.myReservationId !== null || (!isArchived && !isFullyReserved)),
-	);
-	const canManage = $derived(canManageWishlist(role) && !contextualMode);
-	const hasReceivedPrimary = $derived(canManage && !isArchived && onreceived !== undefined);
-	const hasMultipleActions = $derived(
-		hasReceivedPrimary && isVisitorOrModerator && hasReservationAction,
+	const browseActions = $derived(
+		deriveGiftBrowseActions({
+			role,
+			visitorGift,
+			isFullyReserved,
+			isArchived,
+			isAuthenticated: giftsContext.isAuthenticated.current,
+			contextualMode,
+			canMarkReceived: onreceived !== undefined,
+		}),
 	);
 	let actionContentWidth = $state(0);
 
@@ -104,12 +105,6 @@
 		return hasExplicitFrameFill(fillColor) ? fillColor : null;
 	});
 	const priceDisplay = $derived(formatPrice(gift.price, gift.currency, gift.priceMax));
-	const reserverLine = $derived(formatReserverLine(visitorGift?.reserverNames ?? []));
-	const visibleReserverLine = $derived(
-		canSeeReserverNames(role) && reserverLine !== null && reserverLine.trim() !== ''
-			? reserverLine
-			: null,
-	);
 	const hasDescriptionContent = $derived(
 		(gift.description ?? '').trim() !== '' || gift.descriptionAppends.length > 0,
 	);
@@ -177,11 +172,7 @@
 				</div>
 			{/if}
 
-			<GiftStateOverlay
-				model={presentation.overlay}
-				identity={visibleReserverLine}
-				avoidTopRight
-			/>
+			<GiftStateOverlay entries={presentation.overlay} avoidTopRight />
 			<GiftPriorityBadge
 				priorityLabel={gift.priorityLabel}
 				{showPriority}
@@ -239,7 +230,7 @@
 			</div>
 		</div>
 
-		{#if !contextualMode && (hasReceivedPrimary || (isVisitorOrModerator && hasReservationAction) || (onmore && persistentMore))}
+		{#if !contextualMode && (browseActions.primaryAction !== undefined || (onmore && persistentMore))}
 			<div
 				class={styles.footer()}
 				data-gift-card-track="actions"
@@ -250,63 +241,22 @@
 					data-testid="gift-card-reservation-actions"
 					class={styles.reservationActions()}
 				>
-					{#snippet secondaryReceivedAction()}
-						<GiftReceivedToggle
-							giftId={gift.id}
-							received={gift.received}
-							{role}
-							{isArchived}
-							{onreceived}
-							pending={receivedPending}
-							compactLabel
-						/>
-					{/snippet}
-					<GiftActionRow
+					<GiftBrowseActions
+						{gift}
+						{visitorGift}
+						{role}
+						{isArchived}
+						actions={browseActions}
+						contentWidth={actionContentWidth}
+						{onreserve}
+						{onunreserve}
+						{onreceived}
+						{receivedPending}
 						{onmore}
+						{persistentMore}
 						{moreOpen}
 						{moreSurface}
-						{persistentMore}
-						contentWidth={actionContentWidth}
-						secondary={hasMultipleActions ? secondaryReceivedAction : undefined}
-						secondaryAction={hasMultipleActions ? 'received' : undefined}
-						primaryAction={hasReservationAction && visitorGift
-							? visitorGift.myReservationId === null
-								? 'reserve'
-								: 'cancel-reservation'
-							: hasReceivedPrimary
-								? 'received'
-								: undefined}
-						controlSizing="intrinsic"
-					>
-						{#if !canManage && isVisitorOrModerator && visitorGift && onmore === undefined}
-							<PurchasedToggle gift={visitorGift} class="w-full max-sm:hidden" />
-						{/if}
-						{#if hasMultipleActions && visitorGift}
-							<ReserveButton
-								gift={visitorGift}
-								{isArchived}
-								{onreserve}
-								{onunreserve}
-							/>
-						{:else if hasReceivedPrimary}
-							<GiftReceivedToggle
-								giftId={gift.id}
-								received={gift.received}
-								{role}
-								{isArchived}
-								{onreceived}
-								pending={receivedPending}
-								compactLabel
-							/>
-						{:else if isVisitorOrModerator && visitorGift}
-							<ReserveButton
-								gift={visitorGift}
-								{isArchived}
-								{onreserve}
-								{onunreserve}
-							/>
-						{/if}
-					</GiftActionRow>
+					/>
 				</div>
 			</div>
 		{/if}

@@ -131,6 +131,7 @@
 		hasAdditionalGiftContextActions,
 		type GiftContextAction,
 	} from '$lib/modules/gifts/gift_context_actions.js';
+	import { canTrackPurchase } from '$lib/modules/gifts/gift_display_state.js';
 	import { normalizeGiftUrl } from '$lib/modules/gifts/gift_url.js';
 	import { getPriorityActionOptions } from '$lib/modules/gifts/gift_display.js';
 	import type {
@@ -650,7 +651,7 @@
 			// visitors and správci receive reservation fields; recipients and preview projections do not.
 			canReserve: ownsReservation || !giftItem.isFullyReserved,
 			ownsReservation,
-			canTrackPurchased: isAuthenticated && ownsReservation,
+			canTrackPurchased: canTrackPurchase({ isAuthenticated, isArchived, ownsReservation }),
 			purchased: giftItem.myReservationPurchasedAt !== null,
 		};
 	}
@@ -678,6 +679,9 @@
 		}
 		if (reservationContext.canReserve) {
 			actions.push(reservationContext.ownsReservation ? 'cancel-reservation' : 'reserve');
+		}
+		if (reservationContext.canTrackPurchased) {
+			actions.push('purchased');
 		}
 		return actions;
 	}
@@ -2058,7 +2062,7 @@
 			<Dialog.Title>{m.wishlist_archive_confirm_title()}</Dialog.Title>
 			<Dialog.Description>{m.wishlist_archive_confirm_description()}</Dialog.Description>
 		</Dialog.Header>
-		<Dialog.Footer class="flex gap-2">
+		<Dialog.Footer>
 			<Button
 				intent="outline"
 				onclick={() => (archiveConfirmOpen = false)}
