@@ -1,6 +1,10 @@
 import type { GiftForVisitor, GiftByRole } from './types.js';
+import type { GiftContextAction } from './gift_context_actions.js';
 import type { WishlistRole } from '$lib/modules/wishlists/types.js';
-import { canSeeReserverNames } from '$lib/modules/wishlists/wishlist_capabilities.js';
+import {
+	canManageWishlist,
+	canSeeReserverNames,
+} from '$lib/modules/wishlists/wishlist_capabilities.js';
 
 export function isGiftForVisitor(
 	gift: GiftByRole,
@@ -151,5 +155,75 @@ export function deriveGiftDisplayState(
 			isDimmed: !hidePresentationState && (gift.received || isFullyReserved),
 			showLike: capabilities.canLike && !isArchived,
 		},
+	};
+}
+
+// Browse actions sit with display state because the public landing demo renders the real gift
+// views and may load only presentation modules (docs/performance-budget.md).
+export interface PurchaseTrackingContext {
+	isAuthenticated: boolean;
+	isArchived: boolean;
+	ownsReservation: boolean;
+}
+
+/**
+ * Bought is gifter-private self-tracking: only a signed-in holder of a reservation on an active
+ * list may toggle it. Every Bought surface shares this gate so none renders an empty slot.
+ */
+export function canTrackPurchase(context: Readonly<PurchaseTrackingContext>): boolean {
+	return context.isAuthenticated && !context.isArchived && context.ownsReservation;
+}
+
+export interface GiftBrowseActionInput {
+	role: WishlistRole;
+	/** Present only for visitors and moderators allowed to reserve. */
+	visitorGift: GiftForVisitor | null;
+	isFullyReserved: boolean;
+	isArchived: boolean;
+	isAuthenticated: boolean;
+	contextualMode: boolean;
+	canMarkReceived: boolean;
+}
+
+export interface GiftBrowseActions {
+	primaryAction: 'reserve' | 'cancel-reservation' | 'received' | undefined;
+	/** Ordered left to right beside the primary action. */
+	secondaryActions: readonly GiftContextAction[];
+}
+
+/**
+ * Direct actions on a browse card or list row. A reservation command is primary whenever it
+ * exists; a manager's Received then joins the secondary actions, after the viewer's own Bought.
+ */
+export function deriveGiftBrowseActions(input: Readonly<GiftBrowseActionInput>): GiftBrowseActions {
+	const { visitorGift } = input;
+	const ownsReservation = visitorGift !== null && visitorGift.myReservationId !== null;
+	const reservationAction =
+		visitorGift === null
+			? undefined
+			: ownsReservation
+				? 'cancel-reservation'
+				: !input.isArchived && !input.isFullyReserved
+					? 'reserve'
+					: undefined;
+	const hasReceivedAction =
+		canManageWishlist(input.role) &&
+		!input.contextualMode &&
+		!input.isArchived &&
+		input.canMarkReceived;
+	const hasPurchasedAction = canTrackPurchase({
+		isAuthenticated: input.isAuthenticated,
+		isArchived: input.isArchived,
+		ownsReservation,
+	});
+
+	return {
+		primaryAction: reservationAction ?? (hasReceivedAction ? 'received' : undefined),
+		secondaryActions: [
+			...(hasPurchasedAction ? (['purchased'] as const) : []),
+			...(reservationAction !== undefined && hasReceivedAction
+				? (['received'] as const)
+				: []),
+		],
 	};
 }

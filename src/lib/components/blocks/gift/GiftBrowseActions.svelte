@@ -2,7 +2,7 @@
 	import ReserveButton from '$lib/components/blocks/reservation/ReserveButton.svelte';
 	import PurchasedToggle from '$lib/components/blocks/reservation/PurchasedToggle.svelte';
 	import type { GiftActionPlacementSnapshot } from '$lib/components/blocks/wishlist/gift_context_invocation.js';
-	import type { GiftBrowseActions } from '$lib/modules/gifts/gift_browse_actions.js';
+	import type { GiftBrowseActions } from '$lib/modules/gifts/gift_display_state.js';
 	import type { GiftContextAction } from '$lib/modules/gifts/gift_context_actions.js';
 	import type { GiftByRole, GiftForVisitor } from '$lib/modules/gifts/types.js';
 	import type { WishlistRole } from '$lib/modules/wishlists/types.js';

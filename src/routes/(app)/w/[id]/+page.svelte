@@ -127,11 +127,11 @@
 		shouldExitGiftSelectionOnEscape,
 	} from '$lib/modules/gifts/gift_selection.svelte.js';
 	import {
-		canTrackPurchase,
 		giftContextActions,
 		hasAdditionalGiftContextActions,
 		type GiftContextAction,
 	} from '$lib/modules/gifts/gift_context_actions.js';
+	import { canTrackPurchase } from '$lib/modules/gifts/gift_display_state.js';
 	import { normalizeGiftUrl } from '$lib/modules/gifts/gift_url.js';
 	import { getPriorityActionOptions } from '$lib/modules/gifts/gift_display.js';
 	import type {

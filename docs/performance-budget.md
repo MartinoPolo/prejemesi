@@ -71,7 +71,7 @@ never drift from the shipped product), so these modules are public code by desig
 | ------------------------------------------------- | ---------------------------------- |
 | `/lib/modules/gifts/types.ts`                     | Gift view types                    |
 | `/lib/modules/gifts/gift_display.ts`              | Price/label formatting             |
-| `/lib/modules/gifts/gift_display_state.ts`        | Reserved/archived render state     |
+| `/lib/modules/gifts/gift_display_state.ts`        | Render state and browse actions    |
 | `/lib/modules/gifts/gift_url.ts`                  | External-link rendering            |
 | `/lib/modules/gifts/gifts.context.svelte.ts`      | Context the demo stubs locally     |
 | `/lib/modules/gifts/gift_ordering.ts`             | Pure presentation ordering         |

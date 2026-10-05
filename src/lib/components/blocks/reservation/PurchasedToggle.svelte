@@ -5,7 +5,7 @@
 	import { toastSuccess, toastError } from '$lib/components/base/toast/index.js';
 	import * as m from '$lib/paraglide/messages.js';
 	import { useGifts } from '$lib/modules/gifts/gifts.context.svelte.js';
-	import { canTrackPurchase } from '$lib/modules/gifts/gift_context_actions.js';
+	import { canTrackPurchase } from '$lib/modules/gifts/gift_display_state.js';
 	import { setReservationPurchased } from '$lib/modules/reservations/reservations.remote.js';
 	import type { GiftForVisitor } from '$lib/modules/gifts/types.js';
 

@@ -6,9 +6,11 @@
 	import type { GiftForVisitor, GiftByRole } from '$lib/modules/gifts/types.js';
 	import type { WishlistRole } from '$lib/modules/wishlists/types.js';
 	import { formatPrice } from '$lib/modules/gifts/gift_display.js';
-	import { deriveGiftDisplayState } from '$lib/modules/gifts/gift_display_state.js';
+	import {
+		deriveGiftBrowseActions,
+		deriveGiftDisplayState,
+	} from '$lib/modules/gifts/gift_display_state.js';
 	import { canLikeGift } from '$lib/modules/wishlists/wishlist_capabilities.js';
-	import { deriveGiftBrowseActions } from '$lib/modules/gifts/gift_browse_actions.js';
 	import { useGifts } from '$lib/modules/gifts/gifts.context.svelte.js';
 	import { resolveGiftImageUrl } from '$lib/modules/images/public_url.js';
 	import { cn } from '$lib/utils.js';

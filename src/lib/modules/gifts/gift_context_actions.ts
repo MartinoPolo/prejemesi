@@ -56,17 +56,3 @@ export function giftContextActions(context: GiftContextActionContext): GiftConte
 
 	return actions;
 }
-
-export interface PurchaseTrackingContext {
-	isAuthenticated: boolean;
-	isArchived: boolean;
-	ownsReservation: boolean;
-}
-
-/**
- * Bought is gifter-private self-tracking: only a signed-in holder of a reservation on an active
- * list may toggle it. Every Bought surface shares this gate so none renders an empty slot.
- */
-export function canTrackPurchase(context: Readonly<PurchaseTrackingContext>): boolean {
-	return context.isAuthenticated && !context.isArchived && context.ownsReservation;
-}

@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
+import { WISHLIST_ROLES } from '$lib/modules/wishlists/types.js';
 import type { GiftForVisitor } from './types.js';
-import { deriveGiftDisplayState } from './gift_display_state.js';
+import {
+	canTrackPurchase,
+	deriveGiftBrowseActions,
+	deriveGiftDisplayState,
+	type GiftBrowseActionInput,
+} from './gift_display_state.js';
 
 function gift(overrides: Partial<GiftForVisitor> = {}): GiftForVisitor {
 	return {
@@ -403,5 +409,80 @@ describe('deriveGiftDisplayState other-reservation entry', () => {
 				role: 'support',
 			},
 		]);
+	});
+});
+
+describe('canTrackPurchase', () => {
+	it('lets only a signed-in viewer holding a reservation on an active list track Bought', () => {
+		const active = { isAuthenticated: true, isArchived: false, ownsReservation: true };
+
+		expect(canTrackPurchase(active)).toBe(true);
+		expect(canTrackPurchase({ ...active, isAuthenticated: false })).toBe(false);
+		expect(canTrackPurchase({ ...active, isArchived: true })).toBe(false);
+		expect(canTrackPurchase({ ...active, ownsReservation: false })).toBe(false);
+	});
+});
+
+const ownReservationManager: GiftBrowseActionInput = {
+	role: WISHLIST_ROLES.moderator,
+	visitorGift: gift({
+		myReservationId: 'reservation-1',
+		reservedCount: 1,
+		isFullyReserved: true,
+	}),
+	isFullyReserved: true,
+	isArchived: false,
+	isAuthenticated: true,
+	contextualMode: false,
+	canMarkReceived: true,
+};
+
+describe('deriveGiftBrowseActions', () => {
+	it('keeps Bought beside Received for a manager holding their own reservation', () => {
+		expect(deriveGiftBrowseActions(ownReservationManager)).toEqual({
+			primaryAction: 'cancel-reservation',
+			secondaryActions: ['purchased', 'received'],
+		});
+	});
+
+	it('hides Bought on an archived list while keeping own cancellation', () => {
+		expect(
+			deriveGiftBrowseActions({
+				...ownReservationManager,
+				role: WISHLIST_ROLES.visitor,
+				isArchived: true,
+			}),
+		).toEqual({ primaryAction: 'cancel-reservation', secondaryActions: [] });
+	});
+
+	it('hides Bought from a signed-out reserver', () => {
+		expect(
+			deriveGiftBrowseActions({
+				...ownReservationManager,
+				role: WISHLIST_ROLES.visitor,
+				isAuthenticated: false,
+			}),
+		).toEqual({ primaryAction: 'cancel-reservation', secondaryActions: [] });
+	});
+
+	it('offers Reserve alone to a visitor without a reservation', () => {
+		expect(
+			deriveGiftBrowseActions({
+				...ownReservationManager,
+				role: WISHLIST_ROLES.visitor,
+				visitorGift: gift(),
+				isFullyReserved: false,
+			}),
+		).toEqual({ primaryAction: 'reserve', secondaryActions: [] });
+	});
+
+	it('makes Received primary for a recipient who cannot reserve', () => {
+		expect(
+			deriveGiftBrowseActions({
+				...ownReservationManager,
+				role: WISHLIST_ROLES.recipient,
+				visitorGift: null,
+			}),
+		).toEqual({ primaryAction: 'received', secondaryActions: [] });
 	});
 });
