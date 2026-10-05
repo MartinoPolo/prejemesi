@@ -19,9 +19,11 @@ import {
 	resolveRevertCapability,
 } from '$lib/modules/wishlists/wishlist_capabilities.js';
 import { WISHLIST_ROLES } from '$lib/modules/wishlists/types.js';
+import { rejectDemoOperation } from '$lib/server/demo/scope.js';
 import { getWishlistByShortId } from '$lib/modules/wishlists/wishlists.remote.js';
 
 export const shareWishlist = guardedCommand(v.string(), async ({ user }, wishlistId) => {
+	rejectDemoOperation();
 	// Any manager (linked recipient or správce) may share — full management rights (issue #99).
 	const { wishlistRow } = await verifyManagerAccess(user.id, wishlistId);
 

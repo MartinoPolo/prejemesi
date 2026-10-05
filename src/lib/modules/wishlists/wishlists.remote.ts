@@ -3,6 +3,7 @@ import { eq, and, isNull, count } from 'drizzle-orm';
 import { error } from '@sveltejs/kit';
 import { getDb } from '$lib/server/db/index.js';
 import { isAppAdmin } from '$lib/server/admin.js';
+import { wishlistScope, rejectDemoImageUpload } from '$lib/server/demo/scope.js';
 import { wishlist } from '$lib/server/db/wishlist.schema.js';
 import { moderatorAssignment } from '$lib/server/db/moderator.schema.js';
 import { wishlistFollower } from '$lib/server/db/follower.schema.js';
@@ -58,7 +59,7 @@ export const getMyWishlists = guardedQuery(async ({ user }) => {
 		.select(ownRole.projection)
 		.from(wishlist)
 		.leftJoin(ownRole.totalGifts, eq(ownRole.totalGifts.wishlistId, wishlist.id))
-		.where(and(ownRole.predicate, isNull(wishlist.deletedAt)))
+		.where(and(ownRole.predicate, isNull(wishlist.deletedAt), wishlistScope()))
 		.orderBy(wishlist.updatedAt);
 	return rows.map(ownRole.map);
 });
@@ -76,7 +77,7 @@ export const getWishlistByShortId = publicQuery(v.string(), async (authContext, 
 		})
 		.from(wishlist)
 		.leftJoin(user, eq(user.id, wishlist.recipientUserId))
-		.where(and(eq(wishlist.shortId, shortId), isNull(wishlist.deletedAt)))
+		.where(and(eq(wishlist.shortId, shortId), isNull(wishlist.deletedAt), wishlistScope()))
 		.limit(1);
 
 	const row = rows[0];
@@ -165,7 +166,7 @@ export const getModeratedWishlists = guardedQuery(async ({ user: currentUser }) 
 		.leftJoin(user, eq(user.id, wishlist.recipientUserId))
 		.leftJoin(role.totalGifts, eq(role.totalGifts.wishlistId, wishlist.id))
 		.leftJoin(role.reservedGifts, eq(role.reservedGifts.wishlistId, wishlist.id))
-		.where(and(role.predicate, isNull(wishlist.deletedAt)))
+		.where(and(role.predicate, isNull(wishlist.deletedAt), wishlistScope()))
 		.orderBy(wishlist.updatedAt);
 	return rows.map(role.map);
 });
@@ -181,7 +182,7 @@ export const getFollowedWishlists = guardedQuery(async ({ user: currentUser }) =
 		.leftJoin(role.availableGifts, eq(role.availableGifts.wishlistId, wishlist.id))
 		.leftJoin(role.myReservations, eq(role.myReservations.wishlistId, wishlist.id))
 		// Dashboard history deliberately includes unfollowed and archived rows.
-		.where(and(role.predicate, isNull(wishlist.deletedAt)))
+		.where(and(role.predicate, isNull(wishlist.deletedAt), wishlistScope()))
 		.orderBy(wishlist.updatedAt);
 	return rows.map(role.map);
 });
@@ -198,10 +199,11 @@ async function updateLockedWishlist(
 	userId: string,
 	input: v.InferOutput<typeof UpdateWishlistInputSchema>,
 ) {
+	rejectDemoImageUpload(input.imageKey);
 	const rows = await tx
 		.select()
 		.from(wishlist)
-		.where(and(eq(wishlist.id, input.id), isNull(wishlist.deletedAt)))
+		.where(and(eq(wishlist.id, input.id), isNull(wishlist.deletedAt), wishlistScope()))
 		.limit(1)
 		.for('update');
 	const row = rows[0];
@@ -517,7 +519,8 @@ export const followWishlist = guardedCommand(v.string(), async ({ user }, wishli
 	const wishlistRows = await database
 		.select({ recipientUserId: wishlist.recipientUserId })
 		.from(wishlist)
-		.where(and(eq(wishlist.id, wishlistId), isNull(wishlist.deletedAt)))
+		// fallow-ignore-next-line code-duplication
+		.where(and(eq(wishlist.id, wishlistId), isNull(wishlist.deletedAt), wishlistScope()))
 		.limit(1);
 
 	const wishlistRow = wishlistRows[0];
@@ -610,7 +613,7 @@ export const recordWishlistVisit = guardedCommand(v.string(), async ({ user }, w
 	const wishlistRows = await database
 		.select({ recipientUserId: wishlist.recipientUserId })
 		.from(wishlist)
-		.where(and(eq(wishlist.id, wishlistId), isNull(wishlist.deletedAt)))
+		.where(and(eq(wishlist.id, wishlistId), isNull(wishlist.deletedAt), wishlistScope()))
 		.limit(1);
 
 	const wishlistRow = wishlistRows[0];

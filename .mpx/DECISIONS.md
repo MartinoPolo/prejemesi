@@ -151,6 +151,48 @@ sections for UI work. Historical reconciliation and review notes are in
   sessions, and shared verification storage; former magic-link users establish a password through
   reset.
 
+## Public demo playground
+
+- 2026-09-25: Offer a private, editable playground per visitor, not a shared demo account. Start on
+  Přehled as one fictional person with own, managed, and followed wishlists, without a persona
+  switcher; retain normal server-enforced roles and recipient surprise protection.
+- 2026-09-25: Curate eight initial wishlists with fifteen gifts each: three own, two managed, and
+  three followed, covering ongoing, birthday, and Christmas scenarios plus one draft and one
+  archived wishlist. Favor available gifts with a few plausible reservations and received gifts;
+  archive applies to wishlists, not gifts. These are starting-content targets, not constraints on
+  visitor edits. Reuse useful development scenarios, not sparse or artificial test fixtures
+  wholesale.
+- 2026-09-25: Use fictional Czech people and a curated Czech/English gift catalog with reviewed
+  images, natural short descriptions, plausible CZK estimates, relevant product links, categories,
+  and priorities, mostly medium. Select catalog language at playground creation; subsequent locale
+  switches translate the interface without rewriting sample content or edits. Reset can load the
+  other catalog language.
+- 2026-09-25: Add secondary “Vyzkoušet demo” / “Try demo” entry beside landing registration and
+  below the existing interactive example, which remains. Enter in one click; retain a persistent
+  demo notice with expiry information, Reset, Exit, and registration access. Approval of
+  `designs/demo-playground/` covers the strip and lifecycle interactions only; reuse existing
+  Button, Dialog, and Select components and canonical design tokens. Its simplified surrounding
+  cards, navigation, and landing artwork are not approved replacements for the actual app.
+- 2026-09-25: Allow ordinary wishlist/gift editing, creation, reservations, received state,
+  archiving, and appearance changes inside the playground. Disable uploads, imports, external
+  enrichment, and account-security changes with explanations; prepared images and ordinary product
+  links remain usable. Demo actions must not send real emails, issue usable public sharing or
+  invitation links, or interact with real accounts/data.
+- 2026-09-25: Preserve demo changes until fixed expiry twenty-four hours after creation, not sliding
+  inactivity expiry. Confirm Reset before restoring curated content; an expired visit offers a fresh
+  playground rather than a broken page. Demo data is temporary and requires cleanup.
+- 2026-09-25: Keep demo and real sessions separate without replacing an existing sign-in. Exit
+  returns signed-in users to their real dashboard and anonymous visitors to the landing page.
+  Registration starts a clean real account with explicit notice that fictional data and demo edits
+  do not transfer.
+- 2026-10-02: Bound public demo cost on the free tier with per-client creation throttling, a global
+  live-session cap, per-session edit/reset budgets that count failed requests, and per-session
+  wishlist/gift caps; values live in `src/lib/server/demo/constants.ts`. Expired sessions are swept
+  opportunistically from document traffic, off the response path.
+- 2026-10-02: The demo cookie outlives the session so a returning visitor sees the fresh-start page;
+  a stale cookie never blocks sign-in, registration, shared wishlist links, or other real routes,
+  while a live demo must be exited before signing in.
+
 ## Navigation & overview
 
 - 2026-05-30: Desktop uses a top navbar, not a persistent sidebar; mobile uses a drawer. The three

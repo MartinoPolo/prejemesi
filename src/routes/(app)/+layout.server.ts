@@ -18,7 +18,7 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
 			const loginHref = localizeInternalHref(resolve('/login'), getActiveLocaleForUrl(url));
 			throw redirect(303, `${loginHref}?${new URLSearchParams({ redirect: redirectParam })}`);
 		}
-		return { user: null, unreadNotificationCount: 0 };
+		return { user: null, unreadNotificationCount: 0, demoExpiresAt: null };
 	}
 
 	const database = getDb();
@@ -34,5 +34,9 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
 		);
 	const unreadNotificationCount = Number(result[0]?.count ?? 0);
 
-	return { user: locals.user, unreadNotificationCount };
+	return {
+		user: locals.user,
+		unreadNotificationCount,
+		demoExpiresAt: locals.demoSession?.expiresAt.toISOString() ?? null,
+	};
 };

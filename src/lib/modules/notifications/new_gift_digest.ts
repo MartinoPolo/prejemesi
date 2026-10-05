@@ -192,6 +192,10 @@ export async function coalesceNewGiftDigests(
 	if (input.giftNames.length === 0) {
 		return;
 	}
+	const { demoSessionId } = await import('$lib/server/demo/scope.js');
+	if (demoSessionId() !== null) {
+		return;
+	}
 	const followerRows = await tx
 		.select({ userId: wishlistFollower.userId, preferences: user.notificationPreferences })
 		.from(wishlistFollower)

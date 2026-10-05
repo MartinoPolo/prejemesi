@@ -115,23 +115,41 @@ vi.mock('drizzle-orm', () => ({
 
 // Auth is exercised through the mocked BetterAuth surface: getSession supplies
 // `locals.user`, svelteKitHandler just resolves.
-const { mockGetSession } = vi.hoisted(() => ({
+const { mockGetSession, mockCleanExpiredDemos, mockFindDemoSession } = vi.hoisted(() => ({
 	mockGetSession: vi.fn(),
+	mockCleanExpiredDemos: vi.fn(),
+	mockFindDemoSession: vi.fn(),
+}));
+
+vi.mock('$lib/server/demo/session.js', () => ({
+	cleanExpiredDemos: mockCleanExpiredDemos,
+	findDemoSession: mockFindDemoSession,
 }));
 
 vi.mock('$lib/server/auth.js', () => ({
 	createAuth: vi.fn(() => ({ api: { getSession: mockGetSession } })),
+	isReservedDemoEmail: vi.fn((email: string) => email.endsWith('@demo.invalid')),
 }));
 
 vi.mock('better-auth/svelte-kit', () => ({
 	svelteKitHandler: vi.fn(
-		({ event, resolve }: { event: unknown; resolve: (event: unknown) => Promise<Response> }) =>
-			resolve(event),
+		({
+			event,
+			resolve,
+		}: {
+			event: { url: URL };
+			resolve: (event: unknown) => Promise<Response>;
+		}) =>
+			// Like BetterAuth, auth API routes are answered without resolving the app.
+			event.url.pathname.startsWith('/api/auth/')
+				? new Response('auth response', { status: 200 })
+				: resolve(event),
 	),
 }));
 
 import { handle } from './hooks.server.js';
 import { createAuth } from '$lib/server/auth.js';
+import { DEMO_CLEANUP_INTERVAL_MS, DEMO_COOKIE_NAME } from '$lib/server/demo/constants.js';
 
 const SESSION_USER = { id: 'user-1', email: 'user@example.com' };
 
@@ -156,6 +174,7 @@ interface EventOptions {
 	cookies?: Record<string, string>;
 	isDataRequest?: boolean;
 	isRemoteRequest?: boolean;
+	platform?: { env: object; ctx: { waitUntil: (promise: Promise<unknown>) => void } };
 }
 
 function createEvent({
@@ -165,6 +184,7 @@ function createEvent({
 	cookies = {},
 	isDataRequest = false,
 	isRemoteRequest = false,
+	platform,
 }: EventOptions = {}) {
 	const url = new URL(`https://prejemesi.cz${path}`);
 	return {
@@ -183,9 +203,14 @@ function createEvent({
 			},
 		}),
 		route: { id: path },
-		cookies: { get: (name: string) => cookies[name], set: vi.fn() },
+		cookies: {
+			get: (name: string) => cookies[name],
+			set: vi.fn(),
+			serialize: (name: string, value: string, options: { path: string; maxAge: number }) =>
+				`${name}=${value}; Max-Age=${options.maxAge}; Path=${options.path}`,
+		},
 		locals: {} as Record<string, unknown>,
-		platform: undefined,
+		platform,
 		isDataRequest,
 		isRemoteRequest,
 		isSubRequest: false,
@@ -226,6 +251,110 @@ beforeEach(() => {
 	mockIsDatabaseConfigured.mockReturnValue(true);
 	mockGetSession.mockResolvedValue({ session: { id: 'session-1' }, user: SESSION_USER });
 	setPreferenceRow({ preferredLocale: 'en', palette: 'grape', depthStyle: 'ink' });
+});
+
+describe('expired demo maintenance', () => {
+	it('sweeps on ordinary documents only when due, even without demo entry or cookie', async () => {
+		vi.useFakeTimers();
+		try {
+			vi.setSystemTime(new Date('2030-01-01T00:00:00Z'));
+			await runHandle(createEvent({ path: '/my-lists' }));
+			expect(mockCleanExpiredDemos).toHaveBeenCalledOnce();
+			await runHandle(createEvent({ path: '/en', cookies: { 'app-palette': 'mint' } }));
+			expect(mockCleanExpiredDemos).toHaveBeenCalledOnce();
+			vi.advanceTimersByTime(DEMO_CLEANUP_INTERVAL_MS);
+			await runHandle(createEvent({ path: '/my-lists/__data.json', isDataRequest: true }));
+			await runHandle(createEvent({ path: '/api/upload/image.jpg', method: 'PUT' }));
+			expect(mockCleanExpiredDemos).toHaveBeenCalledOnce();
+			await runHandle(createEvent({ path: '/' }));
+			expect(mockCleanExpiredDemos).toHaveBeenCalledTimes(2);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it('does not fail documents if maintenance fails and retries on a later interval', async () => {
+		vi.useFakeTimers();
+		const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+		try {
+			vi.setSystemTime(new Date('2031-01-01T00:00:00Z'));
+			mockCleanExpiredDemos.mockRejectedValueOnce(new Error('database unavailable'));
+			const { response } = await runHandle(createEvent({ path: '/' }));
+			expect(response.status).toBe(200);
+			expect(consoleSpy).toHaveBeenCalledWith(
+				'[demoHandle] expired demo cleanup failed',
+				expect.any(Error),
+			);
+			vi.advanceTimersByTime(DEMO_CLEANUP_INTERVAL_MS);
+			await runHandle(createEvent({ path: '/' }));
+			expect(mockCleanExpiredDemos).toHaveBeenCalledTimes(2);
+		} finally {
+			consoleSpy.mockRestore();
+			vi.useRealTimers();
+		}
+	});
+
+	it('hands the sweep to the platform instead of delaying the document', async () => {
+		vi.useFakeTimers();
+		try {
+			vi.setSystemTime(new Date('2032-01-01T00:00:00Z'));
+			let finishCleanup: () => void = () => {};
+			mockCleanExpiredDemos.mockReturnValueOnce(
+				new Promise<void>((resolve) => {
+					finishCleanup = resolve;
+				}),
+			);
+			const waitUntil = vi.fn();
+			const { response } = await runHandle(
+				createEvent({ path: '/', platform: { env: {}, ctx: { waitUntil } } }),
+			);
+			expect(response.status).toBe(200);
+			expect(waitUntil).toHaveBeenCalledOnce();
+			finishCleanup();
+			await expect(waitUntil.mock.calls[0]![0]).resolves.toBeUndefined();
+			expect(mockCleanExpiredDemos).toHaveBeenCalledOnce();
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+});
+
+describe('demo cookie at the auth API', () => {
+	const demoToken = 'a'.repeat(64);
+
+	it('keeps a live demo visitor out of real authentication', async () => {
+		mockFindDemoSession.mockResolvedValueOnce({ id: 'demo-session' });
+		await expect(
+			runHandle(
+				createEvent({
+					path: '/api/auth/sign-in/email',
+					method: 'POST',
+					cookies: { [DEMO_COOKIE_NAME]: demoToken },
+				}),
+			),
+		).rejects.toMatchObject({ status: 403 });
+		expect(mockGetSession).not.toHaveBeenCalled();
+	});
+
+	it('serves authentication and deletes the cookie of an expired or unknown demo', async () => {
+		mockFindDemoSession.mockResolvedValueOnce(null);
+		const { response, html } = await runHandle(
+			createEvent({
+				path: '/api/auth/sign-in/email',
+				method: 'POST',
+				cookies: { [DEMO_COOKIE_NAME]: demoToken },
+			}),
+		);
+		expect(response.status).toBe(200);
+		expect(html).toBe('auth response');
+		expect(response.headers.get('set-cookie')).toContain(`${DEMO_COOKIE_NAME}=; Max-Age=0`);
+	});
+
+	it('does not look up demo sessions without a demo cookie', async () => {
+		await runHandle(createEvent({ path: '/api/auth/get-session' }));
+		await runHandle(createEvent({ path: '/' }));
+		expect(mockFindDemoSession).not.toHaveBeenCalled();
+	});
 });
 
 describe('anonymous public page auth fast path', () => {

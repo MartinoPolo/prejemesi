@@ -9,6 +9,7 @@
 	import { SITE_URL, SOCIAL_PREVIEW_IMAGE_URL } from '$lib/config/site.js';
 	import * as m from '$lib/paraglide/messages.js';
 	import { getLocale } from '$lib/paraglide/runtime.js';
+	import DemoStartForm from '$lib/components/blocks/demo/DemoStartForm.svelte';
 
 	const landingUrl = $derived(getLocale() === 'en' ? `${SITE_URL}/en` : SITE_URL);
 </script>
@@ -37,6 +38,9 @@
 <LandingNav />
 <LandingHero />
 <LandingDemo />
+<div class="flex justify-center bg-background px-4 py-8">
+	<DemoStartForm label={m.demo_start_full} />
+</div>
 <LandingHowItWorks />
 <LandingFeatureHighlights />
 <LandingCallToAction />

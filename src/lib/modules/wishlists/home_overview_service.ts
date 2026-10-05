@@ -1,5 +1,6 @@
 import { and, eq, isNull, type SQLWrapper } from 'drizzle-orm';
 import { getDb } from '$lib/server/db/index.js';
+import { wishlistScope } from '$lib/server/demo/scope.js';
 import { wishlist } from '$lib/server/db/wishlist.schema.js';
 import { moderatorAssignment } from '$lib/server/db/moderator.schema.js';
 import { wishlistFollower } from '$lib/server/db/follower.schema.js';
@@ -41,7 +42,7 @@ export async function getHomeOverview(userId: string): Promise<HomeOverview> {
 		.from(wishlist)
 		.leftJoin(ownRole.totalGifts, eq(ownRole.totalGifts.wishlistId, wishlist.id))
 		.leftJoin(wishlistVisit, visitJoin(wishlist.id))
-		.where(and(ownRole.predicate, isNull(wishlist.deletedAt)));
+		.where(and(ownRole.predicate, isNull(wishlist.deletedAt), wishlistScope()));
 
 	const moderatedRowsPromise = database
 		.select({ ...moderatedRole.projection, lastVisitedAt: wishlistVisit.lastVisitedAt })
@@ -54,7 +55,7 @@ export async function getHomeOverview(userId: string): Promise<HomeOverview> {
 			eq(moderatedRole.reservedGifts.wishlistId, wishlist.id),
 		)
 		.leftJoin(wishlistVisit, visitJoin(wishlist.id))
-		.where(and(moderatedRole.predicate, isNull(wishlist.deletedAt)));
+		.where(and(moderatedRole.predicate, isNull(wishlist.deletedAt), wishlistScope()));
 
 	const followedRowsPromise = database
 		.select({
@@ -79,6 +80,7 @@ export async function getHomeOverview(userId: string): Promise<HomeOverview> {
 				followedRole.predicate,
 				isNull(wishlistFollower.unfollowedAt),
 				isNull(wishlist.deletedAt),
+				wishlistScope(),
 			),
 		);
 

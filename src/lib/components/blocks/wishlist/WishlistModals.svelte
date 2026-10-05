@@ -26,6 +26,7 @@
 		isAuthenticated: boolean;
 		redirectHref: string;
 		wishlistId: string;
+		demo?: boolean;
 		wishlistTitle: string;
 		giftCount: number;
 		/** Linked recipient self-promoted to see reservation state (passed to the správci panel). */
@@ -87,6 +88,7 @@
 		isAuthenticated,
 		redirectHref,
 		wishlistId,
+		demo = false,
 		wishlistTitle,
 		giftCount,
 		recipientIsModerator,
@@ -137,6 +139,7 @@
 	mode={giftModalMode}
 	gift={selectedGift}
 	{wishlistId}
+	{demo}
 	{priorityLevels}
 	{categoryOptions}
 	{role}
@@ -172,12 +175,12 @@
 {/if}
 
 <!-- Share Wizard (managers only) -->
-{#if canManage}
+{#if canManage && !demo}
 	<ShareWizard {wishlistId} {wishlistTitle} {giftCount} {onshared} />
 {/if}
 
 <!-- Správci panel (managers only) -->
-{#if canManage}
+{#if canManage && !demo}
 	<ModeratorPanel
 		{wishlistId}
 		{recipientIsModerator}

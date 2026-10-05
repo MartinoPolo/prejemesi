@@ -58,6 +58,7 @@
 		/** True when the linked recipient self-promoted to also see reservation state (trust warning). */
 		recipientIsModerator: boolean;
 		adminSettingsAvailable?: boolean;
+		demo?: boolean;
 		/**
 		 * Which heading element the title renders as. The wishlist page is the list's own
 		 * page, so the title is its `<h1>` — but on the landing page the demo header sits
@@ -89,6 +90,7 @@
 		giftCount,
 		recipientIsModerator,
 		adminSettingsAvailable = false,
+		demo = false,
 		headingLevel = 1,
 		onshare,
 		onmoderators,
@@ -191,6 +193,24 @@
 	});
 </script>
 
+<!-- Mobile and desktop layouts each place the same actions; CSS shows one of them. -->
+{#snippet headerActions()}
+	<WishlistHeaderActions
+		{canManage}
+		{settingsAvailable}
+		canShare={!isArchived && !demo}
+		canEditImage={!isArchived && !demo}
+		{canEditRecipient}
+		canArchive={!isArchived}
+		{onshare}
+		onmoderators={demo ? undefined : onmoderators}
+		{onsettings}
+		{oneditimage}
+		{oneditrecipient}
+		{onarchive}
+	/>
+{/snippet}
+
 <header class={styles.root()}>
 	<!-- Narrow screens use a standalone compact hero. The notices below intentionally remain
 	     siblings so lifecycle and reservation privacy messaging never gets clipped by it. -->
@@ -219,40 +239,14 @@
 					</span>{giftCountLabel}{/if}
 			</p>
 		</div>
-		<WishlistHeaderActions
-			{canManage}
-			{settingsAvailable}
-			canShare={!isArchived}
-			canEditImage={!isArchived}
-			{canEditRecipient}
-			canArchive={!isArchived}
-			{onshare}
-			{onmoderators}
-			{onsettings}
-			{oneditimage}
-			{oneditrecipient}
-			{onarchive}
-		/>
+		{@render headerActions()}
 	</div>
 
 	<!-- Spiral-notebook panel: punch holes, red margin line, ruled lines -->
 	<div class="notebook" data-testid="wishlist-banner">
 		<div class="notebook-face">
 			<div class="desktop-header-actions">
-				<WishlistHeaderActions
-					{canManage}
-					{settingsAvailable}
-					canShare={!isArchived}
-					canEditImage={!isArchived}
-					{canEditRecipient}
-					canArchive={!isArchived}
-					{onshare}
-					{onmoderators}
-					{onsettings}
-					{oneditimage}
-					{oneditrecipient}
-					{onarchive}
-				/>
+				{@render headerActions()}
 			</div>
 			{#if countdownLabel !== null}
 				<!-- Sunshine sticky note pinned to the page's top-right corner (desktop only) -->

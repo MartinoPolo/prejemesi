@@ -1754,6 +1754,7 @@
 		giftCount={headerGiftCount}
 		{recipientIsModerator}
 		{adminSettingsAvailable}
+		demo={page.data.demoExpiresAt !== null}
 		onshare={handleShareOpened}
 		onmoderators={handleModeratorsOpened}
 		onarchive={handleArchive}
@@ -1762,6 +1763,11 @@
 		onsettings={handleSettingsOpened}
 	/>
 
+	{#if page.data.demoExpiresAt !== null}
+		<p class="rounded-lg border border-border bg-card p-3 text-sm text-muted-foreground">
+			{m.demo_list_limits()}
+		</p>
+	{/if}
 	{#if isPreparing}
 		<WishlistPreparingNotice />
 	{:else}
@@ -1981,6 +1987,7 @@
 </Dialog.Root>
 
 <WishlistModals
+	demo={page.data.demoExpiresAt !== null}
 	{role}
 	{canManage}
 	{isAuthenticated}
@@ -2077,7 +2084,7 @@
 	</Dialog.Content>
 </Dialog.Root>
 
-{#if canManage}
+{#if canManage && page.data.demoExpiresAt === null}
 	<LazyImportWizard
 		bind:open={importWizardOpen}
 		mode={WIZARD_MODE.append}

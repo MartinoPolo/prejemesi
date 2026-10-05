@@ -17,6 +17,7 @@ interface WishlistRow {
 function mapWishlist(row: WishlistRow): Wishlist {
 	return {
 		id: row.wishlist.id,
+		demoSessionId: row.wishlist.demoSessionId,
 		shortId: row.wishlist.shortId,
 		recipientUserId: row.wishlist.recipientUserId,
 		recipientName: row.wishlist.recipientName,

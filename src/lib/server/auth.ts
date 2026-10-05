@@ -1,4 +1,7 @@
 import { betterAuth } from 'better-auth/minimal';
+import { createAuthMiddleware, APIError } from 'better-auth/api';
+import { eq } from 'drizzle-orm';
+import { user as userTable } from './db/auth.schema.js';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { sveltekitCookies } from 'better-auth/svelte-kit';
 import { captcha } from 'better-auth/plugins';
@@ -7,6 +10,7 @@ import { getRequestEvent } from '$app/server';
 import { getDb } from './db/index.js';
 import { sendEmail, renderActionEmailParts } from './email.js';
 import { getTurnstileSecretKey } from './turnstile.js';
+import { isDemoEmailAddress } from './demo/constants.js';
 import type { RequestEvent } from '@sveltejs/kit';
 import { AUTH_CAPTCHA_ENDPOINTS, AUTH_IP_ADDRESS_HEADERS, authRateLimit } from './auth_security.js';
 import { resolveAuthOrigins } from '$lib/config/runtime_environment.js';
@@ -15,6 +19,14 @@ import { resolveAuthOrigins } from '$lib/config/runtime_environment.js';
 // account owner), so verification links never arrive. Skip the verification gate
 // in dev – sign-up then auto-signs-in – while production still requires it.
 const requireEmailVerification = !import.meta.env.DEV;
+
+export function isReservedDemoEmail(value: unknown): boolean {
+	if (typeof value !== 'string') {
+		return false;
+	}
+	const normalized = value.normalize('NFKC').trim().toLowerCase();
+	return isDemoEmailAddress(normalized);
+}
 
 export function createAuth(event?: RequestEvent) {
 	const authOrigins = resolveAuthOrigins(env, import.meta.env.DEV);
@@ -32,6 +44,49 @@ export function createAuth(event?: RequestEvent) {
 		},
 
 		database: drizzleAdapter(getDb(event), { provider: 'pg' }),
+		hooks: {
+			before: createAuthMiddleware(async (context) => {
+				if (
+					typeof context.body === 'object' &&
+					context.body !== null &&
+					'email' in context.body &&
+					isReservedDemoEmail(context.body.email)
+				) {
+					throw new APIError('FORBIDDEN', {
+						message: 'Demo identities cannot authenticate',
+					});
+				}
+			}),
+		},
+		databaseHooks: {
+			user: {
+				create: {
+					before: async (account) => {
+						if (isReservedDemoEmail(account.email)) {
+							throw new APIError('FORBIDDEN', {
+								message: 'Demo identities cannot authenticate',
+							});
+						}
+					},
+				},
+			},
+			session: {
+				create: {
+					before: async (newSession) => {
+						const [identity] = await getDb(event)
+							.select({ demoSessionId: userTable.demoSessionId })
+							.from(userTable)
+							.where(eq(userTable.id, newSession.userId))
+							.limit(1);
+						if (identity === undefined || identity.demoSessionId !== null) {
+							throw new APIError('FORBIDDEN', {
+								message: 'Demo identities cannot authenticate',
+							});
+						}
+					},
+				},
+			},
+		},
 
 		emailAndPassword: {
 			enabled: true,

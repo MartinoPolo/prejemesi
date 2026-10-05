@@ -36,6 +36,7 @@
 		bind:ref
 		data-slot="dialog-content"
 		class={cn(dialogContentVariants({ size }), className)}
+		data-close-button={showCloseButton || undefined}
 		{...restProps}
 	>
 		{@render children?.()}

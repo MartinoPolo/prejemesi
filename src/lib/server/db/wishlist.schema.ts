@@ -10,7 +10,7 @@ import {
 	uniqueIndex,
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
-import { user } from './auth.schema.js';
+import { user, demoSession } from './auth.schema.js';
 import { paletteEnum, wishlistStatusEnum, wishlistThemeEnum } from './enums.js';
 import { generateId } from './id.js';
 import type { WishlistImageSlots } from '$lib/modules/images/types.js';
@@ -25,6 +25,9 @@ export const wishlist = pgTable(
 		id: text('id')
 			.primaryKey()
 			.$defaultFn(() => generateId()),
+		demoSessionId: text('demo_session_id').references(() => demoSession.id, {
+			onDelete: 'cascade',
+		}),
 		shortId: text('short_id')
 			.notNull()
 			.unique()
