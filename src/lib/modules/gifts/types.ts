@@ -131,6 +131,13 @@ export const GIFT_CARD_COLUMN_OPTIONS = {
 export type GiftCardColumnOption =
 	(typeof GIFT_CARD_COLUMN_OPTIONS)[keyof typeof GIFT_CARD_COLUMN_OPTIONS];
 
+export function isGiftCardColumnOption(value: unknown): value is GiftCardColumnOption {
+	return (
+		typeof value === 'string' &&
+		Object.values(GIFT_CARD_COLUMN_OPTIONS).includes(value as GiftCardColumnOption)
+	);
+}
+
 /** Sort options for gifts */
 export const GIFT_SORT_OPTIONS = {
 	ownerOrder: 'ownerOrder',

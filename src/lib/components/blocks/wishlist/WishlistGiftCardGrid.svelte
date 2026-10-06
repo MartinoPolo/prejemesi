@@ -16,6 +16,7 @@
 	import { cn } from '$lib/utils.js';
 	import {
 		GIFT_CARD_MINIMUM_WIDTH,
+		giftCardChosenColumnCount,
 		largestFittingGiftCardColumnCount,
 		measureGiftCardGridGeometry,
 	} from './gift_card_grid_columns.js';
@@ -80,6 +81,7 @@
 	let gridEl = $state<HTMLElement | null>(null);
 	let reorderAnnouncement = $state('');
 
+	const chosenColumnCount = $derived(giftCardChosenColumnCount(columnOption));
 	const indexedSections = $derived(toIndexedSections(sections));
 	const totalGiftCount = $derived(countGiftsInSections(sections));
 
@@ -148,9 +150,10 @@
 	bind:this={gridEl}
 	data-testid="wishlist-gift-card-grid"
 	style:--gift-card-minimum-width={GIFT_CARD_MINIMUM_WIDTH}
+	style:--gift-card-column-count={chosenColumnCount}
 	class={cn(
-		'gift-card-grid isolate grid auto-rows-auto [grid-template-columns:repeat(auto-fill,minmax(min(100%,280px),1fr))] sm:pb-5',
-		giftCardGridVariants({ columns: columnOption }),
+		'gift-card-grid isolate grid auto-rows-auto sm:pb-5',
+		giftCardGridVariants({ hasChosenColumnCount: chosenColumnCount !== undefined }),
 	)}
 >
 	{#each indexedSections as { section, items } (sectionRenderKey(section, items))}

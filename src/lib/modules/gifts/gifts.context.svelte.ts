@@ -11,6 +11,7 @@ import {
 	GIFT_VIEW_MODES,
 	NO_PRIORITY_GIFT_PRIORITY_FILTER_VALUE,
 	UNCATEGORIZED_GIFT_CATEGORY_FILTER_VALUE,
+	isGiftCardColumnOption,
 	type GiftByRole,
 	type GiftCardColumnOption,
 	type GiftCategoryFilterValue,
@@ -151,13 +152,6 @@ export function setGiftsContext(
 function isGiftViewMode(value: unknown): value is GiftViewMode {
 	return (
 		typeof value === 'string' && Object.values(GIFT_VIEW_MODES).includes(value as GiftViewMode)
-	);
-}
-
-function isGiftCardColumnOption(value: unknown): value is GiftCardColumnOption {
-	return (
-		typeof value === 'string' &&
-		Object.values(GIFT_CARD_COLUMN_OPTIONS).includes(value as GiftCardColumnOption)
 	);
 }
 

@@ -25,7 +25,10 @@
 	} from './gift_card_collection_layout.js';
 	import { createGiftCollectionMotion } from '$lib/motion/gift_collection_motion.js';
 	import { cn } from '$lib/utils.js';
-	import { GIFT_CARD_MINIMUM_WIDTH } from './gift_card_grid_columns.js';
+	import {
+		GIFT_CARD_MINIMUM_WIDTH,
+		giftCardChosenColumnCount,
+	} from './gift_card_grid_columns.js';
 	import { giftCardGridVariants } from './gift_card_grid_variants.js';
 
 	interface WishlistGiftDisplayProps {
@@ -107,6 +110,7 @@
 
 	// Management affordances (add/edit/reorder) open to recipient OR správce.
 	const canManage = $derived(canManageWishlist(role));
+	const chosenCardColumnCount = $derived(giftCardChosenColumnCount(cardColumnOption));
 	// The recipient and recipient-view preview share one presentation gate. Actual role remains
 	// separate so manager edit/reorder affordances stay authorized normally.
 	const reservationStateHidden = $derived(
@@ -396,10 +400,13 @@
 		{#if isLoading}
 			<div
 				class={cn(
-					'gift-card-skeleton-grid grid grid-cols-2 sm:[grid-template-columns:repeat(auto-fill,minmax(280px,1fr))]',
-					giftCardGridVariants({ columns: cardColumnOption }),
+					'gift-card-skeleton-grid grid max-sm:grid-cols-2',
+					giftCardGridVariants({
+						hasChosenColumnCount: chosenCardColumnCount !== undefined,
+					}),
 				)}
 				style:--gift-card-minimum-width={GIFT_CARD_MINIMUM_WIDTH}
+				style:--gift-card-column-count={chosenCardColumnCount}
 				aria-busy="true"
 				aria-label={m.wishlist_detail_loading_gifts()}
 			>

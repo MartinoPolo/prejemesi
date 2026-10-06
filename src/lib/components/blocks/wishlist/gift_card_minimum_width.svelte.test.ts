@@ -13,8 +13,10 @@ import {
 } from '../gift/gift_card.test_fixtures.js';
 import {
 	MORE_ACTION_SELECTOR,
+	expectRightAlignedAdjacentActions,
 	settleActionPlacement,
 	visibleAction,
+	visibleActions,
 } from '../gift/gift_action_geometry.test_fixtures.js';
 import { GIFT_CARD_MINIMUM_WIDTH_REM } from './gift_card_grid_columns.js';
 
@@ -110,13 +112,11 @@ describe('Gift card minimum width', () => {
 			const footerContentRect = host
 				.querySelector<HTMLElement>('[data-testid="gift-card-reservation-actions"]')!
 				.getBoundingClientRect();
-			const primaryRect = primary.getBoundingClientRect();
-			const moreRect = more.getBoundingClientRect();
 
-			expectPixelsNear(primaryRect.top, moreRect.top);
-			expectPixelsNear(primaryRect.height, 32);
-			expectPixelsNear(moreRect.height, 32);
-			expectPixelsAtLeast(primaryRect.left, footerContentRect.left);
+			expect(visibleActions(row)).toEqual([primary, more]);
+			expectRightAlignedAdjacentActions(row, [primary, more], footerContentRect.right);
+			expectPixelsNear(primary.getBoundingClientRect().height, 32);
+			expectPixelsAtLeast(primary.getBoundingClientRect().left, footerContentRect.left);
 			expectRaisedActionShadowInside(primary, surface);
 			expectRaisedActionShadowInside(more, surface);
 		},

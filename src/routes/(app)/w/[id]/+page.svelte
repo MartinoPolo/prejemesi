@@ -153,7 +153,6 @@
 		UpdateGiftInput,
 		GiftViewMode,
 		GiftGroupingOption,
-		GiftCardColumnOption,
 	} from '$lib/modules/gifts/types.js';
 
 	const REORDER_BASELINE_STATUS = {
@@ -1175,12 +1174,6 @@
 		await finishReorderMode();
 	}
 
-	function handleCardColumnOptionChange(option: GiftCardColumnOption) {
-		if (option !== giftsContext.cardColumnOption.current) {
-			giftsContext.cardColumnOption.current = option;
-		}
-	}
-
 	function handleViewModeChange(mode: GiftViewMode) {
 		if (
 			(!reorderMode || mode === GIFT_VIEW_MODES.card || mode === GIFT_VIEW_MODES.list) &&
@@ -1826,7 +1819,7 @@
 			onrecipientviewpreviewchange={handleRecipientViewPreviewChange}
 			onreordermodechange={handleReorderModeChange}
 			onviewmodechange={handleViewModeChange}
-			oncardcolumnoptionchange={handleCardColumnOptionChange}
+			oncardcolumnoptionchange={(option) => (giftsContext.cardColumnOption.current = option)}
 			onsortchange={handleSortChange}
 			onfilterchange={handleFilterChange}
 			ongroupingchange={handleGroupingChange}

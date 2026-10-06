@@ -1,27 +1,22 @@
 import { tv } from 'tailwind-variants';
 
 /**
- * Card grid gap and the chosen column template. A chosen count N renders N columns when each card
- * keeps `--gift-card-minimum-width`; otherwise auto-fill drops to the largest count that does.
- * The 0.1px slack stops sub-pixel rounding from losing a column at an exactly fitting width.
- * Below `sm` the mobile controls are larger, so the responsive Automatic template stays in charge.
+ * Card grid gap and column template. Automatic auto-fills 280px cards. From `sm`, a chosen
+ * `--gift-card-column-count` N renders N columns when each card keeps `--gift-card-minimum-width`;
+ * otherwise auto-fill drops to the largest count that does, the same rule as
+ * `largestFittingGiftCardColumnCount`. The 0.1px slack only keeps sub-pixel rounding of the
+ * N-column term from losing a column; the minimum width alone decides whether N fits.
+ * Below `sm` the mobile controls are larger, so the Automatic template stays in charge.
  */
 export const giftCardGridVariants = tv({
-	base: '[--gift-card-grid-gap:--spacing(2)] gap-(--gift-card-grid-gap) sm:[--gift-card-grid-gap:--spacing(5)]',
+	base: '[grid-template-columns:repeat(auto-fill,minmax(min(100%,280px),1fr))] [--gift-card-grid-gap:--spacing(2)] gap-(--gift-card-grid-gap) sm:[--gift-card-grid-gap:--spacing(5)]',
 	variants: {
-		columns: {
-			automatic: '',
-			four: '[--gift-card-column-count:4]',
-			five: '[--gift-card-column-count:5]',
+		hasChosenColumnCount: {
+			true: 'sm:[grid-template-columns:repeat(auto-fill,minmax(max(min(100%,var(--gift-card-minimum-width)),calc((100%_-_(var(--gift-card-column-count)_-_1)_*_var(--gift-card-grid-gap))_/_var(--gift-card-column-count)_-_0.1px)),1fr))]',
+			false: '',
 		},
 	},
-	compoundVariants: [
-		{
-			columns: ['four', 'five'],
-			class: 'sm:[grid-template-columns:repeat(auto-fill,minmax(max(min(100%,var(--gift-card-minimum-width)),calc((100%_-_(var(--gift-card-column-count)_-_1)_*_var(--gift-card-grid-gap))_/_var(--gift-card-column-count)_-_0.1px)),1fr))]',
-		},
-	],
 	defaultVariants: {
-		columns: 'automatic',
+		hasChosenColumnCount: false,
 	},
 });

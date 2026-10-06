@@ -48,6 +48,7 @@
 		GIFT_CARD_COLUMN_OPTIONS,
 		GIFT_GROUPING_OPTIONS,
 		GIFT_SORT_OPTIONS,
+		isGiftCardColumnOption,
 		type GiftCardColumnOption,
 		type GiftCategoryFilterValue,
 		type GiftFilterOption,
@@ -655,8 +656,11 @@
 					>
 						<DropdownMenu.RadioGroup
 							value={cardColumnOption}
-							onValueChange={(value) =>
-								oncardcolumnoptionchange(value as GiftCardColumnOption)}
+							onValueChange={(value) => {
+								if (isGiftCardColumnOption(value)) {
+									oncardcolumnoptionchange(value);
+								}
+							}}
 						>
 							{#each Object.values(GIFT_CARD_COLUMN_OPTIONS) as option (option)}
 								<DropdownMenu.RadioItem

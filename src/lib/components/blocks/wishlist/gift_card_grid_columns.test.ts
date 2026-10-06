@@ -5,13 +5,16 @@ import {
 	largestFittingGiftCardColumnCount,
 } from './gift_card_grid_columns.js';
 
+/** Smallest step between layout widths: browsers snap layout to 1/64px. */
+const LAYOUT_UNIT = 1 / 64;
+
 describe('largestFittingGiftCardColumnCount', () => {
 	it.each([
 		{ collectionWidth: 1168, expected: 5 },
 		{ collectionWidth: 1160, expected: 5 },
-		{ collectionWidth: 1159.9, expected: 4 },
+		{ collectionWidth: 1160 - LAYOUT_UNIT, expected: 4 },
 		{ collectionWidth: 924, expected: 4 },
-		{ collectionWidth: 923.9, expected: 3 },
+		{ collectionWidth: 924 - LAYOUT_UNIT, expected: 3 },
 		{ collectionWidth: 688, expected: 3 },
 		{ collectionWidth: 216, expected: 1 },
 		{ collectionWidth: 120, expected: 1 },
@@ -29,8 +32,9 @@ describe('largestFittingGiftCardColumnCount', () => {
 	);
 
 	it('keeps an exactly fitting count despite floating-point division', () => {
-		const minimumCardWidth = 216.1;
-		const columnGap = 20.3;
+		// 13.5rem cards and the 1.25rem desktop gap at a 16.1px root font size.
+		const minimumCardWidth = 13.5 * 16.1;
+		const columnGap = 1.25 * 16.1;
 		const exactFiveColumnWidth = 5 * minimumCardWidth + 4 * columnGap;
 		expect(
 			largestFittingGiftCardColumnCount({

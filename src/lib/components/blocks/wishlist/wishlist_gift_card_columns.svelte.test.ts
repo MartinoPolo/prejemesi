@@ -8,15 +8,25 @@ import { GIFT_CARD_COLUMN_OPTIONS, type GiftForVisitor } from '$lib/modules/gift
 import { GIFT_SECTION_KINDS } from '$lib/modules/gifts/gift_ordering.js';
 import { WISHLIST_ROLES, type WishlistRole } from '$lib/modules/wishlists/types.js';
 import { overwriteGetLocale } from '$lib/paraglide/runtime.js';
+import {
+	giftCardChosenColumnCount,
+	isGiftCardColumnOptionAvailable,
+} from './gift_card_grid_columns.js';
 
 vi.mock('$env/dynamic/public', () => ({ env: {} }));
 
 const { default: WishlistGiftDisplayTestHost } =
 	await import('./WishlistGiftDisplayTestHost.svelte');
-const { expectRaisedActionShadowInside } = await import('../gift/gift_card.test_fixtures.js');
-const { MORE_ACTION_SELECTOR, visibleAction } =
+const {
+	IMAGE_URL,
+	REALISTIC_LONG_NAME,
+	expectRaisedActionShadowInside,
+	expectRectanglesSeparated,
+	imageMeta,
+} = await import('../gift/gift_card.test_fixtures.js');
+const { MORE_ACTION_SELECTOR, expectRightAlignedAdjacentActions, visibleAction, visibleActions } =
 	await import('../gift/gift_action_geometry.test_fixtures.js');
-const { expectPixelsNear, expectPixelsAtLeast } = createPixelAssertions(expect);
+const { expectPixelsNear, expectPixelsAtLeast, expectPixelsAtMost } = createPixelAssertions(expect);
 
 /** Desktop wishlist content container: 1200px max width minus two 16px page gutters. */
 const WIDE_DESKTOP_COLLECTION_WIDTH = 1168;
@@ -175,6 +185,160 @@ describe('WishlistGiftDisplay card column choice', () => {
 
 		await screen.rerender({ viewMode: 'list' });
 		await expect.poll(() => oncardcolumncapacitychange.mock.lastCall?.[0]).toBeNull();
+		await screen.unmount();
+	});
+
+	it.each([
+		{ collectionWidth: 1160, capacity: 5, five: 5, four: 4 },
+		{ collectionWidth: 1159.6, capacity: 4, five: 4, four: 4 },
+		{ collectionWidth: 924, capacity: 4, five: 4, four: 4 },
+		{ collectionWidth: 923.6, capacity: 3, five: 3, four: 3 },
+	])(
+		'reports the capacity the grid renders at a fractional $collectionWidth px boundary',
+		async ({ collectionWidth, capacity, ...expectedColumns }) => {
+			await page.viewport(1280, 900);
+			const oncardcolumncapacitychange = vi.fn();
+			const gifts = Array.from({ length: 10 }, (_, index) => gift(index + 1));
+			const screen = await render(
+				WishlistGiftDisplayTestHost,
+				displayProps(gifts, { oncardcolumncapacitychange }),
+			);
+			collection().style.width = `${collectionWidth}px`;
+			await expect.poll(() => oncardcolumncapacitychange.mock.lastCall?.[0]).toBe(capacity);
+
+			for (const option of [GIFT_CARD_COLUMN_OPTIONS.five, GIFT_CARD_COLUMN_OPTIONS.four]) {
+				await screen.rerender({ cardColumnOption: option });
+				await nextLayout();
+				const renderedColumnCount = renderedColumnWidths().length;
+				expect(renderedColumnCount, option).toBe(expectedColumns[option]);
+				expect(cardsInFirstRow(), option).toBe(expectedColumns[option]);
+				expect(renderedColumnCount, option).toBe(
+					isGiftCardColumnOptionAvailable(option, capacity)
+						? giftCardChosenColumnCount(option)
+						: capacity,
+				);
+			}
+			await screen.unmount();
+		},
+	);
+
+	it('keeps rich card content clamped, separated and inside the narrowest five-column cards', async () => {
+		await page.viewport(1280, 900);
+		const richGift = (index: number, overrides: Partial<GiftForVisitor> = {}) =>
+			gift(index, {
+				name: REALISTIC_LONG_NAME,
+				description:
+					'Ideálně v tmavě modré barvě a velikosti M, s kapucí a kapsou na zip. Případně poslouží jakákoli podobná varianta z udržitelné bavlny.',
+				links: [{ url: 'https://example.com/obchod', label: 'Obchod s dlouhým názvem' }],
+				price: 12990,
+				priceMax: 15990,
+				currency: 'CZK',
+				imageUrl: IMAGE_URL,
+				imageMeta: imageMeta('#ffffff'),
+				categoryId: 'category-sport',
+				category: {
+					id: 'category-sport',
+					presetKey: null,
+					customLabel: 'Sportovní vybavení a oblečení',
+					color: '#0369A1',
+					sortOrder: 0,
+				},
+				priorityLabel: 'Vysoka',
+				...overrides,
+			});
+		const gifts = [
+			richGift(1, { myReservationId: 'mine', reservedCount: 1, isFullyReserved: true }),
+			richGift(2, {
+				reservedCount: 1,
+				isFullyReserved: true,
+				reserverNames: ['Alexandra Nováková'],
+			}),
+			richGift(3, { quantity: 3, reservedCount: 1 }),
+			richGift(4, {
+				myReservationId: 'mine',
+				myReservationPurchasedAt: new Date('2026-02-01T00:00:00Z'),
+				reservedCount: 1,
+				isFullyReserved: true,
+			}),
+			richGift(5, { quantity: 2, reservedCount: 1 }),
+		];
+		const screen = await render(
+			WishlistGiftDisplayTestHost,
+			displayProps(gifts, { cardColumnOption: GIFT_CARD_COLUMN_OPTIONS.five }),
+		);
+		collection().style.width = `${WIDE_DESKTOP_COLLECTION_WIDTH}px`;
+		await document.fonts.ready;
+		await expect.poll(() => collection().dataset.giftCardTracksAligned).toBe('true');
+		await nextLayout();
+		await nextLayout();
+		expect(renderedColumnWidths()).toHaveLength(5);
+		expect(cardsInFirstRow()).toBe(5);
+
+		const paintedLineCount = (element: HTMLElement) =>
+			Math.round(
+				element.getBoundingClientRect().height /
+					Number.parseFloat(getComputedStyle(element).lineHeight),
+			);
+		const expectInside = (inner: DOMRect, outer: DOMRect, message: string) => {
+			expectPixelsAtLeast(inner.left, outer.left, message);
+			expectPixelsAtLeast(inner.top, outer.top, message);
+			expectPixelsAtMost(inner.right, outer.right, message);
+			expectPixelsAtMost(inner.bottom, outer.bottom, message);
+		};
+
+		const surfaces = collection().querySelectorAll<HTMLElement>('.gift-card-painted-surface');
+		expect(surfaces).toHaveLength(gifts.length);
+		for (const [cardIndex, surface] of surfaces.entries()) {
+			const card = `card ${cardIndex + 1}`;
+			const surfaceRect = surface.getBoundingClientRect();
+
+			const title = surface.querySelector<HTMLElement>('h3')!;
+			expect(title.scrollHeight, `${card} title is clamped`).toBeGreaterThan(
+				title.clientHeight,
+			);
+			expect(paintedLineCount(title), `${card} title lines`).toBeLessThanOrEqual(2);
+			const description = surface.querySelector<HTMLElement>(
+				'[data-testid="gift-card-description-stack"] p',
+			)!;
+			expect(description.scrollHeight, `${card} description is clamped`).toBeGreaterThan(
+				description.clientHeight,
+			);
+			expect(paintedLineCount(description), `${card} description lines`).toBe(1);
+
+			const labelledRects = [
+				['category', '[data-testid="gift-category-badge"]'],
+				['priority', '[data-testid="gift-priority-badge"]'],
+				['state', '[data-testid="gift-state-overlay"] > span'],
+				['price', '[data-testid="gift-card-price"] > span'],
+			].flatMap(([label, selector]) => {
+				const elements = surface.querySelectorAll<HTMLElement>(selector!);
+				expect(elements.length, `${card} ${label}`).toBeGreaterThan(0);
+				return Array.from(elements, (element) => ({
+					label: `${card} ${label}`,
+					rect: element.getBoundingClientRect(),
+				}));
+			});
+			for (const [index, { label, rect }] of labelledRects.entries()) {
+				expectInside(rect, surfaceRect, `${label} inside the card`);
+				for (const other of labelledRects.slice(index + 1)) {
+					expectRectanglesSeparated(rect, other.rect, `${label} clear of ${other.label}`);
+				}
+			}
+
+			const row = surface.querySelector<HTMLElement>('[data-testid="gift-action-row"]')!;
+			const actionContentRect = surface
+				.querySelector<HTMLElement>('[data-testid="gift-card-reservation-actions"]')!
+				.getBoundingClientRect();
+			const actions = visibleActions(row);
+			expectRightAlignedAdjacentActions(row, actions, actionContentRect.right);
+			for (const action of actions) {
+				expectInside(
+					action.getBoundingClientRect(),
+					surfaceRect,
+					`${card} action inside the card`,
+				);
+			}
+		}
 		await screen.unmount();
 	});
 
