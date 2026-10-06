@@ -1,5 +1,5 @@
 import { dev } from '$app/environment';
-import { error } from '@sveltejs/kit';
+import { error, redirect } from '@sveltejs/kit';
 import { env } from '$env/dynamic/private';
 import type { Handle, HandleServerError } from '@sveltejs/kit';
 import { sequence } from '@sveltejs/kit/hooks';
@@ -8,6 +8,12 @@ import { paraglideMiddleware } from '$lib/paraglide/server';
 import { cookieName, getTextDirection, type Locale } from '$lib/paraglide/runtime';
 import { getDb, isDatabaseConfigured, rememberDatabaseBinding } from '$lib/server/db/index.js';
 import { DEMO_CLEANUP_INTERVAL_MS, DEMO_COOKIE_NAME } from '$lib/server/demo/constants.js';
+import {
+	DEV_AUTO_LOGIN_OPT_OUT_COOKIE_NAME,
+	devAutoLoginOptOutChange,
+	getDevAutoLoginEmail,
+	signInForDevelopment,
+} from '$lib/server/dev_auto_login.js';
 import { SITE_URL, WWW_HOSTNAME } from '$lib/config/site.js';
 import { ROBOTS_NOINDEX_CONTENT, shouldNoindexPath } from '$lib/seo/robots.js';
 import { requestTelemetryHandle } from '$lib/server/request_telemetry.js';
@@ -339,10 +345,17 @@ const authHandle: Handle = async ({ event, resolve }) => {
 	}
 
 	const staleDemoCookie = await rejectLiveDemoAuthentication(event);
+	const devAutoLoginEmail = getDevAutoLoginEmail();
+	const attemptsDevAutoLogin =
+		devAutoLoginEmail !== undefined &&
+		isHtmlDocumentRequest(event) &&
+		(event.cookies.get(DEV_AUTO_LOGIN_OPT_OUT_COOKIE_NAME) ?? '') === '' &&
+		(event.cookies.get(DEMO_COOKIE_NAME) ?? '') === '';
 
 	if (
 		(event.request.method === 'GET' || event.request.method === 'HEAD') &&
 		!event.isRemoteRequest &&
+		!attemptsDevAutoLogin &&
 		!hasBetterAuthSessionCookie(event.request.headers) &&
 		(isPublicWishlistPath(event.url.pathname) ||
 			(!event.isDataRequest && LANDING_PATHS.has(event.url.pathname)))
@@ -362,10 +375,33 @@ const authHandle: Handle = async ({ event, resolve }) => {
 			event.locals.session = sessionData.session;
 			event.locals.user = sessionData.user;
 		}
+	} else if (
+		attemptsDevAutoLogin &&
+		(await signInForDevelopment(auth, devAutoLoginEmail, event.request.headers))
+	) {
+		redirect(303, event.url.pathname + event.url.search);
 	}
 
 	const response = await svelteKitHandler({ event, resolve, auth, building });
-	return staleDemoCookie ? withDeletedDemoCookie(response, event) : response;
+	const appendedCookies: string[] = [];
+	if (staleDemoCookie) {
+		appendedCookies.push(
+			event.cookies.serialize(DEMO_COOKIE_NAME, '', { path: '/', maxAge: 0 }),
+		);
+	}
+	const optOutChange =
+		devAutoLoginEmail === undefined ? undefined : devAutoLoginOptOutChange(event.url.pathname);
+	if (optOutChange !== undefined) {
+		appendedCookies.push(
+			event.cookies.serialize(DEV_AUTO_LOGIN_OPT_OUT_COOKIE_NAME, optOutChange.value, {
+				path: '/',
+				httpOnly: true,
+				sameSite: 'lax',
+				maxAge: optOutChange.maxAge,
+			}),
+		);
+	}
+	return withAppendedCookies(response, appendedCookies);
 };
 
 /** Returns whether the demo cookie is stale and must be deleted from the auth response. */
@@ -388,12 +424,14 @@ async function rejectLiveDemoAuthentication(
 }
 
 /** Auth API responses bypass SvelteKit's resolve, so `event.cookies` changes would not reach them. */
-function withDeletedDemoCookie(response: Response, event: Parameters<Handle>[0]['event']) {
+function withAppendedCookies(response: Response, serializedCookies: readonly string[]) {
+	if (serializedCookies.length === 0) {
+		return response;
+	}
 	const headers = new Headers(response.headers);
-	headers.append(
-		'set-cookie',
-		event.cookies.serialize(DEMO_COOKIE_NAME, '', { path: '/', maxAge: 0 }),
-	);
+	for (const serializedCookie of serializedCookies) {
+		headers.append('set-cookie', serializedCookie);
+	}
 	return new Response(response.body, {
 		status: response.status,
 		statusText: response.statusText,

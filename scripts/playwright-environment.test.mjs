@@ -53,6 +53,7 @@ test('automation uses the exact local database and blanks remote services', () =
 	assert.equal(server.environment.AUTH_SECRET, 'explicit-local-signing-secret');
 	assert.equal(server.environment.ORIGIN, server.origin);
 	assert.equal(server.environment.ADMIN_EMAILS, 'tomas@test.cz');
+	assert.equal(server.environment.DEV_AUTO_LOGIN_EMAIL, '');
 	assert.equal(server.environment.BROWSER, 'none');
 	for (const name of [
 		'R2_ACCOUNT_ID',

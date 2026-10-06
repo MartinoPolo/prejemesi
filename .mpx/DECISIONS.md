@@ -288,9 +288,8 @@ sections for UI work. Historical reconciliation and review notes are in
 - 2026-09-14: Image-bearing Card/List views share eligible category, priority, received/reserved
   state badges across desktop/mobile, including image placeholders; assigned categories go top-left
   and an authorized reserver name stays inside its state badge, not duplicated in the content
-  column. Authorized viewers may see a single reserver's name; multiple reservers use a localized
-  generic summary instead of listing names. Preserve server-derived privacy capabilities and keep
-  Compact image-free. Validate crowded valid states in focused mockups before implementation.
+  column. Preserve server-derived privacy capabilities and keep Compact image-free. Validate crowded
+  valid states in focused mockups before implementation.
 - 2026-09-14: Center gift state badges, including any authorized reserver name, as one group on the
   image; a lone state remains at its center, independent of edge badges. Category stays top-left and
   priority bottom-left, as finalized in the gift-hierarchy design approval. Its badge styling is
@@ -321,7 +320,7 @@ sections for UI work. Historical reconciliation and review notes are in
   consistent across rows. Preserve existing colors and badges; validate the layout in an interactive
   mockup before production implementation.
 - 2026-09-16: Desktop Card secondary actions may move into More while primary actions and relevant
-  Received/Bought controls stay visible, subject to existing capabilities. Price must have a stable
+  Received controls stay visible, subject to existing capabilities. Price must have a stable
   position independent of link count; flowing it horizontally after source links is rejected. Put
   price in the content directly below source links on its own left-aligned line, above right-aligned
   actions, so its width cannot push buttons around. Image-corner overlays retain their
@@ -358,6 +357,13 @@ sections for UI work. Historical reconciliation and review notes are in
   price so narrow titles keep their room. Grid Like uses the image/card top-right with a separate
   wrapping category lane; List Like stays beside the title. Preserve the ghost heart/count and
   accessible targets.
+- 2026-10-05: Where reserver names are visible, a state badge names the other reserver
+  (“Rezervoval(a) {name}”) only when exactly one person holds the gift and it is not the viewer. Any
+  other combination, including the viewer's own reservation plus one other, reads “Rezervováno více
+  lidmi”, because reserver names do not identify which one is the viewer (#442).
+- 2026-10-05: Bought (“Koupeno”) is a footer action for a signed-in viewer's own reservation, never
+  an image state badge, and is hidden on archived lists. For správci who also reserved, it sits
+  beside Received and is the first action to overflow into More (#442).
 
 ## Forms & settings
 
