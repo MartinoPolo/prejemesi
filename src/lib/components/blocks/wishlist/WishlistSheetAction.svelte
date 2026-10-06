@@ -5,11 +5,10 @@
 
 	interface Props extends Omit<ButtonProps, 'children' | 'intent' | 'surfaceClass'> {
 		children: Snippet;
-		indent?: boolean;
 		surfaceClass?: string;
 	}
 
-	let { children, indent = false, class: className, surfaceClass, ...props }: Props = $props();
+	let { children, class: className, surfaceClass, ...props }: Props = $props();
 </script>
 
 <Button
@@ -21,6 +20,5 @@
 		surfaceClass,
 	)}
 >
-	{#if indent}<span class="size-5 shrink-0" aria-hidden="true"></span>{/if}
 	{@render children()}
 </Button>
