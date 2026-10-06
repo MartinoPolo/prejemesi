@@ -20,6 +20,19 @@ Public pages stay lean while the first in-app navigation stays fast:
 > has no effect on what a browser fetches in production. Do **not** add an unconditional root-layout
 > `preloadCode()` to match the warmup list.
 
+## Public code isolation
+
+[`tests/e2e/public-code-isolation.spec.ts`](../tests/e2e/public-code-isolation.spec.ts) fails when
+`/` or `/login` requests authenticated app code before user intent: `(app)` routes, the import,
+wishlist, gift and notification modules, or the app-shell navbar components. The Vite dev server
+serves source modules unbundled, so request URLs name the exact files a page pulls in.
+
+The landing demo server-renders the real gift views, so a small set of gift and wishlist
+presentation modules is allowed **on `/` only**, enumerated file by file in the spec. A forbidden
+request is a regression to fix by moving the needed logic into an allowed presentation module, not
+by widening the list. Add a file only after deciding it is public by design. `/login` allows
+nothing.
+
 ## Production delta report
 
 The CI performance-report job runs only for PRs whose head branch starts with `perf/` or that carry
