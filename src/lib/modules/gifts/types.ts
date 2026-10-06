@@ -121,6 +121,23 @@ export const GIFT_VIEW_MODES = {
 
 export type GiftViewMode = (typeof GIFT_VIEW_MODES)[keyof typeof GIFT_VIEW_MODES];
 
+/** Card grid column preference; `automatic` keeps the responsive auto-fill layout. */
+export const GIFT_CARD_COLUMN_OPTIONS = {
+	automatic: 'automatic',
+	four: 'four',
+	five: 'five',
+} as const;
+
+export type GiftCardColumnOption =
+	(typeof GIFT_CARD_COLUMN_OPTIONS)[keyof typeof GIFT_CARD_COLUMN_OPTIONS];
+
+export function isGiftCardColumnOption(value: unknown): value is GiftCardColumnOption {
+	return (
+		typeof value === 'string' &&
+		Object.values(GIFT_CARD_COLUMN_OPTIONS).includes(value as GiftCardColumnOption)
+	);
+}
+
 /** Sort options for gifts */
 export const GIFT_SORT_OPTIONS = {
 	ownerOrder: 'ownerOrder',

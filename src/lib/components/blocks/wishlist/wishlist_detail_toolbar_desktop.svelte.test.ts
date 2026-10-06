@@ -1,11 +1,12 @@
 import '../../../../app.css';
 import { render } from 'vitest-browser-svelte';
-import { page } from 'vitest/browser';
+import { page, userEvent } from 'vitest/browser';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
 import type { ComponentProps } from 'svelte';
 import * as m from '$lib/paraglide/messages.js';
 import {
+	GIFT_CARD_COLUMN_OPTIONS,
 	GIFT_GROUPING_OPTIONS,
 	GIFT_SORT_OPTIONS,
 	GIFT_VIEW_MODES,
@@ -36,11 +37,13 @@ const defaultProps: ComponentProps<typeof WishlistDetailToolbar> = {
 	groupingAvailability: { priority: false, category: false },
 	categoryFilterOptions: [],
 	priorityFilterOptions: [],
+	cardColumnOption: GIFT_CARD_COLUMN_OPTIONS.automatic,
 	reorderMode: false,
 	recipientViewPreview: false,
 	onrecipientviewpreviewchange: () => {},
 	onreordermodechange: () => {},
 	onviewmodechange: () => {},
+	oncardcolumnoptionchange: () => {},
 	onsortchange: () => {},
 	onfilterchange: () => {},
 	ongroupingchange: () => {},
@@ -227,6 +230,94 @@ describe('WishlistDetailToolbar consolidated desktop display (#359)', () => {
 			m.gift_filter_category_heading(),
 			m.gift_filter_priority_heading(),
 		]);
+		await screen.unmount();
+	});
+
+	it.each([
+		{ viewMode: GIFT_VIEW_MODES.card, offersColumns: true },
+		{ viewMode: GIFT_VIEW_MODES.list, offersColumns: false },
+		{ viewMode: GIFT_VIEW_MODES.compact, offersColumns: false },
+	])(
+		'offers the card column choice in $viewMode view: $offersColumns',
+		async ({ viewMode, offersColumns }) => {
+			const screen = await renderToolbar(
+				{ viewMode, cardColumnOption: GIFT_CARD_COLUMN_OPTIONS.five },
+				1280,
+			);
+			await frames(1);
+			await screen.getByTestId('desktop-display-trigger').click();
+			const root = page.getByRole('menu', { name: m.gift_display_options() });
+			await expect
+				.element(root.getByRole('menuitem', { name: new RegExp(m.gift_filter()) }))
+				.toBeVisible();
+			const columns = root.getByRole('menuitem', {
+				name: new RegExp(m.gift_card_columns_label()),
+			});
+			if (offersColumns) {
+				await expect.element(columns).toBeVisible();
+				await expect.element(columns).toHaveTextContent(m.gift_card_columns_five());
+			} else {
+				await expect.element(columns).not.toBeInTheDocument();
+			}
+			await screen.unmount();
+		},
+	);
+
+	it.each([
+		{ cardColumnCapacity: 5, fourDisabled: false, fiveDisabled: false },
+		{ cardColumnCapacity: 4, fourDisabled: false, fiveDisabled: true },
+		{ cardColumnCapacity: 3, fourDisabled: true, fiveDisabled: true },
+		{ cardColumnCapacity: null, fourDisabled: false, fiveDisabled: false },
+	])(
+		'disables column counts that do not fit a capacity of $cardColumnCapacity',
+		async ({ cardColumnCapacity, fourDisabled, fiveDisabled }) => {
+			const screen = await renderToolbar({ cardColumnCapacity }, 1280);
+			await frames(1);
+			await screen.getByTestId('desktop-display-trigger').click();
+			const root = page.getByRole('menu', { name: m.gift_display_options() });
+			await root
+				.getByRole('menuitem', { name: new RegExp(m.gift_card_columns_label()) })
+				.click();
+			const option = (name: string) => page.getByRole('menuitemradio', { name });
+			await expect.element(option(m.gift_card_columns_automatic())).toBeEnabled();
+			await expect.element(option(m.gift_card_columns_automatic())).toBeChecked();
+			for (const [name, disabled] of [
+				[m.gift_card_columns_four(), fourDisabled],
+				[m.gift_card_columns_five(), fiveDisabled],
+			] as const) {
+				if (disabled) {
+					await expect.element(option(name)).toBeDisabled();
+				} else {
+					await expect.element(option(name)).toBeEnabled();
+				}
+			}
+			await screen.unmount();
+		},
+	);
+
+	it('reports the chosen column count, keeps the menu open, and returns Escape focus to Columns', async () => {
+		const oncardcolumnoptionchange = vi.fn();
+		const screen = await renderToolbar(
+			{ oncardcolumnoptionchange, cardColumnCapacity: 5 },
+			1280,
+		);
+		await frames(1);
+		await screen.getByTestId('desktop-display-trigger').click();
+		const root = page.getByRole('menu', { name: m.gift_display_options() });
+		const columns = root.getByRole('menuitem', {
+			name: new RegExp(m.gift_card_columns_label()),
+		});
+		await columns.click();
+		await page.getByRole('menuitemradio', { name: m.gift_card_columns_five() }).click();
+		expect(oncardcolumnoptionchange).toHaveBeenCalledWith(GIFT_CARD_COLUMN_OPTIONS.five);
+		await expect.element(root).toBeVisible();
+		await expect
+			.element(page.getByRole('menuitemradio', { name: m.gift_card_columns_five() }))
+			.toBeVisible();
+
+		await userEvent.keyboard('{Escape}');
+		await expect.element(root).toBeVisible();
+		await expect.element(columns).toHaveFocus();
 		await screen.unmount();
 	});
 

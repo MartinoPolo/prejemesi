@@ -493,6 +493,7 @@
 		},
 	);
 	const viewMode = $derived(giftsContext.viewMode.current);
+	let cardColumnCapacity = $state<number | null>(null);
 	const reorderLayoutSupported = $derived(
 		viewMode === GIFT_VIEW_MODES.card || viewMode === GIFT_VIEW_MODES.list,
 	);
@@ -1808,6 +1809,8 @@
 			groupingAvailability={giftsContext.groupingAvailability.current}
 			categoryFilterOptions={giftsContext.categoryFilterOptions.current}
 			priorityFilterOptions={giftsContext.priorityFilterOptions.current}
+			cardColumnOption={giftsContext.cardColumnOption.current}
+			{cardColumnCapacity}
 			{reorderMode}
 			{reorderDonePending}
 			reorderRecoveryPending={reorderBaselineStatus === REORDER_BASELINE_STATUS.refreshing}
@@ -1816,6 +1819,7 @@
 			onrecipientviewpreviewchange={handleRecipientViewPreviewChange}
 			onreordermodechange={handleReorderModeChange}
 			onviewmodechange={handleViewModeChange}
+			oncardcolumnoptionchange={(option) => (giftsContext.cardColumnOption.current = option)}
 			onsortchange={handleSortChange}
 			onfilterchange={handleFilterChange}
 			ongroupingchange={handleGroupingChange}
@@ -1905,6 +1909,8 @@
 			{isArchived}
 			{hideReservationState}
 			{viewMode}
+			cardColumnOption={giftsContext.cardColumnOption.current}
+			oncardcolumncapacitychange={(capacity) => (cardColumnCapacity = capacity)}
 			isLoading={isGiftDataLoading}
 			{isEmpty}
 			{isFilteredEmpty}
