@@ -364,6 +364,12 @@ sections for UI work. Historical reconciliation and review notes are in
 - 2026-10-05: Bought (“Koupeno”) is a footer action for a signed-in viewer's own reservation, never
   an image state badge, and is hidden on archived lists. For správci who also reserved, it sits
   beside Received and is the first action to overflow into More (#442).
+- 2026-10-06: Card press belongs to presses that start on card content; inner controls and open
+  action surfaces never press the card, and an open desktop dropdown keeps the card lifted (#450).
+- 2026-10-06: Card view offers Automatic/4/5 columns per device (desktop from `sm`, not part of
+  Reset display). Counts are offered only when cards keep 13.5rem, the measured width for the widest
+  primary action, More and depth clearance; otherwise fall back to the largest count that fits
+  (#451).
 
 ## Forms & settings
 
@@ -510,6 +516,10 @@ sections for UI work. Historical reconciliation and review notes are in
   `src/app.css`); container insets add clearance on shadowed edges only; spacing never changes on
   hover. Floating layers add clearance only for shadowed triggers; hover-opened layers keep the
   trigger-to-layer gap pointer-safe.
+- 2026-10-06: Depth options preview their own shadow; selection uses primary fill, never shadow
+  (#449).
+- 2026-10-06: Rows running under an overlay close button reserve `--overlay-close-clearance`
+  (`src/app.css`) at their end (#453).
 
 ## Images & cropping
 
