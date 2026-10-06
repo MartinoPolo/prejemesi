@@ -8,7 +8,7 @@ export const DEV_AUTO_LOGIN_OPT_OUT_COOKIE_NAME = 'dev-auto-login-opt-out';
 /** Seeded account a signed-out development browser is signed in as; never active outside dev. */
 export function getDevAutoLoginEmail(): string | undefined {
 	const email = env.DEV_AUTO_LOGIN_EMAIL?.trim();
-	return dev && email ? email : undefined;
+	return dev && email !== undefined && email !== '' ? email : undefined;
 }
 
 /**
