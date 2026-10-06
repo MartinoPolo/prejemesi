@@ -40,7 +40,8 @@
 		footer,
 	}: NavDropdownProps = $props();
 
-	/** Grace period so the pointer can cross the offset gap between trigger and panel. */
+	/** Grace period before a pointer that left both surfaces and the gap between them closes the
+	 *  menu, so a brief overshoot does not dismiss it. */
 	const CLOSE_DELAY_MS = 120;
 
 	const SECTION_KEYS = ['open', 'reserved', 'bought'] as const;
@@ -90,11 +91,80 @@
 		closeTimer = setTimeout(() => (open = false), CLOSE_DELAY_MS);
 	}
 
+	/** The gap spans both surfaces horizontally and lies between their facing edges vertically,
+	 *  which covers the menu opening below or flipped above the trigger. */
+	function isPointBetween(triggerRect: DOMRect, menuRect: DOMRect, x: number, y: number) {
+		return (
+			x >= Math.min(triggerRect.left, menuRect.left) &&
+			x <= Math.max(triggerRect.right, menuRect.right) &&
+			y >= Math.min(triggerRect.bottom, menuRect.bottom) &&
+			y <= Math.max(triggerRect.top, menuRect.top)
+		);
+	}
+
+	function isPointerInGap(event: PointerEvent) {
+		if (triggerElement === null || contentElement === null) {
+			return false;
+		}
+		return isPointBetween(
+			triggerElement.getBoundingClientRect(),
+			contentElement.getBoundingClientRect(),
+			event.clientX,
+			event.clientY,
+		);
+	}
+
+	function isInsideSurface(target: EventTarget | null) {
+		return (
+			target instanceof Node &&
+			(triggerElement?.contains(target) === true || contentElement?.contains(target) === true)
+		);
+	}
+
+	// A pointer lingering in the gap between trigger and menu keeps the menu open instead of
+	// racing the close grace; the surfaces' own enter handlers take over once it reaches one.
+	function handleGapPointerMove(event: PointerEvent) {
+		if (isPointerInGap(event)) {
+			return;
+		}
+		stopGapTracking();
+		if (!isInsideSurface(event.target)) {
+			scheduleClose();
+		}
+	}
+
+	function handleGapDocumentLeave() {
+		stopGapTracking();
+		scheduleClose();
+	}
+
+	function startGapTracking() {
+		cancelScheduledClose();
+		window.addEventListener('pointermove', handleGapPointerMove);
+		document.documentElement.addEventListener('pointerleave', handleGapDocumentLeave);
+	}
+
+	function stopGapTracking() {
+		window.removeEventListener('pointermove', handleGapPointerMove);
+		document.documentElement.removeEventListener('pointerleave', handleGapDocumentLeave);
+	}
+
+	/** Shared by the trigger and the menu. Only a mouse can linger in the gap; any other pointer
+	 *  leaving a surface closes the menu after the grace. */
+	function handleSurfacePointerLeave(event: PointerEvent) {
+		if (event.pointerType === 'mouse' && open && isPointerInGap(event)) {
+			startGapTracking();
+			return;
+		}
+		scheduleClose();
+	}
+
 	/** Hover-open is mouse-only: a touch tap should just navigate, without a panel flash. */
 	function handleTriggerPointerEnter(event: PointerEvent) {
 		if (event.pointerType !== 'mouse') {
 			return;
 		}
+		stopGapTracking();
 		openNow();
 	}
 
@@ -102,7 +172,12 @@
 		if (event.pointerType !== 'mouse') {
 			return;
 		}
-		scheduleClose();
+		handleSurfacePointerLeave(event);
+	}
+
+	function handleContentPointerEnter() {
+		stopGapTracking();
+		cancelScheduledClose();
 	}
 
 	/** ArrowDown on the focused trigger opens the menu and focuses the first item
@@ -131,7 +206,15 @@
 		}
 	});
 
-	$effect(() => () => cancelScheduledClose());
+	$effect(() => {
+		if (!open) {
+			stopGapTracking();
+		}
+		return () => {
+			cancelScheduledClose();
+			stopGapTracking();
+		};
+	});
 </script>
 
 <a
@@ -156,11 +239,12 @@
 		align="start"
 		alignOffset={-8}
 		sideOffset={8}
+		shadowedTrigger={false}
 		preventScroll={false}
 		class="w-80 overflow-hidden p-0"
 		aria-label="{m.nav_recent()} – {title}"
-		onpointerenter={cancelScheduledClose}
-		onpointerleave={scheduleClose}
+		onpointerenter={handleContentPointerEnter}
+		onpointerleave={handleSurfacePointerLeave}
 		onOpenAutoFocus={(event) => event.preventDefault()}
 		onCloseAutoFocus={(event) => event.preventDefault()}
 		onEscapeKeydown={handleEscapeKeydown}
