@@ -5,12 +5,14 @@ import { StateRaw } from '$lib/reactivity/state.svelte.js';
 import { Derived } from '$lib/reactivity/derived.svelte.js';
 import { Persisted, jsonSerde } from '$lib/reactivity/persisted.svelte.js';
 import {
+	GIFT_CARD_COLUMN_OPTIONS,
 	GIFT_GROUPING_OPTIONS,
 	GIFT_SORT_OPTIONS,
 	GIFT_VIEW_MODES,
 	NO_PRIORITY_GIFT_PRIORITY_FILTER_VALUE,
 	UNCATEGORIZED_GIFT_CATEGORY_FILTER_VALUE,
 	type GiftByRole,
+	type GiftCardColumnOption,
 	type GiftCategoryFilterValue,
 	type GiftFilterOption,
 	type GiftFilters,
@@ -152,6 +154,13 @@ function isGiftViewMode(value: unknown): value is GiftViewMode {
 	);
 }
 
+function isGiftCardColumnOption(value: unknown): value is GiftCardColumnOption {
+	return (
+		typeof value === 'string' &&
+		Object.values(GIFT_CARD_COLUMN_OPTIONS).includes(value as GiftCardColumnOption)
+	);
+}
+
 function isGiftSortOption(value: unknown): value is GiftSortOption {
 	return (
 		typeof value === 'string' &&
@@ -234,6 +243,12 @@ function createGiftsContext(
 		key: 'prejemesi-gift-view-mode',
 		serde: jsonSerde(isGiftViewMode),
 		defaultValue: 'card',
+	});
+
+	const cardColumnOption = new Persisted<GiftCardColumnOption>({
+		key: 'prejemesi-gift-card-columns',
+		serde: jsonSerde(isGiftCardColumnOption),
+		defaultValue: GIFT_CARD_COLUMN_OPTIONS.automatic,
 	});
 
 	const sortOption = new ScopedPersisted<GiftSortOption>({
@@ -414,6 +429,7 @@ function createGiftsContext(
 		archived,
 		isAuthenticated,
 		viewMode,
+		cardColumnOption,
 		grouping,
 		effectiveGrouping,
 		groupingAvailability,

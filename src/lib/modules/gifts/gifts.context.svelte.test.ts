@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { overwriteGetLocale } from '$lib/paraglide/runtime.js';
 import { WISHLIST_ROLES, type WishlistRole } from '$lib/modules/wishlists/types.js';
 import { wishlistGiftGroupingStorageKey } from './gifts.context.svelte.js';
-import { GIFT_GROUPING_OPTIONS, type GiftForVisitor } from './types.js';
+import { GIFT_CARD_COLUMN_OPTIONS, GIFT_GROUPING_OPTIONS, type GiftForVisitor } from './types.js';
 import GiftsContextTestHost from './GiftsContextTestHost.svelte';
 
 function makeGift(options: { priority?: boolean; category?: boolean } = {}): GiftForVisitor {
@@ -224,5 +224,37 @@ describe('wishlist grouping preference default (#363)', () => {
 			JSON.stringify(GIFT_GROUPING_OPTIONS.priority),
 		);
 		expect(localStorage.getItem('prejemesi-gift-priority-grouping')).toBeNull();
+	});
+});
+
+describe('card column choice persistence (issue #451)', () => {
+	const storageKey = 'prejemesi-gift-card-columns';
+
+	it('defaults to Automatic and restores a saved count after a reload', async () => {
+		const first = render(GiftsContextTestHost);
+		await expect
+			.element(first.getByTestId('card-column-option'))
+			.toHaveTextContent(GIFT_CARD_COLUMN_OPTIONS.automatic);
+		await first.getByRole('button', { name: 'Save five columns' }).click();
+		expect(localStorage.getItem(storageKey)).toBe(
+			JSON.stringify(GIFT_CARD_COLUMN_OPTIONS.five),
+		);
+		await first.unmount();
+
+		const reloaded = render(GiftsContextTestHost, { initialWishlistId: 'wishlist-b' });
+		await expect
+			.element(reloaded.getByTestId('card-column-option'))
+			.toHaveTextContent(GIFT_CARD_COLUMN_OPTIONS.five);
+	});
+
+	it('falls back to Automatic for an invalid stored value', async () => {
+		localStorage.setItem(storageKey, JSON.stringify('six'));
+		const screen = render(GiftsContextTestHost);
+		await expect
+			.element(screen.getByTestId('card-column-option'))
+			.toHaveTextContent(GIFT_CARD_COLUMN_OPTIONS.automatic);
+		expect(localStorage.getItem(storageKey)).toBe(
+			JSON.stringify(GIFT_CARD_COLUMN_OPTIONS.automatic),
+		);
 	});
 });

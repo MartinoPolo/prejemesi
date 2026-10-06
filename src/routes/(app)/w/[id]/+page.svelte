@@ -153,6 +153,7 @@
 		UpdateGiftInput,
 		GiftViewMode,
 		GiftGroupingOption,
+		GiftCardColumnOption,
 	} from '$lib/modules/gifts/types.js';
 
 	const REORDER_BASELINE_STATUS = {
@@ -493,6 +494,7 @@
 		},
 	);
 	const viewMode = $derived(giftsContext.viewMode.current);
+	let cardColumnCapacity = $state<number | null>(null);
 	const reorderLayoutSupported = $derived(
 		viewMode === GIFT_VIEW_MODES.card || viewMode === GIFT_VIEW_MODES.list,
 	);
@@ -1173,6 +1175,12 @@
 		await finishReorderMode();
 	}
 
+	function handleCardColumnOptionChange(option: GiftCardColumnOption) {
+		if (option !== giftsContext.cardColumnOption.current) {
+			giftsContext.cardColumnOption.current = option;
+		}
+	}
+
 	function handleViewModeChange(mode: GiftViewMode) {
 		if (
 			(!reorderMode || mode === GIFT_VIEW_MODES.card || mode === GIFT_VIEW_MODES.list) &&
@@ -1808,6 +1816,8 @@
 			groupingAvailability={giftsContext.groupingAvailability.current}
 			categoryFilterOptions={giftsContext.categoryFilterOptions.current}
 			priorityFilterOptions={giftsContext.priorityFilterOptions.current}
+			cardColumnOption={giftsContext.cardColumnOption.current}
+			{cardColumnCapacity}
 			{reorderMode}
 			{reorderDonePending}
 			reorderRecoveryPending={reorderBaselineStatus === REORDER_BASELINE_STATUS.refreshing}
@@ -1816,6 +1826,7 @@
 			onrecipientviewpreviewchange={handleRecipientViewPreviewChange}
 			onreordermodechange={handleReorderModeChange}
 			onviewmodechange={handleViewModeChange}
+			oncardcolumnoptionchange={handleCardColumnOptionChange}
 			onsortchange={handleSortChange}
 			onfilterchange={handleFilterChange}
 			ongroupingchange={handleGroupingChange}
@@ -1905,6 +1916,8 @@
 			{isArchived}
 			{hideReservationState}
 			{viewMode}
+			cardColumnOption={giftsContext.cardColumnOption.current}
+			oncardcolumncapacitychange={(capacity) => (cardColumnCapacity = capacity)}
 			isLoading={isGiftDataLoading}
 			{isEmpty}
 			{isFilteredEmpty}

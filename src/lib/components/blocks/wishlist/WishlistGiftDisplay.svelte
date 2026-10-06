@@ -7,11 +7,13 @@
 	import WishlistGiftCardGrid from './WishlistGiftCardGrid.svelte';
 	import WishlistGiftListView from './WishlistGiftListView.svelte';
 	import WishlistGiftCompactTable from './WishlistGiftCompactTable.svelte';
-	import type {
-		GiftByRole,
-		GiftForVisitor,
-		GiftGroupingOption,
-		GiftViewMode,
+	import {
+		GIFT_CARD_COLUMN_OPTIONS,
+		type GiftByRole,
+		type GiftCardColumnOption,
+		type GiftForVisitor,
+		type GiftGroupingOption,
+		type GiftViewMode,
 	} from '$lib/modules/gifts/types.js';
 	import type { GiftSection } from '$lib/modules/gifts/gift_ordering.js';
 	import type { GiftContextInvocation } from './gift_context_invocation.js';
@@ -22,6 +24,9 @@
 		measureGiftCardCollectionLayout,
 	} from './gift_card_collection_layout.js';
 	import { createGiftCollectionMotion } from '$lib/motion/gift_collection_motion.js';
+	import { cn } from '$lib/utils.js';
+	import { GIFT_CARD_MINIMUM_WIDTH } from './gift_card_grid_columns.js';
+	import { giftCardGridVariants } from './gift_card_grid_variants.js';
 
 	interface WishlistGiftDisplayProps {
 		/** Shared display sections consumed identically by every view mode. */
@@ -58,6 +63,8 @@
 		contextSurface?: 'menu' | 'dialog';
 		grouping?: GiftGroupingOption;
 		receivedPendingGiftIds?: ReadonlySet<string>;
+		cardColumnOption?: GiftCardColumnOption;
+		oncardcolumncapacitychange?: (largestFittingColumnCount: number | null) => void;
 	}
 
 	let {
@@ -94,6 +101,8 @@
 		contextSurface = 'menu',
 		grouping = 'none',
 		receivedPendingGiftIds = new Set<string>(),
+		cardColumnOption = GIFT_CARD_COLUMN_OPTIONS.automatic,
+		oncardcolumncapacitychange,
 	}: WishlistGiftDisplayProps = $props();
 
 	// Management affordances (add/edit/reorder) open to recipient OR správce.
@@ -323,6 +332,8 @@
 			>
 				{#if displayedViewMode !== 'compact'}
 					<ImageGiftView
+						columnOption={cardColumnOption}
+						oncolumncapacitychange={oncardcolumncapacitychange}
 						{hascontextactions}
 						{activeContextGiftId}
 						{contextSurface}
@@ -384,7 +395,11 @@
 	<div bind:this={motionHost} data-gift-motion-host>
 		{#if isLoading}
 			<div
-				class="gift-card-skeleton-grid grid grid-cols-2 gap-2 sm:gap-5 sm:[grid-template-columns:repeat(auto-fill,minmax(280px,1fr))]"
+				class={cn(
+					'gift-card-skeleton-grid grid grid-cols-2 sm:[grid-template-columns:repeat(auto-fill,minmax(280px,1fr))]',
+					giftCardGridVariants({ columns: cardColumnOption }),
+				)}
+				style:--gift-card-minimum-width={GIFT_CARD_MINIMUM_WIDTH}
 				aria-busy="true"
 				aria-label={m.wishlist_detail_loading_gifts()}
 			>

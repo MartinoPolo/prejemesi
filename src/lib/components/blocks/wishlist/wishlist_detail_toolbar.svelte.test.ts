@@ -7,6 +7,7 @@ import type { ComponentProps } from 'svelte';
 import * as m from '$lib/paraglide/messages.js';
 import { GIFT_SORT_KEYS } from '$lib/components/blocks/gift/gift_sort_options.js';
 import {
+	GIFT_CARD_COLUMN_OPTIONS,
 	GIFT_GROUPING_OPTIONS,
 	GIFT_SORT_OPTIONS,
 	GIFT_VIEW_MODES,
@@ -37,11 +38,13 @@ const defaultProps: ComponentProps<typeof WishlistDetailToolbar> = {
 	groupingAvailability: { priority: false, category: false },
 	categoryFilterOptions: [],
 	priorityFilterOptions: [],
+	cardColumnOption: GIFT_CARD_COLUMN_OPTIONS.automatic,
 	reorderMode: false,
 	recipientViewPreview: false,
 	onrecipientviewpreviewchange: () => {},
 	onreordermodechange: () => {},
 	onviewmodechange: () => {},
+	oncardcolumnoptionchange: () => {},
 	onsortchange: () => {},
 	onfilterchange: () => {},
 	ongroupingchange: () => {},

@@ -4,10 +4,22 @@
 	import WishlistGiftItem from './WishlistGiftItem.svelte';
 	import { createGiftPointerReorderController } from './gift_pointer_reorder.svelte.js';
 	import { giftSectionHasHeader, type GiftSection } from '$lib/modules/gifts/gift_ordering.js';
-	import type { GiftByRole, GiftForVisitor } from '$lib/modules/gifts/types.js';
+	import {
+		GIFT_CARD_COLUMN_OPTIONS,
+		type GiftByRole,
+		type GiftCardColumnOption,
+		type GiftForVisitor,
+	} from '$lib/modules/gifts/types.js';
 	import type { GiftContextInvocation } from './gift_context_invocation.js';
 	import type { WishlistRole } from '$lib/modules/wishlists/types.js';
 	import * as m from '$lib/paraglide/messages.js';
+	import { cn } from '$lib/utils.js';
+	import {
+		GIFT_CARD_MINIMUM_WIDTH,
+		largestFittingGiftCardColumnCount,
+		measureGiftCardGridGeometry,
+	} from './gift_card_grid_columns.js';
+	import { giftCardGridVariants } from './gift_card_grid_variants.js';
 	import {
 		toIndexedSections,
 		countGiftsInSections,
@@ -15,6 +27,9 @@
 	} from './gift_section_rows.js';
 
 	interface WishlistGiftCardGridProps {
+		columnOption?: GiftCardColumnOption;
+		/** Reports the largest column count whose cards fit the minimum width; null when unmounted. */
+		oncolumncapacitychange?: (largestFittingColumnCount: number | null) => void;
 		sections: GiftSection[];
 		role: WishlistRole;
 		isArchived: boolean;
@@ -58,6 +73,8 @@
 		activeContextGiftId = null,
 		contextSurface = 'menu',
 		showPriority = true,
+		columnOption = GIFT_CARD_COLUMN_OPTIONS.automatic,
+		oncolumncapacitychange,
 	}: WishlistGiftCardGridProps = $props();
 
 	let gridEl = $state<HTMLElement | null>(null);
@@ -105,6 +122,22 @@
 		}
 	});
 	$effect(() => () => reorder.destroy());
+
+	$effect(() => {
+		const grid = gridEl;
+		const reportCapacity = oncolumncapacitychange;
+		if (grid === null || reportCapacity === undefined) {
+			return;
+		}
+		const observer = new ResizeObserver(() =>
+			reportCapacity(largestFittingGiftCardColumnCount(measureGiftCardGridGeometry(grid))),
+		);
+		observer.observe(grid);
+		return () => {
+			observer.disconnect();
+			reportCapacity(null);
+		};
+	});
 </script>
 
 <div class="sr-only" role="status" aria-live="polite" aria-atomic="true">
@@ -114,7 +147,11 @@
 <div
 	bind:this={gridEl}
 	data-testid="wishlist-gift-card-grid"
-	class="gift-card-grid isolate grid auto-rows-auto gap-2 [grid-template-columns:repeat(auto-fill,minmax(min(100%,280px),1fr))] sm:gap-5 sm:pb-5"
+	style:--gift-card-minimum-width={GIFT_CARD_MINIMUM_WIDTH}
+	class={cn(
+		'gift-card-grid isolate grid auto-rows-auto [grid-template-columns:repeat(auto-fill,minmax(min(100%,280px),1fr))] sm:pb-5',
+		giftCardGridVariants({ columns: columnOption }),
+	)}
 >
 	{#each indexedSections as { section, items } (sectionRenderKey(section, items))}
 		{#if giftSectionHasHeader(section)}
