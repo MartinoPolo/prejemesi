@@ -337,52 +337,38 @@ const userPreferencesHandle: Handle = async ({ event, resolve }) => {
 	});
 };
 
-const authHandle: Handle = async ({ event, resolve }) => {
-	rememberDatabaseBinding(event);
-
-	if (!isDatabaseConfigured(event)) {
-		return resolve(event);
-	}
-
-	const staleDemoCookie = await rejectLiveDemoAuthentication(event);
-	const devAutoLoginEmail = getDevAutoLoginEmail();
+/** Returns the configured development account when this request should sign it in. */
+function devAutoLoginEmailToAttempt(
+	event: Parameters<Handle>[0]['event'],
+	devAutoLoginEmail: string | undefined,
+): string | undefined {
 	const attemptsDevAutoLogin =
 		devAutoLoginEmail !== undefined &&
 		isHtmlDocumentRequest(event) &&
 		(event.cookies.get(DEV_AUTO_LOGIN_OPT_OUT_COOKIE_NAME) ?? '') === '' &&
 		(event.cookies.get(DEMO_COOKIE_NAME) ?? '') === '';
+	return attemptsDevAutoLogin ? devAutoLoginEmail : undefined;
+}
 
-	if (
+function canSkipAuthentication(
+	event: Parameters<Handle>[0]['event'],
+	attemptsDevAutoLogin: boolean,
+): boolean {
+	return (
 		(event.request.method === 'GET' || event.request.method === 'HEAD') &&
 		!event.isRemoteRequest &&
 		!attemptsDevAutoLogin &&
 		!hasBetterAuthSessionCookie(event.request.headers) &&
 		(isPublicWishlistPath(event.url.pathname) ||
 			(!event.isDataRequest && LANDING_PATHS.has(event.url.pathname)))
-	) {
-		return resolve(event);
-	}
+	);
+}
 
-	const { createAuth, isReservedDemoEmail } = await import('$lib/server/auth.js');
-	const { svelteKitHandler } = await import('better-auth/svelte-kit');
-	const { building } = await import('$app/environment');
-	const auth = createAuth(event);
-
-	const sessionData = await auth.api.getSession({ headers: event.request.headers });
-
-	if (sessionData) {
-		if (!isReservedDemoEmail(sessionData.user.email)) {
-			event.locals.session = sessionData.session;
-			event.locals.user = sessionData.user;
-		}
-	} else if (
-		attemptsDevAutoLogin &&
-		(await signInForDevelopment(auth, devAutoLoginEmail, event.request.headers))
-	) {
-		redirect(303, event.url.pathname + event.url.search);
-	}
-
-	const response = await svelteKitHandler({ event, resolve, auth, building });
+function authResponseCookies(
+	event: Parameters<Handle>[0]['event'],
+	staleDemoCookie: boolean,
+	devAutoLoginEmail: string | undefined,
+): string[] {
 	const appendedCookies: string[] = [];
 	if (staleDemoCookie) {
 		appendedCookies.push(
@@ -401,7 +387,48 @@ const authHandle: Handle = async ({ event, resolve }) => {
 			}),
 		);
 	}
-	return withAppendedCookies(response, appendedCookies);
+	return appendedCookies;
+}
+
+const authHandle: Handle = async ({ event, resolve }) => {
+	rememberDatabaseBinding(event);
+
+	if (!isDatabaseConfigured(event)) {
+		return resolve(event);
+	}
+
+	const staleDemoCookie = await rejectLiveDemoAuthentication(event);
+	const devAutoLoginEmail = getDevAutoLoginEmail();
+	const autoLoginEmail = devAutoLoginEmailToAttempt(event, devAutoLoginEmail);
+
+	if (canSkipAuthentication(event, autoLoginEmail !== undefined)) {
+		return resolve(event);
+	}
+
+	const { createAuth, isReservedDemoEmail } = await import('$lib/server/auth.js');
+	const { svelteKitHandler } = await import('better-auth/svelte-kit');
+	const { building } = await import('$app/environment');
+	const auth = createAuth(event);
+
+	const sessionData = await auth.api.getSession({ headers: event.request.headers });
+
+	if (sessionData) {
+		if (!isReservedDemoEmail(sessionData.user.email)) {
+			event.locals.session = sessionData.session;
+			event.locals.user = sessionData.user;
+		}
+	} else if (
+		autoLoginEmail !== undefined &&
+		(await signInForDevelopment(auth, autoLoginEmail, event.request.headers))
+	) {
+		redirect(303, event.url.pathname + event.url.search);
+	}
+
+	const response = await svelteKitHandler({ event, resolve, auth, building });
+	return withAppendedCookies(
+		response,
+		authResponseCookies(event, staleDemoCookie, devAutoLoginEmail),
+	);
 };
 
 /** Returns whether the demo cookie is stale and must be deleted from the auth response. */
