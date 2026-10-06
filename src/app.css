@@ -268,12 +268,14 @@
 
 /* Soft shadows read as flat, so only Ink and Black reserve room for the shadow offset.
    Use `--nested-control-gap` between adjacent elevated controls and add `--depth-clearance` to
-   container insets on shadowed edges only.
-   `[data-depth]` repeats the derivation so a locally overridden depth recomputes the gap. */
+   container insets on shadowed edges only. Dense header action clusters use
+   `--compact-control-gap`, trading 2 px of clearance (whole pixels, never below the Soft gap).
+   `[data-depth]` repeats the derivation so a locally overridden depth recomputes the gaps. */
 :root,
 [data-depth] {
 	--depth-clearance: 0px;
 	--nested-control-gap: calc(0.5rem + var(--depth-clearance));
+	--compact-control-gap: calc(0.5rem + max(0px, var(--depth-clearance) - 2px));
 }
 
 [data-depth='ink'],
