@@ -274,6 +274,15 @@
 [data-depth] {
 	--depth-clearance: 0px;
 	--nested-control-gap: calc(0.5rem + var(--depth-clearance));
+
+	/* Rows running under an overlay close button reserve this end space: the button plus the
+	   nested control gap, keeping its depth shadow clear. The base clearance is measured from the
+	   surface's padding edge; the dialog variant applies inside the standard 1.5rem dialog padding. */
+	--overlay-close-inset: 1rem;
+	--overlay-close-clearance: calc(
+		var(--overlay-close-inset) + var(--size-control-lg) + var(--nested-control-gap)
+	);
+	--overlay-close-clearance-inside-dialog-padding: calc(var(--overlay-close-clearance) - 1.5rem);
 }
 
 [data-depth='ink'],

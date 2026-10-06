@@ -13,9 +13,8 @@
 	bind:ref
 	data-slot="dialog-title"
 	class={cn(
-		// The close button sits 1rem from the edge inside 1.5rem padding, so a clearance of its
-		// size leaves a 0.5rem gap; centered mobile titles reserve it on both sides.
-		'font-heading text-2xl leading-tight font-semibold break-words in-data-close-button:px-(--size-control-lg) sm:in-data-close-button:ps-0',
+		// Centered mobile titles reserve the close-button clearance on both sides.
+		'font-heading text-2xl leading-tight font-semibold break-words in-data-close-button:px-(--overlay-close-clearance-inside-dialog-padding) sm:in-data-close-button:ps-0',
 		className,
 	)}
 	{...restProps}

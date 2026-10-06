@@ -7,11 +7,13 @@ import { tv } from 'tailwind-variants';
  */
 export const shareWizardVariants = tv({
 	slots: {
-		progressBar: 'flex items-center gap-0 ps-6 pe-16 pt-5',
-		step: 'flex flex-shrink-0 items-center gap-2',
+		// The stepper shares its top row with the dialog close button, so it reserves the close
+		// clearance and compacts its connectors and gaps on mobile to keep every label visible.
+		progressBar: 'flex items-center gap-0 ps-4 pe-(--overlay-close-clearance) pt-5 sm:ps-6',
+		step: 'flex flex-shrink-0 items-center gap-1.5 sm:gap-2',
 		connector:
-			'mx-2 min-w-5 flex-1 border-t-2 border-dashed border-ink-faint transition-colors',
-		connectorDone: 'mx-2 min-w-5 flex-1 border-t-2 border-ink transition-colors',
+			'mx-1 min-w-2 flex-1 border-t-2 border-dashed border-ink-faint transition-colors sm:mx-2',
+		connectorDone: 'mx-1 min-w-2 flex-1 border-t-2 border-ink transition-colors sm:mx-2',
 		stepDot:
 			'flex size-[26px] flex-shrink-0 items-center justify-center rounded-full border-2 border-ink text-[11px] font-bold transition-all',
 		stepDotActive: 'bg-primary text-primary-foreground shadow-sticker-sm',

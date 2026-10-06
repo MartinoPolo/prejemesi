@@ -515,11 +515,13 @@
 <!-- Per-wishlist settings modal (UX rework of the old /w/<id>/settings page). Panels hide via
      the `hidden` attribute instead of unmounting so unsaved edits (typed details,
      uploaded-but-unsaved image) survive tab switches; closing the dialog unmounts everything,
-     matching the old leave-the-page reset. -->
+     matching the old leave-the-page reset. Its own close button runs the unsaved-changes guard,
+     so `data-close-button` restores the title's close-button reserve. -->
 <Dialog.Root {open} onOpenChange={handleOpenChange}>
 	<Dialog.Content
 		size="2xl"
 		showCloseButton={false}
+		data-close-button
 		onEscapeKeydown={handleDismiss}
 		onInteractOutside={handleDismiss}
 		class="flex flex-col gap-0 overflow-hidden p-0 sm:max-w-[calc(100%-2rem)] xl:max-w-5xl"
