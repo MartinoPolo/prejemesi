@@ -9,6 +9,7 @@
 	import WishlistGiftCompactTable from './WishlistGiftCompactTable.svelte';
 	import {
 		GIFT_CARD_COLUMN_OPTIONS,
+		GIFT_VIEW_MODES,
 		type GiftByRole,
 		type GiftCardColumnOption,
 		type GiftForVisitor,
@@ -28,6 +29,7 @@
 	import {
 		GIFT_CARD_MINIMUM_WIDTH,
 		giftCardChosenColumnCount,
+		widenPageForGiftCardColumns,
 	} from './gift_card_grid_columns.js';
 	import { giftCardGridVariants } from './gift_card_grid_variants.js';
 
@@ -204,6 +206,12 @@
 			viewTransitioning = false;
 		}
 	}
+
+	$effect(() => {
+		if (displayedViewMode === GIFT_VIEW_MODES.card && chosenCardColumnCount !== undefined) {
+			return widenPageForGiftCardColumns(chosenCardColumnCount);
+		}
+	});
 
 	$effect(() => {
 		if (viewMode !== displayedViewMode) {

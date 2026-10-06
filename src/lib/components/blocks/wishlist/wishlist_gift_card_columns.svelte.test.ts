@@ -431,4 +431,45 @@ describe('WishlistGiftDisplay card column choice', () => {
 			await screen.unmount();
 		},
 	);
+
+	it('widens the page so chosen-count cards keep the Automatic card width', async () => {
+		await page.viewport(2400, 900);
+		const gifts = Array.from({ length: 10 }, (_, index) => gift(index + 1));
+		const screen = await render(WishlistGiftDisplayTestHost, displayProps(gifts));
+		const pageContent = screen.container;
+		Object.assign(pageContent.style, {
+			maxWidth: 'var(--content-max-width)',
+			marginInline: 'auto',
+			paddingInline: 'var(--page-gutter)',
+		});
+		const pageWidth = () => pageContent.getBoundingClientRect().width;
+		const defaultPageWidth = pageWidth();
+		const [automaticCardWidth] = renderedColumnWidths();
+		expect(renderedColumnWidths()).toHaveLength(3);
+
+		for (const option of [GIFT_CARD_COLUMN_OPTIONS.four, GIFT_CARD_COLUMN_OPTIONS.five]) {
+			await screen.rerender({ cardColumnOption: option });
+			await nextLayout();
+			const columnWidths = renderedColumnWidths();
+			expect(columnWidths, option).toHaveLength(giftCardChosenColumnCount(option)!);
+			for (const columnWidth of columnWidths) {
+				expectPixelsNear(columnWidth, automaticCardWidth!, option, 1);
+			}
+		}
+
+		await page.viewport(1440, 900);
+		await nextLayout();
+		const availableWidth = pageContent.parentElement!.clientWidth;
+		expect(pageWidth(), 'the viewport caps the widened page').toBe(availableWidth);
+		expect(renderedColumnWidths()).toHaveLength(5);
+
+		await screen.rerender({ viewMode: 'list' });
+		await expect.poll(pageWidth).toBe(defaultPageWidth);
+		await screen.rerender({ viewMode: 'card' });
+		await expect.poll(pageWidth).toBe(availableWidth);
+		await screen.unmount();
+		expect(
+			document.documentElement.style.getPropertyValue('--gift-card-chosen-column-count'),
+		).toBe('');
+	});
 });

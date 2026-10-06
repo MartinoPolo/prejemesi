@@ -66,6 +66,18 @@ export function isGiftCardColumnOptionAvailable(
 	);
 }
 
+const CHOSEN_COLUMN_COUNT_PROPERTY = '--gift-card-chosen-column-count';
+
+/**
+ * Widens the whole page for a chosen column count through the root token `app.css` derives
+ * `--content-max-width` from. Returns the cleanup that restores the default width.
+ */
+export function widenPageForGiftCardColumns(columnCount: number): () => void {
+	const rootStyle = document.documentElement.style;
+	rootStyle.setProperty(CHOSEN_COLUMN_COUNT_PROPERTY, String(columnCount));
+	return () => rootStyle.removeProperty(CHOSEN_COLUMN_COUNT_PROPERTY);
+}
+
 export function measureGiftCardGridGeometry(grid: HTMLElement): GiftCardGridGeometry {
 	const rootFontSize = Number.parseFloat(getComputedStyle(document.documentElement).fontSize);
 	return {

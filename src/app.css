@@ -205,9 +205,24 @@
 	--ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
 
 	/* ── Layout ────────────────────────────────────────────── */
-	--content-max-width: 1200px;
+	--content-default-max-width: 1200px;
 	--page-gutter: 12px;
+	--gift-card-grid-gap: --spacing(2);
 	--nav-height: 56px;
+
+	/* Automatic fills the default content width with three cards. A chosen gift card column count
+	   on the root widens the whole page, navbar included, so those cards keep that width until the
+	   viewport caps it; without one, the chosen width is invalid and the default applies. */
+	--gift-card-default-track: calc(var(--content-default-max-width) - 2 * var(--page-gutter));
+	--gift-card-automatic-width: calc(
+		(var(--gift-card-default-track) - 2 * var(--gift-card-grid-gap)) / 3
+	);
+	--gift-card-chosen-track: calc(
+		var(--gift-card-chosen-column-count) * var(--gift-card-automatic-width) +
+			(var(--gift-card-chosen-column-count) - 1) * var(--gift-card-grid-gap)
+	);
+	--gift-card-chosen-content-width: calc(var(--gift-card-chosen-track) + 2 * var(--page-gutter));
+	--content-max-width: var(--gift-card-chosen-content-width, var(--content-default-max-width));
 
 	/* ── Fonts ─────────────────────────────────────────────── */
 	--font-head: 'DynaPuff Variable', 'DynaPuff Fallback', sans-serif;
@@ -259,6 +274,7 @@
 @media (width >= 640px) {
 	:root {
 		--page-gutter: 16px;
+		--gift-card-grid-gap: --spacing(5);
 		--elevation-compact-offset: 2px;
 		--elevation-ordinary-offset: 4px;
 		--elevation-lifted-offset: 7px;

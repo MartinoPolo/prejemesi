@@ -369,7 +369,8 @@ sections for UI work. Historical reconciliation and review notes are in
 - 2026-10-06: Card view offers Automatic/4/5 columns per device (desktop from `sm`, not part of
   Reset display). Counts are offered only when cards keep 13.5rem, the measured width for the widest
   primary action, More and depth clearance; otherwise fall back to the largest count that fits
-  (#451).
+  (#451). A chosen count widens the whole page, navbar included, so cards keep the Automatic
+  default-width card size until the viewport caps it (`--content-max-width` in `src/app.css`).
 
 ## Forms & settings
 
