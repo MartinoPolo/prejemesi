@@ -1,16 +1,30 @@
 import { WISHLIST_ROLES, type WishlistRole } from '$lib/modules/wishlists/types.js';
 
-export type GiftContextAction =
-	| 'open'
-	| 'copy'
-	| 'edit'
-	| 'priority'
-	| 'category'
-	| 'received'
-	| 'multiselect'
-	| 'reserve'
-	| 'cancel-reservation'
-	| 'purchased';
+/** Menu presentation order shared by every gift action surface; also the source of the action union. */
+const GIFT_CONTEXT_ACTION_GROUPS = [
+	{ name: 'link', actions: ['open', 'copy'] },
+	{
+		name: 'gift',
+		actions: ['edit', 'received', 'multiselect', 'reserve', 'cancel-reservation', 'purchased'],
+	},
+	{ name: 'organization', actions: ['priority', 'category'] },
+] as const;
+
+export type GiftContextAction = (typeof GIFT_CONTEXT_ACTION_GROUPS)[number]['actions'][number];
+
+export interface GiftContextActionGroup {
+	readonly name: (typeof GIFT_CONTEXT_ACTION_GROUPS)[number]['name'];
+	readonly actions: readonly GiftContextAction[];
+}
+
+export function groupGiftContextActions(
+	actions: readonly GiftContextAction[],
+): GiftContextActionGroup[] {
+	return GIFT_CONTEXT_ACTION_GROUPS.map((group) => ({
+		name: group.name,
+		actions: group.actions.filter((action) => actions.includes(action)),
+	})).filter((group) => group.actions.length > 0);
+}
 
 export function hasAdditionalGiftContextActions(
 	actions: readonly GiftContextAction[],
