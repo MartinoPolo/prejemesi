@@ -96,8 +96,10 @@ pnpm run dev
 
 ### Test Accounts
 
-Seeded accounts share the password defined by `SEED_PASSWORD` in `src/lib/server/db/seed.ts`
-(currently `"password123"`).
+Seeded accounts share the password defined by `SEED_PASSWORD` in
+`src/lib/server/db/seed_credentials.ts` (currently `"password123"`). Set
+`DEV_AUTO_LOGIN_EMAIL="martin@test.cz"` in `.env` to skip the login form in development; signing out
+pauses auto-login until the next sign-in.
 
 | Email          | Name           | Role                                                |
 | -------------- | -------------- | --------------------------------------------------- |

@@ -64,6 +64,7 @@ export function resolvePlaywrightServer({ environment, databaseUrl, externalServ
 				'local-e2e-only-auth-secret-never-use-in-production-2026',
 			ORIGIN: origin,
 			ADMIN_EMAILS: 'tomas@test.cz',
+			DEV_AUTO_LOGIN_EMAIL: '',
 			R2_ACCOUNT_ID: '',
 			R2_ACCESS_KEY_ID: '',
 			R2_SECRET_ACCESS_KEY: '',
