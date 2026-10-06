@@ -17,6 +17,7 @@
 	import { hasExplicitFrameFill } from '$lib/components/derived/image-frame/index.js';
 	import { cn } from '$lib/utils.js';
 	import { giftCardVariants } from './gift_card_variants.js';
+	import { GIFT_CARD_CONTROL_SELECTOR } from './gift_card_controls.js';
 	import GiftDescription from './GiftDescription.svelte';
 	import GiftCategoryBadge from './GiftCategoryBadge.svelte';
 	import GiftPriorityBadge from './GiftPriorityBadge.svelte';
@@ -95,6 +96,15 @@
 		}),
 	);
 	let actionContentWidth = $state(0);
+	let pressStartedOnControl = $state(false);
+
+	function recordPressOrigin(event: PointerEvent & { currentTarget: HTMLDivElement }) {
+		const control =
+			event.target instanceof Element
+				? event.target.closest(GIFT_CARD_CONTROL_SELECTOR)
+				: null;
+		pressStartedOnControl = control !== null && event.currentTarget.contains(control);
+	}
 
 	const isDimmed = $derived(presentation.isDimmed);
 	const styles = $derived(giftCardVariants({ dimmed: isDimmed }));
@@ -110,7 +120,13 @@
 	);
 </script>
 
-<div class={styles.card()} data-testid="gift-card-surface">
+<div
+	class={styles.card()}
+	data-testid="gift-card-surface"
+	data-gift-actions-open={moreOpen ? moreSurface : undefined}
+	data-gift-control-press={pressStartedOnControl || undefined}
+	onpointerdowncapture={recordPressOrigin}
+>
 	<div class={styles.surface()} use:restingShadowNesting data-slot="elevation-surface">
 		<!-- Image area: dotted mat behind the photo; letterboxed photos keep the mat visible -->
 		<div

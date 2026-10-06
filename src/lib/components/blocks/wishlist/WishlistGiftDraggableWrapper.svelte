@@ -7,6 +7,7 @@
 	import { cn } from '$lib/utils.js';
 	import type { Snippet } from 'svelte';
 	import { createGiftLongPressRecognizer } from '$lib/modules/gifts/gift_long_press.js';
+	import { GIFT_CARD_CONTROL_SELECTOR } from '$lib/components/blocks/gift/gift_card_controls.js';
 	import { Button } from '$lib/components/base/button/index.js';
 	import { CheckboxSurface, checkboxVariants } from '$lib/components/base/checkbox/index.js';
 	import { ElevationSurface } from '$lib/components/base/elevation-surface/index.js';
@@ -82,9 +83,7 @@
 			return false;
 		}
 
-		const interactiveElement = target.closest(
-			'a, button, input, textarea, select, [data-prevent-gift-card-open]',
-		);
+		const interactiveElement = target.closest(GIFT_CARD_CONTROL_SELECTOR);
 
 		return interactiveElement !== null && interactiveElement !== currentTarget;
 	}
