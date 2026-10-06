@@ -112,6 +112,24 @@ describe('WishlistGiftDraggableWrapper — gift card opening (#284)', () => {
 		expect(openDetail).toHaveBeenCalledOnce();
 		await unmount();
 	});
+
+	it('does not open the detail when a left click lands on an inner control', async () => {
+		const openDetail = vi.fn();
+		const { container, unmount } = await render(WishlistGiftDraggableWrapperTestHost, {
+			...baseProps,
+			reorderEnabled: false,
+			primaryLink: 'https://example.com/gift',
+			onopendetail: openDetail,
+		});
+		const innerButton = container.querySelector(
+			'[data-testid="inner-button"]',
+		) as HTMLButtonElement;
+
+		innerButton.click();
+
+		expect(openDetail).not.toHaveBeenCalled();
+		await unmount();
+	});
 });
 
 describe('WishlistGiftDraggableWrapper — explicit reorder mode (#239)', () => {

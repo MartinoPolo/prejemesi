@@ -1,7 +1,7 @@
 import '../../../../app.css';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
-import { userEvent } from 'vitest/browser';
+import { cdp, userEvent } from 'vitest/browser';
 import {
 	createPixelAssertions,
 	DEFAULT_PIXEL_TOLERANCE,
@@ -164,5 +164,233 @@ describe('GiftCard whole-card elevation', () => {
 		const owner = document.querySelector<HTMLElement>('[data-testid="gift-card-surface"]')!;
 		expect(owner.classList.contains('elevation-owner')).toBe(false);
 		expect(owner.classList.contains('elevation-owner-raised')).toBe(false);
+	});
+
+	describe('while the card action menu is open under a modal pointer lock', () => {
+		let previousBodyPointerEvents = '';
+
+		beforeEach(() => {
+			previousBodyPointerEvents = document.body.style.pointerEvents;
+		});
+
+		afterEach(() => {
+			document.body.style.pointerEvents = previousBodyPointerEvents;
+		});
+
+		async function movePointerAwayAndLockBody(): Promise<void> {
+			const pointerRestTarget = document.createElement('span');
+			pointerRestTarget.dataset.testid = 'pointer-rest-target';
+			pointerRestTarget.style.cssText =
+				'position:fixed;top:10px;left:10px;width:10px;height:10px;z-index:2147483647';
+			document.body.append(pointerRestTarget);
+			await userEvent.hover(pointerRestTarget);
+			document.body.style.pointerEvents = 'none';
+		}
+
+		function runningAnimationCount(element: HTMLElement): number {
+			return element.getAnimations().filter((animation) => animation.playState === 'running')
+				.length;
+		}
+
+		it('keeps the open card lifted without :hover and rests once the menu closes', async () => {
+			const screen = await render(GiftCardTestHost, {
+				gift: makeVisitorGift(),
+				role: WISHLIST_ROLES.visitor,
+				onmore: () => {},
+				moreOpen: true,
+			});
+			await movePointerAwayAndLockBody();
+
+			const owner = document.querySelector<HTMLElement>('[data-testid="gift-card-surface"]')!;
+			const paintedSurface = owner.querySelector<HTMLElement>(
+				':scope > [data-slot="elevation-surface"]',
+			)!;
+
+			expect(owner.matches(':hover')).toBe(false);
+			await expect.poll(() => getComputedStyle(paintedSurface).translate).toBe('0px -2px');
+			await expect.poll(() => runningAnimationCount(paintedSurface)).toBe(0);
+			expect(getComputedStyle(paintedSurface).scale).toBe('none');
+			expect(getComputedStyle(owner).translate).toBe('none');
+			const ownerWhileOpen = owner.getBoundingClientRect();
+			const paintedWhileOpen = paintedSurface.getBoundingClientRect();
+
+			await screen.rerender({ moreOpen: false });
+			await expect.poll(() => getComputedStyle(paintedSurface).translate).toBe('none');
+			await expect.poll(() => runningAnimationCount(paintedSurface)).toBe(0);
+			expectPixelsNear(owner.getBoundingClientRect().top, ownerWhileOpen.top);
+			expectPixelsNear(paintedSurface.getBoundingClientRect().top, paintedWhileOpen.top + 2);
+		});
+
+		it('leaves a dimmed card at rest', async () => {
+			await render(GiftCardTestHost, {
+				gift: makeVisitorGift({ isFullyReserved: true, reservedCount: 1 }),
+				role: WISHLIST_ROLES.visitor,
+				onmore: () => {},
+				moreOpen: true,
+			});
+			await movePointerAwayAndLockBody();
+
+			const owner = document.querySelector<HTMLElement>('[data-testid="gift-card-surface"]')!;
+			const paintedSurface = owner.querySelector<HTMLElement>(
+				':scope > [data-slot="elevation-surface"]',
+			)!;
+			await expect.poll(() => runningAnimationCount(paintedSurface)).toBe(0);
+			expect(getComputedStyle(paintedSurface).translate).toBe('none');
+		});
+
+		it('does not lift a card behind its open actions sheet', async () => {
+			await render(GiftCardTestHost, {
+				gift: makeVisitorGift(),
+				role: WISHLIST_ROLES.visitor,
+				onmore: () => {},
+				moreOpen: true,
+				moreSurface: 'dialog',
+			});
+			await movePointerAwayAndLockBody();
+
+			const owner = document.querySelector<HTMLElement>('[data-testid="gift-card-surface"]')!;
+			const paintedSurface = owner.querySelector<HTMLElement>(
+				':scope > [data-slot="elevation-surface"]',
+			)!;
+			await expect.poll(() => runningAnimationCount(paintedSurface)).toBe(0);
+			expect(getComputedStyle(paintedSurface).translate).toBe('none');
+			expect(getComputedStyle(paintedSurface).scale).toBe('none');
+		});
+	});
+
+	describe('press ownership', () => {
+		let releaseHeldPointer: (() => Promise<void>) | undefined;
+
+		afterEach(async () => {
+			await releaseHeldPointer?.();
+			releaseHeldPointer = undefined;
+		});
+
+		/** Maps the element centre through the test iframes into top-level page coordinates. */
+		function pagePointAtCentre(element: Element): { x: number; y: number } {
+			const bounds = element.getBoundingClientRect();
+			let x = bounds.left + bounds.width / 2;
+			let y = bounds.top + bounds.height / 2;
+			let frameWindow: Window = window;
+			while (frameWindow.frameElement !== null) {
+				const frame = frameWindow.frameElement as HTMLElement;
+				const frameBounds = frame.getBoundingClientRect();
+				const frameScale = frameBounds.width / frame.offsetWidth;
+				x = frameBounds.left + (frame.clientLeft + x) * frameScale;
+				y = frameBounds.top + (frame.clientTop + y) * frameScale;
+				frameWindow = frameWindow.parent;
+			}
+			return { x, y };
+		}
+
+		// Vitest userEvent only clicks; a real held mouse button is needed to produce :active.
+		async function pressAndHold(element: Element): Promise<void> {
+			const point = pagePointAtCentre(element);
+			const session = cdp();
+			await session.send('Input.dispatchMouseEvent', { type: 'mouseMoved', ...point });
+			await session.send('Input.dispatchMouseEvent', {
+				type: 'mousePressed',
+				...point,
+				button: 'left',
+				clickCount: 1,
+			});
+			releaseHeldPointer = async () => {
+				releaseHeldPointer = undefined;
+				await session.send('Input.dispatchMouseEvent', {
+					type: 'mouseReleased',
+					...point,
+					button: 'left',
+					clickCount: 1,
+				});
+			};
+		}
+
+		async function settleFrames(frameCount: number): Promise<void> {
+			for (let frame = 0; frame < frameCount; frame += 1) {
+				await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+			}
+		}
+
+		async function renderManagedCard(): Promise<{
+			owner: HTMLElement;
+			paintedSurface: HTMLElement;
+		}> {
+			await render(GiftCardTestHost, {
+				gift: makeVisitorGift({ myReservationId: null, reservedCount: 0 }),
+				role: WISHLIST_ROLES.moderator,
+				onreserve: () => {},
+				onreceived: () => {},
+				onmore: () => {},
+			});
+			const owner = document.querySelector<HTMLElement>('[data-testid="gift-card-surface"]')!;
+			const paintedSurface = owner.querySelector<HTMLElement>(
+				':scope > [data-slot="elevation-surface"]',
+			)!;
+			return { owner, paintedSurface };
+		}
+
+		it('keeps the card unpressed while an inner control is held', async () => {
+			const { owner, paintedSurface } = await renderManagedCard();
+			const more = owner.querySelector<HTMLButtonElement>(
+				'[data-testid="gift-more-actions"]',
+			)!;
+
+			await pressAndHold(more);
+			await expect.poll(() => more.matches(':active')).toBe(true);
+			await settleFrames(12);
+
+			expect(getComputedStyle(paintedSurface).scale).toBe('none');
+		});
+
+		it('keeps the card unpressed when a held control becomes disabled', async () => {
+			const { owner, paintedSurface } = await renderManagedCard();
+			const received = owner.querySelector<HTMLButtonElement>(
+				'[data-testid="gift-received-toggle"]',
+			)!;
+
+			await pressAndHold(received);
+			await expect.poll(() => received.matches(':active')).toBe(true);
+			received.disabled = true;
+			await settleFrames(12);
+
+			// The card stays :active after the held control is disabled, so :has(control:active) alone would press it.
+			expect(owner.matches(':active')).toBe(true);
+			expect(getComputedStyle(paintedSurface).scale).toBe('none');
+		});
+
+		it('keeps the card unpressed from its content while its actions sheet is open', async () => {
+			await render(GiftCardTestHost, {
+				gift: makeVisitorGift(),
+				role: WISHLIST_ROLES.visitor,
+				onmore: () => {},
+				moreOpen: true,
+				moreSurface: 'dialog',
+			});
+			const owner = document.querySelector<HTMLElement>('[data-testid="gift-card-surface"]')!;
+			const paintedSurface = owner.querySelector<HTMLElement>(
+				':scope > [data-slot="elevation-surface"]',
+			)!;
+			const title = owner.querySelector<HTMLElement>('h3')!;
+
+			await pressAndHold(title);
+			await expect.poll(() => owner.matches(':active')).toBe(true);
+			await settleFrames(12);
+
+			expect(getComputedStyle(paintedSurface).scale).toBe('none');
+		});
+
+		it('presses the card from its content after an earlier inner control press', async () => {
+			const { owner, paintedSurface } = await renderManagedCard();
+			const more = owner.querySelector<HTMLButtonElement>(
+				'[data-testid="gift-more-actions"]',
+			)!;
+			const title = owner.querySelector<HTMLElement>('h3')!;
+
+			await pressAndHold(more);
+			await releaseHeldPointer?.();
+			await pressAndHold(title);
+
+			await expect.poll(() => getComputedStyle(paintedSurface).scale).toBe('0.98');
+		});
 	});
 });

@@ -688,13 +688,34 @@
 	scale: 1;
 }
 
+/* The control list mirrors GIFT_CARD_CONTROL_SELECTOR in gift_card_controls.ts. */
 .elevation-owner-raised:not(:disabled, [aria-disabled='true'], [data-disabled]):active:not(
-		.gift-card-root:has(> .elevation-surface :is(a, button, input, textarea, select):active)
+		.gift-card-root:is(
+			[data-gift-actions-open],
+			[data-gift-control-press],
+			:has(
+				> .elevation-surface
+					:is(a, button, input, textarea, select, [data-prevent-gift-card-open]):active
+			)
+		)
 	)
 	> .elevation-surface {
 	box-shadow: var(--elevation-pressed);
 	translate: 0;
 	scale: 0.98;
+}
+
+/* Modal action menus disable body pointer events, so :hover cannot keep the open card lifted. */
+@media (hover: hover) and (pointer: fine) {
+	.gift-card-root.elevation-owner-raised:not(
+			:disabled,
+			[aria-disabled='true'],
+			[data-disabled]
+		)[data-gift-actions-open='menu']
+		> .elevation-surface {
+		box-shadow: var(--elevation-lifted);
+		translate: 0 -2px;
+	}
 }
 
 [data-slot='dropdown-menu-content'][data-state='closed'],
@@ -733,6 +754,12 @@
 			:hover,
 			:active
 		)
+		> .elevation-surface,
+	.gift-card-root.elevation-owner-raised:not(
+			:disabled,
+			[aria-disabled='true'],
+			[data-disabled]
+		)[data-gift-actions-open='menu']
 		> .elevation-surface {
 		box-shadow: var(--elevation-ordinary);
 		translate: 0;
