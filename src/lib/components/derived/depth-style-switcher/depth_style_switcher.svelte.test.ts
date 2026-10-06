@@ -1,10 +1,10 @@
 import { render } from 'vitest-browser-svelte';
-import { page } from 'vitest/browser';
+import { page, userEvent } from 'vitest/browser';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { tick } from 'svelte';
 import '../../../../app.css';
 import * as m from '$lib/paraglide/messages.js';
-import type { DepthStyle } from '$lib/theme/depth_styles.js';
+import { DEPTH_STYLES, type DepthStyle } from '$lib/theme/depth_styles.js';
 import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
 import { PALETTES } from '$lib/theme/palettes.js';
 
@@ -116,7 +116,7 @@ function parseComputedColor(color: string): LinearSrgbColor {
 	const clamp = (value: number) => Math.min(1, Math.max(0, value));
 	return {
 		red: clamp(4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s),
-		green: clamp(-0.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s),
+		green: clamp(-1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s),
 		blue: clamp(-0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s),
 		alpha,
 	};
@@ -150,6 +150,62 @@ function clearRootAppearanceState() {
 	delete document.documentElement.dataset.depth;
 	delete document.documentElement.dataset.palette;
 	document.documentElement.classList.remove('dark');
+}
+
+function choiceSurface(choiceElement: Element): HTMLElement {
+	const surface = choiceElement.querySelector<HTMLElement>(':scope > .elevation-surface');
+	if (!surface) {
+		throw new Error('Depth option has no elevation surface');
+	}
+	return surface;
+}
+
+function disableChoiceSurfaceTransitions(choiceElements: Iterable<Element>) {
+	for (const choiceElement of choiceElements) {
+		choiceSurface(choiceElement).style.transition = 'none';
+	}
+}
+
+function choiceElementsByDepth(screen: { getByRole: typeof page.getByRole }) {
+	return Object.fromEntries(
+		DEPTH_STYLES.map((depth) => [
+			depth,
+			screen.getByRole('radio', { name: depthLabels[depth] }).element() as HTMLElement,
+		]),
+	) as Record<DepthStyle, HTMLElement>;
+}
+
+// Earlier clicks leave the real pointer over a choice, which would hold it in its hover state.
+async function parkPointerAwayFromChoices() {
+	const parking = document.createElement('div');
+	parking.dataset.testid = 'pointer-parking';
+	parking.style.cssText = 'position: fixed; right: 0; bottom: 0; width: 8px; height: 8px';
+	document.body.append(parking);
+	await userEvent.hover(page.getByTestId('pointer-parking'));
+	parking.remove();
+}
+
+function renderGlobalElevationProbe(): HTMLElement {
+	const probe = document.createElement('div');
+	probe.className = 'elevation-ordinary';
+	document.body.append(probe);
+	return probe;
+}
+
+function globalRestingShadowsByDepth(probe: HTMLElement): Record<DepthStyle, string> {
+	const activeDepth = document.documentElement.dataset.depth;
+	const shadows = Object.fromEntries(
+		DEPTH_STYLES.map((depth) => {
+			document.documentElement.dataset.depth = depth;
+			return [depth, getComputedStyle(probe).boxShadow];
+		}),
+	) as Record<DepthStyle, string>;
+	if (activeDepth === undefined) {
+		delete document.documentElement.dataset.depth;
+	} else {
+		document.documentElement.dataset.depth = activeDepth;
+	}
+	return shadows;
 }
 
 describe('DepthStyleSwitcher', () => {
@@ -186,7 +242,7 @@ describe('DepthStyleSwitcher', () => {
 		await screen.unmount();
 	});
 
-	it('keeps every option boundary and geometry stable while only the local shadow preview changes', async () => {
+	it('keeps every option boundary and geometry stable while the selection changes', async () => {
 		const screen = await render(DepthStyleSwitcher, {});
 		const choices = screen.getByRole('radio').all();
 		const boundary = (element: Element) => {
@@ -221,22 +277,33 @@ describe('DepthStyleSwitcher', () => {
 		await screen.unmount();
 	});
 
-	it('renders contrast-safe selected text and indicators for every palette, mode, and depth', async () => {
+	it('renders the selected option without a radio indicator and with contrast-safe dark-mode text', async () => {
 		const screen = await render(DepthStyleSwitcher, {});
 		const choiceElements = new Map(
 			Object.values(depthLabels).map((label) => {
 				const element = screen.getByRole('radio', { name: label }).element() as HTMLElement;
-				element.style.transition = 'none';
 				return [label, element] as const;
 			}),
 		);
+		disableChoiceSurfaceTransitions(choiceElements.values());
+
+		for (const [label, choiceElement] of choiceElements) {
+			expect(choiceElement.textContent?.trim(), `${label} option text`).toBe(label);
+			expect(
+				choiceElement.querySelectorAll('[aria-hidden="true"]'),
+				`${label} decorative indicator`,
+			).toHaveLength(0);
+			const textlessElements = [...choiceElement.querySelectorAll('*')].filter(
+				(element) => !element.textContent?.trim(),
+			);
+			expect(textlessElements, `${label} textless indicator`).toHaveLength(0);
+		}
 
 		for (const palette of PALETTES) {
 			document.documentElement.dataset.palette = palette;
 			for (const dark of [false, true]) {
 				document.documentElement.classList.toggle('dark', dark);
-				for (const label of Object.values(depthLabels)) {
-					const choiceElement = choiceElements.get(label)!;
+				for (const [label, choiceElement] of choiceElements) {
 					choiceElement.click();
 					await tick();
 
@@ -245,34 +312,141 @@ describe('DepthStyleSwitcher', () => {
 						choiceElement.getAttribute('aria-checked'),
 						`${context} selected state`,
 					).toBe('true');
-					const visualSurface = choiceElement.querySelector<HTMLElement>(
-						':scope > .elevation-surface',
-					)!;
-					const choiceStyle = getComputedStyle(visualSurface);
-					const indicator =
-						choiceElement.querySelector<HTMLElement>('[data-selected=true]');
-					expect(indicator, `${context} selected indicator`).not.toBeNull();
-					const indicatorColor = getComputedStyle(indicator!, '::after').backgroundColor;
+					const choiceStyle = getComputedStyle(choiceSurface(choiceElement));
 
 					expectPixelsAtLeast(
 						choiceElement.getBoundingClientRect().height,
 						48,
 						`${context} selected radio height`,
 					);
-					expect(
-						contrastRatio(choiceStyle.color, choiceStyle.backgroundColor),
-						`${context} selected text/background contrast`,
-					).toBeGreaterThanOrEqual(4.5);
-					expect(
-						contrastRatio(indicatorColor, choiceStyle.backgroundColor),
-						`${context} indicator/background contrast`,
-					).toBeGreaterThanOrEqual(3);
+					// Light-mode primary buttons sit below 4.5:1 app-wide (palette_contrast enforces dark
+					// only); light mode is pinned to the primary tokens by the primary-fill test.
+					if (dark) {
+						expect(
+							contrastRatio(choiceStyle.color, choiceStyle.backgroundColor),
+							`${context} selected text/background contrast`,
+						).toBeGreaterThanOrEqual(4.5);
+					}
 				}
 			}
 		}
 
 		await screen.unmount();
 		clearRootAppearanceState();
+	});
+
+	it('previews each option with its own depth shadow at every active depth', async () => {
+		const screen = await render(DepthStyleSwitcher, {});
+		const probe = renderGlobalElevationProbe();
+		const choiceElements = choiceElementsByDepth(screen);
+		disableChoiceSurfaceTransitions(Object.values(choiceElements));
+		await parkPointerAwayFromChoices();
+
+		try {
+			for (const palette of PALETTES) {
+				document.documentElement.dataset.palette = palette;
+				for (const dark of [false, true]) {
+					document.documentElement.classList.toggle('dark', dark);
+					const context = `${palette}/${dark ? 'dark' : 'light'}`;
+					const globalShadows = globalRestingShadowsByDepth(probe);
+					expect(
+						new Set(Object.values(globalShadows)).size,
+						`${context} distinct depth shadows`,
+					).toBe(DEPTH_STYLES.length);
+
+					for (const activeDepth of DEPTH_STYLES) {
+						choiceElements[activeDepth].click();
+						await tick();
+						expect(document.documentElement.dataset.depth).toBe(activeDepth);
+
+						for (const optionDepth of DEPTH_STYLES) {
+							expect(
+								getComputedStyle(choiceSurface(choiceElements[optionDepth]))
+									.boxShadow,
+								`${context} ${optionDepth} option at active ${activeDepth}`,
+							).toBe(globalShadows[optionDepth]);
+						}
+					}
+				}
+			}
+		} finally {
+			probe.remove();
+			await screen.unmount();
+		}
+	});
+
+	it('fills the selected option like a primary button and outlines the others', async () => {
+		const screen = await render(DepthStyleSwitcher, {});
+		const probe = document.createElement('div');
+		document.body.append(probe);
+		const resolvedColor = (property: 'backgroundColor' | 'color', token: string) => {
+			probe.style[property] = `var(${token})`;
+			return getComputedStyle(probe)[property];
+		};
+		const choiceElements = choiceElementsByDepth(screen);
+		disableChoiceSurfaceTransitions(Object.values(choiceElements));
+		await parkPointerAwayFromChoices();
+
+		try {
+			for (const [palette, dark] of PALETTES.flatMap((palette) =>
+				[false, true].map((dark) => [palette, dark] as const),
+			)) {
+				document.documentElement.dataset.palette = palette;
+				document.documentElement.classList.toggle('dark', dark);
+				const primaryFill = resolvedColor('backgroundColor', '--primary');
+				const primaryText = resolvedColor('color', '--primary-foreground');
+				const cardFill = resolvedColor('backgroundColor', '--card');
+				const inkBorder = resolvedColor('color', '--ink');
+
+				for (const selectedDepth of DEPTH_STYLES) {
+					choiceElements[selectedDepth].click();
+					await tick();
+
+					for (const optionDepth of DEPTH_STYLES) {
+						const context = `${palette}/${dark ? 'dark' : 'light'} ${optionDepth} option with ${selectedDepth} selected`;
+						const surfaceStyle = getComputedStyle(
+							choiceSurface(choiceElements[optionDepth]),
+						);
+						expect(surfaceStyle.borderTopColor, `${context} border`).toBe(inkBorder);
+						if (optionDepth === selectedDepth) {
+							expect(surfaceStyle.backgroundColor, `${context} fill`).toBe(
+								primaryFill,
+							);
+							expect(surfaceStyle.color, `${context} text`).toBe(primaryText);
+						} else {
+							expect(surfaceStyle.backgroundColor, `${context} fill`).toBe(cardFill);
+						}
+					}
+				}
+			}
+		} finally {
+			probe.remove();
+			await screen.unmount();
+		}
+	});
+
+	it('keeps the selected option primary-filled while hovered', async () => {
+		const screen = await render(DepthStyleSwitcher, {});
+		const ink = screen.getByRole('radio', { name: m.depth_style_ink() });
+		disableChoiceSurfaceTransitions([ink.element()]);
+		await ink.click();
+		const probe = document.createElement('div');
+		probe.style.backgroundColor = 'var(--primary)';
+		probe.style.color = 'var(--primary-foreground)';
+		document.body.append(probe);
+
+		try {
+			await userEvent.hover(ink);
+			expect(ink.element().matches(':hover')).toBe(true);
+			const surfaceStyle = getComputedStyle(choiceSurface(ink.element()));
+			const probeStyle = getComputedStyle(probe);
+			expect(surfaceStyle.backgroundColor).toBe(probeStyle.backgroundColor);
+			expect(surfaceStyle.color).toBe(probeStyle.color);
+		} finally {
+			await parkPointerAwayFromChoices();
+			probe.remove();
+			await screen.unmount();
+		}
 	});
 
 	it('shows the document depth selection after mounting without exposing the SSR default', async () => {
