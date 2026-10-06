@@ -276,6 +276,15 @@
 	--depth-clearance: 0px;
 	--nested-control-gap: calc(0.5rem + var(--depth-clearance));
 	--compact-control-gap: calc(0.5rem + max(0px, var(--depth-clearance) - 2px));
+
+	/* Rows running under an overlay close button reserve this end space: the button plus the
+	   nested control gap, keeping its depth shadow clear. The base clearance is measured from the
+	   surface's padding edge; the dialog variant applies inside the standard 1.5rem dialog padding. */
+	--overlay-close-inset: 1rem;
+	--overlay-close-clearance: calc(
+		var(--overlay-close-inset) + var(--size-control-lg) + var(--nested-control-gap)
+	);
+	--overlay-close-clearance-inside-dialog-padding: calc(var(--overlay-close-clearance) - 1.5rem);
 }
 
 [data-depth='ink'],
@@ -572,7 +581,8 @@
 }
 
 /* The viewer depth lives on <html>. Repeat the mapping for nested wishlist
-   palettes because their local recipe colors must win without changing geometry. */
+   palettes because their local recipe colors must win without changing geometry.
+   A local `[data-depth]` (depth picker previews) re-derives the elevation recipes below. */
 [data-depth='soft'],
 [data-depth='soft'] [data-palette] {
 	--hard-shadow: var(--soft-shadow);
@@ -591,7 +601,7 @@
 	--hard-shadow-strong: var(--black-shadow-strong);
 }
 
-:where(:root, [data-palette]) {
+:where(:root, [data-palette], [data-depth]) {
 	--elevation-compact: var(--elevation-compact-offset) var(--elevation-compact-offset) 0
 		var(--hard-shadow);
 	--elevation-ordinary: var(--elevation-ordinary-offset) var(--elevation-ordinary-offset) 0

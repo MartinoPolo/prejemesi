@@ -11,6 +11,11 @@
 	let { children, class: className }: Props = $props();
 </script>
 
-<Sheet.Header class={cn('border-border shrink-0 border-b px-4 py-3 pr-14', className)}>
+<Sheet.Header
+	class={cn(
+		'border-border shrink-0 border-b px-4 py-3 pe-(--overlay-close-clearance)',
+		className,
+	)}
+>
 	{@render children()}
 </Sheet.Header>

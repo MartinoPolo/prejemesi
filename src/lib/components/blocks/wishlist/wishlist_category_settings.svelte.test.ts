@@ -28,8 +28,25 @@ vi.mock('$lib/modules/gift-categories/gift_categories.remote.js', () => ({
 }));
 
 const { default: WishlistCategorySettings } = await import('./WishlistCategorySettings.svelte');
-const { expectPixelsNear, expectPixelsAtLeast } = createPixelAssertions(expect);
+const { expectPixelsNear, expectPixelsAtLeast, expectPixelsAtMost } = createPixelAssertions(expect);
 const preset = GIFT_CATEGORY_PRESETS[0]!;
+// Settings dialog body width at a 390 px viewport: calc(100% - 2rem), 2.5px border, px-6.
+const SETTINGS_MODAL_ROW_WIDTH_AT_PHONE_VIEWPORT = 305;
+
+function contentBoxEdges(element: HTMLElement): { left: number; right: number } {
+	const style = getComputedStyle(element);
+	const rect = element.getBoundingClientRect();
+	return {
+		left:
+			rect.left +
+			Number.parseFloat(style.borderLeftWidth) +
+			Number.parseFloat(style.paddingLeft),
+		right:
+			rect.right -
+			Number.parseFloat(style.borderRightWidth) -
+			Number.parseFloat(style.paddingRight),
+	};
+}
 
 function findInput(value: string): HTMLInputElement | undefined {
 	return [...document.querySelectorAll<HTMLInputElement>('input')].find(
@@ -60,7 +77,7 @@ beforeEach(() => {
 });
 
 describe('WishlistCategorySettings', () => {
-	it('keeps adjacent category actions on the shared responsive size and gap', async () => {
+	it('keeps adjacent category actions on the shared responsive size without a gap', async () => {
 		remoteMocks.categories = [category({ customLabel: 'Sport' })];
 		for (const [width, expectedSize] of [
 			[390, 40],
@@ -80,14 +97,75 @@ describe('WishlistCategorySettings', () => {
 			expectPixelsNear(
 				actions[1]!.getBoundingClientRect().left -
 					actions[0]!.getBoundingClientRect().right,
-				8,
+				0,
 			);
 			expectPixelsNear(
 				actions[2]!.getBoundingClientRect().left -
 					actions[1]!.getBoundingClientRect().right,
-				8,
+				0,
 			);
 			await screen.unmount();
+		}
+	});
+
+	it('lets the custom category name fill a narrow modal row with reachable actions', async () => {
+		const typicalName = 'Sportovní vybavení';
+		remoteMocks.categories = [
+			category({ id: 'first', customLabel: typicalName, sortOrder: 0 }),
+			category({ id: 'second', customLabel: 'Elektronika', sortOrder: 1 }),
+		];
+		await page.viewport(390, 720);
+		const modalBodyAtPhoneWidth = document.createElement('div');
+		modalBodyAtPhoneWidth.style.width = `${SETTINGS_MODAL_ROW_WIDTH_AT_PHONE_VIEWPORT}px`;
+		document.body.append(modalBodyAtPhoneWidth);
+		try {
+			render(WishlistCategorySettings, {
+				target: modalBodyAtPhoneWidth,
+				props: { wishlistId: 'wishlist-1' },
+			});
+			await expect
+				.element(page.getByRole('button', { name: m.delete() }).first())
+				.toBeEnabled();
+
+			const firstRow = document.querySelector<HTMLElement>('[data-category-row]')!;
+			const { left: rowContentLeft, right: rowContentRight } = contentBoxEdges(firstRow);
+			const nameInput = findInput(typicalName)!;
+
+			expect(firstRow.contains(nameInput)).toBe(true);
+			expectPixelsAtMost(nameInput.scrollWidth, nameInput.clientWidth);
+			expectPixelsNear(nameInput.getBoundingClientRect().right, rowContentRight);
+			expectPixelsAtMost(firstRow.scrollWidth, firstRow.clientWidth);
+
+			const usedCount = firstRow.querySelector<HTMLElement>(
+				'[data-testid="gift-category-used-count"]',
+			)!;
+			const usedCountRect = usedCount.getBoundingClientRect();
+			expectPixelsAtLeast(usedCountRect.left, rowContentLeft);
+			expectPixelsAtMost(usedCountRect.right, rowContentRight);
+			expectPixelsAtMost(usedCount.scrollWidth, usedCount.clientWidth);
+
+			const actions = [m.move_up(), m.move_down(), m.delete()].map(
+				(name) =>
+					firstRow.querySelector<HTMLButtonElement>(`button[aria-label="${name}"]`)!,
+			);
+			for (const action of actions) {
+				const actionRect = action.getBoundingClientRect();
+				expectPixelsNear(actionRect.width, 40);
+				expectPixelsNear(actionRect.height, 40);
+				expectPixelsAtLeast(actionRect.left, rowContentLeft);
+				expectPixelsAtMost(actionRect.right, rowContentRight);
+			}
+
+			await page.elementLocator(actions[1]!).click();
+			await vi.waitFor(() =>
+				expect(
+					[...document.querySelectorAll<HTMLElement>('[data-category-row]')].map(
+						(row) => row.dataset.categoryLabel,
+					),
+				).toEqual(['Elektronika', typicalName]),
+			);
+		} finally {
+			modalBodyAtPhoneWidth.remove();
 		}
 	});
 
@@ -142,6 +220,7 @@ describe('WishlistCategorySettings', () => {
 				usedCount: 3,
 			}),
 		];
+		await page.viewport(768, 720);
 		render(WishlistCategorySettings, { wishlistId: 'wishlist-1' });
 
 		const counts = document.querySelectorAll('[data-testid="gift-category-used-count"]');
@@ -150,7 +229,7 @@ describe('WishlistCategorySettings', () => {
 		expect(counts[1]!.textContent).toContain('3');
 		expectPixelsAtLeast(
 			counts[0]!.getBoundingClientRect().right,
-			counts[0]!.parentElement!.querySelector('input')!.getBoundingClientRect().right,
+			findInput('Sport')!.getBoundingClientRect().right,
 		);
 		expect(counts[1]!.parentElement?.textContent).toContain(preset.labels.cs);
 	});

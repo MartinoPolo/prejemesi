@@ -373,55 +373,55 @@
 			{#each customDrafts as category, index (category.key)}
 				{@const usedCount = usedCountForCategoryId(category.id)}
 				<div
-					class="flex items-center gap-2 rounded-lg border border-border border-l-4 bg-surface px-3 py-2"
+					class="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1 rounded-lg border border-border border-l-4 bg-surface px-3 py-2 sm:grid-cols-[auto_minmax(0,1fr)_auto_auto]"
 					style:border-left-color={category.color}
 					data-testid="gift-category-settings-card"
 					data-category-row
 					data-category-id={category.key}
 					data-category-label={category.label}
 				>
-					<div class="flex min-w-0 flex-1 items-center gap-2">
-						<ColorPicker
-							bind:value={category.color}
-							label={category.label}
+					<ColorPicker
+						bind:value={category.color}
+						label={category.label}
+						disabled={categoryControlsDisabled}
+					/>
+					<Input
+						bind:value={category.label}
+						maxlength={MAX_CUSTOM_GIFT_CATEGORY_LABEL_LENGTH}
+						class="col-span-2 min-w-0 sm:col-span-1"
+						disabled={categoryControlsDisabled}
+					/>
+					<span
+						data-testid="gift-category-used-count"
+						class="col-span-2 text-right text-xs text-muted-foreground sm:col-span-1 sm:w-20"
+						>{m.gift_category_usage_compact({ count: usedCount })}</span
+					>
+					<div class="flex">
+						<Button
+							type="button"
+							format="icon"
+							intent="ghost"
+							disabled={categoryControlsDisabled || index === 0}
+							onclick={() => move(index, -1)}
+							aria-label={m.move_up()}><ArrowUpIcon /></Button
+						>
+						<Button
+							type="button"
+							format="icon"
+							intent="ghost"
+							disabled={categoryControlsDisabled || index === customDrafts.length - 1}
+							onclick={() => move(index, 1)}
+							aria-label={m.move_down()}><ArrowDownIcon /></Button
+						>
+						<Button
+							type="button"
+							format="icon"
+							intent="ghost"
 							disabled={categoryControlsDisabled}
-						/>
-						<Input
-							bind:value={category.label}
-							maxlength={MAX_CUSTOM_GIFT_CATEGORY_LABEL_LENGTH}
-							class="min-w-0 flex-1"
-							disabled={categoryControlsDisabled}
-						/>
-						<span
-							data-testid="gift-category-used-count"
-							class="w-20 shrink-0 text-right text-xs text-muted-foreground"
-							>{m.gift_category_usage_compact({ count: usedCount })}</span
+							onclick={(event) => requestCustomRemoval(category, event.currentTarget)}
+							aria-label={m.delete()}><TrashIcon /></Button
 						>
 					</div>
-					<Button
-						type="button"
-						format="icon"
-						intent="ghost"
-						disabled={categoryControlsDisabled || index === 0}
-						onclick={() => move(index, -1)}
-						aria-label={m.move_up()}><ArrowUpIcon /></Button
-					>
-					<Button
-						type="button"
-						format="icon"
-						intent="ghost"
-						disabled={categoryControlsDisabled || index === customDrafts.length - 1}
-						onclick={() => move(index, 1)}
-						aria-label={m.move_down()}><ArrowDownIcon /></Button
-					>
-					<Button
-						type="button"
-						format="icon"
-						intent="ghost"
-						disabled={categoryControlsDisabled}
-						onclick={(event) => requestCustomRemoval(category, event.currentTarget)}
-						aria-label={m.delete()}><TrashIcon /></Button
-					>
 				</div>
 			{/each}
 		{/if}
