@@ -400,7 +400,7 @@
 		     anonymous users have no drawer, so they keep the consolidated menu below 1040px. -->
 			<div
 				data-testid="navbar-appearance-controls"
-				class="header-appearance-controls hidden items-center gap-(--nested-control-gap) min-[1040px]:flex"
+				class="header-appearance-controls hidden items-center gap-(--compact-control-gap) min-[1040px]:flex"
 			>
 				<PaletteSwitcher />
 				<LanguageToggle variant="icon" />
@@ -492,7 +492,7 @@
 	.nav-right {
 		display: flex;
 		align-items: center;
-		gap: var(--nested-control-gap);
+		gap: var(--compact-control-gap);
 		flex-shrink: 0;
 		margin-left: auto;
 	}

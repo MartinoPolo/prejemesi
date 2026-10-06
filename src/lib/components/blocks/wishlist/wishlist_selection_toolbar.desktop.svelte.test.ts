@@ -184,4 +184,43 @@ describe('WishlistSelectionToolbar consolidated desktop actions (#353)', () => {
 		expect(badge!.querySelector('[data-badge-icon] svg')).not.toBeNull();
 		await screen.unmount();
 	});
+
+	it('gives Priority and Category the shared gift action icons with aligned labels (#447)', async () => {
+		const screen = await render(WishlistSelectionToolbar, createProps());
+		await screen.getByTestId('desktop-selection-actions-trigger').click();
+		const root = page.getByRole('menu', { name: m.gift_selection_actions() });
+		await expect.element(root).toBeVisible();
+		const labelTextOf = (menuItem: Element, label: string) =>
+			Array.from(menuItem.childNodes).find((node) => {
+				const text = node.textContent!.trim();
+				return (
+					node.nodeType === Node.TEXT_NODE &&
+					(text === label || text.startsWith(`${label}: `))
+				);
+			});
+		const item = (label: string) =>
+			Array.from(root.element().querySelectorAll('[role="menuitem"]')).find(
+				(menuItem) => labelTextOf(menuItem, label) !== undefined,
+			)!;
+
+		expect(item(m.gift_priority_label()).querySelector('svg.lucide-star')).toBeTruthy();
+		expect(item(m.gift_context_category()).querySelector('svg.lucide-tag')).toBeTruthy();
+		const labelLefts = [
+			m.gift_priority_label(),
+			m.gift_context_category(),
+			m.image_fit_label(),
+			m.image_background_label(),
+			m.gift_bulk_copy(),
+			m.gift_selection_received_state(),
+		].map((label) => {
+			const labelText = labelTextOf(item(label), label)!;
+			const range = document.createRange();
+			range.selectNodeContents(labelText);
+			return range.getClientRects()[0]!.left;
+		});
+		for (const labelLeft of labelLefts) {
+			expect(labelLeft).toBeCloseTo(labelLefts[0]!, 0);
+		}
+		await screen.unmount();
+	});
 });

@@ -75,7 +75,7 @@
 		}
 	});
 
-	// Route code preloading strategy (see docs/performance-budget.md):
+	// Route code preloading strategy (see docs/PERFORMANCE.md):
 	// - No unconditional preloading here — public/auth pages must not download
 	//   authenticated app code before user intent.
 	// - Intent-based preloading is framework-provided via

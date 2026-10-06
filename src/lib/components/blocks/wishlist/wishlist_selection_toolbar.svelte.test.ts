@@ -162,6 +162,33 @@ describe('WishlistSelectionToolbar mobile bulk surface (#340)', () => {
 		await screen.unmount();
 	});
 
+	it('gives Priority and Category the shared gift action icons with aligned labels (#447)', async () => {
+		const screen = await render(WishlistSelectionToolbar, createProps());
+		await screen.getByRole('button', { name: m.gift_selection_actions() }).click();
+		await expect
+			.element(screen.getByRole('dialog', { name: m.gift_selection_actions() }))
+			.toBeVisible();
+		const rows = Array.from(
+			screen
+				.getByTestId('selection-bulk-sheet-actions')
+				.element()
+				.querySelectorAll<HTMLButtonElement>('[data-mobile-bulk-action]'),
+		);
+		const row = (action: string) =>
+			rows.find((candidate) => candidate.dataset.mobileBulkAction === action)!;
+
+		expect(row('priority').querySelector('svg.lucide-star')).toBeTruthy();
+		expect(row('category').querySelector('svg.lucide-tag')).toBeTruthy();
+		const firstLabelLeft = rows[0]!.querySelector('strong')!.getBoundingClientRect().left;
+		for (const actionRow of rows) {
+			expectPixelsNear(
+				actionRow.querySelector('strong')!.getBoundingClientRect().left,
+				firstLabelLeft,
+			);
+		}
+		await screen.unmount();
+	});
+
 	it('aligns the title, count, and keyboard-close target in a collision-free header', async () => {
 		for (const width of [320, 390]) {
 			for (const selectedCount of [3, 120]) {

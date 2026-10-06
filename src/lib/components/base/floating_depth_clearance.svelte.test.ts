@@ -66,6 +66,23 @@ describe('floating layer depth clearance (issue #442)', () => {
 		},
 	);
 
+	it('opens a popover with an unshadowed trigger at its standard offset at Black depth', async () => {
+		await page.viewport(800, 700);
+		document.documentElement.dataset.depth = 'black';
+		await render(FloatingDepthClearanceTestFixture, {
+			kind: 'popover',
+			shadowedTrigger: false,
+		});
+		const content = await settledContent();
+		const trigger = page.getByTestId('floating-trigger').element() as HTMLElement;
+
+		expect(content.dataset.side).toBe('bottom');
+		expectPixelsNear(
+			content.getBoundingClientRect().top - trigger.getBoundingClientRect().bottom,
+			6,
+		);
+	});
+
 	it('opens the context menu at its standard offset plus the Black shadow clearance', async () => {
 		await page.viewport(800, 700);
 		document.documentElement.dataset.depth = 'black';

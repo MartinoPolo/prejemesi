@@ -268,12 +268,14 @@
 
 /* Soft shadows read as flat, so only Ink and Black reserve room for the shadow offset.
    Use `--nested-control-gap` between adjacent elevated controls and add `--depth-clearance` to
-   container insets on shadowed edges only.
-   `[data-depth]` repeats the derivation so a locally overridden depth recomputes the gap. */
+   container insets on shadowed edges only. Dense header action clusters use
+   `--compact-control-gap`, trading 2 px of clearance (whole pixels, never below the Soft gap).
+   `[data-depth]` repeats the derivation so a locally overridden depth recomputes the gaps. */
 :root,
 [data-depth] {
 	--depth-clearance: 0px;
 	--nested-control-gap: calc(0.5rem + var(--depth-clearance));
+	--compact-control-gap: calc(0.5rem + max(0px, var(--depth-clearance) - 2px));
 
 	/* Rows running under an overlay close button reserve this end space: the button plus the
 	   nested control gap, keeping its depth shadow clear. The base clearance is measured from the
@@ -579,7 +581,8 @@
 }
 
 /* The viewer depth lives on <html>. Repeat the mapping for nested wishlist
-   palettes because their local recipe colors must win without changing geometry. */
+   palettes because their local recipe colors must win without changing geometry.
+   A local `[data-depth]` (depth picker previews) re-derives the elevation recipes below. */
 [data-depth='soft'],
 [data-depth='soft'] [data-palette] {
 	--hard-shadow: var(--soft-shadow);
@@ -598,7 +601,7 @@
 	--hard-shadow-strong: var(--black-shadow-strong);
 }
 
-:where(:root, [data-palette]) {
+:where(:root, [data-palette], [data-depth]) {
 	--elevation-compact: var(--elevation-compact-offset) var(--elevation-compact-offset) 0
 		var(--hard-shadow);
 	--elevation-ordinary: var(--elevation-ordinary-offset) var(--elevation-ordinary-offset) 0
