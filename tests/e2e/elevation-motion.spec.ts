@@ -53,6 +53,21 @@ async function sampleFrameRects(locator: Locator, frameCount = 12): Promise<Rect
 	}, frameCount);
 }
 
+async function sampleFrameElevation(
+	locator: Locator,
+	frameCount = 12,
+): Promise<{ translate: string; scale: string }[]> {
+	return locator.evaluate(async (element, count) => {
+		const samples: { translate: string; scale: string }[] = [];
+		for (let frame = 0; frame < count; frame += 1) {
+			await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+			const { translate, scale } = getComputedStyle(element);
+			samples.push({ translate, scale });
+		}
+		return samples;
+	}, frameCount);
+}
+
 async function expectAnimationsSettled(locator: Locator) {
 	await expect
 		.poll(() =>
@@ -207,9 +222,24 @@ test.describe('Elevated interaction behavior', () => {
 
 		gift = await switchView('card');
 		more = gift.getByTestId('gift-more-actions');
+		const cardSurface = visualSurface(gift.getByTestId('gift-card-surface'));
+		await gift.getByRole('heading', { name: giftName }).hover();
+		await expect
+			.poll(() => cardSurface.evaluate((element) => getComputedStyle(element).translate))
+			.toBe('0px -2px');
+		await more.hover();
 		await more.click();
 		const menu = page.locator('[data-slot="dropdown-menu-content"]:visible');
 		await expect(menu).toBeVisible();
+		// The content plays a zoom-in entry animation; its floating wrapper carries the placement.
+		const menuPlacement = menu.locator('xpath=..');
+		const [firstPlacement, ...laterPlacements] = await sampleFrameRects(menuPlacement);
+		for (const placement of laterPlacements) {
+			expectPixelsNear(placement.y, firstPlacement!.y);
+		}
+		for (const elevation of await sampleFrameElevation(cardSurface)) {
+			expect(elevation).toEqual({ translate: '0px -2px', scale: 'none' });
+		}
 		const headingBounds = await gift.getByRole('heading', { name: giftName }).boundingBox();
 		expect(headingBounds).not.toBeNull();
 		if (headingBounds === null) {
@@ -229,6 +259,12 @@ test.describe('Elevated interaction behavior', () => {
 		await more.click();
 		const sheet = page.getByRole('dialog', { name: giftName });
 		await expect(sheet).toBeVisible();
+		await expect(page.getByRole('dialog').filter({ visible: true })).toHaveCount(1);
+		const mobileCardSurface = visualSurface(gift.getByTestId('gift-card-surface'));
+		await expectAnimationsSettled(mobileCardSurface);
+		for (const elevation of await sampleFrameElevation(mobileCardSurface)) {
+			expect(elevation).toEqual({ translate: 'none', scale: 'none' });
+		}
 		const sheetOverlay = page.locator('[data-slot="sheet-overlay"]:visible');
 		await expect(sheetOverlay).toBeVisible();
 		await sheetOverlay.click({ position: { x: 8, y: 8 } });
