@@ -504,10 +504,12 @@ sections for UI work. Historical reconciliation and review notes are in
   duration cap. Preserve reduced-motion handling, existing view-switch effects and hover behavior;
   active dragging follows the pointer without a speed limit. Interrupted runs must hand off from
   their current visual positions without leaking overlays or stealing focus.
-- 2026-10-02: Spacing beside elevated elements is a standard gap plus a depth clearance equal to the
-  shadow offset for Ink and Black and none for Soft. Adjacent elevated controls use
-  `--nested-control-gap` in `src/app.css`; container insets add the clearance on shadowed edges
-  only, and spacing never changes on hover.
+- 2026-10-06: Spacing beside elevated elements is a standard gap plus a depth clearance for Ink and
+  Black (none for Soft), judged by shadows staying clear of neighbors, not an exact offset. Adjacent
+  elevated controls use `--nested-control-gap`, dense header actions `--compact-control-gap` (both
+  `src/app.css`); container insets add clearance on shadowed edges only; spacing never changes on
+  hover. Floating layers add clearance only for shadowed triggers; hover-opened layers keep the
+  trigger-to-layer gap pointer-safe.
 
 ## Images & cropping
 

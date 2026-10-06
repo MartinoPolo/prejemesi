@@ -5,9 +5,10 @@
 
 	interface Props {
 		kind: 'select' | 'popover' | 'context-menu';
+		shadowedTrigger?: boolean;
 	}
 
-	let { kind }: Props = $props();
+	let { kind, shadowedTrigger }: Props = $props();
 </script>
 
 <div style:padding="120px 40px">
@@ -21,7 +22,8 @@
 	{:else if kind === 'popover'}
 		<Popover.Root open>
 			<Popover.Trigger data-testid="floating-trigger">Otevřít</Popover.Trigger>
-			<Popover.Content data-testid="floating-content">Obsah</Popover.Content>
+			<Popover.Content data-testid="floating-content" {shadowedTrigger}>Obsah</Popover.Content
+			>
 		</Popover.Root>
 	{:else}
 		<ContextMenu.Root>

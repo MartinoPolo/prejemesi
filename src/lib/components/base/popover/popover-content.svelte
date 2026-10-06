@@ -12,10 +12,13 @@
 		align = 'start' as const,
 		children,
 		portalProps,
+		shadowedTrigger = true,
 		...restProps
 	}: PopoverPrimitive.ContentProps & {
 		children?: Snippet;
 		portalProps?: Omit<PopoverPrimitive.PortalProps, 'children'>;
+		/** Set false when the trigger has no resting shadow, so the layer needs no depth clearance. */
+		shadowedTrigger?: boolean;
 	} = $props();
 </script>
 
@@ -35,7 +38,7 @@
 		class={cn(
 			'data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2',
 			'z-(--z-modal) min-w-55 rounded-panel border-[2.5px] border-ink bg-popover text-popover-foreground px-1.5 py-1.5 shadow-sticker outline-none',
-			floatingDepthClearance,
+			shadowedTrigger && floatingDepthClearance,
 			className,
 		)}
 		{...restProps}

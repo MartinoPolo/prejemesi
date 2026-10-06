@@ -11,10 +11,12 @@ not duplicated component scales.
 - Text and icon-only formats share size-driven icon geometry. Consumers choose variants instead of
   overriding icon dimensions or control height.
 - Adjacent elevated controls use `--nested-control-gap`: an 8 px base plus `--depth-clearance`,
-  which equals the shadow offset at Ink and Black depth and is zero at Soft. Container insets add
-  the clearance only on shadowed edges; spacing never changes on hover. Floating layers add it to
-  their offset and subtract it from their available size via
-  [`floating_depth_clearance.ts`](../src/lib/components/base/floating_depth_clearance.ts).
+  which equals the shadow offset at Ink and Black depth and is zero at Soft. Dense header action
+  clusters use `--compact-control-gap`, which trades part of that clearance. Container insets add
+  the clearance only on shadowed edges; spacing never changes on hover. Floating layers whose
+  trigger casts a shadow add it to their offset and subtract it from their available size via
+  [`floating_depth_clearance.ts`](../src/lib/components/base/floating_depth_clearance.ts); pass
+  `shadowedTrigger={false}` for unshadowed triggers.
 - Badge-like chips reuse `Badge` (`tone`, `badgeStyle` `outlined`/`subtle`/`solid`, `size`
   `default`/`lg` matching Button `sm`, optional leading `icon` snippet) or its exported
   `badgeShape`, never a local pill radius or border.
