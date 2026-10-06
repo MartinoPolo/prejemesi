@@ -3,6 +3,7 @@ import { render } from 'vitest-browser-svelte';
 import { page, userEvent } from 'vitest/browser';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
+import { expectContentClearsOverlayClose } from '$lib/components/base/dialog/overlay_close_geometry.test_fixtures.js';
 import GiftBulkCopyDialog from './GiftBulkCopyDialog.svelte';
 import * as m from '$lib/paraglide/messages.js';
 
@@ -29,7 +30,10 @@ function props() {
 	};
 }
 
-afterEach(async () => page.viewport(1280, 760));
+afterEach(async () => {
+	delete document.documentElement.dataset.depth;
+	await page.viewport(1280, 760);
+});
 
 describe('GiftBulkCopyDialog', () => {
 	it('uses a desktop confirmation dialog and requires a destination', async () => {
@@ -122,7 +126,10 @@ describe('GiftBulkCopyDialog', () => {
 				parseFloat(shellStyle.borderRightWidth),
 		);
 		expect(headerStyle.paddingLeft).toBe('16px');
-		expect(headerStyle.paddingRight).toBe('56px');
+		expectContentClearsOverlayClose(
+			header,
+			shell.querySelector<HTMLElement>('[data-slot="sheet-close"]')!,
+		);
 		expect(headerStyle.paddingTop).toBe('12px');
 		expect(headerStyle.paddingBottom).toBe('12px');
 		expectPixelsNear(parseFloat(headerStyle.borderBottomWidth), 1);
@@ -150,4 +157,22 @@ describe('GiftBulkCopyDialog', () => {
 		expect(onback).toHaveBeenCalledOnce();
 		await screen.unmount();
 	});
+
+	it.each(['soft', 'ink', 'black'] as const)(
+		'keeps the narrow sheet header clear of the close button at %s depth',
+		async (depth) => {
+			document.documentElement.dataset.depth = depth;
+			await page.viewport(390, 760);
+			const screen = await render(GiftBulkCopyDialog, props());
+			const dialog = screen.getByRole('dialog', { name: m.gift_bulk_copy_title() });
+			await expect.element(dialog).toBeVisible();
+			const shell = dialog.element();
+
+			expectContentClearsOverlayClose(
+				shell.querySelector<HTMLElement>('[data-slot="sheet-header"]')!,
+				shell.querySelector<HTMLElement>('[data-slot="sheet-close"]')!,
+			);
+			await screen.unmount();
+		},
+	);
 });

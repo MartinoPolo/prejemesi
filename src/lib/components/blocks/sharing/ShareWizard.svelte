@@ -136,12 +136,15 @@
 {/snippet}
 
 <Dialog.Root open={isOpen} onOpenChange={handleOpenChange}>
-	<Dialog.Content class="flex max-h-[85dvh] flex-col gap-0 overflow-hidden p-0 sm:max-w-[35rem]">
+	<!-- A 0.5rem mobile viewport inset keeps the stepper beside the close button down to 360px. -->
+	<Dialog.Content
+		class="flex max-h-[85dvh] max-w-[calc(100%-1rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-[35rem]"
+	>
 		<Dialog.Title class="sr-only">{m.share_dialog_title()}</Dialog.Title>
 		<Dialog.Description class="sr-only">{m.share_dialog_description()}</Dialog.Description>
 
 		<!-- Step Progress Indicator -->
-		<div class="shrink-0 {styles.progressBar()}">
+		<div class="shrink-0 {styles.progressBar()}" data-testid="share-wizard-stepper">
 			<div class={styles.step()}>
 				<div class="{styles.stepDot()} {getDotClass(step1State)}">
 					{#if step1State === 'done'}

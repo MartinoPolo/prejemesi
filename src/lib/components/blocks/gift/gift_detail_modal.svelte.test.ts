@@ -7,10 +7,14 @@ import type { GiftByRole, GiftForVisitor } from '$lib/modules/gifts/types.js';
 import type { WishlistRole } from '$lib/modules/wishlists/types.js';
 import { IMAGE_FIT_MODES } from '$lib/modules/images/index.js';
 import { getLocale, setLocale, type Locale } from '$lib/paraglide/runtime.js';
+import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
+import { resolvedCssLength } from './gift_action_geometry.test_fixtures.js';
 
 // Same stub as gift_detail_form.svelte.test.ts: the images module barrel reads
 // `$env/dynamic/public`, which vitest-browser-svelte's bare document doesn't seed.
 vi.mock('$env/dynamic/public', () => ({ env: {} }));
+
+const { expectPixelsAtLeast } = createPixelAssertions(expect);
 
 const { default: GiftDetailModal } = await import('./GiftDetailModal.svelte');
 const { default: GiftDetailModalTestHost } = await import('./GiftDetailModalTestHost.svelte');
@@ -160,6 +164,36 @@ describe('GiftDetailModal editor layout and exit safety', () => {
 		expect(imageRect.left).toBeLessThan(detailRect.left);
 		expect(Math.abs(imageRect.right - detailRect.left)).toBeLessThan(1);
 	});
+
+	it.each(['soft', 'ink', 'black'] as const)(
+		'starts desktop editor fields below the close button and its %s depth gap',
+		async (depth) => {
+			document.documentElement.dataset.depth = depth;
+			try {
+				await page.viewport(1280, 800);
+				const screen = await render(GiftDetailModal, {
+					...baseProps,
+					mode: 'edit' as const,
+					gift: makeGift(),
+				});
+				const nameInput = screen.getByRole('textbox', { name: m.gift_name_label() });
+				await expect.element(nameInput).toBeVisible();
+				await Promise.all(document.getAnimations().map((animation) => animation.finished));
+				const nameLabel = document.querySelector<HTMLElement>('label[for="gift-name"]')!;
+				const closeRect = document
+					.querySelector('[data-slot="dialog-close"]')!
+					.getBoundingClientRect();
+				const nestedControlGap = resolvedCssLength(nameLabel, 'var(--nested-control-gap)');
+
+				expectPixelsAtLeast(
+					nameLabel.getBoundingClientRect().top,
+					closeRect.bottom + nestedControlGap,
+				);
+			} finally {
+				delete document.documentElement.dataset.depth;
+			}
+		},
+	);
 
 	it('closes unchanged and guards Cancel, close, and Escape on mobile', async () => {
 		await page.viewport(390, 844);
