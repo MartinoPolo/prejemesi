@@ -245,48 +245,130 @@ describe('deleteGift', () => {
 });
 
 describe('reorderGifts', () => {
-	it('rejects cross-wishlist reorder items', async () => {
-		mockDbInstance.pushResult([{ wishlistId: WISHLIST_ID }]);
-		mockDbInstance.pushResult([makeWishlistRow()]);
-		mockDbInstance.pushResult([
-			{ id: GIFT_ID, wishlistId: WISHLIST_ID },
-			{ id: 'gift-from-other-wishlist', wishlistId: 'other-wishlist' },
-		]);
+	const secondGiftId = 'gift-2';
+	const receivedGiftId = 'gift-received';
+	const lockedGiftRows = [
+		{ id: GIFT_ID, received: false },
+		{ id: secondGiftId, received: false },
+		{ id: receivedGiftId, received: true },
+	];
 
-		await expect(
-			callReorderGifts(makeRecipientAuthContext(), [
-				{ id: GIFT_ID, sortOrder: 0 },
-				{ id: 'gift-from-other-wishlist', sortOrder: 1 },
-			]),
-		).rejects.toMatchObject({
-			status: 403,
-			message: SERVER_ERROR.GIFT_WISHLIST_MISMATCH,
+	function pushRecipientReorderResults(wishlistOverrides = {}) {
+		mockDbInstance.pushResult([makeWishlistRow(wishlistOverrides)]);
+		mockDbInstance.pushResult(lockedGiftRows);
+		mockDbInstance.pushResult([]);
+	}
+
+	function updateCallCount(): number {
+		return mockDbInstance.calls.filter((call) => call.method === 'update').length;
+	}
+
+	it('writes the complete active set inside a transaction', async () => {
+		pushRecipientReorderResults({ sharedAt: SHARED_AT });
+
+		await callReorderGifts(makeRecipientAuthContext(), {
+			wishlistId: WISHLIST_ID,
+			orderedGiftIds: [secondGiftId, GIFT_ID],
 		});
-	});
 
-	it('rejects reorders on archived wishlists', async () => {
-		mockDbInstance.pushResult([{ wishlistId: WISHLIST_ID }]);
-		mockDbInstance.pushResult([makeWishlistRow({ status: 'archived' })]);
-
-		await expect(
-			callReorderGifts(makeRecipientAuthContext(), [{ id: GIFT_ID, sortOrder: 0 }]),
-		).rejects.toMatchObject({
-			status: 400,
-			message: SERVER_ERROR.CANNOT_MODIFY_ARCHIVED_WISHLIST,
-		});
+		expect(mockDbInstance.calls.some((call) => call.method === 'transaction')).toBe(true);
+		expect(mockDbInstance.calls.some((call) => call.method === 'for')).toBe(true);
+		expect(updateCallCount()).toBe(1);
+		expect(singleFlightRefresh).not.toHaveBeenCalled();
 	});
 
 	it('never sets editedAfterShareAt (regression)', async () => {
-		mockDbInstance.pushResult([{ wishlistId: WISHLIST_ID }]);
-		mockDbInstance.pushResult([makeWishlistRow({ sharedAt: SHARED_AT })]);
-		mockDbInstance.pushResult([{ id: GIFT_ID, wishlistId: WISHLIST_ID }]);
-		mockDbInstance.pushResult([]);
+		pushRecipientReorderResults({ sharedAt: SHARED_AT });
 
-		await callReorderGifts(makeRecipientAuthContext(), [{ id: GIFT_ID, sortOrder: 2 }]);
+		await callReorderGifts(makeRecipientAuthContext(), {
+			wishlistId: WISHLIST_ID,
+			orderedGiftIds: [GIFT_ID, secondGiftId],
+		});
 
 		const setValues = mockDbInstance.calls.filter((call) => call.method === 'set').at(0)
 			?.args[0] as Record<string, unknown>;
 		expect('editedAfterShareAt' in setValues).toBe(false);
+		expect('sortOrder' in setValues).toBe(true);
+	});
+
+	it('treats an empty payload for a list without active gifts as a no-op', async () => {
+		mockDbInstance.pushResult([makeWishlistRow()]);
+		mockDbInstance.pushResult([{ id: receivedGiftId, received: true }]);
+
+		await callReorderGifts(makeRecipientAuthContext(), {
+			wishlistId: WISHLIST_ID,
+			orderedGiftIds: [],
+		});
+
+		expect(updateCallCount()).toBe(0);
+	});
+
+	it.each([
+		{ payloadDescription: 'omits an active gift', orderedGiftIds: [GIFT_ID] },
+		{
+			payloadDescription: 'includes a received gift',
+			orderedGiftIds: [GIFT_ID, secondGiftId, receivedGiftId],
+		},
+		{
+			payloadDescription: 'includes a deleted or other-wishlist gift',
+			orderedGiftIds: [GIFT_ID, secondGiftId, 'gift-from-other-wishlist'],
+		},
+		{
+			payloadDescription: 'swaps an active gift for a foreign gift',
+			orderedGiftIds: [GIFT_ID, 'gift-from-other-wishlist'],
+		},
+		{
+			payloadDescription: 'repeats a gift',
+			orderedGiftIds: [GIFT_ID, secondGiftId, GIFT_ID],
+		},
+		{
+			payloadDescription: 'repeats a gift in place of an omitted one',
+			orderedGiftIds: [GIFT_ID, GIFT_ID],
+		},
+	])('rejects a payload that $payloadDescription', async ({ orderedGiftIds }) => {
+		pushRecipientReorderResults();
+
+		await expect(
+			callReorderGifts(makeRecipientAuthContext(), {
+				wishlistId: WISHLIST_ID,
+				orderedGiftIds,
+			}),
+		).rejects.toMatchObject({
+			status: 400,
+			message: SERVER_ERROR.GIFT_WISHLIST_MISMATCH,
+		});
+		expect(updateCallCount()).toBe(0);
+	});
+
+	it('rejects callers who do not manage the wishlist', async () => {
+		mockDbInstance.pushResult([makeWishlistRow()]);
+		mockDbInstance.pushResult([]);
+
+		await expect(
+			callReorderGifts(makeVisitorAuthContext(), {
+				wishlistId: WISHLIST_ID,
+				orderedGiftIds: [GIFT_ID, secondGiftId],
+			}),
+		).rejects.toMatchObject({
+			status: 403,
+			message: SERVER_ERROR.ACCESS_DENIED,
+		});
+		expect(updateCallCount()).toBe(0);
+	});
+
+	it('rejects reorders on archived wishlists', async () => {
+		pushRecipientReorderResults({ status: 'archived' });
+
+		await expect(
+			callReorderGifts(makeRecipientAuthContext(), {
+				wishlistId: WISHLIST_ID,
+				orderedGiftIds: [GIFT_ID, secondGiftId],
+			}),
+		).rejects.toMatchObject({
+			status: 400,
+			message: SERVER_ERROR.CANNOT_MODIFY_ARCHIVED_WISHLIST,
+		});
+		expect(updateCallCount()).toBe(0);
 	});
 });
 

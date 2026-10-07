@@ -145,7 +145,11 @@
 		resetPriorityLevelLoaderForWishlistChange,
 		settlePriorityLevelLoad,
 	} from './priority_level_loader.js';
-	import { GIFT_GROUPING_OPTIONS, GIFT_VIEW_MODES } from '$lib/modules/gifts/types.js';
+	import {
+		GIFT_GROUPING_OPTIONS,
+		GIFT_VIEW_MODES,
+		type ReorderGiftsInput,
+	} from '$lib/modules/gifts/types.js';
 	import type {
 		GiftFilters,
 		GiftSortOption,
@@ -476,14 +480,9 @@
 		}
 	}
 
-	const reorderPersistenceQueue = createLatestAsyncQueue<string[]>(
-		async (orderedIds) => {
-			await reorderGifts(
-				orderedIds.map((id, sortOrder) => ({
-					id,
-					sortOrder,
-				})),
-			);
+	const reorderPersistenceQueue = createLatestAsyncQueue<ReorderGiftsInput>(
+		async (reorderInput) => {
+			await reorderGifts(reorderInput);
 		},
 		async (thrown) => {
 			console.error('Failed to reorder gifts:', thrown);
@@ -1599,7 +1598,10 @@
 		reorderBaselineStatus = REORDER_BASELINE_STATUS.verified;
 		reorderActiveIds = [...orderedIds];
 		giftsContext.setActiveGiftOrder(orderedIds);
-		reorderPersistenceQueue.enqueue([...orderedIds]);
+		reorderPersistenceQueue.enqueue({
+			wishlistId: wishlist.id,
+			orderedGiftIds: [...orderedIds],
+		});
 	}
 
 	// ── Reservation handlers ──────────────────────────────────────────────────

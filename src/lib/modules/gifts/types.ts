@@ -369,16 +369,13 @@ export const UpdateGiftInputSchema = v.pipe(
 	v.check(isPriceRangeValid, 'priceMax must be greater than or equal to price'),
 );
 
-/** Input for reordering gifts */
-export interface ReorderGiftItem {
-	id: string;
-	sortOrder: number;
-}
-
-export const ReorderGiftItemSchema = v.object({
-	id: v.string(),
-	sortOrder: v.number(),
+/** The wishlist's complete active (non-received) gift set in its new manual order. */
+export const ReorderGiftsInputSchema = v.strictObject({
+	wishlistId: v.string(),
+	orderedGiftIds: v.array(v.string()),
 });
+
+export type ReorderGiftsInput = v.InferOutput<typeof ReorderGiftsInputSchema>;
 
 export const MarkGiftReceivedInputSchema = v.object({
 	giftId: v.string(),

@@ -30,7 +30,7 @@ import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
 import {
 	CreateGiftInputSchema,
 	UpdateGiftInputSchema,
-	ReorderGiftItemSchema,
+	ReorderGiftsInputSchema,
 	MarkGiftReceivedInputSchema,
 	BulkUpdateGiftsInputSchema,
 	isPriceRangeValid,
@@ -731,64 +731,46 @@ export const deleteGift = guardedCommand(v.string(), async ({ user }, giftId) =>
 });
 
 export const reorderGifts = guardedCommand(
-	v.array(ReorderGiftItemSchema),
-	async ({ user }, items) => {
-		if (items.length === 0) {
-			return;
-		}
+	ReorderGiftsInputSchema,
+	async ({ user }, { wishlistId, orderedGiftIds }) => {
+		await getDb().transaction(async (tx) => {
+			const { wishlistRow } = await verifyBulkManagerAccess(tx, user.id, wishlistId);
+			assertWishlistMutable(wishlistRow);
 
-		const database = getDb();
-
-		// Get the wishlistId from the first gift
-		const firstGiftRows = await database
-			.select({ wishlistId: gift.wishlistId })
-			.from(gift)
-			.where(eq(gift.id, items[0]!.id))
-			.limit(1);
-
-		const firstGift = firstGiftRows[0];
-		if (firstGift === undefined) {
-			error(404, SERVER_ERROR.GIFT_NOT_FOUND);
-		}
-
-		const { wishlistRow } = await verifyManagerAccess(user.id, firstGift.wishlistId);
-		assertWishlistMutable(wishlistRow);
-
-		const uniqueGiftIds = [...new Set(items.map((item) => item.id))];
-		const reorderedGiftRows = await database
-			.select({ id: gift.id, wishlistId: gift.wishlistId })
-			.from(gift)
-			.where(and(inArray(gift.id, uniqueGiftIds), isNull(gift.deletedAt)));
-
-		if (
-			reorderedGiftRows.length !== uniqueGiftIds.length ||
-			reorderedGiftRows.some((row) => row.wishlistId !== firstGift.wishlistId) === true
-		) {
-			error(403, SERVER_ERROR.GIFT_WISHLIST_MISMATCH);
-		}
-
-		// Batch update sortOrder in a single CASE WHEN statement
-		const now = new Date();
-		const sortOrderCase = sql.join(
-			items.map((item) => sql`WHEN ${gift.id} = ${item.id} THEN ${item.sortOrder}::integer`),
-			sql` `,
-		);
-		await database
-			.update(gift)
-			.set({
-				sortOrder: sql<number>`CASE ${sortOrderCase} END`,
-				updatedAt: now,
-			})
-			.where(
-				and(
-					inArray(
-						gift.id,
-						items.map((item) => item.id),
-					),
-					eq(gift.wishlistId, firstGift.wishlistId),
-					isNull(gift.deletedAt),
-				),
+			const giftRows = await tx
+				.select({ id: gift.id, received: gift.received })
+				.from(gift)
+				.where(and(eq(gift.wishlistId, wishlistId), isNull(gift.deletedAt)))
+				.for('update');
+			const activeGiftIds = new Set(
+				giftRows.filter((row) => !row.received).map((row) => row.id),
 			);
+			const isCompleteActiveSet =
+				orderedGiftIds.length === activeGiftIds.size &&
+				new Set(orderedGiftIds).size === orderedGiftIds.length &&
+				orderedGiftIds.every((id) => activeGiftIds.has(id));
+			if (!isCompleteActiveSet) {
+				error(400, SERVER_ERROR.GIFT_WISHLIST_MISMATCH);
+			}
+			if (orderedGiftIds.length === 0) {
+				return;
+			}
+
+			// Batch update sortOrder in a single CASE WHEN statement
+			const sortOrderCase = sql.join(
+				orderedGiftIds.map(
+					(id, sortOrder) => sql`WHEN ${gift.id} = ${id} THEN ${sortOrder}::integer`,
+				),
+				sql` `,
+			);
+			await tx
+				.update(gift)
+				.set({
+					sortOrder: sql<number>`CASE ${sortOrderCase} END`,
+					updatedAt: new Date(),
+				})
+				.where(and(inArray(gift.id, orderedGiftIds), eq(gift.wishlistId, wishlistId)));
+		});
 	},
 );
 
