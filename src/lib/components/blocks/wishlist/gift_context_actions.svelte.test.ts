@@ -12,13 +12,17 @@ import { RESERVATION_RELEASE_CAPABILITY } from '$lib/modules/wishlists/wishlist_
 
 const { expectPixelsNear, expectPixelsAtLeast } = createPixelAssertions(expect);
 
-function expectSemanticDangerText(surface: HTMLElement) {
+function expectTokenText(surface: HTMLElement, colorToken: string) {
 	const tokenProbe = document.createElement('span');
-	tokenProbe.style.color = 'var(--status-danger-text)';
+	tokenProbe.style.color = `var(${colorToken})`;
 	surface.append(tokenProbe);
 	const expectedColor = getComputedStyle(tokenProbe).color;
 	tokenProbe.remove();
 	expect(getComputedStyle(surface).color).toBe(expectedColor);
+}
+
+function expectSemanticDangerText(surface: HTMLElement) {
+	expectTokenText(surface, '--status-danger-text');
 }
 
 const managerProps = {
@@ -419,6 +423,8 @@ describe('GiftContextActions mobile Sheet', () => {
 			const surface = row.querySelector<HTMLElement>(':scope > .elevation-surface')!;
 			expect(surface).toBeTruthy();
 			expect(getComputedStyle(surface).justifyContent).toBe('flex-start');
+			// Ordinary rows are menu actions, not secondary text: desktop menu items share this ink.
+			expectTokenText(surface, '--foreground');
 		}
 		const iconText = Array.from(
 			iconRow.querySelector(':scope > .elevation-surface')!.childNodes,

@@ -16,7 +16,7 @@
 	intent="ghost"
 	class={cn('min-h-12 w-full', className)}
 	surfaceClass={cn(
-		'w-full justify-start gap-3 text-left [&>svg]:size-5 [&>svg]:shrink-0',
+		'w-full justify-start gap-3 text-left text-foreground [&>svg]:size-5 [&>svg]:shrink-0',
 		surfaceClass,
 	)}
 >
