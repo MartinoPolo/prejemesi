@@ -533,7 +533,8 @@ sections for UI work. Historical reconciliation and review notes are in
 - 2026-10-07: Segmented controls and tabs keep their resting look and slide the selected face to the
   new option; the slide is the only press feedback, so no hover lift (settings-tab track clipping
   also rules it out) and no press scale. Segmented trays hug their options rather than stretching to
-  the container (#455).
+  the container. Switching between login and registration skips the auth card's entrance pop-in,
+  which would hide the tab slide; fresh loads still pop in (#455).
 
 ## Images & cropping
 
