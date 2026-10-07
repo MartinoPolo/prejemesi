@@ -1,0 +1,1549 @@
+<!doctype html>
+<html lang="cs">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>Gift viewer · Variant A</title>
+		<link rel="stylesheet" href="../../tokens.css" />
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link
+			rel="stylesheet"
+			href="https://fonts.googleapis.com/css2?family=DynaPuff:wght@400..700&family=Geist:wght@100..900&display=swap"
+		/>
+		<style>
+			/* ── Canonical tokens mirrored from src/app.css (tokens.css is legacy) ── */
+			:root,
+			[data-palette='sky'] {
+				--p-brand: #1e9be9;
+				--p-deep: #1265a8;
+				--p-ink: #16385c;
+				--p-bright: #55b9f3;
+				--p-accent: #ffc93c;
+				--p-on-accent: #16385c;
+			}
+			:root {
+				--font-head: 'DynaPuff', 'DynaPuff Variable', sans-serif;
+				--font-body: 'Geist', 'Geist Variable', sans-serif;
+				--radius-panel: 16px;
+				--radius-btn: 7px;
+				--radius-badge: 12px;
+				--size-control-sm: 26px;
+				--size-control-md: 32px;
+				--size-control-lg: 40px;
+				--duration-normal: 200ms;
+				--ease-standard: cubic-bezier(0.2, 0.7, 0.3, 1);
+			}
+			/* Viewport-dependent elevation offsets, applied per frame instead of per media query. */
+			.frame-desktop {
+				--elevation-compact-offset: 2px;
+				--elevation-ordinary-offset: 4px;
+				--elevation-lifted-offset: 7px;
+				--elevation-pressed-offset: 2px;
+			}
+			.frame-mobile,
+			.frame-card {
+				--elevation-compact-offset: 1px;
+				--elevation-ordinary-offset: 3px;
+				--elevation-lifted-offset: 4px;
+				--elevation-pressed-offset: 1px;
+			}
+			[data-depth] {
+				--depth-clearance: 0px;
+				--nested-control-gap: calc(0.5rem + var(--depth-clearance));
+			}
+			[data-depth='ink'],
+			[data-depth='black'] {
+				--depth-clearance: var(--elevation-ordinary-offset);
+			}
+			.resting-shadow-nesting {
+				--gift-content-inset: max(
+					0px,
+					calc(var(--radius-panel) - var(--radius-btn) - var(--nested-border-inline, 0px))
+				);
+				--gift-content-inset-end: calc(var(--gift-content-inset) + var(--depth-clearance));
+				--gift-content-inset-bottom: calc(
+					max(0px, calc(var(--radius-panel) - var(--radius-btn) - var(--nested-border-block, 0px))) +
+						var(--depth-clearance)
+				);
+			}
+			:root,
+			[data-palette] {
+				color-scheme: light;
+				--ink: var(--p-ink);
+				--ink-faint: color-mix(in oklab, var(--p-ink) 12%, transparent);
+				--brand: var(--p-brand);
+				--brand-link: var(--p-deep);
+				--tint: color-mix(in oklab, var(--p-brand) 21%, white);
+				--panel-hover: color-mix(in oklab, var(--p-brand) 6%, white);
+				--accent-loud: var(--p-accent);
+				--heart: #e25563;
+				--like-tint: #fdecec;
+				--gift-overlay-own-reservation: #16834f;
+				--gift-overlay-unavailable: #163b60;
+				--gift-overlay-bought: #7a4a24;
+				--pattern-dot: color-mix(in oklab, var(--ink) 13%, transparent);
+				--soft-shadow: color-mix(in oklab, var(--p-ink) 16%, transparent);
+				--ink-shadow: color-mix(in oklab, var(--p-ink) 58%, transparent);
+				--black-shadow: #000;
+				--hard-shadow: var(--soft-shadow);
+				--background: color-mix(in oklab, var(--p-brand) 11%, white);
+				--foreground: var(--p-ink);
+				--card: #fff;
+				--card-foreground: var(--p-ink);
+				--popover: #fff;
+				--primary: var(--p-brand);
+				--primary-hover: color-mix(in oklab, var(--primary) 86%, white);
+				--primary-foreground: #fff;
+				--secondary: color-mix(in oklab, var(--p-brand) 6%, white);
+				--muted-foreground: color-mix(in oklab, var(--p-ink) 62%, transparent);
+				--accent: color-mix(in oklab, var(--p-brand) 11%, white);
+				--ring: var(--p-brand);
+				--surface: var(--background);
+				--status-danger: #e4574c;
+				--status-danger-text: color-mix(in oklab, var(--status-danger) 60%, var(--ink));
+				--overlay-scrim: color-mix(in oklab, var(--p-ink) 45%, transparent);
+			}
+			.dark,
+			.dark [data-palette] {
+				color-scheme: dark;
+				--ink: color-mix(in oklab, var(--p-bright) 12%, #e6e8ec);
+				--ink-faint: color-mix(in oklab, var(--ink) 16%, transparent);
+				--brand: color-mix(in oklab, var(--p-bright) 70%, #b8bec8);
+				--brand-link: var(--brand);
+				--panel-hover: var(--secondary);
+				--accent-loud: color-mix(in oklab, var(--p-accent) 65%, #b8bec8);
+				--heart: #f58a94;
+				--like-tint: #57293a;
+				--gift-overlay-own-reservation: #13704a;
+				--gift-overlay-unavailable: #2b5d91;
+				--gift-overlay-bought: #8a5530;
+				--pattern-dot: color-mix(in oklab, var(--ink) 13%, transparent);
+				--soft-shadow: rgb(2 6 12 / 42%);
+				--ink-shadow: rgb(2 6 12 / 48%);
+				--hard-shadow: var(--soft-shadow);
+				--background: color-mix(in oklab, var(--p-deep) 10%, #090b0f);
+				--foreground: var(--ink);
+				--card: color-mix(in oklab, var(--p-deep) 16%, #13161c);
+				--card-foreground: var(--ink);
+				--popover: var(--card);
+				--primary: color-mix(in oklab, var(--p-brand) 60%, #202630);
+				--primary-hover: color-mix(in oklab, var(--primary) 92%, black);
+				--secondary: color-mix(in oklab, var(--p-deep) 22%, #1c2027);
+				--muted-foreground: color-mix(in oklab, var(--ink) 65%, transparent);
+				--accent: color-mix(in oklab, var(--p-deep) 26%, #222630);
+				--ring: var(--p-bright);
+				--surface: var(--background);
+				--status-danger: #f07a6e;
+				--status-danger-text: color-mix(in oklab, var(--status-danger) 90%, white);
+			}
+			[data-depth='ink'],
+			[data-depth='ink'][data-palette],
+			[data-depth='ink'] [data-palette] {
+				--hard-shadow: var(--ink-shadow);
+			}
+			[data-depth='black'],
+			[data-depth='black'][data-palette],
+			[data-depth='black'] [data-palette] {
+				--hard-shadow: var(--black-shadow);
+			}
+			[data-palette] {
+				--elevation-ordinary: var(--elevation-ordinary-offset) var(--elevation-ordinary-offset) 0
+					var(--hard-shadow);
+				--elevation-lifted: var(--elevation-lifted-offset) var(--elevation-lifted-offset) 0
+					var(--hard-shadow);
+				--elevation-pressed: var(--elevation-pressed-offset) var(--elevation-pressed-offset) 0
+					var(--hard-shadow);
+			}
+
+			/* ── Mockup chrome ─────────────────────────────────────────────── */
+			* {
+				box-sizing: border-box;
+			}
+			body {
+				margin: 0;
+				font-family: var(--font-body);
+				background: var(--background);
+				color: var(--foreground);
+			}
+			.chrome {
+				position: sticky;
+				top: 0;
+				z-index: 100;
+				display: grid;
+				gap: 10px;
+				padding: 14px 20px;
+				background: var(--card);
+				border-bottom: 2.5px solid var(--ink);
+			}
+			.chrome-title {
+				margin: 0;
+				font: 600 18px/1.2 var(--font-head);
+			}
+			.chrome-title small {
+				font: 500 13px var(--font-body);
+				color: var(--muted-foreground);
+				margin-left: 8px;
+			}
+			.chrome-row {
+				display: flex;
+				flex-wrap: wrap;
+				gap: 6px;
+				align-items: center;
+			}
+			.chrome-label {
+				font-size: 11px;
+				font-weight: 700;
+				letter-spacing: 0.04em;
+				text-transform: uppercase;
+				color: var(--muted-foreground);
+				margin-right: 4px;
+			}
+			.chip {
+				height: 28px;
+				padding: 0 10px;
+				border: 2px solid var(--ink);
+				border-radius: 999px;
+				background: var(--card);
+				color: var(--ink);
+				font: 600 12px var(--font-body);
+				cursor: pointer;
+			}
+			.chip[aria-pressed='true'] {
+				background: var(--ink);
+				color: var(--card);
+			}
+			.chip:focus-visible {
+				outline: 2px solid var(--ring);
+				outline-offset: 2px;
+			}
+			.state-note {
+				margin: 0;
+				font-size: 13px;
+				color: var(--muted-foreground);
+			}
+			.state-note b {
+				color: var(--foreground);
+			}
+			.stage {
+				display: flex;
+				flex-wrap: wrap;
+				gap: 28px;
+				align-items: flex-start;
+				padding: 24px 20px 40px;
+			}
+			.frame-label {
+				margin: 0 0 8px;
+				font-size: 12px;
+				font-weight: 700;
+				color: var(--muted-foreground);
+			}
+			.frame {
+				container: frame / size;
+				position: relative;
+				overflow: hidden;
+				border: 2px solid var(--ink);
+				border-radius: 10px;
+				background: var(--background);
+				color: var(--foreground);
+				font-family: var(--font-body);
+			}
+			.frame-desktop {
+				width: 1280px;
+				height: 900px;
+				zoom: var(--desktop-zoom, 0.72);
+			}
+			.frame-mobile {
+				width: 390px;
+				height: 844px;
+				zoom: var(--mobile-zoom, 0.77);
+				border-radius: 28px;
+			}
+			.section-title {
+				margin: 0 20px;
+				font: 600 16px var(--font-head);
+			}
+			.section-text {
+				margin: 4px 20px 0;
+				font-size: 13px;
+				color: var(--muted-foreground);
+				max-width: 780px;
+			}
+
+			/* ── Muted wishlist page behind the dialog (settled, non-interactive) ── */
+			.page {
+				position: absolute;
+				inset: 0;
+				pointer-events: none;
+				user-select: none;
+			}
+			.app-header {
+				display: flex;
+				align-items: center;
+				gap: 18px;
+				height: 52px;
+				padding: 0 24px;
+				background: var(--card);
+				border-bottom: 2.5px solid var(--ink);
+				font-size: 13px;
+				font-weight: 600;
+			}
+			.logo {
+				font: 700 17px var(--font-head);
+				color: var(--brand);
+			}
+			.nav {
+				display: flex;
+				gap: 16px;
+				color: var(--muted-foreground);
+			}
+			.header-spacer {
+				flex: 1;
+			}
+			.fake-button {
+				height: 32px;
+				padding: 0 12px;
+				display: inline-flex;
+				align-items: center;
+				border: 2.5px solid var(--ink);
+				border-radius: var(--radius-btn);
+				background: var(--primary);
+				color: #fff;
+				box-shadow: var(--elevation-ordinary);
+			}
+			.avatar {
+				width: 32px;
+				height: 32px;
+				border-radius: 50%;
+				border: 2.5px solid var(--ink);
+				background: var(--tint);
+			}
+			.page-content {
+				max-width: 1200px;
+				margin: 0 auto;
+				padding: 20px 16px;
+				display: grid;
+				gap: 16px;
+			}
+			.hero {
+				display: flex;
+				gap: 20px;
+				align-items: center;
+				padding: 18px 22px;
+				border: 2.5px solid var(--ink);
+				border-radius: var(--radius-panel);
+				background: var(--card);
+				box-shadow: var(--elevation-ordinary);
+			}
+			.hero-polaroid {
+				width: 84px;
+				height: 96px;
+				padding: 6px 6px 18px;
+				border: 2px solid var(--ink);
+				background: var(--card);
+				rotate: -3deg;
+			}
+			.hero-polaroid div {
+				height: 100%;
+				background: var(--tint);
+			}
+			.hero-for {
+				font-size: 13px;
+				color: var(--muted-foreground);
+			}
+			.hero-title {
+				margin: 2px 0 0;
+				font: 600 30px var(--font-head);
+			}
+			.sticky-note {
+				margin-left: auto;
+				padding: 10px 14px;
+				background: #fff1c1;
+				color: #16385c;
+				rotate: 2deg;
+				font-weight: 700;
+				font-size: 13px;
+				border: 2px solid var(--ink);
+			}
+			.toolbar {
+				display: flex;
+				gap: 8px;
+			}
+			.toolbar span {
+				height: 32px;
+				width: 110px;
+				border: 2.5px solid var(--ink);
+				border-radius: var(--radius-btn);
+				background: var(--card);
+			}
+			.card-grid {
+				display: grid;
+				grid-template-columns: repeat(3, minmax(0, 1fr));
+				gap: 18px;
+			}
+			.page-card {
+				border: 2.5px solid var(--ink);
+				border-radius: var(--radius-panel);
+				background: var(--card);
+				box-shadow: var(--elevation-ordinary);
+				overflow: hidden;
+			}
+			.page-card-image {
+				aspect-ratio: 4 / 3;
+				background:
+					radial-gradient(var(--pattern-dot) 1.4px, transparent 1.5px) 0 0 / 18px 18px,
+					var(--surface);
+				border-bottom: 2.5px solid var(--ink);
+				display: grid;
+				place-items: center;
+				color: var(--ink-faint);
+			}
+			.page-card-body {
+				padding: 12px 14px 16px;
+				font: 600 17px/1.3 var(--font-head);
+			}
+			.page-card-body small {
+				display: block;
+				margin-top: 6px;
+				font: 700 13px var(--font-body);
+				color: var(--muted-foreground);
+			}
+			@container frame (width < 640px) {
+				.app-header {
+					height: 56px;
+					padding: 0 12px;
+				}
+				.nav,
+				.fake-button {
+					display: none;
+				}
+				.page-content {
+					padding: 12px;
+				}
+				.hero {
+					flex-wrap: wrap;
+				}
+				.hero-title {
+					font-size: 24px;
+				}
+				.sticky-note {
+					display: none;
+				}
+				.card-grid {
+					grid-template-columns: repeat(2, minmax(0, 1fr));
+					gap: 10px;
+				}
+				.page-card-body {
+					font-size: 14px;
+					padding: 8px 9px 12px;
+				}
+			}
+			.scrim {
+				position: absolute;
+				inset: 0;
+				background: var(--overlay-scrim);
+				backdrop-filter: blur(2.5px);
+			}
+
+			/* ── Shared controls (Button, LikeButton, badges, TextLink) ───────── */
+			.btn {
+				position: relative;
+				display: inline-flex;
+				flex: none;
+				height: var(--control-height);
+				border: 0;
+				padding: 0;
+				background: none;
+				border-radius: var(--radius-btn);
+				font: 600 var(--control-text) / 1 var(--font-body);
+				white-space: nowrap;
+				cursor: pointer;
+				outline: none;
+			}
+			.btn:focus-visible,
+			.btn.is-focus {
+				outline: 2px solid var(--ring);
+				outline-offset: 2px;
+			}
+			.btn-surface {
+				display: inline-flex;
+				align-items: center;
+				justify-content: center;
+				gap: 6px;
+				width: 100%;
+				height: 100%;
+				padding: 0 var(--control-padding);
+				border: 2.5px solid var(--ink);
+				border-radius: inherit;
+				box-shadow: var(--elevation-ordinary);
+				transition:
+					translate var(--duration-normal) var(--ease-standard),
+					box-shadow var(--duration-normal) var(--ease-standard);
+			}
+			.btn-surface svg {
+				width: 16px;
+				height: 16px;
+				flex: none;
+			}
+			.btn:not(:disabled):hover .btn-surface {
+				translate: 0 -2px;
+				box-shadow: var(--elevation-lifted);
+			}
+			.btn:not(:disabled):active .btn-surface {
+				translate: 0;
+				box-shadow: var(--elevation-pressed);
+			}
+			.btn:disabled {
+				opacity: 0.45;
+				cursor: not-allowed;
+			}
+			.btn:disabled .btn-surface {
+				box-shadow: none;
+			}
+			.btn-primary .btn-surface {
+				background: var(--primary);
+				color: var(--primary-foreground);
+			}
+			.btn-primary:hover .btn-surface {
+				background: var(--primary-hover);
+			}
+			.btn-secondary-filled .btn-surface {
+				background: var(--foreground);
+				color: var(--background);
+			}
+			.btn-secondary .btn-surface {
+				background: var(--card);
+				color: var(--ink);
+			}
+			.btn-danger .btn-surface {
+				border-color: var(--status-danger);
+				background: var(--card);
+				color: var(--status-danger-text);
+			}
+			.btn-danger:hover .btn-surface {
+				background: color-mix(in oklab, var(--status-danger) 10%, var(--card));
+			}
+			.btn-icon {
+				aspect-ratio: 1;
+			}
+			.btn-icon .btn-surface {
+				padding: 0;
+			}
+			.like {
+				display: inline-flex;
+				flex: none;
+				height: var(--control-height);
+				min-width: var(--control-height);
+				padding: 0;
+				border: 0;
+				background: none;
+				border-radius: 8px;
+				cursor: pointer;
+				color: var(--foreground);
+			}
+			.like:focus-visible {
+				outline: 2px solid var(--ring);
+				outline-offset: 2px;
+			}
+			.like-surface {
+				display: inline-flex;
+				align-items: center;
+				justify-content: center;
+				gap: 4px;
+				width: 100%;
+				padding: 4px;
+				border-radius: inherit;
+				font: 700 13px var(--font-body);
+				font-variant-numeric: tabular-nums;
+				transition: background-color var(--duration-normal) var(--ease-standard);
+			}
+			.like:hover .like-surface {
+				background: var(--like-tint);
+			}
+			.like svg {
+				width: 16px;
+				height: 16px;
+				color: var(--heart);
+				fill: var(--card);
+			}
+			.like[aria-pressed='true'] svg {
+				fill: var(--heart);
+			}
+			.state-badge {
+				display: inline-block;
+				max-width: 100%;
+				padding: 6px 12px;
+				border: 2px solid var(--ink);
+				border-radius: var(--radius-badge);
+				font: 700 11px/16px var(--font-body);
+				text-align: center;
+				box-shadow: var(--elevation-ordinary);
+				overflow-wrap: anywhere;
+			}
+			.state-received {
+				background: var(--primary);
+				color: var(--primary-foreground);
+				text-shadow: 0 1px 1px var(--ink);
+			}
+			.state-own-reservation {
+				background: var(--gift-overlay-own-reservation);
+				color: #fff;
+			}
+			.state-own-purchased {
+				background: var(--gift-overlay-bought);
+				color: #fff;
+			}
+			.state-unavailable {
+				background: var(--gift-overlay-unavailable);
+				color: #fff;
+			}
+			.state-partial {
+				background: var(--card);
+				color: var(--foreground);
+			}
+			.text-link {
+				display: inline-flex;
+				align-items: center;
+				gap: 4px;
+				max-width: 100%;
+				min-height: var(--size-control-lg);
+				font-weight: 600;
+				font-size: 14px;
+				color: var(--brand-link);
+				text-decoration: underline;
+				text-decoration-thickness: 1px;
+				text-underline-offset: 2px;
+			}
+			.text-link:hover {
+				text-decoration-thickness: 2px;
+			}
+			.text-link:focus-visible,
+			.text-link.is-focus {
+				border-radius: 2px;
+				outline: 2px solid var(--ring);
+				outline-offset: 2px;
+			}
+			.text-link .label {
+				min-width: 0;
+				overflow: hidden;
+				text-overflow: ellipsis;
+				white-space: nowrap;
+			}
+			.text-link .domain {
+				font-weight: 400;
+				color: var(--muted-foreground);
+			}
+			.text-link svg {
+				width: 1em;
+				height: 1em;
+				flex: none;
+			}
+
+			/* ── Gift viewer (the component under design) ───────────────────── */
+			.viewer {
+				--control-height: var(--size-control-md);
+				--control-text: 13px;
+				--control-padding: 12px;
+				--nested-border-inline: 2.5px;
+				--nested-border-block: 2.5px;
+				position: absolute;
+				left: 50%;
+				top: 50%;
+				translate: -50% -50%;
+				width: min(1100px, calc(100% - 2rem));
+				max-height: 90cqh;
+				display: flex;
+				flex-direction: column;
+				overflow: hidden;
+				background: var(--card);
+				color: var(--card-foreground);
+				border: 2.5px solid var(--ink);
+				border-radius: var(--radius-panel);
+				box-shadow: var(--elevation-ordinary);
+			}
+			.viewer[data-photo='none'] {
+				width: min(560px, calc(100% - 2rem));
+			}
+			.close {
+				position: absolute;
+				z-index: 5;
+				top: 16px;
+				right: 16px;
+				width: var(--size-control-lg);
+				height: var(--size-control-lg);
+				padding: 0;
+				border: 0;
+				background: none;
+				border-radius: 50%;
+				cursor: pointer;
+				outline: none;
+			}
+			.close:focus-visible,
+			.close.is-focus {
+				outline: 2px solid var(--ring);
+				outline-offset: 2px;
+			}
+			.close-surface {
+				display: grid;
+				place-items: center;
+				width: 100%;
+				height: 100%;
+				border: 2.5px solid var(--ink);
+				border-radius: 50%;
+				background: var(--card);
+				color: var(--ink);
+				box-shadow: var(--elevation-ordinary);
+				transition:
+					translate var(--duration-normal) var(--ease-standard),
+					box-shadow var(--duration-normal) var(--ease-standard);
+			}
+			.close-surface svg {
+				width: 16px;
+				height: 16px;
+				transition: rotate var(--duration-normal) var(--ease-standard);
+			}
+			.close:hover .close-surface {
+				translate: 0 -2px;
+				box-shadow: var(--elevation-lifted);
+			}
+			.close:hover svg {
+				rotate: 90deg;
+			}
+			.viewer-layout {
+				display: grid;
+				grid-template-columns: minmax(0, 3fr) minmax(340px, 2fr);
+				min-height: 0;
+			}
+			.viewer[data-photo='none'] .viewer-layout {
+				grid-template-columns: minmax(0, 1fr);
+			}
+			.photo-region {
+				position: relative;
+				border-right: 2.5px solid var(--ink);
+				background:
+					radial-gradient(var(--pattern-dot) 1.4px, transparent 1.5px) 0 0 / 18px 18px,
+					var(--surface);
+			}
+			.photo-region[data-fill] {
+				background: var(--photo-fill);
+			}
+			.photo-sizer {
+				width: 100%;
+				aspect-ratio: var(--photo-aspect, 4 / 3);
+				min-height: 400px;
+				max-height: min(720px, calc(90cqh - 5px));
+			}
+			.photo-image {
+				position: absolute;
+				inset: 0;
+				width: 100%;
+				height: 100%;
+				object-fit: contain;
+			}
+			.caption-column {
+				display: flex;
+				flex-direction: column;
+				min-height: 0;
+				max-height: calc(90cqh - 5px);
+			}
+			.caption-scroll {
+				flex: 1 1 auto;
+				min-height: 0;
+				overflow-y: auto;
+				overscroll-behavior: contain;
+				/* Scroll shadows: covers ride the content, shades stay at the edges. */
+				background:
+					linear-gradient(var(--card) 30%, transparent) top / 100% 28px no-repeat local,
+					linear-gradient(transparent, var(--card) 70%) bottom / 100% 28px no-repeat local,
+					radial-gradient(
+							farthest-side at 50% 0,
+							color-mix(in oklab, var(--ink) 28%, transparent),
+							transparent
+						)
+						top / 100% 12px no-repeat scroll,
+					radial-gradient(
+							farthest-side at 50% 100%,
+							color-mix(in oklab, var(--ink) 28%, transparent),
+							transparent
+						)
+						bottom / 100% 12px no-repeat scroll;
+			}
+			.caption {
+				display: grid;
+				gap: 12px;
+				padding: 24px;
+			}
+			.viewer-title {
+				margin: 0;
+				padding-inline-end: 48px;
+				font: 600 24px/1.25 var(--font-head);
+				color: var(--foreground);
+				overflow-wrap: anywhere;
+			}
+			.price-line {
+				display: flex;
+				flex-wrap: wrap;
+				align-items: baseline;
+				gap: 4px 8px;
+				margin: -4px 0 0;
+				font-size: 14px;
+				color: var(--muted-foreground);
+			}
+			.price {
+				font-size: 17px;
+				font-weight: 700;
+				color: var(--foreground);
+			}
+			.price-empty {
+				font-style: italic;
+				color: var(--muted-foreground);
+			}
+			.separator-dot {
+				color: var(--muted-foreground);
+			}
+			.link-list {
+				display: flex;
+				flex-direction: column;
+				align-items: flex-start;
+				margin-block: -4px;
+			}
+			.description {
+				display: grid;
+				gap: 6px;
+				padding-top: 12px;
+				border-top: 2px dashed var(--ink-faint);
+			}
+			.description p {
+				margin: 0;
+				font-size: 15px;
+				line-height: 1.55;
+				white-space: pre-line;
+				color: var(--muted-foreground);
+			}
+			.append {
+				padding: 6px 12px;
+				border-left: 4px solid var(--accent-loud);
+				border-radius: 0 10px 10px 0;
+				background: color-mix(in oklab, var(--accent-loud) 16%, var(--card));
+				font-size: 14px;
+				line-height: 1.5;
+				white-space: pre-line;
+				color: var(--foreground);
+			}
+			.append-date {
+				font-size: 12px;
+				font-weight: 700;
+				color: var(--muted-foreground);
+			}
+			.edited-line {
+				margin: 0;
+				font-size: 12px;
+				color: var(--muted-foreground);
+			}
+			.viewer-footer {
+				display: flex;
+				flex-wrap: wrap;
+				align-items: center;
+				gap: var(--nested-control-gap);
+				padding: var(--gift-content-inset) var(--gift-content-inset-end) var(--gift-content-inset-bottom)
+					var(--gift-content-inset);
+				background: var(--card);
+			}
+			.state-group {
+				display: flex;
+				flex-wrap: wrap;
+				gap: var(--nested-control-gap);
+				min-width: 0;
+				margin-inline-end: auto;
+			}
+			.action-lane {
+				display: flex;
+				flex-wrap: nowrap;
+				gap: var(--nested-control-gap);
+				margin-inline-start: auto;
+			}
+			.photo-loading {
+				position: absolute;
+				inset: 0;
+				display: grid;
+				place-items: center;
+				color: var(--ink-faint);
+			}
+			.photo-loading svg {
+				width: 56px;
+				height: 56px;
+			}
+
+			@container frame (width < 640px) {
+				.viewer {
+					--control-height: var(--size-control-lg);
+					--control-text: 14px;
+					--control-padding: 16px;
+					--nested-border-inline: 0px;
+					--nested-border-block: 0px;
+					inset: 0;
+					translate: none;
+					width: auto;
+					max-height: none;
+					border: 0;
+					border-radius: 0;
+					box-shadow: none;
+				}
+				.viewer[data-photo='none'] {
+					width: auto;
+				}
+				.close {
+					top: calc(12px + env(safe-area-inset-top));
+					right: 12px;
+				}
+				.viewer-layout {
+					display: flex;
+					flex-direction: column;
+					height: 100%;
+					overflow-y: auto;
+					overscroll-behavior: contain;
+					padding-top: env(safe-area-inset-top);
+				}
+				.photo-region {
+					flex: none;
+					border-right: 0;
+					border-bottom: 2.5px solid var(--ink);
+				}
+				.photo-sizer {
+					min-height: 200px;
+					max-height: 55cqh;
+				}
+				.caption-column {
+					display: contents;
+				}
+				.caption-scroll {
+					flex: 1 0 auto;
+					overflow: visible;
+					background: none;
+				}
+				.caption {
+					padding: 16px;
+				}
+				.viewer-title {
+					font-size: 22px;
+					padding-inline-end: 0;
+				}
+				.viewer[data-photo='none'] .viewer-title {
+					padding-inline-end: 48px;
+					min-height: 40px;
+					padding-top: 4px;
+				}
+				.viewer[data-photo='none'] .caption {
+					padding-top: 12px;
+				}
+				.viewer-footer {
+					position: sticky;
+					bottom: 0;
+					z-index: 3;
+					border-top: 2.5px solid var(--ink);
+					padding-bottom: calc(var(--gift-content-inset-bottom) + env(safe-area-inset-bottom));
+				}
+			}
+
+			/* ── §3.5 card More menu frame ─────────────────────────────────── */
+			.frame-card {
+				width: 640px;
+				height: 540px;
+				padding: 24px;
+				background:
+					radial-gradient(var(--pattern-dot) 1.4px, transparent 1.5px) 0 0 / 18px 18px,
+					var(--background);
+			}
+			.demo-card {
+				--control-height: var(--size-control-md);
+				--control-text: 13px;
+				--control-padding: 12px;
+				--nested-border-inline: 2.5px;
+				--nested-border-block: 2.5px;
+				position: relative;
+				width: 300px;
+				border: 2.5px solid color-mix(in oklab, var(--ink) 50%, var(--card));
+				border-radius: var(--radius-panel);
+				background: color-mix(in oklab, var(--card) 82%, var(--surface));
+				box-shadow: var(--elevation-ordinary-offset) var(--elevation-ordinary-offset) 0
+					color-mix(in oklab, var(--hard-shadow) 50%, transparent);
+			}
+			.demo-card-image {
+				position: relative;
+				aspect-ratio: 4 / 3;
+				border-bottom: 2.5px solid color-mix(in oklab, var(--ink) 50%, var(--card));
+				border-radius: 13.5px 13.5px 0 0;
+				overflow: hidden;
+				background:
+					radial-gradient(var(--pattern-dot) 1.4px, transparent 1.5px) 0 0 / 18px 18px,
+					var(--surface);
+			}
+			.demo-card-image img {
+				width: 100%;
+				height: 100%;
+				object-fit: cover;
+				opacity: 0.5;
+			}
+			.demo-card-image .state-badge {
+				position: absolute;
+				left: 50%;
+				top: 50%;
+				translate: -50% -50%;
+			}
+			.demo-card-body {
+				padding: 8px 12px 6px;
+				opacity: 0.5;
+			}
+			.demo-card-name {
+				margin: 0;
+				font: 600 16px/1.3 var(--font-head);
+			}
+			.demo-card-price {
+				font-size: 14px;
+				font-weight: 700;
+			}
+			.demo-card-footer {
+				display: flex;
+				justify-content: flex-end;
+				gap: var(--nested-control-gap);
+				padding: 0 var(--gift-content-inset-end) var(--gift-content-inset-bottom)
+					var(--gift-content-inset);
+			}
+			.demo-card-footer .like {
+				margin-inline-end: auto;
+			}
+			.menu {
+				position: absolute;
+				left: 250px;
+				top: 362px;
+				width: 260px;
+				padding: 4px;
+				border: 2.5px solid var(--ink);
+				border-radius: 12px;
+				background: var(--popover);
+				color: var(--foreground);
+				box-shadow: var(--elevation-ordinary);
+				font-size: 14px;
+			}
+			.menu-item {
+				display: flex;
+				align-items: center;
+				gap: 8px;
+				height: 36px;
+				padding: 0 10px;
+				border-radius: 7px;
+			}
+			.menu-item svg {
+				width: 16px;
+				height: 16px;
+				color: var(--muted-foreground);
+			}
+			.menu-item.is-active {
+				background: var(--accent);
+			}
+			.menu-item.is-danger,
+			.menu-item.is-danger svg {
+				color: var(--status-danger-text);
+			}
+			.menu-separator {
+				height: 2px;
+				margin: 4px 6px;
+				background: var(--ink-faint);
+			}
+			.callout {
+				position: absolute;
+				left: 360px;
+				top: 40px;
+				width: 230px;
+				font-size: 13px;
+				line-height: 1.45;
+				color: var(--muted-foreground);
+			}
+			.callout b {
+				color: var(--foreground);
+			}
+		</style>
+	</head>
+	<body>
+		<header class="chrome">
+			<h1 class="chrome-title">
+				Gift viewer · Variant A
+				<small
+					>Photo-first lightbox: dominant uncropped photo, caption column, card-geometry footer</small
+				>
+			</h1>
+			<div class="chrome-row" id="state-tabs" role="group" aria-label="Stav">
+				<span class="chrome-label">Stav</span>
+			</div>
+			<div class="chrome-row">
+				<span class="chrome-label">Foto</span>
+				<span role="group" aria-label="Poměr fotky" id="aspect-tabs" class="chrome-row"></span>
+				<span class="chrome-label" style="margin-left: 14px">Hloubka</span>
+				<span role="group" aria-label="Hloubka" id="depth-tabs" class="chrome-row"></span>
+				<span class="chrome-label" style="margin-left: 14px">Motiv</span>
+				<span role="group" aria-label="Motiv" id="theme-tabs" class="chrome-row"></span>
+			</div>
+			<p class="state-note" id="state-note"></p>
+		</header>
+
+		<main>
+			<section class="stage" aria-label="Náhled">
+				<div>
+					<p class="frame-label">Desktop · 1280 × 900</p>
+					<div class="frame frame-desktop" data-palette="sky" id="frame-desktop"></div>
+				</div>
+				<div>
+					<p class="frame-label">Mobile · 390 × 844 (iPhone 13)</p>
+					<div class="frame frame-mobile" data-palette="sky" id="frame-mobile"></div>
+				</div>
+			</section>
+
+			<h2 class="section-title">§3.5 Admin release in the card More menu</h2>
+			<p class="section-text">
+				A reserved card seen by an app admin. „Uvolnit rezervaci" joins the existing More menu in the
+				danger tone, gated by the same capability as the viewer's release button. Touch devices show the
+				same entry in the shared actions sheet.
+			</p>
+			<section class="stage" aria-label="Menu Další akce">
+				<div class="frame frame-card" data-palette="sky" id="frame-card"></div>
+			</section>
+		</main>
+
+		<script>
+			const icons = {
+				close: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+				heart:
+					'<path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>',
+				undo: '<path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11"/>',
+				key: '<path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5" fill="currentColor"/>',
+				external:
+					'<path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>',
+				ellipsis:
+					'<circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>',
+				copy: '<rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>',
+				gift: '<rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13"/><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5"/>',
+			};
+			const icon = (name) =>
+				`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${icons[name]}</svg>`;
+
+			const aspects = {
+				'4:3': [4, 3],
+				'3:4': [3, 4],
+				'9:16': [9, 16],
+				'21:9': [21, 9],
+			};
+
+			// Product-photo stand-ins at a real natural aspect; seed data has no photos.
+			function photoUrl(aspectKey, emoji, from, to) {
+				const [w, h] = aspects[aspectKey];
+				const width = 1200;
+				const height = Math.round((width * h) / w);
+				const size = Math.min(width, height) * 0.5;
+				const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${from}"/><stop offset="1" stop-color="${to}"/></linearGradient></defs><rect width="${width}" height="${height}" fill="url(#g)"/><ellipse cx="${width / 2}" cy="${height / 2 + size * 0.52}" rx="${size * 0.48}" ry="${size * 0.08}" fill="rgba(0,0,0,.14)"/><text x="${width / 2}" y="${height / 2 + size * 0.34}" font-size="${size}" text-anchor="middle">${emoji}</text><text x="${width - 28}" y="${height - 28}" font-family="sans-serif" font-size="30" fill="rgba(0,0,0,.38)" text-anchor="end">foto ${aspectKey}</text></svg>`;
+				return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+			}
+
+			const gifts = {
+				headphones: {
+					name: 'Sluchátka Sony WH-1000XM5 v černé barvě',
+					price: '8 990 Kč',
+					photo: { emoji: '🎧', from: '#f4f1ec', to: '#d9d2c7' },
+					links: [
+						{ label: 'Alza', domain: 'alza.cz' },
+						{ label: null, domain: 'datart.cz' },
+					],
+					description:
+						'Ideálně černá barva. Hodí se mi na cesty vlakem, ta stará už nevydrží nabitá ani hodinu.',
+					appends: [{ date: '3. 10. 2026', text: 'Klidně i starší model XM4, pokud bude ve slevě.' }],
+					edited: '3. 10. 2026',
+					likes: 3,
+				},
+				voucher: {
+					name: 'Poukaz na víkendový kurz keramiky',
+					price: '1 500–2 500 Kč',
+					photo: null,
+					links: [{ label: 'Keramická dílna Hliněnka', domain: 'hlinenka.cz' }],
+					description: 'Nejradši točení na kruhu. Termín si vyberu sama, stačí poukaz.',
+					appends: [],
+					edited: null,
+					likes: 1,
+				},
+				lego: {
+					name: 'LEGO Technic Porsche 911 GT3 RS 42056, sběratelská edice v původním neotevřeném balení',
+					price: null,
+					photo: { emoji: '🏎️', from: '#eef3f8', to: '#c9d6e4' },
+					links: [
+						{ label: 'Bazoš, nejlepší nabídka', domain: 'bazos.cz' },
+						{ label: 'Kostičky Praha', domain: 'kosticky-praha.cz' },
+						{ label: null, domain: 'aukro.cz' },
+						{ label: 'Recenze sady', domain: 'brickset.com' },
+					],
+					description:
+						'Tuhle sadu sháním už dlouho, vyšla v roce 2016 a dnes se prodává jen z druhé ruky.\n\nMusí být kompletní, ideálně s původním návodem a nálepkami. Otevřená krabice nevadí, pokud jsou všechny dílky (je jich 2 704) a funkční převodovka.\n\nPokud nenajdete nic rozumného, nevadí, klidně se složíme víc lidí. Cenu záměrně neuvádím, na bazarech se pohybuje hodně různě.',
+					appends: [
+						{ date: '28. 9. 2026', text: 'Na Aukru teď visí jedna nabídka, vypadá dobře.' },
+						{ date: '1. 10. 2026', text: 'Ta z Aukra už je pryč. Kostičky Praha prý dostanou další kus.' },
+						{ date: '3. 10. 2026', text: 'Klidně i novější verze 42083 (Bugatti), ta by mě taky potěšila.' },
+					],
+					edited: '3. 10. 2026',
+					likes: 5,
+				},
+				glasses: {
+					name: 'Sklenice na víno Riedel Veritas',
+					price: '690 Kč',
+					quantityText: '3 kusy',
+					reservedText: '1 rezervováno',
+					photo: { emoji: '🍷', from: '#f6eef2', to: '#dcc6d1' },
+					links: [{ label: 'Riedel', domain: 'riedel.com' }],
+					description: 'Na červené víno, ideálně sada stejných. Klidně po jedné.',
+					appends: [],
+					edited: null,
+					likes: 2,
+				},
+			};
+
+			const states = [
+				{
+					id: 'available',
+					label: 'S fotkou',
+					trigger: 'Visitor, gift unreserved',
+					gift: 'headphones',
+					overlay: [],
+					actions: ['like', 'reserve'],
+				},
+				{
+					id: 'no-photo',
+					label: 'Bez fotky',
+					trigger: 'imageUrl and imageKey both empty: narrower text-only viewer',
+					gift: 'voucher',
+					overlay: [],
+					actions: ['like', 'reserve'],
+				},
+				{
+					id: 'long',
+					label: 'Dlouhý popis',
+					trigger: 'Long text, several appends, many links: caption scrolls, footer stays',
+					gift: 'lego',
+					overlay: [],
+					actions: ['like', 'reserve'],
+				},
+				{
+					id: 'mine',
+					label: 'Moje rezervace',
+					trigger: 'myReservationId !== null',
+					gift: 'headphones',
+					liked: true,
+					overlay: [['own-reservation', 'Rezervováno vámi']],
+					actions: ['like', 'purchased', 'cancel'],
+				},
+				{
+					id: 'mine-bought',
+					label: 'Moje, koupeno',
+					trigger: 'Own reservation marked purchased',
+					gift: 'headphones',
+					liked: true,
+					purchased: true,
+					overlay: [
+						['own-reservation', 'Rezervováno vámi'],
+						['own-purchased', 'Koupeno'],
+					],
+					actions: ['like', 'purchased', 'cancel'],
+				},
+				{
+					id: 'others',
+					label: 'Rezervováno jinými',
+					trigger: 'Fully reserved, not mine: Rezervovat hidden, photo never dimmed',
+					gift: 'headphones',
+					overlay: [['unavailable', 'Rezervováno někým jiným']],
+					actions: ['like'],
+				},
+				{
+					id: 'partial',
+					label: 'Částečně, více kusů',
+					trigger: 'quantity 3, reservedCount 1',
+					gift: 'glasses',
+					overlay: [['partial', 'Volné 2/3']],
+					actions: ['like', 'reserve'],
+				},
+				{
+					id: 'admin',
+					label: 'Admin',
+					trigger: 'App admin viewing a reserved gift',
+					gift: 'headphones',
+					overlay: [['unavailable', 'Rezervoval(a) Petr']],
+					actions: ['like', 'release'],
+				},
+				{
+					id: 'received',
+					label: 'Přijato',
+					trigger: 'received',
+					gift: 'headphones',
+					overlay: [['received', 'Přijato']],
+					actions: ['like'],
+				},
+				{
+					id: 'archived',
+					label: 'Archivovaný seznam',
+					trigger: 'Archived wishlist: Like only, Zrušit rezervaci remains if the reservation is mine',
+					gift: 'headphones',
+					overlay: [],
+					actions: ['like'],
+				},
+				{
+					id: 'preview',
+					label: 'Náhled příjemce',
+					trigger: 'hideReservationState: no state, no actions, no footer',
+					gift: 'headphones',
+					overlay: [],
+					actions: [],
+					noFooter: true,
+				},
+				{
+					id: 'pending',
+					label: 'Probíhá akce',
+					trigger: 'Koupeno request in flight: that control is disabled, others stay usable',
+					gift: 'headphones',
+					liked: true,
+					pending: 'purchased',
+					overlay: [['own-reservation', 'Rezervováno vámi']],
+					actions: ['like', 'purchased', 'cancel'],
+				},
+				{
+					id: 'focus',
+					label: 'Fokus',
+					trigger: 'Keyboard: shared focus ring on close, links and footer controls',
+					gift: 'headphones',
+					focus: true,
+					overlay: [],
+					actions: ['like', 'reserve'],
+				},
+				{
+					id: 'loading',
+					label: 'Načítání fotky',
+					trigger: 'Slow image: plain placeholder fill on the mat, no spinner',
+					gift: 'headphones',
+					loading: true,
+					overlay: [],
+					actions: ['like', 'reserve'],
+				},
+				{
+					id: 'error',
+					label: 'Chyba fotky',
+					trigger: 'Broken image URL: falls back to the text-only layout',
+					gift: 'headphones',
+					hidePhoto: true,
+					overlay: [],
+					actions: ['like', 'reserve'],
+				},
+			];
+
+			const view = { state: 'available', aspect: '4:3', depth: 'ink', theme: 'light' };
+
+			function renderLinks(links, focus) {
+				return links
+					.map((link, index) => {
+						const label = link.label
+							? `<span class="label">${link.label}</span> <span class="domain">(${link.domain})</span>`
+							: `<span class="label">${link.domain}</span>`;
+						return `<a class="text-link${focus && index === 0 ? ' is-focus' : ''}" href="#" target="_blank" rel="noopener noreferrer" onclick="return false">${label}${icon('external')}</a>`;
+					})
+					.join('');
+			}
+
+			function renderAction(action, state, gift) {
+				const like = state.liked ? gift.likes + 1 : gift.likes;
+				switch (action) {
+					case 'like':
+						return `<button class="like" type="button" aria-pressed="${state.liked ? 'true' : 'false'}" aria-label="${state.liked ? 'Zrušit to se mi líbí' : 'To se mi líbí'}, ${like}"><span class="like-surface">${icon('heart')}<span>${like}</span></span></button>`;
+					case 'purchased': {
+						const purchased = state.purchased === true;
+						const disabled = state.pending === 'purchased' ? ' disabled aria-busy="true"' : '';
+						return `<button class="btn ${purchased ? 'btn-danger' : 'btn-secondary-filled'}" type="button" aria-pressed="${purchased}"${disabled}><span class="btn-surface">${purchased ? icon('undo') : ''}${purchased ? 'Nekoupeno' : 'Koupeno'}</span></button>`;
+					}
+					case 'reserve':
+						return `<button class="btn btn-primary${state.focus ? ' is-focus' : ''}" type="button" aria-label="Rezervovat ${gift.name}"><span class="btn-surface">Rezervovat</span></button>`;
+					case 'cancel':
+						return `<button class="btn btn-danger" type="button" aria-label="Zrušit rezervaci ${gift.name}"><span class="btn-surface">Zrušit rezervaci</span></button>`;
+					case 'release':
+						return `<button class="btn btn-danger" type="button"><span class="btn-surface">${icon('key')}Uvolnit rezervaci</span></button>`;
+					default:
+						return '';
+				}
+			}
+
+			function renderViewer(frameKey) {
+				const state = states.find((candidate) => candidate.id === view.state);
+				const gift = gifts[state.gift];
+				const hasPhoto = gift.photo !== null && !state.hidePhoto;
+				const titleId = `viewer-title-${frameKey}`;
+
+				const photo = hasPhoto
+					? `<figure class="photo-region" style="--photo-aspect:${aspects[view.aspect].join(' / ')}; margin:0">
+							<div class="photo-sizer"></div>
+							${
+								state.loading
+									? `<div class="photo-loading">${icon('gift')}</div>`
+									: `<img class="photo-image" alt="${gift.name}" src="${photoUrl(view.aspect, gift.photo.emoji, gift.photo.from, gift.photo.to)}">`
+							}
+						</figure>`
+					: '';
+
+				const priceLine = [
+					gift.price
+						? `<span class="price">${gift.price}</span>`
+						: `<span class="price-empty">Cena neuvedena</span>`,
+					gift.quantityText ? `<span>${gift.quantityText}</span>` : '',
+					gift.reservedText && state.id !== 'preview' ? `<span>${gift.reservedText}</span>` : '',
+				]
+					.filter(Boolean)
+					.join('<span class="separator-dot" aria-hidden="true">·</span>');
+
+				const description = gift.description
+					? `<div class="description"><p>${gift.description}</p>${gift.appends
+							.map(
+								(append) =>
+									`<div class="append"><span class="append-date">${append.date}</span><br>${append.text}</div>`,
+							)
+							.join('')}</div>`
+					: '';
+
+				const footer = state.noFooter
+					? ''
+					: `<footer class="viewer-footer resting-shadow-nesting">
+							${
+								state.overlay.length
+									? `<div class="state-group" role="status">${state.overlay
+											.map(([kind, label]) => `<span class="state-badge state-${kind}">${label}</span>`)
+											.join('')}</div>`
+									: ''
+							}
+							<div class="action-lane">${state.actions.map((action) => renderAction(action, state, gift)).join('')}</div>
+						</footer>`;
+
+				return `<div class="viewer" role="dialog" aria-modal="true" aria-labelledby="${titleId}" data-photo="${hasPhoto ? 'natural' : 'none'}">
+						<button class="close" type="button" aria-label="Zavřít"><span class="close-surface">${icon('close')}</span></button>
+						<div class="viewer-layout">
+							${photo}
+							<div class="caption-column">
+								<div class="caption-scroll">
+									<div class="caption">
+										<h2 class="viewer-title" id="${titleId}">${gift.name}</h2>
+										<p class="price-line">${priceLine}</p>
+										<div class="link-list">${renderLinks(gift.links, state.focus)}</div>
+										${description}
+										${gift.edited ? `<p class="edited-line">Upraveno po sdílení · ${gift.edited}</p>` : ''}
+									</div>
+								</div>
+								${footer}
+							</div>
+						</div>
+					</div>`;
+			}
+
+			const pageCards = [
+				['Sluchátka Sony WH-1000XM5', '8 990 Kč'],
+				['Poukaz na kurz keramiky', '1 500–2 500 Kč'],
+				['LEGO Technic Porsche 911', 'Cena neuvedena'],
+				['Sklenice Riedel Veritas', '690 Kč'],
+				['Kniha Projekt Hail Mary', '449 Kč'],
+				['Termoska Stanley 1 l', '1 190 Kč'],
+			];
+
+			function renderPage() {
+				return `<div class="page" aria-hidden="true" inert>
+						<div class="app-header"><span class="logo">přejeme si.cz</span><span class="nav"><span>Moje seznamy</span><span>Spravované</span><span>Sledované</span></span><span class="header-spacer"></span><span class="fake-button">Vytvořit</span><span class="avatar"></span></div>
+						<div class="page-content">
+							<div class="hero"><div class="hero-polaroid"><div></div></div><div><div class="hero-for">Pro: Martin Novák</div><p class="hero-title">Vánoce 2026</p></div><div class="sticky-note">Za 81 dní</div></div>
+							<div class="toolbar"><span></span><span></span><span></span></div>
+							<div class="card-grid">${pageCards
+								.map(
+									([name, price]) =>
+										`<div class="page-card"><div class="page-card-image">${icon('gift').replace('<svg', '<svg width="44" height="44"')}</div><div class="page-card-body">${name}<small>${price}</small></div></div>`,
+								)
+								.join('')}</div>
+						</div>
+					</div>
+					<div class="scrim"></div>`;
+			}
+
+			function renderCardFrame() {
+				const gift = gifts.headphones;
+				return `<div class="demo-card resting-shadow-nesting">
+						<div class="demo-card-image"><img alt="" src="${photoUrl('4:3', gift.photo.emoji, gift.photo.from, gift.photo.to)}"><span class="state-badge state-unavailable">Rezervoval(a) Petr</span></div>
+						<div class="demo-card-body"><p class="demo-card-name">${gift.name}</p><span class="demo-card-price">${gift.price}</span></div>
+						<div class="demo-card-footer">
+							<button class="like" type="button" aria-pressed="false"><span class="like-surface">${icon('heart')}<span>${gift.likes}</span></span></button>
+							<button class="btn btn-secondary btn-icon" type="button" aria-label="Další akce" aria-expanded="true"><span class="btn-surface">${icon('ellipsis')}</span></button>
+						</div>
+					</div>
+					<div class="menu" role="menu" aria-label="Další akce">
+						<div class="menu-item" role="menuitem">${icon('external')}Otevřít hlavní odkaz</div>
+						<div class="menu-item" role="menuitem">${icon('copy')}Kopírovat hlavní odkaz</div>
+						<div class="menu-separator" role="separator"></div>
+						<div class="menu-item is-danger is-active" role="menuitem">${icon('key')}Uvolnit rezervaci</div>
+					</div>
+					<p class="callout"><b>Admin only.</b> Same capability gate as the viewer's „Uvolnit rezervaci"; it opens the existing release confirmation. The viewer keeps its own release button too.</p>`;
+			}
+
+			function renderTabs(containerId, options, key) {
+				const container = document.getElementById(containerId);
+				container.querySelectorAll('.chip').forEach((chip) => chip.remove());
+				for (const [value, label] of options) {
+					const chip = document.createElement('button');
+					chip.type = 'button';
+					chip.className = 'chip';
+					chip.textContent = label;
+					chip.setAttribute('aria-pressed', String(view[key] === value));
+					chip.addEventListener('click', () => {
+						view[key] = value;
+						render();
+					});
+					container.append(chip);
+				}
+			}
+
+			function render() {
+				renderTabs(
+					'state-tabs',
+					states.map((state) => [state.id, state.label]),
+					'state',
+				);
+				renderTabs(
+					'aspect-tabs',
+					Object.keys(aspects).map((key) => [key, key]),
+					'aspect',
+				);
+				renderTabs(
+					'depth-tabs',
+					[
+						['soft', 'Soft'],
+						['ink', 'Ink'],
+						['black', 'Black'],
+					],
+					'depth',
+				);
+				renderTabs(
+					'theme-tabs',
+					[
+						['light', 'Světlý'],
+						['dark', 'Tmavý'],
+					],
+					'theme',
+				);
+				document.body.classList.toggle('dark', view.theme === 'dark');
+				const state = states.find((candidate) => candidate.id === view.state);
+				document.getElementById('state-note').innerHTML = `<b>${state.label}:</b> ${state.trigger}`;
+				for (const frameKey of ['desktop', 'mobile']) {
+					const frame = document.getElementById(`frame-${frameKey}`);
+					frame.dataset.depth = view.depth;
+					frame.innerHTML = renderPage() + renderViewer(frameKey);
+				}
+				const cardFrame = document.getElementById('frame-card');
+				cardFrame.dataset.depth = view.depth;
+				cardFrame.innerHTML = renderCardFrame();
+			}
+
+			render();
+		</script>
+	</body>
+</html>

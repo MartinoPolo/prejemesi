@@ -116,26 +116,23 @@ describe('LikeButton approved image treatment (issue #357)', () => {
 		{ size: 'lg' as const, expectedHeight: 40, expectedIconSize: 16 },
 		{ size: 'xl' as const, expectedHeight: 48, expectedIconSize: 20 },
 	])(
-		'keeps explicit $size geometry fixed for ghost and sticker appearances',
+		'keeps explicit $size geometry fixed',
 		async ({ size, expectedHeight, expectedIconSize }) => {
 			await page.viewport(390, 720);
-			for (const appearance of ['ghost', 'sticker'] as const) {
-				likesContext();
-				const screen = await render(LikeButton, {
-					giftId: `gift-${size}-${appearance}`,
-					giftName: 'Explicit gift',
-					likeCount: 2,
-					size,
-					appearance,
-				});
-				const button = screen.getByRole('button').element() as HTMLElement;
-				const icon = button.querySelector('svg') as SVGElement;
+			likesContext();
+			const screen = await render(LikeButton, {
+				giftId: `gift-${size}`,
+				giftName: 'Explicit gift',
+				likeCount: 2,
+				size,
+			});
+			const button = screen.getByRole('button').element() as HTMLElement;
+			const icon = button.querySelector('svg') as SVGElement;
 
-				expectPixelsNear(button.getBoundingClientRect().height, expectedHeight);
-				expectPixelsNear(icon.getBoundingClientRect().width, expectedIconSize);
-				expectPixelsNear(icon.getBoundingClientRect().height, expectedIconSize);
-				await screen.unmount();
-			}
+			expectPixelsNear(button.getBoundingClientRect().height, expectedHeight);
+			expectPixelsNear(icon.getBoundingClientRect().width, expectedIconSize);
+			expectPixelsNear(icon.getBoundingClientRect().height, expectedIconSize);
+			await screen.unmount();
 		},
 	);
 

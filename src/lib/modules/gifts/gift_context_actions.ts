@@ -1,4 +1,9 @@
 import { WISHLIST_ROLES, type WishlistRole } from '$lib/modules/wishlists/types.js';
+import {
+	offersReservationRelease,
+	type GiftContextOrigin,
+	type ReservationReleaseCapability,
+} from '$lib/modules/wishlists/wishlist_capabilities.js';
 
 /** Menu presentation order shared by every gift action surface; also the source of the action union. */
 const GIFT_CONTEXT_ACTION_GROUPS = [
@@ -8,9 +13,13 @@ const GIFT_CONTEXT_ACTION_GROUPS = [
 		actions: ['edit', 'received', 'multiselect', 'reserve', 'cancel-reservation', 'purchased'],
 	},
 	{ name: 'organization', actions: ['priority', 'category'] },
+	{ name: 'release', actions: ['release-reservation'] },
 ] as const;
 
 export type GiftContextAction = (typeof GIFT_CONTEXT_ACTION_GROUPS)[number]['actions'][number];
+
+export const RELEASE_RESERVATION_ACTION =
+	'release-reservation' as const satisfies GiftContextAction;
 
 export interface GiftContextActionGroup {
 	readonly name: (typeof GIFT_CONTEXT_ACTION_GROUPS)[number]['name'];
@@ -42,31 +51,58 @@ export interface GiftContextActionContext {
 	canReserve?: boolean;
 	ownsReservation?: boolean;
 	canTrackPurchased?: boolean;
+	releaseCapability?: ReservationReleaseCapability;
+	/** Rows in the gift's release ledger, which never includes the viewer's own reservation. */
+	releaseLedgerCount?: number;
+	origin?: GiftContextOrigin;
 }
 
 /** Central capability model shared by pointer-menu and touch-sheet renderers. */
 export function giftContextActions(context: GiftContextActionContext): GiftContextAction[] {
-	const actions: GiftContextAction[] = context.primaryUrl === null ? [] : ['open', 'copy'];
+	const origin = context.origin ?? 'card';
+	return [
+		...linkActions(context.primaryUrl, origin),
+		...managementActions(context),
+		...reservationActions(context),
+		...releaseActions(context, origin),
+	];
+}
+
+function linkActions(primaryUrl: string | null, origin: GiftContextOrigin): GiftContextAction[] {
+	// The viewer's caption already lists every link.
+	return primaryUrl === null || origin === 'viewer' ? [] : ['open', 'copy'];
+}
+
+function managementActions(context: GiftContextActionContext): GiftContextAction[] {
 	const manages =
 		context.role === WISHLIST_ROLES.recipient || context.role === WISHLIST_ROLES.moderator;
-
-	if (!context.readOnly && manages) {
-		if (context.canEdit === true) {
-			actions.push('edit');
-		}
-		actions.push('priority', 'category', 'received', 'multiselect');
+	if (context.readOnly || !manages) {
+		return [];
 	}
+	const editActions: GiftContextAction[] = context.canEdit === true ? ['edit'] : [];
+	return [...editActions, 'priority', 'category', 'received', 'multiselect'];
+}
 
-	if (context.canReserve === true) {
-		if (context.ownsReservation === true) {
-			actions.push('cancel-reservation');
-			if (!context.readOnly && context.canTrackPurchased === true) {
-				actions.push('purchased');
-			}
-		} else if (!context.readOnly) {
-			actions.push('reserve');
-		}
+function reservationActions(context: GiftContextActionContext): GiftContextAction[] {
+	if (context.canReserve !== true) {
+		return [];
 	}
+	if (context.ownsReservation !== true) {
+		return context.readOnly ? [] : ['reserve'];
+	}
+	return !context.readOnly && context.canTrackPurchased === true
+		? ['cancel-reservation', 'purchased']
+		: ['cancel-reservation'];
+}
 
-	return actions;
+function releaseActions(
+	context: GiftContextActionContext,
+	origin: GiftContextOrigin,
+): GiftContextAction[] {
+	const offersRelease = offersReservationRelease({
+		releaseCapability: context.releaseCapability,
+		releaseLedgerCount: context.releaseLedgerCount ?? 0,
+		origin,
+	});
+	return offersRelease ? [RELEASE_RESERVATION_ACTION] : [];
 }

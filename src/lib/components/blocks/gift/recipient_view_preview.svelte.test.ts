@@ -86,21 +86,19 @@ describe('recipient-view preview reservation privacy (#241)', () => {
 		},
 	);
 
-	it('paints the detail photo frame with explicit black', async () => {
+	it('paints the detail photo region with explicit black', async () => {
 		const screen = await render(RecipientViewPreviewTestHost, {
 			gift: makeReservedGift({ imageUrl: IMAGE_URL, imageMeta: imageMeta('#000000') }),
 			role: WISHLIST_ROLES.moderator,
 			surface: 'detail',
 		});
 
-		const detailFrame = screen.container.querySelector(
-			'[data-testid="gift-detail-image-frame"]',
-		) as HTMLElement;
-		const imageFrame = detailFrame.querySelector('[data-testid="image-frame"]') as HTMLElement;
+		const photoRegion = page.getByTestId('gift-viewer-photo').element() as HTMLElement;
+		const imageFrame = photoRegion.querySelector('[data-testid="image-frame"]') as HTMLElement;
 
-		expect(detailFrame).toBeTruthy();
 		expect(imageFrame).toBeTruthy();
-		expect(getComputedStyle(detailFrame).backgroundColor).toBe('rgb(0, 0, 0)');
+		expect(getComputedStyle(photoRegion).backgroundColor).toBe('rgb(0, 0, 0)');
+		expect(getComputedStyle(photoRegion).backgroundImage).toBe('none');
 		expect(getComputedStyle(imageFrame).backgroundColor).toBe('rgb(0, 0, 0)');
 
 		await screen.unmount();

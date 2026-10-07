@@ -74,11 +74,12 @@ async function renderRelease(options: {
 	reservations: ReservationForModerator[];
 	gift?: GiftForVisitor;
 	release?: (giftId: string, reservationId: string) => Promise<boolean>;
-	placement?: 'direct' | 'form' | 'detail';
+	placement?: 'direct' | 'form' | 'detail' | 'flow';
 	role?: 'recipient' | 'moderator' | 'visitor';
 	hideReservationState?: boolean;
 	isSubmitting?: boolean;
 	isDeleting?: boolean;
+	returnFocusTo?: HTMLElement | null;
 }) {
 	return render(ReleaseReservationTestHost, {
 		gift: options.gift ?? makeGift(),
@@ -90,6 +91,7 @@ async function renderRelease(options: {
 		hideReservationState: options.hideReservationState,
 		isSubmitting: options.isSubmitting,
 		isDeleting: options.isDeleting,
+		returnFocusTo: options.returnFocusTo,
 	});
 }
 
@@ -361,5 +363,74 @@ describe('release confirmation (issue #213 REQ-8)', () => {
 		await page.getByTestId('release-reservation-confirm-action').click();
 
 		expect(release).toHaveBeenCalledExactlyOnceWith('gift-1', 'reservation-2');
+	});
+
+	it('releases through the same flow when another surface such as the gift menu opens it', async () => {
+		const release = vi.fn(async () => true);
+		await renderRelease({
+			capability: RESERVATION_RELEASE_CAPABILITY.any,
+			reservations: [makeReservation({ id: 'reservation-1' })],
+			placement: 'flow',
+			release,
+		});
+
+		await page.getByTestId('release-reservation-confirm-action').click();
+
+		expect(release).toHaveBeenCalledExactlyOnceWith('gift-1', 'reservation-1');
+		await expect
+			.element(page.getByTestId('release-reservation-confirm'))
+			.not.toBeInTheDocument();
+	});
+});
+
+describe('release flow focus return (issue #440)', () => {
+	function mountMoreAnchor(): { holdingDialog: HTMLElement; moreAnchor: HTMLButtonElement } {
+		const holdingDialog = document.createElement('div');
+		holdingDialog.setAttribute('role', 'dialog');
+		holdingDialog.tabIndex = -1;
+		const moreAnchor = document.createElement('button');
+		moreAnchor.textContent = 'More';
+		holdingDialog.append(moreAnchor);
+		document.body.append(holdingDialog);
+		return { holdingDialog, moreAnchor };
+	}
+
+	it('returns focus to the More button that opened the flow from a menu', async () => {
+		const { holdingDialog, moreAnchor } = mountMoreAnchor();
+		try {
+			await renderRelease({
+				capability: RESERVATION_RELEASE_CAPABILITY.any,
+				reservations: [makeReservation()],
+				placement: 'flow',
+				returnFocusTo: moreAnchor,
+			});
+			await expect.element(page.getByTestId('release-reservation-confirm')).toBeVisible();
+
+			await page.getByTestId('release-reservation-confirm-action').click();
+
+			await expect.poll(() => document.activeElement).toBe(moreAnchor);
+		} finally {
+			holdingDialog.remove();
+		}
+	});
+
+	it('returns focus to the dialog holding a More button that left the lane', async () => {
+		const { holdingDialog, moreAnchor } = mountMoreAnchor();
+		moreAnchor.inert = true;
+		try {
+			await renderRelease({
+				capability: RESERVATION_RELEASE_CAPABILITY.any,
+				reservations: [makeReservation()],
+				placement: 'flow',
+				returnFocusTo: moreAnchor,
+			});
+			await expect.element(page.getByTestId('release-reservation-confirm')).toBeVisible();
+
+			await page.getByTestId('release-reservation-confirm-action').click();
+
+			await expect.poll(() => document.activeElement).toBe(holdingDialog);
+		} finally {
+			holdingDialog.remove();
+		}
 	});
 });

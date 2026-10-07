@@ -15,7 +15,7 @@ const REPRESENTATIVE_DEPTH = 'soft';
 test.describe('Issue #346 stable hover hit regions', () => {
 	test.describe.configure({ mode: 'default', timeout: 180_000 });
 
-	test('visitor detail sticker, link row, and circular close retain hit targets at 1/soft', async ({
+	test('visitor viewer Like, link row, and circular close retain hit targets at 1/soft', async ({
 		baseURL,
 	}) => {
 		const context = await launchZoomableContext([], baseURL!);
@@ -36,10 +36,13 @@ test.describe('Issue #346 stable hover hit regions', () => {
 				name: /(?:Přidat do|Odebrat z) oblíbených:/,
 			});
 			await expect(like).toBeVisible();
-			await expect(like).toHaveClass(/elevation-owner-like/);
-			expectStableLift(await stationaryLowerEdge(page, like, 'Sticker Like'), 1.08);
+			// The Gift viewer Like is the flat ghost chip (#440): no lift, the whole target stays hovered.
+			expectStableLift(
+				await stationaryLowerEdge(page, like, 'Viewer Like', { restingShadow: false }),
+			);
 			expect(
-				(await bottomToTopSweep(page, like, 'Sticker Like')).interveningUnhovered,
+				(await bottomToTopSweep(page, like, 'Viewer Like', { restingShadow: false }))
+					.interveningUnhovered,
 			).toEqual([]);
 			await expectSafeClick(page, like);
 

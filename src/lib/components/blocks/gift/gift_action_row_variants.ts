@@ -3,6 +3,7 @@ import { tv } from 'tailwind-variants';
 export const giftActionRowVariants = tv({
 	slots: {
 		row: 'gift-action-row ml-auto flex w-full max-w-full min-w-0 flex-nowrap items-start justify-end',
+		leading: 'flex flex-none items-start',
 		primaryGroup:
 			'gift-action-primary-group flex max-w-full flex-nowrap items-start justify-end',
 		primary:

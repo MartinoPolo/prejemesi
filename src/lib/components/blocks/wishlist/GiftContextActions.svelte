@@ -13,15 +13,21 @@
 	import GiftContextActionIcon from './GiftContextActionIcon.svelte';
 	import GiftContextDesktopActions from './GiftContextDesktopActions.svelte';
 	import {
+		RELEASE_RESERVATION_ACTION,
 		giftContextActions,
 		groupGiftContextActions,
 		type GiftContextAction,
 	} from '$lib/modules/gifts/gift_context_actions.js';
 	import { normalizeGiftUrl } from '$lib/modules/gifts/gift_url.js';
 	import type { WishlistRole } from '$lib/modules/wishlists/types.js';
+	import type {
+		GiftContextOrigin,
+		ReservationReleaseCapability,
+	} from '$lib/modules/wishlists/wishlist_capabilities.js';
 	import * as m from '$lib/paraglide/messages.js';
 	import type {
 		GiftActionPlacementSnapshot,
+		GiftContextCommandCallbacks,
 		GiftContextFinishPolicy,
 	} from './gift_context_invocation.js';
 	import type {
@@ -37,7 +43,7 @@
 		id: string;
 		label: string;
 	}
-	interface Props {
+	interface Props extends GiftContextCommandCallbacks {
 		sessionId: number;
 		programmaticOpen: boolean;
 		mobile: boolean;
@@ -52,6 +58,9 @@
 		ownsReservation?: boolean;
 		canTrackPurchased?: boolean;
 		purchased?: boolean;
+		releaseCapability?: ReservationReleaseCapability;
+		releaseLedgerCount?: number;
+		origin?: GiftContextOrigin;
 		priorityReady?: boolean;
 		categoryReady?: boolean;
 		priorityLevels: Choice[];
@@ -61,15 +70,6 @@
 		placementSnapshot?: GiftActionPlacementSnapshot;
 		onclose: () => void;
 		oncomplete: (sessionId: number) => void;
-		onfinish: (policy: GiftContextFinishPolicy, callback: () => void) => void;
-		onedit: () => void;
-		onpriority: (id: string | null) => void;
-		oncategory: (id: string | null) => void;
-		onreceived: () => void;
-		onselect: () => void;
-		onreserve?: () => void;
-		oncancelreservation?: () => void;
-		onpurchased?: () => void;
 		oncopysuccess?: () => void;
 		oncopyerror?: () => void;
 	}
@@ -88,6 +88,9 @@
 		ownsReservation = false,
 		canTrackPurchased = false,
 		purchased = false,
+		releaseCapability,
+		releaseLedgerCount = 0,
+		origin = 'card',
 		priorityReady = false,
 		categoryReady = false,
 		priorityLevels,
@@ -106,6 +109,7 @@
 		onreserve,
 		oncancelreservation,
 		onpurchased,
+		onreleasereservation,
 		oncopysuccess,
 		oncopyerror,
 	}: Props = $props();
@@ -124,6 +128,9 @@
 			canReserve,
 			ownsReservation,
 			canTrackPurchased,
+			releaseCapability,
+			releaseLedgerCount,
+			origin,
 		}),
 	);
 	const actions = $derived(
@@ -189,6 +196,14 @@
 			),
 		priority: () => submenuEntry('priority'),
 		category: () => submenuEntry('category'),
+		[RELEASE_RESERVATION_ACTION]: () =>
+			finishingEntry(
+				RELEASE_RESERVATION_ACTION,
+				m.reserve_release_button(),
+				'handoff',
+				onreleasereservation,
+				{ reversal: true },
+			),
 	};
 	const menuGroups: GiftContextMenuGroup[] = $derived(
 		groupGiftContextActions(actions)

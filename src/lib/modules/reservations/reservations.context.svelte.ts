@@ -1,5 +1,8 @@
 import { createContext } from 'svelte';
-import type { ReservationReleaseCapability } from '$lib/modules/wishlists/wishlist_capabilities.js';
+import {
+	offersReservationRelease,
+	type ReservationReleaseCapability,
+} from '$lib/modules/wishlists/wishlist_capabilities.js';
 import type { ReservationForModerator } from './types.js';
 
 /**
@@ -46,6 +49,14 @@ function createReservationsContext(
 		 * control). Empty while the ledger is still loading, or when there is nothing to show.
 		 */
 		reservationsForGift: getReservationsForGift,
+		/** Whether the gift's direct release control (viewer lane, editor) is offered. */
+		offersRelease(giftId: string): boolean {
+			return offersReservationRelease({
+				releaseCapability: getCapability(),
+				releaseLedgerCount: getReservationsForGift(giftId).length,
+				origin: 'viewer',
+			});
+		},
 		/** Releases one reservation. Resolves true when the server accepted it. */
 		release,
 	};

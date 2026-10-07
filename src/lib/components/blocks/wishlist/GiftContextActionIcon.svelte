@@ -11,6 +11,7 @@
 	import ShoppingBagIcon from '@lucide/svelte/icons/shopping-bag';
 	import StarIcon from '@lucide/svelte/icons/star';
 	import TagIcon from '@lucide/svelte/icons/tag';
+	import KeyRoundIcon from '@lucide/svelte/icons/key-round';
 	import type { GiftContextAction } from '$lib/modules/gifts/gift_context_actions.js';
 
 	const ACTION_ICONS: Record<GiftContextAction, Component> = {
@@ -24,6 +25,7 @@
 		purchased: ShoppingBagIcon,
 		priority: StarIcon,
 		category: TagIcon,
+		'release-reservation': KeyRoundIcon,
 	};
 
 	interface Props {

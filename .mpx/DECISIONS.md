@@ -78,8 +78,8 @@ sections for UI work. Historical reconciliation and review notes are in
   consent to expose account identities.
 - 2026-08-12: Privileged single-reservation release retains issue #213 authorization: správci
   release guest reservations only, administrators can release any reservation, and recipients get
-  neither override. Put release in the gift editor/detail, not routine card/list/compact browsing;
-  an admin’s read-only detail remains an entry point.
+  neither override. Release lives in the gift editor and the Gift viewer; administrators also get it
+  in the gift More menu, never as a visible routine browse action.
 - 2026-09-12: Explicit recipient self-promotion reveals reservation state and reservation/like
   counts, not gifter identities; the actor remains a recipient and cannot reserve, like, or use
   admin overrides on that list. Notify visitors and retain a permanent trust banner, including on
@@ -251,7 +251,7 @@ sections for UI work. Historical reconciliation and review notes are in
   an ambiguous check-only icon.
 - 2026-08-12: Received/unreceived is the primary manager browse action; marking received keeps the
   gift visible by enabling the received filter. Fully reserved gifts do not need a redundant
-  disabled reserve button; privileged release belongs in detail/editor.
+  disabled reserve button.
 - 2026-08-13: View mode is global per device; sorting and mutually exclusive grouping (`none`,
   `priority`, `category`) persist per wishlist per device; filters reset each visit. Grouping is a
   visible display control, not a filter.
@@ -374,6 +374,13 @@ sections for UI work. Historical reconciliation and review notes are in
   primary action, More and depth clearance; otherwise fall back to the largest count that fits
   (#451). A chosen count widens the whole page, navbar included, so cards keep the Automatic
   default-width card size until the viewport caps it (`--content-max-width` in `src/app.css`).
+- 2026-10-07: Opening a gift without edit rights always shows the Gift viewer (#440): photo first,
+  then a caption with the full title, price and quantity, all links, full description with appends
+  and the edited-after-share line; priority and category stay on the card. It never dims the photo.
+  On desktop the photo column takes the photo's width at the height cap, so only vertical letterbox
+  remains. State badges sit in the dialog's bottom-left on desktop and between links and description
+  on mobile or without a photo, never in the footer. The footer holds only Like and applicable
+  actions on card geometry. Reference: `designs/gift-viewer/refined.html`.
 
 ## Forms & settings
 
@@ -390,7 +397,7 @@ sections for UI work. Historical reconciliation and review notes are in
   required, trimmed recipient name, capped at 100 characters and autofocused. Explain manager
   reservation visibility, do not autofill the title, and do not request recipient email/account
   linking. Avoid obsolete copy claiming no later reassignment is possible.
-- 2026-07-18: Gift edit/detail dialogs are wide with balanced image/form columns; the footer stays
+- 2026-07-18: Gift editor dialogs are wide with balanced image/form columns; the footer stays
   outside scrolling. The editor mode selector belongs above the image stage, source inputs remain
   with fields, and link rows label “Viditelný popisek” without a redundant “Hlavní” badge.
 - 2026-09-01: Wishlist Details, Categories, Appearance, and Image/Crops share one staged draft and a
@@ -435,8 +442,7 @@ sections for UI work. Historical reconciliation and review notes are in
   styling.
 - 2026-07-10: Primary buttons are flat `--brand-fill` stickers with ink border, hard shadow, and
   white text, not gradients/glow. Tape belongs only on paper artifacts. Gift image mats may pan on
-  hover but remain static for reserved/received gifts; the large detail-dialog Like sticker is a
-  specialized action, distinct from the later ghost-heart browse overlay.
+  hover but remain static for reserved/received gifts.
 - 2026-07-10: Headings use self-hosted DynaPuff and body text Geist, with Czech glyph coverage and
   metric-adjusted fallbacks. Light mode is the design source of truth; derive dark mode through
   tokens rather than independent mockups.
@@ -562,8 +568,8 @@ sections for UI work. Historical reconciliation and review notes are in
   one or wheel-zooming a plain preview enters Manual. The adaptive stage contains the whole source
   photo with the active target window overlaid and overhang dimmed, not clipped; reuse its geometry
   for honest Fill/Fit previews instead of a parallel preview renderer.
-- 2026-07-18: Visitor gift detail shows the uncropped photo at its natural aspect inside a height
-  cap, not another crop target. Measuring an untouched legacy `auto` image may correct its presented
+- 2026-07-18: The Gift viewer shows the uncropped photo at its natural aspect inside a height cap,
+  not another crop target. Measuring an untouched legacy `auto` image may correct its presented
   Fill/Fit selection, but must neither dirty the form nor change persisted `auto` on save.
 - 2026-08-26: Image-frame fill is separate from palette identity: offer white, black, or
   transparent/dotted mat for letterboxing, with the dotted/transparent choice as default. Do not
