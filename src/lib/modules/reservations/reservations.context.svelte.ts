@@ -1,6 +1,8 @@
 import { createContext } from 'svelte';
-import type { ReservationReleaseCapability } from '$lib/modules/wishlists/wishlist_capabilities.js';
-import { offersReservationRelease } from '$lib/modules/gifts/gift_context_actions.js';
+import {
+	offersReservationRelease,
+	type ReservationReleaseCapability,
+} from '$lib/modules/wishlists/wishlist_capabilities.js';
 import type { ReservationForModerator } from './types.js';
 
 /**

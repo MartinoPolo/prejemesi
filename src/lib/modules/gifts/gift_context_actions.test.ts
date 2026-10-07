@@ -3,11 +3,13 @@ import {
 	giftContextActions,
 	groupGiftContextActions,
 	hasAdditionalGiftContextActions,
-	offersReservationRelease,
 	type GiftContextActionContext,
 } from './gift_context_actions.js';
 import { WISHLIST_ROLES } from '$lib/modules/wishlists/types.js';
-import { RESERVATION_RELEASE_CAPABILITY } from '$lib/modules/wishlists/wishlist_capabilities.js';
+import {
+	RESERVATION_RELEASE_CAPABILITY,
+	offersReservationRelease,
+} from '$lib/modules/wishlists/wishlist_capabilities.js';
 
 const capabilityFlags = [
 	'readOnly',

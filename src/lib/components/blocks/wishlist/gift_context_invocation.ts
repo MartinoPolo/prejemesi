@@ -1,7 +1,5 @@
-import type {
-	GiftContextAction,
-	GiftContextOrigin,
-} from '$lib/modules/gifts/gift_context_actions.js';
+import type { GiftContextAction } from '$lib/modules/gifts/gift_context_actions.js';
+import type { GiftContextOrigin } from '$lib/modules/wishlists/wishlist_capabilities.js';
 
 export interface GiftActionPlacementSnapshot {
 	visibleDirectActions: readonly GiftContextAction[];

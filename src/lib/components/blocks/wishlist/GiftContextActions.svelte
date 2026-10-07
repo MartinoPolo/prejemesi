@@ -17,11 +17,13 @@
 		giftContextActions,
 		groupGiftContextActions,
 		type GiftContextAction,
-		type GiftContextOrigin,
 	} from '$lib/modules/gifts/gift_context_actions.js';
 	import { normalizeGiftUrl } from '$lib/modules/gifts/gift_url.js';
 	import type { WishlistRole } from '$lib/modules/wishlists/types.js';
-	import type { ReservationReleaseCapability } from '$lib/modules/wishlists/wishlist_capabilities.js';
+	import type {
+		GiftContextOrigin,
+		ReservationReleaseCapability,
+	} from '$lib/modules/wishlists/wishlist_capabilities.js';
 	import * as m from '$lib/paraglide/messages.js';
 	import type {
 		GiftActionPlacementSnapshot,

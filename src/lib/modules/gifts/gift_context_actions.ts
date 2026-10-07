@@ -1,6 +1,7 @@
 import { WISHLIST_ROLES, type WishlistRole } from '$lib/modules/wishlists/types.js';
 import {
-	RESERVATION_RELEASE_CAPABILITY,
+	offersReservationRelease,
+	type GiftContextOrigin,
 	type ReservationReleaseCapability,
 } from '$lib/modules/wishlists/wishlist_capabilities.js';
 
@@ -19,9 +20,6 @@ export type GiftContextAction = (typeof GIFT_CONTEXT_ACTION_GROUPS)[number]['act
 
 export const RELEASE_RESERVATION_ACTION =
 	'release-reservation' as const satisfies GiftContextAction;
-
-/** Where the gift actions open: a gift card or list row, or the Gift viewer's footer More. */
-export type GiftContextOrigin = 'card' | 'viewer';
 
 export interface GiftContextActionGroup {
 	readonly name: (typeof GIFT_CONTEXT_ACTION_GROUPS)[number]['name'];
@@ -57,25 +55,6 @@ export interface GiftContextActionContext {
 	/** Rows in the gift's release ledger, which never includes the viewer's own reservation. */
 	releaseLedgerCount?: number;
 	origin?: GiftContextOrigin;
-}
-
-/**
- * Whether release is offered. The Gift viewer's lane and its More overflow offer it to any release
- * reach so an overflowed release never vanishes; the card menu shortcut is for administrators only,
- * because moderators release from the gift editor.
- */
-export function offersReservationRelease(input: {
-	releaseCapability: ReservationReleaseCapability | undefined;
-	releaseLedgerCount: number;
-	origin: GiftContextOrigin;
-}): boolean {
-	if (input.releaseLedgerCount === 0) {
-		return false;
-	}
-	return input.origin === 'viewer'
-		? input.releaseCapability !== undefined &&
-				input.releaseCapability !== RESERVATION_RELEASE_CAPABILITY.none
-		: input.releaseCapability === RESERVATION_RELEASE_CAPABILITY.any;
 }
 
 /** Central capability model shared by pointer-menu and touch-sheet renderers. */

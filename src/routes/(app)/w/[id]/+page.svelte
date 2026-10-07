@@ -132,8 +132,8 @@
 		giftContextActions,
 		hasAdditionalGiftContextActions,
 		type GiftContextAction,
-		type GiftContextOrigin,
 	} from '$lib/modules/gifts/gift_context_actions.js';
+	import type { GiftContextOrigin } from '$lib/modules/wishlists/wishlist_capabilities.js';
 	import { canTrackPurchase } from '$lib/modules/gifts/gift_display_state.js';
 	import { normalizeGiftUrl } from '$lib/modules/gifts/gift_url.js';
 	import { getPriorityActionOptions } from '$lib/modules/gifts/gift_display.js';
