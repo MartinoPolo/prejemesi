@@ -104,8 +104,8 @@
 	const isEdit = $derived(mode === 'edit');
 	const isViewer = $derived(readOnly && gift !== null);
 	const title = $derived(isEdit ? m.gift_edit_title() : m.gift_add_title());
-	// A viewer needs a gift: without one, render nothing rather than the editor's add chrome.
-	const rendersDialog = $derived(!readOnly || gift !== null);
+	// A viewer needs a gift: without one, open nothing rather than the editor's add chrome.
+	const hasDialogContent = $derived(!readOnly || gift !== null);
 	const contentClass = $derived(
 		isViewer
 			? viewerStyles.dialog()
@@ -272,46 +272,46 @@
 	{/key}
 {/snippet}
 
-{#if rendersDialog}
-	<Dialog.Root
-		{open}
-		onOpenChange={handleOpenChange}
-		onOpenChangeComplete={handleOpenChangeComplete}
+<!-- Keep the Root mounted even without a gift: its portal must enter body before later
+     dialogs (the reserve form) so those equal-z-index layers stack above the viewer. -->
+<Dialog.Root
+	open={open && hasDialogContent}
+	onOpenChange={handleOpenChange}
+	onOpenChangeComplete={handleOpenChangeComplete}
+>
+	<Dialog.Content
+		bind:ref={contentRef}
+		class={contentClass}
+		showCloseButton={true}
+		onEscapeKeydown={handleDismiss}
+		onInteractOutside={handleDismiss}
+		onOpenAutoFocus={(event) => {
+			event.preventDefault();
+			contentRef?.focus({ preventScroll: true });
+		}}
 	>
-		<Dialog.Content
-			bind:ref={contentRef}
-			class={contentClass}
-			showCloseButton={true}
-			onEscapeKeydown={handleDismiss}
-			onInteractOutside={handleDismiss}
-			onOpenAutoFocus={(event) => {
-				event.preventDefault();
-				contentRef?.focus({ preventScroll: true });
-			}}
-		>
-			{#if !isViewer}
-				{@render editorHeader()}
-			{/if}
-			<Dialog.Description class="sr-only">{description}</Dialog.Description>
+		{#if !readOnly}
+			{@render editorHeader()}
+		{/if}
+		<Dialog.Description class="sr-only">{description}</Dialog.Description>
 
-			{#if isViewer && gift !== null}
-				<GiftViewer
-					{gift}
-					{role}
-					{isArchived}
-					{hideReservationState}
-					{onreserve}
-					{onunreserve}
-					{onmore}
-					{moreOpen}
-					{moreSurface}
-				/>
-			{:else}
-				{@render editorForm()}
-			{/if}
-		</Dialog.Content>
-	</Dialog.Root>
-{/if}
+		{#if isViewer && gift !== null}
+			<GiftViewer
+				{gift}
+				{role}
+				{isArchived}
+				{hideReservationState}
+				{onreserve}
+				{onunreserve}
+				{onmore}
+				{moreOpen}
+				{moreSurface}
+			/>
+		{:else if !readOnly}
+			{@render editorForm()}
+		{/if}
+	</Dialog.Content>
+</Dialog.Root>
 
 <Dialog.Root bind:open={guardOpen}>
 	<Dialog.Content size="md">

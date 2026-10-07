@@ -82,6 +82,22 @@ describe('GiftDetailModal focus contract', () => {
 	});
 });
 
+describe('GiftDetailModal read-only viewer without a gift', () => {
+	it('opens no dialog and renders no editor chrome', async () => {
+		const screen = await render(GiftDetailModal, {
+			...baseProps,
+			mode: 'edit' as const,
+			gift: null,
+			readOnly: true,
+		});
+
+		await expect.element(screen.getByRole('dialog')).not.toBeInTheDocument();
+		await expect.element(screen.getByTestId('gift-editor-header')).not.toBeInTheDocument();
+		await expect.element(screen.getByTestId('gift-viewer')).not.toBeInTheDocument();
+		expect(document.querySelector('[data-slot="dialog-content"]')).toBeNull();
+	});
+});
+
 describe('GiftDetailModal editor layout and exit safety', () => {
 	it('keeps the localized title beside the reserved close target at narrow enlarged text', async () => {
 		const originalLocale = getLocale();

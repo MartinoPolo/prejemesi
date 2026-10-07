@@ -174,7 +174,7 @@
 									data-testid="wishlist-header-danger-actions"
 								>
 									<WishlistSheetAction
-										class="text-destructive"
+										surfaceClass="text-destructive group-hover:text-destructive"
 										onclick={() => run(onarchive)}
 									>
 										<ArchiveIcon />
