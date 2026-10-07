@@ -2,7 +2,7 @@
  * Size-appropriate image variants via Cloudflare Image Transformations
  * (issue #107, REQ-3/REQ-5). Card, list, thumbnail, and banner surfaces load a
  * width-bounded, `format=auto` transformation instead of the original object;
- * detail views keep the original (including GIF animation).
+ * the Gift viewer keeps the original (including GIF animation).
  *
  * Transformation URLs only apply to images hosted on the PUBLIC_R2_URL domain
  * (an R2 custom domain on the zone with Transformations enabled). External
@@ -52,7 +52,7 @@ function isAnimatableGif(pathname: string): boolean {
  * returns the source unchanged when it cannot (or should not) be transformed.
  *
  * GIF sources add `anim=false`, so cards and lists load a single still frame
- * instead of the full animated original (REQ-5); the detail view requests the
+ * instead of the full animated original (REQ-5); the Gift viewer requests the
  * original URL directly, preserving animation.
  */
 export function transformedImageUrl(

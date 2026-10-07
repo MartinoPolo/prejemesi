@@ -1,7 +1,9 @@
 <script lang="ts">
-	import * as m from '$lib/paraglide/messages.js';
 	import type { GiftOverlayEntry } from '$lib/modules/gifts/gift_display_state.js';
-	import { formatOtherReservationLabel } from '$lib/modules/gifts/gift_display.js';
+	import {
+		formatGiftStateLabel,
+		giftStateBadgeAttributes,
+	} from '$lib/modules/gifts/gift_display.js';
 	import { cn } from '$lib/utils.js';
 	import { giftStateBadgeVariants } from './gift_state_overlay_variants.js';
 
@@ -13,24 +15,6 @@
 	}
 
 	let { entries, avoidTopRight = false, class: className }: GiftStateOverlayProps = $props();
-
-	function label(entry: GiftOverlayEntry): string {
-		switch (entry.kind) {
-			case 'received':
-				return m.gift_received_badge();
-			case 'own-reservation':
-				return m.gift_reserved_by_me_overlay();
-			case 'own-purchased':
-				return m.gift_bought();
-			case 'unavailable':
-				return formatOtherReservationLabel(entry.otherReservers);
-			case 'partial':
-				return m.gift_remaining_capacity({
-					remaining: entry.remaining,
-					total: entry.total,
-				});
-		}
-	}
 </script>
 
 {#if entries.length > 0}
@@ -45,10 +29,7 @@
 		{#each entries as entry, index (index)}
 			<span
 				class={cn(giftStateBadgeVariants({ kind: entry.kind }), 'state-pill')}
-				data-state-primary={entry.role === 'primary' ? '' : undefined}
-				data-reservation-support={entry.role === 'support' ? '' : undefined}
-				data-other-reservation={entry.role === 'other-reservation' ? '' : undefined}
-				data-state-kind={entry.kind}>{label(entry)}</span
+				{...giftStateBadgeAttributes(entry)}>{formatGiftStateLabel(entry)}</span
 			>
 		{/each}
 	</div>

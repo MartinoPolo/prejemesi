@@ -33,7 +33,7 @@ export const GIFT_CROP_TARGET_SPECS = {
 		realHeight: 128,
 		realSizeText: '356 × 128 px',
 	},
-	// Retired detail-modal crop (issue #183): the visitor detail view now renders
+	// Retired detail-modal crop (issue #183): the Gift viewer renders
 	// the full uncropped photo and is no longer a crop-target consumer. Kept
 	// parseable for legacy `targets.detail` rows only.
 	detail: {

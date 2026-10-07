@@ -15,7 +15,9 @@
 		type BulkCopyDestination,
 	} from '$lib/components/blocks/wishlist/GiftBulkCopyDialog.svelte';
 	import GiftContextActions from '$lib/components/blocks/wishlist/GiftContextActions.svelte';
+	import ReleaseReservationFlow from '$lib/components/blocks/reservation/ReleaseReservationFlow.svelte';
 	import type {
+		GiftActionPlacementSnapshot,
 		GiftContextFinishPolicy,
 		GiftContextInvocation,
 		GiftContextSession,
@@ -130,6 +132,7 @@
 		giftContextActions,
 		hasAdditionalGiftContextActions,
 		type GiftContextAction,
+		type GiftContextOrigin,
 	} from '$lib/modules/gifts/gift_context_actions.js';
 	import { canTrackPurchase } from '$lib/modules/gifts/gift_display_state.js';
 	import { normalizeGiftUrl } from '$lib/modules/gifts/gift_url.js';
@@ -621,6 +624,13 @@
 			: { x: 0, y: 0 },
 	);
 	const narrowViewport = useNarrowViewportState();
+	const activeContextGiftId = $derived(
+		programmaticOpen && contextAnchor !== null ? contextSession?.gift.id : null,
+	);
+	const contextSurface = $derived(narrowViewport.current ? 'dialog' : 'menu');
+	const viewerMoreOpen = $derived(
+		selectedPresentationGift !== null && activeContextGiftId === selectedPresentationGift.id,
+	);
 
 	$effect(() => giftSelection.reconcileExisting(gifts.map((giftItem) => giftItem.id)));
 	$effect(() => {
@@ -656,7 +666,14 @@
 		};
 	}
 
-	function contextActionsFor(giftItem: GiftByRole) {
+	function releaseContextFor(giftItem: GiftByRole) {
+		return {
+			releaseCapability: wishlist.reservationReleaseCapability,
+			releaseLedgerCount: releaseLedgers[giftItem.id]?.length ?? 0,
+		};
+	}
+
+	function contextActionsFor(giftItem: GiftByRole, origin: GiftContextOrigin = 'card') {
 		const primaryUrl = giftItem.links?.[0]?.url ?? null;
 		const reservationContext = reservationContextFor(giftItem);
 		return giftContextActions({
@@ -665,6 +682,8 @@
 			readOnly: isArchived,
 			canEdit: true,
 			...reservationContext,
+			...releaseContextFor(giftItem),
+			origin,
 		});
 	}
 
@@ -700,8 +719,12 @@
 		return actions.includes(action) ? actions : [...actions, action];
 	}
 
-	function openContextActions(giftItem: GiftByRole, invocation: GiftContextInvocation): boolean {
-		if (giftSelection.active || contextActionsFor(giftItem).length === 0) {
+	function openContextActions(
+		giftItem: GiftByRole,
+		invocation: GiftContextInvocation,
+		origin: GiftContextOrigin = 'card',
+	): boolean {
+		if (giftSelection.active || contextActionsFor(giftItem, origin).length === 0) {
 			return false;
 		}
 		const viewportAtOpen = narrowViewport.current;
@@ -725,6 +748,7 @@
 		contextSession = {
 			id,
 			gift: giftItem,
+			origin,
 			viewportAtOpen,
 			invocation:
 				invocation.kind === 'native'
@@ -745,6 +769,19 @@
 		}
 		void ensurePriorityLevels();
 		return true;
+	}
+
+	function openViewerMore(
+		anchor: HTMLButtonElement,
+		placementSnapshot: GiftActionPlacementSnapshot,
+	) {
+		if (selectedPresentationGift !== null) {
+			openContextActions(
+				selectedPresentationGift,
+				{ kind: 'more', anchor, placementSnapshot },
+				'viewer',
+			);
+		}
 	}
 
 	function requestContextClose() {
@@ -1641,6 +1678,24 @@
 		}
 	}
 
+	// Outlives the More-menu session, which ends as soon as the menu hands off to this dialog.
+	let releaseFlowGift = $state<{
+		id: string;
+		name: string;
+		moreAnchor: HTMLButtonElement | null;
+	} | null>(null);
+	let releaseFlowOpen = $state(false);
+
+	function openReleaseFlow(giftItem: GiftByRole) {
+		const invocation = contextSession?.invocation;
+		releaseFlowGift = {
+			id: giftItem.id,
+			name: giftItem.name,
+			moreAnchor: invocation?.kind === 'more' ? invocation.anchor : null,
+		};
+		releaseFlowOpen = true;
+	}
+
 	/**
 	 * Releasing SOMEONE ELSE's reservation (issue #213). The server re-checks the capability, so
 	 * this path carries no authorization of its own. Returns whether the release went through, so
@@ -1864,6 +1919,8 @@
 					categoryId={contextActionGift.categoryId ?? null}
 					placementSnapshot={contextPlacementSnapshot}
 					{...reservationContextFor(contextActionGift)}
+					{...releaseContextFor(contextActionGift)}
+					origin={contextSession?.origin}
 					onclose={requestContextClose}
 					oncomplete={completeContextClose}
 					onfinish={finishContextAction}
@@ -1884,6 +1941,7 @@
 						}
 					}}
 					onpurchased={() => void handleContextPurchased(contextActionGift)}
+					onreleasereservation={() => openReleaseFlow(contextActionGift)}
 					oncopysuccess={() => toastSuccess(m.gift_context_copy_success())}
 					oncopyerror={() => toastError(m.gift_context_copy_error())}
 				/>
@@ -1909,10 +1967,8 @@
 			onselectiontoggle={(giftId) => giftSelection.toggle(giftId)}
 			oncontextactions={openContextActions}
 			hascontextactions={hasAdditionalContextActions}
-			activeContextGiftId={programmaticOpen && contextAnchor !== null
-				? contextSession?.gift.id
-				: null}
-			contextSurface={narrowViewport.current ? 'dialog' : 'menu'}
+			{activeContextGiftId}
+			{contextSurface}
 			onedit={openEditModal}
 			onreserve={handleOpenReserveModal}
 			onunreserve={handleUnreserve}
@@ -2017,12 +2073,24 @@
 	ondelete={handleDelete}
 	ongiftreserve={handleOpenReserveModal}
 	ongiftunreserve={handleUnreserve}
+	onmore={openViewerMore}
+	moreOpen={viewerMoreOpen}
+	moreSurface={contextSurface}
 	onreservemodalclose={handleReserveModalClose}
 	onreserve={handleReserve}
 	onbatchsubmit={handleBatchSubmit}
 	onbatchdialogopenchange={handleBatchDialogOpenChange}
 	onbatchresetduplicatewarning={resetBatchDuplicateWarning}
 />
+
+{#if releaseFlowGift !== null}
+	<ReleaseReservationFlow
+		bind:open={releaseFlowOpen}
+		giftId={releaseFlowGift.id}
+		giftName={releaseFlowGift.name}
+		returnFocusTo={releaseFlowGift.moreAnchor}
+	/>
+{/if}
 
 <!-- Per-wishlist settings modal (details / appearance / image). Mounted for every viewer:
      non-managers and archived lists get the read-only notice inside the dialog, preserving

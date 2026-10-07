@@ -3,7 +3,7 @@ import { getLocale } from '$lib/paraglide/runtime.js';
 import { extractGiftUrlDomain, getPrimaryGiftLink } from './gift_url.js';
 import { MAX_GIFT_PRICE, type GiftLink } from './types.js';
 import type { WishlistRole } from '$lib/modules/wishlists/types.js';
-import type { OtherReserverIdentity } from './gift_display_state.js';
+import type { GiftOverlayEntry, OtherReserverIdentity } from './gift_display_state.js';
 
 const PRICE_FORMATTER_CACHE_LIMIT = 16;
 const priceFormatters = new Map<string, Intl.NumberFormat>();
@@ -135,6 +135,35 @@ export function formatOtherReservationLabel(otherReservers?: OtherReserverIdenti
 	return otherReservers.kind === 'single'
 		? m.gift_reserved_by_overlay({ name: otherReservers.name })
 		: m.gift_reserved_by_many();
+}
+
+export function formatGiftStateLabel(entry: GiftOverlayEntry): string {
+	switch (entry.kind) {
+		case 'received':
+			return m.gift_received_badge();
+		case 'own-reservation':
+			return m.gift_reserved_by_me_overlay();
+		case 'own-purchased':
+			return m.gift_bought();
+		case 'unavailable':
+			return formatOtherReservationLabel(entry.otherReservers);
+		case 'partial':
+			return m.gift_remaining_capacity({ remaining: entry.remaining, total: entry.total });
+		default: {
+			const unhandled: never = entry;
+			return unhandled;
+		}
+	}
+}
+
+/** Data hooks every rendered state badge exposes for styling, collision checks and tests. */
+export function giftStateBadgeAttributes(entry: GiftOverlayEntry) {
+	return {
+		'data-state-primary': entry.role === 'primary' ? '' : undefined,
+		'data-reservation-support': entry.role === 'support' ? '' : undefined,
+		'data-other-reservation': entry.role === 'other-reservation' ? '' : undefined,
+		'data-state-kind': entry.kind,
+	};
 }
 
 /** Format an ISO timestamp from a description append as a short locale date. */

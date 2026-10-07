@@ -6,6 +6,7 @@ import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assert
 import GiftContextActions from './GiftContextActions.svelte';
 import GiftContextActionsTestHost from './GiftContextActionsTestHost.svelte';
 import * as m from '$lib/paraglide/messages.js';
+import { RESERVATION_RELEASE_CAPABILITY } from '$lib/modules/wishlists/wishlist_capabilities.js';
 
 const { expectPixelsNear, expectPixelsAtLeast } = createPixelAssertions(expect);
 
@@ -133,6 +134,51 @@ describe('GiftContextActions desktop ContextMenu', () => {
 		expect(purchased.querySelector('.lucide-undo-2')).toBeTruthy();
 		expect(cancellation.classList.contains('text-status-danger-text')).toBe(true);
 		await purchasedScreen.unmount();
+	});
+
+	it('offers administrators release in red after a separator and hands off to its dialog', async () => {
+		const trigger = document.createElement('button');
+		trigger.textContent = 'More';
+		document.body.append(trigger);
+		const onreleasereservation = vi.fn();
+		const adminScreen = await render(GiftContextActionsTestHost, {
+			...managerProps,
+			role: 'visitor' as const,
+			releaseCapability: RESERVATION_RELEASE_CAPABILITY.any,
+			releaseLedgerCount: 1,
+			onreleasereservation,
+			mobile: false,
+			nativeOpen: false,
+			programmaticOpen: true,
+			desktopAnchor: trigger,
+		});
+		const release = adminScreen.getByRole('menuitem', { name: m.reserve_release_button() });
+		await expect.element(release).toBeVisible();
+		expectSemanticDangerText(release.element() as HTMLElement);
+		expect(release.element().querySelector('.lucide-key-round')).toBeTruthy();
+		expect(
+			release.element().previousElementSibling?.matches('[data-slot$="-menu-separator"]'),
+		).toBe(true);
+		await release.click();
+		await expect.poll(() => onreleasereservation.mock.calls.length).toBe(1);
+		await adminScreen.unmount();
+		trigger.remove();
+
+		const moderatorScreen = await render(GiftContextActionsTestHost, {
+			...managerProps,
+			role: 'moderator' as const,
+			releaseCapability: RESERVATION_RELEASE_CAPABILITY.guestOnly,
+			releaseLedgerCount: 1,
+			onreleasereservation,
+			mobile: false,
+			nativeOpen: true,
+			programmaticOpen: false,
+		});
+		await expect.element(moderatorScreen.getByRole('menu')).toBeInTheDocument();
+		await expect
+			.element(moderatorScreen.getByRole('menuitem', { name: m.reserve_release_button() }))
+			.not.toBeInTheDocument();
+		await moderatorScreen.unmount();
 	});
 
 	it('uses menu roles and nested submenus for configured manager choices', async () => {
@@ -498,6 +544,26 @@ describe('GiftContextActions mobile Sheet', () => {
 		await expect
 			.element(screen.getByRole('button', { name: m.gift_mark_bought() }))
 			.not.toBeInTheDocument();
+		await screen.unmount();
+	});
+
+	it('offers administrators release as a red sheet action', async () => {
+		const onreleasereservation = vi.fn();
+		const screen = await render(GiftContextActions, {
+			...managerProps,
+			role: 'visitor' as const,
+			releaseCapability: RESERVATION_RELEASE_CAPABILITY.any,
+			releaseLedgerCount: 2,
+			onreleasereservation,
+		});
+
+		const release = screen.getByRole('button', { name: m.reserve_release_button() });
+		await expect.element(release).toBeVisible();
+		expectSemanticDangerText(
+			release.element().querySelector<HTMLElement>('.elevation-surface')!,
+		);
+		await release.click();
+		expect(onreleasereservation).toHaveBeenCalledOnce();
 		await screen.unmount();
 	});
 

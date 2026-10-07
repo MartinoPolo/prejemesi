@@ -5,9 +5,11 @@
 	import type { ReservationReleaseCapability } from '$lib/modules/wishlists/wishlist_capabilities.js';
 	import type { WishlistRole } from '$lib/modules/wishlists/types.js';
 	import ReleaseReservationButton from './ReleaseReservationButton.svelte';
+	import ReleaseReservationFlow from './ReleaseReservationFlow.svelte';
 	import GiftDetailForm from '$lib/components/blocks/gift/GiftDetailForm.svelte';
 	import GiftDetailModal from '$lib/components/blocks/gift/GiftDetailModal.svelte';
 	import { setLikesContext } from '$lib/modules/likes/likes.context.svelte.js';
+	import { setGiftsContext } from '$lib/modules/gifts/gifts.context.svelte.js';
 
 	/**
 	 * Test/story-only harness: `ReleaseReservationButton` reads `useReservations()`, which only
@@ -19,11 +21,12 @@
 		capability: ReservationReleaseCapability;
 		reservations: ReservationForModerator[];
 		release?: (giftId: string, reservationId: string) => Promise<boolean>;
-		placement?: 'direct' | 'form' | 'detail';
+		placement?: 'direct' | 'form' | 'detail' | 'flow';
 		role?: WishlistRole;
 		hideReservationState?: boolean;
 		isSubmitting?: boolean;
 		isDeleting?: boolean;
+		returnFocusTo?: HTMLElement | null;
 	}
 
 	let {
@@ -36,6 +39,7 @@
 		hideReservationState = false,
 		isSubmitting = false,
 		isDeleting = false,
+		returnFocusTo = null,
 	}: ReleaseReservationTestHostProps = $props();
 
 	setReservationsContext(
@@ -47,6 +51,14 @@
 		() => [],
 		() => true,
 		() => {},
+	);
+	setGiftsContext(
+		() => gift.wishlistId,
+		() => [gift],
+		() => role,
+		() => false,
+		() => true,
+		() => [],
 	);
 </script>
 
@@ -74,6 +86,8 @@
 		readOnly={true}
 		{hideReservationState}
 	/>
+{:else if placement === 'flow'}
+	<ReleaseReservationFlow open giftId={gift.id} giftName={gift.name} {returnFocusTo} />
 {:else}
 	<ReleaseReservationButton {gift} size="md" />
 {/if}

@@ -276,8 +276,8 @@
 	// branch stays self-contained and never re-toggles from a reactive prop change.
 	const descriptionFrozen = $derived(locked && description.trim() !== '');
 	// Edited-after-share transparency (issue #185): the recipient/moderator edit
-	// surface shows the SAME muted text line as the read-only visitor detail view
-	// (`GiftDetailView.svelte`) – only the surface changed, not who can see it
+	// surface shows the SAME muted text line as the read-only Gift viewer
+	// (`GiftViewer.svelte`) – only the surface changed, not who can see it
 	// (REQ-5).
 	const editedAfterShareLine = $derived(
 		gift?.editedAfterShareAt != null

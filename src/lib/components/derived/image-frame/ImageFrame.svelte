@@ -19,13 +19,6 @@
 	import type { ImageFocalPoint } from '$lib/modules/images/types.js';
 	import { transformedImageUrl, type ImageVariant } from '$lib/modules/images/variants.js';
 
-	/**
-	 * Fixed box shown for a `natural` frame while loading or falling back – its
-	 * eventual natural size is unknown until the image decodes, so there is no
-	 * "real" size to skeleton toward.
-	 */
-	const NATURAL_PLACEHOLDER_CLASS = 'aspect-square w-[280px] max-w-full';
-
 	interface Props {
 		/** Image source. Null/empty renders the themed fallback. */
 		src?: string | null;
@@ -61,15 +54,14 @@
 		/** Adds keyboard focusability + focus-visible ring (e.g. opens a crop editor). */
 		interactive?: boolean;
 		/**
-		 * Renders the image at its natural size — uncropped, ignoring
-		 * `fitMode`/`focal`/`zoom` entirely (issue #183 REQ-10). The frame box
-		 * shrink-wraps around the rendered image instead of stretching it to fill
-		 * a fixed box, so `class` should cap the image directly (e.g.
-		 * `max-h-[480px] max-w-full`) and the browser scales it down preserving
-		 * its aspect ratio. Used by the visitor gift detail view, which stops
-		 * being a crop-target consumer.
+		 * Shows the whole uncropped image contained in the caller-sized box, ignoring
+		 * `fitMode`/`focal`/`zoom`. Only an explicit `fillColor` paints the box, so the
+		 * caller's own surface shows around the photo. Used by the Gift viewer, which
+		 * sizes the box from `onmeasured`.
 		 */
 		natural?: boolean;
+		/** Reports the decoded image's width / height ratio once it loads. */
+		onmeasured?: (aspectRatio: number) => void;
 		/** Force the loading skeleton (e.g. parent still fetching before `src` exists). */
 		loading?: boolean;
 		/** Fires once the image genuinely fails to load (after any transformed-variant retry). Lets a
@@ -100,6 +92,7 @@
 		shape = 'square',
 		interactive = false,
 		natural = false,
+		onmeasured,
 		loading = false,
 		onerror,
 		referrerPolicy,
@@ -158,23 +151,12 @@
 			: null,
 	);
 
-	// Natural mode (REQ-10): the frame box shrink-wraps around the rendered image
-	// once it loads (or shows a fixed placeholder while loading/falling back,
-	// since the eventual natural size is unknown until then); `className`
-	// applies to the `<img>` directly instead of the box so the caller's cap
-	// (e.g. `max-h-[480px] max-w-full`) does the actual scaling.
 	const rootClass = $derived(
-		natural
-			? cn(
-					styles.root(),
-					showFallback || showSkeleton ? NATURAL_PLACEHOLDER_CLASS : 'inline-block',
-					explicitFillClass,
-				)
-			: cn(styles.root(), className, explicitFillClass),
+		cn(styles.root(), natural && 'bg-transparent', className, explicitFillClass),
 	);
 	const imageClass = $derived(
 		natural
-			? cn('relative z-10 block h-auto w-auto object-contain', className)
+			? 'relative z-10 block size-full object-contain'
 			: zoomOutLayout !== null
 				? 'absolute z-10 max-w-none'
 				: styles.image(),
@@ -211,7 +193,9 @@
 
 	function markLoaded(img: HTMLImageElement) {
 		if (src !== null && img.naturalWidth > 0 && img.naturalHeight > 0) {
-			measured = { src, ratio: img.naturalWidth / img.naturalHeight };
+			const ratio = img.naturalWidth / img.naturalHeight;
+			measured = { src, ratio };
+			onmeasured?.(ratio);
 		}
 		loadedSrc = src;
 	}

@@ -6,23 +6,24 @@
 	import { cn } from '$lib/utils.js';
 	import { observeDepthChange } from '$lib/theme/depth_change.js';
 	import type { GiftContextAction } from '$lib/modules/gifts/gift_context_actions.js';
-	import type { GiftActionPlacementSnapshot } from '$lib/components/blocks/wishlist/gift_context_invocation.js';
+	import type {
+		GiftActionPlacementSnapshot,
+		GiftMoreProps,
+	} from '$lib/components/blocks/wishlist/gift_context_invocation.js';
 	import { placeGiftActions, type GiftActionPlacement } from './gift_action_placement.js';
 	import { giftActionRowVariants } from './gift_action_row_variants.js';
 
-	interface Props {
+	interface Props extends GiftMoreProps {
 		children?: Snippet;
+		/** A control before every action that never overflows, such as the viewer's Like. */
+		leading?: Snippet;
 		/** Renders the control for one secondary action. */
 		secondary?: Snippet<[GiftContextAction]>;
-		onmore?: (
-			anchor: HTMLButtonElement,
-			placementSnapshot: GiftActionPlacementSnapshot,
-		) => void;
-		moreOpen?: boolean;
-		moreSurface?: 'menu' | 'dialog';
 		contentWidth?: number;
 		/** Ordered left to right; the leftmost overflows into More first. */
 		secondaryActions?: readonly GiftContextAction[];
+		/** Secondary actions shown after the primary; they still overflow in `secondaryActions` order. */
+		secondaryActionsAfterPrimary?: readonly GiftContextAction[];
 		primaryAction?: GiftContextAction;
 		persistentMore?: boolean;
 		onplacementchange?: (overflowActions: readonly GiftContextAction[]) => void;
@@ -31,12 +32,14 @@
 
 	let {
 		children,
+		leading,
 		secondary,
 		onmore,
 		moreOpen = false,
 		moreSurface = 'menu',
 		contentWidth,
 		secondaryActions = [],
+		secondaryActionsAfterPrimary = [],
 		primaryAction,
 		persistentMore = onmore !== undefined,
 		onplacementchange,
@@ -46,11 +49,13 @@
 	const styles = giftActionRowVariants();
 
 	let rowElement = $state<HTMLDivElement | null>(null);
+	let leadingElement = $state<HTMLDivElement | null>(null);
 	const secondaryElements = $state<Partial<Record<GiftContextAction, HTMLDivElement | null>>>({});
 	let primaryElement = $state<HTMLDivElement | null>(null);
 	let moreElement = $state<HTMLElement | null>(null);
 	let moreMeasureElement = $state<HTMLSpanElement | null>(null);
 	let observedContentWidth = $state(0);
+	let leadingWidth = $state(0);
 	let secondaryWidths = $state<Partial<Record<GiftContextAction, number>>>({});
 	let primaryWidth = $state(0);
 	let moreWidth = $state(0);
@@ -64,10 +69,20 @@
 		onmore !== undefined &&
 			(renderedSecondaryActions.length > 0 || primaryAction !== undefined),
 	);
-	const availableContentWidth = $derived(contentWidth ?? observedContentWidth);
+	const renderedSecondaryActionsBeforePrimary = $derived(
+		renderedSecondaryActions.filter((action) => !secondaryActionsAfterPrimary.includes(action)),
+	);
+	const renderedSecondaryActionsAfterPrimary = $derived(
+		renderedSecondaryActions.filter((action) => secondaryActionsAfterPrimary.includes(action)),
+	);
+	const availableContentWidth = $derived(
+		(contentWidth ?? observedContentWidth) -
+			(leading === undefined ? 0 : leadingWidth + actionGap),
+	);
 	const placement: GiftActionPlacement = $derived(
 		responsivePlacement &&
 			availableContentWidth > 0 &&
+			(leading === undefined || leadingWidth > 0) &&
 			renderedSecondaryActions.every((action) => (secondaryWidths[action] ?? 0) > 0) &&
 			(primaryAction === undefined || primaryWidth > 0) &&
 			moreWidth > 0
@@ -104,6 +119,9 @@
 		}
 		if (!responsivePlacement) {
 			return;
+		}
+		if (leadingElement !== null && leadingElement.isConnected) {
+			leadingWidth = leadingElement.getBoundingClientRect().width;
 		}
 		const measuredSecondaryWidths: Partial<Record<GiftContextAction, number>> = {};
 		for (const action of renderedSecondaryActions) {
@@ -232,6 +250,7 @@
 	$effect(() => {
 		const observedElements = [
 			rowElement,
+			leadingElement,
 			primaryElement,
 			moreMeasureElement,
 			...renderedSecondaryActions.map((action) => secondaryElements[action]),
@@ -271,21 +290,32 @@
 		}
 	}}
 >
+	{#snippet secondarySlot(
+		action: GiftContextAction,
+		renderSecondary: Snippet<[GiftContextAction]>,
+	)}
+		<div
+			bind:this={secondaryElements[action]}
+			class={cn(
+				styles.secondary(),
+				!secondaryIsVisible(action) && 'gift-action-overflow-measure',
+			)}
+			data-testid="gift-action-secondary"
+			data-gift-secondary-action={action}
+			inert={!secondaryIsVisible(action)}
+			aria-hidden={!secondaryIsVisible(action)}
+		>
+			{@render renderSecondary(action)}
+		</div>
+	{/snippet}
+	{#if leading}
+		<div bind:this={leadingElement} class={styles.leading()}>
+			{@render leading()}
+		</div>
+	{/if}
 	{#if secondary}
-		{#each renderedSecondaryActions as action (action)}
-			<div
-				bind:this={secondaryElements[action]}
-				class={cn(
-					styles.secondary(),
-					!secondaryIsVisible(action) && 'gift-action-overflow-measure',
-				)}
-				data-testid="gift-action-secondary"
-				data-gift-secondary-action={action}
-				inert={!secondaryIsVisible(action)}
-				aria-hidden={!secondaryIsVisible(action)}
-			>
-				{@render secondary(action)}
-			</div>
+		{#each renderedSecondaryActionsBeforePrimary as action (action)}
+			{@render secondarySlot(action, secondary)}
 		{/each}
 	{/if}
 	<span
@@ -294,14 +324,24 @@
 		aria-hidden="true"
 	></span>
 	<div class={styles.primaryGroup()} data-testid="gift-action-primary-group">
-		<div
-			bind:this={primaryElement}
-			class={cn(styles.primary(), !placement.showPrimary && 'gift-action-overflow-measure')}
-			inert={!placement.showPrimary}
-			aria-hidden={!placement.showPrimary}
-		>
-			{@render children?.()}
-		</div>
+		{#if primaryAction !== undefined}
+			<div
+				bind:this={primaryElement}
+				class={cn(
+					styles.primary(),
+					!placement.showPrimary && 'gift-action-overflow-measure',
+				)}
+				inert={!placement.showPrimary}
+				aria-hidden={!placement.showPrimary}
+			>
+				{@render children?.()}
+			</div>
+		{/if}
+		{#if secondary}
+			{#each renderedSecondaryActionsAfterPrimary as action (action)}
+				{@render secondarySlot(action, secondary)}
+			{/each}
+		{/if}
 		{#if onmore}
 			<Button
 				bind:ref={moreElement}
@@ -361,6 +401,11 @@
 	.gift-action-primary-group,
 	.gift-action-slot {
 		gap: var(--nested-control-gap);
+	}
+
+	/* A group holding only off-screen measures must not add a gap after the leading control. */
+	.gift-action-primary-group:not(:has(> :not(:global(.gift-action-overflow-measure)))) {
+		display: contents;
 	}
 
 	.gift-action-slot :global(> [data-slot='button']) {

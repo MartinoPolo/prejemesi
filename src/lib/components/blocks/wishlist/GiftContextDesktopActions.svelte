@@ -8,17 +8,21 @@
 	import BookmarkIcon from '@lucide/svelte/icons/bookmark';
 	import BookmarkXIcon from '@lucide/svelte/icons/bookmark-x';
 	import ShoppingBagIcon from '@lucide/svelte/icons/shopping-bag';
+	import KeyRoundIcon from '@lucide/svelte/icons/key-round';
 	import * as ContextMenu from '$lib/components/base/context-menu/index.js';
 	import * as DropdownMenu from '$lib/components/base/dropdown-menu/index.js';
-	import type { GiftContextAction } from '$lib/modules/gifts/gift_context_actions.js';
-	import type { GiftContextFinishPolicy } from './gift_context_invocation.js';
+	import {
+		RELEASE_RESERVATION_ACTION,
+		type GiftContextAction,
+	} from '$lib/modules/gifts/gift_context_actions.js';
+	import type { GiftContextCommandCallbacks } from './gift_context_invocation.js';
 	import * as m from '$lib/paraglide/messages.js';
 
 	interface Choice {
 		id: string;
 		label: string;
 	}
-	interface Props {
+	interface Props extends GiftContextCommandCallbacks {
 		kind: 'context' | 'dropdown';
 		actions: readonly GiftContextAction[];
 		disabledActions: ReadonlySet<GiftContextAction>;
@@ -31,16 +35,7 @@
 		categories: Choice[];
 		priorityLevelId: string | null;
 		categoryId: string | null;
-		onfinish: (policy: GiftContextFinishPolicy, callback: () => void) => void;
 		oncopy: () => void;
-		onedit: () => void;
-		onpriority: (id: string | null) => void;
-		oncategory: (id: string | null) => void;
-		onreceived: () => void;
-		onselect: () => void;
-		onreserve?: () => void;
-		oncancelreservation?: () => void;
-		onpurchased?: () => void;
 	}
 	let {
 		kind,
@@ -65,6 +60,7 @@
 		onreserve,
 		oncancelreservation,
 		onpurchased,
+		onreleasereservation,
 	}: Props = $props();
 	const has = (action: GiftContextAction) => actions.includes(action);
 	const Item = $derived(kind === 'dropdown' ? DropdownMenu.Item : ContextMenu.Item);
@@ -174,4 +170,11 @@
 		>{#if purchased}<Undo2Icon aria-hidden="true" />{:else}<ShoppingBagIcon
 				aria-hidden="true"
 			/>{/if}{purchased ? m.gift_mark_unbought() : m.gift_mark_bought()}</Item
+	>{/if}
+{#if has(RELEASE_RESERVATION_ACTION) && onreleasereservation}{@const releaseReservation =
+		onreleasereservation}{#if actions.length > 1}<Separator />{/if}<Item
+		disabled={disabledActions.has(RELEASE_RESERVATION_ACTION)}
+		class="text-status-danger-text"
+		onSelect={() => onfinish('handoff', releaseReservation)}
+		><KeyRoundIcon aria-hidden="true" />{m.reserve_release_button()}</Item
 	>{/if}

@@ -3,18 +3,33 @@
 	import { setGiftsContext } from '$lib/modules/gifts/gifts.context.svelte.js';
 	import { setLikesContext } from '$lib/modules/likes/likes.context.svelte.js';
 	import { setReservationsContext } from '$lib/modules/reservations/reservations.context.svelte.js';
-	import { RESERVATION_RELEASE_CAPABILITY } from '$lib/modules/wishlists/wishlist_capabilities.js';
+	import type { ReservationForModerator } from '$lib/modules/reservations/types.js';
+	import {
+		RESERVATION_RELEASE_CAPABILITY,
+		type ReservationReleaseCapability,
+	} from '$lib/modules/wishlists/wishlist_capabilities.js';
 	import GiftDetailModal from './GiftDetailModal.svelte';
 
-	/** Test-only harness: the read-only detail's action bar reads the wishlist page contexts. */
-	let props: ComponentProps<typeof GiftDetailModal> = $props();
+	/** Test-only harness: the Gift viewer's actions read the wishlist page contexts. */
+	type GiftDetailModalTestHostProps = ComponentProps<typeof GiftDetailModal> & {
+		releaseCapability?: ReservationReleaseCapability;
+		releaseLedger?: ReservationForModerator[];
+		isAuthenticated?: boolean;
+	};
+
+	let {
+		releaseCapability = RESERVATION_RELEASE_CAPABILITY.none,
+		releaseLedger = [],
+		isAuthenticated = true,
+		...props
+	}: GiftDetailModalTestHostProps = $props();
 
 	setGiftsContext(
 		() => props.wishlistId,
 		() => (props.gift != null ? [props.gift] : []),
 		() => props.role ?? 'visitor',
 		() => props.isArchived ?? false,
-		() => true,
+		() => isAuthenticated,
 		() => [],
 	);
 	setLikesContext(
@@ -23,8 +38,8 @@
 		() => {},
 	);
 	setReservationsContext(
-		() => RESERVATION_RELEASE_CAPABILITY.none,
-		() => [],
+		() => releaseCapability,
+		() => releaseLedger,
 		async () => false,
 	);
 </script>

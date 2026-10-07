@@ -10,6 +10,7 @@
 	import BookmarkIcon from '@lucide/svelte/icons/bookmark';
 	import BookmarkXIcon from '@lucide/svelte/icons/bookmark-x';
 	import ShoppingBagIcon from '@lucide/svelte/icons/shopping-bag';
+	import KeyRoundIcon from '@lucide/svelte/icons/key-round';
 	import * as ContextMenu from '$lib/components/base/context-menu/index.js';
 	import * as DropdownMenu from '$lib/components/base/dropdown-menu/index.js';
 	import * as Sheet from '$lib/components/base/sheet/index.js';
@@ -18,12 +19,18 @@
 	import WishlistSheetBody from './WishlistSheetBody.svelte';
 	import WishlistSheetHeader from './WishlistSheetHeader.svelte';
 	import GiftContextDesktopActions from './GiftContextDesktopActions.svelte';
-	import { giftContextActions } from '$lib/modules/gifts/gift_context_actions.js';
+	import {
+		RELEASE_RESERVATION_ACTION,
+		giftContextActions,
+		type GiftContextOrigin,
+	} from '$lib/modules/gifts/gift_context_actions.js';
 	import { normalizeGiftUrl } from '$lib/modules/gifts/gift_url.js';
 	import type { WishlistRole } from '$lib/modules/wishlists/types.js';
+	import type { ReservationReleaseCapability } from '$lib/modules/wishlists/wishlist_capabilities.js';
 	import * as m from '$lib/paraglide/messages.js';
 	import type {
 		GiftActionPlacementSnapshot,
+		GiftContextCommandCallbacks,
 		GiftContextFinishPolicy,
 	} from './gift_context_invocation.js';
 
@@ -31,7 +38,7 @@
 		id: string;
 		label: string;
 	}
-	interface Props {
+	interface Props extends GiftContextCommandCallbacks {
 		sessionId: number;
 		programmaticOpen: boolean;
 		mobile: boolean;
@@ -46,6 +53,9 @@
 		ownsReservation?: boolean;
 		canTrackPurchased?: boolean;
 		purchased?: boolean;
+		releaseCapability?: ReservationReleaseCapability;
+		releaseLedgerCount?: number;
+		origin?: GiftContextOrigin;
 		priorityReady?: boolean;
 		categoryReady?: boolean;
 		priorityLevels: Choice[];
@@ -55,15 +65,6 @@
 		placementSnapshot?: GiftActionPlacementSnapshot;
 		onclose: () => void;
 		oncomplete: (sessionId: number) => void;
-		onfinish: (policy: GiftContextFinishPolicy, callback: () => void) => void;
-		onedit: () => void;
-		onpriority: (id: string | null) => void;
-		oncategory: (id: string | null) => void;
-		onreceived: () => void;
-		onselect: () => void;
-		onreserve?: () => void;
-		oncancelreservation?: () => void;
-		onpurchased?: () => void;
 		oncopysuccess?: () => void;
 		oncopyerror?: () => void;
 	}
@@ -82,6 +83,9 @@
 		ownsReservation = false,
 		canTrackPurchased = false,
 		purchased = false,
+		releaseCapability,
+		releaseLedgerCount = 0,
+		origin = 'card',
 		priorityReady = false,
 		categoryReady = false,
 		priorityLevels,
@@ -100,6 +104,7 @@
 		onreserve,
 		oncancelreservation,
 		onpurchased,
+		onreleasereservation,
 		oncopysuccess,
 		oncopyerror,
 	}: Props = $props();
@@ -118,6 +123,9 @@
 			canReserve,
 			ownsReservation,
 			canTrackPurchased,
+			releaseCapability,
+			releaseLedgerCount,
+			origin,
 		}),
 	);
 	const actions = $derived(
@@ -186,7 +194,8 @@
 		| 'multiselect'
 		| 'reserve'
 		| 'cancel-reservation'
-		| 'purchased',
+		| 'purchased'
+		| 'release-reservation',
 )}
 	{#if action === 'open'}<ExternalLinkIcon />{:else if action === 'copy'}<CopyIcon
 		/>{:else if action === 'edit'}<PencilIcon
@@ -201,7 +210,37 @@
 			aria-hidden="true"
 		/>{:else if action === 'purchased'}<ShoppingBagIcon
 			aria-hidden="true"
+		/>{:else if action === RELEASE_RESERVATION_ACTION}<KeyRoundIcon
+			aria-hidden="true"
 		/>{:else}<ListChecksIcon />{/if}
+{/snippet}
+
+{#snippet desktopActions(kind: 'context' | 'dropdown')}
+	<GiftContextDesktopActions
+		{kind}
+		{actions}
+		{disabledActions}
+		{safePrimaryUrl}
+		{received}
+		{purchased}
+		{priorityReady}
+		{categoryReady}
+		{priorityLevels}
+		{categories}
+		{priorityLevelId}
+		{categoryId}
+		onfinish={finish}
+		oncopy={() => void copyLink()}
+		{onedit}
+		{onpriority}
+		{oncategory}
+		{onreceived}
+		{onselect}
+		{onreserve}
+		{oncancelreservation}
+		{onpurchased}
+		{onreleasereservation}
+	/>
 {/snippet}
 
 {#if mobile}
@@ -324,6 +363,14 @@
 								? m.gift_mark_unbought()
 								: m.gift_mark_bought()}</WishlistSheetAction
 						>{/if}
+					{#if has(RELEASE_RESERVATION_ACTION) && onreleasereservation}<WishlistSheetAction
+							disabled={isDisabled(RELEASE_RESERVATION_ACTION)}
+							surfaceClass={reversalSurfaceClass}
+							onclick={() => finish('handoff', onreleasereservation)}
+							>{@render icon(
+								RELEASE_RESERVATION_ACTION,
+							)}{m.reserve_release_button()}</WishlistSheetAction
+						>{/if}
 				{/if}
 			</WishlistSheetBody>
 		</WishlistBottomSheet>
@@ -342,30 +389,7 @@
 			customAnchor={desktopAnchor}
 			onCloseAutoFocus={handleCloseAutoFocus}
 		>
-			<GiftContextDesktopActions
-				kind="dropdown"
-				{actions}
-				{disabledActions}
-				{safePrimaryUrl}
-				{received}
-				{purchased}
-				{priorityReady}
-				{categoryReady}
-				{priorityLevels}
-				{categories}
-				{priorityLevelId}
-				{categoryId}
-				onfinish={finish}
-				oncopy={() => void copyLink()}
-				{onedit}
-				{onpriority}
-				{oncategory}
-				{onreceived}
-				{onselect}
-				{onreserve}
-				{oncancelreservation}
-				{onpurchased}
-			/>
+			{@render desktopActions('dropdown')}
 		</DropdownMenu.Content>
 	</DropdownMenu.Root>
 	<ContextMenu.Content
@@ -376,29 +400,6 @@
 			event.preventDefault();
 		}}
 	>
-		<GiftContextDesktopActions
-			kind="context"
-			{actions}
-			{disabledActions}
-			{safePrimaryUrl}
-			{received}
-			{purchased}
-			{priorityReady}
-			{categoryReady}
-			{priorityLevels}
-			{categories}
-			{priorityLevelId}
-			{categoryId}
-			onfinish={finish}
-			oncopy={() => void copyLink()}
-			{onedit}
-			{onpriority}
-			{oncategory}
-			{onreceived}
-			{onselect}
-			{onreserve}
-			{oncancelreservation}
-			{onpurchased}
-		/>
+		{@render desktopActions('context')}
 	</ContextMenu.Content>
 {/if}

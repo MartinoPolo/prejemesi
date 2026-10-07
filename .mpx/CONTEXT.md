@@ -56,48 +56,49 @@ target** — A gift consumer surface group by aspect family. Two ACTIVE, editor-
 persistence despite the aspect no longer being square, issue #183) and `thumb` (true 1:1 — the
 reservation-modal thumb and the saved square List composition; full-height mobile List frames and
 taller desktop List frames show a portrait side-window of that composition). Plus two retired legacy
-fallbacks kept only to parse old rows: `card` (~2.78:1) and `detail` (~0.5 — the visitor detail
-modal now shows the uncropped photo instead, see below). The 1:1 `thumb` reads
+fallbacks kept only to parse old rows: `card` (~2.78:1) and `detail` (~0.5 — the **Gift viewer** now
+shows the uncropped photo instead, see below). The 1:1 `thumb` reads
 `targets.thumb ?? targets.square` and reprojects the same focal+zoom at render time, so pre-#183
 crops carry over with no migration. Manual crops persist per target in `image_meta.targets`; targets
 without one keep automatic center cover-fit framing. Aspect specs live in `crop_targets.ts` (single
-source for editor stage, previews, and e2e asserts). The visitor gift detail view is NOT a
-crop-target consumer — it renders the full photo at its natural aspect ratio inside a height cap.
-**Image slot** — A named display position on a wishlist: `card` (dashboard banner ~2.84:1),
-`thumbnail` (1:1 — header polaroid, nav, list rows), or `social` (1.91:1 OG preview). Each slot
-carries its own independent crop metadata (`image_slots` JSON column). The legacy `banner` slot is
-retired from the editor (persisted JSON retained). **App palette** — A per-user appearance
-preference mirrored in a cookie and applied as SSR `data-palette` on `<html>`; the old
-app-background theme axis is retired. **Scoped wishlist palette** — Palette-derived semantic tokens
-applied on the wishlist subtree without changing the viewer's app-shell palette. **Image-frame
-fill** — The independently selected background behind letterboxed images, including white, black, or
-the default transparent/dotted mat. **Palette derivation** — Curated primitives derive semantic
-colors through CSS `color-mix(in oklab, …)`; arbitrary category-picker hex colors are not custom
-wishlist palettes. **Sharing** — Distributing a wishlist link. Freezes each existing gift's identity
-(`name`) and blocks delete, but leaves presentation/info fields editable (image, links, price,
-priority, append-only description; quantity raise-only). See Post-share editing. **Post-share grace
-window** — A 2-minute reversibility window for sharing, each description append, and the event-date
-lock; later gift edits never reopen gift name/delete grace. **Description append** — A post-share
-description change: an immutable, accent-colored, timestamped addition. The original text freezes at
-share time and is preserved for the gifter; Card/List previews show only the latest append; full
-history remains available in detail and editors. **Archive** — A read-only state for a completed
-wishlist; visually distinct, no new reservations accepted. **Unfollowed** — A wishlist the user was
-previously invited to / followed but has since unfollowed. Tracked for re-discovery via toggle on
-the Sledované page. **Gift draft** — An unsaved, editable gift row (name, notes, link(s), price) in
-the import or batch grid, before it is committed as a real Gift. **Draft grid** — The editable
-multi-row table that powers both the import Review step and batch gift entry; each row is a Gift
-draft. **Enrichment** — Auto-filling a gift's image / price / title from its link (and, in a later
-phase, by searching for it by name). **Import wizard** — The 3-step Source → Review → Confirm flow
-that turns a pasted/uploaded CSV or Google Sheet into gifts. **Batch add** — Adding multiple gifts
-at once via the shared draft grid (distinct from the import wizard, which sources data externally).
+source for editor stage, previews, and e2e asserts). The **Gift viewer** is NOT a crop-target
+consumer — it renders the full photo at its natural aspect ratio inside a height cap. **Image slot**
+— A named display position on a wishlist: `card` (dashboard banner ~2.84:1), `thumbnail` (1:1 —
+header polaroid, nav, list rows), or `social` (1.91:1 OG preview). Each slot carries its own
+independent crop metadata (`image_slots` JSON column). The legacy `banner` slot is retired from the
+editor (persisted JSON retained). **App palette** — A per-user appearance preference mirrored in a
+cookie and applied as SSR `data-palette` on `<html>`; the old app-background theme axis is retired.
+**Scoped wishlist palette** — Palette-derived semantic tokens applied on the wishlist subtree
+without changing the viewer's app-shell palette. **Image-frame fill** — The independently selected
+background behind letterboxed images, including white, black, or the default transparent/dotted mat.
+**Palette derivation** — Curated primitives derive semantic colors through CSS
+`color-mix(in oklab, …)`; arbitrary category-picker hex colors are not custom wishlist palettes.
+**Sharing** — Distributing a wishlist link. Freezes each existing gift's identity (`name`) and
+blocks delete, but leaves presentation/info fields editable (image, links, price, priority,
+append-only description; quantity raise-only). See Post-share editing. **Post-share grace window** —
+A 2-minute reversibility window for sharing, each description append, and the event-date lock; later
+gift edits never reopen gift name/delete grace. **Description append** — A post-share description
+change: an immutable, accent-colored, timestamped addition. The original text freezes at share time
+and is preserved for the gifter; Card/List previews show only the latest append; full history
+remains available in detail and editors. **Archive** — A read-only state for a completed wishlist;
+visually distinct, no new reservations accepted. **Unfollowed** — A wishlist the user was previously
+invited to / followed but has since unfollowed. Tracked for re-discovery via toggle on the Sledované
+page. **Gift draft** — An unsaved, editable gift row (name, notes, link(s), price) in the import or
+batch grid, before it is committed as a real Gift. **Draft grid** — The editable multi-row table
+that powers both the import Review step and batch gift entry; each row is a Gift draft.
+**Enrichment** — Auto-filling a gift's image / price / title from its link (and, in a later phase,
+by searching for it by name). **Import wizard** — The 3-step Source → Review → Confirm flow that
+turns a pasted/uploaded CSV or Google Sheet into gifts. **Batch add** — Adding multiple gifts at
+once via the shared draft grid (distinct from the import wizard, which sources data externally).
 **Piece count** — Gift quantity; ordinary recipients see quantity without reserved counts, while
-disclosed self-promotion and other role capabilities govern reservation visibility. **Multi-link** —
-Multiple URLs attached to a single gift (up to 10); `links[0]` is treated as the primary link.
-**Přehled** — The logged-in home page at `/home`: horizontal carousel rows (Nedávné, Sledované,
-Spravované, Moje seznamy). Target of `/`, the post-login default, and the logo; in the mobile drawer
-but not the desktop nav. **Nedávné** — The top Přehled row: wishlists across all roles sorted by
-last visit (via `lastVisitedAt` upserted on logged-in wishlist visits), follow-date fallback, not
-deduped from the category rows.
+disclosed self-promotion and other role capabilities govern reservation visibility. **Gift viewer**
+— The read-only, photo-first gift detail with a caption and the viewer's applicable actions;
+managers get the gift editor instead. **Multi-link** — Multiple URLs attached to a single gift (up
+to 10); `links[0]` is treated as the primary link. **Přehled** — The logged-in home page at `/home`:
+horizontal carousel rows (Nedávné, Sledované, Spravované, Moje seznamy). Target of `/`, the
+post-login default, and the logo; in the mobile drawer but not the desktop nav. **Nedávné** — The
+top Přehled row: wishlists across all roles sorted by last visit (via `lastVisitedAt` upserted on
+logged-in wishlist visits), follow-date fallback, not deduped from the category rows.
 
 _Avoid_: "list" for Wishlist (ambiguous), "present" for Gift (confusing with time), "bookmark" for
 Like, "claim" for Reservation.

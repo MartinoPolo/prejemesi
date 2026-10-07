@@ -131,10 +131,16 @@ async function prepareRestingControl(page: Page, control: Locator) {
 		.toBe(0);
 }
 
+export interface RestingShadowOptions {
+	/** Flat controls cast no resting shadow, so probes start at their own lower edge. */
+	restingShadow?: boolean;
+}
+
 export async function stationaryLowerEdge(
 	page: Page,
 	control: Locator,
 	controlName: string,
+	{ restingShadow = true }: RestingShadowOptions = {},
 ): Promise<StationaryEvidence> {
 	await prepareRestingControl(page, control);
 	let box = await control.boundingBox();
@@ -147,11 +153,13 @@ export async function stationaryLowerEdge(
 			top: after.top,
 		};
 	});
-	const ordinaryShadowOffset = await control.evaluate((element) =>
-		Number.parseFloat(
-			getComputedStyle(element).getPropertyValue('--elevation-ordinary-offset'),
-		),
-	);
+	const ordinaryShadowOffset = restingShadow
+		? await control.evaluate((element) =>
+				Number.parseFloat(
+					getComputedStyle(element).getPropertyValue('--elevation-ordinary-offset'),
+				),
+			)
+		: 0;
 	const viewportHeight = await page.evaluate(() => window.innerHeight);
 	if (box!.y < 0 || box!.y + box!.height + ordinaryShadowOffset >= viewportHeight) {
 		await control.evaluate((element) => element.scrollIntoView({ block: 'center' }));
@@ -305,16 +313,11 @@ export async function stationaryLowerEdge(
 	};
 }
 
-export interface BottomToTopSweepOptions {
-	/** Flat controls cast no resting shadow, so the sweep starts at their own lower edge. */
-	restingShadow?: boolean;
-}
-
 export async function bottomToTopSweep(
 	page: Page,
 	control: Locator,
 	controlName: string,
-	{ restingShadow = true }: BottomToTopSweepOptions = {},
+	{ restingShadow = true }: RestingShadowOptions = {},
 ) {
 	await prepareRestingControl(page, control);
 	const box = await control.boundingBox();

@@ -660,11 +660,6 @@
 		box-shadow: var(--elevation-lifted);
 		translate: 0 -2px;
 	}
-
-	.elevation-owner-like:not(:disabled, [aria-disabled='true'], [data-disabled]):hover
-		> .elevation-surface {
-		scale: 1.08;
-	}
 }
 
 .elevation-owner-raised.elevation-owner-anchored:is([data-state='open'], [aria-expanded='true'])
