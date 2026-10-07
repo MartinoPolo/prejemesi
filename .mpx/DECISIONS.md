@@ -367,6 +367,13 @@ sections for UI work. Historical reconciliation and review notes are in
   moves insert before the new next neighbour (else after the previous one) and change
   priority/category through the post-share edit path, atomically with the order, offering a Vrátit
   toast. Only the dragged card shows the live grouping badge (#454).
+- 2026-10-06: Card press belongs to presses that start on card content; inner controls and open
+  action surfaces never press the card, and an open desktop dropdown keeps the card lifted (#450).
+- 2026-10-06: Card view offers Automatic/4/5 columns per device (desktop from `sm`, not part of
+  Reset display). Counts are offered only when cards keep 13.5rem, the measured width for the widest
+  primary action, More and depth clearance; otherwise fall back to the largest count that fits
+  (#451). A chosen count widens the whole page, navbar included, so cards keep the Automatic
+  default-width card size until the viewport caps it (`--content-max-width` in `src/app.css`).
 
 ## Forms & settings
 
@@ -513,6 +520,10 @@ sections for UI work. Historical reconciliation and review notes are in
   `src/app.css`); container insets add clearance on shadowed edges only; spacing never changes on
   hover. Floating layers add clearance only for shadowed triggers; hover-opened layers keep the
   trigger-to-layer gap pointer-safe.
+- 2026-10-06: Depth options preview their own shadow; selection uses primary fill, never shadow
+  (#449).
+- 2026-10-06: Rows running under an overlay close button reserve `--overlay-close-clearance`
+  (`src/app.css`) at their end (#453).
 
 ## Images & cropping
 
