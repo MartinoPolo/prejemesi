@@ -754,6 +754,72 @@
 	pointer-events: none !important;
 }
 
+/* One indicator per segmented control or tab group paints the selected face so it can slide between
+   options (`src/lib/motion/selection_slide.ts`); until it is placed, options paint their own face.
+   Group and option stacking stays layered so consumer utilities can override it. */
+@layer components {
+	[data-selection-group] {
+		position: relative;
+		isolation: isolate;
+	}
+
+	[data-selection-group] > :not([data-slot='selection-indicator']) {
+		position: relative;
+		z-index: 1;
+	}
+}
+
+[data-slot='selection-indicator'] {
+	position: absolute;
+	top: 0;
+	left: 0;
+	z-index: 0;
+	box-sizing: border-box;
+	width: var(--selection-width);
+	height: var(--selection-height);
+	translate: var(--selection-x) var(--selection-y);
+	pointer-events: none;
+	visibility: hidden;
+}
+
+[data-selection-placed] > [data-slot='selection-indicator'] {
+	visibility: visible;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+	[data-selection-animatable] > [data-slot='selection-indicator'] {
+		transition-property: translate, width, height;
+		transition-duration: var(--duration-normal);
+		transition-timing-function: var(--ease-standard);
+	}
+}
+
+/* Faces are the group's own options or, for connected toggles, their direct surface, so nested
+   groups never hide each other's faces. Without decoration transitions, a face the indicator just
+   took over cannot fade out as a ghost of itself. */
+:is(
+	[data-selection-placed] > [data-selection-face],
+	[data-selection-placed] > * > [data-selection-face]
+) {
+	border-color: transparent !important;
+	background-color: transparent !important;
+	box-shadow: none !important;
+	transition-property: color !important;
+}
+
+:is(
+	[data-selection-placed] > [data-selection-face],
+	[data-selection-placed] > * > [data-selection-face]
+):not(:focus-visible) {
+	outline-color: transparent !important;
+}
+
+/* A keyboard-focused selected option shows only its focus ring, as before the face slid. */
+[data-selection-placed]:has(> [data-selection-face]:focus-visible)
+	> [data-slot='selection-indicator'] {
+	outline-color: transparent;
+}
+
 @media (prefers-reduced-motion: no-preference) {
 	.elevation-owner:hover > .dialog-close-surface svg {
 		rotate: 90deg;
