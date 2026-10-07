@@ -524,6 +524,9 @@ sections for UI work. Historical reconciliation and review notes are in
   (#449).
 - 2026-10-06: Rows running under an overlay close button reserve `--overlay-close-clearance`
   (`src/app.css`) at their end (#453).
+- 2026-10-07: Segmented controls and tabs keep their resting look and slide the selected face to the
+  new option; no hover lift, which settings-tab track clipping also rules out. Segmented trays hug
+  their options rather than stretching to the container (#455).
 
 ## Images & cropping
 
