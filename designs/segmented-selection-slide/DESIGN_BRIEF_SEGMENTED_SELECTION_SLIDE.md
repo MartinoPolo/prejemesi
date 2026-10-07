@@ -2,8 +2,8 @@
 
 > **Status**: Refined (Variant 1 · Slide) **Refined mockup**:
 > `designs/segmented-selection-slide/refined.html` **Summary**:
-> `designs/segmented-selection-slide/SUMMARY.md` **Refinements**: slide only (no hover lift), default
-> tray hugs its options
+> `designs/segmented-selection-slide/SUMMARY.md` **Refinements**: slide only (no hover lift), no tab
+> press scale, default tray hugs its options
 
 Design reference for [#455](https://github.com/MartinoPolo/prejemesi/issues/455). Requirements live
 in the issue; this folder shows them in the real app surroundings.
@@ -11,7 +11,8 @@ in the issue; this folder shows them in the real app surroundings.
 ## Goal
 
 Keep the shipped look of every segmented control and tab strip, and animate the selection: the
-selected face slides from the previous option to the new one. Hover and press stay static. The
+selected face slides from the previous option to the new one. Hover and press stay static; the
+slide is the only press feedback, so the settings tabs lose their press scale. The
 default segmented tray hugs its options instead of stretching across a flex-column parent.
 
 ## Contexts

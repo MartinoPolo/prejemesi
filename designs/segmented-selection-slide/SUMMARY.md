@@ -4,7 +4,8 @@
 
 ## Refinements Applied
 
-Variant 1 refined with: slide only (hover lift removed), default tray hugs its options. See the
+Variant 1 refined with: slide only (hover lift removed), no tab press scale, default tray hugs its
+options. See the
 design brief and #455 for full requirements. Structural change from the study: the shipped instant
 baseline, the hover-lift variant and the dark-shadow experiment are gone, so only the final
 behaviour remains.
@@ -45,5 +46,7 @@ None.
   between `/login` and `/register` (or start from the previous route's position).
 - Settings tab track scrolls horizontally; the indicator lives inside the scroller so it scrolls
   with its tab.
+- Press feedback is the slide alone: drop `active:scale-[0.97]` from the base `Tab`
+  (`tabs_variants.ts`); the other controls already stay unscaled on press.
 - Tray fix: add `w-fit` to the default `segmentedToggleVariants` root. Stories wrap toggles in
   `items-start`, so add a story inside a stretching parent to keep the regression visible.

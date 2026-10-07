@@ -39,6 +39,11 @@
 	}
 }
 
+/* Proposed fix: pressing an option starts the slide; the shipped Tab press scale competes with it. */
+[data-slide-group] > [role='tab']:active {
+	scale: 1;
+}
+
 /* Proposed fix: the default tray hugs its options, like the connected presentation's `w-fit`. */
 [data-slot='toggle-group']:not(.segmented-toggle-connected) {
 	width: fit-content;
