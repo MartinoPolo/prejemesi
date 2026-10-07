@@ -3,6 +3,10 @@ import { render } from 'vitest-browser-svelte';
 import { page, userEvent } from 'vitest/browser';
 import { describe, expect, it, vi } from 'vitest';
 import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
+import {
+	isIndicatorOnFace,
+	selectionIndicatorOf,
+} from '../../../../../tests/helpers/selection-slide-assertions.mjs';
 import { GIFT_VIEW_MODES } from '$lib/modules/gifts/types.js';
 import GiftViewSwitcher from './GiftViewSwitcher.svelte';
 
@@ -296,13 +300,18 @@ describe('GiftViewSwitcher toggle selection (fixes: re-click deselects both item
 					expectPixelsNear(parseFloat(cardStyle.borderWidth), 0);
 					expectPixelsNear(parseFloat(listStyle.borderWidth), 0);
 					expectPixelsNear(parseFloat(groupStyle.getPropertyValue('--border-w')), 2.5);
-					const selectedBorderWidth = getComputedStyle(cardSurface).borderWidth;
-					expect(parseFloat(selectedBorderWidth)).toBeGreaterThan(0);
-					expect(getComputedStyle(cardSurface).borderColor).toBe('rgb(77, 88, 99)');
-					expect(getComputedStyle(cardSurface).backgroundColor).toBe('rgb(44, 55, 66)');
-					expect(hasVisibleBoxShadow(cardSurface)).toBe(false);
-					expectPixelsNear(parseFloat(getComputedStyle(listSurface).borderWidth), 0);
-					expect(getComputedStyle(listSurface).backgroundColor).toBe('rgba(0, 0, 0, 0)');
+					// The selected Button face is drawn by the sliding indicator over the selected surface.
+					const selectedFace = selectionIndicatorOf(group);
+					const selectedFaceStyle = getComputedStyle(selectedFace);
+					expectPixelsNear(parseFloat(selectedFaceStyle.borderWidth), 2.5);
+					expect(selectedFaceStyle.borderColor).toBe('rgb(77, 88, 99)');
+					expect(selectedFaceStyle.backgroundColor).toBe('rgb(44, 55, 66)');
+					expect(hasVisibleBoxShadow(selectedFace)).toBe(false);
+					expect(isIndicatorOnFace(group, cardSurface)).toBe(true);
+					for (const surface of [cardSurface, listSurface]) {
+						expect(getComputedStyle(surface).backgroundColor).toBe('rgba(0, 0, 0, 0)');
+						expect(hasVisibleBoxShadow(surface)).toBe(false);
+					}
 					expect(cardStyle.outlineStyle).not.toBe('solid');
 					expect(listStyle.outlineStyle).not.toBe('solid');
 					expectPixelsNear(
@@ -310,12 +319,21 @@ describe('GiftViewSwitcher toggle selection (fixes: re-click deselects both item
 						requireElement(list.querySelector('svg')).getBoundingClientRect().y,
 					);
 
+					const restingSurfaceBorderWidths = [cardSurface, listSurface].map(
+						(surface) => getComputedStyle(surface).borderWidth,
+					);
+
 					await list.click();
 
-					expectPixelsNear(parseFloat(getComputedStyle(cardSurface).borderWidth), 0);
+					await expect.poll(() => isIndicatorOnFace(group, listSurface)).toBe(true);
+					expect(
+						[cardSurface, listSurface].map(
+							(surface) => getComputedStyle(surface).borderWidth,
+						),
+					).toEqual(restingSurfaceBorderWidths);
+					expectPixelsNear(parseFloat(getComputedStyle(selectedFace).borderWidth), 2.5);
+					expect(getComputedStyle(selectedFace).backgroundColor).toBe('rgb(44, 55, 66)');
 					expect(getComputedStyle(cardSurface).backgroundColor).toBe('rgba(0, 0, 0, 0)');
-					expect(getComputedStyle(listSurface).borderWidth).toBe(selectedBorderWidth);
-					expect(getComputedStyle(listSurface).backgroundColor).toBe('rgb(44, 55, 66)');
 					expect(getComputedStyle(group, '::before').boxShadow).toBe(
 						backingStyle.boxShadow,
 					);
@@ -363,6 +381,7 @@ describe('GiftViewSwitcher toggle selection (fixes: re-click deselects both item
 		const previousDepth = root.dataset.depth;
 		const wasDark = root.classList.contains('dark');
 		const { screen, group, card, cardSurface } = await renderDefaultCardSwitcher();
+		const selectedFace = selectionIndicatorOf(group);
 		const contextualPaint = new Set<string>();
 
 		try {
@@ -371,10 +390,10 @@ describe('GiftViewSwitcher toggle selection (fixes: re-click deselects both item
 				for (const depth of ['soft', 'ink', 'black']) {
 					root.dataset.depth = depth;
 					contextualPaint.add(
-						`${getComputedStyle(group, '::before').boxShadow}|${getComputedStyle(cardSurface).backgroundColor}`,
+						`${getComputedStyle(group, '::before').boxShadow}|${getComputedStyle(selectedFace).backgroundColor}`,
 					);
 					expect(getComputedStyle(group, '::before').boxShadow).not.toBe('none');
-					expect(hasVisibleBoxShadow(cardSurface)).toBe(false);
+					expect(hasVisibleBoxShadow(selectedFace)).toBe(false);
 				}
 			}
 			expect(contextualPaint.size).toBeGreaterThan(3);
