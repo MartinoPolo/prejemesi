@@ -12,6 +12,10 @@
 <DialogPrimitive.Title
 	bind:ref
 	data-slot="dialog-title"
-	class={cn('font-heading text-2xl leading-tight font-semibold break-words', className)}
+	class={cn(
+		// Centered mobile titles reserve the close-button clearance on both sides.
+		'font-heading text-2xl leading-tight font-semibold break-words in-data-close-button:px-(--overlay-close-clearance-inside-dialog-padding) sm:in-data-close-button:ps-0',
+		className,
+	)}
 	{...restProps}
 />

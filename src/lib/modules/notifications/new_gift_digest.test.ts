@@ -1,6 +1,10 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+
+vi.mock('$app/server', () => ({ getRequestEvent: vi.fn() }));
+import { getRequestEvent } from '$app/server';
 import {
 	addToNewGiftDigestPayload,
+	coalesceNewGiftDigests,
 	getNewGiftDigestDisplay,
 	parseNewGiftDigestPayload,
 } from './new_gift_digest.js';
@@ -109,5 +113,37 @@ describe('new gift digest payload', () => {
 		expect(getNewGiftDigestDisplay(multi, 'en').message).toContain(
 			'2 new gifts on 2 wishlists',
 		);
+	});
+});
+
+describe('new gift digest in the demo playground', () => {
+	it('writes no follower digest for gifts added inside a demo session', async () => {
+		vi.mocked(getRequestEvent).mockReturnValue({
+			locals: { demoSession: { id: 'demo-session' } },
+		} as ReturnType<typeof getRequestEvent>);
+		const touchedTransactionMembers: PropertyKey[] = [];
+		const untouchableTransaction = new Proxy(
+			{},
+			{
+				get: (_target, member) => {
+					touchedTransactionMembers.push(member);
+					throw new Error('The demo digest must not query or write');
+				},
+			},
+		) as Parameters<typeof coalesceNewGiftDigests>[0];
+
+		await coalesceNewGiftDigests(untouchableTransaction, {
+			wishlist: {
+				id: 'demo-wishlist',
+				shortId: 'demo-list',
+				title: 'Demo list',
+				recipientUserId: 'demo-recipient',
+			},
+			actorId: 'demo-viewer',
+			giftNames: ['Teapot'],
+			now: new Date(),
+		});
+
+		expect(touchedTransactionMembers).toEqual([]);
 	});
 });

@@ -33,6 +33,8 @@ import {
 } from './sheets_link.js';
 import { ImportGiftsInputSchema, CreateWishlistFromImportInputSchema } from './import_types.js';
 
+import { rejectDemoOperation } from '$lib/server/demo/scope.js';
+
 const SheetLinkSchema = v.pipe(v.string(), v.trim(), v.minLength(1));
 
 /**
@@ -45,6 +47,7 @@ const SheetLinkSchema = v.pipe(v.string(), v.trim(), v.minLength(1));
  * Returns the raw CSV string; parsing happens client-side to keep the Worker thin.
  */
 export const fetchGoogleSheetCsv = guardedCommand(SheetLinkSchema, async (_authContext, link) => {
+	rejectDemoOperation();
 	const built = buildSheetsCsvExportUrl(link);
 	if (!built.ok) {
 		error(400, built.code);
@@ -195,6 +198,7 @@ export type ImportGiftsResult =
  * transaction. Returns the created gift rows.
  */
 export const importGifts = guardedCommand(ImportGiftsInputSchema, async ({ user }, input) => {
+	rejectDemoOperation();
 	const { wishlistRow } = await verifyManagerAccess(user.id, input.wishlistId);
 	assertWishlistMutable(wishlistRow);
 
@@ -261,6 +265,7 @@ export const importGifts = guardedCommand(ImportGiftsInputSchema, async ({ user 
 export const createWishlistFromImport = guardedCommand(
 	CreateWishlistFromImportInputSchema,
 	async ({ user }, input) => {
+		rejectDemoOperation();
 		const database = getDb();
 
 		return database.transaction(async (tx) => {

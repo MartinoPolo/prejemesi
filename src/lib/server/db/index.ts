@@ -70,12 +70,35 @@ const globalClientCache: Map<string, ReturnType<typeof drizzle>> = globalCacheHo
  */
 const requestClientCache = new WeakMap<RequestEvent, ReturnType<typeof drizzle>>();
 
+type Database = ReturnType<typeof drizzle>;
+export type DatabaseTransaction = Parameters<Parameters<Database['transaction']>[0]>[0];
+
+/** Scoped to one request; installed only after auth and removed before the request ends. */
+export function withRequestDatabaseTransaction<T>(
+	event: RequestEvent,
+	transaction: DatabaseTransaction,
+	work: () => Promise<T>,
+): Promise<T> {
+	if (event.locals.demoDatabaseTransaction) {
+		throw new Error('Demo transaction already active');
+	}
+	event.locals.demoDatabaseTransaction = transaction;
+	return work().finally(() => {
+		delete event.locals.demoDatabaseTransaction;
+	});
+}
+
 export function getDb(event?: RequestEvent) {
 	let requestEvent: RequestEvent | undefined;
 	try {
 		requestEvent = event ?? getRequestEvent();
 	} catch {
 		requestEvent = undefined;
+	}
+
+	if (requestEvent?.locals.demoDatabaseTransaction) {
+		// Transaction implements the query/transaction API; its only missing DB surface is $client.
+		return requestEvent.locals.demoDatabaseTransaction as unknown as Database;
 	}
 
 	const hyperdriveConnectionString = getHyperdriveConnectionString(requestEvent);

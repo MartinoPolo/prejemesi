@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en" data-depth="ink">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>Segmented selection slide</title>
+		<link rel="stylesheet" href="app-reference.css" />
+		<link rel="stylesheet" href="review.css" />
+		<script src="review.js" defer></script>
+	</head>
+	<body class="review-page">
+		<header class="review-header">
+			<p class="review-eyebrow">Refined — Variant 1 · Slide + tray hugs its options · #455</p>
+			<h1>Segmented selection slide</h1>
+			<p class="review-lead">
+				Every shipped segmented control and tab strip, captured 1:1 from the running app inside its
+				real container (desktop frames are 1280 px like the capture). Resting looks are unchanged;
+				selecting another option slides the selected face to it. Hover and press stay static. Click
+				the options, or focus one and use the arrow keys.
+			</p>
+			<div class="review-controls">
+				<fieldset data-control="device">
+					<legend>Device</legend>
+					<label><input type="radio" name="device" value="desktop" checked /> Desktop</label>
+					<label><input type="radio" name="device" value="mobile" /> Mobile 390 px</label>
+				</fieldset>
+				<fieldset data-control="depth">
+					<legend>Depth</legend>
+					<label><input type="radio" name="depth" value="soft" /> Jemné</label>
+					<label><input type="radio" name="depth" value="ink" checked /> Střední</label>
+					<label><input type="radio" name="depth" value="black" /> Černé</label>
+				</fieldset>
+				<fieldset data-control="mode">
+					<legend>Mode</legend>
+					<label><input type="radio" name="mode" value="light" checked /> Light</label>
+					<label><input type="radio" name="mode" value="dark" /> Dark</label>
+				</fieldset>
+				<label class="review-select"
+					>Palette
+					<select name="palette">
+						<option value="captured" selected>As captured</option>
+						<option value="ruby">ruby</option>
+						<option value="sky">sky</option>
+						<option value="ocean">ocean</option>
+						<option value="matcha">matcha</option>
+						<option value="honey">honey</option>
+						<option value="grape">grape</option>
+						<option value="graphite">graphite</option>
+					</select></label
+				>
+			</div>
+			<p class="review-note">
+				Motion uses <code>--duration-normal</code> and <code>--ease-standard</code>; with reduced
+				motion the selection switches instantly. First render, resize and depth or palette changes
+				place the face without animating.
+			</p>
+		</header>
+		<main class="review-variants" data-variants></main>
+		<template data-variant-template>
+			<section class="review-variant">
+				<header>
+					<h2 data-variant-title></h2>
+					<p data-variant-description></p>
+				</header>
+				<div class="review-frame-shell"><iframe></iframe></div>
+			</section>
+		</template>
+	</body>
+</html>

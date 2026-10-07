@@ -1,5 +1,6 @@
 <script lang="ts">
 	import * as m from '$lib/paraglide/messages.js';
+	import { page } from '$app/state';
 	import {
 		getUserProfile,
 		updateProfile,
@@ -50,30 +51,37 @@
 	</div>
 
 	<div class="settings-sections stagger-pop">
-		<SettingsProfileSection
-			email={profile.email}
-			isOAuthUser={profile.isOAuthUser}
-			hasGoogleAccount={profile.hasGoogleAccount}
-			initialName={profile.name}
-			initialAvatarUrl={profile.imageUrl}
-			initialImageValue={profile.image}
-			onSave={handleProfileSave}
-			onFetchGoogleAvatar={handleFetchGoogleAvatar}
-		/>
+		{#if page.data.demoExpiresAt !== null}
+			<p class="rounded-lg border border-border bg-card p-4 text-muted-foreground">
+				{m.demo_account_limits()}
+			</p>
+			<SettingsAppearanceSection />
+		{:else}
+			<SettingsProfileSection
+				email={profile.email}
+				isOAuthUser={profile.isOAuthUser}
+				hasGoogleAccount={profile.hasGoogleAccount}
+				initialName={profile.name}
+				initialAvatarUrl={profile.imageUrl}
+				initialImageValue={profile.image}
+				onSave={handleProfileSave}
+				onFetchGoogleAvatar={handleFetchGoogleAvatar}
+			/>
 
-		{#if profile.isOAuthUser !== true}
-			<SettingsSecuritySection />
+			{#if profile.isOAuthUser !== true}
+				<SettingsSecuritySection />
+			{/if}
+
+			<SettingsNotificationsSection
+				initialPreferences={notificationPreferences}
+				onSave={(preferences: NotificationPreferences) =>
+					updateNotificationPreferences({ preferences })}
+			/>
+
+			<SettingsAppearanceSection />
+
+			<SettingsDangerSection />
 		{/if}
-
-		<SettingsNotificationsSection
-			initialPreferences={notificationPreferences}
-			onSave={(preferences: NotificationPreferences) =>
-				updateNotificationPreferences({ preferences })}
-		/>
-
-		<SettingsAppearanceSection />
-
-		<SettingsDangerSection />
 	</div>
 </div>
 

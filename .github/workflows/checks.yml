@@ -80,6 +80,7 @@ jobs:
                     5s --health-retries 20
         env:
             DATABASE_URL: postgres://root:mysecretpassword@localhost:5432/local
+            DEMO_TEST_ISOLATED_DATABASE: '1'
             # CI-only secret; production uses the Cloudflare-stored secret.
             AUTH_SECRET: ci-only-e2e-secret-0000000000000000
             ORIGIN: http://localhost:5173
@@ -106,9 +107,17 @@ jobs:
             - run: pnpm run paraglide:compile
             - run: pnpm exec svelte-kit sync
             - run: pnpm run db:seed
+            # The demo integration suite owns a separate local database, never the seeded E2E fixture.
+            - if: ${{ matrix.shard == 1 }}
+              run: |
+                  PGPASSWORD=mysecretpassword psql -h localhost -U root -d local -c 'CREATE DATABASE demo_verify'
+                  DATABASE_URL=postgres://root:mysecretpassword@localhost:5432/demo_verify pnpm run db:migrate
             # The database-backed server suite only needs one matrix runner; the Playwright
             # suite itself is split evenly across all four isolated PostgreSQL services.
             - if: ${{ matrix.shard == 1 }}
+              env:
+                  DEMO_TEST_DATABASE_URL: postgres://root:mysecretpassword@localhost:5432/demo_verify
+                  DEMO_TEST_ISOLATED_DATABASE: '1'
               run: pnpm exec vitest run --project server
             # The real-browser-zoom regression loads an unpacked Chromium extension,
             # which requires headed mode; provide a virtual display on Linux CI.

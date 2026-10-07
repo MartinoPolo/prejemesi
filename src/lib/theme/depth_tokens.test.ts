@@ -87,7 +87,7 @@ describe('canonical semantic depth tokens', () => {
 			'--elevation-lifted-offset: 4px',
 			'--elevation-pressed-offset: 1px',
 		]);
-		const recipeRule = ruleBody(':where(:root, [data-palette])');
+		const recipeRule = ruleBody(':where(:root, [data-palette], [data-depth])');
 		expect(recipeRule).toContain(
 			'--elevation-ordinary: var(--elevation-ordinary-offset) var(--elevation-ordinary-offset) 0\n\t\tvar(--hard-shadow)',
 		);

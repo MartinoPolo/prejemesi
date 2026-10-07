@@ -496,6 +496,7 @@
 		},
 	);
 	const viewMode = $derived(giftsContext.viewMode.current);
+	let cardColumnCapacity = $state<number | null>(null);
 	const reorderLayoutSupported = $derived(
 		viewMode === GIFT_VIEW_MODES.card || viewMode === GIFT_VIEW_MODES.list,
 	);
@@ -1809,6 +1810,7 @@
 		giftCount={headerGiftCount}
 		{recipientIsModerator}
 		{adminSettingsAvailable}
+		demo={page.data.demoExpiresAt !== null}
 		onshare={handleShareOpened}
 		onmoderators={handleModeratorsOpened}
 		onarchive={handleArchive}
@@ -1817,6 +1819,11 @@
 		onsettings={handleSettingsOpened}
 	/>
 
+	{#if page.data.demoExpiresAt !== null}
+		<p class="rounded-lg border border-border bg-card p-3 text-sm text-muted-foreground">
+			{m.demo_list_limits()}
+		</p>
+	{/if}
 	{#if isPreparing}
 		<WishlistPreparingNotice />
 	{:else}
@@ -1857,6 +1864,8 @@
 			groupingAvailability={giftsContext.groupingAvailability.current}
 			categoryFilterOptions={giftsContext.categoryFilterOptions.current}
 			priorityFilterOptions={giftsContext.priorityFilterOptions.current}
+			cardColumnOption={giftsContext.cardColumnOption.current}
+			{cardColumnCapacity}
 			{reorderMode}
 			{reorderDonePending}
 			reorderRecoveryPending={reorderBaselineStatus === REORDER_BASELINE_STATUS.refreshing}
@@ -1865,6 +1874,7 @@
 			onrecipientviewpreviewchange={handleRecipientViewPreviewChange}
 			onreordermodechange={handleReorderModeChange}
 			onviewmodechange={handleViewModeChange}
+			oncardcolumnoptionchange={(option) => (giftsContext.cardColumnOption.current = option)}
 			onsortchange={handleSortChange}
 			onfilterchange={handleFilterChange}
 			ongroupingchange={handleGroupingChange}
@@ -1957,6 +1967,8 @@
 			{isArchived}
 			{hideReservationState}
 			{viewMode}
+			cardColumnOption={giftsContext.cardColumnOption.current}
+			oncardcolumncapacitychange={(capacity) => (cardColumnCapacity = capacity)}
 			isLoading={isGiftDataLoading}
 			{isEmpty}
 			{isFilteredEmpty}
@@ -2037,6 +2049,7 @@
 </Dialog.Root>
 
 <WishlistModals
+	demo={page.data.demoExpiresAt !== null}
 	{role}
 	{canManage}
 	{isAuthenticated}
@@ -2145,7 +2158,7 @@
 	</Dialog.Content>
 </Dialog.Root>
 
-{#if canManage}
+{#if canManage && page.data.demoExpiresAt === null}
 	<LazyImportWizard
 		bind:open={importWizardOpen}
 		mode={WIZARD_MODE.append}

@@ -115,6 +115,23 @@ beforeEach(() => {
 });
 
 describe('dispatchNotification – honoring per-user preferences', () => {
+	it('does not write notices or send email during a demo request', async () => {
+		mockGetRequestEvent.mockReturnValue({
+			locals: { demoSession: { id: 'visitor-a' } },
+		} as ReturnType<typeof getRequestEvent>);
+		const { db, insertedValues } = makeDispatcherDb([
+			{ id: 'real-recipient', email: 'real@test.cz', notificationPreferences: null },
+		]);
+		mockGetDb.mockReturnValue(db);
+		await dispatchNotification({
+			type: NOTIFICATION_TYPE.WISHLIST_ARCHIVED,
+			targetEmails: ['real@test.cz'],
+			targetUserIds: ['real-recipient'],
+		});
+		expect(insertedValues).toEqual([]);
+		expect(mockSendEmail).not.toHaveBeenCalled();
+	});
+
 	it('inserts in-app rows only for users with in-app enabled', async () => {
 		const type = NOTIFICATION_TYPE.RESERVED_GIFT_EDITED; // email-capable type
 		const { db, insertedValues } = makeDispatcherDb([

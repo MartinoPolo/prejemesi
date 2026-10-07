@@ -3,6 +3,7 @@ import { and, eq, inArray, isNull } from 'drizzle-orm';
 import { error } from '@sveltejs/kit';
 import { generateId } from '$lib/server/db/id.js';
 import { getDb } from '$lib/server/db/index.js';
+import { wishlistScope } from '$lib/server/demo/scope.js';
 import { gift, giftCategory } from '$lib/server/db/gift.schema.js';
 import { giftIngestionOrphan } from '$lib/server/db/ingestion.schema.js';
 import { moderatorAssignment } from '$lib/server/db/moderator.schema.js';
@@ -113,7 +114,7 @@ async function assertManagedWishlist(
 	const query = database
 		.select()
 		.from(wishlist)
-		.where(and(eq(wishlist.id, wishlistId), isNull(wishlist.deletedAt)))
+		.where(and(eq(wishlist.id, wishlistId), isNull(wishlist.deletedAt), wishlistScope()))
 		.limit(1);
 	const rows = lock ? await query.for('update') : await query;
 	const row = rows[0];

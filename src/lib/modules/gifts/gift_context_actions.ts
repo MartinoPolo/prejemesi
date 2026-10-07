@@ -4,24 +4,38 @@ import {
 	type ReservationReleaseCapability,
 } from '$lib/modules/wishlists/wishlist_capabilities.js';
 
-export type GiftContextAction =
-	| 'open'
-	| 'copy'
-	| 'edit'
-	| 'priority'
-	| 'category'
-	| 'received'
-	| 'multiselect'
-	| 'reserve'
-	| 'cancel-reservation'
-	| 'purchased'
-	| 'release-reservation';
+/** Menu presentation order shared by every gift action surface; also the source of the action union. */
+const GIFT_CONTEXT_ACTION_GROUPS = [
+	{ name: 'link', actions: ['open', 'copy'] },
+	{
+		name: 'gift',
+		actions: ['edit', 'received', 'multiselect', 'reserve', 'cancel-reservation', 'purchased'],
+	},
+	{ name: 'organization', actions: ['priority', 'category'] },
+	{ name: 'release', actions: ['release-reservation'] },
+] as const;
+
+export type GiftContextAction = (typeof GIFT_CONTEXT_ACTION_GROUPS)[number]['actions'][number];
 
 export const RELEASE_RESERVATION_ACTION =
 	'release-reservation' as const satisfies GiftContextAction;
 
 /** Where the gift actions open: a gift card or list row, or the Gift viewer's footer More. */
 export type GiftContextOrigin = 'card' | 'viewer';
+
+export interface GiftContextActionGroup {
+	readonly name: (typeof GIFT_CONTEXT_ACTION_GROUPS)[number]['name'];
+	readonly actions: readonly GiftContextAction[];
+}
+
+export function groupGiftContextActions(
+	actions: readonly GiftContextAction[],
+): GiftContextActionGroup[] {
+	return GIFT_CONTEXT_ACTION_GROUPS.map((group) => ({
+		name: group.name,
+		actions: group.actions.filter((action) => actions.includes(action)),
+	})).filter((group) => group.actions.length > 0);
+}
 
 export function hasAdditionalGiftContextActions(
 	actions: readonly GiftContextAction[],

@@ -1,7 +1,11 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
 	import { setGiftsContext, wishlistGiftGroupingStorageKey } from './gifts.context.svelte.js';
-	import { GIFT_GROUPING_OPTIONS, type GiftForVisitor } from './types.js';
+	import {
+		GIFT_CARD_COLUMN_OPTIONS,
+		GIFT_GROUPING_OPTIONS,
+		type GiftForVisitor,
+	} from './types.js';
 	import type { WishlistRole } from '$lib/modules/wishlists/types.js';
 
 	let {
@@ -71,6 +75,7 @@
 </script>
 
 <div data-testid="grouping">{context.grouping.current}</div>
+<div data-testid="card-column-option">{context.cardColumnOption.current}</div>
 <div data-testid="effective-grouping">{context.effectiveGrouping.current}</div>
 <div data-testid="priority-filter-options">
 	{JSON.stringify(context.priorityFilterOptions.current)}
@@ -89,4 +94,7 @@
 >
 <button onclick={() => (context.grouping.current = GIFT_GROUPING_OPTIONS.category)}
 	>Save category</button
+>
+<button onclick={() => (context.cardColumnOption.current = GIFT_CARD_COLUMN_OPTIONS.five)}
+	>Save five columns</button
 >

@@ -53,6 +53,8 @@ coverage/
 playwright-report/
 test-results/
 tests/load/reports/
+.vitest-attachments/
+__screenshots__/
 
 # Paraglide (auto-generated, except hand-maintained type declarations)
 src/lib/paraglide/*

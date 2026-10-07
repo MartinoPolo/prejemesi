@@ -13,7 +13,7 @@ export const giftViewerVariants = tv({
 			'[--gift-viewer-photo-height-cap:min(720px,var(--gift-viewer-inner-max-height))] [--gift-viewer-photo-min-width:280px] [--gift-viewer-caption-min-width:340px] [--gift-viewer-caption-max-width:420px]',
 			'right-0 left-0 mx-auto flex max-h-(--gift-viewer-max-height) w-fit max-w-[min(var(--gift-viewer-max-width),calc(100%-2rem))] translate-x-0 flex-col gap-0 overflow-hidden p-0 sm:max-w-[min(var(--gift-viewer-max-width),calc(100%-2rem))]',
 			'max-sm:inset-0 max-sm:h-dvh max-sm:max-h-none max-sm:w-full max-sm:max-w-none max-sm:translate-y-0 max-sm:rounded-none max-sm:border-0 max-sm:shadow-none',
-			'max-sm:[&>[data-slot=dialog-close]]:top-[calc(0.75rem+env(safe-area-inset-top))] max-sm:[&>[data-slot=dialog-close]]:right-3',
+			'[--gift-viewer-mobile-close-inset:0.75rem] max-sm:[&>[data-slot=dialog-close]]:top-[calc(var(--gift-viewer-mobile-close-inset)+env(safe-area-inset-top))] max-sm:[&>[data-slot=dialog-close]]:end-(--gift-viewer-mobile-close-inset)',
 		],
 		root: 'resting-shadow-nesting flex min-h-0 max-w-full flex-1 flex-col',
 		layout: 'flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain pt-[env(safe-area-inset-top)] sm:grid sm:overflow-visible sm:pt-0',
@@ -32,7 +32,8 @@ export const giftViewerVariants = tv({
 		captionScroll:
 			'gift-viewer-caption-scroll min-h-0 flex-[1_0_auto] sm:flex-[1_1_auto] sm:overflow-y-auto sm:overscroll-contain',
 		caption: 'grid gap-3 p-4 sm:p-6',
-		title: 'm-0 font-heading text-[22px] leading-tight font-semibold [overflow-wrap:anywhere] text-foreground sm:pe-12 sm:text-2xl',
+		// The desktop caption padding equals the standard dialog padding the close clearance assumes.
+		title: 'm-0 font-heading text-[22px] leading-tight font-semibold [overflow-wrap:anywhere] text-foreground sm:pe-(--overlay-close-clearance-inside-dialog-padding) sm:text-2xl',
 		priceLine:
 			'-mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-1 text-sm text-muted-foreground',
 		price: 'text-[17px] font-bold text-foreground',
@@ -54,7 +55,8 @@ export const giftViewerVariants = tv({
 				captionStates: 'sm:flex',
 				layout: 'sm:grid-cols-[minmax(0,1fr)]',
 				caption: 'max-sm:pt-3',
-				title: 'max-sm:min-h-10 max-sm:pt-1 max-sm:pe-12',
+				// Shares the top row with the mobile close button, inside the caption's 1rem padding.
+				title: 'max-sm:min-h-10 max-sm:pt-1 max-sm:pe-[calc(var(--gift-viewer-mobile-close-inset)+var(--size-control-lg)+var(--nested-control-gap)-1rem)]',
 			},
 		},
 		hasPrice: {

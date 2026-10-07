@@ -1,4 +1,4 @@
-import { boolean, jsonb, pgTable, text, timestamp } from 'drizzle-orm/pg-core';
+import { boolean, integer, jsonb, pgTable, text, timestamp } from 'drizzle-orm/pg-core';
 import {
 	appBackgroundThemeEnum,
 	depthStyleEnum,
@@ -13,6 +13,10 @@ export const user = pgTable('user', {
 	email: text('email').notNull().unique(),
 	emailVerified: boolean('email_verified').notNull().default(false),
 	image: text('image'),
+	// Fictional identities are never BetterAuth accounts and cannot authenticate.
+	demoSessionId: text('demo_session_id').references(() => demoSession.id, {
+		onDelete: 'cascade',
+	}),
 	// Superseded by `palette`; kept for rollback safety, no reader remains.
 	appBackgroundTheme: appBackgroundThemeEnum('app_background_theme').notNull().default('default'),
 	preferredLocale: preferredLocaleEnum('preferred_locale'),
@@ -25,6 +29,23 @@ export const user = pgTable('user', {
 	notificationPreferences: jsonb('notification_preferences').$type<NotificationPreferences>(),
 	createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 	updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const demoSession = pgTable('demo_session', {
+	id: text('id').primaryKey(),
+	tokenHash: text('token_hash').notNull().unique(),
+	viewerUserId: text('viewer_user_id').notNull(),
+	clientHash: text('client_hash').notNull(),
+	createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+	expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+	editRequests: integer('edit_requests').notNull().default(0),
+	resets: integer('resets').notNull().default(0),
+});
+
+export const demoClientThrottle = pgTable('demo_client_throttle', {
+	clientHash: text('client_hash').primaryKey(),
+	windowStartedAt: timestamp('window_started_at', { withTimezone: true }).notNull(),
+	creations: integer('creations').notNull().default(0),
 });
 
 export const session = pgTable('session', {

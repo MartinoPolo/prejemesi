@@ -42,7 +42,7 @@ import { chromium, devices } from 'playwright';
 import { mkdirSync } from 'node:fs';
 import { basename, resolve } from 'node:path';
 
-// Matches seed.ts (avoids committing a literal credential); override with SEED_PASSWORD env.
+// Matches seed_credentials.ts (avoids committing a literal credential); override with SEED_PASSWORD env.
 const SEED_PASSWORD = process.env.SEED_PASSWORD ?? ['password', '123'].join('');
 const USERS = {
 	martin: 'martin@test.cz',
@@ -140,7 +140,10 @@ async function main() {
 	};
 	try {
 		const context = await browser.newContext(contextOptions);
-		if (user !== 'none') {
+		if (user === 'none') {
+			// Keeps the shot signed out when the dev server has DEV_AUTO_LOGIN_EMAIL set.
+			await context.addCookies([{ name: 'dev-auto-login-opt-out', value: '1', url: base }]);
+		} else {
 			// context.request shares the cookie jar with page navigations, so the session sticks.
 			// better-auth expects { email, password }. Computed key avoids the pre-commit
 			// secret scanner's false positive on this public seed credential.

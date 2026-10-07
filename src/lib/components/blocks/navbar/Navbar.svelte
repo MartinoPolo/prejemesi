@@ -42,6 +42,7 @@
 		user?: { name: string; email: string; image?: string | null } | null;
 		userName?: string;
 		userEmail?: string;
+		demo?: boolean;
 		userInitials?: string;
 		userImage?: string | null;
 	}
@@ -50,6 +51,7 @@
 		user = null,
 		userName = m.nav_default_user(),
 		userEmail = '',
+		demo = false,
 		userInitials = 'U',
 		userImage = null,
 	}: NavbarProps = $props();
@@ -398,7 +400,7 @@
 		     anonymous users have no drawer, so they keep the consolidated menu below 1040px. -->
 			<div
 				data-testid="navbar-appearance-controls"
-				class="header-appearance-controls hidden items-center gap-(--nested-control-gap) min-[1040px]:flex"
+				class="header-appearance-controls hidden items-center gap-(--compact-control-gap) min-[1040px]:flex"
 			>
 				<PaletteSwitcher />
 				<LanguageToggle variant="icon" />
@@ -426,7 +428,7 @@
 			     apart from the square appearance buttons. The bell stays ghost so its
 			     badge never collides with a border. -->
 				<NotificationBell />
-				<UserMenu {userName} {userEmail} {userInitials} {userImage} />
+				<UserMenu {userName} {userEmail} {userInitials} {userImage} {demo} />
 			{:else}
 				<Button intent="primary" href={localizeInternalHref(resolve('/login'))}
 					>{m.nav_login()}</Button
@@ -439,13 +441,14 @@
 {#if user}
 	<CreateWishlistModal
 		bind:open={isCreateModalOpen}
-		onimport={() => (isImportWizardOpen = true)}
+		{demo}
+		onimport={demo ? undefined : () => (isImportWizardOpen = true)}
 	/>
-	<LazyImportWizard
-		bind:open={isImportWizardOpen}
-		mode={WIZARD_MODE.newList}
-		onsuccess={() => void invalidate(HOME_OVERVIEW_DEPENDENCY)}
-	/>
+	{#if !demo}<LazyImportWizard
+			bind:open={isImportWizardOpen}
+			mode={WIZARD_MODE.newList}
+			onsuccess={() => void invalidate(HOME_OVERVIEW_DEPENDENCY)}
+		/>{/if}
 {/if}
 
 <style>
@@ -489,7 +492,7 @@
 	.nav-right {
 		display: flex;
 		align-items: center;
-		gap: var(--nested-control-gap);
+		gap: var(--compact-control-gap);
 		flex-shrink: 0;
 		margin-left: auto;
 	}

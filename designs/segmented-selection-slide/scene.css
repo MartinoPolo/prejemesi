@@ -1,0 +1,22 @@
+* {
+	box-sizing: border-box;
+}
+body {
+	min-width: 320px;
+	margin: 0;
+	background: var(--background);
+	color: var(--foreground);
+	font-family: var(--font-body);
+	-webkit-font-smoothing: antialiased;
+}
+.scene {
+	padding: 16px 0 24px;
+}
+/* Dialog captures sit on the app's modal backdrop so their edges read as in the app. */
+.scene[data-dialog] {
+	padding: 24px 0;
+	background: color-mix(in oklab, var(--ink) 45%, var(--background));
+}
+.scene-context {
+	min-width: 0;
+}

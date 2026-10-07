@@ -13,9 +13,10 @@ vi.mock('$lib/modules/sharing/sharing.remote.js', () => ({ shareWishlist: vi.fn(
 const { default: ShareWizardTestHost } = await import('./ShareWizardTestHost.svelte');
 const { expectPixelsNear, expectPixelsAtLeast, expectPixelsAtMost } = createPixelAssertions(expect);
 
-afterEach(() => {
+afterEach(async () => {
 	delete document.documentElement.dataset.depth;
 	vi.restoreAllMocks();
+	await page.viewport(1280, 720);
 });
 
 function dialog(): HTMLElement {
@@ -27,6 +28,15 @@ async function renderStep(step: ShareWizardStep) {
 	const screen = await render(ShareWizardTestHost, { step });
 	await Promise.all(document.getAnimations().map((animation) => animation.finished));
 	return screen;
+}
+
+function stepperRow(): HTMLElement {
+	return dialog().querySelector<HTMLElement>('[data-testid="share-wizard-stepper"]')!;
+}
+
+/** Stepper steps (dot + label) in order, excluding the connectors between them. */
+function stepperSteps(): HTMLElement[] {
+	return [...stepperRow().querySelectorAll<HTMLElement>(':scope > :has(> span)')];
 }
 
 /** Inline gap between an action and the button placed directly before it. */
@@ -118,4 +128,40 @@ describe('ShareWizard (issue #442)', () => {
 			}
 		},
 	);
+
+	describe.each([
+		[360, 'soft'],
+		[360, 'ink'],
+		[360, 'black'],
+		[390, 'soft'],
+		[390, 'ink'],
+		[390, 'black'],
+	] as const)('stepper at %ipx and %s depth', (viewportWidth, depth) => {
+		it.each(['confirm', 'share', 'success'] as const)(
+			'keeps every %s step fully visible beside the close button',
+			async (step) => {
+				document.documentElement.dataset.depth = depth;
+				await page.viewport(viewportWidth, 844);
+				await renderStep(step);
+				await document.fonts.ready;
+				const dialogRect = dialog().getBoundingClientRect();
+				const closeButton = dialog().querySelector<HTMLElement>(
+					'[data-slot="dialog-close"]',
+				)!;
+				const closeRect = closeButton.getBoundingClientRect();
+				const nestedControlGap = resolvedCssLength(dialog(), 'var(--nested-control-gap)');
+				const steps = stepperSteps();
+
+				expect(steps).toHaveLength(3);
+				expectPixelsAtMost(stepperRow().scrollWidth, stepperRow().clientWidth);
+				for (const stepElement of steps) {
+					const stepRect = stepElement.getBoundingClientRect();
+					expectPixelsAtLeast(stepRect.left, dialogRect.left);
+					expectPixelsAtMost(stepRect.right + nestedControlGap, closeRect.left);
+				}
+				expectPixelsNear(closeRect.width, 40);
+				expectPixelsNear(closeRect.height, 40);
+			},
+		);
+	});
 });

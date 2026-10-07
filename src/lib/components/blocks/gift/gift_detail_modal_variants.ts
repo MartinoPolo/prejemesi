@@ -49,7 +49,8 @@ export const giftDetailModalVariants = tv({
 			'flex min-h-0 shrink-0 flex-col gap-0 overflow-visible sm:col-start-2 sm:row-start-1 sm:overflow-hidden',
 		// Mobile: no own scroll region – fields flow into the body scroll. Desktop:
 		// its own scroll region, unchanged.
-		detailScroll: 'min-h-0 overflow-visible p-5 sm:flex-1 sm:overflow-y-auto sm:p-7',
+		detailScroll:
+			'min-h-0 overflow-visible p-5 sm:flex-1 sm:overflow-y-auto sm:p-7 sm:pt-(--overlay-close-clearance)',
 		formField: 'flex flex-col gap-1.5',
 		formLabel: 'text-sm font-medium text-foreground',
 		formRow:

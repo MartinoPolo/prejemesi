@@ -77,7 +77,7 @@
 	<ToggleGroup.Root
 		type="single"
 		aria-label={m.depth_style_label()}
-		intent="default"
+		intent="outline"
 		bind:value={selected}
 		onValueChange={selectDepth}
 		class={styles.choices({ synchronized })}
@@ -87,16 +87,11 @@
 			<ToggleGroup.Item
 				value={depth}
 				aria-label={labels[depth]()}
-				style={`--hard-shadow: var(--${depth}-shadow); --hard-shadow-strong: var(--${depth}-shadow-strong)`}
+				data-depth={depth}
 				class={styles.choice()}
 				surfaceClass={styles.choiceSurface()}
 			>
 				{labels[depth]()}
-				<span
-					class={styles.indicator()}
-					data-selected={selected === depth}
-					aria-hidden="true"
-				></span>
 			</ToggleGroup.Item>
 		{/each}
 	</ToggleGroup.Root>

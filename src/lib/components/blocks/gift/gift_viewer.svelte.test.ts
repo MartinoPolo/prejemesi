@@ -18,6 +18,7 @@ import {
 	settleActionPlacement,
 	visibleActions,
 } from './gift_action_geometry.test_fixtures.js';
+import { expectContentClearsOverlayClose } from '$lib/components/base/dialog/overlay_close_geometry.test_fixtures.js';
 
 // The images module barrel reads `$env/dynamic/public`, which the bare test document doesn't seed.
 vi.mock('$env/dynamic/public', () => ({ env: {} }));
@@ -585,21 +586,53 @@ describe('Gift viewer layout', () => {
 		expectPixelsNear(footer()!.getBoundingClientRect().bottom, 844);
 	});
 
-	it('keeps the title clear of the close button without a photo on mobile', async () => {
-		await renderViewer(makeGift(), { viewportWidth: 390, viewportHeight: 844 });
-
-		const titleTextRange = document.createRange();
-		titleTextRange.selectNodeContents(
-			page.getByRole('heading', { level: 2, name: 'Sluchátka Sony WH-1000XM5' }).element(),
-		);
-		const title = titleTextRange.getBoundingClientRect();
-		const close = page
-			.getByRole('button', { name: m.close() })
-			.element()
-			.getBoundingClientRect();
-		expect(close.top).toBeLessThan(title.bottom);
-		expect(title.right).toBeLessThanOrEqual(close.left + 0.5);
-	});
+	it.each(
+		[
+			{
+				layout: 'desktop with a photo',
+				viewportWidth: 1280,
+				viewportHeight: 800,
+				photo: true,
+			},
+			{
+				layout: 'desktop without a photo',
+				viewportWidth: 1280,
+				viewportHeight: 800,
+				photo: false,
+			},
+			{
+				layout: 'mobile without a photo',
+				viewportWidth: 390,
+				viewportHeight: 844,
+				photo: false,
+			},
+		].flatMap((scenario) =>
+			(['soft', 'ink', 'black'] as const).map((depth) => ({ ...scenario, depth })),
+		),
+	)(
+		'keeps the title row clear of the close button on $layout at $depth depth',
+		async ({ viewportWidth, viewportHeight, photo, depth }) => {
+			document.documentElement.dataset.depth = depth;
+			try {
+				await renderViewer(makeGift(photo ? { imageUrl: TALL_PHOTO_URL } : {}), {
+					viewportWidth,
+					viewportHeight,
+				});
+				const title = page
+					.getByRole('heading', { level: 2, name: 'Sluchátka Sony WH-1000XM5' })
+					.element() as HTMLElement;
+				const close = page
+					.getByRole('button', { name: m.close() })
+					.element() as HTMLElement;
+				expect(close.getBoundingClientRect().top).toBeLessThan(
+					title.getBoundingClientRect().bottom,
+				);
+				expectContentClearsOverlayClose(title, close);
+			} finally {
+				delete document.documentElement.dataset.depth;
+			}
+		},
+	);
 });
 
 describe('Gift viewer caption details', () => {

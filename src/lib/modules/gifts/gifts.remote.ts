@@ -2,6 +2,7 @@ import * as v from 'valibot';
 import { eq, and, isNull, sql, count as drizzleCount, inArray, ne, or } from 'drizzle-orm';
 import { error, isHttpError } from '@sveltejs/kit';
 import { getDb } from '$lib/server/db/index.js';
+import { wishlistScope, rejectDemoGiftImages } from '$lib/server/demo/scope.js';
 import { gift, giftCategory, reservation, giftLike } from '$lib/server/db/gift.schema.js';
 import { wishlist, priorityLevel } from '$lib/server/db/wishlist.schema.js';
 import { user } from '$lib/server/db/auth.schema.js';
@@ -66,7 +67,7 @@ export const getGiftsByWishlistShortId = publicQuery(v.string(), async (authCont
 	const wishlistRows = await database
 		.select()
 		.from(wishlist)
-		.where(and(eq(wishlist.shortId, shortId), isNull(wishlist.deletedAt)))
+		.where(and(eq(wishlist.shortId, shortId), isNull(wishlist.deletedAt), wishlistScope()))
 		.limit(1);
 
 	const wishlistRow = wishlistRows[0];
@@ -466,6 +467,7 @@ async function notifyReserversOfEditedGiftsBestEffort(
 }
 
 export const updateGift = guardedCommand(UpdateGiftInputSchema, async ({ user }, input) => {
+	rejectDemoGiftImages([input]);
 	const database = getDb();
 
 	// Find the gift
@@ -808,7 +810,7 @@ async function verifyBulkManagerAccess(
 	const wishlistRows = await transaction
 		.select()
 		.from(wishlist)
-		.where(and(eq(wishlist.id, wishlistId), isNull(wishlist.deletedAt)))
+		.where(and(eq(wishlist.id, wishlistId), isNull(wishlist.deletedAt), wishlistScope()))
 		.for('update');
 	const wishlistRow = wishlistRows[0];
 	if (wishlistRow === undefined) {
@@ -1096,6 +1098,7 @@ export const getBulkCopyDestinations = guardedQueryWithArgs(
 					ne(wishlist.id, sourceWishlistId),
 					ne(wishlist.status, 'archived'),
 					isNull(wishlist.deletedAt),
+					wishlistScope(),
 					or(
 						eq(wishlist.recipientUserId, currentUser.id),
 						eq(moderatorAssignment.userId, currentUser.id),

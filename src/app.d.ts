@@ -1,6 +1,7 @@
 // See https://svelte.dev/docs/kit/types#app.d.ts
 // for information about these interfaces
 import type { User, Session } from 'better-auth/minimal';
+import type { DatabaseTransaction } from '$lib/server/db/index.js';
 import type {
 	R2Bucket,
 	Hyperdrive,
@@ -20,6 +21,10 @@ declare global {
 		interface Locals {
 			user?: User;
 			session?: Session;
+			realUser?: User;
+			demoSession?: { id: string; expiresAt: Date };
+			demoExpired?: boolean;
+			demoDatabaseTransaction?: DatabaseTransaction;
 		}
 		// interface PageData {}
 		// interface PageState {}

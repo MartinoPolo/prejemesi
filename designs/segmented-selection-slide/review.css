@@ -1,0 +1,116 @@
+* {
+	box-sizing: border-box;
+}
+body.review-page {
+	margin: 0;
+	background: var(--background);
+	color: var(--foreground);
+	font-family: var(--font-body);
+	-webkit-font-smoothing: antialiased;
+}
+.review-header {
+	position: sticky;
+	top: 0;
+	z-index: 2;
+	display: grid;
+	gap: 10px;
+	padding: 18px 24px 14px;
+	border-bottom: var(--border-w) solid var(--ink);
+	background: var(--card);
+}
+.review-eyebrow {
+	margin: 0;
+	color: var(--muted-foreground);
+	font-size: 11px;
+	font-weight: 700;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+}
+.review-header h1 {
+	margin: 0;
+	font-family: var(--font-display);
+	font-size: 26px;
+}
+.review-lead,
+.review-note {
+	max-width: 880px;
+	margin: 0;
+	color: var(--muted-foreground);
+	font-size: 14px;
+	line-height: 1.45;
+}
+.review-note {
+	font-size: 12px;
+}
+.review-controls {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: end;
+	gap: 10px 22px;
+}
+.review-controls fieldset {
+	display: flex;
+	gap: 12px;
+	margin: 0;
+	padding: 0;
+	border: 0;
+	font-size: 14px;
+}
+.review-controls legend {
+	float: left;
+	margin-right: 4px;
+	font-weight: 700;
+}
+.review-controls label {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	cursor: pointer;
+}
+.review-select {
+	font-size: 14px;
+	font-weight: 700;
+}
+.review-select select {
+	margin-left: 6px;
+	font: inherit;
+	font-weight: 500;
+}
+.review-variants {
+	display: grid;
+	gap: 28px;
+	padding: 24px;
+}
+.review-variant {
+	display: grid;
+	gap: 10px;
+}
+.review-variant h2 {
+	margin: 0;
+	font-size: 17px;
+}
+.review-variant p {
+	max-width: 880px;
+	margin: 4px 0 0;
+	color: var(--muted-foreground);
+	font-size: 13px;
+	line-height: 1.45;
+}
+.review-frame-shell {
+	overflow-x: auto;
+	border: 1px dashed var(--muted-foreground);
+	border-radius: 12px;
+}
+.review-frame-shell iframe {
+	display: block;
+	width: 1280px;
+	max-width: none;
+	height: 360px;
+	border: 0;
+}
+body[data-device='mobile'] .review-frame-shell {
+	width: fit-content;
+}
+body[data-device='mobile'] .review-frame-shell iframe {
+	width: 390px;
+}

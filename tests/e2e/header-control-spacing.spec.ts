@@ -6,6 +6,8 @@ import { createPixelAssertions } from '../helpers/pixel-assertions.mjs';
 
 const { expectPixelsAtLeast, expectPixelsAtMost, expectPixelsNear } = createPixelAssertions(expect);
 
+const DESKTOP_VIEWPORT = { width: 1700, height: 900 } as const;
+
 const VIEWPORTS = [
 	{ width: 320, height: 900 },
 	{ width: 390, height: 844 },
@@ -13,19 +15,50 @@ const VIEWPORTS = [
 	{ width: 767, height: 900 },
 	{ width: 768, height: 900 },
 	{ width: 1024, height: 768 },
-	{ width: 1700, height: 900 },
+	DESKTOP_VIEWPORT,
 ] as const;
 
 const logoName = /^(Přejeme si – domovská stránka|Přejeme si – home)$/;
 const notificationName = /^(Upozornění \(|Notifications \()/;
 const accountName = /(– menu uživatele|– user menu)$/;
 const menuName = /^(Otevření menu|Open menu)$/;
+const myListsName = /^(Moje seznamy|My lists)/;
+const myListsMenuName = /(Moje seznamy|My lists)$/;
+
+const SOFT_ACTION_GAP = 8;
+const NAV_MENU_SIDE_OFFSET = 8;
+const POPOVER_SIDE_OFFSET = 6;
+const LONGER_THAN_CLOSE_GRACE_MS = 400;
 
 async function box(locator: Locator) {
 	return locator.evaluate((element) => {
 		const rect = element.getBoundingClientRect();
-		return { left: rect.left, right: rect.right, width: rect.width, height: rect.height };
+		return {
+			left: rect.left,
+			right: rect.right,
+			top: rect.top,
+			bottom: rect.bottom,
+			width: rect.width,
+			height: rect.height,
+		};
 	});
+}
+
+/** Open animations scale and slide floating layers, so measure them only once settled. */
+async function settledBox(locator: Locator) {
+	await locator.evaluate((element) =>
+		Promise.all(
+			element
+				.getAnimations({ subtree: true })
+				.filter((animation) => animation.effect?.getComputedTiming().endTime !== Infinity)
+				.map((animation) => animation.finished.catch(() => undefined)),
+		),
+	);
+	return box(locator);
+}
+
+function center(rect: { left: number; top: number; width: number; height: number }) {
+	return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
 }
 
 async function contentEdges(page: Page) {
@@ -139,6 +172,150 @@ test('notification and account triggers use responsive shared sizing with an 8px
 		expectPixelsNear(account.left - notification.right, 8);
 	}
 
+	await page.context().close();
+});
+
+test('desktop header actions tighten their gap at Ink and Black depth while still clearing the shadow', async ({
+	browser,
+	request,
+	baseURL,
+}) => {
+	const user = createTestUser('header-action-depth-gap');
+	const page = await registerAndGetPage(browser, request, baseURL!, user);
+	await page.setViewportSize(DESKTOP_VIEWPORT);
+	await page.goto('/my-lists');
+	await page.waitForSelector('h1');
+	const actions = page.getByRole('banner').getByTestId('navbar-actions');
+	const actionTriggers = [
+		actions.getByRole('button', { name: /^(Vytvořit|Create)$/ }),
+		actions.getByRole('button', { name: /^(Barevná paleta|Color palette)$/ }),
+		actions.getByRole('button', { name: /^(Jazyk|Language): / }),
+		actions.getByRole('button', {
+			name: /^(Světlý režim|Tmavý režim|Systémový režim|Light mode|Dark mode|System mode)$/,
+		}),
+	];
+	for (const trigger of actionTriggers) {
+		await expect(trigger).toBeVisible();
+	}
+
+	for (const depth of ['soft', 'ink', 'black'] as const) {
+		const shadowOffset = await page.evaluate((depthStyle) => {
+			document.documentElement.dataset.depth = depthStyle;
+			return Number.parseFloat(
+				getComputedStyle(document.documentElement).getPropertyValue(
+					'--elevation-ordinary-offset',
+				),
+			);
+		}, depth);
+		expect(shadowOffset, 'desktop ordinary shadow offset').toBeGreaterThan(0);
+		const triggerBoxes = await Promise.all(actionTriggers.map(box));
+
+		for (let index = 1; index < triggerBoxes.length; index += 1) {
+			const gap = triggerBoxes[index]!.left - triggerBoxes[index - 1]!.right;
+			const label = `${depth} gap before header action ${index}`;
+			if (depth === 'soft') {
+				expectPixelsNear(gap, SOFT_ACTION_GAP, label);
+				continue;
+			}
+			const fullClearanceGap = SOFT_ACTION_GAP + shadowOffset;
+			expectPixelsAtLeast(gap, fullClearanceGap - 2, `${label} shrinks by at most 2px`);
+			expectPixelsAtMost(gap, fullClearanceGap - 1, `${label} shrinks by at least 1px`);
+			expect(gap, `${label} clears the ${shadowOffset}px shadow`).toBeGreaterThan(
+				shadowOffset,
+			);
+		}
+	}
+
+	await page.context().close();
+});
+
+test('mouse crossing from a header nav trigger into its menu keeps the menu open at every depth', async ({
+	browser,
+	request,
+	baseURL,
+}) => {
+	const user = createTestUser('header-nav-menu-gap');
+	const page = await registerAndGetPage(browser, request, baseURL!, user);
+	await page.setViewportSize(DESKTOP_VIEWPORT);
+	await page.goto('/my-lists');
+	await page.waitForSelector('h1');
+	await waitForAppHydration(page);
+	const header = page.getByRole('banner');
+	const trigger = header
+		.getByRole('link', { name: myListsName })
+		.and(header.locator('[aria-haspopup="menu"]'));
+	const menu = page.getByRole('menu', { name: myListsMenuName });
+	const awayFromHeader = { x: DESKTOP_VIEWPORT.width / 2, y: DESKTOP_VIEWPORT.height - 20 };
+
+	for (const depth of ['soft', 'black'] as const) {
+		await page.mouse.move(awayFromHeader.x, awayFromHeader.y);
+		await expect(menu).toBeHidden();
+		await page.evaluate((depthStyle) => {
+			document.documentElement.dataset.depth = depthStyle;
+		}, depth);
+
+		const triggerBox = await box(trigger);
+		const triggerCenter = center(triggerBox);
+		await page.mouse.move(triggerCenter.x, triggerCenter.y);
+		await expect(menu).toBeVisible();
+		const menuBox = await settledBox(menu);
+		const gapHeight = menuBox.top - triggerBox.bottom;
+		if (depth === 'black') {
+			expectPixelsNear(
+				gapHeight,
+				NAV_MENU_SIDE_OFFSET,
+				'black nav menu has no depth clearance',
+			);
+		}
+		expect(gapHeight, `${depth} gap between trigger and menu`).toBeGreaterThan(1);
+
+		await page.mouse.move(triggerCenter.x, triggerBox.bottom + gapHeight / 2, { steps: 12 });
+		await page.waitForTimeout(LONGER_THAN_CLOSE_GRACE_MS);
+		await expect(
+			menu,
+			`${depth} menu stays open while the mouse rests in the gap`,
+		).toBeVisible();
+
+		await page.mouse.move(triggerCenter.x, menuBox.top + 16, { steps: 6 });
+		await page.waitForTimeout(LONGER_THAN_CLOSE_GRACE_MS);
+		await expect(menu, `${depth} menu stays open once the mouse reaches it`).toBeVisible();
+	}
+
+	await page.mouse.move(awayFromHeader.x, awayFromHeader.y);
+	await expect(menu).toBeHidden();
+	await page.context().close();
+});
+
+test('notification popover opens at its standard offset at Black depth because the bell casts no shadow', async ({
+	browser,
+	request,
+	baseURL,
+}) => {
+	const user = createTestUser('header-bell-popover-offset');
+	const page = await registerAndGetPage(browser, request, baseURL!, user);
+	await page.setViewportSize(DESKTOP_VIEWPORT);
+	await page.goto('/my-lists');
+	await page.waitForSelector('h1');
+	await waitForAppHydration(page);
+	await page.evaluate(() => {
+		document.documentElement.dataset.depth = 'black';
+	});
+	const bell = page.getByRole('banner').getByRole('button', { name: notificationName });
+
+	await bell.click();
+	const popover = page.locator('[data-slot="popover-content"]');
+	await expect(popover).toBeVisible();
+	const bellBox = await box(bell);
+	const popoverBox = await settledBox(popover);
+
+	expectPixelsNear(
+		popoverBox.top - bellBox.bottom,
+		POPOVER_SIDE_OFFSET,
+		'black notification popover has no depth clearance',
+	);
+
+	await page.keyboard.press('Escape');
+	await expect(popover).toBeHidden();
 	await page.context().close();
 });
 

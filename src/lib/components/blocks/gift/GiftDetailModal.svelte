@@ -33,6 +33,7 @@
 		mode: GiftDetailModalMode;
 		gift?: GiftByRole | null;
 		wishlistId: string;
+		demo?: boolean;
 		priorityLevels: GiftPriorityLevel[];
 		categoryOptions?: ManagedGiftCategory[];
 		/** Viewer role drives reservation-safe read-only and editable manager actions. */
@@ -64,6 +65,7 @@
 		mode,
 		gift = null,
 		wishlistId,
+		demo = false,
 		priorityLevels,
 		categoryOptions = [],
 		role = 'visitor',
@@ -247,6 +249,7 @@
 			{mode}
 			{gift}
 			{wishlistId}
+			{demo}
 			{priorityLevels}
 			{categoryOptions}
 			{role}

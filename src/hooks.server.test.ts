@@ -12,10 +12,19 @@ const appTemplate = readFileSync(new URL('./app.html', import.meta.url), 'utf8')
  * routes, whose responses do not depend on those values.
  */
 
+const { applicationEnvironment, privateEnvironment } = vi.hoisted(() => ({
+	applicationEnvironment: { dev: true },
+	privateEnvironment: { AUTH_SECRET: 'test-auth-secret' } as Record<string, string | undefined>,
+}));
+
 vi.mock('$app/environment', () => ({
-	dev: true,
+	get dev() {
+		return applicationEnvironment.dev;
+	},
 	building: false,
 }));
+
+vi.mock('$env/dynamic/private', () => ({ env: privateEnvironment }));
 
 // Kit's real sequence() requires the internal request store (unavailable in unit
 // tests). This equivalent composition chains handles and merges the
@@ -115,23 +124,46 @@ vi.mock('drizzle-orm', () => ({
 
 // Auth is exercised through the mocked BetterAuth surface: getSession supplies
 // `locals.user`, svelteKitHandler just resolves.
-const { mockGetSession } = vi.hoisted(() => ({
-	mockGetSession: vi.fn(),
+const { mockGetSession, mockSignInEmail, mockCleanExpiredDemos, mockFindDemoSession } = vi.hoisted(
+	() => ({
+		mockGetSession: vi.fn(),
+		mockSignInEmail: vi.fn(),
+		mockCleanExpiredDemos: vi.fn(),
+		mockFindDemoSession: vi.fn(),
+	}),
+);
+
+vi.mock('$lib/server/demo/session.js', () => ({
+	cleanExpiredDemos: mockCleanExpiredDemos,
+	findDemoSession: mockFindDemoSession,
 }));
 
 vi.mock('$lib/server/auth.js', () => ({
-	createAuth: vi.fn(() => ({ api: { getSession: mockGetSession } })),
+	createAuth: vi.fn(() => ({
+		api: { getSession: mockGetSession, signInEmail: mockSignInEmail },
+	})),
+	isReservedDemoEmail: vi.fn((email: string) => email.endsWith('@demo.invalid')),
 }));
 
 vi.mock('better-auth/svelte-kit', () => ({
 	svelteKitHandler: vi.fn(
-		({ event, resolve }: { event: unknown; resolve: (event: unknown) => Promise<Response> }) =>
-			resolve(event),
+		({
+			event,
+			resolve,
+		}: {
+			event: { url: URL };
+			resolve: (event: unknown) => Promise<Response>;
+		}) =>
+			// Like BetterAuth, auth API routes are answered without resolving the app.
+			event.url.pathname.startsWith('/api/auth/')
+				? new Response('auth response', { status: 200 })
+				: resolve(event),
 	),
 }));
 
 import { handle } from './hooks.server.js';
 import { createAuth } from '$lib/server/auth.js';
+import { DEMO_CLEANUP_INTERVAL_MS, DEMO_COOKIE_NAME } from '$lib/server/demo/constants.js';
 
 const SESSION_USER = { id: 'user-1', email: 'user@example.com' };
 
@@ -156,6 +188,7 @@ interface EventOptions {
 	cookies?: Record<string, string>;
 	isDataRequest?: boolean;
 	isRemoteRequest?: boolean;
+	platform?: { env: object; ctx: { waitUntil: (promise: Promise<unknown>) => void } };
 }
 
 function createEvent({
@@ -165,6 +198,7 @@ function createEvent({
 	cookies = {},
 	isDataRequest = false,
 	isRemoteRequest = false,
+	platform,
 }: EventOptions = {}) {
 	const url = new URL(`https://prejemesi.cz${path}`);
 	return {
@@ -183,9 +217,14 @@ function createEvent({
 			},
 		}),
 		route: { id: path },
-		cookies: { get: (name: string) => cookies[name], set: vi.fn() },
+		cookies: {
+			get: (name: string) => cookies[name],
+			set: vi.fn(),
+			serialize: (name: string, value: string, options: { path: string; maxAge: number }) =>
+				`${name}=${value}; Max-Age=${options.maxAge}; Path=${options.path}`,
+		},
 		locals: {} as Record<string, unknown>,
-		platform: undefined,
+		platform,
 		isDataRequest,
 		isRemoteRequest,
 		isSubRequest: false,
@@ -223,9 +262,115 @@ async function runHandle(event: ReturnType<typeof createEvent>): Promise<{
 
 beforeEach(() => {
 	vi.clearAllMocks();
+	applicationEnvironment.dev = true;
+	delete privateEnvironment.DEV_AUTO_LOGIN_EMAIL;
 	mockIsDatabaseConfigured.mockReturnValue(true);
 	mockGetSession.mockResolvedValue({ session: { id: 'session-1' }, user: SESSION_USER });
 	setPreferenceRow({ preferredLocale: 'en', palette: 'grape', depthStyle: 'ink' });
+});
+
+describe('expired demo maintenance', () => {
+	it('sweeps on ordinary documents only when due, even without demo entry or cookie', async () => {
+		vi.useFakeTimers();
+		try {
+			vi.setSystemTime(new Date('2030-01-01T00:00:00Z'));
+			await runHandle(createEvent({ path: '/my-lists' }));
+			expect(mockCleanExpiredDemos).toHaveBeenCalledOnce();
+			await runHandle(createEvent({ path: '/en', cookies: { 'app-palette': 'mint' } }));
+			expect(mockCleanExpiredDemos).toHaveBeenCalledOnce();
+			vi.advanceTimersByTime(DEMO_CLEANUP_INTERVAL_MS);
+			await runHandle(createEvent({ path: '/my-lists/__data.json', isDataRequest: true }));
+			await runHandle(createEvent({ path: '/api/upload/image.jpg', method: 'PUT' }));
+			expect(mockCleanExpiredDemos).toHaveBeenCalledOnce();
+			await runHandle(createEvent({ path: '/' }));
+			expect(mockCleanExpiredDemos).toHaveBeenCalledTimes(2);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it('does not fail documents if maintenance fails and retries on a later interval', async () => {
+		vi.useFakeTimers();
+		const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+		try {
+			vi.setSystemTime(new Date('2031-01-01T00:00:00Z'));
+			mockCleanExpiredDemos.mockRejectedValueOnce(new Error('database unavailable'));
+			const { response } = await runHandle(createEvent({ path: '/' }));
+			expect(response.status).toBe(200);
+			expect(consoleSpy).toHaveBeenCalledWith(
+				'[demoHandle] expired demo cleanup failed',
+				expect.any(Error),
+			);
+			vi.advanceTimersByTime(DEMO_CLEANUP_INTERVAL_MS);
+			await runHandle(createEvent({ path: '/' }));
+			expect(mockCleanExpiredDemos).toHaveBeenCalledTimes(2);
+		} finally {
+			consoleSpy.mockRestore();
+			vi.useRealTimers();
+		}
+	});
+
+	it('hands the sweep to the platform instead of delaying the document', async () => {
+		vi.useFakeTimers();
+		try {
+			vi.setSystemTime(new Date('2032-01-01T00:00:00Z'));
+			let finishCleanup: () => void = () => {};
+			mockCleanExpiredDemos.mockReturnValueOnce(
+				new Promise<void>((resolve) => {
+					finishCleanup = resolve;
+				}),
+			);
+			const waitUntil = vi.fn();
+			const { response } = await runHandle(
+				createEvent({ path: '/', platform: { env: {}, ctx: { waitUntil } } }),
+			);
+			expect(response.status).toBe(200);
+			expect(waitUntil).toHaveBeenCalledOnce();
+			finishCleanup();
+			await expect(waitUntil.mock.calls[0]![0]).resolves.toBeUndefined();
+			expect(mockCleanExpiredDemos).toHaveBeenCalledOnce();
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+});
+
+describe('demo cookie at the auth API', () => {
+	const demoToken = 'a'.repeat(64);
+
+	it('keeps a live demo visitor out of real authentication', async () => {
+		mockFindDemoSession.mockResolvedValueOnce({ id: 'demo-session' });
+		await expect(
+			runHandle(
+				createEvent({
+					path: '/api/auth/sign-in/email',
+					method: 'POST',
+					cookies: { [DEMO_COOKIE_NAME]: demoToken },
+				}),
+			),
+		).rejects.toMatchObject({ status: 403 });
+		expect(mockGetSession).not.toHaveBeenCalled();
+	});
+
+	it('serves authentication and deletes the cookie of an expired or unknown demo', async () => {
+		mockFindDemoSession.mockResolvedValueOnce(null);
+		const { response, html } = await runHandle(
+			createEvent({
+				path: '/api/auth/sign-in/email',
+				method: 'POST',
+				cookies: { [DEMO_COOKIE_NAME]: demoToken },
+			}),
+		);
+		expect(response.status).toBe(200);
+		expect(html).toBe('auth response');
+		expect(response.headers.get('set-cookie')).toContain(`${DEMO_COOKIE_NAME}=; Max-Age=0`);
+	});
+
+	it('does not look up demo sessions without a demo cookie', async () => {
+		await runHandle(createEvent({ path: '/api/auth/get-session' }));
+		await runHandle(createEvent({ path: '/' }));
+		expect(mockFindDemoSession).not.toHaveBeenCalled();
+	});
 });
 
 describe('anonymous public page auth fast path', () => {
@@ -277,6 +422,92 @@ describe('anonymous public page auth fast path', () => {
 			createEvent({ path: '/w/public', cookies: { 'better-auth.session_data': 'session' } }),
 		);
 		expect(createAuth).toHaveBeenCalledOnce();
+	});
+});
+
+describe('development auto-login', () => {
+	const autoLoginEmail = 'martin@test.cz';
+
+	beforeEach(() => {
+		privateEnvironment.DEV_AUTO_LOGIN_EMAIL = autoLoginEmail;
+		mockGetSession.mockResolvedValue(null);
+		mockSignInEmail.mockResolvedValue({ token: 'session-token' });
+	});
+
+	it.each(['/my-lists?tab=archived', '/', '/w/public'])(
+		'signs a signed-out document load of %s in as the configured account and reloads it',
+		async (path) => {
+			await expect(runHandle(createEvent({ path }))).rejects.toMatchObject({
+				status: 303,
+				location: path,
+			});
+			expect(mockSignInEmail).toHaveBeenCalledWith(
+				expect.objectContaining({
+					body: expect.objectContaining({ email: autoLoginEmail }),
+				}),
+			);
+		},
+	);
+
+	it.each<[string, () => void, EventOptions]>([
+		[
+			'an existing session',
+			() => mockGetSession.mockResolvedValue({ session: { id: 's' }, user: SESSION_USER }),
+			{},
+		],
+		['the setting is empty', () => (privateEnvironment.DEV_AUTO_LOGIN_EMAIL = ' '), {}],
+		['a production build', () => (applicationEnvironment.dev = false), {}],
+		['a data request', () => {}, { isDataRequest: true, accept: '*/*' }],
+		[
+			'a remote function call',
+			() => {},
+			{ method: 'POST', accept: '*/*', isRemoteRequest: true },
+		],
+		['an opted-out browser', () => {}, { cookies: { 'dev-auto-login-opt-out': '1' } }],
+		[
+			'a demo visitor',
+			() => {},
+			{ path: '/demo/playground/start', cookies: { [DEMO_COOKIE_NAME]: 'a'.repeat(64) } },
+		],
+	])('does not sign in for %s', async (_case, arrange, options) => {
+		arrange();
+		const { response } = await runHandle(createEvent(options));
+		expect(response.status).toBe(200);
+		expect(mockSignInEmail).not.toHaveBeenCalled();
+	});
+
+	it('renders the page signed out when the configured account cannot sign in', async () => {
+		const warningSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+		try {
+			mockSignInEmail.mockRejectedValueOnce(new Error('Invalid email or password'));
+			const { response } = await runHandle(createEvent());
+			expect(response.status).toBe(200);
+			expect(warningSpy).toHaveBeenCalledOnce();
+		} finally {
+			warningSpy.mockRestore();
+		}
+	});
+
+	it('pauses after sign-out and resumes after the next sign-in', async () => {
+		const signOut = await runHandle(
+			createEvent({ path: '/api/auth/sign-out', method: 'POST' }),
+		);
+		expect(signOut.response.headers.get('set-cookie')).toContain('dev-auto-login-opt-out=1');
+
+		const signIn = await runHandle(
+			createEvent({ path: '/api/auth/sign-in/email', method: 'POST' }),
+		);
+		expect(signIn.response.headers.get('set-cookie')).toContain(
+			'dev-auto-login-opt-out=; Max-Age=0',
+		);
+	});
+
+	it('leaves auth responses untouched when auto-login is not configured', async () => {
+		delete privateEnvironment.DEV_AUTO_LOGIN_EMAIL;
+		const { response } = await runHandle(
+			createEvent({ path: '/api/auth/sign-out', method: 'POST' }),
+		);
+		expect(response.headers.get('set-cookie')).toBeNull();
 	});
 });
 

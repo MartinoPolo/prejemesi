@@ -5,6 +5,7 @@ import { SERVER_ERROR, encodeServerError } from '$lib/modules/errors/server_erro
 import { getDb } from '$lib/server/db/index.js';
 import { gift, giftLike, reservation } from '$lib/server/db/gift.schema.js';
 import { wishlist } from '$lib/server/db/wishlist.schema.js';
+import { wishlistScope } from '$lib/server/demo/scope.js';
 import { user } from '$lib/server/db/auth.schema.js';
 import { wishlistFollower } from '$lib/server/db/follower.schema.js';
 import { isAppAdmin } from '$lib/server/admin.js';
@@ -51,7 +52,14 @@ async function getGiftWithWishlist(giftId: string) {
 		})
 		.from(gift)
 		.innerJoin(wishlist, eq(gift.wishlistId, wishlist.id))
-		.where(and(eq(gift.id, giftId), isNull(gift.deletedAt), isNull(wishlist.deletedAt)))
+		.where(
+			and(
+				eq(gift.id, giftId),
+				isNull(gift.deletedAt),
+				isNull(wishlist.deletedAt),
+				wishlistScope(),
+			),
+		)
 		.limit(1);
 
 	const row = rows[0];
@@ -307,6 +315,10 @@ export const unreserveGift = publicCommand(UnreserveInputSchema, async (authCont
 		releaseContext = { wishlistRow, giftName: giftRow.name };
 	}
 
+	if (releaseContext === null) {
+		await getGiftWithWishlist(reservationRow.giftId);
+	}
+
 	// Soft delete. `cancelledByUserId` records WHO released it on every path (REQ-10); it stays
 	// null for a guest self-cancel, which is what makes an override distinguishable.
 	await database
@@ -390,7 +402,13 @@ export const setReservationPurchased = guardedCommand(
 			.from(reservation)
 			.innerJoin(gift, eq(reservation.giftId, gift.id))
 			.innerJoin(wishlist, eq(gift.wishlistId, wishlist.id))
-			.where(and(eq(reservation.id, input.reservationId), isNull(reservation.deletedAt)))
+			.where(
+				and(
+					eq(reservation.id, input.reservationId),
+					isNull(reservation.deletedAt),
+					wishlistScope(),
+				),
+			)
 			.limit(1);
 
 		const reservationRow = rows[0];
@@ -423,7 +441,8 @@ export const getReservationLedgerForWishlist = publicQuery(
 		const wishlistRows = await database
 			.select()
 			.from(wishlist)
-			.where(and(eq(wishlist.shortId, shortId), isNull(wishlist.deletedAt)))
+			// fallow-ignore-next-line code-duplication
+			.where(and(eq(wishlist.shortId, shortId), isNull(wishlist.deletedAt), wishlistScope()))
 			.limit(1);
 		const wishlistRow = wishlistRows[0];
 		if (wishlistRow === undefined) {

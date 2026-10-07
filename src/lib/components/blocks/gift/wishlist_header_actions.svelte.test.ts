@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 import { page } from 'vitest/browser';
 import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
+import { expectContentClearsOverlayClose } from '$lib/components/base/dialog/overlay_close_geometry.test_fixtures.js';
 import WishlistHeaderActions from './WishlistHeaderActions.svelte';
 import * as m from '$lib/paraglide/messages.js';
 
@@ -142,7 +143,10 @@ describe('WishlistHeaderActions', () => {
 				parseFloat(shellStyle.borderRightWidth),
 		);
 		expect(headerStyle.paddingLeft).toBe('16px');
-		expect(headerStyle.paddingRight).toBe('56px');
+		expectContentClearsOverlayClose(
+			header,
+			shell.querySelector<HTMLElement>('[data-slot="sheet-close"]')!,
+		);
 		expect(headerStyle.paddingTop).toBe('12px');
 		expect(headerStyle.paddingBottom).toBe('12px');
 		expectPixelsNear(parseFloat(headerStyle.borderBottomWidth), 1);

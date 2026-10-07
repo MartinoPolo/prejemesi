@@ -3,9 +3,11 @@ import { render } from 'vitest-browser-svelte';
 import { page, userEvent } from 'vitest/browser';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
+import { expectContentClearsOverlayClose } from '$lib/components/base/dialog/overlay_close_geometry.test_fixtures.js';
 import type { ComponentProps } from 'svelte';
 import * as m from '$lib/paraglide/messages.js';
 import {
+	GIFT_CARD_COLUMN_OPTIONS,
 	GIFT_GROUPING_OPTIONS,
 	GIFT_SORT_OPTIONS,
 	GIFT_VIEW_MODES,
@@ -36,11 +38,13 @@ const defaultProps: ComponentProps<typeof WishlistDetailToolbar> = {
 	groupingAvailability: { priority: false, category: false },
 	categoryFilterOptions: [],
 	priorityFilterOptions: [],
+	cardColumnOption: GIFT_CARD_COLUMN_OPTIONS.automatic,
 	reorderMode: false,
 	recipientViewPreview: false,
 	onrecipientviewpreviewchange: () => {},
 	onreordermodechange: () => {},
 	onviewmodechange: () => {},
+	oncardcolumnoptionchange: () => {},
 	onsortchange: () => {},
 	onfilterchange: () => {},
 	ongroupingchange: () => {},
@@ -96,7 +100,10 @@ function expectBottomSheet(dialog: Element) {
 		rect.width - parseFloat(style.borderLeftWidth) - parseFloat(style.borderRightWidth),
 	);
 	expect(headerStyle.paddingLeft).toBe('16px');
-	expect(headerStyle.paddingRight).toBe('56px');
+	expectContentClearsOverlayClose(
+		header,
+		dialog.querySelector<HTMLElement>('[data-slot="sheet-close"]')!,
+	);
 	expect(headerStyle.paddingTop).toBe('12px');
 	expect(headerStyle.paddingBottom).toBe('12px');
 	expectPixelsNear(parseFloat(headerStyle.borderBottomWidth), 1);

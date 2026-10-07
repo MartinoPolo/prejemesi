@@ -151,6 +151,48 @@ sections for UI work. Historical reconciliation and review notes are in
   sessions, and shared verification storage; former magic-link users establish a password through
   reset.
 
+## Public demo playground
+
+- 2026-09-25: Offer a private, editable playground per visitor, not a shared demo account. Start on
+  Přehled as one fictional person with own, managed, and followed wishlists, without a persona
+  switcher; retain normal server-enforced roles and recipient surprise protection.
+- 2026-09-25: Curate eight initial wishlists with fifteen gifts each: three own, two managed, and
+  three followed, covering ongoing, birthday, and Christmas scenarios plus one draft and one
+  archived wishlist. Favor available gifts with a few plausible reservations and received gifts;
+  archive applies to wishlists, not gifts. These are starting-content targets, not constraints on
+  visitor edits. Reuse useful development scenarios, not sparse or artificial test fixtures
+  wholesale.
+- 2026-09-25: Use fictional Czech people and a curated Czech/English gift catalog with reviewed
+  images, natural short descriptions, plausible CZK estimates, relevant product links, categories,
+  and priorities, mostly medium. Select catalog language at playground creation; subsequent locale
+  switches translate the interface without rewriting sample content or edits. Reset can load the
+  other catalog language.
+- 2026-09-25: Add secondary “Vyzkoušet demo” / “Try demo” entry beside landing registration and
+  below the existing interactive example, which remains. Enter in one click; retain a persistent
+  demo notice with expiry information, Reset, Exit, and registration access. Approval of
+  `designs/demo-playground/` covers the strip and lifecycle interactions only; reuse existing
+  Button, Dialog, and Select components and canonical design tokens. Its simplified surrounding
+  cards, navigation, and landing artwork are not approved replacements for the actual app.
+- 2026-09-25: Allow ordinary wishlist/gift editing, creation, reservations, received state,
+  archiving, and appearance changes inside the playground. Disable uploads, imports, external
+  enrichment, and account-security changes with explanations; prepared images and ordinary product
+  links remain usable. Demo actions must not send real emails, issue usable public sharing or
+  invitation links, or interact with real accounts/data.
+- 2026-09-25: Preserve demo changes until fixed expiry twenty-four hours after creation, not sliding
+  inactivity expiry. Confirm Reset before restoring curated content; an expired visit offers a fresh
+  playground rather than a broken page. Demo data is temporary and requires cleanup.
+- 2026-09-25: Keep demo and real sessions separate without replacing an existing sign-in. Exit
+  returns signed-in users to their real dashboard and anonymous visitors to the landing page.
+  Registration starts a clean real account with explicit notice that fictional data and demo edits
+  do not transfer.
+- 2026-10-02: Bound public demo cost on the free tier with per-client creation throttling, a global
+  live-session cap, per-session edit/reset budgets that count failed requests, and per-session
+  wishlist/gift caps; values live in `src/lib/server/demo/constants.ts`. Expired sessions are swept
+  opportunistically from document traffic, off the response path.
+- 2026-10-02: The demo cookie outlives the session so a returning visitor sees the fresh-start page;
+  a stale cookie never blocks sign-in, registration, shared wishlist links, or other real routes,
+  while a live demo must be exited before signing in.
+
 ## Navigation & overview
 
 - 2026-05-30: Desktop uses a top navbar, not a persistent sidebar; mobile uses a drawer. The three
@@ -246,9 +288,8 @@ sections for UI work. Historical reconciliation and review notes are in
 - 2026-09-14: Image-bearing Card/List views share eligible category, priority, received/reserved
   state badges across desktop/mobile, including image placeholders; assigned categories go top-left
   and an authorized reserver name stays inside its state badge, not duplicated in the content
-  column. Authorized viewers may see a single reserver's name; multiple reservers use a localized
-  generic summary instead of listing names. Preserve server-derived privacy capabilities and keep
-  Compact image-free. Validate crowded valid states in focused mockups before implementation.
+  column. Preserve server-derived privacy capabilities and keep Compact image-free. Validate crowded
+  valid states in focused mockups before implementation.
 - 2026-09-14: Center gift state badges, including any authorized reserver name, as one group on the
   image; a lone state remains at its center, independent of edge badges. Category stays top-left and
   priority bottom-left, as finalized in the gift-hierarchy design approval. Its badge styling is
@@ -258,12 +299,6 @@ sections for UI work. Historical reconciliation and review notes are in
   List rows and shared crop geometry, retaining only necessary existing accessibility fallbacks for
   constrained/enlarged content. Verify the real mobile layout during implementation; this exclusion
   does not retain the design gate on #377.
-- 2026-09-14: Keep manual reordering discoverable for eligible Card/List managers and recipients
-  even with grouping active. Enter from the latest saved active/non-received order, temporarily
-  bypass grouping/sorting/filters, explain the temporary view, and restore those browsing choices on
-  Done without overwriting preferences or category/priority assignments. Grid/List switching stays
-  available. Retain the top-left grip's small visible surface inside its larger hit target; approved
-  mockups are not evidence that persistence, dragging, or positioning defects are fixed.
 
 - 2026-09-15: List and mobile Card content follow title → description → source links and price →
   bottom-right actions. Titles and descriptions flow together without reserving a blank second title
@@ -279,7 +314,7 @@ sections for UI work. Historical reconciliation and review notes are in
   consistent across rows. Preserve existing colors and badges; validate the layout in an interactive
   mockup before production implementation.
 - 2026-09-16: Desktop Card secondary actions may move into More while primary actions and relevant
-  Received/Bought controls stay visible, subject to existing capabilities. Price must have a stable
+  Received controls stay visible, subject to existing capabilities. Price must have a stable
   position independent of link count; flowing it horizontally after source links is rejected. Put
   price in the content directly below source links on its own left-aligned line, above right-aligned
   actions, so its width cannot push buttons around. Image-corner overlays retain their
@@ -316,6 +351,29 @@ sections for UI work. Historical reconciliation and review notes are in
   price so narrow titles keep their room. Grid Like uses the image/card top-right with a separate
   wrapping category lane; List Like stays beside the title. Preserve the ghost heart/count and
   accessible targets.
+- 2026-10-05: Where reserver names are visible, a state badge names the other reserver
+  (“Rezervoval(a) {name}”) only when exactly one person holds the gift and it is not the viewer. Any
+  other combination, including the viewer's own reservation plus one other, reads “Rezervováno více
+  lidmi”, because reserver names do not identify which one is the viewer (#442).
+- 2026-10-05: Bought (“Koupeno”) is a footer action for a signed-in viewer's own reservation, never
+  an image state badge, and is hidden on archived lists. For správci who also reserved, it sits
+  beside Received and is the first action to overflow into More (#442).
+- 2026-10-06: Manual order is one global `sortOrder`; grouped order is always derived from it, never
+  stored per group. Reorder mode, discoverable for eligible Card/List managers and recipients,
+  starts from the saved active/non-received order, bypasses sort/filters, restores browsing choices
+  on Done, keeps Grid/List switching and the small grip inside its larger hit target. It keeps
+  active priority or category grouping, showing every level/enabled category plus “Bez …” as drop
+  zones. In-group moves permute the group's existing global slots; cross-group drag or keyboard
+  moves insert before the new next neighbour (else after the previous one) and change
+  priority/category through the post-share edit path, atomically with the order, offering a Vrátit
+  toast. Only the dragged card shows the live grouping badge (#454).
+- 2026-10-06: Card press belongs to presses that start on card content; inner controls and open
+  action surfaces never press the card, and an open desktop dropdown keeps the card lifted (#450).
+- 2026-10-06: Card view offers Automatic/4/5 columns per device (desktop from `sm`, not part of
+  Reset display). Counts are offered only when cards keep 13.5rem, the measured width for the widest
+  primary action, More and depth clearance; otherwise fall back to the largest count that fits
+  (#451). A chosen count widens the whole page, navbar included, so cards keep the Automatic
+  default-width card size until the viewport caps it (`--content-max-width` in `src/app.css`).
 - 2026-10-07: Opening a gift without edit rights always shows the Gift viewer (#440): photo first,
   then a caption with the full title, price and quantity, all links, full description with appends
   and the edited-after-share line; priority and category stay on the card. It never dims the photo.
@@ -462,10 +520,20 @@ sections for UI work. Historical reconciliation and review notes are in
   duration cap. Preserve reduced-motion handling, existing view-switch effects and hover behavior;
   active dragging follows the pointer without a speed limit. Interrupted runs must hand off from
   their current visual positions without leaking overlays or stealing focus.
-- 2026-10-02: Spacing beside elevated elements is a standard gap plus a depth clearance equal to the
-  shadow offset for Ink and Black and none for Soft. Adjacent elevated controls use
-  `--nested-control-gap` in `src/app.css`; container insets add the clearance on shadowed edges
-  only, and spacing never changes on hover.
+- 2026-10-06: Spacing beside elevated elements is a standard gap plus a depth clearance for Ink and
+  Black (none for Soft), judged by shadows staying clear of neighbors, not an exact offset. Adjacent
+  elevated controls use `--nested-control-gap`, dense header actions `--compact-control-gap` (both
+  `src/app.css`); container insets add clearance on shadowed edges only; spacing never changes on
+  hover. Floating layers add clearance only for shadowed triggers; hover-opened layers keep the
+  trigger-to-layer gap pointer-safe.
+- 2026-10-06: Depth options preview their own shadow; selection uses primary fill, never shadow
+  (#449).
+- 2026-10-06: Rows running under an overlay close button reserve `--overlay-close-clearance`
+  (`src/app.css`) at their end (#453).
+- 2026-10-07: Segmented controls and tabs keep their resting look and slide the selected face to the
+  new option; the slide is the only press feedback, so no hover lift (settings-tab track clipping
+  also rules it out) and no press scale. Segmented trays hug their options rather than stretching to
+  the container (#455).
 
 ## Images & cropping
 

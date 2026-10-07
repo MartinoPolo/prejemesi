@@ -1,5 +1,6 @@
 <script lang="ts">
 	import Navbar from '$lib/components/blocks/navbar/Navbar.svelte';
+	import DemoNotice from '$lib/components/blocks/demo/DemoNotice.svelte';
 	import { setNotificationsContext } from '$lib/modules/notifications/notifications.context.svelte.js';
 	import { resolveUserImageUrl } from '$lib/modules/images/public_url.js';
 	import * as m from '$lib/paraglide/messages.js';
@@ -23,6 +24,7 @@
 	const IDLE_PRELOAD_TIMEOUT_MS = 3_000;
 
 	let { data, children }: AppLayoutProps = $props();
+	let demoExpired = $state(false);
 
 	const user: typeof data.user | null = $derived(
 		typeof data.user === 'object' ? data.user : null,
@@ -69,18 +71,25 @@
 </script>
 
 <div class="app-shell">
-	<Navbar
-		{user}
-		userName={user?.name ?? m.nav_default_user()}
-		userEmail={user?.email ?? ''}
-		{userInitials}
-		userImage={resolveUserImageUrl(user?.image)}
-	/>
-	<main class="app-content">
-		<div class="app-content-inner" class:wishlist-detail-content={isWishlistDetailRoute}>
-			{@render children()}
-		</div>
-	</main>
+	{#if !demoExpired}
+		<Navbar
+			{user}
+			userName={user?.name ?? m.nav_default_user()}
+			userEmail={user?.email ?? ''}
+			demo={data.demoExpiresAt !== null}
+			{userInitials}
+			userImage={resolveUserImageUrl(user?.image)}
+		/>
+	{/if}
+	{#if data.demoExpiresAt}<DemoNotice
+			expiresAt={data.demoExpiresAt}
+			onexpired={() => (demoExpired = true)}
+		/>{/if}
+	{#if !demoExpired}<main class="app-content">
+			<div class="app-content-inner" class:wishlist-detail-content={isWishlistDetailRoute}>
+				{@render children()}
+			</div>
+		</main>{/if}
 </div>
 
 <style>

@@ -389,7 +389,11 @@ describe('unreserveGift — administrator release (issue #213)', () => {
 
 	it('dispatches no notification when a gifter cancels their OWN reservation (REQ-9)', async () => {
 		const database = createMultiQueryChain([signedInGifterReservation], []);
-		mockGetDb.mockReturnValueOnce(database as unknown as ReturnType<typeof getDb>);
+		mockGetDb
+			.mockReturnValueOnce(database as unknown as ReturnType<typeof getDb>)
+			.mockReturnValueOnce(
+				createChain([makeActiveWishlistRow()]) as unknown as ReturnType<typeof getDb>,
+			);
 
 		await (unreserveGift as (...args: unknown[]) => unknown)(
 			makeAuthContext(fakeVisitorUser),
@@ -401,7 +405,11 @@ describe('unreserveGift — administrator release (issue #213)', () => {
 
 	it('records the cancelling user on a self-cancel (REQ-10)', async () => {
 		const database = createMultiQueryChain([signedInGifterReservation], []);
-		mockGetDb.mockReturnValueOnce(database as unknown as ReturnType<typeof getDb>);
+		mockGetDb
+			.mockReturnValueOnce(database as unknown as ReturnType<typeof getDb>)
+			.mockReturnValueOnce(
+				createChain([makeActiveWishlistRow()]) as unknown as ReturnType<typeof getDb>,
+			);
 
 		await (unreserveGift as (...args: unknown[]) => unknown)(
 			makeAuthContext(fakeVisitorUser),
@@ -437,7 +445,11 @@ describe('unreserveGift — administrator release (issue #213)', () => {
 	// (`cancelledByUserId !== null && !== userId`) distinguishable from a self-cancel.
 	it('leaves the canceller NULL on a guest self-cancel (REQ-10)', async () => {
 		const database = createMultiQueryChain([guestReservation(null)], []);
-		mockGetDb.mockReturnValueOnce(database as unknown as ReturnType<typeof getDb>);
+		mockGetDb
+			.mockReturnValueOnce(database as unknown as ReturnType<typeof getDb>)
+			.mockReturnValueOnce(
+				createChain([makeActiveWishlistRow()]) as unknown as ReturnType<typeof getDb>,
+			);
 		mockAnonCookie('anon-token-1');
 
 		await (unreserveGift as (...args: unknown[]) => unknown)(null, validInput);
