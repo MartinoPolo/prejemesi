@@ -299,12 +299,6 @@ sections for UI work. Historical reconciliation and review notes are in
   List rows and shared crop geometry, retaining only necessary existing accessibility fallbacks for
   constrained/enlarged content. Verify the real mobile layout during implementation; this exclusion
   does not retain the design gate on #377.
-- 2026-09-14: Keep manual reordering discoverable for eligible Card/List managers and recipients
-  even with grouping active. Enter from the latest saved active/non-received order, temporarily
-  bypass grouping/sorting/filters, explain the temporary view, and restore those browsing choices on
-  Done without overwriting preferences or category/priority assignments. Grid/List switching stays
-  available. Retain the top-left grip's small visible surface inside its larger hit target; approved
-  mockups are not evidence that persistence, dragging, or positioning defects are fixed.
 
 - 2026-09-15: List and mobile Card content follow title → description → source links and price →
   bottom-right actions. Titles and descriptions flow together without reserving a blank second title
@@ -364,6 +358,15 @@ sections for UI work. Historical reconciliation and review notes are in
 - 2026-10-05: Bought (“Koupeno”) is a footer action for a signed-in viewer's own reservation, never
   an image state badge, and is hidden on archived lists. For správci who also reserved, it sits
   beside Received and is the first action to overflow into More (#442).
+- 2026-10-06: Manual order is one global `sortOrder`; grouped order is always derived from it, never
+  stored per group. Reorder mode, discoverable for eligible Card/List managers and recipients,
+  starts from the saved active/non-received order, bypasses sort/filters, restores browsing choices
+  on Done, keeps Grid/List switching and the small grip inside its larger hit target. It keeps
+  active priority or category grouping, showing every level/enabled category plus “Bez …” as drop
+  zones. In-group moves permute the group's existing global slots; cross-group drag or keyboard
+  moves insert before the new next neighbour (else after the previous one) and change
+  priority/category through the post-share edit path, atomically with the order, offering a Vrátit
+  toast. Only the dragged card shows the live grouping badge (#454).
 
 ## Forms & settings
 
