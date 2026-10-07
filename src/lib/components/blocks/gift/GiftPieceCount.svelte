@@ -11,6 +11,9 @@
 		reservationAcknowledgementKey?: string | boolean | null;
 	}
 
+	// Rendered as an expression because Svelte trims the leading space of literal block text.
+	const RESERVED_TEXT_SEPARATOR = ' · ';
+
 	let {
 		quantity,
 		role,
@@ -70,7 +73,8 @@
 		bind:this={countElement}
 		data-testid="gift-piece-count"
 		class="text-sm text-muted-foreground"
-		>{result.pieceText}{#if result.reservedText}
-			&middot; <span class="text-reserved">{result.reservedText}</span>{/if}</span
+		>{result.pieceText}{#if result.reservedText}{RESERVED_TEXT_SEPARATOR}<span
+				class="text-reserved">{result.reservedText}</span
+			>{/if}</span
 	>
 {/if}
