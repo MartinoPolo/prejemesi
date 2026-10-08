@@ -7,8 +7,11 @@
 	import WishlistGiftCardGrid from './WishlistGiftCardGrid.svelte';
 	import WishlistGiftListView from './WishlistGiftListView.svelte';
 	import WishlistGiftCompactTable from './WishlistGiftCompactTable.svelte';
+	import type { GiftReorderPlacement } from '$lib/modules/gifts/gift_grouped_reorder.js';
+	import type { GiftReorderPlacementCommitHandler } from './gift_reorder_view.svelte.js';
 	import {
 		GIFT_CARD_COLUMN_OPTIONS,
+		GIFT_GROUPING_OPTIONS,
 		GIFT_VIEW_MODES,
 		type GiftByRole,
 		type GiftCardColumnOption,
@@ -55,6 +58,9 @@
 		onreorderpreview: (orderedIds: string[]) => void;
 		onreordercommit: (orderedIds: string[]) => void;
 		onreordercancel: (orderedIds: string[]) => void;
+		onreorderplacementpreview?: (placement: GiftReorderPlacement) => void;
+		onreorderplacementcommit?: GiftReorderPlacementCommitHandler;
+		onreorderplacementcancel?: () => void;
 		selectionMode?: boolean;
 		selectedIds?: readonly string[];
 		onselectiontoggle?: (giftId: string) => void;
@@ -93,6 +99,9 @@
 		onreorderpreview,
 		onreordercommit,
 		onreordercancel,
+		onreorderplacementpreview,
+		onreorderplacementcommit,
+		onreorderplacementcancel,
 		selectionMode = false,
 		selectedIds = [],
 		onselectiontoggle,
@@ -370,6 +379,10 @@
 						{onreorderpreview}
 						{onreordercommit}
 						{onreordercancel}
+						reorderGrouping={reorderMode ? grouping : GIFT_GROUPING_OPTIONS.none}
+						{onreorderplacementpreview}
+						{onreorderplacementcommit}
+						{onreorderplacementcancel}
 					/>
 				{:else}
 					<WishlistGiftCompactTable

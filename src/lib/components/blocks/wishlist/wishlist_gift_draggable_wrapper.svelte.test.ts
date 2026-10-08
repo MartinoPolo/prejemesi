@@ -241,6 +241,43 @@ describe('WishlistGiftDraggableWrapper — explicit reorder mode (#239)', () => 
 		await screen.unmount();
 	});
 
+	it('lets a grouped reorder enable a move past the flat list edge and show the in-group position (#454)', async () => {
+		await page.viewport(320, 720);
+		const screen = await render(WishlistGiftDraggableWrapperTestHost, {
+			...baseProps,
+			index: 1,
+			totalCount: 2,
+			reorderEnabled: true,
+			reorderGroupKey: 'priority:high',
+			canMoveBackward: false,
+			canMoveForward: true,
+			groupPosition: { index: 0, total: 1 },
+		});
+
+		await expect
+			.element(
+				screen.getByRole('button', {
+					name: m.gift_reorder_move_up({ name: baseProps.giftName }),
+				}),
+			)
+			.toBeDisabled();
+		await expect
+			.element(
+				screen.getByRole('button', {
+					name: m.gift_reorder_move_down({ name: baseProps.giftName }),
+				}),
+			)
+			.toBeEnabled();
+		await expect
+			.element(screen.getByTestId('gift-reorder-directional-actions'))
+			.toHaveTextContent('1/1');
+		expect(document.querySelector('[data-gift-item]')).toHaveAttribute(
+			'data-gift-reorder-group',
+			'priority:high',
+		);
+		await screen.unmount();
+	});
+
 	it('does not render the reorder grip outside reorder mode', async () => {
 		const screen = await render(WishlistGiftDraggableWrapperTestHost, {
 			...baseProps,

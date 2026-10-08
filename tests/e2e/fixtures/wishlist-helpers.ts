@@ -144,23 +144,52 @@ export async function addGift(
 	await expect(page.getByRole('heading', { name, level: 3 })).toBeVisible({ timeout: 10_000 });
 }
 
-async function clickWishlistHeaderAction(page: Page, accessibleName: RegExp): Promise<void> {
+/** A responsive More surface: a bottom sheet below `sm`, a dropdown menu from `sm`. */
+interface ResponsiveMoreSurface {
+	mobileTriggerTestId: string;
+	/** Accessible name of the mobile sheet; omitted when it is the only visible dialog. */
+	mobileSheetName?: RegExp;
+	desktopTriggerTestId: string;
+}
+
+const WISHLIST_HEADER_MORE_SURFACE: ResponsiveMoreSurface = {
+	mobileTriggerTestId: 'mobile-header-more-trigger',
+	mobileSheetName: /^(Další akce|More actions)$/,
+	desktopTriggerTestId: 'desktop-header-more-trigger',
+};
+
+const WISHLIST_TOOLBAR_MORE_SURFACE: ResponsiveMoreSurface = {
+	mobileTriggerTestId: 'mobile-more-trigger',
+	desktopTriggerTestId: 'desktop-more-trigger',
+};
+
+async function clickResponsiveMoreAction(
+	page: Page,
+	surface: ResponsiveMoreSurface,
+	accessibleName: RegExp,
+): Promise<void> {
 	const mobile = (page.viewportSize()?.width ?? 1280) < 640;
 	if (mobile) {
-		await page.getByTestId('mobile-header-more-trigger').filter({ visible: true }).click();
-		const sheet = page
-			.getByRole('dialog', { name: /^(Další akce|More actions)$/ })
-			.filter({ visible: true });
+		await page.getByTestId(surface.mobileTriggerTestId).filter({ visible: true }).click();
+		const dialogs =
+			surface.mobileSheetName === undefined
+				? page.getByRole('dialog')
+				: page.getByRole('dialog', { name: surface.mobileSheetName });
+		const sheet = dialogs.filter({ visible: true });
 		await expect(sheet).toBeVisible({ timeout: 5_000 });
 		await sheet.getByRole('button', { name: accessibleName }).click();
 	} else {
-		await page.getByTestId('desktop-header-more-trigger').filter({ visible: true }).click();
+		await page.getByTestId(surface.desktopTriggerTestId).filter({ visible: true }).click();
 		// The popup's accessible name is optional in the rendered dropdown primitive. Scope to
-		// the actual visible layer rather than coupling header actions to that implementation detail.
+		// the actual visible layer rather than coupling actions to that implementation detail.
 		const menu = page.locator('[data-slot="dropdown-menu-content"]:visible').last();
 		await expect(menu).toBeVisible({ timeout: 5_000 });
 		await menu.getByRole('menuitem', { name: accessibleName }).click();
 	}
+}
+
+async function clickWishlistHeaderAction(page: Page, accessibleName: RegExp): Promise<void> {
+	await clickResponsiveMoreAction(page, WISHLIST_HEADER_MORE_SURFACE, accessibleName);
 }
 
 /** Open the share workflow from the responsive hero action surface. */
@@ -230,23 +259,18 @@ export async function clickWishlistToolbarMoreAction(
 	page: Page,
 	accessibleName: RegExp,
 ): Promise<void> {
-	const mobile = (page.viewportSize()?.width ?? 1280) < 640;
-	if (mobile) {
-		await page.getByTestId('mobile-more-trigger').filter({ visible: true }).click();
-		const sheet = page.getByRole('dialog').filter({ visible: true });
-		await expect(sheet).toBeVisible({ timeout: 5_000 });
-		await sheet.getByRole('button', { name: accessibleName }).click();
-	} else {
-		await page.getByTestId('desktop-more-trigger').filter({ visible: true }).click();
-		const menu = page.locator('[data-slot="dropdown-menu-content"]:visible').last();
-		await expect(menu).toBeVisible({ timeout: 5_000 });
-		await menu.getByRole('menuitem', { name: accessibleName }).click();
-	}
+	await clickResponsiveMoreAction(page, WISHLIST_TOOLBAR_MORE_SURFACE, accessibleName);
 }
 
 /** Enter manual gift-reordering mode through the toolbar More action. */
 export async function startGiftReorder(page: Page): Promise<void> {
 	await clickWishlistToolbarMoreAction(page, /^(Změnit pořadí|Change order)$/);
+	// Entering reorder mode is async and its notice shifts the collection; measure gifts only after it.
+	await expect(
+		page
+			.getByTestId('gift-reorder-temporary-notice')
+			.or(page.getByTestId('gift-reorder-recovery-notice')),
+	).toBeVisible();
 }
 
 /** Run the share wizard to completion, making the wishlist active/shared. */

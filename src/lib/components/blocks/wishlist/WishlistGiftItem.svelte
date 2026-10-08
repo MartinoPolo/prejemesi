@@ -4,6 +4,7 @@
 	import { getPrimaryGiftLink } from '$lib/modules/gifts/gift_url.js';
 	import { getContext, type Snippet } from 'svelte';
 	import WishlistGiftDraggableWrapper from './WishlistGiftDraggableWrapper.svelte';
+	import type { GiftReorderGroupPosition } from './gift_reorder_view.svelte.js';
 
 	interface Props {
 		gift: GiftByRole;
@@ -22,6 +23,10 @@
 		onreorderpointerdown: (event: PointerEvent, index: number) => void;
 		onreordermove: (index: number, direction: -1 | 1) => void;
 		children: Snippet<[GiftByRole]>;
+		reorderGroupKey?: string;
+		canMoveBackward?: boolean;
+		canMoveForward?: boolean;
+		groupPosition?: GiftReorderGroupPosition;
 	}
 
 	let {
@@ -41,6 +46,10 @@
 		onreorderpointerdown,
 		onreordermove,
 		children,
+		reorderGroupKey,
+		canMoveBackward,
+		canMoveForward,
+		groupPosition,
 	}: Props = $props();
 
 	const isSelected = getContext<((giftId: string) => boolean) | undefined>(
@@ -74,6 +83,10 @@
 	onopendetail={() => onedit(gift)}
 	{onreorderpointerdown}
 	{onreordermove}
+	{reorderGroupKey}
+	{canMoveBackward}
+	{canMoveForward}
+	{groupPosition}
 >
 	{@render children(gift)}
 </WishlistGiftDraggableWrapper>

@@ -212,11 +212,8 @@ export const GIFT_CURRENCY_LABELS = {
 	USD: 'USD',
 } as const satisfies Record<GiftCurrency, string>;
 
-/** Input for creating a new gift */
-export interface CreateGiftInput {
-	wishlistId: string;
-	name: string;
-	description?: string | null;
+/** Optional gift fields shared by the create and update inputs. */
+interface EditableGiftFields {
 	links?: GiftLink[] | null;
 	price?: number | null;
 	/** Upper bound of a non-binding price range hint (issue #155). Null = single price (`price`). */
@@ -228,6 +225,13 @@ export interface CreateGiftInput {
 	quantity?: number | null;
 	priorityLevelId?: string | null;
 	categoryId?: string | null;
+}
+
+/** Input for creating a new gift */
+export interface CreateGiftInput extends EditableGiftFields {
+	wishlistId: string;
+	name: string;
+	description?: string | null;
 }
 
 export const GIFT_CURRENCY_VALUES = Object.values(GIFT_CURRENCIES);
@@ -261,21 +265,31 @@ export const GiftPriceSchema = v.pipe(
 	v.check(isValidGiftPrice, 'price must have at most two decimal places'),
 );
 
+/** Optional link and price fields that every gift input validates identically. */
+const GiftLinkAndPriceFieldEntries = {
+	links: v.optional(v.nullable(GiftLinksSchema)),
+	price: v.optional(v.nullable(GiftPriceSchema)),
+	priceMax: v.optional(v.nullable(GiftPriceSchema)),
+	currency: v.optional(v.nullable(v.picklist(GIFT_CURRENCY_VALUES))),
+};
+
+/** Optional gift fields that creating and updating a gift validate identically. */
+const EditableGiftFieldEntries = {
+	...GiftLinkAndPriceFieldEntries,
+	imageUrl: v.optional(v.nullable(v.string())),
+	imageKey: v.optional(v.nullable(v.string())),
+	imageMeta: v.optional(v.nullable(ImageMetadataSchema)),
+	quantity: v.optional(v.nullable(v.pipe(v.number(), v.integer(), v.minValue(1)))),
+	priorityLevelId: v.optional(v.nullable(v.string())),
+	categoryId: v.optional(v.nullable(v.string())),
+};
+
 export const CreateGiftInputSchema = v.pipe(
 	v.strictObject({
 		wishlistId: v.string(),
 		name: v.pipe(v.string(), v.trim(), v.minLength(1)),
 		description: v.optional(v.nullable(v.string())),
-		links: v.optional(v.nullable(GiftLinksSchema)),
-		price: v.optional(v.nullable(GiftPriceSchema)),
-		priceMax: v.optional(v.nullable(GiftPriceSchema)),
-		currency: v.optional(v.nullable(v.picklist(GIFT_CURRENCY_VALUES))),
-		imageUrl: v.optional(v.nullable(v.string())),
-		imageKey: v.optional(v.nullable(v.string())),
-		imageMeta: v.optional(v.nullable(ImageMetadataSchema)),
-		quantity: v.optional(v.nullable(v.pipe(v.number(), v.integer(), v.minValue(1)))),
-		priorityLevelId: v.optional(v.nullable(v.string())),
-		categoryId: v.optional(v.nullable(v.string())),
+		...EditableGiftFieldEntries,
 	}),
 	v.check(isPriceRangeValid, 'priceMax must be greater than or equal to price'),
 );
@@ -290,10 +304,7 @@ export const GiftDraftInputSchema = v.pipe(
 	v.object({
 		name: v.pipe(v.string(), v.trim(), v.minLength(1)),
 		description: v.optional(v.nullable(v.string())),
-		links: v.optional(v.nullable(GiftLinksSchema)),
-		price: v.optional(v.nullable(GiftPriceSchema)),
-		priceMax: v.optional(v.nullable(GiftPriceSchema)),
-		currency: v.optional(v.nullable(v.picklist(GIFT_CURRENCY_VALUES))),
+		...GiftLinkAndPriceFieldEntries,
 		imageUrl: v.optional(
 			v.nullable(
 				v.pipe(
@@ -326,22 +337,11 @@ export interface DescriptionAppendEdit {
 }
 
 /** Input for updating an existing gift */
-export interface UpdateGiftInput {
+export interface UpdateGiftInput extends EditableGiftFields {
 	id: string;
 	name?: string;
 	description?: string | null;
 	descriptionAppendEdit?: DescriptionAppendEdit;
-	links?: GiftLink[] | null;
-	price?: number | null;
-	/** Upper bound of a non-binding price range hint (issue #155). Null = single price (`price`). */
-	priceMax?: number | null;
-	currency?: GiftCurrency | null;
-	imageUrl?: string | null;
-	imageKey?: string | null;
-	imageMeta?: ImageMetadata | null;
-	quantity?: number | null;
-	priorityLevelId?: string | null;
-	categoryId?: string | null;
 }
 
 export const UpdateGiftInputSchema = v.pipe(
@@ -355,30 +355,48 @@ export const UpdateGiftInputSchema = v.pipe(
 				text: v.nullable(v.string()),
 			}),
 		),
-		links: v.optional(v.nullable(GiftLinksSchema)),
-		price: v.optional(v.nullable(GiftPriceSchema)),
-		priceMax: v.optional(v.nullable(GiftPriceSchema)),
-		currency: v.optional(v.nullable(v.picklist(GIFT_CURRENCY_VALUES))),
-		imageUrl: v.optional(v.nullable(v.string())),
-		imageKey: v.optional(v.nullable(v.string())),
-		imageMeta: v.optional(v.nullable(ImageMetadataSchema)),
-		quantity: v.optional(v.nullable(v.pipe(v.number(), v.integer(), v.minValue(1)))),
-		priorityLevelId: v.optional(v.nullable(v.string())),
-		categoryId: v.optional(v.nullable(v.string())),
+		...EditableGiftFieldEntries,
 	}),
 	v.check(isPriceRangeValid, 'priceMax must be greater than or equal to price'),
 );
 
-/** Input for reordering gifts */
-export interface ReorderGiftItem {
-	id: string;
-	sortOrder: number;
-}
+/** Gift properties a grouped reorder may change: the active priority or category grouping. */
+export const GIFT_REORDER_GROUP_FIELDS = [
+	GIFT_GROUPING_OPTIONS.priority,
+	GIFT_GROUPING_OPTIONS.category,
+] as const;
 
-export const ReorderGiftItemSchema = v.object({
-	id: v.string(),
-	sortOrder: v.number(),
+export type GiftReorderGroupField = (typeof GIFT_REORDER_GROUP_FIELDS)[number];
+
+const ReorderGiftGroupChangeSchema = v.strictObject({
+	giftId: v.string(),
+	field: v.picklist(GIFT_REORDER_GROUP_FIELDS),
+	/** Priority level or category id; null moves the gift to "Bez priority" / "Bez kategorie". */
+	value: v.nullable(v.string()),
 });
+
+export type ReorderGiftGroupChange = v.InferOutput<typeof ReorderGiftGroupChangeSchema>;
+
+/**
+ * The wishlist's complete active (non-received) gift set in its new manual order, plus optional
+ * `groupChanges` that move gifts to another priority or category atomically with that order.
+ */
+export const ReorderGiftsInputSchema = v.strictObject({
+	wishlistId: v.string(),
+	orderedGiftIds: v.array(v.string()),
+	groupChanges: v.optional(
+		v.pipe(
+			v.array(ReorderGiftGroupChangeSchema),
+			v.check(
+				(changes) =>
+					new Set(changes.map((change) => change.giftId)).size === changes.length,
+				'Each gift may change its group at most once.',
+			),
+		),
+	),
+});
+
+export type ReorderGiftsInput = v.InferOutput<typeof ReorderGiftsInputSchema>;
 
 export const MarkGiftReceivedInputSchema = v.object({
 	giftId: v.string(),

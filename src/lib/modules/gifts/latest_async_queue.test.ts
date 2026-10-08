@@ -112,4 +112,34 @@ describe('createLatestAsyncQueue', () => {
 		queue.enqueue('verified later order');
 		await expect(queue.whenIdle()).resolves.toBe(true);
 	});
+
+	it('merges a pending value with a newer one instead of dropping it', async () => {
+		const first = deferred();
+		const calls: Array<{ order: string; changes: string[] }> = [];
+		const worker = vi.fn(async (value: { order: string; changes: string[] }) => {
+			calls.push(value);
+			if (calls.length === 1) {
+				await first.promise;
+			}
+		});
+		const queue = createLatestAsyncQueue(
+			worker,
+			async () => {},
+			(pending, next) => ({
+				order: next.order,
+				changes: [...pending.changes, ...next.changes],
+			}),
+		);
+
+		queue.enqueue({ order: 'first', changes: ['a'] });
+		queue.enqueue({ order: 'second', changes: ['b'] });
+		queue.enqueue({ order: 'third', changes: ['c'] });
+		first.resolve();
+
+		await expect(queue.whenIdle()).resolves.toBe(true);
+		expect(calls).toEqual([
+			{ order: 'first', changes: ['a'] },
+			{ order: 'third', changes: ['b', 'c'] },
+		]);
+	});
 });

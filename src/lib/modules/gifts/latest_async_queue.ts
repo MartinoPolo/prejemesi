@@ -1,6 +1,8 @@
 export function createLatestAsyncQueue<T>(
 	worker: (value: T) => Promise<void>,
 	onError: (error: unknown) => Promise<void>,
+	/** Combines a still-pending value with a newer one; by default the newer value replaces it. */
+	merge: (pending: T, next: T) => T = (_pending, next) => next,
 ) {
 	let pending: T | null = null;
 	let running = false;
@@ -45,7 +47,7 @@ export function createLatestAsyncQueue<T>(
 
 	return {
 		enqueue(value: T) {
-			pending = value;
+			pending = pending === null ? value : merge(pending, value);
 			if (!running) {
 				activeDrainSucceeded = true;
 				void drain();

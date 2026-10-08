@@ -4,8 +4,6 @@
 	import GiftLinkList from '$lib/components/blocks/gift/GiftLinkList.svelte';
 	import GiftStateOverlay from '$lib/components/blocks/gift/GiftStateOverlay.svelte';
 	import LikeButton from '$lib/components/blocks/gift/LikeButton.svelte';
-	import type { GiftForVisitor, GiftByRole } from '$lib/modules/gifts/types.js';
-	import type { WishlistRole } from '$lib/modules/wishlists/types.js';
 	import { formatPrice } from '$lib/modules/gifts/gift_display.js';
 	import {
 		deriveGiftBrowseActions,
@@ -23,27 +21,10 @@
 	import GiftPriorityBadge from './GiftPriorityBadge.svelte';
 	import GiftBrowseActions from './GiftBrowseActions.svelte';
 	import { restingShadowNesting } from '$lib/utils/resting_shadow_nesting.js';
-	import type { GiftActionPlacementSnapshot } from '$lib/components/blocks/wishlist/gift_context_invocation.js';
+	import type { GiftPresentationProps } from './gift_presentation_props.js';
 
-	interface GiftCardProps {
-		gift: GiftByRole;
-		role: WishlistRole;
-		isArchived?: boolean;
-		hideReservationState?: boolean;
-		contextualMode?: boolean;
+	interface GiftCardProps extends GiftPresentationProps {
 		allowArchivedLike?: boolean;
-		onreserve?: (gift: GiftForVisitor) => void;
-		onunreserve?: (gift: GiftForVisitor) => void;
-		onreceived?: (giftId: string, received: boolean) => void;
-		receivedPending?: boolean;
-		onmore?: (
-			anchor: HTMLButtonElement,
-			placementSnapshot: GiftActionPlacementSnapshot,
-		) => void;
-		persistentMore?: boolean;
-		moreOpen?: boolean;
-		moreSurface?: 'menu' | 'dialog';
-		showPriority?: boolean;
 	}
 
 	let {
@@ -62,7 +43,11 @@
 		moreOpen = false,
 		moreSurface = 'menu',
 		showPriority = true,
+		showCategory,
 	}: GiftCardProps = $props();
+
+	const visibleCategory = $derived((showCategory ?? !contextualMode) ? gift.category : null);
+	const showsTopOverlays = $derived(!contextualMode || visibleCategory != null);
 
 	const giftsContext = useGifts();
 
@@ -120,6 +105,27 @@
 	);
 </script>
 
+{#snippet topOverlays()}
+	<div
+		class="gift-card-top-overlays absolute top-2 right-2 z-20 flex items-start gap-2"
+		data-gift-card-top-overlays
+	>
+		{#if visibleCategory != null}
+			<div class="min-w-0 flex-1" data-gift-card-category-zone>
+				<GiftCategoryBadge category={visibleCategory} {isDimmed} />
+			</div>
+		{/if}
+		{#if presentation.showLike && visitorGift}
+			<LikeButton
+				giftId={gift.id}
+				giftName={gift.name}
+				likeCount={visitorGift.likeCount}
+				class="ml-auto"
+			/>
+		{/if}
+	</div>
+{/snippet}
+
 <div
 	class={styles.card()}
 	data-testid="gift-card-surface"
@@ -167,25 +173,8 @@
 				aria-hidden="true"
 			></div>
 
-			{#if !contextualMode}
-				<div
-					class="gift-card-top-overlays absolute top-2 right-2 left-2 z-20 flex items-start gap-2"
-					data-gift-card-top-overlays
-				>
-					{#if gift.category != null}
-						<div class="min-w-0 flex-1" data-gift-card-category-zone>
-							<GiftCategoryBadge category={gift.category} {isDimmed} />
-						</div>
-					{/if}
-					{#if presentation.showLike && visitorGift}
-						<LikeButton
-							giftId={gift.id}
-							giftName={gift.name}
-							likeCount={visitorGift.likeCount}
-							class="ml-auto"
-						/>
-					{/if}
-				</div>
+			{#if showsTopOverlays}
+				{@render topOverlays()}
 			{/if}
 
 			<GiftStateOverlay entries={presentation.overlay} avoidTopRight />
@@ -287,6 +276,10 @@
 
 	:global([data-gift-card-has-descriptions='true']) [data-gift-card-track='description'] {
 		padding-top: 0.125rem;
+	}
+
+	.gift-card-top-overlays {
+		left: var(--gift-context-leading-clearance, 0.5rem);
 	}
 
 	@container (width <= 10rem) {

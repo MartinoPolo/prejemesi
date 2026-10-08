@@ -373,7 +373,7 @@ type GiftCommandHandler = (
 type DeleteGiftHandler = (authContext: { user: { id: string } }, giftId: string) => Promise<void>;
 type ReorderGiftsHandler = (
 	authContext: { user: { id: string } },
-	items: { id: string; sortOrder: number }[],
+	input: { wishlistId: string; orderedGiftIds: string[] },
 ) => Promise<void>;
 
 type MarkReceivedHandler = (

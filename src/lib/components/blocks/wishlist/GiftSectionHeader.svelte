@@ -1,47 +1,34 @@
 <script lang="ts">
 	import * as m from '$lib/paraglide/messages.js';
-	import { getPriorityDisplay } from '$lib/modules/gifts/gift_display.js';
-	import { GIFT_SECTION_KINDS, type GiftSection } from '$lib/modules/gifts/gift_ordering.js';
+	import type { GiftSection } from '$lib/modules/gifts/gift_ordering.js';
 	import { Checkbox } from '$lib/components/base/checkbox/index.js';
 	import { getContext } from 'svelte';
+	import { giftSectionLabel } from './gift_section_label.js';
 
 	interface GiftSectionHeaderProps {
 		section: GiftSection;
 		selectionMode?: boolean;
 		onselectiontoggle?: (giftId: string) => void;
+		/** Marks the header as part of a grouped-reorder drop target. */
+		reorderGroupKey?: string;
 	}
 
-	let { section, selectionMode = false, onselectiontoggle }: GiftSectionHeaderProps = $props();
+	let {
+		section,
+		selectionMode = false,
+		onselectiontoggle,
+		reorderGroupKey,
+	}: GiftSectionHeaderProps = $props();
 	const isSelected = getContext<((giftId: string) => boolean) | undefined>(
 		'wishlist-gift-selection',
 	);
 	const sectionIds = $derived(section.gifts.map((gift) => gift.id));
 	const selectedCount = $derived(sectionIds.filter((id) => isSelected?.(id) ?? false).length);
 
-	// Fixed structural and default priority sections use shared localized copy.
-	const label = $derived.by(() => {
-		switch (section.kind) {
-			case GIFT_SECTION_KINDS.ownReservation:
-				return m.gift_band_own_reservations();
-			case GIFT_SECTION_KINDS.otherGifts:
-				return m.gift_band_other_gifts();
-			case GIFT_SECTION_KINDS.noPriority:
-				return m.gift_priority_none();
-			case GIFT_SECTION_KINDS.priorityGroup:
-				return (
-					getPriorityDisplay(section.priorityKey ?? null)?.label() ?? section.label ?? ''
-				);
-			case GIFT_SECTION_KINDS.uncategorized:
-				return m.gift_category_uncategorized();
-			case GIFT_SECTION_KINDS.received:
-				return m.gift_band_received();
-			default:
-				return section.label ?? '';
-		}
-	});
+	const label = $derived(giftSectionLabel(section));
 </script>
 
-<div class="flex items-center gap-2 pt-1 pb-0.5">
+<div class="flex items-center gap-2 pt-1 pb-0.5" data-gift-reorder-group={reorderGroupKey}>
 	{#if selectionMode}
 		<span class="inline-flex shrink-0">
 			<Checkbox

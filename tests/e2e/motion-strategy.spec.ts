@@ -476,12 +476,16 @@ test.describe('issue #269 integrated motion strategy', () => {
 			page.locator('[role="status"]').filter({ hasText: 'Režim změny pořadí zapnut.' }),
 		).toHaveCount(1);
 		await expect(page.getByTestId('gift-reorder-temporary-notice')).toContainText(
-			'dočasně zobrazujeme všechny aktivní dárky bez seskupení, řazení a filtrů',
+			'dočasně zobrazujeme všechny aktivní dárky bez řazení a filtrů',
 		);
+		// Grouped reorder keeps the category groups; each group lists its gifts in manual order.
 		await expect
 			.poll(() => giftItems(page).getByRole('heading', { level: 3 }).allTextContents())
-			.toEqual(manualOrder);
-		await expect(page.getByRole('heading', { level: 2, name: 'Knihy' })).toHaveCount(0);
+			.toEqual(['Zeta Gift', 'Mu Gift', 'Alpha Gift']);
+		await expect(page.getByRole('heading', { level: 2, name: 'Knihy' })).toBeVisible();
+		await expect(
+			page.getByRole('heading', { level: 2, name: 'Bez kategorie', exact: true }),
+		).toBeVisible();
 		await expect(page.getByTestId('desktop-display-trigger')).toBeDisabled();
 
 		await desktopDone.click();

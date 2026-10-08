@@ -1,7 +1,7 @@
 <script lang="ts">
 	import ReserveButton from '$lib/components/blocks/reservation/ReserveButton.svelte';
 	import PurchasedToggle from '$lib/components/blocks/reservation/PurchasedToggle.svelte';
-	import type { GiftActionPlacementSnapshot } from '$lib/components/blocks/wishlist/gift_context_invocation.js';
+	import type { GiftBrowseActionHandlers } from './gift_presentation_props.js';
 	import type { GiftBrowseActions } from '$lib/modules/gifts/gift_display_state.js';
 	import type { GiftContextAction } from '$lib/modules/gifts/gift_context_actions.js';
 	import type { GiftByRole, GiftForVisitor } from '$lib/modules/gifts/types.js';
@@ -9,21 +9,14 @@
 	import GiftActionRow from './GiftActionRow.svelte';
 	import GiftReceivedToggle from './GiftReceivedToggle.svelte';
 
-	interface GiftBrowseActionsProps {
+	interface GiftBrowseActionsProps extends GiftBrowseActionHandlers {
 		gift: GiftByRole;
 		visitorGift: GiftForVisitor | null;
 		role: WishlistRole;
 		isArchived: boolean;
 		actions: GiftBrowseActions;
 		contentWidth: number;
-		onreserve?: (gift: GiftForVisitor) => void;
-		onunreserve?: (gift: GiftForVisitor) => void;
-		onreceived?: (giftId: string, received: boolean) => void;
 		receivedPending: boolean;
-		onmore?: (
-			anchor: HTMLButtonElement,
-			placementSnapshot: GiftActionPlacementSnapshot,
-		) => void;
 		persistentMore: boolean;
 		moreOpen: boolean;
 		moreSurface: 'menu' | 'dialog';
