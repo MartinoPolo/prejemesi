@@ -24,10 +24,13 @@ Follow this order exactly:
    create/coalesce the expected single and bulk new-gift digest behavior before enabling machine
    ingestion.
 5. Create a dedicated actor account and choose the target wishlists. Then configure the Worker
-   secret `GIFT_INGESTION_TOKEN` and the variables `GIFT_INGESTION_TARGET_SHORT_IDS`
-   (comma-separated wishlist short IDs; short IDs are public, so a plaintext variable kept by
-   `keep_vars` is fine) and `GIFT_INGESTION_ACTOR_ID`. Authorize another wishlist later by appending
-   its short ID; no deploy is needed. A legacy `GIFT_INGESTION_TARGET_SHORT_ID` secret, when
+   secret `GIFT_INGESTION_TOKEN` and the variable `GIFT_INGESTION_ACTOR_ID`. The allowlist
+   `GIFT_INGESTION_TARGET_SHORT_IDS` (comma-separated wishlist short IDs; they are public) is a
+   variable of the GitHub `production` environment, which `deploy.yml` passes to `wrangler deploy`
+   because Wrangler cannot set plain-text Worker variables without deploying. Authorize another
+   wishlist by appending its short ID
+   (`gh variable set GIFT_INGESTION_TARGET_SHORT_IDS --env production --body <ids>`) and redeploying
+   through the gated pipeline. A legacy `GIFT_INGESTION_TARGET_SHORT_ID` Worker secret, when
    present, is also allowlisted; fold its value into the variable before deleting it. Confirm the
    deployed Worker also has the `GIFT_INGESTION_RATE_LIMIT` binding declared in `wrangler.jsonc` (60
    requests per 60 seconds). Missing endpoint values disable the endpoint; a missing or failing

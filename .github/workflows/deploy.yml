@@ -135,13 +135,18 @@ jobs:
                   SENTRY_RELEASE: ${{ github.sha }}
                   SENTRY_UPLOAD_SOURCE_MAPS: 'true'
             - name: Deploy to Cloudflare Workers
-              run:
-                  pnpm exec wrangler deploy --var GIT_COMMIT_SHA:${{ github.sha }} --var
-                  PUBLIC_SENTRY_DSN:${PUBLIC_SENTRY_DSN}
+              run: |
+                  deploy_arguments=(--var "GIT_COMMIT_SHA:${{ github.sha }}" --var "PUBLIC_SENTRY_DSN:${PUBLIC_SENTRY_DSN}")
+                  # Wrangler cannot set plain-text vars without deploying, so the allowlist lives in the environment.
+                  if [ -n "$GIFT_INGESTION_TARGET_SHORT_IDS" ]; then
+                    deploy_arguments+=(--var "GIFT_INGESTION_TARGET_SHORT_IDS:$GIFT_INGESTION_TARGET_SHORT_IDS")
+                  fi
+                  pnpm exec wrangler deploy "${deploy_arguments[@]}"
               env:
                   CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
                   CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
                   PUBLIC_SENTRY_DSN: ${{ vars.PUBLIC_SENTRY_DSN }}
+                  GIFT_INGESTION_TARGET_SHORT_IDS: ${{ vars.GIFT_INGESTION_TARGET_SHORT_IDS }}
             - name: Record deployed commit
               run: |
                   {
