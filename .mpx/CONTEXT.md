@@ -148,7 +148,7 @@ unimplemented.
 | CSV / Google Sheets import (3-step wizard)                          | Done          | v1.x                                                        |
 | Bulk gift entry (shared draft grid, large dialog)                   | Done          | v1.x                                                        |
 | Gift metadata enrichment (link → image/price/title)                 | Planned       | v1.x                                                        |
-| Production gift ingestion (fixed-target manifest API + CLI)         | Done          | v1.x                                                        |
+| Production gift ingestion (allowlisted-target manifest API + CLI)   | Done          | v1.x                                                        |
 | Multiple links per gift (max 10)                                    | Done          | v1.x                                                        |
 | List for someone else (recipient + správce role model)              | Implemented   | v1.x                                                        |
 | Recipient account linking via claim token                           | Implemented   | v1.x                                                        |
@@ -249,5 +249,6 @@ unimplemented.
   bytes/MIME/dimensions, and the 5 MiB gift limit; apply verifies R2 metadata before insertion and
   compensates only uncommitted staged objects.
 - `.agents/skills/add-gifts/SKILL.md` is the production metadata workflow: JSON-LD →
-  OpenGraph/canonical/page metadata → exact brand/model search, never guessing, always dry-run, and
-  apply only after an explicit unambiguous production request. The skill never handles credentials.
+  OpenGraph/canonical/page metadata → exact brand/model search, plus Heureka/Alza/category-store
+  reference prices, never guessing, always dry-run, and apply only after an explicit unambiguous
+  production request. The skill never handles credentials.
