@@ -6,11 +6,7 @@
 	import { useLikes } from '$lib/modules/likes/likes.context.svelte.js';
 	import { toggleLike } from '$lib/modules/likes/likes.remote.js';
 	import { ElevationSurface } from '$lib/components/base/elevation-surface/index.js';
-	import {
-		likeButtonVariants,
-		type LikeButtonSize,
-		type LikeButtonAppearance,
-	} from './like_button_variants.js';
+	import { likeButtonVariants, type LikeButtonSize } from './like_button_variants.js';
 	import { cn } from '$lib/utils.js';
 
 	interface LikeButtonProps {
@@ -18,7 +14,6 @@
 		giftName: string;
 		likeCount: number;
 		size?: LikeButtonSize;
-		appearance?: LikeButtonAppearance;
 		showCount?: boolean;
 		class?: string;
 		surfaceClass?: string;
@@ -29,7 +24,6 @@
 		giftName,
 		likeCount,
 		size,
-		appearance = 'ghost',
 		showCount = true,
 		class: className,
 		surfaceClass,
@@ -44,7 +38,7 @@
 	let run = 0;
 	const activeAnimations = new SvelteSet<Animation>();
 
-	const styles = $derived(likeButtonVariants({ liked, size, appearance }));
+	const styles = $derived(likeButtonVariants({ liked, size }));
 	const componentId = $props.id();
 	const countId = $derived(`like-count-${componentId}`);
 

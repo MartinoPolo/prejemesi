@@ -15,10 +15,12 @@
 	} from '$lib/modules/gifts/types.js';
 	import type { ManagedGiftCategory } from '$lib/modules/gift-categories/types.js';
 	import type { ReserveGiftInput } from '$lib/modules/reservations/types.js';
+	import type { GiftMoreProps } from './gift_context_invocation.js';
 	import type { WishlistRole } from '$lib/modules/wishlists/types.js';
 	import { canReserveGift } from '$lib/modules/wishlists/wishlist_capabilities.js';
 
-	interface WishlistModalsProps {
+	/** `GiftMoreProps` belong to the Gift viewer's footer More. */
+	interface WishlistModalsProps extends GiftMoreProps {
 		/** Viewer role — drives the reserve gate (recipient cannot reserve). */
 		role: WishlistRole;
 		/** Recipient OR správce: gates the gift editor, share wizard, správci panel, batch add. */
@@ -26,6 +28,7 @@
 		isAuthenticated: boolean;
 		redirectHref: string;
 		wishlistId: string;
+		demo?: boolean;
 		wishlistTitle: string;
 		giftCount: number;
 		/** Linked recipient self-promoted to see reservation state (passed to the správci panel). */
@@ -87,6 +90,7 @@
 		isAuthenticated,
 		redirectHref,
 		wishlistId,
+		demo = false,
 		wishlistTitle,
 		giftCount,
 		recipientIsModerator,
@@ -118,6 +122,9 @@
 		ondelete,
 		ongiftreserve,
 		ongiftunreserve,
+		onmore,
+		moreOpen,
+		moreSurface,
 		onreservemodalclose,
 		onreserve,
 		onshared,
@@ -137,6 +144,7 @@
 	mode={giftModalMode}
 	gift={selectedGift}
 	{wishlistId}
+	{demo}
 	{priorityLevels}
 	{categoryOptions}
 	{role}
@@ -155,6 +163,9 @@
 	{ondelete}
 	onreserve={ongiftreserve}
 	onunreserve={ongiftunreserve}
+	{onmore}
+	{moreOpen}
+	{moreSurface}
 	onclose={ongiftmodalclose}
 />
 
@@ -172,12 +183,12 @@
 {/if}
 
 <!-- Share Wizard (managers only) -->
-{#if canManage}
+{#if canManage && !demo}
 	<ShareWizard {wishlistId} {wishlistTitle} {giftCount} {onshared} />
 {/if}
 
 <!-- Správci panel (managers only) -->
-{#if canManage}
+{#if canManage && !demo}
 	<ModeratorPanel
 		{wishlistId}
 		{recipientIsModerator}

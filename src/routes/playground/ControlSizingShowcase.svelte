@@ -20,8 +20,6 @@
 	import UserMenu from '$lib/components/blocks/navbar/UserMenu.svelte';
 	import { setLikesContext } from '$lib/modules/likes/likes.context.svelte.js';
 
-	const LIKE_APPEARANCES = ['ghost', 'sticker'] as const;
-
 	setLikesContext(
 		() => [],
 		() => false,
@@ -96,17 +94,12 @@
 					<Toggle {size} format="icon" aria-label={`${size} toggle`} data-control-peer>
 						<CheckIcon data-icon />
 					</Toggle>
-					{#each LIKE_APPEARANCES as appearance (appearance)}
-						<span data-like-treatment={appearance} class="inline-flex">
-							<LikeButton
-								giftId={`showcase-${size}-${appearance}`}
-								giftName={`${size} ${appearance} LikeButton`}
-								likeCount={3}
-								{size}
-								{appearance}
-							/>
-						</span>
-					{/each}
+					<LikeButton
+						giftId={`showcase-${size}`}
+						giftName={`${size} LikeButton`}
+						likeCount={3}
+						{size}
+					/>
 					<SegmentedToggle.Root
 						{size}
 						bind:value={selectedSegment}
@@ -194,16 +187,11 @@
 			</Select.Root>
 			<Checkbox aria-label="Default responsive checkbox" data-responsive-peer />
 			<Toggle aria-label="Default responsive toggle" data-responsive-peer>Toggle</Toggle>
-			{#each LIKE_APPEARANCES as appearance (appearance)}
-				<span data-like-treatment={appearance} class="inline-flex">
-					<LikeButton
-						giftId={`showcase-responsive-${appearance}`}
-						giftName={`responsive ${appearance} LikeButton`}
-						likeCount={3}
-						{appearance}
-					/>
-				</span>
-			{/each}
+			<LikeButton
+				giftId="showcase-responsive"
+				giftName="responsive LikeButton"
+				likeCount={3}
+			/>
 			<SegmentedToggle.Root
 				bind:value={selectedSegment}
 				aria-label="Default segmented toggle"

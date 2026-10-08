@@ -176,7 +176,7 @@ test.describe('Gift state roles and post-share disclosure', () => {
 
 		await moderatorPage.reload();
 		await assertOverlayInCardAndList(moderatorPage, giftName, {
-			primary: 'Rezervováno někým jiným',
+			primary: `Rezervoval(a) ${reserver.name}`,
 			reserverName: reserver.name,
 		});
 		const moderatorGift = gift(moderatorPage, giftName);
@@ -186,7 +186,7 @@ test.describe('Gift state roles and post-share disclosure', () => {
 		});
 		await assertOverlayInCardAndList(moderatorPage, giftName, {
 			primary: 'Přijato',
-			support: 'Rezervováno někým jiným',
+			support: `Rezervoval(a) ${reserver.name}`,
 			reserverName: reserver.name,
 		});
 

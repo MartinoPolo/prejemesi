@@ -113,7 +113,7 @@ sub-agent pointing at the cloned source in `C:\_MP_github_cloned\` **Available**
 - Schema in `src/lib/server/db/schema.ts`
 - Seed script: `src/lib/server/db/seed.ts` — run `pnpm db:seed` to populate test data.
 
-### Test Accounts (shared sign-in value: `SEED_PASSWORD` in seed.ts)
+### Test Accounts (shared sign-in value: `SEED_PASSWORD` in seed_credentials.ts)
 
 Two most-used personas below (recipient + gifter). For the full roster (jana/eva/tomas), fixture
 layout, and which UI states each exercises, read `src/lib/server/db/seed.ts` — seed IDs are prefixed

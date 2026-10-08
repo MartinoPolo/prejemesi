@@ -205,9 +205,24 @@
 	--ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
 
 	/* ── Layout ────────────────────────────────────────────── */
-	--content-max-width: 1200px;
+	--content-default-max-width: 1200px;
 	--page-gutter: 12px;
+	--gift-card-grid-gap: --spacing(2);
 	--nav-height: 56px;
+
+	/* Automatic fills the default content width with three cards. A chosen gift card column count
+	   on the root widens the whole page, navbar included, so those cards keep that width until the
+	   viewport caps it; without one, the chosen width is invalid and the default applies. */
+	--gift-card-default-track: calc(var(--content-default-max-width) - 2 * var(--page-gutter));
+	--gift-card-automatic-width: calc(
+		(var(--gift-card-default-track) - 2 * var(--gift-card-grid-gap)) / 3
+	);
+	--gift-card-chosen-track: calc(
+		var(--gift-card-chosen-column-count) * var(--gift-card-automatic-width) +
+			(var(--gift-card-chosen-column-count) - 1) * var(--gift-card-grid-gap)
+	);
+	--gift-card-chosen-content-width: calc(var(--gift-card-chosen-track) + 2 * var(--page-gutter));
+	--content-max-width: var(--gift-card-chosen-content-width, var(--content-default-max-width));
 
 	/* ── Fonts ─────────────────────────────────────────────── */
 	--font-head: 'DynaPuff Variable', 'DynaPuff Fallback', sans-serif;
@@ -217,6 +232,7 @@
 	--radius: 0.625rem;
 	--radius-panel: 16px;
 	--radius-btn: 7px;
+	--radius-badge: 12px;
 	--border-w: 2.5px;
 	--elevation-compact-offset: 1px;
 	--elevation-ordinary-offset: 3px;
@@ -258,6 +274,7 @@
 @media (width >= 640px) {
 	:root {
 		--page-gutter: 16px;
+		--gift-card-grid-gap: --spacing(5);
 		--elevation-compact-offset: 2px;
 		--elevation-ordinary-offset: 4px;
 		--elevation-lifted-offset: 7px;
@@ -265,21 +282,42 @@
 	}
 }
 
+/* Soft shadows read as flat, so only Ink and Black reserve room for the shadow offset.
+   Use `--nested-control-gap` between adjacent elevated controls and add `--depth-clearance` to
+   container insets on shadowed edges only. Dense header action clusters use
+   `--compact-control-gap`, trading 2 px of clearance (whole pixels, never below the Soft gap).
+   `[data-depth]` repeats the derivation so a locally overridden depth recomputes the gaps. */
+:root,
+[data-depth] {
+	--depth-clearance: 0px;
+	--nested-control-gap: calc(0.5rem + var(--depth-clearance));
+	--compact-control-gap: calc(0.5rem + max(0px, var(--depth-clearance) - 2px));
+
+	/* Rows running under an overlay close button reserve this end space: the button plus the
+	   nested control gap, keeping its depth shadow clear. The base clearance is measured from the
+	   surface's padding edge; the dialog variant applies inside the standard 1.5rem dialog padding. */
+	--overlay-close-inset: 1rem;
+	--overlay-close-clearance: calc(
+		var(--overlay-close-inset) + var(--size-control-lg) + var(--nested-control-gap)
+	);
+	--overlay-close-clearance-inside-dialog-padding: calc(var(--overlay-close-clearance) - 1.5rem);
+}
+
+[data-depth='ink'],
+[data-depth='black'] {
+	--depth-clearance: var(--elevation-ordinary-offset);
+}
+
 .resting-shadow-nesting {
 	--gift-content-inset: max(
 		0px,
 		calc(var(--radius-panel) - var(--radius-btn) - var(--nested-border-inline, 0px))
 	);
-	--gift-content-inset-end: calc(var(--gift-content-inset) + var(--elevation-ordinary-offset));
-	--gift-content-inset-bottom: max(
-		0px,
-		calc(
-			var(--radius-panel) - var(--radius-btn) - var(--nested-border-block, 0px) +
-				var(--elevation-ordinary-offset)
-		)
+	--gift-content-inset-end: calc(var(--gift-content-inset) + var(--depth-clearance));
+	--gift-content-inset-bottom: calc(
+		max(0px, calc(var(--radius-panel) - var(--radius-btn) - var(--nested-border-block, 0px))) +
+			var(--depth-clearance)
 	);
-	--nested-control-gap: calc(0.5rem + var(--elevation-ordinary-offset));
-	--gift-action-gap: var(--nested-control-gap);
 }
 
 /* ── Light derivation ────────────────────────────────────────────────────
@@ -294,6 +332,7 @@
 	--ink-faint: color-mix(in oklab, var(--p-ink) 12%, transparent);
 	--brand: var(--p-brand);
 	--brand-deep: var(--p-deep);
+	--brand-link: var(--brand-deep);
 	--tint: color-mix(in oklab, var(--p-brand) 21%, white);
 	--panel-hover: color-mix(in oklab, var(--p-brand) 6%, white);
 	--accent-loud: var(--p-accent);
@@ -313,9 +352,9 @@
 	--tag-priority-bg: #ffe9ad;
 	--tag-edited-bg: #ece5fc;
 	--like-tint: #fdecec;
-	--link-tint: #f1edfd;
 	--gift-overlay-own-reservation: #16834f;
 	--gift-overlay-unavailable: #163b60;
+	--gift-overlay-bought: #7a4a24;
 
 	/* Notebook patterns */
 	--pattern-dot: color-mix(in oklab, var(--ink) 13%, transparent);
@@ -430,6 +469,7 @@
 	--ink-faint: color-mix(in oklab, var(--ink) 16%, transparent);
 	--brand: color-mix(in oklab, var(--p-bright) 70%, #b8bec8);
 	--brand-deep: var(--p-deep);
+	--brand-link: var(--brand);
 	--tint: var(--accent);
 	--panel-hover: var(--secondary);
 	--accent-loud: color-mix(in oklab, var(--p-accent) 65%, #b8bec8);
@@ -449,9 +489,11 @@
 	--tag-priority-bg: #5a4a12;
 	--tag-edited-bg: #43356e;
 	--like-tint: #57293a;
-	--link-tint: #352b60;
-	--gift-overlay-own-reservation: #16834f;
-	--gift-overlay-unavailable: #163b60;
+
+	/* Calmer green and brown, lifted navy: each separates from the dark card and keeps white text at AA. */
+	--gift-overlay-own-reservation: #13704a;
+	--gift-overlay-unavailable: #2b5d91;
+	--gift-overlay-bought: #8a5530;
 
 	/* Notebook patterns (dark) */
 	--pattern-dot: color-mix(in oklab, var(--ink) 13%, transparent);
@@ -555,7 +597,8 @@
 }
 
 /* The viewer depth lives on <html>. Repeat the mapping for nested wishlist
-   palettes because their local recipe colors must win without changing geometry. */
+   palettes because their local recipe colors must win without changing geometry.
+   A local `[data-depth]` (depth picker previews) re-derives the elevation recipes below. */
 [data-depth='soft'],
 [data-depth='soft'] [data-palette] {
 	--hard-shadow: var(--soft-shadow);
@@ -574,7 +617,7 @@
 	--hard-shadow-strong: var(--black-shadow-strong);
 }
 
-:where(:root, [data-palette]) {
+:where(:root, [data-palette], [data-depth]) {
 	--elevation-compact: var(--elevation-compact-offset) var(--elevation-compact-offset) 0
 		var(--hard-shadow);
 	--elevation-ordinary: var(--elevation-ordinary-offset) var(--elevation-ordinary-offset) 0
@@ -645,11 +688,6 @@
 		box-shadow: var(--elevation-lifted);
 		translate: 0 -2px;
 	}
-
-	.elevation-owner-like:not(:disabled, [aria-disabled='true'], [data-disabled]):hover
-		> .elevation-surface {
-		scale: 1.08;
-	}
 }
 
 .elevation-owner-raised.elevation-owner-anchored:is([data-state='open'], [aria-expanded='true'])
@@ -670,13 +708,34 @@
 	scale: 1;
 }
 
+/* The control list mirrors GIFT_CARD_CONTROL_SELECTOR in gift_card_controls.ts. */
 .elevation-owner-raised:not(:disabled, [aria-disabled='true'], [data-disabled]):active:not(
-		.gift-card-root:has(> .elevation-surface :is(a, button, input, textarea, select):active)
+		.gift-card-root:is(
+			[data-gift-actions-open],
+			[data-gift-control-press],
+			:has(
+				> .elevation-surface
+					:is(a, button, input, textarea, select, [data-prevent-gift-card-open]):active
+			)
+		)
 	)
 	> .elevation-surface {
 	box-shadow: var(--elevation-pressed);
 	translate: 0;
 	scale: 0.98;
+}
+
+/* Modal action menus disable body pointer events, so :hover cannot keep the open card lifted. */
+@media (hover: hover) and (pointer: fine) {
+	.gift-card-root.elevation-owner-raised:not(
+			:disabled,
+			[aria-disabled='true'],
+			[data-disabled]
+		)[data-gift-actions-open='menu']
+		> .elevation-surface {
+		box-shadow: var(--elevation-lifted);
+		translate: 0 -2px;
+	}
 }
 
 [data-slot='dropdown-menu-content'][data-state='closed'],
@@ -688,6 +747,72 @@
 [data-slot='sheet-content'][data-state='closed'] {
 	animation-fill-mode: forwards;
 	pointer-events: none !important;
+}
+
+/* One indicator per segmented control or tab group paints the selected face so it can slide between
+   options (`src/lib/motion/selection_slide.ts`); until it is placed, options paint their own face.
+   Group and option stacking stays layered so consumer utilities can override it. */
+@layer components {
+	[data-selection-group] {
+		position: relative;
+		isolation: isolate;
+	}
+
+	[data-selection-group] > :not([data-slot='selection-indicator']) {
+		position: relative;
+		z-index: 1;
+	}
+}
+
+[data-slot='selection-indicator'] {
+	position: absolute;
+	top: 0;
+	left: 0;
+	z-index: 0;
+	box-sizing: border-box;
+	width: var(--selection-width);
+	height: var(--selection-height);
+	translate: var(--selection-x) var(--selection-y);
+	pointer-events: none;
+	visibility: hidden;
+}
+
+[data-selection-placed] > [data-slot='selection-indicator'] {
+	visibility: visible;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+	[data-selection-animatable] > [data-slot='selection-indicator'] {
+		transition-property: translate, width, height;
+		transition-duration: var(--duration-normal);
+		transition-timing-function: var(--ease-standard);
+	}
+}
+
+/* Faces are the group's own options or, for connected toggles, their direct surface, so nested
+   groups never hide each other's faces. Without decoration transitions, a face the indicator just
+   took over cannot fade out as a ghost of itself. */
+:is(
+	[data-selection-placed] > [data-selection-face],
+	[data-selection-placed] > * > [data-selection-face]
+) {
+	border-color: transparent !important;
+	background-color: transparent !important;
+	box-shadow: none !important;
+	transition-property: color !important;
+}
+
+:is(
+	[data-selection-placed] > [data-selection-face],
+	[data-selection-placed] > * > [data-selection-face]
+):not(:focus-visible) {
+	outline-color: transparent !important;
+}
+
+/* A keyboard-focused selected option shows only its focus ring, as before the face slid. */
+[data-selection-placed]:has(> [data-selection-face]:focus-visible)
+	> [data-slot='selection-indicator'] {
+	outline-color: transparent;
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -715,27 +840,17 @@
 			:hover,
 			:active
 		)
+		> .elevation-surface,
+	.gift-card-root.elevation-owner-raised:not(
+			:disabled,
+			[aria-disabled='true'],
+			[data-disabled]
+		)[data-gift-actions-open='menu']
 		> .elevation-surface {
 		box-shadow: var(--elevation-ordinary);
 		translate: 0;
 		scale: 1;
 	}
-}
-
-.elevation-sheet[data-side='top'] {
-	box-shadow: 0 var(--elevation-ordinary-offset) 0 var(--hard-shadow);
-}
-
-.elevation-sheet[data-side='right'] {
-	box-shadow: calc(-1 * var(--elevation-ordinary-offset)) 0 0 var(--hard-shadow);
-}
-
-.elevation-sheet[data-side='bottom'] {
-	box-shadow: 0 calc(-1 * var(--elevation-ordinary-offset)) 0 var(--hard-shadow);
-}
-
-.elevation-sheet[data-side='left'] {
-	box-shadow: var(--elevation-ordinary-offset) 0 0 var(--hard-shadow);
 }
 
 @theme inline {
@@ -748,6 +863,7 @@
 	--radius-4xl: calc(var(--radius) * 2.6);
 	--radius-panel: var(--radius-panel);
 	--radius-btn: var(--radius-btn);
+	--radius-badge: var(--radius-badge);
 	--color-background: var(--background);
 	--color-foreground: var(--foreground);
 	--color-card: var(--card);
@@ -818,7 +934,7 @@
 	--color-tag-priority: var(--tag-priority-bg);
 	--color-tag-edited: var(--tag-edited-bg);
 	--color-like-tint: var(--like-tint);
-	--color-link-tint: var(--link-tint);
+	--color-brand-link: var(--brand-link);
 	--color-ghost-hover: var(--ghost-hover);
 
 	/* Semantic elevation utilities plus compatibility aliases. */

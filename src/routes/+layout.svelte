@@ -1,6 +1,6 @@
 <script lang="ts">
 	import '../app.css';
-	import { ModeWatcher } from 'mode-watcher';
+	import { ModeWatcher, modeStorageKey, setMode } from 'mode-watcher';
 	import { AppToaster } from '$lib/components/base/toast/index.js';
 	import favicon from '$lib/assets/favicon.svg';
 	import dynapuffLatinUrl from '@fontsource-variable/dynapuff/files/dynapuff-latin-wght-normal.woff2?url';
@@ -38,10 +38,32 @@
 		};
 	});
 
+	const modesSavedBeforeDemo = new Map<string, 'light' | 'dark' | 'system'>([
+		['"light"', 'light'],
+		['"dark"', 'dark'],
+		['"system"', 'system'],
+	]);
+
+	function restoreModeSavedBeforeDemo() {
+		const savedMode = localStorage.getItem('prejemesi-mode-before-demo');
+		if (savedMode === null) {
+			return;
+		}
+		const restoredMode = modesSavedBeforeDemo.get(savedMode);
+		setMode(restoredMode ?? 'system');
+		if (restoredMode === undefined) {
+			localStorage.removeItem(modeStorageKey.current);
+		}
+		localStorage.removeItem('prejemesi-mode-before-demo');
+	}
+
 	// afterNavigate fires after SvelteKit applies <svelte:head><title> from the page,
 	// so we can safely prepend without the page overwriting us again.
 	// Port is read here (browser-only) so each worktree's port is included.
 	afterNavigate(() => {
+		if (page.data.demoExpiresAt == null) {
+			restoreModeSavedBeforeDemo();
+		}
 		window.dispatchEvent(
 			new CustomEvent(SENTRY_REPLAY_NAVIGATION_EVENT, { detail: window.location.href }),
 		);
@@ -53,7 +75,7 @@
 		}
 	});
 
-	// Route code preloading strategy (see docs/performance-budget.md):
+	// Route code preloading strategy (see docs/PERFORMANCE.md):
 	// - No unconditional preloading here — public/auth pages must not download
 	//   authenticated app code before user intent.
 	// - Intent-based preloading is framework-provided via

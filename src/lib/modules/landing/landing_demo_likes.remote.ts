@@ -1,6 +1,7 @@
 import { query } from '$app/server';
 import { and, eq, isNull, count as drizzleCount } from 'drizzle-orm';
 import { getDb } from '$lib/server/db/index.js';
+import { rejectDemoOperation } from '$lib/server/demo/scope.js';
 import { landingDemoLike } from '$lib/server/db/landing.schema.js';
 import { getAnonVisitorId, getOrCreateAnonVisitorId } from '$lib/server/anonymous_visitor.js';
 import { error } from '@sveltejs/kit';
@@ -54,6 +55,7 @@ const LANDING_DEMO_LIKE_ROWS_PER_SLUG_CAP = 10_000;
  * allows in commands only, so a first-time visitor gets their id on their first like.
  */
 export const getLandingDemoLikes = query(async (): Promise<LandingDemoLikes> => {
+	rejectDemoOperation();
 	const database = getDb();
 
 	const countRows = await database
@@ -98,6 +100,7 @@ export const getLandingDemoLikes = query(async (): Promise<LandingDemoLikes> => 
 export const toggleLandingDemoLike = publicCommand(
 	ToggleLandingDemoLikeInputSchema,
 	async (_authContext, input): Promise<ToggleLandingDemoLikeResult> => {
+		rejectDemoOperation();
 		const database = getDb();
 		const anonVisitorId = getOrCreateAnonVisitorId();
 

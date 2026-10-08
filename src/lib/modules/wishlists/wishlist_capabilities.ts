@@ -159,3 +159,25 @@ export function canReleaseReservation(
 	}
 	return false;
 }
+
+/** Where the gift actions open: a gift card or list row, or the Gift viewer's footer More. */
+export type GiftContextOrigin = 'card' | 'viewer';
+
+/**
+ * Whether release is offered. The Gift viewer's lane and its More overflow offer it to any release
+ * reach so an overflowed release never vanishes; the card menu shortcut is for administrators only,
+ * because moderators release from the gift editor.
+ */
+export function offersReservationRelease(input: {
+	releaseCapability: ReservationReleaseCapability | undefined;
+	releaseLedgerCount: number;
+	origin: GiftContextOrigin;
+}): boolean {
+	if (input.releaseLedgerCount === 0) {
+		return false;
+	}
+	return input.origin === 'viewer'
+		? input.releaseCapability !== undefined &&
+				input.releaseCapability !== RESERVATION_RELEASE_CAPABILITY.none
+		: input.releaseCapability === RESERVATION_RELEASE_CAPABILITY.any;
+}

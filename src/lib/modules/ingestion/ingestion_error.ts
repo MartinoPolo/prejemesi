@@ -1,4 +1,5 @@
 export type IngestionErrorCode =
+	| 'target_not_allowed'
 	| 'target_not_found'
 	| 'target_archived'
 	| 'target_mismatch'
@@ -26,5 +27,8 @@ export class IngestionError extends Error {
 }
 
 export function ingestionErrorStatus(error: IngestionError): number {
+	if (error.code === 'target_not_allowed') {
+		return 403;
+	}
 	return CONFLICT_CODES.has(error.code) ? 409 : 400;
 }

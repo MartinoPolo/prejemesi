@@ -17,6 +17,7 @@
 		isReleasing?: boolean;
 		onrelease?: (reservationId: string) => void;
 		onclose?: () => void;
+		onCloseAutoFocus?: (event: Event) => void;
 	}
 
 	let {
@@ -26,6 +27,7 @@
 		isReleasing = false,
 		onrelease,
 		onclose,
+		onCloseAutoFocus,
 	}: ReleaseReservationDialogProps = $props();
 
 	const styles = releaseReservationDialogVariants();
@@ -67,7 +69,7 @@
 </script>
 
 <Dialog.Root {open} onOpenChange={handleOpenChange}>
-	<Dialog.Content size="md">
+	<Dialog.Content size="md" {onCloseAutoFocus}>
 		{#if pickedReservation !== null}
 			<div data-testid="release-reservation-confirm">
 				<Dialog.Header>
@@ -79,7 +81,7 @@
 						})}
 					</Dialog.Description>
 				</Dialog.Header>
-				<Dialog.Footer class="flex gap-2">
+				<Dialog.Footer>
 					<Button
 						intent="outline"
 						disabled={isReleasing}

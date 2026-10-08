@@ -5,6 +5,7 @@ import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
 import { getDb } from '$lib/server/db/index.js';
 import { gift, giftLike } from '$lib/server/db/gift.schema.js';
 import { wishlist } from '$lib/server/db/wishlist.schema.js';
+import { wishlistScope } from '$lib/server/demo/scope.js';
 import { guardedCommand, guardedQuery, guardedQueryWithArgs } from '$lib/server/remote.js';
 import { ToggleLikeInputSchema, type ToggleLikeResult } from './types.js';
 
@@ -30,7 +31,13 @@ export const toggleLike = guardedCommand(
 		const wishlistRows = await database
 			.select({ recipientUserId: wishlist.recipientUserId, status: wishlist.status })
 			.from(wishlist)
-			.where(and(eq(wishlist.id, giftRow.wishlistId), isNull(wishlist.deletedAt)))
+			.where(
+				and(
+					eq(wishlist.id, giftRow.wishlistId),
+					isNull(wishlist.deletedAt),
+					wishlistScope(),
+				),
+			)
 			.limit(1);
 
 		const wishlistRow = wishlistRows[0];

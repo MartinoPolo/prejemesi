@@ -1,172 +1,96 @@
 <script lang="ts">
 	import GiftCard from '$lib/components/blocks/gift/GiftCard.svelte';
 	import GiftSectionHeader from './GiftSectionHeader.svelte';
+	import GiftReorderDropZone from './GiftReorderDropZone.svelte';
 	import WishlistGiftItem from './WishlistGiftItem.svelte';
-	import { createGiftPointerReorderController } from './gift_pointer_reorder.svelte.js';
-	import { giftSectionHasHeader, type GiftSection } from '$lib/modules/gifts/gift_ordering.js';
-	import type { GiftByRole, GiftForVisitor } from '$lib/modules/gifts/types.js';
-	import type { GiftContextInvocation } from './gift_context_invocation.js';
-	import type { WishlistRole } from '$lib/modules/wishlists/types.js';
-	import * as m from '$lib/paraglide/messages.js';
 	import {
-		toIndexedSections,
-		countGiftsInSections,
-		sectionRenderKey,
-	} from './gift_section_rows.js';
+		createWishlistGiftCollectionView,
+		type WishlistGiftCollectionProps,
+	} from './wishlist_gift_collection.svelte.js';
+	import {
+		GIFT_CARD_COLUMN_OPTIONS,
+		type GiftCardColumnOption,
+	} from '$lib/modules/gifts/types.js';
+	import { cn } from '$lib/utils.js';
+	import {
+		GIFT_CARD_MINIMUM_WIDTH,
+		giftCardChosenColumnCount,
+		largestFittingGiftCardColumnCount,
+		measureGiftCardGridGeometry,
+	} from './gift_card_grid_columns.js';
+	import { giftCardGridVariants } from './gift_card_grid_variants.js';
+	import { GIFT_DISPLAY_ROW_KINDS } from './gift_section_rows.js';
 
-	interface WishlistGiftCardGridProps {
-		sections: GiftSection[];
-		role: WishlistRole;
-		isArchived: boolean;
-		hideReservationState: boolean;
-		reorderEnabled: boolean;
-		onedit: (gift: GiftByRole) => void;
-		onreserve: (gift: GiftForVisitor) => void;
-		onunreserve: (gift: GiftForVisitor) => void;
-		onreceived: (giftId: string, received: boolean) => void;
-		receivedPendingGiftIds?: ReadonlySet<string>;
-		onreorderpreview: (orderedIds: string[]) => void;
-		onreordercommit: (orderedIds: string[]) => void;
-		onreordercancel: (orderedIds: string[]) => void;
-		selectionMode?: boolean;
-		onselectiontoggle?: (giftId: string) => void;
-		oncontextactions?: (gift: GiftByRole, invocation: GiftContextInvocation) => boolean;
-		hascontextactions?: (gift: GiftByRole) => boolean;
-		activeContextGiftId?: string | null;
-		contextSurface?: 'menu' | 'dialog';
-		showPriority?: boolean;
+	interface WishlistGiftCardGridProps extends WishlistGiftCollectionProps {
+		columnOption?: GiftCardColumnOption;
+		/** Reports the largest column count whose cards fit the minimum width; null when unmounted. */
+		oncolumncapacitychange?: (largestFittingColumnCount: number | null) => void;
 	}
 
 	let {
-		sections,
-		role,
-		isArchived,
-		hideReservationState,
-		reorderEnabled,
-		onedit,
-		onreserve,
-		onunreserve,
-		onreceived,
-		receivedPendingGiftIds = new Set<string>(),
-		onreorderpreview,
-		onreordercommit,
-		onreordercancel,
-		selectionMode = false,
-		onselectiontoggle,
-		oncontextactions,
-		hascontextactions,
-		activeContextGiftId = null,
-		contextSurface = 'menu',
-		showPriority = true,
+		columnOption = GIFT_CARD_COLUMN_OPTIONS.automatic,
+		oncolumncapacitychange,
+		...collection
 	}: WishlistGiftCardGridProps = $props();
 
 	let gridEl = $state<HTMLElement | null>(null);
-	let reorderAnnouncement = $state('');
 
-	const indexedSections = $derived(toIndexedSections(sections));
-	const totalGiftCount = $derived(countGiftsInSections(sections));
-
-	function getItemElements() {
-		return gridEl === null
-			? []
-			: Array.from(gridEl.querySelectorAll<HTMLElement>('[data-gift-item]'));
-	}
-
-	const reorder = createGiftPointerReorderController({
-		getItemElements,
-		getItemIds: () => getItemElements().map((element) => element.dataset.giftId!),
-		onPreviewOrder: (orderedIds) => onreorderpreview(orderedIds),
-		onCommitOrder: (orderedIds) => onreordercommit(orderedIds),
-		onCancelOrder: (orderedIds) => onreordercancel(orderedIds),
-	});
-
-	function handleReorderMove(index: number, direction: -1 | 1) {
-		const destination = index + direction;
-		if (destination >= 0 && destination < totalGiftCount) {
-			if (!reorder.move(index, direction)) {
-				return;
-			}
-			const movedGift = indexedSections
-				.flatMap(({ items }) => items)
-				.find((item) => item.index === index)?.gift;
-			if (movedGift !== undefined) {
-				reorderAnnouncement = m.gift_reorder_move_success({
-					name: movedGift.name,
-					position: destination + 1,
-					total: totalGiftCount,
-				});
-			}
-		}
-	}
+	const chosenColumnCount = $derived(giftCardChosenColumnCount(columnOption));
+	const collectionView = createWishlistGiftCollectionView(
+		() => collection,
+		() => gridEl,
+	);
 
 	$effect(() => {
-		if (!reorderEnabled) {
-			reorder.cancel();
+		const grid = gridEl;
+		const reportCapacity = oncolumncapacitychange;
+		if (grid === null || reportCapacity === undefined) {
+			return;
 		}
+		const observer = new ResizeObserver(() =>
+			reportCapacity(largestFittingGiftCardColumnCount(measureGiftCardGridGeometry(grid))),
+		);
+		observer.observe(grid);
+		return () => {
+			observer.disconnect();
+			reportCapacity(null);
+		};
 	});
-	$effect(() => () => reorder.destroy());
 </script>
 
 <div class="sr-only" role="status" aria-live="polite" aria-atomic="true">
-	{reorderAnnouncement}
+	{collectionView.announcement}
 </div>
 
 <div
 	bind:this={gridEl}
 	data-testid="wishlist-gift-card-grid"
-	class="gift-card-grid isolate grid auto-rows-auto gap-2 [grid-template-columns:repeat(auto-fill,minmax(min(100%,280px),1fr))] sm:gap-5 sm:pb-5"
+	style:--gift-card-minimum-width={GIFT_CARD_MINIMUM_WIDTH}
+	style:--gift-card-column-count={chosenColumnCount}
+	class={cn(
+		'gift-card-grid isolate grid auto-rows-auto sm:pb-5',
+		giftCardGridVariants({ hasChosenColumnCount: chosenColumnCount !== undefined }),
+	)}
 >
-	{#each indexedSections as { section, items } (sectionRenderKey(section, items))}
-		{#if giftSectionHasHeader(section)}
+	{#each collectionView.displayRows as row (row.key)}
+		{#if row.kind === GIFT_DISPLAY_ROW_KINDS.header}
 			<!-- Full-width band/group header breaks the auto-fill row so cards flow beneath it. -->
 			<div class="col-span-full">
-				<GiftSectionHeader {section} {selectionMode} {onselectiontoggle} />
+				<GiftSectionHeader {...collectionView.sectionHeaderProps(row.section)} />
 			</div>
-		{/if}
-		{#each items as { gift: giftItem, index } (giftItem.id)}
+		{:else if row.kind === GIFT_DISPLAY_ROW_KINDS.dropZone}
+			<GiftReorderDropZone groupKey={row.section.key} class="col-span-full" />
+		{:else}
 			<WishlistGiftItem
-				gift={giftItem}
-				{index}
-				totalCount={totalGiftCount}
-				{reorderEnabled}
+				{...collectionView.giftItemProps(row)}
 				class="h-auto! min-w-0 self-stretch"
-				draggedGiftId={reorder.draggedGiftId.current}
-				dragOverGiftId={reorder.dragOverGiftId.current}
 				dragOverStyle="ring"
-				{selectionMode}
-				{onselectiontoggle}
-				{oncontextactions}
-				{onedit}
-				onreorderpointerdown={reorder.start}
-				onreordermove={handleReorderMove}
 			>
 				{#snippet children(giftItem)}
-					<GiftCard
-						gift={giftItem}
-						{role}
-						{isArchived}
-						{hideReservationState}
-						{showPriority}
-						contextualMode={selectionMode || reorderEnabled}
-						{onreserve}
-						{onunreserve}
-						{onreceived}
-						receivedPending={receivedPendingGiftIds.has(giftItem.id)}
-						moreOpen={activeContextGiftId === giftItem.id}
-						moreSurface={contextSurface}
-						persistentMore={hascontextactions?.(giftItem) ?? false}
-						onmore={oncontextactions !== undefined
-							? (anchor, placementSnapshot) =>
-									oncontextactions(giftItem, {
-										kind: 'more',
-										anchor,
-										placementSnapshot,
-									})
-							: undefined}
-					/>
+					<GiftCard {...collectionView.giftPresentationProps(giftItem)} />
 				{/snippet}
 			</WishlistGiftItem>
-		{/each}
+		{/if}
 	{/each}
 </div>
 

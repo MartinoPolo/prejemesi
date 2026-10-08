@@ -1,21 +1,28 @@
 import '../../../../app.css';
+import type { ComponentProps } from 'svelte';
 import { render } from 'vitest-browser-svelte';
 import { page } from 'vitest/browser';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
+import { expectContentClearsOverlayClose } from '$lib/components/base/dialog/overlay_close_geometry.test_fixtures.js';
 import GiftContextActions from './GiftContextActions.svelte';
 import GiftContextActionsTestHost from './GiftContextActionsTestHost.svelte';
 import * as m from '$lib/paraglide/messages.js';
+import { RESERVATION_RELEASE_CAPABILITY } from '$lib/modules/wishlists/wishlist_capabilities.js';
 
 const { expectPixelsNear, expectPixelsAtLeast } = createPixelAssertions(expect);
 
-function expectSemanticDangerText(surface: HTMLElement) {
+function expectTokenText(surface: HTMLElement, colorToken: string) {
 	const tokenProbe = document.createElement('span');
-	tokenProbe.style.color = 'var(--status-danger-text)';
+	tokenProbe.style.color = `var(${colorToken})`;
 	surface.append(tokenProbe);
 	const expectedColor = getComputedStyle(tokenProbe).color;
 	tokenProbe.remove();
 	expect(getComputedStyle(surface).color).toBe(expectedColor);
+}
+
+function expectSemanticDangerText(surface: HTMLElement) {
+	expectTokenText(surface, '--status-danger-text');
 }
 
 const managerProps = {
@@ -133,6 +140,51 @@ describe('GiftContextActions desktop ContextMenu', () => {
 		expect(purchased.querySelector('.lucide-undo-2')).toBeTruthy();
 		expect(cancellation.classList.contains('text-status-danger-text')).toBe(true);
 		await purchasedScreen.unmount();
+	});
+
+	it('offers administrators release in red after a separator and hands off to its dialog', async () => {
+		const trigger = document.createElement('button');
+		trigger.textContent = 'More';
+		document.body.append(trigger);
+		const onreleasereservation = vi.fn();
+		const adminScreen = await render(GiftContextActionsTestHost, {
+			...managerProps,
+			role: 'visitor' as const,
+			releaseCapability: RESERVATION_RELEASE_CAPABILITY.any,
+			releaseLedgerCount: 1,
+			onreleasereservation,
+			mobile: false,
+			nativeOpen: false,
+			programmaticOpen: true,
+			desktopAnchor: trigger,
+		});
+		const release = adminScreen.getByRole('menuitem', { name: m.reserve_release_button() });
+		await expect.element(release).toBeVisible();
+		expectSemanticDangerText(release.element() as HTMLElement);
+		expect(release.element().querySelector('.lucide-key-round')).toBeTruthy();
+		expect(
+			release.element().previousElementSibling?.matches('[data-slot$="-menu-separator"]'),
+		).toBe(true);
+		await release.click();
+		await expect.poll(() => onreleasereservation.mock.calls.length).toBe(1);
+		await adminScreen.unmount();
+		trigger.remove();
+
+		const moderatorScreen = await render(GiftContextActionsTestHost, {
+			...managerProps,
+			role: 'moderator' as const,
+			releaseCapability: RESERVATION_RELEASE_CAPABILITY.guestOnly,
+			releaseLedgerCount: 1,
+			onreleasereservation,
+			mobile: false,
+			nativeOpen: true,
+			programmaticOpen: false,
+		});
+		await expect.element(moderatorScreen.getByRole('menu')).toBeInTheDocument();
+		await expect
+			.element(moderatorScreen.getByRole('menuitem', { name: m.reserve_release_button() }))
+			.not.toBeInTheDocument();
+		await moderatorScreen.unmount();
 	});
 
 	it('uses menu roles and nested submenus for configured manager choices', async () => {
@@ -348,7 +400,10 @@ describe('GiftContextActions mobile Sheet', () => {
 				parseFloat(dialogStyle.borderRightWidth),
 		);
 		expect(headerStyle.paddingLeft).toBe('16px');
-		expect(headerStyle.paddingRight).toBe('56px');
+		expectContentClearsOverlayClose(
+			header,
+			dialog.querySelector<HTMLElement>('[data-slot="sheet-close"]')!,
+		);
 		expect(headerStyle.paddingTop).toBe('12px');
 		expect(headerStyle.paddingBottom).toBe('12px');
 		expectPixelsNear(parseFloat(headerStyle.borderBottomWidth), 1);
@@ -361,12 +416,15 @@ describe('GiftContextActions mobile Sheet', () => {
 		expect(bodyStyle.paddingBottom).toBe('8px');
 
 		const iconRow = screen.getByRole('button', { name: m.gift_context_edit() }).element();
-		const textOnlyRow = screen.getByRole('button', { name: m.gift_priority_label() }).element();
-		for (const row of [iconRow, textOnlyRow]) {
+		const nestedRow = screen.getByRole('button', { name: m.gift_priority_label() }).element();
+		expect(nestedRow.querySelector('svg.lucide-star')).toBeTruthy();
+		for (const row of [iconRow, nestedRow]) {
 			expectPixelsAtLeast(row.getBoundingClientRect().height, 48);
 			const surface = row.querySelector<HTMLElement>(':scope > .elevation-surface')!;
 			expect(surface).toBeTruthy();
 			expect(getComputedStyle(surface).justifyContent).toBe('flex-start');
+			// Ordinary rows are menu actions, not secondary text: desktop menu items share this ink.
+			expectTokenText(surface, '--foreground');
 		}
 		const iconText = Array.from(
 			iconRow.querySelector(':scope > .elevation-surface')!.childNodes,
@@ -376,8 +434,8 @@ describe('GiftContextActions mobile Sheet', () => {
 				node.textContent !== null &&
 				node.textContent.trim() !== '',
 		) as Text;
-		const textOnlyText = Array.from(
-			textOnlyRow.querySelector(':scope > .elevation-surface')!.childNodes,
+		const nestedText = Array.from(
+			nestedRow.querySelector(':scope > .elevation-surface')!.childNodes,
 		).find(
 			(node) =>
 				node.nodeType === Node.TEXT_NODE &&
@@ -389,7 +447,7 @@ describe('GiftContextActions mobile Sheet', () => {
 			range.selectNodeContents(node);
 			return range.getBoundingClientRect().left;
 		};
-		expectPixelsNear(textLeft(textOnlyText), textLeft(iconText));
+		expectPixelsNear(textLeft(nestedText), textLeft(iconText));
 		await screen.unmount();
 	});
 
@@ -501,6 +559,26 @@ describe('GiftContextActions mobile Sheet', () => {
 		await screen.unmount();
 	});
 
+	it('offers administrators release as a red sheet action', async () => {
+		const onreleasereservation = vi.fn();
+		const screen = await render(GiftContextActions, {
+			...managerProps,
+			role: 'visitor' as const,
+			releaseCapability: RESERVATION_RELEASE_CAPABILITY.any,
+			releaseLedgerCount: 2,
+			onreleasereservation,
+		});
+
+		const release = screen.getByRole('button', { name: m.reserve_release_button() });
+		await expect.element(release).toBeVisible();
+		expectSemanticDangerText(
+			release.element().querySelector<HTMLElement>('.elevation-surface')!,
+		);
+		await release.click();
+		expect(onreleasereservation).toHaveBeenCalledOnce();
+		await screen.unmount();
+	});
+
 	it('normalizes a scheme-less primary URL in the mobile external link', async () => {
 		const screen = await render(GiftContextActions, {
 			...managerProps,
@@ -512,6 +590,199 @@ describe('GiftContextActions mobile Sheet', () => {
 		await expect.element(link).toHaveAttribute('rel', expect.stringContaining('external'));
 		await expect.element(link).toHaveAttribute('rel', expect.stringContaining('noopener'));
 		await expect.element(link).toHaveAttribute('rel', expect.stringContaining('noreferrer'));
+		await screen.unmount();
+	});
+});
+
+describe('GiftContextActions grouped menus with organization icons (#447)', () => {
+	type MenuSurface = 'dropdown' | 'context' | 'sheet';
+	type DesktopMenuKind = Exclude<MenuSurface, 'sheet'>;
+	type MenuProps = Partial<ComponentProps<typeof GiftContextActions>>;
+	const menuSurfaces: readonly MenuSurface[] = ['dropdown', 'context', 'sheet'];
+	const separatorMarker = '---';
+	const desktopSeparatorSelectors: Record<DesktopMenuKind, string> = {
+		dropdown: '[data-slot="dropdown-menu-separator"]',
+		context: '[data-slot="context-menu-separator"]',
+	};
+	const mobileSeparatorSelector = '[data-slot="separator"]';
+	const reservationOwnerProps = {
+		canReserve: true,
+		ownsReservation: true,
+		canTrackPurchased: true,
+	};
+	const managerSequence = [
+		m.gift_context_open_link(),
+		m.gift_context_copy_link(),
+		separatorMarker,
+		m.gift_context_edit(),
+		m.gift_mark_received(),
+		m.gift_context_select_multiple(),
+		separatorMarker,
+		m.gift_priority_label(),
+		m.gift_context_category(),
+	];
+
+	afterEach(async () => {
+		await page.viewport(1280, 720);
+	});
+
+	function menuSequence(container: Element, itemSelector: string, separatorSelector: string) {
+		return Array.from(container.querySelectorAll(`${itemSelector}, ${separatorSelector}`)).map(
+			(element) =>
+				element.matches(separatorSelector) ? separatorMarker : element.textContent!.trim(),
+		);
+	}
+
+	function labelLeft(element: Element) {
+		const label = Array.from(element.childNodes).find(
+			(node) => node.nodeType === Node.TEXT_NODE && node.textContent!.trim() !== '',
+		)!;
+		const range = document.createRange();
+		range.selectNodeContents(label);
+		return range.getBoundingClientRect().left;
+	}
+
+	async function renderDesktopMenu(kind: DesktopMenuKind, props: MenuProps = {}) {
+		const trigger = document.createElement('button');
+		trigger.textContent = 'More';
+		document.body.append(trigger);
+		const screen = await render(GiftContextActionsTestHost, {
+			...managerProps,
+			...props,
+			mobile: false,
+			nativeOpen: kind === 'context',
+			programmaticOpen: kind === 'dropdown',
+			desktopAnchor: trigger,
+		});
+		const menu = screen.getByRole('menu');
+		await expect.element(menu).toBeInTheDocument();
+		return {
+			screen,
+			menu: menu.element(),
+			async cleanup() {
+				await screen.unmount();
+				trigger.remove();
+			},
+		};
+	}
+
+	function mobileMainScreen() {
+		return document.querySelector<HTMLElement>('[data-mobile-screen="main"]')!;
+	}
+
+	async function renderedMenuSequence(surface: MenuSurface, props: MenuProps = {}) {
+		if (surface === 'sheet') {
+			const screen = await render(GiftContextActions, { ...managerProps, ...props });
+			const sequence = menuSequence(mobileMainScreen(), 'a, button', mobileSeparatorSelector);
+			await screen.unmount();
+			return sequence;
+		}
+		const desktopMenu = await renderDesktopMenu(surface, props);
+		const sequence = menuSequence(
+			desktopMenu.menu,
+			'[role="menuitem"]',
+			desktopSeparatorSelectors[surface],
+		);
+		await desktopMenu.cleanup();
+		return sequence;
+	}
+
+	for (const surface of menuSurfaces) {
+		it(`orders ${surface} groups link, gift, organization with separators only between them`, async () => {
+			expect(await renderedMenuSequence(surface)).toEqual(managerSequence);
+			expect(await renderedMenuSequence(surface, { role: 'visitor' })).toEqual([
+				m.gift_context_open_link(),
+				m.gift_context_copy_link(),
+			]);
+		});
+
+		it(`ends the ${surface} gift group with cancel reservation then purchased before organization`, async () => {
+			const reservationCallbacks = {
+				onreserve: vi.fn(),
+				oncancelreservation: vi.fn(),
+				onpurchased: vi.fn(),
+			};
+			expect(
+				await renderedMenuSequence(surface, {
+					...reservationOwnerProps,
+					...reservationCallbacks,
+					role: 'moderator',
+				}),
+			).toEqual([
+				m.gift_context_open_link(),
+				m.gift_context_copy_link(),
+				separatorMarker,
+				m.gift_context_edit(),
+				m.gift_mark_received(),
+				m.gift_context_select_multiple(),
+				m.reserve_button_cancel(),
+				m.gift_mark_bought(),
+				separatorMarker,
+				m.gift_priority_label(),
+				m.gift_context_category(),
+			]);
+			expect(
+				await renderedMenuSequence(surface, {
+					...reservationOwnerProps,
+					...reservationCallbacks,
+					role: 'visitor',
+				}),
+			).toEqual([
+				m.gift_context_open_link(),
+				m.gift_context_copy_link(),
+				separatorMarker,
+				m.reserve_button_cancel(),
+				m.gift_mark_bought(),
+			]);
+		});
+
+		it(`omits ${surface} reservation actions without callbacks and leaves no stray separator`, async () => {
+			const linkSequence = [m.gift_context_open_link(), m.gift_context_copy_link()];
+			for (const reservationProps of [{ canReserve: true }, reservationOwnerProps]) {
+				expect(
+					await renderedMenuSequence(surface, { ...reservationProps, role: 'visitor' }),
+				).toEqual(linkSequence);
+				expect(await renderedMenuSequence(surface, reservationProps)).toEqual(
+					managerSequence,
+				);
+			}
+		});
+	}
+
+	it('gives desktop Priority and Category icons with labels aligned to plain items', async () => {
+		const { screen, cleanup } = await renderDesktopMenu('dropdown');
+		const plainItem = screen.getByRole('menuitem', { name: m.gift_context_edit() }).element();
+		const priority = screen.getByRole('menuitem', { name: m.gift_priority_label() }).element();
+		const category = screen
+			.getByRole('menuitem', { name: m.gift_context_category() })
+			.element();
+
+		expect(priority.querySelector('svg.lucide-star')).toBeTruthy();
+		expect(category.querySelector('svg.lucide-tag')).toBeTruthy();
+		for (const submenuTrigger of [priority, category]) {
+			expectPixelsNear(labelLeft(submenuTrigger), labelLeft(plainItem));
+		}
+		await cleanup();
+	});
+
+	it('gives mobile Priority and Category icons with labels aligned to plain rows', async () => {
+		await page.viewport(390, 720);
+		const screen = await render(GiftContextActions, managerProps);
+		const surfaceOf = (element: Element) =>
+			element.querySelector(':scope > .elevation-surface')!;
+		const plainRow = screen.getByRole('button', { name: m.gift_context_edit() }).element();
+		const priority = screen
+			.getByRole('button', { name: m.gift_priority_label(), exact: true })
+			.element();
+		const category = screen
+			.getByRole('button', { name: m.gift_context_category(), exact: true })
+			.element();
+
+		expect(priority.querySelector('svg.lucide-star')).toBeTruthy();
+		expect(category.querySelector('svg.lucide-tag')).toBeTruthy();
+		for (const nestedRow of [priority, category]) {
+			expectPixelsNear(labelLeft(surfaceOf(nestedRow)), labelLeft(surfaceOf(plainRow)));
+		}
 		await screen.unmount();
 	});
 });

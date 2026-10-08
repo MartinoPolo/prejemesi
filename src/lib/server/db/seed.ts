@@ -28,6 +28,7 @@ import { wishlistFollower } from './follower.schema.js';
 import { wishlistVisit } from './wishlist_visit.schema.js';
 import { notification } from './notification.schema.js';
 import { prepareSeedImages } from './seed_images.js';
+import { SEED_PASSWORD } from './seed_credentials.js';
 
 // ---------------------------------------------------------------------------
 // .env loader (avoids dotenv dependency)
@@ -55,8 +56,6 @@ try {
 } catch {
 	/* .env not found – rely on environment */
 }
-
-const SEED_PASSWORD = ['password', '123'].join('');
 
 function requireEnv(name: string): string {
 	const value = process.env[name];

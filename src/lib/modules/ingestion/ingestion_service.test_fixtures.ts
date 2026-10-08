@@ -47,7 +47,7 @@ export function store(overrides: Partial<GiftIngestionStore> = {}): GiftIngestio
 	};
 }
 
-export const config = { targetShortId: 'fixed-list', actorId: 'machine-actor' };
+export const config = { targetShortIds: ['fixed-list'], actorId: 'machine-actor' };
 export const IMAGE_BODY = new Uint8Array(30).buffer;
 export const IMAGE_SHA256 = '0679246d6c4216de0daa08e5523fb2674db2b6599c3b72ff946b488a15290b62';
 export const imageManifest: GiftIngestionManifest = {

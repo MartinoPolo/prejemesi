@@ -11,7 +11,7 @@ const SAMPLE_IMAGE_PORTRAIT_PATH = fileURLToPath(
 test.use({ viewport: { width: 1280, height: 900 } });
 
 test.describe('Gift detail image presentation', () => {
-	test('visitor detail view renders the full uncropped photo at its natural aspect', async ({
+	test('Gift viewer sizes its photo column to the full uncropped photo', async ({
 		browser,
 		request,
 		baseURL,
@@ -55,9 +55,7 @@ test.describe('Gift detail image presentation', () => {
 		const visitorDialog = visitorPage.getByRole('dialog');
 		await expect(visitorDialog).toBeVisible({ timeout: 5_000 });
 
-		const detailImage = visitorDialog
-			.getByTestId('gift-detail-view-image-column')
-			.locator('img');
+		const detailImage = visitorDialog.getByTestId('gift-viewer-photo').locator('img');
 		await expect(detailImage).toBeVisible({ timeout: 10_000 });
 		await expect
 			.poll(() =>
@@ -75,7 +73,8 @@ test.describe('Gift detail image presentation', () => {
 						return Math.abs(renderedAspect - naturalAspect) / naturalAspect;
 					}),
 				{
-					message: 'the detail image keeps its decoded natural aspect without cropping',
+					message:
+						'the photo column keeps the decoded aspect, so no side mat or crop remains',
 				},
 			)
 			.toBeLessThan(0.01);

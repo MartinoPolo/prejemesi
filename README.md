@@ -96,8 +96,10 @@ pnpm run dev
 
 ### Test Accounts
 
-Seeded accounts share the password defined by `SEED_PASSWORD` in `src/lib/server/db/seed.ts`
-(currently `"password123"`).
+Seeded accounts share the password defined by `SEED_PASSWORD` in
+`src/lib/server/db/seed_credentials.ts` (currently `"password123"`). Set
+`DEV_AUTO_LOGIN_EMAIL="martin@test.cz"` in `.env` to skip the login form in development; signing out
+pauses auto-login until the next sign-in.
 
 | Email          | Name           | Role                                                |
 | -------------- | -------------- | --------------------------------------------------- |
@@ -254,8 +256,8 @@ enforce auth. The deliberate `/home` exception uses a `+page.server.ts` load for
 latency-sensitive authenticated overview: it awaits parent layout authentication and invokes a
 server-only database service directly, avoiding an intra-server remote request. General REST-style
 `+server.ts` routes are not used; the purpose-specific route exceptions are the BetterAuth
-catch-all, the upload proxy, and the fixed-target internal gift-ingestion endpoint for authenticated
-machine ingestion.
+catch-all, the upload proxy, and the allowlisted-target internal gift-ingestion endpoint for
+authenticated machine ingestion.
 
 ## Code Conventions
 

@@ -26,7 +26,7 @@
 			<Dialog.Title>{title}</Dialog.Title>
 			<Dialog.Description>{description}</Dialog.Description>
 		</Dialog.Header>
-		<div class="flex justify-end gap-2">
+		<div class="flex justify-end gap-(--nested-control-gap)">
 			<Button
 				intent="outline"
 				href={getLocalizedAuthHref(resolve('/register'), redirectHref)}

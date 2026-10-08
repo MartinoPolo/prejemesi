@@ -1,5 +1,7 @@
 import { and, eq, isNull, sql } from 'drizzle-orm';
 import { getDb } from '$lib/server/db/index.js';
+import { wishlistScope, demoSessionId, rejectDemoGiftImages } from '$lib/server/demo/scope.js';
+import { enforceDemoGiftLimit } from '$lib/server/demo/limits.js';
 import { gift } from '$lib/server/db/gift.schema.js';
 import { wishlist } from '$lib/server/db/wishlist.schema.js';
 import { normalizeGiftLinks } from './gift_url.js';
@@ -80,7 +82,7 @@ export async function appendGiftsUsingTransaction(
 			recipientUserId: wishlist.recipientUserId,
 		})
 		.from(wishlist)
-		.where(and(eq(wishlist.id, input.wishlistId), isNull(wishlist.deletedAt)))
+		.where(and(eq(wishlist.id, input.wishlistId), isNull(wishlist.deletedAt), wishlistScope()))
 		.limit(1)
 		.for('update');
 	if (wishlistRow === undefined) {
@@ -90,6 +92,11 @@ export async function appendGiftsUsingTransaction(
 		throw new GiftCreationError('wishlist-archived', 'Wishlist is archived');
 	}
 
+	const sessionId = demoSessionId();
+	if (sessionId !== null) {
+		rejectDemoGiftImages(input.gifts);
+		await enforceDemoGiftLimit(tx, sessionId, input.gifts.length);
+	}
 	const [maxSort] = await tx
 		.select({ maxSort: sql<number>`COALESCE(MAX(${gift.sortOrder}), -1)` })
 		.from(gift)

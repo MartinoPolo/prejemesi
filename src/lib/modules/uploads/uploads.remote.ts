@@ -1,6 +1,7 @@
 import * as v from 'valibot';
 import { error } from '@sveltejs/kit';
 import { guardedCommand } from '$lib/server/remote.js';
+import { rejectDemoOperation } from '$lib/server/demo/scope.js';
 import { generateId } from '$lib/server/db/id.js';
 import { getAuthSigningKey } from '$lib/server/crypto/auth_signing_key.js';
 import { createUploadToken, TOKEN_PURPOSES } from '$lib/server/crypto/upload_token.js';
@@ -39,6 +40,7 @@ const AuthorizeUploadInputSchema = v.object({
 export const authorizeUpload = guardedCommand(
 	AuthorizeUploadInputSchema,
 	async (authContext, input): Promise<UploadAuthorization> => {
+		rejectDemoOperation();
 		if (!isUploadTarget(input.target)) {
 			error(400, `Invalid upload target: ${input.target}`);
 		}

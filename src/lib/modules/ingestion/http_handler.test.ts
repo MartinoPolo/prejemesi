@@ -29,9 +29,9 @@ function request(body: unknown = { manifest }, headers: Record<string, string> =
 describe('gift ingestion HTTP handler', () => {
 	it('is disabled without all dedicated secret and fixed-target configuration', async () => {
 		for (const config of [
-			{ token: '', targetShortId: 'fixed', actorId: 'actor' },
-			{ token: 'top-secret', targetShortId: '', actorId: 'actor' },
-			{ token: 'top-secret', targetShortId: 'fixed', actorId: '' },
+			{ token: '', targetShortIds: ['fixed'], actorId: 'actor' },
+			{ token: 'top-secret', targetShortIds: [], actorId: 'actor' },
+			{ token: 'top-secret', targetShortIds: ['fixed'], actorId: '' },
 		]) {
 			const process = vi.fn();
 			const response = await createGiftIngestionHandler({ config, process })(request());
@@ -43,7 +43,7 @@ describe('gift ingestion HTTP handler', () => {
 	it('requires the dedicated bearer token, JSON content type, valid JSON, and bounded body', async () => {
 		const process = vi.fn();
 		const handler = createGiftIngestionHandler({
-			config: { token: 'top-secret', targetShortId: 'fixed', actorId: 'actor' },
+			config: { token: 'top-secret', targetShortIds: ['fixed'], actorId: 'actor' },
 			process,
 			rateLimit: allowedRateLimit(),
 		});
@@ -64,7 +64,7 @@ describe('gift ingestion HTTP handler', () => {
 		const process = vi.fn(async () => ({ mode: 'dry-run' }));
 		const rateLimit = { limit: vi.fn(async () => ({ success: true })) };
 		const handler = createGiftIngestionHandler({
-			config: { token: 'top-secret', targetShortId: 'fixed', actorId: 'actor' },
+			config: { token: 'top-secret', targetShortIds: ['fixed'], actorId: 'actor' },
 			process,
 			rateLimit,
 		});
@@ -91,7 +91,7 @@ describe('gift ingestion HTTP handler', () => {
 			}),
 		};
 		const handler = createGiftIngestionHandler({
-			config: { token: 'top-secret', targetShortId: 'fixed', actorId: 'actor' },
+			config: { token: 'top-secret', targetShortIds: ['fixed'], actorId: 'actor' },
 			process: vi.fn(async () => ({ mode: 'dry-run' })),
 			rateLimit,
 		});
@@ -107,7 +107,7 @@ describe('gift ingestion HTTP handler', () => {
 		const incoming = request();
 		const readBody = vi.spyOn(incoming, 'text');
 		const handler = createGiftIngestionHandler({
-			config: { token: 'top-secret', targetShortId: 'fixed', actorId: 'actor' },
+			config: { token: 'top-secret', targetShortIds: ['fixed'], actorId: 'actor' },
 			process,
 			prepare,
 			cleanup,
@@ -136,7 +136,7 @@ describe('gift ingestion HTTP handler', () => {
 			const prepare = vi.fn();
 			const cleanup = vi.fn();
 			const handler = createGiftIngestionHandler({
-				config: { token: 'top-secret', targetShortId: 'fixed', actorId: 'actor' },
+				config: { token: 'top-secret', targetShortIds: ['fixed'], actorId: 'actor' },
 				process,
 				prepare,
 				cleanup,
@@ -165,7 +165,7 @@ describe('gift ingestion HTTP handler', () => {
 			},
 		]);
 		const handler = createGiftIngestionHandler({
-			config: { token: 'top-secret', targetShortId: 'fixed', actorId: 'actor' },
+			config: { token: 'top-secret', targetShortIds: ['fixed'], actorId: 'actor' },
 			process: vi.fn(),
 			prepare,
 			rateLimit: allowedRateLimit(),
@@ -189,14 +189,14 @@ describe('gift ingestion HTTP handler', () => {
 		expect(response.status).toBe(200);
 		expect(prepare).toHaveBeenCalledWith(
 			manifest,
-			expect.objectContaining({ config: { targetShortId: 'fixed', actorId: 'actor' } }),
+			expect.objectContaining({ config: { targetShortIds: ['fixed'], actorId: 'actor' } }),
 		);
 	});
 
 	it('routes validated cleanup references through the configured shared cleanup operation', async () => {
 		const cleanup = vi.fn(async () => undefined);
 		const handler = createGiftIngestionHandler({
-			config: { token: 'top-secret', targetShortId: 'fixed', actorId: 'actor' },
+			config: { token: 'top-secret', targetShortIds: ['fixed'], actorId: 'actor' },
 			process: vi.fn(),
 			cleanup,
 			rateLimit: allowedRateLimit(),
@@ -219,12 +219,12 @@ describe('gift ingestion HTTP handler', () => {
 		expect(result.status).toBe(200);
 		expect(cleanup).toHaveBeenCalledWith(manifest, {
 			preparedImages,
-			config: { targetShortId: 'fixed', actorId: 'actor' },
+			config: { targetShortIds: ['fixed'], actorId: 'actor' },
 		});
 	});
 
 	it('retains typed ingestion responses and hides unknown exception details behind 500', async () => {
-		const config = { token: 'top-secret', targetShortId: 'fixed', actorId: 'actor' };
+		const config = { token: 'top-secret', targetShortIds: ['fixed'], actorId: 'actor' };
 		const conflict = await createGiftIngestionHandler({
 			config,
 			rateLimit: allowedRateLimit(),
@@ -249,12 +249,30 @@ describe('gift ingestion HTTP handler', () => {
 		expect(await unknown.json()).toEqual({ error: 'Ingestion failed' });
 	});
 
+	it('answers a non-allowlisted wishlist with 403 and a distinct code', async () => {
+		const handler = createGiftIngestionHandler({
+			config: { token: 'top-secret', targetShortIds: ['fixed'], actorId: 'actor' },
+			rateLimit: allowedRateLimit(),
+			process: vi.fn(async () => {
+				throw new IngestionError('target_not_allowed', 'Not allowlisted');
+			}),
+		});
+
+		const forbidden = await handler(request());
+
+		expect(forbidden.status).toBe(403);
+		expect(await forbidden.json()).toEqual({
+			error: 'Not allowlisted',
+			code: 'target_not_allowed',
+		});
+	});
+
 	it('defaults to dry-run and accepts only an explicit apply boolean without destination or credentials', async () => {
 		const process = vi.fn(async (_manifest: unknown, options: { apply: boolean }) => ({
 			mode: options.apply ? 'apply' : 'dry-run',
 		}));
 		const handler = createGiftIngestionHandler({
-			config: { token: 'top-secret', targetShortId: 'fixed', actorId: 'actor' },
+			config: { token: 'top-secret', targetShortIds: ['fixed'], actorId: 'actor' },
 			process,
 			rateLimit: allowedRateLimit(),
 		});
@@ -264,7 +282,7 @@ describe('gift ingestion HTTP handler', () => {
 			manifest,
 			expect.objectContaining({
 				apply: false,
-				config: { targetShortId: 'fixed', actorId: 'actor' },
+				config: { targetShortIds: ['fixed'], actorId: 'actor' },
 			}),
 		);
 

@@ -103,7 +103,7 @@ describe('transformedImageUrl', () => {
 		);
 	});
 
-	it('returns the original for a null variant (detail views keep originals)', () => {
+	it('returns the original for a null variant (the Gift viewer keeps originals)', () => {
 		mockEnv['PUBLIC_R2_URL'] = PUBLIC_BASE;
 		const src = `${PUBLIC_BASE}/gifts/a.gif`;
 

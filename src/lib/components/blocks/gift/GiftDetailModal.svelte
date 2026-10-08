@@ -24,21 +24,24 @@
 	import type { ManagedGiftCategory } from '$lib/modules/gift-categories/types.js';
 	import type { WishlistRole } from '$lib/modules/wishlists/types.js';
 	import GiftDetailForm from './GiftDetailForm.svelte';
-	import GiftDetailView from './GiftDetailView.svelte';
+	import GiftViewer from './GiftViewer.svelte';
+	import type { GiftMoreProps } from '$lib/components/blocks/wishlist/gift_context_invocation.js';
+	import { giftViewerVariants } from './gift_viewer_variants.js';
 
-	interface Props {
+	interface Props extends GiftMoreProps {
 		open: boolean;
 		mode: GiftDetailModalMode;
 		gift?: GiftByRole | null;
 		wishlistId: string;
+		demo?: boolean;
 		priorityLevels: GiftPriorityLevel[];
 		categoryOptions?: ManagedGiftCategory[];
 		/** Viewer role drives reservation-safe read-only and editable manager actions. */
 		role?: WishlistRole;
-		/** Visitors/non-managers (issue #125): renders the read-only {@link GiftDetailView} instead of the edit form. */
+		/** Viewers without edit rights get the read-only {@link GiftViewer} instead of the edit form. */
 		readOnly?: boolean;
-		/** Archived wishlist (issue #165): the read-only view's reserve action hides
-		 *  unless the viewer already holds a reservation (cancel-only), mirroring cards. */
+		/** Archived wishlist: the viewer's reserve action hides unless the viewer already holds a
+		 *  reservation (cancel-only), mirroring cards. */
 		isArchived?: boolean;
 		hideReservationState?: boolean;
 		postShareLocked?: boolean;
@@ -51,8 +54,7 @@
 		oncreate?: (input: CreateGiftInput) => boolean | void | Promise<boolean | void>;
 		onupdate?: (input: UpdateGiftInput) => boolean | void | Promise<boolean | void>;
 		ondelete?: (giftId: string) => void | Promise<void>;
-		/** Read-only view's inline reserve/like action bar (issue #165): opens the
-		 *  reserve modal / cancels an existing reservation. */
+		/** Gift viewer reservation action: opens the reserve modal / cancels an existing reservation. */
 		onreserve?: (gift: GiftForVisitor) => void;
 		onunreserve?: (gift: GiftForVisitor) => void;
 		onclose?: () => void;
@@ -63,6 +65,7 @@
 		mode,
 		gift = null,
 		wishlistId,
+		demo = false,
 		priorityLevels,
 		categoryOptions = [],
 		role = 'visitor',
@@ -81,6 +84,9 @@
 		ondelete,
 		onreserve,
 		onunreserve,
+		onmore,
+		moreOpen,
+		moreSurface,
 		onclose,
 	}: Props = $props();
 
@@ -94,9 +100,23 @@
 	let formIdentity = $state(`${mode}:${gift?.id ?? 'new'}`);
 
 	const styles = giftDetailModalVariants();
+	const viewerStyles = giftViewerVariants();
 	const isEdit = $derived(mode === 'edit');
-	const title = $derived(
-		readOnly ? m.gift_detail_view_title() : isEdit ? m.gift_edit_title() : m.gift_add_title(),
+	const isViewer = $derived(readOnly && gift !== null);
+	const title = $derived(isEdit ? m.gift_edit_title() : m.gift_add_title());
+	// A viewer needs a gift: without one, open nothing rather than the editor's add chrome.
+	const hasDialogContent = $derived(!readOnly || gift !== null);
+	const contentClass = $derived(
+		isViewer
+			? viewerStyles.dialog()
+			: cn(styles.content(), !readOnly && 'max-sm:[&>[data-slot=dialog-close]]:hidden'),
+	);
+	const description = $derived(
+		readOnly
+			? m.gift_viewer_description()
+			: isEdit
+				? m.gift_edit_description()
+				: m.gift_add_description(),
 	);
 
 	const mutationPending = $derived(isSubmitting || isDeleting || formPending);
@@ -202,10 +222,66 @@
 	});
 </script>
 
-<Dialog.Root {open} onOpenChange={handleOpenChange} onOpenChangeComplete={handleOpenChangeComplete}>
+{#snippet editorHeader()}
+	<div class={styles.editorHeader()} data-testid="gift-editor-header">
+		<Dialog.Title class={styles.editorTitle()}>{title}</Dialog.Title>
+		<Button
+			intent="ghost"
+			size="sm"
+			format="icon"
+			class={cn(overlayCloseButtonClass, 'static shrink-0 sm:hidden')}
+			surfaceClass={overlayCloseButtonSurfaceClass}
+			onclick={() => handleOpenChange(false)}
+		>
+			<XIcon data-icon="solo" />
+			<span class="sr-only">{m.close()}</span>
+		</Button>
+	</div>
+{/snippet}
+
+{#snippet editorForm()}
+	<!-- The form seeds its field state once at mount (deliberately non-reactive), so a
+	     mode/gift swap while it stays mounted would submit the previous gift's typed
+	     values under the new gift's id. Keying by identity forces a remount + reseed,
+	     making that cross-gift write structurally impossible (incident 2026-08-04). -->
+	{#key `${mode}:${gift?.id ?? 'new'}`}
+		<GiftDetailForm
+			{mode}
+			{gift}
+			{wishlistId}
+			{demo}
+			{priorityLevels}
+			{categoryOptions}
+			{role}
+			{hideReservationState}
+			{postShareLocked}
+			{canDelete}
+			{graceExpiresAt}
+			{graceMessage}
+			{graceNow}
+			{isSubmitting}
+			{isDeleting}
+			{oncreate}
+			{onupdate}
+			{ondelete}
+			oncancel={() => handleOpenChange(false)}
+			ondirtychange={(dirty) => (formDirty = dirty)}
+			onpendingchange={(pending) => (formPending = pending)}
+			onsavesuccess={closeAfterSave}
+		/>
+	{/key}
+{/snippet}
+
+<!-- Keep the Root mounted even without a gift: its portal must enter body before later
+     dialogs (the reserve form) so those equal-z-index layers stack above the viewer. -->
+<Dialog.Root
+	open={open && hasDialogContent}
+	onOpenChange={handleOpenChange}
+	onOpenChangeComplete={handleOpenChangeComplete}
+>
 	<Dialog.Content
 		bind:ref={contentRef}
-		class={cn(styles.content(), !readOnly && 'max-sm:[&>[data-slot=dialog-close]]:hidden')}
+		class={contentClass}
 		showCloseButton={true}
 		onEscapeKeydown={handleDismiss}
 		onInteractOutside={handleDismiss}
@@ -214,71 +290,25 @@
 			contentRef?.focus({ preventScroll: true });
 		}}
 	>
-		{#if readOnly}
-			<Dialog.Title class="sr-only">{title}</Dialog.Title>
-		{:else}
-			<div class={styles.editorHeader()} data-testid="gift-editor-header">
-				<Dialog.Title class={styles.editorTitle()}>{title}</Dialog.Title>
-				<Button
-					intent="ghost"
-					size="sm"
-					format="icon"
-					class={cn(overlayCloseButtonClass, 'static shrink-0 sm:hidden')}
-					surfaceClass={overlayCloseButtonSurfaceClass}
-					onclick={() => handleOpenChange(false)}
-				>
-					<XIcon data-icon="solo" />
-					<span class="sr-only">{m.close()}</span>
-				</Button>
-			</div>
+		{#if !readOnly}
+			{@render editorHeader()}
 		{/if}
-		<Dialog.Description class="sr-only">
-			{readOnly
-				? m.gift_detail_view_description()
-				: isEdit
-					? m.gift_edit_description()
-					: m.gift_add_description()}
-		</Dialog.Description>
+		<Dialog.Description class="sr-only">{description}</Dialog.Description>
 
-		{#if readOnly && gift !== null}
-			<GiftDetailView
+		{#if isViewer && gift !== null}
+			<GiftViewer
 				{gift}
 				{role}
 				{isArchived}
 				{hideReservationState}
 				{onreserve}
 				{onunreserve}
+				{onmore}
+				{moreOpen}
+				{moreSurface}
 			/>
-		{:else}
-			<!-- The form seeds its field state once at mount (deliberately non-reactive), so a
-			     mode/gift swap while it stays mounted would submit the previous gift's typed
-			     values under the new gift's id. Keying by identity forces a remount + reseed,
-			     making that cross-gift write structurally impossible (incident 2026-08-04). -->
-			{#key `${mode}:${gift?.id ?? 'new'}`}
-				<GiftDetailForm
-					{mode}
-					{gift}
-					{wishlistId}
-					{priorityLevels}
-					{categoryOptions}
-					{role}
-					{hideReservationState}
-					{postShareLocked}
-					{canDelete}
-					{graceExpiresAt}
-					{graceMessage}
-					{graceNow}
-					{isSubmitting}
-					{isDeleting}
-					{oncreate}
-					{onupdate}
-					{ondelete}
-					oncancel={() => handleOpenChange(false)}
-					ondirtychange={(dirty) => (formDirty = dirty)}
-					onpendingchange={(pending) => (formPending = pending)}
-					onsavesuccess={closeAfterSave}
-				/>
-			{/key}
+		{:else if !readOnly}
+			{@render editorForm()}
 		{/if}
 	</Dialog.Content>
 </Dialog.Root>
@@ -289,7 +319,7 @@
 			<Dialog.Title>{m.wishlist_settings_unsaved_title()}</Dialog.Title>
 			<Dialog.Description>{m.gift_unsaved_description()}</Dialog.Description>
 		</Dialog.Header>
-		<Dialog.Footer class="flex flex-wrap gap-2">
+		<Dialog.Footer class="flex-wrap">
 			<Button intent="outline" onclick={continueEditing}>
 				{m.wishlist_settings_continue_editing()}
 			</Button>

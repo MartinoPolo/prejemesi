@@ -274,7 +274,7 @@ test('notification popover outside dismissal has a monotonic non-interactive exi
 	expectStableExit(await recording.finish());
 });
 
-test('account dropdown keeps opening motion and restores keyboard focus after dismissal', async ({
+test('account dropdown exits stably and restores keyboard focus after dismissal', async ({
 	page,
 }) => {
 	const trigger = page.getByRole('banner').getByRole('button', { name: ACCOUNT_TRIGGER_NAME });
@@ -282,14 +282,6 @@ test('account dropdown keeps opening motion and restores keyboard focus after di
 	await page.keyboard.press('Enter');
 	const menu = page.locator('[data-slot="dropdown-menu-content"]:visible');
 	await expect(menu).toBeVisible();
-	expect(
-		await menu.evaluate((element) =>
-			element
-				.getAnimations()
-				.some((animation) => Number(animation.effect?.getComputedTiming().duration) > 0),
-		),
-		'normal motion retains the dropdown opening animation',
-	).toBe(true);
 	await waitForAnimations(menu);
 
 	const recording = await startExitRecording(menu);

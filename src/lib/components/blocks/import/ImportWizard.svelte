@@ -424,16 +424,24 @@
 				: m.import_wizard_subtitle_append()}
 		</Dialog.Description>
 
-		<!-- Header: Title + Stepper -->
-		<div class="flex flex-col gap-3 px-6 pt-5 pb-4">
-			<div class="flex items-center justify-between pe-12">
+		<!-- Header: the title row shares the close button's row and height so the stepper below
+		     clears the button and its depth shadow. -->
+		<div class="flex flex-col gap-3 px-6 pt-(--overlay-close-inset) pb-4">
+			<div
+				class="flex min-h-(--size-control-lg) items-center justify-between pe-(--overlay-close-clearance-inside-dialog-padding)"
+				data-testid="import-wizard-title-row"
+			>
 				<h2 class="font-heading text-lg font-semibold text-foreground">
 					{m.import_wizard_title()}
 				</h2>
 			</div>
 
 			<!-- Stepper: ink-bordered dots + dashed connectors (anime-sky design language) -->
-			<div class="flex items-center gap-2" bind:this={stepper}>
+			<div
+				class="flex items-center gap-2"
+				bind:this={stepper}
+				data-testid="import-wizard-stepper"
+			>
 				{#each WIZARD_STEPS as step, index (step)}
 					{#if index > 0}
 						<div
@@ -572,7 +580,7 @@
 						</Button>
 					{/if}
 				</div>
-				<div class="flex gap-2">
+				<div class="flex gap-(--nested-control-gap)">
 					{#if commitStatus !== COMMIT_STATUS.committing}
 						<Button intent="ghost" onclick={handleClose}>
 							{m.import_wizard_cancel()}

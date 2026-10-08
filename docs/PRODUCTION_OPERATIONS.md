@@ -58,19 +58,22 @@ SHA, allowing Sentry to resolve minified production frames with the matching upl
 
 Error events disable user identity, cookies, headers, query parameters, HTTP bodies, database
 values, and stack-frame variables. Additional event filtering removes user objects, request details
-beyond method and path, sensitive custom keys, and email addresses. Session Replay is enabled during
-the Sentry trial for 10% of sessions and all sessions containing a captured error; all text and
-inputs are masked, user-facing and link/source/value attributes are masked, hidden inputs and media
-are blocked, and network bodies and headers are not recorded. Replays stop and are discarded on
-authentication routes, token-bearing routes, and URLs with query strings. Error-triggered buffering
-resumes after navigation back to a safe route; regular session sampling resumes on the next page
-load. Review the sampling rates and retained data before the trial ends.
+beyond method, path, and the browser `User-Agent` (kept so Sentry can attribute
+browser-compatibility errors), sensitive custom keys, and email addresses. Session Replay is enabled
+during the Sentry trial for 10% of sessions and all sessions containing a captured error; all text
+and inputs are masked, user-facing and link/source/value attributes are masked, hidden inputs and
+media are blocked, and network bodies and headers are not recorded. Replays stop and are discarded
+on authentication routes, token-bearing routes, and URLs with query strings. Error-triggered
+buffering resumes after navigation back to a safe route; regular session sampling resumes on the
+next page load. Review the sampling rates and retained data before the trial ends.
 
 Configure an issue alert in Sentry for new and regressed `error` or `fatal` issues in the
-`production` environment, then verify the notification recipient. After deployment, create one
-controlled browser error and one authenticated Worker error, confirm both issues use the deployed
-release and readable source maps, inspect the associated replay for masking, and remove the test
-trigger. Do not expose a permanent public error-generation route.
+`production` environment, then verify the notification recipient. Browser fetches that never
+complete (`Load failed`, `Failed to fetch`, `NetworkError…`) are reported as `warning`, so they stay
+searchable without alerting. After deployment, create one controlled browser error and one
+authenticated Worker error, confirm both issues use the deployed release and readable source maps,
+inspect the associated replay for masking, and remove the test trigger. Do not expose a permanent
+public error-generation route.
 
 ## Anonymous landing CPU on Workers Free
 

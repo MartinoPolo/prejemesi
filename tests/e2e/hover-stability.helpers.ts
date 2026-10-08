@@ -131,10 +131,16 @@ async function prepareRestingControl(page: Page, control: Locator) {
 		.toBe(0);
 }
 
+export interface RestingShadowOptions {
+	/** Flat controls cast no resting shadow, so probes start at their own lower edge. */
+	restingShadow?: boolean;
+}
+
 export async function stationaryLowerEdge(
 	page: Page,
 	control: Locator,
 	controlName: string,
+	{ restingShadow = true }: RestingShadowOptions = {},
 ): Promise<StationaryEvidence> {
 	await prepareRestingControl(page, control);
 	let box = await control.boundingBox();
@@ -147,11 +153,13 @@ export async function stationaryLowerEdge(
 			top: after.top,
 		};
 	});
-	const ordinaryShadowOffset = await control.evaluate((element) =>
-		Number.parseFloat(
-			getComputedStyle(element).getPropertyValue('--elevation-ordinary-offset'),
-		),
-	);
+	const ordinaryShadowOffset = restingShadow
+		? await control.evaluate((element) =>
+				Number.parseFloat(
+					getComputedStyle(element).getPropertyValue('--elevation-ordinary-offset'),
+				),
+			)
+		: 0;
 	const viewportHeight = await page.evaluate(() => window.innerHeight);
 	if (box!.y < 0 || box!.y + box!.height + ordinaryShadowOffset >= viewportHeight) {
 		await control.evaluate((element) => element.scrollIntoView({ block: 'center' }));
@@ -305,7 +313,12 @@ export async function stationaryLowerEdge(
 	};
 }
 
-export async function bottomToTopSweep(page: Page, control: Locator, controlName: string) {
+export async function bottomToTopSweep(
+	page: Page,
+	control: Locator,
+	controlName: string,
+	{ restingShadow = true }: RestingShadowOptions = {},
+) {
 	await prepareRestingControl(page, control);
 	const box = await control.boundingBox();
 	expect(box).not.toBeNull();
@@ -313,13 +326,15 @@ export async function bottomToTopSweep(page: Page, control: Locator, controlName
 		const style = getComputedStyle(element, '::after');
 		return style.content === 'none' ? 0 : Number.parseFloat(style.height) || 0;
 	});
-	const ordinaryOffset = await control.evaluate((element) =>
-		Number.parseFloat(
-			getComputedStyle(element).getPropertyValue('--elevation-ordinary-offset'),
-		),
-	);
+	const restingShadowOffset = restingShadow
+		? await control.evaluate((element) =>
+				Number.parseFloat(
+					getComputedStyle(element).getPropertyValue('--elevation-ordinary-offset'),
+				),
+			)
+		: 0;
 	const x = box!.x + box!.width / 2;
-	const lowerBoundary = box!.y + box!.height + ordinaryOffset - 0.25;
+	const lowerBoundary = box!.y + box!.height + restingShadowOffset - 0.25;
 	const lowerBoundaryReachable = await control.evaluate(
 		(element, point) => {
 			const target = document.elementFromPoint(point.x, point.y);

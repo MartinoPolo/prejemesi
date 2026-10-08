@@ -40,6 +40,28 @@ describe('sanitizeSentryEvent', () => {
 		});
 	});
 
+	it('keeps only the User-Agent header so Sentry can identify browser and OS', () => {
+		const userAgent =
+			'Mozilla/5.0 (iPhone; CPU iPhone OS 15_8 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148';
+		const event = {
+			request: {
+				url: 'https://prejemesi.cz/w/abc',
+				headers: {
+					'User-Agent': userAgent,
+					Referer: 'https://prejemesi.cz/claim?token=secret',
+					cookie: 'secret',
+				},
+			},
+		};
+
+		expect(sanitizeSentryEvent(event)).toEqual({
+			request: {
+				url: 'https://prejemesi.cz/w/abc',
+				headers: { 'User-Agent': userAgent },
+			},
+		});
+	});
+
 	it('drops arbitrary custom data while preserving safe replay correlation', () => {
 		const event = {
 			message: 'Failed for person@example.com',

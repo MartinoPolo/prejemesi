@@ -116,7 +116,7 @@ describe('WishlistHeader responsive presentation', () => {
 	});
 
 	it.each([390, 1280])(
-		'centers the archive action with its resting shadow at %ipx',
+		'centers the archive action with its depth clearance at %ipx',
 		async (width) => {
 			await page.viewport(width, 720);
 			const screen = await render(WishlistHeader, {
@@ -130,13 +130,24 @@ describe('WishlistHeader responsive presentation', () => {
 			const shadowOffset = parseFloat(
 				getComputedStyle(action).getPropertyValue('--elevation-ordinary-offset'),
 			);
-			const buttonBox = action.getBoundingClientRect();
-			const alertBox = alert.getBoundingClientRect();
+			try {
+				for (const [depth, depthClearance] of [
+					['soft', 0],
+					['ink', shadowOffset],
+					['black', shadowOffset],
+				] as const) {
+					document.documentElement.dataset.depth = depth;
+					const buttonBox = action.getBoundingClientRect();
+					const alertBox = alert.getBoundingClientRect();
 
-			expectPixelsNear(
-				(buttonBox.top + buttonBox.bottom + shadowOffset) / 2,
-				(alertBox.top + alertBox.bottom) / 2,
-			);
+					expectPixelsNear(
+						(buttonBox.top + buttonBox.bottom + depthClearance) / 2,
+						(alertBox.top + alertBox.bottom) / 2,
+					);
+				}
+			} finally {
+				delete document.documentElement.dataset.depth;
+			}
 			await screen.unmount();
 		},
 	);

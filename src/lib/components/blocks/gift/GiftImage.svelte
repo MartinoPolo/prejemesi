@@ -29,7 +29,7 @@
 		alt: string;
 		/**
 		 * Size-appropriate delivery variant (issue #107). Card and list surfaces
-		 * pass their bounded variant; the detail view omits it to load the
+		 * pass their bounded variant; the Gift viewer omits it to load the
 		 * original (which also preserves GIF animation).
 		 */
 		variant?: ImageVariant | null;

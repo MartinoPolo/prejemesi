@@ -24,7 +24,7 @@
 {#if showPriority && priorityInfo}
 	<Badge
 		tone="neutral"
-		badgeStyle="subtle"
+		badgeStyle="outlined"
 		class={cn(
 			'max-w-full shrink-0',
 			priorityInfo.colorClass,

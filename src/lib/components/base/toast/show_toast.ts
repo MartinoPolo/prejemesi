@@ -36,6 +36,10 @@ export function showToast(options: ShowToastOptions): string | number {
 	});
 }
 
+export function dismissToast(toastId: string | number): void {
+	toast.dismiss(toastId);
+}
+
 export const toastSuccess = (title: string, body?: string): string | number =>
 	showToast({ tone: 'success', title, body });
 

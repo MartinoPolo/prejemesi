@@ -6,15 +6,16 @@
 	interface Props {
 		gift: GiftForVisitor;
 		isAuthenticated?: boolean;
+		isArchived?: boolean;
 	}
 
-	let { gift, isAuthenticated = true }: Props = $props();
+	let { gift, isAuthenticated = true, isArchived = false }: Props = $props();
 
 	setGiftsContext(
 		() => gift.wishlistId,
 		() => [gift],
 		() => 'visitor',
-		() => false,
+		() => isArchived,
 		() => isAuthenticated,
 		() => [],
 	);

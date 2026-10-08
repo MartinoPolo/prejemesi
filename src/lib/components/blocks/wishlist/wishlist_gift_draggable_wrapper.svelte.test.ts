@@ -112,6 +112,24 @@ describe('WishlistGiftDraggableWrapper — gift card opening (#284)', () => {
 		expect(openDetail).toHaveBeenCalledOnce();
 		await unmount();
 	});
+
+	it('does not open the detail when a left click lands on an inner control', async () => {
+		const openDetail = vi.fn();
+		const { container, unmount } = await render(WishlistGiftDraggableWrapperTestHost, {
+			...baseProps,
+			reorderEnabled: false,
+			primaryLink: 'https://example.com/gift',
+			onopendetail: openDetail,
+		});
+		const innerButton = container.querySelector(
+			'[data-testid="inner-button"]',
+		) as HTMLButtonElement;
+
+		innerButton.click();
+
+		expect(openDetail).not.toHaveBeenCalled();
+		await unmount();
+	});
 });
 
 describe('WishlistGiftDraggableWrapper — explicit reorder mode (#239)', () => {
@@ -186,32 +204,77 @@ describe('WishlistGiftDraggableWrapper — explicit reorder mode (#239)', () => 
 		const moveDown = screen
 			.getByRole('button', { name: m.gift_reorder_move_down({ name: baseProps.giftName }) })
 			.element() as HTMLButtonElement;
-		const wrapperRect = wrapper.getBoundingClientRect();
-		const laneRect = lane.getBoundingClientRect();
-		const moveUpRect = moveUp.getBoundingClientRect();
-		const moveDownRect = moveDown.getBoundingClientRect();
 		const styles = getComputedStyle(wrapper);
 		const shadowOffset = parseFloat(styles.getPropertyValue('--elevation-ordinary-offset'));
 		const faceInset =
 			parseFloat(styles.borderRadius) - parseFloat(getComputedStyle(moveDown).borderRadius);
-		const shadowInset = faceInset + shadowOffset;
-		const controlGap = 8 + shadowOffset;
 
 		expect(styles.getPropertyValue('--gift-context-face-inset')).not.toBe('');
 		expect(styles.getPropertyValue('--gift-context-shadow-inset')).not.toBe('');
-		expect(styles.getPropertyValue('--gift-context-control-gap')).not.toBe('');
 		expect(getComputedStyle(lane).display).toBe('flex');
-		expectPixelsNear(wrapperRect.right - laneRect.right, shadowInset);
-		expectPixelsNear(wrapperRect.bottom - laneRect.bottom, shadowInset);
-		expectPixelsNear(moveDownRect.left - moveUpRect.right, controlGap);
-		for (const rect of [moveUpRect, moveDownRect]) {
-			expectPixelsAtMost(rect.right + shadowOffset, wrapperRect.right);
-			expectPixelsAtMost(rect.bottom + shadowOffset, wrapperRect.bottom);
+		try {
+			for (const [depth, depthClearance] of [
+				['soft', 0],
+				['ink', shadowOffset],
+				['black', shadowOffset],
+			] as const) {
+				document.documentElement.dataset.depth = depth;
+				const wrapperRect = wrapper.getBoundingClientRect();
+				const laneRect = lane.getBoundingClientRect();
+				const moveUpRect = moveUp.getBoundingClientRect();
+				const moveDownRect = moveDown.getBoundingClientRect();
+				expectPixelsNear(wrapperRect.right - laneRect.right, faceInset + depthClearance);
+				expectPixelsNear(wrapperRect.bottom - laneRect.bottom, faceInset + depthClearance);
+				expectPixelsNear(moveDownRect.left - moveUpRect.right, 8 + depthClearance);
+				for (const rect of [moveUpRect, moveDownRect]) {
+					expectPixelsAtMost(rect.right + shadowOffset, wrapperRect.right);
+					expectPixelsAtMost(rect.bottom + shadowOffset, wrapperRect.bottom);
+				}
+			}
+		} finally {
+			delete document.documentElement.dataset.depth;
 		}
 		expect(moveUp.disabled).toBe(true);
 		expect(moveDown.disabled).toBe(false);
 		await userEvent.click(moveDown);
 		expect(onreordermove).toHaveBeenCalledWith(0, 1);
+		await screen.unmount();
+	});
+
+	it('lets a grouped reorder enable a move past the flat list edge and show the in-group position (#454)', async () => {
+		await page.viewport(320, 720);
+		const screen = await render(WishlistGiftDraggableWrapperTestHost, {
+			...baseProps,
+			index: 1,
+			totalCount: 2,
+			reorderEnabled: true,
+			reorderGroupKey: 'priority:high',
+			canMoveBackward: false,
+			canMoveForward: true,
+			groupPosition: { index: 0, total: 1 },
+		});
+
+		await expect
+			.element(
+				screen.getByRole('button', {
+					name: m.gift_reorder_move_up({ name: baseProps.giftName }),
+				}),
+			)
+			.toBeDisabled();
+		await expect
+			.element(
+				screen.getByRole('button', {
+					name: m.gift_reorder_move_down({ name: baseProps.giftName }),
+				}),
+			)
+			.toBeEnabled();
+		await expect
+			.element(screen.getByTestId('gift-reorder-directional-actions'))
+			.toHaveTextContent('1/1');
+		expect(document.querySelector('[data-gift-item]')).toHaveAttribute(
+			'data-gift-reorder-group',
+			'priority:high',
+		);
 		await screen.unmount();
 	});
 
@@ -461,8 +524,8 @@ describe('WishlistGiftDraggableWrapper — context actions and selection', () =>
 			name: 'desktop Grid',
 			width: 768,
 			layout: 'overlay' as const,
-			target: 32,
-			visual: 24,
+			target: 40,
+			visual: 32,
 			targetInset: 4,
 			visualInset: 8,
 			visualRadius: '8px',
@@ -471,8 +534,8 @@ describe('WishlistGiftDraggableWrapper — context actions and selection', () =>
 			name: 'desktop List',
 			width: 768,
 			layout: 'list' as const,
-			target: 32,
-			visual: 24,
+			target: 40,
+			visual: 32,
 			targetInset: 4,
 			visualInset: 8,
 			visualRadius: '8px',
@@ -525,6 +588,33 @@ describe('WishlistGiftDraggableWrapper — context actions and selection', () =>
 			await unmount();
 		},
 	);
+
+	it('lifts the reorder grip only on its own hover, never on card hover', async () => {
+		await page.viewport(768, 720);
+		const { container, unmount } = await render(WishlistGiftDraggableWrapperTestHost, {
+			...baseProps,
+			reorderEnabled: true,
+		});
+		const grip = container.querySelector(
+			`[aria-label="${m.gift_reorder_grip_label()}"]`,
+		) as HTMLElement;
+		const surface = grip.querySelector(
+			':scope > [data-slot="elevation-surface"]',
+		) as HTMLElement;
+		const surfaceTop = () =>
+			surface.getBoundingClientRect().top - grip.getBoundingClientRect().top;
+		const restingTop = surfaceTop();
+
+		await userEvent.hover(container.querySelector('[data-gift-item]')!, {
+			position: { x: 200, y: 100 },
+		});
+		await new Promise((resolve) => setTimeout(resolve, 300));
+		expectPixelsNear(surfaceTop(), restingTop);
+
+		await userEvent.hover(grip);
+		await expect.poll(() => restingTop - surfaceTop()).toBeGreaterThan(1);
+		await unmount();
+	});
 
 	it('leaves native interactive descendant context menus untouched outside selection mode', async () => {
 		const openContext = vi.fn(() => false);

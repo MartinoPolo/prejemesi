@@ -104,8 +104,8 @@ export function createGiftIngestionHandler(dependencies: HandlerDependencies) {
 		request: Request,
 		runtimeRateLimit?: GiftIngestionRateLimit,
 	): Promise<Response> => {
-		const { token, targetShortId, actorId } = dependencies.config;
-		if (token === '' || targetShortId === '' || actorId === '') {
+		const { token, targetShortIds, actorId } = dependencies.config;
+		if (token === '' || targetShortIds.length === 0 || actorId === '') {
 			return response({ error: 'Not found' }, 404);
 		}
 
@@ -170,7 +170,7 @@ export function createGiftIngestionHandler(dependencies: HandlerDependencies) {
 					}
 					await dependencies.cleanup(validated.output.manifest, {
 						preparedImages: validated.output.preparedImages,
-						config: { targetShortId, actorId },
+						config: { targetShortIds, actorId },
 					});
 					return response({ mode: 'cleanup-images', cleaned: true }, 200);
 				}
@@ -179,7 +179,7 @@ export function createGiftIngestionHandler(dependencies: HandlerDependencies) {
 				}
 				const prepared = await dependencies.prepare(validated.output.manifest, {
 					images: validated.output.images,
-					config: { targetShortId, actorId },
+					config: { targetShortIds, actorId },
 				});
 				return response(
 					{ mode: 'prepare-images', prepared } as Record<string, unknown>,
@@ -189,7 +189,7 @@ export function createGiftIngestionHandler(dependencies: HandlerDependencies) {
 			const result = await dependencies.process(validated.output.manifest, {
 				apply: validated.output.apply,
 				preparedImages: validated.output.preparedImages,
-				config: { targetShortId, actorId },
+				config: { targetShortIds, actorId },
 			});
 			return response(result, 200);
 		} catch (caught) {

@@ -36,6 +36,14 @@
 			radios.filter((radio) => radio.getAttribute('aria-checked') === 'true'),
 		).toHaveLength(1);
 	};
+
+	const playTrayHugsOptions = async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+		const tray = within(canvasElement).getByRole('group', { name: 'Image source' });
+		const stretchingParent = tray.parentElement!;
+		await expect(tray.getBoundingClientRect().width).toBeLessThan(
+			stretchingParent.getBoundingClientRect().width / 2,
+		);
+	};
 </script>
 
 <script lang="ts">
@@ -45,6 +53,12 @@
 	let exampleValue = $state('grid');
 	let keyboardValue = $state('grid');
 	let responsiveValue = $state('grid');
+	let stretchingParentValue = $state('upload');
+	let motionValues = $state<Record<string, string>>(
+		Object.fromEntries(
+			SEGMENTED_TOGGLE_PRESENTATIONS.map((presentation) => [presentation, 'short']),
+		),
+	);
 </script>
 
 <Story name="All Variants">
@@ -116,6 +130,44 @@
 				<ListIcon />
 			</SegmentedToggle.Item>
 		</SegmentedToggle.Root>
+	{/snippet}
+</Story>
+
+<Story name="Motion">
+	{#snippet template(args: SegmentedToggleArgs)}
+		<div class="flex flex-col items-start gap-4">
+			{#each SEGMENTED_TOGGLE_PRESENTATIONS as presentation (presentation)}
+				<SegmentedToggle.Root
+					{...args}
+					bind:value={motionValues[presentation]}
+					size="md"
+					aria-label={`${presentation} selection slide`}
+					{presentation}
+				>
+					<SegmentedToggle.Item value="short">Card</SegmentedToggle.Item>
+					<SegmentedToggle.Item value="long">List and reservations</SegmentedToggle.Item>
+					<SegmentedToggle.Item value="middle">Compact</SegmentedToggle.Item>
+				</SegmentedToggle.Root>
+			{/each}
+		</div>
+	{/snippet}
+</Story>
+
+<Story name="Inside a stretching parent [play: tray hugs its options]" play={playTrayHugsOptions}>
+	{#snippet template(args: SegmentedToggleArgs)}
+		<div class="flex w-96 flex-col gap-1.5">
+			<span class="text-sm font-medium text-muted-foreground">Image source</span>
+			<SegmentedToggle.Root
+				bind:value={stretchingParentValue}
+				size="md"
+				aria-label="Image source"
+				{...args}
+				presentation="default"
+			>
+				<SegmentedToggle.Item value="upload">Upload</SegmentedToggle.Item>
+				<SegmentedToggle.Item value="link">Link</SegmentedToggle.Item>
+			</SegmentedToggle.Root>
+		</div>
 	{/snippet}
 </Story>
 

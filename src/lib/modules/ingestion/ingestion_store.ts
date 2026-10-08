@@ -41,11 +41,11 @@ export const drizzleGiftIngestionStore: GiftIngestionStore = {
 		await tx
 			.select({ id: wishlist.id })
 			.from(wishlist)
-			.where(eq(wishlist.id, wishlistId))
+			.where(and(eq(wishlist.id, wishlistId), isNull(wishlist.demoSessionId)))
 			.limit(1)
 			.for('update');
 	},
-	async resolveTarget(tx, fixedShortId) {
+	async resolveTarget(tx, shortId) {
 		const [row] = await database(tx)
 			.select({
 				id: wishlist.id,
@@ -57,7 +57,13 @@ export const drizzleGiftIngestionStore: GiftIngestionStore = {
 			})
 			.from(wishlist)
 			.leftJoin(user, eq(user.id, wishlist.recipientUserId))
-			.where(and(eq(wishlist.shortId, fixedShortId), isNull(wishlist.deletedAt)))
+			.where(
+				and(
+					eq(wishlist.shortId, shortId),
+					isNull(wishlist.deletedAt),
+					isNull(wishlist.demoSessionId),
+				),
+			)
 			.limit(1);
 		if (row === undefined) {
 			return null;

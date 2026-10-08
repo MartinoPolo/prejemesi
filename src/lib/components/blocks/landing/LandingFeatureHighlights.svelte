@@ -81,18 +81,17 @@
 					{m.landing_feat2_description()}
 				</p>
 				<div class="feature-demo">
-					<InputGroup.Root>
+					<!-- Decorative illustration of the share wizard's copy field: inert, so it is
+					     neither focusable nor announced as an action. -->
+					<InputGroup.Root data-testid="landing-copy-link-demo" aria-hidden="true" inert>
 						<InputGroup.Input
 							value="prejemesi.cz/w/martina-vanocni-2026"
 							readonly
 							tabindex={-1}
-							aria-label={m.landing_feat2_title()}
 						/>
-						<InputGroup.Addon align="inline-end">
-							<InputGroup.Button aria-hidden="true" tabindex={-1}>
-								{m.landing_feat2_copy()}
-							</InputGroup.Button>
-						</InputGroup.Addon>
+						<InputGroup.Segment decorative>
+							{m.landing_feat2_copy()}
+						</InputGroup.Segment>
 					</InputGroup.Root>
 					<div class="flex justify-center gap-2.5">
 						{#each shareApps as app (app.platform)}

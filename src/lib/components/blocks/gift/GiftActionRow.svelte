@@ -4,23 +4,26 @@
 	import { Button } from '$lib/components/base/button/index.js';
 	import * as m from '$lib/paraglide/messages.js';
 	import { cn } from '$lib/utils.js';
+	import { observeDepthChange } from '$lib/theme/depth_change.js';
 	import type { GiftContextAction } from '$lib/modules/gifts/gift_context_actions.js';
-	import type { GiftActionPlacementSnapshot } from '$lib/components/blocks/wishlist/gift_context_invocation.js';
-	import { placeGiftActions } from './gift_action_placement.js';
+	import type {
+		GiftActionPlacementSnapshot,
+		GiftMoreProps,
+	} from '$lib/components/blocks/wishlist/gift_context_invocation.js';
+	import { placeGiftActions, type GiftActionPlacement } from './gift_action_placement.js';
 	import { giftActionRowVariants } from './gift_action_row_variants.js';
 
-	interface Props {
+	interface Props extends GiftMoreProps {
 		children?: Snippet;
-		secondary?: Snippet;
-		onmore?: (
-			anchor: HTMLButtonElement,
-			placementSnapshot: GiftActionPlacementSnapshot,
-		) => void;
-		moreOpen?: boolean;
-		moreSurface?: 'menu' | 'dialog';
-		controlSizing?: 'fill' | 'intrinsic';
+		/** A control before every action that never overflows, such as the viewer's Like. */
+		leading?: Snippet;
+		/** Renders the control for one secondary action. */
+		secondary?: Snippet<[GiftContextAction]>;
 		contentWidth?: number;
-		secondaryAction?: GiftContextAction;
+		/** Ordered left to right; the leftmost overflows into More first. */
+		secondaryActions?: readonly GiftContextAction[];
+		/** Secondary actions shown after the primary; they still overflow in `secondaryActions` order. */
+		secondaryActionsAfterPrimary?: readonly GiftContextAction[];
 		primaryAction?: GiftContextAction;
 		persistentMore?: boolean;
 		onplacementchange?: (overflowActions: readonly GiftContextAction[]) => void;
@@ -29,26 +32,31 @@
 
 	let {
 		children,
+		leading,
 		secondary,
 		onmore,
 		moreOpen = false,
 		moreSurface = 'menu',
-		controlSizing = 'fill',
 		contentWidth,
-		secondaryAction,
+		secondaryActions = [],
+		secondaryActionsAfterPrimary = [],
 		primaryAction,
 		persistentMore = onmore !== undefined,
 		onplacementchange,
 		class: className,
 	}: Props = $props();
 
+	const styles = giftActionRowVariants();
+
 	let rowElement = $state<HTMLDivElement | null>(null);
-	let secondaryElement = $state<HTMLDivElement | null>(null);
+	let leadingElement = $state<HTMLDivElement | null>(null);
+	const secondaryElements = $state<Partial<Record<GiftContextAction, HTMLDivElement | null>>>({});
 	let primaryElement = $state<HTMLDivElement | null>(null);
 	let moreElement = $state<HTMLElement | null>(null);
 	let moreMeasureElement = $state<HTMLSpanElement | null>(null);
 	let observedContentWidth = $state(0);
-	let secondaryWidth = $state(0);
+	let leadingWidth = $state(0);
+	let secondaryWidths = $state<Partial<Record<GiftContextAction, number>>>({});
 	let primaryWidth = $state(0);
 	let moreWidth = $state(0);
 	let actionGap = $state(0);
@@ -56,24 +64,34 @@
 	let focusTransferVersion = 0;
 	let mounted = false;
 
+	const renderedSecondaryActions = $derived(secondary === undefined ? [] : secondaryActions);
 	const responsivePlacement = $derived(
 		onmore !== undefined &&
-			controlSizing === 'intrinsic' &&
-			(secondaryAction !== undefined || primaryAction !== undefined),
+			(renderedSecondaryActions.length > 0 || primaryAction !== undefined),
 	);
-	const availableContentWidth = $derived(contentWidth ?? observedContentWidth);
-	const placement = $derived(
+	const renderedSecondaryActionsBeforePrimary = $derived(
+		renderedSecondaryActions.filter((action) => !secondaryActionsAfterPrimary.includes(action)),
+	);
+	const renderedSecondaryActionsAfterPrimary = $derived(
+		renderedSecondaryActions.filter((action) => secondaryActionsAfterPrimary.includes(action)),
+	);
+	const availableContentWidth = $derived(
+		(contentWidth ?? observedContentWidth) -
+			(leading === undefined ? 0 : leadingWidth + actionGap),
+	);
+	const placement: GiftActionPlacement = $derived(
 		responsivePlacement &&
 			availableContentWidth > 0 &&
-			(secondaryAction === undefined || secondaryWidth > 0) &&
+			(leading === undefined || leadingWidth > 0) &&
+			renderedSecondaryActions.every((action) => (secondaryWidths[action] ?? 0) > 0) &&
 			(primaryAction === undefined || primaryWidth > 0) &&
 			moreWidth > 0
 			? placeGiftActions({
 					contentWidth: availableContentWidth,
-					secondary:
-						secondaryAction === undefined
-							? undefined
-							: { id: secondaryAction, width: secondaryWidth },
+					secondary: renderedSecondaryActions.map((action) => ({
+						id: action,
+						width: secondaryWidths[action] ?? 0,
+					})),
 					primary:
 						primaryAction === undefined
 							? undefined
@@ -83,19 +101,16 @@
 					persistentMore: persistentMore || moreOpen,
 				})
 			: {
-					showSecondary: secondary !== undefined,
+					visibleSecondaryActions: renderedSecondaryActions,
 					showPrimary: true,
 					showMore: onmore !== undefined && persistentMore,
-					overflowActions: [] as GiftContextAction[],
+					overflowActions: [],
 				},
 	);
-	const styles = $derived(
-		giftActionRowVariants({
-			withMore: placement.showMore,
-			withSecondary: placement.showSecondary,
-			controlSizing,
-		}),
-	);
+
+	function secondaryIsVisible(action: GiftContextAction): boolean {
+		return placement.visibleSecondaryActions.includes(action);
+	}
 
 	function measureIntrinsicActions() {
 		if (rowElement !== null) {
@@ -105,9 +120,17 @@
 		if (!responsivePlacement) {
 			return;
 		}
-		if (secondaryElement !== null && secondaryElement.isConnected) {
-			secondaryWidth = secondaryElement.getBoundingClientRect().width;
+		if (leadingElement !== null && leadingElement.isConnected) {
+			leadingWidth = leadingElement.getBoundingClientRect().width;
 		}
+		const measuredSecondaryWidths: Partial<Record<GiftContextAction, number>> = {};
+		for (const action of renderedSecondaryActions) {
+			const element = secondaryElements[action];
+			if (element?.isConnected === true) {
+				measuredSecondaryWidths[action] = element.getBoundingClientRect().width;
+			}
+		}
+		secondaryWidths = measuredSecondaryWidths;
 		if (primaryElement !== null && primaryElement.isConnected) {
 			primaryWidth = primaryElement.getBoundingClientRect().width;
 		}
@@ -116,11 +139,11 @@
 		}
 	}
 
-	function firstAction(element: HTMLElement | null): HTMLElement | null {
+	function firstAction(element: HTMLElement | null | undefined): HTMLElement | null {
 		return element?.querySelector<HTMLElement>('button, a, input, select, textarea') ?? null;
 	}
 
-	function actionIsDisabled(element: HTMLElement | null): boolean {
+	function actionIsDisabled(element: HTMLElement | null | undefined): boolean {
 		const action = firstAction(element);
 		return (
 			(action instanceof HTMLButtonElement && action.disabled) ||
@@ -128,7 +151,7 @@
 		);
 	}
 
-	function actionIsPending(element: HTMLElement | null): boolean {
+	function actionIsPending(element: HTMLElement | null | undefined): boolean {
 		const action = firstAction(element);
 		return (
 			action?.getAttribute('data-pending') === 'true' ||
@@ -140,13 +163,23 @@
 		const visibleDirectActions: GiftContextAction[] = [];
 		const disabledActions: GiftContextAction[] = [];
 		const pendingActions: GiftContextAction[] = [];
-		for (const [action, element, visible] of [
-			[secondaryAction, secondaryElement, placement.showSecondary],
-			[primaryAction, primaryElement, placement.showPrimary],
-		] as const) {
-			if (action === undefined) {
-				continue;
-			}
+		const directActions = [
+			...renderedSecondaryActions.map((action) => ({
+				action,
+				element: secondaryElements[action],
+				visible: secondaryIsVisible(action),
+			})),
+			...(primaryAction === undefined
+				? []
+				: [
+						{
+							action: primaryAction,
+							element: primaryElement,
+							visible: placement.showPrimary,
+						},
+					]),
+		];
+		for (const { action, element, visible } of directActions) {
 			if (visible && firstAction(element) !== null) {
 				visibleDirectActions.push(action);
 			}
@@ -161,10 +194,14 @@
 	}
 
 	$effect.pre(() => {
-		const { showSecondary, showPrimary, showMore } = placement;
+		const { showPrimary, showMore } = placement;
 		const activeElement = document.activeElement;
 		const hiddenFocusedAction =
-			(!showSecondary && secondaryElement?.contains(activeElement) === true) ||
+			renderedSecondaryActions.some(
+				(action) =>
+					!secondaryIsVisible(action) &&
+					secondaryElements[action]?.contains(activeElement) === true,
+			) ||
 			(!showPrimary && primaryElement?.contains(activeElement) === true);
 		const hiddenFocusedMore = !showMore && moreElement?.contains(activeElement) === true;
 		if (!hiddenFocusedAction && !hiddenFocusedMore) {
@@ -183,11 +220,16 @@
 			) {
 				return;
 			}
+			const lastVisibleSecondary = placement.visibleSecondaryActions.at(-1);
 			const focusTarget = hiddenFocusedAction
 				? moreElement
 				: showPrimary
 					? firstAction(primaryElement)
-					: firstAction(secondaryElement);
+					: firstAction(
+							lastVisibleSecondary === undefined
+								? null
+								: secondaryElements[lastVisibleSecondary],
+						);
 			if (focusTarget !== null) {
 				focusTarget.focus({ preventScroll: true });
 			}
@@ -203,27 +245,32 @@
 		}
 	});
 
+	// Re-subscribes whenever a measured control mounts or unmounts, such as Bought appearing after
+	// the viewer reserves.
+	$effect(() => {
+		const observedElements = [
+			rowElement,
+			leadingElement,
+			primaryElement,
+			moreMeasureElement,
+			...renderedSecondaryActions.map((action) => secondaryElements[action]),
+		].filter((element): element is HTMLElement => element != null);
+		const observer = new ResizeObserver(measureIntrinsicActions);
+		for (const element of observedElements) {
+			observer.observe(element);
+		}
+		return () => observer.disconnect();
+	});
+
 	onMount(() => {
 		mounted = true;
-		const observer = new ResizeObserver(measureIntrinsicActions);
-		if (rowElement !== null) {
-			observer.observe(rowElement);
-		}
-		if (secondaryElement !== null) {
-			observer.observe(secondaryElement);
-		}
-		if (primaryElement !== null) {
-			observer.observe(primaryElement);
-		}
-		if (moreMeasureElement !== null) {
-			observer.observe(moreMeasureElement);
-		}
 		void tick().then(measureIntrinsicActions);
 		document.fonts?.addEventListener('loadingdone', measureIntrinsicActions);
+		const stopObservingDepth = observeDepthChange(measureIntrinsicActions);
 		return () => {
+			stopObservingDepth();
 			mounted = false;
 			focusTransferVersion += 1;
-			observer.disconnect();
 			document.fonts?.removeEventListener('loadingdone', measureIntrinsicActions);
 		};
 	});
@@ -243,19 +290,33 @@
 		}
 	}}
 >
-	{#if secondary}
+	{#snippet secondarySlot(
+		action: GiftContextAction,
+		renderSecondary: Snippet<[GiftContextAction]>,
+	)}
 		<div
-			bind:this={secondaryElement}
+			bind:this={secondaryElements[action]}
 			class={cn(
 				styles.secondary(),
-				!placement.showSecondary && 'gift-action-overflow-measure',
+				!secondaryIsVisible(action) && 'gift-action-overflow-measure',
 			)}
 			data-testid="gift-action-secondary"
-			inert={!placement.showSecondary}
-			aria-hidden={!placement.showSecondary}
+			data-gift-secondary-action={action}
+			inert={!secondaryIsVisible(action)}
+			aria-hidden={!secondaryIsVisible(action)}
 		>
-			{@render secondary()}
+			{@render renderSecondary(action)}
 		</div>
+	{/snippet}
+	{#if leading}
+		<div bind:this={leadingElement} class={styles.leading()}>
+			{@render leading()}
+		</div>
+	{/if}
+	{#if secondary}
+		{#each renderedSecondaryActionsBeforePrimary as action (action)}
+			{@render secondarySlot(action, secondary)}
+		{/each}
 	{/if}
 	<span
 		bind:this={moreMeasureElement}
@@ -263,14 +324,24 @@
 		aria-hidden="true"
 	></span>
 	<div class={styles.primaryGroup()} data-testid="gift-action-primary-group">
-		<div
-			bind:this={primaryElement}
-			class={cn(styles.primary(), !placement.showPrimary && 'gift-action-overflow-measure')}
-			inert={!placement.showPrimary}
-			aria-hidden={!placement.showPrimary}
-		>
-			{@render children?.()}
-		</div>
+		{#if primaryAction !== undefined}
+			<div
+				bind:this={primaryElement}
+				class={cn(
+					styles.primary(),
+					!placement.showPrimary && 'gift-action-overflow-measure',
+				)}
+				inert={!placement.showPrimary}
+				aria-hidden={!placement.showPrimary}
+			>
+				{@render children?.()}
+			</div>
+		{/if}
+		{#if secondary}
+			{#each renderedSecondaryActionsAfterPrimary as action (action)}
+				{@render secondarySlot(action, secondary)}
+			{/each}
+		{/if}
 		{#if onmore}
 			<Button
 				bind:ref={moreElement}
@@ -311,7 +382,8 @@
 		}
 	}
 
-	.gift-action-overflow-measure,
+	/* Global so the class reaches the More <Button> root, which lacks this component's scope hash. */
+	.gift-action-row :global(.gift-action-overflow-measure),
 	.gift-action-more-measure {
 		position: fixed;
 		inset-block-start: 0;
@@ -320,7 +392,7 @@
 		pointer-events: none;
 	}
 
-	.gift-action-overflow-measure {
+	.gift-action-row :global(.gift-action-overflow-measure) {
 		inline-size: max-content;
 		max-inline-size: none;
 	}
@@ -328,7 +400,12 @@
 	.gift-action-row,
 	.gift-action-primary-group,
 	.gift-action-slot {
-		gap: var(--gift-action-gap, calc(0.5rem + var(--elevation-ordinary-offset)));
+		gap: var(--nested-control-gap);
+	}
+
+	/* A group holding only off-screen measures must not add a gap after the leading control. */
+	.gift-action-primary-group:not(:has(> :not(:global(.gift-action-overflow-measure)))) {
+		display: contents;
 	}
 
 	.gift-action-slot :global(> [data-slot='button']) {

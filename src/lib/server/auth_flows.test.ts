@@ -1,5 +1,5 @@
 import { beforeAll, beforeEach, afterAll, describe, expect, it, vi } from 'vitest';
-import { getTableColumns } from 'drizzle-orm';
+import { getTableColumns, Param, type SQL } from 'drizzle-orm';
 import type { createAuth as createAuthFunction } from './auth.js';
 import * as authSchema from './db/auth.schema.js';
 
@@ -14,7 +14,24 @@ vi.mock('$env/dynamic/private', () => ({
 		ORIGIN: 'http://localhost:8300',
 	},
 }));
-vi.mock('./db/index.js', () => ({ getDb: () => ({}) }));
+vi.mock('./db/index.js', () => ({
+	getDb: () => ({
+		select: () => ({
+			from: () => ({
+				where: (condition: SQL) => ({
+					limit: async () => {
+						const requestedUserId = condition.queryChunks.find(
+							(chunk) => chunk instanceof Param,
+						)?.value;
+						return fixtures.database.user
+							.filter((identity) => identity.id === requestedUserId)
+							.map((identity) => ({ demoSessionId: identity.demoSessionId ?? null }));
+					},
+				}),
+			}),
+		}),
+	}),
+}));
 vi.mock('better-auth/adapters/drizzle', async () => {
 	const { memoryAdapter } = await import('better-auth/adapters/memory');
 	return { drizzleAdapter: () => memoryAdapter(fixtures.database) };

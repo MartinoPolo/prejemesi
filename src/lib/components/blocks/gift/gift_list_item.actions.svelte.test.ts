@@ -16,14 +16,17 @@ import {
 	expectRaisedActionShadowInside,
 	GiftListItemTestHost,
 } from './gift_list_item.test_fixtures.js';
+import {
+	expectRightAlignedAdjacentActions,
+	MORE_ACTION_SELECTOR,
+	RECEIVED_ACTION_SELECTOR,
+	RESERVE_ACTION_SELECTOR,
+	settleActionPlacement,
+	visibleAction,
+	visibleActions,
+} from './gift_action_geometry.test_fixtures.js';
 
 const { expectPixelsNear, expectPixelsAtLeast, expectPixelsAtMost } = createPixelAssertions(expect);
-
-async function settleActionPlacement() {
-	await new Promise<void>((resolve) =>
-		requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
-	);
-}
 
 describe('GiftListItem approved action geometry (issue #350)', () => {
 	it('keeps nested action hover paint independent from the flat list row', async () => {
@@ -55,15 +58,14 @@ describe('GiftListItem approved action geometry (issue #350)', () => {
 		const sourceLink = host.querySelector<HTMLAnchorElement>('a[target="_blank"]')!;
 		const moreSurface = more.querySelector<HTMLElement>(':scope > .elevation-surface')!;
 		const receivedSurface = received.querySelector<HTMLElement>(':scope > .elevation-surface')!;
-		const sourceSurface = sourceLink.querySelector<HTMLElement>(':scope > .elevation-surface')!;
-		const restingPaint = [moreSurface, receivedSurface, sourceSurface].map(
+		const restingPaint = [moreSurface, receivedSurface, sourceLink].map(
 			(element) => getComputedStyle(element).backgroundColor,
 		);
 
 		await userEvent.hover(title);
 		await expect
 			.poll(() =>
-				[moreSurface, receivedSurface, sourceSurface].map(
+				[moreSurface, receivedSurface, sourceLink].map(
 					(element) => getComputedStyle(element).backgroundColor,
 				),
 			)
@@ -242,7 +244,7 @@ describe('GiftListItem approved action geometry (issue #350)', () => {
 		host.remove();
 	});
 
-	it('keeps Reserve, Received, and More in one right-aligned desktop row', async () => {
+	it('keeps Received, Reserve, and More adjacent in one right-aligned desktop row', async () => {
 		await page.viewport(768, 900);
 		const host = document.createElement('div');
 		host.style.width = '720px';
@@ -261,21 +263,50 @@ describe('GiftListItem approved action geometry (issue #350)', () => {
 
 		await settleActionPlacement();
 		const row = host.querySelector('[data-testid="gift-action-row"]') as HTMLElement;
-		const reserve = row.querySelector('[data-testid="reserve-button"]') as HTMLElement;
-		const received = row.querySelector('[data-testid="gift-received-toggle"]') as HTMLElement;
-		const more = row.querySelector('[data-testid="gift-more-actions"]') as HTMLElement;
-		const rowRect = row.getBoundingClientRect();
-		const actionRects = [reserve, received, more].map((action) =>
-			action.getBoundingClientRect(),
+		const actions = [
+			RECEIVED_ACTION_SELECTOR,
+			RESERVE_ACTION_SELECTOR,
+			MORE_ACTION_SELECTOR,
+		].map((selector) => visibleAction(row, selector));
+
+		expect(row.dataset.overflowActions).toBe('');
+		expect(getComputedStyle(row).flexWrap).toBe('nowrap');
+		expectPixelsAtLeast(
+			actions[0]!.getBoundingClientRect().left,
+			row.getBoundingClientRect().left,
+		);
+		expectRightAlignedAdjacentActions(row, actions, row.getBoundingClientRect().right);
+		host.remove();
+	});
+
+	it('keeps Received, Reserve, and More adjacent in one right-aligned mobile row when they fit', async () => {
+		await page.viewport(600, 900);
+		const host = document.createElement('div');
+		host.style.width = '576px';
+		document.body.appendChild(host);
+		await render(
+			GiftListItemTestHost,
+			{
+				gift: makeVisitorGift({ myReservationId: null, reservedCount: 0 }),
+				role: WISHLIST_ROLES.moderator,
+				onreceived: () => {},
+				onreserve: () => {},
+				onmore: () => {},
+			},
+			{ baseElement: host },
 		);
 
-		for (const actionRect of actionRects) {
-			expectPixelsNear(actionRect.top, actionRects[0]!.top);
-			expectPixelsAtLeast(actionRect.left, rowRect.left);
-			expectPixelsAtMost(actionRect.right, rowRect.right);
-		}
+		const row = host.querySelector('[data-testid="gift-action-row"]') as HTMLElement;
+		await expect.poll(() => visibleActions(row).length).toBe(3);
+		const actions = [
+			RECEIVED_ACTION_SELECTOR,
+			RESERVE_ACTION_SELECTOR,
+			MORE_ACTION_SELECTOR,
+		].map((selector) => visibleAction(row, selector));
+
+		expect(row.dataset.overflowActions).toBe('');
 		expect(getComputedStyle(row).flexWrap).toBe('nowrap');
-		expectPixelsNear(more.getBoundingClientRect().right, rowRect.right);
+		expectRightAlignedAdjacentActions(row, actions, row.getBoundingClientRect().right);
 		host.remove();
 	});
 
@@ -318,7 +349,7 @@ describe('GiftListItem approved action geometry (issue #350)', () => {
 				'[data-testid="gift-received-toggle"], [data-testid="reserve-button"]',
 			) as HTMLElement;
 			const expectedControlSize = viewport < 640 ? 40 : 32;
-			const actions = Array.from(row.querySelectorAll<HTMLElement>('button'));
+			const actions = visibleActions(row);
 			expect(primary).toBeTruthy();
 			expect(more).toBeTruthy();
 			const contentRect = content.getBoundingClientRect();

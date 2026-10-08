@@ -4,6 +4,7 @@ import { page, userEvent } from 'vitest/browser';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import WishlistSelectionToolbar from './WishlistSelectionToolbar.svelte';
 import * as m from '$lib/paraglide/messages.js';
+import { resolvedCssLength } from '../gift/gift_action_geometry.test_fixtures.js';
 
 function createProps() {
 	return {
@@ -165,6 +166,61 @@ describe('WishlistSelectionToolbar consolidated desktop actions (#353)', () => {
 		await page.getByRole('menuitem', { name: m.gift_bulk_copy_choose() }).click();
 		expect(props.oncopy).toHaveBeenCalledOnce();
 		await expect.element(screen.getByRole('button', { name: m.done() })).toBeVisible();
+		await screen.unmount();
+	});
+
+	it('marks hidden selected gifts with the shared warning badge', async () => {
+		const screen = await render(WishlistSelectionToolbar, { ...createProps(), hiddenCount: 2 });
+		const label = screen.getByText(m.gift_selection_hidden_count({ count: 2 }));
+		await expect.element(label).toBeVisible();
+		const badge = label.element().closest<HTMLElement>('[data-slot="badge"]');
+		expect(badge).not.toBeNull();
+		const badgeStyle = getComputedStyle(badge!);
+
+		expect(Number.parseFloat(badgeStyle.borderTopLeftRadius)).toBeCloseTo(
+			resolvedCssLength(badge!, 'var(--radius-badge)'),
+		);
+		expect(badgeStyle.backgroundColor).not.toBe('rgba(0, 0, 0, 0)');
+		expect(badge!.querySelector('[data-badge-icon] svg')).not.toBeNull();
+		await screen.unmount();
+	});
+
+	it('gives Priority and Category the shared gift action icons with aligned labels (#447)', async () => {
+		const screen = await render(WishlistSelectionToolbar, createProps());
+		await screen.getByTestId('desktop-selection-actions-trigger').click();
+		const root = page.getByRole('menu', { name: m.gift_selection_actions() });
+		await expect.element(root).toBeVisible();
+		const labelTextOf = (menuItem: Element, label: string) =>
+			Array.from(menuItem.childNodes).find((node) => {
+				const text = node.textContent!.trim();
+				return (
+					node.nodeType === Node.TEXT_NODE &&
+					(text === label || text.startsWith(`${label}: `))
+				);
+			});
+		const item = (label: string) =>
+			Array.from(root.element().querySelectorAll('[role="menuitem"]')).find(
+				(menuItem) => labelTextOf(menuItem, label) !== undefined,
+			)!;
+
+		expect(item(m.gift_priority_label()).querySelector('svg.lucide-star')).toBeTruthy();
+		expect(item(m.gift_context_category()).querySelector('svg.lucide-tag')).toBeTruthy();
+		const labelLefts = [
+			m.gift_priority_label(),
+			m.gift_context_category(),
+			m.image_fit_label(),
+			m.image_background_label(),
+			m.gift_bulk_copy(),
+			m.gift_selection_received_state(),
+		].map((label) => {
+			const labelText = labelTextOf(item(label), label)!;
+			const range = document.createRange();
+			range.selectNodeContents(labelText);
+			return range.getClientRects()[0]!.left;
+		});
+		for (const labelLeft of labelLefts) {
+			expect(labelLeft).toBeCloseTo(labelLefts[0]!, 0);
+		}
 		await screen.unmount();
 	});
 });

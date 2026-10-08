@@ -5,12 +5,15 @@ import { StateRaw } from '$lib/reactivity/state.svelte.js';
 import { Derived } from '$lib/reactivity/derived.svelte.js';
 import { Persisted, jsonSerde } from '$lib/reactivity/persisted.svelte.js';
 import {
+	GIFT_CARD_COLUMN_OPTIONS,
 	GIFT_GROUPING_OPTIONS,
 	GIFT_SORT_OPTIONS,
 	GIFT_VIEW_MODES,
 	NO_PRIORITY_GIFT_PRIORITY_FILTER_VALUE,
 	UNCATEGORIZED_GIFT_CATEGORY_FILTER_VALUE,
+	isGiftCardColumnOption,
 	type GiftByRole,
+	type GiftCardColumnOption,
 	type GiftCategoryFilterValue,
 	type GiftFilterOption,
 	type GiftFilters,
@@ -236,6 +239,12 @@ function createGiftsContext(
 		defaultValue: 'card',
 	});
 
+	const cardColumnOption = new Persisted<GiftCardColumnOption>({
+		key: 'prejemesi-gift-card-columns',
+		serde: jsonSerde(isGiftCardColumnOption),
+		defaultValue: GIFT_CARD_COLUMN_OPTIONS.automatic,
+	});
+
 	const sortOption = new ScopedPersisted<GiftSortOption>({
 		getKey: () => wishlistGiftSortStorageKey(getWishlistId()),
 		serde: jsonSerde(isGiftSortOption),
@@ -287,7 +296,7 @@ function createGiftsContext(
 		}
 
 		const options: GiftFilterOption<GiftCategoryFilterValue>[] = optionsByCategoryId
-			.toSorted((a, b) => a.sortOrder - b.sortOrder)
+			.sort((a, b) => a.sortOrder - b.sortOrder)
 			.map(({ value, label }) => ({ value, label }));
 		if (hasUncategorized) {
 			options.push({
@@ -319,7 +328,7 @@ function createGiftsContext(
 		}
 
 		const options: GiftFilterOption<GiftPriorityFilterValue>[] = optionsByPriorityId
-			.toSorted((a, b) => a.sortOrder - b.sortOrder)
+			.sort((a, b) => a.sortOrder - b.sortOrder)
 			.map(({ value, label }) => ({ value, label }));
 		if (hasNoPriority) {
 			options.push({
@@ -414,6 +423,7 @@ function createGiftsContext(
 		archived,
 		isAuthenticated,
 		viewMode,
+		cardColumnOption,
 		grouping,
 		effectiveGrouping,
 		groupingAvailability,

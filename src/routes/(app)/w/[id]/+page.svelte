@@ -15,7 +15,9 @@
 		type BulkCopyDestination,
 	} from '$lib/components/blocks/wishlist/GiftBulkCopyDialog.svelte';
 	import GiftContextActions from '$lib/components/blocks/wishlist/GiftContextActions.svelte';
+	import ReleaseReservationFlow from '$lib/components/blocks/reservation/ReleaseReservationFlow.svelte';
 	import type {
+		GiftActionPlacementSnapshot,
 		GiftContextFinishPolicy,
 		GiftContextInvocation,
 		GiftContextSession,
@@ -83,7 +85,12 @@
 	} from '$lib/modules/images/editor_modes.js';
 	import { SITE_URL, SOCIAL_PREVIEW_IMAGE_URL } from '$lib/config/site.js';
 	import { untrack } from 'svelte';
-	import { showToast, toastSuccess, toastError } from '$lib/components/base/toast/index.js';
+	import {
+		dismissToast,
+		showToast,
+		toastSuccess,
+		toastError,
+	} from '$lib/components/base/toast/index.js';
 	import {
 		translateServerError,
 		getServerErrorCode,
@@ -131,6 +138,8 @@
 		hasAdditionalGiftContextActions,
 		type GiftContextAction,
 	} from '$lib/modules/gifts/gift_context_actions.js';
+	import type { GiftContextOrigin } from '$lib/modules/wishlists/wishlist_capabilities.js';
+	import { canTrackPurchase } from '$lib/modules/gifts/gift_display_state.js';
 	import { normalizeGiftUrl } from '$lib/modules/gifts/gift_url.js';
 	import { getPriorityActionOptions } from '$lib/modules/gifts/gift_display.js';
 	import type {
@@ -141,7 +150,29 @@
 		resetPriorityLevelLoaderForWishlistChange,
 		settlePriorityLevelLoad,
 	} from './priority_level_loader.js';
-	import { GIFT_GROUPING_OPTIONS, GIFT_VIEW_MODES } from '$lib/modules/gifts/types.js';
+	import {
+		GIFT_GROUPING_OPTIONS,
+		GIFT_VIEW_MODES,
+		type GiftReorderGroupField,
+		type ReorderGiftGroupChange,
+		type ReorderGiftsInput,
+	} from '$lib/modules/gifts/types.js';
+	import {
+		GIFT_REORDER_MOVE_SOURCES,
+		applyReorderPlacement,
+		buildReorderSections,
+		categoryReorderGroups,
+		mergeReorderGiftsInputs,
+		priorityReorderGroups,
+		reorderGroupKey,
+		reorderGroupKeyLookup,
+		resolveGroupedReorderMove,
+		withReorderGroup,
+		type GiftReorderGroup,
+		type GiftReorderMoveSource,
+		type GiftReorderPlacement,
+	} from '$lib/modules/gifts/gift_grouped_reorder.js';
+	import { giftSectionLabel } from '$lib/components/blocks/wishlist/gift_section_label.js';
 	import type {
 		GiftFilters,
 		GiftSortOption,
@@ -439,9 +470,38 @@
 			reorderBaselineStatus === REORDER_BASELINE_STATUS.recovered,
 	);
 
+	// Grouped reorder (issue #454): the grouping is frozen on entry, group moves stay optimistic for
+	// the whole session, and a pointer drag previews its placement before it commits.
+	let reorderGrouping = $state<GiftGroupingOption>(GIFT_GROUPING_OPTIONS.none);
+	let reorderGroupChanges = $state.raw<Record<string, ReorderGiftGroupChange>>({});
+	let reorderPreviewPlacement = $state.raw<GiftReorderPlacement | null>(null);
+	let reorderUndoToastId: string | number | null = null;
+	const reorderGroupField = $derived<GiftReorderGroupField | null>(
+		reorderGrouping === GIFT_GROUPING_OPTIONS.none ? null : reorderGrouping,
+	);
+
+	function dismissReorderUndoToast() {
+		if (reorderUndoToastId !== null) {
+			dismissToast(reorderUndoToastId);
+			reorderUndoToastId = null;
+		}
+	}
+
+	function clearReorderSession() {
+		reorderMode = false;
+		reorderActiveIds = null;
+		reorderGrouping = GIFT_GROUPING_OPTIONS.none;
+		reorderGroupChanges = {};
+		reorderPreviewPlacement = null;
+		dismissReorderUndoToast();
+	}
+
 	async function refreshReorderBaseline(): Promise<boolean> {
 		reorderBaselineStatus = REORDER_BASELINE_STATUS.refreshing;
 		giftsContext.clearReorderOverride();
+		reorderGroupChanges = {};
+		reorderPreviewPlacement = null;
+		dismissReorderUndoToast();
 		try {
 			const authoritativeQuery = getGiftsByWishlistShortId(shortId);
 			await authoritativeQuery.refresh();
@@ -472,14 +532,9 @@
 		}
 	}
 
-	const reorderPersistenceQueue = createLatestAsyncQueue<string[]>(
-		async (orderedIds) => {
-			await reorderGifts(
-				orderedIds.map((id, sortOrder) => ({
-					id,
-					sortOrder,
-				})),
-			);
+	const reorderPersistenceQueue = createLatestAsyncQueue<ReorderGiftsInput>(
+		async (reorderInput) => {
+			await reorderGifts(reorderInput);
 		},
 		async (thrown) => {
 			console.error('Failed to reorder gifts:', thrown);
@@ -490,29 +545,95 @@
 					: m.gift_reorder_save_error_unresolved(),
 			);
 		},
+		mergeReorderGiftsInputs,
 	);
 	const viewMode = $derived(giftsContext.viewMode.current);
+	let cardColumnCapacity = $state<number | null>(null);
 	const reorderLayoutSupported = $derived(
 		viewMode === GIFT_VIEW_MODES.card || viewMode === GIFT_VIEW_MODES.list,
 	);
 	const canMaintainReorderMode = $derived(canManage && !isArchived && reorderLayoutSupported);
+	// Grouped reorder shows every level or category, so their definitions must be loaded first.
+	const reorderGroupDefinitionsReady = $derived.by(() => {
+		switch (giftsContext.effectiveGrouping.current) {
+			case GIFT_GROUPING_OPTIONS.priority:
+				return priorityLevelsReady;
+			case GIFT_GROUPING_OPTIONS.category:
+				return categoriesReady;
+			default:
+				return true;
+		}
+	});
 	const canEnterReorderMode = $derived(
 		!isGiftDataLoading &&
 			wishlist.shortId === shortId &&
 			reorderBaselineVerified &&
 			canMaintainReorderMode,
 	);
-	const reorderModeGifts = $derived(
-		reorderActiveIds === null
+	const reorderGroups = $derived.by<GiftReorderGroup[]>(() => {
+		switch (reorderGroupField) {
+			case GIFT_GROUPING_OPTIONS.priority:
+				return priorityReorderGroups(priorityLevels);
+			case GIFT_GROUPING_OPTIONS.category:
+				return categoryReorderGroups(categoryOptions, getLocale());
+			default:
+				return [];
+		}
+	});
+	const reorderGroupsByKey = $derived(new Map(reorderGroups.map((group) => [group.key, group])));
+
+	function withReorderGroupChange(giftItem: GiftByRole): GiftByRole {
+		const change = reorderGroupChanges[giftItem.id];
+		const group =
+			change === undefined
+				? undefined
+				: reorderGroupsByKey.get(reorderGroupKey(change.field, change.value));
+		return group === undefined ? giftItem : withReorderGroup(giftItem, group);
+	}
+
+	/** The saved-or-queued session order with optimistic group changes applied. */
+	const reorderCommittedGifts = $derived(
+		(reorderActiveIds === null
 			? activeGiftsInOwnerOrder(giftsContext.effectiveGifts.current)
-			: resolveActiveGiftOrder(giftsContext.effectiveGifts.current, reorderActiveIds),
+			: resolveActiveGiftOrder(giftsContext.effectiveGifts.current, reorderActiveIds)
+		).map(withReorderGroupChange),
 	);
+	const reorderModeGifts = $derived.by(() => {
+		const placement = reorderPreviewPlacement;
+		const field = reorderGroupField;
+		if (placement === null || field === null) {
+			return reorderCommittedGifts;
+		}
+		const giftsById = new Map(reorderCommittedGifts.map((giftItem) => [giftItem.id, giftItem]));
+		const targetGroup = reorderGroupsByKey.get(placement.groupKey);
+		return applyReorderPlacement(
+			reorderCommittedGifts.map((giftItem) => giftItem.id),
+			reorderGroupKeyLookup(reorderCommittedGifts, field),
+			placement,
+		).flatMap((giftId) => {
+			const giftItem = giftsById.get(giftId);
+			if (giftItem === undefined) {
+				return [];
+			}
+			return giftId === placement.giftId && targetGroup !== undefined
+				? [withReorderGroup(giftItem, targetGroup)]
+				: [giftItem];
+		});
+	});
 	const reorderPresentationGifts = $derived(
 		recipientViewPreview ? projectGiftsForRecipient(reorderModeGifts) : reorderModeGifts,
 	);
 	const giftSections = $derived.by<GiftSection[]>(() => {
 		if (!reorderMode) {
 			return giftsContext.giftSections.current;
+		}
+		if (reorderGroupField !== null) {
+			return buildReorderSections(
+				reorderPresentationGifts,
+				reorderGroupField,
+				reorderGroups,
+				reorderCommittedGifts,
+			);
 		}
 		return reorderPresentationGifts.length === 0
 			? []
@@ -620,6 +741,13 @@
 			: { x: 0, y: 0 },
 	);
 	const narrowViewport = useNarrowViewportState();
+	const activeContextGiftId = $derived(
+		programmaticOpen && contextAnchor !== null ? contextSession?.gift.id : null,
+	);
+	const contextSurface = $derived(narrowViewport.current ? 'dialog' : 'menu');
+	const viewerMoreOpen = $derived(
+		selectedPresentationGift !== null && activeContextGiftId === selectedPresentationGift.id,
+	);
 
 	$effect(() => giftSelection.reconcileExisting(gifts.map((giftItem) => giftItem.id)));
 	$effect(() => {
@@ -650,12 +778,19 @@
 			// visitors and správci receive reservation fields; recipients and preview projections do not.
 			canReserve: ownsReservation || !giftItem.isFullyReserved,
 			ownsReservation,
-			canTrackPurchased: isAuthenticated && ownsReservation,
+			canTrackPurchased: canTrackPurchase({ isAuthenticated, isArchived, ownsReservation }),
 			purchased: giftItem.myReservationPurchasedAt !== null,
 		};
 	}
 
-	function contextActionsFor(giftItem: GiftByRole) {
+	function releaseContextFor(giftItem: GiftByRole) {
+		return {
+			releaseCapability: wishlist.reservationReleaseCapability,
+			releaseLedgerCount: releaseLedgers[giftItem.id]?.length ?? 0,
+		};
+	}
+
+	function contextActionsFor(giftItem: GiftByRole, origin: GiftContextOrigin = 'card') {
 		const primaryUrl = giftItem.links?.[0]?.url ?? null;
 		const reservationContext = reservationContextFor(giftItem);
 		return giftContextActions({
@@ -664,6 +799,8 @@
 			readOnly: isArchived,
 			canEdit: true,
 			...reservationContext,
+			...releaseContextFor(giftItem),
+			origin,
 		});
 	}
 
@@ -678,6 +815,9 @@
 		}
 		if (reservationContext.canReserve) {
 			actions.push(reservationContext.ownsReservation ? 'cancel-reservation' : 'reserve');
+		}
+		if (reservationContext.canTrackPurchased) {
+			actions.push('purchased');
 		}
 		return actions;
 	}
@@ -696,8 +836,12 @@
 		return actions.includes(action) ? actions : [...actions, action];
 	}
 
-	function openContextActions(giftItem: GiftByRole, invocation: GiftContextInvocation): boolean {
-		if (giftSelection.active || contextActionsFor(giftItem).length === 0) {
+	function openContextActions(
+		giftItem: GiftByRole,
+		invocation: GiftContextInvocation,
+		origin: GiftContextOrigin = 'card',
+	): boolean {
+		if (giftSelection.active || contextActionsFor(giftItem, origin).length === 0) {
 			return false;
 		}
 		const viewportAtOpen = narrowViewport.current;
@@ -721,6 +865,7 @@
 		contextSession = {
 			id,
 			gift: giftItem,
+			origin,
 			viewportAtOpen,
 			invocation:
 				invocation.kind === 'native'
@@ -741,6 +886,19 @@
 		}
 		void ensurePriorityLevels();
 		return true;
+	}
+
+	function openViewerMore(
+		anchor: HTMLButtonElement,
+		placementSnapshot: GiftActionPlacementSnapshot,
+	) {
+		if (selectedPresentationGift !== null) {
+			openContextActions(
+				selectedPresentationGift,
+				{ kind: 'more', anchor, placementSnapshot },
+				'viewer',
+			);
+		}
 	}
 
 	function requestContextClose() {
@@ -837,7 +995,13 @@
 			return priorityLevelsLoadPromise;
 		}
 		priorityLevelsRequestedForWishlistId = targetWishlistId;
-		const requestPromise = getPriorityLevels(targetWishlistId)
+		const levelsQuery = getPriorityLevels(targetWishlistId);
+		// A failed query stays cached with its rejection, so a retry has to refetch it.
+		const levelsResponse =
+			levelsQuery.error === undefined
+				? levelsQuery
+				: levelsQuery.refresh().then(() => levelsQuery);
+		const requestPromise = levelsResponse
 			.then((levels) => {
 				if (wishlist.id !== targetWishlistId) {
 					return;
@@ -857,8 +1021,7 @@
 	}
 
 	function enterSelection(giftId?: string) {
-		reorderMode = false;
-		reorderActiveIds = null;
+		clearReorderSession();
 		giftSelection.enter(giftId);
 		void ensurePriorityLevels();
 	}
@@ -1003,8 +1166,16 @@
 
 	$effect(() => {
 		if (reorderMode && !canMaintainReorderMode) {
-			reorderMode = false;
-			reorderActiveIds = null;
+			clearReorderSession();
+		}
+	});
+
+	$effect(() => {
+		if (
+			canManage &&
+			giftsContext.effectiveGrouping.current === GIFT_GROUPING_OPTIONS.priority
+		) {
+			untrack(() => void ensurePriorityLevels());
 		}
 	});
 
@@ -1130,13 +1301,38 @@
 		settingsModalOpen = true;
 	}
 
-	function enterReorderMode() {
-		if (!canEnterReorderMode) {
+	/** Loads, or retries after a failure, the levels or categories grouped reorder displays. */
+	async function ensureReorderGroupDefinitions(): Promise<void> {
+		if (reorderGroupDefinitionsReady) {
+			return;
+		}
+		if (giftsContext.effectiveGrouping.current === GIFT_GROUPING_OPTIONS.priority) {
+			await ensurePriorityLevels();
+		} else if (categoriesQuery !== null) {
+			try {
+				await (categoriesQuery.error === undefined
+					? categoriesQuery
+					: categoriesQuery.refresh());
+			} catch (thrown) {
+				console.error('Failed to load gift categories for reorder:', thrown);
+			}
+		}
+	}
+
+	/** Definitions that cannot load fall back to the ungrouped reorder instead of blocking entry. */
+	async function enterReorderMode() {
+		await ensureReorderGroupDefinitions();
+		if (!canEnterReorderMode || reorderMode) {
 			return;
 		}
 		reorderActiveIds = activeGiftsInOwnerOrder(giftsContext.effectiveGifts.current).map(
 			(giftItem) => giftItem.id,
 		);
+		reorderGrouping = reorderGroupDefinitionsReady
+			? giftsContext.effectiveGrouping.current
+			: GIFT_GROUPING_OPTIONS.none;
+		reorderGroupChanges = {};
+		reorderPreviewPlacement = null;
 		reorderMode = true;
 	}
 
@@ -1157,13 +1353,12 @@
 		if (!canFinishReorderMode(savesSucceeded)) {
 			return;
 		}
-		reorderMode = false;
-		reorderActiveIds = null;
+		clearReorderSession();
 	}
 
 	async function handleReorderModeChange(active: boolean) {
 		if (active) {
-			enterReorderMode();
+			await enterReorderMode();
 			return;
 		}
 		await finishReorderMode();
@@ -1544,20 +1739,108 @@
 		}
 	}
 
-	function handleReorderCommit(orderedIds: string[]) {
+	/** Applies an order (and any group changes) optimistically and queues one reorder call. */
+	function commitReorder(
+		orderedIds: readonly string[],
+		groupChanges: readonly ReorderGiftGroupChange[] = [],
+	): boolean {
 		if (
 			!reorderMode ||
 			!reorderBaselineVerified ||
 			!canMaintainReorderMode ||
 			!isExactActiveGiftOrder(orderedIds)
 		) {
-			return;
+			return false;
 		}
 
+		dismissReorderUndoToast();
 		reorderBaselineStatus = REORDER_BASELINE_STATUS.verified;
 		reorderActiveIds = [...orderedIds];
+		if (groupChanges.length > 0) {
+			reorderGroupChanges = {
+				...reorderGroupChanges,
+				...Object.fromEntries(groupChanges.map((change) => [change.giftId, change])),
+			};
+		}
 		giftsContext.setActiveGiftOrder(orderedIds);
-		reorderPersistenceQueue.enqueue([...orderedIds]);
+		reorderPersistenceQueue.enqueue({
+			wishlistId: wishlist.id,
+			orderedGiftIds: [...orderedIds],
+			...(groupChanges.length > 0 ? { groupChanges: [...groupChanges] } : {}),
+		});
+		return true;
+	}
+
+	function handleReorderCommit(orderedIds: string[]) {
+		commitReorder(orderedIds);
+	}
+
+	function handleReorderPlacementPreview(placement: GiftReorderPlacement) {
+		if (reorderMode && reorderBaselineVerified && reorderGroupField !== null) {
+			reorderPreviewPlacement = placement;
+		}
+	}
+
+	function handleReorderPlacementCancel() {
+		reorderPreviewPlacement = null;
+	}
+
+	/** Returns whether the move was accepted, so only accepted moves are announced. */
+	function handleReorderPlacementCommit(
+		placement: GiftReorderPlacement,
+		source: GiftReorderMoveSource,
+	): boolean {
+		reorderPreviewPlacement = null;
+		const field = reorderGroupField;
+		if (field === null) {
+			return false;
+		}
+		const move = resolveGroupedReorderMove(
+			reorderCommittedGifts,
+			field,
+			reorderGroupsByKey,
+			placement,
+		);
+		if (move === null || !commitReorder(move.orderedIds, move.groupChanges)) {
+			return false;
+		}
+		if (move.targetGroup !== null && source === GIFT_REORDER_MOVE_SOURCES.pointer) {
+			offerGroupMoveUndo(move.movedGift, field, move.targetGroup, move.previousOrder);
+		}
+		return true;
+	}
+
+	/** One undo restores the order and the group value from before the drop. */
+	function offerGroupMoveUndo(
+		movedGift: GiftByRole,
+		field: GiftReorderGroupField,
+		targetGroup: GiftReorderGroup,
+		previousOrder: readonly string[],
+	) {
+		const previousGroupChange: ReorderGiftGroupChange = {
+			giftId: movedGift.id,
+			field,
+			value:
+				field === GIFT_GROUPING_OPTIONS.priority
+					? movedGift.priorityLevelId
+					: (movedGift.categoryId ?? null),
+		};
+		const toastId = showToast({
+			tone: 'success',
+			title: m.gift_reorder_group_changed({
+				name: movedGift.name,
+				group: giftSectionLabel(targetGroup),
+			}),
+			actionLabel: m.gift_reorder_group_undo(),
+			onAction: () => {
+				if (reorderUndoToastId !== toastId) {
+					return;
+				}
+				reorderUndoToastId = null;
+				commitReorder(previousOrder, [previousGroupChange]);
+			},
+		});
+		reorderUndoToastId = toastId;
 	}
 
 	// ── Reservation handlers ──────────────────────────────────────────────────
@@ -1635,6 +1918,24 @@
 		} catch (thrown) {
 			toastError(translateServerError(thrown));
 		}
+	}
+
+	// Outlives the More-menu session, which ends as soon as the menu hands off to this dialog.
+	let releaseFlowGift = $state<{
+		id: string;
+		name: string;
+		moreAnchor: HTMLButtonElement | null;
+	} | null>(null);
+	let releaseFlowOpen = $state(false);
+
+	function openReleaseFlow(giftItem: GiftByRole) {
+		const invocation = contextSession?.invocation;
+		releaseFlowGift = {
+			id: giftItem.id,
+			name: giftItem.name,
+			moreAnchor: invocation?.kind === 'more' ? invocation.anchor : null,
+		};
+		releaseFlowOpen = true;
 	}
 
 	/**
@@ -1750,6 +2051,7 @@
 		giftCount={headerGiftCount}
 		{recipientIsModerator}
 		{adminSettingsAvailable}
+		demo={page.data.demoExpiresAt !== null}
 		onshare={handleShareOpened}
 		onmoderators={handleModeratorsOpened}
 		onarchive={handleArchive}
@@ -1758,6 +2060,11 @@
 		onsettings={handleSettingsOpened}
 	/>
 
+	{#if page.data.demoExpiresAt !== null}
+		<p class="rounded-lg border border-border bg-card p-3 text-sm text-muted-foreground">
+			{m.demo_list_limits()}
+		</p>
+	{/if}
 	{#if isPreparing}
 		<WishlistPreparingNotice />
 	{:else}
@@ -1798,6 +2105,8 @@
 			groupingAvailability={giftsContext.groupingAvailability.current}
 			categoryFilterOptions={giftsContext.categoryFilterOptions.current}
 			priorityFilterOptions={giftsContext.priorityFilterOptions.current}
+			cardColumnOption={giftsContext.cardColumnOption.current}
+			{cardColumnCapacity}
 			{reorderMode}
 			{reorderDonePending}
 			reorderRecoveryPending={reorderBaselineStatus === REORDER_BASELINE_STATUS.refreshing}
@@ -1806,6 +2115,7 @@
 			onrecipientviewpreviewchange={handleRecipientViewPreviewChange}
 			onreordermodechange={handleReorderModeChange}
 			onviewmodechange={handleViewModeChange}
+			oncardcolumnoptionchange={(option) => (giftsContext.cardColumnOption.current = option)}
 			onsortchange={handleSortChange}
 			onfilterchange={handleFilterChange}
 			ongroupingchange={handleGroupingChange}
@@ -1835,7 +2145,11 @@
 		{:else if reorderMode}
 			<Alert.Root data-testid="gift-reorder-temporary-notice">
 				<InfoIcon />
-				<Alert.Description>{m.gift_reorder_temporary_explanation()}</Alert.Description>
+				<Alert.Description>
+					{reorderGroupField === null
+						? m.gift_reorder_temporary_explanation()
+						: m.gift_reorder_temporary_explanation_grouped()}
+				</Alert.Description>
 			</Alert.Root>
 		{/if}
 
@@ -1860,6 +2174,8 @@
 					categoryId={contextActionGift.categoryId ?? null}
 					placementSnapshot={contextPlacementSnapshot}
 					{...reservationContextFor(contextActionGift)}
+					{...releaseContextFor(contextActionGift)}
+					origin={contextSession?.origin}
 					onclose={requestContextClose}
 					oncomplete={completeContextClose}
 					onfinish={finishContextAction}
@@ -1880,6 +2196,7 @@
 						}
 					}}
 					onpurchased={() => void handleContextPurchased(contextActionGift)}
+					onreleasereservation={() => openReleaseFlow(contextActionGift)}
 					oncopysuccess={() => toastSuccess(m.gift_context_copy_success())}
 					oncopyerror={() => toastError(m.gift_context_copy_error())}
 				/>
@@ -1888,13 +2205,13 @@
 		<WishlistGiftDisplay
 			motionKey={shortId}
 			sections={giftSections}
-			grouping={reorderMode
-				? GIFT_GROUPING_OPTIONS.none
-				: giftsContext.effectiveGrouping.current}
+			grouping={reorderMode ? reorderGrouping : giftsContext.effectiveGrouping.current}
 			{role}
 			{isArchived}
 			{hideReservationState}
 			{viewMode}
+			cardColumnOption={giftsContext.cardColumnOption.current}
+			oncardcolumncapacitychange={(capacity) => (cardColumnCapacity = capacity)}
 			isLoading={isGiftDataLoading}
 			{isEmpty}
 			{isFilteredEmpty}
@@ -1905,10 +2222,8 @@
 			onselectiontoggle={(giftId) => giftSelection.toggle(giftId)}
 			oncontextactions={openContextActions}
 			hascontextactions={hasAdditionalContextActions}
-			activeContextGiftId={programmaticOpen && contextAnchor !== null
-				? contextSession?.gift.id
-				: null}
-			contextSurface={narrowViewport.current ? 'dialog' : 'menu'}
+			{activeContextGiftId}
+			{contextSurface}
 			onedit={openEditModal}
 			onreserve={handleOpenReserveModal}
 			onunreserve={handleUnreserve}
@@ -1919,6 +2234,9 @@
 			onreorderpreview={handleReorderPreview}
 			onreordercommit={handleReorderCommit}
 			onreordercancel={handleReorderCancel}
+			onreorderplacementpreview={handleReorderPlacementPreview}
+			onreorderplacementcommit={handleReorderPlacementCommit}
+			onreorderplacementcancel={handleReorderPlacementCancel}
 			bind:nativeContextOpen
 			nativeContextSessionId={contextSession?.id ?? 0}
 			onnativecontextcomplete={completeContextClose}
@@ -1977,6 +2295,7 @@
 </Dialog.Root>
 
 <WishlistModals
+	demo={page.data.demoExpiresAt !== null}
 	{role}
 	{canManage}
 	{isAuthenticated}
@@ -2013,12 +2332,24 @@
 	ondelete={handleDelete}
 	ongiftreserve={handleOpenReserveModal}
 	ongiftunreserve={handleUnreserve}
+	onmore={openViewerMore}
+	moreOpen={viewerMoreOpen}
+	moreSurface={contextSurface}
 	onreservemodalclose={handleReserveModalClose}
 	onreserve={handleReserve}
 	onbatchsubmit={handleBatchSubmit}
 	onbatchdialogopenchange={handleBatchDialogOpenChange}
 	onbatchresetduplicatewarning={resetBatchDuplicateWarning}
 />
+
+{#if releaseFlowGift !== null}
+	<ReleaseReservationFlow
+		bind:open={releaseFlowOpen}
+		giftId={releaseFlowGift.id}
+		giftName={releaseFlowGift.name}
+		returnFocusTo={releaseFlowGift.moreAnchor}
+	/>
+{/if}
 
 <!-- Per-wishlist settings modal (details / appearance / image). Mounted for every viewer:
      non-managers and archived lists get the read-only notice inside the dialog, preserving
@@ -2058,7 +2389,7 @@
 			<Dialog.Title>{m.wishlist_archive_confirm_title()}</Dialog.Title>
 			<Dialog.Description>{m.wishlist_archive_confirm_description()}</Dialog.Description>
 		</Dialog.Header>
-		<Dialog.Footer class="flex gap-2">
+		<Dialog.Footer>
 			<Button
 				intent="outline"
 				onclick={() => (archiveConfirmOpen = false)}
@@ -2073,7 +2404,7 @@
 	</Dialog.Content>
 </Dialog.Root>
 
-{#if canManage}
+{#if canManage && page.data.demoExpiresAt === null}
 	<LazyImportWizard
 		bind:open={importWizardOpen}
 		mode={WIZARD_MODE.append}

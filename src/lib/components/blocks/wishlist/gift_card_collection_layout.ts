@@ -1,3 +1,6 @@
+import { observeDepthChange } from '$lib/theme/depth_change.js';
+import { GIFT_MOTION_DRAGGING_ATTRIBUTE } from './gift_pointer_reorder.svelte.js';
+
 const GIFT_CARD_TRACKS = ['title', 'description', 'links', 'price', 'actions'] as const;
 
 type GiftCardTrack = (typeof GIFT_CARD_TRACKS)[number];
@@ -132,6 +135,10 @@ export function measureGiftCardCollectionLayout(collection: HTMLElement): void {
 	if (collection.dataset.viewMode !== undefined && collection.dataset.viewMode !== 'card') {
 		return;
 	}
+	// A drag only reorders cards, which keeps every track height; its end measures again.
+	if (collection.querySelector(`[${GIFT_MOTION_DRAGGING_ATTRIBUTE}]`) !== null) {
+		return;
+	}
 	resetTrackHeights(collection);
 	const hasDescriptions = collection.querySelector(
 		'[data-gift-card-track="description"][data-has-content="true"]',
@@ -191,12 +198,19 @@ export function giftCardCollectionLayout(collection: HTMLElement) {
 		childList: true,
 		characterData: true,
 		attributes: true,
-		attributeFilter: ['class', 'hidden', 'aria-hidden', 'data-overflow-actions'],
+		attributeFilter: [
+			'class',
+			'hidden',
+			'aria-hidden',
+			'data-overflow-actions',
+			GIFT_MOTION_DRAGGING_ATTRIBUTE,
+		],
 	});
 
 	const fonts = document.fonts;
 	fonts?.addEventListener('loadingdone', scheduleMeasurement);
 	window.addEventListener('resize', scheduleMeasurement);
+	const stopObservingDepth = observeDepthChange(scheduleMeasurement);
 	void fonts?.ready.then(scheduleMeasurement);
 	scheduleMeasurement();
 
@@ -211,6 +225,7 @@ export function giftCardCollectionLayout(collection: HTMLElement) {
 			mutationObserver.disconnect();
 			fonts?.removeEventListener('loadingdone', scheduleMeasurement);
 			window.removeEventListener('resize', scheduleMeasurement);
+			stopObservingDepth();
 			resetTrackHeights(collection);
 			delete collection.dataset.giftCardHasDescriptions;
 		},

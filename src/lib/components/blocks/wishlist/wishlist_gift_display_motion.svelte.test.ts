@@ -8,7 +8,8 @@ import { WISHLIST_ROLES } from '$lib/modules/wishlists/types.js';
 
 vi.mock('$env/dynamic/public', () => ({ env: {} }));
 
-const { default: WishlistGiftDisplay } = await import('./WishlistGiftDisplay.svelte');
+const { default: WishlistGiftDisplayTestHost } =
+	await import('./WishlistGiftDisplayTestHost.svelte');
 
 function visitorGift(): GiftForVisitor {
 	return {
@@ -52,7 +53,7 @@ const sections: GiftSection[] = [
 	},
 ];
 
-const defaultProps: ComponentProps<typeof WishlistGiftDisplay> = {
+const defaultProps: ComponentProps<typeof WishlistGiftDisplayTestHost> = {
 	sections,
 	role: WISHLIST_ROLES.recipient,
 	isArchived: false,
@@ -96,7 +97,7 @@ describe('WishlistGiftDisplay collection transition', () => {
 		const first = visitorGift();
 		const second = { ...visitorGift(), id: 'gift-2', name: 'Kniha' };
 		const initialSections: GiftSection[] = [{ ...sections[0]!, gifts: [first, second] }];
-		const screen = await render(WishlistGiftDisplay, {
+		const screen = await render(WishlistGiftDisplayTestHost, {
 			...defaultProps,
 			sections: initialSections,
 		});
@@ -128,7 +129,7 @@ describe('WishlistGiftDisplay collection transition', () => {
 			.mockReturnValueOnce(exit.animation)
 			.mockReturnValueOnce(enter.animation);
 		const oncontextactions = vi.fn(() => true);
-		const screen = await render(WishlistGiftDisplay, {
+		const screen = await render(WishlistGiftDisplayTestHost, {
 			...defaultProps,
 			hascontextactions: () => true,
 			oncontextactions,
@@ -179,7 +180,7 @@ describe('WishlistGiftDisplay collection transition', () => {
 			.spyOn(HTMLElement.prototype, 'animate')
 			.mockReturnValueOnce(exit.animation)
 			.mockReturnValueOnce(enter.animation);
-		const screen = await render(WishlistGiftDisplay, defaultProps);
+		const screen = await render(WishlistGiftDisplayTestHost, defaultProps);
 		const collection = document.querySelector<HTMLElement>('[data-wishlist-gift-collection]')!;
 
 		await screen.rerender({ ...defaultProps, viewMode: 'list' });
@@ -211,7 +212,7 @@ describe('WishlistGiftDisplay collection transition', () => {
 		const animate = vi
 			.spyOn(HTMLElement.prototype, 'animate')
 			.mockReturnValue(staleExit.animation);
-		const screen = await render(WishlistGiftDisplay, defaultProps);
+		const screen = await render(WishlistGiftDisplayTestHost, defaultProps);
 		const collection = document.querySelector<HTMLElement>('[data-wishlist-gift-collection]')!;
 
 		await screen.rerender({ ...defaultProps, viewMode: 'list' });
@@ -234,7 +235,7 @@ describe('WishlistGiftDisplay collection transition', () => {
 			removeEventListener: vi.fn(),
 		} as unknown as MediaQueryList);
 		const animate = vi.spyOn(HTMLElement.prototype, 'animate');
-		const screen = await render(WishlistGiftDisplay, defaultProps);
+		const screen = await render(WishlistGiftDisplayTestHost, defaultProps);
 		const collection = document.querySelector<HTMLElement>('[data-wishlist-gift-collection]')!;
 
 		await screen.rerender({ ...defaultProps, viewMode: 'list' });
@@ -247,7 +248,7 @@ describe('WishlistGiftDisplay collection transition', () => {
 
 	it('keeps transitions into and out of compact mode immediate', async () => {
 		const animate = vi.spyOn(HTMLElement.prototype, 'animate');
-		const screen = await render(WishlistGiftDisplay, defaultProps);
+		const screen = await render(WishlistGiftDisplayTestHost, defaultProps);
 		const collection = document.querySelector<HTMLElement>('[data-wishlist-gift-collection]')!;
 
 		await screen.rerender({ ...defaultProps, viewMode: 'compact' });
@@ -262,7 +263,7 @@ describe('WishlistGiftDisplay collection transition', () => {
 	it('cancels collection animation and leaves no inline motion styles on teardown', async () => {
 		const pending = deferredAnimation();
 		vi.spyOn(HTMLElement.prototype, 'animate').mockReturnValue(pending.animation);
-		const screen = await render(WishlistGiftDisplay, defaultProps);
+		const screen = await render(WishlistGiftDisplayTestHost, defaultProps);
 		const collection = document.querySelector<HTMLElement>('[data-wishlist-gift-collection]')!;
 
 		await screen.rerender({ ...defaultProps, viewMode: 'list' });

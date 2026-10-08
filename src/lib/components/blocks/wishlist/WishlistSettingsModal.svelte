@@ -515,11 +515,13 @@
 <!-- Per-wishlist settings modal (UX rework of the old /w/<id>/settings page). Panels hide via
      the `hidden` attribute instead of unmounting so unsaved edits (typed details,
      uploaded-but-unsaved image) survive tab switches; closing the dialog unmounts everything,
-     matching the old leave-the-page reset. -->
+     matching the old leave-the-page reset. Its own close button runs the unsaved-changes guard,
+     so `data-close-button` restores the title's close-button reserve. -->
 <Dialog.Root {open} onOpenChange={handleOpenChange}>
 	<Dialog.Content
 		size="2xl"
 		showCloseButton={false}
+		data-close-button
 		onEscapeKeydown={handleDismiss}
 		onInteractOutside={handleDismiss}
 		class="flex flex-col gap-0 overflow-hidden p-0 sm:max-w-[calc(100%-2rem)] xl:max-w-5xl"
@@ -743,8 +745,19 @@
 						<p class="text-sm text-muted-foreground">
 							{m.wishlist_settings_data_hint()}
 						</p>
-						<div class="flex flex-wrap gap-2">
-							<Button type="button" intent="outline" size="sm" onclick={handleImport}>
+						{#if wishlist.demoSessionId !== null}<p
+								class="text-sm text-muted-foreground"
+							>
+								{m.demo_import_limits()}
+							</p>{/if}
+						<div class="flex flex-wrap gap-(--nested-control-gap)">
+							<Button
+								type="button"
+								intent="outline"
+								size="sm"
+								onclick={handleImport}
+								disabled={wishlist.demoSessionId !== null}
+							>
 								<FileUpIcon data-icon="inline-start" />
 								{m.import_toolbar_label()}
 							</Button>
@@ -813,19 +826,23 @@
 						<p class="text-sm text-muted-foreground">
 							{m.wishlist_settings_image_hint()}
 						</p>
-						{#key discardVersion}
-							<WishlistCropEditor
-								formId="wishlist-image-form"
-								imageKey={wishlist.imageKey}
-								imageSlots={wishlist.imageSlots}
-								{themeEmoji}
-								title={wishlist.title}
-								isSaving={saving}
-								{commitVersion}
-								ondirtychange={(dirty) => (imageDirty = dirty)}
-								ondraftchange={(draft) => (imageDraft = draft ?? undefined)}
-							/>
-						{/key}
+						{#if wishlist.demoSessionId !== null}
+							<p class="text-sm text-muted-foreground">{m.demo_image_limits()}</p>
+						{:else}
+							{#key discardVersion}
+								<WishlistCropEditor
+									formId="wishlist-image-form"
+									imageKey={wishlist.imageKey}
+									imageSlots={wishlist.imageSlots}
+									{themeEmoji}
+									title={wishlist.title}
+									isSaving={saving}
+									{commitVersion}
+									ondirtychange={(dirty) => (imageDirty = dirty)}
+									ondraftchange={(draft) => (imageDraft = draft ?? undefined)}
+								/>
+							{/key}
+						{/if}
 					</div>
 				</div>
 
@@ -942,7 +959,7 @@
 			<Dialog.Title>{m.wishlist_settings_unsaved_title()}</Dialog.Title>
 			<Dialog.Description>{m.wishlist_settings_unsaved_description()}</Dialog.Description>
 		</Dialog.Header>
-		<Dialog.Footer class="flex flex-wrap gap-2">
+		<Dialog.Footer class="flex-wrap">
 			<Button intent="outline" onclick={continueEditing}>
 				{m.wishlist_settings_continue_editing()}
 			</Button>
@@ -964,7 +981,7 @@
 			>
 			<Dialog.Description>{m.wishlist_delete_confirm_description()}</Dialog.Description>
 		</Dialog.Header>
-		<Dialog.Footer class="flex gap-2">
+		<Dialog.Footer>
 			<Button
 				intent="outline"
 				onclick={() => (deleteConfirmOpen = false)}
@@ -991,7 +1008,7 @@
 					: m.wishlist_revert_confirm_clean_description()}
 			</Dialog.Description>
 		</Dialog.Header>
-		<Dialog.Footer class="flex gap-2">
+		<Dialog.Footer>
 			<Button
 				intent="outline"
 				onclick={() => (revertConfirmOpen = false)}

@@ -4,9 +4,8 @@
 	import type { ControlSize } from '$lib/components/base/control_sizing.js';
 	import KeyRoundIcon from '@lucide/svelte/icons/key-round';
 	import { useReservations } from '$lib/modules/reservations/reservations.context.svelte.js';
-	import { RESERVATION_RELEASE_CAPABILITY } from '$lib/modules/wishlists/wishlist_capabilities.js';
 	import type { GiftForVisitor } from '$lib/modules/gifts/types.js';
-	import ReleaseReservationDialog from './ReleaseReservationDialog.svelte';
+	import ReleaseReservationFlow from './ReleaseReservationFlow.svelte';
 
 	interface ReleaseReservationButtonProps {
 		gift: GiftForVisitor;
@@ -32,33 +31,14 @@
 	 * A row they may see but not release (správce, signed-in gifter) still counts: it renders
 	 * disabled with a reason inside the picker.
 	 */
-	const releaseLedger = $derived(reservations.reservationsForGift(gift.id));
-	const canRelease = $derived(
-		reservations.capability !== RESERVATION_RELEASE_CAPABILITY.none && releaseLedger.length > 0,
-	);
+	const canRelease = $derived(reservations.offersRelease(gift.id));
 
 	let dialogOpen = $state(false);
-	let isReleasing = $state(false);
 
 	function handleOpenClick(event: MouseEvent) {
 		event.stopPropagation();
 		if (!disabled) {
 			dialogOpen = true;
-		}
-	}
-
-	async function handleRelease(reservationId: string) {
-		if (disabled || isReleasing) {
-			return;
-		}
-		isReleasing = true;
-		try {
-			const released = await reservations.release(gift.id, reservationId);
-			if (released) {
-				dialogOpen = false;
-			}
-		} finally {
-			isReleasing = false;
 		}
 	}
 </script>
@@ -78,11 +58,10 @@
 		{m.reserve_release_button()}
 	</Button>
 
-	<ReleaseReservationDialog
+	<ReleaseReservationFlow
 		bind:open={dialogOpen}
+		giftId={gift.id}
 		giftName={gift.name}
-		reservations={releaseLedger}
-		isReleasing={isReleasing || disabled}
-		onrelease={handleRelease}
+		{disabled}
 	/>
 {/if}

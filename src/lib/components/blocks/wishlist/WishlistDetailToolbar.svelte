@@ -20,6 +20,7 @@
 	import BellOffIcon from '@lucide/svelte/icons/bell-off';
 	import ArrowUpDownIcon from '@lucide/svelte/icons/arrow-up-down';
 	import SlidersHorizontalIcon from '@lucide/svelte/icons/sliders-horizontal';
+	import Columns3Icon from '@lucide/svelte/icons/columns-3';
 	import MoreHorizontalIcon from '@lucide/svelte/icons/ellipsis';
 	import {
 		GIFT_SORT_KEYS,
@@ -42,9 +43,13 @@
 	import WishlistSheetBody from './WishlistSheetBody.svelte';
 	import WishlistSheetChoice from './WishlistSheetChoice.svelte';
 	import WishlistSheetHeader from './WishlistSheetHeader.svelte';
+	import { isGiftCardColumnOptionAvailable } from './gift_card_grid_columns.js';
 	import {
+		GIFT_CARD_COLUMN_OPTIONS,
 		GIFT_GROUPING_OPTIONS,
 		GIFT_SORT_OPTIONS,
+		isGiftCardColumnOption,
+		type GiftCardColumnOption,
 		type GiftCategoryFilterValue,
 		type GiftFilterOption,
 		type GiftFilters,
@@ -66,6 +71,9 @@
 		groupingAvailability: { priority: boolean; category: boolean };
 		categoryFilterOptions: GiftFilterOption<GiftCategoryFilterValue>[];
 		priorityFilterOptions: GiftFilterOption<GiftPriorityFilterValue>[];
+		cardColumnOption: GiftCardColumnOption;
+		/** Largest column count the card collection fits; null while unmeasured. */
+		cardColumnCapacity?: number | null;
 		reorderMode: boolean;
 		reorderDonePending?: boolean;
 		reorderRecoveryPending?: boolean;
@@ -74,6 +82,7 @@
 		onrecipientviewpreviewchange: (active: boolean) => void;
 		onreordermodechange: (active: boolean) => void | Promise<void>;
 		onviewmodechange: (mode: GiftViewMode) => void;
+		oncardcolumnoptionchange: (option: GiftCardColumnOption) => void;
 		onsortchange: (sort: GiftSortOption) => void;
 		onfilterchange: (filters: GiftFilters) => void;
 		ongroupingchange: (grouping: GiftGroupingOption) => void;
@@ -96,6 +105,8 @@
 		groupingAvailability,
 		categoryFilterOptions,
 		priorityFilterOptions,
+		cardColumnOption,
+		cardColumnCapacity = null,
 		reorderMode,
 		reorderDonePending = false,
 		reorderRecoveryPending = false,
@@ -104,6 +115,7 @@
 		onrecipientviewpreviewchange,
 		onreordermodechange,
 		onviewmodechange,
+		oncardcolumnoptionchange,
 		onsortchange,
 		onfilterchange,
 		ongroupingchange,
@@ -165,6 +177,11 @@
 		priority: () => m.gift_grouping_priority(),
 		category: () => m.gift_grouping_category(),
 	} satisfies Record<GiftGroupingOption, () => string>;
+	const CARD_COLUMN_LABELS = {
+		automatic: () => m.gift_card_columns_automatic(),
+		four: () => m.gift_card_columns_four(),
+		five: () => m.gift_card_columns_five(),
+	} satisfies Record<GiftCardColumnOption, () => string>;
 	function clearGiftFilters() {
 		onfilterchange(emptyGiftFilters());
 	}
@@ -234,6 +251,7 @@
 	]);
 
 	type OpenDisplayControl = 'sort' | 'grouping' | 'filter';
+	type DesktopDisplayControl = OpenDisplayControl | 'columns';
 
 	let desktopDisplayTrigger = $state<HTMLButtonElement | null>(null);
 	let desktopMoreTrigger = $state<HTMLButtonElement | null>(null);
@@ -241,7 +259,8 @@
 	let desktopSortTrigger = $state<HTMLElement | null>(null);
 	let desktopGroupingTrigger = $state<HTMLElement | null>(null);
 	let desktopFilterTrigger = $state<HTMLElement | null>(null);
-	let desktopOpenDisplayControl = $state<OpenDisplayControl | null>(null);
+	let desktopColumnsTrigger = $state<HTMLElement | null>(null);
+	let desktopOpenDisplayControl = $state<DesktopDisplayControl | null>(null);
 	let mobileReorderDoneButton = $state<HTMLButtonElement | null>(null);
 	let mobileDisplayTrigger = $state<HTMLButtonElement | null>(null);
 	let mobileMoreTrigger = $state<HTMLButtonElement | null>(null);
@@ -256,7 +275,7 @@
 	let mobileSheetScrollFrame: number | null = null;
 	const MOBILE_SHEET_RESTORE_FRAMES = 5;
 
-	function handleDesktopSubmenuOpenChange(control: OpenDisplayControl, open: boolean) {
+	function handleDesktopSubmenuOpenChange(control: DesktopDisplayControl, open: boolean) {
 		if (open) {
 			desktopOpenDisplayControl = control;
 		} else if (desktopOpenDisplayControl === control) {
@@ -264,7 +283,10 @@
 		}
 	}
 
-	async function handleDesktopSubmenuEscape(control: OpenDisplayControl, event: KeyboardEvent) {
+	async function handleDesktopSubmenuEscape(
+		control: DesktopDisplayControl,
+		event: KeyboardEvent,
+	) {
 		if (event.key !== 'Escape') {
 			return;
 		}
@@ -272,12 +294,12 @@
 		event.stopPropagation();
 		desktopOpenDisplayControl = null;
 		await tick();
-		const trigger =
-			control === 'sort'
-				? desktopSortTrigger
-				: control === 'grouping'
-					? desktopGroupingTrigger
-					: desktopFilterTrigger;
+		const trigger = {
+			sort: desktopSortTrigger,
+			grouping: desktopGroupingTrigger,
+			filter: desktopFilterTrigger,
+			columns: desktopColumnsTrigger,
+		}[control];
 		trigger?.focus();
 	}
 
@@ -616,6 +638,45 @@
 					{/if}
 				</DropdownMenu.SubContent>
 			</DropdownMenu.Sub>
+			{#if viewMode === 'card'}
+				<DropdownMenu.Sub
+					open={desktopOpenDisplayControl === 'columns'}
+					onOpenChange={(open) => handleDesktopSubmenuOpenChange('columns', open)}
+				>
+					<DropdownMenu.SubTrigger bind:ref={desktopColumnsTrigger}>
+						<Columns3Icon />
+						<span class="min-w-0 flex-1">{m.gift_card_columns_label()}</span>
+						<span class="text-muted-foreground"
+							>{CARD_COLUMN_LABELS[cardColumnOption]()}</span
+						>
+					</DropdownMenu.SubTrigger>
+					<DropdownMenu.SubContent
+						class="min-w-52"
+						onkeydowncapture={(event) => handleDesktopSubmenuEscape('columns', event)}
+					>
+						<DropdownMenu.RadioGroup
+							value={cardColumnOption}
+							onValueChange={(value) => {
+								if (isGiftCardColumnOption(value)) {
+									oncardcolumnoptionchange(value);
+								}
+							}}
+						>
+							{#each Object.values(GIFT_CARD_COLUMN_OPTIONS) as option (option)}
+								<DropdownMenu.RadioItem
+									value={option}
+									disabled={!isGiftCardColumnOptionAvailable(
+										option,
+										cardColumnCapacity,
+									)}
+									closeOnSelect={false}
+									>{CARD_COLUMN_LABELS[option]()}</DropdownMenu.RadioItem
+								>
+							{/each}
+						</DropdownMenu.RadioGroup>
+					</DropdownMenu.SubContent>
+				</DropdownMenu.Sub>
+			{/if}
 		</DropdownMenu.Content>
 	</DropdownMenu.Root>
 {/snippet}
@@ -1158,8 +1219,8 @@
 		container-type: inline-size;
 		max-width: 100%;
 		overflow: visible;
-		padding: 0.5rem calc(0.5rem + var(--elevation-ordinary-offset))
-			calc(0.5rem + var(--elevation-ordinary-offset)) 0.5rem;
+		padding: 0.5rem calc(0.5rem + var(--depth-clearance)) calc(0.5rem + var(--depth-clearance))
+			0.5rem;
 	}
 
 	.toolbar-responsive-carrier,
@@ -1179,7 +1240,7 @@
 		display: grid;
 		min-width: 0;
 		grid-auto-rows: minmax(var(--size-control-lg), auto);
-		gap: 8px;
+		gap: var(--nested-control-gap);
 	}
 
 	.toolbar-desktop {
@@ -1354,7 +1415,7 @@
 
 	.toolbar-layout-selection {
 		align-items: stretch;
-		gap: 0.5rem;
+		gap: var(--nested-control-gap);
 	}
 
 	.toolbar-selection-content {

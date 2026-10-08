@@ -4,6 +4,7 @@ import { page } from 'vitest/browser';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { GiftForVisitor } from '$lib/modules/gifts/types.js';
 import { WISHLIST_ROLES } from '$lib/modules/wishlists/types.js';
+import * as m from '$lib/paraglide/messages.js';
 import { IMAGE_FIT_MODES, type ImageMetadata } from '$lib/modules/images/index.js';
 
 vi.mock('$env/dynamic/public', () => ({ env: {} }));
@@ -50,7 +51,7 @@ function makeReservedGift(overrides: Partial<GiftForVisitor> = {}): GiftForVisit
 		likeCount: 4,
 		reservedCount: 2,
 		isFullyReserved: true,
-		reserverNames: ['Babička'],
+		reserverNames: ['Babička', 'Martin'],
 		myReservationId: 'reservation-mine',
 		myReservationPurchasedAt: new Date('2026-01-02T00:00:00Z'),
 		...overrides,
@@ -85,21 +86,19 @@ describe('recipient-view preview reservation privacy (#241)', () => {
 		},
 	);
 
-	it('paints the detail photo frame with explicit black', async () => {
+	it('paints the detail photo region with explicit black', async () => {
 		const screen = await render(RecipientViewPreviewTestHost, {
 			gift: makeReservedGift({ imageUrl: IMAGE_URL, imageMeta: imageMeta('#000000') }),
 			role: WISHLIST_ROLES.moderator,
 			surface: 'detail',
 		});
 
-		const detailFrame = screen.container.querySelector(
-			'[data-testid="gift-detail-image-frame"]',
-		) as HTMLElement;
-		const imageFrame = detailFrame.querySelector('[data-testid="image-frame"]') as HTMLElement;
+		const photoRegion = page.getByTestId('gift-viewer-photo').element() as HTMLElement;
+		const imageFrame = photoRegion.querySelector('[data-testid="image-frame"]') as HTMLElement;
 
-		expect(detailFrame).toBeTruthy();
 		expect(imageFrame).toBeTruthy();
-		expect(getComputedStyle(detailFrame).backgroundColor).toBe('rgb(0, 0, 0)');
+		expect(getComputedStyle(photoRegion).backgroundColor).toBe('rgb(0, 0, 0)');
+		expect(getComputedStyle(photoRegion).backgroundImage).toBe('none');
 		expect(getComputedStyle(imageFrame).backgroundColor).toBe('rgb(0, 0, 0)');
 
 		await screen.unmount();
@@ -158,14 +157,10 @@ describe('recipient-view preview reservation privacy (#241)', () => {
 			});
 
 			const overlay = screen.getByTestId('gift-state-overlay');
-			await expect
-				.element(screen.getByText('Rezervováno vámi', { exact: true }))
-				.toBeVisible();
-			const reserverLine = screen.getByText(/Babička/);
-			await expect.element(reserverLine).toBeVisible();
-			expect(reserverLine.element().textContent).toContain('Babička');
-			expect(overlay.element().contains(reserverLine.element())).toBe(true);
-			expect(overlay.element().textContent).toContain('Babička');
+			await expect.element(overlay.getByText(m.gift_bought(), { exact: true })).toBeVisible();
+			const otherReservation = screen.getByText('Rezervováno více lidmi', { exact: true });
+			await expect.element(otherReservation).toBeVisible();
+			expect(overlay.element().contains(otherReservation.element())).toBe(true);
 			await expect
 				.element(screen.getByText('2 rezervováno', { exact: true }))
 				.not.toBeInTheDocument();

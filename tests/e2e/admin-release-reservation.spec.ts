@@ -1,4 +1,4 @@
-import { test, expect, type Browser, type Page } from '@playwright/test';
+import { test, expect, type Browser, type Locator, type Page } from '@playwright/test';
 import { createTestUser, TEST_GIFT } from './fixtures/test-data.js';
 import {
 	createAuthenticatedContext,
@@ -51,6 +51,17 @@ async function reserveTheGift(page: Page): Promise<void> {
 	await expect(page.getByTestId('reserve-button').first()).toHaveText(/Zrušit rezervaci/);
 }
 
+/** Opens the gift card More menu, checks it offers no release, and closes it again. */
+async function expectMoreMenuWithoutRelease(page: Page, giftCard: Locator): Promise<void> {
+	await giftCard.getByTestId('gift-more-actions').filter({ visible: true }).click();
+	await expect(page.getByRole('menu')).toBeVisible({ timeout: 5_000 });
+	await expect(
+		page.getByRole('menuitem', { name: 'Uvolnit rezervaci', exact: true }),
+	).toHaveCount(0);
+	await page.keyboard.press('Escape');
+	await expect(page.getByRole('menu')).toHaveCount(0, { timeout: 5_000 });
+}
+
 test.describe('Administrator releases another gifter reservation (issue #213)', () => {
 	test('releases a signed-in gifter reservation from a gift card and frees the capacity', async ({
 		browser,
@@ -61,7 +72,11 @@ test.describe('Administrator releases another gifter reservation (issue #213)', 
 		const owner = createTestUser('release-owner');
 		const ownerPage = await registerAndGetPage(browser, request, baseURL!, owner);
 		await createWishlistAndNavigate(ownerPage, 'E2E uvolneni rezervace');
-		await addGift(ownerPage, TEST_GIFT.name, { price: TEST_GIFT.price });
+		// The link gives every visitor a card More menu, so its contents can be checked.
+		await addGift(ownerPage, TEST_GIFT.name, {
+			price: TEST_GIFT.price,
+			primaryLink: 'https://example.com/darek',
+		});
 		await shareWishlist(ownerPage);
 		const wishlistPath = new URL(ownerPage.url()).pathname;
 		await ownerPage.context().close();
@@ -88,6 +103,7 @@ test.describe('Administrator releases another gifter reservation (issue #213)', 
 		await expect(visitorGiftCard.getByText(/Rezervováno|Reserved/).first()).toBeVisible();
 		await expect(visitorGiftCard.getByTestId('reserve-button')).toHaveCount(0);
 		await expect(visitorGiftCard.getByTestId('release-reservation-button')).toHaveCount(0);
+		await expectMoreMenuWithoutRelease(visitorPage, visitorGiftCard);
 
 		await visitorGiftCard.getByRole('heading', { name: TEST_GIFT.name, exact: true }).click();
 		const visitorGiftDialog = visitorPage.getByRole('dialog').filter({
@@ -108,6 +124,22 @@ test.describe('Administrator releases another gifter reservation (issue #213)', 
 		// render neither the redundant disabled reserve control nor privileged release.
 		await expect(giftCard.getByTestId('reserve-button')).toHaveCount(0);
 		await expect(giftCard.getByTestId('release-reservation-button')).toHaveCount(0);
+
+		// The gift More menu offers administrators the same release flow (issue #440).
+		const moreActions = giftCard.getByTestId('gift-more-actions').filter({ visible: true });
+		await moreActions.click();
+		const releaseMenuItem = adminPage.getByRole('menuitem', {
+			name: 'Uvolnit rezervaci',
+			exact: true,
+		});
+		await expect(releaseMenuItem).toBeVisible({ timeout: 5_000 });
+		await releaseMenuItem.click();
+		const menuConfirmation = adminPage.getByTestId('release-reservation-confirm');
+		await expect(menuConfirmation).toBeVisible({ timeout: 5_000 });
+		await expect(menuConfirmation).toContainText(GIFTER_DISPLAY_NAME);
+		await adminPage.keyboard.press('Escape');
+		await expect(menuConfirmation).not.toBeVisible({ timeout: 5_000 });
+		await waitForDialogOverlayRemoval(adminPage);
 
 		await giftCard.getByRole('heading', { name: TEST_GIFT.name, exact: true }).click();
 		const giftDialog = adminPage.getByRole('dialog').filter({
@@ -177,6 +209,7 @@ test.describe('Administrator releases another gifter reservation (issue #213)', 
 		await expect(giftCard.getByText(GIFTER_DISPLAY_NAME)).toHaveCount(0);
 		await expect(giftCard.getByTestId('release-reservation-button')).toHaveCount(0);
 		await expect(giftCard.getByTestId('reserve-button')).toHaveCount(0);
+		await expectMoreMenuWithoutRelease(returningRecipient, giftCard);
 
 		await giftCard.getByRole('heading', { name: TEST_GIFT.name, exact: true }).click();
 		const editDialog = returningRecipient.getByRole('dialog', {

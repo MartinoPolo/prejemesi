@@ -17,6 +17,7 @@ import {
 	hasVisibleBoxShadow,
 	GiftListItemTestHost,
 } from './gift_list_item.test_fixtures.js';
+import { resolvedCssLength } from './gift_action_geometry.test_fixtures.js';
 
 const { expectPixelsNear, expectPixelsAtLeast, expectPixelsAtMost } = createPixelAssertions(expect);
 
@@ -495,6 +496,58 @@ describe('GiftListItem title hierarchy (issue #377)', () => {
 	});
 
 	it.each([
+		{ viewport: 390, hostWidth: 360, placement: 'price' },
+		{ viewport: 800, hostWidth: 640, placement: 'title' },
+	])(
+		'shows applicable quantity beside the $placement at $viewport px',
+		async ({ viewport, hostWidth, placement }) => {
+			await page.viewport(viewport, 720);
+			const host = await renderItem(
+				makeVisitorGift({ quantity: 3, price: 1290, currency: 'CZK' }),
+				WISHLIST_ROLES.visitor,
+				null,
+				hostWidth,
+			);
+			const visibleCounts = Array.from(
+				host.querySelectorAll<HTMLElement>('[data-testid="gift-piece-count"]'),
+			).filter((count) => count.checkVisibility());
+			const title = host.querySelector('.gift-list-title') as HTMLElement;
+			const price = host.querySelector('[data-testid="gift-list-price"]') as HTMLElement;
+			const anchorRect = (placement === 'price' ? price : title).getBoundingClientRect();
+			const anchorLineHeight = Number.parseFloat(
+				getComputedStyle(placement === 'price' ? price : title).lineHeight,
+			);
+
+			expect(visibleCounts).toHaveLength(1);
+			const countRect = visibleCounts[0].getBoundingClientRect();
+			expect(visibleCounts[0].textContent?.trim()).toBe('3 kusy');
+			expectPixelsAtLeast(countRect.left, anchorRect.right);
+			expectPixelsNear(
+				countRect.top + countRect.height / 2,
+				anchorRect.top + anchorLineHeight / 2,
+			);
+			host.remove();
+		},
+	);
+
+	it('shows no mobile quantity or separator beside the price for a single piece', async () => {
+		await page.viewport(390, 720);
+		const host = await renderItem(
+			makeVisitorGift({ quantity: 1, price: 1290, currency: 'CZK' }),
+			WISHLIST_ROLES.visitor,
+			null,
+			360,
+		);
+		const price = host.querySelector('[data-testid="gift-list-price"]') as HTMLElement;
+		const priceLineText = Array.from(price.parentElement!.children)
+			.filter((element) => element.checkVisibility())
+			.map((element) => element.textContent?.trim());
+
+		expect(priceLineText).toEqual([price.textContent?.trim()]);
+		host.remove();
+	});
+
+	it.each([
 		{ viewport: 390, expectedSize: 16, expectedLines: '2' },
 		{ viewport: 800, expectedSize: 24, expectedLines: '1' },
 	])(
@@ -564,6 +617,39 @@ describe('GiftListItem approved Like geometry (issue #357)', () => {
 				countNode.getBoundingClientRect().left,
 			);
 			expect(hasVisibleBoxShadow(like.querySelector('.elevation-surface')!)).toBe(false);
+			host.remove();
+		},
+	);
+});
+
+describe('GiftListItem content padding (issue #420)', () => {
+	it.each([
+		{ viewport: 800, width: 720 },
+		{ viewport: 390, width: 360 },
+	])(
+		'keeps content padding on the shared nested insets at $viewport px',
+		async ({ viewport, width }) => {
+			await page.viewport(viewport, 900);
+			const host = await renderItem(makeVisitorGift(), WISHLIST_ROLES.visitor, null, width);
+			const content = host.querySelector<HTMLElement>('[data-testid="gift-list-content"]')!;
+			const contentStyle = getComputedStyle(content);
+
+			expectPixelsNear(
+				Number.parseFloat(contentStyle.paddingTop),
+				resolvedCssLength(content, 'var(--gift-content-inset)'),
+			);
+			expectPixelsNear(
+				Number.parseFloat(contentStyle.paddingBottom),
+				resolvedCssLength(content, 'var(--gift-content-inset-bottom)'),
+			);
+			expectPixelsNear(
+				Number.parseFloat(contentStyle.paddingLeft),
+				resolvedCssLength(content, 'var(--gift-content-inset)'),
+			);
+			expectPixelsNear(
+				Number.parseFloat(contentStyle.paddingRight),
+				resolvedCssLength(content, 'var(--gift-content-inset-end)'),
+			);
 			host.remove();
 		},
 	);

@@ -1,16 +1,29 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { page } from 'vitest/browser';
 import { render } from 'vitest-browser-svelte';
-import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
 import { WISHLIST_ROLES } from '$lib/modules/wishlists/types.js';
+import * as m from '$lib/paraglide/messages.js';
+import {
+	expectRightAlignedAdjacentActions,
+	MORE_ACTION_SELECTOR,
+	RECEIVED_ACTION_SELECTOR,
+	RESERVE_ACTION_SELECTOR,
+	resolvedCssLength,
+	visibleAction,
+	visibleActions,
+} from './gift_action_geometry.test_fixtures.js';
 import {
 	GiftCardTestHost,
+	MOBILE_VIEWPORT_WIDTH,
 	cleanupCardHosts,
 	fixedHosts,
 	makeVisitorGift,
 } from './gift_card.test_fixtures.js';
 
-const { expectPixelsNear } = createPixelAssertions(expect);
+const DESKTOP_CARD_HOST_WIDTH = 360;
+const WIDE_CARD_HOST_WIDTH = 560;
+const MOBILE_CARD_HOST_WIDTH = 296;
+const NARROW_OVERFLOW_CARD_HOST_WIDTH = 210;
 
 afterEach(cleanupCardHosts);
 
@@ -105,44 +118,176 @@ describe('GiftCard actions (issue #255)', () => {
 	});
 });
 
-describe('GiftCard footer alignment', () => {
+describe('GiftCard footer alignment (issues #255, #420)', () => {
+	const bought = `[aria-label="${m.gift_mark_bought()}"]`;
+	const noop = () => {};
+	const unreservedGift = makeVisitorGift({ myReservationId: null, reservedCount: 0 });
+
 	it.each([
-		{ role: WISHLIST_ROLES.recipient, received: false, isArchived: false, withMore: true },
-		{ role: WISHLIST_ROLES.recipient, received: true, isArchived: false, withMore: true },
-		{ role: WISHLIST_ROLES.recipient, received: false, isArchived: false, withMore: false },
-		{ role: WISHLIST_ROLES.recipient, received: true, isArchived: true, withMore: true },
-		{ role: WISHLIST_ROLES.visitor, received: false, isArchived: true, withMore: false },
+		{
+			name: 'desktop recipient Received and More',
+			props: { gift: makeVisitorGift(), role: WISHLIST_ROLES.recipient, onmore: noop },
+			expectedActions: [RECEIVED_ACTION_SELECTOR, MORE_ACTION_SELECTOR],
+		},
+		{
+			name: 'desktop recipient marked Received and More',
+			props: {
+				gift: makeVisitorGift({ received: true }),
+				role: WISHLIST_ROLES.recipient,
+				onmore: noop,
+			},
+			expectedActions: [RECEIVED_ACTION_SELECTOR, MORE_ACTION_SELECTOR],
+		},
+		{
+			name: 'desktop recipient Received without More',
+			props: { gift: makeVisitorGift(), role: WISHLIST_ROLES.recipient },
+			expectedActions: [RECEIVED_ACTION_SELECTOR],
+		},
+		{
+			name: 'desktop archived recipient More',
+			props: {
+				gift: makeVisitorGift({ received: true }),
+				role: WISHLIST_ROLES.recipient,
+				isArchived: true,
+				onmore: noop,
+			},
+			expectedActions: [MORE_ACTION_SELECTOR],
+		},
+		{
+			name: 'desktop visitor Bought and Cancel reservation',
+			props: { gift: makeVisitorGift(), role: WISHLIST_ROLES.visitor },
+			expectedActions: [bought, RESERVE_ACTION_SELECTOR],
+		},
+		{
+			name: 'desktop archived visitor Cancel reservation without Bought',
+			props: { gift: makeVisitorGift(), role: WISHLIST_ROLES.visitor, isArchived: true },
+			expectedActions: [RESERVE_ACTION_SELECTOR],
+		},
+		{
+			name: 'desktop visitor Reserve and More',
+			props: { gift: unreservedGift, role: WISHLIST_ROLES.visitor, onmore: noop },
+			expectedActions: [RESERVE_ACTION_SELECTOR, MORE_ACTION_SELECTOR],
+		},
+		{
+			name: 'desktop manager Received, Reserve and More',
+			props: { gift: unreservedGift, role: WISHLIST_ROLES.moderator, onmore: noop },
+			expectedActions: [
+				RECEIVED_ACTION_SELECTOR,
+				RESERVE_ACTION_SELECTOR,
+				MORE_ACTION_SELECTOR,
+			],
+		},
+		{
+			name: 'wide manager Bought, Received, Cancel reservation and More',
+			width: WIDE_CARD_HOST_WIDTH,
+			props: { gift: makeVisitorGift(), role: WISHLIST_ROLES.moderator, onmore: noop },
+			expectedActions: [
+				bought,
+				RECEIVED_ACTION_SELECTOR,
+				RESERVE_ACTION_SELECTOR,
+				MORE_ACTION_SELECTOR,
+			],
+		},
+		{
+			name: 'desktop manager Received, Cancel reservation and More with Bought overflowed',
+			props: { gift: makeVisitorGift(), role: WISHLIST_ROLES.moderator, onmore: noop },
+			expectedActions: [
+				RECEIVED_ACTION_SELECTOR,
+				RESERVE_ACTION_SELECTOR,
+				MORE_ACTION_SELECTOR,
+			],
+			expectedOverflow: 'purchased',
+		},
+		{
+			name: 'desktop manager Received and Reserve without More',
+			props: { gift: unreservedGift, role: WISHLIST_ROLES.moderator },
+			expectedActions: [RECEIVED_ACTION_SELECTOR, RESERVE_ACTION_SELECTOR],
+		},
+		{
+			name: 'desktop manager latent More with Received and Reserve',
+			props: {
+				gift: unreservedGift,
+				role: WISHLIST_ROLES.moderator,
+				onmore: noop,
+				persistentMore: false,
+			},
+			expectedActions: [RECEIVED_ACTION_SELECTOR, RESERVE_ACTION_SELECTOR],
+		},
+		{
+			name: 'mobile manager Received and Reserve',
+			viewport: MOBILE_VIEWPORT_WIDTH,
+			width: MOBILE_CARD_HOST_WIDTH,
+			props: { gift: unreservedGift, role: WISHLIST_ROLES.moderator },
+			expectedActions: [RECEIVED_ACTION_SELECTOR, RESERVE_ACTION_SELECTOR],
+		},
 	])(
-		'right-aligns $role actions (received: $received, archived: $isArchived, More: $withMore)',
-		async ({ role, received, isArchived, withMore }) => {
-			await page.viewport(800, 720);
+		'right-aligns adjacent footer actions: $name',
+		async ({
+			viewport = 800,
+			width = DESKTOP_CARD_HOST_WIDTH,
+			props,
+			expectedActions,
+			expectedOverflow = '',
+		}) => {
+			await page.viewport(viewport, 900);
 			const host = document.createElement('div');
-			host.style.width = '360px';
+			host.style.width = `${width}px`;
 			document.body.appendChild(host);
 			fixedHosts.add(host);
 			await render(
 				GiftCardTestHost,
-				{
-					gift: makeVisitorGift({ received }),
-					role,
-					isArchived,
-					onreceived: () => {},
-					onunreserve: () => {},
-					onmore: withMore ? () => {} : undefined,
-				},
+				{ onreceived: noop, onreserve: noop, onunreserve: noop, ...props },
 				{ baseElement: host },
 			);
 
-			const footer = host.querySelector('[data-testid="gift-card-footer"]') as HTMLElement;
-			const footerStyle = getComputedStyle(footer);
-			const rightEdge =
-				footer.getBoundingClientRect().right - parseFloat(footerStyle.paddingRight);
-			const actions = Array.from(footer.querySelectorAll<HTMLElement>('button'));
-			expect(actions.length).toBeGreaterThan(0);
-			expectPixelsNear(
-				Math.max(...actions.map((action) => action.getBoundingClientRect().right)),
-				rightEdge,
+			const row = host.querySelector<HTMLElement>('[data-testid="gift-action-row"]')!;
+			await expect.poll(() => visibleActions(row).length).toBe(expectedActions.length);
+			const footer = host.querySelector<HTMLElement>('[data-testid="gift-card-footer"]')!;
+
+			expect(row.dataset.overflowActions).toBe(expectedOverflow);
+			expectRightAlignedAdjacentActions(
+				row,
+				expectedActions.map((selector) => visibleAction(row, selector)),
+				footerInnerRight(footer),
 			);
 		},
 	);
+
+	it('overflows Received but keeps Reserve and More adjacent in a narrow mobile footer', async () => {
+		await page.viewport(MOBILE_VIEWPORT_WIDTH, 900);
+		const host = document.createElement('div');
+		host.style.width = `${NARROW_OVERFLOW_CARD_HOST_WIDTH}px`;
+		document.body.appendChild(host);
+		fixedHosts.add(host);
+		await render(
+			GiftCardTestHost,
+			{
+				gift: unreservedGift,
+				role: WISHLIST_ROLES.moderator,
+				onreceived: noop,
+				onreserve: noop,
+				onmore: noop,
+				persistentMore: true,
+			},
+			{ baseElement: host },
+		);
+
+		const row = host.querySelector<HTMLElement>('[data-testid="gift-action-row"]')!;
+		await expect.poll(() => row.dataset.overflowActions).toBe('received');
+		const footer = host.querySelector<HTMLElement>('[data-testid="gift-card-footer"]')!;
+
+		expect(visibleActions(row)).toHaveLength(2);
+		expectRightAlignedAdjacentActions(
+			row,
+			[visibleAction(row, RESERVE_ACTION_SELECTOR), visibleAction(row, MORE_ACTION_SELECTOR)],
+			footerInnerRight(footer),
+		);
+	});
 });
+
+function footerInnerRight(footer: HTMLElement): number {
+	return (
+		footer.getBoundingClientRect().right -
+		resolvedCssLength(footer, 'var(--gift-content-inset-end)')
+	);
+}

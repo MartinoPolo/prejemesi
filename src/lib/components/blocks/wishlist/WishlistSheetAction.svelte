@@ -5,11 +5,10 @@
 
 	interface Props extends Omit<ButtonProps, 'children' | 'intent' | 'surfaceClass'> {
 		children: Snippet;
-		indent?: boolean;
 		surfaceClass?: string;
 	}
 
-	let { children, indent = false, class: className, surfaceClass, ...props }: Props = $props();
+	let { children, class: className, surfaceClass, ...props }: Props = $props();
 </script>
 
 <Button
@@ -17,10 +16,9 @@
 	intent="ghost"
 	class={cn('min-h-12 w-full', className)}
 	surfaceClass={cn(
-		'w-full justify-start gap-3 text-left [&>svg]:size-5 [&>svg]:shrink-0',
+		'w-full justify-start gap-3 text-left text-foreground [&>svg]:size-5 [&>svg]:shrink-0',
 		surfaceClass,
 	)}
 >
-	{#if indent}<span class="size-5 shrink-0" aria-hidden="true"></span>{/if}
 	{@render children()}
 </Button>

@@ -6,11 +6,16 @@
 	import ChevronRightIcon from '@lucide/svelte/icons/chevron-right';
 	import ArrowLeftIcon from '@lucide/svelte/icons/arrow-left';
 	import CopyIcon from '@lucide/svelte/icons/copy';
+	import CheckIcon from '@lucide/svelte/icons/check';
+	import PaintBucketIcon from '@lucide/svelte/icons/paint-bucket';
+	import ScalingIcon from '@lucide/svelte/icons/scaling';
 	import { Checkbox } from '$lib/components/base/checkbox/index.js';
+	import { Badge } from '$lib/components/base/badge/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
 	import * as RadioGroup from '$lib/components/base/radio-group/index.js';
 	import * as DropdownMenu from '$lib/components/base/dropdown-menu/index.js';
 	import * as Sheet from '$lib/components/base/sheet/index.js';
+	import GiftContextActionIcon from './GiftContextActionIcon.svelte';
 	import WishlistBottomSheet from './WishlistBottomSheet.svelte';
 	import WishlistSheetAction from './WishlistSheetAction.svelte';
 	import WishlistSheetBody from './WishlistSheetBody.svelte';
@@ -384,6 +389,16 @@
 	</WishlistSheetChoice>
 {/snippet}
 
+{#snippet bulkActionIcon(action: MobileBulkAction)}
+	{#if action === 'priority'}<GiftContextActionIcon
+			action="priority"
+		/>{:else if action === 'category'}<GiftContextActionIcon
+			action="category"
+		/>{:else if action === 'imageFit'}<ScalingIcon
+		/>{:else if action === 'imageBackground'}<PaintBucketIcon
+		/>{:else if action === 'copy'}<CopyIcon />{:else if action === 'received'}<CheckIcon />{/if}
+{/snippet}
+
 {#snippet mobileActionRow(
 	action: MobileBulkAction,
 	label: string,
@@ -396,6 +411,7 @@
 		surfaceClass="gap-2"
 		onclick={() => (action === 'copy' ? handleCopy() : openMobileAction(action))}
 	>
+		{@render bulkActionIcon(action)}
 		<span class="flex min-w-0 flex-1 items-baseline gap-2">
 			<strong class="truncate">{label}</strong>
 			<span class="text-muted-foreground truncate text-xs">{summary}</span>
@@ -659,6 +675,7 @@
 		<DropdownMenu.Content align="end" aria-label={m.gift_selection_actions()}>
 			<DropdownMenu.Sub>
 				<DropdownMenu.SubTrigger disabled={disabled || !priorityReady}>
+					{@render bulkActionIcon('priority')}
 					{labelWithOptionalSummary(
 						m.gift_priority_label(),
 						priorityReady ? prioritySummary : m.moderator_loading(),
@@ -668,6 +685,7 @@
 			</DropdownMenu.Sub>
 			<DropdownMenu.Sub>
 				<DropdownMenu.SubTrigger disabled={disabled || !categoryReady}>
+					{@render bulkActionIcon('category')}
 					{labelWithOptionalSummary(
 						m.gift_context_category(),
 						categoryReady ? categorySummary : m.moderator_loading(),
@@ -677,19 +695,21 @@
 			</DropdownMenu.Sub>
 			<DropdownMenu.Sub>
 				<DropdownMenu.SubTrigger {disabled}>
+					{@render bulkActionIcon('imageFit')}
 					{labelWithOptionalSummary(m.image_fit_label(), imageFitSummary)}
 				</DropdownMenu.SubTrigger>
 				<DropdownMenu.SubContent>{@render imageFitItems()}</DropdownMenu.SubContent>
 			</DropdownMenu.Sub>
 			<DropdownMenu.Sub>
 				<DropdownMenu.SubTrigger {disabled}>
+					{@render bulkActionIcon('imageBackground')}
 					{labelWithOptionalSummary(m.image_background_label(), backgroundSummary)}
 				</DropdownMenu.SubTrigger>
 				<DropdownMenu.SubContent>{@render imageBackgroundItems()}</DropdownMenu.SubContent>
 			</DropdownMenu.Sub>
 			<DropdownMenu.Sub>
 				<DropdownMenu.SubTrigger {disabled}>
-					<CopyIcon data-icon="inline-start" />{m.gift_bulk_copy()}
+					{@render bulkActionIcon('copy')}{m.gift_bulk_copy()}
 				</DropdownMenu.SubTrigger>
 				<DropdownMenu.SubContent>
 					<DropdownMenu.Item {disabled} onclick={handleCopy}
@@ -699,6 +719,7 @@
 			</DropdownMenu.Sub>
 			<DropdownMenu.Sub>
 				<DropdownMenu.SubTrigger {disabled}>
+					{@render bulkActionIcon('received')}
 					{labelWithOptionalSummary(m.gift_selection_received_state(), receivedSummary)}
 				</DropdownMenu.SubTrigger>
 				<DropdownMenu.SubContent>{@render receivedItems()}</DropdownMenu.SubContent>
@@ -732,11 +753,10 @@
 		/>
 		<strong class="selection-count whitespace-nowrap text-sm"
 			>{m.gift_selection_count({ count: selectedCount })}</strong
-		>{#if hiddenCount > 0}<span
-				class="hidden-selection-count inline-flex items-center gap-1 rounded-full bg-warning-soft px-2 py-1 text-xs font-bold text-warning-foreground"
-				><EyeOffIcon class="size-3.5" />{m.gift_selection_hidden_count({
+		>{#if hiddenCount > 0}<Badge tone="warning" size="lg"
+				>{#snippet icon()}<EyeOffIcon data-icon />{/snippet}{m.gift_selection_hidden_count({
 					count: hiddenCount,
-				})}</span
+				})}</Badge
 			>{/if}
 	</div>
 	<div class="selection-actions">
@@ -877,7 +897,7 @@
 		.mobile-selection-row {
 			width: 100%;
 			justify-content: space-between;
-			gap: var(--nested-control-gap, calc(0.5rem + var(--elevation-ordinary-offset)));
+			gap: var(--nested-control-gap);
 		}
 
 		.mobile-selection-label {
@@ -891,7 +911,7 @@
 
 		.mobile-selection-actions {
 			flex: 0 0 auto;
-			gap: var(--nested-control-gap, calc(0.5rem + var(--elevation-ordinary-offset)));
+			gap: var(--nested-control-gap);
 		}
 	}
 

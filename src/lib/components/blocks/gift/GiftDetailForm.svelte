@@ -91,6 +91,7 @@
 		mode: GiftDetailModalMode;
 		gift: GiftByRole | null;
 		wishlistId: string;
+		demo?: boolean;
 		priorityLevels: GiftPriorityLevel[];
 		categoryOptions?: ManagedGiftCategory[];
 		role: WishlistRole;
@@ -117,6 +118,7 @@
 		mode,
 		gift,
 		wishlistId,
+		demo = false,
 		priorityLevels,
 		categoryOptions = [],
 		role,
@@ -276,8 +278,8 @@
 	// branch stays self-contained and never re-toggles from a reactive prop change.
 	const descriptionFrozen = $derived(locked && description.trim() !== '');
 	// Edited-after-share transparency (issue #185): the recipient/moderator edit
-	// surface shows the SAME muted text line as the read-only visitor detail view
-	// (`GiftDetailView.svelte`) – only the surface changed, not who can see it
+	// surface shows the SAME muted text line as the read-only Gift viewer
+	// (`GiftViewer.svelte`) – only the surface changed, not who can see it
 	// (REQ-5).
 	const editedAfterShareLine = $derived(
 		gift?.editedAfterShareAt != null
@@ -826,7 +828,7 @@
 	 * the picker trigger waits a tick for it to render.
 	 */
 	async function openImageEditor() {
-		if (mutationPending || isImageUploadPending) {
+		if (demo || mutationPending || isImageUploadPending) {
 			return;
 		}
 		imageMode = 'upload';
@@ -941,7 +943,7 @@
 										class="flex flex-col gap-2 rounded-md border border-border bg-surface-2 p-2"
 									>
 										<Textarea bind:value={editingAppendText} rows={2} />
-										<div class="flex gap-2">
+										<div class="flex gap-(--nested-control-gap)">
 											<Button
 												size="sm"
 												onclick={() => void saveEditAppend(index)}
@@ -1228,42 +1230,46 @@
 				<!-- Image (last field: source input only – the display-mode control and
 			     the clickable target tiles live in the image column with the
 			     preview they drive, #116 round 3) -->
-				<div class="mt-3 {styles.formField()}" data-testid="gift-image-source">
-					<Label>{m.gift_image_label()}</Label>
-					<SegmentedToggle.Root
-						bind:value={imageMode}
-						disabled={mutationPending || isImageUploadPending}
-						aria-label={m.gift_image_label()}
-					>
-						<SegmentedToggle.Item value="upload">
-							<UploadIcon data-icon="inline-start" />
-							{m.gift_image_upload_tab()}
-						</SegmentedToggle.Item>
-						<SegmentedToggle.Item value="url">
-							<LinkIcon data-icon="inline-start" />
-							{m.gift_image_url_tab()}
-						</SegmentedToggle.Item>
-					</SegmentedToggle.Root>
-					{#if imageMode === 'url'}
-						<Input
-							bind:value={imageUrl}
-							placeholder="https://example.com/image.jpg"
-							type="url"
-						/>
-					{:else}
-						<ImageUpload
-							bind:this={imageUploadRef}
-							target="gift-image"
-							disabled={mutationPending}
-							size="small"
-							initialPreviewUrl={previewSrc ?? undefined}
-							onUpload={handleImageUpload}
-							onPendingChange={handleImageUploadPendingChange}
-							onError={handleImageUploadError}
-							onRemove={handleImageRemove}
-						/>
-					{/if}
-				</div>
+				{#if demo}
+					<p class="mt-3 text-sm text-muted-foreground">{m.demo_image_limits()}</p>
+				{:else}
+					<div class="mt-3 {styles.formField()}" data-testid="gift-image-source">
+						<Label>{m.gift_image_label()}</Label>
+						<SegmentedToggle.Root
+							bind:value={imageMode}
+							disabled={mutationPending || isImageUploadPending}
+							aria-label={m.gift_image_label()}
+						>
+							<SegmentedToggle.Item value="upload">
+								<UploadIcon data-icon="inline-start" />
+								{m.gift_image_upload_tab()}
+							</SegmentedToggle.Item>
+							<SegmentedToggle.Item value="url">
+								<LinkIcon data-icon="inline-start" />
+								{m.gift_image_url_tab()}
+							</SegmentedToggle.Item>
+						</SegmentedToggle.Root>
+						{#if imageMode === 'url'}
+							<Input
+								bind:value={imageUrl}
+								placeholder="https://example.com/image.jpg"
+								type="url"
+							/>
+						{:else}
+							<ImageUpload
+								bind:this={imageUploadRef}
+								target="gift-image"
+								disabled={mutationPending}
+								size="small"
+								initialPreviewUrl={previewSrc ?? undefined}
+								onUpload={handleImageUpload}
+								onPendingChange={handleImageUploadPendingChange}
+								onError={handleImageUploadError}
+								onRemove={handleImageRemove}
+							/>
+						{/if}
+					</div>
+				{/if}
 			</fieldset>
 		</div>
 	</div>
@@ -1386,7 +1392,7 @@
 							onchange={(rect) => handleCropChange(activeTarget, rect)}
 							onWheelPromote={promoteToManual}
 						/>
-						{#if !isCropMode}
+						{#if !isCropMode && !demo}
 							<!-- Click-to-edit affordance (issue #131 REQ-1): overlays the preview
 							     without wrapping it, so wheel-zoom-to-manual and the tile switcher
 							     below stay independently interactive. -->
@@ -1429,15 +1435,17 @@
 			<button
 				type="button"
 				class={styles.imagePlaceholder()}
-				disabled={mutationPending}
+				disabled={mutationPending || demo}
 				onclick={openImageEditor}
-				aria-label={m.gift_image_upload_cta()}
+				aria-label={demo ? m.demo_image_limits() : m.gift_image_upload_cta()}
 			>
 				<UploadIcon class="size-16 text-ink-faint" />
 				<span class="text-sm font-semibold text-muted-foreground">
-					{m.gift_image_upload_cta()}
+					{demo ? m.demo_image_limits() : m.gift_image_upload_cta()}
 				</span>
-				<span class="text-xs text-muted-foreground">{m.gift_image_upload_hint()}</span>
+				{#if !demo}<span class="text-xs text-muted-foreground"
+						>{m.gift_image_upload_hint()}</span
+					>{/if}
 			</button>
 		{/if}
 	</div>

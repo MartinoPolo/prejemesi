@@ -192,6 +192,10 @@ export async function coalesceNewGiftDigests(
 	if (input.giftNames.length === 0) {
 		return;
 	}
+	const { demoSessionId } = await import('$lib/server/demo/scope.js');
+	if (demoSessionId() !== null) {
+		return;
+	}
 	const followerRows = await tx
 		.select({ userId: wishlistFollower.userId, preferences: user.notificationPreferences })
 		.from(wishlistFollower)
@@ -210,7 +214,7 @@ export async function coalesceNewGiftDigests(
 				normalizeNotificationPreferences(row.preferences)[NOTIFICATION_TYPE.NEW_GIFT_ADDED]
 					.inApp,
 		)
-		.toSorted((left, right) => left.userId.localeCompare(right.userId));
+		.sort((left, right) => left.userId.localeCompare(right.userId));
 	for (const target of targets) {
 		await coalesceRecipientDigest(tx, target.userId, input);
 	}

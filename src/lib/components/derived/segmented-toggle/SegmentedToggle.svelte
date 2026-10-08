@@ -11,6 +11,7 @@
 		RESPONSIVE_CONTROL_SIZE_CLASSES,
 		type ControlSize,
 	} from '$lib/components/base/control_sizing.js';
+	import { selectionSlide } from '$lib/motion/selection_slide.js';
 
 	type Props = Omit<
 		ToggleGroup.ToggleGroupProps,
@@ -61,8 +62,14 @@
 		size ? CONTROL_SIZE_CLASSES[size as ControlSize] : RESPONSIVE_CONTROL_SIZE_CLASSES,
 		className,
 	)}
+	{@attach selectionSlide({
+		optionSelector: "[data-slot='toggle-group-item']",
+		selectedSelector: "[data-state='on']",
+		faceSelector: presentation === 'connected' ? ':scope > .elevation-surface' : undefined,
+	})}
 >
 	{@render children?.()}
+	<span data-slot="selection-indicator" aria-hidden="true" class={styles.indicator()}></span>
 </ToggleGroup.Root>
 
 <style>
@@ -96,8 +103,9 @@
 		outline-offset: 2px !important;
 	}
 
+	/* Once the sliding indicator is placed, it paints the selected face instead. */
 	:global(
-		.segmented-toggle-connected
+		.segmented-toggle-connected:not([data-selection-placed])
 			> [data-slot='toggle-group-item'][data-state='on']
 			> .elevation-surface
 	) {
@@ -118,12 +126,13 @@
 		}
 	}
 
+	/* `-of-type` skips the trailing selection indicator span. */
 	@media (width >= 640px) {
-		:global(.segmented-toggle-connected:has(> :first-child[data-state='on']))::before {
+		:global(.segmented-toggle-connected:has(> :first-of-type[data-state='on']))::before {
 			inset-inline-start: 1px;
 		}
 
-		:global(.segmented-toggle-connected:has(> :last-child[data-state='on']))::before {
+		:global(.segmented-toggle-connected:has(> :last-of-type[data-state='on']))::before {
 			inset-inline-end: 1px;
 		}
 	}

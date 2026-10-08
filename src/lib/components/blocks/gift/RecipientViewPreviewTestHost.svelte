@@ -8,7 +8,7 @@
 	import GiftCard from './GiftCard.svelte';
 	import GiftListItem from './GiftListItem.svelte';
 	import GiftCompactRow from './GiftCompactRow.svelte';
-	import GiftDetailView from './GiftDetailView.svelte';
+	import GiftDetailModal from './GiftDetailModal.svelte';
 
 	interface Props {
 		gift: GiftForVisitor;
@@ -58,5 +58,14 @@
 		<tbody><GiftCompactRow {gift} {role} {hideReservationState} {onreceived} /></tbody>
 	</table>
 {:else}
-	<GiftDetailView {gift} {role} {hideReservationState} />
+	<GiftDetailModal
+		open
+		mode="edit"
+		{gift}
+		wishlistId="test-wishlist"
+		priorityLevels={[]}
+		{role}
+		readOnly
+		{hideReservationState}
+	/>
 {/if}

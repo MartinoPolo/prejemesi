@@ -10,8 +10,7 @@ import {
  * Anime-sky like control (issue #102 REQ-14 + round-2 delta): ghost ink chip
  * with the colored heart; hover tints it with the like blush and lifts it as one surface.
  * Omitted size follows the shared responsive action scale and explicit sizes stay fixed.
- * `sm` remains the compact-row exception. `ghost` is the borderless card/list chip and
- * `sticker` is the ink-bordered hard-shadow treatment used in the detail modal's action bar.
+ * `sm` remains the compact-row exception.
  */
 export const likeButtonVariants = tv({
 	slots: {
@@ -57,20 +56,11 @@ export const likeButtonVariants = tv({
 				count: 'text-sm',
 			},
 		},
-		appearance: {
-			ghost: {},
-			sticker: {
-				root: 'elevation-owner elevation-owner-raised elevation-owner-like relative rounded-[7px]',
-				surface: 'border-2 border-ink bg-card shadow-sticker',
-			},
-		},
 	},
 	defaultVariants: {
 		liked: false,
 		size: 'responsive',
-		appearance: 'ghost',
 	},
 });
 
 export type LikeButtonSize = ControlSize;
-export type LikeButtonAppearance = keyof typeof likeButtonVariants.variants.appearance;

@@ -1,5 +1,10 @@
+import '../../../../app.css';
 import { render } from 'vitest-browser-svelte';
+import { page } from 'vitest/browser';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
+import { resolvedCssLength } from '../gift/gift_action_geometry.test_fixtures.js';
+import { expectContentClearsOverlayClose } from '$lib/components/base/dialog/overlay_close_geometry.test_fixtures.js';
 import * as m from '$lib/paraglide/messages.js';
 import { WIZARD_MODE } from './import_wizard_types.js';
 
@@ -13,6 +18,7 @@ vi.mock('$env/dynamic/public', () => ({ env: {} }));
 vi.mock('$lib/modules/import/import.remote.js', () => importRemotes);
 
 const { default: ImportWizard } = await import('./ImportWizard.svelte');
+const { expectPixelsAtLeast } = createPixelAssertions(expect);
 
 function pasteEvent(text: string): ClipboardEvent {
 	const clipboardData = new DataTransfer();
@@ -20,8 +26,10 @@ function pasteEvent(text: string): ClipboardEvent {
 	return new ClipboardEvent('paste', { bubbles: true, cancelable: true, clipboardData });
 }
 
-afterEach(() => {
+afterEach(async () => {
 	document.body.replaceChildren();
+	delete document.documentElement.dataset.depth;
+	await page.viewport(1280, 720);
 });
 
 describe('ImportWizard new-list title validation', () => {
@@ -59,5 +67,39 @@ describe('ImportWizard new-list title validation', () => {
 		await expect
 			.element(screen.getByRole('button', { name: m.import_wizard_commit_new() }))
 			.toBeVisible();
+	});
+});
+
+describe('ImportWizard header beside the close button', () => {
+	describe.each(['soft', 'ink', 'black'] as const)('at %s depth', (depth) => {
+		it.each([390, 1280])(
+			'keeps the title row beside and the stepper below the close button at %ipx',
+			async (viewportWidth) => {
+				document.documentElement.dataset.depth = depth;
+				await page.viewport(viewportWidth, 844);
+				const screen = await render(ImportWizard, {
+					open: true,
+					mode: WIZARD_MODE.newList,
+				});
+				const stepper = screen.getByTestId('import-wizard-stepper');
+				await expect.element(stepper).toBeVisible();
+				await Promise.all(document.getAnimations().map((animation) => animation.finished));
+				await document.fonts.ready;
+				const dialog = document.querySelector<HTMLElement>('[role="dialog"]')!;
+				const closeButton = dialog.querySelector<HTMLElement>(
+					'[data-slot="dialog-close"]',
+				)!;
+				const nestedControlGap = resolvedCssLength(dialog, 'var(--nested-control-gap)');
+
+				expectPixelsAtLeast(
+					stepper.element().getBoundingClientRect().top,
+					closeButton.getBoundingClientRect().bottom + nestedControlGap,
+				);
+				expectContentClearsOverlayClose(
+					screen.getByTestId('import-wizard-title-row').element() as HTMLElement,
+					closeButton,
+				);
+			},
+		);
 	});
 });

@@ -130,7 +130,7 @@
 			</div>
 		{/if}
 
-		<Dialog.Footer class="flex flex-wrap items-center gap-4 border-t border-border px-6 py-4">
+		<Dialog.Footer class="flex flex-wrap items-center border-t border-border px-6 py-4">
 			{#if blockingCount > 0 && !isSubmitting}
 				<HelpText state="error" class="m-0">
 					{m.draft_grid_commit_hint_blocked_rows()}

@@ -3,6 +3,7 @@ import { getLocale } from '$lib/paraglide/runtime.js';
 import { extractGiftUrlDomain, getPrimaryGiftLink } from './gift_url.js';
 import { MAX_GIFT_PRICE, type GiftLink } from './types.js';
 import type { WishlistRole } from '$lib/modules/wishlists/types.js';
+import type { GiftOverlayEntry, OtherReserverIdentity } from './gift_display_state.js';
 
 const PRICE_FORMATTER_CACHE_LIMIT = 16;
 const priceFormatters = new Map<string, Intl.NumberFormat>();
@@ -30,10 +31,25 @@ function getPriceFormatter(locale: string, currency: string): Intl.NumberFormat 
 	return formatter;
 }
 
+type RangeNumberFormat = Intl.NumberFormat & {
+	formatRange(start: number, end: number): string;
+};
+
+function supportsFormatRange(formatter: Intl.NumberFormat): formatter is RangeNumberFormat {
+	return 'formatRange' in formatter && typeof formatter.formatRange === 'function';
+}
+
+function formatPriceRange(formatter: Intl.NumberFormat, price: number, priceMax: number): string {
+	return supportsFormatRange(formatter)
+		? formatter.formatRange(price, priceMax)
+		: `${formatter.format(price)}–${formatter.format(priceMax)}`;
+}
+
 /**
  * Format a price with currency symbol. When `priceMax` is a distinct, larger value, renders a
  * locale-correct range via `Intl.NumberFormat.formatRange` (currency shown once, e.g.
  * "1 200–1 500 Kč") — a non-binding hint, never an approximate/"cca" marker (issue #155).
+ * Browsers without `formatRange` get both bounds formatted individually.
  */
 export function formatPrice(
 	price: number | null,
@@ -48,7 +64,7 @@ export function formatPrice(
 	const isRange = priceMax !== undefined && priceMax !== null && priceMax > price;
 	try {
 		const formatter = getPriceFormatter(getLocale(), currencyCode);
-		return isRange ? formatter.formatRange(price, priceMax) : formatter.format(price);
+		return isRange ? formatPriceRange(formatter, price, priceMax) : formatter.format(price);
 	} catch {
 		return isRange ? `${price}–${priceMax} ${currencyCode}` : `${price} ${currencyCode}`;
 	}
@@ -109,20 +125,45 @@ export function getPriorityActionOptions<T extends { id: string; label: string |
 }
 
 /**
- * Small line naming who reserved a gift, e.g. „rezervoval(a) Babička". Shown to
- * moderators only (issue #198) — the API already omits names for everyone else
- * (visitors, recipient), so this returns null exactly when nothing may be shown.
+ * Badge label for a reservation held by someone else. Only viewers allowed to see reserver names
+ * receive an identity; everyone else reads the anonymous label.
  */
-export function formatReserverLine(reserverNames: readonly string[]): string | null {
-	const firstName = reserverNames[0];
-	if (firstName === undefined) {
-		return null;
+export function formatOtherReservationLabel(otherReservers?: OtherReserverIdentity): string {
+	if (otherReservers === undefined) {
+		return m.gift_reserved_by_other_overlay();
 	}
-	if (reserverNames.length === 1) {
-		return m.gift_reserved_by({ name: firstName });
-	}
+	return otherReservers.kind === 'single'
+		? m.gift_reserved_by_overlay({ name: otherReservers.name })
+		: m.gift_reserved_by_many();
+}
 
-	return m.gift_reserved_by_many();
+export function formatGiftStateLabel(entry: GiftOverlayEntry): string {
+	switch (entry.kind) {
+		case 'received':
+			return m.gift_received_badge();
+		case 'own-reservation':
+			return m.gift_reserved_by_me_overlay();
+		case 'own-purchased':
+			return m.gift_bought();
+		case 'unavailable':
+			return formatOtherReservationLabel(entry.otherReservers);
+		case 'partial':
+			return m.gift_remaining_capacity({ remaining: entry.remaining, total: entry.total });
+		default: {
+			const unhandled: never = entry;
+			return unhandled;
+		}
+	}
+}
+
+/** Data hooks every rendered state badge exposes for styling, collision checks and tests. */
+export function giftStateBadgeAttributes(entry: GiftOverlayEntry) {
+	return {
+		'data-state-primary': entry.role === 'primary' ? '' : undefined,
+		'data-reservation-support': entry.role === 'support' ? '' : undefined,
+		'data-other-reservation': entry.role === 'other-reservation' ? '' : undefined,
+		'data-state-kind': entry.kind,
+	};
 }
 
 /** Format an ISO timestamp from a description append as a short locale date. */

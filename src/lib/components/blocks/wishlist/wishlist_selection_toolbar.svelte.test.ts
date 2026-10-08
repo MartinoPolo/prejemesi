@@ -61,9 +61,25 @@ describe('WishlistSelectionToolbar mobile bulk surface (#340)', () => {
 			const shadowOffset = Number.parseFloat(
 				getComputedStyle(row).getPropertyValue('--elevation-ordinary-offset'),
 			);
-			expectPixelsNear(Number.parseFloat(getComputedStyle(row).gap) - shadowOffset, 8);
 			const actions = row.querySelector('.mobile-selection-actions') as HTMLElement;
-			expectPixelsNear(Number.parseFloat(getComputedStyle(actions).gap) - shadowOffset, 8);
+			try {
+				for (const [depth, depthClearance] of [
+					['soft', 0],
+					['black', shadowOffset],
+				] as const) {
+					document.documentElement.dataset.depth = depth;
+					expectPixelsNear(
+						Number.parseFloat(getComputedStyle(row).gap),
+						8 + depthClearance,
+					);
+					expectPixelsNear(
+						Number.parseFloat(getComputedStyle(actions).gap),
+						8 + depthClearance,
+					);
+				}
+			} finally {
+				delete document.documentElement.dataset.depth;
+			}
 			for (const target of row.querySelectorAll<HTMLElement>(
 				'button, [data-slot="checkbox"]',
 			)) {
@@ -142,6 +158,33 @@ describe('WishlistSelectionToolbar mobile bulk surface (#340)', () => {
 		for (const row of rows) {
 			expectPixelsAtLeast(row.getBoundingClientRect().height, 48);
 			expect(row.textContent?.trim()).not.toBe('');
+		}
+		await screen.unmount();
+	});
+
+	it('gives Priority and Category the shared gift action icons with aligned labels (#447)', async () => {
+		const screen = await render(WishlistSelectionToolbar, createProps());
+		await screen.getByRole('button', { name: m.gift_selection_actions() }).click();
+		await expect
+			.element(screen.getByRole('dialog', { name: m.gift_selection_actions() }))
+			.toBeVisible();
+		const rows = Array.from(
+			screen
+				.getByTestId('selection-bulk-sheet-actions')
+				.element()
+				.querySelectorAll<HTMLButtonElement>('[data-mobile-bulk-action]'),
+		);
+		const row = (action: string) =>
+			rows.find((candidate) => candidate.dataset.mobileBulkAction === action)!;
+
+		expect(row('priority').querySelector('svg.lucide-star')).toBeTruthy();
+		expect(row('category').querySelector('svg.lucide-tag')).toBeTruthy();
+		const firstLabelLeft = rows[0]!.querySelector('strong')!.getBoundingClientRect().left;
+		for (const actionRow of rows) {
+			expectPixelsNear(
+				actionRow.querySelector('strong')!.getBoundingClientRect().left,
+				firstLabelLeft,
+			);
 		}
 		await screen.unmount();
 	});

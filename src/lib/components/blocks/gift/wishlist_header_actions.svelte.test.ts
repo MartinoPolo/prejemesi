@@ -3,10 +3,25 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 import { page } from 'vitest/browser';
 import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
+import { expectContentClearsOverlayClose } from '$lib/components/base/dialog/overlay_close_geometry.test_fixtures.js';
 import WishlistHeaderActions from './WishlistHeaderActions.svelte';
 import * as m from '$lib/paraglide/messages.js';
 
 const { expectPixelsNear, expectPixelsAtLeast } = createPixelAssertions(expect);
+
+function tokenColor(utilityClass: string): string {
+	const probe = document.createElement('span');
+	probe.className = utilityClass;
+	document.body.append(probe);
+	const color = getComputedStyle(probe).color;
+	probe.remove();
+	return color;
+}
+
+function actionSurfaceColor(action: Element): string {
+	return getComputedStyle(action.querySelector<HTMLElement>(':scope > .elevation-surface')!)
+		.color;
+}
 
 const callbacks = {
 	onshare: vi.fn(),
@@ -142,7 +157,10 @@ describe('WishlistHeaderActions', () => {
 				parseFloat(shellStyle.borderRightWidth),
 		);
 		expect(headerStyle.paddingLeft).toBe('16px');
-		expect(headerStyle.paddingRight).toBe('56px');
+		expectContentClearsOverlayClose(
+			header,
+			shell.querySelector<HTMLElement>('[data-slot="sheet-close"]')!,
+		);
 		expect(headerStyle.paddingTop).toBe('12px');
 		expect(headerStyle.paddingBottom).toBe('12px');
 		expectPixelsNear(parseFloat(headerStyle.borderBottomWidth), 1);
@@ -182,6 +200,11 @@ describe('WishlistHeaderActions', () => {
 		const danger = screen.getByTestId('wishlist-header-danger-actions').element();
 		expect(parseFloat(getComputedStyle(danger).borderTopWidth)).toBeGreaterThan(0);
 		expect(danger.querySelector('button')).toHaveTextContent(m.wishlist_archive_button());
+		// Sheet rows are menu actions, not secondary text: they share the desktop menu's ink.
+		expect(actionSurfaceColor(shareAction)).toBe(tokenColor('text-foreground'));
+		expect(actionSurfaceColor(danger.querySelector('button')!)).toBe(
+			tokenColor('text-destructive'),
+		);
 		await sheet.getByRole('button', { name: m.wishlist_share_button() }).click();
 		expect(callbacks.onshare).toHaveBeenCalledOnce();
 		await expect.element(sheet).not.toBeInTheDocument();

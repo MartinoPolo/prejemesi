@@ -1,11 +1,19 @@
 import { dev } from '$app/environment';
+import { error, redirect } from '@sveltejs/kit';
 import { env } from '$env/dynamic/private';
 import type { Handle, HandleServerError } from '@sveltejs/kit';
 import { sequence } from '@sveltejs/kit/hooks';
 import * as Sentry from '@sentry/sveltekit';
 import { paraglideMiddleware } from '$lib/paraglide/server';
 import { cookieName, getTextDirection, type Locale } from '$lib/paraglide/runtime';
-import { isDatabaseConfigured, rememberDatabaseBinding } from '$lib/server/db/index.js';
+import { getDb, isDatabaseConfigured, rememberDatabaseBinding } from '$lib/server/db/index.js';
+import { DEMO_CLEANUP_INTERVAL_MS, DEMO_COOKIE_NAME } from '$lib/server/demo/constants.js';
+import {
+	DEV_AUTO_LOGIN_OPT_OUT_COOKIE_NAME,
+	devAutoLoginOptOutChange,
+	getDevAutoLoginEmail,
+	signInForDevelopment,
+} from '$lib/server/dev_auto_login.js';
 import { SITE_URL, WWW_HOSTNAME } from '$lib/config/site.js';
 import { ROBOTS_NOINDEX_CONTENT, shouldNoindexPath } from '$lib/seo/robots.js';
 import { requestTelemetryHandle } from '$lib/server/request_telemetry.js';
@@ -222,6 +230,39 @@ function isHtmlDocumentRequest(event: Parameters<Handle>[0]['event']): boolean {
 }
 
 /**
+ * Decides which preferences need the authenticated user-row fallback. A demo always reads its
+ * persona's palette and depth from the database (the visitor's cookies belong to their real
+ * account) and keeps the visitor's current locale.
+ */
+function preferenceFallbacksFor(
+	event: Parameters<Handle>[0]['event'],
+	cookiePalette: string | undefined,
+	cookieDepthStyle: string | undefined,
+): { wantsLocale: boolean; wantsPalette: boolean; wantsDepthStyle: boolean } {
+	if (event.locals.demoSession !== undefined) {
+		return { wantsLocale: false, wantsPalette: true, wantsDepthStyle: true };
+	}
+	return {
+		wantsLocale: !hasExplicitUrlLocale(event.url) && event.url.pathname !== '/',
+		wantsPalette: !isPalette(cookiePalette),
+		wantsDepthStyle: !isDepthStyle(cookieDepthStyle),
+	};
+}
+
+/** The cookie mirror must keep reflecting the visitor's real account, never a demo persona. */
+function mirrorDepthStyleCookie(event: Parameters<Handle>[0]['event'], depthStyle: DepthStyle) {
+	if (event.locals.demoSession !== undefined) {
+		return;
+	}
+	event.cookies.set(DEPTH_STYLE_COOKIE_NAME, depthStyle, {
+		path: '/',
+		maxAge: DEPTH_STYLE_COOKIE_MAX_AGE_SECONDS,
+		httpOnly: false,
+		sameSite: 'lax',
+	});
+}
+
+/**
  * Resolves the viewer's locale, app palette, and depth style for HTML document
  * loads only. Locale starts from the request cookie and an authenticated account
  * preference can override it; palette and depth use their cookie mirrors as fast
@@ -248,9 +289,11 @@ const userPreferencesHandle: Handle = async ({ event, resolve }) => {
 	}
 
 	if (event.locals.user != null && isDatabaseConfigured(event) && isHtmlDocumentRequest(event)) {
-		const wantsLocale = !hasExplicitUrlLocale(event.url) && event.url.pathname !== '/';
-		const wantsPalette = !isPalette(cookiePalette);
-		const wantsDepthStyle = !isDepthStyle(cookieDepthStyle);
+		const { wantsLocale, wantsPalette, wantsDepthStyle } = preferenceFallbacksFor(
+			event,
+			cookiePalette,
+			cookieDepthStyle,
+		);
 
 		if (wantsLocale || wantsPalette || wantsDepthStyle) {
 			try {
@@ -280,12 +323,7 @@ const userPreferencesHandle: Handle = async ({ event, resolve }) => {
 				}
 				if (wantsDepthStyle && isDepthStyle(preferences?.depthStyle)) {
 					depthStyle = preferences.depthStyle;
-					event.cookies.set(DEPTH_STYLE_COOKIE_NAME, depthStyle, {
-						path: '/',
-						maxAge: DEPTH_STYLE_COOKIE_MAX_AGE_SECONDS,
-						httpOnly: false,
-						sameSite: 'lax',
-					});
+					mirrorDepthStyleCookie(event, depthStyle);
 				}
 			} catch (err) {
 				console.error('[userPreferencesHandle] failed to read user preferences', err);
@@ -299,6 +337,59 @@ const userPreferencesHandle: Handle = async ({ event, resolve }) => {
 	});
 };
 
+/** Returns the configured development account when this request should sign it in. */
+function devAutoLoginEmailToAttempt(
+	event: Parameters<Handle>[0]['event'],
+	devAutoLoginEmail: string | undefined,
+): string | undefined {
+	const attemptsDevAutoLogin =
+		devAutoLoginEmail !== undefined &&
+		isHtmlDocumentRequest(event) &&
+		(event.cookies.get(DEV_AUTO_LOGIN_OPT_OUT_COOKIE_NAME) ?? '') === '' &&
+		(event.cookies.get(DEMO_COOKIE_NAME) ?? '') === '';
+	return attemptsDevAutoLogin ? devAutoLoginEmail : undefined;
+}
+
+function canSkipAuthentication(
+	event: Parameters<Handle>[0]['event'],
+	attemptsDevAutoLogin: boolean,
+): boolean {
+	return (
+		(event.request.method === 'GET' || event.request.method === 'HEAD') &&
+		!event.isRemoteRequest &&
+		!attemptsDevAutoLogin &&
+		!hasBetterAuthSessionCookie(event.request.headers) &&
+		(isPublicWishlistPath(event.url.pathname) ||
+			(!event.isDataRequest && LANDING_PATHS.has(event.url.pathname)))
+	);
+}
+
+function authResponseCookies(
+	event: Parameters<Handle>[0]['event'],
+	staleDemoCookie: boolean,
+	devAutoLoginEmail: string | undefined,
+): string[] {
+	const appendedCookies: string[] = [];
+	if (staleDemoCookie) {
+		appendedCookies.push(
+			event.cookies.serialize(DEMO_COOKIE_NAME, '', { path: '/', maxAge: 0 }),
+		);
+	}
+	const optOutChange =
+		devAutoLoginEmail === undefined ? undefined : devAutoLoginOptOutChange(event.url.pathname);
+	if (optOutChange !== undefined) {
+		appendedCookies.push(
+			event.cookies.serialize(DEV_AUTO_LOGIN_OPT_OUT_COOKIE_NAME, optOutChange.value, {
+				path: '/',
+				httpOnly: true,
+				sameSite: 'lax',
+				maxAge: optOutChange.maxAge,
+			}),
+		);
+	}
+	return appendedCookies;
+}
+
 const authHandle: Handle = async ({ event, resolve }) => {
 	rememberDatabaseBinding(event);
 
@@ -306,17 +397,15 @@ const authHandle: Handle = async ({ event, resolve }) => {
 		return resolve(event);
 	}
 
-	if (
-		(event.request.method === 'GET' || event.request.method === 'HEAD') &&
-		!event.isRemoteRequest &&
-		!hasBetterAuthSessionCookie(event.request.headers) &&
-		(isPublicWishlistPath(event.url.pathname) ||
-			(!event.isDataRequest && LANDING_PATHS.has(event.url.pathname)))
-	) {
+	const staleDemoCookie = await rejectLiveDemoAuthentication(event);
+	const devAutoLoginEmail = getDevAutoLoginEmail();
+	const autoLoginEmail = devAutoLoginEmailToAttempt(event, devAutoLoginEmail);
+
+	if (canSkipAuthentication(event, autoLoginEmail !== undefined)) {
 		return resolve(event);
 	}
 
-	const { createAuth } = await import('$lib/server/auth.js');
+	const { createAuth, isReservedDemoEmail } = await import('$lib/server/auth.js');
 	const { svelteKitHandler } = await import('better-auth/svelte-kit');
 	const { building } = await import('$app/environment');
 	const auth = createAuth(event);
@@ -324,11 +413,100 @@ const authHandle: Handle = async ({ event, resolve }) => {
 	const sessionData = await auth.api.getSession({ headers: event.request.headers });
 
 	if (sessionData) {
-		event.locals.session = sessionData.session;
-		event.locals.user = sessionData.user;
+		if (!isReservedDemoEmail(sessionData.user.email)) {
+			event.locals.session = sessionData.session;
+			event.locals.user = sessionData.user;
+		}
+	} else if (
+		autoLoginEmail !== undefined &&
+		(await signInForDevelopment(auth, autoLoginEmail, event.request.headers))
+	) {
+		redirect(303, event.url.pathname + event.url.search);
 	}
 
-	return svelteKitHandler({ event, resolve, auth, building });
+	const response = await svelteKitHandler({ event, resolve, auth, building });
+	return withAppendedCookies(
+		response,
+		authResponseCookies(event, staleDemoCookie, devAutoLoginEmail),
+	);
+};
+
+/** Returns whether the demo cookie is stale and must be deleted from the auth response. */
+async function rejectLiveDemoAuthentication(
+	event: Parameters<Handle>[0]['event'],
+): Promise<boolean> {
+	const demoToken = event.cookies.get(DEMO_COOKIE_NAME);
+	if (
+		!event.url.pathname.startsWith('/api/auth/') ||
+		demoToken === undefined ||
+		demoToken === ''
+	) {
+		return false;
+	}
+	const { findDemoSession } = await import('$lib/server/demo/session.js');
+	if (await findDemoSession(demoToken)) {
+		error(403, 'Leave the demo before signing in');
+	}
+	return true;
+}
+
+/** Auth API responses bypass SvelteKit's resolve, so `event.cookies` changes would not reach them. */
+function withAppendedCookies(response: Response, serializedCookies: readonly string[]) {
+	if (serializedCookies.length === 0) {
+		return response;
+	}
+	const headers = new Headers(response.headers);
+	for (const serializedCookie of serializedCookies) {
+		headers.append('set-cookie', serializedCookie);
+	}
+	return new Response(response.body, {
+		status: response.status,
+		statusText: response.statusText,
+		headers,
+	});
+}
+
+let nextDemoCleanupAt = 0;
+
+async function cleanDemosOnDocumentRequest(event: Parameters<Handle>[0]['event']) {
+	if (!isHtmlDocumentRequest(event) || !isDatabaseConfigured(event)) {
+		return;
+	}
+	const now = Date.now();
+	if (now < nextDemoCleanupAt) {
+		return;
+	}
+	// Claim the interval before awaiting: concurrent documents must not launch concurrent sweeps.
+	nextDemoCleanupAt = now + DEMO_CLEANUP_INTERVAL_MS;
+	// Captured before demoHandle can install this request's demo transaction on the event.
+	const database = getDb(event);
+	const cleanup = import('$lib/server/demo/session.js')
+		.then(({ cleanExpiredDemos }) => cleanExpiredDemos(database))
+		.catch((failure: unknown) => {
+			console.error('[demoHandle] expired demo cleanup failed', failure);
+		});
+	if (event.platform?.ctx) {
+		event.platform.ctx.waitUntil(cleanup);
+		return;
+	}
+	await cleanup;
+}
+
+export const demoHandle: Handle = async ({ event, resolve }) => {
+	await cleanDemosOnDocumentRequest(event);
+	const token = event.cookies.get(DEMO_COOKIE_NAME);
+	const requestedPath = new URL(event.request.url).pathname;
+	if (
+		token === undefined ||
+		token === '' ||
+		(!event.isRemoteRequest &&
+			(requestedPath.startsWith('/demo/v1/') ||
+				requestedPath.startsWith('/demo/playground/')))
+	) {
+		return resolve(event);
+	}
+	const { handleDemoRequest } = await import('$lib/server/demo/request.js');
+	return handleDemoRequest(event, resolve, token);
 };
 
 const handles: Handle[] = [
@@ -339,6 +517,7 @@ const handles: Handle[] = [
 	canonicalHostHandle,
 	botProbeHandle,
 	authHandle,
+	demoHandle,
 	userPreferencesHandle,
 	paraglideHandle,
 ];

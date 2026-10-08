@@ -78,8 +78,8 @@ sections for UI work. Historical reconciliation and review notes are in
   consent to expose account identities.
 - 2026-08-12: Privileged single-reservation release retains issue #213 authorization: správci
   release guest reservations only, administrators can release any reservation, and recipients get
-  neither override. Put release in the gift editor/detail, not routine card/list/compact browsing;
-  an admin’s read-only detail remains an entry point.
+  neither override. Release lives in the gift editor and the Gift viewer; administrators also get it
+  in the gift More menu, never as a visible routine browse action.
 - 2026-09-12: Explicit recipient self-promotion reveals reservation state and reservation/like
   counts, not gifter identities; the actor remains a recipient and cannot reserve, like, or use
   admin overrides on that list. Notify visitors and retain a permanent trust banner, including on
@@ -151,6 +151,48 @@ sections for UI work. Historical reconciliation and review notes are in
   sessions, and shared verification storage; former magic-link users establish a password through
   reset.
 
+## Public demo playground
+
+- 2026-09-25: Offer a private, editable playground per visitor, not a shared demo account. Start on
+  Přehled as one fictional person with own, managed, and followed wishlists, without a persona
+  switcher; retain normal server-enforced roles and recipient surprise protection.
+- 2026-09-25: Curate eight initial wishlists with fifteen gifts each: three own, two managed, and
+  three followed, covering ongoing, birthday, and Christmas scenarios plus one draft and one
+  archived wishlist. Favor available gifts with a few plausible reservations and received gifts;
+  archive applies to wishlists, not gifts. These are starting-content targets, not constraints on
+  visitor edits. Reuse useful development scenarios, not sparse or artificial test fixtures
+  wholesale.
+- 2026-09-25: Use fictional Czech people and a curated Czech/English gift catalog with reviewed
+  images, natural short descriptions, plausible CZK estimates, relevant product links, categories,
+  and priorities, mostly medium. Select catalog language at playground creation; subsequent locale
+  switches translate the interface without rewriting sample content or edits. Reset can load the
+  other catalog language.
+- 2026-09-25: Add secondary “Vyzkoušet demo” / “Try demo” entry beside landing registration and
+  below the existing interactive example, which remains. Enter in one click; retain a persistent
+  demo notice with expiry information, Reset, Exit, and registration access. Approval of
+  `designs/demo-playground/` covers the strip and lifecycle interactions only; reuse existing
+  Button, Dialog, and Select components and canonical design tokens. Its simplified surrounding
+  cards, navigation, and landing artwork are not approved replacements for the actual app.
+- 2026-09-25: Allow ordinary wishlist/gift editing, creation, reservations, received state,
+  archiving, and appearance changes inside the playground. Disable uploads, imports, external
+  enrichment, and account-security changes with explanations; prepared images and ordinary product
+  links remain usable. Demo actions must not send real emails, issue usable public sharing or
+  invitation links, or interact with real accounts/data.
+- 2026-09-25: Preserve demo changes until fixed expiry twenty-four hours after creation, not sliding
+  inactivity expiry. Confirm Reset before restoring curated content; an expired visit offers a fresh
+  playground rather than a broken page. Demo data is temporary and requires cleanup.
+- 2026-09-25: Keep demo and real sessions separate without replacing an existing sign-in. Exit
+  returns signed-in users to their real dashboard and anonymous visitors to the landing page.
+  Registration starts a clean real account with explicit notice that fictional data and demo edits
+  do not transfer.
+- 2026-10-02: Bound public demo cost on the free tier with per-client creation throttling, a global
+  live-session cap, per-session edit/reset budgets that count failed requests, and per-session
+  wishlist/gift caps; values live in `src/lib/server/demo/constants.ts`. Expired sessions are swept
+  opportunistically from document traffic, off the response path.
+- 2026-10-02: The demo cookie outlives the session so a returning visitor sees the fresh-start page;
+  a stale cookie never blocks sign-in, registration, shared wishlist links, or other real routes,
+  while a live demo must be exited before signing in.
+
 ## Navigation & overview
 
 - 2026-05-30: Desktop uses a top navbar, not a persistent sidebar; mobile uses a drawer. The three
@@ -183,8 +225,8 @@ sections for UI work. Historical reconciliation and review notes are in
   alongside priority, price, name, and creation date with primary/secondary criteria.
 - 2026-05-30: Source links are immediately accessible in every gift view as an external-link
   affordance and readable label/domain, not hidden in detail; no-link gifts show muted “Bez odkazu”.
-  Multiple links stay with the gift content, and quantity is beside the title; only authorized
-  viewers see the reserved portion.
+  Multiple links stay with the gift content; only authorized viewers see the reserved portion of a
+  quantity.
 - 2026-07-10: The wishlist header is a spiral notebook with a taped, square polaroid and a desktop
   sticky-note countdown; narrow layouts use a countdown chip, no date hides it, and passed dates
   show “proběhlo”. Do not stack a separate full-bleed hero above it.
@@ -204,12 +246,12 @@ sections for UI work. Historical reconciliation and review notes are in
   heading; správci keep the own-reservation pin but do not sink other reservations. Recipient-only
   ordering never depends on reservation state; selected sorting applies inside each band, with
   received gifts final.
-- 2026-08-07: Card and list reserved overlays share the full-text “Rezervováno” sticker, crisp above
-  the faded image; správci additionally see names. Do not replace that signal with an ambiguous
-  check-only icon.
+- 2026-08-07: Card and list reservation states use full-text state badges, crisp above the faded
+  image; správci read a single reserver name inside the same badge. Do not replace that signal with
+  an ambiguous check-only icon.
 - 2026-08-12: Received/unreceived is the primary manager browse action; marking received keeps the
   gift visible by enabling the received filter. Fully reserved gifts do not need a redundant
-  disabled reserve button; privileged release belongs in detail/editor.
+  disabled reserve button.
 - 2026-08-13: View mode is global per device; sorting and mutually exclusive grouping (`none`,
   `priority`, `category`) persist per wishlist per device; filters reset each visit. Grouping is a
   visible display control, not a filter.
@@ -243,38 +285,26 @@ sections for UI work. Historical reconciliation and review notes are in
 - 2026-09-12: Keep active mobile filter pills inside the Display sheet with Reset next to its Filter
   selector, not in another sticky toolbar row. The closed toolbar may show the count; this resolves
   the September 10 request for visible active filters without increasing sticky height.
-- 2026-09-14: Image-bearing Card/List views share eligible category, priority, received/reserved,
-  and authorized reservation-identity overlays across desktop/mobile, including image placeholders;
-  assigned categories go top-left and reservation identity stays with its state overlay, not
-  duplicated in the content column. Authorized viewers may see a single reserver's name; multiple
-  reservers use a localized generic summary instead of listing names. Preserve server-derived
-  privacy capabilities and keep Compact image-free. Validate crowded valid states in focused mockups
-  before implementation.
-- 2026-09-14: Keep applicable gift quantity outside the title clamp, aligned against the first title
-  line using typography-derived slots. Grid Like uses the image/card top-right with a separate
-  wrapping category lane; List Like stays beside the title. Preserve the ghost heart/count and
-  accessible targets.
-- 2026-09-14: Center gift state badges and authorized identity as one combined group on the image; a
-  lone state remains at its center, independent of edge badges. Category stays top-left and priority
-  bottom-left, as finalized in the gift-hierarchy design approval. Its badge styling is schematic
-  and must not replace the actual shared badge components.
+- 2026-09-14: Image-bearing Card/List views share eligible category, priority, received/reserved
+  state badges across desktop/mobile, including image placeholders; assigned categories go top-left
+  and an authorized reserver name stays inside its state badge, not duplicated in the content
+  column. Preserve server-derived privacy capabilities and keep Compact image-free. Validate crowded
+  valid states in focused mockups before implementation.
+- 2026-09-14: Center gift state badges, including any authorized reserver name, as one group on the
+  image; a lone state remains at its center, independent of edge badges. Category stays top-left and
+  priority bottom-left, as finalized in the gift-hierarchy design approval. Its badge styling is
+  schematic and must not replace the actual shared badge components.
 - 2026-09-14: Gift-hierarchy mockups are approved except for their broken mobile List composition;
   agents must not copy its grid-like stacking or prototype dimension script. Preserve genuine mobile
   List rows and shared crop geometry, retaining only necessary existing accessibility fallbacks for
   constrained/enlarged content. Verify the real mobile layout during implementation; this exclusion
   does not retain the design gate on #377.
-- 2026-09-14: Keep manual reordering discoverable for eligible Card/List managers and recipients
-  even with grouping active. Enter from the latest saved active/non-received order, temporarily
-  bypass grouping/sorting/filters, explain the temporary view, and restore those browsing choices on
-  Done without overwriting preferences or category/priority assignments. Grid/List switching stays
-  available. Retain the top-left grip's small visible surface inside its larger hit target; approved
-  mockups are not evidence that persistence, dragging, or positioning defects are fixed.
 
-- 2026-09-15: List and mobile Card content follow title → description → link badges and price →
+- 2026-09-15: List and mobile Card content follow title → description → source links and price →
   bottom-right actions. Titles and descriptions flow together without reserving a blank second title
   line; mobile Card titles allow two lines, desktop List one line with ellipsis, and mobile List two
   lines. Use 16 px mobile and 24 px desktop titles with full names available in detail and
-  accessible naming. Keep short descriptions immediately below titles and source badges visible on
+  accessible naming. Keep short descriptions immediately below titles and source links visible on
   mobile. Place links left and compact prices right, wrapping prices below on collision; keep prices
   in readable ink rather than red action colors.
 - 2026-09-16: Desktop Card content aligns across the displayed collection, not only within each grid
@@ -284,14 +314,14 @@ sections for UI work. Historical reconciliation and review notes are in
   consistent across rows. Preserve existing colors and badges; validate the layout in an interactive
   mockup before production implementation.
 - 2026-09-16: Desktop Card secondary actions may move into More while primary actions and relevant
-  Received/Bought controls stay visible, subject to existing capabilities. Price must have a stable
+  Received controls stay visible, subject to existing capabilities. Price must have a stable
   position independent of link count; flowing it horizontally after source links is rejected. Put
-  price in the content directly below link badges on its own left-aligned line, above right-aligned
-  actions, so its width cannot push buttons around. Content and actions share horizontal card
-  insets; image-corner overlays retain their geometry-specific positions. Omit the action separator.
-  Shared card height must shrink to the minimum justified by current content after option changes,
-  never retain space from previous measurements. Role-specific overflow mappings remain illustrated
-  in `designs/gift-desktop-alignment/DESIGN_BRIEF_GIFT_DESKTOP_ALIGNMENT.md`.
+  price in the content directly below source links on its own left-aligned line, above right-aligned
+  actions, so its width cannot push buttons around. Image-corner overlays retain their
+  geometry-specific positions. Omit the action separator. Shared card height must shrink to the
+  minimum justified by current content after option changes, never retain space from previous
+  measurements. Role-specific overflow mappings remain illustrated in
+  `designs/gift-desktop-alignment/DESIGN_BRIEF_GIFT_DESKTOP_ALIGNMENT.md`.
 - 2026-09-16: Mobile Card and List titles and descriptions show at most two lines, with full text
   accessible in detail. Mobile action lanes never wrap: move eligible secondary actions into More
   when buttons cannot fit, restoring them when space returns. Keep Reserve visible ahead of Received
@@ -308,11 +338,57 @@ sections for UI work. Historical reconciliation and review notes are in
   frames; tall content or overlays may make individual frames portrait without equalizing rows
   across gifts or groups. Desktop text stays one-line.
 - 2026-09-24: Unavailable image-bearing gifts use the approved 50% content/secondary-badge treatment
-  with softened borders, shadows and image/body separators; action controls and state/authorized
-  identity overlays stay crisp. Replace the image veil rather than stacking fades, preserve existing
-  dimming eligibility/privacy and image-free Compact, and keep separators visible in both states.
-  The approved visual reference and implementation handoff are in
+  with softened borders, shadows and image/body separators; action controls and state badges stay
+  crisp. Replace the image veil rather than stacking fades, preserve existing dimming
+  eligibility/privacy and image-free Compact, and keep separators visible in both states. The
+  approved visual reference and implementation handoff are in
   `designs/unavailable-gift-comparison/`; design approval is not an accessibility certification.
+- 2026-10-01: Desktop Card content uses a wider inset than its footer, with equal title top and
+  start padding; desktop List, mobile, and footers keep the nested-corner inset. Received stays
+  adjacent to Reserve/Cancel and More (#420).
+- 2026-10-02: Keep applicable gift quantity outside the title clamp. Card and `sm`+ List align it
+  against the first title line using typography-derived slots; below `sm`, List shows it after the
+  price so narrow titles keep their room. Grid Like uses the image/card top-right with a separate
+  wrapping category lane; List Like stays beside the title. Preserve the ghost heart/count and
+  accessible targets.
+- 2026-10-05: Where reserver names are visible, a state badge names the other reserver
+  (“Rezervoval(a) {name}”) only when exactly one person holds the gift and it is not the viewer. Any
+  other combination, including the viewer's own reservation plus one other, reads “Rezervováno více
+  lidmi”, because reserver names do not identify which one is the viewer (#442).
+- 2026-10-05: Bought (“Koupeno”) is a footer action for a signed-in viewer's own reservation, never
+  an image state badge, and is hidden on archived lists. For správci who also reserved, it sits
+  beside Received and is the first action to overflow into More (#442).
+- 2026-10-06: Manual order is one global `sortOrder`; grouped order is always derived from it, never
+  stored per group. Reorder mode, discoverable for eligible Card/List managers and recipients,
+  starts from the saved active/non-received order, bypasses sort/filters, restores browsing choices
+  on Done, keeps Grid/List switching and the small grip inside its larger hit target. It keeps
+  active priority or category grouping, showing every level/enabled category plus “Bez …” as drop
+  zones. In-group moves permute the group's existing global slots; cross-group drag or keyboard
+  moves insert before the new next neighbour (else after the previous one; a gift dropped into an
+  empty group keeps its global position) and change priority/category through the post-share edit
+  path, atomically with the order, offering a Vrátit toast. Only the dragged card shows the live
+  grouping badge (#454).
+- 2026-10-06: Card press belongs to presses that start on card content; inner controls and open
+  action surfaces never press the card, and an open desktop dropdown keeps the card lifted (#450).
+- 2026-10-06: Card view offers Automatic/4/5 columns per device (desktop from `sm`, not part of
+  Reset display). Counts are offered only when cards keep 13.5rem, the measured width for the widest
+  primary action, More and depth clearance; otherwise fall back to the largest count that fits
+  (#451). A chosen count widens the whole page, navbar included, so cards keep the Automatic
+  default-width card size until the viewport caps it (`--content-max-width` in `src/app.css`).
+- 2026-10-07: Opening a gift without edit rights always shows the Gift viewer (#440): photo first,
+  then a caption with the full title, price and quantity, all links, full description with appends
+  and the edited-after-share line; priority and category stay on the card. It never dims the photo.
+  On desktop the photo column takes the photo's width at the height cap, so only vertical letterbox
+  remains. State badges sit in the dialog's bottom-left on desktop and between links and description
+  on mobile or without a photo, never in the footer. The footer holds only Like and applicable
+  actions on card geometry. Reference: `designs/gift-viewer/refined.html`.
+- 2026-10-08: Reorder drag targets follow the dragged card's center, not the pointer grab point, so
+  neighbours shift at the same threshold in every direction. Grouped drags pick the closest rendered
+  slot (a gift or an empty group's drop zone); entering another group lands before or after that
+  gift by reading order, with no virtual trailing slot. Dragging near the edge of the scrolling
+  content area auto-scrolls. In reorder mode cards never lift on hover; the grip (md control on
+  desktop) lifts only on its own hover, and empty categories sit after every populated group,
+  including “Bez kategorie”, while priority levels keep their order.
 
 ## Forms & settings
 
@@ -329,7 +405,7 @@ sections for UI work. Historical reconciliation and review notes are in
   required, trimmed recipient name, capped at 100 characters and autofocused. Explain manager
   reservation visibility, do not autofill the title, and do not request recipient email/account
   linking. Avoid obsolete copy claiming no later reassignment is possible.
-- 2026-07-18: Gift edit/detail dialogs are wide with balanced image/form columns; the footer stays
+- 2026-07-18: Gift editor dialogs are wide with balanced image/form columns; the footer stays
   outside scrolling. The editor mode selector belongs above the image stage, source inputs remain
   with fields, and link rows label “Viditelný popisek” without a redundant “Hlavní” badge.
 - 2026-09-01: Wishlist Details, Categories, Appearance, and Image/Crops share one staged draft and a
@@ -374,8 +450,7 @@ sections for UI work. Historical reconciliation and review notes are in
   styling.
 - 2026-07-10: Primary buttons are flat `--brand-fill` stickers with ink border, hard shadow, and
   white text, not gradients/glow. Tape belongs only on paper artifacts. Gift image mats may pan on
-  hover but remain static for reserved/received gifts; the large detail-dialog Like sticker is a
-  specialized action, distinct from the later ghost-heart browse overlay.
+  hover but remain static for reserved/received gifts.
 - 2026-07-10: Headings use self-hosted DynaPuff and body text Geist, with Czech glyph coverage and
   metric-adjusted fallbacks. Light mode is the design source of truth; derive dark mode through
   tokens rather than independent mockups.
@@ -419,12 +494,11 @@ sections for UI work. Historical reconciliation and review notes are in
   triggers share contextual height, radius, and icon sizing; selection controls use button-sized
   visible surfaces. Preserve semantic primary/outline/ghost emphasis rather than forcing identical
   intent on neighboring controls.
-- 2026-09-14: Equivalent adjacent-action groups use an 8 px gap on desktop and mobile; section
-  spacing remains distinct. Align header brand/avatar outer visible edges, shell, hero, toolbar, and
-  gift surfaces to the wishlist content container's centered max-width and 12 px mobile / 16 px
-  desktop gutters, not internal notebook/form padding or shadow extents. Keep shadow depth
-  consistent for the viewport/preference, allow additional clearance only where shadows require it,
-  and separate accessible hit areas from visible geometry; nested corners follow `AGENTS.md`.
+- 2026-09-14: Align header brand/avatar outer visible edges, shell, hero, toolbar, and gift surfaces
+  to the wishlist content container's centered max-width and 12 px mobile / 16 px desktop gutters,
+  not internal notebook/form padding or shadow extents. Keep shadow depth consistent for the
+  viewport/preference, allow additional clearance only where shadows require it, and separate
+  accessible hit areas from visible geometry; nested corners follow `AGENTS.md`.
 - 2026-09-14: Shared sizing variants own icon dimensions and consistent parent padding/insets,
   corner geometry, and shadow treatment; audit app-wide usage rather than patching individual call
   sites. Reuse shared components instead of new raw controls or one-off styling. Maintain a
@@ -440,11 +514,6 @@ sections for UI work. Historical reconciliation and review notes are in
   identities. Use `brand` for colored text/icons on dark surfaces and reserve `primary` with
   `primary-foreground` for filled controls. Tune the shared CSS derivation directly in the app
   before adding choices.
-- 2026-09-16: Use full resting-shadow allowance for gift action-container bottom/right nesting and
-  wishlist toolbar clearance across soft, ink and black depth modes. Top/left nesting remains
-  face-relative; use rendered borders and shared radius/offset tokens. Keep semantic interaction
-  owners stationary and toolbar faces aligned, with no hover-driven padding or control-height
-  changes. This does not adopt the experiment's mobile Like relocation or wrapped action lanes.
 - 2026-09-21: The gift view switcher uses a scoped connected accent backing with one ordinary
   resting shadow and a Button face only on the selected segment. Keep the switcher static on hover
   and press; preserve default segmented-toggle presentation for other consumers.
@@ -459,6 +528,21 @@ sections for UI work. Historical reconciliation and review notes are in
   duration cap. Preserve reduced-motion handling, existing view-switch effects and hover behavior;
   active dragging follows the pointer without a speed limit. Interrupted runs must hand off from
   their current visual positions without leaking overlays or stealing focus.
+- 2026-10-06: Spacing beside elevated elements is a standard gap plus a depth clearance for Ink and
+  Black (none for Soft), judged by shadows staying clear of neighbors, not an exact offset. Adjacent
+  elevated controls use `--nested-control-gap`, dense header actions `--compact-control-gap` (both
+  `src/app.css`); container insets add clearance on shadowed edges only; spacing never changes on
+  hover. Floating layers add clearance only for shadowed triggers; hover-opened layers keep the
+  trigger-to-layer gap pointer-safe.
+- 2026-10-06: Depth options preview their own shadow; selection uses primary fill, never shadow
+  (#449).
+- 2026-10-06: Rows running under an overlay close button reserve `--overlay-close-clearance`
+  (`src/app.css`) at their end (#453).
+- 2026-10-07: Segmented controls and tabs keep their resting look and slide the selected face to the
+  new option; the slide is the only press feedback, so no hover lift (settings-tab track clipping
+  also rules it out) and no press scale. Segmented trays hug their options rather than stretching to
+  the container. Switching between login and registration skips the auth card's entrance pop-in,
+  which would hide the tab slide; fresh loads still pop in (#455).
 
 ## Images & cropping
 
@@ -493,8 +577,8 @@ sections for UI work. Historical reconciliation and review notes are in
   one or wheel-zooming a plain preview enters Manual. The adaptive stage contains the whole source
   photo with the active target window overlaid and overhang dimmed, not clipped; reuse its geometry
   for honest Fill/Fit previews instead of a parallel preview renderer.
-- 2026-07-18: Visitor gift detail shows the uncropped photo at its natural aspect inside a height
-  cap, not another crop target. Measuring an untouched legacy `auto` image may correct its presented
+- 2026-07-18: The Gift viewer shows the uncropped photo at its natural aspect inside a height cap,
+  not another crop target. Measuring an untouched legacy `auto` image may correct its presented
   Fill/Fit selection, but must neither dirty the form nor change persisted `auto` on save.
 - 2026-08-26: Image-frame fill is separate from palette identity: offer white, black, or
   transparent/dotted mat for letterboxing, with the dotted/transparent choice as default. Do not
@@ -546,6 +630,10 @@ sections for UI work. Historical reconciliation and review notes are in
 - 2026-09-01: Gift mutations also refresh affected category-usage metadata in the same response; the
   older “gift-list query only” invalidation rule must not leave category-removal confirmations using
   stale assignments.
+- 2026-10-02: Code must not depend on JavaScript built-ins newer than ES2022: production visitors
+  use browsers without them, and Vite never polyfills APIs. `tsconfig.json` restricts `lib` to
+  ES2022 for all code, making typecheck the guard; feature-detect newer APIs with a fallback rather
+  than adding polyfills or widening `lib`.
 
 ## Import, enrichment & production automation
 
@@ -564,11 +652,10 @@ sections for UI work. Historical reconciliation and review notes are in
   manual batch entry do not depend on enrichment shipping. Linkless name search is deferred and must
   show candidates for confirmation; blank names stay blank with clickable links, never guessed from
   domains.
-- 2026-08-09: The versioned gift-ingestion machine API is a fixed-actor, fixed-wishlist, add-only
-  exception using a dedicated bearer token and shared transactional gift creation. Default to
-  side-effect-free dry-run; durable run/item records provide audit and idempotency. No arbitrary
-  destination, browser-cookie auth, general CRUD, SQL, environment selection, or infrastructure
-  credentials in input.
+- 2026-08-09: The versioned gift-ingestion machine API is a fixed-actor, add-only exception using a
+  dedicated bearer token and shared transactional gift creation. Default to side-effect-free
+  dry-run; durable run/item records provide audit and idempotency. No browser-cookie auth, general
+  CRUD, SQL, environment selection, or infrastructure credentials in input.
 - 2026-08-10: Ingestion prepares validated manifest/item/hash-bound uploads through short-lived
   exact-key/type/length presigned PUTs; the CLI checks HTTPS, DNS, every redirect, byte signatures,
   MIME, dimensions, and the gift-size limit before upload. Apply verifies R2 metadata and treats
@@ -577,6 +664,15 @@ sections for UI work. Historical reconciliation and review notes are in
 - 2026-08-10: Follow `.agents/skills/add-gifts/SKILL.md` for evidence-ordered product extraction
   (JSON-LD, then page metadata, then exact brand/model search), no guessing or credential handling,
   mandatory dry-run, and apply only after an explicit unambiguous production request.
+- 2026-10-08: Ingestion targets are an explicit allowlist (`GIFT_INGESTION_TARGET_SHORT_IDS`), not
+  every wishlist the actor manages, so a leaked token reaches only listed wishlists. Outsiders get
+  `target_not_allowed`; the add-gifts skill then asks the user, who alone authorizes a wishlist. The
+  list is a GitHub `production` environment variable passed to `wrangler deploy`, since Wrangler
+  cannot set plain-text Worker variables without deploying and a secret would hide the list.
+- 2026-10-08: Ingested gift prices come from exact-match references: Heureka and Alza for Czech
+  physical goods, the category's store (e.g. Steam for PC games) otherwise, plus a foreign reference
+  when sold abroad. Cloudflare-protected retailers are read through a visible browser
+  (`scripts/gift-research-browser.mjs`) where the user can complete a verification if one persists.
 
 ## Repository checks & operations
 
@@ -594,3 +690,6 @@ sections for UI work. Historical reconciliation and review notes are in
   Cache repository-wide Prettier and ESLint locally. MPX gates focused local checks and builds, with
   risk-based focused E2E for affected behavior; CI gates full E2E and Vitest before merge. Compile
   Paraglide on a fresh checkout or catalog change.
+- 2026-10-02: Sentry error events keep the browser `User-Agent` as their only request header so
+  browser-compatibility errors can be attributed; the full data-collection policy lives in
+  `docs/PRODUCTION_OPERATIONS.md#sentry`.

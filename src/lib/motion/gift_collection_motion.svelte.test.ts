@@ -192,6 +192,23 @@ describe('collection-owned gift identity motion', () => {
 		).toBe(false);
 	});
 
+	it('settles reorder drag slot changes and scroll ends without cloning gifts', async () => {
+		const { host, coordinator, animations } = setup();
+		const position = { x: 10, y: 10 };
+		const source = gift(host, 'dragged', { x: 10, y: 200 });
+		const neighbour = gift(host, 'neighbour', position);
+		coordinator.afterUpdate();
+		source.dataset.giftMotionDragging = '';
+		const cloneSpy = vi.spyOn(neighbour, 'cloneNode');
+		coordinator.beforeUpdate();
+		position.y = 110;
+		coordinator.afterUpdate();
+		await vi.waitFor(() => expect(animations).toHaveLength(1));
+		document.dispatchEvent(new Event('scrollend'));
+		expect(animations[0]?.element).toBe(neighbour);
+		expect(cloneSpy).not.toHaveBeenCalled();
+	});
+
 	it('keeps native WAAPI travel running through class changes, child mutations and initial resize callbacks', async () => {
 		const host = document.createElement('div');
 		const item = document.createElement('div');

@@ -4,48 +4,27 @@
 	import GiftLinkList from '$lib/components/blocks/gift/GiftLinkList.svelte';
 	import GiftStateOverlay from '$lib/components/blocks/gift/GiftStateOverlay.svelte';
 	import LikeButton from '$lib/components/blocks/gift/LikeButton.svelte';
-	import ReserveButton from '$lib/components/blocks/reservation/ReserveButton.svelte';
-	import PurchasedToggle from '$lib/components/blocks/reservation/PurchasedToggle.svelte';
-	import GiftReceivedToggle from './GiftReceivedToggle.svelte';
-	import type { GiftForVisitor, GiftByRole } from '$lib/modules/gifts/types.js';
-	import type { WishlistRole } from '$lib/modules/wishlists/types.js';
-	import { formatPrice, formatReserverLine } from '$lib/modules/gifts/gift_display.js';
-	import { deriveGiftDisplayState } from '$lib/modules/gifts/gift_display_state.js';
+	import { formatPrice } from '$lib/modules/gifts/gift_display.js';
 	import {
-		canLikeGift,
-		canManageWishlist,
-		canSeeReserverNames,
-	} from '$lib/modules/wishlists/wishlist_capabilities.js';
+		deriveGiftBrowseActions,
+		deriveGiftDisplayState,
+	} from '$lib/modules/gifts/gift_display_state.js';
+	import { canLikeGift } from '$lib/modules/wishlists/wishlist_capabilities.js';
+	import { useGifts } from '$lib/modules/gifts/gifts.context.svelte.js';
 	import { resolveGiftImageUrl } from '$lib/modules/images/public_url.js';
 	import { hasExplicitFrameFill } from '$lib/components/derived/image-frame/index.js';
 	import { cn } from '$lib/utils.js';
 	import { giftCardVariants } from './gift_card_variants.js';
+	import { GIFT_CARD_CONTROL_SELECTOR } from './gift_card_controls.js';
 	import GiftDescription from './GiftDescription.svelte';
 	import GiftCategoryBadge from './GiftCategoryBadge.svelte';
 	import GiftPriorityBadge from './GiftPriorityBadge.svelte';
-	import GiftActionRow from './GiftActionRow.svelte';
+	import GiftBrowseActions from './GiftBrowseActions.svelte';
 	import { restingShadowNesting } from '$lib/utils/resting_shadow_nesting.js';
-	import type { GiftActionPlacementSnapshot } from '$lib/components/blocks/wishlist/gift_context_invocation.js';
+	import type { GiftPresentationProps } from './gift_presentation_props.js';
 
-	interface GiftCardProps {
-		gift: GiftByRole;
-		role: WishlistRole;
-		isArchived?: boolean;
-		hideReservationState?: boolean;
-		contextualMode?: boolean;
+	interface GiftCardProps extends GiftPresentationProps {
 		allowArchivedLike?: boolean;
-		onreserve?: (gift: GiftForVisitor) => void;
-		onunreserve?: (gift: GiftForVisitor) => void;
-		onreceived?: (giftId: string, received: boolean) => void;
-		receivedPending?: boolean;
-		onmore?: (
-			anchor: HTMLButtonElement,
-			placementSnapshot: GiftActionPlacementSnapshot,
-		) => void;
-		persistentMore?: boolean;
-		moreOpen?: boolean;
-		moreSurface?: 'menu' | 'dialog';
-		showPriority?: boolean;
 	}
 
 	let {
@@ -64,7 +43,13 @@
 		moreOpen = false,
 		moreSurface = 'menu',
 		showPriority = true,
+		showCategory,
 	}: GiftCardProps = $props();
+
+	const visibleCategory = $derived((showCategory ?? !contextualMode) ? gift.category : null);
+	const showsTopOverlays = $derived(!contextualMode || visibleCategory != null);
+
+	const giftsContext = useGifts();
 
 	const displayState = $derived(
 		deriveGiftDisplayState(
@@ -82,18 +67,29 @@
 			contextualMode,
 		),
 	);
-	const { isVisitorOrModerator, visitorGift, isFullyReserved } = $derived(displayState);
+	const { visitorGift, isFullyReserved } = $derived(displayState);
 	const presentation = $derived(displayState.presentation);
-	const hasReservationAction = $derived(
-		visitorGift !== null &&
-			(visitorGift.myReservationId !== null || (!isArchived && !isFullyReserved)),
-	);
-	const canManage = $derived(canManageWishlist(role) && !contextualMode);
-	const hasReceivedPrimary = $derived(canManage && !isArchived && onreceived !== undefined);
-	const hasMultipleActions = $derived(
-		hasReceivedPrimary && isVisitorOrModerator && hasReservationAction,
+	const browseActions = $derived(
+		deriveGiftBrowseActions({
+			role,
+			visitorGift,
+			isFullyReserved,
+			isArchived,
+			isAuthenticated: giftsContext.isAuthenticated.current,
+			contextualMode,
+			canMarkReceived: onreceived !== undefined,
+		}),
 	);
 	let actionContentWidth = $state(0);
+	let pressStartedOnControl = $state(false);
+
+	function recordPressOrigin(event: PointerEvent & { currentTarget: HTMLDivElement }) {
+		const control =
+			event.target instanceof Element
+				? event.target.closest(GIFT_CARD_CONTROL_SELECTOR)
+				: null;
+		pressStartedOnControl = control !== null && event.currentTarget.contains(control);
+	}
 
 	const isDimmed = $derived(presentation.isDimmed);
 	const styles = $derived(giftCardVariants({ dimmed: isDimmed }));
@@ -104,18 +100,39 @@
 		return hasExplicitFrameFill(fillColor) ? fillColor : null;
 	});
 	const priceDisplay = $derived(formatPrice(gift.price, gift.currency, gift.priceMax));
-	const reserverLine = $derived(formatReserverLine(visitorGift?.reserverNames ?? []));
-	const visibleReserverLine = $derived(
-		canSeeReserverNames(role) && reserverLine !== null && reserverLine.trim() !== ''
-			? reserverLine
-			: null,
-	);
 	const hasDescriptionContent = $derived(
 		(gift.description ?? '').trim() !== '' || gift.descriptionAppends.length > 0,
 	);
 </script>
 
-<div class={styles.card()} data-testid="gift-card-surface">
+{#snippet topOverlays()}
+	<div
+		class="gift-card-top-overlays absolute top-2 right-2 z-20 flex items-start gap-2"
+		data-gift-card-top-overlays
+	>
+		{#if visibleCategory != null}
+			<div class="min-w-0 flex-1" data-gift-card-category-zone>
+				<GiftCategoryBadge category={visibleCategory} {isDimmed} />
+			</div>
+		{/if}
+		{#if presentation.showLike && visitorGift}
+			<LikeButton
+				giftId={gift.id}
+				giftName={gift.name}
+				likeCount={visitorGift.likeCount}
+				class="ml-auto"
+			/>
+		{/if}
+	</div>
+{/snippet}
+
+<div
+	class={styles.card()}
+	data-testid="gift-card-surface"
+	data-gift-actions-open={moreOpen ? moreSurface : undefined}
+	data-gift-control-press={pressStartedOnControl || undefined}
+	onpointerdowncapture={recordPressOrigin}
+>
 	<div class={styles.surface()} use:restingShadowNesting data-slot="elevation-surface">
 		<!-- Image area: dotted mat behind the photo; letterboxed photos keep the mat visible -->
 		<div
@@ -156,32 +173,11 @@
 				aria-hidden="true"
 			></div>
 
-			{#if !contextualMode}
-				<div
-					class="gift-card-top-overlays absolute top-2 right-2 left-2 z-20 flex items-start gap-2"
-					data-gift-card-top-overlays
-				>
-					{#if gift.category != null}
-						<div class="min-w-0 flex-1" data-gift-card-category-zone>
-							<GiftCategoryBadge category={gift.category} {isDimmed} />
-						</div>
-					{/if}
-					{#if presentation.showLike && visitorGift}
-						<LikeButton
-							giftId={gift.id}
-							giftName={gift.name}
-							likeCount={visitorGift.likeCount}
-							class="ml-auto"
-						/>
-					{/if}
-				</div>
+			{#if showsTopOverlays}
+				{@render topOverlays()}
 			{/if}
 
-			<GiftStateOverlay
-				model={presentation.overlay}
-				identity={visibleReserverLine}
-				avoidTopRight
-			/>
+			<GiftStateOverlay entries={presentation.overlay} avoidTopRight />
 			<GiftPriorityBadge
 				priorityLabel={gift.priorityLabel}
 				{showPriority}
@@ -191,7 +187,7 @@
 		</div>
 
 		<!-- Body -->
-		<div class={styles.body()}>
+		<div class={styles.body()} data-testid="gift-card-body">
 			<!-- Name + piece count. Edited-after-share info surfaces only as a muted line
 		     in the gift detail modal (issue #185), not on the card. -->
 			<div class={styles.nameRow()} data-gift-card-track="title">
@@ -239,7 +235,7 @@
 			</div>
 		</div>
 
-		{#if !contextualMode && (hasReceivedPrimary || (isVisitorOrModerator && hasReservationAction) || (onmore && persistentMore))}
+		{#if !contextualMode && (browseActions.primaryAction !== undefined || (onmore && persistentMore))}
 			<div
 				class={styles.footer()}
 				data-gift-card-track="actions"
@@ -250,63 +246,22 @@
 					data-testid="gift-card-reservation-actions"
 					class={styles.reservationActions()}
 				>
-					{#snippet secondaryReceivedAction()}
-						<GiftReceivedToggle
-							giftId={gift.id}
-							received={gift.received}
-							{role}
-							{isArchived}
-							{onreceived}
-							pending={receivedPending}
-							compactLabel
-						/>
-					{/snippet}
-					<GiftActionRow
+					<GiftBrowseActions
+						{gift}
+						{visitorGift}
+						{role}
+						{isArchived}
+						actions={browseActions}
+						contentWidth={actionContentWidth}
+						{onreserve}
+						{onunreserve}
+						{onreceived}
+						{receivedPending}
 						{onmore}
+						{persistentMore}
 						{moreOpen}
 						{moreSurface}
-						{persistentMore}
-						contentWidth={actionContentWidth}
-						secondary={hasMultipleActions ? secondaryReceivedAction : undefined}
-						secondaryAction={hasMultipleActions ? 'received' : undefined}
-						primaryAction={hasReservationAction && visitorGift
-							? visitorGift.myReservationId === null
-								? 'reserve'
-								: 'cancel-reservation'
-							: hasReceivedPrimary
-								? 'received'
-								: undefined}
-						controlSizing="intrinsic"
-					>
-						{#if !canManage && isVisitorOrModerator && visitorGift && onmore === undefined}
-							<PurchasedToggle gift={visitorGift} class="w-full max-sm:hidden" />
-						{/if}
-						{#if hasMultipleActions && visitorGift}
-							<ReserveButton
-								gift={visitorGift}
-								{isArchived}
-								{onreserve}
-								{onunreserve}
-							/>
-						{:else if hasReceivedPrimary}
-							<GiftReceivedToggle
-								giftId={gift.id}
-								received={gift.received}
-								{role}
-								{isArchived}
-								{onreceived}
-								pending={receivedPending}
-								compactLabel
-							/>
-						{:else if isVisitorOrModerator && visitorGift}
-							<ReserveButton
-								gift={visitorGift}
-								{isArchived}
-								{onreserve}
-								{onunreserve}
-							/>
-						{/if}
-					</GiftActionRow>
+					/>
 				</div>
 			</div>
 		{/if}
@@ -321,6 +276,10 @@
 
 	:global([data-gift-card-has-descriptions='true']) [data-gift-card-track='description'] {
 		padding-top: 0.125rem;
+	}
+
+	.gift-card-top-overlays {
+		left: var(--gift-context-leading-clearance, 0.5rem);
 	}
 
 	@container (width <= 10rem) {

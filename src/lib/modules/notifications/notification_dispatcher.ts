@@ -227,6 +227,10 @@ async function sendNotificationEmail(params: {
 }
 
 export async function dispatchNotification(input: DispatchNotificationInput): Promise<void> {
+	const { demoSessionId } = await import('$lib/server/demo/scope.js');
+	if (demoSessionId() !== null) {
+		return;
+	}
 	const targetUserIds = uniqueNonEmpty(input.targetUserIds ?? []);
 	const targetEmails = uniqueNonEmpty(input.targetEmails ?? []);
 

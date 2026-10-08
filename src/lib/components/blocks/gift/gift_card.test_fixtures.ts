@@ -28,6 +28,14 @@ export const IMAGE_URL =
 	'data:image/svg+xml,' +
 	encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="16" height="64"/>');
 
+export const MOBILE_VIEWPORT_WIDTH = 390;
+const MOBILE_PAGE_GUTTER = 12;
+const MOBILE_CARD_GRID_GAP = 8;
+/** One column of the two-column mobile Card grid: the viewport minus both mobile `--page-gutter`s
+ *  and the grid's `gap-2`, split in two. */
+export const MOBILE_TWO_COLUMN_CARD_WIDTH =
+	(MOBILE_VIEWPORT_WIDTH - 2 * MOBILE_PAGE_GUTTER - MOBILE_CARD_GRID_GAP) / 2;
+
 export function imageMeta(bgColor: string | null): ImageMetadata {
 	return {
 		fitMode: IMAGE_FIT_MODES.containPadded,
