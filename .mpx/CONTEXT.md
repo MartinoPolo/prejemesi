@@ -148,7 +148,7 @@ unimplemented.
 | CSV / Google Sheets import (3-step wizard)                          | Done          | v1.x                                                        |
 | Bulk gift entry (shared draft grid, large dialog)                   | Done          | v1.x                                                        |
 | Gift metadata enrichment (link → image/price/title)                 | Planned       | v1.x                                                        |
-| Production gift ingestion (fixed-target manifest API + CLI)         | Done          | v1.x                                                        |
+| Production gift ingestion (allowlisted-target manifest API + CLI)   | Done          | v1.x                                                        |
 | Multiple links per gift (max 10)                                    | Done          | v1.x                                                        |
 | List for someone else (recipient + správce role model)              | Implemented   | v1.x                                                        |
 | Recipient account linking via claim token                           | Implemented   | v1.x                                                        |

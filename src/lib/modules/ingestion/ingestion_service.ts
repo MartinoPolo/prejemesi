@@ -32,7 +32,7 @@ export interface GiftIngestionStore {
 	lockTarget(tx: GiftCreationTransaction, wishlistId: string): Promise<void>;
 	resolveTarget(
 		tx: GiftCreationTransaction | undefined,
-		fixedShortId: string,
+		shortId: string,
 	): Promise<IngestionTarget | null>;
 	findRun(
 		tx: GiftCreationTransaction | undefined,
@@ -87,8 +87,16 @@ export interface GiftIngestionStore {
 }
 
 export interface GiftIngestionConfig {
-	targetShortId: string;
+	targetShortIds: readonly string[];
 	actorId: string;
+}
+
+/** Merges comma-separated allowlist values into unique short IDs. */
+export function parseGiftIngestionTargetShortIds(...values: (string | undefined)[]): string[] {
+	const shortIds = values
+		.flatMap((value) => (value ?? '').split(','))
+		.map((shortId) => shortId.trim());
+	return [...new Set(shortIds.filter((shortId) => shortId !== ''))];
 }
 
 export interface PreparedImageReference extends PreparedImageBinding {
@@ -216,10 +224,10 @@ export function canonicalGiftIngestionItemHash(item: GiftIngestionItem): Promise
 }
 
 function assertTarget(manifest: GiftIngestionManifest, config: GiftIngestionConfig): void {
-	if (manifest.wishlist.shortId !== config.targetShortId) {
+	if (!config.targetShortIds.includes(manifest.wishlist.shortId)) {
 		throw new IngestionError(
-			'target_mismatch',
-			'Manifest target does not match the configured fixed target',
+			'target_not_allowed',
+			'Manifest wishlist is not an allowlisted ingestion target',
 		);
 	}
 }
@@ -293,12 +301,13 @@ async function plan(
 	manifestHash: string;
 	targetId: string;
 }> {
-	const target = await store.resolveTarget(tx, config.targetShortId);
+	assertTarget(manifest, config);
+	const target = await store.resolveTarget(tx, manifest.wishlist.shortId);
 	if (target === null) {
-		throw new IngestionError('target_not_found', 'Configured ingestion target was not found');
+		throw new IngestionError('target_not_found', 'Allowlisted ingestion target was not found');
 	}
 	if (target.status === 'archived') {
-		throw new IngestionError('target_archived', 'Configured ingestion target is archived');
+		throw new IngestionError('target_archived', 'Allowlisted ingestion target is archived');
 	}
 	if (
 		target.shortId !== manifest.wishlist.shortId ||
@@ -307,7 +316,7 @@ async function plan(
 	) {
 		throw new IngestionError(
 			'target_mismatch',
-			'Manifest wishlist identity does not exactly match the configured target',
+			'Manifest wishlist identity does not exactly match the allowlisted target',
 		);
 	}
 

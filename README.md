@@ -256,8 +256,8 @@ enforce auth. The deliberate `/home` exception uses a `+page.server.ts` load for
 latency-sensitive authenticated overview: it awaits parent layout authentication and invokes a
 server-only database service directly, avoiding an intra-server remote request. General REST-style
 `+server.ts` routes are not used; the purpose-specific route exceptions are the BetterAuth
-catch-all, the upload proxy, and the fixed-target internal gift-ingestion endpoint for authenticated
-machine ingestion.
+catch-all, the upload proxy, and the allowlisted-target internal gift-ingestion endpoint for
+authenticated machine ingestion.
 
 ## Code Conventions
 

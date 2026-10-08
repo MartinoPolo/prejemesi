@@ -1,7 +1,7 @@
 # Production gift ingestion
 
 This is a purpose-specific, append-only machine integration for reviewed, versioned gift manifests.
-It is scoped to one configured wishlist and uses the same transactional gift creation and
+It is scoped to an explicit allowlist of wishlists and uses the same transactional gift creation and
 notification digest path as the UI.
 
 ## Setup and production rollout
@@ -23,21 +23,26 @@ Follow this order exactly:
    add a small bulk/import batch. Using a non-actor follower account, verify that both paths
    create/coalesce the expected single and bulk new-gift digest behavior before enabling machine
    ingestion.
-5. Create a dedicated actor account and choose the single fixed target wishlist. Then configure
-   Worker secret/variables `GIFT_INGESTION_TOKEN`, `GIFT_INGESTION_TARGET_SHORT_ID`, and
-   `GIFT_INGESTION_ACTOR_ID`. Confirm the deployed Worker also has the `GIFT_INGESTION_RATE_LIMIT`
-   binding declared in `wrangler.jsonc` (60 requests per 60 seconds). Missing endpoint values
-   disable the endpoint; a missing or failing rate-limit binding fails closed with HTTP 503. Do not
-   enable ingestion before the preceding checks pass.
+5. Create a dedicated actor account and choose the target wishlists. Then configure the Worker
+   secret `GIFT_INGESTION_TOKEN` and the variables `GIFT_INGESTION_TARGET_SHORT_IDS`
+   (comma-separated wishlist short IDs; short IDs are public, so a plaintext variable kept by
+   `keep_vars` is fine) and `GIFT_INGESTION_ACTOR_ID`. Authorize another wishlist later by appending
+   its short ID; no deploy is needed. A legacy `GIFT_INGESTION_TARGET_SHORT_ID` secret, when
+   present, is also allowlisted; fold its value into the variable before deleting it. Confirm the
+   deployed Worker also has the `GIFT_INGESTION_RATE_LIMIT` binding declared in `wrangler.jsonc` (60
+   requests per 60 seconds). Missing endpoint values disable the endpoint; a missing or failing
+   rate-limit binding fails closed with HTTP 503. Do not enable ingestion before the preceding
+   checks pass.
 6. Put `GIFT_INGESTION_TOKEN` and `GIFT_INGESTION_BASE_URL` in the ignored local file
    `.env.gift-ingestion.local`. The base URL is the allowlisted exact production origin: non-local
    HTTPS with no credentials, query, fragment, or non-root path.
-7. Prepare a schema-version-1 manifest whose short ID, title, and recipient exactly match the fixed
-   target. Every item must have at least one gift link, and `gift.links[0].url` must exactly equal
-   its `sourceUrl`. `gift.category` is optional; when present it must be user-provided or
-   evidence-backed and already enabled on the fixed target wishlist. It may match an enabled custom
-   label or either Czech/English label of an enabled preset. Unknown or disabled categories reject
-   dry-run/apply before image preparation or insertion, and never create categories automatically.
+7. Prepare a schema-version-1 manifest whose short ID is allowlisted and whose title and recipient
+   exactly match that wishlist. Every item must have at least one gift link, and `gift.links[0].url`
+   must exactly equal its `sourceUrl`. `gift.category` is optional; when present it must be
+   user-provided or evidence-backed and already enabled on the target wishlist. It may match an
+   enabled custom label or either Czech/English label of an enabled preset. Unknown or disabled
+   categories reject dry-run/apply before image preparation or insertion, and never create
+   categories automatically.
 8. Run a dry-run and inspect the resolved short ID, title, recipient, every proposed item, warnings,
    skips, and conflicts. Stop on any identity mismatch, ambiguity, or conflict.
 9. Apply one controlled, reviewed gift. Verify the created gift, provenance/audit result, mirrored
@@ -48,8 +53,9 @@ Follow this order exactly:
 ## Threat boundaries
 
 `POST /api/internal/v1/gift-ingestion` is the only machine operation. The bearer token grants gift
-creation on only the configured wishlist. The endpoint cannot select another environment or
-destination and has no GET, update, or delete operation. It accepts bounded JSON only, validates
+creation on only the allowlisted wishlists; any other short ID is rejected with HTTP 403
+`target_not_allowed` before the wishlist is looked up. The endpoint cannot select another
+environment and has no GET, update, or delete operation. It accepts bounded JSON only, validates
 HTTPS URLs, rejects archived targets, and does not use BetterAuth cookies. After token validation
 and before reading the body, it calls Cloudflare Workers Rate Limiting with a fixed non-secret
 endpoint key; denied requests return HTTP 429 without DB/R2 work. Invalid tokens never consume

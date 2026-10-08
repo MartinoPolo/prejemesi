@@ -644,11 +644,10 @@ sections for UI work. Historical reconciliation and review notes are in
   manual batch entry do not depend on enrichment shipping. Linkless name search is deferred and must
   show candidates for confirmation; blank names stay blank with clickable links, never guessed from
   domains.
-- 2026-08-09: The versioned gift-ingestion machine API is a fixed-actor, fixed-wishlist, add-only
-  exception using a dedicated bearer token and shared transactional gift creation. Default to
-  side-effect-free dry-run; durable run/item records provide audit and idempotency. No arbitrary
-  destination, browser-cookie auth, general CRUD, SQL, environment selection, or infrastructure
-  credentials in input.
+- 2026-08-09: The versioned gift-ingestion machine API is a fixed-actor, add-only exception using a
+  dedicated bearer token and shared transactional gift creation. Default to side-effect-free
+  dry-run; durable run/item records provide audit and idempotency. No browser-cookie auth, general
+  CRUD, SQL, environment selection, or infrastructure credentials in input.
 - 2026-08-10: Ingestion prepares validated manifest/item/hash-bound uploads through short-lived
   exact-key/type/length presigned PUTs; the CLI checks HTTPS, DNS, every redirect, byte signatures,
   MIME, dimensions, and the gift-size limit before upload. Apply verifies R2 metadata and treats
@@ -657,6 +656,9 @@ sections for UI work. Historical reconciliation and review notes are in
 - 2026-08-10: Follow `.agents/skills/add-gifts/SKILL.md` for evidence-ordered product extraction
   (JSON-LD, then page metadata, then exact brand/model search), no guessing or credential handling,
   mandatory dry-run, and apply only after an explicit unambiguous production request.
+- 2026-10-08: Ingestion targets are an explicit allowlist (`GIFT_INGESTION_TARGET_SHORT_IDS`), not
+  every wishlist the actor manages, so a leaked token reaches only listed wishlists. Outsiders get
+  `target_not_allowed`; the add-gifts skill then asks the user, who alone edits the allowlist.
 - 2026-10-08: Ingested gift prices come from exact-match references: Heureka and Alza for Czech
   physical goods, the category's store (e.g. Steam for PC games) otherwise, plus a foreign reference
   when sold abroad. Cloudflare-protected retailers are read through a visible browser

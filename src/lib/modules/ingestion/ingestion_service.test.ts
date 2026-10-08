@@ -1,11 +1,34 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
 	IngestionWarningCollector,
+	parseGiftIngestionTargetShortIds,
 	prepareGiftIngestionImages,
 	processGiftIngestion,
 } from './ingestion_service.js';
 import type { GiftIngestionManifest } from './manifest.js';
 import { config, manifest, store } from './ingestion_service.test_fixtures.js';
+
+describe('gift ingestion target allowlist parsing', () => {
+	it('reads a comma-separated list, ignoring blanks and repeats', () => {
+		expect(parseGiftIngestionTargetShortIds(' first , second,,first ')).toEqual([
+			'first',
+			'second',
+		]);
+	});
+
+	it('merges several allowlist sources', () => {
+		expect(parseGiftIngestionTargetShortIds('first,second', 'legacy', undefined)).toEqual([
+			'first',
+			'second',
+			'legacy',
+		]);
+	});
+
+	it('disables ingestion when the variable is absent or blank', () => {
+		expect(parseGiftIngestionTargetShortIds(undefined)).toEqual([]);
+		expect(parseGiftIngestionTargetShortIds(' , ')).toEqual([]);
+	});
+});
 
 describe('gift ingestion planning and validation', () => {
 	it('passes a valid enabled category assignment into atomic gift creation', async () => {
@@ -111,12 +134,56 @@ describe('gift ingestion planning and validation', () => {
 		expect(database.transaction).not.toHaveBeenCalled();
 	});
 
-	it('rejects fixed-target, exact identity, and archived mismatches before mutation', async () => {
-		for (const [changedManifest, target] of [
-			[{ ...manifest, wishlist: { ...manifest.wishlist, shortId: 'other' } }, undefined],
-			[{ ...manifest, wishlist: { ...manifest.wishlist, title: 'Other' } }, undefined],
-			[manifest, { status: 'archived' }],
-		] as const) {
+	it('plans against any allowlisted target the manifest names', async () => {
+		const database = store({
+			resolveTarget: vi.fn(async () => ({
+				id: 'second-wishlist-db-id',
+				shortId: 'second-list',
+				title: 'Birthday',
+				recipient: 'Maggie',
+				status: 'active',
+			})),
+		});
+		const result = await processGiftIngestion(
+			{
+				...manifest,
+				wishlist: { shortId: 'second-list', title: 'Birthday', recipient: 'Maggie' },
+			},
+			{
+				apply: false,
+				config: { ...config, targetShortIds: ['fixed-list', 'second-list'] },
+				store: database,
+			},
+		);
+
+		expect(database.resolveTarget).toHaveBeenCalledWith(undefined, 'second-list');
+		expect(result.target).toEqual({
+			shortId: 'second-list',
+			title: 'Birthday',
+			recipient: 'Maggie',
+		});
+	});
+
+	it('rejects a wishlist outside the allowlist before resolving it', async () => {
+		const outsider: GiftIngestionManifest = {
+			...manifest,
+			wishlist: { ...manifest.wishlist, shortId: 'not-allowlisted' },
+		};
+		const database = store();
+		const presign = vi.fn(async () => 'https://r2.example/signed');
+
+		await expect(
+			processGiftIngestion(outsider, { apply: false, config, store: database }),
+		).rejects.toMatchObject({ code: 'target_not_allowed' });
+		await expect(
+			prepareGiftIngestionImages(outsider, { config, store: database, images: [], presign }),
+		).rejects.toMatchObject({ code: 'target_not_allowed' });
+		expect(database.resolveTarget).not.toHaveBeenCalled();
+		expect(presign).not.toHaveBeenCalled();
+	});
+
+	it('rejects exact identity and archived mismatches before mutation', async () => {
+		for (const [changedManifest, target] of [[manifest, { status: 'archived' }]] as const) {
 			const database = store(
 				target === undefined
 					? {}

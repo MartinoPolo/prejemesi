@@ -2,9 +2,9 @@
 name: add-gifts
 description:
     'Gather reviewed product metadata and reference prices (Heureka, Alza, category stores such as
-    Steam) into a gift ingestion manifest and safely dry-run or explicitly apply it to the fixed
-    production wishlist.'
-argument-hint: '<product URLs...> [wishlist alias]'
+    Steam) into a gift ingestion manifest and safely dry-run or explicitly apply it to an
+    allowlisted production wishlist.'
+argument-hint: '<product URLs...> [wishlist URL or alias]'
 allowed-tools:
     Read, Write, WebFetch, WebSearch, Bash(pnpm ingest:gifts *), Bash(pnpm.cmd ingest:gifts *),
     Bash(node scripts/gift-research-browser.mjs *)
@@ -92,11 +92,15 @@ array with the affected item (when known), field, and evidence-backed reason.
 Write a schema-version-1 JSON manifest with a stable manifest ID, unique stable item IDs, exact
 expected wishlist short ID/title/recipient, explicit quantity and priority, original source URL,
 gathered timestamp, gift fields, and provenance. `gift.category` is optional and must be
-evidence-backed or explicitly provided by the user; it must already be enabled on the fixed wishlist
-and match an enabled custom label or either Czech/English label of an enabled preset. Unknown or
-disabled category values are HITL, never guessed, and never silently create custom categories. Every
-gift must have at least one link, and `gift.links[0].url` must exactly equal `sourceUrl`. Do not add
-update or delete instructions.
+evidence-backed or explicitly provided by the user; it must already be enabled on the target
+wishlist and match an enabled custom label or either Czech/English label of an enabled preset.
+Unknown or disabled category values are HITL, never guessed, and never silently create custom
+categories. Every gift must have at least one link, and `gift.links[0].url` must exactly equal
+`sourceUrl`; every other URL the user supplied for that gift follows it, before reference links. Do
+not add update or delete instructions.
+
+Take the short ID from a `/w/<shortId>` wishlist URL and its exact title and recipient from the
+public page; ask when they cannot be read.
 
 ## Safety gate
 
@@ -113,10 +117,15 @@ exclusively to `scripts/ingest-gifts.ts`.
 Apply only when all of these are true:
 
 - the user made an **explicit production** insertion request;
-- the exact fixed target identity matches and any supplied wishlist alias resolves without
-  ambiguity;
+- the wishlist is allowlisted, its exact identity matches, and any supplied wishlist alias resolves
+  without ambiguity;
 - every product and selected image is unambiguous;
 - dry-run reports no conflict, target mismatch, or ambiguity.
+
+Production accepts only wishlists listed in the `GIFT_INGESTION_TARGET_SHORT_IDS` Worker variable. A
+dry-run `target_not_allowed` error means the wishlist is not authorized: stop and ask the user
+whether to authorize it. Authorization is the user adding that short ID to the variable in
+Cloudflare; the skill never changes the allowlist. Rerun the dry-run once the user confirms.
 
 A nonempty dry-run `ambiguities` list is a mandatory HITL stop: do not download, prepare, upload, or
 apply images or gifts until the user resolves every entry. Then invoke the same CLI with `--apply`

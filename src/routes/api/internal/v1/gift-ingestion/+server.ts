@@ -4,6 +4,7 @@ import { createGiftIngestionHandler } from '$lib/modules/ingestion/http_handler.
 import { createGiftIngestionPost } from '$lib/modules/ingestion/http_route.js';
 import {
 	cleanupPreparedGiftIngestionImages,
+	parseGiftIngestionTargetShortIds,
 	prepareGiftIngestionImages,
 	processGiftIngestion,
 } from '$lib/modules/ingestion/ingestion_service.js';
@@ -47,7 +48,11 @@ const imageStorage = {
 const handleGiftIngestion = createGiftIngestionHandler({
 	config: {
 		token: env.GIFT_INGESTION_TOKEN ?? '',
-		targetShortId: env.GIFT_INGESTION_TARGET_SHORT_ID ?? '',
+		// The legacy single-target secret stays honored so its wishlist remains authorized unread.
+		targetShortIds: parseGiftIngestionTargetShortIds(
+			env.GIFT_INGESTION_TARGET_SHORT_IDS,
+			env.GIFT_INGESTION_TARGET_SHORT_ID,
+		),
 		actorId: env.GIFT_INGESTION_ACTOR_ID ?? '',
 	},
 	process: (manifest, options) =>
@@ -63,15 +68,15 @@ const handleGiftIngestion = createGiftIngestionHandler({
 			presign: presignUploadUrl,
 		}),
 	cleanup: async (manifest, options) => {
-		if (manifest.wishlist.shortId !== options.config.targetShortId) {
-			throw new Error('Manifest target mismatch');
+		if (!options.config.targetShortIds.includes(manifest.wishlist.shortId)) {
+			throw new Error('Manifest target is not allowlisted');
 		}
 		const target = await drizzleGiftIngestionStore.resolveTarget(
 			undefined,
-			options.config.targetShortId,
+			manifest.wishlist.shortId,
 		);
 		if (target === null) {
-			throw new Error('Configured ingestion target was not found');
+			throw new Error('Allowlisted ingestion target was not found');
 		}
 		for (const reference of options.preparedImages) {
 			validatePreparedImageReference(reference);

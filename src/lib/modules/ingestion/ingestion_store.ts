@@ -45,7 +45,7 @@ export const drizzleGiftIngestionStore: GiftIngestionStore = {
 			.limit(1)
 			.for('update');
 	},
-	async resolveTarget(tx, fixedShortId) {
+	async resolveTarget(tx, shortId) {
 		const [row] = await database(tx)
 			.select({
 				id: wishlist.id,
@@ -59,7 +59,7 @@ export const drizzleGiftIngestionStore: GiftIngestionStore = {
 			.leftJoin(user, eq(user.id, wishlist.recipientUserId))
 			.where(
 				and(
-					eq(wishlist.shortId, fixedShortId),
+					eq(wishlist.shortId, shortId),
 					isNull(wishlist.deletedAt),
 					isNull(wishlist.demoSessionId),
 				),

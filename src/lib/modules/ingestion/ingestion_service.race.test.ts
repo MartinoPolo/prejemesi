@@ -115,7 +115,7 @@ describe.skipIf(!DB_READY)('gift ingestion idempotency race [real DB]', () => {
 	it('commits exactly one gift, run, and item audit for concurrent identical applies', async () => {
 		const options = {
 			apply: true,
-			config: { targetShortId: SHORT_ID, actorId: USER_ID },
+			config: { targetShortIds: [SHORT_ID], actorId: USER_ID },
 			store: drizzleGiftIngestionStore,
 		} as const;
 		const results = await Promise.allSettled([
