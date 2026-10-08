@@ -124,8 +124,9 @@ Apply only when all of these are true:
 
 Production accepts only wishlists listed in the `GIFT_INGESTION_TARGET_SHORT_IDS` Worker variable. A
 dry-run `target_not_allowed` error means the wishlist is not authorized: stop and ask the user
-whether to authorize it. Authorization is the user adding that short ID to the variable in
-Cloudflare; the skill never changes the allowlist. Rerun the dry-run once the user confirms.
+whether to authorize it. Only the user authorizes a wishlist; the skill never changes the allowlist
+on its own. The allowlist is a GitHub `production` environment variable applied by a gated redeploy
+(`docs/PRODUCTION_GIFT_INGESTION.md`). Rerun the dry-run once the authorized redeploy is live.
 
 A nonempty dry-run `ambiguities` list is a mandatory HITL stop: do not download, prepare, upload, or
 apply images or gifts until the user resolves every entry. Then invoke the same CLI with `--apply`
