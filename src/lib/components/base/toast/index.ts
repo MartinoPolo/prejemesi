@@ -6,6 +6,7 @@ export type { ToastProps, ToastTone } from './toast_variants.js';
 export { TOAST_TONES, toastVariants, toastIconColors, toastTitleColors } from './toast_variants.js';
 export {
 	showToast,
+	dismissToast,
 	toastSuccess,
 	toastError,
 	toastWarning,

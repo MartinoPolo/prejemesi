@@ -3,8 +3,6 @@
 	import GiftStateOverlay from '$lib/components/blocks/gift/GiftStateOverlay.svelte';
 	import GiftPieceCount from '$lib/components/blocks/gift/GiftPieceCount.svelte';
 	import LikeButton from '$lib/components/blocks/gift/LikeButton.svelte';
-	import type { GiftForVisitor, GiftByRole } from '$lib/modules/gifts/types.js';
-	import type { WishlistRole } from '$lib/modules/wishlists/types.js';
 	import { formatPrice } from '$lib/modules/gifts/gift_display.js';
 	import {
 		deriveGiftBrowseActions,
@@ -21,27 +19,7 @@
 	import GiftLinkList from './GiftLinkList.svelte';
 	import { restingShadowNesting } from '$lib/utils/resting_shadow_nesting.js';
 	import { observeDepthChange } from '$lib/theme/depth_change.js';
-	import type { GiftActionPlacementSnapshot } from '$lib/components/blocks/wishlist/gift_context_invocation.js';
-
-	interface GiftListItemProps {
-		gift: GiftByRole;
-		role: WishlistRole;
-		isArchived?: boolean;
-		hideReservationState?: boolean;
-		contextualMode?: boolean;
-		onreserve?: (gift: GiftForVisitor) => void;
-		onunreserve?: (gift: GiftForVisitor) => void;
-		onreceived?: (giftId: string, received: boolean) => void;
-		receivedPending?: boolean;
-		onmore?: (
-			anchor: HTMLButtonElement,
-			placementSnapshot: GiftActionPlacementSnapshot,
-		) => void;
-		persistentMore?: boolean;
-		moreOpen?: boolean;
-		moreSurface?: 'menu' | 'dialog';
-		showPriority?: boolean;
-	}
+	import type { GiftPresentationProps } from './gift_presentation_props.js';
 
 	let {
 		gift,
@@ -58,7 +36,10 @@
 		moreOpen = false,
 		moreSurface = 'menu',
 		showPriority = true,
-	}: GiftListItemProps = $props();
+		showCategory,
+	}: GiftPresentationProps = $props();
+
+	const categoryVisible = $derived(showCategory ?? !contextualMode);
 
 	const giftsContext = useGifts();
 
@@ -237,8 +218,8 @@
 				alt={gift.name}
 				class={dimmedContentClass}
 			/>
-			{#if gift.category != null && !contextualMode}
-				<div class="gift-list-category absolute top-2 right-2 left-2 z-20 min-w-0">
+			{#if gift.category != null && categoryVisible}
+				<div class="gift-list-category absolute top-2 right-2 z-20 min-w-0">
 					<GiftCategoryBadge category={gift.category} {isDimmed} />
 				</div>
 			{/if}
@@ -347,6 +328,10 @@
 <style>
 	.gift-list-query-container {
 		container: gift-list / inline-size;
+	}
+
+	.gift-list-category {
+		left: var(--gift-context-leading-clearance, 0.5rem);
 	}
 
 	.gift-list-item {

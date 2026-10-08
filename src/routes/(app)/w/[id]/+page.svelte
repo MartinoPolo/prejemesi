@@ -85,7 +85,12 @@
 	} from '$lib/modules/images/editor_modes.js';
 	import { SITE_URL, SOCIAL_PREVIEW_IMAGE_URL } from '$lib/config/site.js';
 	import { untrack } from 'svelte';
-	import { showToast, toastSuccess, toastError } from '$lib/components/base/toast/index.js';
+	import {
+		dismissToast,
+		showToast,
+		toastSuccess,
+		toastError,
+	} from '$lib/components/base/toast/index.js';
 	import {
 		translateServerError,
 		getServerErrorCode,
@@ -148,8 +153,26 @@
 	import {
 		GIFT_GROUPING_OPTIONS,
 		GIFT_VIEW_MODES,
+		type GiftReorderGroupField,
+		type ReorderGiftGroupChange,
 		type ReorderGiftsInput,
 	} from '$lib/modules/gifts/types.js';
+	import {
+		GIFT_REORDER_MOVE_SOURCES,
+		applyReorderPlacement,
+		buildReorderSections,
+		categoryReorderGroups,
+		mergeReorderGiftsInputs,
+		priorityReorderGroups,
+		reorderGroupKey,
+		reorderGroupKeyLookup,
+		resolveGroupedReorderMove,
+		withReorderGroup,
+		type GiftReorderGroup,
+		type GiftReorderMoveSource,
+		type GiftReorderPlacement,
+	} from '$lib/modules/gifts/gift_grouped_reorder.js';
+	import { giftSectionLabel } from '$lib/components/blocks/wishlist/gift_section_label.js';
 	import type {
 		GiftFilters,
 		GiftSortOption,
@@ -447,9 +470,38 @@
 			reorderBaselineStatus === REORDER_BASELINE_STATUS.recovered,
 	);
 
+	// Grouped reorder (issue #454): the grouping is frozen on entry, group moves stay optimistic for
+	// the whole session, and a pointer drag previews its placement before it commits.
+	let reorderGrouping = $state<GiftGroupingOption>(GIFT_GROUPING_OPTIONS.none);
+	let reorderGroupChanges = $state.raw<Record<string, ReorderGiftGroupChange>>({});
+	let reorderPreviewPlacement = $state.raw<GiftReorderPlacement | null>(null);
+	let reorderUndoToastId: string | number | null = null;
+	const reorderGroupField = $derived<GiftReorderGroupField | null>(
+		reorderGrouping === GIFT_GROUPING_OPTIONS.none ? null : reorderGrouping,
+	);
+
+	function dismissReorderUndoToast() {
+		if (reorderUndoToastId !== null) {
+			dismissToast(reorderUndoToastId);
+			reorderUndoToastId = null;
+		}
+	}
+
+	function clearReorderSession() {
+		reorderMode = false;
+		reorderActiveIds = null;
+		reorderGrouping = GIFT_GROUPING_OPTIONS.none;
+		reorderGroupChanges = {};
+		reorderPreviewPlacement = null;
+		dismissReorderUndoToast();
+	}
+
 	async function refreshReorderBaseline(): Promise<boolean> {
 		reorderBaselineStatus = REORDER_BASELINE_STATUS.refreshing;
 		giftsContext.clearReorderOverride();
+		reorderGroupChanges = {};
+		reorderPreviewPlacement = null;
+		dismissReorderUndoToast();
 		try {
 			const authoritativeQuery = getGiftsByWishlistShortId(shortId);
 			await authoritativeQuery.refresh();
@@ -493,6 +545,7 @@
 					: m.gift_reorder_save_error_unresolved(),
 			);
 		},
+		mergeReorderGiftsInputs,
 	);
 	const viewMode = $derived(giftsContext.viewMode.current);
 	let cardColumnCapacity = $state<number | null>(null);
@@ -500,23 +553,82 @@
 		viewMode === GIFT_VIEW_MODES.card || viewMode === GIFT_VIEW_MODES.list,
 	);
 	const canMaintainReorderMode = $derived(canManage && !isArchived && reorderLayoutSupported);
+	// Grouped reorder shows every level or category, so their definitions must be loaded first.
+	const reorderGroupDefinitionsReady = $derived.by(() => {
+		switch (giftsContext.effectiveGrouping.current) {
+			case GIFT_GROUPING_OPTIONS.priority:
+				return priorityLevelsReady;
+			case GIFT_GROUPING_OPTIONS.category:
+				return categoriesReady;
+			default:
+				return true;
+		}
+	});
 	const canEnterReorderMode = $derived(
 		!isGiftDataLoading &&
 			wishlist.shortId === shortId &&
 			reorderBaselineVerified &&
 			canMaintainReorderMode,
 	);
-	const reorderModeGifts = $derived(
-		reorderActiveIds === null
+	const reorderGroups = $derived.by<GiftReorderGroup[]>(() => {
+		switch (reorderGroupField) {
+			case GIFT_GROUPING_OPTIONS.priority:
+				return priorityReorderGroups(priorityLevels);
+			case GIFT_GROUPING_OPTIONS.category:
+				return categoryReorderGroups(categoryOptions, getLocale());
+			default:
+				return [];
+		}
+	});
+	const reorderGroupsByKey = $derived(new Map(reorderGroups.map((group) => [group.key, group])));
+
+	function withReorderGroupChange(giftItem: GiftByRole): GiftByRole {
+		const change = reorderGroupChanges[giftItem.id];
+		const group =
+			change === undefined
+				? undefined
+				: reorderGroupsByKey.get(reorderGroupKey(change.field, change.value));
+		return group === undefined ? giftItem : withReorderGroup(giftItem, group);
+	}
+
+	/** The saved-or-queued session order with optimistic group changes applied. */
+	const reorderCommittedGifts = $derived(
+		(reorderActiveIds === null
 			? activeGiftsInOwnerOrder(giftsContext.effectiveGifts.current)
-			: resolveActiveGiftOrder(giftsContext.effectiveGifts.current, reorderActiveIds),
+			: resolveActiveGiftOrder(giftsContext.effectiveGifts.current, reorderActiveIds)
+		).map(withReorderGroupChange),
 	);
+	const reorderModeGifts = $derived.by(() => {
+		const placement = reorderPreviewPlacement;
+		const field = reorderGroupField;
+		if (placement === null || field === null) {
+			return reorderCommittedGifts;
+		}
+		const giftsById = new Map(reorderCommittedGifts.map((giftItem) => [giftItem.id, giftItem]));
+		const targetGroup = reorderGroupsByKey.get(placement.groupKey);
+		return applyReorderPlacement(
+			reorderCommittedGifts.map((giftItem) => giftItem.id),
+			reorderGroupKeyLookup(reorderCommittedGifts, field),
+			placement,
+		).flatMap((giftId) => {
+			const giftItem = giftsById.get(giftId);
+			if (giftItem === undefined) {
+				return [];
+			}
+			return giftId === placement.giftId && targetGroup !== undefined
+				? [withReorderGroup(giftItem, targetGroup)]
+				: [giftItem];
+		});
+	});
 	const reorderPresentationGifts = $derived(
 		recipientViewPreview ? projectGiftsForRecipient(reorderModeGifts) : reorderModeGifts,
 	);
 	const giftSections = $derived.by<GiftSection[]>(() => {
 		if (!reorderMode) {
 			return giftsContext.giftSections.current;
+		}
+		if (reorderGroupField !== null) {
+			return buildReorderSections(reorderPresentationGifts, reorderGroupField, reorderGroups);
 		}
 		return reorderPresentationGifts.length === 0
 			? []
@@ -878,7 +990,13 @@
 			return priorityLevelsLoadPromise;
 		}
 		priorityLevelsRequestedForWishlistId = targetWishlistId;
-		const requestPromise = getPriorityLevels(targetWishlistId)
+		const levelsQuery = getPriorityLevels(targetWishlistId);
+		// A failed query stays cached with its rejection, so a retry has to refetch it.
+		const levelsResponse =
+			levelsQuery.error === undefined
+				? levelsQuery
+				: levelsQuery.refresh().then(() => levelsQuery);
+		const requestPromise = levelsResponse
 			.then((levels) => {
 				if (wishlist.id !== targetWishlistId) {
 					return;
@@ -898,8 +1016,7 @@
 	}
 
 	function enterSelection(giftId?: string) {
-		reorderMode = false;
-		reorderActiveIds = null;
+		clearReorderSession();
 		giftSelection.enter(giftId);
 		void ensurePriorityLevels();
 	}
@@ -1044,8 +1161,16 @@
 
 	$effect(() => {
 		if (reorderMode && !canMaintainReorderMode) {
-			reorderMode = false;
-			reorderActiveIds = null;
+			clearReorderSession();
+		}
+	});
+
+	$effect(() => {
+		if (
+			canManage &&
+			giftsContext.effectiveGrouping.current === GIFT_GROUPING_OPTIONS.priority
+		) {
+			untrack(() => void ensurePriorityLevels());
 		}
 	});
 
@@ -1171,13 +1296,38 @@
 		settingsModalOpen = true;
 	}
 
-	function enterReorderMode() {
-		if (!canEnterReorderMode) {
+	/** Loads, or retries after a failure, the levels or categories grouped reorder displays. */
+	async function ensureReorderGroupDefinitions(): Promise<void> {
+		if (reorderGroupDefinitionsReady) {
+			return;
+		}
+		if (giftsContext.effectiveGrouping.current === GIFT_GROUPING_OPTIONS.priority) {
+			await ensurePriorityLevels();
+		} else if (categoriesQuery !== null) {
+			try {
+				await (categoriesQuery.error === undefined
+					? categoriesQuery
+					: categoriesQuery.refresh());
+			} catch (thrown) {
+				console.error('Failed to load gift categories for reorder:', thrown);
+			}
+		}
+	}
+
+	/** Definitions that cannot load fall back to the ungrouped reorder instead of blocking entry. */
+	async function enterReorderMode() {
+		await ensureReorderGroupDefinitions();
+		if (!canEnterReorderMode || reorderMode) {
 			return;
 		}
 		reorderActiveIds = activeGiftsInOwnerOrder(giftsContext.effectiveGifts.current).map(
 			(giftItem) => giftItem.id,
 		);
+		reorderGrouping = reorderGroupDefinitionsReady
+			? giftsContext.effectiveGrouping.current
+			: GIFT_GROUPING_OPTIONS.none;
+		reorderGroupChanges = {};
+		reorderPreviewPlacement = null;
 		reorderMode = true;
 	}
 
@@ -1198,13 +1348,12 @@
 		if (!canFinishReorderMode(savesSucceeded)) {
 			return;
 		}
-		reorderMode = false;
-		reorderActiveIds = null;
+		clearReorderSession();
 	}
 
 	async function handleReorderModeChange(active: boolean) {
 		if (active) {
-			enterReorderMode();
+			await enterReorderMode();
 			return;
 		}
 		await finishReorderMode();
@@ -1585,23 +1734,108 @@
 		}
 	}
 
-	function handleReorderCommit(orderedIds: string[]) {
+	/** Applies an order (and any group changes) optimistically and queues one reorder call. */
+	function commitReorder(
+		orderedIds: readonly string[],
+		groupChanges: readonly ReorderGiftGroupChange[] = [],
+	): boolean {
 		if (
 			!reorderMode ||
 			!reorderBaselineVerified ||
 			!canMaintainReorderMode ||
 			!isExactActiveGiftOrder(orderedIds)
 		) {
-			return;
+			return false;
 		}
 
+		dismissReorderUndoToast();
 		reorderBaselineStatus = REORDER_BASELINE_STATUS.verified;
 		reorderActiveIds = [...orderedIds];
+		if (groupChanges.length > 0) {
+			reorderGroupChanges = {
+				...reorderGroupChanges,
+				...Object.fromEntries(groupChanges.map((change) => [change.giftId, change])),
+			};
+		}
 		giftsContext.setActiveGiftOrder(orderedIds);
 		reorderPersistenceQueue.enqueue({
 			wishlistId: wishlist.id,
 			orderedGiftIds: [...orderedIds],
+			...(groupChanges.length > 0 ? { groupChanges: [...groupChanges] } : {}),
 		});
+		return true;
+	}
+
+	function handleReorderCommit(orderedIds: string[]) {
+		commitReorder(orderedIds);
+	}
+
+	function handleReorderPlacementPreview(placement: GiftReorderPlacement) {
+		if (reorderMode && reorderBaselineVerified && reorderGroupField !== null) {
+			reorderPreviewPlacement = placement;
+		}
+	}
+
+	function handleReorderPlacementCancel() {
+		reorderPreviewPlacement = null;
+	}
+
+	/** Returns whether the move was accepted, so only accepted moves are announced. */
+	function handleReorderPlacementCommit(
+		placement: GiftReorderPlacement,
+		source: GiftReorderMoveSource,
+	): boolean {
+		reorderPreviewPlacement = null;
+		const field = reorderGroupField;
+		if (field === null) {
+			return false;
+		}
+		const move = resolveGroupedReorderMove(
+			reorderCommittedGifts,
+			field,
+			reorderGroupsByKey,
+			placement,
+		);
+		if (move === null || !commitReorder(move.orderedIds, move.groupChanges)) {
+			return false;
+		}
+		if (move.targetGroup !== null && source === GIFT_REORDER_MOVE_SOURCES.pointer) {
+			offerGroupMoveUndo(move.movedGift, field, move.targetGroup, move.previousOrder);
+		}
+		return true;
+	}
+
+	/** One undo restores the order and the group value from before the drop. */
+	function offerGroupMoveUndo(
+		movedGift: GiftByRole,
+		field: GiftReorderGroupField,
+		targetGroup: GiftReorderGroup,
+		previousOrder: readonly string[],
+	) {
+		const previousGroupChange: ReorderGiftGroupChange = {
+			giftId: movedGift.id,
+			field,
+			value:
+				field === GIFT_GROUPING_OPTIONS.priority
+					? movedGift.priorityLevelId
+					: (movedGift.categoryId ?? null),
+		};
+		const toastId = showToast({
+			tone: 'success',
+			title: m.gift_reorder_group_changed({
+				name: movedGift.name,
+				group: giftSectionLabel(targetGroup),
+			}),
+			actionLabel: m.gift_reorder_group_undo(),
+			onAction: () => {
+				if (reorderUndoToastId !== toastId) {
+					return;
+				}
+				reorderUndoToastId = null;
+				commitReorder(previousOrder, [previousGroupChange]);
+			},
+		});
+		reorderUndoToastId = toastId;
 	}
 
 	// ── Reservation handlers ──────────────────────────────────────────────────
@@ -1906,7 +2140,11 @@
 		{:else if reorderMode}
 			<Alert.Root data-testid="gift-reorder-temporary-notice">
 				<InfoIcon />
-				<Alert.Description>{m.gift_reorder_temporary_explanation()}</Alert.Description>
+				<Alert.Description>
+					{reorderGroupField === null
+						? m.gift_reorder_temporary_explanation()
+						: m.gift_reorder_temporary_explanation_grouped()}
+				</Alert.Description>
 			</Alert.Root>
 		{/if}
 
@@ -1962,9 +2200,7 @@
 		<WishlistGiftDisplay
 			motionKey={shortId}
 			sections={giftSections}
-			grouping={reorderMode
-				? GIFT_GROUPING_OPTIONS.none
-				: giftsContext.effectiveGrouping.current}
+			grouping={reorderMode ? reorderGrouping : giftsContext.effectiveGrouping.current}
 			{role}
 			{isArchived}
 			{hideReservationState}
@@ -1993,6 +2229,9 @@
 			onreorderpreview={handleReorderPreview}
 			onreordercommit={handleReorderCommit}
 			onreordercancel={handleReorderCancel}
+			onreorderplacementpreview={handleReorderPlacementPreview}
+			onreorderplacementcommit={handleReorderPlacementCommit}
+			onreorderplacementcancel={handleReorderPlacementCancel}
 			bind:nativeContextOpen
 			nativeContextSessionId={contextSession?.id ?? 0}
 			onnativecontextcomplete={completeContextClose}

@@ -11,6 +11,7 @@
 	import { Button } from '$lib/components/base/button/index.js';
 	import { CheckboxSurface, checkboxVariants } from '$lib/components/base/checkbox/index.js';
 	import { ElevationSurface } from '$lib/components/base/elevation-surface/index.js';
+	import type { GiftReorderGroupPosition } from './gift_reorder_view.svelte.js';
 
 	interface WishlistGiftDraggableWrapperProps {
 		index: number;
@@ -33,6 +34,12 @@
 		onselectiontoggle?: (giftId: string) => void;
 		oncontextmenu?: (event: MouseEvent) => boolean;
 		onlongpress?: () => boolean | void;
+		/** Grouped reorder: the priority or category group this gift belongs to while reordering. */
+		reorderGroupKey?: string;
+		canMoveBackward?: boolean;
+		canMoveForward?: boolean;
+		/** Grouped reorder: zero-based position within the gift's group and that group's size. */
+		groupPosition?: GiftReorderGroupPosition;
 	}
 
 	let {
@@ -56,7 +63,17 @@
 		onselectiontoggle,
 		oncontextmenu,
 		onlongpress,
+		reorderGroupKey,
+		canMoveBackward,
+		canMoveForward,
+		groupPosition,
 	}: WishlistGiftDraggableWrapperProps = $props();
+
+	const backwardMoveAvailable = $derived(canMoveBackward ?? index > 0);
+	const forwardMoveAvailable = $derived(canMoveForward ?? index < totalCount - 1);
+	const displayedPosition = $derived(
+		`${(groupPosition?.index ?? index) + 1}/${groupPosition?.total ?? totalCount}`,
+	);
 
 	let longPressPending = $state(false);
 	let suppressNextClickAfterLongPress = $state(false);
@@ -68,6 +85,7 @@
 			longPressPending = pending;
 		},
 	);
+	const reorderGripVisible = $derived(reorderEnabled && !selectionMode);
 	const isDragged = $derived(draggedGiftId === giftId);
 	const isDragOver = $derived(dragOverGiftId === giftId);
 	const safePrimaryLink = $derived(normalizeGiftUrl(primaryLink));
@@ -219,7 +237,9 @@
 <div
 	data-gift-item
 	data-gift-id={giftId}
+	data-gift-reorder-group={reorderGroupKey}
 	data-long-press-pending={longPressPending || undefined}
+	class:gift-reorder-grip-owner={reorderGripVisible}
 	class={cn(
 		selectionMode
 			? 'relative h-full cursor-default rounded-panel transition-opacity focus-visible:outline-none'
@@ -265,18 +285,19 @@
 			<CheckboxSurface checked={selected} />
 		</span>
 	{/if}
-	{#if reorderEnabled && !selectionMode}
+	{#if reorderGripVisible}
 		<button
 			type="button"
 			aria-label={m.gift_reorder_grip_label()}
 			title={m.gift_reorder_keyboard_hint()}
-			class="group/grip elevation-owner elevation-owner-raised absolute left-0 top-0 z-50 grid size-[60px] cursor-grab touch-none place-items-start rounded-[var(--radius-panel)] p-0 outline-offset-[-3px] focus-visible:outline-[3px] focus-visible:outline-ring active:cursor-grabbing sm:left-1 sm:top-1 sm:size-8 sm:rounded-[calc(var(--radius-panel)-4px)]"
+			class="group/grip elevation-owner elevation-owner-raised absolute left-(--gift-reorder-grip-offset) top-(--gift-reorder-grip-offset) z-50 grid size-[60px] cursor-grab touch-none place-items-start rounded-[var(--radius-panel)] p-0 outline-offset-[-3px] focus-visible:outline-[3px] focus-visible:outline-ring active:cursor-grabbing sm:size-8 sm:rounded-[calc(var(--radius-panel)-4px)]"
+			data-gift-reorder-grip
 			data-prevent-gift-card-open
 			onpointerdown={(event) => onreorderpointerdown(event, index)}
 			onkeydown={handleGripKeydown}
 		>
 			<ElevationSurface
-				class="ml-1 mt-1 grid size-10 place-items-center rounded-[12px] border-2 border-ink bg-card transition-[translate,scale,box-shadow,background-color,opacity] duration-200 ease-spring group-hover/gift-card:-translate-y-0.5 group-focus-within/gift-card:-translate-y-0.5 group-hover/grip:bg-accent sm:size-6 sm:rounded-[8px]"
+				class="ml-(--gift-reorder-grip-face-inset) mt-(--gift-reorder-grip-face-inset) grid size-(--gift-reorder-grip-face-size) place-items-center rounded-[12px] border-2 border-ink bg-card transition-[translate,scale,box-shadow,background-color,opacity] duration-200 ease-spring group-hover/gift-card:-translate-y-0.5 group-focus-within/gift-card:-translate-y-0.5 group-hover/grip:bg-accent sm:rounded-[8px]"
 			>
 				<GripVerticalIcon class="size-5 text-muted-foreground sm:size-4" />
 			</ElevationSurface>
@@ -289,7 +310,7 @@
 	>
 		{@render children()}
 	</div>
-	{#if reorderEnabled && !selectionMode}
+	{#if reorderGripVisible}
 		<div
 			class={cn(
 				'gift-reorder-directional-actions absolute z-50 items-center',
@@ -298,7 +319,7 @@
 			data-testid="gift-reorder-directional-actions"
 		>
 			<span class="pointer-events-none px-1 text-sm font-medium" aria-hidden="true">
-				{index + 1}/{totalCount}
+				{displayedPosition}
 			</span>
 			<Button
 				type="button"
@@ -306,7 +327,7 @@
 				size="lg"
 				format="icon"
 				aria-label={m.gift_reorder_move_up({ name: giftName })}
-				disabled={index === 0}
+				disabled={!backwardMoveAvailable}
 				data-prevent-gift-card-open
 				onclick={(event) => {
 					event.stopPropagation();
@@ -321,7 +342,7 @@
 				size="lg"
 				format="icon"
 				aria-label={m.gift_reorder_move_down({ name: giftName })}
-				disabled={index === totalCount - 1}
+				disabled={!forwardMoveAvailable}
 				data-prevent-gift-card-open
 				onclick={(event) => {
 					event.stopPropagation();
@@ -338,6 +359,25 @@
 	[data-gift-item] {
 		--gift-context-face-inset: max(0px, calc(var(--radius-panel) - var(--radius-btn)));
 		--gift-context-shadow-inset: calc(var(--gift-context-face-inset) + var(--depth-clearance));
+		--gift-reorder-grip-offset: 0px;
+		--gift-reorder-grip-face-inset: 0.25rem;
+		--gift-reorder-grip-face-size: 2.5rem;
+	}
+
+	@media (width >= 640px) {
+		[data-gift-item] {
+			--gift-reorder-grip-offset: 0.25rem;
+			--gift-reorder-grip-face-size: 1.5rem;
+		}
+	}
+
+	/* Gift content overlaying the top-left corner (the category badge) starts after the grip face
+	   and its depth shadow. */
+	.gift-reorder-grip-owner {
+		--gift-context-leading-clearance: calc(
+			var(--gift-reorder-grip-offset) + var(--gift-reorder-grip-face-inset) +
+				var(--gift-reorder-grip-face-size) + var(--nested-control-gap)
+		);
 	}
 
 	.gift-selection-control {

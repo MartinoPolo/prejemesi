@@ -1,7 +1,11 @@
 import '../../../../app.css';
 import { describe, expect, it } from 'vitest';
 import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
-import { createGiftPointerReorderController } from './gift_pointer_reorder.svelte.js';
+import type { GiftReorderPlacement } from '$lib/modules/gifts/gift_grouped_reorder.js';
+import {
+	createGiftPointerReorderController,
+	GIFT_REORDER_GROUP_ATTRIBUTE,
+} from './gift_pointer_reorder.svelte.js';
 
 const { expectPixelsNear } = createPixelAssertions(expect);
 
@@ -301,5 +305,189 @@ describe('gift pointer reorder controller (#239)', () => {
 		expect(document.querySelector('[data-gift-reorder-overlay]')).toBeNull();
 		controller.destroy();
 		items.forEach((item) => item.remove());
+	});
+});
+
+describe('grouped gift pointer reorder (#454)', () => {
+	const HIGH = 'priority:high';
+	const LOW = 'priority:low';
+	const NONE = 'priority:none';
+
+	interface LayoutEntry {
+		groupKey: string;
+		top: number;
+		height: number;
+		giftId?: string;
+	}
+
+	/** Header and item rows stacked in one column; the empty "none" group shows only a drop zone. */
+	const LAYOUT: LayoutEntry[] = [
+		{ groupKey: HIGH, top: 0, height: 20 },
+		{ groupKey: HIGH, top: 20, height: 60, giftId: 'a' },
+		{ groupKey: HIGH, top: 80, height: 60, giftId: 'b' },
+		{ groupKey: LOW, top: 160, height: 20 },
+		{ groupKey: LOW, top: 180, height: 60, giftId: 'c' },
+		{ groupKey: NONE, top: 260, height: 20 },
+		{ groupKey: NONE, top: 280, height: 40 },
+	];
+
+	function pointer(type: string, clientX: number, clientY: number) {
+		return new PointerEvent(type, {
+			pointerId: 11,
+			pointerType: 'mouse',
+			button: 0,
+			clientX,
+			clientY,
+			bubbles: true,
+			cancelable: true,
+		});
+	}
+
+	function renderGroups() {
+		const container = document.createElement('div');
+		Object.assign(container.style, {
+			position: 'fixed',
+			left: '0',
+			top: '0',
+			width: '300px',
+			height: '320px',
+		});
+		const elements = LAYOUT.map((entry) => {
+			const element = document.createElement('div');
+			element.setAttribute(GIFT_REORDER_GROUP_ATTRIBUTE, entry.groupKey);
+			if (entry.giftId !== undefined) {
+				element.setAttribute('data-gift-item', '');
+				element.dataset.giftId = entry.giftId;
+				element.textContent = entry.giftId;
+			}
+			Object.assign(element.style, {
+				position: 'absolute',
+				left: '0',
+				top: `${entry.top}px`,
+				width: '300px',
+				height: `${entry.height}px`,
+			});
+			container.append(element);
+			return element;
+		});
+		document.body.append(container);
+		const items = elements.filter((element) => element.hasAttribute('data-gift-item'));
+		return { container, elements, items };
+	}
+
+	function createGroupedController(
+		rendered: ReturnType<typeof renderGroups>,
+		onPreview: (placement: GiftReorderPlacement) => void = () => {},
+	) {
+		const previews: GiftReorderPlacement[] = [];
+		const commits: GiftReorderPlacement[] = [];
+		const cancellations: number[] = [];
+		const controller = createGiftPointerReorderController({
+			getItemElements: () => rendered.items,
+			getItemIds: () => rendered.items.map((item) => item.dataset.giftId!),
+			onPreviewOrder: () => {},
+			onCommitOrder: () => {},
+			onCancelOrder: () => {},
+			getGroupTargetElements: () => rendered.elements,
+			grouped: {
+				isActive: () => true,
+				onPreviewPlacement: (placement) => {
+					previews.push(placement);
+					onPreview(placement);
+				},
+				onCommitPlacement: (placement) => commits.push(placement),
+				onCancelPlacement: () => cancellations.push(1),
+			},
+		});
+		return { controller, previews, commits, cancellations };
+	}
+
+	it('moves within a group, into another group and into an empty group, then commits one placement', () => {
+		const rendered = renderGroups();
+		const { controller, previews, commits } = createGroupedController(rendered);
+		try {
+			controller.start(pointer('pointerdown', 150, 50), 0);
+			window.dispatchEvent(pointer('pointermove', 150, 120));
+			window.dispatchEvent(pointer('pointermove', 150, 200));
+			window.dispatchEvent(pointer('pointermove', 150, 300));
+			window.dispatchEvent(pointer('pointerup', 150, 300));
+
+			expect(previews).toEqual([
+				{ giftId: 'a', groupKey: HIGH, index: 1 },
+				{ giftId: 'a', groupKey: LOW, index: 0 },
+				{ giftId: 'a', groupKey: NONE, index: 0 },
+			]);
+			expect(commits).toEqual([{ giftId: 'a', groupKey: NONE, index: 0 }]);
+		} finally {
+			controller.destroy();
+			rendered.container.remove();
+		}
+	});
+
+	it('anti-flicker regression guard: a layout shift under the pointer never bounces the gift between groups', () => {
+		const rendered = renderGroups();
+		const { controller, previews } = createGroupedController(rendered);
+		try {
+			controller.start(pointer('pointerdown', 150, 50), 0);
+			window.dispatchEvent(pointer('pointermove', 150, 150));
+			expect(previews).toEqual([{ giftId: 'a', groupKey: HIGH, index: 1 }]);
+
+			window.dispatchEvent(pointer('pointermove', 150, 200));
+			expect(previews.at(-1)).toEqual({ giftId: 'a', groupKey: LOW, index: 0 });
+
+			// A layout shift moves the high group under the pointer while it keeps moving down.
+			rendered.elements[2]!.style.top = '150px';
+			window.dispatchEvent(pointer('pointermove', 150, 205));
+			expect(previews).toHaveLength(2);
+
+			window.dispatchEvent(pointer('pointermove', 150, 185));
+			expect(previews.at(-1)).toEqual({ giftId: 'a', groupKey: HIGH, index: 1 });
+		} finally {
+			controller.destroy();
+			rendered.container.remove();
+		}
+	});
+
+	it.each([
+		['pointercancel', () => window.dispatchEvent(pointer('pointercancel', 150, 300))],
+		['Escape', () => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))],
+	])('cancels a cross-group preview on %s without committing', (_name, cancelDrag) => {
+		const rendered = renderGroups();
+		const { controller, previews, commits, cancellations } = createGroupedController(rendered);
+		try {
+			controller.start(pointer('pointerdown', 150, 50), 0);
+			window.dispatchEvent(pointer('pointermove', 150, 300));
+			expect(previews).toEqual([{ giftId: 'a', groupKey: NONE, index: 0 }]);
+			cancelDrag();
+			expect(commits).toEqual([]);
+			expect(cancellations).toHaveLength(1);
+			expect(document.querySelector('[data-gift-reorder-overlay]')).toBeNull();
+		} finally {
+			controller.destroy();
+			rendered.container.remove();
+		}
+	});
+
+	it('mirrors the re-rendered dragged card, with its live group badge, into the overlay', async () => {
+		const rendered = renderGroups();
+		const { controller } = createGroupedController(rendered, (placement) => {
+			// Stands in for Svelte re-rendering the dragged card with its new group badge.
+			rendered.items[0]!.textContent = `a ${placement.groupKey}`;
+		});
+		try {
+			controller.start(pointer('pointerdown', 150, 50), 0);
+			window.dispatchEvent(pointer('pointermove', 150, 200));
+			await expect
+				.poll(
+					() =>
+						document.querySelector<HTMLElement>('[data-gift-reorder-overlay]')
+							?.textContent,
+				)
+				.toBe(`a ${LOW}`);
+			expect(rendered.items[0]!.style.visibility).toBe('hidden');
+		} finally {
+			controller.destroy();
+			rendered.container.remove();
+		}
 	});
 });

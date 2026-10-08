@@ -33,9 +33,11 @@ import {
 	ReorderGiftsInputSchema,
 	MarkGiftReceivedInputSchema,
 	BulkUpdateGiftsInputSchema,
+	GIFT_GROUPING_OPTIONS,
 	isPriceRangeValid,
 	type GiftForRecipient,
 	type GiftForVisitor,
+	type GiftReorderGroupField,
 } from './types.js';
 import { normalizeGiftLinks } from './gift_url.js';
 import {
@@ -732,28 +734,55 @@ export const deleteGift = guardedCommand(v.string(), async ({ user }, giftId) =>
 
 export const reorderGifts = guardedCommand(
 	ReorderGiftsInputSchema,
-	async ({ user }, { wishlistId, orderedGiftIds }) => {
-		await getDb().transaction(async (tx) => {
-			const { wishlistRow } = await verifyBulkManagerAccess(tx, user.id, wishlistId);
+	async ({ user }, { wishlistId, orderedGiftIds, groupChanges = [] }) => {
+		const database = getDb();
+		const result = await database.transaction(async (tx) => {
+			const { role, wishlistRow } = await verifyBulkManagerAccess(tx, user.id, wishlistId);
 			assertWishlistMutable(wishlistRow);
 
 			const giftRows = await tx
-				.select({ id: gift.id, received: gift.received })
+				.select()
 				.from(gift)
 				.where(and(eq(gift.wishlistId, wishlistId), isNull(gift.deletedAt)))
 				.for('update');
-			const activeGiftIds = new Set(
-				giftRows.filter((row) => !row.received).map((row) => row.id),
+			const activeGiftRowsById = new Map(
+				giftRows.filter((row) => !row.received).map((row) => [row.id, row]),
 			);
 			const isCompleteActiveSet =
-				orderedGiftIds.length === activeGiftIds.size &&
+				orderedGiftIds.length === activeGiftRowsById.size &&
 				new Set(orderedGiftIds).size === orderedGiftIds.length &&
-				orderedGiftIds.every((id) => activeGiftIds.has(id));
-			if (!isCompleteActiveSet) {
+				orderedGiftIds.every((id) => activeGiftRowsById.has(id));
+			const groupChangeRows = groupChanges.flatMap((change) => {
+				const giftRow = activeGiftRowsById.get(change.giftId);
+				return giftRow === undefined ? [] : [{ change, giftRow }];
+			});
+			if (!isCompleteActiveSet || groupChangeRows.length !== groupChanges.length) {
 				error(400, SERVER_ERROR.GIFT_WISHLIST_MISMATCH);
 			}
 			if (orderedGiftIds.length === 0) {
-				return;
+				return { role, wishlistRow, changedPlans: [] };
+			}
+
+			const now = new Date();
+			const updatePlans: Array<
+				ReturnType<typeof planPresentationUpdate> & { field: GiftReorderGroupField }
+			> = [];
+			for (const { change, giftRow } of groupChangeRows) {
+				const updateData: Partial<typeof gift.$inferInsert> = {};
+				if (change.field === GIFT_GROUPING_OPTIONS.priority) {
+					await assertWishlistPriorityLevel(tx, wishlistId, change.value);
+					updateData.priorityLevelId = change.value;
+				} else {
+					updateData.categoryId = await assertActiveGiftCategoryAssignment(
+						tx,
+						wishlistId,
+						change.value,
+					);
+				}
+				updatePlans.push({
+					field: change.field,
+					...planPresentationUpdate({ giftRow, updateData, now, wishlistRow }),
+				});
 			}
 
 			// Batch update sortOrder in a single CASE WHEN statement
@@ -767,10 +796,41 @@ export const reorderGifts = guardedCommand(
 				.update(gift)
 				.set({
 					sortOrder: sql<number>`CASE ${sortOrderCase} END`,
-					updatedAt: new Date(),
+					updatedAt: now,
 				})
 				.where(and(inArray(gift.id, orderedGiftIds), eq(gift.wishlistId, wishlistId)));
+
+			const changedPlans = updatePlans.filter((plan) => plan.didChange);
+			for (const plan of changedPlans) {
+				await tx
+					.update(gift)
+					.set({ ...plan.updateData, updatedAt: now })
+					.where(eq(gift.id, plan.giftRow.id));
+			}
+			return { role, wishlistRow, changedPlans };
 		});
+
+		if (result.changedPlans.length === 0) {
+			return;
+		}
+		if (result.role === WISHLIST_ROLES.moderator) {
+			await notifyReserversOfEditedGiftsBestEffort({
+				database,
+				changedGifts: result.changedPlans.map(({ giftRow }) => ({
+					id: giftRow.id,
+					wishlistId: giftRow.wishlistId,
+					name: giftRow.name,
+				})),
+				actorId: user.id,
+				actorName: user.name,
+				wishlist: { title: result.wishlistRow.title, shortId: result.wishlistRow.shortId },
+			});
+		}
+		// Group changes alter badges, groups and category counts; pure order changes stay optimistic.
+		await singleFlightRefresh(getGiftsByWishlistShortId, result.wishlistRow.shortId);
+		if (result.changedPlans.some((plan) => plan.field === GIFT_GROUPING_OPTIONS.category)) {
+			await singleFlightRefresh(getGiftCategorySettingsRows, wishlistId);
+		}
 	},
 );
 
@@ -820,6 +880,52 @@ async function verifyBulkManagerAccess(
 	return { role: WISHLIST_ROLES.moderator, wishlistRow };
 }
 
+async function assertWishlistPriorityLevel(
+	transaction: GiftTransaction,
+	wishlistId: string,
+	priorityLevelId: string | null,
+): Promise<void> {
+	if (priorityLevelId === null) {
+		return;
+	}
+	const levels = await transaction
+		.select({ id: priorityLevel.id })
+		.from(priorityLevel)
+		.where(and(eq(priorityLevel.id, priorityLevelId), eq(priorityLevel.wishlistId, wishlistId)))
+		.for('key share');
+	if (levels[0] === undefined) {
+		error(400, SERVER_ERROR.GIFT_PRIORITY_WISHLIST_MISMATCH);
+	}
+}
+
+function updateDataChangesGift(
+	giftRow: typeof gift.$inferSelect,
+	updateData: Partial<typeof gift.$inferInsert>,
+): boolean {
+	return Object.entries(updateData).some(([key, value]) =>
+		jsonChanged(value, giftRow[key as keyof typeof giftRow]),
+	);
+}
+
+/**
+ * Plans a presentation edit (priority, category, image) shared by bulk and grouped-reorder
+ * writes: only a value that actually changes counts, and on shared wishlists it follows the same
+ * "Upraveno po sdílení" transparency rule as the gift editor.
+ */
+function planPresentationUpdate(params: {
+	giftRow: typeof gift.$inferSelect;
+	updateData: Partial<typeof gift.$inferInsert>;
+	now: Date;
+	wishlistRow: typeof wishlist.$inferSelect;
+}) {
+	const { giftRow, updateData, now, wishlistRow } = params;
+	const didChange = updateDataChangesGift(giftRow, updateData);
+	if (didChange && wishlistRow.sharedAt !== null) {
+		applyPostShareEditTransparency({ giftRow, updateData, now, wishlistRow });
+	}
+	return { giftRow, updateData, didChange };
+}
+
 export const bulkUpdateGifts = guardedCommand(
 	BulkUpdateGiftsInputSchema,
 	async ({ user }, input) => {
@@ -833,20 +939,8 @@ export const bulkUpdateGifts = guardedCommand(
 				input.wishlistId,
 			);
 			assertWishlistMutable(wishlistRow);
-			if (input.action === 'priority' && input.priorityLevelId !== null) {
-				const levels = await tx
-					.select({ id: priorityLevel.id })
-					.from(priorityLevel)
-					.where(
-						and(
-							eq(priorityLevel.id, input.priorityLevelId),
-							eq(priorityLevel.wishlistId, input.wishlistId),
-						),
-					)
-					.for('key share');
-				if (levels[0] === undefined) {
-					error(400, SERVER_ERROR.GIFT_PRIORITY_WISHLIST_MISMATCH);
-				}
+			if (input.action === 'priority') {
+				await assertWishlistPriorityLevel(tx, input.wishlistId, input.priorityLevelId);
 			}
 			if (input.action === 'category') {
 				await assertActiveGiftCategoryAssignment(tx, input.wishlistId, input.categoryId);
@@ -879,18 +973,16 @@ export const bulkUpdateGifts = guardedCommand(
 					input,
 					row,
 				);
-				const didChange = Object.entries(updateData).some(([key, value]) =>
-					jsonChanged(value, row[key as keyof typeof row]),
-				);
-				if (didChange && isBulkPresentationAction(input) && wishlistRow.sharedAt !== null) {
-					applyPostShareEditTransparency({
+				if (isBulkPresentationAction(input)) {
+					const plan = planPresentationUpdate({
 						giftRow: row,
 						updateData,
 						now: updatedAt,
 						wishlistRow,
 					});
+					return { row, updateData, didChange: plan.didChange };
 				}
-				return { row, updateData, didChange };
+				return { row, updateData, didChange: updateDataChangesGift(row, updateData) };
 			});
 			const changedPresentationRows = updatePlans
 				.filter((plan) => plan.didChange && isBulkPresentationAction(input))

@@ -1,4 +1,6 @@
 import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest';
+import * as v from 'valibot';
+import { ReorderGiftsInputSchema } from './types.js';
 import {
 	serverErrorFixture as SERVER_ERROR,
 	singleFlightRefreshFixture as singleFlightRefresh,
@@ -354,6 +356,21 @@ describe('reorderGifts', () => {
 			message: SERVER_ERROR.ACCESS_DENIED,
 		});
 		expect(updateCallCount()).toBe(0);
+	});
+
+	it('accepts at most one group change per gift', () => {
+		const change = { giftId: GIFT_ID, field: 'priority', value: null } as const;
+		const input = { wishlistId: WISHLIST_ID, orderedGiftIds: [GIFT_ID, secondGiftId] };
+
+		expect(
+			v.safeParse(ReorderGiftsInputSchema, { ...input, groupChanges: [change] }).success,
+		).toBe(true);
+		expect(
+			v.safeParse(ReorderGiftsInputSchema, {
+				...input,
+				groupChanges: [change, { ...change, field: 'category' }],
+			}).success,
+		).toBe(false);
 	});
 
 	it('rejects reorders on archived wishlists', async () => {

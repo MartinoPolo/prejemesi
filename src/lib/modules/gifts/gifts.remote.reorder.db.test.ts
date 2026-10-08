@@ -48,9 +48,11 @@ vi.mock('$lib/server/remote.js', async () => {
 
 import { closeDb, getDb } from '$lib/server/db/index.js';
 import { user } from '$lib/server/db/auth.schema.js';
-import { wishlist } from '$lib/server/db/wishlist.schema.js';
-import { gift } from '$lib/server/db/gift.schema.js';
+import { priorityLevel, wishlist } from '$lib/server/db/wishlist.schema.js';
+import { gift, giftCategory, reservation } from '$lib/server/db/gift.schema.js';
 import { moderatorAssignment } from '$lib/server/db/moderator.schema.js';
+import { dispatchNotification } from '$lib/modules/notifications/notification_dispatcher.js';
+import { singleFlightRefresh } from '$lib/server/remote.js';
 import { reorderGifts } from './gifts.remote.js';
 
 import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
@@ -71,6 +73,12 @@ const FOREIGN_GIFT_ID = `${PREFIX}foreign-gift`;
 const RECEIVED_SORT_ORDER = 7;
 const DELETED_SORT_ORDER = 8;
 const ACTIVE_GIFT_IDS = [ACTIVE_FIRST_ID, ACTIVE_SECOND_ID, ACTIVE_THIRD_ID];
+const HIGH_PRIORITY_ID = `${PREFIX}priority-high`;
+const LOW_PRIORITY_ID = `${PREFIX}priority-low`;
+const FOREIGN_PRIORITY_ID = `${PREFIX}priority-foreign`;
+const BOOKS_CATEGORY_ID = `${PREFIX}category-books`;
+const DISABLED_CATEGORY_ID = `${PREFIX}category-disabled`;
+const FOREIGN_CATEGORY_ID = `${PREFIX}category-foreign`;
 
 async function isDbUsable(): Promise<boolean> {
 	if (!isLocalDatabaseUrl(databaseUrl)) {
@@ -138,6 +146,40 @@ describe.skipIf(!DB_READY)('reorderGifts remote boundary [real DB]', () => {
 		await database
 			.insert(moderatorAssignment)
 			.values({ wishlistId: WISHLIST_ID, userId: MODERATOR_ID });
+		await database.insert(priorityLevel).values([
+			{ id: HIGH_PRIORITY_ID, wishlistId: WISHLIST_ID, label: 'high', sortOrder: 0 },
+			{ id: LOW_PRIORITY_ID, wishlistId: WISHLIST_ID, label: 'low', sortOrder: 2 },
+			{
+				id: FOREIGN_PRIORITY_ID,
+				wishlistId: FOREIGN_WISHLIST_ID,
+				label: 'high',
+				sortOrder: 0,
+			},
+		]);
+		await database.insert(giftCategory).values([
+			{
+				id: BOOKS_CATEGORY_ID,
+				wishlistId: WISHLIST_ID,
+				customLabel: 'Books',
+				color: '#336699',
+				sortOrder: 0,
+			},
+			{
+				id: DISABLED_CATEGORY_ID,
+				wishlistId: WISHLIST_ID,
+				customLabel: 'Disabled',
+				color: '#336699',
+				sortOrder: 1,
+				deletedAt: new Date(),
+			},
+			{
+				id: FOREIGN_CATEGORY_ID,
+				wishlistId: FOREIGN_WISHLIST_ID,
+				customLabel: 'Foreign',
+				color: '#336699',
+				sortOrder: 0,
+			},
+		]);
 	});
 
 	beforeEach(async () => {
@@ -177,14 +219,22 @@ describe.skipIf(!DB_READY)('reorderGifts remote boundary [real DB]', () => {
 			.where(inArray(gift.wishlistId, [WISHLIST_ID, FOREIGN_WISHLIST_ID]));
 		await database
 			.update(wishlist)
-			.set({ status: 'active' })
+			.set({ status: 'active', sharedAt: null })
 			.where(eq(wishlist.id, WISHLIST_ID));
+		vi.mocked(dispatchNotification).mockClear();
+		vi.mocked(singleFlightRefresh).mockClear();
 	});
 
 	afterAll(async () => {
 		if (!DB_READY) {
 			return;
 		}
+		await getDb()
+			.delete(giftCategory)
+			.where(inArray(giftCategory.wishlistId, [WISHLIST_ID, FOREIGN_WISHLIST_ID]));
+		await getDb()
+			.delete(priorityLevel)
+			.where(inArray(priorityLevel.wishlistId, [WISHLIST_ID, FOREIGN_WISHLIST_ID]));
 		await getDb()
 			.delete(wishlist)
 			.where(inArray(wishlist.id, [WISHLIST_ID, FOREIGN_WISHLIST_ID]));
@@ -283,5 +333,268 @@ describe.skipIf(!DB_READY)('reorderGifts remote boundary [real DB]', () => {
 			body: { message: SERVER_ERROR.CANNOT_MODIFY_ARCHIVED_WISHLIST },
 		});
 		expect(await sortOrdersById()).toEqual(sortOrdersBefore);
+	});
+
+	describe('group changes', () => {
+		async function giftStateById() {
+			const rows = await getDb()
+				.select({
+					id: gift.id,
+					sortOrder: gift.sortOrder,
+					priorityLevelId: gift.priorityLevelId,
+					categoryId: gift.categoryId,
+					editedAfterShareAt: gift.editedAfterShareAt,
+				})
+				.from(gift)
+				.where(eq(gift.wishlistId, WISHLIST_ID));
+			return new Map(rows.map((row) => [row.id, row]));
+		}
+
+		/** Gifts predate the share; the post-share grace window stays open briefly after it. */
+		async function shareWishlist(sharedMillisecondsAgo: number) {
+			await getDb()
+				.update(wishlist)
+				.set({ sharedAt: new Date(Date.now() - sharedMillisecondsAgo) })
+				.where(eq(wishlist.id, WISHLIST_ID));
+			await getDb()
+				.update(gift)
+				.set({ createdAt: new Date(Date.now() - 2 * 60 * 60_000) })
+				.where(eq(gift.wishlistId, WISHLIST_ID));
+		}
+
+		async function shareWishlistLongAgo() {
+			await shareWishlist(60 * 60_000);
+		}
+
+		it('persists the moved gift priority together with the new order', async () => {
+			await callReorderGifts(
+				{ user: { id: RECIPIENT_ID } },
+				{
+					wishlistId: WISHLIST_ID,
+					orderedGiftIds: [ACTIVE_SECOND_ID, ACTIVE_FIRST_ID, ACTIVE_THIRD_ID],
+					groupChanges: [
+						{ giftId: ACTIVE_SECOND_ID, field: 'priority', value: HIGH_PRIORITY_ID },
+					],
+				},
+			);
+
+			const state = await giftStateById();
+			expect(state.get(ACTIVE_SECOND_ID)).toMatchObject({
+				sortOrder: 0,
+				priorityLevelId: HIGH_PRIORITY_ID,
+				editedAfterShareAt: null,
+			});
+			expect(state.get(ACTIVE_FIRST_ID)).toMatchObject({
+				sortOrder: 1,
+				priorityLevelId: null,
+			});
+			expect(singleFlightRefresh).toHaveBeenCalled();
+		});
+
+		it('moves a gift into a category and back to "Bez kategorie"', async () => {
+			await callReorderGifts(
+				{ user: { id: RECIPIENT_ID } },
+				{
+					wishlistId: WISHLIST_ID,
+					orderedGiftIds: ACTIVE_GIFT_IDS,
+					groupChanges: [
+						{ giftId: ACTIVE_THIRD_ID, field: 'category', value: BOOKS_CATEGORY_ID },
+					],
+				},
+			);
+			expect((await giftStateById()).get(ACTIVE_THIRD_ID)?.categoryId).toBe(
+				BOOKS_CATEGORY_ID,
+			);
+
+			await callReorderGifts(
+				{ user: { id: RECIPIENT_ID } },
+				{
+					wishlistId: WISHLIST_ID,
+					orderedGiftIds: ACTIVE_GIFT_IDS,
+					groupChanges: [{ giftId: ACTIVE_THIRD_ID, field: 'category', value: null }],
+				},
+			);
+			expect((await giftStateById()).get(ACTIVE_THIRD_ID)?.categoryId).toBeNull();
+		});
+
+		it('marks a changed priority on a shared wishlist as edited after sharing', async () => {
+			await shareWishlistLongAgo();
+
+			await callReorderGifts(
+				{ user: { id: RECIPIENT_ID } },
+				{
+					wishlistId: WISHLIST_ID,
+					orderedGiftIds: ACTIVE_GIFT_IDS,
+					groupChanges: [
+						{ giftId: ACTIVE_FIRST_ID, field: 'priority', value: LOW_PRIORITY_ID },
+					],
+				},
+			);
+
+			const state = await giftStateById();
+			expect(state.get(ACTIVE_FIRST_ID)?.editedAfterShareAt).toBeInstanceOf(Date);
+			expect(state.get(ACTIVE_SECOND_ID)?.editedAfterShareAt).toBeNull();
+		});
+
+		it.each([
+			{
+				graceDescription: 'inside the post-share grace window clears the badge',
+				sharedMillisecondsAgo: 10_000,
+				editedAfterRevert: null,
+			},
+			{
+				graceDescription: 'after the post-share grace window keeps the badge',
+				sharedMillisecondsAgo: 60 * 60_000,
+				editedAfterRevert: expect.any(Date),
+			},
+		])(
+			'reverting a group move (Vrátit) $graceDescription',
+			async ({ sharedMillisecondsAgo, editedAfterRevert }) => {
+				await shareWishlist(sharedMillisecondsAgo);
+
+				await callReorderGifts(
+					{ user: { id: RECIPIENT_ID } },
+					{
+						wishlistId: WISHLIST_ID,
+						orderedGiftIds: [ACTIVE_SECOND_ID, ACTIVE_THIRD_ID, ACTIVE_FIRST_ID],
+						groupChanges: [
+							{ giftId: ACTIVE_FIRST_ID, field: 'priority', value: LOW_PRIORITY_ID },
+						],
+					},
+				);
+				expect((await giftStateById()).get(ACTIVE_FIRST_ID)?.editedAfterShareAt).toEqual(
+					expect.any(Date),
+				);
+
+				await callReorderGifts(
+					{ user: { id: RECIPIENT_ID } },
+					{
+						wishlistId: WISHLIST_ID,
+						orderedGiftIds: ACTIVE_GIFT_IDS,
+						groupChanges: [{ giftId: ACTIVE_FIRST_ID, field: 'priority', value: null }],
+					},
+				);
+
+				expect((await giftStateById()).get(ACTIVE_FIRST_ID)).toMatchObject({
+					sortOrder: 0,
+					priorityLevelId: null,
+					editedAfterShareAt: editedAfterRevert,
+				});
+			},
+		);
+
+		it('rejects group changes sent with an empty order when the wishlist has no active gifts', async () => {
+			await getDb()
+				.update(gift)
+				.set({ received: true })
+				.where(inArray(gift.id, [...ACTIVE_GIFT_IDS]));
+			const stateBefore = await giftStateById();
+
+			await expect(
+				callReorderGifts(
+					{ user: { id: RECIPIENT_ID } },
+					{
+						wishlistId: WISHLIST_ID,
+						orderedGiftIds: [],
+						groupChanges: [
+							{ giftId: ACTIVE_FIRST_ID, field: 'priority', value: HIGH_PRIORITY_ID },
+						],
+					},
+				),
+			).rejects.toMatchObject({
+				status: 400,
+				body: { message: SERVER_ERROR.GIFT_WISHLIST_MISMATCH },
+			});
+			expect(await giftStateById()).toEqual(stateBefore);
+		});
+
+		it('leaves an unchanged value without a badge or refresh', async () => {
+			await shareWishlistLongAgo();
+
+			await callReorderGifts(
+				{ user: { id: RECIPIENT_ID } },
+				{
+					wishlistId: WISHLIST_ID,
+					orderedGiftIds: ACTIVE_GIFT_IDS,
+					groupChanges: [{ giftId: ACTIVE_FIRST_ID, field: 'priority', value: null }],
+				},
+			);
+
+			expect((await giftStateById()).get(ACTIVE_FIRST_ID)?.editedAfterShareAt).toBeNull();
+			expect(singleFlightRefresh).not.toHaveBeenCalled();
+		});
+
+		it.each([
+			{
+				changeDescription: 'a priority level of another wishlist',
+				change: { giftId: ACTIVE_FIRST_ID, field: 'priority', value: FOREIGN_PRIORITY_ID },
+				message: SERVER_ERROR.GIFT_PRIORITY_WISHLIST_MISMATCH,
+			},
+			{
+				changeDescription: 'a disabled category',
+				change: { giftId: ACTIVE_FIRST_ID, field: 'category', value: DISABLED_CATEGORY_ID },
+				message: SERVER_ERROR.GIFT_CATEGORY_WISHLIST_MISMATCH,
+			},
+			{
+				changeDescription: 'a category of another wishlist',
+				change: { giftId: ACTIVE_FIRST_ID, field: 'category', value: FOREIGN_CATEGORY_ID },
+				message: SERVER_ERROR.GIFT_CATEGORY_WISHLIST_MISMATCH,
+			},
+			{
+				changeDescription: 'a received gift',
+				change: { giftId: RECEIVED_ID, field: 'priority', value: HIGH_PRIORITY_ID },
+				message: SERVER_ERROR.GIFT_WISHLIST_MISMATCH,
+			},
+			{
+				changeDescription: 'a gift of another wishlist',
+				change: { giftId: FOREIGN_GIFT_ID, field: 'priority', value: HIGH_PRIORITY_ID },
+				message: SERVER_ERROR.GIFT_WISHLIST_MISMATCH,
+			},
+		] as const)(
+			'rejects $changeDescription and writes neither order nor group',
+			async ({ change, message }) => {
+				const stateBefore = await giftStateById();
+
+				await expect(
+					callReorderGifts(
+						{ user: { id: RECIPIENT_ID } },
+						{
+							wishlistId: WISHLIST_ID,
+							orderedGiftIds: [...ACTIVE_GIFT_IDS].reverse(),
+							groupChanges: [
+								{
+									giftId: ACTIVE_SECOND_ID,
+									field: 'priority',
+									value: HIGH_PRIORITY_ID,
+								},
+								change,
+							],
+						},
+					),
+				).rejects.toMatchObject({ status: 400, body: { message } });
+				expect(await giftStateById()).toEqual(stateBefore);
+			},
+		);
+
+		it('notifies reservers when a moderator changes a reserved gift group', async () => {
+			await getDb()
+				.insert(reservation)
+				.values({ giftId: ACTIVE_SECOND_ID, userId: OUTSIDER_ID, quantity: 1 });
+
+			await callReorderGifts(
+				{ user: { id: MODERATOR_ID } },
+				{
+					wishlistId: WISHLIST_ID,
+					orderedGiftIds: ACTIVE_GIFT_IDS,
+					groupChanges: [
+						{ giftId: ACTIVE_SECOND_ID, field: 'category', value: BOOKS_CATEGORY_ID },
+					],
+				},
+			);
+
+			expect(dispatchNotification).toHaveBeenCalledWith(
+				expect.objectContaining({ giftId: ACTIVE_SECOND_ID, targetUserIds: [OUTSIDER_ID] }),
+			);
+		});
 	});
 });
