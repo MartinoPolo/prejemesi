@@ -201,20 +201,23 @@ test('card drag preview stays stable while the pointer rests on a gift boundary'
 			name: REORDER_HANDLE,
 			exact: true,
 		});
+		const aBox = await giftItem(page, names[0]!).boundingBox();
 		const bBox = await giftItem(page, names[1]!).boundingBox();
 		const cBox = await giftItem(page, names[2]!).boundingBox();
 		const handleBox = await aHandle.boundingBox();
 		const initialOrder = await visibleGiftNames(page, names.length);
+		expect(aBox, 'A card has a bounding box').not.toBeNull();
 		expect(bBox, 'B card has a bounding box').not.toBeNull();
 		expect(cBox, 'C card has a bounding box').not.toBeNull();
 		expect(handleBox, 'A reorder handle has a bounding box').not.toBeNull();
-		const boundaryX = (bBox!.x + bBox!.width + cBox!.x) / 2;
-		const boundaryY = bBox!.y + bBox!.height / 2;
+		const grabX = handleBox!.x + handleBox!.width / 2;
+		const grabY = handleBox!.y + handleBox!.height / 2;
+		// Rest the dragged card's center, which drives hit testing, on the B|C boundary.
+		const boundaryX =
+			(bBox!.x + bBox!.width + cBox!.x) / 2 - (aBox!.x + aBox!.width / 2 - grabX);
+		const boundaryY = bBox!.y + bBox!.height / 2 - (aBox!.y + aBox!.height / 2 - grabY);
 
-		await page.mouse.move(
-			handleBox!.x + handleBox!.width / 2,
-			handleBox!.y + handleBox!.height / 2,
-		);
+		await page.mouse.move(grabX, grabY);
 		await page.mouse.down();
 		await page.mouse.move(boundaryX, boundaryY, { steps: 12 });
 
@@ -272,31 +275,12 @@ test('gift order persists after card drag and rapid list keyboard moves', async 
 					),
 			)
 			.toBe(0);
-		const aHandle = giftItem(page, names.A).getByRole('button', {
-			name: REORDER_HANDLE,
-			exact: true,
-		});
-		const handleBox = await aHandle.boundingBox();
-		const targetBox = await giftItem(page, names.C).boundingBox();
-		expect(handleBox, 'A reorder handle has a bounding box').not.toBeNull();
-		expect(targetBox, 'C card has a bounding box').not.toBeNull();
-
 		const cardMutation = page.waitForResponse(isSuccessfulRemoteMutation, { timeout: 15_000 });
-		await page.mouse.move(
-			handleBox!.x + handleBox!.width / 2,
-			handleBox!.y + handleBox!.height / 2,
-		);
-		await page.mouse.down();
-		await page.mouse.move(
-			targetBox!.x + targetBox!.width / 2,
-			targetBox!.y + targetBox!.height / 2,
-			{ steps: 10 },
-		);
-		await page.mouse.up();
+		await dragCardCenterTo(page, names.A, giftItem(page, names.C), boxCenter);
 		await cardMutation;
 		await expect
 			.poll(() => visibleGiftNames(page), { timeout: 10_000 })
-			.not.toEqual([names.A, names.B, names.C]);
+			.toEqual([names.B, names.C, names.A]);
 		const cardOrder = await visibleGiftNames(page);
 
 		await page.getByRole('button', { name: 'Hotovo', exact: true }).click();
@@ -367,27 +351,11 @@ test('reorder retains order and keyboard controls while switching Grid and List'
 		await expect(listMode).toBeEnabled();
 		await expect(gridMode).toBeEnabled();
 
-		const aHandle = giftItem(page, names[0]!).getByRole('button', {
-			name: REORDER_HANDLE,
-			exact: true,
-		});
-		const cBox = await giftItem(page, names[2]!).boundingBox();
-		const handleBox = await aHandle.boundingBox();
-		expect(cBox).not.toBeNull();
-		expect(handleBox).not.toBeNull();
 		const dragMutation = page.waitForResponse(isSuccessfulRemoteMutation, { timeout: 15_000 });
-		await page.mouse.move(
-			handleBox!.x + handleBox!.width / 2,
-			handleBox!.y + handleBox!.height / 2,
-		);
-		await page.mouse.down();
-		await page.mouse.move(cBox!.x + cBox!.width / 2, cBox!.y + cBox!.height / 2, {
-			steps: 10,
-		});
-		await page.mouse.up();
+		await dragCardCenterTo(page, names[0]!, giftItem(page, names[2]!), boxCenter);
 		await dragMutation;
 		const draggedOrder = await visibleGiftNames(page);
-		expect(draggedOrder).not.toEqual(names);
+		expect(draggedOrder).toEqual([names[1]!, names[2]!, names[0]!]);
 
 		await listMode.click();
 		await expect(listMode).toBeChecked();
@@ -423,8 +391,6 @@ test('reorder retains order and keyboard controls while switching Grid and List'
 });
 
 const DROP_ZONE_TEST_ID = 'gift-reorder-drop-zone';
-// Pointer drags do not auto-scroll, so keep the dragged gift and every group on screen.
-const GROUPED_REORDER_VIEWPORT = { width: 1280, height: 1800 };
 
 async function chooseGrouping(
 	page: Page,
@@ -481,11 +447,104 @@ async function waitForSettledAnimations(page: Page) {
 
 type DropPoint = 'after' | 'center';
 
-/** Drag a gift by its reorder handle to a point on the target (`after` = trailing half). */
+interface ScreenPoint {
+	x: number;
+	y: number;
+}
+
+type ScreenBox = NonNullable<Awaited<ReturnType<Locator['boundingBox']>>>;
+
+/** A resting pointer this far inside the scrolling content area stays out of its auto-scroll zones. */
+const AUTO_SCROLL_CLEARANCE = 120;
+const AUTO_SCROLL_MAXIMUM_WAITS = 60;
+
+/**
+ * Drags a gift by its reorder handle so the dragged card's center, which picks the drop slot,
+ * lands on `pointOnTarget` of the live target box. A target outside the app shell's scrolling
+ * content area is reached by holding the pointer at its edge until auto-scroll brings the target
+ * in. Resolves with how far the content area scrolled during the drag.
+ */
+async function dragCardCenterTo(
+	page: Page,
+	giftName: string,
+	target: Locator,
+	pointOnTarget: (box: ScreenBox) => ScreenPoint,
+): Promise<number> {
+	await waitForSettledAnimations(page);
+	const card = giftItem(page, giftName);
+	const handle = card.getByRole('button', { name: REORDER_HANDLE, exact: true });
+	await handle.scrollIntoViewIfNeeded();
+	const handleBox = await handle.boundingBox();
+	const cardBox = await card.boundingBox();
+	expect(handleBox, `${giftName} reorder handle has a bounding box`).not.toBeNull();
+	expect(cardBox, `${giftName} card has a bounding box`).not.toBeNull();
+	const grab = {
+		x: handleBox!.x + handleBox!.width / 2,
+		y: handleBox!.y + handleBox!.height / 2,
+	};
+	const grabToCenter = {
+		x: cardBox!.x + cardBox!.width / 2 - grab.x,
+		y: cardBox!.y + cardBox!.height / 2 - grab.y,
+	};
+	const contentArea = page.locator('main');
+	const contentAreaBox = await contentArea.boundingBox();
+	expect(contentAreaBox, 'the scrolling content area has a bounding box').not.toBeNull();
+	const visibleTop = Math.max(0, contentAreaBox!.y);
+	const visibleBottom = Math.min(
+		page.viewportSize()!.height,
+		contentAreaBox!.y + contentAreaBox!.height,
+	);
+	const contentScrollTop = () => contentArea.evaluate((element) => element.scrollTop);
+	const scrollBefore = await contentScrollTop();
+	const targetIsDropZone = (await target.getAttribute('data-testid')) === DROP_ZONE_TEST_ID;
+
+	await page.mouse.move(grab.x, grab.y);
+	await page.mouse.down();
+	for (let wait = 0; wait < AUTO_SCROLL_MAXIMUM_WAITS; wait += 1) {
+		// The preview replaces an empty group's drop zone once the dragged card enters that group.
+		if ((await target.count()) === 0) {
+			break;
+		}
+		const targetBox = await target.boundingBox();
+		expect(targetBox, 'drop target has a bounding box').not.toBeNull();
+		const center = pointOnTarget(targetBox!);
+		const pointer = { x: center.x - grabToCenter.x, y: center.y - grabToCenter.y };
+		if (pointer.y < visibleTop + AUTO_SCROLL_CLEARANCE) {
+			await page.mouse.move(pointer.x, visibleTop + 4, { steps: 4 });
+			await page.waitForTimeout(100);
+			continue;
+		}
+		if (pointer.y > visibleBottom - AUTO_SCROLL_CLEARANCE) {
+			await page.mouse.move(pointer.x, visibleBottom - 4, { steps: 4 });
+			await page.waitForTimeout(100);
+			continue;
+		}
+		await page.mouse.move(pointer.x, pointer.y, { steps: 12 });
+		// A gift target moves aside as the preview reorders, but a drop zone stays until the card
+		// enters its group, and groups the card leaves on the way shift it, so aim again.
+		if (!targetIsDropZone) {
+			break;
+		}
+		await waitForSettledAnimations(page);
+	}
+	const scrolled = (await contentScrollTop()) - scrollBefore;
+	await page.mouse.up();
+	return scrolled;
+}
+
+function boxCenter(box: ScreenBox): ScreenPoint {
+	return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+}
+
+/**
+ * Drag a gift onto the target's slot, or (`after`) most of a card past the target's center, where
+ * the gift's cell behind the target ends up.
+ */
 async function dragGiftTo(page: Page, giftName: string, target: Locator, point: DropPoint) {
 	const mutation = page.waitForResponse(isSuccessfulRemoteMutation, { timeout: 15_000 });
-	await dragGiftWithPointer(page, giftName, target, point);
+	const scrolled = await dragGiftWithPointer(page, giftName, target, point);
 	await mutation;
+	return scrolled;
 }
 
 async function dragGiftWithPointer(
@@ -493,33 +552,17 @@ async function dragGiftWithPointer(
 	giftName: string,
 	target: Locator,
 	point: DropPoint,
-) {
-	await waitForSettledAnimations(page);
-	const handleBox = await giftItem(page, giftName)
-		.getByRole('button', { name: REORDER_HANDLE, exact: true })
-		.boundingBox();
-	const targetBox = await target.boundingBox();
-	expect(handleBox, `${giftName} reorder handle has a bounding box`).not.toBeNull();
-	expect(targetBox, 'drop target has a bounding box').not.toBeNull();
+): Promise<number> {
 	const listView =
 		(await page.locator('[data-wishlist-gift-collection]').getAttribute('data-view-mode')) ===
 		'list';
-	const dropX =
-		point === 'after' && !listView
-			? targetBox!.x + targetBox!.width * 0.8
-			: targetBox!.x + targetBox!.width / 2;
-	const dropY =
-		point === 'after' && listView
-			? targetBox!.y + targetBox!.height * 0.8
-			: targetBox!.y + targetBox!.height / 2;
-
-	await page.mouse.move(
-		handleBox!.x + handleBox!.width / 2,
-		handleBox!.y + handleBox!.height / 2,
-	);
-	await page.mouse.down();
-	await page.mouse.move(dropX, dropY, { steps: 12 });
-	await page.mouse.up();
+	const pastCenter = point === 'after' ? 0.65 : 0;
+	return dragCardCenterTo(page, giftName, target, (box) => {
+		const center = boxCenter(box);
+		return listView
+			? { x: center.x, y: center.y + box.height * pastCenter }
+			: { x: center.x + box.width * pastCenter, y: center.y };
+	});
 }
 
 /** The drop zone an empty group shows while reordering, found through its section heading. */
@@ -541,7 +584,6 @@ test('grouped priority reorder moves gifts within and across levels and persists
 }) => {
 	const user = createTestUser('gift-reorder-grouped-priority');
 	const page = await registerAndGetPage(browser, request, baseURL!, user);
-	await page.setViewportSize(GROUPED_REORDER_VIEWPORT);
 	const context = page.context();
 	try {
 		await createWishlistAndNavigate(page, 'Grouped Priority Reorder');
@@ -648,7 +690,13 @@ test('grouped priority reorder moves gifts within and across levels and persists
 			});
 		await expect(page.getByTestId(DROP_ZONE_TEST_ID)).toHaveCount(1);
 
-		await dragGiftTo(page, names.D, giftItem(page, names.B), 'after');
+		const scrolledToHighGroup = await dragGiftTo(
+			page,
+			names.D,
+			giftItem(page, names.B),
+			'after',
+		);
+		expect(scrolledToHighGroup, 'dragging toward the top edge auto-scrolls up').toBeLessThan(0);
 		const committedGroups = {
 			Vysoká: [names.B, names.D],
 			Střední: [names.A, names.C],
@@ -683,7 +731,6 @@ test('a failed grouped save returns the moved gift to its original priority', as
 }) => {
 	const user = createTestUser('gift-reorder-grouped-failure');
 	const page = await registerAndGetPage(browser, request, baseURL!, user);
-	await page.setViewportSize(GROUPED_REORDER_VIEWPORT);
 	const context = page.context();
 	try {
 		await createWishlistAndNavigate(page, 'Grouped Reorder Failure');
@@ -775,7 +822,6 @@ test('grouped category reorder on a shared wishlist changes the category with po
 }) => {
 	const user = createTestUser('gift-reorder-grouped-category');
 	const page = await registerAndGetPage(browser, request, baseURL!, user);
-	await page.setViewportSize(GROUPED_REORDER_VIEWPORT);
 	const context = page.context();
 	try {
 		await createWishlistAndNavigate(page, 'Grouped Category Reorder');

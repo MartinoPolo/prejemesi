@@ -628,7 +628,12 @@
 			return giftsContext.giftSections.current;
 		}
 		if (reorderGroupField !== null) {
-			return buildReorderSections(reorderPresentationGifts, reorderGroupField, reorderGroups);
+			return buildReorderSections(
+				reorderPresentationGifts,
+				reorderGroupField,
+				reorderGroups,
+				reorderCommittedGifts,
+			);
 		}
 		return reorderPresentationGifts.length === 0
 			? []

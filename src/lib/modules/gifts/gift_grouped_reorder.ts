@@ -154,12 +154,16 @@ function reorderGroupChange(giftId: string, group: GiftReorderGroup): ReorderGif
 
 /**
  * Every group becomes a section, empty ones included so they can receive gifts; gifts keep the
- * global manual order inside their section.
+ * global manual order inside their section. Empty categories follow every populated group;
+ * priority levels keep their order. Which categories count as empty comes from
+ * `sectionOrderGifts`, so a drag preview can keep the section order of the committed gifts and
+ * the layout does not jump under the pointer.
  */
 export function buildReorderSections(
 	orderedGifts: readonly GiftByRole[],
 	field: GiftReorderGroupField,
 	groups: readonly GiftReorderGroup[],
+	sectionOrderGifts: readonly GiftByRole[] = orderedGifts,
 ): GiftSection[] {
 	const sectionsByKey = new Map<string, GiftSection>(
 		groups.map((group) => [
@@ -192,7 +196,17 @@ export function buildReorderSections(
 		}
 		section.gifts.push(gift);
 	}
-	return [...sectionsByKey.values()];
+	const sections = [...sectionsByKey.values()];
+	if (field !== GIFT_GROUPING_OPTIONS.category) {
+		return sections;
+	}
+	const populatedKeys = new Set(
+		sectionOrderGifts.map((gift) => giftReorderGroupKey(gift, field)),
+	);
+	return [
+		...sections.filter((section) => populatedKeys.has(section.key)),
+		...sections.filter((section) => !populatedKeys.has(section.key)),
+	];
 }
 
 /**

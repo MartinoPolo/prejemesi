@@ -290,14 +290,14 @@
 			type="button"
 			aria-label={m.gift_reorder_grip_label()}
 			title={m.gift_reorder_keyboard_hint()}
-			class="group/grip elevation-owner elevation-owner-raised absolute left-(--gift-reorder-grip-offset) top-(--gift-reorder-grip-offset) z-50 grid size-[60px] cursor-grab touch-none place-items-start rounded-[var(--radius-panel)] p-0 outline-offset-[-3px] focus-visible:outline-[3px] focus-visible:outline-ring active:cursor-grabbing sm:size-8 sm:rounded-[calc(var(--radius-panel)-4px)]"
+			class="group/grip elevation-owner elevation-owner-raised absolute left-(--gift-reorder-grip-offset) top-(--gift-reorder-grip-offset) z-50 grid size-(--gift-reorder-grip-target-size) cursor-grab touch-none place-items-start rounded-(--gift-reorder-grip-radius) p-0 outline-offset-[-3px] focus-visible:outline-[3px] focus-visible:outline-ring active:cursor-grabbing"
 			data-gift-reorder-grip
 			data-prevent-gift-card-open
 			onpointerdown={(event) => onreorderpointerdown(event, index)}
 			onkeydown={handleGripKeydown}
 		>
 			<ElevationSurface
-				class="ml-(--gift-reorder-grip-face-inset) mt-(--gift-reorder-grip-face-inset) grid size-(--gift-reorder-grip-face-size) place-items-center rounded-[12px] border-2 border-ink bg-card transition-[translate,scale,box-shadow,background-color,opacity] duration-200 ease-spring group-hover/gift-card:-translate-y-0.5 group-focus-within/gift-card:-translate-y-0.5 group-hover/grip:bg-accent sm:rounded-[8px]"
+				class="ml-(--gift-reorder-grip-face-inset) mt-(--gift-reorder-grip-face-inset) grid size-(--gift-reorder-grip-face-size) place-items-center rounded-(--gift-reorder-grip-face-radius) border-2 border-ink bg-card transition-[translate,scale,box-shadow,background-color,opacity] duration-200 ease-spring group-hover/grip:bg-accent"
 			>
 				<GripVerticalIcon class="size-5 text-muted-foreground sm:size-4" />
 			</ElevationSurface>
@@ -362,12 +362,28 @@
 		--gift-reorder-grip-offset: 0px;
 		--gift-reorder-grip-face-inset: 0.25rem;
 		--gift-reorder-grip-face-size: 2.5rem;
+
+		/* Touch keeps a larger hit target than the visible face. */
+		--gift-reorder-grip-target-size: 60px;
+
+		/* Nested corners: the card radius minus each surface's inset from the card edge. */
+		--gift-reorder-grip-radius: max(
+			0px,
+			calc(var(--radius-panel) - var(--gift-reorder-grip-offset))
+		);
+		--gift-reorder-grip-face-radius: max(
+			0px,
+			calc(var(--gift-reorder-grip-radius) - var(--gift-reorder-grip-face-inset))
+		);
 	}
 
 	@media (width >= 640px) {
 		[data-gift-item] {
 			--gift-reorder-grip-offset: 0.25rem;
-			--gift-reorder-grip-face-size: 1.5rem;
+			--gift-reorder-grip-face-size: var(--size-control-md);
+			--gift-reorder-grip-target-size: calc(
+				var(--gift-reorder-grip-face-size) + 2 * var(--gift-reorder-grip-face-inset)
+			);
 		}
 	}
 
