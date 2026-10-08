@@ -657,6 +657,10 @@ sections for UI work. Historical reconciliation and review notes are in
 - 2026-08-10: Follow `.agents/skills/add-gifts/SKILL.md` for evidence-ordered product extraction
   (JSON-LD, then page metadata, then exact brand/model search), no guessing or credential handling,
   mandatory dry-run, and apply only after an explicit unambiguous production request.
+- 2026-10-08: Ingested gift prices come from exact-match references: Heureka and Alza for Czech
+  physical goods, the category's store (e.g. Steam for PC games) otherwise, plus a foreign reference
+  when sold abroad. Cloudflare-protected retailers are read through a visible browser
+  (`scripts/gift-research-browser.mjs`) where the user can complete a verification if one persists.
 
 ## Repository checks & operations
 

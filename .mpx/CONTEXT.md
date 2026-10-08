@@ -249,5 +249,6 @@ unimplemented.
   bytes/MIME/dimensions, and the 5 MiB gift limit; apply verifies R2 metadata before insertion and
   compensates only uncommitted staged objects.
 - `.agents/skills/add-gifts/SKILL.md` is the production metadata workflow: JSON-LD →
-  OpenGraph/canonical/page metadata → exact brand/model search, never guessing, always dry-run, and
-  apply only after an explicit unambiguous production request. The skill never handles credentials.
+  OpenGraph/canonical/page metadata → exact brand/model search, plus Heureka/Alza/category-store
+  reference prices, never guessing, always dry-run, and apply only after an explicit unambiguous
+  production request. The skill never handles credentials.
