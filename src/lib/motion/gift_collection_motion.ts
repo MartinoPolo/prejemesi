@@ -1,7 +1,10 @@
 import { GIFT_MOTION_EASING, giftMotionDuration } from './gift_motion_timing.js';
 import { LAYOUT_GIFT_MOTION_LIMIT } from './layout_motion.js';
 import { copyComputedCustomProperties } from '$lib/components/blocks/wishlist/copy_computed_custom_properties.js';
-import { detachedSubgridRows } from '$lib/components/blocks/wishlist/gift_pointer_reorder.svelte.js';
+import {
+	detachedSubgridRows,
+	GIFT_MOTION_DRAGGING_ATTRIBUTE,
+} from '$lib/components/blocks/wishlist/gift_pointer_reorder.svelte.js';
 
 interface Rectangle {
 	left: number;
@@ -192,7 +195,7 @@ export function createGiftCollectionMotion(
 				(record) =>
 					record.type === 'childList' ||
 					(record.type === 'attributes' &&
-						!['style', 'data-gift-motion-dragging'].includes(
+						!['style', GIFT_MOTION_DRAGGING_ATTRIBUTE].includes(
 							record.attributeName ?? '',
 						)),
 			)
@@ -251,8 +254,21 @@ export function createGiftCollectionMotion(
 		return ancestors;
 	}
 
+	function dragInProgress(): boolean {
+		return host.querySelector(`[${GIFT_MOTION_DRAGGING_ATTRIBUTE}]`) !== null;
+	}
+
+	function adoptClones(snapshot: Snapshot, source: Snapshot | null): Snapshot {
+		for (const [id, position] of snapshot.gifts) {
+			position.clone = source?.gifts.get(id)?.clone ?? null;
+		}
+		return snapshot;
+	}
+
 	function captureGifts(withClones: boolean, endpoints: boolean): Map<string, GiftPosition> {
 		const gifts = new Map<string, GiftPosition>();
+		// Clones only serve departures; a reorder drag makes none but settles on every slot change.
+		const cloned = withClones && !dragInProgress();
 		const clipCache = new Map<
 			HTMLElement,
 			{ bounds: DOMRect; clipsX: boolean; clipsY: boolean } | null
@@ -262,7 +278,7 @@ export function createGiftCollectionMotion(
 			if (
 				id === undefined ||
 				id === '' ||
-				element.hasAttribute('data-gift-motion-dragging')
+				element.hasAttribute(GIFT_MOTION_DRAGGING_ATTRIBUTE)
 			) {
 				continue;
 			}
@@ -279,7 +295,7 @@ export function createGiftCollectionMotion(
 					width: rectangle.width,
 					height: rectangle.height,
 				},
-				clone: withClones ? cloneGift(element) : null,
+				clone: cloned ? cloneGift(element) : null,
 				scrollAncestors: captureScrollAncestors(element),
 			});
 		}
@@ -452,7 +468,7 @@ export function createGiftCollectionMotion(
 			if (
 				next.gifts.has(id) ||
 				overrides.has(id) ||
-				source.element.hasAttribute('data-gift-motion-dragging') ||
+				source.element.hasAttribute(GIFT_MOTION_DRAGGING_ATTRIBUTE) ||
 				!intersectsViewport(source.rectangle, host.ownerDocument.defaultView)
 			) {
 				continue;
@@ -569,7 +585,8 @@ export function createGiftCollectionMotion(
 		}
 		const source = pending ?? renderedBaseline() ?? previous;
 		cancel();
-		const destination = measure(true, true);
+		// Animations leave the DOM untouched, so the endpoint clones still match.
+		const destination = adoptClones(measure(false, true), endpoint);
 		if (!suspended) {
 			play(source, destination);
 		}
@@ -685,11 +702,7 @@ export function createGiftCollectionMotion(
 		shiftSnapshot(baseline, target, deltaX, deltaY);
 		shiftSnapshot(pending, target, deltaX, deltaY);
 		if (pending === null && !suspended) {
-			const previousBaseline = baseline;
-			baseline = measure(false, true);
-			for (const [id, position] of baseline.gifts) {
-				position.clone = previousBaseline?.gifts.get(id)?.clone ?? null;
-			}
+			baseline = adoptClones(measure(false, true), baseline);
 			observe();
 		}
 		for (const [visual, position] of overlays) {
@@ -700,7 +713,8 @@ export function createGiftCollectionMotion(
 		}
 	}
 	function onScrollEnd() {
-		if (pending === null && !suspended && !destroyed) {
+		// Drag auto-scroll ends a scroll every frame; the drop settles a fresh baseline instead.
+		if (pending === null && !suspended && !destroyed && !dragInProgress()) {
 			baseline = measure(true, true);
 		}
 	}
@@ -715,7 +729,7 @@ export function createGiftCollectionMotion(
 		childList: true,
 		characterData: true,
 		attributes: true,
-		attributeFilter: ['class', 'hidden', 'aria-hidden', 'data-gift-motion-dragging'],
+		attributeFilter: ['class', 'hidden', 'aria-hidden', GIFT_MOTION_DRAGGING_ATTRIBUTE],
 	});
 	const motionPreference = window.matchMedia?.('(prefers-reduced-motion: reduce)');
 	motionPreference?.addEventListener('change', onReducedMotionChange);

@@ -364,9 +364,10 @@ sections for UI work. Historical reconciliation and review notes are in
   on Done, keeps Grid/List switching and the small grip inside its larger hit target. It keeps
   active priority or category grouping, showing every level/enabled category plus “Bez …” as drop
   zones. In-group moves permute the group's existing global slots; cross-group drag or keyboard
-  moves insert before the new next neighbour (else after the previous one) and change
-  priority/category through the post-share edit path, atomically with the order, offering a Vrátit
-  toast. Only the dragged card shows the live grouping badge (#454).
+  moves insert before the new next neighbour (else after the previous one; a gift dropped into an
+  empty group keeps its global position) and change priority/category through the post-share edit
+  path, atomically with the order, offering a Vrátit toast. Only the dragged card shows the live
+  grouping badge (#454).
 - 2026-10-06: Card press belongs to presses that start on card content; inner controls and open
   action surfaces never press the card, and an open desktop dropdown keeps the card lifted (#450).
 - 2026-10-06: Card view offers Automatic/4/5 columns per device (desktop from `sm`, not part of
@@ -381,6 +382,13 @@ sections for UI work. Historical reconciliation and review notes are in
   remains. State badges sit in the dialog's bottom-left on desktop and between links and description
   on mobile or without a photo, never in the footer. The footer holds only Like and applicable
   actions on card geometry. Reference: `designs/gift-viewer/refined.html`.
+- 2026-10-08: Reorder drag targets follow the dragged card's center, not the pointer grab point, so
+  neighbours shift at the same threshold in every direction. Grouped drags pick the closest rendered
+  slot (a gift or an empty group's drop zone); entering another group lands before or after that
+  gift by reading order, with no virtual trailing slot. Dragging near the edge of the scrolling
+  content area auto-scrolls. In reorder mode cards never lift on hover; the grip (md control on
+  desktop) lifts only on its own hover, and empty categories sit after every populated group,
+  including “Bez kategorie”, while priority levels keep their order.
 
 ## Forms & settings
 

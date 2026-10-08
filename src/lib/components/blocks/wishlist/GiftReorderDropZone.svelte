@@ -13,6 +13,7 @@
 <!-- An empty priority level or category still receives gifts while reordering. -->
 <div
 	data-gift-reorder-group={groupKey}
+	data-gift-reorder-drop-zone
 	data-testid="gift-reorder-drop-zone"
 	class={cn(
 		'flex min-h-16 items-center justify-center rounded-panel border-2 border-dashed border-border px-4 py-3 text-center text-sm text-muted-foreground',

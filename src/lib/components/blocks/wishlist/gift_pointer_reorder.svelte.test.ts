@@ -4,6 +4,7 @@ import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assert
 import type { GiftReorderPlacement } from '$lib/modules/gifts/gift_grouped_reorder.js';
 import {
 	createGiftPointerReorderController,
+	GIFT_REORDER_DROP_ZONE_ATTRIBUTE,
 	GIFT_REORDER_GROUP_ATTRIBUTE,
 } from './gift_pointer_reorder.svelte.js';
 
@@ -283,6 +284,67 @@ describe('gift pointer reorder controller (#239)', () => {
 	});
 
 	it.each([
+		['the window', false],
+		['a scrolling content area, as in the app shell', true],
+	])(
+		'auto-scrolls %s near its bottom edge, retargets while the pointer rests, and stops on Escape',
+		async (_scroller, insideContentArea) => {
+			const spacing = window.innerHeight * 2;
+			const contentArea = document.createElement('div');
+			if (insideContentArea) {
+				Object.assign(contentArea.style, {
+					position: 'fixed',
+					inset: '0',
+					overflowY: 'auto',
+				});
+			}
+			const page = document.createElement('div');
+			Object.assign(page.style, { position: 'relative', height: `${spacing * 3}px` });
+			const items = ['a', 'b', 'c'].map((id, index) => {
+				const element = document.createElement('div');
+				element.dataset.giftId = id;
+				Object.assign(element.style, {
+					position: 'absolute',
+					left: '0',
+					top: `${index * spacing}px`,
+					width: '80px',
+					height: '60px',
+				});
+				page.append(element);
+				return element;
+			});
+			contentArea.append(page);
+			document.body.append(contentArea);
+			const scrollTop = () => (insideContentArea ? contentArea.scrollTop : window.scrollY);
+			const previews: string[][] = [];
+			const controller = createGiftPointerReorderController({
+				getItemElements: () => items,
+				getItemIds: () => ['a', 'b', 'c'],
+				onPreviewOrder: (ids) => previews.push(ids),
+				onCommitOrder: () => {},
+				onCancelOrder: () => {},
+			});
+			try {
+				controller.start(pointer('pointerdown', 5, 10, 10), 0);
+				window.dispatchEvent(pointer('pointermove', 5, 10, window.innerHeight - 4));
+				await expect.poll(() => previews.at(-1)).toEqual(['b', 'a', 'c']);
+				expect(scrollTop()).toBeGreaterThan(0);
+
+				window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+				const stoppedAt = scrollTop();
+				await new Promise((resolve) =>
+					requestAnimationFrame(() => setTimeout(resolve, 50)),
+				);
+				expect(scrollTop()).toBe(stoppedAt);
+			} finally {
+				controller.destroy();
+				contentArea.remove();
+				window.scrollTo({ top: 0, behavior: 'instant' });
+			}
+		},
+	);
+
+	it.each([
 		['pointercancel', () => window.dispatchEvent(pointer('pointercancel', 9, 240, 40))],
 		['Escape', () => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))],
 	])('restores the pre-drag order on %s without committing', (_name, cancelDrag) => {
@@ -318,6 +380,7 @@ describe('grouped gift pointer reorder (#454)', () => {
 		top: number;
 		height: number;
 		giftId?: string;
+		dropZone?: boolean;
 	}
 
 	/** Header and item rows stacked in one column; the empty "none" group shows only a drop zone. */
@@ -328,7 +391,7 @@ describe('grouped gift pointer reorder (#454)', () => {
 		{ groupKey: LOW, top: 160, height: 20 },
 		{ groupKey: LOW, top: 180, height: 60, giftId: 'c' },
 		{ groupKey: NONE, top: 260, height: 20 },
-		{ groupKey: NONE, top: 280, height: 40 },
+		{ groupKey: NONE, top: 280, height: 40, dropZone: true },
 	];
 
 	function pointer(type: string, clientX: number, clientY: number) {
@@ -355,6 +418,9 @@ describe('grouped gift pointer reorder (#454)', () => {
 		const elements = LAYOUT.map((entry) => {
 			const element = document.createElement('div');
 			element.setAttribute(GIFT_REORDER_GROUP_ATTRIBUTE, entry.groupKey);
+			if (entry.dropZone === true) {
+				element.setAttribute(GIFT_REORDER_DROP_ZONE_ATTRIBUTE, '');
+			}
 			if (entry.giftId !== undefined) {
 				element.setAttribute('data-gift-item', '');
 				element.dataset.giftId = entry.giftId;
@@ -440,8 +506,39 @@ describe('grouped gift pointer reorder (#454)', () => {
 			window.dispatchEvent(pointer('pointermove', 150, 205));
 			expect(previews).toHaveLength(2);
 
-			window.dispatchEvent(pointer('pointermove', 150, 185));
+			// Leaving the low group upward re-enters the high group.
+			window.dispatchEvent(pointer('pointermove', 150, 150));
 			expect(previews.at(-1)).toEqual({ giftId: 'a', groupKey: HIGH, index: 1 });
+		} finally {
+			controller.destroy();
+			rendered.container.remove();
+		}
+	});
+
+	it('enters an empty group wherever its drop zone lies under the card center', () => {
+		const rendered = renderGroups();
+		const { controller, previews } = createGroupedController(rendered);
+		try {
+			controller.start(pointer('pointerdown', 150, 50), 0);
+			// The top of the drop zone, closer to it than to gift c above it.
+			window.dispatchEvent(pointer('pointermove', 150, 283));
+			expect(previews).toEqual([{ giftId: 'a', groupKey: NONE, index: 0 }]);
+		} finally {
+			controller.destroy();
+			rendered.container.remove();
+		}
+	});
+
+	it('enters the group above at its end once the card center passes its last member', () => {
+		const rendered = renderGroups();
+		const { controller, previews } = createGroupedController(rendered);
+		try {
+			controller.start(pointer('pointerdown', 150, 210), 2);
+			window.dispatchEvent(pointer('pointermove', 150, 150));
+			expect(previews).toEqual([{ giftId: 'c', groupKey: HIGH, index: 2 }]);
+
+			window.dispatchEvent(pointer('pointermove', 150, 100));
+			expect(previews.at(-1)).toEqual({ giftId: 'c', groupKey: HIGH, index: 1 });
 		} finally {
 			controller.destroy();
 			rendered.container.remove();

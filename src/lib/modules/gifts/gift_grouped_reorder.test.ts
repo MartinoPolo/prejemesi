@@ -115,6 +115,63 @@ describe('grouped reorder sections', () => {
 		]);
 	});
 
+	describe('empty categories', () => {
+		const categories = ['books', 'toys', 'games'].map((id, sortOrder) => ({
+			id,
+			presetKey: null,
+			customLabel: id,
+			color: '#112233',
+			sortOrder,
+		}));
+		const categoryGroups = categoryReorderGroups(categories, 'cs');
+		const BOOKS = reorderGroupKey(CATEGORY, 'books');
+		const TOYS = reorderGroupKey(CATEGORY, 'toys');
+		const GAMES = reorderGroupKey(CATEGORY, 'games');
+		const UNCATEGORIZED = reorderGroupKey(CATEGORY, null);
+
+		function giftInCategory(id: string, categoryId: string | null): GiftByRole {
+			const category = categories.find((candidate) => candidate.id === categoryId) ?? null;
+			return { ...giftWithPriority(id, null, 0), categoryId, category };
+		}
+
+		function categorySectionKeys(
+			gifts: readonly GiftByRole[],
+			sectionOrderGifts: readonly GiftByRole[] = gifts,
+		) {
+			return buildReorderSections(gifts, CATEGORY, categoryGroups, sectionOrderGifts).map(
+				(section) => section.key,
+			);
+		}
+
+		it('follow every populated category and "Bez kategorie", in category order', () => {
+			expect(
+				categorySectionKeys([giftInCategory('t', 'toys'), giftInCategory('u', null)]),
+			).toEqual([TOYS, UNCATEGORIZED, BOOKS, GAMES]);
+		});
+
+		it('keep the committed section order while a drag preview empties or fills a category', () => {
+			const committed = [giftInCategory('t', 'toys'), giftInCategory('u', null)];
+			const preview = [giftInCategory('t', 'games'), giftInCategory('u', null)];
+
+			expect(categorySectionKeys(preview, committed)).toEqual([
+				TOYS,
+				UNCATEGORIZED,
+				BOOKS,
+				GAMES,
+			]);
+			expect(categorySectionKeys(preview)).toEqual([GAMES, UNCATEGORIZED, BOOKS, TOYS]);
+		});
+	});
+
+	it('keeps empty priority levels in level order', () => {
+		expect(sectionIds(['b1', 'b2']).map((section) => section.key)).toEqual([
+			HIGH,
+			MEDIUM,
+			LOW,
+			NO_PRIORITY,
+		]);
+	});
+
 	it('derives a gift group key from its priority or category', () => {
 		const gift = giftWithPriority('a', 'high', 0);
 		expect(giftReorderGroupKey(gift, PRIORITY)).toBe(HIGH);

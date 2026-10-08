@@ -70,3 +70,24 @@ it('re-measures card tracks when only the document depth changes', async () => {
 	await nextLayout();
 	expectPixelsNear(trackHeight(), 20);
 });
+
+it('keeps card tracks through a reorder drag and re-measures once it ends', async () => {
+	await page.viewport(1280, 720);
+	const collection = renderCollectionWithDepthPaddedActions();
+	await nextLayout();
+	const trackHeight = () =>
+		Number.parseFloat(collection.style.getPropertyValue('--gift-card-actions-track-height'));
+	expectPixelsNear(trackHeight(), 20);
+
+	const card = collection.querySelector<HTMLElement>('[data-testid="gift-card-surface"]')!;
+	card.dataset.giftMotionDragging = '';
+	const extraAction = document.createElement('div');
+	extraAction.style.height = '20px';
+	card.querySelector('[data-gift-card-track="actions"]')!.append(extraAction);
+	await nextLayout();
+	expectPixelsNear(trackHeight(), 20);
+
+	delete card.dataset.giftMotionDragging;
+	await nextLayout();
+	expectPixelsNear(trackHeight(), 40);
+});

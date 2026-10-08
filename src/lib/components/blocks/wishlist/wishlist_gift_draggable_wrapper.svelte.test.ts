@@ -524,8 +524,8 @@ describe('WishlistGiftDraggableWrapper — context actions and selection', () =>
 			name: 'desktop Grid',
 			width: 768,
 			layout: 'overlay' as const,
-			target: 32,
-			visual: 24,
+			target: 40,
+			visual: 32,
 			targetInset: 4,
 			visualInset: 8,
 			visualRadius: '8px',
@@ -534,8 +534,8 @@ describe('WishlistGiftDraggableWrapper — context actions and selection', () =>
 			name: 'desktop List',
 			width: 768,
 			layout: 'list' as const,
-			target: 32,
-			visual: 24,
+			target: 40,
+			visual: 32,
 			targetInset: 4,
 			visualInset: 8,
 			visualRadius: '8px',
@@ -588,6 +588,33 @@ describe('WishlistGiftDraggableWrapper — context actions and selection', () =>
 			await unmount();
 		},
 	);
+
+	it('lifts the reorder grip only on its own hover, never on card hover', async () => {
+		await page.viewport(768, 720);
+		const { container, unmount } = await render(WishlistGiftDraggableWrapperTestHost, {
+			...baseProps,
+			reorderEnabled: true,
+		});
+		const grip = container.querySelector(
+			`[aria-label="${m.gift_reorder_grip_label()}"]`,
+		) as HTMLElement;
+		const surface = grip.querySelector(
+			':scope > [data-slot="elevation-surface"]',
+		) as HTMLElement;
+		const surfaceTop = () =>
+			surface.getBoundingClientRect().top - grip.getBoundingClientRect().top;
+		const restingTop = surfaceTop();
+
+		await userEvent.hover(container.querySelector('[data-gift-item]')!, {
+			position: { x: 200, y: 100 },
+		});
+		await new Promise((resolve) => setTimeout(resolve, 300));
+		expectPixelsNear(surfaceTop(), restingTop);
+
+		await userEvent.hover(grip);
+		await expect.poll(() => restingTop - surfaceTop()).toBeGreaterThan(1);
+		await unmount();
+	});
 
 	it('leaves native interactive descendant context menus untouched outside selection mode', async () => {
 		const openContext = vi.fn(() => false);
