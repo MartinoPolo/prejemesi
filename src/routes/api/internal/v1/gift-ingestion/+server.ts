@@ -48,11 +48,7 @@ const imageStorage = {
 const handleGiftIngestion = createGiftIngestionHandler({
 	config: {
 		token: env.GIFT_INGESTION_TOKEN ?? '',
-		// The legacy single-target secret stays honored so its wishlist remains authorized unread.
-		targetShortIds: parseGiftIngestionTargetShortIds(
-			env.GIFT_INGESTION_TARGET_SHORT_IDS,
-			env.GIFT_INGESTION_TARGET_SHORT_ID,
-		),
+		targetShortIds: parseGiftIngestionTargetShortIds(env.GIFT_INGESTION_TARGET_SHORT_IDS),
 		actorId: env.GIFT_INGESTION_ACTOR_ID ?? '',
 	},
 	process: (manifest, options) =>

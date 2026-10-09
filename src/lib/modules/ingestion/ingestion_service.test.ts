@@ -16,14 +16,6 @@ describe('gift ingestion target allowlist parsing', () => {
 		]);
 	});
 
-	it('merges several allowlist sources', () => {
-		expect(parseGiftIngestionTargetShortIds('first,second', 'legacy', undefined)).toEqual([
-			'first',
-			'second',
-			'legacy',
-		]);
-	});
-
 	it('disables ingestion when the variable is absent or blank', () => {
 		expect(parseGiftIngestionTargetShortIds(undefined)).toEqual([]);
 		expect(parseGiftIngestionTargetShortIds(' , ')).toEqual([]);
