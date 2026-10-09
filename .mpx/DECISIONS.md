@@ -667,8 +667,8 @@ sections for UI work. Historical reconciliation and review notes are in
 - 2026-10-08: Ingestion targets are an explicit allowlist (`GIFT_INGESTION_TARGET_SHORT_IDS`), not
   every wishlist the actor manages, so a leaked token reaches only listed wishlists. Outsiders get
   `target_not_allowed`; the add-gifts skill then asks the user, who alone authorizes a wishlist. The
-  list is a GitHub `production` environment variable passed to `wrangler deploy`, since Wrangler
-  cannot set plain-text Worker variables without deploying and a secret would hide the list.
+  list is a plain-text Worker variable the user edits in the Cloudflare dashboard: it applies
+  without a release, stays readable (a secret would hide it), and agents cannot change it.
 - 2026-10-08: Ingested gift prices come from exact-match references: Heureka and Alza for Czech
   physical goods, the category's store (e.g. Steam for PC games) otherwise, plus a foreign reference
   when sold abroad. Cloudflare-protected retailers are read through a visible browser

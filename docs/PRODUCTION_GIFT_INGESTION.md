@@ -26,16 +26,12 @@ Follow this order exactly:
 5. Create a dedicated actor account and choose the target wishlists. Then configure the Worker
    secret `GIFT_INGESTION_TOKEN` and the variable `GIFT_INGESTION_ACTOR_ID`. The allowlist
    `GIFT_INGESTION_TARGET_SHORT_IDS` (comma-separated wishlist short IDs; they are public) is a
-   variable of the GitHub `production` environment, which `deploy.yml` passes to `wrangler deploy`
-   because Wrangler cannot set plain-text Worker variables without deploying. Authorize another
-   wishlist by appending its short ID
-   (`gh variable set GIFT_INGESTION_TARGET_SHORT_IDS --env production --body <ids>`) and redeploying
-   through the gated pipeline. A legacy `GIFT_INGESTION_TARGET_SHORT_ID` Worker secret, when
-   present, is also allowlisted; fold its value into the variable before deleting it. Confirm the
-   deployed Worker also has the `GIFT_INGESTION_RATE_LIMIT` binding declared in `wrangler.jsonc` (60
-   requests per 60 seconds). Missing endpoint values disable the endpoint; a missing or failing
-   rate-limit binding fails closed with HTTP 503. Do not enable ingestion before the preceding
-   checks pass.
+   plain-text Worker variable that the user edits in the Cloudflare dashboard (Workers → `prejemesi`
+   → Settings → Variables and Secrets). Saving deploys it immediately without a release, and
+   `keep_vars: true` preserves it across deploys. Confirm the deployed Worker also has the
+   `GIFT_INGESTION_RATE_LIMIT` binding declared in `wrangler.jsonc` (60 requests per 60 seconds).
+   Missing endpoint values disable the endpoint; a missing or failing rate-limit binding fails
+   closed with HTTP 503. Do not enable ingestion before the preceding checks pass.
 6. Put `GIFT_INGESTION_TOKEN` and `GIFT_INGESTION_BASE_URL` in the ignored local file
    `.env.gift-ingestion.local`. The base URL is the allowlisted exact production origin: non-local
    HTTPS with no credentials, query, fragment, or non-root path.

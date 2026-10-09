@@ -91,11 +91,9 @@ export interface GiftIngestionConfig {
 	actorId: string;
 }
 
-/** Merges comma-separated allowlist values into unique short IDs. */
-export function parseGiftIngestionTargetShortIds(...values: (string | undefined)[]): string[] {
-	const shortIds = values
-		.flatMap((value) => (value ?? '').split(','))
-		.map((shortId) => shortId.trim());
+/** Parses the comma-separated allowlist into unique short IDs. */
+export function parseGiftIngestionTargetShortIds(value: string | undefined): string[] {
+	const shortIds = (value ?? '').split(',').map((shortId) => shortId.trim());
 	return [...new Set(shortIds.filter((shortId) => shortId !== ''))];
 }
 
