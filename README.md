@@ -26,7 +26,7 @@
 - **Notifications:** critical email via Resend; routine in-app activity, including one rolling 24-hour new-gift digest per notified user across followed lists.
 - **Languages:** Czech (primary) + English, via URL-based i18n.
 
-> Domain language, the full feature index, and constraints live in [`.mpx/CONTEXT.md`](.mpx/CONTEXT.md). Settled architectural and product decisions live in [`.mpx/DECISIONS.md`](.mpx/DECISIONS.md).
+> Domain language and the done and planned features live in [`.mpx/CONTEXT.md`](.mpx/CONTEXT.md). Settled architectural and product decisions, including constraints, live in [`.mpx/DECISIONS.md`](.mpx/DECISIONS.md).
 
 ## Stack
 

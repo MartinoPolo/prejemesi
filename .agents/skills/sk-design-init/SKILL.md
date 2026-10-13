@@ -21,8 +21,8 @@ Bootstrap the project's visual identity. Reads the project description and requi
 
 Read these files to understand what the app is and who it's for:
 
-1. `.mpx/CONTEXT.md` — "What This Is" section for app description, domain language, key constraints
-2. `.mpx/DECISIONS.md` — any existing UI & Design decisions
+1. `.mpx/CONTEXT.md` — "What This Is" section for app description, domain language
+2. `.mpx/DECISIONS.md` — product constraints and any existing UI & Design decisions
 3. `components.json` — shadcn-svelte configuration (style, base color, icon library)
 4. `src/app.css` — current Tailwind/CSS theme variables
 5. `package.json` — project name and description
