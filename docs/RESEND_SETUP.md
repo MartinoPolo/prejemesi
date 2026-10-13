@@ -1,7 +1,6 @@
 # Resend Email Setup
 
-Status of email sending in Přejeme si, the free-tier limits, what's already wired, and the
-production domain setup.
+Status of email sending in Přejeme si, the free-tier limits, what's already wired, and the production domain setup.
 
 ## Current production status
 
@@ -29,21 +28,15 @@ Plenty for dev and early production. Pro ($20/mo) drops the daily cap and raises
 
 - Until a domain is verified, the sandbox sender `onboarding@resend.dev` only delivers to:
     - the email you signed up to Resend with, and
-    - the test addresses `delivered@resend.dev` (always succeeds), `bounced@resend.dev`,
-      `complained@resend.dev` (simulate failures).
-- Sending to any other real address requires a verified domain. Production uses verified
-  `prejemesi.cz`.
+    - the test addresses `delivered@resend.dev` (always succeeds), `bounced@resend.dev`, `complained@resend.dev` (simulate failures).
+- Sending to any other real address requires a verified domain. Production uses verified `prejemesi.cz`.
 
 ## What's already wired (in code)
 
 - `resend@6.x` installed.
 - `src/lib/server/email.ts`
-    - `sendEmail({ to, subject, html, text?, idempotencyKey? })` – wraps Resend, handles the
-      `{ data, error }` response, **throws on failure**, and **logs instead of sending when
-      `RESEND_API_KEY` is unset** (same optional-service fallback as R2 storage). It always sends a
-      plain-text alternative, either caller-supplied or generated from HTML.
-    - `renderActionEmailParts({ heading, body, buttonLabel, url })` – shared HTML + text template.
-      User-controlled text is escaped before embedding in the HTML email.
+    - `sendEmail({ to, subject, html, text?, idempotencyKey? })` – wraps Resend, handles the `{ data, error }` response, **throws on failure**, and **logs instead of sending when `RESEND_API_KEY` is unset** (same optional-service fallback as R2 storage). It always sends a plain-text alternative, either caller-supplied or generated from HTML.
+    - `renderActionEmailParts({ heading, body, buttonLabel, url })` – shared HTML + text template. User-controlled text is escaped before embedding in the HTML email.
 - `src/lib/server/auth.ts` – the three better-auth stubs now send real emails:
     - `sendResetPassword` (password reset)
     - `sendVerificationEmail` (email verification)
@@ -53,10 +46,8 @@ Plenty for dev and early production. Pro ($20/mo) drops the daily cap and raises
 
 ### 1. Create a Resend account + API key
 
-1. Sign up at <https://resend.com> (free, no card). Use the email you'll test with – sandbox only
-   delivers there.
-2. Dashboard → **API Keys** → **Create API Key** (name `prejemesi-dev`, **Sending access**, domain
-   **All**).
+1. Sign up at <https://resend.com> (free, no card). Use the email you'll test with – sandbox only delivers there.
+2. Dashboard → **API Keys** → **Create API Key** (name `prejemesi-dev`, **Sending access**, domain **All**).
 3. Copy the `re_...` key (shown once).
 
 ### 2. Configure `.env`
@@ -71,8 +62,7 @@ Restart the dev server after editing `.env` so Vite reloads it.
 ### 3. Test the slice
 
 1. `pnpm run dev`
-2. From the login UI, request a **password reset** using your **Resend account email** (the only
-   deliverable sandbox recipient).
+2. From the login UI, request a **password reset** using your **Resend account email** (the only deliverable sandbox recipient).
 3. Server console prints `[Email] Sent "..." (id=...)` on success. Check the inbox.
 
 Troubleshooting:
@@ -82,8 +72,7 @@ Troubleshooting:
 
 ### 4. Production domain
 
-Already done for `prejemesi.cz`. If the domain is ever recreated, add the Resend DNS records in
-Cloudflare and keep receiving disabled unless inbound email is intentionally needed.
+Already done for `prejemesi.cz`. If the domain is ever recreated, add the Resend DNS records in Cloudflare and keep receiving disabled unless inbound email is intentionally needed.
 
 Also add a DMARC record in Cloudflare DNS:
 
@@ -107,8 +96,7 @@ Notification dispatcher coverage:
 - `new_gift_added` – in-app only to followers.
 - `gift_reserved` – in-app only to followers.
 
-Notification preferences are persisted by
-`src/lib/modules/notifications/notification_preferences_public.ts`.
+Notification preferences are persisted by `src/lib/modules/notifications/notification_preferences_public.ts`.
 
 ## References
 

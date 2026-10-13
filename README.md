@@ -1,51 +1,32 @@
 # Přejeme si
 
-**Přejeme si** is a shareable wishlist web app. Users create gift lists for themselves or someone
-else and share a link with friends and family. Visitors reserve gifts to avoid duplicate purchases;
-ordinary recipients are protected from reservation spoilers, with explicit exceptions documented in
-[the decisions](.mpx/DECISIONS.md#roles-privacy--trust).
+**Přejeme si** is a shareable wishlist web app. Users create gift lists for themselves or someone else and share a link with friends and family. Visitors reserve gifts to avoid duplicate purchases; ordinary recipients are protected from reservation spoilers, with explicit exceptions documented in [the decisions](.mpx/DECISIONS.md#roles-privacy--trust).
 
 ## How It Works
 
-- **Create a wishlist** — ongoing or for a specific occasion — then add gifts (name, link, price,
-  image, priority, quantity), pick a color, and arrange them in your preferred order. Add gifts one
-  at a time, **batch-add** multiple rows at once, or use the **import wizard** (CSV upload, paste
-  cells, or a Google Sheets link) for a 3-step Source → Review → Confirm flow. Each gift can carry
-  up to 10 links (**multi-link**); the first is treated as the primary.
-- **Share a link.** Anyone with the link can view and reserve gifts – no account required to reserve
-  (anonymous visitors just provide a display name). Logged-in visitors auto-follow the list.
-- **Reserve & like.** Visitors reserve gifts (with quantity support) to prevent duplicate buying,
-  and "like" gifts to signal interest – if a liked gift gets reserved by someone else, the liker is
-  notified.
-- **Stay surprised.** Ordinary recipients receive no reservation data. After sharing they can still
-  edit presentation fields and append descriptions; names and deletion lock after initial grace.
-  Reserved gifts cannot be deleted even during grace, an explicitly accepted narrow inference
-  exception.
-- **Delegate.** Linked recipients and **správci** (managers) can invite other správci. Explicit
-  recipient self-promotion reveals state/counts with disclosure, but never gifter identities.
+- **Create a wishlist** — ongoing or for a specific occasion — then add gifts (name, link, price, image, priority, quantity), pick a color, and arrange them in your preferred order. Add gifts one at a time, **batch-add** multiple rows at once, or use the **import wizard** (CSV upload, paste cells, or a Google Sheets link) for a 3-step Source → Review → Confirm flow. Each gift can carry up to 10 links (**multi-link**); the first is treated as the primary.
+- **Share a link.** Anyone with the link can view and reserve gifts – no account required to reserve (anonymous visitors just provide a display name). Logged-in visitors auto-follow the list.
+- **Reserve & like.** Visitors reserve gifts (with quantity support) to prevent duplicate buying, and "like" gifts to signal interest – if a liked gift gets reserved by someone else, the liker is notified.
+- **Stay surprised.** Ordinary recipients receive no reservation data. After sharing they can still edit presentation fields and append descriptions; names and deletion lock after initial grace. Reserved gifts cannot be deleted even during grace, an explicitly accepted narrow inference exception.
+- **Delegate.** Linked recipients and **správci** (managers) can invite other správci. Explicit recipient self-promotion reveals state/counts with disclosure, but never gifter identities.
 
 ### Roles
 
-| Role                  | Can do                                                             | Reservation visibility                                            |
-| --------------------- | ------------------------------------------------------------------ | ----------------------------------------------------------------- |
-| **Linked recipient**  | Manage their list, gifts, appearance, sharing, archive and správci | None by default; state/counts only after disclosed self-promotion |
-| **Správce / manager** | Full management, reserve gifts, release guest reservations         | State and gifter identities                                       |
-| **Visitor**           | View, reserve/unreserve own gifts and like via shared link         | State and own controls, not others' identities                    |
+| Role | Can do | Reservation visibility |
+| --- | --- | --- |
+| **Linked recipient** | Manage their list, gifts, appearance, sharing, archive and správci | None by default; state/counts only after disclosed self-promotion |
+| **Správce / manager** | Full management, reserve gifts, release guest reservations | State and gifter identities |
+| **Visitor** | View, reserve/unreserve own gifts and like via shared link | State and own controls, not others' identities |
 
 ### Key Concepts
 
 - **Lifecycle:** Draft → Active (shared) → Archived (read-only). Archiving is manual.
-- **Navigation:** _Přehled_ (`/home`) is the signed-in home; _Moje seznamy_, _Spravované_, and
-  _Sledované_ remain the section pages.
-- **Palettes:** curated user and wishlist palettes, independent image-frame fill, and per-user
-  light/dark/system mode.
-- **Notifications:** critical email via Resend; routine in-app activity, including one rolling
-  24-hour new-gift digest per notified user across followed lists.
+- **Navigation:** _Přehled_ (`/home`) is the signed-in home; _Moje seznamy_, _Spravované_, and _Sledované_ remain the section pages.
+- **Palettes:** curated user and wishlist palettes, independent image-frame fill, and per-user light/dark/system mode.
+- **Notifications:** critical email via Resend; routine in-app activity, including one rolling 24-hour new-gift digest per notified user across followed lists.
 - **Languages:** Czech (primary) + English, via URL-based i18n.
 
-> Domain language, the full feature index, and constraints live in
-> [`.mpx/CONTEXT.md`](.mpx/CONTEXT.md). Settled architectural and product decisions live in
-> [`.mpx/DECISIONS.md`](.mpx/DECISIONS.md).
+> Domain language, the full feature index, and constraints live in [`.mpx/CONTEXT.md`](.mpx/CONTEXT.md). Settled architectural and product decisions live in [`.mpx/DECISIONS.md`](.mpx/DECISIONS.md).
 
 ## Stack
 
@@ -96,10 +77,7 @@ pnpm run dev
 
 ### Test Accounts
 
-Seeded accounts share the password defined by `SEED_PASSWORD` in
-`src/lib/server/db/seed_credentials.ts` (currently `"password123"`). Set
-`DEV_AUTO_LOGIN_EMAIL="martin@test.cz"` in `.env` to skip the login form in development; signing out
-pauses auto-login until the next sign-in.
+Seeded accounts share the password defined by `SEED_PASSWORD` in `src/lib/server/db/seed_credentials.ts` (currently `"password123"`). Set `DEV_AUTO_LOGIN_EMAIL="martin@test.cz"` in `.env` to skip the login form in development; signing out pauses auto-login until the next sign-in.
 
 | Email          | Name           | Role                                                |
 | -------------- | -------------- | --------------------------------------------------- |
@@ -120,22 +98,20 @@ pauses auto-login until the next sign-in.
 | `pnpm run preview`   | Preview the Cloudflare Worker on port 4173                    |
 | `pnpm run storybook` | Start Storybook on port 6006                                  |
 
-Vite uses ordinary port auto-increment when 8300 or an explicit `--port` is occupied. Ports
-8300–8304 are the conventional parallel interactive pool; arbitrary higher ports also work for
-email/password auth. Parallel app instances share database/data unless separately configured.
+Vite uses ordinary port auto-increment when 8300 or an explicit `--port` is occupied. Ports 8300–8304 are the conventional parallel interactive pool; arbitrary higher ports also work for email/password auth. Parallel app instances share database/data unless separately configured.
 
 ### Code Quality
 
-| Script                  | Description                                                                       |
-| ----------------------- | --------------------------------------------------------------------------------- |
-| `pnpm run check`        | Typecheck (paraglide compile + svelte-check)                                      |
-| `pnpm run check:all`    | Full suite: format + oxlint + stylelint + fallow + vykání + svelte-check + eslint |
-| `pnpm run check:vykani` | Fails if Czech copy slips into tykání (informal address)                          |
-| `pnpm run lint`         | OxLint                                                                            |
-| `pnpm run lint:eslint`  | ESLint (type-aware, content cache)                                                |
-| `pnpm run lint:css`     | Stylelint for CSS and Svelte                                                      |
-| `pnpm run format`       | Format with Prettier (content cache)                                              |
-| `pnpm run fallow:audit` | Fallow dead-code / boundary audit (JSON)                                          |
+| Script | Description |
+| --- | --- |
+| `pnpm run check` | Typecheck (paraglide compile + svelte-check) |
+| `pnpm run check:all` | Full suite: format + oxlint + stylelint + fallow + vykání + svelte-check + eslint |
+| `pnpm run check:vykani` | Fails if Czech copy slips into tykání (informal address) |
+| `pnpm run lint` | OxLint |
+| `pnpm run lint:eslint` | ESLint (type-aware, content cache) |
+| `pnpm run lint:css` | Stylelint for CSS and Svelte |
+| `pnpm run format` | Format with Prettier (content cache) |
+| `pnpm run fallow:audit` | Fallow dead-code / boundary audit (JSON) |
 
 ### Testing
 
@@ -174,45 +150,32 @@ On Windows, use `pnpm.cmd` instead of `pnpm`.
 | `pnpm run auth:schema`     | Regenerate BetterAuth DB schema   |
 | `pnpm run build:storybook` | Build static Storybook            |
 
-Application platform bindings use scoped imports from `@cloudflare/workers-types` in `src/app.d.ts`.
-Keep Wrangler's generated `worker-configuration.d.ts` out of the application TypeScript globals: its
-worker-entry import pulls compiled build output into typechecking.
+Application platform bindings use scoped imports from `@cloudflare/workers-types` in `src/app.d.ts`. Keep Wrangler's generated `worker-configuration.d.ts` out of the application TypeScript globals: its worker-entry import pulls compiled build output into typechecking.
 
 ## Environment Variables
 
 Copy `.env.example` to `.env` and configure:
 
-| Variable                                                                      | Required | Description                                                                                                            |
-| ----------------------------------------------------------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------- |
-| `DATABASE_URL`                                                                | Yes      | PostgreSQL connection string                                                                                           |
-| `AUTH_SECRET`                                                                 | Yes      | 32-byte base64 secret (`openssl rand -base64 32`)                                                                      |
-| `ORIGIN`                                                                      | No       | Fixed production/background URL; local request-backed auth and notification links use their validated localhost origin |
-| `PLAYWRIGHT_BASE_URL`                                                         | No       | Exact loopback HTTP origin with explicit port for E2E (default `http://localhost:8300`)                                |
-| `VITEST_CLIENT_PORT`, `VITEST_STORYBOOK_PORT`                                 | No       | Distinct strict browser API ports (defaults 8310 and 8311)                                                             |
-| `GOOGLE_CLIENT_ID`                                                            | No       | Google OAuth client ID                                                                                                 |
-| `GOOGLE_CLIENT_SECRET`                                                        | No       | Google OAuth client secret                                                                                             |
-| `PUBLIC_TURNSTILE_SITE_KEY`                                                   | Prod     | Public Cloudflare Turnstile widget site key                                                                            |
-| `TURNSTILE_SECRET_KEY`                                                        | Prod     | Private Cloudflare Turnstile Siteverify secret                                                                         |
-| `PUBLIC_SENTRY_DSN`                                                           | Prod     | Public Sentry DSN for browser and Worker error reporting                                                               |
-| `SENTRY_ORG`, `SENTRY_PROJECT`                                                | CI       | Sentry source-map destination (`martin-poloch` / `prejemesi`)                                                          |
-| `SENTRY_AUTH_TOKEN`                                                           | CI       | Private build-only token used for source-map uploads; never expose it at runtime                                       |
-| `PUBLIC_R2_URL`                                                               | No       | Public R2 bucket URL (client-visible) – serves images + `/cdn-cgi/image/` variants; in-memory fallback if unset        |
-| `R2_ACCOUNT_ID`, `R2_BUCKET_NAME`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` | No       | Presigned direct-to-R2 uploads (#107); same-origin proxy fallback if unset                                             |
+| Variable | Required | Description |
+| --- | --- | --- |
+| `DATABASE_URL` | Yes | PostgreSQL connection string |
+| `AUTH_SECRET` | Yes | 32-byte base64 secret (`openssl rand -base64 32`) |
+| `ORIGIN` | No | Fixed production/background URL; local request-backed auth and notification links use their validated localhost origin |
+| `PLAYWRIGHT_BASE_URL` | No | Exact loopback HTTP origin with explicit port for E2E (default `http://localhost:8300`) |
+| `VITEST_CLIENT_PORT`, `VITEST_STORYBOOK_PORT` | No | Distinct strict browser API ports (defaults 8310 and 8311) |
+| `GOOGLE_CLIENT_ID` | No | Google OAuth client ID |
+| `GOOGLE_CLIENT_SECRET` | No | Google OAuth client secret |
+| `PUBLIC_TURNSTILE_SITE_KEY` | Prod | Public Cloudflare Turnstile widget site key |
+| `TURNSTILE_SECRET_KEY` | Prod | Private Cloudflare Turnstile Siteverify secret |
+| `PUBLIC_SENTRY_DSN` | Prod | Public Sentry DSN for browser and Worker error reporting |
+| `SENTRY_ORG`, `SENTRY_PROJECT` | CI | Sentry source-map destination (`martin-poloch` / `prejemesi`) |
+| `SENTRY_AUTH_TOKEN` | CI | Private build-only token used for source-map uploads; never expose it at runtime |
+| `PUBLIC_R2_URL` | No | Public R2 bucket URL (client-visible) – serves images + `/cdn-cgi/image/` variants; in-memory fallback if unset |
+| `R2_ACCOUNT_ID`, `R2_BUCKET_NAME`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` | No | Presigned direct-to-R2 uploads (#107); same-origin proxy fallback if unset |
 
-Google OAuth is enabled automatically when both `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are
-set. Registration, password sign-in, password-reset, and anonymous reservation requests are
-protected by Cloudflare Turnstile. Local development uses Cloudflare's published test keys when the
-two Turnstile variables are blank. Authentication remains fail-closed. Anonymous reservation rejects
-invalid/replayed or configured-but-missing tokens, but allows and logs unverified requests when
-configuration or Siteverify is unavailable; see
-[production operations](docs/PRODUCTION_OPERATIONS.md#turnstile).
+Google OAuth is enabled automatically when both `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are set. Registration, password sign-in, password-reset, and anonymous reservation requests are protected by Cloudflare Turnstile. Local development uses Cloudflare's published test keys when the two Turnstile variables are blank. Authentication remains fail-closed. Anonymous reservation rejects invalid/replayed or configured-but-missing tokens, but allows and logs unverified requests when configuration or Siteverify is unavailable; see [production operations](docs/PRODUCTION_OPERATIONS.md#turnstile).
 
-Production errors are reported to Sentry without user identity, cookies, headers, query strings,
-HTTP bodies, database values, or stack-frame variables. Session Replay samples 10% of sessions and
-all sessions containing captured errors while masking all text and inputs and blocking media and
-network bodies. Replays stop and are discarded on authentication, token-bearing, and query-string
-URLs. Production source maps are uploaded only when the deployment workflow explicitly enables
-uploads and all three build-only Sentry settings are available.
+Production errors are reported to Sentry without user identity, cookies, headers, query strings, HTTP bodies, database values, or stack-frame variables. Session Replay samples 10% of sessions and all sessions containing captured errors while masking all text and inputs and blocking media and network bodies. Replays stop and are discarded on authentication, token-bearing, and query-string URLs. Production source maps are uploaded only when the deployment workflow explicitly enables uploads and all three build-only Sentry settings are available.
 
 ## Project Structure
 
@@ -249,35 +212,17 @@ messages/                    # Translation files (cs.json, en.json)
 tests/e2e/                   # Playwright E2E tests
 ```
 
-Each domain module exposes a small public API via `index.ts`. Client–server communication uses
-SvelteKit **remote functions** (`*.remote.ts`) by default – `query` for reads, `form` for
-progressive-enhancement mutations, `command` for JS-only actions – wrapped in guarded helpers that
-enforce auth. The deliberate `/home` exception uses a `+page.server.ts` load for its
-latency-sensitive authenticated overview: it awaits parent layout authentication and invokes a
-server-only database service directly, avoiding an intra-server remote request. General REST-style
-`+server.ts` routes are not used; the purpose-specific route exceptions are the BetterAuth
-catch-all, the upload proxy, and the allowlisted-target internal gift-ingestion endpoint for
-authenticated machine ingestion.
+Each domain module exposes a small public API via `index.ts`. Client–server communication uses SvelteKit **remote functions** (`*.remote.ts`) by default – `query` for reads, `form` for progressive-enhancement mutations, `command` for JS-only actions – wrapped in guarded helpers that enforce auth. The deliberate `/home` exception uses a `+page.server.ts` load for its latency-sensitive authenticated overview: it awaits parent layout authentication and invokes a server-only database service directly, avoiding an intra-server remote request. General REST-style `+server.ts` routes are not used; the purpose-specific route exceptions are the BetterAuth catch-all, the upload proxy, and the allowlisted-target internal gift-ingestion endpoint for authenticated machine ingestion.
 
 ## Code Conventions
 
-- **Indentation:** tabs (4-width) · **Quotes:** single · **Semicolons:** required · **Line width:**
-  100 · **Line endings:** LF
-- **Variables:** `snake_case` or `PascalCase` (no camelCase) · **Types:** `PascalCase` ·
-  **Constants:** `UPPER_CASE`
-- **Svelte:** Svelte 5 runes only (`$state`, `$derived`, `$props`); contexts use the `createContext`
-  API
-- **Components:** new derived/block components use `tailwind-variants` in separate `*-variants.ts`
-  files
+- **Indentation:** tabs (4-width) · **Quotes:** single · **Semicolons:** required · **Line width:** 100 · **Line endings:** LF
+- **Variables:** `snake_case` or `PascalCase` (no camelCase) · **Types:** `PascalCase` · **Constants:** `UPPER_CASE`
+- **Svelte:** Svelte 5 runes only (`$state`, `$derived`, `$props`); contexts use the `createContext` API
+- **Components:** new derived/block components use `tailwind-variants` in separate `*-variants.ts` files
 
 ## Deployment
 
-Built with `@sveltejs/adapter-cloudflare` for **Cloudflare Workers**, backed by **Neon Postgres**
-(via Hyperdrive), **R2** for image storage, and **Resend** for email – all on free tiers.
-Configuration is in `wrangler.jsonc`; add Cloudflare bindings (KV, D1, R2) in `src/app.d.ts` under
-`App.Platform`.
+Built with `@sveltejs/adapter-cloudflare` for **Cloudflare Workers**, backed by **Neon Postgres** (via Hyperdrive), **R2** for image storage, and **Resend** for email – all on free tiers. Configuration is in `wrangler.jsonc`; add Cloudflare bindings (KV, D1, R2) in `src/app.d.ts` under `App.Platform`.
 
-`.github/workflows/checks.yml` defines the full check suite, unit tests with coverage, and
-Playwright E2E. `.github/workflows/ci.yml` invokes it for pull requests and pushes to `dev`;
-`.github/workflows/deploy.yml` invokes it for production deployments. Connect the repo to Cloudflare
-Pages/Workers for automatic deploys and PR preview environments.
+`.github/workflows/checks.yml` defines the full check suite, unit tests with coverage, and Playwright E2E. `.github/workflows/ci.yml` invokes it for pull requests and pushes to `dev`; `.github/workflows/deploy.yml` invokes it for production deployments. Connect the repo to Cloudflare Pages/Workers for automatic deploys and PR preview environments.
