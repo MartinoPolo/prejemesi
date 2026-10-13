@@ -89,7 +89,7 @@ Because migration runs while the previous app version is serving traffic, use th
 3. **Deploy** — approve the environment gate; the new app version starts using the new schema shapes.
 4. **Contract** — only in a later release, after the deployed app no longer reads the old objects: drop/rename in a separate migration.
 
-Enforcement: `pnpm check:migrations` (part of `check:all` and CI) fails on destructive statements (`DROP TABLE/COLUMN/TYPE`, `RENAME`, `TRUNCATE`, `DELETE FROM`, `SET DATA TYPE`, `SET NOT NULL`) unless the migration tag has a nonempty rationale in `drizzle/meta/contract-migrations.json`.
+Enforcement: `pnpm check:migrations` (part of `check:all` and CI) fails on destructive statements (`DROP TABLE/COLUMN/TYPE`, `RENAME`, `TRUNCATE`, `DELETE FROM`, `SET DATA TYPE`, `SET NOT NULL`) unless the migration tag has a nonempty rationale in `drizzle/contract-migrations.json`.
 
 The acknowledgment stays outside the SQL because Drizzle records the exact SQL hash in production. Never add a marker comment to an applied migration. The recipient-role expand and contract migrations demonstrate the sequence and sidecar acknowledgment.
 

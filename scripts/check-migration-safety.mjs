@@ -9,7 +9,7 @@
  * This script scans committed migrations in drizzle/*.sql for statements that
  * break that compatibility window (dropping/renaming tables or columns,
  * type rewrites, data deletion). Such statements are allowed only when the
- * migration tag has a rationale in drizzle/meta/contract-migrations.json.
+ * migration tag has a rationale in drizzle/contract-migrations.json.
  * Keeping the rationale outside SQL preserves the immutable hash recorded by
  * Drizzle in production. Runs in check:all and CI.
  */
@@ -18,7 +18,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { basename, join } from 'node:path';
 
 const MIGRATIONS_DIR = 'drizzle';
-const CONTRACT_MIGRATIONS_FILE = join(MIGRATIONS_DIR, 'meta', 'contract-migrations.json');
+const CONTRACT_MIGRATIONS_FILE = join(MIGRATIONS_DIR, 'contract-migrations.json');
 
 /** Statements that break old-app ↔ new-schema compatibility or delete data. */
 const DESTRUCTIVE_PATTERNS = [
@@ -99,7 +99,7 @@ if (violations.length > 0) {
 			'These statements break compatibility with the currently deployed app',
 			'version or delete data. Follow expand → migrate → deploy → contract',
 			'(docs/DEPLOYMENT.md). If this migration is a deliberate contract step,',
-			'add its tag and rationale to drizzle/meta/contract-migrations.json.',
+			'add its tag and rationale to drizzle/contract-migrations.json.',
 			'Do not edit an applied SQL file because Drizzle records its exact hash.',
 			'',
 		].join('\n'),
