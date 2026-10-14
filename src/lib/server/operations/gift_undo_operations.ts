@@ -18,7 +18,11 @@ import {
 	defineOperation,
 	type MutationOperationContext,
 } from './operation.js';
-import { requireWishlistManagement, type ManagedWishlist } from './wishlist_management.js';
+import {
+	lockWishlistsInIdOrder,
+	requireWishlistManagement,
+	type ManagedWishlist,
+} from './wishlist_management.js';
 import { applyGiftUpdate, type GiftRow, type RestoredGiftState } from './gift_update.js';
 import { softDeleteGift } from './gift_deletion.js';
 import {
@@ -128,10 +132,10 @@ async function undoRevisions(
 		);
 	}
 
+	const wishlistIds = [...new Set(revisions.map((revision) => revision.wishlistId))];
+	await lockWishlistsInIdOrder(transaction, wishlistIds);
 	const managedWishlists = new Map<string, ManagedWishlist>();
-	for (const wishlistId of [
-		...new Set(revisions.map((revision) => revision.wishlistId)),
-	].sort()) {
+	for (const wishlistId of wishlistIds) {
 		const managedWishlist = await requireWishlistManagement(
 			transaction,
 			context.actor.userId,

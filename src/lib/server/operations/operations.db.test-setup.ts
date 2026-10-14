@@ -43,6 +43,7 @@ const OUTSIDER_ID = `${PREFIX}outsider`;
 export const RESERVER_ID = `${PREFIX}reserver`;
 export const SECOND_RESERVER_ID = `${PREFIX}second-reserver`;
 export const RESERVER_NAME = 'Reserving gifter';
+export const RESERVER_EMAIL = `${PREFIX}reserver@example.com`;
 
 export const recipientActor: OperationActor = {
 	userId: RECIPIENT_ID,
@@ -99,7 +100,7 @@ export async function seedFixtureUsers(): Promise<void> {
 			{ id: RECIPIENT_ID, name: 'Recipient', email: `${PREFIX}recipient@example.com` },
 			{ id: MANAGER_ID, name: 'Manager', email: `${PREFIX}manager@example.com` },
 			{ id: OUTSIDER_ID, name: 'Outsider', email: `${PREFIX}outsider@example.com` },
-			{ id: RESERVER_ID, name: RESERVER_NAME, email: `${PREFIX}reserver@example.com` },
+			{ id: RESERVER_ID, name: RESERVER_NAME, email: RESERVER_EMAIL },
 			{
 				id: SECOND_RESERVER_ID,
 				name: 'Second gifter',
@@ -237,13 +238,25 @@ async function waitUntilBlockedBy(holderPid: number, expectedWaiters: number): P
 	throw new Error(`Expected ${expectedWaiters} contenders waiting on the held lock`);
 }
 
+function settle(work: () => Promise<unknown>): Promise<PromiseSettledResult<unknown>> {
+	return Promise.resolve()
+		.then(work)
+		.then(
+			(value): PromiseSettledResult<unknown> => ({ status: 'fulfilled', value }),
+			(reason: unknown): PromiseSettledResult<unknown> => ({ status: 'rejected', reason }),
+		);
+}
+
 /**
  * Runs the contenders while another transaction holds a row they need, and releases it only once
  * all of them wait, so they genuinely overlap instead of finishing one after another.
+ * `queueInOrder` starts each contender only after the previous one waits, fixing which locks each
+ * holds when the row is released.
  */
 export async function raceBehindRowLock(
 	lockRow: (transaction: DatabaseTransaction) => Promise<unknown>,
 	contenders: ReadonlyArray<() => Promise<unknown>>,
+	options: { queueInOrder?: boolean } = {},
 ): Promise<PromiseSettledResult<unknown>[]> {
 	let releaseRow = () => {};
 	const rowReleased = new Promise<void>((resolve) => (releaseRow = resolve));
@@ -259,10 +272,16 @@ export async function raceBehindRowLock(
 	});
 	try {
 		const holderPid = await Promise.race([holderReady, holder.then(() => 0)]);
-		const settled = Promise.allSettled(contenders.map((contender) => contender()));
+		const outcomes: Promise<PromiseSettledResult<unknown>>[] = [];
+		for (const contender of contenders) {
+			outcomes.push(settle(contender));
+			if (options.queueInOrder === true) {
+				await waitUntilBlockedBy(holderPid, outcomes.length);
+			}
+		}
 		await waitUntilBlockedBy(holderPid, contenders.length);
 		releaseRow();
-		return await settled;
+		return await Promise.all(outcomes);
 	} finally {
 		releaseRow();
 		await holder;

@@ -42,6 +42,10 @@ describe('deleteGift', () => {
 			mockDbInstance.pushResult([
 				makeWishlistRow({ sharedAt: new Date(nowFake.getTime() - 10 * 60_000) }),
 			]);
+			// locked gift re-read
+			mockDbInstance.pushResult([
+				makeGiftRow({ createdAt: new Date(nowFake.getTime() - 60_000) }),
+			]);
 			mockDbInstance.pushResult([]);
 			mockDbInstance.pushResult([]);
 
@@ -64,6 +68,13 @@ describe('deleteGift', () => {
 			mockDbInstance.pushResult([
 				makeWishlistRow({ sharedAt: new Date(nowFake.getTime() - 10 * 60_000) }),
 			]);
+			// locked gift re-read
+			mockDbInstance.pushResult([
+				makeGiftRow({
+					createdAt: new Date(nowFake.getTime() - 60_000),
+					imageKey: 'gifts/img.jpg',
+				}),
+			]);
 			mockDbInstance.pushResult([]);
 			mockDbInstance.pushResult([]);
 
@@ -78,6 +89,10 @@ describe('deleteGift', () => {
 			]);
 			mockDbInstance.pushResult([
 				makeWishlistRow({ sharedAt: new Date(nowFake.getTime() - 10 * 60_000) }),
+			]);
+			// locked gift re-read
+			mockDbInstance.pushResult([
+				makeGiftRow({ createdAt: new Date(nowFake.getTime() - 3 * 60_000) }),
 			]);
 
 			await expect(callDeleteGift(makeRecipientAuthContext(), GIFT_ID)).rejects.toMatchObject(
@@ -95,6 +110,8 @@ describe('deleteGift', () => {
 			mockDbInstance.pushResult([makeGiftRow({ createdAt: BEFORE_SHARING })]);
 			// wishlist lookup (shared)
 			mockDbInstance.pushResult([makeWishlistRow({ sharedAt: SHARED_AT })]);
+			// locked gift re-read
+			mockDbInstance.pushResult([makeGiftRow({ createdAt: BEFORE_SHARING })]);
 
 			await expect(callDeleteGift(makeRecipientAuthContext(), GIFT_ID)).rejects.toMatchObject(
 				{
@@ -125,6 +142,10 @@ describe('deleteGift', () => {
 			mockDbInstance.pushResult([
 				makeWishlistRow({ sharedAt: new Date(nowFake.getTime() - 60_000) }),
 			]);
+			// locked gift re-read
+			mockDbInstance.pushResult([
+				makeGiftRow({ createdAt: BEFORE_SHARING, editedAfterShareAt: null }),
+			]);
 			// reservation check – none
 			mockDbInstance.pushResult([]);
 			// soft-delete update
@@ -142,6 +163,10 @@ describe('deleteGift', () => {
 			]);
 			mockDbInstance.pushResult([
 				makeWishlistRow({ sharedAt: new Date(nowFake.getTime() - 3 * 60_000) }),
+			]);
+			// locked gift re-read
+			mockDbInstance.pushResult([
+				makeGiftRow({ createdAt: BEFORE_SHARING, editedAfterShareAt: null }),
 			]);
 
 			await expect(callDeleteGift(makeRecipientAuthContext(), GIFT_ID)).rejects.toMatchObject(
@@ -162,6 +187,13 @@ describe('deleteGift', () => {
 			mockDbInstance.pushResult([
 				makeWishlistRow({ sharedAt: new Date(nowFake.getTime() - 3 * 60_000) }),
 			]);
+			// locked gift re-read
+			mockDbInstance.pushResult([
+				makeGiftRow({
+					createdAt: BEFORE_SHARING,
+					editedAfterShareAt: new Date(nowFake.getTime() - 60_000),
+				}),
+			]);
 
 			await expect(callDeleteGift(makeRecipientAuthContext(), GIFT_ID)).rejects.toMatchObject(
 				{
@@ -177,6 +209,10 @@ describe('deleteGift', () => {
 			]);
 			mockDbInstance.pushResult([
 				makeWishlistRow({ sharedAt: new Date(nowFake.getTime() - 60_000) }),
+			]);
+			// locked gift re-read
+			mockDbInstance.pushResult([
+				makeGiftRow({ createdAt: BEFORE_SHARING, editedAfterShareAt: null }),
 			]);
 			// reservation check – has a reservation
 			mockDbInstance.pushResult([{ id: 'reservation-1' }]);
@@ -202,6 +238,10 @@ describe('deleteGift', () => {
 				]);
 				mockDbInstance.pushResult([
 					makeWishlistRow({ sharedAt: new Date(nowFake.getTime() - 10 * 60_000) }),
+				]);
+				// locked gift re-read
+				mockDbInstance.pushResult([
+					makeGiftRow({ createdAt: new Date(nowFake.getTime() - 60_000) }),
 				]);
 				mockDbInstance.pushResult([{ id: 'reservation-1' }]);
 
@@ -235,6 +275,8 @@ describe('deleteGift', () => {
 		it('rejects deleting gifts from archived wishlists', async () => {
 			mockDbInstance.pushResult([makeGiftRow()]);
 			mockDbInstance.pushResult([makeWishlistRow({ status: 'archived' })]);
+			// locked gift re-read
+			mockDbInstance.pushResult([makeGiftRow()]);
 
 			await expect(callDeleteGift(makeRecipientAuthContext(), GIFT_ID)).rejects.toMatchObject(
 				{
@@ -398,6 +440,8 @@ describe('markGiftReceived', () => {
 			mockDbInstance.pushResult([makeGiftRow()]);
 			// wishlist lookup (recipientUserId matches → recipient)
 			mockDbInstance.pushResult([makeWishlistRow()]);
+			// locked gift re-read
+			mockDbInstance.pushResult([makeGiftRow()]);
 			// update returning
 			mockDbInstance.pushResult([{ id: GIFT_ID, received: true }]);
 
@@ -409,6 +453,8 @@ describe('markGiftReceived', () => {
 		it('never sets editedAfterShareAt (regression)', async () => {
 			mockDbInstance.pushResult([makeGiftRow({ createdAt: BEFORE_SHARING })]);
 			mockDbInstance.pushResult([makeWishlistRow({ sharedAt: SHARED_AT })]);
+			// locked gift re-read
+			mockDbInstance.pushResult([makeGiftRow({ createdAt: BEFORE_SHARING })]);
 			mockDbInstance.pushResult([{ id: GIFT_ID, received: true }]);
 
 			await callMarkReceived(makeRecipientAuthContext(), markInput);
@@ -427,6 +473,8 @@ describe('markGiftReceived', () => {
 			mockDbInstance.pushResult([makeWishlistRow()]);
 			// moderator check returns empty → role resolves to visitor → ACCESS_DENIED
 			mockDbInstance.pushResult([]);
+			// locked gift re-read
+			mockDbInstance.pushResult([makeGiftRow()]);
 
 			await expect(
 				callMarkReceived(makeVisitorAuthContext(), markInput),
@@ -441,6 +489,8 @@ describe('markGiftReceived', () => {
 		it('rejects marking gifts as received on archived wishlists', async () => {
 			mockDbInstance.pushResult([makeGiftRow()]);
 			mockDbInstance.pushResult([makeWishlistRow({ status: 'archived' })]);
+			// locked gift re-read
+			mockDbInstance.pushResult([makeGiftRow()]);
 
 			await expect(
 				callMarkReceived(makeRecipientAuthContext(), markInput),

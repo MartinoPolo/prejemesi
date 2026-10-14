@@ -87,6 +87,14 @@ export const SERVER_ERROR = {
 	SHEETS_LINK_NOT_A_SHEET: 'SHEETS_LINK_NOT_A_SHEET',
 	SHEETS_PRIVATE: 'SHEETS_PRIVATE',
 	SHEETS_FETCH_FAILED: 'SHEETS_FETCH_FAILED',
+
+	// Agent access (issue #475), API only. An unknown and a human-only operation look alike.
+	AGENT_OPERATION_NOT_FOUND: 'AGENT_OPERATION_NOT_FOUND',
+	AGENT_SCOPE_MISSING: 'AGENT_SCOPE_MISSING',
+	AGENT_WISHLIST_NOT_ALLOWED: 'AGENT_WISHLIST_NOT_ALLOWED',
+	AGENT_IMAGE_INPUT_UNSUPPORTED: 'AGENT_IMAGE_INPUT_UNSUPPORTED',
+	// A target wishlist or confirmation requirement changed between authorization and execution.
+	AGENT_AUTHORIZATION_OUTDATED: 'AGENT_AUTHORIZATION_OUTDATED',
 } as const;
 
 export type ServerErrorCode = (typeof SERVER_ERROR)[keyof typeof SERVER_ERROR];
