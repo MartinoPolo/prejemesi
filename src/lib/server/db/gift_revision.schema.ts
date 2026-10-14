@@ -4,6 +4,7 @@ import { user } from './auth.schema.js';
 import { gift } from './gift.schema.js';
 import { wishlist } from './wishlist.schema.js';
 import { generateId } from './id.js';
+import { cascadingReferenceColumn } from './columns.js';
 import type { GiftRevisionSnapshot } from '$lib/server/operations/gift_revision_snapshot.js';
 
 /** Before/after record of one gift change made through the operation core, kept for history and undo. */
@@ -13,12 +14,8 @@ export const giftRevision = pgTable(
 		id: text('id')
 			.primaryKey()
 			.$defaultFn(() => generateId()),
-		giftId: text('gift_id')
-			.notNull()
-			.references(() => gift.id, { onDelete: 'cascade' }),
-		wishlistId: text('wishlist_id')
-			.notNull()
-			.references(() => wishlist.id, { onDelete: 'cascade' }),
+		giftId: cascadingReferenceColumn('gift_id', () => gift.id),
+		wishlistId: cascadingReferenceColumn('wishlist_id', () => wishlist.id),
 		batchId: text('batch_id').notNull(),
 		actorUserId: text('actor_user_id').references(() => user.id, { onDelete: 'set null' }),
 		channel: text('channel').notNull(),

@@ -17,12 +17,127 @@ export interface ReservedGiftEdit {
 	wishlist: { title: string; shortId: string };
 }
 
+interface EditedGiftReserver {
+	userId: string | null;
+	email: string | null;
+	giftIds: Set<string>;
+}
+
 interface NotificationGroup {
 	wishlistId: string;
 	wishlist: { title: string; shortId: string };
 	gifts: ReservedGiftEdit[];
 	targetUserIds: string[];
 	targetEmails: string[];
+}
+
+/** Every reserver (account or anonymous email) of the edited gifts other than the editing actor. */
+async function loadEditedGiftReservers(
+	transaction: DatabaseTransaction,
+	editedGiftIds: readonly string[],
+	actor: OperationActor,
+): Promise<EditedGiftReserver[]> {
+	const reservationRows = await transaction
+		.select({
+			giftId: reservation.giftId,
+			userId: reservation.userId,
+			anonymousEmail: reservation.anonymousEmail,
+		})
+		.from(reservation)
+		.where(and(inArray(reservation.giftId, editedGiftIds), isNull(reservation.deletedAt)));
+
+	const reserversByKey = new Map<string, EditedGiftReserver>();
+	const addReservedGift = (
+		reserverKey: string,
+		reserver: { userId: string | null; email: string | null },
+		giftId: string,
+	) => {
+		const entry = reserversByKey.get(reserverKey) ?? { ...reserver, giftIds: new Set() };
+		entry.giftIds.add(giftId);
+		reserversByKey.set(reserverKey, entry);
+	};
+	for (const row of reservationRows) {
+		if (row.userId !== null && row.userId !== actor.userId) {
+			addReservedGift(`user:${row.userId}`, { userId: row.userId, email: null }, row.giftId);
+		}
+		if (row.anonymousEmail !== null && row.anonymousEmail !== '') {
+			addReservedGift(
+				`email:${row.anonymousEmail}`,
+				{ userId: null, email: row.anonymousEmail },
+				row.giftId,
+			);
+		}
+	}
+	return [...reserversByKey.values()];
+}
+
+function groupEditsByWishlist(edits: readonly ReservedGiftEdit[]): ReservedGiftEdit[][] {
+	const editsByWishlistId = new Map<string, ReservedGiftEdit[]>();
+	for (const edit of edits) {
+		editsByWishlistId.set(edit.wishlistId, [
+			...(editsByWishlistId.get(edit.wishlistId) ?? []),
+			edit,
+		]);
+	}
+	return [...editsByWishlistId.values()];
+}
+
+function addNotificationTarget(group: NotificationGroup, reserver: EditedGiftReserver): void {
+	if (reserver.userId !== null) {
+		group.targetUserIds.push(reserver.userId);
+	}
+	if (reserver.email !== null) {
+		group.targetEmails.push(reserver.email);
+	}
+}
+
+/** Reservers who reserved exactly the same edited gifts on a wishlist share one group. */
+function groupReserversByReservedEdits(
+	reservers: readonly EditedGiftReserver[],
+	edits: readonly ReservedGiftEdit[],
+): NotificationGroup[] {
+	const groups = new Map<string, NotificationGroup>();
+	for (const reserver of reservers) {
+		const reservedEdits = edits.filter((edit) => reserver.giftIds.has(edit.giftId));
+		for (const wishlistEdits of groupEditsByWishlist(reservedEdits)) {
+			const [firstEdit] = wishlistEdits;
+			if (firstEdit === undefined) {
+				continue;
+			}
+			const groupKey = `${firstEdit.wishlistId}:${wishlistEdits.map((edit) => edit.giftId).join(',')}`;
+			const group = groups.get(groupKey) ?? {
+				wishlistId: firstEdit.wishlistId,
+				wishlist: firstEdit.wishlist,
+				gifts: wishlistEdits,
+				targetUserIds: [],
+				targetEmails: [],
+			};
+			addNotificationTarget(group, reserver);
+			groups.set(groupKey, group);
+		}
+	}
+	return [...groups.values()];
+}
+
+function toReservedGiftEditedNotification(
+	group: NotificationGroup,
+	actor: OperationActor,
+): DispatchNotificationInput {
+	const [singleGift] = group.gifts;
+	const giftDetails =
+		group.gifts.length === 1 && singleGift !== undefined
+			? { giftId: singleGift.giftId, giftName: singleGift.giftName }
+			: { giftNames: group.gifts.map((gift) => gift.giftName) };
+	return {
+		type: NOTIFICATION_TYPE.RESERVED_GIFT_EDITED,
+		targetUserIds: group.targetUserIds,
+		targetEmails: group.targetEmails,
+		wishlistId: group.wishlistId,
+		...giftDetails,
+		actorId: actor.userId,
+		actorName: actor.userName,
+		wishlist: group.wishlist,
+	};
 }
 
 /**
@@ -39,99 +154,10 @@ export async function planReservedGiftEditNotifications(
 	if (editsByGiftId.size === 0) {
 		return [];
 	}
-
-	const reservationRows = await transaction
-		.select({
-			giftId: reservation.giftId,
-			userId: reservation.userId,
-			anonymousEmail: reservation.anonymousEmail,
-		})
-		.from(reservation)
-		.where(
-			and(
-				inArray(reservation.giftId, [...editsByGiftId.keys()]),
-				isNull(reservation.deletedAt),
-			),
-		);
-
-	const giftIdsByReserver = new Map<
-		string,
-		{ userId: string | null; email: string | null; giftIds: Set<string> }
-	>();
-	const addReservedGift = (
-		reserverKey: string,
-		reserver: { userId: string | null; email: string | null },
-		giftId: string,
-	) => {
-		const entry = giftIdsByReserver.get(reserverKey) ?? { ...reserver, giftIds: new Set() };
-		entry.giftIds.add(giftId);
-		giftIdsByReserver.set(reserverKey, entry);
-	};
-	for (const row of reservationRows) {
-		if (row.userId !== null && row.userId !== actor.userId) {
-			addReservedGift(`user:${row.userId}`, { userId: row.userId, email: null }, row.giftId);
-		}
-		if (row.anonymousEmail !== null && row.anonymousEmail !== '') {
-			addReservedGift(
-				`email:${row.anonymousEmail}`,
-				{ userId: null, email: row.anonymousEmail },
-				row.giftId,
-			);
-		}
-	}
-
-	const groups = new Map<string, NotificationGroup>();
-	for (const reserver of giftIdsByReserver.values()) {
-		const reservedEdits = [...editsByGiftId.values()].filter((edit) =>
-			reserver.giftIds.has(edit.giftId),
-		);
-		const editsByWishlistId = new Map<string, ReservedGiftEdit[]>();
-		for (const edit of reservedEdits) {
-			editsByWishlistId.set(edit.wishlistId, [
-				...(editsByWishlistId.get(edit.wishlistId) ?? []),
-				edit,
-			]);
-		}
-		for (const wishlistEdits of editsByWishlistId.values()) {
-			const [firstEdit] = wishlistEdits;
-			if (firstEdit === undefined) {
-				continue;
-			}
-			const groupKey = `${firstEdit.wishlistId}:${wishlistEdits.map((edit) => edit.giftId).join(',')}`;
-			const group = groups.get(groupKey) ?? {
-				wishlistId: firstEdit.wishlistId,
-				wishlist: firstEdit.wishlist,
-				gifts: wishlistEdits,
-				targetUserIds: [],
-				targetEmails: [],
-			};
-			if (reserver.userId !== null) {
-				group.targetUserIds.push(reserver.userId);
-			}
-			if (reserver.email !== null) {
-				group.targetEmails.push(reserver.email);
-			}
-			groups.set(groupKey, group);
-		}
-	}
-
-	return [...groups.values()].map((group) => {
-		const [singleGift] = group.gifts;
-		const giftDetails =
-			group.gifts.length === 1 && singleGift !== undefined
-				? { giftId: singleGift.giftId, giftName: singleGift.giftName }
-				: { giftNames: group.gifts.map((gift) => gift.giftName) };
-		return {
-			type: NOTIFICATION_TYPE.RESERVED_GIFT_EDITED,
-			targetUserIds: group.targetUserIds,
-			targetEmails: group.targetEmails,
-			wishlistId: group.wishlistId,
-			...giftDetails,
-			actorId: actor.userId,
-			actorName: actor.userName,
-			wishlist: group.wishlist,
-		};
-	});
+	const reservers = await loadEditedGiftReservers(transaction, [...editsByGiftId.keys()], actor);
+	return groupReserversByReservedEdits(reservers, [...editsByGiftId.values()]).map((group) =>
+		toReservedGiftEditedNotification(group, actor),
+	);
 }
 
 /** Best effort: a failed notification never fails the committed batch. */

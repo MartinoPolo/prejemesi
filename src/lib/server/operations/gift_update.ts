@@ -122,48 +122,157 @@ function assertDescriptionAppendsRestorable(
 	}
 }
 
+/** An unrestricted edit writes every requested field whose value differs from the stored one. */
 function fullWriteUpdateData(giftRow: GiftRow, input: UpdateGiftInput): GiftUpdateData {
-	const updateData: GiftUpdateData = {};
-	if (input.name !== undefined && input.name !== giftRow.name) {
-		updateData.name = input.name;
+	const requestedValues: GiftUpdateData = {
+		name: input.name,
+		description: input.description,
+		links: input.links === undefined ? undefined : normalizeGiftLinks(input.links),
+		price: input.price,
+		priceMax: input.priceMax,
+		currency: input.currency,
+		imageUrl: input.imageUrl,
+		imageKey: input.imageKey,
+		imageMeta: input.imageMeta,
+		quantity: input.quantity,
+		priorityLevelId: input.priorityLevelId,
+		categoryId: input.categoryId,
+	};
+	return Object.fromEntries(
+		Object.entries(requestedValues).filter(
+			([field, value]) =>
+				value !== undefined && jsonChanged(value, giftRow[field as keyof GiftRow]),
+		),
+	);
+}
+
+/**
+ * Cross-field guard on the MERGED row (issue #155): the wire schema only validates bounds present
+ * in the same payload, so a partial update carrying one bound must not invert the persisted range.
+ */
+function assertMergedPriceRangeValid(giftRow: GiftRow, input: UpdateGiftInput): void {
+	const mergedPrice = input.price !== undefined ? input.price : giftRow.price;
+	const mergedPriceMax = input.priceMax !== undefined ? input.priceMax : giftRow.priceMax;
+	if (!isPriceRangeValid({ price: mergedPrice, priceMax: mergedPriceMax })) {
+		error(400, SERVER_ERROR.INVALID_PRICE_RANGE);
 	}
-	if (input.description !== undefined && input.description !== giftRow.description) {
-		updateData.description = input.description;
+}
+
+/** Whether the edit runs through the post-share append engine instead of a full write. */
+function usesAppendEngine(request: GiftUpdateRequest, now: Date): boolean {
+	const { giftRow, input } = request;
+	const { role, wishlistRow } = request.managedWishlist;
+	const isShared = wishlistRow.sharedAt !== null;
+	const isPreShareGift =
+		wishlistRow.sharedAt !== null && giftRow.createdAt <= wishlistRow.sharedAt;
+	// Within the initial 2-minute share grace window the recipient regains full edit. Later edits
+	// deliberately do not reopen name or delete grace.
+	const shareGraceOpen = isPreShareOwnerFullEditGraceOpen(
+		{ wishlistSharedAt: wishlistRow.sharedAt, giftCreatedAt: giftRow.createdAt },
+		now,
+	);
+	// The recipient editing a pre-share gift after grace follows the per-field rules: these protect
+	// gifters from the surprise-blind recipient. A targeted segment edit is always routed through the
+	// engine, which carries its own per-segment window check.
+	const isPreShareRecipientEdit =
+		role === WISHLIST_ROLES.recipient &&
+		isPreShareGift &&
+		(!shareGraceOpen || input.descriptionAppendEdit !== undefined);
+	return isPreShareRecipientEdit || (request.appendsDescription === true && isShared);
+}
+
+interface PlannedGiftEdit {
+	updateData: GiftUpdateData;
+	didChange: boolean;
+}
+
+function planAppendEngineEdit(request: GiftUpdateRequest, now: Date): PlannedGiftEdit {
+	const { giftRow, input, restoring } = request;
+	if (restoring !== undefined && input.description !== undefined) {
+		// The engine would append the restored text; the frozen original cannot be rewritten.
+		error(403, SERVER_ERROR.CANNOT_EDIT_AFTER_SHARING);
 	}
-	if (input.links !== undefined) {
-		const normalized = normalizeGiftLinks(input.links);
-		if (jsonChanged(normalized, giftRow.links)) {
-			updateData.links = normalized;
-		}
+	const outcome = computePreShareOwnerEdit(giftRow, input, now);
+	if (outcome.rejection !== null) {
+		error(outcome.rejection.status, outcome.rejection.code);
 	}
-	if (input.price !== undefined && input.price !== giftRow.price) {
-		updateData.price = input.price;
+	if (restoring?.descriptionAppends !== undefined) {
+		assertDescriptionAppendsRestorable(
+			giftRow.descriptionAppends,
+			restoring.descriptionAppends,
+			now,
+		);
 	}
-	if (input.priceMax !== undefined && input.priceMax !== giftRow.priceMax) {
-		updateData.priceMax = input.priceMax;
+	return { updateData: { ...outcome.updateData }, didChange: outcome.changed };
+}
+
+function planFullWriteEdit(request: GiftUpdateRequest): PlannedGiftEdit {
+	const updateData = fullWriteUpdateData(request.giftRow, request.input);
+	return { updateData, didChange: Object.keys(updateData).length > 0 };
+}
+
+function planGiftEdit(
+	request: GiftUpdateRequest,
+	appendEngine: boolean,
+	now: Date,
+): PlannedGiftEdit {
+	const { giftRow, restoring } = request;
+	const plannedEdit = appendEngine
+		? planAppendEngineEdit(request, now)
+		: planFullWriteEdit(request);
+	const restoredAppends = restoring?.descriptionAppends;
+	if (restoredAppends !== undefined && jsonChanged(restoredAppends, giftRow.descriptionAppends)) {
+		plannedEdit.updateData.descriptionAppends = restoredAppends;
+		plannedEdit.didChange = true;
 	}
-	if (input.currency !== undefined && input.currency !== giftRow.currency) {
-		updateData.currency = input.currency;
+	return plannedEdit;
+}
+
+/** State an undo restores is applied verbatim, after transparency has judged the edit itself. */
+function restoredStateUpdateData(restoring: RestoredGiftState | undefined): GiftUpdateData {
+	if (restoring === undefined) {
+		return {};
 	}
-	if (input.imageUrl !== undefined && input.imageUrl !== giftRow.imageUrl) {
-		updateData.imageUrl = input.imageUrl;
+	const { received, deletedAt } = restoring;
+	return {
+		...(received === undefined ? {} : { received }),
+		...(deletedAt === undefined ? {} : { deletedAt }),
+	};
+}
+
+/**
+ * Storage cleanup (issue #107): replacing or removing an uploaded image leaves no unreferenced R2
+ * object behind.
+ */
+function deferReplacedImageCleanup(
+	context: MutationOperationContext,
+	replacedImageKey: string | null,
+	nextImageKey: string | null | undefined,
+): void {
+	if (
+		nextImageKey !== undefined &&
+		replacedImageKey !== null &&
+		replacedImageKey !== nextImageKey
+	) {
+		context.deferEffect(() => deleteObjectsBestEffort([replacedImageKey]));
 	}
-	if (input.imageKey !== undefined && input.imageKey !== giftRow.imageKey) {
-		updateData.imageKey = input.imageKey;
-	}
-	if (input.imageMeta !== undefined && jsonChanged(input.imageMeta, giftRow.imageMeta)) {
-		updateData.imageMeta = input.imageMeta;
-	}
-	if (input.quantity !== undefined && input.quantity !== giftRow.quantity) {
-		updateData.quantity = input.quantity;
-	}
-	if (input.priorityLevelId !== undefined && input.priorityLevelId !== giftRow.priorityLevelId) {
-		updateData.priorityLevelId = input.priorityLevelId;
-	}
-	if (input.categoryId !== undefined && input.categoryId !== giftRow.categoryId) {
-		updateData.categoryId = input.categoryId;
-	}
-	return updateData;
+}
+
+function noteModeratorEdit(
+	context: MutationOperationContext,
+	request: GiftUpdateRequest,
+	updated: GiftRow,
+): void {
+	const { giftRow } = request;
+	const { wishlistRow } = request.managedWishlist;
+	context.noteReservedGiftEdits([
+		{
+			giftId: giftRow.id,
+			giftName: updated.name ?? giftRow.name,
+			wishlistId: giftRow.wishlistId,
+			wishlist: { title: wishlistRow.title, shortId: wishlistRow.shortId },
+		},
+	]);
 }
 
 /**
@@ -181,89 +290,18 @@ export async function applyGiftUpdate(
 	const didCategoryChange =
 		input.categoryId !== undefined && input.categoryId !== giftRow.categoryId;
 
-	// Cross-field guard on the MERGED row (issue #155): the wire schema only validates bounds present
-	// in the same payload, so a partial update carrying one bound must not invert the persisted range.
-	const mergedPrice = input.price !== undefined ? input.price : giftRow.price;
-	const mergedPriceMax = input.priceMax !== undefined ? input.priceMax : giftRow.priceMax;
-	if (!isPriceRangeValid({ price: mergedPrice, priceMax: mergedPriceMax })) {
-		error(400, SERVER_ERROR.INVALID_PRICE_RANGE);
-	}
-
-	const isShared = wishlistRow.sharedAt !== null;
-	const isPreShareGift =
-		wishlistRow.sharedAt !== null && giftRow.createdAt <= wishlistRow.sharedAt;
-	// Within the initial 2-minute share grace window the recipient regains full edit. Later edits
-	// deliberately do not reopen name or delete grace.
-	const shareGraceOpen = isPreShareOwnerFullEditGraceOpen(
-		{ wishlistSharedAt: wishlistRow.sharedAt, giftCreatedAt: giftRow.createdAt },
-		now,
-	);
-	// The recipient editing a pre-share gift after grace follows the per-field rules: these protect
-	// gifters from the surprise-blind recipient. A targeted segment edit is always routed through the
-	// engine, which carries its own per-segment window check.
-	const isPreShareRecipientEdit =
-		role === WISHLIST_ROLES.recipient &&
-		isPreShareGift &&
-		(!shareGraceOpen || input.descriptionAppendEdit !== undefined);
-	const usesAppendEngine =
-		isPreShareRecipientEdit || (request.appendsDescription === true && isShared);
-
-	let updateData: GiftUpdateData;
-	let didChange: boolean;
-	if (usesAppendEngine) {
-		if (restoring !== undefined && input.description !== undefined) {
-			// The engine would append the restored text; the frozen original cannot be rewritten.
-			error(403, SERVER_ERROR.CANNOT_EDIT_AFTER_SHARING);
-		}
-		const outcome = computePreShareOwnerEdit(giftRow, input, now);
-		if (outcome.rejection !== null) {
-			error(outcome.rejection.status, outcome.rejection.code);
-		}
-		updateData = { ...outcome.updateData };
-		didChange = outcome.changed;
-		if (restoring?.descriptionAppends !== undefined) {
-			assertDescriptionAppendsRestorable(
-				giftRow.descriptionAppends,
-				restoring.descriptionAppends,
-				now,
-			);
-		}
-	} else {
-		updateData = fullWriteUpdateData(giftRow, input);
-		didChange = Object.keys(updateData).length > 0;
-	}
-	if (
-		restoring?.descriptionAppends !== undefined &&
-		jsonChanged(restoring.descriptionAppends, giftRow.descriptionAppends)
-	) {
-		updateData.descriptionAppends = restoring.descriptionAppends;
-		didChange = true;
-	}
+	assertMergedPriceRangeValid(giftRow, input);
+	const appendEngine = usesAppendEngine(request, now);
+	const { updateData, didChange } = planGiftEdit(request, appendEngine, now);
 
 	// Transparency: any post-share edit that actually changes a field flags the gift as edited
 	// after sharing, unless it nets out to a byte-identical revert within the grace window.
-	if (isShared && didChange) {
+	if (wishlistRow.sharedAt !== null && didChange) {
 		applyPostShareEditTransparency({ giftRow, updateData, now, wishlistRow });
 	}
-	if (restoring !== undefined) {
-		const { received, deletedAt } = restoring;
-		Object.assign(
-			updateData,
-			received === undefined ? {} : { received },
-			deletedAt === undefined ? {} : { deletedAt },
-		);
-	}
-	updateData.updatedAt = now;
+	Object.assign(updateData, restoredStateUpdateData(restoring), { updatedAt: now });
 
-	if (usesAppendEngine) {
-		if (input.categoryId !== undefined && updateData.categoryId !== undefined) {
-			updateData.categoryId = await assertActiveGiftCategoryAssignment(
-				transaction,
-				giftRow.wishlistId,
-				input.categoryId,
-			);
-		}
-	} else if (didCategoryChange) {
+	if (input.categoryId !== undefined && updateData.categoryId !== undefined) {
 		updateData.categoryId = await assertActiveGiftCategoryAssignment(
 			transaction,
 			giftRow.wishlistId,
@@ -283,28 +321,13 @@ export async function applyGiftUpdate(
 		{ giftId: giftRow.id, wishlistId: giftRow.wishlistId, before: giftRow, after: updated },
 	]);
 
-	// Storage cleanup (issue #107): replacing or removing an uploaded image leaves no unreferenced
-	// R2 object behind. Undo never deletes storage here (only undoing a creation does, through the
-	// ordinary delete path); it drops uploads it cannot restore instead.
-	const replacedImageKey = giftRow.imageKey;
-	if (
-		!usesAppendEngine &&
-		restoring === undefined &&
-		updateData.imageKey !== undefined &&
-		replacedImageKey !== null &&
-		replacedImageKey !== updateData.imageKey
-	) {
-		context.deferEffect(() => deleteObjectsBestEffort([replacedImageKey]));
+	// Undo never deletes storage here (only undoing a creation does, through the ordinary delete
+	// path); it drops uploads it cannot restore instead.
+	if (!appendEngine && restoring === undefined) {
+		deferReplacedImageCleanup(context, giftRow.imageKey, updateData.imageKey);
 	}
 	if (role === WISHLIST_ROLES.moderator && didChange) {
-		context.noteReservedGiftEdits([
-			{
-				giftId: giftRow.id,
-				giftName: updated.name ?? giftRow.name,
-				wishlistId: giftRow.wishlistId,
-				wishlist: { title: wishlistRow.title, shortId: wishlistRow.shortId },
-			},
-		]);
+		noteModeratorEdit(context, request, updated);
 	}
 	return { updated, didCategoryChange };
 }

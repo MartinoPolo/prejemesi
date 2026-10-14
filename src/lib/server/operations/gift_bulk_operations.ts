@@ -1,6 +1,7 @@
-import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
+import { and, eq, inArray, isNull, sql, type AnyColumn, type SQL } from 'drizzle-orm';
 import { error } from '@sveltejs/kit';
 import { gift } from '$lib/server/db/gift.schema.js';
+import type { DatabaseTransaction } from '$lib/server/db/index.js';
 import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
 import { WISHLIST_ROLES } from '$lib/modules/wishlists/types.js';
 import { assertWishlistMutable } from '$lib/modules/wishlists/wishlist_access.js';
@@ -8,6 +9,7 @@ import {
 	BulkUpdateGiftsInputSchema,
 	GIFT_GROUPING_OPTIONS,
 	ReorderGiftsInputSchema,
+	type BulkUpdateGiftsInput,
 	type GiftReorderGroupField,
 } from '$lib/modules/gifts/types.js';
 import {
@@ -30,7 +32,7 @@ import {
 	type GiftRow,
 	type GiftUpdateData,
 } from './gift_update.js';
-import type { ManagedWishlist } from './wishlist_management.js';
+import type { ManagedWishlist, WishlistRow } from './wishlist_management.js';
 
 function bulkJsonbValue(value: unknown) {
 	return value === null ? sql`NULL::jsonb` : sql`${JSON.stringify(value)}::jsonb`;
@@ -164,6 +166,156 @@ export const reorderGiftsOperation = defineOperation({
 	},
 });
 
+interface BulkUpdatePlan {
+	row: GiftRow;
+	updateData: GiftUpdateData;
+	didChange: boolean;
+}
+
+async function assertBulkActionTargetActive(
+	transaction: DatabaseTransaction,
+	input: BulkUpdateGiftsInput,
+): Promise<void> {
+	if (input.action === 'priority') {
+		await assertWishlistPriorityLevel(transaction, input.wishlistId, input.priorityLevelId);
+	}
+	if (input.action === 'category') {
+		await assertActiveGiftCategoryAssignment(transaction, input.wishlistId, input.categoryId);
+	}
+}
+
+function bulkSelectionFilter(input: BulkUpdateGiftsInput, uniqueGiftIds: readonly string[]) {
+	return and(
+		inArray(gift.id, uniqueGiftIds),
+		eq(gift.wishlistId, input.wishlistId),
+		isNull(gift.deletedAt),
+	);
+}
+
+async function lockBulkSelection(
+	transaction: DatabaseTransaction,
+	input: BulkUpdateGiftsInput,
+	uniqueGiftIds: readonly string[],
+): Promise<GiftRow[]> {
+	const rows = await transaction
+		.select()
+		.from(gift)
+		.where(bulkSelectionFilter(input, uniqueGiftIds))
+		.for('update');
+	if (rows.length !== uniqueGiftIds.length) {
+		error(400, SERVER_ERROR.GIFT_WISHLIST_MISMATCH);
+	}
+	if (
+		input.action === 'restoreReceived' &&
+		uniqueGiftIds.some((id) => input.states[id] === undefined)
+	) {
+		error(400, SERVER_ERROR.BULK_GIFT_STATE_MISMATCH);
+	}
+	return rows;
+}
+
+function planBulkUpdate(
+	input: BulkUpdateGiftsInput,
+	row: GiftRow,
+	now: Date,
+	wishlistRow: WishlistRow,
+): BulkUpdatePlan {
+	const updateData: GiftUpdateData = bulkGiftUpdateData(input, row);
+	if (isBulkPresentationAction(input)) {
+		const plan = planPresentationUpdate({ giftRow: row, updateData, now, wishlistRow });
+		return { row, updateData, didChange: plan.didChange };
+	}
+	return { row, updateData, didChange: updateDataChangesGift(row, updateData) };
+}
+
+/** One CASE expression writes each planned gift its own value in a single UPDATE statement. */
+function valueByGiftId(
+	plans: readonly BulkUpdatePlan[],
+	valueForPlan: (plan: BulkUpdatePlan) => SQL,
+	unchangedValue: AnyColumn,
+): SQL {
+	const branches = sql.join(
+		plans.map((plan) => sql`WHEN ${gift.id} = ${plan.row.id} THEN ${valueForPlan(plan)}`),
+		sql` `,
+	);
+	return sql`CASE ${branches} ELSE ${unchangedValue} END`;
+}
+
+function actionUpdateSet(
+	input: BulkUpdateGiftsInput,
+	updatePlans: readonly BulkUpdatePlan[],
+): Record<string, unknown> {
+	switch (input.action) {
+		case 'priority':
+			return { priorityLevelId: input.priorityLevelId };
+		case 'category':
+			return { categoryId: input.categoryId };
+		case 'received':
+			return { received: input.received };
+		case 'restoreReceived':
+			return {
+				received: valueByGiftId(
+					updatePlans,
+					(plan) => sql`${plan.updateData.received ?? false}::boolean`,
+					gift.received,
+				),
+			};
+		case 'imageFit':
+		case 'imageBackground':
+			return {
+				imageMeta: valueByGiftId(
+					updatePlans,
+					(plan) => bulkJsonbValue(plan.updateData.imageMeta ?? null),
+					gift.imageMeta,
+				),
+			};
+	}
+}
+
+function postShareTransparencyUpdateSet(
+	changedPresentationPlans: readonly BulkUpdatePlan[],
+): Record<string, unknown> {
+	if (changedPresentationPlans.length === 0) {
+		return {};
+	}
+	return {
+		editedAfterShareAt: valueByGiftId(
+			changedPresentationPlans,
+			(plan) =>
+				bulkTimestampValue(
+					plan.updateData.editedAfterShareAt === undefined
+						? plan.row.editedAfterShareAt
+						: plan.updateData.editedAfterShareAt,
+				),
+			gift.editedAfterShareAt,
+		),
+		preEditShareSnapshot: valueByGiftId(
+			changedPresentationPlans,
+			(plan) =>
+				bulkJsonbValue(
+					'preEditShareSnapshot' in plan.updateData
+						? plan.updateData.preEditShareSnapshot
+						: plan.row.preEditShareSnapshot,
+				),
+			gift.preEditShareSnapshot,
+		),
+	};
+}
+
+function assertEveryGiftUpdated(
+	updatedRows: readonly { id: string }[],
+	uniqueGiftIds: readonly string[],
+): void {
+	const updatedIdSet = new Set(updatedRows.map((row) => row.id));
+	if (
+		updatedRows.length !== uniqueGiftIds.length ||
+		updatedIdSet.size !== uniqueGiftIds.length ||
+		uniqueGiftIds.some((id) => !updatedIdSet.has(id))
+	) {
+		error(400, SERVER_ERROR.GIFT_WISHLIST_MISMATCH);
+	}
+}
+
 export const bulkUpdateGiftsOperation = defineOperation({
 	name: 'bulkUpdateGifts',
 	kind: OPERATION_KIND.mutation,
@@ -179,139 +331,29 @@ export const bulkUpdateGiftsOperation = defineOperation({
 		);
 		const { wishlistRow } = managedWishlist;
 		assertWishlistMutable(wishlistRow);
-		if (input.action === 'priority') {
-			await assertWishlistPriorityLevel(transaction, input.wishlistId, input.priorityLevelId);
-		}
-		if (input.action === 'category') {
-			await assertActiveGiftCategoryAssignment(
-				transaction,
-				input.wishlistId,
-				input.categoryId,
-			);
-		}
+		await assertBulkActionTargetActive(transaction, input);
+		const rows = await lockBulkSelection(transaction, input, uniqueGiftIds);
 
-		const rows = await transaction
-			.select()
-			.from(gift)
-			.where(
-				and(
-					inArray(gift.id, uniqueGiftIds),
-					eq(gift.wishlistId, input.wishlistId),
-					isNull(gift.deletedAt),
-				),
-			)
-			.for('update');
-		if (rows.length !== uniqueGiftIds.length) {
-			error(400, SERVER_ERROR.GIFT_WISHLIST_MISMATCH);
-		}
-		if (
-			input.action === 'restoreReceived' &&
-			uniqueGiftIds.some((id) => input.states[id] === undefined)
-		) {
-			error(400, SERVER_ERROR.BULK_GIFT_STATE_MISMATCH);
-		}
-
-		const updatePlans = rows.map((row) => {
-			const updateData: GiftUpdateData = bulkGiftUpdateData(input, row);
-			if (isBulkPresentationAction(input)) {
-				const plan = planPresentationUpdate({
-					giftRow: row,
-					updateData,
-					now,
-					wishlistRow,
-				});
-				return { row, updateData, didChange: plan.didChange };
-			}
-			return { row, updateData, didChange: updateDataChangesGift(row, updateData) };
-		});
+		const updatePlans = rows.map((row) => planBulkUpdate(input, row, now, wishlistRow));
 		const changedPresentationPlans = updatePlans.filter(
 			(plan) => plan.didChange && isBulkPresentationAction(input),
 		);
-
-		const updateSet: Record<string, unknown> = { updatedAt: now };
-		switch (input.action) {
-			case 'priority':
-				updateSet.priorityLevelId = input.priorityLevelId;
-				break;
-			case 'category':
-				updateSet.categoryId = input.categoryId;
-				break;
-			case 'received':
-				updateSet.received = input.received;
-				break;
-			case 'restoreReceived': {
-				const receivedCase = sql.join(
-					updatePlans.map(
-						(plan) =>
-							sql`WHEN ${gift.id} = ${plan.row.id} THEN ${plan.updateData.received ?? false}::boolean`,
-					),
-					sql` `,
-				);
-				updateSet.received = sql<boolean>`CASE ${receivedCase} ELSE ${gift.received} END`;
-				break;
-			}
-			case 'imageFit':
-			case 'imageBackground': {
-				const imageMetaCase = sql.join(
-					updatePlans.map(
-						(plan) =>
-							sql`WHEN ${gift.id} = ${plan.row.id} THEN ${bulkJsonbValue(plan.updateData.imageMeta ?? null)}`,
-					),
-					sql` `,
-				);
-				updateSet.imageMeta = sql`CASE ${imageMetaCase} ELSE ${gift.imageMeta} END`;
-				break;
-			}
-		}
-
-		if (changedPresentationPlans.length > 0 && wishlistRow.sharedAt !== null) {
-			const editedAfterShareCase = sql.join(
-				changedPresentationPlans.map(
-					(plan) =>
-						sql`WHEN ${gift.id} = ${plan.row.id} THEN ${bulkTimestampValue(
-							plan.updateData.editedAfterShareAt === undefined
-								? plan.row.editedAfterShareAt
-								: plan.updateData.editedAfterShareAt,
-						)}`,
-				),
-				sql` `,
-			);
-			const preEditShareSnapshotCase = sql.join(
-				changedPresentationPlans.map(
-					(plan) =>
-						sql`WHEN ${gift.id} = ${plan.row.id} THEN ${bulkJsonbValue(
-							'preEditShareSnapshot' in plan.updateData
-								? plan.updateData.preEditShareSnapshot
-								: plan.row.preEditShareSnapshot,
-						)}`,
-				),
-				sql` `,
-			);
-			updateSet.editedAfterShareAt = sql<Date | null>`CASE ${editedAfterShareCase} ELSE ${gift.editedAfterShareAt} END`;
-			updateSet.preEditShareSnapshot = sql`CASE ${preEditShareSnapshotCase} ELSE ${gift.preEditShareSnapshot} END`;
-		}
+		const updateSet: Record<string, unknown> = {
+			updatedAt: now,
+			...actionUpdateSet(input, updatePlans),
+			...(wishlistRow.sharedAt === null
+				? {}
+				: postShareTransparencyUpdateSet(changedPresentationPlans)),
+		};
 
 		await runBulkUpdateAfterRowsLockedHookForTest(transaction);
 
 		const updatedRows = await transaction
 			.update(gift)
 			.set(updateSet)
-			.where(
-				and(
-					inArray(gift.id, uniqueGiftIds),
-					eq(gift.wishlistId, input.wishlistId),
-					isNull(gift.deletedAt),
-				),
-			)
+			.where(bulkSelectionFilter(input, uniqueGiftIds))
 			.returning({ id: gift.id });
-		const updatedIdSet = new Set(updatedRows.map((row) => row.id));
-		if (
-			updatedRows.length !== uniqueGiftIds.length ||
-			updatedIdSet.size !== uniqueGiftIds.length ||
-			uniqueGiftIds.some((id) => !updatedIdSet.has(id))
-		) {
-			error(400, SERVER_ERROR.GIFT_WISHLIST_MISMATCH);
-		}
+		assertEveryGiftUpdated(updatedRows, uniqueGiftIds);
 
 		// The CASE statements above write exactly each plan's update data, so the new state is known.
 		context.recordGiftRevisions(

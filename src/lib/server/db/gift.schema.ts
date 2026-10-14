@@ -15,6 +15,7 @@ import { sql } from 'drizzle-orm';
 import { user } from './auth.schema.js';
 import { wishlist, priorityLevel } from './wishlist.schema.js';
 import { generateId } from './id.js';
+import { cascadingReferenceColumn } from './columns.js';
 import type { ImageMetadata } from '$lib/modules/images/types.js';
 import type { GiftLink, DescriptionAppend } from '$lib/modules/gifts/types.js';
 import type { PreShareGiftSnapshot } from '$lib/modules/gifts/gift_post_share.js';
@@ -144,9 +145,7 @@ export const reservation = pgTable(
 		id: text('id')
 			.primaryKey()
 			.$defaultFn(() => generateId()),
-		giftId: text('gift_id')
-			.notNull()
-			.references(() => gift.id, { onDelete: 'cascade' }),
+		giftId: cascadingReferenceColumn('gift_id', () => gift.id),
 		userId: text('user_id').references(() => user.id, { onDelete: 'set null' }),
 		anonymousName: text('anonymous_name'),
 		anonymousEmail: text('anonymous_email'),
@@ -187,9 +186,7 @@ export const giftLike = pgTable(
 		id: text('id')
 			.primaryKey()
 			.$defaultFn(() => generateId()),
-		giftId: text('gift_id')
-			.notNull()
-			.references(() => gift.id, { onDelete: 'cascade' }),
+		giftId: cascadingReferenceColumn('gift_id', () => gift.id),
 		userId: text('user_id')
 			.notNull()
 			.references(() => user.id, { onDelete: 'cascade' }),
