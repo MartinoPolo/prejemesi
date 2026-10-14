@@ -22,6 +22,7 @@ vi.mock('$env/dynamic/private', () => ({ env: { DATABASE_URL: process.env.DATABA
 import { closeDb, getDb } from '$lib/server/db/index.js';
 import { user } from '$lib/server/db/auth.schema.js';
 import { gift } from '$lib/server/db/gift.schema.js';
+import { giftRevision } from '$lib/server/db/gift_revision.schema.js';
 import { giftIngestionItem, giftIngestionRun } from '$lib/server/db/ingestion.schema.js';
 import { wishlist } from '$lib/server/db/wishlist.schema.js';
 import { drizzleGiftIngestionStore } from './ingestion_store.js';
@@ -136,5 +137,17 @@ describe.skipIf(!DB_READY)('gift ingestion idempotency race [real DB]', () => {
 		expect(runs).toHaveLength(1);
 		expect(items).toHaveLength(1);
 		expect(items[0]?.provenance).toEqual(manifest.items[0]?.provenance);
+		const revisions = await getDb()
+			.select()
+			.from(giftRevision)
+			.where(eq(giftRevision.wishlistId, WISHLIST_ID));
+		expect(revisions).toHaveLength(1);
+		expect(revisions[0]).toMatchObject({
+			giftId: gifts[0]?.id,
+			actorUserId: USER_ID,
+			channel: 'token:ingestion',
+			before: null,
+			after: { name: `${PREFIX}gift` },
+		});
 	});
 });

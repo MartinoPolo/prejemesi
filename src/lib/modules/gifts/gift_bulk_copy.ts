@@ -16,6 +16,7 @@ import {
 	type GiftCreationTransaction,
 } from './gift_creation_service.js';
 import type { DescriptionAppend } from './types.js';
+import type { RecordGiftRevisions } from '$lib/server/operations/gift_revisions.js';
 
 export const MAX_BULK_COPY_GIFTS = 50;
 
@@ -234,11 +235,30 @@ export async function compensateStagedImages(
 	}
 }
 
-export async function copyGifts(
+interface GiftCopyPlan {
+	source: SourceGift;
+	destinationGiftId: string;
+	destinationImageKey: string | null;
+}
+
+/** The pre-transaction part of a copy: preflight checks, staged image objects and their journal. */
+export interface PreparedGiftCopy {
+	plans: readonly GiftCopyPlan[];
+	/** Closes the staging journal once the copy committed. */
+	complete(): Promise<void>;
+	/** Removes staged objects and closes the journal when the copy did not commit. */
+	abandon(): Promise<void>;
+}
+
+/**
+ * Validates the selection and stages copied images before the copy transaction opens, so R2 I/O
+ * never holds row locks. A dry run skips staging because nothing will reference the objects.
+ */
+export async function prepareGiftCopy(
 	actorId: string,
 	input: BulkCopyGiftsInput,
-	options: { database?: Database } = {},
-) {
+	options: { database?: Database; stageImages: boolean },
+): Promise<PreparedGiftCopy> {
 	if (
 		input.sourceWishlistId === input.destinationWishlistId ||
 		new Set(input.giftIds).size !== input.giftIds.length
@@ -250,7 +270,7 @@ export async function copyGifts(
 	await assertManagedWishlist(database, actorId, input.destinationWishlistId, false);
 	const preflightGifts = await loadSourceGifts(database, input, false);
 	const operationId = generateId();
-	const plans = preflightGifts.map((source) => {
+	const plans: GiftCopyPlan[] = preflightGifts.map((source) => {
 		const destinationGiftId = generateId();
 		return {
 			source,
@@ -261,10 +281,12 @@ export async function copyGifts(
 					: copiedObjectKey(destinationGiftId, source.imageKey),
 		};
 	});
-	const imagePlans = plans.filter(
-		(plan): plan is typeof plan & { destinationImageKey: string } =>
-			plan.destinationImageKey !== null,
-	);
+	const imagePlans = options.stageImages
+		? plans.filter(
+				(plan): plan is typeof plan & { destinationImageKey: string } =>
+					plan.destinationImageKey !== null,
+			)
+		: [];
 	const journalRows =
 		imagePlans.length === 0
 			? []
@@ -285,6 +307,36 @@ export async function copyGifts(
 	const journalIdByKey = new Map(journalRows.map((row) => [row.objectKey, row.id]));
 	const staged: { key: string; journalId: string }[] = [];
 	const attemptedJournalIds = new Set<string>();
+	const preparedCopy: PreparedGiftCopy = {
+		plans,
+		async complete() {
+			try {
+				await markJournalResolved(
+					database,
+					journalRows.map((row) => row.id),
+				);
+			} catch (thrown) {
+				console.error('[Bulk gift copy] could not close staging journal', thrown);
+			}
+		},
+		async abandon() {
+			await compensateStagedImages(staged, {
+				remove: deleteObject,
+				resolve: (journalId) => markJournalResolved(database, [journalId]),
+			});
+			const unstagedJournalIds = journalRows
+				.filter((row) => !attemptedJournalIds.has(row.id))
+				.map((row) => row.id);
+			try {
+				await markJournalResolved(database, unstagedJournalIds);
+			} catch (cleanupError) {
+				console.error(
+					'[Bulk gift copy] could not close unused staging journal',
+					cleanupError,
+				);
+			}
+		},
+	};
 	try {
 		for (const plan of imagePlans) {
 			const journalId = journalIdByKey.get(plan.destinationImageKey)!;
@@ -292,90 +344,77 @@ export async function copyGifts(
 			await stageCopiedImage(plan.source.imageKey!, plan.destinationImageKey);
 			staged.push({ key: plan.destinationImageKey, journalId });
 		}
-		const result = await database.transaction(async (tx) => {
-			await assertManagedWishlist(tx, actorId, input.sourceWishlistId, true);
-			const destination = await assertManagedWishlist(
-				tx,
-				actorId,
-				input.destinationWishlistId,
-				true,
-			);
-			const sourceRows = await loadSourceGifts(tx, input, true);
-			if (
-				sourceRows.some(
-					(source, index) => source.imageKey !== plans[index]!.source.imageKey,
-				)
-			) {
-				error(400, SERVER_ERROR.BULK_COPY_INVALID_SELECTION);
-			}
-			const sourcePriorities = await tx
-				.select({ id: priorityLevel.id })
-				.from(priorityLevel)
-				.where(eq(priorityLevel.wishlistId, input.sourceWishlistId))
-				.orderBy(priorityLevel.sortOrder);
-			const destinationPriorities = await tx
-				.select({ id: priorityLevel.id })
-				.from(priorityLevel)
-				.where(eq(priorityLevel.wishlistId, input.destinationWishlistId))
-				.orderBy(priorityLevel.sortOrder);
-			const destinationCategories = await tx
-				.select({
-					id: giftCategory.id,
-					presetKey: giftCategory.presetKey,
-					customLabel: giftCategory.customLabel,
-				})
-				.from(giftCategory)
-				.where(
-					and(
-						eq(giftCategory.wishlistId, input.destinationWishlistId),
-						isNull(giftCategory.deletedAt),
-					),
-				);
-			const sourcePriorityIds = sourcePriorities.map((level) => level.id);
-			const copied = sourceRows.map((source, index) => {
-				const taxonomy = mapCopiedTaxonomy({
-					source,
-					sourcePriorityIdsByOrdinal: sourcePriorityIds,
-					destinationPriorities,
-					destinationCategories,
-				});
-				return portableGiftCopy({
-					source,
-					destinationGiftId: plans[index]!.destinationGiftId,
-					destinationImageKey: plans[index]!.destinationImageKey,
-					taxonomy,
-				});
-			});
-			const created = await appendGiftsUsingTransaction(tx, {
-				wishlistId: input.destinationWishlistId,
-				actorId,
-				gifts: copied,
-				notifyFollowers: destination.status === 'active',
-			});
-			return { created, destinationShortId: destination.shortId };
-		});
-		try {
-			await markJournalResolved(
-				database,
-				journalRows.map((row) => row.id),
-			);
-		} catch (thrown) {
-			console.error('[Bulk gift copy] could not close staging journal', thrown);
-		}
-		return result;
 	} catch (thrown) {
-		await compensateStagedImages(staged, {
-			remove: deleteObject,
-			resolve: (journalId) => markJournalResolved(database, [journalId]),
-		});
-		const unstagedJournalIds = journalRows
-			.filter((row) => !attemptedJournalIds.has(row.id))
-			.map((row) => row.id);
-		try {
-			await markJournalResolved(database, unstagedJournalIds);
-		} catch (cleanupError) {
-			console.error('[Bulk gift copy] could not close unused staging journal', cleanupError);
-		}
+		await preparedCopy.abandon();
 		throw thrown;
 	}
+	return preparedCopy;
+}
+
+/** The transactional part of a copy: revalidates access and the selection under locks, then appends. */
+export async function copyPreparedGifts(
+	transaction: Transaction,
+	actorId: string,
+	input: BulkCopyGiftsInput,
+	preparedCopy: Pick<PreparedGiftCopy, 'plans'>,
+	recordRevisions: RecordGiftRevisions,
+): Promise<{ created: (typeof gift.$inferSelect)[]; destinationShortId: string }> {
+	const { plans } = preparedCopy;
+	await assertManagedWishlist(transaction, actorId, input.sourceWishlistId, true);
+	const destination = await assertManagedWishlist(
+		transaction,
+		actorId,
+		input.destinationWishlistId,
+		true,
+	);
+	const sourceRows = await loadSourceGifts(transaction, input, true);
+	if (sourceRows.some((source, index) => source.imageKey !== plans[index]!.source.imageKey)) {
+		error(400, SERVER_ERROR.BULK_COPY_INVALID_SELECTION);
+	}
+	const sourcePriorities = await transaction
+		.select({ id: priorityLevel.id })
+		.from(priorityLevel)
+		.where(eq(priorityLevel.wishlistId, input.sourceWishlistId))
+		.orderBy(priorityLevel.sortOrder);
+	const destinationPriorities = await transaction
+		.select({ id: priorityLevel.id })
+		.from(priorityLevel)
+		.where(eq(priorityLevel.wishlistId, input.destinationWishlistId))
+		.orderBy(priorityLevel.sortOrder);
+	const destinationCategories = await transaction
+		.select({
+			id: giftCategory.id,
+			presetKey: giftCategory.presetKey,
+			customLabel: giftCategory.customLabel,
+		})
+		.from(giftCategory)
+		.where(
+			and(
+				eq(giftCategory.wishlistId, input.destinationWishlistId),
+				isNull(giftCategory.deletedAt),
+			),
+		);
+	const sourcePriorityIds = sourcePriorities.map((level) => level.id);
+	const copied = sourceRows.map((source, index) => {
+		const taxonomy = mapCopiedTaxonomy({
+			source,
+			sourcePriorityIdsByOrdinal: sourcePriorityIds,
+			destinationPriorities,
+			destinationCategories,
+		});
+		return portableGiftCopy({
+			source,
+			destinationGiftId: plans[index]!.destinationGiftId,
+			destinationImageKey: plans[index]!.destinationImageKey,
+			taxonomy,
+		});
+	});
+	const created = await appendGiftsUsingTransaction(transaction, {
+		wishlistId: input.destinationWishlistId,
+		actorId,
+		gifts: copied,
+		notifyFollowers: destination.status === 'active',
+		recordRevisions,
+	});
+	return { created, destinationShortId: destination.shortId };
 }

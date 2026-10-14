@@ -22,6 +22,8 @@ import {
 	type NormalizedGiftCreationInput,
 } from '$lib/modules/gifts/gift_creation_service.js';
 import { canonicalGiftLinkKey } from '$lib/modules/gifts/gift_url.js';
+import { createImmediateGiftRevisionRecorder } from '$lib/server/operations/gift_revisions.js';
+import { OPERATION_CHANNEL } from '$lib/server/operations/actor.js';
 import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
 import { mapGiftCreationError } from '$lib/modules/gifts/gift_creation_transport.js';
 import { resolveImportGiftCategoryAssignments } from '$lib/modules/gift-categories/gift_categories_service.js';
@@ -236,6 +238,11 @@ export const importGifts = guardedCommand(ImportGiftsInputSchema, async ({ user 
 			const created = await appendGiftsUsingTransaction(tx, {
 				wishlistId: input.wishlistId,
 				actorId: user.id,
+				recordRevisions: createImmediateGiftRevisionRecorder(tx, {
+					actorUserId: user.id,
+					channel: OPERATION_CHANNEL.ui,
+					operation: 'importGifts',
+				}),
 				gifts: input.gifts.map((draft) =>
 					draftToGiftInput(
 						draft,
@@ -283,6 +290,11 @@ export const createWishlistFromImport = guardedCommand(
 					wishlistId: created.id,
 					actorId: user.id,
 					notifyFollowers: false,
+					recordRevisions: createImmediateGiftRevisionRecorder(tx, {
+						actorUserId: user.id,
+						channel: OPERATION_CHANNEL.ui,
+						operation: 'createWishlistFromImport',
+					}),
 					gifts: input.gifts.map((draft) =>
 						draftToGiftInput(
 							draft,

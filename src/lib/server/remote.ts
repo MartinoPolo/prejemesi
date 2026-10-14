@@ -2,6 +2,7 @@ import { getRequestEvent, query, command } from '$app/server';
 import { error } from '@sveltejs/kit';
 import type { User, Session } from 'better-auth';
 import type { StandardSchemaV1 } from '@standard-schema/spec';
+import { AUTHENTICATION_REQUIRED_MESSAGE } from '$lib/server/operations/actor.js';
 
 interface AuthContext {
 	user: User;
@@ -14,7 +15,7 @@ function getAuthContext(): AuthContext {
 	const session = event.locals.session;
 
 	if (user === undefined || session === undefined) {
-		error(401, 'Authentication required');
+		error(401, AUTHENTICATION_REQUIRED_MESSAGE);
 	}
 
 	return { user, session };

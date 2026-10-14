@@ -646,6 +646,7 @@
 	"notification_body_liked_reserved": "Dárek „{giftName}\" byl právě rezervován.",
 	"notification_body_generic_gift_name": "vybraný dárek",
 	"notification_body_reserved_edited": "Detaily dárku „{giftName}\", který jste rezervovali, se změnily.",
+	"notification_body_reserved_edited_multiple": "Detaily dárků, které jste rezervovali, se změnily: {giftNames}.",
 	"notification_body_archived": "Seznam je nyní uzamčen a nelze jej dále upravovat.",
 	"notification_body_owner_promoted": "Nyní vidíte, kdo rezervoval jednotlivé dárky.",
 	"notification_body_moderator_invited": "Byli jste pozváni ke správě tohoto seznamu přání.",

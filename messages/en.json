@@ -646,6 +646,7 @@
 	"notification_body_liked_reserved": "The gift \"{giftName}\" was just reserved.",
 	"notification_body_generic_gift_name": "the selected gift",
 	"notification_body_reserved_edited": "Details for the gift \"{giftName}\" you reserved have changed.",
+	"notification_body_reserved_edited_multiple": "Details for gifts you reserved have changed: {giftNames}.",
 	"notification_body_archived": "The list is now locked and can no longer be edited.",
 	"notification_body_owner_promoted": "You can now see who reserved each gift.",
 	"notification_body_moderator_invited": "You have been invited to manage this wishlist.",

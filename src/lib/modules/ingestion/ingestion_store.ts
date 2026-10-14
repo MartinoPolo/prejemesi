@@ -12,9 +12,13 @@ import {
 import { canonicalIngestionSourceKey } from '$lib/modules/gifts/gift_url.js';
 import type { GiftLink } from '$lib/modules/gifts/types.js';
 import type { GiftIngestionStore } from './ingestion_service.js';
+import { createImmediateGiftRevisionRecorder } from '$lib/server/operations/gift_revisions.js';
+import { tokenChannel } from '$lib/server/operations/actor.js';
 import { resolveCategoryLabel } from '$lib/modules/gift-categories/types.js';
 import { publicGiftCategory } from '$lib/modules/gift-categories/gift_categories_service.js';
 import { IngestionError } from './ingestion_error.js';
+
+const INGESTION_OPERATION_CHANNEL = tokenChannel('ingestion');
 
 type IngestionDatabase = GiftCreationTransaction | ReturnType<typeof getDb>;
 
@@ -136,7 +140,14 @@ export const drizzleGiftIngestionStore: GiftIngestionStore = {
 	},
 	async appendGifts(tx, input) {
 		try {
-			return await appendGiftsUsingTransaction(tx, input);
+			return await appendGiftsUsingTransaction(tx, {
+				...input,
+				recordRevisions: createImmediateGiftRevisionRecorder(tx, {
+					actorUserId: input.actorId,
+					channel: INGESTION_OPERATION_CHANNEL,
+					operation: 'ingestGifts',
+				}),
+			});
 		} catch (thrown) {
 			if (thrown instanceof GiftCreationError) {
 				if (thrown.code === 'wishlist-not-found') {
