@@ -24,8 +24,17 @@ import { wishlistFollower } from '$lib/server/db/follower.schema.js';
 import { moderatorAssignment } from '$lib/server/db/moderator.schema.js';
 import { newGiftDigestState, notification } from '$lib/server/db/notification.schema.js';
 import { priorityLevel, wishlist } from '$lib/server/db/wishlist.schema.js';
+import { giftRevision } from '$lib/server/db/gift_revision.schema.js';
 import { parseNewGiftDigestPayload } from '$lib/modules/notifications/new_gift_digest.js';
-import { copyGifts } from './gift_bulk_copy.js';
+import type { BulkCopyGiftsInput } from './gift_bulk_copy.js';
+import { executeOperation } from '$lib/server/operations/runner.js';
+import { userInterfaceActor } from '$lib/server/operations/actor.js';
+import { bulkCopyGiftsOperation } from '$lib/server/operations/gift_bulk_operations.js';
+
+const copyActor = (actorId: string) => userInterfaceActor({ id: actorId, name: 'Copy actor' });
+
+const copyGifts = (actorId: string, input: BulkCopyGiftsInput) =>
+	executeOperation(copyActor(actorId), bulkCopyGiftsOperation, input);
 
 const PREFIX = `test-bulk-copy-${Date.now()}-`;
 const RECIPIENT_ID = `${PREFIX}recipient`;
@@ -218,6 +227,25 @@ describe.skipIf(!DATABASE_READY)('bulk gift copy [real DB]', () => {
 			expect(
 				copies.every((row) => ![SOURCE_GIFT_ONE, SOURCE_GIFT_TWO].includes(row.id)),
 			).toBe(true);
+			const copyRevisions = await getDb()
+				.select()
+				.from(giftRevision)
+				.where(
+					inArray(
+						giftRevision.giftId,
+						copies.map((row) => row.id),
+					),
+				);
+			expect(copyRevisions.map((revision) => revision.giftId).sort()).toEqual(
+				copies.map((row) => row.id).sort(),
+			);
+			for (const revision of copyRevisions) {
+				expect(revision).toMatchObject({
+					before: null,
+					actorUserId: actorId,
+					channel: 'ui',
+				});
+			}
 			const destinationReservations = await getDb()
 				.select()
 				.from(reservation)
@@ -287,6 +315,39 @@ describe.skipIf(!DATABASE_READY)('bulk gift copy [real DB]', () => {
 		expect(
 			await getDb().select().from(notification).where(eq(notification.userId, FOLLOWER_ID)),
 		).toHaveLength(0);
+	});
+
+	it('dry-runs a copy without staging images or writing gifts', async () => {
+		await getDb()
+			.update(gift)
+			.set({ imageKey: `${PREFIX}source.webp` })
+			.where(eq(gift.id, SOURCE_GIFT_ONE));
+
+		const dryRun = await executeOperation(
+			copyActor(MANAGER_ID),
+			bulkCopyGiftsOperation,
+			{
+				sourceWishlistId: SOURCE_ID,
+				destinationWishlistId: DESTINATION_ID,
+				giftIds: [SOURCE_GIFT_ONE],
+			},
+			{ dryRun: true },
+		);
+
+		expect(dryRun.revisions).toHaveLength(1);
+		expect(storage.getObject).not.toHaveBeenCalled();
+		expect(storage.putObject).not.toHaveBeenCalled();
+		expect(storage.deleteObject).not.toHaveBeenCalled();
+		expect(
+			await getDb().select().from(gift).where(eq(gift.wishlistId, DESTINATION_ID)),
+		).toHaveLength(0);
+		expect(
+			await getDb()
+				.select()
+				.from(giftIngestionOrphan)
+				.where(like(giftIngestionOrphan.itemId, `${PREFIX}%`)),
+		).toHaveLength(0);
+		await getDb().update(gift).set({ imageKey: null }).where(eq(gift.id, SOURCE_GIFT_ONE));
 	});
 
 	it('revalidates stale manager access after image staging and compensates the object', async () => {

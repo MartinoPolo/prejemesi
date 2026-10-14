@@ -1,4 +1,5 @@
 import { vi, beforeEach } from 'vitest';
+import type * as GiftBulkCopyModule from './gift_bulk_copy.js';
 import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
 
 // ── Suppress SvelteKit's remote-function validator injected by the Vite transform
@@ -240,11 +241,16 @@ vi.mock('$lib/modules/gift-categories/gift_category_queries.remote.js', () => ({
 	getGiftCategorySettingsRows: vi.fn(),
 }));
 vi.mock('./gift_creation_service.js', () => ({
-	appendGifts: vi.fn(),
+	appendGiftsUsingTransaction: vi.fn(),
 }));
-vi.mock('./gift_bulk_copy.js', () => ({
-	BulkCopyGiftsInputSchema: {},
-	copyGifts: vi.fn(),
+vi.mock('./gift_bulk_copy.js', async (importOriginal) => ({
+	...(await importOriginal<typeof GiftBulkCopyModule>()),
+	prepareGiftCopy: vi.fn(async () => ({
+		plans: [],
+		complete: async () => {},
+		abandon: async () => {},
+	})),
+	copyPreparedGifts: vi.fn(),
 }));
 
 // ── Import the module under test (after all mocks are set up) ────────────────
@@ -264,13 +270,13 @@ import { deleteObjectsBestEffort } from '$lib/server/storage/r2.js';
 import { dispatchNotification } from '$lib/modules/notifications/notification_dispatcher.js';
 import { singleFlightRefresh } from '$lib/server/remote.js';
 import { getGiftCategorySettingsRows } from '$lib/modules/gift-categories/gift_category_queries.remote.js';
-import { appendGifts } from './gift_creation_service.js';
-import { copyGifts } from './gift_bulk_copy.js';
+import { appendGiftsUsingTransaction } from './gift_creation_service.js';
+import { copyPreparedGifts } from './gift_bulk_copy.js';
 import { toPreShareGiftSnapshot, type PreShareGiftSnapshot } from './gift_post_share.js';
 
 const mockDeleteObjects = vi.mocked(deleteObjectsBestEffort);
-const mockAppendGifts = vi.mocked(appendGifts);
-const mockCopyGifts = vi.mocked(copyGifts);
+const mockAppendGifts = vi.mocked(appendGiftsUsingTransaction);
+const mockCopyGifts = vi.mocked(copyPreparedGifts);
 // The Vite remote-function transform does not preserve direct imported re-exports from
 // fixture modules. Initialized local aliases retain the exact mocked bindings.
 const serverErrorFixture = SERVER_ERROR;

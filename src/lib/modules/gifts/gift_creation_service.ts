@@ -9,6 +9,7 @@ import { DEFAULT_GIFT_CURRENCY, type GiftLink } from './types.js';
 import { DEFAULT_IMAGE_METADATA, type ImageMetadata } from '$lib/modules/images/types.js';
 import { coalesceNewGiftDigests } from '$lib/modules/notifications/new_gift_digest.js';
 import { assertActiveGiftCategoryAssignment } from '$lib/modules/gift-categories/gift_categories_service.js';
+import type { RecordGiftRevisions } from '$lib/server/operations/gift_revisions.js';
 
 export type GiftCreationErrorCode =
 	| 'wishlist-not-found'
@@ -52,6 +53,8 @@ export interface AppendGiftsInput {
 	actorId: string;
 	gifts: readonly NormalizedGiftCreationInput[];
 	notifyFollowers?: boolean;
+	/** Every creation path records who created each gift and through which channel. */
+	recordRevisions: RecordGiftRevisions;
 }
 
 export async function appendGifts(
@@ -147,5 +150,13 @@ export async function appendGiftsUsingTransaction(
 			now,
 		});
 	}
+	await input.recordRevisions(
+		created.map((row) => ({
+			giftId: row.id,
+			wishlistId: row.wishlistId,
+			before: null,
+			after: row,
+		})),
+	);
 	return created;
 }

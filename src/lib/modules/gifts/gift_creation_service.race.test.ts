@@ -113,6 +113,7 @@ describe.skipIf(!DB_READY)('appendGifts atomicity and ordering [real DB]', () =>
 				appendGifts({
 					wishlistId: WISHLIST_ID,
 					actorId: USER_ID,
+					recordRevisions: () => {},
 					gifts: [{ name }],
 					notifyFollowers: false,
 				}),
@@ -149,6 +150,7 @@ describe.skipIf(!DB_READY)('appendGifts atomicity and ordering [real DB]', () =>
 			appendGifts({
 				wishlistId: WISHLIST_ID,
 				actorId: USER_ID,
+				recordRevisions: () => {},
 				notifyFollowers: false,
 				gifts: [
 					{ name: names[0] },

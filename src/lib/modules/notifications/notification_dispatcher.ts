@@ -168,6 +168,7 @@ async function sendNotificationEmail(params: {
 	urlPathOverride: string | undefined;
 	actorName: string | null | undefined;
 	giftName: string | undefined;
+	giftNames: readonly string[] | undefined;
 	notificationId?: string;
 	/** Present only for registered-account recipients (issue #206) - external,
 	 *  non-account emails have no user row to scope an unsubscribe token to, so
@@ -179,6 +180,7 @@ async function sendNotificationEmail(params: {
 	const heading = getNotificationEmailHeading(params.type, params.locale);
 	const bodyMessage = getNotificationEmailBody(params.type, params.locale, {
 		giftName: params.giftName,
+		giftNames: params.giftNames,
 	});
 	const url = getNotificationUrl(
 		params.wishlistShortId,
@@ -341,6 +343,7 @@ export async function dispatchNotification(input: DispatchNotificationInput): Pr
 				urlPathOverride: input.urlPathOverride,
 				actorName: input.actorName,
 				giftName: input.giftName,
+				giftNames: input.giftNames,
 				notificationId,
 				userId: targetUser.id,
 				origin,
@@ -364,6 +367,7 @@ export async function dispatchNotification(input: DispatchNotificationInput): Pr
 				urlPathOverride: input.urlPathOverride,
 				actorName: input.actorName,
 				giftName: input.giftName,
+				giftNames: input.giftNames,
 				origin,
 			});
 		}

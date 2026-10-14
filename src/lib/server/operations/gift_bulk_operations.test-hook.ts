@@ -1,7 +1,6 @@
-import type { getDb } from '$lib/server/db/index.js';
+import type { DatabaseTransaction } from '$lib/server/db/index.js';
 
-type GiftDbTransaction = Parameters<Parameters<ReturnType<typeof getDb>['transaction']>[0]>[0];
-type AfterRowsLockedHook = (tx: GiftDbTransaction) => Promise<void>;
+type AfterRowsLockedHook = (transaction: DatabaseTransaction) => Promise<void>;
 
 let afterRowsLockedHook: AfterRowsLockedHook | undefined;
 
@@ -15,9 +14,9 @@ export function setBulkUpdateAfterRowsLockedHookForTest(
 }
 
 export async function runBulkUpdateAfterRowsLockedHookForTest(
-	tx: GiftDbTransaction,
+	transaction: DatabaseTransaction,
 ): Promise<void> {
 	if (import.meta.env.MODE === 'test') {
-		await afterRowsLockedHook?.(tx);
+		await afterRowsLockedHook?.(transaction);
 	}
 }

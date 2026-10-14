@@ -12,10 +12,10 @@ const checkerPath = fileURLToPath(
 async function runMigrationSafetyCheck(sql: string, contractMigrations: Record<string, string>) {
 	const repositoryRoot = await mkdtemp(join(tmpdir(), 'migration-safety-'));
 	try {
-		await mkdir(join(repositoryRoot, 'drizzle', 'meta'), { recursive: true });
+		await mkdir(join(repositoryRoot, 'drizzle'), { recursive: true });
 		await writeFile(join(repositoryRoot, 'drizzle', '0000_contract.sql'), sql);
 		await writeFile(
-			join(repositoryRoot, 'drizzle', 'meta', 'contract-migrations.json'),
+			join(repositoryRoot, 'drizzle', 'contract-migrations.json'),
 			JSON.stringify(contractMigrations),
 		);
 		return spawnSync(process.execPath, [checkerPath], {

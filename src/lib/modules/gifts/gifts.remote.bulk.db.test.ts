@@ -53,7 +53,7 @@ import { wishlistFollower } from '$lib/server/db/follower.schema.js';
 import { gift, giftCategory } from '$lib/server/db/gift.schema.js';
 import { newGiftDigestState, notification } from '$lib/server/db/notification.schema.js';
 import { bulkUpdateGifts } from './gifts.remote.js';
-import { setBulkUpdateAfterRowsLockedHookForTest } from './gifts.remote.test-hook.js';
+import { setBulkUpdateAfterRowsLockedHookForTest } from '$lib/server/operations/gift_bulk_operations.test-hook.js';
 
 import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
 import type { BulkUpdateGiftsInput } from './types.js';
