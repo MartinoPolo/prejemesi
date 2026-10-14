@@ -32,9 +32,7 @@ jobs:
             - uses: actions/cache@v4
               with:
                   path: .eslintcache
-                  key:
-                      eslint-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml', 'eslint.config.mjs')
-                      }}-${{ github.sha }}
+                  key: eslint-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml', 'eslint.config.mjs') }}-${{ github.sha }}
                   restore-keys: |
                       eslint-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml', 'eslint.config.mjs') }}-
             - run: pnpm run cf:types
@@ -76,8 +74,8 @@ jobs:
                 ports:
                     - 5432:5432
                 options: >-
-                    --health-cmd "pg_isready -U root -d local" --health-interval 5s --health-timeout
-                    5s --health-retries 20
+                    --health-cmd "pg_isready -U root -d local" --health-interval 5s --health-timeout 5s --health-retries 20
+
         env:
             DATABASE_URL: postgres://root:mysecretpassword@localhost:5432/local
             DEMO_TEST_ISOLATED_DATABASE: '1'

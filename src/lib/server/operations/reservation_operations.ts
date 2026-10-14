@@ -183,8 +183,8 @@ async function reserveGiftForParticipant(
 	input: { giftId: string; quantity: number },
 ): Promise<{ reservationId: string; wishlistShortId: string }> {
 	// Wishlist before gift, the order reverting locks in; the shared lock keeps archiving and
-	// reverting out while reservations of other gifts proceed in parallel. Single gift edits lock
-	// only the gift and read the wishlist unlocked, so they never wait on this lock.
+	// reverting out while reservations of other gifts proceed in parallel. Single gift edits take
+	// only a key share lock on the wishlist, so they never wait on this lock.
 	const target = await loadReservationTarget(context.transaction, input.giftId, {
 		lockWishlist: true,
 	});

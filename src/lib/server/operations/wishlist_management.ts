@@ -1,4 +1,4 @@
-import { and, eq, isNull } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNull } from 'drizzle-orm';
 import { error } from '@sveltejs/kit';
 import type { DatabaseTransaction, getDb } from '$lib/server/db/index.js';
 import { wishlist, priorityLevel } from '$lib/server/db/wishlist.schema.js';
@@ -39,16 +39,57 @@ function selectLiveWishlistRow(
 		.where(and(eq(wishlist.id, wishlistId), isNull(wishlist.deletedAt), wishlistScope()));
 }
 
+/**
+ * Waits out every exclusive (FOR UPDATE) wishlist change without blocking gift edits,
+ * reservations or plain wishlist updates of the same wishlist.
+ */
+export const KEY_SHARE_WISHLIST_LOCK = 'keyShare';
+
+/** `true` locks the row FOR UPDATE; {@link KEY_SHARE_WISHLIST_LOCK} only orders after exclusive changes. */
+export interface WishlistLockOptions {
+	lock: boolean | typeof KEY_SHARE_WISHLIST_LOCK;
+}
+
+function withWishlistLock(
+	wishlistQuery: ReturnType<typeof selectLiveWishlistRow>,
+	lock: WishlistLockOptions['lock'],
+) {
+	if (lock === KEY_SHARE_WISHLIST_LOCK) {
+		return wishlistQuery.for('key share');
+	}
+	return lock ? wishlistQuery.for('update') : wishlistQuery.limit(1);
+}
+
+/**
+ * Locks several wishlist rows FOR UPDATE in id order, so transactions locking overlapping sets
+ * cannot deadlock on each other. Missing rows are skipped; the steps that need them reject.
+ */
+export async function lockWishlistsInIdOrder(
+	transaction: DatabaseTransaction,
+	wishlistIds: readonly string[],
+): Promise<void> {
+	if (wishlistIds.length === 0) {
+		return;
+	}
+	// Postgres locks the rows as the sort returns them.
+	await transaction
+		.select({ id: wishlist.id })
+		.from(wishlist)
+		.where(inArray(wishlist.id, [...wishlistIds]))
+		.orderBy(asc(wishlist.id))
+		.for('update');
+}
+
 /** The live (not deleted, in-scope) wishlist row; 404 when missing. */
 export async function requireLiveWishlistRow(
 	transaction: DatabaseTransaction | ReturnType<typeof getDb>,
 	wishlistId: string,
-	options: { lock: boolean },
+	options: WishlistLockOptions,
 ): Promise<WishlistRow> {
-	const wishlistQuery = selectLiveWishlistRow(transaction, wishlistId);
-	const [wishlistRow] = options.lock
-		? await wishlistQuery.for('update')
-		: await wishlistQuery.limit(1);
+	const [wishlistRow] = await withWishlistLock(
+		selectLiveWishlistRow(transaction, wishlistId),
+		options.lock,
+	);
 	if (wishlistRow === undefined) {
 		error(404, SERVER_ERROR.WISHLIST_NOT_FOUND);
 	}
@@ -93,18 +134,19 @@ export async function requireLiveWishlistRowByShortId(
 /**
  * Resolves the actor's role on a wishlist: the linked recipient, an active správce, or a visitor.
  * 404 for a missing wishlist. `lock` holds the wishlist and the assignment until the batch commits
- * so access cannot be revoked mid-mutation; reads pass the plain database.
+ * so access cannot be revoked mid-mutation; reads pass the plain database. A key share lock needs no
+ * assignment lock: every role change locks the wishlist FOR UPDATE first, so it waits.
  */
 export async function resolveWishlistAccess(
 	transaction: DatabaseTransaction | ReturnType<typeof getDb>,
 	actorUserId: string,
 	wishlistId: string,
-	options: { lock: boolean },
+	options: WishlistLockOptions,
 ): Promise<WishlistAccess> {
 	const wishlistRow = await requireLiveWishlistRow(transaction, wishlistId, options);
 	const role = await resolveRoleOnWishlistRow(actorUserId, wishlistRow, {
 		database: transaction,
-		lock: options.lock,
+		lock: options.lock === true,
 	});
 	return { role, wishlistRow };
 }
@@ -114,7 +156,7 @@ export async function requireWishlistManagement(
 	transaction: DatabaseTransaction | ReturnType<typeof getDb>,
 	actorUserId: string,
 	wishlistId: string,
-	options: { lock: boolean },
+	options: WishlistLockOptions,
 ): Promise<ManagedWishlist> {
 	const { role, wishlistRow } = await resolveWishlistAccess(
 		transaction,

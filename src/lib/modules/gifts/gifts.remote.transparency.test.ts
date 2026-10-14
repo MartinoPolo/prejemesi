@@ -42,6 +42,15 @@ describe('updateGift – net-zero grace-window revert clears the badge (issue #1
 				makeWishlistRow({ sharedAt: nowFake, recipientUserId: 'someone-else' }),
 			]);
 			mockDbInstance.pushResult([{ id: 'mod-assignment-1' }]);
+			// locked gift re-read
+			mockDbInstance.pushResult([
+				makeGiftRow({
+					createdAt: createdAt60sAgo,
+					name: 'Kolo',
+					editedAfterShareAt: null,
+					preEditShareSnapshot: null,
+				}),
+			]);
 			mockDbInstance.pushResult([{ id: GIFT_ID, name: 'Kolo horské' }]);
 
 			await callUpdateGift(makeModeratorAuthContext(), { id: GIFT_ID, name: 'Kolo horské' });
@@ -69,6 +78,15 @@ describe('updateGift – net-zero grace-window revert clears the badge (issue #1
 				makeWishlistRow({ sharedAt: nowFake, recipientUserId: 'someone-else' }),
 			]);
 			mockDbInstance.pushResult([{ id: 'mod-assignment-1' }]);
+			// locked gift re-read
+			mockDbInstance.pushResult([
+				makeGiftRow({
+					createdAt: createdAt60sAgo,
+					name: 'Kolo horské',
+					editedAfterShareAt: createdAt60sAgo,
+					preEditShareSnapshot: toPreShareGiftSnapshot(makeGiftRow({ name: 'Kolo' })),
+				}),
+			]);
 			mockDbInstance.pushResult([{ id: GIFT_ID, name: 'Kolo' }]);
 
 			await callUpdateGift(makeModeratorAuthContext(), { id: GIFT_ID, name: 'Kolo' });
@@ -94,6 +112,15 @@ describe('updateGift – net-zero grace-window revert clears the badge (issue #1
 				makeWishlistRow({ sharedAt: nowFake, recipientUserId: 'someone-else' }),
 			]);
 			mockDbInstance.pushResult([{ id: 'mod-assignment-1' }]);
+			// locked gift re-read
+			mockDbInstance.pushResult([
+				makeGiftRow({
+					createdAt: createdAt60sAgo,
+					name: 'Kolo horské',
+					editedAfterShareAt: createdAt60sAgo,
+					preEditShareSnapshot: shareTimeSnapshot,
+				}),
+			]);
 			mockDbInstance.pushResult([{ id: GIFT_ID, name: 'Kolo elektrické' }]);
 
 			await callUpdateGift(makeModeratorAuthContext(), {
@@ -124,6 +151,15 @@ describe('updateGift – net-zero grace-window revert clears the badge (issue #1
 				makeWishlistRow({ sharedAt: createdAt3MinAgo, recipientUserId: 'someone-else' }),
 			]);
 			mockDbInstance.pushResult([{ id: 'mod-assignment-1' }]);
+			// locked gift re-read
+			mockDbInstance.pushResult([
+				makeGiftRow({
+					createdAt: createdAt3MinAgo,
+					name: 'Kolo',
+					editedAfterShareAt: null,
+					preEditShareSnapshot: null,
+				}),
+			]);
 			mockDbInstance.pushResult([{ id: GIFT_ID, price: 1500 }]);
 
 			await callUpdateGift(makeModeratorAuthContext(), { id: GIFT_ID, price: 1500 });
@@ -148,6 +184,15 @@ describe('updateGift – net-zero grace-window revert clears the badge (issue #1
 				makeWishlistRow({ sharedAt: createdAt3MinAgo, recipientUserId: 'someone-else' }),
 			]);
 			mockDbInstance.pushResult([{ id: 'mod-assignment-1' }]);
+			// locked gift re-read
+			mockDbInstance.pushResult([
+				makeGiftRow({
+					createdAt: createdAt3MinAgo,
+					price: 1500,
+					editedAfterShareAt: createdAt3MinAgo,
+					preEditShareSnapshot: null,
+				}),
+			]);
 			mockDbInstance.pushResult([{ id: GIFT_ID, price: 1000 }]);
 
 			await callUpdateGift(makeModeratorAuthContext(), { id: GIFT_ID, price: 1000 });
@@ -171,6 +216,15 @@ describe('updateGift – net-zero grace-window revert clears the badge (issue #1
 				}),
 			]);
 			mockDbInstance.pushResult([makeWishlistRow({ sharedAt: nowFake })]);
+			// locked gift re-read
+			mockDbInstance.pushResult([
+				makeGiftRow({
+					createdAt: createdAt60sAgo,
+					name: 'Kolo horské',
+					editedAfterShareAt: createdAt60sAgo,
+					preEditShareSnapshot: toPreShareGiftSnapshot(makeGiftRow({ name: 'Kolo' })),
+				}),
+			]);
 			mockDbInstance.pushResult([{ id: GIFT_ID, name: 'Kolo' }]);
 
 			await callUpdateGift(makeRecipientAuthContext(), { id: GIFT_ID, name: 'Kolo' });
@@ -209,6 +263,14 @@ describe('updateGift – share grace window (issue #83)', () => {
 			}),
 		]);
 		mockDbInstance.pushResult([makeWishlistRow({ sharedAt: shared60sAgo })]);
+		// locked gift re-read
+		mockDbInstance.pushResult([
+			makeGiftRow({
+				createdAt: BEFORE_SHARING,
+				name: 'Original',
+				editedAfterShareAt: null,
+			}),
+		]);
 		mockDbInstance.pushResult([{ id: GIFT_ID, name: 'Renamed' }]);
 
 		await callUpdateGift(makeRecipientAuthContext(), { id: GIFT_ID, name: 'Renamed' });
@@ -229,6 +291,14 @@ describe('updateGift – share grace window (issue #83)', () => {
 			}),
 		]);
 		mockDbInstance.pushResult([makeWishlistRow({ sharedAt: shared3MinAgo })]);
+		// locked gift re-read
+		mockDbInstance.pushResult([
+			makeGiftRow({
+				createdAt: BEFORE_SHARING,
+				name: 'Original',
+				editedAfterShareAt: shared60sAgo,
+			}),
+		]);
 
 		await expect(
 			callUpdateGift(makeRecipientAuthContext(), { id: GIFT_ID, name: 'Renamed' }),
@@ -244,6 +314,14 @@ describe('updateGift – share grace window (issue #83)', () => {
 			}),
 		]);
 		mockDbInstance.pushResult([makeWishlistRow({ sharedAt: shared3MinAgo })]);
+		// locked gift re-read
+		mockDbInstance.pushResult([
+			makeGiftRow({
+				createdAt: BEFORE_SHARING,
+				name: 'Original',
+				editedAfterShareAt: null,
+			}),
+		]);
 
 		await expect(
 			callUpdateGift(makeRecipientAuthContext(), { id: GIFT_ID, name: 'Renamed' }),

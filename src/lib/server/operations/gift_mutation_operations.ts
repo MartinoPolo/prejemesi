@@ -14,32 +14,50 @@ import {
 import { appendGiftsUsingTransaction } from '$lib/modules/gifts/gift_creation_service.js';
 import { mapGiftCreationError } from '$lib/modules/gifts/gift_creation_transport.js';
 import { OPERATION_EXPOSURE, OPERATION_KIND, defineOperation } from './operation.js';
-import { requireWishlistManagement, type ManagedWishlist } from './wishlist_management.js';
+import {
+	KEY_SHARE_WISHLIST_LOCK,
+	requireWishlistManagement,
+	type ManagedWishlist,
+} from './wishlist_management.js';
 import { applyGiftUpdate, type GiftRow } from './gift_update.js';
 import { softDeleteGift } from './gift_deletion.js';
 import { lockedGiftFollowsStrictPostShareRules } from './wishlist_kind_rules.js';
 
-/** Locks an active gift and resolves the actor's management of its wishlist. */
+/**
+ * Resolves the actor's management of an active gift's wishlist, then locks the gift: wishlist
+ * before gift, the order every mutation locks in, so a gift edit cannot deadlock against a
+ * reorder or priority and category restructuring of the same wishlist.
+ */
 async function lockManagedGift(
 	transaction: DatabaseTransaction,
 	actorUserId: string,
 	giftId: string,
 ): Promise<{ giftRow: GiftRow; managedWishlist: ManagedWishlist }> {
-	const [giftRow] = await transaction
-		.select()
+	const activeGift = and(eq(gift.id, giftId), isNull(gift.deletedAt));
+	const [unlockedGift] = await transaction
+		.select({ wishlistId: gift.wishlistId })
 		.from(gift)
-		.where(and(eq(gift.id, giftId), isNull(gift.deletedAt)))
-		.for('update');
-	if (giftRow === undefined) {
+		.where(activeGift)
+		.limit(1);
+	if (unlockedGift === undefined) {
 		error(404, SERVER_ERROR.GIFT_NOT_FOUND);
 	}
 	const managedWishlist = await requireWishlistManagement(
 		transaction,
 		actorUserId,
-		giftRow.wishlistId,
-		{ lock: false },
+		unlockedGift.wishlistId,
+		{ lock: KEY_SHARE_WISHLIST_LOCK },
 	);
 	assertWishlistMutable(managedWishlist.wishlistRow);
+	// Re-checked under the lock: the gift may have been deleted while the wishlist lock was awaited.
+	const [giftRow] = await transaction
+		.select()
+		.from(gift)
+		.where(and(activeGift, eq(gift.wishlistId, unlockedGift.wishlistId)))
+		.for('update');
+	if (giftRow === undefined) {
+		error(404, SERVER_ERROR.GIFT_NOT_FOUND);
+	}
 	return { giftRow, managedWishlist };
 }
 

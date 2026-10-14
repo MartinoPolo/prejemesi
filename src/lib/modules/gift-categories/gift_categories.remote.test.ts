@@ -31,6 +31,7 @@ vi.mock('$lib/server/db/index.js', () => ({
 const requireMutableManagedWishlist = vi.fn();
 vi.mock('$lib/server/operations/wishlist_management.js', () => ({
 	requireMutableManagedWishlist,
+	lockWishlistsInIdOrder: vi.fn(),
 }));
 
 const saveGiftCategorySettings = vi.fn();

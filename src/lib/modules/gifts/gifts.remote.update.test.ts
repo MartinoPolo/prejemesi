@@ -26,6 +26,8 @@ describe('updateGift', () => {
 			mockDbInstance.pushResult([makeGiftRow({ createdAt: AFTER_SHARING })]);
 			// wishlist lookup (not shared)
 			mockDbInstance.pushResult([makeWishlistRow({ sharedAt: null })]);
+			// locked gift re-read
+			mockDbInstance.pushResult([makeGiftRow({ createdAt: AFTER_SHARING })]);
 			// update returning
 			mockDbInstance.pushResult([{ id: GIFT_ID, name: 'Updated Name' }]);
 
@@ -39,6 +41,10 @@ describe('updateGift', () => {
 				makeGiftRow({ createdAt: AFTER_SHARING, categoryId: 'category-books' }),
 			]);
 			mockDbInstance.pushResult([makeWishlistRow({ sharedAt: null })]);
+			// locked gift re-read
+			mockDbInstance.pushResult([
+				makeGiftRow({ createdAt: AFTER_SHARING, categoryId: 'category-books' }),
+			]);
 			mockDbInstance.pushResult([{ id: GIFT_ID, categoryId: null }]);
 
 			await callUpdateGift(makeRecipientAuthContext(), { id: GIFT_ID, categoryId: null });
@@ -53,6 +59,8 @@ describe('updateGift', () => {
 			const imageMeta = { fitMode: 'contain-padded', bgColor: '#222222' };
 			mockDbInstance.pushResult([makeGiftRow({ createdAt: AFTER_SHARING })]);
 			mockDbInstance.pushResult([makeWishlistRow({ sharedAt: null })]);
+			// locked gift re-read
+			mockDbInstance.pushResult([makeGiftRow({ createdAt: AFTER_SHARING })]);
 			mockDbInstance.pushResult([{ id: GIFT_ID, imageMeta }]);
 
 			const result = await callUpdateGift(makeRecipientAuthContext(), {
@@ -66,6 +74,8 @@ describe('updateGift', () => {
 		it('persists updated priceMax', async () => {
 			mockDbInstance.pushResult([makeGiftRow({ createdAt: AFTER_SHARING })]);
 			mockDbInstance.pushResult([makeWishlistRow({ sharedAt: null })]);
+			// locked gift re-read
+			mockDbInstance.pushResult([makeGiftRow({ createdAt: AFTER_SHARING })]);
 			mockDbInstance.pushResult([{ id: GIFT_ID, price: 1200, priceMax: 1500 }]);
 
 			const result = await callUpdateGift(makeRecipientAuthContext(), {
@@ -83,6 +93,8 @@ describe('updateGift', () => {
 		it('persists decimal price range bounds (issue #250 REQ-2, REQ-4)', async () => {
 			mockDbInstance.pushResult([makeGiftRow({ createdAt: AFTER_SHARING })]);
 			mockDbInstance.pushResult([makeWishlistRow({ sharedAt: null })]);
+			// locked gift re-read
+			mockDbInstance.pushResult([makeGiftRow({ createdAt: AFTER_SHARING })]);
 			mockDbInstance.pushResult([{ id: GIFT_ID, price: 19.5, priceMax: 29.95 }]);
 
 			const result = await callUpdateGift(makeRecipientAuthContext(), {
@@ -100,6 +112,8 @@ describe('updateGift', () => {
 		it('rejects a priceMax-only update that would invert the persisted range', async () => {
 			mockDbInstance.pushResult([makeGiftRow({ createdAt: AFTER_SHARING, price: 1500 })]);
 			mockDbInstance.pushResult([makeWishlistRow({ sharedAt: null })]);
+			// locked gift re-read
+			mockDbInstance.pushResult([makeGiftRow({ createdAt: AFTER_SHARING, price: 1500 })]);
 
 			await expect(
 				callUpdateGift(makeRecipientAuthContext(), { id: GIFT_ID, priceMax: 1200 }),
@@ -114,6 +128,10 @@ describe('updateGift', () => {
 				makeGiftRow({ createdAt: AFTER_SHARING, imageKey: 'gifts/old.jpg' }),
 			]);
 			mockDbInstance.pushResult([makeWishlistRow({ sharedAt: null })]);
+			// locked gift re-read
+			mockDbInstance.pushResult([
+				makeGiftRow({ createdAt: AFTER_SHARING, imageKey: 'gifts/old.jpg' }),
+			]);
 			mockDbInstance.pushResult([{ id: GIFT_ID, imageKey: 'gifts/new.jpg' }]);
 
 			await callUpdateGift(makeRecipientAuthContext(), {
@@ -129,6 +147,10 @@ describe('updateGift', () => {
 				makeGiftRow({ createdAt: AFTER_SHARING, imageKey: 'gifts/old.jpg' }),
 			]);
 			mockDbInstance.pushResult([makeWishlistRow({ sharedAt: null })]);
+			// locked gift re-read
+			mockDbInstance.pushResult([
+				makeGiftRow({ createdAt: AFTER_SHARING, imageKey: 'gifts/old.jpg' }),
+			]);
 			mockDbInstance.pushResult([{ id: GIFT_ID, imageKey: null }]);
 
 			await callUpdateGift(makeRecipientAuthContext(), { id: GIFT_ID, imageKey: null });
@@ -141,6 +163,10 @@ describe('updateGift', () => {
 				makeGiftRow({ createdAt: AFTER_SHARING, imageKey: 'gifts/same.jpg' }),
 			]);
 			mockDbInstance.pushResult([makeWishlistRow({ sharedAt: null })]);
+			// locked gift re-read
+			mockDbInstance.pushResult([
+				makeGiftRow({ createdAt: AFTER_SHARING, imageKey: 'gifts/same.jpg' }),
+			]);
 			mockDbInstance.pushResult([{ id: GIFT_ID, imageKey: 'gifts/same.jpg' }]);
 
 			await callUpdateGift(makeRecipientAuthContext(), {
@@ -157,6 +183,8 @@ describe('updateGift', () => {
 			mockDbInstance.pushResult([makeGiftRow({ createdAt: AFTER_SHARING })]);
 			// wishlist lookup (shared)
 			mockDbInstance.pushResult([makeWishlistRow({ sharedAt: SHARED_AT })]);
+			// locked gift re-read
+			mockDbInstance.pushResult([makeGiftRow({ createdAt: AFTER_SHARING })]);
 			// update returning
 			mockDbInstance.pushResult([{ id: GIFT_ID, name: 'Updated Name' }]);
 
@@ -168,6 +196,8 @@ describe('updateGift', () => {
 		it('normalizes updated gift links before persisting', async () => {
 			mockDbInstance.pushResult([makeGiftRow({ createdAt: AFTER_SHARING })]);
 			mockDbInstance.pushResult([makeWishlistRow({ sharedAt: null })]);
+			// locked gift re-read
+			mockDbInstance.pushResult([makeGiftRow({ createdAt: AFTER_SHARING })]);
 			mockDbInstance.pushResult([
 				{ id: GIFT_ID, links: [{ url: 'https://example.com/path' }] },
 			]);
@@ -186,6 +216,8 @@ describe('updateGift', () => {
 		it('rejects updates on archived wishlists', async () => {
 			mockDbInstance.pushResult([makeGiftRow()]);
 			mockDbInstance.pushResult([makeWishlistRow({ status: 'archived' })]);
+			// locked gift re-read
+			mockDbInstance.pushResult([makeGiftRow()]);
 
 			await expect(
 				callUpdateGift(makeRecipientAuthContext(), updateInput),
@@ -203,6 +235,8 @@ describe('updateGift', () => {
 			mockDbInstance.pushResult([makeGiftRow({ createdAt: BEFORE_SHARING, price: 100 })]);
 			// wishlist lookup (shared)
 			mockDbInstance.pushResult([makeWishlistRow({ sharedAt: SHARED_AT })]);
+			// locked gift re-read
+			mockDbInstance.pushResult([makeGiftRow({ createdAt: BEFORE_SHARING, price: 100 })]);
 			// update returning
 			mockDbInstance.pushResult([{ id: GIFT_ID }]);
 
@@ -228,6 +262,10 @@ describe('updateGift', () => {
 				makeGiftRow({ createdAt: BEFORE_SHARING, name: 'Original' }),
 			]);
 			mockDbInstance.pushResult([makeWishlistRow({ sharedAt: SHARED_AT })]);
+			// locked gift re-read
+			mockDbInstance.pushResult([
+				makeGiftRow({ createdAt: BEFORE_SHARING, name: 'Original' }),
+			]);
 
 			await expect(
 				callUpdateGift(makeRecipientAuthContext(), { id: GIFT_ID, name: 'Renamed' }),
@@ -239,6 +277,10 @@ describe('updateGift', () => {
 				makeGiftRow({ createdAt: BEFORE_SHARING, categoryId: 'category-books' }),
 			]);
 			mockDbInstance.pushResult([makeWishlistRow({ sharedAt: SHARED_AT })]);
+			// locked gift re-read
+			mockDbInstance.pushResult([
+				makeGiftRow({ createdAt: BEFORE_SHARING, categoryId: 'category-books' }),
+			]);
 			mockDbInstance.pushResult([{ id: GIFT_ID, categoryId: null }]);
 
 			await callUpdateGift(makeRecipientAuthContext(), { id: GIFT_ID, categoryId: null });
@@ -252,6 +294,8 @@ describe('updateGift', () => {
 		it('allows raising quantity (3 -> 5)', async () => {
 			mockDbInstance.pushResult([makeGiftRow({ createdAt: BEFORE_SHARING, quantity: 3 })]);
 			mockDbInstance.pushResult([makeWishlistRow({ sharedAt: SHARED_AT })]);
+			// locked gift re-read
+			mockDbInstance.pushResult([makeGiftRow({ createdAt: BEFORE_SHARING, quantity: 3 })]);
 			mockDbInstance.pushResult([{ id: GIFT_ID }]);
 
 			await callUpdateGift(makeRecipientAuthContext(), { id: GIFT_ID, quantity: 5 });
@@ -269,6 +313,8 @@ describe('updateGift', () => {
 			// reserved, so this single path covers both reserved and unreserved gifts (REQ-3/5).
 			mockDbInstance.pushResult([makeGiftRow({ createdAt: BEFORE_SHARING, quantity: 3 })]);
 			mockDbInstance.pushResult([makeWishlistRow({ sharedAt: SHARED_AT })]);
+			// locked gift re-read
+			mockDbInstance.pushResult([makeGiftRow({ createdAt: BEFORE_SHARING, quantity: 3 })]);
 
 			await expect(
 				callUpdateGift(makeRecipientAuthContext(), { id: GIFT_ID, quantity: 1 }),
@@ -296,6 +342,10 @@ describe('updateGift', () => {
 				makeGiftRow({ createdAt: BEFORE_SHARING, name: 'Test Gift', quantity: 3 }),
 			]);
 			mockDbInstance.pushResult([makeWishlistRow({ sharedAt: SHARED_AT })]);
+			// locked gift re-read
+			mockDbInstance.pushResult([
+				makeGiftRow({ createdAt: BEFORE_SHARING, name: 'Test Gift', quantity: 3 }),
+			]);
 			mockDbInstance.pushResult([{ id: GIFT_ID }]);
 
 			await callUpdateGift(makeRecipientAuthContext(), {
@@ -318,6 +368,14 @@ describe('updateGift', () => {
 				}),
 			]);
 			mockDbInstance.pushResult([makeWishlistRow({ sharedAt: SHARED_AT })]);
+			// locked gift re-read
+			mockDbInstance.pushResult([
+				makeGiftRow({
+					createdAt: BEFORE_SHARING,
+					description: 'Original description',
+					descriptionAppends: [],
+				}),
+			]);
 			mockDbInstance.pushResult([{ id: GIFT_ID }]);
 
 			await callUpdateGift(makeRecipientAuthContext(), {
@@ -344,6 +402,14 @@ describe('updateGift', () => {
 				}),
 			]);
 			mockDbInstance.pushResult([makeWishlistRow({ sharedAt: SHARED_AT })]);
+			// locked gift re-read
+			mockDbInstance.pushResult([
+				makeGiftRow({
+					createdAt: BEFORE_SHARING,
+					description: null,
+					descriptionAppends: [],
+				}),
+			]);
 			mockDbInstance.pushResult([{ id: GIFT_ID }]);
 
 			await callUpdateGift(makeRecipientAuthContext(), {
@@ -368,6 +434,8 @@ describe('updateGift', () => {
 			]);
 			// moderator check
 			mockDbInstance.pushResult([{ id: 'mod-assignment-1' }]);
+			// locked gift re-read
+			mockDbInstance.pushResult([makeGiftRow({ createdAt: BEFORE_SHARING })]);
 			// update returning
 			mockDbInstance.pushResult([{ id: GIFT_ID, name: 'Updated Name' }]);
 
@@ -389,6 +457,10 @@ describe('updateGift', () => {
 				makeGiftRow({ createdAt: AFTER_SHARING, name: 'Original' }),
 			]);
 			mockDbInstance.pushResult([makeWishlistRow({ sharedAt: SHARED_AT })]);
+			// locked gift re-read
+			mockDbInstance.pushResult([
+				makeGiftRow({ createdAt: AFTER_SHARING, name: 'Original' }),
+			]);
 			mockDbInstance.pushResult([{ id: GIFT_ID }]);
 
 			await callUpdateGift(makeRecipientAuthContext(), { id: GIFT_ID, name: 'Renamed' });
@@ -404,6 +476,10 @@ describe('updateGift', () => {
 				makeGiftRow({ createdAt: AFTER_SHARING, name: 'Original' }),
 			]);
 			mockDbInstance.pushResult([makeWishlistRow({ sharedAt: null })]);
+			// locked gift re-read
+			mockDbInstance.pushResult([
+				makeGiftRow({ createdAt: AFTER_SHARING, name: 'Original' }),
+			]);
 			mockDbInstance.pushResult([{ id: GIFT_ID }]);
 
 			await callUpdateGift(makeRecipientAuthContext(), { id: GIFT_ID, name: 'Renamed' });

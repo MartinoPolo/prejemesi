@@ -18,6 +18,7 @@ import {
 } from './gift_creation_service.js';
 import type { DescriptionAppend } from './types.js';
 import type { RecordGiftRevisions } from '$lib/server/operations/gift_revisions.js';
+import { lockWishlistsInIdOrder } from '$lib/server/operations/wishlist_management.js';
 
 export const MAX_BULK_COPY_GIFTS = 50;
 
@@ -378,6 +379,11 @@ export async function copyPreparedGifts(
 	sourceShortId: string;
 }> {
 	const { plans } = preparedCopy;
+	// Copies between two wishlists in opposite directions would otherwise deadlock.
+	await lockWishlistsInIdOrder(transaction, [
+		input.sourceWishlistId,
+		input.destinationWishlistId,
+	]);
 	const source = await assertManagedWishlist(transaction, actorId, input.sourceWishlistId, true);
 	assertSourceRemovalAllowed(source, input);
 	const destination = await assertManagedWishlist(

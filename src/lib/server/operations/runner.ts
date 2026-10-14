@@ -1,6 +1,6 @@
 import * as v from 'valibot';
 import { error } from '@sveltejs/kit';
-import { getDb } from '$lib/server/db/index.js';
+import { getDb, type DatabaseTransaction } from '$lib/server/db/index.js';
 import { generateId } from '$lib/server/db/id.js';
 import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
 import type { DispatchNotificationInput } from '$lib/modules/notifications/types.js';
@@ -25,6 +25,7 @@ import {
 	planReservedGiftEditNotifications,
 	type ReservedGiftEdit,
 } from './reserved_gift_edit_notifications.js';
+import { lockWishlistsInIdOrder } from './wishlist_management.js';
 
 export interface OperationBatchStep {
 	operation: AnyMutationOperation;
@@ -35,6 +36,24 @@ export interface OperationOptions {
 	/** Runs the same code, rolls the transaction back and reports the revisions it would write. */
 	dryRun?: boolean;
 }
+
+export interface OperationBatchOptions extends OperationOptions {
+	/**
+	 * Every wishlist the batch touches, locked FOR UPDATE in id order before the first step. A step
+	 * taking a weaker wishlist lock (a reservation's share lock, a gift edit's key share lock) would
+	 * otherwise deadlock against a concurrent batch once a later step needs the row exclusively.
+	 */
+	exclusiveWishlistIds?: readonly string[];
+	/**
+	 * Runs inside the transaction once the exclusive wishlists are locked and before the first
+	 * step; throwing rejects the batch. Lets a caller re-check under the lock what it decided
+	 * before the transaction opened.
+	 */
+	verifyLocked?: (transaction: DatabaseTransaction) => Promise<void>;
+}
+
+type BatchRunOptions = Required<Pick<OperationBatchOptions, 'dryRun' | 'exclusiveWishlistIds'>> &
+	Pick<OperationBatchOptions, 'verifyLocked'>;
 
 export interface OperationBatchResult {
 	batchId: string;
@@ -75,7 +94,8 @@ class DryRunRollback extends Error {
 	}
 }
 
-function parseOperationInput<TSchema extends OperationInputSchema>(
+/** 400 with the shared invalid-input code when the input does not match the operation's schema. */
+export function parseOperationInput<TSchema extends OperationInputSchema>(
 	schema: TSchema,
 	rawInput: unknown,
 ): v.InferOutput<TSchema> {
@@ -146,8 +166,9 @@ async function settleDeferredEffects(
 async function runBoundSteps(
 	actor: OperationActor,
 	steps: readonly BoundStep[],
-	dryRun: boolean,
+	options: BatchRunOptions,
 ): Promise<OperationBatchResult> {
+	const { dryRun } = options;
 	if (steps.length === 0 || steps.length > MAX_OPERATION_BATCH_STEPS) {
 		error(400, SERVER_ERROR.INVALID_OPERATION_INPUT);
 	}
@@ -163,6 +184,8 @@ async function runBoundSteps(
 		}
 		try {
 			outcome = await getDb().transaction(async (transaction) => {
+				await lockWishlistsInIdOrder(transaction, options.exclusiveWishlistIds);
+				await options.verifyLocked?.(transaction);
 				const revisionCollector = new GiftRevisionCollector({
 					batchId,
 					actorUserId: actor.userId,
@@ -278,12 +301,16 @@ export async function executeAnonymousVisitorMutation<
 export async function executeOperationBatch(
 	actor: OperationActor,
 	steps: readonly OperationBatchStep[],
-	options: OperationOptions = {},
+	options: OperationBatchOptions = {},
 ): Promise<OperationBatchResult> {
 	return runBoundSteps(
 		actor,
 		steps.map((step) => bindMutationStep(step.operation, step.input)),
-		options.dryRun === true,
+		{
+			dryRun: options.dryRun === true,
+			exclusiveWishlistIds: options.exclusiveWishlistIds ?? [],
+			verifyLocked: options.verifyLocked,
+		},
 	);
 }
 
@@ -326,7 +353,10 @@ export async function executeOperation<TSchema extends OperationInputSchema, TOu
 	const step = bindMutationStep(operation, rawInput, (value) => {
 		output = { value };
 	});
-	const batch = await runBoundSteps(mutationActor, [step], options.dryRun === true);
+	const batch = await runBoundSteps(mutationActor, [step], {
+		dryRun: options.dryRun === true,
+		exclusiveWishlistIds: [],
+	});
 	if (output === undefined) {
 		throw new Error(`Operation ${operation.name} produced no result`);
 	}

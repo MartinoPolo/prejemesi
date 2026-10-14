@@ -1,0 +1,177 @@
+import { imagePublicUrl, resolveGiftImageUrl } from '$lib/modules/images/public_url.js';
+import type { GiftBase, GiftByRole, GiftForRecipient } from '$lib/modules/gifts/types.js';
+import type { wishlist } from '$lib/server/db/wishlist.schema.js';
+import type {
+	readBulkCopyDestinationsOperation,
+	readWishlistGiftsOperation,
+} from '$lib/server/operations/gift_read_operations.js';
+import type { readWishlistOperation } from '$lib/server/operations/wishlist_read_operations.js';
+
+type ReadWishlistOutput = Awaited<ReturnType<typeof readWishlistOperation.run>>;
+type ReadWishlistGiftsOutput = Awaited<ReturnType<typeof readWishlistGiftsOperation.run>>;
+type ReadBulkCopyDestinationsOutput = Awaited<
+	ReturnType<typeof readBulkCopyDestinationsOperation.run>
+>;
+
+type AgentWishlistSource = Pick<
+	typeof wishlist.$inferSelect,
+	| 'id'
+	| 'shortId'
+	| 'recipientName'
+	| 'title'
+	| 'description'
+	| 'eventDate'
+	| 'status'
+	| 'kind'
+	| 'palette'
+	| 'imageKey'
+	| 'recipientIsModerator'
+	| 'sharedAt'
+	| 'archivedAt'
+	| 'createdAt'
+	| 'updatedAt'
+>;
+
+/**
+ * A wishlist as agents see it, from a read or a mutation's row. Listed field by field so internal
+ * columns (demo session, recipient account id, superseded theme, edit-grace bookkeeping) never
+ * reach an API response.
+ */
+export function projectAgentWishlistRow(wishlistRow: AgentWishlistSource) {
+	return {
+		id: wishlistRow.id,
+		shortId: wishlistRow.shortId,
+		recipientName: wishlistRow.recipientName,
+		title: wishlistRow.title,
+		description: wishlistRow.description,
+		eventDate: wishlistRow.eventDate,
+		status: wishlistRow.status,
+		kind: wishlistRow.kind,
+		palette: wishlistRow.palette,
+		imageUrl: wishlistRow.imageKey === null ? null : imagePublicUrl(wishlistRow.imageKey),
+		recipientIsModerator: wishlistRow.recipientIsModerator,
+		sharedAt: wishlistRow.sharedAt,
+		archivedAt: wishlistRow.archivedAt,
+		createdAt: wishlistRow.createdAt,
+		updatedAt: wishlistRow.updatedAt,
+	};
+}
+
+/** The read wishlist adds the viewer's role and the people around it; capabilities stay human. */
+export function projectAgentWishlist(wishlistOutput: ReadWishlistOutput) {
+	return {
+		...projectAgentWishlistRow(wishlistOutput),
+		recipientDisplayName: wishlistOutput.recipientDisplayName,
+		recipientImage: wishlistOutput.recipientImage,
+		managerNames: wishlistOutput.managerNames,
+		role: wishlistOutput.role,
+	};
+}
+
+type AgentGiftSource = Pick<
+	GiftBase,
+	| 'id'
+	| 'wishlistId'
+	| 'name'
+	| 'description'
+	| 'descriptionAppends'
+	| 'editedAfterShareAt'
+	| 'links'
+	| 'price'
+	| 'priceMax'
+	| 'currency'
+	| 'imageUrl'
+	| 'imageKey'
+	| 'imageMeta'
+	| 'quantity'
+	| 'sortOrder'
+	| 'received'
+	| 'createdAt'
+	| 'priorityLevelId'
+	| 'categoryId'
+>;
+
+/**
+ * A gift as agents see it, from a read or a mutation's row: the storage key becomes its public
+ * image URL, and internal columns (deletion, share-time snapshot) are left out.
+ */
+export function projectAgentGiftRow(giftRow: AgentGiftSource) {
+	return {
+		id: giftRow.id,
+		wishlistId: giftRow.wishlistId,
+		name: giftRow.name,
+		description: giftRow.description,
+		descriptionAppends: giftRow.descriptionAppends,
+		editedAfterShareAt: giftRow.editedAfterShareAt,
+		links: giftRow.links,
+		price: giftRow.price,
+		priceMax: giftRow.priceMax,
+		currency: giftRow.currency,
+		imageUrl: resolveGiftImageUrl(giftRow.imageUrl, giftRow.imageKey),
+		imageMeta: giftRow.imageMeta,
+		quantity: giftRow.quantity,
+		sortOrder: giftRow.sortOrder,
+		received: giftRow.received,
+		createdAt: giftRow.createdAt,
+		priorityLevelId: giftRow.priorityLevelId,
+		categoryId: giftRow.categoryId ?? null,
+	};
+}
+
+function projectAgentGiftBase(gift: GiftForRecipient) {
+	return {
+		...projectAgentGiftRow(gift),
+		priorityLabel: gift.priorityLabel,
+		prioritySortOrder: gift.prioritySortOrder,
+		category: gift.category ?? null,
+	};
+}
+
+/**
+ * Reservation state and counts for viewers the core shows them to; reserver names only with the
+ * `reservations:identities` scope. A recipient's gifts arrive from the core without any
+ * reservation or like data and stay that way. No reserver email is ever part of a gift.
+ */
+function projectAgentGift(gift: GiftByRole, options: { includeReserverNames: boolean }) {
+	const giftBase = projectAgentGiftBase(gift);
+	if (!('reservedCount' in gift)) {
+		return giftBase;
+	}
+	return {
+		...giftBase,
+		likeCount: gift.likeCount,
+		reservedCount: gift.reservedCount,
+		isFullyReserved: gift.isFullyReserved,
+		myReservationId: gift.myReservationId,
+		myReservationPurchasedAt: gift.myReservationPurchasedAt,
+		...(options.includeReserverNames ? { reserverNames: gift.reserverNames } : {}),
+	};
+}
+
+export function projectAgentWishlistGifts(
+	giftsOutput: ReadWishlistGiftsOutput,
+	options: { includeReserverNames: boolean },
+) {
+	return {
+		role: giftsOutput.role,
+		gifts: giftsOutput.gifts.map((gift: GiftByRole) => projectAgentGift(gift, options)),
+	};
+}
+
+/** A wishlist-restricted token sees only the destinations it may reach. */
+export function projectAgentBulkCopyDestinations(
+	destinations: ReadBulkCopyDestinationsOutput,
+	allowedWishlistIds: readonly string[] | null,
+) {
+	const reachable =
+		allowedWishlistIds === null
+			? destinations
+			: destinations.filter((destination) => allowedWishlistIds.includes(destination.id));
+	return reachable.map((destination) => ({
+		id: destination.id,
+		title: destination.title,
+		status: destination.status,
+		kind: destination.kind,
+		recipientDisplayName: destination.recipientDisplayName,
+	}));
+}
