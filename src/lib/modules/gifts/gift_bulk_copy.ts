@@ -11,6 +11,7 @@ import { priorityLevel, wishlist } from '$lib/server/db/wishlist.schema.js';
 import { getObject, putObject, deleteObject } from '$lib/server/storage/r2.js';
 import { normalizeGiftCategoryLabel } from '$lib/modules/gift-categories/types.js';
 import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
+import { WISHLIST_KIND } from '$lib/modules/wishlists/types.js';
 import {
 	appendGiftsUsingTransaction,
 	type GiftCreationTransaction,
@@ -24,6 +25,8 @@ export const BulkCopyGiftsInputSchema = v.strictObject({
 	sourceWishlistId: v.string(),
 	destinationWishlistId: v.string(),
 	giftIds: v.pipe(v.array(v.string()), v.minLength(1), v.maxLength(MAX_BULK_COPY_GIFTS)),
+	/** Removes each copied unreserved source gift; allowed only from a permanent wishlist. */
+	removeUnreservedSources: v.optional(v.boolean()),
 });
 
 export type BulkCopyGiftsInput = v.InferOutput<typeof BulkCopyGiftsInputSchema>;
@@ -140,6 +143,16 @@ async function assertManagedWishlist(
 		}
 	}
 	return row;
+}
+
+/** Moving gifts out (copy, then remove the unreserved sources) is a permanent wishlist's workflow. */
+function assertSourceRemovalAllowed(
+	source: Pick<typeof wishlist.$inferSelect, 'kind'>,
+	input: BulkCopyGiftsInput,
+): void {
+	if (input.removeUnreservedSources === true && source.kind !== WISHLIST_KIND.permanent) {
+		error(400, SERVER_ERROR.BULK_COPY_SOURCE_NOT_PERMANENT);
+	}
 }
 
 async function loadSourceGifts(
@@ -266,7 +279,8 @@ export async function prepareGiftCopy(
 		error(400, SERVER_ERROR.BULK_COPY_INVALID_SELECTION);
 	}
 	const database = options.database ?? getDb();
-	await assertManagedWishlist(database, actorId, input.sourceWishlistId, false);
+	const source = await assertManagedWishlist(database, actorId, input.sourceWishlistId, false);
+	assertSourceRemovalAllowed(source, input);
 	await assertManagedWishlist(database, actorId, input.destinationWishlistId, false);
 	const preflightGifts = await loadSourceGifts(database, input, false);
 	const operationId = generateId();
@@ -358,9 +372,14 @@ export async function copyPreparedGifts(
 	input: BulkCopyGiftsInput,
 	preparedCopy: Pick<PreparedGiftCopy, 'plans'>,
 	recordRevisions: RecordGiftRevisions,
-): Promise<{ created: (typeof gift.$inferSelect)[]; destinationShortId: string }> {
+): Promise<{
+	created: (typeof gift.$inferSelect)[];
+	destinationShortId: string;
+	sourceShortId: string;
+}> {
 	const { plans } = preparedCopy;
-	await assertManagedWishlist(transaction, actorId, input.sourceWishlistId, true);
+	const source = await assertManagedWishlist(transaction, actorId, input.sourceWishlistId, true);
+	assertSourceRemovalAllowed(source, input);
 	const destination = await assertManagedWishlist(
 		transaction,
 		actorId,
@@ -416,5 +435,5 @@ export async function copyPreparedGifts(
 		notifyFollowers: destination.status === 'active',
 		recordRevisions,
 	});
-	return { created, destinationShortId: destination.shortId };
+	return { created, destinationShortId: destination.shortId, sourceShortId: source.shortId };
 }

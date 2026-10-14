@@ -21,6 +21,7 @@ import { wishlist } from '$lib/server/db/wishlist.schema.js';
 import { moderatorAssignment } from '$lib/server/db/moderator.schema.js';
 import { gift, reservation } from '$lib/server/db/gift.schema.js';
 import { giftRevision } from '$lib/server/db/gift_revision.schema.js';
+import type { WishlistKind } from '$lib/modules/wishlists/types.js';
 import { OPERATION_CHANNEL, tokenChannel, type OperationActor } from './actor.js';
 
 const databaseUrl = process.env.DATABASE_URL ?? '';
@@ -126,6 +127,8 @@ export async function createWishlistFixture(
 		sharedAt?: Date | null;
 		status?: 'draft' | 'active' | 'archived';
 		recipientIsModerator?: boolean;
+		kind?: WishlistKind;
+		eventDate?: Date | null;
 	} = {},
 ): Promise<{ id: string; shortId: string }> {
 	const id = fixtureId('wishlist');
@@ -140,6 +143,8 @@ export async function createWishlistFixture(
 			status: options.status ?? (options.sharedAt ? 'active' : 'draft'),
 			sharedAt: options.sharedAt ?? null,
 			recipientIsModerator: options.recipientIsModerator ?? false,
+			...(options.kind === undefined ? {} : { kind: options.kind }),
+			eventDate: options.eventDate ?? null,
 		});
 	await getDb().insert(moderatorAssignment).values({ wishlistId: id, userId: MANAGER_ID });
 	return { id, shortId };

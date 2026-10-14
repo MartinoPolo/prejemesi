@@ -3,7 +3,6 @@ import { error } from '@sveltejs/kit';
 import { gift } from '$lib/server/db/gift.schema.js';
 import type { DatabaseTransaction } from '$lib/server/db/index.js';
 import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
-import { WISHLIST_ROLES } from '$lib/modules/wishlists/types.js';
 import { assertWishlistMutable } from '$lib/modules/wishlists/wishlist_access.js';
 import {
 	BulkUpdateGiftsInputSchema,
@@ -38,6 +37,8 @@ import {
 	type GiftUpdateData,
 } from './gift_update.js';
 import type { ManagedWishlist, WishlistRow } from './wishlist_management.js';
+import { loadReservedGiftIds, managerEditNotifiesReservers } from './wishlist_kind_rules.js';
+import { softDeleteGift } from './gift_deletion.js';
 
 function bulkJsonbValue(value: unknown) {
 	return value === null ? sql`NULL::jsonb` : sql`${JSON.stringify(value)}::jsonb`;
@@ -47,13 +48,13 @@ function bulkTimestampValue(value: Date | null) {
 	return value === null ? sql`NULL::timestamptz` : sql`${value.toISOString()}::timestamptz`;
 }
 
-/** Správce presentation edits to reserved gifts are coalesced into one notice per reserver. */
+/** Presentation edits to reserved gifts are coalesced into one notice per reserver. */
 function noteManagerEdits(
 	context: MutationOperationContext,
 	managedWishlist: ManagedWishlist,
 	changedGifts: readonly GiftRow[],
 ): void {
-	if (managedWishlist.role !== WISHLIST_ROLES.moderator) {
+	if (!managerEditNotifiesReservers(managedWishlist)) {
 		return;
 	}
 	const { wishlistRow } = managedWishlist;
@@ -385,8 +386,50 @@ export const bulkUpdateGiftsOperation = defineOperation({
 });
 
 /**
- * Copies portable gift data into another managed wishlist. Image objects are staged before the
- * transaction and either kept (commit) or removed (failure, dry run never stages).
+ * Removes the copied source gifts nobody reserved through the ordinary deletion rules; reserved
+ * sources stay untouched with their reservations and likes. Each copy owns its own staged image
+ * object, so deleting a source's image never affects the copy.
+ */
+async function removeUnreservedSourceGifts(
+	context: MutationOperationContext,
+	sourceWishlistId: string,
+	giftIds: readonly string[],
+): Promise<string[]> {
+	const { transaction } = context;
+	const managedSource = await requireWishlistManagement(
+		transaction,
+		context.actor.userId,
+		sourceWishlistId,
+		{ lock: true },
+	);
+	const sourceGiftRows = await transaction
+		.select()
+		.from(gift)
+		.where(
+			and(
+				inArray(gift.id, [...giftIds]),
+				eq(gift.wishlistId, sourceWishlistId),
+				isNull(gift.deletedAt),
+			),
+		)
+		.for('update');
+	const reservedGiftIds = await loadReservedGiftIds(
+		transaction,
+		sourceGiftRows.map((row) => row.id),
+	);
+	const unreservedSourceGiftRows = sourceGiftRows.filter((row) => !reservedGiftIds.has(row.id));
+	for (const sourceGiftRow of unreservedSourceGiftRows) {
+		await softDeleteGift(context, sourceGiftRow, managedSource, {
+			hasActiveReservation: false,
+		});
+	}
+	return unreservedSourceGiftRows.map((row) => row.id);
+}
+
+/**
+ * Copies portable gift data into another managed wishlist, optionally removing the unreserved
+ * sources from a permanent wishlist. Image objects are staged before the transaction and either
+ * kept (commit) or removed (failure, dry run never stages).
  */
 export const bulkCopyGiftsOperation = defineOperation({
 	name: 'bulkCopyGifts',
@@ -404,13 +447,22 @@ export const bulkCopyGiftsOperation = defineOperation({
 		};
 	},
 	async run(context, input, preparedCopy) {
-		const { created, destinationShortId } = await copyPreparedGifts(
+		const { created, destinationShortId, sourceShortId } = await copyPreparedGifts(
 			context.transaction,
 			context.actor.userId,
 			input,
 			preparedCopy,
 			context.recordGiftRevisions,
 		);
-		return { createdIds: created.map((row) => row.id), destinationShortId };
+		const removedSourceIds =
+			input.removeUnreservedSources === true
+				? await removeUnreservedSourceGifts(context, input.sourceWishlistId, input.giftIds)
+				: [];
+		return {
+			createdIds: created.map((row) => row.id),
+			removedSourceIds,
+			destinationShortId,
+			sourceShortId,
+		};
 	},
 });

@@ -148,14 +148,15 @@ export const getBulkCopyDestinations = guardedQueryWithArgs(
 
 export const bulkCopyGifts = guardedCommand(BulkCopyGiftsInputSchema, async ({ user }, input) => {
 	try {
-		const { createdIds, destinationShortId } = await executeOperation(
-			userInterfaceActor(user),
-			bulkCopyGiftsOperation,
-			input,
-		);
+		const { createdIds, removedSourceIds, destinationShortId, sourceShortId } =
+			await executeOperation(userInterfaceActor(user), bulkCopyGiftsOperation, input);
 		singleFlightRefresh(getGiftsByWishlistShortId, destinationShortId);
 		singleFlightRefresh(getGiftCategorySettingsRows, input.destinationWishlistId);
-		return { createdIds };
+		if (removedSourceIds.length > 0) {
+			singleFlightRefresh(getGiftsByWishlistShortId, sourceShortId);
+			singleFlightRefresh(getGiftCategorySettingsRows, input.sourceWishlistId);
+		}
+		return { createdIds, removedSourceIds };
 	} catch (thrown) {
 		if (isHttpError(thrown)) {
 			throw thrown;

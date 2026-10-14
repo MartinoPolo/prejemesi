@@ -31,6 +31,19 @@ export const RECIPIENT_KIND = {
 
 export type RecipientKind = (typeof RECIPIENT_KIND)[keyof typeof RECIPIENT_KIND];
 
+/**
+ * An occasion wishlist follows the strict post-share gift rules; a permanent wishlist has no event
+ * date and keeps its unreserved gifts fully editable after sharing (issue #479).
+ */
+export const WISHLIST_KIND = {
+	occasion: 'occasion',
+	permanent: 'permanent',
+} as const;
+
+export type WishlistKind = (typeof WISHLIST_KIND)[keyof typeof WISHLIST_KIND];
+
+export const WISHLIST_KINDS = [WISHLIST_KIND.occasion, WISHLIST_KIND.permanent] as const;
+
 /** Max length of a free-text recipient name (issue #99 creation modal). */
 export const RECIPIENT_NAME_MAX_LENGTH = 100;
 
@@ -65,6 +78,7 @@ export type CreateWishlistInput =
 	| {
 			recipientKind: 'self';
 			title: string;
+			kind?: WishlistKind;
 			eventDate?: Date | null;
 			theme?: WishlistTheme;
 			palette?: Palette;
@@ -74,6 +88,7 @@ export type CreateWishlistInput =
 			recipientKind: 'other';
 			recipientName: string;
 			title: string;
+			kind?: WishlistKind;
 			eventDate?: Date | null;
 			theme?: WishlistTheme;
 			palette?: Palette;
@@ -85,6 +100,7 @@ const PaletteSchema = v.custom<Palette>(isPalette);
 
 const CreateWishlistBaseFields = {
 	title: WishlistTitleSchema,
+	kind: v.optional(v.picklist(WISHLIST_KINDS)),
 	eventDate: v.optional(v.nullable(v.date())),
 	theme: v.optional(v.picklist(WISHLIST_THEMES)),
 	palette: v.optional(PaletteSchema),
@@ -106,6 +122,7 @@ export interface UpdateWishlistInput {
 	title?: string;
 	description?: string | null;
 	eventDate?: Date | null;
+	kind?: WishlistKind;
 	imageKey?: string | null;
 	imageSlots?: WishlistImageSlots | null;
 	/** Upload proof, required only when assigning a newly uploaded non-null banner key. */
@@ -117,6 +134,7 @@ export const UpdateWishlistInputSchema = v.object({
 	title: v.optional(WishlistTitleSchema),
 	description: v.optional(v.nullable(v.string())),
 	eventDate: v.optional(v.nullable(v.date())),
+	kind: v.optional(v.picklist(WISHLIST_KINDS)),
 	imageKey: v.optional(v.nullable(v.string())),
 	imageSlots: v.optional(v.nullable(WishlistImageSlotsSchema)),
 	imageAssignmentToken: v.optional(v.string()),

@@ -301,6 +301,7 @@ export const readBulkCopyDestinationsOperation = defineOperation({
 				id: wishlist.id,
 				title: wishlist.title,
 				status: wishlist.status,
+				kind: wishlist.kind,
 				recipientDisplayName: sql<string>`coalesce(${wishlist.recipientName}, ${user.name})`,
 			})
 			.from(wishlist)

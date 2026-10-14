@@ -162,6 +162,13 @@
       "when": 1791936406179,
       "tag": "0022_add-gift-revisions",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1791954127008,
+      "tag": "0023_add-wishlist-kind",
+      "breakpoints": true
     }
   ]
 }

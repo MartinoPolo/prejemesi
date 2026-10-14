@@ -28,6 +28,10 @@ import {
 	type ManagedWishlist,
 	type WishlistRow,
 } from './wishlist_management.js';
+import {
+	lockedGiftFollowsStrictPostShareRules,
+	managerEditNotifiesReservers,
+} from './wishlist_kind_rules.js';
 
 export type GiftRow = typeof gift.$inferSelect;
 export type GiftUpdateData = Partial<typeof gift.$inferInsert>;
@@ -162,9 +166,20 @@ function assertMergedPriceRangeValid(giftRow: GiftRow, input: UpdateGiftInput): 
 	}
 }
 
-/** Whether the edit runs through the post-share append engine instead of a full write. */
-function usesAppendEngine(request: GiftUpdateRequest, now: Date): boolean {
+/**
+ * Whether the edit runs through the post-share append engine instead of a full write. A gift that
+ * does not follow the strict post-share rules is written in full, except a targeted segment edit:
+ * only the engine edits existing segments, which such a gift keeps from when it was reserved.
+ */
+function usesAppendEngine(
+	request: GiftUpdateRequest,
+	followsStrictRules: boolean,
+	now: Date,
+): boolean {
 	const { giftRow, input } = request;
+	if (!followsStrictRules) {
+		return input.descriptionAppendEdit !== undefined;
+	}
 	const { role, wishlistRow } = request.managedWishlist;
 	const isShared = wishlistRow.sharedAt !== null;
 	const isPreShareGift =
@@ -262,7 +277,7 @@ function deferReplacedImageCleanup(
 	}
 }
 
-function noteModeratorEdit(
+function noteReservedGiftEdit(
 	context: MutationOperationContext,
 	request: GiftUpdateRequest,
 	updated: GiftRow,
@@ -281,21 +296,27 @@ function noteModeratorEdit(
 
 /**
  * The single gift-edit engine: price-range merge guard, the recipient's per-field post-share
- * rules (name freeze, raise-only quantity, append-only description), category validation,
- * transparency, revision, storage cleanup and the správce reserver notification.
+ * rules (name freeze, raise-only quantity, append-only description) unless the gift is exempt on a
+ * permanent wishlist, category validation, transparency, revision, storage cleanup and the
+ * reserver notification. The caller holds the gift row FOR UPDATE.
  */
 export async function applyGiftUpdate(
 	context: MutationOperationContext,
 	request: GiftUpdateRequest,
 ): Promise<GiftUpdateResult> {
 	const { giftRow, input, restoring } = request;
-	const { role, wishlistRow } = request.managedWishlist;
+	const { wishlistRow } = request.managedWishlist;
 	const { transaction, now } = context;
 	const didCategoryChange =
 		input.categoryId !== undefined && input.categoryId !== giftRow.categoryId;
 
 	assertMergedPriceRangeValid(giftRow, input);
-	const appendEngine = usesAppendEngine(request, now);
+	const followsStrictRules = await lockedGiftFollowsStrictPostShareRules(
+		transaction,
+		wishlistRow,
+		giftRow.id,
+	);
+	const appendEngine = usesAppendEngine(request, followsStrictRules, now);
 	const { updateData, didChange } = planGiftEdit(request, appendEngine, now);
 
 	// Transparency: any post-share edit that actually changes a field flags the gift as edited
@@ -338,8 +359,8 @@ export async function applyGiftUpdate(
 	if (!appendEngine && restoring === undefined) {
 		deferReplacedImageCleanup(context, giftRow.imageKey, updateData.imageKey);
 	}
-	if (role === WISHLIST_ROLES.moderator && didChange) {
-		noteModeratorEdit(context, request, updated);
+	if (managerEditNotifiesReservers(request.managedWishlist) && didChange) {
+		noteReservedGiftEdit(context, request, updated);
 	}
 	return { updated, didCategoryChange };
 }

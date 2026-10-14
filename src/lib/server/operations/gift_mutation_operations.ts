@@ -17,6 +17,7 @@ import { OPERATION_EXPOSURE, OPERATION_KIND, defineOperation } from './operation
 import { requireWishlistManagement, type ManagedWishlist } from './wishlist_management.js';
 import { applyGiftUpdate, type GiftRow } from './gift_update.js';
 import { softDeleteGift } from './gift_deletion.js';
+import { lockedGiftFollowsStrictPostShareRules } from './wishlist_kind_rules.js';
 
 /** Locks an active gift and resolves the actor's management of its wishlist. */
 async function lockManagedGift(
@@ -106,8 +107,8 @@ export const updateGiftOperation = defineOperation({
 
 /**
  * Adds text to a gift's description. On a shared wishlist the text becomes a new timestamped
- * segment for every manager, keeping the original description frozen for gifters; on a draft it
- * simply extends the description.
+ * segment for every manager, keeping the original description frozen for gifters; on a draft, or
+ * for a gift exempt from the strict post-share rules, it simply extends the description.
  */
 export const appendGiftDescriptionOperation = defineOperation({
 	name: 'appendGiftDescription',
@@ -123,10 +124,17 @@ export const appendGiftDescriptionOperation = defineOperation({
 			context.actor.userId,
 			input.giftId,
 		);
-		const isShared = managedWishlist.wishlistRow.sharedAt !== null;
+		const { wishlistRow } = managedWishlist;
+		const appendsSegment =
+			wishlistRow.sharedAt !== null &&
+			(await lockedGiftFollowsStrictPostShareRules(
+				context.transaction,
+				wishlistRow,
+				giftRow.id,
+			));
 		const currentDescription = giftRow.description?.trim() ?? '';
 		const description =
-			isShared || currentDescription === ''
+			appendsSegment || currentDescription === ''
 				? input.text
 				: `${currentDescription}\n\n${input.text}`;
 		const { updated } = await applyGiftUpdate(context, {
