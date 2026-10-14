@@ -180,11 +180,6 @@ function createMultiQueryChain(...resultsQueue: unknown[][]) {
 	return chain;
 }
 
-/** Shorthand: single-result chain (the common case). */
-function createChain(returnValue: unknown[] = []) {
-	return createMultiQueryChain(returnValue);
-}
-
 /** Fake wishlist row for an active (non-archived) list whose linked recipient is OWNER_ID. */
 function makeActiveWishlistRow() {
 	return {
@@ -223,26 +218,23 @@ describe('reserveGift', () => {
 		);
 	});
 
-	// reserveGift now enforces capacity atomically inside database.transaction():
-	//   - getDb() call #1 = `database`; used for database.transaction(cb). The mocked
-	//     transaction invokes cb with the SAME chain, whose queue serves the in-tx
-	//     queries in order: locked gift select (.for('update')) → active count → insert.
-	//   - getDb() call #2 = getGiftWithWishlist's own getDb() (wishlist row).
-	//   - getActiveReservedCount no longer calls getDb() – it runs on the passed tx.
+	// The operation core runs reserveGift in ONE transaction from getDb(). The mocked
+	// transaction invokes cb with the SAME chain, whose queue serves the queries in order:
+	// gift+wishlist → locked gift select (.for('update')) → active count → insert. After
+	// commit, the notification audience (likers → followers) is read through getDb() again,
+	// so a successful reservation gets the same chain from two getDb() calls.
 
 	it('authenticated visitor can reserve a gift – returns { id }', async () => {
-		// Call #1: `database` – transaction queue: locked gift, count, insert.returning()
+		// The operation core reads the gift's wishlist first, inside the one transaction.
 		const database = createMultiQueryChain(
+			[makeActiveWishlistRow()],
 			[{ quantity: 5 }],
 			[{ totalQuantity: 0 }],
 			[{ id: RESERVATION_ID }],
 		);
-		// Call #2: getGiftWithWishlist query
-		const wishlistDb = createChain([makeActiveWishlistRow()]);
-
 		mockGetDb
 			.mockReturnValueOnce(database as unknown as ReturnType<typeof getDb>)
-			.mockReturnValueOnce(wishlistDb as unknown as ReturnType<typeof getDb>);
+			.mockReturnValueOnce(database as unknown as ReturnType<typeof getDb>);
 
 		const result = await (reserveGift as (...args: unknown[]) => unknown)(
 			makeAuthContext(fakeVisitorUser),
@@ -256,16 +248,16 @@ describe('reserveGift', () => {
 	// Reserver identity is personal data (issue #198): the GIFT_RESERVED / LIKED_GIFT_RESERVED
 	// dispatches must never carry the reserving user's name, only the server-side actorId.
 	it("dispatches GIFT_RESERVED and LIKED_GIFT_RESERVED without actorName and never leaks the reserver's account name", async () => {
+		// The operation core reads the gift's wishlist first, inside the one transaction.
 		const database = createMultiQueryChain(
+			[makeActiveWishlistRow()],
 			[{ quantity: 5 }],
 			[{ totalQuantity: 0 }],
 			[{ id: RESERVATION_ID }],
 		);
-		const wishlistDb = createChain([makeActiveWishlistRow()]);
-
 		mockGetDb
 			.mockReturnValueOnce(database as unknown as ReturnType<typeof getDb>)
-			.mockReturnValueOnce(wishlistDb as unknown as ReturnType<typeof getDb>);
+			.mockReturnValueOnce(database as unknown as ReturnType<typeof getDb>);
 
 		await (reserveGift as (...args: unknown[]) => unknown)(
 			makeAuthContext(fakeNamedVisitorUser),
@@ -321,15 +313,16 @@ describe('reserveGift', () => {
 			const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 			mockVerifyTurnstileToken.mockResolvedValue({ success: false, reason });
 
+			// The operation core reads the gift's wishlist first, inside the one transaction.
 			const database = createMultiQueryChain(
+				[makeActiveWishlistRow()],
 				[{ quantity: 5 }],
 				[{ totalQuantity: 0 }],
 				[{ id: RESERVATION_ID }],
 			);
-			const wishlistDb = createChain([makeActiveWishlistRow()]);
 			mockGetDb
 				.mockReturnValueOnce(database as unknown as ReturnType<typeof getDb>)
-				.mockReturnValueOnce(wishlistDb as unknown as ReturnType<typeof getDb>);
+				.mockReturnValueOnce(database as unknown as ReturnType<typeof getDb>);
 
 			const result = await (reserveGift as (...args: unknown[]) => unknown)(null, {
 				...validInput,
@@ -348,16 +341,16 @@ describe('reserveGift', () => {
 	// (real DB) – but those skip in CI, so this asserts the transaction + row lock
 	// are still present, catching their accidental removal.
 	it('capacity check runs inside a transaction that locks the gift row (FOR UPDATE)', async () => {
+		// The operation core reads the gift's wishlist first, inside the one transaction.
 		const database = createMultiQueryChain(
+			[makeActiveWishlistRow()],
 			[{ quantity: 5 }],
 			[{ totalQuantity: 0 }],
 			[{ id: RESERVATION_ID }],
 		);
-		const wishlistDb = createChain([makeActiveWishlistRow()]);
-
 		mockGetDb
 			.mockReturnValueOnce(database as unknown as ReturnType<typeof getDb>)
-			.mockReturnValueOnce(wishlistDb as unknown as ReturnType<typeof getDb>);
+			.mockReturnValueOnce(database as unknown as ReturnType<typeof getDb>);
 
 		await (reserveGift as (...args: unknown[]) => unknown)(
 			makeAuthContext(fakeVisitorUser),

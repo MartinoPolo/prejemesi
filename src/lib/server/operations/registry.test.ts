@@ -5,6 +5,9 @@ import * as giftMutationOperations from './gift_mutation_operations.js';
 import * as giftReadOperations from './gift_read_operations.js';
 import * as giftUndoOperations from './gift_undo_operations.js';
 import * as importOperations from './import_operations.js';
+import * as managerInvitationOperations from './manager_invitation_operations.js';
+import * as reservationOperations from './reservation_operations.js';
+import * as reservationReadOperations from './reservation_read_operations.js';
 import * as wishlistDetailOperations from './wishlist_detail_operations.js';
 import * as wishlistLifecycleOperations from './wishlist_lifecycle_operations.js';
 import { OPERATION_EXPOSURE, OPERATION_KIND } from './operation.js';
@@ -19,6 +22,9 @@ const operationModules = [
 	importOperations,
 	wishlistDetailOperations,
 	wishlistLifecycleOperations,
+	reservationOperations,
+	reservationReadOperations,
+	managerInvitationOperations,
 ];
 
 describe('operation registry', () => {
@@ -36,7 +42,7 @@ describe('operation registry', () => {
 		}
 	});
 
-	it('keeps sharing, reverting, archiving, deleting and the recipient flip with the human user', () => {
+	it('keeps lifecycle, reservation release and správce administration beyond inviting with the human user', () => {
 		const humanOnlyNames = Object.values(OPERATION_REGISTRY)
 			.filter((operation) => operation.exposure === OPERATION_EXPOSURE.humanOnly)
 			.map((operation) => operation.name)
@@ -48,8 +54,26 @@ describe('operation registry', () => {
 				'flipRecipientToFreeText',
 				'revertWishlistToDraft',
 				'shareWishlist',
+				'unreserveGift',
+				'readReservationLedger',
+				'readWishlistModerators',
+				'acceptModeratorInvite',
+				'revokeModeratorInvite',
+				'removeModerator',
+				'selfPromoteToModerator',
 			].sort(),
 		);
+	});
+
+	it('lets agents reserve where the user may and invite managers', () => {
+		for (const operationName of [
+			'reserveGift',
+			'cancelOwnReservation',
+			'setReservationPurchased',
+			'generateModeratorInviteLink',
+		] as const) {
+			expect(OPERATION_REGISTRY[operationName].exposure).toBe(OPERATION_EXPOSURE.agent);
+		}
 	});
 
 	it('contains every exported operation, so generated agent surfaces miss none', () => {

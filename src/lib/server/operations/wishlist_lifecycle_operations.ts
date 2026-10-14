@@ -1,11 +1,9 @@
 import * as v from 'valibot';
 import { and, eq, isNull } from 'drizzle-orm';
 import { error } from '@sveltejs/kit';
-import type { DatabaseTransaction } from '$lib/server/db/index.js';
 import { wishlist } from '$lib/server/db/wishlist.schema.js';
 import { gift } from '$lib/server/db/gift.schema.js';
 import { moderatorAssignment } from '$lib/server/db/moderator.schema.js';
-import { wishlistFollower } from '$lib/server/db/follower.schema.js';
 import { rejectDemoOperation } from '$lib/server/demo/scope.js';
 import { deleteObjectsBestEffort } from '$lib/server/storage/r2.js';
 import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
@@ -20,6 +18,8 @@ import {
 	type MutationOperationContext,
 } from './operation.js';
 import {
+	activeFollowerUserIds,
+	activeModeratorUserIds,
 	requireLiveWishlistRow,
 	requireWishlistManagement,
 	resolveWishlistAccess,
@@ -33,35 +33,6 @@ import {
 } from './wishlist_revert.js';
 
 const WishlistLifecycleInputSchema = v.strictObject({ wishlistId: v.string() });
-
-async function activeFollowerUserIds(
-	transaction: DatabaseTransaction,
-	wishlistId: string,
-): Promise<string[]> {
-	const followerRows = await transaction
-		.select({ userId: wishlistFollower.userId })
-		.from(wishlistFollower)
-		.where(
-			and(eq(wishlistFollower.wishlistId, wishlistId), isNull(wishlistFollower.unfollowedAt)),
-		);
-	return followerRows.map((row) => row.userId);
-}
-
-async function activeModeratorUserIds(
-	transaction: DatabaseTransaction,
-	wishlistId: string,
-): Promise<string[]> {
-	const moderatorRows = await transaction
-		.select({ userId: moderatorAssignment.userId })
-		.from(moderatorAssignment)
-		.where(
-			and(
-				eq(moderatorAssignment.wishlistId, wishlistId),
-				isNull(moderatorAssignment.deletedAt),
-			),
-		);
-	return moderatorRows.map((row) => row.userId);
-}
 
 function withoutActor(context: MutationOperationContext, userIds: readonly string[]): string[] {
 	return userIds.filter((userId) => userId !== context.actor.userId);

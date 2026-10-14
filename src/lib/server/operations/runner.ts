@@ -58,6 +58,11 @@ interface BoundStep {
 	prepare(actor: OperationActor, dryRun: boolean): Promise<PreparedStep>;
 }
 
+interface DeferredEffect {
+	operationName: string;
+	effect: () => Promise<void>;
+}
+
 interface TransactionOutcome {
 	results: unknown[];
 	revisions: GiftRevisionRecord[];
@@ -128,6 +133,16 @@ async function settleBestEffort(label: string, work: () => Promise<void>): Promi
 	}
 }
 
+/** After commit, each effect is best effort: a failure is logged and never skips the others. */
+async function settleDeferredEffects(
+	deferredEffects: readonly DeferredEffect[],
+	origin: string,
+): Promise<void> {
+	for (const { operationName, effect } of deferredEffects) {
+		await settleBestEffort(`deferred effect ${operationName} ${origin}`, effect);
+	}
+}
+
 async function runBoundSteps(
 	actor: OperationActor,
 	steps: readonly BoundStep[],
@@ -139,7 +154,7 @@ async function runBoundSteps(
 	const batchId = generateId();
 	const now = new Date();
 	const preparedSteps: PreparedStep[] = [];
-	const deferredEffects: Array<{ operationName: string; effect: () => Promise<void> }> = [];
+	const deferredEffects: DeferredEffect[] = [];
 	let outcome: TransactionOutcome;
 	let committed = false;
 	try {
@@ -211,12 +226,52 @@ async function runBoundSteps(
 	for (const preparedStep of preparedSteps) {
 		await settleBestEffort('committed preparation cleanup', () => preparedStep.onCommitted());
 	}
-	for (const { operationName, effect } of deferredEffects) {
-		await settleBestEffort(`deferred effect ${operationName} batch ${batchId}`, effect);
-	}
+	await settleDeferredEffects(deferredEffects, `batch ${batchId}`);
 	await dispatchReservedGiftEditNotifications(outcome.notifications);
 	scheduleGiftRevisionPurge();
 	return { batchId, results: outcome.results, revisions: outcome.revisions };
+}
+
+/** What a mutation without a signed-in actor may use: it writes no gift revisions. */
+export type AnonymousVisitorMutationContext = Pick<
+	MutationOperationContext,
+	'transaction' | 'now' | 'deferEffect'
+>;
+
+/**
+ * Runs an anonymous visitor's own mutation (UI only: agents always act as a real user) with an
+ * operation's input validation, single transaction and after-commit effects.
+ */
+export async function executeAnonymousVisitorMutation<
+	TSchema extends OperationInputSchema,
+	TOutput,
+>(
+	mutation: {
+		operationName: string;
+		input: TSchema;
+		run: (
+			context: AnonymousVisitorMutationContext,
+			input: v.InferOutput<TSchema>,
+		) => Promise<TOutput>;
+	},
+	rawInput: unknown,
+): Promise<TOutput> {
+	const input = parseOperationInput(mutation.input, rawInput);
+	const now = new Date();
+	const deferredEffects: DeferredEffect[] = [];
+	const output = await getDb().transaction((transaction) =>
+		mutation.run(
+			{
+				transaction,
+				now,
+				deferEffect: (effect) =>
+					deferredEffects.push({ operationName: mutation.operationName, effect }),
+			},
+			input,
+		),
+	);
+	await settleDeferredEffects(deferredEffects, 'anonymous visitor');
+	return output;
 }
 
 /** Runs several mutations atomically under one batch id and one transaction. */

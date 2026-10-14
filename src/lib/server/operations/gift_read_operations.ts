@@ -1,6 +1,5 @@
 import * as v from 'valibot';
 import { and, count as drizzleCount, eq, inArray, isNull, ne, or, sql } from 'drizzle-orm';
-import { error } from '@sveltejs/kit';
 import { getDb } from '$lib/server/db/index.js';
 import { gift, giftCategory, giftLike, reservation } from '$lib/server/db/gift.schema.js';
 import { priorityLevel, wishlist } from '$lib/server/db/wishlist.schema.js';
@@ -8,7 +7,6 @@ import { user } from '$lib/server/db/auth.schema.js';
 import { moderatorAssignment } from '$lib/server/db/moderator.schema.js';
 import { wishlistScope } from '$lib/server/demo/scope.js';
 import { getAnonVisitorId } from '$lib/server/anonymous_visitor.js';
-import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
 import { resolveWishlistRole } from '$lib/modules/wishlists/wishlist_access.js';
 import {
 	canSeeReserverNames,
@@ -17,11 +15,13 @@ import {
 import { publicGiftCategory } from '$lib/modules/gift-categories/gift_categories_service.js';
 import type { GiftForRecipient, GiftForVisitor } from '$lib/modules/gifts/types.js';
 import { OPERATION_EXPOSURE, OPERATION_KIND, defineOperation } from './operation.js';
-import { requireWishlistManagement } from './wishlist_management.js';
+import {
+	requireLiveWishlistRowByShortId,
+	requireWishlistManagement,
+} from './wishlist_management.js';
 import { requireOperationActor, type OperationActor } from './actor.js';
 
 type ReadDatabase = ReturnType<typeof getDb>;
-type WishlistRow = typeof wishlist.$inferSelect;
 
 /** Gift columns every role may read; anything else (snapshots, soft-delete state) stays server-side. */
 const READABLE_GIFT_COLUMN_NAMES = [
@@ -48,23 +48,6 @@ const READABLE_GIFT_COLUMN_NAMES = [
 const readableGiftColumns = Object.fromEntries(
 	READABLE_GIFT_COLUMN_NAMES.map((columnName) => [columnName, gift[columnName]]),
 ) as Pick<typeof gift, (typeof READABLE_GIFT_COLUMN_NAMES)[number]>;
-
-async function loadReadableWishlist(
-	database: ReadDatabase,
-	wishlistShortId: string,
-): Promise<WishlistRow> {
-	const [wishlistRow] = await database
-		.select()
-		.from(wishlist)
-		.where(
-			and(eq(wishlist.shortId, wishlistShortId), isNull(wishlist.deletedAt), wishlistScope()),
-		)
-		.limit(1);
-	if (wishlistRow === undefined) {
-		error(404, SERVER_ERROR.WISHLIST_NOT_FOUND);
-	}
-	return wishlistRow;
-}
 
 function loadGiftRows(database: ReadDatabase, wishlistId: string) {
 	return database
@@ -274,7 +257,7 @@ export const readWishlistGiftsOperation = defineOperation({
 	input: v.strictObject({ wishlistShortId: v.string() }),
 	async run({ actor }, { wishlistShortId }) {
 		const database = getDb();
-		const wishlistRow = await loadReadableWishlist(database, wishlistShortId);
+		const wishlistRow = await requireLiveWishlistRowByShortId(database, wishlistShortId);
 		const role = await resolveWishlistRole(
 			actor === null ? null : { user: { id: actor.userId } },
 			wishlistRow,
