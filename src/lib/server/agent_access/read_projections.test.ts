@@ -72,6 +72,7 @@ describe('projectAgentWishlist', () => {
 			description: null,
 			eventDate: null,
 			status: 'active',
+			kind: 'permanent',
 			theme: 'default',
 			customThemeColor: '#123456',
 			palette: 'sky',
@@ -177,8 +178,20 @@ describe('agent gift projection', () => {
 
 describe('projectAgentBulkCopyDestinations', () => {
 	const destinations = [
-		{ id: 'allowed', title: 'A', status: 'draft' as const, recipientDisplayName: 'Martin' },
-		{ id: 'other', title: 'B', status: 'active' as const, recipientDisplayName: 'Jana' },
+		{
+			id: 'allowed',
+			title: 'A',
+			status: 'draft' as const,
+			kind: 'occasion' as const,
+			recipientDisplayName: 'Martin',
+		},
+		{
+			id: 'other',
+			title: 'B',
+			status: 'active' as const,
+			kind: 'permanent' as const,
+			recipientDisplayName: 'Jana',
+		},
 	];
 
 	it('shows a restricted token only the wishlists it may reach', () => {

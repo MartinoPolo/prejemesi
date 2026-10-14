@@ -22,6 +22,7 @@ type AgentWishlistSource = Pick<
 	| 'description'
 	| 'eventDate'
 	| 'status'
+	| 'kind'
 	| 'palette'
 	| 'imageKey'
 	| 'recipientIsModerator'
@@ -45,6 +46,7 @@ export function projectAgentWishlistRow(wishlistRow: AgentWishlistSource) {
 		description: wishlistRow.description,
 		eventDate: wishlistRow.eventDate,
 		status: wishlistRow.status,
+		kind: wishlistRow.kind,
 		palette: wishlistRow.palette,
 		imageUrl: wishlistRow.imageKey === null ? null : imagePublicUrl(wishlistRow.imageKey),
 		recipientIsModerator: wishlistRow.recipientIsModerator,
@@ -169,6 +171,7 @@ export function projectAgentBulkCopyDestinations(
 		id: destination.id,
 		title: destination.title,
 		status: destination.status,
+		kind: destination.kind,
 		recipientDisplayName: destination.recipientDisplayName,
 	}));
 }
