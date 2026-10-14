@@ -6,7 +6,7 @@ Přejeme si is a shareable wishlist web app where users create gift lists for th
 
 ### Roles and core objects
 
-- **Wishlist** — A collection of desired gifts for a recipient, managed by a linked recipient and/or správci. A wishlist may be ongoing (no date) or tied to a specific occasion; the event date is optional.
+- **Wishlist** — A collection of desired gifts for a recipient, managed by a linked recipient and/or správci. An occasion wishlist may be ongoing (no date) or tied to a specific occasion; a permanent wishlist never has an event date.
 - **Gift** — An item on a wishlist with name, optional description/URL/price/image/priority/quantity.
 - **Recipient (obdarovaný)** — The person a wishlist is for: a linked user or a free-text name (e.g. a child); linked recipients manage their lists but cannot reserve, and see reservation state/counts only after disclosed self-promotion, never gifter identities. A linked recipient may change their own list to a free-text recipient, becoming a normal správce.
 - **Správce (manager)** — User with full management rights plus full visibility (reservations, gifter identities); can reserve gifts and manage other správci. Code role: `moderator`.
@@ -19,7 +19,9 @@ Přejeme si is a shareable wishlist web app where users create gift lists for th
 
 ### Sharing and lifecycle
 
-- **Sharing** — Distributing a wishlist link. Freezes each existing gift's identity (`name`) and blocks delete, but leaves presentation/info fields editable (image, links, price, priority, append-only description; quantity raise-only). See Post-share editing.
+- **Sharing** — Distributing a wishlist link. Freezes each existing gift's identity (`name`) and blocks delete, but leaves presentation/info fields editable (image, links, price, priority, append-only description; quantity raise-only). On a permanent wishlist this applies only to reserved gifts. See Post-share editing.
+- **Occasion wishlist** — The default wishlist kind, with or without an event date; sharing applies the strict post-share gift rules to every gift.
+- **Permanent wishlist** — A wishlist kind chosen at creation for a list that changes over time: no event date, and after sharing its unreserved gifts stay fully editable and deletable. It can become an occasion wishlist any time; an occasion wishlist becomes permanent only before it is first shared.
 - **Post-share grace window** — A 2-minute reversibility window for sharing, each description append, and the event-date lock; later gift edits never reopen gift name/delete grace.
 - **Description append** — A post-share description change: an immutable, accent-colored, timestamped addition. The original text freezes at share time and is preserved for the gifter; Card/List previews show only the latest append; full history remains available in detail and editors.
 - **Archive** — A read-only state for a completed wishlist; visually distinct, no new reservations accepted.

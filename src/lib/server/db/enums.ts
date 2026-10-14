@@ -1,10 +1,12 @@
 import { pgEnum } from 'drizzle-orm/pg-core';
 import { SUPPORTED_LOCALES } from '$lib/i18n/locale.js';
-import { WISHLIST_THEMES } from '$lib/modules/wishlists/types.js';
+import { WISHLIST_KINDS, WISHLIST_THEMES } from '$lib/modules/wishlists/types.js';
 import { PALETTES } from '$lib/theme/palettes.js';
 import { DEPTH_STYLES } from '$lib/theme/depth_styles.js';
 
 export const wishlistStatusEnum = pgEnum('wishlist_status', ['draft', 'active', 'archived']);
+
+export const wishlistKindEnum = pgEnum('wishlist_kind', WISHLIST_KINDS);
 
 /**
  * Superseded by `paletteEnum` (Redesign 2026). Column kept in the DB for

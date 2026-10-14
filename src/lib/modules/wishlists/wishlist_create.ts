@@ -6,10 +6,13 @@ import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
 import { DEFAULT_PALETTE, type Palette } from '$lib/theme/palettes.js';
 import { demoSessionId } from '$lib/server/demo/scope.js';
 import { enforceDemoWishlistLimit } from '$lib/server/demo/limits.js';
+import { assertEventDateAllowed } from '$lib/server/operations/wishlist_kind_rules.js';
 import {
 	DEFAULT_PRIORITY_LEVELS,
 	DEFAULT_WISHLIST_THEME,
 	RECIPIENT_KIND,
+	WISHLIST_KIND,
+	type WishlistKind,
 	type WishlistTheme,
 } from './types.js';
 
@@ -24,6 +27,7 @@ type Transaction = Parameters<Parameters<ReturnType<typeof getDb>['transaction']
  */
 export type NewWishlistInput = {
 	title: string;
+	kind?: WishlistKind;
 	eventDate?: Date | null;
 	theme?: WishlistTheme;
 	palette?: Palette;
@@ -43,6 +47,8 @@ export async function seedNewWishlist(
 	input: NewWishlistInput,
 ): Promise<typeof wishlist.$inferSelect> {
 	const forSelf = input.recipientKind === RECIPIENT_KIND.self;
+	const kind = input.kind ?? WISHLIST_KIND.occasion;
+	assertEventDateAllowed(kind, input.eventDate);
 	// Normalize the optional description: trim, then collapse empty/whitespace-only to null
 	// (mirrors the settings-modal save path so both write the same shape).
 	const trimmedDescription = input.description?.trim() ?? '';
@@ -58,6 +64,7 @@ export async function seedNewWishlist(
 			recipientUserId: forSelf ? creatorUserId : null,
 			recipientName: forSelf ? null : input.recipientName,
 			title: input.title,
+			kind,
 			eventDate: input.eventDate ?? null,
 			palette: input.palette ?? DEFAULT_PALETTE,
 			description: trimmedDescription === '' ? null : trimmedDescription,

@@ -29,6 +29,7 @@ import { wishlistVisit } from './wishlist_visit.schema.js';
 import { notification } from './notification.schema.js';
 import { prepareSeedImages } from './seed_images.js';
 import { SEED_PASSWORD } from './seed_credentials.js';
+import { WISHLIST_KIND } from '$lib/modules/wishlists/types.js';
 
 // ---------------------------------------------------------------------------
 // .env loader (avoids dotenv dependency)
@@ -94,6 +95,8 @@ const WL_DETSKY = 'seed-wl-detsky';
 const WL_JBDAY = 'seed-wl-jbday';
 const WL_BYT = 'seed-wl-byt';
 const WL_KNIHY = 'seed-wl-knihy';
+// Permanent wishlist (issue #479): no event date; unreserved gifts stay fully editable after sharing.
+const WL_STALY = 'seed-wl-staly';
 // Lists Martin follows – give his "Sledované" dropdown the full open/reserved/bought spread.
 const WL_PBDAY = 'seed-wl-pbday'; // Petr – Martin: open
 const WL_KUCHYNE = 'seed-wl-kuchyne'; // Eva – Martin: open
@@ -189,6 +192,10 @@ const G_SV_KABAT = 'seed-g-sv-kabat';
 const G_SV_CAJ = 'seed-g-sv-caj';
 const G_SV_DENIK = 'seed-g-sv-denik';
 const G_SV_SKLENICE = 'seed-g-sv-sklenice';
+// Martin's permanent list – one gift reserved by Petr (strict rules), the rest unreserved
+const G_ST_SLUCHATKA = 'seed-g-st-sluchatka';
+const G_ST_HRNEK = 'seed-g-st-hrnek';
+const G_ST_KNIHA = 'seed-g-st-kniha';
 // Gifts on the for-someone lists (Rosie / Miminko)
 const G_PANENKA = 'seed-g-panenka';
 const G_ODRAZEDLO = 'seed-g-odrazedlo';
@@ -382,6 +389,22 @@ async function seed() {
 				},
 				createdAt: d('2026-01-20T11:00:00Z'),
 				updatedAt: d('2026-03-10T15:00:00Z'),
+			},
+			// Martin – active, shared, permanent (no event date)
+			{
+				id: WL_STALY,
+				shortId: 'stalymar',
+				recipientUserId: MARTIN,
+				recipientName: null,
+				title: 'Co se mi vždycky hodí',
+				description: 'Seznam průběžně doplňuji.',
+				kind: WISHLIST_KIND.permanent,
+				status: 'active',
+				theme: 'default',
+				palette: 'mint',
+				sharedAt: d('2026-04-01T09:00:00Z'),
+				createdAt: d('2026-03-25T10:00:00Z'),
+				updatedAt: d('2026-04-01T09:00:00Z'),
 			},
 			// Martin – draft
 			{
@@ -639,6 +662,7 @@ async function seed() {
 			WL_JBDAY,
 			WL_BYT,
 			WL_KNIHY,
+			WL_STALY,
 			WL_PBDAY,
 			WL_KUCHYNE,
 			WL_JXMAS,
@@ -1203,6 +1227,38 @@ async function seed() {
 				received: true,
 			},
 
+			// --- Co se mi vždycky hodí / Martin permanent (3 gifts) ---
+			{
+				id: G_ST_SLUCHATKA,
+				wishlistId: WL_STALY,
+				name: 'Bezdrátová sluchátka',
+				price: 2490,
+				currency: 'CZK',
+				priorityLevelId: plId('staly', 'h'),
+				sortOrder: 0,
+				createdAt: d('2026-03-25T10:05:00Z'),
+			},
+			{
+				id: G_ST_HRNEK,
+				wishlistId: WL_STALY,
+				name: 'Termohrnek',
+				description: 'Ideálně do 0,5 l.',
+				price: 590,
+				currency: 'CZK',
+				priorityLevelId: plId('staly', 'm'),
+				sortOrder: 1,
+				createdAt: d('2026-03-25T10:10:00Z'),
+			},
+			{
+				id: G_ST_KNIHA,
+				wishlistId: WL_STALY,
+				name: 'Kniha z oblíbené edice',
+				quantity: 3,
+				priorityLevelId: plId('staly', 'l'),
+				sortOrder: 2,
+				createdAt: d('2026-03-25T10:15:00Z'),
+			},
+
 			// --- Výbava do bytu / Tomáš archived (3 gifts) ---
 			{
 				id: G_MIXER,
@@ -1627,6 +1683,9 @@ async function seed() {
 			{ id: 'seed-r-36', giftId: G_SV_CAJ, userId: EVA, quantity: 1 },
 			// Partially reserved multi-quantity (1 of 3):
 			{ id: 'seed-r-37', giftId: G_SV_SKLENICE, userId: JANA, quantity: 1 },
+
+			// Co se mi vždycky hodí (permanent) – the reserved gift keeps the strict rules.
+			{ id: 'seed-r-staly-petr', giftId: G_ST_SLUCHATKA, userId: PETR, quantity: 1 },
 		]);
 
 		// ---------------------------------------------------------------
@@ -1732,6 +1791,7 @@ async function seed() {
 			// Narozeniny – Eva unfollowed
 			{ wishlistId: WL_BDAY, userId: JANA, createdAt: d('2026-02-02T10:00:00Z') },
 			{ wishlistId: WL_BDAY, userId: PETR, createdAt: d('2026-02-03T11:00:00Z') },
+			{ wishlistId: WL_STALY, userId: PETR, createdAt: d('2026-04-02T10:00:00Z') },
 			{
 				wishlistId: WL_BDAY,
 				userId: EVA,

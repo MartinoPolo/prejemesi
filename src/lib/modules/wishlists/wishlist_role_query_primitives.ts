@@ -25,6 +25,7 @@ function mapWishlist(row: WishlistRow): Wishlist {
 		description: row.wishlist.description,
 		eventDate: row.wishlist.eventDate,
 		status: row.wishlist.status,
+		kind: row.wishlist.kind,
 		theme: row.wishlist.theme,
 		customThemeColor: row.wishlist.customThemeColor,
 		palette: row.wishlist.palette,

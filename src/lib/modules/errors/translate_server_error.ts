@@ -62,6 +62,12 @@ const TRANSLATIONS: Record<string, TranslatorFunction> = {
 	[SERVER_ERROR.BULK_COPY_DESTINATION_UNAVAILABLE]: () =>
 		m.server_error_bulk_copy_destination_unavailable(),
 	[SERVER_ERROR.BULK_COPY_FAILED]: () => m.server_error_bulk_copy_failed(),
+	[SERVER_ERROR.BULK_COPY_SOURCE_NOT_PERMANENT]: () =>
+		m.server_error_bulk_copy_source_not_permanent(),
+	[SERVER_ERROR.PERMANENT_WISHLIST_EVENT_DATE]: () =>
+		m.server_error_permanent_wishlist_event_date(),
+	[SERVER_ERROR.CANNOT_MAKE_SHARED_WISHLIST_PERMANENT]: () =>
+		m.server_error_cannot_make_shared_wishlist_permanent(),
 	[SERVER_ERROR.GIFT_PRIORITY_WISHLIST_MISMATCH]: () =>
 		m.server_error_gift_priority_wishlist_mismatch(),
 	// Reuses the form's own range-error copy so toast and inline hint read identically.

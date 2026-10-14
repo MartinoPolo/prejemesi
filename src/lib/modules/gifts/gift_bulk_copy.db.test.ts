@@ -6,6 +6,7 @@ const storage = vi.hoisted(() => ({
 	getObject: vi.fn(),
 	putObject: vi.fn(),
 	deleteObject: vi.fn(),
+	deleteObjectsBestEffort: vi.fn(),
 }));
 
 vi.mock('$app/server', () => ({
@@ -27,6 +28,8 @@ import { priorityLevel, wishlist } from '$lib/server/db/wishlist.schema.js';
 import { giftRevision } from '$lib/server/db/gift_revision.schema.js';
 import { parseNewGiftDigestPayload } from '$lib/modules/notifications/new_gift_digest.js';
 import type { BulkCopyGiftsInput } from './gift_bulk_copy.js';
+import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
+import { WISHLIST_KIND } from '$lib/modules/wishlists/types.js';
 import { executeOperation } from '$lib/server/operations/runner.js';
 import { userInterfaceActor } from '$lib/server/operations/actor.js';
 import { bulkCopyGiftsOperation } from '$lib/server/operations/gift_bulk_operations.js';
@@ -42,6 +45,7 @@ const MANAGER_ID = `${PREFIX}manager`;
 const FOLLOWER_ID = `${PREFIX}follower`;
 const SOURCE_ID = `${PREFIX}source`;
 const DESTINATION_ID = `${PREFIX}destination`;
+const PERMANENT_SOURCE_ID = `${PREFIX}permanent-source`;
 const SOURCE_GIFT_ONE = `${PREFIX}gift-one`;
 const SOURCE_GIFT_TWO = `${PREFIX}gift-two`;
 const MANAGER_ASSIGNMENTS = [`${PREFIX}source-manager`, `${PREFIX}destination-manager`];
@@ -169,6 +173,7 @@ describe.skipIf(!DATABASE_READY)('bulk gift copy [real DB]', () => {
 		storage.putObject.mockReset();
 		storage.deleteObject.mockReset();
 		storage.deleteObject.mockResolvedValue(undefined);
+		storage.deleteObjectsBestEffort.mockReset();
 		await getDb().delete(gift).where(eq(gift.wishlistId, DESTINATION_ID));
 		await getDb().delete(notification).where(eq(notification.userId, FOLLOWER_ID));
 		await getDb().delete(newGiftDigestState).where(eq(newGiftDigestState.userId, FOLLOWER_ID));
@@ -187,7 +192,7 @@ describe.skipIf(!DATABASE_READY)('bulk gift copy [real DB]', () => {
 		}
 		await getDb()
 			.delete(wishlist)
-			.where(inArray(wishlist.id, [SOURCE_ID, DESTINATION_ID]));
+			.where(inArray(wishlist.id, [SOURCE_ID, DESTINATION_ID, PERMANENT_SOURCE_ID]));
 		await getDb()
 			.delete(user)
 			.where(inArray(user.id, [RECIPIENT_ID, MANAGER_ID, FOLLOWER_ID]));
@@ -427,6 +432,129 @@ describe.skipIf(!DATABASE_READY)('bulk gift copy [real DB]', () => {
 			.set({ status: 'active', archivedAt: null })
 			.where(eq(wishlist.id, DESTINATION_ID));
 		await getDb().update(gift).set({ imageKey: null }).where(eq(gift.id, SOURCE_GIFT_ONE));
+	});
+
+	it('moves unreserved gifts out of a permanent wishlist and keeps reserved ones in place', async () => {
+		const reservedSourceId = `${PREFIX}permanent-reserved`;
+		const unreservedSourceId = `${PREFIX}permanent-unreserved`;
+		const unreservedSourceImageKey = `${PREFIX}permanent-unreserved.webp`;
+		const longAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
+		await getDb()
+			.insert(wishlist)
+			.values({
+				id: PERMANENT_SOURCE_ID,
+				shortId: `${PREFIX}permanent-source-short`,
+				recipientUserId: RECIPIENT_ID,
+				title: 'Permanent source',
+				kind: WISHLIST_KIND.permanent,
+				status: 'active',
+				sharedAt: new Date(Date.now() - 60 * 60 * 1000),
+			});
+		await getDb()
+			.insert(gift)
+			.values([
+				{
+					id: reservedSourceId,
+					wishlistId: PERMANENT_SOURCE_ID,
+					name: 'Reserved permanent gift',
+					createdAt: longAgo,
+				},
+				{
+					id: unreservedSourceId,
+					wishlistId: PERMANENT_SOURCE_ID,
+					name: 'Unreserved permanent gift',
+					imageKey: unreservedSourceImageKey,
+					createdAt: longAgo,
+				},
+			]);
+		await getDb()
+			.insert(reservation)
+			.values({ giftId: reservedSourceId, userId: FOLLOWER_ID, quantity: 1 });
+		await getDb().insert(giftLike).values({ giftId: reservedSourceId, userId: FOLLOWER_ID });
+		storage.getObject.mockResolvedValue({
+			body: new ArrayBuffer(1),
+			contentType: 'image/webp',
+			etag: 'etag',
+		});
+		storage.putObject.mockResolvedValue(true);
+
+		const result = await copyGifts(RECIPIENT_ID, {
+			sourceWishlistId: PERMANENT_SOURCE_ID,
+			destinationWishlistId: DESTINATION_ID,
+			giftIds: [reservedSourceId, unreservedSourceId],
+			removeUnreservedSources: true,
+		});
+
+		expect(result.removedSourceIds).toEqual([unreservedSourceId]);
+		const sources = await getDb()
+			.select({ id: gift.id, deletedAt: gift.deletedAt })
+			.from(gift)
+			.where(eq(gift.wishlistId, PERMANENT_SOURCE_ID));
+		expect(sources.find((row) => row.id === unreservedSourceId)?.deletedAt).not.toBeNull();
+		expect(sources.find((row) => row.id === reservedSourceId)?.deletedAt).toBeNull();
+		const sourceRevisions = await getDb()
+			.select()
+			.from(giftRevision)
+			.where(inArray(giftRevision.giftId, [reservedSourceId, unreservedSourceId]));
+		expect(sourceRevisions).toHaveLength(1);
+		expect(sourceRevisions[0]).toMatchObject({
+			giftId: unreservedSourceId,
+			wishlistId: PERMANENT_SOURCE_ID,
+			before: { deletedAt: null },
+			after: { deletedAt: expect.any(String) },
+		});
+		expect(
+			await getDb()
+				.select()
+				.from(reservation)
+				.where(
+					and(eq(reservation.giftId, reservedSourceId), isNull(reservation.deletedAt)),
+				),
+		).toHaveLength(1);
+		expect(
+			await getDb().select().from(giftLike).where(eq(giftLike.giftId, reservedSourceId)),
+		).toHaveLength(1);
+
+		const copies = await getDb()
+			.select()
+			.from(gift)
+			.where(and(eq(gift.wishlistId, DESTINATION_ID), isNull(gift.deletedAt)));
+		expect(copies.map((row) => row.name).sort()).toEqual([
+			'Reserved permanent gift',
+			'Unreserved permanent gift',
+		]);
+		const copiedImageKey = copies.find(
+			(row) => row.name === 'Unreserved permanent gift',
+		)?.imageKey;
+		expect(copiedImageKey).toEqual(expect.any(String));
+		expect(copiedImageKey).not.toBe(unreservedSourceImageKey);
+		expect(storage.deleteObject).not.toHaveBeenCalled();
+		const deletedImageKeys = storage.deleteObjectsBestEffort.mock.calls.flatMap(
+			([keys]) => keys as string[],
+		);
+		expect(deletedImageKeys).toEqual([unreservedSourceImageKey]);
+	});
+
+	it('rejects removing copied sources from an occasion wishlist before copying', async () => {
+		const thrown = await copyGifts(RECIPIENT_ID, {
+			sourceWishlistId: SOURCE_ID,
+			destinationWishlistId: DESTINATION_ID,
+			giftIds: [SOURCE_GIFT_TWO],
+			removeUnreservedSources: true,
+		}).catch((caught: unknown) => caught);
+
+		expect(thrown).toMatchObject({
+			status: 400,
+			body: { message: SERVER_ERROR.BULK_COPY_SOURCE_NOT_PERMANENT },
+		});
+		expect(
+			await getDb().select().from(gift).where(eq(gift.wishlistId, DESTINATION_ID)),
+		).toHaveLength(0);
+		const [source] = await getDb()
+			.select({ deletedAt: gift.deletedAt })
+			.from(gift)
+			.where(eq(gift.id, SOURCE_GIFT_TWO));
+		expect(source?.deletedAt).toBeNull();
 	});
 
 	it('serializes concurrent appends while preserving each selected order', async () => {

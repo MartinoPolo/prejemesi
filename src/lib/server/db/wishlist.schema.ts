@@ -11,7 +11,7 @@ import {
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import { user, demoSession } from './auth.schema.js';
-import { paletteEnum, wishlistStatusEnum, wishlistThemeEnum } from './enums.js';
+import { paletteEnum, wishlistKindEnum, wishlistStatusEnum, wishlistThemeEnum } from './enums.js';
 import { generateId } from './id.js';
 import type { WishlistImageSlots } from '$lib/modules/images/types.js';
 
@@ -43,6 +43,7 @@ export const wishlist = pgTable(
 		description: text('description'),
 		eventDate: timestamp('event_date', { withTimezone: true }),
 		status: wishlistStatusEnum('status').notNull().default('draft'),
+		kind: wishlistKindEnum('kind').notNull().default('occasion'),
 		// Superseded by `palette`; kept for rollback safety, no reader remains.
 		theme: wishlistThemeEnum('theme').notNull().default('default'),
 		customThemeColor: text('custom_theme_color'),
