@@ -139,7 +139,7 @@ async function runBoundSteps(
 	const batchId = generateId();
 	const now = new Date();
 	const preparedSteps: PreparedStep[] = [];
-	const deferredEffects: Array<() => Promise<void>> = [];
+	const deferredEffects: Array<{ operationName: string; effect: () => Promise<void> }> = [];
 	let outcome: TransactionOutcome;
 	let committed = false;
 	try {
@@ -166,7 +166,11 @@ async function runBoundSteps(
 							recordGiftRevisions: (changes) =>
 								revisionCollector.record(preparedStep.operationName, changes),
 							noteReservedGiftEdits: (edits) => reservedGiftEdits.push(...edits),
-							deferEffect: (effect) => deferredEffects.push(effect),
+							deferEffect: (effect) =>
+								deferredEffects.push({
+									operationName: preparedStep.operationName,
+									effect,
+								}),
 						}),
 					);
 				}
@@ -207,8 +211,8 @@ async function runBoundSteps(
 	for (const preparedStep of preparedSteps) {
 		await settleBestEffort('committed preparation cleanup', () => preparedStep.onCommitted());
 	}
-	for (const effect of deferredEffects) {
-		await settleBestEffort('deferred effect', effect);
+	for (const { operationName, effect } of deferredEffects) {
+		await settleBestEffort(`deferred effect ${operationName} batch ${batchId}`, effect);
 	}
 	await dispatchReservedGiftEditNotifications(outcome.notifications);
 	scheduleGiftRevisionPurge();

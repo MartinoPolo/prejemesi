@@ -24,7 +24,12 @@ import {
 	type PreparedGiftCopy,
 } from '$lib/modules/gifts/gift_bulk_copy.js';
 import { assertActiveGiftCategoryAssignment } from '$lib/modules/gift-categories/gift_categories_service.js';
-import { OPERATION_KIND, defineOperation, type MutationOperationContext } from './operation.js';
+import {
+	OPERATION_EXPOSURE,
+	OPERATION_KIND,
+	defineOperation,
+	type MutationOperationContext,
+} from './operation.js';
 import { assertWishlistPriorityLevel, requireWishlistManagement } from './wishlist_management.js';
 import {
 	planPresentationUpdate,
@@ -65,6 +70,7 @@ function noteManagerEdits(
 export const reorderGiftsOperation = defineOperation({
 	name: 'reorderGifts',
 	kind: OPERATION_KIND.mutation,
+	exposure: OPERATION_EXPOSURE.agent,
 	input: ReorderGiftsInputSchema,
 	async run(context, { wishlistId, orderedGiftIds, groupChanges = [] }) {
 		const { transaction, now } = context;
@@ -319,6 +325,7 @@ function assertEveryGiftUpdated(
 export const bulkUpdateGiftsOperation = defineOperation({
 	name: 'bulkUpdateGifts',
 	kind: OPERATION_KIND.mutation,
+	exposure: OPERATION_EXPOSURE.agent,
 	input: BulkUpdateGiftsInputSchema,
 	async run(context, input) {
 		const { transaction, now } = context;
@@ -384,6 +391,7 @@ export const bulkUpdateGiftsOperation = defineOperation({
 export const bulkCopyGiftsOperation = defineOperation({
 	name: 'bulkCopyGifts',
 	kind: OPERATION_KIND.mutation,
+	exposure: OPERATION_EXPOSURE.agent,
 	input: BulkCopyGiftsInputSchema,
 	async prepare(actor, input, { dryRun }) {
 		const preparedCopy: PreparedGiftCopy = await prepareGiftCopy(actor.userId, input, {

@@ -22,11 +22,17 @@ vi.mock('$lib/server/remote.js', () => ({
 	singleFlightRefresh,
 }));
 
-const verifyManagerAccess = vi.fn();
-const assertWishlistMutable = vi.fn();
-vi.mock('$lib/modules/wishlists/wishlist_access.js', () => ({
-	verifyManagerAccess,
-	assertWishlistMutable,
+vi.mock('$lib/modules/wishlists/wishlist_access.js', () => ({ verifyManagerAccess: vi.fn() }));
+
+const tx = { marker: 'transaction' };
+vi.mock('$lib/server/db/index.js', () => ({
+	getDb: () => ({
+		transaction: async (callback: (database: typeof tx) => unknown) => callback(tx),
+	}),
+}));
+const requireMutableManagedWishlist = vi.fn();
+vi.mock('$lib/server/operations/wishlist_management.js', () => ({
+	requireMutableManagedWishlist,
 }));
 
 const saveGiftCategorySettings = vi.fn();
@@ -35,7 +41,6 @@ vi.mock('./gift_categories_service.js', () => ({
 	getManagedGiftCategorySettingsRows: vi.fn(),
 	saveGiftCategorySettings,
 }));
-vi.mock('./types.js', () => ({ SaveGiftCategorySettingsInputSchema: {} }));
 
 const getGiftsByWishlistShortId = vi.fn();
 Object.assign(getGiftsByWishlistShortId, { __: {} });
@@ -65,7 +70,7 @@ describe('gift category remote commands', () => {
 			presetColors: [],
 			confirmedRemovalCategoryIds: [],
 		};
-		verifyManagerAccess.mockResolvedValue({ wishlistRow });
+		requireMutableManagedWishlist.mockResolvedValue(wishlistRow);
 		saveGiftCategorySettings.mockResolvedValue(undefined);
 		singleFlightRefresh.mockImplementation(() => deferred().promise);
 
@@ -75,7 +80,14 @@ describe('gift category remote commands', () => {
 		) => Promise<void>;
 		await callSave({ user: { id: 'user-1' } }, input);
 
-		expect(saveGiftCategorySettings).toHaveBeenCalledWith(input);
+		expect(saveGiftCategorySettings).toHaveBeenCalledWith(
+			input,
+			expect.objectContaining({
+				transaction: tx,
+				recordGiftRevisions: expect.any(Function),
+				now: expect.any(Date),
+			}),
+		);
 		expect(singleFlightRefresh).toHaveBeenNthCalledWith(1, getGiftCategories, 'wishlist-1');
 		expect(singleFlightRefresh).toHaveBeenNthCalledWith(
 			2,

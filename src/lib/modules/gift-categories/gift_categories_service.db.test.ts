@@ -154,13 +154,20 @@ describe.skipIf(!DB_READY)('gift category color persistence [real DB]', () => {
 		expect(beforeCategory?.color).toBe(INITIAL_COLOR);
 		expect(beforeGift).toBeDefined();
 
-		await saveGiftCategorySettings({
-			wishlistId: WISHLIST_ID,
-			customCategories: [{ id: CATEGORY_ID, label: CATEGORY_LABEL, color: UPDATED_COLOR }],
-			presetKeys: [],
-			presetColors: [],
-			confirmedRemovalCategoryIds: [],
-		});
+		await database.transaction((transaction) =>
+			saveGiftCategorySettings(
+				{
+					wishlistId: WISHLIST_ID,
+					customCategories: [
+						{ id: CATEGORY_ID, label: CATEGORY_LABEL, color: UPDATED_COLOR },
+					],
+					presetKeys: [],
+					presetColors: [],
+					confirmedRemovalCategoryIds: [],
+				},
+				{ transaction, recordGiftRevisions: () => {}, now: new Date() },
+			),
+		);
 
 		const [afterCategory] = await database
 			.select()

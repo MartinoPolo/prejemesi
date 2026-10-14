@@ -21,6 +21,7 @@ import {
 } from './types.js';
 import type { GiftCreationTransaction } from '$lib/modules/gifts/gift_creation_service.js';
 import type { GiftDraftInput } from '$lib/modules/gifts/types.js';
+import type { RecordGiftRevisions } from '$lib/server/operations/gift_revisions.js';
 import { giftCategoryColorForIndex } from './gift_category_colors.js';
 
 type CategoryDatabase = ReturnType<typeof getDb> | GiftCreationTransaction;
@@ -361,6 +362,13 @@ export async function resolveImportGiftCategoryAssignments(params: {
 	return assignmentByImportedLabel;
 }
 
+/** The caller's transaction, its gift revision recorder and the batch timestamp. */
+interface GiftCategorySettingsWrite {
+	transaction: CategoryDatabase;
+	recordGiftRevisions: RecordGiftRevisions;
+	now: Date;
+}
+
 /**
  * Reconciles the complete settings snapshot under one wishlist lock. Retained rows are updated
  * in place; used removals require confirmation before their gifts are de-assigned and the category
@@ -368,8 +376,9 @@ export async function resolveImportGiftCategoryAssignments(params: {
  */
 export async function saveGiftCategorySettings(
 	params: SaveGiftCategorySettingsInput,
-	database?: CategoryDatabase,
+	write: GiftCategorySettingsWrite,
 ): Promise<void> {
+	const { recordGiftRevisions, now } = write;
 	const reconcile = async (tx: CategoryDatabase) => {
 		await lockWishlistCategoryStructure(tx, params.wishlistId);
 		const rows = await tx
@@ -446,9 +455,8 @@ export async function saveGiftCategorySettings(
 			normalizedLabels.add(normalized);
 		}
 
-		const now = new Date();
 		const removeCategory = async (categoryId: string): Promise<void> => {
-			await tx
+			const unassignedGifts = await tx
 				.update(gift)
 				.set({ categoryId: null, updatedAt: now })
 				.where(
@@ -457,7 +465,16 @@ export async function saveGiftCategorySettings(
 						eq(gift.wishlistId, params.wishlistId),
 						isNull(gift.deletedAt),
 					),
-				);
+				)
+				.returning();
+			await recordGiftRevisions(
+				unassignedGifts.map((unassignedGift) => ({
+					giftId: unassignedGift.id,
+					wishlistId: unassignedGift.wishlistId,
+					before: { ...unassignedGift, categoryId },
+					after: unassignedGift,
+				})),
+			);
 			await tx
 				.update(giftCategory)
 				.set({ deletedAt: now, updatedAt: now })
@@ -569,11 +586,7 @@ export async function saveGiftCategorySettings(
 				.where(eq(giftCategory.id, id));
 		}
 	};
-	if (database !== undefined) {
-		await reconcile(database);
-	} else {
-		await getDb().transaction(reconcile);
-	}
+	await reconcile(write.transaction);
 }
 
 export function presetSortOrder(presetKey: GiftCategoryPresetKey): number {

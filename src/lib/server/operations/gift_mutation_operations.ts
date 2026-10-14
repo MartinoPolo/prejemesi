@@ -13,7 +13,7 @@ import {
 } from '$lib/modules/gifts/types.js';
 import { appendGiftsUsingTransaction } from '$lib/modules/gifts/gift_creation_service.js';
 import { mapGiftCreationError } from '$lib/modules/gifts/gift_creation_transport.js';
-import { OPERATION_KIND, defineOperation } from './operation.js';
+import { OPERATION_EXPOSURE, OPERATION_KIND, defineOperation } from './operation.js';
 import { requireWishlistManagement, type ManagedWishlist } from './wishlist_management.js';
 import { applyGiftUpdate, type GiftRow } from './gift_update.js';
 import { softDeleteGift } from './gift_deletion.js';
@@ -45,6 +45,7 @@ async function lockManagedGift(
 export const createGiftOperation = defineOperation({
 	name: 'createGift',
 	kind: OPERATION_KIND.mutation,
+	exposure: OPERATION_EXPOSURE.agent,
 	input: CreateGiftInputSchema,
 	async run(context, input) {
 		const { wishlistRow } = await requireWishlistManagement(
@@ -80,6 +81,7 @@ export const createGiftOperation = defineOperation({
 export const updateGiftOperation = defineOperation({
 	name: 'updateGift',
 	kind: OPERATION_KIND.mutation,
+	exposure: OPERATION_EXPOSURE.agent,
 	input: UpdateGiftInputSchema,
 	async run(context, input) {
 		rejectDemoGiftImages([input]);
@@ -110,6 +112,7 @@ export const updateGiftOperation = defineOperation({
 export const appendGiftDescriptionOperation = defineOperation({
 	name: 'appendGiftDescription',
 	kind: OPERATION_KIND.mutation,
+	exposure: OPERATION_EXPOSURE.agent,
 	input: v.strictObject({
 		giftId: v.string(),
 		text: v.pipe(v.string(), v.trim(), v.minLength(1)),
@@ -139,6 +142,7 @@ export const appendGiftDescriptionOperation = defineOperation({
 export const deleteGiftOperation = defineOperation({
 	name: 'deleteGift',
 	kind: OPERATION_KIND.mutation,
+	exposure: OPERATION_EXPOSURE.agent,
 	input: v.strictObject({ giftId: v.string() }),
 	async run(context, input) {
 		const { giftRow, managedWishlist } = await lockManagedGift(
@@ -158,6 +162,7 @@ export const deleteGiftOperation = defineOperation({
 export const markGiftReceivedOperation = defineOperation({
 	name: 'markGiftReceived',
 	kind: OPERATION_KIND.mutation,
+	exposure: OPERATION_EXPOSURE.agent,
 	input: MarkGiftReceivedInputSchema,
 	async run(context, input) {
 		const { giftRow, managedWishlist } = await lockManagedGift(

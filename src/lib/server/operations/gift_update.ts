@@ -23,7 +23,11 @@ import {
 import { isWithinGraceWindow } from '$lib/modules/sharing/grace_window.js';
 import { assertActiveGiftCategoryAssignment } from '$lib/modules/gift-categories/gift_categories_service.js';
 import type { MutationOperationContext } from './operation.js';
-import type { ManagedWishlist, WishlistRow } from './wishlist_management.js';
+import {
+	assertWishlistPriorityLevel,
+	type ManagedWishlist,
+	type WishlistRow,
+} from './wishlist_management.js';
 
 export type GiftRow = typeof gift.$inferSelect;
 export type GiftUpdateData = Partial<typeof gift.$inferInsert>;
@@ -306,6 +310,14 @@ export async function applyGiftUpdate(
 			transaction,
 			giftRow.wishlistId,
 			input.categoryId,
+		);
+	}
+	// The foreign key alone accepts another wishlist's level, and an undo may target a removed one.
+	if (updateData.priorityLevelId !== undefined) {
+		await assertWishlistPriorityLevel(
+			transaction,
+			giftRow.wishlistId,
+			updateData.priorityLevelId,
 		);
 	}
 
