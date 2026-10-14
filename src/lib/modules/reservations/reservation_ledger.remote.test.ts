@@ -355,29 +355,24 @@ describe('statement budgets (issue #108, REQ-7)', () => {
 	});
 
 	it('reserveGift (no likers/followers to notify) stays within 6 statements', async () => {
-		// Call #1: `database` – tx queue: locked gift, count, insert; then likers +
-		// followers pop empty defaults, so both notification dispatches early-return.
+		// The operation core's one transaction queue: gift+wishlist, locked gift, count, insert;
+		// after commit, likers + followers are read through getDb() again and pop empty defaults.
 		const database = createMultiQueryChain(
+			[makeActiveWishlistRow()],
 			[{ quantity: 5 }],
 			[{ totalQuantity: 0 }],
 			[{ id: RESERVATION_ID }],
 		);
-		// Call #2: getGiftWithWishlist query
-		const wishlistDb = createChain([makeActiveWishlistRow()]);
-
 		mockGetDb
 			.mockReturnValueOnce(database as unknown as ReturnType<typeof getDb>)
-			.mockReturnValueOnce(wishlistDb as unknown as ReturnType<typeof getDb>);
+			.mockReturnValueOnce(database as unknown as ReturnType<typeof getDb>);
 
 		await (reserveGift as (...args: unknown[]) => unknown)(makeAuthContext(fakeVisitorUser), {
 			giftId: GIFT_ID,
 			quantity: 1,
 		});
 
-		const chains = [database, wishlistDb] as unknown as Record<
-			string,
-			ReturnType<typeof vi.fn>
-		>[];
+		const chains = [database] as unknown as Record<string, ReturnType<typeof vi.fn>>[];
 		const statements = chains
 			.flatMap((chain) =>
 				['select', 'insert', 'update', 'delete'].map(

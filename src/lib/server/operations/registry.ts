@@ -38,6 +38,24 @@ import {
 	shareWishlistOperation,
 } from './wishlist_lifecycle_operations.js';
 import { createWishlistFromImportOperation, importGiftsOperation } from './import_operations.js';
+import {
+	cancelOwnReservationOperation,
+	reserveGiftOperation,
+	setReservationPurchasedOperation,
+	unreserveGiftOperation,
+} from './reservation_operations.js';
+import {
+	readMyGiftReservationsOperation,
+	readReservationLedgerOperation,
+} from './reservation_read_operations.js';
+import {
+	acceptModeratorInviteOperation,
+	generateModeratorInviteLinkOperation,
+	readWishlistModeratorsOperation,
+	removeModeratorOperation,
+	revokeModeratorInviteOperation,
+	selfPromoteToModeratorOperation,
+} from './manager_invitation_operations.js';
 import type { AnyOperation } from './operation.js';
 
 /** Every operation the core exposes, keyed by its name; agent surfaces are generated from this. */
@@ -69,4 +87,16 @@ export const OPERATION_REGISTRY = {
 	[archiveWishlistOperation.name]: archiveWishlistOperation,
 	[deleteWishlistOperation.name]: deleteWishlistOperation,
 	[flipRecipientToFreeTextOperation.name]: flipRecipientToFreeTextOperation,
+	[reserveGiftOperation.name]: reserveGiftOperation,
+	[cancelOwnReservationOperation.name]: cancelOwnReservationOperation,
+	[unreserveGiftOperation.name]: unreserveGiftOperation,
+	[setReservationPurchasedOperation.name]: setReservationPurchasedOperation,
+	[readReservationLedgerOperation.name]: readReservationLedgerOperation,
+	[readMyGiftReservationsOperation.name]: readMyGiftReservationsOperation,
+	[readWishlistModeratorsOperation.name]: readWishlistModeratorsOperation,
+	[generateModeratorInviteLinkOperation.name]: generateModeratorInviteLinkOperation,
+	[acceptModeratorInviteOperation.name]: acceptModeratorInviteOperation,
+	[revokeModeratorInviteOperation.name]: revokeModeratorInviteOperation,
+	[removeModeratorOperation.name]: removeModeratorOperation,
+	[selfPromoteToModeratorOperation.name]: selfPromoteToModeratorOperation,
 } as const satisfies Record<string, AnyOperation>;

@@ -60,6 +60,11 @@ vi.mock('drizzle-orm', () => ({
 	and: vi.fn((...args: unknown[]) => args),
 	isNull: vi.fn((arg: unknown) => arg),
 	count: vi.fn(() => 'count()'),
+	// Schema modules loaded through the operation runner build column defaults with `sql`.
+	sql: Object.assign(
+		vi.fn(() => 'sql'),
+		{ join: vi.fn(() => 'sql') },
+	),
 }));
 
 vi.mock('$lib/server/db/wishlist.schema.js', () => ({
@@ -290,14 +295,32 @@ describe('revokeModeratorInvite', () => {
 describe('removeModerator', () => {
 	it('recipient removes a moderator on a self list → succeeds (orphan guard exempt)', async () => {
 		// 1: assignment lookup, 2: requireWishlistRow (recipient = manager, no mod query),
-		// assertNotLastManager returns early (recipientUserId set → no count query), 3: soft-delete update
-		mockGetDb.mockReturnValue(createMockDb([[activeAssignmentRow], [activeWishlistRow], []]));
+		// 3: assignment re-check under the wishlist lock, assertNotLastManager returns early
+		// (recipientUserId set → no count query), 4: soft-delete update
+		mockGetDb.mockReturnValue(
+			createMockDb([
+				[activeAssignmentRow],
+				[activeWishlistRow],
+				[{ id: testAssignmentId }],
+				[],
+			]),
+		);
 
 		const result = await callRemoveModerator(recipientAuthContext, {
 			assignmentId: testAssignmentId,
 		});
 
 		expect(result).toBeUndefined();
+	});
+
+	it('assignment removed concurrently before the wishlist lock is granted → throws 404', async () => {
+		// 1: assignment lookup (still active), 2: requireWishlistRow (recipient = manager),
+		// 3: assignment re-check under the wishlist lock → already removed
+		mockGetDb.mockReturnValue(createMockDb([[activeAssignmentRow], [activeWishlistRow], []]));
+
+		await expect(
+			callRemoveModerator(recipientAuthContext, { assignmentId: testAssignmentId }),
+		).rejects.toMatchObject({ status: 404, message: 'MODERATOR_NOT_FOUND' });
 	});
 
 	it('assignment not found → throws 404', async () => {
@@ -311,12 +334,13 @@ describe('removeModerator', () => {
 	it('orphan guard: removing the last správce on a for-someone list → throws 403 CANNOT_REMOVE_LAST_MANAGER', async () => {
 		// The sole moderator (regularUser) tries to remove themselves from a list with no linked recipient.
 		// 1: assignment lookup, 2: requireWishlistRow (for-someone), 3: hasActiveModeratorAssignment → found,
-		// 4: countActiveModerators → 1 (last one) → guard throws before the soft-delete.
+		// 4: assignment re-check, 5: countActiveModerators → 1 (last one) → guard throws before the soft-delete.
 		mockGetDb.mockReturnValue(
 			createMockDb([
 				[activeAssignmentRow],
 				[forSomeoneWishlistRow],
 				[{ id: 'assignment-1' }],
+				[{ id: testAssignmentId }],
 				[{ value: 1 }],
 			]),
 		);
@@ -328,12 +352,13 @@ describe('removeModerator', () => {
 
 	it('for-someone list with more than one správce → removal is allowed', async () => {
 		// 1: assignment lookup, 2: requireWishlistRow (for-someone), 3: hasActiveModeratorAssignment → found,
-		// 4: countActiveModerators → 2 (guard passes), 5: soft-delete update.
+		// 4: assignment re-check, 5: countActiveModerators → 2 (guard passes), 6: soft-delete update.
 		mockGetDb.mockReturnValue(
 			createMockDb([
 				[activeAssignmentRow],
 				[forSomeoneWishlistRow],
 				[{ id: 'assignment-1' }],
+				[{ id: testAssignmentId }],
 				[{ value: 2 }],
 				[],
 			]),

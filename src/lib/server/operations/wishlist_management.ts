@@ -3,10 +3,14 @@ import { error } from '@sveltejs/kit';
 import type { DatabaseTransaction, getDb } from '$lib/server/db/index.js';
 import { wishlist, priorityLevel } from '$lib/server/db/wishlist.schema.js';
 import { moderatorAssignment } from '$lib/server/db/moderator.schema.js';
+import { wishlistFollower } from '$lib/server/db/follower.schema.js';
 import { wishlistScope } from '$lib/server/demo/scope.js';
 import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
 import { WISHLIST_ROLES, type WishlistRole } from '$lib/modules/wishlists/types.js';
-import { assertWishlistMutable } from '$lib/modules/wishlists/wishlist_access.js';
+import {
+	assertWishlistMutable,
+	resolveRoleOnWishlistRow,
+} from '$lib/modules/wishlists/wishlist_access.js';
 import type { MutationOperationContext } from './operation.js';
 
 export type WishlistRow = typeof wishlist.$inferSelect;
@@ -41,6 +45,24 @@ export async function requireLiveWishlistRow(
 	return wishlistRow;
 }
 
+/** The live (not deleted, in-scope) wishlist addressed by its short id; 404 when missing. */
+export async function requireLiveWishlistRowByShortId(
+	database: ReturnType<typeof getDb>,
+	wishlistShortId: string,
+): Promise<WishlistRow> {
+	const [wishlistRow] = await database
+		.select()
+		.from(wishlist)
+		.where(
+			and(eq(wishlist.shortId, wishlistShortId), isNull(wishlist.deletedAt), wishlistScope()),
+		)
+		.limit(1);
+	if (wishlistRow === undefined) {
+		error(404, SERVER_ERROR.WISHLIST_NOT_FOUND);
+	}
+	return wishlistRow;
+}
+
 /**
  * Resolves the actor's role on a wishlist: the linked recipient, an active správce, or a visitor.
  * 404 for a missing wishlist. `lock` holds the wishlist and the assignment until the batch commits
@@ -53,27 +75,11 @@ export async function resolveWishlistAccess(
 	options: { lock: boolean },
 ): Promise<WishlistAccess> {
 	const wishlistRow = await requireLiveWishlistRow(transaction, wishlistId, options);
-	if (wishlistRow.recipientUserId === actorUserId) {
-		return { role: WISHLIST_ROLES.recipient, wishlistRow };
-	}
-
-	const assignmentQuery = transaction
-		.select({ id: moderatorAssignment.id })
-		.from(moderatorAssignment)
-		.where(
-			and(
-				eq(moderatorAssignment.wishlistId, wishlistId),
-				eq(moderatorAssignment.userId, actorUserId),
-				isNull(moderatorAssignment.deletedAt),
-			),
-		);
-	const [assignment] = options.lock
-		? await assignmentQuery.for('update')
-		: await assignmentQuery.limit(1);
-	return {
-		role: assignment === undefined ? WISHLIST_ROLES.visitor : WISHLIST_ROLES.moderator,
-		wishlistRow,
-	};
+	const role = await resolveRoleOnWishlistRow(actorUserId, wishlistRow, {
+		database: transaction,
+		lock: options.lock,
+	});
+	return { role, wishlistRow };
 }
 
 /** {@link resolveWishlistAccess} for management: 403 unless the actor is the recipient or a správce. */
@@ -127,4 +133,35 @@ export async function assertWishlistPriorityLevel(
 	if (levels[0] === undefined) {
 		error(400, SERVER_ERROR.GIFT_PRIORITY_WISHLIST_MISMATCH);
 	}
+}
+
+/** Users actively following the wishlist. */
+export async function activeFollowerUserIds(
+	database: DatabaseTransaction | ReturnType<typeof getDb>,
+	wishlistId: string,
+): Promise<string[]> {
+	const followerRows = await database
+		.select({ userId: wishlistFollower.userId })
+		.from(wishlistFollower)
+		.where(
+			and(eq(wishlistFollower.wishlistId, wishlistId), isNull(wishlistFollower.unfollowedAt)),
+		);
+	return followerRows.map((row) => row.userId);
+}
+
+/** Users holding an active správce assignment on the wishlist. */
+export async function activeModeratorUserIds(
+	database: DatabaseTransaction | ReturnType<typeof getDb>,
+	wishlistId: string,
+): Promise<string[]> {
+	const moderatorRows = await database
+		.select({ userId: moderatorAssignment.userId })
+		.from(moderatorAssignment)
+		.where(
+			and(
+				eq(moderatorAssignment.wishlistId, wishlistId),
+				isNull(moderatorAssignment.deletedAt),
+			),
+		);
+	return moderatorRows.map((row) => row.userId);
 }
