@@ -9,6 +9,17 @@ export const OPERATION_KIND = {
 	mutation: 'mutation',
 } as const;
 
+/**
+ * Who may call an operation once agent surfaces are generated from the registry. Sharing,
+ * archiving, reverting and deleting wishlists stay with the human user.
+ */
+export const OPERATION_EXPOSURE = {
+	agent: 'agent',
+	humanOnly: 'humanOnly',
+} as const;
+
+export type OperationExposure = (typeof OPERATION_EXPOSURE)[keyof typeof OPERATION_EXPOSURE];
+
 export type OperationInputSchema = v.GenericSchema;
 
 export interface ReadOperationContext {
@@ -45,6 +56,7 @@ export interface ReadOperation<
 > {
 	readonly name: TName;
 	readonly kind: typeof OPERATION_KIND.read;
+	readonly exposure: OperationExposure;
 	readonly input: TSchema;
 	run(context: ReadOperationContext, input: v.InferOutput<TSchema>): Promise<TOutput>;
 }
@@ -56,6 +68,7 @@ export interface MutationOperation<
 > {
 	readonly name: TName;
 	readonly kind: typeof OPERATION_KIND.mutation;
+	readonly exposure: OperationExposure;
 	readonly input: TSchema;
 	readonly prepare?: undefined;
 	run(context: MutationOperationContext, input: v.InferOutput<TSchema>): Promise<TOutput>;
@@ -70,6 +83,7 @@ export interface PreparedMutationOperation<
 > {
 	readonly name: TName;
 	readonly kind: typeof OPERATION_KIND.mutation;
+	readonly exposure: OperationExposure;
 	readonly input: TSchema;
 	prepare(
 		actor: OperationActor,

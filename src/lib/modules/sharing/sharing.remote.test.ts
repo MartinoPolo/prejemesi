@@ -45,8 +45,12 @@ vi.mock('drizzle-orm', () => ({
 	eq: vi.fn((...args: unknown[]) => args),
 	and: vi.fn((...args: unknown[]) => args),
 	isNull: vi.fn((arg: unknown) => arg),
+	isNotNull: vi.fn((arg: unknown) => arg),
+	or: vi.fn((...args: unknown[]) => args),
 	inArray: vi.fn((...args: unknown[]) => args),
 	count: vi.fn(() => 'count'),
+	// Schema modules loaded through the operation runner build column defaults with `sql`.
+	sql: vi.fn(() => 'sql'),
 }));
 
 vi.mock('$lib/server/db/gift.schema.js', () => ({

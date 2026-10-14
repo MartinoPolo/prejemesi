@@ -5,7 +5,9 @@ import { wishlist, priorityLevel } from '$lib/server/db/wishlist.schema.js';
 import { moderatorAssignment } from '$lib/server/db/moderator.schema.js';
 import { wishlistScope } from '$lib/server/demo/scope.js';
 import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
-import { WISHLIST_ROLES } from '$lib/modules/wishlists/types.js';
+import { WISHLIST_ROLES, type WishlistRole } from '$lib/modules/wishlists/types.js';
+import { assertWishlistMutable } from '$lib/modules/wishlists/wishlist_access.js';
+import type { MutationOperationContext } from './operation.js';
 
 export type WishlistRow = typeof wishlist.$inferSelect;
 export type ManagerRole = typeof WISHLIST_ROLES.recipient | typeof WISHLIST_ROLES.moderator;
@@ -15,17 +17,17 @@ export interface ManagedWishlist {
 	wishlistRow: WishlistRow;
 }
 
-/**
- * Resolves the actor's management role on a wishlist: the linked recipient or an active správce.
- * 404 for a missing wishlist, 403 for everyone else. `lock` holds the wishlist and the assignment
- * until the batch commits so access cannot be revoked mid-mutation; reads pass the plain database.
- */
-export async function requireWishlistManagement(
+interface WishlistAccess {
+	role: WishlistRole;
+	wishlistRow: WishlistRow;
+}
+
+/** The live (not deleted, in-scope) wishlist row; 404 when missing. */
+export async function requireLiveWishlistRow(
 	transaction: DatabaseTransaction | ReturnType<typeof getDb>,
-	actorUserId: string,
 	wishlistId: string,
 	options: { lock: boolean },
-): Promise<ManagedWishlist> {
+): Promise<WishlistRow> {
 	const wishlistQuery = transaction
 		.select()
 		.from(wishlist)
@@ -36,6 +38,21 @@ export async function requireWishlistManagement(
 	if (wishlistRow === undefined) {
 		error(404, SERVER_ERROR.WISHLIST_NOT_FOUND);
 	}
+	return wishlistRow;
+}
+
+/**
+ * Resolves the actor's role on a wishlist: the linked recipient, an active správce, or a visitor.
+ * 404 for a missing wishlist. `lock` holds the wishlist and the assignment until the batch commits
+ * so access cannot be revoked mid-mutation; reads pass the plain database.
+ */
+export async function resolveWishlistAccess(
+	transaction: DatabaseTransaction | ReturnType<typeof getDb>,
+	actorUserId: string,
+	wishlistId: string,
+	options: { lock: boolean },
+): Promise<WishlistAccess> {
+	const wishlistRow = await requireLiveWishlistRow(transaction, wishlistId, options);
 	if (wishlistRow.recipientUserId === actorUserId) {
 		return { role: WISHLIST_ROLES.recipient, wishlistRow };
 	}
@@ -53,10 +70,45 @@ export async function requireWishlistManagement(
 	const [assignment] = options.lock
 		? await assignmentQuery.for('update')
 		: await assignmentQuery.limit(1);
-	if (assignment === undefined) {
+	return {
+		role: assignment === undefined ? WISHLIST_ROLES.visitor : WISHLIST_ROLES.moderator,
+		wishlistRow,
+	};
+}
+
+/** {@link resolveWishlistAccess} for management: 403 unless the actor is the recipient or a správce. */
+export async function requireWishlistManagement(
+	transaction: DatabaseTransaction | ReturnType<typeof getDb>,
+	actorUserId: string,
+	wishlistId: string,
+	options: { lock: boolean },
+): Promise<ManagedWishlist> {
+	const { role, wishlistRow } = await resolveWishlistAccess(
+		transaction,
+		actorUserId,
+		wishlistId,
+		options,
+	);
+	if (role === WISHLIST_ROLES.visitor) {
 		error(403, SERVER_ERROR.ACCESS_DENIED);
 	}
-	return { role: WISHLIST_ROLES.moderator, wishlistRow };
+	return { role, wishlistRow };
+}
+
+/** {@link requireWishlistManagement} inside a mutation, rejecting an archived (read-only) wishlist. */
+export async function requireMutableManagedWishlist(
+	context: Pick<MutationOperationContext, 'actor' | 'transaction'>,
+	wishlistId: string,
+	options: { lock: boolean },
+): Promise<WishlistRow> {
+	const { wishlistRow } = await requireWishlistManagement(
+		context.transaction,
+		context.actor.userId,
+		wishlistId,
+		options,
+	);
+	assertWishlistMutable(wishlistRow);
+	return wishlistRow;
 }
 
 export async function assertWishlistPriorityLevel(

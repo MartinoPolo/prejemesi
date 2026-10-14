@@ -16,7 +16,7 @@ import {
 } from '$lib/modules/wishlists/wishlist_capabilities.js';
 import { publicGiftCategory } from '$lib/modules/gift-categories/gift_categories_service.js';
 import type { GiftForRecipient, GiftForVisitor } from '$lib/modules/gifts/types.js';
-import { OPERATION_KIND, defineOperation } from './operation.js';
+import { OPERATION_EXPOSURE, OPERATION_KIND, defineOperation } from './operation.js';
 import { requireWishlistManagement } from './wishlist_management.js';
 import { requireOperationActor, type OperationActor } from './actor.js';
 
@@ -270,6 +270,7 @@ function toVisitorGift(
 export const readWishlistGiftsOperation = defineOperation({
 	name: 'readWishlistGifts',
 	kind: OPERATION_KIND.read,
+	exposure: OPERATION_EXPOSURE.agent,
 	input: v.strictObject({ wishlistShortId: v.string() }),
 	async run({ actor }, { wishlistShortId }) {
 		const database = getDb();
@@ -306,6 +307,7 @@ export const readWishlistGiftsOperation = defineOperation({
 export const readBulkCopyDestinationsOperation = defineOperation({
 	name: 'readBulkCopyDestinations',
 	kind: OPERATION_KIND.read,
+	exposure: OPERATION_EXPOSURE.agent,
 	input: v.strictObject({ sourceWishlistId: v.string() }),
 	async run(context, { sourceWishlistId }) {
 		const actor = requireOperationActor(context.actor);
@@ -347,6 +349,7 @@ export const readBulkCopyDestinationsOperation = defineOperation({
 export const readPriorityLevelsOperation = defineOperation({
 	name: 'readPriorityLevels',
 	kind: OPERATION_KIND.read,
+	exposure: OPERATION_EXPOSURE.agent,
 	input: v.strictObject({ wishlistId: v.string() }),
 	async run(context, { wishlistId }) {
 		const actor = requireOperationActor(context.actor);

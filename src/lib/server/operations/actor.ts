@@ -1,4 +1,5 @@
 import { error } from '@sveltejs/kit';
+import { isAppAdmin } from '$lib/server/admin.js';
 
 /** The 401 message every signed-in-only entry point uses. */
 export const AUTHENTICATION_REQUIRED_MESSAGE = 'Authentication required';
@@ -21,6 +22,8 @@ export interface OperationActor {
 	/** Carried so notifications name the actor without another lookup. */
 	userName: string;
 	channel: OperationChannel;
+	/** Resolved server-side from `ADMIN_EMAILS`; grants only the narrow administrator capabilities. */
+	isAppAdministrator: boolean;
 }
 
 export function tokenChannel(tokenName: string): OperationChannel {
@@ -35,6 +38,15 @@ export function requireOperationActor(actor: OperationActor | null): OperationAc
 	return actor;
 }
 
-export function userInterfaceActor(user: { id: string; name: string }): OperationActor {
-	return { userId: user.id, userName: user.name, channel: OPERATION_CHANNEL.ui };
+export function userInterfaceActor(user: {
+	id: string;
+	name: string;
+	email?: string | null;
+}): OperationActor {
+	return {
+		userId: user.id,
+		userName: user.name,
+		channel: OPERATION_CHANNEL.ui,
+		isAppAdministrator: isAppAdmin(user.email),
+	};
 }

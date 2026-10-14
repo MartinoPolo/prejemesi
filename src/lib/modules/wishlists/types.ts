@@ -164,6 +164,34 @@ export interface WishlistWithRole extends Wishlist {
 	role: WishlistRole;
 }
 
+export const PRIORITY_LEVEL_LABEL_MAX_LENGTH = 80;
+
+export const MAX_PRIORITY_LEVELS = 20;
+
+/**
+ * The complete ordered set of a wishlist's priority levels: listed levels keep their id (renamed
+ * and reordered in place), levels without an id are added, and omitted levels are removed. At
+ * least one level remains.
+ */
+export const SavePriorityLevelsInputSchema = v.strictObject({
+	wishlistId: v.string(),
+	levels: v.pipe(
+		v.array(
+			v.strictObject({
+				id: v.nullable(v.string()),
+				label: v.pipe(
+					v.string(),
+					v.trim(),
+					v.minLength(1),
+					v.maxLength(PRIORITY_LEVEL_LABEL_MAX_LENGTH),
+				),
+			}),
+		),
+		v.minLength(1),
+		v.maxLength(MAX_PRIORITY_LEVELS),
+	),
+});
+
 /** Default priority levels created with each wishlist */
 export const DEFAULT_PRIORITY_LEVELS = [
 	{ label: 'Vysoka', sortOrder: 1 },

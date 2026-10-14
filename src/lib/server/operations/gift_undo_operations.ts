@@ -12,7 +12,12 @@ import {
 	type UpdateGiftInput,
 } from '$lib/modules/gifts/types.js';
 import { jsonChanged } from '$lib/modules/gifts/gift_post_share.js';
-import { OPERATION_KIND, defineOperation, type MutationOperationContext } from './operation.js';
+import {
+	OPERATION_EXPOSURE,
+	OPERATION_KIND,
+	defineOperation,
+	type MutationOperationContext,
+} from './operation.js';
 import { requireWishlistManagement, type ManagedWishlist } from './wishlist_management.js';
 import { applyGiftUpdate, type GiftRow, type RestoredGiftState } from './gift_update.js';
 import { softDeleteGift } from './gift_deletion.js';
@@ -193,6 +198,7 @@ async function undoRevisions(
 export const undoGiftRevisionBatchOperation = defineOperation({
 	name: 'undoGiftRevisionBatch',
 	kind: OPERATION_KIND.mutation,
+	exposure: OPERATION_EXPOSURE.agent,
 	input: v.strictObject({ batchId: v.string() }),
 	async run(context, { batchId }) {
 		const revisions = await context.transaction
@@ -211,6 +217,7 @@ export const undoGiftRevisionBatchOperation = defineOperation({
 export const undoGiftRevisionOperation = defineOperation({
 	name: 'undoGiftRevision',
 	kind: OPERATION_KIND.mutation,
+	exposure: OPERATION_EXPOSURE.agent,
 	input: v.strictObject({ giftId: v.string() }),
 	async run(context, { giftId }) {
 		const latestRevisionId = (await findLatestRevisionIds(context.transaction, [giftId])).get(

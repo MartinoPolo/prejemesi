@@ -16,7 +16,7 @@ const transaction = vi.fn(async (callback: (database: typeof tx) => Promise<unkn
 vi.mock('$lib/server/db/index.js', () => ({ getDb: () => ({ transaction }) }));
 
 const saveLockedWishlistSettings = vi.fn();
-vi.mock('./wishlist_settings_service.js', () => ({ saveLockedWishlistSettings }));
+vi.mock('$lib/server/operations/wishlist_settings.js', () => ({ saveLockedWishlistSettings }));
 
 const deleteObjectsBestEffort = vi.fn();
 vi.mock('$lib/server/storage/r2.js', () => ({ deleteObjectsBestEffort }));
@@ -31,8 +31,6 @@ vi.mock('$lib/modules/gift-categories/gift_category_queries.remote.js', () => ({
 }));
 const getGiftsByWishlistShortId = Object.assign(vi.fn(), { __: {} });
 vi.mock('$lib/modules/gifts/gifts.remote.js', () => ({ getGiftsByWishlistShortId }));
-
-vi.mock('./wishlist_settings_types.js', () => ({ SaveWishlistSettingsInputSchema: {} }));
 
 const { saveWishlistSettings } = await import('./wishlist_settings.remote.js');
 
@@ -71,7 +69,13 @@ describe('saveWishlistSettings', () => {
 		await call({ user: { id: 'user-1' } }, input);
 
 		expect(transaction).toHaveBeenCalledOnce();
-		expect(saveLockedWishlistSettings).toHaveBeenCalledWith(tx, 'user-1', input);
+		expect(saveLockedWishlistSettings).toHaveBeenCalledWith(
+			expect.objectContaining({
+				transaction: tx,
+				actor: expect.objectContaining({ userId: 'user-1' }),
+			}),
+			input,
+		);
 		expect(deleteObjectsBestEffort).toHaveBeenCalledWith(['wishlists/old.webp']);
 		expect(saveLockedWishlistSettings.mock.invocationCallOrder[0]).toBeLessThan(
 			deleteObjectsBestEffort.mock.invocationCallOrder[0],

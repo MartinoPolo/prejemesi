@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { SaveGiftCategorySettingsInput } from './types.js';
 
 vi.mock('@sveltejs/kit', () => ({
 	error: vi.fn((status: number, message: string) => {
@@ -114,6 +115,17 @@ const {
 } = await import('./gift_categories_service.js');
 
 const WISHLIST_ID = 'wishlist-1';
+const BATCH_NOW = new Date('2026-01-01T00:00:00Z');
+const recordGiftRevisions = vi.fn();
+
+/** Settings are saved inside the operation's transaction with its revision recorder. */
+function saveSettings(params: SaveGiftCategorySettingsInput) {
+	return saveGiftCategorySettings(params, {
+		transaction: mockDbInstance.db as never,
+		recordGiftRevisions,
+		now: BATCH_NOW,
+	});
+}
 const CATEGORY_ID = 'category-1';
 
 const customCategory = {
@@ -239,14 +251,24 @@ describe('gift category management service', () => {
 		mockDbInstance.pushResult([]); // wishlist lock
 		mockDbInstance.pushResult([customCategory]);
 		mockDbInstance.pushResult([{ categoryId: CATEGORY_ID }]);
+		mockDbInstance.pushResult([{ id: 'gift-1', wishlistId: WISHLIST_ID, categoryId: null }]);
 
-		await saveGiftCategorySettings({
+		await saveSettings({
 			wishlistId: WISHLIST_ID,
 			customCategories: [],
 			presetKeys: [],
 			presetColors: [],
 			confirmedRemovalCategoryIds: [CATEGORY_ID],
 		});
+
+		expect(recordGiftRevisions).toHaveBeenCalledWith([
+			{
+				giftId: 'gift-1',
+				wishlistId: WISHLIST_ID,
+				before: expect.objectContaining({ categoryId: CATEGORY_ID }),
+				after: expect.objectContaining({ categoryId: null }),
+			},
+		]);
 
 		const setCalls = mockDbInstance.calls.filter((call) => call.method === 'set');
 		expect(setCalls).toHaveLength(2);
@@ -258,9 +280,6 @@ describe('gift category management service', () => {
 			deletedAt: expect.any(Date),
 			updatedAt: expect.any(Date),
 		});
-		expect(mockDbInstance.calls.filter((call) => call.method === 'transaction')).toHaveLength(
-			1,
-		);
 		expect(mockDbInstance.calls.filter((call) => call.method === 'for')).toHaveLength(2);
 	});
 
@@ -275,7 +294,7 @@ describe('gift category management service', () => {
 		mockDbInstance.pushResult([presetCategory]);
 		mockDbInstance.pushResult([{ categoryId: presetCategory.id }]);
 
-		await saveGiftCategorySettings({
+		await saveSettings({
 			wishlistId: WISHLIST_ID,
 			customCategories: [],
 			presetKeys: [],
@@ -297,7 +316,7 @@ describe('gift category management service', () => {
 		mockDbInstance.pushResult([customCategory]);
 		mockDbInstance.pushResult([]);
 
-		await saveGiftCategorySettings({
+		await saveSettings({
 			wishlistId: WISHLIST_ID,
 			customCategories: [],
 			presetKeys: [],
@@ -320,7 +339,7 @@ describe('gift category management service', () => {
 		mockDbInstance.pushResult([{ categoryId: CATEGORY_ID }]);
 
 		await expect(
-			saveGiftCategorySettings({
+			saveSettings({
 				wishlistId: WISHLIST_ID,
 				customCategories: [],
 				presetKeys: [],
@@ -334,7 +353,7 @@ describe('gift category management service', () => {
 	it('serializes rename without marking assigned gifts edited after share', async () => {
 		mockDbInstance.pushResult([]); // wishlist lock
 		mockDbInstance.pushResult([customCategory]);
-		await saveGiftCategorySettings({
+		await saveSettings({
 			wishlistId: WISHLIST_ID,
 			customCategories: [{ id: CATEGORY_ID, label: 'Sportovní vybavení', color: '#0369A1' }],
 			presetKeys: [],
@@ -363,7 +382,7 @@ describe('gift category management service', () => {
 		mockDbInstance.pushResult([]); // wishlist lock
 		mockDbInstance.pushResult([presetCategory]);
 
-		await saveGiftCategorySettings({
+		await saveSettings({
 			wishlistId: WISHLIST_ID,
 			customCategories: [],
 			presetKeys: ['books'],
@@ -394,7 +413,7 @@ describe('gift category management service', () => {
 		mockDbInstance.pushResult([]); // wishlist lock
 		mockDbInstance.pushResult([firstCategory, secondCategory]);
 
-		await saveGiftCategorySettings({
+		await saveSettings({
 			wishlistId: WISHLIST_ID,
 			customCategories: [
 				{ id: CATEGORY_ID, label: 'Kategorie Beta', color: '#0369A1' },
@@ -415,9 +434,6 @@ describe('gift category management service', () => {
 			expect.stringMatching(/^__category_reconcile_/),
 		]);
 		expect(labels.slice(2)).toEqual(['Kategorie Beta', 'Kategorie Alfa']);
-		expect(mockDbInstance.calls.filter((call) => call.method === 'transaction')).toHaveLength(
-			1,
-		);
 	});
 
 	it('creates explicitly resolved custom import categories inside the caller transaction', async () => {

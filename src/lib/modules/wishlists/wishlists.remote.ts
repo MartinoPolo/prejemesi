@@ -1,46 +1,43 @@
 import * as v from 'valibot';
-import { eq, and, isNull, count } from 'drizzle-orm';
+import { eq, and, isNull } from 'drizzle-orm';
 import { error } from '@sveltejs/kit';
 import { getDb } from '$lib/server/db/index.js';
 import { isAppAdmin } from '$lib/server/admin.js';
-import { wishlistScope, rejectDemoImageUpload } from '$lib/server/demo/scope.js';
+import { wishlistScope } from '$lib/server/demo/scope.js';
 import { wishlist } from '$lib/server/db/wishlist.schema.js';
 import { moderatorAssignment } from '$lib/server/db/moderator.schema.js';
 import { wishlistFollower } from '$lib/server/db/follower.schema.js';
 import { wishlistVisit } from '$lib/server/db/wishlist_visit.schema.js';
-import { gift, reservation } from '$lib/server/db/gift.schema.js';
 import { user } from '$lib/server/db/auth.schema.js';
 import { resolveUserImageUrl } from '$lib/modules/images/public_url.js';
-import { dispatchNotification } from '$lib/modules/notifications/notification_dispatcher.js';
-import { NOTIFICATION_TYPE } from '$lib/modules/notifications/types.js';
-import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
 import {
 	guardedCommand,
 	guardedQuery,
 	publicQuery,
 	singleFlightRefresh,
 } from '$lib/server/remote.js';
-import { deleteObjectsBestEffort } from '$lib/server/storage/r2.js';
-import { isWithinGraceWindow } from '$lib/modules/sharing/grace_window.js';
-import { seedNewWishlist } from './wishlist_create.js';
-import type { GiftCreationTransaction } from '$lib/modules/gifts/gift_creation_service.js';
+import { userInterfaceActor } from '$lib/server/operations/actor.js';
+import { executeOperation } from '$lib/server/operations/runner.js';
+import { resolveRevertAccess } from '$lib/server/operations/wishlist_revert.js';
 import {
-	resolveWishlistRole,
-	verifyManagerAccess,
-	verifyLinkedRecipientAccess,
-	assertWishlistMutable,
-} from './wishlist_access.js';
+	createWishlistOperation,
+	renameRecipientOperation,
+	setWishlistPaletteOperation,
+	updateWishlistOperation,
+} from '$lib/server/operations/wishlist_detail_operations.js';
 import {
-	resolveRevertCapability,
-	resolveReservationReleaseCapability,
-} from './wishlist_capabilities.js';
+	archiveWishlistOperation,
+	deleteWishlistOperation,
+	flipRecipientToFreeTextOperation,
+} from '$lib/server/operations/wishlist_lifecycle_operations.js';
+import { resolveWishlistRole } from './wishlist_access.js';
+import { resolveReservationReleaseCapability } from './wishlist_capabilities.js';
 import {
 	CreateWishlistInputSchema,
 	UpdateWishlistInputSchema,
 	RenameRecipientInputSchema,
 	FlipRecipientToFreeTextInputSchema,
 	SetWishlistPaletteInputSchema,
-	WISHLIST_ROLES,
 	type WishlistRole,
 } from './types.js';
 import {
@@ -112,30 +109,10 @@ export const getWishlistByShortId = publicQuery(v.string(), async (authContext, 
 	// (settings gear + danger tab) renders the exact variant without any admin logic of its own.
 	// The reservation count is consulted only for a manager/admin on an active list.
 	const isAdmin = isAppAdmin(authContext?.user.email);
-	const needsReservationCheck =
-		row.wishlist.status === 'active' &&
-		role !== WISHLIST_ROLES.recipient &&
-		(role === WISHLIST_ROLES.moderator || isAdmin);
-	let hasReservations = false;
-	if (needsReservationCheck) {
-		const reservationCountRows = await database
-			.select({ value: count() })
-			.from(reservation)
-			.innerJoin(gift, eq(reservation.giftId, gift.id))
-			.where(
-				and(
-					eq(gift.wishlistId, row.wishlist.id),
-					isNull(reservation.deletedAt),
-					isNull(gift.deletedAt),
-				),
-			);
-		hasReservations = (reservationCountRows[0]?.value ?? 0) > 0;
-	}
-	const revertCapability = resolveRevertCapability({
+	const { capability: revertCapability } = await resolveRevertAccess(database, {
 		role,
-		status: row.wishlist.status,
-		isAdmin,
-		hasReservations,
+		wishlistRow: row.wishlist,
+		isAppAdministrator: isAdmin,
 	});
 	// How far this viewer's reservation-release reach extends (issue #213, REQ-7). Reuses the
 	// `isAdmin`/`role` already resolved above, so it costs no extra query; the administrator
@@ -189,104 +166,19 @@ export const getFollowedWishlists = guardedQuery(async ({ user: currentUser }) =
 
 // ── Commands ─────────────────────────────────────────────────────────────────
 
-export const createWishlist = guardedCommand(CreateWishlistInputSchema, async ({ user }, input) => {
-	const database = getDb();
-	return database.transaction((tx) => seedNewWishlist(tx, user.id, input));
-});
-
-async function updateLockedWishlist(
-	tx: GiftCreationTransaction,
-	userId: string,
-	input: v.InferOutput<typeof UpdateWishlistInputSchema>,
-) {
-	rejectDemoImageUpload(input.imageKey);
-	const rows = await tx
-		.select()
-		.from(wishlist)
-		.where(and(eq(wishlist.id, input.id), isNull(wishlist.deletedAt), wishlistScope()))
-		.limit(1)
-		.for('update');
-	const row = rows[0];
-	if (row === undefined) {
-		error(404, SERVER_ERROR.WISHLIST_NOT_FOUND);
-	}
-	if (row.recipientUserId !== userId) {
-		const managers = await tx
-			.select({ id: moderatorAssignment.id })
-			.from(moderatorAssignment)
-			.where(
-				and(
-					eq(moderatorAssignment.wishlistId, row.id),
-					eq(moderatorAssignment.userId, userId),
-					isNull(moderatorAssignment.deletedAt),
-				),
-			)
-			.limit(1);
-		if (managers[0] === undefined) {
-			error(403, SERVER_ERROR.ACCESS_DENIED);
-		}
-	}
-	if (row.status === 'archived') {
-		error(400, SERVER_ERROR.CANNOT_MODIFY_ARCHIVED_WISHLIST);
-	}
-
-	const now = new Date();
-	const isShared = row.sharedAt !== null;
-	const updateData: Record<string, unknown> = { updatedAt: now };
-	if (input.title !== undefined) {
-		updateData['title'] = input.title;
-	}
-	if (input.description !== undefined) {
-		updateData['description'] = input.description;
-	}
-
-	const eventDateGraceOpen =
-		isShared && isWithinGraceWindow(row.eventDateEditedAt ?? row.sharedAt, now);
-	if (input.eventDate !== undefined && (!isShared || eventDateGraceOpen)) {
-		updateData['eventDate'] = input.eventDate;
-		if (isShared) {
-			updateData['eventDateEditedAt'] = now;
-		}
-	}
-
-	if (
-		input.imageKey !== undefined &&
-		input.imageKey !== null &&
-		input.imageKey !== row.imageKey
-	) {
-		const { assertWishlistBannerAssignment } = await import('./wishlist_image_assignment.js');
-		await assertWishlistBannerAssignment(userId, input.imageKey, input.imageAssignmentToken);
-	}
-	if (input.imageKey !== undefined) {
-		updateData['imageKey'] = input.imageKey;
-	}
-	if (input.imageSlots !== undefined) {
-		updateData['imageSlots'] = input.imageSlots;
-	}
-
-	const [updated] = await tx
-		.update(wishlist)
-		.set(updateData)
-		.where(eq(wishlist.id, input.id))
-		.returning();
-	return {
-		updated,
-		shortId: row.shortId,
-		replacedImageKey:
-			input.imageKey !== undefined && row.imageKey !== input.imageKey ? row.imageKey : null,
-	};
-}
+export const createWishlist = guardedCommand(CreateWishlistInputSchema, async ({ user }, input) =>
+	executeOperation(userInterfaceActor(user), createWishlistOperation, input),
+);
 
 export const updateWishlist = guardedCommand(UpdateWishlistInputSchema, async ({ user }, input) => {
-	const database = getDb();
-	// Lock/read/update form one serialization point. Cleanup uses the key this transaction
-	// actually replaced, never a stale pre-transaction read from a competing image save.
-	const result = await database.transaction((tx) => updateLockedWishlist(tx, user.id, input));
-	if (result.replacedImageKey !== null) {
-		await deleteObjectsBestEffort([result.replacedImageKey]);
-	}
-	singleFlightRefresh(getWishlistByShortId, result.shortId);
-	return result.updated;
+	// The operation locks the wishlist, so cleanup after commit deletes exactly the banner it replaced.
+	const { wishlist: updated, wishlistShortId } = await executeOperation(
+		userInterfaceActor(user),
+		updateWishlistOperation,
+		input,
+	);
+	singleFlightRefresh(getWishlistByShortId, wishlistShortId);
+	return updated;
 });
 
 /**
@@ -297,26 +189,14 @@ export const updateWishlist = guardedCommand(UpdateWishlistInputSchema, async ({
 export const renameRecipient = guardedCommand(
 	RenameRecipientInputSchema,
 	async ({ user }, input) => {
-		const database = getDb();
-
-		const { wishlistRow } = await verifyManagerAccess(user.id, input.id);
-		if (wishlistRow.status === 'archived') {
-			error(400, SERVER_ERROR.CANNOT_MODIFY_ARCHIVED_WISHLIST);
-		}
-		if (wishlistRow.recipientUserId !== null) {
-			error(400, SERVER_ERROR.RECIPIENT_RENAME_NOT_ALLOWED);
-		}
-
-		const [updated] = await database
-			.update(wishlist)
-			.set({ recipientName: input.recipientName, updatedAt: new Date() })
-			.where(eq(wishlist.id, input.id))
-			.returning();
-
+		const { wishlist: updated, wishlistShortId } = await executeOperation(
+			userInterfaceActor(user),
+			renameRecipientOperation,
+			input,
+		);
 		// Single-flight refresh (issue #108, REQ-3/4): header/meta surfaces tracking the
 		// wishlist query get the renamed recipient in the same round trip.
-		singleFlightRefresh(getWishlistByShortId, wishlistRow.shortId);
-
+		singleFlightRefresh(getWishlistByShortId, wishlistShortId);
 		return updated;
 	},
 );
@@ -335,65 +215,17 @@ export const renameRecipient = guardedCommand(
 export const flipRecipientToFreeText = guardedCommand(
 	FlipRecipientToFreeTextInputSchema,
 	async ({ user: currentUser }, input) => {
-		const database = getDb();
-
-		const wishlistRow = await verifyLinkedRecipientAccess(currentUser.id, input.id);
-		assertWishlistMutable(wishlistRow);
-
-		const updated = await database.transaction(async (tx) => {
-			const [row] = await tx
-				.update(wishlist)
-				.set({
-					recipientUserId: null,
-					recipientName: input.recipientName,
-					recipientIsModerator: false,
-					updatedAt: new Date(),
-				})
-				.where(eq(wishlist.id, input.id))
-				.returning();
-
-			// The ex-recipient keeps managing as a regular správce with normal správce
-			// visibility. A linked recipient can never already hold an active assignment
-			// (acceptModeratorInvite rejects the recipient), so a plain insert is safe.
-			await tx.insert(moderatorAssignment).values({
-				wishlistId: input.id,
-				userId: currentUser.id,
-			});
-
-			return row;
-		});
-
-		// Shared list: followers learn the actor now sees reservations — same channel and
-		// copy as recipient self-promote. Draft: silent. Archived was rejected above.
-		if (wishlistRow.sharedAt !== null) {
-			const followerRows = await database
-				.select({ userId: wishlistFollower.userId })
-				.from(wishlistFollower)
-				.where(
-					and(
-						eq(wishlistFollower.wishlistId, input.id),
-						isNull(wishlistFollower.unfollowedAt),
-					),
-				);
-
-			await dispatchNotification({
-				type: NOTIFICATION_TYPE.RECIPIENT_SELF_PROMOTED,
-				targetUserIds: followerRows
-					.map((row) => row.userId)
-					.filter((targetUserId) => targetUserId !== currentUser.id),
-				wishlistId: input.id,
-				actorId: currentUser.id,
-				actorName: currentUser.name,
-			});
-		}
-
+		const { wishlist: updated, wishlistShortId } = await executeOperation(
+			userInterfaceActor(currentUser),
+			flipRecipientToFreeTextOperation,
+			input,
+		);
 		// Single-flight refresh (issue #108, REQ-3/4): the open wishlist page gets the new
 		// role in the same round trip, and the list moves from "Moje seznamy" to "Spravované"
 		// on both dashboards without a reload.
-		singleFlightRefresh(getWishlistByShortId, wishlistRow.shortId);
+		singleFlightRefresh(getWishlistByShortId, wishlistShortId);
 		singleFlightRefresh(getMyWishlists);
 		singleFlightRefresh(getModeratedWishlists);
-
 		return updated;
 	},
 );
@@ -406,103 +238,36 @@ export const flipRecipientToFreeText = guardedCommand(
 export const setWishlistPalette = guardedCommand(
 	SetWishlistPaletteInputSchema,
 	async ({ user }, input) => {
-		const database = getDb();
-
-		const { wishlistRow } = await verifyManagerAccess(user.id, input.wishlistId);
-		assertWishlistMutable(wishlistRow);
-
-		const [updated] = await database
-			.update(wishlist)
-			.set({ palette: input.palette, updatedAt: new Date() })
-			.where(eq(wishlist.id, input.wishlistId))
-			.returning();
-
+		const { wishlist: updated, wishlistShortId } = await executeOperation(
+			userInterfaceActor(user),
+			setWishlistPaletteOperation,
+			input,
+		);
 		// Single-flight refresh (issue #108, REQ-3/4): only the open wishlist page query
 		// rides back. Dashboards and nav dropdowns are NOT refreshed per mutation — those
 		// surfaces re-fetch when they are actually opened, so refreshing them here only
 		// burned three list queries per palette change.
-		singleFlightRefresh(getWishlistByShortId, wishlistRow.shortId);
-
+		singleFlightRefresh(getWishlistByShortId, wishlistShortId);
 		return updated;
 	},
 );
 
 export const archiveWishlist = guardedCommand(v.string(), async ({ user }, wishlistId) => {
-	const database = getDb();
-
 	// Any manager (recipient or správce) may archive.
-	const { wishlistRow } = await verifyManagerAccess(user.id, wishlistId);
-
-	const [archived] = await database
-		.update(wishlist)
-		.set({
-			status: 'archived',
-			archivedAt: new Date(),
-			updatedAt: new Date(),
-		})
-		.where(eq(wishlist.id, wishlistId))
-		.returning();
-
-	const followerRows = await database
-		.select({ userId: wishlistFollower.userId })
-		.from(wishlistFollower)
-		.where(
-			and(eq(wishlistFollower.wishlistId, wishlistId), isNull(wishlistFollower.unfollowedAt)),
-		);
-	const moderatorRows = await database
-		.select({ userId: moderatorAssignment.userId })
-		.from(moderatorAssignment)
-		.where(
-			and(
-				eq(moderatorAssignment.wishlistId, wishlistId),
-				isNull(moderatorAssignment.deletedAt),
-			),
-		);
-
-	// Emails ride the background path inside the dispatcher (issue #108, REQ-6) —
-	// archiving never waits for outbound delivery.
-	await dispatchNotification({
-		type: NOTIFICATION_TYPE.WISHLIST_ARCHIVED,
-		targetUserIds: [...followerRows, ...moderatorRows]
-			.map((row) => row.userId)
-			.filter((targetUserId) => targetUserId !== user.id),
-		wishlistId,
-		actorId: user.id,
-		actorName: user.name,
-		wishlist: { title: wishlistRow.title, shortId: wishlistRow.shortId },
-	});
-
+	const { wishlist: archived, wishlistShortId } = await executeOperation(
+		userInterfaceActor(user),
+		archiveWishlistOperation,
+		{ wishlistId },
+	);
 	// Single-flight refresh (issue #108, REQ-3/4): the open wishlist page gets the
 	// archived status in the same round trip.
-	singleFlightRefresh(getWishlistByShortId, wishlistRow.shortId);
-
+	singleFlightRefresh(getWishlistByShortId, wishlistShortId);
 	return archived;
 });
 
 export const deleteWishlist = guardedCommand(v.string(), async ({ user }, wishlistId) => {
-	const database = getDb();
-
 	// Any manager (recipient or správce) may delete an unshared list.
-	const { wishlistRow: row } = await verifyManagerAccess(user.id, wishlistId);
-	if (row.sharedAt !== null) {
-		error(400, 'Cannot delete a shared wishlist. Archive it instead.');
-	}
-
-	const giftImageRows = await database
-		.select({ imageKey: gift.imageKey })
-		.from(gift)
-		.where(and(eq(gift.wishlistId, wishlistId), isNull(gift.deletedAt)));
-
-	// Soft delete
-	await database
-		.update(wishlist)
-		.set({ deletedAt: new Date(), updatedAt: new Date() })
-		.where(eq(wishlist.id, wishlistId));
-
-	// Storage cleanup (issue #107, REQ-6): the wishlist image and all of its
-	// gifts' uploaded images become unreachable with the list – drop the objects.
-	await deleteObjectsBestEffort([row.imageKey, ...giftImageRows.map((g) => g.imageKey)]);
-
+	await executeOperation(userInterfaceActor(user), deleteWishlistOperation, { wishlistId });
 	// Single-flight refresh (issue #108, REQ-3/4): the deleted list disappears from
 	// whichever dashboard held it (recipient's "Moje seznamy" or a správce's
 	// "Spravované") without a reload. Untracked queries are a no-op.

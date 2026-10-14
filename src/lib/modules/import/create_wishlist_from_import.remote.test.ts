@@ -385,7 +385,13 @@ describe('createWishlistFromImport', () => {
 		await callCreateFromImport(AUTH, {
 			recipientKind: RECIPIENT_KIND.self,
 			title: 'My List',
-			gifts: [{ ...draftB, links: [{ url: 'not a url' }, { url: 'https://example.com/x' }] }],
+			// A wire-valid link the gift normalization still drops: the operation re-validates input.
+			gifts: [
+				{
+					...draftB,
+					links: [{ url: 'ftp://example.com/x' }, { url: 'https://example.com/x' }],
+				},
+			],
 		});
 
 		expect(giftInsertRows()![0].links).toEqual([{ url: 'https://example.com/x' }]);
