@@ -93,7 +93,7 @@ describe('deleteGift', () => {
 		it('throws 403 when gift was created before wishlist was shared', async () => {
 			// gift lookup – created BEFORE sharing
 			mockDbInstance.pushResult([makeGiftRow({ createdAt: BEFORE_SHARING })]);
-			// verifyManagerAccess: wishlist lookup (shared)
+			// wishlist lookup (shared)
 			mockDbInstance.pushResult([makeWishlistRow({ sharedAt: SHARED_AT })]);
 
 			await expect(callDeleteGift(makeRecipientAuthContext(), GIFT_ID)).rejects.toMatchObject(
@@ -396,7 +396,7 @@ describe('markGiftReceived', () => {
 		it('returns updated gift with received=true', async () => {
 			// gift lookup
 			mockDbInstance.pushResult([makeGiftRow()]);
-			// verifyManagerAccess: wishlist lookup (recipientUserId matches → recipient)
+			// wishlist lookup (recipientUserId matches → recipient)
 			mockDbInstance.pushResult([makeWishlistRow()]);
 			// update returning
 			mockDbInstance.pushResult([{ id: GIFT_ID, received: true }]);
@@ -423,7 +423,7 @@ describe('markGiftReceived', () => {
 		it('throws 403 when caller is neither recipient nor moderator', async () => {
 			// gift lookup
 			mockDbInstance.pushResult([makeGiftRow()]);
-			// verifyManagerAccess: wishlist lookup (recipient is RECIPIENT_ID, caller is VISITOR_ID)
+			// wishlist lookup (recipient is RECIPIENT_ID, caller is VISITOR_ID)
 			mockDbInstance.pushResult([makeWishlistRow()]);
 			// moderator check returns empty → role resolves to visitor → ACCESS_DENIED
 			mockDbInstance.pushResult([]);

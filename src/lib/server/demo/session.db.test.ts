@@ -30,7 +30,7 @@ import {
 } from './constants.js';
 import { getDemoCatalog } from './catalog.js';
 import { assertWishlistScope, wishlistScope } from './scope.js';
-import { verifyManagerAccess } from '$lib/modules/wishlists/wishlist_access.js';
+import { requireWishlistManagement } from '$lib/server/operations/wishlist_management.js';
 import { demoHandle } from '../../../hooks.server.js';
 import { createAuth } from '$lib/server/auth.js';
 import { drizzleGiftIngestionStore } from '$lib/modules/ingestion/ingestion_store.js';
@@ -260,13 +260,19 @@ describe.skipIf(isolatedDatabaseUrl === null)(
 				await drizzleGiftIngestionStore.resolveTarget(undefined, realWishlist.shortId),
 			).not.toBeNull();
 			await expect(
-				verifyManagerAccess(sessionA.viewerUserId, listA!.id),
+				requireWishlistManagement(getDb(), sessionA.viewerUserId, listA!.id, {
+					lock: false,
+				}),
 			).resolves.toMatchObject({ wishlistRow: { id: listA!.id } });
 			await expect(
-				verifyManagerAccess(sessionA.viewerUserId, listB!.id),
+				requireWishlistManagement(getDb(), sessionA.viewerUserId, listB!.id, {
+					lock: false,
+				}),
 			).rejects.toMatchObject({ status: 404 });
 			await expect(
-				verifyManagerAccess(sessionA.viewerUserId, realWishlist.id),
+				requireWishlistManagement(getDb(), sessionA.viewerUserId, realWishlist.id, {
+					lock: false,
+				}),
 			).rejects.toMatchObject({ status: 404 });
 			const [followed] = await getDb()
 				.select()
@@ -280,7 +286,9 @@ describe.skipIf(isolatedDatabaseUrl === null)(
 					),
 				);
 			await expect(
-				verifyManagerAccess(sessionA.viewerUserId, followed!.id),
+				requireWishlistManagement(getDb(), sessionA.viewerUserId, followed!.id, {
+					lock: false,
+				}),
 			).rejects.toMatchObject({ status: 403 });
 		});
 

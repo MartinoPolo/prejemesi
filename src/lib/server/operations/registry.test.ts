@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
+import * as claimInviteOperations from './claim_invite_operations.js';
 import * as giftBulkOperations from './gift_bulk_operations.js';
 import * as giftGroupingOperations from './gift_grouping_operations.js';
+import * as giftLikeOperations from './gift_like_operations.js';
 import * as giftMutationOperations from './gift_mutation_operations.js';
 import * as giftReadOperations from './gift_read_operations.js';
 import * as giftUndoOperations from './gift_undo_operations.js';
@@ -9,7 +11,9 @@ import * as managerInvitationOperations from './manager_invitation_operations.js
 import * as reservationOperations from './reservation_operations.js';
 import * as reservationReadOperations from './reservation_read_operations.js';
 import * as wishlistDetailOperations from './wishlist_detail_operations.js';
+import * as wishlistFollowOperations from './wishlist_follow_operations.js';
 import * as wishlistLifecycleOperations from './wishlist_lifecycle_operations.js';
+import * as wishlistReadOperations from './wishlist_read_operations.js';
 import { OPERATION_EXPOSURE, OPERATION_KIND } from './operation.js';
 import { OPERATION_REGISTRY } from './registry.js';
 
@@ -25,6 +29,10 @@ const operationModules = [
 	reservationOperations,
 	reservationReadOperations,
 	managerInvitationOperations,
+	claimInviteOperations,
+	wishlistReadOperations,
+	wishlistFollowOperations,
+	giftLikeOperations,
 ];
 
 describe('operation registry', () => {
@@ -42,7 +50,7 @@ describe('operation registry', () => {
 		}
 	});
 
-	it('keeps lifecycle, reservation release and správce administration beyond inviting with the human user', () => {
+	it('keeps lifecycle, reservation release, správce administration beyond inviting, claim links and personal follows and likes with the human user', () => {
 		const humanOnlyNames = Object.values(OPERATION_REGISTRY)
 			.filter((operation) => operation.exposure === OPERATION_EXPOSURE.humanOnly)
 			.map((operation) => operation.name)
@@ -61,6 +69,15 @@ describe('operation registry', () => {
 				'revokeModeratorInvite',
 				'removeModerator',
 				'selfPromoteToModerator',
+				'readClaimInvites',
+				'generateClaimInviteLink',
+				'acceptClaimInvite',
+				'revokeClaimInvite',
+				'followWishlist',
+				'unfollowWishlist',
+				'refollowWishlist',
+				'recordWishlistVisit',
+				'toggleGiftLike',
 			].sort(),
 		);
 	});
@@ -71,6 +88,16 @@ describe('operation registry', () => {
 			'cancelOwnReservation',
 			'setReservationPurchased',
 			'generateModeratorInviteLink',
+		] as const) {
+			expect(OPERATION_REGISTRY[operationName].exposure).toBe(OPERATION_EXPOSURE.agent);
+		}
+	});
+
+	it('lets agents read wishlists and the categories they manage', () => {
+		for (const operationName of [
+			'readWishlist',
+			'readGiftCategories',
+			'readGiftCategorySettingsRows',
 		] as const) {
 			expect(OPERATION_REGISTRY[operationName].exposure).toBe(OPERATION_EXPOSURE.agent);
 		}

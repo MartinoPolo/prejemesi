@@ -1,20 +1,20 @@
 import * as v from 'valibot';
 import { guardedQueryWithArgs } from '$lib/server/remote.js';
-import { verifyManagerAccess } from '$lib/modules/wishlists/wishlist_access.js';
+import { userInterfaceActor } from '$lib/server/operations/actor.js';
+import { executeOperation } from '$lib/server/operations/runner.js';
 import {
-	getManagedGiftCategories,
-	getManagedGiftCategorySettingsRows,
-} from './gift_categories_service.js';
+	readGiftCategoriesOperation,
+	readGiftCategorySettingsRowsOperation,
+} from '$lib/server/operations/gift_grouping_operations.js';
 
-export const getGiftCategories = guardedQueryWithArgs(v.string(), async ({ user }, wishlistId) => {
-	await verifyManagerAccess(user.id, wishlistId);
-	return getManagedGiftCategories(wishlistId);
-});
+export const getGiftCategories = guardedQueryWithArgs(v.string(), ({ user }, wishlistId) =>
+	executeOperation(userInterfaceActor(user), readGiftCategoriesOperation, { wishlistId }),
+);
 
 export const getGiftCategorySettingsRows = guardedQueryWithArgs(
 	v.string(),
-	async ({ user }, wishlistId) => {
-		await verifyManagerAccess(user.id, wishlistId);
-		return getManagedGiftCategorySettingsRows(wishlistId);
-	},
+	({ user }, wishlistId) =>
+		executeOperation(userInterfaceActor(user), readGiftCategorySettingsRowsOperation, {
+			wishlistId,
+		}),
 );

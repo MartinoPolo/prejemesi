@@ -85,6 +85,9 @@ export const SERVER_ERROR = {
 
 export type ServerErrorCode = (typeof SERVER_ERROR)[keyof typeof SERVER_ERROR];
 
+/** Plain-text 404 that wishlist page, viewer and demo-scope paths return instead of a code. */
+export const WISHLIST_NOT_FOUND_MESSAGE = 'Wishlist not found';
+
 export function encodeServerError(
 	code: ServerErrorCode,
 	params: Record<string, string | number>,

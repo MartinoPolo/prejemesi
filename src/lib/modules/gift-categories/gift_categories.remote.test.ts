@@ -22,8 +22,6 @@ vi.mock('$lib/server/remote.js', () => ({
 	singleFlightRefresh,
 }));
 
-vi.mock('$lib/modules/wishlists/wishlist_access.js', () => ({ verifyManagerAccess: vi.fn() }));
-
 const tx = { marker: 'transaction' };
 vi.mock('$lib/server/db/index.js', () => ({
 	getDb: () => ({

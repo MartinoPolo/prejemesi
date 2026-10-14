@@ -1,10 +1,16 @@
+import * as v from 'valibot';
 import { and, eq, inArray, isNull } from 'drizzle-orm';
 import { error } from '@sveltejs/kit';
+import { getDb } from '$lib/server/db/index.js';
 import { gift } from '$lib/server/db/gift.schema.js';
 import { priorityLevel } from '$lib/server/db/wishlist.schema.js';
 import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
 import { SaveGiftCategorySettingsInputSchema } from '$lib/modules/gift-categories/types.js';
-import { saveGiftCategorySettings } from '$lib/modules/gift-categories/gift_categories_service.js';
+import {
+	getManagedGiftCategories,
+	getManagedGiftCategorySettingsRows,
+	saveGiftCategorySettings,
+} from '$lib/modules/gift-categories/gift_categories_service.js';
 import { SavePriorityLevelsInputSchema, type PriorityLevel } from '$lib/modules/wishlists/types.js';
 import {
 	OPERATION_EXPOSURE,
@@ -12,7 +18,47 @@ import {
 	defineOperation,
 	type MutationOperationContext,
 } from './operation.js';
-import { requireMutableManagedWishlist } from './wishlist_management.js';
+import { requireOperationActor, type OperationActor } from './actor.js';
+import { requireMutableManagedWishlist, requireWishlistManagement } from './wishlist_management.js';
+
+/** Category settings, including usage counts, are for managers only. */
+async function requireCategoryManager(
+	actor: OperationActor | null,
+	wishlistId: string,
+): Promise<void> {
+	const managingActor = requireOperationActor(actor);
+	await requireWishlistManagement(getDb(), managingActor.userId, wishlistId, { lock: false });
+}
+
+/**
+ * The enabled categories with usage counts. The first read of a wishlist without category rows
+ * inserts the default set: an idempotent write that a read-only scope must still permit.
+ */
+export const readGiftCategoriesOperation = defineOperation({
+	name: 'readGiftCategories',
+	kind: OPERATION_KIND.read,
+	exposure: OPERATION_EXPOSURE.agent,
+	input: v.strictObject({ wishlistId: v.string() }),
+	async run(context, { wishlistId }) {
+		await requireCategoryManager(context.actor, wishlistId);
+		return getManagedGiftCategories(wishlistId);
+	},
+});
+
+/**
+ * Every category row, enabled or not, for the category settings editor. Like
+ * {@link readGiftCategoriesOperation}, the first read inserts the default set.
+ */
+export const readGiftCategorySettingsRowsOperation = defineOperation({
+	name: 'readGiftCategorySettingsRows',
+	kind: OPERATION_KIND.read,
+	exposure: OPERATION_EXPOSURE.agent,
+	input: v.strictObject({ wishlistId: v.string() }),
+	async run(context, { wishlistId }) {
+		await requireCategoryManager(context.actor, wishlistId);
+		return getManagedGiftCategorySettingsRows(wishlistId);
+	},
+});
 
 /**
  * Reconciles the complete category settings snapshot. Removing a category unassigns its gifts,

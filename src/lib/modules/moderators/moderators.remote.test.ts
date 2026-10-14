@@ -162,7 +162,7 @@ function createMockDb(queryResults: unknown[][]): ReturnType<typeof getDb> {
 // ── Shared fixtures ──────────────────────────────────────────────────────────
 
 // `recipientUser` is the linked recipient of the self list (`activeWishlistRow`) — manages it
-// inherently, so `verifyManagerAccess`/`resolveWishlistRole` match without a mod-assignment query.
+// inherently, so role resolution needs no správce-assignment query.
 const recipientUser = { id: 'recipient-1', email: 'recipient@example.com' };
 const regularUser = { id: 'user-2', email: 'user@example.com' };
 
@@ -343,7 +343,7 @@ const createdInviteRow = {
 describe('generateModeratorInviteLink', () => {
 	it('archived wishlist → throws 400', async () => {
 		const archivedWishlistRow = { ...activeWishlistRow, status: 'archived' };
-		// 1: requireWishlistRow (recipient = manager, no mod query)
+		// 1: locked wishlist lookup (recipient = manager, no správce assignment query)
 		mockGetDb.mockReturnValue(createMockDb([[archivedWishlistRow]]));
 
 		await expect(
@@ -352,7 +352,7 @@ describe('generateModeratorInviteLink', () => {
 	});
 
 	it('without email → returns token + invitePath, does NOT call dispatchNotification', async () => {
-		// 1: requireWishlistRow, 2: insert invite → returns created row
+		// 1: locked wishlist lookup, 2: insert invite → returns created row
 		mockGetDb.mockReturnValue(createMockDb([[activeWishlistRow], [createdInviteRow]]));
 
 		const result = await callGenerateModeratorInviteLink(recipientAuthContext, {
@@ -368,8 +368,8 @@ describe('generateModeratorInviteLink', () => {
 	});
 
 	it('a moderator (not the recipient) may also generate an invite link', async () => {
-		// 1: requireWishlistRow (for-someone list, caller not recipient),
-		// 2: hasActiveModeratorAssignment → found, 3: insert invite → created row
+		// 1: locked wishlist lookup (for-someone list, caller not recipient),
+		// 2: správce assignment → found, 3: insert invite → created row
 		mockGetDb.mockReturnValue(
 			createMockDb([[forSomeoneWishlistRow], [{ id: 'assignment-1' }], [createdInviteRow]]),
 		);
@@ -387,7 +387,7 @@ describe('generateModeratorInviteLink', () => {
 
 	it('with email → dispatches MODERATOR_INVITED to targetEmails with urlPathOverride pointing to invite path', async () => {
 		const testEmail = 'invitee@example.com';
-		// 1: requireWishlistRow, 2: insert invite → created row, 3: user lookup → not registered
+		// 1: locked wishlist lookup, 2: insert invite → created row, 3: user lookup → not registered
 		mockGetDb.mockReturnValue(createMockDb([[activeWishlistRow], [createdInviteRow], []]));
 
 		const result = await callGenerateModeratorInviteLink(recipientAuthContext, {
@@ -417,7 +417,7 @@ describe('generateModeratorInviteLink', () => {
 
 	it('with email of a registered user → unregisteredInvitee is false', async () => {
 		const testEmail = regularUser.email;
-		// 1: requireWishlistRow, 2: insert invite → created row, 3: user lookup → registered user found
+		// 1: locked wishlist lookup, 2: insert invite → created row, 3: user lookup → registered user found
 		mockGetDb.mockReturnValue(
 			createMockDb([[activeWishlistRow], [createdInviteRow], [{ id: regularUser.id }]]),
 		);
