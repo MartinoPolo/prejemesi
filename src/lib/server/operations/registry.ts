@@ -27,6 +27,8 @@ import {
 	updateWishlistOperation,
 } from './wishlist_detail_operations.js';
 import {
+	readGiftCategoriesOperation,
+	readGiftCategorySettingsRowsOperation,
 	saveGiftCategorySettingsOperation,
 	savePriorityLevelsOperation,
 } from './gift_grouping_operations.js';
@@ -56,6 +58,20 @@ import {
 	revokeModeratorInviteOperation,
 	selfPromoteToModeratorOperation,
 } from './manager_invitation_operations.js';
+import {
+	acceptClaimInviteOperation,
+	generateClaimInviteLinkOperation,
+	readClaimInvitesOperation,
+	revokeClaimInviteOperation,
+} from './claim_invite_operations.js';
+import { readWishlistOperation } from './wishlist_read_operations.js';
+import {
+	followWishlistOperation,
+	recordWishlistVisitOperation,
+	refollowWishlistOperation,
+	unfollowWishlistOperation,
+} from './wishlist_follow_operations.js';
+import { toggleGiftLikeOperation } from './gift_like_operations.js';
 import type { AnyOperation } from './operation.js';
 
 /** Every operation the core exposes, keyed by its name; agent surfaces are generated from this. */
@@ -63,6 +79,9 @@ export const OPERATION_REGISTRY = {
 	[readWishlistGiftsOperation.name]: readWishlistGiftsOperation,
 	[readBulkCopyDestinationsOperation.name]: readBulkCopyDestinationsOperation,
 	[readPriorityLevelsOperation.name]: readPriorityLevelsOperation,
+	[readWishlistOperation.name]: readWishlistOperation,
+	[readGiftCategoriesOperation.name]: readGiftCategoriesOperation,
+	[readGiftCategorySettingsRowsOperation.name]: readGiftCategorySettingsRowsOperation,
 	[createGiftOperation.name]: createGiftOperation,
 	[updateGiftOperation.name]: updateGiftOperation,
 	[appendGiftDescriptionOperation.name]: appendGiftDescriptionOperation,
@@ -99,4 +118,13 @@ export const OPERATION_REGISTRY = {
 	[revokeModeratorInviteOperation.name]: revokeModeratorInviteOperation,
 	[removeModeratorOperation.name]: removeModeratorOperation,
 	[selfPromoteToModeratorOperation.name]: selfPromoteToModeratorOperation,
+	[readClaimInvitesOperation.name]: readClaimInvitesOperation,
+	[generateClaimInviteLinkOperation.name]: generateClaimInviteLinkOperation,
+	[acceptClaimInviteOperation.name]: acceptClaimInviteOperation,
+	[revokeClaimInviteOperation.name]: revokeClaimInviteOperation,
+	[followWishlistOperation.name]: followWishlistOperation,
+	[unfollowWishlistOperation.name]: unfollowWishlistOperation,
+	[refollowWishlistOperation.name]: refollowWishlistOperation,
+	[recordWishlistVisitOperation.name]: recordWishlistVisitOperation,
+	[toggleGiftLikeOperation.name]: toggleGiftLikeOperation,
 } as const satisfies Record<string, AnyOperation>;

@@ -2,6 +2,7 @@ import { getRequestEvent } from '$app/server';
 import { error } from '@sveltejs/kit';
 import { eq, isNull, type SQL } from 'drizzle-orm';
 import { wishlist } from '$lib/server/db/wishlist.schema.js';
+import { WISHLIST_NOT_FOUND_MESSAGE } from '$lib/modules/errors/server_error_codes.js';
 import { preparedDemoImageUrls } from './catalog.js';
 
 export function isPreparedDemoImage(url: string | null | undefined): boolean {
@@ -25,7 +26,7 @@ export function wishlistScope(): SQL {
 
 export function assertWishlistScope(row: { demoSessionId?: string | null }): void {
 	if ((row.demoSessionId ?? null) !== demoSessionId()) {
-		error(404, 'Wishlist not found');
+		error(404, WISHLIST_NOT_FOUND_MESSAGE);
 	}
 }
 

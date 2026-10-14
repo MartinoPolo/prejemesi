@@ -27,7 +27,7 @@ beforeEach(() => {
 describe('deleteWishlist', () => {
 	describe('recipient can delete an unshared wishlist', () => {
 		it('resolves without throwing when the linked recipient deletes a draft wishlist', async () => {
-			// DB call 1: requireWishlistRow (recipientUserId matches caller → manager, no mod query)
+			// DB call 1: wishlist lookup (recipientUserId matches caller → manager, no mod query)
 			mockDbInstance.pushResult([makeWishlistRow({ sharedAt: null })]);
 			// DB call 2: gift image-key collection (issue #107 cleanup)
 			mockDbInstance.pushResult([]);
@@ -58,9 +58,9 @@ describe('deleteWishlist', () => {
 
 	describe('non-manager cannot delete', () => {
 		it('throws 403 ACCESS_DENIED when caller is neither recipient nor správce', async () => {
-			// DB call 1: requireWishlistRow (recipient is RECIPIENT_ID, caller is OTHER_USER_ID)
+			// DB call 1: wishlist lookup (recipient is RECIPIENT_ID, caller is OTHER_USER_ID)
 			mockDbInstance.pushResult([makeWishlistRow()]);
-			// DB call 2: hasActiveModeratorAssignment → none found
+			// DB call 2: správce assignment lookup → none found
 			mockDbInstance.pushResult([]);
 
 			await expect(
@@ -107,9 +107,9 @@ describe('deleteWishlist', () => {
 describe('setWishlistPalette', () => {
 	describe('non-manager cannot change the palette', () => {
 		it('throws 403 ACCESS_DENIED when caller is neither recipient nor správce', async () => {
-			// DB call 1: requireWishlistRow (recipient is RECIPIENT_ID, caller is OTHER_USER_ID)
+			// DB call 1: wishlist lookup (recipient is RECIPIENT_ID, caller is OTHER_USER_ID)
 			mockDbInstance.pushResult([makeWishlistRow()]);
-			// DB call 2: hasActiveModeratorAssignment → none found
+			// DB call 2: správce assignment lookup → none found
 			mockDbInstance.pushResult([]);
 
 			await expect(
@@ -126,7 +126,7 @@ describe('setWishlistPalette', () => {
 
 	describe('archived wishlist is read-only', () => {
 		it('throws 400 even for the linked recipient (same rule as updateWishlist)', async () => {
-			// DB call 1: requireWishlistRow — archived list, caller IS the linked recipient
+			// DB call 1: wishlist lookup — archived list, caller IS the linked recipient
 			mockDbInstance.pushResult([makeWishlistRow({ status: 'archived' })]);
 
 			await expect(
@@ -147,7 +147,7 @@ describe('updateWishlist', () => {
 	describe('recipient can update title on an unshared wishlist', () => {
 		it('returns updated wishlist row', async () => {
 			const updatedRow = makeWishlistRow({ title: 'New Title' });
-			// DB call 1: requireWishlistRow (recipient = manager, no mod query; not shared)
+			// DB call 1: wishlist lookup (recipient = manager, no mod query; not shared)
 			mockDbInstance.pushResult([makeWishlistRow({ sharedAt: null })]);
 			// DB call 2: update returning
 			mockDbInstance.pushResult([updatedRow]);
@@ -164,9 +164,9 @@ describe('updateWishlist', () => {
 	describe('moderator (správce) can update title on a for-someone list', () => {
 		it('returns updated wishlist row after the mod-assignment check passes', async () => {
 			const updatedRow = makeForSomeoneWishlistRow({ title: 'New Title' });
-			// DB call 1: requireWishlistRow (for-someone list, caller is not recipient)
+			// DB call 1: wishlist lookup (for-someone list, caller is not recipient)
 			mockDbInstance.pushResult([makeForSomeoneWishlistRow({ sharedAt: null })]);
-			// DB call 2: hasActiveModeratorAssignment → found → manager
+			// DB call 2: správce assignment lookup → found → manager
 			mockDbInstance.pushResult([{ id: 'assignment-1' }]);
 			// DB call 3: update returning
 			mockDbInstance.pushResult([updatedRow]);
@@ -308,9 +308,9 @@ describe('updateWishlist', () => {
 
 	describe('non-manager cannot update', () => {
 		it('throws 403 ACCESS_DENIED when caller is neither recipient nor správce', async () => {
-			// DB call 1: requireWishlistRow (recipient is RECIPIENT_ID, caller is OTHER_USER_ID)
+			// DB call 1: wishlist lookup (recipient is RECIPIENT_ID, caller is OTHER_USER_ID)
 			mockDbInstance.pushResult([makeWishlistRow()]);
-			// DB call 2: hasActiveModeratorAssignment → none found
+			// DB call 2: správce assignment lookup → none found
 			mockDbInstance.pushResult([]);
 
 			await expect(

@@ -7,6 +7,7 @@ import {
 	createGiftFixture,
 	createWishlistFixture,
 	errorMessage,
+	expectRejection,
 	managerActor,
 	outsiderActor,
 	readGift,
@@ -55,12 +56,6 @@ import { importGiftsOperation } from './import_operations.js';
 
 const administratorActor: OperationActor = { ...outsiderActor, isAppAdministrator: true };
 const BOOKS_PRESET = { key: 'books', color: '#2563EB' } as const;
-
-async function expectRejection(work: Promise<unknown>, status: number, message: string) {
-	const thrown = await captureError(work);
-	expect(thrown).toMatchObject({ status });
-	expect(errorMessage(thrown)).toBe(message);
-}
 
 async function latestBatchIdForGift(giftId: string): Promise<string> {
 	const revisions = await revisionsForGift(giftId);

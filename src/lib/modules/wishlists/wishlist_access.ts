@@ -1,12 +1,11 @@
 import { eq, and, isNull } from 'drizzle-orm';
 import { error } from '@sveltejs/kit';
 import { getDb, type DatabaseTransaction } from '$lib/server/db/index.js';
-import { wishlist } from '$lib/server/db/wishlist.schema.js';
+import type { wishlist } from '$lib/server/db/wishlist.schema.js';
 import { moderatorAssignment } from '$lib/server/db/moderator.schema.js';
 import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
 import { WISHLIST_ROLES, type WishlistRole } from './types.js';
-import { canManageWishlist } from './wishlist_capabilities.js';
-import { assertWishlistScope, wishlistScope } from '$lib/server/demo/scope.js';
+import { assertWishlistScope } from '$lib/server/demo/scope.js';
 
 type WishlistRow = typeof wishlist.$inferSelect;
 
@@ -55,41 +54,6 @@ export async function resolveWishlistRole(
 		return WISHLIST_ROLES.visitor;
 	}
 	return resolveRoleOnWishlistRow(authContext.user.id, wishlistRow);
-}
-
-/** Fetch a live (non-deleted) wishlist row by id, throwing 404 if missing. */
-export async function requireWishlistRow(wishlistId: string): Promise<WishlistRow> {
-	const database = getDb();
-	const rows = await database
-		.select()
-		.from(wishlist)
-		.where(and(eq(wishlist.id, wishlistId), isNull(wishlist.deletedAt), wishlistScope()))
-		.limit(1);
-
-	const wishlistRow = rows[0];
-	if (wishlistRow === undefined) {
-		error(404, SERVER_ERROR.WISHLIST_NOT_FOUND);
-	}
-	return wishlistRow;
-}
-
-/**
- * Management access for remote functions outside the operation core (claim invites and gift
- * category queries): 404 for a missing wishlist, 403 ACCESS_DENIED unless the caller is the
- * recipient or a správce. Operations use `requireWishlistManagement` instead.
- */
-export async function verifyManagerAccess(
-	userId: string,
-	wishlistId: string,
-): Promise<{ role: WishlistRole; wishlistRow: WishlistRow }> {
-	const wishlistRow = await requireWishlistRow(wishlistId);
-	const role = await resolveRoleOnWishlistRow(userId, wishlistRow);
-
-	if (!canManageWishlist(role)) {
-		error(403, SERVER_ERROR.ACCESS_DENIED);
-	}
-
-	return { role, wishlistRow };
 }
 
 /** Reject mutations on an archived wishlist (read-only state). */

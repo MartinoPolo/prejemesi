@@ -24,7 +24,7 @@ describe('updateGift', () => {
 		it('returns updated gift when wishlist is not yet shared', async () => {
 			// gift lookup
 			mockDbInstance.pushResult([makeGiftRow({ createdAt: AFTER_SHARING })]);
-			// verifyManagerAccess: wishlist lookup (not shared)
+			// wishlist lookup (not shared)
 			mockDbInstance.pushResult([makeWishlistRow({ sharedAt: null })]);
 			// update returning
 			mockDbInstance.pushResult([{ id: GIFT_ID, name: 'Updated Name' }]);
@@ -155,7 +155,7 @@ describe('updateGift', () => {
 		it('recipient can update gifts created after sharing date', async () => {
 			// gift lookup – created AFTER sharing
 			mockDbInstance.pushResult([makeGiftRow({ createdAt: AFTER_SHARING })]);
-			// verifyManagerAccess: wishlist lookup (shared)
+			// wishlist lookup (shared)
 			mockDbInstance.pushResult([makeWishlistRow({ sharedAt: SHARED_AT })]);
 			// update returning
 			mockDbInstance.pushResult([{ id: GIFT_ID, name: 'Updated Name' }]);
@@ -362,7 +362,7 @@ describe('updateGift', () => {
 		it('moderator bypasses the edit lock and updates the gift', async () => {
 			// gift lookup – created BEFORE sharing
 			mockDbInstance.pushResult([makeGiftRow({ createdAt: BEFORE_SHARING })]);
-			// verifyManagerAccess: wishlist lookup (shared, caller is a moderator, not the recipient)
+			// wishlist lookup (shared, caller is a moderator, not the recipient)
 			mockDbInstance.pushResult([
 				makeWishlistRow({ sharedAt: SHARED_AT, recipientUserId: 'someone-else' }),
 			]);

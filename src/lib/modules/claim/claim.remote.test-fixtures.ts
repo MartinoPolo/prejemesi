@@ -57,6 +57,11 @@ vi.mock('drizzle-orm', () => ({
 	and: vi.fn((...args: unknown[]) => args),
 	isNull: vi.fn((arg: unknown) => arg),
 	count: vi.fn(() => 'count()'),
+	// Schema modules loaded through the operation runner build column defaults with `sql`.
+	sql: Object.assign(
+		vi.fn(() => 'sql'),
+		{ join: vi.fn(() => 'sql') },
+	),
 }));
 
 vi.mock('$lib/server/db/wishlist.schema.js', () => ({

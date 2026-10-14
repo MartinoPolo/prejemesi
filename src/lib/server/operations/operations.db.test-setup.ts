@@ -1,5 +1,5 @@
-import { vi } from 'vitest';
-import { eq, like } from 'drizzle-orm';
+import { expect, vi } from 'vitest';
+import { eq, like, sql } from 'drizzle-orm';
 
 vi.mock('$app/server', () => ({
 	getRequestEvent: vi.fn(() => {
@@ -15,7 +15,7 @@ vi.mock('$lib/modules/notifications/notification_dispatcher.js', () => ({
 // Captures after-response work (the revision purge) so a test can await it.
 vi.mock('$lib/server/background.js', () => ({ runAfterResponse: vi.fn() }));
 
-import { closeDb, getDb } from '$lib/server/db/index.js';
+import { closeDb, getDb, type DatabaseTransaction } from '$lib/server/db/index.js';
 import { user } from '$lib/server/db/auth.schema.js';
 import { wishlist } from '$lib/server/db/wishlist.schema.js';
 import { moderatorAssignment } from '$lib/server/db/moderator.schema.js';
@@ -194,4 +194,72 @@ export async function captureError(work: Promise<unknown>): Promise<unknown> {
 		return thrown;
 	}
 	throw new Error('Expected the operation to fail');
+}
+
+export async function expectRejection(work: Promise<unknown>, status: number, message: string) {
+	const thrown = await captureError(work);
+	expect(thrown).toMatchObject({ status });
+	expect(errorMessage(thrown)).toBe(message);
+}
+
+export function expectRejectionResult(
+	result: PromiseSettledResult<unknown>,
+	status: number,
+	message: string,
+) {
+	if (result.status !== 'rejected') {
+		throw new Error('Expected the operation to fail');
+	}
+	expect(result.reason).toMatchObject({ status });
+	expect(errorMessage(result.reason)).toBe(message);
+}
+
+async function waitUntilBlockedBy(holderPid: number, expectedWaiters: number): Promise<void> {
+	for (let attempt = 0; attempt < 200; attempt += 1) {
+		const [row] = await getDb().execute<{ waiting: number }>(sql`
+			with recursive blocked(pid) as (
+				select pid from pg_stat_activity where ${holderPid} = any(pg_blocking_pids(pid))
+				union
+				select activity.pid from pg_stat_activity activity, blocked
+				where blocked.pid = any(pg_blocking_pids(activity.pid))
+			)
+			select count(*)::int as waiting from blocked`);
+		if ((row?.waiting ?? 0) >= expectedWaiters) {
+			return;
+		}
+		await new Promise((resolve) => setTimeout(resolve, 25));
+	}
+	throw new Error(`Expected ${expectedWaiters} contenders waiting on the held lock`);
+}
+
+/**
+ * Runs the contenders while another transaction holds a row they need, and releases it only once
+ * all of them wait, so they genuinely overlap instead of finishing one after another.
+ */
+export async function raceBehindRowLock(
+	lockRow: (transaction: DatabaseTransaction) => Promise<unknown>,
+	contenders: ReadonlyArray<() => Promise<unknown>>,
+): Promise<PromiseSettledResult<unknown>[]> {
+	let releaseRow = () => {};
+	const rowReleased = new Promise<void>((resolve) => (releaseRow = resolve));
+	let reportHolder: (holderPid: number) => void = () => {};
+	const holderReady = new Promise<number>((resolve) => (reportHolder = resolve));
+	const holder = getDb().transaction(async (transaction) => {
+		await lockRow(transaction);
+		const [row] = await transaction.execute<{ pid: number }>(
+			sql`select pg_backend_pid() as pid`,
+		);
+		reportHolder(row?.pid ?? 0);
+		await rowReleased;
+	});
+	try {
+		const holderPid = await Promise.race([holderReady, holder.then(() => 0)]);
+		const settled = Promise.allSettled(contenders.map((contender) => contender()));
+		await waitUntilBlockedBy(holderPid, contenders.length);
+		releaseRow();
+		return await settled;
+	} finally {
+		releaseRow();
+		await holder;
+	}
 }

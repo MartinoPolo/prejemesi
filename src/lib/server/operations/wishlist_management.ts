@@ -5,7 +5,10 @@ import { wishlist, priorityLevel } from '$lib/server/db/wishlist.schema.js';
 import { moderatorAssignment } from '$lib/server/db/moderator.schema.js';
 import { wishlistFollower } from '$lib/server/db/follower.schema.js';
 import { wishlistScope } from '$lib/server/demo/scope.js';
-import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
+import {
+	SERVER_ERROR,
+	WISHLIST_NOT_FOUND_MESSAGE,
+} from '$lib/modules/errors/server_error_codes.js';
 import { WISHLIST_ROLES, type WishlistRole } from '$lib/modules/wishlists/types.js';
 import {
 	assertWishlistMutable,
@@ -26,21 +29,45 @@ interface WishlistAccess {
 	wishlistRow: WishlistRow;
 }
 
+function selectLiveWishlistRow(
+	database: DatabaseTransaction | ReturnType<typeof getDb>,
+	wishlistId: string,
+) {
+	return database
+		.select()
+		.from(wishlist)
+		.where(and(eq(wishlist.id, wishlistId), isNull(wishlist.deletedAt), wishlistScope()));
+}
+
 /** The live (not deleted, in-scope) wishlist row; 404 when missing. */
 export async function requireLiveWishlistRow(
 	transaction: DatabaseTransaction | ReturnType<typeof getDb>,
 	wishlistId: string,
 	options: { lock: boolean },
 ): Promise<WishlistRow> {
-	const wishlistQuery = transaction
-		.select()
-		.from(wishlist)
-		.where(and(eq(wishlist.id, wishlistId), isNull(wishlist.deletedAt), wishlistScope()));
+	const wishlistQuery = selectLiveWishlistRow(transaction, wishlistId);
 	const [wishlistRow] = options.lock
 		? await wishlistQuery.for('update')
 		: await wishlistQuery.limit(1);
 	if (wishlistRow === undefined) {
 		error(404, SERVER_ERROR.WISHLIST_NOT_FOUND);
+	}
+	return wishlistRow;
+}
+
+/**
+ * The live wishlist a viewer acts on for themselves (following, visits, likes). These actions
+ * keep their original plain-text 404.
+ */
+export async function keyShareLockViewedWishlistRow(
+	transaction: DatabaseTransaction,
+	wishlistId: string,
+): Promise<WishlistRow> {
+	// Every claim, recipient change, archive and delete locks the row FOR UPDATE first, which key
+	// share waits for; viewers never block one another or a plain non-key UPDATE.
+	const [wishlistRow] = await selectLiveWishlistRow(transaction, wishlistId).for('key share');
+	if (wishlistRow === undefined) {
+		error(404, WISHLIST_NOT_FOUND_MESSAGE);
 	}
 	return wishlistRow;
 }

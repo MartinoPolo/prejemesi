@@ -15,7 +15,7 @@ import {
 
 describe('revokeClaimInvite', () => {
 	it('manager revokes a pending claim link → succeeds', async () => {
-		// 1: invite lookup, 2: requireWishlistRow (for-someone), 3: hasActiveModeratorAssignment → found, 4: update
+		// 1: locked invite, 2: locked wishlist (for-someone), 3: správce assignment → found, 4: update
 		mockGetDb.mockReturnValue(
 			createMockDb([
 				[pendingClaimInviteRow],
@@ -30,7 +30,7 @@ describe('revokeClaimInvite', () => {
 	});
 
 	it('non-manager cannot revoke → 403 ACCESS_DENIED', async () => {
-		// 1: invite lookup, 2: requireWishlistRow, 3: hasActiveModeratorAssignment → none
+		// 1: locked invite, 2: locked wishlist, 3: správce assignment → none
 		mockGetDb.mockReturnValue(createMockDb([[pendingClaimInviteRow], [forSomeoneShared], []]));
 
 		await expect(
@@ -58,7 +58,7 @@ describe('getClaimInvitesForWishlist', () => {
 			usedAt: null,
 			revokedAt: null,
 		};
-		// 1: requireWishlistRow (for-someone), 2: resolveWishlistRole mod check → found, 3: invites select
+		// 1: wishlist lookup (for-someone), 2: správce assignment → found, 3: invites select
 		mockGetDb.mockReturnValue(
 			createMockDb([[forSomeoneShared], [{ id: 'assignment-1' }], [inviteRow]]),
 		);
@@ -73,7 +73,7 @@ describe('getClaimInvitesForWishlist', () => {
 	});
 
 	it('non-manager → 403 ACCESS_DENIED', async () => {
-		// 1: requireWishlistRow (for-someone), 2: resolveWishlistRole mod check → none
+		// 1: wishlist lookup (for-someone), 2: správce assignment → none
 		mockGetDb.mockReturnValue(createMockDb([[forSomeoneShared], []]));
 
 		await expect(
