@@ -27,6 +27,7 @@
 	import WishlistCategorySettings from './WishlistCategorySettings.svelte';
 	import WishlistSettingsSaveButton from './WishlistSettingsSaveButton.svelte';
 	import RecipientPreview from './RecipientPreview.svelte';
+	import WishlistKindField from './WishlistKindField.svelte';
 	import {
 		WISHLIST_SETTINGS_TABS,
 		type WishlistSettingsTab,
@@ -36,6 +37,7 @@
 	import type { SaveWishlistSettingsInput } from '$lib/modules/wishlists/wishlist_settings_types.js';
 	import { revertWishlistToDraft } from '$lib/modules/sharing/sharing.remote.js';
 	import { graceWindowExpiresAt } from '$lib/modules/sharing/grace_window.js';
+	import { hasUpcomingEventDate } from '$lib/modules/wishlists/event_date.js';
 	import {
 		getServerErrorCode,
 		translateServerError,
@@ -48,6 +50,7 @@
 	} from '$lib/modules/wishlists/wishlist_capabilities.js';
 	import {
 		RECIPIENT_NAME_MAX_LENGTH,
+		WISHLIST_KIND,
 		WISHLIST_TITLE_MAX_LENGTH,
 		WISHLIST_ROLES,
 		type Wishlist,
@@ -130,15 +133,27 @@
 	const isFreeTextRecipient = $derived(wishlist.recipientUserId === null);
 	const canFlipRecipient = $derived(role === WISHLIST_ROLES.recipient);
 
+	// Wishlist kind (issue #479): permanent → occasion is allowed any time, occasion → permanent
+	// only while the stored event date is not upcoming. A permanent wishlist has no event date.
+	const isStoredPermanent = $derived(wishlist.kind === WISHLIST_KIND.permanent);
+	const permanentKindUnavailable = $derived(
+		!isStoredPermanent && hasUpcomingEventDate(wishlist.eventDate),
+	);
+
 	// Event-date grace window (issue #83): after sharing, the event date stays editable for a
 	// debounced 2-min window before it locks. `eventDateEditedAt` drives the debounce, falling back
 	// to `sharedAt` until the first in-window edit. The countdown re-locks the field live at zero.
+	// A permanent wishlist never had a date gifters relied on, so turning it into an occasion
+	// leaves the date open (the server opens a fresh window).
 	let eventDateClockNow = $state(new Date());
 	const eventDateGraceExpiresAt = $derived(
-		isShared ? graceWindowExpiresAt(wishlist.eventDateEditedAt ?? wishlist.sharedAt) : null,
+		isShared && !isStoredPermanent
+			? graceWindowExpiresAt(wishlist.eventDateEditedAt ?? wishlist.sharedAt)
+			: null,
 	);
 	const eventDateEditable = $derived(
 		!isShared ||
+			isStoredPermanent ||
 			(eventDateGraceExpiresAt !== null &&
 				eventDateClockNow.getTime() < eventDateGraceExpiresAt.getTime()),
 	);
@@ -164,6 +179,8 @@
 	let detailsDescription = $state(wishlist.description ?? '');
 	// svelte-ignore state_referenced_locally (intentional one-time seed; the form owns its edit state)
 	let detailsEventDate = $state(toEventDate(wishlist.eventDate));
+	// svelte-ignore state_referenced_locally (intentional one-time seed; the form owns its edit state)
+	let detailsKind = $state(wishlist.kind);
 	// Free-text recipient name (issue #150): an inline field saved alongside the details form.
 	// svelte-ignore state_referenced_locally (intentional one-time seed; the form owns its edit state)
 	let recipientNameDraft = $state(recipientDisplayName);
@@ -211,12 +228,14 @@
 		const recipientChanged =
 			isFreeTextRecipient && recipientNameDraft.trim() !== recipientDisplayName.trim();
 		const eventDateChanged =
+			detailsKind === WISHLIST_KIND.occasion &&
 			eventDateEditable &&
 			dateTimestamp(detailsEventDate) !== dateTimestamp(toEventDate(wishlist.eventDate));
 		return (
 			detailsTitle.trim() !== wishlist.title.trim() ||
 			normalizedDescription !== normalizeOptionalText(wishlist.description) ||
 			recipientChanged ||
+			detailsKind !== wishlist.kind ||
 			eventDateChanged
 		);
 	});
@@ -226,6 +245,7 @@
 		detailsTitle = wishlist.title;
 		detailsDescription = wishlist.description ?? '';
 		detailsEventDate = toEventDate(wishlist.eventDate);
+		detailsKind = wishlist.kind;
 		recipientNameDraft = recipientDisplayName;
 		detailsError = '';
 		recipientError = '';
@@ -333,7 +353,11 @@
 				input.details = {
 					title: trimmedTitle,
 					description: description === '' ? null : description,
-					...(eventDateEditable ? { eventDate: detailsEventDate } : {}),
+					...(detailsKind === wishlist.kind ? {} : { kind: detailsKind }),
+					// Becoming permanent clears the date on the server; a permanent list sends none.
+					...(detailsKind === WISHLIST_KIND.occasion && eventDateEditable
+						? { eventDate: detailsEventDate }
+						: {}),
 					...(isFreeTextRecipient && recipientNameDraft.trim() !== recipientDisplayName
 						? { recipientName: recipientNameDraft.trim() }
 						: {}),
@@ -709,26 +733,48 @@
 								/>
 							</div>
 
-							<div class="flex flex-col gap-2">
-								<Label id="wishlist-event-date-label"
-									>{m.wishlist_event_date_label()}</Label
-								>
-								<DatePicker
-									id="wishlist-event-date"
-									ariaLabelledby="wishlist-event-date-label"
-									bind:value={detailsEventDate}
-									disabled={saving || !eventDateEditable}
-								/>
-								{#if isShared && eventDateEditable && eventDateGraceExpiresAt !== null}
-									<GraceCountdown
-										expiresAt={eventDateGraceExpiresAt}
-										now={eventDateClockNow}
-										message={m.wishlist_event_date_grace_hint}
+							<WishlistKindField
+								id="wishlist-settings-kind"
+								value={detailsKind}
+								onvaluechange={(kind) => (detailsKind = kind)}
+								disabled={saving}
+								permanentUnavailable={permanentKindUnavailable}
+							>
+								{#snippet notice()}
+									{#if permanentKindUnavailable}
+										<HelpText
+											>{m.wishlist_kind_permanent_unavailable_hint()}</HelpText
+										>
+									{:else if isShared && isStoredPermanent && detailsKind === WISHLIST_KIND.occasion}
+										<HelpText
+											>{m.wishlist_kind_occasion_after_share_hint()}</HelpText
+										>
+									{/if}
+								{/snippet}
+							</WishlistKindField>
+
+							{#if detailsKind === WISHLIST_KIND.occasion}
+								<div class="flex flex-col gap-2">
+									<Label id="wishlist-event-date-label"
+										>{m.wishlist_event_date_label()}</Label
+									>
+									<DatePicker
+										id="wishlist-event-date"
+										ariaLabelledby="wishlist-event-date-label"
+										bind:value={detailsEventDate}
+										disabled={saving || !eventDateEditable}
 									/>
-								{:else if isShared}
-									<HelpText>{m.wishlist_event_date_locked_hint()}</HelpText>
-								{/if}
-							</div>
+									{#if isShared && eventDateEditable && eventDateGraceExpiresAt !== null}
+										<GraceCountdown
+											expiresAt={eventDateGraceExpiresAt}
+											now={eventDateClockNow}
+											message={m.wishlist_event_date_grace_hint}
+										/>
+									{:else if isShared && !eventDateEditable}
+										<HelpText>{m.wishlist_event_date_locked_hint()}</HelpText>
+									{/if}
+								</div>
+							{/if}
 						</form>
 					</div>
 				</div>

@@ -36,6 +36,19 @@ export function canSeeReserverNames(role: WishlistRole): boolean {
 	return role === WISHLIST_ROLES.moderator;
 }
 
+/**
+ * Whether the recipient may move gifts out of their permanent wishlist (copy, then remove the
+ * unreserved sources): only while it has never been shared, because the reserved gifts a move
+ * leaves behind would reveal reservations to them. `sharedAt` also counts, for a list shared by
+ * code that predates `firstSharedAt`.
+ */
+export function recipientMayMoveGifts(wishlist: {
+	firstSharedAt: Date | null;
+	sharedAt: Date | null;
+}): boolean {
+	return wishlist.firstSharedAt === null && wishlist.sharedAt === null;
+}
+
 /** Whether the caller may reserve gifts. Everyone except the recipient (their own surprise). */
 export function canReserveGift(role: WishlistRole): boolean {
 	return role !== WISHLIST_ROLES.recipient;

@@ -21,7 +21,7 @@ Přejeme si is a shareable wishlist web app where users create gift lists for th
 
 - **Sharing** — Distributing a wishlist link. Freezes each existing gift's identity (`name`) and blocks delete, but leaves presentation/info fields editable (image, links, price, priority, append-only description; quantity raise-only). On a permanent wishlist this applies only to reserved gifts. See Post-share editing.
 - **Occasion wishlist** — The default wishlist kind, with or without an event date; sharing applies the strict post-share gift rules to every gift.
-- **Permanent wishlist** — A wishlist kind chosen at creation for a list that changes over time: no event date, and after sharing its unreserved gifts stay fully editable and deletable. It can become an occasion wishlist any time; an occasion wishlist becomes permanent only before it is first shared.
+- **Permanent wishlist** — A wishlist kind chosen at creation for a list that changes over time: no event date, and after sharing its unreserved gifts stay fully editable and deletable. It can become an occasion wishlist any time; an occasion wishlist can become permanent unless its event date is still upcoming.
 - **Post-share grace window** — A 2-minute reversibility window for sharing, each description append, and the event-date lock; later gift edits never reopen gift name/delete grace.
 - **Description append** — A post-share description change: an immutable, accent-colored, timestamped addition. The original text freezes at share time and is preserved for the gifter; Card/List previews show only the latest append; full history remains available in detail and editors.
 - **Archive** — A read-only state for a completed wishlist; visually distinct, no new reservations accepted.
@@ -75,7 +75,7 @@ _Avoid_: "list" for Wishlist (ambiguous), "present" for Gift (confusing with tim
 ### Done
 
 - Accounts: email/password with optional Google sign-in; anonymous visitors with a display name and optional email.
-- Wishlists: create, edit, share, archive, revert to draft (správce when reservation-free, admin when reserved); lists for someone else with claim links and recipient reassignment.
+- Wishlists: create, edit, share, archive, revert to draft (správce when reservation-free, admin when reserved); occasion and permanent kinds; lists for someone else with claim links and recipient reassignment.
 - Gifts: add, edit, remove, reorder, up to 10 links, image fit/crop, categories with priority/category grouping and facets, mark as received.
 - Bulk entry: shared draft grid and the CSV / Google Sheets import wizard.
 - Reservations with quantity support, single-reservation release, and likes.
@@ -92,7 +92,6 @@ _Avoid_: "list" for Wishlist (ambiguous), "present" for Gift (confusing with tim
 
 - Agent access: tokens, OAuth, JSON API, MCP, CLI, change proposals ([#480](https://github.com/MartinoPolo/prejemesi/issues/480)).
 - Hosted AI chatbot, premium ([#478](https://github.com/MartinoPolo/prejemesi/issues/478)).
-- Permanent vs occasion wishlists ([#479](https://github.com/MartinoPolo/prejemesi/issues/479)).
 - Linking anonymous reservations to an account at sign-up.
 - Gift metadata enrichment from a link (image, price, title), later by name.
 - AI product suggestions.

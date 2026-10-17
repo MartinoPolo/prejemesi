@@ -274,3 +274,61 @@ describe('WishlistHeader responsive presentation', () => {
 		}
 	});
 });
+
+describe('WishlistHeader permanent wishlist', () => {
+	it('shows visitors the permanent chip and a calm note that the list changes over time', async () => {
+		const screen = await render(WishlistHeader, {
+			...baseProps,
+			kind: 'permanent' as const,
+			role: 'visitor' as const,
+		});
+
+		const chip = screen.getByTestId('wishlist-kind-chip');
+		await expect.element(chip).toBeVisible();
+		await expect.element(chip).toHaveTextContent(m.wishlist_kind_permanent());
+		const note = screen.getByTestId('wishlist-permanent-note');
+		await expect.element(note).toBeVisible();
+		await expect.element(note).toHaveTextContent(m.wishlist_permanent_visitor_note());
+		expect(computedRotation(note.element() as HTMLElement)).toBe(0);
+		await screen.unmount();
+	});
+
+	it('shows managers the chip without the visitor note', async () => {
+		const screen = await render(WishlistHeader, { ...baseProps, kind: 'permanent' as const });
+
+		await expect.element(screen.getByTestId('wishlist-kind-chip')).toBeVisible();
+		await expect.element(screen.getByTestId('wishlist-permanent-note')).not.toBeInTheDocument();
+		await screen.unmount();
+	});
+
+	it('marks neither chip nor note on an occasion wishlist', async () => {
+		const screen = await render(WishlistHeader, { ...baseProps, role: 'visitor' as const });
+
+		await expect.element(screen.getByTestId('wishlist-kind-chip')).not.toBeInTheDocument();
+		await expect.element(screen.getByTestId('wishlist-permanent-note')).not.toBeInTheDocument();
+		await screen.unmount();
+	});
+
+	it('names the permanent kind in the compact mobile meta line', async () => {
+		await page.viewport(390, 720);
+		const screen = await render(WishlistHeader, { ...baseProps, kind: 'permanent' as const });
+
+		await expect
+			.element(screen.getByTestId('wishlist-mobile-hero'))
+			.toHaveTextContent(m.wishlist_kind_permanent());
+		expect(screen.getByTestId('wishlist-mobile-meta').element().textContent?.trim()).toBe(
+			`${m.dashboard_status_shared()} · ${m.wishlist_kind_permanent()} · ${m.wishlist_gift_count_other({ count: 13 })}`,
+		);
+		await screen.unmount();
+	});
+
+	it('separates status and gift count with a spaced dot on an occasion wishlist', async () => {
+		await page.viewport(390, 720);
+		const screen = await render(WishlistHeader, baseProps);
+
+		expect(screen.getByTestId('wishlist-mobile-meta').element().textContent?.trim()).toBe(
+			`${m.dashboard_status_shared()} · ${m.wishlist_gift_count_other({ count: 13 })}`,
+		);
+		await screen.unmount();
+	});
+});

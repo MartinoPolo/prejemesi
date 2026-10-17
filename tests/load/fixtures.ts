@@ -128,6 +128,7 @@ export async function setupLoadTestData(db: LoadTestDb): Promise<void> {
 
 	// Arena wishlist: shared, active — the target of viewing + reservation
 	// scenarios. Each VU also gets a private draft wishlist for gift creation.
+	const arenaSharedAt = new Date();
 	await db.insert(wishlist).values([
 		{
 			id: ARENA_WISHLIST_ID,
@@ -136,7 +137,8 @@ export async function setupLoadTestData(db: LoadTestDb): Promise<void> {
 			title: 'Loadtest arena',
 			description: 'Dedicated load-test wishlist — safe to delete.',
 			status: 'active',
-			sharedAt: new Date(),
+			sharedAt: arenaSharedAt,
+			firstSharedAt: arenaSharedAt,
 		},
 		...vuIndexes.map((i) => ({
 			id: virtualUserWishlistId(i),

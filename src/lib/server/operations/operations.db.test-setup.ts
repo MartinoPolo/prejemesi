@@ -143,6 +143,7 @@ export async function createWishlistFixture(
 			recipientUserId: RECIPIENT_ID,
 			status: options.status ?? (options.sharedAt ? 'active' : 'draft'),
 			sharedAt: options.sharedAt ?? null,
+			firstSharedAt: options.sharedAt ?? null,
 			recipientIsModerator: options.recipientIsModerator ?? false,
 			...(options.kind === undefined ? {} : { kind: options.kind }),
 			eventDate: options.eventDate ?? null,

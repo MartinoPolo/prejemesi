@@ -4,7 +4,10 @@ import type { WishlistRow } from './wishlist_management.js';
 import { assertEventDateAllowed, planWishlistKindChange } from './wishlist_kind_rules.js';
 
 type EventDateEdit = Partial<Pick<WishlistRow, 'eventDate' | 'eventDateEditedAt'>>;
-type DetailEditedWishlist = Pick<WishlistRow, 'kind' | 'sharedAt' | 'eventDateEditedAt'>;
+type DetailEditedWishlist = Pick<
+	WishlistRow,
+	'kind' | 'sharedAt' | 'eventDate' | 'eventDateEditedAt'
+>;
 
 /**
  * The event date is editable before sharing; after sharing only inside its own grace window, which

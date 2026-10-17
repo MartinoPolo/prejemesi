@@ -12,6 +12,7 @@ import { getObject, putObject, deleteObject } from '$lib/server/storage/r2.js';
 import { normalizeGiftCategoryLabel } from '$lib/modules/gift-categories/types.js';
 import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
 import { WISHLIST_KIND } from '$lib/modules/wishlists/types.js';
+import { recipientMayMoveGifts } from '$lib/modules/wishlists/wishlist_capabilities.js';
 import {
 	appendGiftsUsingTransaction,
 	type GiftCreationTransaction,
@@ -146,13 +147,27 @@ async function assertManagedWishlist(
 	return row;
 }
 
-/** Moving gifts out (copy, then remove the unreserved sources) is a permanent wishlist's workflow. */
+/**
+ * Moving gifts out (copy, then remove the unreserved sources) is a permanent wishlist's workflow.
+ * The recipient may move only from a list that was never shared: once shared, the reserved gifts a
+ * move leaves behind would reveal their reservations, even after a revert to draft.
+ */
 function assertSourceRemovalAllowed(
-	source: Pick<typeof wishlist.$inferSelect, 'kind'>,
+	actorId: string,
+	source: Pick<
+		typeof wishlist.$inferSelect,
+		'kind' | 'recipientUserId' | 'firstSharedAt' | 'sharedAt'
+	>,
 	input: BulkCopyGiftsInput,
 ): void {
-	if (input.removeUnreservedSources === true && source.kind !== WISHLIST_KIND.permanent) {
+	if (input.removeUnreservedSources !== true) {
+		return;
+	}
+	if (source.kind !== WISHLIST_KIND.permanent) {
 		error(400, SERVER_ERROR.BULK_COPY_SOURCE_NOT_PERMANENT);
+	}
+	if (source.recipientUserId === actorId && !recipientMayMoveGifts(source)) {
+		error(403, SERVER_ERROR.BULK_COPY_RECIPIENT_CANNOT_MOVE);
 	}
 }
 
@@ -281,7 +296,7 @@ export async function prepareGiftCopy(
 	}
 	const database = options.database ?? getDb();
 	const source = await assertManagedWishlist(database, actorId, input.sourceWishlistId, false);
-	assertSourceRemovalAllowed(source, input);
+	assertSourceRemovalAllowed(actorId, source, input);
 	await assertManagedWishlist(database, actorId, input.destinationWishlistId, false);
 	const preflightGifts = await loadSourceGifts(database, input, false);
 	const operationId = generateId();
@@ -385,7 +400,7 @@ export async function copyPreparedGifts(
 		input.destinationWishlistId,
 	]);
 	const source = await assertManagedWishlist(transaction, actorId, input.sourceWishlistId, true);
-	assertSourceRemovalAllowed(source, input);
+	assertSourceRemovalAllowed(actorId, source, input);
 	const destination = await assertManagedWishlist(
 		transaction,
 		actorId,

@@ -33,6 +33,10 @@ import { WISHLIST_KIND } from '$lib/modules/wishlists/types.js';
 import { executeOperation } from '$lib/server/operations/runner.js';
 import { userInterfaceActor } from '$lib/server/operations/actor.js';
 import { bulkCopyGiftsOperation } from '$lib/server/operations/gift_bulk_operations.js';
+import {
+	revertWishlistToDraftOperation,
+	shareWishlistOperation,
+} from '$lib/server/operations/wishlist_lifecycle_operations.js';
 
 const copyActor = (actorId: string) => userInterfaceActor({ id: actorId, name: 'Copy actor' });
 
@@ -46,9 +50,17 @@ const FOLLOWER_ID = `${PREFIX}follower`;
 const SOURCE_ID = `${PREFIX}source`;
 const DESTINATION_ID = `${PREFIX}destination`;
 const PERMANENT_SOURCE_ID = `${PREFIX}permanent-source`;
+const PERMANENT_SOURCE_SHARED_AT = new Date(Date.now() - 60 * 60 * 1000);
+const NEVER_SHARED_PERMANENT_SOURCE_ID = `${PREFIX}never-shared-permanent-source`;
+const REVERTED_PERMANENT_SOURCE_ID = `${PREFIX}reverted-permanent-source`;
 const SOURCE_GIFT_ONE = `${PREFIX}gift-one`;
 const SOURCE_GIFT_TWO = `${PREFIX}gift-two`;
-const MANAGER_ASSIGNMENTS = [`${PREFIX}source-manager`, `${PREFIX}destination-manager`];
+const MANAGER_ASSIGNMENTS = [
+	`${PREFIX}source-manager`,
+	`${PREFIX}destination-manager`,
+	`${PREFIX}permanent-source-manager`,
+	`${PREFIX}reverted-permanent-source-manager`,
+];
 
 function isLocalDatabaseUrl(value: string): boolean {
 	try {
@@ -97,10 +109,42 @@ describe.skipIf(!DATABASE_READY)('bulk gift copy [real DB]', () => {
 				title: 'Destination',
 				status: 'active',
 			},
+			{
+				id: PERMANENT_SOURCE_ID,
+				shortId: `${PREFIX}permanent-source-short`,
+				recipientUserId: RECIPIENT_ID,
+				title: 'Permanent source',
+				kind: WISHLIST_KIND.permanent,
+				status: 'active',
+				sharedAt: PERMANENT_SOURCE_SHARED_AT,
+				firstSharedAt: PERMANENT_SOURCE_SHARED_AT,
+			},
+			{
+				id: NEVER_SHARED_PERMANENT_SOURCE_ID,
+				shortId: `${PREFIX}never-shared-permanent-source-short`,
+				recipientUserId: RECIPIENT_ID,
+				title: 'Never shared permanent source',
+				kind: WISHLIST_KIND.permanent,
+				status: 'draft',
+			},
+			{
+				id: REVERTED_PERMANENT_SOURCE_ID,
+				shortId: `${PREFIX}reverted-permanent-source-short`,
+				recipientUserId: RECIPIENT_ID,
+				title: 'Shared then reverted permanent source',
+				kind: WISHLIST_KIND.permanent,
+				status: 'draft',
+			},
 		]);
 		await database.insert(moderatorAssignment).values([
 			{ id: MANAGER_ASSIGNMENTS[0], wishlistId: SOURCE_ID, userId: MANAGER_ID },
 			{ id: MANAGER_ASSIGNMENTS[1], wishlistId: DESTINATION_ID, userId: MANAGER_ID },
+			{ id: MANAGER_ASSIGNMENTS[2], wishlistId: PERMANENT_SOURCE_ID, userId: MANAGER_ID },
+			{
+				id: MANAGER_ASSIGNMENTS[3],
+				wishlistId: REVERTED_PERMANENT_SOURCE_ID,
+				userId: MANAGER_ID,
+			},
 		]);
 		await database.insert(priorityLevel).values([
 			{
@@ -192,7 +236,15 @@ describe.skipIf(!DATABASE_READY)('bulk gift copy [real DB]', () => {
 		}
 		await getDb()
 			.delete(wishlist)
-			.where(inArray(wishlist.id, [SOURCE_ID, DESTINATION_ID, PERMANENT_SOURCE_ID]));
+			.where(
+				inArray(wishlist.id, [
+					SOURCE_ID,
+					DESTINATION_ID,
+					PERMANENT_SOURCE_ID,
+					NEVER_SHARED_PERMANENT_SOURCE_ID,
+					REVERTED_PERMANENT_SOURCE_ID,
+				]),
+			);
 		await getDb()
 			.delete(user)
 			.where(inArray(user.id, [RECIPIENT_ID, MANAGER_ID, FOLLOWER_ID]));
@@ -434,22 +486,11 @@ describe.skipIf(!DATABASE_READY)('bulk gift copy [real DB]', () => {
 		await getDb().update(gift).set({ imageKey: null }).where(eq(gift.id, SOURCE_GIFT_ONE));
 	});
 
-	it('moves unreserved gifts out of a permanent wishlist and keeps reserved ones in place', async () => {
+	it('lets a správce move unreserved gifts out of a permanent wishlist and keeps reserved ones in place', async () => {
 		const reservedSourceId = `${PREFIX}permanent-reserved`;
 		const unreservedSourceId = `${PREFIX}permanent-unreserved`;
 		const unreservedSourceImageKey = `${PREFIX}permanent-unreserved.webp`;
 		const longAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
-		await getDb()
-			.insert(wishlist)
-			.values({
-				id: PERMANENT_SOURCE_ID,
-				shortId: `${PREFIX}permanent-source-short`,
-				recipientUserId: RECIPIENT_ID,
-				title: 'Permanent source',
-				kind: WISHLIST_KIND.permanent,
-				status: 'active',
-				sharedAt: new Date(Date.now() - 60 * 60 * 1000),
-			});
 		await getDb()
 			.insert(gift)
 			.values([
@@ -478,7 +519,7 @@ describe.skipIf(!DATABASE_READY)('bulk gift copy [real DB]', () => {
 		});
 		storage.putObject.mockResolvedValue(true);
 
-		const result = await copyGifts(RECIPIENT_ID, {
+		const result = await copyGifts(MANAGER_ID, {
 			sourceWishlistId: PERMANENT_SOURCE_ID,
 			destinationWishlistId: DESTINATION_ID,
 			giftIds: [reservedSourceId, unreservedSourceId],
@@ -533,6 +574,135 @@ describe.skipIf(!DATABASE_READY)('bulk gift copy [real DB]', () => {
 			([keys]) => keys as string[],
 		);
 		expect(deletedImageKeys).toEqual([unreservedSourceImageKey]);
+	});
+
+	it('lets the recipient move gifts out of a never-shared permanent wishlist', async () => {
+		const unreservedSourceId = `${PREFIX}never-shared-unreserved`;
+		await getDb().insert(gift).values({
+			id: unreservedSourceId,
+			wishlistId: NEVER_SHARED_PERMANENT_SOURCE_ID,
+			name: 'Never shared permanent gift',
+		});
+
+		const result = await copyGifts(RECIPIENT_ID, {
+			sourceWishlistId: NEVER_SHARED_PERMANENT_SOURCE_ID,
+			destinationWishlistId: DESTINATION_ID,
+			giftIds: [unreservedSourceId],
+			removeUnreservedSources: true,
+		});
+
+		expect(result.removedSourceIds).toEqual([unreservedSourceId]);
+		const [source] = await getDb()
+			.select({ deletedAt: gift.deletedAt })
+			.from(gift)
+			.where(eq(gift.id, unreservedSourceId));
+		expect(source?.deletedAt).not.toBeNull();
+		expect(
+			await getDb()
+				.select()
+				.from(gift)
+				.where(and(eq(gift.wishlistId, DESTINATION_ID), isNull(gift.deletedAt))),
+		).toHaveLength(1);
+	});
+
+	it('keeps the recipient copy-only once the permanent wishlist was shared, even after a revert to draft', async () => {
+		const recipientGiftId = `${PREFIX}reverted-recipient-gift`;
+		const managerGiftId = `${PREFIX}reverted-manager-gift`;
+		await getDb()
+			.insert(gift)
+			.values([
+				{
+					id: recipientGiftId,
+					wishlistId: REVERTED_PERMANENT_SOURCE_ID,
+					name: 'Recipient gift',
+				},
+				{
+					id: managerGiftId,
+					wishlistId: REVERTED_PERMANENT_SOURCE_ID,
+					name: 'Manager gift',
+				},
+			]);
+		const lifecycleInput = { wishlistId: REVERTED_PERMANENT_SOURCE_ID };
+		await executeOperation(copyActor(RECIPIENT_ID), shareWishlistOperation, lifecycleInput);
+		await executeOperation(
+			copyActor(MANAGER_ID),
+			revertWishlistToDraftOperation,
+			lifecycleInput,
+		);
+		const [revertedSource] = await getDb()
+			.select({ sharedAt: wishlist.sharedAt, firstSharedAt: wishlist.firstSharedAt })
+			.from(wishlist)
+			.where(eq(wishlist.id, REVERTED_PERMANENT_SOURCE_ID));
+		expect(revertedSource?.sharedAt).toBeNull();
+		expect(revertedSource?.firstSharedAt).toBeInstanceOf(Date);
+
+		const thrown = await copyGifts(RECIPIENT_ID, {
+			sourceWishlistId: REVERTED_PERMANENT_SOURCE_ID,
+			destinationWishlistId: DESTINATION_ID,
+			giftIds: [recipientGiftId],
+			removeUnreservedSources: true,
+		}).catch((caught: unknown) => caught);
+		expect(thrown).toMatchObject({
+			status: 403,
+			body: { message: SERVER_ERROR.BULK_COPY_RECIPIENT_CANNOT_MOVE },
+		});
+
+		const result = await copyGifts(MANAGER_ID, {
+			sourceWishlistId: REVERTED_PERMANENT_SOURCE_ID,
+			destinationWishlistId: DESTINATION_ID,
+			giftIds: [managerGiftId],
+			removeUnreservedSources: true,
+		});
+		expect(result.removedSourceIds).toEqual([managerGiftId]);
+		const sources = await getDb()
+			.select({ id: gift.id, deletedAt: gift.deletedAt })
+			.from(gift)
+			.where(eq(gift.wishlistId, REVERTED_PERMANENT_SOURCE_ID));
+		expect(sources.find((row) => row.id === recipientGiftId)?.deletedAt).toBeNull();
+		expect(sources.find((row) => row.id === managerGiftId)?.deletedAt).not.toBeNull();
+	});
+
+	it('rejects the recipient removing copied sources from a shared permanent wishlist, yet lets them copy', async () => {
+		const unreservedSourceId = `${PREFIX}permanent-recipient-unreserved`;
+		await getDb().insert(gift).values({
+			id: unreservedSourceId,
+			wishlistId: PERMANENT_SOURCE_ID,
+			name: 'Recipient permanent gift',
+		});
+
+		const thrown = await copyGifts(RECIPIENT_ID, {
+			sourceWishlistId: PERMANENT_SOURCE_ID,
+			destinationWishlistId: DESTINATION_ID,
+			giftIds: [unreservedSourceId],
+			removeUnreservedSources: true,
+		}).catch((caught: unknown) => caught);
+
+		expect(thrown).toMatchObject({
+			status: 403,
+			body: { message: SERVER_ERROR.BULK_COPY_RECIPIENT_CANNOT_MOVE },
+		});
+		expect(
+			await getDb().select().from(gift).where(eq(gift.wishlistId, DESTINATION_ID)),
+		).toHaveLength(0);
+		const readSourceDeletedAt = async () =>
+			(
+				await getDb()
+					.select({ deletedAt: gift.deletedAt })
+					.from(gift)
+					.where(eq(gift.id, unreservedSourceId))
+			)[0]?.deletedAt;
+		expect(await readSourceDeletedAt()).toBeNull();
+
+		const result = await copyGifts(RECIPIENT_ID, {
+			sourceWishlistId: PERMANENT_SOURCE_ID,
+			destinationWishlistId: DESTINATION_ID,
+			giftIds: [unreservedSourceId],
+		});
+		expect(result.removedSourceIds).toEqual([]);
+		expect(
+			await getDb().select().from(gift).where(eq(gift.wishlistId, DESTINATION_ID)),
+		).toHaveLength(1);
+		expect(await readSourceDeletedAt()).toBeNull();
 	});
 
 	it('rejects removing copied sources from an occasion wishlist before copying', async () => {

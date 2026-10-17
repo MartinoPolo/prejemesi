@@ -33,6 +33,7 @@ function mapWishlist(row: WishlistRow): Wishlist {
 		imageSlots: row.wishlist.imageSlots,
 		recipientIsModerator: row.wishlist.recipientIsModerator,
 		sharedAt: row.wishlist.sharedAt,
+		firstSharedAt: row.wishlist.firstSharedAt,
 		eventDateEditedAt: row.wishlist.eventDateEditedAt,
 		archivedAt: row.wishlist.archivedAt,
 		deletedAt: row.wishlist.deletedAt,

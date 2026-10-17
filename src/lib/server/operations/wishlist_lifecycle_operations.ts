@@ -38,7 +38,10 @@ function withoutActor(context: MutationOperationContext, userIds: readonly strin
 	return userIds.filter((userId) => userId !== context.actor.userId);
 }
 
-/** Shares a draft: it becomes active and the post-share grace window opens. */
+/**
+ * Shares a draft: it becomes active and the post-share grace window opens. The first share is
+ * recorded for good; reverting to draft keeps it.
+ */
 export const shareWishlistOperation = defineOperation({
 	name: 'shareWishlist',
 	kind: OPERATION_KIND.mutation,
@@ -60,7 +63,12 @@ export const shareWishlistOperation = defineOperation({
 		}
 		await context.transaction
 			.update(wishlist)
-			.set({ sharedAt: context.now, status: 'active', updatedAt: context.now })
+			.set({
+				sharedAt: context.now,
+				firstSharedAt: wishlistRow.firstSharedAt ?? context.now,
+				status: 'active',
+				updatedAt: context.now,
+			})
 			.where(eq(wishlist.id, input.wishlistId));
 		return { shortId: wishlistRow.shortId, alreadyShared: false } as const;
 	},
@@ -122,6 +130,7 @@ export const revertWishlistToDraftOperation = defineOperation({
 		}
 		await clearPostShareGiftState(context, input.wishlistId);
 		// Clearing `sharedAt` releases the event-date lock; a re-share opens a fresh grace window.
+		// `firstSharedAt` stays: the recipient's copy-only rule outlives the revert.
 		await context.transaction
 			.update(wishlist)
 			.set({

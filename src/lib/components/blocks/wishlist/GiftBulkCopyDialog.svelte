@@ -3,6 +3,8 @@
 	import * as Sheet from '$lib/components/base/sheet/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
 	import { Label } from '$lib/components/base/label/index.js';
+	import { Checkbox } from '$lib/components/base/checkbox/index.js';
+	import { HelpText } from '$lib/components/base/help-text/index.js';
 	import * as Select from '$lib/components/base/select/index.js';
 	import WishlistBottomSheet from './WishlistBottomSheet.svelte';
 	import WishlistSheetBody from './WishlistSheetBody.svelte';
@@ -26,6 +28,10 @@
 		onopenchange: (open: boolean) => void;
 		onback?: () => void;
 		ondestinationchange: (id: string) => void;
+		/** Offered only for a permanent source wishlist, whose gifts may move out. */
+		offerSourceRemoval?: boolean;
+		removeSources?: boolean;
+		onremovesourceschange?: (removeSources: boolean) => void;
 		onconfirm: () => void;
 	}
 
@@ -39,6 +45,9 @@
 		onopenchange,
 		onback,
 		ondestinationchange,
+		offerSourceRemoval = false,
+		removeSources = false,
+		onremovesourceschange,
 		onconfirm,
 	}: Props = $props();
 	let viewportWidth = $state(1024);
@@ -47,6 +56,11 @@
 	const mobile = $derived(viewportWidth < 640);
 	const unavailable = $derived(
 		loading || submitting || selectedDestinationId === '' || destinations.length === 0,
+	);
+	const moving = $derived(offerSourceRemoval && removeSources);
+	const title = $derived(moving ? m.gift_bulk_copy_move_title() : m.gift_bulk_copy_title());
+	const description = $derived(
+		moving ? m.gift_bulk_copy_move_description() : m.gift_bulk_copy_description(),
 	);
 	const selectedDestinationLabel = $derived(
 		destinations.find((destination) => destination.id === selectedDestinationId)
@@ -112,6 +126,25 @@
 					</Select.Content>
 				</Select.Root>
 			</div>
+			{#if offerSourceRemoval}
+				<div class="grid gap-1">
+					<div class="flex items-center gap-2">
+						<Checkbox
+							id="bulk-copy-remove-sources"
+							checked={removeSources}
+							disabled={submitting}
+							aria-describedby="bulk-copy-remove-sources-help"
+							onCheckedChange={(checked) => onremovesourceschange?.(checked === true)}
+						/>
+						<Label for="bulk-copy-remove-sources"
+							>{m.gift_bulk_copy_remove_sources()}</Label
+						>
+					</div>
+					<HelpText id="bulk-copy-remove-sources-help">
+						{m.gift_bulk_copy_remove_sources_help()}
+					</HelpText>
+				</div>
+			{/if}
 		{/if}
 	</div>
 {/snippet}
@@ -137,7 +170,9 @@
 		>
 			{submitting
 				? m.gift_bulk_pending({ count: selectedCount })
-				: m.gift_bulk_copy_confirm()}
+				: moving
+					? m.gift_bulk_copy_move_confirm()
+					: m.gift_bulk_copy_confirm()}
 		</Button>
 	</div>
 {/snippet}
@@ -147,8 +182,8 @@
 		{#if open}
 			<WishlistBottomSheet>
 				<WishlistSheetHeader>
-					<Sheet.Title>{m.gift_bulk_copy_title()}</Sheet.Title>
-					<Sheet.Description>{m.gift_bulk_copy_description()}</Sheet.Description>
+					<Sheet.Title>{title}</Sheet.Title>
+					<Sheet.Description>{description}</Sheet.Description>
 				</WishlistSheetHeader>
 				<WishlistSheetBody>{@render destinationPicker()}</WishlistSheetBody>
 				{@render actions()}
@@ -159,8 +194,8 @@
 	<Dialog.Root {open} onOpenChange={onopenchange}>
 		<Dialog.Content size="sm">
 			<Dialog.Header>
-				<Dialog.Title>{m.gift_bulk_copy_title()}</Dialog.Title>
-				<Dialog.Description>{m.gift_bulk_copy_description()}</Dialog.Description>
+				<Dialog.Title>{title}</Dialog.Title>
+				<Dialog.Description>{description}</Dialog.Description>
 			</Dialog.Header>
 			{@render destinationPicker()}
 			{@render actions()}
