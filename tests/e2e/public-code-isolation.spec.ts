@@ -43,6 +43,7 @@ const LANDING_DEMO_PUBLIC_MODULE_PATHS = [
 	'/lib/modules/wishlists/wishlist_capabilities.ts',
 	'/lib/modules/wishlists/dashboard_types.ts',
 	'/lib/modules/wishlists/event_countdown.ts',
+	'/lib/modules/wishlists/event_date.ts',
 ] as const;
 
 // Locale-resilient: the link text differs per locale, but LandingNav always links to a
