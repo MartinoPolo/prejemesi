@@ -458,9 +458,10 @@
 	// The in-memory set keeps the acknowledgement when session storage is unavailable.
 
 	let recipientGiftChangeWarningOpen = $state(false);
-	let pendingRecipientGiftChange = $state<{ wishlistId: string; change: () => void } | null>(
-		null,
-	);
+	let pendingRecipientGiftChange = $state<{
+		wishlistId: string;
+		resolve: (confirmed: boolean) => void;
+	} | null>(null);
 	const recipientGiftChangeWarningAcknowledgedIds = new SvelteSet<string>();
 
 	// ── Archive confirmation dialog state ────────────────────────────────────
@@ -1478,30 +1479,29 @@
 	}
 
 	/** Opens the gift detail modal (issue #125): edit mode for managers, read-only for everyone
-	 *  else. Gift deletion lives inside it, so this one gate covers editing and deleting. */
-	function openEditModal(gift: GiftByRole) {
-		runAfterRecipientGiftChangeWarning(() => void openGiftDetail(gift));
-	}
-
-	async function openGiftDetail(gift: GiftByRole) {
+	 *  else. */
+	async function openEditModal(gift: GiftByRole) {
 		await ensurePriorityLevels();
 		giftModalMode = 'edit';
 		selectedGift = gifts.find((actualGift) => actualGift.id === gift.id) ?? gift;
 		giftModalOpen = true;
 	}
 
-	/** Runs a gift change, first asking the recipient of a shared permanent wishlist once per session. */
-	function runAfterRecipientGiftChangeWarning(change: () => void) {
+	/** Resolves whether a gift change may go ahead, first asking the recipient of a shared permanent
+	 *  wishlist once per session. The gift editor asks on the first edit or Delete, never on open. */
+	function confirmRecipientGiftChange(): Promise<boolean> {
 		const wishlistId = wishlist.id;
 		const acknowledged =
 			recipientGiftChangeWarningAcknowledgedIds.has(wishlistId) ||
 			readRecipientGiftChangeWarningAcknowledged(wishlistId);
 		if (!shouldWarnRecipientBeforeGiftChange({ wishlist, role, acknowledged })) {
-			change();
-			return;
+			return Promise.resolve(true);
 		}
-		pendingRecipientGiftChange = { wishlistId, change };
-		recipientGiftChangeWarningOpen = true;
+		pendingRecipientGiftChange?.resolve(false);
+		return new Promise((resolve) => {
+			pendingRecipientGiftChange = { wishlistId, resolve };
+			recipientGiftChangeWarningOpen = true;
+		});
 	}
 
 	function confirmRecipientGiftChangeWarning() {
@@ -1513,12 +1513,13 @@
 		}
 		recipientGiftChangeWarningAcknowledgedIds.add(pending.wishlistId);
 		storeRecipientGiftChangeWarningAcknowledged(pending.wishlistId);
-		pending.change();
+		pending.resolve(true);
 	}
 
 	function handleRecipientGiftChangeWarningOpenChange(open: boolean) {
 		recipientGiftChangeWarningOpen = open;
 		if (!open) {
+			pendingRecipientGiftChange?.resolve(false);
 			pendingRecipientGiftChange = null;
 		}
 	}
@@ -2109,7 +2110,7 @@
 				// eslint-disable-next-line svelte/no-navigation-without-resolve -- shallow cleanup of the current URL's query marker, not a route navigation
 				replaceState(cleanedUrl, {});
 			},
-			onOpen: (gift) => openEditModal(gift),
+			onOpen: (gift) => void openEditModal(gift),
 		});
 	});
 </script>
@@ -2268,7 +2269,7 @@
 					onclose={requestContextClose}
 					oncomplete={completeContextClose}
 					onfinish={finishContextAction}
-					onedit={() => openEditModal(contextActionGift)}
+					onedit={() => void openEditModal(contextActionGift)}
 					onpriority={(priorityLevelId) => void updateContextGift({ priorityLevelId })}
 					oncategory={(categoryId) => void updateContextGift({ categoryId })}
 					onreceived={() =>
@@ -2313,7 +2314,7 @@
 			hascontextactions={hasAdditionalContextActions}
 			{activeContextGiftId}
 			{contextSurface}
-			onedit={openEditModal}
+			onedit={(gift) => void openEditModal(gift)}
 			onreserve={handleOpenReserveModal}
 			onunreserve={handleUnreserve}
 			onreceived={handleReceived}
@@ -2386,28 +2387,6 @@
 	</Dialog.Content>
 </Dialog.Root>
 
-<Dialog.Root
-	open={recipientGiftChangeWarningOpen}
-	onOpenChange={handleRecipientGiftChangeWarningOpenChange}
->
-	<Dialog.Content size="sm" data-testid="recipient-gift-change-warning">
-		<Dialog.Header>
-			<Dialog.Title>{m.gift_recipient_change_warning_title()}</Dialog.Title>
-			<Dialog.Description>{m.gift_recipient_change_warning_description()}</Dialog.Description>
-		</Dialog.Header>
-		<Dialog.Footer>
-			<Button
-				intent="outline"
-				onclick={() => handleRecipientGiftChangeWarningOpenChange(false)}
-				>{m.cancel()}</Button
-			>
-			<Button intent="primary" onclick={confirmRecipientGiftChangeWarning}
-				>{m.gift_recipient_change_warning_continue()}</Button
-			>
-		</Dialog.Footer>
-	</Dialog.Content>
-</Dialog.Root>
-
 <WishlistModals
 	demo={page.data.demoExpiresAt !== null}
 	{role}
@@ -2430,6 +2409,7 @@
 	graceExpiresAt={selectedActiveGraceExpiresAt}
 	graceMessage={selectedGraceMessage}
 	graceNow={graceClockNow}
+	confirmGiftChange={confirmRecipientGiftChange}
 	{isSubmitting}
 	{isDeleting}
 	bind:reserveModalOpen
@@ -2455,6 +2435,29 @@
 	onbatchdialogopenchange={handleBatchDialogOpenChange}
 	onbatchresetduplicatewarning={resetBatchDuplicateWarning}
 />
+
+<!-- After the gift editor so its portal stacks above it: the editor asks on the first change. -->
+<Dialog.Root
+	open={recipientGiftChangeWarningOpen}
+	onOpenChange={handleRecipientGiftChangeWarningOpenChange}
+>
+	<Dialog.Content size="sm" data-testid="recipient-gift-change-warning">
+		<Dialog.Header>
+			<Dialog.Title>{m.gift_recipient_change_warning_title()}</Dialog.Title>
+			<Dialog.Description>{m.gift_recipient_change_warning_description()}</Dialog.Description>
+		</Dialog.Header>
+		<Dialog.Footer>
+			<Button
+				intent="outline"
+				onclick={() => handleRecipientGiftChangeWarningOpenChange(false)}
+				>{m.cancel()}</Button
+			>
+			<Button intent="primary" onclick={confirmRecipientGiftChangeWarning}
+				>{m.gift_recipient_change_warning_continue()}</Button
+			>
+		</Dialog.Footer>
+	</Dialog.Content>
+</Dialog.Root>
 
 {#if releaseFlowGift !== null}
 	<ReleaseReservationFlow

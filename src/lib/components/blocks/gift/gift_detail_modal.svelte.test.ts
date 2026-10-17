@@ -504,3 +504,76 @@ describe('GiftDetailModal form identity (2026-08-04 data-corruption incident)', 
 		});
 	});
 });
+
+describe('GiftDetailModal first-change confirmation (issue #479)', () => {
+	function deferredConfirmation() {
+		const pending: Array<(confirmed: boolean) => void> = [];
+		const confirmChange = vi.fn(() => new Promise<boolean>((resolve) => pending.push(resolve)));
+		return { confirmChange, answer: (confirmed: boolean) => pending.shift()?.(confirmed) };
+	}
+
+	it('asks on the first edit, not on opening, and reverts a declined edit', async () => {
+		const { confirmChange, answer } = deferredConfirmation();
+		const screen = await render(GiftDetailModal, {
+			...baseProps,
+			mode: 'edit' as const,
+			gift: makeGift(),
+			confirmChange,
+		});
+		const nameInput = () => screen.getByRole('textbox', { name: m.gift_name_label() });
+		await expect.element(nameInput()).toBeVisible();
+		expect(confirmChange).not.toHaveBeenCalled();
+
+		await nameInput().fill('Changed gift');
+		await expect.poll(() => confirmChange.mock.calls.length).toBe(1);
+		answer(false);
+		await expect.element(nameInput()).toHaveValue('Ledové království');
+
+		await nameInput().fill('Changed again');
+		await expect.poll(() => confirmChange.mock.calls.length).toBe(2);
+		answer(true);
+		await nameInput().fill('Changed once more');
+		await expect.element(nameInput()).toHaveValue('Changed once more');
+		expect(confirmChange).toHaveBeenCalledTimes(2);
+	});
+
+	it('asks before Delete enters its confirm step', async () => {
+		const { confirmChange, answer } = deferredConfirmation();
+		const ondelete = vi.fn();
+		const screen = await render(GiftDetailModal, {
+			...baseProps,
+			mode: 'edit' as const,
+			gift: makeGift(),
+			canDelete: true,
+			confirmChange,
+			ondelete,
+		});
+
+		await screen.getByRole('button', { name: m.gift_delete() }).first().click();
+		await expect.poll(() => confirmChange.mock.calls.length).toBe(1);
+		answer(false);
+		await expect
+			.element(screen.getByRole('button', { name: m.gift_delete() }).first())
+			.toBeVisible();
+
+		await screen.getByRole('button', { name: m.gift_delete() }).first().click();
+		await expect.poll(() => confirmChange.mock.calls.length).toBe(2);
+		answer(true);
+		await screen.getByRole('button', { name: m.gift_delete_confirm() }).first().click();
+		expect(ondelete).toHaveBeenCalledWith('gift-1');
+	});
+
+	it('never asks when adding a gift', async () => {
+		const { confirmChange } = deferredConfirmation();
+		const screen = await render(GiftDetailModal, {
+			...baseProps,
+			mode: 'create' as const,
+			gift: null,
+			confirmChange,
+		});
+		const nameInput = screen.getByRole('textbox', { name: m.gift_name_label() });
+		await nameInput.fill('New gift');
+		await expect.element(nameInput).toHaveValue('New gift');
+		expect(confirmChange).not.toHaveBeenCalled();
+	});
+});

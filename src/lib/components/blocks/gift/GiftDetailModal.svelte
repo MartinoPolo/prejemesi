@@ -49,6 +49,8 @@
 		graceExpiresAt?: Date | null;
 		graceMessage?: (inputs: { time: string }) => string;
 		graceNow?: Date;
+		/** Asked before the first change to an existing gift; false reverts that change. */
+		confirmChange?: () => Promise<boolean>;
 		isSubmitting?: boolean;
 		isDeleting?: boolean;
 		oncreate?: (input: CreateGiftInput) => boolean | void | Promise<boolean | void>;
@@ -77,6 +79,7 @@
 		graceExpiresAt = null,
 		graceMessage = m.gift_grace_hint,
 		graceNow = new Date(),
+		confirmChange,
 		isSubmitting = false,
 		isDeleting = false,
 		oncreate,
@@ -95,6 +98,9 @@
 	let formPending = $state(false);
 	let guardOpen = $state(false);
 	let pendingAction = $state<null | (() => void)>(null);
+	let changeConfirmationPending = false;
+	// Remounting the form is what reverts a change the user declined to confirm.
+	let formRevision = $state(0);
 	let allowNavigation = false;
 	// svelte-ignore state_referenced_locally (identity baseline; the effect below tracks changes)
 	let formIdentity = $state(`${mode}:${gift?.id ?? 'new'}`);
@@ -168,6 +174,25 @@
 		pendingAction = null;
 		formDirty = false;
 		action?.();
+	}
+
+	function handleFormDirtyChange(dirty: boolean) {
+		formDirty = dirty;
+		if (dirty && isEdit && confirmChange !== undefined && !changeConfirmationPending) {
+			void confirmFirstChange(confirmChange);
+		}
+	}
+
+	async function confirmFirstChange(confirm: () => Promise<boolean>) {
+		changeConfirmationPending = true;
+		try {
+			if (!(await confirm())) {
+				formDirty = false;
+				formRevision += 1;
+			}
+		} finally {
+			changeConfirmationPending = false;
+		}
 	}
 
 	function closeAfterSave() {
@@ -244,7 +269,7 @@
 	     mode/gift swap while it stays mounted would submit the previous gift's typed
 	     values under the new gift's id. Keying by identity forces a remount + reseed,
 	     making that cross-gift write structurally impossible (incident 2026-08-04). -->
-	{#key `${mode}:${gift?.id ?? 'new'}`}
+	{#key `${mode}:${gift?.id ?? 'new'}:${formRevision}`}
 		<GiftDetailForm
 			{mode}
 			{gift}
@@ -259,13 +284,14 @@
 			{graceExpiresAt}
 			{graceMessage}
 			{graceNow}
+			confirmChange={isEdit ? confirmChange : undefined}
 			{isSubmitting}
 			{isDeleting}
 			{oncreate}
 			{onupdate}
 			{ondelete}
 			oncancel={() => handleOpenChange(false)}
-			ondirtychange={(dirty) => (formDirty = dirty)}
+			ondirtychange={handleFormDirtyChange}
 			onpendingchange={(pending) => (formPending = pending)}
 			onsavesuccess={closeAfterSave}
 		/>

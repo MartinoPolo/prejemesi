@@ -96,7 +96,7 @@ async function createPermanentWishlistAndNavigate(
 
 async function openGiftEditor(page: Page, giftName: string) {
 	await gift(page, giftName).getByRole('heading', { name: giftName, exact: true }).click();
-	const dialog = page.getByRole('dialog');
+	const dialog = page.getByRole('dialog', { name: m.gift_edit_title() });
 	await expect(dialog).toBeVisible({ timeout: 5_000 });
 	return dialog;
 }
@@ -164,6 +164,7 @@ test('keeps unreserved gifts editable on a shared permanent wishlist after the s
 
 		const permanentPath = await createPermanentWishlistAndNavigate(page, 'Průběžná přání');
 		await addGift(page, 'Termoska');
+		await addGift(page, 'Pláštěnka');
 		await shareWishlist(page);
 		await expireShareGrace(permanentPath);
 
@@ -173,45 +174,67 @@ test('keeps unreserved gifts editable on a shared permanent wishlist after the s
 		await expect(lockedEditor.locator('#gift-name')).toBeDisabled();
 		await expect(lockedEditor.getByRole('button', { name: m.gift_delete() })).toHaveCount(0);
 
+		// Opening a gift is not a change: the recipient gets the editor without a warning.
 		await page.goto(permanentPath);
-		// The recipient is warned before the first gift change on this shared permanent list.
-		await gift(page, 'Termoska')
-			.getByRole('heading', { name: 'Termoska', exact: true })
-			.click();
+		const editor = await openGiftEditor(page, 'Termoska');
 		const warning = recipientGiftChangeWarning(page);
+		const nameInput = editor.locator('#gift-name');
+		await expect(nameInput).toBeEnabled();
+		await expect(editor.getByRole('button', { name: m.gift_delete() })).toBeVisible();
+		await expect(warning).toHaveCount(0);
+
+		// The first edit warns; cancelling reverts the pending edit.
+		await nameInput.fill('Termoska na kávu');
 		await expect(warning).toBeVisible({ timeout: 5_000 });
 		await expect(warning).toContainText(m.gift_recipient_change_warning_description());
 		await warning.getByRole('button', { name: m.cancel() }).click();
 		await expect(warning).toBeHidden();
-		await waitForDialogOverlayRemoval(page);
-		await expect(page.getByRole('dialog')).toHaveCount(0);
+		await expect(editor.locator('#gift-name')).toHaveValue('Termoska');
 
-		await gift(page, 'Termoska')
-			.getByRole('heading', { name: 'Termoska', exact: true })
-			.click();
+		await editor.locator('#gift-name').fill('Termoska na čaj');
 		await expect(warning).toBeVisible({ timeout: 5_000 });
 		await warning
 			.getByRole('button', { name: m.gift_recipient_change_warning_continue() })
 			.click();
 		await expect(warning).toBeHidden();
-		const editor = page.getByRole('dialog');
-		await expect(editor).toBeVisible({ timeout: 5_000 });
-		const nameInput = editor.locator('#gift-name');
-		await expect(nameInput).toBeEnabled();
-		await expect(editor.getByRole('button', { name: m.gift_delete() })).toBeVisible();
-		await nameInput.fill('Termoska na čaj');
+		await expect(editor.locator('#gift-name')).toHaveValue('Termoska na čaj');
 		await editor.getByRole('button', { name: /^(Uložit|Save)$/ }).click();
 		await expect(editor).toBeHidden({ timeout: 10_000 });
 		await expect(gift(page, 'Termoska na čaj')).toHaveCount(1);
 		await expect(gift(page, 'Termoska')).toHaveCount(0);
 
-		// Acknowledged once for this list in this browser session: the editor opens directly.
+		// Acknowledged once for this list in this browser session: a later edit does not warn.
 		const reopenedEditor = await openGiftEditor(page, 'Termoska na čaj');
-		await expect(reopenedEditor.locator('#gift-name')).toBeVisible();
-		await expect(recipientGiftChangeWarning(page)).toHaveCount(0);
-		await page.keyboard.press('Escape');
+		await reopenedEditor.locator('#gift-name').fill('Termoska na výlety');
+		await expect(reopenedEditor.locator('#gift-name')).toHaveValue('Termoska na výlety');
+		await expect(warning).toHaveCount(0);
+		await reopenedEditor.getByRole('button', { name: /^(Zrušit|Cancel)$/ }).click();
+		await page
+			.getByRole('dialog', { name: m.wishlist_settings_unsaved_title() })
+			.getByRole('button', { name: m.wishlist_settings_discard() })
+			.click();
 		await expect(reopenedEditor).toBeHidden();
 		await waitForDialogOverlayRemoval(page);
+
+		// In a new browser session, Delete as the first change warns before the deletion confirm.
+		const freshSessionPage = await page.context().newPage();
+		try {
+			await freshSessionPage.goto(permanentPath);
+			const deleteEditor = await openGiftEditor(freshSessionPage, 'Pláštěnka');
+			const freshWarning = recipientGiftChangeWarning(freshSessionPage);
+			await expect(freshWarning).toHaveCount(0);
+			await deleteEditor.getByRole('button', { name: m.gift_delete() }).click();
+			await expect(freshWarning).toBeVisible({ timeout: 5_000 });
+			await freshWarning
+				.getByRole('button', { name: m.gift_recipient_change_warning_continue() })
+				.click();
+			await expect(freshWarning).toBeHidden();
+			await deleteEditor.getByRole('button', { name: m.gift_delete_confirm() }).click();
+			await expect(deleteEditor).toBeHidden({ timeout: 10_000 });
+			await expect(gift(freshSessionPage, 'Pláštěnka')).toHaveCount(0);
+		} finally {
+			await freshSessionPage.close();
+		}
 
 		// Once the permanent list was shared, its recipient may only copy out of it, never move.
 		await dismissToasts(page);
@@ -283,9 +306,16 @@ test('lets a správce move gifts out of a permanent wishlist, leaving reserved o
 
 		// A non-recipient správce edits a shared permanent list without the recipient warning.
 		const editor = await openGiftEditor(ownerPage, 'Kolo pro výlety');
-		await expect(editor.locator('#gift-name')).toBeEnabled();
+		await editor.locator('#gift-name').fill('Kolo pro výlety do hor');
+		await expect(editor.locator('#gift-name')).toHaveValue('Kolo pro výlety do hor');
+		await editor.getByRole('button', { name: m.gift_delete() }).click();
+		await expect(editor.getByRole('button', { name: m.gift_delete_confirm() })).toBeVisible();
 		await expect(ownerPage.getByTestId('recipient-gift-change-warning')).toHaveCount(0);
-		await ownerPage.keyboard.press('Escape');
+		await editor.getByRole('button', { name: /^(Zrušit|Cancel)$/ }).click();
+		await ownerPage
+			.getByRole('dialog', { name: m.wishlist_settings_unsaved_title() })
+			.getByRole('button', { name: m.wishlist_settings_discard() })
+			.click();
 		await expect(editor).toBeHidden();
 		await waitForDialogOverlayRemoval(ownerPage);
 
