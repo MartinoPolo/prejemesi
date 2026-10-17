@@ -11,6 +11,7 @@ export {
 	ACCESS_TOKEN_NAME_MAX_LENGTH,
 } from './types.js';
 export type {
+	AccessTokenExpiryPresetDays,
 	AccessTokenSummary,
 	AccessTokenWishlistChoices,
 	CreatedAccessToken,

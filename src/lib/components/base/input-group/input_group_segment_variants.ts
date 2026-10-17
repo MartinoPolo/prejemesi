@@ -11,8 +11,17 @@ export const inputGroupSegmentVariants = tv({
 			true: 'cursor-pointer outline-none transition-colors hover:bg-(--primary-hover) focus-visible:ring-3 focus-visible:ring-ring/50',
 			false: '',
 		},
+		state: {
+			default: '',
+			/** Confirms a completed action, such as a copy, with AA success text on a success tint. */
+			success:
+				'bg-[color-mix(in_oklab,var(--status-success)_18%,var(--card))] text-status-success-text hover:bg-[color-mix(in_oklab,var(--status-success)_24%,var(--card))]',
+		},
 	},
 	defaultVariants: {
 		interactive: true,
+		state: 'default',
 	},
 });
+
+export type InputGroupSegmentState = keyof typeof inputGroupSegmentVariants.variants.state;
