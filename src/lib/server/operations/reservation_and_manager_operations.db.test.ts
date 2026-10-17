@@ -481,7 +481,11 @@ describe.skipIf(!DB_READY)('manager invitation operations', () => {
 		const invited = await inviteLink(managerActor, wishlistId, 'invitee@example.com');
 		const [token] = await pendingInviteTokens(wishlistId);
 
-		expect(invited).toEqual({ link: null, unregisteredInvitee: true });
+		expect(invited).toEqual({
+			inviteId: expect.any(String),
+			link: null,
+			unregisteredInvitee: true,
+		});
 		expect(token).toBeDefined();
 		expect(JSON.stringify(invited)).not.toContain(token);
 		expect(vi.mocked(dispatchNotification)).toHaveBeenCalledWith(

@@ -8,8 +8,24 @@ import {
 	isOperationName,
 	type AgentOperationPolicy,
 } from './operation_policies.js';
-import { AGENT_API_MAX_BODY_BYTES, AGENT_API_RATE_LIMIT, AGENT_BATCH_MAX_ITEMS } from './limits.js';
+import {
+	CHANGE_KIND,
+	CHANGE_PROPOSAL_STATE,
+	CHANGE_ROW_STATUS,
+} from '$lib/modules/change_proposals/types.js';
+import {
+	AGENT_API_MAX_BODY_BYTES,
+	AGENT_API_RATE_LIMIT,
+	AGENT_BATCH_MAX_ITEMS,
+	AGENT_DAILY_CHANGE_BUDGET,
+	CHANGE_PROPOSAL_LIFETIME_MS,
+	IDEMPOTENCY_KEY_RETENTION_MS,
+} from './limits.js';
 import { AGENT_API_BASE_PATH } from './api_paths.js';
+import { DAY_MS } from '$lib/server/operations/constants.js';
+import { IDEMPOTENCY_KEY_MAX_LENGTH } from './idempotency.js';
+
+const HOUR_MS = DAY_MS / 24;
 
 const ERROR_RESPONSE_REFERENCE = { $ref: '#/components/responses/Error' } as const;
 
@@ -50,7 +66,150 @@ function jsonResponse(description: string, schema: Record<string, unknown>) {
 function operationDescription(operation: AnyOperation): string {
 	return operation.kind === OPERATION_KIND.read
 		? 'Runs the read as the token user, within the token scopes and wishlist restriction.'
-		: `A change. Changes are submitted as proposals the user reviews; this endpoint answers 409 ${SERVER_ERROR.AGENT_MUTATION_REQUIRES_PROPOSAL}.`;
+		: `A change. Changes are submitted as rows of POST ${AGENT_API_BASE_PATH}/proposals for the user to review; this endpoint answers 409 ${SERVER_ERROR.AGENT_MUTATION_REQUIRES_PROPOSAL}.`;
+}
+
+function agentMutationNames(): string[] {
+	return Object.entries(OPERATION_REGISTRY)
+		.filter(
+			([name, operation]) =>
+				operation.kind === OPERATION_KIND.mutation &&
+				isOperationName(name) &&
+				AGENT_OPERATION_POLICIES[name] !== null,
+		)
+		.map(([name]) => name);
+}
+
+const IDEMPOTENCY_KEY_PARAMETER = {
+	name: 'Idempotency-Key',
+	in: 'header',
+	required: false,
+	description: `Makes a retry safe: a request repeating a key and body within ${IDEMPOTENCY_KEY_RETENTION_MS / HOUR_MS} hours replays the first success (header \`Idempotent-Replayed: true\`) instead of changing anything again. The same key with a different request answers 422 ${SERVER_ERROR.AGENT_IDEMPOTENCY_KEY_REUSED}; while the first request still runs, 409 ${SERVER_ERROR.AGENT_IDEMPOTENCY_IN_PROGRESS}. A failed request frees its key.`,
+	schema: {
+		type: 'string',
+		minLength: 1,
+		maxLength: IDEMPOTENCY_KEY_MAX_LENGTH,
+		pattern: '^[\\x21-\\x7E]+$',
+	},
+};
+
+const CHANGE_PROPOSAL_REQUEST_SCHEMA = {
+	type: 'object',
+	required: ['operations'],
+	additionalProperties: false,
+	description:
+		'Names at most one wishlist, by `wishlistShortId` or `wishlistId`; every row must change it. Only a proposal of an unrestricted fast-forward token may name none, and then lists only `createWishlist` and `createWishlistFromImport` rows. Rows cannot refer to ids an earlier row creates.',
+	properties: {
+		wishlistShortId: { type: 'string' },
+		wishlistId: { type: 'string' },
+		operations: {
+			type: 'array',
+			minItems: 1,
+			maxItems: AGENT_BATCH_MAX_ITEMS,
+			items: {
+				type: 'object',
+				required: ['operation', 'input'],
+				additionalProperties: false,
+				properties: {
+					operation: { type: 'string', enum: agentMutationNames() },
+					input: {
+						type: 'object',
+						description: `The input of POST ${AGENT_API_BASE_PATH}/operations/{operation}.`,
+					},
+				},
+			},
+		},
+	},
+};
+
+const CHANGE_PROPOSAL_SCHEMA = {
+	type: 'object',
+	required: ['id', 'status', 'reviewUrl', 'expiresAt', 'rows'],
+	properties: {
+		id: { type: 'string' },
+		status: { type: 'string', enum: Object.values(CHANGE_PROPOSAL_STATE) },
+		wishlistShortId: { type: ['string', 'null'] },
+		reviewUrl: {
+			type: ['string', 'null'],
+			description:
+				'The path of the review page, `/w/{shortId}/changes/{id}`, to show the user.',
+		},
+		createdAt: { type: 'string', format: 'date-time' },
+		expiresAt: { type: 'string', format: 'date-time' },
+		appliedAt: { type: ['string', 'null'], format: 'date-time' },
+		discardedAt: { type: ['string', 'null'], format: 'date-time' },
+		undoneAt: { type: ['string', 'null'], format: 'date-time' },
+		rows: {
+			type: 'array',
+			items: {
+				type: 'object',
+				required: ['rowId', 'operation', 'kind', 'status', 'requiresConfirmation'],
+				properties: {
+					rowId: { type: 'string', examples: ['r1'] },
+					operation: { type: 'string' },
+					kind: { type: 'string', enum: Object.values(CHANGE_KIND) },
+					status: { type: 'string', enum: Object.values(CHANGE_ROW_STATUS) },
+					requiresConfirmation: { type: 'boolean' },
+					error: {
+						type: ['object', 'null'],
+						description:
+							'Why the dry run rejected the row: `status`, `code`, `details`.',
+					},
+					conflictGiftIds: {
+						type: 'array',
+						items: { type: 'string' },
+						description: 'Gifts the row targets that changed since submission.',
+					},
+					result: {
+						description:
+							'The applied row’s projected output; before apply, the dry run’s, whose created ids are not real.',
+					},
+				},
+			},
+		},
+	},
+};
+
+const CHANGE_PROPOSAL_RESPONSE_SCHEMA = {
+	type: 'object',
+	required: ['proposal'],
+	properties: { proposal: { $ref: '#/components/schemas/ChangeProposal' } },
+};
+
+function changeProposalPaths() {
+	return {
+		[`${AGENT_API_BASE_PATH}/proposals`]: {
+			post: {
+				operationId: 'submitChangeProposal',
+				summary: 'Submits changes for the user to review.',
+				description: `Authorizes every row with the token, dry-runs the rows and stores the proposal for ${CHANGE_PROPOSAL_LIFETIME_MS / DAY_MS} days; the user reviews it at \`reviewUrl\` and applies any rows. With a fast-forward token, a proposal whose rows are all \`ready\` applies at once; gift deletions, reservations and manager invitations always wait for the user. Rows count against the daily change budget whatever their outcome.`,
+				parameters: [IDEMPOTENCY_KEY_PARAMETER],
+				requestBody: {
+					required: true,
+					content: { 'application/json': { schema: CHANGE_PROPOSAL_REQUEST_SCHEMA } },
+				},
+				responses: {
+					201: jsonResponse('The stored proposal.', CHANGE_PROPOSAL_RESPONSE_SCHEMA),
+					...OPERATION_ERROR_RESPONSES,
+					422: ERROR_RESPONSE_REFERENCE,
+				},
+			},
+		},
+		[`${AGENT_API_BASE_PATH}/proposals/{proposalId}`]: {
+			get: {
+				operationId: 'getChangeProposal',
+				summary: 'A proposal of the token user, with its current status.',
+				parameters: [
+					{ name: 'proposalId', in: 'path', required: true, schema: { type: 'string' } },
+				],
+				responses: {
+					200: jsonResponse('The proposal.', CHANGE_PROPOSAL_RESPONSE_SCHEMA),
+					...AUTHENTICATED_ERROR_RESPONSES,
+					404: ERROR_RESPONSE_REFERENCE,
+				},
+			},
+		},
+	};
 }
 
 function operationPath(operation: AnyOperation, policy: AgentOperationPolicy<unknown, unknown>) {
@@ -105,6 +264,10 @@ const ERROR_SCHEMA = {
 					type: 'integer',
 					description: `With ${SERVER_ERROR.AGENT_BATCH_TOO_LARGE}.`,
 				},
+				rowId: {
+					type: 'string',
+					description: 'The proposal row a submission error is about.',
+				},
 			},
 			additionalProperties: true,
 		},
@@ -120,7 +283,8 @@ function buildOriginIndependentDocument() {
 			description: [
 				'Every call acts as the token user, with that user’s current rights, limited by the token scopes and wishlist restriction.',
 				`Scopes: ${Object.values(AGENT_SCOPE).join(', ')}; \`read\` is always granted.`,
-				`Limits: ${AGENT_API_RATE_LIMIT.requestsPerToken} requests per ${AGENT_API_RATE_LIMIT.periodSeconds} seconds per token (429 with Retry-After), ${AGENT_BATCH_MAX_ITEMS} items per batch, ${AGENT_API_MAX_BODY_BYTES} bytes per request body.`,
+				`Limits: ${AGENT_API_RATE_LIMIT.requestsPerToken} requests per ${AGENT_API_RATE_LIMIT.periodSeconds} seconds per token (429 with Retry-After), ${AGENT_BATCH_MAX_ITEMS} items per batch, ${AGENT_API_MAX_BODY_BYTES} bytes per request body, ${AGENT_DAILY_CHANGE_BUDGET.rows} proposal rows per user over the trailing ${AGENT_DAILY_CHANGE_BUDGET.windowMs / HOUR_MS} hours across all tokens (429 ${SERVER_ERROR.AGENT_DAILY_CHANGE_BUDGET_EXCEEDED} with Retry-After).`,
+				`Changes are proposals: POST ${AGENT_API_BASE_PATH}/proposals, which the user reviews and applies.`,
 			].join('\n\n'),
 		},
 		security: [{ bearerAuth: [] }],
@@ -132,7 +296,7 @@ function buildOriginIndependentDocument() {
 					description: 'A personal access token (`pjs_…`) created in Settings.',
 				},
 			},
-			schemas: { Error: ERROR_SCHEMA },
+			schemas: { Error: ERROR_SCHEMA, ChangeProposal: CHANGE_PROPOSAL_SCHEMA },
 			responses: {
 				Error: jsonResponse('The request failed.', { $ref: '#/components/schemas/Error' }),
 			},
@@ -163,6 +327,7 @@ function buildOriginIndependentDocument() {
 					},
 				},
 			},
+			...changeProposalPaths(),
 			...agentOperationPaths(),
 			[`${AGENT_API_BASE_PATH}/openapi.json`]: {
 				get: {

@@ -13,8 +13,11 @@ import {
 	executeOperation,
 	executeOperationBatch,
 	parseOperationInput,
-	type OperationOptions,
+	previewOperationBatch,
+	type OperationBatchOptions,
+	type OperationStepRejection,
 } from '$lib/server/operations/runner.js';
+import type { GiftRevisionRecord } from '$lib/server/operations/gift_revisions.js';
 import { hasAgentScope, tokenActor, type AgentAccessGrant } from './agent_grant.js';
 import {
 	AGENT_OPERATION_POLICIES,
@@ -186,11 +189,13 @@ function sameWishlistIds(first: readonly string[], second: readonly string[]): b
 /**
  * 409 when a step's target wishlists or confirmation requirement differ from what was
  * authorized: between authorization and the lock a gift's undo history or a reference may have
- * changed, and the restriction check and confirmation decision covered the earlier state.
+ * changed, and the restriction check and confirmation decision covered the earlier state. The
+ * first outdated step is reported to `onStepFailed` like a step that threw.
  */
 async function verifyAuthorizationUnchanged(
 	database: LookupDatabase,
 	authorizedOperations: readonly AuthorizedAgentOperation[],
+	onStepFailed: OperationBatchOptions['onStepFailed'],
 ): Promise<void> {
 	const lockedTargets = await resolveTargetWishlistIds(
 		database,
@@ -200,13 +205,19 @@ async function verifyAuthorizationUnchanged(
 		database,
 		authorizedOperations.map((authorized) => authorized.lookup.confirmation),
 	);
-	const unchanged = authorizedOperations.every(
+	const outdatedIndex = authorizedOperations.findIndex(
 		(authorized, index) =>
-			sameWishlistIds(authorized.targetWishlistIds, stepValue(lockedTargets, index)) &&
-			authorized.requiresConfirmation === stepValue(lockedConfirmations, index),
+			!sameWishlistIds(authorized.targetWishlistIds, stepValue(lockedTargets, index)) ||
+			authorized.requiresConfirmation !== stepValue(lockedConfirmations, index),
 	);
-	if (!unchanged) {
+	if (outdatedIndex === -1) {
+		return;
+	}
+	try {
 		error(409, SERVER_ERROR.AGENT_AUTHORIZATION_OUTDATED);
+	} catch (outdated) {
+		onStepFailed?.(outdatedIndex, outdated);
+		throw outdated;
 	}
 }
 
@@ -220,6 +231,41 @@ export interface AgentBatchResult {
 	batchId: string;
 	/** Each step's projected output, in step order. */
 	results: unknown[];
+	/** Each step's unprojected output, in step order. */
+	rawResults: unknown[];
+}
+
+/** Extra checks a caller runs under the batch's locks, after the authorization re-check. */
+export type AgentBatchOptions = Pick<
+	OperationBatchOptions,
+	'dryRun' | 'verifyLocked' | 'beforeCommit' | 'onStepFailed'
+>;
+
+function requireMutations(
+	authorizedOperations: readonly AuthorizedAgentOperation[],
+): (AuthorizedAgentOperation & { operation: AnyMutationOperation })[] {
+	const mutations = authorizedOperations.filter(isMutation);
+	if (mutations.length !== authorizedOperations.length) {
+		error(400, SERVER_ERROR.INVALID_OPERATION_INPUT);
+	}
+	return mutations;
+}
+
+/** Every target wishlist locked first, then the authorization and the caller's checks re-run. */
+function lockedBatchOptions(
+	mutations: readonly AuthorizedAgentOperation[],
+	options: Pick<OperationBatchOptions, 'verifyLocked' | 'onStepFailed'>,
+): Required<Pick<OperationBatchOptions, 'exclusiveWishlistIds' | 'verifyLocked'>> {
+	const { verifyLocked, onStepFailed } = options;
+	return {
+		exclusiveWishlistIds: [
+			...new Set(mutations.flatMap((authorized) => authorized.targetWishlistIds)),
+		],
+		verifyLocked: async (transaction: DatabaseTransaction) => {
+			await verifyAuthorizationUnchanged(transaction, mutations, onStepFailed);
+			await verifyLocked?.(transaction);
+		},
+	};
 }
 
 /**
@@ -231,12 +277,9 @@ export interface AgentBatchResult {
 export async function executeAgentOperationBatch(
 	grant: AgentAccessGrant,
 	authorizedOperations: readonly AuthorizedAgentOperation[],
-	options: OperationOptions = {},
+	options: AgentBatchOptions = {},
 ): Promise<AgentBatchResult> {
-	const mutations = authorizedOperations.filter(isMutation);
-	if (mutations.length !== authorizedOperations.length) {
-		error(400, SERVER_ERROR.INVALID_OPERATION_INPUT);
-	}
+	const mutations = requireMutations(authorizedOperations);
 	const batch = await executeOperationBatch(
 		tokenActor(grant),
 		mutations.map((authorized) => ({
@@ -245,11 +288,9 @@ export async function executeAgentOperationBatch(
 		})),
 		{
 			dryRun: options.dryRun,
-			exclusiveWishlistIds: [
-				...new Set(mutations.flatMap((authorized) => authorized.targetWishlistIds)),
-			],
-			verifyLocked: (transaction: DatabaseTransaction) =>
-				verifyAuthorizationUnchanged(transaction, mutations),
+			beforeCommit: options.beforeCommit,
+			onStepFailed: options.onStepFailed,
+			...lockedBatchOptions(mutations, options),
 		},
 	);
 	return {
@@ -257,7 +298,39 @@ export async function executeAgentOperationBatch(
 		results: batch.results.map((output, index) =>
 			stepValue(mutations, index).projectOutput(output),
 		),
+		rawResults: batch.results,
 	};
+}
+
+/** One previewed step: its projected output and gift revisions, or the core's rejection. */
+export type AgentStepPreview =
+	| { accepted: true; result: unknown; revisions: GiftRevisionRecord[] }
+	| { accepted: false; rejection: OperationStepRejection };
+
+/**
+ * Dry-runs authorized mutations step by step as the token actor under the same exclusive locks
+ * and authorization re-check as {@link executeAgentOperationBatch}; a rejected step is reported
+ * and the following steps still run on the state the accepted ones left. Nothing commits.
+ */
+export async function previewAgentOperationBatch(
+	grant: AgentAccessGrant,
+	authorizedOperations: readonly AuthorizedAgentOperation[],
+	options: Pick<OperationBatchOptions, 'verifyLocked'> = {},
+): Promise<AgentStepPreview[]> {
+	const mutations = requireMutations(authorizedOperations);
+	const previews = await previewOperationBatch(
+		tokenActor(grant),
+		mutations.map((authorized) => ({
+			operation: authorized.operation,
+			input: authorized.input,
+		})),
+		lockedBatchOptions(mutations, options),
+	);
+	return previews.map((preview, index) =>
+		preview.accepted
+			? { ...preview, result: stepValue(mutations, index).projectOutput(preview.result) }
+			: preview,
+	);
 }
 
 function isRead(

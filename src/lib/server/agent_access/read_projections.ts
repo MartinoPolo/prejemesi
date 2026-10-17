@@ -7,6 +7,8 @@ import type {
 } from '$lib/server/operations/gift_read_operations.js';
 import type { readWishlistOperation } from '$lib/server/operations/wishlist_read_operations.js';
 import type { AccessibleWishlist } from '$lib/modules/wishlists/accessible_wishlists.js';
+import type { ChangeProposalGift } from '$lib/modules/change_proposals/types.js';
+import type { GiftRevisionSnapshot } from '$lib/server/operations/gift_revision_snapshot.js';
 
 type ReadWishlistOutput = Awaited<ReturnType<typeof readWishlistOperation.run>>;
 type ReadWishlistGiftsOutput = Awaited<ReturnType<typeof readWishlistGiftsOperation.run>>;
@@ -116,6 +118,31 @@ export function projectAgentGiftRow(giftRow: AgentGiftSource) {
 		createdAt: giftRow.createdAt,
 		priorityLevelId: giftRow.priorityLevelId,
 		categoryId: giftRow.categoryId ?? null,
+	};
+}
+
+/**
+ * A gift's revision snapshot as a proposal shows it: the storage key becomes its public image URL
+ * and the share-time snapshot stays internal. Snapshots carry no reservation or like data, so the
+ * same shape suits every viewer role.
+ */
+export function projectAgentGiftSnapshot(snapshot: GiftRevisionSnapshot): ChangeProposalGift {
+	return {
+		name: snapshot.name,
+		description: snapshot.description,
+		descriptionAppends: snapshot.descriptionAppends,
+		links: snapshot.links,
+		price: snapshot.price,
+		priceMax: snapshot.priceMax,
+		currency: snapshot.currency,
+		imageUrl: resolveGiftImageUrl(snapshot.imageUrl, snapshot.imageKey),
+		imageMeta: snapshot.imageMeta,
+		quantity: snapshot.quantity,
+		priorityLevelId: snapshot.priorityLevelId,
+		categoryId: snapshot.categoryId ?? null,
+		received: snapshot.received,
+		deleted: snapshot.deletedAt !== null,
+		editedAfterShareAt: snapshot.editedAfterShareAt,
 	};
 }
 

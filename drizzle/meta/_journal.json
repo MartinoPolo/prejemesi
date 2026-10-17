@@ -183,6 +183,13 @@
       "when": 1792239471917,
       "tag": "0025_add-wishlist-first-shared-at",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1792262955361,
+      "tag": "0026_add-change-proposals",
+      "breakpoints": true
     }
   ]
 }
