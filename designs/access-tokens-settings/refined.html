@@ -1,0 +1,1262 @@
+<!doctype html>
+<html lang="cs" data-palette="sky">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Refined B · Přístup pro AI a aplikace</title>
+<link rel="icon" href="data:,">
+<style>
+@font-face{font-family:'DynaPuff Variable';src:url('../unavailable-gift-comparison/assets/dynapuff-latin-wght-normal.woff2') format('woff2');font-weight:400 700;font-display:swap;unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+2013-2014,U+201A-201E,U+2026,U+20AC}
+@font-face{font-family:'DynaPuff Variable';src:url('../unavailable-gift-comparison/assets/dynapuff-latin-ext-wght-normal.woff2') format('woff2');font-weight:400 700;font-display:swap;unicode-range:U+0100-02BA,U+02BD-02FF,U+1E00-1EFF,U+20A0-20AB}
+@font-face{font-family:'Geist Variable';src:url('../unavailable-gift-comparison/assets/geist-latin-wght-normal.woff2') format('woff2');font-weight:100 900;font-display:swap;unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+2013-2014,U+201A-201E,U+2026,U+20AC}
+@font-face{font-family:'Geist Variable';src:url('../unavailable-gift-comparison/assets/geist-latin-ext-wght-normal.woff2') format('woff2');font-weight:100 900;font-display:swap;unicode-range:U+0100-02BA,U+02BD-02FF,U+1E00-1EFF,U+20A0-20AB}
+
+/* Standalone mockup: mirrors the sky palette and its light/dark derivation from src/app.css. */
+html{
+	--p-brand:#1e9be9;--p-deep:#1265a8;--p-ink:#16385c;--p-bright:#55b9f3;--p-accent:#ffc93c;--p-on-accent:#16385c;
+	color-scheme:light;
+	--ink:var(--p-ink);
+	--ink-faint:color-mix(in oklab,var(--p-ink) 12%,transparent);
+	--brand:var(--p-brand);
+	--brand-link:var(--p-deep);
+	--tint:color-mix(in oklab,var(--p-brand) 21%,white);
+	--panel-hover:color-mix(in oklab,var(--p-brand) 6%,white);
+	--accent-loud:var(--p-accent);
+	--accent-loud-foreground:var(--p-on-accent);
+	--background:color-mix(in oklab,var(--p-brand) 11%,white);
+	--foreground:var(--p-ink);
+	--card:#fff;
+	--primary:var(--p-brand);
+	--primary-hover:color-mix(in oklab,var(--primary) 86%,white);
+	--primary-foreground:#fff;
+	--secondary:color-mix(in oklab,var(--p-brand) 6%,white);
+	--muted:color-mix(in oklab,var(--p-brand) 4%,white);
+	--muted-foreground:color-mix(in oklab,var(--p-ink) 62%,transparent);
+	--accent:color-mix(in oklab,var(--p-brand) 11%,white);
+	--border:color-mix(in oklab,var(--p-ink) 12%,transparent);
+	--border-strong:color-mix(in oklab,var(--p-ink) 30%,transparent);
+	--ring:var(--p-brand);
+	--status-success:#14a56f;
+	--status-warning:#efa00b;
+	--status-danger:#e4574c;
+	--status-danger-text:color-mix(in oklab,var(--status-danger) 60%,var(--ink));
+	--status-success-text:color-mix(in oklab,var(--status-success) 45%,var(--ink));
+	--status-info:#1e9be9;
+	--warning-text:color-mix(in oklab,var(--status-warning) 50%,var(--foreground));
+	--switch-track:color-mix(in oklab,var(--p-ink) 20%,transparent);
+	--soft-shadow:color-mix(in oklab,var(--p-ink) 16%,transparent);
+	--soft-shadow-strong:color-mix(in oklab,var(--p-ink) 20%,transparent);
+	--hard-shadow:var(--soft-shadow);
+	--hard-shadow-strong:var(--soft-shadow-strong);
+	--scrim:color-mix(in oklab,var(--p-ink) 45%,transparent);
+	--skeleton:color-mix(in oklab,var(--p-ink) 8%,var(--card));
+	--font-head:'DynaPuff Variable',system-ui,sans-serif;
+	--font-body:'Geist Variable',system-ui,sans-serif;
+	--font-mono:ui-monospace,SFMono-Regular,Menlo,Consolas,'Liberation Mono',monospace;
+	--radius-panel:16px;--radius-btn:7px;--radius-badge:12px;--border-w:2.5px;
+	--size-control-sm:26px;--size-control-md:32px;--size-control-lg:40px;
+	--duration-fast:100ms;--duration-normal:200ms;--ease-standard:cubic-bezier(.2,.7,.3,1);
+	--depth-clearance:0px;
+	--nested-control-gap:calc(.5rem + var(--depth-clearance));
+	--overlay-close-inset:1rem;
+	--overlay-close-clearance:calc(var(--overlay-close-inset) + var(--size-control-lg) + var(--nested-control-gap));
+	/* Nested sub-panels sit this close to the card border so their 7 px radius stays parallel:
+	   16 px card radius - 2.5 px border - 6.5 px inset = 7 px (AGENTS.md nested corner geometry). */
+	--grant-inset:6.5px;
+	--grant-radius:max(0px,calc(var(--radius-panel) - var(--border-w) - var(--grant-inset)));
+}
+html.dark{
+	color-scheme:dark;
+	--ink:color-mix(in oklab,var(--p-bright) 12%,#e6e8ec);
+	--ink-faint:color-mix(in oklab,var(--ink) 16%,transparent);
+	--brand:color-mix(in oklab,var(--p-bright) 70%,#b8bec8);
+	--brand-link:var(--brand);
+	--tint:var(--accent);
+	--panel-hover:var(--secondary);
+	--accent-loud:color-mix(in oklab,var(--p-accent) 65%,#b8bec8);
+	--accent-loud-foreground:#18202b;
+	--background:color-mix(in oklab,var(--p-deep) 10%,#090b0f);
+	--foreground:var(--ink);
+	--card:color-mix(in oklab,var(--p-deep) 16%,#13161c);
+	--primary:color-mix(in oklab,var(--p-brand) 60%,#202630);
+	--primary-hover:color-mix(in oklab,var(--primary) 92%,black);
+	--secondary:color-mix(in oklab,var(--p-deep) 22%,#1c2027);
+	--muted:color-mix(in oklab,var(--p-deep) 12%,#181b21);
+	--muted-foreground:color-mix(in oklab,var(--ink) 65%,transparent);
+	--accent:color-mix(in oklab,var(--p-deep) 26%,#222630);
+	--border:color-mix(in oklab,var(--ink) 16%,transparent);
+	--border-strong:color-mix(in oklab,var(--ink) 40%,transparent);
+	--ring:var(--p-bright);
+	--status-success:#3bd598;
+	--status-warning:#ffc24b;
+	--status-danger:#f07a6e;
+	--status-danger-text:color-mix(in oklab,var(--status-danger) 90%,white);
+	--status-success-text:var(--status-success);
+	--status-info:#55b9f3;
+	--warning-text:color-mix(in oklab,var(--status-warning) 85%,var(--foreground));
+	--switch-track:color-mix(in oklab,var(--ink) 25%,transparent);
+	--soft-shadow:rgb(2 6 12 / 42%);
+	--soft-shadow-strong:rgb(2 6 12 / 55%);
+	--scrim:rgb(2 6 12 / 64%);
+	--skeleton:color-mix(in oklab,var(--ink) 10%,var(--card));
+}
+
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0;height:100%}
+body{display:grid;grid-template-rows:auto minmax(0,1fr);background:#c9ced6;color:var(--foreground);font:14px/1.45 var(--font-body);-webkit-font-smoothing:antialiased}
+html.dark body{background:#020305}
+button,input,select{font:inherit;color:inherit}
+h1,h2,h3,h4,p,ul,ol,dl,dd,figure{margin:0}
+ul,ol{padding:0;list-style:none}
+code,.mono{font-family:var(--font-mono)}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.icon{width:16px;height:16px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+/* ── Review toolbar (mockup chrome, not product UI) ───────────────── */
+.review-bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 18px;padding:8px 16px;background:#10151c;color:#e6ebf1;border-bottom:1px solid #2b3542;font-size:12px;position:relative;z-index:5}
+.review-eyebrow{font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:#ffc93c;font-size:11px;margin-right:6px}
+.review-group{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.review-group>span{color:#9aa7b6;font-weight:600}
+.review-seg{display:inline-flex;flex-wrap:wrap;gap:2px;padding:2px;border:1px solid #344152;border-radius:7px;background:#18202a}
+.review-seg button{border:0;background:none;color:#cfd8e3;padding:3px 9px;border-radius:5px;cursor:pointer;font-weight:600;font-size:12px}
+.review-seg button:hover{background:#243040}
+.review-seg button[aria-pressed=true]{background:#e6ebf1;color:#10151c}
+.review-seg button:focus-visible{outline:2px solid #ffc93c;outline-offset:1px}
+
+/* ── Stage and device frame ───────────────────────────────────────── */
+.stage{overflow:auto;display:flex;justify-content:center;align-items:flex-start}
+.device{container:device / inline-size;position:relative;width:100%;height:100%;background:var(--background);overflow:hidden}
+.stage.is-mobile{padding:24px}
+.stage.is-mobile .device{width:390px;height:844px;flex:none;border:3px solid #1d2531;border-radius:30px;box-shadow:0 18px 50px rgb(0 0 0 / 25%)}
+.app{position:absolute;inset:0;
+	--elevation-compact-offset:1px;--elevation-ordinary-offset:3px;--elevation-lifted-offset:4px;--elevation-pressed-offset:1px;
+	--page-gutter:12px}
+.app,.app *{
+	--elevation-ordinary:var(--elevation-ordinary-offset) var(--elevation-ordinary-offset) 0 var(--hard-shadow);
+	--elevation-ordinary-strong:var(--elevation-ordinary-offset) var(--elevation-ordinary-offset) 0 var(--hard-shadow-strong);
+	--elevation-lifted:var(--elevation-lifted-offset) var(--elevation-lifted-offset) 0 var(--hard-shadow);
+	--elevation-pressed:var(--elevation-pressed-offset) var(--elevation-pressed-offset) 0 var(--hard-shadow)}
+@container device (width >= 640px){
+	.app{--elevation-compact-offset:2px;--elevation-ordinary-offset:4px;--elevation-lifted-offset:7px;--elevation-pressed-offset:2px;--page-gutter:16px}
+}
+.screen{position:absolute;inset:0;overflow:auto;scroll-behavior:smooth}
+@media (prefers-reduced-motion:reduce){.screen{scroll-behavior:auto}}
+
+/* ── Navbar (parent-owned, final state) ───────────────────────────── */
+.topbar{position:sticky;top:0;z-index:10;height:56px;background:var(--card);border-bottom:var(--border-w) solid var(--ink)}
+.topbar-inner{display:flex;align-items:center;gap:16px;max-width:1200px;height:100%;margin-inline:auto;padding-inline:var(--page-gutter)}
+.logo{display:flex;align-items:center;gap:8px;font-family:var(--font-head);font-weight:700;font-size:17px;color:var(--ink);text-decoration:none;letter-spacing:-.02em;flex:none}
+.logo-mark{width:30px;height:30px;display:grid;place-items:center;border:2px solid var(--ink);border-radius:10px;background:linear-gradient(180deg,var(--brand),var(--p-deep));color:#fff;transform:rotate(-4deg)}
+.logo-mark .icon{width:18px;height:18px}
+.logo-tld{opacity:.42;font-weight:500;font-size:15px}
+.nav-links{display:flex;gap:2px;flex:1}
+.nav-links a{padding:6px 12px;border-radius:var(--radius-btn);font-weight:600;font-size:13px;color:var(--foreground);text-decoration:none}
+.nav-links a:hover{background:var(--accent)}
+.nav-right{display:flex;align-items:center;gap:8px;margin-left:auto}
+.icon-btn{width:32px;height:32px;display:grid;place-items:center;border:0;border-radius:var(--radius-btn);background:none;color:var(--muted-foreground);cursor:pointer}
+.icon-btn:hover{background:var(--accent);color:var(--foreground)}
+.avatar{width:32px;height:32px;border-radius:50%;border:2px solid var(--ink);background:var(--tint);display:grid;place-items:center;font-weight:700;font-size:12px;color:var(--ink)}
+.menu-btn{display:none;width:40px;height:40px}
+@container device (width < 768px){.nav-links{display:none}.menu-btn{display:grid}.nav-bell{width:40px;height:40px}}
+
+/* ── Settings page (parent-owned) ─────────────────────────────────── */
+.content{max-width:1200px;margin-inline:auto;padding:32px var(--page-gutter) 64px}
+.settings-page{max-width:48rem}
+.page-title{font-family:var(--font-head);font-weight:600;font-size:clamp(26px,3.4cqi,34px);line-height:1.2;letter-spacing:-.02em}
+.page-subtitle{margin-top:4px;color:var(--muted-foreground)}
+.sections{display:flex;flex-direction:column;gap:24px;margin-top:32px}
+.demo-note{padding:16px;border:1px solid var(--border);border-radius:10px;background:var(--card);color:var(--muted-foreground)}
+
+/* ── Card.Root shell ──────────────────────────────────────────────── */
+.card{position:relative;display:flex;flex-direction:column;gap:24px;padding-block:24px;background:var(--card);color:var(--foreground);border:var(--border-w) solid var(--ink);border-radius:var(--radius-panel);box-shadow:var(--elevation-ordinary)}
+.card-header{display:flex;align-items:flex-start;gap:8px;padding-inline:24px}
+.card-header>.icon{width:20px;height:20px;margin-top:4px;color:var(--muted-foreground)}
+.card-title{font-family:var(--font-head);font-weight:600;font-size:22px;line-height:1.3}
+.card-desc{color:var(--muted-foreground);font-size:12px;margin-top:2px}
+
+/* ── Access section ───────────────────────────────────────────────── */
+.access-card{padding-bottom:var(--grant-inset);gap:20px}
+.access-head{display:grid;grid-template-columns:auto minmax(0,1fr) auto;grid-template-areas:"icon text action";align-items:start;column-gap:8px;padding-inline:24px}
+.access-head>.icon{grid-area:icon;width:20px;height:20px;margin-top:4px;color:var(--muted-foreground)}
+.access-head-text{grid-area:text;min-width:0}
+.access-head-text .card-desc{max-width:52ch}
+.access-head-action{grid-area:action;padding-left:16px}
+.doc-link{display:inline-flex;align-items:center;gap:5px;margin-top:8px;font-size:12px;font-weight:600}
+@container device (width < 640px){
+	.access-head{grid-template-areas:"icon text" "action action";grid-template-columns:auto minmax(0,1fr);row-gap:16px}
+	.access-head-action{padding-left:0}
+	.access-head-action .btn{width:100%}
+}
+.text-link{color:var(--brand-link);text-decoration:underline;text-decoration-thickness:1.5px;text-underline-offset:3px;border-radius:3px}
+.text-link:hover{text-decoration-thickness:2.5px}
+.text-link .icon{width:14px;height:14px}
+
+.access-body{display:flex;flex-direction:column;padding-inline:var(--grant-inset)}
+.group-head{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 10px;padding:0 calc(24px - var(--grant-inset)) 10px}
+.group-head h3{font-family:var(--font-head);font-weight:600;font-size:14px}
+.group-head .count{font-size:12px;color:var(--muted-foreground)}
+.group-head .badge{align-self:center}
+.separator{height:0;border:0;border-top:2px solid var(--ink-faint);margin:18px calc(24px - var(--grant-inset)) 16px}
+
+/* AccessGrantRow: a nested sub-panel reused later for OAuth apps. */
+.grant-list{display:flex;flex-direction:column;gap:8px}
+.grant{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"main action" "details details";align-items:center;gap:10px 16px;padding:14px calc(24px - var(--grant-inset) - 2px) 12px;border:2px solid var(--border-strong);border-radius:var(--grant-radius);background:var(--card);transition:background-color var(--duration-normal) var(--ease-standard),opacity var(--duration-normal) var(--ease-standard)}
+.grant:hover{background:var(--panel-hover)}
+.grant.is-new{border-color:var(--brand);background:color-mix(in oklab,var(--primary) 8%,var(--card))}
+.grant.is-leaving{opacity:0}
+.grant-main{grid-area:main;min-width:0;display:flex;flex-direction:column;gap:4px}
+.grant-action{grid-area:action;align-self:center}
+.grant-title-row{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px}
+.grant-name{font-family:var(--font-body);font-weight:600;font-size:15px;line-height:1.3;min-width:0;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.grant-sentence{font-size:13px;font-weight:500;display:flex;gap:6px;align-items:flex-start}
+.grant-sentence .icon{width:14px;height:14px;margin-top:2px;color:var(--brand)}
+.grant-lists{font-size:12px;color:var(--muted-foreground);padding-left:20px}
+.grant-meta{display:flex;flex-wrap:wrap;gap:2px 0;font-size:12px;color:var(--muted-foreground);margin-top:2px}
+.grant-meta li{display:inline-flex;align-items:center;gap:4px}
+.grant-meta li+li::before{content:"·";margin:0 7px;color:var(--muted-foreground)}
+.grant-meta code{font-size:12px;color:var(--foreground);background:var(--muted);border:1px solid var(--border);border-radius:5px;padding:0 4px}
+.grant-meta .is-warning{color:var(--warning-text);font-weight:700}
+.grant-meta .is-warning .icon{width:13px;height:13px}
+.grant.is-expired{background:var(--muted);border-style:dashed}
+.grant-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:var(--nested-control-gap)}
+.expired-note{display:flex;gap:6px;align-items:flex-start;font-size:12px;font-weight:600;color:var(--status-danger-text)}
+.expired-note .icon{width:14px;height:14px;margin-top:1px}
+.roll-facts{display:flex;flex-direction:column;gap:10px;padding:12px 14px;border:2px solid var(--border-strong);border-radius:var(--radius-badge)}
+.roll-facts .grant-name{font-size:14px}
+.roll-list{display:flex;flex-direction:column;gap:6px;font-size:13px}
+.roll-list li{display:flex;gap:8px;align-items:flex-start}
+.roll-list .icon{width:14px;height:14px;margin-top:2px}
+.roll-list .is-kept .icon{color:var(--status-success-text)}
+.roll-list .is-ended .icon{color:var(--status-danger-text)}
+.roll-old{padding:8px 12px;border-radius:var(--radius-btn);background:color-mix(in oklab,var(--status-danger) 10%,var(--card));font-size:13px;color:var(--foreground)}
+.roll-old code{font-size:12px;font-weight:600}
+.grant.is-expired .grant-name,.grant.is-expired .grant-sentence{color:var(--muted-foreground)}
+.grant.is-expired .grant-sentence .icon{color:var(--muted-foreground)}
+.grant-details{grid-area:details;min-width:0}
+.grant-details summary{display:inline-flex;align-items:center;gap:4px;list-style:none;cursor:pointer;font-size:12px;font-weight:600;color:var(--brand-link);border-radius:5px;padding:2px 4px;margin-left:-4px}
+.grant-details summary::-webkit-details-marker{display:none}
+.grant-details summary:hover{background:var(--accent)}
+.grant-details summary .icon{width:14px;height:14px;transition:transform var(--duration-normal) var(--ease-standard)}
+.grant-details[open] summary .icon{transform:rotate(180deg)}
+.detail-list{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:8px 16px;margin-top:8px;padding-top:10px;border-top:2px solid var(--ink-faint);font-size:12px}
+.detail-list dt{font-weight:600;color:var(--muted-foreground)}
+.detail-list dd{min-width:0}
+.scope-list{display:flex;flex-direction:column;gap:4px}
+.scope-list li{display:flex;align-items:center;flex-wrap:wrap;gap:6px}
+.scope-list code{font-size:11.5px;color:var(--muted-foreground)}
+@container device (width < 640px){
+	.grant{grid-template-columns:minmax(0,1fr);grid-template-areas:"main" "details" "action";gap:8px}
+	.grant-actions .btn{height:var(--size-control-lg)}
+	.grant-actions .btn .btn-face{font-size:13px;padding:0 12px}
+	.grant-action{justify-self:end;align-self:end}
+	.grant-meta{column-gap:12px}
+	.grant-meta li+li::before{content:none}
+	.detail-list{grid-template-columns:minmax(0,1fr);gap:2px}
+	.detail-list dd{margin-bottom:8px}
+}
+
+/* Placeholder, empty and demo panels share the nested geometry. */
+.nested-panel{border-radius:var(--grant-radius);padding:16px calc(24px - var(--grant-inset) - 2px)}
+.placeholder-panel{display:flex;gap:10px;align-items:flex-start;border:2px dashed var(--border-strong);color:var(--muted-foreground);font-size:13px}
+.placeholder-panel .icon{width:18px;height:18px;margin-top:1px}
+.empty-panel{border:2px solid var(--border-strong);background:var(--secondary);display:flex;flex-direction:column;align-items:flex-start;gap:6px}
+.empty-panel h4{font-weight:600;font-size:15px}
+.empty-panel p{font-size:13px;color:var(--muted-foreground);max-width:54ch}
+.empty-panel .btn{margin-top:10px}
+.demo-panel{display:flex;gap:10px;align-items:flex-start;border:2px solid var(--border-strong);background:var(--tint);font-size:13px}
+.demo-panel .icon{width:18px;height:18px;margin-top:1px;color:var(--brand-link)}
+@container device (width < 640px){.empty-panel .btn{width:100%}}
+
+/* Skeleton */
+.skeleton-panel{display:flex;flex-direction:column;gap:8px;border:2px solid var(--border);border-radius:var(--grant-radius);padding:16px calc(24px - var(--grant-inset) - 2px)}
+.skeleton{display:block;height:12px;border-radius:6px;background:var(--skeleton)}
+.skeleton.title{height:16px;width:46%}
+.skeleton.short{width:34%}
+.skeleton.mid{width:62%}
+@media (prefers-reduced-motion:no-preference){
+	.skeleton{background:linear-gradient(90deg,var(--skeleton) 0%,color-mix(in oklab,var(--skeleton) 40%,var(--card)) 50%,var(--skeleton) 100%);background-size:200% 100%;animation:shimmer 1.3s linear infinite}
+}
+@keyframes shimmer{from{background-position:100% 0}to{background-position:-100% 0}}
+
+/* ── Badge ────────────────────────────────────────────────────────── */
+.badge{display:inline-flex;align-items:center;gap:4px;height:20px;padding:0 7px;border:2px solid var(--ink);border-radius:var(--radius-badge);font-size:11px;font-weight:700;letter-spacing:.01em;white-space:nowrap;background:var(--card);color:var(--muted-foreground)}
+.badge .icon{width:11px;height:11px;stroke-width:2.5}
+.badge-warning{background:color-mix(in oklab,var(--status-warning) 22%,var(--card));color:var(--foreground)}
+.badge-danger{background:color-mix(in oklab,var(--status-danger) 14%,var(--card));color:var(--status-danger-text)}
+.badge-accent{background:var(--accent-loud);color:var(--accent-loud-foreground)}
+
+/* ── Button (stationary owner, moving surface) ───────────────────── */
+.btn{position:relative;display:inline-flex;flex:none;height:var(--size-control-md);padding:0;border:0;background:none;border-radius:var(--radius-btn);cursor:pointer;font-weight:600;line-height:1;white-space:nowrap}
+.btn-face{display:inline-flex;align-items:center;justify-content:center;gap:6px;width:100%;height:100%;padding:0 12px;font-size:13px;border:var(--border-w) solid var(--ink);border-radius:inherit;box-shadow:var(--elevation-ordinary);transition:translate var(--duration-normal) var(--ease-standard),box-shadow var(--duration-normal) var(--ease-standard),background-color var(--duration-fast)}
+.btn:hover:not(:disabled) .btn-face{translate:0 -2px;box-shadow:var(--elevation-lifted)}
+.btn:active:not(:disabled) .btn-face{translate:0 1px;box-shadow:var(--elevation-pressed)}
+.btn:focus-visible{outline:2px solid var(--ring);outline-offset:2px}
+.btn:disabled{cursor:not-allowed;opacity:.45}
+.btn-sm{height:var(--size-control-sm)}.btn-sm .btn-face{padding:0 9px;font-size:12px}.btn-sm .icon{width:14px;height:14px}
+.btn-lg{height:var(--size-control-lg)}.btn-lg .btn-face{padding:0 16px;font-size:14px}
+.btn-responsive{height:var(--size-control-lg)}.btn-responsive .btn-face{padding:0 16px;font-size:14px}
+@container device (width >= 640px){.btn-responsive{height:var(--size-control-md)}.btn-responsive .btn-face{padding:0 12px;font-size:13px}}
+.btn-primary .btn-face{background:var(--primary);color:var(--primary-foreground)}
+.btn-primary:hover:not(:disabled) .btn-face{background:var(--primary-hover)}
+.btn-secondary .btn-face{background:var(--card);color:var(--ink)}
+.btn-secondary:hover:not(:disabled) .btn-face{background:var(--panel-hover)}
+.btn-danger .btn-face{background:var(--card);color:var(--status-danger-text);border-color:var(--status-danger)}
+.btn-danger:hover:not(:disabled) .btn-face{background:color-mix(in oklab,var(--status-danger) 10%,var(--card))}
+.btn-destructive .btn-face{background:var(--status-danger);color:#fff}
+.btn-destructive:hover:not(:disabled) .btn-face{background:color-mix(in oklab,var(--status-danger) 86%,white)}
+.btn-icon{width:var(--size-control-lg);height:var(--size-control-lg)}.btn-icon .btn-face{padding:0}
+@media (prefers-reduced-motion:reduce){.btn-face{transition:none}.btn:hover:not(:disabled) .btn-face,.btn:active:not(:disabled) .btn-face{translate:none}}
+.spinner{width:14px;height:14px}
+@media (prefers-reduced-motion:no-preference){.spinner{animation:spin .8s linear infinite}}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── Dialog ───────────────────────────────────────────────────────── */
+.layer{position:absolute;inset:0;z-index:40;display:grid;place-items:center;padding:24px}
+.layer-top{z-index:60}
+.scrim{position:absolute;inset:0;background:var(--scrim)}
+.dialog{position:relative;display:flex;flex-direction:column;width:min(560px,100%);max-height:min(800px,100%);background:var(--card);color:var(--foreground);border:var(--border-w) solid var(--ink);border-radius:var(--radius-panel);box-shadow:var(--elevation-lifted);overflow:hidden}
+.dialog-small{width:min(440px,100%)}
+.dialog-roll{width:min(500px,100%)}
+@media (prefers-reduced-motion:no-preference){.layer:not([hidden]) .dialog{animation:pop var(--duration-normal) var(--ease-standard)}}
+@keyframes pop{from{opacity:0;transform:scale(.97) translateY(6px)}}
+.dialog-head{flex:none;padding:24px 24px 16px;border-bottom:2px solid var(--ink-faint)}
+.dialog-title-row{min-height:var(--size-control-lg);display:flex;align-items:center;padding-right:calc(var(--overlay-close-clearance) - 24px)}
+.dialog-title{font-family:var(--font-head);font-weight:600;font-size:22px;line-height:1.3}
+.dialog-close{position:absolute;top:var(--overlay-close-inset);right:var(--overlay-close-inset)}
+.dialog-body{flex:1 1 auto;min-height:0;overflow:auto;padding:20px 24px 24px;display:flex;flex-direction:column;gap:22px}
+.dialog-foot{flex:none;display:flex;justify-content:flex-end;gap:var(--nested-control-gap);padding:16px 24px 20px;border-top:2px solid var(--ink-faint)}
+.dialog-small .dialog-head{border-bottom:0;padding-bottom:4px}
+.dialog-small .dialog-title-row{padding-right:0}
+.dialog-small .dialog-body{padding-top:8px;padding-bottom:20px}
+.dialog-small .dialog-foot{border-top:0;padding-top:0;padding-bottom:24px}
+.dialog-text{font-size:14px;color:var(--foreground)}
+@container device (width < 640px){
+	.layer{padding:8px}
+	.dialog{width:100%;max-height:100%}
+	.dialog-head{padding:16px 16px 12px}
+	.dialog-title-row{padding-right:calc(var(--overlay-close-clearance) - 16px)}
+	.dialog-title{font-size:20px}
+	.dialog-body{padding:16px}
+	.dialog-foot{padding:12px 16px 16px}
+	.dialog-foot .btn{flex:1;height:var(--size-control-lg)}
+	.dialog-foot .btn .btn-face{font-size:14px;padding:0 12px}
+	.dialog-small .dialog-foot{padding-bottom:16px}
+}
+
+/* Step indicator */
+.steps{display:flex;align-items:center;gap:8px;margin-top:12px;font-size:12px;font-weight:600;color:var(--muted-foreground)}
+.step{display:flex;align-items:center;gap:6px;white-space:nowrap}
+.step-dot{width:22px;height:22px;display:grid;place-items:center;border:2px solid var(--border-strong);border-radius:50%;font-size:11px;font-weight:700;background:var(--card)}
+.step-dot .icon{width:12px;height:12px;stroke-width:3}
+.step[aria-current=step]{color:var(--foreground)}
+.step[aria-current=step] .step-dot{background:var(--primary);color:var(--primary-foreground);border-color:var(--ink)}
+.step.is-done{color:var(--foreground)}
+.step.is-done .step-dot{background:var(--ink);color:var(--card);border-color:var(--ink)}
+.step-line{flex:1;min-width:12px;height:2px;background:var(--border-strong);border-radius:1px}
+.step-line.is-done{background:var(--ink)}
+@container device (width < 400px){.step:not([aria-current=step]) .step-label{display:none}}
+
+/* Fields */
+.field{display:flex;flex-direction:column;gap:6px;min-width:0;border:0;padding:0;margin:0}
+.field-label{font-size:12px;font-weight:600;color:var(--foreground);padding:0}
+.field-label-row{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.char-count{font-size:12px;color:var(--muted-foreground);font-variant-numeric:tabular-nums}
+.help{font-size:12px;color:var(--muted-foreground)}
+.help-warning{display:flex;gap:6px;align-items:flex-start;color:var(--warning-text);font-weight:600}
+.help-warning .icon{width:14px;height:14px;margin-top:1px}
+.field-error{display:flex;gap:6px;align-items:center;font-size:12px;font-weight:600;color:var(--status-danger-text)}
+.field-error .icon{width:14px;height:14px}
+.input,.select{width:100%;height:var(--size-control-lg);padding:0 12px;border:var(--border-w) solid var(--ink);border-radius:var(--radius-btn);background:var(--card);color:var(--foreground);font-weight:500;font-size:14px;outline:none;transition:border-color var(--duration-fast),box-shadow var(--duration-fast)}
+@container device (width >= 640px){.input,.select{height:var(--size-control-md);font-size:13px}}
+.input::placeholder{color:var(--muted-foreground)}
+.input:focus-visible,.select:focus-visible{border-color:var(--ring);box-shadow:0 0 0 3px color-mix(in oklab,var(--ring) 22%,transparent)}
+.input[aria-invalid=true]{border-color:var(--status-danger);box-shadow:0 0 0 3px color-mix(in oklab,var(--status-danger) 18%,transparent)}
+.select-wrap{position:relative;width:100%}
+.select{appearance:none;padding-right:34px;cursor:pointer;box-shadow:var(--elevation-ordinary)}
+.select-wrap .icon{position:absolute;right:10px;top:50%;translate:0 -50%;pointer-events:none}
+.expiry-row{display:grid;grid-template-columns:minmax(0,220px) minmax(0,200px);gap:var(--nested-control-gap);align-items:center}
+.expiry-result{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600}
+.expiry-result .icon{width:14px;height:14px;color:var(--brand)}
+@container device (width < 640px){.expiry-row{grid-template-columns:minmax(0,1fr)}}
+
+/* ChoiceRow + checkbox / radio */
+.choice-list{display:flex;flex-direction:column;gap:2px}
+.choice{display:flex;align-items:flex-start;gap:10px;padding:8px 10px;border:2px solid transparent;border-radius:var(--radius-btn);cursor:pointer;font-size:12px;font-weight:600}
+.choice:hover{background:var(--accent)}
+.choice:has(input:checked){border-color:var(--ink);background:var(--accent)}
+.choice:has(input:focus-visible){outline:2px solid var(--ring);outline-offset:1px}
+.choice.is-locked{cursor:default}
+.choice-text{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
+.choice-title{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;font-size:13px}
+.choice-title code{font-size:11px;font-weight:500;color:var(--muted-foreground)}
+.choice-desc{font-weight:400;color:var(--muted-foreground)}
+.locked-note{display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:600;color:var(--muted-foreground)}
+.locked-note .icon{width:12px;height:12px}
+.check,.radio{appearance:none;flex:none;width:18px;height:18px;margin:1px 0 0;border:2px solid var(--ink);background:var(--card);cursor:pointer;display:grid;place-items:center}
+.check{border-radius:5px}
+.check:checked{background:var(--primary) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E") center/12px no-repeat}
+.check:disabled{cursor:default;opacity:.7}
+.radio{border-radius:50%}
+.radio:checked{background:var(--primary);box-shadow:inset 0 0 0 3px var(--card)}
+.check:focus-visible,.radio:focus-visible{outline:none}
+
+/* Wishlist picker: 12 px tray, 3 px inset, rows keep the 7 px button radius (12 - 2 - 3). */
+.picker{display:flex;flex-direction:column;gap:2px;margin-top:6px;padding:3px;border:2px solid var(--border-strong);border-radius:var(--radius-badge)}
+.search{position:relative}
+.search .icon{position:absolute;left:10px;top:50%;translate:0 -50%;color:var(--muted-foreground);pointer-events:none}
+.search .input{padding-left:34px;border-width:2px}
+.picker-group-title{padding:10px 10px 2px;font-size:12px;font-weight:600;color:var(--muted-foreground)}
+.picker-foot{display:flex;justify-content:space-between;align-items:center;padding:6px 10px 5px;font-size:12px;color:var(--muted-foreground)}
+.picker .choice{padding:6px 10px}
+.restrict-error{padding:0 10px 6px}
+
+/* Switch */
+.ff-panel{display:flex;flex-direction:column;gap:8px;padding:14px 16px;border:2px solid var(--border-strong);border-radius:var(--radius-badge)}
+.ff-panel.is-on{border-color:color-mix(in oklab,var(--status-warning) 70%,var(--ink));background:color-mix(in oklab,var(--status-warning) 8%,var(--card))}
+.ff-row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.ff-row label{display:flex;align-items:center;gap:8px;font-weight:600;font-size:13px;cursor:pointer}
+.switch{position:relative;flex:none;width:36px;height:22px;padding:0;border:2px solid var(--ink);border-radius:999px;background:var(--switch-track);cursor:pointer;transition:background-color var(--duration-normal)}
+.switch::after{content:"";position:absolute;inset:-8px -12px}
+.switch-thumb{position:absolute;top:1px;left:1px;width:16px;height:16px;border:2px solid var(--ink);border-radius:50%;background:var(--card);transition:transform var(--duration-normal) var(--ease-standard)}
+.switch[aria-checked=true]{background:var(--primary)}
+.switch[aria-checked=true] .switch-thumb{transform:translateX(14px)}
+.switch:focus-visible{outline:2px solid var(--ring);outline-offset:2px}
+.ff-help{font-size:12px;color:var(--muted-foreground)}
+.ff-help strong{color:var(--foreground);font-weight:600}
+
+/* Alert, InputGroup, code, summary */
+.alert-warning{display:grid;grid-template-columns:auto minmax(0,1fr);gap:10px;padding:12px 16px;border:var(--border-w) solid var(--accent-loud-foreground);border-radius:var(--radius-badge);background:var(--accent-loud);color:var(--accent-loud-foreground);font-size:13px;font-weight:600;box-shadow:var(--elevation-ordinary-strong)}
+.alert-warning .icon{margin-top:1px}
+.input-group{display:flex;height:var(--size-control-lg);border:var(--border-w) solid var(--ink);border-radius:var(--radius-btn);background:var(--muted);overflow:hidden}
+.input-group:focus-within{border-color:var(--ring);box-shadow:0 0 0 3px color-mix(in oklab,var(--ring) 22%,transparent)}
+.token-input{flex:1;min-width:0;border:0;background:none;padding:0 12px;font-family:var(--font-mono);font-size:13px;color:var(--foreground);outline:none}
+.group-btn{flex:none;display:inline-flex;align-items:center;gap:6px;padding:0 14px;border:0;border-left:var(--border-w) solid var(--ink);background:var(--primary);color:var(--primary-foreground);font-weight:600;font-size:13px;cursor:pointer;min-width:132px;justify-content:center}
+.group-btn:hover{background:var(--primary-hover)}
+.group-btn:focus-visible{outline:2px solid var(--ring);outline-offset:-5px}
+.group-btn.is-copied{background:color-mix(in oklab,var(--status-success) 18%,var(--card));color:var(--status-success-text)}
+.quick-start{display:flex;flex-direction:column;gap:8px}
+.code-block{margin:0;padding:10px 12px;border:2px solid var(--border-strong);border-radius:var(--radius-btn);background:var(--muted);font-family:var(--font-mono);font-size:12px;line-height:1.6;overflow:auto;white-space:pre}
+.code-block .k{color:var(--muted-foreground)}
+.summary{display:flex;flex-direction:column;gap:10px;padding:14px 16px;border:2px solid var(--border-strong);border-radius:var(--radius-badge)}
+.summary-sentence{display:flex;gap:6px;align-items:flex-start;font-weight:600;font-size:14px}
+.summary-sentence .icon{margin-top:2px;color:var(--brand)}
+.summary .detail-list{margin-top:0;font-size:12.5px}
+.section-label{font-size:12px;font-weight:600}
+
+/* Toast */
+.toast{position:absolute;left:50%;bottom:20px;z-index:80;translate:-50% 0;display:flex;align-items:center;gap:8px;max-width:calc(100% - 24px);padding:10px 14px;background:var(--card);color:var(--foreground);border:var(--border-w) solid var(--ink);border-radius:var(--radius-badge);box-shadow:var(--elevation-ordinary);font-weight:600;font-size:13px}
+.toast .icon{color:var(--status-success);stroke-width:2.5}
+@media (prefers-reduced-motion:no-preference){.toast:not([hidden]){animation:pop var(--duration-normal) var(--ease-standard)}}
+
+/* Collapsed neighbour cards */
+.card-collapsed{padding-block:20px}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+	<symbol id="i-key" viewBox="0 0 24 24"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5" fill="currentColor"/></symbol>
+	<symbol id="i-bell" viewBox="0 0 24 24"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></symbol>
+	<symbol id="i-palette" viewBox="0 0 24 24"><circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/><circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></symbol>
+	<symbol id="i-gift" viewBox="0 0 24 24"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13"/><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5"/></symbol>
+	<symbol id="i-chevron" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+	<symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol>
+	<symbol id="i-copy" viewBox="0 0 24 24"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></symbol>
+	<symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+	<symbol id="i-lock" viewBox="0 0 24 24"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
+	<symbol id="i-alert" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></symbol>
+	<symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></symbol>
+	<symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></symbol>
+	<symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 12h16"/><path d="M4 18h16"/><path d="M4 6h16"/></symbol>
+	<symbol id="i-bot" viewBox="0 0 24 24"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></symbol>
+	<symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
+	<symbol id="i-plug" viewBox="0 0 24 24"><path d="M12 22v-5"/><path d="M9 8V2"/><path d="M15 8V2"/><path d="M18 8v5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8Z"/></symbol>
+	<symbol id="i-book" viewBox="0 0 24 24"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></symbol>
+	<symbol id="i-zap" viewBox="0 0 24 24"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/></symbol>
+	<symbol id="i-loader" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></symbol>
+	<symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></symbol>
+	<symbol id="i-calendar" viewBox="0 0 24 24"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></symbol>
+	<symbol id="i-refresh" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></symbol>
+	<symbol id="i-ban" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/></symbol>
+	<symbol id="i-list" viewBox="0 0 24 24"><path d="M3 12h.01"/><path d="M3 18h.01"/><path d="M3 6h.01"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M8 6h13"/></symbol>
+</svg>
+
+<div class="review-bar" role="region" aria-label="Ovládání náhledu návrhu">
+	<span class="review-eyebrow">REFINED: Varianta B + platnost 1 rok až 10 let, opětovné vygenerování tokenu</span>
+	<div class="review-group"><span id="rv-viewport">Viewport</span>
+		<div class="review-seg" role="group" aria-labelledby="rv-viewport">
+			<button type="button" data-viewport="desktop" aria-pressed="true">Desktop</button>
+			<button type="button" data-viewport="mobile" aria-pressed="false">Mobil 390 px</button>
+		</div>
+	</div>
+	<div class="review-group"><span id="rv-theme">Motiv</span>
+		<div class="review-seg" role="group" aria-labelledby="rv-theme">
+			<button type="button" data-theme="light" aria-pressed="true">Světlý</button>
+			<button type="button" data-theme="dark" aria-pressed="false">Tmavý</button>
+		</div>
+	</div>
+	<div class="review-group"><span id="rv-scenario">Scénář</span>
+		<div class="review-seg" role="group" aria-labelledby="rv-scenario">
+			<button type="button" data-scenario="listed" aria-pressed="true">Tokeny</button>
+			<button type="button" data-scenario="empty" aria-pressed="false">Prázdné</button>
+			<button type="button" data-scenario="demo" aria-pressed="false">Demo</button>
+			<button type="button" data-scenario="create" aria-pressed="false">Vytvoření</button>
+			<button type="button" data-scenario="revealed" aria-pressed="false">Token zobrazen</button>
+			<button type="button" data-scenario="roll" aria-pressed="false">Vygenerovat znovu</button>
+			<button type="button" data-scenario="roll-expired" aria-pressed="false">Vypršelý: vygenerovat</button>
+			<button type="button" data-scenario="roll-revealed" aria-pressed="false">Nový token zobrazen</button>
+			<button type="button" data-scenario="revoke" aria-pressed="false">Zrušení tokenu</button>
+			<button type="button" data-scenario="loading" aria-pressed="false">Načítání</button>
+		</div>
+	</div>
+</div>
+
+<div class="stage" id="stage">
+<div class="device" id="device">
+<div class="app">
+	<div class="screen" id="screen">
+		<header class="topbar">
+			<div class="topbar-inner">
+				<a class="logo" href="#" aria-label="Přejeme si, domů"><span class="logo-mark"><svg class="icon"><use href="#i-gift"/></svg></span><span>přejeme si<span class="logo-tld">.cz</span></span></a>
+				<nav class="nav-links" aria-label="Hlavní navigace">
+					<a href="#">Moje seznamy</a><a href="#">Spravované</a><a href="#">Sledované</a>
+				</nav>
+				<div class="nav-right">
+					<button class="icon-btn nav-bell" type="button" aria-label="Oznámení"><svg class="icon"><use href="#i-bell"/></svg></button>
+					<span class="avatar" role="img" aria-label="Martin Novák">MN</span>
+					<button class="icon-btn menu-btn" type="button" aria-label="Otevření menu"><svg class="icon"><use href="#i-menu"/></svg></button>
+				</div>
+			</div>
+		</header>
+
+		<main class="content">
+			<div class="settings-page">
+				<h1 class="page-title">Nastavení</h1>
+				<p class="page-subtitle">Spravujte svůj profil, zabezpečení a předvolby</p>
+
+				<div class="sections">
+					<p class="demo-note" id="demoNote" hidden>V demu můžete změnit jen vzhled. Zabezpečení účtu, profilové obrázky, oznámení a smazání účtu vyžadují skutečný účet.</p>
+
+					<section class="card card-collapsed" id="notificationsCard" aria-labelledby="notif-title">
+						<div class="card-header"><svg class="icon"><use href="#i-bell"/></svg><div><h2 class="card-title" id="notif-title">Upozornění</h2><p class="card-desc">Nastavte si, jak chcete být informováni</p></div></div>
+					</section>
+
+					<section class="card access-card" id="accessCard" aria-labelledby="access-title">
+						<div class="access-head">
+							<svg class="icon"><use href="#i-key"/></svg>
+							<div class="access-head-text">
+								<h2 class="card-title" id="access-title">Přístup pro AI a aplikace</h2>
+								<p class="card-desc">Tokeny umožní vašemu AI asistentovi pracovat s vašimi seznamy vaším jménem. Agent nikdy nezíská víc práv než vy.</p>
+								<a class="text-link doc-link" href="#"><svg class="icon"><use href="#i-book"/></svg>Dokumentace API</a>
+							</div>
+							<div class="access-head-action" id="headAction">
+								<button class="btn btn-primary btn-responsive" type="button" id="createButton" data-open-create><span class="btn-face"><svg class="icon"><use href="#i-plus"/></svg>Vytvořit token</span></button>
+							</div>
+						</div>
+
+						<div class="access-body">
+							<div id="demoExplain" class="nested-panel demo-panel" hidden>
+								<svg class="icon"><use href="#i-info"/></svg>
+								<p id="demoExplainText">V ukázce nelze vytvářet tokeny ani používat API. Zaregistrujte se a připojte vlastního AI asistenta. <a class="text-link" href="#">Registrovat</a></p>
+							</div>
+
+							<div id="tokensGroup">
+								<div class="group-head"><h3>Tokeny</h3><span class="count" id="tokenCount"></span></div>
+								<div id="loadingList" class="grant-list" aria-busy="true" hidden>
+									<span class="sr-only" role="status">Načítání tokenů</span>
+									<div class="skeleton-panel" aria-hidden="true"><span class="skeleton title"></span><span class="skeleton mid"></span><span class="skeleton short"></span></div>
+									<div class="skeleton-panel" aria-hidden="true"><span class="skeleton title"></span><span class="skeleton mid"></span><span class="skeleton short"></span></div>
+									<div class="skeleton-panel" aria-hidden="true"><span class="skeleton title"></span><span class="skeleton mid"></span><span class="skeleton short"></span></div>
+								</div>
+								<div id="emptyPanel" class="nested-panel empty-panel" hidden>
+									<h4>Zatím nemáte žádný token.</h4>
+									<p>Token dá vašemu AI asistentovi, třeba Claude nebo ChatGPT, přístup jen k tomu, co mu povolíte, a kdykoli ho můžete zrušit.</p>
+									<button class="btn btn-primary btn-responsive" type="button" data-open-create><span class="btn-face"><svg class="icon"><use href="#i-plus"/></svg>Vytvořit token</span></button>
+								</div>
+								<ul class="grant-list" id="grantList" aria-label="Tokeny"></ul>
+							</div>
+
+							<hr class="separator">
+							<div class="group-head"><h3>Propojené aplikace</h3><span class="badge badge-accent">Brzy</span></div>
+							<div class="nested-panel placeholder-panel">
+								<svg class="icon"><use href="#i-plug"/></svg>
+								<p>Brzy budete moci připojit AI aplikace (například Claude nebo ChatGPT) jedním kliknutím, bez kopírování tokenu.</p>
+							</div>
+						</div>
+					</section>
+
+					<section class="card card-collapsed" aria-labelledby="appearance-title">
+						<div class="card-header"><svg class="icon"><use href="#i-palette"/></svg><div><h2 class="card-title" id="appearance-title">Vzhled</h2><p class="card-desc">Motiv a jazyk aplikace</p></div></div>
+					</section>
+				</div>
+			</div>
+		</main>
+	</div>
+
+	<!-- Create dialog: 1 Základ, 2 Oprávnění, 3 reveal -->
+	<div class="layer" id="createLayer" hidden>
+		<div class="scrim" data-dismiss="create"></div>
+		<div class="dialog" role="dialog" aria-modal="true" aria-labelledby="createTitle">
+			<div class="dialog-head">
+				<div class="dialog-title-row"><h2 class="dialog-title" id="createTitle">Nový token</h2></div>
+				<ol class="steps" aria-label="Postup vytvoření">
+					<li class="step" data-step-indicator="1"><span class="step-dot">1</span><span class="step-label">Základ</span></li>
+					<li class="step-line" aria-hidden="true" data-step-line="1"></li>
+					<li class="step" data-step-indicator="2"><span class="step-dot">2</span><span class="step-label">Oprávnění</span></li>
+					<li class="step-line" aria-hidden="true" data-step-line="2"></li>
+					<li class="step" data-step-indicator="3"><span class="step-dot">3</span><span class="step-label">Token</span></li>
+				</ol>
+				<button class="btn btn-secondary btn-icon dialog-close" type="button" aria-label="Zavřít" data-dismiss="create"><span class="btn-face"><svg class="icon"><use href="#i-x"/></svg></span></button>
+			</div>
+
+			<form class="dialog-body" id="createForm" novalidate>
+				<fieldset class="field" id="stepOne" style="gap:22px">
+					<legend class="sr-only">Základ</legend>
+					<div class="field">
+						<div class="field-label-row"><label class="field-label" for="tokenName">Název</label><span class="char-count" id="nameCount">0/60</span></div>
+						<input class="input" id="tokenName" maxlength="60" autocomplete="off" placeholder="Např. Claude – vánoční dárky" aria-describedby="nameHelp nameError">
+						<p class="field-error" id="nameError" hidden><svg class="icon"><use href="#i-alert"/></svg>Zadejte název tokenu.</p>
+						<p class="help" id="nameHelp">Podle názvu token poznáte v seznamu a v historii změn.</p>
+					</div>
+
+					<fieldset class="field">
+						<legend class="field-label">Seznamy</legend>
+						<div class="choice-list" role="radiogroup">
+							<label class="choice"><input class="radio" type="radio" name="restrict" value="all" checked><span class="choice-text"><span class="choice-title">Všechny seznamy, ke kterým máte přístup</span></span></label>
+							<label class="choice"><input class="radio" type="radio" name="restrict" value="some"><span class="choice-text"><span class="choice-title">Jen vybrané seznamy</span></span></label>
+						</div>
+						<div class="picker" id="picker" hidden>
+							<div class="search"><svg class="icon"><use href="#i-search"/></svg><input class="input" type="search" id="listSearch" placeholder="Hledat seznam" aria-label="Hledat seznam"></div>
+							<div id="pickerGroups"></div>
+							<p class="help" id="pickerNoMatch" hidden style="padding:8px 10px">Žádný seznam neodpovídá hledání.</p>
+							<div class="picker-foot"><span id="pickerCount">Vybráno: 0</span></div>
+							<p class="field-error restrict-error" id="restrictError" hidden><svg class="icon"><use href="#i-alert"/></svg>Vyberte alespoň jeden seznam.</p>
+						</div>
+					</fieldset>
+
+					<div class="field">
+						<label class="field-label" for="expirySelect">Platnost</label>
+						<div class="expiry-row">
+							<div class="select-wrap"><select class="select" id="expirySelect" aria-describedby="expiryResult">
+								<option value="30">30 dní</option>
+								<option value="90">90 dní</option>
+								<option value="365" selected>1 rok (výchozí)</option>
+								<option value="1825">5 let</option>
+								<option value="3650">10 let</option>
+							</select><svg class="icon"><use href="#i-chevron"/></svg></div>
+						</div>
+						<p class="expiry-result" id="expiryResult" aria-live="polite"><svg class="icon"><use href="#i-calendar"/></svg><span>Vyprší 13. 10. 2027</span></p>
+						<p class="help">Nejdéle 10 let. Token bez data vypršení vytvořit nelze. Před vypršením ho můžete vygenerovat znovu.</p>
+					</div>
+				</fieldset>
+
+				<fieldset class="field" id="stepTwo" style="gap:22px" hidden>
+					<legend class="sr-only">Oprávnění</legend>
+					<div class="field">
+						<span class="field-label" id="scopeLabel">Co smí agent dělat</span>
+						<div class="choice-list" role="group" aria-labelledby="scopeLabel" id="scopeList"></div>
+					</div>
+					<div class="ff-panel" id="ffPanel">
+						<div class="ff-row">
+							<label for="ffSwitch" id="ffLabel"><svg class="icon"><use href="#i-zap"/></svg>Bez kontroly</label>
+							<button class="switch" id="ffSwitch" type="button" role="switch" aria-checked="false" aria-labelledby="ffLabel" aria-describedby="ffHelp"><span class="switch-thumb"></span></button>
+						</div>
+						<p class="ff-help" id="ffHelp">Změny se použijí hned, bez stránky s náhledem. <strong>Smazání dárků, rezervace a pozvánky správců vždy potvrzujete sami, i když je tato volba zapnutá.</strong></p>
+					</div>
+				</fieldset>
+
+				<div id="stepThree" class="field" style="gap:20px" hidden>
+					<div class="alert-warning" role="alert"><svg class="icon"><use href="#i-alert"/></svg><p>Token uvidíte jen teď. Uložte si ho, po zavření ho už nezobrazíme.</p></div>
+					<p class="roll-old" id="rollOldNote" hidden></p>
+					<div class="field">
+						<label class="field-label" for="tokenValue">Váš token</label>
+						<div class="input-group">
+							<input class="token-input" id="tokenValue" readonly spellcheck="false">
+							<button class="group-btn" type="button" id="copyButton"><svg class="icon"><use href="#i-copy"/></svg><span>Kopírovat</span></button>
+						</div>
+					</div>
+					<div class="quick-start">
+						<span class="section-label">Rychlý start</span>
+						<pre class="code-block" id="quickStart"></pre>
+						<a class="text-link" href="#" style="font-size:12px;font-weight:600;align-self:flex-start">Jak token předat AI asistentovi</a>
+					</div>
+					<div class="summary" aria-labelledby="summaryLabel">
+						<span class="section-label" id="summaryLabel">Co jste povolili</span>
+						<p class="summary-sentence"><svg class="icon"><use href="#i-bot"/></svg><span id="summarySentence"></span></p>
+						<dl class="detail-list" id="summaryList"></dl>
+					</div>
+				</div>
+			</form>
+
+			<div class="dialog-foot">
+				<button class="btn btn-secondary btn-responsive" type="button" id="backButton"><span class="btn-face">Zrušit</span></button>
+				<button class="btn btn-primary btn-responsive" type="button" id="nextButton"><span class="btn-face">Pokračovat</span></button>
+				<button class="btn btn-primary btn-responsive" type="button" id="doneButton" hidden><span class="btn-face">Hotovo</span></button>
+			</div>
+		</div>
+	</div>
+
+	<!-- Close-before-copy confirm -->
+	<div class="layer layer-top" id="closeConfirmLayer" hidden>
+		<div class="scrim" data-dismiss="closeConfirm"></div>
+		<div class="dialog dialog-small" role="alertdialog" aria-modal="true" aria-labelledby="closeConfirmTitle" aria-describedby="closeConfirmText">
+			<div class="dialog-head"><div class="dialog-title-row"><h2 class="dialog-title" id="closeConfirmTitle">Zavřít bez zkopírování?</h2></div></div>
+			<div class="dialog-body"><p class="dialog-text" id="closeConfirmText">Token už nezobrazíme. Pokud si ho neuložíte, vytvořte později nový.</p></div>
+			<div class="dialog-foot">
+				<button class="btn btn-secondary btn-responsive" type="button" data-dismiss="closeConfirm" id="closeConfirmBack"><span class="btn-face">Zpět</span></button>
+				<button class="btn btn-primary btn-responsive" type="button" id="closeConfirmContinue"><span class="btn-face">Přesto zavřít</span></button>
+			</div>
+		</div>
+	</div>
+
+	<!-- Roll (regenerate) confirm -->
+	<div class="layer" id="rollLayer" hidden>
+		<div class="scrim" data-dismiss="roll"></div>
+		<div class="dialog dialog-roll" role="dialog" aria-modal="true" aria-labelledby="rollTitle" aria-describedby="rollLead">
+			<div class="dialog-head">
+				<div class="dialog-title-row"><h2 class="dialog-title" id="rollTitle">Vygenerovat token znovu?</h2></div>
+				<button class="btn btn-secondary btn-icon dialog-close" type="button" aria-label="Zavřít" data-dismiss="roll"><span class="btn-face"><svg class="icon"><use href="#i-x"/></svg></span></button>
+			</div>
+			<div class="dialog-body">
+				<p class="dialog-text" id="rollLead"></p>
+				<div class="roll-facts">
+					<h3 class="grant-name" id="rollName"></h3>
+					<ul class="roll-list">
+						<li class="is-kept"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg><span id="rollKept"></span></li>
+						<li class="is-ended"><svg class="icon" aria-hidden="true"><use href="#i-ban"/></svg><span id="rollEnded"></span></li>
+					</ul>
+				</div>
+				<div class="field">
+					<label class="field-label" for="rollExpiry">Platnost nového tokenu</label>
+					<div class="expiry-row">
+						<div class="select-wrap"><select class="select" id="rollExpiry" aria-describedby="rollExpiryResult">
+							<option value="30">30 dní</option>
+							<option value="90">90 dní</option>
+							<option value="365">1 rok</option>
+							<option value="1825">5 let</option>
+							<option value="3650">10 let</option>
+						</select><svg class="icon"><use href="#i-chevron"/></svg></div>
+					</div>
+					<p class="expiry-result" id="rollExpiryResult" aria-live="polite"><svg class="icon"><use href="#i-calendar"/></svg><span></span></p>
+					<p class="help" id="rollExpiryHelp"></p>
+				</div>
+			</div>
+			<div class="dialog-foot">
+				<button class="btn btn-secondary btn-responsive" type="button" data-dismiss="roll" id="rollBack"><span class="btn-face">Zpět</span></button>
+				<button class="btn btn-primary btn-responsive" type="button" id="rollConfirm"><span class="btn-face"><svg class="icon"><use href="#i-refresh"/></svg>Vygenerovat znovu</span></button>
+			</div>
+		</div>
+	</div>
+
+	<!-- Revoke confirm -->
+	<div class="layer" id="revokeLayer" hidden>
+		<div class="scrim" data-dismiss="revoke"></div>
+		<div class="dialog dialog-small" role="alertdialog" aria-modal="true" aria-labelledby="revokeTitle" aria-describedby="revokeText">
+			<div class="dialog-head"><div class="dialog-title-row"><h2 class="dialog-title" id="revokeTitle"></h2></div></div>
+			<div class="dialog-body"><p class="dialog-text" id="revokeText">Agent okamžitě ztratí přístup. Zrušený token už nepůjde vygenerovat znovu. Čekající návrhy změn zůstanou dostupné ke kontrole.</p></div>
+			<div class="dialog-foot">
+				<button class="btn btn-secondary btn-responsive" type="button" data-dismiss="revoke" id="revokeBack"><span class="btn-face">Zpět</span></button>
+				<button class="btn btn-destructive btn-responsive" type="button" id="revokeConfirm"><span class="btn-face">Zrušit token</span></button>
+			</div>
+		</div>
+	</div>
+
+	<div class="toast" id="toast" role="status" aria-live="polite" hidden><svg class="icon"><use href="#i-check"/></svg><span id="toastText"></span></div>
+</div>
+</div>
+</div>
+
+<script>
+(() => {
+	const SCOPES = [
+		{ id: 'read', label: 'Čtení', verb: 'čte', description: 'Vidí seznamy a dárky, které vidíte vy. Rezervace jen jako stav a počet.', locked: true },
+		{ id: 'gifts:write', label: 'Úpravy dárků', verb: 'upravuje dárky', description: 'Přidává, upravuje, maže a řadí dárky, spravuje kategorie a priority, zakládá koncepty seznamů.' },
+		{ id: 'reservations:write', label: 'Rezervace', verb: 'rezervuje', description: 'Rezervuje dárky vaším jménem.' },
+		{ id: 'managers:invite', label: 'Pozvánky správců', verb: 'zve správce', description: 'Zve další správce.' },
+		{ id: 'reservations:identities', label: 'Jména dárců', verb: 'vidí jména dárců', description: 'Vidí, kdo rezervoval.', warning: 'Tyto údaje odejdou k poskytovateli vašeho AI. E-maily anonymních dárců agent neuvidí nikdy.' },
+	];
+	const WISHLIST_GROUPS = [
+		['Moje seznamy', ['Martinovy narozeniny', 'Vánoce 2026', 'Vánoce pro babičku', 'Na chalupu']],
+		['Spravované', ['Svatba Kláry a Tomáše', 'Janiny třicetiny', 'Bára do školky']],
+		['Sledované', ['Petrovy Vánoce', 'Eva – nové kolo', 'Tomášova maturita']],
+	];
+	const SAMPLE_TOKENS = [
+		{ id: 'claude', name: 'Claude – vánoční dárky', prefix: 'pjs_7Kq2', scopes: ['read', 'gifts:write'], lists: ['Vánoce pro babičku'], fastForward: true, lastUsed: 'před 2 h', lastUsedMinutes: 120, durationDays: 365, expires: '13. 10. 2027', created: '13. 10. 2026' },
+		{ id: 'chatgpt', name: 'ChatGPT – rezervace', prefix: 'pjs_c9Te', scopes: ['read', 'reservations:write', 'reservations:identities'], lists: ['Martinovy narozeniny', 'Vánoce pro babičku', 'Petrovy Vánoce'], fastForward: false, lastUsed: 'před 5 dny', lastUsedMinutes: 7200, durationDays: 1825, expires: '1. 9. 2031', created: '2. 9. 2026' },
+		{ id: 'codex', name: 'Codex – import z tabulky', prefix: 'pjs_Rm4x', scopes: ['read', 'gifts:write'], lists: null, fastForward: false, lastUsed: null, durationDays: 90, expires: '16. 10. 2026', expiresSoon: 'Vyprší za 3 dny', created: '18. 7. 2026' },
+		{ id: 'old-script', name: 'Starý skript', prefix: 'pjs_Lw0b', scopes: ['read'], lists: null, fastForward: false, lastUsed: '28. 8. 2026', lastUsedMinutes: Infinity, expired: true, durationDays: 90, expires: '1. 9. 2026', created: '3. 6. 2026' },
+	];
+	const TODAY = Date.UTC(2026, 9, 13);
+	const DAY = 86400000;
+
+	const byId = (id) => document.getElementById(id);
+	const icon = (name) => `<svg class="icon" aria-hidden="true"><use href="#i-${name}"/></svg>`;
+	const escapeHtml = (text) => String(text).replace(/[&<>"']/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character]);
+	const formatDate = (timestamp) => { const date = new Date(timestamp); return `${date.getUTCDate()}. ${date.getUTCMonth() + 1}. ${date.getUTCFullYear()}`; };
+	const scopeById = (id) => SCOPES.find((scope) => scope.id === id);
+	const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+	let tokens = [];
+	let scenario = 'listed';
+	let pendingRevokeId = null;
+	let createStep = 1;
+	let copied = false;
+	let createdToken = null;
+	let returnFocus = null;
+	let toastTimer = 0;
+	let copyTimer = 0;
+
+	function scopeSentence(scopeIds, lists) {
+		const verbs = scopeIds.filter((id) => id !== 'read').map((id) => scopeById(id).verb);
+		let text;
+		if (verbs.length === 0) text = 'Jen čte';
+		else {
+			const all = ['čte', ...verbs];
+			text = all.length === 2 ? all.join(' a ') : `${all.slice(0, -1).join(', ')} a ${all[all.length - 1]}`;
+			text = text.charAt(0).toUpperCase() + text.slice(1);
+		}
+		if (!lists) return `${text} na všech seznamech`;
+		return lists.length === 1 ? `${text} na 1 seznamu` : `${text} na ${lists.length} seznamech`;
+	}
+	function listsLine(lists) {
+		if (!lists) return 'Všechny seznamy';
+		const shown = lists.slice(0, 2).join(', ');
+		return lists.length > 2 ? `Jen: ${shown} +${lists.length - 2}` : `Jen: ${shown}`;
+	}
+	function sortTokens(list) {
+		const rank = (token) => (token.expired ? 2 : token.lastUsed ? 0 : 1);
+		return [...list].sort((first, second) => rank(first) - rank(second) || (rank(first) === 0 ? first.lastUsedMinutes - second.lastUsedMinutes : 0));
+	}
+	function durationLabel(days) {
+		return { 30: '30 dní', 90: '90 dní', 365: '1 rok', 1825: '5 let', 3650: '10 let' }[days] ?? `${days} dní`;
+	}
+	function expiryAfter(days) { return formatDate(TODAY + days * DAY); }
+	function detailList(token) {
+		const scopes = token.scopes.map((id) => { const scope = scopeById(id); return `<li><span class="badge">${scope.label}</span><code>${scope.id}</code></li>`; }).join('');
+		const lists = token.lists ? escapeHtml(token.lists.join(', ')) : 'Všechny seznamy, ke kterým máte přístup';
+		const fastForward = token.fastForward ? 'Zapnuto: změny se použijí bez náhledu. Smazání dárků, rezervace a pozvánky správců potvrzujete vždy.' : 'Vypnuto: každou změnu zkontrolujete na stránce s náhledem.';
+		return `<div style="display:contents"><dt>Oprávnění</dt><dd><ul class="scope-list">${scopes}</ul></dd></div>
+			<div style="display:contents"><dt>Seznamy</dt><dd>${lists}</dd></div>
+			<div style="display:contents"><dt>Bez kontroly</dt><dd>${fastForward}</dd></div>
+			${token.durationDays ? `<div style="display:contents"><dt>Platnost</dt><dd>${durationLabel(token.durationDays)}, ${token.expired ? 'vypršel' : 'vyprší'} ${token.expires}</dd></div>` : ''}`;
+	}
+	function grantRow(token) {
+		const name = escapeHtml(token.name);
+		const badges = [
+			token.fastForward && !token.expired ? `<span class="badge badge-warning">${icon('zap')}Bez kontroly</span>` : '',
+			token.expired ? '<span class="badge badge-danger">Vypršel</span>' : '',
+		].join('');
+		const lastUsed = token.lastUsed ? `<li>Naposledy použit ${token.lastUsed}</li>` : '<li>Zatím nepoužit</li>';
+		const expiry = token.expired ? `<li>Vypršel ${token.expires}</li>`
+			: token.expiresSoon ? `<li class="is-warning" title="${token.expires}">${icon('clock')}${token.expiresSoon}</li>`
+			: `<li>Vyprší ${token.expires}</li>`;
+		const actions = token.expired
+			? `<button class="btn btn-secondary btn-sm" type="button" data-revoke="${token.id}" aria-label="Odstranit token ${name}"><span class="btn-face">Odstranit</span></button>
+				<button class="btn btn-primary btn-sm" type="button" data-roll="${token.id}" aria-label="Vygenerovat znovu token ${name}"><span class="btn-face">${icon('refresh')}Vygenerovat znovu</span></button>`
+			: `<button class="btn btn-secondary btn-sm" type="button" data-roll="${token.id}" aria-label="Vygenerovat znovu token ${name}"><span class="btn-face">${icon('refresh')}Vygenerovat znovu</span></button>
+				<button class="btn btn-danger btn-sm" type="button" data-revoke="${token.id}" aria-label="Zrušit token ${name}"><span class="btn-face">Zrušit</span></button>`;
+		return `<li class="grant${token.expired ? ' is-expired' : ''}${token.isNew ? ' is-new' : ''}" data-id="${token.id}">
+			<div class="grant-main">
+				<div class="grant-title-row"><h4 class="grant-name">${name}</h4>${badges}</div>
+				${token.expired ? `<p class="expired-note">${icon('alert')}<span>Token vypršel ${token.expires}, agent s ním už nemá přístup. Vygenerujte nový se stejnými oprávněními.</span></p>` : ''}
+				<p class="grant-sentence">${icon('bot')}<span>${scopeSentence(token.scopes, token.lists)}</span></p>
+				<p class="grant-lists">${escapeHtml(listsLine(token.lists))}</p>
+				<ul class="grant-meta">
+					<li><code aria-label="Začátek tokenu ${token.prefix}">${token.prefix}…</code></li>
+					${lastUsed}${expiry}<li>Vytvořen ${token.created}</li>
+				</ul>
+			</div>
+			<div class="grant-action grant-actions">${actions}</div>
+			<details class="grant-details"><summary>Podrobnosti${icon('chevron')}</summary><dl class="detail-list">${detailList(token)}</dl></details>
+		</li>`;
+	}
+	function expiredWord(count) { return count === 1 ? 'vypršel' : count < 5 ? 'vypršely' : 'vypršelo'; }
+
+	function renderSection() {
+		const isDemo = scenario === 'demo';
+		const isLoading = scenario === 'loading';
+		const isEmpty = !isDemo && !isLoading && tokens.length === 0;
+		byId('demoNote').hidden = !isDemo;
+		byId('notificationsCard').hidden = isDemo;
+		byId('demoExplain').hidden = !isDemo;
+		byId('tokensGroup').hidden = isDemo;
+		byId('loadingList').hidden = !isLoading;
+		byId('emptyPanel').hidden = !isEmpty;
+		byId('headAction').hidden = isEmpty;
+		const createButton = byId('createButton');
+		createButton.disabled = isDemo;
+		if (isDemo) createButton.setAttribute('aria-describedby', 'demoExplainText'); else createButton.removeAttribute('aria-describedby');
+		const list = byId('grantList');
+		list.hidden = isLoading || isEmpty;
+		list.innerHTML = isLoading ? '' : sortTokens(tokens).map(grantRow).join('');
+		const active = tokens.filter((token) => !token.expired).length;
+		const expired = tokens.length - active;
+		byId('tokenCount').textContent = isLoading || isEmpty ? '' : `${active} aktivní${expired ? `, ${expired} ${expiredWord(expired)}` : ''}`;
+	}
+
+	// Layers and focus
+	const layers = { create: byId('createLayer'), roll: byId('rollLayer'), revoke: byId('revokeLayer'), closeConfirm: byId('closeConfirmLayer') };
+	function openLayer(name, focusTarget) {
+		layers[name].hidden = false;
+		(focusTarget || layers[name].querySelector('button, input')).focus();
+	}
+	function closeLayer(name) { layers[name].hidden = true; }
+	function topLayerName() { return ['closeConfirm', 'revoke', 'roll', 'create'].find((name) => !layers[name].hidden); }
+	function restoreFocus() { if (returnFocus && document.contains(returnFocus) && !returnFocus.disabled) returnFocus.focus(); else byId('accessCard').querySelector('button:not([disabled])')?.focus(); returnFocus = null; }
+
+	function showToast(text) {
+		byId('toastText').textContent = text;
+		const toast = byId('toast');
+		toast.hidden = false;
+		clearTimeout(toastTimer);
+		toastTimer = setTimeout(() => { toast.hidden = true; }, 3200);
+	}
+
+	// Create dialog
+	function buildPicker() {
+		byId('pickerGroups').innerHTML = WISHLIST_GROUPS.map(([group, names]) => `<div class="picker-group" role="group" aria-label="${group}"><p class="picker-group-title">${group}</p>${names.map((name) => `<label class="choice"><input class="check" type="checkbox" name="wishlist" value="${escapeHtml(name)}"><span class="choice-text"><span class="choice-title">${escapeHtml(name)}</span></span></label>`).join('')}</div>`).join('');
+	}
+	function buildScopes() {
+		byId('scopeList').innerHTML = SCOPES.map((scope) => `<label class="choice${scope.locked ? ' is-locked' : ''}">
+			<input class="check" type="checkbox" name="scope" value="${scope.id}"${scope.locked ? ' checked disabled' : ''}>
+			<span class="choice-text">
+				<span class="choice-title">${scope.label}<code>${scope.id}</code>${scope.locked ? `<span class="locked-note">${icon('lock')}Vždy zapnuto</span>` : ''}</span>
+				<span class="choice-desc">${scope.description}</span>
+				${scope.warning ? `<span class="help help-warning">${icon('alert')}<span>${scope.warning}</span></span>` : ''}
+			</span></label>`).join('');
+	}
+	function expiryInfo() {
+		const days = Number(byId('expirySelect').value);
+		const date = expiryAfter(days);
+		return { date, days, label: `${durationLabel(days)}, vyprší ${date}` };
+	}
+	function updateExpiry() {
+		byId('expiryResult').lastElementChild.textContent = `Vyprší ${expiryInfo().date}`;
+	}
+	function selectedLists() {
+		if (document.querySelector('input[name=restrict]:checked').value === 'all') return null;
+		return [...document.querySelectorAll('input[name=wishlist]:checked')].map((input) => input.value);
+	}
+	function updatePickerCount() { byId('pickerCount').textContent = `Vybráno: ${document.querySelectorAll('input[name=wishlist]:checked').length}`; }
+	function setFieldError(input, errorElement, isInvalid) {
+		errorElement.hidden = !isInvalid;
+		if (input) input.setAttribute('aria-invalid', String(isInvalid));
+	}
+	function resetCreateForm() {
+		byId('createForm').reset();
+		byId('nameCount').textContent = '0/60';
+		byId('picker').hidden = true;
+		byId('listSearch').value = '';
+		filterPicker();
+		updatePickerCount();
+		setFieldError(byId('tokenName'), byId('nameError'), false);
+		byId('restrictError').hidden = true;
+		setFastForward(false);
+		updateExpiry();
+		copied = false;
+		createdToken = null;
+	}
+	function setFastForward(on) {
+		byId('ffSwitch').setAttribute('aria-checked', String(on));
+		byId('ffPanel').classList.toggle('is-on', on);
+	}
+	function setStep(step) {
+		createStep = step;
+		byId('stepOne').hidden = step !== 1;
+		byId('stepTwo').hidden = step !== 2;
+		byId('stepThree').hidden = step !== 3;
+		byId('createTitle').textContent = step === 3 ? 'Token je připraven' : 'Nový token';
+		byId('createLayer').querySelector('.steps').hidden = false;
+		document.querySelectorAll('[data-step-indicator]').forEach((element) => {
+			const index = Number(element.dataset.stepIndicator);
+			element.classList.toggle('is-done', index < step);
+			if (index === step) element.setAttribute('aria-current', 'step'); else element.removeAttribute('aria-current');
+			element.querySelector('.step-dot').innerHTML = index < step ? icon('check') : String(index);
+		});
+		document.querySelectorAll('[data-step-line]').forEach((element) => element.classList.toggle('is-done', Number(element.dataset.stepLine) < step));
+		byId('backButton').hidden = step === 3;
+		byId('nextButton').hidden = step === 3;
+		byId('doneButton').hidden = step !== 3;
+		byId('backButton').querySelector('.btn-face').textContent = step === 1 ? 'Zrušit' : 'Zpět';
+		byId('nextButton').querySelector('.btn-face').textContent = step === 1 ? 'Pokračovat' : 'Vytvořit token';
+		byId('createForm').scrollTop = 0;
+	}
+	function openCreate(trigger) {
+		returnFocus = trigger || byId('createButton');
+		resetCreateForm();
+		setStep(1);
+		openLayer('create', byId('tokenName'));
+	}
+	function validateStepOne() {
+		const nameInput = byId('tokenName');
+		const nameInvalid = nameInput.value.trim() === '';
+		setFieldError(nameInput, byId('nameError'), nameInvalid);
+		const lists = selectedLists();
+		const listsInvalid = lists !== null && lists.length === 0;
+		byId('restrictError').hidden = !listsInvalid;
+		if (nameInvalid) nameInput.focus();
+		else if (listsInvalid) byId('listSearch').focus();
+		return !nameInvalid && !listsInvalid;
+	}
+	function randomTokenBody() {
+		const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
+		const values = new Uint32Array(32);
+		crypto.getRandomValues(values);
+		return [...values].map((value) => alphabet[value % alphabet.length]).join('');
+	}
+	function showReveal(token) {
+		createdToken = token;
+		copied = false;
+		byId('tokenValue').value = token.secret;
+		resetCopyButton();
+		byId('quickStart').innerHTML = `<span class="k">API</span>            https://prejemesi.cz/api/v1\n<span class="k">Authorization</span>  Bearer ${token.prefix}…`;
+		byId('summarySentence').textContent = scopeSentence(token.scopes, token.lists);
+		byId('summaryList').innerHTML = detailList(token);
+		byId('rollOldNote').hidden = !token.replaces;
+		if (token.replaces) byId('rollOldNote').innerHTML = `Starý token <code>${token.replaces}…</code> už nefunguje. Předejte agentovi tento nový.`;
+		setStep(3);
+		byId('createLayer').querySelector('.steps').hidden = Boolean(token.replaces);
+		if (token.replaces) byId('createTitle').textContent = 'Nový token je připraven';
+		byId('copyButton').focus();
+	}
+	function createToken() {
+		const nextButton = byId('nextButton');
+		const form = byId('createForm');
+		const fieldsets = form.querySelectorAll('fieldset');
+		fieldsets.forEach((fieldset) => { fieldset.disabled = true; });
+		byId('backButton').disabled = true;
+		nextButton.disabled = true;
+		nextButton.querySelector('.btn-face').innerHTML = `<svg class="icon spinner" aria-hidden="true"><use href="#i-loader"/></svg>Vytváření…`;
+		setTimeout(() => {
+			fieldsets.forEach((fieldset) => { fieldset.disabled = false; });
+			byId('backButton').disabled = false;
+			nextButton.disabled = false;
+			const secret = `pjs_${randomTokenBody()}`;
+			const expiry = expiryInfo();
+			const token = {
+				id: `new-${Date.now()}`, name: byId('tokenName').value.trim(), prefix: secret.slice(0, 8), secret,
+				scopes: ['read', ...[...document.querySelectorAll('input[name=scope]:checked:not(:disabled)')].map((input) => input.value)],
+				lists: selectedLists(), fastForward: byId('ffSwitch').getAttribute('aria-checked') === 'true',
+				lastUsed: null, durationDays: expiry.days, expires: expiry.date, expiryLabel: expiry.label, created: '13. 10. 2026', isNew: true,
+			};
+			tokens.forEach((existing) => { existing.isNew = false; });
+			tokens.push(token);
+			renderSection();
+			showReveal(token);
+		}, 900);
+	}
+	function requestCloseCreate() {
+		if (createStep === 3 && !copied) { openLayer('closeConfirm', byId('closeConfirmBack')); return; }
+		finishCreate();
+	}
+	function finishCreate() {
+		closeLayer('closeConfirm');
+		closeLayer('create');
+		const wasCreated = createStep === 3;
+		if (wasCreated) {
+			showToast(createdToken && createdToken.replaces ? 'Token vygenerován znovu' : 'Token vytvořen');
+			const row = createdToken && document.querySelector(`[data-id="${createdToken.id}"]`);
+			if (row) { row.scrollIntoView({ block: 'nearest' }); returnFocus = row.querySelector('[data-revoke]'); }
+			if (createdToken) delete createdToken.replaces;
+			setTimeout(() => { if (createdToken) createdToken.isNew = false; document.querySelector('.grant.is-new')?.classList.remove('is-new'); }, 2400);
+		}
+		restoreFocus();
+	}
+	function resetCopyButton() {
+		clearTimeout(copyTimer);
+		const button = byId('copyButton');
+		button.classList.remove('is-copied');
+		button.innerHTML = `${icon('copy')}<span>Kopírovat</span>`;
+	}
+	function copyToken() {
+		const input = byId('tokenValue');
+		input.select();
+		if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(input.value).catch(() => input.select());
+		copied = true;
+		const button = byId('copyButton');
+		button.classList.add('is-copied');
+		button.innerHTML = '<span>Zkopírováno ✓</span>';
+		clearTimeout(copyTimer);
+		copyTimer = setTimeout(resetCopyButton, 2000);
+	}
+
+	// Roll: same name, scopes and wishlists; new secret shown once; old secret ends immediately.
+	let pendingRollId = null;
+	function updateRollExpiry() {
+		const days = Number(byId('rollExpiry').value);
+		byId('rollExpiryResult').lastElementChild.textContent = `Nový token vyprší ${expiryAfter(days)}`;
+	}
+	function openRoll(id, trigger) {
+		const token = tokens.find((candidate) => candidate.id === id);
+		if (!token) return;
+		returnFocus = trigger || null;
+		pendingRollId = id;
+		const name = escapeHtml(token.name);
+		byId('rollTitle').textContent = token.expired ? 'Vygenerovat vypršelý token znovu?' : 'Vygenerovat token znovu?';
+		byId('rollLead').textContent = token.expired
+			? 'Vytvoříme nový token se stejným nastavením. Zobrazíme ho jen jednou.'
+			: 'Vytvoříme nový token se stejným nastavením a starý okamžitě přestane fungovat. Nový zobrazíme jen jednou.';
+		byId('rollName').textContent = token.name;
+		byId('rollKept').textContent = `Název, oprávnění i seznamy zůstanou stejné: ${scopeSentence(token.scopes, token.lists).toLowerCase()}${token.fastForward ? ', bez kontroly' : ''}.`;
+		byId('rollEnded').innerHTML = token.expired
+			? `Starý token <code>${token.prefix}…</code> vypršel ${token.expires} a už nefunguje.`
+			: `Starý token <code>${token.prefix}…</code> přestane fungovat hned po vygenerování. Agent, který ho používá, ztratí přístup, dokud mu nepředáte nový.`;
+		byId('rollExpiry').value = String(token.durationDays ?? 365);
+		byId('rollExpiryHelp').textContent = `Předvybraná je původní platnost tokenu: ${durationLabel(token.durationDays ?? 365)}.`;
+		updateRollExpiry();
+		openLayer('roll', byId('rollExpiry'));
+	}
+	function confirmRoll() {
+		const token = tokens.find((candidate) => candidate.id === pendingRollId);
+		if (!token) return;
+		const button = byId('rollConfirm');
+		button.disabled = true;
+		byId('rollBack').disabled = true;
+		button.querySelector('.btn-face').innerHTML = `<svg class="icon spinner" aria-hidden="true"><use href="#i-loader"/></svg>Generování…`;
+		setTimeout(() => {
+			button.disabled = false;
+			byId('rollBack').disabled = false;
+			button.querySelector('.btn-face').innerHTML = `${icon('refresh')}Vygenerovat znovu`;
+			rollToken(token, Number(byId('rollExpiry').value));
+		}, reducedMotion ? 0 : 700);
+	}
+	function rollToken(token, days, secret = `pjs_${randomTokenBody()}`) {
+		const replaces = token.prefix;
+		Object.assign(token, { prefix: secret.slice(0, 8), secret, durationDays: days, expires: expiryAfter(days), expiryLabel: `${durationLabel(days)}, vyprší ${expiryAfter(days)}`, expired: false, expiresSoon: null, lastUsed: null, created: '13. 10. 2026', isNew: true, replaces });
+		tokens.forEach((existing) => { if (existing !== token) existing.isNew = false; });
+		closeLayer('roll');
+		renderSection();
+		resetCreateForm();
+		createdToken = token;
+		layers.create.hidden = false;
+		showReveal(token);
+	}
+
+	// Revoke
+	function openRevoke(id, trigger) {
+		const token = tokens.find((candidate) => candidate.id === id);
+		if (!token) return;
+		returnFocus = trigger || null;
+		if (token.expired) { removeToken(id, 'Token odstraněn'); return; }
+		pendingRevokeId = id;
+		byId('revokeTitle').textContent = `Zrušit token „${token.name}“?`;
+		openLayer('revoke', byId('revokeBack'));
+	}
+	function removeToken(id, message) {
+		const row = document.querySelector(`[data-id="${id}"]`);
+		const next = row && (row.nextElementSibling || row.previousElementSibling);
+		returnFocus = next ? next.querySelector('[data-revoke]') : null;
+		const finish = () => { tokens = tokens.filter((token) => token.id !== id); renderSection(); showToast(message); restoreFocus(); };
+		if (row && !reducedMotion) { row.classList.add('is-leaving'); setTimeout(finish, 200); } else finish();
+	}
+
+	// Scenarios
+	function setScenario(name) {
+		scenario = name;
+		Object.keys(layers).forEach(closeLayer);
+		byId('toast').hidden = true;
+		tokens = name === 'empty' ? [] : SAMPLE_TOKENS.map((token) => ({ ...token }));
+		renderSection();
+		document.querySelectorAll('[data-scenario]').forEach((button) => button.setAttribute('aria-pressed', String(button.dataset.scenario === name)));
+		const screen = byId('screen');
+		const opensLayer = ['create', 'revealed', 'revoke', 'roll', 'roll-expired', 'roll-revealed'].includes(name);
+		screen.scrollTo({ top: opensLayer ? Math.max(0, byId('accessCard').offsetTop - 120) : 0, behavior: 'auto' });
+		if (name === 'create') openCreate(byId('createButton'));
+		if (name === 'revealed') {
+			returnFocus = byId('createButton');
+			resetCreateForm();
+			const secret = 'pjs_9fXq2Lm7Rt4vWc8NzKp3Hd6YbJs1Ae5G';
+			const token = { id: 'revealed', name: 'Claude – narozeninový seznam', prefix: secret.slice(0, 8), secret, scopes: ['read', 'gifts:write'], lists: ['Martinovy narozeniny'], fastForward: false, lastUsed: null, durationDays: 365, expires: '13. 10. 2027', expiryLabel: '1 rok, vyprší 13. 10. 2027', created: '13. 10. 2026', isNew: true };
+			tokens.push(token);
+			renderSection();
+			layers.create.hidden = false;
+			showReveal(token);
+		}
+		if (name === 'revoke') openRevoke('claude', document.querySelector('[data-revoke="claude"]'));
+		if (name === 'roll') openRoll('claude', document.querySelector('[data-roll="claude"]'));
+		if (name === 'roll-expired') openRoll('old-script', document.querySelector('[data-roll="old-script"]'));
+		if (name === 'roll-revealed') { returnFocus = byId('createButton'); rollToken(tokens.find((token) => token.id === 'old-script'), 90, 'pjs_Vb3nQ8sLz6Wm2KtR9xHc4JdP7fYa5Ge1'); }
+	}
+
+	// Events
+	document.addEventListener('click', (event) => {
+		const target = event.target.closest('button, [data-dismiss]');
+		if (!target) return;
+		if (target.dataset.viewport) {
+			byId('stage').classList.toggle('is-mobile', target.dataset.viewport === 'mobile');
+			document.querySelectorAll('[data-viewport]').forEach((button) => button.setAttribute('aria-pressed', String(button === target)));
+		} else if (target.dataset.theme) {
+			document.documentElement.classList.toggle('dark', target.dataset.theme === 'dark');
+			document.querySelectorAll('[data-theme]').forEach((button) => button.setAttribute('aria-pressed', String(button === target)));
+		} else if (target.dataset.scenario) setScenario(target.dataset.scenario);
+		else if (target.hasAttribute('data-open-create')) openCreate(target);
+		else if (target.dataset.revoke) openRevoke(target.dataset.revoke, target);
+		else if (target.dataset.roll) openRoll(target.dataset.roll, target);
+		else if (target.dataset.dismiss === 'roll') { closeLayer('roll'); restoreFocus(); }
+		else if (target.id === 'rollConfirm') confirmRoll();
+		else if (target.dataset.dismiss === 'create') requestCloseCreate();
+		else if (target.dataset.dismiss === 'revoke') { closeLayer('revoke'); restoreFocus(); }
+		else if (target.dataset.dismiss === 'closeConfirm') { closeLayer('closeConfirm'); byId('copyButton').focus(); }
+		else if (target.id === 'nextButton') { if (createStep === 1) { if (validateStepOne()) { setStep(2); byId('scopeList').querySelector('input:not(:disabled)').focus(); } } else createToken(); }
+		else if (target.id === 'backButton') { if (createStep === 2) { setStep(1); byId('tokenName').focus(); } else requestCloseCreate(); }
+		else if (target.id === 'doneButton') requestCloseCreate();
+		else if (target.id === 'closeConfirmContinue') finishCreate();
+		else if (target.id === 'copyButton') copyToken();
+		else if (target.id === 'ffSwitch') setFastForward(target.getAttribute('aria-checked') !== 'true');
+		else if (target.id === 'revokeConfirm') { const id = pendingRevokeId; closeLayer('revoke'); removeToken(id, 'Token zrušen'); }
+	});
+	byId('tokenName').addEventListener('input', (event) => {
+		byId('nameCount').textContent = `${event.target.value.length}/60`;
+		if (event.target.value.trim()) setFieldError(event.target, byId('nameError'), false);
+	});
+	byId('createForm').addEventListener('change', (event) => {
+		if (event.target.name === 'restrict') { byId('picker').hidden = event.target.value !== 'some'; byId('restrictError').hidden = true; }
+		if (event.target.name === 'wishlist') { updatePickerCount(); if (document.querySelector('input[name=wishlist]:checked')) byId('restrictError').hidden = true; }
+		if (event.target.id === 'expirySelect') updateExpiry();
+	});
+	byId('createForm').addEventListener('submit', (event) => event.preventDefault());
+	const normalize = (text) => text.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+	function filterPicker() {
+		const query = normalize(byId('listSearch').value.trim());
+		let anyVisible = false;
+		document.querySelectorAll('.picker-group').forEach((group) => {
+			let groupVisible = false;
+			group.querySelectorAll('.choice').forEach((row) => {
+				const visible = normalize(row.textContent).includes(query);
+				row.hidden = !visible;
+				groupVisible = groupVisible || visible;
+			});
+			group.hidden = !groupVisible;
+			anyVisible = anyVisible || groupVisible;
+		});
+		byId('pickerNoMatch').hidden = anyVisible;
+	}
+	byId('listSearch').addEventListener('input', filterPicker);
+	byId('rollExpiry').addEventListener('change', updateRollExpiry);
+	document.addEventListener('keydown', (event) => {
+		const top = topLayerName();
+		if (!top) return;
+		if (event.key === 'Escape') {
+			event.preventDefault();
+			if (top === 'closeConfirm') { closeLayer('closeConfirm'); byId('copyButton').focus(); }
+			else if (top === 'revoke' || top === 'roll') { closeLayer(top); restoreFocus(); }
+			else requestCloseCreate();
+		}
+		if (event.key === 'Tab') {
+			const focusable = [...layers[top].querySelectorAll('button, input, select, summary, a[href]')].filter((element) => !element.disabled && element.offsetParent !== null);
+			if (!focusable.length) return;
+			const first = focusable[0];
+			const last = focusable[focusable.length - 1];
+			if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+			else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+			else if (!layers[top].contains(document.activeElement)) { event.preventDefault(); first.focus(); }
+		}
+	});
+
+	buildPicker();
+	buildScopes();
+	setScenario('listed');
+})();
+</script>
+</body>
+</html>
