@@ -1136,6 +1136,12 @@
 		returnToActions?.();
 	}
 
+	function bulkCopySuccessMessage(copiedCount: number, removedCount: number) {
+		return removedCount > 0
+			? m.gift_bulk_copy_moved_success({ count: copiedCount, removed: removedCount })
+			: m.gift_bulk_copy_success({ count: copiedCount });
+	}
+
 	async function submitBulkCopy() {
 		if (
 			bulkCopySubmitting ||
@@ -1154,18 +1160,8 @@
 				giftIds: selectedIds,
 				...(removeUnreservedSources ? { removeUnreservedSources } : {}),
 			});
-			const returnToActions = bulkCopyReturnToActions;
-			toastSuccess(
-				removedSourceIds.length > 0
-					? m.gift_bulk_copy_moved_success({
-							count: selectedIds.length,
-							removed: removedSourceIds.length,
-						})
-					: m.gift_bulk_copy_success({ count: selectedIds.length }),
-			);
-			bulkCopyOpen = false;
-			bulkCopyReturnToActions = null;
-			returnToActions?.();
+			toastSuccess(bulkCopySuccessMessage(selectedIds.length, removedSourceIds.length));
+			returnFromBulkCopy();
 		} catch (thrown) {
 			toastError(translateServerError(thrown));
 		} finally {
