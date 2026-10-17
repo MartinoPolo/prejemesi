@@ -16,6 +16,7 @@
 	import { Separator } from '$lib/components/base/separator/index.js';
 	import RecipientPreview from './RecipientPreview.svelte';
 	import WishlistPalettePicker from './WishlistPalettePicker.svelte';
+	import WishlistKindField from './WishlistKindField.svelte';
 	import LoaderIcon from '@lucide/svelte/icons/loader';
 	import FileUpIcon from '@lucide/svelte/icons/file-up';
 	import SlidersHorizontalIcon from '@lucide/svelte/icons/sliders-horizontal';
@@ -23,7 +24,9 @@
 	import {
 		RECIPIENT_KIND,
 		RECIPIENT_NAME_MAX_LENGTH,
+		WISHLIST_KIND,
 		WISHLIST_TITLE_MAX_LENGTH,
+		type WishlistKind,
 	} from '$lib/modules/wishlists/types.js';
 	import { DEFAULT_PALETTE, type Palette } from '$lib/theme/palettes.js';
 	import type { Attachment } from 'svelte/attachments';
@@ -53,6 +56,7 @@
 	let selectedRecipientKind = $derived(recipientKind);
 	let recipientName = $state('');
 	let title = $state('');
+	let wishlistKind = $state<WishlistKind>(WISHLIST_KIND.occasion);
 	let eventDate = $state<Date | null>(null);
 	let isSubmitting = $state(false);
 	// Server/submit-level error (network or createWishlist failure). Field-level
@@ -89,6 +93,7 @@
 		recipientKind = RECIPIENT_KIND.self;
 		recipientName = '';
 		title = '';
+		wishlistKind = WISHLIST_KIND.occasion;
 		eventDate = null;
 		description = '';
 		palette = DEFAULT_PALETTE;
@@ -120,6 +125,11 @@
 		}
 
 		isSubmitting = true;
+		// A permanent wishlist has no event date; a date picked before switching kinds is dropped.
+		const kindFields =
+			wishlistKind === WISHLIST_KIND.permanent
+				? { kind: WISHLIST_KIND.permanent }
+				: { kind: WISHLIST_KIND.occasion, eventDate };
 
 		try {
 			const created = await createWishlist(
@@ -128,14 +138,14 @@
 							recipientKind: RECIPIENT_KIND.other,
 							recipientName: trimmedRecipientName,
 							title: trimmedTitle,
-							eventDate,
+							...kindFields,
 							palette,
 							description: description.trim() || null,
 						}
 					: {
 							recipientKind: RECIPIENT_KIND.self,
 							title: trimmedTitle,
-							eventDate,
+							...kindFields,
 							palette,
 							description: description.trim() || null,
 						},
@@ -245,20 +255,31 @@
 					{/snippet}
 				</Field>
 
-				<div class="flex flex-col gap-2">
-					<Label id="wishlist-event-date-label">{m.wishlist_event_date_label()}</Label>
-					<DatePicker
-						id="wishlist-event-date"
-						ariaLabelledby="wishlist-event-date-label"
-						ariaDescribedby="wishlist-event-date-helper"
-						size="lg"
-						bind:value={eventDate}
-						disabled={isSubmitting}
-					/>
-					<HelpText id="wishlist-event-date-helper"
-						>{m.wishlist_event_date_helper()}</HelpText
-					>
-				</div>
+				<WishlistKindField
+					id="wishlist-create-kind"
+					size="lg"
+					value={wishlistKind}
+					onvaluechange={(kind) => (wishlistKind = kind)}
+					disabled={isSubmitting}
+				/>
+
+				{#if wishlistKind === WISHLIST_KIND.occasion}
+					<div class="flex flex-col gap-2">
+						<Label id="wishlist-event-date-label">{m.wishlist_event_date_label()}</Label
+						>
+						<DatePicker
+							id="wishlist-event-date"
+							ariaLabelledby="wishlist-event-date-label"
+							ariaDescribedby="wishlist-event-date-helper"
+							size="lg"
+							bind:value={eventDate}
+							disabled={isSubmitting}
+						/>
+						<HelpText id="wishlist-event-date-helper"
+							>{m.wishlist_event_date_helper()}</HelpText
+						>
+					</div>
+				{/if}
 
 				<!-- Optional metadata (issue #112): collapsed by default so the create flow stays
 			     one field + title; power users can name a description and pick a palette upfront.

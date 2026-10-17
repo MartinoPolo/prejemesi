@@ -5,6 +5,7 @@ import {
 	canSeeReserverNames,
 	canReserveGift,
 	canLikeGift,
+	recipientMayMoveGifts,
 	resolveRevertCapability,
 	REVERT_CAPABILITY,
 	resolveReservationReleaseCapability,
@@ -252,5 +253,23 @@ describe('canReleaseReservation — capability × row kind', () => {
 
 	it.each(cases)('capability=%s guest=%s → %s', (capability, isGuest, expected) => {
 		expect(canReleaseReservation(capability, isGuest)).toBe(expected);
+	});
+});
+
+// Owner rule 2026-10-17 (#479): the recipient may move gifts out only while the wishlist has never
+// been shared; a revert to draft (sharedAt cleared, firstSharedAt kept) does not restore it.
+describe('recipientMayMoveGifts', () => {
+	const sharedOn = new Date('2026-10-01T10:00:00Z');
+	it.each([
+		['never shared', { firstSharedAt: null, sharedAt: null }, true],
+		['currently shared', { firstSharedAt: sharedOn, sharedAt: sharedOn }, false],
+		['shared, then reverted to draft', { firstSharedAt: sharedOn, sharedAt: null }, false],
+		[
+			'shared before first shares were recorded',
+			{ firstSharedAt: null, sharedAt: sharedOn },
+			false,
+		],
+	])('%s → %s', (_label, wishlist, expected) => {
+		expect(recipientMayMoveGifts(wishlist)).toBe(expected);
 	});
 });

@@ -22,6 +22,7 @@ export const wishlist: Wishlist = {
 	imageSlots: null,
 	recipientIsModerator: false,
 	sharedAt: null,
+	firstSharedAt: null,
 	eventDateEditedAt: null,
 	archivedAt: null,
 	deletedAt: null,

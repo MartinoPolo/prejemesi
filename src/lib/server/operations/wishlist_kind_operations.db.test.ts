@@ -13,10 +13,10 @@ import {
 	seedFixtureUsers,
 } from './operations.db.test-setup.js';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { eq } from 'drizzle-orm';
+import { and, eq, isNull } from 'drizzle-orm';
 import { getDb } from '$lib/server/db/index.js';
 import { priorityLevel, wishlist } from '$lib/server/db/wishlist.schema.js';
-import { reservation } from '$lib/server/db/gift.schema.js';
+import { giftLike, reservation } from '$lib/server/db/gift.schema.js';
 import { dispatchNotification } from '$lib/modules/notifications/notification_dispatcher.js';
 import { NOTIFICATION_TYPE } from '$lib/modules/notifications/types.js';
 import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
@@ -39,7 +39,9 @@ import { readBulkCopyDestinationsOperation } from './gift_read_operations.js';
 const MINUTE_MS = 60 * 1000;
 const sharedLongAgo = () => new Date(Date.now() - 60 * MINUTE_MS);
 const preShareCreation = () => new Date(Date.now() - 120 * MINUTE_MS);
-const nextYear = () => new Date(Date.now() + 365 * 24 * 60 * MINUTE_MS);
+const YEAR_MS = 365 * 24 * 60 * MINUTE_MS;
+const nextYear = () => new Date(Date.now() + YEAR_MS);
+const lastYear = () => new Date(Date.now() - YEAR_MS);
 
 async function readWishlistRow(wishlistId: string) {
 	const [row] = await getDb().select().from(wishlist).where(eq(wishlist.id, wishlistId));
@@ -413,8 +415,8 @@ describe.skipIf(!DB_READY)('permanent and occasion wishlists [real DB]', () => {
 	});
 
 	describe('kind changes', () => {
-		it('turns a draft occasion wishlist permanent and clears its event date', async () => {
-			const { id } = await createWishlistFixture({ eventDate: nextYear() });
+		it('turns a draft occasion wishlist permanent and clears its past event date', async () => {
+			const { id } = await createWishlistFixture({ eventDate: lastYear() });
 
 			await executeOperation(recipientActor, updateWishlistOperation, {
 				id,
@@ -429,7 +431,7 @@ describe.skipIf(!DB_READY)('permanent and occasion wishlists [real DB]', () => {
 		});
 
 		it('turns a draft occasion wishlist permanent through the settings', async () => {
-			const { id } = await createWishlistFixture({ eventDate: nextYear() });
+			const { id } = await createWishlistFixture();
 
 			await executeOperation(recipientActor, saveWishlistSettingsOperation, {
 				wishlistId: id,
@@ -447,23 +449,74 @@ describe.skipIf(!DB_READY)('permanent and occasion wishlists [real DB]', () => {
 			});
 		});
 
-		it('rejects turning a shared occasion wishlist permanent', async () => {
-			const { id } = await createWishlistFixture({ sharedAt: sharedLongAgo() });
+		it.each([
+			['draft', null],
+			['shared', sharedLongAgo()],
+		])(
+			'rejects turning a %s occasion wishlist with an upcoming event date permanent',
+			async (_state, sharedAt) => {
+				const eventDate = nextYear();
+				const { id } = await createWishlistFixture({ sharedAt, eventDate });
 
-			await expectRejected(
-				executeOperation(managerActor, saveWishlistSettingsOperation, {
+				await expectRejected(
+					executeOperation(managerActor, saveWishlistSettingsOperation, {
+						wishlistId: id,
+						details: {
+							title: 'Birthday',
+							description: null,
+							kind: WISHLIST_KIND.permanent,
+						},
+					}),
+					409,
+					SERVER_ERROR.CANNOT_MAKE_WISHLIST_WITH_UPCOMING_EVENT_PERMANENT,
+				);
+				const unchanged = await readWishlistRow(id);
+				expect(unchanged.kind).toBe(WISHLIST_KIND.occasion);
+				expect(unchanged.eventDate?.getTime()).toBe(eventDate.getTime());
+			},
+		);
+
+		it.each([
+			['no event date', null],
+			['a past event date', lastYear()],
+		])(
+			'lets a správce turn a shared occasion wishlist with %s permanent, keeping reservations and likes',
+			async (_eventDateCase, eventDate) => {
+				const { id } = await createWishlistFixture({
+					sharedAt: sharedLongAgo(),
+					eventDate,
+				});
+				const giftId = await createGiftFixture(id, { createdAt: preShareCreation() });
+				await reserveGift(giftId, RESERVER_ID);
+				await getDb().insert(giftLike).values({ giftId, userId: RESERVER_ID });
+
+				await executeOperation(managerActor, saveWishlistSettingsOperation, {
 					wishlistId: id,
 					details: {
-						title: 'Birthday',
+						title: 'Always wanted',
 						description: null,
 						kind: WISHLIST_KIND.permanent,
 					},
-				}),
-				409,
-				SERVER_ERROR.CANNOT_MAKE_SHARED_WISHLIST_PERMANENT,
-			);
-			expect((await readWishlistRow(id)).kind).toBe(WISHLIST_KIND.occasion);
-		});
+				});
+
+				expect(await readWishlistRow(id)).toMatchObject({
+					kind: WISHLIST_KIND.permanent,
+					status: 'active',
+					eventDate: null,
+					eventDateEditedAt: null,
+				});
+				const activeReservations = await getDb()
+					.select({ id: reservation.id })
+					.from(reservation)
+					.where(and(eq(reservation.giftId, giftId), isNull(reservation.deletedAt)));
+				expect(activeReservations).toHaveLength(1);
+				const activeLikes = await getDb()
+					.select({ id: giftLike.id })
+					.from(giftLike)
+					.where(and(eq(giftLike.giftId, giftId), isNull(giftLike.deletedAt)));
+				expect(activeLikes).toHaveLength(1);
+			},
+		);
 
 		it('turns a shared permanent wishlist into an occasion with strict rules from then on', async () => {
 			const { id } = await createWishlistFixture({

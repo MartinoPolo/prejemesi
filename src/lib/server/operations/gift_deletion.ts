@@ -5,13 +5,11 @@ import { deleteObjectsBestEffort } from '$lib/server/storage/r2.js';
 import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
 import { WISHLIST_ROLES } from '$lib/modules/wishlists/types.js';
 import { isOwnerSharedGiftDeleteGraceOpen } from '$lib/modules/gifts/gift_deletion_rules.js';
+import { giftFollowsStrictPostShareRules } from '$lib/modules/gifts/gift_strict_post_share_rules.js';
 import type { MutationOperationContext } from './operation.js';
 import type { GiftRow } from './gift_update.js';
 import type { ManagedWishlist } from './wishlist_management.js';
-import {
-	giftFollowsStrictPostShareRules,
-	giftHasActiveReservation,
-} from './wishlist_kind_rules.js';
+import { giftHasActiveReservation } from './wishlist_kind_rules.js';
 
 /**
  * Soft-deletes a gift under the deletion rules: on a shared wishlist the recipient may delete only

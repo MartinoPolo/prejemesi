@@ -340,7 +340,7 @@ async function seed() {
 		// Wishlists
 		// ---------------------------------------------------------------
 		console.log('Seeding wishlists...');
-		await db.insert(wishlist).values([
+		const seedWishlists: (typeof wishlist.$inferInsert)[] = [
 			// Martin – active, shared, christmas
 			{
 				id: WL_XMAS26,
@@ -646,7 +646,13 @@ async function seed() {
 				createdAt: d('2026-06-20T11:00:00Z'),
 				updatedAt: d('2026-06-22T15:00:00Z'),
 			},
-		]);
+		];
+		await db.insert(wishlist).values(
+			seedWishlists.map((seedWishlist) => ({
+				...seedWishlist,
+				firstSharedAt: seedWishlist.sharedAt ?? null,
+			})),
+		);
 
 		// ---------------------------------------------------------------
 		// Priority levels (3 per wishlist)

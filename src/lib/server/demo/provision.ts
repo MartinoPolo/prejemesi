@@ -67,6 +67,7 @@ async function insertDemoWishlist(
 			palette: entry.palette,
 			status: entry.status === 'shared' ? 'active' : entry.status,
 			sharedAt: entry.status === 'draft' ? null : sharedAt,
+			firstSharedAt: entry.status === 'draft' ? null : sharedAt,
 			archivedAt: archive ? new Date(now.getTime() - 30 * 24 * HOUR_MS) : null,
 			createdAt,
 			eventDate,

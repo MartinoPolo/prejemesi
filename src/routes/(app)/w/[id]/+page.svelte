@@ -70,9 +70,14 @@
 		ReserveGiftInput,
 		ReservationForModerator,
 	} from '$lib/modules/reservations/types.js';
-	import { WISHLIST_ROLES, type WishlistRole } from '$lib/modules/wishlists/types.js';
+	import {
+		WISHLIST_KIND,
+		WISHLIST_ROLES,
+		type WishlistRole,
+	} from '$lib/modules/wishlists/types.js';
 	import {
 		canManageWishlist,
+		recipientMayMoveGifts,
 		REVERT_CAPABILITY,
 		RESERVATION_RELEASE_CAPABILITY,
 	} from '$lib/modules/wishlists/wishlist_capabilities.js';
@@ -129,6 +134,12 @@
 		ownerSharedGiftDeleteGraceExpiresAt,
 		preShareOwnerFullEditGraceExpiresAt,
 	} from '$lib/modules/gifts/gift_deletion_rules.js';
+	import { giftFollowsStrictPostShareRules } from '$lib/modules/gifts/gift_strict_post_share_rules.js';
+	import {
+		readRecipientGiftChangeWarningAcknowledged,
+		shouldWarnRecipientBeforeGiftChange,
+		storeRecipientGiftChangeWarningAcknowledged,
+	} from '$lib/modules/gifts/recipient_gift_change_warning.js';
 	import {
 		createGiftSelection,
 		shouldExitGiftSelectionOnEscape,
@@ -443,6 +454,15 @@
 	let settingsModalOpen = $state(false);
 	let settingsModalTab = $state<WishlistSettingsTab>(WISHLIST_SETTINGS_TABS.details);
 
+	// ── Recipient gift-change warning (issue #479) ───────────────────────────
+	// The in-memory set keeps the acknowledgement when session storage is unavailable.
+
+	let recipientGiftChangeWarningOpen = $state(false);
+	let pendingRecipientGiftChange = $state<{ wishlistId: string; change: () => void } | null>(
+		null,
+	);
+	const recipientGiftChangeWarningAcknowledgedIds = new SvelteSet<string>();
+
 	// ── Archive confirmation dialog state ────────────────────────────────────
 
 	let archiveConfirmOpen = $state(false);
@@ -694,6 +714,13 @@
 	let bulkCopyDestinationId = $state('');
 	let bulkCopyReturnToActions = $state<(() => void) | null>(null);
 	let bulkCopyDestinations = $state<BulkCopyDestination[]>([]);
+	// Moving gifts out (copy, then remove the unreserved sources) is a permanent wishlist's workflow;
+	// once the list was shared, its recipient may only copy (issue #479).
+	let bulkCopyRemovesSources = $state(false);
+	const bulkCopyOffersSourceRemoval = $derived(
+		wishlist.kind === WISHLIST_KIND.permanent &&
+			(!isRecipient || recipientMayMoveGifts(wishlist)),
+	);
 	let hiddenConfirmOpen = $state(false);
 	let deferredBulkAction = $state<GiftBulkAction | null>(null);
 	let contextSession = $state<GiftContextSession<GiftByRole> | null>(null);
@@ -1083,6 +1110,7 @@
 		bulkCopyOpen = true;
 		bulkCopyLoading = true;
 		bulkCopyDestinationId = '';
+		bulkCopyRemovesSources = false;
 		try {
 			bulkCopyDestinations = await getBulkCopyDestinations(wishlist.id);
 			bulkCopyDestinationId = bulkCopyDestinations[0]?.id ?? '';
@@ -1108,6 +1136,12 @@
 		returnToActions?.();
 	}
 
+	function bulkCopySuccessMessage(copiedCount: number, removedCount: number) {
+		return removedCount > 0
+			? m.gift_bulk_copy_moved_success({ count: copiedCount, removed: removedCount })
+			: m.gift_bulk_copy_success({ count: copiedCount });
+	}
+
 	async function submitBulkCopy() {
 		if (
 			bulkCopySubmitting ||
@@ -1117,18 +1151,17 @@
 			return;
 		}
 		const selectedIds = [...selectionSnapshot.selectedIds];
+		const removeUnreservedSources = bulkCopyOffersSourceRemoval && bulkCopyRemovesSources;
 		bulkCopySubmitting = true;
 		try {
-			await bulkCopyGifts({
+			const { removedSourceIds } = await bulkCopyGifts({
 				sourceWishlistId: wishlist.id,
 				destinationWishlistId: bulkCopyDestinationId,
 				giftIds: selectedIds,
+				...(removeUnreservedSources ? { removeUnreservedSources } : {}),
 			});
-			const returnToActions = bulkCopyReturnToActions;
-			toastSuccess(m.gift_bulk_copy_success({ count: selectedIds.length }));
-			bulkCopyOpen = false;
-			bulkCopyReturnToActions = null;
-			returnToActions?.();
+			toastSuccess(bulkCopySuccessMessage(selectedIds.length, removedSourceIds.length));
+			returnFromBulkCopy();
 		} catch (thrown) {
 			toastError(translateServerError(thrown));
 		} finally {
@@ -1185,13 +1218,29 @@
 	// the effect below while the modal is open.
 	let graceClockNow = $state(new Date());
 
+	// On a permanent wishlist only reserved gifts keep the post-share locks. An ordinary recipient
+	// never sees reservations, so their gifts read as unreserved and the server rejects an edit to
+	// a reserved one; the recipient gift-change warning tells them so up front (issue #479).
+	const selectedGiftHasVisibleReservation = $derived(
+		selectedGift !== null && 'reservedCount' in selectedGift && selectedGift.reservedCount > 0,
+	);
+	const selectedGiftFollowsStrictPostShareRules = $derived(
+		selectedGift !== null &&
+			giftFollowsStrictPostShareRules(wishlist.kind, selectedGiftHasVisibleReservation),
+	);
+
 	// Full edit grace: a pre-share gift is fully editable for 2 minutes after sharing only.
 	// Later edits update the transparency badge but never reopen name/delete grace.
 	const selectedFullEditGraceExpiresAt = $derived.by(() => {
 		// Post-share edit locks bind the linked recipient (the person the list is for), never a
 		// správce — a moderator edits freely. Self-promotion changes only reservation visibility,
 		// so a self-promoted recipient stays subject to the lock.
-		if (selectedGift === null || !isRecipient || wishlist.sharedAt === null) {
+		if (
+			selectedGift === null ||
+			!isRecipient ||
+			wishlist.sharedAt === null ||
+			!selectedGiftFollowsStrictPostShareRules
+		) {
 			return null;
 		}
 		return preShareOwnerFullEditGraceExpiresAt({
@@ -1201,7 +1250,12 @@
 	});
 
 	const selectedDeleteGraceExpiresAt = $derived.by(() => {
-		if (selectedGift === null || !isRecipient || wishlist.sharedAt === null) {
+		if (
+			selectedGift === null ||
+			!isRecipient ||
+			wishlist.sharedAt === null ||
+			!selectedGiftFollowsStrictPostShareRules
+		) {
 			return null;
 		}
 		return ownerSharedGiftDeleteGraceExpiresAt({
@@ -1260,13 +1314,10 @@
 		if (postShareLockSelectedGift) {
 			return false;
 		}
-		if (
-			'reservedCount' in selectedGift &&
-			(selectedGift as { reservedCount: number }).reservedCount > 0
-		) {
+		if (selectedGiftHasVisibleReservation) {
 			return false;
 		}
-		if (isRecipient && wishlist.sharedAt !== null) {
+		if (isRecipient && wishlist.sharedAt !== null && selectedGiftFollowsStrictPostShareRules) {
 			return isSelectedGiftWithinDeleteGrace;
 		}
 		return true;
@@ -1427,12 +1478,49 @@
 	}
 
 	/** Opens the gift detail modal (issue #125): edit mode for managers, read-only for everyone
-	 *  else. */
-	async function openEditModal(gift: GiftByRole) {
+	 *  else. Gift deletion lives inside it, so this one gate covers editing and deleting. */
+	function openEditModal(gift: GiftByRole) {
+		runAfterRecipientGiftChangeWarning(() => void openGiftDetail(gift));
+	}
+
+	async function openGiftDetail(gift: GiftByRole) {
 		await ensurePriorityLevels();
 		giftModalMode = 'edit';
 		selectedGift = gifts.find((actualGift) => actualGift.id === gift.id) ?? gift;
 		giftModalOpen = true;
+	}
+
+	/** Runs a gift change, first asking the recipient of a shared permanent wishlist once per session. */
+	function runAfterRecipientGiftChangeWarning(change: () => void) {
+		const wishlistId = wishlist.id;
+		const acknowledged =
+			recipientGiftChangeWarningAcknowledgedIds.has(wishlistId) ||
+			readRecipientGiftChangeWarningAcknowledged(wishlistId);
+		if (!shouldWarnRecipientBeforeGiftChange({ wishlist, role, acknowledged })) {
+			change();
+			return;
+		}
+		pendingRecipientGiftChange = { wishlistId, change };
+		recipientGiftChangeWarningOpen = true;
+	}
+
+	function confirmRecipientGiftChangeWarning() {
+		const pending = pendingRecipientGiftChange;
+		recipientGiftChangeWarningOpen = false;
+		pendingRecipientGiftChange = null;
+		if (pending === null) {
+			return;
+		}
+		recipientGiftChangeWarningAcknowledgedIds.add(pending.wishlistId);
+		storeRecipientGiftChangeWarningAcknowledged(pending.wishlistId);
+		pending.change();
+	}
+
+	function handleRecipientGiftChangeWarningOpenChange(open: boolean) {
+		recipientGiftChangeWarningOpen = open;
+		if (!open) {
+			pendingRecipientGiftChange = null;
+		}
 	}
 
 	// Gift mutations rely on the command's server-side single-flight refresh: the
@@ -2021,7 +2109,7 @@
 				// eslint-disable-next-line svelte/no-navigation-without-resolve -- shallow cleanup of the current URL's query marker, not a route navigation
 				replaceState(cleanedUrl, {});
 			},
-			onOpen: (gift) => void openEditModal(gift),
+			onOpen: (gift) => openEditModal(gift),
 		});
 	});
 </script>
@@ -2047,6 +2135,7 @@
 		{themeEmoji}
 		eventDate={wishlist.eventDate}
 		status={wishlistStatus}
+		kind={wishlist.kind}
 		{role}
 		giftCount={headerGiftCount}
 		{recipientIsModerator}
@@ -2179,7 +2268,7 @@
 					onclose={requestContextClose}
 					oncomplete={completeContextClose}
 					onfinish={finishContextAction}
-					onedit={() => void openEditModal(contextActionGift)}
+					onedit={() => openEditModal(contextActionGift)}
 					onpriority={(priorityLevelId) => void updateContextGift({ priorityLevelId })}
 					oncategory={(categoryId) => void updateContextGift({ categoryId })}
 					onreceived={() =>
@@ -2270,6 +2359,9 @@
 	onopenchange={handleBulkCopyOpenChange}
 	onback={bulkCopyReturnToActions === null ? undefined : returnFromBulkCopy}
 	ondestinationchange={(id) => (bulkCopyDestinationId = id)}
+	offerSourceRemoval={bulkCopyOffersSourceRemoval}
+	removeSources={bulkCopyRemovesSources}
+	onremovesourceschange={(removeSources) => (bulkCopyRemovesSources = removeSources)}
 	onconfirm={() => void submitBulkCopy()}
 />
 
@@ -2289,6 +2381,28 @@
 			>
 			<Button intent="primary" onclick={confirmHiddenBulkAction}
 				>{m.gift_hidden_selection_continue()}</Button
+			>
+		</Dialog.Footer>
+	</Dialog.Content>
+</Dialog.Root>
+
+<Dialog.Root
+	open={recipientGiftChangeWarningOpen}
+	onOpenChange={handleRecipientGiftChangeWarningOpenChange}
+>
+	<Dialog.Content size="sm" data-testid="recipient-gift-change-warning">
+		<Dialog.Header>
+			<Dialog.Title>{m.gift_recipient_change_warning_title()}</Dialog.Title>
+			<Dialog.Description>{m.gift_recipient_change_warning_description()}</Dialog.Description>
+		</Dialog.Header>
+		<Dialog.Footer>
+			<Button
+				intent="outline"
+				onclick={() => handleRecipientGiftChangeWarningOpenChange(false)}
+				>{m.cancel()}</Button
+			>
+			<Button intent="primary" onclick={confirmRecipientGiftChangeWarning}
+				>{m.gift_recipient_change_warning_continue()}</Button
 			>
 		</Dialog.Footer>
 	</Dialog.Content>

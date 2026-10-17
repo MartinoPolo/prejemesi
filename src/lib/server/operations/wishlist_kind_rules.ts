@@ -4,18 +4,9 @@ import type { DatabaseTransaction } from '$lib/server/db/index.js';
 import { reservation } from '$lib/server/db/gift.schema.js';
 import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
 import { WISHLIST_KIND, WISHLIST_ROLES, type WishlistKind } from '$lib/modules/wishlists/types.js';
+import { giftFollowsStrictPostShareRules } from '$lib/modules/gifts/gift_strict_post_share_rules.js';
+import { hasUpcomingEventDate } from '$lib/modules/wishlists/event_date.js';
 import type { ManagedWishlist, WishlistRow } from './wishlist_management.js';
-
-/**
- * A gift follows the strict post-share rules (name freeze, append-only description, raise-only
- * quantity, deletion grace) unless its wishlist is permanent and nobody has reserved it.
- */
-export function giftFollowsStrictPostShareRules(
-	wishlistKind: WishlistKind,
-	hasActiveReservation: boolean,
-): boolean {
-	return wishlistKind !== WISHLIST_KIND.permanent || hasActiveReservation;
-}
 
 export async function giftHasActiveReservation(
 	transaction: DatabaseTransaction,
@@ -85,13 +76,14 @@ export function assertEventDateAllowed(
 }
 
 /**
- * Permanent → occasion is allowed any time; occasion → permanent only before the wishlist is
- * shared, because gifters of a shared occasion list rely on its strict rules. Becoming permanent
- * clears the event date and its lock; a shared list becoming an occasion opens a fresh event-date
- * window, since gifters never relied on a date it did not have.
+ * Permanent → occasion is allowed any time. Occasion → permanent is allowed, shared or not, unless
+ * the stored event date is still upcoming, because gifters may be preparing for that event under
+ * the strict rules; reservations and likes stay. Becoming permanent clears the event date and its
+ * lock; a shared list becoming an occasion opens a fresh event-date window, since gifters never
+ * relied on a date it did not have.
  */
 export function planWishlistKindChange(
-	wishlistRow: Pick<WishlistRow, 'kind' | 'sharedAt'>,
+	wishlistRow: Pick<WishlistRow, 'kind' | 'sharedAt' | 'eventDate'>,
 	requestedKind: WishlistKind | undefined,
 	now: Date,
 ): Partial<Pick<WishlistRow, 'kind' | 'eventDate' | 'eventDateEditedAt'>> {
@@ -103,8 +95,8 @@ export function planWishlistKindChange(
 			? { kind: requestedKind }
 			: { kind: requestedKind, eventDateEditedAt: now };
 	}
-	if (wishlistRow.sharedAt !== null) {
-		error(409, SERVER_ERROR.CANNOT_MAKE_SHARED_WISHLIST_PERMANENT);
+	if (hasUpcomingEventDate(wishlistRow.eventDate, now)) {
+		error(409, SERVER_ERROR.CANNOT_MAKE_WISHLIST_WITH_UPCOMING_EVENT_PERMANENT);
 	}
 	return { kind: requestedKind, eventDate: null, eventDateEditedAt: null };
 }

@@ -57,6 +57,9 @@ export const wishlist = pgTable(
 		// state (self-promote). Not a management right — recipients manage inherently.
 		recipientIsModerator: boolean('recipient_is_moderator').notNull().default(false),
 		sharedAt: timestamp('shared_at', { withTimezone: true }),
+		// First time the wishlist was shared; unlike `sharedAt`, revert to draft never clears it, so
+		// rules that depend on "was ever shared" (issue #479) survive a later unshare.
+		firstSharedAt: timestamp('first_shared_at', { withTimezone: true }),
 		// Last edit to the event date during the post-share grace window (issue #83). Drives the
 		// debounced 2-min reversibility of the event-date lock; falls back to `sharedAt` when never
 		// re-edited. Server is the authority – the client countdown derives from this.

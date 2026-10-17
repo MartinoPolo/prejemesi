@@ -158,6 +158,109 @@ describe('GiftBulkCopyDialog', () => {
 		await screen.unmount();
 	});
 
+	it('offers no source removal for an occasion source wishlist', async () => {
+		await page.viewport(1280, 760);
+		const screen = await render(GiftBulkCopyDialog, props());
+		const dialog = screen.getByRole('dialog', { name: m.gift_bulk_copy_title() });
+		await expect.element(dialog).toBeVisible();
+		await expect
+			.element(dialog.getByRole('checkbox', { name: m.gift_bulk_copy_remove_sources() }))
+			.not.toBeInTheDocument();
+		await screen.unmount();
+	});
+
+	it('lets a permanent source opt in to removing the copied unreserved gifts', async () => {
+		await page.viewport(1280, 760);
+		const onremovesourceschange = vi.fn();
+		const screen = await render(GiftBulkCopyDialog, {
+			...props(),
+			selectedDestinationId: 'destination',
+			offerSourceRemoval: true,
+			onremovesourceschange,
+		});
+		const dialog = screen.getByRole('dialog', { name: m.gift_bulk_copy_title() });
+		const removal = dialog.getByRole('checkbox', { name: m.gift_bulk_copy_remove_sources() });
+		await expect.element(removal).toBeVisible();
+		await expect.element(removal).not.toBeChecked();
+		await expect
+			.element(removal)
+			.toHaveAccessibleDescription(m.gift_bulk_copy_remove_sources_help());
+		await expect.element(dialog.getByText(m.gift_bulk_copy_description())).toBeVisible();
+
+		await removal.click();
+		expect(onremovesourceschange).toHaveBeenCalledWith(true);
+		await screen.unmount();
+	});
+
+	it('copies without requesting source removal while the permanent-source checkbox stays unchecked', async () => {
+		await page.viewport(1280, 760);
+		const handlers = {
+			...props(),
+			selectedDestinationId: 'destination',
+			offerSourceRemoval: true,
+			removeSources: false,
+			onremovesourceschange: vi.fn(),
+		};
+		const screen = await render(GiftBulkCopyDialog, handlers);
+		const dialog = screen.getByRole('dialog', { name: m.gift_bulk_copy_title() });
+		await expect
+			.element(dialog.getByRole('checkbox', { name: m.gift_bulk_copy_remove_sources() }))
+			.not.toBeChecked();
+
+		await dialog.getByRole('button', { name: m.gift_bulk_copy_confirm() }).click();
+
+		expect(handlers.onconfirm).toHaveBeenCalledOnce();
+		expect(handlers.onremovesourceschange).not.toHaveBeenCalled();
+		await screen.unmount();
+	});
+
+	it.each([
+		['desktop dialog', 1280],
+		['mobile sheet', 390],
+	])('names the move once source removal is chosen (%s)', async (_surface, viewportWidth) => {
+		await page.viewport(viewportWidth, 760);
+		const screen = await render(GiftBulkCopyDialog, {
+			...props(),
+			selectedDestinationId: 'destination',
+			offerSourceRemoval: true,
+			removeSources: true,
+			onremovesourceschange: vi.fn(),
+		});
+		const dialog = screen.getByRole('dialog', { name: m.gift_bulk_copy_move_title() });
+		await expect.element(dialog).toBeVisible();
+		await expect
+			.element(dialog.getByRole('checkbox', { name: m.gift_bulk_copy_remove_sources() }))
+			.toBeChecked();
+		await expect.element(dialog.getByText(m.gift_bulk_copy_move_description())).toBeVisible();
+		await expect
+			.element(dialog.getByText(m.gift_bulk_copy_description()))
+			.not.toBeInTheDocument();
+		await expect
+			.element(dialog.getByRole('button', { name: m.gift_bulk_copy_move_confirm() }))
+			.toBeEnabled();
+		await expect
+			.element(dialog.getByRole('button', { name: m.gift_bulk_copy_confirm() }))
+			.not.toBeInTheDocument();
+		await screen.unmount();
+	});
+
+	it('keeps the copy wording while source removal is offered but not chosen', async () => {
+		await page.viewport(1280, 760);
+		const screen = await render(GiftBulkCopyDialog, {
+			...props(),
+			selectedDestinationId: 'destination',
+			offerSourceRemoval: true,
+			removeSources: false,
+			onremovesourceschange: vi.fn(),
+		});
+		const dialog = screen.getByRole('dialog', { name: m.gift_bulk_copy_title() });
+		await expect.element(dialog).toBeVisible();
+		await expect
+			.element(dialog.getByRole('button', { name: m.gift_bulk_copy_confirm() }))
+			.toBeEnabled();
+		await screen.unmount();
+	});
+
 	it.each(['soft', 'ink', 'black'] as const)(
 		'keeps the narrow sheet header clear of the close button at %s depth',
 		async (depth) => {

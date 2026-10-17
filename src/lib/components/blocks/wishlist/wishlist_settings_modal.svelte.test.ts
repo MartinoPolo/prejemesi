@@ -5,6 +5,7 @@ import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assert
 import * as m from '$lib/paraglide/messages.js';
 import { GIFT_CATEGORY_PRESETS } from '$lib/modules/gift-categories/types.js';
 import { createDefaultWishlistSlots } from '$lib/modules/images/index.js';
+import { WISHLIST_KIND } from '$lib/modules/wishlists/types.js';
 
 const remoteMocks = vi.hoisted(() => ({
 	refreshGiftCategorySettings: vi.fn().mockResolvedValue(undefined),
@@ -273,5 +274,103 @@ describe('WishlistSettingsModal import and export tab', () => {
 		expectPixelsAtMost(detailsRect.right, tablistRect.right);
 		expectPixelsNear(dialog.scrollTop, dialogScrollTop);
 		expectPixelsNear(window.scrollY, pageScrollY);
+	});
+});
+
+describe('WishlistSettingsModal wishlist kind', () => {
+	const sharedAt = new Date('2026-01-02T00:00:00Z');
+	const oneDayMs = 24 * 60 * 60 * 1000;
+
+	it('stages a draft occasion wishlist with a passed event date becoming permanent without one', async () => {
+		remoteMocks.saveWishlistSettings.mockReset().mockResolvedValue(undefined);
+		const screen = renderSettings({
+			wishlist: { ...wishlist, eventDate: new Date(Date.now() - oneDayMs) },
+		});
+		await expect.element(screen.getByText(m.wishlist_event_date_label())).toBeVisible();
+
+		await screen.getByRole('radio', { name: m.wishlist_kind_permanent() }).click();
+
+		await expect
+			.element(screen.getByText(m.wishlist_event_date_label()))
+			.not.toBeInTheDocument();
+		await expect.element(screen.getByText(m.wishlist_kind_permanent_help())).toBeVisible();
+		expect(remoteMocks.saveWishlistSettings).not.toHaveBeenCalled();
+		await screen.getByRole('button', { name: m.save() }).click();
+		await vi.waitFor(() => expect(remoteMocks.saveWishlistSettings).toHaveBeenCalledOnce());
+		const input = remoteMocks.saveWishlistSettings.mock.calls[0]![0];
+		expect(input.details).toMatchObject({ kind: WISHLIST_KIND.permanent });
+		expect(input.details).not.toHaveProperty('eventDate');
+	});
+
+	it('treats switching back to the stored kind as no change', async () => {
+		const screen = renderSettings();
+		const save = screen.getByRole('button', { name: m.save() });
+
+		await screen.getByRole('radio', { name: m.wishlist_kind_permanent() }).click();
+		await expect.element(save).toBeEnabled();
+		await screen.getByRole('radio', { name: m.wishlist_kind_occasion() }).click();
+		await expect.element(save).toBeDisabled();
+	});
+
+	it('keeps an occasion wishlist with an upcoming event date from becoming permanent and says why', async () => {
+		const screen = renderSettings({
+			wishlist: { ...wishlist, eventDate: new Date(Date.now() + oneDayMs) },
+		});
+
+		await expect
+			.element(screen.getByRole('radio', { name: m.wishlist_kind_permanent() }))
+			.toBeDisabled();
+		await expect
+			.element(screen.getByText(m.wishlist_kind_permanent_unavailable_hint()))
+			.toBeVisible();
+	});
+
+	it('lets a shared occasion wishlist whose event date has passed become permanent', async () => {
+		remoteMocks.saveWishlistSettings.mockReset().mockResolvedValue(undefined);
+		const screen = renderSettings({
+			wishlist: {
+				...wishlist,
+				status: 'active',
+				sharedAt,
+				eventDate: new Date(Date.now() - oneDayMs),
+			},
+		});
+		const permanentOption = screen.getByRole('radio', { name: m.wishlist_kind_permanent() });
+
+		await expect.element(permanentOption).toBeEnabled();
+		await expect
+			.element(screen.getByText(m.wishlist_kind_permanent_unavailable_hint()))
+			.not.toBeInTheDocument();
+		await permanentOption.click();
+		await screen.getByRole('button', { name: m.save() }).click();
+		await vi.waitFor(() => expect(remoteMocks.saveWishlistSettings).toHaveBeenCalledOnce());
+		expect(remoteMocks.saveWishlistSettings.mock.calls[0]![0].details).toMatchObject({
+			kind: WISHLIST_KIND.permanent,
+		});
+	});
+
+	it('lets a shared permanent wishlist become an occasion with an open event date', async () => {
+		remoteMocks.saveWishlistSettings.mockReset().mockResolvedValue(undefined);
+		const screen = renderSettings({
+			wishlist: { ...wishlist, kind: WISHLIST_KIND.permanent, status: 'active', sharedAt },
+		});
+		await expect
+			.element(screen.getByText(m.wishlist_event_date_label()))
+			.not.toBeInTheDocument();
+
+		await screen.getByRole('radio', { name: m.wishlist_kind_occasion() }).click();
+
+		await expect
+			.element(screen.getByText(m.wishlist_kind_occasion_after_share_hint()))
+			.toBeVisible();
+		await expect
+			.element(screen.getByText(m.wishlist_event_date_locked_hint()))
+			.not.toBeInTheDocument();
+		await screen.getByRole('button', { name: m.save() }).click();
+		await vi.waitFor(() => expect(remoteMocks.saveWishlistSettings).toHaveBeenCalledOnce());
+		expect(remoteMocks.saveWishlistSettings.mock.calls[0]![0].details).toMatchObject({
+			kind: WISHLIST_KIND.occasion,
+			eventDate: null,
+		});
 	});
 });
