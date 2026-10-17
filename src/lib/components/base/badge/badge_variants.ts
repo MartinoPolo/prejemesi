@@ -15,7 +15,7 @@ export const badgeVariants = tv({
 		tone: {
 			neutral: 'bg-card text-muted-foreground border-ink',
 			success:
-				'bg-[color-mix(in_oklab,var(--status-success)_14%,var(--card))] text-status-success border-ink',
+				'bg-[color-mix(in_oklab,var(--status-success)_14%,var(--card))] text-status-success-text border-ink',
 			warning:
 				'bg-[color-mix(in_oklab,var(--status-warning)_14%,var(--card))] text-[color-mix(in_oklab,var(--status-warning)_70%,var(--foreground))] border-ink',
 			danger: 'bg-[color-mix(in_oklab,var(--status-danger)_14%,var(--card))] text-status-danger border-ink',

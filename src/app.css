@@ -433,6 +433,7 @@
 
 	/* Status */
 	--status-success: #14a56f;
+	--status-success-text: color-mix(in oklab, var(--status-success) 45%, var(--ink));
 	--status-warning: #efa00b;
 	--status-danger: #e4574c;
 	--status-danger-text: color-mix(in oklab, var(--status-danger) 60%, var(--ink));
@@ -571,6 +572,7 @@
 
 	/* Status (dark) */
 	--status-success: #3bd598;
+	--status-success-text: var(--status-success);
 	--status-warning: #ffc24b;
 	--status-danger: #f07a6e;
 	--status-danger-text: color-mix(in oklab, var(--status-danger) 90%, white);
@@ -903,6 +905,7 @@
 	--color-border-strong: var(--border-strong);
 	--color-primary-soft: var(--primary-soft);
 	--color-status-success: var(--status-success);
+	--color-status-success-text: var(--status-success-text);
 	--color-status-warning: var(--status-warning);
 	--color-status-danger: var(--status-danger);
 	--color-status-danger-text: var(--status-danger-text);

@@ -28,7 +28,7 @@
 		margin-bottom: var(--space-5);
 		font-size: var(--text-sm);
 		font-weight: 600;
-		color: var(--status-success);
+		color: var(--status-success-text);
 		line-height: var(--leading-snug);
 	}
 

@@ -164,6 +164,7 @@ Current product, architecture, and design decisions for Přejeme si. Entries are
 - 2026-10-06: Depth options preview their own shadow; selection uses primary fill, never shadow (#449).
 - 2026-10-06: Rows running under an overlay close button reserve `--overlay-close-clearance` (`src/app.css`) at their end (#453).
 - 2026-10-07: Segmented controls and tabs keep their resting look and slide the selected face to the new option; the slide is the only press feedback, so no hover lift (settings-tab track clipping also rules it out) and no press scale. Segmented trays hug their options rather than stretching to the container. Switching between login and registration skips the auth card's entrance pop-in, which would hide the tab slide; fresh loads still pop in (#455).
+- 2026-10-17: Success-colored text on light surfaces or soft success tints uses `--status-success-text`, darkened toward ink in light mode like `--status-danger-text`, so badges, help text, toasts and banners reach WCAG AA on every palette (`src/lib/theme/palette_contrast.svelte.test.ts`). Solid success fills, borders and icons keep `--status-success`.
 
 ## Images & cropping
 

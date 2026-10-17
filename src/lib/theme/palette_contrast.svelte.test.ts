@@ -5,6 +5,9 @@ import { PALETTES } from './palettes.js';
 import { badgeVariants, BADGE_STYLES } from '../components/base/badge/badge_variants.js';
 import { avatarVariants } from '../components/derived/avatar/avatar_variants.js';
 import { buttonVariants } from '../components/base/button/button_variants.js';
+import { helpTextVariants } from '../components/base/help-text/help_text_variants.js';
+import { toastTitleColors, toastVariants } from '../components/base/toast/toast_variants.js';
+import { statusBadgeVariants } from '../components/derived/status-badge/status_badge_variants.js';
 
 const originalClass = document.documentElement.className;
 const originalPalette = document.documentElement.getAttribute('data-palette');
@@ -49,6 +52,23 @@ function compositedLuminance(colors: readonly string[]): number {
 
 function contrastRatio(text: number, surface: number): number {
 	return (Math.max(text, surface) + 0.05) / (Math.min(text, surface) + 0.05);
+}
+
+/** Contrast of a styled sample's text over its own background composited on `--card`. */
+function sampleContrast(scope: HTMLElement, className: string): number {
+	const sample = document.createElement('span');
+	sample.className = className;
+	scope.append(sample);
+	const style = getComputedStyle(sample);
+	const backing = document.createElement('span');
+	backing.style.color = 'var(--card)';
+	scope.append(backing);
+	const surfaces = [getComputedStyle(backing).color, style.backgroundColor];
+	const surface = compositedLuminance(surfaces);
+	const text = compositedLuminance([...surfaces, style.color]);
+	sample.remove();
+	backing.remove();
+	return contrastRatio(text, surface);
 }
 
 const textPairs = [
@@ -132,6 +152,43 @@ describe('danger text across palette surfaces', () => {
 	});
 });
 
+describe('success text across palette surfaces', () => {
+	const successSamples = [
+		...BADGE_STYLES.filter((badgeStyle) => badgeStyle !== 'solid').map((badgeStyle) =>
+			badgeVariants({ tone: 'success', badgeStyle }),
+		),
+		statusBadgeVariants({ status: 'success' }),
+		`${toastVariants({ tone: 'success' })} ${toastTitleColors.success}`,
+		helpTextVariants({ state: 'success' }),
+	];
+
+	it.each(PALETTES)('%s stays readable in light and dark root/nested scopes', (palette) => {
+		const nested = document.createElement('div');
+		nested.setAttribute('data-palette', palette);
+		document.body.append(nested);
+		try {
+			for (const mode of ['light', 'dark']) {
+				document.documentElement.classList.toggle('dark', mode === 'dark');
+				document.documentElement.setAttribute('data-palette', palette);
+				for (const [scopeName, scope] of [
+					['root', document.documentElement],
+					['nested', nested],
+				] as const) {
+					for (const className of successSamples) {
+						const contrast = sampleContrast(scope, className);
+						expect(
+							contrast,
+							`${palette} ${mode} ${scopeName}: ${className}: ${contrast.toFixed(2)}`,
+						).toBeGreaterThanOrEqual(4.5);
+					}
+				}
+			}
+		} finally {
+			nested.remove();
+		}
+	});
+});
+
 describe('restrained dark palettes', () => {
 	it.each(PALETTES)(
 		'%s keeps dark surfaces and readable semantic text in both scopes',
@@ -156,20 +213,8 @@ describe('restrained dark palettes', () => {
 						avatarVariants({ appearance: 'recipient' }).fallback(),
 					];
 					for (const className of samples) {
-						const sample = document.createElement('span');
-						sample.className = className;
-						scope.append(sample);
-						const style = getComputedStyle(sample);
-						const backing = document.createElement('span');
-						backing.style.color = 'var(--card)';
-						scope.append(backing);
-						const surfaces = [getComputedStyle(backing).color, style.backgroundColor];
-						const surface = compositedLuminance(surfaces);
-						const text = compositedLuminance([...surfaces, style.color]);
-						sample.remove();
-						backing.remove();
 						expect(
-							(Math.max(text, surface) + 0.05) / (Math.min(text, surface) + 0.05),
+							sampleContrast(scope, className),
 							`${palette}: ${className}`,
 						).toBeGreaterThanOrEqual(4.5);
 					}
