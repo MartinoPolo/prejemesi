@@ -96,6 +96,15 @@
    10 curated palettes. Palettes without --p-accent inherit sky's yellow.
    `data-palette` on <html> themes the app; on any wrapper element it
    re-derives every token for that subtree (per-wishlist palette). */
+
+/* Light filled controls: a deepened brand keeps white labels at AA. Declared on every
+   palette scope so a nested palette never inherits an ancestor's override; zero
+   specificity lets any palette block replace it. */
+:where(:root, [data-palette]) {
+	--p-primary: color-mix(in oklab, var(--p-brand) 20%, var(--p-deep));
+	--p-on-primary: #fff;
+}
+
 :root,
 [data-palette='sky'] {
 	--p-brand: #1e9be9;
@@ -148,6 +157,10 @@
 	--p-bright: #ffc24b;
 	--p-accent: #a9dbff;
 	--p-on-accent: #14486b;
+
+	/* Yellow-green brands stay too light for white labels even when deepened. */
+	--p-primary: var(--p-brand);
+	--p-on-primary: color-mix(in oklab, var(--p-ink) 70%, black);
 }
 
 [data-palette='ruby'] {
@@ -162,6 +175,8 @@
 	--p-deep: #557812;
 	--p-ink: #33430f;
 	--p-bright: #a3cc4e;
+	--p-primary: var(--p-brand);
+	--p-on-primary: color-mix(in oklab, var(--p-ink) 70%, black);
 }
 
 [data-palette='graphite'] {
@@ -390,13 +405,13 @@
 	--card-foreground: var(--p-ink);
 	--popover: #fff;
 	--popover-foreground: var(--p-ink);
-	--primary: var(--p-brand);
-	--primary-hover: color-mix(in oklab, var(--primary) 86%, white);
-	--primary-foreground: #fff;
+	--primary: var(--p-primary);
+	--primary-hover: color-mix(in oklab, var(--primary) 86%, var(--p-ink));
+	--primary-foreground: var(--p-on-primary);
 	--secondary: color-mix(in oklab, var(--p-brand) 6%, white);
 	--secondary-foreground: var(--p-ink);
 	--muted: color-mix(in oklab, var(--p-brand) 4%, white);
-	--muted-foreground: color-mix(in oklab, var(--p-ink) 62%, transparent);
+	--muted-foreground: color-mix(in oklab, var(--p-ink) 78%, transparent);
 	--accent: color-mix(in oklab, var(--p-brand) 11%, white);
 	--accent-foreground: var(--p-ink);
 	--destructive: #e4574c;
@@ -435,8 +450,10 @@
 	--status-success: #14a56f;
 	--status-success-text: color-mix(in oklab, var(--status-success) 45%, var(--ink));
 	--status-warning: #efa00b;
+	--status-warning-text: color-mix(in oklab, var(--status-warning) 35%, var(--ink));
 	--status-danger: #e4574c;
 	--status-danger-text: color-mix(in oklab, var(--status-danger) 60%, var(--ink));
+	--status-danger-fill: color-mix(in oklab, var(--status-danger) 75%, var(--ink));
 	--status-info: #1e9be9;
 	--status-dup: oklch(72% 0.175 68deg);
 
@@ -574,8 +591,10 @@
 	--status-success: #3bd598;
 	--status-success-text: var(--status-success);
 	--status-warning: #ffc24b;
+	--status-warning-text: var(--status-warning);
 	--status-danger: #f07a6e;
 	--status-danger-text: color-mix(in oklab, var(--status-danger) 90%, white);
+	--status-danger-fill: color-mix(in oklab, var(--status-danger) 60%, #202630);
 	--status-info: #55b9f3;
 	--status-dup: oklch(76% 0.165 68deg);
 
@@ -907,8 +926,10 @@
 	--color-status-success: var(--status-success);
 	--color-status-success-text: var(--status-success-text);
 	--color-status-warning: var(--status-warning);
+	--color-status-warning-text: var(--status-warning-text);
 	--color-status-danger: var(--status-danger);
 	--color-status-danger-text: var(--status-danger-text);
+	--color-status-danger-fill: var(--status-danger-fill);
 	--color-status-info: var(--status-info);
 	--color-status-dup: var(--status-dup);
 	--color-reserved: var(--reserved);
