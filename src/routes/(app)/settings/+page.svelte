@@ -15,9 +15,11 @@
 		SettingsProfileSection,
 		SettingsSecuritySection,
 		SettingsNotificationsSection,
+		SettingsAccessSection,
 		SettingsAppearanceSection,
 		SettingsDangerSection,
 	} from '$lib/components/blocks/settings/index.js';
+	import { pageHeaderVariants } from '$lib/components/blocks/page-header/index.js';
 
 	const profile = await getUserProfile();
 	const notificationPreferences = await getNotificationPreferences();
@@ -44,7 +46,7 @@
 <div class="settings-page">
 	<!-- Page header -->
 	<div class="mb-8 motion-safe:animate-fade-up">
-		<h1 class="font-heading text-[clamp(26px,3.4vw,34px)] font-semibold tracking-tight">
+		<h1 class={pageHeaderVariants({ size: 'md' }).title()}>
 			{m.settings_title()}
 		</h1>
 		<p class="mt-1 text-muted-foreground">{m.settings_subtitle()}</p>
@@ -55,6 +57,7 @@
 			<p class="rounded-lg border border-border bg-card p-4 text-muted-foreground">
 				{m.demo_account_limits()}
 			</p>
+			<SettingsAccessSection demo />
 			<SettingsAppearanceSection />
 		{:else}
 			<SettingsProfileSection
@@ -77,6 +80,8 @@
 				onSave={(preferences: NotificationPreferences) =>
 					updateNotificationPreferences({ preferences })}
 			/>
+
+			<SettingsAccessSection demo={false} />
 
 			<SettingsAppearanceSection />
 
