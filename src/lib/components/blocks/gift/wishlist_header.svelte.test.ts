@@ -319,6 +319,12 @@ describe('WishlistHeader permanent wishlist', () => {
 		expect(screen.getByTestId('wishlist-mobile-meta').element().textContent?.trim()).toBe(
 			`${m.dashboard_status_shared()} · ${m.wishlist_kind_permanent()} · ${m.wishlist_gift_count_other({ count: 13 })}`,
 		);
+		// A narrow meta column may wrap between segments, never inside "13 přání".
+		const giftCountSegment = screen
+			.getByTestId('wishlist-mobile-meta')
+			.getByText(m.wishlist_gift_count_other({ count: 13 }), { exact: true })
+			.element();
+		expect(getComputedStyle(giftCountSegment).whiteSpace).toBe('nowrap');
 		await screen.unmount();
 	});
 

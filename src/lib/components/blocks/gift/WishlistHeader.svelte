@@ -247,10 +247,12 @@
 				{title}
 			</svelte:element>
 			<p class="mobile-meta" data-testid="wishlist-mobile-meta">
-				{statusLabel}{#if isPermanent}<span aria-hidden="true">{META_SEPARATOR}</span
-					>{m.wishlist_kind_permanent()}{/if}{#if giftCountLabel !== null}<span
+				<span class="mobile-meta-item">{statusLabel}</span>{#if isPermanent}<span
 						aria-hidden="true">{META_SEPARATOR}</span
-					>{giftCountLabel}{/if}
+					><span class="mobile-meta-item">{m.wishlist_kind_permanent()}</span
+					>{/if}{#if giftCountLabel !== null}<span aria-hidden="true"
+						>{META_SEPARATOR}</span
+					><span class="mobile-meta-item">{giftCountLabel}</span>{/if}
 			</p>
 		</div>
 		{@render headerActions()}
@@ -641,6 +643,11 @@
 
 		.mobile-meta {
 			margin-top: var(--space-1);
+		}
+
+		/* Wraps only between segments, never inside one such as "3 přání". */
+		.mobile-meta-item {
+			white-space: nowrap;
 		}
 	}
 </style>
