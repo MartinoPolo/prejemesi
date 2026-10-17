@@ -274,13 +274,15 @@ export const AGENT_OPERATION_POLICIES: AgentOperationPolicies = {
 			wishlistShortId: output.wishlistShortId,
 		}),
 	}),
-	// Copies duplicate the source gifts' own uploads, which the actor must manage.
+	// Copies duplicate the source gifts' own uploads, which the actor must manage. Removing the
+	// copied sources deletes gifts, which needs the user's confirmation like `deleteGift`.
 	bulkCopyGifts: agentOperation({
 		scope: AGENT_SCOPE.giftsWrite,
 		targets: (input) => [
 			{ kind: TARGET_KIND.wishlistId, id: input.sourceWishlistId },
 			{ kind: TARGET_KIND.wishlistId, id: input.destinationWishlistId },
 		],
+		confirmation: confirmedDependingOnInput((input) => input.removeUnreservedSources === true),
 		projectOutput: (output) => ({
 			createdIds: output.createdIds,
 			destinationShortId: output.destinationShortId,

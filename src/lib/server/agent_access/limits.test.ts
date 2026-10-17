@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { MAX_OPERATION_BATCH_STEPS } from '$lib/server/operations/constants.js';
+import { CHANGE_PROPOSAL_MAX_ROWS } from '$lib/modules/change_proposals/types.js';
 import { AGENT_API_RATE_LIMIT, AGENT_BATCH_MAX_ITEMS } from './limits.js';
 
 interface RateLimitBinding {
@@ -35,5 +36,9 @@ describe('agent API limits', () => {
 	it('caps a batch at 200 items, the operation core’s own cap', () => {
 		expect(AGENT_BATCH_MAX_ITEMS).toBe(200);
 		expect(AGENT_BATCH_MAX_ITEMS).toBe(MAX_OPERATION_BATCH_STEPS);
+	});
+
+	it('lets a reviewer select every row a proposal can hold', () => {
+		expect(CHANGE_PROPOSAL_MAX_ROWS).toBe(AGENT_BATCH_MAX_ITEMS);
 	});
 });

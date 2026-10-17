@@ -97,6 +97,7 @@ export const readWishlistModeratorsOperation = defineOperation({
 
 /** A UI invite returns its shareable link; an agent's invite reaches the invitee only by email. */
 interface GeneratedModeratorInvite {
+	inviteId: string;
 	link: { token: string; invitePath: string } | null;
 	unregisteredInvitee: boolean;
 }
@@ -138,6 +139,7 @@ export const generateModeratorInviteLinkOperation = defineOperation({
 			});
 		}
 		return {
+			inviteId: invite.id,
 			link: linkReturned ? { token: invite.token, invitePath: invite.path } : null,
 			unregisteredInvitee: invite.unregisteredInvitee,
 		};

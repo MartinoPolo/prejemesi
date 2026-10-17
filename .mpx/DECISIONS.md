@@ -229,6 +229,11 @@ Current product, architecture, and design decisions for Přejeme si. Entries are
 - 2026-10-10: The hosted chatbot is the planned paid premium feature and the app's intended revenue source. It is an ordinary API client behind a model-provider abstraction; its UX, provider and credits are decided separately. Until then enrichment runs on users' own AI. The fixed-actor ingestion endpoint is an interim exception, retired once add-gifts runs on user tokens.
 - 2026-10-17: Access tokens expire after 365 days by default, with presets of 30, 90, 365, 1825 and 3650 days or a custom date at most 10 years ahead; the app is not security-critical, so long-lived tokens are acceptable.
 - 2026-10-17: The owner can roll an active or expired token: a new value, shown once, replaces the old one immediately while name, scopes, wishlist restriction and fast-forward stay; the new expiry defaults to the token's current lifetime from now and accepts any expiry choice. Revoked tokens cannot be rolled.
+- 2026-10-17: Only a proposal's submitter sees and acts on it, and only while they can still read its wishlist (404 otherwise); revoking the token keeps its pending proposals applicable. A row conflicts when a gift it names, or an existing gift its dry run changed, differs from its state at submission (ordering excluded) or is gone; conflicting rows never apply.
+- 2026-10-17: Undoing an applied proposal reverts its whole batch as one change by the user, or refuses: when a gift changed since, when the batch reordered gifts, changed categories, priority levels or wishlist details, cancelled or marked a reservation purchased, or created a wishlist, and when an invitation it sent was accepted.
+- 2026-10-17: Agents create wishlists only with an unrestricted fast-forward token, in a proposal naming no wishlist that applies at once; there is no page to review a wishlist that does not exist yet.
+- 2026-10-17: Agent changes are bounded by a daily budget of proposal rows per user over a trailing window across all tokens, counting every row whatever its outcome; values in `src/lib/server/agent_access/limits.ts`.
+- 2026-10-17: An agent's gift copy that removes the unreserved sources needs confirmation, like deleting them.
 
 ## Repository checks & operations
 

@@ -67,6 +67,7 @@ export function assertWishlistTakesInvites(wishlistRow: WishlistRow): void {
 }
 
 export interface CreatedInviteLink {
+	id: string;
 	token: string;
 	path: string;
 	unregisteredInvitee: boolean;
@@ -96,14 +97,19 @@ export async function createInviteLink(
 	}
 	const path = `/w/${wishlistRow.shortId}/${pathSegment}/${created.token}`;
 	if (inviteeEmail === null) {
-		return { token: created.token, path, unregisteredInvitee: false };
+		return { id: created.id, token: created.token, path, unregisteredInvitee: false };
 	}
 	const existingUsers = await context.transaction
 		.select({ id: user.id })
 		.from(user)
 		.where(eq(user.email, inviteeEmail.toLowerCase()))
 		.limit(1);
-	return { token: created.token, path, unregisteredInvitee: existingUsers[0] === undefined };
+	return {
+		id: created.id,
+		token: created.token,
+		path,
+		unregisteredInvitee: existingUsers[0] === undefined,
+	};
 }
 
 /** Any manager (recipient or správce) may revoke a pending invite. */

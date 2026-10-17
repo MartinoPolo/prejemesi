@@ -150,6 +150,19 @@ describe('agent operation policies', () => {
 		}
 	});
 
+	it('requires confirmation for a copy that deletes its sources, since that deletes gifts', () => {
+		const copy = {
+			sourceWishlistId: 'source',
+			destinationWishlistId: 'target',
+			giftIds: ['g'],
+		};
+
+		expect(policyOf('bulkCopyGifts').confirmation(copy)).toBe(false);
+		expect(
+			policyOf('bulkCopyGifts').confirmation({ ...copy, removeUnreservedSources: true }),
+		).toBe(true);
+	});
+
 	it('decides undo confirmation from the stored revisions of the batch or gift', () => {
 		expect(policyOf('undoGiftRevisionBatch').confirmation({ batchId: 'batch-1' })).toEqual({
 			undoesGiftCreationsOfBatch: 'batch-1',

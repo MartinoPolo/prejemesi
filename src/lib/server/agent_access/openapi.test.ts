@@ -1,9 +1,10 @@
 import * as v from 'valibot';
 import { describe, expect, it } from 'vitest';
 import { OPERATION_REGISTRY } from '$lib/server/operations/registry.js';
-import { OPERATION_EXPOSURE } from '$lib/server/operations/operation.js';
+import { OPERATION_EXPOSURE, OPERATION_KIND } from '$lib/server/operations/operation.js';
 import { AGENT_SCOPE } from '$lib/modules/access_tokens/scopes.js';
 import { buildAgentApiDocument } from './openapi.js';
+import { AGENT_BATCH_MAX_ITEMS } from './limits.js';
 import { GET as getOpenApiDocument } from '../../../routes/api/v1/openapi.json/+server.js';
 
 const OPERATION_PATH_PREFIX = '/api/v1/operations/';
@@ -100,6 +101,52 @@ describe('agent API document', () => {
 		expect(documentedOperation('createGift')['x-scope']).toBe(AGENT_SCOPE.giftsWrite);
 		expect(documentedInputSchema('createGift')).toMatchObject({
 			properties: { wishlistId: { type: 'string' } },
+		});
+	});
+
+	it('documents submitting proposals of agent changes, with an optional Idempotency-Key', () => {
+		const mutationNames = operations
+			.filter(
+				(operation) =>
+					operation.exposure === OPERATION_EXPOSURE.agent &&
+					operation.kind === OPERATION_KIND.mutation,
+			)
+			.map((operation) => operation.name);
+
+		expect(document.paths['/api/v1/proposals'].post).toMatchObject({
+			parameters: [{ name: 'Idempotency-Key', in: 'header', required: false }],
+			requestBody: {
+				content: {
+					'application/json': {
+						schema: {
+							required: ['operations'],
+							properties: {
+								operations: {
+									maxItems: AGENT_BATCH_MAX_ITEMS,
+									items: {
+										properties: { operation: { enum: expect.any(Array) } },
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			responses: { 201: expect.anything(), 422: expect.anything(), 429: expect.anything() },
+		});
+		const documentedEnum =
+			document.paths['/api/v1/proposals'].post.requestBody.content['application/json'].schema
+				.properties.operations.items.properties.operation.enum;
+		expect([...documentedEnum].sort()).toEqual([...mutationNames].sort());
+		expect(document.paths['/api/v1/proposals/{proposalId}'].get.responses).toHaveProperty(
+			'404',
+		);
+		expect(document.components.schemas.ChangeProposal).toMatchObject({
+			properties: {
+				id: expect.anything(),
+				reviewUrl: expect.anything(),
+				rows: expect.anything(),
+			},
 		});
 	});
 

@@ -1,5 +1,5 @@
 import * as v from 'valibot';
-import { error } from '@sveltejs/kit';
+import { error, isHttpError } from '@sveltejs/kit';
 import { getDb, type DatabaseTransaction } from '$lib/server/db/index.js';
 import { generateId } from '$lib/server/db/id.js';
 import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
@@ -50,16 +50,46 @@ export interface OperationBatchOptions extends OperationOptions {
 	 * before the transaction opened.
 	 */
 	verifyLocked?: (transaction: DatabaseTransaction) => Promise<void>;
+	/**
+	 * Runs inside the transaction after the last step, with every step's output, before it
+	 * commits; throwing rejects the batch. Never runs on a dry run.
+	 */
+	beforeCommit?: (
+		transaction: DatabaseTransaction,
+		batch: OperationBatchOutputs,
+	) => Promise<void>;
+	/** Learns which step threw before the error rejects the whole batch. */
+	onStepFailed?: (stepIndex: number, thrown: unknown) => void;
 }
 
 type BatchRunOptions = Required<Pick<OperationBatchOptions, 'dryRun' | 'exclusiveWishlistIds'>> &
-	Pick<OperationBatchOptions, 'verifyLocked'>;
+	Pick<OperationBatchOptions, 'verifyLocked' | 'beforeCommit' | 'onStepFailed'>;
 
-export interface OperationBatchResult {
+export interface OperationBatchOutputs {
 	batchId: string;
+	/** Each step's unprojected output, in step order. */
 	results: unknown[];
+}
+
+export interface OperationBatchResult extends OperationBatchOutputs {
 	revisions: GiftRevisionRecord[];
 }
+
+/** Why the core rejected one step: the HTTP status and the error message (a code, possibly encoded). */
+export interface OperationStepRejection {
+	status: number;
+	message: string;
+}
+
+/** One step of a batch preview: what it would return and write, or why the core rejected it. */
+export type OperationStepPreview =
+	| { accepted: true; result: unknown; revisions: GiftRevisionRecord[] }
+	| { accepted: false; rejection: OperationStepRejection };
+
+export type OperationPreviewOptions = Pick<
+	OperationBatchOptions,
+	'exclusiveWishlistIds' | 'verifyLocked'
+>;
 
 export interface OperationDryRunResult<TOutput> {
 	result: TOutput;
@@ -145,7 +175,8 @@ function bindMutationStep<TName extends string, TSchema extends OperationInputSc
 	};
 }
 
-async function settleBestEffort(label: string, work: () => Promise<void>): Promise<void> {
+/** Runs bookkeeping whose failure must not fail the request: it is logged and swallowed. */
+export async function settleBestEffort(label: string, work: () => Promise<void>): Promise<void> {
 	try {
 		await work();
 	} catch (thrown) {
@@ -161,6 +192,32 @@ async function settleDeferredEffects(
 	for (const { operationName, effect } of deferredEffects) {
 		await settleBestEffort(`deferred effect ${operationName} ${origin}`, effect);
 	}
+}
+
+/** What every step of one batch transaction shares; each step gets its own context from it. */
+interface BatchStepScope {
+	actor: OperationActor;
+	transaction: DatabaseTransaction;
+	now: Date;
+	batchId: string;
+	dryRun: boolean;
+	revisionCollector: GiftRevisionCollector;
+	noteReservedGiftEdits: (edits: readonly ReservedGiftEdit[]) => void;
+	deferEffect: (deferredEffect: DeferredEffect) => void;
+}
+
+function stepContext(step: PreparedStep, scope: BatchStepScope): MutationOperationContext {
+	return {
+		actor: scope.actor,
+		transaction: scope.transaction,
+		now: scope.now,
+		batchId: scope.batchId,
+		dryRun: scope.dryRun,
+		recordGiftRevisions: (changes) =>
+			scope.revisionCollector.record(step.operationName, changes),
+		noteReservedGiftEdits: scope.noteReservedGiftEdits,
+		deferEffect: (effect) => scope.deferEffect({ operationName: step.operationName, effect }),
+	};
 }
 
 async function runBoundSteps(
@@ -192,25 +249,24 @@ async function runBoundSteps(
 					channel: actor.channel,
 				});
 				const reservedGiftEdits: ReservedGiftEdit[] = [];
+				const scope: BatchStepScope = {
+					actor,
+					transaction,
+					now,
+					batchId,
+					dryRun,
+					revisionCollector,
+					noteReservedGiftEdits: (edits) => reservedGiftEdits.push(...edits),
+					deferEffect: (deferredEffect) => deferredEffects.push(deferredEffect),
+				};
 				const results: unknown[] = [];
-				for (const preparedStep of preparedSteps) {
-					results.push(
-						await preparedStep.run({
-							actor,
-							transaction,
-							now,
-							batchId,
-							dryRun,
-							recordGiftRevisions: (changes) =>
-								revisionCollector.record(preparedStep.operationName, changes),
-							noteReservedGiftEdits: (edits) => reservedGiftEdits.push(...edits),
-							deferEffect: (effect) =>
-								deferredEffects.push({
-									operationName: preparedStep.operationName,
-									effect,
-								}),
-						}),
-					);
+				for (const [stepIndex, preparedStep] of preparedSteps.entries()) {
+					try {
+						results.push(await preparedStep.run(stepContext(preparedStep, scope)));
+					} catch (thrown) {
+						options.onStepFailed?.(stepIndex, thrown);
+						throw thrown;
+					}
 				}
 				const notifications = dryRun
 					? []
@@ -223,6 +279,7 @@ async function runBoundSteps(
 				if (dryRun) {
 					throw new DryRunRollback({ results, revisions, notifications });
 				}
+				await options.beforeCommit?.(transaction, { batchId, results });
 				return { results, revisions, notifications };
 			});
 		} catch (thrown) {
@@ -310,8 +367,114 @@ export async function executeOperationBatch(
 			dryRun: options.dryRun === true,
 			exclusiveWishlistIds: options.exclusiveWishlistIds ?? [],
 			verifyLocked: options.verifyLocked,
+			beforeCommit: options.beforeCommit,
+			onStepFailed: options.onStepFailed,
 		},
 	);
+}
+
+/** A client error the core raised on purpose, or null for anything else: a defect, kept thrown. */
+export function toOperationStepRejection(thrown: unknown): OperationStepRejection | null {
+	return isHttpError(thrown) && thrown.status < 500
+		? { status: thrown.status, message: thrown.body.message }
+		: null;
+}
+
+function requireStepRejection(thrown: unknown): OperationStepRejection {
+	const rejection = toOperationStepRejection(thrown);
+	if (rejection === null) {
+		throw thrown;
+	}
+	return rejection;
+}
+
+type PreviewEntry = { prepared: PreparedStep } | { rejection: OperationStepRejection };
+
+class PreviewRollback extends Error {
+	constructor() {
+		super('Operation preview rollback');
+	}
+}
+
+/**
+ * Previews a batch step by step in one transaction that always rolls back: each step runs in its
+ * own savepoint, so a step the core rejects is reported and undone while the following steps run
+ * on the state the earlier accepted ones left. Nothing commits and no deferred effect runs.
+ */
+export async function previewOperationBatch(
+	actor: OperationActor,
+	steps: readonly OperationBatchStep[],
+	options: OperationPreviewOptions = {},
+): Promise<OperationStepPreview[]> {
+	if (steps.length === 0 || steps.length > MAX_OPERATION_BATCH_STEPS) {
+		error(400, SERVER_ERROR.INVALID_OPERATION_INPUT);
+	}
+	const batchId = generateId();
+	const now = new Date();
+	const entries: PreviewEntry[] = [];
+	const previews: OperationStepPreview[] = [];
+	try {
+		for (const step of steps) {
+			try {
+				const boundStep = bindMutationStep(step.operation, step.input);
+				entries.push({ prepared: await boundStep.prepare(actor, true) });
+			} catch (thrown) {
+				entries.push({ rejection: requireStepRejection(thrown) });
+			}
+		}
+		await getDb().transaction(async (transaction) => {
+			await lockWishlistsInIdOrder(transaction, options.exclusiveWishlistIds ?? []);
+			await options.verifyLocked?.(transaction);
+			for (const entry of entries) {
+				if ('rejection' in entry) {
+					previews.push({ accepted: false, rejection: entry.rejection });
+					continue;
+				}
+				const { prepared } = entry;
+				const revisionCollector = new GiftRevisionCollector({
+					batchId,
+					actorUserId: actor.userId,
+					channel: actor.channel,
+				});
+				try {
+					previews.push(
+						await transaction.transaction(async (savepoint) => {
+							const result = await prepared.run(
+								stepContext(prepared, {
+									actor,
+									transaction: savepoint,
+									now,
+									batchId,
+									dryRun: true,
+									revisionCollector,
+									noteReservedGiftEdits: () => {},
+									deferEffect: () => {},
+								}),
+							);
+							const revisions = await revisionCollector.flush(savepoint);
+							return { accepted: true, result, revisions } as const;
+						}),
+					);
+				} catch (thrown) {
+					previews.push({ accepted: false, rejection: requireStepRejection(thrown) });
+				}
+			}
+			throw new PreviewRollback();
+		});
+	} catch (thrown) {
+		if (!(thrown instanceof PreviewRollback)) {
+			throw thrown;
+		}
+	} finally {
+		for (const entry of entries) {
+			if ('prepared' in entry) {
+				await settleBestEffort('preview preparation cleanup', () =>
+					entry.prepared.onAbandoned(),
+				);
+			}
+		}
+	}
+	return previews;
 }
 
 export async function executeOperation<TSchema extends OperationInputSchema, TOutput>(
