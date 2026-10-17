@@ -103,6 +103,8 @@
 		graceMessage?: (inputs: { time: string }) => string;
 		/** Reactive "now" from the page clock that keeps the grace countdown live. */
 		graceNow?: Date;
+		/** Asked before deleting the gift or one of its description appends; false cancels it. */
+		confirmChange?: () => Promise<boolean>;
 		isSubmitting: boolean;
 		isDeleting: boolean;
 		oncreate?: (input: CreateGiftInput) => GiftSaveResult;
@@ -128,6 +130,7 @@
 		graceExpiresAt = null,
 		graceMessage = m.gift_grace_hint,
 		graceNow = new Date(),
+		confirmChange,
 		isSubmitting,
 		isDeleting,
 		oncreate,
@@ -756,10 +759,11 @@
 		}
 	}
 
-	function deleteAppend(index: number) {
-		if (gift !== null) {
-			onupdate?.({ id: gift.id, descriptionAppendEdit: { index, text: null } });
+	async function deleteAppend(index: number) {
+		if (gift === null || !((await confirmChange?.()) ?? true)) {
+			return;
 		}
+		onupdate?.({ id: gift.id, descriptionAppendEdit: { index, text: null } });
 	}
 
 	function categoryLabel(category: ManagedGiftCategory): string {
@@ -771,7 +775,7 @@
 			return;
 		}
 		if (!showDeleteConfirm) {
-			showDeleteConfirm = true;
+			showDeleteConfirm = (await confirmChange?.()) ?? true;
 			return;
 		}
 		if (gift !== null) {
@@ -978,7 +982,7 @@
 											format="icon"
 											intent="ghost"
 											aria-label={m.gift_description_append_delete_aria()}
-											onclick={() => deleteAppend(index)}
+											onclick={() => void deleteAppend(index)}
 										>
 											<TrashIcon />
 										</Button>
