@@ -3,6 +3,7 @@ import { OPERATION_REGISTRY } from '$lib/server/operations/registry.js';
 import { OPERATION_KIND, type AnyOperation } from '$lib/server/operations/operation.js';
 import { AGENT_SCOPE } from '$lib/modules/access_tokens/scopes.js';
 import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
+import { ALLOWED_CONTENT_TYPES, MAX_GIFT_IMAGE_BYTES } from '$lib/modules/uploads/types.js';
 import {
 	AGENT_OPERATION_POLICIES,
 	isOperationName,
@@ -18,9 +19,14 @@ import {
 	AGENT_API_RATE_LIMIT,
 	AGENT_BATCH_MAX_ITEMS,
 	AGENT_DAILY_CHANGE_BUDGET,
+	AGENT_DAILY_IMAGE_BUDGET,
+	AGENT_IMAGE_MAX_REDIRECTS,
+	AGENT_IMAGE_REFERENCE_LIFETIME_MS,
 	CHANGE_PROPOSAL_LIFETIME_MS,
 	IDEMPOTENCY_KEY_RETENTION_MS,
 } from './limits.js';
+import { MAX_IMAGE_PIXELS, MAX_IMAGE_SIDE_PX } from '$lib/server/images/image_download.js';
+import { IMAGE_REFERENCE_FIELD } from './image_references.js';
 import { AGENT_API_BASE_PATH } from './api_paths.js';
 import { DAY_MS } from '$lib/server/operations/constants.js';
 import { IDEMPOTENCY_KEY_MAX_LENGTH } from './idempotency.js';
@@ -57,6 +63,36 @@ function inputJsonSchema(operation: AnyOperation): Record<string, unknown> {
 	// OpenAPI 3.1 documents declare the JSON Schema dialect once, not per schema.
 	delete schema.$schema;
 	return schema;
+}
+
+const AGENT_IMAGE_INPUT_FIELDS = new Set(['imageUrl', 'imageKey']);
+
+const IMAGE_REFERENCE_PROPERTY = {
+	type: 'string',
+	minLength: 1,
+	description: `The \`reference\` of an image from POST ${AGENT_API_BASE_PATH}/images for the wishlist this changes. The gift gets the stored copy with automatic framing unless \`imageMeta\` is given; a reference attaches to one gift, once. Image URLs and storage keys are not accepted.`,
+};
+
+function isJsonObject(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/** An agent's input schema: where a gift image is set, by image reference only. */
+function agentInputJsonSchema(
+	operation: AnyOperation,
+	policy: AgentOperationPolicy<unknown, unknown>,
+): Record<string, unknown> {
+	const schema = inputJsonSchema(operation);
+	if (!policy.acceptsImageReference || !isJsonObject(schema.properties)) {
+		return schema;
+	}
+	const properties = Object.fromEntries(
+		Object.entries(schema.properties).filter(([field]) => !AGENT_IMAGE_INPUT_FIELDS.has(field)),
+	);
+	return {
+		...schema,
+		properties: { ...properties, [IMAGE_REFERENCE_FIELD]: IMAGE_REFERENCE_PROPERTY },
+	};
 }
 
 function jsonResponse(description: string, schema: Record<string, unknown>) {
@@ -212,6 +248,81 @@ function changeProposalPaths() {
 	};
 }
 
+const AGENT_IMAGE_REQUEST_SCHEMA = {
+	type: 'object',
+	required: ['url'],
+	additionalProperties: false,
+	description:
+		'Names exactly one wishlist the token user manages, by `wishlistShortId` or `wishlistId`.',
+	properties: {
+		wishlistShortId: { type: 'string' },
+		wishlistId: { type: 'string' },
+		url: { type: 'string', format: 'uri', maxLength: 2048 },
+	},
+};
+
+const AGENT_IMAGE_RESPONSE_SCHEMA = {
+	type: 'object',
+	required: ['image'],
+	properties: {
+		image: {
+			type: 'object',
+			required: [
+				'reference',
+				'url',
+				'contentType',
+				'byteLength',
+				'width',
+				'height',
+				'expiresAt',
+			],
+			properties: {
+				reference: {
+					type: 'string',
+					description: `Set as \`${IMAGE_REFERENCE_FIELD}\` in a createGift or updateGift row.`,
+				},
+				url: { type: 'string', description: 'Where the stored copy is served.' },
+				contentType: { type: 'string', enum: [...ALLOWED_CONTENT_TYPES] },
+				byteLength: { type: 'integer' },
+				width: { type: 'integer' },
+				height: { type: 'integer' },
+				expiresAt: {
+					type: 'string',
+					format: 'date-time',
+					description: 'The reference must be attached by an applied change before this.',
+				},
+			},
+		},
+	},
+};
+
+function agentImagePaths() {
+	return {
+		[`${AGENT_API_BASE_PATH}/images`]: {
+			post: {
+				operationId: 'uploadImage',
+				summary: 'Stores an image from a public HTTPS URL for a gift.',
+				description: `Needs \`${AGENT_SCOPE.giftsWrite}\`. Downloads the image server-side and stores a copy; the URL itself is never kept. Every hop, including at most ${AGENT_IMAGE_MAX_REDIRECTS} redirects, must be HTTPS on the default port to a public host name: IP addresses and local names answer 400 ${SERVER_ERROR.AGENT_IMAGE_HOST_BLOCKED}. The image must be ${ALLOWED_CONTENT_TYPES.join(', ')} whose bytes match the declared type, at most ${MAX_GIFT_IMAGE_BYTES} bytes, with positive dimensions of at most ${MAX_IMAGE_SIDE_PX} px per side and ${MAX_IMAGE_PIXELS} pixels (422). The reference is valid for ${AGENT_IMAGE_REFERENCE_LIFETIME_MS / DAY_MS} days, for the token user on this wishlist; an unattached image is then deleted. Counts against the daily image budget.`,
+				'x-scope': AGENT_SCOPE.giftsWrite,
+				parameters: [IDEMPOTENCY_KEY_PARAMETER],
+				requestBody: {
+					required: true,
+					content: { 'application/json': { schema: AGENT_IMAGE_REQUEST_SCHEMA } },
+				},
+				responses: {
+					201: jsonResponse(
+						'The stored image and its reference.',
+						AGENT_IMAGE_RESPONSE_SCHEMA,
+					),
+					...OPERATION_ERROR_RESPONSES,
+					422: ERROR_RESPONSE_REFERENCE,
+					502: ERROR_RESPONSE_REFERENCE,
+				},
+			},
+		},
+	};
+}
+
 function operationPath(operation: AnyOperation, policy: AgentOperationPolicy<unknown, unknown>) {
 	return {
 		post: {
@@ -224,7 +335,9 @@ function operationPath(operation: AnyOperation, policy: AgentOperationPolicy<unk
 			'x-confirmation': policy.confirmationMode,
 			requestBody: {
 				required: true,
-				content: { 'application/json': { schema: inputJsonSchema(operation) } },
+				content: {
+					'application/json': { schema: agentInputJsonSchema(operation, policy) },
+				},
 			},
 			responses: {
 				200: jsonResponse('The projected result.', {
@@ -264,6 +377,10 @@ const ERROR_SCHEMA = {
 					type: 'integer',
 					description: `With ${SERVER_ERROR.AGENT_BATCH_TOO_LARGE}.`,
 				},
+				maxBytes: {
+					type: 'integer',
+					description: `With ${SERVER_ERROR.AGENT_REQUEST_TOO_LARGE} and ${SERVER_ERROR.AGENT_IMAGE_TOO_LARGE}.`,
+				},
 				rowId: {
 					type: 'string',
 					description: 'The proposal row a submission error is about.',
@@ -283,7 +400,8 @@ function buildOriginIndependentDocument() {
 			description: [
 				'Every call acts as the token user, with that user’s current rights, limited by the token scopes and wishlist restriction.',
 				`Scopes: ${Object.values(AGENT_SCOPE).join(', ')}; \`read\` is always granted.`,
-				`Limits: ${AGENT_API_RATE_LIMIT.requestsPerToken} requests per ${AGENT_API_RATE_LIMIT.periodSeconds} seconds per token (429 with Retry-After), ${AGENT_BATCH_MAX_ITEMS} items per batch, ${AGENT_API_MAX_BODY_BYTES} bytes per request body, ${AGENT_DAILY_CHANGE_BUDGET.rows} proposal rows per user over the trailing ${AGENT_DAILY_CHANGE_BUDGET.windowMs / HOUR_MS} hours across all tokens (429 ${SERVER_ERROR.AGENT_DAILY_CHANGE_BUDGET_EXCEEDED} with Retry-After).`,
+				`Limits: ${AGENT_API_RATE_LIMIT.requestsPerToken} requests per ${AGENT_API_RATE_LIMIT.periodSeconds} seconds per token (429 with Retry-After), ${AGENT_BATCH_MAX_ITEMS} items per batch, ${AGENT_API_MAX_BODY_BYTES} bytes per request body, ${AGENT_DAILY_CHANGE_BUDGET.rows} proposal rows per user over the trailing ${AGENT_DAILY_CHANGE_BUDGET.windowMs / HOUR_MS} hours across all tokens (429 ${SERVER_ERROR.AGENT_DAILY_CHANGE_BUDGET_EXCEEDED} with Retry-After), ${AGENT_DAILY_IMAGE_BUDGET.images} images per user over the trailing ${AGENT_DAILY_IMAGE_BUDGET.windowMs / HOUR_MS} hours across all tokens (429 ${SERVER_ERROR.AGENT_DAILY_IMAGE_BUDGET_EXCEEDED} with Retry-After).`,
+				`Gift images: POST ${AGENT_API_BASE_PATH}/images stores an image from a URL, and a createGift or updateGift row sets it by \`${IMAGE_REFERENCE_FIELD}\`.`,
 				`Changes are proposals: POST ${AGENT_API_BASE_PATH}/proposals, which the user reviews and applies.`,
 			].join('\n\n'),
 		},
@@ -328,6 +446,7 @@ function buildOriginIndependentDocument() {
 				},
 			},
 			...changeProposalPaths(),
+			...agentImagePaths(),
 			...agentOperationPaths(),
 			[`${AGENT_API_BASE_PATH}/openapi.json`]: {
 				get: {

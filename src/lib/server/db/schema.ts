@@ -12,3 +12,4 @@ export * from './ingestion.schema.js';
 export * from './gift_revision.schema.js';
 export * from './access_token.schema.js';
 export * from './change_proposal.schema.js';
+export * from './agent_image.schema.js';

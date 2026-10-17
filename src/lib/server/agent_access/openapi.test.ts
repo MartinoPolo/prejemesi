@@ -150,6 +150,36 @@ describe('agent API document', () => {
 		});
 	});
 
+	it('documents storing an image by URL, with an optional Idempotency-Key', () => {
+		expect(document.paths['/api/v1/images'].post).toMatchObject({
+			'x-scope': AGENT_SCOPE.giftsWrite,
+			parameters: [{ name: 'Idempotency-Key', in: 'header', required: false }],
+			requestBody: {
+				content: { 'application/json': { schema: { required: ['url'] } } },
+			},
+			responses: {
+				201: expect.anything(),
+				400: expect.anything(),
+				403: expect.anything(),
+				422: expect.anything(),
+				429: expect.anything(),
+				502: expect.anything(),
+			},
+		});
+	});
+
+	it('documents gift images by image reference only, never by URL or storage key', () => {
+		for (const name of ['createGift', 'updateGift']) {
+			const properties = v.parse(
+				v.object({ properties: v.record(v.string(), v.unknown()) }),
+				documentedInputSchema(name),
+			).properties;
+			expect(properties, name).toHaveProperty('imageReference');
+			expect(properties, name).not.toHaveProperty('imageUrl');
+			expect(properties, name).not.toHaveProperty('imageKey');
+		}
+	});
+
 	it('describes the error shape every failure uses', () => {
 		expect(document.components.schemas.Error).toMatchObject({
 			required: ['error'],

@@ -13,6 +13,7 @@ import { sql } from 'drizzle-orm';
 import { user, demoSession } from './auth.schema.js';
 import { paletteEnum, wishlistKindEnum, wishlistStatusEnum, wishlistThemeEnum } from './enums.js';
 import { generateId } from './id.js';
+import { softDeletableTimestampColumns } from './columns.js';
 import type { WishlistImageSlots } from '$lib/modules/images/types.js';
 
 export function generateShortId(): string {
@@ -65,9 +66,7 @@ export const wishlist = pgTable(
 		// re-edited. Server is the authority – the client countdown derives from this.
 		eventDateEditedAt: timestamp('event_date_edited_at', { withTimezone: true }),
 		archivedAt: timestamp('archived_at', { withTimezone: true }),
-		deletedAt: timestamp('deleted_at', { withTimezone: true }),
-		createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-		updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+		...softDeletableTimestampColumns(),
 	},
 	(table) => ({
 		recipientStatusIdx: index('wishlist_recipient_status_idx')

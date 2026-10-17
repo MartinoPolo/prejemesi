@@ -1,4 +1,8 @@
 import { DAY_MS, MAX_OPERATION_BATCH_STEPS } from '$lib/server/operations/constants.js';
+import {
+	DEFAULT_IMAGE_DOWNLOAD_TIMEOUT_MS,
+	DEFAULT_IMAGE_MAX_REDIRECTS,
+} from '$lib/server/images/image_download.js';
 
 /**
  * Every limit of the agent API. The request rate is enforced by the `AGENT_API_RATE_LIMIT`
@@ -35,6 +39,28 @@ export const CHANGE_PROPOSAL_EXPIRED_RETENTION_MS = 7 * DAY_MS;
 export const IDEMPOTENCY_KEY_RETENTION_MS = DAY_MS;
 /** A key still in progress after this long belongs to a request that died; a retry takes it over. */
 export const IDEMPOTENCY_KEY_ABANDONED_AFTER_MS = 5 * 60 * 1000;
+
+/**
+ * How long an image an agent supplied by URL can be attached to a gift: a day to submit it in a
+ * proposal, plus the proposal's own lifetime for the user to apply it.
+ */
+export const AGENT_IMAGE_REFERENCE_LIFETIME_MS = DAY_MS + CHANGE_PROPOSAL_LIFETIME_MS;
+/**
+ * An expired image is purged only this long after its expiry, so an apply that checked it just
+ * before expiry has committed and the purge sees the gift referencing it.
+ */
+export const AGENT_IMAGE_PURGE_DELAY_MS = 60 * 60 * 1000;
+/**
+ * Images one user may supply by URL over a trailing window, across all their tokens: each costs
+ * a server-side download and R2 storage until it is attached or purged.
+ */
+export const AGENT_DAILY_IMAGE_BUDGET = {
+	images: 100,
+	windowMs: DAY_MS,
+} as const;
+/** The shared image download limits, so ingestion and agents fetch alike. */
+export const AGENT_IMAGE_FETCH_TIMEOUT_MS = DEFAULT_IMAGE_DOWNLOAD_TIMEOUT_MS;
+export const AGENT_IMAGE_MAX_REDIRECTS = DEFAULT_IMAGE_MAX_REDIRECTS;
 
 /** Per-isolate throttle for the opportunistic proposal and idempotency key purge. */
 export const AGENT_ACCESS_PURGE_INTERVAL_MS = 60 * 60 * 1000;

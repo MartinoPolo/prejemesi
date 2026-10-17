@@ -32,6 +32,15 @@ import {
 	type TargetReference,
 } from './policy_lookups.js';
 import { AGENT_BATCH_MAX_ITEMS } from './limits.js';
+import {
+	attachImageReferences,
+	inputWithBoundImage,
+	resolveImageReferences,
+	namesImageReference,
+	splitImageReference,
+	type AgentImageBinding,
+	type ImageReferenceSplit,
+} from './image_references.js';
 
 export interface AgentOperationRequest {
 	operationName: string;
@@ -41,8 +50,13 @@ export interface AgentOperationRequest {
 /** An operation the token may call with this input, ready for the runner. */
 export interface AuthorizedAgentOperation {
 	operation: AnyOperation;
-	/** The caller's input as received; the runner validates it again when it runs. */
+	/**
+	 * The caller's input as received, an image reference replaced by its stored image; the runner
+	 * validates it again when it runs.
+	 */
 	input: unknown;
+	/** The image the input's reference resolved to; attached under the batch's locks. */
+	imageBinding: AgentImageBinding | null;
 	/** Locked first when the call runs in a batch; re-checked under that lock. */
 	targetWishlistIds: readonly string[];
 	/** Fast-forward never applies such a call without the user's explicit selection. */
@@ -108,9 +122,24 @@ function checkOperationAndScope(
 	return { operation, policy, rawInput: request.input };
 }
 
+function splitAgentInput(
+	policy: AgentOperationPolicy<unknown, unknown>,
+	rawInput: unknown,
+): ImageReferenceSplit {
+	if (policy.acceptsImageReference) {
+		return splitImageReference(rawInput);
+	}
+	// The core input schemas drop unknown fields, which would ignore the reference silently.
+	if (namesImageReference(rawInput)) {
+		error(400, SERVER_ERROR.AGENT_IMAGE_INPUT_UNSUPPORTED);
+	}
+	return { imageReference: null, coreInput: rawInput };
+}
+
 /**
  * Checks a token's calls before they reach the operation core: only agent-exposed operations,
- * only within the token's scopes and wishlist restriction, and without image references. Every
+ * only within the token's scopes and wishlist restriction, and without image URLs or storage
+ * keys; an image reference must be the user's own for the wishlist the call changes. Every
  * call's operation and scope are checked before any input is validated, and every input before
  * any wishlist is looked up. A restricted token gets 403 for a target that does not exist too,
  * so it cannot probe which ids exist outside its wishlists. The core still checks the user's
@@ -132,8 +161,11 @@ export async function authorizeAgentOperations(
 		);
 	}
 	const checkedRequests = requests.map((request) => checkOperationAndScope(grant, request));
-	const lookups = checkedRequests.map(({ operation, policy, rawInput }) => {
-		const input = parseOperationInput(operation.input, rawInput);
+	const splitInputs = checkedRequests.map(({ policy, rawInput }) =>
+		splitAgentInput(policy, rawInput),
+	);
+	const lookups = checkedRequests.map(({ operation, policy }, index) => {
+		const input = parseOperationInput(operation.input, stepValue(splitInputs, index).coreInput);
 		if (policy.setsImageReference(input)) {
 			error(400, SERVER_ERROR.AGENT_IMAGE_INPUT_UNSUPPORTED);
 		}
@@ -158,14 +190,34 @@ export async function authorizeAgentOperations(
 		database,
 		lookups.map((lookup) => lookup.confirmation),
 	);
+	const imageBindings = await resolveImageReferences(
+		database,
+		grant.userId,
+		splitInputs.map((split, index) => ({
+			imageReference: split.imageReference,
+			targetWishlistIds: stepValue(targetWishlistIds, index),
+		})),
+	);
 	return checkedRequests.map(({ operation, policy, rawInput }, index) => ({
 		operation,
-		input: rawInput,
+		input: boundInput(rawInput, stepValue(splitInputs, index), stepValue(imageBindings, index)),
+		imageBinding: stepValue(imageBindings, index),
 		targetWishlistIds: stepValue(targetWishlistIds, index),
 		requiresConfirmation: stepValue(confirmations, index),
 		lookup: stepValue(lookups, index),
 		projectOutput: (output) => policy.projectOutput(output, grant),
 	}));
+}
+
+function boundInput(
+	rawInput: unknown,
+	split: ImageReferenceSplit,
+	binding: AgentImageBinding | null,
+): unknown {
+	if (binding === null || split.imageReference === null) {
+		return rawInput;
+	}
+	return inputWithBoundImage(split.coreInput, binding);
 }
 
 export async function authorizeAgentOperation(
@@ -251,8 +303,12 @@ function requireMutations(
 	return mutations;
 }
 
-/** Every target wishlist locked first, then the authorization and the caller's checks re-run. */
+/**
+ * Every target wishlist locked first, then the authorization re-checked, the image references
+ * attached and the caller's checks run.
+ */
 function lockedBatchOptions(
+	grant: Pick<AgentAccessGrant, 'userId'>,
 	mutations: readonly AuthorizedAgentOperation[],
 	options: Pick<OperationBatchOptions, 'verifyLocked' | 'onStepFailed'>,
 ): Required<Pick<OperationBatchOptions, 'exclusiveWishlistIds' | 'verifyLocked'>> {
@@ -263,6 +319,15 @@ function lockedBatchOptions(
 		],
 		verifyLocked: async (transaction: DatabaseTransaction) => {
 			await verifyAuthorizationUnchanged(transaction, mutations, onStepFailed);
+			await attachImageReferences(
+				transaction,
+				grant.userId,
+				mutations.map((authorized) => ({
+					targetWishlistIds: authorized.targetWishlistIds,
+					binding: authorized.imageBinding,
+				})),
+				onStepFailed,
+			);
 			await verifyLocked?.(transaction);
 		},
 	};
@@ -271,7 +336,8 @@ function lockedBatchOptions(
 /**
  * Runs authorized mutations atomically as the token actor. Every target wishlist is locked FOR
  * UPDATE in id order first, then the authorization is re-checked under that lock (409
- * `AGENT_AUTHORIZATION_OUTDATED` on any difference). Reads are rejected: they run through
+ * `AGENT_AUTHORIZATION_OUTDATED` on any difference) and the image references are re-checked and
+ * marked attached. Reads are rejected: they run through
  * {@link executeAgentRead} without a transaction or exclusive locks.
  */
 export async function executeAgentOperationBatch(
@@ -290,7 +356,7 @@ export async function executeAgentOperationBatch(
 			dryRun: options.dryRun,
 			beforeCommit: options.beforeCommit,
 			onStepFailed: options.onStepFailed,
-			...lockedBatchOptions(mutations, options),
+			...lockedBatchOptions(grant, mutations, options),
 		},
 	);
 	return {
@@ -324,7 +390,7 @@ export async function previewAgentOperationBatch(
 			operation: authorized.operation,
 			input: authorized.input,
 		})),
-		lockedBatchOptions(mutations, options),
+		lockedBatchOptions(grant, mutations, options),
 	);
 	return previews.map((preview, index) =>
 		preview.accepted

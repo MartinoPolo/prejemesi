@@ -226,11 +226,7 @@ describe.skipIf(!DB_READY)('agent API', () => {
 
 		it('fails an expired token with 401 AGENT_TOKEN_EXPIRED', async () => {
 			const longAgo = new Date(Date.now() - 100 * DAY_MS);
-			const { authorization } = await tokenFor(
-				MANAGER_ID,
-				{ expiry: { kind: 'preset', days: 30 } },
-				longAgo,
-			);
+			const { authorization } = await tokenFor(MANAGER_ID, { expiryDays: 30 }, longAgo);
 
 			expect(await errorOf(await callMe({ authorization }))).toMatchObject({
 				status: 401,

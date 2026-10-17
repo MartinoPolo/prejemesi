@@ -55,10 +55,10 @@ const createInput = {
 	name: 'Claude',
 	scopes: [],
 	wishlistIds: null,
-	expiry: { kind: 'preset', days: 365 },
+	expiryDays: 365,
 	fastForward: false,
 };
-const rollInput = { tokenId: 'token-1', expiry: { kind: 'preset', days: 90 } };
+const rollInput = { tokenId: 'token-1', expiryDays: 90 };
 
 type RemoteFunction = (arg?: unknown) => Promise<unknown>;
 

@@ -16,9 +16,8 @@ import { listAccessibleWishlists } from '$lib/modules/wishlists/accessible_wishl
 import { WISHLIST_ROLES } from '$lib/modules/wishlists/types.js';
 import { AGENT_SCOPE, type AgentScope } from '$lib/modules/access_tokens/scopes.js';
 import {
-	ACCESS_TOKEN_EXPIRY_KIND,
-	ACCESS_TOKEN_MAX_EXPIRY_DAYS,
-	type AccessTokenExpiry,
+	ACCESS_TOKEN_EXPIRY_PRESET_DAYS,
+	type AccessTokenExpiryPresetDays,
 	type AccessTokenSummary,
 	type AccessTokenWishlistChoices,
 	type CreateAccessTokenInput,
@@ -70,15 +69,8 @@ function grantedScopes(requestedScopes: readonly AgentScope[]): AgentScope[] {
 	return Object.values(AGENT_SCOPE).filter((scope) => requested.has(scope));
 }
 
-function expiryDate(expiry: AccessTokenExpiry, now: Date): Date {
-	if (expiry.kind === ACCESS_TOKEN_EXPIRY_KIND.preset) {
-		return new Date(now.getTime() + expiry.days * DAY_MS);
-	}
-	const latestExpiry = now.getTime() + ACCESS_TOKEN_MAX_EXPIRY_DAYS * DAY_MS;
-	if (expiry.expiresAt.getTime() <= now.getTime() || expiry.expiresAt.getTime() > latestExpiry) {
-		error(400, SERVER_ERROR.AGENT_TOKEN_EXPIRY_OUT_OF_RANGE);
-	}
-	return expiry.expiresAt;
+function expiryDate(expiryDays: number, now: Date): Date {
+	return new Date(now.getTime() + expiryDays * DAY_MS);
 }
 
 /** A token may be limited only to wishlists its user currently receives, manages or follows. */
@@ -98,6 +90,20 @@ async function restrictionWishlistIds(
 	return [...new Set(wishlistIds)];
 }
 
+/**
+ * The preset closest to the lifetime since creation or the last roll. Every expiry is a preset
+ * counted from one of those, so the lifetime matches one exactly.
+ */
+function expiryPresetDays(
+	row: Pick<AccessTokenRow, 'expiresAt' | 'createdAt' | 'rolledAt'>,
+): AccessTokenExpiryPresetDays {
+	const lifetimeDays =
+		(row.expiresAt.getTime() - (row.rolledAt ?? row.createdAt).getTime()) / DAY_MS;
+	return ACCESS_TOKEN_EXPIRY_PRESET_DAYS.reduce((closest, preset) =>
+		Math.abs(preset - lifetimeDays) < Math.abs(closest - lifetimeDays) ? preset : closest,
+	);
+}
+
 function summarize(
 	row: AccessTokenRow,
 	wishlists: AccessTokenSummary['wishlists'],
@@ -111,6 +117,7 @@ function summarize(
 		wishlists,
 		fastForward: row.fastForward,
 		expiresAt: row.expiresAt,
+		expiryPresetDays: expiryPresetDays(row),
 		expired: row.expiresAt.getTime() <= now.getTime(),
 		lastUsedAt: row.lastUsedAt,
 		createdAt: row.createdAt,
@@ -131,7 +138,7 @@ export async function createAccessToken(
 	input: CreateAccessTokenInput,
 	now = new Date(),
 ): Promise<CreatedAccessToken> {
-	const expiresAt = expiryDate(input.expiry, now);
+	const expiresAt = expiryDate(input.expiryDays, now);
 	const wishlistIds = await restrictionWishlistIds(userId, input.wishlistIds);
 	const { value, tokenHash, tokenPrefix } = await issueTokenSecret();
 	const row = await getDb().transaction(async (transaction) => {
@@ -272,7 +279,9 @@ export async function rollAccessToken(
 			tokenHash,
 			tokenPrefix,
 			expiresAt:
-				input.expiry === undefined ? currentLifetimeFromNow : expiryDate(input.expiry, now),
+				input.expiryDays === undefined
+					? currentLifetimeFromNow
+					: expiryDate(input.expiryDays, now),
 			rolledAt: now,
 			lastUsedAt: null,
 		})
