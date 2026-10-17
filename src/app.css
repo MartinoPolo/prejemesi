@@ -96,10 +96,11 @@
    10 curated palettes. Palettes without --p-accent inherit sky's yellow.
    `data-palette` on <html> themes the app; on any wrapper element it
    re-derives every token for that subtree (per-wishlist palette). */
+
 /* Light filled controls: a deepened brand keeps white labels at AA. Declared on every
-   palette scope so a nested palette never inherits an ancestor's override. */
-:root,
-[data-palette] {
+   palette scope so a nested palette never inherits an ancestor's override; zero
+   specificity lets any palette block replace it. */
+:where(:root, [data-palette]) {
 	--p-primary: color-mix(in oklab, var(--p-brand) 20%, var(--p-deep));
 	--p-on-primary: #fff;
 }
@@ -156,6 +157,7 @@
 	--p-bright: #ffc24b;
 	--p-accent: #a9dbff;
 	--p-on-accent: #14486b;
+
 	/* Yellow-green brands stay too light for white labels even when deepened. */
 	--p-primary: var(--p-brand);
 	--p-on-primary: color-mix(in oklab, var(--p-ink) 70%, black);
