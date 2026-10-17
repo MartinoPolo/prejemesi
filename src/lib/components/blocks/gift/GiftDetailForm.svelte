@@ -1011,7 +1011,7 @@
 
 				<!-- Price + Currency -->
 				<div class="mt-3 {styles.formRow()}" data-testid="gift-price-currency-row">
-					<div class={styles.formField()}>
+					<div class={styles.formRowField()}>
 						<div data-slot="gift-form-label-row" class={styles.formLabelRow()}>
 							<Label for="gift-price">{m.gift_price_label()}</Label>
 							<div class="flex items-center gap-1.5">
@@ -1029,11 +1029,61 @@
 								/>
 							</div>
 						</div>
-						{#if isPriceRange}
-							<div class="flex items-center gap-2">
+						<div class={styles.formControlStack()}>
+							{#if isPriceRange}
+								<div class="flex items-center gap-2">
+									<Input
+										id="gift-price"
+										class="numeric-input min-w-0"
+										bind:value={price}
+										placeholder="0"
+										type="number"
+										min="0"
+										step="0.01"
+										onkeydown={(event) =>
+											handleGiftPriceKeydown(
+												event,
+												price,
+												(value) => (price = value),
+											)}
+										bind:ref={priceInput}
+										aria-label={m.gift_price_range_min_aria()}
+										state={priceRangeError !== '' ? 'error' : 'default'}
+										aria-invalid={priceRangeError !== '' ? true : undefined}
+										aria-describedby={priceRangeError !== ''
+											? 'gift-price-range-error'
+											: undefined}
+									/>
+									<span class="shrink-0 text-muted-foreground" aria-hidden="true"
+										>–</span
+									>
+									<Input
+										id="gift-price-max"
+										class="numeric-input min-w-0"
+										bind:value={priceMax}
+										placeholder="0"
+										type="number"
+										min="0"
+										step="0.01"
+										onkeydown={(event) =>
+											handleGiftPriceKeydown(
+												event,
+												priceMax,
+												(value) => (priceMax = value),
+											)}
+										bind:ref={priceMaxInput}
+										aria-label={m.gift_price_range_max_aria()}
+										state={priceRangeError !== '' ? 'error' : 'default'}
+										aria-invalid={priceRangeError !== '' ? true : undefined}
+										aria-describedby={priceRangeError !== ''
+											? 'gift-price-range-error'
+											: undefined}
+									/>
+								</div>
+							{:else}
 								<Input
 									id="gift-price"
-									class="numeric-input min-w-0"
+									class="numeric-input"
 									bind:value={price}
 									placeholder="0"
 									type="number"
@@ -1046,183 +1096,146 @@
 											(value) => (price = value),
 										)}
 									bind:ref={priceInput}
-									aria-label={m.gift_price_range_min_aria()}
-									state={priceRangeError !== '' ? 'error' : 'default'}
-									aria-invalid={priceRangeError !== '' ? true : undefined}
-									aria-describedby={priceRangeError !== ''
-										? 'gift-price-range-error'
-										: undefined}
 								/>
-								<span class="shrink-0 text-muted-foreground" aria-hidden="true"
-									>–</span
+							{/if}
+							{#if priceRangeError !== ''}
+								<HelpText id="gift-price-range-error" state="error"
+									>{priceRangeError}</HelpText
 								>
-								<Input
-									id="gift-price-max"
-									class="numeric-input min-w-0"
-									bind:value={priceMax}
-									placeholder="0"
-									type="number"
-									min="0"
-									step="0.01"
-									onkeydown={(event) =>
-										handleGiftPriceKeydown(
-											event,
-											priceMax,
-											(value) => (priceMax = value),
-										)}
-									bind:ref={priceMaxInput}
-									aria-label={m.gift_price_range_max_aria()}
-									state={priceRangeError !== '' ? 'error' : 'default'}
-									aria-invalid={priceRangeError !== '' ? true : undefined}
-									aria-describedby={priceRangeError !== ''
-										? 'gift-price-range-error'
-										: undefined}
-								/>
-							</div>
-						{:else}
-							<Input
-								id="gift-price"
-								class="numeric-input"
-								bind:value={price}
-								placeholder="0"
-								type="number"
-								min="0"
-								step="0.01"
-								onkeydown={(event) =>
-									handleGiftPriceKeydown(
-										event,
-										price,
-										(value) => (price = value),
-									)}
-								bind:ref={priceInput}
-							/>
-						{/if}
-						{#if priceRangeError !== ''}
-							<HelpText id="gift-price-range-error" state="error"
-								>{priceRangeError}</HelpText
-							>
-						{/if}
+							{/if}
+						</div>
 					</div>
-					<div class={styles.formField()}>
+					<div class={styles.formRowField()}>
 						<div data-slot="gift-form-label-row" class={styles.formLabelRow()}>
 							<Label>{m.gift_currency_label()}</Label>
 						</div>
-						<Select.Root type="single" bind:value={currency}>
-							<Select.Trigger size="md" class="w-full">
-								{GIFT_CURRENCY_LABELS[currency]}
-							</Select.Trigger>
-							<Select.Content>
-								<Select.Group>
-									{#each Object.entries(GIFT_CURRENCIES) as [key, val] (key)}
-										<Select.Item value={val} label={GIFT_CURRENCY_LABELS[val]}>
-											{GIFT_CURRENCY_LABELS[val]}
-										</Select.Item>
-									{/each}
-								</Select.Group>
-							</Select.Content>
-						</Select.Root>
-					</div>
-				</div>
-
-				<!-- Quantity + category + priority -->
-				<div class={cn('mt-3', styles.formRow())} data-testid="gift-quantity-priority-row">
-					<div class={styles.formField()}>
-						<div data-slot="gift-form-label-row" class={styles.formLabelRow()}>
-							<Label for="gift-quantity">{m.gift_quantity_label()}</Label>
-						</div>
-						<Input
-							id="gift-quantity"
-							class="numeric-input"
-							bind:value={quantity}
-							type="number"
-							min={locked ? String(currentQuantity) : '1'}
-							placeholder="1"
-						/>
-						{#if locked}
-							<HelpText
-								class="w-fit rounded-md border border-border bg-surface-2 px-2 py-1"
-							>
-								{m.gift_quantity_frozen_help()}
-							</HelpText>
-						{/if}
-					</div>
-
-					<div class={styles.formField()}>
-						<div data-slot="gift-form-label-row" class={styles.formLabelRow()}>
-							<Label>{m.gift_category_label()}</Label>
-						</div>
-						{#if categoryOptions.length > 0}
-							<Select.Root type="single" bind:value={categoryId}>
-								<Select.Trigger size="md" class="w-full">
-									{#if categoryId}
-										{categoryLabel(
-											categoryOptions.find(
-												(category) => category.id === categoryId,
-											) ?? categoryOptions[0]!,
-										)}
-									{:else}
-										{m.gift_category_none()}
-									{/if}
+						<div class={styles.formControlStack()}>
+							<Select.Root type="single" bind:value={currency}>
+								<Select.Trigger class="w-full">
+									{GIFT_CURRENCY_LABELS[currency]}
 								</Select.Trigger>
 								<Select.Content>
 									<Select.Group>
-										<Select.Item value="" label={m.gift_category_none()}>
-											{m.gift_category_none()}
-										</Select.Item>
-										{#each categoryOptions as category (category.id)}
-											{@const label = categoryLabel(category)}
-											<Select.Item value={category.id} {label}
-												>{label}</Select.Item
+										{#each Object.entries(GIFT_CURRENCIES) as [key, val] (key)}
+											<Select.Item
+												value={val}
+												label={GIFT_CURRENCY_LABELS[val]}
 											>
-										{/each}
-									</Select.Group>
-								</Select.Content>
-							</Select.Root>
-						{:else}
-							<Select.Root type="single" disabled>
-								<Select.Trigger size="md" class="w-full" disabled>
-									{m.gift_category_none_enabled()}
-								</Select.Trigger>
-							</Select.Root>
-							<HelpText>{m.gift_category_none_enabled_help()}</HelpText>
-						{/if}
-					</div>
-
-					{#if priorityLevels.length > 0}
-						<div class={styles.formField()}>
-							<div data-slot="gift-form-label-row" class={styles.formLabelRow()}>
-								<Label>{m.gift_priority_label()}</Label>
-							</div>
-							<Select.Root type="single" bind:value={priorityLevelId}>
-								<Select.Trigger size="md" class="w-full">
-									{#if priorityLevelId}
-										{@const selectedLabel =
-											priorityLevels.find((p) => p.id === priorityLevelId)
-												?.label ?? ''}
-										{selectedLabel !== ''
-											? (getPriorityDisplay(selectedLabel)?.label() ??
-												selectedLabel)
-											: m.gift_priority_select()}
-									{:else}
-										{m.gift_priority_none()}
-									{/if}
-								</Select.Trigger>
-								<Select.Content>
-									<Select.Group>
-										<Select.Item value="" label={m.gift_priority_none()}
-											>{m.gift_priority_none()}</Select.Item
-										>
-										{#each priorityLevels as level (level.id)}
-											{@const levelLabel =
-												getPriorityDisplay(level.label)?.label() ??
-												level.label}
-											<Select.Item value={level.id} label={levelLabel}>
-												{levelLabel}
+												{GIFT_CURRENCY_LABELS[val]}
 											</Select.Item>
 										{/each}
 									</Select.Group>
 								</Select.Content>
 							</Select.Root>
+						</div>
+					</div>
+				</div>
+
+				<!-- Quantity + category + priority -->
+				<div class={cn('mt-3', styles.formRow())} data-testid="gift-quantity-priority-row">
+					<div class={styles.formRowField()}>
+						<div data-slot="gift-form-label-row" class={styles.formLabelRow()}>
+							<Label for="gift-quantity">{m.gift_quantity_label()}</Label>
+						</div>
+						<div class={styles.formControlStack()}>
+							<Input
+								id="gift-quantity"
+								class="numeric-input"
+								bind:value={quantity}
+								type="number"
+								min={locked ? String(currentQuantity) : '1'}
+								placeholder="1"
+							/>
+							{#if locked}
+								<HelpText
+									class="w-fit rounded-md border border-border bg-surface-2 px-2 py-1"
+								>
+									{m.gift_quantity_frozen_help()}
+								</HelpText>
+							{/if}
+						</div>
+					</div>
+
+					<div class={styles.formRowField()}>
+						<div data-slot="gift-form-label-row" class={styles.formLabelRow()}>
+							<Label>{m.gift_category_label()}</Label>
+						</div>
+						<div class={styles.formControlStack()}>
+							{#if categoryOptions.length > 0}
+								<Select.Root type="single" bind:value={categoryId}>
+									<Select.Trigger class="w-full">
+										{#if categoryId}
+											{categoryLabel(
+												categoryOptions.find(
+													(category) => category.id === categoryId,
+												) ?? categoryOptions[0]!,
+											)}
+										{:else}
+											{m.gift_category_none()}
+										{/if}
+									</Select.Trigger>
+									<Select.Content>
+										<Select.Group>
+											<Select.Item value="" label={m.gift_category_none()}>
+												{m.gift_category_none()}
+											</Select.Item>
+											{#each categoryOptions as category (category.id)}
+												{@const label = categoryLabel(category)}
+												<Select.Item value={category.id} {label}
+													>{label}</Select.Item
+												>
+											{/each}
+										</Select.Group>
+									</Select.Content>
+								</Select.Root>
+							{:else}
+								<Select.Root type="single" disabled>
+									<Select.Trigger class="w-full" disabled>
+										{m.gift_category_none_enabled()}
+									</Select.Trigger>
+								</Select.Root>
+								<HelpText>{m.gift_category_none_enabled_help()}</HelpText>
+							{/if}
+						</div>
+					</div>
+
+					{#if priorityLevels.length > 0}
+						<div class={styles.formRowField()}>
+							<div data-slot="gift-form-label-row" class={styles.formLabelRow()}>
+								<Label>{m.gift_priority_label()}</Label>
+							</div>
+							<div class={styles.formControlStack()}>
+								<Select.Root type="single" bind:value={priorityLevelId}>
+									<Select.Trigger class="w-full">
+										{#if priorityLevelId}
+											{@const selectedLabel =
+												priorityLevels.find((p) => p.id === priorityLevelId)
+													?.label ?? ''}
+											{selectedLabel !== ''
+												? (getPriorityDisplay(selectedLabel)?.label() ??
+													selectedLabel)
+												: m.gift_priority_select()}
+										{:else}
+											{m.gift_priority_none()}
+										{/if}
+									</Select.Trigger>
+									<Select.Content>
+										<Select.Group>
+											<Select.Item value="" label={m.gift_priority_none()}
+												>{m.gift_priority_none()}</Select.Item
+											>
+											{#each priorityLevels as level (level.id)}
+												{@const levelLabel =
+													getPriorityDisplay(level.label)?.label() ??
+													level.label}
+												<Select.Item value={level.id} label={levelLabel}>
+													{levelLabel}
+												</Select.Item>
+											{/each}
+										</Select.Group>
+									</Select.Content>
+								</Select.Root>
+							</div>
 						</div>
 					{/if}
 				</div>

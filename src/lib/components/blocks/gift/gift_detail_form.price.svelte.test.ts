@@ -358,10 +358,25 @@ describe('GiftDetailForm legacy `auto` normalization (issue #183 EXTRA)', () => 
 });
 
 describe('GiftDetailForm dense control alignment (issue #159)', () => {
+	const MOBILE_CONTROL_HEIGHT = 40;
+	const DESKTOP_CONTROL_HEIGHT = 32;
+	const SINGLE_LINE_LABEL_ROW_HEIGHT = 24;
+
+	const priorityLevels = [
+		{
+			id: 'priority-medium',
+			wishlistId: 'wishlist-1',
+			sortOrder: 1,
+			label: 'Stredni',
+			createdAt: new Date('2026-01-01T00:00:00Z'),
+		},
+	];
+
 	function expectAlignedControlPair(
 		rowTestId: string,
 		firstControlSelector: string,
 		secondControlSelector: string,
+		expectedControlHeight: number,
 	): void {
 		const row = document.querySelector<HTMLElement>(`[data-testid="${rowTestId}"]`);
 		expect(row).not.toBeNull();
@@ -383,10 +398,10 @@ describe('GiftDetailForm dense control alignment (issue #159)', () => {
 		expect(secondControl).not.toBeNull();
 		const firstControlRect = firstControl!.getBoundingClientRect();
 		const secondControlRect = secondControl!.getBoundingClientRect();
-		expectPixelsNear(firstControlRect.height, 40);
-		expectPixelsNear(secondControlRect.height, 32);
+		expectPixelsNear(firstControlRect.height, expectedControlHeight);
+		expectPixelsNear(secondControlRect.height, expectedControlHeight);
 		expectPixelsNear(firstControlRect.top, secondControlRect.top);
-		expect(firstControlRect.bottom).toBeGreaterThan(secondControlRect.bottom);
+		expectPixelsNear(firstControlRect.bottom, secondControlRect.bottom);
 
 		const labelRows = fields.map((field) =>
 			field.querySelector<HTMLElement>('[data-slot="gift-form-label-row"]'),
@@ -396,6 +411,10 @@ describe('GiftDetailForm dense control alignment (issue #159)', () => {
 			labelRow!.getBoundingClientRect(),
 		);
 		expectPixelsNear(firstLabelRowRect.top, secondLabelRowRect.top);
+		expectPixelsNear(
+			firstControlRect.top - firstLabelRowRect.bottom,
+			Number.parseFloat(getComputedStyle(fields[0]!).rowGap),
+		);
 
 		const [firstLabelRect, secondLabelRect] = labelRows.map((labelRow) =>
 			labelRow!.querySelector('label')!.getBoundingClientRect(),
@@ -404,45 +423,77 @@ describe('GiftDetailForm dense control alignment (issue #159)', () => {
 		expectPixelsNear(firstLabelRect.bottom, secondLabelRect.bottom);
 	}
 
-	it('aligns paired label rows while preserving responsive and explicit mobile control sizes', async () => {
+	function expectWrappedPriorityControl(expectedControlHeight: number): void {
+		const row = document.querySelector<HTMLElement>(
+			'[data-testid="gift-quantity-priority-row"]',
+		);
+		const [quantityField, , priorityField] = [...row!.children] as HTMLElement[];
+		expect(priorityField).toBeDefined();
+		const priorityTrigger = priorityField!.querySelector<HTMLElement>(
+			'[data-slot="select-trigger"]',
+		);
+		expect(priorityTrigger).not.toBeNull();
+		expectPixelsNear(priorityTrigger!.getBoundingClientRect().height, expectedControlHeight);
+		expectPixelsNear(
+			priorityField!.getBoundingClientRect().top -
+				quantityField!.getBoundingClientRect().bottom,
+			Number.parseFloat(getComputedStyle(row!).rowGap),
+		);
+	}
+
+	it('gives paired mobile controls the same large height and edges', async () => {
 		await page.viewport(390, 720);
-		await render(GiftDetailForm, {
-			...baseProps,
-			gift: makeGift(),
-			priorityLevels: [
-				{
-					id: 'priority-medium',
-					wishlistId: 'wishlist-1',
-					sortOrder: 1,
-					label: 'Stredni',
-					createdAt: new Date('2026-01-01T00:00:00Z'),
-				},
-			],
-		});
+		await render(GiftDetailForm, { ...baseProps, gift: makeGift(), priorityLevels });
 
 		expectAlignedControlPair(
 			'gift-price-currency-row',
 			'#gift-price',
 			'[data-slot="select-trigger"]',
+			MOBILE_CONTROL_HEIGHT,
 		);
 		expectAlignedControlPair(
 			'gift-quantity-priority-row',
 			'#gift-quantity',
 			'[data-slot="select-trigger"]',
+			MOBILE_CONTROL_HEIGHT,
 		);
+		expectWrappedPriorityControl(MOBILE_CONTROL_HEIGHT);
 	});
 
 	it('keeps quantity and the empty category control aligned when no priorities exist', async () => {
 		await page.viewport(390, 720);
-		await render(GiftDetailForm, {
-			...baseProps,
-			gift: makeGift(),
-		});
+		await render(GiftDetailForm, { ...baseProps, gift: makeGift() });
 
 		expectAlignedControlPair(
 			'gift-quantity-priority-row',
 			'#gift-quantity',
 			'[data-slot="select-trigger"]',
+			MOBILE_CONTROL_HEIGHT,
 		);
+	});
+
+	it('keeps desktop controls level when the price-range label wraps in a narrow editor', async () => {
+		await page.viewport(660, 720);
+		await render(GiftDetailForm, { ...baseProps, gift: makeGift(), priorityLevels });
+
+		const priceLabelRow = document.querySelector<HTMLElement>(
+			'[data-testid="gift-price-currency-row"] [data-slot="gift-form-label-row"]',
+		);
+		expect(priceLabelRow!.getBoundingClientRect().height).toBeGreaterThan(
+			SINGLE_LINE_LABEL_ROW_HEIGHT + 1,
+		);
+		expectAlignedControlPair(
+			'gift-price-currency-row',
+			'#gift-price',
+			'[data-slot="select-trigger"]',
+			DESKTOP_CONTROL_HEIGHT,
+		);
+		expectAlignedControlPair(
+			'gift-quantity-priority-row',
+			'#gift-quantity',
+			'[data-slot="select-trigger"]',
+			DESKTOP_CONTROL_HEIGHT,
+		);
+		expectWrappedPriorityControl(DESKTOP_CONTROL_HEIGHT);
 	});
 });

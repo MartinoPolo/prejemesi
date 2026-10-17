@@ -55,6 +55,10 @@ export const giftDetailModalVariants = tv({
 		formLabel: 'text-sm font-medium text-foreground',
 		formRow:
 			'grid grid-cols-[repeat(auto-fit,minmax(min(100%,9rem),1fr))] gap-3 sm:grid-cols-2',
+		// Fields in a row share its label and control tracks, so a label that wraps in one
+		// field moves every control in the row together instead of offsetting only its own.
+		formRowField: 'row-span-2 grid grid-rows-subgrid gap-y-1.5',
+		formControlStack: 'flex flex-col gap-1.5',
 		formLabelRow: 'flex min-h-6 items-center justify-between gap-2',
 		// Mobile: manager release/delete actions flow with the form scroll; Save
 		// itself is hidden here and rendered instead in `mobileSubmitFooter`
