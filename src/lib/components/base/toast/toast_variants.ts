@@ -42,7 +42,7 @@ export const toastIconColors = {
 export const toastTitleColors = {
 	info: 'text-[color-mix(in_oklab,var(--status-info)_60%,var(--foreground))]',
 	success: 'text-status-success-text',
-	warning: 'text-[color-mix(in_oklab,var(--status-warning)_60%,var(--foreground))]',
+	warning: 'text-status-warning-text',
 	danger: 'text-[color-mix(in_oklab,var(--status-danger)_60%,var(--foreground))]',
 	loading: 'text-[color-mix(in_oklab,var(--primary)_60%,var(--foreground))]',
 } as const satisfies Record<ToastTone, string>;
