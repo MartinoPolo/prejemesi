@@ -7,7 +7,7 @@ export const helpTextVariants = tv({
 	variants: {
 		state: {
 			default: '',
-			error: 'text-status-danger',
+			error: 'text-status-danger-text',
 			success: 'text-status-success-text',
 		},
 	},
