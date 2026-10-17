@@ -124,18 +124,27 @@ vi.mock('drizzle-orm', () => ({
 
 // Auth is exercised through the mocked BetterAuth surface: getSession supplies
 // `locals.user`, svelteKitHandler just resolves.
-const { mockGetSession, mockSignInEmail, mockCleanExpiredDemos, mockFindDemoSession } = vi.hoisted(
-	() => ({
-		mockGetSession: vi.fn(),
-		mockSignInEmail: vi.fn(),
-		mockCleanExpiredDemos: vi.fn(),
-		mockFindDemoSession: vi.fn(),
-	}),
-);
+const {
+	mockGetSession,
+	mockSignInEmail,
+	mockCleanExpiredDemos,
+	mockFindDemoSession,
+	mockHandleDemoRequest,
+} = vi.hoisted(() => ({
+	mockGetSession: vi.fn(),
+	mockSignInEmail: vi.fn(),
+	mockCleanExpiredDemos: vi.fn(),
+	mockFindDemoSession: vi.fn(),
+	mockHandleDemoRequest: vi.fn(),
+}));
 
 vi.mock('$lib/server/demo/session.js', () => ({
 	cleanExpiredDemos: mockCleanExpiredDemos,
 	findDemoSession: mockFindDemoSession,
+}));
+
+vi.mock('$lib/server/demo/request.js', () => ({
+	handleDemoRequest: mockHandleDemoRequest,
 }));
 
 vi.mock('$lib/server/auth.js', () => ({
@@ -267,6 +276,7 @@ beforeEach(() => {
 	mockIsDatabaseConfigured.mockReturnValue(true);
 	mockGetSession.mockResolvedValue({ session: { id: 'session-1' }, user: SESSION_USER });
 	setPreferenceRow({ preferredLocale: 'en', palette: 'grape', depthStyle: 'ink' });
+	mockHandleDemoRequest.mockResolvedValue(new Response('demo response', { status: 200 }));
 });
 
 describe('expired demo maintenance', () => {
@@ -370,6 +380,28 @@ describe('demo cookie at the auth API', () => {
 		await runHandle(createEvent({ path: '/api/auth/get-session' }));
 		await runHandle(createEvent({ path: '/' }));
 		expect(mockFindDemoSession).not.toHaveBeenCalled();
+	});
+});
+
+describe('demo cookie at the agent API', () => {
+	const demoCookies = { [DEMO_COOKIE_NAME]: 'a'.repeat(64) };
+
+	it('serves the agent API outside demo session and transaction setup', async () => {
+		const { html } = await runHandle(
+			createEvent({ path: '/api/v1/me', accept: 'application/json', cookies: demoCookies }),
+		);
+		// The terminal resolve renders the app template; demo handling would answer instead.
+		expect(html).toContain('%sveltekit.head%');
+		expect(mockHandleDemoRequest).not.toHaveBeenCalled();
+		expect(mockFindDemoSession).not.toHaveBeenCalled();
+	});
+
+	it('keeps demo handling for the same cookie outside the agent API', async () => {
+		const { html } = await runHandle(
+			createEvent({ path: '/my-lists', accept: 'application/json', cookies: demoCookies }),
+		);
+		expect(html).toBe('demo response');
+		expect(mockHandleDemoRequest).toHaveBeenCalledOnce();
 	});
 });
 

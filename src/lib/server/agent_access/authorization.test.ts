@@ -25,7 +25,7 @@ import {
 	type AgentOperationRequest,
 } from './authorization.js';
 import { tokenActor, type AgentAccessGrant } from './agent_grant.js';
-import { AGENT_SCOPE, type AgentScope } from './scopes.js';
+import { AGENT_SCOPE, type AgentScope } from '$lib/modules/access_tokens/scopes.js';
 
 const ALLOWED_WISHLIST_ID = 'allowed-wishlist';
 const OTHER_WISHLIST_ID = 'other-wishlist';
@@ -168,6 +168,22 @@ describe('authorizeAgentOperation', () => {
 			recipientKind: 'self',
 		});
 		expect(authorized.targetWishlistIds).toEqual([]);
+	});
+
+	it('lets a restricted token list its wishlists, limited to them', async () => {
+		const restrictedGrant = grantWith([AGENT_SCOPE.read], [ALLOWED_WISHLIST_ID]);
+		const authorized = await authorizeAgentOperation(
+			restrictedGrant,
+			'readAccessibleWishlists',
+			{},
+		);
+		const accessible = { title: 'T', recipientDisplayName: 'R', status: 'active' };
+		expect(
+			authorized.projectOutput([
+				{ ...accessible, id: ALLOWED_WISHLIST_ID, shortId: 'a', role: 'moderator' },
+				{ ...accessible, id: OTHER_WISHLIST_ID, shortId: 'b', role: 'recipient' },
+			]),
+		).toEqual([expect.objectContaining({ id: ALLOWED_WISHLIST_ID, role: 'moderator' })]);
 	});
 
 	it('rejects input that does not match the operation schema', async () => {
@@ -345,21 +361,35 @@ describe('authorizeAgentOperations', () => {
 		);
 	});
 
-	it('rejects an empty batch and one beyond the step limit', async () => {
+	it('rejects an empty batch', async () => {
+		await expectServerError(
+			authorizeAgentOperations(grantWith(everyScope), []),
+			400,
+			SERVER_ERROR.INVALID_OPERATION_INPUT,
+		);
+	});
+
+	it('rejects a batch beyond the 200-item cap and reports the cap', async () => {
 		const createGift: AgentOperationRequest = {
 			operationName: 'createGift',
 			input: { wishlistId: ALLOWED_WISHLIST_ID, name: 'Kolo' },
 		};
-		for (const requests of [
-			[],
-			Array.from({ length: MAX_OPERATION_BATCH_STEPS + 1 }, () => createGift),
-		]) {
-			await expectServerError(
-				authorizeAgentOperations(grantWith(everyScope), requests),
-				400,
-				SERVER_ERROR.INVALID_OPERATION_INPUT,
-				String(requests.length),
-			);
-		}
+		const thrown = await captureRejection(
+			authorizeAgentOperations(
+				grantWith(everyScope),
+				Array.from({ length: 201 }, () => createGift),
+			),
+		);
+		expect(thrown).toMatchObject({ status: 400 });
+		expect(JSON.parse((thrown as { body: { message: string } }).body.message)).toEqual({
+			code: SERVER_ERROR.AGENT_BATCH_TOO_LARGE,
+			maxItems: 200,
+		});
+		await expect(
+			authorizeAgentOperations(
+				grantWith(everyScope),
+				Array.from({ length: MAX_OPERATION_BATCH_STEPS }, () => createGift),
+			),
+		).resolves.toHaveLength(200);
 	});
 });

@@ -9,7 +9,7 @@ import {
 } from './operation_policies.js';
 import { TARGET_KIND } from './policy_lookups.js';
 import type { AgentAccessGrant } from './agent_grant.js';
-import { AGENT_SCOPE, type AgentScope } from './scopes.js';
+import { AGENT_SCOPE, type AgentScope } from '$lib/modules/access_tokens/scopes.js';
 
 const RESERVATION_OPERATION_NAMES = [
 	'reserveGift',

@@ -1,4 +1,4 @@
-const DAY_MS = 24 * 60 * 60 * 1000;
+export const DAY_MS = 24 * 60 * 60 * 1000;
 
 export const GIFT_REVISION_RETENTION_DAYS = 90;
 export const GIFT_REVISION_RETENTION_MS = GIFT_REVISION_RETENTION_DAYS * DAY_MS;

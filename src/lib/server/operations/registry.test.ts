@@ -93,8 +93,9 @@ describe('operation registry', () => {
 		}
 	});
 
-	it('lets agents read wishlists and the categories they manage', () => {
+	it('lets agents list and read wishlists and the categories they manage', () => {
 		for (const operationName of [
+			'readAccessibleWishlists',
 			'readWishlist',
 			'readGiftCategories',
 			'readGiftCategorySettingsRows',

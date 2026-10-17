@@ -1,5 +1,5 @@
 import { tokenChannel, type OperationActor } from '$lib/server/operations/actor.js';
-import type { AgentScope } from './scopes.js';
+import type { AgentScope } from '$lib/modules/access_tokens/scopes.js';
 
 /** What one personal access token lets its user's agent do. */
 export interface AgentAccessGrant {
