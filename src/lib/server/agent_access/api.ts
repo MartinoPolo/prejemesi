@@ -103,6 +103,27 @@ const AGENT_ERROR_MESSAGES: Partial<Record<ServerErrorCode, string>> = {
 		'The selected rows include unknown, repeated or rejected rows.',
 	[SERVER_ERROR.AGENT_PROPOSAL_UNDO_UNSUPPORTED]:
 		'The applied proposal includes changes undo cannot reverse.',
+	[SERVER_ERROR.AGENT_IMAGE_INPUT_UNSUPPORTED]: `Image URLs and storage keys are not accepted. Only operations whose input schema lists imageReference take an image, from POST ${AGENT_API_BASE_PATH}/images; wishlist images and imported drafts take none.`,
+	[SERVER_ERROR.AGENT_IMAGE_REQUEST_INVALID]:
+		'The request must give an image url and exactly one of wishlistId or wishlistShortId.',
+	[SERVER_ERROR.AGENT_IMAGE_URL_INVALID]:
+		'The image url must be an HTTPS URL without credentials.',
+	[SERVER_ERROR.AGENT_IMAGE_HOST_BLOCKED]:
+		'The image url, or a redirect, names an IP address, a local host or a non-default port.',
+	[SERVER_ERROR.AGENT_IMAGE_TOO_LARGE]: 'The image is larger than allowed.',
+	[SERVER_ERROR.AGENT_IMAGE_UNSUPPORTED_TYPE]: 'The image must be JPEG, PNG, WebP or GIF.',
+	[SERVER_ERROR.AGENT_IMAGE_SIGNATURE_MISMATCH]:
+		'The downloaded bytes are not an image of the declared type.',
+	[SERVER_ERROR.AGENT_IMAGE_DIMENSIONS_INVALID]: 'The image has no width or height.',
+	[SERVER_ERROR.AGENT_IMAGE_FETCH_FAILED]:
+		'The image could not be downloaded: an error status, a timeout or too many redirects.',
+	[SERVER_ERROR.AGENT_IMAGE_STORAGE_UNAVAILABLE]: 'Image storage is unavailable.',
+	[SERVER_ERROR.AGENT_DAILY_IMAGE_BUDGET_EXCEEDED]:
+		'The daily image budget of the access token user is used up.',
+	[SERVER_ERROR.AGENT_IMAGE_REFERENCE_INVALID]:
+		'The imageReference is unknown, belongs to another user or wishlist, or is repeated.',
+	[SERVER_ERROR.AGENT_IMAGE_REFERENCE_EXPIRED]: 'The imageReference has expired.',
+	[SERVER_ERROR.AGENT_IMAGE_REFERENCE_USED]: 'The imageReference is already attached to a gift.',
 };
 
 /** A failure the API answers with its own status, details and headers. */

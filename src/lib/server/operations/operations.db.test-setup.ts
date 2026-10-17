@@ -7,7 +7,10 @@ vi.mock('$app/server', () => ({
 	}),
 }));
 vi.mock('$env/dynamic/private', () => ({ env: { DATABASE_URL: process.env.DATABASE_URL } }));
-vi.mock('$lib/server/storage/r2.js', () => ({ deleteObjectsBestEffort: vi.fn() }));
+vi.mock('$lib/server/storage/r2.js', async (importOriginal) => ({
+	...(await importOriginal<Record<string, unknown>>()),
+	deleteObjectsBestEffort: vi.fn(),
+}));
 vi.mock('$lib/server/anonymous_visitor.js', () => ({ getAnonVisitorId: vi.fn(() => null) }));
 vi.mock('$lib/modules/notifications/notification_dispatcher.js', () => ({
 	dispatchNotification: vi.fn(),

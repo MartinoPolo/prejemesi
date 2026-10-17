@@ -17,6 +17,7 @@ import {
 	imageObjectKey,
 	validatePreparedImageReference,
 } from './image_mirroring.js';
+import { IMAGE_DOWNLOAD_FAILURE, ImageDownloadError } from '$lib/server/images/image_download.js';
 
 const png = Uint8Array.from([
 	137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13, 73, 72, 68, 82, 0, 0, 0, 2, 0, 0, 0, 3, 8, 6, 0,
@@ -197,6 +198,32 @@ describe('ingestion image mirroring', () => {
 			'93.184.216.34',
 			expect.any(AbortSignal),
 		);
+	});
+
+	it('reports a failing DNS lookup or request as a download failure keeping the cause', async () => {
+		const lookupFailure = new Error('getaddrinfo ENOTFOUND safe.example');
+		const requestFailure = new Error('socket hang up');
+		for (const [dependencies, cause] of [
+			[{ resolve: async () => Promise.reject(lookupFailure) }, lookupFailure],
+			[
+				{
+					resolve: async () => ['93.184.216.34'],
+					request: async () => Promise.reject(requestFailure),
+				},
+				requestFailure,
+			],
+		] as const) {
+			const failure = await downloadValidatedImage(
+				'https://safe.example/a.png',
+				dependencies,
+			).catch((thrown: unknown) => thrown);
+			expect(failure).toBeInstanceOf(ImageDownloadError);
+			expect(failure).toMatchObject({
+				reason: IMAGE_DOWNLOAD_FAILURE.fetchFailed,
+				cause,
+				message: expect.stringContaining(cause.message),
+			});
+		}
 	});
 
 	it('binds ingestion keys and prepared references to wishlist, manifest, item, hash, MIME, and size', () => {

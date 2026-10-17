@@ -5,10 +5,8 @@ import {
 	parseGiftIngestionManifest,
 	type GiftIngestionManifest,
 } from '../src/lib/modules/ingestion/manifest.js';
-import {
-	downloadValidatedImage,
-	type DownloadedImage,
-} from '../src/lib/modules/ingestion/image_mirroring.js';
+import { downloadValidatedImage } from '../src/lib/modules/ingestion/image_mirroring.js';
+import type { DownloadedImage } from '../src/lib/server/images/image_download.js';
 
 export interface CliDependencies {
 	readFile(path: string): Promise<string>;

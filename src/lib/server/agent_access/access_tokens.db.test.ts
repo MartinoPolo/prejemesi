@@ -113,41 +113,28 @@ describe.skipIf(!DB_READY)('personal access tokens', () => {
 			const byDefault = await createTokenFor(MANAGER_ID, {}, now);
 			expect(byDefault.token.expiresAt.getTime()).toBe(now.getTime() + 365 * DAY_MS);
 			for (const days of [30, 90, 1825, 3650]) {
-				const preset = await createTokenFor(
-					MANAGER_ID,
-					{ expiry: { kind: 'preset', days } },
-					now,
-				);
+				const preset = await createTokenFor(MANAGER_ID, { expiryDays: days }, now);
 				expect(preset.token.expiresAt.getTime(), String(days)).toBe(
 					now.getTime() + days * DAY_MS,
 				);
 			}
 		});
 
-		it('accepts a custom expiry only strictly in the future and at most 10 years ahead', async () => {
+		it('reports the preset it was created with, in the list too', async () => {
 			const now = new Date('2026-10-14T12:00:00Z');
-			for (const expiresAt of [
-				new Date(now.getTime() - DAY_MS),
+			const byDefault = await createTokenFor(MANAGER_ID, { name: 'Default' }, now);
+			const shortLived = await createTokenFor(
+				MANAGER_ID,
+				{ name: 'Short', expiryDays: 30 },
 				now,
-				new Date(now.getTime() + 3650 * DAY_MS + 1000),
-			]) {
-				await expectRejection(
-					createTokenFor(MANAGER_ID, { expiry: { kind: 'custom', expiresAt } }, now),
-					400,
-					SERVER_ERROR.AGENT_TOKEN_EXPIRY_OUT_OF_RANGE,
-				);
-			}
-			for (const expiresAt of [
-				new Date(now.getTime() + 60 * 1000),
-				new Date(now.getTime() + 3650 * DAY_MS),
-			]) {
-				const custom = await createTokenFor(
-					MANAGER_ID,
-					{ expiry: { kind: 'custom', expiresAt } },
-					now,
-				);
-				expect(custom.token.expiresAt).toEqual(expiresAt);
-			}
+			);
+
+			expect(byDefault.token.expiryPresetDays).toBe(365);
+			expect(shortLived.token.expiryPresetDays).toBe(30);
+			const listed = await listAccessTokens(MANAGER_ID, now);
+			expect(listed.find((token) => token.id === shortLived.token.id)?.expiryPresetDays).toBe(
+				30,
+			);
 		});
 
 		it('keeps fast-forward off unless chosen', async () => {
@@ -217,7 +204,7 @@ describe.skipIf(!DB_READY)('personal access tokens', () => {
 			const longAgo = new Date(now.getTime() - 100 * DAY_MS);
 			const expired = await createTokenFor(
 				userId,
-				{ name: 'Expired', expiry: { kind: 'preset', days: 30 } },
+				{ name: 'Expired', expiryDays: 30 },
 				longAgo,
 			);
 			const neverUsed = await createTokenFor(userId, { name: 'Never used' });
@@ -269,7 +256,7 @@ describe.skipIf(!DB_READY)('personal access tokens', () => {
 			const longAgo = new Date(Date.now() - 100 * DAY_MS);
 			const { token } = await createTokenFor(
 				MANAGER_ID,
-				{ name: 'Old', expiry: { kind: 'preset', days: 30 } },
+				{ name: 'Old', expiryDays: 30 },
 				longAgo,
 			);
 			const listedBefore = await listAccessTokens(MANAGER_ID);
@@ -320,11 +307,7 @@ describe.skipIf(!DB_READY)('personal access tokens', () => {
 
 		it('renews for the token’s current lifetime from now unless another expiry is chosen', async () => {
 			const createdAt = new Date('2026-01-01T00:00:00Z');
-			const { token } = await createTokenFor(
-				MANAGER_ID,
-				{ expiry: { kind: 'preset', days: 90 } },
-				createdAt,
-			);
+			const { token } = await createTokenFor(MANAGER_ID, { expiryDays: 90 }, createdAt);
 
 			const firstRoll = new Date('2026-02-01T00:00:00Z');
 			const keptLifetime = await rollAccessToken(
@@ -333,16 +316,18 @@ describe.skipIf(!DB_READY)('personal access tokens', () => {
 				firstRoll,
 			);
 			expect(keptLifetime.token.expiresAt.getTime()).toBe(firstRoll.getTime() + 90 * DAY_MS);
+			expect(keptLifetime.token.expiryPresetDays).toBe(90);
 
 			const secondRoll = new Date('2026-03-01T00:00:00Z');
 			const chosenPreset = await rollAccessToken(
 				MANAGER_ID,
-				{ tokenId: token.id, expiry: { kind: 'preset', days: 1825 } },
+				{ tokenId: token.id, expiryDays: 1825 },
 				secondRoll,
 			);
 			expect(chosenPreset.token.expiresAt.getTime()).toBe(
 				secondRoll.getTime() + 1825 * DAY_MS,
 			);
+			expect(chosenPreset.token.expiryPresetDays).toBe(1825);
 
 			const thirdRoll = new Date('2026-04-01T00:00:00Z');
 			const keptNewLifetime = await rollAccessToken(
@@ -353,42 +338,12 @@ describe.skipIf(!DB_READY)('personal access tokens', () => {
 			expect(keptNewLifetime.token.expiresAt.getTime()).toBe(
 				thirdRoll.getTime() + 1825 * DAY_MS,
 			);
-		});
-
-		it('takes a custom expiry only strictly in the future and at most 10 years ahead', async () => {
-			const now = new Date('2026-10-14T12:00:00Z');
-			const { token, value } = await createTokenFor(MANAGER_ID, {}, now);
-
-			for (const expiresAt of [now, new Date(now.getTime() + 3650 * DAY_MS + 1000)]) {
-				await expectRejection(
-					rollAccessToken(
-						MANAGER_ID,
-						{ tokenId: token.id, expiry: { kind: 'custom', expiresAt } },
-						now,
-					),
-					400,
-					SERVER_ERROR.AGENT_TOKEN_EXPIRY_OUT_OF_RANGE,
-				);
-			}
-			expect((await storedToken(token.id)).tokenHash).toBe(
-				createHash('sha256').update(value).digest('hex'),
-			);
-			const expiresAt = new Date(now.getTime() + 3650 * DAY_MS);
-			const rolled = await rollAccessToken(
-				MANAGER_ID,
-				{ tokenId: token.id, expiry: { kind: 'custom', expiresAt } },
-				now,
-			);
-			expect(rolled.token.expiresAt).toEqual(expiresAt);
+			expect(keptNewLifetime.token.expiryPresetDays).toBe(1825);
 		});
 
 		it('revives an expired token, unused under its new secret', async () => {
 			const longAgo = new Date(Date.now() - 100 * DAY_MS);
-			const { token } = await createTokenFor(
-				MANAGER_ID,
-				{ expiry: { kind: 'preset', days: 30 } },
-				longAgo,
-			);
+			const { token } = await createTokenFor(MANAGER_ID, { expiryDays: 30 }, longAgo);
 			await getDb()
 				.update(personalAccessToken)
 				.set({ lastUsedAt: new Date(longAgo.getTime() + DAY_MS) })

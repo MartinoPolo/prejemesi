@@ -1,9 +1,8 @@
 import * as v from 'valibot';
-import { and, asc, eq, gt, isNull, sql } from 'drizzle-orm';
-import { getDb, type DatabaseTransaction } from '$lib/server/db/index.js';
+import { and, asc, eq, gt } from 'drizzle-orm';
+import { getDb } from '$lib/server/db/index.js';
 import { changeProposal } from '$lib/server/db/change_proposal.schema.js';
-import { wishlist } from '$lib/server/db/wishlist.schema.js';
-import { wishlistScope } from '$lib/server/demo/scope.js';
+import { resolveAddressedWishlist } from './wishlist_address.js';
 import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
 import {
 	CHANGE_PROPOSAL_OUTCOME,
@@ -23,7 +22,7 @@ import {
 	type AuthorizedAgentOperation,
 } from './authorization.js';
 import type { StoredChangeRow, StoredGiftBaseline } from './change_proposal_records.js';
-import { TARGET_KIND, type LookupDatabase } from './policy_lookups.js';
+import { TARGET_KIND } from './policy_lookups.js';
 import {
 	applyChangeProposalRows,
 	buildChangeProposalView,
@@ -31,6 +30,11 @@ import {
 } from './change_proposals.js';
 import { baselineGiftIds, readGiftSnapshots, toChangeRowError } from './change_proposal_rows.js';
 import { scheduleAgentAccessPurge } from './agent_access_purge.js';
+import {
+	assertWithinTrailingBudget,
+	lockTrailingBudget,
+	type TrailingBudget,
+} from './trailing_budget.js';
 import { AGENT_DAILY_CHANGE_BUDGET, CHANGE_PROPOSAL_LIFETIME_MS } from './limits.js';
 import type { GiftRevisionSnapshot } from '$lib/server/operations/gift_revision_snapshot.js';
 
@@ -53,45 +57,15 @@ function invalidProposal(): AgentApiFailure {
 	return new AgentApiFailure(400, SERVER_ERROR.AGENT_PROPOSAL_INVALID);
 }
 
-/**
- * The one wishlist a proposal targets, or null for a proposal that only creates wishlists. A
- * restricted token gets 403 for an unknown wishlist too, so it cannot probe which ids exist.
- */
+/** The one wishlist a proposal targets, or null for a proposal that only creates wishlists. */
 async function resolveProposalWishlist(
 	grant: AgentAccessGrant,
 	request: ChangeProposalRequest,
 ): Promise<{ id: string; shortId: string } | null> {
-	const { wishlistShortId, wishlistId } = request;
-	if (wishlistShortId !== undefined && wishlistId !== undefined) {
+	if (request.wishlistShortId !== undefined && request.wishlistId !== undefined) {
 		throw invalidProposal();
 	}
-	if (wishlistShortId === undefined && wishlistId === undefined) {
-		return null;
-	}
-	const [wishlistRow] = await getDb()
-		.select({ id: wishlist.id, shortId: wishlist.shortId })
-		.from(wishlist)
-		.where(
-			and(
-				wishlistShortId === undefined
-					? eq(wishlist.id, wishlistId ?? '')
-					: eq(wishlist.shortId, wishlistShortId),
-				isNull(wishlist.deletedAt),
-				wishlistScope(),
-			),
-		)
-		.limit(1);
-	const allowedWishlistIds = grant.wishlistIds;
-	if (
-		allowedWishlistIds !== null &&
-		(wishlistRow === undefined || !allowedWishlistIds.includes(wishlistRow.id))
-	) {
-		throw new AgentApiFailure(403, SERVER_ERROR.AGENT_WISHLIST_NOT_ALLOWED);
-	}
-	if (wishlistRow === undefined) {
-		throw new AgentApiFailure(404, SERVER_ERROR.WISHLIST_NOT_FOUND);
-	}
-	return wishlistRow;
+	return resolveAddressedWishlist(grant, request);
 }
 
 function createsWishlist(authorized: AuthorizedAgentOperation): boolean {
@@ -135,62 +109,25 @@ function assertRowsFitWishlist(
 	});
 }
 
-/**
- * Seconds until enough of the user's rows leave the trailing window for this many more, or null
- * while they fit the daily change budget. Rows count from every token and every outcome.
- */
-async function secondsUntilBudgetFits(
-	database: LookupDatabase,
-	userId: string,
-	requestedRows: number,
-	now: Date,
-): Promise<number | null> {
-	const windowStart = new Date(now.getTime() - AGENT_DAILY_CHANGE_BUDGET.windowMs);
-	const recentProposals = await database
-		.select({ createdAt: changeProposal.createdAt, rowCount: changeProposal.rowCount })
-		.from(changeProposal)
-		.where(
-			and(
-				eq(changeProposal.submitterUserId, userId),
-				gt(changeProposal.createdAt, windowStart),
-			),
-		)
-		.orderBy(asc(changeProposal.createdAt));
-	let usedRows = recentProposals.reduce((sum, proposal) => sum + proposal.rowCount, 0);
-	if (usedRows + requestedRows <= AGENT_DAILY_CHANGE_BUDGET.rows) {
-		return null;
-	}
-	for (const proposal of recentProposals) {
-		usedRows -= proposal.rowCount;
-		if (usedRows + requestedRows <= AGENT_DAILY_CHANGE_BUDGET.rows) {
-			const leavesWindowAt =
-				proposal.createdAt.getTime() + AGENT_DAILY_CHANGE_BUDGET.windowMs;
-			return Math.max(1, Math.ceil((leavesWindowAt - now.getTime()) / 1000));
-		}
-	}
-	return Math.ceil(AGENT_DAILY_CHANGE_BUDGET.windowMs / 1000);
-}
-
-async function assertWithinChangeBudget(
-	database: LookupDatabase,
-	userId: string,
-	requestedRows: number,
-	now: Date,
-): Promise<void> {
-	const retryAfterSeconds = await secondsUntilBudgetFits(database, userId, requestedRows, now);
-	if (retryAfterSeconds !== null) {
-		throw new AgentApiFailure(
-			429,
-			SERVER_ERROR.AGENT_DAILY_CHANGE_BUDGET_EXCEEDED,
-			{
-				retryAfterSeconds,
-				budgetRows: AGENT_DAILY_CHANGE_BUDGET.rows,
-				windowSeconds: AGENT_DAILY_CHANGE_BUDGET.windowMs / 1000,
-			},
-			{ 'retry-after': String(retryAfterSeconds) },
-		);
-	}
-}
+/** Rows count from every token and every outcome. */
+const CHANGE_BUDGET: TrailingBudget = {
+	lockName: 'agent-change-budget',
+	limit: AGENT_DAILY_CHANGE_BUDGET.rows,
+	windowMs: AGENT_DAILY_CHANGE_BUDGET.windowMs,
+	exceededCode: SERVER_ERROR.AGENT_DAILY_CHANGE_BUDGET_EXCEEDED,
+	limitDetail: 'budgetRows',
+	recentSpends: (database, userId, windowStart) =>
+		database
+			.select({ createdAt: changeProposal.createdAt, amount: changeProposal.rowCount })
+			.from(changeProposal)
+			.where(
+				and(
+					eq(changeProposal.submitterUserId, userId),
+					gt(changeProposal.createdAt, windowStart),
+				),
+			)
+			.orderBy(asc(changeProposal.createdAt)),
+};
 
 function storedRow(
 	authorized: AuthorizedAgentOperation,
@@ -275,16 +212,6 @@ async function previewRows(
 	});
 }
 
-/** Serializes one user's submissions so concurrent ones cannot both pass the budget check. */
-async function lockUserChangeBudget(
-	transaction: DatabaseTransaction,
-	userId: string,
-): Promise<void> {
-	await transaction.execute(
-		sql`select pg_advisory_xact_lock(hashtextextended(${`agent-change-budget:${userId}`}, 0))`,
-	);
-}
-
 /** A proposal as the API reports it; reviewer-only details (gift previews, names) stay out. */
 function projectChangeProposalForAgent(view: ChangeProposalView) {
 	return {
@@ -359,15 +286,27 @@ export async function submitChangeProposal(
 	}
 	assertRowsFitWishlist(token, proposalWishlist, authorizedOperations);
 	const database = getDb();
-	await assertWithinChangeBudget(database, grant.userId, authorizedOperations.length, now);
+	await assertWithinTrailingBudget(
+		database,
+		CHANGE_BUDGET,
+		grant.userId,
+		authorizedOperations.length,
+		now,
+	);
 
 	const rows = await previewRows(grant, authorizedOperations, request);
 	const fastForwards =
 		token.fastForward &&
 		rows.every((row) => row.rejection === null && !row.requiresConfirmation);
 	const proposalId = await database.transaction(async (transaction) => {
-		await lockUserChangeBudget(transaction, grant.userId);
-		await assertWithinChangeBudget(transaction, grant.userId, rows.length, now);
+		await lockTrailingBudget(transaction, CHANGE_BUDGET, grant.userId);
+		await assertWithinTrailingBudget(
+			transaction,
+			CHANGE_BUDGET,
+			grant.userId,
+			rows.length,
+			now,
+		);
 		const createsOnlyWishlists = proposalWishlist === null;
 		const [inserted] = await transaction
 			.insert(changeProposal)

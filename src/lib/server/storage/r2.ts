@@ -46,7 +46,8 @@ export const MAX_FILE_SIZE = {
 	avatar: 5 * 1024 * 1024, // 5 MB
 } as const satisfies Record<UploadTarget, number>;
 
-function getR2Bucket(): PlatformR2Bucket | undefined {
+/** The current request's R2 binding; undefined outside a request or without the binding. */
+export function getR2Bucket(): PlatformR2Bucket | undefined {
 	try {
 		const event = getRequestEvent();
 		return event?.platform?.env?.R2;
@@ -140,8 +141,27 @@ export async function deleteObjectsBestEffort(
 	keys: readonly (string | null | undefined)[],
 ): Promise<void> {
 	const bucket = getR2Bucket();
+	if (bucket != null) {
+		await deleteFromBucketBestEffort(bucket, keys);
+	}
+}
+
+/** The bucket calls agent images make; the Workers `R2` binding satisfies it. */
+export interface AgentImageBucket {
+	put(
+		key: string,
+		value: Uint8Array,
+		options: { httpMetadata: { contentType: string } },
+	): Promise<unknown>;
+	delete(keys: string[]): Promise<void>;
+}
+
+async function deleteFromBucketBestEffort(
+	bucket: AgentImageBucket,
+	keys: readonly (string | null | undefined)[],
+): Promise<void> {
 	const validKeys = keys.filter((key): key is string => key != null && key !== '');
-	if (bucket == null || validKeys.length === 0) {
+	if (validKeys.length === 0) {
 		return;
 	}
 
@@ -150,4 +170,25 @@ export async function deleteObjectsBestEffort(
 	} catch (thrown) {
 		console.error('R2 cleanup failed for keys', validKeys, thrown);
 	}
+}
+
+/**
+ * Agent image storage bound to one bucket, so a purge running after the response still reaches
+ * it. Upload compensation deletes best effort; the purge keeps a row whose object survived, so
+ * its delete must throw.
+ */
+export interface AgentImageStorage {
+	put(key: string, body: Uint8Array, contentType: string): Promise<void>;
+	deleteBestEffort(keys: readonly string[]): Promise<void>;
+	deleteOrThrow(keys: readonly string[]): Promise<void>;
+}
+
+export function agentImageStorage(bucket: AgentImageBucket): AgentImageStorage {
+	return {
+		put: async (key, body, contentType) => {
+			await bucket.put(key, body, { httpMetadata: { contentType } });
+		},
+		deleteBestEffort: (keys) => deleteFromBucketBestEffort(bucket, keys),
+		deleteOrThrow: (keys) => bucket.delete([...keys]),
+	};
 }

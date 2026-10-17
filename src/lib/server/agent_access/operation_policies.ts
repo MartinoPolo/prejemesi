@@ -48,11 +48,16 @@ export interface AgentOperationPolicy<TInput, TOutput> {
 	/** Deleting gifts, reservations and manager invitations always need the user's confirmation. */
 	confirmation(input: TInput): ConfirmationRule;
 	/**
-	 * Agents cannot set image references yet: the core trusts a given upload key, so a token could
-	 * point a gift at another user's upload and later trigger its deletion. Images by URL, with an
-	 * ownership-checked reference, replace this rejection.
+	 * Agents never set an image URL or storage key: the core trusts a given upload key, so a token
+	 * could point a gift at another user's upload and later trigger its deletion, and an external
+	 * URL would be kept as a reference. Such input is rejected.
 	 */
 	setsImageReference(input: TInput): boolean;
+	/**
+	 * Whether the input may name an image from `POST /api/v1/images` in `imageReference`, which
+	 * authorization checks for ownership and replaces with the stored image's key.
+	 */
+	readonly acceptsImageReference: boolean;
 	/** What the API returns: listed fields only, no internal columns or out-of-scope identities. */
 	projectOutput(output: TOutput, grant: AgentAccessGrant): unknown;
 }
@@ -70,6 +75,7 @@ function agentOperation<TInput, TOutput>(policy: {
 	targets: (input: TInput) => TargetReference[];
 	confirmation?: ConfirmationDeclaration<NoInfer<TInput>>;
 	setsImageReference?: (input: NoInfer<TInput>) => boolean;
+	acceptsImageReference?: boolean;
 	projectOutput: (output: TOutput, grant: AgentAccessGrant) => unknown;
 }): AgentOperationPolicy<TInput, TOutput> {
 	return {
@@ -78,6 +84,7 @@ function agentOperation<TInput, TOutput>(policy: {
 		targets: policy.targets,
 		confirmation: policy.confirmation?.rule ?? (() => false),
 		setsImageReference: policy.setsImageReference ?? (() => false),
+		acceptsImageReference: policy.acceptsImageReference ?? false,
 		projectOutput: policy.projectOutput,
 	};
 }
@@ -233,12 +240,14 @@ export const AGENT_OPERATION_POLICIES: AgentOperationPolicies = {
 		scope: AGENT_SCOPE.giftsWrite,
 		targets: byWishlistId((input) => input.wishlistId),
 		setsImageReference: setsGiftImage,
+		acceptsImageReference: true,
 		projectOutput: projectGiftChange,
 	}),
 	updateGift: agentOperation({
 		scope: AGENT_SCOPE.giftsWrite,
 		targets: byGiftId((input) => input.id),
 		setsImageReference: setsGiftImage,
+		acceptsImageReference: true,
 		projectOutput: (output) => ({
 			...projectGiftChange(output),
 			didCategoryChange: output.didCategoryChange,

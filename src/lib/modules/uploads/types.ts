@@ -8,6 +8,14 @@ export const ALLOWED_CONTENT_TYPES = [
 
 export type AllowedContentType = (typeof ALLOWED_CONTENT_TYPES)[number];
 
+/** The file extension of a stored image's object key. */
+export const IMAGE_FILE_EXTENSIONS = {
+	'image/jpeg': 'jpg',
+	'image/png': 'png',
+	'image/webp': 'webp',
+	'image/gif': 'gif',
+} as const satisfies Record<AllowedContentType, string>;
+
 /** Maximum bytes accepted for a gift image across uploads and ingestion. */
 export const MAX_GIFT_IMAGE_BYTES = 5 * 1024 * 1024;
 

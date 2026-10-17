@@ -13,21 +13,11 @@ import {
 	getPublicUrl,
 	type UploadTarget,
 } from '$lib/server/storage/r2.js';
-import { UPLOAD_API_BASE, UPLOAD_MODES } from './types.js';
+import { IMAGE_FILE_EXTENSIONS, UPLOAD_API_BASE, UPLOAD_MODES } from './types.js';
 import type { UploadAuthorization } from './types.js';
 
 function isUploadTarget(value: string): value is UploadTarget {
 	return value in UPLOAD_TARGETS;
-}
-
-function getExtensionFromContentType(contentType: string): string {
-	const extensionMap: Record<string, string> = {
-		'image/jpeg': 'jpg',
-		'image/png': 'png',
-		'image/webp': 'webp',
-		'image/gif': 'gif',
-	};
-	return extensionMap[contentType] ?? 'bin';
 }
 
 const AuthorizeUploadInputSchema = v.object({
@@ -62,7 +52,7 @@ export const authorizeUpload = guardedCommand(
 		}
 
 		const prefix = UPLOAD_TARGETS[input.target];
-		const extension = getExtensionFromContentType(input.contentType);
+		const extension = IMAGE_FILE_EXTENSIONS[input.contentType];
 		const uniqueId = generateId();
 		const objectKey = `${prefix}/${uniqueId}.${extension}`;
 
