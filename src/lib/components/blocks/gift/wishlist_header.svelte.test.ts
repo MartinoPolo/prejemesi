@@ -322,6 +322,16 @@ describe('WishlistHeader permanent wishlist', () => {
 		await screen.unmount();
 	});
 
+	it('separates the compact mobile recipient prefix from the name', async () => {
+		await page.viewport(390, 720);
+		const screen = await render(WishlistHeader, baseProps);
+
+		expect(screen.getByTestId('wishlist-mobile-recipient').element().textContent?.trim()).toBe(
+			`${m.wishlist_header_for_prefix()} ${baseProps.recipientDisplayName}`,
+		);
+		await screen.unmount();
+	});
+
 	it('separates status and gift count with a spaced dot on an occasion wishlist', async () => {
 		await page.viewport(390, 720);
 		const screen = await render(WishlistHeader, baseProps);

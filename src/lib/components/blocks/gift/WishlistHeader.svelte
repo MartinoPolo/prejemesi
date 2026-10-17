@@ -240,8 +240,8 @@
 			/>
 		</figure>
 		<div class="mobile-copy">
-			<p class="mobile-recipient">
-				{m.wishlist_header_for_prefix()}<strong>{recipientDisplayName}</strong>
+			<p class="mobile-recipient" data-testid="wishlist-mobile-recipient">
+				{m.wishlist_header_for_prefix()}{' '}<strong>{recipientDisplayName}</strong>
 			</p>
 			<svelte:element this={headingLevel === 1 ? 'h1' : 'h2'} class="mobile-title">
 				{title}
