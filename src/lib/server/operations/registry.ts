@@ -64,7 +64,10 @@ import {
 	readClaimInvitesOperation,
 	revokeClaimInviteOperation,
 } from './claim_invite_operations.js';
-import { readWishlistOperation } from './wishlist_read_operations.js';
+import {
+	readAccessibleWishlistsOperation,
+	readWishlistOperation,
+} from './wishlist_read_operations.js';
 import {
 	followWishlistOperation,
 	recordWishlistVisitOperation,
@@ -80,6 +83,7 @@ export const OPERATION_REGISTRY = {
 	[readBulkCopyDestinationsOperation.name]: readBulkCopyDestinationsOperation,
 	[readPriorityLevelsOperation.name]: readPriorityLevelsOperation,
 	[readWishlistOperation.name]: readWishlistOperation,
+	[readAccessibleWishlistsOperation.name]: readAccessibleWishlistsOperation,
 	[readGiftCategoriesOperation.name]: readGiftCategoriesOperation,
 	[readGiftCategorySettingsRowsOperation.name]: readGiftCategorySettingsRowsOperation,
 	[createGiftOperation.name]: createGiftOperation,

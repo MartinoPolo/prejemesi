@@ -27,7 +27,7 @@ import {
 	type AgentOperationRequest,
 } from './authorization.js';
 import type { AgentAccessGrant } from './agent_grant.js';
-import { AGENT_SCOPE, type AgentScope } from './scopes.js';
+import { AGENT_SCOPE, type AgentScope } from '$lib/modules/access_tokens/scopes.js';
 
 const ANONYMOUS_GIFTER_NAME = 'Anonymní teta';
 const ANONYMOUS_GIFTER_EMAIL = 'teta@example.com';

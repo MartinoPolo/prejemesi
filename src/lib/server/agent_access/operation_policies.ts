@@ -2,10 +2,11 @@ import type * as v from 'valibot';
 import { OPERATION_REGISTRY } from '$lib/server/operations/registry.js';
 import type { GiftDraftInput } from '$lib/modules/gifts/types.js';
 import type { ManagedGiftCategory } from '$lib/modules/gift-categories/types.js';
-import { AGENT_SCOPE, type AgentScope } from './scopes.js';
+import { AGENT_SCOPE, type AgentScope } from '$lib/modules/access_tokens/scopes.js';
 import { hasAgentScope, type AgentAccessGrant } from './agent_grant.js';
 import { TARGET_KIND, type ConfirmationRule, type TargetReference } from './policy_lookups.js';
 import {
+	projectAgentAccessibleWishlists,
 	projectAgentBulkCopyDestinations,
 	projectAgentGiftRow,
 	projectAgentWishlist,
@@ -20,9 +21,25 @@ type OperationOutput<TName extends OperationName> = Awaited<
 	ReturnType<OperationRegistry[TName]['run']>
 >;
 
+/** Whether an operation's calls need the user's confirmation, as the generated docs state it. */
+const CONFIRMATION_MODE = {
+	never: 'never',
+	always: 'always',
+	dependsOnInput: 'dependsOnInput',
+} as const;
+
+type ConfirmationMode = (typeof CONFIRMATION_MODE)[keyof typeof CONFIRMATION_MODE];
+
+/** A policy's declared confirmation: its documented mode and the rule the server applies. */
+interface ConfirmationDeclaration<TInput> {
+	mode: ConfirmationMode;
+	rule: (input: TInput) => ConfirmationRule;
+}
+
 /** How the agent surface treats one operation; human-only operations have none. */
 export interface AgentOperationPolicy<TInput, TOutput> {
 	readonly scope: AgentScope;
+	readonly confirmationMode: ConfirmationMode;
 	/**
 	 * What the call reads or changes; their wishlists are checked against the token's wishlist
 	 * restriction and locked first when a batch runs. Empty when the call only creates a wishlist.
@@ -51,22 +68,33 @@ type AgentOperationPolicies = {
 function agentOperation<TInput, TOutput>(policy: {
 	scope: AgentScope;
 	targets: (input: TInput) => TargetReference[];
-	confirmation?: (input: TInput) => ConfirmationRule;
+	confirmation?: ConfirmationDeclaration<NoInfer<TInput>>;
 	setsImageReference?: (input: NoInfer<TInput>) => boolean;
 	projectOutput: (output: TOutput, grant: AgentAccessGrant) => unknown;
 }): AgentOperationPolicy<TInput, TOutput> {
 	return {
 		scope: policy.scope,
+		confirmationMode: policy.confirmation?.mode ?? CONFIRMATION_MODE.never,
 		targets: policy.targets,
-		confirmation: policy.confirmation ?? (() => false),
+		confirmation: policy.confirmation?.rule ?? (() => false),
 		setsImageReference: policy.setsImageReference ?? (() => false),
 		projectOutput: policy.projectOutput,
 	};
 }
 
-const alwaysConfirmed = (): ConfirmationRule => true;
+const ALWAYS_CONFIRMED: ConfirmationDeclaration<unknown> = {
+	mode: CONFIRMATION_MODE.always,
+	rule: () => true,
+};
 
-const createsNewWishlist = (): TargetReference[] => [];
+function confirmedDependingOnInput<TInput>(
+	rule: (input: TInput) => ConfirmationRule,
+): ConfirmationDeclaration<TInput> {
+	return { mode: CONFIRMATION_MODE.dependsOnInput, rule };
+}
+
+/** Creating a wishlist or listing the user's wishlists names no existing wishlist. */
+const namesNoWishlist = (): TargetReference[] => [];
 
 function byWishlistId<TInput>(wishlistIdOf: (input: TInput) => string) {
 	return (input: TInput): TargetReference[] => [
@@ -179,6 +207,13 @@ export const AGENT_OPERATION_POLICIES: AgentOperationPolicies = {
 		targets: byWishlistShortId((input) => input.wishlistShortId),
 		projectOutput: projectAgentWishlist,
 	}),
+	// Names no wishlist: the projection applies the token's wishlist restriction instead.
+	readAccessibleWishlists: agentOperation({
+		scope: AGENT_SCOPE.read,
+		targets: namesNoWishlist,
+		projectOutput: (output, grant) =>
+			projectAgentAccessibleWishlists(output, grant.wishlistIds),
+	}),
 	// The first read inserts the default categories; `read` permits that idempotent write.
 	readGiftCategories: agentOperation({
 		scope: AGENT_SCOPE.read,
@@ -217,7 +252,7 @@ export const AGENT_OPERATION_POLICIES: AgentOperationPolicies = {
 	deleteGift: agentOperation({
 		scope: AGENT_SCOPE.giftsWrite,
 		targets: byGiftId((input) => input.giftId),
-		confirmation: alwaysConfirmed,
+		confirmation: ALWAYS_CONFIRMED,
 		projectOutput: projectWishlistShortId,
 	}),
 	markGiftReceived: agentOperation({
@@ -254,18 +289,22 @@ export const AGENT_OPERATION_POLICIES: AgentOperationPolicies = {
 	undoGiftRevisionBatch: agentOperation({
 		scope: AGENT_SCOPE.giftsWrite,
 		targets: (input) => [{ kind: TARGET_KIND.revisionBatchId, id: input.batchId }],
-		confirmation: (input) => ({ undoesGiftCreationsOfBatch: input.batchId }),
+		confirmation: confirmedDependingOnInput((input) => ({
+			undoesGiftCreationsOfBatch: input.batchId,
+		})),
 		projectOutput: projectUndo,
 	}),
 	undoGiftRevision: agentOperation({
 		scope: AGENT_SCOPE.giftsWrite,
 		targets: byGiftId((input) => input.giftId),
-		confirmation: (input) => ({ undoesGiftCreationOfGift: input.giftId }),
+		confirmation: confirmedDependingOnInput((input) => ({
+			undoesGiftCreationOfGift: input.giftId,
+		})),
 		projectOutput: projectUndo,
 	}),
 	createWishlist: agentOperation({
 		scope: AGENT_SCOPE.giftsWrite,
-		targets: createsNewWishlist,
+		targets: namesNoWishlist,
 		projectOutput: projectAgentWishlistRow,
 	}),
 	updateWishlist: agentOperation({
@@ -321,7 +360,7 @@ export const AGENT_OPERATION_POLICIES: AgentOperationPolicies = {
 	}),
 	createWishlistFromImport: agentOperation({
 		scope: AGENT_SCOPE.giftsWrite,
-		targets: createsNewWishlist,
+		targets: namesNoWishlist,
 		setsImageReference: setsDraftImage,
 		projectOutput: projectAgentWishlistRow,
 	}),
@@ -333,7 +372,7 @@ export const AGENT_OPERATION_POLICIES: AgentOperationPolicies = {
 	reserveGift: agentOperation({
 		scope: AGENT_SCOPE.reservationsWrite,
 		targets: byGiftId((input) => input.giftId),
-		confirmation: alwaysConfirmed,
+		confirmation: ALWAYS_CONFIRMED,
 		projectOutput: (output) => ({
 			reservationId: output.reservationId,
 			wishlistShortId: output.wishlistShortId,
@@ -342,14 +381,14 @@ export const AGENT_OPERATION_POLICIES: AgentOperationPolicies = {
 	cancelOwnReservation: agentOperation({
 		scope: AGENT_SCOPE.reservationsWrite,
 		targets: byReservationId((input) => input.reservationId),
-		confirmation: alwaysConfirmed,
+		confirmation: ALWAYS_CONFIRMED,
 		projectOutput: projectWishlistShortId,
 	}),
 	unreserveGift: HUMAN_ONLY,
 	setReservationPurchased: agentOperation({
 		scope: AGENT_SCOPE.reservationsWrite,
 		targets: byReservationId((input) => input.reservationId),
-		confirmation: alwaysConfirmed,
+		confirmation: ALWAYS_CONFIRMED,
 		projectOutput: (output) => ({
 			purchased: output.purchased,
 			wishlistShortId: output.wishlistShortId,
@@ -371,7 +410,7 @@ export const AGENT_OPERATION_POLICIES: AgentOperationPolicies = {
 	generateModeratorInviteLink: agentOperation({
 		scope: AGENT_SCOPE.managersInvite,
 		targets: byWishlistId((input) => input.wishlistId),
-		confirmation: alwaysConfirmed,
+		confirmation: ALWAYS_CONFIRMED,
 		projectOutput: (output) => ({ unregisteredInvitee: output.unregisteredInvitee }),
 	}),
 	acceptModeratorInvite: HUMAN_ONLY,

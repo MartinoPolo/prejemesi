@@ -6,6 +6,7 @@ import type {
 	readWishlistGiftsOperation,
 } from '$lib/server/operations/gift_read_operations.js';
 import type { readWishlistOperation } from '$lib/server/operations/wishlist_read_operations.js';
+import type { AccessibleWishlist } from '$lib/modules/wishlists/accessible_wishlists.js';
 
 type ReadWishlistOutput = Awaited<ReturnType<typeof readWishlistOperation.run>>;
 type ReadWishlistGiftsOutput = Awaited<ReturnType<typeof readWishlistGiftsOperation.run>>;
@@ -173,5 +174,26 @@ export function projectAgentBulkCopyDestinations(
 		status: destination.status,
 		kind: destination.kind,
 		recipientDisplayName: destination.recipientDisplayName,
+	}));
+}
+
+/** A wishlist-restricted token sees only its wishlists in the list of the user's wishlists. */
+export function projectAgentAccessibleWishlists(
+	wishlists: readonly AccessibleWishlist[],
+	allowedWishlistIds: readonly string[] | null,
+) {
+	const reachable =
+		allowedWishlistIds === null
+			? wishlists
+			: wishlists.filter((accessible) => allowedWishlistIds.includes(accessible.id));
+	return reachable.map((accessible) => ({
+		id: accessible.id,
+		shortId: accessible.shortId,
+		title: accessible.title,
+		recipientDisplayName: accessible.recipientDisplayName,
+		status: accessible.status,
+		kind: accessible.kind,
+		eventDate: accessible.eventDate,
+		role: accessible.role,
 	}));
 }

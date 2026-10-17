@@ -37,6 +37,7 @@ declare global {
 				ASSETS: Fetcher;
 				CF_VERSION_METADATA?: { id: string; tag?: string; timestamp?: string };
 				GIFT_INGESTION_RATE_LIMIT?: RateLimit;
+				AGENT_API_RATE_LIMIT?: RateLimit;
 			};
 			ctx: ExecutionContext;
 			caches: CacheStorage;

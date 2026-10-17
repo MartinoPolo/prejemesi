@@ -9,8 +9,10 @@ import { wishlistScope } from '$lib/server/demo/scope.js';
 import { WISHLIST_NOT_FOUND_MESSAGE } from '$lib/modules/errors/server_error_codes.js';
 import { resolveUserImageUrl } from '$lib/modules/images/public_url.js';
 import { resolveWishlistRole } from '$lib/modules/wishlists/wishlist_access.js';
+import { listAccessibleWishlists } from '$lib/modules/wishlists/accessible_wishlists.js';
 import { resolveReservationReleaseCapability } from '$lib/modules/wishlists/wishlist_capabilities.js';
 import { recipientDisplayNameSql } from '$lib/modules/wishlists/wishlist_role_query_primitives.js';
+import { requireOperationActor } from './actor.js';
 import { OPERATION_EXPOSURE, OPERATION_KIND, defineOperation } from './operation.js';
 import { resolveRevertAccess } from './wishlist_revert.js';
 import type { WishlistRow } from './wishlist_management.js';
@@ -109,5 +111,16 @@ export const readWishlistOperation = defineOperation({
 				isAdmin: isAppAdministrator,
 			}),
 		} as const;
+	},
+});
+
+/** The wishlists the signed-in user receives, manages or follows, with their role on each. */
+export const readAccessibleWishlistsOperation = defineOperation({
+	name: 'readAccessibleWishlists',
+	kind: OPERATION_KIND.read,
+	exposure: OPERATION_EXPOSURE.agent,
+	input: v.strictObject({}),
+	async run({ actor }) {
+		return listAccessibleWishlists(requireOperationActor(actor).userId);
 	},
 });

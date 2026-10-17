@@ -1,8 +1,7 @@
 import { error } from '@sveltejs/kit';
 import { getDb, type DatabaseTransaction } from '$lib/server/db/index.js';
-import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
+import { SERVER_ERROR, encodeServerError } from '$lib/modules/errors/server_error_codes.js';
 import { OPERATION_REGISTRY } from '$lib/server/operations/registry.js';
-import { MAX_OPERATION_BATCH_STEPS } from '$lib/server/operations/constants.js';
 import {
 	OPERATION_EXPOSURE,
 	OPERATION_KIND,
@@ -29,6 +28,7 @@ import {
 	type LookupDatabase,
 	type TargetReference,
 } from './policy_lookups.js';
+import { AGENT_BATCH_MAX_ITEMS } from './limits.js';
 
 export interface AgentOperationRequest {
 	operationName: string;
@@ -66,13 +66,18 @@ function stepValue<TValue>(values: readonly TValue[], index: number): TValue {
 
 function isWithinWishlistRestriction(
 	grant: Pick<AgentAccessGrant, 'wishlistIds'>,
+	step: { operation: AnyOperation; targets: readonly TargetReference[] },
 	targetWishlistIds: readonly string[],
 ): boolean {
 	const allowedWishlistIds = grant.wishlistIds;
 	if (allowedWishlistIds === null) {
 		return true;
 	}
-	// A restricted token cannot create wishlists: they would be outside its restriction.
+	if (step.targets.length === 0) {
+		// A read naming no wishlist filters its output by the restriction; a restricted token
+		// cannot create wishlists, which would be outside its restriction.
+		return step.operation.kind === OPERATION_KIND.read;
+	}
 	return (
 		targetWishlistIds.length > 0 &&
 		targetWishlistIds.every((wishlistId) => allowedWishlistIds.includes(wishlistId))
@@ -112,8 +117,16 @@ export async function authorizeAgentOperations(
 	grant: AgentAccessGrant,
 	requests: readonly AgentOperationRequest[],
 ): Promise<AuthorizedAgentOperation[]> {
-	if (requests.length === 0 || requests.length > MAX_OPERATION_BATCH_STEPS) {
+	if (requests.length === 0) {
 		error(400, SERVER_ERROR.INVALID_OPERATION_INPUT);
+	}
+	if (requests.length > AGENT_BATCH_MAX_ITEMS) {
+		error(
+			400,
+			encodeServerError(SERVER_ERROR.AGENT_BATCH_TOO_LARGE, {
+				maxItems: AGENT_BATCH_MAX_ITEMS,
+			}),
+		);
 	}
 	const checkedRequests = requests.map((request) => checkOperationAndScope(grant, request));
 	const lookups = checkedRequests.map(({ operation, policy, rawInput }) => {
@@ -128,9 +141,14 @@ export async function authorizeAgentOperations(
 		database,
 		lookups.map((lookup) => lookup.targets),
 	);
-	if (
-		!targetWishlistIds.every((wishlistIds) => isWithinWishlistRestriction(grant, wishlistIds))
-	) {
+	const withinRestriction = checkedRequests.every(({ operation }, index) =>
+		isWithinWishlistRestriction(
+			grant,
+			{ operation, targets: stepValue(lookups, index).targets },
+			stepValue(targetWishlistIds, index),
+		),
+	);
+	if (!withinRestriction) {
 		error(403, SERVER_ERROR.AGENT_WISHLIST_NOT_ALLOWED);
 	}
 	const confirmations = await resolveConfirmations(
