@@ -214,7 +214,7 @@
 
 			<div class="flex flex-col gap-2 rounded-lg border border-border bg-card p-4">
 				<span class="text-sm font-medium">As text on card surface</span>
-				<span class="text-status-success font-medium">Payment completed</span>
+				<span class="text-status-success-text font-medium">Payment completed</span>
 				<span class="text-status-warning font-medium">Awaiting review</span>
 				<span class="text-status-danger font-medium">Error occurred</span>
 				<span class="text-status-info font-medium">Processing</span>
