@@ -22,7 +22,7 @@ export const reserveModalVariants = tv({
 		authPromptText: 'text-xs text-muted-foreground',
 		authPromptLinks: 'flex items-center gap-2 text-xs',
 		separator: 'text-muted-foreground',
-		errorText: 'text-xs text-destructive',
+		errorText: 'text-xs text-status-danger-text',
 		actions: 'flex items-center justify-end gap-(--nested-control-gap)',
 	},
 });

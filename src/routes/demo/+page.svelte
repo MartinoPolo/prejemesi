@@ -40,5 +40,7 @@
 	</p>
 	<DemoStartForm label={data.hasLiveDemo ? m.demo_continue : m.demo_start_new} intent="primary" />
 	<Button intent="ghost" disabled={pending} onclick={exit}>{m.demo_exit()}</Button>
-	{#if error}<p role="alert" class="text-sm text-destructive">{m.demo_exit_error()}</p>{/if}
+	{#if error}<p role="alert" class="text-sm text-status-danger-text">
+			{m.demo_exit_error()}
+		</p>{/if}
 </main>

@@ -110,7 +110,7 @@
 				{demo ? m.demo_exit_menu() : m.nav_logout()}
 			</DropdownMenu.Item>
 		</DropdownMenu.Group>
-		{#if demoExitFailed}<p role="alert" class="p-2 text-sm text-destructive">
+		{#if demoExitFailed}<p role="alert" class="p-2 text-sm text-status-danger-text">
 				{m.demo_exit_error()}
 			</p>{/if}
 	</DropdownMenu.Content>

@@ -335,7 +335,7 @@
 				</Accordion.Root>
 
 				{#if errorMessage !== ''}
-					<p class="text-destructive text-sm">{errorMessage}</p>
+					<p class="text-status-danger-text text-sm">{errorMessage}</p>
 				{/if}
 
 				{#if demo}<p class="text-sm text-muted-foreground">{m.demo_import_limits()}</p>{/if}

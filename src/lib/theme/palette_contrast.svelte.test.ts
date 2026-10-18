@@ -8,6 +8,9 @@ import { buttonVariants } from '../components/base/button/button_variants.js';
 import { helpTextVariants } from '../components/base/help-text/help_text_variants.js';
 import { toastTitleColors, toastVariants } from '../components/base/toast/toast_variants.js';
 import { statusBadgeVariants } from '../components/derived/status-badge/status_badge_variants.js';
+import { alertVariants } from '../components/base/alert/alert_variants.js';
+import { fieldErrorVariants } from '../components/derived/field/field_variants.js';
+import { moderatorPanelVariants } from '../components/blocks/moderator/moderator_panel_variants.js';
 
 const originalClass = document.documentElement.className;
 const originalPalette = document.documentElement.getAttribute('data-palette');
@@ -81,7 +84,8 @@ async function buttonContrast(
 	const { owner, surface: surfaceClass } = buttonVariants({ intent });
 	const button = document.createElement('button');
 	button.className = owner();
-	button.dataset.testid = 'contrast-button';
+	const testId = `contrast-button-${crypto.randomUUID()}`;
+	button.dataset.testid = testId;
 	const face = document.createElement('span');
 	face.className = surfaceClass();
 	button.append(face);
@@ -98,7 +102,7 @@ async function buttonContrast(
 	};
 	try {
 		const resting = faceContrast();
-		await page.getByTestId('contrast-button').hover();
+		await page.getByTestId(testId).hover();
 		const hovered = faceContrast();
 		return {
 			resting: resting.contrast,
@@ -217,8 +221,28 @@ const statusTextSamples = {
 		...BADGE_STYLES.map((badgeStyle) => badgeVariants({ tone: 'warning', badgeStyle })),
 		statusBadgeVariants({ status: 'warning' }),
 		`${toastVariants({ tone: 'warning' })} ${toastTitleColors.warning}`,
+		moderatorPanelVariants().selfPromoteWarning(),
 	],
-	danger: [badgeVariants({ tone: 'danger', badgeStyle: 'solid' })],
+	danger: [
+		...BADGE_STYLES.map((badgeStyle) => badgeVariants({ tone: 'danger', badgeStyle })),
+		statusBadgeVariants({ status: 'danger' }),
+		`${toastVariants({ tone: 'danger' })} ${toastTitleColors.danger}`,
+		helpTextVariants({ state: 'error' }),
+		fieldErrorVariants(),
+		alertVariants({ tone: 'destructive' }),
+	],
+	link: [
+		...BADGE_STYLES.filter((badgeStyle) => badgeStyle !== 'solid').flatMap((badgeStyle) => [
+			badgeVariants({ tone: 'info', badgeStyle }),
+			badgeVariants({ tone: 'primary', badgeStyle }),
+		]),
+		statusBadgeVariants({ status: 'info' }),
+		`${toastVariants({ tone: 'info' })} ${toastTitleColors.info}`,
+		`${toastVariants({ tone: 'loading' })} ${toastTitleColors.loading}`,
+		moderatorPanelVariants().disclosureBanner(),
+		moderatorPanelVariants().moderatorAvatar(),
+		buttonVariants({ intent: 'link' }).surface(),
+	],
 };
 
 describe.each(Object.entries(statusTextSamples))(
@@ -301,7 +325,13 @@ describe('restrained dark palettes', () => {
 
 describe('light palettes', () => {
 	// Light `--brand` is a fill and icon colour; coloured light text uses `--brand-link` or status text tokens.
-	const lightTextPairs = textPairs.filter(([foreground]) => foreground !== '--brand');
+	const lightTextPairs = [
+		...textPairs.filter(([foreground]) => foreground !== '--brand'),
+		...['--background', '--card', '--secondary', '--muted', '--accent'].map((surface) => [
+			'--brand-link',
+			surface,
+		]),
+	];
 
 	it.each(PALETTES)('%s keeps token text pairs readable in both scopes', (palette) => {
 		document.documentElement.classList.remove('dark');

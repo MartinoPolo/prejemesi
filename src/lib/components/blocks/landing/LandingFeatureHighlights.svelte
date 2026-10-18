@@ -106,7 +106,7 @@
 						{/each}
 					</div>
 					<div
-						class="flex items-center justify-center gap-2 text-(length:--text-base) font-semibold text-brand"
+						class="flex items-center justify-center gap-2 text-(length:--text-base) font-semibold text-brand-link"
 					>
 						<span aria-hidden="true">🤍</span>
 						{m.landing_feat2_no_account()}

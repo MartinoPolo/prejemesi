@@ -115,7 +115,7 @@
 			size="sm"
 			format="icon"
 			class="shrink-0"
-			surfaceClass="text-muted-foreground group-hover:text-destructive"
+			surfaceClass="text-muted-foreground group-hover:text-status-danger-text"
 			{disabled}
 			onclick={onremove}
 			aria-label={m.gift_link_remove()}
@@ -146,6 +146,6 @@
 	</div>
 
 	{#if hasUrlError}
-		<span id={urlErrorId} class="text-xs text-destructive">{urlError}</span>
+		<span id={urlErrorId} class="text-xs text-status-danger-text">{urlError}</span>
 	{/if}
 </div>

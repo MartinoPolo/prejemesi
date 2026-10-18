@@ -10,8 +10,7 @@ export const alertVariants = tv({
 			default: 'bg-tint text-card-foreground',
 			success:
 				'bg-[color-mix(in_oklab,var(--status-success)_14%,var(--card))] text-card-foreground *:[svg]:text-status-success-text',
-			destructive:
-				'text-destructive bg-card *:data-[slot=alert-description]:text-destructive/90 *:[svg]:text-current',
+			destructive: 'text-status-danger-text bg-card *:[svg]:text-current',
 			warning:
 				'border-accent-loud-foreground bg-accent-loud text-accent-loud-foreground font-semibold shadow-sticker-strong *:data-[slot=alert-description]:text-accent-loud-foreground/90 *:[svg]:text-current',
 		},

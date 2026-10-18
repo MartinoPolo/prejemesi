@@ -71,7 +71,7 @@
 			<span class="text-foreground flex items-center gap-1 text-xs font-medium">
 				{field.label()}
 				{#if field.required}
-					<span class="text-status-danger" aria-hidden="true">*</span>
+					<span class="text-status-danger-text" aria-hidden="true">*</span>
 				{/if}
 			</span>
 

@@ -44,7 +44,9 @@
 				<article
 					class="step rounded-panel border-ink bg-card border-[2.5px] p-6 shadow-sticker"
 				>
-					<div class="step-num font-heading mb-2.5 flex items-center gap-2.5 text-brand">
+					<div
+						class="step-num font-heading mb-2.5 flex items-center gap-2.5 text-brand-link"
+					>
 						{index + 1}.
 						<span aria-hidden="true">{step.emoji}</span>
 					</div>

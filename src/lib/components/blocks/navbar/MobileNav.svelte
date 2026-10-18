@@ -66,7 +66,7 @@
 					class="w-full"
 					surfaceClass={cn(
 						'justify-start',
-						isNavActive(link.href) && 'font-semibold text-brand',
+						isNavActive(link.href) && 'font-semibold text-brand-link',
 					)}
 					onclick={() => (open = false)}
 				>

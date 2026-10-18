@@ -49,5 +49,7 @@
 	<Button {intent} size="xl" type="submit" disabled={pending} aria-busy={pending}>
 		{pending ? m.demo_start_pending() : label()}
 	</Button>
-	{#if error}<p role="alert" class="text-sm text-destructive">{m.demo_start_error()}</p>{/if}
+	{#if error}<p role="alert" class="text-sm text-status-danger-text">
+			{m.demo_start_error()}
+		</p>{/if}
 </form>
