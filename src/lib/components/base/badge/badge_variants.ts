@@ -19,9 +19,9 @@ export const badgeVariants = tv({
 			warning:
 				'bg-[color-mix(in_oklab,var(--status-warning)_14%,var(--card))] text-status-warning-text border-ink',
 			danger: 'bg-[color-mix(in_oklab,var(--status-danger)_14%,var(--card))] text-status-danger-text border-ink',
-			info: 'bg-[color-mix(in_oklab,var(--status-info)_14%,var(--card))] text-status-info border-ink',
+			info: 'bg-[color-mix(in_oklab,var(--status-info)_14%,var(--card))] text-brand-link border-ink',
 			primary:
-				'bg-[color-mix(in_oklab,var(--primary)_14%,var(--card))] text-brand border-ink',
+				'bg-[color-mix(in_oklab,var(--primary)_14%,var(--card))] text-brand-link border-ink',
 			accent: 'bg-accent-loud text-accent-loud-foreground border-ink',
 		},
 		badgeStyle: {

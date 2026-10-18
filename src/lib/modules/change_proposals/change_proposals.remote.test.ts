@@ -38,6 +38,7 @@ vi.mock('$app/server', () => {
 
 vi.mock('$lib/server/agent_access/change_proposals.js', () => changeProposalService);
 vi.mock('$lib/modules/gifts/gifts.remote.js', () => ({ getGiftsByWishlistShortId: vi.fn() }));
+vi.mock('$lib/modules/wishlists/wishlists.remote.js', () => ({ getWishlistByShortId: vi.fn() }));
 vi.mock('$lib/server/remote.js', async (importOriginal) => ({
 	...(await importOriginal<typeof RemoteModule>()),
 	singleFlightRefresh: vi.fn(async () => {}),
@@ -53,6 +54,7 @@ import {
 import * as v from 'valibot';
 import { singleFlightRefresh } from '$lib/server/remote.js';
 import { getGiftsByWishlistShortId } from '$lib/modules/gifts/gifts.remote.js';
+import { getWishlistByShortId } from '$lib/modules/wishlists/wishlists.remote.js';
 import {
 	ApplyChangeProposalInputSchema,
 	CHANGE_PROPOSAL_MAX_ROWS,
@@ -189,9 +191,12 @@ describe('change proposal remote functions', () => {
 			[getChangeProposal, address],
 			[getPendingChangeProposals, { wishlistShortId: 'abc123' }],
 		];
-		const giftList = [getGiftsByWishlistShortId, 'abc123'];
+		const changedWishlist = [
+			[getGiftsByWishlistShortId, 'abc123'],
+			[getWishlistByShortId, 'abc123'],
+		];
 
-		it('refreshes the proposal, the pending list and the gifts once a proposal applied', async () => {
+		it('refreshes the proposal, the pending list, the wishlist and its gifts once a proposal applied', async () => {
 			signIn();
 			changeProposalService.applyChangeProposalRows.mockResolvedValue({
 				outcome: 'applied',
@@ -200,10 +205,10 @@ describe('change proposal remote functions', () => {
 
 			await call(applyChangeProposal, applyInput);
 
-			expect(refreshedQueries()).toEqual([...proposalViews, giftList]);
+			expect(refreshedQueries()).toEqual([...proposalViews, ...changedWishlist]);
 		});
 
-		it('refreshes the proposal, the pending list and the gifts once a proposal was undone', async () => {
+		it('refreshes the proposal, the pending list, the wishlist and its gifts once a proposal was undone', async () => {
 			signIn();
 			changeProposalService.undoChangeProposal.mockResolvedValue({
 				outcome: 'undone',
@@ -212,7 +217,7 @@ describe('change proposal remote functions', () => {
 
 			await call(undoChangeProposal, { proposalId: 'proposal-1' });
 
-			expect(refreshedQueries()).toEqual([...proposalViews, giftList]);
+			expect(refreshedQueries()).toEqual([...proposalViews, ...changedWishlist]);
 		});
 
 		it('refreshes the proposal views but not the unchanged gifts after a discard', async () => {
