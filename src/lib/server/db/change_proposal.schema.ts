@@ -7,7 +7,7 @@ import type {
 } from '$lib/server/agent_access/change_proposal_records.js';
 import { user } from './auth.schema.js';
 import { wishlist } from './wishlist.schema.js';
-import { personalAccessToken } from './access_token.schema.js';
+import { agentAccessOauthGrant, personalAccessToken } from './access_token.schema.js';
 import { generateId } from './id.js';
 import { cascadingReferenceColumn } from './columns.js';
 
@@ -24,7 +24,11 @@ export const changeProposal = pgTable(
 		// Null only for a proposal that created wishlists, applied at once by fast-forward.
 		wishlistId: text('wishlist_id').references(() => wishlist.id, { onDelete: 'cascade' }),
 		submitterUserId: cascadingReferenceColumn('submitter_user_id', () => user.id),
+		// The submitting credential: a personal access token or an OAuth grant, the other null.
 		tokenId: text('token_id').references(() => personalAccessToken.id, {
+			onDelete: 'set null',
+		}),
+		oauthGrantId: text('oauth_grant_id').references(() => agentAccessOauthGrant.id, {
 			onDelete: 'set null',
 		}),
 		channel: text('channel').notNull(),
@@ -51,6 +55,7 @@ export const changeProposal = pgTable(
 		expiresIdx: index('change_proposal_expires_idx').on(table.expiresAt),
 		wishlistIdx: index('change_proposal_wishlist_idx').on(table.wishlistId),
 		tokenIdx: index('change_proposal_token_idx').on(table.tokenId),
+		oauthGrantIdx: index('change_proposal_oauth_grant_idx').on(table.oauthGrantId),
 	}),
 );
 
@@ -73,5 +78,22 @@ export const agentIdempotencyKey = pgTable(
 	(table) => ({
 		pk: primaryKey({ columns: [table.tokenId, table.key] }),
 		createdIdx: index('agent_idempotency_key_created_idx').on(table.createdAt),
+	}),
+);
+
+/** Like `agentIdempotencyKey`, for the keys of an OAuth grant. */
+export const agentOauthIdempotencyKey = pgTable(
+	'agent_oauth_idempotency_key',
+	{
+		grantId: cascadingReferenceColumn('grant_id', () => agentAccessOauthGrant.id),
+		key: text('key').notNull(),
+		requestFingerprint: text('request_fingerprint').notNull(),
+		responseStatus: integer('response_status'),
+		responseBody: jsonb('response_body'),
+		createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+	},
+	(table) => ({
+		pk: primaryKey({ columns: [table.grantId, table.key] }),
+		createdIdx: index('agent_oauth_idempotency_key_created_idx').on(table.createdAt),
 	}),
 );

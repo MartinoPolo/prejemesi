@@ -77,6 +77,9 @@
 		"valibot": "^1.4.2"
 	},
 	"devDependencies": {
+		"@better-auth/cimd": "~1.7.7",
+		"@better-auth/mcp": "~1.7.7",
+		"@better-auth/oauth-provider": "~1.7.7",
 		"@chromatic-com/storybook": "^5.1.1",
 		"@cloudflare/workers-types": "^5.20260822.1",
 		"@fontsource-variable/figtree": "^5.2.10",

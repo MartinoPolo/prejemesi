@@ -1,7 +1,7 @@
 import { index, integer, pgTable, text, timestamp } from 'drizzle-orm/pg-core';
 import { user } from './auth.schema.js';
 import { wishlist } from './wishlist.schema.js';
-import { personalAccessToken } from './access_token.schema.js';
+import { agentAccessOauthGrant, personalAccessToken } from './access_token.schema.js';
 import { generateToken } from './id.js';
 import { cascadingReferenceColumn } from './columns.js';
 
@@ -22,6 +22,9 @@ export const agentImage = pgTable(
 		tokenId: text('token_id').references(() => personalAccessToken.id, {
 			onDelete: 'set null',
 		}),
+		oauthGrantId: text('oauth_grant_id').references(() => agentAccessOauthGrant.id, {
+			onDelete: 'set null',
+		}),
 		objectKey: text('object_key').notNull().unique(),
 		contentType: text('content_type').notNull(),
 		byteLength: integer('byte_length').notNull(),
@@ -38,5 +41,6 @@ export const agentImage = pgTable(
 		attachedIdx: index('agent_image_attached_idx').on(table.attachedAt),
 		wishlistIdx: index('agent_image_wishlist_idx').on(table.wishlistId),
 		tokenIdx: index('agent_image_token_idx').on(table.tokenId),
+		oauthGrantIdx: index('agent_image_oauth_grant_idx').on(table.oauthGrantId),
 	}),
 );
