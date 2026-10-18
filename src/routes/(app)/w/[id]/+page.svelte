@@ -57,6 +57,11 @@
 		recordWishlistVisit,
 	} from '$lib/modules/wishlists/wishlists.remote.js';
 	import { getGiftsByWishlistShortId } from '$lib/modules/gifts/gifts.remote.js';
+	import { PendingChangesBanner } from '$lib/components/blocks/change-proposals/index.js';
+	import {
+		getPendingChangeProposals,
+		type PendingChangeProposalSummary,
+	} from '$lib/modules/change_proposals/index.js';
 	import { getGiftCategories } from '$lib/modules/gift-categories/gift_category_queries.remote.js';
 	import { getUserLikesForWishlistScoped } from '$lib/modules/likes/likes.remote.js';
 	import {
@@ -277,7 +282,12 @@
 
 	// ── Remote data fetch ────────────────────────────────────────────────────
 
-	// SSR fetches only wishlist metadata for title/OG/header. The plain awaited value
+	// The submitter's own pending agent proposals load in parallel with the wishlist during
+	// SSR, so the banner adds no client request; nobody else gets any back.
+	// svelte-ignore state_referenced_locally
+	const pendingProposalsLoad = loadInitialPendingProposals(isAuthenticated, shortId);
+
+	// SSR fetches wishlist metadata for title/OG/header. The plain awaited value
 	// is required for <svelte:head> — reading post-await state through a memoized
 	// $derived there collapses to undefined during async SSR and 500s (see
 	// getSocialDescription). The reactive query shares the same client cache entry,
@@ -288,6 +298,16 @@
 	const initialWishlist = await getWishlistByShortId(shortId);
 	const wishlistQuery = $derived(getWishlistByShortId(shortId));
 	const wishlist = $derived(wishlistQuery.current ?? initialWishlist);
+	// svelte-ignore state_referenced_locally
+	const initialPendingProposalsShortId = shortId;
+	const initialPendingProposals = await pendingProposalsLoad;
+	const pendingProposalsQuery = $derived(
+		isAuthenticated ? getPendingChangeProposals({ wishlistShortId: shortId }) : null,
+	);
+	const pendingProposals = $derived(
+		pendingProposalsQuery?.current ??
+			(shortId === initialPendingProposalsShortId ? initialPendingProposals : []),
+	);
 	const likesQuery = $derived(
 		browser && isAuthenticated
 			? getUserLikesForWishlistScoped({ wishlistId: wishlist.id })
@@ -415,6 +435,21 @@
 			SOCIAL_PREVIEW_IMAGE_URL,
 		);
 		return url.startsWith('http') ? url : `${SITE_URL}${url}`;
+	}
+
+	/** A failing lookup only hides the banner; it never breaks the wishlist. */
+	async function loadInitialPendingProposals(
+		authenticated: boolean,
+		wishlistShortId: string,
+	): Promise<PendingChangeProposalSummary[]> {
+		if (!authenticated) {
+			return [];
+		}
+		try {
+			return await getPendingChangeProposals({ wishlistShortId });
+		} catch {
+			return [];
+		}
 	}
 
 	// OG/Twitter description. A plain function (evaluated at render), NOT a $derived — reading
@@ -2150,6 +2185,9 @@
 		onsettings={handleSettingsOpened}
 	/>
 
+	{#if pendingProposals.length > 0}
+		<PendingChangesBanner wishlistShortId={shortId} proposals={pendingProposals} />
+	{/if}
 	{#if page.data.demoExpiresAt !== null}
 		<p class="rounded-lg border border-border bg-card p-3 text-sm text-muted-foreground">
 			{m.demo_list_limits()}

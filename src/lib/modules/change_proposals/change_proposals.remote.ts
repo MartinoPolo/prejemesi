@@ -8,6 +8,7 @@ import {
 	undoChangeProposal as undoOwnChangeProposal,
 } from '$lib/server/agent_access/change_proposals.js';
 import { getGiftsByWishlistShortId } from '$lib/modules/gifts/gifts.remote.js';
+import { getWishlistByShortId } from '$lib/modules/wishlists/wishlists.remote.js';
 import {
 	ApplyChangeProposalInputSchema,
 	CHANGE_PROPOSAL_OUTCOME,
@@ -29,7 +30,7 @@ export const getPendingChangeProposals = guardedQueryWithArgs(
 	({ user }, { wishlistShortId }) => listPendingChangeProposals(user, wishlistShortId),
 );
 
-/** The review page, the pending banner and, after a change, the wishlist's gifts. */
+/** The review page, the pending banner and, after a change, the wishlist and its gifts. */
 async function refreshProposalViews(
 	proposal: ChangeProposalView,
 	giftsChanged: boolean,
@@ -42,6 +43,7 @@ async function refreshProposalViews(
 		singleFlightRefresh(getChangeProposal, { wishlistShortId, proposalId: proposal.id }),
 		singleFlightRefresh(getPendingChangeProposals, { wishlistShortId }),
 		giftsChanged ? singleFlightRefresh(getGiftsByWishlistShortId, wishlistShortId) : undefined,
+		giftsChanged ? singleFlightRefresh(getWishlistByShortId, wishlistShortId) : undefined,
 	]);
 }
 
