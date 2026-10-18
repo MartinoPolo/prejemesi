@@ -79,7 +79,7 @@ From "Vylepšit pomocí AI" on "Sluchátka Sony WH-1000XM5" (name + link, no ima
 - The assistant restates the scope in one line ("Změním 4 dárky, smažu 2"), then proposes.
 - Deletions need explicit confirmation.
 - The assistant has exactly the user's rights. When a recipient asks for something they cannot do, it refuses or warns with the same message the UI gives for that action (e.g. "Stávající dárky nelze po sdílení seznamu odebrat."), including the first-change warning on a shared permanent list, and never says or hints anything about reservations the recipient could not learn from the UI. A správce may read that a gift is reserved.
-- Reorders are low risk: the assistant applies them without confirmation, even with the trust switch off, and reports them as an applied card.
+- Reorders are low risk: the assistant applies them without confirmation, even with the trust switch off, and reports them as an applied card with Vrátit. The batch stores the previous order; undo restores it and refuses only when the order changed since.
 
 ### 3.6 Decisions, live preview and fast-forward
 
@@ -222,9 +222,9 @@ Confirmed by the owner (2026-10-18):
 - Fast-forward is per chat.
 - The pending banner shows one row per proposal, each with its source.
 - On shared lists, enrichment adds to the description only.
-- Reorders apply without confirmation, even with the trust switch off.
+- Reorders apply without confirmation, even with the trust switch off, and are undoable from the stored previous order.
 - The assistant has exactly the recipient's rights and answers with the UI's own refusal or warning, never hinting at reservations.
-- Users may let the agent apply changes immediately at their own risk: Použít from the chat and the trust switch need no review step; the review page is optional. Deletions, reservations and manager invitations stay behind explicit confirmation.
+- Users may let the agent apply changes immediately at their own risk: Použít from the chat and the trust switch need no review step; the review page is optional. Deletions, reservations and manager invitations always need explicit confirmation, even with the trust switch on.
 
 Still an assumption:
 

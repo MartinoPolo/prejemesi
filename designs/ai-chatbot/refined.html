@@ -738,7 +738,7 @@ const PANEL_MIN=360,PANEL_MAX=640,PANEL_DEFAULT=420;
 const ui={viewport:'desktop',theme:'light',role:'manager',scenario:'enrich',actions:'bar',entry:'header',
   open:true,view:'chat',page:'wishlist',trust:false,access:'full',menuGift:null,reviewId:null,reviewSelection:{},historyLoading:false,
   sheet:'half',trayOpen:false,panelWidth:PANEL_DEFAULT,hintDismissed:false};
-let gifts=[],thread=[],proposals={},freshGiftIds=new Set(),deletedIds=new Set(),timers=[],streaming=null,createState={choice:'catan',retrying:false,retried:false},demoUsed=new Set(),lastTrigger=null;
+let gifts=[],thread=[],proposals={},freshGiftIds=new Set(),deletedIds=new Set(),timers=[],streaming=null,createState={choice:'catan',retrying:false,retried:false},demoUsed=new Set(),sortUndo=null,lastTrigger=null;
 
 /* ── Proposal model: one source for the chat check, the live preview and the review page ── */
 const field=(key,label,old,suggested,control='text',extra={})=>({key,label,old,suggested,value:suggested,decision:null,control,...extra});
@@ -912,7 +912,7 @@ function loadScenario(id){
   ui.trust=id==='fast-forward';
   ui.sheet=DECIDING.includes(id)?'half':'full';
   ui.trayOpen=['enrich','create','bulk'].includes(id)&&ui.viewport==='desktop';
-  gifts=clone(BASE_GIFTS);proposals={};freshGiftIds=new Set();deletedIds=new Set();demoUsed=new Set();
+  gifts=clone(BASE_GIFTS);proposals={};freshGiftIds=new Set();deletedIds=new Set();demoUsed=new Set();sortUndo=null;
   createState={choice:'catan',retrying:false,retried:false};
   if(id==='create'){PROPOSAL_FACTORIES.create().inspect=true}
   thread=CONVERSATIONS[id]();
@@ -1184,7 +1184,9 @@ function renderPart(part){
     case 'starters':return startersPart();
     case 'stream':return streamPart(part);
     case 'error':return `<div class="alert destructive" role="group" aria-labelledby="error-title">${icon('alert')}<p class="alert-title" id="error-title">Odpověď se nepodařilo dokončit.</p><p class="alert-body">Nic se nezměnilo.</p><div class="alert-actions"><button type="button" class="btn sm secondary" data-action="retry-turn" data-key="retry">${icon('refresh')}Zkusit znovu</button></div></div>`;
-    case 'sorted':return `<article class="pcard" data-tone="success" aria-labelledby="sorted-title"><div class="pcard-band"><h3 class="pcard-title" id="sorted-title">${icon('reorder')}Pořadí změněno</h3></div><div class="pcard-body"><p class="pcard-meta">Od nejlevnějšího, dárky bez ceny na konci.</p></div></article>`;
+    case 'sorted':return sortUndo?.status==='undone'
+      ?`<article class="pcard is-closed" data-tone="ink" aria-labelledby="sorted-title"><div class="pcard-band"><h3 class="pcard-title" id="sorted-title">${icon('undo')}Pořadí vráceno</h3><span class="pcard-meta">Dárky jsou v původním pořadí.</span></div></article>`
+      :`<article class="pcard" data-tone="success" aria-labelledby="sorted-title"><div class="pcard-band"><h3 class="pcard-title" id="sorted-title">${icon('reorder')}Pořadí změněno</h3></div><div class="pcard-body"><p class="pcard-meta">Od nejlevnějšího, dárky bez ceny na konci.</p><div class="pcard-meta"><button type="button" class="btn sm danger" data-action="undo-sort" data-key="undo-sort">${icon('undo')}Vrátit</button></div></div></article>`;
     default:return '';
   }
 }
@@ -1433,8 +1435,8 @@ function demoChip(key){
   thread.push(user(labels[key],'Ukázka'));
   if(key==='enrich'){const proposal=PROPOSAL_FACTORIES.enrich();proposal.inspect=true;deliverProposal(proposal);thread.push(ai(tools(['done','Heureka, Alza, Amazon.de a 3 obrázky']),text('Mám 6 vylepšení.'),proposalPart(proposal)))}
   if(key==='create'){const proposal=PROPOSAL_FACTORIES.demoCreate();proposal.inspect=true;deliverProposal(proposal);thread.push(ai(tools(['done','Načetl jsem 3 ukázkové odkazy']),proposalPart(proposal)))}
-  /* Reorders are low risk: applied straight away, no review step, no batch undo. */
-  if(key==='sort'){gifts.sort((first,second)=>priceValue(first.price)-priceValue(second.price));thread.push(ai({type:'sorted'}))}
+  /* Reorders are low risk: applied straight away with no review step; undo restores the stored previous order. */
+  if(key==='sort'){sortUndo={previousOrder:gifts.map(gift=>gift.id),status:'applied'};gifts.sort((first,second)=>priceValue(first.price)-priceValue(second.price));sortUndo.appliedOrder=gifts.map(gift=>gift.id).join();thread.push(ai({type:'sorted'}))}
   ui.trayOpen=true;
   renderAll({scroll:'last-user'});revealGhosts();announce(key==='sort'?'Pořadí změněno.':'Asistent připravil návrh.');
 }
@@ -1476,6 +1478,7 @@ document.addEventListener('click',event=>{
     case 'confirm-delete':{const proposal=proposals[target.dataset.proposal];const index=Number(target.dataset.index);const gift=giftById(proposal.held[index].giftId);
       openDialog({title:'Smazat 1 dárek?',body:`„${escapeHtml(gift.name)}“ se trvale odstraní ze seznamu.`,confirmLabel:'Smazat 1 dárek',tone:'destructive',onConfirm:()=>{deleteHeld(proposal,index);renderAll();toast('Dárek smazán.')}});break}
     case 'keep-held':{proposals[target.dataset.proposal].held[Number(target.dataset.index)].status='kept';renderAll();break}
+    case 'undo-sort':{if(gifts.map(gift=>gift.id).join()!==sortUndo.appliedOrder){toast('Pořadí se mezitím změnilo, vrátit ho už nejde.');break}const positions=new Map(sortUndo.previousOrder.map((giftId,index)=>[giftId,index]));gifts.sort((first,second)=>positions.get(first.id)-positions.get(second.id));sortUndo.status='undone';renderAll();toast('Pořadí vráceno.');announce('Pořadí vráceno.');break}
     case 'undo-held':{const held=proposals[target.dataset.proposal].held[Number(target.dataset.index)];gifts.splice(held.removedIndex,0,held.removed);deletedIds.delete(held.giftId);held.status='restored';renderAll();toast('Dárek je zpět v seznamu.');break}
     case 'toggle-trust':ui.trust=!ui.trust;afterTrust();break;
     case 'set-trust':ui.trust=target.dataset.value==='on';afterTrust();break;
