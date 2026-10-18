@@ -40,6 +40,8 @@ h3{font-size:17px}
 .option{display:flex;flex-direction:column;gap:10px}
 .preview{position:relative;aspect-ratio:1440/900;overflow:hidden;border:2px solid var(--ink);border-radius:calc(var(--radius-panel) - 6px);background:#161a20}
 .preview iframe{position:absolute;inset:0;width:1440px;height:900px;border:0;transform-origin:0 0;pointer-events:none}
+.preview.phone{aspect-ratio:440/1010;max-width:300px;width:100%;justify-self:center}
+.preview.phone iframe{width:440px;height:1010px}
 .trade{font-size:13px}
 .trade strong{display:block}
 .open{display:inline-flex;align-items:center;justify-content:center;min-height:32px;padding:0 14px;border:2px solid var(--ink);border-radius:var(--radius-btn);background:var(--primary);color:var(--primary-foreground);font-weight:700;text-decoration:none;box-shadow:3px 3px 0 var(--hard-shadow);justify-self:start;align-self:flex-start}
@@ -47,6 +49,7 @@ h3{font-size:17px}
 .label{display:inline-block;padding:1px 8px;border:1.5px solid var(--ink);border-radius:var(--radius-badge);font:700 12px/1.5 var(--font-body);vertical-align:middle}
 .label-rec{background:color-mix(in oklab,var(--status-success) 18%,var(--card));color:var(--status-success-text)}
 .label-confirmed{background:color-mix(in oklab,var(--status-success) 18%,var(--card));color:var(--status-success-text)}
+.label-rejected{background:color-mix(in oklab,var(--ink) 8%,var(--card));color:var(--muted-foreground)}
 .label-assumption{background:color-mix(in oklab,var(--status-warning) 22%,var(--card));color:var(--foreground)}
 table{width:100%;border-collapse:collapse;font-size:13px}
 th,td{text-align:left;vertical-align:top;padding:8px 10px;border-bottom:1px solid color-mix(in oklab,var(--ink) 18%,transparent)}
@@ -63,67 +66,51 @@ ul,ol{margin:0;padding-left:20px;display:grid;gap:6px}
   <header>
     <p class="eyebrow">Přejeme si · Vybraná varianta · <a href="https://github.com/MartinoPolo/prejemesi/issues/478">#478</a></p>
     <h1>AI asistent: Refined A</h1>
-    <p class="lead">Varianta A doplněná o připomínky vlastníka a prvky z varianty C. Otevřené zůstávají dvě volby: podoba spodní části panelu a vstup do asistenta. Lišta v mockupu přepíná zařízení, motiv, roli, vstup, akce i scénář; stav jde nastavit adresou <code>?viewport=&amp;theme=&amp;scenario=&amp;actions=&amp;entry=&amp;role=&amp;panel=closed</code>. Požadavky: <a href="./DESIGN_BRIEF_AI_CHATBOT.md">brief</a>.</p>
+    <p class="lead">Varianta A doplněná o připomínky vlastníka ve dvou kolech. Všechny volby jsou rozhodnuté: lišta rozhodnutí nad polem pro zprávu a plovoucí tlačítko vpravo dole. Lišta v mockupu přepíná zařízení, motiv, roli a scénář; stav jde nastavit adresou <code>?viewport=&amp;theme=&amp;scenario=&amp;role=&amp;panel=closed</code>. Požadavky: <a href="./DESIGN_BRIEF_AI_CHATBOT.md">brief</a>.</p>
   </header>
 
   <section class="panel" aria-labelledby="refined-title">
     <h2 id="refined-title">Refined A</h2>
     <div class="preview"><iframe title="Náhled Refined A" src="./refined.html?scenario=enrich" tabindex="-1"></iframe></div>
     <ul>
-      <li><strong>Méně textu:</strong> vysvětlení důvěry jen jednou jako zavíratelná nápověda, pak kompaktní přepínač.</li>
-      <li><strong>Rozhodnutí dole:</strong> Zkontrolovat, Použít a Zamítnout a přepínač důvěry jsou u pole pro zprávu.</li>
-      <li><strong>Po polích:</strong> každé pole má upravitelnou hodnotu, přijmout, zamítnout a zrušení rozhodnutí; řádek se po rozhodnutí podbarví.</li>
-      <li><strong>Živý náhled:</strong> karty v seznamu ukazují návrh (štítek „Návrh“, přerušovaný okraj, nové a mazané dárky); stránka kontroly je volitelná, výchozí jen pro velké dávky.</li>
-      <li><strong>Hutné karty a reálné fotky:</strong> menší kandidátní obrázky s přiblížením po kliknutí.</li>
-      <li><strong>Šířka panelu:</strong> tažením 360–640 px, pamatuje se, dvojklik vrací 420 px; na mobilu místo toho dvě výšky (náhled a celý chat).</li>
-      <li><strong>Vstup:</strong> globální tlačítko, „Vylepšit pomocí AI“ v menu dárku, nikdy v hlavičce seznamu.</li>
+      <li><strong>Lišta rozhodnutí:</strong> Zamítnout, Zkontrolovat a Použít nad polem pro zprávu, pod ním přepínač „Bez kontroly“; počty jsou po dárcích.</li>
+      <li><strong>Po polích, bez vstupů:</strong> každé pole ukazuje původní hodnotu červeně přeškrtnutou a novou zeleně; ✓ přijme, ✕ zamítne, opětovné klepnutí volbu zruší.</li>
+      <li><strong>Úprava:</strong> ✎ změní jen tu jednu hodnotu na pole, výběr nebo výběr obrázku; Uložit pole přijme jako „Upraveno“.</li>
+      <li><strong>Mazání v chatu:</strong> klepnutí na „Smazat 1 dárek“ je potvrzení, bez dalšího dialogu; Vrátit vrací volbu Smazat / Ponechat.</li>
+      <li><strong>Živý náhled:</strong> karty v seznamu ukazují návrh (štítek „Návrh“, přerušovaný okraj, nové a mazané dárky); stránka kontroly je volitelná, výchozí jen pro návrhy nad 5 dárků.</li>
+      <li><strong>Šířka panelu:</strong> tažením 360–640 px, pamatuje se, dvojklik vrací 420 px; na mobilu dvě výšky (náhled a celý chat).</li>
     </ul>
     <a class="open" href="./refined.html">Otevřít Refined A</a>
   </section>
 
-  <section class="panel" aria-labelledby="actions-title">
-    <h2 id="actions-title">Spodní část panelu (<code>?actions=</code>)</h2>
+  <section class="panel" aria-labelledby="entry-title">
+    <h2 id="entry-title">Plovoucí tlačítko na mobilu <span class="label label-confirmed">Rozhodnuto</span></h2>
     <div class="grid-3">
       <article class="option">
-        <h3>Lišta <span class="label label-rec">Doporučeno</span></h3>
-        <div class="preview"><iframe title="Náhled akcí Lišta" src="./refined.html?scenario=bulk&amp;actions=bar" tabindex="-1"></iframe></div>
-        <p>Pevná lišta nad polem pro zprávu: počet změn a tři tlačítka; pod polem přepínač „Bez kontroly“.</p>
-        <p class="trade"><strong>Kompromis</strong>Rozhodnutí je vždy na jednom místě, ale lišta trvale zabírá asi 100 px, na mobilu v poloviční výšce je to těsné.</p>
-        <a class="open" href="./refined.html?scenario=bulk&amp;actions=bar">Otevřít</a>
+        <h3>Nahoře seznamu</h3>
+        <div class="preview phone"><iframe title="Plovoucí tlačítko nahoře seznamu" src="./refined.html?scenario=chat&amp;viewport=mobile&amp;panel=closed" tabindex="-1"></iframe></div>
+        <p>Plné tlačítko „AI asistent“ vpravo dole, jen když je panel zavřený.</p>
       </article>
       <article class="option">
-        <h3>Na kartě</h3>
-        <div class="preview"><iframe title="Náhled akcí Na kartě" src="./refined.html?scenario=bulk&amp;actions=inline" tabindex="-1"></iframe></div>
-        <p>Tlačítka jsou na každé kartě návrhu ve vlákně; pod polem pro zprávu štítek „Důvěřovat agentovi“.</p>
-        <p class="trade"><strong>Kompromis</strong>Nejvíc místa pro konverzaci, ale u dlouhého návrhu tlačítka odjedou a více návrhů má každý svá tlačítka.</p>
-        <a class="open" href="./refined.html?scenario=bulk&amp;actions=inline">Otevřít</a>
+        <h3>Při posouvání dolů</h3>
+        <div class="preview phone"><iframe title="Plovoucí tlačítko při posouvání" src="./refined.html?scenario=chat&amp;viewport=mobile&amp;panel=closed&amp;scroll=600" tabindex="-1"></iframe></div>
+        <p>Sbalí se na ikonu, aby nezakrývalo ceny a tlačítka karet; při posunu nahoru se zase rozbalí.</p>
       </article>
       <article class="option">
-        <h3>Zásuvka</h3>
-        <div class="preview"><iframe title="Náhled akcí Zásuvka" src="./refined.html?scenario=bulk&amp;actions=tray" tabindex="-1"></iframe></div>
-        <p>Rozbalovací zásuvka nad polem pro zprávu: sbalená ukazuje počet a Použít, rozbalená řádky po polích; přepínač „Kontrolovat · Důvěřovat“.</p>
-        <p class="trade"><strong>Kompromis</strong>Sbalená je nejúspornější, rozbalená ale bere výšku vláknu a na mobilu stojí kontrola po polích jedno klepnutí navíc.</p>
-        <a class="open" href="./refined.html?scenario=bulk&amp;actions=tray">Otevřít</a>
+        <h3>Konec seznamu</h3>
+        <div class="preview phone"><iframe title="Plovoucí tlačítko na konci seznamu" src="./refined.html?scenario=chat&amp;viewport=mobile&amp;panel=closed&amp;scroll=end" tabindex="-1"></iframe></div>
+        <p>Seznam má dole rezervované místo, takže poslední karta jde vždy odsunout nad tlačítko.</p>
       </article>
     </div>
+    <p>Na stránkách s vlastní spodní lištou (stránka kontroly) se nezobrazí; oznámení se objevují nad ním.</p>
+    <p><span class="label label-rejected">Zamítnuto</span> Tlačítko v hlavičce aplikace a spodní část panelu „Na kartě“ nebo „Zásuvka“; platí Lišta.</p>
+    <a class="open" href="./refined.html?scenario=chat&amp;viewport=mobile&amp;panel=closed">Otevřít na mobilu</a>
   </section>
 
-  <section class="panel" aria-labelledby="entry-title">
-    <h2 id="entry-title">Vstup do asistenta (<code>?entry=</code>)</h2>
-    <div class="grid-2">
-      <article class="option">
-        <h3>Tlačítko v hlavičce aplikace <span class="label label-rec">Doporučeno</span></h3>
-        <div class="preview"><iframe title="Náhled vstupu v hlavičce" src="./refined.html?scenario=chat&amp;entry=header&amp;panel=closed" tabindex="-1"></iframe></div>
-        <p class="trade"><strong>Kompromis</strong>Konzistentní s navigací a nic nepřekrývá; na mobilu je to jen ikona mezi dalšími.</p>
-        <a class="open" href="./refined.html?scenario=chat&amp;entry=header&amp;panel=closed">Otevřít</a>
-      </article>
-      <article class="option">
-        <h3>Plovoucí tlačítko</h3>
-        <div class="preview"><iframe title="Náhled plovoucího vstupu" src="./refined.html?scenario=chat&amp;entry=fab&amp;panel=closed" tabindex="-1"></iframe></div>
-        <p class="trade"><strong>Kompromis</strong>Nejviditelnější, ale na mobilu překrývá ceny a tlačítka karet a soupeří s „Přidat dárek“.</p>
-        <a class="open" href="./refined.html?scenario=chat&amp;entry=fab&amp;panel=closed">Otevřít</a>
-      </article>
-    </div>
+  <section class="panel" aria-labelledby="review-title">
+    <h2 id="review-title">Stránka kontroly</h2>
+    <p>Stejné řádky po polích jako v chatu: původní → nová hodnota, ✓ ✕ ✎ a „Upraveno“ po uložení úpravy. Jen návrh, změna rozhraní přijde s implementací #478.</p>
+    <a class="open" href="../agent-change-review/refined.html">Otevřít návrh stránky kontroly</a>
   </section>
 
   <section class="panel scenarios" aria-labelledby="scenario-title">
@@ -147,17 +134,14 @@ ul,ol{margin:0;padding-left:20px;display:grid;gap:6px}
       <li><span class="label label-confirmed">Potvrzeno</span> Změnu pořadí asistent použije bez potvrzení, i když je kontrola zapnutá; jde vrátit do původního pořadí, pokud se mezitím nezměnilo.</li>
       <li><span class="label label-confirmed">Potvrzeno</span> Asistent má přesně práva obdarovaného: odmítne nebo varuje stejnou zprávou jako aplikace a nikdy nenaznačí rezervace.</li>
       <li><span class="label label-confirmed">Potvrzeno</span> Použít z chatu i Bez kontroly mění seznam hned, na vlastní riziko; stránka kontroly je volitelná. Smazání, rezervace a pozvánky správců vždy potvrdíte, i se zapnutým Bez kontroly.</li>
-      <li><span class="label label-assumption">Předpoklad</span> Návrh s více než 5 změnami se kontroluje na stránce kontroly, ne v panelu.</li>
+      <li><span class="label label-confirmed">Potvrzeno</span> Klepnutí na „Smazat 1 dárek“ v chatu je to potvrzení; Vrátit vrací rozhodnutí na výběr Smazat / Ponechat.</li>
+      <li><span class="label label-confirmed">Potvrzeno</span> Změny se počítají po dárcích.</li>
+      <li><span class="label label-confirmed">Potvrzeno</span> Uložená úprava hodnotu přijme („Upraveno“).</li>
+      <li><span class="label label-confirmed">Potvrzeno</span> Čekající návrhy jde použít i při globálně vypnutém asistentovi.</li>
+      <li><span class="label label-confirmed">Potvrzeno</span> Spodní část panelu je lišta, vstup je plovoucí tlačítko vpravo dole.</li>
+      <li><span class="label label-confirmed">Potvrzeno</span> Stránka kontroly používá stejné přijmout, zamítnout a upravit po polích jako chat.</li>
+      <li><span class="label label-assumption">Předpoklad</span> Návrh s více než 5 dárky se kontroluje na stránce kontroly, ne v panelu.</li>
     </ul>
-  </section>
-
-  <section class="panel" aria-labelledby="questions-title">
-    <h2 id="questions-title">Otevřené otázky</h2>
-    <ol>
-      <li><strong>Počty:</strong> počítat návrh po dárcích, nebo po změnách polí? Mockup ukazuje změny polí na tlačítkách a dárky v textu.</li>
-      <li><strong>Úprava hodnoty:</strong> přepsání navržené hodnoty ji rovnou přijme („Upraveno“); nebo má zůstat nerozhodnutá do ✓?</li>
-      <li><strong>Globální vypnutí:</strong> mají čekající návrhy jít použít i při vypnutém asistentovi?</li>
-    </ol>
   </section>
 
   <section class="panel" aria-labelledby="origin-title">
@@ -191,7 +175,8 @@ for (const [id, label] of scenarios) {
 }
 function scalePreviews() {
   for (const preview of document.querySelectorAll('.preview')) {
-    preview.querySelector('iframe').style.transform = `scale(${preview.clientWidth / 1440})`;
+    const frame = preview.querySelector('iframe');
+    frame.style.transform = `scale(${preview.clientWidth / frame.offsetWidth})`;
   }
 }
 new ResizeObserver(scalePreviews).observe(document.body);

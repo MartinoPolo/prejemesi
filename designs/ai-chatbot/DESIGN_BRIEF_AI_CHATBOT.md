@@ -1,7 +1,7 @@
 # AI Chatbot: Design Brief
 
-> **Status**: Variant A chosen (2026-10-18), refined with owner feedback; bottom action area and entry point still open between sub-variants
-> **Refined mockup**: `designs/ai-chatbot/refined.html` (`?actions=` and `?entry=` switch the open options)
+> **Status**: Variant A chosen and refined (2026-10-18): decision bar at the bottom, floating entry button
+> **Refined mockup**: `designs/ai-chatbot/refined.html`
 > **Comparison page**: `designs/ai-chatbot/index.html`
 > **Original variants**: `designs/ai-chatbot/variants/variant-{a,b,c}.html` (reference only)
 
@@ -25,8 +25,8 @@ Turn "I have a few links and a vague idea" into a tidy, priced, illustrated wish
 
 1. **App navbar** (final state): 56 px, logo, Moje seznamy / Spravované / Sledované pills, bell and avatar right; mobile drawer trigger.
 2. **Wishlist page** `/w/<id>` (final state) for a manager: notebook hero ("Pro: Babička", title "Vánoce pro babičku", Settings gear, More), then the toolbar (View, Display, Add gift rightmost), then gift cards (Card view, 3–4 columns desktop, 2 or 1 mobile).
-3. **Pending banner** (exists, `PendingChangesBanner.svelte`): an `Alert` above the toolbar, title "Čekající změny (n)", one row per proposal with its source ("3 změny přes token „Claude“" or "2 změny z AI asistenta") and validity, each with a secondary sm "Zkontrolovat" linking to `/w/<id>/changes/<proposalId>`.
-4. **Review page** `/w/<id>/changes/<proposalId>` (exists, `designs/agent-change-review/refined.html`): compact header, summary strip, change rows with a tinted header band, sticky "Použít vybrané (n)" bar.
+3. **Pending banner** (exists, `PendingChangesBanner.svelte`): an `Alert` above the toolbar, title "Čekající změny (n)", one row per proposal with its source ("Změny u 3 dárků přes token „Claude“" or "Změny u 2 dárků z AI asistenta") and validity, each with a secondary sm "Zkontrolovat" linking to `/w/<id>/changes/<proposalId>`.
+4. **Review page** `/w/<id>/changes/<proposalId>` (exists, `designs/agent-change-review/refined.html`): compact header, summary strip, change rows with a tinted header band and the same per-field rows as the chat (§3.6), sticky apply bar.
 
 **What parent provides**: navbar, wishlist page, review page, toasts.
 **What this design fills**: the AI side panel, its global entry point, "Vylepšit pomocí AI" in the gift menu, in-chat decisions with a live preview on the wishlist, the handoff to the review page, and the chat source in the pending banner.
@@ -35,7 +35,7 @@ Turn "I have a few links and a vague idea" into a tidy, priced, illustrated wish
 
 - Desktop ~1440×900 and mobile 390×844, light and dark, palette `sky`.
 - Render the wishlist page beside the panel at real fidelity (navbar, hero, toolbar, 6–8 gift cards with real product photos from `static/demo/`).
-- A visually separate review toolbar switches every option below. The same state is reachable by URL query: `?viewport=desktop|mobile&theme=light|dark&scenario=<id>&actions=<id>&entry=header|fab&role=manager|recipient` (scenario ids in §4, action-area ids in §3.6).
+- A visually separate review toolbar switches every option below. The same state is reachable by URL query: `?viewport=desktop|mobile&theme=light|dark&scenario=<id>&role=manager|recipient`, plus `&panel=closed` to start with the panel closed (scenario ids in §4).
 
 ---
 
@@ -43,7 +43,10 @@ Turn "I have a few links and a vague idea" into a tidy, priced, illustrated wish
 
 ### 3.1 Placement and entry points (G12)
 
-- **Global entry**, two options to compare: an "AI asistent" button in the app header, or a floating button near the bottom-right corner. Opening it from a wishlist scopes the panel to that wishlist ("Vánoce pro babičku").
+- **Global entry**: a floating "AI asistent" button in the bottom-right corner, shown while the panel is closed. Opening it from a wishlist scopes the panel to that wishlist ("Vánoce pro babičku").
+  - It collapses to an icon while the list scrolls down and expands again on scroll up or at the top.
+  - The list reserves bottom space for it, so the last cards' prices and buttons can always scroll clear.
+  - It is hidden on pages with their own bottom action bar (the review page) and toasts sit above it.
 - **"Vylepšit pomocí AI"** stays in the gift More menu ("Další akce") and opens the panel focused on that gift with the enrich flow started.
 - **Never an AI button in the wishlist hero.**
 - Entry points are hidden for users outside the allowlist and for visitors.
@@ -77,46 +80,42 @@ From "Vylepšit pomocí AI" on "Sluchátka Sony WH-1000XM5" (name + link, no ima
 
 - "Všechno nad 3 000 Kč dejte do nízké priority a smažte ty dva duplicitní Lego sety."
 - The assistant restates the scope in one line ("Změním 4 dárky, smažu 2"), then proposes.
-- Deletions need explicit confirmation.
+- Deletions need explicit confirmation: clicking "Smazat 1 dárek" in the chat is that confirmation, with no second dialog, and Vrátit stays available.
 - The assistant has exactly the user's rights. When a recipient asks for something they cannot do, it refuses or warns with the same message the UI gives for that action (e.g. "Stávající dárky nelze po sdílení seznamu odebrat."), including the first-change warning on a shared permanent list, and never says or hints anything about reservations the recipient could not learn from the UI. A správce may read that a gift is reserved.
 - Reorders are low risk: the assistant applies them without confirmation, even with the trust switch off, and reports them as an applied card with Vrátit. The batch stores the previous order; undo restores it and refuses only when the order changed since.
 
 ### 3.6 Decisions, live preview and fast-forward
 
-**Three actions on every proposal that needs the user:**
+Counts are per gift: "Návrh · 1 dárek", "Použít (7)", "Použito · 2 dárky".
 
-- **Zkontrolovat**: expands the inline check (per-field rows, below). Batches over 5 change rows open the review page instead.
+**Three actions on every proposal that needs the user**, in a sticky decision bar above the composer for the open proposal (count line + Zamítnout · Zkontrolovat · Použít), with the trust switch row under the composer:
+
+- **Zkontrolovat**: expands the inline check (per-field rows, below). Proposals over 5 gifts open the review page instead.
 - **Použít**: applies the proposal from the chat, with the same server dry-run, conflict check, revision record and batch undo as the review page.
 - **Zamítnout**: declines the proposal; nothing changes.
 
-**Per-field decisions** (inline check):
+**Per-field decisions** (inline check and review page alike):
 
-- Each changed field of a gift is its own row: label, old value, suggested value as an **editable input**, accept ✓ and reject ✗, and a small cross that reverts only that field to undecided.
-- Accepted rows take a success tint, rejected rows a muted tint (from variant C).
-- Použít applies accepted and undecided rows with their (possibly edited) values; rejected rows are skipped.
+- Each changed field of a gift is its own read-only row: label, then previous → next, the previous value struck through in red (`--status-danger-text`) and the next in green (`--status-success-text`). An empty previous value is muted, not struck; an append keeps the previous part neutral and greens only the addition; images show the new thumb with tap-to-enlarge.
+- Three icon buttons per row: accept ✓, reject ✕ and edit ✎. Clicking the active ✓ or ✕ again clears the decision; there is no other undo control. A status pill ("Přijato", "Zamítnuto", "Upraveno") carries text only.
+- Edit turns that one value into the right control (input, textarea, select, image picker) with Zrušit / Uložit; Enter saves inputs, Escape cancels. Saving accepts the field; a changed value shows as "Upraveno".
+- Accepted rows take a success tint; rejected rows a muted tint with the next value struck and the previous value back in plain text.
+- Použít applies accepted and undecided rows; rejected rows are skipped.
 
 **Live preview**: while deciding, the affected gift cards on the wishlist show the result as a ghost state (dashed brand outline, "Návrh" chip visible only to the user), new gifts as ghost cards and deletions struck through. It updates as the user accepts, rejects or edits.
 
 **Never asked**: reorders apply directly (§3.5).
 
-**Always confirmed**: deletions, reservations and manager invitations are separate rows with their own explicit confirm ("Smazat 1 dárek"); neither Použít nor the trust switch covers them.
+**Always confirmed**: deletions, reservations and manager invitations are separate rows with their own explicit action ("Smazat 1 dárek" / "Ponechat"); neither Použít nor the trust switch covers them. The click is the confirmation. Smazáno or Ponecháno then offers Vrátit, which returns the row to the Smazat / Ponechat choice and restores a deleted gift.
 
-**Trust switch (fast-forward per chat)**: at the bottom near the composer, compact, off for each new chat. Explained once in a dismissible hint. When on, ordinary edits and creations apply as they arrive with an applied card ("Použito · Vrátit"); always-confirmed rows still wait.
-
-**Bottom action area sub-variants** (`?actions=`), all keep Zkontrolovat, Použít and Zamítnout and the trust switch at the bottom:
-
-| id       | Layout                                                                                                     | Switch wording                         |
-| -------- | ---------------------------------------------------------------------------------------------------------- | -------------------------------------- |
-| `bar`    | Sticky decision bar above the composer for the open proposal: count line + Zamítnout · Zkontrolovat · Použít | Switch row under the composer: "Bez kontroly" |
-| `inline` | Actions stay on each proposal card in the thread; the composer footer holds a compact toggle chip           | Chip: "Důvěřovat agentovi"             |
-| `tray`   | Collapsible tray above the composer: collapsed shows count + Použít; expanded shows per-field rows and all three actions | Segmented "Kontrolovat · Důvěřovat" in the tray |
+**Trust switch (fast-forward per chat)**: "Bez kontroly" under the composer, compact, off for each new chat. Explained once in a dismissible hint. When on, ordinary edits and creations apply as they arrive with an applied card ("Použito · Vrátit"); always-confirmed rows still wait.
 
 ### 3.7 Access and limit states (G14, G18, G20, G21)
 
 - **Allowlisted family member**: full panel.
-- **Not allowlisted**: no entry point at all (header/floating button and gift-menu item hidden). The mockup shows the page without them.
+- **Not allowlisted**: no entry point at all (floating button and gift-menu item hidden). The mockup shows the page without them.
 - **Per-user daily cap reached**: history readable, composer disabled, one line "Dnešní limit je vyčerpaný, obnoví se zítra v 0:00." Pending proposals stay actionable.
-- **Global kill switch on**: "AI asistent je dočasně vypnutý." Composer disabled, history readable.
+- **Global kill switch on**: "AI asistent je dočasně vypnutý." Composer disabled, history readable; pending proposals can still be applied.
 - **Provider error**: inline error on the failed turn with "Zkusit znovu"; the user's message stays; nothing changed.
 - **Demo playground**: predefined action chips only, one-line note "Ukázka: odpovědi jsou předpřipravené." Its proposals apply to demo data like real ones.
 
@@ -130,14 +129,14 @@ From "Vylepšit pomocí AI" on "Sluchátka Sony WH-1000XM5" (name + link, no ima
 
 | Scenario id       | What it shows                                                                    |
 | ----------------- | -------------------------------------------------------------------------------- |
-| `chat`            | Fresh chat with starters                                                         |
-| `enrich`          | Headphones: per-field rows, image picker with enlarge, live preview, 3 actions   |
+| `chat`            | Fresh chat with starters; with `panel=closed`, the floating button              |
+| `enrich`          | Headphones: per-field rows with previous → next and ✓ ✕ ✎, live preview, 3 actions |
 | `create`          | Gifts from links + text, one ambiguous, one failed, ghost cards                  |
 | `bulk`            | Bulk edit with restated scope, an always-confirmed deletion                      |
-| `big-batch`       | Proposal over 5 rows: Zkontrolovat opens the review page                          |
+| `big-batch`       | Proposal over 5 gifts: Zkontrolovat opens the review page with per-field rows    |
 | `streaming`       | Tool lines, streaming text, Zastavit                                             |
 | `handoff`         | Review page reached from the chat, pending banner row "z AI asistenta"           |
-| `fast-forward`    | Trust switch on: applied card with Vrátit, a held deletion awaiting confirmation |
+| `fast-forward`    | Trust switch on: applied card with Vrátit, a held deletion with Smazat / Ponechat |
 | `history`         | 30-day history                                                                   |
 | `not-allowlisted` | Page with no entry points                                                        |
 | `daily-cap`       | Cap reached                                                                      |
@@ -156,13 +155,13 @@ From "Vylepšit pomocí AI" on "Sluchátka Sony WH-1000XM5" (name + link, no ima
 | Button               | `src/lib/components/base/button/`                | Send, Zkontrolovat, Použít, Zamítnout       |
 | Badge                | `src/lib/components/base/badge/`                 | Kind counts, "Vyžaduje potvrzení", "Návrh"  |
 | Alert                | `src/lib/components/base/alert/`                 | Cap, kill switch, provider error            |
-| Switch / ToggleGroup | `src/lib/components/base/switch/`, `toggle-group/` | Trust switch sub-variants                 |
-| Input / Textarea     | `src/lib/components/base/input/`, `textarea/`    | Editable suggested values, composer         |
-| Sheet / Dialog       | `src/lib/components/base/sheet/`, `dialog/`      | Mobile panel, deletion confirm, image zoom  |
+| Switch               | `src/lib/components/base/switch/`                | Trust switch                                |
+| Input / Textarea     | `src/lib/components/base/input/`, `textarea/`    | Field edit mode, composer                   |
+| Sheet / Dialog       | `src/lib/components/base/sheet/`, `dialog/`      | Mobile panel, image zoom                    |
 | DropdownMenu         | `src/lib/components/base/dropdown-menu/`         | Gift More menu entry                        |
 | ImageFrame           | `src/lib/components/derived/image-frame/`        | Thumbs and candidates                       |
 | GiftCard             | `src/lib/components/blocks/gift/GiftCard.svelte` | Ghost preview (real geometry)               |
-| FieldDiffList        | `src/lib/components/blocks/change-proposals/`    | Old value display in field rows             |
+| FieldDiffList        | `src/lib/components/blocks/change-proposals/`    | Previous → next display in field rows       |
 | ChangeKindTitle      | `src/lib/components/blocks/change-proposals/`    | Kind counts                                 |
 | PendingChangesBanner | `src/lib/components/blocks/change-proposals/`    | Source per row                              |
 
@@ -172,9 +171,10 @@ From "Vylepšit pomocí AI" on "Sluchátka Sony WH-1000XM5" (name + link, no ima
 | ----------------- | -------------------------------------------------------------------- |
 | AssistantPanel    | Resizable docked panel / two-height mobile sheet, thread, composer    |
 | ChatMessage       | Turns, tool lines, error turn                                        |
-| FieldDecisionRow  | Label, old value, editable suggestion, accept/reject/revert, tint    |
+| FieldDecisionRow  | Label, previous → next, accept/reject/edit, edit mode, tint; shared with the review page |
 | ProposalCard      | Counts, Zkontrolovat · Použít · Zamítnout, applied/undo state        |
-| ProposalActionArea| Bottom decision area and trust switch (sub-variant)                  |
+| ProposalActionArea| Bottom decision bar and trust switch                                 |
+| AssistantFab      | Floating entry: collapse on scroll, reserved list space, hidden over bottom bars |
 | GhostGiftState    | Card preview state for proposed edit, creation, deletion             |
 
 ---
@@ -184,7 +184,7 @@ From "Vylepšit pomocí AI" on "Sluchátka Sony WH-1000XM5" (name + link, no ima
 - Panel width 360–640 px (≤ 50 % viewport), default 420 px; content container keeps 16 px gutters. Mobile panel full width, 12 px gutters.
 - Chat cards use tight insets (8–12 px), nested corners per `AGENTS.md`.
 - Typography from `src/app.css`: panel title 17 px DynaPuff semibold; message text 14 px; field rows 13 px; meta 12 px muted.
-- Controls `md` 32 px desktop, `lg` 40 px mobile; field-row accept/reject may be `sm` 26 px on desktop with 32 px hit targets.
+- Controls `md` 32 px desktop, `lg` 40 px mobile; field-row accept/reject/edit may be `sm` 26 px on desktop with 32 px hit targets.
 
 ---
 
@@ -223,12 +223,18 @@ Confirmed by the owner (2026-10-18):
 - The pending banner shows one row per proposal, each with its source.
 - On shared lists, enrichment adds to the description only.
 - Reorders apply without confirmation, even with the trust switch off, and are undoable from the stored previous order.
+- Changes are counted per gift.
+- Editing a suggested value accepts it ("Upraveno").
+- Pending proposals can still be applied while the global kill switch is on.
+- The bottom action area is the decision bar; the global entry is the floating button.
+- Clicking "Smazat 1 dárek" in the chat is the explicit confirmation; reverting a decision returns to the choice.
+- The review page uses the same per-field accept, reject and edit as the chat.
 - The assistant has exactly the recipient's rights and answers with the UI's own refusal or warning, never hinting at reservations.
 - Users may let the agent apply changes immediately at their own risk: Použít from the chat and the trust switch need no review step; the review page is optional. Deletions, reservations and manager invitations always need explicit confirmation, even with the trust switch on.
 
 Still an assumption:
 
-- Batches over 5 change rows check on the review page rather than inline.
+- Proposals over 5 gifts check on the review page rather than inline.
 
 ---
 
@@ -246,4 +252,4 @@ Still an assumption:
 - Provider, model and billing configuration (G14, G16, G17).
 - Admin UI for the allowlist, global cap and kill switch.
 - Linkless name search beyond what the create flow shows.
-- Implementation of the review page itself (exists).
+- Implementation of the review page; its per-field design is in `designs/agent-change-review/refined.html`.

@@ -3,7 +3,7 @@
 > **Status**: Refined (Variant D)
 > **Refined mockup**: `designs/agent-change-review/refined.html`
 > **Summary**: `designs/agent-change-review/SUMMARY.md`
-> **Refinements**: tinted row header with the change type as coloured title text instead of a kind badge, title and status centred on the checkbox, `--status-success-text` for green text, AA-safe warning tone, mixed and nothing-selected review states
+> **Refinements**: tinted row header with the change type as coloured title text instead of a kind badge, title and status centred on the checkbox, `--status-success-text` for green text, AA-safe warning tone, mixed and nothing-selected review states, per-field accept, reject and edit shared with the AI chatbot (`designs/ai-chatbot/`)
 
 The review page where a user inspects a batch of changes that their own agent (Claude, Codex, a script) proposed for one wishlist, deselects what they do not want, applies the rest in one transaction, and can undo the whole batch afterwards. It turns an opaque API call into a visible, reversible diff the user trusts.
 
@@ -20,7 +20,7 @@ An agent acting as the user submits a batch of operations. The server dry-runs i
 - Which rows cannot apply because the gift changed after the agent looked at it?
 - After applying: can I take it all back?
 
-**Key value**: the user sees exactly what their agent wants to do and keeps the final word, row by row.
+**Key value**: the user sees exactly what their agent wants to do and keeps the final word, field by field.
 
 ---
 
@@ -45,7 +45,7 @@ The page is a normal authenticated route inside the `(app)` layout.
 
 - Desktop frame ~1440×900 and mobile frame 390×844, light and dark (dark derived from tokens, light is the source of truth).
 - The change table and apply bar are the focus; the navbar is shown at full fidelity but not redesigned.
-- Provide in-mockup controls (a small review toolbar, visually separate from the design) to switch: viewport, theme, and page state (Pending, Conflict on apply, Applied with undo, Undo conflict, Undone, Expired, Loading).
+- Provide in-mockup controls (a small review toolbar, visually separate from the design) to switch: viewport, theme, and page state (Pending, Field decisions, Editing a value, Conflict on apply, Applied with undo, Undo conflict, Undone, Expired, Loading).
 
 ---
 
@@ -62,11 +62,13 @@ The page is a normal authenticated route inside the `(app)` layout.
 - One row per operation, in the agent's submitted order, grouped visually by gift where several operations touch the same gift (e.g. price + image on one gift form one row with two field diffs).
 - Row anatomy (desktop):
     - **Selection checkbox** (button-sized visible surface, `md` 32 px desktop / `lg` 40 px mobile per control sizing).
-    - **Row header** (replaces a kind badge): a full-width band tinted with the type colour (12% in oklab over the row surface, 7% for ink-coloured types) holding the checkbox, the type as a DynaPuff semibold 16 px title with an 18 px icon (Nový dárek, Úprava · 2 změny, Doplnění popisu, Smazání dárku, Rezervace, Pozvánka správce, Přesun pořadí, Přijato, Kategorie, Úroveň priority) and the status Badge on the right, all centred on the checkbox. Deletion uses `--status-danger-text`, new gifts `--status-success-text`, reservations and invitations `--brand-link`, other types ink with a muted icon. Blocked rows keep the coloured title on a grey band.
+    - **Row header** (replaces a kind badge): a full-width band tinted with the type colour (12% in oklab over the row surface, 7% for ink-coloured types) holding the checkbox, the type as a DynaPuff semibold 16 px title with an 18 px icon (Nový dárek, Úprava · 2 pole, Doplnění popisu, Smazání dárku, Rezervace, Pozvánka správce, Přesun pořadí, Přijato, Kategorie, Úroveň priority) and the status Badge on the right, all centred on the checkbox. Deletion uses `--status-danger-text`, new gifts `--status-success-text`, reservations and invitations `--brand-link`, other types ink with a muted icon. Blocked rows keep the coloured title on a grey band.
     - **Gift identity**: 1:1 thumb (ImageFrame, `thumb` target) and gift name; for wishlist-level rows (category or priority-level management, invitation) an icon instead of a thumb.
-    - **Field diffs**: one line per field, `label: old → new`. Old value on a red tint with strikethrough, new value on a green tint, both with readable ink text (colors are a hint, the strikethrough and the arrow carry meaning for color-blind users). Long text diffs (description) wrap; links show domain + label per link, added links green, removed links red.
-    - **Row status**: Připraveno / Konflikt / Nelze použít / Vyžaduje potvrzení / Použito / Vráceno.
-- **Card-affecting rows** (category, priority, image, price, also name and quantity for new gifts) additionally show **old and new gift cards side by side** (desktop Card geometry: 4:3 image, category top-left, priority bottom-left, title, links, price, action footer omitted or non-interactive). New-gift rows show only the new card; delete rows show only the old card with a "bude smazán" treatment.
+    - **Field rows** (new gifts, edits, description appends): one read-only row per field with the label, `previous → next` and three 32 px icon buttons ✓ Přijmout, ✕ Zamítnout, ✎ Upravit (same contract as the chatbot). The previous value is `--status-danger-text` with strikethrough, the arrow muted, the next value `--status-success-text` at weight 600 without decoration; an empty previous value shows a muted placeholder (new gifts show `+ next`). Image changes show the old thumb dimmed with a red outline and the new thumb with a green outline. Long text wraps; links show domain + label.
+    - **Field decision**: ✓ and ✕ are pressed toggles (`aria-pressed`); clicking the active one clears the decision, there is no other undo control. ✎ swaps the value for its control (input, textarea, select, image picker) with Uložit and Zrušit; Enter saves (Ctrl/Cmd+Enter in a textarea), Escape cancels. Saving marks the field accepted with the text pill "Upraveno"; saving a value equal to the proposal stores no edit. Other pills: "Přijato", "Zamítnuto". Accepted and edited fields get a 12% success tint, rejected fields a muted dashed surface with the next value dimmed. A new gift's name cannot be rejected alone (✕ disabled with a tooltip); the row checkbox drops the whole gift.
+    - **Field summary** under the fields: "Použije se 1 ze 2 polí".
+    - **Row status**: Připraveno / Částečně / Nevybráno / Konflikt / Nelze použít / Vyžaduje potvrzení / Použito / Vráceno.
+- **Card-affecting rows** (category, priority, image, price, also name and quantity for new gifts) additionally show **old and new gift cards side by side** (desktop Card geometry: 4:3 image, category top-left, priority bottom-left, title, links, price, action footer omitted or non-interactive). New-gift rows show only the new card; delete rows show only the old card with a "bude smazán" treatment. The Po card reflects the field decisions: rejected fields keep the previous value, edited fields show the user's value, and a new gift with every field rejected shows "Dárek se nepřidá".
 - Description appends (post-share) show only the appended text in green, rendered with the accent append style, labeled "Doplnění popisu", because the original is immutable.
 - Reorder rows show "pozice 7 → 2" and the neighbouring gift names, not a card pair.
 - Table header: "Vybrat vše" master checkbox (mixed state), a count, and quick filters as a segmented control: Vše · Vyžaduje potvrzení · Konflikty. A filter never changes the selection.
@@ -75,7 +77,10 @@ The page is a normal authenticated route inside the `(app)` layout.
 
 ### 3.3 Selection rules
 
-- Ordinary rows start **selected**.
+- Ordinary rows start **selected**: every field is undecided and an undecided field applies. A row applies when at least one of its fields does.
+- The row checkbox is a whole-gift shortcut: unticking rejects every field (and drops saved edits), ticking clears those rejections. It shows the mixed state when only some fields apply. "Vybrat vše" works the same way across ordinary rows.
+- Changes are counted per gift: one row is one change however many fields it touches. The apply bar adds "U 2 dárků jen vybraná pole." when rows apply partially.
+- Deletions, reservations, invitations and reorders have no fields; they stay whole-row decisions with the checkbox.
 - **Separately confirmed rows** (gift deletion, reservations, manager invitations) start **unselected** and live in a highlighted "Vyžaduje potvrzení" treatment. Selecting one is the confirmation of that row; the row states the consequence in plain words:
     - Smazání: "Dárek „Bezdrátová sluchátka“ bude trvale odstraněn." A gift with active reservations can never be deleted, so such a row is "Nelze použít".
     - Rezervace: "Zarezervujete 1 ks pod svým jménem Petr Svoboda." (the reserving actor is the user)
@@ -88,7 +93,7 @@ The page is a normal authenticated route inside the `(app)` layout.
 
 - One primary button in the sticky bar: "Použít 11 vybraných změn". Disabled at zero selected ("Nic není vybráno").
 - When any separately confirmed row is selected, Apply opens a confirmation Dialog listing exactly those rows (deletions by gift name, reservation with quantity, invitation with exact email) with "Potvrdit a použít" (primary) and "Zpět ke kontrole". Without such rows, Apply runs directly.
-- Apply is one transaction for all selected conflict-free rows. Loading: button shows spinner + "Používám…", table locked.
+- Apply is one transaction for all selected conflict-free rows, applying only their included fields (edited fields with the user's value). Loading: button shows spinner + "Používám…", table locked.
 - If a gift changes between page load and Apply, nothing applies; the page reloads the dry-run, marks the new conflicts, keeps the user's other selections, and shows an inline alert "2 změny mezitím přestaly platit. Zkontrolujte je a použijte znovu." (no partial apply).
 - Secondary action: "Zahodit návrh" (ghost/danger outline) with a confirm dialog; the link then shows the Discarded state.
 
@@ -110,7 +115,7 @@ The page is a normal authenticated route inside the `(app)` layout.
 
 ### 3.7 Mobile
 
-- Rows become stacked row cards: the header band holds checkbox + type title; the status moves to the first line of the row body (title and status do not fit 390 px together), then gift identity and field diffs as label/old/new stacked lines.
+- Rows become stacked row cards: the header band holds checkbox + type title; the status moves to the first line of the row body (title and status do not fit 390 px together), then gift identity and field rows: label and the three buttons on the first line, `previous → next` below; in edit mode Uložit and Zrušit fill the width at `lg` 40 px.
 - Old/new cards side by side are kept as two narrow cards (compact mobile Card geometry, ~170 px each) or swapped through a "Před / Po" segmented control; designer decides, both must keep the cards legible.
 - Sticky apply bar with count and full-width primary Apply (`lg` 40 px), safe-area clearance.
 - The filter segmented control scrolls horizontally if needed; no wrapping toolbars.
@@ -125,6 +130,11 @@ The page is a normal authenticated route inside the `(app)` layout.
 | Loading                 | Skeleton summary + skeleton rows                                         | Initial load                               |
 | Row selected            | Checked box, full-contrast row                                           | Default for ordinary rows                  |
 | Row deselected          | Unchecked, row content at reduced emphasis (diffs stay readable)          | User unticks                               |
+| Row partial             | Mixed checkbox, "Částečně" status, field summary                         | Some fields rejected                       |
+| Field accepted          | Pressed ✓, "Přijato" pill, success tint                                  | User clicks ✓                              |
+| Field rejected          | Pressed ✕, "Zamítnuto" pill, muted dashed surface, next value dimmed     | User clicks ✕                              |
+| Field editing           | Pressed ✎, control with Uložit / Zrušit below the value                  | User clicks ✎                              |
+| Field edited            | Pressed ✓, "Upraveno" pill, user's value as next, agent's value noted    | User saves an edit                         |
 | Needs confirmation      | Highlighted row frame, consequence sentence, starts unselected           | Deletion, reservation, invitation          |
 | Conflict                | Warning badge + reason, disabled checkbox, current-state disclosure      | Gift changed after submission              |
 | Nelze použít            | Danger-tone badge + rule reason, disabled checkbox                        | Dry-run rejected the operation             |
@@ -173,7 +183,7 @@ None. Table semantics use a native `<table>` on desktop (screen-reader row/colum
 | Component            | Description                                                      | Why New                                    |
 | -------------------- | ---------------------------------------------------------------- | ------------------------------------------ |
 | ChangeReviewTable    | Responsive table / stacked rows with selection and status        | No existing diff/review surface            |
-| FieldDiff            | `label: old → new` with red/green tints and strikethrough        | No diff primitive exists                   |
+| FieldDecisionRow     | Label, `previous → next`, ✓ ✕ ✎ toggles, inline editor, pill     | Shared with the chatbot's field review     |
 | GiftCardComparison   | Old and new GiftCard side by side with "Před"/"Po" captions       | Composition of GiftCard                    |
 | ProposalSummaryStrip | Submitter, channel, time, expiry, kind counts                    | New metadata                               |
 | ApplyBar             | Sticky bottom bar with count and Apply                           | Mirrors mobile selection toolbar semantics |
@@ -196,7 +206,7 @@ From `src/app.css` (inline a mirrored subset in the standalone mockup; do not li
 
 - Fonts: `--font-head` DynaPuff Variable, `--font-body` Geist Variable (woff2 files in `designs/unavailable-gift-comparison/assets/`).
 - Ink and surfaces: `--ink`, `--card`, `--background`, `--tint`, `--panel-hover`, `--muted-foreground`, `--brand`, `--primary`, `--primary-foreground`.
-- Diff colors: removed = `color-mix(in oklab, var(--status-danger) 14%, var(--card))` with `--status-danger-text`; added = `color-mix(in oklab, var(--status-success) 14%, var(--card))` with `--status-success-text`. Mix in **oklab**, never oklch.
+- Diff colors: field values carry no background; previous = `--status-danger-text` struck through, next = `--status-success-text`. The field row carries the decision: accepted = `color-mix(in oklab, var(--status-success) 12%, var(--card))`, rejected = muted surface with a dashed border. Card-pair highlights keep red/green dashed outlines. Mix in **oklab**, never oklch.
 - Coloured text uses only `--status-success-text`, `--status-danger-text` or `--brand-link` (`src/app.css`), never raw `--status-success`.
 - Warning (conflict, needs confirmation): `--status-warning`, `--accent-loud`; warning badges use a 22% warning tint with `--foreground` text because the warning text mix fails AA.
 - Radii: `--radius-panel` 16 px, `--radius-btn` 7 px, `--radius-badge` 12 px; borders 2–2.5 px ink; hard offset shadows via elevation tokens.
@@ -223,7 +233,6 @@ From `src/app.css` (inline a mirrored subset in the standalone mockup; do not li
 
 - Whether card pairs are always visible or behind a per-row disclosure, and their placement within the row.
 - Grouping of confirmation rows (inline with a highlight vs a separate section at the top).
-- Diff presentation: inline `old → new` vs two-column Před/Po vs stacked.
 - Mobile card-pair strategy (two narrow cards vs Před/Po toggle).
 - Summary strip layout and kind counts visualisation.
 - Applied/Undo panel placement (top panel vs replacing the sticky bar).
@@ -267,3 +276,7 @@ Each was resolved by assumption so the mockups could proceed; please confirm or 
 10. **"Vybrat vše"** toggles only ordinary rows; deletion, reservation and invitation rows are always ticked one by one.
 11. **Diff and badge text contrast** (resolved): `--status-success-text` (see §7).
 12. **Kind presentation** (resolved): variant D, a tinted row header with a coloured type title; uniform badges (B) and grouping by type (E) were not chosen.
+13. **Counting and edits** (resolved): changes count per gift; saving an edit accepts the field as "Upraveno".
+14. **Undecided fields apply**, so an untouched proposal applies in full, as before. Alternative: require a decision on every field.
+15. **New gift name** cannot be rejected alone; dropping the gift goes through the row checkbox.
+16. **Rejecting an edited field** discards the saved edit instead of keeping it for a later re-accept.
