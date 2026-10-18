@@ -1,3 +1,6 @@
+packages:
+    - packages/*
+
 allowBuilds:
     '@prisma/client': false
     '@sentry/cli': true

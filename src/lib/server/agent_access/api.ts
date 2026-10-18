@@ -104,6 +104,8 @@ const AGENT_ERROR_MESSAGES: Partial<Record<ServerErrorCode, string>> = {
 		'The selected rows include unknown, repeated or rejected rows.',
 	[SERVER_ERROR.AGENT_PROPOSAL_UNDO_UNSUPPORTED]:
 		'The applied proposal includes changes undo cannot reverse.',
+	[SERVER_ERROR.AGENT_PROPOSAL_REVIEW_REQUIRED]:
+		'The user applies this proposal on its review page: only the fast-forward token that submitted it applies it, and only while every row is ready.',
 	[SERVER_ERROR.AGENT_IMAGE_INPUT_UNSUPPORTED]: `Image URLs and storage keys are not accepted. Only operations whose input schema lists imageReference take an image, from POST ${AGENT_API_BASE_PATH}/images; wishlist images and imported drafts take none.`,
 	[SERVER_ERROR.AGENT_IMAGE_REQUEST_INVALID]:
 		'The request must give an image url and exactly one of wishlistId or wishlistShortId.',

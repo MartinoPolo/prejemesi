@@ -1,0 +1,36 @@
+{
+	"name": "prejemesi",
+	"version": "0.1.0",
+	"description": "Command-line client for Přejeme si wishlists: read gifts and propose changes with your personal access token.",
+	"keywords": [
+		"wishlist",
+		"gifts",
+		"cli",
+		"agent"
+	],
+	"homepage": "https://prejemesi.cz",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/MartinoPolo/prejemesi.git",
+		"directory": "packages/cli"
+	},
+	"type": "module",
+	"bin": {
+		"prejemesi": "dist/bin.js"
+	},
+	"files": [
+		"dist"
+	],
+	"scripts": {
+		"build": "tsc -p tsconfig.build.json",
+		"check": "tsc -p tsconfig.json",
+		"prepack": "pnpm run build"
+	},
+	"devDependencies": {
+		"@types/node": "^25.5.0",
+		"typescript": "^5.9.3"
+	},
+	"engines": {
+		"node": ">=20"
+	}
+}

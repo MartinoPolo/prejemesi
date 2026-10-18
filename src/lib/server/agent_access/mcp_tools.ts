@@ -10,6 +10,7 @@ import {
 	imageUploadResponse,
 	meResponse,
 	operationReadResponse,
+	proposalApplyResponse,
 	proposalResponse,
 	proposalSubmissionResponse,
 	singleChangeSubmissionResponse,
@@ -110,6 +111,8 @@ const FIXED_TOOL_EXECUTORS = {
 	submitChangeProposal: ({ token, body }) => proposalSubmissionResponse(token, body),
 	getChangeProposal: (call) =>
 		proposalResponse(call.token, requiredPathParameter(call, 'proposalId')),
+	applyChangeProposal: (call) =>
+		proposalApplyResponse(call.token, requiredPathParameter(call, 'proposalId')),
 	uploadImage: ({ token, body, imageBucket }) => imageUploadResponse(token, body, imageBucket),
 } satisfies Record<FixedOperationId, ToolExecutor>;
 
