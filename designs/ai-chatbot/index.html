@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="cs" data-palette="sky">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI asistent · Porovnání variant · #478</title>
+<style>
+@font-face{font-family:'DynaPuff Variable';src:url('../unavailable-gift-comparison/assets/dynapuff-latin-wght-normal.woff2') format('woff2');font-weight:400 700;font-display:swap;unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+20AC}
+@font-face{font-family:'DynaPuff Variable';src:url('../unavailable-gift-comparison/assets/dynapuff-latin-ext-wght-normal.woff2') format('woff2');font-weight:400 700;font-display:swap;unicode-range:U+0100-02BA,U+02BD-02FF,U+1E00-1EFF,U+20A0-20AB}
+@font-face{font-family:'Geist Variable';src:url('../unavailable-gift-comparison/assets/geist-latin-wght-normal.woff2') format('woff2');font-weight:100 900;font-display:swap;unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+2000-206F,U+20AC,U+2190-21FF}
+@font-face{font-family:'Geist Variable';src:url('../unavailable-gift-comparison/assets/geist-latin-ext-wght-normal.woff2') format('woff2');font-weight:100 900;font-display:swap;unicode-range:U+0100-02BA,U+02BD-02FF,U+1E00-1EFF,U+20A0-20AB}
+html{
+  --p-brand:#1e9be9;--p-deep:#1265a8;--p-ink:#16385c;
+  --ink:var(--p-ink);--brand-link:var(--p-deep);
+  --background:color-mix(in oklab,var(--p-brand) 11%,white);--foreground:var(--p-ink);--card:#fff;
+  --primary:color-mix(in oklab,var(--p-brand) 78%,var(--p-ink));--primary-foreground:#fff;
+  --muted-foreground:color-mix(in oklab,var(--p-ink) 72%,transparent);--tint:color-mix(in oklab,var(--p-brand) 21%,white);
+  --hard-shadow:color-mix(in oklab,var(--p-ink) 16%,transparent);
+  --radius-panel:16px;--radius-btn:7px;--radius-badge:12px;
+  --font-head:'DynaPuff Variable',Arial,sans-serif;--font-body:'Geist Variable',Arial,sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;background:var(--background);color:var(--foreground);font:14px/1.5 var(--font-body)}
+h1,h2,h3{font-family:var(--font-head);font-weight:600;line-height:1.2;margin:0}
+p{margin:0}
+a{color:var(--brand-link);text-underline-offset:3px}
+a:focus-visible,summary:focus-visible{outline:3px solid var(--p-brand);outline-offset:2px}
+main{max-width:1200px;margin:auto;padding:32px 16px 64px;display:grid;gap:24px}
+.eyebrow{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted-foreground)}
+h1{font-size:28px}
+.lead{max-width:72ch;color:var(--muted-foreground)}
+.panel{background:var(--card);border:2.5px solid var(--ink);border-radius:var(--radius-panel);box-shadow:4px 4px 0 var(--hard-shadow);padding:20px}
+.variants{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px}
+.variant{display:flex;flex-direction:column;gap:12px}
+.variant h2{font-size:22px}
+.preview{position:relative;aspect-ratio:1440/900;overflow:hidden;border:2px solid var(--ink);border-radius:calc(var(--radius-panel) - 6px);background:#161a20}
+.preview iframe{position:absolute;inset:0;width:1440px;height:900px;border:0;transform-origin:0 0;pointer-events:none}
+.trade{font-size:13px}
+.trade strong{display:block}
+.open{display:inline-flex;align-items:center;justify-content:center;min-height:32px;padding:0 14px;border:2px solid var(--ink);border-radius:var(--radius-btn);background:var(--primary);color:var(--primary-foreground);font-weight:700;text-decoration:none;box-shadow:3px 3px 0 var(--hard-shadow);align-self:flex-start}
+.pill{display:inline-block;padding:1px 8px;border:1.5px solid var(--ink);border-radius:var(--radius-badge);font-size:12px;font-weight:700;background:var(--tint)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{text-align:left;vertical-align:top;padding:8px 10px;border-bottom:1px solid color-mix(in oklab,var(--ink) 18%,transparent)}
+th{font-weight:700}
+thead th{font-family:var(--font-head);font-weight:600;font-size:15px}
+.scenarios td a{margin-right:10px;white-space:nowrap}
+ol{margin:0;padding-left:20px;display:grid;gap:6px}
+@media (max-width:900px){.variants{grid-template-columns:1fr}.table-wrap{overflow-x:auto}table{min-width:720px}}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <p class="eyebrow">Přejeme si · Návrh k výběru · <a href="https://github.com/MartinoPolo/prejemesi/issues/478">#478</a></p>
+    <h1>AI asistent: tři varianty</h1>
+    <p class="lead">Všechny varianty pokrývají stejné požadavky z <a href="./DESIGN_BRIEF_AI_CHATBOT.md">briefu</a>: boční panel a akci „Vylepšit pomocí AI“, vylepšení dárku, dárky z odkazů a hromadnou úpravu, předání návrhu ke kontrole, režim Bez kontroly a stavy přístupu. Každá varianta má vlastní lištu pro přepnutí zařízení, motivu a scénáře; stav jde nastavit i adresou <code>?viewport=&amp;theme=&amp;scenario=</code>.</p>
+  </header>
+
+  <section class="variants" aria-label="Varianty">
+    <article class="panel variant">
+      <h2>A · Konverzace v panelu</h2>
+      <div class="preview"><iframe title="Náhled varianty A" src="./variants/variant-a.html?scenario=enrich" loading="lazy" tabindex="-1"></iframe></div>
+      <p>Vše probíhá jako chat. Panel vpravo zúží seznam, výsledky (ceny, obrázky, hodnocení, návrh) jsou bohaté zprávy, „Zkontrolovat a použít“ vede na stránku kontroly.</p>
+      <p class="trade"><strong>Kompromis</strong>Nejjednodušší model a nejbližší běžným chatbotům, ale dlouhé odpovědi v úzkém panelu hodně rolují a podrobnosti návrhu žijí až na stránce kontroly.</p>
+      <a class="open" href="./variants/variant-a.html">Otevřít variantu A</a>
+    </article>
+    <article class="panel variant">
+      <h2>B · Úkoly a kontrola v panelu</h2>
+      <div class="preview"><iframe title="Náhled varianty B" src="./variants/variant-b.html?scenario=enrich" loading="lazy" tabindex="-1"></iframe></div>
+      <p>Panel začíná třemi úkoly, každý běží jako kroky Zadání, Průběh, Výsledek. Na konci je zmenšená kontrola s řádky a zaškrtávátky, celá kontrola zůstává zdrojem pravdy.</p>
+      <p class="trade"><strong>Kompromis</strong>Nejvíc vede začátečníka, ale bez režimu Bez kontroly se kontroluje dvakrát (v panelu a na stránce) a překryvný panel zakrývá pravou část seznamu.</p>
+      <a class="open" href="./variants/variant-b.html">Otevřít variantu B</a>
+    </article>
+    <article class="panel variant">
+      <h2>C · Dílna dárku s náhledem</h2>
+      <div class="preview"><iframe title="Náhled varianty C" src="./variants/variant-c.html?scenario=enrich" loading="lazy" tabindex="-1"></iframe></div>
+      <p>Náhledem je samotný seznam: navrhované úpravy jsou přerušovaně orámované karty se štítkem „Návrh“, nové dárky jako duchové karty. Vylepšení dárku je dílna s přijetím nebo odmítnutím každého pole.</p>
+      <p class="trade"><strong>Kompromis</strong>Výsledek je vidět na místě, kde bude, ale panel je hutný a seznam je během čekajícího návrhu plný stavů navíc.</p>
+      <a class="open" href="./variants/variant-c.html">Otevřít variantu C</a>
+    </article>
+  </section>
+
+  <section class="panel" aria-labelledby="compare-title">
+    <h2 id="compare-title" style="font-size:22px;margin-bottom:12px">Porovnání</h2>
+    <div class="table-wrap">
+    <table>
+      <thead><tr><th scope="col">Otázka</th><th scope="col">A · Konverzace</th><th scope="col">B · Úkoly</th><th scope="col">C · Dílna</th></tr></thead>
+      <tbody>
+        <tr><th scope="row">Spuštění</th><td>Tlačítko „AI asistent“ v hlavičce seznamu</td><td>Ikona v navigační liště, přepínač seznamu v panelu</td><td>Tlačítko v nástrojové liště a ikona na každé kartě</td></tr>
+        <tr><th scope="row">Desktop</th><td>Ukotvený panel 420 px, seznam se zúží</td><td>Překryvný panel 440 px</td><td>Ukotvený panel 380 px, seznam je náhled</td></tr>
+        <tr><th scope="row">Mobil</th><td>Celá obrazovka</td><td>Spodní panel, poloviční a plná výška</td><td>Celá obrazovka s přepínačem „Náhled na seznamu“</td></tr>
+        <tr><th scope="row">Kde se rozhoduje</th><td>Na stránce kontroly</td><td>V panelu (výběr řádků), potvrzení na stránce kontroly</td><td>V dílně po polích, potvrzení na stránce kontroly</td></tr>
+        <tr><th scope="row">Bez kontroly</th><td>Přepínač v hlavičce panelu</td><td>Nastavení v hlavičce, štítek když je zapnuto</td><td>Segment „Ke kontrole | Rovnou použít“ u lišty návrhu</td></tr>
+        <tr><th scope="row">Historie</th><td>Pro seznam, podzobrazení panelu</td><td>Globální, záložka Historie</td><td>Pro seznam, z menu panelu</td></tr>
+        <tr><th scope="row">Bez přístupu</th><td>Zámek na tlačítku, zamčený panel</td><td>Zamčený panel</td><td>Zámek na tlačítku, skryté ikony na kartách</td></tr>
+        <tr><th scope="row">Síla</th><td>Volný chat, nejméně nového UI</td><td>Nejjasnější pro nové uživatele</td><td>Nejlépe ukazuje, co se kde změní</td></tr>
+        <tr><th scope="row">Slabina</th><td>Rolování, málo náhledu</td><td>Dvojí kontrola, těžší volný chat</td><td>Hutnost, nejvíc práce v kódu</td></tr>
+      </tbody>
+    </table>
+    </div>
+  </section>
+
+  <section class="panel scenarios" aria-labelledby="scenario-title">
+    <h2 id="scenario-title" style="font-size:22px;margin-bottom:12px">Scénáře</h2>
+    <div class="table-wrap">
+    <table>
+      <thead><tr><th scope="col">Scénář</th><th scope="col">Odkazy</th></tr></thead>
+      <tbody id="scenario-rows"></tbody>
+    </table>
+    </div>
+  </section>
+
+  <section class="panel" aria-labelledby="questions-title">
+    <h2 id="questions-title" style="font-size:22px;margin-bottom:12px">Otevřené otázky z návrhů</h2>
+    <ol>
+      <li><strong>Hodnocení produktu:</strong> dárek nemá pole pro hodnocení; všechny varianty ho zatím přidávají jako větu do popisu.</li>
+      <li><strong>Bez přístupu:</strong> zamčený panel s odkazem na přístupové tokeny, nebo vstup úplně skrýt?</li>
+      <li><strong>Rozsah režimu Bez kontroly:</strong> platí jen pro jednu konverzaci a nová konverzace začíná s kontrolou?</li>
+      <li><strong>Sdílený seznam:</strong> název je zamčený, takže vylepšení značku a model jen doplní do popisu.</li>
+      <li><strong>Pruh Čekající změny:</strong> text „z AI asistenta“ místo „přes token“; jak se má chovat, když čekají návrhy z tokenu i z chatu zároveň?</li>
+      <li><strong>Řazení a vrácení:</strong> dávku s přesunem pořadí nelze vrátit, což se týká i ukázkové akce „Seřadit podle ceny“.</li>
+      <li><strong>Obdarovaný a mazání:</strong> věta „tento dárek teď smazat nelze“ může naznačit rezervaci; nevynechat řádek potichu?</li>
+    </ol>
+  </section>
+</main>
+<script>
+const scenarios = [
+  ['chat', 'Prázdný chat'], ['enrich', 'Vylepšit dárek'], ['create', 'Dárky z odkazů a textu'],
+  ['bulk', 'Hromadná úprava'], ['streaming', 'Asistent pracuje'], ['handoff', 'Předání ke kontrole'],
+  ['fast-forward', 'Bez kontroly'], ['history', 'Historie 30 dní'], ['not-allowlisted', 'Bez přístupu'],
+  ['daily-cap', 'Denní limit'], ['kill-switch', 'Vypnuto globálně'], ['provider-error', 'Chyba poskytovatele'],
+  ['demo', 'Ukázka s předpřipravenými akcemi'],
+];
+const rows = document.getElementById('scenario-rows');
+for (const [id, label] of scenarios) {
+  const row = rows.insertRow();
+  const head = document.createElement('th');
+  head.scope = 'row';
+  head.textContent = label;
+  row.append(head);
+  const links = row.insertCell();
+  for (const variant of ['a', 'b', 'c']) {
+    for (const viewport of ['desktop', 'mobile']) {
+      const link = document.createElement('a');
+      link.href = `./variants/variant-${variant}.html?scenario=${id}&viewport=${viewport}`;
+      link.textContent = `${variant.toUpperCase()} ${viewport === 'desktop' ? 'desktop' : 'mobil'}`;
+      links.append(link);
+    }
+  }
+}
+function scalePreviews() {
+  for (const preview of document.querySelectorAll('.preview')) {
+    preview.querySelector('iframe').style.transform = `scale(${preview.clientWidth / 1440})`;
+  }
+}
+new ResizeObserver(scalePreviews).observe(document.body);
+</script>
+</body>
+</html>
