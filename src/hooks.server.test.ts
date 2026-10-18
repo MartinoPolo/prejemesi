@@ -386,15 +386,18 @@ describe('demo cookie at the auth API', () => {
 describe('demo cookie at the agent API', () => {
 	const demoCookies = { [DEMO_COOKIE_NAME]: 'a'.repeat(64) };
 
-	it('serves the agent API outside demo session and transaction setup', async () => {
-		const { html } = await runHandle(
-			createEvent({ path: '/api/v1/me', accept: 'application/json', cookies: demoCookies }),
-		);
-		// The terminal resolve renders the app template; demo handling would answer instead.
-		expect(html).toContain('%sveltekit.head%');
-		expect(mockHandleDemoRequest).not.toHaveBeenCalled();
-		expect(mockFindDemoSession).not.toHaveBeenCalled();
-	});
+	it.each(['/api/v1/me', '/mcp'])(
+		'serves %s outside demo session and transaction setup',
+		async (path) => {
+			const { html } = await runHandle(
+				createEvent({ path, accept: 'application/json', cookies: demoCookies }),
+			);
+			// The terminal resolve renders the app template; demo handling would answer instead.
+			expect(html).toContain('%sveltekit.head%');
+			expect(mockHandleDemoRequest).not.toHaveBeenCalled();
+			expect(mockFindDemoSession).not.toHaveBeenCalled();
+		},
+	);
 
 	it('keeps demo handling for the same cookie outside the agent API', async () => {
 		const { html } = await runHandle(

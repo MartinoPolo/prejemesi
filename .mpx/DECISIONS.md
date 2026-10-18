@@ -234,6 +234,7 @@ Current product, architecture, and design decisions for Přejeme si. Entries are
 - 2026-10-17: Agents create wishlists only with an unrestricted fast-forward token, in a proposal naming no wishlist that applies at once; there is no page to review a wishlist that does not exist yet.
 - 2026-10-17: Agent changes are bounded by a daily budget of proposal rows per user over a trailing window across all tokens, counting every row whatever its outcome; values in `src/lib/server/agent_access/limits.ts`.
 - 2026-10-17: An agent's gift copy that removes the unreserved sources needs confirmation, like deleting them.
+- 2026-10-18: The MCP server is a small stateless Streamable HTTP handler at `/mcp` whose tools are derived from the OpenAPI document; the official SDK stays a test-only client because it bundles ajv and zod into the Worker for the few methods used. It sits outside `/api/` because the edge request challenge on `/api/*` would block MCP clients. A change tool submits a one-row proposal; caller resolution sits in one function (`authenticateAgentRequest`) where OAuth grants join as a second credential source.
 
 ## Repository checks & operations
 

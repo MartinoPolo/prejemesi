@@ -17,7 +17,7 @@ export const TARGET_KIND = {
 	revisionBatchId: 'revisionBatchId',
 } as const;
 
-type TargetKind = (typeof TARGET_KIND)[keyof typeof TARGET_KIND];
+export type TargetKind = (typeof TARGET_KIND)[keyof typeof TARGET_KIND];
 
 export interface TargetReference {
 	kind: TargetKind;

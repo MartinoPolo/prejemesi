@@ -32,7 +32,8 @@ export interface AgentApiRateLimit {
 	limit(input: { key: string }): Promise<{ success: boolean }>;
 }
 
-interface AgentApiEvent {
+/** What the agent surfaces read from a SvelteKit request event. */
+export interface AgentApiEvent {
 	request: Request;
 	cookies: Pick<Cookies, 'get'>;
 	platform?: { env: { AGENT_API_RATE_LIMIT?: AgentApiRateLimit } };
@@ -145,7 +146,16 @@ function agentApiJson(body: unknown, status: number, headers: Record<string, str
 	});
 }
 
-function errorBody(code: string, details: Record<string, unknown> = {}, message?: string) {
+/** The body of every failure. */
+export interface AgentApiErrorBody {
+	error: { code: string; message: string; [detail: string]: unknown };
+}
+
+function errorBody(
+	code: string,
+	details: Record<string, unknown> = {},
+	message?: string,
+): AgentApiErrorBody {
 	const codeMessage = isServerErrorCode(code) ? AGENT_ERROR_MESSAGES[code] : undefined;
 	return { error: { ...details, code, message: message ?? codeMessage ?? code } };
 }
@@ -156,16 +166,37 @@ function httpErrorBody(status: number, message: string) {
 	return errorBody(code, details, plainMessage);
 }
 
-function agentApiErrorResponse(thrown: unknown): Response {
+/** What a failure answers: `{ "error": { "code", "message", ... } }`, without internals. */
+export function describeAgentApiFailure(thrown: unknown): {
+	status: number;
+	body: AgentApiErrorBody;
+	headers: Record<string, string>;
+} {
 	if (thrown instanceof AgentApiFailure) {
-		return agentApiJson(errorBody(thrown.code, thrown.details), thrown.status, thrown.headers);
+		return {
+			status: thrown.status,
+			body: errorBody(thrown.code, thrown.details),
+			headers: thrown.headers,
+		};
 	}
 	if (isHttpError(thrown) && thrown.status < 500) {
-		return agentApiJson(httpErrorBody(thrown.status, thrown.body.message), thrown.status);
+		return {
+			status: thrown.status,
+			body: httpErrorBody(thrown.status, thrown.body.message),
+			headers: {},
+		};
 	}
 	console.error('[agent-api] request failed', thrown);
-	const status = isHttpError(thrown) ? thrown.status : 500;
-	return agentApiJson(errorBody(SERVER_ERROR.AGENT_INTERNAL_ERROR), status);
+	return {
+		status: isHttpError(thrown) ? thrown.status : 500,
+		body: errorBody(SERVER_ERROR.AGENT_INTERNAL_ERROR),
+		headers: {},
+	};
+}
+
+function agentApiErrorResponse(thrown: unknown): Response {
+	const { status, body, headers } = describeAgentApiFailure(thrown);
+	return agentApiJson(body, status, headers);
 }
 
 /** The API never acts for a live demo, even though it authenticates by token, not cookie. */
@@ -249,7 +280,7 @@ async function readCappedBodyText(request: Request): Promise<string> {
 	return new TextDecoder().decode(bytes);
 }
 
-async function readJsonBody(request: Request): Promise<AgentApiRequestBody> {
+export async function readJsonBody(request: Request): Promise<AgentApiRequestBody> {
 	const mediaType = request.headers.get('content-type')?.split(';')[0]?.trim().toLowerCase();
 	if (mediaType !== 'application/json') {
 		throw new AgentApiFailure(415, SERVER_ERROR.AGENT_UNSUPPORTED_MEDIA_TYPE);
@@ -267,17 +298,29 @@ async function readJsonBody(request: Request): Promise<AgentApiRequestBody> {
 	}
 }
 
+/**
+ * The caller of an agent request, for every agent surface (`/api/v1` and MCP): rejects a live
+ * demo, resolves the credential to the user it acts for, and applies its request limit. Personal
+ * access tokens are the only credential so far; another kind belongs here, not in the surfaces.
+ */
+export async function authenticateAgentRequest(
+	event: AgentApiEvent,
+): Promise<AuthenticatedAccessToken> {
+	await rejectLiveDemo(event);
+	// Authentication precedes the per-token limit, which needs the token id. An invalid token
+	// costs one indexed hash lookup, and 256-bit secrets make guessing infeasible.
+	const token = await authenticateAccessToken(event.request.headers.get('authorization'));
+	await enforceRateLimit(event.platform?.env.AGENT_API_RATE_LIMIT, token.tokenId);
+	return token;
+}
+
 function createAgentApiEndpoint<TBody, TEvent extends AgentApiEvent>(
 	readBody: (request: Request) => Promise<TBody>,
 	handler: AgentApiHandler<TBody, TEvent>,
 ) {
 	return async (event: TEvent): Promise<Response> => {
 		try {
-			await rejectLiveDemo(event);
-			// Authentication precedes the per-token limit, which needs the token id. An invalid
-			// token costs one indexed hash lookup, and 256-bit secrets make guessing infeasible.
-			const token = await authenticateAccessToken(event.request.headers.get('authorization'));
-			await enforceRateLimit(event.platform?.env.AGENT_API_RATE_LIMIT, token.tokenId);
+			const token = await authenticateAgentRequest(event);
 			const body = await readBody(event.request);
 			const response = await handler({ token, body }, event);
 			return agentApiJson(response.body, response.status ?? 200, response.headers);
@@ -326,63 +369,89 @@ function isSuccessStatus(status: number): boolean {
 export function agentApiIdempotentJsonEndpoint<TEvent extends AgentApiEvent>(
 	handler: AgentApiHandler<AgentApiRequestBody, TEvent>,
 ) {
-	return createAgentApiEndpoint(readJsonBody, async (call, event: TEvent) => {
-		const key = event.request.headers.get(IDEMPOTENCY_KEY_HEADER);
-		if (key === null) {
-			return handler(call, event);
+	return createAgentApiEndpoint(readJsonBody, async (call, event: TEvent) =>
+		runIdempotently(
+			{
+				tokenId: call.token.tokenId,
+				key: event.request.headers.get(IDEMPOTENCY_KEY_HEADER),
+				method: event.request.method,
+				path: new URL(event.request.url).pathname,
+				body: call.body.parsed,
+			},
+			() => handler(call, event),
+		),
+	);
+}
+
+/** One change request, identified for idempotency by its token, method, path and body. */
+export interface IdempotentRequest {
+	tokenId: string;
+	/** Null runs the request without idempotency. */
+	key: string | null;
+	method: string;
+	path: string;
+	body: unknown;
+}
+
+/**
+ * Runs a change at most once per idempotency key, with the semantics `agentApiIdempotentJsonEndpoint`
+ * documents; every agent surface shares the token's keys.
+ */
+export async function runIdempotently(
+	request: IdempotentRequest,
+	handler: () => Promise<AgentApiResponse>,
+): Promise<AgentApiResponse> {
+	const { key } = request;
+	if (key === null) {
+		return handler();
+	}
+	if (!isValidIdempotencyKey(key)) {
+		throw new AgentApiFailure(400, SERVER_ERROR.AGENT_IDEMPOTENCY_KEY_INVALID, {
+			maxLength: IDEMPOTENCY_KEY_MAX_LENGTH,
+		});
+	}
+	const scope = {
+		tokenId: request.tokenId,
+		key,
+		fingerprint: await fingerprintRequest(request.method, request.path, request.body),
+	};
+	const claim = await claimIdempotencyKey(scope);
+	switch (claim.kind) {
+		case IDEMPOTENCY_CLAIM.replay:
+			return {
+				body: claim.body,
+				status: claim.status,
+				headers: { [IDEMPOTENT_REPLAY_HEADER]: 'true' },
+			};
+		case IDEMPOTENCY_CLAIM.reused:
+			throw new AgentApiFailure(422, SERVER_ERROR.AGENT_IDEMPOTENCY_KEY_REUSED);
+		case IDEMPOTENCY_CLAIM.inProgress:
+			throw new AgentApiFailure(409, SERVER_ERROR.AGENT_IDEMPOTENCY_IN_PROGRESS);
+		case IDEMPOTENCY_CLAIM.claimed:
+			break;
+		default: {
+			const unhandled: never = claim;
+			throw new Error(`Unknown idempotency claim ${JSON.stringify(unhandled)}`);
 		}
-		if (!isValidIdempotencyKey(key)) {
-			throw new AgentApiFailure(400, SERVER_ERROR.AGENT_IDEMPOTENCY_KEY_INVALID, {
-				maxLength: IDEMPOTENCY_KEY_MAX_LENGTH,
-			});
-		}
-		const scope = {
-			tokenId: call.token.tokenId,
-			key,
-			fingerprint: await fingerprintRequest(
-				event.request.method,
-				new URL(event.request.url).pathname,
-				call.body.parsed,
-			),
-		};
-		const claim = await claimIdempotencyKey(scope);
-		switch (claim.kind) {
-			case IDEMPOTENCY_CLAIM.replay:
-				return {
-					body: claim.body,
-					status: claim.status,
-					headers: { [IDEMPOTENT_REPLAY_HEADER]: 'true' },
-				};
-			case IDEMPOTENCY_CLAIM.reused:
-				throw new AgentApiFailure(422, SERVER_ERROR.AGENT_IDEMPOTENCY_KEY_REUSED);
-			case IDEMPOTENCY_CLAIM.inProgress:
-				throw new AgentApiFailure(409, SERVER_ERROR.AGENT_IDEMPOTENCY_IN_PROGRESS);
-			case IDEMPOTENCY_CLAIM.claimed:
-				break;
-			default: {
-				const unhandled: never = claim;
-				throw new Error(`Unknown idempotency claim ${JSON.stringify(unhandled)}`);
-			}
-		}
-		let response: AgentApiResponse;
-		try {
-			response = await handler(call, event);
-		} catch (thrown) {
-			await settleBestEffort('Idempotency key release', () => releaseIdempotencyKey(scope));
-			throw thrown;
-		}
-		const status = response.status ?? 200;
-		if (isSuccessStatus(status)) {
-			// The stored body is what JSON serialization sends, so a replay matches byte for byte.
-			const storedBody: unknown = JSON.parse(JSON.stringify(response.body ?? null));
-			await settleBestEffort('Idempotent response store', () =>
-				storeIdempotentResponse(scope, { status, body: storedBody }),
-			);
-		} else {
-			await settleBestEffort('Idempotency key release', () => releaseIdempotencyKey(scope));
-		}
-		return response;
-	});
+	}
+	let response: AgentApiResponse;
+	try {
+		response = await handler();
+	} catch (thrown) {
+		await settleBestEffort('Idempotency key release', () => releaseIdempotencyKey(scope));
+		throw thrown;
+	}
+	const status = response.status ?? 200;
+	if (isSuccessStatus(status)) {
+		// The stored body is what JSON serialization sends, so a replay matches byte for byte.
+		const storedBody: unknown = JSON.parse(JSON.stringify(response.body ?? null));
+		await settleBestEffort('Idempotent response store', () =>
+			storeIdempotentResponse(scope, { status, body: storedBody }),
+		);
+	} else {
+		await settleBestEffort('Idempotency key release', () => releaseIdempotencyKey(scope));
+	}
+	return response;
 }
 
 function agentMutationPolicy(operationName: string) {

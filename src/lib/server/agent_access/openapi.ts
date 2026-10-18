@@ -33,6 +33,19 @@ import { IDEMPOTENCY_KEY_MAX_LENGTH } from './idempotency.js';
 
 const HOUR_MS = DAY_MS / 24;
 
+/**
+ * The documented endpoints besides the operations, which are documented under their own names.
+ * MCP tools carry the same names.
+ */
+export const AGENT_API_OPERATION_ID = {
+	me: 'me',
+	listWishlists: 'listWishlists',
+	submitChangeProposal: 'submitChangeProposal',
+	getChangeProposal: 'getChangeProposal',
+	uploadImage: 'uploadImage',
+	openApiDocument: 'openApiDocument',
+} as const;
+
 const ERROR_RESPONSE_REFERENCE = { $ref: '#/components/responses/Error' } as const;
 
 const AUTHENTICATED_ERROR_RESPONSES = {
@@ -216,7 +229,7 @@ function changeProposalPaths() {
 	return {
 		[`${AGENT_API_BASE_PATH}/proposals`]: {
 			post: {
-				operationId: 'submitChangeProposal',
+				operationId: AGENT_API_OPERATION_ID.submitChangeProposal,
 				summary: 'Submits changes for the user to review.',
 				description: `Authorizes every row with the token, dry-runs the rows and stores the proposal for ${CHANGE_PROPOSAL_LIFETIME_MS / DAY_MS} days; the user reviews it at \`reviewUrl\` and applies any rows. With a fast-forward token, a proposal whose rows are all \`ready\` applies at once; gift deletions, reservations and manager invitations always wait for the user. Rows count against the daily change budget whatever their outcome.`,
 				parameters: [IDEMPOTENCY_KEY_PARAMETER],
@@ -233,7 +246,7 @@ function changeProposalPaths() {
 		},
 		[`${AGENT_API_BASE_PATH}/proposals/{proposalId}`]: {
 			get: {
-				operationId: 'getChangeProposal',
+				operationId: AGENT_API_OPERATION_ID.getChangeProposal,
 				summary: 'A proposal of the token user, with its current status.',
 				parameters: [
 					{ name: 'proposalId', in: 'path', required: true, schema: { type: 'string' } },
@@ -300,7 +313,7 @@ function agentImagePaths() {
 	return {
 		[`${AGENT_API_BASE_PATH}/images`]: {
 			post: {
-				operationId: 'uploadImage',
+				operationId: AGENT_API_OPERATION_ID.uploadImage,
 				summary: 'Stores an image from a public HTTPS URL for a gift.',
 				description: `Needs \`${AGENT_SCOPE.giftsWrite}\`. Downloads the image server-side and stores a copy; the URL itself is never kept. Every hop, including at most ${AGENT_IMAGE_MAX_REDIRECTS} redirects, must be HTTPS on the default port to a public host name: IP addresses and local names answer 400 ${SERVER_ERROR.AGENT_IMAGE_HOST_BLOCKED}. The image must be ${ALLOWED_CONTENT_TYPES.join(', ')} whose bytes match the declared type, at most ${MAX_GIFT_IMAGE_BYTES} bytes, with positive dimensions of at most ${MAX_IMAGE_SIDE_PX} px per side and ${MAX_IMAGE_PIXELS} pixels (422). The reference is valid for ${AGENT_IMAGE_REFERENCE_LIFETIME_MS / DAY_MS} days, for the token user on this wishlist; an unattached image is then deleted. Counts against the daily image budget.`,
 				'x-scope': AGENT_SCOPE.giftsWrite,
@@ -327,7 +340,7 @@ function operationPath(operation: AnyOperation, policy: AgentOperationPolicy<unk
 	return {
 		post: {
 			operationId: operation.name,
-			summary: operation.name,
+			summary: policy.summary,
 			description: operationDescription(operation),
 			tags: [operation.kind],
 			'x-scope': policy.scope,
@@ -422,7 +435,7 @@ function buildOriginIndependentDocument() {
 		paths: {
 			[`${AGENT_API_BASE_PATH}/me`]: {
 				get: {
-					operationId: 'me',
+					operationId: AGENT_API_OPERATION_ID.me,
 					summary: 'The token user and the token itself.',
 					responses: {
 						200: jsonResponse('The token user and token.', { type: 'object' }),
@@ -432,7 +445,7 @@ function buildOriginIndependentDocument() {
 			},
 			[`${AGENT_API_BASE_PATH}/wishlists`]: {
 				get: {
-					operationId: 'listWishlists',
+					operationId: AGENT_API_OPERATION_ID.listWishlists,
 					summary: 'The wishlists the token reaches, with the user’s role on each.',
 					'x-scope': AGENT_SCOPE.read,
 					responses: {
@@ -450,7 +463,7 @@ function buildOriginIndependentDocument() {
 			...agentOperationPaths(),
 			[`${AGENT_API_BASE_PATH}/openapi.json`]: {
 				get: {
-					operationId: 'openApiDocument',
+					operationId: AGENT_API_OPERATION_ID.openApiDocument,
 					summary: 'This document.',
 					security: [],
 					responses: { 200: jsonResponse('OpenAPI 3.1 document.', { type: 'object' }) },
