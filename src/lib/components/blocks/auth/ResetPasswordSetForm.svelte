@@ -161,7 +161,7 @@
 	.success-link {
 		display: inline-block;
 		margin-top: var(--space-2);
-		color: var(--brand);
+		color: var(--brand-link);
 		text-decoration: none;
 		font-weight: var(--weight-semibold);
 	}

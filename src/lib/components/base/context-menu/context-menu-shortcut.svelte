@@ -14,7 +14,7 @@
 	bind:this={ref}
 	data-slot="context-menu-shortcut"
 	class={cn(
-		'text-muted-foreground group-data-[variant=destructive]/context-menu-item:text-destructive ml-auto text-xs tracking-widest',
+		'text-muted-foreground group-data-[variant=destructive]/context-menu-item:text-status-danger-text ml-auto text-xs tracking-widest',
 		className,
 	)}
 	{...restProps}

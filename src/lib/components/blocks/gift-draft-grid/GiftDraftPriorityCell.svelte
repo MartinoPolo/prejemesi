@@ -40,7 +40,7 @@
 			aria-label={name.trim() === ''
 				? m.draft_grid_priority_toggle_unnamed()
 				: m.draft_grid_priority_toggle({ name })}
-			surfaceClass={isHigh ? 'text-destructive' : 'text-muted-foreground'}
+			surfaceClass={isHigh ? 'text-status-danger-text' : 'text-muted-foreground'}
 		>
 			<HeartIcon data-icon="solo" class={cn(isHigh && 'fill-current')} aria-hidden="true" />
 		</Toggle>

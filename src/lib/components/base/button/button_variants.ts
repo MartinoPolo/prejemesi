@@ -63,7 +63,7 @@ export const buttonVariants = tv({
 				owner: 'elevation-owner elevation-owner-raised elevation-owner-anchored',
 				surface: OUTLINE_CONTROL_SURFACE_CLASSES,
 			},
-			link: { surface: 'text-brand underline-offset-4 group-hover:underline' },
+			link: { surface: 'text-brand-link underline-offset-4 group-hover:underline' },
 		},
 		size: {
 			responsive: {

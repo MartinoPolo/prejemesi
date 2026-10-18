@@ -26,7 +26,7 @@ export const wishlistCardVariants = tv({
 		progressWrap: 'flex flex-col gap-1.5',
 		progressLabelRow:
 			'flex items-center justify-between text-[13px] font-bold text-muted-foreground',
-		progressValue: 'font-extrabold text-brand',
+		progressValue: 'font-extrabold text-brand-link',
 		availableCount: 'text-[13px] font-semibold text-muted-foreground',
 		divider: 'my-0.5',
 		actions: 'flex flex-wrap items-center gap-1.5',

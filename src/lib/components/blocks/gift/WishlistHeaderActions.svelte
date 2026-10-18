@@ -113,7 +113,7 @@
 							>{/if}
 						{#if canArchive}
 							<DropdownMenu.Separator />
-							<DropdownMenu.Item class="text-destructive" onclick={onarchive}
+							<DropdownMenu.Item class="text-status-danger-text" onclick={onarchive}
 								><ArchiveIcon />{m.wishlist_archive_button()}</DropdownMenu.Item
 							>
 						{/if}
@@ -174,7 +174,7 @@
 									data-testid="wishlist-header-danger-actions"
 								>
 									<WishlistSheetAction
-										surfaceClass="text-destructive group-hover:text-destructive"
+										surfaceClass="text-status-danger-text group-hover:text-status-danger-text"
 										onclick={() => run(onarchive)}
 									>
 										<ArchiveIcon />

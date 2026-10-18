@@ -487,9 +487,9 @@
 		<Card.Root class="border-destructive/30">
 			<Card.Header>
 				<div class="flex items-center gap-2">
-					<RotateCcwIcon class="size-5 text-destructive" />
+					<RotateCcwIcon class="size-5 text-status-danger-text" />
 					<div>
-						<Card.Title class="text-destructive">
+						<Card.Title class="text-status-danger-text">
 							{m.wishlist_settings_revert_title()}
 						</Card.Title>
 						<Card.Description>{m.wishlist_settings_revert_hint()}</Card.Description>
@@ -667,7 +667,7 @@
 									{#if recipientError !== ''}
 										<p
 											id="wishlist-recipient-error"
-											class="text-sm text-destructive"
+											class="text-sm text-status-danger-text"
 										>
 											{recipientError}
 										</p>
@@ -915,9 +915,9 @@
 							<Card.Root class="border-destructive/30">
 								<Card.Header>
 									<div class="flex items-center gap-2">
-										<TriangleAlertIcon class="size-5 text-destructive" />
+										<TriangleAlertIcon class="size-5 text-status-danger-text" />
 										<div>
-											<Card.Title class="text-destructive">
+											<Card.Title class="text-status-danger-text">
 												{m.wishlist_settings_danger_tab()}
 											</Card.Title>
 											<Card.Description

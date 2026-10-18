@@ -338,7 +338,7 @@
 			class="flex items-center justify-between gap-3 rounded-lg border border-destructive/30 p-3"
 			role="alert"
 		>
-			<p class="text-sm text-destructive">{m.error_generic()}</p>
+			<p class="text-sm text-status-danger-text">{m.error_generic()}</p>
 			<Button type="button" size="sm" intent="outline" onclick={refreshCategoryUsage}>
 				{m.import_wizard_retry()}
 			</Button>

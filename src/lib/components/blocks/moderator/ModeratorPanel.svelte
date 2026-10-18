@@ -361,7 +361,7 @@
 										size="sm"
 										intent="ghost"
 										class=""
-										surfaceClass="text-destructive group-hover:text-destructive"
+										surfaceClass="text-status-danger-text group-hover:text-status-danger-text"
 										disabled={isRevokingClaimId === invite.id}
 										aria-label={m.claim_revoke_invite()}
 										onclick={() => handleRevokeClaim(invite.id)}
@@ -483,7 +483,7 @@
 									size="sm"
 									intent="ghost"
 									class=""
-									surfaceClass="text-destructive group-hover:text-destructive"
+									surfaceClass="text-status-danger-text group-hover:text-status-danger-text"
 									disabled={isRevokingId === invite.id}
 									aria-label={m.moderator_revoke_invite()}
 									onclick={() => handleRevokeInvite(invite.id)}

@@ -50,7 +50,7 @@ describe('GiftLinkList source links (issue #442)', () => {
 				expect(anchor.target).toBe('_blank');
 				expect(anchor.rel).toContain('noopener');
 				expect(style.textDecorationLine).toContain('underline');
-				expect(style.color).toBe(colorOf('text-brand-deep', host));
+				expect(style.color).toBe(colorOf('text-brand-link', host));
 				expect(style.borderTopWidth).toBe('0px');
 				expect(style.backgroundColor).toBe('rgba(0, 0, 0, 0)');
 				expect(style.paddingLeft).toBe('0px');

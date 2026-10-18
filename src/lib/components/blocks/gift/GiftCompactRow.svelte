@@ -127,7 +127,7 @@
 
 	<td class="px-3 py-1.5 text-right">
 		{#if gift.price !== null}
-			<span class="text-sm font-semibold text-brand">{priceDisplay}</span>
+			<span class="text-sm font-semibold text-brand-link">{priceDisplay}</span>
 		{:else}
 			<span class="text-xs text-muted-foreground">{priceDisplay}</span>
 		{/if}

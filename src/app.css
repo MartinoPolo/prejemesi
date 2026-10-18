@@ -103,6 +103,7 @@
 :where(:root, [data-palette]) {
 	--p-primary: color-mix(in oklab, var(--p-brand) 20%, var(--p-deep));
 	--p-on-primary: #fff;
+	--p-link: color-mix(in oklab, var(--p-deep) 75%, var(--p-ink));
 }
 
 :root,
@@ -161,6 +162,7 @@
 	/* Yellow-green brands stay too light for white labels even when deepened. */
 	--p-primary: var(--p-brand);
 	--p-on-primary: color-mix(in oklab, var(--p-ink) 70%, black);
+	--p-link: color-mix(in oklab, var(--p-deep) 60%, var(--p-ink));
 }
 
 [data-palette='ruby'] {
@@ -347,7 +349,7 @@
 	--ink-faint: color-mix(in oklab, var(--p-ink) 12%, transparent);
 	--brand: var(--p-brand);
 	--brand-deep: var(--p-deep);
-	--brand-link: var(--brand-deep);
+	--brand-link: var(--p-link);
 	--tint: color-mix(in oklab, var(--p-brand) 21%, white);
 	--panel-hover: color-mix(in oklab, var(--p-brand) 6%, white);
 	--accent-loud: var(--p-accent);
@@ -452,7 +454,7 @@
 	--status-warning: #efa00b;
 	--status-warning-text: color-mix(in oklab, var(--status-warning) 35%, var(--ink));
 	--status-danger: #e4574c;
-	--status-danger-text: color-mix(in oklab, var(--status-danger) 60%, var(--ink));
+	--status-danger-text: color-mix(in oklab, var(--status-danger) 50%, var(--ink));
 	--status-danger-fill: color-mix(in oklab, var(--status-danger) 75%, var(--ink));
 	--status-info: #1e9be9;
 	--status-dup: oklch(72% 0.175 68deg);
@@ -593,7 +595,7 @@
 	--status-warning: #ffc24b;
 	--status-warning-text: var(--status-warning);
 	--status-danger: #f07a6e;
-	--status-danger-text: color-mix(in oklab, var(--status-danger) 90%, white);
+	--status-danger-text: color-mix(in oklab, var(--status-danger) 85%, white);
 	--status-danger-fill: color-mix(in oklab, var(--status-danger) 60%, #202630);
 	--status-info: #55b9f3;
 	--status-dup: oklch(76% 0.165 68deg);
@@ -1181,7 +1183,7 @@ main.app-content {
 	font-weight: 700;
 	letter-spacing: 0.08em;
 	text-transform: uppercase;
-	color: var(--brand);
+	color: var(--brand-link);
 	margin-bottom: var(--space-3);
 }
 

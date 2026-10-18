@@ -7,8 +7,8 @@ export const statusBadgeVariants = tv({
 		status: {
 			success: 'bg-status-success/10 text-status-success-text',
 			warning: 'bg-status-warning/10 text-status-warning-text',
-			danger: 'bg-status-danger/10 text-status-danger',
-			info: 'bg-status-info/10 text-status-info',
+			danger: 'bg-status-danger/10 text-status-danger-text',
+			info: 'bg-status-info/10 text-brand-link',
 		},
 	},
 	defaultVariants: {

@@ -24,7 +24,7 @@
 	}
 
 	.auth-footer a {
-		color: var(--brand);
+		color: var(--brand-link);
 		text-decoration: none;
 		font-weight: var(--weight-semibold);
 	}

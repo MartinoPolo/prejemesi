@@ -92,7 +92,7 @@
 				{#if accepted}
 					<CheckIcon class="size-7 text-brand" />
 				{:else if errorMessage !== null}
-					<XCircleIcon class="size-7 text-destructive" />
+					<XCircleIcon class="size-7 text-status-danger-text" />
 				{:else if !isAuthenticated}
 					<LogInIcon class="size-7 text-brand" />
 				{:else}
