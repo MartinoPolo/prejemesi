@@ -8,6 +8,7 @@ import {
 	createGiftFixture,
 	createWishlistFixture,
 	fixtureId,
+	recipientActor,
 	removeFixtureRows,
 	reserveGift,
 	seedFixtureUsers,
@@ -34,6 +35,8 @@ import { moderatorAssignment } from '$lib/server/db/moderator.schema.js';
 import { DEMO_COOKIE_NAME, demoEmailAddress } from '$lib/server/demo/constants.js';
 import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
 import { CreateAccessTokenInputSchema } from '$lib/modules/access_tokens/types.js';
+import { executeOperation } from '$lib/server/operations/runner.js';
+import { flipRecipientToFreeTextOperation } from '$lib/server/operations/wishlist_lifecycle_operations.js';
 import { createAccessToken, revokeAccessToken } from './access_tokens.js';
 import {
 	AgentApiFailure,
@@ -538,6 +541,40 @@ describe.skipIf(!DB_READY)('agent API', () => {
 			).text();
 			expect(JSON.parse(giftsText).result.role).toBe('visitor');
 			expect(giftsText).not.toContain(RESERVER_NAME);
+		});
+
+		it('drops recipient rights on the next call once the recipient hands the list to a free-text name', async () => {
+			const fixture = await sharedWishlistWithReservedLikedGift();
+			const { authorization } = await tokenFor(RECIPIENT_ID);
+			const giftsInput = { wishlistShortId: fixture.shortId };
+			const readGifts = async () => {
+				const response = await callOperation('readWishlistGifts', giftsInput, {
+					authorization,
+				});
+				expect(response.status).toBe(200);
+				return (await response.json()).result;
+			};
+			const recipientRead = await readGifts();
+			expect(recipientRead.role).toBe('recipient');
+			expect(recipientRead.gifts[0]).not.toHaveProperty('reservedCount');
+
+			// Only the linked recipient may flip the list, and they keep managing it as a správce.
+			await executeOperation(recipientActor, flipRecipientToFreeTextOperation, {
+				id: fixture.id,
+				recipientName: 'Babička',
+			});
+
+			const managerRead = await readGifts();
+			expect(managerRead.role).toBe('moderator');
+			expect(managerRead.gifts[0]).toMatchObject({ reservedCount: 2 });
+			expect(managerRead.gifts[0]).not.toHaveProperty('reserverNames');
+			expect(JSON.stringify(managerRead)).not.toContain(RESERVER_NAME);
+			const listResponse = await route(getWishlists)(
+				apiEvent('/api/v1/wishlists', 'GET', { authorization }),
+			);
+			expect((await listResponse.json()).wishlists).toContainEqual(
+				expect.objectContaining({ id: fixture.id, role: 'moderator' }),
+			);
 		});
 
 		it('rejects a wishlist outside the token restriction with 403 AGENT_WISHLIST_NOT_ALLOWED', async () => {
