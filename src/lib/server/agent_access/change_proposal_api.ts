@@ -7,6 +7,7 @@ import { SERVER_ERROR, type ServerErrorCode } from '$lib/modules/errors/server_e
 import {
 	CHANGE_PROPOSAL_OUTCOME,
 	CHANGE_PROPOSAL_STATUS,
+	CHANGE_ROW_STATUS,
 	NonEmptyIdSchema,
 	type ChangeProposalView,
 } from '$lib/modules/change_proposals/types.js';
@@ -427,10 +428,7 @@ async function fastForwardProposal(
 }
 
 /** The token's user's own proposal; 403 when the token's wishlist restriction excludes it. */
-export async function readChangeProposalForAgent(
-	token: AuthenticatedAccessToken,
-	proposalId: string,
-) {
+async function requireAgentChangeProposal(token: AuthenticatedAccessToken, proposalId: string) {
 	const record = await requireOwnChangeProposal(token.grant.userId, proposalId);
 	const allowedWishlistIds = token.grant.wishlistIds;
 	const { wishlistId } = record.proposal;
@@ -440,5 +438,54 @@ export async function readChangeProposalForAgent(
 	) {
 		throw new AgentApiFailure(403, SERVER_ERROR.AGENT_WISHLIST_NOT_ALLOWED);
 	}
-	return projectChangeProposalForAgent(await buildChangeProposalView(record));
+	return record;
+}
+
+export async function readChangeProposalForAgent(
+	token: AuthenticatedAccessToken,
+	proposalId: string,
+) {
+	return projectChangeProposalForAgent(
+		await buildChangeProposalView(await requireAgentChangeProposal(token, proposalId)),
+	);
+}
+
+function reviewRequired(view: ChangeProposalView, details: Record<string, unknown> = {}) {
+	return new AgentApiFailure(409, SERVER_ERROR.AGENT_PROPOSAL_REVIEW_REQUIRED, {
+		reviewUrl: view.reviewUrl,
+		...details,
+	});
+}
+
+/**
+ * Applies a pending proposal under the rule fast-forward applies at submission, for one that
+ * waited because its apply failed or a gift changed meanwhile. Only the fast-forward token that
+ * submitted it may, so no token skips the review another token's proposal waits for.
+ */
+export async function applyChangeProposalForAgent(
+	token: AuthenticatedAccessToken,
+	proposalId: string,
+) {
+	const record = await requireAgentChangeProposal(token, proposalId);
+	const view = await buildChangeProposalView(record);
+	if (view.state !== CHANGE_PROPOSAL_STATUS.pending) {
+		throw new AgentApiFailure(409, SERVER_ERROR.AGENT_PROPOSAL_NOT_PENDING, {
+			status: view.state,
+		});
+	}
+	if (!token.fastForward || record.proposal.tokenId !== token.tokenId) {
+		throw reviewRequired(view);
+	}
+	if (view.rows.some((row) => row.status !== CHANGE_ROW_STATUS.ready)) {
+		throw reviewRequired(view);
+	}
+	const result = await applyChangeProposalRows(
+		{ id: token.grant.userId, name: token.grant.userName },
+		proposalId,
+		view.rows.map((row) => row.rowId),
+	);
+	if (result.outcome !== CHANGE_PROPOSAL_OUTCOME.applied) {
+		throw reviewRequired(view, { outcome: result.outcome });
+	}
+	return projectChangeProposalForAgent(result.proposal);
 }

@@ -235,6 +235,8 @@ Current product, architecture, and design decisions for Přejeme si. Entries are
 - 2026-10-17: Agent changes are bounded by a daily budget of proposal rows per user over a trailing window across all tokens, counting every row whatever its outcome; values in `src/lib/server/agent_access/limits.ts`.
 - 2026-10-17: An agent's gift copy that removes the unreserved sources needs confirmation, like deleting them.
 - 2026-10-18: The MCP server is a small stateless Streamable HTTP handler at `/mcp` whose tools are derived from the OpenAPI document; the official SDK stays a test-only client because it bundles ajv and zod into the Worker for the few methods used. It sits outside `/api/` because the edge request challenge on `/api/*` would block MCP clients. A change tool submits a one-row proposal; caller resolution sits in one function (`authenticateAgentRequest`) where OAuth grants join as a second credential source.
+- 2026-10-18: The `prejemesi` CLI lives in `packages/cli`, a dependency-free pnpm workspace package the owner publishes; the private root app package is `prejemesi-app` so the CLI owns the npm name. It reads the token only from a hidden prompt or standard input, never from arguments, so it stays out of shell history, and stores it in the user's config directory, readable by the user only.
+- 2026-10-18: An API apply (`POST /api/v1/proposals/{id}/apply`, the CLI's `proposals apply`) is fast-forward retried later, not a review: only the fast-forward token that submitted the proposal may apply it, and only while every row is `ready`; everything else goes to the review page.
 
 ## Repository checks & operations
 

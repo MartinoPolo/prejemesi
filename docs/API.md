@@ -1,6 +1,6 @@
 # Agent API
 
-The versioned JSON API at `/api/v1`, and the [MCP server](#mcp) built from it, let a user's own agent act as that user. The complete, current reference is the public OpenAPI 3.1 document at `GET /api/v1/openapi.json`, generated from the operation registry and agent policies (`src/lib/server/agent_access/`); it lists every agent operation with its input schema, scope and confirmation rule.
+The versioned JSON API at `/api/v1`, with the [MCP server](#mcp) built from it and the [CLI](#cli) on top of it, lets a user's own agent act as that user. The complete, current reference is the public OpenAPI 3.1 document at `GET /api/v1/openapi.json`, generated from the operation registry and agent policies (`src/lib/server/agent_access/`); it lists every agent operation with its input schema, scope and confirmation rule.
 
 ## Authentication
 
@@ -28,7 +28,7 @@ Every call acts with the user's current role: losing a role takes effect on the 
 - `GET /api/v1/me` returns the token user and the token (name, prefix, scopes, wishlist restriction, expiry, fast-forward).
 - `GET /api/v1/wishlists` returns the wishlists the token reaches, with the user's role and the wishlist kind.
 - `POST /api/v1/operations/{operationName}` runs an agent read; the JSON body is the operation input and the answer is `{ "result": … }`. Change operations answer 409 `AGENT_MUTATION_REQUIRES_PROPOSAL`, because changes are submitted as proposals the user reviews.
-- `POST /api/v1/proposals` submits changes as a proposal and answers 201 `{ "proposal": … }`; `GET /api/v1/proposals/{proposalId}` reads one with its current status.
+- `POST /api/v1/proposals` submits changes as a proposal and answers 201 `{ "proposal": … }`; `GET /api/v1/proposals/{proposalId}` reads one with its current status; `POST /api/v1/proposals/{proposalId}/apply` applies a waiting one under the fast-forward rule.
 - `POST /api/v1/images` stores an image from a URL for a gift and answers 201 `{ "image": … }` with its `reference`.
 - `GET /api/v1/openapi.json` returns the reference document without authentication.
 
@@ -39,7 +39,7 @@ The body is `{ "wishlistShortId" | "wishlistId", "operations": [{ "operation", "
 - Every row is authorized with the token, must change the named wishlist (400 `AGENT_PROPOSAL_WISHLIST_MISMATCH` with `rowId`) and is dry-run in order, so later rows see earlier ones. Rows cannot refer to ids an earlier row creates; preview results carry placeholder ids.
 - A row is `ready`, `rejected` (with the core's `error`), `needsConfirmation` (gift deletions, reservations, manager invitations, copying that removes sources) or, once a gift it depends on changes, `conflict`. Its conflict baseline is the gifts it names plus the existing gifts its dry run changed, as they were at submission; ordering is ignored and a gift that is gone conflicts.
 - The submitter reviews the proposal at `reviewUrl` (`/w/<shortId>/changes/<id>`) until `expiresAt`, selects rows and applies them in one transaction; unselected rows are discarded and a proposal applies once. Nobody else can see it, and the submitter only while they can read the wishlist (404 otherwise). A revoked token's pending proposals stay applicable. Expired and discarded proposals stay readable for a grace period, applied ones while undo is possible.
-- With fast-forward, a proposal whose rows are all `ready` applies at once (status `applied`); otherwise, or when that apply fails, it waits for review.
+- With fast-forward, a proposal whose rows are all `ready` applies at once (status `applied`); otherwise, or when that apply fails, it waits for review. The apply endpoint retries that for the fast-forward token that submitted the proposal while every row is still `ready`; any other call answers 409 `AGENT_PROPOSAL_REVIEW_REQUIRED` with `reviewUrl`, so no token skips a review.
 - Wishlist creation (`createWishlist`, `createWishlistFromImport`) needs an unrestricted fast-forward token and a proposal naming no wishlist, which applies at once or is discarded; otherwise 400 `AGENT_WISHLIST_CREATION_REQUIRES_FAST_FORWARD`.
 - Undo, from the review page, reverts the whole applied batch. It refuses with 409 `AGENT_PROPOSAL_UNDO_UNSUPPORTED` when the batch reordered gifts, changed categories, priority levels or wishlist details, cancelled or marked a reservation purchased, created a wishlist, or sent an invitation that was since accepted; a gift changed since apply blocks it too.
 - An optional `Idempotency-Key` header (1–255 printable ASCII characters, kept per token for a limited time) makes retries safe: the same key and body replay the stored 201 with `Idempotent-Replayed: true`; the same key with another body answers 422 `AGENT_IDEMPOTENCY_KEY_REUSED`, and 409 `AGENT_IDEMPOTENCY_IN_PROGRESS` while the first request runs. Failures free the key.
@@ -61,9 +61,15 @@ Agents set a gift image by URL in two steps; gifts never keep an external URL. I
 claude mcp add --transport http prejemesi https://prejemesi.cz/mcp --header "Authorization: Bearer pjs_…"
 ```
 
-- Tools are built from the OpenAPI document, so they share its names, summaries and input schemas: one tool per endpoint (`me`, `listWishlists`, `submitChangeProposal`, `getChangeProposal`, `uploadImage`) and per agent operation. Path parameters become arguments and the `Idempotency-Key` header becomes `idempotencyKey`. `tools/list` shows only the tools the token's scopes allow.
+- Tools are built from the OpenAPI document, so they share its names, summaries and input schemas: one tool per endpoint (`me`, `listWishlists`, `submitChangeProposal`, `getChangeProposal`, `applyChangeProposal`, `uploadImage`) and per agent operation. Path parameters become arguments and the `Idempotency-Key` header becomes `idempotencyKey`. `tools/list` shows only the tools the token's scopes allow.
 - A read tool returns the operation's `{ "result": … }`. A change tool submits a one-row proposal for the wishlist it changes and returns `{ "proposal": … }` with the absolute review link, or applies at once under fast-forward; batches and idempotent retries go through `submitChangeProposal`.
 - An API failure in a tool comes back as a tool result with `isError` and the API error body. Authentication failures answer the HTTP status with a JSON-RPC error carrying it in `data` (401 adds `WWW-Authenticate: Bearer`).
+
+## CLI
+
+The `prejemesi` npm package (`packages/cli`, `npx prejemesi …`) is a thin client of this API with JSON output; its commands are in [its README](../packages/cli/README.md). `login` reads the token from a hidden prompt or standard input, checks it with `GET /me` and stores it in the user's config directory; the CLI never prints it. Gift commands submit one proposal each and print its absolute `reviewLink`.
+
+The owner publishes it from `packages/cli` after bumping its version: `pnpm --filter prejemesi publish` builds it on `prepack`.
 
 ## Errors
 
@@ -75,7 +81,7 @@ Every failure answers `{ "error": { "code": "…", "message": "…", …details 
 | 401 | `AGENT_TOKEN_INVALID`, `AGENT_TOKEN_EXPIRED`, `AGENT_TOKEN_REVOKED` |
 | 403 | `AGENT_SCOPE_MISSING`, `AGENT_WISHLIST_NOT_ALLOWED`, `AGENT_DEMO_NOT_ALLOWED` |
 | 404 | `AGENT_OPERATION_NOT_FOUND` (unknown and human-only operations alike), `WISHLIST_NOT_FOUND`, `AGENT_PROPOSAL_NOT_FOUND` (also for other users' proposals) |
-| 409 | `AGENT_MUTATION_REQUIRES_PROPOSAL`, `AGENT_AUTHORIZATION_OUTDATED`, `AGENT_IDEMPOTENCY_IN_PROGRESS`, `AGENT_IMAGE_REFERENCE_USED` |
+| 409 | `AGENT_MUTATION_REQUIRES_PROPOSAL`, `AGENT_AUTHORIZATION_OUTDATED`, `AGENT_IDEMPOTENCY_IN_PROGRESS`, `AGENT_IMAGE_REFERENCE_USED`, `AGENT_PROPOSAL_REVIEW_REQUIRED` (with `reviewUrl`), `AGENT_PROPOSAL_NOT_PENDING` (with `status`) |
 | 410 | `AGENT_IMAGE_REFERENCE_EXPIRED` |
 | 413 | `AGENT_REQUEST_TOO_LARGE` (with `maxBytes`) |
 | 415 | `AGENT_UNSUPPORTED_MEDIA_TYPE`: bodies must be `application/json` |

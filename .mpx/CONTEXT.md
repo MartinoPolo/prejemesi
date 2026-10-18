@@ -87,11 +87,11 @@ _Avoid_: "list" for Wishlist (ambiguous), "present" for Gift (confusing with tim
 - Profile and settings: identity, notifications, appearance.
 - Isolated editable demo playground from the landing page.
 - Production gift ingestion (allowlisted manifest API and CLI), interim until [#476](https://github.com/MartinoPolo/prejemesi/issues/476).
-- Agent access: access tokens, JSON API, remote MCP server, change proposals with review and undo.
+- Agent access: access tokens, JSON API, remote MCP server, `prejemesi` CLI, change proposals with review and undo.
 
 ### Planned
 
-- Agent access: OAuth, CLI ([#480](https://github.com/MartinoPolo/prejemesi/issues/480)).
+- Agent access: OAuth for MCP clients ([#480](https://github.com/MartinoPolo/prejemesi/issues/480)).
 - Hosted AI chatbot, premium ([#478](https://github.com/MartinoPolo/prejemesi/issues/478)).
 - Linking anonymous reservations to an account at sign-up.
 - Gift metadata enrichment from a link (image, price, title), later by name.

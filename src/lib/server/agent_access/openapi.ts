@@ -42,6 +42,7 @@ export const AGENT_API_OPERATION_ID = {
 	listWishlists: 'listWishlists',
 	submitChangeProposal: 'submitChangeProposal',
 	getChangeProposal: 'getChangeProposal',
+	applyChangeProposal: 'applyChangeProposal',
 	uploadImage: 'uploadImage',
 	openApiDocument: 'openApiDocument',
 } as const;
@@ -255,6 +256,22 @@ function changeProposalPaths() {
 					200: jsonResponse('The proposal.', CHANGE_PROPOSAL_RESPONSE_SCHEMA),
 					...AUTHENTICATED_ERROR_RESPONSES,
 					404: ERROR_RESPONSE_REFERENCE,
+				},
+			},
+		},
+		[`${AGENT_API_BASE_PATH}/proposals/{proposalId}/apply`]: {
+			post: {
+				operationId: AGENT_API_OPERATION_ID.applyChangeProposal,
+				summary: 'Applies a waiting proposal the way fast-forward would have.',
+				description: `For a pending proposal that did not apply at submission because its apply failed or a gift changed meanwhile. Only the fast-forward token that submitted it may apply it, and only while every row is \`ready\`; otherwise it answers 409 ${SERVER_ERROR.AGENT_PROPOSAL_REVIEW_REQUIRED} with the \`reviewUrl\` where the user reviews it.`,
+				parameters: [
+					{ name: 'proposalId', in: 'path', required: true, schema: { type: 'string' } },
+				],
+				responses: {
+					200: jsonResponse('The applied proposal.', CHANGE_PROPOSAL_RESPONSE_SCHEMA),
+					...AUTHENTICATED_ERROR_RESPONSES,
+					404: ERROR_RESPONSE_REFERENCE,
+					409: ERROR_RESPONSE_REFERENCE,
 				},
 			},
 		},

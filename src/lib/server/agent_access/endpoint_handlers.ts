@@ -3,6 +3,7 @@ import { agentImageStorage, type AgentImageBucket } from '$lib/server/storage/r2
 import type { AuthenticatedAccessToken } from './access_tokens.js';
 import { runAgentApiOperation, type AgentApiResponse } from './api.js';
 import {
+	applyChangeProposalForAgent,
 	readChangeProposalForAgent,
 	submitChangeProposal,
 	submitSingleChangeProposal,
@@ -75,6 +76,13 @@ export async function proposalResponse(
 	proposalId: string,
 ): Promise<AgentApiResponse> {
 	return { body: { proposal: await readChangeProposalForAgent(token, proposalId) } };
+}
+
+export async function proposalApplyResponse(
+	token: AuthenticatedAccessToken,
+	proposalId: string,
+): Promise<AgentApiResponse> {
+	return { body: { proposal: await applyChangeProposalForAgent(token, proposalId) } };
 }
 
 export async function imageUploadResponse(

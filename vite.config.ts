@@ -234,7 +234,7 @@ export default defineConfig({
 					name: 'server',
 					sequence: { groupOrder: 1 },
 					environment: 'node',
-					include: ['src/**/*.{test,spec}.{js,ts}'],
+					include: ['src/**/*.{test,spec}.{js,ts}', 'packages/*/src/**/*.test.ts'],
 					exclude: ['src/**/*.svelte.{test,spec}.{js,ts}'],
 				},
 			},

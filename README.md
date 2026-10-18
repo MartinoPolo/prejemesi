@@ -9,7 +9,7 @@
 - **Reserve & like.** Visitors reserve gifts (with quantity support) to prevent duplicate buying, and "like" gifts to signal interest – if a liked gift gets reserved by someone else, the liker is notified.
 - **Stay surprised.** Ordinary recipients receive no reservation data. After sharing they can still edit presentation fields and append descriptions; names and deletion lock after initial grace. Reserved gifts cannot be deleted even during grace, an explicitly accepted narrow inference exception.
 - **Delegate.** Linked recipients and **správci** (managers) can invite other správci. Explicit recipient self-promotion reveals state/counts with disclosure, but never gifter identities.
-- **Bring your own agent.** A personal access token from Settings lets your AI agent read and propose changes through the [JSON API or the remote MCP server](docs/API.md) at `https://prejemesi.cz/mcp`; you review proposed changes before they apply unless the token has fast-forward.
+- **Bring your own agent.** A personal access token from Settings lets your AI agent read and propose changes through the [JSON API, the remote MCP server](docs/API.md) at `https://prejemesi.cz/mcp` or the [`npx prejemesi` CLI](packages/cli/README.md); you review proposed changes before they apply unless the token has fast-forward.
 
 ### Roles
 

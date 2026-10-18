@@ -1,5 +1,5 @@
 {
-	"name": "prejemesi",
+	"name": "prejemesi-app",
 	"version": "0.0.1",
 	"private": true,
 	"type": "module",
@@ -10,7 +10,7 @@
 		"deploy": "vite build && wrangler deploy",
 		"preview": "wrangler dev --local --port 4173 --var ORIGIN:http://localhost:4173",
 		"paraglide:compile": "node ./scripts/paraglide-compile.mjs",
-		"check": "node ./scripts/paraglide-compile.mjs && svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+		"check": "node ./scripts/paraglide-compile.mjs && svelte-kit sync && svelte-check --tsconfig ./tsconfig.json && tsc -p packages/cli",
 		"typecheck": "pnpm check",
 		"check:fast": "prettier --cache --cache-strategy content --write --log-level warn . && oxlint",
 		"check:all": "pnpm paraglide:compile && svelte-kit sync && pnpm run format && node scripts/check-all-parallel.mjs",
