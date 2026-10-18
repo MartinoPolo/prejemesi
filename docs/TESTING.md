@@ -38,7 +38,7 @@ The setup project allows extra navigation time for cold Vite compilation without
 
 Never point either command at production.
 
-The ingestion endpoint depends on the `GIFT_INGESTION_RATE_LIMIT` Workers binding. `pnpm preview` uses local Wrangler, which simulates this binding from `wrangler.jsonc`. The normal Vite-backed e2e server remains supported for application tests, but intentionally has no Workers binding; if ingestion credentials are configured there, ingestion fails closed with HTTP 503 rather than bypassing the limit. The agent API's `AGENT_API_RATE_LIMIT` binding fails closed the same way in production builds but is skipped in the Vite dev server, so e2e can call `/api/v1`.
+The agent API's `AGENT_API_RATE_LIMIT` Workers binding fails closed with HTTP 503 in production builds but is skipped in the Vite dev server, so e2e can call `/api/v1`; `pnpm preview` uses local Wrangler, which simulates the binding from `wrangler.jsonc`.
 
 ## Rendered geometry assertions
 

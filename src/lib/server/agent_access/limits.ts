@@ -58,7 +58,7 @@ export const AGENT_DAILY_IMAGE_BUDGET = {
 	images: 100,
 	windowMs: DAY_MS,
 } as const;
-/** The shared image download limits, so ingestion and agents fetch alike. */
+/** Agents fetch images with the shared image download limits. */
 export const AGENT_IMAGE_FETCH_TIMEOUT_MS = DEFAULT_IMAGE_DOWNLOAD_TIMEOUT_MS;
 export const AGENT_IMAGE_MAX_REDIRECTS = DEFAULT_IMAGE_MAX_REDIRECTS;
 

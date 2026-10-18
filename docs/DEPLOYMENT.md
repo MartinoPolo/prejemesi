@@ -103,7 +103,7 @@ The acknowledgment stays outside the SQL because Drizzle records the exact SQL h
 - [ ] Target SHA and rollback Worker version recorded.
 - [ ] Complete migration manifest passes `pnpm check:migrations`.
 - [ ] Any new migration was generated via `pnpm db:generate`, reviewed, committed, and is expand-compatible (or a later contract is explicitly acknowledged).
-- [ ] All declared Worker bindings are present in the built/deployed config. In particular, `GIFT_INGESTION_RATE_LIMIT` must show the 60 requests / 60 seconds policy and `AGENT_API_RATE_LIMIT` the per-token policy from `src/lib/server/agent_access/limits.ts`; ingestion and the agent API fail closed with HTTP 503 if their binding is absent or errors.
+- [ ] All declared Worker bindings are present in the built/deployed config. In particular, `AGENT_API_RATE_LIMIT` must show the per-token policy from `src/lib/server/agent_access/limits.ts`; the agent API fails closed with HTTP 503 if the binding is absent or errors.
 - [ ] Any **new env var/secret** the release reads is set on the Worker (`wrangler secret list` + `wrangler versions view <id>`). A missing one does not fail the deploy — the feature just silently stays off, which is how `ADMIN_EMAILS` sat unset from #150 until the #213 release.
 - [ ] Sync the release PR (`update-branch`) — it opens `BEHIND` every time.
 - [ ] Merge to `production` (merge commit, not squash); wait for **verify**.

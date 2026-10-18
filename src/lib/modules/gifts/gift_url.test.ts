@@ -7,7 +7,6 @@ import {
 	createGiftLinkId,
 	ensureGiftLinkIds,
 	canonicalGiftLinkKey,
-	canonicalIngestionSourceKey,
 } from './gift_url.js';
 import { extractGiftDomain } from './gift_display.js';
 import { MAX_GIFT_LINKS } from './types.js';
@@ -54,18 +53,9 @@ describe('normalizeGiftUrl', () => {
 });
 
 describe('canonical URL identities', () => {
-	it('keeps advisory matching query-insensitive but ingestion identity query-complete', () => {
+	it('keeps advisory matching query-insensitive', () => {
 		expect(canonicalGiftLinkKey('https://www.Shop.Example/item/?b=2&a=1#details')).toBe(
 			'shop.example/item',
-		);
-		expect(canonicalIngestionSourceKey('https://www.Shop.Example/item/?b=2&a=1#details')).toBe(
-			'shop.example/item?a=1&b=2',
-		);
-		expect(canonicalIngestionSourceKey('https://shop.example/item?a=1&b=2')).toBe(
-			'shop.example/item?a=1&b=2',
-		);
-		expect(canonicalIngestionSourceKey('https://shop.example/item?a=2&b=2')).not.toBe(
-			canonicalIngestionSourceKey('https://shop.example/item?a=1&b=2'),
 		);
 	});
 });

@@ -33,7 +33,6 @@ import { assertWishlistScope, wishlistScope } from './scope.js';
 import { requireWishlistManagement } from '$lib/server/operations/wishlist_management.js';
 import { demoHandle } from '../../../hooks.server.js';
 import { createAuth } from '$lib/server/auth.js';
-import { drizzleGiftIngestionStore } from '$lib/modules/ingestion/ingestion_store.js';
 
 // Only the explicitly isolated, separately migrated verification database may run this suite.
 const isolatedDatabaseUrl = resolveIsolatedDemoTestDatabaseUrl('DEMO_TEST_DATABASE_URL', {
@@ -253,12 +252,6 @@ describe.skipIf(isolatedDatabaseUrl === null)(
 			expect(thrownBy(() => assertWishlistScope(realWishlist))).toMatchObject({
 				status: 404,
 			});
-			expect(
-				await drizzleGiftIngestionStore.resolveTarget(undefined, listA!.shortId),
-			).toBeNull();
-			expect(
-				await drizzleGiftIngestionStore.resolveTarget(undefined, realWishlist.shortId),
-			).not.toBeNull();
 			await expect(
 				requireWishlistManagement(getDb(), sessionA.viewerUserId, listA!.id, {
 					lock: false,
@@ -370,7 +363,7 @@ describe.skipIf(isolatedDatabaseUrl === null)(
 			}
 			const denied = {
 				...event,
-				url: new URL('http://localhost/api/internal/v1/gift-ingestion'),
+				url: new URL('http://localhost/api/v1/me'),
 				locals: {},
 			};
 			await expect(
