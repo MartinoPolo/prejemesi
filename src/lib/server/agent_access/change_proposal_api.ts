@@ -3,7 +3,7 @@ import { and, asc, eq, gt } from 'drizzle-orm';
 import { getDb } from '$lib/server/db/index.js';
 import { changeProposal } from '$lib/server/db/change_proposal.schema.js';
 import { resolveAddressedWishlist } from './wishlist_address.js';
-import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
+import { SERVER_ERROR, type ServerErrorCode } from '$lib/modules/errors/server_error_codes.js';
 import {
 	CHANGE_PROPOSAL_OUTCOME,
 	CHANGE_PROPOSAL_STATUS,
@@ -22,7 +22,7 @@ import {
 	type AuthorizedAgentOperation,
 } from './authorization.js';
 import type { StoredChangeRow, StoredGiftBaseline } from './change_proposal_records.js';
-import { TARGET_KIND } from './policy_lookups.js';
+import { TARGET_KIND, type TargetKind } from './policy_lookups.js';
 import {
 	applyChangeProposalRows,
 	buildChangeProposalView,
@@ -184,7 +184,7 @@ function giftsAtSubmissionOf(
 async function previewRows(
 	grant: AgentAccessGrant,
 	authorizedOperations: readonly AuthorizedAgentOperation[],
-	request: ChangeProposalRequest,
+	request: Pick<ChangeProposalRequest, 'operations'>,
 ): Promise<StoredChangeRow[]> {
 	const namedGiftIds = [
 		...new Set(
@@ -279,6 +279,61 @@ export async function submitChangeProposal(
 			input: operation.input,
 		})),
 	);
+	return storeChangeProposal(token, proposalWishlist, authorizedOperations, request, now);
+}
+
+/** What an existing target that names no live wishlist answers. */
+const MISSING_TARGET_ERROR = {
+	[TARGET_KIND.wishlistId]: SERVER_ERROR.WISHLIST_NOT_FOUND,
+	[TARGET_KIND.wishlistShortId]: SERVER_ERROR.WISHLIST_NOT_FOUND,
+	[TARGET_KIND.giftId]: SERVER_ERROR.GIFT_NOT_FOUND,
+	[TARGET_KIND.reservationId]: SERVER_ERROR.RESERVATION_NOT_FOUND,
+	[TARGET_KIND.revisionBatchId]: SERVER_ERROR.GIFT_REVISION_NOT_FOUND,
+} satisfies Record<TargetKind, ServerErrorCode>;
+
+/**
+ * Submits one change as a proposal of its own, on the wishlist the change targets (the first one
+ * when it names several, such as a copy's source). A change that only creates a wishlist names
+ * none, like a wishlist-creating proposal.
+ */
+export async function submitSingleChangeProposal(
+	token: AuthenticatedAccessToken,
+	operationName: string,
+	input: unknown,
+	now = new Date(),
+) {
+	const { grant } = token;
+	const authorizedOperations = await authorizeAgentOperations(grant, [{ operationName, input }]);
+	const [authorized] = authorizedOperations;
+	if (authorized === undefined) {
+		throw new Error(`Authorizing ${operationName} returned no operation`);
+	}
+	const [targetWishlistId] = authorized.targetWishlistIds;
+	const [firstTarget] = authorized.lookup.targets;
+	if (targetWishlistId === undefined && firstTarget !== undefined) {
+		throw new AgentApiFailure(404, MISSING_TARGET_ERROR[firstTarget.kind]);
+	}
+	const proposalWishlist =
+		targetWishlistId === undefined
+			? null
+			: await resolveAddressedWishlist(grant, { wishlistId: targetWishlistId });
+	return storeChangeProposal(
+		token,
+		proposalWishlist,
+		authorizedOperations,
+		{ operations: [{ operation: operationName, input }] },
+		now,
+	);
+}
+
+async function storeChangeProposal(
+	token: AuthenticatedAccessToken,
+	proposalWishlist: { id: string; shortId: string } | null,
+	authorizedOperations: readonly AuthorizedAgentOperation[],
+	request: Pick<ChangeProposalRequest, 'operations'>,
+	now: Date,
+) {
+	const { grant } = token;
 	if (
 		authorizedOperations.some((authorized) => authorized.operation.kind === OPERATION_KIND.read)
 	) {

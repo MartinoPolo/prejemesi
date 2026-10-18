@@ -1,6 +1,7 @@
 import type { RequestHandler } from './$types.js';
-import { agentApiJsonEndpoint, runAgentApiOperation } from '$lib/server/agent_access/api.js';
+import { agentApiJsonEndpoint } from '$lib/server/agent_access/api.js';
+import { operationReadResponse } from '$lib/server/agent_access/endpoint_handlers.js';
 
-export const POST: RequestHandler = agentApiJsonEndpoint(async ({ token, body }, { params }) => ({
-	body: { result: await runAgentApiOperation(token.grant, params.operationName, body.parsed) },
-}));
+export const POST: RequestHandler = agentApiJsonEndpoint(({ token, body }, { params }) =>
+	operationReadResponse(token, params.operationName, body.parsed),
+);

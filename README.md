@@ -9,6 +9,7 @@
 - **Reserve & like.** Visitors reserve gifts (with quantity support) to prevent duplicate buying, and "like" gifts to signal interest – if a liked gift gets reserved by someone else, the liker is notified.
 - **Stay surprised.** Ordinary recipients receive no reservation data. After sharing they can still edit presentation fields and append descriptions; names and deletion lock after initial grace. Reserved gifts cannot be deleted even during grace, an explicitly accepted narrow inference exception.
 - **Delegate.** Linked recipients and **správci** (managers) can invite other správci. Explicit recipient self-promotion reveals state/counts with disclosure, but never gifter identities.
+- **Bring your own agent.** A personal access token from Settings lets your AI agent read and propose changes through the [JSON API or the remote MCP server](docs/API.md) at `https://prejemesi.cz/mcp`; you review proposed changes before they apply unless the token has fast-forward.
 
 ### Roles
 
@@ -212,7 +213,7 @@ messages/                    # Translation files (cs.json, en.json)
 tests/e2e/                   # Playwright E2E tests
 ```
 
-Each domain module exposes a small public API via `index.ts`. Client–server communication uses SvelteKit **remote functions** (`*.remote.ts`) by default – `query` for reads, `form` for progressive-enhancement mutations, `command` for JS-only actions – wrapped in guarded helpers that enforce auth. The deliberate `/home` exception uses a `+page.server.ts` load for its latency-sensitive authenticated overview: it awaits parent layout authentication and invokes a server-only database service directly, avoiding an intra-server remote request. General REST-style `+server.ts` routes are not used; the purpose-specific route exceptions are the BetterAuth catch-all, the upload proxy, the allowlisted-target internal gift-ingestion endpoint for authenticated machine ingestion, and the token-authenticated agent API under `/api/v1` ([docs/API.md](docs/API.md)).
+Each domain module exposes a small public API via `index.ts`. Client–server communication uses SvelteKit **remote functions** (`*.remote.ts`) by default – `query` for reads, `form` for progressive-enhancement mutations, `command` for JS-only actions – wrapped in guarded helpers that enforce auth. The deliberate `/home` exception uses a `+page.server.ts` load for its latency-sensitive authenticated overview: it awaits parent layout authentication and invokes a server-only database service directly, avoiding an intra-server remote request. General REST-style `+server.ts` routes are not used; the purpose-specific route exceptions are the BetterAuth catch-all, the upload proxy, the allowlisted-target internal gift-ingestion endpoint for authenticated machine ingestion, and the token-authenticated agent API under `/api/v1` with its MCP endpoint `/mcp` ([docs/API.md](docs/API.md)).
 
 ## Code Conventions
 

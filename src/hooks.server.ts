@@ -8,7 +8,7 @@ import { paraglideMiddleware } from '$lib/paraglide/server';
 import { cookieName, getTextDirection, type Locale } from '$lib/paraglide/runtime';
 import { getDb, isDatabaseConfigured, rememberDatabaseBinding } from '$lib/server/db/index.js';
 import { DEMO_CLEANUP_INTERVAL_MS, DEMO_COOKIE_NAME } from '$lib/server/demo/constants.js';
-import { AGENT_API_BASE_PATH } from '$lib/server/agent_access/api_paths.js';
+import { AGENT_API_BASE_PATH, AGENT_MCP_PATH } from '$lib/server/agent_access/api_paths.js';
 import {
 	DEV_AUTO_LOGIN_OPT_OUT_COOKIE_NAME,
 	devAutoLoginOptOutChange,
@@ -498,14 +498,16 @@ export const demoHandle: Handle = async ({ event, resolve }) => {
 	await cleanDemosOnDocumentRequest(event);
 	const token = event.cookies.get(DEMO_COOKIE_NAME);
 	const requestedPath = new URL(event.request.url).pathname;
-	// The agent API rejects a live demo itself, in its own error shape, outside a demo transaction.
+	// The agent API and MCP reject a live demo themselves, in their own error shape, outside a
+	// demo transaction.
 	if (
 		token === undefined ||
 		token === '' ||
 		(!event.isRemoteRequest &&
 			(requestedPath.startsWith('/demo/v1/') ||
 				requestedPath.startsWith('/demo/playground/') ||
-				requestedPath.startsWith(AGENT_API_PATH_PREFIX)))
+				requestedPath.startsWith(AGENT_API_PATH_PREFIX) ||
+				requestedPath === AGENT_MCP_PATH))
 	) {
 		return resolve(event);
 	}

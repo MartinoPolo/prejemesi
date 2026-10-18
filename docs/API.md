@@ -1,6 +1,6 @@
 # Agent API
 
-The versioned JSON API at `/api/v1` lets a user's own agent act as that user. The complete, current reference is the public OpenAPI 3.1 document at `GET /api/v1/openapi.json`, generated from the operation registry and agent policies (`src/lib/server/agent_access/`); it lists every agent operation with its input schema, scope and confirmation rule.
+The versioned JSON API at `/api/v1`, and the [MCP server](#mcp) built from it, let a user's own agent act as that user. The complete, current reference is the public OpenAPI 3.1 document at `GET /api/v1/openapi.json`, generated from the operation registry and agent policies (`src/lib/server/agent_access/`); it lists every agent operation with its input schema, scope and confirmation rule.
 
 ## Authentication
 
@@ -52,6 +52,18 @@ Agents set a gift image by URL in two steps; gifts never keep an external URL. I
 - The URL and every redirect (a capped number) must be HTTPS on the default port to a public host name; IP addresses and local names are refused. The image must be JPEG, PNG, WebP or GIF, its bytes must match the declared type, and it must fit the gift image size cap with positive dimensions within a maximum side and pixel count. A storage failure answers 503 `AGENT_IMAGE_STORAGE_UNAVAILABLE`.
 - A `createGift` or `updateGift` row sets `"imageReference": "<reference>"`; the gift gets the stored copy with automatic framing unless the row gives `imageMeta`. A reference is valid only for its user and wishlist, attaches to one gift once, and must be attached by an applied change before `expiresAt`; it is checked at submission and again at apply. Undo restores a previous image link or no image; an uploaded image the change replaced was deleted, so the gift then keeps the new one.
 - Unattached images are deleted after expiry. Wishlist covers and import drafts take no image references.
+
+## MCP
+
+`POST /mcp` is a remote MCP server (Streamable HTTP, stateless, JSON responses) with the same bearer token, scopes, limits and errors as the API. It lives outside `/api/` so the edge request challenge there cannot block MCP clients. Connect Claude Code with:
+
+```bash
+claude mcp add --transport http prejemesi https://prejemesi.cz/mcp --header "Authorization: Bearer pjs_…"
+```
+
+- Tools are built from the OpenAPI document, so they share its names, summaries and input schemas: one tool per endpoint (`me`, `listWishlists`, `submitChangeProposal`, `getChangeProposal`, `uploadImage`) and per agent operation. Path parameters become arguments and the `Idempotency-Key` header becomes `idempotencyKey`. `tools/list` shows only the tools the token's scopes allow.
+- A read tool returns the operation's `{ "result": … }`. A change tool submits a one-row proposal for the wishlist it changes and returns `{ "proposal": … }` with the absolute review link, or applies at once under fast-forward; batches and idempotent retries go through `submitChangeProposal`.
+- An API failure in a tool comes back as a tool result with `isError` and the API error body. Authentication failures answer the HTTP status with a JSON-RPC error carrying it in `data` (401 adds `WWW-Authenticate: Bearer`).
 
 ## Errors
 

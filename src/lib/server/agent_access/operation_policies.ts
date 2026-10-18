@@ -38,6 +38,8 @@ interface ConfirmationDeclaration<TInput> {
 
 /** How the agent surface treats one operation; human-only operations have none. */
 export interface AgentOperationPolicy<TInput, TOutput> {
+	/** One sentence on what the operation does, for the generated API docs and MCP tools. */
+	readonly summary: string;
 	readonly scope: AgentScope;
 	readonly confirmationMode: ConfirmationMode;
 	/**
@@ -71,6 +73,7 @@ type AgentOperationPolicies = {
 };
 
 function agentOperation<TInput, TOutput>(policy: {
+	summary: string;
 	scope: AgentScope;
 	targets: (input: TInput) => TargetReference[];
 	confirmation?: ConfirmationDeclaration<NoInfer<TInput>>;
@@ -79,6 +82,7 @@ function agentOperation<TInput, TOutput>(policy: {
 	projectOutput: (output: TOutput, grant: AgentAccessGrant) => unknown;
 }): AgentOperationPolicy<TInput, TOutput> {
 	return {
+		summary: policy.summary,
 		scope: policy.scope,
 		confirmationMode: policy.confirmation?.mode ?? CONFIRMATION_MODE.never,
 		targets: policy.targets,
@@ -191,6 +195,7 @@ function projectPriorityLevels(
  */
 export const AGENT_OPERATION_POLICIES: AgentOperationPolicies = {
 	readWishlistGifts: agentOperation({
+		summary: 'Lists the gifts of a wishlist as the user may see them.',
 		scope: AGENT_SCOPE.read,
 		targets: byWishlistShortId((input) => input.wishlistShortId),
 		projectOutput: (output, grant) =>
@@ -199,23 +204,27 @@ export const AGENT_OPERATION_POLICIES: AgentOperationPolicies = {
 			}),
 	}),
 	readBulkCopyDestinations: agentOperation({
+		summary: 'Lists the wishlists the gifts of this wishlist can be copied to.',
 		scope: AGENT_SCOPE.read,
 		targets: byWishlistId((input) => input.sourceWishlistId),
 		projectOutput: (output, grant) =>
 			projectAgentBulkCopyDestinations(output, grant.wishlistIds),
 	}),
 	readPriorityLevels: agentOperation({
+		summary: 'Lists the priority levels of a wishlist.',
 		scope: AGENT_SCOPE.read,
 		targets: byWishlistId((input) => input.wishlistId),
 		projectOutput: projectPriorityLevels,
 	}),
 	readWishlist: agentOperation({
+		summary: 'Reads the details of one wishlist.',
 		scope: AGENT_SCOPE.read,
 		targets: byWishlistShortId((input) => input.wishlistShortId),
 		projectOutput: projectAgentWishlist,
 	}),
 	// Names no wishlist: the projection applies the token's wishlist restriction instead.
 	readAccessibleWishlists: agentOperation({
+		summary: 'Lists the wishlists the token reaches, with the user’s role on each.',
 		scope: AGENT_SCOPE.read,
 		targets: namesNoWishlist,
 		projectOutput: (output, grant) =>
@@ -223,11 +232,13 @@ export const AGENT_OPERATION_POLICIES: AgentOperationPolicies = {
 	}),
 	// The first read inserts the default categories; `read` permits that idempotent write.
 	readGiftCategories: agentOperation({
+		summary: 'Lists the gift categories a wishlist uses.',
 		scope: AGENT_SCOPE.read,
 		targets: byWishlistId((input) => input.wishlistId),
 		projectOutput: (output) => output.map(projectCategory),
 	}),
 	readGiftCategorySettingsRows: agentOperation({
+		summary: 'Lists every gift category of a wishlist and whether it is enabled.',
 		scope: AGENT_SCOPE.read,
 		targets: byWishlistId((input) => input.wishlistId),
 		projectOutput: (output) =>
@@ -237,6 +248,7 @@ export const AGENT_OPERATION_POLICIES: AgentOperationPolicies = {
 			})),
 	}),
 	createGift: agentOperation({
+		summary: 'Adds a gift to a wishlist the user manages.',
 		scope: AGENT_SCOPE.giftsWrite,
 		targets: byWishlistId((input) => input.wishlistId),
 		setsImageReference: setsGiftImage,
@@ -244,6 +256,8 @@ export const AGENT_OPERATION_POLICIES: AgentOperationPolicies = {
 		projectOutput: projectGiftChange,
 	}),
 	updateGift: agentOperation({
+		summary:
+			'Edits a gift; after sharing, the post-share rules decide which fields may change.',
 		scope: AGENT_SCOPE.giftsWrite,
 		targets: byGiftId((input) => input.id),
 		setsImageReference: setsGiftImage,
@@ -254,28 +268,33 @@ export const AGENT_OPERATION_POLICIES: AgentOperationPolicies = {
 		}),
 	}),
 	appendGiftDescription: agentOperation({
+		summary: 'Adds a dated addition to the description of a shared gift.',
 		scope: AGENT_SCOPE.giftsWrite,
 		targets: byGiftId((input) => input.giftId),
 		projectOutput: projectGiftChange,
 	}),
 	deleteGift: agentOperation({
+		summary: 'Deletes a gift; always needs the user’s confirmation.',
 		scope: AGENT_SCOPE.giftsWrite,
 		targets: byGiftId((input) => input.giftId),
 		confirmation: ALWAYS_CONFIRMED,
 		projectOutput: projectWishlistShortId,
 	}),
 	markGiftReceived: agentOperation({
+		summary: 'Marks a gift received or not received.',
 		scope: AGENT_SCOPE.giftsWrite,
 		targets: byGiftId((input) => input.giftId),
 		projectOutput: projectGiftChange,
 	}),
 	reorderGifts: agentOperation({
+		summary: 'Sets the manual order of the gifts of a wishlist.',
 		scope: AGENT_SCOPE.giftsWrite,
 		targets: byWishlistId((input) => input.wishlistId),
 		projectOutput: projectWishlistShortId,
 	}),
 	// No bulk action deletes gifts or sets an image reference; image actions only restyle.
 	bulkUpdateGifts: agentOperation({
+		summary: 'Sets one field, such as priority or category, on several gifts at once.',
 		scope: AGENT_SCOPE.giftsWrite,
 		targets: byWishlistId((input) => input.wishlistId),
 		projectOutput: (output) => ({
@@ -286,6 +305,8 @@ export const AGENT_OPERATION_POLICIES: AgentOperationPolicies = {
 	// Copies duplicate the source gifts' own uploads, which the actor must manage. Removing the
 	// copied sources deletes gifts, which needs the user's confirmation like `deleteGift`.
 	bulkCopyGifts: agentOperation({
+		summary:
+			'Copies gifts to another wishlist, optionally removing the unreserved sources, which needs confirmation.',
 		scope: AGENT_SCOPE.giftsWrite,
 		targets: (input) => [
 			{ kind: TARGET_KIND.wishlistId, id: input.sourceWishlistId },
@@ -298,6 +319,7 @@ export const AGENT_OPERATION_POLICIES: AgentOperationPolicies = {
 		}),
 	}),
 	undoGiftRevisionBatch: agentOperation({
+		summary: 'Undoes a batch of gift changes unless a gift changed since.',
 		scope: AGENT_SCOPE.giftsWrite,
 		targets: (input) => [{ kind: TARGET_KIND.revisionBatchId, id: input.batchId }],
 		confirmation: confirmedDependingOnInput((input) => ({
@@ -306,6 +328,7 @@ export const AGENT_OPERATION_POLICIES: AgentOperationPolicies = {
 		projectOutput: projectUndo,
 	}),
 	undoGiftRevision: agentOperation({
+		summary: 'Undoes the latest change of a gift unless it changed since.',
 		scope: AGENT_SCOPE.giftsWrite,
 		targets: byGiftId((input) => input.giftId),
 		confirmation: confirmedDependingOnInput((input) => ({
@@ -314,11 +337,13 @@ export const AGENT_OPERATION_POLICIES: AgentOperationPolicies = {
 		projectOutput: projectUndo,
 	}),
 	createWishlist: agentOperation({
+		summary: 'Creates a draft wishlist; only with an unrestricted fast-forward token.',
 		scope: AGENT_SCOPE.giftsWrite,
 		targets: namesNoWishlist,
 		projectOutput: projectAgentWishlistRow,
 	}),
 	updateWishlist: agentOperation({
+		summary: 'Edits the title, description, event date or kind of a wishlist.',
 		scope: AGENT_SCOPE.giftsWrite,
 		targets: byWishlistId((input) => input.id),
 		setsImageReference: (input) =>
@@ -326,27 +351,32 @@ export const AGENT_OPERATION_POLICIES: AgentOperationPolicies = {
 		projectOutput: projectWishlistChange,
 	}),
 	renameRecipient: agentOperation({
+		summary: 'Renames the free-text recipient of a wishlist.',
 		scope: AGENT_SCOPE.giftsWrite,
 		targets: byWishlistId((input) => input.id),
 		projectOutput: projectWishlistChange,
 	}),
 	setWishlistPalette: agentOperation({
+		summary: 'Sets the color palette of a wishlist.',
 		scope: AGENT_SCOPE.giftsWrite,
 		targets: byWishlistId((input) => input.wishlistId),
 		projectOutput: projectWishlistChange,
 	}),
 	saveWishlistSettings: agentOperation({
+		summary: 'Saves the details, categories and palette of a wishlist together.',
 		scope: AGENT_SCOPE.giftsWrite,
 		targets: byWishlistId((input) => input.wishlistId),
 		setsImageReference: (input) => input.image !== undefined,
 		projectOutput: projectWishlistShortId,
 	}),
 	saveGiftCategorySettings: agentOperation({
+		summary: 'Saves which gift categories a wishlist uses and their order.',
 		scope: AGENT_SCOPE.giftsWrite,
 		targets: byWishlistId((input) => input.wishlistId),
 		projectOutput: projectWishlistShortId,
 	}),
 	savePriorityLevels: agentOperation({
+		summary: 'Renames, adds, removes or reorders the priority levels of a wishlist.',
 		scope: AGENT_SCOPE.giftsWrite,
 		targets: byWishlistId((input) => input.wishlistId),
 		projectOutput: (output) => ({
@@ -355,6 +385,7 @@ export const AGENT_OPERATION_POLICIES: AgentOperationPolicies = {
 		}),
 	}),
 	importGifts: agentOperation({
+		summary: 'Adds several gifts at once, reporting likely duplicates unless acknowledged.',
 		scope: AGENT_SCOPE.giftsWrite,
 		targets: byWishlistId((input) => input.wishlistId),
 		setsImageReference: setsDraftImage,
@@ -370,6 +401,8 @@ export const AGENT_OPERATION_POLICIES: AgentOperationPolicies = {
 		}),
 	}),
 	createWishlistFromImport: agentOperation({
+		summary:
+			'Creates a draft wishlist with gifts; only with an unrestricted fast-forward token.',
 		scope: AGENT_SCOPE.giftsWrite,
 		targets: namesNoWishlist,
 		setsImageReference: setsDraftImage,
@@ -381,6 +414,7 @@ export const AGENT_OPERATION_POLICIES: AgentOperationPolicies = {
 	deleteWishlist: HUMAN_ONLY,
 	flipRecipientToFreeText: HUMAN_ONLY,
 	reserveGift: agentOperation({
+		summary: 'Reserves a gift for the user; always needs the user’s confirmation.',
 		scope: AGENT_SCOPE.reservationsWrite,
 		targets: byGiftId((input) => input.giftId),
 		confirmation: ALWAYS_CONFIRMED,
@@ -390,6 +424,7 @@ export const AGENT_OPERATION_POLICIES: AgentOperationPolicies = {
 		}),
 	}),
 	cancelOwnReservation: agentOperation({
+		summary: 'Cancels one of the user’s reservations; always needs the user’s confirmation.',
 		scope: AGENT_SCOPE.reservationsWrite,
 		targets: byReservationId((input) => input.reservationId),
 		confirmation: ALWAYS_CONFIRMED,
@@ -397,6 +432,8 @@ export const AGENT_OPERATION_POLICIES: AgentOperationPolicies = {
 	}),
 	unreserveGift: HUMAN_ONLY,
 	setReservationPurchased: agentOperation({
+		summary:
+			'Marks one of the user’s reservations bought or not; always needs the user’s confirmation.',
 		scope: AGENT_SCOPE.reservationsWrite,
 		targets: byReservationId((input) => input.reservationId),
 		confirmation: ALWAYS_CONFIRMED,
@@ -407,6 +444,7 @@ export const AGENT_OPERATION_POLICIES: AgentOperationPolicies = {
 	}),
 	readReservationLedger: HUMAN_ONLY,
 	readMyGiftReservations: agentOperation({
+		summary: 'Lists the user’s own reservations of a gift.',
 		scope: AGENT_SCOPE.read,
 		targets: byGiftId((input) => input.giftId),
 		projectOutput: (output) =>
@@ -419,6 +457,7 @@ export const AGENT_OPERATION_POLICIES: AgentOperationPolicies = {
 	readWishlistModerators: HUMAN_ONLY,
 	// The core never returns the link on a token channel; the invitee receives it by email.
 	generateModeratorInviteLink: agentOperation({
+		summary: 'Invites a manager by email; always needs the user’s confirmation.',
 		scope: AGENT_SCOPE.managersInvite,
 		targets: byWishlistId((input) => input.wishlistId),
 		confirmation: ALWAYS_CONFIRMED,
