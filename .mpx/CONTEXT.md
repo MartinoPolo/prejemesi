@@ -64,8 +64,8 @@ Přejeme si is a shareable wishlist web app where users create gift lists for th
 ### Agent access
 
 - **Access token** — A user-created, scoped and revocable credential that lets an agent act as that user.
-- **Proposal** — A stored batch of agent changes, checked with a dry-run, that the user reviews and applies on the preview page.
-- **Fast-forward** — A per-token or per-chat setting that applies proposals without the visual review, never for deletions, reservations or manager invitations.
+- **Proposal** — A stored batch of agent changes, checked with a dry-run, that the user applies from the review page or the chat, or that fast-forward applies.
+- **Fast-forward** — A per-token or per-chat setting that applies proposals with no review step, never for deletions, reservations or manager invitations.
 - **Gift revision** — A before/after record of one gift change, with who made it and how, used for history and Undo.
 
 _Avoid_: "list" for Wishlist (ambiguous), "present" for Gift (confusing with time), "bookmark" for Like, "claim" for Reservation.

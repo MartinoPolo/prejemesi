@@ -1,0 +1,1548 @@
+<!doctype html>
+<html lang="cs" data-palette="sky">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Varianta C · Dílna dárku s náhledem · AI asistent · Vánoce pro babičku</title>
+<style>
+@font-face{font-family:'DynaPuff Variable';src:url('../../unavailable-gift-comparison/assets/dynapuff-latin-wght-normal.woff2') format('woff2');font-weight:400 700;font-display:swap;unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+20AC}
+@font-face{font-family:'DynaPuff Variable';src:url('../../unavailable-gift-comparison/assets/dynapuff-latin-ext-wght-normal.woff2') format('woff2');font-weight:400 700;font-display:swap;unicode-range:U+0100-02BA,U+02BD-02FF,U+1E00-1EFF,U+20A0-20AB}
+@font-face{font-family:'Geist Variable';src:url('../../unavailable-gift-comparison/assets/geist-latin-wght-normal.woff2') format('woff2');font-weight:100 900;font-display:swap;unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+2000-206F,U+20AC,U+2190-21FF}
+@font-face{font-family:'Geist Variable';src:url('../../unavailable-gift-comparison/assets/geist-latin-ext-wght-normal.woff2') format('woff2');font-weight:100 900;font-display:swap;unicode-range:U+0100-02BA,U+02BD-02FF,U+1E00-1EFF,U+20A0-20AB}
+
+/* Standalone mirror of src/app.css (palette sky). Light is the source of truth, dark is derived. */
+html{
+  --p-brand:#1e9be9;--p-deep:#1265a8;--p-ink:#16385c;--p-bright:#55b9f3;--p-accent:#ffc93c;--p-on-accent:#16385c;
+  --p-primary:color-mix(in oklab,var(--p-brand) 20%,var(--p-deep));--p-on-primary:#fff;
+  --ink:var(--p-ink);--brand:var(--p-brand);--brand-deep:var(--p-deep);--brand-link:var(--brand-deep);
+  --tint:color-mix(in oklab,var(--p-brand) 21%,white);--panel-hover:color-mix(in oklab,var(--p-brand) 6%,white);
+  --accent-loud:var(--p-accent);--accent-loud-foreground:var(--p-on-accent);
+  --background:color-mix(in oklab,var(--p-brand) 11%,white);--foreground:var(--p-ink);--card:#fff;
+  --primary:var(--p-primary);--primary-hover:color-mix(in oklab,var(--primary) 86%,var(--p-ink));--primary-foreground:var(--p-on-primary);
+  --secondary:color-mix(in oklab,var(--p-brand) 6%,white);--muted:color-mix(in oklab,var(--p-brand) 4%,white);
+  --muted-foreground:color-mix(in oklab,var(--p-ink) 78%,transparent);--accent:color-mix(in oklab,var(--p-brand) 11%,white);
+  --border:color-mix(in oklab,var(--p-ink) 12%,transparent);--border-strong:color-mix(in oklab,var(--p-ink) 30%,transparent);--surface:var(--background);
+  --soft-shadow:color-mix(in oklab,var(--p-ink) 16%,transparent);--soft-shadow-strong:color-mix(in oklab,var(--p-ink) 20%,transparent);
+  --hard-shadow:var(--soft-shadow);--hard-shadow-strong:var(--soft-shadow-strong);
+  --status-success:#14a56f;--status-warning:#efa00b;--status-danger:#e4574c;--status-info:#1e9be9;
+  --status-success-text:color-mix(in oklab,var(--status-success) 45%,var(--ink));
+  --status-warning-text:color-mix(in oklab,var(--status-warning) 35%,var(--ink));
+  --status-danger-text:color-mix(in oklab,var(--status-danger) 60%,var(--ink));
+  --status-danger-fill:color-mix(in oklab,var(--status-danger) 75%,var(--ink));
+  --gift-overlay-own-reservation:#16834f;--gift-overlay-unavailable:#163b60;
+  --priority-bg:oklch(.93 .05 75);--priority-fg:oklch(.50 .12 75);
+  --radius-panel:16px;--radius-btn:7px;--radius-badge:12px;
+  --size-control-sm:26px;--size-control-md:32px;--size-control-lg:40px;--size-control-xl:48px;
+  --text-2xs:10.5px;--text-xs:11px;--text-sm:12px;--text-md:13px;--text-base:14px;--text-lg:15px;--text-xl:17px;--text-2xl:22px;--text-3xl:28px;
+  --font-head:'DynaPuff Variable',Arial,sans-serif;--font-body:'Geist Variable',Arial,sans-serif;
+  --elevation-compact-offset:2px;--elevation-ordinary-offset:4px;--elevation-lifted-offset:7px;
+  --depth-clearance:0px;--nested-control-gap:calc(.5rem + var(--depth-clearance));
+  --overlay-close-clearance:calc(1rem + var(--size-control-lg) + var(--nested-control-gap));
+  color-scheme:light;
+}
+html.dark{
+  --ink:color-mix(in oklab,var(--p-bright) 12%,#e6e8ec);--brand:color-mix(in oklab,var(--p-bright) 70%,#b8bec8);--brand-link:var(--brand);
+  --tint:var(--accent);--panel-hover:var(--secondary);
+  --accent-loud:color-mix(in oklab,var(--p-accent) 65%,#b8bec8);--accent-loud-foreground:#18202b;
+  --background:color-mix(in oklab,var(--p-deep) 10%,#090b0f);--foreground:var(--ink);
+  --card:color-mix(in oklab,var(--p-deep) 16%,#13161c);
+  --primary:color-mix(in oklab,var(--p-brand) 60%,#202630);--primary-hover:color-mix(in oklab,var(--primary) 92%,black);--primary-foreground:#fff;
+  --secondary:color-mix(in oklab,var(--p-deep) 22%,#1c2027);--muted:color-mix(in oklab,var(--p-deep) 12%,#181b21);
+  --muted-foreground:color-mix(in oklab,var(--ink) 65%,transparent);--accent:color-mix(in oklab,var(--p-deep) 26%,#222630);
+  --border:color-mix(in oklab,var(--ink) 16%,transparent);--border-strong:color-mix(in oklab,var(--ink) 40%,transparent);
+  --soft-shadow:rgb(2 6 12 / 42%);--soft-shadow-strong:rgb(2 6 12 / 55%);
+  --status-success:#3bd598;--status-warning:#ffc24b;--status-danger:#f07a6e;--status-info:#55b9f3;
+  --status-success-text:var(--status-success);--status-warning-text:var(--status-warning);
+  --status-danger-text:color-mix(in oklab,var(--status-danger) 90%,white);
+  --status-danger-fill:color-mix(in oklab,var(--status-danger) 60%,#202630);
+  --gift-overlay-own-reservation:#13704a;--gift-overlay-unavailable:#2b5d91;
+  --priority-bg:oklch(.28 .04 75);--priority-fg:oklch(.78 .08 75);
+  color-scheme:dark;
+}
+/* Composite tokens are re-declared on .shell so the mobile offsets below recompute them. */
+html,.shell{
+  --elevation-compact:var(--elevation-compact-offset) var(--elevation-compact-offset) 0 var(--hard-shadow);
+  --elevation-ordinary:var(--elevation-ordinary-offset) var(--elevation-ordinary-offset) 0 var(--hard-shadow);
+  --elevation-ordinary-strong:var(--elevation-ordinary-offset) var(--elevation-ordinary-offset) 0 var(--hard-shadow-strong);
+  --elevation-lifted:var(--elevation-lifted-offset) var(--elevation-lifted-offset) 0 var(--hard-shadow);
+  --diff-removed-bg:color-mix(in oklab,var(--status-danger) 14%,var(--card));
+  --diff-added-bg:color-mix(in oklab,var(--status-success) 14%,var(--card));
+  --confirm-tint:color-mix(in oklab,var(--accent-loud) 22%,var(--card));
+  --ghost-tint:color-mix(in oklab,var(--brand) 6%,var(--card));
+}
+*,*::before,*::after{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{display:flex;flex-direction:column;background:#161a20;color:var(--foreground);font:14px/1.45 var(--font-body);-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+h1,h2,h3,p,ul,ol,figure{margin:0}
+ul,ol{padding:0;list-style:none}
+a{color:var(--brand-link)}
+[hidden]{display:none!important}
+.sr-only{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+:focus-visible{outline:3px solid var(--brand);outline-offset:2px}
+svg.icon{width:16px;height:16px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+/* ── Review toolbar: tooling, deliberately outside the design tokens ── */
+.review-bar{flex:none;position:relative;z-index:40;display:flex;flex-wrap:wrap;align-items:center;gap:8px 20px;padding:8px 16px;background:#0d1015;color:#e8ebf0;border-bottom:1px solid #2b323c;font:12px/1.3 'Geist Variable',Arial,sans-serif}
+.review-eyebrow{font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:#ffc93c;margin-right:auto}
+.review-group{display:flex;align-items:center;gap:6px}
+.review-group>span,.review-group>label{color:#9aa4b2;font-weight:600}
+.review-group button,.review-group select{min-height:28px;padding:3px 9px;border:1px solid #3a4350;border-radius:6px;background:#1b222b;color:#e8ebf0;font-weight:600}
+.review-group button[aria-pressed=true]{background:#e8ebf0;color:#0d1015;border-color:#e8ebf0}
+.review-group :focus-visible{outline:2px solid #ffc93c;outline-offset:2px}
+
+/* ── Stage and device frame ── */
+.stage{flex:1;min-height:0;display:flex;justify-content:center}
+.stage[data-viewport=mobile]{overflow:auto;align-items:flex-start;padding:24px 12px 48px}
+.device{container:device/inline-size;position:relative;flex:1;min-width:0;height:100%;overflow:hidden;background:var(--background)}
+.stage[data-viewport=mobile] .device{flex:none;width:390px;height:844px;border-radius:22px;border:1px solid #3a4350;box-shadow:0 24px 60px rgb(0 0 0 / 50%)}
+.shell{height:100%;display:flex;flex-direction:column;color:var(--foreground)}
+.shell-body{flex:1;min-height:0;display:flex}
+.workspace{flex:1;min-width:0;overflow-y:auto;position:relative;scroll-padding:16px 0 96px}
+
+/* ── Navbar (unchanged app chrome) ── */
+.topbar{flex:none;height:56px;background:var(--card);border-bottom:2.5px solid var(--ink);position:relative;z-index:5}
+.topbar-inner{display:flex;align-items:center;gap:16px;height:100%;padding-inline:16px}
+.logo{display:flex;align-items:center;gap:8px;flex:none;font:700 17px var(--font-head);color:var(--ink);letter-spacing:-.02em;text-decoration:none}
+.logo-mark{width:30px;height:30px;display:grid;place-items:center;flex:none;color:#fff;background:linear-gradient(180deg,var(--brand),var(--brand-deep));border:2px solid var(--ink);border-radius:10px;transform:rotate(-4deg)}
+.logo-mark svg.icon{width:18px;height:18px}
+.logo-tld{opacity:.42;font-weight:500;font-size:15px}
+.nav-links{display:flex;align-items:center;gap:2px;flex:1}
+.nav-link{display:inline-flex;align-items:center;gap:4px;height:32px;padding:0 12px;border-radius:999px;color:var(--foreground);font-weight:600;text-decoration:none}
+.nav-link:hover,.nav-link[aria-current=page]{background:var(--accent)}
+.nav-link svg.icon{width:14px;height:14px;opacity:.6}
+.nav-right{display:flex;align-items:center;gap:var(--nested-control-gap);margin-left:auto;flex:none}
+.icon-btn{width:var(--size-control-md);height:var(--size-control-md);display:inline-grid;place-items:center;flex:none;padding:0;border:2.5px solid var(--ink);border-radius:var(--radius-btn);background:var(--card);color:var(--ink);box-shadow:var(--elevation-ordinary);position:relative}
+.icon-btn:hover:not(:disabled){background:var(--panel-hover)}
+.icon-btn.ghost{border-color:transparent;background:transparent;box-shadow:none}
+.icon-btn.ghost:hover:not(:disabled){background:var(--accent)}
+.icon-btn:disabled,.icon-btn[aria-disabled=true]{opacity:.45;cursor:not-allowed;box-shadow:none}
+.bell-count{position:absolute;top:1px;right:0;min-width:15px;height:15px;padding:0 3px;border-radius:999px;background:var(--status-danger-fill);color:#fff;font-size:10px;font-weight:800;line-height:15px;text-align:center}
+.avatar{width:32px;height:32px;display:grid;place-items:center;border:2px solid var(--ink);border-radius:999px;background:var(--tint);color:var(--ink);font-size:12px;font-weight:800;padding:0}
+.only-mobile{display:none!important}
+
+/* ── Buttons and badges (Button intent / Badge tone mirror) ── */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:var(--size-control-md);padding:0 12px;border:2.5px solid var(--ink);border-radius:var(--radius-btn);background:var(--card);color:var(--ink);font:600 13px/1 var(--font-body);white-space:nowrap;text-decoration:none;box-shadow:var(--elevation-ordinary)}
+.btn.sm{height:var(--size-control-sm);padding:0 9px;font-size:12px;box-shadow:var(--elevation-compact)}
+.btn.sm svg.icon{width:14px;height:14px}
+.btn.primary{background:var(--primary);color:var(--primary-foreground)}
+.btn.primary:hover:not(:disabled){background:var(--primary-hover)}
+.btn.secondary:hover:not(:disabled){background:var(--panel-hover)}
+.btn.reversal{border-color:var(--status-danger);color:var(--status-danger-text)}
+.btn.reversal:hover:not(:disabled){background:color-mix(in oklab,var(--status-danger) 10%,var(--card))}
+.btn.destructive{background:var(--status-danger-fill);color:#fff}
+.btn.ghost{border-color:transparent;background:transparent;box-shadow:none;color:var(--foreground)}
+.btn.ghost:hover:not(:disabled){background:var(--accent)}
+.btn:disabled{opacity:.45;cursor:not-allowed;box-shadow:none}
+.btn.ai-trigger[aria-expanded=true]{background:var(--tint)}
+.btn.ai-trigger .trigger-note{font-weight:500;color:var(--muted-foreground)}
+@media (prefers-reduced-motion:no-preference){
+  .btn,.icon-btn{transition:translate .15s ease,box-shadow .15s ease,background-color .15s}
+  .btn:not(.ghost):hover:not(:disabled),.icon-btn:not(.ghost):hover:not(:disabled):not([aria-disabled=true]){translate:-1px -1px;box-shadow:var(--elevation-lifted)}
+  .btn:not(.ghost):active:not(:disabled),.icon-btn:not(.ghost):active:not(:disabled){translate:1px 1px;box-shadow:var(--elevation-compact)}
+}
+.badge{display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 8px;border:2px solid var(--ink);border-radius:var(--radius-badge);background:var(--card);color:var(--foreground);font-size:var(--text-xs);font-weight:700;white-space:nowrap}
+.badge svg.icon{width:12px;height:12px}
+.tone-success{background:color-mix(in oklab,var(--status-success) 14%,var(--card));color:var(--status-success-text)}
+.tone-warning{background:color-mix(in oklab,var(--status-warning) 22%,var(--card));color:var(--foreground)}
+.tone-danger{background:color-mix(in oklab,var(--status-danger) 14%,var(--card));color:var(--status-danger-text)}
+.tone-info{background:color-mix(in oklab,var(--status-info) 14%,var(--card));color:var(--brand-link)}
+.tone-muted{border-color:var(--border-strong);color:var(--muted-foreground)}
+.spinner{animation:spin .9s linear infinite}
+@keyframes spin{to{rotate:360deg}}
+@media (prefers-reduced-motion:reduce){.spinner{animation-duration:2.4s}}
+
+/* Kind colours shared with the review page */
+[data-tone]{--tone:var(--foreground);--tone-icon:var(--muted-foreground);--tone-mix:var(--ink);--tone-strength:7%}
+[data-tone=danger]{--tone:var(--status-danger-text);--tone-icon:var(--status-danger-text);--tone-mix:var(--status-danger);--tone-strength:12%}
+[data-tone=success]{--tone:var(--status-success-text);--tone-icon:var(--status-success-text);--tone-mix:var(--status-success);--tone-strength:12%}
+[data-tone=link]{--tone:var(--brand-link);--tone-icon:var(--brand-link);--tone-mix:var(--status-info);--tone-strength:12%}
+.kind-count{display:inline-flex;align-items:center;gap:4px;color:var(--tone);font:600 var(--text-md)/20px var(--font-head);white-space:nowrap}
+.kind-count svg.icon{width:14px;height:14px;color:var(--tone-icon)}
+.kind-counts{display:flex;flex-wrap:wrap;gap:2px 12px}
+
+/* ── Alerts ── */
+.alert{display:grid;grid-template-columns:auto minmax(0,1fr);gap:2px 12px;padding:12px 14px;border:2.5px solid var(--ink);border-radius:12px;background:var(--tint);color:var(--foreground)}
+.alert>svg.icon{width:20px;height:20px;margin-top:1px;grid-row:span 3}
+.alert-title{font:600 var(--text-xl)/1.35 var(--font-head)}
+.alert-body{font-size:var(--text-md)}
+.alert-actions{display:flex;flex-wrap:wrap;gap:var(--nested-control-gap);margin-top:8px}
+.alert.compact .alert-title{font:700 var(--text-base)/1.35 var(--font-body)}
+.alert.warning{border-color:var(--accent-loud-foreground);background:var(--accent-loud);color:var(--accent-loud-foreground)}
+.alert.destructive{background:var(--card);border-color:var(--status-danger)}
+.alert.destructive>svg.icon,.alert.destructive .alert-title{color:var(--status-danger-text)}
+.alert.neutral{background:var(--muted);border-color:var(--border-strong)}
+
+/* ── Wishlist page ── */
+.page{width:100%;max-width:1200px;margin-inline:auto;padding:20px 16px 40px}
+.hero{position:relative;display:flex;align-items:flex-start;gap:16px;padding:18px 18px 18px 44px;border:2.5px solid var(--ink);border-radius:var(--radius-panel);background:var(--card) repeating-linear-gradient(180deg,transparent 0 27px,color-mix(in oklab,var(--ink) 9%,transparent) 27px 28px);box-shadow:var(--elevation-ordinary)}
+.hero-holes{position:absolute;left:14px;top:0;bottom:0;display:flex;flex-direction:column;justify-content:center;gap:18px}
+.hero-holes span{width:13px;height:13px;border:2px solid var(--ink);border-radius:50%;background:var(--background)}
+.hero-main{flex:1;min-width:0}
+.for-chip{display:inline-block;padding:1px 9px;border:2px solid var(--ink);border-radius:6px;background:var(--accent-loud);color:var(--accent-loud-foreground);font-size:var(--text-sm);font-weight:800;transform:rotate(-2deg)}
+.hero h1{margin-top:6px;font:600 clamp(26px,3vw,34px)/1.2 var(--font-head);overflow-wrap:anywhere}
+.hero-meta{display:flex;flex-wrap:wrap;gap:2px 14px;margin-top:4px;font-size:var(--text-md);color:var(--muted-foreground)}
+.hero-meta span{display:inline-flex;align-items:center;gap:5px}
+.hero-meta svg.icon{width:14px;height:14px}
+.hero-actions{display:flex;gap:var(--nested-control-gap);flex:none}
+.pending-banner{margin-top:16px}
+.pending-banner .proposals{grid-column:2;display:grid;gap:8px;margin-top:8px}
+.pending-banner .proposal{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 12px}
+.pending-banner .proposal-summary{display:flex;flex-wrap:wrap;gap:0 8px;font-size:var(--text-md)}
+.pending-banner .expiry{color:var(--muted-foreground);white-space:nowrap}
+.toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:var(--nested-control-gap);margin-top:20px}
+.toolbar .spacer{flex:1}
+.segmented{display:inline-flex;gap:2px;padding:3px;border-radius:10px;background:var(--accent);white-space:nowrap}
+.segmented button{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:var(--size-control-md);min-width:var(--size-control-md);padding:0 10px;border:2.5px solid transparent;border-radius:var(--radius-btn);background:transparent;font-weight:600;font-size:var(--text-md);color:var(--foreground)}
+.segmented button.icon-only{padding:0}
+.segmented button[aria-pressed=true],.segmented button[aria-checked=true]{background:var(--card);border-color:var(--ink);box-shadow:var(--elevation-compact)}
+.segmented button:disabled{opacity:.5;cursor:not-allowed}
+.gift-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:20px;margin-top:16px;padding:0 var(--elevation-ordinary-offset) var(--elevation-ordinary-offset) 0}
+.workbench-tip{display:flex;align-items:center;gap:8px;margin-top:14px;font-size:var(--text-sm);color:var(--muted-foreground)}
+
+/* ── Gift card (GiftCard geometry: category top-left, priority bottom-left, state centred, actions right) ── */
+.gift-cell{position:relative;min-width:0}
+.gift{position:relative;height:100%;min-width:0;display:grid;grid-template-rows:auto 1fr auto;border:2.5px solid var(--ink);border-radius:var(--radius-panel);background:var(--card);box-shadow:var(--elevation-ordinary);overflow:hidden}
+.image-area{position:relative;aspect-ratio:4/3;background:var(--surface);border-bottom:3px solid var(--ink);isolation:isolate}
+.image-pattern{position:absolute;inset:0;background-image:radial-gradient(color-mix(in oklab,var(--ink) 13%,transparent) 1.4px,transparent 1.5px);background-size:16px 16px}
+.image-art{position:absolute;inset:0;display:grid;place-items:center}
+.image-art svg.art{width:78%;height:78%}
+.image-art img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.image-placeholder{display:grid;place-items:center;gap:4px;color:var(--muted-foreground);font-size:var(--text-xs);font-weight:700}
+.image-placeholder svg.icon{width:30px;height:30px;stroke-width:1.6}
+.category,.priority,.state{position:absolute;z-index:2}
+.category{top:8px;left:8px;max-width:calc(100% - 90px);padding:1px 8px;border:2px solid #000;border-radius:6px;color:#16385c;font-size:var(--text-xs);line-height:15px;font-weight:800;transform:rotate(-3deg);box-shadow:var(--elevation-compact);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.priority{bottom:9px;left:9px;height:20px;padding:0 7px;border-radius:999px;background:var(--priority-bg);color:var(--priority-fg);font-size:var(--text-2xs);line-height:20px;font-weight:700}
+.state{inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none}
+.state span{display:inline-flex;align-items:center;gap:4px;max-width:calc(100% - 12px);padding:3px 9px;border:2px solid var(--ink);border-radius:var(--radius-panel);background:var(--gift-overlay-unavailable);color:#fff;font-size:var(--text-xs);line-height:15px;font-weight:700;text-align:center;transform:rotate(-1deg);box-shadow:var(--elevation-compact)}
+.state span svg.icon{width:12px;height:12px}
+.state.removal span{background:var(--status-danger-fill)}
+.gift-body{min-width:0;padding:12px 12px 4px}
+.gift-title{font:600 var(--text-xl)/1.3 var(--font-head);display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;overflow-wrap:anywhere}
+.gift-description{margin-top:3px;font-size:var(--text-sm);display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
+.gift-links{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.gift-link{display:inline-flex;align-items:center;gap:3px;max-width:100%;padding:1px 7px;border:2px solid var(--ink);border-radius:999px;font-size:var(--text-xs);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--foreground);text-decoration:none}
+.gift-link svg.icon{width:11px;height:11px}
+.gift-price{margin-top:5px;font-size:var(--text-sm);font-weight:700}
+.gift-price.empty{font-weight:500;color:var(--muted-foreground)}
+.gift-actions{display:flex;align-items:center;justify-content:flex-end;gap:var(--nested-control-gap);padding:6px 12px 12px}
+.gift-actions .footer-note{margin-right:auto;font-size:var(--text-sm);color:var(--muted-foreground)}
+.icon-btn.ai-sparkle{color:var(--brand-link)}
+.mark-new{outline:2px dashed var(--status-success);outline-offset:2px;border-radius:5px}
+.image-area.mark-new{outline-offset:-6px;border-radius:0}
+.art .fa{fill:color-mix(in oklab,var(--brand) 34%,var(--card))}
+.art .fb{fill:var(--accent-loud)}
+.art .fc{fill:var(--card)}
+.art .fd{fill:color-mix(in oklab,var(--ink) 78%,var(--card))}
+.art .fn{fill:none}
+.art path,.art rect,.art circle,.art ellipse{stroke:var(--ink);stroke-width:2.6;stroke-linejoin:round;stroke-linecap:round}
+
+/* Live preview on the real cards: shown to the signed-in user only, never to visitors */
+.ai-chip{position:absolute;top:8px;right:8px;z-index:3;display:inline-flex;align-items:center;gap:4px;height:22px;padding:0 8px;border:2px solid var(--ink);border-radius:999px;background:var(--card);color:var(--brand-link);font-size:var(--text-xs);font-weight:800;box-shadow:var(--elevation-compact);white-space:nowrap}
+.ai-chip svg.icon{width:12px;height:12px}
+.gift-cell.is-proposed .gift{outline:2.5px dashed var(--brand);outline-offset:4px}
+.gift-cell.is-focused .gift{outline:3px solid var(--brand);outline-offset:4px}
+.gift-cell.is-working .gift{outline:2.5px dashed var(--brand);outline-offset:4px}
+@media (prefers-reduced-motion:no-preference){.gift-cell.is-working .gift{animation:working 1.3s ease-in-out infinite}}
+@keyframes working{50%{outline-color:color-mix(in oklab,var(--brand) 25%,transparent)}}
+.gift-cell.is-new .gift{border-style:dashed;border-color:var(--brand);background:var(--ghost-tint);box-shadow:none}
+.gift-cell.is-new .image-area{border-bottom-style:dashed;border-bottom-color:var(--brand)}
+.gift-cell.is-deleting .gift{border-color:color-mix(in oklab,var(--ink) 45%,var(--card));box-shadow:none}
+.gift-cell.is-deleting .image-art,.gift-cell.is-deleting .category,.gift-cell.is-deleting .priority,.gift-cell.is-deleting .gift-body>*:not(.gift-title){opacity:.45}
+.gift-cell.is-deleting .gift-title{text-decoration:line-through;text-decoration-thickness:2px;color:var(--muted-foreground)}
+.gift-cell.flash .gift{outline:3px solid var(--brand);outline-offset:4px}
+
+/* Gift More menu (DropdownMenu mirror). Item radius = menu radius 12 − border 2.5 − padding 4. */
+.menu{position:absolute;z-index:12;min-width:248px;padding:4px;border:2.5px solid var(--ink);border-radius:12px;background:var(--card);box-shadow:var(--elevation-lifted)}
+.gift-menu{right:8px;bottom:52px}
+.menu [role=menuitem]{display:flex;align-items:center;gap:8px;width:100%;min-height:var(--size-control-md);padding:4px 8px;border:0;border-radius:5.5px;background:transparent;text-align:left;font-size:var(--text-md);font-weight:600;color:var(--foreground)}
+.menu [role=menuitem]:hover,.menu [role=menuitem]:focus-visible{background:var(--accent);outline:none}
+.menu [role=menuitem][aria-disabled=true]{opacity:.5;cursor:not-allowed}
+.menu .menu-ai{color:var(--brand-link)}
+.menu .menu-ai small{margin-left:auto;white-space:nowrap;padding-left:8px;font-size:var(--text-xs);font-weight:600;color:var(--muted-foreground)}
+.menu .menu-danger{color:var(--status-danger-text)}
+.menu hr{margin:4px 0;border:0;border-top:2px solid var(--border)}
+.menu-label{padding:4px 8px 2px;font-size:var(--text-xs);font-weight:700;color:var(--muted-foreground)}
+
+/* ── Assistant panel: docked, pushes the wishlist on desktop ── */
+.assistant{width:380px;flex:none;display:flex;flex-direction:column;min-height:0;background:var(--card);border-left:2.5px solid var(--ink);position:relative}
+.ap-head{flex:none;display:flex;align-items:center;gap:10px;padding:10px 12px 10px 14px;border-bottom:2.5px solid var(--ink);position:relative}
+.ap-mark{width:32px;height:32px;display:grid;place-items:center;flex:none;border:2px solid var(--ink);border-radius:9px;background:var(--primary);color:var(--primary-foreground);transform:rotate(-4deg)}
+.ap-titles{flex:1;min-width:0}
+.ap-title{font:600 var(--text-xl)/1.2 var(--font-head)}
+.ap-scope{font-size:var(--text-sm);color:var(--muted-foreground);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ap-actions{display:flex;gap:4px;flex:none}
+.panel-menu{right:12px;top:52px}
+.history-back{display:inline-flex}
+.mobile-tabs{display:none}
+
+/* Pinned gift header (workbench mode) */
+.pin{flex:none;display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center;padding:10px 12px 10px 14px;border-bottom:2px solid var(--ink);background:var(--ghost-tint)}
+.pin-eyebrow{font-size:var(--text-xs);font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--brand-link)}
+.pin-name{font:600 var(--text-base)/1.3 var(--font-head);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pin-meta{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;margin-top:2px;font-size:var(--text-sm);color:var(--muted-foreground)}
+.pin-actions{display:flex;gap:4px}
+.pin-toggle{display:none}
+.thumb{position:relative;width:44px;height:44px;flex:none;display:grid;place-items:center;overflow:hidden;border:2px solid var(--ink);border-radius:9px;background:var(--surface);color:var(--muted-foreground)}
+.thumb svg.art{width:100%;height:100%}
+.thumb img{width:100%;height:100%;object-fit:cover}
+.thumb.sm{width:36px;height:36px;border-radius:8px}
+.thumb.icon-thumb{background:var(--tint);color:var(--ink)}
+
+/* Thread */
+.thread>*{flex-shrink:0}
+.thread{flex:1;min-height:0;overflow-y:auto;padding:16px 14px 20px;display:flex;flex-direction:column;gap:14px;scroll-padding:16px}
+.msg-user{align-self:flex-end;max-width:88%;padding:8px 12px;border:2px solid var(--ink);border-radius:14px 14px 4px 14px;background:var(--tint);white-space:pre-wrap;overflow-wrap:anywhere;font-size:var(--text-base)}
+.msg-ai{display:grid;grid-template-columns:24px minmax(0,1fr);gap:8px;align-items:start}
+.msg-ai>.ai-avatar{width:24px;height:24px;display:grid;place-items:center;border:2px solid var(--ink);border-radius:50%;background:var(--primary);color:var(--primary-foreground)}
+.msg-ai>.ai-avatar svg.icon{width:12px;height:12px}
+.msg-ai>.ai-content{min-width:0;display:grid;gap:10px}
+.msg-ai p{font-size:var(--text-base)}
+.msg-ai.no-avatar{grid-template-columns:minmax(0,1fr)}
+.msg-context{display:flex;align-items:center;justify-content:center;gap:6px;font-size:var(--text-sm);color:var(--muted-foreground);text-align:center}
+.msg-context svg.icon{width:13px;height:13px}
+.tools{display:grid;gap:3px;font-size:var(--text-sm);color:var(--muted-foreground)}
+.tools li{display:flex;align-items:center;gap:6px}
+.tools svg.icon{width:13px;height:13px}
+.tools li[data-state=done] svg.icon{color:var(--status-success-text)}
+.tools li[data-state=active]{color:var(--foreground);font-weight:600}
+.tools li[data-state=queued]{opacity:.8}
+.tools li[data-state=failed]{color:var(--status-danger-text)}
+.caret{display:inline-block;width:7px;height:15px;margin-left:2px;vertical-align:-2px;background:var(--brand)}
+@media (prefers-reduced-motion:no-preference){.caret{animation:blink 1s steps(2) infinite}}
+@keyframes blink{50%{opacity:0}}
+
+/* Welcome / starters */
+.welcome{display:grid;gap:10px;padding:16px;border:2.5px dashed var(--border-strong);border-radius:var(--radius-panel);text-align:left}
+.welcome h3{font:600 var(--text-xl)/1.3 var(--font-head)}
+.welcome p{font-size:var(--text-md)}
+.starters{display:grid;gap:8px}
+.starters .btn{justify-content:flex-start;width:100%}
+.starters .btn svg.icon{color:var(--brand-link)}
+.tip{font-size:var(--text-sm);color:var(--muted-foreground)}
+
+/* Enrichment card: per-field suggestions */
+.ecard{border:2.5px solid var(--ink);border-radius:14px;background:var(--card);box-shadow:var(--elevation-compact);overflow:hidden}
+.ecard-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 12px;border-bottom:2px solid var(--ink);background:color-mix(in oklab,var(--status-info) 12%,var(--card));border-radius:11.5px 11.5px 0 0}
+.ecard-head h3{font:600 var(--text-base)/1.3 var(--font-head)}
+.erow{display:grid;gap:6px;padding:10px 12px;border-top:2px dashed var(--border)}
+.erow:first-of-type{border-top:0}
+.erow[data-state=accepted]{background:color-mix(in oklab,var(--status-success) 7%,var(--card))}
+.erow[data-state=rejected] .erow-value{color:var(--muted-foreground);text-decoration:line-through}
+.erow-head{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:26px}
+.erow-label{display:inline-flex;align-items:center;gap:6px;font-size:var(--text-sm);font-weight:700}
+.erow-label svg.icon{width:14px;height:14px;color:var(--muted-foreground)}
+.erow-value{font-size:var(--text-base);font-weight:700}
+.erow-help{font-size:var(--text-sm);color:var(--muted-foreground)}
+.decide{display:inline-flex;gap:2px;padding:2px;border-radius:9px;background:var(--accent)}
+.decide button{display:inline-flex;align-items:center;gap:4px;height:22px;padding:0 7px;border:2px solid transparent;border-radius:var(--radius-btn);background:transparent;font-size:var(--text-sm);font-weight:700;color:var(--foreground)}
+.decide button svg.icon{width:13px;height:13px}
+.decide button[aria-pressed=true]{background:var(--card);border-color:var(--ink);box-shadow:var(--elevation-compact)}
+.decide button[data-decision=accepted][aria-pressed=true]{color:var(--status-success-text)}
+.refs{display:grid;gap:2px;font-size:var(--text-sm)}
+.refs li{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:baseline}
+.refs a{display:inline-flex;align-items:center;gap:4px;font-weight:600;text-underline-offset:2px}
+.refs a svg.icon{width:11px;height:11px}
+.refs .ref-price{font-weight:700}
+.refs .ref-note{grid-column:1/-1;margin-top:-2px;color:var(--muted-foreground)}
+.image-picks{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.pick{position:relative;aspect-ratio:4/3;padding:0;border:2px solid var(--ink);border-radius:8px;background:var(--surface);overflow:hidden}
+.pick svg.art{width:100%;height:100%}
+.pick:hover{background:var(--panel-hover)}
+.pick[aria-pressed=true]{outline:3px solid var(--brand);outline-offset:2px}
+.pick .pick-check{position:absolute;top:3px;right:3px;width:18px;height:18px;display:none;place-items:center;border:2px solid var(--ink);border-radius:50%;background:var(--primary);color:var(--primary-foreground)}
+.pick .pick-check svg.icon{width:10px;height:10px;stroke-width:3}
+.pick[aria-pressed=true] .pick-check{display:grid}
+.pick-source{display:block;margin-top:2px;font-size:var(--text-2xs);color:var(--muted-foreground);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pick-row{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:6px}
+.append{padding:6px 10px;border-left:4px solid var(--accent-loud);border-radius:0 10px 10px 0;background:color-mix(in oklab,var(--accent-loud) 16%,var(--card));font-size:var(--text-md)}
+.append-date{display:block;font-size:var(--text-xs);font-weight:700;color:var(--muted-foreground)}
+.locked-row{display:flex;gap:8px;align-items:flex-start;font-size:var(--text-sm)}
+.locked-row svg.icon{width:14px;height:14px;margin-top:2px;color:var(--muted-foreground)}
+.ecard-foot{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px;border-top:2px solid var(--ink);background:var(--muted);font-size:var(--text-sm)}
+
+/* Draft cards (create flow) */
+.drafts{display:grid;gap:8px}
+.draft{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px 10px;border:2px solid var(--ink);border-radius:12px;background:var(--card)}
+.draft.is-failed{border-style:dashed;border-color:var(--status-danger);background:var(--diff-removed-bg)}
+.draft-name{font-size:var(--text-base);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.draft-meta{display:flex;flex-wrap:wrap;align-items:center;gap:2px 8px;font-size:var(--text-sm);color:var(--muted-foreground)}
+.draft-error{display:flex;align-items:center;gap:5px;font-size:var(--text-sm);font-weight:700;color:var(--status-danger-text)}
+.draft-error svg.icon{width:13px;height:13px}
+.draft-actions{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:var(--nested-control-gap)}
+.choices{display:grid;gap:8px}
+.choice{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center;width:100%;padding:8px 10px;border:2px solid var(--ink);border-radius:12px;background:var(--card);text-align:left}
+.choice:hover{background:var(--panel-hover)}
+.choice[aria-checked=true]{background:var(--ghost-tint);outline:3px solid var(--brand);outline-offset:1px}
+.choice .radio{width:20px;height:20px;display:grid;place-items:center;border:2.5px solid var(--ink);border-radius:50%;background:var(--card)}
+.choice[aria-checked=true] .radio::after{content:"";width:10px;height:10px;border-radius:50%;background:var(--primary)}
+.choice-note{display:block;font-size:var(--text-sm);color:var(--muted-foreground)}
+
+/* Bulk scope */
+.scope{display:grid;gap:8px;padding:10px 12px;border:2px solid var(--ink);border-radius:12px;background:var(--card)}
+.scope-head{font:600 var(--text-lg)/1.3 var(--font-head)}
+.scope-sub{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:var(--text-sm);font-weight:700;color:var(--muted-foreground)}
+.scope ul{display:grid;gap:4px}
+.scope li{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;font-size:var(--text-md)}
+.scope li .scope-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}
+.scope li .scope-change{color:var(--muted-foreground);white-space:nowrap}
+.reason{display:flex;gap:8px;align-items:flex-start;padding:8px 10px;border:2px dashed var(--border-strong);border-radius:10px;font-size:var(--text-md)}
+.reason svg.icon{margin-top:2px;color:var(--muted-foreground)}
+
+/* Proposal, applied and confirmation cards. Band corners = card radius 14 − border 2.5. */
+.pcard{border:2.5px solid var(--ink);border-radius:14px;background:var(--card);box-shadow:var(--elevation-compact);overflow:hidden}
+.pcard-band{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:2px solid var(--ink);border-radius:11.5px 11.5px 0 0;background:color-mix(in oklab,var(--tone-mix) var(--tone-strength),var(--card));font:600 var(--text-base)/1.3 var(--font-head);color:var(--tone)}
+.pcard-band svg.icon{color:var(--tone-icon)}
+.pcard-body{display:grid;gap:8px;padding:10px 12px 12px}
+.pcard-meta{display:flex;flex-wrap:wrap;gap:2px 12px;font-size:var(--text-sm);color:var(--muted-foreground)}
+.pcard-meta span{display:inline-flex;align-items:center;gap:4px}
+.pcard-meta svg.icon{width:13px;height:13px}
+.pcard-actions{display:flex;flex-wrap:wrap;align-items:center;gap:var(--nested-control-gap)}
+.pcard-note{font-size:var(--text-sm);color:var(--muted-foreground)}
+.confirm-card{border:2.5px solid var(--ink);border-radius:14px;background:var(--confirm-tint);box-shadow:var(--elevation-compact);padding:12px;display:grid;gap:10px}
+.confirm-head{display:flex;align-items:center;gap:10px}
+.confirm-mark{width:30px;height:30px;display:grid;place-items:center;flex:none;border:2px solid var(--ink);border-radius:9px;background:var(--accent-loud);color:var(--accent-loud-foreground);transform:rotate(-3deg)}
+.confirm-head h3{font:600 var(--text-base)/1.3 var(--font-head)}
+.identity{display:flex;align-items:center;gap:10px;min-width:0;padding:8px;border:2px solid var(--ink);border-radius:10px;background:var(--card)}
+.identity-text{min-width:0}
+.identity-name{display:block;font-size:var(--text-base);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.identity-sub{display:block;font-size:var(--text-sm);color:var(--muted-foreground)}
+
+/* Proposal bar: always-visible footer of the panel */
+.pbar{flex:none;display:grid;gap:8px;padding:10px 12px;border-top:2.5px solid var(--ink);background:var(--card)}
+.pbar-row{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:var(--size-control-md)}
+.pbar-summary{min-width:0;display:grid}
+.pbar-label{display:inline-flex;align-items:center;gap:6px;font-size:var(--text-sm);font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--muted-foreground)}
+.pbar-label svg.icon{width:13px;height:13px}
+.pbar-empty{font-size:var(--text-md);color:var(--muted-foreground)}
+.pbar-ff{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.pbar-ff-label{font-size:var(--text-sm);font-weight:700}
+.pbar-help{font-size:var(--text-sm);color:var(--muted-foreground)}
+.pbar-help.is-on{color:var(--foreground)}
+
+/* Composer */
+.composer{flex:none;display:grid;gap:6px;padding:10px 12px 12px;border-top:2px solid var(--border-strong);background:var(--card)}
+.composer-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:var(--nested-control-gap);align-items:end}
+.composer textarea{display:block;width:100%;min-height:var(--size-control-md);max-height:132px;padding:5px 10px;border:2.5px solid var(--ink);border-radius:var(--radius-btn);background:var(--card);color:var(--foreground);font-size:var(--text-base);line-height:1.3;resize:none}
+.composer textarea::placeholder{color:var(--muted-foreground)}
+.composer textarea:disabled{background:var(--muted);border-color:var(--border-strong);cursor:not-allowed}
+.composer .send{width:var(--size-control-md);padding:0}
+.composer-note{font-size:var(--text-sm);color:var(--muted-foreground)}
+
+/* History */
+.history{flex:1;min-height:0;overflow-y:auto;padding:14px;display:grid;align-content:start;gap:12px}
+.history-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.history-head h3{font:600 var(--text-xl)/1.3 var(--font-head)}
+.history-list{display:grid;gap:8px}
+.history-item{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 10px;align-items:center;width:100%;padding:10px 12px;border:2px solid var(--ink);border-radius:12px;background:var(--card);text-align:left}
+.history-item:hover{background:var(--panel-hover)}
+.history-title{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.history-date{grid-column:1;font-size:var(--text-sm);color:var(--muted-foreground)}
+.history-item .badge{grid-row:1/3;grid-column:2}
+.skel{display:block;border-radius:8px;background:color-mix(in oklab,var(--ink) 9%,var(--card))}
+@media (prefers-reduced-motion:no-preference){.skel{animation:pulse 1.4s ease-in-out infinite}}
+@keyframes pulse{50%{opacity:.55}}
+
+/* Locked teaser */
+.locked{flex:1;display:grid;align-content:center;justify-items:center;gap:12px;padding:24px 22px;text-align:center}
+.locked-mark{position:relative;width:64px;height:64px;display:grid;place-items:center;border:2.5px solid var(--ink);border-radius:16px;background:var(--tint);transform:rotate(-4deg)}
+.locked-mark svg.icon{width:28px;height:28px}
+.locked-mark .lock{position:absolute;right:-10px;bottom:-8px;width:30px;height:30px;display:grid;place-items:center;border:2px solid var(--ink);border-radius:50%;background:var(--card);transform:rotate(4deg)}
+.locked-mark .lock svg.icon{width:15px;height:15px}
+.locked h3{font:600 var(--text-xl)/1.3 var(--font-head)}
+.locked p{font-size:var(--text-md);max-width:30ch}
+
+/* ── Review page (exists; mirrored in brief to show the handoff) ── */
+.back-link{display:inline-flex;align-items:center;gap:6px;min-height:32px;margin-left:-6px;padding:0 6px;border:0;border-radius:var(--radius-btn);background:none;color:var(--brand-link);font-weight:600;font-size:var(--text-md)}
+.back-link:hover{text-decoration:underline;text-underline-offset:3px}
+.eyebrow{margin-top:6px;font-size:var(--text-xs);font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--brand-link)}
+.review-h1{margin-top:2px;font:600 clamp(26px,3vw,34px)/1.2 var(--font-head)}
+.summary{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 14px;align-items:start;margin-top:16px;padding:14px 16px;border:2px solid var(--ink);border-radius:var(--radius-panel);background:var(--card)}
+.summary-icon{grid-row:span 3;width:40px;height:40px;display:grid;place-items:center;border:2px solid var(--ink);border-radius:10px;background:var(--tint)}
+.summary-icon svg.icon{width:20px;height:20px}
+.summary-meta{display:flex;flex-wrap:wrap;gap:4px 16px;font-size:var(--text-md);color:var(--muted-foreground)}
+.summary-meta span{display:inline-flex;align-items:center;gap:5px}
+.summary-meta svg.icon{width:14px;height:14px}
+.r-section{margin-top:20px}
+.r-section h2{font:600 var(--text-2xl)/1.3 var(--font-head)}
+.r-note{margin:2px 0 12px;font-size:var(--text-sm);color:var(--muted-foreground)}
+.r-section.confirm{padding:16px;border:2.5px solid var(--ink);border-radius:20px;background:var(--confirm-tint);box-shadow:var(--elevation-ordinary)}
+.r-section.confirm .r-note{color:var(--foreground)}
+.r-rows{display:grid;gap:12px}
+.rrow{border:2px solid var(--ink);border-radius:var(--radius-panel);background:var(--card);overflow:hidden}
+.rrow[data-selected=false]{background:var(--muted)}
+.rrow-band{display:flex;align-items:center;gap:12px;padding:8px 14px;border-bottom:2px solid var(--ink);border-radius:14px 14px 0 0;background:color-mix(in oklab,var(--tone-mix) var(--tone-strength),var(--card))}
+.rrow-kind{display:inline-flex;align-items:center;gap:8px;color:var(--tone);font:600 var(--text-lg)/1.3 var(--font-head)}
+.rrow-kind svg.icon{width:18px;height:18px;color:var(--tone-icon)}
+.rrow-body{display:grid;grid-template-columns:minmax(180px,260px) minmax(0,1fr);gap:10px 16px;align-items:start;padding:12px 14px 14px 58px}
+.rrow-body .identity{border:0;padding:0;background:none}
+.check{appearance:none;-webkit-appearance:none;margin:0;width:var(--size-control-md);height:var(--size-control-md);display:grid;place-items:center;flex:none;border:2.5px solid var(--ink);border-radius:var(--radius-btn);background:var(--card);box-shadow:var(--elevation-compact);cursor:pointer}
+.check::after{content:"";width:62%;height:62%;background:var(--primary-foreground);opacity:0;-webkit-mask:var(--mask-check) center/contain no-repeat;mask:var(--mask-check) center/contain no-repeat}
+.check:hover{background:var(--panel-hover)}
+.check:checked{background:var(--primary)}
+.check:checked::after{opacity:1}
+html{--mask-check:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E")}
+.diff-list{display:grid;gap:6px}
+.diff{display:grid;grid-template-columns:76px minmax(0,1fr);gap:8px;align-items:baseline}
+.diff-label{font-size:var(--text-sm);font-weight:600;color:var(--muted-foreground)}
+.diff-values{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 6px;font-size:var(--text-md);min-width:0}
+.diff-old,.diff-new{padding:1px 6px;border-radius:5px;overflow-wrap:anywhere}
+del.diff-old{background:var(--diff-removed-bg);color:var(--status-danger-text);text-decoration:line-through;text-decoration-thickness:1.5px}
+ins.diff-new{background:var(--diff-added-bg);color:var(--status-success-text);font-weight:600;text-decoration:none}
+.diff-new.only::before{content:"+ ";font-weight:800}
+.diff-arrow{font-weight:800}
+.apply-bar{position:sticky;bottom:0;z-index:4;margin:24px -16px -40px;background:var(--card);border-top:2.5px solid var(--ink)}
+.apply-inner{min-height:64px;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;gap:16px}
+.apply-count{font-weight:700}
+.apply-help{font-size:var(--text-sm);color:var(--muted-foreground)}
+.handoff-note{display:flex;align-items:center;gap:8px;margin-top:12px;padding:8px 12px;border:2px dashed var(--brand);border-radius:12px;background:var(--ghost-tint);font-size:var(--text-md)}
+.handoff-note svg.icon{color:var(--brand-link)}
+
+/* Mobile preview dock (Náhled na seznamu) */
+.preview-dock{position:absolute;left:0;right:0;bottom:0;z-index:25;display:grid;gap:8px;padding:10px 12px calc(12px + env(safe-area-inset-bottom));border-top:2.5px solid var(--ink);background:var(--card);box-shadow:0 -4px 0 color-mix(in oklab,var(--hard-shadow) 60%,transparent)}
+.shell:has(.preview-dock) .page{padding-bottom:140px}
+.dock-summary{display:flex;align-items:center;gap:8px;font-size:var(--text-md);font-weight:700}
+.dock-summary svg.icon{color:var(--brand-link)}
+
+dialog{width:min(480px,calc(100vw - 24px));padding:24px;border:2.5px solid var(--ink);border-radius:var(--radius-panel);background:var(--card);color:var(--foreground);box-shadow:var(--elevation-lifted)}
+dialog::backdrop{background:rgb(8 12 20 / 55%)}
+dialog h2{font:600 var(--text-2xl)/1.3 var(--font-head)}
+.dialog-text{margin-top:8px}
+.dialog-list{display:grid;gap:8px;margin-top:14px}
+.dialog-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:var(--nested-control-gap);margin-top:20px}
+.toast{position:absolute;left:50%;bottom:150px;z-index:60;max-width:calc(100% - 24px);transform:translateX(-50%);padding:9px 14px;border:2px solid var(--ink);border-radius:var(--radius-btn);background:var(--ink);color:var(--card);font-weight:600;font-size:var(--text-md);box-shadow:var(--elevation-ordinary)}
+
+/* ── Narrow content ── */
+@container device (max-width:1099px){
+  .nav-links .nav-link:not([aria-current]){display:none}
+}
+/* ── Mobile: full-screen assistant, 40 px controls, 12 px gutters ── */
+@container device (max-width:639px){
+  .shell{--elevation-compact-offset:1px;--elevation-ordinary-offset:3px;--elevation-lifted-offset:4px}
+  .topbar-inner{gap:8px;padding-inline:12px}
+  .nav-links{display:none}
+  .only-mobile{display:inline-grid!important}
+  .only-desktop{display:none!important}
+  .logo{font-size:15px}
+  .logo-tld{font-size:11px}
+  .nav-right .icon-btn,.nav-right .avatar{width:var(--size-control-lg);height:var(--size-control-lg)}
+  .page{padding:14px 12px 28px}
+  .hero{padding:14px 12px 14px 36px}
+  .hero-holes{left:10px}
+  .hero-actions .icon-btn{width:var(--size-control-lg);height:var(--size-control-lg)}
+  .btn{height:var(--size-control-lg);font-size:14px}
+  .btn.sm{height:var(--size-control-md);font-size:13px}
+  .icon-btn{width:var(--size-control-lg);height:var(--size-control-lg)}
+  .segmented button{height:var(--size-control-lg);min-width:var(--size-control-lg)}
+  .toolbar .label-wide{display:none}
+  .toolbar .icon-label{width:var(--size-control-lg);padding:0}
+  .gift-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+  .gift-body{padding:8px 8px 2px}
+  .gift-title{font-size:var(--text-lg)}
+  .gift-description{display:none}
+  .category{font-size:10px;line-height:13px;padding:1px 5px;top:6px;left:6px;max-width:calc(100% - 12px)}
+  .ai-chip{top:auto;bottom:6px;right:6px;height:20px;padding:0 6px;font-size:10px}
+  .priority{bottom:6px;left:6px;height:18px;line-height:18px;padding:0 6px;font-size:10px}
+  .gift-actions{padding:4px 8px 8px;gap:6px}
+  .gift-actions .footer-note{font-size:var(--text-xs)}
+  .gift-menu{right:0;bottom:56px}
+  .menu [role=menuitem]{min-height:var(--size-control-lg)}
+  .assistant{position:absolute;inset:0;z-index:30;width:auto;border-left:0}
+  .ap-head{padding:8px 12px}
+  .ap-actions .icon-btn{width:var(--size-control-lg);height:var(--size-control-lg)}
+  .mobile-tabs{display:block;flex:none;padding:8px 12px;border-bottom:2px solid var(--border-strong)}
+  .mobile-tabs .segmented,.preview-dock .segmented{display:flex}
+  .mobile-tabs .segmented button,.preview-dock .segmented button{flex:1}
+  .pin{padding:8px 12px;grid-template-columns:auto minmax(0,1fr) auto}
+  .pin .thumb{width:36px;height:36px}
+  .pin-toggle{display:inline-grid}
+  .pin:not(.is-expanded) .pin-meta,.pin:not(.is-expanded) .pin-eyebrow,.pin:not(.is-expanded) .pin-actions-wide{display:none}
+  .pin-actions-wide{grid-column:1/-1}
+  .thread{padding:14px 12px 18px}
+  .image-picks{gap:6px}
+  .decide button{height:30px;padding:0 8px}
+  .pbar{padding:8px 12px}
+  .pbar-help:not(.is-on){display:none}
+  .composer{padding:8px 12px calc(12px + env(safe-area-inset-bottom))}
+  .composer textarea{min-height:var(--size-control-lg);font-size:16px;padding:7px 10px}
+  .composer .send{width:var(--size-control-lg)}
+  .rrow-body{grid-template-columns:1fr;padding:10px 12px 12px}
+  .diff{grid-template-columns:1fr;gap:2px}
+  .apply-bar{margin:20px -12px -28px}
+  .apply-inner{flex-direction:column;align-items:stretch;gap:6px;padding:8px 12px 12px}
+  .apply-inner .btn{width:100%}
+  .r-section.confirm{padding:12px}
+  .toast{bottom:170px}
+}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="review-bar" role="region" aria-label="Ovládání ukázky">
+  <span class="review-eyebrow">Varianta C · Dílna dárku s náhledem</span>
+  <div class="review-group" role="group" aria-label="Zobrazení"><span>Viewport</span><button type="button" data-viewport-option="desktop" aria-pressed="true">Desktop</button><button type="button" data-viewport-option="mobile" aria-pressed="false">Mobil 390 px</button></div>
+  <div class="review-group" role="group" aria-label="Motiv"><span>Motiv</span><button type="button" data-theme-option="light" aria-pressed="true">Světlý</button><button type="button" data-theme-option="dark" aria-pressed="false">Tmavý</button></div>
+  <div class="review-group" role="group" aria-label="Role"><span>Role</span><button type="button" data-role-option="manager" aria-pressed="true">Správce</button><button type="button" data-role-option="recipient" aria-pressed="false">Obdarovaný</button></div>
+  <div class="review-group"><label for="scenario-select">Scénář</label><select id="scenario-select"></select></div>
+</div>
+
+<div class="stage" id="stage" data-viewport="desktop">
+  <div class="device" id="device"></div>
+</div>
+<dialog id="dialog" aria-labelledby="dialog-title"></dialog>
+
+<script>
+/* ── Icons (Lucide paths) ── */
+const ICONS={
+  gift:'<rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13"/><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5"/>',
+  bell:'<path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/>',
+  plus:'<path d="M5 12h14"/><path d="M12 5v14"/>',
+  palette:'<circle cx="13.5" cy="6.5" r="1"/><circle cx="17.5" cy="10.5" r="1"/><circle cx="8.5" cy="7.5" r="1"/><circle cx="6.5" cy="12.5" r="1"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/>',
+  moon:'<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>',
+  menu:'<path d="M4 6h16M4 12h16M4 18h16"/>',
+  'chevron-down':'<path d="m6 9 6 6 6-6"/>',
+  'chevron-up':'<path d="m18 15-6-6-6 6"/>',
+  'arrow-left':'<path d="m12 19-7-7 7-7"/><path d="M19 12H5"/>',
+  check:'<path d="M20 6 9 17l-5-5"/>',
+  x:'<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+  alert:'<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
+  undo:'<path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11"/>',
+  trash:'<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>',
+  clock:'<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
+  hourglass:'<path d="M5 22h14M5 2h14"/><path d="M17 22v-4.172a2 2 0 0 0-.586-1.414L12 12l-4.414 4.414A2 2 0 0 0 7 17.828V22"/><path d="M7 2v4.172a2 2 0 0 0 .586 1.414L12 12l4.414-4.414A2 2 0 0 0 17 6.172V2"/>',
+  external:'<path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>',
+  ban:'<circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/>',
+  info:'<circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>',
+  loader:'<path d="M21 12a9 9 0 1 1-6.219-8.56"/>',
+  image:'<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>',
+  sparkles:'<path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/><path d="M20 3v4"/><path d="M22 5h-4"/><path d="M4 17v2"/><path d="M5 18H3"/>',
+  pencil:'<path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/>',
+  text:'<path d="M17 6.1H3M21 12.1H3M15.1 18H3"/>',
+  settings:'<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>',
+  ellipsis:'<circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>',
+  lock:'<rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+  send:'<path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"/><path d="m21.854 2.147-10.94 10.939"/>',
+  square:'<rect width="14" height="14" x="5" y="5" rx="2"/>',
+  history:'<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/>',
+  'message-plus':'<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M12 7v6"/><path d="M9 10h6"/>',
+  message:'<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
+  grid:'<rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/>',
+  list:'<path d="M3 12h.01M3 18h.01M3 6h.01M8 12h13M8 18h13M8 6h13"/>',
+  rows:'<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M21 9H3M21 15H3"/>',
+  sliders:'<path d="M21 4h-7M10 4H3M21 12h-9M8 12H3M21 20h-5M12 20H3M14 2v4M8 10v4M16 18v4"/>',
+  eye:'<path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/>',
+  link:'<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>',
+  star:'<path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/>',
+  tag:'<path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r=".5"/>',
+  retry:'<path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/>',
+  copy:'<rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>',
+  folder:'<path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/>',
+  reorder:'<path d="m21 16-4 4-4-4"/><path d="M17 20V4"/><path d="m3 8 4-4 4 4"/><path d="M7 4v16"/>',
+  users:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>',
+  calendar:'<rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
+  circle:'<circle cx="12" cy="12" r="9" stroke-dasharray="3 3"/>',
+  key:'<path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r="1"/>'
+};
+const icon=(name,extra='')=>`<svg class="icon ${extra}" viewBox="0 0 24 24" aria-hidden="true">${ICONS[name]}</svg>`;
+
+/* ── Illustrations (local placeholders, not product photos) ── */
+const ART={
+  headphones:'<path class="fn" d="M34 58V46a26 26 0 0 1 52 0v12"/><rect class="fd" x="25" y="50" width="17" height="25" rx="6"/><rect class="fd" x="78" y="50" width="17" height="25" rx="6"/><path class="fn" d="M42 60h-4M82 60h-4"/>',
+  'hp-side':'<path class="fn" d="M40 66V44a22 22 0 0 1 44 0"/><ellipse class="fd" cx="78" cy="58" rx="13" ry="18"/><ellipse class="fc" cx="78" cy="58" rx="6" ry="10"/><rect class="fa" x="34" y="50" width="10" height="20" rx="4"/>',
+  'hp-case':'<ellipse class="fa" cx="60" cy="48" rx="38" ry="26"/><path class="fn" d="M22 48h76"/><rect class="fb" x="52" y="20" width="16" height="6" rx="3"/><path class="fn" d="M50 62c6 4 14 4 20 0"/>',
+  'hp-desk':'<rect class="fc" x="12" y="64" width="96" height="10" rx="3"/><path class="fn" d="M38 58V46a22 22 0 0 1 44 0v12"/><rect class="fd" x="30" y="48" width="14" height="18" rx="5"/><rect class="fd" x="76" y="48" width="14" height="18" rx="5"/><path class="fa" d="M92 64V40h12v24z"/><circle class="fb" cx="98" cy="30" r="6"/>',
+  orchid:'<path class="fa" d="M44 62h32l-4 16H48z"/><path class="fn" d="M60 62V30M60 46c-8-4-14-2-18 4M60 40c8-6 16-4 20 2"/><circle class="fb" cx="60" cy="25" r="8"/><circle class="fb" cx="41" cy="50" r="6.5"/><circle class="fb" cx="81" cy="41" r="6.5"/><circle class="fc" cx="60" cy="25" r="3"/>',
+  vacuum:'<path class="fa" d="M24 50v8c0 9 16 15 36 15s36-6 36-15v-8"/><ellipse class="fc" cx="60" cy="50" rx="36" ry="15"/><ellipse class="fb" cx="60" cy="46" rx="10" ry="4.5"/><path class="fn" d="M36 56h8"/>',
+  spa:'<rect class="fa" x="22" y="50" width="46" height="24" rx="12"/><circle class="fc" cx="34" cy="62" r="6.5"/><path class="fb" d="M78 74V52h14v22z"/><path class="fn" d="M85 52v-6"/><path class="fa" d="M44 44c0-15 13-24 28-24 0 15-13 24-28 24z"/><path class="fn" d="M44 44 66 27"/>',
+  kindle:'<rect class="fc" x="38" y="10" width="44" height="70" rx="6"/><rect class="fa" x="44" y="16" width="32" height="50" rx="2"/><path class="fn" d="M50 28h20M50 36h20M50 44h14"/>',
+  blanket:'<rect class="fa" x="24" y="56" width="72" height="14" rx="4"/><rect class="fb" x="28" y="42" width="64" height="15" rx="4"/><rect class="fa" x="32" y="28" width="56" height="15" rx="4"/><path class="fn" d="M30 70v7M38 70v7M46 70v7M54 70v7M62 70v7M70 70v7M78 70v7M86 70v7"/>',
+  book:'<path class="fa" d="M38 14h44a4 4 0 0 1 4 4v54a4 4 0 0 1-4 4H38z"/><path class="fc" d="M38 14a6 6 0 0 0-6 6v54a6 6 0 0 1 6-6h48"/><path class="fn" d="M50 30h24M50 38h16"/><circle class="fb" cx="63" cy="54" r="7"/>',
+  slippers:'<path class="fa" d="M18 60c0-14 10-22 22-22s16 8 16 18-8 18-20 18-18-4-18-14z"/><path class="fb" d="M62 60c0-14 10-22 22-22s16 8 16 18-8 18-20 18-18-4-18-14z"/><path class="fn" d="M26 52c6-6 18-6 24 0M70 52c6-6 18-6 24 0"/>',
+  game:'<path class="fa" d="M22 36h70v36H22z"/><path class="fb" d="M22 36l10-12h70l-10 12z"/><path class="fc" d="M92 36l10-12v36l-10 12z"/><circle class="fc" cx="44" cy="54" r="7"/><rect class="fc" x="58" y="48" width="22" height="12" rx="2"/>',
+  'game-b':'<rect class="fb" x="26" y="22" width="68" height="50" rx="4"/><path class="fn" d="M26 38h68M44 22v50"/><circle class="fc" cx="70" cy="56" r="8"/>',
+  'game-c':'<path class="fa" d="M60 14 92 32v30L60 80 28 62V32z"/><path class="fn" d="M28 32l32 18 32-18M60 50v30"/><circle class="fb" cx="60" cy="34" r="5"/>'
+};
+const art=(key,thumb=false)=>`<svg class="art" viewBox="${thumb?'14 8 92 74':'0 0 120 90'}" preserveAspectRatio="xMidYMid ${thumb?'slice':'meet'}" aria-hidden="true">${ART[key]}</svg>`;
+const CAMERA_SRC='../../unavailable-gift-comparison/assets/sample-camera.svg';
+const CATEGORY_COLORS={Domov:'#ffd9a8',Knihy:'#e2d4ff',Oblečení:'#ffc9d6',Elektronika:'#c7f0ef',Zážitky:'#bfe8b0',Hry:'#a9dbff'};
+
+/* ── Domain data: "Vánoce pro babičku", shared with the family ── */
+const BASE_GIFTS=[
+  {id:'sony',name:'Sluchátka Sony WH-1000XM5',art:null,category:'Elektronika',priority:'Střední',price:null,links:['sony.cz'],description:null},
+  {id:'orchid-1',name:'LEGO Icons Orchidej',art:'orchid',category:'Domov',priority:'Nízká',price:'1 199 Kč',links:['lego.com'],description:'Na parapet v kuchyni, babička má ráda květiny.',reserved:true},
+  {id:'vacuum',name:'Robotický vysavač Roborock Q7',art:'vacuum',category:'Domov',priority:'Vysoká',price:'7 490 Kč',links:['alza.cz']},
+  {id:'camera',name:'Kompaktní fotoaparát',img:'camera',category:'Elektronika',priority:'Střední',price:'3 290 Kč',links:['fotoskoda.cz'],description:'Na společné výlety a rodinné vzpomínky.'},
+  {id:'spa',name:'Víkend v Lázních Luhačovice pro dva',art:'spa',category:'Zážitky',priority:'Vysoká',price:'5 900 Kč',links:['slevomat.cz']},
+  {id:'orchid-2',name:'LEGO Icons Orchidej',art:'orchid',category:'Domov',priority:'Nízká',price:'1 199 Kč',links:['alza.cz']},
+  {id:'kindle',name:'Čtečka Kindle Paperwhite',art:'kindle',category:'Elektronika',priority:'Střední',price:'3 790 Kč',links:['datart.cz'],description:'S podsvícením, ať může číst i večer.'},
+  {id:'orchid-3',name:'LEGO Icons Orchidej',art:'orchid',category:'Domov',priority:null,price:'1 249 Kč',links:['mall.cz']}
+];
+const DRAFTS={
+  blanket:{id:'new-blanket',name:'Vlněný pléd s třásněmi',art:'blanket',category:'Domov',priority:null,price:'1 290 Kč',links:['ikea.com'],source:'ikea.com/cz/cs/p/vlneny-pled-130x170'},
+  book:{id:'new-book',name:'Babiččiny recepty z Valašska',art:'book',category:'Knihy',priority:null,price:'449 Kč',links:['knihydobrovsky.cz'],source:'knihydobrovsky.cz/kniha/babicciny-recepty'},
+  slippers:{id:'new-slippers',name:'Hřejivé papuče z ovčí vlny, vel. 38',art:'slippers',category:'Oblečení',priority:null,price:'890 Kč',links:['mall.cz'],source:'mall.cz/papuce/hrejive-ovci-38'},
+  patchwork:{id:'new-patchwork',name:'Patchwork',art:'game',category:'Hry',priority:null,price:'549 Kč',links:['mindok.cz'],note:'Skládání deky z dílků, 15–30 minut'},
+  jaipur:{id:'new-jaipur',name:'Jaipur',art:'game-b',category:'Hry',priority:null,price:'599 Kč',links:['blackfire.cz'],note:'Obchodní karetní hra, asi 30 minut'},
+  duel:{id:'new-duel',name:'7 Divů světa: Duel',art:'game-c',category:'Hry',priority:null,price:'749 Kč',links:['rexhry.cz'],note:'Stavění civilizace, asi 30 minut'}
+};
+const IMAGE_CANDIDATES=[
+  {key:'headphones',label:'Černá sluchátka zepředu',source:'sony.cz'},
+  {key:'hp-side',label:'Sluchátka z boku',source:'alza.cz'},
+  {key:'hp-case',label:'Sluchátka v pouzdře',source:'heureka.cz'},
+  {key:'hp-desk',label:'Sluchátka na stole',source:'alza.cz'}
+];
+const ENRICH_TEXT={
+  price:'7 990–8 490 Kč',
+  links:['heureka.cz','alza.cz'],
+  rating:'Hodnocení 4,7/5 (2 315 hodnocení na Heurece).',
+  description:'Sony WH-1000XM5, černá. Bezdrátová sluchátka s aktivním potlačením hluku a výdrží až 30 hodin.'
+};
+const SCENARIOS=[
+  ['chat','Prázdná konverzace s nabídkami'],['enrich','Vylepšit pomocí AI: sluchátka'],['create','Dárky z odkazů a textu'],['bulk','Hromadná úprava slovy'],
+  ['streaming','Asistent pracuje, Zastavit'],['handoff','Předání ke kontrole'],['fast-forward','Rovnou použít + potvrzení smazání'],['history','Historie za 30 dní'],
+  ['not-allowlisted','Bez přístupu (zamčeno)'],['daily-cap','Vyčerpaný denní limit'],['kill-switch','Asistent dočasně vypnutý'],['provider-error','Chyba služby AI'],['demo','Ukázkový účet s akcemi']
+];
+
+/* ── Helpers ── */
+const clone=value=>JSON.parse(JSON.stringify(value));
+const escapeHtml=text=>String(text).replace(/[&<>"]/g,character=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[character]));
+const plural=(count,one,few,other)=>count===1?one:(count>=2&&count<=4?few:other);
+const changesLabel=count=>`${count} ${plural(count,'změna','změny','změn')}`;
+const ofChangesLabel=count=>`${count} ${count===1?"změny":"změn"}`;
+const KINDS={
+  edit:{tone:'neutral',icon:'pencil',label:count=>`${count} ${plural(count,'úprava','úpravy','úprav')}`,title:'Úprava'},
+  create:{tone:'success',icon:'plus',label:count=>`${count} ${plural(count,'nový dárek','nové dárky','nových dárků')}`,title:'Nový dárek'},
+  delete:{tone:'danger',icon:'trash',label:count=>`${count} smazání`,title:'Smazání dárku'},
+  reorder:{tone:'neutral',icon:'reorder',label:count=>`${count} ${plural(count,'přesun','přesuny','přesunů')} pořadí`,title:'Přesun pořadí'}
+};
+const emptyProposal=()=>({edits:{},creates:[],deletes:[],reorder:null});
+const isMobile=()=>state.viewport==='mobile';
+const priceValue=gift=>gift.price?Number(gift.price.split('–')[0].replace(/\D/g,'')):Infinity;
+
+const state={viewport:'desktop',theme:'light',scenario:'enrich',role:'manager'};
+let timers=[];let streamTimer=null;let toastTimer=null;let lastTrigger='ai-trigger';
+const later=(callback,delay)=>{const timer=setTimeout(callback,delay);timers.push(timer);return timer};
+function clearTimers(){timers.forEach(clearTimeout);timers=[];clearInterval(streamTimer);streamTimer=null}
+
+function freshState(){
+  return {page:'wishlist',panelOpen:true,mobileView:'chat',panelMode:'chat',panelView:'thread',access:'ok',demo:false,
+    menuFor:null,panelMenu:false,pinExpanded:false,ff:false,gifts:clone(BASE_GIFTS),thread:[],proposal:emptyProposal(),
+    submitted:null,batches:[],held:[],enrich:null,create:null,streaming:false,stream:null,workingGift:null,focusGift:null,
+    historyLoading:false,reviewSelection:{},usedChips:[],scrollThreadEnd:false,flashGift:null};
+}
+const giftById=id=>state.gifts.find(gift=>gift.id===id)||BASE_GIFTS.find(gift=>gift.id===id)||Object.values(DRAFTS).find(draft=>draft.id===id);
+const positionOf=id=>state.gifts.findIndex(gift=>gift.id===id)+1;
+
+/* ── Proposal model: one source for ghost cards, the proposal bar and the review page ── */
+function proposalRows(proposal){
+  const rows=[];
+  for(const [id,fields] of Object.entries(proposal.edits))rows.push({id:'edit:'+id,kind:'edit',giftId:id,fields});
+  for(const gift of proposal.creates)rows.push({id:'new:'+gift.id,kind:'create',gift});
+  for(const id of proposal.deletes)rows.push({id:'del:'+id,kind:'delete',giftId:id,confirm:true});
+  if(proposal.reorder){
+    proposal.reorder.forEach((id,index)=>{const from=positionOf(id);if(from!==index+1)rows.push({id:'move:'+id,kind:'reorder',giftId:id,from,to:index+1})});
+  }
+  return rows;
+}
+function kindCounts(rows){
+  const counts={};for(const row of rows)counts[row.kind]=(counts[row.kind]||0)+1;
+  return ['edit','create','delete','reorder'].filter(kind=>counts[kind]).map(kind=>({kind,count:counts[kind]}));
+}
+const kindCountsHtml=rows=>`<span class="kind-counts">${kindCounts(rows).map(({kind,count})=>`<span class="kind-count" data-tone="${KINDS[kind].tone}">${icon(KINDS[kind].icon)}${KINDS[kind].label(count)}</span>`).join('')}</span>`;
+const kindCountsText=rows=>kindCounts(rows).map(({kind,count})=>KINDS[kind].label(count)).join(', ');
+
+function combinedOverlay(){
+  const parts=[state.proposal];
+  if(state.submitted&&state.submitted.status==='pending')parts.push(state.submitted.proposal);
+  const edits={};const creates=[];const deletes=new Set(state.held);let reorder=null;
+  for(const part of parts){
+    for(const [id,fields] of Object.entries(part.edits))edits[id]={...(edits[id]||{}),...fields};
+    creates.push(...part.creates);part.deletes.forEach(id=>deletes.add(id));
+    if(part.reorder)reorder=part.reorder;
+  }
+  return {edits,creates,deletes,reorder};
+}
+function displayGift(gift,fields){
+  if(!fields)return {gift,marks:new Set()};
+  const marks=new Set(Object.keys(fields));
+  return {marks,gift:{...gift,
+    price:fields.price??gift.price,priority:fields.priority??gift.priority,
+    links:[...gift.links,...(fields.addLinks||[])],
+    art:fields.image??gift.art,img:fields.image?null:gift.img,
+    description:[gift.description,...(fields.append||[])].filter(Boolean).join(' ')||null}};
+}
+function applyEditTo(gift,fields){Object.assign(gift,displayGift(gift,fields).gift)}
+function applyRows(rows,proposal){
+  for(const row of rows){
+    if(row.kind==='edit'){const gift=state.gifts.find(item=>item.id===row.giftId);if(gift)applyEditTo(gift,row.fields)}
+    if(row.kind==='create')state.gifts.push(clone(row.gift));
+    if(row.kind==='delete')state.gifts=state.gifts.filter(gift=>gift.id!==row.giftId);
+  }
+  if(rows.some(row=>row.kind==='reorder')&&proposal.reorder){
+    const order=proposal.reorder;state.gifts.sort((first,second)=>order.indexOf(first.id)-order.indexOf(second.id));
+  }
+}
+
+/* Enrichment rows feed the draft proposal live */
+function syncEnrichProposal(){
+  const enrich=state.enrich;if(!enrich||enrich.locked)return;
+  const fields={};
+  const pending=key=>enrich.rows[key]==='accepted'&&!enrich.applied[key];
+  if(pending('price'))fields.price=ENRICH_TEXT.price;
+  if(pending('links'))fields.addLinks=ENRICH_TEXT.links;
+  if(pending('image')&&enrich.imagePick!==null)fields.image=IMAGE_CANDIDATES[enrich.imagePick].key;
+  const append=[];
+  if(pending('description'))append.push(ENRICH_TEXT.description);
+  if(pending('rating'))append.push(ENRICH_TEXT.rating);
+  if(append.length)fields.append=append;
+  if(Object.keys(fields).length)state.proposal.edits[enrich.giftId]=fields;else delete state.proposal.edits[enrich.giftId];
+}
+function enrichFieldNames(fields){
+  const names=[];if(fields.price)names.push('cena');if(fields.addLinks)names.push('odkazy');if(fields.image)names.push('obrázek');if(fields.append)names.push('popis');if(fields.priority)names.push('priorita');
+  return names.join(', ');
+}
+
+/* Fast-forward: ordinary rows apply at once, sensitive rows wait in the chat */
+function commitFastForward(){
+  if(!state.ff)return;
+  const proposal=state.proposal;const rows=proposalRows(proposal);
+  const ordinary=rows.filter(row=>!row.confirm);
+  const sensitive=rows.filter(row=>row.confirm);
+  if(sensitive.length){
+    sensitive.forEach(row=>{if(!state.held.includes(row.giftId))state.held.push(row.giftId)});
+    if(!state.thread.some(item=>item.type==='held'))state.thread.push({type:'held'});
+  }
+  if(ordinary.length){
+    let batch=state.batches.find(item=>item.open&&!item.undone);
+    if(!batch){batch={id:'batch-'+(state.batches.length+1),snapshot:clone(state.gifts),rows:[],open:true,undone:false,source:'ff'};state.batches.push(batch);state.thread.push({type:'applied',batchId:batch.id})}
+    applyRows(ordinary,proposal);batch.rows.push(...ordinary.map(row=>({id:row.id,kind:row.kind})));
+    if(state.enrich)for(const key of Object.keys(state.enrich.rows))if(state.enrich.rows[key]==='accepted'&&(key!=='image'||state.enrich.imagePick!==null))state.enrich.applied[key]=true;
+    state.scrollThreadEnd=true;
+  }
+  state.proposal=emptyProposal();
+}
+function afterProposalChange(){syncEnrichProposal();commitFastForward();render()}
+
+/* ── Scenario setup ── */
+const ai=html=>({type:'ai',html});
+const user=text=>({type:'user',text});
+const tools=lines=>({type:'tools',lines});
+function enrichState(initial){
+  return {giftId:'sony',rows:initial?{price:'accepted',links:'accepted',image:'pending',rating:'pending',description:'accepted'}:{price:'pending',links:'pending',image:'pending',rating:'pending',description:'pending'},imagePick:null,applied:{},locked:false};
+}
+function enrichThread(){
+  return [
+    {type:'context',text:'Spuštěno z karty dárku: Vylepšit pomocí AI',iconName:'sparkles'},
+    tools([{state:'done',text:'Načetl jsem odkaz sony.cz'},{state:'done',text:'Prohledal jsem Heureku, Alzu a Amazon.de'},{state:'done',text:'Našel jsem 4 obrázky produktu'}]),
+    ai('<p>Seznam už je sdílený, takže název dárku nechám beze změny a popis jen doplním. Každou položku můžete přijmout nebo odmítnout, výsledek hned vidíte na kartě v seznamu.</p>'),
+    {type:'enrich'},
+    ai('<p>Zatím se nic nezměnilo. Až budete spokojení, návrh zkontrolujete a použijete.</p>')
+  ];
+}
+function setupEnrich(){
+  state.panelMode='gift';state.focusGift='sony';state.enrich=enrichState(true);state.thread=enrichThread();syncEnrichProposal();
+}
+function setupCreate(){
+  state.create={failed:'error',pick:null};
+  state.thread=[
+    user('https://www.ikea.com/cz/cs/p/vlneny-pled-130x170\nhttps://www.knihydobrovsky.cz/kniha/babicciny-recepty\nhttps://www.mall.cz/papuce/hrejive-ovci-38\na nějakou deskovku pro 2 hráče do 800 Kč'),
+    tools([{state:'done',text:'Načetl jsem 2 ze 3 odkazů'},{state:'failed',text:'1 odkaz se nepodařilo načíst'},{state:'done',text:'Hledám deskové hry pro 2 hráče do 800 Kč'}]),
+    ai('<p>Z odkazů jsem připravil tyto dárky. Na seznamu je vidíte jako náhled na konci, přidají se až po kontrole.</p>'),
+    {type:'drafts'},
+    ai('<p>U deskovky pro 2 hráče do 800 Kč mám tři tipy. Kterou mám přidat?</p>'),
+    {type:'choose'}
+  ];
+  state.proposal.creates=[clone(DRAFTS.blanket),clone(DRAFTS.book)];
+}
+function setupBulk(){
+  state.thread=[
+    user('Všechno nad 3 000 Kč dej do nízké priority a smaž ty dva duplicitní Lego sety.'),
+    tools([{state:'done',text:'Prošel jsem 8 dárků na seznamu'}]),
+    {type:'bulk'},
+    ai('<p>Nic jsem zatím nezměnil. Smazání potvrdíte zvlášť na stránce kontroly.</p>')
+  ];
+  for(const id of ['vacuum','camera','spa','kindle'])state.proposal.edits[id]={priority:'Nízká'};
+  state.proposal.deletes=['orchid-2','orchid-3'];
+}
+function setupStreaming(){
+  state.panelMode='gift';state.focusGift='sony';state.workingGift='sony';state.streaming=true;
+  state.thread=[
+    {type:'context',text:'Spuštěno z karty dárku: Vylepšit pomocí AI',iconName:'sparkles'},
+    tools([{state:'done',text:'Načetl jsem odkaz sony.cz'},{state:'active',text:'Hledám na Heurece a Alze…'},{state:'queued',text:'Hledám obrázky produktu'}]),
+    {type:'stream'}
+  ];
+  startStream('Seznam už je sdílený, takže název dárku nechám beze změny. Zatím vidím cenu kolem 8 000 Kč u dvou obchodů, ještě porovnávám dopravu a dostupnost, než vám navrhnu rozpětí.');
+}
+const HANDOFF_PROPOSAL=()=>({edits:{sony:{price:ENRICH_TEXT.price,addLinks:ENRICH_TEXT.links},kindle:{priority:'Vysoká'}},creates:[clone(DRAFTS.blanket),clone(DRAFTS.book),clone(DRAFTS.slippers)],deletes:['orchid-3'],reorder:null});
+function setupHandoff(){
+  state.thread=[
+    user('Sluchátkům doplňte cenu podle Heureky, Kindlu dejte vysokou prioritu, přidejte pléd, kuchařku a papuče z odkazů a smažte duplicitní orchidej na pozici 8.'),
+    tools([{state:'done',text:'Načetl jsem 3 odkazy'},{state:'done',text:'Porovnal jsem ceny na Heurece a Alze'}]),
+    ai('<p>Návrh je připravený. Nic jsem zatím nezměnil, všechno uvidíte na stránce kontroly vedle sebe.</p>'),
+    {type:'proposal'}
+  ];
+  state.submitted={id:'prop-7kq2',status:'pending',proposal:HANDOFF_PROPOSAL(),submittedAt:'dnes 14:32'};
+}
+function setupFastForward(){
+  state.ff=true;
+  const snapshot=clone(state.gifts);
+  applyEditTo(state.gifts[0],{price:ENRICH_TEXT.price,addLinks:ENRICH_TEXT.links});
+  state.gifts.push(clone(DRAFTS.blanket));
+  state.batches=[{id:'batch-1',snapshot,rows:[{id:'edit:sony',kind:'edit'},{id:'new:new-blanket',kind:'create'}],open:true,undone:false,source:'ff'}];
+  state.held=['orchid-3'];
+  state.thread=[
+    user('Sluchátkům doplňte cenu podle Heureky, přidejte vlněný pléd z IKEA a smažte duplicitní orchidej na pozici 8.'),
+    tools([{state:'done',text:'Porovnal jsem ceny na Heurece a Alze'},{state:'done',text:'Načetl jsem odkaz ikea.com'}]),
+    ai('<p>Máte zapnuté <strong>Rovnou použít</strong>, takže běžné změny jsem použil hned:</p>'),
+    {type:'applied',batchId:'batch-1'},
+    ai('<p>Smazání ale nikdy nepoužiji bez vašeho potvrzení:</p>'),
+    {type:'held'}
+  ];
+}
+function setupHistory(){state.panelView='history';state.thread=[{type:'welcome'}]}
+function setupDailyCap(){
+  state.access='cap';
+  state.thread=[
+    {type:'context',text:'Dnes 9:14',iconName:'clock'},
+    user('Doplňte cenu a obrázek ke sluchátkům.'),
+    tools([{state:'done',text:'Prohledal jsem Heureku a Alzu'}]),
+    ai('<p>Připravil jsem úpravu sluchátek. Čeká na vaši kontrolu.</p>'),
+    {type:'proposal'},
+    {type:'notice',tone:'warning',iconName:'hourglass',title:'Dnešní limit AI asistenta jste vyčerpali.',body:'Obnoví se zítra v 0:00. Konverzace zůstává k přečtení a čekající návrh můžete zkontrolovat i teď.'}
+  ];
+  state.submitted={id:'prop-3fd8',status:'pending',proposal:{edits:{sony:{price:ENRICH_TEXT.price,addLinks:ENRICH_TEXT.links,image:'headphones'}},creates:[],deletes:[],reorder:null},submittedAt:'dnes 9:16'};
+}
+function setupKillSwitch(){
+  state.access='kill';
+  state.gifts.push(clone(DRAFTS.blanket),clone(DRAFTS.book));
+  state.thread=[
+    {type:'context',text:'15. 10. v 19:40',iconName:'clock'},
+    user('Přidejte pléd a kuchařku z těchhle odkazů.'),
+    ai('<p>Oba dárky jsou v návrhu ke kontrole.</p>'),
+    {type:'proposal'},
+    {type:'notice',tone:'neutral',iconName:'ban',title:'AI asistent je dočasně vypnutý.',body:'Historie zůstává k dispozici a použité změny můžete dál vrátit. Psát asistentovi půjde, až ho znovu zapneme.'}
+  ];
+  state.submitted={id:'prop-1aa4',status:'applied',proposal:{edits:{},creates:[clone(DRAFTS.blanket),clone(DRAFTS.book)],deletes:[],reorder:null},submittedAt:'15. 10.',applied:2,total:2,batchId:'batch-1'};
+  state.batches=[{id:'batch-1',snapshot:clone(BASE_GIFTS),rows:[{id:'new:new-blanket',kind:'create'},{id:'new:new-book',kind:'create'}],open:false,undone:false,source:'review'}];
+}
+function setupProviderError(){
+  state.thread=[
+    user('Doplňte ceny k dárkům, které ji ještě nemají.'),
+    tools([{state:'done',text:'Našel jsem 1 dárek bez ceny'},{state:'failed',text:'Hledání cen se přerušilo'}]),
+    {type:'error'}
+  ];
+}
+function setupDemo(){
+  state.demo=true;
+  state.thread=[
+    {type:'notice',tone:'info',iconName:'info',title:'Ukázka: odpovědi jsou předpřipravené, nic se neposílá AI.',body:'Návrhy ale fungují jako skutečné, můžete je zkontrolovat a použít na ukázková data.'},
+    ai('<p>Dobrý den, vyberte si, co mám u seznamu udělat.</p>')
+  ];
+}
+const SETUP={chat:()=>{state.thread=[{type:'welcome'}]},enrich:()=>{setupEnrich();state.menuFor='sony'},create:setupCreate,bulk:setupBulk,streaming:setupStreaming,handoff:setupHandoff,
+  'fast-forward':setupFastForward,history:setupHistory,'not-allowlisted':()=>{state.access='locked'},'daily-cap':setupDailyCap,'kill-switch':setupKillSwitch,'provider-error':setupProviderError,demo:setupDemo};
+
+function applyScenario(id,{updateUrl=true}={}){
+  clearTimers();
+  const keep={viewport:state.viewport,theme:state.theme,role:state.role};
+  for(const key of Object.keys(state))delete state[key];
+  Object.assign(state,keep,freshState(),{scenario:id});
+  SETUP[id]();
+  if(isMobile()&&id==='enrich')state.menuFor=null;
+  state.scrollThreadEnd=id!=='enrich';
+  document.getElementById('scenario-select').value=id;
+  if(updateUrl)syncUrl();
+  render({resetScroll:true});
+}
+
+/* ── Flows ── */
+function runEnrichFlow(giftId,{append=false}={}){
+  clearTimers();
+  Object.assign(state,{panelOpen:true,panelMode:'gift',panelView:'thread',focusGift:giftId,workingGift:giftId,menuFor:null,streaming:true,mobileView:'chat',page:'wishlist'});
+  const gift=giftById(giftId);const domain=gift.links[0];
+  const toolItem=tools([{state:'active',text:`Načítám odkaz ${domain}…`},{state:'queued',text:'Hledám na Heurece a Alze'},{state:'queued',text:'Hledám obrázky produktu'}]);
+  state.thread=[...(append?state.thread:[]),{type:'context',text:`Vylepšit pomocí AI: ${gift.name}`,iconName:'sparkles'},toolItem];
+  state.scrollThreadEnd=true;render();
+  later(()=>{toolItem.lines[0]={state:'done',text:`Načetl jsem odkaz ${domain}`};toolItem.lines[1].state='active';toolItem.lines[1].text='Hledám na Heurece a Alze…';render()},800);
+  later(()=>{toolItem.lines[1]={state:'done',text:'Prohledal jsem Heureku a Alzu'};toolItem.lines[2].state='active';toolItem.lines[2].text='Hledám obrázky produktu…';render()},1600);
+  later(()=>{
+    state.streaming=false;state.workingGift=null;
+    if(giftId==='sony'){
+      toolItem.lines[2]={state:'done',text:'Našel jsem 4 obrázky produktu'};
+      state.enrich=enrichState(false);
+      state.thread.push(ai('<p>Seznam už je sdílený, takže název dárku nechám beze změny a popis jen doplním. Vyberte, co chcete převzít, náhled se hned ukáže na kartě.</p>'),{type:'enrich'});
+    }else{
+      toolItem.lines[2]={state:'done',text:'Obrázek už dárek má'};
+      state.thread.push(ai(`<p>U dárku <strong>${escapeHtml(gift.name)}</strong> jsem nenašel nic, co by chybělo: má cenu, odkaz i obrázek. Mám zkusit najít levnější nabídku?</p>`));
+    }
+    state.scrollThreadEnd=true;render();
+  },2400);
+}
+function startStream(text){
+  const words=text.split(' ');state.stream={words,shown:0};
+  const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if(reduce){state.stream.shown=words.length;return}
+  streamTimer=setInterval(()=>{
+    if(!state.stream){clearInterval(streamTimer);return}
+    state.stream.shown=Math.min(words.length,state.stream.shown+1);
+    const element=document.getElementById('stream-text');
+    if(element)element.firstChild.textContent=words.slice(0,state.stream.shown).join(' ');
+    if(state.stream.shown>=words.length)clearInterval(streamTimer);
+  },110);
+}
+function stopWorking(){
+  clearTimers();
+  for(const item of state.thread)if(item.type==='tools')item.lines.forEach(line=>{if(line.state==='active'||line.state==='queued')line.state='stopped'});
+  state.thread=state.thread.map(item=>item.type==='stream'?ai(`<p>${escapeHtml(state.stream.words.slice(0,state.stream.shown).join(' '))}</p>`):item);
+  state.stream=null;state.streaming=false;state.workingGift=null;
+  state.thread.push({type:'stopped'});state.scrollThreadEnd=true;render();
+}
+function retryProvider(){
+  state.thread=state.thread.filter(item=>item.type!=='error');
+  const toolItem=tools([{state:'active',text:'Zkouším to znovu…'}]);state.thread.push(toolItem);state.streaming=true;render();
+  later(()=>{
+    toolItem.lines[0]={state:'done',text:'Porovnal jsem ceny na Heurece a Alze'};state.streaming=false;
+    state.thread.push(ai('<p>Tentokrát to vyšlo. <strong>Sluchátka Sony WH-1000XM5</strong> stojí 7 990–8 490 Kč (Heureka, Alza). Cenu jsem dal do návrhu, na kartě ji vidíte jako náhled.</p>'));
+    state.proposal.edits.sony={price:ENRICH_TEXT.price};state.scrollThreadEnd=true;afterProposalChange();
+  },1400);
+}
+function retryFailedLink(){
+  state.create.failed='loading';render();
+  later(()=>{state.create.failed='done';state.proposal.creates.push(clone(DRAFTS.slippers));afterProposalChange()},1200);
+}
+function sendMessage(text){
+  if(!text.trim())return;
+  state.thread=state.thread.filter(item=>item.type!=='welcome');
+  state.thread.push(user(text));
+  const toolItem=tools([{state:'active',text:'Přemýšlím…'}]);state.thread.push(toolItem);state.streaming=true;state.scrollThreadEnd=true;render();
+  later(()=>{state.thread.pop();state.streaming=false;state.thread.push(ai('<p>Tahle ukázka odpovídá jen na připravené úlohy. Vyberte prosím jednu z nabídek.</p>'),{type:'starters'});state.scrollThreadEnd=true;render()},1100);
+}
+function demoAction(action){
+  state.usedChips.push(action);
+  if(action==='enrich'){state.thread.push(user('Vylepšit sluchátka'));runEnrichFlow('sony',{append:true});return}
+  if(action==='create'){
+    state.thread.push(user('Přidat 3 dárky z odkazů'),tools([{state:'done',text:'Načetl jsem 3 ukázkové odkazy'}]),ai('<p>Připravil jsem 3 dárky. Na konci seznamu je vidíte jako náhled.</p>'),{type:'drafts'});
+    state.create={failed:'none',pick:null};
+    state.proposal.creates.push(clone(DRAFTS.blanket),clone(DRAFTS.book),clone(DRAFTS.slippers));
+  }
+  if(action==='sort'){
+    const order=[...state.gifts].sort((first,second)=>priceValue(first)-priceValue(second)).map(gift=>gift.id);
+    state.thread.push(user('Seřadit podle ceny'),ai('<p>Seřadím dárky od nejlevnějšího, sluchátka bez ceny dám na konec. Nové pořadí vidíte na kartách.</p>'));
+    state.proposal.reorder=order;
+  }
+  state.scrollThreadEnd=true;afterProposalChange();
+}
+function submitForReview(){
+  const rows=proposalRows(state.proposal);if(!rows.length)return;
+  if(state.submitted&&state.submitted.status==='pending'){
+    const target=state.submitted.proposal;
+    Object.assign(target.edits,state.proposal.edits);target.creates.push(...state.proposal.creates);target.deletes.push(...state.proposal.deletes);if(state.proposal.reorder)target.reorder=state.proposal.reorder;
+  }else{
+    state.submitted={id:'prop-'+Math.random().toString(36).slice(2,6),status:'pending',proposal:state.proposal,submittedAt:'dnes 14:32'};
+    state.thread.push(ai('<p>Návrh jsem odeslal ke kontrole. Nic se zatím nezměnilo.</p>'),{type:'proposal'});
+  }
+  state.proposal=emptyProposal();if(state.enrich)state.enrich.locked=true;
+  state.scrollThreadEnd=true;openReview();
+}
+function openReview(){
+  const rows=proposalRows(state.submitted.proposal);
+  state.reviewSelection=Object.fromEntries(rows.map(row=>[row.id,!row.confirm]));
+  state.page='review';state.menuFor=null;if(isMobile())state.panelOpen=false;
+  render({resetWorkspace:true});
+}
+function applyReview(){
+  const rows=proposalRows(state.submitted.proposal);const selected=rows.filter(row=>state.reviewSelection[row.id]);
+  if(!selected.length)return;
+  const snapshot=clone(state.gifts);applyRows(selected,state.submitted.proposal);
+  const batch={id:'batch-'+(state.batches.length+1),snapshot,rows:selected.map(row=>({id:row.id,kind:row.kind})),open:false,undone:false,source:'review'};
+  state.batches.push(batch);
+  Object.assign(state.submitted,{status:'applied',applied:selected.length,total:rows.length,batchId:batch.id});
+  state.page='wishlist';state.scrollThreadEnd=true;
+  render({resetWorkspace:true});
+  showToast(`Použito ${selected.length} z ${ofChangesLabel(rows.length)}. Výsledek je i v AI asistentovi.`);
+}
+function undoBatch(batchId){
+  const batch=state.batches.find(item=>item.id===batchId);if(!batch||batch.undone)return;
+  state.gifts=clone(batch.snapshot);batch.undone=true;batch.open=false;
+  if(state.enrich){state.enrich.applied={};state.enrich.locked=false;for(const key of Object.keys(state.enrich.rows))state.enrich.rows[key]='pending';state.enrich.imagePick=null}
+  state.thread.push(ai('<p>Vráceno. Seznam je ve stavu před použitím těchto změn.</p>'));state.scrollThreadEnd=true;render();
+}
+
+/* ── Rendering: page ── */
+function canUseAssistant(){return state.access!=='locked'}
+function giftCard(gift,overlay){
+  const edit=overlay.edits[gift.id];const deleting=overlay.deletes.has(gift.id);const isNew=overlay.isNew;
+  const {gift:shown,marks}=displayGift(gift,edit);
+  const working=state.workingGift===gift.id;const focused=state.panelOpen&&state.panelMode==='gift'&&state.focusGift===gift.id&&!working;
+  const moveTo=overlay.reorder?overlay.reorder.indexOf(gift.id)+1:0;const moved=moveTo&&moveTo!==positionOf(gift.id);
+  const classes=['gift-cell'];
+  if(isNew)classes.push('is-new');else if(deleting)classes.push('is-deleting');else if(working)classes.push('is-working');else if(focused)classes.push('is-focused');else if(edit||moved)classes.push('is-proposed');
+  if(state.flashGift===gift.id)classes.push('flash');
+  const chipText=isNew?'Nový, návrh':working?'AI pracuje':moved?`Návrh: ${moveTo}. místo`:edit?'Návrh':focused?'V dílně AI':null;
+  const chip=chipText&&!deleting?`<span class="ai-chip" title="Vidíte jen vy, návštěvníci seznamu ne.">${icon(working?'loader':'sparkles',working?'spinner':'')}${chipText}<span class="sr-only">, vidíte jen vy</span></span>`:'';
+  const imageInner=shown.img==='camera'?`<img src="${CAMERA_SRC}" alt="">`:shown.art?art(shown.art):`<div class="image-placeholder">${icon('image')}<span>Bez obrázku</span></div>`;
+  const showReserved=gift.reserved&&state.role==='manager'&&!isNew;
+  const stateBadge=deleting?`<div class="state removal"><span>${icon('trash')}${state.held.includes(gift.id)?'Čeká na potvrzení smazání':'Bude smazán po kontrole'}</span></div>`:showReserved?'<div class="state"><span>Rezervováno</span></div>':'';
+  const sparkleDisabled=state.access==='kill';
+  const actions=isNew?`<span class="footer-note">Přidá se ${state.ff?'hned':'po kontrole'}</span>`:deleting?'<span class="footer-note">Smaže se jen s potvrzením</span>':
+    `${canUseAssistant()?`<button type="button" class="icon-btn ai-sparkle" data-action="enrich-gift" data-arg="${gift.id}" ${sparkleDisabled?'aria-disabled="true" title="AI asistent je dočasně vypnutý"':''} aria-label="Vylepšit pomocí AI: ${escapeHtml(gift.name)}">${icon('sparkles')}</button>`:''}
+     <button type="button" class="icon-btn" data-action="gift-menu" data-arg="${gift.id}" aria-haspopup="menu" aria-expanded="${state.menuFor===gift.id}" aria-label="Další akce: ${escapeHtml(gift.name)}">${icon('ellipsis')}</button>`;
+  const article=`<article class="gift" id="gift-${gift.id}" aria-label="${escapeHtml(gift.name)}${isNew?', navržený nový dárek':''}${deleting?', navržený ke smazání':''}">
+    <div class="image-area${marks.has('image')?' mark-new':''}"><div class="image-pattern" aria-hidden="true"></div><div class="image-art">${imageInner}</div>
+      <span class="category" style="background:${CATEGORY_COLORS[shown.category]||'#a9dbff'}">${escapeHtml(shown.category)}</span>
+      ${shown.priority?`<span class="priority${marks.has('priority')?' mark-new':''}">${shown.priority}</span>`:''}${stateBadge}${chip}</div>
+    <div class="gift-body"><h3 class="gift-title">${escapeHtml(shown.name)}</h3>
+      ${shown.description?`<p class="gift-description${marks.has('append')?' mark-new':''}">${escapeHtml(shown.description)}</p>`:''}
+      <div class="gift-links${marks.has('addLinks')?' mark-new':''}">${shown.links.map(link=>`<a class="gift-link" href="#" data-demo="link">${icon('external')}${link}</a>`).join('')}</div>
+      <p class="gift-price${shown.price?'':' empty'}${marks.has('price')?' mark-new':''}">${shown.price||'Cena neuvedena'}</p></div>
+    <div class="gift-actions">${actions}</div></article>`;
+  return `<div class="${classes.join(' ')}">${article}${state.menuFor===gift.id?giftMenu(gift):''}</div>`;
+}
+function giftMenu(gift){
+  const killed=state.access==='kill';
+  const aiItem=canUseAssistant()?`<button type="button" role="menuitem" class="menu-ai" data-action="enrich-gift" data-arg="${gift.id}" ${killed?'aria-disabled="true"':''}>${icon('sparkles')}Vylepšit pomocí AI<small>${killed?'Dočasně vypnuto':'Otevře dílnu'}</small></button><hr>`:'';
+  return `<div class="menu gift-menu" role="menu" aria-label="Další akce: ${escapeHtml(gift.name)}">${aiItem}
+    <button type="button" role="menuitem" data-demo="menu">${icon('pencil')}Upravit</button>
+    <button type="button" role="menuitem" data-demo="menu">${icon('copy')}Duplikovat</button>
+    <button type="button" role="menuitem" data-demo="menu">${icon('folder')}Přesunout do kategorie</button><hr>
+    <button type="button" role="menuitem" class="menu-danger" data-demo="menu">${icon('trash')}Smazat</button></div>`;
+}
+function pendingBanner(){
+  if(!state.submitted||state.submitted.status!=='pending')return '';
+  const count=proposalRows(state.submitted.proposal).length;
+  return `<div class="alert pending-banner" role="region" aria-label="Čekající změny">${icon('sparkles')}
+    <p class="alert-title">Čekající změny (1)</p><p class="alert-body">AI asistent navrhl změny tohoto seznamu. Použijí se, až je zkontrolujete.</p>
+    <ul class="proposals"><li class="proposal"><span class="proposal-summary"><strong>${changesLabel(count)} z AI asistenta</strong><span class="expiry">platnost do 25. 10.</span></span>
+    <button type="button" class="btn secondary sm" data-action="open-review">Zkontrolovat</button></li></ul></div>`;
+}
+function triggerButton(){
+  const locked=state.access==='locked';const killed=state.access==='kill';
+  return `<button type="button" class="btn secondary ai-trigger" id="ai-trigger" data-action="toggle-panel" aria-expanded="${state.panelOpen}" aria-controls="assistant">${icon(locked?'lock':'sparkles')}<span>AI asistent</span>${killed?'<span class="trigger-note label-wide">vypnuto</span>':''}</button>`;
+}
+function renderWishlist(){
+  const overlay=combinedOverlay();
+  const giftsInOrder=state.gifts;
+  const cards=giftsInOrder.map(gift=>giftCard(gift,overlay)).join('')+overlay.creates.map(gift=>giftCard(gift,{...overlay,isNew:true})).join('');
+  return `<div class="page">
+    <section class="hero" aria-labelledby="wishlist-title"><div class="hero-holes" aria-hidden="true"><span></span><span></span><span></span></div>
+      <div class="hero-main"><span class="for-chip">Pro: Babička</span><h1 id="wishlist-title">Vánoce pro babičku</h1>
+        <p class="hero-meta"><span>${icon('users')}Sdíleno s rodinou</span><span>${icon('gift')}${state.gifts.length} ${plural(state.gifts.length,'dárek','dárky','dárků')}</span><span>${icon('calendar')}Štědrý den 24. 12.</span></p></div>
+      <div class="hero-actions"><button type="button" class="icon-btn" data-demo="chrome" aria-label="Nastavení seznamu">${icon('settings')}</button><button type="button" class="icon-btn" data-demo="chrome" aria-label="Další akce se seznamem">${icon('ellipsis')}</button></div>
+    </section>
+    ${pendingBanner()}
+    <div class="toolbar" role="toolbar" aria-label="Nástroje seznamu">
+      <div class="segmented" role="group" aria-label="Zobrazení dárků"><button type="button" class="icon-only" aria-pressed="true" aria-label="Karty" data-demo="chrome">${icon('grid')}</button><button type="button" class="icon-only" aria-pressed="false" aria-label="Seznam" data-demo="chrome">${icon('list')}</button><button type="button" class="icon-only" aria-pressed="false" aria-label="Kompaktní" data-demo="chrome">${icon('rows')}</button></div>
+      <button type="button" class="btn secondary icon-label" data-demo="chrome" aria-label="Zobrazit">${icon('sliders')}<span class="label-wide">Zobrazit</span></button>
+      <span class="spacer"></span>
+      ${triggerButton()}
+      <button type="button" class="btn primary icon-label" data-demo="chrome" aria-label="Přidat dárek">${icon('plus')}<span class="label-wide">Přidat dárek</span></button>
+    </div>
+    ${canUseAssistant()&&state.scenario==='chat'?`<p class="workbench-tip">${icon('sparkles')}Ikona jiskry na kartě otevře dílnu dárku. Návrhy se tady ukážou jako náhled, který vidíte jen vy.</p>`:''}
+    <div class="gift-grid">${cards}</div>
+  </div>`;
+}
+function renderReview(){
+  const proposal=state.submitted.proposal;const rows=proposalRows(proposal);
+  const selectedCount=rows.filter(row=>state.reviewSelection[row.id]).length;
+  const confirmRows=rows.filter(row=>row.confirm);const normalRows=rows.filter(row=>!row.confirm);
+  const confirmSelected=confirmRows.filter(row=>state.reviewSelection[row.id]).length;
+  return `<div class="page review-page">
+    <button type="button" class="back-link" data-action="back-to-list">${icon('arrow-left')}Zpět na seznam</button>
+    <p class="eyebrow">Návrh změn</p><h1 class="review-h1">Vánoce pro babičku</h1>
+    <section class="summary" aria-label="Souhrn návrhu"><span class="summary-icon">${icon('sparkles')}</span>
+      <p><strong>AI asistent</strong> jménem ${state.demo?'Ukázkový účet':state.role==='manager'?'Martin Novák':'Vlasta Nováková'}, z konverzace v panelu vpravo</p>
+      <p class="summary-meta"><span>${icon('clock')}Odesláno ${state.submitted.submittedAt}</span><span>${icon('hourglass')}Platnost do 25. 10.</span></p>
+      ${kindCountsHtml(rows)}</section>
+    ${state.viewport==='desktop'?`<p class="handoff-note">${icon('message')}Konverzace zůstává otevřená vedle. Po použití v ní uvidíte výsledek a tlačítko Vrátit.</p>`:''}
+    ${confirmRows.length?`<section class="r-section confirm" aria-labelledby="confirm-h"><h2 id="confirm-h">Vyžaduje vaše potvrzení</h2><p class="r-note">Tyto změny se nepoužijí, dokud je jednotlivě nezaškrtnete. Před použitím je ještě jednou shrneme.</p><div class="r-rows">${confirmRows.map(reviewRow).join('')}</div></section>`:''}
+    <section class="r-section" aria-labelledby="normal-h"><h2 id="normal-h">Změny</h2><p class="r-note">Seřazené tak, jak je asistent navrhl.</p><div class="r-rows">${normalRows.map(reviewRow).join('')}</div></section>
+    <div class="apply-bar" role="region" aria-label="Použití vybraných změn"><div class="apply-inner"><div><p class="apply-count">Vybráno ${selectedCount} z ${rows.length}</p>
+      <p class="apply-help">${confirmSelected?`Včetně ${confirmSelected} ${plural(confirmSelected,'změny','změn','změn')} s potvrzením, před použitím ji shrneme.`:'Vybrané změny se použijí najednou.'}</p></div>
+      <button type="button" class="btn primary" data-action="apply-review" ${selectedCount?'':'disabled'}>${icon('check')}Použít vybrané (${selectedCount})</button></div></div>
+  </div>`;
+}
+function reviewRow(row){
+  const kind=KINDS[row.kind];const gift=row.gift||giftById(row.giftId);
+  const diffs=[];
+  if(row.kind==='edit'){
+    const fields=row.fields;
+    if(fields.price)diffs.push(['Cena',gift.price,fields.price]);
+    if(fields.priority)diffs.push(['Priorita',gift.priority||'Bez priority',fields.priority]);
+    if(fields.addLinks)diffs.push(['Odkazy',null,fields.addLinks.join(', ')]);
+    if(fields.image)diffs.push(['Obrázek',gift.art||gift.img?'Původní obrázek':'Bez obrázku','Vybraný obrázek, uloží se do Přejeme si']);
+    if(fields.append)diffs.push(['Popis',null,fields.append.join(' ')]);
+  }
+  if(row.kind==='create')diffs.push(['Název',null,gift.name],['Cena',null,gift.price],['Odkaz',null,gift.links[0]]);
+  if(row.kind==='delete')diffs.push(['Dárek',gift.name,null]);
+  if(row.kind==='reorder')diffs.push(['Pozice',String(row.from),String(row.to)]);
+  const diffHtml=diffs.map(([label,old,next])=>`<div class="diff"><span class="diff-label">${label}</span><span class="diff-values">${old&&next?`<del class="diff-old">${escapeHtml(old)}</del><span class="diff-arrow" aria-hidden="true">→</span><ins class="diff-new">${escapeHtml(next)}</ins>`:old?`<del class="diff-old">${escapeHtml(old)}</del>`:`<ins class="diff-new only">${escapeHtml(next)}</ins>`}</span></div>`).join('');
+  const checked=state.reviewSelection[row.id];
+  const thumb=gift.img==='camera'?`<span class="thumb sm"><img src="${CAMERA_SRC}" alt=""></span>`:`<span class="thumb sm">${gift.art?art(gift.art,true):icon('image')}</span>`;
+  return `<article class="rrow" data-tone="${kind.tone}" data-selected="${checked}"><div class="rrow-band"><input type="checkbox" class="check" data-action="review-select" data-arg="${row.id}" ${checked?'checked':''} aria-label="Vybrat: ${kind.title}, ${escapeHtml(gift.name)}"><span class="rrow-kind">${icon(kind.icon)}${kind.title}${row.kind==='edit'?` <span style="font-weight:400">(${Object.keys(row.fields).length}×)</span>`:''}</span></div>
+    <div class="rrow-body"><div class="identity">${thumb}<span class="identity-text"><span class="identity-name">${escapeHtml(gift.name)}</span><span class="identity-sub">${row.kind==='create'?'Přidá se na konec seznamu':`Pozice ${positionOf(gift.id)} · ${gift.links[0]}`}</span></span></div><div class="diff-list">${diffHtml}</div></div></article>`;
+}
+
+/* ── Rendering: assistant panel ── */
+function renderPanel(){
+  if(!state.panelOpen)return '';
+  const hiddenOnMobile=isMobile()&&state.mobileView==='preview';
+  const locked=state.access==='locked';
+  const headMenu=state.panelMenu?`<div class="menu panel-menu" role="menu" aria-label="Možnosti asistenta">
+      <button type="button" role="menuitem" data-action="new-chat">${icon('message-plus')}Nová konverzace</button>
+      <button type="button" role="menuitem" data-action="open-history">${icon('history')}Historie konverzací<small style="margin-left:auto;font-size:11px;color:var(--muted-foreground)">tento seznam</small></button></div>`:'';
+  const back=state.panelView==='history'?`<button type="button" class="icon-btn ghost history-back" data-action="close-history" aria-label="Zpět do konverzace">${icon('arrow-left')}</button>`:'';
+  const head=`<header class="ap-head">${back||`<span class="ap-mark" aria-hidden="true">${icon('sparkles')}</span>`}
+    <div class="ap-titles"><h2 class="ap-title" id="assistant-title">${state.panelView==='history'?'Historie konverzací':'AI asistent'}</h2><p class="ap-scope">Seznam: Vánoce pro babičku</p></div>
+    ${state.demo?'<span class="badge tone-info">Ukázka</span>':''}
+    <div class="ap-actions">${locked?'':`<button type="button" class="icon-btn ghost" data-action="panel-menu" aria-haspopup="menu" aria-expanded="${state.panelMenu}" aria-label="Možnosti asistenta">${icon('ellipsis')}</button>`}
+    <button type="button" class="icon-btn" data-action="close-panel" aria-label="Zavřít AI asistenta">${icon('x')}</button></div>${headMenu}</header>`;
+  if(locked)return `<aside class="assistant" id="assistant" aria-labelledby="assistant-title" ${hiddenOnMobile?'hidden':''}>${head}${lockedBody()}</aside>`;
+  if(state.panelView==='history')return `<aside class="assistant" id="assistant" aria-labelledby="assistant-title">${head}${historyBody()}</aside>`;
+  const tabs=state.panelMode==='gift'||proposalRows(combinedOverlay()).length||state.batches.length?`<div class="mobile-tabs">${previewToggle()}</div>`:'';
+  return `<aside class="assistant" id="assistant" aria-labelledby="assistant-title" ${hiddenOnMobile?'hidden':''}>${head}${tabs}${pinnedGift()}
+    <div class="thread" id="thread" role="log" aria-label="Konverzace">${state.thread.map(renderItem).join('')}${state.demo&&!state.streaming?demoChips():''}</div>
+    ${proposalBar()}${composer()}</aside>`;
+}
+function previewToggle(){
+  return `<div class="segmented" role="radiogroup" aria-label="Zobrazit"><button type="button" role="radio" aria-checked="${state.mobileView==='chat'}" data-action="mobile-view" data-arg="chat">${icon('message')}Chat</button><button type="button" role="radio" aria-checked="${state.mobileView==='preview'}" data-action="mobile-view" data-arg="preview">${icon('eye')}Náhled na seznamu</button></div>`;
+}
+function pinnedGift(){
+  if(state.panelMode!=='gift')return '';
+  const base=giftById(state.focusGift);if(!base)return '';
+  const {gift}=displayGift(base,combinedOverlay().edits[base.id]);
+  const thumb=gift.img==='camera'?`<span class="thumb"><img src="${CAMERA_SRC}" alt=""></span>`:`<span class="thumb">${gift.art?art(gift.art,true):icon('image')}</span>`;
+  return `<section class="pin${state.pinExpanded?' is-expanded':''}" aria-label="Dárek v dílně">${thumb}
+    <div style="min-width:0"><p class="pin-eyebrow">Dílna dárku</p><p class="pin-name">${escapeHtml(gift.name)}</p>
+      <p class="pin-meta"><a class="gift-link" href="#" data-demo="link">${icon('external')}${gift.links[0]}</a><span>${gift.price?escapeHtml(gift.price):'Bez ceny'}</span>${state.workingGift?'<span>Zjišťuji údaje…</span>':''}</p></div>
+    <div class="pin-actions">
+      <button type="button" class="icon-btn ghost pin-toggle" data-action="toggle-pin" aria-expanded="${state.pinExpanded}" aria-label="${state.pinExpanded?'Sbalit':'Rozbalit'} údaje o dárku">${icon(state.pinExpanded?'chevron-up':'chevron-down')}</button>
+      <button type="button" class="icon-btn ghost only-desktop" data-action="locate-gift" aria-label="Ukázat dárek na seznamu">${icon('eye')}</button>
+      <button type="button" class="icon-btn ghost" data-action="exit-workbench" aria-label="Zavřít dílnu dárku a pracovat s celým seznamem">${icon('x')}</button></div>
+  </section>`;
+}
+function renderItem(item){
+  switch(item.type){
+    case 'user':return `<div class="msg-user">${escapeHtml(item.text)}</div>`;
+    case 'ai':return `<div class="msg-ai"><span class="ai-avatar" aria-hidden="true">${icon('sparkles')}</span><div class="ai-content">${item.html}</div></div>`;
+    case 'context':return `<p class="msg-context">${icon(item.iconName||'info')}${escapeHtml(item.text)}</p>`;
+    case 'tools':return `<div class="msg-ai"><span></span><ul class="tools" aria-label="Postup asistenta">${item.lines.map(line=>`<li data-state="${line.state}">${icon({done:'check',active:'loader',queued:'circle',failed:'alert',stopped:'square'}[line.state],line.state==='active'?'spinner':'')}${escapeHtml(line.text)}${line.state==='stopped'?' (zastaveno)':''}</li>`).join('')}</ul></div>`;
+    case 'stream':{const text=state.stream?state.stream.words.slice(0,state.stream.shown).join(' '):'';return `<div class="msg-ai"><span class="ai-avatar" aria-hidden="true">${icon('sparkles')}</span><div class="ai-content"><p id="stream-text" aria-live="off">${escapeHtml(text)}<span class="caret" aria-hidden="true"></span></p></div></div>`}
+    case 'stopped':return `<div class="msg-ai"><span class="ai-avatar" aria-hidden="true">${icon('sparkles')}</span><div class="ai-content"><p>Zastavil jsem to. Nic se nezměnilo.</p><div class="pcard-actions"><button type="button" class="btn secondary sm" data-action="enrich-gift" data-arg="sony">${icon('retry')}Pokračovat ve vylepšení</button></div></div></div>`;
+    case 'welcome':return welcome();
+    case 'starters':return `<div class="starters">${starterButtons()}</div>`;
+    case 'enrich':return enrichCard();
+    case 'drafts':return draftsBlock();
+    case 'choose':return chooseBlock();
+    case 'bulk':return bulkBlock();
+    case 'proposal':return proposalCard();
+    case 'applied':return appliedCard(item.batchId);
+    case 'held':return heldCard();
+    case 'notice':return `<div class="alert compact ${item.tone}" role="status">${icon(item.iconName)}<p class="alert-title">${item.title}</p><p class="alert-body">${item.body}</p></div>`;
+    case 'error':return `<div class="msg-ai"><span class="ai-avatar" aria-hidden="true">${icon('sparkles')}</span><div class="ai-content"><div class="alert compact destructive" role="alert">${icon('alert')}<p class="alert-title">Odpověď se nepodařilo dokončit.</p><p class="alert-body">Služba AI teď neodpovídá. Vaše zpráva zůstala a nic se nezměnilo.</p><div class="alert-actions"><button type="button" class="btn secondary sm" data-action="retry-provider">${icon('retry')}Zkusit znovu</button></div></div></div></div>`;
+    default:return '';
+  }
+}
+function starterButtons(){
+  return `<button type="button" class="btn secondary" data-action="starter" data-arg="enrich">${icon('image')}Vylepšit dárek bez obrázku</button>
+    <button type="button" class="btn secondary" data-action="starter" data-arg="create">${icon('link')}Přidat dárky z odkazů</button>
+    <button type="button" class="btn secondary" data-action="starter" data-arg="bulk">${icon('pencil')}Upravit více dárků najednou</button>`;
+}
+function welcome(){
+  return `<section class="welcome" aria-labelledby="welcome-h"><h3 id="welcome-h">S čím vám u seznamu pomůžu?</h3>
+    <p>Popište dárky vlastními slovy nebo vložte odkazy. Každou změnu před použitím zkontrolujete.</p>
+    <div class="starters">${starterButtons()}</div>
+    <p class="tip">U každého dárku najdete také <strong>Vylepšit pomocí AI</strong>, otevře se dílna jen pro ten dárek.</p></section>`;
+}
+function decideControls(key){
+  const enrich=state.enrich;
+  if(enrich.applied[key])return '<span class="badge tone-success">'+icon('check')+'Použito</span>';
+  if(enrich.locked)return enrich.rows[key]==='accepted'?'<span class="badge tone-info">Ke kontrole</span>':'<span class="badge tone-muted">Nepřevzato</span>';
+  const value=enrich.rows[key];
+  return `<span class="decide" role="group" aria-label="Rozhodnutí"><button type="button" data-decision="accepted" aria-pressed="${value==='accepted'}" data-action="decide" data-arg="${key}:accepted">${icon('check')}Přijmout</button><button type="button" data-decision="rejected" aria-pressed="${value==='rejected'}" data-action="decide" data-arg="${key}:rejected">${icon('x')}Odmítnout</button></span>`;
+}
+function enrichCard(){
+  const enrich=state.enrich;if(!enrich)return '';
+  const row=(key,label,iconName,content)=>`<div class="erow" data-state="${enrich.applied[key]?'accepted':enrich.rows[key]}"><div class="erow-head"><span class="erow-label">${icon(iconName)}${label}</span>${key==='image'?'':decideControls(key)}</div>${content}</div>`;
+  const pick=enrich.imagePick;const imageLocked=enrich.locked||enrich.applied.image;
+  const picks=IMAGE_CANDIDATES.map((candidate,index)=>`<div><button type="button" class="pick" aria-pressed="${pick===index}" data-action="pick-image" data-arg="${index}" ${imageLocked?'disabled':''} aria-label="Obrázek ${index+1} ze 4: ${candidate.label}, zdroj ${candidate.source}">${art(candidate.key)}<span class="pick-check">${icon('check')}</span></button><span class="pick-source">${candidate.source}</span></div>`).join('');
+  const acceptedCount=Object.keys(enrich.rows).filter(key=>enrich.rows[key]==='accepted').length;
+  return `<section class="ecard" aria-labelledby="ecard-h"><div class="ecard-head"><h3 id="ecard-h">Návrhy pro sluchátka</h3><span class="badge">${acceptedCount} z 5 přijato</span></div>
+    <div class="erow"><div class="locked-row">${icon('lock')}<span><strong>Název zůstává:</strong> seznam je sdílený, takže název dárku už měnit nejde. Značku a model doplním do popisu.</span></div></div>
+    ${row('price','Cena','tag',`<p class="erow-value">${ENRICH_TEXT.price}</p><ul class="refs">
+      <li><a href="#" data-demo="link">Heureka.cz ${icon('external')}</a><span class="ref-price">od 7 990 Kč</span><span class="ref-note">14 obchodů, nejlevněji Datart</span></li>
+      <li><a href="#" data-demo="link">Alza.cz ${icon('external')}</a><span class="ref-price">8 490 Kč</span><span class="ref-note">Skladem, doprava zdarma</span></li>
+      <li><a href="#" data-demo="link">Amazon.de ${icon('external')}</a><span class="ref-price">329 €</span><span class="ref-note">Zahraniční srovnání, asi 8 230 Kč bez dopravy</span></li></ul>`)}
+    ${row('links','Odkazy na obchody','link',`<p class="erow-value">+ heureka.cz, + alza.cz</p><p class="erow-help">Srovnání cen přidám jako další odkazy, sony.cz zůstává první.</p>`)}
+    <div class="erow" data-state="${enrich.applied.image?'accepted':pick!==null?'accepted':enrich.rows.image}"><div class="erow-head"><span class="erow-label">${icon('image')}Obrázek</span>${enrich.applied.image?'<span class="badge tone-success">'+icon('check')+'Použito</span>':enrich.locked?(pick!==null?'<span class="badge tone-info">Ke kontrole</span>':'<span class="badge tone-muted">Bez obrázku</span>'):''}</div>
+      <div class="image-picks" role="group" aria-label="Vyberte obrázek">${picks}</div>
+      <div class="pick-row"><span class="erow-help">${pick!==null?`Vybráno: ${IMAGE_CANDIDATES[pick].label}. `:''}Obrázek se uloží do Přejeme si, nebude se načítat z obchodu.</span>${imageLocked?'':`<button type="button" class="btn ghost sm" data-action="pick-image" data-arg="none" aria-pressed="${enrich.rows.image==='rejected'}">${icon('ban')}Bez obrázku</button>`}</div></div>
+    ${row('rating','Hodnocení','star',`<p class="erow-value">4,7/5 · 2 315 hodnocení na Heurece</p><p class="erow-help">Dárky zatím nemají pole pro hodnocení, přidám ho jako samostatnou větu na konec popisu.</p>`)}
+    ${row('description','Doplnění popisu','text',`<p class="append"><span class="append-date">Doplnění 18. 10.</span>${ENRICH_TEXT.description}</p>`)}
+    ${enrich.locked||Object.keys(enrich.applied).length?'':`<div class="ecard-foot"><span>Náhled se mění na kartě v seznamu.</span><button type="button" class="btn secondary sm" data-action="accept-all">${icon('check')}Přijmout vše</button></div>`}
+  </section>`;
+}
+function draftsBlock(){
+  const create=state.create;
+  const draft=gift=>`<li class="draft"><span class="thumb sm">${art(gift.art,true)}</span><span style="min-width:0"><span class="draft-name" style="display:block">${escapeHtml(gift.name)}</span><span class="draft-meta">${gift.price} · ${gift.links[0]}</span></span><span class="badge tone-info">V návrhu</span></li>`;
+  const items=[draft(DRAFTS.blanket),draft(DRAFTS.book)];
+  if(create.failed==='none'||create.failed==='done')items.push(draft(DRAFTS.slippers));
+  else items.push(`<li class="draft is-failed"><span class="thumb sm icon-thumb">${icon(create.failed==='loading'?'loader':'link',create.failed==='loading'?'spinner':'')}</span><span style="min-width:0"><span class="draft-name" style="display:block">${DRAFTS.slippers.source}</span><span class="draft-error">${icon('alert')}${create.failed==='loading'?'Načítám znovu…':'Odkaz se nepodařilo načíst'}</span></span><span></span>
+    ${create.failed==='loading'?'':`<span class="draft-actions"><span class="erow-help" style="flex-basis:100%">Obchod stránku nevydal. Ostatní dárky to neblokuje.</span><button type="button" class="btn secondary sm" data-action="retry-link">${icon('retry')}Zkusit znovu</button><button type="button" class="btn ghost sm" data-action="skip-link">Vynechat</button></span>`}</li>`);
+  if(create.failed==='skipped')items.pop();
+  return `<ul class="drafts" aria-label="Připravené dárky">${items.join('')}</ul>`;
+}
+function chooseBlock(){
+  const pick=state.create.pick;
+  const options=['patchwork','jaipur','duel'].map(key=>{const gift=DRAFTS[key];return `<button type="button" class="choice" role="radio" aria-checked="${pick===key}" data-action="choose-game" data-arg="${key}"><span class="radio" aria-hidden="true"></span><span style="min-width:0"><strong>${gift.name}</strong><span class="choice-note">${gift.note} · ${gift.links[0]}</span></span><strong>${gift.price}</strong></button>`}).join('');
+  return `<div class="choices" role="radiogroup" aria-label="Desková hra pro 2 hráče">${options}</div>${pick?`<div class="msg-ai"><span class="ai-avatar" aria-hidden="true">${icon('sparkles')}</span><div class="ai-content"><p>Přidám <strong>${DRAFTS[pick].name}</strong> do návrhu. Jiný tip můžete vybrat kdykoli před kontrolou.</p></div></div>`:''}`;
+}
+function bulkBlock(){
+  const item=(id,change)=>{const gift=giftById(id);return `<li><span class="scope-name">${escapeHtml(gift.name)} <span style="font-weight:400;color:var(--muted-foreground)">${gift.price}</span></span><span class="scope-change">${change}</span></li>`};
+  const reason=state.role==='manager'?'Orchidej na pozici 2 nechávám. Je rezervovaná, takže ji smazat nejde.':'Orchidej na pozici 2 nechávám, tento dárek teď smazat nejde.';
+  return `<div class="msg-ai"><span class="ai-avatar" aria-hidden="true">${icon('sparkles')}</span><div class="ai-content"><p>Rozumím. Než cokoli navrhnu, shrnu rozsah:</p>
+    <section class="scope" aria-label="Rozsah změn"><p class="scope-head">Změním 4 dárky, smažu 2.</p>
+      <p class="scope-sub">${icon('pencil')}Do nízké priority, vše nad 3 000 Kč</p>
+      <ul>${item('vacuum','Vysoká → Nízká')}${item('spa','Vysoká → Nízká')}${item('kindle','Střední → Nízká')}${item('camera','Střední → Nízká')}</ul>
+      <p class="scope-sub">${icon('trash')}Smazání duplikátů <span class="badge tone-warning">${icon('alert')}Vyžaduje potvrzení</span></p>
+      <ul>${item('orchid-2','pozice 6')}${item('orchid-3','pozice 8')}</ul>
+      <p class="reason">${icon('info')}<span>${reason}</span></p></section></div></div>`;
+}
+function proposalCard(){
+  const submitted=state.submitted;if(!submitted)return '';
+  const rows=proposalRows(submitted.proposal);
+  if(submitted.status==='pending'){
+    const reviewable=state.access!=='kill';
+    return `<article class="pcard" aria-labelledby="pcard-${submitted.id}"><div class="pcard-band" data-tone="link" id="pcard-${submitted.id}">${icon('hourglass')}Návrh čeká na vaši kontrolu</div>
+      <div class="pcard-body">${kindCountsHtml(rows)}<p class="pcard-meta"><span>${icon('clock')}Platnost 7 dní, do 25. 10.</span><span>${changesLabel(rows.length)}</span></p>
+      <div class="pcard-actions"><button type="button" class="btn primary" data-action="open-review" ${reviewable?'':'disabled'}>Zkontrolovat a použít</button></div>
+      <p class="pcard-note">Najdete ho i v pruhu Čekající změny nad seznamem.</p></div></article>`;
+  }
+  const batch=state.batches.find(item=>item.id===submitted.batchId);
+  if(batch&&batch.undone)return `<article class="pcard"><div class="pcard-band" data-tone="neutral">${icon('undo')}Vráceno</div><div class="pcard-body"><p class="pcard-note">Seznam je zpět ve stavu před použitím návrhu.</p></div></article>`;
+  return `<article class="pcard"><div class="pcard-band" data-tone="success">${icon('check')}Použito ${submitted.applied} z ${ofChangesLabel(submitted.total)}</div>
+    <div class="pcard-body">${kindCountsHtml(batch?batch.rows:rows)}${submitted.applied<submitted.total?`<p class="pcard-note">${submitted.total-submitted.applied} ${plural(submitted.total-submitted.applied,'změnu','změny','změn')} jste nevybrali, návrh je uzavřený.</p>`:''}
+    <div class="pcard-actions">${undoButton(batch)}</div></div></article>`;
+}
+function undoButton(batch){
+  if(!batch)return '';
+  if(batch.rows.some(row=>row.kind==='reorder'))return '<p class="pcard-note">Tuto dávku nelze vrátit, protože obsahuje přesun pořadí.</p>';
+  return `<button type="button" class="btn reversal sm" data-action="undo" data-arg="${batch.id}">${icon('undo')}Vrátit</button>`;
+}
+function appliedCard(batchId){
+  const batch=state.batches.find(item=>item.id===batchId);if(!batch)return '';
+  if(batch.undone)return `<article class="pcard"><div class="pcard-band" data-tone="neutral">${icon('undo')}Vráceno: ${changesLabel(batch.rows.length)}</div><div class="pcard-body"><p class="pcard-note">Seznam je ve stavu před použitím.</p></div></article>`;
+  return `<article class="pcard" aria-label="Použité změny"><div class="pcard-band" data-tone="success">${icon('check')}Použito: ${changesLabel(batch.rows.length)}</div>
+    <div class="pcard-body">${kindCountsHtml(batch.rows)}<p class="pcard-note">Změny už vidíte na seznamu. Celou dávku můžete vrátit, dokud se dárky znovu nezmění.</p>
+    <div class="pcard-actions">${undoButton(batch)}</div></div></article>`;
+}
+function heldCard(){
+  if(!state.held.length)return state.heldResolved?`<p class="msg-context">${icon(state.heldResolved==='deleted'?'trash':'check')}${state.heldResolved==='deleted'?'Dárek jste smazali. Smazání můžete vrátit v historii seznamu.':'Dárek zůstává na seznamu.'}</p>`:'';
+  const gifts=state.held.map(id=>giftById(id)).filter(Boolean);
+  return `<article class="confirm-card" aria-labelledby="held-h"><div class="confirm-head"><span class="confirm-mark">${icon('alert')}</span><h3 id="held-h">Smazání čeká na vaše potvrzení</h3></div>
+    <p style="font-size:13px">Smazání, rezervace a pozvánky správců vždy potvrdíte, i když používáte změny bez kontroly.</p>
+    ${gifts.map(gift=>`<div class="identity"><span class="thumb sm">${art(gift.art,true)}</span><span class="identity-text"><span class="identity-name">${escapeHtml(gift.name)}</span><span class="identity-sub">Pozice ${positionOf(gift.id)} · ${gift.links[0]} · duplikát</span></span></div>`).join('')}
+    <div class="pcard-actions"><button type="button" class="btn destructive" data-action="held-delete">${icon('trash')}Smazat dárek</button><button type="button" class="btn secondary" data-action="held-keep">Ponechat</button></div></article>`;
+}
+function demoChips(){
+  const chips=[['enrich','Vylepšit sluchátka','sparkles'],['create','Přidat 3 dárky z odkazů','link'],['sort','Seřadit podle ceny','reorder']];
+  return `<div class="starters" role="group" aria-label="Předpřipravené akce">${chips.map(([action,label,iconName])=>`<button type="button" class="btn secondary" data-action="demo" data-arg="${action}" ${state.usedChips.includes(action)?'disabled':''}>${icon(iconName)}${label}</button>`).join('')}</div>`;
+}
+function proposalBar(){
+  const draftRows=proposalRows(state.proposal);
+  const pendingSubmitted=state.submitted&&state.submitted.status==='pending';
+  const openBatch=state.batches.find(batch=>batch.open&&!batch.undone);
+  const disabled=state.access==='kill'||state.access==='cap';
+  let row;
+  if(draftRows.length&&!state.ff){
+    const editRow=draftRows.length===1&&draftRows[0].kind==='edit'?`<span class="pbar-empty">${enrichFieldNames(draftRows[0].fields)}</span>`:'';
+    row=`<div class="pbar-summary"><span class="pbar-label">${icon('sparkles')}Návrh: ${changesLabel(draftRows.length)}</span>${kindCountsHtml(draftRows)}${editRow}</div><button type="button" class="btn primary" data-action="submit-review">Zkontrolovat</button>`;
+  }else if(pendingSubmitted){
+    const count=proposalRows(state.submitted.proposal).length;
+    row=`<div class="pbar-summary"><span class="pbar-label">${icon('hourglass')}Odesláno ke kontrole</span><span class="pbar-empty">${changesLabel(count)}, platnost do 25. 10.</span></div><button type="button" class="btn secondary" data-action="open-review" ${state.access==='kill'?'disabled':''}>Otevřít</button>`;
+  }else if(openBatch){
+    row=`<div class="pbar-summary"><span class="pbar-label">${icon('check')}Použito: ${changesLabel(openBatch.rows.length)}</span>${state.held.length?`<span class="pbar-empty">${state.held.length} smazání čeká na potvrzení v chatu</span>`:'<span class="pbar-empty">Změny jsou na seznamu</span>'}</div>${undoButton(openBatch).replace('btn reversal sm','btn reversal')}`;
+  }else{
+    row=`<div class="pbar-summary"><span class="pbar-label">${icon('sparkles')}Návrh</span><span class="pbar-empty">Zatím žádné změny</span></div>`;
+  }
+  return `<section class="pbar" aria-label="Návrh změn z této konverzace"><div class="pbar-row">${row}</div>
+    <div class="pbar-ff"><span class="pbar-ff-label" id="ff-label">Změny z chatu</span>
+      <div class="segmented" role="radiogroup" aria-labelledby="ff-label" aria-describedby="ff-help"><button type="button" role="radio" aria-checked="${!state.ff}" data-action="ff" data-arg="off" ${disabled?'disabled':''}>Ke kontrole</button><button type="button" role="radio" aria-checked="${state.ff}" data-action="ff" data-arg="on" ${disabled?'disabled':''}>Rovnou použít</button></div></div>
+    <p class="pbar-help${state.ff?' is-on':''}" id="ff-help">${state.ff?'Úpravy a nové dárky se použijí hned. ':''}Smazání, rezervace a pozvánky správců vždy potvrdíte.</p></section>`;
+}
+function composer(){
+  const reason=state.access==='cap'?'Limit se obnoví zítra v 0:00.':state.access==='kill'?'Asistent je dočasně vypnutý.':state.demo?'V ukázce vybíráte jen z připravených akcí.':'';
+  const disabled=Boolean(reason);
+  const placeholder=reason||(state.panelMode==='gift'?'Upřesněte, co mám u dárku změnit…':'Napište, co mám udělat…');
+  const button=state.streaming?`<button type="button" class="btn secondary" data-action="stop">${icon('square')}Zastavit</button>`:`<button type="button" class="btn primary send" data-action="send" aria-label="Odeslat" ${disabled?'disabled':''}>${icon('send')}</button>`;
+  return `<div class="composer"><div class="composer-row"><label class="sr-only" for="composer-input">Zpráva pro AI asistenta</label><textarea id="composer-input" rows="1" placeholder="${placeholder}" ${disabled?'disabled':''}>${disabled?'':escapeHtml(state.draft||'')}</textarea>${button}</div>
+    ${state.streaming?'<p class="composer-note" role="status">Asistent pracuje. Zastavením nic nezměníte.</p>':''}</div>`;
+}
+function historyBody(){
+  if(state.historyLoading)return `<div class="history" aria-busy="true"><span class="skel" style="height:32px;width:60%"></span>${[1,2,3,4].map(()=>'<span class="skel" style="height:58px"></span>').join('')}</div>`;
+  const items=[
+    ['enrich','Vylepšení: Sluchátka Sony WH-1000XM5','Dnes 14:20','Čeká na kontrolu','tone-info'],
+    ['toast','Dárky z odkazů od Jany','15. 10. v 19:40','3 změny použity','tone-success'],
+    ['toast','Nízká priorita pro dražší dárky','9. 10. v 21:05','Vráceno','tone-muted'],
+    ['toast','Nápady na dárek do 800 Kč','2. 10. v 18:12','Bez změn','tone-muted'],
+    ['toast','Doplnění cen podle Heureky','24. 9. v 20:31','5 změn použito','tone-success']
+  ];
+  return `<div class="history"><div class="history-head"><h3>Posledních 30 dní</h3><button type="button" class="btn primary sm" data-action="new-chat">${icon('message-plus')}Nová konverzace</button></div>
+    <ul class="history-list">${items.map(([target,title,date,outcome,tone])=>`<li><button type="button" class="history-item" data-action="history-open" data-arg="${target}"><span class="history-title">${title}</span><span class="history-date">${date}</span><span class="badge ${tone}">${outcome}</span></button></li>`).join('')}</ul>
+    <p class="tip">Konverzace se mažou po 30 dnech. Použité změny zůstávají v historii seznamu.</p></div>`;
+}
+function lockedBody(){
+  return `<div class="locked"><span class="locked-mark" aria-hidden="true">${icon('sparkles')}<span class="lock">${icon('lock')}</span></span>
+    <h3>AI asistent je zatím jen pro pozvané testery.</h3>
+    <p>Dárky můžete vylepšovat i s vlastní AI. Připojíte ji v Nastavení › Přístup pro AI a aplikace.</p>
+    <a class="btn secondary" href="#" data-demo="settings">${icon('key')}Přístup pro AI a aplikace</a></div>`;
+}
+function previewDock(){
+  if(!isMobile()||!state.panelOpen||state.mobileView!=='preview')return '';
+  const rows=proposalRows(combinedOverlay());
+  return `<div class="preview-dock"><p class="dock-summary">${icon('eye')}${rows.length?`Náhled návrhu: ${kindCountsText(rows)}`:'Náhled seznamu, žádné čekající změny'}</p>${previewToggle()}</div>`;
+}
+
+/* ── Main render ── */
+function render({resetScroll=false,resetWorkspace=false}={}){
+  const active=document.activeElement;
+  const focusKey=active&&active.dataset&&active.dataset.action?`[data-action="${active.dataset.action}"]${active.dataset.arg?`[data-arg="${active.dataset.arg}"]`:''}`:active&&active.id?'#'+active.id:null;
+  const thread=document.getElementById('thread');const threadScroll=thread?thread.scrollTop:0;
+  const workspace=document.getElementById('workspace');const workspaceScroll=workspace?workspace.scrollTop:0;
+  const initials=state.demo?'UK':state.role==='manager'?'MN':'VN';
+  const accountName=state.demo?'Ukázkový účet':state.role==='manager'?'Martin Novák':'Vlasta Nováková';
+  document.getElementById('device').innerHTML=`<div class="shell">
+    <header class="topbar"><div class="topbar-inner">
+      <a class="logo" href="#" data-demo="chrome" aria-label="Přejeme si, domovská stránka"><span class="logo-mark" aria-hidden="true">${icon('gift')}</span><span>přejeme si<span class="logo-tld">.cz</span></span></a>
+      <nav class="nav-links" aria-label="Hlavní navigace"><a class="nav-link" href="#" data-demo="chrome">Moje seznamy ${icon('chevron-down')}</a><a class="nav-link" href="#" aria-current="page" data-demo="chrome">Spravované ${icon('chevron-down')}</a><a class="nav-link" href="#" data-demo="chrome">Sledované ${icon('chevron-down')}</a></nav>
+      <div class="nav-right"><button type="button" class="icon-btn only-desktop" aria-label="Paleta barev" data-demo="chrome">${icon('palette')}</button><button type="button" class="icon-btn only-desktop" aria-label="Přepnout tmavý režim" data-action="nav-theme">${icon('moon')}</button>
+        <button type="button" class="icon-btn ghost" aria-label="Oznámení, 2 nepřečtená" data-demo="chrome">${icon('bell')}<span class="bell-count" aria-hidden="true">2</span></button>
+        <button type="button" class="avatar" aria-label="Účet: ${accountName}" data-demo="chrome">${initials}</button>
+        <button type="button" class="icon-btn ghost only-mobile" aria-label="Otevřít menu" data-demo="chrome">${icon('menu')}</button></div></div></header>
+    <div class="shell-body"><main class="workspace" id="workspace" data-palette="sky">${state.page==='review'?renderReview():renderWishlist()}</main>${renderPanel()}</div>
+    ${previewDock()}<div class="toast" id="toast" role="status" aria-live="polite" hidden></div></div>`;
+  const newThread=document.getElementById('thread');
+  if(newThread){newThread.scrollTop=resetScroll?0:threadScroll;if(state.scrollThreadEnd){newThread.scrollTop=newThread.scrollHeight}}
+  state.scrollThreadEnd=false;
+  const newWorkspace=document.getElementById('workspace');if(newWorkspace)newWorkspace.scrollTop=resetScroll||resetWorkspace?0:workspaceScroll;
+  if(focusKey){const target=document.querySelector(focusKey);if(target)target.focus({preventScroll:true})}
+  const textarea=document.getElementById('composer-input');if(textarea)autoGrow(textarea);
+}
+function autoGrow(textarea){textarea.style.height='auto';textarea.style.height=Math.min(textarea.scrollHeight+5,132)+'px'}
+function showToast(text){const toast=document.getElementById('toast');if(!toast)return;toast.textContent=text;toast.hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>{const current=document.getElementById('toast');if(current)current.hidden=true},3600)}
+
+/* ── Events ── */
+const dialog=document.getElementById('dialog');
+function openDeleteConfirmation(rows){
+  dialog.innerHTML=`<h2 id="dialog-title">Potvrďte smazání</h2><p class="dialog-text">Spolu s ostatními vybranými změnami smažete:</p>
+    <ul class="dialog-list">${rows.map(row=>{const gift=giftById(row.giftId);return `<li class="identity"><span class="thumb sm">${art(gift.art,true)}</span><span class="identity-text"><span class="identity-name">${escapeHtml(gift.name)}</span><span class="identity-sub">Pozice ${positionOf(gift.id)} · ${gift.links[0]}</span></span></li>`}).join('')}</ul>
+    <div class="dialog-actions"><button type="button" class="btn secondary" data-dialog="cancel">Zpět</button><button type="button" class="btn destructive" data-dialog="confirm">${icon('trash')}Použít a smazat</button></div>`;
+  dialog.showModal();
+}
+dialog.addEventListener('click',event=>{
+  const button=event.target.closest('[data-dialog]');if(!button)return;
+  dialog.close();if(button.dataset.dialog==='confirm')applyReview();
+});
+function closePanel(){
+  clearTimers();if(state.stream){state.stream=null}
+  state.panelOpen=false;state.panelMenu=false;state.streaming=false;state.workingGift=null;render();
+  const trigger=document.getElementById(lastTrigger)||document.getElementById('ai-trigger');if(trigger)trigger.focus();
+}
+const ACTIONS={
+  'toggle-panel':()=>{if(state.panelOpen&&!isMobile()){closePanel();return}lastTrigger='ai-trigger';state.panelOpen=true;state.mobileView='chat';state.page=state.page;render();const close=document.querySelector('[data-action="close-panel"]');if(close)close.focus()},
+  'close-panel':closePanel,
+  'panel-menu':()=>{state.panelMenu=!state.panelMenu;render();if(state.panelMenu)document.querySelector('.panel-menu [role=menuitem]').focus()},
+  'new-chat':()=>applyScenario(state.demo?'demo':'chat'),
+  'open-history':()=>{state.panelMenu=false;state.panelView='history';state.historyLoading=true;render();later(()=>{state.historyLoading=false;render()},700)},
+  'close-history':()=>{state.panelView='thread';if(!state.thread.length)state.thread=[{type:'welcome'}];render()},
+  'history-open':arg=>{if(arg==='enrich')applyScenario('enrich');else showToast('Ukázka: otevře uloženou konverzaci, jen ke čtení.')},
+  'gift-menu':arg=>{state.menuFor=state.menuFor===arg?null:arg;render();if(state.menuFor){const first=document.querySelector('.gift-menu [role=menuitem]');if(first)first.focus()}},
+  'enrich-gift':(arg,element)=>{
+    if(element.getAttribute('aria-disabled')==='true'){showToast('AI asistent je dočasně vypnutý.');return}
+    lastTrigger='';state.menuFor=null;
+    if(state.access==='cap'){state.panelOpen=true;state.mobileView='chat';state.scrollThreadEnd=true;render();showToast('Dnešní limit je vyčerpaný, obnoví se zítra v 0:00.');return}
+    runEnrichFlow(arg,{append:state.demo});
+  },
+  'exit-workbench':()=>{state.panelMode='chat';state.focusGift=null;render()},
+  'locate-gift':()=>{const id=state.focusGift;state.flashGift=id;render();const card=document.getElementById('gift-'+id);if(card)card.scrollIntoView({block:'center',behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});later(()=>{state.flashGift=null;render()},1200)},
+  'toggle-pin':()=>{state.pinExpanded=!state.pinExpanded;render()},
+  'mobile-view':arg=>{state.mobileView=arg;render();if(arg==='preview'){const id=state.focusGift||Object.keys(combinedOverlay().edits)[0];const card=id&&document.getElementById('gift-'+id);if(card)card.scrollIntoView({block:'center'})}},
+  decide:arg=>{const [key,value]=arg.split(':');state.enrich.rows[key]=state.enrich.rows[key]===value?'pending':value;afterProposalChange()},
+  'pick-image':arg=>{const enrich=state.enrich;if(arg==='none'){enrich.imagePick=null;enrich.rows.image='rejected'}else{const index=Number(arg);enrich.imagePick=enrich.imagePick===index?null:index;enrich.rows.image=enrich.imagePick===null?'pending':'accepted'}afterProposalChange()},
+  'accept-all':()=>{const enrich=state.enrich;for(const key of Object.keys(enrich.rows))if(key!=='image')enrich.rows[key]='accepted';if(enrich.imagePick===null){enrich.imagePick=0;enrich.rows.image='accepted'}afterProposalChange()},
+  'choose-game':arg=>{state.create.pick=arg;state.proposal.creates=state.proposal.creates.filter(gift=>!['new-patchwork','new-jaipur','new-duel'].includes(gift.id));state.proposal.creates.push(clone(DRAFTS[arg]));afterProposalChange()},
+  'retry-link':retryFailedLink,
+  'skip-link':()=>{state.create.failed='skipped';render()},
+  'submit-review':submitForReview,
+  'open-review':()=>{if(state.submitted&&state.submitted.status==='pending')openReview()},
+  'back-to-list':()=>{state.page='wishlist';render({resetWorkspace:true})},
+  'review-select':(arg,element)=>{state.reviewSelection[arg]=element.checked;render()},
+  'apply-review':()=>{const rows=proposalRows(state.submitted.proposal).filter(row=>row.confirm&&state.reviewSelection[row.id]);if(rows.length)openDeleteConfirmation(rows);else applyReview()},
+  undo:arg=>undoBatch(arg),
+  ff:arg=>{const on=arg==='on';if(state.ff===on)return;state.ff=on;if(on){commitFastForward();showToast('Úpravy a nové dárky se teď použijí hned. Smazání potvrdíte.')}else{state.batches.forEach(batch=>batch.open=false);showToast('Další změny půjdou znovu ke kontrole.')}render()},
+  'held-delete':()=>{const snapshot=clone(state.gifts);state.gifts=state.gifts.filter(gift=>!state.held.includes(gift.id));state.batches.push({id:'batch-del',snapshot,rows:state.held.map(id=>({id:'del:'+id,kind:'delete'})),open:false,undone:false});state.held=[];state.heldResolved='deleted';render()},
+  'held-keep':()=>{state.held=[];state.heldResolved='kept';render()},
+  stop:stopWorking,
+  'retry-provider':retryProvider,
+  send:()=>{const textarea=document.getElementById('composer-input');const text=textarea.value;state.draft='';sendMessage(text)},
+  starter:arg=>{if(arg==='enrich')runEnrichFlow('sony');else applyScenario(arg)},
+  demo:arg=>demoAction(arg),
+  'nav-theme':()=>setTheme(state.theme==='dark'?'light':'dark')
+};
+document.getElementById('device').addEventListener('click',event=>{
+  const actionTarget=event.target.closest('[data-action]');
+  if(actionTarget&&!actionTarget.disabled){
+    if(actionTarget.type==='checkbox'){return}
+    event.preventDefault();const handler=ACTIONS[actionTarget.dataset.action];if(handler)handler(actionTarget.dataset.arg,actionTarget);return;
+  }
+  const demo=event.target.closest('[data-demo]');
+  if(demo){event.preventDefault();state.menuFor=null;state.panelMenu=false;render();showToast(demo.dataset.demo==='link'?'Ukázkový odkaz, obchod se neotevře.':demo.dataset.demo==='settings'?'Ukázka: vede do Nastavení › Přístup pro AI a aplikace.':'Ukázka: tato část aplikace není součástí návrhu.');return}
+  if((state.menuFor||state.panelMenu)&&!event.target.closest('.menu')){state.menuFor=null;state.panelMenu=false;render()}
+});
+document.getElementById('device').addEventListener('change',event=>{
+  const target=event.target;if(target.dataset.action==='review-select')ACTIONS['review-select'](target.dataset.arg,target);
+});
+document.getElementById('device').addEventListener('input',event=>{if(event.target.id==='composer-input'){state.draft=event.target.value;autoGrow(event.target)}});
+document.getElementById('device').addEventListener('keydown',event=>{
+  if(event.target.id==='composer-input'&&event.key==='Enter'&&!event.shiftKey){event.preventDefault();if(!state.streaming)ACTIONS.send()}
+  const menu=event.target.closest('.menu');
+  if(menu&&(event.key==='ArrowDown'||event.key==='ArrowUp')){
+    event.preventDefault();const items=[...menu.querySelectorAll('[role=menuitem]')];const index=items.indexOf(event.target);
+    items[(index+(event.key==='ArrowDown'?1:-1)+items.length)%items.length].focus();
+  }
+});
+document.addEventListener('keydown',event=>{
+  if(event.key!=='Escape'||dialog.open)return;
+  if(state.menuFor){const id=state.menuFor;state.menuFor=null;render();const trigger=document.querySelector(`[data-action="gift-menu"][data-arg="${id}"]`);if(trigger)trigger.focus();return}
+  if(state.panelMenu){state.panelMenu=false;render();document.querySelector('[data-action="panel-menu"]').focus();return}
+  if(state.panelOpen)closePanel();
+});
+
+/* ── Review toolbar and URL state ── */
+function syncUrl(){
+  const params=new URLSearchParams({viewport:state.viewport,theme:state.theme,scenario:state.scenario});
+  if(state.role!=='manager')params.set('role',state.role);
+  history.replaceState(null,'',`${location.pathname}?${params}`);
+}
+function setPressed(attribute,value){document.querySelectorAll(`[${attribute}]`).forEach(button=>button.setAttribute('aria-pressed',String(button.getAttribute(attribute)===value)))}
+function setViewport(viewport){state.viewport=viewport;document.getElementById('stage').dataset.viewport=viewport;setPressed('data-viewport-option',viewport);if(viewport==='mobile'){state.mobileView='chat'}syncUrl();render()}
+function setTheme(theme){state.theme=theme;document.documentElement.classList.toggle('dark',theme==='dark');setPressed('data-theme-option',theme);syncUrl()}
+function setRole(role){state.role=role;setPressed('data-role-option',role);syncUrl();render()}
+document.querySelectorAll('[data-viewport-option]').forEach(button=>button.addEventListener('click',()=>setViewport(button.dataset.viewportOption)));
+document.querySelectorAll('[data-theme-option]').forEach(button=>button.addEventListener('click',()=>setTheme(button.dataset.themeOption)));
+document.querySelectorAll('[data-role-option]').forEach(button=>button.addEventListener('click',()=>setRole(button.dataset.roleOption)));
+const select=document.getElementById('scenario-select');
+select.innerHTML=SCENARIOS.map(([id,label])=>`<option value="${id}">${id} · ${label}</option>`).join('');
+select.addEventListener('change',()=>applyScenario(select.value));
+
+const params=new URLSearchParams(location.search);
+const initialViewport=params.get('viewport')==='mobile'?'mobile':'desktop';
+const initialTheme=params.get('theme')==='dark'?'dark':'light';
+const initialScenario=SCENARIOS.some(([id])=>id===params.get('scenario'))?params.get('scenario'):'enrich';
+state.viewport=initialViewport;document.getElementById('stage').dataset.viewport=initialViewport;setPressed('data-viewport-option',initialViewport);
+state.role=params.get('role')==='recipient'?'recipient':'manager';setPressed('data-role-option',state.role);
+setTheme(initialTheme);
+applyScenario(initialScenario);
+</script>
+</body>
+</html>
