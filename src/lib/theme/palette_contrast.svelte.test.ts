@@ -81,7 +81,8 @@ async function buttonContrast(
 	const { owner, surface: surfaceClass } = buttonVariants({ intent });
 	const button = document.createElement('button');
 	button.className = owner();
-	button.dataset.testid = 'contrast-button';
+	const testId = `contrast-button-${crypto.randomUUID()}`;
+	button.dataset.testid = testId;
 	const face = document.createElement('span');
 	face.className = surfaceClass();
 	button.append(face);
@@ -98,7 +99,7 @@ async function buttonContrast(
 	};
 	try {
 		const resting = faceContrast();
-		await page.getByTestId('contrast-button').hover();
+		await page.getByTestId(testId).hover();
 		const hovered = faceContrast();
 		return {
 			resting: resting.contrast,
