@@ -61,6 +61,7 @@ html{
   --diff-removed-bg:color-mix(in oklab,var(--status-danger) 14%,var(--card));
   --diff-added-bg:color-mix(in oklab,var(--status-success) 14%,var(--card));
   --confirm-tint:color-mix(in oklab,var(--accent-loud) 22%,var(--card));
+  --dim-text:color-mix(in oklab,var(--foreground) 74%,var(--muted));
   scroll-padding:64px 0 104px;
 }
 *,*::before,*::after{box-sizing:border-box}
@@ -294,6 +295,50 @@ ins.diff-new{background:var(--diff-added-bg);color:var(--status-success-text);fo
 .append ins::before{content:"+ ";font-weight:800}
 .original-desc{margin-top:6px;font-size:12px;color:var(--muted-foreground)}
 
+/* Per-field decisions: read-only previous → next, ✓ ✕ ✎ per field; the field row carries the decision tint. */
+.field-list{display:grid;gap:6px}
+.field{--field-surface:var(--card);display:grid;grid-template-columns:76px minmax(0,1fr) auto;grid-template-areas:"label values side" "edit edit edit";column-gap:10px;align-items:center;padding:5px 6px 5px 10px;border:1.5px solid var(--border-strong);border-radius:10px;background:var(--field-surface);transition:background-color .15s}
+.field[data-decision=accepted],.field[data-decision=edited]{--field-surface:color-mix(in oklab,var(--status-success) 12%,var(--card));border-color:color-mix(in oklab,var(--status-success) 55%,var(--ink))}
+.field[data-decision=rejected]{--field-surface:var(--muted);border-style:dashed}
+.field-label{grid-area:label;font-size:12px;font-weight:600;color:var(--muted-foreground)}
+.field-values{grid-area:values;display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;min-width:0;padding-block:4px;font-size:13px}
+.field del.diff-old,.field ins.diff-new{padding:0;background:none}
+.field .diff-arrow{font-weight:700;color:var(--muted-foreground)}
+.field .append{flex-basis:100%}
+.field .original-desc{flex-basis:100%;margin-top:0}
+.diff-empty{color:var(--muted-foreground)}
+.field[data-decision=rejected] ins.diff-new,.field[data-decision=rejected] .append ins{color:var(--dim-text);font-weight:500}
+.field[data-decision=rejected] .diff-thumb.new{opacity:.5;border-color:var(--border-strong)}
+.field-proposed{flex-basis:100%;font-size:12px;color:var(--muted-foreground)}
+.diff-note{font-size:12px;color:var(--muted-foreground)}
+.diff-thumb{width:36px;height:36px;flex:none;display:inline-grid;place-items:center;overflow:hidden;border-radius:7px;background:var(--surface)}
+.diff-thumb svg.art{width:100%;height:100%}
+.diff-thumb.old{border:2px solid var(--status-danger);opacity:.55}
+.diff-thumb.new{border:2px solid var(--status-success)}
+.field-side{grid-area:side;display:flex;align-items:center;justify-content:flex-end;gap:8px}
+.pill{display:inline-flex;align-items:center;height:22px;padding:0 8px;border:1.5px solid var(--ink);border-radius:var(--radius-badge);font-size:11px;font-weight:700;white-space:nowrap}
+.pill.accepted{background:color-mix(in oklab,var(--status-success) 18%,var(--card));color:var(--status-success-text)}
+.pill.rejected{border-color:var(--border-strong);background:var(--card);color:var(--muted-foreground)}
+.field-actions{display:flex;gap:4px}
+.field-btn{width:32px;height:32px;display:grid;place-items:center;padding:0;border:2px solid var(--ink);border-radius:var(--radius-btn);background:var(--card);color:var(--ink)}
+.field-btn:hover:not(:disabled){background:var(--panel-hover)}
+.field-btn[data-field-action=accept][aria-pressed=true]{border-color:var(--status-success-text);background:var(--status-success-text);color:var(--card)}
+.field-btn[data-field-action=reject][aria-pressed=true]{background:var(--ink);color:var(--card)}
+.field-btn[data-field-action=edit][aria-expanded=true]{background:var(--primary);color:var(--primary-foreground)}
+.field-btn:disabled{opacity:.4;cursor:not-allowed}
+.field-edit{grid-area:edit;display:flex;flex-wrap:wrap;align-items:flex-start;gap:8px;padding:4px 0 6px}
+.field-input{flex:1 1 220px;min-width:0;height:var(--size-control-md);padding:0 10px;border:2px solid var(--ink);border-radius:var(--radius-btn);background:var(--card);color:var(--foreground);font-size:13px}
+textarea.field-input{height:auto;min-height:76px;padding:6px 10px;resize:vertical;font:13px/1.45 var(--font-body)}
+.field-edit-actions{display:flex;gap:var(--nested-control-gap)}
+.image-pick{display:flex;flex-wrap:wrap;gap:8px;flex:1 1 220px;margin:0;padding:0;border:0}
+.image-pick label{position:relative;display:grid;justify-items:center;gap:2px;font-size:11px;font-weight:600;color:var(--muted-foreground);cursor:pointer}
+.image-pick input{position:absolute;opacity:0;pointer-events:none}
+.pick-thumb{width:56px;height:56px;display:grid;place-items:center;overflow:hidden;border:2px solid var(--ink);border-radius:9px;background:var(--surface)}
+.pick-thumb svg.art{width:100%;height:100%}
+.image-pick input:checked+.pick-thumb{outline:3px solid var(--brand);outline-offset:2px}
+.image-pick input:focus-visible+.pick-thumb{outline:3px solid var(--brand);outline-offset:2px;box-shadow:0 0 0 5px var(--card)}
+.field-summary{margin-top:6px;font-size:12px;font-weight:600;color:var(--muted-foreground)}
+
 /* Consequences and reasons */
 .consequence,.reason{display:flex;gap:8px;align-items:flex-start;padding:8px 10px;border-radius:10px;font-size:13px;line-height:1.4}
 .consequence{margin-bottom:8px;border:2px solid var(--ink);background:var(--confirm-tint);font-weight:600}
@@ -431,6 +476,10 @@ dialog::backdrop{background:rgb(8 12 20 / 55%)}
   .change-row>td.cell-status{min-height:0;padding:0;align-self:start;justify-content:flex-start}
   .diff{grid-template-columns:1fr;gap:2px}
   .diff-values{flex-direction:column;align-items:flex-start;gap:3px}
+  .field{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"label side" "values values" "edit edit";padding:6px 6px 6px 10px}
+  .field-values{padding-block:2px 4px}
+  .field-edit-actions{flex-basis:100%}
+  .field-edit-actions .btn{flex:1 1 0;height:var(--size-control-lg)}
   .card-pair{--card-w:minmax(0,1fr);gap:10px}
   .card-ghost{min-height:180px;padding:10px}
   .gift-title{font-size:15px}
@@ -450,13 +499,14 @@ dialog::backdrop{background:rgb(8 12 20 / 55%)}
 </head>
 <body>
 <div class="review-bar" role="region" aria-label="Ovládání ukázky">
-  <span class="review-eyebrow">REFINED: Varianta D + barevná hlavička řádku místo štítku, zarovnání se zaškrtávátkem, AA text</span>
+  <span class="review-eyebrow">REFINED: Varianta D + rozhodnutí po polích (přijmout, zamítnout, upravit)</span>
   <div class="review-group" role="group" aria-label="Zobrazení"><span>Viewport</span><button type="button" data-viewport="desktop" aria-pressed="true">Desktop</button><button type="button" data-viewport="mobile" aria-pressed="false">Mobil 390 px</button></div>
   <div class="review-group" role="group" aria-label="Motiv"><span>Motiv</span><button type="button" data-theme="light" aria-pressed="true">Světlý</button><button type="button" data-theme="dark" aria-pressed="false">Tmavý</button></div>
   <div class="review-group"><label for="state-select"><span style="color:#9aa4b2;font-weight:600">Stav</span></label>
     <select id="state-select">
       <option value="pending">Čeká na kontrolu (výchozí výběr)</option>
-      <option value="mixed">Smíšený výběr</option>
+      <option value="mixed">Rozhodnutí po polích</option>
+      <option value="editing">Úprava hodnoty</option>
       <option value="none">Nic nevybráno</option>
       <option value="apply-conflict">Konflikt při použití</option>
       <option value="applied">Použito + Vrátit</option>
@@ -518,6 +568,7 @@ const ICONS={
   'chevron-down':'<path d="m6 9 6 6 6-6"/>',
   'arrow-left':'<path d="m12 19-7-7 7-7"/><path d="M19 12H5"/>',
   check:'<path d="M20 6 9 17l-5-5"/>',
+  x:'<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
   dash:'<path d="M5 12h14"/>',
   alert:'<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
   undo:'<path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11"/>',
@@ -554,7 +605,8 @@ const ART={
   diffuser:'<path class="fa" d="M40 76 49 40h22l9 36z"/><ellipse class="fc" cx="60" cy="40" rx="11" ry="3.5"/><path class="fn" d="M55 32c-5-5 5-9 0-14M65 32c-5-5 5-9 0-14"/>',
   needles:'<circle class="fa" cx="72" cy="54" r="19"/><path class="fn" d="M58 44c9 4 17 12 21 22M56 56c8 2 14 8 16 15"/><path class="fn" d="M26 18l52 30M32 14l42 46"/><circle class="fb" cx="26" cy="18" r="3.5"/><circle class="fb" cx="32" cy="14" r="3.5"/>'
 };
-const art=(key,thumb=false)=>`<svg class="art" viewBox="${thumb?'14 8 92 74':'0 0 120 90'}" preserveAspectRatio="xMidYMid ${thumb?'slice':'meet'}" aria-hidden="true">${ART[key]}</svg>`;
+const art=(key,thumb=false,view)=>`<svg class="art" viewBox="${view||(thumb?'14 8 92 74':'0 0 120 90')}" preserveAspectRatio="xMidYMid ${thumb?'slice':'meet'}" aria-hidden="true">${ART[key]}</svg>`;
+const esc=value=>String(value).replace(/[&<>"]/g,character=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[character]));
 
 const CATEGORY_COLORS={Domov:'#ffd9a8',Zahrada:'#bfe8b0',Knihy:'#e2d4ff',Oblečení:'#ffc9d6',Kuchyně:'#a9dbff',Elektronika:'#c7f0ef','Ruční práce':'#f6e3b4'};
 
@@ -574,8 +626,14 @@ const GIFTS={
   needles:{name:'Pletací jehlice',art:'needles',category:'Ruční práce',priority:null,price:'260 Kč',link:'mall.cz'}
 };
 const withGift=(key,changes)=>({...GIFTS[key],...changes});
+const CATEGORIES=Object.keys(CATEGORY_COLORS);
+const PRIORITIES=['Nízká','Střední','Vysoká'];
+/* Image candidates the agent offers: framings of one product image, chosen in the image picker. */
+const IMAGE_VIEWS=[{view:'0 0 120 90',label:'Celý produkt'},{view:'26 16 68 51',label:'Detail'},{view:'-16 -12 152 114',label:'S okrajem'}];
+const CARD_FIELDS=new Set(['name','price','category','priority','link','image']);
 
-/* Rows follow the agent's submitted order inside each section. `ops` counts operations grouped on one gift. */
+/* Rows follow the agent's submitted order inside each section; changes are counted per gift.
+   `fields` rows get per-field decisions; deletions, reservations, invitations and reorders stay whole-row. */
 const ROWS=[
   {id:'delete-headphones',group:'confirm',kind:['Smazání dárku','danger','trash'],gift:'headphones',sub:'alza.cz · bez rezervací',
    consequence:'Dárek „Bezdrátová sluchátka Sony“ bude trvale odstraněn.',
@@ -593,27 +651,28 @@ const ROWS=[
    confirmTitle:'Pozvánka správce',confirmHtml:'<code class="email">eva.kralova@email.cz</code> dostane e-mail s pozvánkou a uvidí rezervace.'},
 
   {id:'new-blanket',group:'normal',kind:['Nový dárek','success','plus'],gift:'blanket',sub:'Přidá se na konec seznamu',
-   diffs:[{label:'Název',new:'Vlněný pléd s třásněmi',only:true},{label:'Cena',new:'1 290 Kč',only:true},{label:'Kategorie',new:'Domov',only:true},{label:'Priorita',new:'Střední',only:true},{label:'Odkaz',new:'ikea.com · Pléd 130 × 170 cm',only:true,link:true}],
+   fields:[{key:'name',label:'Název',new:'Vlněný pléd s třásněmi',control:'text',required:true},{key:'price',label:'Cena',new:'1 290 Kč',control:'text'},{key:'category',label:'Kategorie',new:'Domov',control:'category'},{key:'priority',label:'Priorita',new:'Střední',control:'priority'},{key:'link',label:'Odkaz',new:'ikea.com · Pléd 130 × 170 cm',control:'text',link:true}],
    cards:{beforeGhost:['plus','Nový dárek, v seznamu zatím není'],after:withGift('blanket',{})}},
   {id:'new-book',group:'normal',kind:['Nový dárek','success','plus'],gift:'book',sub:'Přidá se na konec seznamu',
-   diffs:[{label:'Název',new:'Babiččiny recepty z Valašska',only:true},{label:'Cena',new:'449 Kč',only:true},{label:'Kategorie',new:'Knihy',only:true},{label:'Odkaz',new:'knihydobrovsky.cz · Kniha, vázaná',only:true,link:true}],
-   cards:{beforeGhost:['plus','Nový dárek, v seznamu zatím není'],after:withGift('book',{})}},
+   fields:[{key:'name',label:'Název',new:'Babiččiny recepty z Valašska',control:'text',required:true},{key:'price',label:'Cena',new:'449 Kč',control:'text'},{key:'category',label:'Kategorie',new:'Knihy',control:'category'},{key:'link',label:'Odkaz',new:'knihydobrovsky.cz · Kniha, vázaná',control:'text',link:true}],
+   cards:{beforeGhost:['plus','Nový dárek, v seznamu zatím není'],after:withGift('book',{priority:null})}},
   {id:'new-slippers',group:'normal',kind:['Nový dárek','success','plus'],gift:'slippers',sub:'Přidá se na konec seznamu',
-   diffs:[{label:'Název',new:'Hřejivé papuče z ovčí vlny, vel. 38',only:true},{label:'Cena',new:'890 Kč',only:true},{label:'Množství',new:'1 pár',only:true},{label:'Kategorie',new:'Oblečení',only:true},{label:'Priorita',new:'Vysoká',only:true}],
+   fields:[{key:'name',label:'Název',new:'Hřejivé papuče z ovčí vlny, vel. 38',control:'text',required:true},{key:'price',label:'Cena',new:'890 Kč',control:'text'},{key:'quantity',label:'Množství',new:'1 pár',control:'text'},{key:'category',label:'Kategorie',new:'Oblečení',control:'category'},{key:'priority',label:'Priorita',new:'Vysoká',control:'priority'}],
    cards:{beforeGhost:['plus','Nový dárek, v seznamu zatím není'],after:withGift('slippers',{})}},
-  {id:'edit-kettle',group:'normal',ops:2,kind:['Úprava','neutral','pencil'],gift:'kettle',noImage:true,sub:'Pozice 4 · alza.cz',
-   diffs:[{label:'Cena',old:'1 190 Kč',new:'990 Kč'},{label:'Obrázek',old:'Bez obrázku',new:'Fotografie z alza.cz'}],
-   cards:{before:withGift('kettle',{noImage:true}),after:withGift('kettle',{price:'990 Kč'}),marks:{before:['price','image'],after:['price','image']}}},
-  {id:'edit-album',group:'normal',kind:['Úprava','neutral','pencil'],gift:'album',noImage:true,sub:'Pozice 7 · ikea.com',
-   diffs:[{label:'Obrázek',old:'Bez obrázku',new:'Fotografie z ikea.com'}],
-   cards:{before:withGift('album',{noImage:true}),after:withGift('album',{}),marks:{before:['image'],after:['image']}}},
+  {id:'edit-kettle',group:'normal',kind:['Úprava','neutral','pencil'],gift:'kettle',noImage:true,sub:'Pozice 4 · alza.cz',
+   fields:[{key:'price',label:'Cena',old:'1 190 Kč',new:'990 Kč',control:'text'},{key:'image',label:'Obrázek',old:null,emptyLabel:'Bez obrázku',new:{art:'kettle',view:IMAGE_VIEWS[0].view,source:'alza.cz'},control:'image'}],
+   cards:{before:withGift('kettle',{noImage:true}),after:withGift('kettle',{})}},
+  {id:'edit-album',group:'normal',kind:['Úprava','neutral','pencil'],gift:'album',sub:'Pozice 7 · ikea.com',
+   fields:[{key:'image',label:'Obrázek',old:{art:'album',view:IMAGE_VIEWS[1].view},new:{art:'album',view:IMAGE_VIEWS[0].view,source:'ikea.com'},control:'image'}],
+   cards:{before:withGift('album',{artView:IMAGE_VIEWS[1].view}),after:withGift('album',{})}},
   {id:'edit-gloves',group:'normal',kind:['Úprava','neutral','pencil'],gift:'gloves',sub:'Pozice 11 · hornbach.cz',
-   diffs:[{label:'Kategorie',old:'Domov',new:'Zahrada'}],
-   cards:{before:withGift('gloves',{}),after:withGift('gloves',{category:'Zahrada'}),marks:{before:['category'],after:['category']}}},
+   fields:[{key:'category',label:'Kategorie',old:'Domov',new:'Zahrada',control:'category'}],
+   cards:{before:withGift('gloves',{}),after:withGift('gloves',{})}},
   {id:'edit-tea',group:'normal',kind:['Úprava','neutral','pencil'],gift:'tea',sub:'Pozice 6 · kosik.cz',
-   diffs:[{label:'Priorita',old:'Nízká',new:'Vysoká'}],
-   cards:{before:withGift('tea',{}),after:withGift('tea',{priority:'Vysoká'}),marks:{before:['priority'],after:['priority']}}},
-  {id:'append-scarf',group:'normal',kind:['Doplnění popisu','accent','text'],gift:'scarf',sub:'Pozice 2 · zoot.cz',appendText:'Nejlépe v lahvově zelené, babička k ní nosí šedý vlněný kabát.',originalDescription:'Měkká, alespoň 180 cm dlouhá.'},
+   fields:[{key:'priority',label:'Priorita',old:'Nízká',new:'Vysoká',control:'priority'}],
+   cards:{before:withGift('tea',{}),after:withGift('tea',{})}},
+  {id:'append-scarf',group:'normal',kind:['Doplnění popisu','accent','text'],gift:'scarf',sub:'Pozice 2 · zoot.cz',originalDescription:'Měkká, alespoň 180 cm dlouhá.',
+   fields:[{key:'append',label:'Popis',new:'Nejlépe v lahvově zelené, babička k ní nosí šedý vlněný kabát.',control:'textarea',append:true}]},
   {id:'reorder-socks',group:'normal',kind:['Přesun pořadí','neutral','reorder'],gift:'socks',sub:'mall.cz',dependsOn:'new-blanket',
    diffs:[{label:'Pozice',old:'9',new:'3'}],context:'Nově mezi <q>Kašmírová šála</q> a <q>Vlněný pléd s třásněmi</q>',
    dependencyNote:'Přesun počítá s novým dárkem „Vlněný pléd s třásněmi“, který jste nevybrali. Vyberte ho a přesun se vrátí.'},
@@ -627,7 +686,6 @@ const ROWS=[
    reason:'Po sdílení už dárek nelze přejmenovat, lhůta pro úpravy skončila 2. 10. 2026. Upřesnění můžete přidat jako doplnění popisu.'}
 ];
 const ROW_BY_ID=Object.fromEntries(ROWS.map(row=>[row.id,row]));
-const operationsOf=row=>row.ops||1;
 const NEW_CONFLICTS={'edit-kettle':'Dárek se mezitím změnil (upravila Jana Dvořáková, 14. 10. v 10:49).','edit-gloves':'Dárek se mezitím změnil (upravila Jana Dvořáková, 14. 10. v 10:50).'};
 const CHANGED_SINCE_APPLY={'edit-kettle':'Elektrická konvice Bosch (upravila Jana Dvořáková, 14. 10. v 11:20)','new-blanket':'Vlněný pléd s třásněmi (upravila Jana Dvořáková, 14. 10. v 11:34)'};
 
@@ -636,24 +694,50 @@ let selection={};
 let heldByDependency={};
 let appliedIds=new Set();
 let newConflicts={};
+/* Per-field state: decision null (undecided, applies like a selected row), 'accepted' or 'rejected'; `edited` holds the user's value and only lives with an acceptance. */
+let fieldStates={};
+let editing=null;
 
 const plural=(count,one,few,many)=>count===1?one:(count>=2&&count<=4?few:many);
 const changesWord=count=>plural(count,'změna','změny','změn');
-const isSelectable=row=>!row.blocked&&!newConflicts[row.id]&&!heldByDependency[row.id]&&row.id in selection;
+const fromCount=count=>[2,3,4,7].includes(count)?'ze':'z';
 
 function resetSelection(){
-  selection={};heldByDependency={};newConflicts={};
-  for(const row of ROWS){if(!row.blocked)selection[row.id]=row.group==='normal'}
+  selection={};heldByDependency={};newConflicts={};fieldStates={};editing=null;
+  for(const row of ROWS){
+    if(row.fields)fieldStates[row.id]=row.fields.map(()=>({decision:null,edited:null}));
+    else if(!row.blocked)selection[row.id]=row.group==='normal';
+  }
 }
-function selectedRows(){return ROWS.filter(row=>selection[row.id]&&!newConflicts[row.id]&&!row.blocked)}
-function selectedOperationCount(){return selectedRows().reduce((sum,row)=>sum+operationsOf(row),0)}
-function selectableOperationCount(){return ROWS.filter(row=>!row.blocked&&!newConflicts[row.id]).reduce((sum,row)=>sum+operationsOf(row),0)}
-function appliedOperationCount(){return ROWS.filter(row=>appliedIds.has(row.id)).reduce((sum,row)=>sum+operationsOf(row),0)}
+function fieldDecision(row,index){
+  const state=fieldStates[row.id][index];
+  if(state.decision==='accepted'&&state.edited!=null)return 'edited';
+  return state.decision||'undecided';
+}
+const includedFieldCount=row=>fieldStates[row.id].filter(state=>state.decision!=='rejected').length;
+const isUnavailable=row=>!!(row.blocked||newConflicts[row.id]||heldByDependency[row.id]);
+function rowIncluded(row){
+  if(isUnavailable(row))return false;
+  return row.fields?includedFieldCount(row)>0:!!selection[row.id];
+}
+function rowFullyIncluded(row){return row.fields?includedFieldCount(row)===row.fields.length:!!selection[row.id]}
+function setRowIncluded(row,included){
+  if(!row.fields){selection[row.id]=included;return}
+  if(editing&&editing.rowId===row.id)editing=null;
+  for(const state of fieldStates[row.id]){
+    if(included&&state.decision==='rejected')state.decision=null;
+    if(!included){state.decision='rejected';state.edited=null}
+  }
+}
+function selectedRows(){return ROWS.filter(rowIncluded)}
+function selectedOperationCount(){return selectedRows().length}
+function selectableOperationCount(){return ROWS.filter(row=>!row.blocked&&!newConflicts[row.id]).length}
+function appliedOperationCount(){return appliedIds.size}
 
 function applyDependencies(){
   for(const row of ROWS){
     if(!row.dependsOn)continue;
-    const parentSelected=!!selection[row.dependsOn];
+    const parentSelected=rowIncluded(ROW_BY_ID[row.dependsOn]);
     if(!parentSelected&&!heldByDependency[row.id]){heldByDependency[row.id]={wasSelected:!!selection[row.id]};selection[row.id]=false}
     else if(parentSelected&&heldByDependency[row.id]){selection[row.id]=heldByDependency[row.id].wasSelected;delete heldByDependency[row.id]}
   }
@@ -665,7 +749,8 @@ function badge(label,tone,iconName){return `<span class="badge ${tone==='neutral
 const KIND_TONES={danger:"danger",success:"success",primary:"link",info:"link"};
 const kindTone=badgeTone=>KIND_TONES[badgeTone]||"ink";
 function kindTitle(row){
-  const ops=row.ops>1?`<span class="kind-ops"> · ${row.ops} ${changesWord(row.ops)}</span>`:"";
+  const fieldCount=row.kind[0]==='Úprava'&&row.fields?row.fields.length:0;
+  const ops=fieldCount>1?`<span class="kind-ops"> · ${fieldCount} ${plural(fieldCount,'pole','pole','polí')}</span>`:"";
   return `<span class="kind-title">${icon(row.kind[2])}<span class="kind-title-text" title="${row.kind[0]}">${row.kind[0]}${ops}</span></span>`;
 }
 function kindCount(label,tone,iconName){return `<span class="kind-count" data-tone="${tone}">${icon(iconName)}${label}</span>`}
@@ -674,15 +759,15 @@ function giftCard(gift,marks=[],markClass='mark-new'){
   const mark=field=>marks.includes(field)?` ${markClass}`:'';
   const image=gift.noImage
     ?`<div class="image-placeholder" role="img" aria-label="Dárek bez obrázku">${icon('image')}<span>Bez obrázku</span></div>`
-    :`<div role="img" aria-label="Ilustrace: ${gift.name}" style="display:contents">${art(gift.art)}</div>`;
+    :`<div role="img" aria-label="Ilustrace: ${gift.name}" style="display:contents">${art(gift.art,false,gift.artView)}</div>`;
   const stateBadge=gift.state?`<div class="state ${gift.state[1]}${mark('state')}"><span>${gift.state[1]==='removal'?icon('trash'):''}${gift.state[0]}</span></div>`:'';
   return `<article class="gift${gift.dim?' is-dimmed':''}" aria-label="Karta dárku ${gift.name}">
     <div class="image-area${mark('image')}"><div class="image-pattern" aria-hidden="true"></div><div class="image-art">${image}</div>
-      ${gift.category?`<span class="category${mark('category')}" style="background:${CATEGORY_COLORS[gift.category]}">${gift.category}</span>`:''}
-      ${gift.priority?`<span class="priority${mark('priority')}">${gift.priority}</span>`:''}${stateBadge}</div>
-    <div class="gift-body"><h3 class="gift-title" title="${gift.name}">${gift.name}</h3>
-      <div class="gift-links"><span class="gift-link">${icon('external')}${gift.link}</span></div>
-      <p class="gift-price${mark('price')}">${gift.price}</p></div>
+      ${gift.category?`<span class="category${mark('category')}" style="background:${CATEGORY_COLORS[gift.category]||'#e6e8ec'}">${esc(gift.category)}</span>`:''}
+      ${gift.priority?`<span class="priority${mark('priority')}">${esc(gift.priority)}</span>`:''}${stateBadge}</div>
+    <div class="gift-body"><h3 class="gift-title${mark('name')}" title="${esc(gift.name)}">${esc(gift.name)}</h3>
+      ${gift.link?`<div class="gift-links"><span class="gift-link${mark('link')}">${icon('external')}${esc(gift.link)}</span></div>`:''}
+      ${gift.price?`<p class="gift-price${mark('price')}">${esc(gift.price)}</p>`:'<p class="gift-price empty">Bez ceny</p>'}</div>
   </article>`;
 }
 function ghostSlot([iconName,text]){return `<div class="card-ghost">${icon(iconName)}<span>${text}</span></div>`}
@@ -703,6 +788,87 @@ function diffLine(diff){
   else{values=`<del class="diff-old"><span class="sr-only">Původně: </span>${diff.old}</del><span class="diff-after"><span class="diff-arrow" aria-hidden="true">→</span><ins class="diff-new"><span class="sr-only">Nově: </span>${diff.new}</ins></span>`}
   return `<li class="diff"><span class="diff-label">${diff.label}</span><span class="diff-values">${values}</span></li>`;
 }
+/* ── Per-field decisions ── */
+const viewLabel=value=>IMAGE_VIEWS.find(option=>option.view===value.view)?.label||'';
+const sameValue=(field,first,second)=>field.control==='image'?first.view===second.view:String(first).trim()===String(second).trim();
+function imageThumb(value,tone){
+  const label=tone==='old'?'Původní obrázek':`Nový obrázek: ${viewLabel(value)}`;
+  return `<span class="diff-thumb ${tone}" role="img" aria-label="${label}">${art(value.art,true,value.view)}</span>`;
+}
+function fieldValuesHtml(row,field,state){
+  const next=state.edited??field.new;
+  if(field.append)return `<div class="append"><span class="append-date">Doplnění popisu · zobrazí se pod původním popisem</span><ins><span class="sr-only">Přidá se: </span>${esc(next)}</ins></div><p class="original-desc">Původní popis zůstává beze změny: „${row.originalDescription}“</p>`;
+  const isNew=field.old===undefined;
+  const nextHtml=field.control==='image'
+    ?`${imageThumb(next,'new')}<span class="diff-note">${viewLabel(next)} · ${field.new.source}</span>`
+    :`<ins class="diff-new${isNew?' only':''}"><span class="sr-only">${isNew?'Přidá se: ':'Nově: '}</span>${field.link?icon('external'):''}${esc(next)}</ins>`;
+  let html=nextHtml;
+  if(!isNew){
+    const previous=field.old===null?`<span class="diff-empty">${field.emptyLabel}</span>`
+      :field.control==='image'?imageThumb(field.old,'old')
+      :`<del class="diff-old"><span class="sr-only">Původně: </span>${esc(field.old)}</del>`;
+    html=`${previous}<span class="diff-arrow" aria-hidden="true">→</span>${nextHtml}`;
+  }
+  if(state.decision==='accepted'&&state.edited!=null)html+=`<span class="field-proposed">Návrh agenta: ${field.control==='image'?viewLabel(field.new):esc(field.new)}</span>`;
+  return html;
+}
+function fieldEditorHtml(row,field,index,state){
+  const key=`${row.id}:${index}`;
+  const id=`edit-${row.id}-${index}`;
+  const current=state.edited??field.new;
+  let control;
+  if(field.control==='image'){
+    control=`<fieldset class="image-pick"><legend class="sr-only">Vyberte obrázek</legend>${IMAGE_VIEWS.map((option,optionIndex)=>`<label><input type="radio" name="${id}" value="${optionIndex}"${option.view===current.view?' checked':''} data-edit-control><span class="pick-thumb">${art(field.new.art,true,option.view)}</span>${option.label}</label>`).join('')}</fieldset>`;
+  }else if(field.control==='category'||field.control==='priority'){
+    const options=field.control==='category'?CATEGORIES:PRIORITIES;
+    control=`<label class="sr-only" for="${id}">${field.label}</label><select class="field-input" id="${id}" data-edit-control>${options.map(option=>`<option${option===current?' selected':''}>${option}</option>`).join('')}</select>`;
+  }else if(field.control==='textarea'){
+    control=`<label class="sr-only" for="${id}">${field.label}</label><textarea class="field-input" id="${id}" rows="3" data-edit-control aria-describedby="${id}-hint">${esc(current)}</textarea><span class="sr-only" id="${id}-hint">Uložíte klávesami Ctrl+Enter.</span>`;
+  }else{
+    control=`<label class="sr-only" for="${id}">${field.label}</label><input class="field-input" id="${id}" value="${esc(current)}" data-edit-control>`;
+  }
+  return `<div class="field-edit" role="group" aria-label="Upravit: ${field.label}">${control}<span class="field-edit-actions"><button type="button" class="btn primary" data-field-action="save" data-field="${key}">Uložit</button><button type="button" class="btn secondary" data-field-action="cancel" data-field="${key}">Zrušit</button></span></div>`;
+}
+function fieldHtml(row,field,index){
+  const state=fieldStates[row.id][index];
+  const decision=fieldDecision(row,index);
+  const key=`${row.id}:${index}`;
+  const interactive=isInteractive()&&!isUnavailable(row);
+  const isEditing=interactive&&editing&&editing.rowId===row.id&&editing.index===index;
+  const pill={accepted:'<span class="pill accepted">Přijato</span>',edited:'<span class="pill accepted">Upraveno</span>',rejected:'<span class="pill rejected">Zamítnuto</span>'}[decision]||'';
+  const rejectBlocked=field.required?' disabled title="Název nového dárku nelze zamítnout. Celý dárek vyřadíte zaškrtávátkem řádku."':'';
+  const buttons=interactive?`<span class="field-actions" role="group" aria-label="Rozhodnutí: ${field.label}">
+      <button type="button" class="field-btn" data-field-action="accept" data-field="${key}" aria-pressed="${decision==='accepted'||decision==='edited'}" aria-label="Přijmout: ${field.label}" title="Přijmout">${icon('check')}</button>
+      <button type="button" class="field-btn" data-field-action="reject" data-field="${key}" aria-pressed="${decision==='rejected'}" aria-label="Zamítnout: ${field.label}"${rejectBlocked||' title="Zamítnout"'}>${icon('x')}</button>
+      <button type="button" class="field-btn" data-field-action="edit" data-field="${key}" aria-expanded="${!!isEditing}" aria-label="Upravit hodnotu: ${field.label}" title="Upravit">${icon('pencil')}</button></span>`:'';
+  return `<li class="field" data-decision="${decision}" data-field-key="${key}">
+    <span class="field-label">${field.label}</span>
+    <span class="field-values">${fieldValuesHtml(row,field,state)}</span>
+    <span class="field-side">${pill}${buttons}</span>
+    ${isEditing?fieldEditorHtml(row,field,index,state):''}
+  </li>`;
+}
+function setCardValue(gift,field,value){
+  if(field.key==='image'){if(value){gift.noImage=false;gift.art=value.art;gift.artView=value.view}else gift.noImage=true}
+  else if(field.key==='link')gift.link=value?String(value).split(' · ')[0]:null;
+  else gift[field.key]=value||null;
+}
+/* The "Po" card shows what applying would produce: rejected fields keep the current value, edited fields show the user's value. */
+function effectiveCards(row){
+  if(!row.fields||!row.cards)return row.cards;
+  if(!row.cards.before&&includedFieldCount(row)===0)return {...row.cards,after:null,afterGhost:['ban','Dárek se nepřidá']};
+  const after={...row.cards.after};
+  const marks=[];
+  row.fields.forEach((field,index)=>{
+    if(!CARD_FIELDS.has(field.key))return;
+    const state=fieldStates[row.id][index];
+    if(state.decision==='rejected'){setCardValue(after,field,field.old??null);return}
+    setCardValue(after,field,state.edited??field.new);
+    if(row.cards.before)marks.push(field.key);
+  });
+  return {...row.cards,after,marks:{before:marks,after:marks}};
+}
+
 function identity(row){
   const gift=row.gift?GIFTS[row.gift]:null;
   const name=gift?gift.name:row.name;
@@ -724,6 +890,11 @@ function rowStatus(row){
   if(phase==='discarded')return ['Zahozeno','muted',null];
   if(heldByDependency[row.id])return ['Závisí na jiné změně','muted',null];
   if(row.group==='confirm')return selection[row.id]?['Potvrzeno','primary','check']:['Vyžaduje potvrzení','warning','alert'];
+  if(row.fields){
+    const included=includedFieldCount(row);
+    if(included===0)return ['Nevybráno','muted',null];
+    return included===row.fields.length?['Připraveno','success','check']:['Částečně','primary',null];
+  }
   return selection[row.id]?['Připraveno','success','check']:['Nevybráno','muted',null];
 }
 const isInteractive=()=>ui.phase==='pending'||ui.phase==='apply-conflict'||ui.phase==='applying';
@@ -734,9 +905,10 @@ function selectCell(row){
     const applied=appliedIds.has(row.id)&&(ui.phase==='applied'||ui.phase==='undo-conflict');
     return `<span class="done-glyph${applied?' on':''}" aria-hidden="true">${icon(applied?'check':'dash')}</span>`;
   }
-  const disabled=row.blocked||newConflicts[row.id]||heldByDependency[row.id];
+  const disabled=isUnavailable(row);
   const describedBy=row.consequence||row.consequenceHtml?` aria-describedby="consequence-${row.id}"`:'';
-  return `<input type="checkbox" class="check row-check" id="check-${row.id}" data-row="${row.id}" aria-label="Vybrat změnu: ${row.kind[0]}, ${name}"${describedBy}${selection[row.id]&&!disabled?' checked':''}${disabled?' disabled':''}>`;
+  const label=row.fields?`Použít celý dárek: ${row.kind[0]}, ${name}`:`Vybrat změnu: ${row.kind[0]}, ${name}`;
+  return `<input type="checkbox" class="check row-check" id="check-${row.id}" data-row="${row.id}" aria-label="${label}"${describedBy}${rowFullyIncluded(row)&&!disabled?' checked':''}${disabled?' disabled':''}>`;
 }
 
 function diffsCell(row){
@@ -744,8 +916,12 @@ function diffsCell(row){
   if(row.consequence||row.consequenceHtml){
     html+=`<p class="consequence" id="consequence-${row.id}">${icon('alert')}${row.consequenceHtml||`<span>${row.consequence}</span>`}</p>`;
   }
-  if(row.appendText){
-    html+=`<div class="append"><span class="append-date">Doplnění popisu · zobrazí se pod původním popisem</span><ins><span class="sr-only">Přidá se: </span>${row.appendText}</ins></div><p class="original-desc">Původní popis zůstává beze změny: „${row.originalDescription}“</p>`;
+  if(row.fields){
+    html+=`<ul class="field-list" aria-label="Pole dárku">${row.fields.map((field,index)=>fieldHtml(row,field,index)).join('')}</ul>`;
+    if(row.fields.length>1){
+      const included=includedFieldCount(row);
+      html+=`<p class="field-summary" data-field-summary="${row.id}">Použije se ${included} ${fromCount(row.fields.length)} ${row.fields.length} polí</p>`;
+    }
   }
   if(row.diffs)html+=`<ul class="diff-list">${row.diffs.map(diffLine).join('')}</ul>`;
   if(row.context)html+=`<p class="diff-context" style="margin-top:4px">${row.context}</p>`;
@@ -766,7 +942,7 @@ function rowHtml(row){
   if(row.blocked)classes.push('is-blocked');
   if(newConflicts[row.id])classes.push('is-new-conflict','is-blocked');
   if(ui.phase==='undo-conflict'&&CHANGED_SINCE_APPLY[row.id])classes.push('is-changed-since');
-  const selected=isInteractive()?!!(selection[row.id]&&!row.blocked&&!newConflicts[row.id]):(ui.phase==='applied'||ui.phase==='undo-conflict'||ui.phase==='undone'?appliedIds.has(row.id):true);
+  const selected=isInteractive()?rowIncluded(row):(ui.phase==='applied'||ui.phase==='undo-conflict'||ui.phase==='undone'?appliedIds.has(row.id):true);
   const tags=[row.group==='confirm'?'confirm':'',row.blocked||newConflicts[row.id]?'conflict':''].join(' ');
   return `<tr class="${classes.join(" ")}" role="row" data-tone="${kindTone(row.kind[1])}" data-row-id="${row.id}" data-group="${row.group}" data-selected="${selected}" data-tags="${tags}">
     <td class="cell-select" role="cell">${selectCell(row)}</td>
@@ -774,7 +950,7 @@ function rowHtml(row){
     <td class="cell-gift" role="cell">${identity(row)}</td>
     <td class="cell-diffs" role="cell">${diffsCell(row)}</td>
     <td class="cell-status" role="cell" data-status="${row.id}">${badge(statusLabel,statusTone,statusIcon)}</td>
-    <td class="cell-cards${hasCards?'':' is-empty'}" role="cell">${hasCards?cardPair(row.cards):''}</td>
+    <td class="cell-cards${hasCards?'':' is-empty'}" role="cell">${hasCards?cardPair(effectiveCards(row)):''}</td>
   </tr>`;
 }
 function tableHtml(rows,caption){
@@ -799,7 +975,7 @@ function summaryHtml(){
     <span class="summary-icon" aria-hidden="true">${icon('key')}</span>
     <p class="summary-who">Navrhl: <strong>Petr Svoboda</strong> přes token <strong>„Claude – vánoční dárky“</strong></p>
     <p class="summary-meta"><span>${icon('clock')}Odesláno 13. 10. 2026 v 21:47</span>${expiry}</p>
-    <div class="summary-counts"><strong>15 změn:</strong>${kindCount("3 nové dárky","success","plus")}${kindCount("9 úprav","ink","pencil")}${kindCount("1 smazání","danger","trash")}${kindCount("1 rezervace","link","bookmark")}${kindCount("1 pozvánka","link","user-plus")}</div>
+    <div class="summary-counts"><strong>14 změn:</strong>${kindCount("3 nové dárky","success","plus")}${kindCount("8 úprav","ink","pencil")}${kindCount("1 smazání","danger","trash")}${kindCount("1 rezervace","link","bookmark")}${kindCount("1 pozvánka","link","user-plus")}</div>
   </section>`;
 }
 function outcomeHtml(){
@@ -809,7 +985,7 @@ function outcomeHtml(){
     const blocked=ui.phase==='undo-conflict';
     return `<div class="alert success" role="status" tabindex="-1" id="outcome">${icon('check')}
       <p class="alert-title">${verb} ${count} ${changesWord(count)} · 14. 10. 2026 v 10:52</p>
-      <p class="alert-body">Nevybrané a konfliktní změny se nepoužily a návrh je uzavřený. Celou dávku můžete vrátit, dokud se dárky znovu nezmění.</p>
+      <p class="alert-body">Nevybrané změny, zamítnutá pole a konflikty se nepoužily a návrh je uzavřený. Celou dávku můžete vrátit, dokud se dárky znovu nezmění.</p>
       <div class="alert-actions"><button type="button" class="btn danger" data-action="undo"${blocked?' disabled aria-describedby="undo-block"':''}>${icon('undo')}Vrátit celou dávku</button><a class="btn secondary" href="#w-vanoce-pro-babicku" data-demo>Otevřít seznam</a></div>
     </div>${blocked?`<div class="alert destructive" id="undo-block" role="alert">${icon('alert')}<p class="alert-title">Dávku nelze vrátit celou</p><div class="alert-body">Tyto dárky se od použití změnily, dávku nelze vrátit celou:<ul>${Object.values(CHANGED_SINCE_APPLY).map(item=>`<li>${item}</li>`).join('')}</ul></div></div>`:''}`;
   }
@@ -823,7 +999,7 @@ function controlsHtml(){
   if(!isInteractive())return '';
   const confirmCount=ROWS.filter(row=>row.group==='confirm').length;
   const conflictCount=ROWS.filter(row=>row.blocked||newConflicts[row.id]).length;
-  const filters=[['all','Vše',ROWS.reduce((sum,row)=>sum+operationsOf(row),0)],['confirm','Vyžaduje potvrzení',confirmCount],['conflict','Konflikty',conflictCount]];
+  const filters=[['all','Vše',ROWS.length],['confirm','Vyžaduje potvrzení',confirmCount],['conflict','Konflikty',conflictCount]];
   return `<div class="list-controls">
     <div class="master"><input type="checkbox" class="check" id="master-check" style="--select-size:var(--size-control-md)" aria-describedby="master-note"><label for="master-check">Vybrat vše</label><span class="master-note" id="master-note">běžné změny, potvrzení zvlášť</span><span class="master-count" id="master-count" aria-live="polite"></span></div>
     <div class="segmented-scroll"><div class="segmented" role="group" aria-label="Filtr změn">${filters.map(([value,label,count])=>`<button type="button" data-filter="${value}" aria-pressed="${ui.filter===value}">${label}<span class="seg-count">${count}</span></button>`).join('')}</div></div>
@@ -860,7 +1036,9 @@ function applyBarHtml(){
   const count=selectedOperationCount();
   const confirmSelected=selectedRows().filter(row=>row.group==='confirm').length;
   const applying=ui.phase==='applying';
-  const help=count===0?'Nic není vybráno':confirmSelected?`Včetně ${confirmSelected} ${plural(confirmSelected,'změny','změn','změn')} s potvrzením, před použitím je shrneme.`:'Použije se najednou, celou dávku půjde vrátit.';
+  const partial=selectedRows().filter(row=>row.fields&&includedFieldCount(row)<row.fields.length).length;
+  const partialNote=partial?` U ${partial} ${plural(partial,'dárku','dárků','dárků')} jen vybraná pole.`:'';
+  const help=count===0?'Nic není vybráno':(confirmSelected?`Včetně ${confirmSelected} ${plural(confirmSelected,'změny','změn','změn')} s potvrzením, před použitím je shrneme.`:'Použije se najednou, celou dávku půjde vrátit.')+partialNote;
   const label=applying?`${icon('loader','spinner')}Používám…`:`Použít ${count} ${plural(count,'vybranou změnu','vybrané změny','vybraných změn')}`;
   return `<div class="apply-inner"><div class="apply-text"><span class="apply-count">Vybráno ${count} z ${selectableOperationCount()}</span><span class="apply-help" id="apply-help"> ${help}</span></div>
     <button type="button" class="btn primary" data-action="apply" aria-describedby="apply-help"${count===0||applying?' disabled':''}${applying?' aria-busy="true"':''}>${label}</button></div>`;
@@ -871,15 +1049,27 @@ function render(){
   if(ui.phase==='loading'){page.innerHTML=headerHtml().replace(/<button[^]*?<\/button>/,'')+skeletonHtml();document.getElementById('apply-bar').hidden=true;return}
   page.innerHTML=headerHtml()+summaryHtml()+outcomeHtml()+controlsHtml()+sectionsHtml();
   if(ui.phase==='applying')document.getElementById('sections').setAttribute('inert','');
-  renderApplyBar();applyFilter();updateMaster();
+  syncIndeterminate();renderApplyBar();applyFilter();updateMaster();
+}
+function syncIndeterminate(){
+  document.querySelectorAll('.row-check').forEach(checkbox=>{
+    const row=ROW_BY_ID[checkbox.dataset.row];
+    checkbox.indeterminate=!!row.fields&&!checkbox.disabled&&includedFieldCount(row)>0&&!rowFullyIncluded(row);
+  });
+}
+function rerenderRow(row){
+  const element=document.querySelector(`tr[data-row-id="${row.id}"]`);if(!element)return;
+  element.outerHTML=rowHtml(row);
 }
 function renderApplyBar(){const bar=document.getElementById('apply-bar');const html=applyBarHtml();bar.hidden=!html;bar.innerHTML=html}
 function updateRow(row){
   const element=document.querySelector(`tr[data-row-id="${row.id}"]`);if(!element)return;
   const checkbox=element.querySelector('.row-check');
-  const disabled=!!(row.blocked||newConflicts[row.id]||heldByDependency[row.id]);
-  if(checkbox){checkbox.disabled=disabled;checkbox.checked=!!selection[row.id]&&!disabled}
-  element.dataset.selected=String(!!selection[row.id]&&!disabled);
+  const disabled=isUnavailable(row);
+  if(checkbox){checkbox.disabled=disabled;checkbox.checked=rowFullyIncluded(row)&&!disabled}
+  element.dataset.selected=String(rowIncluded(row));
+  const summary=element.querySelector('[data-field-summary]');
+  if(summary)summary.textContent=`Použije se ${includedFieldCount(row)} ${fromCount(row.fields.length)} ${row.fields.length} polí`;
   const [label,tone,iconName]=rowStatus(row);
   element.querySelector('[data-status]').innerHTML=badge(label,tone,iconName);
   const note=element.querySelector('[data-dependency-note]');if(note)note.hidden=!heldByDependency[row.id];
@@ -887,13 +1077,14 @@ function updateRow(row){
 function updateMaster(){
   const master=document.getElementById('master-check');if(!master)return;
   const ordinary=ROWS.filter(row=>row.group==='normal'&&!newConflicts[row.id]&&!heldByDependency[row.id]);
-  const chosen=ordinary.filter(row=>selection[row.id]).length;
+  const chosen=ordinary.filter(rowFullyIncluded).length;
+  const touched=ordinary.filter(rowIncluded).length;
   master.checked=chosen===ordinary.length&&chosen>0;
-  master.indeterminate=chosen>0&&chosen<ordinary.length;
+  master.indeterminate=touched>0&&chosen<ordinary.length;
   const count=selectedOperationCount();
   document.getElementById('master-count').textContent=`${count} z ${selectableOperationCount()} ${plural(selectableOperationCount(),'změny','změn','změn')} vybráno`;
 }
-function refreshSelection(){applyDependencies();ROWS.forEach(updateRow);updateMaster();renderApplyBar()}
+function refreshSelection(){applyDependencies();ROWS.forEach(updateRow);syncIndeterminate();updateMaster();renderApplyBar()}
 function applyFilter(){
   document.querySelectorAll('.change-row').forEach(row=>{row.hidden=ui.filter!=='all'&&!row.dataset.tags.includes(ui.filter)});
   document.querySelectorAll('[data-section]').forEach(section=>{section.hidden=![...section.querySelectorAll('.change-row')].some(row=>!row.hidden)});
@@ -919,7 +1110,7 @@ function openUndoConfirmation(){
     <div class="dialog-actions"><button type="button" class="btn secondary" data-action="close-dialog" data-autofocus>Zpět</button><button type="button" class="btn danger" data-action="confirm-undo">${icon('undo')}Vrátit celou dávku</button></div>`);
 }
 function openDiscardConfirmation(){
-  openDialog(`<h2 id="dialog-title">Zahodit návrh?</h2><p class="dialog-text">Žádná z 15 změn se nepoužije a odkaz na návrh přestane fungovat pro úpravy. Váš agent může poslat nový návrh.</p>
+  openDialog(`<h2 id="dialog-title">Zahodit návrh?</h2><p class="dialog-text">Žádná ze 14 změn se nepoužije a odkaz na návrh přestane fungovat pro úpravy. Váš agent může poslat nový návrh.</p>
     <div class="dialog-actions"><button type="button" class="btn secondary" data-action="close-dialog" data-autofocus>Zpět ke kontrole</button><button type="button" class="btn destructive" data-action="confirm-discard">${icon('trash')}Zahodit návrh</button></div>`);
 }
 function setPhase(phase,{focusOutcome=false,keepPreset=false}={}){
@@ -932,14 +1123,25 @@ function runApply(){
   ui.phase='applying';render();
   setTimeout(()=>{ui.filter='all';setPhase('applied',{focusOutcome:true})},1200);
 }
+/* Showcase: accepted, rejected and edited fields side by side, one gift partly and one wholly rejected. */
+function presetFieldDecisions(){
+  fieldStates['edit-kettle'][0].decision='accepted';
+  fieldStates['edit-kettle'][1].decision='rejected';
+  fieldStates['edit-gloves'][0].decision='accepted';
+  Object.assign(fieldStates['edit-tea'][0],{decision:'accepted',edited:'Střední'});
+  fieldStates['edit-album'][0].decision='rejected';
+  setRowIncluded(ROW_BY_ID['new-book'],false);
+}
 function presetState(phase){
   resetSelection();ui.filter='all';
-  if(phase==='mixed'){
-    Object.assign(selection,{'edit-album':false,'edit-tea':false,'new-book':false,'reserve-mug':true});
+  if(phase==='mixed'||phase==='editing'){
+    presetFieldDecisions();selection['reserve-mug']=true;
+    if(phase==='editing')editing={rowId:'new-blanket',index:1};
     applyDependencies();setPhase('pending',{keepPreset:true});return;
   }
   if(phase==='none'){
     for(const id in selection)selection[id]=false;
+    for(const row of ROWS)if(row.fields)setRowIncluded(row,false);
     applyDependencies();setPhase('pending',{keepPreset:true});return;
   }
   if(phase==='apply-conflict'){newConflicts={...NEW_CONFLICTS}}
@@ -952,13 +1154,55 @@ function presetState(phase){
 const device=document.getElementById('device');
 device.addEventListener('change',event=>{
   const target=event.target;
-  if(target.matches('.row-check')){selection[target.dataset.row]=target.checked;refreshSelection()}
+  if(target.matches('.row-check')){
+    const row=ROW_BY_ID[target.dataset.row];
+    if(row.fields){setRowIncluded(row,!rowFullyIncluded(row));rerenderRow(row);document.getElementById(`check-${row.id}`)?.focus()}
+    else selection[row.id]=target.checked;
+    refreshSelection();applyFilter();
+  }
   else if(target.id==='master-check'){
     const ordinary=ROWS.filter(row=>row.group==='normal'&&!newConflicts[row.id]&&!heldByDependency[row.id]);
-    const allSelected=ordinary.every(row=>selection[row.id]);
-    for(const row of ROWS.filter(row=>row.group==='normal'&&!newConflicts[row.id]))selection[row.id]=!allSelected;
-    refreshSelection();
+    const allSelected=ordinary.every(rowFullyIncluded);
+    for(const row of ROWS.filter(row=>row.group==='normal'&&!newConflicts[row.id])){setRowIncluded(row,!allSelected);if(row.fields)rerenderRow(row)}
+    refreshSelection();applyFilter();
   }
+});
+
+/* ── Field decisions: ✓ and ✕ toggle (clicking the active one clears it), ✎ opens one editor, saving accepts as "Upraveno". ── */
+function readEditor(row,field,index){
+  const container=document.querySelector(`[data-field-key="${row.id}:${index}"] .field-edit`);
+  if(field.control==='image'){const chosen=container.querySelector('input:checked');return chosen?{...field.new,view:IMAGE_VIEWS[Number(chosen.value)].view}:field.new}
+  return container.querySelector('[data-edit-control]').value.trim();
+}
+function handleFieldAction(action,key){
+  const [rowId,indexText]=key.split(':');
+  const row=ROW_BY_ID[rowId];const index=Number(indexText);const field=row.fields[index];const state=fieldStates[rowId][index];
+  let focusAction=action;
+  if(action==='accept'){
+    const active=state.decision==='accepted';
+    Object.assign(state,{decision:active?null:'accepted',edited:null});
+    if(editing&&editing.rowId===rowId&&editing.index===index)editing=null;
+  }else if(action==='reject'){
+    Object.assign(state,{decision:state.decision==='rejected'?null:'rejected',edited:null});
+    if(editing&&editing.rowId===rowId&&editing.index===index)editing=null;
+  }else if(action==='edit'){
+    editing=editing&&editing.rowId===rowId&&editing.index===index?null:{rowId,index};
+  }else if(action==='save'){
+    const value=readEditor(row,field,index);
+    if(field.control!=='image'&&!value&&field.required){showToast('Název nového dárku nesmí být prázdný.');return}
+    Object.assign(state,{decision:'accepted',edited:sameValue(field,value,field.new)?null:value});
+    editing=null;focusAction='edit';
+  }else if(action==='cancel'){editing=null;focusAction='edit'}
+  rerenderRow(row);refreshSelection();applyFilter();
+  const opened=action==='edit'&&editing;
+  const target=opened?document.querySelector(`[data-field-key="${key}"] [data-edit-control]`):document.querySelector(`[data-field="${key}"][data-field-action="${focusAction}"]`);
+  target?.focus();
+}
+device.addEventListener('keydown',event=>{
+  const editor=event.target.closest('.field-edit');if(!editor)return;
+  const key=editor.closest('[data-field-key]').dataset.fieldKey;
+  if(event.key==='Escape'){event.preventDefault();handleFieldAction('cancel',key)}
+  else if(event.key==='Enter'&&event.target.matches('[data-edit-control]')&&(event.target.tagName!=='TEXTAREA'||event.ctrlKey||event.metaKey)){event.preventDefault();handleFieldAction('save',key)}
 });
 function handleAction(action){
   if(action==='apply'){if(selectedRows().some(row=>row.group==='confirm'))openApplyConfirmation();else runApply()}
@@ -970,6 +1214,8 @@ function handleAction(action){
   else if(action==='confirm-discard'){dialog.close();appliedIds=new Set();setPhase('discarded',{focusOutcome:true})}
 }
 document.addEventListener('click',event=>{
+  const fieldTarget=event.target.closest('[data-field-action]');
+  if(fieldTarget){if(!fieldTarget.disabled)handleFieldAction(fieldTarget.dataset.fieldAction,fieldTarget.dataset.field);return}
   const actionTarget=event.target.closest('[data-action]');
   if(actionTarget&&!actionTarget.disabled){handleAction(actionTarget.dataset.action);return}
   const filterButton=event.target.closest('[data-filter]');
@@ -993,7 +1239,19 @@ document.getElementById('nav-theme').addEventListener('click',()=>setTheme(ui.th
 document.getElementById('state-select').addEventListener('change',event=>presetState(event.target.value));
 
 document.querySelectorAll('[data-icon]').forEach(slot=>{slot.outerHTML=icon(slot.dataset.icon)});
+/* Review state in the URL: ?viewport=desktop|mobile&theme=light|dark&state=<toolbar state>. */
+function writeUrl(){
+  const params=new URLSearchParams({viewport:ui.viewport,theme:ui.theme,state:document.getElementById('state-select').value});
+  history.replaceState(null,'',`?${params}`);
+}
+document.querySelector('.review-bar').addEventListener('click',event=>{if(event.target.closest('button'))writeUrl()});
+document.getElementById('state-select').addEventListener('change',writeUrl);
+const startParams=new URLSearchParams(location.search);
 resetSelection();render();
+document.querySelector(`[data-viewport="${startParams.get('viewport')}"]`)?.click();
+if(startParams.get('theme')==='dark')setTheme('dark');
+const startState=startParams.get('state');
+if(startState&&startState!=='pending'&&document.querySelector(`#state-select option[value="${startState}"]`)){document.getElementById('state-select').value=startState;presetState(startState)}
 </script>
 </body>
 </html>

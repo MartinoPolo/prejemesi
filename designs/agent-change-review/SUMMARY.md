@@ -4,7 +4,7 @@
 
 ## Refinements Applied
 
-Variant D was chosen and refined with: exact checkbox alignment, AA-passing coloured text, mixed and nothing-selected review states. See the design brief for full requirements. Key changes from variant B, which D grew out of: rows carry no kind badge; each row opens with a tinted header band holding the checkbox, the change type as coloured title text and the status, and the summary strip shows kind counts as the same coloured icon and text.
+Variant D was chosen and refined with: exact checkbox alignment, AA-passing coloured text, mixed and nothing-selected review states, then per-field accept, reject and edit matching the AI chatbot. See the design brief for full requirements. Key changes from variant B, which D grew out of: rows carry no kind badge; each row opens with a tinted header band holding the checkbox, the change type as coloured title text and the status, and the summary strip shows kind counts as the same coloured icon and text.
 
 ## Component Map
 
@@ -32,7 +32,7 @@ None.
 | --- | --- | --- |
 | ChangeRow | Header band (checkbox, type title, status) over gift identity, diffs and card pair | Domain-specific composition |
 | ChangeKindTitle | Icon + DynaPuff title coloured per change type; also used for summary counts | One mapping of type to colour and icon |
-| FieldDiff | `label: old → new` with struck red and green tints | No diff primitive exists |
+| FieldDecisionRow | Label, `previous → next`, ✓ ✕ ✎ toggles, inline editor and decision pill; share it with the chatbot's field review | No diff or per-field decision primitive exists |
 | ProposalApplyBar | Sticky count + single Apply | Specific to the proposal flow |
 
 ## Implementation Notes
@@ -41,4 +41,5 @@ None.
 - The band's top corners use the row's outer radius minus its border (nested-corner rule in `AGENTS.md`); it touches the border, so there is no padding term.
 - Head cells must be their own flex cells with `min-height` equal to the checkbox size; a generic `td { display: block }` rule outranked them in the base variant and broke the centring.
 - Badge `tone="warning"` text in `src/app.css` measures about 3.15:1; the mockup uses a 22% warning tint with `--foreground` text. Fix the shared tone, not call sites.
-- The "Smíšený výběr" and "Nic nevybráno" review states are presets of the same selection model; the apply bar disables at zero.
+- The "Smíšený výběr", "Nic nevybráno", "Rozhodnutí po polích" and "Úprava hodnoty" review states are presets of one model: per-field decisions (undecided, accepted, rejected, plus an optional edit). The row checkbox and Vybrat vše derive from it (checked, mixed, unchecked) and write through it; the apply bar disables at zero.
+- The Po card is computed from the field decisions, so it always previews exactly what Apply writes.
