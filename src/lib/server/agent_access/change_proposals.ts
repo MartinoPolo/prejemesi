@@ -4,7 +4,7 @@ import { getDb, type DatabaseTransaction } from '$lib/server/db/index.js';
 import { changeProposal } from '$lib/server/db/change_proposal.schema.js';
 import { user } from '$lib/server/db/auth.schema.js';
 import { wishlist } from '$lib/server/db/wishlist.schema.js';
-import { personalAccessToken } from '$lib/server/db/access_token.schema.js';
+import { agentAccessOauthGrant, personalAccessToken } from '$lib/server/db/access_token.schema.js';
 import { gift, reservation } from '$lib/server/db/gift.schema.js';
 import { giftRevision } from '$lib/server/db/gift_revision.schema.js';
 import { moderatorInvite } from '$lib/server/db/moderator.schema.js';
@@ -31,7 +31,7 @@ import {
 	type PendingChangeProposalSummary,
 	type UndoChangeProposalResult,
 } from '$lib/modules/change_proposals/types.js';
-import { userInterfaceActor } from '$lib/server/operations/actor.js';
+import { isAppChannel, userInterfaceActor } from '$lib/server/operations/actor.js';
 import { executeOperationBatch, type OperationBatchStep } from '$lib/server/operations/runner.js';
 import { undoGiftRevisionBatchOperation } from '$lib/server/operations/gift_undo_operations.js';
 import {
@@ -68,6 +68,8 @@ export interface ChangeProposalRecord {
 	proposal: ChangeProposalRow;
 	wishlistShortId: string | null;
 	submitterName: string;
+	/** Submitted by a connected app rather than a personal access token. */
+	viaApp: boolean;
 	tokenRevoked: boolean;
 	/** The submitter's current role on the proposal's wishlist; null for a proposal without one. */
 	viewerRole: WishlistRole | null;
@@ -102,6 +104,8 @@ export async function requireOwnChangeProposal(
 			submitterName: user.name,
 			tokenRevokedAt: personalAccessToken.revokedAt,
 			liveTokenId: personalAccessToken.id,
+			grantRevokedAt: agentAccessOauthGrant.revokedAt,
+			liveGrantId: agentAccessOauthGrant.id,
 		})
 		.from(changeProposal)
 		.innerJoin(user, eq(user.id, changeProposal.submitterUserId))
@@ -114,6 +118,7 @@ export async function requireOwnChangeProposal(
 			),
 		)
 		.leftJoin(personalAccessToken, eq(personalAccessToken.id, changeProposal.tokenId))
+		.leftJoin(agentAccessOauthGrant, eq(agentAccessOauthGrant.id, changeProposal.oauthGrantId))
 		.where(
 			and(
 				eq(changeProposal.id, proposalId),
@@ -129,11 +134,16 @@ export async function requireOwnChangeProposal(
 	}
 	const viewerRole =
 		wishlistRow === null ? null : await resolveRoleOnWishlistRow(submitterUserId, wishlistRow);
+	// By channel: a deleted credential leaves both references null.
+	const viaApp = isAppChannel(proposal.channel);
 	return {
 		proposal,
 		wishlistShortId: wishlistRow?.shortId ?? null,
 		submitterName: found.submitterName,
-		tokenRevoked: found.liveTokenId === null || found.tokenRevokedAt !== null,
+		viaApp,
+		tokenRevoked: viaApp
+			? found.liveGrantId === null || found.grantRevokedAt !== null
+			: found.liveTokenId === null || found.tokenRevokedAt !== null,
 		viewerRole,
 		hidesReservations:
 			viewerRole !== null &&
@@ -312,6 +322,7 @@ export async function buildChangeProposalView(
 		viewerRole: record.viewerRole,
 		channel: proposal.channel,
 		tokenName: proposal.tokenName,
+		viaApp: record.viaApp,
 		tokenRevoked: record.tokenRevoked,
 		createdAt: proposal.createdAt,
 		expiresAt: proposal.expiresAt,
@@ -406,6 +417,7 @@ function submittedGrant(
 		userId: reviewer.id,
 		userName: reviewer.name,
 		tokenName: proposal.tokenName,
+		channel: proposal.channel,
 		scopes: proposal.grant.scopes,
 		wishlistIds: proposal.grant.wishlistIds,
 	};

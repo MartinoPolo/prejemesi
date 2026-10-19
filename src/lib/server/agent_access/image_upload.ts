@@ -19,8 +19,8 @@ import { IMAGE_FILE_EXTENSIONS, MAX_GIFT_IMAGE_BYTES } from '$lib/modules/upload
 import { AGENT_SCOPE } from '$lib/modules/access_tokens/scopes.js';
 import { SERVER_ERROR, type ServerErrorCode } from '$lib/modules/errors/server_error_codes.js';
 import { NonEmptyIdSchema } from '$lib/modules/change_proposals/types.js';
-import type { AuthenticatedAccessToken } from './access_tokens.js';
-import { hasAgentScope } from './agent_grant.js';
+import { credentialReference, type AgentCaller } from './agent_caller.js';
+import { requireAgentScope } from './agent_grant.js';
 import { AgentApiFailure } from './api.js';
 import { resolveAddressedWishlist } from './wishlist_address.js';
 import { scheduleAgentAccessPurge } from './agent_access_purge.js';
@@ -113,7 +113,7 @@ const IMAGE_BUDGET: TrailingBudget = {
 
 /** The wishlist the upload is for: the token may reach it and its user manages it. */
 async function requireUploadWishlist(
-	token: AuthenticatedAccessToken,
+	caller: AgentCaller,
 	request: v.InferOutput<typeof ImageUploadRequestSchema>,
 ): Promise<string> {
 	const namesOneWishlist =
@@ -121,13 +121,13 @@ async function requireUploadWishlist(
 	if (!namesOneWishlist) {
 		throw new AgentApiFailure(400, SERVER_ERROR.AGENT_IMAGE_REQUEST_INVALID);
 	}
-	const addressed = await resolveAddressedWishlist(token.grant, request);
+	const addressed = await resolveAddressedWishlist(caller.grant, request);
 	if (addressed === null) {
 		throw new AgentApiFailure(400, SERVER_ERROR.AGENT_IMAGE_REQUEST_INVALID);
 	}
 	const { wishlistRow } = await requireWishlistManagement(
 		getDb(),
-		token.grant.userId,
+		caller.grant.userId,
 		addressed.id,
 		{ lock: false },
 	);
@@ -148,19 +148,17 @@ export interface AgentImageUploadDependencies {
  * gifts only ever point at the stored copy.
  */
 export async function uploadAgentImage(
-	token: AuthenticatedAccessToken,
+	caller: AgentCaller,
 	body: unknown,
 	{ fetch, storage, now = new Date() }: AgentImageUploadDependencies,
 ) {
-	const { grant } = token;
-	if (!hasAgentScope(grant, AGENT_SCOPE.giftsWrite)) {
-		throw new AgentApiFailure(403, SERVER_ERROR.AGENT_SCOPE_MISSING);
-	}
+	const { grant } = caller;
+	requireAgentScope(grant, AGENT_SCOPE.giftsWrite);
 	const parsed = v.safeParse(ImageUploadRequestSchema, body);
 	if (!parsed.success) {
 		throw new AgentApiFailure(400, SERVER_ERROR.AGENT_IMAGE_REQUEST_INVALID);
 	}
-	const wishlistId = await requireUploadWishlist(token, parsed.output);
+	const wishlistId = await requireUploadWishlist(caller, parsed.output);
 	if (storage === undefined) {
 		throw new AgentApiFailure(503, SERVER_ERROR.AGENT_IMAGE_STORAGE_UNAVAILABLE);
 	}
@@ -189,7 +187,7 @@ export async function uploadAgentImage(
 				.values({
 					userId: grant.userId,
 					wishlistId,
-					tokenId: token.tokenId,
+					...credentialReference(caller.credential),
 					objectKey,
 					contentType: image.contentType,
 					byteLength: image.byteLength,

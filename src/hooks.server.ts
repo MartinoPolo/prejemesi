@@ -18,6 +18,10 @@ import {
 import { SITE_URL, WWW_HOSTNAME } from '$lib/config/site.js';
 import { ROBOTS_NOINDEX_CONTENT, shouldNoindexPath } from '$lib/seo/robots.js';
 import { requestTelemetryHandle } from '$lib/server/request_telemetry.js';
+import {
+	CONTENT_SECURITY_POLICY_HEADER,
+	contentSecurityPolicy,
+} from '$lib/server/content_security_policy.js';
 import { createSentryServerOptions } from '$lib/observability/sentry_server.js';
 import {
 	reportOperationalFailure,
@@ -80,16 +84,9 @@ function setSecurityHeaders(headers: Headers, url: URL) {
 	headers.set('X-Frame-Options', 'DENY');
 	headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
 	headers.set('Permissions-Policy', 'camera=(), geolocation=(), microphone=(), payment=()');
-	headers.set(
-		'Content-Security-Policy',
-		[
-			"base-uri 'self'",
-			"object-src 'none'",
-			"frame-ancestors 'none'",
-			"form-action 'self'",
-			...(dev ? [] : ['upgrade-insecure-requests']),
-		].join('; '),
-	);
+	if (!headers.has(CONTENT_SECURITY_POLICY_HEADER)) {
+		headers.set(CONTENT_SECURITY_POLICY_HEADER, contentSecurityPolicy());
+	}
 
 	if (!dev) {
 		headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');

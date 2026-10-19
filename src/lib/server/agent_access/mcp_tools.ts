@@ -3,8 +3,8 @@ import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
 import { AGENT_SCOPE, type AgentScope } from '$lib/modules/access_tokens/scopes.js';
 import { OPERATION_KIND, type AnyOperation } from '$lib/server/operations/operation.js';
 import type { AgentImageBucket } from '$lib/server/storage/r2.js';
-import type { AuthenticatedAccessToken } from './access_tokens.js';
-import { hasAgentScope, type AgentAccessGrant } from './agent_grant.js';
+import { AGENT_CREDENTIAL_KIND, type AgentCaller } from './agent_caller.js';
+import { hasAgentScope } from './agent_grant.js';
 import { AgentApiFailure, runIdempotently, type AgentApiResponse } from './api.js';
 import {
 	imageUploadResponse,
@@ -83,7 +83,7 @@ interface AgentMcpToolDefinition {
 }
 
 interface ToolCall {
-	token: AuthenticatedAccessToken;
+	caller: AgentCaller;
 	name: string;
 	pathParameters: Readonly<Record<string, string>>;
 	body: Record<string, unknown>;
@@ -106,14 +106,14 @@ function requiredPathParameter(call: ToolCall, name: string): string {
 }
 
 const FIXED_TOOL_EXECUTORS = {
-	me: async ({ token }) => meResponse(token),
-	listWishlists: ({ token }) => wishlistsResponse(token),
-	submitChangeProposal: ({ token, body }) => proposalSubmissionResponse(token, body),
+	me: async ({ caller }) => meResponse(caller),
+	listWishlists: ({ caller }) => wishlistsResponse(caller),
+	submitChangeProposal: ({ caller, body }) => proposalSubmissionResponse(caller, body),
 	getChangeProposal: (call) =>
-		proposalResponse(call.token, requiredPathParameter(call, 'proposalId')),
+		proposalResponse(call.caller, requiredPathParameter(call, 'proposalId')),
 	applyChangeProposal: (call) =>
-		proposalApplyResponse(call.token, requiredPathParameter(call, 'proposalId')),
-	uploadImage: ({ token, body, imageBucket }) => imageUploadResponse(token, body, imageBucket),
+		proposalApplyResponse(call.caller, requiredPathParameter(call, 'proposalId')),
+	uploadImage: ({ caller, body, imageBucket }) => imageUploadResponse(caller, body, imageBucket),
 } satisfies Record<FixedOperationId, ToolExecutor>;
 
 function isFixedOperationId(operationId: string): operationId is FixedOperationId {
@@ -122,9 +122,9 @@ function isFixedOperationId(operationId: string): operationId is FixedOperationI
 
 /** Operations run like their endpoint, except that a change is submitted as its own proposal. */
 const OPERATION_TOOL_EXECUTORS = {
-	[OPERATION_KIND.read]: ({ token, name, body }) => operationReadResponse(token, name, body),
-	[OPERATION_KIND.mutation]: ({ token, name, body }) =>
-		singleChangeSubmissionResponse(token, name, body),
+	[OPERATION_KIND.read]: ({ caller, name, body }) => operationReadResponse(caller, name, body),
+	[OPERATION_KIND.mutation]: ({ caller, name, body }) =>
+		singleChangeSubmissionResponse(caller, name, body),
 } satisfies Record<OperationKind, ToolExecutor>;
 
 const CONFIRMATION_NOTES: Readonly<Record<string, string>> = {
@@ -255,10 +255,19 @@ function agentMcpToolDefinitions(): Map<string, AgentMcpToolDefinition> {
 	return toolDefinitions;
 }
 
-/** The tools the grant's scopes allow; the others would only answer `AGENT_SCOPE_MISSING`. */
-export function listAgentMcpTools(grant: Pick<AgentAccessGrant, 'scopes'>): AgentMcpTool[] {
+/**
+ * A token's tools are those its scopes allow; the others would only answer `AGENT_SCOPE_MISSING`.
+ * An app sees every tool, since calling one beyond its scopes asks its user for that scope.
+ */
+export function listAgentMcpTools(
+	caller: Pick<AgentCaller, 'credential' | 'grant'>,
+): AgentMcpTool[] {
+	const listsEveryTool = caller.credential.kind === AGENT_CREDENTIAL_KIND.oauthGrant;
 	return [...agentMcpToolDefinitions().values()]
-		.filter(({ route }) => route.scope === null || hasAgentScope(grant, route.scope))
+		.filter(
+			({ route }) =>
+				listsEveryTool || route.scope === null || hasAgentScope(caller.grant, route.scope),
+		)
 		.map(({ tool }) => tool);
 }
 
@@ -278,7 +287,7 @@ function concretePath(route: AgentMcpToolRoute, pathParameters: Record<string, s
 
 /** Runs a tool as the request its endpoint would get: path and header arguments split off. */
 export async function callAgentMcpTool(
-	token: AuthenticatedAccessToken,
+	caller: AgentCaller,
 	name: string,
 	toolArguments: Record<string, unknown>,
 	imageBucket: AgentImageBucket | undefined,
@@ -309,13 +318,13 @@ export async function callAgentMcpTool(
 	if (route.pathParameters.some((parameter) => pathParameters[parameter] === undefined)) {
 		throw invalidArguments();
 	}
-	const call: ToolCall = { token, name, pathParameters, body, imageBucket };
+	const call: ToolCall = { caller, name, pathParameters, body, imageBucket };
 	if (!route.idempotent) {
 		return definition.execute(call);
 	}
 	return runIdempotently(
 		{
-			tokenId: token.tokenId,
+			credential: caller.credential,
 			key: idempotencyKey,
 			method: route.method,
 			path: concretePath(route, pathParameters),

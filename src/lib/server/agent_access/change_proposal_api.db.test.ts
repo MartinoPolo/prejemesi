@@ -23,6 +23,7 @@ import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
 import { CreateAccessTokenInputSchema } from '$lib/modules/access_tokens/types.js';
 import { user } from '$lib/server/db/auth.schema.js';
 import { createAccessToken } from './access_tokens.js';
+import { AGENT_CREDENTIAL_KIND, type AgentCredential } from './agent_caller.js';
 import { claimIdempotencyKey, fingerprintRequest } from './idempotency.js';
 import type { AgentApiRateLimit } from './api.js';
 import { AGENT_BATCH_MAX_ITEMS, AGENT_DAILY_CHANGE_BUDGET } from './limits.js';
@@ -98,7 +99,7 @@ async function proposalOf(response: Response): Promise<SubmittedProposal> {
 	return ((await response.json()) as { proposal: SubmittedProposal }).proposal;
 }
 
-async function tokenWithId(userId: string, input: Record<string, unknown> = {}) {
+async function tokenWithCredential(userId: string, input: Record<string, unknown> = {}) {
 	const { value, token } = await createAccessToken(
 		userId,
 		v.parse(CreateAccessTokenInputSchema, {
@@ -108,11 +109,17 @@ async function tokenWithId(userId: string, input: Record<string, unknown> = {}) 
 			...input,
 		}),
 	);
-	return { authorization: `Bearer ${value}`, tokenId: token.id };
+	const credential: AgentCredential = {
+		kind: AGENT_CREDENTIAL_KIND.personalAccessToken,
+		id: token.id,
+		prefix: token.prefix,
+		expiresAt: token.expiresAt,
+	};
+	return { authorization: `Bearer ${value}`, credential };
 }
 
 async function tokenFor(userId: string, input: Record<string, unknown> = {}) {
-	return (await tokenWithId(userId, input)).authorization;
+	return (await tokenWithCredential(userId, input)).authorization;
 }
 
 async function proposalCount(submitterUserId: string) {
@@ -317,13 +324,13 @@ describe.skipIf(!DB_READY)('POST /api/v1/proposals', () => {
 	it('answers 409 while the first request with the same Idempotency-Key still runs', async () => {
 		const target = await createWishlistFixture();
 		const giftId = await createGiftFixture(target.id);
-		const { authorization, tokenId } = await tokenWithId(MANAGER_ID);
+		const { authorization, credential } = await tokenWithCredential(MANAGER_ID);
 		const body = {
 			wishlistShortId: target.shortId,
 			operations: [{ operation: 'updateGift', input: { id: giftId, name: 'Souběžně' } }],
 		};
 		await claimIdempotencyKey({
-			tokenId,
+			credential,
 			key: 'running-1',
 			fingerprint: await fingerprintRequest('POST', '/api/v1/proposals', body),
 		});

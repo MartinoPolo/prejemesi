@@ -1,12 +1,20 @@
 import * as v from 'valibot';
 import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
+import { isAgentScope, type AgentScope } from '$lib/modules/access_tokens/scopes.js';
 import type { AgentImageBucket } from '$lib/server/storage/r2.js';
-import type { AuthenticatedAccessToken } from './access_tokens.js';
+import { bearerValue } from './access_tokens.js';
+import { AGENT_CREDENTIAL_KIND, type AgentCaller } from './agent_caller.js';
+import {
+	insufficientScopeChallenge,
+	unauthorizedChallenge,
+	type OauthAccessVerifier,
+} from './oauth_access.js';
 import {
 	AgentApiFailure,
 	authenticateAgentRequest,
 	describeAgentApiFailure,
 	readJsonBody,
+	type AgentApiErrorBody,
 	type AgentApiEvent,
 	type AgentApiResponse,
 } from './api.js';
@@ -45,7 +53,7 @@ const MCP_METHOD = {
 const SERVER_INFO = { name: 'prejemesi', title: 'Přejeme si', version: '1' } as const;
 
 const SERVER_INSTRUCTIONS = [
-	'Přejeme si is a family wishlist app. Every tool acts as the user who created the access token, with exactly that user’s rights; recipients never see reservations.',
+	'Přejeme si is a family wishlist app. Every tool acts as the user who created the access token or connected this app, with exactly that user’s rights; recipients never see reservations.',
 	`Start with ${AGENT_API_OPERATION_ID.listWishlists}. Changes are proposals: show the user the review link a change answers with, where they review and apply it. A fast-forward token applies ready changes at once, but deletions, reservations and manager invitations always wait for the user.`,
 	`Put related changes to one wishlist into one ${AGENT_API_OPERATION_ID.submitChangeProposal} call with an idempotencyKey, so a retry never repeats them. For a gift image, call ${AGENT_API_OPERATION_ID.uploadImage} and set its reference as imageReference.`,
 ].join('\n\n');
@@ -82,6 +90,19 @@ class JsonRpcError extends Error {
 	}
 }
 
+/**
+ * A tool call an app's token lacks the scope for. Unlike a token's, it answers HTTP 403 with a
+ * step-up challenge, so the app can ask its user for the scope and retry.
+ */
+class ScopeStepUp extends Error {
+	constructor(
+		readonly scope: AgentScope,
+		readonly body: AgentApiErrorBody,
+	) {
+		super(body.error.message);
+	}
+}
+
 function isJsonObject(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
@@ -111,12 +132,18 @@ function errorResponse(
 	);
 }
 
-/** An agent API failure before any message is read, answered with its own HTTP status. */
-function failureResponse(thrown: unknown): Response {
+/**
+ * An agent API failure before any message is read, answered with its own HTTP status. A 401
+ * names where an app discovers how to sign in (RFC 9728), whether or not a token came along.
+ */
+function failureResponse(thrown: unknown, event: McpEvent, oauth?: OauthAccessVerifier): Response {
 	const failure = describeAgentApiFailure(thrown);
+	const tokenPresented = bearerValue(event.request.headers.get('authorization')) !== null;
+	const challenge =
+		oauth === undefined ? 'Bearer' : unauthorizedChallenge(oauth.endpoints, tokenPresented);
 	const headers =
 		failure.status === 401
-			? { ...failure.headers, 'www-authenticate': 'Bearer' }
+			? { ...failure.headers, 'www-authenticate': challenge }
 			: failure.headers;
 	return errorResponse(
 		null,
@@ -180,7 +207,7 @@ function toolResult(response: AgentApiResponse, origin: string, isError: boolean
 }
 
 async function callTool(
-	token: AuthenticatedAccessToken,
+	caller: AgentCaller,
 	params: unknown,
 	event: McpEvent,
 ): Promise<ReturnType<typeof toolResult>> {
@@ -194,16 +221,30 @@ async function callTool(
 	}
 	// Tool failures are results the model reads, not protocol errors.
 	try {
-		const response = await callAgentMcpTool(token, name, toolArguments, event.platform?.env.R2);
+		const response = await callAgentMcpTool(
+			caller,
+			name,
+			toolArguments,
+			event.platform?.env.R2,
+		);
 		return toolResult(response, event.url.origin, false);
 	} catch (thrown) {
 		const failure = describeAgentApiFailure(thrown);
+		const { code, scope } = failure.body.error;
+		if (
+			caller.credential.kind === AGENT_CREDENTIAL_KIND.oauthGrant &&
+			code === SERVER_ERROR.AGENT_SCOPE_MISSING &&
+			typeof scope === 'string' &&
+			isAgentScope(scope)
+		) {
+			throw new ScopeStepUp(scope, failure.body);
+		}
 		return toolResult({ body: failure.body, status: failure.status }, event.url.origin, true);
 	}
 }
 
 async function answerRequest(
-	token: AuthenticatedAccessToken,
+	caller: AgentCaller,
 	method: string,
 	params: unknown,
 	event: McpEvent,
@@ -219,9 +260,9 @@ async function answerRequest(
 		case MCP_METHOD.ping:
 			return {};
 		case MCP_METHOD.listTools:
-			return { tools: listAgentMcpTools(token.grant) };
+			return { tools: listAgentMcpTools(caller) };
 		case MCP_METHOD.callTool:
-			return callTool(token, params, event);
+			return callTool(caller, params, event);
 		default:
 			throw new JsonRpcError(JSON_RPC_ERROR.methodNotFound, `Method not found: ${method}`);
 	}
@@ -229,13 +270,17 @@ async function answerRequest(
 
 /**
  * Answers one MCP message posted to the endpoint. Every request authenticates like the agent
- * API, including its demo rejection and per-token request limit.
+ * API, including its demo rejection and per-credential request limit; with `oauth`, an app's
+ * access token bound to this endpoint authenticates too.
  */
-export async function handleMcpRequest(event: McpEvent): Promise<Response> {
-	let token: AuthenticatedAccessToken;
+export async function handleMcpRequest(
+	event: McpEvent,
+	oauth?: OauthAccessVerifier,
+): Promise<Response> {
+	let caller: AgentCaller;
 	let message: unknown;
 	try {
-		token = await authenticateAgentRequest(event);
+		caller = await authenticateAgentRequest(event, oauth);
 		const protocolVersion = event.request.headers.get(MCP_PROTOCOL_VERSION_HEADER);
 		if (
 			protocolVersion !== null &&
@@ -262,7 +307,7 @@ export async function handleMcpRequest(event: McpEvent): Promise<Response> {
 				400,
 			);
 		}
-		return failureResponse(thrown);
+		return failureResponse(thrown, event, oauth);
 	}
 
 	const incoming = classifyMessage(message);
@@ -280,11 +325,25 @@ export async function handleMcpRequest(event: McpEvent): Promise<Response> {
 		);
 	}
 	try {
-		const result = await answerRequest(token, incoming.method, incoming.params, event);
+		const result = await answerRequest(caller, incoming.method, incoming.params, event);
 		return mcpJson({ jsonrpc: JSON_RPC_VERSION, id: incoming.id, result });
 	} catch (thrown) {
 		if (thrown instanceof JsonRpcError) {
 			return errorResponse(incoming.id, thrown);
+		}
+		if (thrown instanceof ScopeStepUp && oauth !== undefined) {
+			return errorResponse(
+				incoming.id,
+				new JsonRpcError(JSON_RPC_ERROR.server, thrown.message, thrown.body.error),
+				403,
+				{
+					'www-authenticate': insufficientScopeChallenge(
+						oauth.endpoints,
+						caller.grant.scopes,
+						thrown.scope,
+					),
+				},
+			);
 		}
 		const failure = describeAgentApiFailure(thrown);
 		return errorResponse(

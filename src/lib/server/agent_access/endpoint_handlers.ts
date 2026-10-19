@@ -1,6 +1,6 @@
 import { readAccessibleWishlistsOperation } from '$lib/server/operations/wishlist_read_operations.js';
 import { agentImageStorage, type AgentImageBucket } from '$lib/server/storage/r2.js';
-import type { AuthenticatedAccessToken } from './access_tokens.js';
+import { AGENT_CREDENTIAL_KIND, type AgentCaller } from './agent_caller.js';
 import { runAgentApiOperation, type AgentApiResponse } from './api.js';
 import {
 	applyChangeProposalForAgent,
@@ -14,29 +14,30 @@ import { uploadAgentImage } from './image_upload.js';
  * What each agent endpoint answers, shared by its `/api/v1` route and its MCP tool so both
  * surfaces return the same body for the same call.
  */
-export function meResponse(token: AuthenticatedAccessToken): AgentApiResponse {
+export function meResponse({ credential, fastForward, grant }: AgentCaller): AgentApiResponse {
+	const access = { name: grant.tokenName, scopes: grant.scopes, wishlistIds: grant.wishlistIds };
 	return {
 		body: {
-			user: { name: token.grant.userName },
-			token: {
-				name: token.grant.tokenName,
-				prefix: token.prefix,
-				scopes: token.grant.scopes,
-				wishlistIds: token.grant.wishlistIds,
-				expiresAt: token.expiresAt,
-				fastForward: token.fastForward,
-			},
+			user: { name: grant.userName },
+			...(credential.kind === AGENT_CREDENTIAL_KIND.personalAccessToken
+				? {
+						token: {
+							...access,
+							prefix: credential.prefix,
+							expiresAt: credential.expiresAt,
+							fastForward,
+						},
+					}
+				: { app: access }),
 		},
 	};
 }
 
-export async function wishlistsResponse(
-	token: AuthenticatedAccessToken,
-): Promise<AgentApiResponse> {
+export async function wishlistsResponse(caller: AgentCaller): Promise<AgentApiResponse> {
 	return {
 		body: {
 			wishlists: await runAgentApiOperation(
-				token.grant,
+				caller.grant,
 				readAccessibleWishlistsOperation.name,
 				{},
 			),
@@ -45,54 +46,54 @@ export async function wishlistsResponse(
 }
 
 export async function operationReadResponse(
-	token: AuthenticatedAccessToken,
+	caller: AgentCaller,
 	operationName: string,
 	input: unknown,
 ): Promise<AgentApiResponse> {
-	return { body: { result: await runAgentApiOperation(token.grant, operationName, input) } };
+	return { body: { result: await runAgentApiOperation(caller.grant, operationName, input) } };
 }
 
 export async function proposalSubmissionResponse(
-	token: AuthenticatedAccessToken,
+	caller: AgentCaller,
 	body: unknown,
 ): Promise<AgentApiResponse> {
-	return { body: { proposal: await submitChangeProposal(token, body) }, status: 201 };
+	return { body: { proposal: await submitChangeProposal(caller, body) }, status: 201 };
 }
 
 /** One change submitted as a proposal of its own, as MCP change tools do. */
 export async function singleChangeSubmissionResponse(
-	token: AuthenticatedAccessToken,
+	caller: AgentCaller,
 	operationName: string,
 	input: unknown,
 ): Promise<AgentApiResponse> {
 	return {
-		body: { proposal: await submitSingleChangeProposal(token, operationName, input) },
+		body: { proposal: await submitSingleChangeProposal(caller, operationName, input) },
 		status: 201,
 	};
 }
 
 export async function proposalResponse(
-	token: AuthenticatedAccessToken,
+	caller: AgentCaller,
 	proposalId: string,
 ): Promise<AgentApiResponse> {
-	return { body: { proposal: await readChangeProposalForAgent(token, proposalId) } };
+	return { body: { proposal: await readChangeProposalForAgent(caller, proposalId) } };
 }
 
 export async function proposalApplyResponse(
-	token: AuthenticatedAccessToken,
+	caller: AgentCaller,
 	proposalId: string,
 ): Promise<AgentApiResponse> {
-	return { body: { proposal: await applyChangeProposalForAgent(token, proposalId) } };
+	return { body: { proposal: await applyChangeProposalForAgent(caller, proposalId) } };
 }
 
 export async function imageUploadResponse(
-	token: AuthenticatedAccessToken,
+	caller: AgentCaller,
 	body: unknown,
 	bucket: AgentImageBucket | undefined,
 ): Promise<AgentApiResponse> {
 	return {
 		body: {
-			image: await uploadAgentImage(token, body, {
+			image: await uploadAgentImage(caller, body, {
 				// The global fetch, not SvelteKit's: the image host is never this app.
 				fetch: (url, init) => fetch(url, init),
 				storage: bucket && agentImageStorage(bucket),

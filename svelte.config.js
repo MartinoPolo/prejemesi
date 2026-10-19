@@ -27,6 +27,15 @@ const config = {
 			// type-safe client-server functions that always run on the server
 			remoteFunctions: true,
 		},
+		typescript: {
+			// TypeScript's `**` skips dot-directories, so name the OAuth discovery route explicitly.
+			config: (tsconfig) => {
+				tsconfig.include.push(
+					'./types/src/routes/.well-known/**/$types.d.ts',
+					'../src/routes/.well-known/**/*.ts',
+				);
+			},
+		},
 	},
 	vitePlugin: {
 		// https://github.com/sveltejs/vite-plugin-svelte/blob/main/docs/inspector.md

@@ -171,6 +171,7 @@ vi.mock('better-auth/svelte-kit', () => ({
 }));
 
 import { handle } from './hooks.server.js';
+import { CONTENT_SECURITY_POLICY_HEADER } from '$lib/server/content_security_policy.js';
 import { createAuth } from '$lib/server/auth.js';
 import { DEMO_CLEANUP_INTERVAL_MS, DEMO_COOKIE_NAME } from '$lib/server/demo/constants.js';
 
@@ -632,5 +633,41 @@ describe('user preference reads (issue #108, REQ-1/REQ-2)', () => {
 		expect(mockGetDb).not.toHaveBeenCalled();
 		expect(html).toContain('data-palette="sky"');
 		expect(html).toContain('data-depth="soft"');
+	});
+});
+
+describe('content security policy', () => {
+	async function responseWithRouteHeaders(path: string, routeHeaders: Record<string, string>) {
+		return (handle as unknown as (input: unknown) => Promise<Response>)({
+			event: createEvent({ path }),
+			resolve: vi.fn(
+				async () =>
+					new Response('<html></html>', {
+						headers: { 'content-type': 'text/html', ...routeHeaders },
+					}),
+			),
+		});
+	}
+
+	it('sets the site policy, limiting form submissions to the site', async () => {
+		const response = await responseWithRouteHeaders('/my-lists', {});
+
+		expect(response.headers.get(CONTENT_SECURITY_POLICY_HEADER)).toContain(
+			"form-action 'self'",
+		);
+		expect(response.headers.get(CONTENT_SECURITY_POLICY_HEADER)).toContain(
+			"frame-ancestors 'none'",
+		);
+	});
+
+	it('keeps the policy a route already set, such as OAuth consent naming the app', async () => {
+		const routePolicy = "base-uri 'self'; form-action 'self' https://claude.ai";
+
+		const response = await responseWithRouteHeaders('/oauth/consent', {
+			[CONTENT_SECURITY_POLICY_HEADER]: routePolicy,
+		});
+
+		expect(response.headers.get(CONTENT_SECURITY_POLICY_HEADER)).toBe(routePolicy);
+		expect(response.headers.get('x-frame-options')).toBe('DENY');
 	});
 });

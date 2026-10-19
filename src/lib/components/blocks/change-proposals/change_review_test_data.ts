@@ -114,6 +114,7 @@ export function changeProposal(overrides: Partial<ChangeProposalView> = {}): Cha
 		viewerRole: WISHLIST_ROLES.recipient,
 		channel: 'token',
 		tokenName: 'Claude – nákupní asistent',
+		viaApp: false,
 		tokenRevoked: false,
 		createdAt: new Date(now - DAY_MILLISECONDS),
 		expiresAt: new Date(now + 6 * DAY_MILLISECONDS),

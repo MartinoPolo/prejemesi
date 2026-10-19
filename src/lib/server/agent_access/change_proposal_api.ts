@@ -12,8 +12,7 @@ import {
 	type ChangeProposalView,
 } from '$lib/modules/change_proposals/types.js';
 import { OPERATION_KIND } from '$lib/server/operations/operation.js';
-import { tokenChannel } from '$lib/server/operations/actor.js';
-import type { AuthenticatedAccessToken } from './access_tokens.js';
+import { credentialReference, type AgentCaller } from './agent_caller.js';
 import type { AgentAccessGrant } from './agent_grant.js';
 import { AgentApiFailure } from './api.js';
 import {
@@ -80,7 +79,7 @@ function createsWishlist(authorized: AuthorizedAgentOperation): boolean {
  * stays in the proposal and the dry run rejects it.
  */
 function assertRowsFitWishlist(
-	token: AuthenticatedAccessToken,
+	caller: AgentCaller,
 	proposalWishlist: { id: string } | null,
 	authorizedOperations: readonly AuthorizedAgentOperation[],
 ): void {
@@ -88,7 +87,9 @@ function assertRowsFitWishlist(
 		const rowId = changeRowId(index);
 		if (createsWishlist(authorized)) {
 			const mayCreate =
-				proposalWishlist === null && token.fastForward && token.grant.wishlistIds === null;
+				proposalWishlist === null &&
+				caller.fastForward &&
+				caller.grant.wishlistIds === null;
 			if (!mayCreate) {
 				throw new AgentApiFailure(
 					400,
@@ -261,17 +262,13 @@ async function discardUnappliedProposal(proposalId: string): Promise<void> {
  * them for the user to review. With fast-forward, a proposal whose rows are all ready and none
  * needs confirmation applies at once; a wishlist-creating proposal that cannot is discarded.
  */
-export async function submitChangeProposal(
-	token: AuthenticatedAccessToken,
-	body: unknown,
-	now = new Date(),
-) {
+export async function submitChangeProposal(caller: AgentCaller, body: unknown, now = new Date()) {
 	const parsed = v.safeParse(ChangeProposalRequestSchema, body);
 	if (!parsed.success) {
 		throw invalidProposal();
 	}
 	const request = parsed.output;
-	const { grant } = token;
+	const { grant } = caller;
 	const proposalWishlist = await resolveProposalWishlist(grant, request);
 	const authorizedOperations = await authorizeAgentOperations(
 		grant,
@@ -280,7 +277,7 @@ export async function submitChangeProposal(
 			input: operation.input,
 		})),
 	);
-	return storeChangeProposal(token, proposalWishlist, authorizedOperations, request, now);
+	return storeChangeProposal(caller, proposalWishlist, authorizedOperations, request, now);
 }
 
 /** What an existing target that names no live wishlist answers. */
@@ -298,12 +295,12 @@ const MISSING_TARGET_ERROR = {
  * none, like a wishlist-creating proposal.
  */
 export async function submitSingleChangeProposal(
-	token: AuthenticatedAccessToken,
+	caller: AgentCaller,
 	operationName: string,
 	input: unknown,
 	now = new Date(),
 ) {
-	const { grant } = token;
+	const { grant } = caller;
 	const authorizedOperations = await authorizeAgentOperations(grant, [{ operationName, input }]);
 	const [authorized] = authorizedOperations;
 	if (authorized === undefined) {
@@ -319,7 +316,7 @@ export async function submitSingleChangeProposal(
 			? null
 			: await resolveAddressedWishlist(grant, { wishlistId: targetWishlistId });
 	return storeChangeProposal(
-		token,
+		caller,
 		proposalWishlist,
 		authorizedOperations,
 		{ operations: [{ operation: operationName, input }] },
@@ -328,19 +325,19 @@ export async function submitSingleChangeProposal(
 }
 
 async function storeChangeProposal(
-	token: AuthenticatedAccessToken,
+	caller: AgentCaller,
 	proposalWishlist: { id: string; shortId: string } | null,
 	authorizedOperations: readonly AuthorizedAgentOperation[],
 	request: Pick<ChangeProposalRequest, 'operations'>,
 	now: Date,
 ) {
-	const { grant } = token;
+	const { grant } = caller;
 	if (
 		authorizedOperations.some((authorized) => authorized.operation.kind === OPERATION_KIND.read)
 	) {
 		throw new AgentApiFailure(400, SERVER_ERROR.AGENT_PROPOSAL_NOT_A_CHANGE);
 	}
-	assertRowsFitWishlist(token, proposalWishlist, authorizedOperations);
+	assertRowsFitWishlist(caller, proposalWishlist, authorizedOperations);
 	const database = getDb();
 	await assertWithinTrailingBudget(
 		database,
@@ -352,7 +349,7 @@ async function storeChangeProposal(
 
 	const rows = await previewRows(grant, authorizedOperations, request);
 	const fastForwards =
-		token.fastForward &&
+		caller.fastForward &&
 		rows.every((row) => row.rejection === null && !row.requiresConfirmation);
 	const proposalId = await database.transaction(async (transaction) => {
 		await lockTrailingBudget(transaction, CHANGE_BUDGET, grant.userId);
@@ -369,8 +366,8 @@ async function storeChangeProposal(
 			.values({
 				wishlistId: proposalWishlist?.id ?? null,
 				submitterUserId: grant.userId,
-				tokenId: token.tokenId,
-				channel: tokenChannel(grant.tokenName),
+				...credentialReference(caller.credential),
+				channel: grant.channel,
 				tokenName: grant.tokenName,
 				grant: {
 					scopes: [...grant.scopes],
@@ -427,10 +424,10 @@ async function fastForwardProposal(
 	}
 }
 
-/** The token's user's own proposal; 403 when the token's wishlist restriction excludes it. */
-async function requireAgentChangeProposal(token: AuthenticatedAccessToken, proposalId: string) {
-	const record = await requireOwnChangeProposal(token.grant.userId, proposalId);
-	const allowedWishlistIds = token.grant.wishlistIds;
+/** The caller's user's own proposal; 403 when the caller's wishlist restriction excludes it. */
+async function requireAgentChangeProposal(caller: AgentCaller, proposalId: string) {
+	const record = await requireOwnChangeProposal(caller.grant.userId, proposalId);
+	const allowedWishlistIds = caller.grant.wishlistIds;
 	const { wishlistId } = record.proposal;
 	if (
 		allowedWishlistIds !== null &&
@@ -441,12 +438,9 @@ async function requireAgentChangeProposal(token: AuthenticatedAccessToken, propo
 	return record;
 }
 
-export async function readChangeProposalForAgent(
-	token: AuthenticatedAccessToken,
-	proposalId: string,
-) {
+export async function readChangeProposalForAgent(caller: AgentCaller, proposalId: string) {
 	return projectChangeProposalForAgent(
-		await buildChangeProposalView(await requireAgentChangeProposal(token, proposalId)),
+		await buildChangeProposalView(await requireAgentChangeProposal(caller, proposalId)),
 	);
 }
 
@@ -462,25 +456,22 @@ function reviewRequired(view: ChangeProposalView, details: Record<string, unknow
  * waited because its apply failed or a gift changed meanwhile. Only the fast-forward token that
  * submitted it may, so no token skips the review another token's proposal waits for.
  */
-export async function applyChangeProposalForAgent(
-	token: AuthenticatedAccessToken,
-	proposalId: string,
-) {
-	const record = await requireAgentChangeProposal(token, proposalId);
+export async function applyChangeProposalForAgent(caller: AgentCaller, proposalId: string) {
+	const record = await requireAgentChangeProposal(caller, proposalId);
 	const view = await buildChangeProposalView(record);
 	if (view.state !== CHANGE_PROPOSAL_STATUS.pending) {
 		throw new AgentApiFailure(409, SERVER_ERROR.AGENT_PROPOSAL_NOT_PENDING, {
 			status: view.state,
 		});
 	}
-	if (!token.fastForward || record.proposal.tokenId !== token.tokenId) {
+	if (!caller.fastForward || record.proposal.tokenId !== caller.credential.id) {
 		throw reviewRequired(view);
 	}
 	if (view.rows.some((row) => row.status !== CHANGE_ROW_STATUS.ready)) {
 		throw reviewRequired(view);
 	}
 	const result = await applyChangeProposalRows(
-		{ id: token.grant.userId, name: token.grant.userName },
+		{ id: caller.grant.userId, name: caller.grant.userName },
 		proposalId,
 		view.rows.map((row) => row.rowId),
 	);

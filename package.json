@@ -53,6 +53,9 @@
 		"build:storybook": "pnpm paraglide:compile && svelte-kit sync && storybook build"
 	},
 	"dependencies": {
+		"@better-auth/cimd": "~1.7.7",
+		"@better-auth/mcp": "~1.7.7",
+		"@better-auth/oauth-provider": "~1.7.7",
 		"@fontsource-variable/dynapuff": "^5.2.8",
 		"@fontsource-variable/geist": "^5.2.9",
 		"@lucide/svelte": "^1.17.0",
@@ -77,9 +80,6 @@
 		"valibot": "^1.4.2"
 	},
 	"devDependencies": {
-		"@better-auth/cimd": "~1.7.7",
-		"@better-auth/mcp": "~1.7.7",
-		"@better-auth/oauth-provider": "~1.7.7",
 		"@chromatic-com/storybook": "^5.1.1",
 		"@cloudflare/workers-types": "^5.20260822.1",
 		"@fontsource-variable/figtree": "^5.2.10",

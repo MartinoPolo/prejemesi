@@ -1,6 +1,10 @@
 import { and, eq, isNull, lt, or } from 'drizzle-orm';
 import { getDb } from '$lib/server/db/index.js';
-import { agentIdempotencyKey } from '$lib/server/db/change_proposal.schema.js';
+import {
+	agentIdempotencyKey,
+	agentOauthIdempotencyKey,
+} from '$lib/server/db/change_proposal.schema.js';
+import { AGENT_CREDENTIAL_KIND, type AgentCredential } from './agent_caller.js';
 import { IDEMPOTENCY_KEY_ABANDONED_AFTER_MS, IDEMPOTENCY_KEY_RETENTION_MS } from './limits.js';
 
 export const IDEMPOTENCY_KEY_HEADER = 'idempotency-key';
@@ -23,11 +27,37 @@ export type IdempotencyClaim =
 	| { kind: typeof IDEMPOTENCY_CLAIM.reused }
 	| { kind: typeof IDEMPOTENCY_CLAIM.inProgress };
 
-/** One token's key; keys of different tokens never meet. */
+/** One credential's key; keys of different credentials never meet. */
 export interface IdempotencyScope {
-	tokenId: string;
+	credential: AgentCredential;
 	key: string;
 	fingerprint: string;
+}
+
+/** Tokens and grants keep their keys in tables of the same shape, each cascading with its owner. */
+function keyTableOf(credential: AgentCredential) {
+	return credential.kind === AGENT_CREDENTIAL_KIND.personalAccessToken
+		? { table: agentIdempotencyKey, ownerColumn: agentIdempotencyKey.tokenId }
+		: { table: agentOauthIdempotencyKey, ownerColumn: agentOauthIdempotencyKey.grantId };
+}
+
+function insertClaim(
+	scope: IdempotencyScope,
+	values: { requestFingerprint: string; createdAt: Date },
+) {
+	const database = getDb();
+	const { credential, key } = scope;
+	return credential.kind === AGENT_CREDENTIAL_KIND.personalAccessToken
+		? database
+				.insert(agentIdempotencyKey)
+				.values({ tokenId: credential.id, key, ...values })
+				.onConflictDoNothing()
+				.returning({ key: agentIdempotencyKey.key })
+		: database
+				.insert(agentOauthIdempotencyKey)
+				.values({ grantId: credential.id, key, ...values })
+				.onConflictDoNothing()
+				.returning({ key: agentOauthIdempotencyKey.key });
 }
 
 export function isValidIdempotencyKey(key: string): boolean {
@@ -59,11 +89,9 @@ export async function fingerprintRequest(
 	return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 
-function keyOf(scope: Pick<IdempotencyScope, 'tokenId' | 'key'>) {
-	return and(
-		eq(agentIdempotencyKey.tokenId, scope.tokenId),
-		eq(agentIdempotencyKey.key, scope.key),
-	);
+function keyOf(scope: Pick<IdempotencyScope, 'credential' | 'key'>) {
+	const { table, ownerColumn } = keyTableOf(scope.credential);
+	return and(eq(ownerColumn, scope.credential.id), eq(table.key, scope.key));
 }
 
 /**
@@ -75,6 +103,7 @@ export async function claimIdempotencyKey(
 	now = new Date(),
 ): Promise<IdempotencyClaim> {
 	const database = getDb();
+	const { table } = keyTableOf(scope.credential);
 	const claimedValues = {
 		requestFingerprint: scope.fingerprint,
 		responseStatus: null,
@@ -83,40 +112,40 @@ export async function claimIdempotencyKey(
 	};
 	// A key purged between the insert and the read is simply claimed on the next attempt.
 	for (let attempt = 0; attempt < 2; attempt += 1) {
-		const inserted = await database
-			.insert(agentIdempotencyKey)
-			.values({ tokenId: scope.tokenId, key: scope.key, ...claimedValues })
-			.onConflictDoNothing()
-			.returning({ key: agentIdempotencyKey.key });
+		const inserted = await insertClaim(scope, claimedValues);
 		if (inserted.length > 0) {
 			return { kind: IDEMPOTENCY_CLAIM.claimed };
 		}
 		const takenOver = await database
-			.update(agentIdempotencyKey)
+			.update(table)
 			.set(claimedValues)
 			.where(
 				and(
 					keyOf(scope),
 					or(
-						lt(
-							agentIdempotencyKey.createdAt,
-							new Date(now.getTime() - IDEMPOTENCY_KEY_RETENTION_MS),
-						),
+						lt(table.createdAt, new Date(now.getTime() - IDEMPOTENCY_KEY_RETENTION_MS)),
 						and(
-							isNull(agentIdempotencyKey.responseStatus),
+							isNull(table.responseStatus),
 							lt(
-								agentIdempotencyKey.createdAt,
+								table.createdAt,
 								new Date(now.getTime() - IDEMPOTENCY_KEY_ABANDONED_AFTER_MS),
 							),
 						),
 					),
 				),
 			)
-			.returning({ key: agentIdempotencyKey.key });
+			.returning({ key: table.key });
 		if (takenOver.length > 0) {
 			return { kind: IDEMPOTENCY_CLAIM.claimed };
 		}
-		const [existing] = await database.select().from(agentIdempotencyKey).where(keyOf(scope));
+		const [existing] = await database
+			.select({
+				requestFingerprint: table.requestFingerprint,
+				responseStatus: table.responseStatus,
+				responseBody: table.responseBody,
+			})
+			.from(table)
+			.where(keyOf(scope));
 		if (existing === undefined) {
 			continue;
 		}
@@ -136,10 +165,11 @@ export async function claimIdempotencyKey(
 }
 
 function claimedBy(scope: IdempotencyScope) {
+	const { table } = keyTableOf(scope.credential);
 	return and(
 		keyOf(scope),
-		eq(agentIdempotencyKey.requestFingerprint, scope.fingerprint),
-		isNull(agentIdempotencyKey.responseStatus),
+		eq(table.requestFingerprint, scope.fingerprint),
+		isNull(table.responseStatus),
 	);
 }
 
@@ -149,12 +179,12 @@ export async function storeIdempotentResponse(
 	response: { status: number; body: unknown },
 ): Promise<void> {
 	await getDb()
-		.update(agentIdempotencyKey)
+		.update(keyTableOf(scope.credential).table)
 		.set({ responseStatus: response.status, responseBody: response.body })
 		.where(claimedBy(scope));
 }
 
 /** Frees the key of a failed request, which changed nothing, so a retry runs it again. */
 export async function releaseIdempotencyKey(scope: IdempotencyScope): Promise<void> {
-	await getDb().delete(agentIdempotencyKey).where(claimedBy(scope));
+	await getDb().delete(keyTableOf(scope.credential).table).where(claimedBy(scope));
 }

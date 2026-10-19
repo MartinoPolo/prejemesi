@@ -23,11 +23,8 @@ import { CreateAccessTokenInputSchema } from '$lib/modules/access_tokens/types.j
 import { CHANGE_PROPOSAL_OUTCOME } from '$lib/modules/change_proposals/types.js';
 import { DEFAULT_IMAGE_METADATA } from '$lib/modules/images/types.js';
 import { GIFT_REVISION_RETENTION_MS } from '$lib/server/operations/constants.js';
-import {
-	authenticateAccessToken,
-	createAccessToken,
-	type AuthenticatedAccessToken,
-} from './access_tokens.js';
+import { authenticateAccessToken, createAccessToken } from './access_tokens.js';
+import type { AgentCaller } from './agent_caller.js';
 import { submitChangeProposal } from './change_proposal_api.js';
 import { applyChangeProposalRows, undoChangeProposal } from './change_proposals.js';
 import { uploadAgentImage } from './image_upload.js';
@@ -62,7 +59,7 @@ const bucket: AgentImageBucket = {
 };
 const storage = agentImageStorage(bucket);
 
-async function agentToken(userId: string): Promise<AuthenticatedAccessToken> {
+async function agentToken(userId: string): Promise<AgentCaller> {
 	const { value } = await createAccessToken(
 		userId,
 		v.parse(CreateAccessTokenInputSchema, {
@@ -74,7 +71,7 @@ async function agentToken(userId: string): Promise<AuthenticatedAccessToken> {
 	return authenticateAccessToken(`Bearer ${value}`);
 }
 
-async function uploadFor(token: AuthenticatedAccessToken, wishlistId: string) {
+async function uploadFor(token: AgentCaller, wishlistId: string) {
 	const image = await uploadAgentImage(
 		token,
 		{ wishlistId, url: 'https://shop.example/kolo.png' },
@@ -87,7 +84,7 @@ async function uploadFor(token: AuthenticatedAccessToken, wishlistId: string) {
 	return row;
 }
 
-async function submit(token: AuthenticatedAccessToken, wishlistShortId: string, rows: Row[]) {
+async function submit(token: AgentCaller, wishlistShortId: string, rows: Row[]) {
 	return submitChangeProposal(token, {
 		wishlistShortId,
 		operations: rows.map(([operation, input]) => ({ operation, input })),

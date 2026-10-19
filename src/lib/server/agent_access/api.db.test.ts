@@ -46,6 +46,12 @@ import {
 } from './api.js';
 import { AGENT_API_MAX_BODY_BYTES, AGENT_API_RATE_LIMIT } from './limits.js';
 import { authorizeAgentOperations } from './authorization.js';
+import {
+	createOauthClientFixture,
+	mintOauthAccessToken,
+	removeOauthClientFixtures,
+} from './oauth.db.test-setup.js';
+import { saveOauthGrant } from './oauth_grants.js';
 import { GET as getMe } from '../../../routes/api/v1/me/+server.js';
 import { GET as getWishlists } from '../../../routes/api/v1/wishlists/+server.js';
 import { POST as postOperation } from '../../../routes/api/v1/operations/[operationName]/+server.js';
@@ -172,6 +178,7 @@ describe.skipIf(!DB_READY)('agent API', () => {
 
 	afterAll(async () => {
 		if (DB_READY) {
+			await removeOauthClientFixtures();
 			await getDb().delete(user).where(eq(user.id, demoUserId));
 			await getDb().delete(demoSession).where(eq(demoSession.id, demoSessionId));
 		}
@@ -225,6 +232,23 @@ describe.skipIf(!DB_READY)('agent API', () => {
 					},
 				);
 			}
+		});
+
+		it('fails an app’s OAuth access token, which only /mcp accepts, with 401', async () => {
+			const clientId = await createOauthClientFixture();
+			await saveOauthGrant(MANAGER_ID, clientId, {
+				scopes: ['gifts:write'],
+				wishlistIds: null,
+			});
+			const accessToken = mintOauthAccessToken({
+				sub: MANAGER_ID,
+				client_id: clientId,
+				scope: 'read offline_access',
+			});
+
+			expect(
+				await errorOf(await callMe({ authorization: `Bearer ${accessToken}` })),
+			).toMatchObject({ status: 401, code: SERVER_ERROR.AGENT_TOKEN_INVALID });
 		});
 
 		it('fails an expired token with 401 AGENT_TOKEN_EXPIRED', async () => {
@@ -337,9 +361,9 @@ describe.skipIf(!DB_READY)('agent API', () => {
 		it('answers a batch over 200 items with 400 and the cap', async () => {
 			const fixture = await createWishlistFixture();
 			const { authorization } = await tokenFor(MANAGER_ID, { scopes: ['gifts:write'] });
-			const batchEndpoint = agentApiEndpoint(async ({ token }) => ({
+			const batchEndpoint = agentApiEndpoint(async ({ caller }) => ({
 				body: await authorizeAgentOperations(
-					token.grant,
+					caller.grant,
 					Array.from({ length: 201 }, () => ({
 						operationName: 'createGift',
 						input: { wishlistId: fixture.id, name: 'Kolo' },
@@ -603,6 +627,7 @@ describe.skipIf(!DB_READY)('agent API', () => {
 				{
 					status: 403,
 					code: SERVER_ERROR.AGENT_SCOPE_MISSING,
+					scope: 'gifts:write',
 				},
 			);
 			expect(await errorOf(await callOperation('createGift', input, writer))).toMatchObject({

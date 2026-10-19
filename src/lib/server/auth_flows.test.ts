@@ -1,5 +1,6 @@
 import { beforeAll, beforeEach, afterAll, describe, expect, it, vi } from 'vitest';
 import { getTableColumns, Param, type SQL } from 'drizzle-orm';
+import type * as BetterAuthPlugins from 'better-auth/plugins';
 import type { createAuth as createAuthFunction } from './auth.js';
 import * as authSchema from './db/auth.schema.js';
 
@@ -36,7 +37,10 @@ vi.mock('better-auth/adapters/drizzle', async () => {
 	const { memoryAdapter } = await import('better-auth/adapters/memory');
 	return { drizzleAdapter: () => memoryAdapter(fixtures.database) };
 });
-vi.mock('better-auth/plugins', () => ({ captcha: () => ({ id: 'test-captcha' }) }));
+vi.mock('better-auth/plugins', async (importOriginal) => ({
+	...(await importOriginal<typeof BetterAuthPlugins>()),
+	captcha: () => ({ id: 'test-captcha' }),
+}));
 vi.mock('better-auth/svelte-kit', () => ({
 	sveltekitCookies: () => ({ id: 'test-cookie-bridge' }),
 }));
@@ -57,7 +61,14 @@ beforeAll(async () => {
 }, 30_000);
 afterAll(() => vi.unstubAllEnvs());
 beforeEach(() => {
-	for (const key of ['user', 'account', 'session', 'verification', 'rateLimit']) {
+	for (const key of [
+		'user',
+		'account',
+		'session',
+		'verification',
+		'rateLimit',
+		'oauthResource',
+	]) {
 		fixtures.database[key] = [];
 	}
 	fixtures.emails.length = 0;

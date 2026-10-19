@@ -12,3 +12,9 @@ export const AGENT_SCOPE = {
 } as const;
 
 export type AgentScope = (typeof AGENT_SCOPE)[keyof typeof AGENT_SCOPE];
+
+const AGENT_SCOPES = new Set<string>(Object.values(AGENT_SCOPE));
+
+export function isAgentScope(value: string): value is AgentScope {
+	return AGENT_SCOPES.has(value);
+}

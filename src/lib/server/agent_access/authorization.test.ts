@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { isHttpError } from '@sveltejs/kit';
 import type * as DatabaseModule from '$lib/server/db/index.js';
 
 vi.mock('$lib/server/db/index.js', async (importOriginal) => ({
@@ -25,6 +26,7 @@ import {
 	type AgentOperationRequest,
 } from './authorization.js';
 import { tokenActor, type AgentAccessGrant } from './agent_grant.js';
+import { tokenChannel } from '$lib/server/operations/actor.js';
 import { AGENT_SCOPE, type AgentScope } from '$lib/modules/access_tokens/scopes.js';
 
 const ALLOWED_WISHLIST_ID = 'allowed-wishlist';
@@ -34,7 +36,14 @@ function grantWith(
 	scopes: readonly AgentScope[],
 	wishlistIds: readonly string[] | null = null,
 ): AgentAccessGrant {
-	return { userId: 'user-1', userName: 'Martin', tokenName: 'Claude', scopes, wishlistIds };
+	return {
+		userId: 'user-1',
+		userName: 'Martin',
+		tokenName: 'Claude',
+		channel: tokenChannel('Claude'),
+		scopes,
+		wishlistIds,
+	};
 }
 
 const everyScope = Object.values(AGENT_SCOPE);
@@ -55,6 +64,17 @@ async function expectServerError(
 	label?: string,
 ) {
 	expect(await captureRejection(work), label).toMatchObject({ status, body: { message: code } });
+}
+
+async function expectScopeMissing(work: Promise<unknown>, scope: AgentScope, label?: string) {
+	const rejection = await captureRejection(work);
+	if (!isHttpError(rejection, 403)) {
+		throw new Error(`Expected a 403 for ${label ?? 'the call'}`, { cause: rejection });
+	}
+	expect(JSON.parse(rejection.body.message), label).toEqual({
+		code: SERVER_ERROR.AGENT_SCOPE_MISSING,
+		scope,
+	});
 }
 
 describe('tokenActor', () => {
@@ -85,25 +105,31 @@ describe('authorizeAgentOperation', () => {
 	});
 
 	it('rejects a call outside the token scopes', async () => {
-		const deniedCalls: Array<[readonly AgentScope[], string, unknown]> = [
-			[[], 'readPriorityLevels', { wishlistId: ALLOWED_WISHLIST_ID }],
-			[[AGENT_SCOPE.read], 'createGift', { wishlistId: ALLOWED_WISHLIST_ID, name: 'Kolo' }],
+		const deniedCalls: Array<[readonly AgentScope[], string, unknown, AgentScope]> = [
+			[[], 'readPriorityLevels', { wishlistId: ALLOWED_WISHLIST_ID }, AGENT_SCOPE.read],
+			[
+				[AGENT_SCOPE.read],
+				'createGift',
+				{ wishlistId: ALLOWED_WISHLIST_ID, name: 'Kolo' },
+				AGENT_SCOPE.giftsWrite,
+			],
 			[
 				[AGENT_SCOPE.read, AGENT_SCOPE.giftsWrite, AGENT_SCOPE.reservationsIdentities],
 				'generateModeratorInviteLink',
 				{ wishlistId: ALLOWED_WISHLIST_ID, email: 'invitee@example.com' },
+				AGENT_SCOPE.managersInvite,
 			],
 			[
 				[AGENT_SCOPE.read, AGENT_SCOPE.giftsWrite],
 				'reserveGift',
 				{ giftId: 'g', quantity: 1 },
+				AGENT_SCOPE.reservationsWrite,
 			],
 		];
-		for (const [scopes, name, input] of deniedCalls) {
-			await expectServerError(
+		for (const [scopes, name, input, missingScope] of deniedCalls) {
+			await expectScopeMissing(
 				authorizeAgentOperation(grantWith(scopes), name, input),
-				403,
-				SERVER_ERROR.AGENT_SCOPE_MISSING,
+				missingScope,
 				name,
 			);
 		}
@@ -263,17 +289,16 @@ describe('authorizeAgentOperation', () => {
 
 describe('authorization precedence', () => {
 	it('checks the scope before validating the input', async () => {
-		await expectServerError(
+		await expectScopeMissing(
 			authorizeAgentOperation(grantWith([AGENT_SCOPE.read]), 'createGift', {
 				wishlistId: 42,
 			}),
-			403,
-			SERVER_ERROR.AGENT_SCOPE_MISSING,
+			AGENT_SCOPE.giftsWrite,
 		);
 	});
 
 	it('checks the scope before the wishlist restriction', async () => {
-		await expectServerError(
+		await expectScopeMissing(
 			authorizeAgentOperation(
 				grantWith([AGENT_SCOPE.read], [ALLOWED_WISHLIST_ID]),
 				'createGift',
@@ -282,8 +307,7 @@ describe('authorization precedence', () => {
 					name: 'Kolo',
 				},
 			),
-			403,
-			SERVER_ERROR.AGENT_SCOPE_MISSING,
+			AGENT_SCOPE.giftsWrite,
 		);
 	});
 
@@ -298,13 +322,12 @@ describe('authorization precedence', () => {
 	});
 
 	it('checks every step of a batch for scope before validating any input', async () => {
-		await expectServerError(
+		await expectScopeMissing(
 			authorizeAgentOperations(grantWith([AGENT_SCOPE.read, AGENT_SCOPE.giftsWrite]), [
 				{ operationName: 'createGift', input: { wishlistId: 42 } },
 				{ operationName: 'reserveGift', input: { giftId: 'gift', quantity: 1 } },
 			]),
-			403,
-			SERVER_ERROR.AGENT_SCOPE_MISSING,
+			AGENT_SCOPE.reservationsWrite,
 		);
 	});
 });

@@ -178,16 +178,23 @@ describe.skipIf(!DB_READY)('MCP server', () => {
 		await client.close();
 	});
 
-	it('answers a missing or unknown token with 401 and a bearer challenge', async () => {
+	it('answers a missing or unknown token with 401 and a discovery challenge', async () => {
 		const missing = await postRaw({ jsonrpc: '2.0', id: 1, method: 'ping' });
 		const unknown = await postRaw(
 			{ jsonrpc: '2.0', id: 1, method: 'ping' },
 			{ authorization: `Bearer pjs_${'x'.repeat(43)}` },
 		);
 
+		const discovery =
+			/resource_metadata="https?:\/\/[^"]+\/\.well-known\/oauth-protected-resource\/mcp", scope="read offline_access"$/;
+		expect(missing.headers.get('www-authenticate')).toMatch(
+			new RegExp(`^Bearer ${discovery.source}`),
+		);
+		expect(unknown.headers.get('www-authenticate')).toMatch(
+			new RegExp(`^Bearer error="invalid_token", ${discovery.source}`),
+		);
 		for (const response of [missing, unknown]) {
 			expect(response.status).toBe(401);
-			expect(response.headers.get('www-authenticate')).toBe('Bearer');
 			expect(await response.json()).toMatchObject({
 				error: { data: { code: 'AGENT_TOKEN_INVALID' } },
 			});

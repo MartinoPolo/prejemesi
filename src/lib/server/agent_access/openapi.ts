@@ -453,9 +453,9 @@ function buildOriginIndependentDocument() {
 			[`${AGENT_API_BASE_PATH}/me`]: {
 				get: {
 					operationId: AGENT_API_OPERATION_ID.me,
-					summary: 'The token user and the token itself.',
+					summary: 'The user, and the token or connected app the call acts through.',
 					responses: {
-						200: jsonResponse('The token user and token.', { type: 'object' }),
+						200: jsonResponse('The user, and `token` or `app`.', { type: 'object' }),
 						...AUTHENTICATED_ERROR_RESPONSES,
 					},
 				},

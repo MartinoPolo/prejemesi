@@ -29,6 +29,12 @@
 			.map((kind) => ({ kind, count: proposal.kindCounts[kind] ?? 0 }))
 			.filter((entry) => entry.count > 0),
 	);
+	const submittedVia = $derived(
+		proposal.viaApp ? m.change_review_submitted_via_app() : m.change_review_submitted_via(),
+	);
+	const revokedCopy = $derived(
+		proposal.viaApp ? m.change_review_app_revoked() : m.change_review_token_revoked(),
+	);
 	const expiry = $derived.by(() => {
 		if (proposal.state === CHANGE_PROPOSAL_STATE.expired) {
 			return m.change_review_expired_on({ date: formatChangeReviewDate(proposal.expiresAt) });
@@ -43,10 +49,10 @@
 	<span class="summary-icon" aria-hidden="true"><KeyRoundIcon /></span>
 	<p class="summary-who">
 		{m.change_review_submitted_by()} <strong>{proposal.submitterName}</strong>
-		{m.change_review_submitted_via()}
+		{submittedVia}
 		<strong>{m.change_review_token_name({ name: proposal.tokenName })}</strong>
 		{#if proposal.tokenRevoked}
-			<span class="revoked">({m.change_review_token_revoked()})</span>
+			<span class="revoked">({revokedCopy})</span>
 		{/if}
 	</p>
 	<p class="summary-meta">

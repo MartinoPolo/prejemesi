@@ -165,8 +165,11 @@ export interface ChangeProposalView {
 	/** The submitter's current role on the wishlist; null for a proposal without one. */
 	viewerRole: WishlistRole | null;
 	channel: string;
+	/** The token's name, or the connected app's. */
 	tokenName: string;
-	/** The submitting token was revoked since; its pending proposal still applies. */
+	/** Submitted by a connected app rather than a personal access token. */
+	viaApp: boolean;
+	/** The submitting token or app access was revoked since; its pending proposal still applies. */
 	tokenRevoked: boolean;
 	createdAt: Date;
 	expiresAt: Date;

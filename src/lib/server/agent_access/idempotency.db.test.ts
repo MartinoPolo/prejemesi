@@ -8,6 +8,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import * as v from 'valibot';
 import { CreateAccessTokenInputSchema } from '$lib/modules/access_tokens/types.js';
 import { createAccessToken } from './access_tokens.js';
+import { AGENT_CREDENTIAL_KIND, type AgentCredential } from './agent_caller.js';
 import {
 	IDEMPOTENCY_CLAIM,
 	claimIdempotencyKey,
@@ -17,12 +18,12 @@ import {
 } from './idempotency.js';
 import { IDEMPOTENCY_KEY_ABANDONED_AFTER_MS, IDEMPOTENCY_KEY_RETENTION_MS } from './limits.js';
 
-let tokenId = '';
+let credential: AgentCredential;
 let keyCounter = 0;
 
 function freshScope(fingerprint = 'request-a'): IdempotencyScope {
 	keyCounter += 1;
-	return { tokenId, key: `key-${keyCounter}`, fingerprint };
+	return { credential, key: `key-${keyCounter}`, fingerprint };
 }
 
 function later(start: Date, milliseconds: number): Date {
@@ -40,7 +41,12 @@ describe.skipIf(!DB_READY)('idempotency keys', () => {
 				wishlistIds: null,
 			}),
 		);
-		tokenId = token.id;
+		credential = {
+			kind: AGENT_CREDENTIAL_KIND.personalAccessToken,
+			id: token.id,
+			prefix: token.prefix,
+			expiresAt: token.expiresAt,
+		};
 	});
 	afterAll(removeFixtureRows);
 

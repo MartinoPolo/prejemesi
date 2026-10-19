@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { requestEvent, accessTokenService } = vi.hoisted(() => ({
+const { requestEvent, accessTokenService, oauthGrantService } = vi.hoisted(() => ({
 	requestEvent: {
 		locals: {} as Record<string, unknown>,
 		isRemoteRequest: false,
@@ -11,6 +11,10 @@ const { requestEvent, accessTokenService } = vi.hoisted(() => ({
 		rollAccessToken: vi.fn(),
 		listAccessTokens: vi.fn(),
 		listAccessTokenWishlistChoices: vi.fn(),
+	},
+	oauthGrantService: {
+		listOauthGrants: vi.fn(),
+		revokeOauthGrant: vi.fn(),
 	},
 }));
 
@@ -36,17 +40,21 @@ vi.mock('$app/server', () => {
 });
 
 vi.mock('$lib/server/agent_access/access_tokens.js', () => accessTokenService);
+vi.mock('$lib/server/agent_access/oauth_grants.js', () => oauthGrantService);
 
 import {
 	createAccessToken,
 	getAccessTokens,
+	getConnectedApps,
 	getAccessTokenWishlistChoices,
 	revokeAccessToken,
+	revokeConnectedApp,
 	rollAccessToken,
 } from './access_tokens.remote.js';
 import {
 	CreateAccessTokenInputSchema,
 	RevokeAccessTokenInputSchema,
+	RevokeConnectedAppInputSchema,
 	RollAccessTokenInputSchema,
 } from './types.js';
 
@@ -88,6 +96,7 @@ describe('access token remote functions', () => {
 		expect(inputSchemaOf(createAccessToken)).toBe(CreateAccessTokenInputSchema);
 		expect(inputSchemaOf(revokeAccessToken)).toBe(RevokeAccessTokenInputSchema);
 		expect(inputSchemaOf(rollAccessToken)).toBe(RollAccessTokenInputSchema);
+		expect(inputSchemaOf(revokeConnectedApp)).toBe(RevokeConnectedAppInputSchema);
 	});
 
 	it('require a signed-in user', async () => {
@@ -97,12 +106,36 @@ describe('access token remote functions', () => {
 			[createAccessToken, createInput],
 			[revokeAccessToken, { tokenId: 'token-1' }],
 			[rollAccessToken, rollInput],
+			[getConnectedApps, undefined],
+			[revokeConnectedApp, { grantId: 'grant-1' }],
 		] as const) {
 			await expect(call(remoteFunction, arg)).rejects.toMatchObject({ status: 401 });
 		}
 		expect(accessTokenService.createAccessToken).not.toHaveBeenCalled();
 		expect(accessTokenService.revokeAccessToken).not.toHaveBeenCalled();
 		expect(accessTokenService.rollAccessToken).not.toHaveBeenCalled();
+		expect(oauthGrantService.listOauthGrants).not.toHaveBeenCalled();
+		expect(oauthGrantService.revokeOauthGrant).not.toHaveBeenCalled();
+	});
+
+	it('list and disconnect connected apps as the signed-in user only', async () => {
+		signIn();
+		oauthGrantService.listOauthGrants.mockResolvedValue([]);
+
+		await call(getConnectedApps);
+		await call(revokeConnectedApp, { grantId: 'grant-1' });
+
+		expect(oauthGrantService.listOauthGrants).toHaveBeenCalledWith(USER.id);
+		expect(oauthGrantService.revokeOauthGrant).toHaveBeenCalledWith(USER.id, 'grant-1');
+	});
+
+	it('reject disconnecting apps in the demo', async () => {
+		enterDemo();
+
+		await expect(call(revokeConnectedApp, { grantId: 'grant-1' })).rejects.toMatchObject({
+			status: 403,
+		});
+		expect(oauthGrantService.revokeOauthGrant).not.toHaveBeenCalled();
 	});
 
 	it('list and offer wishlists for the signed-in user only', async () => {
