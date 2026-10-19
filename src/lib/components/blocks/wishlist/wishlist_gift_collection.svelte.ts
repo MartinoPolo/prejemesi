@@ -63,8 +63,7 @@ export function createWishlistGiftCollectionView(
 		onCommitOrder: (orderedIds) => collection.onreordercommit(orderedIds),
 		onCancelOrder: (orderedIds) => collection.onreordercancel(orderedIds),
 		onPreviewPlacement: (placement) => collection.onreorderplacementpreview?.(placement),
-		onCommitPlacement: (placement, source) =>
-			collection.onreorderplacementcommit?.(placement, source) ?? false,
+		onCommitPlacement: (placement) => collection.onreorderplacementcommit?.(placement) ?? false,
 		onCancelPlacement: () => collection.onreorderplacementcancel?.(),
 	});
 

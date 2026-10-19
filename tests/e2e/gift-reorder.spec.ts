@@ -648,6 +648,8 @@ test('grouped priority reorder moves gifts within and across levels and persists
 			.poll(() => groupedGiftNames(page))
 			.toMatchObject({ Vysoká: [names.B], Střední: [names.A, names.C] });
 		await expect(aHandle).toBeFocused();
+		await expect(page.getByText(`${names.A} přesunut do skupiny Střední.`)).toBeVisible();
+		await expect(page.getByRole('button', { name: 'Vrátit', exact: true })).toBeVisible();
 
 		// Focus stays on the moved gift's handle, so further presses keep moving it.
 		for (const [key, mediumGroup] of [
