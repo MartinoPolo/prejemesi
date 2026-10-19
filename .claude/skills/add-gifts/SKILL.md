@@ -1,22 +1,35 @@
 ---
 name: add-gifts
-description:
-    'Gather reviewed product metadata and reference prices (Heureka, Alza, category stores such as
-    Steam) into a gift ingestion manifest and safely dry-run or explicitly apply it to an
-    allowlisted production wishlist.'
-argument-hint: '<product URLs...> [wishlist URL or alias]'
-allowed-tools:
-    Read, Write, WebFetch, WebSearch, Bash(pnpm ingest:gifts *), Bash(pnpm.cmd ingest:gifts *),
-    Bash(node scripts/gift-research-browser.mjs *)
+description: "Research product metadata and reference prices (Heureka, Alza, category stores such as Steam), then add new gifts or update existing ones on the user's wishlists through the Přejeme si CLI or MCP server, as change proposals the user reviews."
+argument-hint: '<product URLs or gifts to update...> [wishlist URL or name]'
+allowed-tools: Read, Write, WebFetch, WebSearch, Bash(npx prejemesi *), Bash(prejemesi *), Bash(node packages/cli/dist/bin.js *), Bash(node scripts/gift-research-browser.mjs *), mcp__prejemesi
 metadata:
-    version: '1.1'
+    version: '2.0'
     category: operations
 ---
 
 # Add gifts
 
-Accept one or more product URLs and an optional wishlist alias. This workflow is evidence-only:
-**Never guess** a product identity, brand, model, price, currency, image, or wishlist target.
+Accept product URLs for new gifts, existing gifts to enrich (for example with review data, prices or links), and an optional wishlist URL or name. This workflow is evidence-only: **Never guess** a product identity, brand, model, price, currency, image, gift, or wishlist target.
+
+## Connection
+
+Act as the user with **their own personal access token**, through either:
+
+- **CLI:** `npx prejemesi …` (`packages/cli/README.md`). Inside this repository before the package is published, run `pnpm --filter prejemesi build` once and use `node packages/cli/dist/bin.js …`. Output is JSON; failures go to standard error.
+- **MCP:** the `prejemesi` server (`docs/API.md#mcp`), whose tools mirror the API: `listWishlists`, `readWishlistGifts`, `readGiftCategories`, `readPriorityLevels`, `uploadImage`, `submitChangeProposal`, `getChangeProposal`.
+
+The skill **never reads, asks for, or prints** the token. Do not open the CLI config file, echo `PREJEMESI_TOKEN`, or pass a token argument. When the CLI answers `NOT_LOGGED_IN` or a 401 code, stop and ask the user to run `npx prejemesi login` themselves. The token needs `gifts:write`; on `AGENT_SCOPE_MISSING` or `AGENT_WISHLIST_NOT_ALLOWED`, tell the user which scope or wishlist it lacks. Only the user changes tokens, in Settings.
+
+## Target wishlist
+
+List the wishlists the token reaches (`prejemesi wishlists` or `listWishlists`). Pick the one whose `shortId` matches a `/w/<shortId>` URL, or whose title matches the given name exactly; ask when none or several match. Gifts can be changed only where the user's role allows it; report the wishlist title and recipient.
+
+Before proposing, read the wishlist's state:
+
+- gifts: `prejemesi gifts list --wishlist <shortId>` or `readWishlistGifts` (`{ "wishlistShortId" }`), for gift ids and to spot duplicates;
+- categories: `prejemesi read readGiftCategories --input '{"wishlistId":"<id>"}'` or the tool of the same name;
+- priority levels: `readPriorityLevels` with the same input.
 
 ## Extraction order
 
@@ -24,119 +37,58 @@ For every supplied URL, use this order:
 
 1. Fetch the page and inspect product JSON-LD.
 2. Inspect OpenGraph fields, the canonical URL, and ordinary page metadata.
-3. Only when direct extraction is incomplete, perform an **exact brand/model** web search. Accept a
-   search result only when its identity is unambiguous and matches the source evidence exactly.
+3. Only when direct extraction is incomplete, perform an **exact brand/model** web search. Accept a search result only when its identity is unambiguous and matches the source evidence exactly.
 
-Preserve the user-supplied source URL as the primary link even when a canonical URL is recorded as
-metadata. Never replace it with a searched retailer URL. Leave uncertain fields empty and ask a
-targeted question rather than inferring them.
+Preserve the user-supplied source URL as the primary link even when a canonical URL is recorded as metadata. Never replace it with a searched retailer URL. Leave uncertain fields empty and ask a targeted question rather than inferring them.
 
 ## Price references
 
-Always research reference prices, even when the source page shows one. Search by EAN/GTIN or exact
-brand + model + edition/platform, and accept only exact matches: a different edition, platform,
-size, colour, language, or a used/unpacked offer is a different product.
+Always research reference prices, even when the source page shows one. Search by EAN/GTIN or exact brand + model + edition/platform, and accept only exact matches: a different edition, platform, size, colour, language, or a used/unpacked offer is a different product.
 
-| Gift kind                                      | References to try                                                                           |
-| ---------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| Physical goods sold in Czechia (default)       | **Heureka.cz** and **Alza.cz**, always both                                                 |
-| PC games                                       | **Steam** (`store.steampowered.com/api/appdetails?appids=<id>&cc=cz&l=czech`), plus Heureka |
-| Console games                                  | Heureka and Alza for boxed editions; the platform store for digital                         |
-| Other categories (books, board games, LEGO, …) | Heureka and Alza, plus the category's authoritative store or database                       |
-| Products not sold in Czechia                   | The manufacturer's store or the main retailer of its home market                            |
+| Gift kind | References to try |
+| --- | --- |
+| Physical goods sold in Czechia (default) | **Heureka.cz** and **Alza.cz**, always both |
+| PC games | **Steam** (`store.steampowered.com/api/appdetails?appids=<id>&cc=cz&l=czech`), plus Heureka |
+| Console games | Heureka and Alza for boxed editions; the platform store for digital |
+| Other categories (books, board games, LEGO, …) | Heureka and Alza, plus the category's authoritative store or database |
+| Products not sold in Czechia | The manufacturer's store or the main retailer of its home market |
 
-Also record a foreign reference (manufacturer store, Steam, or a major foreign retailer) whenever
-the product is sold internationally. When the gift has several plausible formats (boxed vs. digital
-key, Czech vs. English edition, platform), ask which the user prefers instead of choosing.
+Also record a foreign reference (manufacturer store, Steam, or a major foreign retailer) whenever the product is sold internationally. When the gift has several plausible formats (boxed vs. digital key, Czech vs. English edition, platform), ask which the user prefers instead of choosing.
 
-- **Price fields:** use the lowest–highest **new, in-stock** exact-match Heureka offer range in CZK,
-  widened to include the Alza price; a single value when they agree. Without a Czech reference, use
-  the category reference: for Steam, `price` is the current final price and `priceMax` the regular
-  price when on sale. Keep the currency shown (`CZK`, `EUR`, or `USD`) and never convert; other
-  currencies are reported only.
-- **Links:** after the source link, add each exact-match reference page with a short label
-  (`Heureka`, `Alza`, `Steam`, or an edition qualifier such as `Heureka – PS5`). Skip duplicates of
-  the source and respect the link limit.
-- **Provenance:** give `price`, `priceMax`, and `currency` their own `provenance.fields` entries
-  naming the references and figures used, for example
-  `exact-search: Heureka new offers 1108–1571 CZK, Alza 1369 CZK`. Entries are limited to 100
-  characters.
+- **Price fields:** use the lowest–highest **new, in-stock** exact-match Heureka offer range in CZK, widened to include the Alza price; a single value when they agree. Without a Czech reference, use the category reference: for Steam, `price` is the current final price and `priceMax` the regular price when on sale. Keep the currency shown (`CZK`, `EUR`, or `USD`) and never convert; other currencies are reported only.
+- **Links:** after the source link, add each exact-match reference page with a short label (`Heureka`, `Alza`, `Steam`, or an edition qualifier such as `Heureka – PS5`). Skip duplicates of the source and respect the link limit.
 
 ### Bot-protected sites
 
-Heureka and Alza sit behind Cloudflare; do not use WebFetch for them. Batch every Heureka/Alza
-search and product URL for the round into one run:
+Heureka and Alza sit behind Cloudflare; do not use WebFetch for them. Batch every Heureka/Alza search and product URL for the round into one run:
 
 ```bash
 node scripts/gift-research-browser.mjs "<url>" ... --out <scratch>/round-1.json
 ```
 
-Search URLs: `https://www.heureka.cz/?h%5Bfraze%5D=<query>` and
-`https://www.alza.cz/search.htm?exps=<query>`. The script opens a visible Chrome window; most
-challenges clear on their own. Before running it, tell the user a Chrome window will open and they
-may need to complete a verification there; the script waits for them and continues on its own. Pick
-product pages from the search results' `links`, then read them in a second run. Prices often appear
-only in `text`, not in JSON-LD: Heureka lists shop offers under `Doporučené nabídky` and
-`Nejlevnější nabídky`; Alza shows the regular new price next to `Nový`, while `Rozbalený` and
-`S kódem` (discount-code) prices are not the reference price. Report a page that stays blocked as
-unresolved instead of falling back to guesses.
+Search URLs: `https://www.heureka.cz/?h%5Bfraze%5D=<query>` and `https://www.alza.cz/search.htm?exps=<query>`. The script opens a visible Chrome window; most challenges clear on their own. Before running it, tell the user a Chrome window will open and they may need to complete a verification there; the script waits for them and continues on its own. Pick product pages from the search results' `links`, then read them in a second run. Prices often appear only in `text`, not in JSON-LD: Heureka lists shop offers under `Doporučené nabídky` and `Nejlevnější nabídky`; Alza shows the regular new price next to `Nový`, while `Rozbalený` and `S kódem` (discount-code) prices are not the reference price. Report a page that stays blocked as unresolved instead of falling back to guesses.
 
-## Provenance and manifest
+## Evidence
 
-For each field, record the extraction method in `provenance.fields`. Record selected image
-provenance in `provenance.imageSource` with its HTTPS URL and method (`json-ld`, `opengraph`,
-`page-metadata`, or `exact-search`). If several images or products plausibly match, do not choose
-one silently. Write every unresolved decision explicitly into the manifest's top-level `ambiguities`
-array with the affected item (when known), field, and evidence-backed reason.
+Keep a research record per gift in the scratch directory: for each field, the extraction method (`json-ld`, `opengraph`, `page-metadata`, `exact-search`) and the evidence, such as `exact-search: Heureka new offers 1108–1571 CZK, Alza 1369 CZK`; the selected image's HTTPS URL and method. If several products or images plausibly match, do not choose one silently: list every unresolved decision with the affected gift, field, and evidence-backed reason. **Any open ambiguity is a HITL stop**: submit nothing until the user resolves it.
 
-Write a schema-version-1 JSON manifest with a stable manifest ID, unique stable item IDs, exact
-expected wishlist short ID/title/recipient, explicit quantity and priority, original source URL,
-gathered timestamp, gift fields, and provenance. `gift.category` is optional and must be
-evidence-backed or explicitly provided by the user; it must already be enabled on the target
-wishlist and match an enabled custom label or either Czech/English label of an enabled preset.
-Unknown or disabled category values are HITL, never guessed, and never silently create custom
-categories. Every gift must have at least one link, and `gift.links[0].url` must exactly equal
-`sourceUrl`; every other URL the user supplied for that gift follows it, before reference links. Do
-not add update or delete instructions.
+Gift fields follow the `createGift` and `updateGift` inputs in the API reference (`GET /api/v1/openapi.json`):
 
-Take the short ID from a `/w/<shortId>` wishlist URL and its exact title and recipient from the
-public page; ask when they cannot be read.
+- Every new gift has at least one link, and `links[0].url` is exactly the source URL; other URLs the user supplied for that gift follow it, before reference links.
+- `categoryId` is optional and only from the wishlist's existing categories, matched by `customLabel` or by the preset (`presetKey`) the user or the evidence names. Unknown categories are HITL; never create one.
+- `priorityLevelId` and `quantity` only when the user gave them.
+- Images: store the selected image with `prejemesi images add --wishlist <shortId> --url <image URL> --idempotency-key <key>` or `uploadImage`, then set `"imageReference": "<reference>"` on the gift. Report a refused image (`AGENT_IMAGE_*`) and propose the gift without it.
 
-## Safety gate
+## Proposing changes
 
-Always run the fixed CLI in dry-run mode first:
+Every change is a proposal: nothing changes until the user applies it on its review page, unless their token has fast-forward. Send each batch with an **`Idempotency-Key`** made from the batch's purpose and content (for example `add-gifts-<shortId>-<date>-<n>`), and resend the identical body with the same key when a call fails or times out; a changed body needs a new key (`AGENT_IDEMPOTENCY_KEY_REUSED`).
 
-```bash
-pnpm ingest:gifts --manifest <manifest-path> --base-url <explicit-production-url>
-```
+- **New gifts:** one proposal per wishlist: `prejemesi gifts create --wishlist <shortId> --input @<scratch>/gifts.json --idempotency-key <key>` with an array of gift inputs, or `submitChangeProposal` with `createGift` rows and `idempotencyKey`. Skip a product whose source URL is already a link of a gift on the wishlist and report it as a duplicate.
+- **Updating existing gifts:** take the gift id from the gift list; when names are similar, ask which gift is meant. Add review data and other research with `appendGiftDescription` (`{ "giftId", "text" }`), which on a shared wishlist adds a dated addition and keeps the original description for gifters. Change prices, links or the image with `updateGift` (`{ "id", … }`); `links` replaces the whole list, so send the existing links followed by the new ones. Several updates go in one proposal: `prejemesi proposals submit --input @<scratch>/proposal.json --idempotency-key <key>` with `{ "wishlistShortId", "operations": [{ "operation", "input" }] }`, or `submitChangeProposal`. A single update can use `prejemesi gifts update <giftId> --wishlist <shortId> --input '<json>'`.
+- Delete or reorder gifts only when the user asked; deletions always wait for confirmation on the review page.
 
-The skill **never reads or prints** the ingestion token. Do not open the credential file, inspect
-process credentials, echo environment values, or pass a token argument. Credential loading belongs
-exclusively to `scripts/ingest-gifts.ts`.
-
-Apply only when all of these are true:
-
-- the user made an **explicit production** insertion request;
-- the wishlist is allowlisted, its exact identity matches, and any supplied wishlist alias resolves
-  without ambiguity;
-- every product and selected image is unambiguous;
-- dry-run reports no conflict, target mismatch, or ambiguity.
-
-Production accepts only wishlists listed in the `GIFT_INGESTION_TARGET_SHORT_IDS` Worker variable. A
-dry-run `target_not_allowed` error means the wishlist is not authorized: stop and ask the user
-whether to authorize it. Only the user authorizes a wishlist; the skill never changes the allowlist
-on its own. The user edits it in the Cloudflare dashboard, where it applies immediately
-(`docs/PRODUCTION_GIFT_INGESTION.md`). Rerun the dry-run once the user confirms the edit.
-
-A nonempty dry-run `ambiguities` list is a mandatory HITL stop: do not download, prepare, upload, or
-apply images or gifts until the user resolves every entry. Then invoke the same CLI with `--apply`
-and the explicit production base URL. Otherwise stop for targeted HITL: identify the exact
-item/field/image/target decision needed and present only the evidence-backed choices.
+After submitting, check every row's status: `ready`; `rejected` with its `error`; `needsConfirmation`; `conflict`. Give the user the **review link** (`reviewLink` from the CLI, the absolute link in the MCP result) for every pending proposal. Status `applied` means a fast-forward token applied it at once. Never use `proposals apply` to skip a review; it only retries a fast-forward apply. On `AGENT_RATE_LIMITED`, wait `retryAfterSeconds` and resend with the same key; on a daily budget code, stop and report.
 
 ## Report
 
-Report created gift IDs, skipped duplicates, conflicts, omitted metadata, and image provenance.
-Include a per-gift price table with each reference's price, currency, and availability, and list
-references that were blocked or had no exact match. Report preparation/download/upload/apply
-failures by item and stage. Never expose signed PUT URLs, bearer tokens, R2 credentials, database
-credentials, or cookies.
+For each wishlist: its title, each proposal's id, status and review link, and per row the gift, whether it is created or updated, and its status or error. Report skipped duplicates, omitted metadata, and image provenance. Include a per-gift price table with each reference's price, currency, and availability, and list references that were blocked or had no exact match. Never expose access tokens, cookies, or other credentials.

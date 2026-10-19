@@ -56,11 +56,6 @@
 	],
 	"r2_buckets": [{ "binding": "R2", "bucket_name": "prejemesi-images" }],
 	"ratelimits": [
-		{
-			"name": "GIFT_INGESTION_RATE_LIMIT",
-			"namespace_id": "1001",
-			"simple": { "limit": 60, "period": 60 },
-		},
 		// Per personal access token; must match AGENT_API_RATE_LIMIT in
 		// src/lib/server/agent_access/limits.ts.
 		{

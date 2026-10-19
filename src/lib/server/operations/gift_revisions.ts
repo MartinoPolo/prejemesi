@@ -1,7 +1,6 @@
 import { inArray, lt } from 'drizzle-orm';
 import { getDb, type DatabaseTransaction } from '$lib/server/db/index.js';
 import { giftRevision } from '$lib/server/db/gift_revision.schema.js';
-import { generateId } from '$lib/server/db/id.js';
 import { runAfterResponse } from '$lib/server/background.js';
 import { demoSessionId } from '$lib/server/demo/scope.js';
 import type { OperationChannel } from './actor.js';
@@ -110,25 +109,6 @@ export class GiftRevisionCollector {
 			.returning();
 		return insertedRevisions.map((revision) => ({ ...revision, channel: this.#batch.channel }));
 	}
-}
-
-/**
- * Revision recorder for gift creation paths that own their transaction outside the operation
- * runner (import and ingestion): each call writes immediately under one batch.
- */
-export function createImmediateGiftRevisionRecorder(
-	transaction: DatabaseTransaction,
-	params: { actorUserId: string; channel: OperationChannel; operation: string },
-): RecordGiftRevisions {
-	const collector = new GiftRevisionCollector({
-		batchId: generateId(),
-		actorUserId: params.actorUserId,
-		channel: params.channel,
-	});
-	return async (changes) => {
-		collector.record(params.operation, changes);
-		await collector.flush(transaction);
-	};
 }
 
 /** Deletes expired revisions in bounded chunks so no single statement runs long. */

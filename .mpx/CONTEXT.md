@@ -86,8 +86,7 @@ _Avoid_: "list" for Wishlist (ambiguous), "present" for Gift (confusing with tim
 - Appearance and language: curated user and wishlist palettes, image-frame fill, Czech primary with English.
 - Profile and settings: identity, notifications, appearance.
 - Isolated editable demo playground from the landing page.
-- Production gift ingestion (allowlisted manifest API and CLI), interim until [#476](https://github.com/MartinoPolo/prejemesi/issues/476).
-- Agent access: access tokens, JSON API, remote MCP server, `prejemesi` CLI, change proposals with review and undo.
+- Agent access: access tokens, JSON API, remote MCP server, `prejemesi` CLI, change proposals with review and undo, the add-gifts research skill.
 
 ### Planned
 

@@ -32,11 +32,14 @@ Commands:
   logout                                  Forget the stored token
   whoami                                  The token user and the token's scopes
   wishlists                               Wishlists the token reaches
+  read <operation> [--input <json>]       Any agent read, such as readGiftCategories
   gifts list --wishlist <shortId>
   gifts create --wishlist <shortId> (--name <name> | --input <json>)
   gifts update <giftId> --wishlist <shortId> --input <json>
   gifts delete <giftId> --wishlist <shortId>
   gifts reorder <giftId>... --wishlist <shortId>
+  images add --wishlist <shortId> --url <url>
+                                          Stores an image for a gift; prints its reference
   proposals submit --input <json>         A proposal body as POST /api/v1/proposals takes it
   proposals show <proposalId>
   proposals apply <proposalId>            Fast-forward tokens only; otherwise prints the reviewLink
@@ -49,6 +52,7 @@ Options:
 
 Changes become proposals the user reviews at the printed reviewLink, unless the token has
 fast-forward. \`gifts create\` takes an array as --input to propose several gifts at once.
+A gift takes a stored image as \`"imageReference": "<reference>"\` in its --input.
 Output is JSON. PREJEMESI_TOKEN and PREJEMESI_URL override the stored login.
 API reference: ${DEFAULT_BASE_URL}/api/v1/openapi.json`;
 
@@ -61,6 +65,7 @@ interface ParsedCommand {
 	options: {
 		wishlist?: string;
 		name?: string;
+		url?: string;
 		input?: string;
 		'idempotency-key'?: string;
 		'base-url'?: string;
@@ -95,6 +100,7 @@ function parseCommand(argumentList: readonly string[]): ParsedCommand {
 			options: {
 				wishlist: { type: 'string' },
 				name: { type: 'string' },
+				url: { type: 'string' },
 				input: { type: 'string' },
 				'idempotency-key': { type: 'string' },
 				'base-url': { type: 'string' },
@@ -165,7 +171,7 @@ async function readObjectInput(context: CommandContext): Promise<JsonObject> {
 	return input;
 }
 
-function requiredOption(context: CommandContext, name: 'wishlist'): string {
+function requiredOption(context: CommandContext, name: 'wishlist' | 'url'): string {
 	const value = context.command.options[name];
 	if (value === undefined || value === '') {
 		throw new UsageError(`--${name} is required`);
@@ -283,6 +289,19 @@ const GIFT_COMMANDS = {
 	},
 } satisfies Record<string, (context: ConnectedContext) => Promise<unknown>>;
 
+const IMAGE_COMMANDS = {
+	add: async (context) => {
+		const url = requiredOption(context, 'url');
+		const wishlist = await resolveWishlist(context);
+		return context.request({
+			method: 'POST',
+			path: '/images',
+			body: { wishlistId: wishlist.id, url },
+			idempotencyKey: context.command.options['idempotency-key'],
+		});
+	},
+} satisfies Record<string, (context: ConnectedContext) => Promise<unknown>>;
+
 const PROPOSAL_COMMANDS = {
 	submit: async (context) => {
 		const body = await readInput(context);
@@ -329,8 +348,16 @@ function subcommandOf<TCommands extends Record<string, unknown>>(
 const CONNECTED_COMMANDS = {
 	whoami: (context) => context.request({ method: 'GET', path: '/me' }),
 	wishlists: (context) => context.request({ method: 'GET', path: '/wishlists' }),
+	read: async (context) =>
+		context.request({
+			method: 'POST',
+			path: `/operations/${encodeURIComponent(positionalAt(context, 1, 'The operation name'))}`,
+			body: await readObjectInput(context),
+		}),
 	gifts: (context) =>
 		subcommandOf(GIFT_COMMANDS, 'gifts', context.command.positionals[1])(context),
+	images: (context) =>
+		subcommandOf(IMAGE_COMMANDS, 'images', context.command.positionals[1])(context),
 	proposals: (context) =>
 		subcommandOf(PROPOSAL_COMMANDS, 'proposals', context.command.positionals[1])(context),
 } satisfies Record<string, (context: ConnectedContext) => Promise<unknown>>;

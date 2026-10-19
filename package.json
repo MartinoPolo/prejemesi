@@ -31,7 +31,6 @@
 		"perf:compare": "node scripts/production-performance.mjs compare",
 		"test:performance-report": "node --test scripts/production-performance.test.mjs",
 		"test:scripts": "node --test scripts/*.test.mjs",
-		"ingest:gifts": "tsx scripts/ingest-gifts.ts",
 		"loadtest": "tsx tests/load/run.ts",
 		"loadtest:setup": "tsx tests/load/setup.ts",
 		"loadtest:cleanup": "tsx tests/load/cleanup.ts",

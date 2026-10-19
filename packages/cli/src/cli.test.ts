@@ -11,6 +11,8 @@ const BASE_URL = 'https://prejemesi.cz';
 const WISHLIST = { id: 'wishlist-id-1', shortId: 'narozky', title: 'Narozeniny', role: 'owner' };
 const PROPOSAL_ID = 'proposal-1';
 const REVIEW_PATH = `/w/${WISHLIST.shortId}/changes/${PROPOSAL_ID}`;
+const IMAGE_REFERENCE = 'image-reference-1';
+const IMAGE_URL = 'https://shop.example/kolo.webp';
 
 interface RecordedRequest {
 	method: string;
@@ -50,7 +52,14 @@ function defaultRoutes(): FakeServer['routes'] {
 		'POST /api/v1/operations/readWishlistGifts': () => ({
 			body: { result: { gifts: [{ id: 'gift-1', name: 'Kolo' }] } },
 		}),
+		'POST /api/v1/operations/readGiftCategories': () => ({
+			body: { result: [{ id: 'category-1', label: 'Sport' }] },
+		}),
 		'POST /api/v1/proposals': () => ({ status: 201, body: proposalBody('pending') }),
+		'POST /api/v1/images': () => ({
+			status: 201,
+			body: { image: { reference: IMAGE_REFERENCE, contentType: 'image/webp' } },
+		}),
 		[`GET /api/v1/proposals/${PROPOSAL_ID}`]: () => ({ body: proposalBody('pending') }),
 		[`POST /api/v1/proposals/${PROPOSAL_ID}/apply`]: () => ({
 			status: 409,
@@ -192,6 +201,7 @@ describe('prejemesi CLI', () => {
 			['whoami'],
 			['wishlists'],
 			['gifts', 'list', '--wishlist', WISHLIST.shortId],
+			['read', 'readGiftCategories', '--input', `{"wishlistId":"${WISHLIST.id}"}`],
 			['gifts', 'create', '--wishlist', WISHLIST.shortId, '--name', 'Kolo'],
 			[
 				'gifts',
@@ -204,6 +214,7 @@ describe('prejemesi CLI', () => {
 			],
 			['gifts', 'delete', 'gift-1', '--wishlist', WISHLIST.shortId],
 			['gifts', 'reorder', 'gift-2', 'gift-1', '--wishlist', WISHLIST.shortId],
+			['images', 'add', '--wishlist', WISHLIST.shortId, '--url', IMAGE_URL],
 			['proposals', 'show', PROPOSAL_ID],
 			['proposals', 'apply', PROPOSAL_ID],
 			['proposals', 'show', 'missing'],
@@ -237,6 +248,27 @@ describe('prejemesi CLI', () => {
 			result: { gifts: [{ id: 'gift-1', name: 'Kolo' }] },
 		});
 		expect(server.requests.at(-1)?.body).toEqual({ wishlistShortId: WISHLIST.shortId });
+	});
+
+	it('runs any agent read with its input', async () => {
+		await run(['login']);
+
+		const result = await run([
+			'read',
+			'readGiftCategories',
+			'--input',
+			JSON.stringify({ wishlistId: WISHLIST.id }),
+		]);
+
+		expect(result.exitCode).toBe(EXIT_CODE.success);
+		expect(server.requests.at(-1)).toMatchObject({
+			method: 'POST',
+			url: `${BASE_URL}/api/v1/operations/readGiftCategories`,
+			body: { wishlistId: WISHLIST.id },
+		});
+		expect(JSON.parse(result.stdout)).toEqual({
+			result: [{ id: 'category-1', label: 'Sport' }],
+		});
 	});
 
 	describe('gift changes', () => {
@@ -323,6 +355,28 @@ describe('prejemesi CLI', () => {
 						input: { wishlistId: WISHLIST.id, orderedGiftIds: ['gift-2', 'gift-1'] },
 					},
 				],
+			});
+		});
+
+		it('stores an image by URL for the wishlist and prints the reference a gift takes', async () => {
+			const result = await run([
+				'images',
+				'add',
+				'--wishlist',
+				WISHLIST.shortId,
+				'--url',
+				IMAGE_URL,
+				'--idempotency-key',
+				'kolo-image-1',
+			]);
+
+			const upload = server.requests.at(-1);
+			expect(result.exitCode).toBe(EXIT_CODE.success);
+			expect(upload?.url).toBe(`${BASE_URL}/api/v1/images`);
+			expect(upload?.body).toEqual({ wishlistId: WISHLIST.id, url: IMAGE_URL });
+			expect(upload?.headers.get('idempotency-key')).toBe('kolo-image-1');
+			expect(JSON.parse(result.stdout)).toMatchObject({
+				image: { reference: IMAGE_REFERENCE },
 			});
 		});
 

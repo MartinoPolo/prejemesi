@@ -44,7 +44,7 @@ export interface DownloadedImage {
 }
 
 /** Validates one hop's URL and requests it without following redirects. */
-export type ImageHopRequest = (url: URL, signal: AbortSignal) => Promise<Response>;
+type ImageHopRequest = (url: URL, signal: AbortSignal) => Promise<Response>;
 
 export interface ImageDownloadLimits {
 	timeoutMs?: number;
@@ -311,7 +311,7 @@ function asImageDownloadError(thrown: unknown): ImageDownloadError {
 	if (thrown instanceof ImageDownloadError) {
 		return thrown;
 	}
-	// The ingestion CLI reports only the message, so it carries the cause's.
+	// Callers that report only the message still see the cause's.
 	const causeMessage = thrown instanceof Error ? thrown.message : String(thrown);
 	return new ImageDownloadError(
 		IMAGE_DOWNLOAD_FAILURE.fetchFailed,
@@ -345,7 +345,7 @@ async function downloadHop(hop: ImageHop): Promise<ImageHopOutcome> {
  * `maxBytes`, the declared type and the byte signature must agree, and the dimensions must be
  * positive and within {@link MAX_IMAGE_SIDE_PX} and {@link MAX_IMAGE_PIXELS}.
  */
-export async function downloadImage(
+async function downloadImage(
 	source: string,
 	requestHop: ImageHopRequest,
 	limits: ImageDownloadLimits = {},

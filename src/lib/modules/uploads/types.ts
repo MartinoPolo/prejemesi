@@ -16,7 +16,7 @@ export const IMAGE_FILE_EXTENSIONS = {
 	'image/gif': 'gif',
 } as const satisfies Record<AllowedContentType, string>;
 
-/** Maximum bytes accepted for a gift image across uploads and ingestion. */
+/** Maximum bytes accepted for a gift image across uploads and agent images. */
 export const MAX_GIFT_IMAGE_BYTES = 5 * 1024 * 1024;
 
 export function isAllowedContentType(value: string): value is AllowedContentType {
