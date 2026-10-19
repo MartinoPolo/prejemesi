@@ -1,7 +1,19 @@
-import { test, expect, type APIRequestContext, type BrowserContext } from '@playwright/test';
+import {
+	test,
+	expect,
+	type APIRequestContext,
+	type BrowserContext,
+	type Page,
+} from '@playwright/test';
 import { createHash, randomBytes } from 'node:crypto';
 import { createTestUser } from './fixtures/test-data.js';
-import { registerAndGetPage, waitForAppHydration } from './fixtures/auth-helpers.js';
+import {
+	registerAndGetPage,
+	registerViaApi,
+	waitForAppHydration,
+} from './fixtures/auth-helpers.js';
+
+type TestUser = ReturnType<typeof createTestUser>;
 
 const APP_NAME = 'E2E Connector';
 const REDIRECT_URI = 'https://connector.example/oauth/callback';
@@ -62,6 +74,14 @@ async function captureAppRedirect(context: BrowserContext): Promise<() => URL | 
 		await route.fulfill({ response });
 	});
 	return () => appRedirect;
+}
+
+/** Signs in on the page the app's authorization sent a signed-out visitor to. */
+async function signInFromAuthorization(page: Page, user: TestUser) {
+	await waitForAppHydration(page);
+	await page.locator('#login-email').fill(user.email);
+	await page.locator('#login-password').fill(user.password);
+	await page.locator('button[type="submit"]').first().click();
 }
 
 async function listWishlistsStatus(request: APIRequestContext, baseURL: string, token: string) {
@@ -145,6 +165,63 @@ test.describe('connecting an app through OAuth consent', () => {
 		// The access token has not expired, yet the next call already fails.
 		expect(await listWishlistsStatus(app, baseURL!, tokens.access_token)).toBe(401);
 		await app.dispose();
+	});
+
+	test('a signed-out visitor signs in from the app and continues to consent', async ({
+		browser,
+		playwright,
+		request,
+		baseURL,
+	}) => {
+		const user = createTestUser('oauth-sign-in');
+		await registerViaApi(request, baseURL!, user);
+		const context = await browser.newContext();
+		const page = await context.newPage();
+		const app = await playwright.request.newContext();
+		const appRedirect = await captureAppRedirect(context);
+		const authorization = await startAuthorization(app, baseURL!);
+
+		await page.goto(authorization.url);
+		await page.waitForURL(/\/login\?/);
+		await signInFromAuthorization(page, user);
+		await page.waitForURL(/\/oauth\/consent\?/);
+		expect(new URL(page.url()).pathname).toBe('/oauth/consent');
+		await waitForAppHydration(page);
+		await expect(page.getByRole('heading', { name: `Propojit ${APP_NAME}?` })).toBeVisible();
+		await page.getByRole('button', { name: 'Povolit přístup' }).click();
+		await expect(page.getByText('returned to app')).toBeVisible();
+		expect(appRedirect()?.searchParams.get('code')).toBeTruthy();
+		expect(appRedirect()?.searchParams.get('state')).toBe(authorization.state);
+
+		await app.dispose();
+		await context.close();
+	});
+
+	test('an English visitor signs in and consents in English', async ({
+		browser,
+		playwright,
+		request,
+		baseURL,
+	}) => {
+		const user = createTestUser('oauth-english');
+		await registerViaApi(request, baseURL!, user);
+		const context = await browser.newContext();
+		// The language a visitor chose earlier, as the language switch remembers it.
+		await context.addCookies([{ name: 'PARAGLIDE_LOCALE', value: 'en', url: baseURL! }]);
+		const page = await context.newPage();
+		const app = await playwright.request.newContext();
+		await captureAppRedirect(context);
+		const authorization = await startAuthorization(app, baseURL!);
+
+		await page.goto(authorization.url);
+		await page.waitForURL(/\/en\/login\?/);
+		await signInFromAuthorization(page, user);
+		await page.waitForURL(/\/en\/oauth\/consent\?/);
+		await waitForAppHydration(page);
+		await expect(page.getByRole('heading', { name: `Connect ${APP_NAME}?` })).toBeVisible();
+
+		await app.dispose();
+		await context.close();
 	});
 
 	test('denying returns access_denied to the app and connects nothing', async ({
