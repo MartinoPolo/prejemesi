@@ -8,7 +8,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import * as v from 'valibot';
 import { CreateAccessTokenInputSchema } from '$lib/modules/access_tokens/types.js';
 import { createAccessToken } from './access_tokens.js';
-import { AGENT_CREDENTIAL_KIND, type AgentCredential } from './agent_caller.js';
+import { AGENT_CREDENTIAL_KIND, type IdempotentCredential } from './agent_caller.js';
 import {
 	IDEMPOTENCY_CLAIM,
 	claimIdempotencyKey,
@@ -18,7 +18,7 @@ import {
 } from './idempotency.js';
 import { IDEMPOTENCY_KEY_ABANDONED_AFTER_MS, IDEMPOTENCY_KEY_RETENTION_MS } from './limits.js';
 
-let credential: AgentCredential;
+let credential: IdempotentCredential;
 let keyCounter = 0;
 
 function freshScope(fingerprint = 'request-a'): IdempotencyScope {

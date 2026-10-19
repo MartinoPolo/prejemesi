@@ -1,4 +1,5 @@
 import { and, eq, inArray, isNull, lt, or, sql, type SQL } from 'drizzle-orm';
+import type { AnyPgColumn, PgTable } from 'drizzle-orm/pg-core';
 import { getDb } from '$lib/server/db/index.js';
 import {
 	agentIdempotencyKey,
@@ -6,12 +7,14 @@ import {
 	changeProposal,
 } from '$lib/server/db/change_proposal.schema.js';
 import { agentImage } from '$lib/server/db/agent_image.schema.js';
+import { chatSession } from '$lib/server/db/chat.schema.js';
 import { gift } from '$lib/server/db/gift.schema.js';
 import { runAfterResponse } from '$lib/server/background.js';
 import { agentImageStorage, getR2Bucket, type AgentImageStorage } from '$lib/server/storage/r2.js';
 import { demoSessionId } from '$lib/server/demo/scope.js';
 import { CHANGE_PROPOSAL_STATUS } from '$lib/modules/change_proposals/types.js';
 import { GIFT_REVISION_RETENTION_MS } from '$lib/server/operations/constants.js';
+import { CHAT_RETENTION_MS } from '$lib/server/chat/limits.js';
 import {
 	AGENT_ACCESS_PURGE_CHUNK_SIZE,
 	AGENT_ACCESS_PURGE_INTERVAL_MS,
@@ -21,19 +24,23 @@ import {
 	IDEMPOTENCY_KEY_RETENTION_MS,
 } from './limits.js';
 
-/** Deletes the matching proposals in bounded chunks so no single statement runs long. */
-async function deleteProposalsInChunks(condition: SQL | undefined): Promise<void> {
+/** Deletes the matching rows in bounded chunks so no single statement runs long. */
+async function deleteRowsInChunks(
+	table: PgTable,
+	idColumn: AnyPgColumn,
+	condition: SQL | undefined,
+): Promise<void> {
 	const database = getDb();
 	for (let chunkIndex = 0; chunkIndex < AGENT_ACCESS_PURGE_MAX_CHUNKS; chunkIndex += 1) {
 		const chunk = database
-			.select({ id: changeProposal.id })
-			.from(changeProposal)
+			.select({ id: idColumn })
+			.from(table)
 			.where(condition)
 			.limit(AGENT_ACCESS_PURGE_CHUNK_SIZE);
 		const deleted = await database
-			.delete(changeProposal)
-			.where(inArray(changeProposal.id, chunk))
-			.returning({ id: changeProposal.id });
+			.delete(table)
+			.where(inArray(idColumn, chunk))
+			.returning({ id: idColumn });
 		if (deleted.length < AGENT_ACCESS_PURGE_CHUNK_SIZE) {
 			return;
 		}
@@ -135,8 +142,8 @@ async function purgeAgentImages(now: Date, storage: AgentImageStorage): Promise<
 /**
  * Deletes expired pending and discarded proposals once a late review link has had time to show
  * them, applied and undone proposals once their batch's gift revisions are gone (undo is
- * impossible after that), and stale idempotency keys. Agent images are purged only with
- * `storage`, since their objects must go first.
+ * impossible after that), stale idempotency keys and chats past their retention. Agent images
+ * are purged only with `storage`, since their objects must go first.
  */
 export async function purgeAgentAccessRecords(
 	now = new Date(),
@@ -144,7 +151,9 @@ export async function purgeAgentAccessRecords(
 ): Promise<void> {
 	const readableUntil = new Date(now.getTime() - CHANGE_PROPOSAL_EXPIRED_RETENTION_MS);
 	const undoableUntil = new Date(now.getTime() - GIFT_REVISION_RETENTION_MS);
-	await deleteProposalsInChunks(
+	await deleteRowsInChunks(
+		changeProposal,
+		changeProposal.id,
 		or(
 			and(
 				eq(changeProposal.status, CHANGE_PROPOSAL_STATUS.pending),
@@ -167,6 +176,11 @@ export async function purgeAgentAccessRecords(
 	for (const keyTable of IDEMPOTENCY_KEY_TABLES) {
 		await deleteIdempotencyKeysInChunks(keyTable, staleKeysBefore);
 	}
+	await deleteRowsInChunks(
+		chatSession,
+		chatSession.id,
+		lt(chatSession.lastTurnAt, new Date(now.getTime() - CHAT_RETENTION_MS)),
+	);
 	if (storage !== undefined) {
 		await purgeAgentImages(now, storage);
 	}

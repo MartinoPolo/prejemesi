@@ -78,8 +78,17 @@ interface AgentMcpToolRoute {
 
 interface AgentMcpToolDefinition {
 	tool: AgentMcpTool;
+	/** The endpoint's own summary, without the MCP-specific notes of the tool description. */
+	summary: string;
 	route: AgentMcpToolRoute;
 	execute: ToolExecutor;
+}
+
+/** A tool with the core operation it runs, for a surface that phrases and routes tools itself. */
+export interface AgentToolDescriptor {
+	tool: AgentMcpTool;
+	summary: string;
+	operationKind: OperationKind | null;
 }
 
 interface ToolCall {
@@ -207,6 +216,7 @@ function toolDefinition(
 	const parameters = operation.parameters ?? [];
 	return {
 		execute,
+		summary: operation.summary,
 		tool: {
 			name: operation.operationId,
 			description: toolDescription(operation),
@@ -262,13 +272,23 @@ function agentMcpToolDefinitions(): Map<string, AgentMcpToolDefinition> {
 export function listAgentMcpTools(
 	caller: Pick<AgentCaller, 'credential' | 'grant'>,
 ): AgentMcpTool[] {
+	return describeAgentMcpTools(caller).map(({ tool }) => tool);
+}
+
+export function describeAgentMcpTools(
+	caller: Pick<AgentCaller, 'credential' | 'grant'>,
+): AgentToolDescriptor[] {
 	const listsEveryTool = caller.credential.kind === AGENT_CREDENTIAL_KIND.oauthGrant;
 	return [...agentMcpToolDefinitions().values()]
 		.filter(
 			({ route }) =>
 				listsEveryTool || route.scope === null || hasAgentScope(caller.grant, route.scope),
 		)
-		.map(({ tool }) => tool);
+		.map(({ tool, summary, route }) => ({
+			tool,
+			summary,
+			operationKind: route.operationKind,
+		}));
 }
 
 export function isAgentMcpTool(name: string): boolean {

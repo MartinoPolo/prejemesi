@@ -204,6 +204,13 @@
       "when": 1792351318425,
       "tag": "0028_add-oauth-provider",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1792443059264,
+      "tag": "0029_add-chat",
+      "breakpoints": true
     }
   ]
 }
