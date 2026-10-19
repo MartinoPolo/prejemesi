@@ -1,5 +1,5 @@
 import * as v from 'valibot';
-import { asc, desc, eq, inArray } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
 import { error } from '@sveltejs/kit';
 import type { DatabaseTransaction } from '$lib/server/db/index.js';
 import { gift } from '$lib/server/db/gift.schema.js';
@@ -238,5 +238,69 @@ export const undoGiftRevisionOperation = defineOperation({
 			error(404, SERVER_ERROR.GIFT_REVISION_NOT_FOUND);
 		}
 		return undoRevisions(context, [latestRevision]);
+	},
+});
+
+/**
+ * Puts back the sort order a reorder replaced, for undoing a proposal batch. Refuses with 409
+ * (listing the gift ids) when any of the gifts moved or left the wishlist since the reorder.
+ */
+export const restoreGiftOrderOperation = defineOperation({
+	name: 'restoreGiftOrder',
+	kind: OPERATION_KIND.mutation,
+	exposure: OPERATION_EXPOSURE.humanOnly,
+	input: v.strictObject({
+		wishlistId: v.string(),
+		gifts: v.pipe(
+			v.array(
+				v.strictObject({
+					giftId: v.string(),
+					previousSortOrder: v.pipe(v.number(), v.integer()),
+					appliedSortOrder: v.pipe(v.number(), v.integer()),
+				}),
+			),
+			v.minLength(1),
+		),
+	}),
+	async run(context, { wishlistId, gifts }) {
+		const { transaction, now } = context;
+		const { wishlistRow } = await requireWishlistManagement(
+			transaction,
+			context.actor.userId,
+			wishlistId,
+			{ lock: true },
+		);
+		assertWishlistMutable(wishlistRow);
+		const giftIds = gifts.map((entry) => entry.giftId);
+		const giftRows = await transaction
+			.select({ id: gift.id, sortOrder: gift.sortOrder })
+			.from(gift)
+			.where(and(inArray(gift.id, giftIds), eq(gift.wishlistId, wishlistId)))
+			.orderBy(asc(gift.id))
+			.for('update');
+		const sortOrders = new Map(giftRows.map((row) => [row.id, row.sortOrder]));
+		const movedGiftIds = gifts
+			.filter((entry) => sortOrders.get(entry.giftId) !== entry.appliedSortOrder)
+			.map((entry) => entry.giftId);
+		if (movedGiftIds.length > 0) {
+			error(
+				409,
+				encodeServerError(SERVER_ERROR.GIFT_REVISION_CONFLICT, {
+					giftIds: movedGiftIds.join(','),
+				}),
+			);
+		}
+		const sortOrderCase = sql.join(
+			gifts.map(
+				(entry) =>
+					sql`WHEN ${gift.id} = ${entry.giftId} THEN ${entry.previousSortOrder}::integer`,
+			),
+			sql` `,
+		);
+		await transaction
+			.update(gift)
+			.set({ sortOrder: sql<number>`CASE ${sortOrderCase} END`, updatedAt: now })
+			.where(and(inArray(gift.id, giftIds), eq(gift.wishlistId, wishlistId)));
+		return { wishlistShortId: wishlistRow.shortId };
 	},
 });

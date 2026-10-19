@@ -2,6 +2,7 @@ import * as v from 'valibot';
 import type { DescriptionAppend, GiftLink } from '$lib/modules/gifts/types.js';
 import type { ImageMetadata } from '$lib/modules/images/types.js';
 import type { WishlistRole } from '$lib/modules/wishlists/types.js';
+import { ChangeRowDecisionSchema, type FieldDecisions } from './change_field_decisions.js';
 
 /** The stored lifecycle of a proposal; a proposal applies, is discarded or is undone once. */
 export const CHANGE_PROPOSAL_STATUS = {
@@ -90,12 +91,18 @@ export const ChangeProposalIdInputSchema = v.strictObject({ proposalId: NonEmpty
 
 export const ApplyChangeProposalInputSchema = v.strictObject({
 	proposalId: NonEmptyIdSchema,
-	/** The rows to apply; confirmation rows apply only when listed here. */
-	selectedRowIds: v.pipe(
-		v.array(NonEmptyIdSchema),
+	/**
+	 * One decision per row the dry run accepted; rows the dry run rejected may be listed as
+	 * rejected. Confirmation rows apply only when explicitly accepted here.
+	 */
+	decisions: v.pipe(
+		v.array(ChangeRowDecisionSchema),
 		v.minLength(1),
 		v.maxLength(CHANGE_PROPOSAL_MAX_ROWS),
-		v.check((rowIds) => new Set(rowIds).size === rowIds.length),
+		v.check(
+			(decisions) =>
+				new Set(decisions.map((decision) => decision.rowId)).size === decisions.length,
+		),
 	),
 });
 
@@ -151,6 +158,8 @@ export interface ChangeProposalRowView {
 	} | null;
 	/** What the applied row returned, e.g. the ids it created; null unless it applied. */
 	appliedResult: unknown;
+	/** The reviewer's field rejections and edits the row applied with; null unless it applied. */
+	appliedFields: FieldDecisions | null;
 }
 
 export type ChangeKindCounts = Partial<Record<ChangeKind, number>>;

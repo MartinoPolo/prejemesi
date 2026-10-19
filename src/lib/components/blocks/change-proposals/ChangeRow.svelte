@@ -1,51 +1,48 @@
 <script lang="ts">
 	import * as m from '$lib/paraglide/messages.js';
-	import CheckIcon from '@lucide/svelte/icons/check';
-	import MinusIcon from '@lucide/svelte/icons/minus';
 	import { Badge } from '$lib/components/base/badge/index.js';
-	import { Checkbox } from '$lib/components/base/checkbox/index.js';
 	import GiftImage from '$lib/components/blocks/gift/GiftImage.svelte';
 	import {
 		CHANGE_ROW_DISPLAY_STATUS,
 		CHANGE_ROW_GROUP,
-	} from '$lib/modules/change_proposals/change_review_selection.js';
+	} from '$lib/modules/change_proposals/change_review_decisions.js';
 	import ChangeKindTitle from './ChangeKindTitle.svelte';
 	import ChangeRowDetails from './ChangeRowDetails.svelte';
 	import GiftCardComparison from './GiftCardComparison.svelte';
+	import RowDecision from './RowDecision.svelte';
 	import {
 		CHANGE_KIND_PRESENTATION,
 		CHANGE_ROW_STATUS_PRESENTATION,
 	} from './change_review_presentation.js';
-	import type { ReviewRowEntry } from './change_review_rows.js';
+	import type { ChangeReviewActions, ReviewRowEntry } from './change_review_rows.js';
 
 	/**
 	 * One proposal row as a table row laid out as a panel: a header band tinted by change type
-	 * holds the checkbox, title and status, the body holds the gift, field diffs and card pair.
+	 * holds the title, status and decision, the body holds the gift, its fields and card pair.
 	 */
 	let {
 		entry,
-		interactive,
-		onselectedchange,
+		actions,
+		showUnresolved,
 	}: {
 		entry: ReviewRowEntry;
-		/** The proposal still waits for review, so rows carry checkboxes. */
-		interactive: boolean;
-		onselectedchange: (selected: boolean) => void;
+		/** Absent once the proposal is closed. */
+		actions: ChangeReviewActions | undefined;
+		/** Outlines undecided controls after Apply was pressed too early. */
+		showUnresolved: boolean;
 	} = $props();
 
 	const { rowId, kind } = $derived(entry.row);
-	const { model, group, blocked, status, selectable, selected, conflictedOnApply } =
-		$derived(entry);
+	const { model, group, blocked, status, included, conflictedOnApply } = $derived(entry);
 	const presentation = $derived(CHANGE_KIND_PRESENTATION[kind]);
 	const statusPresentation = $derived(CHANGE_ROW_STATUS_PRESENTATION[status]);
 	const cards = $derived(
 		model.giftChanges.find((change) => change.cards !== null)?.cards ?? null,
 	);
 	const consequenceId = $derived(`change-consequence-${rowId}`);
-	const done = $derived(status === CHANGE_ROW_DISPLAY_STATUS.applied);
 	const muted = $derived(
 		blocked ||
-			(interactive && !selected) ||
+			(actions !== undefined && !included) ||
 			status === CHANGE_ROW_DISPLAY_STATUS.notApplied ||
 			status === CHANGE_ROW_DISPLAY_STATUS.discarded,
 	);
@@ -60,7 +57,7 @@
 		conflictedOnApply && 'is-new-conflict',
 		status === CHANGE_ROW_DISPLAY_STATUS.changedSinceApply && 'is-changed-since',
 		inConfirm && 'in-confirm',
-		inConfirm && selected && 'is-confirmed',
+		inConfirm && included && 'is-confirmed',
 	]);
 	const reasonTone = $derived(
 		status === CHANGE_ROW_DISPLAY_STATUS.conflict ? 'warning' : 'danger',
@@ -70,25 +67,6 @@
 
 {#snippet statusIcon()}
 	{#if statusPresentation.icon !== null}<statusPresentation.icon data-icon />{/if}
-{/snippet}
-
-{#snippet selectControl()}
-	{#if interactive}
-		<Checkbox
-			checked={selectable && selected}
-			disabled={!selectable}
-			aria-label={m.change_review_select_row({
-				kind: presentation.title(),
-				name: model.identity.name,
-			})}
-			aria-describedby={model.consequence === null ? undefined : consequenceId}
-			onCheckedChange={(checked) => onselectedchange(checked === true)}
-		/>
-	{:else}
-		<span class={['done-glyph', done && 'is-on']} aria-hidden="true">
-			{#if done}<CheckIcon />{:else}<MinusIcon />{/if}
-		</span>
-	{/if}
 {/snippet}
 
 {#snippet giftIdentity()}
@@ -108,7 +86,7 @@
 			{/if}
 		</span>
 		<span class="identity-text">
-			<span class="gift-name" title={model.identity.name}>{model.identity.name}</span>
+			<span class="gift-name">{model.identity.name}</span>
 			{#if model.identity.sub !== null}
 				<span class="gift-sub">{model.identity.sub}</span>
 			{/if}
@@ -125,11 +103,17 @@
 	data-status={status}
 	hidden={entry.hidden}
 >
-	<td class="cell-select">{@render selectControl()}</td>
 	<td class="cell-kind"><ChangeKindTitle {kind} /></td>
 	<td class="cell-gift">{@render giftIdentity()}</td>
 	<td class="cell-diffs">
-		<ChangeRowDetails {model} {consequenceId} {reasonTone} {reasonSuffix} />
+		<ChangeRowDetails
+			{entry}
+			{consequenceId}
+			{reasonTone}
+			{reasonSuffix}
+			{actions}
+			{showUnresolved}
+		/>
 	</td>
 	<td class="cell-status">
 		<Badge
@@ -139,6 +123,14 @@
 		>
 			{statusPresentation.label()}
 		</Badge>
+		{#if actions !== undefined && entry.rowReview !== undefined}
+			<RowDecision
+				{entry}
+				{actions}
+				{showUnresolved}
+				describedBy={model.consequence === null ? undefined : consequenceId}
+			/>
+		{/if}
 	</td>
 	<td class="cell-cards">
 		{#if cards !== null}
@@ -149,7 +141,7 @@
 
 <style>
 	.change-row {
-		--select-size: var(--size-control-md);
+		--band-control-size: var(--size-control-md);
 		--band-pad: 10px;
 		--row-pad-x: var(--space-4);
 		--row-border: 2px;
@@ -194,10 +186,6 @@
 		padding: 0;
 	}
 
-	.cell-select {
-		grid-area: select;
-	}
-
 	.cell-kind {
 		grid-area: kind;
 	}
@@ -218,40 +206,40 @@
 		grid-area: cards;
 	}
 
-	/* Band cells share padding and stretch to the band track, so checkbox, title and status centres align. */
-	.change-row > .cell-select,
+	/* Band cells share padding and stretch to the band track, so title, status and decision centres align. */
 	.change-row > .cell-kind,
 	.change-row > .cell-status {
 		display: flex;
 		align-items: center;
 		align-self: stretch;
-		min-height: calc(var(--select-size) + 2 * var(--band-pad) + 2px);
+		min-height: calc(var(--band-control-size) + 2 * var(--band-pad) + 2px);
 		padding: var(--band-pad) 0 calc(var(--band-pad) + 2px);
 	}
 
 	.change-row > .cell-status {
+		flex-wrap: wrap;
 		justify-content: flex-end;
+		gap: var(--space-2);
 	}
 
 	.has-cards {
 		grid-template:
-			'select kind status' auto
-			'. gift cards' auto
-			'. diffs cards' 1fr
-			/ var(--select-size) minmax(0, 1fr) auto;
+			'kind status' auto
+			'gift cards' auto
+			'diffs cards' 1fr
+			/ minmax(0, 1fr) auto;
 	}
 
 	.slim {
 		grid-template-areas:
-			'select kind kind status'
-			'. gift diffs diffs';
-		grid-template-columns: var(--select-size) minmax(180px, 260px) minmax(0, 1fr) auto;
+			'kind kind status'
+			'gift diffs diffs';
+		grid-template-columns: minmax(200px, 280px) minmax(0, 1fr) auto;
 	}
 
 	.slim > .cell-gift {
 		display: flex;
-		align-items: center;
-		min-height: 40px;
+		align-items: flex-start;
 	}
 
 	.slim > .cell-cards {
@@ -299,31 +287,10 @@
 		box-shadow: var(--elevation-compact);
 	}
 
-	.done-glyph {
-		display: grid;
-		place-items: center;
-		width: var(--select-size);
-		height: var(--select-size);
-		border: 2px solid var(--border-strong);
-		border-radius: var(--radius-btn);
-		color: var(--muted-foreground);
-	}
-
-	.done-glyph.is-on {
-		border-color: var(--ink);
-		background: color-mix(in oklab, var(--status-success) 14%, var(--card));
-		color: var(--status-success-text);
-	}
-
-	.done-glyph :global(svg) {
-		width: 16px;
-		height: 16px;
-	}
-
 	.identity {
 		display: flex;
-		align-items: center;
-		gap: 10px;
+		align-items: flex-start;
+		gap: var(--space-3);
 		min-width: 0;
 	}
 
@@ -332,11 +299,11 @@
 		display: grid;
 		flex: none;
 		place-items: center;
-		width: 40px;
-		height: 40px;
+		width: 64px;
+		height: 64px;
 		overflow: hidden;
-		border: 2px solid var(--ink);
-		border-radius: 9px;
+		border: 2.5px solid var(--ink);
+		border-radius: 12px;
 		background: var(--surface);
 		color: var(--ink);
 	}
@@ -346,25 +313,24 @@
 	}
 
 	.icon-thumb :global(svg) {
-		width: 20px;
-		height: 20px;
+		width: 28px;
+		height: 28px;
 	}
 
 	.identity-text {
 		min-width: 0;
+		padding-top: var(--space-1);
 	}
 
 	.gift-name,
 	.gift-sub {
 		display: block;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
+		overflow-wrap: anywhere;
 	}
 
 	.gift-name {
 		font-size: var(--text-base);
-		font-weight: 600;
+		font-weight: 700;
 		line-height: 1.3;
 	}
 
@@ -373,6 +339,7 @@
 	}
 
 	.gift-sub {
+		margin-top: 2px;
 		color: var(--muted-foreground);
 		font-size: var(--text-sm);
 	}
@@ -380,19 +347,19 @@
 	@container change-review (width < 900px) {
 		.has-cards {
 			grid-template-areas:
-				'select kind status'
-				'gift gift gift'
-				'diffs diffs diffs'
-				'cards cards cards';
+				'kind status'
+				'gift gift'
+				'diffs diffs'
+				'cards cards';
 			grid-template-rows: auto;
 		}
 
 		.slim {
 			grid-template-areas:
-				'select kind status'
-				'gift gift gift'
-				'diffs diffs diffs';
-			grid-template-columns: var(--select-size) minmax(0, 1fr) auto;
+				'kind status'
+				'gift gift'
+				'diffs diffs';
+			grid-template-columns: minmax(0, 1fr) auto;
 		}
 
 		.has-cards > .cell-cards {
@@ -404,7 +371,7 @@
 
 	@media (width < 640px) {
 		.change-row {
-			--select-size: var(--size-control-lg);
+			--band-control-size: var(--size-control-lg);
 			--band-pad: var(--space-2);
 			--row-pad-x: var(--space-3);
 
@@ -412,35 +379,31 @@
 			padding-bottom: var(--space-3);
 		}
 
-		/* Title and status do not both fit a phone band, so the status opens the row body. */
+		/* Title and the decision controls do not both fit a phone band, so they open the row body. */
 		.has-cards,
 		.slim {
 			row-gap: var(--space-2);
-			grid-template-columns: var(--select-size) minmax(0, 1fr);
+			grid-template-columns: minmax(0, 1fr);
 		}
 
 		.has-cards {
-			grid-template-areas:
-				'select kind'
-				'status status'
-				'gift gift'
-				'diffs diffs'
-				'cards cards';
+			grid-template-areas: 'kind' 'status' 'gift' 'diffs' 'cards';
 		}
 
 		.slim {
-			grid-template-areas:
-				'select kind'
-				'status status'
-				'gift gift'
-				'diffs diffs';
+			grid-template-areas: 'kind' 'status' 'gift' 'diffs';
 		}
 
 		.change-row > .cell-status {
 			align-self: start;
-			justify-content: flex-start;
+			justify-content: space-between;
 			min-height: 0;
 			padding: 0;
+		}
+
+		.thumb {
+			width: 56px;
+			height: 56px;
 		}
 	}
 </style>

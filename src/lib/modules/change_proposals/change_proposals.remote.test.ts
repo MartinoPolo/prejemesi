@@ -65,7 +65,8 @@ import {
 
 const USER = { id: 'user-1', name: 'Martin', email: 'martin@test.cz' };
 const address = { wishlistShortId: 'abc123', proposalId: 'proposal-1' };
-const applyInput = { proposalId: 'proposal-1', selectedRowIds: ['r1'] };
+const decisions = [{ rowId: 'r1', decision: 'accepted' }];
+const applyInput = { proposalId: 'proposal-1', decisions };
 
 type RemoteFunction = (arg?: unknown) => Promise<unknown>;
 
@@ -99,21 +100,52 @@ describe('change proposal remote functions', () => {
 		expect(inputSchemaOf(undoChangeProposal)).toBe(ChangeProposalIdInputSchema);
 	});
 
-	it('accept only a bounded selection of distinct non-empty row ids', () => {
-		const accepts = (selectedRowIds: unknown) =>
+	it('accept only a bounded list of decisions on distinct non-empty row ids', () => {
+		const accepts = (decisions: unknown) =>
 			v.safeParse(ApplyChangeProposalInputSchema, {
 				proposalId: 'proposal-1',
-				selectedRowIds,
+				decisions,
 			}).success;
-		const rowIds = (count: number) =>
-			Array.from({ length: count }, (_, index) => `r${index + 1}`);
+		const accepted = (rowId: string) => ({ rowId, decision: 'accepted' });
+		const acceptedRows = (count: number) =>
+			Array.from({ length: count }, (_, index) => accepted(`r${index + 1}`));
 
-		expect(accepts(['r1', 'r2'])).toBe(true);
-		expect(accepts(rowIds(CHANGE_PROPOSAL_MAX_ROWS))).toBe(true);
+		expect(accepts([accepted('r1'), { rowId: 'r2', decision: 'rejected' }])).toBe(true);
+		expect(accepts(acceptedRows(CHANGE_PROPOSAL_MAX_ROWS))).toBe(true);
 		expect(accepts([])).toBe(false);
-		expect(accepts(rowIds(CHANGE_PROPOSAL_MAX_ROWS + 1))).toBe(false);
-		expect(accepts(['r1', 'r1'])).toBe(false);
-		expect(accepts([''])).toBe(false);
+		expect(accepts(acceptedRows(CHANGE_PROPOSAL_MAX_ROWS + 1))).toBe(false);
+		expect(accepts([accepted('r1'), { rowId: 'r1', decision: 'rejected' }])).toBe(false);
+		expect(accepts([accepted('')])).toBe(false);
+		expect(accepts([{ rowId: 'r1', decision: 'maybe' }])).toBe(false);
+	});
+
+	it('accept field decisions only on an accepted row and on known fields', () => {
+		const accepts = (decision: unknown) =>
+			v.safeParse(ApplyChangeProposalInputSchema, {
+				proposalId: 'proposal-1',
+				decisions: [decision],
+			}).success;
+		const fields = {
+			name: { decision: 'edited', input: { name: 'Pléd' } },
+			price: { decision: 'rejected' },
+		};
+
+		expect(accepts({ rowId: 'r1', decision: 'accepted', fields })).toBe(true);
+		expect(accepts({ rowId: 'r1', decision: 'rejected', fields })).toBe(false);
+		expect(
+			accepts({
+				rowId: 'r1',
+				decision: 'accepted',
+				fields: { wishlist: { decision: 'rejected' } },
+			}),
+		).toBe(false);
+		expect(
+			accepts({
+				rowId: 'r1',
+				decision: 'accepted',
+				fields: { name: { decision: 'edited' } },
+			}),
+		).toBe(false);
 	});
 
 	it('require a signed-in user', async () => {
@@ -171,7 +203,7 @@ describe('change proposal remote functions', () => {
 		expect(changeProposalService.applyChangeProposalRows).toHaveBeenCalledWith(
 			USER,
 			'proposal-1',
-			['r1'],
+			decisions,
 		);
 		expect(changeProposalService.discardChangeProposal).toHaveBeenCalledWith(
 			USER,

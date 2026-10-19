@@ -1,19 +1,19 @@
 <script lang="ts">
 	import * as m from '$lib/paraglide/messages.js';
 	import ChangeRow from './ChangeRow.svelte';
-	import type { ReviewRowEntry } from './change_review_rows.js';
+	import type { ChangeReviewActions, ReviewRowEntry } from './change_review_rows.js';
 
 	/** Native table semantics so screen readers announce columns; the rows lay out as panels. */
 	let {
 		entries,
 		caption,
-		interactive,
-		onselectedchange,
+		actions,
+		showUnresolved,
 	}: {
 		entries: readonly ReviewRowEntry[];
 		caption: string;
-		interactive: boolean;
-		onselectedchange: (rowId: string, selected: boolean) => void;
+		actions: ChangeReviewActions | undefined;
+		showUnresolved: boolean;
 	} = $props();
 </script>
 
@@ -21,7 +21,6 @@
 	<caption class="sr-only">{caption}</caption>
 	<thead class="sr-only">
 		<tr>
-			<th scope="col">{m.change_review_column_select()}</th>
 			<th scope="col">{m.change_review_column_kind()}</th>
 			<th scope="col">{m.change_review_column_gift()}</th>
 			<th scope="col">{m.change_review_column_changes()}</th>
@@ -31,11 +30,7 @@
 	</thead>
 	<tbody>
 		{#each entries as entry (entry.row.rowId)}
-			<ChangeRow
-				{entry}
-				{interactive}
-				onselectedchange={(selected) => onselectedchange(entry.row.rowId, selected)}
-			/>
+			<ChangeRow {entry} {actions} {showUnresolved} />
 		{/each}
 	</tbody>
 </table>

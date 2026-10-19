@@ -336,6 +336,7 @@ export const AGENT_OPERATION_POLICIES: AgentOperationPolicies = {
 		})),
 		projectOutput: projectUndo,
 	}),
+	restoreGiftOrder: HUMAN_ONLY,
 	createWishlist: agentOperation({
 		summary: 'Creates a draft wishlist; only with an unrestricted fast-forward token.',
 		scope: AGENT_SCOPE.giftsWrite,

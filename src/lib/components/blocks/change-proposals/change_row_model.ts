@@ -18,16 +18,35 @@ import {
 	reorderMoves,
 	showsGiftCards,
 	type GiftDiffField,
+	type GiftFieldDiff,
 	type GiftLabelLookups,
 } from '$lib/modules/change_proposals/change_review_diffs.js';
 import { formatChangeReviewDateTime } from '$lib/modules/change_proposals/change_review_copy.js';
 import {
+	CHANGE_DECISION,
+	CHANGE_FIELD,
+	CHANGE_FIELDS,
+	changeInputRecord,
+	isEditableChangeField,
+	isRequiredChangeField,
+	type ChangeField,
+} from '$lib/modules/change_proposals/change_field_decisions.js';
+import {
 	CHANGE_ROW_GROUP,
+	FIELD_REVIEW_STATE,
+	ROW_REVIEW_KIND,
+	SNAPSHOT_KEYS_BY_FIELD,
 	changeRowGroup,
-} from '$lib/modules/change_proposals/change_review_selection.js';
+	fieldEditorText,
+	fieldReviewState,
+	isGiftDropped,
+	type FieldReview,
+	type FieldReviewState,
+	type RowReview,
+} from '$lib/modules/change_proposals/change_review_decisions.js';
 
 /** Reservation operations the page words differently; the server's operation policies own the full list. */
-const RESERVATION_OPERATION = {
+export const RESERVATION_OPERATION = {
 	reserve: 'reserveGift',
 	cancel: 'cancelOwnReservation',
 	markPurchased: 'setReservationPurchased',
@@ -60,11 +79,47 @@ export interface CardPair {
 	after: GiftByRole | null;
 	/** The before card is a gift the row deletes. */
 	removal: boolean;
+	/** The reviewer rejected every field of a new gift, so it will not be added. */
+	dropped: boolean;
+}
+
+export const FIELD_EDITOR_CONTROL = {
+	text: 'text',
+	textarea: 'textarea',
+	number: 'number',
+	select: 'select',
+} as const;
+
+export type FieldEditorControl = (typeof FIELD_EDITOR_CONTROL)[keyof typeof FIELD_EDITOR_CONTROL];
+
+export interface FieldEditor {
+	control: FieldEditorControl;
+	/** The value the editor opens with: the reviewer's own, else the agent's. */
+	text: string;
+	/** Choices of a select; the empty value clears the field. */
+	options: { value: string; label: string }[];
+}
+
+/** One field a reviewer accepts, rejects or edits, with the value that would apply. */
+export interface FieldChangeModel {
+	field: ChangeField;
+	label: string;
+	diffs: LabelledDiff[];
+	appends: string[];
+	/** The agent's value, shown once the reviewer replaced it with their own. */
+	proposed: string | null;
+	state: FieldReviewState;
+	/** A new gift's name: only the whole gift can be rejected. */
+	required: boolean;
+	editor: FieldEditor | null;
 }
 
 export interface GiftChangeModel {
 	giftId: string;
 	name: string;
+	/** Reviewed fields; empty when the row is decided whole or no longer reviewed. */
+	fields: FieldChangeModel[];
+	/** Changes outside the reviewed fields, such as defaults a new gift gets. */
 	diffs: LabelledDiff[];
 	appends: DescriptionAppend[];
 	originalDescription: string | null;
@@ -94,8 +149,6 @@ export interface ChangeRowModel {
 	consequence: RowConsequence | null;
 	reasons: string[];
 	currentCards: CardPair | null;
-	confirmTitle: string;
-	confirmDetail: RowConsequence;
 	giftIds: string[];
 }
 
@@ -197,7 +250,7 @@ function giftPositionSub(context: ChangeRowContext, giftId: string): string | nu
 	return domain === null ? position : `${position} · ${domain}`;
 }
 
-function labelled(diffs: ReturnType<typeof giftFieldDiffs>): LabelledDiff[] {
+function labelled(diffs: readonly GiftFieldDiff[]): LabelledDiff[] {
 	return diffs.map((diff) => ({
 		label: FIELD_LABELS[diff.field](),
 		before: diff.before,
@@ -205,27 +258,298 @@ function labelled(diffs: ReturnType<typeof giftFieldDiffs>): LabelledDiff[] {
 	}));
 }
 
+const CHANGE_FIELD_LABELS = {
+	name: m.change_review_field_name,
+	description: m.change_review_field_description,
+	append: m.change_review_field_description,
+	price: m.change_review_field_price,
+	quantity: m.change_review_field_quantity,
+	category: m.change_review_field_category,
+	priority: m.change_review_field_priority,
+	links: m.change_review_field_link,
+	image: m.change_review_field_image,
+} satisfies Record<ChangeField, () => string>;
+
+/** The reviewed field a displayed diff belongs to; the rest are not the reviewer's to decide. */
+const CHANGE_FIELD_BY_DIFF_FIELD = {
+	gift: null,
+	name: CHANGE_FIELD.name,
+	description: CHANGE_FIELD.description,
+	price: CHANGE_FIELD.price,
+	quantity: CHANGE_FIELD.quantity,
+	category: CHANGE_FIELD.category,
+	priority: CHANGE_FIELD.priority,
+	image: CHANGE_FIELD.image,
+	link: CHANGE_FIELD.links,
+	received: null,
+} satisfies Record<GiftDiffField, ChangeField | null>;
+
+type PreviewChange = NonNullable<ChangeProposalRowView['preview']>['gifts'][number];
+type FieldsReview = Extract<RowReview, { kind: typeof ROW_REVIEW_KIND.fields }>;
+
+/** What a new gift is without a field: the server leaves it empty. */
+function emptiedGift(gift: ChangeProposalGift): ChangeProposalGift {
+	return {
+		...gift,
+		description: null,
+		descriptionAppends: [],
+		links: [],
+		price: null,
+		priceMax: null,
+		currency: null,
+		imageUrl: null,
+		imageMeta: null,
+		quantity: null,
+		priorityLevelId: null,
+		categoryId: null,
+	};
+}
+
+function copySnapshotKey<Key extends keyof ChangeProposalGift>(
+	target: ChangeProposalGift,
+	source: ChangeProposalGift,
+	key: Key,
+) {
+	target[key] = source[key];
+}
+
+function nullableText(value: unknown): string | null {
+	return typeof value === 'string' ? value : null;
+}
+
+function nullableNumber(value: unknown): number | null {
+	return typeof value === 'number' ? value : null;
+}
+
+/** The gift with the reviewer's own value for one field. */
+function withEditedField(
+	gift: ChangeProposalGift,
+	field: ChangeField,
+	edited: Readonly<Record<string, unknown>>,
+): ChangeProposalGift {
+	switch (field) {
+		case CHANGE_FIELD.name:
+			return { ...gift, name: nullableText(edited.name) ?? gift.name };
+		case CHANGE_FIELD.description:
+			return { ...gift, description: nullableText(edited.description) };
+		case CHANGE_FIELD.append: {
+			const appends = [...gift.descriptionAppends];
+			const last = appends.pop();
+			const text = nullableText(edited.text);
+			return last === undefined || text === null
+				? gift
+				: { ...gift, descriptionAppends: [...appends, { ...last, text }] };
+		}
+		case CHANGE_FIELD.price:
+			return {
+				...gift,
+				price: nullableNumber(edited.price),
+				priceMax: nullableNumber(edited.priceMax),
+				currency: nullableText(edited.currency) ?? gift.currency,
+			};
+		case CHANGE_FIELD.quantity:
+			return { ...gift, quantity: nullableNumber(edited.quantity) };
+		case CHANGE_FIELD.category:
+			return { ...gift, categoryId: nullableText(edited.categoryId) };
+		case CHANGE_FIELD.priority:
+			return { ...gift, priorityLevelId: nullableText(edited.priorityLevelId) };
+		case CHANGE_FIELD.links:
+		case CHANGE_FIELD.image:
+			return gift;
+	}
+}
+
+/** The gift applying would produce: rejected and unresolved fields keep the current value. */
+function effectiveGift(change: PreviewChange, review: FieldsReview): ChangeProposalGift {
+	const base = change.before ?? emptiedGift(change.after);
+	let gift: ChangeProposalGift = { ...change.after };
+	for (const field of CHANGE_FIELDS) {
+		const fieldReview = review.fields[field];
+		if (fieldReview === undefined) {
+			continue;
+		}
+		if (fieldReview.decision !== CHANGE_DECISION.accepted) {
+			for (const key of SNAPSHOT_KEYS_BY_FIELD[field]) {
+				copySnapshotKey(gift, base, key);
+			}
+		} else if (fieldReview.edited !== null) {
+			gift = withEditedField(gift, field, fieldReview.edited);
+		}
+	}
+	return gift;
+}
+
+function fieldDiffs(diffs: readonly GiftFieldDiff[], field: ChangeField): GiftFieldDiff[] {
+	return diffs.filter((diff) => CHANGE_FIELD_BY_DIFF_FIELD[diff.field] === field);
+}
+
+function selectOptions(
+	field: ChangeField,
+	context: ChangeRowContext,
+	lookups: GiftLabelLookups,
+): FieldEditor['options'] {
+	if (field === CHANGE_FIELD.category) {
+		return [
+			{ value: '', label: m.change_review_edit_no_category() },
+			...context.categories.map((category) => ({
+				value: category.id,
+				label: lookups.categoryLabel(category.id) ?? category.id,
+			})),
+		];
+	}
+	return [
+		{ value: '', label: m.change_review_edit_no_priority() },
+		...context.priorityLevels.map((level) => ({ value: level.id, label: level.label })),
+	];
+}
+
+const EDITOR_CONTROLS = {
+	name: FIELD_EDITOR_CONTROL.text,
+	description: FIELD_EDITOR_CONTROL.textarea,
+	append: FIELD_EDITOR_CONTROL.textarea,
+	price: FIELD_EDITOR_CONTROL.text,
+	quantity: FIELD_EDITOR_CONTROL.number,
+	category: FIELD_EDITOR_CONTROL.select,
+	priority: FIELD_EDITOR_CONTROL.select,
+	links: null,
+	image: null,
+} satisfies Record<ChangeField, FieldEditorControl | null>;
+
+/** A description the gift shows as an append (it is shared) is only accepted or rejected. */
+function fieldEditor(
+	row: ChangeProposalRowView,
+	field: ChangeField,
+	fieldReview: FieldReview,
+	describedAsAppend: boolean,
+	context: ChangeRowContext,
+	lookups: GiftLabelLookups,
+): FieldEditor | null {
+	const control = EDITOR_CONTROLS[field];
+	const input = changeInputRecord(row.input);
+	if (
+		control === null ||
+		!isEditableChangeField(field) ||
+		(field === CHANGE_FIELD.description &&
+			(describedAsAppend || input === null || !Object.hasOwn(input, 'description')))
+	) {
+		return null;
+	}
+	return {
+		control,
+		text: fieldEditorText(field, fieldReview.edited ?? row.input),
+		options:
+			control === FIELD_EDITOR_CONTROL.select ? selectOptions(field, context, lookups) : [],
+	};
+}
+
+interface ReviewedFields {
+	fields: FieldChangeModel[];
+	otherDiffs: GiftFieldDiff[];
+	otherAppends: DescriptionAppend[];
+}
+
+function reviewedFields(
+	row: ChangeProposalRowView,
+	change: PreviewChange,
+	review: FieldsReview,
+	context: ChangeRowContext,
+	lookups: GiftLabelLookups,
+): ReviewedFields {
+	const { before, after } = change;
+	const proposedDiffs = giftFieldDiffs(before, after, lookups);
+	const proposedAppends = appendedDescriptions(before, after);
+	const reviewed = CHANGE_FIELDS.filter((field) => review.fields[field] !== undefined);
+	const appendField = reviewed.includes(CHANGE_FIELD.append)
+		? CHANGE_FIELD.append
+		: reviewed.includes(CHANGE_FIELD.description) && proposedAppends.length > 0
+			? CHANGE_FIELD.description
+			: null;
+	const fields = reviewed.flatMap((field) => {
+		const fieldReview = review.fields[field];
+		if (fieldReview === undefined) {
+			return [];
+		}
+		const state = fieldReviewState(fieldReview);
+		const proposed = fieldDiffs(proposedDiffs, field);
+		const appends = field === appendField ? proposedAppends.map((append) => append.text) : [];
+		const edited =
+			state === FIELD_REVIEW_STATE.edited && fieldReview.edited !== null
+				? withEditedField(after, field, fieldReview.edited)
+				: null;
+		return [
+			{
+				field,
+				label: CHANGE_FIELD_LABELS[field](),
+				diffs: labelled(
+					edited === null
+						? proposed
+						: fieldDiffs(giftFieldDiffs(before, edited, lookups), field),
+				),
+				appends:
+					edited === null || field !== appendField
+						? appends
+						: appendedDescriptions(before, edited).map((append) => append.text),
+				proposed: edited === null ? null : (proposed[0]?.after ?? appends[0] ?? null),
+				state,
+				required: isRequiredChangeField(row.operation, field),
+				editor: fieldEditor(
+					row,
+					field,
+					fieldReview,
+					field === appendField,
+					context,
+					lookups,
+				),
+			},
+		];
+	});
+	return {
+		fields,
+		otherDiffs: proposedDiffs.filter((diff) => {
+			const field = CHANGE_FIELD_BY_DIFF_FIELD[diff.field];
+			return field === null || !reviewed.includes(field);
+		}),
+		otherAppends: appendField === null ? proposedAppends : [],
+	};
+}
+
 function previewChange(
-	change: NonNullable<ChangeProposalRowView['preview']>['gifts'][number],
+	row: ChangeProposalRowView,
+	change: PreviewChange,
+	rowReview: RowReview | undefined,
 	context: ChangeRowContext,
 	lookups: GiftLabelLookups,
 ): GiftChangeModel {
 	const { before, after, giftId } = change;
 	const diffs = giftFieldDiffs(before, after, lookups);
-	const appends = appendedDescriptions(before, after);
 	const removal = isGiftDeletion(before, after);
+	const review = rowReview?.kind === ROW_REVIEW_KIND.fields ? rowReview : null;
+	const reviewed =
+		review === null
+			? { fields: [], otherDiffs: diffs, otherAppends: appendedDescriptions(before, after) }
+			: reviewedFields(row, change, review, context, lookups);
+	const dropped = isGiftDropped(rowReview);
+	const shownAfter = review === null ? after : effectiveGift(change, review);
+	const hasAppends =
+		reviewed.otherAppends.length > 0 ||
+		reviewed.fields.some((field) => field.appends.length > 0);
 	return {
 		giftId,
 		name: removal && before !== null ? before.name : after.name,
-		diffs: labelled(diffs),
-		appends,
-		originalDescription: appends.length > 0 ? (before?.description ?? null) : null,
+		fields: reviewed.fields,
+		diffs: labelled(reviewed.otherDiffs),
+		appends: reviewed.otherAppends,
+		originalDescription: hasAppends ? (before?.description ?? null) : null,
 		context: null,
 		cards: showsGiftCards(before, after, diffs)
 			? {
 					before: before === null ? null : previewGift(before, giftId, context, lookups),
-					after: removal ? null : previewGift(after, giftId, context, lookups),
+					after:
+						removal || dropped
+							? null
+							: previewGift(shownAfter, giftId, context, lookups),
 					removal,
+					dropped,
 				}
 			: null,
 	};
@@ -236,6 +560,7 @@ function reorderChanges(row: ChangeProposalRowView, context: ChangeRowContext): 
 		(move) => ({
 			giftId: move.giftId,
 			name: move.name,
+			fields: [],
 			diffs: [
 				{
 					label: m.change_review_field_position(),
@@ -426,41 +751,8 @@ function currentCards(
 		before: previewGift(conflict.current, conflict.giftId, context, lookups),
 		after: previewGift(proposed.after, proposed.giftId, context, lookups),
 		removal: false,
+		dropped: false,
 	};
-}
-
-function confirmTitle(
-	row: ChangeProposalRowView,
-	identity: RowIdentity,
-	context: ChangeRowContext,
-): string {
-	if (row.kind === CHANGE_KIND.giftDeletion) {
-		return m.change_review_confirm_deletion({ name: identity.name });
-	}
-	if (row.operation === RESERVATION_OPERATION.reserve) {
-		return m.change_review_confirm_reservation({
-			count: reservedQuantity(row),
-			name: identity.name,
-		});
-	}
-	return `${context.kindTitle(row.kind)}: ${identity.name}`;
-}
-
-function confirmDetail(
-	row: ChangeProposalRowView,
-	consequence: RowConsequence | null,
-	context: ChangeRowContext,
-): RowConsequence {
-	if (row.kind === CHANGE_KIND.giftDeletion) {
-		return { text: m.change_review_confirm_deletion_detail(), email: null };
-	}
-	if (row.operation === RESERVATION_OPERATION.reserve) {
-		return {
-			text: m.change_review_confirm_reservation_detail({ name: context.submitterName }),
-			email: null,
-		};
-	}
-	return consequence ?? { text: context.kindTitle(row.kind), email: null };
 }
 
 /** Everything one review row shows, resolved from the row view and the wishlist's current gifts. */
@@ -468,11 +760,14 @@ export function buildChangeRowModel(
 	row: ChangeProposalRowView,
 	context: ChangeRowContext,
 	lookups: GiftLabelLookups,
+	rowReview?: RowReview,
 ): ChangeRowModel {
 	const allChanges =
 		row.kind === CHANGE_KIND.reorder
 			? reorderChanges(row, context)
-			: (row.preview?.gifts ?? []).map((change) => previewChange(change, context, lookups));
+			: (row.preview?.gifts ?? []).map((change) =>
+					previewChange(row, change, rowReview, context, lookups),
+				);
 	const visibleCount =
 		row.kind === CHANGE_KIND.reorder ? REORDER_VISIBLE_MOVES : allChanges.length;
 	const giftChanges = allChanges.slice(0, visibleCount);
@@ -488,8 +783,6 @@ export function buildChangeRowModel(
 		consequence: changeRowGroup(row) === CHANGE_ROW_GROUP.blocked ? null : consequence,
 		reasons: rowReasons(row),
 		currentCards: currentCards(row, context, lookups),
-		confirmTitle: confirmTitle(row, identity, context),
-		confirmDetail: confirmDetail(row, consequence, context),
 		giftIds:
 			target === null || previewGiftIds.includes(target)
 				? previewGiftIds

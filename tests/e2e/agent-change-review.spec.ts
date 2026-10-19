@@ -126,26 +126,47 @@ test.describe('agent change review', () => {
 			wishlistShortId,
 			(wishlistId, giftId) => [
 				{ operation: 'createGift', input: { wishlistId, name: NEW_GIFT } },
-				{ operation: 'updateGift', input: { id: giftId(EDITED_GIFT), name: RENAMED_GIFT } },
+				{
+					operation: 'updateGift',
+					input: { id: giftId(EDITED_GIFT), name: RENAMED_GIFT, quantity: 2 },
+				},
 				{ operation: 'deleteGift', input: { giftId: giftId(DELETED_GIFT) } },
 			],
 		);
 
 		const review = await openPendingReview(page, wishlistPath);
-		const row = (text: string) =>
-			review.getByTestId('change-row').filter({ hasText: text }).getByRole('checkbox');
+		const changeRow = (text: string) =>
+			review.getByTestId('change-row').filter({ hasText: text });
+		const rowButton = (text: string, name: string) =>
+			changeRow(text).getByRole('button', { name, exact: true });
 		const applyButton = page.getByTestId('change-review-apply');
 
-		// A deletion waits for an explicit tick; the ordinary rows start ticked.
-		await expect(row(NEW_GIFT)).toBeChecked();
-		await expect(row(RENAMED_GIFT)).toBeChecked();
-		await expect(row(DELETED_GIFT)).not.toBeChecked();
-		await expect(applyButton).toHaveText('Použít 2 vybrané změny');
+		// Edits and new gifts start accepted; the deletion waits for the reviewer.
+		await expect(rowButton(NEW_GIFT, 'Přijmout: Název')).toHaveAttribute(
+			'aria-pressed',
+			'true',
+		);
+		await expect(rowButton(RENAMED_GIFT, 'Přijmout: Množství')).toHaveAttribute(
+			'aria-pressed',
+			'true',
+		);
+		await expect(changeRow(DELETED_GIFT)).toHaveAttribute('data-status', 'needsDecision');
+		await expect(applyButton).toHaveAttribute('aria-disabled', 'true');
+		await expect(applyButton).toHaveText('Použít (2)');
 
-		await row(RENAMED_GIFT).click();
-		await expect(applyButton).toHaveText('Použít 1 vybranou změnu');
-		await row(RENAMED_GIFT).click();
-		await expect(applyButton).toHaveText('Použít 2 vybrané změny');
+		// Použít stays clickable while blocked and points at the open decision.
+		await applyButton.click({ force: true });
+		await expect(page.getByTestId('change-review-unresolved-message')).toHaveText(
+			'Rozhodněte 1 změnu',
+		);
+		await expect(rowButton(DELETED_GIFT, 'Smazat')).toBeFocused();
+		await expect(review).toHaveAttribute('data-state', 'pending');
+
+		await rowButton(DELETED_GIFT, 'Ponechat').click();
+		await rowButton(RENAMED_GIFT, 'Zamítnout: Množství').click();
+		await expect(changeRow(RENAMED_GIFT)).toHaveAttribute('data-status', 'partial');
+		await expect(applyButton).not.toHaveAttribute('aria-disabled');
+		await expect(applyButton).toHaveText('Použít (2)');
 
 		await applyButton.click();
 		const applied = page.getByTestId('change-review-applied');
@@ -200,8 +221,8 @@ test.describe('agent change review', () => {
 		const changeRow = (text: string) =>
 			review.getByTestId('change-row').filter({ hasText: text });
 		const applyButton = page.getByTestId('change-review-apply');
-		await expect(changeRow(RENAMED_GIFT).getByRole('checkbox')).toBeChecked();
-		await expect(applyButton).toHaveText('Použít 2 vybrané změny');
+		await expect(changeRow(RENAMED_GIFT)).toHaveAttribute('data-status', 'ready');
+		await expect(applyButton).toHaveText('Použít (2)');
 
 		// The user renames the same gift in another tab while the review is open.
 		const wishlistTab = await page.context().newPage();
@@ -218,8 +239,8 @@ test.describe('agent change review', () => {
 		);
 		await expect(review).toHaveAttribute('data-state', 'pending');
 		await expect(changeRow(RENAMED_GIFT)).toHaveAttribute('data-status', 'conflict');
-		await expect(changeRow(RENAMED_GIFT).getByRole('checkbox')).toBeDisabled();
-		await expect(applyButton).toHaveText('Použít 1 vybranou změnu');
+		await expect(changeRow(RENAMED_GIFT).getByRole('button')).toHaveCount(0);
+		await expect(applyButton).toHaveText('Použít (1)');
 		await wishlistTab.bringToFront();
 		await wishlistTab.reload();
 		await expect(
@@ -236,8 +257,8 @@ test.describe('agent change review', () => {
 		await waitForAppHydration(page);
 		await review.getByRole('heading', { name: 'Nelze použít (1)' }).click();
 		await expect(changeRow(RENAMED_GIFT)).toHaveAttribute('data-status', 'conflict');
-		await expect(changeRow(RENAMED_GIFT).getByRole('checkbox')).toBeDisabled();
-		await expect(applyButton).toHaveText('Použít 1 vybranou změnu');
+		await expect(changeRow(RENAMED_GIFT).getByRole('button')).toHaveCount(0);
+		await expect(applyButton).toHaveText('Použít (1)');
 		await applyButton.click();
 		await expect(page.getByTestId('change-review-applied')).toContainText('Použita 1 změna');
 		await expect(changeRow(NEW_GIFT)).toHaveAttribute('data-status', 'applied');

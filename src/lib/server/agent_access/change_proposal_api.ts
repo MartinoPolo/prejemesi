@@ -24,6 +24,7 @@ import {
 import type { StoredChangeRow, StoredGiftBaseline } from './change_proposal_records.js';
 import { TARGET_KIND, type TargetKind } from './policy_lookups.js';
 import {
+	acceptEveryReadyRow,
 	applyChangeProposalRows,
 	buildChangeProposalView,
 	requireOwnChangeProposal,
@@ -413,7 +414,7 @@ async function fastForwardProposal(
 		const result = await applyChangeProposalRows(
 			{ id: grant.userId, name: grant.userName },
 			proposalId,
-			rows.map((row) => row.rowId),
+			acceptEveryReadyRow(rows),
 		);
 		applied = result.outcome === CHANGE_PROPOSAL_OUTCOME.applied;
 	} catch (thrown) {
@@ -473,7 +474,7 @@ export async function applyChangeProposalForAgent(caller: AgentCaller, proposalI
 	const result = await applyChangeProposalRows(
 		{ id: caller.grant.userId, name: caller.grant.userName },
 		proposalId,
-		view.rows.map((row) => row.rowId),
+		acceptEveryReadyRow(record.proposal.rows),
 	);
 	if (result.outcome !== CHANGE_PROPOSAL_OUTCOME.applied) {
 		throw reviewRequired(view, { outcome: result.outcome });

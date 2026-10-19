@@ -18,7 +18,6 @@ import {
 	toOperationStepRejection,
 	type OperationStepRejection,
 } from '$lib/server/operations/runner.js';
-import { reorderGiftsOperation } from '$lib/server/operations/gift_bulk_operations.js';
 import {
 	saveGiftCategorySettingsOperation,
 	savePriorityLevelsOperation,
@@ -88,12 +87,11 @@ export function countChangeKinds(rows: readonly Pick<StoredChangeRow, 'operation
 }
 
 /**
- * Operations whose effect the proposal undo cannot reverse: gift revisions leave out ordering,
- * categories, priority levels and wishlist details, and a reservation's cancellation or purchase
- * mark has no inverse operation. Undo refuses a batch with any of them rather than undo part of it.
+ * Operations whose effect the proposal undo cannot reverse: gift revisions leave out categories,
+ * priority levels and wishlist details, and a reservation's cancellation or purchase mark has no
+ * inverse operation. Undo refuses a batch with any of them rather than undo part of it.
  */
 const UNDO_UNSUPPORTED_OPERATIONS = new Set<string>([
-	reorderGiftsOperation.name,
 	saveGiftCategorySettingsOperation.name,
 	savePriorityLevelsOperation.name,
 	updateWishlistOperation.name,

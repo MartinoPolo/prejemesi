@@ -1,10 +1,7 @@
 import type { gift } from '$lib/server/db/gift.schema.js';
 import { jsonChanged } from '$lib/modules/gifts/gift_post_share.js';
 
-/**
- * The gift state a revision records: user-visible fields plus the state undo must restore.
- * Sort order is a list-level property with its own undo, so revisions leave it out.
- */
+/** The gift state a revision records: user-visible fields plus the state undo must restore. */
 export type GiftRevisionSource = Pick<
 	typeof gift.$inferSelect,
 	| 'name'

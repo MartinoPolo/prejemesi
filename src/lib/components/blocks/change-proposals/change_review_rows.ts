@@ -10,10 +10,18 @@ import {
 	CHANGE_ROW_GROUP,
 	changeRowDisplayStatus,
 	changeRowGroup,
-	isSelectableChangeRow,
+	isDecidableChangeRow,
+	isRowIncluded,
+	rowUnresolvedCount,
+	type ChangeReview,
 	type ChangeRowDisplayStatus,
 	type ChangeRowGroup,
-} from '$lib/modules/change_proposals/change_review_selection.js';
+	type RowReview,
+} from '$lib/modules/change_proposals/change_review_decisions.js';
+import type {
+	ChangeDecision,
+	ChangeField,
+} from '$lib/modules/change_proposals/change_field_decisions.js';
 import type { GiftLabelLookups } from '$lib/modules/change_proposals/change_review_diffs.js';
 import {
 	buildChangeRowModel,
@@ -33,6 +41,15 @@ export function isChangeReviewFilter(value: string): value is ChangeReviewFilter
 	return Object.values<string>(CHANGE_REVIEW_FILTER).includes(value);
 }
 
+/** The reviewer's decisions on an open proposal, by row and field. */
+export interface ChangeReviewActions {
+	decideRow: (rowId: string, decision: ChangeDecision) => void;
+	chooseRow: (rowId: string, accepted: boolean) => void;
+	toggleField: (rowId: string, field: ChangeField, decision: ChangeDecision) => void;
+	/** Saves the field editor; false when the text is not a valid value. */
+	editField: (rowId: string, field: ChangeField, text: string) => boolean;
+}
+
 /** What the last Apply answered for rows that stopped applying; nothing applied in either case. */
 export interface ApplyRowOutcomes {
 	conflicts: ReadonlyMap<string, ChangeRowConflict[]>;
@@ -47,8 +64,11 @@ export interface ReviewRowEntry {
 	/** The row never applies: a conflict or a rule failure, from the server or the last Apply. */
 	blocked: boolean;
 	status: ChangeRowDisplayStatus;
-	selectable: boolean;
-	selected: boolean;
+	/** The reviewer's decision, absent for rows that take none. */
+	rowReview: RowReview | undefined;
+	/** The row would apply as decided. */
+	included: boolean;
+	unresolvedCount: number;
 	hidden: boolean;
 	conflictedOnApply: boolean;
 }
@@ -56,7 +76,7 @@ export interface ReviewRowEntry {
 export interface ReviewRowsInput {
 	rows: readonly ChangeProposalRowView[];
 	state: ChangeProposalState;
-	selection: ReadonlySet<string>;
+	review: ChangeReview;
 	filter: ChangeReviewFilter;
 	applyOutcomes: ApplyRowOutcomes;
 	/** Gifts that changed since apply, which is why undo refused. */
@@ -98,9 +118,9 @@ export function buildReviewRowEntries(input: ReviewRowsInput): ReviewRowEntry[] 
 		const row = interactive
 			? withApplyOutcome(submittedRow, input.applyOutcomes)
 			: submittedRow;
-		const model = buildChangeRowModel(row, input.context, input.lookups);
-		const selectable = interactive && isSelectableChangeRow(row);
-		const selected = selectable && input.selection.has(row.rowId);
+		const decidable = !interactive || isDecidableChangeRow(row);
+		const rowReview = decidable ? input.review[row.rowId] : undefined;
+		const model = buildChangeRowModel(row, input.context, input.lookups, rowReview);
 		const blocked = changeRowGroup(row) === CHANGE_ROW_GROUP.blocked;
 		const group = changeRowGroup(submittedRow);
 		return {
@@ -110,13 +130,23 @@ export function buildReviewRowEntries(input: ReviewRowsInput): ReviewRowEntry[] 
 			blocked,
 			status: changeRowDisplayStatus(row, {
 				state: input.state,
-				selected,
+				rowReview,
 				changedSinceApply: model.giftIds.some((giftId) => input.changedGiftIds.has(giftId)),
 			}),
-			selectable,
-			selected,
+			rowReview,
+			included: isRowIncluded(rowReview),
+			unresolvedCount: interactive ? rowUnresolvedCount(rowReview) : 0,
 			hidden: isHidden(input.filter, group, blocked),
 			conflictedOnApply: row !== submittedRow && row.status === CHANGE_ROW_STATUS.conflict,
 		};
 	});
+}
+
+/** The decisions of rows that can still apply; a row that conflicted on Apply drops out. */
+export function activeChangeReview(entries: readonly ReviewRowEntry[]): ChangeReview {
+	return Object.fromEntries(
+		entries.flatMap((entry) =>
+			entry.rowReview === undefined ? [] : [[entry.row.rowId, entry.rowReview]],
+		),
+	);
 }

@@ -50,9 +50,9 @@ async function refreshProposalViews(
 /** Conflicts and failing rows are results, not errors: nothing applied and the page shows why. */
 export const applyChangeProposal = guardedCommand(
 	ApplyChangeProposalInputSchema,
-	async ({ user }, { proposalId, selectedRowIds }) => {
+	async ({ user }, { proposalId, decisions }) => {
 		rejectDemoOperation();
-		const result = await applyChangeProposalRows(user, proposalId, selectedRowIds);
+		const result = await applyChangeProposalRows(user, proposalId, decisions);
 		if (result.outcome === CHANGE_PROPOSAL_OUTCOME.applied) {
 			await refreshProposalViews(result.proposal, true);
 		}

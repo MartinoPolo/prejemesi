@@ -94,7 +94,7 @@ The page is a normal authenticated route inside the `(app)` layout.
 - "Přijmout vše" accepts every field change and reorder; it never resolves deletions, reservations or invitations. "Zamítnout vše" rejects everything, including setting deletions to "Ponechat".
 - **Unresolved blocks apply**: while any decision is unresolved, Použít looks disabled but keeps `aria-disabled="true"` instead of `disabled`, so it stays focusable and clickable. Clicking it outlines every unresolved decision control group in red (2 px `--status-danger-text`, offset 2 px), scrolls the first into view and focuses its first control, and replaces the helper line with "Rozhodněte 2 změny" in danger text, also announced through a polite live region. Each outline clears once its row is resolved.
 - With nothing unresolved and nothing accepted, the primary reads "Zamítnout návrh" and declines the proposal through the discard dialog.
-- When any separately confirmed row is accepted, Apply opens a confirmation Dialog listing exactly those rows (deletions by gift name, reservation with quantity, invitation with exact email) with "Potvrdit a použít" (primary) and "Zpět ke kontrole". Without such rows, Apply runs directly.
+- There is no confirmation dialog: choosing "Smazat", "Rezervovat" or "Pozvat" on the row is the explicit confirmation, as in the chat, so Apply runs directly.
 - Apply is one transaction for all accepted conflict-free rows, applying only their accepted fields (edited fields with the user's value). Loading: button shows spinner + "Používám…", table locked.
 - If a gift changes between page load and Apply, nothing applies; the page reloads the dry-run, marks the new conflicts, keeps the user's other decisions, and shows an inline alert "2 změny mezitím přestaly platit. Zkontrolujte je a použijte znovu." (no partial apply).
 - Secondary action: "Zahodit návrh" (ghost/danger outline) with a confirm dialog; the link then shows the Discarded state.
@@ -145,7 +145,6 @@ The page is a normal authenticated route inside the `(app)` layout.
 | Apply blocked           | aria-disabled primary, "Zbývá rozhodnout 3 změny"                        | Any decision unresolved                    |
 | Unresolved shown        | Red outlines on unresolved controls, "Rozhodněte 3 změny", scroll + focus | Click on the blocked Apply                 |
 | All rejected            | Primary reads "Zamítnout návrh"                                          | Nothing unresolved, nothing accepted       |
-| Confirm dialog          | Dialog listing confirmation rows, exact email                            | Apply with confirmation rows accepted      |
 | Applying                | Spinner in button, table locked                                          | Apply in flight                            |
 | Apply conflict          | Inline alert, newly conflicting rows marked, nothing applied             | Gift changed between load and apply        |
 | Applied                 | Success panel with Undo, rows "Použito"/"Nepoužito", no Apply bar          | Apply succeeded                            |
@@ -163,13 +162,13 @@ The page is a normal authenticated route inside the `(app)` layout.
 
 | Component                         | Variant/Props                                         | Usage in This Design                                  |
 | --------------------------------- | ----------------------------------------------------- | ----------------------------------------------------- |
-| Button                            | `intent="primary" size="md"` (`lg` mobile)            | Apply, Potvrdit a použít                              |
-| Button                            | `intent="secondary"` / `intent="ghost" size="sm"`     | Zpět ke kontrole, Zobrazit karty, filters' overflow   |
+| Button                            | `intent="primary" size="md"` (`lg` mobile)            | Apply                                                 |
+| Button                            | `intent="secondary"` / `intent="ghost" size="sm"`     | Zamítnout vše, Přijmout vše, Zobrazit karty, filters' overflow |
 | Button                            | `intent="danger"` with undo icon                      | Vrátit celou dávku (reversal convention)              |
 | Badge                             | `tone="neutral"/"primary"/"warning"/"danger"/"success"/"info"` | Kind and status badges                     |
 | SegmentedToggle                   | default                                               | Vše · Vyžaduje potvrzení · Konflikty; mobile Před/Po  |
 | Alert                             | `tone="default"/"warning"/"destructive"`              | Applied/expired/conflict panels                       |
-| Dialog                            | standard                                              | Apply confirmation, Undo confirmation, Discard        |
+| Dialog                            | standard                                              | Undo confirmation, Discard                            |
 | GiftCard (blocks/gift)            | Card view, non-interactive actions                    | Old/new card pair                                     |
 | ImageFrame / GiftListImage        | `thumb` target                                        | Row thumbnail                                         |
 | GiftCategoryBadge, GiftPriorityBadge | as on cards                                        | Inside card pair and category/priority diffs          |
@@ -270,7 +269,7 @@ From `src/app.css` (inline a mirrored subset in the standalone mockup; do not li
 Each was resolved by assumption so the mockups could proceed; please confirm or correct.
 
 1. **Viewer**: only the submitting user can open the review page; other správci get 404. Alternative: any správce of the wishlist may review.
-2. **Confirmation model**: deletions, reservations and invitations start unresolved, choosing "Smazat", "Rezervovat" or "Pozvat" is the per-row confirmation, and Apply then shows one dialog listing them. Alternative: no dialog, as in the chat.
+2. **Confirmation model** (resolved): deletions, reservations and invitations start unresolved, and choosing "Smazat", "Rezervovat" or "Pozvat" is the confirmation, with no dialog, as in the chat.
 3. **Rejected rows after apply** are discarded with the proposal ("Nepoužito"); the proposal cannot be applied a second time. Alternative: keep leftovers pending until expiry.
 4. **Discard action** ("Zahodit návrh") exists. The issue does not mention it.
 5. **Rejected rows** ("Nelze použít", dry-run rule violations) are shown alongside conflicts rather than rejected at submission time.
