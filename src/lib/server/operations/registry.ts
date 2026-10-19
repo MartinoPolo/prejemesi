@@ -16,6 +16,7 @@ import {
 	reorderGiftsOperation,
 } from './gift_bulk_operations.js';
 import {
+	restoreGiftOrderOperation,
 	undoGiftRevisionBatchOperation,
 	undoGiftRevisionOperation,
 } from './gift_undo_operations.js';
@@ -96,6 +97,7 @@ export const OPERATION_REGISTRY = {
 	[bulkCopyGiftsOperation.name]: bulkCopyGiftsOperation,
 	[undoGiftRevisionBatchOperation.name]: undoGiftRevisionBatchOperation,
 	[undoGiftRevisionOperation.name]: undoGiftRevisionOperation,
+	[restoreGiftOrderOperation.name]: restoreGiftOrderOperation,
 	[createWishlistOperation.name]: createWishlistOperation,
 	[updateWishlistOperation.name]: updateWishlistOperation,
 	[renameRecipientOperation.name]: renameRecipientOperation,

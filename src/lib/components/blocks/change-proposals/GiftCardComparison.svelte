@@ -1,5 +1,6 @@
 <script lang="ts">
 	import * as m from '$lib/paraglide/messages.js';
+	import BanIcon from '@lucide/svelte/icons/ban';
 	import PlusIcon from '@lucide/svelte/icons/plus';
 	import Trash2Icon from '@lucide/svelte/icons/trash-2';
 	import GiftCard from '$lib/components/blocks/gift/GiftCard.svelte';
@@ -8,7 +9,8 @@
 
 	/**
 	 * The real GiftCard before and after a change, in the recipient shape so no reservation state
-	 * shows. A missing side is a dashed placeholder: a new gift has no before, a deletion no after.
+	 * shows. A missing side is a dashed placeholder: a new gift has no before, a deletion or a new
+	 * gift the reviewer rejected no after.
 	 */
 	let {
 		pair,
@@ -36,6 +38,9 @@
 				{#if side === 'before'}
 					<PlusIcon aria-hidden="true" />
 					<span>{m.change_review_ghost_new()}</span>
+				{:else if pair.dropped}
+					<BanIcon aria-hidden="true" />
+					<span>{m.change_review_ghost_dropped()}</span>
 				{:else}
 					<Trash2Icon aria-hidden="true" />
 					<span>{m.change_review_ghost_deleted()}</span>

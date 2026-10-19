@@ -44,11 +44,12 @@ function proposalRow(
 		conflicts: [],
 		preview: null,
 		appliedResult: null,
+		appliedFields: null,
 		...overrides,
 	};
 }
 
-/** Two ordinary rows, a deletion awaiting confirmation and a row the dry run rejected. */
+/** A new gift, an edit, a deletion awaiting a decision and a row the dry run rejected. */
 function proposalRows(): ChangeProposalRowView[] {
 	const lego = proposalGift({ name: 'Lego Titanic' });
 	return [
@@ -56,12 +57,17 @@ function proposalRows(): ChangeProposalRowView[] {
 			rowId: 'r1',
 			operation: 'createGift',
 			kind: CHANGE_KIND.giftCreation,
+			input: { name: 'Stolní hra Azul', price: 1290, currency: 'CZK' },
 			preview: {
 				gifts: [
 					{
 						giftId: 'g-new',
 						before: null,
-						after: proposalGift({ name: 'Stolní hra Azul' }),
+						after: proposalGift({
+							name: 'Stolní hra Azul',
+							price: 1290,
+							currency: 'CZK',
+						}),
 					},
 				],
 				result: null,
@@ -69,13 +75,13 @@ function proposalRows(): ChangeProposalRowView[] {
 		}),
 		proposalRow({
 			rowId: 'r2',
-			input: { id: 'g-duna' },
+			input: { id: 'g-duna', name: 'Kniha Duna (brožovaná)', quantity: 2 },
 			preview: {
 				gifts: [
 					{
 						giftId: 'g-duna',
 						before: proposalGift(),
-						after: proposalGift({ name: 'Kniha Duna (brožovaná)' }),
+						after: proposalGift({ name: 'Kniha Duna (brožovaná)', quantity: 2 }),
 					},
 				],
 				result: null,

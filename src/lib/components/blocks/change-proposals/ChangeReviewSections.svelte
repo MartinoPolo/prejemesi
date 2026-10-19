@@ -2,10 +2,11 @@
 	import * as m from '$lib/paraglide/messages.js';
 	import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
 	import TriangleAlertIcon from '@lucide/svelte/icons/triangle-alert';
-	import { CHANGE_ROW_GROUP } from '$lib/modules/change_proposals/change_review_selection.js';
+	import { CHANGE_ROW_GROUP } from '$lib/modules/change_proposals/change_review_decisions.js';
 	import ChangeTable from './ChangeTable.svelte';
 	import {
 		CHANGE_REVIEW_FILTER,
+		type ChangeReviewActions,
 		type ChangeReviewFilter,
 		type ReviewRowEntry,
 	} from './change_review_rows.js';
@@ -16,13 +17,16 @@
 		interactive,
 		filter,
 		busy,
-		onselectedchange,
+		actions,
+		showUnresolved,
 	}: {
 		entries: readonly ReviewRowEntry[];
 		interactive: boolean;
 		filter: ChangeReviewFilter;
 		busy: boolean;
-		onselectedchange: (rowId: string, selected: boolean) => void;
+		/** Absent once the proposal is closed. */
+		actions: ChangeReviewActions | undefined;
+		showUnresolved: boolean;
 	} = $props();
 
 	const confirmEntries = $derived(
@@ -56,8 +60,8 @@
 			<ChangeTable
 				entries={confirmEntries}
 				caption={m.change_review_confirm_heading()}
-				{interactive}
-				{onselectedchange}
+				{actions}
+				{showUnresolved}
 			/>
 		</section>
 	{/if}
@@ -70,8 +74,8 @@
 			<ChangeTable
 				entries={ordinaryEntries}
 				caption={m.change_review_ordinary_heading()}
-				{interactive}
-				{onselectedchange}
+				{actions}
+				{showUnresolved}
 			/>
 		</section>
 	{/if}
@@ -90,8 +94,8 @@
 				<ChangeTable
 					entries={blockedEntries}
 					caption={m.change_review_blocked_heading({ count: blockedEntries.length })}
-					{interactive}
-					{onselectedchange}
+					{actions}
+					{showUnresolved}
 				/>
 			</div>
 		</details>

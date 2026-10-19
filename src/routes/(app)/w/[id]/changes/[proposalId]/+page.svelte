@@ -72,7 +72,7 @@
 			currentGifts={giftsQuery?.current?.gifts ?? []}
 			categories={categoriesQuery?.current ?? []}
 			priorityLevels={priorityLevelsQuery?.current ?? []}
-			onapply={(selectedRowIds) => applyChangeProposal({ proposalId, selectedRowIds })}
+			onapply={(decisions) => applyChangeProposal({ proposalId, decisions })}
 			onundo={() => undoChangeProposal({ proposalId })}
 			ondiscard={discard}
 		/>

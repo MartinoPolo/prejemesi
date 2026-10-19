@@ -14,7 +14,6 @@ import {
 } from '$lib/modules/gifts/types.js';
 import { GIFT_SECTION_KINDS, type GiftSection } from '$lib/modules/gifts/gift_ordering.js';
 import {
-	GIFT_REORDER_MOVE_SOURCES,
 	applyReorderPlacement,
 	buildReorderSections,
 	categoryReorderGroups,
@@ -534,10 +533,11 @@ describe('WishlistGiftDisplay grouped reorder (#454)', () => {
 			grips[1]!.element().focus();
 			await userEvent.keyboard('{ArrowDown}');
 
-			expect(onreorderplacementcommit).toHaveBeenCalledWith(
-				{ giftId: 'gift-kettle', groupKey: 'priority:level-soon', index: 0 },
-				GIFT_REORDER_MOVE_SOURCES.keyboard,
-			);
+			expect(onreorderplacementcommit).toHaveBeenCalledWith({
+				giftId: 'gift-kettle',
+				groupKey: 'priority:level-soon',
+				index: 0,
+			});
 			await expect.element(screen.getByRole('status')).toHaveTextContent(
 				m.gift_reorder_move_group_success({
 					name: 'Konvice',

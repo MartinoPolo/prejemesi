@@ -174,7 +174,6 @@
 		type ReorderGiftsInput,
 	} from '$lib/modules/gifts/types.js';
 	import {
-		GIFT_REORDER_MOVE_SOURCES,
 		applyReorderPlacement,
 		buildReorderSections,
 		categoryReorderGroups,
@@ -185,7 +184,6 @@
 		resolveGroupedReorderMove,
 		withReorderGroup,
 		type GiftReorderGroup,
-		type GiftReorderMoveSource,
 		type GiftReorderPlacement,
 	} from '$lib/modules/gifts/gift_grouped_reorder.js';
 	import { giftSectionLabel } from '$lib/components/blocks/wishlist/gift_section_label.js';
@@ -1910,10 +1908,7 @@
 	}
 
 	/** Returns whether the move was accepted, so only accepted moves are announced. */
-	function handleReorderPlacementCommit(
-		placement: GiftReorderPlacement,
-		source: GiftReorderMoveSource,
-	): boolean {
+	function handleReorderPlacementCommit(placement: GiftReorderPlacement): boolean {
 		reorderPreviewPlacement = null;
 		const field = reorderGroupField;
 		if (field === null) {
@@ -1928,7 +1923,7 @@
 		if (move === null || !commitReorder(move.orderedIds, move.groupChanges)) {
 			return false;
 		}
-		if (move.targetGroup !== null && source === GIFT_REORDER_MOVE_SOURCES.pointer) {
+		if (move.targetGroup !== null) {
 			offerGroupMoveUndo(move.movedGift, field, move.targetGroup, move.previousOrder);
 		}
 		return true;

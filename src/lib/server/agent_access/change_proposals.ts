@@ -1,3 +1,4 @@
+import * as v from 'valibot';
 import { and, desc, eq, gt, inArray, isNotNull, isNull, sql } from 'drizzle-orm';
 import { error, isHttpError } from '@sveltejs/kit';
 import { getDb, type DatabaseTransaction } from '$lib/server/db/index.js';
@@ -31,9 +32,22 @@ import {
 	type PendingChangeProposalSummary,
 	type UndoChangeProposalResult,
 } from '$lib/modules/change_proposals/types.js';
+import {
+	CHANGE_DECISION,
+	effectiveChangeInput,
+	fieldDecisionsProblem,
+	isFieldDecidedOperation,
+	type ChangeRowDecision,
+	type FieldDecisions,
+} from '$lib/modules/change_proposals/change_field_decisions.js';
+import { ReorderGiftsInputSchema } from '$lib/modules/gifts/types.js';
 import { isAppChannel, userInterfaceActor } from '$lib/server/operations/actor.js';
 import { executeOperationBatch, type OperationBatchStep } from '$lib/server/operations/runner.js';
-import { undoGiftRevisionBatchOperation } from '$lib/server/operations/gift_undo_operations.js';
+import {
+	restoreGiftOrderOperation,
+	undoGiftRevisionBatchOperation,
+} from '$lib/server/operations/gift_undo_operations.js';
+import { reorderGiftsOperation } from '$lib/server/operations/gift_bulk_operations.js';
 import {
 	cancelOwnReservationOperation,
 	reserveGiftOperation,
@@ -48,7 +62,11 @@ import {
 	executeAgentOperationBatch,
 	type AuthorizedAgentOperation,
 } from './authorization.js';
-import type { ChangeProposalUndoTargets, StoredChangeRow } from './change_proposal_records.js';
+import type {
+	ChangeProposalUndoTargets,
+	GiftOrderTarget,
+	StoredChangeRow,
+} from './change_proposal_records.js';
 import {
 	changeKindOf,
 	changeRowErrorOf,
@@ -187,11 +205,23 @@ async function lockChangeProposal(
 	return locked;
 }
 
-/** Applied rows undo cannot reverse: unsupported operations, and invitations already accepted. */
+/**
+ * Applied rows undo cannot reverse: unsupported operations, reorders applied before their previous
+ * order was stored, and invitations already accepted.
+ */
 async function rowsBlockingUndo(proposal: ChangeProposalRow): Promise<string[]> {
 	const appliedRowIds = new Set(proposal.appliedRowIds ?? []);
+	const storedOrderRowIds = new Set(
+		(proposal.undoTargets?.giftOrders ?? []).flatMap((target) => target.rowIds),
+	);
 	const unsupportedRowIds = proposal.rows
-		.filter((row) => appliedRowIds.has(row.rowId) && !undoSupportsOperation(row.operation))
+		.filter(
+			(row) =>
+				appliedRowIds.has(row.rowId) &&
+				(!undoSupportsOperation(row.operation) ||
+					(row.operation === reorderGiftsOperation.name &&
+						!storedOrderRowIds.has(row.rowId))),
+		)
 		.map((row) => row.rowId);
 	const invites = proposal.undoTargets?.moderatorInvites ?? [];
 	const acceptedInvites =
@@ -286,6 +316,7 @@ function rowView(
 						result: hidesRowDetails ? null : row.preview.result,
 					},
 		appliedResult: hidesRowDetails ? null : (row.appliedResult ?? null),
+		appliedFields: row.appliedFields ?? null,
 	};
 }
 
@@ -423,14 +454,64 @@ function submittedGrant(
 	};
 }
 
-/** 400 listing the selected row ids that are unknown, repeated or rejected by the dry run. */
-function selectRows(rows: readonly StoredChangeRow[], selectedRowIds: readonly string[]) {
-	const rowsById = new Map(rows.map((row) => [row.rowId, row]));
-	const invalidRowIds = selectedRowIds.filter(
-		(rowId, index) =>
-			selectedRowIds.indexOf(rowId) !== index || rowsById.get(rowId)?.rejection !== null,
+/** A row the reviewer accepted, with the input it applies with after their field decisions. */
+interface AcceptedRow {
+	row: StoredChangeRow;
+	input: unknown;
+	fields: FieldDecisions;
+}
+
+function isInvalidDecision(row: StoredChangeRow | undefined, decision: ChangeRowDecision): boolean {
+	if (row === undefined) {
+		return true;
+	}
+	if (decision.decision === CHANGE_DECISION.rejected) {
+		return false;
+	}
+	if (row.rejection !== null) {
+		return true;
+	}
+	return (
+		decision.fields !== undefined &&
+		(!isFieldDecidedOperation(row.operation) ||
+			fieldDecisionsProblem(row.operation, row.input, decision.fields) !== null)
 	);
-	if (selectedRowIds.length === 0 || invalidRowIds.length > 0) {
+}
+
+/**
+ * The accepted rows in submission order, each with the input the reviewer's field decisions leave.
+ * 400 listing the rows whose decision is unknown, repeated, missing (every row the dry run accepted
+ * needs one), accepts a row the dry run rejected or decides fields the row does not have, and when
+ * nothing is left to apply.
+ */
+function acceptedRows(
+	rows: readonly StoredChangeRow[],
+	decisions: readonly ChangeRowDecision[],
+): AcceptedRow[] {
+	const rowsById = new Map(rows.map((row) => [row.rowId, row]));
+	const decisionsById = new Map(decisions.map((decision) => [decision.rowId, decision]));
+	const invalidRowIds = [
+		...decisions
+			.filter(
+				(decision, index) =>
+					decisions.findIndex((other) => other.rowId === decision.rowId) !== index ||
+					isInvalidDecision(rowsById.get(decision.rowId), decision),
+			)
+			.map((decision) => decision.rowId),
+		...rows
+			.filter((row) => row.rejection === null && !decisionsById.has(row.rowId))
+			.map((row) => row.rowId),
+	];
+	const accepted = rows.flatMap((row) => {
+		const decision = decisionsById.get(row.rowId);
+		if (decision?.decision !== CHANGE_DECISION.accepted) {
+			return [];
+		}
+		const fields = decision.fields ?? {};
+		const input = effectiveChangeInput(row.operation, row.input, fields);
+		return input === null ? [] : [{ row, input, fields }];
+	});
+	if (invalidRowIds.length > 0 || accepted.length === 0) {
 		error(
 			400,
 			encodeServerError(SERVER_ERROR.AGENT_PROPOSAL_SELECTION_INVALID, {
@@ -438,9 +519,16 @@ function selectRows(rows: readonly StoredChangeRow[], selectedRowIds: readonly s
 			}),
 		);
 	}
-	const selected = new Set(selectedRowIds);
-	// Submission order, whatever order the reviewer selected in.
-	return rows.filter((row) => selected.has(row.rowId));
+	return accepted;
+}
+
+/** Every row the dry run accepted, accepted as proposed: what fast-forward applies. */
+export function acceptEveryReadyRow(rows: readonly StoredChangeRow[]): ChangeRowDecision[] {
+	return rows.map((row) =>
+		row.rejection === null
+			? { rowId: row.rowId, decision: CHANGE_DECISION.accepted }
+			: { rowId: row.rowId, decision: CHANGE_DECISION.rejected },
+	);
 }
 
 type SelectedAuthorization = { authorized: AuthorizedAgentOperation[] } | FailedChangeRows;
@@ -451,11 +539,11 @@ type SelectedAuthorization = { authorized: AuthorizedAgentOperation[] } | Failed
  */
 async function authorizeSelectedRows(
 	grant: AgentAccessGrant,
-	rows: readonly StoredChangeRow[],
+	rows: readonly AcceptedRow[],
 ): Promise<SelectedAuthorization> {
-	const requestOf = (row: StoredChangeRow) => ({
+	const requestOf = ({ row, input }: AcceptedRow) => ({
 		operationName: row.operation,
-		input: row.input,
+		input,
 	});
 	try {
 		return { authorized: await authorizeAgentOperations(grant, rows.map(requestOf)) };
@@ -464,15 +552,15 @@ async function authorizeSelectedRows(
 			throw batchError;
 		}
 		const failedRows: FailedChangeRows['rows'] = [];
-		for (const row of rows) {
+		for (const acceptedRow of rows) {
 			try {
-				await authorizeAgentOperations(grant, [requestOf(row)]);
+				await authorizeAgentOperations(grant, [requestOf(acceptedRow)]);
 			} catch (thrown) {
 				const rowError = changeRowErrorOf(thrown);
 				if (rowError === null) {
 					throw thrown;
 				}
-				failedRows.push({ rowId: row.rowId, error: rowError });
+				failedRows.push({ rowId: acceptedRow.row.rowId, error: rowError });
 			}
 		}
 		if (failedRows.length === 0) {
@@ -496,12 +584,17 @@ function stringField(output: unknown, field: string): string | null {
 	return typeof value === 'string' ? value : null;
 }
 
-/** The reservations and invitations the applied rows created, for undo to cancel and revoke. */
+/** What the applied rows created or replaced, for undo to cancel, revoke and restore. */
 function collectUndoTargets(
 	rows: readonly StoredChangeRow[],
 	rawResults: readonly unknown[],
+	giftOrders: GiftOrderTarget[],
 ): ChangeProposalUndoTargets {
-	const targets: ChangeProposalUndoTargets = { reservations: [], moderatorInvites: [] };
+	const targets: ChangeProposalUndoTargets = {
+		reservations: [],
+		moderatorInvites: [],
+		giftOrders,
+	};
 	for (const [index, row] of rows.entries()) {
 		const output = rawResults[index];
 		const reservationId =
@@ -522,6 +615,57 @@ function collectUndoTargets(
 	return targets;
 }
 
+/** The accepted reorders grouped by wishlist, with every gift they order. */
+function reorderedGiftsByWishlist(rows: readonly AcceptedRow[]) {
+	const byWishlist = new Map<string, { rowIds: string[]; giftIds: Set<string> }>();
+	for (const { row, input } of rows) {
+		if (row.operation !== reorderGiftsOperation.name) {
+			continue;
+		}
+		const { wishlistId, orderedGiftIds } = v.parse(ReorderGiftsInputSchema, input);
+		const entry = byWishlist.get(wishlistId) ?? { rowIds: [], giftIds: new Set<string>() };
+		entry.rowIds.push(row.rowId);
+		orderedGiftIds.forEach((giftId) => entry.giftIds.add(giftId));
+		byWishlist.set(wishlistId, entry);
+	}
+	return byWishlist;
+}
+
+async function readSortOrders(
+	transaction: DatabaseTransaction,
+	giftIds: readonly string[],
+): Promise<Map<string, number>> {
+	if (giftIds.length === 0) {
+		return new Map();
+	}
+	const rows = await transaction
+		.select({ id: gift.id, sortOrder: gift.sortOrder })
+		.from(gift)
+		.where(inArray(gift.id, [...giftIds]));
+	return new Map(rows.map((row) => [row.id, row.sortOrder]));
+}
+
+/** Each reordered wishlist's gifts whose sort order the batch changed, before and after. */
+function giftOrderTargets(
+	byWishlist: ReturnType<typeof reorderedGiftsByWishlist>,
+	previous: ReadonlyMap<string, number>,
+	applied: ReadonlyMap<string, number>,
+): GiftOrderTarget[] {
+	return [...byWishlist].map(([wishlistId, { rowIds, giftIds }]) => ({
+		rowIds,
+		wishlistId,
+		gifts: [...giftIds].flatMap((giftId) => {
+			const previousSortOrder = previous.get(giftId);
+			const appliedSortOrder = applied.get(giftId);
+			return previousSortOrder === undefined ||
+				appliedSortOrder === undefined ||
+				previousSortOrder === appliedSortOrder
+				? []
+				: [{ giftId, previousSortOrder, appliedSortOrder }];
+		}),
+	}));
+}
+
 /** A step the core refused, as a result naming the rows it belongs to; null for a defect. */
 function failedRowsResult(rowIds: readonly string[], thrown: unknown): FailedChangeRows | null {
 	const rowError = changeRowErrorOf(thrown);
@@ -535,27 +679,33 @@ function failedRowsResult(rowIds: readonly string[], thrown: unknown): FailedCha
 }
 
 /**
- * Applies the selected rows of a pending proposal in one transaction as its submitter through the
- * submitting token's channel, with the grant stored at submission, so a revoked token's proposal
- * still applies; the core checks the submitter's current role on every row. Every target wishlist
- * is locked first and then the proposal row; under those locks the proposal must still be pending
- * and every selected row's gifts unchanged since submission. A conflict, a row the core refuses
- * and an authorization that changed before the locks apply nothing and are answered as results.
+ * Applies the accepted rows of a pending proposal, with the reviewer's field rejections and edits,
+ * in one transaction as its submitter through the submitting token's channel, with the grant
+ * stored at submission, so a revoked token's proposal still applies; the core checks the
+ * submitter's current role on every row. Every target wishlist is locked first and then the
+ * proposal row; under those locks the proposal must still be pending and every accepted row's
+ * gifts unchanged since submission. A conflict, a row the core refuses and an authorization that
+ * changed before the locks apply nothing and are answered as results. A reorder stores the order
+ * it replaced, so undo can restore it.
  */
 export async function applyChangeProposalRows(
 	reviewer: Pick<ChangeProposalReviewer, 'id' | 'name'>,
 	proposalId: string,
-	selectedRowIds: readonly string[],
+	decisions: readonly ChangeRowDecision[],
 ): Promise<ApplyChangeProposalResult> {
 	const { proposal } = await requireOwnChangeProposal(reviewer.id, proposalId);
 	assertPending(proposal, new Date());
-	const selectedRows = selectRows(proposal.rows, selectedRowIds);
+	const accepted = acceptedRows(proposal.rows, decisions);
+	const selectedRows = accepted.map(({ row }) => row);
 	const grant = submittedGrant(proposal, reviewer);
-	const authorization = await authorizeSelectedRows(grant, selectedRows);
+	const authorization = await authorizeSelectedRows(grant, accepted);
 	if (!('authorized' in authorization)) {
 		return authorization;
 	}
 	const { authorized } = authorization;
+	const reorders = reorderedGiftsByWishlist(accepted);
+	const reorderedGiftIds = [...reorders.values()].flatMap((entry) => [...entry.giftIds]);
+	let previousSortOrders = new Map<string, number>();
 	let failedStepIndex: number | null = null;
 	try {
 		await executeAgentOperationBatch(grant, authorized, {
@@ -565,16 +715,25 @@ export async function applyChangeProposalRows(
 				if (conflicts.size > 0) {
 					throw new ChangeProposalConflict(conflicts);
 				}
+				previousSortOrders = await readSortOrders(transaction, reorderedGiftIds);
 			},
 			onStepFailed: (stepIndex) => {
 				failedStepIndex = stepIndex;
 			},
 			beforeCommit: async (transaction, batch) => {
-				const appliedResults = new Map(
-					selectedRows.map((row, index) => [
+				const appliedRows = new Map(
+					accepted.map(({ row, fields }, index) => [
 						row.rowId,
-						authorized[index]?.projectOutput(batch.results[index]),
+						{
+							appliedResult: authorized[index]?.projectOutput(batch.results[index]),
+							appliedFields: fields,
+						},
 					]),
+				);
+				const giftOrders = giftOrderTargets(
+					reorders,
+					previousSortOrders,
+					await readSortOrders(transaction, reorderedGiftIds),
 				);
 				await transaction
 					.update(changeProposal)
@@ -583,12 +742,17 @@ export async function applyChangeProposalRows(
 						appliedAt: new Date(),
 						appliedBatchId: batch.batchId,
 						appliedRowIds: selectedRows.map((row) => row.rowId),
-						undoTargets: collectUndoTargets(selectedRows, batch.results),
-						rows: proposal.rows.map((row) =>
-							appliedResults.has(row.rowId)
-								? { ...row, appliedResult: appliedResults.get(row.rowId) ?? null }
-								: row,
-						),
+						undoTargets: collectUndoTargets(selectedRows, batch.results, giftOrders),
+						rows: proposal.rows.map((row) => {
+							const applied = appliedRows.get(row.rowId);
+							return applied === undefined
+								? row
+								: {
+										...row,
+										appliedResult: applied.appliedResult ?? null,
+										appliedFields: applied.appliedFields,
+									};
+						}),
 					})
 					.where(eq(changeProposal.id, proposal.id));
 			},
@@ -646,12 +810,14 @@ interface UndoStep {
 
 /**
  * The undo batch: revoke the invitations still pending, restore the gifts through the core's
- * batch undo, then cancel the reservations still active. Invitations come first because revoking
- * locks the invitation before its wishlist, and the gift undo locks the wishlists itself.
+ * batch undo, restore the order reorders replaced, then cancel the reservations still active.
+ * Invitations come first because revoking locks the invitation before its wishlist, and the gift
+ * undo locks the wishlists itself.
  */
 async function planUndoSteps(proposal: ChangeProposalRow): Promise<UndoStep[]> {
 	const database = getDb();
 	const targets = proposal.undoTargets ?? { reservations: [], moderatorInvites: [] };
+	const giftOrders = targets.giftOrders ?? [];
 	const inviteIds = targets.moderatorInvites.map((invite) => invite.inviteId);
 	const pendingInviteIds =
 		inviteIds.length === 0
@@ -696,9 +862,10 @@ async function planUndoSteps(proposal: ChangeProposalRow): Promise<UndoStep[]> {
 					.from(giftRevision)
 					.where(eq(giftRevision.batchId, batchId))
 					.limit(1);
-	const targetRowIds = new Set(
-		[...targets.reservations, ...targets.moderatorInvites].map((target) => target.rowId),
-	);
+	const targetRowIds = new Set([
+		...[...targets.reservations, ...targets.moderatorInvites].map((target) => target.rowId),
+		...giftOrders.flatMap((target) => target.rowIds),
+	]);
 	const giftRowIds = (proposal.appliedRowIds ?? []).filter((rowId) => !targetRowIds.has(rowId));
 	return [
 		...targets.moderatorInvites
@@ -718,6 +885,15 @@ async function planUndoSteps(proposal: ChangeProposalRow): Promise<UndoStep[]> {
 						rowIds: giftRowIds,
 					},
 				]),
+		...giftOrders
+			.filter((target) => target.gifts.length > 0)
+			.map((target) => ({
+				step: {
+					operation: restoreGiftOrderOperation,
+					input: { wishlistId: target.wishlistId, gifts: target.gifts },
+				},
+				rowIds: target.rowIds,
+			})),
 		...targets.reservations
 			.filter((target) => activeReservationIds.has(target.reservationId))
 			.map((target) => ({

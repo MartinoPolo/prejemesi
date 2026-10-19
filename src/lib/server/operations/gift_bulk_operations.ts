@@ -152,7 +152,7 @@ export const reorderGiftsOperation = defineOperation({
 				.where(eq(gift.id, plan.giftRow.id));
 		}
 
-		// Order alone is a list-level change with its own undo, so only group changes are revisions.
+		// Revisions leave sort order out; a proposal batch stores the order it replaced instead.
 		context.recordGiftRevisions(
 			changedPlans.map((plan) => ({
 				giftId: plan.giftRow.id,

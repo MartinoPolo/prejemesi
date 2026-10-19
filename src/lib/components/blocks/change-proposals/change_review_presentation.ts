@@ -21,7 +21,7 @@ import { CHANGE_KIND, type ChangeKind } from '$lib/modules/change_proposals/type
 import {
 	CHANGE_ROW_DISPLAY_STATUS,
 	type ChangeRowDisplayStatus,
-} from '$lib/modules/change_proposals/change_review_selection.js';
+} from '$lib/modules/change_proposals/change_review_decisions.js';
 import type { PluralMessages } from '$lib/modules/change_proposals/change_review_copy.js';
 
 /** Change-type colours: only AA text tokens, each with the hue its header band tints with. */
@@ -207,13 +207,33 @@ export const CHANGE_ROW_STATUS_PRESENTATION = {
 		tone: 'success',
 		icon: CheckIcon,
 	},
-	[CHANGE_ROW_DISPLAY_STATUS.unselected]: {
-		label: m.change_review_status_unselected,
+	[CHANGE_ROW_DISPLAY_STATUS.partial]: {
+		label: m.change_review_status_partial,
+		tone: 'primary',
+		icon: null,
+	},
+	[CHANGE_ROW_DISPLAY_STATUS.declined]: {
+		label: m.change_review_status_declined,
 		tone: 'neutral',
 		icon: null,
 	},
-	[CHANGE_ROW_DISPLAY_STATUS.needsConfirmation]: {
-		label: m.change_review_status_needs_confirmation,
+	[CHANGE_ROW_DISPLAY_STATUS.kept]: {
+		label: m.change_review_status_kept,
+		tone: 'neutral',
+		icon: null,
+	},
+	[CHANGE_ROW_DISPLAY_STATUS.dropped]: {
+		label: m.change_review_status_dropped,
+		tone: 'neutral',
+		icon: BanIcon,
+	},
+	[CHANGE_ROW_DISPLAY_STATUS.needsDecision]: {
+		label: m.change_review_status_needs_decision,
+		tone: 'warning',
+		icon: TriangleAlertIcon,
+	},
+	[CHANGE_ROW_DISPLAY_STATUS.undecided]: {
+		label: m.change_review_status_undecided,
 		tone: 'warning',
 		icon: TriangleAlertIcon,
 	},
@@ -258,3 +278,10 @@ export const CHANGE_ROW_STATUS_PRESENTATION = {
 		icon: TriangleAlertIcon,
 	},
 } satisfies Record<ChangeRowDisplayStatus, ChangeRowStatusPresentation>;
+
+/** "Rozhodněte 3 změny", shown and read out when Apply is pressed with decisions still open. */
+export const UNRESOLVED_DECISION_MESSAGES: PluralMessages = {
+	one: m.change_review_unresolved_message_one,
+	few: m.change_review_unresolved_message_few,
+	other: m.change_review_unresolved_message_other,
+};

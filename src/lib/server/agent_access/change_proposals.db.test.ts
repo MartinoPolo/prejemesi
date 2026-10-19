@@ -54,6 +54,7 @@ import {
 	requireOwnChangeProposal,
 	undoChangeProposal,
 } from './change_proposals.js';
+import { applyRows } from './change_proposals.db.test-setup.js';
 
 const DEADLOCK_DETECTED = '40P01';
 const HOUR_MS = 60 * 60 * 1000;
@@ -221,7 +222,7 @@ describe.skipIf(!DB_READY)('change proposals', () => {
 			]);
 			await reserveGift(secondGiftId, SECOND_RESERVER_ID);
 
-			const result = await applyChangeProposalRows(RESERVER, submitted.id, ['r1', 'r2']);
+			const result = await applyRows(RESERVER, submitted.id, ['r1', 'r2']);
 
 			expect(result).toEqual({
 				outcome: CHANGE_PROPOSAL_OUTCOME.failed,
@@ -257,7 +258,7 @@ describe.skipIf(!DB_READY)('change proposals', () => {
 				r1: CHANGE_ROW_STATUS.ready,
 				r2: CHANGE_ROW_STATUS.conflict,
 			});
-			const result = await applyChangeProposalRows(MANAGER, submitted.id, ['r1', 'r2']);
+			const result = await applyRows(MANAGER, submitted.id, ['r1', 'r2']);
 
 			expect(result).toEqual({
 				outcome: CHANGE_PROPOSAL_OUTCOME.conflict,
@@ -292,7 +293,7 @@ describe.skipIf(!DB_READY)('change proposals', () => {
 				orderedGiftIds: [secondGiftId, firstGiftId],
 			});
 
-			const result = await applyChangeProposalRows(MANAGER, submitted.id, ['r1']);
+			const result = await applyRows(MANAGER, submitted.id, ['r1']);
 
 			expect(result.outcome).toBe(CHANGE_PROPOSAL_OUTCOME.applied);
 		});
@@ -307,7 +308,7 @@ describe.skipIf(!DB_READY)('change proposals', () => {
 				['deleteGift', { giftId: skippedGiftId }],
 			]);
 
-			const result = await applyChangeProposalRows(MANAGER, submitted.id, ['r1']);
+			const result = await applyRows(MANAGER, submitted.id, ['r1']);
 
 			if (result.outcome !== CHANGE_PROPOSAL_OUTCOME.applied) {
 				throw new Error(`Expected the proposal to apply, got ${result.outcome}`);
@@ -320,14 +321,14 @@ describe.skipIf(!DB_READY)('change proposals', () => {
 			expect((await readGift(selectedGiftId)).name).toBe('Fotbalový míč');
 			expect((await readGift(skippedGiftId)).deletedAt).toBeNull();
 			await expectRejection(
-				applyChangeProposalRows(MANAGER, submitted.id, ['r2']),
+				applyRows(MANAGER, submitted.id, ['r2']),
 				409,
 				SERVER_ERROR.AGENT_PROPOSAL_NOT_PENDING,
 			);
 			expect((await readGift(skippedGiftId)).deletedAt).toBeNull();
 		});
 
-		it('refuses selecting a rejected, unknown or repeated row', async () => {
+		it('refuses accepting a rejected or unknown row and repeating a decision', async () => {
 			const wishlist = await createWishlistFixture();
 			const giftId = await createGiftFixture(wishlist.id);
 			const token = await agentToken(MANAGER_ID);
@@ -337,13 +338,47 @@ describe.skipIf(!DB_READY)('change proposals', () => {
 			]);
 
 			await expectRejection(
-				applyChangeProposalRows(MANAGER, submitted.id, ['r1', 'r2', 'r9', 'r1']),
+				applyChangeProposalRows(MANAGER, submitted.id, [
+					{ rowId: 'r1', decision: 'accepted' },
+					{ rowId: 'r2', decision: 'accepted' },
+					{ rowId: 'r9', decision: 'rejected' },
+					{ rowId: 'r1', decision: 'accepted' },
+				]),
 				400,
 				encodeServerError(SERVER_ERROR.AGENT_PROPOSAL_SELECTION_INVALID, {
 					rowIds: 'r2,r9,r1',
 				}),
 			);
 			expect((await readGift(giftId)).name).not.toBe('Upraveno');
+		});
+
+		it('refuses while a row the dry run accepted is undecided, and when nothing is accepted', async () => {
+			const wishlist = await createWishlistFixture();
+			const keptGiftId = await createGiftFixture(wishlist.id, { name: 'Míč' });
+			const deletedGiftId = await createGiftFixture(wishlist.id, { name: 'Kolo' });
+			const token = await agentToken(MANAGER_ID);
+			const submitted = await submit(token, wishlist.shortId, [
+				['updateGift', { id: keptGiftId, name: 'Fotbalový míč' }],
+				['deleteGift', { giftId: deletedGiftId }],
+			]);
+
+			await expectRejection(
+				applyChangeProposalRows(MANAGER, submitted.id, [
+					{ rowId: 'r1', decision: 'accepted' },
+				]),
+				400,
+				encodeServerError(SERVER_ERROR.AGENT_PROPOSAL_SELECTION_INVALID, { rowIds: 'r2' }),
+			);
+			await expectRejection(
+				applyChangeProposalRows(MANAGER, submitted.id, [
+					{ rowId: 'r1', decision: 'rejected' },
+					{ rowId: 'r2', decision: 'rejected' },
+				]),
+				400,
+				encodeServerError(SERVER_ERROR.AGENT_PROPOSAL_SELECTION_INVALID, { rowIds: '' }),
+			);
+			expect((await readGift(keptGiftId)).name).toBe('Míč');
+			expect((await readGift(deletedGiftId)).deletedAt).toBeNull();
 		});
 
 		it('refuses an expired proposal', async () => {
@@ -362,7 +397,7 @@ describe.skipIf(!DB_READY)('change proposals', () => {
 				CHANGE_PROPOSAL_STATE.expired,
 			);
 			await expectRejection(
-				applyChangeProposalRows(MANAGER, submitted.id, ['r1']),
+				applyRows(MANAGER, submitted.id, ['r1']),
 				410,
 				SERVER_ERROR.AGENT_PROPOSAL_EXPIRED,
 			);
@@ -384,7 +419,7 @@ describe.skipIf(!DB_READY)('change proposals', () => {
 			await revokeAccessToken(MANAGER_ID, token.credential.id);
 
 			expect((await viewOf(MANAGER, wishlist.shortId, submitted.id)).tokenRevoked).toBe(true);
-			const result = await applyChangeProposalRows(MANAGER, submitted.id, ['r1']);
+			const result = await applyRows(MANAGER, submitted.id, ['r1']);
 
 			expect(result.outcome).toBe(CHANGE_PROPOSAL_OUTCOME.applied);
 			expect((await readGift(giftId)).name).toBe('Upraveno');
@@ -425,8 +460,8 @@ describe.skipIf(!DB_READY)('change proposals', () => {
 						.where(eq(gift.id, gateGiftId))
 						.for('update'),
 				[
-					() => applyChangeProposalRows(MANAGER, first.id, ['r1', 'r2', 'r3']),
-					() => applyChangeProposalRows(MANAGER, second.id, ['r1', 'r2', 'r3']),
+					() => applyRows(MANAGER, first.id, ['r1', 'r2', 'r3']),
+					() => applyRows(MANAGER, second.id, ['r1', 'r2', 'r3']),
 					() => discardChangeProposal(MANAGER, first.id),
 				],
 				{ queueInOrder: true },
@@ -468,7 +503,7 @@ describe.skipIf(!DB_READY)('change proposals', () => {
 			]);
 			await executeOperation(recipientActor, deleteGiftOperation, { giftId });
 
-			const result = await applyChangeProposalRows(MANAGER, submitted.id, ['r1']);
+			const result = await applyRows(MANAGER, submitted.id, ['r1']);
 
 			expect(result).toEqual({
 				outcome: CHANGE_PROPOSAL_OUTCOME.conflict,
@@ -506,7 +541,7 @@ describe.skipIf(!DB_READY)('change proposals', () => {
 			]);
 			await renameAsRecipient(editedGiftId, 'Silniční kolo');
 
-			const result = await applyChangeProposalRows(MANAGER, submitted.id, ['r1']);
+			const result = await applyRows(MANAGER, submitted.id, ['r1']);
 
 			expect(result).toEqual({
 				outcome: CHANGE_PROPOSAL_OUTCOME.conflict,
@@ -545,7 +580,7 @@ describe.skipIf(!DB_READY)('change proposals', () => {
 			// Gone for good: the restricted grant can no longer place the row on its wishlist.
 			await getDb().delete(gift).where(eq(gift.id, purgedGiftId));
 
-			const result = await applyChangeProposalRows(MANAGER, submitted.id, ['r1', 'r2']);
+			const result = await applyRows(MANAGER, submitted.id, ['r1', 'r2']);
 
 			expect(result).toEqual({
 				outcome: CHANGE_PROPOSAL_OUTCOME.failed,
@@ -577,7 +612,7 @@ describe.skipIf(!DB_READY)('change proposals', () => {
 				.set({ deletedAt: new Date() })
 				.where(eq(moderatorAssignment.wishlistId, wishlist.id));
 
-			const result = await applyChangeProposalRows(MANAGER, submitted.id, ['r1']);
+			const result = await applyRows(MANAGER, submitted.id, ['r1']);
 
 			expect(result).toEqual({
 				outcome: CHANGE_PROPOSAL_OUTCOME.failed,
@@ -589,6 +624,160 @@ describe.skipIf(!DB_READY)('change proposals', () => {
 				state: CHANGE_PROPOSAL_STATE.pending,
 				viewerRole: WISHLIST_ROLES.visitor,
 			});
+		});
+	});
+
+	describe('field decisions', () => {
+		it('applies an edit without its rejected fields and with the reviewer’s own values', async () => {
+			const wishlist = await createWishlistFixture();
+			const giftId = await createGiftFixture(wishlist.id, { name: 'Konvice', price: 1190 });
+			const token = await agentToken(MANAGER_ID);
+			const submitted = await submit(token, wishlist.shortId, [
+				['updateGift', { id: giftId, name: 'Konvice Bosch', price: 990, quantity: 2 }],
+			]);
+
+			const result = await applyChangeProposalRows(MANAGER, submitted.id, [
+				{
+					rowId: 'r1',
+					decision: 'accepted',
+					fields: {
+						name: { decision: 'edited', input: { name: 'Rychlovarná konvice' } },
+						price: { decision: 'rejected' },
+					},
+				},
+			]);
+
+			if (result.outcome !== CHANGE_PROPOSAL_OUTCOME.applied) {
+				throw new Error(`Expected the proposal to apply, got ${result.outcome}`);
+			}
+			const applied = await readGift(giftId);
+			expect(applied).toMatchObject({ name: 'Rychlovarná konvice', quantity: 2 });
+			expect(Number(applied.price)).toBe(1190);
+			expect(result.proposal.rows[0]?.appliedFields).toEqual({
+				name: { decision: 'edited', input: { name: 'Rychlovarná konvice' } },
+				price: { decision: 'rejected' },
+			});
+		});
+
+		it('creates a new gift without its rejected fields but never without its name', async () => {
+			const wishlist = await createWishlistFixture();
+			const token = await agentToken(MANAGER_ID);
+			const submitted = await submit(token, wishlist.shortId, [
+				['createGift', { wishlistId: wishlist.id, name: 'Pléd', price: 1290, quantity: 2 }],
+			]);
+
+			await expectRejection(
+				applyChangeProposalRows(MANAGER, submitted.id, [
+					{
+						rowId: 'r1',
+						decision: 'accepted',
+						fields: { name: { decision: 'rejected' } },
+					},
+				]),
+				400,
+				encodeServerError(SERVER_ERROR.AGENT_PROPOSAL_SELECTION_INVALID, { rowIds: 'r1' }),
+			);
+			const result = await applyChangeProposalRows(MANAGER, submitted.id, [
+				{ rowId: 'r1', decision: 'accepted', fields: { price: { decision: 'rejected' } } },
+			]);
+
+			if (result.outcome !== CHANGE_PROPOSAL_OUTCOME.applied) {
+				throw new Error(`Expected the proposal to apply, got ${result.outcome}`);
+			}
+			const created = await readGift(createdGiftIdOf(result.proposal.rows[0]?.appliedResult));
+			expect(created).toMatchObject({ name: 'Pléd', price: null, quantity: 2 });
+		});
+
+		it('skips an edit whose every field is rejected', async () => {
+			const wishlist = await createWishlistFixture();
+			const skippedGiftId = await createGiftFixture(wishlist.id, { name: 'Míč' });
+			const editedGiftId = await createGiftFixture(wishlist.id, { name: 'Kolo' });
+			const token = await agentToken(MANAGER_ID);
+			const submitted = await submit(token, wishlist.shortId, [
+				['updateGift', { id: skippedGiftId, name: 'Fotbalový míč' }],
+				['updateGift', { id: editedGiftId, name: 'Horské kolo' }],
+			]);
+
+			const result = await applyChangeProposalRows(MANAGER, submitted.id, [
+				{ rowId: 'r1', decision: 'accepted', fields: { name: { decision: 'rejected' } } },
+				{ rowId: 'r2', decision: 'accepted' },
+			]);
+
+			if (result.outcome !== CHANGE_PROPOSAL_OUTCOME.applied) {
+				throw new Error(`Expected the proposal to apply, got ${result.outcome}`);
+			}
+			expect(rowStatuses(result.proposal)).toEqual({
+				r1: CHANGE_ROW_STATUS.notApplied,
+				r2: CHANGE_ROW_STATUS.applied,
+			});
+			expect((await readGift(skippedGiftId)).name).toBe('Míč');
+			expect((await readGift(editedGiftId)).name).toBe('Horské kolo');
+		});
+
+		it('refuses decisions on fields the row does not set, on images and outside a field', async () => {
+			const wishlist = await createWishlistFixture();
+			const giftId = await createGiftFixture(wishlist.id, { name: 'Míč' });
+			const otherWishlist = await createWishlistFixture();
+			const token = await agentToken(MANAGER_ID);
+			const submitted = await submit(token, wishlist.shortId, [
+				['updateGift', { id: giftId, name: 'Fotbalový míč' }],
+				['deleteGift', { giftId }],
+			]);
+			const invalidFields = [
+				{ price: { decision: 'rejected' } },
+				{
+					name: {
+						decision: 'edited',
+						input: { name: 'Míček', wishlistId: otherWishlist.id },
+					},
+				},
+			] as const;
+
+			for (const fields of invalidFields) {
+				await expectRejection(
+					applyChangeProposalRows(MANAGER, submitted.id, [
+						{ rowId: 'r1', decision: 'accepted', fields },
+						{ rowId: 'r2', decision: 'rejected' },
+					]),
+					400,
+					encodeServerError(SERVER_ERROR.AGENT_PROPOSAL_SELECTION_INVALID, {
+						rowIds: 'r1',
+					}),
+				);
+			}
+			await expectRejection(
+				applyChangeProposalRows(MANAGER, submitted.id, [
+					{ rowId: 'r1', decision: 'rejected' },
+					{
+						rowId: 'r2',
+						decision: 'accepted',
+						fields: { name: { decision: 'rejected' } },
+					},
+				]),
+				400,
+				encodeServerError(SERVER_ERROR.AGENT_PROPOSAL_SELECTION_INVALID, { rowIds: 'r2' }),
+			);
+			expect((await readGift(giftId)).name).toBe('Míč');
+		});
+
+		it('answers an edited value the operation refuses as that row’s failure', async () => {
+			const wishlist = await createWishlistFixture();
+			const giftId = await createGiftFixture(wishlist.id, { name: 'Míč' });
+			const token = await agentToken(MANAGER_ID);
+			const submitted = await submit(token, wishlist.shortId, [
+				['updateGift', { id: giftId, quantity: 2 }],
+			]);
+
+			const result = await applyChangeProposalRows(MANAGER, submitted.id, [
+				{
+					rowId: 'r1',
+					decision: 'accepted',
+					fields: { quantity: { decision: 'edited', input: { quantity: 0 } } },
+				},
+			]);
+
+			expect(result.outcome).toBe(CHANGE_PROPOSAL_OUTCOME.failed);
+			expect((await readGift(giftId)).quantity).not.toBe(0);
 		});
 	});
 
@@ -706,7 +895,7 @@ describe.skipIf(!DB_READY)('change proposals', () => {
 
 			expect(discarded.state).toBe(CHANGE_PROPOSAL_STATE.discarded);
 			await expectRejection(
-				applyChangeProposalRows(MANAGER, submitted.id, ['r1']),
+				applyRows(MANAGER, submitted.id, ['r1']),
 				409,
 				SERVER_ERROR.AGENT_PROPOSAL_NOT_PENDING,
 			);
@@ -730,11 +919,7 @@ describe.skipIf(!DB_READY)('change proposals', () => {
 			const notFound = SERVER_ERROR.AGENT_PROPOSAL_NOT_FOUND;
 
 			await expectRejection(viewOf(RECIPIENT, wishlist.shortId, submitted.id), 404, notFound);
-			await expectRejection(
-				applyChangeProposalRows(RECIPIENT, submitted.id, ['r1']),
-				404,
-				notFound,
-			);
+			await expectRejection(applyRows(RECIPIENT, submitted.id, ['r1']), 404, notFound);
 			await expectRejection(discardChangeProposal(RECIPIENT, submitted.id), 404, notFound);
 			await expectRejection(undoChangeProposal(RECIPIENT, submitted.id), 404, notFound);
 			expect(await listPendingChangeProposals(RECIPIENT, wishlist.shortId)).toEqual([]);
@@ -752,7 +937,7 @@ describe.skipIf(!DB_READY)('change proposals', () => {
 			const applied = await submit(token, wishlist.shortId, [
 				['updateGift', { id: appliedGiftId, name: 'Fotbalový míč' }],
 			]);
-			await applyChangeProposalRows(MANAGER, applied.id, ['r1']);
+			await applyRows(MANAGER, applied.id, ['r1']);
 			// A conflict whose view would show the gift as it is now.
 			await renameAsRecipient(pendingGiftId, 'Tajné kolo');
 			await getDb()
@@ -762,11 +947,7 @@ describe.skipIf(!DB_READY)('change proposals', () => {
 			const notFound = SERVER_ERROR.AGENT_PROPOSAL_NOT_FOUND;
 
 			await expectRejection(viewOf(MANAGER, wishlist.shortId, pending.id), 404, notFound);
-			await expectRejection(
-				applyChangeProposalRows(MANAGER, pending.id, ['r1']),
-				404,
-				notFound,
-			);
+			await expectRejection(applyRows(MANAGER, pending.id, ['r1']), 404, notFound);
 			await expectRejection(undoChangeProposal(MANAGER, applied.id), 404, notFound);
 			await expectRejection(
 				listPendingChangeProposals(MANAGER, wishlist.shortId),
@@ -807,7 +988,7 @@ describe.skipIf(!DB_READY)('change proposals', () => {
 				['deleteGift', { giftId }],
 			]);
 			const applied = await submit(managerToken, wishlist.shortId, [edit]);
-			await applyChangeProposalRows(MANAGER, applied.id, ['r1']);
+			await applyRows(MANAGER, applied.id, ['r1']);
 			const expired = await submit(managerToken, wishlist.shortId, [edit]);
 			await getDb()
 				.update(changeProposal)
@@ -850,11 +1031,7 @@ describe.skipIf(!DB_READY)('change proposals', () => {
 					{ wishlistId: wishlist.id, email: 'teta@example.com' },
 				],
 			]);
-			const applied = await applyChangeProposalRows(MANAGER, submitted.id, [
-				'r1',
-				'r2',
-				'r3',
-			]);
+			const applied = await applyRows(MANAGER, submitted.id, ['r1', 'r2', 'r3']);
 			if (applied.outcome !== CHANGE_PROPOSAL_OUTCOME.applied) {
 				throw new Error(`Expected the proposal to apply, got ${applied.outcome}`);
 			}
@@ -895,7 +1072,7 @@ describe.skipIf(!DB_READY)('change proposals', () => {
 			const submitted = await submit(token, wishlist.shortId, [
 				['reserveGift', { giftId, quantity: 1 }],
 			]);
-			await applyChangeProposalRows(RESERVER, submitted.id, ['r1']);
+			await applyRows(RESERVER, submitted.id, ['r1']);
 			expect(await activeReservations(giftId, RESERVER_ID)).toHaveLength(1);
 
 			const result = await undoChangeProposal(RESERVER, submitted.id);
@@ -913,7 +1090,7 @@ describe.skipIf(!DB_READY)('change proposals', () => {
 				['updateGift', { id: changedGiftId, name: 'Fotbalový míč' }],
 				['updateGift', { id: untouchedGiftId, name: 'Horské kolo' }],
 			]);
-			await applyChangeProposalRows(MANAGER, submitted.id, ['r1', 'r2']);
+			await applyRows(MANAGER, submitted.id, ['r1', 'r2']);
 			await renameAsRecipient(changedGiftId, 'Basketbalový míč');
 
 			const result = await undoChangeProposal(MANAGER, submitted.id);
@@ -923,6 +1100,65 @@ describe.skipIf(!DB_READY)('change proposals', () => {
 				changedGifts: [{ giftId: changedGiftId, name: 'Basketbalový míč' }],
 			});
 			expect((await readGift(untouchedGiftId)).name).toBe('Horské kolo');
+			const { proposal } = await requireOwnChangeProposal(MANAGER_ID, submitted.id);
+			expect(proposal.status).toBe('applied');
+		});
+
+		it('restores the order a reorder replaced', async () => {
+			const wishlist = await createWishlistFixture();
+			const firstGiftId = await createGiftFixture(wishlist.id, { sortOrder: 0 });
+			const secondGiftId = await createGiftFixture(wishlist.id, { sortOrder: 1 });
+			const token = await agentToken(MANAGER_ID);
+			const submitted = await submit(token, wishlist.shortId, [
+				[
+					'reorderGifts',
+					{ wishlistId: wishlist.id, orderedGiftIds: [secondGiftId, firstGiftId] },
+				],
+			]);
+			const applied = await applyRows(MANAGER, submitted.id, ['r1']);
+			if (applied.outcome !== CHANGE_PROPOSAL_OUTCOME.applied) {
+				throw new Error(`Expected the proposal to apply, got ${applied.outcome}`);
+			}
+			expect(applied.proposal.undo).toEqual({ available: true, blockingRowIds: [] });
+			expect((await readGift(secondGiftId)).sortOrder).toBe(0);
+
+			const result = await undoChangeProposal(MANAGER, submitted.id);
+
+			expect(result.outcome).toBe(CHANGE_PROPOSAL_OUTCOME.undone);
+			expect((await readGift(firstGiftId)).sortOrder).toBe(0);
+			expect((await readGift(secondGiftId)).sortOrder).toBe(1);
+		});
+
+		it('refuses to restore the order once the gifts moved again', async () => {
+			const wishlist = await createWishlistFixture();
+			const firstGiftId = await createGiftFixture(wishlist.id, { sortOrder: 0 });
+			const secondGiftId = await createGiftFixture(wishlist.id, { sortOrder: 1 });
+			const thirdGiftId = await createGiftFixture(wishlist.id, { sortOrder: 2 });
+			const token = await agentToken(MANAGER_ID);
+			const submitted = await submit(token, wishlist.shortId, [
+				[
+					'reorderGifts',
+					{
+						wishlistId: wishlist.id,
+						orderedGiftIds: [secondGiftId, firstGiftId, thirdGiftId],
+					},
+				],
+			]);
+			await applyRows(MANAGER, submitted.id, ['r1']);
+			await executeOperation(recipientActor, reorderGiftsOperation, {
+				wishlistId: wishlist.id,
+				orderedGiftIds: [thirdGiftId, secondGiftId, firstGiftId],
+			});
+
+			const result = await undoChangeProposal(MANAGER, submitted.id);
+
+			if (result.outcome !== CHANGE_PROPOSAL_OUTCOME.conflict) {
+				throw new Error(`Expected an undo conflict, got ${result.outcome}`);
+			}
+			expect(result.changedGifts.map((changed) => changed.giftId).sort()).toEqual(
+				[firstGiftId, secondGiftId].sort(),
+			);
+			expect((await readGift(thirdGiftId)).sortOrder).toBe(0);
 			const { proposal } = await requireOwnChangeProposal(MANAGER_ID, submitted.id);
 			expect(proposal.status).toBe('applied');
 		});
@@ -939,7 +1175,7 @@ describe.skipIf(!DB_READY)('change proposals', () => {
 			const token = await agentToken(MANAGER_ID, { scopes: ['gifts:write'] });
 			const submitted = await submit(token, wishlist.shortId, rows(wishlist.id, giftId));
 			const rowIds = submitted.rows.map((row) => row.rowId);
-			const applied = await applyChangeProposalRows(MANAGER, submitted.id, rowIds);
+			const applied = await applyRows(MANAGER, submitted.id, rowIds);
 			expect(applied.outcome).toBe(CHANGE_PROPOSAL_OUTCOME.applied);
 			return submitted.id;
 		}
@@ -955,22 +1191,25 @@ describe.skipIf(!DB_READY)('change proposals', () => {
 			const submitted = await submit(token, wishlist.shortId, [
 				[operation, { reservationId: reserved?.id, ...input }],
 			]);
-			const applied = await applyChangeProposalRows(RESERVER, submitted.id, ['r1']);
+			const applied = await applyRows(RESERVER, submitted.id, ['r1']);
 			expect(applied.outcome).toBe(CHANGE_PROPOSAL_OUTCOME.applied);
 			return submitted.id;
 		}
 
 		const irreversibleCases: [string, () => Promise<IrreversibleCase>][] = [
 			[
-				'reorderGifts',
-				async () => ({
-					reviewer: MANAGER,
-					proposalId: await appliedByManager((wishlistId, giftId) => [
+				'a reorder applied before its previous order was stored',
+				async () => {
+					const proposalId = await appliedByManager((wishlistId, giftId) => [
 						['updateGift', { id: giftId, name: 'Upraveno' }],
 						['reorderGifts', { wishlistId, orderedGiftIds: [giftId] }],
-					]),
-					blockingRowId: 'r2',
-				}),
+					]);
+					await getDb()
+						.update(changeProposal)
+						.set({ undoTargets: { reservations: [], moderatorInvites: [] } })
+						.where(eq(changeProposal.id, proposalId));
+					return { reviewer: MANAGER, proposalId, blockingRowId: 'r2' };
+				},
 			],
 			[
 				'updateWishlist',
@@ -1032,7 +1271,7 @@ describe.skipIf(!DB_READY)('change proposals', () => {
 							{ wishlistId: wishlist.id, email: 'teta@example.com' },
 						],
 					]);
-					await applyChangeProposalRows(MANAGER, submitted.id, ['r1']);
+					await applyRows(MANAGER, submitted.id, ['r1']);
 					await getDb()
 						.update(moderatorInvite)
 						.set({ usedAt: new Date() })
@@ -1072,7 +1311,7 @@ describe.skipIf(!DB_READY)('change proposals', () => {
 			const submitted = await submit(token, wishlist.shortId, [
 				['reserveGift', { giftId, quantity: 1 }],
 			]);
-			await applyChangeProposalRows(RESERVER, submitted.id, ['r1']);
+			await applyRows(RESERVER, submitted.id, ['r1']);
 			const [reserved] = await activeReservations(giftId, RESERVER_ID);
 			const reservationId = reserved?.id ?? '';
 

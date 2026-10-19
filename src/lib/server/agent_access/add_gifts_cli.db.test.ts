@@ -22,7 +22,7 @@ import { CreateAccessTokenInputSchema } from '$lib/modules/access_tokens/types.j
 import { EXIT_CODE, runCli, type CliEnvironment } from '../../../../packages/cli/src/cli.js';
 import { createAccessToken } from './access_tokens.js';
 import type { AgentApiRateLimit } from './api.js';
-import { applyChangeProposalRows } from './change_proposals.js';
+import { applyRows } from './change_proposals.db.test-setup.js';
 import { GET as getMe } from '../../../routes/api/v1/me/+server.js';
 import { GET as getWishlists } from '../../../routes/api/v1/wishlists/+server.js';
 import { POST as postOperation } from '../../../routes/api/v1/operations/[operationName]/+server.js';
@@ -264,7 +264,7 @@ describe.skipIf(!DB_READY)('add-gifts through the CLI on the user’s own token'
 
 		const shown = await proposalFrom(['proposals', 'show', output.proposal.id]);
 		expect(shown.reviewLink).toBe(output.reviewLink);
-		await applyChangeProposalRows(
+		await applyRows(
 			{ id: MANAGER_ID, name: 'Manager' },
 			output.proposal.id,
 			output.proposal.rows.map((row) => row.rowId),

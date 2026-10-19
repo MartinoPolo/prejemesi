@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { untrack } from 'svelte';
+	import { tick, untrack } from 'svelte';
+	import { prefersReducedMotion } from 'svelte/motion';
 	import * as m from '$lib/paraglide/messages.js';
 	import { getLocale } from '$lib/paraglide/runtime.js';
 	import Trash2Icon from '@lucide/svelte/icons/trash-2';
@@ -26,38 +27,49 @@
 		type UndoChangeProposalResult,
 	} from '$lib/modules/change_proposals/types.js';
 	import {
+		CHANGE_DECISION,
+		type ChangeDecision,
+		type ChangeRowDecision,
+	} from '$lib/modules/change_proposals/change_field_decisions.js';
+	import {
 		CHANGE_ROW_GROUP,
-		initialChangeSelection,
-		ordinarySelectionState,
-		selectableChangeRowCount,
-		selectedChangeRowIds,
-		toggleOrdinarySelection,
-		withChangeRowSelected,
-	} from '$lib/modules/change_proposals/change_review_selection.js';
+		appliedChangeReview,
+		changeRowDecisions,
+		fieldEditInput,
+		fieldEditorText,
+		includedRowCount,
+		initialChangeReview,
+		unresolvedChangeCount,
+		withEveryRowDecided,
+		withFieldDecisionToggled,
+		withFieldEdited,
+		withRowChoiceToggled,
+		withRowDecided,
+		type ChangeReview,
+	} from '$lib/modules/change_proposals/change_review_decisions.js';
 	import { countCopy } from '$lib/modules/change_proposals/change_review_copy.js';
 	import ChangeReviewControls from './ChangeReviewControls.svelte';
 	import ChangeReviewHeader from './ChangeReviewHeader.svelte';
 	import ChangeReviewOutcomes from './ChangeReviewOutcomes.svelte';
 	import ChangeReviewSections from './ChangeReviewSections.svelte';
-	import ConfirmChangeList from './ConfirmChangeList.svelte';
 	import ProposalApplyBar from './ProposalApplyBar.svelte';
 	import ProposalSummary from './ProposalSummary.svelte';
 	import ReviewActionDialog from './ReviewActionDialog.svelte';
-	import { CHANGE_KIND_PRESENTATION } from './change_review_presentation.js';
+	import {
+		CHANGE_KIND_PRESENTATION,
+		UNRESOLVED_DECISION_MESSAGES,
+	} from './change_review_presentation.js';
 	import {
 		CHANGE_REVIEW_FILTER,
+		activeChangeReview,
 		buildReviewRowEntries,
+		type ChangeReviewActions,
 		type ChangeReviewFilter,
 	} from './change_review_rows.js';
 	import { giftLabelLookups, type ChangeRowContext } from './change_row_model.js';
 
 	type ReviewAction = 'apply' | 'undo' | 'discard';
 
-	const CONFIRM_LEADS = {
-		one: m.change_review_confirm_lead_one,
-		few: m.change_review_confirm_lead_few,
-		other: m.change_review_confirm_lead_other,
-	};
 	const UNDO_TITLES = {
 		one: m.change_review_undo_title_one,
 		few: m.change_review_undo_title_few,
@@ -70,8 +82,9 @@
 	};
 
 	/**
-	 * The submitter's review of one agent proposal: select rows, apply them as one batch, undo the
-	 * batch or discard the proposal. The parent refreshes `proposal` after each action.
+	 * The submitter's review of one agent proposal: decide each change or field, apply the accepted
+	 * ones as one batch, undo the batch or discard the proposal. The parent refreshes `proposal`
+	 * after each action.
 	 */
 	let {
 		proposal,
@@ -94,7 +107,7 @@
 		categories: readonly PublicGiftCategory[];
 		priorityLevels: readonly { id: string; label: string }[];
 		now?: Date;
-		onapply: (selectedRowIds: string[]) => Promise<ApplyChangeProposalResult>;
+		onapply: (decisions: ChangeRowDecision[]) => Promise<ApplyChangeProposalResult>;
 		onundo: () => Promise<UndoChangeProposalResult>;
 		ondiscard: () => Promise<void>;
 	} = $props();
@@ -110,16 +123,16 @@
 		),
 	);
 
-	let selection = $state.raw<ReadonlySet<string>>(
-		untrack(() => initialChangeSelection(proposal.rows)),
-	);
+	let root = $state<HTMLDivElement>();
+	let review = $state.raw<ChangeReview>(untrack(() => initialChangeReview(proposal.rows)));
+	let showUnresolved = $state(false);
+	let announcement = $state('');
 	let filter = $state<ChangeReviewFilter>(CHANGE_REVIEW_FILTER.all);
 	let applyConflicts = $state.raw<ReadonlyMap<string, ChangeRowConflict[]>>(new Map());
 	let applyErrors = $state.raw<ReadonlyMap<string, ChangeRowError>>(new Map());
 	let undoChangedGifts = $state.raw<{ giftId: string; name: string | null }[]>([]);
 	let pendingAction = $state<ReviewAction | null>(null);
 	let focusOutcome = $state(false);
-	let confirmOpen = $state(false);
 	let undoOpen = $state(false);
 	let discardOpen = $state(false);
 
@@ -135,7 +148,7 @@
 		buildReviewRowEntries({
 			rows: proposal.rows,
 			state: proposal.state,
-			selection,
+			review: interactive ? review : appliedChangeReview(proposal.rows),
 			filter,
 			applyOutcomes: { conflicts: applyConflicts, errors: applyErrors },
 			changedGiftIds: new Set(undoChangedGifts.map((gift) => gift.giftId)),
@@ -145,13 +158,12 @@
 			),
 		}),
 	);
-	const reviewRows = $derived(entries.map((entry) => entry.row));
-	const selectedRowIds = $derived(selectedChangeRowIds(reviewRows, selection));
-	const selectableCount = $derived(selectableChangeRowCount(reviewRows));
-	const ordinaryState = $derived(ordinarySelectionState(reviewRows, selection));
-	const confirmSelectedEntries = $derived(
-		entries.filter((entry) => entry.group === CHANGE_ROW_GROUP.confirm && entry.selected),
+	const activeReview = $derived(activeChangeReview(entries));
+	const decidableRows = $derived(
+		entries.filter((entry) => entry.rowReview !== undefined).map((entry) => entry.row),
 	);
+	const unresolvedCount = $derived(unresolvedChangeCount(activeReview));
+	const includedCount = $derived(includedRowCount(activeReview));
 	const filterCounts = $derived({
 		[CHANGE_REVIEW_FILTER.all]: entries.length,
 		[CHANGE_REVIEW_FILTER.confirm]: entries.filter(
@@ -159,7 +171,6 @@
 		).length,
 		[CHANGE_REVIEW_FILTER.conflicts]: entries.filter((entry) => entry.blocked).length,
 	});
-	const otherSelectedCount = $derived(selectedRowIds.length - confirmSelectedEntries.length);
 	const undoGiftNames = $derived(
 		undoChangedGifts.map((gift) => gift.name ?? m.change_review_unknown_gift()),
 	);
@@ -167,12 +178,36 @@
 		proposal.rows.filter((row) => row.status === CHANGE_ROW_STATUS.applied).length,
 	);
 
-	function setRowSelected(rowId: string, selected: boolean) {
-		selection = withChangeRowSelected(selection, rowId, selected);
-	}
+	const actions: ChangeReviewActions = {
+		decideRow: (rowId, decision) => {
+			review = withRowDecided(review, rowId, decision);
+		},
+		chooseRow: (rowId, accepted) => {
+			review = withRowChoiceToggled(review, rowId, accepted);
+		},
+		toggleField: (rowId, field, decision) => {
+			review = withFieldDecisionToggled(review, rowId, field, decision);
+		},
+		editField: (rowId, field, text) => {
+			const row = proposal.rows.find((candidate) => candidate.rowId === rowId);
+			if (row === undefined) {
+				return false;
+			}
+			if (text.trim() === fieldEditorText(field, row.input).trim()) {
+				review = withFieldEdited(review, rowId, field, null);
+				return true;
+			}
+			const edited = fieldEditInput(field, text, row.input);
+			if (edited === null) {
+				return false;
+			}
+			review = withFieldEdited(review, rowId, field, edited);
+			return true;
+		},
+	};
 
-	function toggleAllOrdinary() {
-		selection = toggleOrdinarySelection(reviewRows, selection);
+	function decideEveryRow(decision: ChangeDecision) {
+		review = withEveryRowDecided(review, decidableRows, decision);
 	}
 
 	function firstFailureMessage(rows: { error: ChangeRowError }[], fallback: string): string {
@@ -182,9 +217,29 @@
 			: translateServerErrorCode(error.code, error.details, fallback);
 	}
 
+	/** Outlines every open decision, reads out how many are left and moves focus to the first. */
+	async function revealUnresolved() {
+		showUnresolved = true;
+		filter = CHANGE_REVIEW_FILTER.all;
+		announcement = '';
+		const message = countCopy(UNRESOLVED_DECISION_MESSAGES, unresolvedCount);
+		requestAnimationFrame(() => (announcement = message));
+		await tick();
+		const first = root?.querySelector('.needs-decision');
+		first?.closest('tr')?.scrollIntoView({
+			block: 'center',
+			behavior: prefersReducedMotion.current ? 'auto' : 'smooth',
+		});
+		first?.querySelector<HTMLButtonElement>('button:not(:disabled)')?.focus({
+			preventScroll: true,
+		});
+	}
+
 	function requestApply() {
-		if (confirmSelectedEntries.length > 0) {
-			confirmOpen = true;
+		if (unresolvedCount > 0) {
+			void revealUnresolved();
+		} else if (includedCount === 0) {
+			discardOpen = true;
 		} else {
 			void runApply();
 		}
@@ -193,7 +248,7 @@
 	async function runApply() {
 		pendingAction = 'apply';
 		try {
-			const result = await onapply(selectedRowIds);
+			const result = await onapply(changeRowDecisions(proposal.rows, activeReview));
 			if (result.outcome === CHANGE_PROPOSAL_OUTCOME.conflict) {
 				applyConflicts = new Map(result.rows.map((row) => [row.rowId, row.conflicts]));
 				applyErrors = new Map();
@@ -207,7 +262,6 @@
 			toastError(translateServerError(error, m.change_review_apply_error()));
 		} finally {
 			pendingAction = null;
-			confirmOpen = false;
 		}
 	}
 
@@ -244,7 +298,7 @@
 	}
 </script>
 
-<div class="change-review" data-testid="change-review" data-state={proposal.state}>
+<div class="change-review" data-testid="change-review" data-state={proposal.state} bind:this={root}>
 	<ChangeReviewHeader
 		{listHref}
 		{wishlistTitle}
@@ -263,50 +317,29 @@
 		onundo={() => (undoOpen = true)}
 	/>
 	{#if interactive}
-		<ChangeReviewControls
-			bind:filter
-			allSelected={ordinaryState.checked}
-			someSelected={ordinaryState.indeterminate}
-			selectedCount={selectedRowIds.length}
-			{selectableCount}
-			{filterCounts}
-			ontoggleall={toggleAllOrdinary}
-		/>
+		<ChangeReviewControls bind:filter {filterCounts} />
 	{/if}
 	<ChangeReviewSections
 		{entries}
 		{interactive}
 		{filter}
 		busy={pendingAction === 'apply'}
-		onselectedchange={setRowSelected}
+		actions={interactive ? actions : undefined}
+		{showUnresolved}
 	/>
 	{#if interactive}
 		<ProposalApplyBar
-			selectedCount={selectedRowIds.length}
-			{selectableCount}
-			confirmSelectedCount={confirmSelectedEntries.length}
+			{includedCount}
+			{unresolvedCount}
+			{showUnresolved}
+			{announcement}
 			pending={pendingAction === 'apply'}
+			onrejectall={() => decideEveryRow(CHANGE_DECISION.rejected)}
+			onacceptall={() => decideEveryRow(CHANGE_DECISION.accepted)}
 			onapply={requestApply}
 		/>
 	{/if}
 </div>
-
-<ReviewActionDialog
-	bind:open={confirmOpen}
-	pending={pendingAction === 'apply'}
-	title={m.change_review_confirm_title()}
-	description={otherSelectedCount > 0
-		? countCopy(CONFIRM_LEADS, otherSelectedCount)
-		: m.change_review_confirm_lead_none()}
-	cancelLabel={m.change_review_back_to_review()}
-	confirmLabel={m.change_review_confirm_apply()}
-	pendingLabel={m.change_review_applying()}
-	confirmIntent="primary"
-	testId="change-review-confirm-dialog"
-	onconfirm={() => void runApply()}
->
-	<ConfirmChangeList entries={confirmSelectedEntries} />
-</ReviewActionDialog>
 
 <ReviewActionDialog
 	bind:open={undoOpen}
@@ -339,5 +372,11 @@
 <style>
 	.change-review {
 		container: change-review / inline-size;
+	}
+
+	/* After a blocked Použít, every open decision's controls carry a danger outline. */
+	.change-review :global(.needs-decision) {
+		outline: 2px solid var(--status-danger-text);
+		outline-offset: 2px;
 	}
 </style>

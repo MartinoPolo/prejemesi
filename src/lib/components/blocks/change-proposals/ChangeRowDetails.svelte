@@ -3,24 +3,44 @@
 	import BanIcon from '@lucide/svelte/icons/ban';
 	import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
 	import TriangleAlertIcon from '@lucide/svelte/icons/triangle-alert';
+	import { acceptedFieldCount } from '$lib/modules/change_proposals/change_review_decisions.js';
 	import EmailAddress from './EmailAddress.svelte';
+	import FieldDecisionList from './FieldDecisionList.svelte';
+	import DescriptionAppend from './DescriptionAppend.svelte';
 	import FieldDiffList from './FieldDiffList.svelte';
 	import GiftCardComparison from './GiftCardComparison.svelte';
-	import type { ChangeRowModel, GiftChangeModel, RowConsequence } from './change_row_model.js';
+	import type { ChangeReviewActions, ReviewRowEntry } from './change_review_rows.js';
+	import type { GiftChangeModel, RowConsequence } from './change_row_model.js';
+
+	/** Czech writes "ze" before the counts whose spoken form starts with s or z, e.g. "ze 2". */
+	const ZE_COUNTS = new Set([2, 3, 4, 7]);
 
 	/** The changes column: what happens, field by field, and why a blocked row never applies. */
 	let {
-		model,
+		entry,
 		consequenceId,
 		reasonTone,
 		reasonSuffix = null,
+		actions,
+		showUnresolved,
 	}: {
-		model: ChangeRowModel;
+		entry: ReviewRowEntry;
 		consequenceId: string;
 		reasonTone: 'warning' | 'danger';
 		/** Appended to each reason, e.g. that a row which conflicted on apply will not apply. */
 		reasonSuffix?: string | null;
+		actions: ChangeReviewActions | undefined;
+		showUnresolved: boolean;
 	} = $props();
+
+	const model = $derived(entry.model);
+
+	function fieldSummary(count: number): string {
+		const accepted = acceptedFieldCount(entry.rowReview);
+		return ZE_COUNTS.has(count)
+			? m.change_review_field_summary_ze({ accepted, count })
+			: m.change_review_field_summary({ accepted, count });
+	}
 </script>
 
 {#snippet consequenceText(consequence: RowConsequence)}
@@ -37,15 +57,22 @@
 		{#if showName}
 			<p class="change-name">{change.name}</p>
 		{/if}
+		{#if change.fields.length > 0}
+			<FieldDecisionList
+				rowId={entry.row.rowId}
+				fields={change.fields}
+				originalDescription={change.originalDescription}
+				{actions}
+				{showUnresolved}
+			/>
+			{#if change.fields.length > 1}
+				<p class="field-summary">{fieldSummary(change.fields.length)}</p>
+			{/if}
+		{/if}
 		{#each change.appends as append, index (index)}
-			<div class="append">
-				<span class="append-label">{m.change_review_append_label()}</span>
-				<ins class="append-text"
-					><span class="sr-only">{m.change_review_diff_added()} </span>{append.text}</ins
-				>
-			</div>
+			<DescriptionAppend text={append.text} />
 		{/each}
-		{#if change.originalDescription !== null}
+		{#if change.appends.length > 0 && change.originalDescription !== null}
 			<p class="note">
 				{m.change_review_original_description({ description: change.originalDescription })}
 			</p>
@@ -116,33 +143,10 @@
 		font-size: var(--text-sm);
 	}
 
-	.append {
-		padding: 6px var(--space-3);
-		border-left: 4px solid var(--accent-loud);
-		border-radius: 0 10px 10px 0;
-		background: color-mix(in oklab, var(--accent-loud) 16%, var(--card));
-		font-size: var(--text-md);
-	}
-
-	.append-label {
-		display: block;
+	.field-summary {
 		color: var(--muted-foreground);
-		font-size: var(--text-xs);
-		font-weight: 700;
-	}
-
-	.append-text {
-		padding: 0 var(--space-1);
-		border-radius: 4px;
-		background: color-mix(in oklab, var(--status-success) 14%, var(--card));
-		color: var(--status-success-text);
+		font-size: var(--text-sm);
 		font-weight: 600;
-		text-decoration: none;
-	}
-
-	.append-text::before {
-		content: '+ ';
-		font-weight: 800;
 	}
 
 	.consequence,

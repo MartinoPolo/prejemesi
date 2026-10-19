@@ -37,14 +37,6 @@ export interface GiftReorderPlacement {
 	index: number;
 }
 
-/** Pointer drops that change a group offer an undo toast; keyboard moves only announce. */
-export const GIFT_REORDER_MOVE_SOURCES = {
-	pointer: 'pointer',
-	keyboard: 'keyboard',
-} as const;
-export type GiftReorderMoveSource =
-	(typeof GIFT_REORDER_MOVE_SOURCES)[keyof typeof GIFT_REORDER_MOVE_SOURCES];
-
 export function reorderGroupKey(field: GiftReorderGroupField, value: string | null): string {
 	return `${field}:${value ?? 'none'}`;
 }

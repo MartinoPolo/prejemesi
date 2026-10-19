@@ -26,7 +26,8 @@ import { GIFT_REVISION_RETENTION_MS } from '$lib/server/operations/constants.js'
 import { authenticateAccessToken, createAccessToken } from './access_tokens.js';
 import type { AgentCaller } from './agent_caller.js';
 import { submitChangeProposal } from './change_proposal_api.js';
-import { applyChangeProposalRows, undoChangeProposal } from './change_proposals.js';
+import { undoChangeProposal } from './change_proposals.js';
+import { applyRows } from './change_proposals.db.test-setup.js';
 import { uploadAgentImage } from './image_upload.js';
 import { purgeAgentAccessRecords } from './agent_access_purge.js';
 import { AGENT_IMAGE_PURGE_DELAY_MS } from './limits.js';
@@ -92,7 +93,7 @@ async function submit(token: AgentCaller, wishlistShortId: string, rows: Row[]) 
 }
 
 async function applyAll(proposalId: string, rowIds = ['r1']) {
-	const result = await applyChangeProposalRows(MANAGER, proposalId, rowIds);
+	const result = await applyRows(MANAGER, proposalId, rowIds);
 	if (result.outcome !== CHANGE_PROPOSAL_OUTCOME.applied) {
 		throw new Error(`Expected the proposal to apply, got ${JSON.stringify(result)}`);
 	}
@@ -238,8 +239,8 @@ describe.skipIf(!DB_READY)('agent image references', () => {
 						.where(eq(agentImage.id, image.id))
 						.for('update'),
 				[
-					() => applyChangeProposalRows(MANAGER, first.id, ['r1']),
-					() => applyChangeProposalRows(MANAGER, second.id, ['r1']),
+					() => applyRows(MANAGER, first.id, ['r1']),
+					() => applyRows(MANAGER, second.id, ['r1']),
 				],
 			);
 
@@ -364,7 +365,7 @@ describe.skipIf(!DB_READY)('agent image references', () => {
 			const second = await submit(token, wishlist.shortId, [createRow('B')]);
 
 			await applyAll(first.id);
-			const result = await applyChangeProposalRows(MANAGER, second.id, ['r1']);
+			const result = await applyRows(MANAGER, second.id, ['r1']);
 
 			expect(result).toMatchObject({
 				outcome: CHANGE_PROPOSAL_OUTCOME.failed,
@@ -389,7 +390,7 @@ describe.skipIf(!DB_READY)('agent image references', () => {
 				.set({ expiresAt: new Date(Date.now() - 1000) })
 				.where(eq(agentImage.id, image.id));
 
-			const result = await applyChangeProposalRows(MANAGER, submitted.id, ['r1']);
+			const result = await applyRows(MANAGER, submitted.id, ['r1']);
 
 			expect(result).toMatchObject({
 				outcome: CHANGE_PROPOSAL_OUTCOME.failed,
