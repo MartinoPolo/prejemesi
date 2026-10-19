@@ -431,13 +431,18 @@
 		cursor: pointer;
 	}
 
-	.field-btn:hover:not(:disabled) {
-		background: var(--panel-hover);
-	}
-
 	.field-btn:focus-visible {
 		outline: 2px solid var(--ring);
 		outline-offset: 2px;
+	}
+
+	.field-btn:disabled {
+		opacity: 0.4;
+		cursor: not-allowed;
+	}
+
+	.field-btn:hover:not(:disabled) {
+		background: var(--panel-hover);
 	}
 
 	.field-btn[data-field-action='accept'][aria-pressed='true'] {
@@ -454,11 +459,6 @@
 	.field-btn[data-field-action='edit'][aria-expanded='true'] {
 		background: var(--primary);
 		color: var(--primary-foreground);
-	}
-
-	.field-btn:disabled {
-		opacity: 0.4;
-		cursor: not-allowed;
 	}
 
 	.field-btn :global(svg) {

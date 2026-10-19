@@ -8,7 +8,7 @@ import {
 import { applyChangeProposalRows } from './change_proposals.js';
 
 /** Decisions accepting the listed rows as proposed and rejecting every other row. */
-export async function acceptOnly(
+async function acceptOnly(
 	proposalId: string,
 	acceptedRowIds: readonly string[],
 ): Promise<ChangeRowDecision[]> {
