@@ -4,7 +4,7 @@ import {
 	agentIdempotencyKey,
 	agentOauthIdempotencyKey,
 } from '$lib/server/db/change_proposal.schema.js';
-import { AGENT_CREDENTIAL_KIND, type AgentCredential } from './agent_caller.js';
+import { AGENT_CREDENTIAL_KIND, type IdempotentCredential } from './agent_caller.js';
 import { IDEMPOTENCY_KEY_ABANDONED_AFTER_MS, IDEMPOTENCY_KEY_RETENTION_MS } from './limits.js';
 
 export const IDEMPOTENCY_KEY_HEADER = 'idempotency-key';
@@ -29,13 +29,13 @@ export type IdempotencyClaim =
 
 /** One credential's key; keys of different credentials never meet. */
 export interface IdempotencyScope {
-	credential: AgentCredential;
+	credential: IdempotentCredential;
 	key: string;
 	fingerprint: string;
 }
 
 /** Tokens and grants keep their keys in tables of the same shape, each cascading with its owner. */
-function keyTableOf(credential: AgentCredential) {
+function keyTableOf(credential: IdempotentCredential) {
 	return credential.kind === AGENT_CREDENTIAL_KIND.personalAccessToken
 		? { table: agentIdempotencyKey, ownerColumn: agentIdempotencyKey.tokenId }
 		: { table: agentOauthIdempotencyKey, ownerColumn: agentOauthIdempotencyKey.grantId };

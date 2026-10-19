@@ -75,6 +75,15 @@ prejemesi.cz is the OAuth 2.1 authorization server for its own MCP resource (Bet
 - Access tokens are JWTs valid for 10 minutes; `offline_access` adds a refresh token valid for a year. Disconnecting in Settings, or deleting the account, stops the app at once: its unexpired access tokens fail the next call and its refresh tokens are revoked. Demo sessions cannot connect apps.
 - A tool beyond the app's scopes answers HTTP 403 with `WWW-Authenticate: Bearer error="insufficient_scope", scope="<current scopes> <needed scope> offline_access"`; authorizing again with that scope asks the user to consent to it.
 
+## In-app AI assistant
+
+The chat panel is one more client of the same operations, acting as the signed-in user with every scope except `reservations:identities` (its reads go to the model provider) and limited to the chat's wishlist. Its proposals record the `chatbot` channel and the name `AI asistent`.
+
+- Turns stream as server-sent events from `POST /chat/<sessionId>/turns` with `{ "kind": "message", "text" }` or `{ "kind": "retry" }` after a failed answer; the panel's remote functions are in `src/lib/modules/chat/chat.remote.ts`. Like `/mcp`, the route lives outside `/api/`.
+- The model sees the agent tools of its grant, minus those that reach other wishlists, submit or apply proposals, or undo. All changes of one model response form one proposal; it applies at once under the chat's fast-forward (off for each new chat), or when it only reorders gifts. Deletions, reservations and invitations still wait for their own confirmation. A failed tool returns the UI's localized message for the model to relay.
+- Configuration: `CHAT_ALLOWED_EMAILS` (comma-separated family allowlist; everyone else gets no entry point), `CHAT_DISABLED=true` (kill switch), `CHAT_PROVIDER` (`anthropic` or `fake`), `CHAT_MODEL` (default `claude-sonnet-5-5`) and the secret `ANTHROPIC_API_KEY`. Development without a key runs the scripted fake assistant.
+- Limits live in `src/lib/server/chat/limits.ts`: per-user and global daily message caps that reset at midnight Prague time, model calls per turn, output tokens, a turn timeout, and 30-day chat retention from the last turn. The caps and the kill switch stop new turns only; history stays readable and proposals already made still apply.
+
 ## CLI
 
 The `prejemesi` npm package (`packages/cli`, `npx prejemesi …`) is a thin client of this API with JSON output; its commands are in [its README](../packages/cli/README.md). `login` reads the token from a hidden prompt or standard input, checks it with `GET /me` and stores it in the user's config directory; the CLI never prints it. Gift commands submit one proposal each and print its absolute `reviewLink`.

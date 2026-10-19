@@ -11,7 +11,12 @@ import {
 	bearerValue,
 	isPersonalAccessTokenValue,
 } from './access_tokens.js';
-import { credentialRateLimitKey, type AgentCaller, type AgentCredential } from './agent_caller.js';
+import {
+	credentialRateLimitKey,
+	keepsIdempotencyKeys,
+	type AgentCaller,
+	type AgentCredential,
+} from './agent_caller.js';
 import type { OauthAccessVerifier } from './oauth_access.js';
 import { authorizeAgentOperation, executeAgentRead } from './authorization.js';
 import { requireAgentScope, type AgentAccessGrant } from './agent_grant.js';
@@ -416,8 +421,8 @@ export async function runIdempotently(
 	request: IdempotentRequest,
 	handler: () => Promise<AgentApiResponse>,
 ): Promise<AgentApiResponse> {
-	const { key } = request;
-	if (key === null) {
+	const { key, credential } = request;
+	if (key === null || !keepsIdempotencyKeys(credential)) {
 		return handler();
 	}
 	if (!isValidIdempotencyKey(key)) {
@@ -426,7 +431,7 @@ export async function runIdempotently(
 		});
 	}
 	const scope = {
-		credential: request.credential,
+		credential,
 		key,
 		fingerprint: await fingerprintRequest(request.method, request.path, request.body),
 	};
