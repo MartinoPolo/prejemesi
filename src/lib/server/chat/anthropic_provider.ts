@@ -17,7 +17,7 @@ const WEB_SEARCH_TOOL = { type: 'web_search_20250305', name: 'web_search' } as c
 /** Bounds what one response may spend on searches. */
 const WEB_SEARCH_MAX_USES = 5;
 
-/** 429, 500, 503 and 529 (overloaded) pass; other failures are the request's own fault. */
+/** Rate limits, server errors and 529 (overloaded) pass; other failures are the request's own fault. */
 const RETRYABLE_STATUSES = new Set([429, 500, 502, 503, 504, 529]);
 
 const STOP_REASONS: Readonly<Record<string, ChatStopReason>> = {
@@ -220,70 +220,88 @@ export function createAnthropicProvider(options: AnthropicProviderOptions): Chat
 	};
 }
 
+type StreamEventOf<Type extends StreamEvent['type']> = Extract<StreamEvent, { type: Type }>;
+
+const OPEN_BLOCK_KINDS: Readonly<Record<string, OpenToolBlock['kind']>> = {
+	tool_use: OPEN_BLOCK_KIND.tool,
+	server_tool_use: OPEN_BLOCK_KIND.webSearch,
+};
+
+function openedBlock(event: StreamEventOf<'content_block_start'>): OpenToolBlock | null {
+	const { content_block: block } = event;
+	const kind = OPEN_BLOCK_KINDS[block.type];
+	return kind === undefined
+		? null
+		: { kind, id: block.id ?? '', name: block.name ?? '', inputJson: '' };
+}
+
+/** A text delta becomes an event; a tool input fragment extends its open block. */
+function deltaEvent(
+	event: StreamEventOf<'content_block_delta'>,
+	openBlocks: ReadonlyMap<number, OpenToolBlock>,
+): ChatModelEvent | null {
+	const { delta } = event;
+	if (delta.type === 'text_delta') {
+		return (delta.text ?? '') === ''
+			? null
+			: { type: CHAT_MODEL_EVENT.textDelta, text: delta.text ?? '' };
+	}
+	const open = openBlocks.get(event.index);
+	if (delta.type === 'input_json_delta' && open !== undefined) {
+		open.inputJson += delta.partial_json ?? '';
+	}
+	return null;
+}
+
+function closedBlockEvent(open: OpenToolBlock | undefined): ChatModelEvent | null {
+	if (open === undefined) {
+		return null;
+	}
+	const input = parseToolInput(open.inputJson);
+	return open.kind === OPEN_BLOCK_KIND.tool
+		? { type: CHAT_MODEL_EVENT.toolCall, id: open.id, name: open.name, input }
+		: { type: CHAT_MODEL_EVENT.webSearch, query: webSearchQuery(input) };
+}
+
+function streamFailure(event: StreamEventOf<'error'>): ChatProviderError {
+	const { type } = event.error;
+	return new ChatProviderError(
+		`The model stream failed: ${type}`,
+		type === 'overloaded_error' || type === 'api_error',
+	);
+}
+
 async function* modelEvents(body: ReadableStream<Uint8Array>): AsyncGenerator<ChatModelEvent> {
 	const openBlocks = new Map<number, OpenToolBlock>();
 	let stopReason: ChatStopReason | null = null;
 	for await (const data of serverSentEventData(body)) {
 		const event = parseStreamEvent(data);
-		if (event === null) {
-			continue;
-		}
-		switch (event.type) {
+		let modelEvent: ChatModelEvent | null = null;
+		switch (event?.type) {
 			case 'content_block_start': {
-				const { content_block: block } = event;
-				if (block.type === 'tool_use' || block.type === 'server_tool_use') {
-					openBlocks.set(event.index, {
-						kind:
-							block.type === 'tool_use'
-								? OPEN_BLOCK_KIND.tool
-								: OPEN_BLOCK_KIND.webSearch,
-						id: block.id ?? '',
-						name: block.name ?? '',
-						inputJson: '',
-					});
+				const opened = openedBlock(event);
+				if (opened !== null) {
+					openBlocks.set(event.index, opened);
 				}
 				break;
 			}
-			case 'content_block_delta': {
-				const { delta } = event;
-				if (delta.type === 'text_delta' && delta.text !== undefined && delta.text !== '') {
-					yield { type: CHAT_MODEL_EVENT.textDelta, text: delta.text };
-				} else if (delta.type === 'input_json_delta') {
-					const open = openBlocks.get(event.index);
-					if (open !== undefined) {
-						open.inputJson += delta.partial_json ?? '';
-					}
-				}
+			case 'content_block_delta':
+				modelEvent = deltaEvent(event, openBlocks);
 				break;
-			}
-			case 'content_block_stop': {
-				const open = openBlocks.get(event.index);
+			case 'content_block_stop':
+				modelEvent = closedBlockEvent(openBlocks.get(event.index));
 				openBlocks.delete(event.index);
-				if (open?.kind === OPEN_BLOCK_KIND.tool) {
-					yield {
-						type: CHAT_MODEL_EVENT.toolCall,
-						id: open.id,
-						name: open.name,
-						input: parseToolInput(open.inputJson),
-					};
-				} else if (open?.kind === OPEN_BLOCK_KIND.webSearch) {
-					yield {
-						type: CHAT_MODEL_EVENT.webSearch,
-						query: webSearchQuery(parseToolInput(open.inputJson)),
-					};
-				}
 				break;
-			}
 			case 'message_delta':
 				stopReason = STOP_REASONS[event.delta.stop_reason ?? ''] ?? stopReason;
 				break;
 			case 'error':
-				throw new ChatProviderError(
-					`The model stream failed: ${event.error.type}`,
-					event.error.type === 'overloaded_error' || event.error.type === 'api_error',
-				);
+				throw streamFailure(event);
 			default:
 				break;
+		}
+		if (modelEvent !== null) {
+			yield modelEvent;
 		}
 	}
 	if (stopReason === null) {
