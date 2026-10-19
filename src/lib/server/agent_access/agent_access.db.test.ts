@@ -27,6 +27,7 @@ import {
 	type AgentOperationRequest,
 } from './authorization.js';
 import type { AgentAccessGrant } from './agent_grant.js';
+import { tokenChannel } from '$lib/server/operations/actor.js';
 import { AGENT_SCOPE, type AgentScope } from '$lib/modules/access_tokens/scopes.js';
 
 const ANONYMOUS_GIFTER_NAME = 'Anonymní teta';
@@ -45,9 +46,10 @@ function grantFor(
 	scopes: readonly AgentScope[],
 	wishlistIds: readonly string[] | null = null,
 ): AgentAccessGrant {
+	const token = { tokenName: 'Agent', channel: tokenChannel('Agent'), scopes, wishlistIds };
 	return user === 'recipient'
-		? { userId: RECIPIENT_ID, userName: 'Recipient', tokenName: 'Agent', scopes, wishlistIds }
-		: { userId: MANAGER_ID, userName: 'Manager', tokenName: 'Agent', scopes, wishlistIds };
+		? { userId: RECIPIENT_ID, userName: 'Recipient', ...token }
+		: { userId: MANAGER_ID, userName: 'Manager', ...token };
 }
 
 const everyScope = Object.values(AGENT_SCOPE);

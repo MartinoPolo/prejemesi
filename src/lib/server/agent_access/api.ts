@@ -6,9 +6,15 @@ import { SERVER_ERROR, type ServerErrorCode } from '$lib/modules/errors/server_e
 import { OPERATION_REGISTRY } from '$lib/server/operations/registry.js';
 import { OPERATION_KIND } from '$lib/server/operations/operation.js';
 import { settleBestEffort } from '$lib/server/operations/runner.js';
-import { authenticateAccessToken, type AuthenticatedAccessToken } from './access_tokens.js';
+import {
+	authenticateAccessToken,
+	bearerValue,
+	isPersonalAccessTokenValue,
+} from './access_tokens.js';
+import { credentialRateLimitKey, type AgentCaller, type AgentCredential } from './agent_caller.js';
+import type { OauthAccessVerifier } from './oauth_access.js';
 import { authorizeAgentOperation, executeAgentRead } from './authorization.js';
-import { hasAgentScope, type AgentAccessGrant } from './agent_grant.js';
+import { requireAgentScope, type AgentAccessGrant } from './agent_grant.js';
 import {
 	AGENT_OPERATION_POLICIES,
 	isOperationName,
@@ -47,7 +53,7 @@ export interface AgentApiRequestBody {
 }
 
 interface AgentApiCall<TBody> {
-	token: AuthenticatedAccessToken;
+	caller: AgentCaller;
 	body: TBody;
 }
 
@@ -213,12 +219,12 @@ async function rejectLiveDemo(event: AgentApiEvent): Promise<void> {
 }
 
 /**
- * Per-token request limit from the Workers binding. Without the binding production fails closed;
- * the Vite dev server has no Workers bindings, so development allows the request.
+ * Per-credential request limit from the Workers binding. Without the binding production fails
+ * closed; the Vite dev server has no Workers bindings, so development allows the request.
  */
 async function enforceRateLimit(
 	rateLimit: AgentApiRateLimit | undefined,
-	tokenId: string,
+	credential: AgentCredential,
 ): Promise<void> {
 	if (rateLimit === undefined) {
 		if (dev) {
@@ -228,7 +234,7 @@ async function enforceRateLimit(
 	}
 	let success: boolean;
 	try {
-		({ success } = await rateLimit.limit({ key: tokenId }));
+		({ success } = await rateLimit.limit({ key: credentialRateLimitKey(credential) }));
 	} catch {
 		throw new AgentApiFailure(503, SERVER_ERROR.AGENT_RATE_LIMIT_UNAVAILABLE);
 	}
@@ -302,18 +308,25 @@ export async function readJsonBody(request: Request): Promise<AgentApiRequestBod
 
 /**
  * The caller of an agent request, for every agent surface (`/api/v1` and MCP): rejects a live
- * demo, resolves the credential to the user it acts for, and applies its request limit. Personal
- * access tokens are the only credential so far; another kind belongs here, not in the surfaces.
+ * demo, resolves the credential to the user it acts for, and applies its request limit. A
+ * personal access token works everywhere; an app's OAuth access token only where the surface
+ * passes `oauth`, so an app never reaches beyond the resource its token is bound to.
  */
 export async function authenticateAgentRequest(
 	event: AgentApiEvent,
-): Promise<AuthenticatedAccessToken> {
+	oauth?: OauthAccessVerifier,
+): Promise<AgentCaller> {
 	await rejectLiveDemo(event);
-	// Authentication precedes the per-token limit, which needs the token id. An invalid token
-	// costs one indexed hash lookup, and 256-bit secrets make guessing infeasible.
-	const token = await authenticateAccessToken(event.request.headers.get('authorization'));
-	await enforceRateLimit(event.platform?.env.AGENT_API_RATE_LIMIT, token.tokenId);
-	return token;
+	// Authentication precedes the per-credential limit, which needs the credential id. An invalid
+	// token costs one indexed hash lookup or one signature check, so guessing stays infeasible.
+	const authorization = event.request.headers.get('authorization');
+	const bearer = bearerValue(authorization);
+	const caller =
+		oauth !== undefined && bearer !== null && !isPersonalAccessTokenValue(bearer)
+			? await oauth.authenticate(bearer)
+			: await authenticateAccessToken(authorization);
+	await enforceRateLimit(event.platform?.env.AGENT_API_RATE_LIMIT, caller.credential);
+	return caller;
 }
 
 function createAgentApiEndpoint<TBody, TEvent extends AgentApiEvent>(
@@ -322,9 +335,9 @@ function createAgentApiEndpoint<TBody, TEvent extends AgentApiEvent>(
 ) {
 	return async (event: TEvent): Promise<Response> => {
 		try {
-			const token = await authenticateAgentRequest(event);
+			const caller = await authenticateAgentRequest(event);
 			const body = await readBody(event.request);
-			const response = await handler({ token, body }, event);
+			const response = await handler({ caller, body }, event);
 			return agentApiJson(response.body, response.status ?? 200, response.headers);
 		} catch (thrown) {
 			return agentApiErrorResponse(thrown);
@@ -374,7 +387,7 @@ export function agentApiIdempotentJsonEndpoint<TEvent extends AgentApiEvent>(
 	return createAgentApiEndpoint(readJsonBody, async (call, event: TEvent) =>
 		runIdempotently(
 			{
-				tokenId: call.token.tokenId,
+				credential: call.caller.credential,
 				key: event.request.headers.get(IDEMPOTENCY_KEY_HEADER),
 				method: event.request.method,
 				path: new URL(event.request.url).pathname,
@@ -385,9 +398,9 @@ export function agentApiIdempotentJsonEndpoint<TEvent extends AgentApiEvent>(
 	);
 }
 
-/** One change request, identified for idempotency by its token, method, path and body. */
+/** One change request, identified for idempotency by its credential, method, path and body. */
 export interface IdempotentRequest {
-	tokenId: string;
+	credential: AgentCredential;
 	/** Null runs the request without idempotency. */
 	key: string | null;
 	method: string;
@@ -413,7 +426,7 @@ export async function runIdempotently(
 		});
 	}
 	const scope = {
-		tokenId: request.tokenId,
+		credential: request.credential,
 		key,
 		fingerprint: await fingerprintRequest(request.method, request.path, request.body),
 	};
@@ -476,9 +489,7 @@ export async function runAgentApiOperation(
 ): Promise<unknown> {
 	const mutationPolicy = agentMutationPolicy(operationName);
 	if (mutationPolicy !== null) {
-		if (!hasAgentScope(grant, mutationPolicy.scope)) {
-			throw new AgentApiFailure(403, SERVER_ERROR.AGENT_SCOPE_MISSING);
-		}
+		requireAgentScope(grant, mutationPolicy.scope);
 		throw new AgentApiFailure(409, SERVER_ERROR.AGENT_MUTATION_REQUIRES_PROPOSAL);
 	}
 	return executeAgentRead(grant, await authorizeAgentOperation(grant, operationName, input));

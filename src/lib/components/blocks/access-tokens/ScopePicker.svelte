@@ -14,10 +14,20 @@
 	interface ScopePickerProps {
 		/** The optional scopes picked; reading is always granted and never listed here. */
 		selected: AgentScope[];
+		/** The scopes to choose among, such as only those an app asks for; all by default. */
+		offered?: readonly AgentScope[];
+		label?: string;
 		disabled?: boolean;
 	}
 
-	let { selected = $bindable([]), disabled = false }: ScopePickerProps = $props();
+	let {
+		selected = $bindable([]),
+		offered = ACCESS_TOKEN_SCOPES,
+		label = m.access_tokens_scopes_label(),
+		disabled = false,
+	}: ScopePickerProps = $props();
+
+	const offeredScopes = $derived(ACCESS_TOKEN_SCOPES.filter((scope) => offered.includes(scope)));
 
 	const idPrefix = $props.id();
 
@@ -32,10 +42,10 @@
 
 <div class="flex flex-col gap-1.5">
 	<span id="{idPrefix}-label" class="text-(length:--text-sm) font-semibold">
-		{m.access_tokens_scopes_label()}
+		{label}
 	</span>
 	<div class="flex flex-col gap-0.5" role="group" aria-labelledby="{idPrefix}-label">
-		{#each ACCESS_TOKEN_SCOPES as scope (scope)}
+		{#each offeredScopes as scope (scope)}
 			{@const copy = ACCESS_TOKEN_SCOPE_COPY[scope]}
 			{@const locked = scope === AGENT_SCOPE.read}
 			{@const checked = locked || selected.includes(scope)}

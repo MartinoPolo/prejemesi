@@ -71,3 +71,31 @@ export interface AccessTokenWishlistChoices {
 	managed: AccessTokenWishlistChoice[];
 	followed: AccessTokenWishlistChoice[];
 }
+
+/** An app the user connected through OAuth consent, listed next to their tokens. */
+export interface ConnectedAppSummary {
+	/** The grant's id, which revoking names. */
+	id: string;
+	name: string;
+	/** The host the app proved it controls by serving its metadata there; null when unverified. */
+	verifiedHost: string | null;
+	scopes: AgentScope[];
+	/** Null when the app reaches every wishlist its user may. */
+	wishlists: { id: string; title: string }[] | null;
+	lastUsedAt: Date | null;
+	createdAt: Date;
+}
+
+export const RevokeConnectedAppInputSchema = v.strictObject({ grantId: v.string() });
+
+/** What the consent page shows an app's user and pre-fills. */
+export interface OauthConsentView {
+	client: { name: string; verifiedHost: string | null };
+	/** Where the browser returns after the decision. */
+	redirectHost: string;
+	requestedScopes: AgentScope[];
+	/** The optional scopes ticked at first: all the app asks for. */
+	selectedScopes: AgentScope[];
+	/** The active grant's restriction, so consenting again keeps it; null when unrestricted. */
+	wishlistIds: string[] | null;
+}

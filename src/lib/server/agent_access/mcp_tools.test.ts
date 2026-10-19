@@ -1,15 +1,37 @@
 import * as v from 'valibot';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { AGENT_SCOPE } from '$lib/modules/access_tokens/scopes.js';
+import { AGENT_SCOPE, type AgentScope } from '$lib/modules/access_tokens/scopes.js';
 import { OPERATION_REGISTRY } from '$lib/server/operations/registry.js';
 import { OPERATION_EXPOSURE, OPERATION_KIND } from '$lib/server/operations/operation.js';
+import { tokenChannel } from '$lib/server/operations/actor.js';
 import { buildAgentApiDocument } from './openapi.js';
 import type * as OpenApiModule from './openapi.js';
 import { listAgentMcpTools } from './mcp_tools.js';
+import { AGENT_CREDENTIAL_KIND, type AgentCaller } from './agent_caller.js';
 
 const OPERATION_PATH_PREFIX = '/api/v1/operations/';
-const EVERY_SCOPE = { scopes: Object.values(AGENT_SCOPE) };
-const READ_ONLY = { scopes: [AGENT_SCOPE.read] };
+
+function tokenCaller(scopes: readonly AgentScope[]): Pick<AgentCaller, 'credential' | 'grant'> {
+	return {
+		credential: {
+			kind: AGENT_CREDENTIAL_KIND.personalAccessToken,
+			id: 'token-1',
+			prefix: 'pjs_test',
+			expiresAt: new Date('2099-01-01T00:00:00Z'),
+		},
+		grant: {
+			userId: 'user-1',
+			userName: 'Martin',
+			tokenName: 'Claude',
+			channel: tokenChannel('Claude'),
+			scopes,
+			wishlistIds: null,
+		},
+	};
+}
+
+const EVERY_SCOPE_CALLER = tokenCaller(Object.values(AGENT_SCOPE));
+const READ_ONLY_CALLER = tokenCaller([AGENT_SCOPE.read]);
 
 const DocumentedEndpointSchema = v.object({
 	operationId: v.string(),
@@ -54,8 +76,8 @@ function memberOf(value: unknown, key: string): Record<string, unknown> {
 	return member;
 }
 
-function toolNamed(name: string, grant = EVERY_SCOPE) {
-	const tool = listAgentMcpTools(grant).find((candidate) => candidate.name === name);
+function toolNamed(name: string, caller = EVERY_SCOPE_CALLER) {
+	const tool = listAgentMcpTools(caller).find((candidate) => candidate.name === name);
 	if (tool === undefined) {
 		throw new Error(`No tool ${name}`);
 	}
@@ -78,7 +100,7 @@ describe('MCP tools', () => {
 			.filter((name) => name !== 'openApiDocument');
 
 		expect(
-			listAgentMcpTools(EVERY_SCOPE)
+			listAgentMcpTools(EVERY_SCOPE_CALLER)
 				.map((tool) => tool.name)
 				.sort(),
 		).toEqual(documentedNames.sort());
@@ -148,7 +170,9 @@ describe('MCP tools', () => {
 			};
 		});
 		const { listAgentMcpTools: listChangedTools } = await import('./mcp_tools.js');
-		const createGift = listChangedTools(EVERY_SCOPE).find((tool) => tool.name === 'createGift');
+		const createGift = listChangedTools(EVERY_SCOPE_CALLER).find(
+			(tool) => tool.name === 'createGift',
+		);
 
 		expect(createGift?.inputSchema).toMatchObject({
 			properties: { addedField: { type: 'string' } },
@@ -156,13 +180,13 @@ describe('MCP tools', () => {
 	});
 
 	it('have an object schema at the root, as MCP requires', () => {
-		for (const tool of listAgentMcpTools(EVERY_SCOPE)) {
+		for (const tool of listAgentMcpTools(EVERY_SCOPE_CALLER)) {
 			expect(tool.inputSchema, tool.name).toMatchObject({ type: 'object' });
 		}
 	});
 
 	it('list only what the token scopes allow', () => {
-		const readOnlyNames = listAgentMcpTools(READ_ONLY).map((tool) => tool.name);
+		const readOnlyNames = listAgentMcpTools(READ_ONLY_CALLER).map((tool) => tool.name);
 		const readOperationNames = agentOperations
 			.filter((operation) => operation.kind === OPERATION_KIND.read)
 			.map((operation) => operation.name);
@@ -174,7 +198,7 @@ describe('MCP tools', () => {
 		expect(readOnlyNames).not.toContain('createGift');
 		expect(readOnlyNames).not.toContain('uploadImage');
 		expect(
-			listAgentMcpTools({ scopes: [AGENT_SCOPE.read, AGENT_SCOPE.giftsWrite] }).map(
+			listAgentMcpTools(tokenCaller([AGENT_SCOPE.read, AGENT_SCOPE.giftsWrite])).map(
 				(tool) => tool.name,
 			),
 		).not.toContain('reserveGift');

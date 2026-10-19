@@ -18,7 +18,7 @@ import {
 	type OperationStepRejection,
 } from '$lib/server/operations/runner.js';
 import type { GiftRevisionRecord } from '$lib/server/operations/gift_revisions.js';
-import { hasAgentScope, tokenActor, type AgentAccessGrant } from './agent_grant.js';
+import { requireAgentScope, tokenActor, type AgentAccessGrant } from './agent_grant.js';
 import {
 	AGENT_OPERATION_POLICIES,
 	isOperationName,
@@ -116,9 +116,7 @@ function checkOperationAndScope(
 	if (policy === null || operation.exposure !== OPERATION_EXPOSURE.agent) {
 		error(404, SERVER_ERROR.AGENT_OPERATION_NOT_FOUND);
 	}
-	if (!hasAgentScope(grant, policy.scope)) {
-		error(403, SERVER_ERROR.AGENT_SCOPE_MISSING);
-	}
+	requireAgentScope(grant, policy.scope);
 	return { operation, policy, rawInput: request.input };
 }
 

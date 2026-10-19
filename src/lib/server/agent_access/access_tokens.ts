@@ -11,6 +11,7 @@ import { isReservedDemoEmail } from '$lib/server/auth.js';
 import { runAfterResponse } from '$lib/server/background.js';
 import { toBase64Url } from '$lib/server/crypto/hmac.js';
 import { DAY_MS } from '$lib/server/operations/constants.js';
+import { tokenChannel } from '$lib/server/operations/actor.js';
 import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
 import { listAccessibleWishlists } from '$lib/modules/wishlists/accessible_wishlists.js';
 import { WISHLIST_ROLES } from '$lib/modules/wishlists/types.js';
@@ -24,7 +25,7 @@ import {
 	type CreatedAccessToken,
 	type RollAccessTokenInput,
 } from '$lib/modules/access_tokens/types.js';
-import type { AgentAccessGrant } from './agent_grant.js';
+import { AGENT_CREDENTIAL_KIND, type AgentCaller } from './agent_caller.js';
 import { ACCESS_TOKEN_LAST_USED_INTERVAL_MS } from './limits.js';
 
 const TOKEN_VALUE_PREFIX = 'pjs_';
@@ -38,15 +39,6 @@ const TOKEN_VALUE_PATTERN = new RegExp(
 const TOKEN_DISPLAY_RANDOM_CHARACTERS = 4;
 
 type AccessTokenRow = typeof personalAccessToken.$inferSelect;
-
-/** An authenticated token: its grant for the operation core plus what the API reports about it. */
-export interface AuthenticatedAccessToken {
-	tokenId: string;
-	prefix: string;
-	expiresAt: Date;
-	fastForward: boolean;
-	grant: AgentAccessGrant;
-}
 
 async function hashTokenValue(value: string): Promise<string> {
 	const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value));
@@ -64,7 +56,7 @@ async function issueTokenSecret() {
 }
 
 /** `read` is always granted; scopes are stored once each, in their canonical order. */
-function grantedScopes(requestedScopes: readonly AgentScope[]): AgentScope[] {
+export function grantedScopes(requestedScopes: readonly AgentScope[]): AgentScope[] {
 	const requested = new Set<AgentScope>([AGENT_SCOPE.read, ...requestedScopes]);
 	return Object.values(AGENT_SCOPE).filter((scope) => requested.has(scope));
 }
@@ -74,7 +66,7 @@ function expiryDate(expiryDays: number, now: Date): Date {
 }
 
 /** A token may be limited only to wishlists its user currently receives, manages or follows. */
-async function restrictionWishlistIds(
+export async function restrictionWishlistIds(
 	userId: string,
 	wishlistIds: readonly string[] | null,
 ): Promise<string[] | null> {
@@ -318,9 +310,14 @@ export async function listAccessTokenWishlistChoices(
 	return choices;
 }
 
-function bearerValue(authorization: string | null): string | null {
+export function bearerValue(authorization: string | null): string | null {
 	const match = /^Bearer\s+(\S+)$/i.exec(authorization?.trim() ?? '');
 	return match?.[1] ?? null;
+}
+
+/** Whether a bearer value is shaped like a personal access token rather than an app's. */
+export function isPersonalAccessTokenValue(value: string): boolean {
+	return value.startsWith(TOKEN_VALUE_PREFIX);
 }
 
 /** Records the use off the response path, at most once per interval per token. */
@@ -353,7 +350,7 @@ function recordTokenUse(row: Pick<AccessTokenRow, 'tokenHash' | 'lastUsedAt'>, n
 export async function authenticateAccessToken(
 	authorization: string | null,
 	now = new Date(),
-): Promise<AuthenticatedAccessToken> {
+): Promise<AgentCaller> {
 	const value = bearerValue(authorization);
 	if (value === null || !TOKEN_VALUE_PATTERN.test(value)) {
 		error(401, SERVER_ERROR.AGENT_TOKEN_INVALID);
@@ -392,14 +389,18 @@ export async function authenticateAccessToken(
 		: null;
 	recordTokenUse(token, now);
 	return {
-		tokenId: token.id,
-		prefix: token.tokenPrefix,
-		expiresAt: token.expiresAt,
+		credential: {
+			kind: AGENT_CREDENTIAL_KIND.personalAccessToken,
+			id: token.id,
+			prefix: token.tokenPrefix,
+			expiresAt: token.expiresAt,
+		},
 		fastForward: token.fastForward,
 		grant: {
 			userId: token.userId,
 			userName: found.userName,
 			tokenName: token.name,
+			channel: tokenChannel(token.name),
 			scopes: token.scopes,
 			wishlistIds,
 		},

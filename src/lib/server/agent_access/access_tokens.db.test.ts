@@ -31,6 +31,7 @@ import {
 	revokeAccessToken,
 	rollAccessToken,
 } from './access_tokens.js';
+import { AGENT_CREDENTIAL_KIND } from './agent_caller.js';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -355,7 +356,7 @@ describe.skipIf(!DB_READY)('personal access tokens', () => {
 			expect(rolled.token).toMatchObject({ expired: false, lastUsedAt: null, rolledAt: now });
 			expect(rolled.token.expiresAt.getTime()).toBe(now.getTime() + 30 * DAY_MS);
 			const authenticated = await authenticateAccessToken(`Bearer ${rolled.value}`);
-			expect(authenticated.tokenId).toBe(token.id);
+			expect(authenticated.credential.id).toBe(token.id);
 		});
 
 		it('never counts a use of the old value as a use of the new one', async () => {
@@ -391,7 +392,7 @@ describe.skipIf(!DB_READY)('personal access tokens', () => {
 				SERVER_ERROR.AGENT_TOKEN_REVOKED,
 			);
 			const stillValid = await authenticateAccessToken(`Bearer ${someoneElses.value}`);
-			expect(stillValid.tokenId).toBe(someoneElses.token.id);
+			expect(stillValid.credential.id).toBe(someoneElses.token.id);
 		});
 	});
 
@@ -430,7 +431,7 @@ describe.skipIf(!DB_READY)('personal access tokens', () => {
 			const authenticated = await authenticateAccessToken(`bearer ${value}`);
 
 			expect(authenticated).toMatchObject({
-				tokenId: token.id,
+				credential: { kind: AGENT_CREDENTIAL_KIND.personalAccessToken, id: token.id },
 				fastForward: true,
 				grant: {
 					userId: MANAGER_ID,

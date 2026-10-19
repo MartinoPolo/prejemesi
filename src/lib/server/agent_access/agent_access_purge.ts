@@ -1,6 +1,10 @@
 import { and, eq, inArray, isNull, lt, or, sql, type SQL } from 'drizzle-orm';
 import { getDb } from '$lib/server/db/index.js';
-import { agentIdempotencyKey, changeProposal } from '$lib/server/db/change_proposal.schema.js';
+import {
+	agentIdempotencyKey,
+	agentOauthIdempotencyKey,
+	changeProposal,
+} from '$lib/server/db/change_proposal.schema.js';
 import { agentImage } from '$lib/server/db/agent_image.schema.js';
 import { gift } from '$lib/server/db/gift.schema.js';
 import { runAfterResponse } from '$lib/server/background.js';
@@ -36,18 +40,26 @@ async function deleteProposalsInChunks(condition: SQL | undefined): Promise<void
 	}
 }
 
-async function deleteIdempotencyKeysInChunks(createdBefore: Date): Promise<void> {
+const IDEMPOTENCY_KEY_TABLES = [
+	{ table: agentIdempotencyKey, ownerColumn: agentIdempotencyKey.tokenId },
+	{ table: agentOauthIdempotencyKey, ownerColumn: agentOauthIdempotencyKey.grantId },
+];
+
+async function deleteIdempotencyKeysInChunks(
+	{ table, ownerColumn }: (typeof IDEMPOTENCY_KEY_TABLES)[number],
+	createdBefore: Date,
+): Promise<void> {
 	const database = getDb();
 	for (let chunkIndex = 0; chunkIndex < AGENT_ACCESS_PURGE_MAX_CHUNKS; chunkIndex += 1) {
 		const chunk = database
-			.select({ tokenId: agentIdempotencyKey.tokenId, key: agentIdempotencyKey.key })
-			.from(agentIdempotencyKey)
-			.where(lt(agentIdempotencyKey.createdAt, createdBefore))
+			.select({ ownerId: ownerColumn, key: table.key })
+			.from(table)
+			.where(lt(table.createdAt, createdBefore))
 			.limit(AGENT_ACCESS_PURGE_CHUNK_SIZE);
 		const deleted = await database
-			.delete(agentIdempotencyKey)
-			.where(sql`(${agentIdempotencyKey.tokenId}, ${agentIdempotencyKey.key}) in (${chunk})`)
-			.returning({ key: agentIdempotencyKey.key });
+			.delete(table)
+			.where(sql`(${ownerColumn}, ${table.key}) in (${chunk})`)
+			.returning({ key: table.key });
 		if (deleted.length < AGENT_ACCESS_PURGE_CHUNK_SIZE) {
 			return;
 		}
@@ -151,7 +163,10 @@ export async function purgeAgentAccessRecords(
 			),
 		),
 	);
-	await deleteIdempotencyKeysInChunks(new Date(now.getTime() - IDEMPOTENCY_KEY_RETENTION_MS));
+	const staleKeysBefore = new Date(now.getTime() - IDEMPOTENCY_KEY_RETENTION_MS);
+	for (const keyTable of IDEMPOTENCY_KEY_TABLES) {
+		await deleteIdempotencyKeysInChunks(keyTable, staleKeysBefore);
+	}
 	if (storage !== undefined) {
 		await purgeAgentImages(now, storage);
 	}

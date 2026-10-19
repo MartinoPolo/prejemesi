@@ -4,7 +4,7 @@ The versioned JSON API at `/api/v1`, with the [MCP server](#mcp) built from it a
 
 ## Authentication
 
-Send a personal access token as `Authorization: Bearer pjs_…`. Cookies never authenticate the API.
+Send a personal access token as `Authorization: Bearer pjs_…`. Cookies never authenticate the API. The [MCP server](#mcp) also accepts the access tokens of [connected apps](#connected-apps-oauth); `/api/v1` does not.
 
 - The account owner creates, rolls and revokes tokens in Settings. The value is shown once; only its SHA-256 hash is stored.
 - Expiry: 30, 90, 365 (default), 1825 or 3650 days. No token is non-expiring.
@@ -55,15 +55,25 @@ Agents set a gift image by URL in two steps; gifts never keep an external URL. I
 
 ## MCP
 
-`POST /mcp` is a remote MCP server (Streamable HTTP, stateless, JSON responses) with the same bearer token, scopes, limits and errors as the API. It lives outside `/api/` so the edge request challenge there cannot block MCP clients. Connect Claude Code with:
+`POST /mcp` is a remote MCP server (Streamable HTTP, stateless, JSON responses) with the same scopes, limits and errors as the API. It lives outside `/api/` so the edge request challenge there cannot block MCP clients. Clients that support MCP authorization, such as the Claude and ChatGPT connectors, only need the URL `https://prejemesi.cz/mcp` and sign in as a [connected app](#connected-apps-oauth). Others send a personal access token; connect Claude Code with:
 
 ```bash
 claude mcp add --transport http prejemesi https://prejemesi.cz/mcp --header "Authorization: Bearer pjs_…"
 ```
 
-- Tools are built from the OpenAPI document, so they share its names, summaries and input schemas: one tool per endpoint (`me`, `listWishlists`, `submitChangeProposal`, `getChangeProposal`, `applyChangeProposal`, `uploadImage`) and per agent operation. Path parameters become arguments and the `Idempotency-Key` header becomes `idempotencyKey`. `tools/list` shows only the tools the token's scopes allow.
+- Tools are built from the OpenAPI document, so they share its names, summaries and input schemas: one tool per endpoint (`me`, `listWishlists`, `submitChangeProposal`, `getChangeProposal`, `applyChangeProposal`, `uploadImage`) and per agent operation. Path parameters become arguments and the `Idempotency-Key` header becomes `idempotencyKey`. `tools/list` shows a token only the tools its scopes allow, and a connected app every tool.
 - A read tool returns the operation's `{ "result": … }`. A change tool submits a one-row proposal for the wishlist it changes and returns `{ "proposal": … }` with the absolute review link, or applies at once under fast-forward; batches and idempotent retries go through `submitChangeProposal`.
-- An API failure in a tool comes back as a tool result with `isError` and the API error body. Authentication failures answer the HTTP status with a JSON-RPC error carrying it in `data` (401 adds `WWW-Authenticate: Bearer`).
+- An API failure in a tool comes back as a tool result with `isError` and the API error body, except that a connected app missing a scope gets the step-up answer below. Authentication failures answer the HTTP status with a JSON-RPC error carrying it in `data`; 401 adds `WWW-Authenticate: Bearer resource_metadata="…/.well-known/oauth-protected-resource/mcp", scope="read offline_access"` (with `error="invalid_token"` when a token was sent).
+
+### Connected apps (OAuth)
+
+prejemesi.cz is the OAuth 2.1 authorization server for its own MCP resource (BetterAuth OAuth provider with its MCP and CIMD plugins).
+
+- Discovery: protected-resource metadata at `/.well-known/oauth-protected-resource/mcp` (resource `…/mcp`, `scopes_supported: ["read"]`) points to the issuer `…/api/auth`, whose metadata is at `/.well-known/oauth-authorization-server/api/auth`.
+- Clients identify with a Client ID Metadata Document URL (fetched only from public HTTPS hosts, never following redirects) or register dynamically at `/api/auth/oauth2/register`; dynamically registered web clients need HTTPS redirect URIs. Authorization needs PKCE (`S256`) and `resource=…/mcp`.
+- The consent page shows the app, whether its domain is verified, where it returns, and the requested scopes, all pre-ticked except that `read` is always on, plus an optional wishlist restriction. The user may grant fewer scopes; an app's rights are the token's scopes within that grant, enforced exactly like a token with the same scopes and restriction. Apps never fast-forward.
+- Access tokens are JWTs valid for 10 minutes; `offline_access` adds a refresh token valid for a year. Disconnecting in Settings, or deleting the account, stops the app at once: its unexpired access tokens fail the next call and its refresh tokens are revoked. Demo sessions cannot connect apps.
+- A tool beyond the app's scopes answers HTTP 403 with `WWW-Authenticate: Bearer error="insufficient_scope", scope="<current scopes> <needed scope> offline_access"`; authorizing again with that scope asks the user to consent to it.
 
 ## CLI
 

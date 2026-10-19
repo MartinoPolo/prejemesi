@@ -9,6 +9,7 @@ import {
 } from './operation_policies.js';
 import { TARGET_KIND } from './policy_lookups.js';
 import type { AgentAccessGrant } from './agent_grant.js';
+import { tokenChannel } from '$lib/server/operations/actor.js';
 import { AGENT_SCOPE, type AgentScope } from '$lib/modules/access_tokens/scopes.js';
 
 const RESERVATION_OPERATION_NAMES = [
@@ -27,6 +28,7 @@ const grant: AgentAccessGrant = {
 	userId: 'user-1',
 	userName: 'Martin',
 	tokenName: 'Claude',
+	channel: tokenChannel('Claude'),
 	scopes: Object.values(AGENT_SCOPE),
 	wishlistIds: null,
 };

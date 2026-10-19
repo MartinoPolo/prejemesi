@@ -15,6 +15,7 @@
 	import AuthFooterLink from '$lib/components/blocks/auth/AuthFooterLink.svelte';
 	import * as Alert from '$lib/components/base/alert/index.js';
 	import { authClient } from '$lib/auth_client.js';
+	import { isOauthAuthorizationQuery } from '$lib/modules/access_tokens/oauth_authorization.js';
 	import {
 		getLocalizedAuthCallback,
 		getLocalizedAuthHref,
@@ -47,6 +48,9 @@
 	let callbackUrl = $derived(
 		getLocalizedAuthCallback(page.url.searchParams.get('redirect'), resolve('/home')),
 	);
+	// An app's authorization sent the user here; signing in answers with where it continues, and
+	// the auth client navigates there itself.
+	let continuesAppAuthorization = $derived(isOauthAuthorizationQuery(page.url.searchParams));
 
 	function validateEmail(): boolean {
 		if (!email.trim()) {
@@ -111,7 +115,7 @@
 				} else {
 					errorMessage = m.login_error_credentials();
 				}
-			} else {
+			} else if (!continuesAppAuthorization) {
 				await goto(callbackUrl);
 			}
 		} catch {

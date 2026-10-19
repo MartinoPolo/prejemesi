@@ -4,6 +4,8 @@ export {
 	createAccessToken,
 	revokeAccessToken,
 	rollAccessToken,
+	getConnectedApps,
+	revokeConnectedApp,
 } from './access_tokens.remote.js';
 export {
 	ACCESS_TOKEN_DEFAULT_EXPIRY_DAYS,
@@ -14,6 +16,7 @@ export type {
 	AccessTokenExpiryPresetDays,
 	AccessTokenSummary,
 	AccessTokenWishlistChoices,
+	ConnectedAppSummary,
 	CreatedAccessToken,
 } from './types.js';
 export { AGENT_SCOPE, type AgentScope } from './scopes.js';

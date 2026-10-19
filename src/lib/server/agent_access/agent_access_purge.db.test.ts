@@ -8,15 +8,22 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import * as v from 'valibot';
 import { eq, inArray } from 'drizzle-orm';
 import { getDb } from '$lib/server/db/index.js';
-import { agentIdempotencyKey, changeProposal } from '$lib/server/db/change_proposal.schema.js';
+import {
+	agentIdempotencyKey,
+	agentOauthIdempotencyKey,
+	changeProposal,
+} from '$lib/server/db/change_proposal.schema.js';
 import { CreateAccessTokenInputSchema } from '$lib/modules/access_tokens/types.js';
 import {
 	CHANGE_PROPOSAL_STATUS,
 	type ChangeProposalStatus,
 } from '$lib/modules/change_proposals/types.js';
 import { DAY_MS, GIFT_REVISION_RETENTION_MS } from '$lib/server/operations/constants.js';
+import { tokenChannel } from '$lib/server/operations/actor.js';
 import { createAccessToken } from './access_tokens.js';
 import { purgeAgentAccessRecords } from './agent_access_purge.js';
+import { saveOauthGrant } from './oauth_grants.js';
+import { createOauthClientFixture, removeOauthClientFixtures } from './oauth.db.test-setup.js';
 import {
 	AGENT_ACCESS_PURGE_CHUNK_SIZE,
 	CHANGE_PROPOSAL_EXPIRED_RETENTION_MS,
@@ -35,7 +42,7 @@ function proposalValues(status: ChangeProposalStatus, times: ProposalTimes) {
 	return {
 		wishlistId: null,
 		submitterUserId: RECIPIENT_ID,
-		channel: 'token:Claude',
+		channel: tokenChannel('Claude'),
 		tokenName: 'Claude',
 		grant: { scopes: [], wishlistIds: null },
 		status,
@@ -67,7 +74,12 @@ async function remainingProposalIds(proposalIds: readonly string[]): Promise<str
 
 describe.skipIf(!DB_READY)('agent access purge', () => {
 	beforeAll(seedFixtureUsers);
-	afterAll(removeFixtureRows);
+	afterAll(async () => {
+		if (DB_READY) {
+			await removeOauthClientFixtures();
+		}
+		await removeFixtureRows();
+	});
 
 	it('keeps expired and discarded proposals readable for a grace period, settled ones while undo is possible', async () => {
 		const now = new Date();
@@ -167,5 +179,53 @@ describe.skipIf(!DB_READY)('agent access purge', () => {
 			.from(agentIdempotencyKey)
 			.where(eq(agentIdempotencyKey.tokenId, token.id));
 		expect(keys).toEqual([{ key: 'fresh' }]);
+	});
+
+	it('purges a connected app’s idempotency keys and proposals like a token’s', async () => {
+		const now = new Date();
+		const clientId = await createOauthClientFixture();
+		const { grantId } = await saveOauthGrant(RECIPIENT_ID, clientId, {
+			scopes: [],
+			wishlistIds: null,
+		});
+		await getDb()
+			.insert(agentOauthIdempotencyKey)
+			.values([
+				{
+					grantId,
+					key: 'stale',
+					requestFingerprint: 'stale',
+					createdAt: new Date(now.getTime() - IDEMPOTENCY_KEY_RETENTION_MS - 1000),
+				},
+				{
+					grantId,
+					key: 'fresh',
+					requestFingerprint: 'fresh',
+					createdAt: new Date(now.getTime() - 1000),
+				},
+			]);
+		const [expiredProposal] = await getDb()
+			.insert(changeProposal)
+			.values({
+				...proposalValues(CHANGE_PROPOSAL_STATUS.pending, {
+					createdAt: new Date(
+						now.getTime() -
+							CHANGE_PROPOSAL_LIFETIME_MS -
+							CHANGE_PROPOSAL_EXPIRED_RETENTION_MS -
+							DAY_MS,
+					),
+				}),
+				oauthGrantId: grantId,
+			})
+			.returning({ id: changeProposal.id });
+
+		await purgeAgentAccessRecords(now);
+
+		const keys = await getDb()
+			.select({ key: agentOauthIdempotencyKey.key })
+			.from(agentOauthIdempotencyKey)
+			.where(eq(agentOauthIdempotencyKey.grantId, grantId));
+		expect(keys).toEqual([{ key: 'fresh' }]);
+		expect(await remainingProposalIds([expiredProposal?.id ?? ''])).toEqual([]);
 	});
 });

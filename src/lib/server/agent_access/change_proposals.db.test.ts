@@ -42,12 +42,8 @@ import {
 import { reorderGiftsOperation } from '$lib/server/operations/gift_bulk_operations.js';
 import { cancelOwnReservationOperation } from '$lib/server/operations/reservation_operations.js';
 import { tokenChannel, userInterfaceActor } from '$lib/server/operations/actor.js';
-import {
-	authenticateAccessToken,
-	createAccessToken,
-	revokeAccessToken,
-	type AuthenticatedAccessToken,
-} from './access_tokens.js';
+import { authenticateAccessToken, createAccessToken, revokeAccessToken } from './access_tokens.js';
+import type { AgentCaller } from './agent_caller.js';
 import { submitChangeProposal } from './change_proposal_api.js';
 import {
 	applyChangeProposalRows,
@@ -71,7 +67,7 @@ type Row = [operation: string, input: Record<string, unknown>];
 async function agentToken(
 	userId: string,
 	input: { scopes?: string[]; fastForward?: boolean; name?: string } = {},
-): Promise<AuthenticatedAccessToken> {
+): Promise<AgentCaller> {
 	const { value } = await createAccessToken(
 		userId,
 		v.parse(CreateAccessTokenInputSchema, {
@@ -84,7 +80,7 @@ async function agentToken(
 	return authenticateAccessToken(`Bearer ${value}`);
 }
 
-async function submit(token: AuthenticatedAccessToken, wishlistShortId: string, rows: Row[]) {
+async function submit(token: AgentCaller, wishlistShortId: string, rows: Row[]) {
 	return submitChangeProposal(token, {
 		wishlistShortId,
 		operations: rows.map(([operation, input]) => ({ operation, input })),
@@ -385,7 +381,7 @@ describe.skipIf(!DB_READY)('change proposals', () => {
 			const submitted = await submit(token, wishlist.shortId, [
 				['updateGift', { id: giftId, name: 'Upraveno' }],
 			]);
-			await revokeAccessToken(MANAGER_ID, token.tokenId);
+			await revokeAccessToken(MANAGER_ID, token.credential.id);
 
 			expect((await viewOf(MANAGER, wishlist.shortId, submitted.id)).tokenRevoked).toBe(true);
 			const result = await applyChangeProposalRows(MANAGER, submitted.id, ['r1']);

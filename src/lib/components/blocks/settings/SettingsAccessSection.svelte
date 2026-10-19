@@ -5,7 +5,6 @@
 	import * as m from '$lib/paraglide/messages.js';
 	import * as Card from '$lib/components/base/card/index.js';
 	import * as Dialog from '$lib/components/base/dialog/index.js';
-	import { Badge } from '$lib/components/base/badge/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
 	import { Separator } from '$lib/components/base/separator/index.js';
 	import { Skeleton } from '$lib/components/base/skeleton/index.js';
@@ -16,16 +15,20 @@
 		type AccessTokenReveal,
 	} from '$lib/components/blocks/access-tokens/AccessTokenDialog.svelte';
 	import TokenRegenerateDialog from '$lib/components/blocks/access-tokens/TokenRegenerateDialog.svelte';
+	import ConnectedAppRow from '$lib/components/blocks/access-tokens/ConnectedAppRow.svelte';
 	import { getApplicationUrl } from '$lib/config/site.js';
 	import { translateServerError } from '$lib/modules/errors/translate_server_error.js';
 	import { accessTokenCountLabel } from '$lib/modules/access_tokens/access_token_display.js';
 	import {
 		createAccessToken,
 		getAccessTokens,
+		getConnectedApps,
 		revokeAccessToken,
+		revokeConnectedApp,
 		rollAccessToken,
 		type AccessTokenExpiryPresetDays,
 		type AccessTokenSummary,
+		type ConnectedAppSummary,
 	} from '$lib/modules/access_tokens/index.js';
 	import type { CreateAccessTokenInput } from '$lib/modules/access_tokens/types.js';
 	import BookOpenIcon from '@lucide/svelte/icons/book-open';
@@ -40,6 +43,10 @@
 		demo: boolean;
 	}
 
+	type RevokeTarget =
+		| { kind: 'token'; token: AccessTokenSummary }
+		| { kind: 'app'; app: ConnectedAppSummary };
+
 	const SKELETON_ROW_COUNT = 3;
 	const HIGHLIGHT_DURATION_MILLISECONDS = 2400;
 
@@ -52,7 +59,7 @@
 	let regenerateTarget = $state<AccessTokenSummary | null>(null);
 	let regenerateOpen = $state(false);
 	let regenerateSession = $state(0);
-	let revokeTarget = $state<AccessTokenSummary | null>(null);
+	let revokeTarget = $state<RevokeTarget | null>(null);
 	let revokeOpen = $state(false);
 	let revokePending = $state(false);
 	let focusAfterRevoke: HTMLElement | null = null;
@@ -61,7 +68,24 @@
 	const tokensQuery = $derived(demo ? null : getAccessTokens());
 	const tokens = $derived(tokensQuery?.current);
 	const tokensEmpty = $derived(tokens !== undefined && tokens.length === 0);
+	const appsQuery = $derived(demo ? null : getConnectedApps());
+	const apps = $derived(appsQuery?.current);
 	const apiBaseUrl = $derived(getApplicationUrl('/api/v1', page.url.origin));
+	const revokeCopy = $derived(
+		revokeTarget?.kind === 'app'
+			? {
+					title: m.access_tokens_app_revoke_title({ name: revokeTarget.app.name }),
+					description: m.access_tokens_app_revoke_description(),
+					confirm: m.access_tokens_app_revoke_confirm(),
+					pending: m.access_tokens_app_revoking(),
+				}
+			: {
+					title: m.access_tokens_revoke_title({ name: revokeTarget?.token.name ?? '' }),
+					description: m.access_tokens_revoke_description(),
+					confirm: m.access_tokens_revoke_confirm(),
+					pending: m.access_tokens_revoking(),
+				},
+	);
 
 	function rowActionFor(tokenId: string): HTMLElement | null {
 		return (
@@ -73,7 +97,7 @@
 
 	/** The control to focus once a row disappears: a neighbouring row, else the section's first. */
 	function focusTargetAfterRemoving(trigger: HTMLElement): HTMLElement | null {
-		const row = trigger.closest('[data-token-id]');
+		const row = trigger.closest('[data-token-id], [data-app-id]');
 		const neighbour = row?.nextElementSibling ?? row?.previousElementSibling;
 		return neighbour?.querySelector<HTMLElement>('button') ?? null;
 	}
@@ -135,7 +159,7 @@
 		focusAfterRevoke = focusTargetAfterRemoving(trigger);
 		revokeCompleted = false;
 		if (!token.expired) {
-			revokeTarget = token;
+			revokeTarget = { kind: 'token', token };
 			revokeOpen = true;
 			return;
 		}
@@ -149,18 +173,41 @@
 		}
 	}
 
+	function requestAppRevoke(app: ConnectedAppSummary, trigger: HTMLElement) {
+		focusAfterRevoke = focusTargetAfterRemoving(trigger);
+		revokeCompleted = false;
+		revokeTarget = { kind: 'app', app };
+		revokeOpen = true;
+	}
+
 	async function confirmRevoke() {
 		if (revokeTarget === null) {
 			return;
 		}
+		const target = revokeTarget;
 		revokePending = true;
 		try {
-			await revokeAccessToken({ tokenId: revokeTarget.id });
+			if (target.kind === 'app') {
+				await revokeConnectedApp({ grantId: target.app.id });
+			} else {
+				await revokeAccessToken({ tokenId: target.token.id });
+			}
 			revokeCompleted = true;
 			revokeOpen = false;
-			toastSuccess(m.access_tokens_revoked_toast());
+			toastSuccess(
+				target.kind === 'app'
+					? m.access_tokens_app_revoked_toast()
+					: m.access_tokens_revoked_toast(),
+			);
 		} catch (error) {
-			toastError(translateServerError(error, m.access_tokens_revoke_error()));
+			toastError(
+				translateServerError(
+					error,
+					target.kind === 'app'
+						? m.access_tokens_app_revoke_error()
+						: m.access_tokens_revoke_error(),
+				),
+			);
 		} finally {
 			revokePending = false;
 		}
@@ -214,6 +261,34 @@
 	{/if}
 {/snippet}
 
+{#snippet appStates(appList: ConnectedAppSummary[] | undefined)}
+	{#if demo}
+		<div class="nested-panel placeholder-panel">
+			<PlugIcon class="mt-px size-4.5 shrink-0" aria-hidden="true" />
+			<p>{m.access_tokens_apps_demo()}</p>
+		</div>
+	{:else if appsQuery?.error}
+		<p class="nested-panel error-panel" role="alert">{m.access_tokens_apps_load_error()}</p>
+	{:else if appList === undefined}
+		<div class="nested-panel skeleton-panel" aria-busy="true">
+			<span class="sr-only" role="status">{m.access_tokens_apps_loading()}</span>
+			<Skeleton class="h-4 w-1/2" aria-hidden="true" />
+			<Skeleton class="h-3 w-3/5" aria-hidden="true" />
+		</div>
+	{:else if appList.length === 0}
+		<div class="nested-panel placeholder-panel">
+			<PlugIcon class="mt-px size-4.5 shrink-0" aria-hidden="true" />
+			<p>{m.access_tokens_apps_empty()}</p>
+		</div>
+	{:else}
+		<ul class="flex flex-col gap-2" aria-label={m.access_tokens_apps_heading()}>
+			{#each appList as app (app.id)}
+				<ConnectedAppRow {app} onrevoke={requestAppRevoke} />
+			{/each}
+		</ul>
+	{/if}
+{/snippet}
+
 {#snippet tokenGroup()}
 	<div class="group-head">
 		<h3>{m.access_tokens_tokens_heading()}</h3>
@@ -251,10 +326,10 @@
 		>
 			<Dialog.Header>
 				<Dialog.Title>
-					{m.access_tokens_revoke_title({ name: revokeTarget?.name ?? '' })}
+					{revokeCopy.title}
 				</Dialog.Title>
 				<Dialog.Description class="text-(length:--text-base) text-foreground">
-					{m.access_tokens_revoke_description()}
+					{revokeCopy.description}
 				</Dialog.Description>
 			</Dialog.Header>
 			<Dialog.Footer>
@@ -272,9 +347,9 @@
 				>
 					{#if revokePending}
 						<LoaderIcon class="animate-spin" data-icon="inline-start" />
-						{m.access_tokens_revoking()}
+						{revokeCopy.pending}
 					{:else}
-						{m.access_tokens_revoke_confirm()}
+						{revokeCopy.confirm}
 					{/if}
 				</Button>
 			</Dialog.Footer>
@@ -336,12 +411,8 @@
 		/>
 		<div class="group-head">
 			<h3>{m.access_tokens_apps_heading()}</h3>
-			<Badge tone="accent" class="self-center">{m.access_tokens_apps_soon()}</Badge>
 		</div>
-		<div class="nested-panel placeholder-panel">
-			<PlugIcon class="mt-px size-4.5 shrink-0" aria-hidden="true" />
-			<p>{m.access_tokens_apps_placeholder()}</p>
-		</div>
+		{@render appStates(apps)}
 	</Card.Content>
 </Card.Root>
 

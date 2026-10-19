@@ -9,6 +9,7 @@ import { user } from './auth.schema.js';
 import { wishlist } from './wishlist.schema.js';
 import { agentAccessOauthGrant, personalAccessToken } from './access_token.schema.js';
 import { generateId } from './id.js';
+import type { OperationChannel } from '$lib/server/operations/actor.js';
 import { cascadingReferenceColumn } from './columns.js';
 
 /**
@@ -31,7 +32,7 @@ export const changeProposal = pgTable(
 		oauthGrantId: text('oauth_grant_id').references(() => agentAccessOauthGrant.id, {
 			onDelete: 'set null',
 		}),
-		channel: text('channel').notNull(),
+		channel: text('channel').$type<OperationChannel>().notNull(),
 		tokenName: text('token_name').notNull(),
 		grant: jsonb('grant').$type<ChangeProposalGrantSnapshot>().notNull(),
 		status: text('status').$type<ChangeProposalStatus>().notNull(),
