@@ -10,7 +10,7 @@
 	{#each diffs as diff, index (index)}
 		<li class="diff">
 			<span class="diff-label">{diff.label}</span>
-			<span class="diff-values"><DiffValues {diff} /></span>
+			<DiffValues {diff} />
 		</li>
 	{/each}
 </ul>
@@ -29,6 +29,7 @@
 		grid-template-columns: 76px minmax(0, 1fr);
 		gap: var(--space-2);
 		align-items: baseline;
+		font-size: var(--text-md);
 	}
 
 	.diff-label {
@@ -37,25 +38,14 @@
 		font-weight: 600;
 	}
 
-	.diff-values {
-		display: inline-flex;
-		flex-wrap: wrap;
-		align-items: baseline;
-		gap: var(--space-1) 6px;
-		min-width: 0;
-		font-size: var(--text-md);
-	}
-
 	@media (width < 640px) {
 		.diff {
+			--diff-values-direction: column;
+			--diff-values-align: flex-start;
+			--diff-values-gap: 3px;
+
 			grid-template-columns: 1fr;
 			gap: 2px;
-		}
-
-		.diff-values {
-			flex-direction: column;
-			align-items: flex-start;
-			gap: 3px;
 		}
 	}
 </style>

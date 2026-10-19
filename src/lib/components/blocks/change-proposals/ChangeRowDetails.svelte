@@ -6,6 +6,7 @@
 	import { acceptedFieldCount } from '$lib/modules/change_proposals/change_review_decisions.js';
 	import EmailAddress from './EmailAddress.svelte';
 	import FieldDecisionList from './FieldDecisionList.svelte';
+	import DescriptionAppend from './DescriptionAppend.svelte';
 	import FieldDiffList from './FieldDiffList.svelte';
 	import GiftCardComparison from './GiftCardComparison.svelte';
 	import type { ChangeReviewActions, ReviewRowEntry } from './change_review_rows.js';
@@ -69,12 +70,7 @@
 			{/if}
 		{/if}
 		{#each change.appends as append, index (index)}
-			<div class="append">
-				<span class="append-label">{m.change_review_append_label()}</span>
-				<ins class="append-text"
-					><span class="sr-only">{m.change_review_diff_added()} </span>{append.text}</ins
-				>
-			</div>
+			<DescriptionAppend text={append.text} />
 		{/each}
 		{#if change.appends.length > 0 && change.originalDescription !== null}
 			<p class="note">
@@ -151,35 +147,6 @@
 		color: var(--muted-foreground);
 		font-size: var(--text-sm);
 		font-weight: 600;
-	}
-
-	.append {
-		padding: 6px var(--space-3);
-		border-left: 4px solid var(--accent-loud);
-		border-radius: 0 10px 10px 0;
-		background: color-mix(in oklab, var(--accent-loud) 16%, var(--card));
-		font-size: var(--text-md);
-	}
-
-	.append-label {
-		display: block;
-		color: var(--muted-foreground);
-		font-size: var(--text-xs);
-		font-weight: 700;
-	}
-
-	.append-text {
-		padding: 0 var(--space-1);
-		border-radius: 4px;
-		background: color-mix(in oklab, var(--status-success) 14%, var(--card));
-		color: var(--status-success-text);
-		font-weight: 600;
-		text-decoration: none;
-	}
-
-	.append-text::before {
-		content: '+ ';
-		font-weight: 800;
 	}
 
 	.consequence,

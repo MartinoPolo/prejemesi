@@ -542,16 +542,25 @@ function previewChange(
 		originalDescription: hasAppends ? (before?.description ?? null) : null,
 		context: null,
 		cards: showsGiftCards(before, after, diffs)
-			? {
-					before: before === null ? null : previewGift(before, giftId, context, lookups),
-					after:
-						removal || dropped
-							? null
-							: previewGift(shownAfter, giftId, context, lookups),
-					removal,
-					dropped,
-				}
+			? previewCards(change, shownAfter, dropped, context, lookups)
 			: null,
+	};
+}
+
+function previewCards(
+	change: PreviewChange,
+	shownAfter: ChangeProposalGift,
+	dropped: boolean,
+	context: ChangeRowContext,
+	lookups: GiftLabelLookups,
+): CardPair {
+	const { before, after, giftId } = change;
+	const removal = isGiftDeletion(before, after);
+	return {
+		before: before === null ? null : previewGift(before, giftId, context, lookups),
+		after: removal || dropped ? null : previewGift(shownAfter, giftId, context, lookups),
+		removal,
+		dropped,
 	};
 }
 

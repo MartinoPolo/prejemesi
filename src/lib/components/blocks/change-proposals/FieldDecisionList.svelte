@@ -14,6 +14,7 @@
 		type ChangeField,
 	} from '$lib/modules/change_proposals/change_field_decisions.js';
 	import { FIELD_REVIEW_STATE } from '$lib/modules/change_proposals/change_review_decisions.js';
+	import DescriptionAppend from './DescriptionAppend.svelte';
 	import DiffValues from './DiffValues.svelte';
 	import type { ChangeReviewActions } from './change_review_rows.js';
 	import {
@@ -157,15 +158,10 @@
 
 {#snippet fieldValues(field: FieldChangeModel)}
 	{#each field.diffs as diff, index (index)}
-		<span class="field-diff"><DiffValues {diff} /></span>
+		<DiffValues {diff} />
 	{/each}
 	{#each field.appends as append, index (index)}
-		<div class="append">
-			<span class="append-label">{m.change_review_append_label()}</span>
-			<ins class="append-text"
-				><span class="sr-only">{m.change_review_diff_added()} </span>{append}</ins
-			>
-		</div>
+		<DescriptionAppend text={append} />
 	{/each}
 	{#if field.appends.length > 0 && originalDescription !== null}
 		<p class="note">
@@ -177,10 +173,62 @@
 	{/if}
 {/snippet}
 
+{#snippet fieldActions(field: FieldChangeModel, editing: boolean)}
+	<span
+		class={[
+			'field-actions',
+			showUnresolved && field.state === FIELD_REVIEW_STATE.undecided && 'needs-decision',
+		]}
+		role="group"
+		aria-label={m.change_review_field_decision_label({ field: field.label })}
+	>
+		<button
+			type="button"
+			class="field-btn"
+			data-field-action="accept"
+			aria-pressed={field.state === FIELD_REVIEW_STATE.accepted ||
+				field.state === FIELD_REVIEW_STATE.edited}
+			aria-label={m.change_review_field_accept_label({ field: field.label })}
+			title={m.change_review_accept()}
+			onclick={() => toggle(field.field, CHANGE_DECISION.accepted)}
+		>
+			<CheckIcon aria-hidden="true" />
+		</button>
+		<button
+			type="button"
+			class="field-btn"
+			data-field-action="reject"
+			aria-pressed={field.state === FIELD_REVIEW_STATE.rejected}
+			aria-label={m.change_review_field_reject_label({ field: field.label })}
+			title={field.required
+				? m.change_review_field_required_title()
+				: m.change_review_reject()}
+			disabled={field.required}
+			onclick={() => toggle(field.field, CHANGE_DECISION.rejected)}
+		>
+			<XIcon aria-hidden="true" />
+		</button>
+		<button
+			bind:this={editButtons[field.field]}
+			type="button"
+			class="field-btn"
+			data-field-action="edit"
+			aria-expanded={editing}
+			aria-label={m.change_review_field_edit_label({ field: field.label })}
+			title={field.editor === null
+				? m.change_review_field_edit_unavailable()
+				: m.change_review_edit()}
+			disabled={field.editor === null}
+			onclick={() => toggleEditor(field)}
+		>
+			<PencilIcon aria-hidden="true" />
+		</button>
+	</span>
+{/snippet}
+
 <ul class="field-list" aria-label={m.change_review_field_list_label()}>
 	{#each fields as field (field.field)}
 		{@const pill = PILLS[field.state]}
-		{@const undecided = field.state === FIELD_REVIEW_STATE.undecided}
 		{@const editing = actions !== undefined && editingField === field.field}
 		<li class="field" data-decision={field.state} data-field={field.field}>
 			<span class="field-label">{field.label}</span>
@@ -195,53 +243,7 @@
 					>
 				{/if}
 				{#if actions !== undefined}
-					<span
-						class={['field-actions', showUnresolved && undecided && 'needs-decision']}
-						role="group"
-						aria-label={m.change_review_field_decision_label({ field: field.label })}
-					>
-						<button
-							type="button"
-							class="field-btn"
-							data-field-action="accept"
-							aria-pressed={field.state === FIELD_REVIEW_STATE.accepted ||
-								field.state === FIELD_REVIEW_STATE.edited}
-							aria-label={m.change_review_field_accept_label({ field: field.label })}
-							title={m.change_review_accept()}
-							onclick={() => toggle(field.field, CHANGE_DECISION.accepted)}
-						>
-							<CheckIcon aria-hidden="true" />
-						</button>
-						<button
-							type="button"
-							class="field-btn"
-							data-field-action="reject"
-							aria-pressed={field.state === FIELD_REVIEW_STATE.rejected}
-							aria-label={m.change_review_field_reject_label({ field: field.label })}
-							title={field.required
-								? m.change_review_field_required_title()
-								: m.change_review_reject()}
-							disabled={field.required}
-							onclick={() => toggle(field.field, CHANGE_DECISION.rejected)}
-						>
-							<XIcon aria-hidden="true" />
-						</button>
-						<button
-							bind:this={editButtons[field.field]}
-							type="button"
-							class="field-btn"
-							data-field-action="edit"
-							aria-expanded={editing}
-							aria-label={m.change_review_field_edit_label({ field: field.label })}
-							title={field.editor === null
-								? m.change_review_field_edit_unavailable()
-								: m.change_review_edit()}
-							disabled={field.editor === null}
-							onclick={() => toggleEditor(field)}
-						>
-							<PencilIcon aria-hidden="true" />
-						</button>
-					</span>
+					{@render fieldActions(field, editing)}
 				{/if}
 			</span>
 			{#if editing && field.editor !== null}
@@ -278,9 +280,6 @@
 	.field-list {
 		display: grid;
 		gap: 6px;
-		margin: 0;
-		padding: 0;
-		list-style: none;
 	}
 
 	/* The field row carries the decision tint: accepted green, rejected dashed and muted. */
@@ -336,43 +335,6 @@
 		min-width: 0;
 		padding-block: var(--space-1);
 		font-size: var(--text-md);
-	}
-
-	.field-diff {
-		display: inline-flex;
-		flex-wrap: wrap;
-		align-items: baseline;
-		gap: var(--space-1) 6px;
-		min-width: 0;
-	}
-
-	.append {
-		flex-basis: 100%;
-		padding: 6px var(--space-3);
-		border-left: 4px solid var(--accent-loud);
-		border-radius: 0 10px 10px 0;
-		background: color-mix(in oklab, var(--accent-loud) 16%, var(--card));
-	}
-
-	.append-label {
-		display: block;
-		color: var(--muted-foreground);
-		font-size: var(--text-xs);
-		font-weight: 700;
-	}
-
-	.append-text {
-		padding: 0 var(--space-1);
-		border-radius: 4px;
-		background: color-mix(in oklab, var(--status-success) 14%, var(--card));
-		color: var(--diff-new-color, var(--status-success-text));
-		font-weight: var(--diff-new-weight, 600);
-		text-decoration: none;
-	}
-
-	.append-text::before {
-		content: '+ ';
-		font-weight: 800;
 	}
 
 	.note {

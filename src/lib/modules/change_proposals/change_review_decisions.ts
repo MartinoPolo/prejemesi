@@ -1,6 +1,5 @@
 import {
 	CHANGE_DECISION,
-	CHANGE_FIELD,
 	CHANGE_FIELDS,
 	FIELD_DECISION,
 	changeInputRecord,
@@ -584,43 +583,53 @@ function parsePrice(text: string): number | null | undefined {
 		: undefined;
 }
 
-/**
- * The reviewer's value as the field's operation input, or null when it is not a valid value.
- * A price edit is one price, so it clears a proposed range and keeps the proposed currency.
- */
+function blankAsNull(text: string): string | null {
+	const trimmed = text.trim();
+	return trimmed === '' ? null : trimmed;
+}
+
+function whenFilled(
+	text: string,
+	input: (value: string) => Record<string, unknown>,
+): Record<string, unknown> | null {
+	const value = blankAsNull(text);
+	return value === null ? null : input(value);
+}
+
+/** A price edit is one price, so it clears a proposed range and keeps the proposed currency. */
+function priceEditInput(text: string, proposedInput: unknown): Record<string, unknown> | null {
+	const price = parsePrice(text);
+	if (price === undefined) {
+		return null;
+	}
+	const currency = changeInputRecord(proposedInput)?.currency;
+	return currency === undefined ? { price, priceMax: null } : { price, priceMax: null, currency };
+}
+
+function quantityEditInput(text: string): Record<string, unknown> | null {
+	const quantity = Number(text.trim());
+	return Number.isInteger(quantity) && quantity >= 1 ? { quantity } : null;
+}
+
+type FieldEditParser = (text: string, proposedInput: unknown) => Record<string, unknown> | null;
+
+const FIELD_EDIT_PARSERS = {
+	name: (text) => whenFilled(text, (name) => ({ name })),
+	description: (text) => ({ description: blankAsNull(text) === null ? null : text }),
+	append: (text) => whenFilled(text, (appended) => ({ text: appended })),
+	price: priceEditInput,
+	quantity: quantityEditInput,
+	category: (text) => ({ categoryId: blankAsNull(text) }),
+	priority: (text) => ({ priorityLevelId: blankAsNull(text) }),
+	links: () => null,
+	image: () => null,
+} satisfies Record<ChangeField, FieldEditParser>;
+
+/** The reviewer's value as the field's operation input, or null when it is not a valid value. */
 export function fieldEditInput(
 	field: ChangeField,
 	text: string,
 	proposedInput: unknown,
 ): Record<string, unknown> | null {
-	const trimmed = text.trim();
-	switch (field) {
-		case CHANGE_FIELD.name:
-			return trimmed === '' ? null : { name: trimmed };
-		case CHANGE_FIELD.description:
-			return { description: trimmed === '' ? null : text };
-		case CHANGE_FIELD.append:
-			return trimmed === '' ? null : { text: trimmed };
-		case CHANGE_FIELD.price: {
-			const price = parsePrice(text);
-			if (price === undefined) {
-				return null;
-			}
-			const currency = changeInputRecord(proposedInput)?.currency;
-			return currency === undefined
-				? { price, priceMax: null }
-				: { price, priceMax: null, currency };
-		}
-		case CHANGE_FIELD.quantity: {
-			const quantity = Number(trimmed);
-			return Number.isInteger(quantity) && quantity >= 1 ? { quantity } : null;
-		}
-		case CHANGE_FIELD.category:
-			return { categoryId: trimmed === '' ? null : trimmed };
-		case CHANGE_FIELD.priority:
-			return { priorityLevelId: trimmed === '' ? null : trimmed };
-		case CHANGE_FIELD.links:
-		case CHANGE_FIELD.image:
-			return null;
-	}
+	return FIELD_EDIT_PARSERS[field](text, proposedInput);
 }

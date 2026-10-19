@@ -303,7 +303,7 @@
 		height: 64px;
 		overflow: hidden;
 		border: 2.5px solid var(--ink);
-		border-radius: 12px;
+		border-radius: var(--radius-badge);
 		background: var(--surface);
 		color: var(--ink);
 	}

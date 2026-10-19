@@ -22,19 +22,30 @@
 	>
 {/snippet}
 
-{#if diff.before !== null && diff.after !== null}
-	{@render removedValue(diff.before, false)}
-	<span class="diff-after">
-		<span class="diff-arrow" aria-hidden="true">→</span>
-		{@render addedValue(diff.after, false)}
-	</span>
-{:else if diff.before !== null}
-	{@render removedValue(diff.before, true)}
-{:else if diff.after !== null}
-	{@render addedValue(diff.after, true)}
-{/if}
+<span class="diff-values">
+	{#if diff.before !== null && diff.after !== null}
+		{@render removedValue(diff.before, false)}
+		<span class="diff-after">
+			<span class="diff-arrow" aria-hidden="true">→</span>
+			{@render addedValue(diff.after, false)}
+		</span>
+	{:else if diff.before !== null}
+		{@render removedValue(diff.before, true)}
+	{:else if diff.after !== null}
+		{@render addedValue(diff.after, true)}
+	{/if}
+</span>
 
 <style>
+	/* Callers that stack the values set the direction, alignment and gap. */
+	.diff-values {
+		display: inline-flex;
+		flex-flow: var(--diff-values-direction, row) wrap;
+		align-items: var(--diff-values-align, baseline);
+		gap: var(--diff-values-gap, var(--space-1) 6px);
+		min-width: 0;
+	}
+
 	.diff-after {
 		display: inline-flex;
 		flex-wrap: wrap;
