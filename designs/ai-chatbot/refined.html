@@ -146,17 +146,22 @@ a{color:var(--brand-link)}
 .page-scroll{flex:1;min-width:0;overflow-y:auto;container:content/inline-size;scroll-padding:16px 0 96px}
 .page{position:relative;max-width:1200px;margin-inline:auto;padding:20px var(--gutter) 40px}
 .is-mobile .workspace[data-sheet=half] .page{padding-bottom:calc(var(--sheet-half) + 24px)}
-.fab{position:absolute;right:20px;bottom:20px;z-index:20;display:inline-flex;align-items:center;gap:8px;height:var(--size-control-xl);padding:0 18px 0 14px;border:2.5px solid var(--ink);border-radius:999px;background:var(--primary);color:var(--primary-foreground);font:600 var(--text-lg)/1 var(--font-head);box-shadow:var(--elevation-lifted)}
+.fab{position:absolute;right:20px;bottom:20px;z-index:20;display:inline-flex;align-items:center;height:var(--size-control-xl);min-width:var(--size-control-xl);padding:0 11.5px;border:2.5px solid var(--ink);border-radius:999px;background:var(--primary);color:var(--primary-foreground);font:600 var(--text-lg)/1 var(--font-head);white-space:nowrap;box-shadow:var(--elevation-lifted)}
 .fab svg.icon{width:20px;height:20px}
 .fab:hover{background:var(--primary-hover)}
-.is-mobile .fab{right:14px;bottom:16px;height:52px;padding:0 16px 0 14px}
-/* Collapses to an icon while the list scrolls down; the list reserves room so the last cards' prices and buttons can scroll clear of it. */
-.fab.is-compact{width:var(--size-control-xl);padding:0;justify-content:center}
-.is-mobile .fab.is-compact{width:52px;padding:0}
-.fab.is-compact .fab-label{display:none}
-.page-scroll.has-fab .page{padding-bottom:96px}
-.is-mobile .page-scroll.has-fab .page{padding-bottom:84px}
-body.fab-visible .toast{bottom:96px}
+/* Open panel: the same button stays docked at the panel edge and closes it. */
+.fab.is-open{background:var(--card);color:var(--ink)}
+.fab.is-open:hover{background:var(--panel-hover)}
+.fab-label{display:inline-block;max-width:0;margin-left:0;overflow:hidden;opacity:0}
+/* Desktop only: the label slides out on hover (pointer devices) and on keyboard focus, never on scroll. */
+@media (hover:hover){.device:not(.is-mobile) .fab:hover{padding-right:18px}.device:not(.is-mobile) .fab:hover .fab-label{max-width:12em;margin-left:8px;opacity:1}}
+.device:not(.is-mobile) .fab:focus-visible,.preview-fab-label .device:not(.is-mobile) .fab{padding-right:18px}
+.device:not(.is-mobile) .fab:focus-visible .fab-label,.preview-fab-label .device:not(.is-mobile) .fab-label{max-width:12em;margin-left:8px;opacity:1}
+@media (prefers-reduced-motion:no-preference){.fab{transition:padding .2s ease,background-color .15s ease,translate .15s ease,box-shadow .15s ease}.fab-label{transition:max-width .2s ease,margin-left .2s ease,opacity .15s ease}}
+.is-mobile .fab{right:14px;bottom:16px;width:52px;height:52px;padding:0;justify-content:center}
+.page-scroll.has-fab .page{padding-bottom:84px}
+.is-mobile .page-scroll.has-fab .page{padding-bottom:80px}
+body.fab-visible .toast{bottom:84px}
 
 /* Buttons (Button intent mirror) */
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:var(--control);padding:0 12px;border:2.5px solid var(--ink);border-radius:var(--radius-btn);background:var(--card);color:var(--ink);font:600 var(--text-md)/1 var(--font-body);white-space:nowrap;text-decoration:none;box-shadow:var(--elevation-ordinary)}
@@ -178,7 +183,7 @@ body.fab-visible .toast{bottom:96px}
 .link-btn{display:inline-flex;align-items:center;gap:4px;padding:0;border:0;background:none;color:var(--brand-link);font-weight:600;font-size:var(--text-sm);text-decoration:underline;text-underline-offset:3px}
 .link-btn svg.icon{width:12px;height:12px}
 @media (prefers-reduced-motion:no-preference){
-  .btn,.icon-btn,.fab{transition:translate .15s ease,box-shadow .15s ease,background-color .15s ease}
+  .btn,.icon-btn{transition:translate .15s ease,box-shadow .15s ease,background-color .15s ease}
   .btn:not(.quiet):hover:not(:disabled),.icon-btn:not(.ghost):hover:not(:disabled){translate:-1px -1px;box-shadow:var(--elevation-lifted)}
   .btn:not(.quiet):active:not(:disabled),.icon-btn:not(.ghost):active:not(:disabled){translate:1px 1px;box-shadow:var(--elevation-compact)}
 }
@@ -315,16 +320,25 @@ body.is-resizing{cursor:col-resize;user-select:none}
 @media (prefers-reduced-motion:reduce){.is-mobile .assistant{transition:none}}
 .grabber{flex:none;display:grid;place-items:center;height:20px;padding:0;border:0;background:transparent;touch-action:none;cursor:grab;border-radius:var(--radius-panel) var(--radius-panel) 0 0}
 .grabber::before{content:"";width:44px;height:5px;border-radius:999px;background:var(--border-strong)}
-.as-head{flex:none;display:flex;align-items:center;gap:8px;padding:10px var(--gutter);border-bottom:2.5px solid var(--ink);background:var(--card)}
+.as-head{flex:none;display:grid;gap:6px;padding:10px var(--gutter) 8px;border-bottom:2.5px solid var(--ink);background:var(--card)}
 .is-mobile .as-head{padding-top:0}
+.as-line{display:flex;align-items:center;gap:8px;min-width:0}
+/* Line 2: every tool is ghost so the switch and the state read as one quiet toolbar. */
+.as-tools{display:flex;align-items:center;gap:var(--compact-control-gap);min-width:0;margin:0 -4px}
+.as-tools .icon-btn{width:32px;height:32px}
+.is-mobile .as-tools .icon-btn{width:36px;height:36px}
+.as-tools .trust-row,.as-tools .as-state{margin-left:auto}
+.as-tools .trust-row{padding-right:4px}
+.as-tools .as-state+.trust-row{margin-left:6px}
 .as-mark{width:28px;height:28px;flex:none;display:grid;place-items:center;border:2px solid var(--ink);border-radius:8px;background:var(--accent-loud);color:var(--accent-loud-foreground);transform:rotate(-4deg)}
 .as-mark svg.icon{width:16px;height:16px}
 .as-titles{min-width:0;flex:1}
 .as-title{display:flex;align-items:center;gap:6px;font:600 var(--text-xl)/1.2 var(--font-head)}
-.as-scope{font-size:var(--text-sm);color:var(--muted-foreground);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.as-scope{font-size:var(--text-sm);color:var(--muted-foreground);overflow-wrap:anywhere}
 .as-head-actions{display:flex;gap:var(--compact-control-gap);flex:none}
 .is-mobile .as-head-actions .icon-btn{width:36px;height:36px}
-.preview-toggle{height:36px!important;padding:0 10px!important}
+.preview-toggle{height:36px!important;padding:0 8px!important}
+.btn.quiet[aria-pressed=true]{background:var(--primary-soft)}
 .as-thread{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:12px;padding:12px var(--gutter) 16px;background:var(--background);scroll-padding:12px}
 .as-foot{flex:none;display:grid;gap:8px;padding:8px var(--gutter) 10px;border-top:2.5px solid var(--ink);background:var(--card)}
 .is-mobile .as-foot{padding-bottom:calc(10px + env(safe-area-inset-bottom))}
@@ -340,11 +354,10 @@ body.is-resizing{cursor:col-resize;user-select:none}
 .status-line svg.icon{width:15px;height:15px;color:var(--muted-foreground)}
 .chip-tray{display:flex;flex-wrap:wrap;gap:var(--nested-control-gap)}
 
-/* Trust controls (three sub-variants) and the one-time hint */
-.trust-row{display:flex;align-items:center;gap:8px;min-height:28px;font-size:var(--text-md)}
+/* Trust switch (header line 2) and the one-time hint right below it */
+.trust-row{display:flex;align-items:center;gap:8px;min-height:28px;font-size:var(--text-md);white-space:nowrap}
 .trust-row label{font-weight:700;cursor:pointer}
-.trust-row .trust-state{margin-left:auto;font-size:var(--text-sm);color:var(--muted-foreground)}
-.trust-row[data-on=true] .trust-state{color:var(--status-success-text);font-weight:600}
+.trust-row[data-on=true] label{color:var(--status-success-text)}
 .switch{position:relative;width:36px;height:22px;flex:none;padding:0;border:2px solid var(--ink);border-radius:999px;background:var(--switch-track)}
 .switch::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border:2px solid var(--ink);border-radius:999px;background:var(--switch-thumb);transition:translate .15s ease}
 .switch[aria-checked=true]{background:var(--primary)}
@@ -357,12 +370,32 @@ body.is-resizing{cursor:col-resize;user-select:none}
 
 /* Decision bar */
 .dbar{display:grid;gap:6px;padding:8px 10px;margin:-2px 0 0;border:2.5px solid var(--ink);border-radius:12px;background:var(--ghost-tint);box-shadow:var(--elevation-compact)}
+.dbar-line{display:flex;align-items:center;gap:6px;min-width:0;margin:0}
+.dbar-line .btn.quiet{margin:-4px -4px -4px auto;flex:none}
 .dbar-count{display:flex;align-items:center;gap:6px;min-width:0;padding:0;border:0;background:none;text-align:left;font-size:var(--text-md);font-weight:700}
+.dbar-count.is-blocked{color:var(--status-danger-text)}
+.dbar-count.is-blocked svg.icon{color:var(--status-danger-text)}
+.pcard-actions{display:grid;gap:6px}
 .dbar-count svg.icon{width:14px;height:14px;color:var(--brand-link)}
 .dbar-count .decided{font-weight:500;color:var(--muted-foreground)}
 .actions3{display:flex;gap:var(--compact-control-gap)}
 .actions3 .btn{flex:none}
-.actions3 .btn.primary{flex:1}
+.actions3 .btn.grow{flex:1}
+.is-mobile .actions3 .btn{padding:0 10px}
+/* Looks disabled but stays focusable and clickable to point at open decisions. */
+.btn[aria-disabled=true]{opacity:.45;cursor:not-allowed;box-shadow:none;translate:none!important}
+/* Open decisions after a blocked Použít: AA danger outline in both themes. */
+.is-unresolved{outline:2px solid var(--status-danger-text);outline-offset:2px;border-radius:9px}
+.bulk{display:inline-flex;gap:4px;flex:none;margin-left:auto}
+.bulk button{position:relative;display:inline-flex;align-items:center;gap:3px;height:26px;padding:0 7px 0 5px;border:2px solid var(--ink);border-radius:var(--radius-btn);background:var(--card);color:var(--ink);font-size:var(--text-sm);font-weight:700}
+.bulk button svg.icon{width:13px;height:13px;stroke-width:2.6}
+.bulk button::before{content:"";position:absolute;inset:-4px -2px}
+.bulk button:hover{background:var(--panel-hover)}
+.bulk button[data-decision=accepted][aria-pressed=true]{background:var(--status-success-text);border-color:var(--status-success-text);color:var(--card)}
+.bulk button[data-decision=rejected][aria-pressed=true]{background:var(--ink);color:var(--card)}
+.bulk button[data-decision=accepted][aria-pressed=mixed]{border-style:dashed;border-color:var(--status-success-text);background:var(--accepted-tint);color:var(--status-success-text)}
+.bulk button[data-decision=rejected][aria-pressed=mixed]{border-style:dashed;background:var(--muted)}
+.is-mobile .bulk button{height:32px}
 
 
 /* Messages */
@@ -425,9 +458,9 @@ body.is-resizing{cursor:col-resize;user-select:none}
 /* Per-field decisions (FieldDecisionRow) */
 .iblock{display:grid;gap:6px}
 .ihead{display:flex;align-items:center;gap:8px;min-width:0;font-weight:700;font-size:var(--text-md)}
-.ihead span{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.frows{display:grid;gap:4px}
-.frow{display:grid;gap:5px;padding:6px 8px;border:2px solid var(--border);border-radius:10px;background:var(--card);font-size:var(--text-md);transition:background-color .15s}
+.ihead .ihead-name{min-width:0;flex:1;overflow-wrap:anywhere}
+.frows{display:grid;gap:4px;align-content:start}
+.frow{display:grid;align-content:start;gap:5px;padding:6px 8px;border:2px solid var(--border);border-radius:10px;background:var(--card);font-size:var(--text-md);transition:background-color .15s}
 .frow[data-state=accepted]{background:var(--accepted-tint);border-color:color-mix(in oklab,var(--status-success) 45%,var(--card))}
 .frow[data-state=rejected]{background:var(--muted);border-color:var(--border)}
 .frow[data-state=rejected] del.diff-old{background:none;color:var(--foreground);text-decoration:none}
@@ -436,7 +469,7 @@ body.is-resizing{cursor:col-resize;user-select:none}
 .frow-head{display:flex;align-items:center;gap:6px;min-width:0;min-height:26px}
 .frow-label{flex:none;font-weight:700;font-size:var(--text-sm)}
 .frow-title{display:flex;align-items:center;gap:6px;min-width:0;flex:1;font-weight:600}
-.frow-title .name{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.frow-title .name{min-width:0;overflow-wrap:anywhere}
 .fdiff{display:flex;flex-wrap:wrap;align-items:center;gap:3px 6px;margin:0;min-width:0;font-size:var(--text-md);line-height:1.4}
 .diff-arrow{color:var(--muted-foreground)}
 .diff-empty,.diff-kept{color:var(--muted-foreground)}
@@ -532,17 +565,16 @@ select.finput{padding-right:4px}
 .rv-list{display:grid;gap:10px}
 .rv-row{border:2px solid var(--ink);border-radius:var(--radius-panel);background:var(--card);overflow:hidden}
 .rv-band{display:flex;align-items:center;gap:12px;padding:7px 14px;border-bottom:2px solid var(--ink);background:color-mix(in oklab,var(--tone-mix) var(--tone-strength),var(--card))}
-.rv-band .badge{margin-left:auto}
-.rv-body{display:grid;grid-template-columns:minmax(180px,260px) minmax(0,1fr);gap:10px 16px;padding:10px 14px 12px calc(14px + var(--control) + 12px)}
-.is-mobile .rv-body{grid-template-columns:1fr;padding:10px 12px 12px}
-.rv-row[data-selected=false]{background:var(--muted)}
-.identity{display:flex;align-items:center;gap:10px;min-width:0}
-.identity strong{display:block;font-size:var(--text-base);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rv-band .bulk,.rv-band .held-choice{margin-left:auto}
+.held-choice{display:inline-flex;gap:var(--compact-control-gap)}
+.rv-body{display:grid;grid-template-columns:minmax(120px,160px) minmax(0,1fr);align-items:start;gap:12px 16px;padding:12px 14px}
+/* Narrow widths stack the gift above its fields. */
+@container content (max-width:720px){.rv-body{grid-template-columns:minmax(0,1fr);padding:10px 12px 12px}.rv-body .identity{flex-direction:row;align-items:center}.rv-body .thumb.xl{width:64px;height:64px}}
+.identity{display:flex;flex-direction:column;align-items:flex-start;gap:10px;min-width:0}
+.identity strong{display:block;font-size:var(--text-base);overflow-wrap:anywhere}
+.thumb.xl{width:100%;max-width:160px;height:auto;aspect-ratio:1;border-radius:var(--radius-btn)}
+.thumb.xl svg.icon{width:28px;height:28px}
 .identity .sub{display:block;font-size:var(--text-sm);color:var(--muted-foreground)}
-.check{appearance:none;-webkit-appearance:none;margin:0;width:var(--control);height:var(--control);display:grid;place-items:center;flex:none;border:2.5px solid var(--ink);border-radius:var(--radius-btn);background:var(--card);cursor:pointer;box-shadow:var(--elevation-compact)}
-.check::after{content:"";width:60%;height:60%;background:var(--primary-foreground);opacity:0;-webkit-mask:var(--mask-check) center/contain no-repeat;mask:var(--mask-check) center/contain no-repeat}
-.check:checked{background:var(--primary)}
-.check:checked::after{opacity:1}
 .diff-list{display:grid;gap:5px}
 .diff{display:grid;grid-template-columns:64px minmax(0,1fr);gap:8px;align-items:baseline}
 .diff-label{font-size:var(--text-sm);font-weight:600;color:var(--muted-foreground)}
@@ -550,10 +582,16 @@ select.finput{padding-right:4px}
 .diff-old,.diff-new{padding:1px 5px;border-radius:5px;overflow-wrap:anywhere}
 del.diff-old{background:var(--diff-removed-bg);color:var(--status-danger-text);text-decoration:line-through}
 ins.diff-new{background:var(--diff-added-bg);color:var(--status-success-text);font-weight:600;text-decoration:none}
-.apply-bar{position:sticky;bottom:0;z-index:4;margin:20px calc(-1 * var(--gutter)) -40px;background:var(--card);border-top:2.5px solid var(--ink)}
-.apply-inner{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:60px;padding:10px var(--gutter)}
-.apply-count{font-weight:700}
-.is-mobile .apply-inner{flex-direction:column;align-items:stretch;gap:6px}
+/* Boxed like the change cards so the bar never looks cut off at the sides. */
+.apply-bar{position:sticky;bottom:12px;z-index:4;margin-top:20px;border:2px solid var(--ink);border-radius:var(--radius-panel);background:var(--card);box-shadow:var(--elevation-ordinary),0 16px 0 4px var(--background)}
+.apply-inner{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px 12px;min-height:60px;padding:10px 14px}
+.apply-count{display:flex;align-items:center;gap:6px;font-weight:700}
+.apply-count.is-blocked{color:var(--status-danger-text)}
+.apply-actions{display:flex;gap:var(--compact-control-gap);margin-left:auto}
+.is-mobile .apply-inner{flex-direction:column;align-items:stretch;gap:6px;padding:10px 12px}
+.is-mobile .apply-actions{margin-left:0}
+.is-mobile .apply-actions .btn{padding:0 10px}
+.is-mobile .apply-actions .btn:last-child{flex:1}
 
 /* Dialogs and toast */
 dialog{width:min(420px,calc(100vw - 24px));padding:20px;border:2.5px solid var(--ink);border-radius:var(--radius-panel);background:var(--card);color:var(--foreground);box-shadow:8px 8px 0 rgb(0 0 0 / 22%)}
@@ -631,6 +669,7 @@ const ICONS={
   'arrow-up':'<path d="m5 12 7-7 7 7"/><path d="M12 19V5"/>',
   check:'<path d="M20 6 9 17l-5-5"/>',
   x:'<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+  'panel-close':'<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M15 3v18"/><path d="m8 9 3 3-3 3"/>',
   alert:'<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
   undo:'<path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11"/>',
   trash:'<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>',
@@ -726,17 +765,18 @@ const PANEL_MIN=360,PANEL_MAX=640,PANEL_DEFAULT=420;
 
 /* ── State ── */
 const ui={viewport:'desktop',theme:'light',role:'manager',scenario:'enrich',
-  open:true,view:'chat',page:'wishlist',trust:false,access:'full',menuGift:null,reviewId:null,reviewSelection:{},historyLoading:false,
-  sheet:'half',editRef:null,editDraft:null,fabCompact:false,panelWidth:PANEL_DEFAULT,hintDismissed:false};
+  open:true,view:'chat',page:'wishlist',trust:false,access:'full',menuGift:null,reviewId:null,historyLoading:false,
+  sheet:'half',editRef:null,editDraft:null,panelWidth:PANEL_DEFAULT,hintDismissed:false};
 let gifts=[],thread=[],proposals={},freshGiftIds=new Set(),deletedIds=new Set(),timers=[],streaming=null,createState={choice:'catan',retrying:false,retried:false},demoUsed=new Set(),sortUndo=null,lastTrigger=null;
 
 /* ── Proposal model: one source for the chat check, the live preview and the review page ── */
-const field=(key,label,old,suggested,control='text',extra={})=>({key,label,old,suggested,value:suggested,decision:null,control,...extra});
+/* Field changes start accepted; deletions start unresolved (held rows). */
+const field=(key,label,old,suggested,control='text',extra={})=>({key,label,old,suggested,value:suggested,decision:'accepted',control,...extra});
 const editItem=(giftId,fields,extra={})=>({kind:'edit',giftId,fields,...extra});
 const createItem=gift=>({kind:'create',gift:clone(gift),fields:[field('name','Nový dárek',null,gift.name)]});
 const giftById=id=>gifts.find(gift=>gift.id===id)||BASE_GIFTS.find(gift=>gift.id===id);
 const itemName=item=>item.kind==='create'?item.fields[0].value:giftById(item.giftId).name;
-const itemImage=item=>item.kind==='create'?item.gift.image:(item.fields.find(entry=>entry.key==='image'&&entry.decision!=='rejected')?.value||giftById(item.giftId).image);
+const itemImage=item=>item.kind==='create'?item.gift.image:(item.fields.find(entry=>entry.key==='image'&&entry.decision==='accepted')?.value||giftById(item.giftId).image);
 const heldRow=(giftId)=>({giftId,status:'pending'});
 function makeProposal(id,items,extra={}){
   proposals[id]={id,items,held:[],refusals:[],status:'pending',inspect:false,expires:'25. 10.',...extra};
@@ -747,8 +787,15 @@ const allFields=proposal=>proposal.items.flatMap(item=>item.fields);
 function decisionSummary(proposal){
   const fields=allFields(proposal);
   const accepted=fields.filter(entry=>entry.decision==='accepted').length,rejected=fields.filter(entry=>entry.decision==='rejected').length;
-  const effective=proposal.items.filter(item=>item.fields.some(entry=>entry.decision!=='rejected')).length;
-  return {total:proposal.items.length,accepted,rejected,effective};
+  const effective=proposal.items.filter(item=>item.fields.some(entry=>entry.decision==='accepted')).length;
+  const unresolved=fields.filter(entry=>!entry.decision).length+proposal.held.filter(held=>held.status==='pending'&&!held.choice).length;
+  return {total:proposal.items.length,accepted,rejected,effective,unresolved};
+}
+const changesToDecide=count=>`Rozhodněte ${count} ${plural(count,'změnu','změny','změn')}`;
+/* Per-gift and global bulk state: true when all fields share the decision, mixed when some do. */
+function bulkState(fields,decision){
+  const matching=fields.filter(entry=>entry.decision===decision).length;
+  return matching===fields.length?'true':matching?'mixed':'false';
 }
 const decidedText=summary=>[summary.accepted?`${summary.accepted} přijato`:'',summary.rejected?`${summary.rejected} zamítnuto`:''].filter(Boolean).join(' · ');
 
@@ -801,7 +848,7 @@ function previewEntries(){
   for(const proposal of Object.values(proposals)){
     if(proposal.status==='pending'){
       for(const item of proposal.items){
-        const live=item.fields.filter(entry=>entry.decision!=='rejected');
+        const live=item.fields.filter(entry=>entry.decision==='accepted');
         if(!live.length)continue;
         if(item.kind==='edit'){const entry=entries.find(candidate=>candidate.gift.id===item.giftId);if(entry){live.forEach(fieldEntry=>applyField(entry.gift,fieldEntry));entry.ghost='edit'}}
         else{const gift=clone(item.gift);live.forEach(fieldEntry=>applyField(gift,fieldEntry));entries.push({gift,ghost:'new'})}
@@ -816,7 +863,7 @@ function applyProposal(proposal,{auto=false}={}){
   freshGiftIds=new Set();
   let count=0;
   for(const item of proposal.items){
-    const live=item.fields.filter(entry=>entry.decision!=='rejected');
+    const live=item.fields.filter(entry=>entry.decision==='accepted');
     if(!live.length)continue;
     if(item.kind==='edit'){const gift=gifts.find(candidate=>candidate.id===item.giftId);if(gift){live.forEach(entry=>applyField(gift,entry));freshGiftIds.add(gift.id);count+=1}}
     else{const gift=clone(item.gift);live.forEach(entry=>applyField(gift,entry));gifts.push(gift);freshGiftIds.add(gift.id);count+=1}
@@ -901,7 +948,7 @@ function loadScenario(id){
   ui.open=id!=='not-allowlisted';
   ui.trust=id==='fast-forward';
   ui.sheet=DECIDING.includes(id)?'half':'full';
-  ui.editRef=null;ui.editDraft=null;ui.fabCompact=false;
+  ui.editRef=null;ui.editDraft=null;
   gifts=clone(BASE_GIFTS);proposals={};freshGiftIds=new Set();deletedIds=new Set();demoUsed=new Set();sortUndo=null;
   createState={choice:'catan',retrying:false,retried:false};
   if(id==='create'){PROPOSAL_FACTORIES.create().inspect=true}
@@ -931,10 +978,12 @@ function renderTopbar(){
     <div class="nav-right"><button type="button" class="icon-btn ghost" aria-label="Oznámení, 2 nepřečtená" data-demo>${icon('bell')}<span class="bell-count" aria-hidden="true">2</span></button>
       <button type="button" class="avatar" aria-label="Účet: ${isManager?'Martin Novák':'Božena Nováková'}" data-demo>${isManager?'MN':'BN'}</button>
       <button type="button" class="icon-btn ghost only-mobile" aria-label="Otevřít menu" data-demo>${icon('menu')}</button></div></div>`;
-  /* Hidden on pages with their own bottom action bar, such as the review page. */
-  const showFab=entryAllowed()&&!ui.open&&ui.page==='wishlist'&&!$('#dialog').open;
+  /* Hidden on pages with their own bottom action bar (the review page) and behind the mobile sheet; on desktop it stays docked at the open panel's edge and closes it. */
+  const docked=ui.open&&ui.viewport==='desktop';
+  const showFab=entryAllowed()&&(!ui.open||docked)&&ui.page==='wishlist'&&!$('#dialog').open;
+  const fabLabel=docked?'Zavřít AI asistenta':'AI asistent';
   $('#fab-slot').innerHTML=showFab
-    ?`<button type="button" class="fab${ui.fabCompact?' is-compact':''}" aria-label="AI asistent" aria-controls="assistant" aria-expanded="false" data-action="toggle-panel" data-key="entry">${icon('sparkles')}<span class="fab-label" aria-hidden="true">AI asistent</span></button>`:'';
+    ?`<button type="button" class="fab${docked?' is-open':''}" aria-label="${fabLabel}" aria-controls="assistant" aria-expanded="${docked}" data-action="toggle-panel" data-key="entry">${icon(docked?'panel-close':'sparkles')}<span class="fab-label" aria-hidden="true">${fabLabel}</span></button>`:'';
   $('#page-scroll').classList.toggle('has-fab',showFab);document.body.classList.toggle('fab-visible',showFab);
 }
 
@@ -1013,24 +1062,32 @@ function positionMenu(){
 
 /* ── Rendering: review page (simplified existing page) ── */
 function diffList(diffs){
-  return `<div class="diff-list">${diffs.map(([label,oldValue,newValue])=>`<div class="diff"><span class="diff-label">${label}</span><span class="diff-values">${oldValue&&!/^Bez /.test(oldValue)?`<del class="diff-old">${escapeHtml(oldValue)}</del><span aria-label="změní se na">→</span>`:''}${newValue==null?'':`<ins class="diff-new">${escapeHtml(newValue)}</ins>`}</span></div>`).join('')}</div>`;
+  return `<div class="diff-list">${diffs.map(([label,oldValue,newValue])=>`<div class="diff"><span class="diff-label">${label}</span><span class="diff-values">${oldValue&&!/^Bez /.test(oldValue)?`<del class="diff-old">${escapeHtml(oldValue)}</del>${newValue==null?"":`<span aria-label="změní se na">→</span>`}`:''}${newValue==null?'':`<ins class="diff-new">${escapeHtml(newValue)}</ins>`}</span></div>`).join('')}</div>`;
 }
 function renderReview(){
   const proposal=proposals[ui.reviewId];
-  const rows=[...proposal.items.map((item,index)=>({type:'item',item,index,key:'i'+index})),...proposal.held.map((held,index)=>({type:'held',held,key:'h'+index})).filter(row=>row.held.status==='pending')];
-  const giftCount=decisionSummary(proposal).effective;
-  const deleteCount=rows.filter(row=>row.type==='held'&&ui.reviewSelection[row.key]).length;
+  const summary=decisionSummary(proposal);
+  const rows=[...proposal.items.map((item,index)=>({type:'item',item,index})),...proposal.held.map((held,index)=>({type:'held',held,index})).filter(row=>row.held.status==='pending')];
+  const deleteCount=proposal.held.filter(held=>held.status==='pending'&&held.choice==='delete').length;
+  const applyCount=summary.effective+deleteCount;
   const rowHtml=row=>{
     const isHeld=row.type==='held';const name=isHeld?giftById(row.held.giftId).name:itemName(row.item);const image=isHeld?giftById(row.held.giftId).image:itemImage(row.item);
     const kind=isHeld?['Smazání dárku','danger','trash']:row.item.kind==='create'?['Nový dárek','success','plus']:['Úprava','ink','pencil'];
-    const select=isHeld?`<input type="checkbox" class="check" aria-label="Vybrat: ${kind[0]}, ${escapeHtml(name)}" data-action="review-select" data-row="${row.key}" ${ui.reviewSelection[row.key]?'checked':''}>`:'';
+    const choice=row.held?.choice;
+    const control=isHeld
+      ?`<span class="held-choice${!choice&&proposal.flagUnresolved?' is-unresolved':''}" role="group" aria-label="Rozhodnutí: ${escapeHtml(name)}"><button type="button" class="btn sm ${choice==='delete'?'destructive':'secondary'}" aria-pressed="${choice==='delete'}" data-action="review-held" data-choice="delete" data-index="${row.index}" data-key="rv-del-${row.index}">${icon('trash')}Smazat</button><button type="button" class="btn sm secondary" aria-pressed="${choice==='keep'}" data-action="review-held" data-choice="keep" data-index="${row.index}" data-key="rv-keep-${row.index}">Ponechat</button></span>`
+      :bulkButtons(proposal,row.index);
     const body=isHeld?diffList([['Dárek',name,null]]):`<div class="frows">${row.item.fields.map((entry,fieldIndex)=>fieldRow(proposal,row.index,fieldIndex)).join('')}</div>`;
-    return `<article class="rv-row" data-selected="${isHeld?!!ui.reviewSelection[row.key]:true}" data-tone="${kind[1]}"><div class="rv-band">${select}
-      <span class="kind-count">${icon(kind[2])}${kind[0]}</span>${isHeld?'<span class="badge tone-accent">Vyžaduje potvrzení</span>':''}</div>
-      <div class="rv-body"><div class="identity">${thumb(image,'lg')}<span style="min-width:0"><strong>${escapeHtml(name)}</strong></span></div>${body}</div></article>`;
+    return `<article class="rv-row" data-tone="${kind[1]}"><div class="rv-band"><span class="kind-count">${icon(kind[2])}${kind[0]}</span>${control}</div>
+      <div class="rv-body"><div class="identity">${thumb(image,'xl')}<strong>${escapeHtml(name)}</strong></div>${body}</div></article>`;
   };
   const normal=rows.filter(row=>row.type==='item').map(rowHtml).join('');
   const confirm=rows.filter(row=>row.type==='held').map(rowHtml).join('');
+  const blocked=summary.unresolved>0;
+  const count=proposal.flagUnresolved&&blocked?`<p class="apply-count is-blocked" role="status">${icon('alert')}${changesToDecide(summary.unresolved)}</p>`:`<p class="apply-count">Změny u ${applyCount} ${applyCount===1?'dárku':'dárků'}${deleteCount?` · ${deleteCount} ke smazání`:''}</p>`;
+  const primary=!applyCount&&!blocked
+    ?`<button type="button" class="btn secondary" data-action="review-decline" data-key="review-apply">Zamítnout návrh</button>`
+    :`<button type="button" class="btn primary" data-action="review-apply" data-key="review-apply" ${blocked?'aria-disabled="true"':''}>Použít (${applyCount})</button>`;
   return `<div class="review">
     <p class="tool-note"><strong>Náhled</strong>Zkrácená stránka kontroly, úplný návrh je v designs/agent-change-review.</p>
     <button type="button" class="back-link" data-action="back-to-list">${icon('arrow-left')}Zpět na seznam</button>
@@ -1039,8 +1096,8 @@ function renderReview(){
       <p>Návrh z <strong>AI asistenta</strong></p><p class="summary-meta"><span>Dnes 13:06</span><span>Platnost do ${proposal.expires}</span></p></section>
     ${normal?`<section class="rv-section" aria-labelledby="rv-normal"><h2 id="rv-normal">Změny</h2><div class="rv-list">${normal}</div></section>`:''}
     ${confirm?`<section class="rv-section confirm" aria-labelledby="rv-confirm"><h2 id="rv-confirm">Vyžaduje potvrzení</h2><div class="rv-list">${confirm}</div></section>`:''}
-    <div class="apply-bar" role="region" aria-label="Použití změn"><div class="apply-inner"><p class="apply-count">Změny u ${giftCount} ${giftCount===1?'dárku':'dárků'}${deleteCount?` · ${deleteCount} ke smazání`:''}</p>
-      <button type="button" class="btn primary" data-action="review-apply" ${giftCount+deleteCount?'':'disabled'}>Použít (${giftCount+deleteCount})</button></div></div></div>`;
+    <div class="apply-bar" role="region" aria-label="Použití změn"><div class="apply-inner">${count}
+      <div class="apply-actions"><button type="button" class="btn secondary" data-action="review-all" data-decision="rejected" data-key="review-reject-all">Zamítnout vše</button><button type="button" class="btn secondary" data-action="review-all" data-decision="accepted" data-key="review-accept-all">Přijmout vše</button>${primary}</div></div></div></div>`;
 }
 
 /* ── Rendering: assistant ── */
@@ -1048,9 +1105,9 @@ const ref=(proposal,itemIndex,fieldIndex)=>`${proposal.id}|${itemIndex}|${fieldI
 function decideButtons(proposal,itemIndex,fieldIndex,entry,label){
   const key=ref(proposal,itemIndex,fieldIndex);
   const state=entry.decision==='accepted'?(entry.value!==entry.suggested?'Upraveno':'Přijato'):entry.decision==='rejected'?'Zamítnuto':'';
-  return `<span class="decide" role="group" aria-label="Rozhodnutí: ${escapeHtml(label)}">${state?`<span class="frow-state">${state}</span>`:''}
+  return `<span class="decide${!entry.decision&&proposal.flagUnresolved?' is-unresolved':''}" role="group" aria-label="Rozhodnutí: ${escapeHtml(label)}">${state?`<span class="frow-state">${state}</span>`:''}
     <button type="button" data-decision="accepted" aria-pressed="${entry.decision==='accepted'}" aria-label="Přijmout: ${escapeHtml(label)}" data-action="decide" data-ref="${key}" data-key="acc-${key}">${icon('check')}</button>
-    <button type="button" data-decision="rejected" aria-pressed="${entry.decision==='rejected'}" aria-label="Zamítnout: ${escapeHtml(label)}" data-action="decide" data-ref="${key}" data-key="rej-${key}">${icon('x')}</button>
+    <button type="button" data-decision="rejected" aria-pressed="${entry.decision==='rejected'}" aria-label="${entry.key==='name'?'Nepřidávat':'Zamítnout'}: ${escapeHtml(label)}" data-action="decide" data-ref="${key}" data-key="rej-${key}">${icon('x')}</button>
     <button type="button" class="edit" aria-pressed="${ui.editRef===key}" aria-label="Upravit: ${escapeHtml(label)}" data-action="edit-field" data-ref="${key}" data-key="edit-${key}">${icon('pencil')}</button></span>`;
 }
 function fieldControl(proposal,itemIndex,fieldIndex,entry,label){
@@ -1100,8 +1157,12 @@ function fieldRow(proposal,itemIndex,fieldIndex,{title}={}){
 function inspectRows(proposal){
   return proposal.items.map((item,itemIndex)=>{
     if(item.kind==='create'||item.fields.length===1)return fieldRow(proposal,itemIndex,0,{title:item.kind==='edit'});
-    return `<div class="iblock"><p class="ihead">${thumb(itemImage(item))}<span>${escapeHtml(itemName(item))}</span></p>${item.note?`<p class="lock-line">${icon('lock')}${item.note}</p>`:''}<div class="frows">${item.fields.map((entry,fieldIndex)=>fieldRow(proposal,itemIndex,fieldIndex)).join('')}</div></div>`;
+    return `<div class="iblock"><div class="ihead">${thumb(itemImage(item))}<span class="ihead-name">${escapeHtml(itemName(item))}</span>${bulkButtons(proposal,itemIndex)}</div>${item.note?`<p class="lock-line">${icon('lock')}${item.note}</p>`:''}<div class="frows">${item.fields.map((entry,fieldIndex)=>fieldRow(proposal,itemIndex,fieldIndex)).join('')}</div></div>`;
   }).join('')+failedRow(proposal);
+}
+function bulkButtons(proposal,itemIndex){
+  const item=proposal.items[itemIndex];const name=escapeHtml(itemName(item));
+  return `<span class="bulk" role="group" aria-label="Všechna pole: ${name}"><button type="button" data-decision="accepted" aria-pressed="${bulkState(item.fields,'accepted')}" aria-label="Přijmout vše: ${name}" data-action="bulk-decide" data-proposal="${proposal.id}" data-item="${itemIndex}" data-key="bulk-acc-${proposal.id}-${itemIndex}">${icon('check')}Vše</button><button type="button" data-decision="rejected" aria-pressed="${bulkState(item.fields,'rejected')}" aria-label="Zamítnout vše: ${name}" data-action="bulk-decide" data-proposal="${proposal.id}" data-item="${itemIndex}" data-key="bulk-rej-${proposal.id}-${itemIndex}">${icon('x')}Vše</button></span>`;
 }
 function failedRow(proposal){
   if(!proposal.failedLink)return '';
@@ -1110,8 +1171,8 @@ function failedRow(proposal){
 }
 function fieldSummary(item){
   if(item.kind==='create'){const gift=item.gift;return `${gift.price} · ${gift.links[0]}`}
-  const live=item.fields.filter(entry=>entry.decision!=='rejected');
-  if(!live.length)return 'Vše zamítnuto';
+  const live=item.fields.filter(entry=>entry.decision==='accepted');
+  if(!live.length)return item.fields.some(entry=>!entry.decision)?'Čeká na rozhodnutí':'Vše zamítnuto';
   return live.map(entry=>entry.control==='image'?'obrázek':entry.key==='description'?'popis':entry.key==='links'?'+ heureka.cz':`${entry.label.toLowerCase()} ${entry.value}`).join(' · ');
 }
 function summaryRows(proposal,limit=4){
@@ -1127,7 +1188,7 @@ function heldBlock(proposal){
       const undo=`<button type="button" class="btn sm ${held.status==='deleted'?'danger':'secondary'}" data-action="undo-held" data-proposal="${proposal.id}" data-index="${index}" data-key="undo-held-${proposal.id}-${index}">${icon('undo')}Vrátit</button>`;
       const done=held.status==='deleted'?`<span class="badge tone-success">${icon('check')}Smazáno</span>${undo}`:held.status==='kept'?`<span class="badge tone-muted">Ponecháno</span>${undo}`:'';
       return `<div class="held-row${held.status!=='pending'?' is-done':''}">${thumb(gift.image)}<span style="min-width:0"><span class="sum-name">${escapeHtml(gift.name)}</span><span class="sum-sub">Duplicita · ${escapeHtml(gift.links[0])}</span></span>
-        <div class="held-actions">${held.status==='pending'?`<button type="button" class="btn sm destructive" data-action="confirm-delete" data-proposal="${proposal.id}" data-index="${index}" data-key="del-${proposal.id}-${index}">${icon('trash')}Smazat 1 dárek</button><button type="button" class="btn sm secondary" data-action="keep-held" data-proposal="${proposal.id}" data-index="${index}" data-key="keep-${proposal.id}-${index}">Ponechat</button>`:done}</div></div>`}).join('')}</div>`;
+        <div class="held-actions${held.status==='pending'&&proposal.flagUnresolved?' is-unresolved':''}">${held.status==='pending'?`<button type="button" class="btn sm destructive" data-action="confirm-delete" data-proposal="${proposal.id}" data-index="${index}" data-key="del-${proposal.id}-${index}">${icon('trash')}Smazat 1 dárek</button><button type="button" class="btn sm secondary" data-action="keep-held" data-proposal="${proposal.id}" data-index="${index}" data-key="keep-${proposal.id}-${index}">Ponechat</button>`:done}</div></div>`}).join('')}</div>`;
   }
   html+=refusals.map(refusal=>`<p class="refusal">${icon('ban')}<span><strong>${escapeHtml(refusal.name)}:</strong> ${escapeHtml(refusal.text)}</span></p>`).join('');
   return html;
@@ -1137,13 +1198,19 @@ function activeProposal(){
   const pending=Object.values(proposals).filter(proposal=>proposal.status==='pending');
   return pending[pending.length-1]||null;
 }
-function threeActions(proposal,context){
+function reviewButton(proposal,context){
+  return isBig(proposal)
+    ?`<button type="button" class="btn sm quiet" data-action="review" data-proposal="${proposal.id}" data-key="review-${context}">Zkontrolovat${icon('arrow-right')}</button>`
+    :`<button type="button" class="btn sm quiet" aria-expanded="${proposal.inspect}" data-action="inspect" data-proposal="${proposal.id}" data-key="inspect-${context}">Zkontrolovat${icon(proposal.inspect?'chevron-up':'chevron-down')}</button>`;
+}
+/* Použít stays focusable while decisions are open (aria-disabled), so the click can point at them. With nothing accepted it declines the proposal. */
+function applyButton(proposal,context,summary){
+  if(!summary.effective&&!summary.unresolved)return `<button type="button" class="btn secondary grow" data-action="decline" data-proposal="${proposal.id}" data-key="apply-${context}">Zamítnout návrh</button>`;
+  return `<button type="button" class="btn primary grow" data-action="apply" data-proposal="${proposal.id}" data-key="apply-${context}" ${summary.unresolved?'aria-disabled="true"':''}>Použít (${summary.effective})</button>`;
+}
+function proposalActions(proposal,context){
   const summary=decisionSummary(proposal);
-  const big=isBig(proposal);
-  const reviewButton=big
-    ?`<button type="button" class="btn secondary" data-action="review" data-proposal="${proposal.id}" data-key="review-${context}">Zkontrolovat${icon('arrow-right')}</button>`
-    :`<button type="button" class="btn secondary" aria-expanded="${proposal.inspect}" data-action="inspect" data-proposal="${proposal.id}" data-key="inspect-${context}">Zkontrolovat</button>`;
-  return `<div class="actions3"><button type="button" class="btn secondary" data-action="decline" data-proposal="${proposal.id}" data-key="decline-${context}">Zamítnout</button>${reviewButton}<button type="button" class="btn primary" data-action="apply" data-proposal="${proposal.id}" data-key="apply-${context}" ${summary.effective?'':'disabled'}>Použít (${summary.effective})</button></div>`;
+  return `<div class="actions3"><button type="button" class="btn secondary" data-action="decide-all" data-decision="rejected" data-proposal="${proposal.id}" data-key="reject-all-${context}">Zamítnout vše</button><button type="button" class="btn secondary" data-action="decide-all" data-decision="accepted" data-proposal="${proposal.id}" data-key="accept-all-${context}">Přijmout vše</button>${applyButton(proposal,context,summary)}</div>`;
 }
 function proposalCard(id){
   const proposal=proposals[id];if(!proposal)return '';
@@ -1161,7 +1228,7 @@ function proposalCard(id){
   const showRows=proposal.inspect&&!isBig(proposal);
   const decided=decidedText(summary);
   const body=showRows?inspectRows(proposal):summaryRows(proposal)+failedRow(proposal);
-  const actionsHtml=controlsElsewhere?'':threeActions(proposal,'card-'+id);
+  const actionsHtml=controlsElsewhere?'':`<div class="pcard-actions"><p class="dbar-line">${countLine(proposal)}${reviewButton(proposal,'card-'+id)}</p>${proposalActions(proposal,'card-'+id)}</div>`;
   const reviewLink=isBig(proposal)?'':`<button type="button" class="link-btn" data-action="review" data-proposal="${id}">Otevřít na stránce kontroly</button>`;
   return `<article class="pcard${active&&!ui.trust?' is-active':''}" data-tone="ink" aria-labelledby="${id}-title" data-card="${id}"><div class="pcard-band"><h3 class="pcard-title" id="${id}-title">${icon('clipboard')}Návrh · ${giftsLabel(summary.total)}</h3>${decided?`<span class="pcard-meta">${decided}</span>`:''}</div>
     <div class="pcard-body">${body}${actionsHtml}${heldBlock(proposal)}<p class="pcard-meta"><span>${icon('clock')}Platnost do ${proposal.expires}</span>${reviewLink}</p></div></article>`;
@@ -1209,12 +1276,13 @@ function renderMessage(message){
 function panelHead(){
   const isMobile=ui.viewport==='mobile';
   const close=`<button type="button" class="icon-btn ghost" aria-label="Zavřít AI asistenta" data-action="close-panel" data-key="close">${icon('x')}</button>`;
-  const preview=isMobile&&ui.view==='chat'?`<button type="button" class="btn sm secondary preview-toggle" aria-pressed="${ui.sheet==='half'}" data-action="sheet-toggle" data-key="sheet-toggle">${icon('eye')}Náhled</button>`:'';
-  if(ui.view==='history')return `<button type="button" class="icon-btn ghost" aria-label="Zpět do konverzace" data-action="history-back" data-key="history-back">${icon('arrow-left')}</button><div class="as-titles"><h2 class="as-title" id="assistant-title">Historie</h2><p class="as-scope">Vánoce pro babičku</p></div><div class="as-head-actions">${close}</div>`;
+  if(ui.view==='history')return `<div class="as-line"><button type="button" class="icon-btn ghost" aria-label="Zpět do konverzace" data-action="history-back" data-key="history-back">${icon('arrow-left')}</button><div class="as-titles"><h2 class="as-title" id="assistant-title">Historie</h2><p class="as-scope">Vánoce pro babičku</p></div><div class="as-head-actions">${close}</div></div>`;
   const disabled=['cap','kill'].includes(ui.access);
-  const badge=ui.access==='demo'?'<span class="badge tone-accent">Ukázka</span>':ui.access==='kill'?'<span class="badge tone-muted">Vypnuto</span>':'';
-  return `<span class="as-mark" aria-hidden="true">${icon('sparkles')}</span><div class="as-titles"><h2 class="as-title" id="assistant-title">AI asistent ${badge}</h2><p class="as-scope">Vánoce pro babičku</p></div>
-    <div class="as-head-actions">${preview}<button type="button" class="icon-btn ghost" aria-label="Historie konverzací" data-action="open-history" data-key="open-history">${icon('history')}</button>${ui.access==='demo'?'':`<button type="button" class="icon-btn ghost" aria-label="Nová konverzace" data-action="new-chat" data-key="new-chat" ${disabled?'disabled':''}>${icon('square-pen')}</button>`}${close}</div>`;
+  const preview=isMobile?`<button type="button" class="btn sm quiet preview-toggle" aria-pressed="${ui.sheet==='half'}" data-action="sheet-toggle" data-key="sheet-toggle">${icon('eye')}Náhled</button>`:'';
+  const state=ui.access==='demo'?'<span class="badge tone-accent as-state">Ukázka</span>':ui.access==='kill'?`<span class="badge tone-muted as-state">${icon('power')}Vypnuto</span>`:'';
+  const trust=trustAllowed()?trustBar():'';
+  return `<div class="as-line"><span class="as-mark" aria-hidden="true">${icon('sparkles')}</span><div class="as-titles"><h2 class="as-title" id="assistant-title">AI asistent</h2><p class="as-scope">Vánoce pro babičku</p></div><div class="as-head-actions">${close}</div></div>
+    <div class="as-tools" role="toolbar" aria-label="Nástroje asistenta">${preview}<button type="button" class="icon-btn ghost" aria-label="Historie konverzací" data-action="open-history" data-key="open-history">${icon('history')}</button>${ui.access==='demo'?'':`<button type="button" class="icon-btn ghost" aria-label="Nová konverzace" data-action="new-chat" data-key="new-chat" ${disabled?'disabled':''}>${icon('square-pen')}</button>`}${state}${trust}</div>${trustHint()}`;
 }
 function historyView(){
   if(ui.historyLoading)return `<div class="history" aria-busy="true"><span class="sr-only">Načítání historie</span>${[1,2,3].map(()=>`<span class="skel" style="height:52px"></span>`).join('')}</div>`;
@@ -1229,15 +1297,16 @@ function trustHint(){
   return `<div class="hint" role="note">${icon('info')}<span><strong>Bez kontroly:</strong> úpravy a nové dárky se v této konverzaci použijí hned, na vlastní riziko. Smazání vždy potvrdíte.</span><button type="button" class="icon-btn ghost" aria-label="Skrýt nápovědu" data-action="dismiss-hint" data-key="dismiss-hint">${icon('x')}</button></div>`;
 }
 function trustBar(){
-  return `<div class="trust-row" data-on="${ui.trust}"><button type="button" class="switch" role="switch" id="trust-switch" aria-checked="${ui.trust}" data-action="toggle-trust" data-key="trust"></button><label for="trust-switch">Bez kontroly</label><span class="trust-state">${ui.trust?'Zapnuto v této konverzaci':''}</span></div>`;
+  return `<div class="trust-row" data-on="${ui.trust}"><button type="button" class="switch" role="switch" id="trust-switch" aria-checked="${ui.trust}" data-action="toggle-trust" data-key="trust"></button><label for="trust-switch">Bez kontroly</label></div>`;
 }
 function countLine(proposal){
-  const summary=decisionSummary(proposal);const decided=decidedText(summary);
-  const heldCount=proposal.held.filter(held=>held.status==='pending').length;
-  return `${icon('clipboard')}<span>Návrh · ${giftsLabel(summary.total)}${decided?` <span class="decided">· ${decided}</span>`:''}${heldCount?` <span class="decided">· ${heldCount} smazání zvlášť</span>`:''}</span>`;
+  const summary=decisionSummary(proposal);
+  if(proposal.flagUnresolved&&summary.unresolved)return `<span class="dbar-count is-blocked" role="status">${icon('alert')}${changesToDecide(summary.unresolved)}</span>`;
+  const decided=decidedText(summary);
+  return `<button type="button" class="dbar-count" data-action="locate" data-proposal="${proposal.id}" title="Ukázat návrh v konverzaci">${icon('clipboard')}<span>Návrh · ${giftsLabel(summary.total)}${decided?` <span class="decided">· ${decided}</span>`:''}</span></button>`;
 }
 function decisionBar(proposal){
-  return `<section class="dbar" aria-label="Rozhodnutí o návrhu"><button type="button" class="dbar-count" data-action="locate" data-proposal="${proposal.id}" title="Ukázat návrh v konverzaci">${countLine(proposal)}</button>${threeActions(proposal,'bar')}</section>`;
+  return `<section class="dbar" aria-label="Rozhodnutí o návrhu"><p class="dbar-line">${countLine(proposal)}${reviewButton(proposal,'bar')}</p>${proposalActions(proposal,'bar')}</section>`;
 }
 function composerBox(){
   if(ui.access==='demo'){
@@ -1253,7 +1322,7 @@ function footer(){
   if(ui.view==='history')return '';
   const active=ui.trust?null:activeProposal();
   const composerHtml=composerBox();
-  return `${active?decisionBar(active):''}${composerHtml}${trustAllowed()?trustHint()+trustBar():''}`;
+  return `${active?decisionBar(active):''}${composerHtml}`;
 }
 function renderPanel({scroll}={}){
   const panel=$('#assistant');
@@ -1365,22 +1434,25 @@ function clearTimers(){timers.forEach(clearTimeout);timers=[]}
 function fieldByRef(key){const [id,itemIndex,fieldIndex]=key.split('|');const proposal=proposals[id];return {proposal,entry:proposal.items[Number(itemIndex)].fields[Number(fieldIndex)]}}
 function openReview(id,{silent=false}={}){
   const proposal=proposals[id];
-  ui.reviewId=id;ui.page='review';ui.menuGift=null;ui.reviewSelection={};ui.editRef=null;ui.editDraft=null;
+  ui.reviewId=id;ui.page='review';ui.menuGift=null;ui.editRef=null;ui.editDraft=null;
   if(ui.viewport==='mobile')ui.open=false;
   if(silent)return;
   renderAll();$('#page-scroll').scrollTop=0;$('#review-title')?.focus();
 }
 function applyFromReview(){
   const proposal=proposals[ui.reviewId];
-  const selectedHeld=proposal.held.map((held,index)=>({held,index})).filter(({held,index})=>held.status==='pending'&&ui.reviewSelection['h'+index]);
+  if(decisionSummary(proposal).unresolved){flagUnresolved(proposal);return}
+  const deletions=proposal.held.filter(held=>held.status==='pending'&&held.choice==='delete');
   const run=()=>{
-    applyProposal(proposal);selectedHeld.forEach(({index})=>deleteHeld(proposal,index));
+    applyProposal(proposal);
+    proposal.held.forEach((held,index)=>{if(held.status==='pending'){if(held.choice==='delete'){deleteHeld(proposal,index);proposal.appliedCount+=1}else if(held.choice==='keep')held.status='kept'}});
     ui.page='wishlist';ui.reviewId=null;
     if(ui.viewport==='mobile'){ui.open=true;ui.sheet='half'}
     renderAll({scroll:'bottom'});$('#page-scroll').scrollTop=0;
     toast(`Použito: ${changesOfGifts(proposal.appliedCount)}. Vrátit jde v AI asistentovi.`);$('#wishlist-title')?.focus();
   };
-  if(selectedHeld.length)openDialog({title:`Smazat ${giftsLabel(selectedHeld.length)}?`,body:`Spolu se změnami se trvale odstraní: ${selectedHeld.map(({held})=>`„${escapeHtml(giftById(held.giftId).name)}“`).join(', ')}.`,confirmLabel:`Smazat ${giftsLabel(selectedHeld.length)}`,tone:'destructive',onConfirm:run});
+  /* The review page summarizes chosen deletions once before applying; the chat row click needs no dialog. */
+  if(deletions.length)openDialog({title:`Smazat ${giftsLabel(deletions.length)}?`,body:`Spolu se změnami se trvale odstraní: ${deletions.map(held=>`„${escapeHtml(giftById(held.giftId).name)}“`).join(', ')}.`,confirmLabel:`Použít a smazat ${giftsLabel(deletions.length)}`,tone:'destructive',onConfirm:run});
   else run();
 }
 function deleteHeld(proposal,index){
@@ -1426,6 +1498,16 @@ function demoChip(key){
   if(key==='sort'){sortUndo={previousOrder:gifts.map(gift=>gift.id),status:'applied'};gifts.sort((first,second)=>priceValue(first.price)-priceValue(second.price));sortUndo.appliedOrder=gifts.map(gift=>gift.id).join();thread.push(ai({type:'sorted'}))}
   renderAll({scroll:'last-user'});revealGhosts();announce(key==='sort'?'Pořadí změněno.':'Asistent připravil návrh.');
 }
+function flagUnresolved(proposal){
+  proposal.flagUnresolved=true;
+  if(!isBig(proposal))proposal.inspect=true;
+  const summary=decisionSummary(proposal);
+  if(isBig(proposal)&&allFields(proposal).some(entry=>!entry.decision)){openReview(proposal.id);return}
+  renderAll();
+  const first=ui.page==='review'?document.querySelector('.review .is-unresolved'):document.querySelector(`[data-card="${proposal.id}"] .is-unresolved`);
+  first?.scrollIntoView({block:'center',behavior:'smooth'});first?.querySelector('button')?.focus({preventScroll:true});
+  announce(`${changesToDecide(summary.unresolved)}.`);
+}
 function decide(key,decision){
   const {entry}=fieldByRef(key);
   entry.decision=entry.decision===decision?null:decision;
@@ -1439,7 +1521,7 @@ document.addEventListener('click',event=>{
   if(ui.menuGift&&!event.target.closest('#gift-menu')&&!(target&&target.dataset.action==='gift-menu')){ui.menuGift=null;renderPage()}
   if(!target){const demo=event.target.closest('[data-demo]');if(demo){event.preventDefault();toast('Ukázka: tato akce v návrhu nic nedělá.')}return}
   const action=target.dataset.action;
-  if(['pick-board','review-select','field-input','send-form'].includes(action))return;
+  if(['pick-board','field-input','send-form'].includes(action))return;
   event.preventDefault();
   switch(action){
     case 'toggle-panel':lastTrigger=target.dataset.key==='entry'?null:target;ui.open?closePanel():openPanel();break;
@@ -1456,11 +1538,26 @@ document.addEventListener('click',event=>{
     case 'review':openReview(target.dataset.proposal);break;
     case 'back-to-list':ui.page='wishlist';if(ui.viewport==='mobile')ui.open=false;renderAll();$('#wishlist-title')?.focus();break;
     case 'review-apply':applyFromReview();break;
+    case 'review-decline':{const proposal=proposals[ui.reviewId];proposal.status='declined';ui.page='wishlist';ui.reviewId=null;renderAll();toast('Návrh zamítnut, nic se nezměnilo.');$('#wishlist-title')?.focus();break}
+    case 'review-held':{const proposal=proposals[ui.reviewId];const held=proposal.held[Number(target.dataset.index)];held.choice=held.choice===target.dataset.choice?null:target.dataset.choice;renderAll();document.querySelector(`[data-key="${target.dataset.key}"]`)?.focus();break}
+    case 'review-all':{const proposal=proposals[ui.reviewId];const decision=target.dataset.decision;
+      allFields(proposal).forEach(entry=>{entry.decision=decision;if(decision!=='accepted')entry.value=entry.suggested});
+      if(decision==='rejected')proposal.held.forEach(held=>{if(held.status==='pending')held.choice='keep'});
+      ui.editRef=null;ui.editDraft=null;renderAll();document.querySelector(`[data-key="${target.dataset.key}"]`)?.focus();announce(decision==='accepted'?'Všechny změny přijaty, smazání čekají na vás.':'Všechny změny zamítnuty.');break}
     case 'inspect':{const proposal=proposals[target.dataset.proposal];proposal.inspect=!proposal.inspect;renderAll();if(proposal.inspect)document.querySelector(`[data-card="${proposal.id}"]`)?.scrollIntoView({block:'nearest'});break}
-    case 'apply':{const proposal=proposals[target.dataset.proposal];applyProposal(proposal);renderAll();toast(`Použito: ${changesOfGifts(proposal.appliedCount)}.`);announce('Návrh použit.');document.querySelector(`[data-key="undo-${proposal.id}"]`)?.focus();break}
+    case 'apply':{const proposal=proposals[target.dataset.proposal];if(target.getAttribute('aria-disabled')==='true'){flagUnresolved(proposal);break}applyProposal(proposal);renderAll();toast(`Použito: ${changesOfGifts(proposal.appliedCount)}.`);announce('Návrh použit.');document.querySelector(`[data-key="undo-${proposal.id}"]`)?.focus();break}
     case 'decline':{const proposal=proposals[target.dataset.proposal];proposal.status='declined';renderAll();toast('Návrh zamítnut, nic se nezměnilo.');$('#composer')?.focus();break}
     case 'undo-proposal':{const proposal=proposals[target.dataset.proposal];openDialog({title:`Vrátit ${changesOfGifts(proposal.appliedCount)}?`,body:'Dárky se vrátí do stavu před použitím.',confirmLabel:'Vrátit',tone:'danger',onConfirm:()=>{undoProposal(proposal);renderAll();toast('Vráceno.')}});break}
     case 'decide':decide(target.dataset.ref,target.dataset.decision);break;
+    case 'bulk-decide':{const proposal=proposals[target.dataset.proposal];const item=proposal.items[Number(target.dataset.item)];const decision=target.dataset.decision;
+      const next=bulkState(item.fields,decision)==='true'?null:decision;
+      item.fields.forEach(entry=>{entry.decision=next;if(next!=='accepted')entry.value=entry.suggested});ui.editRef=null;ui.editDraft=null;
+      renderAll();announce(`${itemName(item)}: ${next==='accepted'?'vše přijato':next==='rejected'?'vše zamítnuto':'bez rozhodnutí'}.`);break}
+    case 'decide-all':{const proposal=proposals[target.dataset.proposal];const decision=target.dataset.decision;
+      allFields(proposal).forEach(entry=>{entry.decision=decision;if(decision!=='accepted')entry.value=entry.suggested});
+      /* Přijmout vše never resolves deletions; Zamítnout vše keeps the gifts. */
+      if(decision==='rejected')proposal.held.forEach(held=>{if(held.status==='pending'){held.status='kept';held.choice=null}});
+      ui.editRef=null;ui.editDraft=null;renderAll();announce(decision==='accepted'?'Všechny změny přijaty, smazání čekají na vás.':'Všechny změny zamítnuty.');break}
     case 'edit-field':{const key=target.dataset.ref;if(ui.editRef===key){cancelEdit(key);break}ui.editRef=key;ui.editDraft=null;renderAll();document.querySelector(`[data-key="in-${key}"],[data-key^="cand-${key}-"][aria-checked="true"],[data-key^="cand-${key}-"]`)?.focus();break}
     case 'edit-cancel':cancelEdit(target.dataset.ref);break;
     case 'edit-save':saveEdit(target.dataset.ref);break;
@@ -1512,7 +1609,6 @@ document.addEventListener('change',event=>{
     if(target.value!=='none')proposal.items.push(createItem(NEW_GIFTS[target.value]));
     renderAll();
   }
-  if(action==='review-select'){ui.reviewSelection[target.dataset.row]=target.checked;renderPage();document.querySelector(`[data-action="review-select"][data-row="${target.dataset.row}"]`)?.focus()}
 });
 document.addEventListener('submit',event=>{if(event.target.matches('[data-action="send-form"]')){event.preventDefault();sendComposer()}});
 function sendComposer(){
@@ -1577,13 +1673,6 @@ document.querySelectorAll('[data-set]').forEach(button=>button.addEventListener(
   else{renderAll();writeUrl()}
 }));
 $('#scenario-select').addEventListener('change',event=>loadScenario(event.target.value));
-let lastPageScroll=0;
-$('#page-scroll').addEventListener('scroll',event=>{
-  const top=event.currentTarget.scrollTop;
-  const compact=top>24&&top>=lastPageScroll?true:top<lastPageScroll||top<=24?false:ui.fabCompact;
-  lastPageScroll=top;
-  if(compact!==ui.fabCompact){ui.fabCompact=compact;$('.fab')?.classList.toggle('is-compact',compact)}
-},{passive:true});
 $('#reset-stored').addEventListener('click',()=>{store.remove(WIDTH_KEY);store.remove(HINT_KEY);ui.hintDismissed=false;ui.panelWidth=PANEL_DEFAULT;renderAll();toast('Uložená šířka a nápověda smazány.')});
 window.addEventListener('resize',()=>{syncToolbar();applyWidth();positionMenu()});
 $('#page-scroll').addEventListener('scroll',()=>{if(ui.menuGift)positionMenu()},{passive:true});
@@ -1596,6 +1685,7 @@ ui.panelWidth=Number(store.get(WIDTH_KEY,PANEL_DEFAULT))||PANEL_DEFAULT;
 ui.hintDismissed=store.get(HINT_KEY,'')==='1';
 const startParams=new URLSearchParams(location.search);
 const startClosed=startParams.get('panel')==='closed';
+document.body.classList.toggle('preview-fab-label',startParams.get('fab')==='label');
 readUrl();syncToolbar();loadScenario(ui.scenario);
 if(startClosed){ui.open=false;renderAll();writeUrl()}
 const startScroll=startParams.get('scroll');

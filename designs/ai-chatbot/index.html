@@ -66,16 +66,17 @@ ul,ol{margin:0;padding-left:20px;display:grid;gap:6px}
   <header>
     <p class="eyebrow">Přejeme si · Vybraná varianta · <a href="https://github.com/MartinoPolo/prejemesi/issues/478">#478</a></p>
     <h1>AI asistent: Refined A</h1>
-    <p class="lead">Varianta A doplněná o připomínky vlastníka ve dvou kolech. Všechny volby jsou rozhodnuté: lišta rozhodnutí nad polem pro zprávu a plovoucí tlačítko vpravo dole. Lišta v mockupu přepíná zařízení, motiv, roli a scénář; stav jde nastavit adresou <code>?viewport=&amp;theme=&amp;scenario=&amp;role=&amp;panel=closed</code>. Požadavky: <a href="./DESIGN_BRIEF_AI_CHATBOT.md">brief</a>.</p>
+    <p class="lead">Varianta A doplněná o připomínky vlastníka ve třech kolech. Všechny volby jsou rozhodnuté: dvouřádková hlavička panelu, lišta rozhodnutí nad polem pro zprávu, plovoucí ikona vpravo dole a nerozhodnuté změny se nepoužijí. Lišta v mockupu přepíná zařízení, motiv, roli a scénář; stav jde nastavit adresou <code>?viewport=&amp;theme=&amp;scenario=&amp;role=&amp;panel=closed&amp;fab=label</code>. Požadavky: <a href="./DESIGN_BRIEF_AI_CHATBOT.md">brief</a>.</p>
   </header>
 
   <section class="panel" aria-labelledby="refined-title">
     <h2 id="refined-title">Refined A</h2>
     <div class="preview"><iframe title="Náhled Refined A" src="./refined.html?scenario=enrich" tabindex="-1"></iframe></div>
     <ul>
-      <li><strong>Lišta rozhodnutí:</strong> Zamítnout, Zkontrolovat a Použít nad polem pro zprávu, pod ním přepínač „Bez kontroly“; počty jsou po dárcích.</li>
-      <li><strong>Po polích, bez vstupů:</strong> každé pole ukazuje původní hodnotu červeně přeškrtnutou a novou zeleně; ✓ přijme, ✕ zamítne, opětovné klepnutí volbu zruší.</li>
-      <li><strong>Úprava:</strong> ✎ změní jen tu jednu hodnotu na pole, výběr nebo výběr obrázku; Uložit pole přijme jako „Upraveno“.</li>
+      <li><strong>Lišta rozhodnutí:</strong> počet a Zkontrolovat, pod nimi Zamítnout vše, Přijmout vše a Použít (N); N počítá dárky s aspoň jednou přijatou změnou.</li>
+      <li><strong>Předvybráno:</strong> přidání a úpravy polí začínají jako přijaté, mazání, rezervace a pozvánky jako nerozhodnuté. Dokud něco zbývá, Použít vypadá neaktivně; klepnutí orámuje nerozhodnuté volby červeně, posune k první a ukáže „Rozhodněte 2 změny“.</li>
+      <li><strong>Po polích, bez vstupů:</strong> každé pole ukazuje původní hodnotu červeně přeškrtnutou a novou zeleně; ✓ přijme, ✕ zamítne, opětovné klepnutí volbu zruší. Každý dárek má ✓ Vše a ✕ Vše, se smíšeným stavem.</li>
+      <li><strong>Úprava:</strong> ✎ změní jen tu jednu hodnotu na pole, výběr nebo výběr obrázku; Zrušit / Uložit, uložení pole přijme jako „Upraveno“, zamítnutí úpravu zahodí.</li>
       <li><strong>Mazání v chatu:</strong> klepnutí na „Smazat 1 dárek“ je potvrzení, bez dalšího dialogu; Vrátit vrací volbu Smazat / Ponechat.</li>
       <li><strong>Živý náhled:</strong> karty v seznamu ukazují návrh (štítek „Návrh“, přerušovaný okraj, nové a mazané dárky); stránka kontroly je volitelná, výchozí jen pro návrhy nad 5 dárků.</li>
       <li><strong>Šířka panelu:</strong> tažením 360–640 px, pamatuje se, dvojklik vrací 420 px; na mobilu dvě výšky (náhled a celý chat).</li>
@@ -84,32 +85,50 @@ ul,ol{margin:0;padding-left:20px;display:grid;gap:6px}
   </section>
 
   <section class="panel" aria-labelledby="entry-title">
-    <h2 id="entry-title">Plovoucí tlačítko na mobilu <span class="label label-confirmed">Rozhodnuto</span></h2>
-    <div class="grid-3">
+    <h2 id="entry-title">Plovoucí tlačítko <span class="label label-confirmed">Rozhodnuto</span></h2>
+    <div class="grid-2">
       <article class="option">
-        <h3>Nahoře seznamu</h3>
-        <div class="preview phone"><iframe title="Plovoucí tlačítko nahoře seznamu" src="./refined.html?scenario=chat&amp;viewport=mobile&amp;panel=closed" tabindex="-1"></iframe></div>
-        <p>Plné tlačítko „AI asistent“ vpravo dole, jen když je panel zavřený.</p>
+        <h3>Desktop: najetí nebo fokus</h3>
+        <div class="preview"><iframe title="Plovoucí tlačítko s popiskem" src="./refined.html?scenario=chat&amp;panel=closed&amp;fab=label" tabindex="-1"></iframe></div>
+        <p>V klidu jen ikona; popisek „AI asistent“ se vysune při najetí myší (jen zařízení s hover) a při fokusu z klávesnice, ne při posouvání. S omezeným pohybem bez animace.</p>
       </article>
       <article class="option">
-        <h3>Při posouvání dolů</h3>
-        <div class="preview phone"><iframe title="Plovoucí tlačítko při posouvání" src="./refined.html?scenario=chat&amp;viewport=mobile&amp;panel=closed&amp;scroll=600" tabindex="-1"></iframe></div>
-        <p>Sbalí se na ikonu, aby nezakrývalo ceny a tlačítka karet; při posunu nahoru se zase rozbalí.</p>
-      </article>
-      <article class="option">
-        <h3>Konec seznamu</h3>
-        <div class="preview phone"><iframe title="Plovoucí tlačítko na konci seznamu" src="./refined.html?scenario=chat&amp;viewport=mobile&amp;panel=closed&amp;scroll=end" tabindex="-1"></iframe></div>
-        <p>Seznam má dole rezervované místo, takže poslední karta jde vždy odsunout nad tlačítko.</p>
+        <h3>Desktop: otevřený panel</h3>
+        <div class="preview"><iframe title="Plovoucí tlačítko u otevřeného panelu" src="./refined.html?scenario=chat" tabindex="-1"></iframe></div>
+        <p>Tlačítko zůstane u okraje panelu a zavírá ho („Zavřít AI asistenta“); ✕ v hlavičce panelu zůstává.</p>
       </article>
     </div>
-    <p>Na stránkách s vlastní spodní lištou (stránka kontroly) se nezobrazí; oznámení se objevují nad ním.</p>
+    <p>Na mobilu je vždy jen ikona s přístupným názvem a na posouvání nereaguje. Seznam má dole rezervované místo; na stránkách s vlastní spodní lištou se tlačítko nezobrazí a oznámení se objevují nad ním.</p>
     <p><span class="label label-rejected">Zamítnuto</span> Tlačítko v hlavičce aplikace a spodní část panelu „Na kartě“ nebo „Zásuvka“; platí Lišta.</p>
-    <a class="open" href="./refined.html?scenario=chat&amp;viewport=mobile&amp;panel=closed">Otevřít na mobilu</a>
+    <a class="open" href="./refined.html?scenario=chat&amp;panel=closed">Otevřít na desktopu</a>
+  </section>
+
+  <section class="panel" aria-labelledby="header-title">
+    <h2 id="header-title">Hlavička panelu <span class="label label-confirmed">Rozhodnuto</span></h2>
+    <div class="grid-3">
+      <article class="option">
+        <h3>Mobil: nová konverzace</h3>
+        <div class="preview phone"><iframe title="Dvouřádková hlavička na mobilu" src="./refined.html?scenario=chat&amp;viewport=mobile" tabindex="-1"></iframe></div>
+        <p>Řádek 1: ikona, název a seznam, ✕. Řádek 2: Náhled, historie, nová konverzace a přepínač Bez kontroly, vše ve stejném tichém stylu; nápověda hned pod ním.</p>
+      </article>
+      <article class="option">
+        <h3>Mobil: vypnuto globálně</h3>
+        <div class="preview phone"><iframe title="Hlavička s vypnutým asistentem" src="./refined.html?scenario=kill-switch&amp;viewport=mobile" tabindex="-1"></iframe></div>
+        <p>„Vypnuto“ sedí na řádku 2 místo přepínače. Pod tlačítkem odeslat už nic není.</p>
+      </article>
+      <article class="option">
+        <h3>Mobil: plovoucí ikona</h3>
+        <div class="preview phone"><iframe title="Plovoucí ikona na konci seznamu" src="./refined.html?scenario=chat&amp;viewport=mobile&amp;panel=closed&amp;scroll=end" tabindex="-1"></iframe></div>
+        <p>Poslední karta jde vždy odsunout nad ikonu.</p>
+      </article>
+    </div>
+    <p>Desktop používá stejné dva řádky: přepínač má jedno místo na všech zařízeních a název se nikdy nezkracuje.</p>
+    <a class="open" href="./refined.html?scenario=kill-switch&amp;viewport=mobile">Otevřít na mobilu</a>
   </section>
 
   <section class="panel" aria-labelledby="review-title">
     <h2 id="review-title">Stránka kontroly</h2>
-    <p>Stejné řádky po polích jako v chatu: původní → nová hodnota, ✓ ✕ ✎ a „Upraveno“ po uložení úpravy. Jen návrh, změna rozhraní přijde s implementací #478.</p>
+    <p>Stejné řádky po polích jako v chatu: původní → nová hodnota, ✓ ✕ ✎, „Upraveno“ po uložení úpravy a ✓ Vše / ✕ Vše u každého dárku. Velký obrázek dárku, jména se nezkracují, na úzké šířce je dárek nad svými poli. Spodní lišta je orámovaná karta se Zamítnout vše, Přijmout vše a Použít, které nerozhodnuté volby orámuje červeně. Jen návrh, změna rozhraní přijde s implementací #478.</p>
     <a class="open" href="../agent-change-review/refined.html">Otevřít návrh stránky kontroly</a>
   </section>
 
@@ -136,11 +155,17 @@ ul,ol{margin:0;padding-left:20px;display:grid;gap:6px}
       <li><span class="label label-confirmed">Potvrzeno</span> Použít z chatu i Bez kontroly mění seznam hned, na vlastní riziko; stránka kontroly je volitelná. Smazání, rezervace a pozvánky správců vždy potvrdíte, i se zapnutým Bez kontroly.</li>
       <li><span class="label label-confirmed">Potvrzeno</span> Klepnutí na „Smazat 1 dárek“ v chatu je to potvrzení; Vrátit vrací rozhodnutí na výběr Smazat / Ponechat.</li>
       <li><span class="label label-confirmed">Potvrzeno</span> Změny se počítají po dárcích.</li>
-      <li><span class="label label-confirmed">Potvrzeno</span> Uložená úprava hodnotu přijme („Upraveno“).</li>
+      <li><span class="label label-confirmed">Potvrzeno</span> Uložená úprava hodnotu přijme („Upraveno“); zamítnutí úpravu zahodí.</li>
+      <li><span class="label label-confirmed">Potvrzeno</span> Nerozhodnuté změny se nepoužijí: úpravy polí začínají přijaté, mazání nerozhodnuté a dokud něco zbývá, Použít je blokované.</li>
+      <li><span class="label label-confirmed">Potvrzeno</span> Přijmout vše a Zamítnout vše u každého dárku i pro celý návrh.</li>
+      <li><span class="label label-confirmed">Potvrzeno</span> Hlavička panelu má dva řádky; přepínač Bez kontroly je na mobilu nahoře, ne pod polem pro zprávu.</li>
       <li><span class="label label-confirmed">Potvrzeno</span> Čekající návrhy jde použít i při globálně vypnutém asistentovi.</li>
-      <li><span class="label label-confirmed">Potvrzeno</span> Spodní část panelu je lišta, vstup je plovoucí tlačítko vpravo dole.</li>
+      <li><span class="label label-confirmed">Potvrzeno</span> Spodní část panelu je lišta, vstup je plovoucí ikona vpravo dole: na desktopu s popiskem při najetí a u otevřeného panelu ho zavírá, na mobilu vždy jen ikona.</li>
       <li><span class="label label-confirmed">Potvrzeno</span> Stránka kontroly používá stejné přijmout, zamítnout a upravit po polích jako chat.</li>
       <li><span class="label label-assumption">Předpoklad</span> Návrh s více než 5 dárky se kontroluje na stránce kontroly, ne v panelu.</li>
+      <li><span class="label label-assumption">Předpoklad</span> Nerozhodnuté začínají mazání, rezervace a pozvánky správců.</li>
+      <li><span class="label label-assumption">Předpoklad</span> Přijmout vše nikdy nerozhodne mazání, rezervace ani pozvánky.</li>
+      <li><span class="label label-assumption">Předpoklad</span> Desktop má také dvouřádkovou hlavičku.</li>
     </ul>
   </section>
 
