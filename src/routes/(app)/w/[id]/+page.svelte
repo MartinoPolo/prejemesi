@@ -371,7 +371,7 @@
 	const canManage = $derived(canManageWishlist(role));
 	const categoriesQuery = $derived(browser && canManage ? getGiftCategories(wishlist.id) : null);
 	const chatAvailabilityQuery = $derived(
-		browser && isAuthenticated && canManage ? getChatAvailability() : null,
+		browser && data.chatOffered && canManage ? getChatAvailability() : null,
 	);
 	const chatAvailability = $derived(chatAvailabilityQuery?.current);
 	// The demo playground gets its own chatbot; until then demo identities see no entry point.
