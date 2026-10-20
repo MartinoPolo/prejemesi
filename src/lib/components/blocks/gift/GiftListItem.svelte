@@ -17,6 +17,9 @@
 	import GiftPriorityBadge from './GiftPriorityBadge.svelte';
 	import GiftCategoryBadge from './GiftCategoryBadge.svelte';
 	import GiftLinkList from './GiftLinkList.svelte';
+	import GiftLivePreviewBadge from './GiftLivePreviewBadge.svelte';
+	import { GIFT_LIVE_PREVIEW } from '$lib/components/blocks/change-proposals/change_row_model.js';
+	import { giftLivePreviewMarks } from '$lib/components/blocks/change-proposals/gift_live_preview.js';
 	import { restingShadowNesting } from '$lib/utils/resting_shadow_nesting.js';
 	import { observeDepthChange } from '$lib/theme/depth_change.js';
 	import type { GiftPresentationProps } from './gift_presentation_props.js';
@@ -37,9 +40,14 @@
 		moreSurface = 'menu',
 		showPriority = true,
 		showCategory,
+		livePreview,
 	}: GiftPresentationProps = $props();
 
 	const categoryVisible = $derived(showCategory ?? !contextualMode);
+	const previewMarks = $derived(giftLivePreviewMarks(livePreview));
+	const showsTopRow = $derived(
+		(gift.category != null && categoryVisible) || previewMarks.proposed,
+	);
 
 	const giftsContext = useGifts();
 
@@ -69,7 +77,7 @@
 		}),
 	);
 	let actionContentWidth = $state(0);
-	const isDimmed = $derived(presentation.isDimmed);
+	const isDimmed = $derived(presentation.isDimmed || previewMarks.deletion);
 	// Content fades per element because the title row and content column also hold actions.
 	const dimmedContentClass = $derived(cn(isDimmed && 'opacity-50'));
 	const imageSrc = $derived(resolveGiftImageUrl(gift.imageUrl, gift.imageKey));
@@ -106,7 +114,7 @@
 				resizeObserver.observe(control);
 			}
 			for (const element of image.querySelectorAll<HTMLElement>(
-				'[data-testid="gift-category-badge"], [data-testid="gift-priority-badge"], [data-testid="gift-state-overlay"] > span',
+				'.gift-list-top-row, [data-testid="gift-priority-badge"], [data-testid="gift-state-overlay"] > span',
 			)) {
 				resizeObserver.observe(element);
 			}
@@ -115,9 +123,7 @@
 
 		function measure() {
 			const imageRect = image.getBoundingClientRect();
-			const category = image.querySelector<HTMLElement>(
-				'[data-testid="gift-category-badge"]',
-			);
+			const category = image.querySelector<HTMLElement>('.gift-list-top-row');
 			const priority = image.querySelector<HTMLElement>(
 				'[data-testid="gift-priority-badge"]',
 			);
@@ -195,6 +201,7 @@
 <div class="gift-list-query-container w-full">
 	<div
 		data-testid="gift-list-item"
+		data-live-preview={livePreview}
 		use:restingShadowNesting
 		class={cn(
 			'gift-list-item resting-shadow-nesting relative grid items-start gap-0 rounded-panel border-2 bg-card',
@@ -218,15 +225,30 @@
 				alt={gift.name}
 				class={dimmedContentClass}
 			/>
-			{#if gift.category != null && categoryVisible}
-				<div class="gift-list-category absolute top-2 right-2 z-20 min-w-0">
-					<GiftCategoryBadge category={gift.category} {isDimmed} />
+			{#if showsTopRow}
+				<div
+					class="gift-list-top-row absolute top-2 right-2 z-20 flex min-w-0 flex-wrap items-start gap-1"
+				>
+					{#if previewMarks.proposed && livePreview !== undefined}
+						<GiftLivePreviewBadge kind={livePreview} />
+					{/if}
+					{#if gift.category != null && categoryVisible}
+						<GiftCategoryBadge category={gift.category} {isDimmed} />
+					{/if}
 				</div>
 			{/if}
-			<GiftStateOverlay
-				entries={presentation.overlay}
-				class={cn('gift-list-state-overlay', contextualMode && 'pt-[3.25rem]')}
-			/>
+			{#if previewMarks.deletion}
+				<div
+					class="pointer-events-none absolute inset-0 z-10 flex items-center justify-center p-1"
+				>
+					<GiftLivePreviewBadge kind={GIFT_LIVE_PREVIEW.deletion} />
+				</div>
+			{:else}
+				<GiftStateOverlay
+					entries={presentation.overlay}
+					class={cn('gift-list-state-overlay', contextualMode && 'pt-[3.25rem]')}
+				/>
+			{/if}
 			<GiftPriorityBadge
 				priorityLabel={gift.priorityLabel}
 				{showPriority}
@@ -246,6 +268,7 @@
 					class={cn(
 						'gift-list-title line-clamp-2 min-w-0 flex-1 font-semibold text-foreground [overflow-wrap:anywhere] sm:line-clamp-1',
 						dimmedContentClass,
+						previewMarks.deletion && 'line-through decoration-2',
 					)}
 					title={gift.name}
 				>
@@ -296,7 +319,7 @@
 				</span>
 			</div>
 
-			{#if !contextualMode && (browseActions.primaryAction !== undefined || (onmore && persistentMore))}
+			{#if !contextualMode && !previewMarks.actionless && (browseActions.primaryAction !== undefined || (onmore && persistentMore))}
 				<div
 					bind:clientWidth={actionContentWidth}
 					class="mt-auto flex min-w-0 flex-col gap-1.5 pt-1.5"
@@ -330,7 +353,7 @@
 		container: gift-list / inline-size;
 	}
 
-	.gift-list-category {
+	.gift-list-top-row {
 		left: var(--gift-context-leading-clearance, 0.5rem);
 	}
 
@@ -398,5 +421,23 @@
 		.gift-list-image {
 			height: 100%;
 		}
+	}
+
+	/* The chat's live preview: a proposed edit is outlined, a proposed new gift is a ghost row. */
+	.gift-list-item[data-live-preview='edit'] {
+		outline: 2.5px dashed var(--brand);
+		outline-offset: 4px;
+	}
+
+	.gift-list-item[data-live-preview='creation'] {
+		border-style: dashed;
+		border-color: var(--brand);
+		background: color-mix(in oklab, var(--brand) 7%, var(--card));
+		box-shadow: none;
+	}
+
+	.gift-list-item[data-live-preview='creation'] .gift-list-image {
+		border-right-style: dashed;
+		border-right-color: var(--brand);
 	}
 </style>

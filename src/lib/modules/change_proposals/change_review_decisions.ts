@@ -99,7 +99,7 @@ export const SNAPSHOT_KEYS_BY_FIELD = {
 	image: ['imageUrl', 'imageMeta'],
 } as const satisfies Record<ChangeField, readonly (keyof ChangeProposalGift)[]>;
 
-function sameSnapshotValue(first: unknown, second: unknown): boolean {
+export function sameSnapshotValue(first: unknown, second: unknown): boolean {
 	return JSON.stringify(first) === JSON.stringify(second);
 }
 

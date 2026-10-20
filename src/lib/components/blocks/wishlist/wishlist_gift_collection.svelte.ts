@@ -1,4 +1,9 @@
 import type { GiftPresentationProps } from '$lib/components/blocks/gift/gift_presentation_props.js';
+import {
+	NO_GIFT_LIVE_PREVIEWS,
+	previewedGift,
+	type GiftLivePreviews,
+} from '$lib/components/blocks/change-proposals/gift_live_preview.js';
 import type { GiftSection } from '$lib/modules/gifts/gift_ordering.js';
 import type { GiftReorderPlacement } from '$lib/modules/gifts/gift_grouped_reorder.js';
 import {
@@ -42,6 +47,8 @@ export interface WishlistGiftCollectionProps {
 	activeContextGiftId?: string | null;
 	contextSurface?: 'menu' | 'dialog';
 	showPriority?: boolean;
+	/** The open chat's proposals as they are decided: edited, new and deleted gifts. */
+	livePreviews?: GiftLivePreviews;
 }
 
 /**
@@ -96,8 +103,10 @@ export function createWishlistGiftCollectionView(
 
 	function giftPresentationProps(gift: GiftByRole): GiftPresentationProps {
 		const openContextActions = collection.oncontextactions;
+		const previewed = previewedGift(gift, collection.livePreviews ?? NO_GIFT_LIVE_PREVIEWS);
 		return {
-			gift,
+			gift: previewed.gift,
+			livePreview: previewed.livePreview,
 			role: collection.role,
 			isArchived: collection.isArchived,
 			hideReservationState: collection.hideReservationState,

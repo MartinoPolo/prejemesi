@@ -2,6 +2,7 @@
 	import { untrack } from 'svelte';
 	import { MediaQuery } from 'svelte/reactivity';
 	import type { ChangeRowContext } from '$lib/components/blocks/change-proposals/change_row_model.js';
+	import type { DecidingProposalRegistry } from '$lib/components/blocks/change-proposals/gift_live_preview.js';
 	import { useAssistant } from '$lib/modules/chat/assistant.context.svelte.js';
 	import { useAssistantDock } from '$lib/modules/chat/assistant_dock.context.svelte.js';
 	import type { ChatAvailability } from '$lib/modules/chat/types.js';
@@ -17,11 +18,14 @@
 		wishlistTitle,
 		availability,
 		rowContext,
+		decidingProposals,
 	}: {
 		wishlistShortId: string;
 		wishlistTitle: string;
 		availability: ChatAvailability;
 		rowContext: Omit<ChangeRowContext, 'submitterName' | 'kindTitle'>;
+		/** Pending proposals register here so the wishlist behind the panel previews them. */
+		decidingProposals: DecidingProposalRegistry;
 	} = $props();
 
 	const assistant = useAssistant();
@@ -48,6 +52,7 @@
 		{availability}
 		mobile={mobile.current}
 		{rowContext}
+		{decidingProposals}
 	/>
 {/snippet}
 

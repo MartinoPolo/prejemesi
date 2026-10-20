@@ -84,4 +84,42 @@ test.describe('AI assistant on a wishlist (issue #478)', () => {
 		await panel.getByTestId('assistant-history-open').click();
 		await expect(panel.getByTestId('assistant-history')).toContainText(GIFT_NAME);
 	});
+
+	test('previews proposals on the wishlist while they are decided', async ({
+		page,
+		request,
+		baseURL,
+	}) => {
+		await loginAsMartin(page, request, baseURL!);
+		await createWishlistAndNavigate(page, `Asistent náhled ${Date.now()}`);
+		await addGift(page, GIFT_NAME);
+
+		const panel = page.getByTestId('assistant-panel');
+		const composer = page.getByTestId('assistant-composer');
+		await page.getByTestId('assistant-fab').click();
+		await composer.fill('Přidejte Stolní hra Azul');
+		await page.getByTestId('assistant-send').click();
+
+		const ghost = page.getByTestId('gift-live-preview-creation');
+		await expect(ghost).toContainText('Stolní hra Azul', { timeout: 15_000 });
+		await expect(ghost.getByTestId('gift-live-preview-badge')).toContainText('Návrh');
+
+		await composer.fill(`Smažte ${GIFT_NAME}`);
+		await page.getByTestId('assistant-send').click();
+		const giftCard = page.locator('[data-gift-item]').filter({ hasText: GIFT_NAME });
+		const deletionBadge = giftCard.getByTestId('gift-live-preview-badge');
+		await expect(deletionBadge).toContainText('Čeká na smazání', { timeout: 15_000 });
+
+		// The decision bar holds the newest proposal; rejecting it keeps the gift.
+		await panel
+			.getByRole('region', { name: 'Rozhodnutí o návrhu' })
+			.getByTestId('chat-proposal-reject-all')
+			.click();
+		await expect(deletionBadge).toHaveCount(0);
+		await expect(ghost).toHaveCount(1);
+
+		await page.keyboard.press('Escape');
+		await expect(panel).toBeHidden();
+		await expect(ghost).toHaveCount(0);
+	});
 });

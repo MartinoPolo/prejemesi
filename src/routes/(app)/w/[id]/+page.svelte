@@ -4,7 +4,7 @@
 	import { afterNavigate, replaceState, goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { onMount, tick } from 'svelte';
-	import { SvelteSet } from 'svelte/reactivity';
+	import { SvelteMap, SvelteSet } from 'svelte/reactivity';
 	import * as m from '$lib/paraglide/messages.js';
 	import { localizeInternalHref } from '$lib/i18n/locale.js';
 	import WishlistHeader from '$lib/components/blocks/gift/WishlistHeader.svelte';
@@ -17,6 +17,11 @@
 	import GiftContextActions from '$lib/components/blocks/wishlist/GiftContextActions.svelte';
 	import WishlistAssistant from '$lib/components/blocks/chat/WishlistAssistant.svelte';
 	import { setAssistantContext } from '$lib/modules/chat/assistant.context.svelte.js';
+	import {
+		NO_GIFT_LIVE_PREVIEWS,
+		giftLivePreviews,
+		type DecidingProposalRegistry,
+	} from '$lib/components/blocks/change-proposals/gift_live_preview.js';
 	import { getChatAvailability } from '$lib/modules/chat/chat.remote.js';
 	import { CHAT_AVAILABILITY } from '$lib/modules/chat/types.js';
 	import { cn } from '$lib/utils.js';
@@ -258,6 +263,7 @@
 	);
 
 	const assistant = setAssistantContext();
+	const decidingProposals: DecidingProposalRegistry = new SvelteMap();
 
 	untrack(() =>
 		setLikesContext(
@@ -535,6 +541,12 @@
 	// ── Gift display ─────────────────────────────────────────────────────────
 
 	let reorderMode = $state(false);
+	// The list previews the proposals the open chat is deciding; reordering shows it as stored.
+	const giftPreviews = $derived(
+		assistant.open.current && !reorderMode
+			? giftLivePreviews(decidingProposals)
+			: NO_GIFT_LIVE_PREVIEWS,
+	);
 	let reorderActiveIds = $state<string[] | null>(null);
 	let reorderDonePending = $state(false);
 	let reorderBaselineStatus = $state<ReorderBaselineStatus>(REORDER_BASELINE_STATUS.verified);
@@ -2392,6 +2404,7 @@
 			nativeContextSessionId={contextSession?.id ?? 0}
 			onnativecontextcomplete={completeContextClose}
 			contextContent={contextActions}
+			livePreviews={giftPreviews}
 		/>
 	{/if}
 	<p class="sr-only" aria-live="polite" aria-atomic="true">{receivedAnnouncement}</p>
@@ -2401,6 +2414,7 @@
 			wishlistTitle={wishlist.title}
 			availability={chatAvailability}
 			rowContext={{ currentGifts: gifts, categories: categoryOptions, priorityLevels }}
+			{decidingProposals}
 		/>
 	{/if}
 </div>

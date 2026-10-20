@@ -8,6 +8,8 @@
 		type WishlistGiftCollectionProps,
 	} from './wishlist_gift_collection.svelte.js';
 	import { GIFT_DISPLAY_ROW_KINDS } from './gift_section_rows.js';
+	import { GIFT_LIVE_PREVIEW } from '$lib/components/blocks/change-proposals/change_row_model.js';
+	import { WISHLIST_ROLES } from '$lib/modules/wishlists/types.js';
 
 	let collection: WishlistGiftCollectionProps = $props();
 
@@ -44,5 +46,14 @@
 				{/snippet}
 			</WishlistGiftItem>
 		{/if}
+	{/each}
+	{#each collection.livePreviews?.creations ?? [] as creation (creation.key)}
+		<div data-testid="gift-live-preview-creation">
+			<GiftListItem
+				gift={creation.gift}
+				role={WISHLIST_ROLES.recipient}
+				livePreview={GIFT_LIVE_PREVIEW.creation}
+			/>
+		</div>
 	{/each}
 </div>
