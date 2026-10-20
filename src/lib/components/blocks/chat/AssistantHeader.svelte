@@ -73,6 +73,27 @@
 	</Button>
 {/snippet}
 
+{#snippet chatState()}
+	{#if availability === CHAT_AVAILABILITY.disabled}
+		<Badge tone="neutral" badgeStyle="subtle" class="state">
+			{#snippet icon()}<PowerIcon />{/snippet}
+			{m.chat_state_disabled()}
+		</Badge>
+	{:else if demo}
+		<Badge tone="accent" badgeStyle="solid" class="state">{m.chat_state_demo()}</Badge>
+	{/if}
+	{#if available || demo}
+		<label class="trust">
+			<Switch
+				checked={fastForward}
+				onCheckedChange={onfastforward}
+				data-testid="assistant-fast-forward"
+			/>
+			{m.chat_fast_forward()}
+		</label>
+	{/if}
+{/snippet}
+
 <header class="head">
 	{#if view === ASSISTANT_VIEW.history}
 		<div class="line">
@@ -140,24 +161,7 @@
 					<SquarePenIcon />
 				</Button>
 			{/if}
-			{#if availability === CHAT_AVAILABILITY.disabled}
-				<Badge tone="neutral" badgeStyle="subtle" class="state">
-					{#snippet icon()}<PowerIcon />{/snippet}
-					{m.chat_state_disabled()}
-				</Badge>
-			{:else if demo}
-				<Badge tone="accent" badgeStyle="solid" class="state">{m.chat_state_demo()}</Badge>
-			{/if}
-			{#if available || demo}
-				<label class="trust">
-					<Switch
-						checked={fastForward}
-						onCheckedChange={onfastforward}
-						data-testid="assistant-fast-forward"
-					/>
-					{m.chat_fast_forward()}
-				</label>
-			{/if}
+			{@render chatState()}
 		</div>
 		{#if showHint}
 			<div class="hint" role="note">

@@ -385,6 +385,25 @@
 	{/if}
 {/snippet}
 
+{#snippet messageInput()}
+	{#if demo}
+		<ChatDemoActions
+			{sentTexts}
+			busy={streaming || creatingSession}
+			onsend={(text) => void runTurn({ kind: CHAT_TURN_KIND.message, text })}
+		/>
+	{:else}
+		<ChatComposer
+			bind:value={assistant.draft.current}
+			bind:textarea={composer}
+			streaming={streaming || creatingSession}
+			disabled={!available}
+			onsend={send}
+			onstop={stop}
+		/>
+	{/if}
+{/snippet}
+
 {#snippet conversation()}
 	{#if items.length === 0 && liveTurn === null}
 		<ChatWelcome {available} {demo} onstarter={(prompt) => void useStarter(prompt)} />
@@ -479,22 +498,7 @@
 				</section>
 			{/if}
 			{@render statusLine()}
-			{#if demo}
-				<ChatDemoActions
-					{sentTexts}
-					busy={streaming || creatingSession}
-					onsend={(text) => void runTurn({ kind: CHAT_TURN_KIND.message, text })}
-				/>
-			{:else}
-				<ChatComposer
-					bind:value={assistant.draft.current}
-					bind:textarea={composer}
-					streaming={streaming || creatingSession}
-					disabled={!available}
-					onsend={send}
-					onstop={stop}
-				/>
-			{/if}
+			{@render messageInput()}
 		</footer>
 	{/if}
 </aside>
