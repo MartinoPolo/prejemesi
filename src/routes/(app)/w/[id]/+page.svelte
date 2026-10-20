@@ -171,6 +171,7 @@
 		resetPriorityLevelLoaderForWishlistChange,
 		settlePriorityLevelLoad,
 	} from './priority_level_loader.js';
+	import type { PageProps } from './$types';
 	import {
 		GIFT_GROUPING_OPTIONS,
 		GIFT_VIEW_MODES,
@@ -213,7 +214,7 @@
 	type ReorderBaselineStatus =
 		(typeof REORDER_BASELINE_STATUS)[keyof typeof REORDER_BASELINE_STATUS];
 
-	let { data } = $props();
+	let { data }: PageProps = $props();
 
 	const shortId = $derived(page.params.id!);
 	const isAuthenticated = $derived(data.user !== null);
