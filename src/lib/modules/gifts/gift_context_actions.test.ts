@@ -14,6 +14,7 @@ import {
 const capabilityFlags = [
 	'readOnly',
 	'canEdit',
+	'canEnrich',
 	'canReserve',
 	'ownsReservation',
 	'canTrackPurchased',
@@ -61,6 +62,23 @@ describe('gift contextual actions', () => {
 				canEdit: true,
 			}),
 		).toEqual(['open', 'copy', 'edit', 'priority', 'category', 'received', 'multiselect']);
+	});
+
+	it('offers AI enrichment after edit to managers the assistant is offered to, never on archived lists', () => {
+		const manager: GiftContextActionContext = {
+			role: 'recipient',
+			primaryUrl: null,
+			readOnly: false,
+			canEdit: true,
+			canEnrich: true,
+		};
+		expect(groupGiftContextActions(giftContextActions(manager))).toContainEqual({
+			name: 'gift',
+			actions: ['edit', 'enrich', 'received', 'multiselect'],
+		});
+		expect(giftContextActions({ ...manager, canEnrich: false })).not.toContain('enrich');
+		expect(giftContextActions({ ...manager, readOnly: true })).not.toContain('enrich');
+		expect(giftContextActions({ ...manager, role: 'visitor' })).not.toContain('enrich');
 	});
 
 	it('offers reservation ownership and purchased actions from explicit capabilities', () => {

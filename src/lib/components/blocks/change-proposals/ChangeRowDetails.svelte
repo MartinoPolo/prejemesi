@@ -23,6 +23,7 @@
 		reasonSuffix = null,
 		actions,
 		showUnresolved,
+		showCurrentCards = true,
 	}: {
 		entry: ReviewRowEntry;
 		consequenceId: string;
@@ -31,6 +32,8 @@
 		reasonSuffix?: string | null;
 		actions: ChangeReviewActions | undefined;
 		showUnresolved: boolean;
+		/** The chat leaves the full gift cards to the review page. */
+		showCurrentCards?: boolean;
 	} = $props();
 
 	const model = $derived(entry.model);
@@ -108,7 +111,7 @@
 		<span>{reasonSuffix === null ? reason : `${reason} ${reasonSuffix}`}</span>
 	</p>
 {/each}
-{#if model.currentCards !== null}
+{#if showCurrentCards && model.currentCards !== null}
 	<details class="disclosure">
 		<summary class="disclosure-toggle"
 			><ChevronDownIcon aria-hidden="true" />{m.change_review_show_current()}</summary

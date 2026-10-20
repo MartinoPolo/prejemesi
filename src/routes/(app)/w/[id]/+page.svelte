@@ -15,6 +15,11 @@
 		type BulkCopyDestination,
 	} from '$lib/components/blocks/wishlist/GiftBulkCopyDialog.svelte';
 	import GiftContextActions from '$lib/components/blocks/wishlist/GiftContextActions.svelte';
+	import WishlistAssistant from '$lib/components/blocks/chat/WishlistAssistant.svelte';
+	import { setAssistantContext } from '$lib/modules/chat/assistant.context.svelte.js';
+	import { getChatAvailability } from '$lib/modules/chat/chat.remote.js';
+	import { CHAT_AVAILABILITY } from '$lib/modules/chat/types.js';
+	import { cn } from '$lib/utils.js';
 	import ReleaseReservationFlow from '$lib/components/blocks/reservation/ReleaseReservationFlow.svelte';
 	import type {
 		GiftActionPlacementSnapshot,
@@ -251,6 +256,8 @@
 		),
 	);
 
+	const assistant = setAssistantContext();
+
 	untrack(() =>
 		setLikesContext(
 			() => likedGiftIds,
@@ -363,6 +370,17 @@
 	// Full management gate (add/edit gifts, share, archive, settings): recipient OR správce.
 	const canManage = $derived(canManageWishlist(role));
 	const categoriesQuery = $derived(browser && canManage ? getGiftCategories(wishlist.id) : null);
+	const chatAvailabilityQuery = $derived(
+		browser && isAuthenticated && canManage ? getChatAvailability() : null,
+	);
+	const chatAvailability = $derived(chatAvailabilityQuery?.current);
+	// The demo playground gets its own chatbot; until then demo identities see no entry point.
+	const chatOffered = $derived(
+		chatAvailability !== undefined &&
+			chatAvailability !== CHAT_AVAILABILITY.notAllowed &&
+			chatAvailability !== CHAT_AVAILABILITY.demo &&
+			!isArchived,
+	);
 	const categoryOptions = $derived(categoriesQuery?.current ?? []);
 	const categoryActionOptions = $derived(
 		categoryOptions.map((category) => ({
@@ -2152,7 +2170,10 @@
 	data-testid="wishlist-page-shell"
 	data-palette={activePalette}
 	style="overflow-anchor: none"
-	class="mt-3 flex flex-col gap-3 pb-3 sm:mt-0 sm:gap-6 sm:py-6"
+	class={cn(
+		'mt-3 flex flex-col gap-3 pb-3 sm:mt-0 sm:gap-6 sm:py-6',
+		chatOffered && 'pb-20 sm:pb-20',
+	)}
 >
 	<WishlistHeader
 		title={wishlist.title}
@@ -2303,6 +2324,12 @@
 					oncomplete={completeContextClose}
 					onfinish={finishContextAction}
 					onedit={() => void openEditModal(contextActionGift)}
+					onenrich={chatOffered
+						? () =>
+								assistant.startNewChat(
+									m.chat_enrich_prompt({ name: contextActionGift.name }),
+								)
+						: undefined}
 					onpriority={(priorityLevelId) => void updateContextGift({ priorityLevelId })}
 					oncategory={(categoryId) => void updateContextGift({ categoryId })}
 					onreceived={() =>
@@ -2367,6 +2394,14 @@
 		/>
 	{/if}
 	<p class="sr-only" aria-live="polite" aria-atomic="true">{receivedAnnouncement}</p>
+	{#if chatOffered && chatAvailability !== undefined}
+		<WishlistAssistant
+			wishlistShortId={shortId}
+			wishlistTitle={wishlist.title}
+			availability={chatAvailability}
+			rowContext={{ currentGifts: gifts, categories: categoryOptions, priorityLevels }}
+		/>
+	{/if}
 </div>
 
 <svelte:window

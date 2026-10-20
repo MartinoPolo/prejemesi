@@ -3,6 +3,7 @@
 	import ExternalLinkIcon from '@lucide/svelte/icons/external-link';
 	import CopyIcon from '@lucide/svelte/icons/copy';
 	import PencilIcon from '@lucide/svelte/icons/pencil';
+	import SparklesIcon from '@lucide/svelte/icons/sparkles';
 	import CheckIcon from '@lucide/svelte/icons/check';
 	import Undo2Icon from '@lucide/svelte/icons/undo-2';
 	import ListChecksIcon from '@lucide/svelte/icons/list-checks';
@@ -18,6 +19,7 @@
 		open: ExternalLinkIcon,
 		copy: CopyIcon,
 		edit: PencilIcon,
+		enrich: SparklesIcon,
 		received: CheckIcon,
 		multiselect: ListChecksIcon,
 		reserve: BookmarkIcon,

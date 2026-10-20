@@ -8,6 +8,7 @@
 		CHANGE_PROPOSAL_STATE,
 		type ChangeProposalView,
 	} from '$lib/modules/change_proposals/types.js';
+	import { OPERATION_CHANNEL } from '$lib/modules/change_proposals/operation_channel.js';
 	import {
 		changeReviewExpiryCopy,
 		countCopy,
@@ -29,6 +30,7 @@
 			.map((kind) => ({ kind, count: proposal.kindCounts[kind] ?? 0 }))
 			.filter((entry) => entry.count > 0),
 	);
+	const fromChat = $derived(proposal.channel === OPERATION_CHANNEL.chatbot);
 	const submittedVia = $derived(
 		proposal.viaApp ? m.change_review_submitted_via_app() : m.change_review_submitted_via(),
 	);
@@ -49,8 +51,12 @@
 	<span class="summary-icon" aria-hidden="true"><KeyRoundIcon /></span>
 	<p class="summary-who">
 		{m.change_review_submitted_by()} <strong>{proposal.submitterName}</strong>
-		{submittedVia}
-		<strong>{m.change_review_token_name({ name: proposal.tokenName })}</strong>
+		{#if fromChat}
+			{m.change_review_submitted_via_chat()}
+		{:else}
+			{submittedVia}
+			<strong>{m.change_review_token_name({ name: proposal.tokenName })}</strong>
+		{/if}
 		{#if proposal.tokenRevoked}
 			<span class="revoked">({revokedCopy})</span>
 		{/if}

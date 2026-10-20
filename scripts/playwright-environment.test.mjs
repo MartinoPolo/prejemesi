@@ -44,6 +44,7 @@ test('automation uses the exact local database and blanks remote services', () =
 		AUTH_SECRET: 'explicit-local-signing-secret',
 		R2_ACCESS_KEY_ID: 'remote',
 		RESEND_API_KEY: 'remote',
+		ANTHROPIC_API_KEY: 'remote',
 	});
 	assert.equal(server.environment.DATABASE_URL, databaseUrl);
 	assert.equal(
@@ -53,6 +54,8 @@ test('automation uses the exact local database and blanks remote services', () =
 	assert.equal(server.environment.AUTH_SECRET, 'explicit-local-signing-secret');
 	assert.equal(server.environment.ORIGIN, server.origin);
 	assert.equal(server.environment.ADMIN_EMAILS, 'tomas@test.cz');
+	assert.equal(server.environment.CHAT_PROVIDER, 'fake');
+	assert.equal(server.environment.CHAT_ALLOWED_EMAILS, 'martin@test.cz');
 	assert.equal(server.environment.DEV_AUTO_LOGIN_EMAIL, '');
 	assert.equal(server.environment.BROWSER, 'none');
 	for (const name of [
@@ -62,6 +65,7 @@ test('automation uses the exact local database and blanks remote services', () =
 		'PUBLIC_R2_URL',
 		'RESEND_API_KEY',
 		'EMAIL_FROM',
+		'ANTHROPIC_API_KEY',
 	]) {
 		assert.equal(server.environment[name], '');
 	}

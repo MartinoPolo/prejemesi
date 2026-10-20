@@ -2,6 +2,7 @@
 	import Navbar from '$lib/components/blocks/navbar/Navbar.svelte';
 	import DemoNotice from '$lib/components/blocks/demo/DemoNotice.svelte';
 	import { setNotificationsContext } from '$lib/modules/notifications/notifications.context.svelte.js';
+	import { setAssistantDockContext } from '$lib/modules/chat/assistant_dock.context.svelte.js';
 	import { resolveUserImageUrl } from '$lib/modules/images/public_url.js';
 	import * as m from '$lib/paraglide/messages.js';
 	import { preloadCode } from '$app/navigation';
@@ -44,6 +45,7 @@
 
 	// svelte-ignore state_referenced_locally (intentional initial seed; the count is owned/updated by the notifications context thereafter)
 	setNotificationsContext(data.unreadNotificationCount);
+	const assistantDock = setAssistantDockContext();
 
 	onMount(() => {
 		const connection = (navigator as Navigator & { connection?: NetworkConnectionInfo })
@@ -72,24 +74,32 @@
 
 <div class="app-shell">
 	{#if !demoExpired}
-		<Navbar
-			{user}
-			userName={user?.name ?? m.nav_default_user()}
-			userEmail={user?.email ?? ''}
-			demo={data.demoExpiresAt !== null}
-			{userInitials}
-			userImage={resolveUserImageUrl(user?.image)}
-		/>
+		<div class="navbar-slot" inert={assistantDock.modal.current}>
+			<Navbar
+				{user}
+				userName={user?.name ?? m.nav_default_user()}
+				userEmail={user?.email ?? ''}
+				demo={data.demoExpiresAt !== null}
+				{userInitials}
+				userImage={resolveUserImageUrl(user?.image)}
+			/>
+		</div>
 	{/if}
 	{#if data.demoExpiresAt}<DemoNotice
 			expiresAt={data.demoExpiresAt}
 			onexpired={() => (demoExpired = true)}
 		/>{/if}
-	{#if !demoExpired}<main class="app-content">
-			<div class="app-content-inner" class:wishlist-detail-content={isWishlistDetailRoute}>
-				{@render children()}
-			</div>
-		</main>{/if}
+	{#if !demoExpired}<div class="app-body">
+			<main class="app-content" inert={assistantDock.modal.current}>
+				<div
+					class="app-content-inner"
+					class:wishlist-detail-content={isWishlistDetailRoute}
+				>
+					{@render children()}
+				</div>
+			</main>
+			{@render assistantDock.panel.current?.()}
+		</div>{/if}
 </div>
 
 <style>
@@ -105,8 +115,20 @@
 		overflow: hidden;
 	}
 
+	.navbar-slot {
+		display: contents;
+	}
+
+	/* A docked assistant panel sits beside the content and narrows it. */
+	.app-body {
+		display: flex;
+		flex: 1;
+		min-height: 0;
+	}
+
 	.app-content {
 		flex: 1;
+		min-width: 0;
 		overflow: hidden auto;
 	}
 

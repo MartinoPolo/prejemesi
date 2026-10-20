@@ -6,7 +6,9 @@
 	import { Button } from '$lib/components/base/button/index.js';
 	import { localizeInternalHref } from '$lib/i18n/locale.js';
 	import type { PendingChangeProposalSummary } from '$lib/modules/change_proposals/types.js';
+	import { OPERATION_CHANNEL } from '$lib/modules/change_proposals/operation_channel.js';
 	import {
+		countCopy,
 		formatChangeReviewDate,
 		pluralCopy,
 		type PluralMessages,
@@ -16,6 +18,11 @@
 		one: m.pending_changes_item_one,
 		few: m.pending_changes_item_few,
 		other: m.pending_changes_item_other,
+	};
+	const CHAT_ITEM_TITLES: PluralMessages = {
+		one: m.pending_changes_item_chat_one,
+		few: m.pending_changes_item_chat_few,
+		other: m.pending_changes_item_chat_other,
 	};
 
 	/** Shown to the proposals' submitter only; the query returns nothing to anyone else. */
@@ -43,10 +50,12 @@
 			<li class="proposal" data-testid="pending-changes-item">
 				<span class="summary">
 					<strong>
-						{pluralCopy(ITEM_TITLES, {
-							count: proposal.rowCount,
-							token: proposal.tokenName,
-						})}
+						{proposal.channel === OPERATION_CHANNEL.chatbot
+							? countCopy(CHAT_ITEM_TITLES, proposal.rowCount)
+							: pluralCopy(ITEM_TITLES, {
+									count: proposal.rowCount,
+									token: proposal.tokenName,
+								})}
 					</strong>
 					<span class="expiry">
 						{m.pending_changes_expires({

@@ -1,14 +1,12 @@
 import { error } from '@sveltejs/kit';
 import { isAppAdmin } from '$lib/server/admin.js';
+import { OPERATION_CHANNEL } from '$lib/modules/change_proposals/operation_channel.js';
 
 /** The 401 message every signed-in-only entry point uses. */
 export const AUTHENTICATION_REQUIRED_MESSAGE = 'Authentication required';
 
-/** Fixed channels; agent tokens use {@link tokenChannel} and connected apps {@link appChannel}. */
-export const OPERATION_CHANNEL = {
-	ui: 'ui',
-	chatbot: 'chatbot',
-} as const;
+// Fixed channels; agent tokens use tokenChannel and connected apps appChannel.
+export { OPERATION_CHANNEL };
 
 const TOKEN_CHANNEL_PREFIX = 'token:';
 const APP_CHANNEL_PREFIX = 'app:';
