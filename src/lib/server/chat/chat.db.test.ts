@@ -82,9 +82,12 @@ function scriptedProvider(responses: ChatModelEvent[][]): ChatModelProvider {
 
 function failingProvider(): ChatModelProvider {
 	return {
-		async *stream() {
-			throw new ChatProviderError('The model API answered 529', true);
-		},
+		stream: () => ({
+			[Symbol.asyncIterator]: () => ({
+				next: () =>
+					Promise.reject(new ChatProviderError('The model API answered 529', true)),
+			}),
+		}),
 	};
 }
 
