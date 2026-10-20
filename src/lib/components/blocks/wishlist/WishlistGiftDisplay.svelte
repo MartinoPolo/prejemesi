@@ -35,6 +35,7 @@
 		widenPageForGiftCardColumns,
 	} from './gift_card_grid_columns.js';
 	import { giftCardGridVariants } from './gift_card_grid_variants.js';
+	import type { GiftLivePreviews } from '$lib/components/blocks/change-proposals/gift_live_preview.js';
 
 	interface WishlistGiftDisplayProps {
 		/** Shared display sections consumed identically by every view mode. */
@@ -76,6 +77,8 @@
 		receivedPendingGiftIds?: ReadonlySet<string>;
 		cardColumnOption?: GiftCardColumnOption;
 		oncardcolumncapacitychange?: (largestFittingColumnCount: number | null) => void;
+		/** The open chat's proposals as they are decided; the compact table leaves them out. */
+		livePreviews?: GiftLivePreviews;
 	}
 
 	let {
@@ -117,6 +120,7 @@
 		receivedPendingGiftIds = new Set<string>(),
 		cardColumnOption = GIFT_CARD_COLUMN_OPTIONS.automatic,
 		oncardcolumncapacitychange,
+		livePreviews,
 	}: WishlistGiftDisplayProps = $props();
 
 	// Management affordances (add/edit/reorder) open to recipient OR správce.
@@ -383,6 +387,7 @@
 						{onreorderplacementpreview}
 						{onreorderplacementcommit}
 						{onreorderplacementcancel}
+						{livePreviews}
 					/>
 				{:else}
 					<WishlistGiftCompactTable

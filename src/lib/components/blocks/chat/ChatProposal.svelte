@@ -4,6 +4,7 @@
 	import { Button } from '$lib/components/base/button/index.js';
 	import { Skeleton } from '$lib/components/base/skeleton/index.js';
 	import type { ChangeRowContext } from '$lib/components/blocks/change-proposals/change_row_model.js';
+	import type { DecidingProposalRegistry } from '$lib/components/blocks/change-proposals/gift_live_preview.js';
 	import { getChangeProposal } from '$lib/modules/change_proposals/index.js';
 	import type { StateRaw } from '$lib/reactivity/state.svelte.js';
 	import ChatProposalCard from './ChatProposalCard.svelte';
@@ -14,12 +15,14 @@
 		rowContext,
 		inBar,
 		decisionBar,
+		decidingProposals,
 	}: {
 		proposalId: string;
 		wishlistShortId: string;
 		rowContext: Omit<ChangeRowContext, 'submitterName' | 'kindTitle'>;
 		inBar: boolean;
 		decisionBar: StateRaw<DecisionBarControls | null>;
+		decidingProposals: DecidingProposalRegistry;
 	} = $props();
 
 	const proposalQuery = $derived(getChangeProposal({ wishlistShortId, proposalId }));
@@ -28,7 +31,7 @@
 
 {#if proposal !== undefined}
 	{#key proposal.id}
-		<ChatProposalCard {proposal} {rowContext} {inBar} {decisionBar} />
+		<ChatProposalCard {proposal} {rowContext} {inBar} {decisionBar} {decidingProposals} />
 	{/key}
 {:else if proposalQuery.error}
 	<p class="error" role="alert">

@@ -52,6 +52,7 @@
 	import ChatNote from './ChatNote.svelte';
 	import ChatParts from './ChatParts.svelte';
 	import ChatProposal from './ChatProposal.svelte';
+	import type { DecidingProposalRegistry } from '$lib/components/blocks/change-proposals/gift_live_preview.js';
 	import ChatTurnError from './ChatTurnError.svelte';
 	import ChatWelcome from './ChatWelcome.svelte';
 	import type { DecisionBarControls } from './chat_presentation.js';
@@ -70,6 +71,7 @@
 		availability,
 		mobile,
 		rowContext,
+		decidingProposals,
 	}: {
 		assistant: ReturnType<typeof useAssistant>;
 		dock: ReturnType<typeof useAssistantDock>;
@@ -78,6 +80,7 @@
 		availability: ChatAvailability;
 		mobile: boolean;
 		rowContext: Omit<ChangeRowContext, 'submitterName' | 'kindTitle'>;
+		decidingProposals: DecidingProposalRegistry;
 	} = $props();
 
 	const decisionBar = new StateRaw<DecisionBarControls | null>(null);
@@ -325,6 +328,7 @@
 		{rowContext}
 		inBar={proposalId === latestProposalId && !fastForward}
 		{decisionBar}
+		{decidingProposals}
 	/>
 {/snippet}
 

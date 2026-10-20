@@ -16,6 +16,7 @@
 	import RowDecision from '$lib/components/blocks/change-proposals/RowDecision.svelte';
 	import { CHANGE_KIND_PRESENTATION } from '$lib/components/blocks/change-proposals/change_review_presentation.js';
 	import type { ChangeRowContext } from '$lib/components/blocks/change-proposals/change_row_model.js';
+	import type { DecidingProposalRegistry } from '$lib/components/blocks/change-proposals/gift_live_preview.js';
 	import { ProposalDecisions } from '$lib/components/blocks/change-proposals/proposal_decisions.svelte.js';
 	import { localizeInternalHref } from '$lib/i18n/locale.js';
 	import type { StateRaw } from '$lib/reactivity/state.svelte.js';
@@ -60,12 +61,15 @@
 		rowContext,
 		inBar,
 		decisionBar,
+		decidingProposals,
 	}: {
 		proposal: ChangeProposalView;
 		rowContext: Omit<ChangeRowContext, 'submitterName' | 'kindTitle'>;
 		/** The decision bar shows this proposal's controls instead of the card. */
 		inBar: boolean;
 		decisionBar: StateRaw<DecisionBarControls | null>;
+		/** Pending proposals register here so the wishlist behind the panel previews them. */
+		decidingProposals: DecidingProposalRegistry;
 	} = $props();
 
 	let card = $state<HTMLElement>();
@@ -193,6 +197,21 @@
 		return () => {
 			if (untrack(() => decisionBar.current) === barControlsHandle) {
 				decisionBar.current = null;
+			}
+		};
+	});
+
+	const readEntries = () => decisions.entries;
+
+	$effect(() => {
+		if (!decisions.interactive) {
+			return;
+		}
+		const proposalId = proposal.id;
+		untrack(() => decidingProposals.set(proposalId, readEntries));
+		return () => {
+			if (untrack(() => decidingProposals.get(proposalId)) === readEntries) {
+				decidingProposals.delete(proposalId);
 			}
 		};
 	});

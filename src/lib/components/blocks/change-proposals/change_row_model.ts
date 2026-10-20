@@ -40,6 +40,8 @@ import {
 	fieldEditorText,
 	fieldReviewState,
 	isGiftDropped,
+	isRowIncluded,
+	sameSnapshotValue,
 	type FieldReview,
 	type FieldReviewState,
 	type RowReview,
@@ -114,6 +116,20 @@ export interface FieldChangeModel {
 	editor: FieldEditor | null;
 }
 
+export const GIFT_LIVE_PREVIEW = {
+	edit: 'edit',
+	creation: 'creation',
+	deletion: 'deletion',
+} as const;
+
+export type GiftLivePreviewKind = (typeof GIFT_LIVE_PREVIEW)[keyof typeof GIFT_LIVE_PREVIEW];
+
+/** How the wishlist shows a gift while its proposal is decided: the edit, the new gift or the deletion. */
+export type GiftLivePreview =
+	| { kind: typeof GIFT_LIVE_PREVIEW.edit; giftId: string; changes: Partial<GiftForRecipient> }
+	| { kind: typeof GIFT_LIVE_PREVIEW.creation; giftId: string; gift: GiftForRecipient }
+	| { kind: typeof GIFT_LIVE_PREVIEW.deletion; giftId: string };
+
 export interface GiftChangeModel {
 	giftId: string;
 	name: string;
@@ -125,6 +141,7 @@ export interface GiftChangeModel {
 	originalDescription: string | null;
 	context: string | null;
 	cards: CardPair | null;
+	livePreview: GiftLivePreview | null;
 }
 
 export interface RowIdentity {
@@ -513,6 +530,69 @@ function reviewedFields(
 	};
 }
 
+/** The card keys a live preview takes from the decided gift once a snapshot key changes. */
+const LIVE_PREVIEW_CARD_KEYS: readonly (readonly [
+	keyof ChangeProposalGift,
+	readonly (keyof GiftForRecipient)[],
+])[] = [
+	['name', ['name']],
+	['description', ['description']],
+	['descriptionAppends', ['descriptionAppends']],
+	['links', ['links']],
+	['price', ['price']],
+	['priceMax', ['priceMax']],
+	['currency', ['currency']],
+	['imageUrl', ['imageUrl', 'imageKey']],
+	['imageMeta', ['imageMeta']],
+	['quantity', ['quantity']],
+	['priorityLevelId', ['priorityLevelId', 'priorityLabel']],
+	['categoryId', ['categoryId', 'category']],
+];
+
+function copyCardKey<Key extends keyof GiftForRecipient>(
+	target: Partial<GiftForRecipient>,
+	source: GiftForRecipient,
+	key: Key,
+) {
+	target[key] = source[key];
+}
+
+/**
+ * A deletion shows until the user keeps the gift; an edit or a new gift shows while it keeps an
+ * accepted field, with the reviewer's decisions and edits applied.
+ */
+function livePreview(
+	change: PreviewChange,
+	rowReview: RowReview | undefined,
+	shownAfter: ChangeProposalGift,
+	context: ChangeRowContext,
+	lookups: GiftLabelLookups,
+): GiftLivePreview | null {
+	const { before, after, giftId } = change;
+	if (isGiftDeletion(before, after)) {
+		const kept = rowReview?.kind === ROW_REVIEW_KIND.whole && rowReview.accepted === false;
+		return kept ? null : { kind: GIFT_LIVE_PREVIEW.deletion, giftId };
+	}
+	if (!isRowIncluded(rowReview)) {
+		return null;
+	}
+	const card = previewGift(shownAfter, giftId, context, lookups);
+	if (before === null) {
+		return { kind: GIFT_LIVE_PREVIEW.creation, giftId, gift: card };
+	}
+	const changes: Partial<GiftForRecipient> = {};
+	for (const [snapshotKey, cardKeys] of LIVE_PREVIEW_CARD_KEYS) {
+		if (!sameSnapshotValue(before[snapshotKey], shownAfter[snapshotKey])) {
+			for (const cardKey of cardKeys) {
+				copyCardKey(changes, card, cardKey);
+			}
+		}
+	}
+	return Object.keys(changes).length === 0
+		? null
+		: { kind: GIFT_LIVE_PREVIEW.edit, giftId, changes };
+}
+
 function previewChange(
 	row: ChangeProposalRowView,
 	change: PreviewChange,
@@ -544,6 +624,7 @@ function previewChange(
 		cards: showsGiftCards(before, after, diffs)
 			? previewCards(change, shownAfter, dropped, context, lookups)
 			: null,
+		livePreview: livePreview(change, rowReview, shownAfter, context, lookups),
 	};
 }
 
@@ -591,6 +672,7 @@ function reorderChanges(row: ChangeProposalRowView, context: ChangeRowContext): 
 							? m.change_review_reorder_last({ previous: move.previousName })
 							: null,
 			cards: null,
+			livePreview: null,
 		}),
 	);
 }
