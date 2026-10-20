@@ -48,6 +48,7 @@
 	import { StateRaw } from '$lib/reactivity/state.svelte.js';
 	import AssistantHeader from './AssistantHeader.svelte';
 	import ChatComposer from './ChatComposer.svelte';
+	import ChatDemoActions from './ChatDemoActions.svelte';
 	import ChatHistory from './ChatHistory.svelte';
 	import ChatNote from './ChatNote.svelte';
 	import ChatParts from './ChatParts.svelte';
@@ -98,6 +99,8 @@
 	const sheet = $derived(assistant.sheet.current);
 	const modal = $derived(open && mobile && sheet === ASSISTANT_SHEET.full);
 	const available = $derived(availability === CHAT_AVAILABILITY.available);
+	const demo = $derived(availability === CHAT_AVAILABILITY.demo);
+	const takesMessages = $derived(available || demo);
 	const sessionsQuery = $derived(getChatSessions({ wishlistShortId }));
 	const sessionId = $derived.by(() => {
 		const selection = assistant.selection.current;
@@ -120,6 +123,12 @@
 	const items = $derived(chatThreadItems(messages));
 	const fastForward = $derived(sessionQuery?.current?.fastForward ?? false);
 	const latestProposalId = $derived(latestChatProposalId(messages));
+	const sentTexts = $derived(
+		new Set([
+			...items.flatMap((item) => (item.type === CHAT_ITEM.user ? [item.text] : [])),
+			...(liveTurn?.userText == null ? [] : [liveTurn.userText]),
+		]),
+	);
 	const unfinished = $derived(!streaming && liveTurn === null && isChatTurnUnfinished(messages));
 	const width = $derived(assistant.panelWidth.current);
 	const maxWidth = $derived(assistant.maxWidth.current);
@@ -313,7 +322,7 @@
 	/** A prompt queued from the gift menu goes out once its new chat is showing. */
 	$effect(() => {
 		const prompt = assistant.queuedPrompt.current;
-		if (prompt === null || !open || streaming || creatingSession || !available) {
+		if (prompt === null || !open || streaming || creatingSession || !takesMessages) {
 			return;
 		}
 		assistant.queuedPrompt.current = null;
@@ -378,7 +387,7 @@
 
 {#snippet conversation()}
 	{#if items.length === 0 && liveTurn === null}
-		<ChatWelcome {available} onstarter={(prompt) => void useStarter(prompt)} />
+		<ChatWelcome {available} {demo} onstarter={(prompt) => void useStarter(prompt)} />
 	{/if}
 	{#each items as item (item.id)}
 		{#if item.type === CHAT_ITEM.user}
@@ -396,7 +405,7 @@
 	{#if unfinished || liveTurn?.error != null}
 		<ChatTurnError
 			proposed={liveTurn?.proposed === true}
-			onretry={unfinished && available
+			onretry={unfinished && takesMessages
 				? () => void runTurn({ kind: CHAT_TURN_KIND.retry })
 				: undefined}
 		/>
@@ -470,14 +479,22 @@
 				</section>
 			{/if}
 			{@render statusLine()}
-			<ChatComposer
-				bind:value={assistant.draft.current}
-				bind:textarea={composer}
-				streaming={streaming || creatingSession}
-				disabled={!available}
-				onsend={send}
-				onstop={stop}
-			/>
+			{#if demo}
+				<ChatDemoActions
+					{sentTexts}
+					busy={streaming || creatingSession}
+					onsend={(text) => void runTurn({ kind: CHAT_TURN_KIND.message, text })}
+				/>
+			{:else}
+				<ChatComposer
+					bind:value={assistant.draft.current}
+					bind:textarea={composer}
+					streaming={streaming || creatingSession}
+					disabled={!available}
+					onsend={send}
+					onstop={stop}
+				/>
+			{/if}
 		</footer>
 	{/if}
 </aside>

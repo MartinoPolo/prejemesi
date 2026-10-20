@@ -1,10 +1,10 @@
 import { guardedCommand, guardedQueryWithArgs, singleFlightRefresh } from '$lib/server/remote.js';
-import { rejectDemoOperation } from '$lib/server/demo/scope.js';
 import {
 	applyChangeProposalRows,
 	discardChangeProposal as discardOwnChangeProposal,
 	getChangeProposalForReview,
 	listPendingChangeProposals,
+	rejectDemoAgentProposal,
 	undoChangeProposal as undoOwnChangeProposal,
 } from '$lib/server/agent_access/change_proposals.js';
 import { getGiftsByWishlistShortId } from '$lib/modules/gifts/gifts.remote.js';
@@ -51,7 +51,7 @@ async function refreshProposalViews(
 export const applyChangeProposal = guardedCommand(
 	ApplyChangeProposalInputSchema,
 	async ({ user }, { proposalId, decisions }) => {
-		rejectDemoOperation();
+		await rejectDemoAgentProposal(user.id, proposalId);
 		const result = await applyChangeProposalRows(user, proposalId, decisions);
 		if (result.outcome === CHANGE_PROPOSAL_OUTCOME.applied) {
 			await refreshProposalViews(result.proposal, true);
@@ -63,7 +63,7 @@ export const applyChangeProposal = guardedCommand(
 export const discardChangeProposal = guardedCommand(
 	ChangeProposalIdInputSchema,
 	async ({ user }, { proposalId }) => {
-		rejectDemoOperation();
+		await rejectDemoAgentProposal(user.id, proposalId);
 		const proposal = await discardOwnChangeProposal(user, proposalId);
 		await refreshProposalViews(proposal, false);
 		return proposal;
@@ -74,7 +74,7 @@ export const discardChangeProposal = guardedCommand(
 export const undoChangeProposal = guardedCommand(
 	ChangeProposalIdInputSchema,
 	async ({ user }, { proposalId }) => {
-		rejectDemoOperation();
+		await rejectDemoAgentProposal(user.id, proposalId);
 		const result = await undoOwnChangeProposal(user, proposalId);
 		if (result.outcome === CHANGE_PROPOSAL_OUTCOME.undone) {
 			await refreshProposalViews(result.proposal, true);

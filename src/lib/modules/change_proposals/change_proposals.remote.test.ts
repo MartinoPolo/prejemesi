@@ -11,6 +11,7 @@ const { requestEvent, changeProposalService } = vi.hoisted(() => ({
 		discardChangeProposal: vi.fn(),
 		getChangeProposalForReview: vi.fn(),
 		listPendingChangeProposals: vi.fn(),
+		rejectDemoAgentProposal: vi.fn(),
 		undoChangeProposal: vi.fn(),
 	},
 }));
@@ -86,6 +87,7 @@ function enterDemo() {
 describe('change proposal remote functions', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		changeProposalService.rejectDemoAgentProposal.mockResolvedValue(undefined);
 		requestEvent.locals = {};
 	});
 
@@ -210,6 +212,11 @@ describe('change proposal remote functions', () => {
 			'proposal-1',
 		);
 		expect(changeProposalService.undoChangeProposal).toHaveBeenCalledWith(USER, 'proposal-1');
+		expect(changeProposalService.rejectDemoAgentProposal).toHaveBeenCalledTimes(3);
+		expect(changeProposalService.rejectDemoAgentProposal).toHaveBeenCalledWith(
+			USER.id,
+			'proposal-1',
+		);
 	});
 
 	describe('refresh after a change', () => {
@@ -279,8 +286,11 @@ describe('change proposal remote functions', () => {
 		});
 	});
 
-	it('reject applying, discarding and undoing in the demo', async () => {
+	it('act on nothing the demo rule refuses', async () => {
 		enterDemo();
+		changeProposalService.rejectDemoAgentProposal.mockRejectedValue(
+			Object.assign(new Error('This action is unavailable in the demo'), { status: 403 }),
+		);
 
 		await expect(call(applyChangeProposal, applyInput)).rejects.toMatchObject({ status: 403 });
 		await expect(

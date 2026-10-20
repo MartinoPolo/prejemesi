@@ -132,6 +132,10 @@
 		hideReservationState || role === WISHLIST_ROLES.recipient,
 	);
 	const showPriority = $derived(grouping !== 'priority');
+	// Gifts the assistant proposes for an empty list preview in place of the empty state.
+	const showsEmptyState = $derived(
+		isFilteredEmpty || (isEmpty && (livePreviews?.creations.length ?? 0) === 0),
+	);
 	const STANDARD_EASING = 'cubic-bezier(0.2, 0.7, 0.3, 1)';
 	let displayedViewMode = $state(untrack(() => viewMode));
 	const ImageGiftView = $derived(
@@ -440,7 +444,7 @@
 					<GiftCardSkeleton />
 				{/each}
 			</div>
-		{:else if isEmpty || isFilteredEmpty}
+		{:else if showsEmptyState}
 			<WishlistEmptyState
 				{isArchived}
 				{canManage}

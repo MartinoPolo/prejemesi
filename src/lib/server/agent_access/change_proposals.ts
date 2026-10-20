@@ -9,7 +9,7 @@ import { agentAccessOauthGrant, personalAccessToken } from '$lib/server/db/acces
 import { gift, reservation } from '$lib/server/db/gift.schema.js';
 import { giftRevision } from '$lib/server/db/gift_revision.schema.js';
 import { moderatorInvite } from '$lib/server/db/moderator.schema.js';
-import { wishlistScope } from '$lib/server/demo/scope.js';
+import { demoSessionId, rejectDemoOperation, wishlistScope } from '$lib/server/demo/scope.js';
 import { requireLiveWishlistRowByShortId } from '$lib/server/operations/wishlist_management.js';
 import { SERVER_ERROR, encodeServerError } from '$lib/modules/errors/server_error_codes.js';
 import { resolveRoleOnWishlistRow } from '$lib/modules/wishlists/wishlist_access.js';
@@ -41,7 +41,11 @@ import {
 	type FieldDecisions,
 } from '$lib/modules/change_proposals/change_field_decisions.js';
 import { ReorderGiftsInputSchema } from '$lib/modules/gifts/types.js';
-import { isAppChannel, userInterfaceActor } from '$lib/server/operations/actor.js';
+import {
+	OPERATION_CHANNEL,
+	isAppChannel,
+	userInterfaceActor,
+} from '$lib/server/operations/actor.js';
 import { executeOperationBatch, type OperationBatchStep } from '$lib/server/operations/runner.js';
 import {
 	restoreGiftOrderOperation,
@@ -168,6 +172,23 @@ export async function requireOwnChangeProposal(
 			wishlistRow !== null &&
 			hidesReservationState(viewerRole, wishlistRow.recipientIsModerator),
 	};
+}
+
+/**
+ * A demo visitor acts only on what the playground's own chat proposed on its wishlists; agent
+ * tokens and connected apps stay outside the demo. A proposal of another playground is not found.
+ */
+export async function rejectDemoAgentProposal(
+	submitterUserId: string,
+	proposalId: string,
+): Promise<void> {
+	if (demoSessionId() === null) {
+		return;
+	}
+	const { proposal } = await requireOwnChangeProposal(submitterUserId, proposalId);
+	if (proposal.channel !== OPERATION_CHANNEL.chatbot || proposal.wishlistId === null) {
+		rejectDemoOperation();
+	}
 }
 
 function isExpired(proposal: Pick<ChangeProposalRow, 'expiresAt'>, now: Date): boolean {

@@ -116,6 +116,31 @@ describe('WishlistGiftDisplay received pending state', () => {
 	);
 });
 
+describe('WishlistGiftDisplay live preview', () => {
+	it('previews proposed gifts of an empty list instead of its empty state', async () => {
+		const emptyList = { ...defaultProps, sections: [], isEmpty: true };
+		const screen = await render(WishlistGiftDisplayTestHost, emptyList);
+		await expect
+			.element(page.getByText(m.wishlist_detail_owner_empty_title()))
+			.toBeInTheDocument();
+
+		await screen.rerender({
+			...emptyList,
+			livePreviews: {
+				edits: new Map(),
+				deletions: new Set(),
+				creations: [{ key: 'proposal-1:r1', gift: { ...visitorGift(), id: 'preview' } }],
+			},
+		});
+
+		await expect.element(page.getByTestId('gift-live-preview-creation')).toBeInTheDocument();
+		await expect
+			.element(page.getByText(m.wishlist_detail_owner_empty_title()))
+			.not.toBeInTheDocument();
+		await screen.unmount();
+	});
+});
+
 describe('WishlistGiftDisplay selection accessibility', () => {
 	it('uses group and independently tabbable checkbox semantics', async () => {
 		const screen = await render(WishlistGiftDisplayTestHost, {

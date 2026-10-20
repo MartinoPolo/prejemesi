@@ -2,6 +2,7 @@ import { error } from '@sveltejs/kit';
 import { and, asc, count, desc, eq, gt, gte, isNull, ne } from 'drizzle-orm';
 import { getDb } from '$lib/server/db/index.js';
 import { chatMessage, chatSession } from '$lib/server/db/chat.schema.js';
+import { user } from '$lib/server/db/auth.schema.js';
 import { wishlist } from '$lib/server/db/wishlist.schema.js';
 import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
 import {
@@ -203,18 +204,23 @@ export async function storeAssistantMessage(
 	});
 }
 
-/** The user's messages since `since`: one user's, or everyone's for the global cap. */
+/**
+ * The user's messages since `since`: one user's, or everyone's for the global cap. Demo
+ * visitors chat with the scripted assistant, so their messages never count against the cap.
+ */
 export async function countUserMessagesSince(since: Date, userId: string | null): Promise<number> {
-	const database = getDb();
-	const conditions = and(eq(chatMessage.role, CHAT_ROLE.user), gte(chatMessage.createdAt, since));
-	const [row] =
-		userId === null
-			? await database.select({ total: count() }).from(chatMessage).where(conditions)
-			: await database
-					.select({ total: count() })
-					.from(chatMessage)
-					.innerJoin(chatSession, eq(chatSession.id, chatMessage.sessionId))
-					.where(and(conditions, eq(chatSession.userId, userId)));
+	const [row] = await getDb()
+		.select({ total: count() })
+		.from(chatMessage)
+		.innerJoin(chatSession, eq(chatSession.id, chatMessage.sessionId))
+		.innerJoin(user, eq(user.id, chatSession.userId))
+		.where(
+			and(
+				eq(chatMessage.role, CHAT_ROLE.user),
+				gte(chatMessage.createdAt, since),
+				userId === null ? isNull(user.demoSessionId) : eq(chatSession.userId, userId),
+			),
+		);
 	return row?.total ?? 0;
 }
 

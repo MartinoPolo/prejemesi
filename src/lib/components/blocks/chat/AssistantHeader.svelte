@@ -54,8 +54,9 @@
 	} = $props();
 
 	const available = $derived(availability === CHAT_AVAILABILITY.available);
+	const demo = $derived(availability === CHAT_AVAILABILITY.demo);
 	const showHint = $derived(
-		available && !hintDismissed && !(mobile && sheet === ASSISTANT_SHEET.half),
+		(available || demo) && !hintDismissed && !(mobile && sheet === ASSISTANT_SHEET.half),
 	);
 </script>
 
@@ -125,23 +126,29 @@
 			>
 				<HistoryIcon />
 			</Button>
-			<Button
-				intent="ghost"
-				size="md"
-				format="icon"
-				aria-label={m.chat_new()}
-				disabled={!available}
-				data-testid="assistant-new-chat"
-				onclick={onnew}
-			>
-				<SquarePenIcon />
-			</Button>
+			<!-- The demo keeps one chat, so its prepared actions are offered once each. -->
+			{#if !demo}
+				<Button
+					intent="ghost"
+					size="md"
+					format="icon"
+					aria-label={m.chat_new()}
+					disabled={!available}
+					data-testid="assistant-new-chat"
+					onclick={onnew}
+				>
+					<SquarePenIcon />
+				</Button>
+			{/if}
 			{#if availability === CHAT_AVAILABILITY.disabled}
 				<Badge tone="neutral" badgeStyle="subtle" class="state">
 					{#snippet icon()}<PowerIcon />{/snippet}
 					{m.chat_state_disabled()}
 				</Badge>
-			{:else if available}
+			{:else if demo}
+				<Badge tone="accent" badgeStyle="solid" class="state">{m.chat_state_demo()}</Badge>
+			{/if}
+			{#if available || demo}
 				<label class="trust">
 					<Switch
 						checked={fastForward}
@@ -238,6 +245,10 @@
 
 	.tools :global(.state) {
 		margin-inline-start: auto;
+	}
+
+	.tools :global(.state + .trust) {
+		margin-inline-start: var(--space-2);
 	}
 
 	.hint {
