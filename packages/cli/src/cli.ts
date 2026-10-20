@@ -91,10 +91,30 @@ function isJsonObject(value: unknown): value is JsonObject {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+const HELP_FLAG = '-h';
+const SHIELD_PREFIX = '\u0000';
+
+/**
+ * Gift, proposal and wishlist ids may start with "-", which `parseArgs` would read as short flags.
+ * The only short flag is -h, so every other single-dash argument is shielded from parsing and
+ * restored in the positionals and option values.
+ */
 function parseCommand(argumentList: readonly string[]): ParsedCommand {
+	const shielded: string[] = [];
+	const shield = (argument: string) => {
+		if (argument === HELP_FLAG || !/^-[^-]/u.test(argument)) {
+			return argument;
+		}
+		shielded.push(argument);
+		return `${SHIELD_PREFIX}${shielded.length - 1}`;
+	};
+	const restore = (value: string) =>
+		value.startsWith(SHIELD_PREFIX)
+			? (shielded[Number(value.slice(SHIELD_PREFIX.length))] ?? value)
+			: value;
 	try {
 		const { values, positionals } = parseArgs({
-			args: [...argumentList],
+			args: argumentList.map(shield),
 			allowPositionals: true,
 			strict: true,
 			options: {
@@ -107,7 +127,16 @@ function parseCommand(argumentList: readonly string[]): ParsedCommand {
 				help: { type: 'boolean', short: 'h' },
 			},
 		});
-		return { positionals, options: values };
+		const { help, ...stringOptions } = values;
+		return {
+			positionals: positionals.map(restore),
+			options: {
+				help,
+				...Object.fromEntries(
+					Object.entries(stringOptions).map(([name, value]) => [name, restore(value)]),
+				),
+			},
+		};
 	} catch (thrown) {
 		throw new UsageError(thrown instanceof Error ? thrown.message : String(thrown));
 	}
