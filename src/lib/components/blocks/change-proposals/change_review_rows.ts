@@ -1,6 +1,8 @@
 import {
+	CHANGE_PROPOSAL_OUTCOME,
 	CHANGE_PROPOSAL_STATE,
 	CHANGE_ROW_STATUS,
+	type ApplyChangeProposalResult,
 	type ChangeProposalRowView,
 	type ChangeProposalState,
 	type ChangeRowConflict,
@@ -54,6 +56,25 @@ export interface ChangeReviewActions {
 export interface ApplyRowOutcomes {
 	conflicts: ReadonlyMap<string, ChangeRowConflict[]>;
 	errors: ReadonlyMap<string, ChangeRowError>;
+}
+
+export const NO_APPLY_ROW_OUTCOMES: ApplyRowOutcomes = { conflicts: new Map(), errors: new Map() };
+
+/** The rows that stopped an Apply, or none once it applied. */
+export function applyRowOutcomes(result: ApplyChangeProposalResult): ApplyRowOutcomes {
+	if (result.outcome === CHANGE_PROPOSAL_OUTCOME.conflict) {
+		return {
+			conflicts: new Map(result.rows.map((row) => [row.rowId, row.conflicts])),
+			errors: new Map(),
+		};
+	}
+	if (result.outcome === CHANGE_PROPOSAL_OUTCOME.failed) {
+		return {
+			conflicts: new Map(),
+			errors: new Map(result.rows.map((row) => [row.rowId, row.error])),
+		};
+	}
+	return NO_APPLY_ROW_OUTCOMES;
 }
 
 export interface ReviewRowEntry {

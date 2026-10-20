@@ -102,6 +102,7 @@
 		oncomplete,
 		onfinish,
 		onedit,
+		onenrich,
 		onpriority,
 		oncategory,
 		onreceived,
@@ -125,6 +126,7 @@
 			primaryUrl: safePrimaryUrl,
 			readOnly,
 			canEdit: true,
+			canEnrich: onenrich !== undefined,
 			canReserve,
 			ownsReservation,
 			canTrackPurchased,
@@ -167,6 +169,7 @@
 			commandEntry('open', m.gift_context_open_link(), openLink, { href: safePrimaryUrl! }),
 		copy: () => commandEntry('copy', m.gift_context_copy_link(), () => void copyLink()),
 		edit: () => finishingEntry('edit', m.gift_context_edit(), 'handoff', onedit),
+		enrich: () => finishingEntry('enrich', m.gift_context_enrich(), 'handoff', onenrich),
 		received: () =>
 			finishingEntry(
 				'received',

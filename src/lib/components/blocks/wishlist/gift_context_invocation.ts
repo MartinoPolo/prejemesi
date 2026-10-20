@@ -45,6 +45,8 @@ export type GiftContextFinishPolicy = 'restore-focus' | 'handoff';
 export interface GiftContextCommandCallbacks {
 	onfinish: (policy: GiftContextFinishPolicy, callback: () => void) => void;
 	onedit: () => void;
+	/** Present only when the AI assistant is offered. */
+	onenrich?: () => void;
 	onpriority: (id: string | null) => void;
 	oncategory: (id: string | null) => void;
 	onreceived: () => void;

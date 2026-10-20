@@ -10,7 +10,15 @@ const GIFT_CONTEXT_ACTION_GROUPS = [
 	{ name: 'link', actions: ['open', 'copy'] },
 	{
 		name: 'gift',
-		actions: ['edit', 'received', 'multiselect', 'reserve', 'cancel-reservation', 'purchased'],
+		actions: [
+			'edit',
+			'enrich',
+			'received',
+			'multiselect',
+			'reserve',
+			'cancel-reservation',
+			'purchased',
+		],
 	},
 	{ name: 'organization', actions: ['priority', 'category'] },
 	{ name: 'release', actions: ['release-reservation'] },
@@ -48,6 +56,8 @@ export interface GiftContextActionContext {
 	primaryUrl: string | null;
 	readOnly: boolean;
 	canEdit?: boolean;
+	/** The AI assistant is offered to this user on this wishlist. */
+	canEnrich?: boolean;
 	canReserve?: boolean;
 	ownsReservation?: boolean;
 	canTrackPurchased?: boolean;
@@ -79,7 +89,10 @@ function managementActions(context: GiftContextActionContext): GiftContextAction
 	if (context.readOnly || !manages) {
 		return [];
 	}
-	const editActions: GiftContextAction[] = context.canEdit === true ? ['edit'] : [];
+	const editActions: GiftContextAction[] = [
+		...(context.canEdit === true ? (['edit'] as const) : []),
+		...(context.canEnrich === true ? (['enrich'] as const) : []),
+	];
 	return [...editActions, 'priority', 'category', 'received', 'multiselect'];
 }
 
