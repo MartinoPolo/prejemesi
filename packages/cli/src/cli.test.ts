@@ -358,6 +358,22 @@ describe('prejemesi CLI', () => {
 			});
 		});
 
+		it('reads ids that start with a dash as ids, not flags', async () => {
+			const result = await run([
+				'gifts',
+				'reorder',
+				'-b2xQ',
+				'gift-1',
+				'--wishlist',
+				WISHLIST.shortId,
+			]);
+
+			expect(result.exitCode).toBe(EXIT_CODE.success);
+			expect(lastSubmission()?.body).toMatchObject({
+				operations: [{ input: { orderedGiftIds: ['-b2xQ', 'gift-1'] } }],
+			});
+		});
+
 		it('stores an image by URL for the wishlist and prints the reference a gift takes', async () => {
 			const result = await run([
 				'images',

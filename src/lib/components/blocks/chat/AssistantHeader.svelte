@@ -54,8 +54,9 @@
 	} = $props();
 
 	const available = $derived(availability === CHAT_AVAILABILITY.available);
+	const demo = $derived(availability === CHAT_AVAILABILITY.demo);
 	const showHint = $derived(
-		available && !hintDismissed && !(mobile && sheet === ASSISTANT_SHEET.half),
+		(available || demo) && !hintDismissed && !(mobile && sheet === ASSISTANT_SHEET.half),
 	);
 </script>
 
@@ -70,6 +71,27 @@
 	>
 		<XIcon />
 	</Button>
+{/snippet}
+
+{#snippet chatState()}
+	{#if availability === CHAT_AVAILABILITY.disabled}
+		<Badge tone="neutral" badgeStyle="subtle" class="state">
+			{#snippet icon()}<PowerIcon />{/snippet}
+			{m.chat_state_disabled()}
+		</Badge>
+	{:else if demo}
+		<Badge tone="accent" badgeStyle="solid" class="state">{m.chat_state_demo()}</Badge>
+	{/if}
+	{#if available || demo}
+		<label class="trust">
+			<Switch
+				checked={fastForward}
+				onCheckedChange={onfastforward}
+				data-testid="assistant-fast-forward"
+			/>
+			{m.chat_fast_forward()}
+		</label>
+	{/if}
 {/snippet}
 
 <header class="head">
@@ -125,32 +147,21 @@
 			>
 				<HistoryIcon />
 			</Button>
-			<Button
-				intent="ghost"
-				size="md"
-				format="icon"
-				aria-label={m.chat_new()}
-				disabled={!available}
-				data-testid="assistant-new-chat"
-				onclick={onnew}
-			>
-				<SquarePenIcon />
-			</Button>
-			{#if availability === CHAT_AVAILABILITY.disabled}
-				<Badge tone="neutral" badgeStyle="subtle" class="state">
-					{#snippet icon()}<PowerIcon />{/snippet}
-					{m.chat_state_disabled()}
-				</Badge>
-			{:else if available}
-				<label class="trust">
-					<Switch
-						checked={fastForward}
-						onCheckedChange={onfastforward}
-						data-testid="assistant-fast-forward"
-					/>
-					{m.chat_fast_forward()}
-				</label>
+			<!-- The demo keeps one chat, so its prepared actions are offered once each. -->
+			{#if !demo}
+				<Button
+					intent="ghost"
+					size="md"
+					format="icon"
+					aria-label={m.chat_new()}
+					disabled={!available}
+					data-testid="assistant-new-chat"
+					onclick={onnew}
+				>
+					<SquarePenIcon />
+				</Button>
 			{/if}
+			{@render chatState()}
 		</div>
 		{#if showHint}
 			<div class="hint" role="note">
@@ -238,6 +249,10 @@
 
 	.tools :global(.state) {
 		margin-inline-start: auto;
+	}
+
+	.tools :global(.state + .trust) {
+		margin-inline-start: var(--space-2);
 	}
 
 	.hint {

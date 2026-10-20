@@ -90,6 +90,18 @@ import {
 	updateProfile,
 } from '$lib/modules/settings/settings.remote.js';
 import { sendEmail } from '$lib/server/email.js';
+import { changeProposal } from '$lib/server/db/change_proposal.schema.js';
+import { startChatSession } from '$lib/modules/chat/chat.remote.js';
+import { applyChangeProposal } from '$lib/modules/change_proposals/change_proposals.remote.js';
+import {
+	CHAT_STREAM_EVENT,
+	CHAT_TURN_KIND,
+	type ChatStreamEvent,
+} from '$lib/modules/chat/types.js';
+import { handleChatTurnRequest } from '$lib/server/chat/chat_endpoint.js';
+import { countUserMessagesSince } from '$lib/server/chat/chat_store.js';
+import { chatDayStart } from '$lib/server/chat/limits.js';
+import { tokenChannel } from '$lib/server/operations/actor.js';
 import { PALETTES, PALETTE_COOKIE_NAME } from '$lib/theme/palettes.js';
 
 const DATABASE_SUITE_TIMEOUT_MS = 120_000;
@@ -143,9 +155,9 @@ async function asViewer<T>(
 	viewer: DemoViewer | 'real' | 'anonymous',
 	method: 'GET' | 'POST',
 	operation: () => Promise<T> | T,
-	options: { alongsideRealSession?: boolean } = {},
+	options: { alongsideRealSession?: boolean; path?: string } = {},
 ): Promise<T> {
-	const url = new URL('http://localhost/w/fixture');
+	const url = new URL(options.path ?? '/w/fixture', 'http://localhost');
 	const demoToken = typeof viewer === 'object' ? viewer.token : undefined;
 	const signedInAsReal =
 		viewer === 'real' || (typeof viewer === 'object' && options.alongsideRealSession === true);
@@ -1023,6 +1035,101 @@ describe.skipIf(isolatedDatabaseUrl === null)(
 				{ imageUrl: preparedImageUrl, imageKey: null },
 				{ imageUrl: preparedImageUrl, imageKey: null },
 			]);
+			await resetDemo(first.id, 'cs');
+		});
+
+		it('answers chat turns with the scripted assistant and applies only its own proposals', async () => {
+			const ownList = await demoWishlist(first, 'own');
+			const chat = await asViewer(first, 'POST', () =>
+				startChatSession({ wishlistShortId: ownList.shortId }),
+			);
+			const realMessagesBefore = await countUserMessagesSince(chatDayStart(new Date()), null);
+			const turn = await asViewer(
+				first,
+				'POST',
+				async () => {
+					const response = await handleChatTurnRequest(
+						{
+							request: new Request(`http://localhost/chat/${chat.id}/turns`, {
+								method: 'POST',
+								headers: { 'content-type': 'application/json' },
+								body: JSON.stringify({
+									kind: CHAT_TURN_KIND.message,
+									text: 'Přidejte 3 dárky',
+								}),
+							}),
+							params: { sessionId: chat.id },
+							locals: getRequestEvent().locals,
+						},
+						() => {
+							throw new Error('A demo turn must never reach the model API');
+						},
+					);
+					return response.text();
+				},
+				{ path: `/chat/${chat.id}/turns` },
+			);
+			const events = turn
+				.split('\n\n')
+				.filter((chunk) => chunk.startsWith('data: '))
+				.map((chunk) => JSON.parse(chunk.slice('data: '.length)) as ChatStreamEvent);
+			const proposalEvent = events.find((event) => event.type === CHAT_STREAM_EVENT.proposal);
+			if (proposalEvent?.type !== CHAT_STREAM_EVENT.proposal) {
+				throw new Error('The demo turn proposed nothing');
+			}
+			expect(await countUserMessagesSince(chatDayStart(new Date()), null)).toBe(
+				realMessagesBefore,
+			);
+			const [chatProposal] = await getDb()
+				.select()
+				.from(changeProposal)
+				.where(eq(changeProposal.id, proposalEvent.proposalId));
+			const acceptEveryRow = chatProposal!.rows.map((row) => ({
+				rowId: row.rowId,
+				decision: 'accepted' as const,
+			}));
+			// The same changes, as if an agent token had submitted them.
+			const [tokenProposal] = await getDb()
+				.insert(changeProposal)
+				.values({
+					wishlistId: chatProposal!.wishlistId,
+					submitterUserId: chatProposal!.submitterUserId,
+					channel: tokenChannel('Agent'),
+					tokenName: 'Agent',
+					grant: chatProposal!.grant,
+					status: chatProposal!.status,
+					rows: chatProposal!.rows,
+					rowCount: chatProposal!.rowCount,
+					expiresAt: chatProposal!.expiresAt,
+				})
+				.returning();
+			const giftsOnList = async () =>
+				(await getDb().select().from(gift).where(eq(gift.wishlistId, ownList.id))).length;
+			const giftsBefore = await giftsOnList();
+
+			await expect(
+				asViewer(first, 'POST', () =>
+					applyChangeProposal({
+						proposalId: tokenProposal!.id,
+						decisions: acceptEveryRow,
+					}),
+				),
+			).rejects.toMatchObject({ status: 403 });
+			await expect(
+				asViewer(second, 'POST', () =>
+					applyChangeProposal({
+						proposalId: chatProposal!.id,
+						decisions: acceptEveryRow,
+					}),
+				),
+			).rejects.toMatchObject({ status: 404 });
+			expect(await giftsOnList()).toBe(giftsBefore);
+
+			const applied = await asViewer(first, 'POST', () =>
+				applyChangeProposal({ proposalId: chatProposal!.id, decisions: acceptEveryRow }),
+			);
+			expect(applied.outcome).toBe('applied');
+			expect(await giftsOnList()).toBe(giftsBefore + 3);
 			await resetDemo(first.id, 'cs');
 		});
 

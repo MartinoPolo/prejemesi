@@ -4,9 +4,9 @@ import { isChatAllowedFor, isChatKillSwitchOn } from './chat_config.js';
 import { countUserMessagesSince } from './chat_store.js';
 import { CHAT_LIMITS, chatDayStart } from './limits.js';
 
-/** The demo runs its own scripted chat; elsewhere the chat exists only for the family allowlist. */
+/** Every demo visitor gets the scripted chat; elsewhere it exists only for the family allowlist. */
 export function isChatOfferedTo(email: string): boolean {
-	return demoSessionId() === null && isChatAllowedFor(email);
+	return demoSessionId() !== null || isChatAllowedFor(email);
 }
 
 /**

@@ -381,11 +381,9 @@
 		browser && data.chatOffered && canManage ? getChatAvailability() : null,
 	);
 	const chatAvailability = $derived(chatAvailabilityQuery?.current);
-	// The demo playground gets its own chatbot; until then demo identities see no entry point.
 	const chatOffered = $derived(
 		chatAvailability !== undefined &&
 			chatAvailability !== CHAT_AVAILABILITY.notAllowed &&
-			chatAvailability !== CHAT_AVAILABILITY.demo &&
 			!isArchived,
 	);
 	const categoryOptions = $derived(categoriesQuery?.current ?? []);

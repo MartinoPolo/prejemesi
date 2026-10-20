@@ -11,18 +11,23 @@
 		{ icon: ListIcon, label: m.chat_starter_bulk, prompt: m.chat_starter_bulk_prompt },
 	];
 
-	/** An empty chat's greeting; the starters put a prompt in the composer to finish. */
+	/**
+	 * An empty chat's greeting; the starters put a prompt in the composer to finish. The demo
+	 * points to its prepared actions instead.
+	 */
 	let {
 		available,
+		demo,
 		onstarter,
 	}: {
 		available: boolean;
+		demo: boolean;
 		onstarter: (prompt: string) => void;
 	} = $props();
 </script>
 
 <div class="welcome">
-	<p class="welcome-title">{m.chat_welcome()}</p>
+	<p class="welcome-title">{demo ? m.chat_demo_welcome() : m.chat_welcome()}</p>
 	{#if available}
 		<div class="starters">
 			{#each STARTERS as starter (starter.label)}

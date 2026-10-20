@@ -174,6 +174,41 @@ async function switchInterfaceLanguageWithinDemo(page: Page, locale: DemoLocale)
 	await waitForAppHydration(page);
 }
 
+/** The demo assistant answers prepared actions with the scripted chat, applied in the playground. */
+async function addGiftsWithDemoAssistant(page: Page, locale: DemoLocale) {
+	const english = locale === 'en';
+	const panel = page.getByTestId('assistant-panel');
+	await page.getByTestId('assistant-fab').click();
+	await expect(panel).toContainText(
+		english ? 'Pick a prepared action below.' : 'Vyberte připravenou akci dole.',
+	);
+	await expect(panel.getByText(english ? 'Demo' : 'Ukázka', { exact: true })).toBeVisible();
+	await expect(page.getByTestId('assistant-composer')).toHaveCount(0);
+	await expect(page.getByTestId('assistant-new-chat')).toHaveCount(0);
+
+	const addAction = panel
+		.getByRole('group', { name: english ? 'Prepared actions' : 'Připravené akce' })
+		.getByRole('button', { name: english ? 'Add 3 gifts' : 'Přidat 3 dárky' });
+	await addAction.click();
+	await expect(page.getByTestId('gift-live-preview-creation')).toHaveCount(3, {
+		timeout: 15_000,
+	});
+	await expect(addAction).toBeDisabled();
+	await panel
+		.getByRole('region', { name: english ? 'Proposal decision' : 'Rozhodnutí o návrhu' })
+		.getByTestId('chat-proposal-apply')
+		.click();
+	await expect(panel.getByTestId('chat-proposal-undo')).toBeVisible();
+	await page.keyboard.press('Escape');
+	const gifts = page.locator('[data-gift-item]');
+	await expect(gifts).toHaveCount(3);
+	await expect(
+		gifts.filter({
+			hasText: english ? 'Red wine glasses, set of 4' : 'Sklenice na červené víno, 4 ks',
+		}),
+	).toHaveCount(1);
+}
+
 async function cancelReset(page: Page, notice: Locator, locale: DemoLocale) {
 	const english = locale === 'en';
 	await notice.getByRole('button', { name: english ? 'Reset' : 'Obnovit' }).click();
@@ -272,6 +307,7 @@ for (const locale of ['cs', 'en'] as const) {
 		if (english) {
 			await switchInterfaceLanguageWithinDemo(page, locale);
 		}
+		await addGiftsWithDemoAssistant(page, locale);
 		await cancelReset(page, notice, locale);
 		await resetAfterOneFailedAttempt(page, notice, locale);
 		await expectCzechSampleCatalogAfterReset(page, english);
