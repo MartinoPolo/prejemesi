@@ -113,11 +113,11 @@
 	 * above the open mobile sheet's composer, where the button hides; the panel publishes both
 	 * clearances.
 	 */
-	:global(body:has([data-assistant-fab], #assistant-panel) [data-sonner-toaster]) {
-		--offset-right: calc(var(--assistant-toast-right, 0px) + 24px) !important;
-		--offset-bottom: calc(var(--space-4) + 52px + var(--space-3)) !important;
-		--mobile-offset-bottom: calc(
+	:global(:root:has([data-assistant-fab], #assistant-panel)) {
+		--toast-offset-right: calc(var(--assistant-toast-right, 0px) + 24px);
+		--toast-offset-bottom: calc(var(--space-4) + 52px + var(--space-3));
+		--toast-mobile-offset-bottom: calc(
 			max(var(--space-4) + 52px, var(--assistant-toast-bottom, 0px)) + var(--space-3)
-		) !important;
+		);
 	}
 </style>

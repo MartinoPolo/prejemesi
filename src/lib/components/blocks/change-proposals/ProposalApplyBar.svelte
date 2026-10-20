@@ -1,9 +1,9 @@
 <script lang="ts">
 	import * as m from '$lib/paraglide/messages.js';
-	import LoaderIcon from '@lucide/svelte/icons/loader';
 	import { Button } from '$lib/components/base/button/index.js';
 	import { countCopy } from '$lib/modules/change_proposals/change_review_copy.js';
 	import { UNRESOLVED_DECISION_MESSAGES } from './change_review_presentation.js';
+	import ApplyProposalLabel from './ApplyProposalLabel.svelte';
 
 	const INCLUDED_COUNTS = {
 		one: m.change_review_included_count_one,
@@ -99,16 +99,7 @@
 				data-testid="change-review-apply"
 				onclick={onapply}
 			>
-				{#if pending}
-					<LoaderIcon
-						class="animate-spin"
-						data-icon="inline-start"
-					/>{m.change_review_applying()}
-				{:else if declines}
-					{m.change_review_decline_proposal()}
-				{:else}
-					{m.change_review_apply_included({ count: includedCount })}
-				{/if}
+				<ApplyProposalLabel {pending} {declines} {includedCount} />
 			</Button>
 		</div>
 	</div>

@@ -12,7 +12,7 @@
 	import { toastError } from '$lib/components/base/toast/index.js';
 	import ChangeKindTitle from '$lib/components/blocks/change-proposals/ChangeKindTitle.svelte';
 	import ChangeRowDetails from '$lib/components/blocks/change-proposals/ChangeRowDetails.svelte';
-	import ReviewActionDialog from '$lib/components/blocks/change-proposals/ReviewActionDialog.svelte';
+	import UndoProposalDialog from '$lib/components/blocks/change-proposals/UndoProposalDialog.svelte';
 	import RowDecision from '$lib/components/blocks/change-proposals/RowDecision.svelte';
 	import { CHANGE_KIND_PRESENTATION } from '$lib/components/blocks/change-proposals/change_review_presentation.js';
 	import type { ChangeRowContext } from '$lib/components/blocks/change-proposals/change_row_model.js';
@@ -45,11 +45,6 @@
 
 	type CardAction = 'apply' | 'discard' | 'undo';
 
-	const UNDO_TITLES = {
-		one: m.change_review_undo_title_one,
-		few: m.change_review_undo_title_few,
-		other: m.change_review_undo_title_other,
-	};
 	const APPLY_CONFLICT_TITLES = {
 		one: m.change_review_apply_conflict_title_one,
 		few: m.change_review_apply_conflict_title_few,
@@ -263,6 +258,74 @@
 	</ul>
 {/snippet}
 
+{#snippet appliedState()}
+	<div class="band" data-tone="success">
+		<h3 class="title" id={titleId}>
+			<CheckIcon aria-hidden="true" />{countCopy(APPLIED_TITLES, appliedCount)}
+		</h3>
+	</div>
+	<div class="body">
+		{@render summaryRows()}
+		{#if canUndo}
+			<div>
+				<Button
+					intent="danger"
+					size="sm"
+					disabled={pendingAction !== null}
+					data-testid="chat-proposal-undo"
+					onclick={() => (undoOpen = true)}
+				>
+					<Undo2Icon data-icon="inline-start" />{m.chat_undo()}
+				</Button>
+			</div>
+		{/if}
+	</div>
+{/snippet}
+
+{#snippet pendingState()}
+	<div class="band">
+		<h3 class="title" id={titleId}>
+			<ClipboardListIcon aria-hidden="true" />{countCopy(PROPOSAL_TITLES, proposal.rowCount)}
+		</h3>
+	</div>
+	<div class="body">
+		{#if inspecting && checksInline}
+			{@render inspectRows()}
+		{:else}
+			{@render summaryRows()}
+		{/if}
+		{#if !inBar}
+			{@render controls()}
+		{/if}
+		<p class="meta">
+			<span class="meta-item">
+				<ClockIcon aria-hidden="true" />
+				{m.chat_proposal_expires({
+					date: formatChangeReviewDateTime(proposal.expiresAt),
+				})}
+			</span>
+			{#if checksInline && reviewHref !== null}
+				<a class="meta-link" href={reviewHref}>{m.chat_review_page()}</a>
+			{/if}
+		</p>
+	</div>
+{/snippet}
+
+{#snippet closedState()}
+	<div class="band is-closed">
+		<h3 class="title" id={titleId}>
+			{#if proposal.state === CHANGE_PROPOSAL_STATE.undone}
+				<Undo2Icon aria-hidden="true" />{m.chat_undone_title()}
+			{:else if proposal.state === CHANGE_PROPOSAL_STATE.expired}
+				<ClockIcon aria-hidden="true" />{m.chat_expired_title()}
+			{:else}
+				<XIcon aria-hidden="true" />{m.chat_declined_title()}
+			{/if}
+		</h3>
+		<span class="meta">{m.chat_closed_note()}</span>
+	</div>
+{/snippet}
+
 <article
 	class="card"
 	data-state={proposal.state}
@@ -271,83 +334,19 @@
 	bind:this={card}
 >
 	{#if proposal.state === CHANGE_PROPOSAL_STATE.applied}
-		<div class="band" data-tone="success">
-			<h3 class="title" id={titleId}>
-				<CheckIcon aria-hidden="true" />{countCopy(APPLIED_TITLES, appliedCount)}
-			</h3>
-		</div>
-		<div class="body">
-			{@render summaryRows()}
-			{#if canUndo}
-				<div>
-					<Button
-						intent="danger"
-						size="sm"
-						disabled={pendingAction !== null}
-						data-testid="chat-proposal-undo"
-						onclick={() => (undoOpen = true)}
-					>
-						<Undo2Icon data-icon="inline-start" />{m.chat_undo()}
-					</Button>
-				</div>
-			{/if}
-		</div>
+		{@render appliedState()}
 	{:else if proposal.state === CHANGE_PROPOSAL_STATE.pending}
-		<div class="band">
-			<h3 class="title" id={titleId}>
-				<ClipboardListIcon aria-hidden="true" />{countCopy(
-					PROPOSAL_TITLES,
-					proposal.rowCount,
-				)}
-			</h3>
-		</div>
-		<div class="body">
-			{#if inspecting && checksInline}
-				{@render inspectRows()}
-			{:else}
-				{@render summaryRows()}
-			{/if}
-			{#if !inBar}
-				{@render controls()}
-			{/if}
-			<p class="meta">
-				<span class="meta-item">
-					<ClockIcon aria-hidden="true" />
-					{m.chat_proposal_expires({
-						date: formatChangeReviewDateTime(proposal.expiresAt),
-					})}
-				</span>
-				{#if checksInline && reviewHref !== null}
-					<a class="meta-link" href={reviewHref}>{m.chat_review_page()}</a>
-				{/if}
-			</p>
-		</div>
+		{@render pendingState()}
 	{:else}
-		<div class="band is-closed">
-			<h3 class="title" id={titleId}>
-				{#if proposal.state === CHANGE_PROPOSAL_STATE.undone}
-					<Undo2Icon aria-hidden="true" />{m.chat_undone_title()}
-				{:else if proposal.state === CHANGE_PROPOSAL_STATE.expired}
-					<ClockIcon aria-hidden="true" />{m.chat_expired_title()}
-				{:else}
-					<XIcon aria-hidden="true" />{m.chat_declined_title()}
-				{/if}
-			</h3>
-			<span class="meta">{m.chat_closed_note()}</span>
-		</div>
+		{@render closedState()}
 	{/if}
 </article>
 
-<ReviewActionDialog
+<UndoProposalDialog
 	bind:open={undoOpen}
 	pending={pendingAction === 'undo'}
-	title={countCopy(UNDO_TITLES, appliedCount)}
-	description={m.change_review_undo_body()}
-	cancelLabel={m.change_review_back_short()}
+	{appliedCount}
 	confirmLabel={m.chat_undo()}
-	pendingLabel={m.change_review_undoing()}
-	confirmIntent="danger"
-	confirmIcon={Undo2Icon}
 	testId="chat-proposal-undo-dialog"
 	onconfirm={() =>
 		void run('undo', undo, m.change_review_undo_error()).finally(() => (undoOpen = false))}
@@ -358,7 +357,7 @@
 	.card {
 		overflow: hidden;
 		border: 2px solid var(--ink);
-		border-radius: 12px;
+		border-radius: var(--chat-surface-radius);
 		background: var(--card);
 	}
 

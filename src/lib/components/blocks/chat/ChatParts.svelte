@@ -4,8 +4,9 @@
 	import CheckIcon from '@lucide/svelte/icons/check';
 	import LoaderIcon from '@lucide/svelte/icons/loader';
 	import SparklesIcon from '@lucide/svelte/icons/sparkles';
-	import { CHAT_PART, type ChatPart } from '$lib/modules/chat/chat_thread.js';
+	import { CHAT_PART, type ChatPart, type ChatToolLine } from '$lib/modules/chat/chat_thread.js';
 	import { chatToolLabel } from './chat_presentation.js';
+	import ChatNote from './ChatNote.svelte';
 
 	/** One assistant answer: tool lines, text and proposals, in the order they came. */
 	let {
@@ -18,7 +19,31 @@
 		live?: boolean;
 		proposal: Snippet<[string]>;
 	} = $props();
+
+	/** Only the newest part of a streaming answer is still in progress. */
+	function isStreaming(partIndex: number): boolean {
+		return live && partIndex === parts.length - 1;
+	}
 </script>
+
+{#snippet caret()}
+	<span class="caret" aria-hidden="true"></span>
+{/snippet}
+
+{#snippet toolLines(tools: readonly ChatToolLine[], streaming: boolean)}
+	<ul class="tools" aria-label={m.chat_steps_label()}>
+		{#each tools as tool, toolIndex (toolIndex)}
+			<ChatNote as="li">
+				{#if streaming && toolIndex === tools.length - 1}
+					<LoaderIcon class="animate-spin" aria-hidden="true" />
+				{:else}
+					<CheckIcon aria-hidden="true" />
+				{/if}
+				<span>{chatToolLabel(tool)}</span>
+			</ChatNote>
+		{/each}
+	</ul>
+{/snippet}
 
 <div class="answer">
 	<span class="avatar" aria-hidden="true"><SparklesIcon /></span>
@@ -26,35 +51,17 @@
 		<span class="sr-only">{m.chat_assistant_says()}</span>
 		{#each parts as part, partIndex (partIndex)}
 			{#if part.type === CHAT_PART.tools}
-				<ul class="tools" aria-label={m.chat_steps_label()}>
-					{#each part.tools as tool, toolIndex (toolIndex)}
-						{@const running =
-							live &&
-							partIndex === parts.length - 1 &&
-							toolIndex === part.tools.length - 1}
-						<li class="tool">
-							{#if running}
-								<LoaderIcon class="animate-spin" aria-hidden="true" />
-							{:else}
-								<CheckIcon aria-hidden="true" />
-							{/if}
-							<span>{chatToolLabel(tool)}</span>
-						</li>
-					{/each}
-				</ul>
+				{@render toolLines(part.tools, isStreaming(partIndex))}
 			{:else if part.type === CHAT_PART.text}
 				<p class="text">
-					{part.text}{#if live && partIndex === parts.length - 1}<span
-							class="caret"
-							aria-hidden="true"
-						></span>{/if}
+					{part.text}{#if isStreaming(partIndex)}{@render caret()}{/if}
 				</p>
 			{:else}
 				{@render proposal(part.proposalId)}
 			{/if}
 		{/each}
 		{#if live && parts.length === 0}
-			<p class="text"><span class="caret" aria-hidden="true"></span></p>
+			<p class="text">{@render caret()}</p>
 		{/if}
 	</div>
 </div>
@@ -101,20 +108,6 @@
 		margin: 0;
 		padding: 0;
 		list-style: none;
-	}
-
-	.tool {
-		display: flex;
-		align-items: center;
-		gap: 6px;
-		color: var(--muted-foreground);
-		font-size: var(--text-sm);
-	}
-
-	.tool :global(svg) {
-		flex: none;
-		width: 14px;
-		height: 14px;
 	}
 
 	.caret {

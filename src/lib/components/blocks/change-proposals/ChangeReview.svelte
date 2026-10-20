@@ -3,7 +3,6 @@
 	import { prefersReducedMotion } from 'svelte/motion';
 	import * as m from '$lib/paraglide/messages.js';
 	import Trash2Icon from '@lucide/svelte/icons/trash-2';
-	import Undo2Icon from '@lucide/svelte/icons/undo-2';
 	import { toastError } from '$lib/components/base/toast/index.js';
 	import { setGiftsContext } from '$lib/modules/gifts/gifts.context.svelte.js';
 	import type { GiftByRole } from '$lib/modules/gifts/types.js';
@@ -39,14 +38,10 @@
 	} from './change_review_presentation.js';
 	import { CHANGE_REVIEW_FILTER, type ChangeReviewFilter } from './change_review_rows.js';
 	import { ProposalDecisions } from './proposal_decisions.svelte.js';
+	import UndoProposalDialog from './UndoProposalDialog.svelte';
 
 	type ReviewAction = 'apply' | 'undo' | 'discard';
 
-	const UNDO_TITLES = {
-		one: m.change_review_undo_title_one,
-		few: m.change_review_undo_title_few,
-		other: m.change_review_undo_title_other,
-	};
 	const DISCARD_BODIES = {
 		one: m.change_review_discard_body_one,
 		few: m.change_review_discard_body_few,
@@ -255,16 +250,11 @@
 	{/if}
 </div>
 
-<ReviewActionDialog
+<UndoProposalDialog
 	bind:open={undoOpen}
 	pending={pendingAction === 'undo'}
-	title={countCopy(UNDO_TITLES, appliedCount)}
-	description={m.change_review_undo_body()}
-	cancelLabel={m.change_review_back_short()}
+	{appliedCount}
 	confirmLabel={m.change_review_undo()}
-	pendingLabel={m.change_review_undoing()}
-	confirmIntent="danger"
-	confirmIcon={Undo2Icon}
 	testId="change-review-undo-dialog"
 	onconfirm={() => void runUndo()}
 />

@@ -4,9 +4,9 @@
 	import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
 	import ChevronUpIcon from '@lucide/svelte/icons/chevron-up';
 	import ClipboardListIcon from '@lucide/svelte/icons/clipboard-list';
-	import LoaderIcon from '@lucide/svelte/icons/loader';
 	import TriangleAlertIcon from '@lucide/svelte/icons/triangle-alert';
 	import { Button } from '$lib/components/base/button/index.js';
+	import ApplyProposalLabel from '$lib/components/blocks/change-proposals/ApplyProposalLabel.svelte';
 	import { countCopy } from '$lib/modules/change_proposals/change_review_copy.js';
 	import { CHANGE_DECISION } from '$lib/modules/change_proposals/change_field_decisions.js';
 	import { UNRESOLVED_DECISION_MESSAGES } from '$lib/components/blocks/change-proposals/change_review_presentation.js';
@@ -44,45 +44,53 @@
 	const title = $derived(countCopy(PROPOSAL_TITLES, rowCount));
 </script>
 
+{#snippet count()}
+	{#if decisions.showUnresolved && blocked}
+		<span class="count is-blocked" role="status" data-testid="chat-proposal-unresolved">
+			<TriangleAlertIcon aria-hidden="true" />
+			{countCopy(UNRESOLVED_DECISION_MESSAGES, decisions.unresolvedCount)}
+		</span>
+	{:else if onlocate !== undefined}
+		<button
+			type="button"
+			class="count locate"
+			title={m.chat_locate_proposal()}
+			onclick={onlocate}
+		>
+			<ClipboardListIcon aria-hidden="true" />{title}
+		</button>
+	{:else}
+		<span class="count"><ClipboardListIcon aria-hidden="true" />{title}</span>
+	{/if}
+{/snippet}
+
+{#snippet reviewButton()}
+	{#if reviewHref !== null}
+		<Button intent="ghost" size="sm" href={reviewHref}>
+			{m.chat_review()}<ArrowRightIcon data-icon="inline-end" />
+		</Button>
+	{:else}
+		<Button
+			intent="ghost"
+			size="sm"
+			aria-expanded={inspecting}
+			data-testid="chat-proposal-inspect"
+			onclick={oninspect}
+		>
+			{m.chat_review()}
+			{#if inspecting}
+				<ChevronUpIcon data-icon="inline-end" />
+			{:else}
+				<ChevronDownIcon data-icon="inline-end" />
+			{/if}
+		</Button>
+	{/if}
+{/snippet}
+
 <div class="controls" data-testid="chat-proposal-controls">
 	<p class="count-line">
-		{#if decisions.showUnresolved && blocked}
-			<span class="count is-blocked" role="status" data-testid="chat-proposal-unresolved">
-				<TriangleAlertIcon aria-hidden="true" />
-				{countCopy(UNRESOLVED_DECISION_MESSAGES, decisions.unresolvedCount)}
-			</span>
-		{:else if onlocate !== undefined}
-			<button
-				type="button"
-				class="count locate"
-				title={m.chat_locate_proposal()}
-				onclick={onlocate}
-			>
-				<ClipboardListIcon aria-hidden="true" />{title}
-			</button>
-		{:else}
-			<span class="count"><ClipboardListIcon aria-hidden="true" />{title}</span>
-		{/if}
-		{#if reviewHref !== null}
-			<Button intent="ghost" size="sm" href={reviewHref}>
-				{m.chat_review()}<ArrowRightIcon data-icon="inline-end" />
-			</Button>
-		{:else}
-			<Button
-				intent="ghost"
-				size="sm"
-				aria-expanded={inspecting}
-				data-testid="chat-proposal-inspect"
-				onclick={oninspect}
-			>
-				{m.chat_review()}
-				{#if inspecting}
-					<ChevronUpIcon data-icon="inline-end" />
-				{:else}
-					<ChevronDownIcon data-icon="inline-end" />
-				{/if}
-			</Button>
-		{/if}
+		{@render count()}
+		{@render reviewButton()}
 	</p>
 	<div class="actions">
 		<Button
@@ -113,16 +121,7 @@
 			data-testid="chat-proposal-apply"
 			onclick={onapply}
 		>
-			{#if pending}
-				<LoaderIcon
-					class="animate-spin"
-					data-icon="inline-start"
-				/>{m.change_review_applying()}
-			{:else if declines}
-				{m.change_review_decline_proposal()}
-			{:else}
-				{m.change_review_apply_included({ count: decisions.includedCount })}
-			{/if}
+			<ApplyProposalLabel {pending} {declines} includedCount={decisions.includedCount} />
 		</Button>
 	</div>
 </div>

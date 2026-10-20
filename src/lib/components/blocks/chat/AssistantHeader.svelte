@@ -207,7 +207,7 @@
 
 	.title {
 		font-family: var(--font-head);
-		font-size: 17px;
+		font-size: var(--text-xl);
 		font-weight: 600;
 		line-height: 1.2;
 		overflow-wrap: anywhere;

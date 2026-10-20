@@ -3,14 +3,7 @@
 	import { resolve } from '$app/paths';
 	import * as m from '$lib/paraglide/messages.js';
 	import ClockIcon from '@lucide/svelte/icons/clock';
-	import ImageIcon from '@lucide/svelte/icons/image';
-	import LinkIcon from '@lucide/svelte/icons/link';
-	import ListIcon from '@lucide/svelte/icons/list';
 	import PowerIcon from '@lucide/svelte/icons/power';
-	import RefreshCwIcon from '@lucide/svelte/icons/refresh-cw';
-	import TriangleAlertIcon from '@lucide/svelte/icons/triangle-alert';
-	import ChevronRightIcon from '@lucide/svelte/icons/chevron-right';
-	import { Button } from '$lib/components/base/button/index.js';
 	import { toastError } from '$lib/components/base/toast/index.js';
 	import type { ChangeRowContext } from '$lib/components/blocks/change-proposals/change_row_model.js';
 	import { localizeInternalHref } from '$lib/i18n/locale.js';
@@ -56,8 +49,11 @@
 	import AssistantHeader from './AssistantHeader.svelte';
 	import ChatComposer from './ChatComposer.svelte';
 	import ChatHistory from './ChatHistory.svelte';
+	import ChatNote from './ChatNote.svelte';
 	import ChatParts from './ChatParts.svelte';
 	import ChatProposal from './ChatProposal.svelte';
+	import ChatTurnError from './ChatTurnError.svelte';
+	import ChatWelcome from './ChatWelcome.svelte';
 	import type { DecisionBarControls } from './chat_presentation.js';
 
 	const RESIZE_STEP = 20;
@@ -124,11 +120,9 @@
 	const unfinished = $derived(!streaming && liveTurn === null && isChatTurnUnfinished(messages));
 	const width = $derived(assistant.panelWidth.current);
 	const maxWidth = $derived(assistant.maxWidth.current);
-	const starters = [
-		{ icon: ImageIcon, label: m.chat_starter_enrich, prompt: m.chat_starter_enrich_prompt },
-		{ icon: LinkIcon, label: m.chat_starter_add, prompt: m.chat_starter_add_prompt },
-		{ icon: ListIcon, label: m.chat_starter_bulk, prompt: m.chat_starter_bulk_prompt },
-	];
+	const loading = $derived(
+		resolvingLatest || (sessionQuery !== null && sessionQuery.current === undefined),
+	);
 
 	/** The handle sits on the left edge, so dragging left widens the panel. */
 	function startResize(event: PointerEvent) {
@@ -279,8 +273,8 @@
 		}
 	}
 
-	async function useStarter(prompt: () => string) {
-		assistant.draft.current = prompt();
+	async function useStarter(prompt: string) {
+		assistant.draft.current = prompt;
 		await tick();
 		composer?.focus();
 		composer?.setSelectionRange(composer.value.length, composer.value.length);
@@ -336,32 +330,17 @@
 
 {#snippet statusLine()}
 	{#if availability === CHAT_AVAILABILITY.dailyCapReached}
-		<p class="status-line" role="status">
+		<ChatNote role="status" emphasis>
 			<ClockIcon aria-hidden="true" />{m.chat_cap_reached()}
-		</p>
+		</ChatNote>
 	{:else if availability === CHAT_AVAILABILITY.disabled}
-		<p class="status-line" role="status">
+		<ChatNote role="status" emphasis>
 			<PowerIcon aria-hidden="true" />{m.chat_disabled()}
-		</p>
+		</ChatNote>
 	{/if}
 {/snippet}
 
-<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-<aside
-	id="assistant-panel"
-	class="panel"
-	data-sheet={mobile ? sheet : undefined}
-	data-testid="assistant-panel"
-	hidden={!open}
-	inert={!open}
-	role={modal ? 'dialog' : 'complementary'}
-	aria-modal={modal ? 'true' : undefined}
-	aria-labelledby="assistant-title"
-	tabindex="-1"
-	style:--assistant-width="{width}px"
-	bind:this={panel}
-	onkeydown={onpanelkeydown}
->
+{#snippet edge()}
 	{#if mobile}
 		<button
 			type="button"
@@ -374,7 +353,7 @@
 					sheet === ASSISTANT_SHEET.half ? ASSISTANT_SHEET.full : ASSISTANT_SHEET.half)}
 		></button>
 	{:else}
-		<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+		<!-- svelte-ignore a11y_no_noninteractive_tabindex, a11y_no_noninteractive_element_interactions -->
 		<div
 			class="resize-handle"
 			role="separator"
@@ -391,6 +370,51 @@
 			ondblclick={() => assistant.resize(ASSISTANT_PANEL_WIDTH.default)}
 		></div>
 	{/if}
+{/snippet}
+
+{#snippet conversation()}
+	{#if items.length === 0 && liveTurn === null}
+		<ChatWelcome {available} onstarter={(prompt) => void useStarter(prompt)} />
+	{/if}
+	{#each items as item (item.id)}
+		{#if item.type === CHAT_ITEM.user}
+			<p class="bubble">{item.text}</p>
+		{:else}
+			<ChatParts parts={item.parts} {proposal} />
+		{/if}
+	{/each}
+	{#if liveTurn !== null}
+		{#if liveTurn.userText !== null}
+			<p class="bubble">{liveTurn.userText}</p>
+		{/if}
+		<ChatParts parts={liveTurn.parts} live={streaming} {proposal} />
+	{/if}
+	{#if unfinished || liveTurn?.error != null}
+		<ChatTurnError
+			proposed={liveTurn?.proposed === true}
+			onretry={unfinished && available
+				? () => void runTurn({ kind: CHAT_TURN_KIND.retry })
+				: undefined}
+		/>
+	{/if}
+{/snippet}
+
+<aside
+	id="assistant-panel"
+	class="panel"
+	data-sheet={mobile ? sheet : undefined}
+	data-testid="assistant-panel"
+	hidden={!open}
+	inert={!open}
+	role={modal ? 'dialog' : 'complementary'}
+	aria-modal={modal ? 'true' : undefined}
+	aria-labelledby="assistant-title"
+	tabindex="-1"
+	style:--assistant-width="{width}px"
+	bind:this={panel}
+	onkeydown={onpanelkeydown}
+>
+	{@render edge()}
 	<AssistantHeader
 		{wishlistTitle}
 		{view}
@@ -428,65 +452,10 @@
 			/>
 		{:else if sessionQuery?.error}
 			<p class="note" role="alert">{m.chat_load_error()}</p>
-		{:else if resolvingLatest || (sessionQuery !== null && sessionQuery.current === undefined)}
+		{:else if loading}
 			<p class="note" aria-busy="true">{m.chat_history_loading()}</p>
 		{:else}
-			{#if items.length === 0 && liveTurn === null}
-				<div class="welcome">
-					<p class="welcome-title">{m.chat_welcome()}</p>
-					{#if available}
-						<div class="starters">
-							{#each starters as starter (starter.label)}
-								<button
-									type="button"
-									class="starter"
-									onclick={() => void useStarter(starter.prompt)}
-								>
-									<span class="starter-icon" aria-hidden="true"
-										><starter.icon /></span
-									>
-									<span>{starter.label()}</span>
-									<ChevronRightIcon aria-hidden="true" />
-								</button>
-							{/each}
-						</div>
-					{/if}
-				</div>
-			{/if}
-			{#each items as item (item.id)}
-				{#if item.type === CHAT_ITEM.user}
-					<p class="bubble">{item.text}</p>
-				{:else}
-					<ChatParts parts={item.parts} {proposal} />
-				{/if}
-			{/each}
-			{#if liveTurn !== null}
-				{#if liveTurn.userText !== null}
-					<p class="bubble">{liveTurn.userText}</p>
-				{/if}
-				<ChatParts parts={liveTurn.parts} live={streaming} {proposal} />
-			{/if}
-			{#if unfinished || liveTurn?.error}
-				<div class="turn-error" role="group" aria-labelledby="assistant-turn-error">
-					<TriangleAlertIcon aria-hidden="true" />
-					<p class="turn-error-title" id="assistant-turn-error">{m.chat_error_title()}</p>
-					{#if liveTurn?.proposed !== true}
-						<p class="turn-error-body">{m.chat_error_nothing_changed()}</p>
-					{/if}
-					{#if unfinished && available}
-						<div>
-							<Button
-								intent="secondary"
-								size="sm"
-								data-testid="assistant-retry"
-								onclick={() => void runTurn({ kind: CHAT_TURN_KIND.retry })}
-							>
-								<RefreshCwIcon data-icon="inline-start" />{m.chat_retry()}
-							</Button>
-						</div>
-					{/if}
-				</div>
-			{/if}
+			{@render conversation()}
 		{/if}
 	</div>
 	{#if view === ASSISTANT_VIEW.chat}
@@ -511,6 +480,9 @@
 
 <style>
 	.panel {
+		/* One corner for every card-like surface in the assistant. */
+		--chat-surface-radius: 12px;
+
 		position: relative;
 		display: flex;
 		flex: none;
@@ -562,97 +534,17 @@
 		font-size: var(--text-md);
 	}
 
-	.welcome {
-		display: grid;
-		gap: var(--space-3);
-	}
-
-	.welcome-title {
-		font-family: var(--font-head);
-		font-size: var(--text-lg);
-	}
-
-	.starters {
-		display: grid;
-		gap: var(--space-2);
-	}
-
-	.starter {
-		display: grid;
-		grid-template-columns: auto minmax(0, 1fr) auto;
-		align-items: center;
-		gap: var(--space-2);
-		padding: var(--space-2) var(--space-3);
-		border: 2px solid var(--ink);
-		border-radius: 12px;
-		background: var(--card);
-		color: inherit;
-		font-size: var(--text-md);
-		font-weight: 600;
-		text-align: start;
-		cursor: pointer;
-	}
-
-	.starter:hover {
-		background: var(--panel-hover);
-	}
-
-	.starter:focus-visible {
-		outline: 2px solid var(--ring);
-		outline-offset: 2px;
-	}
-
-	.starter :global(svg) {
-		width: 16px;
-		height: 16px;
-	}
-
-	.starter-icon {
-		display: grid;
-		place-items: center;
-		width: 28px;
-		height: 28px;
-		border-radius: 8px;
-		background: var(--tint);
-	}
-
 	.bubble {
 		justify-self: end;
 		max-width: 85%;
 		padding: var(--space-2) var(--space-3);
 		border: 2px solid var(--ink);
-		border-radius: 12px 12px 4px;
+		border-radius: var(--chat-surface-radius) var(--chat-surface-radius) 4px;
 		background: var(--tint);
 		font-size: var(--text-md);
 		line-height: 1.5;
 		white-space: pre-wrap;
 		overflow-wrap: anywhere;
-	}
-
-	.turn-error {
-		display: grid;
-		grid-template-columns: auto minmax(0, 1fr);
-		gap: 4px var(--space-2);
-		padding: var(--space-3);
-		border: 2px solid color-mix(in oklab, var(--status-danger) 60%, var(--ink));
-		border-radius: 12px;
-		background: color-mix(in oklab, var(--status-danger) 12%, var(--card));
-		font-size: var(--text-md);
-	}
-
-	.turn-error > :global(svg) {
-		width: 16px;
-		height: 16px;
-		margin-top: 2px;
-		color: var(--status-danger-text);
-	}
-
-	.turn-error-title {
-		font-weight: 700;
-	}
-
-	.turn-error > :not(:first-child, .turn-error-title) {
-		grid-column: 2;
 	}
 
 	.foot {
@@ -666,21 +558,6 @@
 	.decision-bar {
 		padding-bottom: var(--space-2);
 		border-bottom: 1px solid var(--border);
-	}
-
-	.status-line {
-		display: flex;
-		align-items: center;
-		gap: 6px;
-		color: var(--muted-foreground);
-		font-size: var(--text-sm);
-		font-weight: 600;
-	}
-
-	.status-line :global(svg) {
-		flex: none;
-		width: 14px;
-		height: 14px;
 	}
 
 	.grabber {

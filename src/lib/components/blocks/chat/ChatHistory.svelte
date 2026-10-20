@@ -6,6 +6,7 @@
 	import { Skeleton } from '$lib/components/base/skeleton/index.js';
 	import { formatChangeReviewDateTime } from '$lib/modules/change_proposals/change_review_copy.js';
 	import type { ChatSessionSummary } from '$lib/modules/chat/types.js';
+	import ChatNote from './ChatNote.svelte';
 
 	/** This wishlist's chats from the last 30 days, newest first. */
 	let {
@@ -37,7 +38,7 @@
 			<Skeleton class="h-13 w-full" />
 		</div>
 	{:else if sessions.length === 0}
-		<p class="note">{m.chat_history_empty()}</p>
+		<ChatNote>{m.chat_history_empty()}</ChatNote>
 	{:else}
 		<ul class="list">
 			{#each sessions as session (session.id)}
@@ -55,7 +56,7 @@
 			{/each}
 		</ul>
 	{/if}
-	<p class="note"><ClockIcon aria-hidden="true" />{m.chat_history_note()}</p>
+	<ChatNote><ClockIcon aria-hidden="true" />{m.chat_history_note()}</ChatNote>
 </div>
 
 <style>
@@ -78,7 +79,7 @@
 		width: 100%;
 		padding: var(--space-2) var(--space-3);
 		border: 2px solid var(--ink);
-		border-radius: 12px;
+		border-radius: var(--chat-surface-radius);
 		background: var(--card);
 		color: inherit;
 		text-align: start;
@@ -103,19 +104,5 @@
 	.sub {
 		color: var(--muted-foreground);
 		font-size: var(--text-sm);
-	}
-
-	.note {
-		display: flex;
-		align-items: center;
-		gap: 6px;
-		color: var(--muted-foreground);
-		font-size: var(--text-sm);
-	}
-
-	.note :global(svg) {
-		flex: none;
-		width: 14px;
-		height: 14px;
 	}
 </style>
