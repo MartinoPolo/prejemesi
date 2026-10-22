@@ -201,18 +201,14 @@
 		};
 	});
 
-	const readEntries = () => decisions.entries;
-
 	$effect(() => {
 		if (!decisions.interactive) {
 			return;
 		}
-		const proposalId = proposal.id;
-		untrack(() => decidingProposals.set(proposalId, readEntries));
+		const registration = { proposalId: proposal.id, entries: () => decisions.entries };
+		untrack(() => decidingProposals.add(registration));
 		return () => {
-			if (untrack(() => decidingProposals.get(proposalId)) === readEntries) {
-				decidingProposals.delete(proposalId);
-			}
+			decidingProposals.delete(registration);
 		};
 	});
 </script>
