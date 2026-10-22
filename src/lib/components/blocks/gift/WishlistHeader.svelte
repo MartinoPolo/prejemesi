@@ -235,7 +235,7 @@
 				frame={polaroidFrame}
 				{themeEmoji}
 				alt={title}
-				variant="thumbnail"
+				variant="banner"
 				eagerLoading
 			/>
 		</figure>
@@ -278,7 +278,7 @@
 						frame={polaroidFrame}
 						{themeEmoji}
 						alt={title}
-						variant="thumbnail"
+						variant="banner"
 						eagerLoading
 					/>
 					{#if canManage && !isArchived}
