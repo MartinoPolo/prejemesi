@@ -253,9 +253,9 @@
 		}
 	}
 
-	function handleUploadError(uploadError: Error) {
+	function handleUploadError(uploadError: Error, message: string) {
 		console.error('Wishlist image upload failed:', uploadError.message);
-		toastError(m.toast_wishlist_image_upload_error());
+		toastError(m.toast_wishlist_image_upload_error(), message);
 	}
 
 	function handleRemove() {
