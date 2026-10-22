@@ -23,7 +23,7 @@ export interface GiftPresentationProps extends GiftBrowseActionHandlers {
 	moreOpen?: boolean;
 	moreSurface?: 'menu' | 'dialog';
 	showPriority?: boolean;
-	/** Defaults to hidden in contextual mode; grouped reorder reveals it on the dragged gift. */
+	/** Defaults to hidden in contextual mode; reorder reveals it beside the grip. */
 	showCategory?: boolean;
 	/** How a chat proposal being decided would change the gift. */
 	livePreview?: GiftLivePreviewKind;
