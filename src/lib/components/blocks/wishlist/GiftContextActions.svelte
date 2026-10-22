@@ -107,6 +107,7 @@
 		oncategory,
 		onreceived,
 		onselect,
+		onreorder,
 		onreserve,
 		oncancelreservation,
 		onpurchased,
@@ -127,6 +128,7 @@
 			readOnly,
 			canEdit: true,
 			canEnrich: onenrich !== undefined,
+			canReorder: onreorder !== undefined,
 			canReserve,
 			ownsReservation,
 			canTrackPurchased,
@@ -180,6 +182,7 @@
 			),
 		multiselect: () =>
 			finishingEntry('multiselect', m.gift_context_select_multiple(), 'handoff', onselect),
+		reorder: () => finishingEntry('reorder', m.gift_context_reorder(), 'handoff', onreorder),
 		reserve: () => finishingEntry('reserve', m.reserve_button_reserve(), 'handoff', onreserve),
 		'cancel-reservation': () =>
 			finishingEntry(

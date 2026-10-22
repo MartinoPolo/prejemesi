@@ -1118,6 +1118,7 @@
 	"gift_context_edit": "Edit gift",
 	"gift_context_category": "Category",
 	"gift_context_select_multiple": "Select multiple gifts",
+	"gift_context_reorder": "Reorder gifts",
 	"gift_context_actions_description": "Available actions for this gift",
 	"gift_context_back": "Back",
 	"gift_context_copy_success": "Link copied",

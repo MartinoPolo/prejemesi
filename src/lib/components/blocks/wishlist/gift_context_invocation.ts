@@ -51,6 +51,8 @@ export interface GiftContextCommandCallbacks {
 	oncategory: (id: string | null) => void;
 	onreceived: () => void;
 	onselect: () => void;
+	/** Present only while reorder mode can start. */
+	onreorder?: () => void;
 	onreserve?: () => void;
 	oncancelreservation?: () => void;
 	onpurchased?: () => void;
