@@ -323,66 +323,72 @@ function assertEveryGiftUpdated(
 	}
 }
 
+/** Applies one bulk action inside the caller's transaction, through the post-share edit rules. */
+export async function applyBulkGiftUpdate(
+	context: MutationOperationContext,
+	input: BulkUpdateGiftsInput,
+) {
+	const { transaction, now } = context;
+	const uniqueGiftIds = [...new Set(input.giftIds)];
+	const managedWishlist = await requireWishlistManagement(
+		transaction,
+		context.actor.userId,
+		input.wishlistId,
+		{ lock: true },
+	);
+	const { wishlistRow } = managedWishlist;
+	assertWishlistMutable(wishlistRow);
+	await assertBulkActionTargetActive(transaction, input);
+	const rows = await lockBulkSelection(transaction, input, uniqueGiftIds);
+
+	const updatePlans = rows.map((row) => planBulkUpdate(input, row, now, wishlistRow));
+	const changedPresentationPlans = updatePlans.filter(
+		(plan) => plan.didChange && isBulkPresentationAction(input),
+	);
+	const updateSet: Record<string, unknown> = {
+		updatedAt: now,
+		...actionUpdateSet(input, updatePlans),
+		...(wishlistRow.sharedAt === null
+			? {}
+			: postShareTransparencyUpdateSet(changedPresentationPlans)),
+	};
+
+	await runBulkUpdateAfterRowsLockedHookForTest(transaction);
+
+	const updatedRows = await transaction
+		.update(gift)
+		.set(updateSet)
+		.where(bulkSelectionFilter(input, uniqueGiftIds))
+		.returning({ id: gift.id });
+	assertEveryGiftUpdated(updatedRows, uniqueGiftIds);
+
+	// The CASE statements above write exactly each plan's update data, so the new state is known.
+	context.recordGiftRevisions(
+		updatePlans.map((plan) => ({
+			giftId: plan.row.id,
+			wishlistId: plan.row.wishlistId,
+			before: plan.row,
+			after: { ...plan.row, ...plan.updateData },
+		})),
+	);
+	noteManagerEdits(
+		context,
+		managedWishlist,
+		changedPresentationPlans.map((plan) => plan.row),
+	);
+	return {
+		updatedIds: updatedRows.map((row) => row.id),
+		priorReceived: Object.fromEntries(rows.map((row) => [row.id, row.received])),
+		wishlistShortId: wishlistRow.shortId,
+	};
+}
+
 export const bulkUpdateGiftsOperation = defineOperation({
 	name: 'bulkUpdateGifts',
 	kind: OPERATION_KIND.mutation,
 	exposure: OPERATION_EXPOSURE.agent,
 	input: BulkUpdateGiftsInputSchema,
-	async run(context, input) {
-		const { transaction, now } = context;
-		const uniqueGiftIds = [...new Set(input.giftIds)];
-		const managedWishlist = await requireWishlistManagement(
-			transaction,
-			context.actor.userId,
-			input.wishlistId,
-			{ lock: true },
-		);
-		const { wishlistRow } = managedWishlist;
-		assertWishlistMutable(wishlistRow);
-		await assertBulkActionTargetActive(transaction, input);
-		const rows = await lockBulkSelection(transaction, input, uniqueGiftIds);
-
-		const updatePlans = rows.map((row) => planBulkUpdate(input, row, now, wishlistRow));
-		const changedPresentationPlans = updatePlans.filter(
-			(plan) => plan.didChange && isBulkPresentationAction(input),
-		);
-		const updateSet: Record<string, unknown> = {
-			updatedAt: now,
-			...actionUpdateSet(input, updatePlans),
-			...(wishlistRow.sharedAt === null
-				? {}
-				: postShareTransparencyUpdateSet(changedPresentationPlans)),
-		};
-
-		await runBulkUpdateAfterRowsLockedHookForTest(transaction);
-
-		const updatedRows = await transaction
-			.update(gift)
-			.set(updateSet)
-			.where(bulkSelectionFilter(input, uniqueGiftIds))
-			.returning({ id: gift.id });
-		assertEveryGiftUpdated(updatedRows, uniqueGiftIds);
-
-		// The CASE statements above write exactly each plan's update data, so the new state is known.
-		context.recordGiftRevisions(
-			updatePlans.map((plan) => ({
-				giftId: plan.row.id,
-				wishlistId: plan.row.wishlistId,
-				before: plan.row,
-				after: { ...plan.row, ...plan.updateData },
-			})),
-		);
-		noteManagerEdits(
-			context,
-			managedWishlist,
-			changedPresentationPlans.map((plan) => plan.row),
-		);
-		return {
-			updatedIds: updatedRows.map((row) => row.id),
-			priorReceived: Object.fromEntries(rows.map((row) => [row.id, row.received])),
-			wishlistShortId: wishlistRow.shortId,
-		};
-	},
+	run: applyBulkGiftUpdate,
 });
 
 /**

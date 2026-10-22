@@ -28,6 +28,7 @@ import {
 	updateWishlistOperation,
 } from './wishlist_detail_operations.js';
 import {
+	createGiftCategoryOperation,
 	readGiftCategoriesOperation,
 	readGiftCategorySettingsRowsOperation,
 	saveGiftCategorySettingsOperation,
@@ -104,6 +105,7 @@ export const OPERATION_REGISTRY = {
 	[setWishlistPaletteOperation.name]: setWishlistPaletteOperation,
 	[saveWishlistSettingsOperation.name]: saveWishlistSettingsOperation,
 	[saveGiftCategorySettingsOperation.name]: saveGiftCategorySettingsOperation,
+	[createGiftCategoryOperation.name]: createGiftCategoryOperation,
 	[savePriorityLevelsOperation.name]: savePriorityLevelsOperation,
 	[importGiftsOperation.name]: importGiftsOperation,
 	[createWishlistFromImportOperation.name]: createWishlistFromImportOperation,

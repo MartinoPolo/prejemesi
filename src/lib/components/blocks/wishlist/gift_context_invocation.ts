@@ -49,6 +49,8 @@ export interface GiftContextCommandCallbacks {
 	onenrich?: () => void;
 	onpriority: (id: string | null) => void;
 	oncategory: (id: string | null) => void;
+	/** Present only when the viewer may manage the wishlist's categories. */
+	oncreatecategory?: () => void;
 	onreceived: () => void;
 	onselect: () => void;
 	/** Present only while reorder mode can start. */

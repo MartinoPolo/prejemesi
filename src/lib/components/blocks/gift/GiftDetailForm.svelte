@@ -80,7 +80,10 @@
 	import {
 		labelForGiftCategory,
 		type ManagedGiftCategory,
+		type PublicGiftCategory,
 	} from '$lib/modules/gift-categories/types.js';
+	import PlusIcon from '@lucide/svelte/icons/plus';
+	import GiftCategoryQuickAddDialog from './GiftCategoryQuickAddDialog.svelte';
 	import { getLocale } from '$lib/paraglide/runtime.js';
 
 	type GiftSaveResult = boolean | void | Promise<boolean | void>;
@@ -94,6 +97,8 @@
 		demo?: boolean;
 		priorityLevels: GiftPriorityLevel[];
 		categoryOptions?: ManagedGiftCategory[];
+		/** Offers creating a category from the category select; the gift gets it on save. */
+		canCreateCategory?: boolean;
 		role: WishlistRole;
 		hideReservationState?: boolean;
 		postShareLocked: boolean;
@@ -123,6 +128,7 @@
 		demo = false,
 		priorityLevels,
 		categoryOptions = [],
+		canCreateCategory = false,
 		role,
 		hideReservationState = false,
 		postShareLocked,
@@ -766,8 +772,32 @@
 		onupdate?.({ id: gift.id, descriptionAppendEdit: { index, text: null } });
 	}
 
-	function categoryLabel(category: ManagedGiftCategory): string {
+	function categoryLabel(category: PublicGiftCategory): string {
 		return labelForGiftCategory(category, getLocale().startsWith('en') ? 'en' : 'cs');
+	}
+
+	const CREATE_CATEGORY_VALUE = '__create-category__';
+	let categoryQuickAddOpen = $state(false);
+	// Shown until the refreshed category list that includes it arrives.
+	let createdCategory = $state<PublicGiftCategory | null>(null);
+	const categorySelectOptions = $derived<readonly PublicGiftCategory[]>(
+		createdCategory === null ||
+			categoryOptions.some((category) => category.id === createdCategory?.id)
+			? categoryOptions
+			: [...categoryOptions, createdCategory],
+	);
+
+	function chooseCategory(value: string) {
+		if (value === CREATE_CATEGORY_VALUE) {
+			categoryQuickAddOpen = true;
+			return;
+		}
+		categoryId = value;
+	}
+
+	function selectCreatedCategory(category: PublicGiftCategory) {
+		createdCategory = category;
+		categoryId = category.id;
 	}
 
 	async function handleDelete() {
@@ -1165,31 +1195,43 @@
 							<Label>{m.gift_category_label()}</Label>
 						</div>
 						<div class={styles.formControlStack()}>
-							{#if categoryOptions.length > 0}
-								<Select.Root type="single" bind:value={categoryId}>
-									<Select.Trigger class="w-full">
-										{#if categoryId}
-											{categoryLabel(
-												categoryOptions.find(
-													(category) => category.id === categoryId,
-												) ?? categoryOptions[0]!,
-											)}
-										{:else}
-											{m.gift_category_none()}
-										{/if}
+							{#if categorySelectOptions.length > 0 || canCreateCategory}
+								{@const selectedCategory = categorySelectOptions.find(
+									(category) => category.id === categoryId,
+								)}
+								<Select.Root
+									type="single"
+									bind:value={() => categoryId, chooseCategory}
+								>
+									<Select.Trigger
+										class="w-full"
+										data-testid="gift-category-select"
+									>
+										{selectedCategory === undefined
+											? m.gift_category_none()
+											: categoryLabel(selectedCategory)}
 									</Select.Trigger>
 									<Select.Content>
 										<Select.Group>
 											<Select.Item value="" label={m.gift_category_none()}>
 												{m.gift_category_none()}
 											</Select.Item>
-											{#each categoryOptions as category (category.id)}
+											{#each categorySelectOptions as category (category.id)}
 												{@const label = categoryLabel(category)}
 												<Select.Item value={category.id} {label}
 													>{label}</Select.Item
 												>
 											{/each}
 										</Select.Group>
+										{#if canCreateCategory}
+											<Select.Separator />
+											<Select.Item
+												value={CREATE_CATEGORY_VALUE}
+												label={m.gift_category_create()}
+												data-testid="gift-category-create-option"
+												><PlusIcon />{m.gift_category_create()}</Select.Item
+											>
+										{/if}
 									</Select.Content>
 								</Select.Root>
 							{:else}
@@ -1516,3 +1558,13 @@
 <div class={styles.mobileSubmitFooter()} data-testid="gift-mobile-submit-footer">
 	{@render submitActions()}
 </div>
+
+{#if canCreateCategory}
+	<GiftCategoryQuickAddDialog
+		bind:open={categoryQuickAddOpen}
+		{wishlistId}
+		target={{ kind: 'editor' }}
+		categories={categorySelectOptions}
+		oncreated={selectCreatedCategory}
+	/>
+{/if}

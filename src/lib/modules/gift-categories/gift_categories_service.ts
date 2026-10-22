@@ -64,29 +64,33 @@ export async function getActiveGiftCategories(
 	return rows.map(publicGiftCategory);
 }
 
+async function insertDefaultGiftCategoriesWhenUnset(
+	database: CategoryDatabase,
+	wishlistId: string,
+): Promise<void> {
+	await lockWishlistCategoryStructure(database, wishlistId);
+	const existing = await database
+		.select({ id: giftCategory.id })
+		.from(giftCategory)
+		.where(eq(giftCategory.wishlistId, wishlistId))
+		.limit(1);
+	// Any row, including a soft-deleted one, proves that settings were explicitly saved.
+	// This preserves an intentional all-disabled configuration.
+	if (existing.length > 0) {
+		return;
+	}
+	await database.insert(giftCategory).values(
+		DEFAULT_ENABLED_GIFT_CATEGORY_PRESET_KEYS.map((key, sortOrder) => ({
+			wishlistId,
+			presetKey: key,
+			color: GIFT_CATEGORY_PRESET_BY_KEY.get(key)!.color,
+			sortOrder,
+		})),
+	);
+}
+
 async function ensureDefaultGiftCategories(wishlistId: string): Promise<void> {
-	const database = getDb();
-	await database.transaction(async (tx) => {
-		await lockWishlistCategoryStructure(tx, wishlistId);
-		const existing = await tx
-			.select({ id: giftCategory.id })
-			.from(giftCategory)
-			.where(eq(giftCategory.wishlistId, wishlistId))
-			.limit(1);
-		// Any row, including a soft-deleted one, proves that settings were explicitly saved.
-		// This preserves an intentional all-disabled configuration.
-		if (existing.length > 0) {
-			return;
-		}
-		await tx.insert(giftCategory).values(
-			DEFAULT_ENABLED_GIFT_CATEGORY_PRESET_KEYS.map((key, sortOrder) => ({
-				wishlistId,
-				presetKey: key,
-				color: GIFT_CATEGORY_PRESET_BY_KEY.get(key)!.color,
-				sortOrder,
-			})),
-		);
-	});
+	await getDb().transaction((tx) => insertDefaultGiftCategoriesWhenUnset(tx, wishlistId));
 }
 
 function loadManagedGiftCategoryRows(database: CategoryDatabase, wishlistId: string) {
@@ -269,7 +273,7 @@ async function nextCustomCategoryColor(
 
 async function createCustomGiftCategoryWithDatabase(
 	database: CategoryDatabase,
-	params: { wishlistId: string; label: string },
+	params: { wishlistId: string; label: string; color?: string },
 ): Promise<PublicGiftCategory> {
 	await assertNoLabelConflict({
 		database,
@@ -281,7 +285,7 @@ async function createCustomGiftCategoryWithDatabase(
 		.values({
 			wishlistId: params.wishlistId,
 			customLabel: params.label.trim(),
-			color: await nextCustomCategoryColor(database, params.wishlistId),
+			color: params.color ?? (await nextCustomCategoryColor(database, params.wishlistId)),
 			sortOrder: await nextSortOrder(database, params.wishlistId),
 		})
 		.returning();
@@ -289,6 +293,18 @@ async function createCustomGiftCategoryWithDatabase(
 		error(500, SERVER_ERROR.FAILED_TO_CREATE_GIFT);
 	}
 	return publicGiftCategory(row);
+}
+
+/**
+ * Adds one custom category after the enabled ones. A wishlist whose categories were never read
+ * first receives the default set, so the new row does not read as an explicit all-disabled choice.
+ */
+export async function createCustomGiftCategory(
+	database: CategoryDatabase,
+	params: { wishlistId: string; label: string; color: string },
+): Promise<PublicGiftCategory> {
+	await insertDefaultGiftCategoriesWhenUnset(database, params.wishlistId);
+	return createCustomGiftCategoryWithDatabase(database, params);
 }
 
 export async function resolveImportGiftCategoryAssignments(params: {

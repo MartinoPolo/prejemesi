@@ -150,6 +150,7 @@
 	{demo}
 	{priorityLevels}
 	{categoryOptions}
+	canCreateCategory={canManage && !isArchived}
 	{role}
 	readOnly={!canManage}
 	{isArchived}
