@@ -5,8 +5,12 @@ import { getDb } from '$lib/server/db/index.js';
 import { gift } from '$lib/server/db/gift.schema.js';
 import { priorityLevel } from '$lib/server/db/wishlist.schema.js';
 import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
-import { SaveGiftCategorySettingsInputSchema } from '$lib/modules/gift-categories/types.js';
 import {
+	CreateGiftCategoryInputSchema,
+	SaveGiftCategorySettingsInputSchema,
+} from '$lib/modules/gift-categories/types.js';
+import {
+	createCustomGiftCategory,
 	getManagedGiftCategories,
 	getManagedGiftCategorySettingsRows,
 	saveGiftCategorySettings,
@@ -20,6 +24,7 @@ import {
 } from './operation.js';
 import { requireOperationActor, type OperationActor } from './actor.js';
 import { requireMutableManagedWishlist, requireWishlistManagement } from './wishlist_management.js';
+import { applyBulkGiftUpdate } from './gift_bulk_operations.js';
 
 /** Category settings, including usage counts, are for managers only. */
 async function requireCategoryManager(
@@ -75,6 +80,38 @@ export const saveGiftCategorySettingsOperation = defineOperation({
 		});
 		await saveGiftCategorySettings(input, context);
 		return { wishlistShortId: wishlistRow.shortId };
+	},
+});
+
+/**
+ * Creates a custom category from a category picker and assigns it to the gifts the picker acted
+ * on, atomically and through the ordinary bulk post-share rules. Agents compose the same change
+ * from the category settings and bulk update operations.
+ */
+export const createGiftCategoryOperation = defineOperation({
+	name: 'createGiftCategory',
+	kind: OPERATION_KIND.mutation,
+	exposure: OPERATION_EXPOSURE.humanOnly,
+	input: CreateGiftCategoryInputSchema,
+	async run(context, { wishlistId, label, color, giftIds }) {
+		// The wishlist lock serializes structure changes against concurrent gift assignment.
+		const wishlistRow = await requireMutableManagedWishlist(context, wishlistId, {
+			lock: true,
+		});
+		const category = await createCustomGiftCategory(context.transaction, {
+			wishlistId,
+			label,
+			color,
+		});
+		if (giftIds.length > 0) {
+			await applyBulkGiftUpdate(context, {
+				wishlistId,
+				giftIds,
+				action: 'category',
+				categoryId: category.id,
+			});
+		}
+		return { category, wishlistShortId: wishlistRow.shortId };
 	},
 });
 

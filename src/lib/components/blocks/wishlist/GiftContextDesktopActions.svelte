@@ -1,6 +1,7 @@
 <script lang="ts">
 	import * as ContextMenu from '$lib/components/base/context-menu/index.js';
 	import * as DropdownMenu from '$lib/components/base/dropdown-menu/index.js';
+	import PlusIcon from '@lucide/svelte/icons/plus';
 	import GiftContextActionIcon from './GiftContextActionIcon.svelte';
 	import type { GiftContextMenuGroup, GiftContextSubmenuEntry } from './gift_context_menu.js';
 
@@ -41,7 +42,10 @@
 				{#each entry.menu.options as option (option.id)}<RadioItem value={option.id ?? ''}
 						>{option.label}</RadioItem
 					>{/each}
-			</RadioGroup></SubContent
+			</RadioGroup>{#if entry.menu.create !== undefined}<Separator /><Item
+					data-testid="gift-category-create-option"
+					onSelect={entry.menu.create.select}><PlusIcon />{entry.menu.create.label}</Item
+				>{/if}</SubContent
 		>
 	</Sub>
 {/snippet}

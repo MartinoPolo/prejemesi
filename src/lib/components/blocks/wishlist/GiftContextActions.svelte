@@ -2,6 +2,7 @@
 	import CheckIcon from '@lucide/svelte/icons/check';
 	import ChevronLeftIcon from '@lucide/svelte/icons/chevron-left';
 	import ChevronRightIcon from '@lucide/svelte/icons/chevron-right';
+	import PlusIcon from '@lucide/svelte/icons/plus';
 	import * as ContextMenu from '$lib/components/base/context-menu/index.js';
 	import * as DropdownMenu from '$lib/components/base/dropdown-menu/index.js';
 	import { Separator } from '$lib/components/base/separator/index.js';
@@ -105,6 +106,7 @@
 		onenrich,
 		onpriority,
 		oncategory,
+		oncreatecategory,
 		onreceived,
 		onselect,
 		onreorder,
@@ -164,6 +166,13 @@
 			options: [{ id: null, label: m.gift_category_uncategorized() }, ...categories],
 			selectedId: categoryId,
 			choose: (id) => finish('restore-focus', () => oncategory(id)),
+			create:
+				oncreatecategory === undefined
+					? undefined
+					: {
+							label: m.gift_category_create(),
+							select: () => finish('handoff', oncreatecategory),
+						},
 		},
 	});
 	const menuEntryBuilders: Record<GiftContextAction, () => GiftContextMenuEntry | undefined> = {
@@ -353,6 +362,12 @@
 			>{option.label}
 		</WishlistSheetAction>
 	{/each}
+	{#if menu.create !== undefined}
+		<Separator class="my-1" />
+		<WishlistSheetAction data-testid="gift-category-create-option" onclick={menu.create.select}>
+			<PlusIcon class="size-5 shrink-0" aria-hidden="true" />{menu.create.label}
+		</WishlistSheetAction>
+	{/if}
 {/snippet}
 
 {#if mobile}

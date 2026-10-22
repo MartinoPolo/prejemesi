@@ -50,7 +50,7 @@ describe('operation registry', () => {
 		}
 	});
 
-	it('keeps lifecycle, reservation release, správce administration beyond inviting, claim links and personal follows and likes, and restoring the order a proposal replaced with the human user', () => {
+	it('keeps lifecycle, reservation release, správce administration beyond inviting, claim links, personal follows and likes, restoring the order a proposal replaced and the inline category quick-add with the human user', () => {
 		const humanOnlyNames = Object.values(OPERATION_REGISTRY)
 			.filter((operation) => operation.exposure === OPERATION_EXPOSURE.humanOnly)
 			.map((operation) => operation.name)
@@ -79,6 +79,7 @@ describe('operation registry', () => {
 				'recordWishlistVisit',
 				'toggleGiftLike',
 				'restoreGiftOrder',
+				'createGiftCategory',
 			].sort(),
 		);
 	});

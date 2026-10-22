@@ -376,6 +376,7 @@ export const AGENT_OPERATION_POLICIES: AgentOperationPolicies = {
 		targets: byWishlistId((input) => input.wishlistId),
 		projectOutput: projectWishlistShortId,
 	}),
+	createGiftCategory: HUMAN_ONLY,
 	savePriorityLevels: agentOperation({
 		summary: 'Renames, adds, removes or reorders the priority levels of a wishlist.',
 		scope: AGENT_SCOPE.giftsWrite,

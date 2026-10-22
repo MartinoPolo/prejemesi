@@ -44,18 +44,20 @@ export const GiftCategoryColorSchema = v.pipe(
 	v.regex(GIFT_CATEGORY_COLOR_PATTERN, 'Category color must be a six-digit hex value'),
 );
 
+const CustomGiftCategoryLabelSchema = v.pipe(
+	v.string(),
+	v.trim(),
+	v.minLength(1),
+	v.maxLength(MAX_CUSTOM_GIFT_CATEGORY_LABEL_LENGTH),
+);
+
 /** Complete category-settings snapshot committed as one transaction. */
 export const SaveGiftCategorySettingsInputSchema = v.object({
 	wishlistId: v.string(),
 	customCategories: v.array(
 		v.object({
 			id: v.nullable(v.string()),
-			label: v.pipe(
-				v.string(),
-				v.trim(),
-				v.minLength(1),
-				v.maxLength(MAX_CUSTOM_GIFT_CATEGORY_LABEL_LENGTH),
-			),
+			label: CustomGiftCategoryLabelSchema,
 			color: GiftCategoryColorSchema,
 		}),
 	),
@@ -69,6 +71,16 @@ export const SaveGiftCategorySettingsInputSchema = v.object({
 export type SaveGiftCategorySettingsInput = v.InferOutput<
 	typeof SaveGiftCategorySettingsInputSchema
 >;
+
+/** A custom category created from a category picker, assigned at once to the gifts it acted on. */
+export const CreateGiftCategoryInputSchema = v.strictObject({
+	wishlistId: v.string(),
+	label: CustomGiftCategoryLabelSchema,
+	color: GiftCategoryColorSchema,
+	giftIds: v.array(v.string()),
+});
+
+export type CreateGiftCategoryInput = v.InferOutput<typeof CreateGiftCategoryInputSchema>;
 
 export function normalizeGiftCategoryLabel(value: string): string {
 	return value

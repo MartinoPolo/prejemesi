@@ -8,6 +8,7 @@
 	import CopyIcon from '@lucide/svelte/icons/copy';
 	import CheckIcon from '@lucide/svelte/icons/check';
 	import PaintBucketIcon from '@lucide/svelte/icons/paint-bucket';
+	import PlusIcon from '@lucide/svelte/icons/plus';
 	import ScalingIcon from '@lucide/svelte/icons/scaling';
 	import { Checkbox } from '$lib/components/base/checkbox/index.js';
 	import { Badge } from '$lib/components/base/badge/index.js';
@@ -15,6 +16,7 @@
 	import * as RadioGroup from '$lib/components/base/radio-group/index.js';
 	import * as DropdownMenu from '$lib/components/base/dropdown-menu/index.js';
 	import * as Sheet from '$lib/components/base/sheet/index.js';
+	import { Separator } from '$lib/components/base/separator/index.js';
 	import GiftContextActionIcon from './GiftContextActionIcon.svelte';
 	import WishlistBottomSheet from './WishlistBottomSheet.svelte';
 	import WishlistSheetAction from './WishlistSheetAction.svelte';
@@ -48,6 +50,8 @@
 		onselectvisible: (checked: boolean) => void;
 		onpriority: (id: string | null) => void;
 		oncategory: (id: string | null) => void;
+		/** Present only when the viewer may manage the wishlist's categories. */
+		oncreatecategory?: () => void;
 		onaction: (action: GiftBulkAction) => void;
 		oncopy?: (returnToActions?: () => void) => void;
 		ondone: () => void;
@@ -69,6 +73,7 @@
 		onselectvisible,
 		onpriority,
 		oncategory,
+		oncreatecategory,
 		onaction,
 		oncopy = () => undefined,
 		ondone,
@@ -269,6 +274,19 @@
 		onchange();
 	}
 
+	function handleCreateCategory() {
+		if (oncreatecategory === undefined) {
+			return;
+		}
+		if (mobileBulkSheetOpen) {
+			mobileBulkSheetOpen = false;
+			mobileActiveAction = null;
+			requestAnimationFrame(() => oncreatecategory());
+			return;
+		}
+		oncreatecategory();
+	}
+
 	function handleCopy() {
 		if (mobileBulkSheetOpen) {
 			mobileInvokingAction = 'copy';
@@ -315,7 +333,12 @@
 				value={choice.id}
 				disabled={disabled || !categoryReady}>{choice.label}</DropdownMenu.RadioItem
 			>{/each}</DropdownMenu.RadioGroup
-	>{/snippet}
+	>{#if oncreatecategory !== undefined}<DropdownMenu.Separator /><DropdownMenu.Item
+			data-testid="selection-category-create"
+			disabled={disabled || !categoryReady}
+			onSelect={handleCreateCategory}
+			><PlusIcon />{m.gift_category_create()}</DropdownMenu.Item
+		>{/if}{/snippet}
 {#snippet imageFitItems()}{#if commonImageFit === undefined}<DropdownMenu.Label
 			>{m.gift_selection_mixed()}</DropdownMenu.Label
 		>{/if}<DropdownMenu.RadioGroup
@@ -504,6 +527,19 @@
 					)}
 				{/each}
 			</RadioGroup.Root>
+			{#if oncreatecategory !== undefined}
+				<Separator class="my-1" />
+				<WishlistSheetAction
+					data-testid="selection-category-create"
+					disabled={disabled || !categoryReady}
+					onclick={handleCreateCategory}
+				>
+					<PlusIcon
+						class="size-5 shrink-0"
+						aria-hidden="true"
+					/>{m.gift_category_create()}
+				</WishlistSheetAction>
+			{/if}
 		{:else if mobileActiveAction === 'imageFit'}
 			<RadioGroup.Root
 				value={commonImageFit ?? MIXED_RADIO_VALUE}

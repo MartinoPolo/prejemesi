@@ -13,6 +13,8 @@ export interface GiftContextChoiceMenu {
 	options: readonly { id: string | null; label: string }[];
 	selectedId: string | null;
 	choose: (id: string | null) => void;
+	/** A trailing command, separated from the options, that creates a new option. */
+	create?: { label: string; select: () => void };
 }
 
 export interface GiftContextCommandEntry {

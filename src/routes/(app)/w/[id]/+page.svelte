@@ -39,6 +39,9 @@
 	import { useNarrowViewportState } from '$lib/components/derived/narrow_viewport_state.svelte.js';
 	import WishlistPreparingNotice from '$lib/components/blocks/wishlist/WishlistPreparingNotice.svelte';
 	import WishlistModals from '$lib/components/blocks/wishlist/WishlistModals.svelte';
+	import GiftCategoryQuickAddDialog, {
+		type GiftCategoryQuickAddTarget,
+	} from '$lib/components/blocks/gift/GiftCategoryQuickAddDialog.svelte';
 	import WishlistSettingsModal from '$lib/components/blocks/wishlist/WishlistSettingsModal.svelte';
 	import EditRecipientDialog from '$lib/components/blocks/wishlist/EditRecipientDialog.svelte';
 	import * as Dialog from '$lib/components/base/dialog/index.js';
@@ -400,6 +403,14 @@
 	const categoriesReady = $derived(
 		categoriesQuery !== null && categoriesQuery.current !== undefined,
 	);
+	const canCreateCategory = $derived(canManage && !isArchived && categoriesReady);
+	let categoryQuickAddOpen = $state(false);
+	let categoryQuickAddTarget = $state<GiftCategoryQuickAddTarget>({ kind: 'editor' });
+
+	function openCategoryQuickAdd(target: GiftCategoryQuickAddTarget) {
+		categoryQuickAddTarget = target;
+		categoryQuickAddOpen = true;
+	}
 	let priorityLevels = $state<Awaited<ReturnType<typeof getPriorityLevels>>>([]);
 	let priorityLevelsOwnerWishlistId = $state<string | null>(null);
 	let priorityLevelsWishlistId = $state<string | null>(null);
@@ -2243,6 +2254,14 @@
 					void applyBulkAction({ action: 'priority', priorityLevelId })}
 				oncategory={(categoryId) =>
 					void applyBulkAction({ action: 'category', categoryId })}
+				oncreatecategory={canCreateCategory
+					? () =>
+							openCategoryQuickAdd({
+								kind: 'gifts',
+								giftIds: [...selectionSnapshot.selectedIds],
+								hiddenCount: selectionSnapshot.hiddenIds.length,
+							})
+					: undefined}
 				onaction={(action) => void applyBulkAction(action)}
 				oncopy={(returnToActions) => void openBulkCopy(returnToActions)}
 				ondone={() => giftSelection.exit()}
@@ -2343,6 +2362,14 @@
 						: undefined}
 					onpriority={(priorityLevelId) => void updateContextGift({ priorityLevelId })}
 					oncategory={(categoryId) => void updateContextGift({ categoryId })}
+					oncreatecategory={canCreateCategory
+						? () =>
+								openCategoryQuickAdd({
+									kind: 'gifts',
+									giftIds: [contextActionGift.id],
+									giftName: contextActionGift.name,
+								})
+						: undefined}
 					onreceived={() =>
 						void handleReceived(contextActionGift.id, !contextActionGift.received)}
 					onselect={() => enterSelection(contextActionGift.id)}
@@ -2519,6 +2546,15 @@
 	onbatchdialogopenchange={handleBatchDialogOpenChange}
 	onbatchresetduplicatewarning={resetBatchDuplicateWarning}
 />
+
+{#if canCreateCategory}
+	<GiftCategoryQuickAddDialog
+		bind:open={categoryQuickAddOpen}
+		wishlistId={wishlist.id}
+		target={categoryQuickAddTarget}
+		categories={categoryOptions}
+	/>
+{/if}
 
 <!-- After the gift editor so its portal stacks above it: the editor asks on the first change. -->
 <Dialog.Root

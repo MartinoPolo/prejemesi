@@ -36,6 +36,8 @@
 		demo?: boolean;
 		priorityLevels: GiftPriorityLevel[];
 		categoryOptions?: ManagedGiftCategory[];
+		/** Offers creating a category from the editor's category select. */
+		canCreateCategory?: boolean;
 		/** Viewer role drives reservation-safe read-only and editable manager actions. */
 		role?: WishlistRole;
 		/** Viewers without edit rights get the read-only {@link GiftViewer} instead of the edit form. */
@@ -70,6 +72,7 @@
 		demo = false,
 		priorityLevels,
 		categoryOptions = [],
+		canCreateCategory = false,
 		role = 'visitor',
 		readOnly = false,
 		isArchived = false,
@@ -277,6 +280,7 @@
 			{demo}
 			{priorityLevels}
 			{categoryOptions}
+			{canCreateCategory}
 			{role}
 			{hideReservationState}
 			{postShareLocked}
