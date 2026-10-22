@@ -1220,10 +1220,20 @@
 
 	function confirmBulkCopy() {
 		if (bulkCopyDestinationId === NEW_WISHLIST_DESTINATION) {
+			// Hidden rather than stacked: the mobile copy sheet would otherwise sit above the modal.
+			bulkCopyOpen = false;
 			bulkCopyCreateOpen = true;
 			return;
 		}
 		void submitBulkCopy();
+	}
+
+	/** Closing creation, cancelled or done, returns to the copy dialog, which shows the copy's progress. */
+	function setBulkCopyCreateOpen(open: boolean) {
+		bulkCopyCreateOpen = open;
+		if (!open) {
+			bulkCopyOpen = true;
+		}
 	}
 
 	function copyIntoCreatedWishlist(created: CreatedWishlist) {
@@ -2501,7 +2511,7 @@
 />
 
 <CreateWishlistModal
-	bind:open={bulkCopyCreateOpen}
+	bind:open={() => bulkCopyCreateOpen, setBulkCopyCreateOpen}
 	demo={page.data.demoExpiresAt !== null}
 	oncreated={copyIntoCreatedWishlist}
 />
