@@ -338,12 +338,16 @@
 	);
 	const likedGiftIds = $derived(likesQuery?.current ?? []);
 	const role = $derived<WishlistRole>(giftsResult?.role ?? wishlist.role);
-	let filterStateWishlistId = $state<string | null>(null);
+	const giftSelection = untrack(() => createGiftSelection());
+	// The page component is reused across /w/A -> /w/B navigation, so per-wishlist view state
+	// (filters, gift selection) must reset when the wishlist changes.
+	let viewStateWishlistId = $state<string | null>(null);
 
 	$effect(() => {
-		if (filterStateWishlistId !== wishlist.id) {
-			filterStateWishlistId = wishlist.id;
+		if (viewStateWishlistId !== wishlist.id) {
+			viewStateWishlistId = wishlist.id;
 			giftsContext.filters.current = emptyGiftFilters();
+			giftSelection.exit();
 		}
 	});
 
@@ -740,7 +744,6 @@
 	const headerGiftCount = $derived(isGiftDataLoading && gifts.length === 0 ? null : totalCount);
 	const isFilteredEmpty = $derived(!reorderMode && displayedGifts.length === 0 && totalCount > 0);
 	const isEmpty = $derived(reorderMode ? reorderModeGifts.length === 0 : totalCount === 0);
-	const giftSelection = untrack(() => createGiftSelection());
 	const visibleGiftIds = $derived(displayedGifts.map((giftItem) => giftItem.id));
 	const selectionSnapshot = $derived(giftSelection.snapshot(visibleGiftIds));
 	const selectedGiftRows = $derived(

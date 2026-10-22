@@ -325,7 +325,7 @@
 	"wishlist_name_placeholder": "e.g. Christmas 2026",
 	"wishlist_name_required": "Name is required",
 	"wishlist_event_date_label": "Event date (optional)",
-	"wishlist_event_date_helper": "An ongoing list does not need a date.",
+	"wishlist_event_date_helper": "Without a date, the list stays ongoing. After the event date, we will offer to archive it.",
 	"wishlist_create_error": "Failed to create list",
 	"create_for_toggle_self": "For me",
 	"create_for_toggle_other": "For someone else",
