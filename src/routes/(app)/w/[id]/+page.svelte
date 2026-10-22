@@ -32,7 +32,10 @@
 		GiftContextInvocation,
 		GiftContextSession,
 	} from '$lib/components/blocks/wishlist/gift_context_invocation.js';
-	import { resolveGiftContextFocusTarget } from '$lib/components/blocks/wishlist/gift_context_focus.js';
+	import {
+		resolveGiftContextFocusTarget,
+		resolveGiftReorderGripFocusTarget,
+	} from '$lib/components/blocks/wishlist/gift_context_focus.js';
 	import { useNarrowViewportState } from '$lib/components/derived/narrow_viewport_state.svelte.js';
 	import WishlistPreparingNotice from '$lib/components/blocks/wishlist/WishlistPreparingNotice.svelte';
 	import WishlistModals from '$lib/components/blocks/wishlist/WishlistModals.svelte';
@@ -653,6 +656,7 @@
 			reorderBaselineVerified &&
 			canMaintainReorderMode,
 	);
+	const canStartReorderFromGift = $derived(canEnterReorderMode && !reorderMode);
 	const reorderGroups = $derived.by<GiftReorderGroup[]>(() => {
 		switch (reorderGroupField) {
 			case GIFT_GROUPING_OPTIONS.priority:
@@ -888,6 +892,7 @@
 			primaryUrl: normalizeGiftUrl(primaryUrl),
 			readOnly: isArchived,
 			canEdit: true,
+			canReorder: canStartReorderFromGift,
 			...reservationContext,
 			...releaseContextFor(giftItem),
 			origin,
@@ -1468,6 +1473,16 @@
 			return;
 		}
 		clearReorderSession();
+	}
+
+	/** Hands keyboard focus to the chosen gift's grip so arrow keys can move it right away. */
+	async function enterReorderModeFromGift(giftId: string) {
+		await enterReorderMode();
+		if (!reorderMode) {
+			return;
+		}
+		await tick();
+		resolveGiftReorderGripFocusTarget(giftId, wishlistPageElement ?? document)?.focus();
 	}
 
 	async function handleReorderModeChange(active: boolean) {
@@ -2346,6 +2361,9 @@
 					onreceived={() =>
 						void handleReceived(contextActionGift.id, !contextActionGift.received)}
 					onselect={() => enterSelection(contextActionGift.id)}
+					onreorder={canStartReorderFromGift
+						? () => void enterReorderModeFromGift(contextActionGift.id)
+						: undefined}
 					onreserve={() => {
 						if ('myReservationId' in contextActionGift) {
 							handleOpenReserveModal(contextActionGift);

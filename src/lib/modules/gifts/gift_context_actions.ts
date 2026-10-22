@@ -15,6 +15,7 @@ const GIFT_CONTEXT_ACTION_GROUPS = [
 			'enrich',
 			'received',
 			'multiselect',
+			'reorder',
 			'reserve',
 			'cancel-reservation',
 			'purchased',
@@ -58,6 +59,8 @@ export interface GiftContextActionContext {
 	canEdit?: boolean;
 	/** The AI assistant is offered to this user on this wishlist. */
 	canEnrich?: boolean;
+	/** Reorder mode can start now: its view, role, list state and loaded data allow it. */
+	canReorder?: boolean;
 	canReserve?: boolean;
 	ownsReservation?: boolean;
 	canTrackPurchased?: boolean;
@@ -93,7 +96,14 @@ function managementActions(context: GiftContextActionContext): GiftContextAction
 		...(context.canEdit === true ? (['edit'] as const) : []),
 		...(context.canEnrich === true ? (['enrich'] as const) : []),
 	];
-	return [...editActions, 'priority', 'category', 'received', 'multiselect'];
+	return [
+		...editActions,
+		'priority',
+		'category',
+		'received',
+		'multiselect',
+		...(context.canReorder === true ? (['reorder'] as const) : []),
+	];
 }
 
 function reservationActions(context: GiftContextActionContext): GiftContextAction[] {

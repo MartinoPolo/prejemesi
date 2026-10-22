@@ -1,5 +1,8 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { resolveGiftContextFocusTarget } from './gift_context_focus.js';
+import {
+	resolveGiftContextFocusTarget,
+	resolveGiftReorderGripFocusTarget,
+} from './gift_context_focus.js';
 
 function moreButton(giftId: string, options: { disabled?: boolean; hidden?: boolean } = {}) {
 	const gift = document.createElement('article');
@@ -112,5 +115,25 @@ describe('gift context focus target', () => {
 		expect(resolveGiftContextFocusTarget(detachedButton(), adversarialId, document.body)).toBe(
 			exact,
 		);
+	});
+});
+
+describe('gift reorder grip focus target', () => {
+	function reorderGrip(giftId: string, options: { disabled?: boolean } = {}) {
+		const button = moreButton(giftId);
+		delete button.dataset.giftAction;
+		button.dataset.giftReorderGrip = '';
+		button.disabled = options.disabled ?? false;
+		return button;
+	}
+
+	it("resolves the requested gift's usable grip, never another gift's or its More action", () => {
+		reorderGrip('gift-one');
+		moreButton('gift-two');
+		reorderGrip('gift-two', { disabled: true });
+		const grip = reorderGrip('gift-two');
+
+		expect(resolveGiftReorderGripFocusTarget('gift-two', document.body)).toBe(grip);
+		expect(resolveGiftReorderGripFocusTarget('gift-three', document.body)).toBeNull();
 	});
 });

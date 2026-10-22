@@ -786,3 +786,83 @@ describe('GiftContextActions grouped menus with organization icons (#447)', () =
 		await screen.unmount();
 	});
 });
+
+describe('GiftContextActions reorder entry (#521)', () => {
+	type ReorderProps = Partial<ComponentProps<typeof GiftContextActions>>;
+
+	afterEach(async () => {
+		await page.viewport(1280, 720);
+	});
+
+	async function renderDesktopDropdown(props: ReorderProps) {
+		const trigger = document.createElement('button');
+		document.body.append(trigger);
+		const screen = await render(GiftContextActionsTestHost, {
+			...managerProps,
+			...props,
+			mobile: false,
+			nativeOpen: false,
+			programmaticOpen: true,
+			desktopAnchor: trigger,
+		});
+		await expect.element(screen.getByRole('menu')).toBeInTheDocument();
+		return {
+			screen,
+			labels: () =>
+				Array.from(document.querySelectorAll('[role="menuitem"]')).map((item) =>
+					item.textContent!.trim(),
+				),
+			async cleanup() {
+				await screen.unmount();
+				trigger.remove();
+			},
+		};
+	}
+
+	it('lists Reorder gifts right after Select multiple gifts on the desktop menu', async () => {
+		const { labels, screen, cleanup } = await renderDesktopDropdown({ onreorder: vi.fn() });
+		const menuLabels = labels();
+		expect(menuLabels.indexOf(m.gift_context_reorder())).toBe(
+			menuLabels.indexOf(m.gift_context_select_multiple()) + 1,
+		);
+		const entry = screen.getByRole('menuitem', { name: m.gift_context_reorder() }).element();
+		expect(entry.querySelector('svg.lucide-hand')).toBeTruthy();
+		await cleanup();
+	});
+
+	it('lists Reorder gifts right after Select multiple gifts on the mobile sheet', async () => {
+		await page.viewport(390, 720);
+		const screen = await render(GiftContextActions, { ...managerProps, onreorder: vi.fn() });
+		const rowLabels = Array.from(
+			document.querySelectorAll('[data-mobile-screen="main"] button'),
+		).map((row) => row.textContent!.trim());
+		expect(rowLabels.indexOf(m.gift_context_reorder())).toBe(
+			rowLabels.indexOf(m.gift_context_select_multiple()) + 1,
+		);
+		await screen.unmount();
+	});
+
+	it('hands off once to the reorder callback after the menu closes', async () => {
+		const onreorder = vi.fn();
+		const oncomplete = vi.fn();
+		const { screen, cleanup } = await renderDesktopDropdown({ onreorder, oncomplete });
+
+		await screen.getByRole('menuitem', { name: m.gift_context_reorder() }).click();
+		await expect.poll(() => oncomplete).toHaveBeenCalledTimes(1);
+		expect(onreorder).toHaveBeenCalledTimes(1);
+		await expect.element(screen.getByRole('menu')).not.toBeInTheDocument();
+		await cleanup();
+	});
+
+	it('omits the entry when reorder mode cannot start, on archived lists and for visitors', async () => {
+		for (const props of [
+			{},
+			{ onreorder: vi.fn(), readOnly: true },
+			{ onreorder: vi.fn(), role: 'visitor' as const },
+		]) {
+			const { labels, cleanup } = await renderDesktopDropdown(props);
+			expect(labels()).not.toContain(m.gift_context_reorder());
+			await cleanup();
+		}
+	});
+});
