@@ -31,13 +31,22 @@
 	import { DEFAULT_PALETTE, type Palette } from '$lib/theme/palettes.js';
 	import type { Attachment } from 'svelte/attachments';
 
+	export type CreatedWishlist = Awaited<ReturnType<typeof createWishlist>>;
+
 	interface CreateWishlistModalProps {
 		open: boolean;
 		onimport?: () => void;
+		/** Replaces the default navigation to the new wishlist. */
+		oncreated?: (created: CreatedWishlist) => void;
 		demo?: boolean;
 	}
 
-	let { open = $bindable(false), onimport, demo = false }: CreateWishlistModalProps = $props();
+	let {
+		open = $bindable(false),
+		onimport,
+		oncreated,
+		demo = false,
+	}: CreateWishlistModalProps = $props();
 
 	// Typed as string (not RecipientKind) because ToggleGroup's single-select
 	// value binding is `string`; comparisons against RECIPIENT_KIND narrow it.
@@ -155,6 +164,10 @@
 			// surfaces (pages, nav dropdowns) re-fetch when they are next opened (issue #108).
 			open = false;
 			resetForm();
+			if (oncreated !== undefined) {
+				oncreated(created);
+				return;
+			}
 			await goto(localizeInternalHref(resolve('/(app)/w/[id]', { id: created.shortId })));
 		} catch (error) {
 			errorMessage = error instanceof Error ? error.message : m.wishlist_create_error();

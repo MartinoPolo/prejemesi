@@ -26,6 +26,47 @@ function renderModal() {
 	return render(CreateWishlistModal, { open: true });
 }
 
+describe('CreateWishlistModal created handler', () => {
+	it('hands the created wishlist to the caller instead of navigating to it', async () => {
+		mocks.createWishlist.mockResolvedValue({ id: 'wishlist-1', shortId: 'created1' });
+		const oncreated = vi.fn();
+		const screen = render(CreateWishlistModal, { open: true, oncreated });
+
+		await screen.getByRole('textbox', { name: m.wishlist_name_label() }).fill('Vánoce');
+		await screen.getByRole('button', { name: m.create(), exact: true }).click();
+
+		await vi.waitFor(() =>
+			expect(oncreated).toHaveBeenCalledWith({ id: 'wishlist-1', shortId: 'created1' }),
+		);
+		expect(mocks.goto).not.toHaveBeenCalled();
+		await expect.element(screen.getByRole('dialog')).not.toBeInTheDocument();
+	});
+
+	it('creates nothing when cancelled', async () => {
+		const oncreated = vi.fn();
+		const screen = render(CreateWishlistModal, { open: true, oncreated });
+
+		await screen.getByRole('textbox', { name: m.wishlist_name_label() }).fill('Vánoce');
+		await screen.getByRole('button', { name: m.cancel(), exact: true }).click();
+
+		await expect.element(screen.getByRole('dialog')).not.toBeInTheDocument();
+		expect(mocks.createWishlist).not.toHaveBeenCalled();
+		expect(oncreated).not.toHaveBeenCalled();
+	});
+
+	it('keeps the modal open with the error when creation fails', async () => {
+		mocks.createWishlist.mockRejectedValue(new Error('Limit reached'));
+		const oncreated = vi.fn();
+		const screen = render(CreateWishlistModal, { open: true, oncreated });
+
+		await screen.getByRole('textbox', { name: m.wishlist_name_label() }).fill('Vánoce');
+		await screen.getByRole('button', { name: m.create(), exact: true }).click();
+
+		await expect.element(screen.getByText('Limit reached')).toBeVisible();
+		expect(oncreated).not.toHaveBeenCalled();
+	});
+});
+
 describe('CreateWishlistModal wishlist kind', () => {
 	it('defaults to an occasion wishlist with the event date directly available', async () => {
 		const screen = renderModal();
