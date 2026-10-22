@@ -240,6 +240,8 @@
 	data-gift-reorder-group={reorderGroupKey}
 	data-long-press-pending={longPressPending || undefined}
 	class:gift-reorder-grip-owner={reorderGripVisible}
+	class:gift-selection-owner={selectionMode}
+	class:gift-selection-list-owner={selectionMode && selectionLayout === 'list'}
 	class={cn(
 		selectionMode
 			? 'relative h-full cursor-default rounded-panel transition-opacity focus-visible:outline-none'
@@ -394,6 +396,35 @@
 			var(--gift-reorder-grip-offset) + var(--gift-reorder-grip-face-inset) +
 				var(--gift-reorder-grip-face-size) + var(--nested-control-gap)
 		);
+	}
+
+	/* The category badge starts after the selection checkbox, like it does after the reorder grip. */
+	.gift-selection-owner {
+		--gift-context-leading-clearance: calc(
+			var(--gift-context-face-inset) + var(--size-control-lg) + var(--nested-control-gap)
+		);
+	}
+
+	/* The narrow List image cannot fit both side by side, so the badge sits below the checkbox. */
+	.gift-selection-list-owner {
+		--gift-context-leading-clearance: initial;
+		--gift-context-top-clearance: calc(
+			var(--gift-context-face-inset) + var(--size-control-lg) + var(--nested-control-gap)
+		);
+	}
+
+	@media (width >= 640px) {
+		.gift-selection-owner {
+			--gift-context-leading-clearance: calc(
+				var(--gift-context-face-inset) + var(--size-control-md) + var(--nested-control-gap)
+			);
+		}
+
+		/* The List checkbox moves into its own gutter, so the badge keeps its ordinary place. */
+		.gift-selection-list-owner {
+			--gift-context-leading-clearance: initial;
+			--gift-context-top-clearance: initial;
+		}
 	}
 
 	.gift-selection-control {
