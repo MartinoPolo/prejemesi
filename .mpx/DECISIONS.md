@@ -200,6 +200,7 @@ Current product, architecture, and design decisions for Přejeme si. Entries are
 - 2026-08-07: `/home` deliberately uses an authenticated server load and a server-only overview database service for typed SSR; do not replace it with eager/global fetch or an intra-server remote-function call merely to enforce the default convention.
 - 2026-09-01: Gift mutations also refresh affected category-usage metadata in the same response; the older “gift-list query only” invalidation rule must not leave category-removal confirmations using stale assignments.
 - 2026-10-02: Code must not depend on JavaScript built-ins newer than ES2022: production visitors use browsers without them, and Vite never polyfills APIs. `tsconfig.json` restricts `lib` to ES2022 for all code, making typecheck the guard; feature-detect newer APIs with a fallback rather than adding polyfills or widening `lib`.
+- 2026-10-22: Transformed images offer one fixed width ladder via `srcset`; ImageFrame sets `sizes` to the painted CSS width (cover overscan × focal zoom), so the browser picks rendered size × DPR, capped by the source and the top rung. Do not add per-surface widths, which ignored DPR, crop overscan and zoom.
 
 ## Import, enrichment & production automation
 
