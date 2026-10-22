@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import { cn } from '$lib/utils.js';
 	import { uploadFile } from '$lib/modules/uploads/upload.js';
 	import { prepareImageForUpload } from '$lib/modules/uploads/prepare_image.js';
@@ -59,6 +60,10 @@
 	// the revoke-on-cleanup calls below are harmless no-ops for non-blob URLs.
 	// svelte-ignore state_referenced_locally
 	let previewUrl = $state<string | undefined>(initialPreviewUrl);
+	// The browser could not render this URL; any other preview URL is tried again.
+	let unrenderablePreviewUrl = $state<string | undefined>(undefined);
+	const hasPreviewImage = $derived(previewUrl !== undefined && previewUrl !== '');
+	const showsPreview = $derived(hasPreviewImage && previewUrl !== unrenderablePreviewUrl);
 	let activeAbortController: AbortController | null = null;
 	let progress = $state<UploadProgress>({
 		status: 'idle',
@@ -140,32 +145,42 @@
 		isUploadPending = true;
 		onPendingChange?.(true);
 
-		// Generate preview
-		if (previewUrl != null) {
-			URL.revokeObjectURL(previewUrl);
-		}
-		previewUrl = URL.createObjectURL(file);
+		// The previous image stays the caller's value until this file uploads, so keep its preview
+		// to restore if preparation or upload fails.
+		const previousPreviewUrl = previewUrl;
+		const filePreviewUrl = URL.createObjectURL(file);
+		previewUrl = filePreviewUrl;
 
 		activeAbortController = new AbortController();
 		const maxBytes = MAX_FILE_SIZE[target];
 
 		try {
-			progress = { status: 'preparing', percentage: 0 };
-			const preparedFile = await prepareImageForUpload(file, maxBytes);
-			const result = await uploadFile(
-				preparedFile,
-				target,
-				(uploadProgress) => {
-					progress = uploadProgress;
-				},
-				activeAbortController.signal,
-			);
+			let result: UploadResult;
+			try {
+				progress = { status: 'preparing', percentage: 0 };
+				const preparedFile = await prepareImageForUpload(file, maxBytes);
+				result = await uploadFile(
+					preparedFile,
+					target,
+					(uploadProgress) => {
+						progress = uploadProgress;
+					},
+					activeAbortController.signal,
+				);
+			} catch (thrown) {
+				URL.revokeObjectURL(filePreviewUrl);
+				previewUrl = previousPreviewUrl;
+				const uploadError = thrown instanceof Error ? thrown : new Error('Upload failed');
+				const errorMessage = imageUploadErrorMessage(thrown, maxBytes);
+				progress = { status: 'error', percentage: 0, errorMessage };
+				onError?.(uploadError, errorMessage);
+				return;
+			}
+			// Only preparation or upload failures roll back; the uploaded file stays previewed.
+			if (previousPreviewUrl != null) {
+				URL.revokeObjectURL(previousPreviewUrl);
+			}
 			onUpload?.(result);
-		} catch (thrown) {
-			const uploadError = thrown instanceof Error ? thrown : new Error('Upload failed');
-			const errorMessage = imageUploadErrorMessage(thrown, maxBytes);
-			progress = { status: 'error', percentage: 0, errorMessage };
-			onError?.(uploadError, errorMessage);
 		} finally {
 			activeAbortController = null;
 			isUploadPending = false;
@@ -188,17 +203,12 @@
 
 	// Unmount guard – manual revokes in handlers cover the normal case
 	$effect(() => {
-		const url = previewUrl;
-		return () => {
-			if (url != null) {
-				URL.revokeObjectURL(url);
-			}
-		};
-	});
-
-	$effect(() => {
 		return () => {
 			activeAbortController?.abort();
+			const unmountedPreviewUrl = untrack(() => previewUrl);
+			if (unmountedPreviewUrl != null) {
+				URL.revokeObjectURL(unmountedPreviewUrl);
+			}
 		};
 	});
 </script>
@@ -247,31 +257,32 @@
 	>
 		{@render fileInput()}
 
-		{#if previewUrl}
+		{#if showsPreview}
 			<img
 				src={previewUrl}
 				alt={m.image_upload_preview_alt()}
 				class={styles.preview()}
 				data-testid="image-upload-preview"
+				onerror={() => (unrenderablePreviewUrl = previewUrl)}
 			/>
-
-			{#if !isUploadPending}
-				<Button
-					size="sm"
-					format="icon"
-					intent="ghost"
-					class={cn(styles.removeButtonOwner(), CONTROL_SIZE_CLASSES.sm)}
-					surfaceClass={styles.removeButtonSurface()}
-					onclick={handleRemove}
-					aria-label={m.image_upload_remove()}
-					{disabled}
-				>
-					<XIcon data-icon="solo" />
-				</Button>
-			{/if}
 		{:else}
 			<UploadIcon class="size-8 text-muted-foreground" />
 			<p class={styles.label()}>{label ?? m.image_upload_dropzone()}</p>
+		{/if}
+
+		{#if hasPreviewImage && !isUploadPending}
+			<Button
+				size="sm"
+				format="icon"
+				intent="ghost"
+				class={cn(styles.removeButtonOwner(), CONTROL_SIZE_CLASSES.sm)}
+				surfaceClass={styles.removeButtonSurface()}
+				onclick={handleRemove}
+				aria-label={m.image_upload_remove()}
+				{disabled}
+			>
+				<XIcon data-icon="solo" />
+			</Button>
 		{/if}
 
 		{#if isUploadPending}

@@ -325,7 +325,7 @@
 	"wishlist_name_placeholder": "např. Vánoce 2026",
 	"wishlist_name_required": "Název je povinný",
 	"wishlist_event_date_label": "Datum události (volitelné)",
-	"wishlist_event_date_helper": "Průběžný seznam žádné datum nepotřebuje.",
+	"wishlist_event_date_helper": "Bez data zůstane seznam průběžný. Po datu události vám nabídneme jeho archivaci.",
 	"wishlist_create_error": "Nepodařilo se vytvořit seznam",
 	"create_for_toggle_self": "Pro mě",
 	"create_for_toggle_other": "Pro někoho jiného",

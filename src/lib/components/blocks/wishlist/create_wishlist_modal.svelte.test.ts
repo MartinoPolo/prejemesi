@@ -77,6 +77,10 @@ describe('CreateWishlistModal wishlist kind', () => {
 			.toHaveAttribute('aria-checked', 'true');
 		await expect.element(screen.getByText(m.wishlist_kind_occasion_help())).toBeVisible();
 		await expect.element(screen.getByText(m.wishlist_event_date_label())).toBeVisible();
+		await expect.element(screen.getByText(m.wishlist_event_date_helper())).toBeVisible();
+		await expect
+			.element(screen.getByRole('button', { name: m.wishlist_event_date_label() }))
+			.toHaveAccessibleDescription(m.wishlist_event_date_helper());
 	});
 
 	it('hides the event date for a permanent wishlist and explains the kind', async () => {
@@ -87,6 +91,9 @@ describe('CreateWishlistModal wishlist kind', () => {
 		await expect.element(screen.getByText(m.wishlist_kind_permanent_help())).toBeVisible();
 		await expect
 			.element(screen.getByText(m.wishlist_event_date_label()))
+			.not.toBeInTheDocument();
+		await expect
+			.element(screen.getByText(m.wishlist_event_date_helper()))
 			.not.toBeInTheDocument();
 
 		await screen.getByRole('radio', { name: m.wishlist_kind_occasion() }).click();

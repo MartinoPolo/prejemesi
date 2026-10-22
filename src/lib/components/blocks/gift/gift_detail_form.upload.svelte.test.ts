@@ -25,7 +25,7 @@ const {
 		events: [] as string[],
 	},
 }));
-// These placeholder files are not decodable images; preparation has its own tests.
+// Preparation has its own tests.
 vi.mock('$lib/modules/uploads/prepare_image.js', async (importOriginal) => ({
 	...(await importOriginal<typeof import('$lib/modules/uploads/prepare_image.js')>()),
 	prepareImageForUpload: async (file: File) => file,
@@ -89,9 +89,17 @@ function deferred<T>() {
 	return { promise, resolve, reject };
 }
 
+// A decodable image, because ImageUpload hides previews the browser cannot render.
+const ONE_PIXEL_PNG = Uint8Array.from(
+	atob(
+		'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
+	),
+	(character) => character.charCodeAt(0),
+);
+
 function selectImage(input: HTMLInputElement, name = 'selected.png') {
 	const transfer = new DataTransfer();
-	transfer.items.add(new File(['image'], name, { type: 'image/png' }));
+	transfer.items.add(new File([ONE_PIXEL_PNG], name, { type: 'image/png' }));
 	input.files = transfer.files;
 	input.dispatchEvent(new Event('change', { bubbles: true }));
 }

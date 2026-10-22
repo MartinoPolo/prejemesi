@@ -217,6 +217,8 @@ test.describe('Large camera photo upload (#525)', () => {
 				buffer: Buffer.from('this is not a picture'),
 			});
 			await expect(addDialog.getByText(m.image_upload_error_unreadable())).toBeVisible();
+			await expect(addDialog.getByTestId('image-upload-preview')).toHaveCount(0);
+			await expect(addDialog.getByAltText(m.image_upload_preview_alt())).toHaveCount(0);
 			expect(uploadAttempted).toBe(false);
 		} finally {
 			await page.context().close();
