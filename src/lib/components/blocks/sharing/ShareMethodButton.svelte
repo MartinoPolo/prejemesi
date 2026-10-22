@@ -14,11 +14,6 @@
 	let { platform, shareUrl, message, icon }: ShareMethodButtonProps = $props();
 
 	const href = $derived(platform.buildUrl(shareUrl, message));
-
-	function handleClick(event: MouseEvent) {
-		event.preventDefault();
-		window.open(href, '_blank', 'noopener,noreferrer');
-	}
 </script>
 
 <!-- Sticker share row (issue #102 REQ-16): ink border, hard shadow lift on hover. -->
@@ -28,9 +23,10 @@
 	class="w-full"
 	surfaceClass="justify-start gap-3 no-underline"
 	{href}
+	target={platform.opensInNewTab ? '_blank' : undefined}
 	rel="external noopener noreferrer"
 	aria-label={platform.label}
-	onclick={handleClick}
+	data-share-platform={platform.id}
 >
 	<span
 		class="{platform.colorClass} flex size-8 -rotate-3 items-center justify-center rounded-[9px] border-2 border-ink text-white"

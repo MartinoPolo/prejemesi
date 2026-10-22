@@ -47,6 +47,36 @@ function gapBeforeAction(name: string): number {
 	return action.getBoundingClientRect().left - previous.getBoundingClientRect().right;
 }
 
+describe('ShareWizard share methods (issue #528)', () => {
+	it('links every method to its prefilled intent and offers no Messenger', async () => {
+		await renderStep('share');
+		const methods = [...dialog().querySelectorAll<HTMLAnchorElement>('a[data-share-platform]')];
+		const methodByPlatform = Object.fromEntries(
+			methods.map((method) => [method.dataset.sharePlatform, method]),
+		);
+
+		expect(methods.map((method) => method.dataset.sharePlatform)).toEqual([
+			'whatsapp',
+			'email',
+			'telegram',
+			'sms',
+		]);
+		expect(dialog().textContent).not.toContain('Messenger');
+		expect(methodByPlatform.whatsapp!.href).toMatch(
+			/^https:\/\/wa\.me\/\?text=.+%2Fw%2Fabc123$/,
+		);
+		expect(methodByPlatform.telegram!.href).toMatch(
+			/^https:\/\/t\.me\/share\/url\?url=.+abc123/,
+		);
+		expect(methodByPlatform.email!.href).toMatch(/^mailto:\?subject=.+&body=.+abc123$/);
+		expect(methodByPlatform.sms!.href).toMatch(/^sms:\?&body=.+abc123$/);
+		expect(methodByPlatform.whatsapp!.target).toBe('_blank');
+		expect(methodByPlatform.telegram!.target).toBe('_blank');
+		expect(methodByPlatform.email!.target).toBe('');
+		expect(methodByPlatform.sms!.target).toBe('');
+	});
+});
+
 describe('ShareWizard (issue #442)', () => {
 	it('renders the message preview as a flat note with the shared badge shape', async () => {
 		await renderStep('share');
