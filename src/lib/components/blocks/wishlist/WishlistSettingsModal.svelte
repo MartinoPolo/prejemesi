@@ -172,7 +172,11 @@
 		return () => clearInterval(id);
 	});
 
-	// One-time seed; handleOpenChange re-seeds on close so the next open starts fresh.
+	// Drafts seed once per mount; the wishlist page remounts this modal per wishlist id, and the
+	// id check below keeps a draft seeded for one wishlist from ever saving onto another (#527).
+	// svelte-ignore state_referenced_locally (the draft belongs to the wishlist it was seeded from)
+	const draftWishlistId = wishlist.id;
+	const draftBelongsToWishlist = $derived(wishlist.id === draftWishlistId);
 	// svelte-ignore state_referenced_locally (intentional one-time seed; the form owns its edit state)
 	let detailsTitle = $state(wishlist.title);
 	// svelte-ignore state_referenced_locally (intentional one-time seed; the form owns its edit state)
@@ -251,7 +255,9 @@
 		recipientError = '';
 	}
 
-	const anyDirty = $derived(detailsDirty || categoriesDirty || paletteDirty || imageDirty);
+	const anyDirty = $derived(
+		draftBelongsToWishlist && (detailsDirty || categoriesDirty || paletteDirty || imageDirty),
+	);
 
 	function discardDrafts() {
 		onpaletteselect?.(wishlist.palette);
@@ -325,7 +331,7 @@
 	});
 
 	async function saveAll(afterSave?: () => void): Promise<boolean> {
-		if (!anyDirty || saving) {
+		if (!anyDirty || saving || !draftBelongsToWishlist) {
 			return false;
 		}
 		const trimmedTitle = detailsTitle.trim();
