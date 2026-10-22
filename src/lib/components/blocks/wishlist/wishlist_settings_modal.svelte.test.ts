@@ -374,3 +374,49 @@ describe('WishlistSettingsModal wishlist kind', () => {
 		});
 	});
 });
+
+describe('WishlistSettingsModal draft ownership (#527)', () => {
+	const otherWishlist = {
+		...wishlist,
+		id: 'wishlist-settings-other',
+		shortId: 'settings2',
+		title: 'Druhý seznam',
+	};
+
+	async function openDeleteFromDangerZone(screen: ReturnType<typeof renderSettings>) {
+		await screen.getByRole('tab', { name: m.wishlist_settings_danger_tab() }).click();
+		await screen.getByRole('button', { name: m.wishlist_delete_button() }).click();
+	}
+
+	it('is not dirty after a successful save once the saved state arrives', async () => {
+		remoteMocks.saveWishlistSettings.mockReset().mockResolvedValue(undefined);
+		const screen = renderSettings();
+		await screen.getByLabelText(m.wishlist_name_label()).fill('Uložený název');
+		await screen.getByRole('button', { name: m.save() }).click();
+		await vi.waitFor(() => expect(remoteMocks.saveWishlistSettings).toHaveBeenCalledOnce());
+		await screen.rerender({ open: true, wishlist: { ...wishlist, title: 'Uložený název' } });
+
+		await expect
+			.element(screen.getByLabelText(m.wishlist_name_label()))
+			.toHaveValue('Uložený název');
+		await expect.element(screen.getByRole('button', { name: m.save() })).toBeDisabled();
+		await openDeleteFromDangerZone(screen);
+		await expect
+			.element(screen.getByRole('dialog', { name: m.wishlist_settings_unsaved_title() }))
+			.not.toBeInTheDocument();
+	});
+
+	it('never offers or saves a draft from another wishlist', async () => {
+		remoteMocks.saveWishlistSettings.mockReset().mockResolvedValue(undefined);
+		const screen = renderSettings();
+		await screen.getByLabelText(m.wishlist_name_label()).fill('Název prvního seznamu');
+		await screen.rerender({ wishlist: otherWishlist });
+
+		await expect.element(screen.getByRole('button', { name: m.save() })).toBeDisabled();
+		await openDeleteFromDangerZone(screen);
+		await expect
+			.element(screen.getByRole('dialog', { name: m.wishlist_settings_unsaved_title() }))
+			.not.toBeInTheDocument();
+		expect(remoteMocks.saveWishlistSettings).not.toHaveBeenCalled();
+	});
+});

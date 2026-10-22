@@ -2551,23 +2551,26 @@
 
 <!-- Per-wishlist settings modal (details / appearance / image). Mounted for every viewer:
      non-managers and archived lists get the read-only notice inside the dialog, preserving
-     the old /w/<id>/settings deep-link behavior. -->
-<WishlistSettingsModal
-	bind:open={settingsModalOpen}
-	bind:activeTab={settingsModalTab}
-	{wishlist}
-	{canManage}
-	{role}
-	revertCapability={presentationRevertCapability}
-	recipientDisplayName={wishlist.recipientDisplayName}
-	{themeEmoji}
-	onsaved={async () => {}}
-	onpaletteselect={handlePaletteSelect}
-	ondeleted={handleWishlistDeleted}
-	onimport={openImportWizard}
-	onexport={handleExport}
-	oneditrecipient={handleEditRecipientOpened}
-/>
+     the old /w/<id>/settings deep-link behavior. Navigating between wishlists reuses this page,
+     so the key remounts the modal to drop the previous wishlist's settings drafts (#527). -->
+{#key wishlist.id}
+	<WishlistSettingsModal
+		bind:open={settingsModalOpen}
+		bind:activeTab={settingsModalTab}
+		{wishlist}
+		{canManage}
+		{role}
+		revertCapability={presentationRevertCapability}
+		recipientDisplayName={wishlist.recipientDisplayName}
+		{themeEmoji}
+		onsaved={async () => {}}
+		onpaletteselect={handlePaletteSelect}
+		ondeleted={handleWishlistDeleted}
+		onimport={openImportWizard}
+		onexport={handleExport}
+		oneditrecipient={handleEditRecipientOpened}
+	/>
+{/key}
 
 <!-- Shared recipient dialog (issue #150): linked lists get the one-way flip with consequence
      copy (linked recipient only); free-text lists get the plain rename (any správce). -->
