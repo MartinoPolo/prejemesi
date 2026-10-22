@@ -39,15 +39,11 @@
 		moreOpen = false,
 		moreSurface = 'menu',
 		showPriority = true,
-		showCategory,
 		livePreview,
 	}: GiftPresentationProps = $props();
 
-	const categoryVisible = $derived(showCategory ?? !contextualMode);
 	const previewMarks = $derived(giftLivePreviewMarks(livePreview));
-	const showsTopRow = $derived(
-		(gift.category != null && categoryVisible) || previewMarks.proposed,
-	);
+	const showsTopRow = $derived(gift.category != null || previewMarks.proposed);
 
 	const giftsContext = useGifts();
 
@@ -227,12 +223,12 @@
 			/>
 			{#if showsTopRow}
 				<div
-					class="gift-list-top-row absolute top-2 right-2 z-20 flex min-w-0 flex-wrap items-start gap-1"
+					class="gift-list-top-row absolute right-2 z-20 flex min-w-0 flex-wrap items-start gap-1"
 				>
 					{#if previewMarks.proposed && livePreview !== undefined}
 						<GiftLivePreviewBadge kind={livePreview} />
 					{/if}
-					{#if gift.category != null && categoryVisible}
+					{#if gift.category != null}
 						<GiftCategoryBadge category={gift.category} {isDimmed} />
 					{/if}
 				</div>
@@ -354,6 +350,7 @@
 	}
 
 	.gift-list-top-row {
+		top: var(--gift-context-top-clearance, 0.5rem);
 		left: var(--gift-context-leading-clearance, 0.5rem);
 	}
 

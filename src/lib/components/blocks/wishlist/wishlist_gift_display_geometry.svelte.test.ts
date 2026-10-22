@@ -1175,3 +1175,75 @@ describe('WishlistGiftDisplay grouped badge geometry (#520)', () => {
 		},
 	);
 });
+
+describe('WishlistGiftDisplay selection badge geometry (#550)', () => {
+	const category = {
+		id: 'category-long',
+		presetKey: null,
+		customLabel: 'Výpravné ilustrované edice a kompletní sběratelské kolekce',
+		color: '#0369A1',
+		sortOrder: 0,
+	};
+	const categorizedGift: GiftForVisitor = {
+		...visitorGift(),
+		categoryId: category.id,
+		category,
+		priorityLabel: 'Vysoka',
+	};
+
+	it.each(
+		(['card', 'list'] as const).flatMap((viewMode) =>
+			[1280, 390].map((viewportWidth) => ({ viewMode, viewportWidth })),
+		),
+	)(
+		'keeps the selection checkbox and badges apart and inside the $viewMode image at $viewportWidth px',
+		async ({ viewMode, viewportWidth }) => {
+			await page.viewport(viewportWidth, 900);
+			const screen = await render(WishlistGiftDisplayTestHost, {
+				...defaultProps,
+				role: WISHLIST_ROLES.moderator,
+				sections: [{ ...sections[0]!, gifts: [categorizedGift] }],
+				viewMode,
+				selectionMode: true,
+				selectedIds: [categorizedGift.id],
+			});
+			await document.fonts.ready;
+			await nextLayout();
+			const wrapper = document.querySelector<HTMLElement>('[data-gift-item]')!;
+			const imageRect = wrapper
+				.querySelector<HTMLElement>(
+					viewMode === 'card'
+						? '[data-testid="gift-card-image-frame"]'
+						: '[data-testid="gift-list-image"]',
+				)!
+				.getBoundingClientRect();
+			const checkboxRect = wrapper
+				.querySelector<HTMLElement>(
+					'[data-testid="gift-selection-control"] > [data-slot="checkbox-surface"]',
+				)!
+				.getBoundingClientRect();
+
+			for (const testId of ['gift-category-badge', 'gift-priority-badge']) {
+				const badgeRect = wrapper
+					.querySelector<HTMLElement>(`[data-testid="${testId}"]`)!
+					.getBoundingClientRect();
+				const separatedOnAnAxis =
+					checkboxRect.right <= badgeRect.left + DEFAULT_PIXEL_TOLERANCE ||
+					badgeRect.right <= checkboxRect.left + DEFAULT_PIXEL_TOLERANCE ||
+					checkboxRect.bottom <= badgeRect.top + DEFAULT_PIXEL_TOLERANCE ||
+					badgeRect.bottom <= checkboxRect.top + DEFAULT_PIXEL_TOLERANCE;
+
+				expect(
+					separatedOnAnAxis,
+					`${testId} ${JSON.stringify(badgeRect.toJSON())}, checkbox ${JSON.stringify(checkboxRect.toJSON())}`,
+				).toBe(true);
+				expect(badgeRect.width).toBeGreaterThan(0);
+				expectPixelsAtLeast(badgeRect.left, imageRect.left);
+				expectPixelsAtMost(badgeRect.right, imageRect.right);
+				expectPixelsAtLeast(badgeRect.top, imageRect.top);
+				expectPixelsAtMost(badgeRect.bottom, imageRect.bottom);
+			}
+			await screen.unmount();
+		},
+	);
+});

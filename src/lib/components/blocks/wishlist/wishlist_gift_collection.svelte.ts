@@ -109,8 +109,6 @@ export function createWishlistGiftCollectionView(
 			role: collection.role,
 			isArchived: collection.isArchived,
 			hideReservationState: collection.hideReservationState,
-			// Reorder clears the grip so the category stays put; selection has no such clearance.
-			showCategory: !selectionMode,
 			contextualMode: selectionMode || collection.reorderEnabled,
 			onreserve: collection.onreserve,
 			onunreserve: collection.onunreserve,

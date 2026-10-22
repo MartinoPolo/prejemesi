@@ -205,7 +205,7 @@ describe('GiftCard category badge (issue #265)', () => {
 		},
 	);
 
-	it('hides a moderator gift category only in contextual mode while preserving state and body details', async () => {
+	it('keeps a moderator gift category in contextual mode while preserving state and body details', async () => {
 		await page.viewport(800, 720);
 		const categorizedGift = makeVisitorGift({
 			received: true,
@@ -239,7 +239,9 @@ describe('GiftCard category badge (issue #265)', () => {
 		);
 
 		expect(normalHost.querySelector('[data-testid="gift-category-badge"]')).toBeTruthy();
-		expect(contextualHost.querySelector('[data-testid="gift-category-badge"]')).toBeNull();
+		expect(
+			contextualHost.querySelector('[data-testid="gift-category-badge"]')?.textContent,
+		).toContain('Sport');
 		const overlay = contextualHost.querySelector(
 			'[data-testid="gift-state-overlay"]',
 		) as HTMLElement;

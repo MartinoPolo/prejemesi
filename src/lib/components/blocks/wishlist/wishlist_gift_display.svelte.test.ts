@@ -614,21 +614,37 @@ describe('WishlistGiftDisplay grouped reorder (#454)', () => {
 		[GIFT_GROUPING_OPTIONS.category]: categoryReorderGroups([books], 'cs'),
 	};
 
+	function badgedSections(grouping: GiftReorderGroupField | typeof GIFT_GROUPING_OPTIONS.none) {
+		return grouping === GIFT_GROUPING_OPTIONS.none
+			? [{ ...sections[0]!, gifts: badgedGifts }]
+			: buildReorderSections(badgedGifts, grouping, badgedGroups[grouping]);
+	}
+
 	it.each(
 		(['card', 'list'] as const).flatMap((viewMode) =>
-			[GIFT_GROUPING_OPTIONS.priority, GIFT_GROUPING_OPTIONS.category].flatMap((grouping) =>
-				[false, true].map((reorderMode) => ({ viewMode, grouping, reorderMode })),
+			[
+				GIFT_GROUPING_OPTIONS.none,
+				GIFT_GROUPING_OPTIONS.priority,
+				GIFT_GROUPING_OPTIONS.category,
+			].flatMap((grouping) =>
+				(['browse', 'reorder', 'selection'] as const).map((mode) => ({
+					viewMode,
+					grouping,
+					mode,
+				})),
 			),
 		),
 	)(
-		'shows category and priority badges on every gift in $viewMode view grouped by $grouping (reorder $reorderMode)',
-		async ({ viewMode, grouping, reorderMode }) => {
+		'shows category and priority badges on every gift in $viewMode view grouped by $grouping in $mode mode',
+		async ({ viewMode, grouping, mode }) => {
+			const reorderMode = mode === 'reorder';
 			const screen = await render(WishlistGiftDisplayTestHost, {
 				...defaultProps,
-				sections: buildReorderSections(badgedGifts, grouping, badgedGroups[grouping]),
+				sections: badgedSections(grouping),
 				grouping,
 				viewMode,
 				reorderMode,
+				selectionMode: mode === 'selection',
 			});
 			const badges = () =>
 				Array.from(
@@ -665,6 +681,39 @@ describe('WishlistGiftDisplay grouped reorder (#454)', () => {
 				window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
 				await expect.poll(badges).toEqual(expectedBadges);
 			}
+			await screen.unmount();
+		},
+	);
+
+	it.each(['card', 'list'] as const)(
+		'selects and deselects a gift through a click on its badges in %s view',
+		async (viewMode) => {
+			const onselectiontoggle = vi.fn();
+			const props = {
+				...defaultProps,
+				sections: badgedSections(GIFT_GROUPING_OPTIONS.none),
+				viewMode,
+				selectionMode: true,
+				onselectiontoggle,
+			};
+			const screen = await render(WishlistGiftDisplayTestHost, {
+				...props,
+				selectedIds: [],
+			});
+			const lamp = () =>
+				document.querySelector<HTMLElement>('[data-gift-item][data-gift-id="gift-lamp"]')!;
+			const lampBadge = (testId: string) =>
+				lamp().querySelector<HTMLElement>(`[data-testid="${testId}"]`)!;
+
+			// A forced click lands on whatever the badge's position hit-tests to, like a real press.
+			await userEvent.click(lampBadge('gift-category-badge'), { force: true });
+			expect(onselectiontoggle).toHaveBeenLastCalledWith('gift-lamp');
+
+			await screen.rerender({ ...props, selectedIds: ['gift-lamp'] });
+			expect(lamp().getAttribute('aria-checked')).toBe('true');
+			await userEvent.click(lampBadge('gift-priority-badge'), { force: true });
+			expect(onselectiontoggle).toHaveBeenCalledTimes(2);
+			expect(onselectiontoggle).toHaveBeenLastCalledWith('gift-lamp');
 			await screen.unmount();
 		},
 	);
