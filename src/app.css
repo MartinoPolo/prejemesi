@@ -329,6 +329,7 @@
    the face: its shadowed edges add `--depth-clearance`, so every visible gap equals the inset. */
 .selection-tray-inset {
 	--selection-tray-inset: 5px;
+
 	padding: var(--selection-tray-inset);
 	padding-block-end: calc(var(--selection-tray-inset) + var(--depth-clearance));
 	padding-inline-end: calc(var(--selection-tray-inset) + var(--depth-clearance));
