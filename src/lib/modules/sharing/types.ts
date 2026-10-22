@@ -15,14 +15,7 @@ export type ShareWizardStep = (typeof SHARE_WIZARD_STEPS)[keyof typeof SHARE_WIZ
  * Facebook app id, and `fb-messenger://share` works only in the mobile app, so Messenger
  * users paste the copied link, which unfurls from the page's Open Graph tags.
  */
-const SHARE_PLATFORMS = {
-	whatsapp: 'whatsapp',
-	email: 'email',
-	telegram: 'telegram',
-	sms: 'sms',
-} as const;
-
-export type SharePlatform = (typeof SHARE_PLATFORMS)[keyof typeof SHARE_PLATFORMS];
+export type SharePlatform = 'whatsapp' | 'email' | 'telegram' | 'sms';
 
 /** Social platform display info */
 export interface SharePlatformInfo {
