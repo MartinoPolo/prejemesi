@@ -188,6 +188,7 @@ Current product, architecture, and design decisions for Přejeme si. Entries are
 - 2026-08-26: Image-frame fill is separate from palette identity: offer white, black, or transparent/dotted mat for letterboxing, with the dotted/transparent choice as default. Do not revive the retired app-background theme axis to control image fill.
 
 - 2026-09-24: The saved square `thumb` composition anchors List/reservation imagery; its editor preview is exact only in square-frame consumers. Mobile List and taller desktop List fill their portrait, full-height frames with a centered side-window of that composition, which may clip its sides; disclose this in the editor. Do not reproject focal/zoom to portrait or alter persisted targets.
+- 2026-10-22: The browser prepares every uploaded image before upload authorization: one over its target's byte limit (`MAX_FILE_SIZE`) or longest edge (`MAX_UPLOAD_IMAGE_EDGE_PX`, sized for the Gift viewer's uncropped photo) is decoded upright from EXIF, downscaled and re-encoded (JPEG stays JPEG; other types become WebP, or PNG where WebP cannot be encoded, keeping transparency); smaller ones upload untouched. GIFs and animated PNG/WebP are never re-encoded, so an oversized one is refused with a specific message. Server limits stay enforced (`src/lib/modules/uploads/prepare_image.ts`).
 
 ## Architecture, data & delivery
 

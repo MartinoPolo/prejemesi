@@ -25,6 +25,11 @@ const {
 		events: [] as string[],
 	},
 }));
+// These placeholder files are not decodable images; preparation has its own tests.
+vi.mock('$lib/modules/uploads/prepare_image.js', async (importOriginal) => ({
+	...(await importOriginal<typeof import('$lib/modules/uploads/prepare_image.js')>()),
+	prepareImageForUpload: async (file: File) => file,
+}));
 vi.mock('$lib/modules/uploads/upload.js', () => ({
 	uploadFile: uploadFileMock,
 	createPendingUploads: () => ({

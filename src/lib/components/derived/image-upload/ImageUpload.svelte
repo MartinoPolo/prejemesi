@@ -1,10 +1,12 @@
 <script lang="ts">
 	import { cn } from '$lib/utils.js';
 	import { uploadFile } from '$lib/modules/uploads/upload.js';
+	import { prepareImageForUpload } from '$lib/modules/uploads/prepare_image.js';
 	import type { UploadTarget } from '$lib/server/storage/r2.js';
-	import { ALLOWED_CONTENT_TYPES } from '$lib/modules/uploads/types.js';
+	import { ALLOWED_CONTENT_TYPES, MAX_FILE_SIZE } from '$lib/modules/uploads/types.js';
 	import type { UploadResult, UploadProgress } from '$lib/modules/uploads/types.js';
 	import { imageUploadVariants, type ImageUploadSize } from './image_upload_variants.js';
+	import { imageUploadErrorMessage } from './image_upload_errors.js';
 	import { Button } from '$lib/components/base/button/index.js';
 	import { CONTROL_SIZE_CLASSES } from '$lib/components/base/control_sizing.js';
 	import * as m from '$lib/paraglide/messages.js';
@@ -16,8 +18,6 @@
 		target: UploadTarget;
 		/** Allowed MIME types. Defaults to all image types. */
 		accept?: string;
-		/** Maximum file size in bytes. Overrides the default for the target if set. */
-		maxSize?: number;
 		/** Component size variant. */
 		size?: ImageUploadSize;
 		/** Prevents starting, replacing, or removing an upload. */
@@ -30,8 +30,8 @@
 		onUpload?: (result: UploadResult) => void;
 		/** Reports the full upload lifecycle, including authorization. */
 		onPendingChange?: (pending: boolean) => void;
-		/** Called when an error occurs. */
-		onError?: (error: Error) => void;
+		/** Called when an error occurs, with the localized message shown to the user. */
+		onError?: (error: Error, message: string) => void;
 		/** Called when the user clears the current image (so callers can drop the key/url). */
 		onRemove?: () => void;
 		/** Additional CSS classes. */
@@ -41,7 +41,6 @@
 	let {
 		target,
 		accept = ALLOWED_CONTENT_TYPES.join(','),
-		maxSize,
 		size = 'medium',
 		disabled = false,
 		label,
@@ -138,15 +137,6 @@
 			return;
 		}
 
-		// Client-side max size check
-		if (maxSize != null && file.size > maxSize) {
-			const maxMb = Math.round(maxSize / (1024 * 1024));
-			const fileError = new Error(`File too large. Maximum size: ${String(maxMb)}MB`);
-			progress = { status: 'error', percentage: 0, errorMessage: fileError.message };
-			onError?.(fileError);
-			return;
-		}
-
 		isUploadPending = true;
 		onPendingChange?.(true);
 
@@ -157,10 +147,13 @@
 		previewUrl = URL.createObjectURL(file);
 
 		activeAbortController = new AbortController();
+		const maxBytes = MAX_FILE_SIZE[target];
 
 		try {
+			progress = { status: 'preparing', percentage: 0 };
+			const preparedFile = await prepareImageForUpload(file, maxBytes);
 			const result = await uploadFile(
-				file,
+				preparedFile,
 				target,
 				(uploadProgress) => {
 					progress = uploadProgress;
@@ -170,7 +163,9 @@
 			onUpload?.(result);
 		} catch (thrown) {
 			const uploadError = thrown instanceof Error ? thrown : new Error('Upload failed');
-			onError?.(uploadError);
+			const errorMessage = imageUploadErrorMessage(thrown, maxBytes);
+			progress = { status: 'error', percentage: 0, errorMessage };
+			onError?.(uploadError, errorMessage);
 		} finally {
 			activeAbortController = null;
 			isUploadPending = false;
