@@ -1,4 +1,6 @@
 const LONG_PRESS_MS = 600;
+/** Short enough to feel like a drag, long enough that a swipe over a card still scrolls. */
+export const GIFT_REORDER_LONG_PRESS_MS = 300;
 const MOVEMENT_TOLERANCE_PX = 8;
 
 let cancelActiveRecognizer: (() => void) | null = null;
@@ -7,6 +9,7 @@ let cancelActiveRecognizer: (() => void) | null = null;
 export function createGiftLongPressRecognizer(
 	onOpen: () => void,
 	onPendingChange?: (pending: boolean) => void,
+	durationMs = LONG_PRESS_MS,
 ) {
 	let origin: { x: number; y: number } | null = null;
 	let timer: ReturnType<typeof setTimeout> | null = null;
@@ -62,7 +65,7 @@ export function createGiftLongPressRecognizer(
 			}
 			setPending(false);
 			onOpen();
-		}, LONG_PRESS_MS);
+		}, durationMs);
 	}
 
 	function move(x: number, y: number) {

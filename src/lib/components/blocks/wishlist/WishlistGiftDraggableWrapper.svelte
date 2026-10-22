@@ -6,7 +6,11 @@
 	import { normalizeGiftUrl } from '$lib/modules/gifts/gift_url.js';
 	import { cn } from '$lib/utils.js';
 	import type { Snippet } from 'svelte';
-	import { createGiftLongPressRecognizer } from '$lib/modules/gifts/gift_long_press.js';
+	import type { Attachment } from 'svelte/attachments';
+	import {
+		createGiftLongPressRecognizer,
+		GIFT_REORDER_LONG_PRESS_MS,
+	} from '$lib/modules/gifts/gift_long_press.js';
 	import { GIFT_CARD_CONTROL_SELECTOR } from '$lib/components/blocks/gift/gift_card_controls.js';
 	import { Button } from '$lib/components/base/button/index.js';
 	import { CheckboxSurface, checkboxVariants } from '$lib/components/base/checkbox/index.js';
@@ -85,13 +89,45 @@
 			longPressPending = pending;
 		},
 	);
+	/** The touch press a reorder long-press turns into a drag once it completes. */
+	let pendingReorderPress: PointerEvent | null = null;
+	const reorderLongPress = createGiftLongPressRecognizer(
+		() => {
+			if (pendingReorderPress !== null) {
+				onreorderpointerdown(pendingReorderPress, index);
+				pendingReorderPress = null;
+			}
+		},
+		(pending) => {
+			longPressPending = pending;
+		},
+		GIFT_REORDER_LONG_PRESS_MS,
+	);
 	const reorderGripVisible = $derived(reorderEnabled && !selectionMode);
 	const isDragged = $derived(draggedGiftId === giftId);
 	const isDragOver = $derived(dragOverGiftId === giftId);
 	const safePrimaryLink = $derived(normalizeGiftUrl(primaryLink));
 	const selectionCheckboxStyles = checkboxVariants({ size: 'responsive' });
 
-	$effect(() => () => longPress.cancel());
+	$effect(() => () => {
+		longPress.cancel();
+		reorderLongPress.cancel();
+	});
+
+	/**
+	 * Outside the grip the card keeps native touch scrolling, so a long-press drag cancels its
+	 * touch's scrolling itself. Browsers honour that only from a non-passive listener that existed
+	 * before the touch started.
+	 */
+	const blockTouchScrollWhileDragged: Attachment<HTMLElement> = (element) => {
+		function preventScroll(event: TouchEvent) {
+			if (draggedGiftId === giftId && event.cancelable) {
+				event.preventDefault();
+			}
+		}
+		element.addEventListener('touchmove', preventScroll, { passive: false });
+		return () => element.removeEventListener('touchmove', preventScroll);
+	};
 
 	function eventStartedInsideInteractiveElement(event: Event): boolean {
 		const target = event.target;
@@ -147,26 +183,45 @@
 		}
 	}
 
+	/** Mouse and pen drag the card at once; touch needs a long-press so swipes still scroll. */
+	function handleReorderPointerDown(event: PointerEvent) {
+		if (event.pointerType !== 'touch') {
+			onreorderpointerdown(event, index);
+			return;
+		}
+		pendingReorderPress = event;
+		reorderLongPress.start(event.clientX, event.clientY);
+	}
+
 	function handlePointerDown(event: PointerEvent) {
 		suppressNextClickAfterLongPress = false;
 		if (selectionMode) {
 			suppressSelectionContext(event);
 			return;
 		}
-		if (event.pointerType === 'mouse') {
-			return;
+		if (event.pointerType !== 'mouse') {
+			event.stopPropagation();
 		}
-		event.stopPropagation();
 		if (eventStartedInsideInteractiveElement(event)) {
 			return;
 		}
-		longPress.start(event.clientX, event.clientY);
+		if (reorderEnabled) {
+			handleReorderPointerDown(event);
+		} else if (event.pointerType !== 'mouse') {
+			longPress.start(event.clientX, event.clientY);
+		}
 	}
 
 	function handlePointerMove(event: PointerEvent) {
 		if (event.pointerType !== 'mouse') {
 			longPress.move(event.clientX, event.clientY);
+			reorderLongPress.move(event.clientX, event.clientY);
 		}
+	}
+
+	function endLongPresses() {
+		longPress.end();
+		reorderLongPress.end();
 	}
 
 	function handleAuxclick(event: MouseEvent) {
@@ -246,6 +301,7 @@
 		selectionMode
 			? 'relative h-full cursor-default rounded-panel transition-opacity focus-visible:outline-none'
 			: 'group/gift-card relative h-full cursor-pointer rounded-panel transition-opacity focus-visible:outline-none',
+		reorderGripVisible && 'cursor-grab active:cursor-grabbing',
 		className,
 		isDragged && 'invisible',
 		isDragOver && dragOverStyle === 'ring' && 'ring-2 ring-inset ring-primary',
@@ -270,9 +326,10 @@
 	oncontextmenu={handleContextMenu}
 	onpointerdown={handlePointerDown}
 	onpointermove={handlePointerMove}
-	onpointerup={() => longPress.end()}
-	onpointercancel={() => longPress.cancel()}
+	onpointerup={endLongPresses}
+	onpointercancel={endLongPresses}
 	onkeydown={handleKeydown}
+	{@attach reorderGripVisible && blockTouchScrollWhileDragged}
 >
 	{#if selectionMode}
 		<span
@@ -396,6 +453,11 @@
 			var(--gift-reorder-grip-offset) + var(--gift-reorder-grip-face-inset) +
 				var(--gift-reorder-grip-face-size) + var(--nested-control-gap)
 		);
+
+		/* A press anywhere on the card drags it, where text selection and touch callouts get in the
+		   way. */
+		user-select: none;
+		-webkit-touch-callout: none;
 	}
 
 	/* The category badge starts after the selection checkbox, like it does after the reorder grip. */

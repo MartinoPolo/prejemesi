@@ -636,7 +636,7 @@ export function createGiftPointerReorderController(options: GiftPointerReorderOp
 	}
 
 	function start(event: PointerEvent, index: number) {
-		if (activePointerId !== null || (event.pointerType === 'mouse' && event.button !== 0)) {
+		if (activePointerId !== null || event.button !== 0) {
 			return;
 		}
 		const itemIds = options.getItemIds();

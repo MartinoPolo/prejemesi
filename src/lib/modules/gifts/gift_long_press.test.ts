@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createGiftLongPressRecognizer } from './gift_long_press.js';
+import { createGiftLongPressRecognizer, GIFT_REORDER_LONG_PRESS_MS } from './gift_long_press.js';
 
 afterEach(() => vi.useRealTimers());
 
@@ -15,6 +15,17 @@ describe('gift long press', () => {
 		expect(open).not.toHaveBeenCalled();
 		vi.advanceTimersByTime(1);
 		expect(pending).toHaveBeenLastCalledWith(false);
+		expect(open).toHaveBeenCalledOnce();
+	});
+
+	it('opens after the reorder long-press duration when given one', () => {
+		vi.useFakeTimers();
+		const open = vi.fn();
+		const press = createGiftLongPressRecognizer(open, undefined, GIFT_REORDER_LONG_PRESS_MS);
+		press.start(10, 10);
+		vi.advanceTimersByTime(299);
+		expect(open).not.toHaveBeenCalled();
+		vi.advanceTimersByTime(1);
 		expect(open).toHaveBeenCalledOnce();
 	});
 
