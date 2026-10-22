@@ -96,14 +96,14 @@ The Free plan permits one rate-limiting rule. Configure exactly one rule named `
 
 | Setting | Value |
 | --- | --- |
-| Match | Path starts with `/api/` **OR** `/_app/remote/`; **AND Verified Bot is false**; **AND path is not** `/api/auth/oauth2/token` |
-| Expression | `(starts_with(http.request.uri.path, "/api/") or starts_with(http.request.uri.path, "/_app/remote/")) and not cf.client.bot and http.request.uri.path ne "/api/auth/oauth2/token"` |
+| Match | Path starts with `/api/` **OR** `/_app/remote/`; **AND path does not start with** `/api/v1/` or `/api/auth/oauth2/`; **AND Verified Bot is false** |
+| Expression | `(starts_with(http.request.uri.path, "/api/") or starts_with(http.request.uri.path, "/_app/remote/")) and not starts_with(http.request.uri.path, "/api/v1/") and not starts_with(http.request.uri.path, "/api/auth/oauth2/") and not cf.client.bot` |
 | Counting characteristic | IP |
 | Threshold | 20 requests per 10 seconds |
 | Action | Managed Challenge |
 | Mitigation timeout | `0` (challenge/throttle mode required on Free) |
 
-Twenty requests/10 seconds/IP is a starting hypothesis, not measured capacity. It covers BetterAuth, upload/API, and SvelteKit remote-function traffic without counting ordinary page/static-asset requests. Shared NAT users still share the IP counter, so validate before lowering it. The OAuth token endpoint is excluded because connector backends such as Claude's and ChatGPT's exchange and refresh tokens for many users from shared IPs and cannot solve a challenge; it only answers requests carrying a valid code or refresh token.
+Twenty requests/10 seconds/IP is a starting hypothesis, not measured capacity. It covers BetterAuth, upload/API, and SvelteKit remote-function traffic without counting ordinary page/static-asset requests. Shared NAT users still share the IP counter, so validate before lowering it. The agent API and the OAuth endpoints are excluded because agents and connector backends such as Claude's and ChatGPT's call them for many users from shared IPs and cannot solve a challenge; `/api/v1` has its own per-token limit (`AGENT_API_RATE_LIMIT`), and the OAuth endpoints act only on valid codes and tokens or a signed-in consent.
 
 Verification:
 
