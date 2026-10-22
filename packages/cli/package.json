@@ -9,6 +9,7 @@
 		"agent"
 	],
 	"homepage": "https://prejemesi.cz",
+	"license": "MIT",
 	"repository": {
 		"type": "git",
 		"url": "git+https://github.com/MartinoPolo/prejemesi.git",

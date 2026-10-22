@@ -38,3 +38,7 @@ prejemesi proposals apply <proposalId>
 - `proposals apply` applies a waiting proposal only for the fast-forward token that submitted it; otherwise it fails with the `reviewLink` where you review it.
 
 Output is JSON. Results go to standard output; failures go to standard error as the API's `{ "error": … }` body. Exit codes: `0` success, `1` request failure, `2` usage error. Proposal results carry a `reviewLink` to the review page.
+
+## License
+
+MIT, for this package only; the Přejeme si app is not open source.
