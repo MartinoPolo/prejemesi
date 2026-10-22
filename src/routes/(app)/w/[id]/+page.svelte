@@ -12,8 +12,12 @@
 	import WishlistGiftDisplay from '$lib/components/blocks/wishlist/WishlistGiftDisplay.svelte';
 	import WishlistSelectionToolbar from '$lib/components/blocks/wishlist/WishlistSelectionToolbar.svelte';
 	import GiftBulkCopyDialog, {
+		NEW_WISHLIST_DESTINATION,
 		type BulkCopyDestination,
 	} from '$lib/components/blocks/wishlist/GiftBulkCopyDialog.svelte';
+	import CreateWishlistModal, {
+		type CreatedWishlist,
+	} from '$lib/components/blocks/wishlist/CreateWishlistModal.svelte';
 	import GiftContextActions from '$lib/components/blocks/wishlist/GiftContextActions.svelte';
 	import WishlistAssistant from '$lib/components/blocks/chat/WishlistAssistant.svelte';
 	import { setAssistantContext } from '$lib/modules/chat/assistant.context.svelte.js';
@@ -766,6 +770,9 @@
 	let bulkCopyDestinationId = $state('');
 	let bulkCopyReturnToActions = $state<(() => void) | null>(null);
 	let bulkCopyDestinations = $state<BulkCopyDestination[]>([]);
+	let bulkCopyCreateOpen = $state(false);
+	// Stays selected after a failed copy, so a retry fills the wishlist already created and still links it.
+	let bulkCopyCreatedDestination = $state<CreatedWishlist | null>(null);
 	// Moving gifts out (copy, then remove the unreserved sources) is a permanent wishlist's workflow;
 	// once the list was shared, its recipient may only copy (issue #479).
 	let bulkCopyRemovesSources = $state(false);
@@ -1164,9 +1171,10 @@
 		bulkCopyLoading = true;
 		bulkCopyDestinationId = '';
 		bulkCopyRemovesSources = false;
+		bulkCopyCreatedDestination = null;
 		try {
 			bulkCopyDestinations = await getBulkCopyDestinations(wishlist.id);
-			bulkCopyDestinationId = bulkCopyDestinations[0]?.id ?? '';
+			bulkCopyDestinationId = bulkCopyDestinations[0]?.id ?? NEW_WISHLIST_DESTINATION;
 		} catch (thrown) {
 			bulkCopyDestinations = [];
 			toastError(translateServerError(thrown));
@@ -1195,6 +1203,44 @@
 			: m.gift_bulk_copy_success({ count: copiedCount });
 	}
 
+	function bulkCopySuccessToast(message: string, destinationId: string) {
+		const created = bulkCopyCreatedDestination;
+		if (created?.id !== destinationId) {
+			toastSuccess(message);
+			return;
+		}
+		showToast({
+			tone: 'success',
+			title: message,
+			actionLabel: m.gift_bulk_copy_open_destination(),
+			onAction: () =>
+				void goto(localizeInternalHref(resolve('/(app)/w/[id]', { id: created.shortId }))),
+		});
+	}
+
+	function confirmBulkCopy() {
+		if (bulkCopyDestinationId === NEW_WISHLIST_DESTINATION) {
+			bulkCopyCreateOpen = true;
+			return;
+		}
+		void submitBulkCopy();
+	}
+
+	function copyIntoCreatedWishlist(created: CreatedWishlist) {
+		bulkCopyCreatedDestination = created;
+		bulkCopyDestinations = [
+			{
+				id: created.id,
+				title: created.title,
+				status: created.status,
+				recipientDisplayName: created.recipientName ?? data.user?.name ?? '',
+			},
+			...bulkCopyDestinations,
+		];
+		bulkCopyDestinationId = created.id;
+		void submitBulkCopy();
+	}
+
 	async function submitBulkCopy() {
 		if (
 			bulkCopySubmitting ||
@@ -1204,16 +1250,20 @@
 			return;
 		}
 		const selectedIds = [...selectionSnapshot.selectedIds];
+		const destinationWishlistId = bulkCopyDestinationId;
 		const removeUnreservedSources = bulkCopyOffersSourceRemoval && bulkCopyRemovesSources;
 		bulkCopySubmitting = true;
 		try {
 			const { removedSourceIds } = await bulkCopyGifts({
 				sourceWishlistId: wishlist.id,
-				destinationWishlistId: bulkCopyDestinationId,
+				destinationWishlistId,
 				giftIds: selectedIds,
 				...(removeUnreservedSources ? { removeUnreservedSources } : {}),
 			});
-			toastSuccess(bulkCopySuccessMessage(selectedIds.length, removedSourceIds.length));
+			bulkCopySuccessToast(
+				bulkCopySuccessMessage(selectedIds.length, removedSourceIds.length),
+				destinationWishlistId,
+			);
 			returnFromBulkCopy();
 		} catch (thrown) {
 			toastError(translateServerError(thrown));
@@ -2447,7 +2497,13 @@
 	offerSourceRemoval={bulkCopyOffersSourceRemoval}
 	removeSources={bulkCopyRemovesSources}
 	onremovesourceschange={(removeSources) => (bulkCopyRemovesSources = removeSources)}
-	onconfirm={() => void submitBulkCopy()}
+	onconfirm={confirmBulkCopy}
+/>
+
+<CreateWishlistModal
+	bind:open={bulkCopyCreateOpen}
+	demo={page.data.demoExpiresAt !== null}
+	oncreated={copyIntoCreatedWishlist}
 />
 
 <Dialog.Root bind:open={hiddenConfirmOpen}>

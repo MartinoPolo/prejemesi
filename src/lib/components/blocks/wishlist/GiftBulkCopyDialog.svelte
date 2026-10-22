@@ -1,3 +1,8 @@
+<script module lang="ts">
+	/** Picker value that creates the destination first; `#` never occurs in generated wishlist ids. */
+	export const NEW_WISHLIST_DESTINATION = '#new-wishlist';
+</script>
+
 <script lang="ts">
 	import * as Dialog from '$lib/components/base/dialog/index.js';
 	import * as Sheet from '$lib/components/base/sheet/index.js';
@@ -54,19 +59,27 @@
 	let confirmButton = $state<HTMLButtonElement | null>(null);
 	let submittingCycleObserved = $state(false);
 	const mobile = $derived(viewportWidth < 640);
-	const unavailable = $derived(
-		loading || submitting || selectedDestinationId === '' || destinations.length === 0,
-	);
+	const unavailable = $derived(loading || submitting || selectedDestinationId === '');
 	const moving = $derived(offerSourceRemoval && removeSources);
+	const creatingDestination = $derived(selectedDestinationId === NEW_WISHLIST_DESTINATION);
 	const title = $derived(moving ? m.gift_bulk_copy_move_title() : m.gift_bulk_copy_title());
 	const description = $derived(
 		moving ? m.gift_bulk_copy_move_description() : m.gift_bulk_copy_description(),
 	);
-	const selectedDestinationLabel = $derived(
-		destinations.find((destination) => destination.id === selectedDestinationId)
-			? `${destinations.find((destination) => destination.id === selectedDestinationId)?.title} · ${destinations.find((destination) => destination.id === selectedDestinationId)?.recipientDisplayName}`
-			: m.gift_bulk_copy_choose(),
+	const selectedDestination = $derived(
+		destinations.find((destination) => destination.id === selectedDestinationId),
 	);
+	const selectedDestinationLabel = $derived(
+		creatingDestination
+			? m.gift_bulk_copy_new_destination()
+			: selectedDestination === undefined
+				? m.gift_bulk_copy_choose()
+				: destinationLabel(selectedDestination),
+	);
+
+	function destinationLabel(destination: BulkCopyDestination): string {
+		return `${destination.title} · ${destination.recipientDisplayName}`;
+	}
 
 	$effect(() => {
 		if (submitting) {
@@ -94,8 +107,6 @@
 	<div class="space-y-4 px-4 py-3 sm:px-0 sm:py-4">
 		{#if loading}
 			<p class="text-sm text-muted-foreground">{m.moderator_loading()}</p>
-		{:else if destinations.length === 0}
-			<p class="text-sm text-muted-foreground">{m.gift_bulk_copy_empty()}</p>
 		{:else}
 			<div class="grid gap-2">
 				<Label id="bulk-copy-destination-label" for="bulk-copy-destination">
@@ -120,9 +131,13 @@
 						{#each destinations as destination (destination.id)}
 							<Select.Item
 								value={destination.id}
-								label={`${destination.title} · ${destination.recipientDisplayName}`}
+								label={destinationLabel(destination)}
 							/>
 						{/each}
+						<Select.Item
+							value={NEW_WISHLIST_DESTINATION}
+							label={m.gift_bulk_copy_new_destination()}
+						/>
 					</Select.Content>
 				</Select.Root>
 			</div>
@@ -170,9 +185,11 @@
 		>
 			{submitting
 				? m.gift_bulk_pending({ count: selectedCount })
-				: moving
-					? m.gift_bulk_copy_move_confirm()
-					: m.gift_bulk_copy_confirm()}
+				: creatingDestination
+					? m.gift_bulk_copy_new_destination_confirm()
+					: moving
+						? m.gift_bulk_copy_move_confirm()
+						: m.gift_bulk_copy_confirm()}
 		</Button>
 	</div>
 {/snippet}
