@@ -4,7 +4,7 @@
 	import { afterNavigate, replaceState, goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { onMount, tick } from 'svelte';
-	import { SvelteMap, SvelteSet } from 'svelte/reactivity';
+	import { SvelteSet } from 'svelte/reactivity';
 	import * as m from '$lib/paraglide/messages.js';
 	import { localizeInternalHref } from '$lib/i18n/locale.js';
 	import WishlistHeader from '$lib/components/blocks/gift/WishlistHeader.svelte';
@@ -267,7 +267,7 @@
 	);
 
 	const assistant = setAssistantContext();
-	const decidingProposals: DecidingProposalRegistry = new SvelteMap();
+	const decidingProposals: DecidingProposalRegistry = new SvelteSet();
 
 	untrack(() =>
 		setLikesContext(

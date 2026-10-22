@@ -2,10 +2,19 @@ import type { GiftByRole, GiftForRecipient } from '$lib/modules/gifts/types.js';
 import { GIFT_LIVE_PREVIEW, type GiftLivePreviewKind } from './change_row_model.js';
 import type { ReviewRowEntry } from './change_review_rows.js';
 
-/** The rows of each proposal being decided, by proposal id, read live as decisions change. */
-export type DecidingProposals = ReadonlyMap<string, () => readonly ReviewRowEntry[]>;
+/** A pending proposal card's rows, read live as decisions change. */
+export interface DecidingProposal {
+	proposalId: string;
+	entries: () => readonly ReviewRowEntry[];
+}
+
+/**
+ * One registration per card: the live turn's card and the stored copy of the same proposal
+ * overlap for a moment, and either may unmount first without dropping the other's preview.
+ */
+export type DecidingProposals = ReadonlySet<DecidingProposal>;
 /** Where each pending proposal card registers its rows while it is being decided. */
-export type DecidingProposalRegistry = Map<string, () => readonly ReviewRowEntry[]>;
+export type DecidingProposalRegistry = Set<DecidingProposal>;
 
 /** What the wishlist shows while proposals are decided; only the deciding user sees it. */
 export interface GiftLivePreviews {
@@ -28,7 +37,11 @@ export function giftLivePreviews(proposals: DecidingProposals): GiftLivePreviews
 	const edits = new Map<string, Partial<GiftForRecipient>>();
 	const deletions = new Set<string>();
 	const creations: { key: string; gift: GiftForRecipient }[] = [];
-	for (const [proposalId, entries] of proposals) {
+	const latestEntries = new Map<string, DecidingProposal['entries']>();
+	for (const { proposalId, entries } of proposals) {
+		latestEntries.set(proposalId, entries);
+	}
+	for (const [proposalId, entries] of latestEntries) {
 		for (const entry of entries()) {
 			if (entry.blocked) {
 				continue;
