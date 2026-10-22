@@ -43,6 +43,7 @@
 		"db:verify:prod": "tsx scripts/migrate-prod.ts --check",
 		"db:seed": "tsx src/lib/server/db/seed.ts",
 		"seed:images": "tsx scripts/prepare-seed-images.ts",
+		"social-preview:generate": "node scripts/social-preview/generate.mjs",
 		"db:studio": "drizzle-kit studio",
 		"db:audit:crop-rects": "tsx scripts/audit-legacy-crop-rects.ts",
 		"cf:types": "wrangler types --no-include-runtime",

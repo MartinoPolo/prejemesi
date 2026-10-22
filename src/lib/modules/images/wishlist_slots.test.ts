@@ -18,14 +18,14 @@ import {
 	createDefaultWishlistSlots,
 	wishlistSlotToFrameProps,
 	socialSlotFocalPoint,
-	wishlistSocialImageUrl,
+	wishlistSocialImage,
 } from './wishlist_slots.js';
 import { WISHLIST_EDITOR_SLOTS } from './crop_targets.js';
 import { WishlistImageSlotsSchema, type WishlistImageSlots } from './types.js';
 import { IMAGE_FIT_MODES } from '$lib/components/derived/image-frame/index.js';
 
 const PUBLIC_BASE = 'https://images.example.com';
-const FALLBACK = 'https://prejemesi.cz/social-preview.png';
+const FALLBACK = { url: 'https://prejemesi.cz/social-preview.png', width: 1200, height: 630 };
 
 beforeEach(() => {
 	for (const key of Object.keys(mockEnv)) {
@@ -125,29 +125,37 @@ describe('socialSlotFocalPoint', () => {
 	});
 });
 
-describe('wishlistSocialImageUrl', () => {
+describe('wishlistSocialImage', () => {
 	it('returns the fallback preview when no image is assigned (issue #117)', () => {
-		expect(wishlistSocialImageUrl(null, null, FALLBACK)).toBe(FALLBACK);
-		expect(wishlistSocialImageUrl(undefined, undefined, FALLBACK)).toBe(FALLBACK);
-		expect(wishlistSocialImageUrl('', {}, FALLBACK)).toBe(FALLBACK);
+		expect(wishlistSocialImage(null, null, FALLBACK)).toBe(FALLBACK);
+		expect(wishlistSocialImage(undefined, undefined, FALLBACK)).toBe(FALLBACK);
+		expect(wishlistSocialImage('', {}, FALLBACK)).toBe(FALLBACK);
 	});
 
-	it("crops the assigned image to the social slot's saved focal point", () => {
+	it("crops the assigned image to the social slot's saved focal point at 1200×630", () => {
 		mockEnv['PUBLIC_R2_URL'] = PUBLIC_BASE;
 		const slots: WishlistImageSlots = {
 			social: { fitMode: IMAGE_FIT_MODES.coverCrop, focal: { x: 30, y: 70 }, zoom: 1 },
 		};
 
-		expect(wishlistSocialImageUrl('wishlists/a.jpg', slots, FALLBACK)).toBe(
-			`${PUBLIC_BASE}/cdn-cgi/image/width=1200,height=630,fit=cover,gravity=0.30x0.70,format=jpeg/wishlists/a.jpg`,
-		);
+		expect(wishlistSocialImage('wishlists/a.jpg', slots, FALLBACK)).toEqual({
+			url: `${PUBLIC_BASE}/cdn-cgi/image/width=1200,height=630,fit=cover,gravity=0.30x0.70,format=jpeg/wishlists/a.jpg`,
+			width: 1200,
+			height: 630,
+		});
 	});
 
 	it('falls back to a centered crop when an image is assigned but the social slot is unset', () => {
 		mockEnv['PUBLIC_R2_URL'] = PUBLIC_BASE;
 
-		expect(wishlistSocialImageUrl('wishlists/a.jpg', {}, FALLBACK)).toBe(
+		expect(wishlistSocialImage('wishlists/a.jpg', {}, FALLBACK).url).toBe(
 			`${PUBLIC_BASE}/cdn-cgi/image/width=1200,height=630,fit=cover,gravity=0.50x0.50,format=jpeg/wishlists/a.jpg`,
 		);
+	});
+
+	it('serves an untransformable image without claiming 1200×630 dimensions', () => {
+		expect(wishlistSocialImage('wishlists/a.jpg', {}, FALLBACK)).toEqual({
+			url: '/api/upload/wishlists/a.jpg',
+		});
 	});
 });

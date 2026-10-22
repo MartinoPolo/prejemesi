@@ -1,6 +1,6 @@
 # Production operations
 
-Operational runbook for `prejemesi` on Cloudflare Workers, Hyperdrive/Neon, R2, and Resend. Dashboard configuration is account-side work: verify each control in production; this document does not claim it is already enabled.
+Operational runbook for `prejemesi` on Cloudflare Workers, Hyperdrive/Neon, R2, and Resend. Dashboard configuration is account-side work: verify each control in production; this document does not claim it is already enabled. Link previews and share links have their own checklist: [SHARING_PREVIEWS.md](SHARING_PREVIEWS.md).
 
 ## Telemetry and privacy
 

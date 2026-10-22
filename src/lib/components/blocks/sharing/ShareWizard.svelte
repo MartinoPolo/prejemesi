@@ -280,18 +280,6 @@
 												/>
 												<polyline points="22,6 12,13 2,6" />
 											</svg>
-										{:else if platformKey === 'messenger'}
-											<svg
-												width="18"
-												height="18"
-												viewBox="0 0 24 24"
-												fill="currentColor"
-												aria-hidden="true"
-											>
-												<path
-													d="M12 2C6.477 2 2 6.145 2 11.243c0 2.936 1.43 5.556 3.667 7.288V22l3.338-1.834A10.5 10.5 0 0 0 12 20.486c5.523 0 10-4.144 10-9.243C22 6.145 17.523 2 12 2zm1.007 12.44l-2.545-2.71-4.97 2.71 5.467-5.802 2.606 2.71 4.908-2.71-5.466 5.802z"
-												/>
-											</svg>
 										{:else if platformKey === 'telegram'}
 											<svg
 												width="18"

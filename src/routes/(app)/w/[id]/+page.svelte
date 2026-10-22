@@ -62,7 +62,10 @@
 	import { createLatestAsyncQueue } from '$lib/modules/gifts/latest_async_queue.js';
 	import { setLikesContext } from '$lib/modules/likes/likes.context.svelte.js';
 	import { setSharingContext } from '$lib/modules/sharing/sharing.context.svelte.js';
-	import { wishlistSocialDescription } from '$lib/modules/sharing/social_description.js';
+	import {
+		buildWishlistSocialMetaTags,
+		wishlistPageUrl,
+	} from '$lib/modules/sharing/social_meta.js';
 	import {
 		getWishlistByShortId,
 		archiveWishlist,
@@ -101,12 +104,10 @@
 	} from '$lib/modules/wishlists/wishlist_capabilities.js';
 	import type { Palette } from '$lib/theme/palettes.js';
 	import { getWishlistEmoji } from '$lib/modules/wishlists/wishlist_theme.js';
-	import { wishlistSocialImageUrl } from '$lib/modules/images/index.js';
 	import {
 		giftEditorModeFromMeta,
 		IMAGE_EDITOR_MODES,
 	} from '$lib/modules/images/editor_modes.js';
-	import { SITE_URL, SOCIAL_PREVIEW_IMAGE_URL } from '$lib/config/site.js';
 	import { untrack } from 'svelte';
 	import {
 		dismissToast,
@@ -305,7 +306,7 @@
 	// SSR fetches wishlist metadata for title/OG/header. The plain awaited value
 	// is required for <svelte:head> — reading post-await state through a memoized
 	// $derived there collapses to undefined during async SSR and 500s (see
-	// getSocialDescription). The reactive query shares the same client cache entry,
+	// getSocialMetaTags). The reactive query shares the same client cache entry,
 	// so hydration costs no second fetch and single-flight refreshes flow into
 	// `wishlist` below; the awaited value doubles as the fallback while a new
 	// shortId is loading after in-place navigation.
@@ -445,20 +446,12 @@
 	// For-someone-else ⇔ no linked recipient account (management is via správci rows only).
 	const isForSomeoneElse = $derived(wishlist?.recipientUserId == null);
 	const themeEmoji = $derived(getWishlistEmoji(wishlist?.theme));
-	function getWishlistPageUrl() {
-		return `${SITE_URL}/w/${wishlist.shortId}`;
-	}
-
-	// OG/Twitter image (issue #117): a fixed-aspect crop honoring the `social` slot's saved
-	// focal point, so the crawler-visible preview matches what the owner framed in the crop
-	// editor instead of always serving the unmodified source image.
-	function getWishlistSocialImageUrl() {
-		const url = wishlistSocialImageUrl(
-			wishlist.imageKey,
-			wishlist.imageSlots,
-			SOCIAL_PREVIEW_IMAGE_URL,
-		);
-		return url.startsWith('http') ? url : `${SITE_URL}${url}`;
+	// OG/Twitter tags. A plain function (evaluated at render), NOT a $derived — reading
+	// post-await state through a memoized $derived inside <svelte:head> collapses to undefined
+	// during async SSR and 500s. The image is the `social` slot crop the owner framed in the
+	// crop editor (issue #117), else the branded fallback.
+	function getSocialMetaTags() {
+		return buildWishlistSocialMetaTags(wishlist, getLocale());
 	}
 
 	/** A failing lookup only hides the banner; it never breaks the wishlist. */
@@ -474,14 +467,6 @@
 		} catch {
 			return [];
 		}
-	}
-
-	// OG/Twitter description. A plain function (evaluated at render), NOT a $derived — reading
-	// post-await state through a memoized $derived inside <svelte:head> collapses to undefined
-	// during async SSR and 500s. Localized via Paraglide (issue #117). Sentence form
-	// „Seznam přání pro {recipient}" on ALL lists — self lists included (2026-07-14 decision).
-	function getSocialDescription() {
-		return wishlistSocialDescription(wishlist.recipientDisplayName);
 	}
 
 	// ── Modal state ──────────────────────────────────────────────────────────
@@ -2639,17 +2624,8 @@
 
 <svelte:head>
 	<title>{wishlist.title} – Přejeme si</title>
-	<meta property="og:title" content={wishlist.title} />
-	<meta property="og:description" content={getSocialDescription()} />
-	<meta property="og:type" content="website" />
-	<meta property="og:url" content={getWishlistPageUrl()} />
-	<meta property="og:image" content={getWishlistSocialImageUrl()} />
-	<meta property="og:image:width" content="1200" />
-	<meta property="og:image:height" content="630" />
-	<meta property="og:image:alt" content={wishlist.title} />
-	<meta name="twitter:card" content="summary_large_image" />
-	<meta name="twitter:title" content={wishlist.title} />
-	<meta name="twitter:description" content={getSocialDescription()} />
-	<meta name="twitter:image" content={getWishlistSocialImageUrl()} />
-	<link rel="canonical" href={getWishlistPageUrl()} />
+	{#each getSocialMetaTags() as tag (tag.property ?? tag.name)}
+		<meta property={tag.property} name={tag.name} content={tag.content} />
+	{/each}
+	<link rel="canonical" href={wishlistPageUrl(wishlist.shortId)} />
 </svelte:head>

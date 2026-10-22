@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="cs">
+	<head>
+		<meta charset="utf-8" />
+		<style>
+			@font-face {
+				font-family: 'DynaPuff';
+				font-weight: 400 700;
+				src: url('{{headingFontLatin}}') format('woff2-variations');
+				unicode-range:
+					U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F;
+			}
+			@font-face {
+				font-family: 'DynaPuff';
+				font-weight: 400 700;
+				src: url('{{headingFontLatinExtended}}') format('woff2-variations');
+				unicode-range: U+0100-02AF, U+0304, U+0308, U+0329, U+1E00-1EFF, U+2020, U+20A0-20AB;
+			}
+			@font-face {
+				font-family: 'Geist';
+				font-weight: 100 900;
+				src: url('{{bodyFontLatin}}') format('woff2-variations');
+				unicode-range:
+					U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F;
+			}
+			@font-face {
+				font-family: 'Geist';
+				font-weight: 100 900;
+				src: url('{{bodyFontLatinExtended}}') format('woff2-variations');
+				unicode-range: U+0100-02AF, U+0304, U+0308, U+0329, U+1E00-1EFF, U+2020, U+20A0-20AB;
+			}
+
+			:root {
+				--brand: {{brand}};
+				--deep: {{deep}};
+				--ink: {{ink}};
+				--accent: {{accent}};
+				--on-accent: {{onAccent}};
+				--background: color-mix(in oklab, var(--brand) 11%, white);
+				--dot: color-mix(in oklab, var(--brand) 22%, white);
+			}
+
+			* {
+				box-sizing: border-box;
+				margin: 0;
+			}
+
+			html,
+			body {
+				width: 1200px;
+				height: 630px;
+				overflow: hidden;
+			}
+
+			body {
+				position: relative;
+				display: flex;
+				align-items: center;
+				gap: 48px;
+				padding: 0 64px;
+				background-color: var(--background);
+				background-image: radial-gradient(var(--dot) 2px, transparent 2px);
+				background-size: 26px 26px;
+				color: var(--ink);
+				font-family: 'Geist', sans-serif;
+			}
+
+			.cloud {
+				position: absolute;
+				fill: white;
+				opacity: 0.9;
+			}
+
+			.copy {
+				position: relative;
+				display: flex;
+				flex: 1 1 0;
+				flex-direction: column;
+				gap: 28px;
+			}
+
+			.wordmark {
+				display: flex;
+				align-items: center;
+				gap: 20px;
+				font-family: 'DynaPuff', sans-serif;
+				font-size: 58px;
+				font-weight: 700;
+				letter-spacing: -0.01em;
+			}
+
+			.wordmark-tld {
+				opacity: 0.42;
+				font-size: 44px;
+				font-weight: 500;
+			}
+
+			.mark {
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				width: 96px;
+				height: 96px;
+				border: 4px solid var(--ink);
+				border-radius: 26px;
+				background: linear-gradient(180deg, var(--brand), var(--deep));
+				box-shadow: 6px 6px 0 var(--ink);
+				transform: rotate(-4deg);
+			}
+
+			.headline {
+				font-family: 'DynaPuff', sans-serif;
+				font-size: 44px;
+				font-weight: 600;
+				line-height: 1.14;
+			}
+
+			.tagline {
+				max-width: 560px;
+				font-size: 26px;
+				font-weight: 500;
+				line-height: 1.35;
+				opacity: 0.8;
+			}
+
+			.card {
+				position: relative;
+				flex: 0 0 460px;
+				padding: 26px 26px 18px;
+				border: 4px solid var(--ink);
+				border-radius: 22px;
+				background: white;
+				box-shadow: 10px 10px 0 var(--ink);
+				transform: rotate(2deg);
+			}
+
+			.tape {
+				position: absolute;
+				top: -18px;
+				left: 50%;
+				width: 120px;
+				height: 34px;
+				background: color-mix(in oklab, var(--accent) 70%, transparent);
+				transform: translateX(-50%) rotate(-3deg);
+			}
+
+			.gift {
+				display: flex;
+				align-items: center;
+				gap: 14px;
+				padding: 14px 0;
+			}
+
+			.gift + .gift {
+				border-top: 2px dashed color-mix(in oklab, var(--ink) 18%, transparent);
+			}
+
+			.gift-icon {
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				width: 48px;
+				height: 48px;
+				border: 3px solid var(--ink);
+				border-radius: 12px;
+				background: color-mix(in oklab, var(--brand) 14%, white);
+			}
+
+			.gift-icon svg {
+				width: 26px;
+				height: 26px;
+				fill: none;
+				stroke: var(--deep);
+				stroke-width: 2;
+				stroke-linecap: round;
+				stroke-linejoin: round;
+			}
+
+			.gift-name {
+				flex: 1;
+				font-size: 22px;
+				font-weight: 600;
+			}
+
+			.badge {
+				padding: 4px 12px;
+				border: 3px solid var(--ink);
+				border-radius: 999px;
+				background: var(--accent);
+				color: var(--on-accent);
+				font-size: 17px;
+				font-weight: 700;
+			}
+		</style>
+	</head>
+	<body>
+		<svg class="cloud" style="top: 34px; left: 520px; width: 190px" viewBox="0 0 200 70">
+			<ellipse cx="48" cy="48" rx="42" ry="17" />
+			<ellipse cx="98" cy="36" rx="40" ry="23" />
+			<ellipse cx="150" cy="48" rx="44" ry="17" />
+			<ellipse cx="100" cy="53" rx="72" ry="14" />
+		</svg>
+		<svg class="cloud" style="bottom: 22px; left: 40px; width: 240px" viewBox="0 0 200 70">
+			<ellipse cx="48" cy="48" rx="42" ry="17" />
+			<ellipse cx="98" cy="36" rx="40" ry="23" />
+			<ellipse cx="150" cy="48" rx="44" ry="17" />
+			<ellipse cx="100" cy="53" rx="72" ry="14" />
+		</svg>
+
+		<div class="copy">
+			<div class="wordmark">
+				<span class="mark">
+					<svg
+						width="52"
+						height="52"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="white"
+						stroke-width="2.2"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+					>
+						<path d="M12 7v14" />
+						<path d="M20 11v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-8" />
+						<path
+							d="M7.5 7a1 1 0 0 1 0-5A4.8 8 0 0 1 12 7a4.8 8 0 0 1 4.5-5 1 1 0 0 1 0 5"
+						/>
+						<rect x="3" y="7" width="18" height="4" rx="1" />
+					</svg>
+				</span>
+				<span>přejeme si<span class="wordmark-tld">.cz</span></span>
+			</div>
+			<p class="headline">{{headline}}</p>
+			<p class="tagline">{{tagline}}</p>
+		</div>
+
+		<div class="card">
+			<span class="tape"></span>
+			<div class="gift">
+				<span class="gift-icon">
+					<svg viewBox="0 0 24 24">
+						<path d="M12 7v14" />
+						<path
+							d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"
+						/>
+					</svg>
+				</span>
+				<span class="gift-name">{{giftBook}}</span>
+			</div>
+			<div class="gift">
+				<span class="gift-icon">
+					<svg viewBox="0 0 24 24">
+						<path
+							d="M3 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a9 9 0 0 1 18 0v7a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3"
+						/>
+					</svg>
+				</span>
+				<span class="gift-name">{{giftHeadphones}}</span>
+				<span class="badge">{{reservedBadge}}</span>
+			</div>
+			<div class="gift">
+				<span class="gift-icon">
+					<svg viewBox="0 0 24 24">
+						<path
+							d="M12 3q1 4 4 6.5t3 5.5a1 1 0 0 1-14 0 5 5 0 0 1 1-3 1 1 0 0 0 5 0c0-2-1.5-3-1.5-5q0-2 2.5-4"
+						/>
+					</svg>
+				</span>
+				<span class="gift-name">{{giftCandles}}</span>
+			</div>
+		</div>
+	</body>
+</html>
