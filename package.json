@@ -67,7 +67,6 @@
 		"clsx": "^2.1.1",
 		"drizzle-orm": "^0.45.2",
 		"embla-carousel-svelte": "^8.6.0",
-		"embla-carousel-wheel-gestures": "^8.1.0",
 		"mode-watcher": "^1.1.0",
 		"nanoid": "^5.1.16",
 		"papaparse": "^5.5.3",
