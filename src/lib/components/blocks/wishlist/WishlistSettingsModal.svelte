@@ -490,7 +490,7 @@
      admin-only view. -->
 {#snippet revertSection()}
 	{#if revertCapability !== REVERT_CAPABILITY.hidden}
-		<Card.Root class="border-destructive/30">
+		<Card.Root elevation="flat" class="border-destructive/30">
 			<Card.Header>
 				<div class="flex items-center gap-2">
 					<RotateCcwIcon class="size-5 text-status-danger-text" />
@@ -563,11 +563,11 @@
 		</Dialog.Header>
 
 		{#if canManage && !isArchived}
-			<div inert={saving ? true : undefined} class="h-14 shrink-0 px-6 pb-4">
+			<div inert={saving ? true : undefined} class="shrink-0 px-6 pb-4">
 				<Tabs.Root
 					aria-label={m.wishlist_settings_title()}
 					aria-orientation="horizontal"
-					class="flex h-10 min-h-10 w-full max-w-full flex-nowrap overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [&>[role=tab]]:shrink-0 [&>[role=tab]]:whitespace-nowrap lg:[&>[role=tab]]:flex-1 lg:[&>[role=tab]]:justify-center"
+					class="flex w-full max-w-full flex-nowrap overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [&>[role=tab]]:shrink-0 [&>[role=tab]]:whitespace-nowrap lg:[&>[role=tab]]:flex-1 lg:[&>[role=tab]]:justify-center"
 				>
 					<Tabs.Tab
 						id="wishlist-settings-tab-details"
@@ -806,14 +806,14 @@
 							<Button
 								type="button"
 								intent="outline"
-								size="sm"
+								size="md"
 								onclick={handleImport}
 								disabled={wishlist.demoSessionId !== null}
 							>
 								<FileUpIcon data-icon="inline-start" />
 								{m.import_toolbar_label()}
 							</Button>
-							<Button type="button" intent="outline" size="sm" onclick={onexport}>
+							<Button type="button" intent="outline" size="md" onclick={onexport}>
 								<FileDownIcon data-icon="inline-start" />
 								{m.export_toolbar_label()}
 							</Button>
@@ -918,7 +918,7 @@
 								>
 							</Alert.Root>
 						{:else}
-							<Card.Root class="border-destructive/30">
+							<Card.Root elevation="flat" class="border-destructive/30">
 								<Card.Header>
 									<div class="flex items-center gap-2">
 										<TriangleAlertIcon class="size-5 text-status-danger-text" />

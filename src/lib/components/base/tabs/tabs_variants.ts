@@ -3,13 +3,13 @@ import type { WithElementRef } from '$lib/utils.js';
 import type { HTMLAttributes, HTMLButtonAttributes } from 'svelte/elements';
 import { tv } from 'tailwind-variants';
 
-const SELECTED_TAB_FACE_CLASSES = 'border-ink bg-card shadow-sticker-sm';
+const SELECTED_TAB_FACE_CLASSES = 'border-ink bg-card shadow-sticker';
 
 /** Paints the selected tab face that slides between tabs; mirrors the active tab face. */
 export const TAB_INDICATOR_CLASSES = `rounded-btn border-2 ${SELECTED_TAB_FACE_CLASSES}`;
 
 export const tabsContainerVariants = tv({
-	base: 'inline-flex bg-background border-[2.5px] border-ink p-[5px] rounded-[12px] gap-1',
+	base: 'selection-tray-inset inline-flex bg-background border-[2.5px] border-ink rounded-[12px] gap-1',
 });
 
 export const tabVariants = tv({

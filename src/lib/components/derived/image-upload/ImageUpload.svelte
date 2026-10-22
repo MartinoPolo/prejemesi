@@ -6,10 +6,7 @@
 	import type { UploadResult, UploadProgress } from '$lib/modules/uploads/types.js';
 	import { imageUploadVariants, type ImageUploadSize } from './image_upload_variants.js';
 	import { Button } from '$lib/components/base/button/index.js';
-	import {
-		CONTROL_SIZE_CLASSES,
-		RESPONSIVE_CONTROL_SIZE_CLASSES,
-	} from '$lib/components/base/control_sizing.js';
+	import { CONTROL_SIZE_CLASSES } from '$lib/components/base/control_sizing.js';
 	import * as m from '$lib/paraglide/messages.js';
 	import UploadIcon from '@lucide/svelte/icons/upload';
 	import XIcon from '@lucide/svelte/icons/x';
@@ -211,18 +208,7 @@
 	});
 </script>
 
-<div
-	class={cn(styles.root(), size === 'compact' && RESPONSIVE_CONTROL_SIZE_CLASSES, className)}
-	role="button"
-	aria-label={label ?? m.image_upload_aria()}
-	aria-disabled={disabled}
-	tabindex={disabled || isUploadPending ? -1 : 0}
-	ondragover={handleDragOver}
-	ondragleave={handleDragLeave}
-	ondrop={handleDrop}
-	onclick={handleClick}
-	onkeydown={handleKeyDown}
->
+{#snippet fileInput()}
 	<input
 		bind:this={fileInputElement}
 		type="file"
@@ -232,41 +218,78 @@
 		onchange={handleFileSelect}
 		tabindex={-1}
 	/>
+{/snippet}
 
-	{#if previewUrl}
-		<img
-			src={previewUrl}
-			alt={m.image_upload_preview_alt()}
-			class={styles.preview()}
-			data-testid="image-upload-preview"
-		/>
+{#if size === 'compact'}
+	<!-- A compact upload is an ordinary outline Button that still accepts a dropped file; the caller
+	     reports upload errors and shows the uploaded image. -->
+	{@render fileInput()}
+	<Button
+		intent="outline"
+		class={className}
+		disabled={disabled || isUploadPending}
+		aria-busy={isUploadPending}
+		ondragover={handleDragOver}
+		ondragleave={handleDragLeave}
+		ondrop={handleDrop}
+		onclick={handleClick}
+	>
+		<UploadIcon data-icon="inline-start" />
+		{label ?? m.image_upload_dropzone()}
+	</Button>
+{:else}
+	<div
+		class={cn(styles.root(), className)}
+		role="button"
+		aria-label={label ?? m.image_upload_aria()}
+		aria-disabled={disabled}
+		tabindex={disabled || isUploadPending ? -1 : 0}
+		ondragover={handleDragOver}
+		ondragleave={handleDragLeave}
+		ondrop={handleDrop}
+		onclick={handleClick}
+		onkeydown={handleKeyDown}
+	>
+		{@render fileInput()}
 
-		{#if !isUploadPending}
-			<Button
-				size="sm"
-				format="icon"
-				intent="ghost"
-				class={cn(styles.removeButtonOwner(), CONTROL_SIZE_CLASSES.sm)}
-				surfaceClass={styles.removeButtonSurface()}
-				onclick={handleRemove}
-				aria-label={m.image_upload_remove()}
-				{disabled}
-			>
-				<XIcon data-icon="solo" />
-			</Button>
+		{#if previewUrl}
+			<img
+				src={previewUrl}
+				alt={m.image_upload_preview_alt()}
+				class={styles.preview()}
+				data-testid="image-upload-preview"
+			/>
+
+			{#if !isUploadPending}
+				<Button
+					size="sm"
+					format="icon"
+					intent="ghost"
+					class={cn(styles.removeButtonOwner(), CONTROL_SIZE_CLASSES.sm)}
+					surfaceClass={styles.removeButtonSurface()}
+					onclick={handleRemove}
+					aria-label={m.image_upload_remove()}
+					{disabled}
+				>
+					<XIcon data-icon="solo" />
+				</Button>
+			{/if}
+		{:else}
+			<UploadIcon class="size-8 text-muted-foreground" />
+			<p class={styles.label()}>{label ?? m.image_upload_dropzone()}</p>
 		{/if}
-	{:else}
-		<UploadIcon class={size === 'compact' ? 'size-4' : 'size-8 text-muted-foreground'} />
-		<p class={styles.label()}>{label ?? m.image_upload_dropzone()}</p>
-	{/if}
 
-	{#if isUploadPending}
-		<div class={styles.progressTrack()}>
-			<div class={styles.progressBar()} style:width="{String(progress.percentage)}%"></div>
-		</div>
-	{/if}
+		{#if isUploadPending}
+			<div class={styles.progressTrack()}>
+				<div
+					class={styles.progressBar()}
+					style:width="{String(progress.percentage)}%"
+				></div>
+			</div>
+		{/if}
 
-	{#if progress.status === 'error' && progress.errorMessage}
-		<p class={styles.errorText()}>{progress.errorMessage}</p>
-	{/if}
-</div>
+		{#if progress.status === 'error' && progress.errorMessage}
+			<p class={styles.errorText()}>{progress.errorMessage}</p>
+		{/if}
+	</div>
+{/if}

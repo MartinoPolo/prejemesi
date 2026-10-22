@@ -355,7 +355,7 @@
 						onUpload={handleUpload}
 						onError={handleUploadError}
 					/>
-					<Button intent="outline" onclick={handleRemove}>
+					<Button intent="danger" onclick={handleRemove}>
 						<TrashIcon data-icon="inline-start" />
 						{m.wishlist_image_remove()}
 					</Button>
