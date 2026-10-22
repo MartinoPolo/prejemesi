@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>#533 Editor obrázků – varianty</title>
+<style>
+	body { margin: 0; font-family: 'Segoe UI', system-ui, sans-serif; color: #16385c; background: color-mix(in oklab, #1e9be9 11%, white); }
+	main { max-width: 980px; margin: 0 auto; padding: 32px 20px 64px; }
+	h1 { font-size: 26px; margin: 0 0 6px; }
+	p { line-height: 1.5; }
+	.cards { display: grid; gap: 16px; margin-top: 20px; }
+	.card { background: #fff; border: 2.5px solid #16385c; border-radius: 16px; padding: 16px 18px; box-shadow: 4px 4px 0 rgb(22 56 92 / 16%); }
+	.card h2 { margin: 0 0 4px; font-size: 19px; }
+	.links { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+	.links a { font-size: 13px; font-weight: 600; color: #fff; background: #1a6fb3; border: 2px solid #16385c; border-radius: 7px; padding: 5px 10px; text-decoration: none; }
+	.rec { display: inline-block; font-size: 11px; font-weight: 700; background: #ffc93c; border-radius: 999px; padding: 2px 8px; margin-left: 6px; vertical-align: middle; }
+	code { font-size: 12px; }
+</style>
+</head>
+<body>
+<main>
+	<h1>#533 – Editor obrázků: pevné okno ve skutečné velikosti</h1>
+	<p>Ve všech variantách je okno ořezu pevné a ve skutečné velikosti cílového místa; pod ním se posouvá a přibližuje fotka (tah, kolečko, dva prsty, posuvník, klávesnice). Náhledy v kontextu se mění živě a v panelu „Uloží se“ je vidět <code>image_meta</code>, které by se uložilo – formát je beze změny. Přepínače nahoře mění editor (dárek / seznam), zařízení a zdrojovou fotku. Podrobnosti najdete v <a href="DESIGN_BRIEF.md">DESIGN_BRIEF.md</a>.</p>
+	<div class="cards">
+		<section class="card">
+			<h2>A – Dílna <span class="rec">doporučeno jako základ</span></h2>
+			<p>Velká tmavá plocha s oknem uprostřed, fotka mimo okno zůstává ztlumená. Cíl se přepíná záložkami nebo kliknutím na náhled; pod plochou je galerie náhledů v kontextu (karta, desktopový seznam, mobilní řádek s volbou výšky, rezervace / karta v Přehledu, polaroid, navigace, sdílení).</p>
+			<div class="links">
+				<a href="variant-a.html?editor=gift&amp;device=desktop">Dárek – desktop</a>
+				<a href="variant-a.html?editor=gift&amp;device=mobile">Dárek – mobil</a>
+				<a href="variant-a.html?editor=wishlist&amp;device=desktop">Seznam – desktop</a>
+				<a href="variant-a.html?editor=wishlist&amp;device=mobile">Seznam – mobil</a>
+			</div>
+		</section>
+		<section class="card">
+			<h2>B – Úprava přímo v kontextu</h2>
+			<p>Okno je obrazová část skutečné komponenty (karta, řádek, rezervace, polaroid, náhled odkazu) ve skutečné velikosti na pozadí stránky. Fotka mimo okno se ukáže jen během posouvání nebo zoomu. Mobilní řádek ukazuje, co se ze čtverce skutečně ořízne.</p>
+			<div class="links">
+				<a href="variant-b.html?editor=gift&amp;device=desktop">Dárek – desktop</a>
+				<a href="variant-b.html?editor=gift&amp;device=mobile">Dárek – mobil</a>
+				<a href="variant-b.html?editor=wishlist&amp;device=desktop">Seznam – desktop</a>
+				<a href="variant-b.html?editor=wishlist&amp;device=mobile">Seznam – mobil</a>
+			</div>
+		</section>
+		<section class="card">
+			<h2>C – Lupa a mapa</h2>
+			<p>Okno ve skutečné velikosti doplňuje navigátor celé fotky (kliknutím nebo tažením skočíte jinam) a mřížka 3×3 pro zarovnání k okrajům. Dlaždice náhledů jsou jediný přepínač cíle, jako dnes, a ukazují stav ořezu.</p>
+			<div class="links">
+				<a href="variant-c.html?editor=gift&amp;device=desktop">Dárek – desktop</a>
+				<a href="variant-c.html?editor=gift&amp;device=mobile">Dárek – mobil</a>
+				<a href="variant-c.html?editor=wishlist&amp;device=desktop">Seznam – desktop</a>
+				<a href="variant-c.html?editor=wishlist&amp;device=mobile">Seznam – mobil</a>
+			</div>
+		</section>
+	</div>
+	<p style="font-size:12px;margin-top:24px">Zdroj stránek: <code>src/</code> (sdílené jádro <code>core.js</code>/<code>core.css</code> a jeden soubor na variantu); <code>node build.mjs</code> je vloží do samostatných HTML souborů.</p>
+</main>
+</body>
+</html>
