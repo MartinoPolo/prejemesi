@@ -4,8 +4,7 @@
 	import type { CarouselAPI, CarouselOptions } from '$lib/components/base/carousel/context.js';
 	import { resolveCarouselScrollability } from '$lib/components/base/carousel/carousel_scrollability.js';
 	import { SoftenedDragMomentum } from '$lib/components/base/carousel/softened_drag_momentum.js';
-	import { WheelGesturesPlugin } from 'embla-carousel-wheel-gestures';
-	import { ShiftWheelHorizontalScroll } from '$lib/components/base/carousel/shift_wheel_horizontal_scroll.js';
+	import { WheelHorizontalScroll } from '$lib/components/base/carousel/wheel_horizontal_scroll.js';
 	import ViewAllCard from './ViewAllCard.svelte';
 	import * as m from '$lib/paraglide/messages.js';
 
@@ -31,14 +30,8 @@
 		duration: 50,
 	} satisfies CarouselOptions;
 
-	// Plain vertical wheel keeps scrolling the page — only horizontal deltas move the shelf.
-	// ShiftWheelHorizontalScroll bridges Chromium's Shift+wheel (which arrives as vertical
-	// deltaY) into the horizontal deltaX the WheelGesturesPlugin understands.
-	const plugins = [
-		WheelGesturesPlugin({ forceWheelAxis: 'x' }),
-		ShiftWheelHorizontalScroll(),
-		SoftenedDragMomentum({ remainingMomentum: 0.5 }),
-	];
+	// Plain vertical wheel keeps scrolling the page — only Shift+wheel and horizontal deltas move the shelf.
+	const plugins = [WheelHorizontalScroll(), SoftenedDragMomentum({ remainingMomentum: 0.5 })];
 
 	// The trailing „Zobrazit vše" card appears only when the row was capped (more lists exist).
 	const remaining = $derived(Math.max(0, total - visibleCount));
