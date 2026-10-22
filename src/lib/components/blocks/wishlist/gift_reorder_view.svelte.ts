@@ -184,19 +184,6 @@ export function createGiftReorderView(options: GiftReorderViewOptions) {
 		};
 	}
 
-	/** Only the dragged gift shows the live badge of the grouping it is being moved within. */
-	function groupBadgeProps(giftId: string, showPriority: boolean) {
-		const showsDraggedGroupBadge = groupedReorder && reorder.draggedGiftId.current === giftId;
-		return {
-			showPriority: showPriority || showsDraggedGroupBadge,
-			showCategory:
-				showsDraggedGroupBadge &&
-				options.getReorderGrouping() === GIFT_GROUPING_OPTIONS.category
-					? true
-					: undefined,
-		};
-	}
-
 	$effect(() => {
 		if (!options.isReorderEnabled()) {
 			reorder.cancel();
@@ -220,6 +207,5 @@ export function createGiftReorderView(options: GiftReorderViewOptions) {
 		moveGift,
 		headerGroupKey,
 		giftReorderProps,
-		groupBadgeProps,
 	};
 }

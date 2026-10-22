@@ -131,7 +131,8 @@
 	const reservationStateHidden = $derived(
 		hideReservationState || role === WISHLIST_ROLES.recipient,
 	);
-	const showPriority = $derived(grouping !== 'priority');
+	// Compact rows drop the priority already named by its group header; Card/List always show it.
+	const showCompactPriority = $derived(grouping !== 'priority');
 	// Gifts the assistant proposes for an empty list preview in place of the empty state.
 	const showsEmptyState = $derived(
 		isFilteredEmpty || (isEmpty && (livePreviews?.creations.length ?? 0) === 0),
@@ -260,7 +261,7 @@
 			isArchived,
 			hideReservationState,
 			grouping,
-			showPriority,
+			showCompactPriority,
 			reorderMode,
 			selectionMode,
 			receivedPendingGiftIds,
@@ -368,7 +369,6 @@
 						{contextSurface}
 						{sections}
 						{role}
-						{showPriority}
 						{isArchived}
 						hideReservationState={reservationStateHidden}
 						reorderEnabled={reorderMode &&
@@ -397,7 +397,7 @@
 					<WishlistGiftCompactTable
 						{sections}
 						{role}
-						{showPriority}
+						showPriority={showCompactPriority}
 						{isArchived}
 						hideReservationState={reservationStateHidden}
 						{canManage}

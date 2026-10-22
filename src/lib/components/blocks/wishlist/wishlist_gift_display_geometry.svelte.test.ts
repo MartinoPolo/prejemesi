@@ -797,7 +797,7 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 		}
 	});
 
-	it('does not render an empty card priority spacing element for hidden or unrecognized priorities', async () => {
+	it('does not render an empty card priority spacing element for unrecognized priorities', async () => {
 		const unknown = { ...visitorGift(), priorityLabel: 'Neznama' };
 		const screen = await render(WishlistGiftDisplayTestHost, {
 			...defaultProps,
@@ -810,19 +810,10 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 		)!.parentElement!;
 		expect(body.querySelector('[data-testid="gift-priority-badge"]')).toBeNull();
 		expect(body.querySelector('.row-start-3')).toBeNull();
-
-		await screen.rerender({
-			...defaultProps,
-			sections: [{ ...sections[0]!, gifts: [{ ...unknown, priorityLabel: 'Vysoka' }] }],
-			viewMode: 'card',
-			grouping: 'priority',
-		});
-		expect(body.querySelector('[data-testid="gift-priority-badge"]')).toBeNull();
-		expect(body.querySelector('.row-start-3')).toBeNull();
 		await screen.unmount();
 	});
 
-	it('shows priority for category grouping, hides it for priority grouping, and reacts to changes', async () => {
+	it('shows priority in every grouping and reacts to changes', async () => {
 		const high = { ...visitorGift(), priorityLabel: 'Vysoka' };
 		const screen = await render(WishlistGiftDisplayTestHost, {
 			...defaultProps,
@@ -836,7 +827,7 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 			sections: [{ ...sections[0]!, gifts: [high] }],
 			grouping: 'priority',
 		});
-		expect(document.querySelector('[data-testid="gift-priority-badge"]')).toBeNull();
+		expect(document.querySelector('[data-priority="Vysoka"]')).not.toBeNull();
 
 		const low = { ...high, priorityLabel: 'Nizka' };
 		await screen.rerender({
@@ -1081,4 +1072,106 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 		expectPixelsNear(cardRects[1]!.top - cardRects[0]!.bottom, 10);
 		await screen.unmount();
 	});
+});
+
+describe('WishlistGiftDisplay grouped badge geometry (#520)', () => {
+	const category = {
+		id: 'category-long',
+		presetKey: null,
+		customLabel: 'Výpravné ilustrované edice a kompletní sběratelské kolekce',
+		color: '#0369A1',
+		sortOrder: 0,
+	};
+	const crowdedGift: GiftForVisitor = {
+		...visitorGift(),
+		id: 'crowded',
+		name: '1984 – George Orwell',
+		categoryId: category.id,
+		category,
+		priorityLabel: 'Vysoka',
+		quantity: 3,
+		reservedCount: 1,
+		reserverNames: ['Jana Dvořáková'],
+	};
+	const groupedSections: Record<'none' | 'priority' | 'category', GiftSection[]> = {
+		none: [{ ...sections[0]!, gifts: [crowdedGift] }],
+		priority: [
+			{
+				kind: GIFT_SECTION_KINDS.priorityGroup,
+				key: 'priority:high',
+				label: 'Vysoká priorita',
+				priorityKey: 'Vysoka',
+				gifts: [crowdedGift],
+			},
+		],
+		category: [
+			{
+				kind: GIFT_SECTION_KINDS.categoryGroup,
+				key: 'category:long',
+				label: category.customLabel,
+				priorityKey: null,
+				gifts: [crowdedGift],
+			},
+		],
+	};
+
+	async function badgeGeometry(
+		viewMode: 'card' | 'list',
+		grouping: 'none' | 'priority' | 'category',
+	) {
+		const screen = await render(WishlistGiftDisplayTestHost, {
+			...defaultProps,
+			role: WISHLIST_ROLES.moderator,
+			sections: groupedSections[grouping],
+			grouping,
+			viewMode,
+		});
+		await document.fonts.ready;
+		await nextLayout();
+		const image = document.querySelector<HTMLElement>(
+			viewMode === 'card'
+				? '[data-testid="gift-card-image-frame"]'
+				: '[data-testid="gift-list-image"]',
+		)!;
+		const imageRect = image.getBoundingClientRect();
+		const geometry = ['gift-category-badge', 'gift-priority-badge'].map((testId) => {
+			const rect = image
+				.querySelector<HTMLElement>(`[data-testid="${testId}"]`)!
+				.getBoundingClientRect();
+			return {
+				left: rect.left - imageRect.left,
+				top: rect.top - imageRect.top,
+				width: rect.width,
+				height: rect.height,
+			};
+		});
+		await screen.unmount();
+		return geometry;
+	}
+
+	it.each(
+		(['card', 'list'] as const).flatMap((viewMode) =>
+			[1280, 390].flatMap((viewportWidth) =>
+				(['priority', 'category'] as const).map((grouping) => ({
+					viewMode,
+					viewportWidth,
+					grouping,
+				})),
+			),
+		),
+	)(
+		'places badges as in the ungrouped $viewMode view at $viewportWidth px when grouped by $grouping',
+		async ({ viewMode, viewportWidth, grouping }) => {
+			await page.viewport(viewportWidth, 900);
+			const ungrouped = await badgeGeometry(viewMode, 'none');
+			const grouped = await badgeGeometry(viewMode, grouping);
+			for (const [index, badge] of grouped.entries()) {
+				const reference = ungrouped[index]!;
+				expectPixelsNear(badge.left, reference.left);
+				expectPixelsNear(badge.top, reference.top);
+				expectPixelsNear(badge.width, reference.width);
+				expectPixelsNear(badge.height, reference.height);
+			}
+		},
+	);
 });
