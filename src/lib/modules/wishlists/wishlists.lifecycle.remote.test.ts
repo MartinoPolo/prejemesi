@@ -15,6 +15,7 @@ import {
 	makeOtherAuthContext,
 	makeModeratorAuthContext,
 	callDeleteWishlist,
+	callDeleteWishlistIfEmpty,
 	callUpdateWishlist,
 	callSetWishlistPalette,
 } from './wishlists.remote.test-setup.js';
@@ -100,6 +101,40 @@ describe('deleteWishlist', () => {
 				message: 'WISHLIST_NOT_FOUND',
 			});
 		});
+	});
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+describe('deleteWishlistIfEmpty', () => {
+	it('soft-deletes a draft list without gifts and reports it', async () => {
+		mockDbInstance.pushResult([makeWishlistRow({ sharedAt: null })]);
+		mockDbInstance.pushResult([]);
+		mockDbInstance.pushResult([]);
+
+		await expect(
+			callDeleteWishlistIfEmpty(makeRecipientAuthContext(), WISHLIST_ID),
+		).resolves.toBe(true);
+		expect(mockDbInstance.lastSetPayload()).toMatchObject({ deletedAt: expect.any(Date) });
+	});
+
+	it('keeps a list that already has gifts and removes no images', async () => {
+		mockDbInstance.pushResult([makeWishlistRow({ sharedAt: null })]);
+		mockDbInstance.pushResult([{ imageKey: 'gifts/a.jpg' }]);
+
+		await expect(
+			callDeleteWishlistIfEmpty(makeRecipientAuthContext(), WISHLIST_ID),
+		).resolves.toBe(false);
+		expect(mockDbInstance.lastSetPayload()).toBeUndefined();
+		expect(mockDeleteObjects).not.toHaveBeenCalled();
+	});
+
+	it('throws 403 ACCESS_DENIED for a non-manager', async () => {
+		mockDbInstance.pushResult([makeWishlistRow()]);
+		mockDbInstance.pushResult([]);
+
+		await expect(
+			callDeleteWishlistIfEmpty(makeOtherAuthContext(), WISHLIST_ID),
+		).rejects.toMatchObject({ status: 403, message: 'ACCESS_DENIED' });
 	});
 });
 

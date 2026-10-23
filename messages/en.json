@@ -1152,6 +1152,7 @@
 	"gift_bulk_copy_choose": "Choose a wishlist",
 	"gift_bulk_copy_new_destination": "New wishlist…",
 	"gift_bulk_copy_new_destination_confirm": "Create wishlist…",
+	"gift_bulk_copy_outcome_unknown": "The copy may have completed. Please check the destination wishlist.",
 	"gift_bulk_copy_open_destination": "Open wishlist",
 	"gift_bulk_copy_confirm": "Copy gifts",
 	"gift_bulk_copy_success": "Copied gifts: {count}",

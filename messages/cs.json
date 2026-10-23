@@ -1152,6 +1152,7 @@
 	"gift_bulk_copy_choose": "Vyberte seznam",
 	"gift_bulk_copy_new_destination": "Nový seznam…",
 	"gift_bulk_copy_new_destination_confirm": "Vytvořit seznam…",
+	"gift_bulk_copy_outcome_unknown": "Kopírování se možná dokončilo. Zkontrolujte prosím cílový seznam.",
 	"gift_bulk_copy_open_destination": "Otevřít seznam",
 	"gift_bulk_copy_confirm": "Kopírovat dárky",
 	"gift_bulk_copy_success": "Zkopírováno dárků: {count}",
