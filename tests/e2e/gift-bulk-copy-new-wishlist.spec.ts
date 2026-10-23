@@ -13,6 +13,8 @@ import {
 } from './wishlist-gift-actions.helpers.js';
 
 const BULK_COPY_REMOTE = '**/_app/remote/**/bulkCopyGifts';
+const DELETE_WISHLIST_REMOTE = '**/_app/remote/**/deleteWishlist';
+const DELETE_WISHLIST_RESPONSE = /\/_app\/remote\/.*\/deleteWishlist/;
 
 async function selectBothGifts(page: Page): Promise<Locator> {
 	await page.setViewportSize({ width: 390, height: 760 });
@@ -103,7 +105,7 @@ test('copies selected gifts into a wishlist created from the copy dialog', async
 	}
 });
 
-test('keeps the created wishlist when the copy into it fails', async ({
+test('deletes the created wishlist when the copy into it fails', async ({
 	browser,
 	request,
 	baseURL,
@@ -121,18 +123,67 @@ test('keeps the created wishlist when the copy into it fails', async ({
 		await page.route(BULK_COPY_REMOTE, (route) => route.abort('failed'));
 
 		const { copySheet, modal } = await openNewWishlistCopy(page);
+		await modal.getByRole('textbox', { name: m.wishlist_name_label() }).fill('Smazaný cíl');
+		const cleanup = page.waitForResponse(DELETE_WISHLIST_RESPONSE);
+		await modal.getByRole('button', { name: m.create(), exact: true }).click();
+
+		await waitForToast(page, m.error_generic());
+		expect((await cleanup).ok()).toBe(true);
+		await expect(modal).toBeHidden();
+		await expect(copySheet).toBeVisible();
+		await expect(copySheet.getByTestId('bulk-copy-destination')).toHaveText(
+			m.gift_bulk_copy_new_destination(),
+		);
+
+		await page.unroute(BULK_COPY_REMOTE);
+		await dismissToasts(page);
+		await copySheet
+			.getByRole('button', { name: m.gift_bulk_copy_new_destination_confirm() })
+			.click();
+		await expect(modal).toBeVisible();
+		await modal.getByRole('textbox', { name: m.wishlist_name_label() }).fill('Nový pokus');
+		await modal.getByRole('button', { name: m.create(), exact: true }).click();
+		await openCopiedWishlistFromToast(page, toolbar);
+		await expect(page.getByRole('heading', { level: 1 })).toContainText('Nový pokus');
+		await expect(page.locator('[data-gift-item]')).toHaveCount(2);
+
+		await page.goto('/my-lists');
+		await expect(page.getByText('Nový pokus').first()).toBeVisible();
+		await expect(page.getByText('Smazaný cíl')).toHaveCount(0);
+	} finally {
+		await page.context().close();
+	}
+});
+
+test('keeps the copy dialog usable when deleting the created wishlist fails', async ({
+	browser,
+	request,
+	baseURL,
+}) => {
+	const page = await registerAndGetPage(
+		browser,
+		request,
+		baseURL!,
+		createTestUser('bulk-copy-new-wishlist-cleanup-failure'),
+	);
+	try {
+		await createActionFixture(page);
+		await dismissToasts(page);
+		const toolbar = await selectBothGifts(page);
+		await page.route(BULK_COPY_REMOTE, (route) => route.abort('failed'));
+		await page.route(DELETE_WISHLIST_REMOTE, (route) => route.abort('failed'));
+
+		const { copySheet, modal } = await openNewWishlistCopy(page);
 		await modal.getByRole('textbox', { name: m.wishlist_name_label() }).fill('Ponechaný cíl');
 		await modal.getByRole('button', { name: m.create(), exact: true }).click();
 
 		await waitForToast(page, m.error_generic());
 		await expect(modal).toBeHidden();
-		await expect(copySheet).toBeVisible();
 		await expect(copySheet.getByTestId('bulk-copy-destination')).toContainText('Ponechaný cíl');
 
 		await page.unroute(BULK_COPY_REMOTE);
 		await dismissToasts(page);
 		await copySheet.getByRole('button', { name: m.gift_bulk_copy_confirm() }).click();
-		await expect(modal).toBeHidden();
 		await openCopiedWishlistFromToast(page, toolbar);
 		await expect(page.getByRole('heading', { level: 1 })).toContainText('Ponechaný cíl');
 		await expect(page.locator('[data-gift-item]')).toHaveCount(2);

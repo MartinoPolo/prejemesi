@@ -76,6 +76,7 @@
 	import {
 		getWishlistByShortId,
 		archiveWishlist,
+		deleteWishlist,
 		unfollowWishlist,
 		recordWishlistVisit,
 	} from '$lib/modules/wishlists/wishlists.remote.js';
@@ -785,7 +786,7 @@
 	let bulkCopyReturnToActions = $state<(() => void) | null>(null);
 	let bulkCopyDestinations = $state<BulkCopyDestination[]>([]);
 	let bulkCopyCreateOpen = $state(false);
-	// Stays selected after a failed copy, so a retry fills the wishlist already created and still links it.
+	// Set only for a list created by this flow, which a failed copy deletes again (issue #557).
 	let bulkCopyCreatedDestination = $state<CreatedWishlist | null>(null);
 	// Moving gifts out (copy, then remove the unreserved sources) is a permanent wishlist's workflow;
 	// once the list was shared, its recipient may only copy (issue #479).
@@ -1291,9 +1292,30 @@
 			returnFromBulkCopy();
 		} catch (thrown) {
 			toastError(translateServerError(thrown));
+			await discardCreatedBulkCopyDestination(destinationWishlistId);
 		} finally {
 			bulkCopySubmitting = false;
 		}
+	}
+
+	/** Returns the copy dialog to its pre-creation state, so a retry creates a fresh list. */
+	async function discardCreatedBulkCopyDestination(destinationWishlistId: string) {
+		const created = bulkCopyCreatedDestination;
+		if (created?.id !== destinationWishlistId) {
+			return;
+		}
+		try {
+			await deleteWishlist(created.id);
+		} catch (thrown) {
+			// The copy error is already shown; the kept list stays selected so a retry can still fill it.
+			console.error('Failed to delete the wishlist created for a failed bulk copy:', thrown);
+			return;
+		}
+		bulkCopyCreatedDestination = null;
+		bulkCopyDestinations = bulkCopyDestinations.filter(
+			(destination) => destination.id !== created.id,
+		);
+		bulkCopyDestinationId = NEW_WISHLIST_DESTINATION;
 	}
 
 	async function restoreBulkReceived(mutatedWishlistId: string, states: Record<string, boolean>) {
