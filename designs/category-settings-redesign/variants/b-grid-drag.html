@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<title>B: Mřížka na desktopu | Kategorie (#534)</title>
+<link rel="stylesheet" href="../shared.css">
+</head>
+<body>
+<header class="page-header">
+  <div>
+    <h1>B: Mřížka na desktopu</h1>
+    <p>Na desktopu tři sloupce, pořadí se čte po řádcích zleva doprava a přetahuje se do nejbližšího slotu. Na mobilu jeden sloupec se stejným úchytem. <a href="../index.html">Všechny varianty</a></p>
+  </div>
+  <div class="state-switch" aria-label="Stav ukázky"></div>
+</header>
+<main class="stage">
+  <section class="frame frame-desktop" data-frame="desktop" data-depth="ink"></section>
+  <section class="frame frame-mobile" data-frame="mobile" data-depth="ink"></section>
+</main>
+<script src="../shared.js"></script>
+<script>mountCategoryMockup({ desktopColumns: 3, desktopReorder: 'drag', mobileReorder: 'drag', mobileRowLayout: 'inline', aside: false });</script>
+</body>
+</html>

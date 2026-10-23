@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="cs" data-palette="sky" data-tint="none">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>#532 Přehled — barevné karty a výraznější Nedávné</title>
+<style>
+@font-face{font-family:GeistMock;src:url('../../node_modules/@fontsource-variable/geist/files/geist-latin-wght-normal.woff2') format('woff2');font-weight:100 900}
+@font-face{font-family:GeistMock;src:url('../../node_modules/@fontsource-variable/geist/files/geist-latin-ext-wght-normal.woff2') format('woff2');font-weight:100 900;unicode-range:U+0100-024F,U+1E00-1EFF}
+@font-face{font-family:DynaMock;src:url('../../node_modules/@fontsource-variable/dynapuff/files/dynapuff-latin-wght-normal.woff2') format('woff2');font-weight:400 700}
+@font-face{font-family:DynaMock;src:url('../../node_modules/@fontsource-variable/dynapuff/files/dynapuff-latin-ext-wght-normal.woff2') format('woff2');font-weight:400 700;unicode-range:U+0100-024F,U+1E00-1EFF}
+
+/* ── Palette primitives: copied from src/app.css ── */
+:where(:root,[data-palette]){--p-accent:#ffc93c;--p-on-accent:#16385c;--p-primary:color-mix(in oklab,var(--p-brand) 20%,var(--p-deep));--p-on-primary:#fff;--p-link:color-mix(in oklab,var(--p-deep) 75%,var(--p-ink))}
+[data-palette='sky']{--p-brand:#1e9be9;--p-deep:#1265a8;--p-ink:#16385c;--p-bright:#55b9f3;}
+[data-palette='mint']{--p-brand:#14a56f;--p-deep:#0b7a4e;--p-ink:#164a38;--p-bright:#3bd598;}
+[data-palette='peach']{--p-brand:#f97250;--p-deep:#c2410c;--p-ink:#6b2f1a;--p-bright:#ff9b7a;}
+[data-palette='grape']{--p-brand:#8b5cf6;--p-deep:#6023c0;--p-ink:#35216b;--p-bright:#a78bfa;}
+[data-palette='sakura']{--p-brand:#ec5fa3;--p-deep:#be3382;--p-ink:#5f1d44;--p-bright:#f48fc0;}
+[data-palette='ocean']{--p-brand:#0fa8a8;--p-deep:#0b7676;--p-ink:#10484a;--p-bright:#3ad1ce;}
+[data-palette='honey']{--p-brand:#efa00b;--p-deep:#b26e05;--p-ink:#59430d;--p-bright:#ffc24b;--p-accent:#a9dbff;--p-on-accent:#14486b;--p-primary:var(--p-brand);--p-on-primary:color-mix(in oklab,var(--p-ink) 70%,black);--p-link:color-mix(in oklab,var(--p-deep) 60%,var(--p-ink));}
+[data-palette='ruby']{--p-brand:#e23a57;--p-deep:#a31335;--p-ink:#571726;--p-bright:#f7728b;}
+[data-palette='matcha']{--p-brand:#7fb023;--p-deep:#557812;--p-ink:#33430f;--p-bright:#a3cc4e;--p-primary:var(--p-brand);--p-on-primary:color-mix(in oklab,var(--p-ink) 70%,black);}
+[data-palette='graphite']{--p-brand:#526a85;--p-deep:#33465c;--p-ink:#1d2b3a;--p-bright:#8fa6bd;}
+
+:root{
+	--font-head:'DynaMock','DynaPuff Variable',system-ui,sans-serif;
+	--font-body:'GeistMock','Geist Variable',system-ui,sans-serif;
+	--radius-panel:16px;--radius-btn:7px;--border-w:2.5px;
+	--elevation-offset:4px;--elevation-lifted-offset:7px;
+	--gutter:16px;
+}
+
+/* ── Light derivation (subset of src/app.css) ── */
+:root,[data-palette]{
+	color-scheme:light;
+	--ink:var(--p-ink);--ink-faint:color-mix(in oklab,var(--p-ink) 12%,transparent);
+	--brand:var(--p-brand);--brand-deep:var(--p-deep);--brand-link:var(--p-link);
+	--tint:color-mix(in oklab,var(--p-brand) 21%,white);
+	--background:color-mix(in oklab,var(--p-brand) 11%,white);
+	--foreground:var(--p-ink);--card:#fff;
+	--primary:var(--p-primary);--primary-foreground:var(--p-on-primary);
+	--muted-foreground:color-mix(in oklab,var(--p-ink) 78%,transparent);
+	--accent:color-mix(in oklab,var(--p-brand) 11%,white);
+	--surface:var(--background);
+	--pattern-dot:color-mix(in oklab,var(--ink) 13%,transparent);
+	--hole-inner:var(--background);--hole-ring:var(--ink);
+	--tape-bg:color-mix(in oklab,var(--tint) 65%,transparent);--tape-border:color-mix(in oklab,var(--ink) 25%,transparent);
+	--hard-shadow:color-mix(in oklab,var(--p-ink) 58%,transparent);
+	--recent-band:color-mix(in oklab,var(--p-brand) 22%,white);
+	--wishlist-card-body:var(--card);--wishlist-card-plate:var(--card);--wishlist-card-plate-foreground:var(--foreground);
+}
+/* ── Dark derivation (subset of src/app.css) ── */
+.dark,.dark [data-palette]{
+	color-scheme:dark;
+	--ink:color-mix(in oklab,var(--p-bright) 12%,#e6e8ec);--ink-faint:color-mix(in oklab,var(--ink) 16%,transparent);
+	--brand:color-mix(in oklab,var(--p-bright) 70%,#b8bec8);--brand-link:var(--brand);
+	--background:color-mix(in oklab,var(--p-deep) 10%,#090b0f);
+	--foreground:var(--ink);--card:color-mix(in oklab,var(--p-deep) 16%,#13161c);
+	--primary:color-mix(in oklab,var(--p-brand) 60%,#202630);--primary-foreground:#fff;
+	--muted-foreground:color-mix(in oklab,var(--ink) 65%,transparent);
+	--accent:color-mix(in oklab,var(--p-deep) 26%,#222630);--tint:var(--accent);
+	--surface:var(--background);
+	--pattern-dot:color-mix(in oklab,var(--ink) 13%,transparent);
+	--hole-inner:color-mix(in oklab,var(--p-deep) 20%,#04080e);--hole-ring:color-mix(in oklab,var(--ink) 80%,transparent);
+	--tape-bg:rgb(255 255 255 / 14%);--tape-border:color-mix(in oklab,var(--ink) 32%,transparent);
+	--hard-shadow:rgb(2 6 12 / 48%);
+	--recent-band:color-mix(in oklab,var(--p-deep) 34%,#1a1e26);
+	--wishlist-card-body:var(--card);--wishlist-card-plate:var(--card);--wishlist-card-plate-foreground:var(--foreground);
+}
+
+/* ── Proposed wishlist-card tint tokens (strength chosen by data-tint) ── */
+[data-tint='subtle'] [data-palette], [data-palette][data-tint='subtle'] { --wishlist-card-body: color-mix(in oklab, var(--p-brand) 5%, var(--card)); --wishlist-card-plate: color-mix(in oklab, var(--p-brand) 14%, var(--card)); --wishlist-card-plate-foreground: var(--foreground); }
+[data-tint='medium'] [data-palette], [data-palette][data-tint='medium'] { --wishlist-card-body: color-mix(in oklab, var(--p-brand) 10%, var(--card)); --wishlist-card-plate: color-mix(in oklab, var(--p-brand) 24%, var(--card)); --wishlist-card-plate-foreground: var(--foreground); }
+[data-tint='strong'] [data-palette], [data-palette][data-tint='strong'] { --wishlist-card-body: color-mix(in oklab, var(--p-brand) 17%, var(--card)); --wishlist-card-plate: var(--primary); --wishlist-card-plate-foreground: var(--primary-foreground); }
+.dark[data-tint='subtle'] [data-palette], .dark [data-tint='subtle'] [data-palette], .dark [data-palette][data-tint='subtle'] { --wishlist-card-body: color-mix(in oklab, var(--p-brand) 8%, var(--card)); --wishlist-card-plate: color-mix(in oklab, var(--p-brand) 18%, var(--card)); --wishlist-card-plate-foreground: var(--foreground); }
+.dark[data-tint='medium'] [data-palette], .dark [data-tint='medium'] [data-palette], .dark [data-palette][data-tint='medium'] { --wishlist-card-body: color-mix(in oklab, var(--p-brand) 14%, var(--card)); --wishlist-card-plate: color-mix(in oklab, var(--p-brand) 30%, var(--card)); --wishlist-card-plate-foreground: var(--foreground); }
+.dark[data-tint='strong'] [data-palette], .dark [data-tint='strong'] [data-palette], .dark [data-palette][data-tint='strong'] { --wishlist-card-body: color-mix(in oklab, var(--p-brand) 20%, var(--card)); --wishlist-card-plate: var(--primary); --wishlist-card-plate-foreground: var(--primary-foreground); }
+
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--background);color:var(--foreground);font-family:var(--font-body);font-size:14px;-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}
+h1,h2,h3{font-family:var(--font-head);font-weight:600;margin:0}
+.icon{flex:none;display:block}
+button{font:inherit;color:inherit}
+
+/* ── App frame (container queries so the mobile frame toggle works on desktop) ── */
+.app{container:app/inline-size;min-height:100vh;background:var(--background)}
+html[data-frame='mobile'] body{background:#8a8f99}
+html[data-frame='mobile'] .app{max-width:390px;margin:0 auto;box-shadow:0 0 0 1px #0003}
+
+.topbar{background:var(--card);border-bottom:var(--border-w) solid var(--ink)}
+.topbar-inner{max-width:1200px;margin:0 auto;height:60px;display:flex;align-items:center;gap:22px;padding:0 var(--gutter)}
+.logo{display:flex;align-items:center;gap:8px;font-family:var(--font-head);font-weight:700;font-size:19px}
+.logo-mark{width:32px;height:32px;border-radius:9px;background:var(--primary);color:var(--primary-foreground);display:grid;place-items:center;border:2px solid var(--ink);box-shadow:2px 2px 0 var(--hard-shadow)}
+.logo .tld{color:var(--muted-foreground);font-weight:400}
+.nav{display:flex;gap:26px;color:var(--muted-foreground);font-weight:600;font-size:15px}
+.nav span{display:flex;align-items:center;gap:6px}
+.top-actions{margin-left:auto;display:flex;align-items:center;gap:10px}
+.btn{height:32px;border-radius:var(--radius-btn);border:2px solid var(--ink);display:inline-flex;align-items:center;gap:6px;padding:0 12px;font-weight:700;font-size:13px;box-shadow:3px 3px 0 var(--hard-shadow);background:var(--card)}
+.btn-primary{background:var(--primary);color:var(--primary-foreground)}
+.btn-icon{width:32px;padding:0;justify-content:center}
+.swatch{width:14px;height:14px;border-radius:50%;background:var(--brand);border:2px solid var(--ink)}
+.avatar-top{width:34px;height:34px;border-radius:50%;border:2px solid var(--ink);background:linear-gradient(135deg,#f3c7a5,#b67a52)}
+.mobile-only{display:none}
+
+.page{max-width:1200px;margin:0 auto;padding:28px var(--gutter) 64px;overflow:hidden}
+.page-title{font-size:32px;margin-bottom:22px}
+
+/* ── Shelf ── */
+.shelf{--slide:320px;--banner:128px;--plate-size:17px;--track-gap:20px;margin-bottom:40px}
+.shelf-head{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.shelf-title{display:inline-flex;align-items:center;gap:8px;font-size:22px}
+.shelf-icon{display:inline-flex;color:var(--brand)}
+.shelf-link{font-size:13px;font-weight:700;color:var(--brand-link);border-bottom:2px dotted var(--ink-faint)}
+.shelf-controls{margin-left:auto;display:flex;gap:6px}
+.arrow{width:32px;height:32px;border-radius:var(--radius-btn);border:2px solid var(--ink);background:var(--card);display:grid;place-items:center;box-shadow:3px 3px 0 var(--hard-shadow);cursor:pointer}
+.arrow:disabled{opacity:.45;box-shadow:none;cursor:default}
+.shelf-track{display:flex;gap:var(--track-gap);overflow-x:auto;scrollbar-width:none;padding:6px var(--gutter) 14px 2px;margin-right:calc(var(--gutter) * -1);margin-left:-2px;
+	mask-image:linear-gradient(to right,#000 calc(100% - 56px),transparent 100%)}
+.shelf-track::-webkit-scrollbar{display:none}
+
+/* ── Wishlist card (mirrors WishlistCard.svelte geometry) ── */
+.wl-card{flex:0 0 var(--slide);display:flex;border-radius:var(--radius-panel);color:var(--foreground)}
+.wl-surface{position:relative;display:flex;flex-direction:column;width:100%;border-radius:var(--radius-panel);border:var(--border-w) solid var(--ink);background:var(--wishlist-card-body);box-shadow:var(--elevation-offset) var(--elevation-offset) 0 var(--hard-shadow);overflow:hidden;transition:translate .2s cubic-bezier(.2,.7,.3,1),box-shadow .2s cubic-bezier(.2,.7,.3,1)}
+.wl-card:hover .wl-surface{translate:-3px -3px;box-shadow:var(--elevation-lifted-offset) var(--elevation-lifted-offset) 0 var(--hard-shadow)}
+.wl-banner{position:relative;height:var(--banner);flex:none;display:flex;flex-direction:column;justify-content:flex-end;align-items:flex-start;padding:14px;border-bottom:var(--border-w) solid var(--ink);overflow:hidden}
+.wl-plate{position:relative;z-index:1;max-width:100%;rotate:-1deg;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-radius:10px;border:2px solid var(--ink);background:var(--wishlist-card-plate);color:var(--wishlist-card-plate-foreground);padding:4px 12px;font-family:var(--font-head);font-weight:600;font-size:var(--plate-size);box-shadow:2px 2px 0 var(--hard-shadow)}
+.wl-status{position:absolute;top:12px;right:12px;z-index:1;border:2px solid var(--ink);border-radius:999px;padding:2px 12px;font-size:12.5px;font-weight:600;background:var(--card);color:var(--foreground)}
+.wl-status-active{background:var(--primary);color:var(--primary-foreground)}
+.wl-body{flex:1;display:flex;flex-direction:column;gap:10px;padding:14px 16px 16px}
+.wl-meta-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.wl-stack{flex-direction:column;align-items:flex-start;gap:6px}
+.wl-meta{font-size:13px;color:var(--muted-foreground)}
+.wl-chip{display:inline-flex;align-items:center;gap:4px;border:2px solid var(--ink);border-radius:999px;padding:2px 12px;font-size:13px;font-weight:600;background:var(--card)}
+.wl-owner{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--muted-foreground)}
+.wl-avatar{width:24px;height:24px;border-radius:50%;background:var(--primary);color:var(--primary-foreground);border:2px solid var(--ink);display:grid;place-items:center;font-size:11px;font-weight:800}
+.wl-progress{display:flex;flex-direction:column;gap:6px}
+.wl-progress-label{display:flex;justify-content:space-between;gap:8px;font-size:13px;font-weight:700;color:var(--muted-foreground)}
+.wl-progress-value{font-weight:800;color:var(--brand-link);white-space:nowrap}
+.wl-progress-track{height:12px;border:2px solid var(--ink);border-radius:999px;background:var(--card);overflow:hidden}
+.wl-progress-fill{height:100%;background:var(--primary)}
+.wl-available{display:inline-flex;align-items:center;gap:4px;font-size:13px;font-weight:600;color:var(--muted-foreground)}
+.wl-mine{display:inline-flex;align-items:center;gap:4px;border:2px solid var(--ink);border-radius:999px;background:var(--primary);color:var(--primary-foreground);padding:2px 10px;font-size:11px;font-weight:700}
+
+/* Banner art: photos are stand-ins (no external assets); fallback mirrors WishlistFallbackHero. */
+.photo,.fallback-hero{position:absolute;inset:0}
+.fallback-hero{background:var(--tint);display:grid;place-items:center}
+.fallback-emoji{font-size:calc(var(--banner) * .42);translate:0 -10%}
+.banner-pattern{position:absolute;inset:0;background:radial-gradient(var(--pattern-dot) 1.4px,transparent 1.5px);background-size:18px 18px}
+.photo::after{position:absolute;font-size:calc(var(--banner) * .5);right:10%;bottom:6%;line-height:1}
+.photo-party{background:radial-gradient(circle at 18% 28%,#bcd7fb 0 16%,transparent 17%),radial-gradient(circle at 46% 12%,#d6e7ff 0 10%,transparent 11%),radial-gradient(circle at 70% 85%,#f6d3df 0 20%,transparent 21%),linear-gradient(135deg,#e8f1ff,#f9e8ef)}
+.photo-party::after{content:'🎂'}
+.photo-baby{background:repeating-linear-gradient(35deg,#0000 0 22px,#8c6b4a14 22px 26px),linear-gradient(160deg,#ece1d1,#cdb79b)}
+.photo-baby::after{content:'👶'}
+.photo-flowers{background:radial-gradient(circle at 12% 30%,#f7b8c6 0 9%,transparent 10%),radial-gradient(circle at 30% 70%,#fbd3d9 0 12%,transparent 13%),linear-gradient(120deg,#fdf3ec,#f9e4dc)}
+.photo-flowers::after{content:'🎈'}
+.photo-poster{background:repeating-linear-gradient(90deg,#d9e4ef 0 2px,transparent 2px 25%),repeating-linear-gradient(0deg,#d9e4ef 0 2px,transparent 2px 50%),#f7fafc}
+.photo-poster::after{content:'💧';font-size:calc(var(--banner) * .4)}
+.dark .photo{filter:brightness(.82)}
+
+/* Trailing view-all card */
+.view-all{flex:0 0 200px;border:2.5px dashed var(--ink-faint);border-color:color-mix(in oklab,var(--ink) 40%,transparent);border-radius:var(--radius-panel);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:var(--foreground);font-weight:700}
+.view-all-circle{width:44px;height:44px;border-radius:50%;border:2px solid var(--ink);background:var(--card);display:grid;place-items:center;box-shadow:3px 3px 0 var(--hard-shadow)}
+.view-all-title{font-family:var(--font-head);font-size:16px}
+.view-all-count{font-size:13px;font-weight:600;color:var(--muted-foreground)}
+
+/* ── Mobile ── */
+@container app (max-width: 640px){
+	.page{padding:20px 12px 48px}
+	.page-title{font-size:26px;margin-bottom:16px}
+	.topbar-inner{height:54px;padding:0 12px;gap:10px}
+	.nav,.desktop-only{display:none}
+	.mobile-only{display:inline-flex}
+	.shelf{--slide:276px;--track-gap:12px;margin-bottom:28px}
+	.shelf-title{font-size:20px}
+	.shelf-controls{display:none}
+	.shelf-track{padding-right:12px;margin-right:-12px}
+	.view-all{flex-basis:160px}
+}
+
+/* ── Mockup controls (not part of the design) ── */
+.mock-controls{position:fixed;right:12px;bottom:12px;z-index:100;background:#15181d;color:#f2f4f7;font:12px/1.3 system-ui,sans-serif;border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:8px;box-shadow:0 6px 24px #0006;max-width:340px}
+.mock-controls strong{font-size:12.5px}
+.mock-controls .group{display:flex;gap:4px;flex-wrap:wrap;align-items:center}
+.mock-controls .group span{width:52px;color:#aab2bf}
+.mock-controls button{background:#2a2f38;border:1px solid #3a414d;color:#f2f4f7;border-radius:6px;padding:3px 8px;font-size:12px;cursor:pointer}
+.mock-controls button[aria-pressed='true']{background:#f2f4f7;color:#15181d}
+.mock-controls a{color:#9cc9ff}
+html[data-controls='0'] .mock-controls{display:none}
+
+.index{max-width:1200px;margin:0 auto;padding:28px 16px 64px}
+.index p{max-width:760px;line-height:1.55}
+.variants{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px;margin:20px 0 40px}
+.variant-link{display:block;background:var(--card);border:var(--border-w) solid var(--ink);border-radius:var(--radius-panel);box-shadow:4px 4px 0 var(--hard-shadow);padding:16px 18px}
+.variant-link h2{font-size:19px;margin-bottom:6px}
+.variant-link p{margin:0;color:var(--muted-foreground);font-size:13.5px}
+.variant-link .links{margin-top:10px;display:flex;gap:10px;flex-wrap:wrap;font-size:13px;font-weight:700;color:var(--brand-link)}
+.ladders{display:grid;grid-template-columns:1fr;gap:24px}
+.ladder-wrap{border:var(--border-w) solid var(--ink);border-radius:var(--radius-panel);background:var(--background);padding:16px;overflow-x:auto}
+.ladder-wrap h3{font-size:17px;margin-bottom:10px;color:var(--foreground)}
+.ladder{border-collapse:separate;border-spacing:10px 8px;color:var(--foreground)}
+.ladder th{font-size:12.5px;text-align:left;font-weight:700;vertical-align:bottom}
+.ladder th small{display:block;font-weight:500;color:var(--muted-foreground)}
+.sample{width:190px;border:var(--border-w) solid var(--ink);border-radius:12px;background:var(--wishlist-card-body);padding:8px 10px;display:flex;flex-direction:column;gap:6px;color:var(--foreground)}
+.sample-plate{align-self:flex-start;rotate:-1deg;border:2px solid var(--ink);border-radius:8px;background:var(--wishlist-card-plate);color:var(--wishlist-card-plate-foreground);font-family:var(--font-head);font-weight:600;font-size:14px;padding:2px 9px}
+.sample-text{display:flex;justify-content:space-between;font-size:12.5px;font-weight:700}
+.sample-muted{color:var(--muted-foreground)}
+.sample-link{color:var(--brand-link);font-weight:800}
+.ratio{font-size:11.5px;margin-top:3px;font-weight:600}
+.ratio.pass{color:var(--muted-foreground)}
+.ratio.fail{color:#c0392b}
+</style>
+</head>
+<body>
+<div class="app"><main class="index">
+<h1 class="page-title">#532 · Přehled: barevné karty a výraznější Nedávné</h1>
+<p>Každá karta seznamu nese <code>data-palette</code> svého seznamu a odvozuje z palety pozadí obsahu (<code>--wishlist-card-body</code>) a štítku s názvem (<code>--wishlist-card-plate</code>) přes <code>color-mix(in oklab, …)</code>. Varianty kombinují sílu tónu s jiným způsobem zvýraznění řádku Nedávné; sílu tónu lze v každé variantě přepnout v ovládání vpravo dole (<code>?tint=subtle|medium|strong|none</code>, <code>?mode=dark</code>, <code>?frame=mobile</code>).</p>
+<div class="variants">
+	<div class="variant-link"><h2>A — Jemný tón · tišší kategorie</h2><p>Tělo 5 %, štítek 14 % barvy palety. Nedávné zůstává v dnešní velikosti; Sledované, Spravované a Moje seznamy dostanou menší nadpisy a kompaktní karty.</p><div class="links"><a href="variant-a.html">Světlý</a><a href="variant-a.html?mode=dark">Tmavý</a><a href="variant-a.html?frame=mobile">Mobil</a><a href="variant-a.html?frame=mobile&amp;mode=dark">Mobil tmavý</a></div></div>
+	<div class="variant-link"><h2>B — Střední tón · sešitový pás</h2><p>Tělo 10 %, štítek 24 %. Nedávné leží na tónovaném sešitovém pásu s děrováním a páskou u nadpisu; kategorie beze změny.</p><div class="links"><a href="variant-b.html">Světlý</a><a href="variant-b.html?mode=dark">Tmavý</a><a href="variant-b.html?frame=mobile">Mobil</a><a href="variant-b.html?frame=mobile&amp;mode=dark">Mobil tmavý</a></div></div>
+	<div class="variant-link"><h2>C — Výrazný tón · větší Nedávné</h2><p>Tělo 17 %, štítek vyplněný <code>--primary</code>. Nedávné má větší karty a nadpis, kategorie jsou kompaktní.</p><div class="links"><a href="variant-c.html">Světlý</a><a href="variant-c.html?mode=dark">Tmavý</a><a href="variant-c.html?frame=mobile">Mobil</a><a href="variant-c.html?frame=mobile&amp;mode=dark">Mobil tmavý</a></div></div>
+</div>
+<h2 style="font-size:22px;margin-bottom:8px">Žebříček síly tónu na všech paletách</h2>
+<p>Číslo je nejnižší kontrast WCAG ze čtyř rolí na kartě: text (<code>--foreground</code>), tlumený text (<code>--muted-foreground</code>), odkaz/hodnota (<code>--brand-link</code>) a text štítku. Vypočteno replikou odvození z <code>src/app.css</code> (oklab mix, sRGB skládání). AA = 4.5 : 1.</p>
+<div class="ladders">
+	<div class="ladder-wrap"><h3>Světlý režim</h3><table class="ladder"><tr><th>Paleta</th><th>Dnes (bílá)</th><th>Jemný<small>tělo 5 % · štítek 14 %</small></th><th>Střední<small>tělo 10 % · štítek 24 %</small></th><th>Výrazný<small>tělo 17 % · štítek = primary</small></th></tr><tr><th>Obloha</th><td><div class="sample" data-palette="sky" data-tint="none"><div class="sample-plate">Obloha</div><div class="sample-text"><span class="sample-muted">Průběh rezervací</span><span class="sample-link">16 / 38</span></div></div><div class="ratio pass">min 6.16 : 1</div></td><td><div class="sample" data-palette="sky" data-tint="subtle"><div class="sample-plate">Obloha</div><div class="sample-text"><span class="sample-muted">Průběh rezervací</span><span class="sample-link">16 / 38</span></div></div><div class="ratio pass">min 5.97 : 1</div></td><td><div class="sample" data-palette="sky" data-tint="medium"><div class="sample-plate">Obloha</div><div class="sample-text"><span class="sample-muted">Průběh rezervací</span><span class="sample-link">16 / 38</span></div></div><div class="ratio pass">min 5.79 : 1</div></td><td><div class="sample" data-palette="sky" data-tint="strong"><div class="sample-plate">Obloha</div><div class="sample-text"><span class="sample-muted">Průběh rezervací</span><span class="sample-link">16 / 38</span></div></div><div class="ratio pass">min 5.26 : 1</div></td></tr><tr><th>Máta</th><td><div class="sample" data-palette="mint" data-tint="none"><div class="sample-plate">Máta</div><div class="sample-text"><span class="sample-muted">Průběh rezervací</span><span class="sample-link">16 / 38</span></div></div><div class="ratio pass">min 5.43 : 1</div></td><td><div class="sample" data-palette="mint" data-tint="subtle"><div class="sample-plate">Máta</div><div class="sample-text"><span class="sample-muted">Průběh rezervací</span><span class="sample-link">16 / 38</span></div></div><div class="ratio pass">min 5.26 : 1</div></td><td><div class="sample" data-palette="mint" data-tint="medium"><div class="sample-plate">Máta</div><div class="sample-text"><span class="sample-muted">Průběh rezervací</span><span class="sample-link">16 / 38</span></div></div><div class="ratio pass">min 5.09 : 1</div></td><td><div class="sample" data-palette="mint" data-tint="strong"><div class="sample-plate">Máta</div><div class="sample-text"><span class="sample-muted">Průběh rezervací</span><span class="sample-link">16 / 38</span></div></div><div class="ratio pass">min 4.82 : 1</div></td></tr><tr><th>Broskev</th><td><div class="sample" data-palette="peach" data-tint="none"><div class="sample-plate">Broskev</div><div class="sample-text"><span class="sample-muted">Průběh rezervací</span><span class="sample-link">16 / 38</span></div></div><div class="ratio pass">min 5.57 : 1</div></td><td><div class="sample" data-palette="peach" data-tint="subtle"><div class="sample-plate">Broskev</div><div class="sample-text"><span class="sample-muted">Průběh rezervací</span><span class="sample-link">16 / 38</span></div></div><div class="ratio pass">min 5.40 : 1</div></td><td><div class="sample" data-palette="peach" data-tint="medium"><div class="sample-plate">Broskev</div><div class="sample-text"><span class="sample-muted">Průběh rezervací</span><span class="sample-link">16 / 38</span></div></div><div class="ratio pass">min 5.23 : 1</div></td><td><div class="sample" data-palette="peach" data-tint="strong"><div class="sample-plate">Broskev</div><div class="sample-text"><span class="sample-muted">Průběh rezervací</span><span class="sample-link">16 / 38</span></div></div><div class="ratio pass">min 4.55 : 1</div></td></tr><tr><th>Hrozen</th><td><div class="sample" data-palette="grape" data-tint="none"><div class="sample-plate">Hrozen</div><div class="sample-text"><span class="sample-muted">Průběh rezervací</span><span class="sample-link">16 / 38</span></div></div><div class="ratio pass">min 6.79 : 1</div></td><td><div class="sample" data-palette="grape" data-tint="subtle"><div class="sample-plate">Hrozen</div><div class="sample-text"><span class="sample-muted">Průběh rezervací</span><span class="sample-link">16 / 38</span></div></div><div class="ratio pass">min 6.54 : 1</div></td><td><div class="sample" data-palette="grape" data-tint="medium"><div class="sample-plate">Hrozen</div><div class="sample-text"><span class="sample-muted">Průběh rezervací</span><span class="sample-link">16 / 38</span></div></div><div class="ratio pass">min 6.29 : 1</div></td><td><div class="sample" data-palette="grape" data-tint="strong"><div class="sample-plate">Hrozen</div><div class="sample-text"><span class="sample-muted">Průběh rezervací</span><span class="sample-link">16 / 38</span></div></div><div class="ratio pass">min 5.95 : 1</div></td></tr><tr><th>Sakura</th><td><div class="sample" data-palette="sakura" data-tint="none"><div class="sample-plate">Sakura</div><div class="sample-text"><span class="sample-muted">Průběh rezervací</span><span class="sample-link">16 / 38</span></div></div><div class="ratio pass">min 6.39 : 1</div></td><td><div class="sample" data-palette="sakura" data-tint="subtle"><div class="sample-plate">Sakura</div><div class="sample-text"><span class="sample-muted">Průběh rezervací</span><span class="sample-link">16 / 38</span></div></div><div class="ratio pass">min 6.18 : 1</div></td><td><div class="sample" data-palette="sakura" data-tint="medium"><div class="sample-plate">Sakura</div><div class="sample-text"><span class="sample-muted">Průběh rezervací</span><span class="sample-link">16 / 38</span></div></div><div class="ratio pass">min 5.88 : 1</div></td><td><div class="sample" data-palette="sakura" data-tint="strong"><div class="sample-plate">Sakura</div><div class="sample-text"><span class="sample-muted">Průběh rezervací</span><span class="sample-link">16 / 38</span></div></div><div class="ratio pass">min 4.73 : 1</div></td></tr><tr><th>Oceán</th><td><div class="sample" data-palette="ocean" data-tint="none"><div class="sample-plate">Oceán</div><div class="sample-text"><span class="sample-muted">Průběh rezervací</span><span class="sample-link">16 / 38</span></div></div><div class="ratio pass">min 5.50 : 1</div></td><td><div class="sample" data-palette="ocean" data-tint="subtle"><div class="sample-plate">Oceán</div><div class="sample-text"><span class="sample-muted">Průběh rezervací</span><span class="sample-link">16 / 38</span></div></div><div class="ratio pass">min 5.33 : 1</div></td><td><div class="sample" data-palette="ocean" data-tint="medium"><div class="sample-plate">Oceán</div><div class="sample-text"><span class="sample-muted">Průběh rezervací</span><span class="sample-link">16 / 38</span></div></div><div class="ratio pass">min 5.17 : 1</div></td><td><div class="sample" data-palette="ocean" data-tint="strong"><div class="sample-plate">Oceán</div><div class="sample-text"><span class="sample-muted">Průběh rezervací</span><span class="sample-link">16 / 38</span></div></div><div class="ratio pass">min 4.77 : 1</div></td></tr><tr><th>Med</th><td><div class="sample" data-palette="honey" data-tint="none"><div class="sample-plate">Med</div><div class="sample-text"><span class="sample-muted">Průběh rezervací</span><span class="sample-link">16 / 38</span></div></div><div class="ratio pass">min 5.10 : 1</div></td><td><div class="sample" data-palette="honey" data-tint="subtle"><div class="sample-plate">Med</div><div class="sample-text"><span class="sample-muted">Průběh rezervací</span><span class="sample-link">16 / 38</span></div></div><div class="ratio pass">min 4.98 : 1</div></td><td><div class="sample" data-palette="honey" data-tint="medium"><div class="sample-plate">Med</div><div class="sample-text"><span class="sample-muted">Průběh rezervací</span><span class="sample-link">16 / 38</span></div></div><div class="ratio pass">min 4.87 : 1</div></td><td><div class="sample" data-palette="honey" data-tint="strong"><div class="sample-plate">Med</div><div class="sample-text"><span class="sample-muted">Průběh rezervací</span><span class="sample-link">16 / 38</span></div></div><div class="ratio pass">min 4.72 : 1</div></td></tr><tr><th>Malina</th><td><div class="sample" data-palette="ruby" data-tint="none"><div class="sample-plate">Malina</div><div class="sample-text"><span class="sample-muted">Průběh rezervací</span><span class="sample-link">16 / 38</span></div></div><div class="ratio pass">min 7.07 : 1</div></td><td><div class="sample" data-palette="ruby" data-tint="subtle"><div class="sample-plate">Malina</div><div class="sample-text"><span class="sample-muted">Průběh rezervací</span><span class="sample-link">16 / 38</span></div></div><div class="ratio pass">min 6.79 : 1</div></td><td><div class="sample" data-palette="ruby" data-tint="medium"><div class="sample-plate">Malina</div><div class="sample-text"><span class="sample-muted">Průběh rezervací</span><span class="sample-link">16 / 38</span></div></div><div class="ratio pass">min 6.51 : 1</div></td><td><div class="sample" data-palette="ruby" data-tint="strong"><div class="sample-plate">Malina</div><div class="sample-text"><span class="sample-muted">Průběh rezervací</span><span class="sample-link">16 / 38</span></div></div><div class="ratio pass">min 6.13 : 1</div></td></tr><tr><th>Matcha</th><td><div class="sample" data-palette="matcha" data-tint="none"><div class="sample-plate">Matcha</div><div class="sample-text"><span class="sample-muted">Průběh rezervací</span><span class="sample-link">16 / 38</span></div></div><div class="ratio pass">min 5.62 : 1</div></td><td><div class="sample" data-palette="matcha" data-tint="subtle"><div class="sample-plate">Matcha</div><div class="sample-text"><span class="sample-muted">Průběh rezervací</span><span class="sample-link">16 / 38</span></div></div><div class="ratio pass">min 5.47 : 1</div></td><td><div class="sample" data-palette="matcha" data-tint="medium"><div class="sample-plate">Matcha</div><div class="sample-text"><span class="sample-muted">Průběh rezervací</span><span class="sample-link">16 / 38</span></div></div><div class="ratio pass">min 5.33 : 1</div></td><td><div class="sample" data-palette="matcha" data-tint="strong"><div class="sample-plate">Matcha</div><div class="sample-text"><span class="sample-muted">Průběh rezervací</span><span class="sample-link">16 / 38</span></div></div><div class="ratio pass">min 5.12 : 1</div></td></tr><tr><th>Tužka</th><td><div class="sample" data-palette="graphite" data-tint="none"><div class="sample-plate">Tužka</div><div class="sample-text"><span class="sample-muted">Průběh rezervací</span><span class="sample-link">16 / 38</span></div></div><div class="ratio pass">min 7.07 : 1</div></td><td><div class="sample" data-palette="graphite" data-tint="subtle"><div class="sample-plate">Tužka</div><div class="sample-text"><span class="sample-muted">Průběh rezervací</span><span class="sample-link">16 / 38</span></div></div><div class="ratio pass">min 6.78 : 1</div></td><td><div class="sample" data-palette="graphite" data-tint="medium"><div class="sample-plate">Tužka</div><div class="sample-text"><span class="sample-muted">Průběh rezervací</span><span class="sample-link">16 / 38</span></div></div><div class="ratio pass">min 6.49 : 1</div></td><td><div class="sample" data-palette="graphite" data-tint="strong"><div class="sample-plate">Tužka</div><div class="sample-text"><span class="sample-muted">Průběh rezervací</span><span class="sample-link">16 / 38</span></div></div><div class="ratio pass">min 6.09 : 1</div></td></tr></table></div>
+	<div class="ladder-wrap dark" data-palette="sky"><h3>Tmavý režim</h3><table class="ladder"><tr><th>Paleta</th><th>Dnes (bílá)</th><th>Jemný<small>tělo 8 % · štítek 18 %</small></th><th>Střední<small>tělo 14 % · štítek 30 %</small></th><th>Výrazný<small>tělo 20 % · štítek = primary</small></th></tr><tr><th>Obloha</th><td><div class="sample" data-palette="sky" data-tint="none"><div class="sample-plate">Obloha</div><div class="sample-text"><span class="sample-muted">Průběh rezervací</span><span class="sample-link">16 / 38</span></div></div><div class="ratio pass">min 5.99 : 1</div></td><td><div class="sample" data-palette="sky" data-tint="subtle"><div class="sample-plate">Obloha</div><div class="sample-text"><span class="sample-muted">Průběh rezervací</span><span class="sample-link">16 / 38</span></div></div><div class="ratio pass">min 5.59 : 1</div></td><td><div class="sample" data-palette="sky" data-tint="medium"><div class="sample-plate">Obloha</div><div class="sample-text"><span class="sample-muted">Průběh rezervací</span><span class="sample-link">16 / 38</span></div></div><div class="ratio pass">min 5.26 : 1</div></td><td><div class="sample" data-palette="sky" data-tint="strong"><div class="sample-plate">Obloha</div><div class="sample-text"><span class="sample-muted">Průběh rezervací</span><span class="sample-link">16 / 38</span></div></div><div class="ratio pass">min 4.91 : 1</div></td></tr><tr><th>Máta</th><td><div class="sample" data-palette="mint" data-tint="none"><div class="sample-plate">Máta</div><div class="sample-text"><span class="sample-muted">Průběh rezervací</span><span class="sample-link">16 / 38</span></div></div><div class="ratio pass">min 6.02 : 1</div></td><td><div class="sample" data-palette="mint" data-tint="subtle"><div class="sample-plate">Máta</div><div class="sample-text"><span class="sample-muted">Průběh rezervací</span><span class="sample-link">16 / 38</span></div></div><div class="ratio pass">min 5.62 : 1</div></td><td><div class="sample" data-palette="mint" data-tint="medium"><div class="sample-plate">Máta</div><div class="sample-text"><span class="sample-muted">Průběh rezervací</span><span class="sample-link">16 / 38</span></div></div><div class="ratio pass">min 5.29 : 1</div></td><td><div class="sample" data-palette="mint" data-tint="strong"><div class="sample-plate">Máta</div><div class="sample-text"><span class="sample-muted">Průběh rezervací</span><span class="sample-link">16 / 38</span></div></div><div class="ratio pass">min 4.96 : 1</div></td></tr><tr><th>Broskev</th><td><div class="sample" data-palette="peach" data-tint="none"><div class="sample-plate">Broskev</div><div class="sample-text"><span class="sample-muted">Průběh rezervací</span><span class="sample-link">16 / 38</span></div></div><div class="ratio pass">min 5.95 : 1</div></td><td><div class="sample" data-palette="peach" data-tint="subtle"><div class="sample-plate">Broskev</div><div class="sample-text"><span class="sample-muted">Průběh rezervací</span><span class="sample-link">16 / 38</span></div></div><div class="ratio pass">min 5.52 : 1</div></td><td><div class="sample" data-palette="peach" data-tint="medium"><div class="sample-plate">Broskev</div><div class="sample-text"><span class="sample-muted">Průběh rezervací</span><span class="sample-link">16 / 38</span></div></div><div class="ratio pass">min 5.16 : 1</div></td><td><div class="sample" data-palette="peach" data-tint="strong"><div class="sample-plate">Broskev</div><div class="sample-text"><span class="sample-muted">Průběh rezervací</span><span class="sample-link">16 / 38</span></div></div><div class="ratio pass">min 4.80 : 1</div></td></tr><tr><th>Hrozen</th><td><div class="sample" data-palette="grape" data-tint="none"><div class="sample-plate">Hrozen</div><div class="sample-text"><span class="sample-muted">Průběh rezervací</span><span class="sample-link">16 / 38</span></div></div><div class="ratio pass">min 5.99 : 1</div></td><td><div class="sample" data-palette="grape" data-tint="subtle"><div class="sample-plate">Hrozen</div><div class="sample-text"><span class="sample-muted">Průběh rezervací</span><span class="sample-link">16 / 38</span></div></div><div class="ratio pass">min 5.68 : 1</div></td><td><div class="sample" data-palette="grape" data-tint="medium"><div class="sample-plate">Hrozen</div><div class="sample-text"><span class="sample-muted">Průběh rezervací</span><span class="sample-link">16 / 38</span></div></div><div class="ratio pass">min 5.43 : 1</div></td><td><div class="sample" data-palette="grape" data-tint="strong"><div class="sample-plate">Hrozen</div><div class="sample-text"><span class="sample-muted">Průběh rezervací</span><span class="sample-link">16 / 38</span></div></div><div class="ratio pass">min 5.16 : 1</div></td></tr><tr><th>Sakura</th><td><div class="sample" data-palette="sakura" data-tint="none"><div class="sample-plate">Sakura</div><div class="sample-text"><span class="sample-muted">Průběh rezervací</span><span class="sample-link">16 / 38</span></div></div><div class="ratio pass">min 5.92 : 1</div></td><td><div class="sample" data-palette="sakura" data-tint="subtle"><div class="sample-plate">Sakura</div><div class="sample-text"><span class="sample-muted">Průběh rezervací</span><span class="sample-link">16 / 38</span></div></div><div class="ratio pass">min 5.52 : 1</div></td><td><div class="sample" data-palette="sakura" data-tint="medium"><div class="sample-plate">Sakura</div><div class="sample-text"><span class="sample-muted">Průběh rezervací</span><span class="sample-link">16 / 38</span></div></div><div class="ratio pass">min 5.20 : 1</div></td><td><div class="sample" data-palette="sakura" data-tint="strong"><div class="sample-plate">Sakura</div><div class="sample-text"><span class="sample-muted">Průběh rezervací</span><span class="sample-link">16 / 38</span></div></div><div class="ratio pass">min 4.86 : 1</div></td></tr><tr><th>Oceán</th><td><div class="sample" data-palette="ocean" data-tint="none"><div class="sample-plate">Oceán</div><div class="sample-text"><span class="sample-muted">Průběh rezervací</span><span class="sample-link">16 / 38</span></div></div><div class="ratio pass">min 6.03 : 1</div></td><td><div class="sample" data-palette="ocean" data-tint="subtle"><div class="sample-plate">Oceán</div><div class="sample-text"><span class="sample-muted">Průběh rezervací</span><span class="sample-link">16 / 38</span></div></div><div class="ratio pass">min 5.61 : 1</div></td><td><div class="sample" data-palette="ocean" data-tint="medium"><div class="sample-plate">Oceán</div><div class="sample-text"><span class="sample-muted">Průběh rezervací</span><span class="sample-link">16 / 38</span></div></div><div class="ratio pass">min 5.26 : 1</div></td><td><div class="sample" data-palette="ocean" data-tint="strong"><div class="sample-plate">Oceán</div><div class="sample-text"><span class="sample-muted">Průběh rezervací</span><span class="sample-link">16 / 38</span></div></div><div class="ratio pass">min 4.91 : 1</div></td></tr><tr><th>Med</th><td><div class="sample" data-palette="honey" data-tint="none"><div class="sample-plate">Med</div><div class="sample-text"><span class="sample-muted">Průběh rezervací</span><span class="sample-link">16 / 38</span></div></div><div class="ratio pass">min 5.99 : 1</div></td><td><div class="sample" data-palette="honey" data-tint="subtle"><div class="sample-plate">Med</div><div class="sample-text"><span class="sample-muted">Průběh rezervací</span><span class="sample-link">16 / 38</span></div></div><div class="ratio pass">min 5.47 : 1</div></td><td><div class="sample" data-palette="honey" data-tint="medium"><div class="sample-plate">Med</div><div class="sample-text"><span class="sample-muted">Průběh rezervací</span><span class="sample-link">16 / 38</span></div></div><div class="ratio pass">min 5.05 : 1</div></td><td><div class="sample" data-palette="honey" data-tint="strong"><div class="sample-plate">Med</div><div class="sample-text"><span class="sample-muted">Průběh rezervací</span><span class="sample-link">16 / 38</span></div></div><div class="ratio pass">min 4.61 : 1</div></td></tr><tr><th>Malina</th><td><div class="sample" data-palette="ruby" data-tint="none"><div class="sample-plate">Malina</div><div class="sample-text"><span class="sample-muted">Průběh rezervací</span><span class="sample-link">16 / 38</span></div></div><div class="ratio pass">min 5.97 : 1</div></td><td><div class="sample" data-palette="ruby" data-tint="subtle"><div class="sample-plate">Malina</div><div class="sample-text"><span class="sample-muted">Průběh rezervací</span><span class="sample-link">16 / 38</span></div></div><div class="ratio pass">min 5.66 : 1</div></td><td><div class="sample" data-palette="ruby" data-tint="medium"><div class="sample-plate">Malina</div><div class="sample-text"><span class="sample-muted">Průběh rezervací</span><span class="sample-link">16 / 38</span></div></div><div class="ratio pass">min 5.39 : 1</div></td><td><div class="sample" data-palette="ruby" data-tint="strong"><div class="sample-plate">Malina</div><div class="sample-text"><span class="sample-muted">Průběh rezervací</span><span class="sample-link">16 / 38</span></div></div><div class="ratio pass">min 5.11 : 1</div></td></tr><tr><th>Matcha</th><td><div class="sample" data-palette="matcha" data-tint="none"><div class="sample-plate">Matcha</div><div class="sample-text"><span class="sample-muted">Průběh rezervací</span><span class="sample-link">16 / 38</span></div></div><div class="ratio pass">min 6.01 : 1</div></td><td><div class="sample" data-palette="matcha" data-tint="subtle"><div class="sample-plate">Matcha</div><div class="sample-text"><span class="sample-muted">Průběh rezervací</span><span class="sample-link">16 / 38</span></div></div><div class="ratio pass">min 5.56 : 1</div></td><td><div class="sample" data-palette="matcha" data-tint="medium"><div class="sample-plate">Matcha</div><div class="sample-text"><span class="sample-muted">Průběh rezervací</span><span class="sample-link">16 / 38</span></div></div><div class="ratio pass">min 5.19 : 1</div></td><td><div class="sample" data-palette="matcha" data-tint="strong"><div class="sample-plate">Matcha</div><div class="sample-text"><span class="sample-muted">Průběh rezervací</span><span class="sample-link">16 / 38</span></div></div><div class="ratio pass">min 4.81 : 1</div></td></tr><tr><th>Tužka</th><td><div class="sample" data-palette="graphite" data-tint="none"><div class="sample-plate">Tužka</div><div class="sample-text"><span class="sample-muted">Průběh rezervací</span><span class="sample-link">16 / 38</span></div></div><div class="ratio pass">min 6.10 : 1</div></td><td><div class="sample" data-palette="graphite" data-tint="subtle"><div class="sample-plate">Tužka</div><div class="sample-text"><span class="sample-muted">Průběh rezervací</span><span class="sample-link">16 / 38</span></div></div><div class="ratio pass">min 5.86 : 1</div></td><td><div class="sample" data-palette="graphite" data-tint="medium"><div class="sample-plate">Tužka</div><div class="sample-text"><span class="sample-muted">Průběh rezervací</span><span class="sample-link">16 / 38</span></div></div><div class="ratio pass">min 5.66 : 1</div></td><td><div class="sample" data-palette="graphite" data-tint="strong"><div class="sample-plate">Tužka</div><div class="sample-text"><span class="sample-muted">Průběh rezervací</span><span class="sample-link">16 / 38</span></div></div><div class="ratio pass">min 5.45 : 1</div></td></tr></table></div>
+</div>
+</main></div>
+</body>
+</html>
