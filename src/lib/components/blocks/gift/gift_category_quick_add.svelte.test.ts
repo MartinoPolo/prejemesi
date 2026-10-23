@@ -77,25 +77,39 @@ describe('category quick-add dialog', () => {
 		await screen.unmount();
 	});
 
-	it('rejects a name an existing or preset category uses, like category settings do', async () => {
+	it('rejects a name an enabled category uses in either language, like category settings do', async () => {
+		const booksPreset: ManagedGiftCategory = {
+			id: 'books',
+			presetKey: 'books',
+			customLabel: null,
+			color: '#2563EB',
+			sortOrder: 1,
+			usedCount: 0,
+		};
 		const screen = await render(GiftCategoryQuickAddDialog, {
 			props: {
 				open: true,
 				wishlistId: 'wishlist-1',
 				target: { kind: 'gifts', giftIds: ['gift-1'], giftName: 'Kolo' },
-				categories: existingCategories,
+				categories: [...existingCategories, booksPreset],
 			},
 		});
 		const name = screen.getByRole('textbox', { name: m.gift_category_quick_add_name_label() });
 		const submit = screen.getByRole('button', { name: m.gift_category_quick_add_submit() });
 
-		for (const duplicate of ['lego', 'Knihy']) {
+		for (const duplicate of ['lego', 'Knihy', 'Books']) {
 			await name.fill(duplicate);
 			await expect
 				.element(screen.getByText(m.server_error_gift_category_label_conflict()))
 				.toBeInTheDocument();
 			await expect.element(submit).toBeDisabled();
 		}
+		// Issue #534: a preset name is free once the wishlist no longer has that preset.
+		await name.fill('Hry');
+		await expect
+			.element(screen.getByText(m.server_error_gift_category_label_conflict()))
+			.not.toBeInTheDocument();
+		await expect.element(submit).toBeEnabled();
 		await name.fill('');
 		await expect.element(submit).toBeDisabled();
 		expect(remoteMocks.create).not.toHaveBeenCalled();

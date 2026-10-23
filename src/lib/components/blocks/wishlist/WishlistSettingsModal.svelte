@@ -43,7 +43,7 @@
 		translateServerError,
 	} from '$lib/modules/errors/translate_server_error.js';
 	import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
-	import { getGiftCategorySettingsRows } from '$lib/modules/gift-categories/gift_category_queries.remote.js';
+	import { getGiftCategories } from '$lib/modules/gift-categories/gift_category_queries.remote.js';
 	import {
 		REVERT_CAPABILITY,
 		type RevertCapability,
@@ -392,7 +392,7 @@
 				SERVER_ERROR.GIFT_CATEGORY_REMOVAL_CONFIRMATION_MISMATCH
 			) {
 				try {
-					await getGiftCategorySettingsRows(wishlist.id).refresh();
+					await getGiftCategories(wishlist.id).refresh();
 				} catch (refreshError) {
 					console.error(
 						'Failed to refresh category settings after conflict:',

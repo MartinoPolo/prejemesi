@@ -1,4 +1,5 @@
 <script lang="ts">
+	import type { Snippet } from 'svelte';
 	import * as m from '$lib/paraglide/messages.js';
 	import * as Popover from '$lib/components/base/popover/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
@@ -15,9 +16,11 @@
 		label: string;
 		disabled?: boolean;
 		onValueChange?: (value: string) => void;
+		/** Shows what the staged color will look like, above the swatches. */
+		preview?: Snippet<[stagedColor: string]>;
 	}
 
-	let { value = $bindable(), label, disabled = false, onValueChange }: Props = $props();
+	let { value = $bindable(), label, disabled = false, onValueChange, preview }: Props = $props();
 	let open = $state(false);
 	let openingValue = $state(value);
 	let hexDraft = $state(value);
@@ -29,7 +32,8 @@
 	const changedDraft = $derived(
 		validDraft && hexDraft.toUpperCase() !== openingValue.toUpperCase(),
 	);
-	const nativeValue = $derived(open ? (validDraft ? hexDraft : openingValue) : value);
+	const stagedColor = $derived(validDraft ? hexDraft : openingValue);
+	const nativeValue = $derived(open ? stagedColor : value);
 
 	function handleOpenChange(nextOpen: boolean) {
 		if (nextOpen) {
@@ -85,6 +89,15 @@
 		{/snippet}
 	</Popover.Trigger>
 	<Popover.Content class="w-64 space-y-3 p-3" aria-label={label} role="dialog">
+		{#if preview !== undefined}
+			<div
+				class="flex min-w-0 items-center gap-2 text-sm font-semibold text-muted-foreground"
+				data-testid="color-picker-preview"
+			>
+				<span class="shrink-0">{m.color_picker_preview_label()}</span>
+				{@render preview(stagedColor)}
+			</div>
+		{/if}
 		<div class="grid grid-cols-5 gap-2" role="group" aria-label={m.color_picker_presets()}>
 			{#each CUSTOM_GIFT_CATEGORY_COLORS as preset (preset)}
 				<button

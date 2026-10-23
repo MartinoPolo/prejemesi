@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
 	serverErrorFixture as SERVER_ERROR,
 	singleFlightRefreshFixture as singleFlightRefresh,
-	getGiftCategorySettingsRowsFixture as getGiftCategorySettingsRows,
+	getGiftCategoriesFixture as getGiftCategories,
 	dispatchNotificationFixture as dispatchNotification,
 	mockDbInstance,
 	mockAppendGifts,
@@ -32,7 +32,7 @@ describe('gift category settings refresh dependencies', () => {
 			categoryId: 'category-books',
 		});
 
-		expect(singleFlightRefresh).toHaveBeenCalledWith(getGiftCategorySettingsRows, WISHLIST_ID);
+		expect(singleFlightRefresh).toHaveBeenCalledWith(getGiftCategories, WISHLIST_ID);
 	});
 
 	it('refreshes destination category counts after copying gifts', async () => {
@@ -47,10 +47,7 @@ describe('gift category settings refresh dependencies', () => {
 			giftIds: [GIFT_ID],
 		});
 
-		expect(singleFlightRefresh).toHaveBeenCalledWith(
-			getGiftCategorySettingsRows,
-			'destination-wishlist',
-		);
+		expect(singleFlightRefresh).toHaveBeenCalledWith(getGiftCategories, 'destination-wishlist');
 	});
 });
 
@@ -101,7 +98,7 @@ describe('bulkUpdateGifts presentation parity', () => {
 			categoryId: null,
 		});
 
-		expect(singleFlightRefresh).toHaveBeenCalledWith(getGiftCategorySettingsRows, WISHLIST_ID);
+		expect(singleFlightRefresh).toHaveBeenCalledWith(getGiftCategories, WISHLIST_ID);
 	});
 
 	it('applies post-share edit transparency to every changed presentation gift in one update statement', async () => {

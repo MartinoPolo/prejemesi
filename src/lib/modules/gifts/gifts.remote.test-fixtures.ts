@@ -238,7 +238,7 @@ vi.mock('$lib/modules/notifications/notification_dispatcher.js', () => ({
 	dispatchNotification: vi.fn(() => Promise.resolve()),
 }));
 vi.mock('$lib/modules/gift-categories/gift_category_queries.remote.js', () => ({
-	getGiftCategorySettingsRows: vi.fn(),
+	getGiftCategories: vi.fn(),
 }));
 vi.mock('./gift_creation_service.js', () => ({
 	appendGiftsUsingTransaction: vi.fn(),
@@ -269,7 +269,7 @@ import type { GiftForRecipient, GiftForVisitor } from './types.js';
 import { deleteObjectsBestEffort } from '$lib/server/storage/r2.js';
 import { dispatchNotification } from '$lib/modules/notifications/notification_dispatcher.js';
 import { singleFlightRefresh } from '$lib/server/remote.js';
-import { getGiftCategorySettingsRows } from '$lib/modules/gift-categories/gift_category_queries.remote.js';
+import { getGiftCategories } from '$lib/modules/gift-categories/gift_category_queries.remote.js';
 import { appendGiftsUsingTransaction } from './gift_creation_service.js';
 import { copyPreparedGifts } from './gift_bulk_copy.js';
 import { toPreShareGiftSnapshot, type PreShareGiftSnapshot } from './gift_post_share.js';
@@ -281,7 +281,7 @@ const mockCopyGifts = vi.mocked(copyPreparedGifts);
 // fixture modules. Initialized local aliases retain the exact mocked bindings.
 const serverErrorFixture = SERVER_ERROR;
 const singleFlightRefreshFixture = vi.mocked(singleFlightRefresh);
-const getGiftCategorySettingsRowsFixture = vi.mocked(getGiftCategorySettingsRows);
+const getGiftCategoriesFixture = vi.mocked(getGiftCategories);
 const dispatchNotificationFixture = vi.mocked(dispatchNotification);
 const toPreShareGiftSnapshotFixture = toPreShareGiftSnapshot;
 
@@ -411,7 +411,7 @@ beforeEach(() => {
 export {
 	serverErrorFixture,
 	singleFlightRefreshFixture,
-	getGiftCategorySettingsRowsFixture,
+	getGiftCategoriesFixture,
 	dispatchNotificationFixture,
 	toPreShareGiftSnapshotFixture,
 	mockDbInstance,

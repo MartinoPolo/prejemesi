@@ -10,8 +10,7 @@ vi.mock('$lib/modules/wishlists/wishlist_settings.remote.js', () => ({
 	saveWishlistSettings: vi.fn(),
 }));
 vi.mock('$lib/modules/gift-categories/gift_category_queries.remote.js', () => ({
-	getGiftCategories: vi.fn(() => ({ current: [] })),
-	getGiftCategorySettingsRows: vi.fn(() => ({ current: [], refresh: vi.fn() })),
+	getGiftCategories: vi.fn(() => ({ current: [], refresh: vi.fn() })),
 }));
 vi.mock('$lib/modules/gift-categories/gift_categories.remote.js', () => ({
 	saveGiftCategorySettingsCommand: vi.fn(),

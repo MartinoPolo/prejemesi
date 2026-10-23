@@ -7,7 +7,7 @@ import {
 } from '$lib/server/operations/gift_grouping_operations.js';
 import { getGiftsByWishlistShortId } from '$lib/modules/gifts/gifts.remote.js';
 import { CreateGiftCategoryInputSchema, SaveGiftCategorySettingsInputSchema } from './types.js';
-import { getGiftCategories, getGiftCategorySettingsRows } from './gift_category_queries.remote.js';
+import { getGiftCategories } from './gift_category_queries.remote.js';
 
 export const saveGiftCategorySettingsCommand = guardedCommand(
 	SaveGiftCategorySettingsInputSchema,
@@ -18,7 +18,6 @@ export const saveGiftCategorySettingsCommand = guardedCommand(
 			input,
 		);
 		void singleFlightRefresh(getGiftCategories, input.wishlistId);
-		void singleFlightRefresh(getGiftCategorySettingsRows, input.wishlistId);
 		void singleFlightRefresh(getGiftsByWishlistShortId, wishlistShortId);
 	},
 );
@@ -32,7 +31,6 @@ export const createGiftCategoryCommand = guardedCommand(
 			input,
 		);
 		void singleFlightRefresh(getGiftCategories, input.wishlistId);
-		void singleFlightRefresh(getGiftCategorySettingsRows, input.wishlistId);
 		if (input.giftIds.length > 0) {
 			void singleFlightRefresh(getGiftsByWishlistShortId, wishlistShortId);
 		}

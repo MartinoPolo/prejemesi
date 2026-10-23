@@ -9,7 +9,10 @@ import { giftIngestionOrphan } from '$lib/server/db/ingestion.schema.js';
 import { moderatorAssignment } from '$lib/server/db/moderator.schema.js';
 import { priorityLevel, wishlist } from '$lib/server/db/wishlist.schema.js';
 import { getObject, putObject, deleteObject } from '$lib/server/storage/r2.js';
-import { normalizeGiftCategoryLabel } from '$lib/modules/gift-categories/types.js';
+import {
+	occupiedGiftCategoryLabels,
+	type GiftCategoryPresetKey,
+} from '$lib/modules/gift-categories/types.js';
 import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
 import { WISHLIST_KIND } from '$lib/modules/wishlists/types.js';
 import { recipientMayMoveGifts } from '$lib/modules/wishlists/wishlist_capabilities.js';
@@ -36,7 +39,7 @@ export type BulkCopyGiftsInput = v.InferOutput<typeof BulkCopyGiftsInputSchema>;
 type Database = ReturnType<typeof getDb>;
 type Transaction = GiftCreationTransaction;
 type SourceGift = typeof gift.$inferSelect & {
-	categoryPresetKey: string | null;
+	categoryPresetKey: GiftCategoryPresetKey | null;
 	categoryCustomLabel: string | null;
 };
 
@@ -81,7 +84,7 @@ export function mapCopiedTaxonomy(input: {
 	destinationPriorities: readonly { id: string }[];
 	destinationCategories: readonly {
 		id: string;
-		presetKey: string | null;
+		presetKey: GiftCategoryPresetKey | null;
 		customLabel: string | null;
 	}[];
 }): { priorityLevelId: string | null; categoryId: string | null } {
@@ -89,21 +92,22 @@ export function mapCopiedTaxonomy(input: {
 		input.source.priorityLevelId === null
 			? -1
 			: input.sourcePriorityIdsByOrdinal.indexOf(input.source.priorityLevelId);
-	let categoryId: string | null = null;
-	if (input.source.categoryPresetKey !== null) {
-		categoryId =
-			input.destinationCategories.find(
-				(category) => category.presetKey === input.source.categoryPresetKey,
-			)?.id ?? null;
-	} else if (input.source.categoryCustomLabel !== null) {
-		const normalizedSourceLabel = normalizeGiftCategoryLabel(input.source.categoryCustomLabel);
-		categoryId =
-			input.destinationCategories.find(
-				(category) =>
-					category.customLabel !== null &&
-					normalizeGiftCategoryLabel(category.customLabel) === normalizedSourceLabel,
-			)?.id ?? null;
-	}
+	// A preset maps to the same preset; otherwise any category claiming the same label matches,
+	// because a preset may be renamed into a custom category or recreated as one.
+	const sourceLabels = occupiedGiftCategoryLabels({
+		presetKey: input.source.categoryPresetKey,
+		customLabel: input.source.categoryCustomLabel,
+	});
+	const categoryId =
+		(input.source.categoryPresetKey === null
+			? undefined
+			: input.destinationCategories.find(
+					(category) => category.presetKey === input.source.categoryPresetKey,
+				)?.id) ??
+		input.destinationCategories.find((category) =>
+			occupiedGiftCategoryLabels(category).some((label) => sourceLabels.includes(label)),
+		)?.id ??
+		null;
 	return {
 		priorityLevelId:
 			priorityOrdinal < 0 ? null : (input.destinationPriorities[priorityOrdinal]?.id ?? null),

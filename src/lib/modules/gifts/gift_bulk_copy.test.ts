@@ -76,7 +76,7 @@ describe('bulk gift copy requirements', () => {
 
 	it('maps categories by preset or normalized custom label and falls back to uncategorized', () => {
 		const destinations = [
-			{ id: 'preset-destination', presetKey: 'books', customLabel: null },
+			{ id: 'preset-destination', presetKey: 'books' as const, customLabel: null },
 			{ id: 'custom-destination', presetKey: null, customLabel: '  VýLeTy  ' },
 		];
 		expect(
@@ -103,6 +103,29 @@ describe('bulk gift copy requirements', () => {
 				destinationCategories: destinations,
 			}).categoryId,
 		).toBeNull();
+	});
+
+	it('maps a category to the destination category with the same label across preset and custom kinds', () => {
+		const customGames = [{ id: 'custom-games', presetKey: null, customLabel: 'Hry' }];
+		const presetGames = [
+			{ id: 'preset-games', presetKey: 'games' as const, customLabel: null },
+		];
+		expect(
+			mapCopiedTaxonomy({
+				source: source({ categoryPresetKey: 'games' }),
+				sourcePriorityIdsByOrdinal: [],
+				destinationPriorities: [],
+				destinationCategories: customGames,
+			}).categoryId,
+		).toBe('custom-games');
+		expect(
+			mapCopiedTaxonomy({
+				source: source({ categoryCustomLabel: 'Games' }),
+				sourcePriorityIdsByOrdinal: [],
+				destinationPriorities: [],
+				destinationCategories: presetGames,
+			}).categoryId,
+		).toBe('preset-games');
 	});
 
 	it('maps priority by ordinal and leaves a missing destination ordinal unset', () => {

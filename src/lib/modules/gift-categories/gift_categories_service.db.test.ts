@@ -158,11 +158,7 @@ describe.skipIf(!DB_READY)('gift category color persistence [real DB]', () => {
 			saveGiftCategorySettings(
 				{
 					wishlistId: WISHLIST_ID,
-					customCategories: [
-						{ id: CATEGORY_ID, label: CATEGORY_LABEL, color: UPDATED_COLOR },
-					],
-					presetKeys: [],
-					presetColors: [],
+					categories: [{ id: CATEGORY_ID, label: CATEGORY_LABEL, color: UPDATED_COLOR }],
 					confirmedRemovalCategoryIds: [],
 				},
 				{ transaction, recordGiftRevisions: () => {}, now: new Date() },

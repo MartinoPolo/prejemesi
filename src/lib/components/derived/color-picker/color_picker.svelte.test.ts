@@ -2,6 +2,7 @@ import '../../../../app.css';
 import { render } from 'vitest-browser-svelte';
 import { page, userEvent } from 'vitest/browser';
 import { describe, expect, it, vi } from 'vitest';
+import { createRawSnippet } from 'svelte';
 import * as m from '$lib/paraglide/messages.js';
 import { DEFAULT_PIXEL_TOLERANCE } from '../../../../../tests/helpers/pixel-assertions.mjs';
 import ColorPicker from './ColorPicker.svelte';
@@ -117,6 +118,28 @@ describe('ColorPicker', () => {
 		await expect.element(hex).toHaveValue('#AABBCC');
 		await expect.element(save).toBeDisabled();
 		expect(onValueChange).not.toHaveBeenCalled();
+	});
+
+	it('previews the staged color above the swatches when a preview is supplied', async () => {
+		const preview = createRawSnippet((stagedColor: () => string) => ({
+			render: () => '<span data-testid="staged-preview"></span>',
+			setup: (element) => {
+				$effect(() => {
+					element.textContent = stagedColor();
+				});
+			},
+		}));
+		const screen = render(ColorPicker, { value: '#0369A1', label, preview });
+		await screen.getByRole('button', { name: label }).click();
+		const dialog = page.getByRole('dialog', { name: label });
+		const stagedPreview = dialog.getByTestId('staged-preview');
+
+		await expect.element(dialog.getByText(m.color_picker_preview_label())).toBeVisible();
+		await expect.element(stagedPreview).toHaveTextContent('#0369A1');
+		await dialog.getByRole('button', { name: '#B91C1C' }).click();
+		await expect.element(stagedPreview).toHaveTextContent('#B91C1C');
+		await dialog.getByRole('textbox', { name: m.color_picker_hex_label() }).fill('#12');
+		await expect.element(stagedPreview).toHaveTextContent('#0369A1');
 	});
 
 	it('closes without changing value when disabled while open', async () => {

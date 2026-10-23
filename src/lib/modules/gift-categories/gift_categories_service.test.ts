@@ -255,9 +255,7 @@ describe('gift category management service', () => {
 
 		await saveSettings({
 			wishlistId: WISHLIST_ID,
-			customCategories: [],
-			presetKeys: [],
-			presetColors: [],
+			categories: [],
 			confirmedRemovalCategoryIds: [CATEGORY_ID],
 		});
 
@@ -271,7 +269,6 @@ describe('gift category management service', () => {
 		]);
 
 		const setCalls = mockDbInstance.calls.filter((call) => call.method === 'set');
-		expect(setCalls).toHaveLength(2);
 		expect(setCalls[0]?.args[0]).toMatchObject({
 			categoryId: null,
 			updatedAt: expect.any(Date),
@@ -283,7 +280,7 @@ describe('gift category management service', () => {
 		expect(mockDbInstance.calls.filter((call) => call.method === 'for')).toHaveLength(2);
 	});
 
-	it('atomically de-assigns active gifts before soft-deleting a disabled preset category', async () => {
+	it('atomically de-assigns active gifts before soft-deleting an omitted preset category', async () => {
 		const presetCategory = {
 			...customCategory,
 			id: 'preset-category',
@@ -296,14 +293,11 @@ describe('gift category management service', () => {
 
 		await saveSettings({
 			wishlistId: WISHLIST_ID,
-			customCategories: [],
-			presetKeys: [],
-			presetColors: [],
+			categories: [],
 			confirmedRemovalCategoryIds: [presetCategory.id],
 		});
 
 		const setCalls = mockDbInstance.calls.filter((call) => call.method === 'set');
-		expect(setCalls).toHaveLength(2);
 		expect(setCalls[0]?.args[0]).toMatchObject({
 			categoryId: null,
 			updatedAt: expect.any(Date),
@@ -318,15 +312,14 @@ describe('gift category management service', () => {
 
 		await saveSettings({
 			wishlistId: WISHLIST_ID,
-			customCategories: [],
-			presetKeys: [],
-			presetColors: [],
+			categories: [],
 			confirmedRemovalCategoryIds: [],
 		});
 
-		const setCalls = mockDbInstance.calls.filter((call) => call.method === 'set');
-		expect(setCalls).toHaveLength(2);
-		expect(setCalls[1]?.args[0]).toMatchObject({ deletedAt: expect.any(Date) });
+		const setValues = mockDbInstance.calls
+			.filter((call) => call.method === 'set')
+			.map((call) => call.args[0]);
+		expect(setValues).toContainEqual(expect.objectContaining({ deletedAt: expect.any(Date) }));
 	});
 
 	it.each([
@@ -341,9 +334,7 @@ describe('gift category management service', () => {
 		await expect(
 			saveSettings({
 				wishlistId: WISHLIST_ID,
-				customCategories: [],
-				presetKeys: [],
-				presetColors: [],
+				categories: [],
 				confirmedRemovalCategoryIds: confirmations,
 			}),
 		).rejects.toThrow('GIFT_CATEGORY_REMOVAL_CONFIRMATION_MISMATCH');
@@ -355,22 +346,19 @@ describe('gift category management service', () => {
 		mockDbInstance.pushResult([customCategory]);
 		await saveSettings({
 			wishlistId: WISHLIST_ID,
-			customCategories: [{ id: CATEGORY_ID, label: 'Sportovní vybavení', color: '#0369A1' }],
-			presetKeys: [],
-			presetColors: [],
+			categories: [{ id: CATEGORY_ID, label: 'Sportovní vybavení', color: '#0369A1' }],
 			confirmedRemovalCategoryIds: [],
 		});
 
 		const setCalls = mockDbInstance.calls.filter((call) => call.method === 'set');
-		expect(setCalls).toHaveLength(3);
-		expect(setCalls[1]?.args[0]).toMatchObject({ customLabel: 'Sportovní vybavení' });
+		expect(setCalls.at(-1)?.args[0]).toMatchObject({ customLabel: 'Sportovní vybavení' });
 		for (const call of setCalls) {
 			expect(call.args[0]).not.toHaveProperty('editedAfterShareAt');
 		}
 		expect(mockDbInstance.calls.filter((call) => call.method === 'for')).toHaveLength(2);
 	});
 
-	it('restores a soft-deleted preset with the same-save color override', async () => {
+	it('saves a legacy enabled preset without an active row as a new category with its color', async () => {
 		const presetCategory = {
 			...customCategory,
 			id: 'preset-category',
@@ -390,16 +378,28 @@ describe('gift category management service', () => {
 			confirmedRemovalCategoryIds: [],
 		});
 
+		const valuesCall = mockDbInstance.calls.find((call) => call.method === 'values');
+		expect(valuesCall?.args[0]).toMatchObject({ customLabel: 'Knihy', color: '#2563EB' });
 		const setValues = mockDbInstance.calls
 			.filter((call) => call.method === 'set')
-			.map((call) => call.args[0] as Record<string, unknown>);
-		expect(setValues).toContainEqual(
-			expect.objectContaining({
-				deletedAt: null,
-				color: '#2563EB',
-				updatedAt: expect.any(Date),
-			}),
-		);
+			.map((call) => call.args[0]);
+		expect(setValues).not.toContainEqual(expect.objectContaining({ deletedAt: null }));
+	});
+
+	it.each([
+		['neither the ordered list nor the legacy fields', {}],
+		[
+			'both the ordered list and the legacy fields',
+			{ categories: [], customCategories: [], presetKeys: [], presetColors: [] },
+		],
+	])('rejects a save with %s', async (_case, shape) => {
+		mockDbInstance.pushResult([]); // wishlist lock
+		mockDbInstance.pushResult([customCategory]);
+
+		await expect(
+			saveSettings({ wishlistId: WISHLIST_ID, confirmedRemovalCategoryIds: [], ...shape }),
+		).rejects.toThrow('GIFT_CATEGORY_REORDER_MISMATCH');
+		expect(mockDbInstance.calls.filter((call) => call.method === 'set')).toHaveLength(0);
 	});
 
 	it('moves retained custom labels aside before applying an atomic label swap', async () => {
@@ -415,12 +415,10 @@ describe('gift category management service', () => {
 
 		await saveSettings({
 			wishlistId: WISHLIST_ID,
-			customCategories: [
+			categories: [
 				{ id: CATEGORY_ID, label: 'Kategorie Beta', color: '#0369A1' },
 				{ id: secondCategory.id, label: 'Kategorie Alfa', color: '#047857' },
 			],
-			presetKeys: [],
-			presetColors: [],
 			confirmedRemovalCategoryIds: [],
 		});
 
