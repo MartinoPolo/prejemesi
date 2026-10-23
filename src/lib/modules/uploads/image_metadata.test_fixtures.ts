@@ -185,6 +185,21 @@ export function structuralJpeg(): Uint8Array<ArrayBuffer> {
 	);
 }
 
+/**
+ * A structurally complete PNG with no image data: the signature, an IHDR chunk
+ * declaring `width`×`height` and IEND. Chunk CRCs are zero; nothing on the upload
+ * path verifies them.
+ */
+export function structuralPng(width: number, height: number): Uint8Array<ArrayBuffer> {
+	const bytes = new Uint8Array(45);
+	bytes.set([137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13, ...ascii('IHDR')]);
+	const view = new DataView(bytes.buffer);
+	view.setUint32(16, width);
+	view.setUint32(20, height);
+	bytes.set([0, 0, 0, 0, ...ascii('IEND')], 33);
+	return bytes;
+}
+
 function assertJpeg(jpegBytes: Uint8Array): void {
 	if (jpegBytes[0] !== 0xff || jpegBytes[1] !== 0xd8) {
 		throw new Error('Not a JPEG');

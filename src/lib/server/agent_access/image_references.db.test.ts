@@ -27,6 +27,7 @@ import {
 	EXIF_ORIENTATION_ROTATE_CLOCKWISE,
 	identifyingTextIn,
 	structuralJpeg,
+	structuralPng,
 	withExifOrientation,
 	withPhoneMetadata,
 } from '$lib/modules/uploads/image_metadata.test_fixtures.js';
@@ -44,15 +45,8 @@ const HOUR_MS = 60 * 60 * 1000;
 
 type Row = [operation: string, input: Record<string, unknown>];
 
-/** A PNG signature, an IHDR chunk (320×240) and IEND; chunk CRCs are not checked on upload. */
 function pngResponse(): Response {
-	const bytes = new Uint8Array(45);
-	bytes.set([137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13, 73, 72, 68, 82]);
-	const view = new DataView(bytes.buffer);
-	view.setUint32(16, 320);
-	view.setUint32(20, 240);
-	bytes.set([0, 0, 0, 0, 73, 69, 78, 68], 33);
-	return new Response(bytes, { headers: { 'content-type': 'image/png' } });
+	return new Response(structuralPng(320, 240), { headers: { 'content-type': 'image/png' } });
 }
 
 const storedObjects = new Set<string>();
