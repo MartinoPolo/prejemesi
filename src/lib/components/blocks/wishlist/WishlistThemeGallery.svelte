@@ -2,7 +2,10 @@
 	import { RadioGroup as RadioGroupPrimitive } from 'bits-ui';
 	import * as m from '$lib/paraglide/messages.js';
 	import { loadWishlistThemeArt } from '$lib/theme/wishlist_theme_art/index.js';
-	import { wishlistThemeName } from '$lib/theme/wishlist_theme_messages.js';
+	import {
+		wishlistThemeDescription,
+		wishlistThemeName,
+	} from '$lib/theme/wishlist_theme_messages.js';
 	import {
 		WISHLIST_THEMES,
 		WISHLIST_THEME_IDS,
@@ -33,6 +36,7 @@
 	}: WishlistThemeGalleryProps = $props();
 
 	const styles = wishlistAppearanceChoiceVariants();
+	const idPrefix = $props.id();
 	let galleryElement = $state<HTMLElement | null>(null);
 	let thumbnailMotifs = $state.raw<Partial<Record<WishlistThemeId, readonly string[]>>>({});
 	// Bits UI writes the clicked value through the binding first; mirroring the prop keeps the
@@ -106,7 +110,12 @@
 	class={styles.root()}
 	data-testid="wishlist-theme-gallery"
 >
-	<RadioGroupPrimitive.Item value={NO_THEME_VALUE} class={styles.item()}>
+	<RadioGroupPrimitive.Item
+		value={NO_THEME_VALUE}
+		class={styles.item()}
+		aria-labelledby="{idPrefix}-{NO_THEME_VALUE}-name"
+		aria-describedby="{idPrefix}-{NO_THEME_VALUE}-description"
+	>
 		<span
 			class="relative block aspect-[4/3] w-full border-b-2 border-ink bg-background"
 			data-palette={palette}
@@ -114,11 +123,21 @@
 		>
 			{@render thumbnailPaper()}
 		</span>
-		<span class={styles.label()}>{m.wishlist_appearance_no_theme()}</span>
+		<span class={styles.label()}>
+			<span id="{idPrefix}-{NO_THEME_VALUE}-name">{m.wishlist_appearance_no_theme()}</span>
+			<span id="{idPrefix}-{NO_THEME_VALUE}-description" class={styles.description()}>
+				{m.wishlist_appearance_no_theme_description()}
+			</span>
+		</span>
 	</RadioGroupPrimitive.Item>
 	{#each WISHLIST_THEME_IDS as themeId (themeId)}
 		{@const motifs = thumbnailMotifs[themeId] ?? []}
-		<RadioGroupPrimitive.Item value={themeId} class={styles.item()}>
+		<RadioGroupPrimitive.Item
+			value={themeId}
+			class={styles.item()}
+			aria-labelledby="{idPrefix}-{themeId}-name"
+			aria-describedby="{idPrefix}-{themeId}-description"
+		>
 			<span
 				class="relative block aspect-[4/3] w-full overflow-hidden border-b-2 border-ink [background:var(--theme-backdrop,var(--background))]"
 				data-palette={WISHLIST_THEMES[themeId].palette}
@@ -137,7 +156,12 @@
 				{/each}
 				{@render thumbnailPaper()}
 			</span>
-			<span class={styles.label()}>{wishlistThemeName(themeId)}</span>
+			<span class={styles.label()}>
+				<span id="{idPrefix}-{themeId}-name">{wishlistThemeName(themeId)}</span>
+				<span id="{idPrefix}-{themeId}-description" class={styles.description()}>
+					{wishlistThemeDescription(themeId)}
+				</span>
+			</span>
 		</RadioGroupPrimitive.Item>
 	{/each}
 </RadioGroupPrimitive.Root>

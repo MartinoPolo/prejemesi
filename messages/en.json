@@ -1778,6 +1778,7 @@
 	"wishlist_appearance_theme_heading": "Theme",
 	"wishlist_appearance_theme_hint": "A theme sets the palette, background and style at once. You can change each part below.",
 	"wishlist_appearance_no_theme": "No theme",
+	"wishlist_appearance_no_theme_description": "Palette only, no background or illustrations",
 	"wishlist_appearance_palette_heading": "Palette",
 	"wishlist_appearance_palette_hint": "Button and text colors derive from the palette so they stay readable.",
 	"wishlist_appearance_background_heading": "Background",

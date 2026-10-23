@@ -1778,6 +1778,7 @@
 	"wishlist_appearance_theme_heading": "Motiv",
 	"wishlist_appearance_theme_hint": "Motiv nastaví paletu, pozadí i styl najednou. Každou část pak můžete níže změnit.",
 	"wishlist_appearance_no_theme": "Bez motivu",
+	"wishlist_appearance_no_theme_description": "Jen paleta, bez pozadí a ilustrací",
 	"wishlist_appearance_palette_heading": "Paleta",
 	"wishlist_appearance_palette_hint": "Barvy tlačítek a textu se odvozují z palety, aby zůstaly čitelné.",
 	"wishlist_appearance_background_heading": "Pozadí",

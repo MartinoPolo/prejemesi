@@ -14,8 +14,12 @@ export const wishlistAppearanceChoiceVariants = tv({
 			'data-[state=checked]:border-primary',
 		],
 		label: [
-			'flex min-h-9 items-center px-2 py-1 text-(length:--text-xs) leading-tight font-semibold',
+			'flex min-h-9 flex-1 flex-col justify-center gap-0.5 px-2 py-1 text-(length:--text-xs) leading-tight font-semibold',
 			'group-data-[state=checked]:bg-primary group-data-[state=checked]:text-primary-foreground',
+		],
+		description: [
+			'font-normal text-muted-foreground',
+			'group-data-[state=checked]:text-primary-foreground',
 		],
 	},
 });

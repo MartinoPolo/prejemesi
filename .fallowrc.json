@@ -20,6 +20,10 @@
 		{
 			"file": "src/routes/**/+*.ts",
 			"exports": ["prerender", "ssr", "csr", "trailingSlash"]
+		},
+		{
+			"file": "src/lib/theme/wishlist_theme_art/*.ts",
+			"exports": ["motifs", "placements"]
 		}
 	],
 	"ignoreDependencies": [
@@ -27,6 +31,8 @@
 		"vitest-browser-svelte",
 		"@fontsource-variable/figtree",
 		"@fontsource-variable/noto-sans",
+		"@fontsource-variable/fraunces",
+		"@fontsource-variable/caveat",
 		"shadcn-svelte",
 		"tw-animate-css",
 		"@fallow-cli/win32-x64-msvc",

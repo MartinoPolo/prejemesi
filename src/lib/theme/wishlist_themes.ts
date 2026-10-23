@@ -46,7 +46,7 @@ export interface WishlistStyleTokens {
 }
 
 /** Today's look: what a wishlist without a theme and without overrides renders. */
-export const DEFAULT_WISHLIST_STYLE: WishlistStyleTokens = {
+const DEFAULT_WISHLIST_STYLE: WishlistStyleTokens = {
 	corners: 'round',
 	border: 'bold',
 	mat: 'dotted',
