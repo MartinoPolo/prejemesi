@@ -636,6 +636,60 @@ describe.skipIf(!DB_READY)('wishlist operation core [real DB]', () => {
 		});
 	});
 
+	describe('delete only if empty', () => {
+		it('deletes an empty draft list', async () => {
+			const { id: wishlistId } = await createWishlistFixture();
+
+			const result = await executeOperation(recipientActor, deleteWishlistOperation, {
+				wishlistId,
+				onlyIfEmpty: true,
+			});
+
+			expect(result.deleted).toBe(true);
+			expect((await readWishlist(wishlistId)).deletedAt).not.toBeNull();
+		});
+
+		it('keeps a list that already has gifts', async () => {
+			const { id: wishlistId } = await createWishlistFixture();
+			const giftId = await createGiftFixture(wishlistId);
+
+			const result = await executeOperation(recipientActor, deleteWishlistOperation, {
+				wishlistId,
+				onlyIfEmpty: true,
+			});
+
+			expect(result.deleted).toBe(false);
+			expect((await readWishlist(wishlistId)).deletedAt).toBeNull();
+			expect((await readGift(giftId)).deletedAt).toBeNull();
+		});
+
+		it('ignores gifts that were already deleted', async () => {
+			const { id: wishlistId } = await createWishlistFixture();
+			await createGiftFixture(wishlistId, { deletedAt: new Date() });
+
+			const result = await executeOperation(recipientActor, deleteWishlistOperation, {
+				wishlistId,
+				onlyIfEmpty: true,
+			});
+
+			expect(result.deleted).toBe(true);
+		});
+
+		it('still denies an outsider', async () => {
+			const { id: wishlistId } = await createWishlistFixture();
+
+			await expectRejection(
+				executeOperation(outsiderActor, deleteWishlistOperation, {
+					wishlistId,
+					onlyIfEmpty: true,
+				}),
+				403,
+				SERVER_ERROR.ACCESS_DENIED,
+			);
+			expect((await readWishlist(wishlistId)).deletedAt).toBeNull();
+		});
+	});
+
 	describe('import', () => {
 		it('records created gifts as one revision batch of the importing actor', async () => {
 			const { id: wishlistId } = await createWishlistFixture();

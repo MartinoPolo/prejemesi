@@ -33,6 +33,11 @@ import {
 } from './wishlist_revert.js';
 
 const WishlistLifecycleInputSchema = v.strictObject({ wishlistId: v.string() });
+const DeleteWishlistInputSchema = v.strictObject({
+	wishlistId: v.string(),
+	// Checked under the wishlist lock, so a list that received gifts in the meantime is kept.
+	onlyIfEmpty: v.optional(v.boolean()),
+});
 
 function withoutActor(context: MutationOperationContext, userIds: readonly string[]): string[] {
 	return userIds.filter((userId) => userId !== context.actor.userId);
@@ -185,7 +190,7 @@ export const deleteWishlistOperation = defineOperation({
 	name: 'deleteWishlist',
 	kind: OPERATION_KIND.mutation,
 	exposure: OPERATION_EXPOSURE.humanOnly,
-	input: WishlistLifecycleInputSchema,
+	input: DeleteWishlistInputSchema,
 	async run(context, input) {
 		const { wishlistRow } = await requireWishlistManagement(
 			context.transaction,
@@ -200,6 +205,9 @@ export const deleteWishlistOperation = defineOperation({
 			.select({ imageKey: gift.imageKey })
 			.from(gift)
 			.where(and(eq(gift.wishlistId, input.wishlistId), isNull(gift.deletedAt)));
+		if (input.onlyIfEmpty === true && giftImageRows.length > 0) {
+			return { wishlistShortId: wishlistRow.shortId, deleted: false };
+		}
 		await context.transaction
 			.update(wishlist)
 			.set({ deletedAt: context.now, updatedAt: context.now })
@@ -210,7 +218,7 @@ export const deleteWishlistOperation = defineOperation({
 			...giftImageRows.map((row) => row.imageKey),
 		];
 		context.deferEffect(() => deleteObjectsBestEffort(unreachableImageKeys));
-		return { wishlistShortId: wishlistRow.shortId };
+		return { wishlistShortId: wishlistRow.shortId, deleted: true };
 	},
 });
 
