@@ -55,6 +55,9 @@ Přejeme si is a shareable wishlist web app where users create gift lists for th
 - **App palette** — A per-user appearance preference mirrored in a cookie and applied as SSR `data-palette` on `<html>`; the old app-background theme axis is retired.
 - **Scoped wishlist palette** — Palette-derived semantic tokens applied on the wishlist subtree without changing the viewer's app-shell palette.
 - **Palette derivation** — Curated primitives derive semantic colors through CSS `color-mix(in oklab, …)`; arbitrary category-picker hex colors are not custom wishlist palettes.
+- **Wishlist theme** (Motiv) — A curated wishlist preset of palette, decorative backdrop with motifs, and default style tokens; the registry is `src/lib/theme/wishlist_themes.ts`. Choosing one copies its palette into the wishlist palette.
+- **Style tokens** — Per-wishlist corners, card border, image mat and heading font; the theme supplies defaults and only the manager's explicit choices are stored as overrides.
+- **Wishlist background** (Pozadí) — The wishlist page backdrop: from the theme, a custom uploaded photo with focal point, placement, dim and scroll motion, or none. Content surfaces stay opaque over it.
 
 ### Navigation
 
@@ -83,7 +86,7 @@ _Avoid_: "list" for Wishlist (ambiguous), "present" for Gift (confusing with tim
 - Sharing: visitor links, manager invites, social buttons.
 - Notifications: critical email, in-app activity, new-gift digest.
 - Navigation: Přehled home and the Moje seznamy, Spravované and Sledované section pages.
-- Appearance and language: curated user and wishlist palettes, image-frame fill, Czech primary with English.
+- Appearance and language: curated user and wishlist palettes, wishlist themes with backgrounds and style tokens, image-frame fill, Czech primary with English.
 - Profile and settings: identity, notifications, appearance.
 - Isolated editable demo playground from the landing page.
 - Agent access: access tokens, JSON API, remote MCP server, `prejemesi` CLI, change proposals with review and undo, the add-gifts research skill.
