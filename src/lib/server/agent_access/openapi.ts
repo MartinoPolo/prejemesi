@@ -311,9 +311,13 @@ const AGENT_IMAGE_RESPONSE_SCHEMA = {
 					type: 'string',
 					description: `Set as \`${IMAGE_REFERENCE_FIELD}\` in a createGift or updateGift row.`,
 				},
-				url: { type: 'string', description: 'Where the stored copy is served.' },
+				url: {
+					type: 'string',
+					description:
+						'Where the stored copy is served; location and camera metadata are removed from it.',
+				},
 				contentType: { type: 'string', enum: [...ALLOWED_CONTENT_TYPES] },
-				byteLength: { type: 'integer' },
+				byteLength: { type: 'integer', description: 'Size of the stored copy.' },
 				width: { type: 'integer' },
 				height: { type: 'integer' },
 				expiresAt: {
