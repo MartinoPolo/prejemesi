@@ -51,8 +51,9 @@ export const readGiftCategoriesOperation = defineOperation({
 });
 
 /**
- * Every category row, enabled or not, for the category settings editor. Like
- * {@link readGiftCategoriesOperation}, the first read inserts the default set.
+ * Every category row, enabled or not. Superseded by {@link readGiftCategoriesOperation}, which the
+ * category settings now read; kept for existing agent clients. The first read likewise inserts the
+ * default set.
  */
 export const readGiftCategorySettingsRowsOperation = defineOperation({
 	name: 'readGiftCategorySettingsRows',
@@ -66,8 +67,8 @@ export const readGiftCategorySettingsRowsOperation = defineOperation({
 });
 
 /**
- * Reconciles the complete category settings snapshot. Removing a category unassigns its gifts,
- * which records a revision for each of them.
+ * Reconciles the complete ordered category list. Removing a category unassigns its gifts, which
+ * records a revision for each of them.
  */
 export const saveGiftCategorySettingsOperation = defineOperation({
 	name: 'saveGiftCategorySettings',

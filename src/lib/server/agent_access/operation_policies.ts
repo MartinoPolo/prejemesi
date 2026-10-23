@@ -371,7 +371,8 @@ export const AGENT_OPERATION_POLICIES: AgentOperationPolicies = {
 		projectOutput: projectWishlistShortId,
 	}),
 	saveGiftCategorySettings: agentOperation({
-		summary: 'Saves which gift categories a wishlist uses and their order.',
+		summary:
+			'Saves the ordered gift categories of a wishlist: renames, recolors, reorders, removes or creates them.',
 		scope: AGENT_SCOPE.giftsWrite,
 		targets: byWishlistId((input) => input.wishlistId),
 		projectOutput: projectWishlistShortId,

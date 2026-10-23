@@ -26,7 +26,10 @@ import { moderatorAssignment } from '$lib/server/db/moderator.schema.js';
 import { dispatchNotification } from '$lib/modules/notifications/notification_dispatcher.js';
 import { NOTIFICATION_TYPE } from '$lib/modules/notifications/types.js';
 import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
-import type { SaveGiftCategorySettingsInput } from '$lib/modules/gift-categories/types.js';
+import type {
+	GiftCategoryPresetKey,
+	SaveGiftCategorySettingsInput,
+} from '$lib/modules/gift-categories/types.js';
 import {
 	MAX_PRIORITY_LEVELS,
 	PRIORITY_LEVEL_LABEL_MAX_LENGTH,
@@ -95,9 +98,7 @@ function categorySettings(
 ): SaveGiftCategorySettingsInput {
 	return {
 		wishlistId,
-		customCategories: [],
-		presetKeys: [],
-		presetColors: [],
+		categories: [],
 		confirmedRemovalCategoryIds: [],
 		...overrides,
 	};
@@ -105,7 +106,7 @@ function categorySettings(
 
 async function createCategoryFixture(
 	wishlistId: string,
-	values: { customLabel?: string; presetKey?: string; color: string },
+	values: { customLabel?: string; presetKey?: GiftCategoryPresetKey; color: string },
 ): Promise<string> {
 	const [created] = await getDb()
 		.insert(giftCategory)
@@ -460,7 +461,7 @@ describe.skipIf(!DB_READY)('wishlist operation core [real DB]', () => {
 			);
 		});
 
-		it('restores the assignment when the removed preset category is enabled again', async () => {
+		it('keeps refusing the undo after a removed preset is added again, as a new category', async () => {
 			const { id: wishlistId } = await createWishlistFixture();
 			const categoryId = await createCategoryFixture(wishlistId, {
 				presetKey: BOOKS_PRESET.key,
@@ -478,15 +479,17 @@ describe.skipIf(!DB_READY)('wishlist operation core [real DB]', () => {
 				recipientActor,
 				saveGiftCategorySettingsOperation,
 				categorySettings(wishlistId, {
-					presetKeys: [BOOKS_PRESET.key],
-					presetColors: [BOOKS_PRESET],
+					categories: [{ id: null, label: 'Knihy', color: BOOKS_PRESET.color }],
 				}),
 			);
-			await executeOperation(recipientActor, undoGiftRevisionBatchOperation, {
-				batchId: removalBatchId,
-			});
-
-			expect((await readGift(giftId)).categoryId).toBe(categoryId);
+			await expectRejection(
+				executeOperation(recipientActor, undoGiftRevisionBatchOperation, {
+					batchId: removalBatchId,
+				}),
+				400,
+				SERVER_ERROR.GIFT_CATEGORY_WISHLIST_MISMATCH,
+			);
+			expect((await readGift(giftId)).categoryId).toBeNull();
 		});
 	});
 
@@ -501,9 +504,7 @@ describe.skipIf(!DB_READY)('wishlist operation core [real DB]', () => {
 			await executeOperation(managerActor, saveWishlistSettingsOperation, {
 				wishlistId,
 				categories: {
-					customCategories: [],
-					presetKeys: [],
-					presetColors: [],
+					categories: [],
 					confirmedRemovalCategoryIds: [categoryId],
 				},
 			});

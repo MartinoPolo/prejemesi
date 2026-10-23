@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
 	serverErrorFixture as SERVER_ERROR,
 	singleFlightRefreshFixture as singleFlightRefresh,
-	getGiftCategorySettingsRowsFixture as getGiftCategorySettingsRows,
+	getGiftCategoriesFixture as getGiftCategories,
 	mockDbInstance,
 	mockDeleteObjects,
 	WISHLIST_ID,
@@ -49,10 +49,7 @@ describe('updateGift', () => {
 
 			await callUpdateGift(makeRecipientAuthContext(), { id: GIFT_ID, categoryId: null });
 
-			expect(singleFlightRefresh).toHaveBeenCalledWith(
-				getGiftCategorySettingsRows,
-				WISHLIST_ID,
-			);
+			expect(singleFlightRefresh).toHaveBeenCalledWith(getGiftCategories, WISHLIST_ID);
 		});
 
 		it('persists updated image metadata', async () => {
@@ -285,10 +282,7 @@ describe('updateGift', () => {
 
 			await callUpdateGift(makeRecipientAuthContext(), { id: GIFT_ID, categoryId: null });
 
-			expect(singleFlightRefresh).toHaveBeenCalledWith(
-				getGiftCategorySettingsRows,
-				WISHLIST_ID,
-			);
+			expect(singleFlightRefresh).toHaveBeenCalledWith(getGiftCategories, WISHLIST_ID);
 		});
 
 		it('allows raising quantity (3 -> 5)', async () => {

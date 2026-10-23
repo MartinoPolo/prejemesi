@@ -43,7 +43,7 @@ vi.mock('$lib/modules/gifts/gifts.remote.js', () => ({
 	getGiftsByWishlistShortId: vi.fn(),
 }));
 vi.mock('$lib/modules/gift-categories/gift_category_queries.remote.js', () => ({
-	getGiftCategorySettingsRows: vi.fn(),
+	getGiftCategories: vi.fn(),
 }));
 
 import { closeDb, getDb } from '$lib/server/db/index.js';

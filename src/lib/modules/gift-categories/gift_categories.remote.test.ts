@@ -45,8 +45,7 @@ const getGiftsByWishlistShortId = vi.fn();
 Object.assign(getGiftsByWishlistShortId, { __: {} });
 vi.mock('$lib/modules/gifts/gifts.remote.js', () => ({ getGiftsByWishlistShortId }));
 
-const { getGiftCategories, getGiftCategorySettingsRows } =
-	await import('./gift_category_queries.remote.js');
+const { getGiftCategories } = await import('./gift_category_queries.remote.js');
 const { saveGiftCategorySettingsCommand } = await import('./gift_categories.remote.js');
 
 function deferred() {
@@ -64,9 +63,7 @@ describe('gift category remote commands', () => {
 		const wishlistRow = { shortId: 'short-1' };
 		const input = {
 			wishlistId: 'wishlist-1',
-			customCategories: [],
-			presetKeys: [],
-			presetColors: [],
+			categories: [],
 			confirmedRemovalCategoryIds: [],
 		};
 		requireMutableManagedWishlist.mockResolvedValue(wishlistRow);
@@ -90,13 +87,9 @@ describe('gift category remote commands', () => {
 		expect(singleFlightRefresh).toHaveBeenNthCalledWith(1, getGiftCategories, 'wishlist-1');
 		expect(singleFlightRefresh).toHaveBeenNthCalledWith(
 			2,
-			getGiftCategorySettingsRows,
-			'wishlist-1',
-		);
-		expect(singleFlightRefresh).toHaveBeenNthCalledWith(
-			3,
 			getGiftsByWishlistShortId,
 			'short-1',
 		);
+		expect(singleFlightRefresh).toHaveBeenCalledTimes(2);
 	});
 });

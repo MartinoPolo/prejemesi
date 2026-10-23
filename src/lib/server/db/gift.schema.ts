@@ -19,7 +19,10 @@ import { cascadingReferenceColumn, softDeletableTimestampColumns } from './colum
 import type { ImageMetadata } from '$lib/modules/images/types.js';
 import type { GiftLink, DescriptionAppend } from '$lib/modules/gifts/types.js';
 import type { PreShareGiftSnapshot } from '$lib/modules/gifts/gift_post_share.js';
-import { GIFT_CATEGORY_PRESET_KEYS } from '$lib/modules/gift-categories/presets.js';
+import {
+	GIFT_CATEGORY_PRESET_KEYS,
+	type GiftCategoryPresetKey,
+} from '$lib/modules/gift-categories/presets.js';
 
 const presetKeySqlList = sql.join(
 	GIFT_CATEGORY_PRESET_KEYS.map((key) => sql`${key}`),
@@ -35,7 +38,7 @@ export const giftCategory = pgTable(
 		wishlistId: text('wishlist_id')
 			.notNull()
 			.references(() => wishlist.id, { onDelete: 'cascade' }),
-		presetKey: text('preset_key'),
+		presetKey: text('preset_key').$type<GiftCategoryPresetKey>(),
 		customLabel: text('custom_label'),
 		color: text('color').notNull(),
 		sortOrder: integer('sort_order').notNull().default(0),

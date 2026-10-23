@@ -17,10 +17,12 @@ import { getDb } from '$lib/server/db/index.js';
 import { giftCategory } from '$lib/server/db/gift.schema.js';
 import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
 import { DEFAULT_ENABLED_GIFT_CATEGORY_PRESET_KEYS } from '$lib/modules/gift-categories/presets.js';
+import { labelForGiftCategory } from '$lib/modules/gift-categories/types.js';
 import { executeOperation } from './runner.js';
 import {
 	createGiftCategoryOperation,
 	readGiftCategoriesOperation,
+	saveGiftCategorySettingsOperation,
 } from './gift_grouping_operations.js';
 
 const NEW_COLOR = '#0F766E';
@@ -108,7 +110,58 @@ describe.skipIf(!DB_READY)('creating a category from a category picker [real DB]
 		expect((await readGift(giftId)).editedAfterShareAt).not.toBeNull();
 	});
 
-	it('rejects a name that an existing or preset category already uses', async () => {
+	it('allows a preset name once the wishlist no longer has that preset', async () => {
+		const { id: wishlistId } = await createWishlistFixture();
+		const categories = await executeOperation(recipientActor, readGiftCategoriesOperation, {
+			wishlistId,
+		});
+		const gamesPreset = categories.find((category) => category.presetKey === 'games')!;
+		await getDb()
+			.update(giftCategory)
+			.set({ deletedAt: new Date() })
+			.where(eq(giftCategory.id, gamesPreset.id));
+
+		const { category } = await executeOperation(recipientActor, createGiftCategoryOperation, {
+			wishlistId,
+			label: 'Hry',
+			color: NEW_COLOR,
+			giftIds: [],
+		});
+
+		expect(category).toMatchObject({ presetKey: null, customLabel: 'Hry' });
+	});
+
+	it('allows a preset name once that preset was renamed', async () => {
+		const { id: wishlistId } = await createWishlistFixture();
+		const categories = await executeOperation(recipientActor, readGiftCategoriesOperation, {
+			wishlistId,
+		});
+		const booksPreset = categories.find((category) => category.presetKey === 'books')!;
+		await executeOperation(recipientActor, saveGiftCategorySettingsOperation, {
+			wishlistId,
+			categories: categories.map((category) => ({
+				id: category.id,
+				label:
+					category.id === booksPreset.id ? 'Četba' : labelForGiftCategory(category, 'cs'),
+				color: category.color,
+			})),
+			confirmedRemovalCategoryIds: [],
+		});
+
+		const { category } = await executeOperation(recipientActor, createGiftCategoryOperation, {
+			wishlistId,
+			label: 'Knihy',
+			color: NEW_COLOR,
+			giftIds: [],
+		});
+
+		expect(category).toMatchObject({ presetKey: null, customLabel: 'Knihy' });
+		expect(category.id).not.toBe(booksPreset.id);
+		const rows = await activeCategories(wishlistId);
+		expect(rows.find((row) => row.id === booksPreset.id)?.customLabel).toBe('Četba');
+	});
+
+	it('rejects a name that an enabled category already uses in either language', async () => {
 		const { id: wishlistId } = await createWishlistFixture();
 		await executeOperation(recipientActor, createGiftCategoryOperation, {
 			wishlistId,
