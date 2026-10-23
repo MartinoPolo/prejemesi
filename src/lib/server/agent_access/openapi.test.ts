@@ -180,6 +180,30 @@ describe('agent API document', () => {
 		}
 	});
 
+	it('documents a wishlist background whose image key may be omitted to keep the stored upload', () => {
+		const backgroundSchema = v
+			.parse(
+				v.object({
+					properties: v.object({
+						appearance: v.object({
+							properties: v.object({
+								background: v.object({
+									anyOf: v.array(v.record(v.string(), v.unknown())),
+								}),
+							}),
+						}),
+					}),
+				}),
+				documentedInputSchema('saveWishlistSettings'),
+			)
+			.properties.appearance.properties.background.anyOf.find(
+				(variant) => variant.type === 'object',
+			);
+		expect(backgroundSchema).toMatchObject({ properties: { imageKey: expect.anything() } });
+		expect(backgroundSchema?.required).toEqual(expect.arrayContaining(['mode', 'dim']));
+		expect(backgroundSchema?.required).not.toContain('imageKey');
+	});
+
 	it('describes the error shape every failure uses', () => {
 		expect(document.components.schemas.Error).toMatchObject({
 			required: ['error'],

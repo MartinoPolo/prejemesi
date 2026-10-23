@@ -23,6 +23,17 @@ describe('WishlistAppearanceInputSchema', () => {
 		expect(v.safeParse(WishlistAppearanceInputSchema, cleared).success).toBe(true);
 	});
 
+	it('accepts a background without an image key, which keeps the stored upload', () => {
+		const { imageKey: _omitted, ...backgroundWithoutImageKey } = DEFAULT_WISHLIST_BACKGROUND;
+		const parsed = v.safeParse(WishlistAppearanceInputSchema, {
+			...validAppearance,
+			background: backgroundWithoutImageKey,
+		});
+		expect(parsed.success).toBe(true);
+		expect(parsed.output).toMatchObject({ background: backgroundWithoutImageKey });
+		expect(parsed.output).not.toHaveProperty('background.imageKey');
+	});
+
 	it.each([
 		['an unknown theme', { ...validAppearance, themeId: 'halloween' }],
 		['an unknown token key', { ...validAppearance, styleTokens: { glow: 'neon' } }],

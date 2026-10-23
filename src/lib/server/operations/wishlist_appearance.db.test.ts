@@ -256,6 +256,90 @@ describe.skipIf(!DB_READY)('wishlist appearance [real DB]', () => {
 			expect(deletedObjectKeys()).toEqual([firstKey, secondKey]);
 		});
 
+		async function storeCustomBackground(wishlistId: string): Promise<string> {
+			const backgroundKey = `wishlists/backgrounds/${wishlistId}-kept.webp`;
+			await executeOperation(managerActor, saveWishlistSettingsOperation, {
+				wishlistId,
+				appearance: {
+					themeId: null,
+					styleTokens: null,
+					background: customBackground(backgroundKey),
+					backgroundAssignmentToken: await assignmentToken(backgroundKey),
+				},
+			});
+			return backgroundKey;
+		}
+
+		function withoutImageKey(
+			background: WishlistBackground,
+		): Omit<WishlistBackground, 'imageKey'> {
+			const { imageKey: _omitted, ...backgroundWithoutImageKey } = background;
+			return backgroundWithoutImageKey;
+		}
+
+		it('keeps the stored upload when a save omits the image key', async () => {
+			const { id: wishlistId } = await createWishlistFixture();
+			const backgroundKey = await storeCustomBackground(wishlistId);
+
+			await executeOperation(managerActor, saveWishlistSettingsOperation, {
+				wishlistId,
+				appearance: {
+					themeId: 'books',
+					styleTokens: null,
+					background: { ...withoutImageKey(customBackground(backgroundKey)), dim: 40 },
+				},
+			});
+
+			expect((await readAppearance(wishlistId)).background).toEqual({
+				...customBackground(backgroundKey),
+				dim: 40,
+			});
+			expect(deletedObjectKeys()).toEqual([]);
+		});
+
+		it('keeps the stored upload when a mode switch omits the image key', async () => {
+			const { id: wishlistId } = await createWishlistFixture();
+			const backgroundKey = await storeCustomBackground(wishlistId);
+
+			await executeOperation(managerActor, saveWishlistSettingsOperation, {
+				wishlistId,
+				appearance: {
+					themeId: 'space',
+					styleTokens: null,
+					background: {
+						...withoutImageKey(customBackground(backgroundKey)),
+						mode: 'theme',
+					},
+				},
+			});
+
+			expect((await readAppearance(wishlistId)).background).toEqual({
+				...customBackground(backgroundKey),
+				mode: 'theme',
+			});
+			expect(deletedObjectKeys()).toEqual([]);
+		});
+
+		it('clears and deletes the stored upload when a save sends a null image key', async () => {
+			const { id: wishlistId } = await createWishlistFixture();
+			const backgroundKey = await storeCustomBackground(wishlistId);
+
+			await executeOperation(managerActor, saveWishlistSettingsOperation, {
+				wishlistId,
+				appearance: {
+					themeId: null,
+					styleTokens: null,
+					background: { ...DEFAULT_WISHLIST_BACKGROUND, imageKey: null },
+				},
+			});
+
+			expect((await readAppearance(wishlistId)).background).toEqual({
+				...DEFAULT_WISHLIST_BACKGROUND,
+				imageKey: null,
+			});
+			expect(deletedObjectKeys()).toEqual([backgroundKey]);
+		});
+
 		it('deletes the background upload with a deleted wishlist', async () => {
 			const { id: wishlistId } = await createWishlistFixture();
 			const backgroundKey = `wishlists/backgrounds/${wishlistId}.webp`;

@@ -312,6 +312,22 @@ describe('authorizeAgentOperation', () => {
 				},
 			}),
 		).resolves.toMatchObject({ targetWishlistIds: [ALLOWED_WISHLIST_ID] });
+		await expect(
+			authorizeAgentOperation(grantWith(everyScope), 'saveWishlistSettings', {
+				wishlistId: ALLOWED_WISHLIST_ID,
+				appearance: {
+					themeId: 'space',
+					styleTokens: null,
+					background: {
+						mode: 'theme',
+						focal: { x: 50, y: 50 },
+						placement: 'gutters',
+						dim: 20,
+						motion: 'subtle',
+					},
+				},
+			}),
+		).resolves.toMatchObject({ targetWishlistIds: [ALLOWED_WISHLIST_ID] });
 	});
 });
 

@@ -40,7 +40,16 @@ const BACKGROUND_FIELD_SCHEMAS = {
 export const WishlistAppearanceInputSchema = v.strictObject({
 	themeId: v.nullable(v.picklist(WISHLIST_THEME_IDS)),
 	styleTokens: v.nullable(v.partial(v.strictObject(STYLE_TOKEN_SCHEMAS))),
-	background: v.nullable(v.strictObject(BACKGROUND_FIELD_SCHEMAS)),
+	/**
+	 * An omitted image key keeps the stored upload, so a client that cannot reference images (an
+	 * agent) can change the background without deleting it; null clears and deletes the upload.
+	 */
+	background: v.nullable(
+		v.strictObject({
+			...BACKGROUND_FIELD_SCHEMAS,
+			imageKey: v.optional(BACKGROUND_FIELD_SCHEMAS.imageKey),
+		}),
+	),
 	/** Upload proof, required only when assigning a newly uploaded background image key. */
 	backgroundAssignmentToken: v.optional(v.string()),
 });

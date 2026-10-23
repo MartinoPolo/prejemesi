@@ -15,17 +15,34 @@ import {
 
 type AppearanceInput = NonNullable<SaveWishlistSettingsInput['appearance']>;
 
+/** The image key a background draft requests: undefined keeps the stored upload. */
+function requestedBackgroundImageKey(appearance: AppearanceInput): string | null | undefined {
+	return appearance.background === null ? null : appearance.background.imageKey;
+}
+
 /** Only explicit choices are stored, so an empty override set reads like no override. */
-function planAppearanceEdit(appearance: AppearanceInput | undefined): Partial<WishlistRow> {
+function planAppearanceEdit(
+	wishlistRow: WishlistRow,
+	appearance: AppearanceInput | undefined,
+): Partial<WishlistRow> {
 	if (appearance === undefined) {
 		return {};
 	}
-	const styleTokens = appearance.styleTokens;
+	const { styleTokens, background } = appearance;
 	return {
 		themeId: appearance.themeId,
 		styleTokens:
 			styleTokens === null || Object.keys(styleTokens).length === 0 ? null : styleTokens,
-		background: appearance.background,
+		background:
+			background === null
+				? null
+				: {
+						...background,
+						imageKey:
+							background.imageKey === undefined
+								? wishlistBackgroundImageKey(wishlistRow.background)
+								: background.imageKey,
+					},
 	};
 }
 
@@ -43,7 +60,7 @@ function planSettingsEdit(
 		...planWishlistDetailEdit(wishlistRow, { ...input.details, ...input.image }, now),
 		...(recipientName === undefined ? {} : { recipientName }),
 		...(input.palette === undefined ? {} : { palette: input.palette }),
-		...planAppearanceEdit(input.appearance),
+		...planAppearanceEdit(wishlistRow, input.appearance),
 	};
 }
 
@@ -61,7 +78,7 @@ function authorizeBackgroundReplacement(
 		actorUserId,
 		storedBackgroundKey,
 		{
-			imageKey: appearance.background?.imageKey ?? null,
+			imageKey: requestedBackgroundImageKey(appearance),
 			assignmentToken: appearance.backgroundAssignmentToken,
 		},
 		'wishlist-background',
