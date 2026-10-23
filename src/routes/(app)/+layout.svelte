@@ -139,6 +139,13 @@
 		padding-block: var(--space-6);
 	}
 
+	/* Wishlist theme backdrops (#535) position against the content column and fill at least
+	   the visible scroller, so short lists never end in a plain strip. */
+	.app-content-inner.wishlist-detail-content {
+		position: relative;
+		min-height: 100%;
+	}
+
 	@media (width < 640px) {
 		.app-content-inner.wishlist-detail-content {
 			padding-block: 0;

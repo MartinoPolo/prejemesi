@@ -47,6 +47,8 @@ export const IMAGE_VARIANTS = {
 	thumbnail: { cssWidth: 48 },
 	/** Wishlist page header image (the taped polaroid print). */
 	banner: { cssWidth: 152 },
+	/** Custom wishlist background photo, served at viewport width (`sizes="100vw"`). */
+	background: { cssWidth: 1440 },
 } as const satisfies Record<string, { cssWidth: number }>;
 
 export type ImageVariant = keyof typeof IMAGE_VARIANTS;

@@ -258,7 +258,7 @@
 			class="gift-list-content flex min-w-0 flex-col gap-0.5 self-stretch sm:gap-1"
 		>
 			<div
-				class="flex min-w-0 items-start gap-1.5 font-heading text-[1rem] leading-[1.3] sm:text-[1.5rem]"
+				class="flex min-w-0 items-start gap-1.5 [font-family:var(--wishlist-gift-title-font,var(--font-head))] text-[1rem] leading-[1.3] sm:text-[1.5rem]"
 			>
 				<h3
 					class={cn(

@@ -7,6 +7,7 @@
      a never-shared draft or one reverted from active. The same /w/<id> URL revives its full
      view for everyone once a manager (re-)shares the list. -->
 <EmptyState
+	class="wishlist-backdrop-panel"
 	emoji="🛠️"
 	title={m.wishlist_preparing_title()}
 	description={m.wishlist_preparing_description()}

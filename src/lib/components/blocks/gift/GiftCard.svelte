@@ -161,7 +161,9 @@
 				></div>
 			{/if}
 
-			<div class="absolute inset-x-0 top-0 bottom-[2.5px] flex items-center justify-center">
+			<div
+				class="absolute inset-x-0 top-0 bottom-(--border-w) flex items-center justify-center"
+			>
 				<div class={styles.cropComposition()} data-testid="gift-card-crop-composition">
 					<GiftImage
 						class="size-full rounded-none bg-transparent max-sm:[&_img]:p-0"

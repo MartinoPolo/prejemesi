@@ -57,6 +57,7 @@
 		type WishlistRole,
 	} from '$lib/modules/wishlists/types.js';
 	import type { Palette } from '$lib/theme/palettes.js';
+	import type { WishlistAppearancePreview } from './wishlist_theme_scope.js';
 	import {
 		overlayCloseButtonClass,
 		overlayCloseButtonSurfaceClass,
@@ -82,6 +83,8 @@
 		onsaved: () => Promise<void>;
 		/** Optimistic palette update so the page's data-palette subtree re-themes instantly. */
 		onpaletteselect?: (palette: Palette) => void;
+		/** Live appearance preview on the page (#535); null drops it after a discard or save. */
+		onappearancepreview?: (appearance: WishlistAppearancePreview | null) => void;
 		/** Fires after a successful delete so the page can navigate away + refresh dashboards. */
 		ondeleted?: () => void;
 		/** Awaited page refresh after a successful revert-to-draft (issue #150). */
@@ -114,6 +117,8 @@
 		themeEmoji,
 		onsaved,
 		onpaletteselect,
+		// eslint-disable-next-line @typescript-eslint/no-unused-vars -- the appearance editor (#535) calls it
+		onappearancepreview,
 		ondeleted,
 		onreverted,
 		onimport,
