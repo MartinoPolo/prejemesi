@@ -16,6 +16,7 @@ import {
 } from '$lib/server/remote.js';
 import { deleteObjectsBestEffort } from '$lib/server/storage/r2.js';
 import { isStoredObjectKey, resolveUserImageUrl } from '$lib/modules/images/public_url.js';
+import { wishlistBackgroundImageKey } from '$lib/modules/wishlists/wishlist_appearance.js';
 import {
 	PALETTE_COOKIE_MAX_AGE_SECONDS,
 	PALETTE_COOKIE_NAME,
@@ -338,10 +339,15 @@ export const deleteAccount = guardedCommandNoArgs(async ({ user: authUser }) => 
 	}
 
 	const ownWishlists = await database
-		.select({ id: wishlist.id, imageKey: wishlist.imageKey })
+		.select({ id: wishlist.id, imageKey: wishlist.imageKey, background: wishlist.background })
 		.from(wishlist)
 		.where(eq(wishlist.recipientUserId, authUser.id));
-	imageKeys.push(...ownWishlists.map((row) => row.imageKey));
+	imageKeys.push(
+		...ownWishlists.flatMap((row) => [
+			row.imageKey,
+			wishlistBackgroundImageKey(row.background),
+		]),
+	);
 
 	if (ownWishlists.length > 0) {
 		const giftRows = await database

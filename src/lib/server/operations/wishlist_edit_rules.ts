@@ -1,5 +1,6 @@
 import { isWithinGraceWindow } from '$lib/modules/sharing/grace_window.js';
 import { WISHLIST_KIND, type WishlistKind } from '$lib/modules/wishlists/types.js';
+import type { WishlistUploadTarget } from '$lib/modules/wishlists/wishlist_image_assignment.js';
 import type { WishlistRow } from './wishlist_management.js';
 import { assertEventDateAllowed, planWishlistKindChange } from './wishlist_kind_rules.js';
 
@@ -63,24 +64,26 @@ export function planWishlistDetailEdit(
 }
 
 /**
- * A newly assigned banner must carry the uploader's assignment proof, so nobody can plant a key
- * they did not upload and later get it deleted. Returns the stored key the edit replaces.
+ * A newly assigned banner or background must carry the uploader's assignment proof, so nobody can
+ * plant a key they did not upload and later get it deleted. Returns the stored key it replaces.
  */
-export async function authorizeBannerReplacement(
+export async function authorizeWishlistUploadReplacement(
 	actorUserId: string,
 	currentImageKey: string | null,
 	requested: { imageKey?: string | null; assignmentToken?: string },
+	uploadTarget: WishlistUploadTarget,
 ): Promise<string | null> {
 	if (requested.imageKey === undefined || requested.imageKey === currentImageKey) {
 		return null;
 	}
 	if (requested.imageKey !== null) {
-		const { assertWishlistBannerAssignment } =
+		const { assertWishlistUploadAssignment } =
 			await import('$lib/modules/wishlists/wishlist_image_assignment.js');
-		await assertWishlistBannerAssignment(
+		await assertWishlistUploadAssignment(
 			actorUserId,
 			requested.imageKey,
 			requested.assignmentToken,
+			uploadTarget,
 		);
 	}
 	return currentImageKey;

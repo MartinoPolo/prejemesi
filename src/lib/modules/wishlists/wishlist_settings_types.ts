@@ -8,6 +8,10 @@ import {
 	WISHLIST_TITLE_MAX_LENGTH,
 	type WishlistKind,
 } from './types.js';
+import {
+	WishlistAppearanceInputSchema,
+	type WishlistAppearanceInput,
+} from './wishlist_appearance.js';
 
 const DetailsSchema = v.object({
 	title: v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(WISHLIST_TITLE_MAX_LENGTH)),
@@ -24,6 +28,7 @@ export const SaveWishlistSettingsInputSchema = v.object({
 	details: v.optional(DetailsSchema),
 	categories: v.optional(v.omit(SaveGiftCategorySettingsInputSchema, ['wishlistId'])),
 	palette: v.optional(v.custom<Palette>(isPalette)),
+	appearance: v.optional(WishlistAppearanceInputSchema),
 	image: v.optional(
 		v.object({
 			imageKey: v.nullable(v.string()),
@@ -44,6 +49,7 @@ export interface SaveWishlistSettingsInput {
 	};
 	categories?: Omit<v.InferOutput<typeof SaveGiftCategorySettingsInputSchema>, 'wishlistId'>;
 	palette?: Palette;
+	appearance?: WishlistAppearanceInput;
 	image?: {
 		imageKey: string | null;
 		imageSlots: WishlistImageSlots | null;

@@ -25,6 +25,7 @@ export const MAX_GIFT_IMAGE_BYTES = 5 * 1024 * 1024;
 export const MAX_FILE_SIZE = {
 	'gift-image': MAX_GIFT_IMAGE_BYTES,
 	'wishlist-banner': 10 * 1024 * 1024,
+	'wishlist-background': 10 * 1024 * 1024,
 	'wishlist-thumbnail': 5 * 1024 * 1024,
 	avatar: 5 * 1024 * 1024,
 } as const satisfies Record<UploadTarget, number>;

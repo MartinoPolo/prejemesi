@@ -30,6 +30,7 @@ export const UPLOAD_TARGETS = {
 	'gift-image': 'gifts',
 	'wishlist-banner': 'wishlists/banners',
 	'wishlist-thumbnail': 'wishlists/thumbnails',
+	'wishlist-background': 'wishlists/backgrounds',
 	// Forward-ported from profile/settings – not in issue #5 scope but already wired up
 	avatar: 'avatars',
 } as const;

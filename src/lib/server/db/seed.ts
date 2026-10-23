@@ -345,6 +345,7 @@ async function seed() {
 			{
 				id: WL_XMAS26,
 				shortId: 'xmas2026',
+				themeId: 'christmas',
 				recipientUserId: MARTIN,
 				recipientName: null,
 				// Linked recipient self-promoted to also see reservation state (disclosure only,
@@ -394,6 +395,9 @@ async function seed() {
 			{
 				id: WL_STALY,
 				shortId: 'stalymar',
+				// Theme defaults with one explicit override, kept apart from the theme.
+				themeId: 'minimal',
+				styleTokens: { corners: 'round' },
 				recipientUserId: MARTIN,
 				recipientName: null,
 				title: 'Co se mi vždycky hodí',
@@ -401,7 +405,7 @@ async function seed() {
 				kind: WISHLIST_KIND.permanent,
 				status: 'active',
 				theme: 'default',
-				palette: 'mint',
+				palette: 'graphite',
 				sharedAt: d('2026-04-01T09:00:00Z'),
 				createdAt: d('2026-03-25T10:00:00Z'),
 				updatedAt: d('2026-04-01T09:00:00Z'),
@@ -410,6 +414,7 @@ async function seed() {
 			{
 				id: WL_DRAFT,
 				shortId: 'draftlst',
+				themeId: 'toys',
 				recipientUserId: MARTIN,
 				recipientName: null,
 				title: 'Nový seznam',
@@ -531,6 +536,7 @@ async function seed() {
 			{
 				id: WL_PBDAY,
 				shortId: 'petrbday',
+				themeId: 'gamer',
 				recipientUserId: PETR,
 				recipientName: null,
 				title: 'Petrovy narozeniny',
@@ -538,7 +544,7 @@ async function seed() {
 				eventDate: d('2026-07-15T00:00:00Z'),
 				status: 'active',
 				theme: 'birthday',
-				palette: 'sakura',
+				palette: 'grape',
 				sharedAt: d('2026-05-20T09:00:00Z'),
 				createdAt: d('2026-05-18T11:00:00Z'),
 				updatedAt: d('2026-06-05T15:00:00Z'),

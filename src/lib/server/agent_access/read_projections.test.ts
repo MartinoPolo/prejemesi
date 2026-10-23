@@ -9,6 +9,7 @@ import type { readWishlistOperation } from '$lib/server/operations/wishlist_read
 import {
 	projectAgentBulkCopyDestinations,
 	projectAgentWishlist,
+	projectAgentWishlistRow,
 	projectAgentWishlistGifts,
 } from './read_projections.js';
 
@@ -76,6 +77,9 @@ describe('projectAgentWishlist', () => {
 			theme: 'default',
 			customThemeColor: '#123456',
 			palette: 'sky',
+			themeId: 'minimal',
+			styleTokens: { corners: 'round' },
+			background: { mode: 'custom', imageKey: 'wishlists/backgrounds/owned.webp' },
 			imageKey: 'wishlists/banner.webp',
 			imageSlots: null,
 			recipientIsModerator: false,
@@ -119,6 +123,38 @@ describe('projectAgentWishlist', () => {
 			role: WISHLIST_ROLES.moderator,
 		});
 		expect(projected.imageUrl).toContain('wishlists/banner.webp');
+	});
+
+	it('exposes the theme and resolved look without the custom background storage key', () => {
+		const projected = projectAgentWishlistRow({
+			id: 'wishlist-1',
+			shortId: 'short-1',
+			recipientName: null,
+			title: 'Seznam',
+			description: null,
+			eventDate: null,
+			status: 'draft',
+			kind: 'occasion',
+			palette: 'graphite',
+			themeId: 'minimal',
+			styleTokens: { corners: 'round' },
+			background: { mode: 'custom', imageKey: 'wishlists/backgrounds/owned.webp' },
+			imageKey: null,
+			recipientIsModerator: false,
+			sharedAt: null,
+			archivedAt: null,
+			createdAt,
+			updatedAt: createdAt,
+		});
+
+		expect(projected).toMatchObject({
+			themeId: 'minimal',
+			style: { corners: 'round', border: 'fine', mat: 'white', heading: 'plain' },
+			backgroundMode: 'custom',
+		});
+		expect(projected).not.toHaveProperty('styleTokens');
+		expect(projected).not.toHaveProperty('background');
+		expect(JSON.stringify(projected)).not.toContain('wishlists/backgrounds/');
 	});
 });
 

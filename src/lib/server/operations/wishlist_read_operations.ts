@@ -12,6 +12,7 @@ import { resolveWishlistRole } from '$lib/modules/wishlists/wishlist_access.js';
 import { listAccessibleWishlists } from '$lib/modules/wishlists/accessible_wishlists.js';
 import { resolveReservationReleaseCapability } from '$lib/modules/wishlists/wishlist_capabilities.js';
 import { recipientDisplayNameSql } from '$lib/modules/wishlists/wishlist_role_query_primitives.js';
+import { sanitizeWishlistAppearance } from '$lib/modules/wishlists/wishlist_appearance.js';
 import { requireOperationActor } from './actor.js';
 import { OPERATION_EXPOSURE, OPERATION_KIND, defineOperation } from './operation.js';
 import { resolveRevertAccess } from './wishlist_revert.js';
@@ -99,6 +100,7 @@ export const readWishlistOperation = defineOperation({
 		});
 		return {
 			...row.wishlist,
+			...sanitizeWishlistAppearance(row.wishlist),
 			recipientDisplayName: row.recipientDisplayName,
 			// The header already shows this recipient's name to every viewer, so their avatar
 			// exposes no new personal data (issue #158).

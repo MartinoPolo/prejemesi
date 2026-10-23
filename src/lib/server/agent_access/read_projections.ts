@@ -9,6 +9,8 @@ import type { readWishlistOperation } from '$lib/server/operations/wishlist_read
 import type { AccessibleWishlist } from '$lib/modules/wishlists/accessible_wishlists.js';
 import type { ChangeProposalGift } from '$lib/modules/change_proposals/types.js';
 import type { GiftRevisionSnapshot } from '$lib/server/operations/gift_revision_snapshot.js';
+import { sanitizeWishlistAppearance } from '$lib/modules/wishlists/wishlist_appearance.js';
+import { resolveWishlistBackground, resolveWishlistStyle } from '$lib/theme/wishlist_themes.js';
 
 type ReadWishlistOutput = Awaited<ReturnType<typeof readWishlistOperation.run>>;
 type ReadWishlistGiftsOutput = Awaited<ReturnType<typeof readWishlistGiftsOperation.run>>;
@@ -27,6 +29,9 @@ type AgentWishlistSource = Pick<
 	| 'status'
 	| 'kind'
 	| 'palette'
+	| 'themeId'
+	| 'styleTokens'
+	| 'background'
 	| 'imageKey'
 	| 'recipientIsModerator'
 	| 'sharedAt'
@@ -34,6 +39,16 @@ type AgentWishlistSource = Pick<
 	| 'createdAt'
 	| 'updatedAt'
 >;
+
+/** The theme and its resolved look; the custom background's storage key stays internal. */
+function projectAgentAppearance(wishlistRow: AgentWishlistSource) {
+	const appearance = sanitizeWishlistAppearance(wishlistRow);
+	return {
+		themeId: appearance.themeId,
+		style: resolveWishlistStyle(appearance.themeId, appearance.styleTokens),
+		backgroundMode: resolveWishlistBackground(appearance.background).mode,
+	};
+}
 
 /**
  * A wishlist as agents see it, from a read or a mutation's row. Listed field by field so internal
@@ -51,6 +66,7 @@ export function projectAgentWishlistRow(wishlistRow: AgentWishlistSource) {
 		status: wishlistRow.status,
 		kind: wishlistRow.kind,
 		palette: wishlistRow.palette,
+		...projectAgentAppearance(wishlistRow),
 		imageUrl: wishlistRow.imageKey === null ? null : imagePublicUrl(wishlistRow.imageKey),
 		recipientIsModerator: wishlistRow.recipientIsModerator,
 		sharedAt: wishlistRow.sharedAt,

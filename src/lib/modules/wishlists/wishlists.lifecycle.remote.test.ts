@@ -42,7 +42,11 @@ describe('deleteWishlist', () => {
 
 		it('deletes the wishlist image and its gifts’ images from storage (issue #107 REQ-6)', async () => {
 			mockDbInstance.pushResult([
-				makeWishlistRow({ sharedAt: null, imageKey: 'wishlists/banners/w.jpg' }),
+				makeWishlistRow({
+					sharedAt: null,
+					imageKey: 'wishlists/banners/w.jpg',
+					background: { mode: 'theme', imageKey: 'wishlists/backgrounds/w.jpg' },
+				}),
 			]);
 			mockDbInstance.pushResult([{ imageKey: 'gifts/a.jpg' }, { imageKey: null }]);
 			mockDbInstance.pushResult([]);
@@ -51,6 +55,7 @@ describe('deleteWishlist', () => {
 
 			expect(mockDeleteObjects).toHaveBeenCalledWith([
 				'wishlists/banners/w.jpg',
+				'wishlists/backgrounds/w.jpg',
 				'gifts/a.jpg',
 				null,
 			]);

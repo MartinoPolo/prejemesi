@@ -4,10 +4,30 @@ import { wishlist } from '$lib/server/db/wishlist.schema.js';
 import { rejectDemoImageUpload } from '$lib/server/demo/scope.js';
 import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
 import { saveGiftCategorySettings } from '$lib/modules/gift-categories/gift_categories_service.js';
+import { wishlistBackgroundImageKey } from '$lib/modules/wishlists/wishlist_appearance.js';
 import type { SaveWishlistSettingsInput } from '$lib/modules/wishlists/wishlist_settings_types.js';
 import type { MutationOperationContext } from './operation.js';
 import { requireMutableManagedWishlist, type WishlistRow } from './wishlist_management.js';
-import { authorizeBannerReplacement, planWishlistDetailEdit } from './wishlist_edit_rules.js';
+import {
+	authorizeWishlistUploadReplacement,
+	planWishlistDetailEdit,
+} from './wishlist_edit_rules.js';
+
+type AppearanceInput = NonNullable<SaveWishlistSettingsInput['appearance']>;
+
+/** Only explicit choices are stored, so an empty override set reads like no override. */
+function planAppearanceEdit(appearance: AppearanceInput | undefined): Partial<WishlistRow> {
+	if (appearance === undefined) {
+		return {};
+	}
+	const styleTokens = appearance.styleTokens;
+	return {
+		themeId: appearance.themeId,
+		styleTokens:
+			styleTokens === null || Object.keys(styleTokens).length === 0 ? null : styleTokens,
+		background: appearance.background,
+	};
+}
 
 /** The wishlist columns a settings draft writes; a linked recipient's name is not editable. */
 function planSettingsEdit(
@@ -23,26 +43,55 @@ function planSettingsEdit(
 		...planWishlistDetailEdit(wishlistRow, { ...input.details, ...input.image }, now),
 		...(recipientName === undefined ? {} : { recipientName }),
 		...(input.palette === undefined ? {} : { palette: input.palette }),
+		...planAppearanceEdit(input.appearance),
 	};
+}
+
+/** The stored custom background this save replaces or clears, after checking a new key's proof. */
+function authorizeBackgroundReplacement(
+	actorUserId: string,
+	wishlistRow: WishlistRow,
+	appearance: AppearanceInput | undefined,
+): Promise<string | null> {
+	if (appearance === undefined) {
+		return Promise.resolve(null);
+	}
+	const storedBackgroundKey = wishlistBackgroundImageKey(wishlistRow.background);
+	return authorizeWishlistUploadReplacement(
+		actorUserId,
+		storedBackgroundKey,
+		{
+			imageKey: appearance.background?.imageKey ?? null,
+			assignmentToken: appearance.backgroundAssignmentToken,
+		},
+		'wishlist-background',
+	);
 }
 
 /**
  * Locks and revalidates the mutable wishlist, then saves every settings domain inside the batch
- * transaction. Returns the image key this batch actually replaced so cleanup cannot race a later
+ * transaction. Returns the image keys this batch actually replaced so cleanup cannot race a later
  * save.
  */
 export async function saveLockedWishlistSettings(
 	context: MutationOperationContext,
 	input: SaveWishlistSettingsInput,
-): Promise<{ replacedImageKey: string | null; shortId: string }> {
+): Promise<{ replacedImageKeys: string[]; shortId: string }> {
 	rejectDemoImageUpload(input.image?.imageKey);
+	rejectDemoImageUpload(input.appearance?.background?.imageKey);
 	const wishlistRow = await requireMutableManagedWishlist(context, input.wishlistId, {
 		lock: true,
 	});
-	const replacedImageKey = await authorizeBannerReplacement(
+	const replacedBannerKey = await authorizeWishlistUploadReplacement(
 		context.actor.userId,
 		wishlistRow.imageKey,
 		input.image ?? {},
+		'wishlist-banner',
+	);
+	const replacedBackgroundKey = await authorizeBackgroundReplacement(
+		context.actor.userId,
+		wishlistRow,
+		input.appearance,
 	);
 	const settingsEdit = planSettingsEdit(wishlistRow, input, context.now);
 	if (Object.keys(settingsEdit).length > 0) {
@@ -57,5 +106,8 @@ export async function saveLockedWishlistSettings(
 			context,
 		);
 	}
-	return { replacedImageKey, shortId: wishlistRow.shortId };
+	const replacedImageKeys = [replacedBannerKey, replacedBackgroundKey].filter(
+		(imageKey) => imageKey !== null,
+	);
+	return { replacedImageKeys, shortId: wishlistRow.shortId };
 }

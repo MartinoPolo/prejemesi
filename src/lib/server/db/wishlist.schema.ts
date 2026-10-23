@@ -15,6 +15,11 @@ import { paletteEnum, wishlistKindEnum, wishlistStatusEnum, wishlistThemeEnum } 
 import { generateId } from './id.js';
 import { softDeletableTimestampColumns } from './columns.js';
 import type { WishlistImageSlots } from '$lib/modules/images/types.js';
+import type {
+	WishlistBackground,
+	WishlistStyleTokens,
+	WishlistThemeId,
+} from '$lib/theme/wishlist_themes.js';
 
 export function generateShortId(): string {
 	return generateId(8);
@@ -50,6 +55,11 @@ export const wishlist = pgTable(
 		customThemeColor: text('custom_theme_color'),
 		// Redesign 2026 per-wishlist palette (replaces theme presets + custom color).
 		palette: paletteEnum('palette').notNull().default('sky'),
+		// Wishlist theme (#535): registry key, not the legacy `theme` enum. Null keeps the default
+		// look; style tokens and background hold only what the manager chose explicitly.
+		themeId: text('theme_id').$type<WishlistThemeId>(),
+		styleTokens: jsonb('style_tokens').$type<Partial<WishlistStyleTokens>>(),
+		background: jsonb('background').$type<Partial<WishlistBackground>>(),
 		// One wishlist image assignment + per-slot crop metadata (REQ-2). Replaces
 		// the obsolete separate banner/thumbnail keys (no compatibility shim kept).
 		imageKey: text('image_key'),

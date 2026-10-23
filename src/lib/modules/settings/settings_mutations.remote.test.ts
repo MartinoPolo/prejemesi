@@ -196,8 +196,12 @@ describe('deleteAccount', () => {
 				[{ image: 'avatars/me.jpg' }],
 				// 2: recipient wishlists
 				[
-					{ id: 'w1', imageKey: 'wishlists/banners/w1.jpg' },
-					{ id: 'w2', imageKey: null },
+					{
+						id: 'w1',
+						imageKey: 'wishlists/banners/w1.jpg',
+						background: { mode: 'custom', imageKey: 'wishlists/backgrounds/w1.jpg' },
+					},
+					{ id: 'w2', imageKey: null, background: null },
 				],
 				// 3: gifts of those wishlists
 				[{ imageKey: 'gifts/g1.jpg' }, { imageKey: null }],
@@ -211,6 +215,8 @@ describe('deleteAccount', () => {
 		expect(mockDeleteObjects).toHaveBeenCalledWith([
 			'avatars/me.jpg',
 			'wishlists/banners/w1.jpg',
+			'wishlists/backgrounds/w1.jpg',
+			null,
 			null,
 			'gifts/g1.jpg',
 			null,
