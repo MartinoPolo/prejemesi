@@ -577,3 +577,192 @@ describe('GiftDetailModal first-change confirmation (issue #479)', () => {
 		expect(confirmChange).not.toHaveBeenCalled();
 	});
 });
+
+describe('GiftDetailModal fixed-window image editor (#533)', () => {
+	const photoUrl =
+		'data:image/svg+xml,' +
+		encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300"/>');
+	const fillMeta = {
+		fitMode: IMAGE_FIT_MODES.coverCrop,
+		cropRect: null,
+		focal: { x: 50, y: 50 },
+		zoom: 1,
+		bgColor: null,
+	};
+
+	async function renderEditor(imageMeta: GiftByRole['imageMeta'] = fillMeta) {
+		await page.viewport(1280, 800);
+		const onupdate = vi.fn();
+		const screen = await render(GiftDetailModal, {
+			...baseProps,
+			mode: 'edit' as const,
+			gift: makeGift({ imageUrl: photoUrl, imageMeta }),
+			onupdate,
+		});
+		await expect.element(screen.getByTestId('crop-stage-window')).toBeVisible();
+		return { screen, onupdate };
+	}
+
+	function pressOnStage(screen: Awaited<ReturnType<typeof renderEditor>>['screen'], key: string) {
+		screen
+			.getByTestId('crop-stage')
+			.element()
+			.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true }));
+	}
+
+	it('draws the crop window at the card real size, or labels how much it is reduced', async () => {
+		const { screen } = await renderEditor();
+		// The modal layout settles after the image loads, so read size and badge together.
+		const readWindow = () => {
+			const window = screen
+				.getByTestId('crop-stage-window')
+				.element()
+				.getBoundingClientRect();
+			const scale = window.width / 356;
+			return {
+				scale,
+				heightMatchesAspect: Math.abs(window.height - 267 * scale) < 1,
+				badgeMatches:
+					screen.getByTestId('crop-stage-size').element().textContent?.trim() ===
+					(scale > 0.995
+						? m.image_crop_true_size({ width: 356, height: 267 })
+						: m.image_crop_scaled_size({
+								width: 356,
+								height: 267,
+								percent: Math.round(scale * 100),
+							})),
+			};
+		};
+		await expect.poll(() => readWindow().badgeMatches).toBe(true);
+		const { scale, heightMatchesAspect } = readWindow();
+		expect(scale).toBeLessThanOrEqual(1);
+		expect(heightMatchesAspect).toBe(true);
+	});
+
+	it('selects a target from its tile without leaving Fill', async () => {
+		const { screen } = await renderEditor();
+		await screen.getByTestId('gift-preview-tile-thumb').click();
+		await expect
+			.element(screen.getByTestId('crop-stage-editing'))
+			.toHaveTextContent(m.image_crop_editing({ target: m.gift_image_target_thumb() }));
+		await expect
+			.element(screen.getByRole('radio', { name: m.image_fit_fill() }))
+			.toHaveAttribute('aria-checked', 'true');
+	});
+
+	it('promotes an edit in Fill to Manual and lets the thumbnail follow the card', async () => {
+		const { screen, onupdate } = await renderEditor();
+		pressOnStage(screen, '+');
+		await expect
+			.element(screen.getByRole('radio', { name: m.image_fit_manual() }))
+			.toHaveAttribute('aria-checked', 'true');
+		await expect
+			.element(screen.getByTestId('gift-preview-status-thumb'))
+			.toHaveTextContent(m.image_crop_status_follows_card());
+
+		await screen.getByRole('button', { name: m.save() }).first().click();
+		const imageMeta = onupdate.mock.calls[0]![0].imageMeta;
+		expect(imageMeta.fitMode).toBe(IMAGE_FIT_MODES.coverCrop);
+		expect(Object.keys(imageMeta.targets)).toEqual(['square']);
+		expect(imageMeta.targets.square.zoom).toBeGreaterThan(1);
+	});
+
+	it('keeps Fill when a key cannot move the window or is a browser shortcut', async () => {
+		const { screen } = await renderEditor();
+		// The 4:3 photo exactly fills the 4:3 card window, so there is nothing to pan.
+		pressOnStage(screen, 'ArrowRight');
+		screen
+			.getByTestId('crop-stage')
+			.element()
+			.dispatchEvent(
+				new KeyboardEvent('keydown', { key: '+', ctrlKey: true, bubbles: true }),
+			);
+		await expect
+			.element(screen.getByRole('radio', { name: m.image_fit_fill() }))
+			.toHaveAttribute('aria-checked', 'true');
+	});
+
+	it('zooms in on wheel up and pans with the arrow keys in the pressed direction', async () => {
+		const { screen, onupdate } = await renderEditor();
+		// Wheel zoom anchors at the pointer, so aim at the window center.
+		const window = screen.getByTestId('crop-stage-window').element().getBoundingClientRect();
+		screen
+			.getByTestId('crop-stage')
+			.element()
+			.dispatchEvent(
+				new WheelEvent('wheel', {
+					deltaY: -200,
+					clientX: window.left + window.width / 2,
+					clientY: window.top + window.height / 2,
+					bubbles: true,
+					cancelable: true,
+				}),
+			);
+		await expect
+			.element(screen.getByRole('radio', { name: m.image_fit_manual() }))
+			.toHaveAttribute('aria-checked', 'true');
+		pressOnStage(screen, 'ArrowRight');
+		pressOnStage(screen, 'ArrowDown');
+
+		await screen.getByRole('button', { name: m.save() }).first().click();
+		const square = onupdate.mock.calls[0]![0].imageMeta.targets.square;
+		expect(square.zoom).toBeGreaterThan(1);
+		expect(square.focal.x).toBeGreaterThan(50);
+		expect(square.focal.y).toBeGreaterThan(50);
+	});
+
+	it('pins only the thumbnail when only the thumbnail is edited', async () => {
+		const { screen, onupdate } = await renderEditor();
+		await screen.getByTestId('gift-preview-tile-thumb').click();
+		pressOnStage(screen, '+');
+		await expect
+			.element(screen.getByTestId('gift-preview-status-thumb'))
+			.toHaveTextContent(m.image_crop_status_manual());
+		await expect
+			.element(screen.getByTestId('gift-preview-status-square'))
+			.toHaveTextContent(m.image_crop_status_automatic());
+
+		await screen.getByRole('button', { name: m.save() }).first().click();
+		expect(Object.keys(onupdate.mock.calls[0]![0].imageMeta.targets)).toEqual(['thumb']);
+	});
+
+	it('starts an edit in Fit from the whole photo it shows', async () => {
+		const { screen, onupdate } = await renderEditor();
+		await screen.getByRole('radio', { name: m.image_fit_fit() }).click();
+		await screen.getByTestId('gift-preview-tile-thumb').click();
+		pressOnStage(screen, '+');
+		await expect
+			.element(screen.getByRole('radio', { name: m.image_fit_manual() }))
+			.toHaveAttribute('aria-checked', 'true');
+
+		await screen.getByRole('button', { name: m.save() }).first().click();
+		// The whole 4:3 photo in the square window is zoom 0.75; Fill would start at 1.
+		const thumb = onupdate.mock.calls[0]![0].imageMeta.targets.thumb;
+		expect(thumb.zoom).toBeGreaterThan(0.75);
+		expect(thumb.zoom).toBeLessThan(1);
+	});
+
+	it('drops the thumbnail own crop when it takes the card crop again', async () => {
+		const { screen, onupdate } = await renderEditor({
+			...fillMeta,
+			targets: {
+				square: { cropRect: { x: 0, y: 0, w: 1, h: 1 }, focal: { x: 50, y: 50 }, zoom: 1 },
+				thumb: {
+					cropRect: { x: 0.1, y: 0.1, w: 0.5, h: 0.6667 },
+					focal: { x: 25, y: 30 },
+					zoom: 1.5,
+				},
+			},
+		});
+		await expect
+			.element(screen.getByTestId('gift-preview-status-thumb'))
+			.toHaveTextContent(m.image_crop_status_manual());
+		await screen.getByTestId('gift-preview-follow-square').click();
+		await expect
+			.element(screen.getByTestId('gift-preview-status-thumb'))
+			.toHaveTextContent(m.image_crop_status_follows_card());
+
+		await screen.getByRole('button', { name: m.save() }).first().click();
+		expect(onupdate.mock.calls[0]![0].imageMeta.targets).not.toHaveProperty('thumb');
+	});
+});

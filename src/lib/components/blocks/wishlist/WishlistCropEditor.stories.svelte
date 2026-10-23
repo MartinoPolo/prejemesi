@@ -46,8 +46,8 @@
 
 	// The preview workflow since #116 (D3 + follow-up): three slot tiles render (banner
 	// removed from the editor; its persisted JSON above is retained), exactly one is
-	// active (the card slot by default), and selecting another tile moves the active
-	// selection and promotes that slot to Manual mode. The display-mode control offers
+	// active (the card slot by default), and selecting another tile only moves the active
+	// selection – the slot keeps its mode until its crop is edited (#533). The display-mode control offers
 	// Fill / Fit / Manual for the active slot.
 	const playSlotSelection = async ({ canvasElement }: { canvasElement: HTMLElement }) => {
 		const canvas = within(canvasElement);
@@ -66,7 +66,7 @@
 		await userEvent.click(thumbnailTile);
 		await waitFor(() => {
 			expect(thumbnailTile).toHaveAttribute('aria-pressed', 'true');
-			expect(canvas.getByRole('radio', { name: /Ručně|Manual/ })).toBeChecked();
+			expect(canvas.getByRole('radio', { name: /Vyplnit|Fill/ })).toBeChecked();
 		});
 	};
 </script>
