@@ -120,7 +120,7 @@
 					/>
 				</div>
 				<span
-					class="rounded-full bg-surface/90 px-2 py-0.5 text-[10px] font-semibold text-foreground"
+					class="max-w-full rounded-full bg-surface/90 px-2 py-0.5 text-center text-[10px] font-semibold text-balance text-foreground"
 				>
 					{tile.label()}
 				</span>

@@ -65,9 +65,12 @@ surface will use. Clicking selects the slot for editing.
 	>
 		<WishlistSlotImage class="absolute inset-0" {src} {frame} {themeEmoji} alt={label} />
 	</div>
-	<span class="flex items-baseline justify-between gap-1 text-xs text-muted-foreground">
-		<span class="truncate">{label}</span>
-		<small class="text-[10px] tabular-nums opacity-70">
+	<!-- Wraps instead of truncating: narrow mobile tiles drop the size below the full name. -->
+	<span
+		class="flex flex-wrap items-baseline justify-between gap-x-1 text-xs text-muted-foreground"
+	>
+		<span class="min-w-0 break-words">{label}</span>
+		<small class="text-[10px] whitespace-nowrap tabular-nums opacity-70">
 			{WISHLIST_SLOT_SPECS[slot].realSizeText}
 		</small>
 	</span>
