@@ -82,6 +82,7 @@ Current product, architecture, and design decisions for Přejeme si. Entries are
 - 2026-08-07: `/home` (“Přehled” / “Overview”) is the signed-in root redirect, default post-auth destination, and logo target, preserving explicit auth redirects. Keep it out of desktop section navigation but first in the mobile drawer; the old “no dashboard” rejection no longer applies.
 - 2026-08-07: Overview uses horizontal, next-card-peeking carousels on desktop and mobile: Nedávné, then Sledované → Spravované → Moje seznamy; omit empty rows and archived lists. Reuse WishlistCard rather than inventing a dense overview identity; category rows end with “Zobrazit vše”. New users with no lists see a create-first-list hero and shared-link following explanation.
 - 2026-08-07: Category overview rows sort upcoming dates first, undated lists by recent visit with creation fallback next, and past unarchived events last. Nedávné mixes roles by `lastVisitedAt`, including own-list visits, with follow-date cold-start fallback and no deduplication against category rows.
+- 2026-10-23: Wishlist cards carry their wishlist's palette (`data-palette` on WishlistCard, so ink and fills follow it too): a brand-tinted body and a filled `--primary` title plate (`--wishlist-card-body`, `--wishlist-card-plate` in `src/app.css`), AA-tested on every palette. On Přehled, Nedávné shows large cards under a larger heading with a clock sticker; category rows show compact cards limited to the essential line, without dates or the progress label (#532).
 
 ## Wishlist browsing & actions
 

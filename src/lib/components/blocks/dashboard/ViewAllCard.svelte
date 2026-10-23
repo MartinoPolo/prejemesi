@@ -47,7 +47,7 @@
 		border: var(--border-w) dashed var(--ink-faint);
 		border-radius: var(--radius-panel);
 		background: color-mix(in oklab, var(--card) 55%, transparent);
-		color: var(--brand-deep);
+		color: var(--brand-link);
 		font-weight: 700;
 		font-size: var(--text-base);
 		text-align: center;

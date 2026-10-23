@@ -5,6 +5,7 @@ import { createRawSnippet } from 'svelte';
 import { userEvent } from 'vitest/browser';
 import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
 import type { Wishlist } from '$lib/modules/wishlists/types.js';
+import type { Palette } from '$lib/theme/palettes.js';
 import * as m from '$lib/paraglide/messages.js';
 
 vi.mock('$env/dynamic/public', () => ({ env: {} }));
@@ -236,6 +237,125 @@ describe('WishlistCard reservation progress', () => {
 
 		expect(screen.container.querySelector('[data-slot="progress"]')).toBeNull();
 		expect(screen.container.textContent).not.toContain(m.wishlist_reservation_progress());
+		await screen.unmount();
+	});
+});
+
+describe('WishlistCard palette tint', () => {
+	function tokenColor(scope: HTMLElement, token: string): string {
+		const probe = document.createElement('span');
+		probe.style.backgroundColor = `var(${token})`;
+		scope.append(probe);
+		const color = getComputedStyle(probe).backgroundColor;
+		probe.remove();
+		return color;
+	}
+
+	it("tints the body and title plate from the wishlist's own palette", async () => {
+		const screen = await render(WishlistCard, {
+			wishlist: { ...wishlist, palette: 'ruby' },
+			giftCount: 3,
+		});
+		const card = screen.container.querySelector<HTMLElement>('[data-testid="wishlist-card"]')!;
+		expect(card.getAttribute('data-palette')).toBe('ruby');
+
+		const surface = card.querySelector<HTMLElement>('[data-slot="elevation-surface"]')!;
+		const plate = screen.getByText(wishlist.title).element() as HTMLElement;
+		const plainCard = tokenColor(card, '--card');
+		const surfaceBackground = getComputedStyle(surface).backgroundColor;
+		const plateBackground = getComputedStyle(plate).backgroundColor;
+
+		expect(surfaceBackground).not.toBe(plainCard);
+		expect(surfaceBackground).toBe(tokenColor(card, '--wishlist-card-body'));
+		expect(plateBackground).not.toBe(plainCard);
+		expect(plateBackground).toBe(tokenColor(card, '--wishlist-card-plate'));
+		expect(tokenColor(card, '--wishlist-card-body')).not.toBe(
+			tokenColor(document.body, '--wishlist-card-body'),
+		);
+		await screen.unmount();
+	});
+
+	it('gives cards with different palettes different surface and title plate colors', async () => {
+		async function paletteColors(palette: Palette) {
+			const screen = await render(WishlistCard, {
+				wishlist: { ...wishlist, palette },
+				giftCount: 3,
+			});
+			const card = screen.container.querySelector<HTMLElement>(
+				'[data-testid="wishlist-card"]',
+			)!;
+			const surface = card.querySelector<HTMLElement>('[data-slot="elevation-surface"]')!;
+			const plate = screen.getByText(wishlist.title).element() as HTMLElement;
+			const colors = {
+				surface: getComputedStyle(surface).backgroundColor,
+				plate: getComputedStyle(plate).backgroundColor,
+			};
+			await screen.unmount();
+			return colors;
+		}
+
+		const mint = await paletteColors('mint');
+		const ruby = await paletteColors('ruby');
+
+		expect(mint.surface).not.toBe(ruby.surface);
+		expect(mint.plate).not.toBe(ruby.plate);
+	});
+});
+
+describe('WishlistCard compact size', () => {
+	const createdPrefix = m.wishlist_created_at({ date: '' }).trim();
+	const updatedPrefix = m.wishlist_updated_at({ date: '' }).trim();
+	const datedWishlist = { ...wishlist, eventDate: new Date('2026-12-24T00:00:00Z') };
+
+	it('keeps the full meta rows at the default size', async () => {
+		const screen = await render(WishlistCard, { wishlist: datedWishlist, giftCount: 3 });
+		const text = screen.container.textContent ?? '';
+		expect(text).toContain(createdPrefix);
+		expect(text).toContain(updatedPrefix);
+		expect(text).toContain('🗓');
+		await screen.unmount();
+	});
+
+	it('shows only the gift count on an own card', async () => {
+		const screen = await render(WishlistCard, {
+			wishlist: datedWishlist,
+			giftCount: 3,
+			size: 'compact',
+		});
+		const text = screen.container.textContent ?? '';
+		expect(text).toContain(m.wishlist_gift_count_other({ count: 3 }));
+		expect(text).not.toContain(createdPrefix);
+		expect(text).not.toContain(updatedPrefix);
+		expect(text).not.toContain('🗓');
+		await screen.unmount();
+	});
+
+	it('shows the reservation progress label and gift total at the default size', async () => {
+		const screen = await render(WishlistCard, {
+			wishlist,
+			recipientDisplayName: 'Marie',
+			reservationProgress: { reserved: 1, total: 3 },
+		});
+		const text = screen.container.textContent ?? '';
+		expect(text).toContain(m.wishlist_reservation_progress());
+		expect(text).toContain(m.wishlist_total_gifts({ count: 3 }));
+		await screen.unmount();
+	});
+
+	it('keeps recipient and reservation progress value but drops the progress label and totals', async () => {
+		const screen = await render(WishlistCard, {
+			wishlist,
+			recipientDisplayName: 'Marie',
+			reservationProgress: { reserved: 1, total: 3 },
+			size: 'compact',
+		});
+		const text = screen.container.textContent ?? '';
+		expect(text).toContain(m.wishlist_recipient_chip({ name: 'Marie' }));
+		expect(text).toContain(m.wishlist_reserved_ratio({ reserved: 1, total: 3 }));
+		expect(text).not.toContain(m.wishlist_reservation_progress());
+		expect(text).not.toContain(m.wishlist_total_gifts({ count: 3 }));
+		const progress = screen.container.querySelector('[data-slot="progress"]')!;
+		expect(progress.getAttribute('aria-label')).toBe(m.wishlist_reservation_progress());
 		await screen.unmount();
 	});
 });

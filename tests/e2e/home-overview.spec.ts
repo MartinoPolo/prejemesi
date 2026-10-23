@@ -353,4 +353,32 @@ test.describe('Home overview (issue #225)', () => {
 
 		await page.context().close();
 	});
+
+	test('Nedávné is more prominent than the category rows on desktop (issue #532)', async ({
+		browser,
+		request,
+		baseURL,
+	}) => {
+		const page = await signInAs(browser, request, baseURL!, MARTIN);
+		await page.setViewportSize({ width: 1280, height: 900 });
+		await page.goto('/home');
+		await waitForAppHydration(page);
+
+		const recent = shelf(page, 'Nedávné');
+		const followed = shelf(page, 'Sledované');
+		await expect(recent.getByTestId('wishlist-card').first()).toBeVisible({ timeout: 10_000 });
+		await expect(followed.getByTestId('wishlist-card').first()).toBeVisible();
+
+		const recentCard = await recent.getByTestId('wishlist-card').first().boundingBox();
+		const categoryCard = await followed.getByTestId('wishlist-card').first().boundingBox();
+		expect(recentCard!.width).toBeGreaterThan(categoryCard!.width);
+
+		const headingFontSize = (row: ReturnType<typeof shelf>) =>
+			row
+				.getByRole('heading', { level: 2 })
+				.evaluate((heading) => Number.parseFloat(getComputedStyle(heading).fontSize));
+		expect(await headingFontSize(recent)).toBeGreaterThan(await headingFontSize(followed));
+
+		await page.context().close();
+	});
 });
