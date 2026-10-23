@@ -91,4 +91,61 @@ describe('WishlistCropEditor loaded image', () => {
 		await screen.getByRole('radio', { name: m.image_fit_fill() }).click();
 		await vi.waitFor(() => expect(ondirtychange).toHaveBeenLastCalledWith(false));
 	});
+
+	it('promotes only the edited slot to Manual when its crop is panned (#533)', async () => {
+		const onsave = vi.fn();
+		const screen = render(WishlistCropEditor, {
+			imageKey: 'demo/v1/backpack.jpg',
+			imageSlots: createDefaultWishlistSlots(),
+			themeEmoji: '🎁',
+			title: 'Test wishlist',
+			formId: 'crop-promotion-form',
+			onsave,
+		});
+		await expect.element(screen.getByTestId('crop-stage-window')).toBeVisible();
+		await expect
+			.element(screen.getByTestId('wishlist-preview-status-card'))
+			.toHaveTextContent(m.image_fit_fill());
+
+		const stage = screen.getByTestId('crop-stage').element();
+		stage.dispatchEvent(new KeyboardEvent('keydown', { key: '+', bubbles: true }));
+		await expect
+			.element(screen.getByRole('radio', { name: m.image_fit_manual() }))
+			.toHaveAttribute('aria-checked', 'true');
+		await expect
+			.element(screen.getByTestId('wishlist-preview-status-card'))
+			.toHaveTextContent(m.image_crop_status_manual());
+		await expect
+			.element(screen.getByTestId('wishlist-preview-status-thumbnail'))
+			.toHaveTextContent(m.image_fit_fill());
+
+		document
+			.getElementById('crop-promotion-form')!
+			.dispatchEvent(new SubmitEvent('submit', { bubbles: true, cancelable: true }));
+		await vi.waitFor(() => expect(onsave).toHaveBeenCalledOnce());
+		const slots = onsave.mock.calls[0]![0].imageSlots;
+		expect(slots.card.zoom).toBeGreaterThan(1);
+		expect(slots.thumbnail).toEqual(createDefaultWishlistSlots().thumbnail);
+	});
+
+	it('selects a slot from its preview tile without leaving Fill (#533)', async () => {
+		const screen = render(WishlistCropEditor, {
+			imageKey: 'demo/v1/backpack.jpg',
+			imageSlots: createDefaultWishlistSlots(),
+			themeEmoji: '🎁',
+			title: 'Test wishlist',
+			onsave: vi.fn(),
+		});
+		await expect.element(screen.getByTestId('crop-stage-window')).toBeVisible();
+		await screen.getByTestId('wishlist-preview-status-thumbnail').click();
+		await expect
+			.element(screen.getByTestId('crop-stage-editing'))
+			.toHaveTextContent(m.image_crop_editing({ target: m.wishlist_image_slot_thumbnail() }));
+		await expect
+			.element(screen.getByRole('radio', { name: m.image_fit_fill() }))
+			.toHaveAttribute('aria-checked', 'true');
+		await expect
+			.element(screen.getByTestId('wishlist-preview-status-thumbnail'))
+			.toHaveTextContent(m.image_fit_fill());
+	});
 });

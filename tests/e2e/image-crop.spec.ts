@@ -59,8 +59,9 @@ test('uploaded manual crop reaches the gift card and restores after reload', asy
 		await uploadCompleted;
 		await expect(dialog.getByTestId('image-upload-preview')).toBeVisible({ timeout: 10_000 });
 
-		await dialog.getByTestId('gift-preview-square').click();
-		await expect(dialog.getByRole('radio', { name: /Ručně/ })).toHaveAttribute(
+		// Picking the card tile only selects it; the first crop edit promotes to Manual.
+		await dialog.getByTestId('gift-preview-tile-square').click();
+		await expect(dialog.getByRole('radio', { name: /Vyplnit/ })).toHaveAttribute(
 			'aria-checked',
 			'true',
 		);
@@ -74,6 +75,10 @@ test('uploaded manual crop reaches the gift card and restores after reload', asy
 		}
 		const chosenZoomValue = await zoomSlider.inputValue();
 		expect(chosenZoomValue).not.toBe(initialZoomValue);
+		await expect(dialog.getByRole('radio', { name: /Ručně/ })).toHaveAttribute(
+			'aria-checked',
+			'true',
+		);
 		await dragStage(page, dialog.getByTestId('crop-stage'), 40, 24);
 
 		await dialog.getByRole('button', { name: 'Přidat dárek' }).click();

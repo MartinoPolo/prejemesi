@@ -42,7 +42,7 @@ function clampZoom(zoom: number): number {
 	return Math.min(Math.max(zoom, IMAGE_ZOOM_OUT_MIN), IMAGE_ZOOM_MAX);
 }
 
-const clamp01 = (value: number) => Math.min(Math.max(value, 0), 1);
+export const clamp01 = (value: number) => Math.min(Math.max(value, 0), 1);
 
 /**
  * Clamp a rect origin so the image always covers the window's shorter side:
@@ -114,21 +114,75 @@ export function panCropRect(rect: ImageCropRect, dx: number, dy: number): ImageC
 	};
 }
 
+/** A point inside the crop window as fractions of its width and height (0..1). */
+export interface CropWindowPoint {
+	x: number;
+	y: number;
+}
+
+const WINDOW_CENTER: CropWindowPoint = { x: 0.5, y: 0.5 };
+
 /**
- * Resize a crop rect to a zoom level around its current center. The zoom floor
- * is the aspect's contain zoom, so zooming out stops exactly when the whole
- * image is visible (never white space on both axes).
+ * Resize a crop rect to a zoom level, keeping the source point under `anchor`
+ * (a window-relative point) fixed – the wheel/pinch zooms around the pointer,
+ * the slider and buttons around the window center. The zoom floor is the
+ * aspect's contain zoom, so zooming out stops exactly when the whole image is
+ * visible (never white space on both axes).
  */
 export function zoomCropRect(
 	rect: ImageCropRect,
 	normalizedAspect: number,
 	zoom: number,
+	anchor: CropWindowPoint = WINDOW_CENTER,
 ): ImageCropRect {
 	const flooredZoom = Math.max(zoom, containZoomForAspect(normalizedAspect));
 	const { w, h } = rectSizeForZoom(normalizedAspect, flooredZoom);
-	const centerX = rect.x + rect.w / 2;
-	const centerY = rect.y + rect.h / 2;
-	return { x: clampOrigin(centerX - w / 2, w), y: clampOrigin(centerY - h / 2, h), w, h };
+	const anchorX = rect.x + rect.w * anchor.x;
+	const anchorY = rect.y + rect.h * anchor.y;
+	return {
+		x: clampOrigin(anchorX - w * anchor.x, w),
+		y: clampOrigin(anchorY - h * anchor.y, h),
+		w,
+		h,
+	};
+}
+
+/** The centered framing at the contain zoom: the whole image, letterboxed on one axis. */
+export function containCropRect(normalizedAspect: number): ImageCropRect {
+	return zoomCropRect(
+		centeredCropRect(normalizedAspect),
+		normalizedAspect,
+		containZoomForAspect(normalizedAspect),
+	);
+}
+
+/** Move a crop rect so its center sits on a normalized source point, keeping its size. */
+export function centerCropRectOn(rect: ImageCropRect, point: CropWindowPoint): ImageCropRect {
+	return panCropRect(rect, point.x - (rect.x + rect.w / 2), point.y - (rect.y + rect.h / 2));
+}
+
+/**
+ * Align a crop rect to an edge, corner or the center of the image at its current
+ * size: each alignment is a fraction (0 = start, 0.5 = center, 1 = end) and maps
+ * to the renderer's focal percentage on that axis.
+ */
+export function alignCropRect(rect: ImageCropRect, alignment: CropWindowPoint): ImageCropRect {
+	return {
+		x: clamp01(alignment.x) * (1 - rect.w),
+		y: clamp01(alignment.y) * (1 - rect.h),
+		w: rect.w,
+		h: rect.h,
+	};
+}
+
+/**
+ * The window a cover-crop surface of another aspect renders for the same
+ * persisted focal + zoom – how a target without its own crop (the `thumb`
+ * following `square`) frames the image.
+ */
+export function reprojectCropRect(rect: ImageCropRect, normalizedAspect: number): ImageCropRect {
+	const { focal, zoom } = cropRectToFocalZoom(rect);
+	return focalZoomToWindowRect(focal, zoom, normalizedAspect);
 }
 
 /**
@@ -367,34 +421,20 @@ export function mergeGiftTargetCrops(
  * Build the `targets` a Manual-mode gift image save should persist, from the
  * editor's per-target session rects (`GiftDetailForm.targetRects`).
  *
- * An untouched session (no manual edits this session) is a pure pass-through:
- * whatever was persisted before flows through `mergeGiftTargetCrops` verbatim
- * – no metadata rewrite for a gift the user never actually edited.
+ * An untouched session is a pure pass-through: whatever was persisted before
+ * flows through `mergeGiftTargetCrops` verbatim, so a gift the user never
+ * edited is never rewritten.
  *
- * Once the user makes ANY manual edit, every editor target is pinned
- * explicitly from ITS OWN current session rect, not just the target(s) the
- * user actually dragged/zoomed. Two reasons this matters together:
- * - Session independence: editing one target must never move another
- *   target's live preview tile. Both tiles render through the shared
- *   `resolveGiftTargetCrop` carry-over chain (`thumb` → `square` → `card`),
- *   so as long as only the edited target has an explicit `targets` entry,
- *   an untouched target with NO entry keeps re-resolving through that chain
- *   and visibly "follows" every edit to the target it falls back to.
- * - WYSIWYG: what a preview tile shows during the session is what a save
- *   must make the real surfaces render. An untouched target's session rect
- *   (seeded once at mount, and reshaped to the target's aspect by
- *   `ImageCropStage`'s snap effect – see `GiftDetailForm.initTargetRects`)
- *   IS exactly the framing its tile has been displaying, so pinning it there
- *   locks in that same framing and prevents the carry-over chain from
- *   retroactively re-framing it to the edited target's crop after save.
- *
- * The carry-over chain itself is untouched by this – it still gives a never-
- * edited LEGACY row (no `targets` at all) an immediate crop with no data
- * migration; this function only stops it from ALSO reaching across two
- * targets edited live in the same session.
+ * Once the session changes any crop, only targets with their OWN crop are
+ * pinned from their session rects; every other editor target is dropped so it
+ * renders through the `resolveGiftTargetCrop` carry-over chain. The `thumb`
+ * then follows the `square` crop, which the editor shows and labels while the
+ * user edits (#533), and a `square` without its own crop keeps its automatic
+ * (or retired `card`) framing.
  */
 export function buildManualGiftTargets(
 	sessionRects: Record<GiftEditorCropTarget, ImageCropRect>,
+	ownTargets: ReadonlySet<GiftEditorCropTarget>,
 	hasSessionEdits: boolean,
 	existingTargets: ImageMetadata['targets'] | undefined,
 ): ImageMetadata['targets'] {
@@ -402,10 +442,31 @@ export function buildManualGiftTargets(
 		return mergeGiftTargetCrops(existingTargets, {});
 	}
 	const pinnedTargets: Partial<Record<GiftEditorCropTarget, ImageTargetCrop>> = {};
+	const inheritedTargets = { ...existingTargets };
 	for (const target of GIFT_EDITOR_CROP_TARGET_VALUES) {
-		const rect = sessionRects[target];
-		const { focal, zoom } = cropRectToFocalZoom(rect);
-		pinnedTargets[target] = { cropRect: { ...rect }, focal, zoom };
+		delete inheritedTargets[target];
+		if (ownTargets.has(target)) {
+			const rect = sessionRects[target];
+			const { focal, zoom } = cropRectToFocalZoom(rect);
+			pinnedTargets[target] = { cropRect: { ...rect }, focal, zoom };
+		}
 	}
-	return mergeGiftTargetCrops(existingTargets, pinnedTargets);
+	return mergeGiftTargetCrops(inheritedTargets, pinnedTargets);
+}
+
+/**
+ * Editor targets whose persisted crop is their own rather than inherited. The
+ * `square` also owns a retired `card` crop, which it supersedes on save (#163).
+ */
+export function ownGiftTargets(
+	targets: ImageMetadata['targets'] | undefined,
+): Set<GiftEditorCropTarget> {
+	const owned = new Set<GiftEditorCropTarget>();
+	if (targets?.square !== undefined || targets?.card !== undefined) {
+		owned.add('square');
+	}
+	if (targets?.thumb !== undefined) {
+		owned.add('thumb');
+	}
+	return owned;
 }

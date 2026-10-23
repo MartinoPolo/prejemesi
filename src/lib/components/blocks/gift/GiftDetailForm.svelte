@@ -15,6 +15,8 @@
 	import { HelpText } from '$lib/components/base/help-text/index.js';
 	import { SimpleTooltip } from '$lib/components/base/tooltip/index.js';
 	import ImageCropStage from '$lib/components/derived/image-crop/ImageCropStage.svelte';
+	import { editorModeStatusLabel } from '$lib/components/derived/image-crop/editor_mode_status_label.js';
+	import { useNarrowViewportState } from '$lib/components/derived/narrow_viewport_state.svelte.js';
 	import GiftImagePreviewSlots from './GiftImagePreviewSlots.svelte';
 	import GiftLinkEditor from './GiftLinkEditor.svelte';
 	import GiftDescription from './GiftDescription.svelte';
@@ -60,6 +62,10 @@
 	} from '$lib/components/derived/image-frame/index.js';
 	import {
 		buildManualGiftTargets,
+		cropTargetSurfaceSize,
+		normalizedCropAspect,
+		ownGiftTargets,
+		reprojectCropRect,
 		fitModeForEditorMode,
 		giftEditorModeFromMeta,
 		resolveGiftTargetCrop,
@@ -202,11 +208,10 @@
 	// Image presentation metadata (#116 D1/D2 + follow-up). The editor offers three
 	// modes – Fill / Fit / Manual – mapped onto the persisted fitMode enum.
 	// Manual crops are edited PER TARGET: each target keeps its own rect, locked to
-	// the target's aspect by the stage, so the two targets stay independent live
-	// (editing one never moves the other's preview tile). An untouched session
-	// passes persisted targets through verbatim (legacy base focal/zoom rows
-	// included, D5); the moment the user edits ANY target, a save pins every
-	// editor target explicitly – see `buildManualGiftTargets` for why.
+	// the target's aspect by the stage. A target without its own crop inherits
+	// (`thumb` follows `square`, #533) and the editor shows that inherited framing.
+	// An untouched session passes persisted targets through verbatim (legacy base
+	// focal/zoom rows included, D5) – see `buildManualGiftTargets`.
 	// svelte-ignore state_referenced_locally
 	let editorMode = $state<ImageEditorMode>(giftEditorModeFromMeta(gift?.imageMeta));
 	// Whether the user touched the display mode this session; an untouched form keeps
@@ -255,8 +260,17 @@
 		) as Record<GiftEditorCropTarget, ImageCropRect>,
 	);
 	let activeTarget = $state<GiftEditorCropTarget>('square');
-	// Targets edited in this session; only these are (re)persisted on save.
+	// Targets whose rect differs from the persisted one in this session.
 	const dirtyTargets = new SvelteSet<GiftEditorCropTarget>();
+	// Targets with their own crop (persisted or drawn this session); the rest inherit.
+	// svelte-ignore state_referenced_locally
+	const initialOwnTargets = ownGiftTargets(gift?.imageMeta?.targets);
+	const ownTargets = new SvelteSet<GiftEditorCropTarget>(initialOwnTargets);
+	const ownershipChanged = $derived(
+		ownTargets.size !== initialOwnTargets.size ||
+			[...ownTargets].some((target) => !initialOwnTargets.has(target)),
+	);
+	const hasCropSessionEdits = $derived(dirtyTargets.size > 0 || ownershipChanged);
 
 	const styles = giftDetailModalVariants();
 
@@ -319,12 +333,32 @@
 		);
 	}
 
+	/**
+	 * A pan or zoom on the stage is a manual-crop intent (#533): in Fill/Fit it
+	 * promotes the editor to Manual with only the edited target owning a crop, so
+	 * the other target keeps inheriting instead of freezing a stale framing.
+	 */
 	function handleCropChange(target: GiftEditorCropTarget, rect: ImageCropRect) {
+		if (editorMode !== IMAGE_EDITOR_MODES.manual) {
+			editorMode = IMAGE_EDITOR_MODES.manual;
+			modeDirty = true;
+			ownTargets.clear();
+		}
+		ownTargets.add(target);
 		if (cropRectsEqual(rect, initialTargetRects[target])) {
 			dirtyTargets.delete(target);
 		} else {
 			dirtyTargets.add(target);
 		}
+	}
+
+	/** Drops the thumbnail's own crop so it follows the card crop again. */
+	function followSquareCrop() {
+		if (mutationPending) {
+			return;
+		}
+		ownTargets.delete('thumb');
+		dirtyTargets.delete('thumb');
 	}
 
 	const giftDetailsChanged = $derived(
@@ -373,7 +407,7 @@
 		hasImage &&
 			(imageModeChanged ||
 				bgColor !== initialBgColor ||
-				(editorMode === IMAGE_EDITOR_MODES.manual && dirtyTargets.size > 0)),
+				(editorMode === IMAGE_EDITOR_MODES.manual && hasCropSessionEdits)),
 	);
 	const dirty = $derived(
 		giftDetailsChanged ||
@@ -404,11 +438,8 @@
 	/**
 	 * Outside Manual mode there are no manual crops: leaving Manual drops them on
 	 * save (Fill/Fit own the framing), and a replaced image never inherits crops
-	 * drawn for the old pixels. Inside Manual mode, delegates the pin-all-on-edit
-	 * rule to `buildManualGiftTargets` (session independence + WYSIWYG vs. the
-	 * legacy carry-over chain – see its doc comment): an untouched session passes
-	 * the persisted targets through verbatim, but the moment any target is dirty
-	 * every editor target is pinned from its own current session rect.
+	 * drawn for the old pixels. Inside Manual mode, `buildManualGiftTargets` pins
+	 * the targets that own a crop and lets the rest inherit.
 	 */
 	function buildTargets(): ImageMetadata['targets'] {
 		if (editorMode !== IMAGE_EDITOR_MODES.manual) {
@@ -416,7 +447,8 @@
 		}
 		return buildManualGiftTargets(
 			targetRects,
-			dirtyTargets.size > 0,
+			ownTargets,
+			hasCropSessionEdits,
 			imageReplaced ? undefined : gift?.imageMeta?.targets,
 		);
 	}
@@ -512,11 +544,47 @@
 				: '',
 	);
 
-	// Adaptive stage sizing (#189 REQ-4/5): the stage tracks the photo's natural
-	// aspect (portrait renders tall, landscape wide) within the min/max caps applied
-	// on the wrapper, so the whole photo is visible at default zoom. Falls back to the
-	// 4:3 card aspect until the probe (`measuredNaturalRatio`) resolves the real ratio.
-	const stageAspectRatio = $derived(measuredNaturalRatio ?? GIFT_CROP_TARGET_SPECS.square.aspect);
+	// The crop window is drawn at the target's real size on this device class (#533).
+	const compactViewport = useNarrowViewportState();
+	const activeSurfaceSize = $derived(
+		cropTargetSurfaceSize(GIFT_CROP_TARGET_SPECS[activeTarget], compactViewport.current),
+	);
+	// The mobile List row shows only a centered slice of the square thumbnail.
+	const activeVisibleWidthFraction = $derived(
+		compactViewport.current && activeTarget === 'thumb'
+			? GIFT_CROP_TARGET_SPECS.thumb.compactVisibleWidthFraction
+			: null,
+	);
+
+	// A thumbnail without its own crop follows the card crop (`resolveGiftTargetCrop`),
+	// so the editor mirrors the card's focal point and zoom at the thumbnail aspect.
+	$effect(() => {
+		if (ownTargets.has('thumb') || measuredNaturalRatio === null) {
+			return;
+		}
+		const followed = reprojectCropRect(
+			targetRects.square,
+			normalizedCropAspect(GIFT_CROP_TARGET_SPECS.thumb.aspect, measuredNaturalRatio),
+		);
+		if (!cropRectsEqual(followed, targetRects.thumb)) {
+			targetRects.thumb = followed;
+		}
+	});
+
+	const targetStatusLabels = $derived.by((): Record<GiftEditorCropTarget, string> => {
+		if (presentedEditorMode !== IMAGE_EDITOR_MODES.manual) {
+			const modeLabel = editorModeStatusLabel(presentedEditorMode);
+			return { square: modeLabel, thumb: modeLabel };
+		}
+		return {
+			square: ownTargets.has('square')
+				? m.image_crop_status_manual()
+				: m.image_crop_status_automatic(),
+			thumb: ownTargets.has('thumb')
+				? m.image_crop_status_manual()
+				: m.image_crop_status_follows_card(),
+		};
+	});
 
 	function setEditorMode(value: string) {
 		if (mutationPending) {
@@ -531,15 +599,8 @@
 			const nextMode = value as ImageEditorMode;
 			if (nextMode === IMAGE_EDITOR_MODES.fill) {
 				// Explicit Fill re-centers the framing (the `recentered` branch of
-				// `currentImageMeta` below), so the static preview must show that SAME
-				// centered framing (#183 REQ-6/7 WYSIWYG) instead of whatever rect
-				// Manual editing or a legacy seed left in `targetRects` – reset it to
-				// the "no framing yet" sentinel and let `ImageCropStage`'s own snap
-				// effect resolve it to the identical centered cover-crop
-				// (`centeredCropRect`) that Save persists. Fit and Manual are
-				// unaffected: Fit's preview is computed independently of
-				// `targetRects` (`containMode`), and Manual must keep whatever
-				// framing the user actually drew.
+				// `currentImageMeta`), so a later switch back to Manual starts from that
+				// centered cover-crop: the "no framing yet" sentinel snaps to it.
 				targetRects[activeTarget] = { ...FULL_CROP_RECT };
 			}
 			editorMode = nextMode;
@@ -565,24 +626,12 @@
 		}
 	}
 
-	/** A zoom attempt on the plain preview is a manual-crop intent (#116 follow-up). */
-	function promoteToManual() {
-		if (mutationPending) {
-			return;
-		}
-		if (editorMode !== IMAGE_EDITOR_MODES.manual) {
-			editorMode = IMAGE_EDITOR_MODES.manual;
-			modeDirty = true;
-		}
-	}
-
-	/** Clicking a preview tile jumps to Manual mode with that target active. */
+	/** Clicking a preview tile only picks the edited target; editing it promotes. */
 	function handleTileSelect(target: GiftEditorCropTarget) {
 		if (mutationPending) {
 			return;
 		}
 		activeTarget = target;
-		promoteToManual();
 	}
 
 	function adjustGiftPrice(
@@ -1424,65 +1473,59 @@
 					</ToggleGroup.Root>
 				</div>
 				{#if previewSrc !== null}
-					<!-- Adaptive stage (issue #189 REQ-4/5): the whole photo renders
-					     contained and always fully visible; the box tracks the photo's
-					     natural aspect within min/max caps (portrait tall, landscape wide).
-					     Manual: interactive per-target crop. Fill/Fit: the SAME stage,
-					     non-interactive, showing exactly the cover (Fill) or letterboxed
-					     (Fit) framing; a wheel gesture still promotes to Manual. -->
-					<div
-						class="relative min-h-[220px] w-full max-h-[46dvh] sm:max-h-[440px]"
-						style="aspect-ratio: {stageAspectRatio};"
+					<!-- Fixed-window stage (#533): the window keeps the active target's
+					     real size while the photo pans and zooms behind it. Fill/Fit show
+					     their automatic framing; any edit promotes to Manual. -->
+					<ImageCropStage
+						src={previewSrc}
+						alt={name || m.gift_image_preview()}
+						targetAspect={GIFT_CROP_TARGET_SPECS[activeTarget].aspect}
+						targetLabel={targetLabels[activeTarget]()}
+						surfaceSize={activeSurfaceSize}
+						framing={presentedEditorMode}
+						fillColor={bgColor}
+						tokenScope={IMAGE_TOKEN_SCOPES.wishlist}
+						disabled={mutationPending}
+						visibleWidthFraction={activeVisibleWidthFraction}
+						stageClass="h-[min(340px,45dvh)] min-h-[220px]"
+						bind:cropRect={targetRects[activeTarget]}
+						onchange={(rect) => handleCropChange(activeTarget, rect)}
 					>
-						<ImageCropStage
-							class="size-full"
-							src={previewSrc}
-							alt={name || m.gift_image_preview()}
-							targetAspect={GIFT_CROP_TARGET_SPECS[activeTarget].aspect}
-							targetLabel={targetLabels[activeTarget]()}
-							fillColor={bgColor}
-							tokenScope={IMAGE_TOKEN_SCOPES.wishlist}
-							interactive={isCropMode}
-							disabled={mutationPending}
-							containMode={!isCropMode &&
-								presentedEditorMode === IMAGE_EDITOR_MODES.fit}
-							showLabelChip={false}
-							bind:cropRect={targetRects[activeTarget]}
-							onchange={(rect) => handleCropChange(activeTarget, rect)}
-							onWheelPromote={promoteToManual}
-						/>
-						{#if !isCropMode && !demo}
-							<!-- Click-to-edit affordance (issue #131 REQ-1): overlays the preview
-							     without wrapping it, so wheel-zoom-to-manual and the tile switcher
-							     below stay independently interactive. -->
-							<Button
-								type="button"
-								intent="ghost-overlay"
-								size="sm"
-								format="icon"
-								class="absolute top-2 right-2 rounded-full"
-								surfaceClass="bg-surface/90"
-								onclick={openImageEditor}
-								disabled={mutationPending}
-								aria-label={m.gift_image_replace_cta()}
-							>
-								<PencilIcon data-icon="solo" />
-							</Button>
-						{/if}
-					</div>
-					<!-- Below the stage (not overlapping: every stage pixel matters here);
-					     the tiles are the only crop-target switcher (round 3). Rendered here
-					     for every mode – Fill/Fit used to float these over the stage's lower
-					     edge, clipping into the photo on short stages (mobile edit modal
-					     scroll fix); Manual keeps the same target highlighted, Fill/Fit
-					     highlight none. -->
+						{#snippet heading()}
+							<span class="flex flex-wrap items-center gap-2">
+								<span data-testid="crop-stage-editing">
+									{m.image_crop_editing({ target: targetLabels[activeTarget]() })}
+								</span>
+								{#if !demo}
+									<!-- Click-to-replace affordance (issue #131 REQ-1). -->
+									<Button
+										type="button"
+										intent="ghost"
+										size="sm"
+										format="icon"
+										onclick={openImageEditor}
+										disabled={mutationPending}
+										aria-label={m.gift_image_replace_cta()}
+									>
+										<PencilIcon data-icon="solo" />
+									</Button>
+								{/if}
+							</span>
+						{/snippet}
+					</ImageCropStage>
+					<!-- The tiles are the crop-target switcher and the in-context check:
+					     each renders what Save persists, with its framing status. -->
 					<GiftImagePreviewSlots
 						class="flex-none pt-2.5"
 						src={previewSrc}
 						alt={name || m.gift_image_preview()}
 						imageMeta={currentImageMeta}
-						activeTarget={isCropMode ? activeTarget : null}
+						{activeTarget}
+						statusLabels={targetStatusLabels}
 						onTileSelect={handleTileSelect}
+						onFollowSquare={isCropMode && ownTargets.has('thumb')
+							? followSquareCrop
+							: undefined}
 						disabled={mutationPending}
 					/>
 				{/if}

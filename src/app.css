@@ -415,6 +415,9 @@
 	--foreground: var(--p-ink);
 	--card: #fff;
 	--card-foreground: var(--p-ink);
+
+	/* Dark crop-editor stage: photos read truer on a dark surround in both modes. */
+	--crop-stage: color-mix(in oklab, var(--p-ink) 82%, black);
 	--popover: #fff;
 	--popover-foreground: var(--p-ink);
 	--primary: var(--p-primary);
@@ -556,6 +559,7 @@
 	--foreground: var(--ink);
 	--card: color-mix(in oklab, var(--p-deep) 16%, #13161c);
 	--card-foreground: var(--ink);
+	--crop-stage: color-mix(in oklab, var(--p-deep) 8%, #050608);
 	--popover: var(--card);
 	--popover-foreground: var(--ink);
 	--primary: color-mix(in oklab, var(--p-brand) 60%, #202630);
@@ -957,6 +961,7 @@
 
 	/* Anime-sky tokens as Tailwind utilities */
 	--color-ink: var(--ink);
+	--color-crop-stage: var(--crop-stage);
 	--color-ink-faint: var(--ink-faint);
 	--color-brand: var(--brand);
 	--color-brand-deep: var(--brand-deep);
