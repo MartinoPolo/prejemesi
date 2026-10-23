@@ -466,7 +466,7 @@
 		}
 	}
 
-	function dialogHtml(viewport) {
+	function dialogHtml() {
 		const tabs = ['Podrobnosti', 'Kategorie', 'Vzhled', 'Obrázek a ořezy', 'Import a export', 'Nebezpečná zóna']
 			.map((label) => `<span class="${label === 'Kategorie' ? 'is-selected' : ''}">${label}</span>`).join('');
 		return `<div class="dialog" role="dialog" aria-label="Nastavení seznamu">
@@ -490,8 +490,8 @@
 	window.mountCategoryMockup = function (options) {
 		const desktop = document.querySelector('[data-frame="desktop"]');
 		const mobile = document.querySelector('[data-frame="mobile"]');
-		desktop.innerHTML = `<p class="frame-label">Desktop, dialog 1024 px</p>${dialogHtml('desktop')}`;
-		mobile.innerHTML = `<p class="frame-label">Mobil, 390 px</p><div class="viewport">${dialogHtml('mobile')}</div>`;
+		desktop.innerHTML = `<p class="frame-label">Desktop, dialog 1024 px</p>${dialogHtml()}`;
+		mobile.innerHTML = `<p class="frame-label">Mobil, 390 px</p><div class="viewport">${dialogHtml()}</div>`;
 		const editors = [
 			new CategoryEditor(desktop, { ...options, viewport: 'desktop' }),
 			new CategoryEditor(mobile, { ...options, viewport: 'mobile' }),

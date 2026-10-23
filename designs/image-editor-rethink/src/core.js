@@ -287,7 +287,7 @@ const MOBILE_ROW = {
 	heights: { short: 96, two: 118, long: 160 },
 };
 /** Window-normalized x band of the square thumb composition still visible in the mobile List row. */
-function mobileBand() {
+export function mobileBand() {
 	// Fit letterboxes the whole photo into the row frame itself, so nothing is side-clipped.
 	if (resolveMeta('thumb').mode === 'contain') return null;
 	const visible = Math.min(1, MOBILE_ROW.width / MOBILE_ROW.heights[S.rowVariant]);
@@ -446,7 +446,7 @@ function persistedMeta() {
 // ── Crop stage ──────────────────────────────────────────────────────────────
 const stages = new Set();
 
-class CropStage {
+export class CropStage {
 	/**
 	 * cfg.windowSize(): { w, h } true CSS size of the window (scaled down only if it cannot fit)
 	 * cfg.offset?(): { x, y } shift of the window from the stage centre (room for chrome)
@@ -621,7 +621,7 @@ class CropStage {
 const px = (values) => Object.fromEntries(Object.entries(values).map(([key, value]) => [key, value + 'px']));
 
 // ── Navigator minimap (whole photo with the window's source rect) ───────────
-class Minimap {
+export class Minimap {
 	constructor(host, { width = 150 } = {}) {
 		this.host = host;
 		this.width = width;
@@ -734,7 +734,7 @@ const GIFT_TEXT = {
 const giftImageBadges = (top = 8, bottom = 8) =>
 	`<span class="m-badge m-badge-cat" style="top:${top}px;left:8px">Elektronika</span><span class="m-badge m-badge-prio" style="bottom:${bottom}px;left:8px">Vysoká</span>`;
 
-function giftCardMock(width = 356) {
+export function giftCardMock(width = 356) {
 	const height = Math.round((width * 3) / 4);
 	return `<article class="m-card" style="width:${width + 5}px">
 		<div class="m-card-img" style="position:relative">${frame('square', width, height)}${giftImageBadges()}</div>
@@ -745,7 +745,7 @@ function giftCardMock(width = 356) {
 		</div></article>`;
 }
 
-function desktopListRowMock(width = 640) {
+export function desktopListRowMock(width = 640) {
 	return `<div class="m-row" style="width:${width}px;min-height:150px">
 		${frame('thumb', 146, 0, 'data-side="1"')}
 		<div class="m-row-body">
@@ -755,7 +755,7 @@ function desktopListRowMock(width = 640) {
 		</div></div>`;
 }
 
-function mobileListRowMock(variant = S.rowVariant, width = 358) {
+export function mobileListRowMock(variant = S.rowVariant, width = 358) {
 	const title = variant === 'short' ? 'Retro rádio' : GIFT_TEXT.title;
 	return `<div class="m-row" data-mobile-row style="width:${width}px;height:${MOBILE_ROW.heights[variant]}px">
 		${frame('thumb', MOBILE_ROW.width, 0, 'data-side="1"')}
@@ -766,7 +766,7 @@ function mobileListRowMock(variant = S.rowVariant, width = 358) {
 		</div></div>`;
 }
 
-function reservationMock() {
+export function reservationMock() {
 	return `<div class="m-card" style="width:330px;padding:12px;display:flex;gap:12px;align-items:center">
 		${frame('thumb', 146, 146, 'style="border-radius:10px;border:2px solid var(--ink)"')}
 		<div style="display:grid;gap:6px"><div class="eyebrow">Rezervujete</div><div class="m-title" style="font-size:16px">${GIFT_TEXT.title}</div><span class="m-price">${GIFT_TEXT.price}</span></div>
@@ -775,7 +775,7 @@ function reservationMock() {
 
 const WISHLIST_TEXT = { title: 'Vánoce 2026', owner: 'Martin Novák', meta: '24. 12. 2026 · 12 dárků' };
 
-function overviewCardMock(width = 364) {
+export function overviewCardMock(width = 364) {
 	return `<article class="m-card" style="width:${width + 5}px">
 		<div class="m-card-img">${frame('card', width, 128)}</div>
 		<div class="m-card-body">
@@ -785,11 +785,11 @@ function overviewCardMock(width = 364) {
 		</div></article>`;
 }
 
-function polaroidMock(size = 146) {
+export function polaroidMock(size = 146) {
 	return `<figure class="m-polaroid" style="margin:0">${frame('thumbnail', size, size)}<figcaption>${WISHLIST_TEXT.title}</figcaption></figure>`;
 }
 
-function navMock() {
+export function navMock() {
 	return `<div class="m-nav">
 		<div class="m-nav-row on">${frame('thumbnail', 34, 34)}<span>${WISHLIST_TEXT.title}</span></div>
 		<div class="m-nav-row"><span style="width:34px;height:34px;border-radius:8px;background:var(--primary-soft);display:grid;place-items:center">🎂</span><span>Narozeniny</span></div>
@@ -798,13 +798,13 @@ function navMock() {
 	</div>`;
 }
 
-function socialMock(width = 500) {
+export function socialMock(width = 500) {
 	return `<div class="m-social" style="width:${width}px">${frame('social', width, Math.round((width * 630) / 1200))}
 		<div class="m-social-body"><div class="m-social-domain">prejemesi.cz</div><div class="m-social-title">${WISHLIST_TEXT.title} – seznam přání</div><div class="m-social-desc">${WISHLIST_TEXT.owner} vám posílá seznam přání.</div></div></div>`;
 }
 
 /** Faded gift form column: context only, the mockups do not change the fields. */
-function giftFieldsMock() {
+export function giftFieldsMock() {
 	return `<div class="fields-mock">
 		<div class="field"><label>Název</label><div class="input">${GIFT_TEXT.title}</div></div>
 		<div class="field"><label>Odkaz</label><div class="input">https://www.bazos.cz/radio-tesla</div></div>
@@ -815,16 +815,16 @@ function giftFieldsMock() {
 }
 
 const WISHLIST_TABS = ['Podrobnosti', 'Kategorie', 'Vzhled', 'Obrázek a ořezy', 'Import a export', 'Nebezpečná zóna'];
-const wishlistTabs = () =>
+export const wishlistTabs = () =>
 	`<div class="wl-tabs" role="tablist">${WISHLIST_TABS.map((tab) => `<span class="wl-tab ${tab === 'Obrázek a ořezy' ? 'on' : ''}">${tab}</span>`).join('')}</div>`;
 
-const sourceRow = () =>
+export const sourceRow = () =>
 	`<div class="source-row"><div class="frame-src" style="background-image:url(${currentImage().url})"></div>
 	<div style="flex:1;min-width:0"><div class="small" style="font-weight:600">vanoce-2026.jpg</div><div class="tiny muted">${SOURCES[S.source].label} px</div></div>
 	<span class="btn btn-sm">Změnit</span><span class="btn btn-sm btn-ghost">Odebrat</span></div>`;
 
 /** Wraps a mock at a scale; `zoom` keeps layout size honest for neighbours. */
-const scaled = (html, scale) => `<div class="scaled" style="--k:${scale}">${html}</div>`;
+export const scaled = (html, scale) => `<div class="scaled" style="--k:${scale}">${html}</div>`;
 
 // ── UI controls ─────────────────────────────────────────────────────────────
 function segmented(name, options, value, extraClass = '') {
@@ -833,9 +833,9 @@ function segmented(name, options, value, extraClass = '') {
 		.join('')}</div>`;
 }
 
-const modePill = (extraClass = '') => segmented('mode', MODE_LABELS, activeMode(), extraClass);
+export const modePill = (extraClass = '') => segmented('mode', MODE_LABELS, activeMode(), extraClass);
 
-function zoomBar({ compact = false } = {}) {
+export function zoomBar({ compact = false } = {}) {
 	const real = activeSpec().real[S.device];
 	const image = currentImage();
 	const min = containZoom(image, real.w, real.h);
@@ -849,13 +849,13 @@ function zoomBar({ compact = false } = {}) {
 }
 
 const MAT_LABELS = { white: 'Bílé', black: 'Černé', dots: 'Průhledné' };
-const matPicker = () =>
+export const matPicker = () =>
 	`<div class="shell-group" style="color:inherit"><span class="small muted">Okraje</span>${segmented('mat', MAT_LABELS, currentMat(), 'seg-sm')}</div>`;
 
-const ghostToggle = () =>
+export const ghostToggle = () =>
 	`<label class="small" style="display:inline-flex;gap:6px;align-items:center;cursor:pointer"><input type="checkbox" data-ghost ${S.ghost ? 'checked' : ''}> Zobrazit fotku i mimo ořez</label>`;
 
-const rowVariantPicker = () => segmented('rowVariant', MOBILE_ROW.variants, S.rowVariant, 'seg-sm');
+export const rowVariantPicker = () => segmented('rowVariant', MOBILE_ROW.variants, S.rowVariant, 'seg-sm');
 
 function updateZoomBars() {
 	const meta = resolveMeta(activeKey());
@@ -882,7 +882,7 @@ function toast(message) {
 // ── Shell ───────────────────────────────────────────────────────────────────
 let VARIANT;
 
-function start(variant) {
+export function start(variant) {
 	VARIANT = variant;
 	const params = new URLSearchParams(location.search);
 	S.editor = params.get('editor') ?? S.editor;

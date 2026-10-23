@@ -6,7 +6,8 @@ import { fileURLToPath } from 'node:url';
 const here = dirname(fileURLToPath(import.meta.url));
 const read = (name) => readFileSync(join(here, 'src', name), 'utf8');
 const coreCss = read('core.css');
-const coreJs = read('core.js');
+// Variants share core.js as one page scope, so core.js exports what they use; the export keywords do not belong in the inlined page.
+const coreJs = read('core.js').replace(/^export /gm, '');
 
 const ids = process.argv.length > 2 ? process.argv.slice(2) : ['a', 'b', 'c'];
 for (const id of ids) {
