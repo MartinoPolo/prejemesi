@@ -75,6 +75,8 @@
 				"PUBLIC_R2_URL": "https://staging-images.prejemesi.cz",
 				// Production's OAuth client; GOOGLE_CLIENT_SECRET is a staging Worker secret.
 				"GOOGLE_CLIENT_ID": "867815684383-d6tg9nlkf7539s0f21divv8u5b9d3ir2.apps.googleusercontent.com",
+				// Scripted assistant without API cost; CHAT_ALLOWED_EMAILS is a staging Worker secret.
+				"CHAT_PROVIDER": "fake",
 			},
 			"hyperdrive": [
 				{
