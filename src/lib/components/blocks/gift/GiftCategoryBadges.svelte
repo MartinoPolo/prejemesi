@@ -97,7 +97,12 @@
 		>
 			<div class="flex w-max gap-1" data-category-measuring-row>
 				{#each categories as category (category.id)}
-					<GiftCategoryBadge {category} singleLine class="max-w-none" />
+					<GiftCategoryBadge
+						{category}
+						singleLine
+						testId="gift-category-badge-measure"
+						class="max-w-none"
+					/>
 				{/each}
 				<span class={moreChipClass}>+{categories.length - 1}</span>
 			</div>

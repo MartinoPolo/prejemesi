@@ -11,10 +11,18 @@
 		isDimmed?: boolean;
 		/** One line with an ellipsis instead of the two-line clamp, for multi-category lanes. */
 		singleLine?: boolean;
+		/** Hidden measuring copies use their own id so lookups find only the shown badges. */
+		testId?: string;
 		class?: string;
 	}
 
-	let { category, isDimmed = false, singleLine = false, class: className }: Props = $props();
+	let {
+		category,
+		isDimmed = false,
+		singleLine = false,
+		testId = 'gift-category-badge',
+		class: className,
+	}: Props = $props();
 	const label = $derived(
 		labelForGiftCategory(category, getLocale().startsWith('en') ? 'en' : 'cs'),
 	);
@@ -25,7 +33,7 @@
      break only when a single word cannot fit. The full label stays in the DOM for assistive
      technology and in the title tooltip. -->
 <span
-	data-testid="gift-category-badge"
+	data-testid={testId}
 	data-single-line={singleLine || undefined}
 	class={cn(
 		badgeShape,
