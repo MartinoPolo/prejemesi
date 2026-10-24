@@ -1,6 +1,6 @@
 # Next release: dev → production
 
-Steps this release needs on top of the standard runbook in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md#production-release-checklist). It covers everything merged to `dev` since the last production release: agent access (tokens, JSON API, MCP, OAuth connectors, CLI), the in-app AI assistant, permanent wishlists and the UI fixes. Reset this file after the release.
+Steps this release needs on top of the standard runbook in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md#production-release-checklist). It covers everything merged to `dev` since the last production release: agent access (tokens, JSON API, MCP, OAuth connectors, CLI), the in-app AI assistant, permanent wishlists, wishlist themes, multiple categories per gift and the UI fixes. Reset this file after the release.
 
 ## 1. Before the release (any time, harmless early)
 
@@ -16,8 +16,8 @@ Steps this release needs on top of the standard runbook in [docs/DEPLOYMENT.md](
 
 ## 3. Database (from a clean checkout at the exact production SHA)
 
-1. `pnpm db:verify:prod`. Expect **PENDING** with `0022`–`0029`; anything else (or DRIFT) stops the release.
-2. Review the listed SQL. All eight are additive expand migrations (none is in `drizzle/contract-migrations.json`), so the running app keeps working against them. Order matters for the new app: `0025` backfills `first_shared_at`, `0028` holds the OAuth tables that better-auth validates at runtime (sign-in breaks without it), `0029` holds the chat tables.
+1. `pnpm db:verify:prod`. Expect **PENDING** with `0022`–`0031`; anything else (or DRIFT) stops the release.
+2. Review the listed SQL. All ten are additive expand migrations (none is in `drizzle/contract-migrations.json`), so the running app keeps working against them. Order matters for the new app: `0025` backfills `first_shared_at`, `0028` holds the OAuth tables that better-auth validates at runtime (sign-in breaks without it), `0029` holds the chat tables, `0030` adds the nullable wishlist theme columns, and `0031` adds `gift.category_ids`, backfills it from `category_id` and installs the `gift_category_ids_legacy_mirror` trigger that keeps the old column in sync while the previous app still runs.
 3. `pnpm db:migrate:prod -- --yes`, then `pnpm db:verify:prod` again and record **EXACT**.
 
 ## 4. Deploy
@@ -36,6 +36,8 @@ Rollback is app-only (`wrangler rollback`): every migration in this release is a
 4. Permanent wishlists: create one, share it, check the recipient warning on the first gift change.
 5. If the assistant is enabled: open the panel as an allowlisted user, run one turn, apply a proposal.
 6. Image upload of a large phone photo succeeds; gift images look sharp (Cloudflare image transformations are production-only).
+7. Existing gifts keep their category; give one gift a second category and check its badges and that grouping follows the first category.
+8. Settings → Vzhled: pick a theme and a custom background photo, save and reload; an unthemed wishlist looks unchanged.
 
 ## 6. After the release
 
@@ -43,3 +45,4 @@ Rollback is app-only (`wrangler rollback`): every migration in this release is a
 2. **Retired gift ingestion**: delete secrets `GIFT_INGESTION_TOKEN`, `GIFT_INGESTION_ACTOR_ID` and variable `GIFT_INGESTION_TARGET_SHORT_IDS` (`pnpm exec wrangler secret delete <name>`; the variable in the dashboard). Dropping the `gift_ingestion_*` tables is a later contract migration, not part of this release.
 3. **Publish the CLI** (needs the production API live): `npm login`, then `pnpm --filter prejemesi publish --access public`. Bump `packages/cli/package.json` first for every later publish.
 4. Watch **Security → Events** for challenges on `/api/` and `/mcp` during the first days.
+5. **Contract in a later release**, once no older app version serves traffic: drop the `gift_category_ids_legacy_mirror` trigger and function, `gift.category_id` and `gift_wishlist_category_fk` (#529); remove the deprecated category settings save fields and the `readGiftCategorySettingsRows` agent operation (#534).
