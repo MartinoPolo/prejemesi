@@ -35,24 +35,36 @@ export function stripImageMetadata(
 	}
 }
 
+/**
+ * Output barely outgrows its input (a rewritten orientation block, a closing
+ * marker), so one buffer sized from the input takes every copy: a hostile file
+ * of millions of tiny blocks must not become millions of objects.
+ */
 class ByteWriter {
-	private readonly parts: Uint8Array[] = [];
-	private length = 0;
+	private buffer: Uint8Array<ArrayBuffer>;
+	private written = 0;
+
+	constructor(inputLength: number) {
+		this.buffer = new Uint8Array(inputLength + 64);
+	}
+
+	get length(): number {
+		return this.written;
+	}
 
 	append(part: Uint8Array | readonly number[]): void {
-		const bytes = part instanceof Uint8Array ? part : Uint8Array.from(part);
-		this.parts.push(bytes);
-		this.length += bytes.byteLength;
+		const end = this.written + part.length;
+		if (end > this.buffer.byteLength) {
+			const grown = new Uint8Array(Math.max(end, this.buffer.byteLength * 2));
+			grown.set(this.buffer.subarray(0, this.written));
+			this.buffer = grown;
+		}
+		this.buffer.set(part, this.written);
+		this.written = end;
 	}
 
 	toBytes(): Uint8Array<ArrayBuffer> {
-		const output = new Uint8Array(this.length);
-		let offset = 0;
-		for (const part of this.parts) {
-			output.set(part, offset);
-			offset += part.byteLength;
-		}
-		return output;
+		return this.buffer.slice(0, this.written);
 	}
 }
 
@@ -161,8 +173,8 @@ function isStandaloneJpegMarker(marker: number): boolean {
 /**
  * Keeps only the application segments that change how pixels render: JFIF
  * (APP0), the ICC colour profile (APP2) and Adobe's colour-transform flag
- * (APP14). EXIF/XMP (APP1), MPF preview images (APP2), IPTC (APP13) and
- * comments are dropped.
+ * (APP14). EXIF/XMP (APP1), MPF preview images (APP2), JFXX thumbnails (APP0),
+ * IPTC (APP13) and comments are dropped.
  */
 function keepsJpegSegment(marker: number, payload: Uint8Array): boolean {
 	switch (marker) {
@@ -175,6 +187,36 @@ function keepsJpegSegment(marker: number, payload: Uint8Array): boolean {
 		default:
 			return !(marker >= JPEG_APP0 && marker <= JPEG_APP15) && marker !== JPEG_COMMENT;
 	}
+}
+
+/** Identifier, version, density units and the two densities, ending at the thumbnail size. */
+const JFIF_HEADER_BYTES = 12;
+
+/**
+ * The JFIF segment without its embedded thumbnail, which shows the whole
+ * uncropped photo.
+ */
+function jfifSegmentWithoutThumbnail(
+	segment: Uint8Array,
+	payload: Uint8Array,
+): Uint8Array | number[] {
+	const isWithoutThumbnail =
+		payload.byteLength === JFIF_HEADER_BYTES + 2 &&
+		payload[JFIF_HEADER_BYTES] === 0 &&
+		payload[JFIF_HEADER_BYTES + 1] === 0;
+	if (isWithoutThumbnail || payload.byteLength < JFIF_HEADER_BYTES) {
+		return segment;
+	}
+	const segmentLength = JFIF_HEADER_BYTES + 2 + 2;
+	return [
+		JPEG_MARKER_PREFIX,
+		JPEG_APP0,
+		segmentLength >> 8,
+		segmentLength & 0xff,
+		...payload.subarray(0, JFIF_HEADER_BYTES),
+		0, // thumbnail width
+		0, // thumbnail height
+	];
 }
 
 function jpegExifSegment(orientation: number): number[] {
@@ -204,31 +246,34 @@ function endOfEntropyCodedData(bytes: Uint8Array, start: number): number {
 }
 
 /**
- * Rewrites the segment list up to the end-of-image marker. Anything after it
- * is dropped: phones append preview, depth and gain-map JPEGs there, each
- * with its own EXIF block.
+ * Rewrites the segment list up to the end-of-image marker, which it always
+ * closes with. Anything after that marker is dropped: phones append preview,
+ * depth and gain-map JPEGs there, each with its own EXIF block.
  */
 function stripJpegMetadata(bytes: Uint8Array): Uint8Array<ArrayBuffer> {
 	if (bytes[0] !== JPEG_MARKER_PREFIX || bytes[1] !== JPEG_START_OF_IMAGE) {
 		throw new ImageMetadataError('missing JPEG start-of-image marker');
 	}
 	const view = dataView(bytes);
-	const output = new ByteWriter();
+	const output = new ByteWriter(bytes.byteLength);
 	output.append(bytes.subarray(0, 2));
 	let wroteOrientation = false;
+	let wroteScan = false;
 	let offset = 2;
 
-	while (offset < bytes.byteLength) {
-		if (bytes[offset] !== JPEG_MARKER_PREFIX) {
-			throw new ImageMetadataError(`expected a JPEG marker at byte ${offset}`);
-		}
-		while (bytes[offset + 1] === JPEG_MARKER_PREFIX) {
-			offset += 1;
-		}
-		assertWithin(bytes, offset + 2, 'JPEG marker');
+	while (offset + 1 < bytes.byteLength) {
 		const marker = bytes[offset + 1]!;
+		// Decoders skip any byte that does not start a marker, as do repeated
+		// 0xFF fill bytes; so does this walk.
+		if (
+			bytes[offset] !== JPEG_MARKER_PREFIX ||
+			marker === JPEG_MARKER_PREFIX ||
+			marker === JPEG_ESCAPED_DATA_BYTE
+		) {
+			offset += 1;
+			continue;
+		}
 		if (marker === JPEG_END_OF_IMAGE) {
-			output.append(bytes.subarray(offset, offset + 2));
 			break;
 		}
 		if (isStandaloneJpegMarker(marker)) {
@@ -236,23 +281,28 @@ function stripJpegMetadata(bytes: Uint8Array): Uint8Array<ArrayBuffer> {
 			offset += 2;
 			continue;
 		}
-		assertWithin(bytes, offset + 4, 'JPEG segment length');
-		const segmentEnd = offset + 2 + view.getUint16(offset + 2);
-		assertWithin(bytes, segmentEnd, 'JPEG segment');
+		const segmentEnd =
+			offset + 4 <= bytes.byteLength ? offset + 2 + view.getUint16(offset + 2) : Infinity;
+		if (segmentEnd > bytes.byteLength || segmentEnd < offset + 4) {
+			// A damaged tail after the image data renders like a truncated file.
+			if (wroteScan) {
+				break;
+			}
+			throw new ImageMetadataError(`the JPEG segment at byte ${offset} is damaged`);
+		}
+		const segment = bytes.subarray(offset, segmentEnd);
 		const payload = bytes.subarray(offset + 4, segmentEnd);
 
-		if (
-			marker === JPEG_APP1 &&
-			!wroteOrientation &&
-			startsWithAscii(payload, 0, EXIF_IDENTIFIER)
-		) {
+		if (marker === JPEG_APP1 && startsWithAscii(payload, 0, EXIF_IDENTIFIER)) {
 			const orientation = readExifOrientation(payload.subarray(EXIF_IDENTIFIER.length));
-			if (orientation !== null) {
+			if (orientation !== null && !wroteOrientation) {
 				output.append(jpegExifSegment(orientation));
 				wroteOrientation = true;
 			}
+		} else if (marker === JPEG_APP0 && keepsJpegSegment(marker, payload)) {
+			output.append(jfifSegmentWithoutThumbnail(segment, payload));
 		} else if (keepsJpegSegment(marker, payload)) {
-			output.append(bytes.subarray(offset, segmentEnd));
+			output.append(segment);
 		}
 
 		offset = segmentEnd;
@@ -260,8 +310,10 @@ function stripJpegMetadata(bytes: Uint8Array): Uint8Array<ArrayBuffer> {
 			const scanEnd = endOfEntropyCodedData(bytes, offset);
 			output.append(bytes.subarray(offset, scanEnd));
 			offset = scanEnd;
+			wroteScan = true;
 		}
 	}
+	output.append([JPEG_MARKER_PREFIX, JPEG_END_OF_IMAGE]);
 	return output.toBytes();
 }
 
@@ -329,17 +381,23 @@ function stripPngMetadata(bytes: Uint8Array): Uint8Array<ArrayBuffer> {
 		throw new ImageMetadataError('missing PNG signature');
 	}
 	const view = dataView(bytes);
-	const output = new ByteWriter();
+	const output = new ByteWriter(bytes.byteLength);
 	output.append(bytes.subarray(0, PNG_SIGNATURE.length));
 	let wroteOrientation = false;
+	let wroteImageData = false;
 	let offset = PNG_SIGNATURE.length;
 
 	while (offset < bytes.byteLength) {
-		assertWithin(bytes, offset + 8, 'PNG chunk header');
-		const dataLength = view.getUint32(offset);
+		const dataLength = offset + 8 <= bytes.byteLength ? view.getUint32(offset) : Infinity;
 		const type = readAscii(bytes, offset + 4, 4);
 		const chunkEnd = offset + 12 + dataLength;
-		assertWithin(bytes, chunkEnd, `PNG ${type} chunk`);
+		if (chunkEnd > bytes.byteLength) {
+			// A damaged tail after the image data renders like a truncated file.
+			if (wroteImageData) {
+				break;
+			}
+			throw new ImageMetadataError(`the PNG chunk at byte ${offset} is damaged`);
+		}
 
 		if (type === 'eXIf') {
 			const orientation = readExifOrientation(
@@ -351,13 +409,14 @@ function stripPngMetadata(bytes: Uint8Array): Uint8Array<ArrayBuffer> {
 			}
 		} else if (isCriticalPngChunk(type) || PNG_RENDERING_CHUNKS.has(type)) {
 			output.append(bytes.subarray(offset, chunkEnd));
+			wroteImageData ||= type === 'IDAT';
 		}
-
 		offset = chunkEnd;
 		if (type === 'IEND') {
-			break;
+			return output.toBytes();
 		}
 	}
+	output.append(pngChunk('IEND', []));
 	return output.toBytes();
 }
 
@@ -383,8 +442,9 @@ function stripWebpMetadata(bytes: Uint8Array): Uint8Array<ArrayBuffer> {
 	}
 	const view = dataView(bytes);
 	const riffEnd = Math.min(bytes.byteLength, 8 + view.getUint32(4, true));
-	const chunks: Uint8Array[] = [];
-	let extendedHeader: Uint8Array | null = null;
+	const writer = new ByteWriter(bytes.byteLength);
+	writer.append(bytes.subarray(0, RIFF_HEADER_BYTES));
+	let extendedFlagsOffset: number | null = null;
 	let wroteOrientation = false;
 	let offset = RIFF_HEADER_BYTES;
 
@@ -393,7 +453,7 @@ function stripWebpMetadata(bytes: Uint8Array): Uint8Array<ArrayBuffer> {
 		const dataLength = view.getUint32(offset + 4, true);
 		const chunkEnd = offset + 8 + dataLength + (dataLength % 2);
 		assertWithin(bytes, Math.min(chunkEnd, offset + 8 + dataLength), `WebP ${fourCc} chunk`);
-		const chunk = bytes.slice(offset, Math.min(chunkEnd, bytes.byteLength));
+		const chunk = bytes.subarray(offset, Math.min(chunkEnd, bytes.byteLength));
 
 		if (fourCc === 'EXIF') {
 			const exif = chunk.subarray(8, 8 + dataLength);
@@ -402,34 +462,27 @@ function stripWebpMetadata(bytes: Uint8Array): Uint8Array<ArrayBuffer> {
 				: exif;
 			const orientation = readExifOrientation(tiff);
 			// Only the extended format may carry EXIF.
-			if (orientation !== null && !wroteOrientation && extendedHeader !== null) {
-				chunks.push(riffChunk('EXIF', orientationOnlyTiff(orientation)));
+			if (orientation !== null && !wroteOrientation && extendedFlagsOffset !== null) {
+				writer.append(riffChunk('EXIF', orientationOnlyTiff(orientation)));
 				wroteOrientation = true;
 			}
 		} else if (WEBP_IMAGE_CHUNKS.has(fourCc)) {
-			if (fourCc === 'VP8X' && extendedHeader === null) {
-				extendedHeader = chunk;
+			if (fourCc === 'VP8X' && extendedFlagsOffset === null) {
+				assertWithin(chunk, 9, 'WebP VP8X flags');
+				extendedFlagsOffset = writer.length + 8;
 			}
-			chunks.push(chunk);
+			writer.append(chunk);
 		}
 		offset = chunkEnd;
 	}
 
-	if (extendedHeader !== null) {
-		assertWithin(extendedHeader, 9, 'WebP VP8X flags');
-		const flags = extendedHeader[8]! & ~(WEBP_XMP_FLAG | WEBP_EXIF_FLAG);
-		extendedHeader[8] = wroteOrientation ? flags | WEBP_EXIF_FLAG : flags;
+	const output = writer.toBytes();
+	if (extendedFlagsOffset !== null) {
+		const flags = output[extendedFlagsOffset]! & ~(WEBP_XMP_FLAG | WEBP_EXIF_FLAG);
+		output[extendedFlagsOffset] = wroteOrientation ? flags | WEBP_EXIF_FLAG : flags;
 	}
-
-	const output = new ByteWriter();
-	const header = bytes.slice(0, RIFF_HEADER_BYTES);
-	const bodyLength = chunks.reduce((total, chunk) => total + chunk.byteLength, 4);
-	dataView(header).setUint32(4, bodyLength, true);
-	output.append(header);
-	for (const chunk of chunks) {
-		output.append(chunk);
-	}
-	return output.toBytes();
+	dataView(output).setUint32(4, output.byteLength - 8, true);
+	return output;
 }
 
 // --- GIF ----------------------------------------------------------------
@@ -438,6 +491,7 @@ const GIF_HEADER_AND_SCREEN_DESCRIPTOR_BYTES = 13;
 const GIF_IMAGE_DESCRIPTOR = 0x2c;
 const GIF_EXTENSION = 0x21;
 const GIF_TRAILER = 0x3b;
+const GIF_PLAIN_TEXT_LABEL = 0x01;
 const GIF_COMMENT_LABEL = 0xfe;
 const GIF_APPLICATION_LABEL = 0xff;
 const GIF_COLOR_TABLE_FLAG = 0x80;
@@ -449,21 +503,45 @@ function colorTableBytes(packedFields: number): number {
 	return packedFields & GIF_COLOR_TABLE_FLAG ? 3 * 2 ** ((packedFields & 0x07) + 1) : 0;
 }
 
-/** The offset just past a run of data sub-blocks and its zero-length terminator. */
-function skipGifSubBlocks(bytes: Uint8Array, start: number): number {
+/**
+ * The offset just past a run of data sub-blocks and its zero-length
+ * terminator, or `null` when the file ends first.
+ */
+function endOfGifSubBlocks(bytes: Uint8Array, start: number): number | null {
 	let offset = start;
-	while (true) {
-		assertWithin(bytes, offset + 1, 'GIF data sub-block');
+	while (offset < bytes.byteLength) {
 		const blockLength = bytes[offset]!;
 		offset += 1 + blockLength;
 		if (blockLength === 0) {
 			return offset;
 		}
 	}
+	return null;
 }
 
+/** The offset just past the block at `start`, or `null` for an unknown or truncated block. */
+function endOfGifBlock(bytes: Uint8Array, start: number): number | null {
+	switch (bytes[start]) {
+		case GIF_IMAGE_DESCRIPTOR: {
+			if (start + 10 > bytes.byteLength) {
+				return null;
+			}
+			// Descriptor, local colour table, then the LZW minimum code size byte.
+			return endOfGifSubBlocks(bytes, start + 10 + colorTableBytes(bytes[start + 9]!) + 1);
+		}
+		case GIF_EXTENSION:
+			return endOfGifSubBlocks(bytes, start + 2);
+		default:
+			return null;
+	}
+}
+
+/**
+ * Drops comments, plain text (which browsers never render) and unknown
+ * application extensions.
+ */
 function keepsGifExtension(bytes: Uint8Array, start: number, label: number): boolean {
-	if (label === GIF_COMMENT_LABEL) {
+	if (label === GIF_COMMENT_LABEL || label === GIF_PLAIN_TEXT_LABEL) {
 		return false;
 	}
 	if (label !== GIF_APPLICATION_LABEL) {
@@ -473,42 +551,39 @@ function keepsGifExtension(bytes: Uint8Array, start: number, label: number): boo
 	return GIF_RENDERING_APPLICATIONS.includes(identifier);
 }
 
+/**
+ * Walks the blocks up to the trailer, which it always closes with. Like
+ * decoders, it ends the image at the first block it cannot read, so stray
+ * bytes or a truncated tail only cost what follows them.
+ */
 function stripGifMetadata(bytes: Uint8Array): Uint8Array<ArrayBuffer> {
 	if (!/^GIF8[79]a$/.test(readAscii(bytes, 0, 6))) {
 		throw new ImageMetadataError('missing GIF header');
 	}
 	assertWithin(bytes, GIF_HEADER_AND_SCREEN_DESCRIPTOR_BYTES, 'GIF screen descriptor');
-	const output = new ByteWriter();
+	const output = new ByteWriter(bytes.byteLength);
 	const headerEnd = GIF_HEADER_AND_SCREEN_DESCRIPTOR_BYTES + colorTableBytes(bytes[10]!);
 	assertWithin(bytes, headerEnd, 'GIF global colour table');
 	output.append(bytes.subarray(0, headerEnd));
+	let wroteFrame = false;
 	let offset = headerEnd;
 
-	while (offset < bytes.byteLength) {
-		const introducer = bytes[offset]!;
-		if (introducer === GIF_TRAILER) {
-			output.append([GIF_TRAILER]);
+	while (offset < bytes.byteLength && bytes[offset] !== GIF_TRAILER) {
+		const blockEnd = endOfGifBlock(bytes, offset);
+		if (blockEnd === null || blockEnd > bytes.byteLength) {
 			break;
 		}
-		let blockEnd: number;
-		let keep = true;
-		if (introducer === GIF_IMAGE_DESCRIPTOR) {
-			assertWithin(bytes, offset + 10, 'GIF image descriptor');
-			// Descriptor, local colour table, then the LZW minimum code size byte.
-			const imageDataStart = offset + 10 + colorTableBytes(bytes[offset + 9]!) + 1;
-			blockEnd = skipGifSubBlocks(bytes, imageDataStart);
-		} else if (introducer === GIF_EXTENSION) {
-			assertWithin(bytes, offset + 2, 'GIF extension');
-			blockEnd = skipGifSubBlocks(bytes, offset + 2);
-			keep = keepsGifExtension(bytes, offset, bytes[offset + 1]!);
-		} else {
-			throw new ImageMetadataError(`unexpected GIF block 0x${introducer.toString(16)}`);
-		}
-		assertWithin(bytes, blockEnd, 'GIF block');
-		if (keep) {
+		if (bytes[offset] === GIF_IMAGE_DESCRIPTOR) {
+			output.append(bytes.subarray(offset, blockEnd));
+			wroteFrame = true;
+		} else if (keepsGifExtension(bytes, offset, bytes[offset + 1]!)) {
 			output.append(bytes.subarray(offset, blockEnd));
 		}
 		offset = blockEnd;
 	}
+	if (!wroteFrame) {
+		throw new ImageMetadataError('no complete GIF frame');
+	}
+	output.append([GIF_TRAILER]);
 	return output.toBytes();
 }

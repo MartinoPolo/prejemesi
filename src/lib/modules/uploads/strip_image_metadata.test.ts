@@ -17,6 +17,8 @@ import {
 const ascii = (text: string): number[] => [...new TextEncoder().encode(text)];
 const EXIF_ORIENTATION_NORMAL = 1;
 const EXIF_ORIENTATION_ROTATE_COUNTERCLOCKWISE = 8;
+/** The marker, length and 14-byte payload of the JFIF segment in {@link structuralJpeg}. */
+const JFIF_SEGMENT_BYTES = 18;
 
 describe('stripImageMetadata: JPEG', () => {
 	it('removes GPS, camera, XMP, IPTC, MPF, comments and appended previews from a phone photo', () => {
@@ -48,6 +50,44 @@ describe('stripImageMetadata: JPEG', () => {
 		);
 
 		expect(stripImageMetadata(bigEndian, 'image/jpeg')).toEqual(bigEndian);
+	});
+
+	it('skips stray bytes between segments, as decoders do', () => {
+		const jpeg = structuralJpeg();
+		const afterJfifSegment = 2 + JFIF_SEGMENT_BYTES;
+		const padded = concatBytes(
+			jpeg.subarray(0, afterJfifSegment),
+			[0x00, 0x12],
+			jpeg.subarray(afterJfifSegment),
+		);
+
+		expect(stripImageMetadata(padded, 'image/jpeg')).toEqual(jpeg);
+	});
+
+	it('closes a JPEG cut off after its image data, dropping the damaged tail', () => {
+		const jpeg = structuralJpeg();
+		const withoutEndMarker = jpeg.subarray(0, jpeg.byteLength - 2);
+		const damagedTail = [0xff, 0xc4, 0x40, 0x00, 0x01];
+
+		expect(
+			stripImageMetadata(concatBytes(withoutEndMarker, damagedTail), 'image/jpeg'),
+		).toEqual(jpeg);
+		expect(stripImageMetadata(withoutEndMarker, 'image/jpeg')).toEqual(jpeg);
+	});
+
+	it('drops the JFIF thumbnail, which shows the uncropped photo', () => {
+		const jpeg = structuralJpeg();
+		const jfifHeader = [...ascii('JFIF\0'), 0x01, 0x01, 0x00, 0x00, 0x01, 0x00, 0x01];
+		const thumbnail = [0x01, 0x01, 0xff, 0x00, 0x00]; // 1×1 pixel, red
+		const segmentLength = 2 + jfifHeader.length + thumbnail.length;
+		const withThumbnail = concatBytes(
+			[0xff, 0xd8, 0xff, 0xe0, 0x00, segmentLength],
+			jfifHeader,
+			thumbnail,
+			jpeg.subarray(2 + JFIF_SEGMENT_BYTES),
+		);
+
+		expect(stripImageMetadata(withThumbnail, 'image/jpeg')).toEqual(jpeg);
 	});
 
 	it('refuses a JPEG whose segments run past the end of the file', () => {
@@ -104,6 +144,21 @@ describe('stripImageMetadata: PNG', () => {
 				PNG_END,
 			),
 		);
+	});
+
+	it('closes a PNG cut off after its image data, dropping the damaged tail', () => {
+		const truncatedText = pngChunk('tEXt', ascii('Comment\0Hidden comment')).slice(0, 12);
+		const png = concatBytes(PNG_SIGNATURE, PNG_HEADER, PNG_IMAGE_DATA, truncatedText);
+
+		expect(stripImageMetadata(png, 'image/png')).toEqual(
+			concatBytes(PNG_SIGNATURE, PNG_HEADER, PNG_IMAGE_DATA, PNG_END),
+		);
+	});
+
+	it('refuses a PNG cut off before its image data', () => {
+		const png = concatBytes(PNG_SIGNATURE, PNG_HEADER, PNG_IMAGE_DATA.slice(0, 10));
+
+		expect(() => stripImageMetadata(png, 'image/png')).toThrow(ImageMetadataError);
 	});
 
 	it('keeps every animation chunk of an animated PNG', () => {
@@ -234,14 +289,17 @@ function gifApplicationExtension(identifier: string, data: readonly number[]): n
 }
 
 describe('stripImageMetadata: GIF', () => {
+	const header = [...ascii('GIF89a'), 1, 0, 1, 0, 0x80, 0, 0, 0, 0, 0, 255, 255, 255];
+	const graphicControl = [0x21, 0xf9, 0x04, 0x00, 0x0a, 0x00, 0x00, 0x00];
+	const frame = [
+		graphicControl,
+		[0x2c, 0, 0, 0, 0, 1, 0, 1, 0, 0x00], // image descriptor
+		[0x02, 0x02, 0x44, 0x01, 0x00], // LZW image data
+	].flat();
+	const trailer = [0x3b];
+
 	it('drops comments and XMP, keeping the loop setting and every frame', () => {
-		const header = [...ascii('GIF89a'), 1, 0, 1, 0, 0x80, 0, 0, 0, 0, 0, 255, 255, 255];
 		const loop = gifApplicationExtension('NETSCAPE2.0', [0x01, 0x00, 0x00]);
-		const frame = [
-			[0x21, 0xf9, 0x04, 0x00, 0x0a, 0x00, 0x00, 0x00], // graphic control extension
-			[0x2c, 0, 0, 0, 0, 1, 0, 1, 0, 0x00], // image descriptor
-			[0x02, 0x02, 0x44, 0x01, 0x00], // LZW image data
-		].flat();
 		const animated = concatBytes(
 			header,
 			loop,
@@ -249,13 +307,70 @@ describe('stripImageMetadata: GIF', () => {
 			gifApplicationExtension('XMP DataXMP', XMP_PACKET_BYTES),
 			frame,
 			frame,
-			[0x3b],
+			trailer,
 			ascii('Apple'),
 		);
 
 		const stripped = stripImageMetadata(animated, 'image/gif');
 
 		expect(identifyingTextIn(stripped)).toEqual([]);
-		expect(stripped).toEqual(concatBytes(header, loop, frame, frame, [0x3b]));
+		expect(stripped).toEqual(concatBytes(header, loop, frame, frame, trailer));
+	});
+
+	it('drops plain text extensions', () => {
+		const plainTextGrid = [0, 0, 0, 0, 1, 0, 1, 0, 1, 1, 0, 1];
+		const plainText = [
+			0x21,
+			0x01,
+			0x0c,
+			...plainTextGrid,
+			...gifSubBlocks(ascii('Hidden text')),
+		];
+		const gif = concatBytes(header, graphicControl, plainText, frame, trailer);
+
+		expect(stripImageMetadata(gif, 'image/gif')).toEqual(
+			concatBytes(header, graphicControl, frame, trailer),
+		);
+	});
+
+	it('ends the image at a stray byte or a truncated block, as decoders do', () => {
+		const expected = concatBytes(header, frame, frame, trailer);
+
+		expect(
+			stripImageMetadata(concatBytes(header, frame, frame, [0x00], trailer), 'image/gif'),
+		).toEqual(expected);
+		expect(
+			stripImageMetadata(concatBytes(header, frame, frame, frame.slice(8, 14)), 'image/gif'),
+		).toEqual(expected);
+	});
+
+	it('refuses a GIF without one complete frame', () => {
+		expect(() =>
+			stripImageMetadata(concatBytes(header, [0x00], frame, trailer), 'image/gif'),
+		).toThrow(ImageMetadataError);
+		expect(() =>
+			stripImageMetadata(concatBytes(header, frame.slice(0, 12)), 'image/gif'),
+		).toThrow(ImageMetadataError);
+	});
+
+	it('copies a GIF of a million tiny blocks without allocating per block', () => {
+		const tinyBlockCount = 1_000_000;
+		const emptyExtension = [0x21, 0xf9, 0x00];
+		const gif = new Uint8Array(
+			header.length + tinyBlockCount * emptyExtension.length + frame.length + trailer.length,
+		);
+		gif.set(header);
+		for (let index = 0; index < tinyBlockCount; index += 1) {
+			gif.set(emptyExtension, header.length + index * emptyExtension.length);
+		}
+		gif.set([...frame, ...trailer], gif.length - frame.length - trailer.length);
+
+		const heapBefore = process.memoryUsage().heapUsed;
+		const stripped = stripImageMetadata(gif, 'image/gif');
+		const heapGrowth = process.memoryUsage().heapUsed - heapBefore;
+
+		expect(Buffer.from(stripped).equals(gif)).toBe(true);
+		// One object per kept block would cost on the order of 100 MB here.
+		expect(heapGrowth).toBeLessThan(32 * 1024 * 1024);
 	});
 });

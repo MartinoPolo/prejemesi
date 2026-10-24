@@ -297,6 +297,9 @@ describe.skipIf(!DB_READY)('POST /api/v1/images', () => {
 		const authorization = await tokenFor(MANAGER_ID);
 		const html = new Response('<html></html>', { headers: { 'content-type': 'image/png' } });
 		const svg = new Response('<svg/>', { headers: { 'content-type': 'image/svg+xml' } });
+		const damaged = new Response(structuralPng(10, 10).subarray(0, 40), {
+			headers: { 'content-type': 'image/png' },
+		});
 		const oversized = new Response(structuralPng(10, 10), {
 			headers: {
 				'content-type': 'image/png',
@@ -314,6 +317,7 @@ describe.skipIf(!DB_READY)('POST /api/v1/images', () => {
 			{ url: 'https://127.0.0.1/kolo.png', status: 400, code: 'AGENT_IMAGE_HOST_BLOCKED' },
 			{ response: svg, status: 422, code: 'AGENT_IMAGE_UNSUPPORTED_TYPE' },
 			{ response: html, status: 422, code: 'AGENT_IMAGE_SIGNATURE_MISMATCH' },
+			{ response: damaged, status: 422, code: 'AGENT_IMAGE_DAMAGED' },
 			{
 				response: oversized,
 				status: 422,

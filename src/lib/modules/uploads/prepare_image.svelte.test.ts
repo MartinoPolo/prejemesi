@@ -17,6 +17,8 @@ const MEGABYTE = 1024 * 1024;
 const GENEROUS_LIMIT = 50 * MEGABYTE;
 const RANDOM_VALUES_CHUNK = 16384;
 const ascii = new TextEncoder();
+const GIF_HEADER = [...ascii.encode('GIF89a'), 1, 0, 1, 0, 0x80, 0, 0, 0, 0, 0, 255, 255, 255];
+const GIF_FRAME = [0x2c, 0, 0, 0, 0, 1, 0, 1, 0, 0x00, 0x02, 0x02, 0x44, 0x01, 0x00];
 
 interface DrawOptions {
 	width: number;
@@ -134,12 +136,9 @@ describe('prepareImageForUpload', () => {
 		await expectUprightMarkedPhoto(prepared);
 	});
 
-	it('re-encodes a phone photo whose structure the metadata removal refuses, so no metadata survives', async () => {
-		const photoBytes = withPhoneMetadata(
-			await drawMarkedPhoto(),
-			EXIF_ORIENTATION_ROTATE_CLOCKWISE,
-		);
-		// Decoders skip a stray byte between segments; the metadata walk refuses it.
+	it('strips a phone photo with stray bytes between segments without re-encoding it, as decoders read it', async () => {
+		const storedBytes = await drawMarkedPhoto();
+		const photoBytes = withPhoneMetadata(storedBytes, EXIF_ORIENTATION_ROTATE_CLOCKWISE);
 		const afterExifSegment = 4 + ((photoBytes[4]! << 8) | photoBytes[5]!);
 		const irregular = new File(
 			[
@@ -155,7 +154,23 @@ describe('prepareImageForUpload', () => {
 
 		const prepared = await prepareImageForUpload(irregular, GENEROUS_LIMIT);
 
-		expect(prepared.type).toBe('image/jpeg');
+		expect(await bytesOf(prepared)).toEqual(
+			withExifOrientation(storedBytes, EXIF_ORIENTATION_ROTATE_CLOCKWISE),
+		);
+		await expectUprightMarkedPhoto(prepared);
+	});
+
+	it('re-encodes a photo whose structure the metadata removal cannot walk, so no metadata survives', async () => {
+		const photoBytes = withPhoneMetadata(
+			await drawMarkedPhoto(),
+			EXIF_ORIENTATION_ROTATE_CLOCKWISE,
+		);
+		// The browser sniffs the JPEG behind the wrong type; the metadata walk expects a PNG.
+		const mislabeled = new File([photoBytes], 'IMG_0003.png', { type: 'image/png' });
+
+		const prepared = await prepareImageForUpload(mislabeled, GENEROUS_LIMIT);
+
+		expect(prepared.type).not.toBe('image/jpeg');
 		expect(identifyingTextIn(await bytesOf(prepared))).toEqual([]);
 		await expectUprightMarkedPhoto(prepared);
 	});
@@ -238,18 +253,34 @@ describe('prepareImageForUpload', () => {
 	});
 
 	it('never re-encodes a GIF: within the limit it keeps every frame but loses its comment, over it the user is told', async () => {
-		const header = [...ascii.encode('GIF89a'), 1, 0, 1, 0, 0x80, 0, 0, 0, 0, 0, 255, 255, 255];
-		const frame = [0x2c, 0, 0, 0, 0, 1, 0, 1, 0, 0x00, 0x02, 0x02, 0x44, 0x01, 0x00];
 		const comment = [0x21, 0xfe, 14, ...ascii.encode('Hidden comment'), 0x00];
-		const gif = new File([concatBytes(header, comment, frame, frame, [0x3b])], 'party.gif', {
-			type: 'image/gif',
-		});
+		const gif = new File(
+			[concatBytes(GIF_HEADER, comment, GIF_FRAME, GIF_FRAME, [0x3b])],
+			'party.gif',
+			{ type: 'image/gif' },
+		);
 
 		const prepared = await prepareImageForUpload(gif, GENEROUS_LIMIT);
 
 		expect(prepared.type).toBe('image/gif');
-		expect(await bytesOf(prepared)).toEqual(concatBytes(header, frame, frame, [0x3b]));
+		expect(await bytesOf(prepared)).toEqual(
+			concatBytes(GIF_HEADER, GIF_FRAME, GIF_FRAME, [0x3b]),
+		);
 		await expectFailure(prepareImageForUpload(gif, 32), IMAGE_PREPARATION_FAILURES.tooLarge);
+	});
+
+	it('keeps every frame of a GIF with a stray byte before its trailer', async () => {
+		const gif = new File(
+			[concatBytes(GIF_HEADER, GIF_FRAME, GIF_FRAME, [0x00, 0x3b])],
+			'party.gif',
+			{ type: 'image/gif' },
+		);
+
+		const prepared = await prepareImageForUpload(gif, GENEROUS_LIMIT);
+
+		expect(await bytesOf(prepared)).toEqual(
+			concatBytes(GIF_HEADER, GIF_FRAME, GIF_FRAME, [0x3b]),
+		);
 	});
 
 	it('never re-encodes an animated PNG', async () => {

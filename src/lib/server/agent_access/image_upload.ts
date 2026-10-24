@@ -109,10 +109,9 @@ async function downloadAgentImage(url: string, fetch: ImageFetch): Promise<Stora
 	try {
 		bytes = stripImageMetadata(image.bytes, image.contentType);
 	} catch (thrown) {
-		// Unlike the browser, the server has no decoder to re-encode with, so a container its
-		// metadata removal cannot walk is refused as not a well-formed image of its type.
+		// Unlike the browser, the server has no decoder to re-encode with.
 		if (thrown instanceof ImageMetadataError) {
-			throw downloadFailure(IMAGE_DOWNLOAD_FAILURE.signatureMismatch);
+			throw new AgentApiFailure(422, SERVER_ERROR.AGENT_IMAGE_DAMAGED);
 		}
 		throw thrown;
 	}
