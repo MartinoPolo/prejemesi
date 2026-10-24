@@ -1,5 +1,5 @@
-// Gives an existing staging user an email/password sign-in, so accounts that only use Google
-// (which staging does not offer) can sign in. Touches only STAGING_DATABASE_URL, read from the
+// Gives an existing staging user an email/password sign-in, e.g. to act as a Google-only account
+// without its Google login. Touches only STAGING_DATABASE_URL, read from the
 // environment or the gitignored .env.staging. Prints a generated password unless one is passed.
 // Usage: pnpm exec tsx scripts/set-staging-password.ts <email> [password] (see docs/STAGING.md)
 import { randomBytes, randomUUID } from 'node:crypto';

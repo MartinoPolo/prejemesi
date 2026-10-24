@@ -65,7 +65,7 @@
 		},
 	],
 	// Staging (docs/STAGING.md): bindings and vars are not inherited, so each is redeclared
-	// with staging resources. Email, Google, Turnstile and presigned uploads stay off.
+	// with staging resources. Email, Turnstile and presigned uploads stay off.
 	"env": {
 		"staging": {
 			"name": "prejemesi-staging",
@@ -73,6 +73,8 @@
 			"vars": {
 				"ORIGIN": "https://staging.prejemesi.cz",
 				"PUBLIC_R2_URL": "https://staging-images.prejemesi.cz",
+				// Production's OAuth client; GOOGLE_CLIENT_SECRET is a staging Worker secret.
+				"GOOGLE_CLIENT_ID": "867815684383-d6tg9nlkf7539s0f21divv8u5b9d3ir2.apps.googleusercontent.com",
 			},
 			"hyperdrive": [
 				{

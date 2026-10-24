@@ -10,14 +10,14 @@ https://staging.prejemesi.cz runs the current `dev` branch so a release can be e
 | Database | Neon branch `staging` (snapshot of production) behind its own Hyperdrive config; migrations run automatically on deploy |
 | Images | R2 bucket `prejemesi-images-staging`, public at `staging-images.prejemesi.cz`; production objects are copied in, so staging deletes never reach production |
 | Email | Off: no `RESEND_API_KEY`, so sends are skipped and logged. Sign-up verification and password reset cannot complete; see [Sign in](#sign-in) |
-| Optional | No Google sign-in, Turnstile, presigned uploads (same-origin upload proxy instead), or AI assistant unless their secrets are added to the staging Worker |
+| Optional | No Turnstile, presigned uploads (same-origin upload proxy instead), or AI assistant unless their secrets are added to the staging Worker |
 | Indexing | Every response carries `X-Robots-Tag: noindex`; Sentry reports under environment `staging` |
 
 Links the app builds (share, invite, claim, reset) stay on the staging host; see `src/lib/config/site.ts`.
 
 ## Sign in
 
-Staging has no Google sign-in, so give an existing account a staging-only password (generated and printed unless one is passed):
+Google sign-in uses the production OAuth client, whose authorized redirect URIs include `https://staging.prejemesi.cz/api/auth/callback/google`. For a password sign-in, give an existing account a staging-only password (generated and printed unless one is passed):
 
 ```bash
 pnpm exec tsx scripts/set-staging-password.ts <email> [password]
