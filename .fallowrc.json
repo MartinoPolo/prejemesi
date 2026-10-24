@@ -40,7 +40,8 @@
 		"@internationalized/date",
 		"postcss-html",
 		"bits-ui",
-		"@cloudflare/workers-types"
+		"@cloudflare/workers-types",
+		"sharp"
 	],
 	"health": {
 		"maxCrap": 60
