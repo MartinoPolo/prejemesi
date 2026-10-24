@@ -13,7 +13,8 @@ export type ShareWizardStep = (typeof SHARE_WIZARD_STEPS)[keyof typeof SHARE_WIZ
  * Share methods with a standard prefilled intent URL. Messenger is deliberately absent:
  * its only web intent, Facebook's Send dialog, rejects requests without a registered
  * Facebook app id, and `fb-messenger://share` works only in the mobile app, so Messenger
- * users paste the copied link, which unfurls from the page's Open Graph tags.
+ * users reach it through the native share sheet (`native_share.ts`) or paste the copied link,
+ * which unfurls from the page's Open Graph tags.
  */
 export type SharePlatform = 'whatsapp' | 'email' | 'telegram' | 'sms';
 

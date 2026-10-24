@@ -21,12 +21,13 @@ Facebook, Messenger and others cache a page's preview, including the image, for 
 
 On a phone and a desktop, share a test wishlist through the wizard and confirm each method:
 
-| Method   | Expected                                                                        |
-| -------- | ------------------------------------------------------------------------------- |
-| Copy     | Link copied; pasted into Messenger/WhatsApp it unfurls with the current preview |
-| WhatsApp | `wa.me` opens WhatsApp with the message and link prefilled                      |
-| E-mail   | The mail app opens with subject and body (message and link) prefilled           |
-| Telegram | `t.me/share` opens Telegram with the link and message                           |
-| SMS      | Phones open Messages with the body prefilled; desktops may have no SMS app      |
+| Method | Expected |
+| --- | --- |
+| Copy | Link copied; pasted into Messenger/WhatsApp it unfurls with the current preview |
+| WhatsApp | `wa.me` opens WhatsApp with the message and link prefilled |
+| E-mail | The mail app opens with subject and body (message and link) prefilled |
+| Telegram | `t.me/share` opens Telegram with the link and message |
+| SMS | Phones open Messages with the body prefilled; desktops may have no SMS app |
+| More options | Shown only where the browser has a share sheet (most phones): it opens with the title, message and link; pick Messenger and check the prefill; dismissing it shows no error |
 
-Messenger has no button: its only web intent, Facebook's Send dialog, needs a registered Facebook app id, and `fb-messenger://share` works only inside the mobile app. Sharing to Messenger is copy and paste.
+Messenger has no button of its own: its only web intent, Facebook's Send dialog, needs a registered Facebook app id, and `fb-messenger://share` works only inside the mobile app. Phones reach it through More options; elsewhere sharing to Messenger is copy and paste.
