@@ -124,5 +124,71 @@
 		"themeId": "party",
 		"variant": "illustrated",
 		"widths": [640, 1280, 1672]
+	},
+	{
+		"id": "party-photo",
+		"themeId": "party",
+		"variant": "photo",
+		"widths": [640, 1280, 1672]
+	},
+	{
+		"id": "space-illustrated",
+		"themeId": "space",
+		"variant": "illustrated",
+		"widths": [640, 1280, 1672]
+	},
+	{
+		"id": "space-photo",
+		"themeId": "space",
+		"variant": "photo",
+		"widths": [640, 1280, 1672]
+	},
+	{
+		"id": "music-illustrated",
+		"themeId": "music",
+		"variant": "illustrated",
+		"widths": [640, 1280, 1672]
+	},
+	{
+		"id": "music-photo",
+		"themeId": "music",
+		"variant": "photo",
+		"widths": [640, 1280, 1672]
+	},
+	{
+		"id": "pets-illustrated",
+		"themeId": "pets",
+		"variant": "illustrated",
+		"widths": [640, 1280, 1672]
+	},
+	{
+		"id": "pets-photo",
+		"themeId": "pets",
+		"variant": "photo",
+		"widths": [640, 1280, 1672]
+	},
+	{
+		"id": "gourmet-illustrated",
+		"themeId": "gourmet",
+		"variant": "illustrated",
+		"widths": [640, 1280, 1672]
+	},
+	{
+		"id": "gourmet-photo",
+		"themeId": "gourmet",
+		"variant": "photo",
+		"widths": [640, 1280, 1672]
+	},
+	{
+		"id": "travel-illustrated",
+		"themeId": "travel",
+		"variant": "illustrated",
+		"widths": [640, 1280, 1672]
+	},
+	{
+		"id": "travel-photo",
+		"themeId": "travel",
+		"variant": "photo",
+		"widths": [640, 1280, 1672]
 	}
 ]
