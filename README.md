@@ -152,7 +152,7 @@ On Windows, use `pnpm.cmd` instead of `pnpm`.
 | `pnpm run build:storybook`            | Build static Storybook                              |
 | `pnpm run generate:theme-backgrounds` | Generate the curated background library (see below) |
 
-The background library is generated offline with Gemini image generation: `GEMINI_API_KEY=... pnpm run generate:theme-backgrounds [--theme <id>] [--model <id>] [--force]` writes WebP files to `static/wishlist-backgrounds/` and rewrites `src/lib/theme/wishlist_background_library.json`; review and commit both. The key must be paid tier because the free tier has no image quota. Runs resume by skipping existing images. Prompts live in `scripts/theme_background_prompts.mjs`.
+The background library is generated offline with Gemini image generation: `GEMINI_API_KEY=... pnpm run generate:theme-backgrounds [--theme <id>] [--model <id>] [--force]` writes WebP files to `static/wishlist-backgrounds/` and rewrites `src/lib/theme/wishlist_background_library.json`; review and commit both. The key must be paid tier because the free tier has no image quota. Runs resume by skipping existing images. Prompts live in `scripts/theme_background_prompts.mjs`. To use any other image tool, `pnpm run generate:theme-backgrounds --prompts` prints the prompt for each image id; save each result (16:9, ideally 2560 px wide) as `<id>.png`, `.jpg` or `.webp` in one folder and import them with `pnpm run generate:theme-backgrounds --from <folder>`.
 
 Application platform bindings use scoped imports from `@cloudflare/workers-types` in `src/app.d.ts`. Keep Wrangler's generated `worker-configuration.d.ts` out of the application TypeScript globals: its worker-entry import pulls compiled build output into typechecking.
 

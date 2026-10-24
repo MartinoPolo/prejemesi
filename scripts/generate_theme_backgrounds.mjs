@@ -7,8 +7,12 @@
  * Usage: GEMINI_API_KEY=... pnpm generate:theme-backgrounds [--model <id>] [--theme <id>] [--force]
  * Image generation needs a paid-tier key; the free tier has no image quota.
  * Existing images are skipped unless --force is given, so an interrupted run resumes.
+ *
+ * Images made with any other tool: `--prompts` prints the prompt per image id, and
+ * `--from <directory>` imports `<id>.png|jpg|jpeg|webp` files from that directory instead of
+ * calling Gemini.
  */
-import { mkdir, readdir, rename, rm, writeFile } from 'node:fs/promises';
+import { mkdir, readdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
@@ -157,6 +161,20 @@ async function saveWebpWidths(id, imageBuffer) {
 	}
 }
 
+const IMPORTED_IMAGE_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.webp'];
+
+async function findImportedImage(directory, id) {
+	const fileNames = await readdir(directory);
+	const fileName = fileNames.find((candidate) => {
+		const extension = path.extname(candidate).toLowerCase();
+		return (
+			IMPORTED_IMAGE_EXTENSIONS.includes(extension) &&
+			path.basename(candidate, path.extname(candidate)) === id
+		);
+	});
+	return fileName === undefined ? undefined : path.join(directory, fileName);
+}
+
 /** Lists every id with saved files, in theme then variant order. */
 async function writeManifest() {
 	const entries = [];
@@ -179,18 +197,30 @@ async function main() {
 			model: { type: 'string', default: DEFAULT_MODEL },
 			theme: { type: 'string' },
 			force: { type: 'boolean', default: false },
+			prompts: { type: 'boolean', default: false },
+			from: { type: 'string' },
 		},
 	});
-	const apiKey = process.env.GEMINI_API_KEY;
-	if (!apiKey) {
-		throw new Error('Set GEMINI_API_KEY (a paid-tier key; the free tier has no image quota).');
-	}
 	if (values.theme !== undefined && !(values.theme in THEME_PROMPTS)) {
 		throw new Error(
 			`Unknown theme "${values.theme}". Known: ${Object.keys(THEME_PROMPTS).join(', ')}`,
 		);
 	}
 	const themeIds = values.theme === undefined ? Object.keys(THEME_PROMPTS) : [values.theme];
+	if (values.prompts) {
+		for (const themeId of themeIds) {
+			for (const variant of BACKGROUND_VARIANTS) {
+				console.log(`${themeId}-${variant}\n${backgroundPrompt(themeId, variant)}\n`);
+			}
+		}
+		return;
+	}
+	const apiKey = process.env.GEMINI_API_KEY;
+	if (values.from === undefined && !apiKey) {
+		throw new Error(
+			'Set GEMINI_API_KEY (a paid-tier key; the free tier has no image quota), or import images with --from <directory>.',
+		);
+	}
 	await mkdir(OUTPUT_DIRECTORY, { recursive: true });
 	const failures = [];
 	for (const themeId of themeIds) {
@@ -201,13 +231,26 @@ async function main() {
 				console.log(`${id}: exists, skipped`);
 				continue;
 			}
-			console.log(`${id}: generating with ${values.model}`);
+			let importedPath;
+			if (values.from !== undefined) {
+				importedPath = await findImportedImage(values.from, id);
+				if (importedPath === undefined) {
+					console.log(`${id}: no file in ${values.from}, skipped`);
+					continue;
+				}
+				console.log(`${id}: importing ${importedPath}`);
+			} else {
+				console.log(`${id}: generating with ${values.model}`);
+			}
 			try {
-				const imageBuffer = await requestImage(
-					values.model,
-					apiKey,
-					backgroundPrompt(themeId, variant),
-				);
+				const imageBuffer =
+					importedPath === undefined
+						? await requestImage(
+								values.model,
+								apiKey,
+								backgroundPrompt(themeId, variant),
+							)
+						: await readFile(importedPath);
 				await saveWebpWidths(id, imageBuffer);
 				console.log(`${id}: saved`);
 			} catch (generationError) {
