@@ -16,6 +16,10 @@ import {
 import { assertWishlistMutable } from '$lib/modules/wishlists/wishlist_access.js';
 import { imagePublicUrl } from '$lib/modules/images/public_url.js';
 import { IMAGE_FILE_EXTENSIONS, MAX_GIFT_IMAGE_BYTES } from '$lib/modules/uploads/types.js';
+import {
+	ImageMetadataError,
+	stripImageMetadata,
+} from '$lib/modules/uploads/strip_image_metadata.js';
 import { AGENT_SCOPE } from '$lib/modules/access_tokens/scopes.js';
 import { SERVER_ERROR, type ServerErrorCode } from '$lib/modules/errors/server_error_codes.js';
 import { NonEmptyIdSchema } from '$lib/modules/change_proposals/types.js';
@@ -80,9 +84,16 @@ function downloadFailure(reason: ImageDownloadFailure): AgentApiFailure {
 	return new AgentApiFailure(status, code, details);
 }
 
-async function downloadAgentImage(url: string, fetch: ImageFetch): Promise<DownloadedImage> {
+type StorableImage = Pick<
+	DownloadedImage,
+	'bytes' | 'contentType' | 'byteLength' | 'width' | 'height'
+>;
+
+/** Downloads the image and removes its identifying metadata, as browser uploads do. */
+async function downloadAgentImage(url: string, fetch: ImageFetch): Promise<StorableImage> {
+	let image: DownloadedImage;
 	try {
-		return await fetchPublicImage(url, {
+		image = await fetchPublicImage(url, {
 			fetch,
 			timeoutMs: AGENT_IMAGE_FETCH_TIMEOUT_MS,
 			maxBytes: MAX_GIFT_IMAGE_BYTES,
@@ -94,6 +105,18 @@ async function downloadAgentImage(url: string, fetch: ImageFetch): Promise<Downl
 		}
 		throw thrown;
 	}
+	let bytes: Uint8Array;
+	try {
+		bytes = stripImageMetadata(image.bytes, image.contentType);
+	} catch (thrown) {
+		// Unlike the browser, the server has no decoder to re-encode with.
+		if (thrown instanceof ImageMetadataError) {
+			throw new AgentApiFailure(422, SERVER_ERROR.AGENT_IMAGE_DAMAGED);
+		}
+		throw thrown;
+	}
+	const { contentType, width, height } = image;
+	return { bytes, contentType, byteLength: bytes.byteLength, width, height };
 }
 
 /** Images count from every token, attached or not. */

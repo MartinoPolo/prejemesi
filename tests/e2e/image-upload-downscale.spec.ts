@@ -1,11 +1,12 @@
 import { test, expect, type Locator, type Page } from '@playwright/test';
 import { createTestUser } from './fixtures/test-data.js';
 import { registerAndGetPage } from './fixtures/auth-helpers.js';
-import { createWishlistAndNavigate } from './fixtures/wishlist-helpers.js';
+import { createWishlistAndNavigate, shareWishlist } from './fixtures/wishlist-helpers.js';
 import {
 	EXIF_ORIENTATION_ROTATE_CLOCKWISE,
-	withExifOrientation,
-} from '../../src/lib/modules/uploads/jpeg_orientation.test_fixtures.js';
+	identifyingTextIn,
+	withPhoneMetadata,
+} from '../../src/lib/modules/uploads/image_metadata.test_fixtures.js';
 import { MAX_FILE_SIZE } from '../../src/lib/modules/uploads/types.js';
 import { MAX_UPLOAD_IMAGE_EDGE_PX } from '../../src/lib/modules/uploads/prepare_image.js';
 import * as m from '../../src/lib/paraglide/messages.js';
@@ -27,20 +28,30 @@ interface UploadedImage {
 	height: number;
 	bytes: number;
 	topRightPixel: number[];
+	/** Phone metadata values still present in the stored bytes. */
+	identifyingText: string[];
+}
+
+interface MarkedPhotoOptions {
+	width: number;
+	height: number;
+	markerSize: number;
+	/** Noise defeats JPEG compression, so the photo exceeds every upload limit. */
+	noise: boolean;
 }
 
 /**
- * Noise defeats JPEG compression so the photo exceeds the largest upload limit;
- * a red block marks the stored top-left corner, which EXIF orientation 6 must
- * display at the top right.
+ * Draws a JPEG whose red block marks the stored top-left corner, which EXIF
+ * orientation 6 must display at the top right, and dresses it like a phone
+ * photo: GPS, camera and serial EXIF, XMP, IPTC and an appended preview.
  */
-async function buildCameraPhoto(page: Page): Promise<CameraPhoto> {
-	const base64 = await page.evaluate(
-		async ({ width, height, markerSize }) => {
-			const canvas = document.createElement('canvas');
-			canvas.width = width;
-			canvas.height = height;
-			const context = canvas.getContext('2d')!;
+async function buildPhonePhoto(page: Page, options: MarkedPhotoOptions): Promise<CameraPhoto> {
+	const base64 = await page.evaluate(async ({ width, height, markerSize, noise }) => {
+		const canvas = document.createElement('canvas');
+		canvas.width = width;
+		canvas.height = height;
+		const context = canvas.getContext('2d')!;
+		if (noise) {
 			const pixels = context.createImageData(width, height);
 			const random = new Uint32Array(pixels.data.buffer);
 			for (let offset = 0; offset < random.length; offset += 16384) {
@@ -50,25 +61,38 @@ async function buildCameraPhoto(page: Page): Promise<CameraPhoto> {
 				pixels.data[index] = 255;
 			}
 			context.putImageData(pixels, 0, 0);
-			context.fillStyle = 'rgb(255, 0, 0)';
-			context.fillRect(0, 0, markerSize, markerSize);
-			const blob = await new Promise<Blob>((resolve) => {
-				canvas.toBlob((result) => resolve(result!), 'image/jpeg', 1);
-			});
-			const dataUrl = await new Promise<string>((resolve) => {
-				const reader = new FileReader();
-				reader.onload = () => resolve(reader.result as string);
-				reader.readAsDataURL(blob);
-			});
-			return dataUrl.slice(dataUrl.indexOf(',') + 1);
-		},
-		{ width: CAMERA_PHOTO_WIDTH, height: CAMERA_PHOTO_HEIGHT, markerSize: MARKER_SIZE },
-	);
+		} else {
+			context.fillStyle = 'rgb(40, 120, 200)';
+			context.fillRect(0, 0, width, height);
+		}
+		context.fillStyle = 'rgb(255, 0, 0)';
+		context.fillRect(0, 0, markerSize, markerSize);
+		const blob = await new Promise<Blob>((resolve) => {
+			canvas.toBlob((result) => resolve(result!), 'image/jpeg', 1);
+		});
+		const dataUrl = await new Promise<string>((resolve) => {
+			const reader = new FileReader();
+			reader.onload = () => resolve(reader.result as string);
+			reader.readAsDataURL(blob);
+		});
+		return dataUrl.slice(dataUrl.indexOf(',') + 1);
+	}, options);
 	const buffer = Buffer.from(
-		withExifOrientation(Buffer.from(base64, 'base64'), EXIF_ORIENTATION_ROTATE_CLOCKWISE),
+		withPhoneMetadata(Buffer.from(base64, 'base64'), EXIF_ORIENTATION_ROTATE_CLOCKWISE),
 	);
-	expect(buffer.byteLength).toBeGreaterThan(Math.max(...Object.values(MAX_FILE_SIZE)));
+	expect(identifyingTextIn(buffer)).not.toEqual([]);
 	return { name: 'IMG_camera_photo.jpg', mimeType: 'image/jpeg', buffer };
+}
+
+async function buildCameraPhoto(page: Page): Promise<CameraPhoto> {
+	const photo = await buildPhonePhoto(page, {
+		width: CAMERA_PHOTO_WIDTH,
+		height: CAMERA_PHOTO_HEIGHT,
+		markerSize: MARKER_SIZE,
+		noise: true,
+	});
+	expect(photo.buffer.byteLength).toBeGreaterThan(Math.max(...Object.values(MAX_FILE_SIZE)));
+	return photo;
 }
 
 function waitForUploadedObjectUrl(page: Page): Promise<string> {
@@ -84,7 +108,10 @@ function waitForUploadedObjectUrl(page: Page): Promise<string> {
 }
 
 async function inspectUploadedImage(page: Page, objectPath: string): Promise<UploadedImage> {
-	return page.evaluate(async (path) => {
+	const stored = await page.request.get(objectPath);
+	expect(stored.ok()).toBe(true);
+	const identifyingText = identifyingTextIn(await stored.body());
+	const decoded = await page.evaluate(async (path) => {
 		const blob = await (await fetch(path)).blob();
 		const bitmap = await createImageBitmap(blob);
 		const canvas = document.createElement('canvas');
@@ -100,18 +127,24 @@ async function inspectUploadedImage(page: Page, objectPath: string): Promise<Upl
 			topRightPixel: [sample[0], sample[1], sample[2]],
 		};
 	}, objectPath);
+	return { ...decoded, identifyingText };
+}
+
+function expectUprightWithoutMetadata(image: UploadedImage) {
+	expect(image.identifyingText).toEqual([]);
+	const [red, green, blue] = image.topRightPixel;
+	expect(red).toBeGreaterThan(200);
+	expect(green).toBeLessThan(60);
+	expect(blue).toBeLessThan(60);
 }
 
 function expectDownscaledUpright(image: UploadedImage, maxBytes: number) {
+	expectUprightWithoutMetadata(image);
 	expect(image.bytes).toBeLessThanOrEqual(maxBytes);
 	expect(image.height).toBe(MAX_UPLOAD_IMAGE_EDGE_PX);
 	expect(image.width).toBe(
 		Math.round((MAX_UPLOAD_IMAGE_EDGE_PX * CAMERA_PHOTO_HEIGHT) / CAMERA_PHOTO_WIDTH),
 	);
-	const [red, green, blue] = image.topRightPixel;
-	expect(red).toBeGreaterThan(200);
-	expect(green).toBeLessThan(60);
-	expect(blue).toBeLessThan(60);
 }
 
 async function openGiftImageUpload(page: Page): Promise<Locator> {
@@ -222,6 +255,69 @@ test.describe('Large camera photo upload (#525)', () => {
 			expect(uploadAttempted).toBe(false);
 		} finally {
 			await page.context().close();
+		}
+	});
+});
+
+test.describe('Phone photo metadata (#558)', () => {
+	test('a phone photo within the limits uploads without GPS or camera metadata and displays upright', async ({
+		browser,
+		request,
+		baseURL,
+	}) => {
+		const ownerPage = await registerAndGetPage(
+			browser,
+			request,
+			baseURL!,
+			createTestUser('upload-gift-metadata'),
+		);
+		const giftName = 'Darek z telefonu';
+		let wishlistPath: string;
+		try {
+			await createWishlistAndNavigate(ownerPage, 'Phone Photo Metadata');
+			const photo = await buildPhonePhoto(ownerPage, {
+				width: 1200,
+				height: 900,
+				markerSize: 150,
+				noise: false,
+			});
+			expect(photo.buffer.byteLength).toBeLessThan(MAX_FILE_SIZE['gift-image']);
+
+			const addDialog = await openGiftImageUpload(ownerPage);
+			await addDialog.getByRole('textbox', { name: 'Název' }).fill(giftName);
+			const uploadedObject = waitForUploadedObjectUrl(ownerPage);
+			await addDialog.locator('input[type=file]').setInputFiles(photo);
+			const uploaded = await inspectUploadedImage(ownerPage, await uploadedObject);
+			expectUprightWithoutMetadata(uploaded);
+			expect([uploaded.width, uploaded.height]).toEqual([900, 1200]);
+
+			await addDialog.getByRole('button', { name: 'Přidat dárek' }).click();
+			await expect(addDialog).not.toBeVisible({ timeout: 10_000 });
+			await shareWishlist(ownerPage);
+			wishlistPath = new URL(ownerPage.url()).pathname;
+		} finally {
+			await ownerPage.context().close();
+		}
+
+		const visitorContext = await browser.newContext();
+		try {
+			const visitorPage = await visitorContext.newPage();
+			await visitorPage.goto(wishlistPath);
+			await visitorPage.getByText(giftName, { exact: true }).first().click();
+			const viewer = visitorPage.getByRole('dialog');
+			const viewerImage = viewer.getByTestId('gift-viewer-photo').locator('img');
+			await expect
+				.poll(() =>
+					viewerImage.evaluate((image: HTMLImageElement) =>
+						image.complete ? [image.naturalWidth, image.naturalHeight] : null,
+					),
+				)
+				.toEqual([900, 1200]);
+			await viewer.screenshot({
+				path: test.info().outputPath('phone-photo-gift-viewer.png'),
+			});
+		} finally {
+			await visitorContext.close();
 		}
 	});
 });

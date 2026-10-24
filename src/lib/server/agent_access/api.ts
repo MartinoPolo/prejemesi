@@ -129,6 +129,8 @@ const AGENT_ERROR_MESSAGES: Partial<Record<ServerErrorCode, string>> = {
 	[SERVER_ERROR.AGENT_IMAGE_SIGNATURE_MISMATCH]:
 		'The downloaded bytes are not an image of the declared type.',
 	[SERVER_ERROR.AGENT_IMAGE_DIMENSIONS_INVALID]: 'The image has no width or height.',
+	[SERVER_ERROR.AGENT_IMAGE_DAMAGED]:
+		'The image file is damaged before its image data, so its metadata cannot be removed.',
 	[SERVER_ERROR.AGENT_IMAGE_FETCH_FAILED]:
 		'The image could not be downloaded: an error status, a timeout or too many redirects.',
 	[SERVER_ERROR.AGENT_IMAGE_STORAGE_UNAVAILABLE]: 'Image storage is unavailable.',

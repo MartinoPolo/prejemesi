@@ -104,7 +104,7 @@ Every failure answers `{ "error": { "code": "…", "message": "…", …details 
 | 410 | `AGENT_IMAGE_REFERENCE_EXPIRED` |
 | 413 | `AGENT_REQUEST_TOO_LARGE` (with `maxBytes`) |
 | 415 | `AGENT_UNSUPPORTED_MEDIA_TYPE`: bodies must be `application/json` |
-| 422 | `AGENT_IDEMPOTENCY_KEY_REUSED`, `AGENT_IMAGE_TOO_LARGE` (with `maxBytes`), `AGENT_IMAGE_UNSUPPORTED_TYPE`, `AGENT_IMAGE_SIGNATURE_MISMATCH`, `AGENT_IMAGE_DIMENSIONS_INVALID` |
+| 422 | `AGENT_IDEMPOTENCY_KEY_REUSED`, `AGENT_IMAGE_TOO_LARGE` (with `maxBytes`), `AGENT_IMAGE_UNSUPPORTED_TYPE`, `AGENT_IMAGE_SIGNATURE_MISMATCH`, `AGENT_IMAGE_DIMENSIONS_INVALID`, `AGENT_IMAGE_DAMAGED` |
 | 429 | `AGENT_RATE_LIMITED`, with a `Retry-After` header and `retryAfterSeconds`; `AGENT_DAILY_CHANGE_BUDGET_EXCEEDED`, also with `budgetRows` and `windowSeconds`; `AGENT_DAILY_IMAGE_BUDGET_EXCEEDED`, also with `budgetImages` and `windowSeconds` |
 | 502 | `AGENT_IMAGE_FETCH_FAILED`: the image host failed, timed out, answered an error or redirected too often |
 | 503 | `AGENT_RATE_LIMIT_UNAVAILABLE`, `AGENT_IMAGE_STORAGE_UNAVAILABLE` |

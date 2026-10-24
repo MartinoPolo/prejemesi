@@ -18,6 +18,7 @@ import { agentImage } from '$lib/server/db/agent_image.schema.js';
 import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
 import { CreateAccessTokenInputSchema } from '$lib/modules/access_tokens/types.js';
 import { MAX_GIFT_IMAGE_BYTES } from '$lib/modules/uploads/types.js';
+import { structuralPng } from '$lib/modules/uploads/image_metadata.test_fixtures.js';
 import { createAccessToken } from './access_tokens.js';
 import type { AgentApiRateLimit } from './api.js';
 import type { AgentImageBucket } from '$lib/server/storage/r2.js';
@@ -27,17 +28,8 @@ import { POST as postImage } from '../../../routes/api/v1/images/+server.js';
 
 const allowingRateLimit: AgentApiRateLimit = { limit: async () => ({ success: true }) };
 
-function pngBytes(width: number, height: number): Uint8Array<ArrayBuffer> {
-	const bytes = new Uint8Array(29);
-	bytes.set([137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13, 73, 72, 68, 82]);
-	const view = new DataView(bytes.buffer);
-	view.setUint32(16, width);
-	view.setUint32(20, height);
-	return bytes;
-}
-
 function pngResponse(width = 800, height = 600): Response {
-	return new Response(pngBytes(width, height), { headers: { 'content-type': 'image/png' } });
+	return new Response(structuralPng(width, height), { headers: { 'content-type': 'image/png' } });
 }
 
 interface StoredObject {
@@ -202,7 +194,7 @@ describe.skipIf(!DB_READY)('POST /api/v1/images', () => {
 		expect(String(fetch.mock.calls[0]?.[0])).toBe('https://shop.example/kolo.png');
 		expect(image).toMatchObject({
 			contentType: 'image/png',
-			byteLength: 29,
+			byteLength: structuralPng(800, 600).byteLength,
 			width: 800,
 			height: 600,
 		});
@@ -217,7 +209,7 @@ describe.skipIf(!DB_READY)('POST /api/v1/images', () => {
 		expect(image.url).not.toContain('shop.example');
 		expect(image.url.endsWith(row?.objectKey ?? '-')).toBe(true);
 		expect(objects.get(row?.objectKey ?? '')).toEqual({
-			bytes: pngBytes(800, 600),
+			bytes: structuralPng(800, 600),
 			contentType: 'image/png',
 		});
 	});
@@ -305,7 +297,10 @@ describe.skipIf(!DB_READY)('POST /api/v1/images', () => {
 		const authorization = await tokenFor(MANAGER_ID);
 		const html = new Response('<html></html>', { headers: { 'content-type': 'image/png' } });
 		const svg = new Response('<svg/>', { headers: { 'content-type': 'image/svg+xml' } });
-		const oversized = new Response(pngBytes(10, 10), {
+		const damaged = new Response(structuralPng(10, 10).subarray(0, 40), {
+			headers: { 'content-type': 'image/png' },
+		});
+		const oversized = new Response(structuralPng(10, 10), {
 			headers: {
 				'content-type': 'image/png',
 				'content-length': String(MAX_GIFT_IMAGE_BYTES + 1),
@@ -322,6 +317,7 @@ describe.skipIf(!DB_READY)('POST /api/v1/images', () => {
 			{ url: 'https://127.0.0.1/kolo.png', status: 400, code: 'AGENT_IMAGE_HOST_BLOCKED' },
 			{ response: svg, status: 422, code: 'AGENT_IMAGE_UNSUPPORTED_TYPE' },
 			{ response: html, status: 422, code: 'AGENT_IMAGE_SIGNATURE_MISMATCH' },
+			{ response: damaged, status: 422, code: 'AGENT_IMAGE_DAMAGED' },
 			{
 				response: oversized,
 				status: 422,

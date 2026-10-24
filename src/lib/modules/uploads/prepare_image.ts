@@ -1,3 +1,4 @@
+import { ImageMetadataError, stripImageMetadata } from './strip_image_metadata.js';
 import { IMAGE_FILE_EXTENSIONS, isAllowedContentType, type AllowedContentType } from './types.js';
 
 /**
@@ -40,35 +41,58 @@ interface DecodedImage {
 }
 
 /**
- * Makes a picked image acceptable for upload: a file within `maxBytes` and
- * {@link MAX_UPLOAD_IMAGE_EDGE_PX} is returned untouched; a larger one is
- * decoded with its EXIF orientation applied, downscaled and re-encoded.
- * Animated images (every GIF, animated PNG and WebP) are never re-encoded,
- * because a canvas keeps only their first frame.
+ * Makes a picked image acceptable for upload. Every result is free of
+ * location and other identifying metadata (see {@link stripImageMetadata}).
+ * A file within `maxBytes` and {@link MAX_UPLOAD_IMAGE_EDGE_PX} keeps its
+ * encoded pixels; a larger one, or one whose structure the metadata removal
+ * cannot walk, is decoded with its EXIF orientation applied, downscaled and
+ * re-encoded, which drops all metadata. Animated images (every GIF, animated
+ * PNG and WebP) are never re-encoded, because a canvas keeps only their first
+ * frame.
  */
 export async function prepareImageForUpload(file: File, maxBytes: number): Promise<File> {
-	if (!isAllowedContentType(file.type)) {
+	const contentType = file.type;
+	if (!isAllowedContentType(contentType)) {
 		throw new ImagePreparationError(IMAGE_PREPARATION_FAILURES.unsupportedType);
 	}
 
+	const stripped = await withoutMetadata(file, contentType);
+
 	if (await isAnimatedImage(file)) {
-		if (file.size > maxBytes) {
+		if (stripped === null) {
+			throw new ImagePreparationError(IMAGE_PREPARATION_FAILURES.unreadable);
+		}
+		if (stripped.size > maxBytes) {
 			throw new ImagePreparationError(IMAGE_PREPARATION_FAILURES.tooLarge);
 		}
-		return file;
+		return stripped;
 	}
 
 	const image = await decodeImage(file);
 	try {
 		if (
-			file.size <= maxBytes &&
+			stripped !== null &&
+			stripped.size <= maxBytes &&
 			Math.max(image.width, image.height) <= MAX_UPLOAD_IMAGE_EDGE_PX
 		) {
-			return file;
+			return stripped;
 		}
 		return await downscaleAndEncode(file, image, maxBytes);
 	} finally {
 		image.release();
+	}
+}
+
+/** The file without metadata, or `null` when its structure cannot be walked. */
+async function withoutMetadata(file: File, contentType: AllowedContentType): Promise<File | null> {
+	try {
+		const bytes = stripImageMetadata(new Uint8Array(await file.arrayBuffer()), contentType);
+		return new File([bytes], file.name, { type: contentType, lastModified: file.lastModified });
+	} catch (thrown) {
+		if (thrown instanceof ImageMetadataError) {
+			return null;
+		}
+		throw thrown;
 	}
 }
 

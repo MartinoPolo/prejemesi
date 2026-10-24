@@ -7,12 +7,18 @@ import {
 } from './prepare_image.js';
 import {
 	EXIF_ORIENTATION_ROTATE_CLOCKWISE,
+	concatBytes,
+	identifyingTextIn,
 	withExifOrientation,
-} from './jpeg_orientation.test_fixtures.js';
+	withPhoneMetadata,
+} from './image_metadata.test_fixtures.js';
 
 const MEGABYTE = 1024 * 1024;
 const GENEROUS_LIMIT = 50 * MEGABYTE;
 const RANDOM_VALUES_CHUNK = 16384;
+const ascii = new TextEncoder();
+const GIF_HEADER = [...ascii.encode('GIF89a'), 1, 0, 1, 0, 0x80, 0, 0, 0, 0, 0, 255, 255, 255];
+const GIF_FRAME = [0x2c, 0, 0, 0, 0, 1, 0, 1, 0, 0x00, 0x02, 0x02, 0x44, 0x01, 0x00];
 
 interface DrawOptions {
 	width: number;
@@ -66,6 +72,28 @@ async function readPixel(file: File, x: number, y: number) {
 	return { width: bitmap.width, height: bitmap.height, red, green, blue, alpha };
 }
 
+async function bytesOf(file: File): Promise<Uint8Array> {
+	return new Uint8Array(await file.arrayBuffer());
+}
+
+async function drawMarkedPhoto(): Promise<Uint8Array> {
+	const stored = await drawImageFile('stored.jpg', {
+		width: 400,
+		height: 300,
+		type: 'image/jpeg',
+		redTopLeftMarker: 60,
+	});
+	return bytesOf(stored);
+}
+
+/** EXIF orientation 6 turns the stored 400×300 frame upright to 300×400, red marker at the top right. */
+async function expectUprightMarkedPhoto(file: File) {
+	const topRight = await readPixel(file, 300 - 20, 20);
+	expect([topRight.width, topRight.height]).toEqual([300, 400]);
+	expect(topRight.red).toBeGreaterThan(200);
+	expect(topRight.green).toBeLessThan(60);
+}
+
 async function expectFailure(promise: Promise<unknown>, reason: string) {
 	const thrown = await promise.then(
 		() => null,
@@ -76,14 +104,75 @@ async function expectFailure(promise: Promise<unknown>, reason: string) {
 }
 
 describe('prepareImageForUpload', () => {
-	it('keeps an image that already fits the byte limit and maximum edge untouched', async () => {
+	it('keeps the bytes of a metadata-free image that already fits the byte limit and maximum edge', async () => {
 		const file = await drawImageFile('small.jpg', {
 			width: 800,
 			height: 600,
 			type: 'image/jpeg',
 		});
 
-		expect(await prepareImageForUpload(file, GENEROUS_LIMIT)).toBe(file);
+		const prepared = await prepareImageForUpload(file, GENEROUS_LIMIT);
+
+		expect(prepared.name).toBe('small.jpg');
+		expect(prepared.type).toBe('image/jpeg');
+		expect(await bytesOf(prepared)).toEqual(await bytesOf(file));
+	});
+
+	it('strips GPS and camera metadata from a phone photo within the limits without re-encoding it', async () => {
+		const storedBytes = await drawMarkedPhoto();
+		const photo = new File(
+			[withPhoneMetadata(storedBytes, EXIF_ORIENTATION_ROTATE_CLOCKWISE)],
+			'IMG_0001.jpg',
+			{ type: 'image/jpeg' },
+		);
+
+		const prepared = await prepareImageForUpload(photo, GENEROUS_LIMIT);
+
+		const preparedBytes = await bytesOf(prepared);
+		expect(identifyingTextIn(preparedBytes)).toEqual([]);
+		expect(preparedBytes).toEqual(
+			withExifOrientation(storedBytes, EXIF_ORIENTATION_ROTATE_CLOCKWISE),
+		);
+		await expectUprightMarkedPhoto(prepared);
+	});
+
+	it('strips a phone photo with stray bytes between segments without re-encoding it, as decoders read it', async () => {
+		const storedBytes = await drawMarkedPhoto();
+		const photoBytes = withPhoneMetadata(storedBytes, EXIF_ORIENTATION_ROTATE_CLOCKWISE);
+		const afterExifSegment = 4 + ((photoBytes[4]! << 8) | photoBytes[5]!);
+		const irregular = new File(
+			[
+				concatBytes(
+					photoBytes.subarray(0, afterExifSegment),
+					[0x00],
+					photoBytes.subarray(afterExifSegment),
+				),
+			],
+			'IMG_0002.jpg',
+			{ type: 'image/jpeg' },
+		);
+
+		const prepared = await prepareImageForUpload(irregular, GENEROUS_LIMIT);
+
+		expect(await bytesOf(prepared)).toEqual(
+			withExifOrientation(storedBytes, EXIF_ORIENTATION_ROTATE_CLOCKWISE),
+		);
+		await expectUprightMarkedPhoto(prepared);
+	});
+
+	it('re-encodes a photo whose structure the metadata removal cannot walk, so no metadata survives', async () => {
+		const photoBytes = withPhoneMetadata(
+			await drawMarkedPhoto(),
+			EXIF_ORIENTATION_ROTATE_CLOCKWISE,
+		);
+		// The browser sniffs the JPEG behind the wrong type; the metadata walk expects a PNG.
+		const mislabeled = new File([photoBytes], 'IMG_0003.png', { type: 'image/png' });
+
+		const prepared = await prepareImageForUpload(mislabeled, GENEROUS_LIMIT);
+
+		expect(prepared.type).not.toBe('image/jpeg');
+		expect(identifyingTextIn(await bytesOf(prepared))).toEqual([]);
+		await expectUprightMarkedPhoto(prepared);
 	});
 
 	it('re-encodes a JPEG over the byte limit into a JPEG within it', async () => {
@@ -163,26 +252,60 @@ describe('prepareImageForUpload', () => {
 		expect(opaque.alpha).toBe(255);
 	});
 
-	it('never re-encodes a GIF: within the limit it is kept, over it the user is told', async () => {
-		const gif = new File([new Uint8Array(1024)], 'party.gif', { type: 'image/gif' });
+	it('never re-encodes a GIF: within the limit it keeps every frame but loses its comment, over it the user is told', async () => {
+		const comment = [0x21, 0xfe, 14, ...ascii.encode('Hidden comment'), 0x00];
+		const gif = new File(
+			[concatBytes(GIF_HEADER, comment, GIF_FRAME, GIF_FRAME, [0x3b])],
+			'party.gif',
+			{ type: 'image/gif' },
+		);
 
-		expect(await prepareImageForUpload(gif, GENEROUS_LIMIT)).toBe(gif);
-		await expectFailure(prepareImageForUpload(gif, 512), IMAGE_PREPARATION_FAILURES.tooLarge);
+		const prepared = await prepareImageForUpload(gif, GENEROUS_LIMIT);
+
+		expect(prepared.type).toBe('image/gif');
+		expect(await bytesOf(prepared)).toEqual(
+			concatBytes(GIF_HEADER, GIF_FRAME, GIF_FRAME, [0x3b]),
+		);
+		await expectFailure(prepareImageForUpload(gif, 32), IMAGE_PREPARATION_FAILURES.tooLarge);
+	});
+
+	it('keeps every frame of a GIF with a stray byte before its trailer', async () => {
+		const gif = new File(
+			[concatBytes(GIF_HEADER, GIF_FRAME, GIF_FRAME, [0x00, 0x3b])],
+			'party.gif',
+			{ type: 'image/gif' },
+		);
+
+		const prepared = await prepareImageForUpload(gif, GENEROUS_LIMIT);
+
+		expect(await bytesOf(prepared)).toEqual(
+			concatBytes(GIF_HEADER, GIF_FRAME, GIF_FRAME, [0x3b]),
+		);
 	});
 
 	it('never re-encodes an animated PNG', async () => {
 		const pngSignature = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
-		const ascii = new TextEncoder();
-		const ihdrChunk = [0, 0, 0, 13, ...ascii.encode('IHDR')];
-		const ihdrBodyAndCrc = Array.from({ length: 13 + 4 }, () => 0);
-		const actlChunk = [0, 0, 0, 8, ...ascii.encode('acTL')];
-		const apng = new File(
-			[new Uint8Array([...pngSignature, ...ihdrChunk, ...ihdrBodyAndCrc, ...actlChunk])],
-			'animated.png',
-			{ type: 'image/png' },
+		const chunk = (type: string, length: number) => [
+			0,
+			0,
+			0,
+			length,
+			...ascii.encode(type),
+			...Array.from({ length: length + 4 }, () => 0),
+		];
+		const apngBytes = concatBytes(
+			pngSignature,
+			chunk('IHDR', 13),
+			chunk('acTL', 8),
+			chunk('fcTL', 26),
+			chunk('IDAT', 4),
+			chunk('IEND', 0),
 		);
+		const apng = new File([apngBytes], 'animated.png', { type: 'image/png' });
 
-		expect(await prepareImageForUpload(apng, GENEROUS_LIMIT)).toBe(apng);
+		const prepared = await prepareImageForUpload(apng, GENEROUS_LIMIT);
+
+		expect(await bytesOf(prepared)).toEqual(apngBytes);
 		await expectFailure(prepareImageForUpload(apng, 8), IMAGE_PREPARATION_FAILURES.tooLarge);
 	});
 
