@@ -23,7 +23,7 @@ function proposalGift(overrides: Partial<ChangeProposalGift> = {}): ChangePropos
 		imageMeta: null,
 		quantity: null,
 		priorityLevelId: null,
-		categoryId: null,
+		categoryIds: [],
 		received: false,
 		deleted: false,
 		editedAfterShareAt: null,

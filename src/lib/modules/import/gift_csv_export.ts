@@ -20,12 +20,13 @@ export interface ExportableGift {
 	links: GiftLink[];
 	price: number | null;
 	currency: string | null;
-	categoryLabel?: string | null;
+	/** Category labels in the gift's order, the primary first. */
+	categoryLabels?: readonly string[];
 }
 
-/** Extra link columns beyond the first reuse the same „Odkaz"/"Link" label with a suffix. */
-function linkHeader(index: number): string {
-	return index === 0 ? m.import_wizard_role_url() : `${m.import_wizard_role_url()} ${index + 1}`;
+/** Extra columns beyond the first reuse the same label with a suffix, e.g. „Odkaz 2". */
+function numberedHeader(label: string, index: number): string {
+	return index === 0 ? label : `${label} ${index + 1}`;
 }
 
 /**
@@ -42,14 +43,25 @@ function formatPrice(gift: ExportableGift): string {
 /** Build the CSV text for the given gifts. One "link" column per link position present. */
 export function buildGiftCsv(gifts: readonly ExportableGift[]): string {
 	const maxLinks = gifts.reduce((max, gift) => Math.max(max, gift.links.length), 0);
-	const linkHeaders = Array.from({ length: maxLinks }, (_, index) => linkHeader(index));
+	const linkHeaders = Array.from({ length: maxLinks }, (_, index) =>
+		numberedHeader(m.import_wizard_role_url(), index),
+	);
+	// The primary category leads, so an import, which keeps the first category column, regroups
+	// the gifts the same way.
+	const maxCategories = gifts.reduce(
+		(max, gift) => Math.max(max, gift.categoryLabels?.length ?? 0),
+		1,
+	);
+	const categoryHeaders = Array.from({ length: maxCategories }, (_, index) =>
+		numberedHeader(m.draft_grid_col_category(), index),
+	);
 
 	const header = [
 		m.import_wizard_role_name(),
 		m.import_wizard_role_notes(),
 		...linkHeaders,
 		m.import_wizard_role_price(),
-		m.draft_grid_col_category(),
+		...categoryHeaders,
 	];
 
 	const rows = gifts.map((gift) => [
@@ -57,7 +69,7 @@ export function buildGiftCsv(gifts: readonly ExportableGift[]): string {
 		gift.description ?? '',
 		...linkHeaders.map((_, index) => gift.links[index]?.url ?? ''),
 		formatPrice(gift),
-		gift.categoryLabel ?? '',
+		...categoryHeaders.map((_, index) => gift.categoryLabels?.[index] ?? ''),
 	]);
 
 	return Papa.unparse([header, ...rows]);

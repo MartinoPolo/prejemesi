@@ -8,7 +8,7 @@ import { normalizeGiftLinks } from './gift_url.js';
 import { DEFAULT_GIFT_CURRENCY, type GiftLink } from './types.js';
 import { DEFAULT_IMAGE_METADATA, type ImageMetadata } from '$lib/modules/images/types.js';
 import { coalesceNewGiftDigests } from '$lib/modules/notifications/new_gift_digest.js';
-import { assertActiveGiftCategoryAssignment } from '$lib/modules/gift-categories/gift_categories_service.js';
+import { assertActiveGiftCategoryAssignments } from '$lib/modules/gift-categories/gift_categories_service.js';
 import type { RecordGiftRevisions } from '$lib/server/operations/gift_revisions.js';
 
 export type GiftCreationErrorCode =
@@ -40,7 +40,7 @@ export interface NormalizedGiftCreationInput {
 	imageMeta?: ImageMetadata | null;
 	quantity?: number | null;
 	priorityLevelId?: string | null;
-	categoryId?: string | null;
+	categoryIds?: readonly string[];
 }
 
 export type GiftCreationDatabase = Pick<ReturnType<typeof getDb>, 'transaction'>;
@@ -105,9 +105,9 @@ export async function appendGiftsUsingTransaction(
 		.from(gift)
 		.where(and(eq(gift.wishlistId, input.wishlistId), isNull(gift.deletedAt)));
 	let nextSortOrder = Number(maxSort?.maxSort ?? -1) + 1;
-	const categoryIds = await Promise.all(
+	const categoryIdLists = await Promise.all(
 		input.gifts.map((item) =>
-			assertActiveGiftCategoryAssignment(tx, input.wishlistId, item.categoryId),
+			assertActiveGiftCategoryAssignments(tx, input.wishlistId, item.categoryIds ?? []),
 		),
 	);
 	const rows = input.gifts.map((item, index) => {
@@ -131,7 +131,7 @@ export async function appendGiftsUsingTransaction(
 					: null,
 			quantity: item.quantity ?? 1,
 			priorityLevelId: item.priorityLevelId ?? null,
-			categoryId: categoryIds[index] ?? null,
+			categoryIds: categoryIdLists[index] ?? [],
 			sortOrder: allocatedSortOrder,
 		};
 	});

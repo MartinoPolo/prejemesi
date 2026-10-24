@@ -51,6 +51,14 @@ function nonEmpty(text: string | null): string | null {
 	return trimmed === '' ? null : trimmed;
 }
 
+/** The categories in their order, the primary first; null when the gift has none it can name. */
+function categoryText(categoryIds: readonly string[], lookups: GiftLabelLookups): string | null {
+	const labels = categoryIds
+		.map((categoryId) => lookups.categoryLabel(categoryId))
+		.filter((label): label is string => label !== null);
+	return labels.length === 0 ? null : labels.join(', ');
+}
+
 function linkText(link: GiftLink): string {
 	const domain = extractGiftUrlDomain(link.url) ?? link.url;
 	const label = nonEmpty(link.label ?? null);
@@ -80,7 +88,7 @@ function giftFieldValues(
 		description: nonEmpty(gift.description),
 		price: gift.price === null ? null : formatPrice(gift.price, gift.currency, gift.priceMax),
 		quantity: formatPieceCount(gift.quantity, 'recipient')?.pieceText ?? null,
-		category: gift.categoryId === null ? null : lookups.categoryLabel(gift.categoryId),
+		category: categoryText(gift.categoryIds, lookups),
 		priority:
 			gift.priorityLevelId === null ? null : lookups.priorityLabel(gift.priorityLevelId),
 		image: gift.imageUrl === null ? null : m.change_review_image_present(),

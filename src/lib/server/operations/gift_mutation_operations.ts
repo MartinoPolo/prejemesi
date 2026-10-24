@@ -10,7 +10,9 @@ import {
 	CreateGiftInputSchema,
 	MarkGiftReceivedInputSchema,
 	UpdateGiftInputSchema,
+	type CreateGiftInput,
 } from '$lib/modules/gifts/types.js';
+import { requestedGiftCategoryIds } from '$lib/modules/gift-categories/gift_category_assignment.js';
 import { appendGiftsUsingTransaction } from '$lib/modules/gifts/gift_creation_service.js';
 import { mapGiftCreationError } from '$lib/modules/gifts/gift_creation_transport.js';
 import { OPERATION_EXPOSURE, OPERATION_KIND, defineOperation } from './operation.js';
@@ -61,6 +63,11 @@ async function lockManagedGift(
 	return { giftRow, managedWishlist };
 }
 
+/** A new gift's categories from either the list or the superseded single `categoryId`. */
+function withCreationCategoryIds({ categoryId, ...input }: CreateGiftInput) {
+	return { ...input, categoryIds: requestedGiftCategoryIds({ ...input, categoryId }, []) };
+}
+
 export const createGiftOperation = defineOperation({
 	name: 'createGift',
 	kind: OPERATION_KIND.mutation,
@@ -82,7 +89,7 @@ export const createGiftOperation = defineOperation({
 				{
 					wishlistId: input.wishlistId,
 					actorId: context.actor.userId,
-					gifts: [input],
+					gifts: [withCreationCategoryIds(input)],
 					recordRevisions: context.recordGiftRevisions,
 				},
 				context.now,

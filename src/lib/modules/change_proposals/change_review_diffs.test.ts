@@ -11,8 +11,14 @@ import {
 } from './change_review_diffs.js';
 import type { ChangeProposalGift } from './types.js';
 
+const CATEGORY_LABELS = new Map([
+	['cat-books', 'Knihy'],
+	['cat-toys', 'Hračky'],
+	['cat-games', 'Hry'],
+]);
+
 const lookups: GiftLabelLookups = {
-	categoryLabel: (categoryId) => (categoryId === 'cat-books' ? 'Knihy' : null),
+	categoryLabel: (categoryId) => CATEGORY_LABELS.get(categoryId) ?? null,
 	priorityLabel: (priorityLevelId) => (priorityLevelId === 'prio-high' ? 'Vysoká' : null),
 };
 
@@ -29,7 +35,7 @@ function gift(overrides: Partial<ChangeProposalGift> = {}): ChangeProposalGift {
 		imageMeta: null,
 		quantity: null,
 		priorityLevelId: null,
-		categoryId: null,
+		categoryIds: [],
 		received: false,
 		deleted: false,
 		editedAfterShareAt: null,
@@ -43,7 +49,7 @@ describe('gift field diffs', () => {
 			description: '  Vázané vydání  ',
 			price: 450,
 			currency: 'CZK',
-			categoryId: 'cat-books',
+			categoryIds: ['cat-books'],
 			priorityLevelId: 'prio-high',
 			links: [{ url: 'https://www.knihy.cz/duna' }],
 		});
@@ -67,7 +73,7 @@ describe('gift field diffs', () => {
 	});
 
 	it('pairs only the changed fields of an edit, with a placeholder for a cleared value', () => {
-		const before = gift({ price: 450, currency: 'CZK', categoryId: 'cat-books' });
+		const before = gift({ price: 450, currency: 'CZK', categoryIds: ['cat-books'] });
 		const after = gift({ name: 'Kniha Duna (brožovaná)', price: 450, currency: 'CZK' });
 
 		expect(giftFieldDiffs(before, after, lookups)).toEqual([
@@ -77,6 +83,28 @@ describe('gift field diffs', () => {
 				before: 'Knihy',
 				after: m.change_review_value_none(),
 			},
+		]);
+	});
+
+	it('shows several categories as their labels joined in order, primary first', () => {
+		const before = gift({ categoryIds: ['cat-books', 'cat-toys'] });
+		const after = gift({ categoryIds: ['cat-games', 'cat-books', 'cat-toys'] });
+
+		expect(giftFieldDiffs(before, after, lookups)).toEqual([
+			{
+				field: GIFT_DIFF_FIELD.category,
+				before: 'Knihy, Hračky',
+				after: 'Hry, Knihy, Hračky',
+			},
+		]);
+	});
+
+	it('reports a changed primary even when the same categories are kept', () => {
+		const before = gift({ categoryIds: ['cat-books', 'cat-toys'] });
+		const after = gift({ categoryIds: ['cat-toys', 'cat-books'] });
+
+		expect(giftFieldDiffs(before, after, lookups)).toEqual([
+			{ field: GIFT_DIFF_FIELD.category, before: 'Knihy, Hračky', after: 'Hračky, Knihy' },
 		]);
 	});
 

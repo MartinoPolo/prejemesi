@@ -437,7 +437,7 @@ describe.skipIf(!DB_READY)('wishlist operation core [real DB]', () => {
 				customLabel: 'Garden',
 				color: BOOKS_PRESET.color,
 			});
-			const giftId = await createGiftFixture(wishlistId, { categoryId });
+			const giftId = await createGiftFixture(wishlistId, { categoryIds: [categoryId] });
 
 			await executeOperation(
 				managerActor,
@@ -445,12 +445,12 @@ describe.skipIf(!DB_READY)('wishlist operation core [real DB]', () => {
 				categorySettings(wishlistId, { confirmedRemovalCategoryIds: [categoryId] }),
 			);
 
-			expect((await readGift(giftId)).categoryId).toBeNull();
+			expect((await readGift(giftId)).categoryIds).toEqual([]);
 			expect(await revisionOf(giftId, 'saveGiftCategorySettings')).toMatchObject({
 				actorUserId: MANAGER_ID,
 				channel: managerActor.channel,
-				before: { categoryId },
-				after: { categoryId: null },
+				before: { categoryIds: [categoryId] },
+				after: { categoryIds: [] },
 			});
 			await expectRejection(
 				executeOperation(managerActor, undoGiftRevisionBatchOperation, {
@@ -467,7 +467,7 @@ describe.skipIf(!DB_READY)('wishlist operation core [real DB]', () => {
 				presetKey: BOOKS_PRESET.key,
 				color: BOOKS_PRESET.color,
 			});
-			const giftId = await createGiftFixture(wishlistId, { categoryId });
+			const giftId = await createGiftFixture(wishlistId, { categoryIds: [categoryId] });
 
 			await executeOperation(
 				recipientActor,
@@ -489,7 +489,7 @@ describe.skipIf(!DB_READY)('wishlist operation core [real DB]', () => {
 				400,
 				SERVER_ERROR.GIFT_CATEGORY_WISHLIST_MISMATCH,
 			);
-			expect((await readGift(giftId)).categoryId).toBeNull();
+			expect((await readGift(giftId)).categoryIds).toEqual([]);
 		});
 	});
 
@@ -500,7 +500,7 @@ describe.skipIf(!DB_READY)('wishlist operation core [real DB]', () => {
 				customLabel: 'Garden',
 				color: BOOKS_PRESET.color,
 			});
-			const giftId = await createGiftFixture(wishlistId, { categoryId });
+			const giftId = await createGiftFixture(wishlistId, { categoryIds: [categoryId] });
 			await executeOperation(managerActor, saveWishlistSettingsOperation, {
 				wishlistId,
 				categories: {
@@ -509,12 +509,12 @@ describe.skipIf(!DB_READY)('wishlist operation core [real DB]', () => {
 				},
 			});
 
-			expect((await readGift(giftId)).categoryId).toBeNull();
+			expect((await readGift(giftId)).categoryIds).toEqual([]);
 			expect(await revisionOf(giftId, 'saveWishlistSettings')).toMatchObject({
 				actorUserId: MANAGER_ID,
 				channel: managerActor.channel,
-				before: { categoryId },
-				after: { categoryId: null },
+				before: { categoryIds: [categoryId] },
+				after: { categoryIds: [] },
 			});
 		});
 

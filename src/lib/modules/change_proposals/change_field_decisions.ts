@@ -32,7 +32,7 @@ const INPUT_KEYS_BY_FIELD = {
 	append: ['text'],
 	price: ['price', 'priceMax', 'currency'],
 	quantity: ['quantity'],
-	category: ['categoryId'],
+	category: ['categoryIds', 'categoryId'],
 	priority: ['priorityLevelId'],
 	links: ['links'],
 	image: ['imageReference', 'imageUrl', 'imageKey', 'imageMeta'],

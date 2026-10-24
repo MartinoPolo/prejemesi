@@ -15,7 +15,7 @@
 	import GiftDescription from './GiftDescription.svelte';
 	import GiftBrowseActions from './GiftBrowseActions.svelte';
 	import GiftPriorityBadge from './GiftPriorityBadge.svelte';
-	import GiftCategoryBadge from './GiftCategoryBadge.svelte';
+	import GiftCategoryBadges from './GiftCategoryBadges.svelte';
 	import GiftLinkList from './GiftLinkList.svelte';
 	import GiftLivePreviewBadge from './GiftLivePreviewBadge.svelte';
 	import { GIFT_LIVE_PREVIEW } from '$lib/components/blocks/change-proposals/change_row_model.js';
@@ -43,7 +43,7 @@
 	}: GiftPresentationProps = $props();
 
 	const previewMarks = $derived(giftLivePreviewMarks(livePreview));
-	const showsTopRow = $derived(gift.category != null || previewMarks.proposed);
+	const showsTopRow = $derived(gift.categories.length > 0 || previewMarks.proposed);
 
 	const giftsContext = useGifts();
 
@@ -228,8 +228,12 @@
 					{#if previewMarks.proposed && livePreview !== undefined}
 						<GiftLivePreviewBadge kind={livePreview} />
 					{/if}
-					{#if gift.category != null}
-						<GiftCategoryBadge category={gift.category} {isDimmed} />
+					{#if gift.categories.length > 0}
+						<GiftCategoryBadges
+							categories={gift.categories}
+							{isDimmed}
+							interactive={!contextualMode}
+						/>
 					{/if}
 				</div>
 			{/if}

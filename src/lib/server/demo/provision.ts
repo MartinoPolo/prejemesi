@@ -137,10 +137,10 @@ async function insertDemoGifts(
 				links: [{ url: item.url }],
 				price: item.price,
 				currency: 'CZK',
-				categoryId:
-					categoryRows.find(
-						(_, categoryIndex) => categories[categoryIndex] === item.category,
-					)?.id ?? null,
+				categoryIds: categoryRows
+					.filter((_, categoryIndex) => categories[categoryIndex] === item.category)
+					.slice(0, 1)
+					.map((category) => category.id),
 				priorityLevelId: priorities[PRIORITY_LEVEL_INDEX[item.priority]]?.id ?? null,
 				sortOrder,
 				received: item.state === 'received',

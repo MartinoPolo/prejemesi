@@ -113,26 +113,45 @@ describe('computeGiftSections — priority grouping (grouping on)', () => {
 });
 
 describe('computeGiftSections — category grouping (issue #246)', () => {
-	const books = {
-		categoryId: 'category-books',
-		category: {
-			id: 'category-books',
-			presetKey: null,
-			customLabel: 'Knihy',
-			color: '#2563EB',
-			sortOrder: 2,
-		},
+	const booksCategory = {
+		id: 'category-books',
+		presetKey: null,
+		customLabel: 'Knihy',
+		color: '#2563EB',
+		sortOrder: 2,
 	};
-	const toys = {
-		categoryId: 'category-toys',
-		category: {
-			id: 'category-toys',
-			presetKey: null,
-			customLabel: 'Hračky',
-			color: '#D97706',
-			sortOrder: 1,
-		},
+	const toysCategory = {
+		id: 'category-toys',
+		presetKey: null,
+		customLabel: 'Hračky',
+		color: '#D97706',
+		sortOrder: 1,
 	};
+	const books = { categoryIds: [booksCategory.id], categories: [booksCategory] };
+	const toys = { categoryIds: [toysCategory.id], categories: [toysCategory] };
+
+	it('groups a gift with several categories only under its primary category', () => {
+		const bookFirst = makeGift({
+			id: 'book-first',
+			categoryIds: [booksCategory.id, toysCategory.id],
+			categories: [booksCategory, toysCategory],
+		});
+		const toy = makeGift({ id: 'toy', ...toys });
+		const sections = computeGiftSections(
+			[bookFirst, toy],
+			WISHLIST_ROLES.visitor,
+			GIFT_SORT_OPTIONS.ownerOrder,
+			GIFT_GROUPING_OPTIONS.category,
+			LOCALE,
+		);
+
+		expect(
+			sections.map((section) => [section.label, section.gifts.map((gift) => gift.id)]),
+		).toEqual([
+			['Hračky', ['toy']],
+			['Knihy', ['book-first']],
+		]);
+	});
 
 	it('orders category groups by manager sort order and uncategorized last', () => {
 		const book = makeGift({ id: 'book', ...books });

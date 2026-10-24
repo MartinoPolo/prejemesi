@@ -69,7 +69,7 @@ vi.mock('$lib/server/db/gift.schema.js', () => ({
 		links: 'gift.links',
 		sortOrder: 'gift.sortOrder',
 		deletedAt: 'gift.deletedAt',
-		categoryId: 'gift.categoryId',
+		categoryIds: 'gift.categoryIds',
 	},
 	giftCategory: {
 		id: 'giftCategory.id',

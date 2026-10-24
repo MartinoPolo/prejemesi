@@ -90,7 +90,7 @@ export type SaveGiftCategorySettingsInput = v.InferOutput<
 	typeof SaveGiftCategorySettingsInputSchema
 >;
 
-/** A custom category created from a category picker, assigned at once to the gifts it acted on. */
+/** A custom category created from a category picker, added at once to the gifts it acted on. */
 export const CreateGiftCategoryInputSchema = v.strictObject({
 	wishlistId: v.string(),
 	label: CustomGiftCategoryLabelSchema,

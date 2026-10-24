@@ -192,21 +192,24 @@ function hasPriorityValue(gift: GiftByRole): boolean {
 }
 
 function hasCategoryValue(gift: GiftByRole): boolean {
-	return gift.categoryId != null && gift.category != null;
+	return gift.categories.length > 0;
 }
 
 function priorityFilterValue(gift: GiftByRole): GiftPriorityFilterValue {
 	return hasPriorityValue(gift) ? gift.priorityLevelId! : NO_PRIORITY_GIFT_PRIORITY_FILTER_VALUE;
 }
 
-function categoryFilterValue(gift: GiftByRole): GiftCategoryFilterValue {
-	return hasCategoryValue(gift) ? gift.categoryId! : UNCATEGORIZED_GIFT_CATEGORY_FILTER_VALUE;
+/** Every category of the gift counts, so a facet matches a gift through any of them. */
+function categoryFilterValues(gift: GiftByRole): GiftCategoryFilterValue[] {
+	return hasCategoryValue(gift)
+		? gift.categories.map((category) => category.id)
+		: [UNCATEGORIZED_GIFT_CATEGORY_FILTER_VALUE];
 }
 
 export function giftMatchesFacetFilters(gift: GiftByRole, filters: GiftFilters): boolean {
 	const categoryMatches =
 		filters.categoryValues.length === 0 ||
-		filters.categoryValues.includes(categoryFilterValue(gift));
+		categoryFilterValues(gift).some((value) => filters.categoryValues.includes(value));
 	const priorityMatches =
 		filters.priorityValues.length === 0 ||
 		filters.priorityValues.includes(priorityFilterValue(gift));
@@ -282,16 +285,17 @@ function createGiftsContext(
 		let hasUncategorized = false;
 
 		for (const gift of effectiveGifts.current) {
-			if (hasCategoryValue(gift)) {
-				if (!optionsByCategoryId.some((option) => option.value === gift.categoryId)) {
+			if (!hasCategoryValue(gift)) {
+				hasUncategorized = true;
+			}
+			for (const category of gift.categories) {
+				if (!optionsByCategoryId.some((option) => option.value === category.id)) {
 					optionsByCategoryId.push({
-						value: gift.categoryId!,
-						label: labelForGiftCategory(gift.category!, language),
-						sortOrder: gift.category!.sortOrder,
+						value: category.id,
+						label: labelForGiftCategory(category, language),
+						sortOrder: category.sortOrder,
 					});
 				}
-			} else {
-				hasUncategorized = true;
 			}
 		}
 

@@ -13,10 +13,29 @@ import {
 function source(overrides: Record<string, unknown> = {}) {
 	return {
 		priorityLevelId: null,
-		categoryPresetKey: null,
-		categoryCustomLabel: null,
+		categories: [],
 		...overrides,
 	} as never;
+}
+
+function presetCategory(presetKey: string) {
+	return { presetKey, customLabel: null };
+}
+
+function customCategory(customLabel: string) {
+	return { presetKey: null, customLabel };
+}
+
+function copiedCategoryIds(
+	sourceCategories: readonly { presetKey: string | null; customLabel: string | null }[],
+	destinationCategories: Parameters<typeof mapCopiedTaxonomy>[0]['destinationCategories'],
+): string[] {
+	return mapCopiedTaxonomy({
+		source: source({ categories: sourceCategories }),
+		sourcePriorityIdsByOrdinal: [],
+		destinationPriorities: [],
+		destinationCategories,
+	}).categoryIds;
 }
 
 describe('bulk gift copy requirements', () => {
@@ -53,14 +72,17 @@ describe('bulk gift copy requirements', () => {
 			}),
 			destinationGiftId: 'destination-id',
 			destinationImageKey: 'gifts/destination.webp',
-			taxonomy: { priorityLevelId: 'destination-priority', categoryId: null },
+			taxonomy: {
+				priorityLevelId: 'destination-priority',
+				categoryIds: ['destination-primary', 'destination-secondary'],
+			},
 		});
 		expect(copied).toMatchObject({
 			id: 'destination-id',
 			description: 'Base\n\nAppend',
 			imageKey: 'gifts/destination.webp',
 			priorityLevelId: 'destination-priority',
-			categoryId: null,
+			categoryIds: ['destination-primary', 'destination-secondary'],
 		});
 		expect(Object.keys(copied)).not.toEqual(
 			expect.arrayContaining([
@@ -79,30 +101,14 @@ describe('bulk gift copy requirements', () => {
 			{ id: 'preset-destination', presetKey: 'books' as const, customLabel: null },
 			{ id: 'custom-destination', presetKey: null, customLabel: '  VýLeTy  ' },
 		];
-		expect(
-			mapCopiedTaxonomy({
-				source: source({ categoryPresetKey: 'books' }),
-				sourcePriorityIdsByOrdinal: [],
-				destinationPriorities: [],
-				destinationCategories: destinations,
-			}).categoryId,
-		).toBe('preset-destination');
-		expect(
-			mapCopiedTaxonomy({
-				source: source({ categoryCustomLabel: 'výlety' }),
-				sourcePriorityIdsByOrdinal: [],
-				destinationPriorities: [],
-				destinationCategories: destinations,
-			}).categoryId,
-		).toBe('custom-destination');
-		expect(
-			mapCopiedTaxonomy({
-				source: source({ categoryCustomLabel: 'Missing' }),
-				sourcePriorityIdsByOrdinal: [],
-				destinationPriorities: [],
-				destinationCategories: destinations,
-			}).categoryId,
-		).toBeNull();
+		expect(copiedCategoryIds([presetCategory('books')], destinations)).toEqual([
+			'preset-destination',
+		]);
+		expect(copiedCategoryIds([customCategory('výlety')], destinations)).toEqual([
+			'custom-destination',
+		]);
+		expect(copiedCategoryIds([customCategory('Missing')], destinations)).toEqual([]);
+		expect(copiedCategoryIds([], destinations)).toEqual([]);
 	});
 
 	it('maps a category to the destination category with the same label across preset and custom kinds', () => {
@@ -110,22 +116,40 @@ describe('bulk gift copy requirements', () => {
 		const presetGames = [
 			{ id: 'preset-games', presetKey: 'games' as const, customLabel: null },
 		];
+		expect(copiedCategoryIds([presetCategory('games')], customGames)).toEqual(['custom-games']);
+		expect(copiedCategoryIds([customCategory('Games')], presetGames)).toEqual(['preset-games']);
+	});
+
+	it('maps every source category in order, dropping unmatched ones and duplicates', () => {
+		const destinations = [
+			{ id: 'preset-books', presetKey: 'books' as const, customLabel: null },
+			{ id: 'custom-trips', presetKey: null, customLabel: 'Výlety' },
+			{ id: 'preset-games', presetKey: 'games' as const, customLabel: null },
+		];
+
 		expect(
-			mapCopiedTaxonomy({
-				source: source({ categoryPresetKey: 'games' }),
-				sourcePriorityIdsByOrdinal: [],
-				destinationPriorities: [],
-				destinationCategories: customGames,
-			}).categoryId,
-		).toBe('custom-games');
+			copiedCategoryIds(
+				[
+					customCategory('výlety'),
+					customCategory('Missing'),
+					presetCategory('books'),
+					// Both name the destination's games preset: once by key, once by label.
+					presetCategory('games'),
+					customCategory('Hry'),
+				],
+				destinations,
+			),
+		).toEqual(['custom-trips', 'preset-books', 'preset-games']);
+	});
+
+	it('promotes the next mapped category when the source primary has no destination match', () => {
+		const destinations = [
+			{ id: 'preset-books', presetKey: 'books' as const, customLabel: null },
+		];
+
 		expect(
-			mapCopiedTaxonomy({
-				source: source({ categoryCustomLabel: 'Games' }),
-				sourcePriorityIdsByOrdinal: [],
-				destinationPriorities: [],
-				destinationCategories: presetGames,
-			}).categoryId,
-		).toBe('preset-games');
+			copiedCategoryIds([customCategory('Missing'), presetCategory('books')], destinations),
+		).toEqual(['preset-books']);
 	});
 
 	it('maps priority by ordinal and leaves a missing destination ordinal unset', () => {

@@ -6,8 +6,10 @@ import {
 	RESERVATION_RELEASE_CAPABILITY,
 } from '$lib/modules/wishlists/wishlist_capabilities.js';
 import type { readWishlistOperation } from '$lib/server/operations/wishlist_read_operations.js';
+import type { GiftRevisionSnapshot } from '$lib/server/operations/gift_revision_snapshot.js';
 import {
 	projectAgentBulkCopyDestinations,
+	projectAgentGiftSnapshot,
 	projectAgentWishlist,
 	projectAgentWishlistRow,
 	projectAgentWishlistGifts,
@@ -38,8 +40,8 @@ const recipientGift: GiftForRecipient = {
 	priorityLevelId: null,
 	priorityLabel: null,
 	prioritySortOrder: null,
-	categoryId: null,
-	category: null,
+	categoryIds: [],
+	categories: [],
 };
 
 const visitorGift: GiftForVisitor = {
@@ -197,6 +199,84 @@ describe('projectAgentWishlistGifts', () => {
 		for (const field of RESERVATION_AND_LIKE_FIELDS) {
 			expect(projected.gifts[0]).not.toHaveProperty(field);
 		}
+	});
+});
+
+describe('agent gift categories', () => {
+	const sport = {
+		id: 'category-sport',
+		presetKey: null,
+		customLabel: 'Sport',
+		color: '#0369A1',
+		sortOrder: 1,
+	};
+	const outdoor = {
+		id: 'category-outdoor',
+		presetKey: null,
+		customLabel: 'Venku',
+		color: '#047857',
+		sortOrder: 0,
+	};
+
+	it('lists every category of a gift in its order, primary first', () => {
+		const projected = projectAgentWishlistGifts(
+			{
+				role: WISHLIST_ROLES.recipient,
+				gifts: [
+					{
+						...recipientGift,
+						categoryIds: [sport.id, outdoor.id],
+						categories: [sport, outdoor],
+					},
+				],
+			},
+			{ includeReserverNames: false },
+		);
+
+		expect(projected.gifts[0]).toMatchObject({
+			categoryIds: [sport.id, outdoor.id],
+			categories: [sport, outdoor],
+		});
+	});
+
+	function revisionSnapshot(
+		categories: { categoryIds: string[] } | { categoryId: string | null },
+	): GiftRevisionSnapshot {
+		return {
+			name: 'Kolo',
+			description: null,
+			descriptionAppends: [],
+			links: [],
+			price: null,
+			priceMax: null,
+			currency: null,
+			imageUrl: null,
+			imageKey: null,
+			imageMeta: null,
+			quantity: 1,
+			priorityLevelId: null,
+			received: false,
+			deletedAt: null,
+			editedAfterShareAt: null,
+			preEditShareSnapshot: null,
+			...categories,
+		} as GiftRevisionSnapshot;
+	}
+
+	it('reads a revision snapshot stored with the single categoryId as a category list', () => {
+		expect(
+			projectAgentGiftSnapshot(revisionSnapshot({ categoryId: sport.id })).categoryIds,
+		).toEqual([sport.id]);
+		expect(
+			projectAgentGiftSnapshot(revisionSnapshot({ categoryId: null })).categoryIds,
+		).toEqual([]);
+	});
+
+	it('keeps a current snapshot’s category list in order', () => {
+		expect(
+			projectAgentGiftSnapshot(revisionSnapshot({ categoryIds: [outdoor.id, sport.id] }))
+				.categoryIds,
+		).toEqual([outdoor.id, sport.id]);
 	});
 });
 

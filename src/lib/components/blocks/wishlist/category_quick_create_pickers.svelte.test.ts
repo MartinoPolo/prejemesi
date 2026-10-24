@@ -6,6 +6,7 @@ import * as m from '$lib/paraglide/messages.js';
 import GiftContextActions from './GiftContextActions.svelte';
 import GiftContextActionsTestHost from './GiftContextActionsTestHost.svelte';
 import WishlistSelectionToolbar from './WishlistSelectionToolbar.svelte';
+import { selectionCategoryChoices } from './selection_category_choices.test_fixtures.js';
 
 // Issue #519: every category picker ends with “Vytvořit kategorii”, separated from the
 // categories, and only viewers who may manage categories get it.
@@ -29,7 +30,7 @@ function contextProps() {
 		priorityReady: true,
 		categoryReady: true,
 		priorityLevelId: null,
-		categoryId: null,
+		categoryIds: [] as readonly string[],
 		onclose: vi.fn(),
 		oncomplete: vi.fn(),
 		onfinish: vi.fn((_policy, callback: () => void) => callback()),
@@ -54,7 +55,7 @@ function toolbarProps() {
 			{ id: 'books', label: 'Knihy' },
 		],
 		commonPriorityId: null,
-		commonCategoryId: null,
+		categoryChoices: selectionCategoryChoices({}, true),
 		commonImageBackground: null,
 		onselectvisible: vi.fn(),
 		onpriority: vi.fn(),
@@ -129,7 +130,7 @@ describe('gift context menu category picker', () => {
 		await page.viewport(390, 720);
 		const screen = await render(GiftContextActions, contextProps());
 		await screen.getByRole('button', { name: m.gift_context_category(), exact: true }).click();
-		await expect.element(screen.getByRole('button', { name: 'Knihy' })).toBeInTheDocument();
+		await expect.element(screen.getByRole('checkbox', { name: 'Knihy' })).toBeInTheDocument();
 		expect(screen.getByRole('button', { name: m.gift_category_create() }).query()).toBeNull();
 		await screen.unmount();
 	});
@@ -183,7 +184,7 @@ describe('bulk selection category picker', () => {
 			.getByRole('menuitem', { name: new RegExp(`^${m.gift_context_category()}:`) })
 			.click();
 		await expect
-			.element(screen.getByRole('menuitemradio', { name: 'Knihy' }))
+			.element(screen.getByRole('menuitemcheckbox', { name: 'Knihy' }))
 			.toBeInTheDocument();
 		expect(screen.getByRole('menuitem', { name: m.gift_category_create() }).query()).toBeNull();
 		await screen.unmount();

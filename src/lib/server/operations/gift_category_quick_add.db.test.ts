@@ -51,7 +51,7 @@ describe.skipIf(!DB_READY)('creating a category from a category picker [real DB]
 
 		expect(category).toMatchObject({ customLabel: 'Deskovky', color: NEW_COLOR });
 		for (const giftId of giftIds) {
-			expect((await readGift(giftId)).categoryId).toBe(category.id);
+			expect((await readGift(giftId)).categoryIds).toEqual([category.id]);
 			expect(await revisionsForGift(giftId)).toHaveLength(1);
 		}
 		const usage = await executeOperation(recipientActor, readGiftCategoriesOperation, {
@@ -72,7 +72,7 @@ describe.skipIf(!DB_READY)('creating a category from a category picker [real DB]
 		});
 
 		expect((await activeCategories(wishlistId)).map((row) => row.id)).toContain(category.id);
-		expect((await readGift(giftId)).categoryId).toBeNull();
+		expect((await readGift(giftId)).categoryIds).toEqual([]);
 	});
 
 	it('keeps the default categories of a wishlist whose categories were never read', async () => {
@@ -207,7 +207,7 @@ describe.skipIf(!DB_READY)('creating a category from a category picker [real DB]
 		expect(
 			(await activeCategories(wishlistId)).filter((row) => row.customLabel === 'Lego'),
 		).toHaveLength(0);
-		expect((await readGift(giftId)).categoryId).toBeNull();
+		expect((await readGift(giftId)).categoryIds).toEqual([]);
 	});
 
 	it('is refused to viewers who cannot manage the wishlist and on archived wishlists', async () => {

@@ -77,6 +77,7 @@ const HIGH_PRIORITY_ID = `${PREFIX}priority-high`;
 const LOW_PRIORITY_ID = `${PREFIX}priority-low`;
 const FOREIGN_PRIORITY_ID = `${PREFIX}priority-foreign`;
 const BOOKS_CATEGORY_ID = `${PREFIX}category-books`;
+const GAMES_CATEGORY_ID = `${PREFIX}category-games`;
 const DISABLED_CATEGORY_ID = `${PREFIX}category-disabled`;
 const FOREIGN_CATEGORY_ID = `${PREFIX}category-foreign`;
 
@@ -163,6 +164,13 @@ describe.skipIf(!DB_READY)('reorderGifts remote boundary [real DB]', () => {
 				customLabel: 'Books',
 				color: '#336699',
 				sortOrder: 0,
+			},
+			{
+				id: GAMES_CATEGORY_ID,
+				wishlistId: WISHLIST_ID,
+				customLabel: 'Games',
+				color: '#336699',
+				sortOrder: 2,
 			},
 			{
 				id: DISABLED_CATEGORY_ID,
@@ -342,7 +350,7 @@ describe.skipIf(!DB_READY)('reorderGifts remote boundary [real DB]', () => {
 					id: gift.id,
 					sortOrder: gift.sortOrder,
 					priorityLevelId: gift.priorityLevelId,
-					categoryId: gift.categoryId,
+					categoryIds: gift.categoryIds,
 					editedAfterShareAt: gift.editedAfterShareAt,
 				})
 				.from(gift)
@@ -402,9 +410,9 @@ describe.skipIf(!DB_READY)('reorderGifts remote boundary [real DB]', () => {
 					],
 				},
 			);
-			expect((await giftStateById()).get(ACTIVE_THIRD_ID)?.categoryId).toBe(
+			expect((await giftStateById()).get(ACTIVE_THIRD_ID)?.categoryIds).toEqual([
 				BOOKS_CATEGORY_ID,
-			);
+			]);
 
 			await callReorderGifts(
 				{ user: { id: RECIPIENT_ID } },
@@ -414,7 +422,63 @@ describe.skipIf(!DB_READY)('reorderGifts remote boundary [real DB]', () => {
 					groupChanges: [{ giftId: ACTIVE_THIRD_ID, field: 'category', value: null }],
 				},
 			);
-			expect((await giftStateById()).get(ACTIVE_THIRD_ID)?.categoryId).toBeNull();
+			expect((await giftStateById()).get(ACTIVE_THIRD_ID)?.categoryIds).toEqual([]);
+		});
+
+		it('replaces only the primary category, or drops it, keeping the other categories', async () => {
+			await getDb()
+				.update(gift)
+				.set({ categoryIds: [BOOKS_CATEGORY_ID, GAMES_CATEGORY_ID] })
+				.where(eq(gift.id, ACTIVE_THIRD_ID));
+
+			await callReorderGifts(
+				{ user: { id: RECIPIENT_ID } },
+				{
+					wishlistId: WISHLIST_ID,
+					orderedGiftIds: ACTIVE_GIFT_IDS,
+					groupChanges: [{ giftId: ACTIVE_THIRD_ID, field: 'category', value: null }],
+				},
+			);
+			expect((await giftStateById()).get(ACTIVE_THIRD_ID)?.categoryIds).toEqual([
+				GAMES_CATEGORY_ID,
+			]);
+
+			await callReorderGifts(
+				{ user: { id: RECIPIENT_ID } },
+				{
+					wishlistId: WISHLIST_ID,
+					orderedGiftIds: ACTIVE_GIFT_IDS,
+					groupChanges: [
+						{ giftId: ACTIVE_THIRD_ID, field: 'category', value: BOOKS_CATEGORY_ID },
+					],
+				},
+			);
+			expect((await giftStateById()).get(ACTIVE_THIRD_ID)?.categoryIds).toEqual([
+				BOOKS_CATEGORY_ID,
+			]);
+		});
+
+		it('writes an explicit category list as given, so an undo restores every category', async () => {
+			const groupChange = {
+				giftId: ACTIVE_THIRD_ID,
+				field: 'category',
+				value: GAMES_CATEGORY_ID,
+				categoryIds: [GAMES_CATEGORY_ID, BOOKS_CATEGORY_ID] as string[],
+			} as const;
+			for (let attempt = 0; attempt < 2; attempt += 1) {
+				await callReorderGifts(
+					{ user: { id: RECIPIENT_ID } },
+					{
+						wishlistId: WISHLIST_ID,
+						orderedGiftIds: ACTIVE_GIFT_IDS,
+						groupChanges: [groupChange],
+					},
+				);
+				expect((await giftStateById()).get(ACTIVE_THIRD_ID)?.categoryIds).toEqual([
+					GAMES_CATEGORY_ID,
+					BOOKS_CATEGORY_ID,
+				]);
+			}
 		});
 
 		it('marks a changed priority on a shared wishlist as edited after sharing', async () => {
@@ -533,6 +597,16 @@ describe.skipIf(!DB_READY)('reorderGifts remote boundary [real DB]', () => {
 			{
 				changeDescription: 'a disabled category',
 				change: { giftId: ACTIVE_FIRST_ID, field: 'category', value: DISABLED_CATEGORY_ID },
+				message: SERVER_ERROR.GIFT_CATEGORY_WISHLIST_MISMATCH,
+			},
+			{
+				changeDescription: 'an explicit category list naming a disabled category',
+				change: {
+					giftId: ACTIVE_FIRST_ID,
+					field: 'category',
+					value: BOOKS_CATEGORY_ID,
+					categoryIds: [BOOKS_CATEGORY_ID, DISABLED_CATEGORY_ID] as string[],
+				},
 				message: SERVER_ERROR.GIFT_CATEGORY_WISHLIST_MISMATCH,
 			},
 			{

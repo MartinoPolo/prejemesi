@@ -159,6 +159,10 @@
 	} from '$lib/modules/import/duplicate_aware_submission.js';
 	import { buildGiftCsv, giftCsvFilename, downloadGiftCsv } from '$lib/modules/import/index.js';
 	import { labelForGiftCategory } from '$lib/modules/gift-categories/types.js';
+	import {
+		giftCategoryChoices,
+		withGiftCategoryToggled,
+	} from '$lib/modules/gift-categories/gift_category_assignment.js';
 	import { getLocale } from '$lib/paraglide/runtime.js';
 	import {
 		GIFT_SECTION_KINDS,
@@ -218,6 +222,8 @@
 		reorderGroupKeyLookup,
 		resolveGroupedReorderMove,
 		withReorderGroup,
+		withGiftCategoryIds,
+		categoryGroupChange,
 		type GiftReorderGroup,
 		type GiftReorderPlacement,
 	} from '$lib/modules/gifts/gift_grouped_reorder.js';
@@ -736,6 +742,9 @@
 
 	function withReorderGroupChange(giftItem: GiftByRole): GiftByRole {
 		const change = reorderGroupChanges[giftItem.id];
+		if (change?.categoryIds !== undefined) {
+			return withGiftCategoryIds(giftItem, change.categoryIds, categoryOptions);
+		}
 		const group =
 			change === undefined
 				? undefined
@@ -819,8 +828,11 @@
 	const commonPriorityId = $derived(
 		commonSelectionValue(selectedGiftRows.map((giftItem) => giftItem.priorityLevelId)),
 	);
-	const commonCategoryId = $derived(
-		commonSelectionValue(selectedGiftRows.map((giftItem) => giftItem.categoryId ?? null)),
+	const selectionCategoryChoices = $derived(
+		giftCategoryChoices(
+			selectedGiftRows.map((giftItem) => giftItem.categoryIds),
+			categoryOptions.map((category) => category.id),
+		),
 	);
 	const commonImageFit = $derived(
 		commonSelectionValue(
@@ -1113,7 +1125,7 @@
 
 	async function updateContextGift(update: {
 		priorityLevelId?: string | null;
-		categoryId?: string | null;
+		categoryIds?: string[];
 	}) {
 		const gift = contextSession?.gift;
 		if (gift === undefined) {
@@ -1954,13 +1966,9 @@
 				links: gift.links ?? [],
 				price: gift.price,
 				currency: gift.currency,
-				categoryLabel:
-					gift.category == null
-						? ''
-						: labelForGiftCategory(
-								gift.category,
-								getLocale().startsWith('en') ? 'en' : 'cs',
-							),
+				categoryLabels: gift.categories.map((category) =>
+					labelForGiftCategory(category, getLocale().startsWith('en') ? 'en' : 'cs'),
+				),
 			})),
 		);
 		downloadGiftCsv(csv, giftCsvFilename(wishlist.title, wishlist.shortId));
@@ -2166,14 +2174,10 @@
 		targetGroup: GiftReorderGroup,
 		previousOrder: readonly string[],
 	) {
-		const previousGroupChange: ReorderGiftGroupChange = {
-			giftId: movedGift.id,
-			field,
-			value:
-				field === GIFT_GROUPING_OPTIONS.priority
-					? movedGift.priorityLevelId
-					: (movedGift.categoryId ?? null),
-		};
+		const previousGroupChange: ReorderGiftGroupChange =
+			field === GIFT_GROUPING_OPTIONS.priority
+				? { giftId: movedGift.id, field, value: movedGift.priorityLevelId }
+				: categoryGroupChange(movedGift.id, movedGift.categoryIds);
 		const toastId = showToast({
 			tone: 'success',
 			title: m.gift_reorder_group_changed({
@@ -2443,15 +2447,19 @@
 				priorityLevels={priorityActionOptions}
 				categories={categoryActionOptions}
 				{commonPriorityId}
-				{commonCategoryId}
+				categoryChoices={selectionCategoryChoices}
 				{commonImageFit}
 				{commonImageBackground}
 				{commonReceived}
 				onselectvisible={(checked) => giftSelection.setVisible(visibleGiftIds, checked)}
 				onpriority={(priorityLevelId) =>
 					void applyBulkAction({ action: 'priority', priorityLevelId })}
-				oncategory={(categoryId) =>
-					void applyBulkAction({ action: 'category', categoryId })}
+				oncategory={(categoryId: string | null, checked: boolean) =>
+					void applyBulkAction(
+						categoryId === null
+							? { action: 'category', categoryId: null }
+							: { action: checked ? 'addCategory' : 'removeCategory', categoryId },
+					)}
 				oncreatecategory={canCreateCategory
 					? () =>
 							openCategoryQuickAdd({
@@ -2543,7 +2551,7 @@
 					priorityLevels={priorityActionOptions}
 					categories={categoryActionOptions}
 					priorityLevelId={contextActionGift.priorityLevelId}
-					categoryId={contextActionGift.categoryId ?? null}
+					categoryIds={contextActionGift.categoryIds}
 					placementSnapshot={contextPlacementSnapshot}
 					{...reservationContextFor(contextActionGift)}
 					{...releaseContextFor(contextActionGift)}
@@ -2559,7 +2567,17 @@
 								)
 						: undefined}
 					onpriority={(priorityLevelId) => void updateContextGift({ priorityLevelId })}
-					oncategory={(categoryId) => void updateContextGift({ categoryId })}
+					oncategory={(categoryId, checked) =>
+						void updateContextGift({
+							categoryIds:
+								categoryId === null
+									? []
+									: withGiftCategoryToggled(
+											contextActionGift.categoryIds,
+											categoryId,
+											checked,
+										),
+						})}
 					oncreatecategory={canCreateCategory
 						? () =>
 								openCategoryQuickAdd({

@@ -2,20 +2,42 @@ import type {
 	GiftContextAction,
 	GiftContextActionGroup,
 } from '$lib/modules/gifts/gift_context_actions.js';
+import type { GiftCategoryCheckState } from '$lib/modules/gift-categories/gift_category_assignment.js';
 
 /** Actions whose menu row opens a choice list instead of running a command. */
 export type GiftContextChoiceAction = Extract<GiftContextAction, 'priority' | 'category'>;
 
-export interface GiftContextChoiceMenu {
+interface GiftContextChoiceMenuBase {
 	title: string;
 	ready: boolean;
-	/** The leading `null` option clears the current choice. */
-	options: readonly { id: string | null; label: string }[];
-	selectedId: string | null;
-	choose: (id: string | null) => void;
 	/** A trailing command, separated from the options, that creates a new option. */
 	create?: { label: string; select: () => void };
 }
+
+/** Picks one option; the leading `null` option clears the current choice. */
+export interface GiftContextSingleChoiceMenu extends GiftContextChoiceMenuBase {
+	kind: 'single';
+	options: readonly { id: string | null; label: string }[];
+	selectedId: string | null;
+	choose: (id: string | null) => void;
+}
+
+/**
+ * Checks options independently. An option some of the gifts have is indeterminate; the leading
+ * `null` option clears every choice.
+ */
+export interface GiftContextMultipleChoiceMenu extends GiftContextChoiceMenuBase {
+	kind: 'multiple';
+	options: readonly {
+		id: string | null;
+		label: string;
+		state: GiftCategoryCheckState;
+		disabled: boolean;
+	}[];
+	toggle: (id: string | null, checked: boolean) => void;
+}
+
+export type GiftContextChoiceMenu = GiftContextSingleChoiceMenu | GiftContextMultipleChoiceMenu;
 
 export interface GiftContextCommandEntry {
 	kind: 'command';

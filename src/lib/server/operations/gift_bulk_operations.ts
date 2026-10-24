@@ -22,7 +22,12 @@ import {
 	prepareGiftCopy,
 	type PreparedGiftCopy,
 } from '$lib/modules/gifts/gift_bulk_copy.js';
-import { assertActiveGiftCategoryAssignment } from '$lib/modules/gift-categories/gift_categories_service.js';
+import {
+	assertActiveGiftCategoryAssignment,
+	assertActiveGiftCategoryAssignments,
+} from '$lib/modules/gift-categories/gift_categories_service.js';
+import { withPrimaryGiftCategory } from '$lib/modules/gift-categories/gift_category_assignment.js';
+import { textArraySql } from '$lib/server/db/sql_arrays.js';
 import {
 	OPERATION_EXPOSURE,
 	OPERATION_KIND,
@@ -116,11 +121,17 @@ export const reorderGiftsOperation = defineOperation({
 			if (change.field === GIFT_GROUPING_OPTIONS.priority) {
 				await assertWishlistPriorityLevel(transaction, wishlistId, change.value);
 				updateData.priorityLevelId = change.value;
-			} else {
-				updateData.categoryId = await assertActiveGiftCategoryAssignment(
+			} else if (change.categoryIds !== undefined) {
+				updateData.categoryIds = await assertActiveGiftCategoryAssignments(
 					transaction,
 					wishlistId,
-					change.value,
+					change.categoryIds,
+				);
+			} else {
+				// A cross-group move replaces only the primary category the groups are built from.
+				updateData.categoryIds = withPrimaryGiftCategory(
+					giftRow.categoryIds,
+					await assertActiveGiftCategoryAssignment(transaction, wishlistId, change.value),
 				);
 			}
 			updatePlans.push({
@@ -186,7 +197,7 @@ async function assertBulkActionTargetActive(
 	if (input.action === 'priority') {
 		await assertWishlistPriorityLevel(transaction, input.wishlistId, input.priorityLevelId);
 	}
-	if (input.action === 'category') {
+	if (input.action === 'category' || input.action === 'addCategory') {
 		await assertActiveGiftCategoryAssignment(transaction, input.wishlistId, input.categoryId);
 	}
 }
@@ -256,7 +267,15 @@ function actionUpdateSet(
 		case 'priority':
 			return { priorityLevelId: input.priorityLevelId };
 		case 'category':
-			return { categoryId: input.categoryId };
+		case 'addCategory':
+		case 'removeCategory':
+			return {
+				categoryIds: valueByGiftId(
+					updatePlans,
+					(plan) => textArraySql(plan.updateData.categoryIds ?? plan.row.categoryIds),
+					gift.categoryIds,
+				),
+			};
 		case 'received':
 			return { received: input.received };
 		case 'restoreReceived':

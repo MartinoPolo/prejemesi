@@ -17,7 +17,7 @@
 	import { giftCardVariants } from './gift_card_variants.js';
 	import { GIFT_CARD_CONTROL_SELECTOR } from './gift_card_controls.js';
 	import GiftDescription from './GiftDescription.svelte';
-	import GiftCategoryBadge from './GiftCategoryBadge.svelte';
+	import GiftCategoryBadges from './GiftCategoryBadges.svelte';
 	import GiftPriorityBadge from './GiftPriorityBadge.svelte';
 	import GiftBrowseActions from './GiftBrowseActions.svelte';
 	import GiftLivePreviewBadge from './GiftLivePreviewBadge.svelte';
@@ -51,7 +51,7 @@
 
 	const previewMarks = $derived(giftLivePreviewMarks(livePreview));
 	const showsTopOverlays = $derived(
-		!contextualMode || gift.category != null || previewMarks.proposed,
+		!contextualMode || gift.categories.length > 0 || previewMarks.proposed,
 	);
 
 	const giftsContext = useGifts();
@@ -115,9 +115,13 @@
 		class="gift-card-top-overlays absolute top-2 right-2 z-20 flex items-start gap-2"
 		data-gift-card-top-overlays
 	>
-		{#if gift.category != null}
+		{#if gift.categories.length > 0}
 			<div class="min-w-0 flex-1" data-gift-card-category-zone>
-				<GiftCategoryBadge category={gift.category} {isDimmed} />
+				<GiftCategoryBadges
+					categories={gift.categories}
+					{isDimmed}
+					interactive={!contextualMode}
+				/>
 			</div>
 		{/if}
 		{#if presentation.showLike && visitorGift}

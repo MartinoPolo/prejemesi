@@ -27,6 +27,9 @@
 	const RadioItem = $derived(
 		kind === 'dropdown' ? DropdownMenu.RadioItem : ContextMenu.RadioItem,
 	);
+	const CheckboxItem = $derived(
+		kind === 'dropdown' ? DropdownMenu.CheckboxItem : ContextMenu.CheckboxItem,
+	);
 </script>
 
 {#snippet submenu(entry: GiftContextSubmenuEntry)}
@@ -35,14 +38,22 @@
 			><GiftContextActionIcon action={entry.action} />{entry.label}</SubTrigger
 		>
 		<SubContent
-			><RadioGroup
-				value={entry.menu.selectedId ?? ''}
-				onValueChange={(id) => entry.menu.choose(id === '' ? null : id)}
-			>
-				{#each entry.menu.options as option (option.id)}<RadioItem value={option.id ?? ''}
-						>{option.label}</RadioItem
-					>{/each}
-			</RadioGroup>{#if entry.menu.create !== undefined}<Separator /><Item
+			>{#if entry.menu.kind === 'single'}{@const menu = entry.menu}<RadioGroup
+					value={menu.selectedId ?? ''}
+					onValueChange={(id) => menu.choose(id === '' ? null : id)}
+				>
+					{#each menu.options as option (option.id)}<RadioItem value={option.id ?? ''}
+							>{option.label}</RadioItem
+						>{/each}
+				</RadioGroup>{:else}{@const menu =
+					entry.menu}{#each menu.options as option (option.id)}<CheckboxItem
+						checked={option.state === true}
+						indeterminate={option.state === 'indeterminate'}
+						disabled={option.disabled}
+						onCheckedChange={(checked) =>
+							menu.toggle(option.id, option.id === null || checked)}
+						>{option.label}</CheckboxItem
+					>{/each}{/if}{#if entry.menu.create !== undefined}<Separator /><Item
 					data-testid="gift-category-create-option"
 					onSelect={entry.menu.create.select}><PlusIcon />{entry.menu.create.label}</Item
 				>{/if}</SubContent

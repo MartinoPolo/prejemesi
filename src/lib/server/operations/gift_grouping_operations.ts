@@ -85,7 +85,7 @@ export const saveGiftCategorySettingsOperation = defineOperation({
 });
 
 /**
- * Creates a custom category from a category picker and assigns it to the gifts the picker acted
+ * Creates a custom category from a category picker and adds it to the gifts the picker acted
  * on, atomically and through the ordinary bulk post-share rules. Agents compose the same change
  * from the category settings and bulk update operations.
  */
@@ -108,7 +108,7 @@ export const createGiftCategoryOperation = defineOperation({
 			await applyBulkGiftUpdate(context, {
 				wishlistId,
 				giftIds,
-				action: 'category',
+				action: 'addCategory',
 				categoryId: category.id,
 			});
 		}

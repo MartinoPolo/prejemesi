@@ -37,6 +37,8 @@ export const giftViewerVariants = tv({
 		priceLine:
 			'-mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-1 text-sm text-muted-foreground',
 		price: 'text-[17px] font-bold text-foreground',
+		// Every category wraps here; cards collapse the rest into "+X".
+		categories: 'm-0 flex list-none flex-wrap gap-1.5 p-0',
 		// The caption placement applies on mobile, and on desktop only without a photo.
 		captionStates: 'sm:hidden',
 		description: 'border-t-2 border-dashed border-ink-faint pt-3',

@@ -3,6 +3,7 @@ import { extractGiftUrlDomain } from '$lib/modules/gifts/gift_url.js';
 import type { DescriptionAppend, GiftByRole, GiftForRecipient } from '$lib/modules/gifts/types.js';
 import type { ImageMetadata } from '$lib/modules/images/types.js';
 import type { PublicGiftCategory } from '$lib/modules/gift-categories/types.js';
+import { giftCategoryIdsFromLegacyCategoryId } from '$lib/modules/gift-categories/gift_category_assignment.js';
 import { translateServerErrorCode } from '$lib/modules/errors/translate_server_error.js';
 import {
 	CHANGE_KIND,
@@ -198,7 +199,9 @@ function inputStrings(input: unknown, key: string): string[] {
 function categoryById(context: ChangeRowContext, categoryId: string): PublicGiftCategory | null {
 	return (
 		context.categories.find((category) => category.id === categoryId) ??
-		context.currentGifts.find((gift) => gift.category?.id === categoryId)?.category ??
+		context.currentGifts
+			.flatMap((gift) => gift.categories)
+			.find((category) => category.id === categoryId) ??
 		null
 	);
 }
@@ -252,8 +255,11 @@ function previewGift(
 				? null
 				: lookups.priorityLabel(snapshot.priorityLevelId),
 		prioritySortOrder: null,
-		categoryId: snapshot.categoryId,
-		category: snapshot.categoryId === null ? null : categoryById(context, snapshot.categoryId),
+		categoryIds: snapshot.categoryIds,
+		categories: snapshot.categoryIds.flatMap((categoryId) => {
+			const category = categoryById(context, categoryId);
+			return category === null ? [] : [category];
+		}),
 	};
 }
 
@@ -318,7 +324,7 @@ function emptiedGift(gift: ChangeProposalGift): ChangeProposalGift {
 		imageMeta: null,
 		quantity: null,
 		priorityLevelId: null,
-		categoryId: null,
+		categoryIds: [],
 	};
 }
 
@@ -367,7 +373,15 @@ function withEditedField(
 		case CHANGE_FIELD.quantity:
 			return { ...gift, quantity: nullableNumber(edited.quantity) };
 		case CHANGE_FIELD.category:
-			return { ...gift, categoryId: nullableText(edited.categoryId) };
+			return {
+				...gift,
+				categoryIds: Array.isArray(edited.categoryIds)
+					? edited.categoryIds.filter((id): id is string => typeof id === 'string')
+					: giftCategoryIdsFromLegacyCategoryId(
+							gift.categoryIds,
+							nullableText(edited.categoryId),
+						),
+			};
 		case CHANGE_FIELD.priority:
 			return { ...gift, priorityLevelId: nullableText(edited.priorityLevelId) };
 		case CHANGE_FIELD.links:
@@ -546,7 +560,7 @@ const LIVE_PREVIEW_CARD_KEYS: readonly (readonly [
 	['imageMeta', ['imageMeta']],
 	['quantity', ['quantity']],
 	['priorityLevelId', ['priorityLevelId', 'priorityLabel']],
-	['categoryId', ['categoryId', 'category']],
+	['categoryIds', ['categoryIds', 'categories']],
 ];
 
 function copyCardKey<Key extends keyof GiftForRecipient>(

@@ -200,7 +200,7 @@ describe('gift editor category select', () => {
 
 		await screen.getByRole('button', { name: m.gift_add_title() }).first().click();
 		expect(oncreate).toHaveBeenCalledWith(
-			expect.objectContaining({ categoryId: createdCategory.id }),
+			expect.objectContaining({ categoryIds: [createdCategory.id] }),
 		);
 		await screen.unmount();
 	});

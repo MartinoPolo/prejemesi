@@ -14,6 +14,7 @@ vi.mock('drizzle-orm', () => ({
 	and: vi.fn((...args: unknown[]) => args),
 	isNull: vi.fn((arg: unknown) => arg),
 	inArray: vi.fn((...args: unknown[]) => args),
+	arrayOverlaps: vi.fn((...args: unknown[]) => args),
 	sql: Object.assign(
 		vi.fn(() => ({ as: vi.fn(() => ({})) })),
 		{
@@ -26,7 +27,7 @@ vi.mock('$lib/server/db/gift.schema.js', () => ({
 	gift: {
 		id: 'gift.id',
 		wishlistId: 'gift.wishlistId',
-		categoryId: 'gift.categoryId',
+		categoryIds: 'gift.categoryIds',
 		deletedAt: 'gift.deletedAt',
 		editedAfterShareAt: 'gift.editedAfterShareAt',
 		preEditShareSnapshot: 'gift.preEditShareSnapshot',
@@ -247,11 +248,18 @@ describe('gift category management service', () => {
 		]);
 	});
 
-	it('atomically de-assigns active gifts before soft-deleting an omitted custom category', async () => {
+	it('atomically removes an omitted custom category from its gifts, keeping their other categories, before soft-deleting it', async () => {
+		const giftBefore = {
+			id: 'gift-1',
+			wishlistId: WISHLIST_ID,
+			categoryIds: [CATEGORY_ID, 'category-kept'],
+		};
+		const giftAfter = { ...giftBefore, categoryIds: ['category-kept'] };
 		mockDbInstance.pushResult([]); // wishlist lock
 		mockDbInstance.pushResult([customCategory]);
-		mockDbInstance.pushResult([{ categoryId: CATEGORY_ID }]);
-		mockDbInstance.pushResult([{ id: 'gift-1', wishlistId: WISHLIST_ID, categoryId: null }]);
+		mockDbInstance.pushResult([{ categoryIds: giftBefore.categoryIds }]); // used removals
+		mockDbInstance.pushResult([giftBefore]); // gifts locked before the change
+		mockDbInstance.pushResult([giftAfter]); // updated gifts
 
 		await saveSettings({
 			wishlistId: WISHLIST_ID,
@@ -263,24 +271,25 @@ describe('gift category management service', () => {
 			{
 				giftId: 'gift-1',
 				wishlistId: WISHLIST_ID,
-				before: expect.objectContaining({ categoryId: CATEGORY_ID }),
-				after: expect.objectContaining({ categoryId: null }),
+				before: expect.objectContaining({ categoryIds: [CATEGORY_ID, 'category-kept'] }),
+				after: expect.objectContaining({ categoryIds: ['category-kept'] }),
 			},
 		]);
 
 		const setCalls = mockDbInstance.calls.filter((call) => call.method === 'set');
-		expect(setCalls[0]?.args[0]).toMatchObject({
-			categoryId: null,
-			updatedAt: expect.any(Date),
-		});
+		expect(setCalls[0]?.args[0]).toMatchObject({ updatedAt: expect.any(Date) });
+		expect(setCalls[0]?.args[0]).toHaveProperty('categoryIds');
 		expect(setCalls[1]?.args[0]).toMatchObject({
 			deletedAt: expect.any(Date),
 			updatedAt: expect.any(Date),
 		});
-		expect(mockDbInstance.calls.filter((call) => call.method === 'for')).toHaveLength(2);
+		// At least the wishlist and its categories are locked.
+		expect(
+			mockDbInstance.calls.filter((call) => call.method === 'for').length,
+		).toBeGreaterThanOrEqual(2);
 	});
 
-	it('atomically de-assigns active gifts before soft-deleting an omitted preset category', async () => {
+	it('atomically removes an omitted preset category from its gifts before soft-deleting it', async () => {
 		const presetCategory = {
 			...customCategory,
 			id: 'preset-category',
@@ -289,7 +298,7 @@ describe('gift category management service', () => {
 		};
 		mockDbInstance.pushResult([]); // wishlist lock
 		mockDbInstance.pushResult([presetCategory]);
-		mockDbInstance.pushResult([{ categoryId: presetCategory.id }]);
+		mockDbInstance.pushResult([{ categoryIds: [presetCategory.id] }]);
 
 		await saveSettings({
 			wishlistId: WISHLIST_ID,
@@ -298,11 +307,23 @@ describe('gift category management service', () => {
 		});
 
 		const setCalls = mockDbInstance.calls.filter((call) => call.method === 'set');
-		expect(setCalls[0]?.args[0]).toMatchObject({
-			categoryId: null,
-			updatedAt: expect.any(Date),
-		});
+		expect(setCalls[0]?.args[0]).toHaveProperty('categoryIds');
 		expect(setCalls[1]?.args[0]).toMatchObject({ deletedAt: expect.any(Date) });
+	});
+
+	it('requires confirming a removed category that a gift holds as a secondary category', async () => {
+		mockDbInstance.pushResult([]); // wishlist lock
+		mockDbInstance.pushResult([customCategory]);
+		mockDbInstance.pushResult([{ categoryIds: ['category-kept', CATEGORY_ID] }]);
+
+		await expect(
+			saveSettings({
+				wishlistId: WISHLIST_ID,
+				categories: [],
+				confirmedRemovalCategoryIds: [],
+			}),
+		).rejects.toThrow('GIFT_CATEGORY_REMOVAL_CONFIRMATION_MISMATCH');
+		expect(mockDbInstance.calls.filter((call) => call.method === 'set')).toHaveLength(0);
 	});
 
 	it('soft-deletes an unused category without requiring confirmation', async () => {
@@ -329,7 +350,7 @@ describe('gift category management service', () => {
 	])('rejects %s removal confirmations before changing gifts', async (_case, confirmations) => {
 		mockDbInstance.pushResult([]); // wishlist lock
 		mockDbInstance.pushResult([customCategory]);
-		mockDbInstance.pushResult([{ categoryId: CATEGORY_ID }]);
+		mockDbInstance.pushResult([{ categoryIds: [CATEGORY_ID] }]);
 
 		await expect(
 			saveSettings({

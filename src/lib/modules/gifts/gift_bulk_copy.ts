@@ -12,7 +12,9 @@ import { getObject, putObject, deleteObject } from '$lib/server/storage/r2.js';
 import {
 	occupiedGiftCategoryLabels,
 	type GiftCategoryPresetKey,
+	type PublicGiftCategory,
 } from '$lib/modules/gift-categories/types.js';
+import { activeGiftCategoriesColumn } from '$lib/modules/gift-categories/gift_categories_service.js';
 import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
 import { WISHLIST_KIND } from '$lib/modules/wishlists/types.js';
 import { recipientMayMoveGifts } from '$lib/modules/wishlists/wishlist_capabilities.js';
@@ -39,8 +41,7 @@ export type BulkCopyGiftsInput = v.InferOutput<typeof BulkCopyGiftsInputSchema>;
 type Database = ReturnType<typeof getDb>;
 type Transaction = GiftCreationTransaction;
 type SourceGift = typeof gift.$inferSelect & {
-	categoryPresetKey: GiftCategoryPresetKey | null;
-	categoryCustomLabel: string | null;
+	categories: readonly Pick<PublicGiftCategory, 'presetKey' | 'customLabel'>[];
 };
 
 export function flattenGiftDescription(
@@ -57,7 +58,7 @@ export function portableGiftCopy(input: {
 	source: SourceGift;
 	destinationGiftId: string;
 	destinationImageKey: string | null;
-	taxonomy: { priorityLevelId: string | null; categoryId: string | null };
+	taxonomy: { priorityLevelId: string | null; categoryIds: string[] };
 }) {
 	return {
 		id: input.destinationGiftId,
@@ -87,31 +88,34 @@ export function mapCopiedTaxonomy(input: {
 		presetKey: GiftCategoryPresetKey | null;
 		customLabel: string | null;
 	}[];
-}): { priorityLevelId: string | null; categoryId: string | null } {
+}): { priorityLevelId: string | null; categoryIds: string[] } {
 	const priorityOrdinal =
 		input.source.priorityLevelId === null
 			? -1
 			: input.sourcePriorityIdsByOrdinal.indexOf(input.source.priorityLevelId);
 	// A preset maps to the same preset; otherwise any category claiming the same label matches,
-	// because a preset may be renamed into a custom category or recreated as one.
-	const sourceLabels = occupiedGiftCategoryLabels({
-		presetKey: input.source.categoryPresetKey,
-		customLabel: input.source.categoryCustomLabel,
-	});
-	const categoryId =
-		(input.source.categoryPresetKey === null
-			? undefined
-			: input.destinationCategories.find(
-					(category) => category.presetKey === input.source.categoryPresetKey,
-				)?.id) ??
-		input.destinationCategories.find((category) =>
-			occupiedGiftCategoryLabels(category).some((label) => sourceLabels.includes(label)),
-		)?.id ??
-		null;
+	// because a preset may be renamed into a custom category or recreated as one. Unmatched
+	// categories are dropped and the rest keep their order, so the primary stays first.
+	const categoryIds = new Set<string>();
+	for (const sourceCategory of input.source.categories) {
+		const sourceLabels = occupiedGiftCategoryLabels(sourceCategory);
+		const destinationCategoryId =
+			(sourceCategory.presetKey === null
+				? undefined
+				: input.destinationCategories.find(
+						(category) => category.presetKey === sourceCategory.presetKey,
+					)?.id) ??
+			input.destinationCategories.find((category) =>
+				occupiedGiftCategoryLabels(category).some((label) => sourceLabels.includes(label)),
+			)?.id;
+		if (destinationCategoryId !== undefined) {
+			categoryIds.add(destinationCategoryId);
+		}
+	}
 	return {
 		priorityLevelId:
 			priorityOrdinal < 0 ? null : (input.destinationPriorities[priorityOrdinal]?.id ?? null),
-		categoryId,
+		categoryIds: [...categoryIds],
 	};
 }
 
@@ -181,20 +185,8 @@ async function loadSourceGifts(
 	lock: boolean,
 ): Promise<SourceGift[]> {
 	const query = database
-		.select({
-			gift,
-			categoryPresetKey: giftCategory.presetKey,
-			categoryCustomLabel: giftCategory.customLabel,
-		})
+		.select({ gift, categories: activeGiftCategoriesColumn() })
 		.from(gift)
-		.leftJoin(
-			giftCategory,
-			and(
-				eq(gift.categoryId, giftCategory.id),
-				eq(gift.wishlistId, giftCategory.wishlistId),
-				isNull(giftCategory.deletedAt),
-			),
-		)
 		.where(
 			and(
 				inArray(gift.id, input.giftIds),
@@ -207,14 +199,7 @@ async function loadSourceGifts(
 		error(400, SERVER_ERROR.BULK_COPY_INVALID_SELECTION);
 	}
 	const byId = new Map(
-		rows.map((row) => [
-			row.gift.id,
-			{
-				...row.gift,
-				categoryPresetKey: row.categoryPresetKey,
-				categoryCustomLabel: row.categoryCustomLabel,
-			},
-		]),
+		rows.map((row) => [row.gift.id, { ...row.gift, categories: row.categories }]),
 	);
 	return input.giftIds.map((id) => byId.get(id)!);
 }

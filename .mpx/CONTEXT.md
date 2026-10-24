@@ -79,7 +79,7 @@ _Avoid_: "list" for Wishlist (ambiguous), "present" for Gift (confusing with tim
 
 - Accounts: email/password with optional Google sign-in; anonymous visitors with a display name and optional email.
 - Wishlists: create, edit, share, archive, revert to draft (správce when reservation-free, admin when reserved); occasion and permanent kinds; lists for someone else with claim links and recipient reassignment.
-- Gifts: add, edit, remove, reorder, up to 10 links, image fit/crop, categories with priority/category grouping and facets, mark as received.
+- Gifts: add, edit, remove, reorder, up to 10 links, image fit/crop, up to five categories (the first one groups) with priority/category grouping and facets, mark as received.
 - Bulk entry: shared draft grid and the CSV / Google Sheets import wizard.
 - Reservations with quantity support, single-reservation release, and likes.
 - Roles and privacy: recipient, správce, visitor, admin; recipient surprise protection and post-share edit rules.

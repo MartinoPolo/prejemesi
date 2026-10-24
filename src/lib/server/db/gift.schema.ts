@@ -23,6 +23,7 @@ import {
 	GIFT_CATEGORY_PRESET_KEYS,
 	type GiftCategoryPresetKey,
 } from '$lib/modules/gift-categories/presets.js';
+import { MAX_GIFT_CATEGORIES } from '$lib/modules/gift-categories/gift_category_assignment.js';
 
 const presetKeySqlList = sql.join(
 	GIFT_CATEGORY_PRESET_KEYS.map((key) => sql`${key}`),
@@ -89,7 +90,16 @@ export const gift = pgTable(
 		priorityLevelId: text('priority_level_id').references(() => priorityLevel.id, {
 			onDelete: 'set null',
 		}),
+		// Legacy single category, kept equal to `category_ids[1]` by the
+		// `gift_category_ids_legacy_mirror` trigger until the contract step drops it. The application
+		// never writes it.
 		categoryId: text('category_id'),
+		// Ordered categories; the first is the primary one that category grouping uses. Not a foreign
+		// key: categories are soft-deleted, removing one strips it here, and reads keep active ones.
+		categoryIds: text('category_ids')
+			.array()
+			.notNull()
+			.default(sql`'{}'::text[]`),
 		name: text('name').notNull(),
 		description: text('description'),
 		// Post-share description edits accrue here as immutable, timestamped segments rendered as
@@ -139,6 +149,10 @@ export const gift = pgTable(
 			foreignColumns: [giftCategory.wishlistId, giftCategory.id],
 			name: 'gift_wishlist_category_fk',
 		}),
+		categoryIdsLimitCheck: check(
+			'gift_category_ids_limit_check',
+			sql`cardinality(${table.categoryIds}) <= ${sql.raw(String(MAX_GIFT_CATEGORIES))}`,
+		),
 	}),
 );
 

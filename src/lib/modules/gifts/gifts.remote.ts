@@ -34,6 +34,7 @@ import {
 	GIFT_GROUPING_OPTIONS,
 } from './types.js';
 import { BulkCopyGiftsInputSchema } from './gift_bulk_copy.js';
+import { isBulkCategoryAction } from './gift_bulk_update.js';
 import { getGiftCategories } from '$lib/modules/gift-categories/gift_category_queries.remote.js';
 
 // Thin adapters over the operation core, which owns authorization and the post-share rules.
@@ -114,7 +115,7 @@ export const bulkUpdateGifts = guardedCommand(
 		);
 
 		await singleFlightRefresh(getGiftsByWishlistShortId, wishlistShortId);
-		if (input.action === 'category') {
+		if (isBulkCategoryAction(input)) {
 			await singleFlightRefresh(getGiftCategories, input.wishlistId);
 		}
 		return { updatedIds, priorReceived };

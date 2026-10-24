@@ -7,6 +7,7 @@
 		hasExplicitFrameFill,
 	} from '$lib/components/derived/image-frame/index.js';
 	import GiftPieceCount from './GiftPieceCount.svelte';
+	import GiftCategoryBadge from './GiftCategoryBadge.svelte';
 	import GiftLinkList from './GiftLinkList.svelte';
 	import GiftDescription from './GiftDescription.svelte';
 	import GiftStateList from './GiftStateList.svelte';
@@ -145,6 +146,20 @@
 							hideWhenOne
 						/>
 					</p>
+
+					{#if gift.categories.length > 0}
+						<ul
+							class={styles.categories()}
+							aria-label={m.gift_category_label()}
+							data-testid="gift-viewer-categories"
+						>
+							{#each gift.categories as category (category.id)}
+								<li class="max-w-full min-w-0">
+									<GiftCategoryBadge {category} />
+								</li>
+							{/each}
+						</ul>
+					{/if}
 
 					<GiftLinkList links={gift.links} maxVisible={gift.links.length} display="row" />
 

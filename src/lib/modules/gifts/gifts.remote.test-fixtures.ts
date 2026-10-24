@@ -107,7 +107,7 @@ vi.mock('$lib/server/db/gift.schema.js', () => ({
 		createdAt: 'gift.createdAt',
 		deletedAt: 'gift.deletedAt',
 		priorityLevelId: 'gift.priorityLevelId',
-		categoryId: 'gift.categoryId',
+		categoryIds: 'gift.categoryIds',
 	},
 	giftCategory: {
 		id: 'giftCategory.id',
@@ -343,11 +343,8 @@ function makeGiftRow(
 		priorityLevelId: null,
 		priorityLabel: null,
 		prioritySortOrder: null,
-		categoryId: null,
-		categoryPresetKey: null,
-		categoryCustomLabel: null,
-		categoryColor: null,
-		categorySortOrder: null,
+		categoryIds: [],
+		categories: [],
 		...overrides,
 	};
 }

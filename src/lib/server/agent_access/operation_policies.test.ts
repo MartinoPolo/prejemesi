@@ -95,7 +95,7 @@ const giftRow = {
 	id: 'gift-1',
 	wishlistId: 'wishlist-1',
 	priorityLevelId: null,
-	categoryId: null,
+	categoryIds: ['category-sport', 'category-outdoor'],
 	name: 'Kolo',
 	description: null,
 	descriptionAppends: [],
@@ -234,6 +234,7 @@ describe('agent output projections', () => {
 				id: 'gift-1',
 				name: 'Kolo',
 				imageUrl: expect.stringContaining('gifts/kolo.webp'),
+				categoryIds: ['category-sport', 'category-outdoor'],
 			});
 			expect(JSON.stringify(projected), name).not.toContain('Staré kolo');
 		}
