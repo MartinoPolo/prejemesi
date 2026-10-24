@@ -1,5 +1,9 @@
 <script lang="ts">
 	import { IMAGE_VARIANTS, responsiveImageSource } from '$lib/modules/images/variants.js';
+	import {
+		findWishlistLibraryImage,
+		wishlistLibraryImageSource,
+	} from '$lib/theme/wishlist_background_library.js';
 	import type { MotifPlacement, WishlistThemeArt } from '$lib/theme/wishlist_theme_art/index.js';
 	import type { WishlistBackground, WishlistBackgroundMode } from '$lib/theme/wishlist_themes.js';
 
@@ -8,7 +12,7 @@
 		mode: WishlistBackgroundMode;
 		/** Theme art; null while it loads, so only the CSS pattern paints meanwhile. */
 		art: WishlistThemeArt | null;
-		/** Custom background URL, required for the custom mode. */
+		/** Custom background URL, required for the custom mode; library images come from the registry. */
 		imageUrl: string | null;
 		background: WishlistBackground;
 	}
@@ -29,11 +33,26 @@
 		}
 		return sides;
 	});
-	const photoSource = $derived(
-		imageUrl === null
-			? null
-			: responsiveImageSource(imageUrl, 'background', IMAGE_VARIANTS.background.cssWidth),
-	);
+	/** Custom uploads and library images share one photo rendering; only the source differs. */
+	const photo = $derived.by((): { src: string; srcset?: string; sizes?: string } | null => {
+		if (mode === 'library') {
+			const libraryImage = findWishlistLibraryImage(background.libraryImageId);
+			return libraryImage === null
+				? null
+				: { ...wishlistLibraryImageSource(libraryImage), sizes: '100vw' };
+		}
+		if (mode !== 'custom' || imageUrl === null) {
+			return null;
+		}
+		const responsiveSource = responsiveImageSource(
+			imageUrl,
+			'background',
+			IMAGE_VARIANTS.background.cssWidth,
+		);
+		return responsiveSource === null
+			? { src: imageUrl }
+			: { src: responsiveSource.src, srcset: responsiveSource.srcset, sizes: '100vw' };
+	});
 </script>
 
 {#snippet motifLayer(side: MotifSide)}
@@ -62,19 +81,20 @@
 		aria-hidden="true"
 		data-testid="wishlist-theme-backdrop"
 		data-mode={mode}
-		data-placement={mode === 'custom' ? background.placement : undefined}
+		data-placement={photo === null ? undefined : background.placement}
+		data-photo={photo === null ? undefined : ''}
 		data-motion={background.motion}
 		style:--photo-focal-x="{background.focal.x}%"
 		style:--photo-focal-y="{background.focal.y}%"
 		style:--photo-dim="{background.dim}%"
 		style:--photo-drift={PHOTO_DRIFT_PX}
 	>
-		{#if mode === 'custom' && imageUrl !== null}
+		{#if photo !== null}
 			<div class="wishlist-backdrop-photo">
 				<img
-					src={photoSource?.src ?? imageUrl}
-					srcset={photoSource?.srcset}
-					sizes={photoSource === null ? undefined : '100vw'}
+					src={photo.src}
+					srcset={photo.srcset}
+					sizes={photo.sizes}
 					alt=""
 					decoding="async"
 					data-testid="wishlist-backdrop-photo"
@@ -208,7 +228,7 @@
 		background: color-mix(in oklab, var(--background) var(--photo-dim), transparent);
 	}
 
-	.wishlist-backdrop[data-mode='custom'] .wishlist-backdrop-wash {
+	.wishlist-backdrop[data-photo] .wishlist-backdrop-wash {
 		--theme-wash: transparent;
 	}
 
@@ -255,13 +275,13 @@
 			--motif-scale: 0.62;
 		}
 
-		.wishlist-backdrop[data-mode='custom'] .wishlist-backdrop-photo {
+		.wishlist-backdrop[data-photo] .wishlist-backdrop-photo {
 			position: absolute;
 			height: var(--wishlist-band-height);
 		}
 
-		.wishlist-backdrop[data-mode='custom'] .wishlist-backdrop-dim,
-		.wishlist-backdrop[data-mode='custom'] .wishlist-backdrop-wash {
+		.wishlist-backdrop[data-photo] .wishlist-backdrop-dim,
+		.wishlist-backdrop[data-photo] .wishlist-backdrop-wash {
 			display: none;
 		}
 	}

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { imagePublicUrl } from '$lib/modules/images/public_url.js';
 import { DEFAULT_WISHLIST_BACKGROUND } from '$lib/theme/wishlist_themes.js';
 import {
@@ -6,6 +6,11 @@ import {
 	wishlistThemeScopeAttributes,
 	type WishlistAppearancePreview,
 } from './wishlist_theme_scope.js';
+
+// The shipped library is empty until images are generated.
+vi.mock('$lib/theme/wishlist_background_library.json', () => ({
+	default: [{ id: 'toys-photo', themeId: 'toys', variant: 'photo', widths: [1280, 2560] }],
+}));
 
 function scopeAttributes(appearance: WishlistAppearancePreview) {
 	return wishlistThemeScopeAttributes(resolveWishlistThemeScope(appearance));
@@ -111,6 +116,40 @@ describe('wishlist theme scope', () => {
 			'data-wishlist-placement': 'gutters',
 		});
 	});
+
+	it('renders a library image as a dark photo backdrop with its placement', () => {
+		const scope = resolveWishlistThemeScope({
+			themeId: 'toys',
+			styleTokens: null,
+			background: { mode: 'library', libraryImageId: 'toys-photo', placement: 'full' },
+		});
+		expect(scope.customImageUrl).toBeNull();
+		expect(wishlistThemeScopeAttributes(scope)).toMatchObject({
+			'data-wishlist-theme': undefined,
+			'data-wishlist-background': 'library',
+			'data-wishlist-backdrop': '',
+			'data-wishlist-dark-backdrop': '',
+			'data-wishlist-placement': 'full',
+		});
+	});
+
+	it.each([
+		['a retired', 'toys', 'toys-retired'],
+		['no', 'toys', null],
+		['a retired', null, 'toys-retired'],
+		['no', null, null],
+	] as const)(
+		'renders no backdrop for a library mode with %s image (theme %s)',
+		(_label, themeId, libraryImageId) => {
+			const scope = resolveWishlistThemeScope({
+				themeId,
+				styleTokens: null,
+				background: { mode: 'library', libraryImageId },
+			});
+			expect(scope.backgroundMode).toBe('none');
+			expect(scope.backdropThemeId).toBeNull();
+		},
+	);
 
 	it('previews an unsaved local photo over the stored one', () => {
 		const scope = resolveWishlistThemeScope({

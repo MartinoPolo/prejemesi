@@ -1,5 +1,6 @@
 import type { WishlistAppearance } from '$lib/modules/wishlists/wishlist_appearance.js';
 import { imagePublicUrl } from '$lib/modules/images/public_url.js';
+import { findWishlistLibraryImage } from '$lib/theme/wishlist_background_library.js';
 import {
 	WISHLIST_THEMES,
 	resolveWishlistBackground,
@@ -30,13 +31,13 @@ export interface WishlistThemeScope {
 	backdropThemeId: WishlistThemeId | null;
 	/** Theme whose first motif replaces the no-image placeholders; null without a theme. */
 	placeholderThemeId: WishlistThemeId | null;
-	/** The backdrop actually rendered: a theme without art or a custom mode without an image is none. */
+	/** The backdrop actually rendered: a theme, custom or library mode without its source is none. */
 	backgroundMode: WishlistBackgroundMode;
 	background: WishlistBackground;
 	/** Resolved custom background URL, only while the custom backdrop is rendered. */
 	customImageUrl: string | null;
 	style: WishlistStyleTokens;
-	/** Dark backdrops (dark-native themes, custom photos) switch the hard shadow to black. */
+	/** Dark backdrops (dark-native themes, photos) switch the hard shadow to black. */
 	darkBackdrop: boolean;
 }
 
@@ -48,7 +49,7 @@ export function resolveWishlistThemeScope(
 	const customImageUrl =
 		appearance.previewImageUrl ??
 		(background.imageKey === null ? null : imagePublicUrl(background.imageKey));
-	const backgroundMode = renderedBackgroundMode(background.mode, themeId, customImageUrl);
+	const backgroundMode = renderedBackgroundMode(background, themeId, customImageUrl);
 	return {
 		backdropThemeId: backgroundMode === 'theme' ? themeId : null,
 		placeholderThemeId: themeId,
@@ -57,23 +58,34 @@ export function resolveWishlistThemeScope(
 		customImageUrl: backgroundMode === 'custom' ? customImageUrl : null,
 		style: resolveWishlistStyle(themeId, appearance.styleTokens),
 		darkBackdrop:
-			backgroundMode === 'custom' ||
+			isPhotoBackground(backgroundMode) ||
 			(backgroundMode === 'theme' &&
 				themeId !== null &&
 				WISHLIST_THEMES[themeId].darkBackdrop),
 	};
 }
 
+/** Custom uploads and library images render the same way; only their source differs. */
+function isPhotoBackground(mode: WishlistBackgroundMode): boolean {
+	return mode === 'custom' || mode === 'library';
+}
+
 function renderedBackgroundMode(
-	mode: WishlistBackgroundMode,
+	background: WishlistBackground,
 	themeId: WishlistThemeId | null,
 	customImageUrl: string | null,
 ): WishlistBackgroundMode {
-	if (mode === 'theme' && themeId !== null) {
+	if (background.mode === 'theme' && themeId !== null) {
 		return 'theme';
 	}
-	if (mode === 'custom' && customImageUrl !== null) {
+	if (background.mode === 'custom' && customImageUrl !== null) {
 		return 'custom';
+	}
+	if (
+		background.mode === 'library' &&
+		findWishlistLibraryImage(background.libraryImageId) !== null
+	) {
+		return 'library';
 	}
 	return 'none';
 }
@@ -86,8 +98,9 @@ export function wishlistThemeScopeAttributes(scope: WishlistThemeScope) {
 		'data-wishlist-background': scope.backgroundMode,
 		'data-wishlist-backdrop': hasBackdrop ? '' : undefined,
 		'data-wishlist-dark-backdrop': scope.darkBackdrop ? '' : undefined,
-		'data-wishlist-placement':
-			scope.backgroundMode === 'custom' ? scope.background.placement : undefined,
+		'data-wishlist-placement': isPhotoBackground(scope.backgroundMode)
+			? scope.background.placement
+			: undefined,
 		...wishlistStyleTokenAttributes(scope.style),
 	};
 }

@@ -1,4 +1,5 @@
 import * as v from 'valibot';
+import { isWishlistLibraryImageId } from '$lib/theme/wishlist_background_library.js';
 import {
 	WISHLIST_BACKGROUND_DIM_MAX,
 	WISHLIST_BACKGROUND_MODES,
@@ -27,6 +28,12 @@ const STYLE_TOKEN_SCHEMAS = {
 const BACKGROUND_FIELD_SCHEMAS = {
 	mode: v.picklist(WISHLIST_BACKGROUND_MODES),
 	imageKey: v.nullable(v.pipe(v.string(), v.minLength(1))),
+	libraryImageId: v.nullable(
+		v.pipe(
+			v.string(),
+			v.check((id: string) => isWishlistLibraryImageId(id), 'Unknown library image'),
+		),
+	),
 	focal: v.strictObject({ x: PercentSchema, y: PercentSchema }),
 	placement: v.picklist(WISHLIST_BACKGROUND_PLACEMENTS),
 	dim: v.pipe(v.number(), v.integer(), v.minValue(0), v.maxValue(WISHLIST_BACKGROUND_DIM_MAX)),
@@ -43,12 +50,14 @@ export const WishlistAppearanceInputSchema = v.strictObject({
 	/**
 	 * An omitted image key keeps the stored upload, so a client that cannot reference images (an
 	 * agent) can change the background without deleting it. From the UI, a null key or background
-	 * clears and deletes the upload; an agent's null background keeps it.
+	 * clears and deletes the upload; an agent's null background keeps it. An omitted library image
+	 * id likewise keeps the stored choice.
 	 */
 	background: v.nullable(
 		v.strictObject({
 			...BACKGROUND_FIELD_SCHEMAS,
 			imageKey: v.optional(BACKGROUND_FIELD_SCHEMAS.imageKey),
+			libraryImageId: v.optional(BACKGROUND_FIELD_SCHEMAS.libraryImageId),
 		}),
 	),
 	/** Upload proof, required only when assigning a newly uploaded background image key. */
@@ -90,9 +99,25 @@ export function wishlistBackgroundImageKey(storedBackground: unknown): string | 
 	return pickValidFields(storedBackground, BACKGROUND_FIELD_SCHEMAS)?.imageKey ?? null;
 }
 
+/** The library image a stored background references; null once it left the library. */
+export function wishlistBackgroundLibraryImageId(storedBackground: unknown): string | null {
+	return pickValidFields(storedBackground, BACKGROUND_FIELD_SCHEMAS)?.libraryImageId ?? null;
+}
+
+/** Library mode without a library image is invalid, so the default mode applies instead. */
+function sanitizeWishlistBackground(storedBackground: unknown): Partial<WishlistBackground> | null {
+	const background = pickValidFields(storedBackground, BACKGROUND_FIELD_SCHEMAS);
+	if (background?.mode !== 'library' || typeof background.libraryImageId === 'string') {
+		return background;
+	}
+	const backgroundWithoutMode = { ...background };
+	delete backgroundWithoutMode.mode;
+	return Object.keys(backgroundWithoutMode).length === 0 ? null : backgroundWithoutMode;
+}
+
 /**
- * Stored appearance read defensively: a theme or token value retired from the registry, or a
- * malformed JSON column, falls back to the default look instead of reaching the renderer.
+ * Stored appearance read defensively: a theme, token or library image retired from its registry,
+ * or a malformed JSON column, falls back to the default look instead of reaching the renderer.
  */
 export function sanitizeWishlistAppearance(stored: {
 	themeId: unknown;
@@ -102,6 +127,6 @@ export function sanitizeWishlistAppearance(stored: {
 	return {
 		themeId: isWishlistThemeId(stored.themeId) ? stored.themeId : null,
 		styleTokens: pickValidFields(stored.styleTokens, STYLE_TOKEN_SCHEMAS),
-		background: pickValidFields(stored.background, BACKGROUND_FIELD_SCHEMAS),
+		background: sanitizeWishlistBackground(stored.background),
 	};
 }

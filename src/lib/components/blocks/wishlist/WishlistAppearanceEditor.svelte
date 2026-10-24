@@ -222,7 +222,7 @@
 		</h3>
 		<WishlistBackgroundEditor
 			background={draft.background}
-			hasTheme={draft.themeId !== null}
+			themeId={draft.themeId}
 			imageUrl={backgroundImageUrl}
 			{allowCustomUpload}
 			onchange={(changes) => (draft = setWishlistBackground(draft, changes))}

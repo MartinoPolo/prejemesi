@@ -47,10 +47,12 @@ type AgentWishlistSource = Pick<
 /** The theme and its resolved look; the custom background's storage key stays internal. */
 function projectAgentAppearance(wishlistRow: AgentWishlistSource) {
 	const appearance = sanitizeWishlistAppearance(wishlistRow);
+	const background = resolveWishlistBackground(appearance.background);
 	return {
 		themeId: appearance.themeId,
 		style: resolveWishlistStyle(appearance.themeId, appearance.styleTokens),
-		backgroundMode: resolveWishlistBackground(appearance.background).mode,
+		backgroundMode: background.mode,
+		backgroundLibraryImageId: background.libraryImageId,
 	};
 }
 

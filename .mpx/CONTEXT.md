@@ -57,7 +57,7 @@ Přejeme si is a shareable wishlist web app where users create gift lists for th
 - **Palette derivation** — Curated primitives derive semantic colors through CSS `color-mix(in oklab, …)`; arbitrary category-picker hex colors are not custom wishlist palettes.
 - **Wishlist theme** (Motiv) — A curated wishlist preset of palette, decorative backdrop with motifs, and default style tokens; the registry is `src/lib/theme/wishlist_themes.ts`. Choosing one copies its palette into the wishlist palette.
 - **Style tokens** — Per-wishlist corners, card border, image mat and heading font; the theme supplies defaults and only the manager's explicit choices are stored as overrides.
-- **Wishlist background** (Pozadí) — The wishlist page backdrop: from the theme, a custom uploaded photo with focal point, placement, dim and scroll motion, or none. Content surfaces stay opaque over it.
+- **Wishlist background** (Pozadí) — The wishlist page backdrop: from the theme, a curated library image (Knihovna, generated offline per theme, `src/lib/theme/wishlist_background_library.ts`) or a custom uploaded photo, both with focal point, placement, dim and scroll motion, or none. A library image that leaves the library falls back to the theme backdrop. Content surfaces stay opaque over it.
 
 ### Navigation
 

@@ -53,7 +53,7 @@ const DEFAULT_WISHLIST_STYLE: WishlistStyleTokens = {
 	heading: 'playful',
 };
 
-export const WISHLIST_BACKGROUND_MODES = ['theme', 'custom', 'none'] as const;
+export const WISHLIST_BACKGROUND_MODES = ['theme', 'library', 'custom', 'none'] as const;
 export const WISHLIST_BACKGROUND_PLACEMENTS = ['gutters', 'full'] as const;
 export const WISHLIST_BACKGROUND_MOTIONS = ['subtle', 'off'] as const;
 
@@ -67,6 +67,8 @@ export interface WishlistBackground {
 	mode: WishlistBackgroundMode;
 	/** R2 key of the custom upload; kept while another mode is selected so switching back is free. */
 	imageKey: string | null;
+	/** Id of the chosen curated library image (`wishlist_background_library.ts`). */
+	libraryImageId: string | null;
 	/** Percent 0–100, drives the mobile strip crop and the desktop anchoring. */
 	focal: { x: number; y: number };
 	placement: WishlistBackgroundPlacement;
@@ -78,6 +80,7 @@ export interface WishlistBackground {
 export const DEFAULT_WISHLIST_BACKGROUND: WishlistBackground = {
 	mode: 'theme',
 	imageKey: null,
+	libraryImageId: null,
 	focal: { x: 50, y: 50 },
 	placement: 'gutters',
 	dim: 20,
