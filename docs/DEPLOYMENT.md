@@ -1,6 +1,6 @@
 # Production Deployment Runbook
 
-How a commit reaches the production Worker, and how schema changes ship safely (issue #110). Provisioning and service setup live in `CLOUDFLARE_SETUP.md`.
+How a commit reaches the production Worker, and how schema changes ship safely (issue #110). Provisioning and service setup live in `CLOUDFLARE_SETUP.md`; rehearse a release on staging first (`STAGING.md`).
 
 ## The gated pipeline
 

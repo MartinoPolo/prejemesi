@@ -1,3 +1,4 @@
+import type { DeploymentEnvironment } from '$lib/config/site.js';
 import { httpServerIntegration } from '@sentry/cloudflare';
 import {
 	SENTRY_DATA_COLLECTION,
@@ -18,7 +19,7 @@ export function createSentryServerOptions({
 	release,
 }: {
 	dsn?: string;
-	environment: 'development' | 'production';
+	environment: DeploymentEnvironment;
 	release?: string;
 }) {
 	return {

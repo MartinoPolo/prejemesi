@@ -1,5 +1,5 @@
-import { dev } from '$app/environment';
 import { env } from '$env/dynamic/public';
+import { deploymentEnvironment } from '$lib/config/site.js';
 import type { ClientInit, HandleClientError } from '@sveltejs/kit';
 import type { getReplay, replayIntegration } from '@sentry/replay';
 import {
@@ -24,7 +24,7 @@ const loadSentry = createSingletonSafeLoader<HandleClientError>(
 		Sentry.init(
 			createSentryClientOptions({
 				dsn,
-				environment: dev ? 'development' : 'production',
+				environment: deploymentEnvironment(window.location.hostname),
 			}),
 		);
 		earlyErrors?.flush((error) => Sentry.captureException(error));

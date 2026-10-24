@@ -64,4 +64,31 @@
 			"simple": { "limit": 120, "period": 60 },
 		},
 	],
+	// Staging (docs/STAGING.md): bindings and vars are not inherited, so each is redeclared
+	// with staging resources. Email, Google, Turnstile and presigned uploads stay off.
+	"env": {
+		"staging": {
+			"name": "prejemesi-staging",
+			"routes": [{ "pattern": "staging.prejemesi.cz", "custom_domain": true }],
+			"vars": {
+				"ORIGIN": "https://staging.prejemesi.cz",
+				"PUBLIC_R2_URL": "https://staging-images.prejemesi.cz",
+			},
+			"hyperdrive": [
+				{
+					"binding": "HYPERDRIVE",
+					"id": "f18708619a2c44ebaf1ba87bde9f3aef",
+					"localConnectionString": "postgres://root:mysecretpassword@localhost:5432/local",
+				},
+			],
+			"r2_buckets": [{ "binding": "R2", "bucket_name": "prejemesi-images-staging" }],
+			"ratelimits": [
+				{
+					"name": "AGENT_API_RATE_LIMIT",
+					"namespace_id": "1003",
+					"simple": { "limit": 120, "period": 60 },
+				},
+			],
+		},
+	},
 }
