@@ -79,12 +79,14 @@ vi.mock('$lib/server/storage/r2.js', async () => {
 			'gift-image': 'gifts',
 			'wishlist-banner': 'wishlists/banners',
 			'wishlist-thumbnail': 'wishlists/thumbnails',
+			'wishlist-background': 'wishlists/backgrounds',
 			avatar: 'avatars',
 		} as Record<string, string>,
 		MAX_FILE_SIZE: {
 			'gift-image': 5 * 1024 * 1024,
 			'wishlist-banner': 10 * 1024 * 1024,
 			'wishlist-thumbnail': 5 * 1024 * 1024,
+			'wishlist-background': 10 * 1024 * 1024,
 			avatar: 5 * 1024 * 1024,
 		} as Record<string, number>,
 		isAllowedContentType: types.isAllowedContentType,
@@ -289,6 +291,7 @@ describe('authorizeUpload', () => {
 			{ target: 'gift-image', maxBytes: 5 * 1024 * 1024, label: '5MB' },
 			{ target: 'wishlist-banner', maxBytes: 10 * 1024 * 1024, label: '10MB' },
 			{ target: 'wishlist-thumbnail', maxBytes: 5 * 1024 * 1024, label: '5MB' },
+			{ target: 'wishlist-background', maxBytes: 10 * 1024 * 1024, label: '10MB' },
 		])('$target: rejects file over $label limit', async ({ target, maxBytes }) => {
 			await expect(
 				callAuthorizeUpload({

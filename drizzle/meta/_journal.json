@@ -211,6 +211,13 @@
       "when": 1792443059264,
       "tag": "0029_add-chat",
       "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1792788101286,
+      "tag": "0030_add-wishlist-themes",
+      "breakpoints": true
     }
   ]
 }

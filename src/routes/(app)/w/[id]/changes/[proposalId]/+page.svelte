@@ -25,6 +25,8 @@
 	} from '$lib/modules/gifts/gifts.remote.js';
 	import { getWishlistByShortId } from '$lib/modules/wishlists/wishlists.remote.js';
 	import { canManageWishlist } from '$lib/modules/wishlists/wishlist_capabilities.js';
+	import { resolveWishlistStyle } from '$lib/theme/wishlist_themes.js';
+	import { wishlistStyleTokenAttributes } from '$lib/components/blocks/wishlist/wishlist_theme_scope.js';
 
 	const shortId = $derived(page.params.id!);
 	const proposalId = $derived(page.params.proposalId!);
@@ -36,6 +38,9 @@
 	const wishlistQuery = $derived(getWishlistByShortId(shortId));
 	const wishlist = $derived(wishlistQuery.current ?? initialWishlist);
 	const canManage = $derived(canManageWishlist(wishlist.role));
+	const styleTokenAttributes = $derived(
+		wishlistStyleTokenAttributes(resolveWishlistStyle(wishlist.themeId, wishlist.styleTokens)),
+	);
 
 	// The proposal's dry run is the heavy part, so it loads in the browser behind a skeleton.
 	const proposalQuery = $derived(
@@ -62,7 +67,7 @@
 	<title>{pageTitle()}</title>
 </svelte:head>
 
-<div class="review-page" data-palette={wishlist.palette}>
+<div class="review-page" data-palette={wishlist.palette} {...styleTokenAttributes}>
 	{#if proposal !== undefined}
 		<ChangeReview
 			{proposal}

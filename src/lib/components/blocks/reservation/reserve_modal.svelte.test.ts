@@ -118,7 +118,9 @@ describe('ReserveModal contains an unbreakable gift name (issue #210)', () => {
 			});
 			const imageFrame = document.querySelector('[data-testid="image-frame"]') as HTMLElement;
 			expect(imageFrame).toBeTruthy();
-			expect(imageFrame.style.getPropertyValue('--frame-fill')).toBe('var(--secondary)');
+			expect(imageFrame.style.getPropertyValue('--frame-fill')).toBe(
+				'var(--wishlist-image-mat, var(--secondary))',
+			);
 			expect(getComputedStyle(imageFrame).backgroundColor).not.toBe('rgba(0, 0, 0, 0)');
 		},
 	);

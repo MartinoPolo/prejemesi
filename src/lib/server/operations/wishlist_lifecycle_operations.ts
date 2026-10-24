@@ -11,6 +11,7 @@ import { dispatchNotification } from '$lib/modules/notifications/notification_di
 import { NOTIFICATION_TYPE } from '$lib/modules/notifications/types.js';
 import { FlipRecipientToFreeTextInputSchema } from '$lib/modules/wishlists/types.js';
 import { assertWishlistMutable } from '$lib/modules/wishlists/wishlist_access.js';
+import { wishlistBackgroundImageKey } from '$lib/modules/wishlists/wishlist_appearance.js';
 import {
 	OPERATION_EXPOSURE,
 	OPERATION_KIND,
@@ -215,6 +216,7 @@ export const deleteWishlistOperation = defineOperation({
 		// The list's own and its gifts' uploaded images become unreachable with it.
 		const unreachableImageKeys = [
 			wishlistRow.imageKey,
+			wishlistBackgroundImageKey(wishlistRow.background),
 			...giftImageRows.map((row) => row.imageKey),
 		];
 		context.deferEffect(() => deleteObjectsBestEffort(unreachableImageKeys));

@@ -1,6 +1,8 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
 @import 'shadcn-svelte/tailwind.css';
+@import './lib/theme/wishlist_themes.css';
+@import './lib/theme/wishlist_scope.css';
 
 /* ═══════════════════════════════════════════════════════════════════════
    Redesign 2026 „Anime Sky" — design tokens
@@ -81,6 +83,83 @@
 	descent-override: 28.16%;
 	line-gap-override: 0%;
 	size-adjust: 104.76%;
+}
+
+/* Wishlist heading fonts (#535). Only a wishlist whose style uses them renders them, so
+   @font-face laziness keeps every other page from downloading these files. */
+
+/* Fraunces Variable – latin */
+@font-face {
+	font-family: 'Fraunces Variable';
+	font-style: normal;
+	font-display: swap;
+	font-weight: 100 900;
+	src: url('../node_modules/@fontsource-variable/fraunces/files/fraunces-latin-wght-normal.woff2')
+		format('woff2-variations');
+	unicode-range:
+		U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308,
+		U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* Fraunces Variable – latin-ext */
+@font-face {
+	font-family: 'Fraunces Variable';
+	font-style: normal;
+	font-display: swap;
+	font-weight: 100 900;
+	src: url('../node_modules/@fontsource-variable/fraunces/files/fraunces-latin-ext-wght-normal.woff2')
+		format('woff2-variations');
+	unicode-range:
+		U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329,
+		U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113,
+		U+2C60-2C7F, U+A720-A7FF;
+}
+
+/* Fraunces fallback – metric-adjusted Georgia to limit CLS */
+@font-face {
+	font-family: 'Fraunces Fallback';
+	src: local('Georgia');
+	ascent-override: 92%;
+	descent-override: 24%;
+	line-gap-override: 0%;
+	size-adjust: 106%;
+}
+
+/* Caveat Variable – latin */
+@font-face {
+	font-family: 'Caveat Variable';
+	font-style: normal;
+	font-display: swap;
+	font-weight: 400 700;
+	src: url('../node_modules/@fontsource-variable/caveat/files/caveat-latin-wght-normal.woff2')
+		format('woff2-variations');
+	unicode-range:
+		U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308,
+		U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* Caveat Variable – latin-ext */
+@font-face {
+	font-family: 'Caveat Variable';
+	font-style: normal;
+	font-display: swap;
+	font-weight: 400 700;
+	src: url('../node_modules/@fontsource-variable/caveat/files/caveat-latin-ext-wght-normal.woff2')
+		format('woff2-variations');
+	unicode-range:
+		U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329,
+		U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113,
+		U+2C60-2C7F, U+A720-A7FF;
+}
+
+/* Caveat fallback – metric-adjusted Arial (Caveat is far narrower) to limit CLS */
+@font-face {
+	font-family: 'Caveat Fallback';
+	src: local('Arial');
+	ascent-override: 118%;
+	descent-override: 37%;
+	line-gap-override: 0%;
+	size-adjust: 80%;
 }
 
 @custom-variant dark (&:is(.dark *));
@@ -1043,7 +1122,7 @@
 }
 
 main.app-content {
-	container-type: inline-size;
+	container: app-content / inline-size;
 }
 
 @layer base {

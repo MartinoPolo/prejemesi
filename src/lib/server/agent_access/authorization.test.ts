@@ -245,6 +245,42 @@ describe('authorizeAgentOperation', () => {
 				},
 			],
 			[
+				'saveWishlistSettings',
+				{
+					wishlistId: ALLOWED_WISHLIST_ID,
+					appearance: {
+						themeId: null,
+						styleTokens: null,
+						background: {
+							mode: 'custom',
+							imageKey: 'wishlists/backgrounds/foreign.webp',
+							focal: { x: 50, y: 50 },
+							placement: 'gutters',
+							dim: 20,
+							motion: 'subtle',
+						},
+					},
+				},
+			],
+			[
+				'saveWishlistSettings',
+				{
+					wishlistId: ALLOWED_WISHLIST_ID,
+					appearance: {
+						themeId: null,
+						styleTokens: null,
+						background: {
+							mode: 'theme',
+							imageKey: null,
+							focal: { x: 50, y: 50 },
+							placement: 'gutters',
+							dim: 20,
+							motion: 'subtle',
+						},
+					},
+				},
+			],
+			[
 				'importGifts',
 				{
 					wishlistId: ALLOWED_WISHLIST_ID,
@@ -282,6 +318,32 @@ describe('authorizeAgentOperation', () => {
 			authorizeAgentOperation(grantWith(everyScope), 'importGifts', {
 				wishlistId: ALLOWED_WISHLIST_ID,
 				gifts: [{ name: 'Kolo' }],
+			}),
+		).resolves.toMatchObject({ targetWishlistIds: [ALLOWED_WISHLIST_ID] });
+		await expect(
+			authorizeAgentOperation(grantWith(everyScope), 'saveWishlistSettings', {
+				wishlistId: ALLOWED_WISHLIST_ID,
+				appearance: {
+					themeId: 'books',
+					styleTokens: { corners: 'sharp' },
+					background: null,
+				},
+			}),
+		).resolves.toMatchObject({ targetWishlistIds: [ALLOWED_WISHLIST_ID] });
+		await expect(
+			authorizeAgentOperation(grantWith(everyScope), 'saveWishlistSettings', {
+				wishlistId: ALLOWED_WISHLIST_ID,
+				appearance: {
+					themeId: 'space',
+					styleTokens: null,
+					background: {
+						mode: 'theme',
+						focal: { x: 50, y: 50 },
+						placement: 'gutters',
+						dim: 20,
+						motion: 'subtle',
+					},
+				},
 			}),
 		).resolves.toMatchObject({ targetWishlistIds: [ALLOWED_WISHLIST_ID] });
 	});

@@ -23,7 +23,7 @@
 
 - **Lifecycle:** Draft → Active (shared) → Archived (read-only). Archiving is manual.
 - **Navigation:** _Přehled_ (`/home`) is the signed-in home; _Moje seznamy_, _Spravované_, and _Sledované_ remain the section pages.
-- **Palettes:** curated user and wishlist palettes, independent image-frame fill, and per-user light/dark/system mode.
+- **Appearance:** curated user and wishlist palettes, wishlist themes (backdrop, motifs and style tokens) with an optional custom background photo, independent image-frame fill, and per-user light/dark/system mode.
 - **Notifications:** critical email via Resend; routine in-app activity, including one rolling 24-hour new-gift digest per notified user across followed lists.
 - **Languages:** Czech (primary) + English, via URL-based i18n.
 
@@ -202,6 +202,7 @@ src/
                              #   gift.links – jsonb array of up to 10 URLs; links[0] is primary (replaces url)
                              #   wishlist.image_key + image_slots – single upload + per-slot crop JSON
                              #     (replaced banner_image_key / thumbnail_image_key)
+                             #   wishlist.theme_id + style_tokens + background – theme, style overrides, backdrop
                              #   user.app_background_theme – default | golden-hour | twilight
         seed.ts              # Idempotent test-data seeder
   routes/

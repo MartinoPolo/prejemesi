@@ -159,8 +159,9 @@ export function resolveFrameFill(options: {
 	}
 	if (tokenScope === IMAGE_TOKEN_SCOPES.wishlist) {
 		// Palette tokens re-derive per subtree ([data-palette] wrapper), so the
-		// wishlist scope resolves through the same semantic token as the global one.
-		return 'var(--secondary)';
+		// wishlist scope resolves through the same semantic token as the global one,
+		// unless the wishlist style picks a white or black mat (#535).
+		return 'var(--wishlist-image-mat, var(--secondary))';
 	}
 	return 'var(--surface-2)';
 }

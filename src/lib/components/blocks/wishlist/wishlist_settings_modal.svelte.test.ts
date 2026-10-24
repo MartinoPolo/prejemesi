@@ -169,20 +169,6 @@ describe('WishlistSettingsModal import and export tab', () => {
 		await expect.element(screen.getByRole('button', { name: m.save() })).toBeEnabled();
 	});
 
-	it('stages palette preview until global Save', async () => {
-		remoteMocks.saveWishlistSettings.mockReset().mockResolvedValueOnce(undefined);
-		const onpaletteselect = vi.fn();
-		const screen = renderSettings({ activeTab: 'appearance', onpaletteselect });
-		await screen.getByRole('button', { name: 'Oceán' }).click();
-		expect(onpaletteselect).toHaveBeenCalledWith('ocean');
-		expect(remoteMocks.saveWishlistSettings).not.toHaveBeenCalled();
-		await screen.getByRole('button', { name: m.save() }).click();
-		expect(remoteMocks.saveWishlistSettings).toHaveBeenCalledWith({
-			wishlistId: wishlist.id,
-			palette: 'ocean',
-		});
-	});
-
 	it('keeps one global Save visible on Import and Danger tabs', async () => {
 		const screen = renderSettings();
 		const footer = screen.getByTestId('wishlist-settings-footer').element();

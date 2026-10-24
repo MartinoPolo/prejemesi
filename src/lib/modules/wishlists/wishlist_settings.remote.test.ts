@@ -43,7 +43,7 @@ describe('saveWishlistSettings', () => {
 			status: 'active',
 		};
 		saveLockedWishlistSettings.mockResolvedValue({
-			replacedImageKey: wishlistRow.imageKey,
+			replacedImageKeys: [wishlistRow.imageKey],
 			shortId: wishlistRow.shortId,
 		});
 		const input = {

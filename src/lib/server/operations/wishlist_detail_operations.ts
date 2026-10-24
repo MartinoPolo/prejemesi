@@ -19,7 +19,10 @@ import {
 	type MutationOperationContext,
 } from './operation.js';
 import { requireMutableManagedWishlist, type WishlistRow } from './wishlist_management.js';
-import { authorizeBannerReplacement, planWishlistDetailEdit } from './wishlist_edit_rules.js';
+import {
+	authorizeWishlistUploadReplacement,
+	planWishlistDetailEdit,
+} from './wishlist_edit_rules.js';
 import { saveLockedWishlistSettings } from './wishlist_settings.js';
 
 async function updateWishlistRow(
@@ -35,13 +38,14 @@ async function updateWishlistRow(
 	return updated;
 }
 
-/** Storage cannot join the transaction; the replaced upload is deleted once the batch commits. */
-function deleteReplacedImageAfterCommit(
+/** Storage cannot join the transaction; replaced uploads are deleted once the batch commits. */
+function deleteReplacedImagesAfterCommit(
 	context: MutationOperationContext,
-	replacedImageKey: string | null,
+	replacedImageKeys: readonly (string | null)[],
 ): void {
-	if (replacedImageKey !== null) {
-		context.deferEffect(() => deleteObjectsBestEffort([replacedImageKey]));
+	const deletedImageKeys = replacedImageKeys.filter((imageKey) => imageKey !== null);
+	if (deletedImageKeys.length > 0) {
+		context.deferEffect(() => deleteObjectsBestEffort(deletedImageKeys));
 	}
 }
 
@@ -63,17 +67,18 @@ export const updateWishlistOperation = defineOperation({
 		rejectDemoImageUpload(input.imageKey);
 		// Locked so the replaced image key is the one this batch actually replaces.
 		const wishlistRow = await requireMutableManagedWishlist(context, input.id, { lock: true });
-		const replacedImageKey = await authorizeBannerReplacement(
+		const replacedImageKey = await authorizeWishlistUploadReplacement(
 			context.actor.userId,
 			wishlistRow.imageKey,
 			{ imageKey: input.imageKey, assignmentToken: input.imageAssignmentToken },
+			'wishlist-banner',
 		);
 		const updated = await updateWishlistRow(
 			context,
 			input.id,
 			planWishlistDetailEdit(wishlistRow, input, context.now),
 		);
-		deleteReplacedImageAfterCommit(context, replacedImageKey);
+		deleteReplacedImagesAfterCommit(context, [replacedImageKey]);
 		return { wishlist: updated, wishlistShortId: wishlistRow.shortId };
 	},
 });
@@ -112,15 +117,15 @@ export const setWishlistPaletteOperation = defineOperation({
 	},
 });
 
-/** Saves the staged settings draft (details, categories, palette, image) atomically. */
+/** Saves the staged settings draft (details, categories, palette, appearance, image) atomically. */
 export const saveWishlistSettingsOperation = defineOperation({
 	name: 'saveWishlistSettings',
 	kind: OPERATION_KIND.mutation,
 	exposure: OPERATION_EXPOSURE.agent,
 	input: SaveWishlistSettingsInputSchema,
 	async run(context, input) {
-		const { replacedImageKey, shortId } = await saveLockedWishlistSettings(context, input);
-		deleteReplacedImageAfterCommit(context, replacedImageKey);
+		const { replacedImageKeys, shortId } = await saveLockedWishlistSettings(context, input);
+		deleteReplacedImagesAfterCommit(context, replacedImageKeys);
 		return { wishlistShortId: shortId };
 	},
 });

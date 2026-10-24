@@ -111,6 +111,18 @@
 		RESERVATION_RELEASE_CAPABILITY,
 	} from '$lib/modules/wishlists/wishlist_capabilities.js';
 	import type { Palette } from '$lib/theme/palettes.js';
+	import type { WishlistThemeId } from '$lib/theme/wishlist_themes.js';
+	import {
+		loadWishlistThemeArt,
+		type WishlistThemeArt,
+	} from '$lib/theme/wishlist_theme_art/index.js';
+	import WishlistThemeBackdrop from '$lib/components/blocks/wishlist/WishlistThemeBackdrop.svelte';
+	import {
+		resolveWishlistThemeScope,
+		wishlistThemeScopeAttributes,
+		type WishlistAppearancePreview,
+		type WishlistThemeMotif,
+	} from '$lib/components/blocks/wishlist/wishlist_theme_scope.js';
 	import { getWishlistEmoji } from '$lib/modules/wishlists/wishlist_theme.js';
 	import {
 		giftEditorModeFromMeta,
@@ -252,6 +264,12 @@
 	// Optimistic palette: the override paints instantly on selection; the persisted
 	// value rides back via setWishlistPalette's single-flight refresh.
 	let paletteOverride = $state<Palette | null>(null);
+	// Optimistic appearance preview from the settings editor, keyed by the wishlist it belongs
+	// to so in-place navigation to another wishlist never shows the previous one's draft.
+	let appearanceOverride = $state.raw<{
+		wishlistId: string;
+		appearance: WishlistAppearancePreview;
+	} | null>(null);
 
 	// Opens the "log in to like" prompt when an anonymous visitor taps the heart.
 	let authPromptOpen = $state(false);
@@ -322,6 +340,26 @@
 	const initialWishlist = await getWishlistByShortId(shortId);
 	const wishlistQuery = $derived(getWishlistByShortId(shortId));
 	const wishlist = $derived(wishlistQuery.current ?? initialWishlist);
+	// The art is decorative, so a failed load leaves the theme without motifs.
+	async function loadThemeArtOrNone(themeId: WishlistThemeId): Promise<WishlistThemeArt | null> {
+		try {
+			return await loadWishlistThemeArt(themeId);
+		} catch (thrown) {
+			console.error('Failed to load wishlist theme art:', thrown);
+			return null;
+		}
+	}
+	// The first theme's art loads during SSR so the motifs paint before hydration; a theme
+	// picked later (another wishlist, a settings preview) loads lazily below.
+	// svelte-ignore state_referenced_locally
+	const initialThemeId = initialWishlist.themeId;
+	const initialThemeArt =
+		initialThemeId === null ? null : await loadThemeArtOrNone(initialThemeId);
+	let loadedThemeArt = $state.raw<{ themeId: WishlistThemeId; art: WishlistThemeArt } | null>(
+		initialThemeId === null || initialThemeArt === null
+			? null
+			: { themeId: initialThemeId, art: initialThemeArt },
+	);
 	// svelte-ignore state_referenced_locally
 	const initialPendingProposalsShortId = shortId;
 	const initialPendingProposals = await pendingProposalsLoad;
@@ -387,6 +425,28 @@
 	// ── Derived values ───────────────────────────────────────────────────────
 
 	const activePalette = $derived(paletteOverride ?? wishlist.palette);
+	const themeScope = $derived(
+		resolveWishlistThemeScope(
+			appearanceOverride !== null && appearanceOverride.wishlistId === wishlist.id
+				? appearanceOverride.appearance
+				: {
+						themeId: wishlist.themeId,
+						styleTokens: wishlist.styleTokens,
+						background: wishlist.background,
+					},
+		),
+	);
+	const themeScopeAttributes = $derived(wishlistThemeScopeAttributes(themeScope));
+	const themeArt = $derived(
+		loadedThemeArt !== null && loadedThemeArt.themeId === themeScope.placeholderThemeId
+			? loadedThemeArt.art
+			: null,
+	);
+	const themeMotif = $derived<WishlistThemeMotif | null>(
+		themeScope.placeholderThemeId === null
+			? null
+			: { themeId: themeScope.placeholderThemeId, markup: themeArt?.motifs[0] ?? null },
+	);
 	const isArchived = $derived(wishlist.status === 'archived');
 	const isRecipient = $derived(role === 'recipient');
 	const hideReservationState = $derived(isRecipient || recipientViewPreview);
@@ -1985,6 +2045,27 @@
 		paletteOverride = palette;
 	}
 
+	// Settings appearance preview (#535): null drops the preview after a discard or save.
+	function handleAppearancePreview(appearance: WishlistAppearancePreview | null) {
+		appearanceOverride = appearance === null ? null : { wishlistId: wishlist.id, appearance };
+	}
+
+	$effect(() => {
+		const themeId = themeScope.placeholderThemeId;
+		if (themeId === null || untrack(() => loadedThemeArt?.themeId) === themeId) {
+			return;
+		}
+		let current = true;
+		void loadThemeArtOrNone(themeId).then((art) => {
+			if (current && art !== null) {
+				loadedThemeArt = { themeId, art };
+			}
+		});
+		return () => {
+			current = false;
+		};
+	});
+
 	// ── Reorder handler (pointer + keyboard, mouse/touch/pen) ─────────────────
 
 	function isExactActiveGiftOrder(orderedIds: readonly string[]): boolean {
@@ -2300,12 +2381,19 @@
 	bind:this={wishlistPageElement}
 	data-testid="wishlist-page-shell"
 	data-palette={activePalette}
+	{...themeScopeAttributes}
 	style="overflow-anchor: none"
 	class={cn(
-		'mt-3 flex flex-col gap-3 pb-3 sm:mt-0 sm:gap-6 sm:py-6',
+		'wishlist-page-shell flex flex-col gap-3 pt-3 pb-3 sm:gap-6 sm:py-6',
 		chatOffered && 'pb-20 sm:pb-20',
 	)}
 >
+	<WishlistThemeBackdrop
+		mode={themeScope.backgroundMode}
+		art={themeArt}
+		imageUrl={themeScope.customImageUrl}
+		background={themeScope.background}
+	/>
 	<WishlistHeader
 		title={wishlist.title}
 		recipientDisplayName={wishlist.recipientDisplayName}
@@ -2316,6 +2404,7 @@
 		imageKey={wishlist.imageKey}
 		imageSlots={wishlist.imageSlots}
 		{themeEmoji}
+		{themeMotif}
 		eventDate={wishlist.eventDate}
 		status={wishlistStatus}
 		kind={wishlist.kind}
@@ -2719,6 +2808,7 @@
 		{themeEmoji}
 		onsaved={async () => {}}
 		onpaletteselect={handlePaletteSelect}
+		onappearancepreview={handleAppearancePreview}
 		ondeleted={handleWishlistDeleted}
 		onimport={openImportWizard}
 		onexport={handleExport}

@@ -45,16 +45,19 @@
 			/>
 		</span>
 	{/if}
-	<h2
-		class="font-heading text-sm font-bold tracking-wide text-foreground uppercase [word-spacing:0.1em]"
-	>
-		{label}
-	</h2>
-	{#if selectionMode}<span class="text-xs text-muted-foreground"
-			>{m.gift_selection_section_count({
-				selectedCount,
-				totalCount: sectionIds.length,
-			})}</span
-		>{/if}
+	<!-- The plate only paints over a wishlist theme backdrop, keeping text off the artwork. -->
+	<span class="wishlist-backdrop-plate inline-flex min-w-0 items-center gap-2">
+		<h2
+			class="font-heading text-sm font-bold tracking-wide text-foreground uppercase [word-spacing:0.1em]"
+		>
+			{label}
+		</h2>
+		{#if selectionMode}<span class="text-xs text-muted-foreground"
+				>{m.gift_selection_section_count({
+					selectedCount,
+					totalCount: sectionIds.length,
+				})}</span
+			>{/if}
+	</span>
 	<span class="h-px flex-1 bg-border" aria-hidden="true"></span>
 </div>

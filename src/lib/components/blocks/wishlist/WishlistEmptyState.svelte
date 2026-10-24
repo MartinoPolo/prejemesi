@@ -24,6 +24,7 @@
 
 {#if isFilteredEmpty}
 	<EmptyState
+		class="wishlist-backdrop-panel"
 		emoji="🔍"
 		title={m.wishlist_detail_no_filter_results_title()}
 		description={m.wishlist_detail_no_filter_results_description()}
@@ -36,12 +37,14 @@
 	</EmptyState>
 {:else if isArchived}
 	<EmptyState
+		class="wishlist-backdrop-panel"
 		emoji="🗄️"
 		title={m.wishlist_detail_archived_empty_title()}
 		description={m.wishlist_detail_archived_empty_description()}
 	/>
 {:else if canManage}
 	<EmptyState
+		class="wishlist-backdrop-panel"
 		emoji="🎁"
 		title={m.wishlist_detail_owner_empty_title()}
 		description={m.wishlist_detail_owner_empty_description()}
@@ -55,6 +58,7 @@
 	</EmptyState>
 {:else}
 	<EmptyState
+		class="wishlist-backdrop-panel"
 		emoji="🎁"
 		title={m.wishlist_detail_visitor_empty_title()}
 		description={m.wishlist_detail_visitor_empty_description()}

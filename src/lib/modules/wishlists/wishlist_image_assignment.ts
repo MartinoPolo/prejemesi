@@ -4,11 +4,15 @@ import { TOKEN_PURPOSES, verifyUploadToken } from '$lib/server/crypto/upload_tok
 import { UPLOAD_TARGETS } from '$lib/server/storage/r2.js';
 import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
 
-/** Proves that a newly assigned banner was authorized for this uploader. */
-export async function assertWishlistBannerAssignment(
+/** Upload targets whose keys a wishlist stores and deletes once replaced. */
+export type WishlistUploadTarget = 'wishlist-banner' | 'wishlist-background';
+
+/** Proves that a newly assigned wishlist upload was authorized for this uploader and target. */
+export async function assertWishlistUploadAssignment(
 	userId: string,
 	objectKey: string,
 	deleteToken: string | undefined,
+	uploadTarget: WishlistUploadTarget,
 ): Promise<void> {
 	try {
 		if (deleteToken === undefined) {
@@ -20,9 +24,9 @@ export async function assertWishlistBannerAssignment(
 			payload.userId !== userId ||
 			payload.objectKey !== objectKey ||
 			payload.purpose !== TOKEN_PURPOSES.delete ||
-			!objectKey.startsWith(`${UPLOAD_TARGETS['wishlist-banner']}/`)
+			!objectKey.startsWith(`${UPLOAD_TARGETS[uploadTarget]}/`)
 		) {
-			throw new Error('invalid banner assignment');
+			throw new Error('invalid wishlist upload assignment');
 		}
 	} catch {
 		error(403, SERVER_ERROR.ACCESS_DENIED);

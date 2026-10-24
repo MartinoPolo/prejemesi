@@ -1,0 +1,136 @@
+/* Wishlist scope (#535): style tokens, backdrop layout and contrast plates, applied only on the
+   wishlist page shell (`wishlist_theme_scope.ts` sets the attributes). Portalled app chrome
+   (dialogs, menus) sits outside the shell and keeps the viewer's look. These rules are unlayered,
+   so they win over Tailwind utilities inside the scope. */
+
+/* ── Corners ───────────────────────────────────────────── */
+[data-corners] {
+	--wishlist-pill-radius: calc(infinity * 1px);
+}
+
+[data-corners='soft'] {
+	--radius: 0.375rem;
+	--radius-panel: 8px;
+	--radius-btn: 4px;
+	--radius-badge: 6px;
+	--wishlist-pill-radius: 6px;
+}
+
+[data-corners='sharp'] {
+	--radius: 0px;
+	--radius-panel: 0px;
+	--radius-btn: 0px;
+	--radius-badge: 0px;
+	--wishlist-pill-radius: 0px;
+}
+
+/* Pills and chips follow the chip radius; avatars stay round portraits. */
+:is([data-corners='soft'], [data-corners='sharp'])
+	:is(.rounded-full, [class~='rounded-[12px]']):not(
+		[data-slot='avatar'],
+		[data-slot='avatar'] *
+	) {
+	border-radius: var(--wishlist-pill-radius);
+}
+
+/* ── Borders ───────────────────────────────────────────── */
+[data-border='fine'] {
+	--border-w: 1px;
+}
+
+/* Shared controls hard-code the bold weights; inside a fine scope they all become hairlines. */
+[data-border='fine'] :is(.border-2, [class~='border-[2.5px]'], [class~='border-[3px]']) {
+	border-width: var(--border-w);
+}
+
+/* ── Image mat: the wishlist default fill behind letterboxed gift images ─ */
+[data-mat='white'] {
+	--wishlist-image-mat: #fff;
+}
+
+[data-mat='black'] {
+	--wishlist-image-mat: #17161c;
+}
+
+/* ── Heading font ─────────────────────────────────────── */
+[data-heading='elegant'] {
+	--font-head: 'Fraunces Variable', 'Fraunces Fallback', serif;
+}
+
+[data-heading='plain'] {
+	--font-head: var(--font-body);
+}
+
+/* Caveat reads well only at title sizes, so gift titles fall back to the body font. */
+[data-heading='hand'] {
+	--font-head: 'Caveat Variable', 'Caveat Fallback', cursive;
+	--wishlist-gift-title-font: var(--font-body);
+}
+
+/* ── Dark backdrops: hard sticker shadows turn black, depth stays the viewer's ─ */
+[data-wishlist-background='custom'] {
+	--theme-shadow-override: #000;
+}
+
+[data-palette][data-wishlist-dark-backdrop],
+.dark [data-palette][data-wishlist-dark-backdrop] {
+	--soft-shadow: color-mix(in oklab, var(--theme-shadow-override, #000) 35%, transparent);
+	--soft-shadow-strong: color-mix(in oklab, var(--theme-shadow-override, #000) 45%, transparent);
+	--ink-shadow: color-mix(in oklab, var(--theme-shadow-override, #000) 62%, transparent);
+	--ink-shadow-strong: color-mix(in oklab, var(--theme-shadow-override, #000) 72%, transparent);
+	--black-shadow: var(--theme-shadow-override, #000);
+	--black-shadow-strong: var(--theme-shadow-override, #000);
+}
+
+/* ── Backdrop layout ──────────────────────────────────── */
+
+/* Below the gutter breakpoint the decoration becomes a short strip above the header, so the
+   shell reserves the strip's height (minus the layout's own top padding). The 1360px and 640px
+   thresholds are repeated in WishlistThemeBackdrop.svelte because custom properties cannot be
+   used in @container conditions; change both together. */
+[data-wishlist-backdrop] {
+	--wishlist-band-height: 84px;
+}
+
+@container app-content (width < 1360px) {
+	.wishlist-page-shell:is(
+		[data-wishlist-background='theme'],
+		[data-wishlist-background='custom'][data-wishlist-placement='gutters']
+	) {
+		padding-top: calc(var(--wishlist-band-height) - var(--space-6));
+	}
+}
+
+@container app-content (width < 640px) {
+	[data-wishlist-backdrop] {
+		--wishlist-band-height: 68px;
+	}
+
+	.wishlist-page-shell[data-wishlist-backdrop] {
+		padding-top: calc(var(--wishlist-band-height) - 4px);
+	}
+}
+
+/* ── Contrast plates: text that would sit on artwork gets an opaque surface ─ */
+[data-wishlist-backdrop] .wishlist-backdrop-plate {
+	padding: 4px 14px;
+	background: var(--card);
+	border: var(--border-w) solid var(--ink);
+	border-radius: var(--wishlist-pill-radius);
+	box-shadow: var(--elevation-compact);
+}
+
+[data-wishlist-backdrop] .wishlist-backdrop-panel {
+	background: var(--card);
+}
+
+/* The sticky toolbar mask hides gifts scrolling beneath it. Over a backdrop it stays inside the
+   content column, so gutter art is never cut, and only blurs what scrolls under it. */
+.wishlist-page-shell[data-wishlist-backdrop] .wishlist-toolbar-mask {
+	inline-size: min(100cqw, var(--content-max-width));
+	background: transparent;
+}
+
+.wishlist-page-shell[data-wishlist-backdrop] .wishlist-toolbar-mask::after {
+	background: transparent;
+}

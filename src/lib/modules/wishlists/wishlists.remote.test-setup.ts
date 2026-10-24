@@ -1,12 +1,12 @@
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
-const assertWishlistBannerAssignment = vi.fn(
+const assertWishlistUploadAssignment = vi.fn(
 	async (userId: string, objectKey: string, token: string | undefined) => {
 		if (token !== `proof:${userId}:${objectKey}`) {
 			throw new Error('ACCESS_DENIED');
 		}
 	},
 );
-vi.mock('./wishlist_image_assignment.js', () => ({ assertWishlistBannerAssignment }));
+vi.mock('./wishlist_image_assignment.js', () => ({ assertWishlistUploadAssignment }));
 
 async function bannerAssignmentToken(objectKey: string, userId = RECIPIENT_ID) {
 	return `proof:${userId}:${objectKey}`;
