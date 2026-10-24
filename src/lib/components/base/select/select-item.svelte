@@ -9,6 +9,7 @@
 		value,
 		label,
 		children: childrenProp,
+		disabled,
 		indicator = 'check',
 		...restProps
 	}: WithoutChild<SelectPrimitive.ItemProps> & {
@@ -20,6 +21,8 @@
 <SelectPrimitive.Item
 	bind:ref
 	{value}
+	{disabled}
+	aria-disabled={disabled === true ? 'true' : undefined}
 	data-slot="select-item"
 	class={cn(
 		"focus:bg-accent focus:text-accent-foreground not-data-[variant=destructive]:focus:**:text-accent-foreground gap-2 rounded-btn py-1.5 pr-8 pl-2 text-sm font-medium [&_svg:not([class*='size-'])]:size-4 *:[span]:last:flex *:[span]:last:items-center *:[span]:last:gap-2 focus:bg-accent data-highlighted:bg-accent data-highlighted:text-accent-foreground focus:text-accent-foreground relative flex w-full cursor-default items-center outline-hidden select-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0",

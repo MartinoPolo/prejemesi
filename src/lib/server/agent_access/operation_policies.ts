@@ -364,14 +364,17 @@ export const AGENT_OPERATION_POLICIES: AgentOperationPolicies = {
 		projectOutput: projectWishlistChange,
 	}),
 	saveWishlistSettings: agentOperation({
-		summary: 'Saves the details, categories and palette of a wishlist together.',
+		summary:
+			'Saves the details, categories, palette and appearance (theme, style tokens, background) of a wishlist together. Omit appearance.background.imageKey: the uploaded background photo cannot be referenced or removed, and a null background resets the background settings while keeping the photo. Background mode "library" requires libraryImageId (sent, or kept from the stored background) and shows that curated image.',
 		scope: AGENT_SCOPE.giftsWrite,
 		targets: byWishlistId((input) => input.wishlistId),
-		setsImageReference: (input) => input.image !== undefined,
+		setsImageReference: (input) =>
+			input.image !== undefined || input.appearance?.background?.imageKey !== undefined,
 		projectOutput: projectWishlistShortId,
 	}),
 	saveGiftCategorySettings: agentOperation({
-		summary: 'Saves which gift categories a wishlist uses and their order.',
+		summary:
+			'Saves the ordered gift categories of a wishlist: renames, recolors, reorders, removes or creates them.',
 		scope: AGENT_SCOPE.giftsWrite,
 		targets: byWishlistId((input) => input.wishlistId),
 		projectOutput: projectWishlistShortId,

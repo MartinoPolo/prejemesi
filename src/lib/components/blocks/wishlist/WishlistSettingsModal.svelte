@@ -23,7 +23,7 @@
 	import RotateCcwIcon from '@lucide/svelte/icons/rotate-ccw';
 	import XIcon from '@lucide/svelte/icons/x';
 	import WishlistCropEditor from './WishlistCropEditor.svelte';
-	import WishlistPaletteAutoSave from './WishlistPaletteAutoSave.svelte';
+	import WishlistAppearanceEditor from './WishlistAppearanceEditor.svelte';
 	import WishlistCategorySettings from './WishlistCategorySettings.svelte';
 	import WishlistSettingsSaveButton from './WishlistSettingsSaveButton.svelte';
 	import RecipientPreview from './RecipientPreview.svelte';
@@ -43,7 +43,7 @@
 		translateServerError,
 	} from '$lib/modules/errors/translate_server_error.js';
 	import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
-	import { getGiftCategorySettingsRows } from '$lib/modules/gift-categories/gift_category_queries.remote.js';
+	import { getGiftCategories } from '$lib/modules/gift-categories/gift_category_queries.remote.js';
 	import {
 		REVERT_CAPABILITY,
 		type RevertCapability,
@@ -57,6 +57,7 @@
 		type WishlistRole,
 	} from '$lib/modules/wishlists/types.js';
 	import type { Palette } from '$lib/theme/palettes.js';
+	import type { WishlistAppearancePreview } from './wishlist_theme_scope.js';
 	import {
 		overlayCloseButtonClass,
 		overlayCloseButtonSurfaceClass,
@@ -82,6 +83,8 @@
 		onsaved: () => Promise<void>;
 		/** Optimistic palette update so the page's data-palette subtree re-themes instantly. */
 		onpaletteselect?: (palette: Palette) => void;
+		/** Live appearance preview on the page (#535); null drops it after a discard or save. */
+		onappearancepreview?: (appearance: WishlistAppearancePreview | null) => void;
 		/** Fires after a successful delete so the page can navigate away + refresh dashboards. */
 		ondeleted?: () => void;
 		/** Awaited page refresh after a successful revert-to-draft (issue #150). */
@@ -114,6 +117,7 @@
 		themeEmoji,
 		onsaved,
 		onpaletteselect,
+		onappearancepreview,
 		ondeleted,
 		onreverted,
 		onimport,
@@ -196,6 +200,8 @@
 	let paletteDirty = $state(false);
 	// svelte-ignore state_referenced_locally (one-time modal draft seed)
 	let paletteDraft = $state<Palette>(wishlist.palette);
+	let appearanceDirty = $state(false);
+	let appearanceDraft = $state.raw<SaveWishlistSettingsInput['appearance']>();
 	let categoryDraft = $state<SaveWishlistSettingsInput['categories']>();
 	let imageDraft = $state<SaveWishlistSettingsInput['image']>();
 	let commitVersion = $state(0);
@@ -256,18 +262,22 @@
 	}
 
 	const anyDirty = $derived(
-		draftBelongsToWishlist && (detailsDirty || categoriesDirty || paletteDirty || imageDirty),
+		draftBelongsToWishlist &&
+			(detailsDirty || categoriesDirty || paletteDirty || appearanceDirty || imageDirty),
 	);
 
 	function discardDrafts() {
 		onpaletteselect?.(wishlist.palette);
+		onappearancepreview?.(null);
 		discardVersion += 1;
 		seedDetailsForm();
 		categoryDraft = undefined;
 		imageDraft = undefined;
+		appearanceDraft = undefined;
 		categoriesDirty = false;
 		imageDirty = false;
 		paletteDirty = false;
+		appearanceDirty = false;
 	}
 
 	function requestGuarded(action: () => void) {
@@ -375,6 +385,9 @@
 			if (paletteDirty) {
 				input.palette = paletteDraft;
 			}
+			if (appearanceDirty && appearanceDraft !== undefined) {
+				input.appearance = appearanceDraft;
+			}
 			if (imageDirty && imageDraft !== undefined) {
 				input.image = imageDraft;
 			}
@@ -382,6 +395,8 @@
 			commitVersion += 1;
 			await tick();
 			await onsaved();
+			// The refreshed page now renders the saved appearance itself.
+			onappearancepreview?.(null);
 			toastSuccess(m.toast_wishlist_details_saved());
 			afterSave?.();
 			return true;
@@ -392,7 +407,7 @@
 				SERVER_ERROR.GIFT_CATEGORY_REMOVAL_CONFIRMATION_MISMATCH
 			) {
 				try {
-					await getGiftCategorySettingsRows(wishlist.id).refresh();
+					await getGiftCategories(wishlist.id).refresh();
 				} catch (refreshError) {
 					console.error(
 						'Failed to refresh category settings after conflict:',
@@ -840,7 +855,8 @@
 					{/key}
 				</div>
 
-				<!-- Vzhled: palette picker contributes a draft to the global composite save. -->
+				<!-- Vzhled: theme, palette, background and style drafts for the global composite save,
+				     previewed live on the page behind the dialog. -->
 				<div
 					role="tabpanel"
 					id="wishlist-settings-panel-appearance"
@@ -848,22 +864,27 @@
 					class="w-full min-w-0"
 					hidden={activeTab !== WISHLIST_SETTINGS_TABS.appearance}
 				>
-					<div class="flex flex-col gap-4">
-						<p class="text-sm text-muted-foreground">
-							{m.wishlist_palette_dialog_description()}
-						</p>
-						<WishlistPaletteAutoSave
+					{#key discardVersion}
+						<WishlistAppearanceEditor
 							palette={wishlist.palette}
-							onselect={onpaletteselect}
+							appearance={{
+								themeId: wishlist.themeId,
+								styleTokens: wishlist.styleTokens,
+								background: wishlist.background,
+							}}
+							allowCustomUpload={wishlist.demoSessionId === null}
 							{commitVersion}
-							{discardVersion}
 							disabled={saving}
-							ondirtychange={(dirty, palette) => {
-								paletteDirty = dirty;
-								paletteDraft = palette;
+							{onpaletteselect}
+							{onappearancepreview}
+							ondraftchange={(draft) => {
+								paletteDirty = draft.paletteDirty;
+								paletteDraft = draft.palette;
+								appearanceDirty = draft.appearanceDirty;
+								appearanceDraft = draft.appearance;
 							}}
 						/>
-					</div>
+					{/key}
 				</div>
 
 				<!-- Obrázek a ořezy: saved from the shared fixed dialog footer. -->

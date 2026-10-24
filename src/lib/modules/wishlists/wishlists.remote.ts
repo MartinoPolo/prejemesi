@@ -209,6 +209,20 @@ export const deleteWishlist = guardedCommand(v.string(), async ({ user }, wishli
 	singleFlightRefresh(getModeratedWishlists);
 });
 
+/**
+ * Deletes a list only while it has no gifts (issue #557): a bulk copy whose response was lost may
+ * still have committed into it. Returns whether the list was deleted.
+ */
+export const deleteWishlistIfEmpty = guardedCommand(v.string(), async ({ user }, wishlistId) => {
+	const { deleted } = await executeOperation(userInterfaceActor(user), deleteWishlistOperation, {
+		wishlistId,
+		onlyIfEmpty: true,
+	});
+	singleFlightRefresh(getMyWishlists);
+	singleFlightRefresh(getModeratedWishlists);
+	return deleted;
+});
+
 // ── Follower Commands ──────────────────────────────────────────────────────
 
 export const followWishlist = guardedCommand(v.string(), ({ user }, wishlistId) =>

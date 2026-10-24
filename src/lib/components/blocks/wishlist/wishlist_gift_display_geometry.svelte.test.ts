@@ -43,8 +43,8 @@ function visitorGift(): GiftForVisitor {
 		priorityLevelId: null,
 		priorityLabel: null,
 		prioritySortOrder: null,
-		categoryId: null,
-		category: null,
+		categoryIds: [],
+		categories: [],
 		likeCount: 0,
 		reservedCount: 0,
 		isFullyReserved: false,
@@ -873,8 +873,8 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 				...visitorGift(),
 				id: 'crowded',
 				name: '1984 – George Orwell',
-				categoryId: category.id,
-				category,
+				categoryIds: [category.id],
+				categories: [category],
 				priorityLabel: 'Vysoka',
 				quantity: 3,
 				reservedCount: 1,
@@ -883,8 +883,8 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 			};
 			const longContentGift = {
 				...visitorGift(),
-				categoryId: category.id,
-				category,
+				categoryIds: [category.id],
+				categories: [category],
 				id: 'tall-content',
 				name: 'Kniha s dlouhým názvem, rozsáhlým popisem a více detaily',
 				description: 'Podrobný popis dárku, který zabírá v seznamu více místa.',
@@ -1086,8 +1086,8 @@ describe('WishlistGiftDisplay grouped badge geometry (#520)', () => {
 		...visitorGift(),
 		id: 'crowded',
 		name: '1984 – George Orwell',
-		categoryId: category.id,
-		category,
+		categoryIds: [category.id],
+		categories: [category],
 		priorityLabel: 'Vysoka',
 		quantity: 3,
 		reservedCount: 1,
@@ -1186,8 +1186,8 @@ describe('WishlistGiftDisplay selection badge geometry (#550)', () => {
 	};
 	const categorizedGift: GiftForVisitor = {
 		...visitorGift(),
-		categoryId: category.id,
-		category,
+		categoryIds: [category.id],
+		categories: [category],
 		priorityLabel: 'Vysoka',
 	};
 

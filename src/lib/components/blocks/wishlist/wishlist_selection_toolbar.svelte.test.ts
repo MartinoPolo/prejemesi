@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
 import WishlistSelectionToolbar from './WishlistSelectionToolbar.svelte';
 import * as m from '$lib/paraglide/messages.js';
+import { selectionCategoryChoices } from './selection_category_choices.test_fixtures.js';
 
 const { expectPixelsNear, expectPixelsAtLeast, expectPixelsAtMost } = createPixelAssertions(expect);
 
@@ -18,7 +19,7 @@ function createProps() {
 		priorityLevels: [{ id: 'high', label: 'Vysoká' }],
 		categories: [{ id: 'sport', label: 'Sport' }],
 		commonPriorityId: undefined,
-		commonCategoryId: undefined,
+		categoryChoices: selectionCategoryChoices({ sport: 'indeterminate' }, 'indeterminate'),
 		commonImageFit: undefined,
 		commonImageBackground: undefined,
 		commonReceived: undefined,
@@ -271,7 +272,7 @@ describe('WishlistSelectionToolbar mobile bulk surface (#340)', () => {
 		const props = {
 			...createProps(),
 			commonPriorityId: 'high',
-			commonCategoryId: 'sport',
+			categoryChoices: selectionCategoryChoices({ sport: true }),
 			commonImageFit: 'fit' as const,
 			commonImageBackground: '#000000',
 			commonReceived: true,
@@ -280,21 +281,24 @@ describe('WishlistSelectionToolbar mobile bulk surface (#340)', () => {
 		await screen.getByRole('button', { name: m.gift_selection_actions() }).click();
 		const actions = screen.getByTestId('selection-bulk-sheet-actions');
 
-		for (const [action, focusedOption, option, assertion] of [
+		for (const [action, role, focusedOption, option, assertion] of [
 			[
 				'priority',
+				'radio',
 				'Vysoká',
 				m.gift_priority_none(),
 				() => expect(props.onpriority).toHaveBeenCalledWith(null),
 			],
 			[
 				'category',
-				'Sport',
+				'checkbox',
 				m.gift_category_uncategorized(),
-				() => expect(props.oncategory).toHaveBeenCalledWith(null),
+				m.gift_category_uncategorized(),
+				() => expect(props.oncategory).toHaveBeenCalledWith(null, true),
 			],
 			[
 				'imageFit',
+				'radio',
 				m.image_fit_fit(),
 				m.image_fit_fill(),
 				() =>
@@ -305,6 +309,7 @@ describe('WishlistSelectionToolbar mobile bulk surface (#340)', () => {
 			],
 			[
 				'imageBackground',
+				'radio',
 				m.image_background_black(),
 				m.image_background_transparent(),
 				() =>
@@ -315,6 +320,7 @@ describe('WishlistSelectionToolbar mobile bulk surface (#340)', () => {
 			],
 			[
 				'received',
+				'radio',
 				m.gift_mark_received(),
 				m.gift_mark_unreceived(),
 				() =>
@@ -333,8 +339,8 @@ describe('WishlistSelectionToolbar mobile bulk surface (#340)', () => {
 				.toHaveFocus();
 			expect(screen.getByTestId('selection-bulk-sheet-actions').query()).toBeNull();
 			await userEvent.keyboard('{Tab}');
-			await expect.element(screen.getByRole('radio', { name: focusedOption })).toHaveFocus();
-			await screen.getByRole('radio', { name: option }).click();
+			await expect.element(screen.getByRole(role, { name: focusedOption })).toHaveFocus();
+			await screen.getByRole(role, { name: option }).click();
 			assertion();
 			await screen.getByRole('button', { name: m.gift_context_back() }).click();
 			await new Promise(requestAnimationFrame);
@@ -427,7 +433,7 @@ describe('WishlistSelectionToolbar mobile bulk surface (#340)', () => {
 		await screen.getByRole('button', { name: m.gift_selection_actions() }).click();
 		const sheet = screen.getByRole('dialog', { name: m.gift_selection_actions() });
 
-		for (const action of ['priority', 'category', 'imageFit', 'imageBackground', 'received']) {
+		for (const action of ['priority', 'imageFit', 'imageBackground', 'received']) {
 			const row = sheet
 				.element()
 				.querySelector<HTMLButtonElement>(`[data-mobile-bulk-action="${action}"]`)!;
@@ -444,6 +450,102 @@ describe('WishlistSelectionToolbar mobile bulk surface (#340)', () => {
 			await sheet.getByRole('button', { name: m.gift_context_back() }).click();
 		}
 		await screen.unmount();
+	});
+
+	it('shows a mixed category summary with indeterminate checkboxes for partly shared categories', async () => {
+		const screen = await render(WishlistSelectionToolbar, createProps());
+		await screen.getByRole('button', { name: m.gift_selection_actions() }).click();
+		const row = screen
+			.getByTestId('selection-bulk-sheet-actions')
+			.element()
+			.querySelector<HTMLButtonElement>('[data-mobile-bulk-action="category"]')!;
+		expect(row).toHaveTextContent(m.gift_selection_mixed());
+		await row.click();
+		for (const name of [m.gift_category_uncategorized(), 'Sport']) {
+			await expect
+				.element(screen.getByRole('checkbox', { name }))
+				.toHaveAttribute('aria-checked', 'mixed');
+		}
+		await screen.unmount();
+	});
+
+	describe('category checklist', () => {
+		const categories = [
+			{ id: 'sport', label: 'Sport' },
+			{ id: 'books', label: 'Knihy' },
+			{ id: 'toys', label: 'Hračky' },
+		];
+
+		async function openCategoryStep(props: ReturnType<typeof createProps>) {
+			const screen = await render(WishlistSelectionToolbar, { ...props, categories });
+			await screen.getByRole('button', { name: m.gift_selection_actions() }).click();
+			await screen
+				.getByTestId('selection-bulk-sheet-actions')
+				.element()
+				.querySelector<HTMLButtonElement>('[data-mobile-bulk-action="category"]')!
+				.click();
+			return screen;
+		}
+
+		it('checks categories every selected gift has, marks partial ones mixed and leaves the rest unchecked', async () => {
+			const screen = await openCategoryStep({
+				...createProps(),
+				categoryChoices: selectionCategoryChoices({ sport: true, books: 'indeterminate' }),
+			});
+			await expect
+				.element(screen.getByRole('checkbox', { name: 'Sport' }))
+				.toHaveAttribute('aria-checked', 'true');
+			await expect
+				.element(screen.getByRole('checkbox', { name: 'Knihy' }))
+				.toHaveAttribute('aria-checked', 'mixed');
+			await expect
+				.element(screen.getByRole('checkbox', { name: 'Hračky' }))
+				.toHaveAttribute('aria-checked', 'false');
+			await expect
+				.element(screen.getByRole('checkbox', { name: m.gift_category_uncategorized() }))
+				.toHaveAttribute('aria-checked', 'false');
+			await screen.unmount();
+		});
+
+		it('adds an unchecked or partly shared category and removes a checked one', async () => {
+			const props = {
+				...createProps(),
+				categoryChoices: selectionCategoryChoices({ sport: true, books: 'indeterminate' }),
+			};
+			const screen = await openCategoryStep(props);
+			await screen.getByRole('checkbox', { name: 'Hračky' }).click();
+			expect(props.oncategory).toHaveBeenLastCalledWith('toys', true);
+			await screen.getByRole('checkbox', { name: 'Knihy' }).click();
+			expect(props.oncategory).toHaveBeenLastCalledWith('books', true);
+			await screen.getByRole('checkbox', { name: 'Sport' }).click();
+			expect(props.oncategory).toHaveBeenLastCalledWith('sport', false);
+			await screen.unmount();
+		});
+
+		it('clears every category through Bez kategorie', async () => {
+			const props = {
+				...createProps(),
+				categoryChoices: selectionCategoryChoices({ sport: true }),
+			};
+			const screen = await openCategoryStep(props);
+			await screen.getByRole('checkbox', { name: m.gift_category_uncategorized() }).click();
+			expect(props.oncategory).toHaveBeenLastCalledWith(null, true);
+			await screen.unmount();
+		});
+
+		it('disables an unchecked category no selected gift can take but keeps checked ones removable', async () => {
+			const props = {
+				...createProps(),
+				categoryChoices: selectionCategoryChoices({
+					sport: { state: true, addable: false },
+					books: { state: false, addable: false },
+				}),
+			};
+			const screen = await openCategoryStep(props);
+			await expect.element(screen.getByRole('checkbox', { name: 'Knihy' })).toBeDisabled();
+			await expect.element(screen.getByRole('checkbox', { name: 'Sport' })).toBeEnabled();
+			await screen.unmount();
+		});
 	});
 
 	it('restores focus to a nested radio after its matching pending cycle settles', async () => {
@@ -540,10 +642,10 @@ describe('WishlistSelectionToolbar mobile bulk surface (#340)', () => {
 			.click();
 		const options = screen.getByTestId('selection-bulk-sheet-options').element();
 		const scrollBody = options.parentElement!;
-		const firstRadio = options.querySelector<HTMLElement>('[role="radio"]')!;
-		const firstChoice = firstRadio.closest('label');
+		const firstCheckbox = options.querySelector<HTMLElement>('[role="checkbox"]')!;
+		const firstChoice = firstCheckbox.closest('label');
 		expect(firstChoice).not.toBeNull();
-		expect(firstChoice).toHaveAttribute('for', firstRadio.id);
+		expect(firstChoice).toHaveAttribute('for', firstCheckbox.id);
 		expect(getComputedStyle(firstChoice!).minHeight).toBe('48px');
 		expect(scrollBody.scrollHeight).toBeGreaterThan(scrollBody.clientHeight);
 		expect(getComputedStyle(scrollBody).overflowY).toBe('auto');

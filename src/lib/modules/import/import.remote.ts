@@ -3,7 +3,7 @@ import { error } from '@sveltejs/kit';
 import { guardedCommand, singleFlightRefresh } from '$lib/server/remote.js';
 import { getGiftsByWishlistShortId } from '$lib/modules/gifts/gifts.remote.js';
 import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
-import { getGiftCategorySettingsRows } from '$lib/modules/gift-categories/gift_category_queries.remote.js';
+import { getGiftCategories } from '$lib/modules/gift-categories/gift_category_queries.remote.js';
 import { userInterfaceActor } from '$lib/server/operations/actor.js';
 import { executeOperation } from '$lib/server/operations/runner.js';
 import {
@@ -91,7 +91,7 @@ export const importGifts = guardedCommand(ImportGiftsInputSchema, async ({ user 
 	);
 	if (outcome.status === 'created' && outcome.gifts.length > 0) {
 		singleFlightRefresh(getGiftsByWishlistShortId, wishlistShortId);
-		singleFlightRefresh(getGiftCategorySettingsRows, input.wishlistId);
+		singleFlightRefresh(getGiftCategories, input.wishlistId);
 	}
 	return outcome;
 });

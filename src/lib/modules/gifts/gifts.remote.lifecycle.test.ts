@@ -4,7 +4,7 @@ import { ReorderGiftsInputSchema } from './types.js';
 import {
 	serverErrorFixture as SERVER_ERROR,
 	singleFlightRefreshFixture as singleFlightRefresh,
-	getGiftCategorySettingsRowsFixture as getGiftCategorySettingsRows,
+	getGiftCategoriesFixture as getGiftCategories,
 	mockDbInstance,
 	mockDeleteObjects,
 	WISHLIST_ID,
@@ -52,10 +52,7 @@ describe('deleteGift', () => {
 			await expect(
 				callDeleteGift(makeRecipientAuthContext(), GIFT_ID),
 			).resolves.not.toThrow();
-			expect(singleFlightRefresh).toHaveBeenCalledWith(
-				getGiftCategorySettingsRows,
-				WISHLIST_ID,
-			);
+			expect(singleFlightRefresh).toHaveBeenCalledWith(getGiftCategories, WISHLIST_ID);
 		});
 
 		it('deletes the uploaded image from storage on delete (issue #107 REQ-6)', async () => {

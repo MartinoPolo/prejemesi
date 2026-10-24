@@ -177,7 +177,6 @@ describe('GiftDetailForm pending image uploads', () => {
 		await nameInput.fill('Draft survives resize');
 		await screen.getByRole('radio', { name: m.image_fit_manual() }).click();
 		const cropStage = screen.getByTestId('crop-stage');
-		await expect.element(cropStage).toHaveAttribute('role', 'button');
 		const cropImage = cropStage.element().querySelector('img')!;
 		Object.defineProperties(cropImage, {
 			naturalWidth: { configurable: true, value: 400 },

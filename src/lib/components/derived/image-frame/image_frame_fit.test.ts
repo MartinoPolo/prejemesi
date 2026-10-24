@@ -210,7 +210,7 @@ describe('resolveFrameFill', () => {
 		expect(normalizeFrameFill('transparent')).toBeNull();
 		expect(hasExplicitFrameFill('transparent')).toBe(false);
 		expect(resolveFrameFill({ fillColor: 'transparent', tokenScope: 'wishlist' })).toBe(
-			'var(--secondary)',
+			'var(--wishlist-image-mat, var(--secondary))',
 		);
 	});
 
@@ -231,7 +231,7 @@ describe('resolveFrameFill', () => {
 		// Redesign 2026: palette tokens re-derive per [data-palette] subtree, so the
 		// wishlist scope resolves through the semantic secondary-surface token.
 		expect(resolveFrameFill({ fillColor: null, tokenScope: 'wishlist' })).toBe(
-			'var(--secondary)',
+			'var(--wishlist-image-mat, var(--secondary))',
 		);
 	});
 

@@ -51,8 +51,9 @@ export const readGiftCategoriesOperation = defineOperation({
 });
 
 /**
- * Every category row, enabled or not, for the category settings editor. Like
- * {@link readGiftCategoriesOperation}, the first read inserts the default set.
+ * Every category row, enabled or not. Superseded by {@link readGiftCategoriesOperation}, which the
+ * category settings now read; kept for existing agent clients. The first read likewise inserts the
+ * default set.
  */
 export const readGiftCategorySettingsRowsOperation = defineOperation({
 	name: 'readGiftCategorySettingsRows',
@@ -66,8 +67,8 @@ export const readGiftCategorySettingsRowsOperation = defineOperation({
 });
 
 /**
- * Reconciles the complete category settings snapshot. Removing a category unassigns its gifts,
- * which records a revision for each of them.
+ * Reconciles the complete ordered category list. Removing a category unassigns its gifts, which
+ * records a revision for each of them.
  */
 export const saveGiftCategorySettingsOperation = defineOperation({
 	name: 'saveGiftCategorySettings',
@@ -84,7 +85,7 @@ export const saveGiftCategorySettingsOperation = defineOperation({
 });
 
 /**
- * Creates a custom category from a category picker and assigns it to the gifts the picker acted
+ * Creates a custom category from a category picker and adds it to the gifts the picker acted
  * on, atomically and through the ordinary bulk post-share rules. Agents compose the same change
  * from the category settings and bulk update operations.
  */
@@ -107,7 +108,7 @@ export const createGiftCategoryOperation = defineOperation({
 			await applyBulkGiftUpdate(context, {
 				wishlistId,
 				giftIds,
-				action: 'category',
+				action: 'addCategory',
 				categoryId: category.id,
 			});
 		}

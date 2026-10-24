@@ -54,8 +54,8 @@ function visitorGift(): GiftForVisitor {
 		priorityLevelId: null,
 		priorityLabel: null,
 		prioritySortOrder: null,
-		categoryId: null,
-		category: null,
+		categoryIds: [],
+		categories: [],
 		likeCount: 0,
 		reservedCount: 0,
 		isFullyReserved: false,
@@ -605,8 +605,8 @@ describe('WishlistGiftDisplay grouped reorder (#454)', () => {
 		sortOrder: 0,
 	};
 	const badgedGifts: GiftForVisitor[] = [
-		{ ...lamp, categoryId: books.id, category: books },
-		{ ...kettle, categoryId: books.id, category: books },
+		{ ...lamp, categoryIds: [books.id], categories: [books] },
+		{ ...kettle, categoryIds: [books.id], categories: [books] },
 		book,
 	];
 	const badgedGroups = {
@@ -727,13 +727,19 @@ describe('WishlistGiftDisplay grouped reorder (#454)', () => {
 	};
 	const categoryGroups = categoryReorderGroups([books, tools], 'cs');
 	const categoryGifts: GiftForVisitor[] = [
-		{ ...visitorGift(), id: 'gift-lamp', name: 'Lampa', categoryId: books.id, category: books },
+		{
+			...visitorGift(),
+			id: 'gift-lamp',
+			name: 'Lampa',
+			categoryIds: [books.id],
+			categories: [books],
+		},
 		{
 			...visitorGift(),
 			id: 'gift-kettle',
 			name: 'Konvice',
-			categoryId: books.id,
-			category: books,
+			categoryIds: [books.id],
+			categories: [books],
 		},
 		{ ...visitorGift(), id: 'gift-book', name: 'Kniha' },
 	];

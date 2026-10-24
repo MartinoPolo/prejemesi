@@ -60,6 +60,11 @@ export function buildDraftRows(
 					quantity = cellValue;
 					break;
 				case COLUMN_ROLE.category: {
+					// A draft has one category: the first category column, which an export
+					// writes as the primary.
+					if (importedCategoryLabel !== null) {
+						break;
+					}
 					importedCategoryLabel = cellValue;
 					const resolved = resolveCategoryLabel(cellValue, activeCategories);
 					categoryId = resolved?.categoryId ?? null;

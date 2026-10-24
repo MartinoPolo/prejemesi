@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import WishlistSelectionToolbar from './WishlistSelectionToolbar.svelte';
 import * as m from '$lib/paraglide/messages.js';
 import { resolvedCssLength } from '../gift/gift_action_geometry.test_fixtures.js';
+import { selectionCategoryChoices } from './selection_category_choices.test_fixtures.js';
 
 function createProps() {
 	return {
@@ -16,7 +17,7 @@ function createProps() {
 		priorityLevels: [{ id: 'high', label: 'Vysoká' }],
 		categories: [{ id: 'sport', label: 'Sport' }],
 		commonPriorityId: undefined,
-		commonCategoryId: undefined,
+		categoryChoices: selectionCategoryChoices({ sport: 'indeterminate' }, 'indeterminate'),
 		commonImageFit: undefined,
 		commonImageBackground: undefined,
 		commonReceived: undefined,
@@ -102,7 +103,7 @@ describe('WishlistSelectionToolbar consolidated desktop actions (#353)', () => {
 		const props = {
 			...createProps(),
 			commonPriorityId: 'high',
-			commonCategoryId: 'sport',
+			categoryChoices: selectionCategoryChoices({ sport: true }),
 			commonImageFit: 'fit' as const,
 			commonImageBackground: '#000000',
 			commonReceived: true,
@@ -167,6 +168,93 @@ describe('WishlistSelectionToolbar consolidated desktop actions (#353)', () => {
 		expect(props.oncopy).toHaveBeenCalledOnce();
 		await expect.element(screen.getByRole('button', { name: m.done() })).toBeVisible();
 		await screen.unmount();
+	});
+
+	describe('category checklist submenu', () => {
+		const categories = [
+			{ id: 'sport', label: 'Sport' },
+			{ id: 'books', label: 'Knihy' },
+			{ id: 'toys', label: 'Hračky' },
+		];
+
+		async function openCategorySubmenu(props: ReturnType<typeof createProps>) {
+			const screen = await render(WishlistSelectionToolbar, { ...props, categories });
+			await screen.getByTestId('desktop-selection-actions-trigger').click();
+			const root = page.getByRole('menu', { name: m.gift_selection_actions() });
+			await root
+				.getByRole('menuitem', { name: new RegExp(m.gift_context_category()) })
+				.click();
+			return screen;
+		}
+
+		function categoryItem(name: string) {
+			return page.getByRole('menuitemcheckbox', { name });
+		}
+
+		it('checks categories every selected gift has, marks partial ones mixed and leaves the rest unchecked', async () => {
+			const screen = await openCategorySubmenu({
+				...createProps(),
+				categoryChoices: selectionCategoryChoices({ sport: true, books: 'indeterminate' }),
+			});
+			await expect.element(categoryItem('Sport')).toHaveAttribute('aria-checked', 'true');
+			await expect.element(categoryItem('Knihy')).toHaveAttribute('aria-checked', 'mixed');
+			await expect.element(categoryItem('Hračky')).toHaveAttribute('aria-checked', 'false');
+			await expect
+				.element(categoryItem(m.gift_category_uncategorized()))
+				.toHaveAttribute('aria-checked', 'false');
+			await screen.unmount();
+		});
+
+		it('adds an unchecked or partly shared category, removes a checked one and clears all through Bez kategorie', async () => {
+			const props = {
+				...createProps(),
+				categoryChoices: selectionCategoryChoices({ sport: true, books: 'indeterminate' }),
+			};
+			const screen = await openCategorySubmenu(props);
+			await categoryItem('Hračky').click();
+			expect(props.oncategory).toHaveBeenLastCalledWith('toys', true);
+			await categoryItem('Knihy').click();
+			expect(props.oncategory).toHaveBeenLastCalledWith('books', true);
+			await categoryItem('Sport').click();
+			expect(props.oncategory).toHaveBeenLastCalledWith('sport', false);
+			await categoryItem(m.gift_category_uncategorized()).click();
+			expect(props.oncategory).toHaveBeenLastCalledWith(null, true);
+			await screen.unmount();
+		});
+
+		it('keeps showing the selection state until the gifts change', async () => {
+			const props = {
+				...createProps(),
+				categoryChoices: selectionCategoryChoices({ sport: false }, true),
+			};
+			const screen = await openCategorySubmenu(props);
+			const uncategorized = categoryItem(m.gift_category_uncategorized());
+			await uncategorized.click();
+			expect(props.oncategory).toHaveBeenLastCalledWith(null, true);
+			await expect.element(uncategorized).toHaveAttribute('aria-checked', 'true');
+			await categoryItem('Sport').click();
+			await expect.element(categoryItem('Sport')).toHaveAttribute('aria-checked', 'false');
+
+			await screen.rerender({ categoryChoices: selectionCategoryChoices({ sport: true }) });
+			await expect.element(categoryItem('Sport')).toHaveAttribute('aria-checked', 'true');
+			await expect.element(uncategorized).toHaveAttribute('aria-checked', 'false');
+			await screen.unmount();
+		});
+
+		it('disables an unchecked category no selected gift can take but keeps checked ones removable', async () => {
+			const screen = await openCategorySubmenu({
+				...createProps(),
+				categoryChoices: selectionCategoryChoices({
+					sport: { state: true, addable: false },
+					books: { state: false, addable: false },
+				}),
+			});
+			await expect.element(categoryItem('Knihy')).toHaveAttribute('aria-disabled', 'true');
+			await expect
+				.element(categoryItem('Sport'))
+				.not.toHaveAttribute('aria-disabled', 'true');
+			await screen.unmount();
+		});
 	});
 
 	it('marks hidden selected gifts with the shared warning badge', async () => {

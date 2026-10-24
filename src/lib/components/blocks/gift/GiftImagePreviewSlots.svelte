@@ -25,6 +25,10 @@
 		activeTarget?: GiftEditorCropTarget | null;
 		/** Makes tiles buttons: clicking one selects its crop target (#116 follow-up). */
 		onTileSelect?: (target: GiftEditorCropTarget) => void;
+		/** Framing status per target, shown as a chip under each tile (#533). */
+		statusLabels?: Record<GiftEditorCropTarget, string> | null;
+		/** Offered while the thumbnail has its own crop: makes it follow the card again. */
+		onFollowSquare?: () => void;
 		tokenScope?: ImageTokenScope;
 		/** Force the loading skeleton across every tile. */
 		loading?: boolean;
@@ -39,6 +43,8 @@
 		imageMeta,
 		activeTarget = null,
 		onTileSelect,
+		statusLabels = null,
+		onFollowSquare,
 		tokenScope = IMAGE_TOKEN_SCOPES.wishlist,
 		loading = false,
 		disabled = false,
@@ -80,7 +86,7 @@
 		{@const frame = giftTargetFrameProps(imageMeta, tile.target)}
 		{@const showCardPattern =
 			tile.target === 'square' && !hasExplicitFrameFill(frame.fillColor)}
-		<li class="min-w-0">
+		<li class="flex min-w-0 flex-col items-center">
 			{#snippet tileFace()}
 				<!-- The frame is absolutely positioned: a %-height child inside an
 				     aspect-ratio box is circular, so the image's intrinsic height
@@ -114,12 +120,20 @@
 					/>
 				</div>
 				<span
-					class="rounded-full bg-surface/90 px-2 py-0.5 text-[10px] font-semibold text-foreground"
+					class="max-w-full rounded-full bg-surface/90 px-2 py-0.5 text-center text-[10px] font-semibold text-balance text-foreground"
 				>
 					{tile.label()}
 				</span>
+				{#if statusLabels !== null}
+					<span
+						class="rounded-full border border-border px-1.5 text-[10px] text-muted-foreground"
+						data-testid="gift-preview-status-{tile.key}"
+					>
+						{statusLabels[tile.target]}
+					</span>
+				{/if}
 			{/snippet}
-			<!-- A tile is a button when selectable (clicking jumps to Manual for its target). -->
+			<!-- A tile is a button when selectable (clicking picks its crop target). -->
 			{#if onTileSelect !== undefined}
 				<button
 					type="button"
@@ -139,6 +153,17 @@
 				>
 					{@render tileFace()}
 				</div>
+			{/if}
+			{#if tile.target === 'thumb' && onFollowSquare !== undefined}
+				<button
+					type="button"
+					class="pointer-events-auto mt-1 text-[11px] font-medium text-brand-link underline-offset-2 hover:underline disabled:opacity-50"
+					{disabled}
+					onclick={onFollowSquare}
+					data-testid="gift-preview-follow-square"
+				>
+					{m.gift_image_thumb_follow_card()}
+				</button>
 			{/if}
 		</li>
 	{/each}

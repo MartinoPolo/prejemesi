@@ -2,6 +2,7 @@ import { test, expect, type Locator, type Page } from '@playwright/test';
 import { createTestUser } from './fixtures/test-data.js';
 import { registerAndGetPage } from './fixtures/auth-helpers.js';
 import { createWishlistAndNavigate } from './fixtures/wishlist-helpers.js';
+import { categoryRow } from './wishlist-settings.helpers.js';
 
 const CATEGORY_NAME = 'Knihy';
 const ACCEPTED_COLOR = '#123ABC';
@@ -14,13 +15,14 @@ async function openCategorySettings(page: Page): Promise<Locator> {
 	const settingsDialog = page.getByRole('dialog', { name: 'Nastavení seznamu' });
 	await expect(settingsDialog).toBeVisible();
 	await settingsDialog.getByRole('tab', { name: 'Kategorie' }).click();
-	await expect(settingsDialog.getByRole('checkbox', { name: CATEGORY_NAME })).toBeChecked();
+	await expect(categoryRow(settingsDialog, CATEGORY_NAME)).toBeVisible();
 	return settingsDialog;
 }
 
 async function openCategoryColorPicker(settingsDialog: Locator): Promise<Locator> {
-	await settingsDialog.getByRole('button', { name: CATEGORY_NAME, exact: true }).click();
-	const pickerDialog = settingsDialog.page().getByRole('dialog', { name: CATEGORY_NAME });
+	const pickerName = `Barva kategorie ${CATEGORY_NAME}`;
+	await settingsDialog.getByRole('button', { name: pickerName, exact: true }).click();
+	const pickerDialog = settingsDialog.page().getByRole('dialog', { name: pickerName });
 	await expect(pickerDialog).toBeVisible();
 	return pickerDialog;
 }

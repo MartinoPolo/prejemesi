@@ -36,7 +36,7 @@ vi.mock('$lib/modules/gifts/gifts.remote.js', () => ({
 	getGiftsByWishlistShortId: vi.fn(),
 }));
 vi.mock('$lib/modules/gift-categories/gift_category_queries.remote.js', () => ({
-	getGiftCategorySettingsRows: vi.fn(),
+	getGiftCategories: vi.fn(),
 }));
 
 vi.mock('@sveltejs/kit', () => ({
@@ -70,7 +70,7 @@ vi.mock('$lib/server/db/gift.schema.js', () => ({
 		links: 'gift.links',
 		sortOrder: 'gift.sortOrder',
 		deletedAt: 'gift.deletedAt',
-		categoryId: 'gift.categoryId',
+		categoryIds: 'gift.categoryIds',
 	},
 	giftCategory: {
 		id: 'giftCategory.id',
@@ -171,7 +171,7 @@ vi.mock('$lib/server/db/index.js', () => ({
 
 const { importGifts } = await import('./import.remote.js');
 const { singleFlightRefresh } = await import('$lib/server/remote.js');
-const { getGiftCategorySettingsRows } =
+const { getGiftCategories } =
 	await import('$lib/modules/gift-categories/gift_category_queries.remote.js');
 
 // The mocked guardedCommand returns the raw (authContext, arg) handler; cast to it.
@@ -295,7 +295,7 @@ describe('importGifts — creation and normalization', () => {
 		// draftA = medium → rank 1, draftB = high → rank 0.
 		expect(rows!.map((r) => r.priorityLevelId)).toEqual(['pl-medium', 'pl-high']);
 		expect(result).toMatchObject({ status: 'created', gifts: [{ id: 'g5' }, { id: 'g6' }] });
-		expect(singleFlightRefresh).toHaveBeenCalledWith(getGiftCategorySettingsRows, WISHLIST_ID);
+		expect(singleFlightRefresh).toHaveBeenCalledWith(getGiftCategories, WISHLIST_ID);
 	});
 
 	it('starts sortOrder at 0 for an empty wishlist (COALESCE -1)', async () => {

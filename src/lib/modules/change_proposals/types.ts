@@ -119,7 +119,7 @@ export interface ChangeProposalGift {
 	imageMeta: ImageMetadata | null;
 	quantity: number | null;
 	priorityLevelId: string | null;
-	categoryId: string | null;
+	categoryIds: string[];
 	received: boolean;
 	deleted: boolean;
 	editedAfterShareAt: string | null;

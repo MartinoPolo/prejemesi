@@ -76,6 +76,7 @@
 	import {
 		getWishlistByShortId,
 		archiveWishlist,
+		deleteWishlistIfEmpty,
 		unfollowWishlist,
 		recordWishlistVisit,
 	} from '$lib/modules/wishlists/wishlists.remote.js';
@@ -110,6 +111,18 @@
 		RESERVATION_RELEASE_CAPABILITY,
 	} from '$lib/modules/wishlists/wishlist_capabilities.js';
 	import type { Palette } from '$lib/theme/palettes.js';
+	import type { WishlistThemeId } from '$lib/theme/wishlist_themes.js';
+	import {
+		loadWishlistThemeArt,
+		type WishlistThemeArt,
+	} from '$lib/theme/wishlist_theme_art/index.js';
+	import WishlistThemeBackdrop from '$lib/components/blocks/wishlist/WishlistThemeBackdrop.svelte';
+	import {
+		resolveWishlistThemeScope,
+		wishlistThemeScopeAttributes,
+		type WishlistAppearancePreview,
+		type WishlistThemeMotif,
+	} from '$lib/components/blocks/wishlist/wishlist_theme_scope.js';
 	import { getWishlistEmoji } from '$lib/modules/wishlists/wishlist_theme.js';
 	import {
 		giftEditorModeFromMeta,
@@ -146,6 +159,10 @@
 	} from '$lib/modules/import/duplicate_aware_submission.js';
 	import { buildGiftCsv, giftCsvFilename, downloadGiftCsv } from '$lib/modules/import/index.js';
 	import { labelForGiftCategory } from '$lib/modules/gift-categories/types.js';
+	import {
+		giftCategoryChoices,
+		withGiftCategoryToggled,
+	} from '$lib/modules/gift-categories/gift_category_assignment.js';
 	import { getLocale } from '$lib/paraglide/runtime.js';
 	import {
 		GIFT_SECTION_KINDS,
@@ -205,6 +222,8 @@
 		reorderGroupKeyLookup,
 		resolveGroupedReorderMove,
 		withReorderGroup,
+		withGiftCategoryIds,
+		categoryGroupChange,
 		type GiftReorderGroup,
 		type GiftReorderPlacement,
 	} from '$lib/modules/gifts/gift_grouped_reorder.js';
@@ -251,6 +270,12 @@
 	// Optimistic palette: the override paints instantly on selection; the persisted
 	// value rides back via setWishlistPalette's single-flight refresh.
 	let paletteOverride = $state<Palette | null>(null);
+	// Optimistic appearance preview from the settings editor, keyed by the wishlist it belongs
+	// to so in-place navigation to another wishlist never shows the previous one's draft.
+	let appearanceOverride = $state.raw<{
+		wishlistId: string;
+		appearance: WishlistAppearancePreview;
+	} | null>(null);
 
 	// Opens the "log in to like" prompt when an anonymous visitor taps the heart.
 	let authPromptOpen = $state(false);
@@ -321,6 +346,26 @@
 	const initialWishlist = await getWishlistByShortId(shortId);
 	const wishlistQuery = $derived(getWishlistByShortId(shortId));
 	const wishlist = $derived(wishlistQuery.current ?? initialWishlist);
+	// The art is decorative, so a failed load leaves the theme without motifs.
+	async function loadThemeArtOrNone(themeId: WishlistThemeId): Promise<WishlistThemeArt | null> {
+		try {
+			return await loadWishlistThemeArt(themeId);
+		} catch (thrown) {
+			console.error('Failed to load wishlist theme art:', thrown);
+			return null;
+		}
+	}
+	// The first theme's art loads during SSR so the motifs paint before hydration; a theme
+	// picked later (another wishlist, a settings preview) loads lazily below.
+	// svelte-ignore state_referenced_locally
+	const initialThemeId = initialWishlist.themeId;
+	const initialThemeArt =
+		initialThemeId === null ? null : await loadThemeArtOrNone(initialThemeId);
+	let loadedThemeArt = $state.raw<{ themeId: WishlistThemeId; art: WishlistThemeArt } | null>(
+		initialThemeId === null || initialThemeArt === null
+			? null
+			: { themeId: initialThemeId, art: initialThemeArt },
+	);
 	// svelte-ignore state_referenced_locally
 	const initialPendingProposalsShortId = shortId;
 	const initialPendingProposals = await pendingProposalsLoad;
@@ -386,6 +431,28 @@
 	// ── Derived values ───────────────────────────────────────────────────────
 
 	const activePalette = $derived(paletteOverride ?? wishlist.palette);
+	const themeScope = $derived(
+		resolveWishlistThemeScope(
+			appearanceOverride !== null && appearanceOverride.wishlistId === wishlist.id
+				? appearanceOverride.appearance
+				: {
+						themeId: wishlist.themeId,
+						styleTokens: wishlist.styleTokens,
+						background: wishlist.background,
+					},
+		),
+	);
+	const themeScopeAttributes = $derived(wishlistThemeScopeAttributes(themeScope));
+	const themeArt = $derived(
+		loadedThemeArt !== null && loadedThemeArt.themeId === themeScope.placeholderThemeId
+			? loadedThemeArt.art
+			: null,
+	);
+	const themeMotif = $derived<WishlistThemeMotif | null>(
+		themeScope.placeholderThemeId === null
+			? null
+			: { themeId: themeScope.placeholderThemeId, markup: themeArt?.motifs[0] ?? null },
+	);
 	const isArchived = $derived(wishlist.status === 'archived');
 	const isRecipient = $derived(role === 'recipient');
 	const hideReservationState = $derived(isRecipient || recipientViewPreview);
@@ -675,6 +742,9 @@
 
 	function withReorderGroupChange(giftItem: GiftByRole): GiftByRole {
 		const change = reorderGroupChanges[giftItem.id];
+		if (change?.categoryIds !== undefined) {
+			return withGiftCategoryIds(giftItem, change.categoryIds, categoryOptions);
+		}
 		const group =
 			change === undefined
 				? undefined
@@ -758,8 +828,11 @@
 	const commonPriorityId = $derived(
 		commonSelectionValue(selectedGiftRows.map((giftItem) => giftItem.priorityLevelId)),
 	);
-	const commonCategoryId = $derived(
-		commonSelectionValue(selectedGiftRows.map((giftItem) => giftItem.categoryId ?? null)),
+	const selectionCategoryChoices = $derived(
+		giftCategoryChoices(
+			selectedGiftRows.map((giftItem) => giftItem.categoryIds),
+			categoryOptions.map((category) => category.id),
+		),
 	);
 	const commonImageFit = $derived(
 		commonSelectionValue(
@@ -785,7 +858,7 @@
 	let bulkCopyReturnToActions = $state<(() => void) | null>(null);
 	let bulkCopyDestinations = $state<BulkCopyDestination[]>([]);
 	let bulkCopyCreateOpen = $state(false);
-	// Stays selected after a failed copy, so a retry fills the wishlist already created and still links it.
+	// Set only for a list created by this flow, which a failed copy deletes while still empty (issue #557).
 	let bulkCopyCreatedDestination = $state<CreatedWishlist | null>(null);
 	// Moving gifts out (copy, then remove the unreserved sources) is a permanent wishlist's workflow;
 	// once the list was shared, its recipient may only copy (issue #479).
@@ -1052,7 +1125,7 @@
 
 	async function updateContextGift(update: {
 		priorityLevelId?: string | null;
-		categoryId?: string | null;
+		categoryIds?: string[];
 	}) {
 		const gift = contextSession?.gift;
 		if (gift === undefined) {
@@ -1290,9 +1363,54 @@
 			);
 			returnFromBulkCopy();
 		} catch (thrown) {
-			toastError(translateServerError(thrown));
+			await handleFailedBulkCopy(destinationWishlistId, thrown);
 		} finally {
 			bulkCopySubmitting = false;
+		}
+	}
+
+	/**
+	 * A list this flow created for the failed copy is deleted while still empty, returning the dialog
+	 * to its pre-creation state so a retry creates a fresh list (issue #557). If it already has gifts,
+	 * the copy committed before its response was lost, so the list is kept and stays selected.
+	 */
+	async function handleFailedBulkCopy(destinationWishlistId: string, thrown: unknown) {
+		const created = bulkCopyCreatedDestination;
+		const cleanup =
+			created?.id === destinationWishlistId
+				? await deleteCreatedDestinationIfEmpty(created.id)
+				: 'notCreated';
+		if (cleanup === 'kept' && created !== null) {
+			void getGiftsByWishlistShortId(shortId).refresh();
+			showToast({
+				tone: 'warning',
+				title: m.gift_bulk_copy_outcome_unknown(),
+				actionLabel: m.gift_bulk_copy_open_destination(),
+				onAction: () =>
+					void goto(
+						localizeInternalHref(resolve('/(app)/w/[id]', { id: created.shortId })),
+					),
+			});
+			return;
+		}
+		toastError(translateServerError(thrown));
+		if (cleanup === 'deleted') {
+			bulkCopyCreatedDestination = null;
+			bulkCopyDestinations = bulkCopyDestinations.filter(
+				(destination) => destination.id !== destinationWishlistId,
+			);
+			bulkCopyDestinationId = NEW_WISHLIST_DESTINATION;
+		}
+	}
+
+	async function deleteCreatedDestinationIfEmpty(
+		createdWishlistId: string,
+	): Promise<'deleted' | 'kept' | 'cleanupFailed'> {
+		try {
+			return (await deleteWishlistIfEmpty(createdWishlistId)) ? 'deleted' : 'kept';
+		} catch (thrown) {
+			console.error('Failed to delete the wishlist created for a failed bulk copy:', thrown);
+			return 'cleanupFailed';
 		}
 	}
 
@@ -1848,13 +1966,9 @@
 				links: gift.links ?? [],
 				price: gift.price,
 				currency: gift.currency,
-				categoryLabel:
-					gift.category == null
-						? ''
-						: labelForGiftCategory(
-								gift.category,
-								getLocale().startsWith('en') ? 'en' : 'cs',
-							),
+				categoryLabels: gift.categories.map((category) =>
+					labelForGiftCategory(category, getLocale().startsWith('en') ? 'en' : 'cs'),
+				),
 			})),
 		);
 		downloadGiftCsv(csv, giftCsvFilename(wishlist.title, wishlist.shortId));
@@ -1938,6 +2052,27 @@
 	function handlePaletteSelect(palette: Palette) {
 		paletteOverride = palette;
 	}
+
+	// Settings appearance preview (#535): null drops the preview after a discard or save.
+	function handleAppearancePreview(appearance: WishlistAppearancePreview | null) {
+		appearanceOverride = appearance === null ? null : { wishlistId: wishlist.id, appearance };
+	}
+
+	$effect(() => {
+		const themeId = themeScope.placeholderThemeId;
+		if (themeId === null || untrack(() => loadedThemeArt?.themeId) === themeId) {
+			return;
+		}
+		let current = true;
+		void loadThemeArtOrNone(themeId).then((art) => {
+			if (current && art !== null) {
+				loadedThemeArt = { themeId, art };
+			}
+		});
+		return () => {
+			current = false;
+		};
+	});
 
 	// ── Reorder handler (pointer + keyboard, mouse/touch/pen) ─────────────────
 
@@ -2039,14 +2174,10 @@
 		targetGroup: GiftReorderGroup,
 		previousOrder: readonly string[],
 	) {
-		const previousGroupChange: ReorderGiftGroupChange = {
-			giftId: movedGift.id,
-			field,
-			value:
-				field === GIFT_GROUPING_OPTIONS.priority
-					? movedGift.priorityLevelId
-					: (movedGift.categoryId ?? null),
-		};
+		const previousGroupChange: ReorderGiftGroupChange =
+			field === GIFT_GROUPING_OPTIONS.priority
+				? { giftId: movedGift.id, field, value: movedGift.priorityLevelId }
+				: categoryGroupChange(movedGift.id, movedGift.categoryIds);
 		const toastId = showToast({
 			tone: 'success',
 			title: m.gift_reorder_group_changed({
@@ -2254,12 +2385,19 @@
 	bind:this={wishlistPageElement}
 	data-testid="wishlist-page-shell"
 	data-palette={activePalette}
+	{...themeScopeAttributes}
 	style="overflow-anchor: none"
 	class={cn(
-		'mt-3 flex flex-col gap-3 pb-3 sm:mt-0 sm:gap-6 sm:py-6',
+		'wishlist-page-shell flex flex-col gap-3 pt-3 pb-3 sm:gap-6 sm:py-6',
 		chatOffered && 'pb-20 sm:pb-20',
 	)}
 >
+	<WishlistThemeBackdrop
+		mode={themeScope.backgroundMode}
+		art={themeArt}
+		imageUrl={themeScope.customImageUrl}
+		background={themeScope.background}
+	/>
 	<WishlistHeader
 		title={wishlist.title}
 		recipientDisplayName={wishlist.recipientDisplayName}
@@ -2270,6 +2408,7 @@
 		imageKey={wishlist.imageKey}
 		imageSlots={wishlist.imageSlots}
 		{themeEmoji}
+		{themeMotif}
 		eventDate={wishlist.eventDate}
 		status={wishlistStatus}
 		kind={wishlist.kind}
@@ -2308,15 +2447,19 @@
 				priorityLevels={priorityActionOptions}
 				categories={categoryActionOptions}
 				{commonPriorityId}
-				{commonCategoryId}
+				categoryChoices={selectionCategoryChoices}
 				{commonImageFit}
 				{commonImageBackground}
 				{commonReceived}
 				onselectvisible={(checked) => giftSelection.setVisible(visibleGiftIds, checked)}
 				onpriority={(priorityLevelId) =>
 					void applyBulkAction({ action: 'priority', priorityLevelId })}
-				oncategory={(categoryId) =>
-					void applyBulkAction({ action: 'category', categoryId })}
+				oncategory={(categoryId: string | null, checked: boolean) =>
+					void applyBulkAction(
+						categoryId === null
+							? { action: 'category', categoryId: null }
+							: { action: checked ? 'addCategory' : 'removeCategory', categoryId },
+					)}
 				oncreatecategory={canCreateCategory
 					? () =>
 							openCategoryQuickAdd({
@@ -2408,7 +2551,7 @@
 					priorityLevels={priorityActionOptions}
 					categories={categoryActionOptions}
 					priorityLevelId={contextActionGift.priorityLevelId}
-					categoryId={contextActionGift.categoryId ?? null}
+					categoryIds={contextActionGift.categoryIds}
 					placementSnapshot={contextPlacementSnapshot}
 					{...reservationContextFor(contextActionGift)}
 					{...releaseContextFor(contextActionGift)}
@@ -2424,7 +2567,17 @@
 								)
 						: undefined}
 					onpriority={(priorityLevelId) => void updateContextGift({ priorityLevelId })}
-					oncategory={(categoryId) => void updateContextGift({ categoryId })}
+					oncategory={(categoryId, checked) =>
+						void updateContextGift({
+							categoryIds:
+								categoryId === null
+									? []
+									: withGiftCategoryToggled(
+											contextActionGift.categoryIds,
+											categoryId,
+											checked,
+										),
+						})}
 					oncreatecategory={canCreateCategory
 						? () =>
 								openCategoryQuickAdd({
@@ -2673,6 +2826,7 @@
 		{themeEmoji}
 		onsaved={async () => {}}
 		onpaletteselect={handlePaletteSelect}
+		onappearancepreview={handleAppearancePreview}
 		ondeleted={handleWishlistDeleted}
 		onimport={openImportWizard}
 		onexport={handleExport}

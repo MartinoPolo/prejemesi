@@ -28,7 +28,7 @@
 		/** Existing image shown as the initial preview (edit mode); replaced on upload. */
 		initialPreviewUrl?: string;
 		/** Called when upload completes successfully. */
-		onUpload?: (result: UploadResult) => void;
+		onUpload?: (result: UploadResult, uploadedFile: File) => void;
 		/** Reports the full upload lifecycle, including authorization. */
 		onPendingChange?: (pending: boolean) => void;
 		/** Called when an error occurs, with the localized message shown to the user. */
@@ -156,11 +156,12 @@
 
 		try {
 			let result: UploadResult;
+			let uploadedFile: File;
 			try {
 				progress = { status: 'preparing', percentage: 0 };
-				const preparedFile = await prepareImageForUpload(file, maxBytes);
+				uploadedFile = await prepareImageForUpload(file, maxBytes);
 				result = await uploadFile(
-					preparedFile,
+					uploadedFile,
 					target,
 					(uploadProgress) => {
 						progress = uploadProgress;
@@ -180,7 +181,7 @@
 			if (previousPreviewUrl != null) {
 				URL.revokeObjectURL(previousPreviewUrl);
 			}
-			onUpload?.(result);
+			onUpload?.(result, uploadedFile);
 		} finally {
 			activeAbortController = null;
 			isUploadPending = false;

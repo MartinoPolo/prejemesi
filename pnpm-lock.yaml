@@ -29,9 +29,15 @@ importers:
       '@better-auth/oauth-provider':
         specifier: ~1.7.7
         version: 1.7.7(4ee2871cb6e248a7c0de24d7537d4f7a)
+      '@fontsource-variable/caveat':
+        specifier: ^5.3.0
+        version: 5.3.0
       '@fontsource-variable/dynapuff':
         specifier: ^5.2.8
         version: 5.2.8
+      '@fontsource-variable/fraunces':
+        specifier: ^5.3.0
+        version: 5.3.0
       '@fontsource-variable/geist':
         specifier: ^5.2.9
         version: 5.2.9
@@ -219,6 +225,9 @@ importers:
       shadcn-svelte:
         specifier: ^1.2.7
         version: 1.2.7(svelte@5.56.10(@typescript-eslint/types@8.57.2))
+      sharp:
+        specifier: 0.35.2
+        version: 0.35.2
       storybook:
         specifier: ^10.3.3
         version: 10.3.3(@testing-library/dom@10.4.1)(prettier@3.8.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -1589,11 +1598,17 @@ packages:
   '@floating-ui/utils@0.2.11':
     resolution: {integrity: sha512-RiB/yIh78pcIxl6lLMG0CgBXAZ2Y0eVHqMPYugu+9U0AeT6YBeiJpf7lbdJNIugFP5SIjwNRgo4DhR1Qxi26Gg==}
 
+  '@fontsource-variable/caveat@5.3.0':
+    resolution: {integrity: sha512-Q3mjghoYIlXgwqBPJKZ4q6f3zu921Gq7UU76r9Z+NAmhapHfX130GIFpOCYf8vt2SIcgCi9RHDT7anfJKg/kiA==}
+
   '@fontsource-variable/dynapuff@5.2.8':
     resolution: {integrity: sha512-qsR7Jx2aeq6xFwBlooSownMM5MlPjXmdjPjsNbAQUAgFSi4hIBDqidU8AYNLBTV+2z7yXMtqnnGHeAjMJALIQw==}
 
   '@fontsource-variable/figtree@5.2.10':
     resolution: {integrity: sha512-a5Gumbpy3mdd+Yg31g6Qb7CmjYbrfyutJa3bWfP5q8A4GclIOwX7mI+ZuSHsJnw/mHvW6r9oh1AHJcJTIxK4JA==}
+
+  '@fontsource-variable/fraunces@5.3.0':
+    resolution: {integrity: sha512-9BYGySn4AHEJdgp9Z28tQ3X+laJMEOITXkQarZXeloWQZDq5oOvXJ3kDA8c7MGIfpogIaZfjrQBqmda8POOCKA==}
 
   '@fontsource-variable/geist@5.2.9':
     resolution: {integrity: sha512-TP+QSBG3wxKGPE33CbMy/L0Nu3qvJ6Fy81Yc4LnQ95xH+i+cfEp8fyU8/kfV14YwszxIFPhnoMTbjL71waVpyQ==}
@@ -6732,9 +6747,13 @@ snapshots:
 
   '@floating-ui/utils@0.2.11': {}
 
+  '@fontsource-variable/caveat@5.3.0': {}
+
   '@fontsource-variable/dynapuff@5.2.8': {}
 
   '@fontsource-variable/figtree@5.2.10': {}
+
+  '@fontsource-variable/fraunces@5.3.0': {}
 
   '@fontsource-variable/geist@5.2.9': {}
 

@@ -6,8 +6,8 @@
 	import * as ToggleGroup from '$lib/components/base/toggle-group/index.js';
 	import ImageUpload from '$lib/components/derived/image-upload/ImageUpload.svelte';
 	import ImageCropStage from '$lib/components/derived/image-crop/ImageCropStage.svelte';
-	import { promoteOnWheel } from '$lib/components/derived/image-crop/promote_on_wheel.js';
-	import ImageFrame from '$lib/components/derived/image-frame/ImageFrame.svelte';
+	import { editorModeStatusLabel } from '$lib/components/derived/image-crop/editor_mode_status_label.js';
+	import { useNarrowViewportState } from '$lib/components/derived/narrow_viewport_state.svelte.js';
 	import {
 		IMAGE_TOKEN_SCOPES,
 		IMAGE_FIT_MODES,
@@ -27,6 +27,7 @@
 		WISHLIST_SLOT_SPECS,
 		createDefaultWishlistSlots,
 		cropStateToImageMeta,
+		cropTargetSurfaceSize,
 		fillImageMeta,
 		fitImageMeta,
 		imageMetaToFrameProps,
@@ -181,7 +182,8 @@
 	const imageUrl = $derived(wishlistImageUrl(assignedKey));
 	const hasImage = $derived(imageUrl !== null);
 	const active = $derived(slotState[activeSlot]);
-	const isCropMode = $derived(active.mode === IMAGE_EDITOR_MODES.manual);
+	// The crop window is drawn at the slot's real size on this device class (#533).
+	const compactViewport = useNarrowViewportState();
 
 	// Bits UI's ToggleGroup.Root (type="single") mutates its own bindable `value`
 	// on every click, including a re-click of the already-active item (see
@@ -276,18 +278,10 @@
 		}
 	}
 
-	/** A zoom attempt on the plain preview is a manual-crop intent (#116 follow-up). */
-	function promoteActiveSlotToManual() {
-		if (slotState[activeSlot].mode !== IMAGE_EDITOR_MODES.manual) {
-			slotState[activeSlot].mode = IMAGE_EDITOR_MODES.manual;
-			markDirty(activeSlot);
-		}
-	}
-
-	/** Clicking a preview tile jumps to Manual mode for that slot. */
-	function handleTileSelect(slot: WishlistEditorSlot) {
-		activeSlot = slot;
-		promoteActiveSlotToManual();
+	/** A pan or zoom on the stage is a manual-crop intent: Fill/Fit promote to Manual. */
+	function handleCropChange() {
+		slotState[activeSlot].mode = IMAGE_EDITOR_MODES.manual;
+		markDirty(activeSlot);
 	}
 
 	async function handleSave() {
@@ -365,49 +359,31 @@
 	</div>
 
 	{#if hasImage}
-		<!-- WYSIWYG stage for the active slot (#116 REQ-2): the window is locked to
-		     the slot's real surface aspect, so switching slots visibly reshapes it. -->
+		<!-- Fixed-window stage (#533): the window keeps the active slot's real size
+		     while the photo pans and zooms behind it. Fill/Fit show their automatic
+		     framing; any edit promotes the slot to Manual. -->
 		<div class="flex flex-col gap-3">
-			<Label>{slotLabels[activeSlot]()}</Label>
-			{#if isCropMode}
-				<ImageCropStage
-					class="h-80"
-					src={imageUrl!}
-					alt={title}
-					targetAspect={WISHLIST_SLOT_SPECS[activeSlot].aspect}
-					targetLabel={slotLabels[activeSlot]()}
-					realSizeText={WISHLIST_SLOT_SPECS[activeSlot].realSizeText}
-					tokenScope={IMAGE_TOKEN_SCOPES.wishlist}
-					bind:cropRect={slotState[activeSlot].cropRect}
-					onchange={() => markDirty(activeSlot)}
-				/>
-			{:else}
-				{@const frame = frameFor(activeSlot)}
-				<!-- Wheel over the plain preview promotes to Manual so zooming "just works". -->
-				<div
-					class="flex justify-center"
-					data-testid="image-fit-preview"
-					use:promoteOnWheel={promoteActiveSlotToManual}
-				>
-					<!-- Absolutely positioned frame: see SlotPreviewCard (aspect-ratio
-					     boxes stretch when a %-height child falls back to intrinsic size). -->
-					<div
-						class="relative w-full max-w-md"
-						style:aspect-ratio={WISHLIST_SLOT_SPECS[activeSlot].cssAspect}
-					>
-						<ImageFrame
-							class="absolute inset-0"
-							src={imageUrl}
-							alt={title}
-							fitMode={frame.fitMode}
-							focal={frame.focal}
-							zoom={frame.zoom}
-							fillColor={frame.fillColor}
-							tokenScope={IMAGE_TOKEN_SCOPES.wishlist}
-						/>
-					</div>
-				</div>
-			{/if}
+			<ImageCropStage
+				src={imageUrl!}
+				alt={title}
+				targetAspect={WISHLIST_SLOT_SPECS[activeSlot].aspect}
+				targetLabel={slotLabels[activeSlot]()}
+				surfaceSize={cropTargetSurfaceSize(
+					WISHLIST_SLOT_SPECS[activeSlot],
+					compactViewport.current,
+				)}
+				framing={active.mode}
+				tokenScope={IMAGE_TOKEN_SCOPES.wishlist}
+				stageClass="h-[min(320px,45dvh)] min-h-[200px]"
+				bind:cropRect={slotState[activeSlot].cropRect}
+				onchange={handleCropChange}
+			>
+				{#snippet heading()}
+					<span data-testid="crop-stage-editing">
+						{m.image_crop_editing({ target: slotLabels[activeSlot]() })}
+					</span>
+				{/snippet}
+			</ImageCropStage>
 
 			<!-- Display mode (three-mode model, #116 follow-up) -->
 			<div class="flex flex-col gap-2">
@@ -431,8 +407,8 @@
 			</div>
 		</div>
 
-		<!-- Per-slot previews (REQ-7: true consumer aspects) – clicking a tile jumps
-		     to Manual mode for that slot (#116 follow-up) -->
+		<!-- Per-slot previews (REQ-7: true consumer aspects) – clicking a tile picks
+		     the slot being edited -->
 		<div class="flex flex-col gap-2">
 			<span class="text-xs font-medium tracking-wide text-muted-foreground uppercase">
 				{m.wishlist_image_preview_strip_label()}
@@ -447,7 +423,8 @@
 							frame={frameFor(slot)}
 							{themeEmoji}
 							active={activeSlot === slot}
-							onclick={() => handleTileSelect(slot)}
+							status={editorModeStatusLabel(slotState[slot].mode)}
+							onclick={() => (activeSlot = slot)}
 							class="w-full"
 						/>
 					</li>

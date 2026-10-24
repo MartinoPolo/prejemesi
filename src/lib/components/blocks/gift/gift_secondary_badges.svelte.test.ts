@@ -68,8 +68,8 @@ function comparisonGift(
 		price: 1490,
 		currency: 'CZK',
 		imageUrl,
-		categoryId: COMPARISON_CATEGORY.id,
-		category: COMPARISON_CATEGORY,
+		categoryIds: [COMPARISON_CATEGORY.id],
+		categories: [COMPARISON_CATEGORY],
 		priorityLabel: 'Vysoka',
 		quantity: 2,
 		likeCount: 3,
@@ -425,7 +425,7 @@ describe('unavailable gift treatment', () => {
 			const loneBadgeGift: GiftForVisitor =
 				present === 'category'
 					? { ...gift, priorityLabel: null }
-					: { ...gift, categoryId: null, category: null };
+					: { ...gift, categoryIds: [], categories: [] };
 			const { host } = await renderGift(view, loneBadgeGift);
 			const badge = element(host, contentSelectors[view][present]);
 			expect(effectiveOpacity(badge, host)).toBeCloseTo(RETAINED_CONTENT_VISIBILITY, 3);

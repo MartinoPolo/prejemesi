@@ -35,7 +35,7 @@ vi.mock('$lib/modules/gifts/gifts.remote.js', () => ({
 	getGiftsByWishlistShortId: vi.fn(),
 }));
 vi.mock('$lib/modules/gift-categories/gift_category_queries.remote.js', () => ({
-	getGiftCategorySettingsRows: vi.fn(),
+	getGiftCategories: vi.fn(),
 }));
 
 vi.mock('@sveltejs/kit', () => ({
@@ -69,7 +69,7 @@ vi.mock('$lib/server/db/gift.schema.js', () => ({
 		links: 'gift.links',
 		sortOrder: 'gift.sortOrder',
 		deletedAt: 'gift.deletedAt',
-		categoryId: 'gift.categoryId',
+		categoryIds: 'gift.categoryIds',
 	},
 	giftCategory: {
 		id: 'giftCategory.id',

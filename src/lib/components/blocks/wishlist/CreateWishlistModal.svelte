@@ -73,7 +73,8 @@
 	let errorMessage = $state('');
 	// Optional metadata behind the "Další nastavení" accordion (issue #112).
 	let description = $state('');
-	let palette = $state<Palette>(DEFAULT_PALETTE);
+	// Null until the user picks one, so the server can default an occasion theme's palette.
+	let palette = $state<Palette | null>(null);
 	// Track whether the user has interacted with each required field so validation
 	// only surfaces after a submit attempt or after the user edits then clears the
 	// field — never on a freshly opened dialog.
@@ -105,7 +106,7 @@
 		wishlistKind = WISHLIST_KIND.occasion;
 		eventDate = null;
 		description = '';
-		palette = DEFAULT_PALETTE;
+		palette = null;
 		errorMessage = '';
 		isSubmitting = false;
 		titleTouched = false;
@@ -139,6 +140,7 @@
 			wishlistKind === WISHLIST_KIND.permanent
 				? { kind: WISHLIST_KIND.permanent }
 				: { kind: WISHLIST_KIND.occasion, eventDate };
+		const paletteField = palette === null ? {} : { palette };
 
 		try {
 			const created = await createWishlist(
@@ -148,14 +150,14 @@
 							recipientName: trimmedRecipientName,
 							title: trimmedTitle,
 							...kindFields,
-							palette,
+							...paletteField,
 							description: description.trim() || null,
 						}
 					: {
 							recipientKind: RECIPIENT_KIND.self,
 							title: trimmedTitle,
 							...kindFields,
-							palette,
+							...paletteField,
 							description: description.trim() || null,
 						},
 			);
@@ -336,7 +338,7 @@
 										aria-labelledby="wishlist-create-palette-label"
 									>
 										<WishlistPalettePicker
-											value={palette}
+											value={palette ?? DEFAULT_PALETTE}
 											onchange={(nextPalette) => (palette = nextPalette)}
 											disabled={isSubmitting}
 										/>

@@ -21,7 +21,7 @@
 	import {
 		MAX_CUSTOM_GIFT_CATEGORY_LABEL_LENGTH,
 		normalizeGiftCategoryLabel,
-		presetLabelsByNormalizedValue,
+		occupiedGiftCategoryLabels,
 		type PublicGiftCategory,
 	} from '$lib/modules/gift-categories/types.js';
 	import {
@@ -53,13 +53,8 @@
 		if (normalized === '') {
 			return false;
 		}
-		return (
-			presetLabelsByNormalizedValue().has(normalized) ||
-			categories.some(
-				(category) =>
-					category.customLabel !== null &&
-					normalizeGiftCategoryLabel(category.customLabel) === normalized,
-			)
+		return categories.some((category) =>
+			occupiedGiftCategoryLabels(category).includes(normalized),
 		);
 	});
 	const labelError = $derived(

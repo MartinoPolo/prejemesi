@@ -24,10 +24,8 @@ vi.mock('$lib/server/storage/r2.js', () => ({ deleteObjectsBestEffort }));
 const getWishlistByShortId = Object.assign(vi.fn(), { __: {} });
 vi.mock('./wishlists.remote.js', () => ({ getWishlistByShortId }));
 const getGiftCategories = Object.assign(vi.fn(), { __: {} });
-const getGiftCategorySettingsRows = Object.assign(vi.fn(), { __: {} });
 vi.mock('$lib/modules/gift-categories/gift_category_queries.remote.js', () => ({
 	getGiftCategories,
-	getGiftCategorySettingsRows,
 }));
 const getGiftsByWishlistShortId = Object.assign(vi.fn(), { __: {} });
 vi.mock('$lib/modules/gifts/gifts.remote.js', () => ({ getGiftsByWishlistShortId }));
@@ -45,16 +43,14 @@ describe('saveWishlistSettings', () => {
 			status: 'active',
 		};
 		saveLockedWishlistSettings.mockResolvedValue({
-			replacedImageKey: wishlistRow.imageKey,
+			replacedImageKeys: [wishlistRow.imageKey],
 			shortId: wishlistRow.shortId,
 		});
 		const input = {
 			wishlistId: 'wishlist-1',
 			details: { title: 'Nový název', description: null },
 			categories: {
-				customCategories: [],
-				presetKeys: [],
-				presetColors: [],
+				categories: [],
 				confirmedRemovalCategoryIds: [],
 			},
 			palette: 'ocean',
@@ -81,5 +77,7 @@ describe('saveWishlistSettings', () => {
 			deleteObjectsBestEffort.mock.invocationCallOrder[0],
 		);
 		expect(singleFlightRefresh).toHaveBeenCalledWith(getWishlistByShortId, 'short-1');
+		expect(singleFlightRefresh).toHaveBeenCalledWith(getGiftCategories, 'wishlist-1');
+		expect(singleFlightRefresh).toHaveBeenCalledWith(getGiftsByWishlistShortId, 'short-1');
 	});
 });

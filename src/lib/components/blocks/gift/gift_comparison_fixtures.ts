@@ -36,6 +36,8 @@ export const BASE_STORY_GIFT: GiftForVisitor = {
 	priorityLevelId: null,
 	priorityLabel: null,
 	prioritySortOrder: null,
+	categoryIds: [],
+	categories: [],
 	likeCount: 2,
 	reservedCount: 0,
 	isFullyReserved: false,
@@ -49,8 +51,8 @@ export const COMPARISON_AVAILABLE: GiftForVisitor = {
 	...BASE_STORY_GIFT,
 	description: 'Tichá sluchátka na cesty',
 	imageUrl: PAINTED_GIFT_IMAGE_URL,
-	categoryId: COMPARISON_CATEGORY.id,
-	category: COMPARISON_CATEGORY,
+	categoryIds: [COMPARISON_CATEGORY.id],
+	categories: [COMPARISON_CATEGORY],
 	priorityLabel: 'Vysoka',
 };
 

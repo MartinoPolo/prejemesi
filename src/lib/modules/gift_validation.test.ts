@@ -3,6 +3,7 @@ import * as v from 'valibot';
 import {
 	CreateGiftInputSchema,
 	UpdateGiftInputSchema,
+	ReorderGiftsInputSchema,
 	GIFT_CURRENCY_VALUES,
 	GiftPriceSchema,
 } from './gifts/types.js';
@@ -364,5 +365,90 @@ describe('UpdateGiftInputSchema – priceMax (price range)', () => {
 			priceMax: 1500,
 		});
 		expect(result.success).toBe(true);
+	});
+});
+
+describe.each([
+	['CreateGiftInputSchema', CreateGiftInputSchema, { wishlistId: 'wl-1', name: 'Nice Book' }],
+	['UpdateGiftInputSchema', UpdateGiftInputSchema, { id: 'gift-1' }],
+] as const)('%s – categories', (_name, schema, base) => {
+	it.each([[[]], [['c1']], [['c1', 'c2', 'c3', 'c4', 'c5']]])(
+		'accepts the ordered category list %j',
+		(categoryIds) => {
+			expect(parseSuccess(schema, { ...base, categoryIds }).success).toBe(true);
+		},
+	);
+
+	it('rejects more than five categories', () => {
+		expect(
+			parseSuccess(schema, { ...base, categoryIds: ['c1', 'c2', 'c3', 'c4', 'c5', 'c6'] })
+				.success,
+		).toBe(false);
+	});
+
+	it('rejects a category listed twice', () => {
+		expect(parseSuccess(schema, { ...base, categoryIds: ['c1', 'c2', 'c1'] }).success).toBe(
+			false,
+		);
+	});
+
+	it.each([['c1'], [null]])('accepts the deprecated single categoryId %j', (categoryId) => {
+		expect(parseSuccess(schema, { ...base, categoryId }).success).toBe(true);
+	});
+
+	it.each([
+		[['c1'], 'c1'],
+		[[], null],
+	])(
+		'rejects categoryIds %j together with the deprecated categoryId %j',
+		(categoryIds, categoryId) => {
+			expect(parseSuccess(schema, { ...base, categoryIds, categoryId }).success).toBe(false);
+		},
+	);
+});
+
+describe('ReorderGiftsInputSchema – category group changes', () => {
+	function parseGroupChange(change: Record<string, unknown>) {
+		return parseSuccess(ReorderGiftsInputSchema, {
+			wishlistId: 'wl-1',
+			orderedGiftIds: ['gift-1'],
+			groupChanges: [{ giftId: 'gift-1', ...change }],
+		});
+	}
+
+	it.each([
+		[{ field: 'category', value: 'c1', categoryIds: ['c1', 'c2'] }],
+		[{ field: 'category', value: null, categoryIds: [] }],
+		[{ field: 'category', value: 'c1' }],
+		[{ field: 'category', value: null }],
+	])('accepts the category change %j', (change) => {
+		expect(parseGroupChange(change).success).toBe(true);
+	});
+
+	it.each([
+		[{ field: 'category', value: 'c2', categoryIds: ['c1', 'c2'] }],
+		[{ field: 'category', value: null, categoryIds: ['c1'] }],
+		[{ field: 'category', value: 'c1', categoryIds: [] }],
+	])('rejects categoryIds that do not lead with the value: %j', (change) => {
+		expect(parseGroupChange(change).success).toBe(false);
+	});
+
+	it('rejects categoryIds on a priority change', () => {
+		expect(
+			parseGroupChange({ field: 'priority', value: 'c1', categoryIds: ['c1'] }).success,
+		).toBe(false);
+	});
+
+	it('rejects a category list over the cap or with duplicates', () => {
+		expect(
+			parseGroupChange({
+				field: 'category',
+				value: 'c1',
+				categoryIds: ['c1', 'c2', 'c3', 'c4', 'c5', 'c6'],
+			}).success,
+		).toBe(false);
+		expect(
+			parseGroupChange({ field: 'category', value: 'c1', categoryIds: ['c1', 'c1'] }).success,
+		).toBe(false);
 	});
 });

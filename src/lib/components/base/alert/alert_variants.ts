@@ -4,7 +4,7 @@ import type { HTMLAttributes } from 'svelte/elements';
 import type { WithElementRef } from '$lib/utils.js';
 
 export const alertVariants = tv({
-	base: "grid gap-0.5 rounded-[12px] border-[2.5px] border-ink px-4 py-3 text-left text-sm has-data-[slot=alert-action]:relative has-data-[slot=alert-action]:pr-18 has-[>svg]:grid-cols-[auto_1fr] has-[>svg]:gap-x-2.5 *:[svg]:row-span-2 *:[svg]:translate-y-0.5 *:[svg]:text-current *:[svg:not([class*='size-'])]:size-4 group/alert relative w-full",
+	base: "grid gap-0.5 rounded-[12px] border-[2.5px] border-ink px-4 py-3 text-left text-sm has-[>svg]:grid-cols-[auto_1fr] has-data-[slot=alert-action]:grid-cols-[1fr_auto] has-[>svg]:has-data-[slot=alert-action]:grid-cols-[auto_1fr_auto] has-data-[slot=alert-action]:gap-x-3 has-[>svg]:gap-x-2.5 *:[svg]:row-span-2 *:[svg]:translate-y-0.5 *:[svg]:text-current *:[svg:not([class*='size-'])]:size-4 group/alert relative w-full",
 	variants: {
 		tone: {
 			default: 'bg-tint text-card-foreground',

@@ -4,11 +4,11 @@
 
 <!-- Mirrors the sticker gift card chrome so the loading grid doesn't jump on swap -->
 <div
-	class="grid h-[280px] grid-rows-[136px_minmax(0,1fr)] overflow-hidden rounded-panel border-[2.5px] border-ink bg-card shadow-sticker sm:flex sm:h-auto sm:flex-col"
+	class="grid h-[280px] grid-rows-[136px_minmax(0,1fr)] overflow-hidden rounded-panel border-(length:--border-w) border-ink bg-card shadow-sticker sm:flex sm:h-auto sm:flex-col"
 >
 	<!-- Image area: 4:3 (issue #183), mirrors gift_card_variants' imageArea -->
 	<Skeleton
-		class="size-full rounded-none border-b-[2.5px] border-ink sm:aspect-[4/3] sm:h-auto"
+		class="size-full rounded-none border-b-(length:--border-w) border-ink sm:aspect-[4/3] sm:h-auto"
 	/>
 
 	<!-- Body -->

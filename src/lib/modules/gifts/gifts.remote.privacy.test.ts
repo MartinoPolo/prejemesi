@@ -37,28 +37,29 @@ describe('getGiftsByWishlistShortId', () => {
 			expect('reserverNames' in gift).toBe(false);
 		});
 
-		it('returns category metadata without adding reservation-derived fields', async () => {
-			mockDbInstance.pushResult([makeWishlistRow({ recipientIsModerator: false })]);
-			mockDbInstance.pushResult([
-				makeGiftRow({
-					categoryId: 'category-books',
-					categoryPresetKey: 'books',
-					categoryCustomLabel: null,
-					categoryColor: '#2563EB',
-					categorySortOrder: 2,
-				}),
-			]);
-
-			const result = await callGetGifts(makeRecipientAuthContext(), WISHLIST_SHORT_ID);
-			const gift = result.gifts[0] as Record<string, unknown>;
-
-			expect(gift.category).toEqual({
+		it('returns every active category in the gift’s order without adding reservation-derived fields', async () => {
+			const books = {
 				id: 'category-books',
 				presetKey: 'books',
 				customLabel: null,
 				color: '#2563EB',
 				sortOrder: 2,
-			});
+			};
+			const garden = {
+				id: 'category-garden',
+				presetKey: null,
+				customLabel: 'Zahrada',
+				color: '#047857',
+				sortOrder: 0,
+			};
+			mockDbInstance.pushResult([makeWishlistRow({ recipientIsModerator: false })]);
+			mockDbInstance.pushResult([makeGiftRow({ categories: [books, garden] })]);
+
+			const result = await callGetGifts(makeRecipientAuthContext(), WISHLIST_SHORT_ID);
+			const gift = result.gifts[0] as Record<string, unknown>;
+
+			expect(gift.categoryIds).toEqual(['category-books', 'category-garden']);
+			expect(gift.categories).toEqual([books, garden]);
 			expect('reservedCount' in gift).toBe(false);
 			expect('reserverNames' in gift).toBe(false);
 		});
