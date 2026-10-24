@@ -5,17 +5,27 @@ import { render } from 'vitest-browser-svelte';
 import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
 import * as m from '$lib/paraglide/messages.js';
 import type { ShareWizardStep } from '$lib/modules/sharing/types.js';
+import type * as ToastModule from '$lib/components/base/toast/index.js';
 import { resolvedCssLength } from '../gift/gift_action_geometry.test_fixtures.js';
 
 vi.mock('$env/dynamic/public', () => ({ env: {} }));
 vi.mock('$lib/modules/sharing/sharing.remote.js', () => ({ shareWishlist: vi.fn() }));
+vi.mock('$lib/components/base/toast/index.js', async (importOriginal) => ({
+	...(await importOriginal<typeof ToastModule>()),
+	toastError: vi.fn(),
+}));
+
+const { toastError } = await import('$lib/components/base/toast/index.js');
 
 const { default: ShareWizardTestHost } = await import('./ShareWizardTestHost.svelte');
 const { expectPixelsNear, expectPixelsAtLeast, expectPixelsAtMost } = createPixelAssertions(expect);
 
 afterEach(async () => {
 	delete document.documentElement.dataset.depth;
+	// Drops the per-test `navigator.share` stub so the prototype's own value shows again.
+	delete (navigator as { share?: unknown }).share;
 	vi.restoreAllMocks();
+	vi.mocked(toastError).mockClear();
 	await page.viewport(1280, 720);
 });
 
@@ -74,6 +84,77 @@ describe('ShareWizard share methods (issue #528)', () => {
 		expect(methodByPlatform.telegram!.target).toBe('_blank');
 		expect(methodByPlatform.email!.target).toBe('');
 		expect(methodByPlatform.sms!.target).toBe('');
+	});
+});
+
+function stubNativeShare(share: Navigator['share'] | undefined) {
+	Object.defineProperty(navigator, 'share', { value: share, configurable: true });
+}
+
+function nativeShareMethod(): HTMLElement | null {
+	return dialog().querySelector<HTMLElement>('[data-share-platform="native"]');
+}
+
+describe('ShareWizard native share sheet (issue #551)', () => {
+	it('hides the more-options method when the browser has no share sheet', async () => {
+		stubNativeShare(undefined);
+		await renderStep('share');
+
+		expect(dialog().querySelectorAll('a[data-share-platform]')).toHaveLength(4);
+		expect(nativeShareMethod()).toBeNull();
+		expect(dialog().textContent).not.toContain(m.share_method_native());
+	});
+
+	it('offers the share sheet after the intent methods with the wishlist title and link', async () => {
+		const share = vi.fn<Navigator['share']>().mockResolvedValue();
+		stubNativeShare(share);
+		await renderStep('share');
+		const method = page.getByRole('button', { name: m.share_method_native() });
+
+		await expect.element(method).toBeVisible();
+		const methods = [...dialog().querySelectorAll<HTMLElement>('[data-share-platform]')];
+		expect(methods.map((element) => element.dataset.sharePlatform)).toEqual([
+			'whatsapp',
+			'email',
+			'telegram',
+			'sms',
+			'native',
+		]);
+		await method.click();
+
+		expect(share).toHaveBeenCalledOnce();
+		const [data] = share.mock.calls[0]!;
+		expect(data!.title).toBe('Narozeniny');
+		expect(data!.text).toContain('Narozeniny');
+		expect(data!.url).toMatch(/\/w\/abc123$/);
+		expect(toastError).not.toHaveBeenCalled();
+	});
+
+	it('treats a dismissed share sheet as no error', async () => {
+		const share = vi
+			.fn<Navigator['share']>()
+			.mockRejectedValue(new DOMException('Share canceled', 'AbortError'));
+		stubNativeShare(share);
+		await renderStep('share');
+
+		await page.getByRole('button', { name: m.share_method_native() }).click();
+
+		await vi.waitFor(() => expect(share).toHaveBeenCalledOnce());
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(toastError).not.toHaveBeenCalled();
+	});
+
+	it('reports a share sheet that fails to open', async () => {
+		stubNativeShare(
+			vi
+				.fn<Navigator['share']>()
+				.mockRejectedValue(new DOMException('Denied', 'NotAllowedError')),
+		);
+		await renderStep('share');
+
+		await page.getByRole('button', { name: m.share_method_native() }).click();
+
+		await vi.waitFor(() => expect(toastError).toHaveBeenCalledWith(m.share_native_error()));
 	});
 });
 

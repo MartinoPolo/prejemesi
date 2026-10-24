@@ -563,6 +563,8 @@
 	"share_message_template": "Ahoj! Tady je můj seznam přání: {title}",
 	"share_email_subject": "Můj seznam přání",
 	"share_method_email": "E-mail",
+	"share_method_native": "Další možnosti",
+	"share_native_error": "Sdílení se nepodařilo otevřít. Zkopírujte prosím odkaz.",
 	"share_error": "Sdílení se nezdařilo",
 	"share_success_title": "Seznam byl sdílen!",
 	"share_success_body": "{title} je teď dostupný přátelům a rodině přes odkaz:",

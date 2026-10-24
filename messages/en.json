@@ -563,6 +563,8 @@
 	"share_message_template": "Hi! Here is my wishlist: {title}",
 	"share_email_subject": "My wishlist",
 	"share_method_email": "Email",
+	"share_method_native": "More options",
+	"share_native_error": "Could not open sharing. Please copy the link instead.",
 	"share_error": "Sharing failed",
 	"share_success_title": "List has been shared!",
 	"share_success_body": "{title} is now available to friends and family via the link:",

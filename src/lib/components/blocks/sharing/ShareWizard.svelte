@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import * as m from '$lib/paraglide/messages.js';
 	import { translateServerError } from '$lib/modules/errors/translate_server_error.js';
 	import * as Dialog from '$lib/components/base/dialog/index.js';
@@ -14,6 +15,7 @@
 	} from '$lib/modules/sharing/types.js';
 	import { useSharing } from '$lib/modules/sharing/sharing.context.svelte.js';
 	import { shareWishlist } from '$lib/modules/sharing/sharing.remote.js';
+	import { isNativeShareAvailable, shareNatively } from '$lib/modules/sharing/native_share.js';
 	import { toastError } from '$lib/components/base/toast/index.js';
 	import CheckIcon from '@lucide/svelte/icons/check';
 	import ArrowRightIcon from '@lucide/svelte/icons/arrow-right';
@@ -21,6 +23,7 @@
 	import CopyIcon from '@lucide/svelte/icons/copy';
 	import XIcon from '@lucide/svelte/icons/x';
 	import CircleCheckBigIcon from '@lucide/svelte/icons/circle-check-big';
+	import Share2Icon from '@lucide/svelte/icons/share-2';
 
 	interface ShareWizardProps {
 		wishlistId: string;
@@ -35,6 +38,12 @@
 	const styles = shareWizardVariants();
 
 	let isSubmitting = $state(false);
+	// Detected after mount so server and client render the same method list.
+	let nativeShareAvailable = $state(false);
+
+	onMount(() => {
+		nativeShareAvailable = isNativeShareAvailable();
+	});
 
 	const step = $derived(sharing.wizardStep.current);
 	const isOpen = $derived(sharing.wizardOpen.current);
@@ -105,6 +114,14 @@
 			toastError(translateServerError(thrown, m.share_error()));
 		} finally {
 			isSubmitting = false;
+		}
+	}
+
+	async function handleNativeShare() {
+		try {
+			await shareNatively({ title: wishlistTitle, text: shareMessage, url: shareUrl });
+		} catch {
+			toastError(m.share_native_error());
 		}
 	}
 
@@ -251,7 +268,13 @@
 						<div class={styles.socialButtonsList()} role="list">
 							{#each SHARE_PLATFORM_ORDER as platformKey (platformKey)}
 								{@const platform = SHARE_PLATFORM_INFO[platformKey]}
-								<ShareMethodButton {platform} {shareUrl} message={shareMessage}>
+								<ShareMethodButton
+									methodId={platform.id}
+									label={platform.label}
+									colorClass={platform.colorClass}
+									href={platform.buildUrl(shareUrl, shareMessage)}
+									opensInNewTab={platform.opensInNewTab}
+								>
 									{#snippet icon()}
 										{#if platformKey === 'whatsapp'}
 											<svg
@@ -310,6 +333,18 @@
 									{/snippet}
 								</ShareMethodButton>
 							{/each}
+							{#if nativeShareAvailable}
+								<ShareMethodButton
+									methodId="native"
+									label={m.share_method_native()}
+									colorClass="bg-[oklch(0.5_0.03_260)]"
+									onclick={handleNativeShare}
+								>
+									{#snippet icon()}
+										<Share2Icon class="size-[18px]" aria-hidden="true" />
+									{/snippet}
+								</ShareMethodButton>
+							{/if}
 						</div>
 					</div>
 
