@@ -2,7 +2,7 @@
 	import { cn } from '$lib/utils.js';
 	import { resolve } from '$app/paths';
 	import { localizeInternalHref } from '$lib/i18n/locale.js';
-	import { wishlistCardVariants } from './wishlist_card_variants.js';
+	import { wishlistCardVariants, type WishlistCardSize } from './wishlist_card_variants.js';
 	import { getWishlistEmoji } from '$lib/modules/wishlists/wishlist_theme.js';
 	import { WISHLIST_STATUS_LABELS } from '$lib/modules/wishlists/dashboard_types.js';
 	import type { Wishlist } from '$lib/modules/wishlists/types.js';
@@ -36,6 +36,8 @@
 		extraContent?: Snippet;
 		/** Action buttons */
 		actions?: Snippet;
+		/** Overview rows: `large` for Nedávné; `compact` keeps only the essential line. */
+		size?: WishlistCardSize;
 		class?: string;
 	}
 
@@ -48,6 +50,7 @@
 		myReservations,
 		extraContent,
 		actions,
+		size = 'default',
 		class: className,
 	}: WishlistCardProps = $props();
 
@@ -55,7 +58,8 @@
 	const themeEmoji = $derived(getWishlistEmoji(wishlistData.theme));
 	const cardSrc = $derived(wishlistImageUrl(wishlistData.imageKey));
 	const cardFrame = $derived(wishlistSlotToFrameProps(wishlistData.imageSlots, 'card'));
-	const variants = $derived(wishlistCardVariants({ archived: isArchived }));
+	const variants = $derived(wishlistCardVariants({ archived: isArchived, size }));
+	const isCompact = $derived(size === 'compact');
 	const statusLabel = $derived(WISHLIST_STATUS_LABELS[wishlistData.status]());
 
 	function formatDate(date: Date | null): string {
@@ -74,6 +78,7 @@
 	href={localizeInternalHref(resolve('/(app)/w/[id]', { id: wishlistData.shortId }))}
 	class={cn(variants.root(), className)}
 	aria-label={wishlistData.title}
+	data-palette={wishlistData.palette}
 	data-testid="wishlist-card"
 >
 	<ElevationSurface class={variants.surface()}>
@@ -121,7 +126,9 @@
 			{#if reservationProgress}
 				<div class={variants.progressWrap()}>
 					<div class={variants.progressLabelRow()}>
-						<span>{m.wishlist_reservation_progress()}</span>
+						{#if !isCompact}
+							<span>{m.wishlist_reservation_progress()}</span>
+						{/if}
 						<span class={variants.progressValue()}>
 							{m.wishlist_reserved_ratio({
 								reserved: reservationProgress.reserved,
@@ -153,7 +160,7 @@
 							{m.wishlist_my_reservations({ count: myReservations })}
 						</WishlistBadge>
 					{:else if myReservations !== undefined}
-						<span class="text-xs text-muted-foreground/60"
+						<span class="text-xs text-muted-foreground"
 							>{m.wishlist_no_my_reservations()}</span
 						>
 					{/if}
@@ -169,7 +176,7 @@
 							? m.wishlist_gift_count_one()
 							: m.wishlist_gift_count_other({ count: giftCount })}
 					</WishlistBadge>
-					{#if wishlistData.eventDate}
+					{#if wishlistData.eventDate && !isCompact}
 						<WishlistBadge presentation="card-metadata">
 							🗓 {formatDate(wishlistData.eventDate)}
 						</WishlistBadge>
@@ -178,8 +185,8 @@
 			{/if}
 
 			<!-- Owner card: created + last-updated timestamps (own lists only) -->
-			{#if giftCount !== undefined && !reservationProgress && wishlistData.createdAt}
-				<div class={variants.metaRow()}>
+			{#if !isCompact && giftCount !== undefined && !reservationProgress && wishlistData.createdAt}
+				<div class={variants.metaStack()}>
 					<span class={variants.metaText()}>
 						{m.wishlist_created_at({ date: formatDate(wishlistData.createdAt) })}
 					</span>
@@ -191,7 +198,7 @@
 				</div>
 			{/if}
 
-			{#if reservationProgress || (giftCount === undefined && wishlistData.createdAt)}
+			{#if !isCompact && (reservationProgress || (giftCount === undefined && wishlistData.createdAt))}
 				<div class={variants.metaRow()}>
 					<span class={variants.metaText()}>
 						{#if reservationProgress}

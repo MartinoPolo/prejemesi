@@ -4,6 +4,7 @@ import { page, userEvent } from 'vitest/browser';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as m from '$lib/paraglide/messages.js';
 import type { UploadResult } from '$lib/modules/uploads/types.js';
+import type * as PrepareImageModule from '$lib/modules/uploads/prepare_image.js';
 
 vi.mock('$env/dynamic/public', () => ({
 	env: { PUBLIC_R2_URL: 'data:image/svg+xml,%3Csvg%2F%3E' },
@@ -27,7 +28,7 @@ const {
 }));
 // Preparation has its own tests.
 vi.mock('$lib/modules/uploads/prepare_image.js', async (importOriginal) => ({
-	...(await importOriginal<typeof import('$lib/modules/uploads/prepare_image.js')>()),
+	...(await importOriginal<typeof PrepareImageModule>()),
 	prepareImageForUpload: async (file: File) => file,
 }));
 vi.mock('$lib/modules/uploads/upload.js', () => ({

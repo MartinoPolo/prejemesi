@@ -418,6 +418,11 @@
 
 	/* Dark crop-editor stage: photos read truer on a dark surround in both modes. */
 	--crop-stage: color-mix(in oklab, var(--p-ink) 82%, black);
+
+	/* Wishlist cards carry their own palette (#532): a tinted body with a primary title plate. */
+	--wishlist-card-body: color-mix(in oklab, var(--p-brand) 17%, var(--card));
+	--wishlist-card-plate: var(--primary);
+	--wishlist-card-plate-foreground: var(--primary-foreground);
 	--popover: #fff;
 	--popover-foreground: var(--p-ink);
 	--primary: var(--p-primary);
@@ -560,6 +565,7 @@
 	--card: color-mix(in oklab, var(--p-deep) 16%, #13161c);
 	--card-foreground: var(--ink);
 	--crop-stage: color-mix(in oklab, var(--p-deep) 8%, #050608);
+	--wishlist-card-body: color-mix(in oklab, var(--p-brand) 20%, var(--card));
 	--popover: var(--card);
 	--popover-foreground: var(--ink);
 	--primary: color-mix(in oklab, var(--p-brand) 60%, #202630);
@@ -905,6 +911,9 @@
 	--color-foreground: var(--foreground);
 	--color-card: var(--card);
 	--color-card-foreground: var(--card-foreground);
+	--color-wishlist-card-body: var(--wishlist-card-body);
+	--color-wishlist-card-plate: var(--wishlist-card-plate);
+	--color-wishlist-card-plate-foreground: var(--wishlist-card-plate-foreground);
 	--color-popover: var(--popover);
 	--color-popover-foreground: var(--popover-foreground);
 	--color-primary: var(--primary);
