@@ -69,7 +69,7 @@ beforeAll(async () => {
 	`);
 
 	const migrationSql = await readFile(
-		new URL('../../../../drizzle/0030_add-gift-category-ids.sql', import.meta.url),
+		new URL('../../../../drizzle/0031_add-gift-category-ids.sql', import.meta.url),
 		'utf8',
 	);
 	for (const statement of migrationSql.split('--> statement-breakpoint')) {
@@ -100,7 +100,7 @@ async function categoriesOf(giftId: string) {
 	return { categoryId: row!.category_id, categoryIds: row!.category_ids };
 }
 
-describe.skipIf(!databaseReady)('0030 gift category ids migration [real DB]', () => {
+describe.skipIf(!databaseReady)('0031 gift category ids migration [real DB]', () => {
 	it('backfills the existing single category as the only one', async () => {
 		expect(await categoriesOf('gift-categorized')).toEqual({
 			categoryId: 'books',
