@@ -341,13 +341,13 @@ export async function expectShareMethodsStep(page: Page): Promise<void> {
 
 	const expectedMethodHrefs: ReadonlyArray<[label: string, href: RegExp]> = [
 		['WhatsApp', /^https:\/\/wa\.me\/\?text=/],
-		['Email', /^mailto:\?subject=/],
-		['Messenger', /^https:\/\/www\.facebook\.com\/dialog\/send\?link=/],
+		['E-mail', /^mailto:\?subject=/],
 		['Telegram', /^https:\/\/t\.me\/share\/url\?url=/],
-		['SMS', /^sms:\?body=/],
+		['SMS', /^sms:\?&body=/],
 	];
 
 	for (const [label, href] of expectedMethodHrefs) {
 		await expect(dialog.getByRole('link', { name: label })).toHaveAttribute('href', href);
 	}
+	await expect(dialog.getByRole('link', { name: 'Messenger' })).toHaveCount(0);
 }

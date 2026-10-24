@@ -6,6 +6,7 @@ import { wishlistFollower } from '$lib/server/db/follower.schema.js';
 import { gift, reservation } from '$lib/server/db/gift.schema.js';
 import { user } from '$lib/server/db/auth.schema.js';
 import type { Wishlist } from './types.js';
+import { sanitizeWishlistAppearance } from './wishlist_appearance.js';
 import type { FollowedWishlist, ModeratedWishlist, MyWishlist } from './dashboard_types.js';
 
 type Database = ReturnType<typeof getDb>;
@@ -29,6 +30,7 @@ function mapWishlist(row: WishlistRow): Wishlist {
 		theme: row.wishlist.theme,
 		customThemeColor: row.wishlist.customThemeColor,
 		palette: row.wishlist.palette,
+		...sanitizeWishlistAppearance(row.wishlist),
 		imageKey: row.wishlist.imageKey,
 		imageSlots: row.wishlist.imageSlots,
 		recipientIsModerator: row.wishlist.recipientIsModerator,

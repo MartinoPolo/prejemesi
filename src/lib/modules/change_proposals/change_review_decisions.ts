@@ -1,5 +1,6 @@
 import {
 	CHANGE_DECISION,
+	CHANGE_FIELD,
 	CHANGE_FIELDS,
 	FIELD_DECISION,
 	changeInputRecord,
@@ -12,6 +13,7 @@ import {
 	type FieldDecision,
 	type FieldDecisions,
 } from './change_field_decisions.js';
+import { withPrimaryGiftCategory } from '$lib/modules/gift-categories/gift_category_assignment.js';
 import {
 	CHANGE_KIND,
 	CHANGE_PROPOSAL_STATE,
@@ -93,7 +95,7 @@ export const SNAPSHOT_KEYS_BY_FIELD = {
 	append: ['descriptionAppends'],
 	price: ['price', 'priceMax', 'currency'],
 	quantity: ['quantity'],
-	category: ['categoryId'],
+	category: ['categoryIds'],
 	priority: ['priorityLevelId'],
 	links: ['links'],
 	image: ['imageUrl', 'imageMeta'],
@@ -559,8 +561,19 @@ const FIELD_EDITOR_KEY = {
 	image: 'imageReference',
 } as const satisfies Record<ChangeField, string>;
 
+function proposedCategoryIds(input: unknown): string[] | null {
+	const categoryIds = changeInputRecord(input)?.categoryIds;
+	return Array.isArray(categoryIds)
+		? categoryIds.filter((categoryId): categoryId is string => typeof categoryId === 'string')
+		: null;
+}
+
 /** The editor's starting text for a field, from the proposed input or the reviewer's own. */
 export function fieldEditorText(field: ChangeField, input: unknown): string {
+	const categoryIds = field === CHANGE_FIELD.category ? proposedCategoryIds(input) : null;
+	if (categoryIds !== null) {
+		return categoryIds[0] ?? '';
+	}
 	const value = changeInputRecord(input)?.[FIELD_EDITOR_KEY[field]];
 	if (typeof value === 'number') {
 		return String(value);
@@ -606,6 +619,21 @@ function priceEditInput(text: string, proposedInput: unknown): Record<string, un
 	return currency === undefined ? { price, priceMax: null } : { price, priceMax: null, currency };
 }
 
+/**
+ * The reviewer picks the primary category: it replaces the first proposed one and keeps the rest,
+ * while none clears every category.
+ */
+function categoryEditInput(text: string, proposedInput: unknown): Record<string, unknown> {
+	const categoryId = blankAsNull(text);
+	const categoryIds = proposedCategoryIds(proposedInput);
+	if (categoryIds === null) {
+		return { categoryId };
+	}
+	return {
+		categoryIds: categoryId === null ? [] : withPrimaryGiftCategory(categoryIds, categoryId),
+	};
+}
+
 function quantityEditInput(text: string): Record<string, unknown> | null {
 	const quantity = Number(text.trim());
 	return Number.isInteger(quantity) && quantity >= 1 ? { quantity } : null;
@@ -619,7 +647,7 @@ const FIELD_EDIT_PARSERS = {
 	append: (text) => whenFilled(text, (appended) => ({ text: appended })),
 	price: priceEditInput,
 	quantity: quantityEditInput,
-	category: (text) => ({ categoryId: blankAsNull(text) }),
+	category: categoryEditInput,
 	priority: (text) => ({ priorityLevelId: blankAsNull(text) }),
 	links: () => null,
 	image: () => null,

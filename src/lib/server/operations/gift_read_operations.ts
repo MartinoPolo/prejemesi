@@ -1,7 +1,7 @@
 import * as v from 'valibot';
 import { and, count as drizzleCount, eq, inArray, isNull, ne, or, sql } from 'drizzle-orm';
 import { getDb } from '$lib/server/db/index.js';
-import { gift, giftCategory, giftLike, reservation } from '$lib/server/db/gift.schema.js';
+import { gift, giftLike, reservation } from '$lib/server/db/gift.schema.js';
 import { priorityLevel, wishlist } from '$lib/server/db/wishlist.schema.js';
 import { user } from '$lib/server/db/auth.schema.js';
 import { moderatorAssignment } from '$lib/server/db/moderator.schema.js';
@@ -12,7 +12,7 @@ import {
 	canSeeReserverNames,
 	hidesReservationState,
 } from '$lib/modules/wishlists/wishlist_capabilities.js';
-import { publicGiftCategory } from '$lib/modules/gift-categories/gift_categories_service.js';
+import { activeGiftCategoriesColumn } from '$lib/modules/gift-categories/gift_categories_service.js';
 import type { GiftForRecipient, GiftForVisitor } from '$lib/modules/gifts/types.js';
 import { OPERATION_EXPOSURE, OPERATION_KIND, defineOperation } from './operation.js';
 import {
@@ -55,54 +55,18 @@ function loadGiftRows(database: ReadDatabase, wishlistId: string) {
 			...readableGiftColumns,
 			priorityLabel: priorityLevel.label,
 			prioritySortOrder: priorityLevel.sortOrder,
-			categoryId: gift.categoryId,
-			categoryPresetKey: giftCategory.presetKey,
-			categoryCustomLabel: giftCategory.customLabel,
-			categoryColor: giftCategory.color,
-			categorySortOrder: giftCategory.sortOrder,
+			categories: activeGiftCategoriesColumn(),
 		})
 		.from(gift)
 		.leftJoin(priorityLevel, eq(gift.priorityLevelId, priorityLevel.id))
-		.leftJoin(
-			giftCategory,
-			and(
-				eq(gift.categoryId, giftCategory.id),
-				eq(gift.wishlistId, giftCategory.wishlistId),
-				isNull(giftCategory.deletedAt),
-			),
-		)
 		.where(and(eq(gift.wishlistId, wishlistId), isNull(gift.deletedAt)))
 		.orderBy(gift.sortOrder);
 }
 
 type GiftReadRow = Awaited<ReturnType<typeof loadGiftRows>>[number];
 
-function toRecipientGift(row: GiftReadRow, wishlistId: string): GiftForRecipient {
-	const {
-		categoryPresetKey,
-		categoryCustomLabel,
-		categoryColor,
-		categorySortOrder,
-		...giftFields
-	} = row;
-	return {
-		...giftFields,
-		categoryId: row.categoryId ?? null,
-		category:
-			row.categoryId === null || (categoryPresetKey === null && categoryCustomLabel === null)
-				? null
-				: publicGiftCategory({
-						id: row.categoryId,
-						wishlistId,
-						presetKey: categoryPresetKey,
-						customLabel: categoryCustomLabel,
-						color: categoryColor!,
-						sortOrder: categorySortOrder ?? 0,
-						deletedAt: null,
-						createdAt: new Date(0),
-						updatedAt: new Date(0),
-					}),
-	};
+function toRecipientGift(row: GiftReadRow): GiftForRecipient {
+	return { ...row, categoryIds: row.categories.map((category) => category.id) };
 }
 
 interface ReservationSummary {
@@ -225,16 +189,12 @@ interface VisitorGiftReadings {
 	includeReserverNames: boolean;
 }
 
-function toVisitorGift(
-	row: GiftReadRow,
-	wishlistId: string,
-	readings: VisitorGiftReadings,
-): GiftForVisitor {
+function toVisitorGift(row: GiftReadRow, readings: VisitorGiftReadings): GiftForVisitor {
 	const reservationSummary = readings.reservationSummaries.get(row.id);
 	const reservedCount = reservationSummary?.reservedCount ?? 0;
 	const viewerReservation = readings.viewerReservations.get(row.id);
 	return {
-		...toRecipientGift(row, wishlistId),
+		...toRecipientGift(row),
 		likeCount: readings.likeCounts.get(row.id) ?? 0,
 		reservedCount,
 		isFullyReserved: reservedCount >= (row.quantity ?? 1),
@@ -266,9 +226,7 @@ export const readWishlistGiftsOperation = defineOperation({
 
 		if (hidesReservationState(role, wishlistRow.recipientIsModerator)) {
 			// Recipient without self-promote: no reservation data, no like counts (protects the surprise)
-			const recipientGifts: GiftForRecipient[] = giftRows.map((row) =>
-				toRecipientGift(row, wishlistRow.id),
-			);
+			const recipientGifts: GiftForRecipient[] = giftRows.map((row) => toRecipientGift(row));
 			return { role, gifts: recipientGifts } as const;
 		}
 
@@ -279,9 +237,7 @@ export const readWishlistGiftsOperation = defineOperation({
 			viewerReservations: await loadViewerReservations(database, giftIds, actor),
 			includeReserverNames: canSeeReserverNames(role),
 		};
-		const visitorGifts: GiftForVisitor[] = giftRows.map((row) =>
-			toVisitorGift(row, wishlistRow.id, readings),
-		);
+		const visitorGifts: GiftForVisitor[] = giftRows.map((row) => toVisitorGift(row, readings));
 		return { role, gifts: visitorGifts } as const;
 	},
 });

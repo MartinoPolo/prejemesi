@@ -3,8 +3,6 @@ export const WWW_HOSTNAME = `www.${CANONICAL_HOSTNAME}`;
 const STAGING_HOSTNAME = `staging.${CANONICAL_HOSTNAME}`;
 export const SITE_URL = `https://${CANONICAL_HOSTNAME}`;
 
-export const SOCIAL_PREVIEW_IMAGE_URL = `${SITE_URL}/social-preview.png`;
-
 export function isStagingHostname(hostname: string): boolean {
 	return hostname === STAGING_HOSTNAME;
 }

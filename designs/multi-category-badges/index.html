@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>#529 Více kategorií u dárku — varianty</title>
+<style>
+	:root { --ink: #16385c; --background: color-mix(in oklab, #1e9be9 11%, white); --link: color-mix(in oklab, #1265a8 75%, #16385c); }
+	body { margin: 0; background: var(--background); color: var(--ink); font-family: 'Segoe UI', system-ui, sans-serif; font-size: 14px; }
+	main { max-width: 860px; padding: 32px; }
+	h1 { font-size: 28px; margin: 0 0 8px; }
+	p { line-height: 1.5; }
+	a.variant { display: block; background: #fff; border: 2.5px solid var(--ink); border-radius: 16px; box-shadow: 3px 3px 0 #000; padding: 16px 20px; margin: 16px 0; color: inherit; text-decoration: none; }
+	a.variant:hover { translate: -1px -1px; box-shadow: 4px 4px 0 #000; }
+	a.variant strong { font-size: 17px; display: block; margin-bottom: 4px; }
+	.recommended { display: inline-block; margin-left: 8px; font-size: 11px; font-weight: 800; border: 2px solid var(--ink); border-radius: 12px; padding: 1px 8px; background: #ffc93c; }
+	code { font-size: 12px; }
+</style>
+</head>
+<body>
+<main>
+	<h1>#529 — Více kategorií u dárku</h1>
+	<p>Každá varianta ukazuje desktop Card (5 / 4 sloupce a Automaticky), desktop List, mobilní Card (1 a 2 sloupce) a mobilní List s 0, 1, 2, 3, 4 a 6 kategoriemi, dlouhými názvy, Like, prioritou a stavem; dále otevřený popover „+X“, editor (multi-select), hromadné akce a popisek v prohlížeči. Omezení, pravidlo přetečení a otevřené otázky: <a href="DESIGN_BRIEF.md">DESIGN_BRIEF.md</a>.</p>
+
+	<a class="variant" href="variant-a.html">
+		<strong>A — Fit-to-lane, jeden řádek + „+X“ <span class="recommended">Doporučeno</span></strong>
+		Ukáže tolik kategorií, kolik se v pořadí vejde do jednoho řádku, zbytek jako „+X“. Primární se vždy ukáže; je-li příliš zkrácená, „+X“ spadne pod ni.
+	</a>
+	<a class="variant" href="variant-b.html">
+		<strong>B — Primární kategorie + barevný „+X“</strong>
+		Vždy jen primární kategorie a čip „+X“ s barevnými tečkami skrytých. Nejklidnější a stabilní, ale skrývá i to, co by se vešlo.
+	</a>
+	<a class="variant" href="variant-c.html">
+		<strong>C — Zalomení do 2 řádků (desktop List 3) + „+X“</strong>
+		Nejvíc viditelných štítků, ale víc zakrývá fotku a stav se musí posunout pod pruh.
+	</a>
+</main>
+</body>
+</html>

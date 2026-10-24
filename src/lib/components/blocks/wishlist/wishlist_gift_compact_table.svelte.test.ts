@@ -26,6 +26,8 @@ const gift: GiftForRecipient = {
 	priorityLevelId: null,
 	priorityLabel: null,
 	prioritySortOrder: null,
+	categoryIds: [],
+	categories: [],
 };
 
 function renderRecipientTable(isArchived: boolean) {

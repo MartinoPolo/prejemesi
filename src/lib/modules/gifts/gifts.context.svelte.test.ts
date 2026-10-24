@@ -3,8 +3,21 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { overwriteGetLocale } from '$lib/paraglide/runtime.js';
 import { WISHLIST_ROLES, type WishlistRole } from '$lib/modules/wishlists/types.js';
 import { wishlistGiftGroupingStorageKey } from './gifts.context.svelte.js';
-import { GIFT_CARD_COLUMN_OPTIONS, GIFT_GROUPING_OPTIONS, type GiftForVisitor } from './types.js';
+import {
+	GIFT_CARD_COLUMN_OPTIONS,
+	GIFT_GROUPING_OPTIONS,
+	UNCATEGORIZED_GIFT_CATEGORY_FILTER_VALUE,
+	type GiftForVisitor,
+} from './types.js';
 import GiftsContextTestHost from './GiftsContextTestHost.svelte';
+
+function giftCategory(id: string, customLabel: string, sortOrder: number) {
+	return { id, presetKey: null, customLabel, color: '#000000', sortOrder };
+}
+
+const BOOKS = giftCategory('category-books', 'Books', 0);
+const TOYS = giftCategory('category-toys', 'Toys', 1);
+const GAMES = giftCategory('category-games', 'Games', 2);
 
 function makeGift(options: { priority?: boolean; category?: boolean } = {}): GiftForVisitor {
 	return {
@@ -28,17 +41,8 @@ function makeGift(options: { priority?: boolean; category?: boolean } = {}): Gif
 		priorityLevelId: options.priority === true ? 'priority-high' : null,
 		priorityLabel: options.priority === true ? 'High' : null,
 		prioritySortOrder: options.priority === true ? 0 : null,
-		categoryId: options.category === true ? 'category-books' : null,
-		category:
-			options.category === true
-				? {
-						id: 'category-books',
-						presetKey: null,
-						customLabel: 'Books',
-						color: '#000000',
-						sortOrder: 0,
-					}
-				: null,
+		categoryIds: options.category === true ? [BOOKS.id] : [],
+		categories: options.category === true ? [BOOKS] : [],
 		likeCount: 0,
 		reservedCount: 0,
 		isFullyReserved: false,
@@ -87,6 +91,54 @@ describe('priority filter labels (issue #351)', () => {
 			}
 		},
 	);
+});
+
+describe('category filter options with several categories per gift', () => {
+	it('lists every category any gift uses, in category order, plus "Bez kategorie"', async () => {
+		overwriteGetLocale(() => 'cs');
+		const screen = render(GiftsContextTestHost, {
+			initialGifts: [
+				{
+					...makeGift(),
+					id: 'gift-a',
+					categoryIds: [GAMES.id, BOOKS.id],
+					categories: [GAMES, BOOKS],
+				},
+				{ ...makeGift(), id: 'gift-b', categoryIds: [TOYS.id], categories: [TOYS] },
+				{ ...makeGift(), id: 'gift-c' },
+			],
+		});
+
+		await expect.element(screen.getByTestId('category-filter-options')).toHaveTextContent(
+			JSON.stringify([
+				{ value: BOOKS.id, label: 'Books' },
+				{ value: TOYS.id, label: 'Toys' },
+				{ value: GAMES.id, label: 'Games' },
+				{ value: UNCATEGORIZED_GIFT_CATEGORY_FILTER_VALUE, label: 'Bez kategorie' },
+			]),
+		);
+	});
+
+	it('omits "Bez kategorie" when every gift has a category', async () => {
+		overwriteGetLocale(() => 'cs');
+		const screen = render(GiftsContextTestHost, {
+			initialGifts: [
+				{
+					...makeGift(),
+					id: 'gift-a',
+					categoryIds: [TOYS.id, BOOKS.id],
+					categories: [TOYS, BOOKS],
+				},
+			],
+		});
+
+		await expect.element(screen.getByTestId('category-filter-options')).toHaveTextContent(
+			JSON.stringify([
+				{ value: BOOKS.id, label: 'Books' },
+				{ value: TOYS.id, label: 'Toys' },
+			]),
+		);
+	});
 });
 
 describe('wishlist grouping preference default (#363)', () => {

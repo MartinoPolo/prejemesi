@@ -388,6 +388,95 @@ describe.skipIf(!DB_READY)('chat turns', () => {
 		await getDb().delete(chatMessage).where(eq(chatMessage.sessionId, session.id));
 	});
 
+	it('refuses every user’s turns once all users together reach the global daily cap', async () => {
+		const { session: managerSession } = await newChat();
+		const { session: recipientSession } = await newChat(RECIPIENT, { sharedAt: new Date() });
+		const request = { kind: CHAT_TURN_KIND.message, text: 'Ahoj' } as const;
+		const now = new Date();
+		const remaining =
+			CHAT_LIMITS.globalMessagesPerDay -
+			(await countUserMessagesSince(chatDayStart(now), null));
+		const fillMessages = (sessionId: string, count: number) =>
+			getDb()
+				.insert(chatMessage)
+				.values(
+					Array.from({ length: count }, () => ({
+						sessionId,
+						role: CHAT_ROLE.user,
+						content: [{ type: CHAT_BLOCK.text, text: 'Ahoj' } as const],
+						createdAt: now,
+					})),
+				);
+		try {
+			await fillMessages(managerSession.id, Math.max(remaining - 1, 0));
+			expect(await chatAvailability(RECIPIENT, now)).toBe(CHAT_AVAILABILITY.available);
+
+			await fillMessages(managerSession.id, 1);
+
+			expect(await chatAvailability(RECIPIENT, now)).not.toBe(CHAT_AVAILABILITY.available);
+			expect(await chatAvailability(MANAGER, now)).not.toBe(CHAT_AVAILABILITY.available);
+			const refused = await postTurn(RECIPIENT, recipientSession.id, request);
+			expect(refused.status).toBe(403);
+			expect(await storedMessages(recipientSession.id)).toHaveLength(0);
+		} finally {
+			await getDb().delete(chatMessage).where(eq(chatMessage.sessionId, managerSession.id));
+		}
+	});
+
+	it('turns a bulk edit of several gifts into one proposal the user reviews', async () => {
+		const { wishlist, session } = await newChat();
+		const bikeId = await createGiftFixture(wishlist.id, { name: 'Kolo' });
+		const ballId = await createGiftFixture(wishlist.id, { name: 'Míč' });
+		const bookId = await createGiftFixture(wishlist.id, { name: 'Kniha' });
+		const provider = scriptedProvider([
+			[
+				{
+					type: CHAT_MODEL_EVENT.toolCall,
+					id: 'bulk',
+					name: 'bulkUpdateGifts',
+					input: {
+						wishlistId: wishlist.id,
+						giftIds: [bikeId, ballId],
+						action: 'received',
+						received: true,
+					},
+				},
+				{ type: CHAT_MODEL_EVENT.stop, reason: CHAT_STOP_REASON.toolUse },
+			],
+			[
+				{ type: CHAT_MODEL_EVENT.textDelta, text: 'Navrhuji to.' },
+				{ type: CHAT_MODEL_EVENT.stop, reason: CHAT_STOP_REASON.endTurn },
+			],
+		]);
+
+		const events = await sendMessage(
+			MANAGER,
+			session.id,
+			'Označte kolo a míč jako obdržené',
+			provider,
+		);
+
+		const proposals = events.filter((event) => event.type === CHAT_STREAM_EVENT.proposal);
+		expect(proposals).toHaveLength(1);
+		const { proposalId, applied } = proposalEvent(events);
+		expect(applied).toBe(false);
+		const proposal = await readProposal(proposalId);
+		expect(proposal.status).toBe(CHANGE_PROPOSAL_STATUS.pending);
+		expect((await readGift(bikeId)).received).toBe(false);
+		expect((await readGift(ballId)).received).toBe(false);
+
+		const result = await applyChangeProposalRows(
+			MANAGER,
+			proposalId,
+			proposal.rows.map((row) => ({ rowId: row.rowId, decision: CHANGE_DECISION.accepted })),
+		);
+
+		expect(result.outcome).toBe('applied');
+		expect((await readGift(bikeId)).received).toBe(true);
+		expect((await readGift(ballId)).received).toBe(true);
+		expect((await readGift(bookId)).received).toBe(false);
+	});
+
 	it('still applies a chat’s proposal while the chat is switched off', async () => {
 		const { wishlist, session } = await newChat();
 		const { proposalId } = proposalEvent(

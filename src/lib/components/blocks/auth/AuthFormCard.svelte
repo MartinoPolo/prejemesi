@@ -81,7 +81,7 @@
 
 		{#if tabs}
 			<nav
-				class="auth-tabs"
+				class="auth-tabs selection-tray-inset"
 				aria-label={m.auth_tabs_label()}
 				{@attach selectionSlide({
 					optionSelector: 'a',
@@ -149,7 +149,6 @@
 	.auth-tabs {
 		display: flex;
 		gap: 4px;
-		padding: 5px;
 		background: var(--surface);
 		border: 2.5px solid var(--ink);
 		border-radius: 12px;
@@ -187,7 +186,7 @@
 	.tab-indicator {
 		background: var(--card);
 		border-color: var(--ink);
-		box-shadow: var(--elevation-compact);
+		box-shadow: var(--elevation-ordinary);
 	}
 
 	.form-heading {

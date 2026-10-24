@@ -17,7 +17,7 @@
 	import { giftCardVariants } from './gift_card_variants.js';
 	import { GIFT_CARD_CONTROL_SELECTOR } from './gift_card_controls.js';
 	import GiftDescription from './GiftDescription.svelte';
-	import GiftCategoryBadge from './GiftCategoryBadge.svelte';
+	import GiftCategoryBadges from './GiftCategoryBadges.svelte';
 	import GiftPriorityBadge from './GiftPriorityBadge.svelte';
 	import GiftBrowseActions from './GiftBrowseActions.svelte';
 	import GiftLivePreviewBadge from './GiftLivePreviewBadge.svelte';
@@ -46,14 +46,12 @@
 		moreOpen = false,
 		moreSurface = 'menu',
 		showPriority = true,
-		showCategory,
 		livePreview,
 	}: GiftCardProps = $props();
 
 	const previewMarks = $derived(giftLivePreviewMarks(livePreview));
-	const visibleCategory = $derived((showCategory ?? !contextualMode) ? gift.category : null);
 	const showsTopOverlays = $derived(
-		!contextualMode || visibleCategory != null || previewMarks.proposed,
+		!contextualMode || gift.categories.length > 0 || previewMarks.proposed,
 	);
 
 	const giftsContext = useGifts();
@@ -117,9 +115,13 @@
 		class="gift-card-top-overlays absolute top-2 right-2 z-20 flex items-start gap-2"
 		data-gift-card-top-overlays
 	>
-		{#if visibleCategory != null}
+		{#if gift.categories.length > 0}
 			<div class="min-w-0 flex-1" data-gift-card-category-zone>
-				<GiftCategoryBadge category={visibleCategory} {isDimmed} />
+				<GiftCategoryBadges
+					categories={gift.categories}
+					{isDimmed}
+					interactive={!contextualMode}
+				/>
 			</div>
 		{/if}
 		{#if presentation.showLike && visitorGift}
@@ -163,7 +165,9 @@
 				></div>
 			{/if}
 
-			<div class="absolute inset-x-0 top-0 bottom-[2.5px] flex items-center justify-center">
+			<div
+				class="absolute inset-x-0 top-0 bottom-(--border-w) flex items-center justify-center"
+			>
 				<div class={styles.cropComposition()} data-testid="gift-card-crop-composition">
 					<GiftImage
 						class="size-full rounded-none bg-transparent max-sm:[&_img]:p-0"

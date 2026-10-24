@@ -49,6 +49,8 @@ export function makeVisitorGift(overrides: Partial<GiftForVisitor> = {}): GiftFo
 		priorityLevelId: null,
 		priorityLabel: null,
 		prioritySortOrder: null,
+		categoryIds: [],
+		categories: [],
 		likeCount: 0,
 		reservedCount: 1,
 		isFullyReserved: false,

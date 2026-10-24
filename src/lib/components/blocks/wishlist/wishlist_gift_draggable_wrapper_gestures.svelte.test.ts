@@ -21,7 +21,19 @@ afterEach(() => {
 	vi.useRealTimers();
 });
 
-describe('WishlistGiftDraggableWrapper — touch gestures', () => {
+function pointerEvent(type: string, pointerType = 'mouse', init: PointerEventInit = {}) {
+	return new PointerEvent(type, {
+		bubbles: true,
+		cancelable: true,
+		pointerId: 1,
+		pointerType,
+		clientX: 80,
+		clientY: 80,
+		...init,
+	});
+}
+
+describe('WishlistGiftDraggableWrapper — pointer gestures', () => {
 	it('leaves touch scrolling unblocked outside the reorder handle', async () => {
 		const { container, unmount } = await render(WishlistGiftDraggableWrapperTestHost, {
 			...baseProps,
@@ -115,6 +127,132 @@ describe('WishlistGiftDraggableWrapper — touch gestures', () => {
 		expect(openDetail).toHaveBeenCalledTimes(1);
 		await unmount();
 	});
+
+	it.each(['mouse', 'pen'])(
+		'starts a reorder drag when a %s press lands anywhere on the card (#530)',
+		async (pointerType) => {
+			const startReorder = vi.fn();
+			const { container, unmount } = await render(WishlistGiftDraggableWrapperTestHost, {
+				...baseProps,
+				index: 1,
+				reorderEnabled: true,
+				onreorderpointerdown: startReorder,
+			});
+			const down = pointerEvent('pointerdown', pointerType);
+
+			container.querySelector('[data-testid="image-placeholder"]')!.dispatchEvent(down);
+
+			expect(startReorder).toHaveBeenCalledExactlyOnceWith(down, 1);
+			await unmount();
+		},
+	);
+
+	it('starts one drag, not two, when a mouse press lands on the grip (#530)', async () => {
+		const startReorder = vi.fn();
+		const { container, unmount } = await render(WishlistGiftDraggableWrapperTestHost, {
+			...baseProps,
+			reorderEnabled: true,
+			onreorderpointerdown: startReorder,
+		});
+
+		container
+			.querySelector('[data-gift-reorder-grip]')!
+			.dispatchEvent(pointerEvent('pointerdown'));
+
+		expect(startReorder).toHaveBeenCalledOnce();
+		await unmount();
+	});
+
+	it('does not drag from a press outside reorder mode', async () => {
+		const startReorder = vi.fn();
+		const { container, unmount } = await render(WishlistGiftDraggableWrapperTestHost, {
+			...baseProps,
+			reorderEnabled: false,
+			onreorderpointerdown: startReorder,
+		});
+
+		container
+			.querySelector('[data-testid="card-placeholder"]')!
+			.dispatchEvent(pointerEvent('pointerdown'));
+
+		expect(startReorder).not.toHaveBeenCalled();
+		await unmount();
+	});
+
+	it('starts a touch drag outside the grip only after a 300 ms long press (#530)', async () => {
+		vi.useFakeTimers();
+		const startReorder = vi.fn();
+		const { container, unmount } = await render(WishlistGiftDraggableWrapperTestHost, {
+			...baseProps,
+			index: 1,
+			reorderEnabled: true,
+			onreorderpointerdown: startReorder,
+		});
+		const down = pointerEvent('pointerdown', 'touch');
+
+		container.querySelector('[data-testid="card-placeholder"]')!.dispatchEvent(down);
+		vi.advanceTimersByTime(299);
+		expect(startReorder).not.toHaveBeenCalled();
+		vi.advanceTimersByTime(1);
+
+		expect(down.defaultPrevented).toBe(false);
+		expect(startReorder).toHaveBeenCalledExactlyOnceWith(down, 1);
+		await unmount();
+	});
+
+	it.each([
+		[
+			'moves past the long-press tolerance',
+			(wrapper: HTMLElement) => {
+				wrapper.dispatchEvent(pointerEvent('pointermove', 'touch', { clientY: 100 }));
+			},
+		],
+		['scrolls the page', () => document.dispatchEvent(new Event('scroll'))],
+		[
+			'lifts before the long press completes',
+			(wrapper: HTMLElement) => {
+				wrapper.dispatchEvent(pointerEvent('pointerup', 'touch'));
+			},
+		],
+	])('keeps a touch that %s from dragging the card (#530)', async (_name, interrupt) => {
+		vi.useFakeTimers();
+		const startReorder = vi.fn();
+		const { container, unmount } = await render(WishlistGiftDraggableWrapperTestHost, {
+			...baseProps,
+			reorderEnabled: true,
+			onreorderpointerdown: startReorder,
+		});
+		const wrapper = container.querySelector('[data-gift-item]') as HTMLElement;
+
+		wrapper.dispatchEvent(pointerEvent('pointerdown', 'touch'));
+		interrupt(wrapper);
+		vi.advanceTimersByTime(600);
+
+		expect(startReorder).not.toHaveBeenCalled();
+		await unmount();
+	});
+
+	it.each([
+		{ reorderEnabled: true, draggedGiftId: 'gift-alpha', prevented: true },
+		{ reorderEnabled: true, draggedGiftId: null, prevented: false },
+		{ reorderEnabled: true, draggedGiftId: 'gift-beta', prevented: false },
+		{ reorderEnabled: false, draggedGiftId: null, prevented: false },
+	])(
+		'cancels touch scrolling only while this card is dragged: $draggedGiftId in reorder $reorderEnabled (#530)',
+		async ({ reorderEnabled, draggedGiftId, prevented }) => {
+			const { container, unmount } = await render(WishlistGiftDraggableWrapperTestHost, {
+				...baseProps,
+				reorderEnabled,
+				draggedGiftId,
+			});
+			const move = new TouchEvent('touchmove', { bubbles: true, cancelable: true });
+
+			container.querySelector('[data-gift-item]')!.dispatchEvent(move);
+
+			expect(move.defaultPrevented).toBe(prevented);
+			await unmount();
+		},
+	);
 
 	it('cancels only the pending long press when touch scrolling starts', async () => {
 		vi.useFakeTimers();

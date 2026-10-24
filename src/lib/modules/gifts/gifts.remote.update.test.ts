@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
 	serverErrorFixture as SERVER_ERROR,
 	singleFlightRefreshFixture as singleFlightRefresh,
-	getGiftCategorySettingsRowsFixture as getGiftCategorySettingsRows,
+	getGiftCategoriesFixture as getGiftCategories,
 	mockDbInstance,
 	mockDeleteObjects,
 	WISHLIST_ID,
@@ -38,21 +38,18 @@ describe('updateGift', () => {
 
 		it('refreshes category counts when clearing a category', async () => {
 			mockDbInstance.pushResult([
-				makeGiftRow({ createdAt: AFTER_SHARING, categoryId: 'category-books' }),
+				makeGiftRow({ createdAt: AFTER_SHARING, categoryIds: ['category-books'] }),
 			]);
 			mockDbInstance.pushResult([makeWishlistRow({ sharedAt: null })]);
 			// locked gift re-read
 			mockDbInstance.pushResult([
-				makeGiftRow({ createdAt: AFTER_SHARING, categoryId: 'category-books' }),
+				makeGiftRow({ createdAt: AFTER_SHARING, categoryIds: ['category-books'] }),
 			]);
-			mockDbInstance.pushResult([{ id: GIFT_ID, categoryId: null }]);
+			mockDbInstance.pushResult([{ id: GIFT_ID, categoryIds: [] }]);
 
 			await callUpdateGift(makeRecipientAuthContext(), { id: GIFT_ID, categoryId: null });
 
-			expect(singleFlightRefresh).toHaveBeenCalledWith(
-				getGiftCategorySettingsRows,
-				WISHLIST_ID,
-			);
+			expect(singleFlightRefresh).toHaveBeenCalledWith(getGiftCategories, WISHLIST_ID);
 		});
 
 		it('persists updated image metadata', async () => {
@@ -274,21 +271,18 @@ describe('updateGift', () => {
 
 		it('refreshes category counts when the pre-share edit path clears a category', async () => {
 			mockDbInstance.pushResult([
-				makeGiftRow({ createdAt: BEFORE_SHARING, categoryId: 'category-books' }),
+				makeGiftRow({ createdAt: BEFORE_SHARING, categoryIds: ['category-books'] }),
 			]);
 			mockDbInstance.pushResult([makeWishlistRow({ sharedAt: SHARED_AT })]);
 			// locked gift re-read
 			mockDbInstance.pushResult([
-				makeGiftRow({ createdAt: BEFORE_SHARING, categoryId: 'category-books' }),
+				makeGiftRow({ createdAt: BEFORE_SHARING, categoryIds: ['category-books'] }),
 			]);
-			mockDbInstance.pushResult([{ id: GIFT_ID, categoryId: null }]);
+			mockDbInstance.pushResult([{ id: GIFT_ID, categoryIds: [] }]);
 
 			await callUpdateGift(makeRecipientAuthContext(), { id: GIFT_ID, categoryId: null });
 
-			expect(singleFlightRefresh).toHaveBeenCalledWith(
-				getGiftCategorySettingsRows,
-				WISHLIST_ID,
-			);
+			expect(singleFlightRefresh).toHaveBeenCalledWith(getGiftCategories, WISHLIST_ID);
 		});
 
 		it('allows raising quantity (3 -> 5)', async () => {

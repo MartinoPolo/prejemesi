@@ -46,7 +46,6 @@ export interface WishlistGiftCollectionProps {
 	hascontextactions?: (gift: GiftByRole) => boolean;
 	activeContextGiftId?: string | null;
 	contextSurface?: 'menu' | 'dialog';
-	showPriority?: boolean;
 	/** The open chat's proposals as they are decided: edited, new and deleted gifts. */
 	livePreviews?: GiftLivePreviews;
 }
@@ -110,7 +109,6 @@ export function createWishlistGiftCollectionView(
 			role: collection.role,
 			isArchived: collection.isArchived,
 			hideReservationState: collection.hideReservationState,
-			...reorderView.groupBadgeProps(gift.id, collection.showPriority ?? true),
 			contextualMode: selectionMode || collection.reorderEnabled,
 			onreserve: collection.onreserve,
 			onunreserve: collection.onunreserve,

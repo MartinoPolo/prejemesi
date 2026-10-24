@@ -15,7 +15,7 @@
 	import GiftDescription from './GiftDescription.svelte';
 	import GiftBrowseActions from './GiftBrowseActions.svelte';
 	import GiftPriorityBadge from './GiftPriorityBadge.svelte';
-	import GiftCategoryBadge from './GiftCategoryBadge.svelte';
+	import GiftCategoryBadges from './GiftCategoryBadges.svelte';
 	import GiftLinkList from './GiftLinkList.svelte';
 	import GiftLivePreviewBadge from './GiftLivePreviewBadge.svelte';
 	import { GIFT_LIVE_PREVIEW } from '$lib/components/blocks/change-proposals/change_row_model.js';
@@ -39,15 +39,11 @@
 		moreOpen = false,
 		moreSurface = 'menu',
 		showPriority = true,
-		showCategory,
 		livePreview,
 	}: GiftPresentationProps = $props();
 
-	const categoryVisible = $derived(showCategory ?? !contextualMode);
 	const previewMarks = $derived(giftLivePreviewMarks(livePreview));
-	const showsTopRow = $derived(
-		(gift.category != null && categoryVisible) || previewMarks.proposed,
-	);
+	const showsTopRow = $derived(gift.categories.length > 0 || previewMarks.proposed);
 
 	const giftsContext = useGifts();
 
@@ -227,13 +223,17 @@
 			/>
 			{#if showsTopRow}
 				<div
-					class="gift-list-top-row absolute top-2 right-2 z-20 flex min-w-0 flex-wrap items-start gap-1"
+					class="gift-list-top-row absolute right-2 z-20 flex min-w-0 flex-wrap items-start gap-1"
 				>
 					{#if previewMarks.proposed && livePreview !== undefined}
 						<GiftLivePreviewBadge kind={livePreview} />
 					{/if}
-					{#if gift.category != null && categoryVisible}
-						<GiftCategoryBadge category={gift.category} {isDimmed} />
+					{#if gift.categories.length > 0}
+						<GiftCategoryBadges
+							categories={gift.categories}
+							{isDimmed}
+							interactive={!contextualMode}
+						/>
 					{/if}
 				</div>
 			{/if}
@@ -262,7 +262,7 @@
 			class="gift-list-content flex min-w-0 flex-col gap-0.5 self-stretch sm:gap-1"
 		>
 			<div
-				class="flex min-w-0 items-start gap-1.5 font-heading text-[1rem] leading-[1.3] sm:text-[1.5rem]"
+				class="flex min-w-0 items-start gap-1.5 [font-family:var(--wishlist-gift-title-font,var(--font-head))] text-[1rem] leading-[1.3] sm:text-[1.5rem]"
 			>
 				<h3
 					class={cn(
@@ -354,6 +354,7 @@
 	}
 
 	.gift-list-top-row {
+		top: var(--gift-context-top-clearance, 0.5rem);
 		left: var(--gift-context-leading-clearance, 0.5rem);
 	}
 

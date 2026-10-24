@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { SvelteMap } from 'svelte/reactivity';
+import { SvelteSet } from 'svelte/reactivity';
 import { CHANGE_DECISION } from '$lib/modules/change_proposals/change_field_decisions.js';
 import type { ChangeProposalView } from '$lib/modules/change_proposals/types.js';
 import type { GiftForRecipient } from '$lib/modules/gifts/types.js';
@@ -8,6 +8,7 @@ import {
 	NO_GIFT_LIVE_PREVIEWS,
 	giftLivePreviews,
 	previewedGift,
+	type DecidingProposal,
 	type DecidingProposalRegistry,
 } from './gift_live_preview.js';
 import { ProposalDecisions } from './proposal_decisions.svelte.js';
@@ -26,10 +27,14 @@ function decide(proposal: ChangeProposalView = changeProposal()) {
 	});
 }
 
+function registration(proposalId: string, decisions: ProposalDecisions): DecidingProposal {
+	return { proposalId, entries: () => decisions.entries };
+}
+
 function previewsOf(...decisions: ProposalDecisions[]) {
-	const registry: DecidingProposalRegistry = new SvelteMap();
+	const registry: DecidingProposalRegistry = new SvelteSet();
 	decisions.forEach((proposalDecisions, index) => {
-		registry.set(`proposal-${index + 1}`, () => proposalDecisions.entries);
+		registry.add(registration(`proposal-${index + 1}`, proposalDecisions));
 	});
 	return giftLivePreviews(registry);
 }
@@ -93,8 +98,24 @@ describe('gift live preview while a proposal is decided', () => {
 		expect(new Set(previews.creations.map((creation) => creation.key)).size).toBe(2);
 	});
 
+	it('keeps previewing a proposal whose live and stored cards overlap until both are gone', () => {
+		const registry: DecidingProposalRegistry = new SvelteSet();
+		const storedCard = registration('proposal-1', decide());
+		const liveCard = registration('proposal-1', decide());
+		registry.add(storedCard);
+		registry.add(liveCard);
+
+		expect(giftLivePreviews(registry).creations).toHaveLength(1);
+
+		registry.delete(liveCard);
+		expect(giftLivePreviews(registry).creations).toHaveLength(1);
+
+		registry.delete(storedCard);
+		expect(giftLivePreviews(registry)).toBe(NO_GIFT_LIVE_PREVIEWS);
+	});
+
 	it('previews nothing while no proposal is being decided', () => {
-		expect(giftLivePreviews(new SvelteMap())).toBe(NO_GIFT_LIVE_PREVIEWS);
+		expect(giftLivePreviews(new SvelteSet())).toBe(NO_GIFT_LIVE_PREVIEWS);
 	});
 });
 

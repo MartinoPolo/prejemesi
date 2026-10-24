@@ -6,6 +6,7 @@ import {
 	resolveGiftTargetCrop,
 	mergeGiftTargetCrops,
 	buildManualGiftTargets,
+	ownGiftTargets,
 	cropRectToFocalZoom,
 	FULL_CROP_RECT,
 	type ImageFrameProps,
@@ -17,7 +18,7 @@ import {
 	type GiftEditorCropTarget,
 	type ImageCropRect,
 } from './types.js';
-import { GIFT_CROP_TARGET_SPECS } from './crop_targets.js';
+import { GIFT_CROP_TARGET_SPECS, cropTargetSurfaceSize } from './crop_targets.js';
 import { IMAGE_FIT_MODES } from '$lib/components/derived/image-frame/index.js';
 
 describe('imageMetaToFrameProps', () => {
@@ -329,59 +330,83 @@ describe('mergeGiftTargetCrops', () => {
 	});
 });
 
-describe('buildManualGiftTargets (session independence + WYSIWYG pin-all-on-edit)', () => {
+describe('buildManualGiftTargets (owned targets pinned, the rest inherit)', () => {
 	const squareRect: ImageCropRect = { x: 0.1, y: 0.1, w: 0.5, h: 0.5 };
 	const thumbRect: ImageCropRect = { x: 0.25, y: 0, w: 0.5, h: 1 };
 	const sessionRects: Record<GiftEditorCropTarget, ImageCropRect> = {
 		square: squareRect,
 		thumb: thumbRect,
 	};
+	const pinned = (rect: ImageCropRect) => ({
+		cropRect: { ...rect },
+		...cropRectToFocalZoom(rect),
+	});
+	const bothOwned = new Set<GiftEditorCropTarget>(['square', 'thumb']);
 
 	it('passes existing targets through verbatim when the session has no manual edits', () => {
 		const existing = {
 			card: { cropRect: FULL_CROP_RECT, focal: { x: 50, y: 50 }, zoom: 1 },
 		};
-		expect(buildManualGiftTargets(sessionRects, false, existing)).toEqual(
+		expect(buildManualGiftTargets(sessionRects, bothOwned, false, existing)).toEqual(
 			mergeGiftTargetCrops(existing, {}),
 		);
-		// No persisted targets and no session edits: still a pass-through (undefined).
-		expect(buildManualGiftTargets(sessionRects, false, undefined)).toBeUndefined();
+		expect(buildManualGiftTargets(sessionRects, bothOwned, false, undefined)).toBeUndefined();
 	});
 
-	it('pins every editor target from its own session rect once any edit exists', () => {
-		const result = buildManualGiftTargets(sessionRects, true, undefined);
-		expect(result?.square).toEqual({
-			cropRect: { ...squareRect },
-			...cropRectToFocalZoom(squareRect),
-		});
-		// The untouched `thumb` target is pinned from ITS OWN session rect – it must
-		// reconstruct the framing its own preview tile displayed, never the square
-		// target's crop (session independence).
-		expect(result?.thumb).toEqual({
-			cropRect: { ...thumbRect },
-			...cropRectToFocalZoom(thumbRect),
-		});
-		expect(result?.thumb?.focal).not.toEqual(result?.square?.focal);
+	it('pins each owned target from its own session rect', () => {
+		const result = buildManualGiftTargets(sessionRects, bothOwned, true, undefined);
+		expect(result).toEqual({ square: pinned(squareRect), thumb: pinned(thumbRect) });
 	});
 
-	it('never inherits existing persisted targets for a replaced image', () => {
-		// GiftDetailForm.buildTargets passes `undefined` in place of the persisted
-		// targets once the source image was replaced; the pin-all branch must not
-		// resurrect any of the old target keys (e.g. a legacy `card`) regardless.
-		const result = buildManualGiftTargets(sessionRects, true, undefined);
-		expect(Object.keys(result ?? {}).sort()).toEqual(
-			[...GIFT_EDITOR_CROP_TARGET_VALUES].sort(),
+	it('leaves a thumbnail without its own crop to follow the card crop (#533)', () => {
+		const existing = { thumb: pinned(thumbRect) };
+		const result = buildManualGiftTargets(
+			sessionRects,
+			new Set<GiftEditorCropTarget>(['square']),
+			true,
+			existing,
 		);
+		expect(result).toEqual({ square: pinned(squareRect) });
+		expect(resolveGiftTargetCrop(result, 'thumb')).toEqual(result?.square);
+	});
+
+	it('keeps the automatic card framing when only the thumbnail owns a crop', () => {
+		const result = buildManualGiftTargets(
+			sessionRects,
+			new Set<GiftEditorCropTarget>(['thumb']),
+			true,
+			undefined,
+		);
+		expect(result).toEqual({ thumb: pinned(thumbRect) });
 	});
 
 	it('drops the legacy card fallback when pinning over an existing card target (#163 cleanup)', () => {
 		const existing = {
 			card: { cropRect: FULL_CROP_RECT, focal: { x: 50, y: 50 }, zoom: 1 },
 		};
-		const result = buildManualGiftTargets(sessionRects, true, existing);
+		const result = buildManualGiftTargets(sessionRects, bothOwned, true, existing);
 		expect(result).not.toHaveProperty('card');
-		expect(result?.square).toBeDefined();
-		expect(result?.thumb).toBeDefined();
+		expect(result?.square).toEqual(pinned(squareRect));
+	});
+});
+
+describe('ownGiftTargets', () => {
+	const crop = { cropRect: FULL_CROP_RECT, focal: { x: 50, y: 50 }, zoom: 1 };
+
+	it('reports no own crops for a gift without targets', () => {
+		expect([...ownGiftTargets(undefined)]).toEqual([]);
+	});
+
+	it('treats a retired card crop as the card target own crop', () => {
+		expect([...ownGiftTargets({ card: crop })]).toEqual(['square']);
+	});
+
+	it('reports a thumbnail as own only when it has a persisted crop', () => {
+		expect([...ownGiftTargets({ square: crop })]).toEqual(['square']);
+		expect([...ownGiftTargets({ square: crop, thumb: crop })].sort()).toEqual([
+			'square',
+			'thumb',
+		]);
 	});
 });
 
@@ -406,6 +431,24 @@ describe('thumb crop target spec + schema (#189)', () => {
 		};
 		const parsed = v.parse(ImageMetadataSchema, meta);
 		expect(parsed.targets?.thumb?.focal).toEqual({ x: 30, y: 40 });
+	});
+});
+
+describe('cropTargetSurfaceSize (crop window at true size, #533)', () => {
+	it('uses the desktop surface size outside the compact viewport', () => {
+		expect(cropTargetSurfaceSize(GIFT_CROP_TARGET_SPECS.square, false)).toEqual({
+			width: GIFT_CROP_TARGET_SPECS.square.realWidth,
+			height: GIFT_CROP_TARGET_SPECS.square.realHeight,
+		});
+	});
+
+	it('uses the phone surface size in the compact viewport, keeping the target aspect', () => {
+		for (const target of GIFT_EDITOR_CROP_TARGET_VALUES) {
+			const spec = GIFT_CROP_TARGET_SPECS[target];
+			const size = cropTargetSurfaceSize(spec, true);
+			expect(size.width).toBe(spec.compactRealWidth);
+			expect(size.width / size.height).toBeCloseTo(spec.aspect, 1);
+		}
 	});
 });
 

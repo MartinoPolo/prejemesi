@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { createTestUser } from './fixtures/test-data.js';
 import { registerAndGetPage } from './fixtures/auth-helpers.js';
 import { createWishlistAndNavigate } from './fixtures/wishlist-helpers.js';
+import { addCategoryDraft, categoryRow } from './wishlist-settings.helpers.js';
 
 const SAMPLE_IMAGE_PATH = fileURLToPath(new URL('./fixtures/sample-image.jpg', import.meta.url));
 
@@ -31,8 +32,7 @@ test.describe('wishlist settings global save', () => {
 		await dialog.getByLabel('Název').fill('Čtyři uložené oblasti');
 		await dialog.getByLabel('Popis').fill('Globálně uložený popis');
 		await dialog.getByRole('tab', { name: 'Kategorie' }).click();
-		await dialog.getByPlaceholder('Vlastní kategorie').fill('Globální kategorie');
-		await dialog.getByRole('button', { name: 'Vytvořit kategorii' }).click();
+		await addCategoryDraft(dialog, 'Globální kategorie');
 		await dialog.getByRole('tab', { name: 'Vzhled' }).click();
 		await dialog.getByRole('button', { name: 'Oceán' }).click();
 		await dialog.getByRole('tab', { name: 'Obrázek a ořezy' }).click();
@@ -51,12 +51,7 @@ test.describe('wishlist settings global save', () => {
 		await expect(dialog.getByLabel('Název')).toHaveValue('Čtyři uložené oblasti');
 		await expect(dialog.getByLabel('Popis')).toHaveValue('Globálně uložený popis');
 		await dialog.getByRole('tab', { name: 'Kategorie' }).click();
-		const customSection = dialog
-			.getByRole('heading', { name: 'Vlastní kategorie' })
-			.locator('..');
-		await expect(customSection.locator('input:not([type="color"])')).toHaveValue(
-			'Globální kategorie',
-		);
+		await expect(categoryRow(dialog, 'Globální kategorie')).toBeVisible();
 		await dialog.getByRole('tab', { name: 'Vzhled' }).click();
 		await expect(dialog.getByRole('button', { name: 'Oceán' })).toHaveAttribute(
 			'aria-pressed',

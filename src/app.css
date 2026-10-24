@@ -1,6 +1,8 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
 @import 'shadcn-svelte/tailwind.css';
+@import './lib/theme/wishlist_themes.css';
+@import './lib/theme/wishlist_scope.css';
 
 /* ═══════════════════════════════════════════════════════════════════════
    Redesign 2026 „Anime Sky" — design tokens
@@ -81,6 +83,83 @@
 	descent-override: 28.16%;
 	line-gap-override: 0%;
 	size-adjust: 104.76%;
+}
+
+/* Wishlist heading fonts (#535). Only a wishlist whose style uses them renders them, so
+   @font-face laziness keeps every other page from downloading these files. */
+
+/* Fraunces Variable – latin */
+@font-face {
+	font-family: 'Fraunces Variable';
+	font-style: normal;
+	font-display: swap;
+	font-weight: 100 900;
+	src: url('../node_modules/@fontsource-variable/fraunces/files/fraunces-latin-wght-normal.woff2')
+		format('woff2-variations');
+	unicode-range:
+		U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308,
+		U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* Fraunces Variable – latin-ext */
+@font-face {
+	font-family: 'Fraunces Variable';
+	font-style: normal;
+	font-display: swap;
+	font-weight: 100 900;
+	src: url('../node_modules/@fontsource-variable/fraunces/files/fraunces-latin-ext-wght-normal.woff2')
+		format('woff2-variations');
+	unicode-range:
+		U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329,
+		U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113,
+		U+2C60-2C7F, U+A720-A7FF;
+}
+
+/* Fraunces fallback – metric-adjusted Georgia to limit CLS */
+@font-face {
+	font-family: 'Fraunces Fallback';
+	src: local('Georgia');
+	ascent-override: 92%;
+	descent-override: 24%;
+	line-gap-override: 0%;
+	size-adjust: 106%;
+}
+
+/* Caveat Variable – latin */
+@font-face {
+	font-family: 'Caveat Variable';
+	font-style: normal;
+	font-display: swap;
+	font-weight: 400 700;
+	src: url('../node_modules/@fontsource-variable/caveat/files/caveat-latin-wght-normal.woff2')
+		format('woff2-variations');
+	unicode-range:
+		U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308,
+		U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* Caveat Variable – latin-ext */
+@font-face {
+	font-family: 'Caveat Variable';
+	font-style: normal;
+	font-display: swap;
+	font-weight: 400 700;
+	src: url('../node_modules/@fontsource-variable/caveat/files/caveat-latin-ext-wght-normal.woff2')
+		format('woff2-variations');
+	unicode-range:
+		U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329,
+		U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113,
+		U+2C60-2C7F, U+A720-A7FF;
+}
+
+/* Caveat fallback – metric-adjusted Arial (Caveat is far narrower) to limit CLS */
+@font-face {
+	font-family: 'Caveat Fallback';
+	src: local('Arial');
+	ascent-override: 118%;
+	descent-override: 37%;
+	line-gap-override: 0%;
+	size-adjust: 80%;
 }
 
 @custom-variant dark (&:is(.dark *));
@@ -325,6 +404,16 @@
 	--depth-clearance: var(--elevation-ordinary-offset);
 }
 
+/* A tray around a raised selected face (tabs) counts the face's Ink/Black ordinary shadow as part of
+   the face: its shadowed edges add `--depth-clearance`, so every visible gap equals the inset. */
+.selection-tray-inset {
+	--selection-tray-inset: 5px;
+
+	padding: var(--selection-tray-inset);
+	padding-block-end: calc(var(--selection-tray-inset) + var(--depth-clearance));
+	padding-inline-end: calc(var(--selection-tray-inset) + var(--depth-clearance));
+}
+
 .resting-shadow-nesting {
 	--gift-content-inset: max(
 		0px,
@@ -405,6 +494,14 @@
 	--foreground: var(--p-ink);
 	--card: #fff;
 	--card-foreground: var(--p-ink);
+
+	/* Dark crop-editor stage: photos read truer on a dark surround in both modes. */
+	--crop-stage: color-mix(in oklab, var(--p-ink) 82%, black);
+
+	/* Wishlist cards carry their own palette (#532): a tinted body with a primary title plate. */
+	--wishlist-card-body: color-mix(in oklab, var(--p-brand) 17%, var(--card));
+	--wishlist-card-plate: var(--primary);
+	--wishlist-card-plate-foreground: var(--primary-foreground);
 	--popover: #fff;
 	--popover-foreground: var(--p-ink);
 	--primary: var(--p-primary);
@@ -546,6 +643,8 @@
 	--foreground: var(--ink);
 	--card: color-mix(in oklab, var(--p-deep) 16%, #13161c);
 	--card-foreground: var(--ink);
+	--crop-stage: color-mix(in oklab, var(--p-deep) 8%, #050608);
+	--wishlist-card-body: color-mix(in oklab, var(--p-brand) 20%, var(--card));
 	--popover: var(--card);
 	--popover-foreground: var(--ink);
 	--primary: color-mix(in oklab, var(--p-brand) 60%, #202630);
@@ -891,6 +990,9 @@
 	--color-foreground: var(--foreground);
 	--color-card: var(--card);
 	--color-card-foreground: var(--card-foreground);
+	--color-wishlist-card-body: var(--wishlist-card-body);
+	--color-wishlist-card-plate: var(--wishlist-card-plate);
+	--color-wishlist-card-plate-foreground: var(--wishlist-card-plate-foreground);
 	--color-popover: var(--popover);
 	--color-popover-foreground: var(--popover-foreground);
 	--color-primary: var(--primary);
@@ -947,6 +1049,7 @@
 
 	/* Anime-sky tokens as Tailwind utilities */
 	--color-ink: var(--ink);
+	--color-crop-stage: var(--crop-stage);
 	--color-ink-faint: var(--ink-faint);
 	--color-brand: var(--brand);
 	--color-brand-deep: var(--brand-deep);
@@ -1019,7 +1122,7 @@
 }
 
 main.app-content {
-	container-type: inline-size;
+	container: app-content / inline-size;
 }
 
 @layer base {

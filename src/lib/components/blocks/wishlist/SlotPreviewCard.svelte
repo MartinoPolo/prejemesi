@@ -19,6 +19,8 @@
 		themeEmoji: string;
 		/** Marks this tile as the slot currently being edited. */
 		active?: boolean;
+		/** Framing status chip (#533), e.g. the slot's mode or its manual crop. */
+		status?: string | null;
 		onclick?: () => void;
 		class?: string;
 	}
@@ -30,6 +32,7 @@
 		frame,
 		themeEmoji,
 		active = false,
+		status = null,
 		onclick,
 		class: className,
 	}: Props = $props();
@@ -62,10 +65,21 @@ surface will use. Clicking selects the slot for editing.
 	>
 		<WishlistSlotImage class="absolute inset-0" {src} {frame} {themeEmoji} alt={label} />
 	</div>
-	<span class="flex items-baseline justify-between gap-1 text-xs text-muted-foreground">
-		<span class="truncate">{label}</span>
-		<small class="text-[10px] tabular-nums opacity-70">
+	<!-- Wraps instead of truncating: narrow mobile tiles drop the size below the full name. -->
+	<span
+		class="flex flex-wrap items-baseline justify-between gap-x-1 text-xs text-muted-foreground"
+	>
+		<span class="min-w-0 break-words">{label}</span>
+		<small class="text-[10px] whitespace-nowrap tabular-nums opacity-70">
 			{WISHLIST_SLOT_SPECS[slot].realSizeText}
 		</small>
 	</span>
+	{#if status !== null}
+		<span
+			class="w-fit rounded-full border border-border px-1.5 text-[10px] text-muted-foreground"
+			data-testid="wishlist-preview-status-{slot}"
+		>
+			{status}
+		</span>
+	{/if}
 </button>

@@ -19,14 +19,27 @@ export function resolveGiftContextFocusTarget(
 	if (isUsableFocusTarget(originalAnchor)) {
 		return originalAnchor;
 	}
+	return firstUsableGiftButton(root, giftId, 'button[data-gift-action="more"]');
+}
 
+/** Resolve the reorder grip of the gift whose menu started reorder mode. */
+export function resolveGiftReorderGripFocusTarget(
+	giftId: string,
+	root: ParentNode,
+): HTMLButtonElement | null {
+	return firstUsableGiftButton(root, giftId, 'button[data-gift-reorder-grip]');
+}
+
+function firstUsableGiftButton(
+	root: ParentNode,
+	giftId: string,
+	buttonSelector: string,
+): HTMLButtonElement | null {
 	for (const giftItem of root.querySelectorAll<HTMLElement>('[data-gift-item][data-gift-id]')) {
 		if (giftItem.dataset.giftId !== giftId) {
 			continue;
 		}
-		for (const candidate of giftItem.querySelectorAll<HTMLButtonElement>(
-			'button[data-gift-action="more"]',
-		)) {
+		for (const candidate of giftItem.querySelectorAll<HTMLButtonElement>(buttonSelector)) {
 			if (isUsableFocusTarget(candidate)) {
 				return candidate;
 			}

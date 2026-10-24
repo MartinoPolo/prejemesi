@@ -23,6 +23,14 @@ import { CreateAccessTokenInputSchema } from '$lib/modules/access_tokens/types.j
 import { CHANGE_PROPOSAL_OUTCOME } from '$lib/modules/change_proposals/types.js';
 import { DEFAULT_IMAGE_METADATA } from '$lib/modules/images/types.js';
 import { GIFT_REVISION_RETENTION_MS } from '$lib/server/operations/constants.js';
+import {
+	EXIF_ORIENTATION_ROTATE_CLOCKWISE,
+	identifyingTextIn,
+	structuralJpeg,
+	structuralPng,
+	withExifOrientation,
+	withPhoneMetadata,
+} from '$lib/modules/uploads/image_metadata.test_fixtures.js';
 import { authenticateAccessToken, createAccessToken } from './access_tokens.js';
 import type { AgentCaller } from './agent_caller.js';
 import { submitChangeProposal } from './change_proposal_api.js';
@@ -38,18 +46,15 @@ const HOUR_MS = 60 * 60 * 1000;
 type Row = [operation: string, input: Record<string, unknown>];
 
 function pngResponse(): Response {
-	const bytes = new Uint8Array(29);
-	bytes.set([137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13, 73, 72, 68, 82]);
-	const view = new DataView(bytes.buffer);
-	view.setUint32(16, 320);
-	view.setUint32(20, 240);
-	return new Response(bytes, { headers: { 'content-type': 'image/png' } });
+	return new Response(structuralPng(320, 240), { headers: { 'content-type': 'image/png' } });
 }
 
 const storedObjects = new Set<string>();
+const storedBodies = new Map<string, unknown>();
 const bucket: AgentImageBucket = {
-	put: async (key) => {
+	put: async (key, body) => {
 		storedObjects.add(key);
+		storedBodies.set(key, body);
 		return null;
 	},
 	delete: async (keys) => {
@@ -268,6 +273,36 @@ describe.skipIf(!DB_READY)('agent image references', () => {
 				.from(gift)
 				.where(and(eq(gift.wishlistId, wishlist.id), eq(gift.imageKey, image.objectKey)));
 			expect(giftsWithImage).toHaveLength(1);
+		});
+	});
+
+	describe('stored bytes', () => {
+		it('stores a downloaded phone photo without its GPS and camera metadata, keeping its orientation', async () => {
+			const wishlist = await createWishlistFixture();
+			const token = await agentToken(MANAGER_ID);
+			const photo = withPhoneMetadata(structuralJpeg(), EXIF_ORIENTATION_ROTATE_CLOCKWISE);
+
+			const image = await uploadAgentImage(
+				token,
+				{ wishlistId: wishlist.id, url: 'https://shop.example/foto.jpg' },
+				{
+					fetch: async () =>
+						new Response(photo, { headers: { 'content-type': 'image/jpeg' } }),
+					storage,
+				},
+			);
+
+			const [row] = await getDb()
+				.select()
+				.from(agentImage)
+				.where(eq(agentImage.id, image.reference));
+			const stored = storedBodies.get(row!.objectKey) as Uint8Array;
+			expect(identifyingTextIn(stored)).toEqual([]);
+			expect(stored).toEqual(
+				withExifOrientation(structuralJpeg(), EXIF_ORIENTATION_ROTATE_CLOCKWISE),
+			);
+			expect(image.byteLength).toBe(stored.byteLength);
+			expect(row!.byteLength).toBe(stored.byteLength);
 		});
 	});
 

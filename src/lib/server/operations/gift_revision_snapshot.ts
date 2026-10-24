@@ -16,7 +16,7 @@ export type GiftRevisionSource = Pick<
 	| 'imageMeta'
 	| 'quantity'
 	| 'priorityLevelId'
-	| 'categoryId'
+	| 'categoryIds'
 	| 'received'
 	| 'deletedAt'
 	| 'editedAfterShareAt'
@@ -47,7 +47,7 @@ export function toGiftRevisionSnapshot(giftRow: GiftRevisionSource): GiftRevisio
 		imageMeta: giftRow.imageMeta,
 		quantity: giftRow.quantity,
 		priorityLevelId: giftRow.priorityLevelId,
-		categoryId: giftRow.categoryId,
+		categoryIds: giftRow.categoryIds,
 		received: giftRow.received,
 		deletedAt: isoTimestamp(giftRow.deletedAt),
 		editedAfterShareAt: isoTimestamp(giftRow.editedAfterShareAt),
@@ -55,10 +55,27 @@ export function toGiftRevisionSnapshot(giftRow: GiftRevisionSource): GiftRevisio
 	};
 }
 
+/**
+ * A stored snapshot in the current shape. Snapshots recorded before gifts carried several
+ * categories hold only the single `categoryId`, which becomes the one-item list.
+ */
+export function currentGiftRevisionSnapshot(snapshot: GiftRevisionSnapshot): GiftRevisionSnapshot {
+	const { categoryId, ...current } = snapshot as GiftRevisionSnapshot & {
+		categoryId?: string | null;
+	};
+	if (Array.isArray(current.categoryIds)) {
+		return current;
+	}
+	return { ...current, categoryIds: categoryId == null ? [] : [categoryId] };
+}
+
 /** Structural comparison that ignores jsonb key order and null/undefined differences. */
 export function giftRevisionSnapshotsDiffer(
 	first: GiftRevisionSnapshot | null,
 	second: GiftRevisionSnapshot | null,
 ): boolean {
-	return jsonChanged(first, second);
+	return jsonChanged(
+		first === null ? null : currentGiftRevisionSnapshot(first),
+		second === null ? null : currentGiftRevisionSnapshot(second),
+	);
 }

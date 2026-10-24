@@ -363,8 +363,8 @@ describe.skipIf(!DB_READY)('gift operation core [real DB]', () => {
 					'priorityLevelId',
 					'priorityLabel',
 					'prioritySortOrder',
-					'categoryId',
-					'category',
+					'categoryIds',
+					'categories',
 				].sort(),
 			);
 		});

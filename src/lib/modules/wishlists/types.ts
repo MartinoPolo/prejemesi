@@ -2,6 +2,7 @@ import * as v from 'valibot';
 import type { wishlist, priorityLevel } from '$lib/server/db/wishlist.schema.js';
 import { WishlistImageSlotsSchema, type WishlistImageSlots } from '$lib/modules/images/types.js';
 import { isPalette, type Palette } from '$lib/theme/palettes.js';
+import { WISHLIST_THEME_IDS, type WishlistThemeId } from '$lib/theme/wishlist_themes.js';
 
 /** Full wishlist row from DB */
 export type Wishlist = typeof wishlist.$inferSelect;
@@ -82,6 +83,8 @@ export type CreateWishlistInput =
 			eventDate?: Date | null;
 			theme?: WishlistTheme;
 			palette?: Palette;
+			/** Omitted: inferred from the title or event date; null: explicitly no theme. */
+			themeId?: WishlistThemeId | null;
 			description?: string | null;
 	  }
 	| {
@@ -92,6 +95,8 @@ export type CreateWishlistInput =
 			eventDate?: Date | null;
 			theme?: WishlistTheme;
 			palette?: Palette;
+			/** Omitted: inferred from the title or event date; null: explicitly no theme. */
+			themeId?: WishlistThemeId | null;
 			description?: string | null;
 	  };
 
@@ -104,6 +109,7 @@ const CreateWishlistBaseFields = {
 	eventDate: v.optional(v.nullable(v.date())),
 	theme: v.optional(v.picklist(WISHLIST_THEMES)),
 	palette: v.optional(PaletteSchema),
+	themeId: v.optional(v.nullable(v.picklist(WISHLIST_THEME_IDS))),
 	description: v.optional(v.nullable(v.string())),
 };
 

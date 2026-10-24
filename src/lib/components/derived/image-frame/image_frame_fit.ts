@@ -109,6 +109,38 @@ export function coverWindowLayout(input: {
 }
 
 /**
+ * CSS width the image content actually paints at, which is what a transformation
+ * must cover (issue #523). Cover-crop overscans the box on the axis where the source
+ * is relatively wider and then magnifies by `zoom`; contain never exceeds the box.
+ * Before the box is measured (server render) the surface's typical width stands in;
+ * before the natural ratio is known the box width does.
+ */
+export function paintedImageWidth(input: {
+	fit: ResolvedImageFit;
+	zoom: number;
+	boxWidth: number;
+	boxHeight: number;
+	naturalRatio: number | null;
+	fallbackBoxWidth: number;
+	zoomOutLayout: CoverWindowLayout | null;
+}): number {
+	const { fit, zoom, boxWidth, boxHeight, naturalRatio, fallbackBoxWidth, zoomOutLayout } = input;
+	if (zoomOutLayout !== null) {
+		return zoomOutLayout.width;
+	}
+	const measured = boxWidth > 0 && boxHeight > 0;
+	const frameWidth = measured ? boxWidth : fallbackBoxWidth;
+	if (fit !== IMAGE_FIT_MODES.coverCrop) {
+		return frameWidth;
+	}
+	const coverWidth =
+		measured && naturalRatio !== null && Number.isFinite(naturalRatio) && naturalRatio > 0
+			? Math.max(boxWidth, boxHeight * naturalRatio)
+			: frameWidth;
+	return coverWidth * Math.max(1, zoom);
+}
+
+/**
  * Resolve the background fill in strict priority order (REQ-3):
  *   1. extracted/manual image color (literal)
  *   2. wishlist image-frame token → wishlist surface
@@ -127,8 +159,9 @@ export function resolveFrameFill(options: {
 	}
 	if (tokenScope === IMAGE_TOKEN_SCOPES.wishlist) {
 		// Palette tokens re-derive per subtree ([data-palette] wrapper), so the
-		// wishlist scope resolves through the same semantic token as the global one.
-		return 'var(--secondary)';
+		// wishlist scope resolves through the same semantic token as the global one,
+		// unless the wishlist style picks a white or black mat (#535).
+		return 'var(--wishlist-image-mat, var(--secondary))';
 	}
 	return 'var(--surface-2)';
 }

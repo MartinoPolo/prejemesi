@@ -1,12 +1,12 @@
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
-const assertWishlistBannerAssignment = vi.fn(
+const assertWishlistUploadAssignment = vi.fn(
 	async (userId: string, objectKey: string, token: string | undefined) => {
 		if (token !== `proof:${userId}:${objectKey}`) {
 			throw new Error('ACCESS_DENIED');
 		}
 	},
 );
-vi.mock('./wishlist_image_assignment.js', () => ({ assertWishlistBannerAssignment }));
+vi.mock('./wishlist_image_assignment.js', () => ({ assertWishlistUploadAssignment }));
 
 async function bannerAssignmentToken(objectKey: string, userId = RECIPIENT_ID) {
 	return `proof:${userId}:${objectKey}`;
@@ -295,6 +295,7 @@ vi.mock('$lib/server/storage/r2.js', () => ({
 
 import {
 	deleteWishlist,
+	deleteWishlistIfEmpty,
 	updateWishlist,
 	archiveWishlist,
 	createWishlist,
@@ -389,6 +390,7 @@ interface AuthContext {
 type NullableAuthContext = AuthContext | null;
 
 type DeleteWishlistHandler = (auth: AuthContext, wishlistId: string) => Promise<void>;
+type DeleteWishlistIfEmptyHandler = (auth: AuthContext, wishlistId: string) => Promise<boolean>;
 type UpdateWishlistHandler = (
 	auth: AuthContext,
 	input: Record<string, unknown>,
@@ -420,6 +422,7 @@ type SetWishlistPaletteHandler = (
 ) => Promise<unknown>;
 
 const callDeleteWishlist = deleteWishlist as unknown as DeleteWishlistHandler;
+const callDeleteWishlistIfEmpty = deleteWishlistIfEmpty as unknown as DeleteWishlistIfEmptyHandler;
 const callUpdateWishlist = updateWishlist as unknown as UpdateWishlistHandler;
 const callArchiveWishlist = archiveWishlist as unknown as ArchiveWishlistHandler;
 const callCreateWishlist = createWishlist as unknown as CreateWishlistHandler;
@@ -475,6 +478,7 @@ export {
 	makeOtherAuthContext,
 	makeModeratorAuthContext,
 	callDeleteWishlist,
+	callDeleteWishlistIfEmpty,
 	callUpdateWishlist,
 	callArchiveWishlist,
 	callCreateWishlist,

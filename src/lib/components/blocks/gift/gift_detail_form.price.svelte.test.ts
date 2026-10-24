@@ -44,6 +44,8 @@ function makeGift(overrides: Partial<GiftByRole> = {}): GiftByRole {
 		priorityLevelId: null,
 		priorityLabel: null,
 		prioritySortOrder: null,
+		categoryIds: [],
+		categories: [],
 		...overrides,
 	};
 }
@@ -358,9 +360,9 @@ describe('GiftDetailForm legacy `auto` normalization (issue #183 EXTRA)', () => 
 });
 
 describe('GiftDetailForm dense control alignment (issue #159)', () => {
-	const MOBILE_CONTROL_HEIGHT = 40;
-	const DESKTOP_CONTROL_HEIGHT = 32;
-	const SINGLE_LINE_LABEL_ROW_HEIGHT = 24;
+	const mobileControlHeight = 40;
+	const desktopControlHeight = 32;
+	const singleLineLabelRowHeight = 24;
 
 	const priorityLevels = [
 		{
@@ -449,15 +451,15 @@ describe('GiftDetailForm dense control alignment (issue #159)', () => {
 			'gift-price-currency-row',
 			'#gift-price',
 			'[data-slot="select-trigger"]',
-			MOBILE_CONTROL_HEIGHT,
+			mobileControlHeight,
 		);
 		expectAlignedControlPair(
 			'gift-quantity-priority-row',
 			'#gift-quantity',
 			'[data-slot="select-trigger"]',
-			MOBILE_CONTROL_HEIGHT,
+			mobileControlHeight,
 		);
-		expectWrappedPriorityControl(MOBILE_CONTROL_HEIGHT);
+		expectWrappedPriorityControl(mobileControlHeight);
 	});
 
 	it('keeps quantity and the empty category control aligned when no priorities exist', async () => {
@@ -468,7 +470,7 @@ describe('GiftDetailForm dense control alignment (issue #159)', () => {
 			'gift-quantity-priority-row',
 			'#gift-quantity',
 			'[data-slot="select-trigger"]',
-			MOBILE_CONTROL_HEIGHT,
+			mobileControlHeight,
 		);
 	});
 
@@ -480,20 +482,20 @@ describe('GiftDetailForm dense control alignment (issue #159)', () => {
 			'[data-testid="gift-price-currency-row"] [data-slot="gift-form-label-row"]',
 		);
 		expect(priceLabelRow!.getBoundingClientRect().height).toBeGreaterThan(
-			SINGLE_LINE_LABEL_ROW_HEIGHT + 1,
+			singleLineLabelRowHeight + 1,
 		);
 		expectAlignedControlPair(
 			'gift-price-currency-row',
 			'#gift-price',
 			'[data-slot="select-trigger"]',
-			DESKTOP_CONTROL_HEIGHT,
+			desktopControlHeight,
 		);
 		expectAlignedControlPair(
 			'gift-quantity-priority-row',
 			'#gift-quantity',
 			'[data-slot="select-trigger"]',
-			DESKTOP_CONTROL_HEIGHT,
+			desktopControlHeight,
 		);
-		expectWrappedPriorityControl(DESKTOP_CONTROL_HEIGHT);
+		expectWrappedPriorityControl(desktopControlHeight);
 	});
 });

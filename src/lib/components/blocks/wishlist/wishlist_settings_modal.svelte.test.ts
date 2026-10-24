@@ -3,7 +3,6 @@ import { userEvent } from 'vitest/browser';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
 import * as m from '$lib/paraglide/messages.js';
-import { GIFT_CATEGORY_PRESETS } from '$lib/modules/gift-categories/types.js';
 import { createDefaultWishlistSlots } from '$lib/modules/images/index.js';
 import { WISHLIST_KIND } from '$lib/modules/wishlists/types.js';
 
@@ -17,8 +16,7 @@ vi.mock('$lib/modules/wishlists/wishlist_settings.remote.js', () => ({
 	saveWishlistSettings: remoteMocks.saveWishlistSettings,
 }));
 vi.mock('$lib/modules/gift-categories/gift_category_queries.remote.js', () => ({
-	getGiftCategories: vi.fn(() => ({ current: [] })),
-	getGiftCategorySettingsRows: vi.fn(() => ({
+	getGiftCategories: vi.fn(() => ({
 		current: [],
 		refresh: remoteMocks.refreshGiftCategorySettings,
 	})),
@@ -30,6 +28,14 @@ vi.mock('$lib/modules/gift-categories/gift_categories.remote.js', () => ({
 import { renderSettings, wishlist } from './wishlist_settings_modal.test_fixtures.js';
 
 const { expectPixelsNear, expectPixelsAtLeast, expectPixelsAtMost } = createPixelAssertions(expect);
+
+async function addCategoryDraft(screen: ReturnType<typeof renderSettings>, label: string) {
+	const newCategory = screen.getByRole('button', { name: m.gift_category_new() });
+	await expect.element(newCategory).toBeEnabled();
+	await newCategory.click();
+	await screen.getByRole('textbox', { name: m.gift_category_quick_add_name_label() }).fill(label);
+	await screen.getByRole('button', { name: m.gift_category_add() }).click();
+}
 
 afterEach(() => {
 	cleanup();
@@ -73,8 +79,7 @@ describe('WishlistSettingsModal import and export tab', () => {
 	it('guards Import with Save, Discard, and Continue editing choices', async () => {
 		const onimport = vi.fn();
 		const screen = renderSettings({ onimport, activeTab: 'categories' });
-		await screen.getByPlaceholder(m.gift_category_custom_placeholder()).fill('Nová kategorie');
-		await screen.getByRole('button', { name: m.gift_category_create() }).click();
+		await addCategoryDraft(screen, 'Výlety');
 		await screen.getByRole('tab', { name: m.wishlist_settings_data_title() }).click();
 		await screen.getByRole('button', { name: m.import_toolbar_label() }).click();
 		expect(onimport).not.toHaveBeenCalled();
@@ -120,19 +125,14 @@ describe('WishlistSettingsModal import and export tab', () => {
 	it('commits staged category changes through the composite global Save', async () => {
 		remoteMocks.saveWishlistSettings.mockReset().mockResolvedValue(undefined);
 		const screen = renderSettings({ activeTab: 'categories' });
-		await screen.getByPlaceholder(m.gift_category_custom_placeholder()).fill('Nová kategorie');
-		await screen.getByRole('button', { name: m.gift_category_create() }).click();
-		const preset = GIFT_CATEGORY_PRESETS[0]!;
-		await screen.getByText(preset.labels.cs).click();
+		await addCategoryDraft(screen, 'Výlety');
 		expect(remoteMocks.saveWishlistSettings).not.toHaveBeenCalled();
 		await screen.getByRole('button', { name: m.save() }).click();
 		await vi.waitFor(() => expect(remoteMocks.saveWishlistSettings).toHaveBeenCalledOnce());
 		expect(remoteMocks.saveWishlistSettings).toHaveBeenCalledWith({
 			wishlistId: wishlist.id,
 			categories: {
-				customCategories: [{ id: null, label: 'Nová kategorie', color: '#0369A1' }],
-				presetKeys: [preset.key],
-				presetColors: [{ key: preset.key, color: preset.color }],
+				categories: [{ id: null, label: 'Výlety', color: '#0369A1' }],
 				confirmedRemovalCategoryIds: [],
 			},
 		});
@@ -144,8 +144,7 @@ describe('WishlistSettingsModal import and export tab', () => {
 			.mockReset()
 			.mockImplementationOnce(() => new Promise<void>((resolve) => (resolveSave = resolve)));
 		const screen = renderSettings({ activeTab: 'categories' });
-		await screen.getByPlaceholder(m.gift_category_custom_placeholder()).fill('Nová kategorie');
-		await screen.getByRole('button', { name: m.gift_category_create() }).click();
+		await addCategoryDraft(screen, 'Výlety');
 		await screen.getByRole('button', { name: m.save() }).click();
 		await expect
 			.element(screen.getByRole('dialog', { name: m.wishlist_settings_title() }))
@@ -168,20 +167,6 @@ describe('WishlistSettingsModal import and export tab', () => {
 			.toBeVisible();
 		await expect.element(title).toHaveValue('Rozepsané změny');
 		await expect.element(screen.getByRole('button', { name: m.save() })).toBeEnabled();
-	});
-
-	it('stages palette preview until global Save', async () => {
-		remoteMocks.saveWishlistSettings.mockReset().mockResolvedValueOnce(undefined);
-		const onpaletteselect = vi.fn();
-		const screen = renderSettings({ activeTab: 'appearance', onpaletteselect });
-		await screen.getByRole('button', { name: 'Oceán' }).click();
-		expect(onpaletteselect).toHaveBeenCalledWith('ocean');
-		expect(remoteMocks.saveWishlistSettings).not.toHaveBeenCalled();
-		await screen.getByRole('button', { name: m.save() }).click();
-		expect(remoteMocks.saveWishlistSettings).toHaveBeenCalledWith({
-			wishlistId: wishlist.id,
-			palette: 'ocean',
-		});
 	});
 
 	it('keeps one global Save visible on Import and Danger tabs', async () => {
@@ -372,5 +357,51 @@ describe('WishlistSettingsModal wishlist kind', () => {
 			kind: WISHLIST_KIND.occasion,
 			eventDate: null,
 		});
+	});
+});
+
+describe('WishlistSettingsModal draft ownership (#527)', () => {
+	const otherWishlist = {
+		...wishlist,
+		id: 'wishlist-settings-other',
+		shortId: 'settings2',
+		title: 'Druhý seznam',
+	};
+
+	async function openDeleteFromDangerZone(screen: ReturnType<typeof renderSettings>) {
+		await screen.getByRole('tab', { name: m.wishlist_settings_danger_tab() }).click();
+		await screen.getByRole('button', { name: m.wishlist_delete_button() }).click();
+	}
+
+	it('is not dirty after a successful save once the saved state arrives', async () => {
+		remoteMocks.saveWishlistSettings.mockReset().mockResolvedValue(undefined);
+		const screen = renderSettings();
+		await screen.getByLabelText(m.wishlist_name_label()).fill('Uložený název');
+		await screen.getByRole('button', { name: m.save() }).click();
+		await vi.waitFor(() => expect(remoteMocks.saveWishlistSettings).toHaveBeenCalledOnce());
+		await screen.rerender({ open: true, wishlist: { ...wishlist, title: 'Uložený název' } });
+
+		await expect
+			.element(screen.getByLabelText(m.wishlist_name_label()))
+			.toHaveValue('Uložený název');
+		await expect.element(screen.getByRole('button', { name: m.save() })).toBeDisabled();
+		await openDeleteFromDangerZone(screen);
+		await expect
+			.element(screen.getByRole('dialog', { name: m.wishlist_settings_unsaved_title() }))
+			.not.toBeInTheDocument();
+	});
+
+	it('never offers or saves a draft from another wishlist', async () => {
+		remoteMocks.saveWishlistSettings.mockReset().mockResolvedValue(undefined);
+		const screen = renderSettings();
+		await screen.getByLabelText(m.wishlist_name_label()).fill('Název prvního seznamu');
+		await screen.rerender({ wishlist: otherWishlist });
+
+		await expect.element(screen.getByRole('button', { name: m.save() })).toBeDisabled();
+		await openDeleteFromDangerZone(screen);
+		await expect
+			.element(screen.getByRole('dialog', { name: m.wishlist_settings_unsaved_title() }))
+			.not.toBeInTheDocument();
+		expect(remoteMocks.saveWishlistSettings).not.toHaveBeenCalled();
 	});
 });

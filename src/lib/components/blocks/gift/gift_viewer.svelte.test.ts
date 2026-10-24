@@ -56,6 +56,8 @@ function makeGift(overrides: Partial<GiftForVisitor> = {}): GiftForVisitor {
 		priorityLevelId: null,
 		priorityLabel: null,
 		prioritySortOrder: null,
+		categoryIds: [],
+		categories: [],
 		likeCount: 12,
 		reservedCount: 0,
 		isFullyReserved: false,
@@ -944,7 +946,7 @@ describe('Gift viewer mobile sheet', () => {
 });
 
 describe('Gift viewer caption order', () => {
-	it('stacks title, price, links, states, description, appends and the edited line on a phone', async () => {
+	it('stacks title, price, categories, links, states, description, appends and the edited line on a phone', async () => {
 		const { dialog } = await renderViewer(
 			makeGift({
 				quantity: 3,
@@ -954,14 +956,16 @@ describe('Gift viewer caption order', () => {
 					{ text: 'Doplnění: stačí i starší model.', addedAt: '2026-10-02T09:00:00Z' },
 				],
 				editedAfterShareAt: new Date('2026-10-03T10:00:00Z'),
-				categoryId: 'category-electronics',
-				category: {
-					id: 'category-electronics',
-					presetKey: null,
-					customLabel: 'Elektronika pro test',
-					color: '#2563eb',
-					sortOrder: 0,
-				},
+				categoryIds: ['category-electronics'],
+				categories: [
+					{
+						id: 'category-electronics',
+						presetKey: null,
+						customLabel: 'Elektronika pro test',
+						color: '#2563eb',
+						sortOrder: 0,
+					},
+				],
 			}),
 			{ viewportWidth: 390, viewportHeight: 844 },
 		);
@@ -972,6 +976,7 @@ describe('Gift viewer caption order', () => {
 		const priceLine = page.getByTestId('gift-piece-count').element().parentElement!;
 		expect(priceLine.textContent).toContain('3');
 		expect(priceLine.textContent).toContain(m.gift_reserved_count({ count: 1 }));
+		const categories = page.getByTestId('gift-viewer-categories').element();
 		const link = dialog.querySelector('a[href*="obchod.cz"]')!;
 		const states = stateList('caption')!;
 		expect(isDisplayed(states)).toBe(true);
@@ -985,7 +990,16 @@ describe('Gift viewer caption order', () => {
 		)!;
 		expect(editedLine).toBeDefined();
 
-		const orderedBlocks = [title, priceLine, link, states, description, append, editedLine];
+		const orderedBlocks = [
+			title,
+			priceLine,
+			categories,
+			link,
+			states,
+			description,
+			append,
+			editedLine,
+		];
 		for (const [index, block] of orderedBlocks.slice(1).entries()) {
 			const previous = orderedBlocks[index]!;
 			expect(
@@ -995,7 +1009,32 @@ describe('Gift viewer caption order', () => {
 				previous.getBoundingClientRect().bottom - 0.5,
 			);
 		}
-		expect(dialog.textContent).not.toContain('Elektronika pro test');
+		expect(categories.textContent).toContain('Elektronika pro test');
+	});
+
+	it('lists every category in order without collapsing any into "+X"', async () => {
+		const labels = ['Elektronika', 'Cestování', 'Hudba a poslech', 'Dárky pro kutily'];
+		await renderViewer(
+			makeGift({
+				categoryIds: labels.map((_label, index) => `category-${index}`),
+				categories: labels.map((label, index) => ({
+					id: `category-${index}`,
+					presetKey: null,
+					customLabel: label,
+					color: '#2563eb',
+					sortOrder: index,
+				})),
+			}),
+			{ viewportWidth: 390, viewportHeight: 844 },
+		);
+
+		const categoryList = page.getByRole('list', { name: m.gift_category_label() });
+		const badges = Array.from(
+			categoryList.element().querySelectorAll('[data-testid="gift-category-badge"]'),
+			(badge) => badge.textContent?.trim(),
+		);
+		expect(badges).toEqual(labels);
+		expect(page.getByTestId('gift-category-more').query()).toBeNull();
 	});
 });
 

@@ -128,6 +128,10 @@ const textPairs = [
 	['--accent-foreground', '--accent'],
 	['--accent-loud-foreground', '--accent-loud'],
 	['--note-ink', '--note-tint'],
+	['--foreground', '--wishlist-card-body'],
+	['--muted-foreground', '--wishlist-card-body'],
+	['--brand-link', '--wishlist-card-body'],
+	['--wishlist-card-plate-foreground', '--wishlist-card-plate'],
 	...['--background', '--card', '--secondary', '--muted', '--accent'].map((surface) => [
 		'--muted-foreground',
 		surface,

@@ -2,6 +2,8 @@
 	import CheckIcon from '@lucide/svelte/icons/check';
 	import ChevronLeftIcon from '@lucide/svelte/icons/chevron-left';
 	import ChevronRightIcon from '@lucide/svelte/icons/chevron-right';
+	import MinusIcon from '@lucide/svelte/icons/minus';
+	import PlusIcon from '@lucide/svelte/icons/plus';
 	import * as ContextMenu from '$lib/components/base/context-menu/index.js';
 	import * as DropdownMenu from '$lib/components/base/dropdown-menu/index.js';
 	import { Separator } from '$lib/components/base/separator/index.js';
@@ -19,6 +21,7 @@
 		type GiftContextAction,
 	} from '$lib/modules/gifts/gift_context_actions.js';
 	import { normalizeGiftUrl } from '$lib/modules/gifts/gift_url.js';
+	import { giftCategoryChoices } from '$lib/modules/gift-categories/gift_category_assignment.js';
 	import type { WishlistRole } from '$lib/modules/wishlists/types.js';
 	import type {
 		GiftContextOrigin,
@@ -66,7 +69,7 @@
 		priorityLevels: Choice[];
 		categories: Choice[];
 		priorityLevelId: string | null;
-		categoryId: string | null;
+		categoryIds: readonly string[];
 		placementSnapshot?: GiftActionPlacementSnapshot;
 		onclose: () => void;
 		oncomplete: (sessionId: number) => void;
@@ -96,7 +99,7 @@
 		priorityLevels,
 		categories,
 		priorityLevelId,
-		categoryId,
+		categoryIds,
 		placementSnapshot,
 		onclose,
 		oncomplete,
@@ -105,8 +108,10 @@
 		onenrich,
 		onpriority,
 		oncategory,
+		oncreatecategory,
 		onreceived,
 		onselect,
+		onreorder,
 		onreserve,
 		oncancelreservation,
 		onpurchased,
@@ -127,6 +132,7 @@
 			readOnly,
 			canEdit: true,
 			canEnrich: onenrich !== undefined,
+			canReorder: onreorder !== undefined,
 			canReserve,
 			ownsReservation,
 			canTrackPurchased,
@@ -148,8 +154,15 @@
 			...(placementSnapshot?.pendingActions ?? []),
 		]),
 	);
+	const categoryChoices = $derived(
+		giftCategoryChoices(
+			[categoryIds],
+			categories.map((category) => category.id),
+		),
+	);
 	const choiceMenus = $derived<Record<GiftContextChoiceAction, GiftContextChoiceMenu>>({
 		priority: {
+			kind: 'single',
 			title: m.gift_priority_label(),
 			ready: priorityReady,
 			options: [{ id: null, label: m.gift_priority_none() }, ...priorityLevels],
@@ -157,11 +170,33 @@
 			choose: (id) => finish('restore-focus', () => onpriority(id)),
 		},
 		category: {
+			kind: 'multiple',
 			title: m.gift_context_category(),
 			ready: categoryReady,
-			options: [{ id: null, label: m.gift_category_uncategorized() }, ...categories],
-			selectedId: categoryId,
-			choose: (id) => finish('restore-focus', () => oncategory(id)),
+			options: [
+				{
+					id: null,
+					label: m.gift_category_uncategorized(),
+					state: categoryChoices.uncategorized,
+					disabled: false,
+				},
+				...categories.map((category) => {
+					const choice = categoryChoices.categories.get(category.id);
+					return {
+						...category,
+						state: choice?.state ?? false,
+						disabled: choice?.state === false && choice.addable === false,
+					};
+				}),
+			],
+			toggle: (id, checked) => finish('restore-focus', () => oncategory(id, checked)),
+			create:
+				oncreatecategory === undefined
+					? undefined
+					: {
+							label: m.gift_category_create(),
+							select: () => finish('handoff', oncreatecategory),
+						},
 		},
 	});
 	const menuEntryBuilders: Record<GiftContextAction, () => GiftContextMenuEntry | undefined> = {
@@ -180,6 +215,7 @@
 			),
 		multiselect: () =>
 			finishingEntry('multiselect', m.gift_context_select_multiple(), 'handoff', onselect),
+		reorder: () => finishingEntry('reorder', m.gift_context_reorder(), 'handoff', onreorder),
 		reserve: () => finishingEntry('reserve', m.reserve_button_reserve(), 'handoff', onreserve),
 		'cancel-reservation': () =>
 			finishingEntry(
@@ -343,13 +379,36 @@
 	<WishlistSheetAction onclick={() => (mobileScreen = 'main')}
 		><ChevronLeftIcon />{m.gift_context_back()}</WishlistSheetAction
 	>
-	{#each menu.options as option (option.id)}
-		<WishlistSheetAction onclick={() => menu.choose(option.id)}>
-			<span class="flex size-5 shrink-0 items-center justify-center"
-				>{#if menu.selectedId === option.id}<CheckIcon class="size-4" />{/if}</span
-			>{option.label}
+	{#if menu.kind === 'single'}
+		{#each menu.options as option (option.id)}
+			<WishlistSheetAction onclick={() => menu.choose(option.id)}>
+				<span class="flex size-5 shrink-0 items-center justify-center"
+					>{#if menu.selectedId === option.id}<CheckIcon class="size-4" />{/if}</span
+				>{option.label}
+			</WishlistSheetAction>
+		{/each}
+	{:else}
+		{#each menu.options as option (option.id)}
+			<WishlistSheetAction
+				role="checkbox"
+				aria-checked={option.state === 'indeterminate' ? 'mixed' : option.state}
+				disabled={option.disabled}
+				onclick={() => menu.toggle(option.id, option.id === null || option.state !== true)}
+			>
+				<span class="flex size-5 shrink-0 items-center justify-center"
+					>{#if option.state === 'indeterminate'}<MinusIcon
+							class="size-4"
+						/>{:else if option.state}<CheckIcon class="size-4" />{/if}</span
+				>{option.label}
+			</WishlistSheetAction>
+		{/each}
+	{/if}
+	{#if menu.create !== undefined}
+		<Separator class="my-1" />
+		<WishlistSheetAction data-testid="gift-category-create-option" onclick={menu.create.select}>
+			<PlusIcon class="size-5 shrink-0" aria-hidden="true" />{menu.create.label}
 		</WishlistSheetAction>
-	{/each}
+	{/if}
 {/snippet}
 
 {#if mobile}

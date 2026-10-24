@@ -26,7 +26,7 @@
 		</figcaption>
 		{#if gift !== null}
 			<div class="card-frame" class:is-removal={side === 'before' && pair.removal}>
-				<GiftCard {gift} role="recipient" showCategory />
+				<GiftCard {gift} role="recipient" />
 				{#if side === 'before' && pair.removal}
 					<span class="removal-badge"
 						><Trash2Icon aria-hidden="true" />{m.change_review_removal_overlay()}</span

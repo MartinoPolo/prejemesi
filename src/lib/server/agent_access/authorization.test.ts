@@ -15,6 +15,10 @@ vi.mock('$lib/server/db/index.js', async (importOriginal) => ({
 			},
 		),
 }));
+// The shipped library is empty until images are generated.
+vi.mock('$lib/theme/wishlist_background_library.json', () => ({
+	default: [{ id: 'space-photo', themeId: 'space', variant: 'photo', widths: [1280, 2560] }],
+}));
 
 import { OPERATION_REGISTRY } from '$lib/server/operations/registry.js';
 import { OPERATION_EXPOSURE } from '$lib/server/operations/operation.js';
@@ -245,6 +249,42 @@ describe('authorizeAgentOperation', () => {
 				},
 			],
 			[
+				'saveWishlistSettings',
+				{
+					wishlistId: ALLOWED_WISHLIST_ID,
+					appearance: {
+						themeId: null,
+						styleTokens: null,
+						background: {
+							mode: 'custom',
+							imageKey: 'wishlists/backgrounds/foreign.webp',
+							focal: { x: 50, y: 50 },
+							placement: 'gutters',
+							dim: 20,
+							motion: 'subtle',
+						},
+					},
+				},
+			],
+			[
+				'saveWishlistSettings',
+				{
+					wishlistId: ALLOWED_WISHLIST_ID,
+					appearance: {
+						themeId: null,
+						styleTokens: null,
+						background: {
+							mode: 'theme',
+							imageKey: null,
+							focal: { x: 50, y: 50 },
+							placement: 'gutters',
+							dim: 20,
+							motion: 'subtle',
+						},
+					},
+				},
+			],
+			[
 				'importGifts',
 				{
 					wishlistId: ALLOWED_WISHLIST_ID,
@@ -282,6 +322,52 @@ describe('authorizeAgentOperation', () => {
 			authorizeAgentOperation(grantWith(everyScope), 'importGifts', {
 				wishlistId: ALLOWED_WISHLIST_ID,
 				gifts: [{ name: 'Kolo' }],
+			}),
+		).resolves.toMatchObject({ targetWishlistIds: [ALLOWED_WISHLIST_ID] });
+		await expect(
+			authorizeAgentOperation(grantWith(everyScope), 'saveWishlistSettings', {
+				wishlistId: ALLOWED_WISHLIST_ID,
+				appearance: {
+					themeId: 'books',
+					styleTokens: { corners: 'sharp' },
+					background: null,
+				},
+			}),
+		).resolves.toMatchObject({ targetWishlistIds: [ALLOWED_WISHLIST_ID] });
+		await expect(
+			authorizeAgentOperation(grantWith(everyScope), 'saveWishlistSettings', {
+				wishlistId: ALLOWED_WISHLIST_ID,
+				appearance: {
+					themeId: 'space',
+					styleTokens: null,
+					background: {
+						mode: 'theme',
+						focal: { x: 50, y: 50 },
+						placement: 'gutters',
+						dim: 20,
+						motion: 'subtle',
+					},
+				},
+			}),
+		).resolves.toMatchObject({ targetWishlistIds: [ALLOWED_WISHLIST_ID] });
+	});
+
+	it('accepts a curated library background, which is a static asset rather than an upload', async () => {
+		await expect(
+			authorizeAgentOperation(grantWith(everyScope), 'saveWishlistSettings', {
+				wishlistId: ALLOWED_WISHLIST_ID,
+				appearance: {
+					themeId: 'space',
+					styleTokens: null,
+					background: {
+						mode: 'library',
+						libraryImageId: 'space-photo',
+						focal: { x: 50, y: 50 },
+						placement: 'full',
+						dim: 20,
+						motion: 'subtle',
+					},
+				},
 			}),
 		).resolves.toMatchObject({ targetWishlistIds: [ALLOWED_WISHLIST_ID] });
 	});

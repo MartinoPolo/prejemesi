@@ -52,7 +52,7 @@ function draftToGiftInput(
 		imageUrl: draft.imageUrl,
 		quantity: draft.quantity,
 		priorityLevelId,
-		categoryId,
+		categoryIds: categoryId === null ? [] : [categoryId],
 	};
 }
 

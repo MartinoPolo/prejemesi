@@ -31,13 +31,22 @@
 	import { DEFAULT_PALETTE, type Palette } from '$lib/theme/palettes.js';
 	import type { Attachment } from 'svelte/attachments';
 
+	export type CreatedWishlist = Awaited<ReturnType<typeof createWishlist>>;
+
 	interface CreateWishlistModalProps {
 		open: boolean;
 		onimport?: () => void;
+		/** Replaces the default navigation to the new wishlist. */
+		oncreated?: (created: CreatedWishlist) => void;
 		demo?: boolean;
 	}
 
-	let { open = $bindable(false), onimport, demo = false }: CreateWishlistModalProps = $props();
+	let {
+		open = $bindable(false),
+		onimport,
+		oncreated,
+		demo = false,
+	}: CreateWishlistModalProps = $props();
 
 	// Typed as string (not RecipientKind) because ToggleGroup's single-select
 	// value binding is `string`; comparisons against RECIPIENT_KIND narrow it.
@@ -64,7 +73,8 @@
 	let errorMessage = $state('');
 	// Optional metadata behind the "Další nastavení" accordion (issue #112).
 	let description = $state('');
-	let palette = $state<Palette>(DEFAULT_PALETTE);
+	// Null until the user picks one, so the server can default an occasion theme's palette.
+	let palette = $state<Palette | null>(null);
 	// Track whether the user has interacted with each required field so validation
 	// only surfaces after a submit attempt or after the user edits then clears the
 	// field — never on a freshly opened dialog.
@@ -96,7 +106,7 @@
 		wishlistKind = WISHLIST_KIND.occasion;
 		eventDate = null;
 		description = '';
-		palette = DEFAULT_PALETTE;
+		palette = null;
 		errorMessage = '';
 		isSubmitting = false;
 		titleTouched = false;
@@ -130,6 +140,7 @@
 			wishlistKind === WISHLIST_KIND.permanent
 				? { kind: WISHLIST_KIND.permanent }
 				: { kind: WISHLIST_KIND.occasion, eventDate };
+		const paletteField = palette === null ? {} : { palette };
 
 		try {
 			const created = await createWishlist(
@@ -139,14 +150,14 @@
 							recipientName: trimmedRecipientName,
 							title: trimmedTitle,
 							...kindFields,
-							palette,
+							...paletteField,
 							description: description.trim() || null,
 						}
 					: {
 							recipientKind: RECIPIENT_KIND.self,
 							title: trimmedTitle,
 							...kindFields,
-							palette,
+							...paletteField,
 							description: description.trim() || null,
 						},
 			);
@@ -155,6 +166,10 @@
 			// surfaces (pages, nav dropdowns) re-fetch when they are next opened (issue #108).
 			open = false;
 			resetForm();
+			if (oncreated !== undefined) {
+				oncreated(created);
+				return;
+			}
 			await goto(localizeInternalHref(resolve('/(app)/w/[id]', { id: created.shortId })));
 		} catch (error) {
 			errorMessage = error instanceof Error ? error.message : m.wishlist_create_error();
@@ -323,7 +338,7 @@
 										aria-labelledby="wishlist-create-palette-label"
 									>
 										<WishlistPalettePicker
-											value={palette}
+											value={palette ?? DEFAULT_PALETTE}
 											onchange={(nextPalette) => (palette = nextPalette)}
 											disabled={isSubmitting}
 										/>

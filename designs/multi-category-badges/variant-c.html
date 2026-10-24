@@ -1,0 +1,492 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>#529 Varianta C — Zalomení do dvou řádků (List až tři) + „+X“</title>
+<style>
+/* Fonts resolve from the worktree's installed packages; system fallbacks apply elsewhere. */
+@font-face { font-family: 'DynaPuff Variable'; font-weight: 400 700; font-display: swap;
+	unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2212;
+	src: url('../../node_modules/@fontsource-variable/dynapuff/files/dynapuff-latin-wght-normal.woff2') format('woff2'); }
+@font-face { font-family: 'DynaPuff Variable'; font-weight: 400 700; font-display: swap;
+	unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+1E00-1E9F;
+	src: url('../../node_modules/@fontsource-variable/dynapuff/files/dynapuff-latin-ext-wght-normal.woff2') format('woff2'); }
+@font-face { font-family: 'Geist Variable'; font-weight: 100 900; font-display: swap;
+	unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2212;
+	src: url('../../node_modules/@fontsource-variable/geist/files/geist-latin-wght-normal.woff2') format('woff2'); }
+@font-face { font-family: 'Geist Variable'; font-weight: 100 900; font-display: swap;
+	unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+1E00-1E9F;
+	src: url('../../node_modules/@fontsource-variable/geist/files/geist-latin-ext-wght-normal.woff2') format('woff2'); }
+
+/* Subset of src/app.css (light, default blue palette). */
+:root {
+	--p-brand: #1e9be9; --p-deep: #1265a8; --p-ink: #16385c; --p-accent: #ffc93c;
+	--ink: var(--p-ink);
+	--font-head: 'DynaPuff Variable', 'Trebuchet MS', sans-serif;
+	--font-body: 'Geist Variable', 'Segoe UI', system-ui, sans-serif;
+	--radius-panel: 16px; --radius-btn: 7px; --radius-badge: 12px;
+	--size-control-sm: 26px; --size-control-md: 32px; --size-control-lg: 40px;
+	--background: color-mix(in oklab, var(--p-brand) 11%, white);
+	--foreground: var(--p-ink);
+	--card: #fff;
+	--primary: color-mix(in oklab, var(--p-brand) 20%, var(--p-deep));
+	--muted-foreground: color-mix(in oklab, var(--p-ink) 78%, transparent);
+	--brand-link: color-mix(in oklab, var(--p-deep) 75%, var(--p-ink));
+	--pattern-dot: color-mix(in oklab, var(--ink) 13%, transparent);
+	--surface: var(--background);
+	--hard-shadow: #000;
+	--heart: #e4574c;
+	--gift-overlay-own-reservation: #16834f;
+	--gift-overlay-unavailable: #163b60;
+	--elevation-ordinary: 3px 3px 0 var(--hard-shadow);
+	--sticker: 2px 2px 0 var(--hard-shadow);
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--background); color: var(--foreground); font-family: var(--font-body); font-size: 14px; }
+h1, h2, h3 { font-family: var(--font-head); font-weight: 600; margin: 0; }
+.page { padding: 24px 32px 64px; }
+.intro { max-width: 980px; margin-bottom: 24px; }
+.intro h1 { font-size: 28px; margin-bottom: 6px; }
+.intro p { margin: 4px 0; color: var(--muted-foreground); line-height: 1.45; }
+.intro a { color: var(--brand-link); font-weight: 600; }
+section.demo { margin: 36px 0 0; }
+section.demo > h2 { font-size: 22px; margin-bottom: 4px; }
+section.demo > .note { color: var(--muted-foreground); font-size: 12px; margin: 0 0 12px; max-width: 980px; }
+.frame-label { font-size: 12px; font-weight: 700; color: var(--muted-foreground); margin: 14px 0 6px; text-transform: uppercase; letter-spacing: .04em; }
+
+/* ── Badges ─────────────────────────────────────────── */
+.badge { display: inline-block; border: 2px solid var(--ink); border-radius: var(--radius-badge);
+	padding: 2px 10px; font-size: 11px; line-height: 16px; font-weight: 800; max-width: 100%;
+	overflow: hidden; white-space: nowrap; text-overflow: ellipsis; flex-shrink: 0; }
+.badge.cat-multi { max-width: 9.5rem; }
+.badge.clamp2 { white-space: normal; display: -webkit-inline-box; -webkit-box-orient: vertical;
+	-webkit-line-clamp: 2; overflow-wrap: break-word; }
+.lane.shrink-first .badge:first-child { flex-shrink: 1; min-width: 3.5rem; }
+.lane.stack .badge, .lane:not([data-rows='1']) .badge { max-width: 100%; flex-shrink: 1; }
+.plus { font: inherit; font-size: 11px; line-height: 16px; font-weight: 800; cursor: pointer;
+	border: 2px solid var(--ink); border-radius: var(--radius-badge); background: var(--card); color: var(--ink);
+	padding: 2px 7px; flex-shrink: 0; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.plus:hover { background: color-mix(in oklab, var(--p-brand) 12%, white); }
+.plus:focus-visible { outline: 2px solid var(--p-brand); outline-offset: 2px; }
+.plus .dots { display: inline-flex; }
+.plus .dots i { width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid var(--ink); margin-left: -4px; display: inline-block; }
+.plus .dots i:first-child { margin-left: 0; }
+.prio { position: absolute; z-index: 20; border: 2px solid var(--ink); border-radius: var(--radius-badge);
+	height: 20px; padding: 0 7px; font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; }
+.prio.high { background: oklch(0.92 0.06 25); color: oklch(0.45 0.15 25); }
+.prio.mid { background: oklch(0.93 0.05 75); color: oklch(0.5 0.12 75); }
+.prio.low { background: oklch(0.93 0.06 145); color: oklch(0.38 0.12 145); }
+.states { position: absolute; inset: 0; z-index: 10; display: flex; flex-direction: column; align-items: center;
+	justify-content: center; gap: 6px; pointer-events: none; }
+.state { border: 2px solid var(--ink); border-radius: var(--radius-badge); padding: 4px 12px; font-size: 11px;
+	line-height: 16px; font-weight: 700; box-shadow: var(--sticker); text-align: center; max-width: calc(100% - .5rem); }
+.state.reserved { background: var(--gift-overlay-unavailable); color: #fff; }
+.state.received { background: var(--primary); color: #fff; text-shadow: 0 1px 1px var(--ink); }
+.state.multi { background: var(--gift-overlay-unavailable); color: #fff; }
+.dim .badge, .dim .plus, .dim .prio { opacity: .5; }
+
+/* ── Like / buttons ─────────────────────────────────── */
+.like { display: inline-flex; align-items: center; justify-content: center; gap: 4px; height: var(--size-control-md);
+	min-width: var(--size-control-md); padding: 0 4px; border: 0; background: transparent; font: inherit; font-weight: 700;
+	font-size: 13px; color: var(--foreground); border-radius: 8px; flex-shrink: 0; }
+.like svg { width: 18px; height: 18px; fill: var(--card); stroke: var(--heart); stroke-width: 2.4; }
+.like.liked svg { fill: var(--heart); }
+.mobile .like { height: var(--size-control-lg); min-width: var(--size-control-lg); }
+.btn { font: inherit; font-weight: 700; font-size: 13px; height: var(--size-control-md); border: 2px solid var(--ink);
+	border-radius: var(--radius-btn); padding: 0 12px; background: var(--card); color: var(--foreground);
+	box-shadow: var(--elevation-ordinary); display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.btn.primary { background: var(--primary); color: #fff; }
+.btn.icon { width: var(--size-control-md); padding: 0; }
+.mobile .btn { height: var(--size-control-lg); font-size: 14px; }
+.mobile .btn.icon { width: var(--size-control-lg); }
+
+/* ── Card ───────────────────────────────────────────── */
+.grid { display: grid; gap: 20px; align-items: stretch; }
+.mobile .grid { gap: 12px; }
+.card { background: var(--card); border: 2.5px solid var(--ink); border-radius: var(--radius-panel);
+	box-shadow: var(--elevation-ordinary); display: grid; grid-template-rows: auto 1fr auto; overflow: visible; min-width: 0; }
+.card.dim { border-color: color-mix(in oklab, var(--ink) 45%, transparent); box-shadow: none; }
+.img { position: relative; aspect-ratio: 4 / 3; overflow: hidden; border-radius: 13.5px 13.5px 0 0;
+	border-bottom: 2.5px solid var(--ink); background: var(--surface); container-type: inline-size; }
+.dim .img { border-bottom-color: color-mix(in oklab, var(--ink) 45%, transparent); }
+.mat { position: absolute; inset: 0; background: radial-gradient(var(--pattern-dot) 1.4px, transparent 1.5px); background-size: 18px 18px; opacity: .6; }
+.photo { position: absolute; inset: 14% 22%; border-radius: 10px;
+	background: linear-gradient(140deg, hsl(var(--h) 70% 72%), hsl(calc(var(--h) + 40) 65% 52%)); }
+.photo::after { content: ''; position: absolute; inset: 28% 30%; border-radius: 50%; background: hsl(var(--h) 60% 88% / .7); }
+.dim .photo { opacity: .5; }
+.top { position: absolute; top: 8px; left: 8px; right: 8px; z-index: 20; display: flex; align-items: flex-start; gap: 8px; }
+.lane { flex: 1; min-width: 0; display: flex; gap: 4px; align-items: flex-start; }
+.lane[data-rows='1'] { flex-wrap: nowrap; }
+.lane:not([data-rows='1']), .lane.stack { flex-wrap: wrap; }
+.top .like { margin-left: auto; margin-top: -4px; margin-right: -4px; }
+.body { padding: 14px 14px 12px; display: flex; flex-direction: column; min-width: 0; }
+.dim .body { opacity: .5; }
+.body h3 { font-size: 24px; line-height: 1.3; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.mobile .body { padding: 8px 9px 6px; }
+.mobile .body h3 { font-size: 16px; }
+.desc { margin: 2px 0 0; font-size: 13px; color: var(--muted-foreground); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.links { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 12px; }
+.links a { color: var(--brand-link); font-weight: 600; text-decoration: underline; text-underline-offset: 2px; }
+.links .more { color: var(--muted-foreground); font-weight: 600; }
+.price { margin-top: 4px; font-size: 12px; font-weight: 700; }
+.foot { display: flex; justify-content: flex-end; gap: 8px; padding: 0 12px 12px; }
+.mobile .foot { padding: 0 9px 9px; }
+
+/* ── List ───────────────────────────────────────────── */
+.list { display: flex; flex-direction: column; gap: 14px; }
+.row { display: grid; grid-template-columns: 176px 1fr; background: var(--card); border: 2px solid var(--ink);
+	border-radius: var(--radius-panel); box-shadow: var(--elevation-ordinary); min-height: 176px; overflow: hidden; }
+.row.dim { border-color: color-mix(in oklab, var(--ink) 45%, transparent); box-shadow: none; }
+.row .img { aspect-ratio: auto; border-radius: 0; border-bottom: 0; border-right: 2px solid var(--ink); }
+.img.clear .states { padding-top: var(--lane-clearance, 0px); padding-bottom: 30px; }
+.row .rbody { padding: 12px 14px 12px 16px; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.row .title { display: flex; align-items: flex-start; gap: 6px; }
+.row h3 { flex: 1; min-width: 0; font-size: 24px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row.dim .rbody > :not(.foot) { opacity: .5; }
+.row .foot { margin-top: auto; padding: 6px 0 0; }
+.mobile .row { grid-template-columns: 104px 1fr; min-height: 150px; }
+.mobile .row .rbody { padding: 8px 9px 9px 10px; }
+.mobile .row h3 { font-size: 16px; white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.mobile .row .desc { white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.mobile .row .prio { left: 6px; bottom: 6px; }
+
+/* ── Frames ─────────────────────────────────────────── */
+.frame { background: var(--background); border: 1px dashed color-mix(in oklab, var(--ink) 30%, transparent); padding: 16px; border-radius: 10px; }
+.frame.mobile { width: 390px; padding: 12px; }
+.mobile-row { display: flex; gap: 28px; align-items: flex-start; flex-wrap: wrap; }
+
+/* ── Popover / editor ───────────────────────────────── */
+.popover { position: absolute; z-index: 100; background: var(--card); border: 2px solid var(--ink); border-radius: 12px;
+	box-shadow: var(--elevation-ordinary); padding: 10px; width: max-content; max-width: 16rem; }
+.popover h4 { margin: 0 0 8px; font-size: 12px; font-weight: 700; color: var(--muted-foreground); }
+.popover .all { display: flex; flex-wrap: wrap; gap: 6px; }
+.popover .badge { white-space: normal; max-width: 100%; }
+.popover .badge.primary-mark { box-shadow: var(--sticker); }
+.popover .hint { margin-top: 8px; font-size: 11px; color: var(--muted-foreground); }
+.editor-wrap { display: flex; gap: 40px; flex-wrap: wrap; align-items: flex-start; }
+.dialog { width: 460px; background: var(--card); border: 2.5px solid var(--ink); border-radius: var(--radius-panel); box-shadow: var(--elevation-ordinary); padding: 20px; }
+.dialog h3 { font-size: 22px; margin-bottom: 14px; }
+.field label { display: block; font-size: 12px; font-weight: 600; color: var(--muted-foreground); margin-bottom: 6px; }
+.combo { min-height: 40px; border: 2px solid var(--ink); border-radius: var(--radius-btn); padding: 5px 34px 5px 6px; display: flex;
+	flex-wrap: wrap; gap: 6px; align-items: center; position: relative; background: var(--card); }
+.combo::after { content: ''; position: absolute; right: 12px; top: 50%; width: 7px; height: 7px; border-right: 2px solid var(--ink);
+	border-bottom: 2px solid var(--ink); transform: translateY(-70%) rotate(45deg); }
+.chip { display: inline-flex; align-items: center; gap: 4px; padding-right: 4px; }
+.chip .grip { opacity: .7; letter-spacing: -2px; font-size: 10px; }
+.chip .x { width: 16px; height: 16px; border-radius: 50%; border: 0; background: rgb(255 255 255 / .3); color: inherit; font: inherit; font-size: 11px; line-height: 16px; padding: 0; cursor: pointer; }
+.help { font-size: 12px; color: var(--muted-foreground); margin-top: 6px; line-height: 1.4; }
+.menu { margin-top: 6px; border: 2px solid var(--ink); border-radius: 12px; box-shadow: var(--elevation-ordinary); background: var(--card); padding: 6px; }
+.option { display: flex; align-items: center; gap: 10px; padding: 7px 8px; border-radius: 7px; font-size: 13px; }
+.option:hover { background: color-mix(in oklab, var(--p-brand) 10%, white); }
+.option.disabled { opacity: .45; }
+.check { width: 18px; height: 18px; border: 2px solid var(--ink); border-radius: 5px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 12px; font-weight: 900; }
+.check.on { background: var(--primary); color: #fff; }
+.check.mixed { background: var(--card); }
+.check.mixed::before { content: ''; width: 8px; height: 2.5px; background: var(--ink); border-radius: 2px; }
+.swatch { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--ink); flex-shrink: 0; }
+.option .order { margin-left: auto; font-size: 11px; color: var(--muted-foreground); font-weight: 700; }
+.menu-title { font-size: 11px; font-weight: 700; color: var(--muted-foreground); padding: 4px 8px 6px; text-transform: uppercase; letter-spacing: .04em; }
+.sep { height: 2px; background: color-mix(in oklab, var(--ink) 12%, transparent); margin: 4px 0; }
+.bulk { width: 280px; }
+.viewer-caption { width: 460px; background: var(--card); border: 2.5px solid var(--ink); border-radius: var(--radius-panel); padding: 16px; box-shadow: var(--elevation-ordinary); }
+.viewer-caption .cats { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+.viewer-caption .cats .badge { white-space: normal; max-width: 100%; }
+</style>
+</head>
+<body>
+<div class="page">
+	<div class="intro">
+		<h1>Varianta C — Zalomení do dvou řádků (List až tři) + „+X“</h1>
+		<p>Pruh se zalamuje: Card až 2 řádky, desktop List až 3 řádky (vysoký obrázek), mobilní List 2 řádky; „+X“ na konci posledního řádku. Více viditelných štítků, ale víc zakrývá fotku; aby nekolidoval se stavem, centruje se stav na Card pod pruhem (odchylka od přísného středu z 2026-09-14).</p>
+		<p>Návrh pro #529. Pozice odznaků podle DECISIONS 2026-09-14 / 2026-10-02: kategorie vlevo nahoře, Like vpravo nahoře (Card), priorita vlevo dole, stav uprostřed. Klikněte na „+X“ pro popover. <a href="index.html">← Přehled variant</a></p>
+	</div>
+
+	<section class="demo">
+		<h2>Desktop Card — 5 sloupců (nejužší karta ≈ 227 px)</h2>
+		<p class="note">1, 2, 3, 4 a 6 kategorií, dlouhé názvy, Like, priorita a stav současně. Vybraný počet sloupců na 1280 px viewportu.</p>
+		<div class="frame"><div class="grid" data-grid="5" style="width:1216px;grid-template-columns:repeat(5,1fr)"></div></div>
+	</section>
+	<section class="demo">
+		<h2>Desktop Card — 4 sloupce</h2>
+		<div class="frame"><div class="grid" data-grid="4" style="width:1216px;grid-template-columns:repeat(4,1fr)"></div></div>
+	</section>
+	<section class="demo">
+		<h2>Desktop Card — Automaticky</h2>
+		<div class="frame"><div class="grid" data-grid="auto" style="width:1080px;grid-template-columns:repeat(auto-fill,minmax(280px,1fr))"></div></div>
+	</section>
+	<section class="demo">
+		<h2>Desktop List</h2>
+		<p class="note">Like zůstává u titulku, takže pruh kategorií má celou šířku obrázku. Stavy se centrují pod pruhem a nad prioritou.</p>
+		<div class="frame"><div class="list" data-list="desktop" style="width:1080px"></div></div>
+	</section>
+	<section class="demo">
+		<h2>Mobile</h2>
+		<div class="mobile-row">
+			<div><div class="frame-label">Card — 1 sloupec</div><div class="frame mobile"><div class="grid" data-grid="m1" style="grid-template-columns:1fr"></div></div></div>
+			<div><div class="frame-label">Card — 2 sloupce</div><div class="frame mobile"><div class="grid" data-grid="m2" style="grid-template-columns:1fr 1fr"></div></div></div>
+			<div><div class="frame-label">List</div><div class="frame mobile"><div class="list" data-list="mobile"></div></div></div>
+		</div>
+	</section>
+	<section class="demo">
+		<h2>Popover „+X“ (otevřený)</h2>
+		<p class="note">Čip „+X“ je tlačítko; otevře popover se všemi kategoriemi v pořadí (první = primární, určuje skupinu). Stisk čipu nestiskne kartu. Na dotyku stejný popover, ne tooltip.</p>
+		<div class="frame" style="width:max-content"><div class="grid" data-grid="pop" style="width:560px;grid-template-columns:repeat(2,1fr);padding-bottom:170px"></div></div>
+	</section>
+	<section class="demo">
+		<h2>Editor, hromadné akce a prohlížeč</h2>
+		<p class="note">Společné pro všechny varianty. Multi-select pole s čipy v pořadí (přetažením se mění primární), menu se zaškrtávacími poli a limitem 5; hromadné akce s tri-state; prohlížeč (Gift viewer) ukazuje celou sadu zalomeně.</p>
+		<div class="editor-wrap">
+			<div class="dialog">
+				<h3>Upravit přání</h3>
+				<div class="field">
+					<label>Kategorie</label>
+					<div class="combo" id="combo"></div>
+					<div class="help">První kategorie určuje skupinu při seskupení. Pořadí změníte přetažením. Nejvýše 5.</div>
+					<div class="menu" id="combo-menu"></div>
+				</div>
+			</div>
+			<div>
+				<div class="frame-label">Hromadné akce → Kategorie (3 vybraná přání)</div>
+				<div class="menu bulk" id="bulk-menu"></div>
+			</div>
+			<div>
+				<div class="frame-label">Gift viewer — popisek</div>
+				<div class="viewer-caption" id="viewer"></div>
+			</div>
+		</div>
+	</section>
+</div>
+
+<script>
+const CONFIG = {"mode":"fit","rows":{"card":2,"list":3,"mobileList":2},"clearStates":true};
+
+const CATS = {
+	el: { label: 'Elektronika', color: '#0F766E' },
+	ob: { label: 'Oblečení', color: '#DB2777' },
+	za: { label: 'Společné zážitky', color: '#15803D' },
+	hr: { label: 'Hry', color: '#7C3AED' },
+	sp: { label: 'Sport', color: '#EA580C' },
+	kn: { label: 'Knihy', color: '#B45309' },
+	ku: { label: 'Kuchyně', color: '#0369A1' },
+	dr: { label: 'Drobnosti', color: '#FDE68A' },
+	byt: { label: 'Věci do nového bytu a na chalupu', color: '#4D7C0F' },
+	ro: { label: 'Dárky pro celou rodinu k Vánocům', color: '#BE123C' },
+};
+const GIFTS = [
+	{ name: 'Bezdrátová sluchátka Sony WH-1000XM5', cats: ['el'], like: 3, liked: true, prio: 'high', h: 200, desc: 'Černá barva, ideálně s pouzdrem.', links: ['alza.cz', 'heureka.cz'], price: '7 990 Kč' },
+	{ name: 'Merino mikina na hory', cats: ['ob', 'sp'], like: 1, prio: 'mid', state: ['reserved', 'Rezervoval(a) Petr'], h: 20, desc: 'Velikost M.', links: ['hannah.cz'], price: '2 490 Kč' },
+	{ name: 'Desková hra Wingspan', cats: ['hr', 'za', 'dr'], like: 5, prio: 'high', state: ['multi', 'Rezervováno více lidmi'], h: 280, desc: 'České vydání.', links: ['albi.cz', 'mindok.cz', 'heureka.cz', 'zatrolene-hry.cz'], price: '1 290 Kč' },
+	{ name: 'Kurz vaření pro dva', cats: ['za', 'ku', 'dr', 'hr', 'sp', 'kn'], like: 12, liked: true, prio: 'high', state: ['received', 'Přijato'], dim: true, h: 40, desc: 'Italská kuchyně, jakýkoli termín.', links: ['zazitky.cz'], price: '3 200 Kč' },
+	{ name: 'Litinový hrnec Le Creuset', cats: ['byt', 'ro'], like: 2, prio: 'low', h: 0, desc: 'Kulatý, 24 cm, barva Volcanic.', links: ['lecreuset.cz'], price: '6 500–7 200 Kč' },
+	{ name: 'Kindle Paperwhite', cats: ['kn', 'el', 'byt'], like: 4, prio: 'mid', h: 160, desc: '', links: ['alza.cz', 'datart.cz'], price: '3 990 Kč' },
+	{ name: 'Ponožky s lamami', cats: [], like: 0, prio: 'low', h: 320, desc: 'Cokoli veselého.', links: [], price: null },
+	{ name: 'Poukaz do lanového centra', cats: ['sp', 'za', 'ro', 'dr'], like: 2, prio: 'mid', state: ['reserved', 'Rezervoval(a) Jana'], h: 100, desc: 'Pro dva dospělé.', links: ['lanovecentrum.cz'], price: '1 200 Kč' },
+];
+const PRIO = { high: 'Vysoká', mid: 'Střední', low: 'Nízká' };
+const HEART = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>';
+const escapeHtml = (text) => text.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+
+function foregroundFor(hex) {
+	const value = parseInt(hex.slice(1), 16);
+	const [r, g, b] = [value >> 16, (value >> 8) & 255, value & 255].map((c) => { c /= 255; return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; });
+	return 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.4 ? 'var(--ink)' : '#fff';
+}
+function badgeElement(key, className) {
+	const category = CATS[key];
+	const element = document.createElement('span');
+	element.className = 'badge ' + className;
+	element.style.background = category.color;
+	element.style.color = foregroundFor(category.color);
+	element.title = category.label;
+	element.textContent = category.label;
+	return element;
+}
+function plusElement(allKeys, hiddenKeys) {
+	const button = document.createElement('button');
+	button.type = 'button';
+	button.className = 'plus';
+	button.setAttribute('aria-label', 'Další kategorie: ' + hiddenKeys.length);
+	button.setAttribute('aria-haspopup', 'dialog');
+	if (CONFIG.mode === 'primary') {
+		const dots = hiddenKeys.slice(0, 3).map((key) => `<i style="background:${CATS[key].color}"></i>`).join('');
+		button.innerHTML = `<span class="dots" aria-hidden="true">${dots}</span>+${hiddenKeys.length}`;
+	} else {
+		button.textContent = '+' + hiddenKeys.length;
+	}
+	button.addEventListener('click', (event) => { event.stopPropagation(); togglePopover(button, allKeys); });
+	return button;
+}
+function laneFits(lane, maxRows) {
+	if (lane.scrollWidth > lane.clientWidth + 0.5) return false;
+	const rowTops = new Set(Array.from(lane.children, (child) => child.offsetTop));
+	return rowTops.size <= maxRows;
+}
+function layoutLane(lane) {
+	const keys = JSON.parse(lane.dataset.cats);
+	const maxRows = Number(lane.dataset.rows);
+	lane.classList.remove('shrink-first', 'stack');
+	lane.replaceChildren();
+	if (keys.length === 0) return;
+	if (keys.length === 1) { lane.append(badgeElement(keys[0], 'clamp2')); return; }
+	if (CONFIG.mode === 'primary') {
+		lane.append(badgeElement(keys[0], 'cat-multi'), plusElement(keys, keys.slice(1)));
+		shrinkOrStackPrimary(lane);
+		return;
+	}
+	for (let visibleCount = keys.length; visibleCount >= 1; visibleCount--) {
+		lane.replaceChildren(...keys.slice(0, visibleCount).map((key) => badgeElement(key, 'cat-multi')));
+		if (visibleCount < keys.length) lane.append(plusElement(keys, keys.slice(visibleCount)));
+		if (laneFits(lane, maxRows)) return;
+	}
+	// The primary category never disappears: it shrinks with an ellipsis down to its minimum.
+	shrinkOrStackPrimary(lane);
+}
+const PRIMARY_READABLE_WIDTH = 80;
+function shrinkOrStackPrimary(lane) {
+	lane.classList.add('shrink-first');
+	const primary = lane.firstElementChild;
+	// Too short to read next to "+X": give the primary the full lane and drop "+X" below it.
+	const primaryTooShort = primary.scrollWidth > primary.clientWidth && primary.offsetWidth < PRIMARY_READABLE_WIDTH;
+	if (primaryTooShort || lane.scrollWidth > lane.clientWidth + 0.5) {
+		lane.classList.remove('shrink-first');
+		lane.classList.add('stack');
+	}
+}
+function syncStateClearance(lane) {
+	const image = lane.closest('.img');
+	const rowTops = new Set(Array.from(lane.children, (child) => child.offsetTop));
+	// Lists always center states between lane and priority; cards only once the lane wraps.
+	const clears = image.closest('.row') !== null || CONFIG.clearStates || rowTops.size > 1;
+	image.classList.toggle('clear', clears);
+	image.style.setProperty('--lane-clearance', lane.children.length ? lane.offsetHeight + 16 + 'px' : '0px');
+}
+const laneWidths = new WeakMap();
+const laneObserver = new ResizeObserver((entries) => {
+	for (const entry of entries) {
+		const width = Math.round(entry.contentRect.width);
+		if (laneWidths.get(entry.target) === width) continue;
+		laneWidths.set(entry.target, width);
+		layoutLane(entry.target);
+		syncStateClearance(entry.target);
+	}
+});
+
+function laneHtml(gift, context) {
+	return `<div class="lane" role="group" aria-label="Kategorie: ${escapeHtml(gift.cats.map((k) => CATS[k].label).join(', '))}" data-rows="${CONFIG.rows[context]}" data-cats='${JSON.stringify(gift.cats)}'></div>`;
+}
+function likeHtml(gift) {
+	return `<button class="like ${gift.liked ? 'liked' : ''}" aria-label="To se líbí">${HEART}${gift.like > 0 ? gift.like : ''}</button>`;
+}
+function imageInner(gift, context) {
+	return `<div class="mat"></div><div class="photo" style="--h:${gift.h}"></div>
+		${gift.state ? `<div class="states"><span class="state ${gift.state[0]}">${gift.state[1]}</span></div>` : ''}`;
+}
+function linksHtml(gift) {
+	if (!gift.links.length) return '<div class="links"><span class="more" style="font-style:italic;font-weight:400">Bez odkazu</span></div>';
+	const visible = gift.links.slice(0, 3).map((link) => `<a href="#">${link}</a>`).join('');
+	return `<div class="links">${visible}${gift.links.length > 3 ? `<span class="more">+${gift.links.length - 3} další</span>` : ''}</div>`;
+}
+const MORE = '<button class="btn icon" aria-label="Další akce">•••</button>';
+function footerHtml(gift) {
+	return gift.state ? MORE : `<button class="btn primary">Rezervovat</button>${MORE}`;
+}
+function cardHtml(gift) {
+	return `<article class="card ${gift.dim ? 'dim' : ''}">
+		<div class="img">${imageInner(gift)}
+			<div class="top">${laneHtml(gift, 'card')}${likeHtml(gift)}</div>
+			<span class="prio ${gift.prio}" style="left:12px;bottom:12px">${PRIO[gift.prio]}</span>
+		</div>
+		<div class="body"><h3 title="${gift.name}">${gift.name}</h3>
+			${gift.desc ? `<p class="desc">${gift.desc}</p>` : ''}
+			${linksHtml(gift)}
+			<div class="price">${gift.price ?? '<span style="font-weight:400;font-style:italic;color:var(--muted-foreground)">Cena neuvedena</span>'}</div>
+		</div>
+		<div class="foot">${footerHtml(gift)}</div>
+	</article>`;
+}
+function rowHtml(gift, context) {
+	return `<article class="row ${gift.dim ? 'dim' : ''}">
+		<div class="img">${imageInner(gift)}
+			<div class="top">${laneHtml(gift, context)}</div>
+			<span class="prio ${gift.prio}" style="left:8px;bottom:8px">${PRIO[gift.prio]}</span>
+		</div>
+		<div class="rbody">
+			<div class="title"><h3 title="${gift.name}">${gift.name}</h3>${likeHtml(gift)}</div>
+			${gift.desc ? `<p class="desc">${gift.desc}</p>` : ''}
+			${linksHtml(gift)}
+			<div class="price">${gift.price ?? ''}</div>
+			<div class="foot">${footerHtml(gift)}</div>
+		</div>
+	</article>`;
+}
+
+let openPopover = null;
+function togglePopover(anchor, keys) {
+	const wasSame = openPopover && openPopover.anchor === anchor;
+	closePopover();
+	if (wasSame) return;
+	const popover = document.createElement('div');
+	popover.className = 'popover';
+	popover.setAttribute('role', 'dialog');
+	popover.setAttribute('aria-label', 'Všechny kategorie');
+	popover.innerHTML = `<h4>Kategorie (${keys.length})</h4><div class="all"></div><div class="hint">První kategorie určuje skupinu.</div>`;
+	keys.forEach((key, index) => popover.querySelector('.all').append(badgeElement(key, index === 0 ? 'primary-mark' : '')));
+	document.body.append(popover);
+	const rect = anchor.getBoundingClientRect();
+	const left = Math.min(rect.left + scrollX, document.documentElement.scrollWidth - popover.offsetWidth - 8);
+	popover.style.left = Math.max(8, left) + 'px';
+	popover.style.top = rect.bottom + scrollY + 6 + 'px';
+	anchor.setAttribute('aria-expanded', 'true');
+	openPopover = { anchor, popover };
+}
+function closePopover() {
+	if (!openPopover) return;
+	openPopover.anchor.setAttribute('aria-expanded', 'false');
+	openPopover.popover.remove();
+	openPopover = null;
+}
+document.addEventListener('click', (event) => { if (openPopover && !openPopover.popover.contains(event.target)) closePopover(); });
+document.addEventListener('keydown', (event) => { if (event.key === 'Escape') closePopover(); });
+
+const POPOVER_GIFTS = [GIFTS[3], GIFTS[2]];
+document.querySelectorAll('[data-grid]').forEach((grid) => {
+	const isMobile = grid.dataset.grid.startsWith('m');
+	const gifts = grid.dataset.grid === 'pop' ? POPOVER_GIFTS : grid.dataset.grid === 'm1' ? GIFTS.slice(0, 5) : GIFTS;
+	grid.innerHTML = gifts.map((gift) => cardHtml(gift)).join('');
+	if (isMobile) grid.closest('.frame').classList.add('mobile');
+});
+document.querySelectorAll('[data-list]').forEach((list) => {
+	const isMobile = list.dataset.list === 'mobile';
+	const gifts = isMobile ? GIFTS.slice(0, 6) : GIFTS;
+	list.innerHTML = gifts.map((gift) => rowHtml(gift, isMobile ? 'mobileList' : 'list')).join('');
+});
+document.querySelectorAll('.lane').forEach((lane) => laneObserver.observe(lane));
+
+// Editor field, bulk menu, viewer caption — shared across variants.
+const SELECTED = ['el', 'hr', 'za', 'byt'];
+document.getElementById('combo').innerHTML = SELECTED.map((key) => {
+	const category = CATS[key];
+	return `<span class="badge chip" style="background:${category.color};color:${foregroundFor(category.color)};max-width:14rem"><span class="grip" aria-hidden="true">⋮⋮</span><span style="overflow:hidden;text-overflow:ellipsis">${category.label}</span><button class="x" aria-label="Odebrat ${category.label}">✕</button></span>`;
+}).join('');
+const ALL_OPTIONS = ['el', 'ob', 'za', 'hr', 'sp', 'kn', 'ku', 'dr', 'byt', 'ro'];
+document.getElementById('combo-menu').innerHTML = ['el', 'ob', 'za', 'hr', 'sp', 'kn', 'byt'].map((key) => {
+	const order = SELECTED.indexOf(key);
+	return `<div class="option"><span class="check ${order >= 0 ? 'on' : ''}">${order >= 0 ? '✓' : ''}</span><span class="swatch" style="background:${CATS[key].color}"></span>${CATS[key].label}${order === 0 ? '<span class="order">Hlavní</span>' : order > 0 ? `<span class="order">${order + 1}.</span>` : ''}</div>`;
+}).join('') + '<div class="sep"></div><div class="option" style="color:var(--muted-foreground)">+ Vytvořit kategorii…</div>';
+const BULK = { el: 'on', hr: 'mixed', za: 'mixed', sp: '', kn: '', ku: '', dr: 'mixed' };
+document.getElementById('bulk-menu').innerHTML = '<div class="menu-title">Kategorie</div>' + Object.entries(BULK).map(([key, state]) =>
+	`<div class="option"><span class="check ${state}">${state === 'on' ? '✓' : ''}</span><span class="swatch" style="background:${CATS[key].color}"></span>${CATS[key].label}</div>`).join('') +
+	'<div class="sep"></div><div class="option">Odebrat všechny kategorie</div><div class="help" style="padding:0 8px 4px">Zaškrtnutí přidá kategorii všem vybraným, odškrtnutí ji všem odebere. Plné = mají všechna, pomlčka = jen některá.</div>';
+const viewer = document.getElementById('viewer');
+viewer.innerHTML = `<h3 style="font-size:22px">Kurz vaření pro dva</h3><div class="cats"></div><div style="font-weight:700;font-size:13px">3 200 Kč</div><div class="links" style="margin-top:6px"><a href="#">zazitky.cz</a></div><p class="desc" style="white-space:normal">Italská kuchyně, jakýkoli termín.</p>`;
+GIFTS[3].cats.forEach((key) => viewer.querySelector('.cats').append(badgeElement(key, '')));
+
+// Open one popover so the static screenshot shows it.
+requestAnimationFrame(() => requestAnimationFrame(() => {
+	const anchor = document.querySelector('[data-grid="pop"] .plus');
+	if (anchor && !location.hash.includes('closed')) anchor.click();
+}));
+</script>
+</body>
+</html>

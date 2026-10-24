@@ -75,7 +75,7 @@ Keep a research record per gift in the scratch directory: for each field, the ex
 Gift fields follow the `createGift` and `updateGift` inputs in the API reference (`GET /api/v1/openapi.json`):
 
 - Every new gift has at least one link, and `links[0].url` is exactly the source URL; other URLs the user supplied for that gift follow it, before reference links.
-- `categoryId` is optional and only from the wishlist's existing categories, matched by `customLabel` or by the preset (`presetKey`) the user or the evidence names. Unknown categories are HITL; never create one.
+- `categoryIds` is optional: up to five of the wishlist's existing categories, the primary first, each matched by `customLabel` or by the preset (`presetKey`) the user or the evidence names. Unknown categories are HITL; never create one.
 - `priorityLevelId` and `quantity` only when the user gave them.
 - Images: store the selected image with `prejemesi images add --wishlist <shortId> --url <image URL> --idempotency-key <key>` or `uploadImage`, then set `"imageReference": "<reference>"` on the gift. Report a refused image (`AGENT_IMAGE_*`) and propose the gift without it.
 

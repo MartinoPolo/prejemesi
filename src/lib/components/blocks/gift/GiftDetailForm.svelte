@@ -15,11 +15,15 @@
 	import { HelpText } from '$lib/components/base/help-text/index.js';
 	import { SimpleTooltip } from '$lib/components/base/tooltip/index.js';
 	import ImageCropStage from '$lib/components/derived/image-crop/ImageCropStage.svelte';
+	import { editorModeStatusLabel } from '$lib/components/derived/image-crop/editor_mode_status_label.js';
+	import { useNarrowViewportState } from '$lib/components/derived/narrow_viewport_state.svelte.js';
 	import GiftImagePreviewSlots from './GiftImagePreviewSlots.svelte';
 	import GiftLinkEditor from './GiftLinkEditor.svelte';
 	import GiftDescription from './GiftDescription.svelte';
 	import GraceCountdown from '$lib/components/derived/grace-countdown/GraceCountdown.svelte';
 	import TrashIcon from '@lucide/svelte/icons/trash-2';
+	import ArrowLeftIcon from '@lucide/svelte/icons/arrow-left';
+	import XIcon from '@lucide/svelte/icons/x';
 	import LinkIcon from '@lucide/svelte/icons/link';
 	import UploadIcon from '@lucide/svelte/icons/upload';
 	import PencilIcon from '@lucide/svelte/icons/pencil';
@@ -60,6 +64,10 @@
 	} from '$lib/components/derived/image-frame/index.js';
 	import {
 		buildManualGiftTargets,
+		cropTargetSurfaceSize,
+		normalizedCropAspect,
+		ownGiftTargets,
+		reprojectCropRect,
 		fitModeForEditorMode,
 		giftEditorModeFromMeta,
 		resolveGiftTargetCrop,
@@ -80,7 +88,17 @@
 	import {
 		labelForGiftCategory,
 		type ManagedGiftCategory,
+		type PublicGiftCategory,
 	} from '$lib/modules/gift-categories/types.js';
+	import PlusIcon from '@lucide/svelte/icons/plus';
+	import GiftCategoryQuickAddDialog from './GiftCategoryQuickAddDialog.svelte';
+	import GiftCategoryBadge from './GiftCategoryBadge.svelte';
+	import {
+		MAX_GIFT_CATEGORIES,
+		sameGiftCategoryIds,
+		withGiftCategoryAdded,
+		withGiftCategoryRemoved,
+	} from '$lib/modules/gift-categories/gift_category_assignment.js';
 	import { getLocale } from '$lib/paraglide/runtime.js';
 
 	type GiftSaveResult = boolean | void | Promise<boolean | void>;
@@ -94,6 +112,8 @@
 		demo?: boolean;
 		priorityLevels: GiftPriorityLevel[];
 		categoryOptions?: ManagedGiftCategory[];
+		/** Offers creating a category from the category select; the gift gets it on save. */
+		canCreateCategory?: boolean;
 		role: WishlistRole;
 		hideReservationState?: boolean;
 		postShareLocked: boolean;
@@ -123,6 +143,7 @@
 		demo = false,
 		priorityLevels,
 		categoryOptions = [],
+		canCreateCategory = false,
 		role,
 		hideReservationState = false,
 		postShareLocked,
@@ -172,7 +193,7 @@
 	// svelte-ignore state_referenced_locally
 	let priorityLevelId = $state(gift?.priorityLevelId ?? '');
 	// svelte-ignore state_referenced_locally
-	let categoryId = $state(gift?.categoryId ?? '');
+	let categoryIds = $state<string[]>([...(gift?.categoryIds ?? [])]);
 	// Editing an uploaded image (imageKey set) opens on the Upload tab so the user sees
 	// the current image with replace/remove – not its resolved URL in the URL field.
 	// Editing a URL image (imageUrl set, no imageKey) opens on the URL tab. A brand-new
@@ -196,11 +217,10 @@
 	// Image presentation metadata (#116 D1/D2 + follow-up). The editor offers three
 	// modes – Fill / Fit / Manual – mapped onto the persisted fitMode enum.
 	// Manual crops are edited PER TARGET: each target keeps its own rect, locked to
-	// the target's aspect by the stage, so the two targets stay independent live
-	// (editing one never moves the other's preview tile). An untouched session
-	// passes persisted targets through verbatim (legacy base focal/zoom rows
-	// included, D5); the moment the user edits ANY target, a save pins every
-	// editor target explicitly – see `buildManualGiftTargets` for why.
+	// the target's aspect by the stage. A target without its own crop inherits
+	// (`thumb` follows `square`, #533) and the editor shows that inherited framing.
+	// An untouched session passes persisted targets through verbatim (legacy base
+	// focal/zoom rows included, D5) – see `buildManualGiftTargets`.
 	// svelte-ignore state_referenced_locally
 	let editorMode = $state<ImageEditorMode>(giftEditorModeFromMeta(gift?.imageMeta));
 	// Whether the user touched the display mode this session; an untouched form keeps
@@ -249,8 +269,17 @@
 		) as Record<GiftEditorCropTarget, ImageCropRect>,
 	);
 	let activeTarget = $state<GiftEditorCropTarget>('square');
-	// Targets edited in this session; only these are (re)persisted on save.
+	// Targets whose rect differs from the persisted one in this session.
 	const dirtyTargets = new SvelteSet<GiftEditorCropTarget>();
+	// Targets with their own crop (persisted or drawn this session); the rest inherit.
+	// svelte-ignore state_referenced_locally
+	const initialOwnTargets = ownGiftTargets(gift?.imageMeta?.targets);
+	const ownTargets = new SvelteSet<GiftEditorCropTarget>(initialOwnTargets);
+	const ownershipChanged = $derived(
+		ownTargets.size !== initialOwnTargets.size ||
+			[...ownTargets].some((target) => !initialOwnTargets.has(target)),
+	);
+	const hasCropSessionEdits = $derived(dirtyTargets.size > 0 || ownershipChanged);
 
 	const styles = giftDetailModalVariants();
 
@@ -313,7 +342,18 @@
 		);
 	}
 
+	/**
+	 * A pan or zoom on the stage is a manual-crop intent (#533): in Fill/Fit it
+	 * promotes the editor to Manual with only the edited target owning a crop, so
+	 * the other target keeps inheriting instead of freezing a stale framing.
+	 */
 	function handleCropChange(target: GiftEditorCropTarget, rect: ImageCropRect) {
+		if (editorMode !== IMAGE_EDITOR_MODES.manual) {
+			editorMode = IMAGE_EDITOR_MODES.manual;
+			modeDirty = true;
+			ownTargets.clear();
+		}
+		ownTargets.add(target);
 		if (cropRectsEqual(rect, initialTargetRects[target])) {
 			dirtyTargets.delete(target);
 		} else {
@@ -321,12 +361,21 @@
 		}
 	}
 
+	/** Drops the thumbnail's own crop so it follows the card crop again. */
+	function followSquareCrop() {
+		if (mutationPending) {
+			return;
+		}
+		ownTargets.delete('thumb');
+		dirtyTargets.delete('thumb');
+	}
+
 	const giftDetailsChanged = $derived(
 		name.trim() !== (gift?.name ?? '').trim() ||
 			(!descriptionFrozen && description.trim() !== (gift?.description ?? '').trim()) ||
 			!valuesEqual(normalizeGiftLinks(links), normalizeGiftLinks(gift?.links ?? [])) ||
 			priorityLevelId !== (gift?.priorityLevelId ?? '') ||
-			categoryId !== (gift?.categoryId ?? ''),
+			!sameGiftCategoryIds(categoryIds, gift?.categoryIds ?? []),
 	);
 	const giftPriceChanged = $derived(
 		finalizeGiftPrice(price) !== finalizeGiftPrice(gift?.price ?? null) ||
@@ -367,7 +416,7 @@
 		hasImage &&
 			(imageModeChanged ||
 				bgColor !== initialBgColor ||
-				(editorMode === IMAGE_EDITOR_MODES.manual && dirtyTargets.size > 0)),
+				(editorMode === IMAGE_EDITOR_MODES.manual && hasCropSessionEdits)),
 	);
 	const dirty = $derived(
 		giftDetailsChanged ||
@@ -398,11 +447,8 @@
 	/**
 	 * Outside Manual mode there are no manual crops: leaving Manual drops them on
 	 * save (Fill/Fit own the framing), and a replaced image never inherits crops
-	 * drawn for the old pixels. Inside Manual mode, delegates the pin-all-on-edit
-	 * rule to `buildManualGiftTargets` (session independence + WYSIWYG vs. the
-	 * legacy carry-over chain – see its doc comment): an untouched session passes
-	 * the persisted targets through verbatim, but the moment any target is dirty
-	 * every editor target is pinned from its own current session rect.
+	 * drawn for the old pixels. Inside Manual mode, `buildManualGiftTargets` pins
+	 * the targets that own a crop and lets the rest inherit.
 	 */
 	function buildTargets(): ImageMetadata['targets'] {
 		if (editorMode !== IMAGE_EDITOR_MODES.manual) {
@@ -410,7 +456,8 @@
 		}
 		return buildManualGiftTargets(
 			targetRects,
-			dirtyTargets.size > 0,
+			ownTargets,
+			hasCropSessionEdits,
 			imageReplaced ? undefined : gift?.imageMeta?.targets,
 		);
 	}
@@ -506,11 +553,47 @@
 				: '',
 	);
 
-	// Adaptive stage sizing (#189 REQ-4/5): the stage tracks the photo's natural
-	// aspect (portrait renders tall, landscape wide) within the min/max caps applied
-	// on the wrapper, so the whole photo is visible at default zoom. Falls back to the
-	// 4:3 card aspect until the probe (`measuredNaturalRatio`) resolves the real ratio.
-	const stageAspectRatio = $derived(measuredNaturalRatio ?? GIFT_CROP_TARGET_SPECS.square.aspect);
+	// The crop window is drawn at the target's real size on this device class (#533).
+	const compactViewport = useNarrowViewportState();
+	const activeSurfaceSize = $derived(
+		cropTargetSurfaceSize(GIFT_CROP_TARGET_SPECS[activeTarget], compactViewport.current),
+	);
+	// The mobile List row shows only a centered slice of the square thumbnail.
+	const activeVisibleWidthFraction = $derived(
+		compactViewport.current && activeTarget === 'thumb'
+			? GIFT_CROP_TARGET_SPECS.thumb.compactVisibleWidthFraction
+			: null,
+	);
+
+	// A thumbnail without its own crop follows the card crop (`resolveGiftTargetCrop`),
+	// so the editor mirrors the card's focal point and zoom at the thumbnail aspect.
+	$effect(() => {
+		if (ownTargets.has('thumb') || measuredNaturalRatio === null) {
+			return;
+		}
+		const followed = reprojectCropRect(
+			targetRects.square,
+			normalizedCropAspect(GIFT_CROP_TARGET_SPECS.thumb.aspect, measuredNaturalRatio),
+		);
+		if (!cropRectsEqual(followed, targetRects.thumb)) {
+			targetRects.thumb = followed;
+		}
+	});
+
+	const targetStatusLabels = $derived.by((): Record<GiftEditorCropTarget, string> => {
+		if (presentedEditorMode !== IMAGE_EDITOR_MODES.manual) {
+			const modeLabel = editorModeStatusLabel(presentedEditorMode);
+			return { square: modeLabel, thumb: modeLabel };
+		}
+		return {
+			square: ownTargets.has('square')
+				? m.image_crop_status_manual()
+				: m.image_crop_status_automatic(),
+			thumb: ownTargets.has('thumb')
+				? m.image_crop_status_manual()
+				: m.image_crop_status_follows_card(),
+		};
+	});
 
 	function setEditorMode(value: string) {
 		if (mutationPending) {
@@ -525,15 +608,8 @@
 			const nextMode = value as ImageEditorMode;
 			if (nextMode === IMAGE_EDITOR_MODES.fill) {
 				// Explicit Fill re-centers the framing (the `recentered` branch of
-				// `currentImageMeta` below), so the static preview must show that SAME
-				// centered framing (#183 REQ-6/7 WYSIWYG) instead of whatever rect
-				// Manual editing or a legacy seed left in `targetRects` – reset it to
-				// the "no framing yet" sentinel and let `ImageCropStage`'s own snap
-				// effect resolve it to the identical centered cover-crop
-				// (`centeredCropRect`) that Save persists. Fit and Manual are
-				// unaffected: Fit's preview is computed independently of
-				// `targetRects` (`containMode`), and Manual must keep whatever
-				// framing the user actually drew.
+				// `currentImageMeta`), so a later switch back to Manual starts from that
+				// centered cover-crop: the "no framing yet" sentinel snaps to it.
 				targetRects[activeTarget] = { ...FULL_CROP_RECT };
 			}
 			editorMode = nextMode;
@@ -559,24 +635,12 @@
 		}
 	}
 
-	/** A zoom attempt on the plain preview is a manual-crop intent (#116 follow-up). */
-	function promoteToManual() {
-		if (mutationPending) {
-			return;
-		}
-		if (editorMode !== IMAGE_EDITOR_MODES.manual) {
-			editorMode = IMAGE_EDITOR_MODES.manual;
-			modeDirty = true;
-		}
-	}
-
-	/** Clicking a preview tile jumps to Manual mode with that target active. */
+	/** Clicking a preview tile only picks the edited target; editing it promotes. */
 	function handleTileSelect(target: GiftEditorCropTarget) {
 		if (mutationPending) {
 			return;
 		}
 		activeTarget = target;
-		promoteToManual();
 	}
 
 	function adjustGiftPrice(
@@ -690,7 +754,7 @@
 			imageMeta,
 			quantity: finalQuantity,
 			priorityLevelId: priorityLevelId || null,
-			categoryId: categoryId || null,
+			categoryIds: [...categoryIds],
 		}) satisfies CreateGiftInput;
 		const updateInput =
 			gift === null
@@ -708,7 +772,7 @@
 						imageMeta: createInput.imageMeta,
 						quantity: createInput.quantity,
 						priorityLevelId: createInput.priorityLevelId,
-						categoryId: createInput.categoryId,
+						categoryIds: createInput.categoryIds,
 					}) satisfies UpdateGiftInput);
 		let saveSucceeded = false;
 		isLocalMutationPending = true;
@@ -766,8 +830,75 @@
 		onupdate?.({ id: gift.id, descriptionAppendEdit: { index, text: null } });
 	}
 
-	function categoryLabel(category: ManagedGiftCategory): string {
+	function categoryLabel(category: PublicGiftCategory): string {
 		return labelForGiftCategory(category, getLocale().startsWith('en') ? 'en' : 'cs');
+	}
+
+	const CREATE_CATEGORY_VALUE = '__create-category__';
+	let categoryQuickAddOpen = $state(false);
+	let categorySelectOpen = $state(false);
+	// Shown until the refreshed category list that includes it arrives.
+	let createdCategory = $state<PublicGiftCategory | null>(null);
+	const categorySelectOptions = $derived<readonly PublicGiftCategory[]>(
+		createdCategory === null ||
+			categoryOptions.some((category) => category.id === createdCategory?.id)
+			? categoryOptions
+			: [...categoryOptions, createdCategory],
+	);
+
+	const selectedCategories = $derived(
+		categoryIds.flatMap((id) => {
+			const category = [...categorySelectOptions, ...(gift?.categories ?? [])].find(
+				(option) => option.id === id,
+			);
+			return category === undefined ? [] : [category];
+		}),
+	);
+	const isAtCategoryLimit = $derived(categoryIds.length >= MAX_GIFT_CATEGORIES);
+
+	/** Keeps the chosen order: kept categories stay in place and new ones join at the end. */
+	function chooseCategories(values: string[]) {
+		if (values.includes(CREATE_CATEGORY_VALUE)) {
+			categorySelectOpen = false;
+			categoryQuickAddOpen = true;
+			return;
+		}
+		categoryIds = [
+			...categoryIds.filter((id) => values.includes(id)),
+			...values.filter((id) => !categoryIds.includes(id)),
+		].slice(0, MAX_GIFT_CATEGORIES);
+	}
+
+	let categoryChipList = $state<HTMLElement | null>(null);
+
+	/** The pressed chip button disappears or moves, so keep keyboard focus on the chip list. */
+	async function focusCategoryChipButton(categoryId: string | undefined) {
+		await tick();
+		const chipButtons = categoryChipList?.querySelector<HTMLElement>(
+			`[data-category-chip="${categoryId}"] button`,
+		);
+		(
+			chipButtons ??
+			document.querySelector<HTMLElement>('[data-testid="gift-category-select"]')
+		)?.focus();
+	}
+
+	function removeCategory(id: string) {
+		const index = categoryIds.indexOf(id);
+		categoryIds = withGiftCategoryRemoved(categoryIds, id);
+		void focusCategoryChipButton(categoryIds[index] ?? categoryIds[index - 1]);
+	}
+
+	function moveCategoryEarlier(index: number) {
+		const reordered = [...categoryIds];
+		[reordered[index - 1], reordered[index]] = [reordered[index]!, reordered[index - 1]!];
+		categoryIds = reordered;
+		void focusCategoryChipButton(reordered[index - 1]);
+	}
+
+	function selectCreatedCategory(category: PublicGiftCategory) {
+		createdCategory = category;
+		categoryIds = withGiftCategoryAdded(categoryIds, category.id);
 	}
 
 	async function handleDelete() {
@@ -1165,33 +1296,104 @@
 							<Label>{m.gift_category_label()}</Label>
 						</div>
 						<div class={styles.formControlStack()}>
-							{#if categoryOptions.length > 0}
-								<Select.Root type="single" bind:value={categoryId}>
-									<Select.Trigger class="w-full">
-										{#if categoryId}
-											{categoryLabel(
-												categoryOptions.find(
-													(category) => category.id === categoryId,
-												) ?? categoryOptions[0]!,
-											)}
-										{:else}
-											{m.gift_category_none()}
-										{/if}
+							{#if categorySelectOptions.length > 0 || canCreateCategory}
+								<Select.Root
+									type="multiple"
+									bind:open={categorySelectOpen}
+									bind:value={() => categoryIds, chooseCategories}
+								>
+									<Select.Trigger
+										class="w-full"
+										data-testid="gift-category-select"
+									>
+										<span class="truncate">
+											{selectedCategories.length === 0
+												? m.gift_category_none()
+												: selectedCategories.map(categoryLabel).join(', ')}
+										</span>
 									</Select.Trigger>
 									<Select.Content>
 										<Select.Group>
-											<Select.Item value="" label={m.gift_category_none()}>
-												{m.gift_category_none()}
-											</Select.Item>
-											{#each categoryOptions as category (category.id)}
+											{#each categorySelectOptions as category (category.id)}
 												{@const label = categoryLabel(category)}
-												<Select.Item value={category.id} {label}
-													>{label}</Select.Item
+												<Select.Item
+													value={category.id}
+													{label}
+													indicator="checkbox"
+													disabled={isAtCategoryLimit &&
+														!categoryIds.includes(category.id)}
+													><span
+														class="size-3 shrink-0 rounded-full border border-ink"
+														style:background-color={category.color}
+														aria-hidden="true"
+													></span>{label}</Select.Item
 												>
 											{/each}
 										</Select.Group>
+										{#if canCreateCategory}
+											<Select.Separator />
+											<Select.Item
+												value={CREATE_CATEGORY_VALUE}
+												label={m.gift_category_create()}
+												disabled={isAtCategoryLimit}
+												data-testid="gift-category-create-option"
+												><PlusIcon />{m.gift_category_create()}</Select.Item
+											>
+										{/if}
 									</Select.Content>
 								</Select.Root>
+								{#if selectedCategories.length > 0}
+									<ul
+										class="flex flex-wrap gap-1.5"
+										aria-label={m.gift_category_label()}
+										bind:this={categoryChipList}
+										data-testid="gift-category-chips"
+									>
+										{#each selectedCategories as category, index (category.id)}
+											{@const label = categoryLabel(category)}
+											<li
+												class="inline-flex min-w-0 items-center gap-0.5"
+												data-category-chip={category.id}
+											>
+												<GiftCategoryBadge {category} />
+												{#if index > 0}
+													<Button
+														intent="ghost"
+														size="sm"
+														format="icon"
+														aria-label={m.gift_category_chip_promote_label(
+															{
+																category: label,
+															},
+														)}
+														onclick={() => moveCategoryEarlier(index)}
+														><ArrowLeftIcon /></Button
+													>
+												{/if}
+												<Button
+													intent="ghost"
+													size="sm"
+													format="icon"
+													aria-label={m.gift_category_chip_remove_label({
+														category: label,
+													})}
+													onclick={() => removeCategory(category.id)}
+													><XIcon /></Button
+												>
+											</li>
+										{/each}
+									</ul>
+									{#if selectedCategories.length > 1}
+										<HelpText>{m.gift_categories_primary_help()}</HelpText>
+									{/if}
+									{#if isAtCategoryLimit}
+										<HelpText
+											>{m.gift_categories_limit_help({
+												count: MAX_GIFT_CATEGORIES,
+											})}</HelpText
+										>
+									{/if}
+								{/if}
 							{:else}
 								<Select.Root type="single" disabled>
 									<Select.Trigger class="w-full" disabled>
@@ -1382,65 +1584,59 @@
 					</ToggleGroup.Root>
 				</div>
 				{#if previewSrc !== null}
-					<!-- Adaptive stage (issue #189 REQ-4/5): the whole photo renders
-					     contained and always fully visible; the box tracks the photo's
-					     natural aspect within min/max caps (portrait tall, landscape wide).
-					     Manual: interactive per-target crop. Fill/Fit: the SAME stage,
-					     non-interactive, showing exactly the cover (Fill) or letterboxed
-					     (Fit) framing; a wheel gesture still promotes to Manual. -->
-					<div
-						class="relative min-h-[220px] w-full max-h-[46dvh] sm:max-h-[440px]"
-						style="aspect-ratio: {stageAspectRatio};"
+					<!-- Fixed-window stage (#533): the window keeps the active target's
+					     real size while the photo pans and zooms behind it. Fill/Fit show
+					     their automatic framing; any edit promotes to Manual. -->
+					<ImageCropStage
+						src={previewSrc}
+						alt={name || m.gift_image_preview()}
+						targetAspect={GIFT_CROP_TARGET_SPECS[activeTarget].aspect}
+						targetLabel={targetLabels[activeTarget]()}
+						surfaceSize={activeSurfaceSize}
+						framing={presentedEditorMode}
+						fillColor={bgColor}
+						tokenScope={IMAGE_TOKEN_SCOPES.wishlist}
+						disabled={mutationPending}
+						visibleWidthFraction={activeVisibleWidthFraction}
+						stageClass="h-[min(340px,45dvh)] min-h-[220px]"
+						bind:cropRect={targetRects[activeTarget]}
+						onchange={(rect) => handleCropChange(activeTarget, rect)}
 					>
-						<ImageCropStage
-							class="size-full"
-							src={previewSrc}
-							alt={name || m.gift_image_preview()}
-							targetAspect={GIFT_CROP_TARGET_SPECS[activeTarget].aspect}
-							targetLabel={targetLabels[activeTarget]()}
-							fillColor={bgColor}
-							tokenScope={IMAGE_TOKEN_SCOPES.wishlist}
-							interactive={isCropMode}
-							disabled={mutationPending}
-							containMode={!isCropMode &&
-								presentedEditorMode === IMAGE_EDITOR_MODES.fit}
-							showLabelChip={false}
-							bind:cropRect={targetRects[activeTarget]}
-							onchange={(rect) => handleCropChange(activeTarget, rect)}
-							onWheelPromote={promoteToManual}
-						/>
-						{#if !isCropMode && !demo}
-							<!-- Click-to-edit affordance (issue #131 REQ-1): overlays the preview
-							     without wrapping it, so wheel-zoom-to-manual and the tile switcher
-							     below stay independently interactive. -->
-							<Button
-								type="button"
-								intent="ghost-overlay"
-								size="sm"
-								format="icon"
-								class="absolute top-2 right-2 rounded-full"
-								surfaceClass="bg-surface/90"
-								onclick={openImageEditor}
-								disabled={mutationPending}
-								aria-label={m.gift_image_replace_cta()}
-							>
-								<PencilIcon data-icon="solo" />
-							</Button>
-						{/if}
-					</div>
-					<!-- Below the stage (not overlapping: every stage pixel matters here);
-					     the tiles are the only crop-target switcher (round 3). Rendered here
-					     for every mode – Fill/Fit used to float these over the stage's lower
-					     edge, clipping into the photo on short stages (mobile edit modal
-					     scroll fix); Manual keeps the same target highlighted, Fill/Fit
-					     highlight none. -->
+						{#snippet heading()}
+							<span class="flex flex-wrap items-center gap-2">
+								<span data-testid="crop-stage-editing">
+									{m.image_crop_editing({ target: targetLabels[activeTarget]() })}
+								</span>
+								{#if !demo}
+									<!-- Click-to-replace affordance (issue #131 REQ-1). -->
+									<Button
+										type="button"
+										intent="ghost"
+										size="sm"
+										format="icon"
+										onclick={openImageEditor}
+										disabled={mutationPending}
+										aria-label={m.gift_image_replace_cta()}
+									>
+										<PencilIcon data-icon="solo" />
+									</Button>
+								{/if}
+							</span>
+						{/snippet}
+					</ImageCropStage>
+					<!-- The tiles are the crop-target switcher and the in-context check:
+					     each renders what Save persists, with its framing status. -->
 					<GiftImagePreviewSlots
 						class="flex-none pt-2.5"
 						src={previewSrc}
 						alt={name || m.gift_image_preview()}
 						imageMeta={currentImageMeta}
-						activeTarget={isCropMode ? activeTarget : null}
+						{activeTarget}
+						statusLabels={targetStatusLabels}
 						onTileSelect={handleTileSelect}
+						onFollowSquare={isCropMode && ownTargets.has('thumb')
+							? followSquareCrop
+							: undefined}
 						disabled={mutationPending}
 					/>
 				{/if}
@@ -1516,3 +1712,13 @@
 <div class={styles.mobileSubmitFooter()} data-testid="gift-mobile-submit-footer">
 	{@render submitActions()}
 </div>
+
+{#if canCreateCategory}
+	<GiftCategoryQuickAddDialog
+		bind:open={categoryQuickAddOpen}
+		{wishlistId}
+		target={{ kind: 'editor' }}
+		categories={categorySelectOptions}
+		oncreated={selectCreatedCategory}
+	/>
+{/if}

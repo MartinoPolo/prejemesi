@@ -1,57 +1,44 @@
 <script lang="ts">
 	import * as m from '$lib/paraglide/messages.js';
 	import { Button } from '$lib/components/base/button/index.js';
-	import { Checkbox } from '$lib/components/base/checkbox/index.js';
 	import { Input } from '$lib/components/base/input/index.js';
 	import { HelpText } from '$lib/components/base/help-text/index.js';
-	import { ColorPicker } from '$lib/components/derived/color-picker/index.js';
-	import * as Dialog from '$lib/components/base/dialog/index.js';
 	import { toastError, toastSuccess } from '$lib/components/base/toast/index.js';
-	import { getGiftCategorySettingsRows } from '$lib/modules/gift-categories/gift_category_queries.remote.js';
+	import GiftCategoryBadge from '$lib/components/blocks/gift/GiftCategoryBadge.svelte';
+	import { getGiftCategories } from '$lib/modules/gift-categories/gift_category_queries.remote.js';
 	import { saveGiftCategorySettingsCommand } from '$lib/modules/gift-categories/gift_categories.remote.js';
 	import {
-		GIFT_CATEGORY_PRESETS,
 		MAX_CUSTOM_GIFT_CATEGORY_LABEL_LENGTH,
-		type GiftCategoryPresetKey,
+		type PublicGiftCategory,
 	} from '$lib/modules/gift-categories/types.js';
+	import { giftCategoryColorForIndex } from '$lib/modules/gift-categories/gift_category_colors.js';
+	import { czechPluralCategory } from '$lib/modules/gifts/gift_display.js';
 	import { getLocale } from '$lib/paraglide/runtime.js';
 	import {
 		getServerErrorCode,
 		translateServerError,
 	} from '$lib/modules/errors/translate_server_error.js';
 	import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
-	import ArrowUpIcon from '@lucide/svelte/icons/arrow-up';
-	import ArrowDownIcon from '@lucide/svelte/icons/arrow-down';
-	import TrashIcon from '@lucide/svelte/icons/trash-2';
+	import PlusIcon from '@lucide/svelte/icons/plus';
 	import { onDestroy, onMount, tick } from 'svelte';
-	import { giftCategoryColorForIndex } from '$lib/modules/gift-categories/gift_category_colors.js';
+	import WishlistCategorySettingsRow from './WishlistCategorySettingsRow.svelte';
 	import { createCategorySettingsMotion } from './wishlist_category_settings_motion.svelte.js';
+	import { createGiftPointerReorderController } from './gift_pointer_reorder.svelte.js';
+	import {
+		categoryForRow,
+		categorySettingsDraft,
+		labelConflicts,
+		rowsFromCategories,
+		type CategorySettingsDraft,
+		type CategorySettingsRow,
+	} from './wishlist_category_settings_draft.js';
 
-	interface CategoryDraft {
-		customCategories: Array<{ id: string | null; label: string; color: string }>;
-		presetKeys: GiftCategoryPresetKey[];
-		presetColors: Array<{ key: GiftCategoryPresetKey; color: string }>;
-		confirmedRemovalCategoryIds: string[];
-	}
 	interface Props {
 		wishlistId: string;
 		saving?: boolean;
 		commitVersion?: number;
 		ondirtychange?: (dirty: boolean) => void;
-		ondraftchange?: (draft: CategoryDraft | null) => void;
-	}
-	interface CustomDraft {
-		key: string;
-		id: string | null;
-		label: string;
-		color: string;
-	}
-	interface PendingRemoval {
-		type: 'custom' | 'preset';
-		key: string;
-		categoryId: string;
-		label: string;
-		usedCount: number;
+		ondraftchange?: (draft: CategorySettingsDraft | null) => void;
 	}
 
 	let {
@@ -61,26 +48,59 @@
 		ondirtychange,
 		ondraftchange,
 	}: Props = $props();
-	const categoriesQuery = $derived(getGiftCategorySettingsRows(wishlistId));
-	const settingsRows = $derived(categoriesQuery.current ?? []);
-	const categories = $derived(settingsRows.filter((category) => category.enabled));
-	let customLabel = $state('');
-	let customDrafts = $state<CustomDraft[]>([]);
-	let enabledPresets = $state<GiftCategoryPresetKey[]>([]);
-	let presetColors = $state<Partial<Record<GiftCategoryPresetKey, string>>>({});
+	const categoriesQuery = $derived(getGiftCategories(wishlistId));
+	const savedCategories = $derived(categoriesQuery.current ?? []);
+	const locale = $derived(getLocale().startsWith('en') ? 'en' : 'cs');
+	let rows = $state<CategorySettingsRow[]>([]);
 	let baseline = $state('');
 	let seededSignature = $state('');
 	let nextCustomColorIndex = $state(0);
 	// svelte-ignore state_referenced_locally (one-time version seed)
 	let seenCommitVersion = $state(commitVersion);
-	let pendingRemoval = $state<PendingRemoval | null>(null);
-	let confirmedRemovalCategoryIds = $state<string[]>([]);
-	let removalTrigger = $state<HTMLElement | null>(null);
-	let categoryRowsElement = $state<HTMLElement | null>(null);
+	let listElement = $state<HTMLElement | null>(null);
+	let newCategoryOpen = $state(false);
+	let newCategoryLabel = $state('');
+	let newCategoryError = $state<string | null>(null);
+	let newCategoryInput = $state<HTMLInputElement | null>(null);
+	let newCategoryButton = $state<HTMLButtonElement | null>(null);
+	const newCategoryErrorId = $props.id();
 	let usageRefreshStatus = $state<'loading' | 'fresh' | 'error'>('loading');
 	const categoryControlsDisabled = $derived(saving || usageRefreshStatus !== 'fresh');
+	const keptRows = $derived(rows.filter((row) => !row.stagedForRemoval));
+	const keptCountLabel = $derived.by(() => {
+		const count = keptRows.length;
+		const plural = czechPluralCategory(count);
+		if (plural === 'one') {
+			return m.gift_categories_count_one();
+		}
+		return plural === 'few'
+			? m.gift_categories_count_few({ count })
+			: m.gift_categories_count_other({ count });
+	});
+	const newCategoryPreview = $derived<PublicGiftCategory>({
+		id: 'new-category-preview',
+		presetKey: null,
+		customLabel: newCategoryLabel.trim() || m.gift_category_new(),
+		color: giftCategoryColorForIndex(nextCustomColorIndex),
+		sortOrder: 0,
+	});
 	const categoryMotion = createCategorySettingsMotion();
-	onDestroy(() => categoryMotion.destroy());
+	const reorder = createGiftPointerReorderController({
+		getItemElements: () =>
+			listElement === null
+				? []
+				: Array.from(
+						listElement.querySelectorAll<HTMLElement>(':scope > [data-category-row]'),
+					),
+		getItemIds: () => rows.map((row) => row.key),
+		onPreviewOrder: (orderedKeys) => void applyOrder(orderedKeys),
+		onCommitOrder: (orderedKeys) => void applyOrder(orderedKeys),
+		onCancelOrder: (orderedKeys) => void applyOrder(orderedKeys),
+	});
+	onDestroy(() => {
+		reorder.destroy();
+		categoryMotion.destroy();
+	});
 	onMount(() => {
 		void refreshCategoryUsage();
 	});
@@ -100,205 +120,182 @@
 		}
 	}
 
-	function usedCountForCategoryId(categoryId: string | null): number {
-		if (categoryId === null) {
+	function usedCountFor(row: CategorySettingsRow): number {
+		if (row.id === null) {
 			return 0;
 		}
-		return (
-			categoriesQuery.current?.find((category) => category.id === categoryId)?.usedCount ?? 0
-		);
+		return categoriesQuery.current?.find((category) => category.id === row.id)?.usedCount ?? 0;
 	}
 
 	function snapshot(): string {
-		return JSON.stringify({
-			custom: customDrafts.map(({ id, label, color }) => ({
-				id,
-				label: label.trim(),
-				color,
-			})),
-			presets: [...enabledPresets].sort().map((key) => ({ key, color: presetColors[key] })),
-		});
+		return JSON.stringify(categorySettingsDraft(rows));
 	}
 	const dirty = $derived(baseline !== '' && snapshot() !== baseline);
-	function buildDraft(): CategoryDraft {
-		return {
-			customCategories: customDrafts.map(({ id, label, color }) => ({
-				id,
-				label: label.trim(),
-				color,
-			})),
-			presetKeys: enabledPresets,
-			presetColors: enabledPresets.map((key) => ({
-				key,
-				color:
-					presetColors[key] ??
-					GIFT_CATEGORY_PRESETS.find((preset) => preset.key === key)!.color,
-			})),
-			confirmedRemovalCategoryIds,
-		};
-	}
 	$effect(() => {
 		ondirtychange?.(dirty);
-		ondraftchange?.(dirty ? buildDraft() : null);
+		ondraftchange?.(dirty ? categorySettingsDraft(rows) : null);
 	});
 	$effect(() => {
 		if (commitVersion !== seenCommitVersion) {
 			seenCommitVersion = commitVersion;
-			confirmedRemovalCategoryIds = [];
+			rows = rows.filter((row) => !row.stagedForRemoval);
 			baseline = snapshot();
 		}
 	});
 	$effect(() => {
-		const signature = JSON.stringify(settingsRows);
+		const signature = JSON.stringify(savedCategories);
 		if (signature === seededSignature || dirty) {
 			return;
 		}
-		customDrafts = categories
-			.filter((category) => category.customLabel !== null)
-			.map((category) => ({
-				key: category.id,
-				id: category.id,
-				label: category.customLabel ?? '',
-				color: category.color,
-			}));
-		enabledPresets = categories.flatMap((category) => category.presetKey ?? []);
-		presetColors = Object.fromEntries(
-			settingsRows.flatMap((category) =>
-				category.presetKey === null ? [] : [[category.presetKey, category.color]],
-			),
-		);
-		nextCustomColorIndex = settingsRows.filter(
+		rows = rowsFromCategories(savedCategories, locale);
+		nextCustomColorIndex = savedCategories.filter(
 			(category) => category.presetKey === null,
 		).length;
 		baseline = snapshot();
 		seededSignature = signature;
 	});
 
-	function createCustom() {
-		const label = customLabel.trim();
-		if (!label || saving) {
+	function rowElement(key: string): HTMLElement | null {
+		return (
+			listElement?.querySelector<HTMLElement>(
+				`:scope > [data-category-id="${CSS.escape(key)}"]`,
+			) ?? null
+		);
+	}
+
+	async function focusInRow(key: string, selector: string) {
+		await tick();
+		rowElement(key)?.querySelector<HTMLElement>(selector)?.focus();
+	}
+
+	async function applyOrder(orderedKeys: string[]) {
+		if (orderedKeys.every((key, index) => rows[index]?.key === key)) {
 			return;
 		}
-		customDrafts = [
-			{
-				key: crypto.randomUUID(),
-				id: null,
-				label,
-				color: giftCategoryColorForIndex(nextCustomColorIndex),
-			},
-			...customDrafts,
-		];
-		nextCustomColorIndex += 1;
-		customLabel = '';
+		const motionSnapshot = listElement === null ? null : categoryMotion.capture(listElement);
+		const rowsByKey = new Map(rows.map((row) => [row.key, row]));
+		rows = orderedKeys.flatMap((key) => rowsByKey.get(key) ?? []);
+		await tick();
+		if (motionSnapshot !== null && listElement !== null) {
+			void categoryMotion.play(motionSnapshot, listElement);
+		}
 	}
-	function handleCreateKeydown(event: KeyboardEvent) {
-		if (event.key !== 'Enter' || event.isComposing) {
+
+	function handleGripPointerDown(event: PointerEvent, index: number) {
+		if (!categoryControlsDisabled) {
+			reorder.start(event, index);
+		}
+	}
+
+	/** Escape mid-drag cancels the drag before the settings dialog would treat it as dismissal. */
+	function cancelDragOnEscape(event: KeyboardEvent) {
+		if (event.key === 'Escape' && reorder.draggedGiftId.current !== null) {
+			event.preventDefault();
+			event.stopPropagation();
+			reorder.cancel();
+		}
+	}
+
+	function handleGripKeydown(event: KeyboardEvent, index: number, key: string) {
+		const direction = event.key === 'ArrowUp' ? -1 : event.key === 'ArrowDown' ? 1 : 0;
+		if (direction === 0 || categoryControlsDisabled) {
 			return;
 		}
 		event.preventDefault();
-		createCustom();
-	}
-	async function move(index: number, direction: -1 | 1) {
-		const snapshot =
-			categoryRowsElement === null ? null : categoryMotion.capture(categoryRowsElement);
-		const next = [...customDrafts];
-		const item = next.splice(index, 1)[0]!;
-		next.splice(index + direction, 0, item);
-		customDrafts = next;
-		await tick();
-		if (snapshot !== null && categoryRowsElement !== null) {
-			void categoryMotion.play(snapshot, categoryRowsElement);
+		if (reorder.move(index, direction)) {
+			void focusInRow(key, '[data-category-grip]');
 		}
 	}
-	async function togglePreset(
-		key: GiftCategoryPresetKey,
-		checked: boolean,
-		label: string,
-		usedCount: number,
-	) {
-		const persisted = categories.find((category) => category.presetKey === key);
-		if (!checked && persisted !== undefined && usedCount > 0) {
-			removalTrigger = document.activeElement as HTMLElement | null;
-			pendingRemoval = { type: 'preset', key, categoryId: persisted.id, label, usedCount };
-			// Bits UI updates its bindable state before reporting the attempted toggle. Drive the
-			// controlled prop through a full state change to restore it without recreating the node.
-			enabledPresets = enabledPresets.filter((candidate) => candidate !== key);
-			await tick();
-			if (pendingRemoval?.categoryId === persisted.id) {
-				enabledPresets = [...enabledPresets, key];
-			}
-			return;
-		}
-		if (checked) {
-			enabledPresets = enabledPresets.includes(key)
-				? enabledPresets
-				: [...enabledPresets, key];
-			presetColors[key] ??= GIFT_CATEGORY_PRESETS.find((preset) => preset.key === key)!.color;
-			if (persisted !== undefined) {
-				confirmedRemovalCategoryIds = confirmedRemovalCategoryIds.filter(
-					(id) => id !== persisted.id,
-				);
-			}
-		} else {
-			enabledPresets = enabledPresets.filter((candidate) => candidate !== key);
-		}
+
+	function updateRow(key: string, change: Partial<CategorySettingsRow>) {
+		rows = rows.map((row) => (row.key === key ? { ...row, ...change } : row));
 	}
-	async function requestCustomRemoval(category: CustomDraft, trigger: HTMLElement) {
+
+	async function removeRow(row: CategorySettingsRow) {
 		if (categoryControlsDisabled) {
 			return;
 		}
-		const usedCount = usedCountForCategoryId(category.id);
-		if (category.id !== null && usedCount > 0) {
-			removalTrigger = trigger;
-			pendingRemoval = {
-				type: 'custom',
-				key: category.key,
-				categoryId: category.id,
-				label: category.label.trim(),
-				usedCount,
-			};
+		if (usedCountFor(row) > 0) {
+			updateRow(row.key, { stagedForRemoval: true });
+			void focusInRow(row.key, 'button');
 			return;
 		}
-		const snapshot =
-			categoryRowsElement === null
-				? null
-				: categoryMotion.capture(categoryRowsElement, category.key);
-		customDrafts = customDrafts.filter((item) => item.key !== category.key);
+		const index = rows.findIndex((candidate) => candidate.key === row.key);
+		const motionSnapshot =
+			listElement === null ? null : categoryMotion.capture(listElement, row.key);
+		rows = rows.filter((candidate) => candidate.key !== row.key);
 		await tick();
-		if (snapshot !== null && categoryRowsElement !== null) {
-			void categoryMotion.play(snapshot, categoryRowsElement);
+		const nextRow = rows[index] ?? rows[index - 1];
+		const nextFocus =
+			nextRow === undefined
+				? newCategoryButton
+				: rowElement(nextRow.key)?.querySelector<HTMLElement>('button:not(:disabled)');
+		nextFocus?.focus();
+		if (motionSnapshot !== null && listElement !== null) {
+			void categoryMotion.play(motionSnapshot, listElement);
 		}
 	}
-	async function confirmRemoval() {
-		const removal = pendingRemoval;
-		if (removal === null) {
+
+	function restoreRow(row: CategorySettingsRow) {
+		updateRow(row.key, { stagedForRemoval: false });
+		void focusInRow(row.key, '[data-category-remove]');
+	}
+
+	async function openNewCategory() {
+		newCategoryOpen = true;
+		await tick();
+		newCategoryInput?.focus();
+	}
+
+	async function closeNewCategory() {
+		newCategoryOpen = false;
+		newCategoryLabel = '';
+		newCategoryError = null;
+		await tick();
+		newCategoryButton?.focus();
+	}
+
+	function addNewCategory() {
+		const label = newCategoryLabel.trim();
+		if (label === '' || categoryControlsDisabled) {
+			newCategoryInput?.focus();
 			return;
 		}
-		const snapshot =
-			removal.type === 'custom' && categoryRowsElement !== null
-				? categoryMotion.capture(categoryRowsElement, removal.key)
-				: null;
-		confirmedRemovalCategoryIds = [
-			...confirmedRemovalCategoryIds.filter((id) => id !== removal.categoryId),
-			removal.categoryId,
+		if (labelConflicts(rows, label, null)) {
+			newCategoryError = m.server_error_gift_category_label_conflict();
+			newCategoryInput?.focus();
+			return;
+		}
+		rows = [
+			...rows,
+			{
+				key: crypto.randomUUID(),
+				id: null,
+				presetKey: null,
+				label,
+				color: giftCategoryColorForIndex(nextCustomColorIndex),
+				stagedForRemoval: false,
+			},
 		];
-		if (removal.type === 'custom') {
-			customDrafts = customDrafts.filter((item) => item.key !== removal.key);
-		} else {
-			enabledPresets = enabledPresets.filter((key) => key !== removal.key);
-		}
-		pendingRemoval = null;
-		await tick();
-		if (snapshot !== null && categoryRowsElement !== null) {
-			void categoryMotion.play(snapshot, categoryRowsElement);
-		}
+		nextCustomColorIndex += 1;
+		newCategoryLabel = '';
+		newCategoryError = null;
+		newCategoryInput?.focus();
 	}
-	function restoreRemovalTrigger(event: Event) {
-		if (removalTrigger?.isConnected === true) {
-			event.preventDefault();
-			removalTrigger.focus();
+
+	function handleNewCategoryKeydown(event: KeyboardEvent) {
+		if (event.isComposing) {
+			return;
 		}
-		removalTrigger = null;
+		if (event.key === 'Enter') {
+			event.preventDefault();
+			addNewCategory();
+		} else if (event.key === 'Escape') {
+			// Escape closes the inline row, not the settings dialog around it.
+			event.preventDefault();
+			event.stopPropagation();
+			void closeNewCategory();
+		}
 	}
 
 	async function save(event: SubmitEvent) {
@@ -308,8 +305,8 @@
 		}
 		saving = true;
 		try {
-			await saveGiftCategorySettingsCommand({ wishlistId, ...buildDraft() });
-			confirmedRemovalCategoryIds = [];
+			await saveGiftCategorySettingsCommand({ wishlistId, ...categorySettingsDraft(rows) });
+			rows = rows.filter((row) => !row.stagedForRemoval);
 			baseline = snapshot();
 			await tick();
 			toastSuccess(m.gift_categories_saved());
@@ -318,7 +315,6 @@
 				getServerErrorCode(thrown) ===
 				SERVER_ERROR.GIFT_CATEGORY_REMOVAL_CONFIRMATION_MISMATCH
 			) {
-				confirmedRemovalCategoryIds = [];
 				baseline = '';
 				seededSignature = '';
 				await refreshCategoryUsage();
@@ -330,9 +326,10 @@
 	}
 </script>
 
-<form id="wishlist-categories-form" class="flex flex-col gap-5" onsubmit={save}>
-	<p class="text-sm text-muted-foreground">{m.gift_categories_settings_hint()}</p>
-	<HelpText>{m.gift_category_color_save_hint()}</HelpText>
+<svelte:window onkeydowncapture={cancelDragOnEscape} />
+
+<form id="wishlist-categories-form" class="category-settings flex flex-col gap-4" onsubmit={save}>
+	<p class="max-w-160 text-sm text-muted-foreground">{m.gift_categories_intro()}</p>
 	{#if usageRefreshStatus === 'error'}
 		<div
 			class="flex items-center justify-between gap-3 rounded-lg border border-destructive/30 p-3"
@@ -345,164 +342,132 @@
 		</div>
 	{/if}
 
-	<div class="flex flex-col gap-2">
-		<h3 class="text-base font-semibold">{m.gift_category_create()}</h3>
-		<div class="flex flex-wrap gap-2">
-			<Input
-				bind:value={customLabel}
-				maxlength={MAX_CUSTOM_GIFT_CATEGORY_LABEL_LENGTH}
-				placeholder={m.gift_category_custom_placeholder()}
-				class="min-w-56 flex-1"
-				disabled={categoryControlsDisabled}
-				onkeydown={handleCreateKeydown}
-			/>
-			<Button
-				type="button"
-				onclick={createCustom}
-				disabled={categoryControlsDisabled || customLabel.trim() === ''}
-				>{m.gift_category_create()}</Button
-			>
-		</div>
-	</div>
-
-	<div class="flex flex-col gap-3" bind:this={categoryRowsElement}>
-		<h3 class="text-base font-semibold">{m.gift_categories_custom_title()}</h3>
-		{#if customDrafts.length === 0}
-			<HelpText>{m.gift_categories_empty()}</HelpText>
-		{:else}
-			{#each customDrafts as category, index (category.key)}
-				{@const usedCount = usedCountForCategoryId(category.id)}
-				<div
-					class="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1 rounded-lg border border-border border-l-4 bg-surface px-3 py-2 sm:grid-cols-[auto_minmax(0,1fr)_auto_auto]"
-					style:border-left-color={category.color}
-					data-testid="gift-category-settings-card"
-					data-category-row
-					data-category-id={category.key}
-					data-category-label={category.label}
+	<div class="grid gap-6 lg:grid-cols-[minmax(0,600px)_minmax(0,1fr)]">
+		<div class="flex min-w-0 flex-col gap-2">
+			<div class="flex items-baseline justify-between gap-3">
+				<h3 class="text-base font-semibold">{m.gift_categories_list_title()}</h3>
+				<span
+					class="text-sm font-semibold text-muted-foreground"
+					data-testid="gift-category-count">{keptCountLabel}</span
 				>
-					<ColorPicker
-						bind:value={category.color}
-						label={category.label}
+			</div>
+			{#if rows.length === 0}
+				<HelpText>{m.gift_categories_empty()}</HelpText>
+			{/if}
+			<div class="relative flex flex-col gap-2" bind:this={listElement}>
+				{#each rows as row, index (row.key)}
+					<WishlistCategorySettingsRow
+						{row}
+						usedCount={usedCountFor(row)}
 						disabled={categoryControlsDisabled}
+						labelConflicts={(label) => labelConflicts(rows, label, row.key)}
+						onrename={(label) => updateRow(row.key, { label })}
+						oncolorchange={(color) => updateRow(row.key, { color })}
+						onremove={() => removeRow(row)}
+						onrestore={() => restoreRow(row)}
+						ongrippointerdown={(event) => handleGripPointerDown(event, index)}
+						ongripkeydown={(event) => handleGripKeydown(event, index, row.key)}
 					/>
-					<Input
-						bind:value={category.label}
-						maxlength={MAX_CUSTOM_GIFT_CATEGORY_LABEL_LENGTH}
-						class="col-span-2 min-w-0 sm:col-span-1"
-						disabled={categoryControlsDisabled}
-					/>
-					<span
-						data-testid="gift-category-used-count"
-						class="col-span-2 text-right text-xs text-muted-foreground sm:col-span-1 sm:w-20"
-						>{m.gift_category_usage_compact({ count: usedCount })}</span
-					>
-					<div class="flex">
-						<Button
-							type="button"
-							format="icon"
-							intent="ghost"
-							disabled={categoryControlsDisabled || index === 0}
-							onclick={() => move(index, -1)}
-							aria-label={m.move_up()}><ArrowUpIcon /></Button
-						>
-						<Button
-							type="button"
-							format="icon"
-							intent="ghost"
-							disabled={categoryControlsDisabled || index === customDrafts.length - 1}
-							onclick={() => move(index, 1)}
-							aria-label={m.move_down()}><ArrowDownIcon /></Button
-						>
-						<Button
-							type="button"
-							format="icon"
-							intent="ghost"
-							disabled={categoryControlsDisabled}
-							onclick={(event) => requestCustomRemoval(category, event.currentTarget)}
-							aria-label={m.delete()}><TrashIcon /></Button
-						>
-					</div>
-				</div>
-			{/each}
-		{/if}
-	</div>
-
-	<div class="flex flex-col gap-3">
-		<h3 class="text-base font-semibold">{m.gift_categories_presets_title()}</h3>
-		<div class="grid gap-2 sm:grid-cols-2">
-			{#each GIFT_CATEGORY_PRESETS as preset (preset.key)}
-				{@const checked = enabledPresets.includes(preset.key)}
-				{@const label = preset.labels[getLocale().startsWith('en') ? 'en' : 'cs']}
-				{@const usedCount =
-					categories.find((category) => category.presetKey === preset.key)?.usedCount ??
-					0}
-				{@const accentColor = checked
-					? (presetColors[preset.key] ?? preset.color)
-					: preset.color}
+				{/each}
+			</div>
+			{#if newCategoryOpen}
 				<div
-					class="flex items-center gap-3 rounded-lg border border-border border-l-4 bg-surface px-3 py-2 text-sm font-semibold"
-					style:border-left-color={accentColor}
-					data-testid="gift-category-settings-card"
-					data-category-label={label}
+					class="flex flex-col gap-1 rounded-(--category-row-radius) border-(length:--category-new-row-border) border-ink bg-card p-(--category-row-padding) [--radius-btn:var(--category-new-row-inner-radius)]"
+					data-testid="gift-category-new-row"
 				>
-					<Checkbox
-						id={`gift-category-preset-${preset.key}`}
-						{checked}
-						disabled={categoryControlsDisabled}
-						onCheckedChange={(value) =>
-							togglePreset(preset.key, value === true, label, usedCount)}
-					/>
-					<label class="min-w-0 flex-1" for={`gift-category-preset-${preset.key}`}
-						>{label}</label
-					>
-					{#if checked}
-						<ColorPicker
-							value={presetColors[preset.key] ?? preset.color}
-							onValueChange={(value) => (presetColors[preset.key] = value)}
-							{label}
+					<div class="flex flex-wrap items-center gap-2 sm:flex-nowrap">
+						<span
+							class="grid size-(--size-control-lg) shrink-0 place-items-center text-muted-foreground sm:size-(--size-control-md)"
+							aria-hidden="true"><PlusIcon class="size-4" /></span
+						>
+						<Input
+							bind:ref={newCategoryInput}
+							bind:value={newCategoryLabel}
+							class="min-w-0 flex-[1_1_9rem]"
+							maxlength={MAX_CUSTOM_GIFT_CATEGORY_LABEL_LENGTH}
+							placeholder={m.gift_category_quick_add_name_label()}
+							aria-label={m.gift_category_quick_add_name_label()}
+							state={newCategoryError === null ? 'default' : 'error'}
+							aria-describedby={newCategoryError === null
+								? undefined
+								: newCategoryErrorId}
 							disabled={categoryControlsDisabled}
+							oninput={() => (newCategoryError = null)}
+							onkeydown={handleNewCategoryKeydown}
 						/>
 						<span
-							data-testid="gift-category-used-count"
-							class="w-20 shrink-0 text-right text-xs font-normal text-muted-foreground"
-							>{m.gift_category_usage_compact({ count: usedCount })}</span
+							class="order-last max-w-full basis-full pl-[calc(var(--size-control-lg)+0.5rem)] sm:order-none sm:max-w-[40%] sm:basis-auto sm:pl-0"
+							data-testid="gift-category-new-preview"
+						>
+							<GiftCategoryBadge category={newCategoryPreview} />
+						</span>
+						<Button
+							type="button"
+							class="me-(--depth-clearance)"
+							disabled={categoryControlsDisabled}
+							onclick={addNewCategory}
+						>
+							{m.gift_category_add()}
+						</Button>
+					</div>
+					{#if newCategoryError !== null}
+						<HelpText
+							id={newCategoryErrorId}
+							state="error"
+							class="pl-[calc(var(--size-control-lg)+0.5rem)] sm:pl-[calc(var(--size-control-md)+0.5rem)]"
+							>{newCategoryError}</HelpText
 						>
 					{/if}
 				</div>
-			{/each}
+			{:else}
+				<button
+					bind:this={newCategoryButton}
+					type="button"
+					class="flex min-h-[calc(var(--size-control-lg)+var(--category-row-chrome))] w-full cursor-pointer items-center gap-2 rounded-(--category-row-radius) border-(length:--category-new-row-border) border-dashed border-border-strong p-(--category-row-padding) text-base font-bold text-brand-link outline-none hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring focus-visible:outline-solid disabled:cursor-not-allowed disabled:opacity-45 sm:min-h-[calc(var(--size-control-md)+var(--category-row-chrome))]"
+					disabled={categoryControlsDisabled}
+					onclick={openNewCategory}
+				>
+					<span
+						class="grid size-(--size-control-lg) shrink-0 place-items-center sm:size-(--size-control-md)"
+						aria-hidden="true"><PlusIcon class="size-4" /></span
+					>
+					{m.gift_category_new()}
+				</button>
+			{/if}
 		</div>
+
+		<aside
+			class="sticky top-0 hidden self-start rounded-panel border border-border bg-muted p-4 lg:block"
+			data-testid="gift-category-order-preview"
+		>
+			<h3 class="mb-1.5 text-base font-semibold">{m.gift_categories_order_title()}</h3>
+			<p class="mb-3 text-sm text-muted-foreground">{m.gift_categories_order_hint()}</p>
+			<div class="flex flex-wrap gap-1.5">
+				{#each keptRows as row (row.key)}
+					<GiftCategoryBadge category={categoryForRow(row)} />
+				{/each}
+			</div>
+		</aside>
 	</div>
 </form>
 
-<Dialog.Root
-	open={pendingRemoval !== null}
-	onOpenChange={(open: boolean) => {
-		if (open === false) pendingRemoval = null;
-	}}
->
-	<Dialog.Content size="md" onCloseAutoFocus={restoreRemovalTrigger}>
-		<Dialog.Header>
-			<Dialog.Title>
-				{m.gift_category_remove_confirm_title({ category: pendingRemoval?.label ?? '' })}
-			</Dialog.Title>
-			<Dialog.Description>
-				{m.gift_category_remove_confirm_description({
-					count: pendingRemoval?.usedCount ?? 0,
-				})}
-			</Dialog.Description>
-		</Dialog.Header>
-		<Dialog.Footer>
-			<Button type="button" intent="outline" onclick={() => (pendingRemoval = null)}>
-				{m.cancel()}
-			</Button>
-			<Button
-				type="button"
-				intent="danger"
-				data-testid="gift-category-remove-confirm"
-				onclick={confirmRemoval}
-			>
-				{m.gift_category_remove_confirm_action()}
-			</Button>
-		</Dialog.Footer>
-	</Dialog.Content>
-</Dialog.Root>
+<style>
+	/* Row controls keep the shared button radius, so the row corner is derived outward from it.
+	   The new-category rows share that outer corner with a thicker border, so their controls take
+	   the radius left after border and padding (AGENTS.md, nested corner geometry). The closed
+	   new-category row adds a row's padding and border around its control to match a row's height. */
+	.category-settings {
+		--category-row-padding: 0.375rem;
+		--category-row-border: 1px;
+		--category-new-row-border: 2px;
+		--category-row-radius: calc(
+			var(--radius-btn) + var(--category-row-padding) + var(--category-row-border)
+		);
+		--category-new-row-inner-radius: max(
+			0px,
+			var(--category-row-radius) - var(--category-new-row-border) -
+				var(--category-row-padding)
+		);
+		--category-row-chrome: calc(2 * (var(--category-row-padding) + var(--category-row-border)));
+	}
+</style>

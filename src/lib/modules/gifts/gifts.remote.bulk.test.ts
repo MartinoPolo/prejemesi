@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
 	serverErrorFixture as SERVER_ERROR,
 	singleFlightRefreshFixture as singleFlightRefresh,
-	getGiftCategorySettingsRowsFixture as getGiftCategorySettingsRows,
+	getGiftCategoriesFixture as getGiftCategories,
 	dispatchNotificationFixture as dispatchNotification,
 	mockDbInstance,
 	mockAppendGifts,
@@ -23,16 +23,16 @@ describe('gift category settings refresh dependencies', () => {
 	it('refreshes category counts after creating a gift', async () => {
 		mockDbInstance.pushResult([makeWishlistRow()]);
 		mockAppendGifts.mockResolvedValueOnce([
-			makeGiftRow({ categoryId: 'category-books' }),
+			makeGiftRow({ categoryIds: ['category-books'] }),
 		] as never);
 
 		await callCreateGift(makeRecipientAuthContext(), {
 			wishlistId: WISHLIST_ID,
 			name: 'Book',
-			categoryId: 'category-books',
+			categoryIds: ['category-books'],
 		});
 
-		expect(singleFlightRefresh).toHaveBeenCalledWith(getGiftCategorySettingsRows, WISHLIST_ID);
+		expect(singleFlightRefresh).toHaveBeenCalledWith(getGiftCategories, WISHLIST_ID);
 	});
 
 	it('refreshes destination category counts after copying gifts', async () => {
@@ -47,10 +47,7 @@ describe('gift category settings refresh dependencies', () => {
 			giftIds: [GIFT_ID],
 		});
 
-		expect(singleFlightRefresh).toHaveBeenCalledWith(
-			getGiftCategorySettingsRows,
-			'destination-wishlist',
-		);
+		expect(singleFlightRefresh).toHaveBeenCalledWith(getGiftCategories, 'destination-wishlist');
 	});
 });
 
@@ -89,19 +86,21 @@ describe('bulkUpdateGifts presentation parity', () => {
 		expect(mockDbInstance.calls.filter((call) => call.method === 'update')).toHaveLength(0);
 	});
 
-	it('refreshes category counts when clearing categories in bulk', async () => {
+	it.each([
+		{ action: 'category' as const, categoryId: null },
+		{ action: 'removeCategory' as const, categoryId: 'category-books' },
+	])('refreshes category counts after the $action bulk action', async (categoryInput) => {
 		mockDbInstance.pushResult([makeWishlistRow({ status: 'active' })]);
-		mockDbInstance.pushResult([makeGiftRow({ categoryId: 'category-books' })]);
+		mockDbInstance.pushResult([makeGiftRow({ categoryIds: ['category-books'] })]);
 		mockDbInstance.pushResult([{ id: GIFT_ID }]);
 
 		await callBulkUpdate(makeRecipientAuthContext(), {
 			wishlistId: WISHLIST_ID,
 			giftIds: [GIFT_ID],
-			action: 'category',
-			categoryId: null,
+			...categoryInput,
 		});
 
-		expect(singleFlightRefresh).toHaveBeenCalledWith(getGiftCategorySettingsRows, WISHLIST_ID);
+		expect(singleFlightRefresh).toHaveBeenCalledWith(getGiftCategories, WISHLIST_ID);
 	});
 
 	it('applies post-share edit transparency to every changed presentation gift in one update statement', async () => {

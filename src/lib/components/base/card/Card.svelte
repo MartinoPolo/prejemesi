@@ -4,6 +4,7 @@
 
 	let {
 		class: className,
+		elevation = 'ordinary',
 		padding = 'none',
 		state,
 		accentBarColor,
@@ -20,7 +21,7 @@
 	data-slot="card"
 	data-state={dataState}
 	class={cn(
-		cardVariants({ padding, state }),
+		cardVariants({ elevation, padding, state }),
 		accentBarColor != null && 'overflow-hidden',
 		className,
 	)}

@@ -30,6 +30,7 @@
 	import { wishlistImageUrl, wishlistSlotToFrameProps } from '$lib/modules/images/index.js';
 	import type { WishlistImageSlots } from '$lib/modules/images/index.js';
 	import WishlistSlotImage from '$lib/components/blocks/wishlist/WishlistSlotImage.svelte';
+	import type { WishlistThemeMotif } from '$lib/components/blocks/wishlist/wishlist_theme_scope.js';
 	import WishlistHeaderActions from './WishlistHeaderActions.svelte';
 	import { wishlistHeaderVariants } from './wishlist_header_variants.js';
 
@@ -59,6 +60,8 @@
 		imageSlots: WishlistImageSlots | null;
 		/** Theme-derived emoji for the no-image polaroid fallback. */
 		themeEmoji: string;
+		/** Wishlist theme motif for the no-image polaroid on themed lists (#535). */
+		themeMotif?: WishlistThemeMotif | null;
 		eventDate: Date | null;
 		status: 'draft' | 'active' | 'archived';
 		kind?: WishlistKind;
@@ -93,6 +96,7 @@
 		imageSrc = null,
 		imageSlots,
 		themeEmoji,
+		themeMotif = null,
 		eventDate,
 		status,
 		kind = WISHLIST_KIND.occasion,
@@ -234,8 +238,9 @@
 				src={polaroidSrc}
 				frame={polaroidFrame}
 				{themeEmoji}
+				{themeMotif}
 				alt={title}
-				variant="thumbnail"
+				variant="banner"
 				eagerLoading
 			/>
 		</figure>
@@ -277,8 +282,9 @@
 						src={polaroidSrc}
 						frame={polaroidFrame}
 						{themeEmoji}
+						{themeMotif}
 						alt={title}
-						variant="thumbnail"
+						variant="banner"
 						eagerLoading
 					/>
 					{#if canManage && !isArchived}
@@ -456,8 +462,8 @@
 			100% 100%,
 			100% 100%;
 		background-repeat: repeat-y, no-repeat, no-repeat;
-		border: 2.5px solid var(--ink);
-		border-radius: 14px;
+		border: var(--border-w) solid var(--ink);
+		border-radius: max(0px, calc(var(--radius-panel) - 2px));
 		box-shadow: var(--elevation-ordinary-strong);
 	}
 
@@ -593,8 +599,8 @@
 			padding: var(--space-2);
 			overflow: hidden;
 			background: var(--card);
-			border: 2px solid var(--ink);
-			border-radius: var(--radius-xl);
+			border: max(1px, calc(var(--border-w) - 0.5px)) solid var(--ink);
+			border-radius: max(0px, calc(var(--radius-panel) - 2px));
 			box-shadow: var(--elevation-ordinary);
 		}
 
@@ -603,8 +609,8 @@
 			height: 92px;
 			margin: 0;
 			overflow: hidden;
-			border: 2px solid var(--ink);
-			border-radius: var(--radius-lg);
+			border: max(1px, calc(var(--border-w) - 0.5px)) solid var(--ink);
+			border-radius: max(0px, calc(var(--radius-panel) - 6px));
 		}
 
 		.mobile-copy {
@@ -632,7 +638,7 @@
 			display: -webkit-box;
 			margin: 1px 0 0;
 			overflow: hidden;
-			font-family: var(--font-heading);
+			font-family: var(--font-head);
 			font-size: 16px;
 			font-weight: 700;
 			line-height: 1.15;

@@ -34,7 +34,8 @@ import {
 	GIFT_GROUPING_OPTIONS,
 } from './types.js';
 import { BulkCopyGiftsInputSchema } from './gift_bulk_copy.js';
-import { getGiftCategorySettingsRows } from '$lib/modules/gift-categories/gift_category_queries.remote.js';
+import { isBulkCategoryAction } from './gift_bulk_update.js';
+import { getGiftCategories } from '$lib/modules/gift-categories/gift_category_queries.remote.js';
 
 // Thin adapters over the operation core, which owns authorization and the post-share rules.
 
@@ -55,7 +56,7 @@ export const createGift = guardedCommand(CreateGiftInputSchema, async ({ user },
 
 	// Gift creation changes both the visible list and category assignment counts.
 	singleFlightRefresh(getGiftsByWishlistShortId, wishlistShortId);
-	singleFlightRefresh(getGiftCategorySettingsRows, input.wishlistId);
+	singleFlightRefresh(getGiftCategories, input.wishlistId);
 
 	return gift;
 });
@@ -70,7 +71,7 @@ export const updateGift = guardedCommand(UpdateGiftInputSchema, async ({ user },
 	// Keep both gift data and category assignment counts current after category moves.
 	singleFlightRefresh(getGiftsByWishlistShortId, wishlistShortId);
 	if (didCategoryChange) {
-		singleFlightRefresh(getGiftCategorySettingsRows, wishlistId);
+		singleFlightRefresh(getGiftCategories, wishlistId);
 	}
 
 	return gift;
@@ -85,7 +86,7 @@ export const deleteGift = guardedCommand(v.string(), async ({ user }, giftId) =>
 
 	// Deletion changes both the visible list and category assignment counts.
 	singleFlightRefresh(getGiftsByWishlistShortId, wishlistShortId);
-	singleFlightRefresh(getGiftCategorySettingsRows, wishlistId);
+	singleFlightRefresh(getGiftCategories, wishlistId);
 });
 
 export const reorderGifts = guardedCommand(ReorderGiftsInputSchema, async ({ user }, input) => {
@@ -100,7 +101,7 @@ export const reorderGifts = guardedCommand(ReorderGiftsInputSchema, async ({ use
 	// Group changes alter badges, groups and category counts; pure order changes stay optimistic.
 	await singleFlightRefresh(getGiftsByWishlistShortId, wishlistShortId);
 	if (changedGroupFields.includes(GIFT_GROUPING_OPTIONS.category)) {
-		await singleFlightRefresh(getGiftCategorySettingsRows, input.wishlistId);
+		await singleFlightRefresh(getGiftCategories, input.wishlistId);
 	}
 });
 
@@ -114,8 +115,8 @@ export const bulkUpdateGifts = guardedCommand(
 		);
 
 		await singleFlightRefresh(getGiftsByWishlistShortId, wishlistShortId);
-		if (input.action === 'category') {
-			await singleFlightRefresh(getGiftCategorySettingsRows, input.wishlistId);
+		if (isBulkCategoryAction(input)) {
+			await singleFlightRefresh(getGiftCategories, input.wishlistId);
 		}
 		return { updatedIds, priorReceived };
 	},
@@ -151,10 +152,10 @@ export const bulkCopyGifts = guardedCommand(BulkCopyGiftsInputSchema, async ({ u
 		const { createdIds, removedSourceIds, destinationShortId, sourceShortId } =
 			await executeOperation(userInterfaceActor(user), bulkCopyGiftsOperation, input);
 		singleFlightRefresh(getGiftsByWishlistShortId, destinationShortId);
-		singleFlightRefresh(getGiftCategorySettingsRows, input.destinationWishlistId);
+		singleFlightRefresh(getGiftCategories, input.destinationWishlistId);
 		if (removedSourceIds.length > 0) {
 			singleFlightRefresh(getGiftsByWishlistShortId, sourceShortId);
-			singleFlightRefresh(getGiftCategorySettingsRows, input.sourceWishlistId);
+			singleFlightRefresh(getGiftCategories, input.sourceWishlistId);
 		}
 		return { createdIds, removedSourceIds };
 	} catch (thrown) {

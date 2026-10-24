@@ -1,8 +1,6 @@
 import { getRequestEvent } from '$app/server';
 import { imagePublicUrl } from '$lib/modules/images/public_url.js';
-import { MAX_GIFT_IMAGE_BYTES } from '$lib/modules/uploads/types.js';
-
-export { isAllowedContentType } from '$lib/modules/uploads/types.js';
+export { isAllowedContentType, MAX_FILE_SIZE } from '$lib/modules/uploads/types.js';
 
 /**
  * R2 types extracted from App.Platform to avoid depending on @cloudflare/workers-types globals.
@@ -32,19 +30,12 @@ export const UPLOAD_TARGETS = {
 	'gift-image': 'gifts',
 	'wishlist-banner': 'wishlists/banners',
 	'wishlist-thumbnail': 'wishlists/thumbnails',
+	'wishlist-background': 'wishlists/backgrounds',
 	// Forward-ported from profile/settings – not in issue #5 scope but already wired up
 	avatar: 'avatars',
 } as const;
 
 export type UploadTarget = keyof typeof UPLOAD_TARGETS;
-
-/** Maximum file size per target (in bytes). */
-export const MAX_FILE_SIZE = {
-	'gift-image': MAX_GIFT_IMAGE_BYTES,
-	'wishlist-banner': 10 * 1024 * 1024, // 10 MB
-	'wishlist-thumbnail': 5 * 1024 * 1024, // 5 MB
-	avatar: 5 * 1024 * 1024, // 5 MB
-} as const satisfies Record<UploadTarget, number>;
 
 /** The current request's R2 binding; undefined outside a request or without the binding. */
 export function getR2Bucket(): PlatformR2Bucket | undefined {

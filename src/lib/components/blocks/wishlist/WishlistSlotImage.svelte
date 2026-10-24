@@ -4,6 +4,7 @@
 	import { IMAGE_TOKEN_SCOPES } from '$lib/components/derived/image-frame/index.js';
 	import type { ImageFrameProps, ImageVariant } from '$lib/modules/images/index.js';
 	import WishlistFallbackHero from './WishlistFallbackHero.svelte';
+	import type { WishlistThemeMotif } from './wishlist_theme_scope.js';
 
 	interface Props {
 		/** Resolved image URL for the active slot – null renders the themed fallback. */
@@ -12,6 +13,8 @@
 		frame: ImageFrameProps;
 		/** Theme-derived emoji for the no-image fallback (REQ-3). */
 		themeEmoji: string;
+		/** Wishlist theme motif that replaces the emoji fallback on themed lists (#535). */
+		themeMotif?: WishlistThemeMotif | null;
 		/** Accessible description. */
 		alt: string;
 		/**
@@ -28,6 +31,7 @@
 		src,
 		frame,
 		themeEmoji,
+		themeMotif = null,
 		alt,
 		variant = null,
 		eagerLoading = false,
@@ -56,5 +60,5 @@ presentation is identical everywhere; otherwise it shows the theme-aware fallbac
 		tokenScope={IMAGE_TOKEN_SCOPES.wishlist}
 	/>
 {:else}
-	<WishlistFallbackHero class={className} emoji={themeEmoji} label={alt} />
+	<WishlistFallbackHero class={className} emoji={themeEmoji} {themeMotif} label={alt} />
 {/if}

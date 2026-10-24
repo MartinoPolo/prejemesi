@@ -1,5 +1,10 @@
 import { fillImageMeta, fitImageMeta } from '$lib/modules/images/editor_modes.js';
 import type { ImageMetadata } from '$lib/modules/images/types.js';
+import {
+	giftCategoryIdsFromLegacyCategoryId,
+	withGiftCategoryAdded,
+	withGiftCategoryRemoved,
+} from '$lib/modules/gift-categories/gift_category_assignment.js';
 import type { BulkUpdateGiftsInput } from './types.js';
 
 export type GiftBulkAction =
@@ -14,10 +19,21 @@ export interface PendingGiftBulkActionDescriptor {
 	count: number;
 }
 
+const CATEGORY_BULK_ACTIONS: ReadonlySet<BulkUpdateGiftsInput['action']> = new Set([
+	'category',
+	'addCategory',
+	'removeCategory',
+]);
+
+/** Actions that write each gift's category list. */
+export function isBulkCategoryAction(input: BulkUpdateGiftsInput): boolean {
+	return CATEGORY_BULK_ACTIONS.has(input.action);
+}
+
 export function isBulkPresentationAction(input: BulkUpdateGiftsInput): boolean {
 	return (
 		input.action === 'priority' ||
-		input.action === 'category' ||
+		isBulkCategoryAction(input) ||
 		input.action === 'imageFit' ||
 		input.action === 'imageBackground'
 	);
@@ -25,10 +41,10 @@ export function isBulkPresentationAction(input: BulkUpdateGiftsInput): boolean {
 
 export function bulkGiftUpdateData(
 	input: BulkUpdateGiftsInput,
-	gift: { id?: string; imageMeta: ImageMetadata | null },
+	gift: { id?: string; imageMeta: ImageMetadata | null; categoryIds: readonly string[] },
 ): {
 	priorityLevelId?: string | null;
-	categoryId?: string | null;
+	categoryIds?: string[];
 	imageMeta?: ImageMetadata;
 	received?: boolean;
 } {
@@ -36,11 +52,22 @@ export function bulkGiftUpdateData(
 		case 'priority':
 			return { priorityLevelId: input.priorityLevelId };
 		case 'category':
-			return { categoryId: input.categoryId };
+			return {
+				categoryIds: giftCategoryIdsFromLegacyCategoryId(
+					gift.categoryIds,
+					input.categoryId,
+				),
+			};
+		case 'addCategory':
+			return { categoryIds: withGiftCategoryAdded(gift.categoryIds, input.categoryId) };
+		case 'removeCategory':
+			return {
+				categoryIds: withGiftCategoryRemoved(gift.categoryIds, input.categoryId),
+			};
 		case 'received':
 			return { received: input.received };
 		case 'restoreReceived':
-			return { received: input.states[(gift as { id?: string }).id ?? ''] };
+			return { received: input.states[gift.id ?? ''] };
 		case 'imageFit': {
 			const background = gift.imageMeta?.bgColor ?? null;
 			return {

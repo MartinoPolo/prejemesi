@@ -144,14 +144,16 @@ describe('GiftCard category badge (issue #265)', () => {
 			const label = 'Velmi dlouhá kategorie sportovního vybavení pro celou rodinu';
 			const host = await renderCardInGridColumn(
 				makeVisitorGift({
-					categoryId: 'category-sport',
-					category: {
-						id: 'category-sport',
-						presetKey: null,
-						customLabel: label,
-						color,
-						sortOrder: 0,
-					},
+					categoryIds: ['category-sport'],
+					categories: [
+						{
+							id: 'category-sport',
+							presetKey: null,
+							customLabel: label,
+							color,
+							sortOrder: 0,
+						},
+					],
 					isFullyReserved: true,
 					received: true,
 				}),
@@ -205,7 +207,7 @@ describe('GiftCard category badge (issue #265)', () => {
 		},
 	);
 
-	it('hides a moderator gift category only in contextual mode while preserving state and body details', async () => {
+	it('keeps a moderator gift category in contextual mode while preserving state and body details', async () => {
 		await page.viewport(800, 720);
 		const categorizedGift = makeVisitorGift({
 			received: true,
@@ -214,14 +216,16 @@ describe('GiftCard category badge (issue #265)', () => {
 			isFullyReserved: true,
 			myReservationId: null,
 			reserverNames: ['Babička'],
-			categoryId: 'category-sport',
-			category: {
-				id: 'category-sport',
-				presetKey: null,
-				customLabel: 'Sport',
-				color: '#0369A1',
-				sortOrder: 0,
-			},
+			categoryIds: ['category-sport'],
+			categories: [
+				{
+					id: 'category-sport',
+					presetKey: null,
+					customLabel: 'Sport',
+					color: '#0369A1',
+					sortOrder: 0,
+				},
+			],
 		});
 		const normalHost = await renderCardInGridColumn(categorizedGift, WISHLIST_ROLES.moderator);
 		const contextualHost = document.createElement('div');
@@ -239,7 +243,9 @@ describe('GiftCard category badge (issue #265)', () => {
 		);
 
 		expect(normalHost.querySelector('[data-testid="gift-category-badge"]')).toBeTruthy();
-		expect(contextualHost.querySelector('[data-testid="gift-category-badge"]')).toBeNull();
+		expect(
+			contextualHost.querySelector('[data-testid="gift-category-badge"]')?.textContent,
+		).toContain('Sport');
 		const overlay = contextualHost.querySelector(
 			'[data-testid="gift-state-overlay"]',
 		) as HTMLElement;
