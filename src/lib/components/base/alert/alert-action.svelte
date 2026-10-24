@@ -14,7 +14,7 @@
 	bind:this={ref}
 	data-slot="alert-action"
 	class={cn(
-		'absolute top-[calc(50%_-_var(--depth-clearance)/2)] right-3 -translate-y-1/2',
+		'col-end-[-1] row-span-2 row-start-1 -mt-(--depth-clearance) self-center justify-self-end',
 		className,
 	)}
 	{...restProps}
