@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { GiftForRecipient, GiftForVisitor } from '$lib/modules/gifts/types.js';
 import { WISHLIST_ROLES } from '$lib/modules/wishlists/types.js';
 import {
@@ -7,6 +7,7 @@ import {
 } from '$lib/modules/wishlists/wishlist_capabilities.js';
 import type { readWishlistOperation } from '$lib/server/operations/wishlist_read_operations.js';
 import type { GiftRevisionSnapshot } from '$lib/server/operations/gift_revision_snapshot.js';
+import type { WishlistBackground } from '$lib/theme/wishlist_themes.js';
 import {
 	projectAgentBulkCopyDestinations,
 	projectAgentGiftSnapshot,
@@ -14,6 +15,11 @@ import {
 	projectAgentWishlistRow,
 	projectAgentWishlistGifts,
 } from './read_projections.js';
+
+// The shipped library is empty until images are generated.
+vi.mock('$lib/theme/wishlist_background_library.json', () => ({
+	default: [{ id: 'minimal-photo', themeId: 'minimal', variant: 'photo', widths: [1280] }],
+}));
 
 type ReadWishlistOutput = Awaited<ReturnType<typeof readWishlistOperation.run>>;
 
@@ -127,6 +133,41 @@ describe('projectAgentWishlist', () => {
 		expect(projected.imageUrl).toContain('wishlists/banner.webp');
 	});
 
+	function projectRowWithBackground(background: Partial<WishlistBackground> | null) {
+		return projectAgentWishlistRow({
+			id: 'wishlist-1',
+			shortId: 'short-1',
+			recipientName: null,
+			title: 'Seznam',
+			description: null,
+			eventDate: null,
+			status: 'draft',
+			kind: 'occasion',
+			palette: 'graphite',
+			themeId: 'minimal',
+			styleTokens: null,
+			background,
+			imageKey: null,
+			recipientIsModerator: false,
+			sharedAt: null,
+			archivedAt: null,
+			createdAt,
+			updatedAt: createdAt,
+		});
+	}
+
+	it('exposes the id of a stored library background', () => {
+		expect(
+			projectRowWithBackground({ mode: 'library', libraryImageId: 'minimal-photo' }),
+		).toMatchObject({ backgroundMode: 'library', backgroundLibraryImageId: 'minimal-photo' });
+	});
+
+	it('drops a library image that left the library, so the mode no longer reads as library', () => {
+		expect(
+			projectRowWithBackground({ mode: 'library', libraryImageId: 'minimal-retired' }),
+		).toMatchObject({ backgroundMode: 'theme', backgroundLibraryImageId: null });
+	});
+
 	it('exposes the theme and resolved look without the custom background storage key', () => {
 		const projected = projectAgentWishlistRow({
 			id: 'wishlist-1',
@@ -153,6 +194,7 @@ describe('projectAgentWishlist', () => {
 			themeId: 'minimal',
 			style: { corners: 'round', border: 'fine', mat: 'white', heading: 'plain' },
 			backgroundMode: 'custom',
+			backgroundLibraryImageId: null,
 		});
 		expect(projected).not.toHaveProperty('styleTokens');
 		expect(projected).not.toHaveProperty('background');

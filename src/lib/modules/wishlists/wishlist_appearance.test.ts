@@ -1,11 +1,16 @@
 import * as v from 'valibot';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { DEFAULT_WISHLIST_BACKGROUND } from '$lib/theme/wishlist_themes.js';
 import {
 	WishlistAppearanceInputSchema,
 	sanitizeWishlistAppearance,
 	wishlistBackgroundImageKey,
 } from './wishlist_appearance.js';
+
+// The shipped library is empty until images are generated.
+vi.mock('$lib/theme/wishlist_background_library.json', () => ({
+	default: [{ id: 'gamer-photo', themeId: 'gamer', variant: 'photo', widths: [1280, 2560] }],
+}));
 
 const validAppearance = {
 	themeId: 'gamer',
@@ -16,6 +21,20 @@ const validAppearance = {
 describe('WishlistAppearanceInputSchema', () => {
 	it('accepts a registry theme, partial token overrides and a complete background', () => {
 		expect(v.safeParse(WishlistAppearanceInputSchema, validAppearance).success).toBe(true);
+	});
+
+	it('accepts a library background naming an image from the library', () => {
+		const libraryBackground = {
+			...DEFAULT_WISHLIST_BACKGROUND,
+			mode: 'library',
+			libraryImageId: 'gamer-photo',
+		};
+		const parsed = v.safeParse(WishlistAppearanceInputSchema, {
+			...validAppearance,
+			background: libraryBackground,
+		});
+		expect(parsed.success).toBe(true);
+		expect(parsed.output).toMatchObject({ background: libraryBackground });
 	});
 
 	it('accepts clearing every appearance field', () => {
@@ -63,6 +82,17 @@ describe('WishlistAppearanceInputSchema', () => {
 			{ ...validAppearance, background: { ...DEFAULT_WISHLIST_BACKGROUND, mode: 'video' } },
 		],
 		['an incomplete background', { ...validAppearance, background: { mode: 'none' } }],
+		[
+			'a library image id that is not in the library',
+			{
+				...validAppearance,
+				background: {
+					...DEFAULT_WISHLIST_BACKGROUND,
+					mode: 'library',
+					libraryImageId: 'gamer-retired',
+				},
+			},
+		],
 	])('rejects %s', (_label, appearance) => {
 		expect(v.safeParse(WishlistAppearanceInputSchema, appearance).success).toBe(false);
 	});
@@ -118,6 +148,45 @@ describe('sanitizeWishlistAppearance', () => {
 				background: { mode: 'custom', dim: 99, focal: { x: -5, y: 50 }, motion: 'off' },
 			}).background,
 		).toEqual({ mode: 'custom', motion: 'off' });
+	});
+
+	it('keeps a stored library image that is still in the library', () => {
+		expect(
+			sanitizeWishlistAppearance({
+				themeId: 'gamer',
+				styleTokens: null,
+				background: { mode: 'library', libraryImageId: 'gamer-photo' },
+			}).background,
+		).toEqual({ mode: 'library', libraryImageId: 'gamer-photo' });
+	});
+
+	it.each([
+		[
+			'a library image id that left the library',
+			{ mode: 'library', libraryImageId: 'gamer-retired', dim: 30 },
+			{ dim: 30 },
+		],
+		['no library image id', { mode: 'library', dim: 30 }, { dim: 30 }],
+		[
+			'a null library image id',
+			{ mode: 'library', libraryImageId: null, dim: 30 },
+			{ libraryImageId: null, dim: 30 },
+		],
+	])('drops library mode with %s so the default mode applies', (_label, stored, expected) => {
+		expect(
+			sanitizeWishlistAppearance({ themeId: 'gamer', styleTokens: null, background: stored })
+				.background,
+		).toEqual(expected);
+	});
+
+	it('reads a library mode without an image and no other field as no background', () => {
+		expect(
+			sanitizeWishlistAppearance({
+				themeId: 'gamer',
+				styleTokens: null,
+				background: { mode: 'library', libraryImageId: 'gamer-retired' },
+			}).background,
+		).toBeNull();
 	});
 });
 

@@ -4,9 +4,15 @@ import { wishlist } from '$lib/server/db/wishlist.schema.js';
 import { rejectDemoImageUpload } from '$lib/server/demo/scope.js';
 import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
 import { saveGiftCategorySettings } from '$lib/modules/gift-categories/gift_categories_service.js';
-import { wishlistBackgroundImageKey } from '$lib/modules/wishlists/wishlist_appearance.js';
+import {
+	wishlistBackgroundImageKey,
+	wishlistBackgroundLibraryImageId,
+} from '$lib/modules/wishlists/wishlist_appearance.js';
 import type { SaveWishlistSettingsInput } from '$lib/modules/wishlists/wishlist_settings_types.js';
-import { DEFAULT_WISHLIST_BACKGROUND } from '$lib/theme/wishlist_themes.js';
+import {
+	DEFAULT_WISHLIST_BACKGROUND,
+	type WishlistBackground,
+} from '$lib/theme/wishlist_themes.js';
 import { OPERATION_CHANNEL, type OperationActor } from './actor.js';
 import type { MutationOperationContext } from './operation.js';
 import { requireMutableManagedWishlist, type WishlistRow } from './wishlist_management.js';
@@ -55,16 +61,29 @@ function planAppearanceEdit(
 		themeId: appearance.themeId,
 		styleTokens:
 			styleTokens === null || Object.keys(styleTokens).length === 0 ? null : styleTokens,
-		background:
-			background === null
-				? null
-				: {
-						...background,
-						imageKey:
-							background.imageKey === undefined
-								? wishlistBackgroundImageKey(wishlistRow.background)
-								: background.imageKey,
-					},
+		background: background === null ? null : mergeStoredBackground(wishlistRow, background),
+	};
+}
+
+/** Omitted references keep the stored ones; library mode needs an image after that merge. */
+function mergeStoredBackground(
+	wishlistRow: WishlistRow,
+	background: NonNullable<AppearanceInput['background']>,
+): WishlistBackground {
+	const libraryImageId =
+		background.libraryImageId === undefined
+			? wishlistBackgroundLibraryImageId(wishlistRow.background)
+			: background.libraryImageId;
+	if (background.mode === 'library' && libraryImageId === null) {
+		error(400, SERVER_ERROR.INVALID_OPERATION_INPUT);
+	}
+	return {
+		...background,
+		imageKey:
+			background.imageKey === undefined
+				? wishlistBackgroundImageKey(wishlistRow.background)
+				: background.imageKey,
+		libraryImageId,
 	};
 }
 

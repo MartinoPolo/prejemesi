@@ -50,21 +50,27 @@ export function hasStyleOverrides(draft: WishlistAppearanceDraft): boolean {
 	return Object.keys(draft.styleOverrides).length > 0;
 }
 
-function hasSelectedCustomImage(background: WishlistBackground): boolean {
-	return background.mode === 'custom' && background.imageKey !== null;
+function hasSelectedPhoto(background: WishlistBackground): boolean {
+	return (
+		(background.mode === 'custom' && background.imageKey !== null) ||
+		(background.mode === 'library' && background.libraryImageId !== null)
+	);
 }
 
 /**
  * Choosing a theme restyles the list as a whole: its palette is copied into the palette draft,
  * style overrides reset to the theme defaults and its backdrop is shown, except that a selected
- * custom photo stays. Without a theme there is no theme backdrop to show.
+ * custom or library photo stays. Without a theme there is no theme backdrop to show.
  */
 export function selectWishlistTheme(
 	draft: WishlistAppearanceDraft,
 	themeId: WishlistThemeId | null,
 ): { draft: WishlistAppearanceDraft; palette: Palette | null } {
-	const keepsCustomImage = hasSelectedCustomImage(draft.background);
-	const nextMode = keepsCustomImage ? 'custom' : themeId === null ? 'none' : 'theme';
+	const nextMode = hasSelectedPhoto(draft.background)
+		? draft.background.mode
+		: themeId === null
+			? 'none'
+			: 'theme';
 	return {
 		draft: {
 			themeId,

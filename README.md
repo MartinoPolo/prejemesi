@@ -23,7 +23,7 @@
 
 - **Lifecycle:** Draft → Active (shared) → Archived (read-only). Archiving is manual.
 - **Navigation:** _Přehled_ (`/home`) is the signed-in home; _Moje seznamy_, _Spravované_, and _Sledované_ remain the section pages.
-- **Appearance:** curated user and wishlist palettes, wishlist themes (backdrop, motifs and style tokens) with an optional custom background photo, independent image-frame fill, and per-user light/dark/system mode.
+- **Appearance:** curated user and wishlist palettes, wishlist themes (backdrop, motifs and style tokens) with an optional curated library image or custom background photo, independent image-frame fill, and per-user light/dark/system mode.
 - **Notifications:** critical email via Resend; routine in-app activity, including one rolling 24-hour new-gift digest per notified user across followed lists.
 - **Languages:** Czech (primary) + English, via URL-based i18n.
 
@@ -145,11 +145,14 @@ On Windows, use `pnpm.cmd` instead of `pnpm`.
 
 ### Deployment & Codegen
 
-| Script                     | Description                       |
-| -------------------------- | --------------------------------- |
-| `pnpm run cf:types`        | Generate Cloudflare Workers types |
-| `pnpm run auth:schema`     | Regenerate BetterAuth DB schema   |
-| `pnpm run build:storybook` | Build static Storybook            |
+| Script                                | Description                                         |
+| ------------------------------------- | --------------------------------------------------- |
+| `pnpm run cf:types`                   | Generate Cloudflare Workers types                   |
+| `pnpm run auth:schema`                | Regenerate BetterAuth DB schema                     |
+| `pnpm run build:storybook`            | Build static Storybook                              |
+| `pnpm run generate:theme-backgrounds` | Generate the curated background library (see below) |
+
+The background library is generated offline with Gemini image generation: `GEMINI_API_KEY=... pnpm run generate:theme-backgrounds [--theme <id>] [--model <id>] [--force]` writes WebP files to `static/wishlist-backgrounds/` and rewrites `src/lib/theme/wishlist_background_library.json`; review and commit both. The key must be paid tier because the free tier has no image quota. Runs resume by skipping existing images. Prompts live in `scripts/theme_background_prompts.mjs`.
 
 Application platform bindings use scoped imports from `@cloudflare/workers-types` in `src/app.d.ts`. Keep Wrangler's generated `worker-configuration.d.ts` out of the application TypeScript globals: its worker-entry import pulls compiled build output into typechecking.
 

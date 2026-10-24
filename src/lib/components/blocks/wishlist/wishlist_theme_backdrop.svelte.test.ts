@@ -11,6 +11,10 @@ import WishlistThemeBackdrop from './WishlistThemeBackdrop.svelte';
 
 // The responsive photo source reads the image CDN base from `$env/dynamic/public`.
 vi.mock('$env/dynamic/public', () => ({ env: {} }));
+// The shipped library is empty until images are generated.
+vi.mock('$lib/theme/wishlist_background_library.json', () => ({
+	default: [{ id: 'space-photo', themeId: 'space', variant: 'photo', widths: [1280, 2560] }],
+}));
 
 // One motif per side is enough to tell the desktop gutters from the mobile strip.
 const ART: WishlistThemeArt = {
@@ -107,6 +111,63 @@ describe('WishlistThemeBackdrop', () => {
 		);
 		expect(backdrop?.style.getPropertyValue('--photo-dim')).toBe('35%');
 		expect(container.querySelector('[data-testid="wishlist-backdrop-motif"]')).toBeNull();
+	});
+
+	it('shows a library image like a custom photo, from its static files', async () => {
+		const container = await renderBackdrop({
+			mode: 'library',
+			background: {
+				libraryImageId: 'space-photo',
+				placement: 'full',
+				dim: 35,
+				focal: { x: 20, y: 70 },
+			},
+		});
+		const photo = container.querySelector<HTMLImageElement>(
+			'[data-testid="wishlist-backdrop-photo"]',
+		);
+
+		expect(photo?.getAttribute('src')).toMatch(
+			/\/wishlist-backgrounds\/space-photo-2560\.webp$/,
+		);
+		expect(photo?.getAttribute('srcset')).toMatch(
+			/space-photo-1280\.webp 1280w, .*space-photo-2560\.webp 2560w$/,
+		);
+		expect(photo?.getAttribute('alt')).toBe('');
+		expect(getComputedStyle(photo!).objectPosition).toBe('20% 70%');
+		const backdrop = container.querySelector<HTMLElement>(
+			'[data-testid="wishlist-theme-backdrop"]',
+		);
+		expect(backdrop?.style.getPropertyValue('--photo-dim')).toBe('35%');
+		expect(container.querySelector('[data-testid="wishlist-backdrop-motif"]')).toBeNull();
+	});
+
+	it('shows a library image as the top strip on phones, like a custom photo', async () => {
+		const container = await renderBackdrop({
+			mode: 'library',
+			background: { libraryImageId: 'space-photo', placement: 'full' },
+			contentWidth: 400,
+		});
+		const photoFrame = container.querySelector<HTMLElement>('.wishlist-backdrop-photo');
+
+		const photoFrameStyle = getComputedStyle(photoFrame!);
+		expect(photoFrameStyle.position).toBe('absolute');
+		expect(`${String(photoFrame!.getBoundingClientRect().height)}px`).toBe(
+			photoFrameStyle.getPropertyValue('--wishlist-band-height').trim(),
+		);
+	});
+
+	it.each([
+		['drifts with the page scroll by default', 'subtle', true],
+		['stays still when motion is off', 'off', false],
+	] as const)('library image %s', async (_label, motion, drifts) => {
+		const container = await renderBackdrop({
+			mode: 'library',
+			background: { libraryImageId: 'space-photo', motion },
+		});
+		const photoFrame = container.querySelector<HTMLElement>('.wishlist-backdrop-photo');
+
+		expect(photoFrame!.getAnimations().length > 0).toBe(drifts);
 	});
 
 	it('drifts motifs with the page scroll by default', async () => {

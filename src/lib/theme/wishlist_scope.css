@@ -68,7 +68,8 @@
 }
 
 /* ── Dark backdrops: hard sticker shadows turn black, depth stays the viewer's ─ */
-[data-wishlist-background='custom'] {
+[data-wishlist-background='custom'],
+[data-wishlist-background='library'] {
 	--theme-shadow-override: #000;
 }
 
@@ -95,7 +96,8 @@
 @container app-content (width < 1360px) {
 	.wishlist-page-shell:is(
 		[data-wishlist-background='theme'],
-		[data-wishlist-background='custom'][data-wishlist-placement='gutters']
+		[data-wishlist-background='custom'][data-wishlist-placement='gutters'],
+		[data-wishlist-background='library'][data-wishlist-placement='gutters']
 	) {
 		padding-top: calc(var(--wishlist-band-height) - var(--space-6));
 	}

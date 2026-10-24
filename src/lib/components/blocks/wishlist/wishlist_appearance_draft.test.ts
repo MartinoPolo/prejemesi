@@ -53,6 +53,33 @@ describe('wishlist appearance draft', () => {
 		expect(draft.background.imageKey).toBe('wishlists/backgrounds/photo.jpg');
 	});
 
+	it('keeps a selected library image when switching themes', () => {
+		const withLibraryImage = setWishlistBackground(unthemed, {
+			mode: 'library',
+			libraryImageId: 'christmas-photo',
+		});
+		const { draft } = selectWishlistTheme(withLibraryImage, 'gamer');
+		expect(draft.background.mode).toBe('library');
+		expect(draft.background.libraryImageId).toBe('christmas-photo');
+	});
+
+	it('keeps a stored custom upload while a library image is selected', () => {
+		const saved = createWishlistAppearanceDraft({
+			themeId: null,
+			styleTokens: null,
+			background: { mode: 'custom', imageKey: 'stored.jpg' },
+		});
+		const input = wishlistAppearanceDraftToInput(
+			setWishlistBackground(saved, { mode: 'library', libraryImageId: 'christmas-photo' }),
+			'stored.jpg',
+		);
+		expect(input.background).not.toHaveProperty('imageKey');
+		expect(input.background).toMatchObject({
+			mode: 'library',
+			libraryImageId: 'christmas-photo',
+		});
+	});
+
 	it('choosing no theme keeps the palette and shows no theme backdrop', () => {
 		const themed = selectWishlistTheme(unthemed, 'toys').draft;
 		const { draft, palette } = selectWishlistTheme(themed, null);
@@ -95,6 +122,7 @@ describe('wishlist appearance draft', () => {
 	it.each([
 		['mode', { mode: 'none' }],
 		['image key', { imageKey: 'wishlists/backgrounds/photo.webp' }],
+		['library image', { libraryImageId: 'christmas-photo' }],
 		['focal point', { focal: { x: 10, y: 50 } }],
 		['placement', { placement: 'full' }],
 		['dim', { dim: 0 }],

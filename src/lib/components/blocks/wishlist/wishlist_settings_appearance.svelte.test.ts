@@ -13,6 +13,7 @@ const remoteMocks = vi.hoisted(() => ({
 	uploadFile: vi.fn(),
 }));
 vi.mock('$env/dynamic/public', () => ({ env: {} }));
+vi.mock('$lib/theme/wishlist_background_library.json', () => ({ default: [] }));
 // Preparation has its own tests.
 vi.mock('$lib/modules/uploads/prepare_image.js', async (importOriginal) => ({
 	...(await importOriginal<typeof PrepareImageModule>()),
@@ -41,6 +42,7 @@ import { renderSettings, wishlist } from './wishlist_settings_modal.test_fixture
 
 const defaultBackgroundWithoutImage = {
 	mode: DEFAULT_WISHLIST_BACKGROUND.mode,
+	libraryImageId: DEFAULT_WISHLIST_BACKGROUND.libraryImageId,
 	focal: DEFAULT_WISHLIST_BACKGROUND.focal,
 	placement: DEFAULT_WISHLIST_BACKGROUND.placement,
 	dim: DEFAULT_WISHLIST_BACKGROUND.dim,
@@ -299,6 +301,26 @@ describe('WishlistSettingsModal appearance tab', () => {
 				screen.getByTestId('wishlist-appearance-editor').getByText(m.demo_image_limits()),
 			)
 			.toBeVisible();
+	});
+
+	it('offers no library background while the library is empty', async () => {
+		const screen = renderSettings({ activeTab: 'appearance' });
+		await expect
+			.element(
+				screen.getByRole('radio', {
+					name: m.wishlist_appearance_background_custom(),
+					exact: true,
+				}),
+			)
+			.toBeVisible();
+		await expect
+			.element(
+				screen.getByRole('radio', {
+					name: m.wishlist_appearance_background_library(),
+					exact: true,
+				}),
+			)
+			.not.toBeInTheDocument();
 	});
 
 	it('disables the theme backdrop choice without a theme', async () => {

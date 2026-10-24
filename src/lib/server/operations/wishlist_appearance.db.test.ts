@@ -36,6 +36,10 @@ const SIGNING_KEY = 'wishlist-appearance-test-signing-secret';
 vi.mock('$lib/server/crypto/auth_signing_key.js', () => ({
 	getAuthSigningKey: () => 'wishlist-appearance-test-signing-secret',
 }));
+// The shipped library is empty until images are generated.
+vi.mock('$lib/theme/wishlist_background_library.json', () => ({
+	default: [{ id: 'books-photo', themeId: 'books', variant: 'photo', widths: [1280, 2560] }],
+}));
 vi.mock('$app/server', () => ({
 	getRequestEvent: vi.fn(() => {
 		throw new Error('Outside a request');
@@ -282,7 +286,7 @@ describe.skipIf(!DB_READY)('wishlist appearance [real DB]', () => {
 
 		function withoutImageKey(
 			background: WishlistBackground,
-		): Omit<WishlistBackground, 'imageKey'> {
+		): Omit<WishlistBackground, 'imageKey' | 'libraryImageId'> {
 			const { mode, focal, placement, dim, motion } = background;
 			return { mode, focal, placement, dim, motion };
 		}
@@ -410,6 +414,165 @@ describe.skipIf(!DB_READY)('wishlist appearance [real DB]', () => {
 
 			expect(deletedObjectKeys()).toContain(backgroundKey);
 		});
+	});
+
+	describe('library background', () => {
+		const libraryBackground: WishlistBackground = {
+			...DEFAULT_WISHLIST_BACKGROUND,
+			mode: 'library',
+			libraryImageId: 'books-photo',
+			placement: 'full',
+		};
+
+		it('lets an agent choose a library image and keeps it when a later save omits the id', async () => {
+			const { id: wishlistId } = await createWishlistFixture();
+			await executeOperation(managerActor, saveWishlistSettingsOperation, {
+				wishlistId,
+				appearance: { themeId: 'books', styleTokens: null, background: libraryBackground },
+			});
+			const { mode, focal, placement, motion } = libraryBackground;
+			await executeOperation(managerActor, saveWishlistSettingsOperation, {
+				wishlistId,
+				appearance: {
+					themeId: 'books',
+					styleTokens: null,
+					background: { mode, focal, placement, dim: 45, motion },
+				},
+			});
+			expect((await readAppearance(wishlistId)).background).toMatchObject({
+				mode: 'library',
+				libraryImageId: 'books-photo',
+				dim: 45,
+			});
+		});
+
+		it('rejects an id that is not in the library', async () => {
+			const { id: wishlistId } = await createWishlistFixture();
+			const thrown = await captureError(
+				executeOperation(managerActor, saveWishlistSettingsOperation, {
+					wishlistId,
+					appearance: {
+						themeId: 'books',
+						styleTokens: null,
+						background: { ...libraryBackground, libraryImageId: 'books-retired' },
+					},
+				}),
+			);
+			expect(thrown).toMatchObject({ status: 400 });
+			expect((await readAppearance(wishlistId)).background).toBeNull();
+		});
+
+		it.each([
+			[
+				'without an image id',
+				{
+					mode: 'library',
+					focal: { x: 50, y: 50 },
+					placement: 'full',
+					dim: 20,
+					motion: 'off',
+				},
+			],
+			['with a null image id', { ...libraryBackground, libraryImageId: null }],
+		] as const)('rejects library mode %s when none is stored', async (_label, background) => {
+			const { id: wishlistId } = await createWishlistFixture();
+			const thrown = await captureError(
+				executeOperation(managerActor, saveWishlistSettingsOperation, {
+					wishlistId,
+					appearance: { themeId: 'books', styleTokens: null, background },
+				}),
+			);
+			expect(thrown).toMatchObject({ status: 400 });
+			expect((await readAppearance(wishlistId)).background).toBeNull();
+		});
+
+		it('does not keep a stored image id that left the library', async () => {
+			const { id: wishlistId } = await createWishlistFixture();
+			await getDb()
+				.update(wishlist)
+				.set({
+					background: sql`'{"mode":"theme","libraryImageId":"books-retired"}'::jsonb`,
+				})
+				.where(eq(wishlist.id, wishlistId));
+			const { mode, focal, placement, dim, motion } = DEFAULT_WISHLIST_BACKGROUND;
+
+			const libraryThrown = await captureError(
+				executeOperation(managerActor, saveWishlistSettingsOperation, {
+					wishlistId,
+					appearance: {
+						themeId: 'books',
+						styleTokens: null,
+						background: { mode: 'library', focal, placement, dim, motion },
+					},
+				}),
+			);
+			expect(libraryThrown).toMatchObject({ status: 400 });
+
+			await executeOperation(managerActor, saveWishlistSettingsOperation, {
+				wishlistId,
+				appearance: {
+					themeId: 'books',
+					styleTokens: null,
+					background: { mode, focal, placement, dim, motion },
+				},
+			});
+			expect((await readAppearance(wishlistId)).background).toMatchObject({
+				mode: 'theme',
+				libraryImageId: null,
+			});
+		});
+
+		it.each([
+			[
+				'the app',
+				managerInterfaceActor,
+				(backgroundKey: string) => ({
+					...customBackground(backgroundKey),
+					mode: 'library' as const,
+					libraryImageId: 'books-photo',
+				}),
+			],
+			[
+				'an agent',
+				managerActor,
+				() => {
+					const { mode, libraryImageId, focal, placement, dim, motion } =
+						libraryBackground;
+					return { mode, libraryImageId, focal, placement, dim, motion };
+				},
+			],
+		])(
+			'keeps the stored upload when %s switches to a library image',
+			async (_label, actor, libraryDraft) => {
+				const { id: wishlistId } = await createWishlistFixture();
+				const backgroundKey = `wishlists/backgrounds/${wishlistId}-before-library.webp`;
+				await executeOperation(managerActor, saveWishlistSettingsOperation, {
+					wishlistId,
+					appearance: {
+						themeId: 'books',
+						styleTokens: null,
+						background: customBackground(backgroundKey),
+						backgroundAssignmentToken: await assignmentToken(backgroundKey),
+					},
+				});
+
+				await executeOperation(actor, saveWishlistSettingsOperation, {
+					wishlistId,
+					appearance: {
+						themeId: 'books',
+						styleTokens: null,
+						background: libraryDraft(backgroundKey),
+					},
+				});
+
+				expect((await readAppearance(wishlistId)).background).toMatchObject({
+					mode: 'library',
+					libraryImageId: 'books-photo',
+					imageKey: backgroundKey,
+				});
+				expect(deletedObjectKeys()).toEqual([]);
+			},
+		);
 	});
 
 	describe('read', () => {
