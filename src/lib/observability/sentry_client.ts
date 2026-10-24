@@ -1,3 +1,4 @@
+import type { DeploymentEnvironment } from '$lib/config/site.js';
 import {
 	SENTRY_DATA_COLLECTION,
 	sanitizeSentryBreadcrumb,
@@ -56,7 +57,7 @@ export function createSentryClientOptions<T extends { name: string }>({
 	replayIntegration,
 }: {
 	dsn?: string;
-	environment: 'development' | 'production';
+	environment: DeploymentEnvironment;
 	replayIntegration?: T;
 }) {
 	return {

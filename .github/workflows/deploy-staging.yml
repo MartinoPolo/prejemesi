@@ -1,0 +1,45 @@
+name: Deploy (staging)
+
+# Deploys every `dev` push to https://staging.prejemesi.cz (Worker `prejemesi-staging`)
+# so a release can be exercised before it reaches production. Staging runs on its own
+# Neon branch, Hyperdrive config and R2 bucket, and sends no email. Unlike production,
+# migrations apply automatically here: staging is where a release's migrations are
+# rehearsed. Setup and refresh: docs/STAGING.md.
+#
+# Requires the STAGING_DATABASE_URL repository secret (direct, non-pooler Neon URL of the
+# staging branch) besides the CLOUDFLARE_API_TOKEN secret shared with production.
+
+on:
+    push:
+        branches: [dev]
+    workflow_dispatch:
+
+concurrency:
+    group: deploy-staging
+    cancel-in-progress: false
+
+jobs:
+    deploy:
+        runs-on: ubuntu-latest
+        environment:
+            name: staging
+            url: https://staging.prejemesi.cz
+        steps:
+            - uses: actions/checkout@v4
+            - uses: pnpm/action-setup@v4
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: 22
+                  cache: pnpm
+            - run: pnpm install --frozen-lockfile
+            - name: Apply migrations to the staging database
+              run: pnpm db:migrate
+              env:
+                  DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+            - run: pnpm run build
+            - name: Deploy to Cloudflare Workers
+              run: pnpm exec wrangler deploy --env staging --var "GIT_COMMIT_SHA:${{ github.sha }}" --var "PUBLIC_SENTRY_DSN:${PUBLIC_SENTRY_DSN}"
+              env:
+                  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+                  CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+                  PUBLIC_SENTRY_DSN: ${{ vars.PUBLIC_SENTRY_DSN }}

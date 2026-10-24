@@ -18,6 +18,7 @@
 	let errorMessage = $state('');
 	let success = $state(false);
 	let turnstileToken = $state<string | null>(null);
+	let turnstileUnavailable = $state(false);
 	let turnstileResetSignal = $state(0);
 
 	function validateEmail(): boolean {
@@ -102,14 +103,14 @@
 		</div>
 
 		{#key turnstileResetSignal}
-			<TurnstileWidget bind:token={turnstileToken} />
+			<TurnstileWidget bind:token={turnstileToken} bind:unavailable={turnstileUnavailable} />
 		{/key}
 
 		<Button
 			type="submit"
 			class="mt-6 w-full"
 			size="lg"
-			disabled={loading || turnstileToken === null}
+			disabled={loading || (!turnstileUnavailable && turnstileToken === null)}
 		>
 			{#if loading}
 				<span class="spinner"></span>

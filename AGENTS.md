@@ -53,6 +53,7 @@ When debugging or analyzing issues related to third-party libraries, delegate ex
 ## Deployment
 
 - Production deploys are gated: push to `production` → checks for the exact SHA → GitHub `production` environment approval → `wrangler deploy`. Schema changes follow expand → migrate → deploy → contract, enforced by `pnpm check:migrations`. Runbook: `docs/DEPLOYMENT.md`.
+- Every `dev` push auto-deploys to https://staging.prejemesi.cz (production snapshot, migrations auto-applied, no email). Runbook: `docs/STAGING.md`.
 
 ## Git Workflow
 

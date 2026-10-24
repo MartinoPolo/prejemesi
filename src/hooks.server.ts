@@ -15,7 +15,12 @@ import {
 	getDevAutoLoginEmail,
 	signInForDevelopment,
 } from '$lib/server/dev_auto_login.js';
-import { SITE_URL, WWW_HOSTNAME } from '$lib/config/site.js';
+import {
+	SITE_URL,
+	WWW_HOSTNAME,
+	deploymentEnvironment,
+	isStagingHostname,
+} from '$lib/config/site.js';
 import { ROBOTS_NOINDEX_CONTENT, shouldNoindexPath } from '$lib/seo/robots.js';
 import { requestTelemetryHandle } from '$lib/server/request_telemetry.js';
 import {
@@ -66,7 +71,7 @@ const sentryInitializationHandle: Handle = ({ event, resolve }) => {
 	initializedSentryHandle ??= Sentry.initCloudflareSentryHandle(
 		createSentryServerOptions({
 			dsn,
-			environment: dev ? 'development' : 'production',
+			environment: deploymentEnvironment(event.url.hostname),
 			release: event.platform?.env.GIT_COMMIT_SHA,
 		}),
 	);
@@ -92,7 +97,7 @@ function setSecurityHeaders(headers: Headers, url: URL) {
 		headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
 	}
 
-	if (shouldNoindexPath(url.pathname)) {
+	if (isStagingHostname(url.hostname) || shouldNoindexPath(url.pathname)) {
 		headers.set('X-Robots-Tag', ROBOTS_NOINDEX_CONTENT);
 	}
 }
