@@ -1,1 +1,128 @@
-[]
+[
+	{
+		"id": "toys-illustrated",
+		"themeId": "toys",
+		"variant": "illustrated",
+		"widths": [640, 1280, 1672]
+	},
+	{
+		"id": "toys-photo",
+		"themeId": "toys",
+		"variant": "photo",
+		"widths": [640, 1280, 1672]
+	},
+	{
+		"id": "kids_clothes-illustrated",
+		"themeId": "kids_clothes",
+		"variant": "illustrated",
+		"widths": [640, 1280, 1672]
+	},
+	{
+		"id": "kids_clothes-photo",
+		"themeId": "kids_clothes",
+		"variant": "photo",
+		"widths": [640, 1280, 1672]
+	},
+	{
+		"id": "gamer-illustrated",
+		"themeId": "gamer",
+		"variant": "illustrated",
+		"widths": [640, 1280, 1672]
+	},
+	{
+		"id": "gamer-photo",
+		"themeId": "gamer",
+		"variant": "photo",
+		"widths": [640, 1280, 1672]
+	},
+	{
+		"id": "minimal-illustrated",
+		"themeId": "minimal",
+		"variant": "illustrated",
+		"widths": [640, 1280, 1672]
+	},
+	{
+		"id": "minimal-photo",
+		"themeId": "minimal",
+		"variant": "photo",
+		"widths": [640, 1280, 1672]
+	},
+	{
+		"id": "wedding-illustrated",
+		"themeId": "wedding",
+		"variant": "illustrated",
+		"widths": [640, 1280, 1672]
+	},
+	{
+		"id": "wedding-photo",
+		"themeId": "wedding",
+		"variant": "photo",
+		"widths": [640, 1280, 1672]
+	},
+	{
+		"id": "christmas-illustrated",
+		"themeId": "christmas",
+		"variant": "illustrated",
+		"widths": [640, 1280, 1672]
+	},
+	{
+		"id": "christmas-photo",
+		"themeId": "christmas",
+		"variant": "photo",
+		"widths": [640, 1280, 1672]
+	},
+	{
+		"id": "outdoor-illustrated",
+		"themeId": "outdoor",
+		"variant": "illustrated",
+		"widths": [640, 1280, 1672]
+	},
+	{
+		"id": "outdoor-photo",
+		"themeId": "outdoor",
+		"variant": "photo",
+		"widths": [640, 1280, 1672]
+	},
+	{
+		"id": "books-illustrated",
+		"themeId": "books",
+		"variant": "illustrated",
+		"widths": [640, 1280, 1672]
+	},
+	{
+		"id": "books-photo",
+		"themeId": "books",
+		"variant": "photo",
+		"widths": [640, 1280, 1672]
+	},
+	{
+		"id": "baby-illustrated",
+		"themeId": "baby",
+		"variant": "illustrated",
+		"widths": [640, 1280, 1672]
+	},
+	{
+		"id": "baby-photo",
+		"themeId": "baby",
+		"variant": "photo",
+		"widths": [640, 1280, 1672]
+	},
+	{
+		"id": "retro-illustrated",
+		"themeId": "retro",
+		"variant": "illustrated",
+		"widths": [640, 1280, 1672]
+	},
+	{
+		"id": "retro-photo",
+		"themeId": "retro",
+		"variant": "photo",
+		"widths": [640, 1280, 1672]
+	},
+	{
+		"id": "party-illustrated",
+		"themeId": "party",
+		"variant": "illustrated",
+		"widths": [640, 1280, 1672]
+	}
+]
