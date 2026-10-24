@@ -15,6 +15,7 @@ vi.mock('$env/dynamic/private', () => ({
 		ORIGIN: 'http://localhost:8300',
 	},
 }));
+vi.mock('$app/environment', () => ({ browser: false, building: false, dev: false }));
 vi.mock('./db/index.js', () => ({
 	getDb: () => ({
 		select: () => ({
@@ -110,6 +111,11 @@ describe('production authentication flows', () => {
 				expect(columns, `${model}.${field}`).toHaveProperty(field);
 			}
 		}
+	});
+
+	it('keeps password sign-in available when Turnstile is not configured', () => {
+		const pluginIds = createAuth().options.plugins.map((plugin) => plugin.id);
+		expect(pluginIds).not.toContain('test-captcha');
 	});
 
 	it('does not expose magic-link issuance or redemption', async () => {

@@ -82,6 +82,7 @@ function oauthProviderPlugins(applicationOrigin: string) {
 export function createAuth(event?: RequestEvent) {
 	const authOrigins = resolveAuthOrigins(env, import.meta.env.DEV);
 	const applicationOrigin = resolveApplicationOrigin(env, import.meta.env.DEV, event?.url.href);
+	const turnstileSecretKey = getTurnstileSecretKey();
 	return betterAuth({
 		baseURL: authOrigins.baseURL,
 		secret: env.AUTH_SECRET,
@@ -202,11 +203,17 @@ export function createAuth(event?: RequestEvent) {
 		},
 
 		plugins: [
-			captcha({
-				provider: 'cloudflare-turnstile',
-				secretKey: getTurnstileSecretKey(),
-				endpoints: [...AUTH_CAPTCHA_ENDPOINTS],
-			}),
+			// Turnstile is advisory: the captcha plugin throws on every protected endpoint
+			// without a secret, which would turn missing configuration into a sign-in outage.
+			...(turnstileSecretKey === ''
+				? []
+				: [
+						captcha({
+							provider: 'cloudflare-turnstile',
+							secretKey: turnstileSecretKey,
+							endpoints: [...AUTH_CAPTCHA_ENDPOINTS],
+						}),
+					]),
 			...(event === undefined || needsOauthProvider(deLocalizeUrl(event.url).pathname)
 				? oauthProviderPlugins(applicationOrigin)
 				: []),
