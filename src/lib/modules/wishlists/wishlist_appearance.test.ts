@@ -24,7 +24,8 @@ describe('WishlistAppearanceInputSchema', () => {
 	});
 
 	it('accepts a background without an image key, which keeps the stored upload', () => {
-		const { imageKey: _omitted, ...backgroundWithoutImageKey } = DEFAULT_WISHLIST_BACKGROUND;
+		const { mode, focal, placement, dim, motion } = DEFAULT_WISHLIST_BACKGROUND;
+		const backgroundWithoutImageKey = { mode, focal, placement, dim, motion };
 		const parsed = v.safeParse(WishlistAppearanceInputSchema, {
 			...validAppearance,
 			background: backgroundWithoutImageKey,

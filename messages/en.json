@@ -1793,6 +1793,7 @@
 	"wishlist_appearance_background_remove": "Remove image",
 	"wishlist_appearance_background_focal_label": "Image center",
 	"wishlist_appearance_background_focal_value": "Image center: {x} % across, {y} % down",
+	"wishlist_appearance_background_focal_role": "movable point",
 	"wishlist_appearance_background_focal_hint": "Click the preview, drag the point or use the arrow keys. On desktop the photo fills the margins; on mobile only a strip above the notebook shows, around the chosen center.",
 	"wishlist_appearance_background_placement_label": "Placement",
 	"wishlist_appearance_background_placement_gutters": "Margins",

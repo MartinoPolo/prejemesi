@@ -85,7 +85,6 @@ export const DEFAULT_WISHLIST_BACKGROUND: WishlistBackground = {
 };
 
 export interface WishlistThemeDefinition {
-	id: WishlistThemeId;
 	palette: Palette;
 	style: WishlistStyleTokens;
 	/** Dark-native backdrops look the same in light and dark mode and use black hard shadows. */
@@ -94,97 +93,81 @@ export interface WishlistThemeDefinition {
 
 export const WISHLIST_THEMES: Record<WishlistThemeId, WishlistThemeDefinition> = {
 	toys: {
-		id: 'toys',
 		palette: 'sky',
 		style: { corners: 'round', border: 'bold', mat: 'dotted', heading: 'playful' },
 		darkBackdrop: false,
 	},
 	kids_clothes: {
-		id: 'kids_clothes',
 		palette: 'sakura',
 		style: { corners: 'round', border: 'bold', mat: 'white', heading: 'hand' },
 		darkBackdrop: false,
 	},
 	gamer: {
-		id: 'gamer',
 		palette: 'grape',
 		style: { corners: 'soft', border: 'bold', mat: 'black', heading: 'plain' },
 		darkBackdrop: true,
 	},
 	minimal: {
-		id: 'minimal',
 		palette: 'graphite',
 		style: { corners: 'sharp', border: 'fine', mat: 'white', heading: 'plain' },
 		darkBackdrop: false,
 	},
 	wedding: {
-		id: 'wedding',
 		palette: 'honey',
 		style: { corners: 'soft', border: 'fine', mat: 'white', heading: 'elegant' },
 		darkBackdrop: false,
 	},
 	christmas: {
-		id: 'christmas',
 		palette: 'ruby',
 		style: { corners: 'round', border: 'bold', mat: 'dotted', heading: 'playful' },
 		darkBackdrop: true,
 	},
 	outdoor: {
-		id: 'outdoor',
 		palette: 'matcha',
 		style: { corners: 'soft', border: 'bold', mat: 'dotted', heading: 'playful' },
 		darkBackdrop: false,
 	},
 	books: {
-		id: 'books',
 		palette: 'ocean',
 		style: { corners: 'soft', border: 'fine', mat: 'white', heading: 'elegant' },
 		darkBackdrop: false,
 	},
 	baby: {
-		id: 'baby',
 		palette: 'mint',
 		style: { corners: 'round', border: 'fine', mat: 'dotted', heading: 'hand' },
 		darkBackdrop: false,
 	},
 	retro: {
-		id: 'retro',
 		palette: 'peach',
 		style: { corners: 'round', border: 'bold', mat: 'dotted', heading: 'playful' },
 		darkBackdrop: false,
 	},
 	party: {
-		id: 'party',
 		palette: 'sakura',
 		style: { corners: 'round', border: 'bold', mat: 'dotted', heading: 'playful' },
 		darkBackdrop: false,
 	},
 	space: {
-		id: 'space',
 		palette: 'sky',
 		style: { corners: 'soft', border: 'bold', mat: 'black', heading: 'plain' },
 		darkBackdrop: true,
 	},
 	music: {
-		id: 'music',
 		palette: 'ruby',
 		style: { corners: 'soft', border: 'bold', mat: 'white', heading: 'plain' },
 		darkBackdrop: false,
 	},
 	pets: {
-		id: 'pets',
 		palette: 'honey',
 		style: { corners: 'round', border: 'bold', mat: 'dotted', heading: 'playful' },
 		darkBackdrop: false,
 	},
 	gourmet: {
-		id: 'gourmet',
 		palette: 'peach',
 		style: { corners: 'soft', border: 'fine', mat: 'white', heading: 'elegant' },
 		darkBackdrop: false,
 	},
 	travel: {
-		id: 'travel',
 		palette: 'ocean',
 		style: { corners: 'round', border: 'bold', mat: 'white', heading: 'hand' },
 		darkBackdrop: false,

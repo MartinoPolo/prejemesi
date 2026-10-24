@@ -3,13 +3,29 @@ import { cleanup } from 'vitest-browser-svelte';
 import { userEvent } from 'vitest/browser';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import * as m from '$lib/paraglide/messages.js';
+import type * as PrepareImageModule from '$lib/modules/uploads/prepare_image.js';
+import type { UploadResult } from '$lib/modules/uploads/types.js';
 import { DEFAULT_WISHLIST_BACKGROUND, WISHLIST_THEMES } from '$lib/theme/wishlist_themes.js';
 import { wishlistThemeName } from '$lib/theme/wishlist_theme_messages.js';
 
 const remoteMocks = vi.hoisted(() => ({
 	saveWishlistSettings: vi.fn(),
+	uploadFile: vi.fn(),
 }));
 vi.mock('$env/dynamic/public', () => ({ env: {} }));
+// Preparation has its own tests.
+vi.mock('$lib/modules/uploads/prepare_image.js', async (importOriginal) => ({
+	...(await importOriginal<typeof PrepareImageModule>()),
+	prepareImageForUpload: async (file: File) => file,
+}));
+vi.mock('$lib/modules/uploads/upload.js', () => ({
+	uploadFile: remoteMocks.uploadFile,
+	createPendingUploads: () => ({
+		track: () => {},
+		commit: async () => {},
+		discardAll: async () => {},
+	}),
+}));
 vi.mock('$lib/modules/wishlists/wishlist_settings.remote.js', () => ({
 	saveWishlistSettings: remoteMocks.saveWishlistSettings,
 }));
@@ -30,6 +46,26 @@ const defaultBackgroundWithoutImage = {
 	dim: DEFAULT_WISHLIST_BACKGROUND.dim,
 	motion: DEFAULT_WISHLIST_BACKGROUND.motion,
 };
+
+const STORED_BACKGROUND_KEY = 'wishlists/backgrounds/stored.webp';
+
+const ONE_PIXEL_PNG = Uint8Array.from(
+	atob(
+		'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+	),
+	(character) => character.charCodeAt(0),
+);
+
+function selectImage(input: HTMLInputElement) {
+	const transfer = new DataTransfer();
+	transfer.items.add(new File([ONE_PIXEL_PNG], 'background.png', { type: 'image/png' }));
+	input.files = transfer.files;
+	input.dispatchEvent(new Event('change', { bubbles: true }));
+}
+
+function savedAppearance() {
+	return remoteMocks.saveWishlistSettings.mock.calls[0]![0].appearance;
+}
 
 afterEach(() => {
 	cleanup();
@@ -115,7 +151,7 @@ describe('WishlistSettingsModal appearance tab', () => {
 		await expect.element(save).toBeDisabled();
 	});
 
-	it('keeps a stored override until the manager resets it', async () => {
+	it('reset clears stored overrides', async () => {
 		remoteMocks.saveWishlistSettings.mockReset().mockResolvedValue(undefined);
 		const screen = renderSettings({
 			activeTab: 'appearance',
@@ -129,6 +165,81 @@ describe('WishlistSettingsModal appearance tab', () => {
 		expect(remoteMocks.saveWishlistSettings.mock.calls[0]![0].appearance).toMatchObject({
 			themeId: 'minimal',
 			styleTokens: null,
+		});
+	});
+
+	it('keeps a stored override when only an unrelated field changes', async () => {
+		remoteMocks.saveWishlistSettings.mockReset().mockResolvedValue(undefined);
+		const screen = renderSettings({
+			activeTab: 'appearance',
+			wishlist: { ...wishlist, themeId: 'minimal', styleTokens: { corners: 'round' } },
+		});
+		await screen
+			.getByRole('radio', { name: m.wishlist_appearance_motion_off(), exact: true })
+			.click();
+		await screen.getByRole('button', { name: m.save() }).click();
+		await vi.waitFor(() => expect(remoteMocks.saveWishlistSettings).toHaveBeenCalledOnce());
+		expect(savedAppearance()).toMatchObject({
+			themeId: 'minimal',
+			styleTokens: { corners: 'round' },
+			background: expect.objectContaining({ motion: 'off' }),
+		});
+	});
+
+	it('sends no image key when a stored custom background only changes its dim', async () => {
+		remoteMocks.saveWishlistSettings.mockReset().mockResolvedValue(undefined);
+		const screen = renderSettings({
+			activeTab: 'appearance',
+			wishlist: {
+				...wishlist,
+				background: {
+					...DEFAULT_WISHLIST_BACKGROUND,
+					mode: 'custom',
+					imageKey: STORED_BACKGROUND_KEY,
+				},
+			},
+		});
+		await screen.getByRole('slider').click();
+		await userEvent.keyboard('{ArrowRight}');
+		await screen.getByRole('button', { name: m.save() }).click();
+		await vi.waitFor(() => expect(remoteMocks.saveWishlistSettings).toHaveBeenCalledOnce());
+		const { background } = savedAppearance();
+		expect(background).toMatchObject({ mode: 'custom' });
+		expect(background.dim).not.toBe(DEFAULT_WISHLIST_BACKGROUND.dim);
+		expect(background).not.toHaveProperty('imageKey');
+		expect(savedAppearance()).not.toHaveProperty('backgroundAssignmentToken');
+	});
+
+	it('saves a newly uploaded background with its assignment proof', async () => {
+		remoteMocks.saveWishlistSettings.mockReset().mockResolvedValue(undefined);
+		const uploaded: UploadResult = {
+			objectKey: 'wishlists/backgrounds/new-upload.png',
+			publicUrl: 'data:image/png;base64,iVBORw0KGgo=',
+			deleteToken: 'background-assignment-token',
+		};
+		remoteMocks.uploadFile.mockReset().mockResolvedValue(uploaded);
+		const screen = renderSettings({ activeTab: 'appearance' });
+
+		await screen
+			.getByRole('radio', { name: m.wishlist_appearance_background_custom(), exact: true })
+			.click();
+		const fileInput = await vi.waitFor(() => {
+			const input = screen.container.ownerDocument.querySelector<HTMLInputElement>(
+				'[data-testid="wishlist-appearance-editor"] input[type="file"]',
+			);
+			expect(input).not.toBeNull();
+			return input!;
+		});
+		selectImage(fileInput);
+		await vi.waitFor(() => expect(remoteMocks.uploadFile).toHaveBeenCalledOnce());
+
+		const save = screen.getByRole('button', { name: m.save() });
+		await expect.element(save).toBeEnabled();
+		await save.click();
+		await vi.waitFor(() => expect(remoteMocks.saveWishlistSettings).toHaveBeenCalledOnce());
+		expect(savedAppearance()).toMatchObject({
+			background: { mode: 'custom', imageKey: uploaded.objectKey },
+			backgroundAssignmentToken: uploaded.deleteToken,
 		});
 	});
 
@@ -154,17 +265,20 @@ describe('WishlistSettingsModal appearance tab', () => {
 
 	it('drops the preview once a save has refreshed the page', async () => {
 		remoteMocks.saveWishlistSettings.mockReset().mockResolvedValue(undefined);
-		const onappearancepreview = vi.fn();
+		const events: string[] = [];
+		const onappearancepreview = vi.fn((preview: unknown) => {
+			events.push(preview === null ? 'preview:null' : 'preview');
+		});
 		const onsaved = vi.fn(async () => {
-			expect(onappearancepreview).not.toHaveBeenLastCalledWith(null);
+			events.push('saved');
 		});
 		const screen = renderSettings({ activeTab: 'appearance', onappearancepreview, onsaved });
 
 		await screen.getByRole('radio', { name: wishlistThemeName('books'), exact: true }).click();
 		await screen.getByRole('button', { name: m.save() }).click();
 
-		await vi.waitFor(() => expect(onsaved).toHaveBeenCalledOnce());
-		await vi.waitFor(() => expect(onappearancepreview).toHaveBeenLastCalledWith(null));
+		await vi.waitFor(() => expect(events.at(-1)).toBe('preview:null'));
+		expect(events.slice(-3)).toEqual(['preview', 'saved', 'preview:null']);
 	});
 
 	it('offers no custom upload on a demo wishlist', async () => {

@@ -108,6 +108,7 @@
 		onpointermove={handlePointerMove}
 		onpointerup={handlePointerEnd}
 		onpointercancel={handlePointerEnd}
+		onlostpointercapture={handlePointerEnd}
 	>
 		<img src={imageUrl} alt="" draggable="false" class="block max-h-56 max-w-full rounded-sm" />
 		<button
@@ -120,6 +121,7 @@
 				x: String(focal.x),
 				y: String(focal.y),
 			})}
+			aria-roledescription={m.wishlist_appearance_background_focal_role()}
 			aria-describedby={describedBy}
 			{disabled}
 			data-testid="wishlist-background-focal-handle"

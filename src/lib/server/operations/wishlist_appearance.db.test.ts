@@ -12,6 +12,7 @@ import {
 } from './operations.db.test-setup.js';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { eq, sql } from 'drizzle-orm';
+import { getRequestEvent } from '$app/server';
 import { getDb } from '$lib/server/db/index.js';
 import { wishlist } from '$lib/server/db/wishlist.schema.js';
 import { deleteObjectsBestEffort } from '$lib/server/storage/r2.js';
@@ -22,6 +23,7 @@ import {
 	DEFAULT_WISHLIST_BACKGROUND,
 	type WishlistBackground,
 } from '$lib/theme/wishlist_themes.js';
+import { OPERATION_CHANNEL, type OperationActor } from './actor.js';
 import { executeOperation } from './runner.js';
 import {
 	createWishlistOperation,
@@ -34,6 +36,14 @@ const SIGNING_KEY = 'wishlist-appearance-test-signing-secret';
 vi.mock('$lib/server/crypto/auth_signing_key.js', () => ({
 	getAuthSigningKey: () => 'wishlist-appearance-test-signing-secret',
 }));
+vi.mock('$app/server', () => ({
+	getRequestEvent: vi.fn(() => {
+		throw new Error('Outside a request');
+	}),
+}));
+
+/** The same manager saving through the app instead of through an agent token. */
+const managerInterfaceActor: OperationActor = { ...managerActor, channel: OPERATION_CHANNEL.ui };
 
 async function assignmentToken(objectKey: string, userId = MANAGER_ID): Promise<string> {
 	return (await createUploadToken(objectKey, userId, SIGNING_KEY, TOKEN_PURPOSES.delete)).token;
@@ -249,7 +259,7 @@ describe.skipIf(!DB_READY)('wishlist appearance [real DB]', () => {
 			});
 			expect(deletedObjectKeys()).toEqual([firstKey]);
 
-			await executeOperation(managerActor, saveWishlistSettingsOperation, {
+			await executeOperation(managerInterfaceActor, saveWishlistSettingsOperation, {
 				wishlistId,
 				appearance: { themeId: 'space', styleTokens: null, background: null },
 			});
@@ -273,8 +283,8 @@ describe.skipIf(!DB_READY)('wishlist appearance [real DB]', () => {
 		function withoutImageKey(
 			background: WishlistBackground,
 		): Omit<WishlistBackground, 'imageKey'> {
-			const { imageKey: _omitted, ...backgroundWithoutImageKey } = background;
-			return backgroundWithoutImageKey;
+			const { mode, focal, placement, dim, motion } = background;
+			return { mode, focal, placement, dim, motion };
 		}
 
 		it('keeps the stored upload when a save omits the image key', async () => {
@@ -324,7 +334,7 @@ describe.skipIf(!DB_READY)('wishlist appearance [real DB]', () => {
 			const { id: wishlistId } = await createWishlistFixture();
 			const backgroundKey = await storeCustomBackground(wishlistId);
 
-			await executeOperation(managerActor, saveWishlistSettingsOperation, {
+			await executeOperation(managerInterfaceActor, saveWishlistSettingsOperation, {
 				wishlistId,
 				appearance: {
 					themeId: null,
@@ -338,6 +348,49 @@ describe.skipIf(!DB_READY)('wishlist appearance [real DB]', () => {
 				imageKey: null,
 			});
 			expect(deletedObjectKeys()).toEqual([backgroundKey]);
+		});
+
+		it('resets an agent-cleared background to the defaults but keeps the stored upload', async () => {
+			const { id: wishlistId } = await createWishlistFixture();
+			const backgroundKey = await storeCustomBackground(wishlistId);
+
+			await executeOperation(managerActor, saveWishlistSettingsOperation, {
+				wishlistId,
+				appearance: { themeId: 'space', styleTokens: null, background: null },
+			});
+
+			expect((await readAppearance(wishlistId)).background).toEqual({
+				...DEFAULT_WISHLIST_BACKGROUND,
+				imageKey: backgroundKey,
+			});
+			expect(deletedObjectKeys()).toEqual([]);
+		});
+
+		it('rejects assigning a custom background in a demo session', async () => {
+			const { id: wishlistId } = await createWishlistFixture();
+			const backgroundKey = `wishlists/backgrounds/${wishlistId}-demo.webp`;
+			const backgroundAssignmentToken = await assignmentToken(backgroundKey);
+			vi.mocked(getRequestEvent).mockReturnValue({
+				locals: { demoSession: { id: 'demo-visitor' } },
+			} as ReturnType<typeof getRequestEvent>);
+			try {
+				await expectRejection(
+					executeOperation(managerInterfaceActor, saveWishlistSettingsOperation, {
+						wishlistId,
+						appearance: {
+							themeId: null,
+							styleTokens: null,
+							background: customBackground(backgroundKey),
+							backgroundAssignmentToken,
+						},
+					}),
+					403,
+					'Image uploads are unavailable in the demo',
+				);
+			} finally {
+				vi.mocked(getRequestEvent).mockReset();
+			}
+			expect((await readAppearance(wishlistId)).background).toBeNull();
 		});
 
 		it('deletes the background upload with a deleted wishlist', async () => {

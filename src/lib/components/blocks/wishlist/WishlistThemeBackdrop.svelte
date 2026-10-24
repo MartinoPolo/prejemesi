@@ -158,7 +158,7 @@
 		top: 0;
 		right: 0;
 		left: 0;
-		height: var(--wishlist-band-height, 84px);
+		height: var(--wishlist-band-height);
 	}
 
 	.wishlist-backdrop-motif {
@@ -220,6 +220,7 @@
 		display: none;
 	}
 
+	/* Breakpoints and band heights come from wishlist_scope.css. */
 	@container app-content (width >= 1360px) {
 		.wishlist-backdrop-gutter {
 			display: block;
@@ -241,7 +242,7 @@
 	@container app-content (width < 1360px) {
 		.wishlist-backdrop[data-placement='gutters'] .wishlist-backdrop-photo {
 			position: absolute;
-			height: var(--wishlist-band-height, 84px);
+			height: var(--wishlist-band-height);
 		}
 
 		.wishlist-backdrop[data-placement='gutters'] .wishlist-backdrop-wash {
@@ -256,7 +257,7 @@
 
 		.wishlist-backdrop[data-mode='custom'] .wishlist-backdrop-photo {
 			position: absolute;
-			height: var(--wishlist-band-height, 68px);
+			height: var(--wishlist-band-height);
 		}
 
 		.wishlist-backdrop[data-mode='custom'] .wishlist-backdrop-dim,

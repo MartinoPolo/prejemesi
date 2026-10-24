@@ -43,7 +43,11 @@
 	props: ComponentProps<typeof WishlistThemeBackdrop>,
 )}
 	<div class="[container:app-content/inline-size]">
-		<div class="relative isolate {frameClass}" data-wishlist-theme={themeId}>
+		<div
+			class="relative isolate {frameClass}"
+			data-wishlist-theme={themeId}
+			data-wishlist-backdrop
+		>
 			{#if themeId === null}
 				<WishlistThemeBackdrop {...args} {...props} />
 			{:else}
@@ -107,7 +111,11 @@
 			Scroll the frame: motifs drift with the scroll unless reduced motion is requested.
 		</p>
 		<div class="h-96 w-[1440px] overflow-y-auto [container:app-content/inline-size]">
-			<div class="relative isolate h-[1600px]" data-wishlist-theme="toys">
+			<div
+				class="relative isolate h-[1600px]"
+				data-wishlist-theme="toys"
+				data-wishlist-backdrop
+			>
 				{#await loadWishlistThemeArt('toys') then art}
 					<WishlistThemeBackdrop
 						mode="theme"

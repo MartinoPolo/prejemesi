@@ -111,16 +111,24 @@ function sameStyleOverrides(
 	return [...tokens].every((token) => first[token] === second[token]);
 }
 
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/** Field values compared by value one level deep, so nested points like `focal` count by content. */
+function sameFieldValue(first: unknown, second: unknown): boolean {
+	if (!isPlainRecord(first) || !isPlainRecord(second)) {
+		return first === second;
+	}
+	const keys = new Set([...Object.keys(first), ...Object.keys(second)]);
+	return [...keys].every((key) => first[key] === second[key]);
+}
+
 function sameBackground(first: WishlistBackground, second: WishlistBackground): boolean {
-	return (
-		first.mode === second.mode &&
-		first.imageKey === second.imageKey &&
-		first.focal.x === second.focal.x &&
-		first.focal.y === second.focal.y &&
-		first.placement === second.placement &&
-		first.dim === second.dim &&
-		first.motion === second.motion
-	);
+	const fields = new Set([...Object.keys(first), ...Object.keys(second)]) as Set<
+		keyof WishlistBackground
+	>;
+	return [...fields].every((field) => sameFieldValue(first[field], second[field]));
 }
 
 export function isSameWishlistAppearanceDraft(
@@ -134,6 +142,17 @@ export function isSameWishlistAppearanceDraft(
 	);
 }
 
+/** The draft's look as stored: copies, so a payload or preview never aliases the draft. */
+function draftLook(draft: WishlistAppearanceDraft): {
+	styleTokens: Partial<WishlistStyleTokens> | null;
+	background: WishlistBackground;
+} {
+	return {
+		styleTokens: hasStyleOverrides(draft) ? { ...draft.styleOverrides } : null,
+		background: { ...draft.background, focal: { ...draft.background.focal } },
+	};
+}
+
 /**
  * The save payload. An unchanged background image key is omitted so the server keeps the stored
  * upload; a removed one is null; a new upload carries its assignment proof.
@@ -143,14 +162,14 @@ export function wishlistAppearanceDraftToInput(
 	savedImageKey: string | null,
 	backgroundAssignmentToken?: string,
 ): WishlistAppearanceInput {
-	const { imageKey, ...backgroundFields } = draft.background;
+	const { styleTokens, background } = draftLook(draft);
+	const { imageKey, ...backgroundFields } = background;
 	const isNewUpload = imageKey !== null && imageKey !== savedImageKey;
 	return {
 		themeId: draft.themeId,
-		styleTokens: hasStyleOverrides(draft) ? { ...draft.styleOverrides } : null,
+		styleTokens,
 		background: {
 			...backgroundFields,
-			focal: { ...draft.background.focal },
 			...(imageKey === savedImageKey ? {} : { imageKey }),
 		},
 		...(isNewUpload && backgroundAssignmentToken !== undefined
@@ -165,8 +184,7 @@ export function wishlistAppearanceDraftToPreview(
 ): WishlistAppearancePreview {
 	return {
 		themeId: draft.themeId,
-		styleTokens: hasStyleOverrides(draft) ? { ...draft.styleOverrides } : null,
-		background: { ...draft.background, focal: { ...draft.background.focal } },
+		...draftLook(draft),
 		...(previewImageUrl === undefined ? {} : { previewImageUrl }),
 	};
 }

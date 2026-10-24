@@ -42,7 +42,8 @@ export const WishlistAppearanceInputSchema = v.strictObject({
 	styleTokens: v.nullable(v.partial(v.strictObject(STYLE_TOKEN_SCHEMAS))),
 	/**
 	 * An omitted image key keeps the stored upload, so a client that cannot reference images (an
-	 * agent) can change the background without deleting it; null clears and deletes the upload.
+	 * agent) can change the background without deleting it. From the UI, a null key or background
+	 * clears and deletes the upload; an agent's null background keeps it.
 	 */
 	background: v.nullable(
 		v.strictObject({

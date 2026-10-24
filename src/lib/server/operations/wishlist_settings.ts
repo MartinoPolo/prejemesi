@@ -6,6 +6,8 @@ import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
 import { saveGiftCategorySettings } from '$lib/modules/gift-categories/gift_categories_service.js';
 import { wishlistBackgroundImageKey } from '$lib/modules/wishlists/wishlist_appearance.js';
 import type { SaveWishlistSettingsInput } from '$lib/modules/wishlists/wishlist_settings_types.js';
+import { DEFAULT_WISHLIST_BACKGROUND } from '$lib/theme/wishlist_themes.js';
+import { OPERATION_CHANNEL, type OperationActor } from './actor.js';
 import type { MutationOperationContext } from './operation.js';
 import { requireMutableManagedWishlist, type WishlistRow } from './wishlist_management.js';
 import {
@@ -14,6 +16,26 @@ import {
 } from './wishlist_edit_rules.js';
 
 type AppearanceInput = NonNullable<SaveWishlistSettingsInput['appearance']>;
+
+/**
+ * Agents can neither reference nor remove images, so an agent's background reset restores the
+ * default settings but keeps the stored upload; only the owner's UI clears it.
+ */
+function appearanceForActor(
+	actor: OperationActor,
+	wishlistRow: WishlistRow,
+	appearance: AppearanceInput | undefined,
+): AppearanceInput | undefined {
+	if (
+		appearance?.background !== null ||
+		actor.channel === OPERATION_CHANNEL.ui ||
+		wishlistBackgroundImageKey(wishlistRow.background) === null
+	) {
+		return appearance;
+	}
+	const { mode, focal, placement, dim, motion } = DEFAULT_WISHLIST_BACKGROUND;
+	return { ...appearance, background: { mode, focal, placement, dim, motion } };
+}
 
 /** The image key a background draft requests: undefined keeps the stored upload. */
 function requestedBackgroundImageKey(appearance: AppearanceInput): string | null | undefined {
@@ -92,13 +114,17 @@ function authorizeBackgroundReplacement(
  */
 export async function saveLockedWishlistSettings(
 	context: MutationOperationContext,
-	input: SaveWishlistSettingsInput,
+	requestedInput: SaveWishlistSettingsInput,
 ): Promise<{ replacedImageKeys: string[]; shortId: string }> {
-	rejectDemoImageUpload(input.image?.imageKey);
-	rejectDemoImageUpload(input.appearance?.background?.imageKey);
-	const wishlistRow = await requireMutableManagedWishlist(context, input.wishlistId, {
+	rejectDemoImageUpload(requestedInput.image?.imageKey);
+	rejectDemoImageUpload(requestedInput.appearance?.background?.imageKey);
+	const wishlistRow = await requireMutableManagedWishlist(context, requestedInput.wishlistId, {
 		lock: true,
 	});
+	const input = {
+		...requestedInput,
+		appearance: appearanceForActor(context.actor, wishlistRow, requestedInput.appearance),
+	};
 	const replacedBannerKey = await authorizeWishlistUploadReplacement(
 		context.actor.userId,
 		wishlistRow.imageKey,

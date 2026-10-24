@@ -638,7 +638,7 @@
 			display: -webkit-box;
 			margin: 1px 0 0;
 			overflow: hidden;
-			font-family: var(--font-heading);
+			font-family: var(--font-head);
 			font-size: 16px;
 			font-weight: 700;
 			line-height: 1.15;

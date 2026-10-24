@@ -340,12 +340,21 @@
 	const initialWishlist = await getWishlistByShortId(shortId);
 	const wishlistQuery = $derived(getWishlistByShortId(shortId));
 	const wishlist = $derived(wishlistQuery.current ?? initialWishlist);
+	// The art is decorative, so a failed load leaves the theme without motifs.
+	async function loadThemeArtOrNone(themeId: WishlistThemeId): Promise<WishlistThemeArt | null> {
+		try {
+			return await loadWishlistThemeArt(themeId);
+		} catch (thrown) {
+			console.error('Failed to load wishlist theme art:', thrown);
+			return null;
+		}
+	}
 	// The first theme's art loads during SSR so the motifs paint before hydration; a theme
 	// picked later (another wishlist, a settings preview) loads lazily below.
 	// svelte-ignore state_referenced_locally
 	const initialThemeId = initialWishlist.themeId;
 	const initialThemeArt =
-		initialThemeId === null ? null : await loadWishlistThemeArt(initialThemeId);
+		initialThemeId === null ? null : await loadThemeArtOrNone(initialThemeId);
 	let loadedThemeArt = $state.raw<{ themeId: WishlistThemeId; art: WishlistThemeArt } | null>(
 		initialThemeId === null || initialThemeArt === null
 			? null
@@ -2047,8 +2056,8 @@
 			return;
 		}
 		let current = true;
-		void loadWishlistThemeArt(themeId).then((art) => {
-			if (current) {
+		void loadThemeArtOrNone(themeId).then((art) => {
+			if (current && art !== null) {
 				loadedThemeArt = { themeId, art };
 			}
 		});

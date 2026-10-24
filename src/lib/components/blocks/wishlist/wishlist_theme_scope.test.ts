@@ -52,6 +52,18 @@ describe('wishlist theme scope', () => {
 		).toBeUndefined();
 	});
 
+	it.each([
+		['christmas', ''],
+		['space', ''],
+		['wedding', undefined],
+	] as const)('marks the %s backdrop dark: %s', (themeId, darkBackdrop) => {
+		expect(
+			scopeAttributes({ themeId, styleTokens: null, background: null })[
+				'data-wishlist-dark-backdrop'
+			],
+		).toBe(darkBackdrop);
+	});
+
 	it('drops the theme backdrop for mode none but keeps the theme for placeholders and tokens', () => {
 		const scope = resolveWishlistThemeScope({
 			themeId: 'minimal',

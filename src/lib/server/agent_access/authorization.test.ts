@@ -263,6 +263,24 @@ describe('authorizeAgentOperation', () => {
 				},
 			],
 			[
+				'saveWishlistSettings',
+				{
+					wishlistId: ALLOWED_WISHLIST_ID,
+					appearance: {
+						themeId: null,
+						styleTokens: null,
+						background: {
+							mode: 'theme',
+							imageKey: null,
+							focal: { x: 50, y: 50 },
+							placement: 'gutters',
+							dim: 20,
+							motion: 'subtle',
+						},
+					},
+				},
+			],
+			[
 				'importGifts',
 				{
 					wishlistId: ALLOWED_WISHLIST_ID,

@@ -92,6 +92,24 @@ describe('wishlist appearance draft', () => {
 		expect(isSameWishlistAppearanceDraft(moved, unthemed)).toBe(false);
 	});
 
+	it.each([
+		['mode', { mode: 'none' }],
+		['image key', { imageKey: 'wishlists/backgrounds/photo.webp' }],
+		['focal point', { focal: { x: 10, y: 50 } }],
+		['placement', { placement: 'full' }],
+		['dim', { dim: 0 }],
+		['motion', { motion: 'off' }],
+	] as const)('counts a changed background %s as a change', (_field, changes) => {
+		expect(
+			isSameWishlistAppearanceDraft(setWishlistBackground(unthemed, changes), unthemed),
+		).toBe(false);
+	});
+
+	it('treats an equal focal point copy as unchanged', () => {
+		const copied = setWishlistBackground(unthemed, { focal: { ...unthemed.background.focal } });
+		expect(isSameWishlistAppearanceDraft(copied, unthemed)).toBe(true);
+	});
+
 	it('omits an unchanged image key so the stored upload is kept', () => {
 		const saved = createWishlistAppearanceDraft({
 			themeId: null,

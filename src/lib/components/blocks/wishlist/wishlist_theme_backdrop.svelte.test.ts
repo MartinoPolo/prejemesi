@@ -46,6 +46,8 @@ async function renderBackdrop({
 	// Recreates the app layout pair the backdrop sizes against: the `app-content` scroller and
 	// the positioned content column.
 	container.style.cssText = `container: app-content / inline-size; position: relative; width: ${String(contentWidth)}px; height: 900px; --content-max-width: 1168px`;
+	// The page shell's backdrop scope supplies the strip height.
+	container.dataset.wishlistBackdrop = '';
 	await new Promise<void>((resolve) =>
 		requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
 	);
@@ -113,7 +115,7 @@ describe('WishlistThemeBackdrop', () => {
 			'[data-testid="wishlist-backdrop-motif"]',
 		);
 
-		expect(getComputedStyle(motif!).animationName).toContain('wishlist-backdrop-motif-drift');
+		expect(motif!.getAnimations().length).toBeGreaterThan(0);
 	});
 
 	it('stops the scroll drift when motion is off', async () => {
@@ -126,6 +128,6 @@ describe('WishlistThemeBackdrop', () => {
 			'[data-testid="wishlist-backdrop-motif"]',
 		);
 
-		expect(getComputedStyle(motif!).animationName).toBe('none');
+		expect(motif!.getAnimations()).toHaveLength(0);
 	});
 });

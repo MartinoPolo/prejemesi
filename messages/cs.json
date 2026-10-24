@@ -1793,6 +1793,7 @@
 	"wishlist_appearance_background_remove": "Odebrat obrázek",
 	"wishlist_appearance_background_focal_label": "Střed obrázku",
 	"wishlist_appearance_background_focal_value": "Střed obrázku: vodorovně {x} %, svisle {y} %",
+	"wishlist_appearance_background_focal_role": "posuvný bod",
 	"wishlist_appearance_background_focal_hint": "Klikněte do náhledu, táhněte bod nebo použijte šipky. Na počítači fotka vyplní okraje, na mobilu se ukáže jen pruh nad sešitem podle zvoleného středu.",
 	"wishlist_appearance_background_placement_label": "Umístění",
 	"wishlist_appearance_background_placement_gutters": "Po stranách",

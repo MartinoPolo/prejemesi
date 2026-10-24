@@ -43,6 +43,8 @@
 		disabled = false,
 	}: WishlistBackgroundEditorProps = $props();
 
+	const idPrefix = $props.id();
+
 	const modeOptions = $derived([
 		{
 			value: 'theme',
@@ -105,7 +107,7 @@
 		{:else}
 			<div class="flex flex-col gap-2">
 				<div class="flex flex-wrap items-center justify-between gap-2">
-					<Label id="wishlist-appearance-focal-label">
+					<Label id="{idPrefix}-focal-label">
 						{m.wishlist_appearance_background_focal_label()}
 					</Label>
 					<div class="flex flex-wrap gap-(--nested-control-gap)">
@@ -127,10 +129,10 @@
 					imageUrl={customImageUrl}
 					focal={background.focal}
 					onchange={(focal) => onchange({ focal })}
-					describedBy="wishlist-appearance-focal-hint"
+					describedBy="{idPrefix}-focal-hint"
 					{disabled}
 				/>
-				<HelpText id="wishlist-appearance-focal-hint">
+				<HelpText id="{idPrefix}-focal-hint">
 					{m.wishlist_appearance_background_focal_hint()}
 				</HelpText>
 			</div>
