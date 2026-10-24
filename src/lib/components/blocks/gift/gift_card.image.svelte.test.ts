@@ -144,14 +144,16 @@ describe('GiftCard category badge (issue #265)', () => {
 			const label = 'Velmi dlouhá kategorie sportovního vybavení pro celou rodinu';
 			const host = await renderCardInGridColumn(
 				makeVisitorGift({
-					categoryId: 'category-sport',
-					category: {
-						id: 'category-sport',
-						presetKey: null,
-						customLabel: label,
-						color,
-						sortOrder: 0,
-					},
+					categoryIds: ['category-sport'],
+					categories: [
+						{
+							id: 'category-sport',
+							presetKey: null,
+							customLabel: label,
+							color,
+							sortOrder: 0,
+						},
+					],
 					isFullyReserved: true,
 					received: true,
 				}),
@@ -214,14 +216,16 @@ describe('GiftCard category badge (issue #265)', () => {
 			isFullyReserved: true,
 			myReservationId: null,
 			reserverNames: ['Babička'],
-			categoryId: 'category-sport',
-			category: {
-				id: 'category-sport',
-				presetKey: null,
-				customLabel: 'Sport',
-				color: '#0369A1',
-				sortOrder: 0,
-			},
+			categoryIds: ['category-sport'],
+			categories: [
+				{
+					id: 'category-sport',
+					presetKey: null,
+					customLabel: 'Sport',
+					color: '#0369A1',
+					sortOrder: 0,
+				},
+			],
 		});
 		const normalHost = await renderCardInGridColumn(categorizedGift, WISHLIST_ROLES.moderator);
 		const contextualHost = document.createElement('div');

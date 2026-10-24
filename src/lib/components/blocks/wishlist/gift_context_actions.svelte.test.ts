@@ -40,7 +40,7 @@ const managerProps = {
 	priorityReady: true,
 	categoryReady: true,
 	priorityLevelId: 'high',
-	categoryId: null,
+	categoryIds: [] as readonly string[],
 	onclose: vi.fn(),
 	oncomplete: vi.fn(),
 	onfinish: vi.fn((_policy, callback: () => void) => callback()),
@@ -50,6 +50,16 @@ const managerProps = {
 	onreceived: vi.fn(),
 	onselect: vi.fn(),
 };
+
+const CHECKLIST_CATEGORIES = [
+	{ id: 'sport', label: 'Sport' },
+	{ id: 'outdoor', label: 'Venku' },
+	{ id: 'books', label: 'Knihy' },
+	{ id: 'games', label: 'Hry' },
+	{ id: 'toys', label: 'Hračky' },
+	{ id: 'music', label: 'Hudba' },
+];
+const FIVE_CATEGORY_IDS = ['sport', 'outdoor', 'books', 'games', 'toys'];
 
 describe('GiftContextActions desktop ContextMenu', () => {
 	it('restores More only after the parent-owned genuine close completion', async () => {
@@ -208,6 +218,76 @@ describe('GiftContextActions desktop ContextMenu', () => {
 		await highPriorityOption.click();
 		expect(managerProps.onpriority).toHaveBeenCalledWith('high');
 		await screen.unmount();
+	});
+
+	describe('category checklist submenu', () => {
+		async function openCategorySubmenu(categoryIds: readonly string[]) {
+			const oncategory = vi.fn();
+			const screen = await render(GiftContextActionsTestHost, {
+				...managerProps,
+				categories: CHECKLIST_CATEGORIES,
+				categoryIds,
+				oncategory,
+				mobile: false,
+				nativeOpen: true,
+				programmaticOpen: false,
+			});
+			await screen.getByRole('menuitem', { name: m.gift_context_category() }).click();
+			return { screen, oncategory };
+		}
+
+		const checkboxItem = (screen: Awaited<ReturnType<typeof render>>, name: string) =>
+			screen.getByRole('menuitemcheckbox', { name, exact: true });
+
+		it('checks the gift’s categories and leaves the others unchecked', async () => {
+			const { screen } = await openCategorySubmenu(['outdoor', 'sport']);
+
+			await expect
+				.element(checkboxItem(screen, 'Sport'))
+				.toHaveAttribute('aria-checked', 'true');
+			await expect
+				.element(checkboxItem(screen, 'Venku'))
+				.toHaveAttribute('aria-checked', 'true');
+			await expect
+				.element(checkboxItem(screen, 'Knihy'))
+				.toHaveAttribute('aria-checked', 'false');
+			await expect
+				.element(checkboxItem(screen, m.gift_category_uncategorized()))
+				.toHaveAttribute('aria-checked', 'false');
+			await screen.unmount();
+		});
+
+		it('adds an unchecked category and removes a checked one', async () => {
+			const adding = await openCategorySubmenu(['sport']);
+			await checkboxItem(adding.screen, 'Knihy').click();
+			expect(adding.oncategory).toHaveBeenCalledWith('books', true);
+			await adding.screen.unmount();
+
+			const removing = await openCategorySubmenu(['sport', 'outdoor']);
+			await checkboxItem(removing.screen, 'Sport').click();
+			expect(removing.oncategory).toHaveBeenCalledWith('sport', false);
+			await removing.screen.unmount();
+		});
+
+		it('clears every category with "Bez kategorie"', async () => {
+			const { screen, oncategory } = await openCategorySubmenu(['sport']);
+
+			await checkboxItem(screen, m.gift_category_uncategorized()).click();
+			expect(oncategory).toHaveBeenCalledWith(null, true);
+			await screen.unmount();
+		});
+
+		it('disables unchecked categories once the gift has five', async () => {
+			const { screen } = await openCategorySubmenu(FIVE_CATEGORY_IDS);
+
+			await expect
+				.element(checkboxItem(screen, 'Hudba'))
+				.toHaveAttribute('aria-disabled', 'true');
+			await expect
+				.element(checkboxItem(screen, 'Sport'))
+				.not.toHaveAttribute('aria-disabled', 'true');
+			await screen.unmount();
+		});
 	});
 });
 
@@ -466,6 +546,83 @@ describe('GiftContextActions mobile Sheet', () => {
 		await expect.element(screen.getByText(/rezerv/i)).not.toBeInTheDocument();
 		await expect.element(screen.getByText(/líb/i)).not.toBeInTheDocument();
 		await screen.unmount();
+	});
+
+	describe('category checklist', () => {
+		async function openCategoryScreen(categoryIds: readonly string[]) {
+			const oncategory = vi.fn();
+			const screen = await render(GiftContextActions, {
+				...managerProps,
+				categories: CHECKLIST_CATEGORIES,
+				categoryIds,
+				oncategory,
+			});
+			await screen
+				.getByRole('button', { name: m.gift_context_category(), exact: true })
+				.click();
+			return { screen, oncategory };
+		}
+
+		const checkbox = (screen: Awaited<ReturnType<typeof render>>, name: string) =>
+			screen.getByRole('checkbox', { name, exact: true });
+
+		it('checks the gift’s categories and leaves the others unchecked', async () => {
+			const { screen } = await openCategoryScreen(['outdoor', 'sport']);
+
+			await expect.element(checkbox(screen, 'Sport')).toHaveAttribute('aria-checked', 'true');
+			await expect.element(checkbox(screen, 'Venku')).toHaveAttribute('aria-checked', 'true');
+			await expect
+				.element(checkbox(screen, 'Knihy'))
+				.toHaveAttribute('aria-checked', 'false');
+			await expect
+				.element(checkbox(screen, m.gift_category_uncategorized()))
+				.toHaveAttribute('aria-checked', 'false');
+			await screen.unmount();
+		});
+
+		it('checks "Bez kategorie" for a gift without categories', async () => {
+			const { screen } = await openCategoryScreen([]);
+
+			await expect
+				.element(checkbox(screen, m.gift_category_uncategorized()))
+				.toHaveAttribute('aria-checked', 'true');
+			await screen.unmount();
+		});
+
+		it('adds an unchecked category', async () => {
+			const { screen, oncategory } = await openCategoryScreen(['sport']);
+
+			await checkbox(screen, 'Knihy').click();
+			expect(oncategory).toHaveBeenCalledWith('books', true);
+			await screen.unmount();
+		});
+
+		it('removes a checked category', async () => {
+			const { screen, oncategory } = await openCategoryScreen(['sport', 'outdoor']);
+
+			await checkbox(screen, 'Venku').click();
+			expect(oncategory).toHaveBeenCalledWith('outdoor', false);
+			await screen.unmount();
+		});
+
+		it('clears every category with "Bez kategorie"', async () => {
+			const { screen, oncategory } = await openCategoryScreen(['sport', 'outdoor']);
+
+			await checkbox(screen, m.gift_category_uncategorized()).click();
+			expect(oncategory).toHaveBeenCalledWith(null, true);
+			await screen.unmount();
+		});
+
+		it('disables unchecked categories once the gift has five', async () => {
+			const { screen } = await openCategoryScreen(FIVE_CATEGORY_IDS);
+
+			await expect.element(checkbox(screen, 'Hudba')).toBeDisabled();
+			await expect.element(checkbox(screen, 'Sport')).not.toBeDisabled();
+			await expect
+				.element(checkbox(screen, m.gift_category_uncategorized()))
+				.not.toBeDisabled();
+			await screen.unmount();
+		});
 	});
 
 	it('shows loading-labeled manager controls as disabled until choices are ready', async () => {

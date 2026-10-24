@@ -188,14 +188,16 @@ describe('live depth changes re-measure gift layouts', () => {
 			GiftListItemTestHost,
 			{
 				gift: makeVisitorGift({
-					categoryId: 'category-sport',
-					category: {
-						id: 'category-sport',
-						presetKey: null,
-						customLabel: 'Sportovní vybavení',
-						color: '#0369A1',
-						sortOrder: 0,
-					},
+					categoryIds: ['category-sport'],
+					categories: [
+						{
+							id: 'category-sport',
+							presetKey: null,
+							customLabel: 'Sportovní vybavení',
+							color: '#0369A1',
+							sortOrder: 0,
+						},
+					],
 					priorityLabel: 'Vysoka',
 					isFullyReserved: true,
 					reservedCount: 1,

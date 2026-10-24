@@ -12,7 +12,7 @@ const GIFTS: ExportableGift[] = [
 		links: [{ url: 'https://alza.cz/kniha' }],
 		price: 299,
 		currency: GIFT_CURRENCIES.CZK,
-		categoryLabel: 'Knihy',
+		categoryLabels: ['Knihy'],
 	},
 	{
 		name: 'Sluchátka',
@@ -20,7 +20,7 @@ const GIFTS: ExportableGift[] = [
 		links: [{ url: 'https://alza.cz/a' }, { url: 'https://mall.cz/b' }],
 		price: 8990,
 		currency: GIFT_CURRENCIES.CZK,
-		categoryLabel: 'Elektronika',
+		categoryLabels: ['Elektronika', 'Knihy'],
 	},
 ];
 
@@ -38,6 +38,13 @@ describe('buildGiftCsv', () => {
 		for (const forbidden of ['rezerv', 'reserved', 'gifter', 'koupeno', 'bought', 'received']) {
 			expect(header).not.toContain(forbidden);
 		}
+	});
+
+	it('writes every category in order, one column each, the primary first', () => {
+		const [header, , secondRow] = buildGiftCsv(GIFTS).split(/\r?\n/);
+
+		expect(header).toContain('Kategorie,Kategorie 2');
+		expect(secondRow).toMatch(/,Elektronika,Knihy$/);
 	});
 
 	it('round-trips gift data back through the importer', () => {

@@ -1,8 +1,9 @@
-import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
+import { and, arrayOverlaps, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { error } from '@sveltejs/kit';
 import { getDb } from '$lib/server/db/index.js';
 import { gift, giftCategory } from '$lib/server/db/gift.schema.js';
 import { wishlist } from '$lib/server/db/wishlist.schema.js';
+import { textArraySql } from '$lib/server/db/sql_arrays.js';
 import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
 import {
 	DEFAULT_ENABLED_GIFT_CATEGORY_PRESET_KEYS,
@@ -42,6 +43,33 @@ async function lockWishlistCategoryStructure(
 		.where(eq(wishlist.id, wishlistId))
 		.limit(1)
 		.for('update');
+}
+
+/**
+ * A gift's active categories in its own order as a column of a query over `gift`, so reads need
+ * no extra statement. Soft-deleted categories and ids of another wishlist drop out.
+ */
+export function activeGiftCategoriesColumn() {
+	return sql<PublicGiftCategory[]>`(
+		SELECT coalesce(
+			json_agg(
+				json_build_object(
+					'id', ${giftCategory.id},
+					'presetKey', ${giftCategory.presetKey},
+					'customLabel', ${giftCategory.customLabel},
+					'color', ${giftCategory.color},
+					'sortOrder', ${giftCategory.sortOrder}
+				)
+				ORDER BY assigned.position
+			),
+			'[]'::json
+		)
+		FROM unnest(${gift.categoryIds}) WITH ORDINALITY AS assigned(category_id, position)
+		JOIN ${giftCategory}
+			ON ${giftCategory.id} = assigned.category_id
+			AND ${giftCategory.wishlistId} = ${gift.wishlistId}
+			AND ${giftCategory.deletedAt} IS NULL
+	)`;
 }
 
 export function publicGiftCategory(row: typeof giftCategory.$inferSelect): PublicGiftCategory {
@@ -107,7 +135,14 @@ function loadManagedGiftCategoryRows(database: CategoryDatabase, wishlistId: str
 			usedCount: sql<number>`count(${gift.id})::int`,
 		})
 		.from(giftCategory)
-		.leftJoin(gift, and(eq(gift.categoryId, giftCategory.id), isNull(gift.deletedAt)))
+		.leftJoin(
+			gift,
+			and(
+				eq(gift.wishlistId, giftCategory.wishlistId),
+				sql`${giftCategory.id} = ANY(${gift.categoryIds})`,
+				isNull(gift.deletedAt),
+			),
+		)
 		.where(eq(giftCategory.wishlistId, wishlistId))
 		.groupBy(giftCategory.id)
 		.orderBy(giftCategory.sortOrder);
@@ -157,25 +192,40 @@ export async function assertActiveGiftCategoryAssignment(
 	wishlistId: string,
 	categoryId: string | null | undefined,
 ): Promise<string | null> {
-	if (categoryId == null || categoryId === '') {
-		return null;
+	const categoryIds = categoryId == null || categoryId === '' ? [] : [categoryId];
+	const [assignedId] = await assertActiveGiftCategoryAssignments(
+		database,
+		wishlistId,
+		categoryIds,
+	);
+	return assignedId ?? null;
+}
+
+/** Rejects any category that is not an active category of the wishlist; returns the list as given. */
+export async function assertActiveGiftCategoryAssignments(
+	database: CategoryDatabase,
+	wishlistId: string,
+	categoryIds: readonly string[],
+): Promise<string[]> {
+	if (categoryIds.length === 0) {
+		return [];
 	}
-	const [row] = await database
+	const rows = await database
 		.select({ id: giftCategory.id })
 		.from(giftCategory)
 		.where(
 			and(
-				eq(giftCategory.id, categoryId),
+				inArray(giftCategory.id, [...categoryIds]),
 				eq(giftCategory.wishlistId, wishlistId),
 				isNull(giftCategory.deletedAt),
 			),
 		)
-		.limit(1)
 		.for('update');
-	if (row === undefined) {
+	const activeIds = new Set(rows.map((row) => row.id));
+	if (categoryIds.some((categoryId) => !activeIds.has(categoryId))) {
 		error(400, SERVER_ERROR.GIFT_CATEGORY_WISHLIST_MISMATCH);
 	}
-	return row.id;
+	return [...categoryIds];
 }
 
 async function nextSortOrder(database: CategoryDatabase, wishlistId: string): Promise<number> {
@@ -469,22 +519,23 @@ async function validateRemovalConfirmation(
 	params: SaveGiftCategorySettingsInput,
 	removalIds: readonly string[],
 ): Promise<void> {
+	const removalIdSet = new Set(removalIds);
 	const usedRemovalRows =
 		removalIds.length === 0
 			? []
 			: await transaction
-					.select({ categoryId: gift.categoryId })
+					.select({ categoryIds: gift.categoryIds })
 					.from(gift)
 					.where(
 						and(
 							eq(gift.wishlistId, params.wishlistId),
-							inArray(gift.categoryId, [...removalIds]),
+							arrayOverlaps(gift.categoryIds, [...removalIds]),
 							isNull(gift.deletedAt),
 						),
-					)
-					.groupBy(gift.categoryId);
-	const usedRemovalIds = new Set(usedRemovalRows.flatMap((row) => row.categoryId ?? []));
-	const removalIdSet = new Set(removalIds);
+					);
+	const usedRemovalIds = new Set(
+		usedRemovalRows.flatMap((row) => row.categoryIds.filter((id) => removalIdSet.has(id))),
+	);
 	const confirmedRemovalIds = new Set(params.confirmedRemovalCategoryIds);
 	if (
 		confirmedRemovalIds.size !== params.confirmedRemovalCategoryIds.length ||
@@ -513,26 +564,42 @@ async function removeCategories(
 	removalIds: readonly string[],
 ): Promise<void> {
 	const { transaction, recordGiftRevisions, now } = write;
+	if (removalIds.length === 0) {
+		return;
+	}
+	const assignedToRemoved = and(
+		eq(gift.wishlistId, wishlistId),
+		arrayOverlaps(gift.categoryIds, [...removalIds]),
+		isNull(gift.deletedAt),
+	);
+	const giftsBefore = await transaction
+		.select()
+		.from(gift)
+		.where(assignedToRemoved)
+		.for('update');
+	const giftBeforeById = new Map(giftsBefore.map((giftRow) => [giftRow.id, giftRow]));
+	const unassignedGifts = await transaction
+		.update(gift)
+		.set({
+			categoryIds: sql`ARRAY(
+				SELECT assigned.category_id
+				FROM unnest(${gift.categoryIds}) WITH ORDINALITY AS assigned(category_id, position)
+				WHERE NOT (assigned.category_id = ANY(${textArraySql(removalIds)}))
+				ORDER BY assigned.position
+			)`,
+			updatedAt: now,
+		})
+		.where(assignedToRemoved)
+		.returning();
+	await recordGiftRevisions(
+		unassignedGifts.map((unassignedGift) => ({
+			giftId: unassignedGift.id,
+			wishlistId: unassignedGift.wishlistId,
+			before: giftBeforeById.get(unassignedGift.id) ?? unassignedGift,
+			after: unassignedGift,
+		})),
+	);
 	for (const categoryId of removalIds) {
-		const unassignedGifts = await transaction
-			.update(gift)
-			.set({ categoryId: null, updatedAt: now })
-			.where(
-				and(
-					eq(gift.categoryId, categoryId),
-					eq(gift.wishlistId, wishlistId),
-					isNull(gift.deletedAt),
-				),
-			)
-			.returning();
-		await recordGiftRevisions(
-			unassignedGifts.map((unassignedGift) => ({
-				giftId: unassignedGift.id,
-				wishlistId: unassignedGift.wishlistId,
-				before: { ...unassignedGift, categoryId },
-				after: unassignedGift,
-			})),
-		);
 		await transaction
 			.update(giftCategory)
 			.set({ deletedAt: now, updatedAt: now })

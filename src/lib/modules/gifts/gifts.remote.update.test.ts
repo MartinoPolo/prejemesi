@@ -38,14 +38,14 @@ describe('updateGift', () => {
 
 		it('refreshes category counts when clearing a category', async () => {
 			mockDbInstance.pushResult([
-				makeGiftRow({ createdAt: AFTER_SHARING, categoryId: 'category-books' }),
+				makeGiftRow({ createdAt: AFTER_SHARING, categoryIds: ['category-books'] }),
 			]);
 			mockDbInstance.pushResult([makeWishlistRow({ sharedAt: null })]);
 			// locked gift re-read
 			mockDbInstance.pushResult([
-				makeGiftRow({ createdAt: AFTER_SHARING, categoryId: 'category-books' }),
+				makeGiftRow({ createdAt: AFTER_SHARING, categoryIds: ['category-books'] }),
 			]);
-			mockDbInstance.pushResult([{ id: GIFT_ID, categoryId: null }]);
+			mockDbInstance.pushResult([{ id: GIFT_ID, categoryIds: [] }]);
 
 			await callUpdateGift(makeRecipientAuthContext(), { id: GIFT_ID, categoryId: null });
 
@@ -271,14 +271,14 @@ describe('updateGift', () => {
 
 		it('refreshes category counts when the pre-share edit path clears a category', async () => {
 			mockDbInstance.pushResult([
-				makeGiftRow({ createdAt: BEFORE_SHARING, categoryId: 'category-books' }),
+				makeGiftRow({ createdAt: BEFORE_SHARING, categoryIds: ['category-books'] }),
 			]);
 			mockDbInstance.pushResult([makeWishlistRow({ sharedAt: SHARED_AT })]);
 			// locked gift re-read
 			mockDbInstance.pushResult([
-				makeGiftRow({ createdAt: BEFORE_SHARING, categoryId: 'category-books' }),
+				makeGiftRow({ createdAt: BEFORE_SHARING, categoryIds: ['category-books'] }),
 			]);
-			mockDbInstance.pushResult([{ id: GIFT_ID, categoryId: null }]);
+			mockDbInstance.pushResult([{ id: GIFT_ID, categoryIds: [] }]);
 
 			await callUpdateGift(makeRecipientAuthContext(), { id: GIFT_ID, categoryId: null });
 

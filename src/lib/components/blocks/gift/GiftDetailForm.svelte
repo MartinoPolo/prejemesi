@@ -22,6 +22,8 @@
 	import GiftDescription from './GiftDescription.svelte';
 	import GraceCountdown from '$lib/components/derived/grace-countdown/GraceCountdown.svelte';
 	import TrashIcon from '@lucide/svelte/icons/trash-2';
+	import ArrowLeftIcon from '@lucide/svelte/icons/arrow-left';
+	import XIcon from '@lucide/svelte/icons/x';
 	import LinkIcon from '@lucide/svelte/icons/link';
 	import UploadIcon from '@lucide/svelte/icons/upload';
 	import PencilIcon from '@lucide/svelte/icons/pencil';
@@ -90,6 +92,13 @@
 	} from '$lib/modules/gift-categories/types.js';
 	import PlusIcon from '@lucide/svelte/icons/plus';
 	import GiftCategoryQuickAddDialog from './GiftCategoryQuickAddDialog.svelte';
+	import GiftCategoryBadge from './GiftCategoryBadge.svelte';
+	import {
+		MAX_GIFT_CATEGORIES,
+		sameGiftCategoryIds,
+		withGiftCategoryAdded,
+		withGiftCategoryRemoved,
+	} from '$lib/modules/gift-categories/gift_category_assignment.js';
 	import { getLocale } from '$lib/paraglide/runtime.js';
 
 	type GiftSaveResult = boolean | void | Promise<boolean | void>;
@@ -184,7 +193,7 @@
 	// svelte-ignore state_referenced_locally
 	let priorityLevelId = $state(gift?.priorityLevelId ?? '');
 	// svelte-ignore state_referenced_locally
-	let categoryId = $state(gift?.categoryId ?? '');
+	let categoryIds = $state<string[]>([...(gift?.categoryIds ?? [])]);
 	// Editing an uploaded image (imageKey set) opens on the Upload tab so the user sees
 	// the current image with replace/remove – not its resolved URL in the URL field.
 	// Editing a URL image (imageUrl set, no imageKey) opens on the URL tab. A brand-new
@@ -366,7 +375,7 @@
 			(!descriptionFrozen && description.trim() !== (gift?.description ?? '').trim()) ||
 			!valuesEqual(normalizeGiftLinks(links), normalizeGiftLinks(gift?.links ?? [])) ||
 			priorityLevelId !== (gift?.priorityLevelId ?? '') ||
-			categoryId !== (gift?.categoryId ?? ''),
+			!sameGiftCategoryIds(categoryIds, gift?.categoryIds ?? []),
 	);
 	const giftPriceChanged = $derived(
 		finalizeGiftPrice(price) !== finalizeGiftPrice(gift?.price ?? null) ||
@@ -745,7 +754,7 @@
 			imageMeta,
 			quantity: finalQuantity,
 			priorityLevelId: priorityLevelId || null,
-			categoryId: categoryId || null,
+			categoryIds: [...categoryIds],
 		}) satisfies CreateGiftInput;
 		const updateInput =
 			gift === null
@@ -763,7 +772,7 @@
 						imageMeta: createInput.imageMeta,
 						quantity: createInput.quantity,
 						priorityLevelId: createInput.priorityLevelId,
-						categoryId: createInput.categoryId,
+						categoryIds: createInput.categoryIds,
 					}) satisfies UpdateGiftInput);
 		let saveSucceeded = false;
 		isLocalMutationPending = true;
@@ -827,6 +836,7 @@
 
 	const CREATE_CATEGORY_VALUE = '__create-category__';
 	let categoryQuickAddOpen = $state(false);
+	let categorySelectOpen = $state(false);
 	// Shown until the refreshed category list that includes it arrives.
 	let createdCategory = $state<PublicGiftCategory | null>(null);
 	const categorySelectOptions = $derived<readonly PublicGiftCategory[]>(
@@ -836,17 +846,59 @@
 			: [...categoryOptions, createdCategory],
 	);
 
-	function chooseCategory(value: string) {
-		if (value === CREATE_CATEGORY_VALUE) {
+	const selectedCategories = $derived(
+		categoryIds.flatMap((id) => {
+			const category = [...categorySelectOptions, ...(gift?.categories ?? [])].find(
+				(option) => option.id === id,
+			);
+			return category === undefined ? [] : [category];
+		}),
+	);
+	const isAtCategoryLimit = $derived(categoryIds.length >= MAX_GIFT_CATEGORIES);
+
+	/** Keeps the chosen order: kept categories stay in place and new ones join at the end. */
+	function chooseCategories(values: string[]) {
+		if (values.includes(CREATE_CATEGORY_VALUE)) {
+			categorySelectOpen = false;
 			categoryQuickAddOpen = true;
 			return;
 		}
-		categoryId = value;
+		categoryIds = [
+			...categoryIds.filter((id) => values.includes(id)),
+			...values.filter((id) => !categoryIds.includes(id)),
+		].slice(0, MAX_GIFT_CATEGORIES);
+	}
+
+	let categoryChipList = $state<HTMLElement | null>(null);
+
+	/** The pressed chip button disappears or moves, so keep keyboard focus on the chip list. */
+	async function focusCategoryChipButton(categoryId: string | undefined) {
+		await tick();
+		const chipButtons = categoryChipList?.querySelector<HTMLElement>(
+			`[data-category-chip="${categoryId}"] button`,
+		);
+		(
+			chipButtons ??
+			document.querySelector<HTMLElement>('[data-testid="gift-category-select"]')
+		)?.focus();
+	}
+
+	function removeCategory(id: string) {
+		const index = categoryIds.indexOf(id);
+		categoryIds = withGiftCategoryRemoved(categoryIds, id);
+		void focusCategoryChipButton(categoryIds[index] ?? categoryIds[index - 1]);
+	}
+
+	function moveCategoryEarlier(index: number) {
+		const reordered = [...categoryIds];
+		[reordered[index - 1], reordered[index]] = [reordered[index]!, reordered[index - 1]!];
+		categoryIds = reordered;
+		void focusCategoryChipButton(reordered[index - 1]);
 	}
 
 	function selectCreatedCategory(category: PublicGiftCategory) {
 		createdCategory = category;
-		categoryId = category.id;
+		categoryIds = withGiftCategoryAdded(categoryIds, category.id);
 	}
 
 	async function handleDelete() {
@@ -1245,30 +1297,36 @@
 						</div>
 						<div class={styles.formControlStack()}>
 							{#if categorySelectOptions.length > 0 || canCreateCategory}
-								{@const selectedCategory = categorySelectOptions.find(
-									(category) => category.id === categoryId,
-								)}
 								<Select.Root
-									type="single"
-									bind:value={() => categoryId, chooseCategory}
+									type="multiple"
+									bind:open={categorySelectOpen}
+									bind:value={() => categoryIds, chooseCategories}
 								>
 									<Select.Trigger
 										class="w-full"
 										data-testid="gift-category-select"
 									>
-										{selectedCategory === undefined
-											? m.gift_category_none()
-											: categoryLabel(selectedCategory)}
+										<span class="truncate">
+											{selectedCategories.length === 0
+												? m.gift_category_none()
+												: selectedCategories.map(categoryLabel).join(', ')}
+										</span>
 									</Select.Trigger>
 									<Select.Content>
 										<Select.Group>
-											<Select.Item value="" label={m.gift_category_none()}>
-												{m.gift_category_none()}
-											</Select.Item>
 											{#each categorySelectOptions as category (category.id)}
 												{@const label = categoryLabel(category)}
-												<Select.Item value={category.id} {label}
-													>{label}</Select.Item
+												<Select.Item
+													value={category.id}
+													{label}
+													indicator="checkbox"
+													disabled={isAtCategoryLimit &&
+														!categoryIds.includes(category.id)}
+													><span
+														class="size-3 shrink-0 rounded-full border border-ink"
+														style:background-color={category.color}
+														aria-hidden="true"
+													></span>{label}</Select.Item
 												>
 											{/each}
 										</Select.Group>
@@ -1277,12 +1335,65 @@
 											<Select.Item
 												value={CREATE_CATEGORY_VALUE}
 												label={m.gift_category_create()}
+												disabled={isAtCategoryLimit}
 												data-testid="gift-category-create-option"
 												><PlusIcon />{m.gift_category_create()}</Select.Item
 											>
 										{/if}
 									</Select.Content>
 								</Select.Root>
+								{#if selectedCategories.length > 0}
+									<ul
+										class="flex flex-wrap gap-1.5"
+										aria-label={m.gift_category_label()}
+										bind:this={categoryChipList}
+										data-testid="gift-category-chips"
+									>
+										{#each selectedCategories as category, index (category.id)}
+											{@const label = categoryLabel(category)}
+											<li
+												class="inline-flex min-w-0 items-center gap-0.5"
+												data-category-chip={category.id}
+											>
+												<GiftCategoryBadge {category} />
+												{#if index > 0}
+													<Button
+														intent="ghost"
+														size="sm"
+														format="icon"
+														aria-label={m.gift_category_chip_promote_label(
+															{
+																category: label,
+															},
+														)}
+														onclick={() => moveCategoryEarlier(index)}
+														><ArrowLeftIcon /></Button
+													>
+												{/if}
+												<Button
+													intent="ghost"
+													size="sm"
+													format="icon"
+													aria-label={m.gift_category_chip_remove_label({
+														category: label,
+													})}
+													onclick={() => removeCategory(category.id)}
+													><XIcon /></Button
+												>
+											</li>
+										{/each}
+									</ul>
+									{#if selectedCategories.length > 1}
+										<HelpText>{m.gift_categories_primary_help()}</HelpText>
+									{/if}
+									{#if isAtCategoryLimit}
+										<HelpText
+											>{m.gift_categories_limit_help({
+												count: MAX_GIFT_CATEGORIES,
+											})}</HelpText
+										>
+									{/if}
+								{/if}
 							{:else}
 								<Select.Root type="single" disabled>
 									<Select.Trigger class="w-full" disabled>

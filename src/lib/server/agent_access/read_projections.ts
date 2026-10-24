@@ -8,7 +8,11 @@ import type {
 import type { readWishlistOperation } from '$lib/server/operations/wishlist_read_operations.js';
 import type { AccessibleWishlist } from '$lib/modules/wishlists/accessible_wishlists.js';
 import type { ChangeProposalGift } from '$lib/modules/change_proposals/types.js';
-import type { GiftRevisionSnapshot } from '$lib/server/operations/gift_revision_snapshot.js';
+import {
+	currentGiftRevisionSnapshot,
+	type GiftRevisionSnapshot,
+} from '$lib/server/operations/gift_revision_snapshot.js';
+import { primaryGiftCategoryId } from '$lib/modules/gift-categories/gift_category_assignment.js';
 import { sanitizeWishlistAppearance } from '$lib/modules/wishlists/wishlist_appearance.js';
 import { resolveWishlistBackground, resolveWishlistStyle } from '$lib/theme/wishlist_themes.js';
 
@@ -107,7 +111,7 @@ type AgentGiftSource = Pick<
 	| 'received'
 	| 'createdAt'
 	| 'priorityLevelId'
-	| 'categoryId'
+	| 'categoryIds'
 >;
 
 /**
@@ -133,7 +137,9 @@ export function projectAgentGiftRow(giftRow: AgentGiftSource) {
 		received: giftRow.received,
 		createdAt: giftRow.createdAt,
 		priorityLevelId: giftRow.priorityLevelId,
-		categoryId: giftRow.categoryId ?? null,
+		categoryIds: giftRow.categoryIds,
+		// Superseded by `categoryIds`; kept for agents written against the single category.
+		categoryId: primaryGiftCategoryId(giftRow.categoryIds),
 	};
 }
 
@@ -155,7 +161,7 @@ export function projectAgentGiftSnapshot(snapshot: GiftRevisionSnapshot): Change
 		imageMeta: snapshot.imageMeta,
 		quantity: snapshot.quantity,
 		priorityLevelId: snapshot.priorityLevelId,
-		categoryId: snapshot.categoryId ?? null,
+		categoryIds: currentGiftRevisionSnapshot(snapshot).categoryIds,
 		received: snapshot.received,
 		deleted: snapshot.deletedAt !== null,
 		editedAfterShareAt: snapshot.editedAfterShareAt,
@@ -167,7 +173,9 @@ function projectAgentGiftBase(gift: GiftForRecipient) {
 		...projectAgentGiftRow(gift),
 		priorityLabel: gift.priorityLabel,
 		prioritySortOrder: gift.prioritySortOrder,
-		category: gift.category ?? null,
+		categories: gift.categories,
+		// Superseded by `categories`: the primary category only.
+		category: gift.categories[0] ?? null,
 	};
 }
 

@@ -26,6 +26,7 @@ import {
 import { applyGiftUpdate, type GiftRow, type RestoredGiftState } from './gift_update.js';
 import { softDeleteGift } from './gift_deletion.js';
 import {
+	currentGiftRevisionSnapshot,
 	giftRevisionSnapshotsDiffer,
 	toGiftRevisionSnapshot,
 	type GiftRevisionSnapshot,
@@ -88,7 +89,7 @@ function planRestore(
 		...imageInput,
 		...(changed('quantity') ? { quantity: before.quantity } : {}),
 		...(changed('priorityLevelId') ? { priorityLevelId: before.priorityLevelId } : {}),
-		...(changed('categoryId') ? { categoryId: before.categoryId } : {}),
+		...(changed('categoryIds') ? { categoryIds: before.categoryIds } : {}),
 	};
 	const restoring: RestoredGiftState = {
 		...(changed('descriptionAppends') ? { descriptionAppends: before.descriptionAppends } : {}),
@@ -186,7 +187,11 @@ async function undoRevisions(
 			await softDeleteGift(context, giftRow, managedWishlist);
 			continue;
 		}
-		const { input, restoring } = planRestore(giftRow.id, revision.before, revision.after);
+		const { input, restoring } = planRestore(
+			giftRow.id,
+			currentGiftRevisionSnapshot(revision.before),
+			currentGiftRevisionSnapshot(revision.after),
+		);
 		await applyGiftUpdate(context, { giftRow, managedWishlist, input, restoring });
 	}
 

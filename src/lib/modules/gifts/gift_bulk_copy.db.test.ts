@@ -187,7 +187,7 @@ describe.skipIf(!DATABASE_READY)('bulk gift copy [real DB]', () => {
 				priceMax: 20,
 				quantity: 2,
 				priorityLevelId: `${PREFIX}source-priority-0`,
-				categoryId: `${PREFIX}source-category`,
+				categoryIds: [`${PREFIX}source-category`],
 				received: true,
 				sortOrder: 0,
 			},
@@ -276,7 +276,7 @@ describe.skipIf(!DATABASE_READY)('bulk gift copy [real DB]', () => {
 				descriptionAppends: [],
 				received: false,
 				priorityLevelId: `${PREFIX}destination-priority-0`,
-				categoryId: `${PREFIX}destination-category`,
+				categoryIds: [`${PREFIX}destination-category`],
 				editedAfterShareAt: null,
 				preEditShareSnapshot: null,
 			});

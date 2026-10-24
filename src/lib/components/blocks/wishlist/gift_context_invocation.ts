@@ -48,7 +48,8 @@ export interface GiftContextCommandCallbacks {
 	/** Present only when the AI assistant is offered. */
 	onenrich?: () => void;
 	onpriority: (id: string | null) => void;
-	oncategory: (id: string | null) => void;
+	/** Adds (`checked`) or removes one category; `null` removes every category. */
+	oncategory: (id: string | null, checked: boolean) => void;
 	/** Present only when the viewer may manage the wishlist's categories. */
 	oncreatecategory?: () => void;
 	onreceived: () => void;

@@ -130,7 +130,7 @@ describe.skipIf(!DB_READY)('saving the ordered category list [real DB]', () => {
 	it('renames a preset into a custom category with the same id, color and gifts', async () => {
 		const { wishlistId, categories, presetId } = await wishlistWithDefaultCategories();
 		const booksId = presetId('books');
-		const giftId = await createGiftFixture(wishlistId, { categoryId: booksId });
+		const giftId = await createGiftFixture(wishlistId, { categoryIds: [booksId] });
 		const items = unchangedItems(categories).map((item) =>
 			item.id === booksId ? { ...item, label: 'Četba' } : item,
 		);
@@ -143,7 +143,7 @@ describe.skipIf(!DB_READY)('saving the ordered category list [real DB]', () => {
 			color: GIFT_CATEGORY_PRESET_BY_KEY.get('books')!.color,
 			deletedAt: null,
 		});
-		expect((await readGift(giftId)).categoryId).toBe(booksId);
+		expect((await readGift(giftId)).categoryIds).toEqual([booksId]);
 		expect(await revisionsForGift(giftId)).toHaveLength(0);
 	});
 
@@ -185,7 +185,7 @@ describe.skipIf(!DB_READY)('saving the ordered category list [real DB]', () => {
 	it('requires confirmation to remove a used category, then unassigns its gifts with revisions', async () => {
 		const { wishlistId, categories, presetId } = await wishlistWithDefaultCategories();
 		const booksId = presetId('books');
-		const giftId = await createGiftFixture(wishlistId, { categoryId: booksId });
+		const giftId = await createGiftFixture(wishlistId, { categoryIds: [booksId] });
 		const withoutBooks = unchangedItems(categories).filter((item) => item.id !== booksId);
 
 		await expectRejection(
@@ -194,12 +194,12 @@ describe.skipIf(!DB_READY)('saving the ordered category list [real DB]', () => {
 			SERVER_ERROR.GIFT_CATEGORY_REMOVAL_CONFIRMATION_MISMATCH,
 		);
 		expect((await readCategory(booksId)).deletedAt).toBeNull();
-		expect((await readGift(giftId)).categoryId).toBe(booksId);
+		expect((await readGift(giftId)).categoryIds).toEqual([booksId]);
 
 		await saveCategories(wishlistId, withoutBooks, [booksId]);
 
 		expect((await readCategory(booksId)).deletedAt).not.toBeNull();
-		expect((await readGift(giftId)).categoryId).toBeNull();
+		expect((await readGift(giftId)).categoryIds).toEqual([]);
 		expect(await revisionsForGift(giftId)).toHaveLength(1);
 	});
 
@@ -355,7 +355,7 @@ describe.skipIf(!DB_READY)('saving the ordered category list [real DB]', () => {
 	it('requires confirmation when a legacy-shaped save disables a used preset', async () => {
 		const { wishlistId, presetId } = await wishlistWithDefaultCategories();
 		const booksId = presetId('books');
-		const giftId = await createGiftFixture(wishlistId, { categoryId: booksId });
+		const giftId = await createGiftFixture(wishlistId, { categoryIds: [booksId] });
 		const presetsWithoutBooks = GIFT_CATEGORY_PRESETS.filter(
 			(preset) => preset.key !== 'books',
 		);
@@ -377,12 +377,12 @@ describe.skipIf(!DB_READY)('saving the ordered category list [real DB]', () => {
 			SERVER_ERROR.GIFT_CATEGORY_REMOVAL_CONFIRMATION_MISMATCH,
 		);
 		expect((await readCategory(booksId)).deletedAt).toBeNull();
-		expect((await readGift(giftId)).categoryId).toBe(booksId);
+		expect((await readGift(giftId)).categoryIds).toEqual([booksId]);
 
 		await legacySave([booksId]);
 
 		expect((await readCategory(booksId)).deletedAt).not.toBeNull();
-		expect((await readGift(giftId)).categoryId).toBeNull();
+		expect((await readGift(giftId)).categoryIds).toEqual([]);
 	});
 
 	it('reads a wishlist saved in the legacy shape with its ids, order and assignments, creating no disabled preset', async () => {
@@ -407,8 +407,8 @@ describe.skipIf(!DB_READY)('saving the ordered category list [real DB]', () => {
 			])
 			.returning();
 		const [lego, kola, toys, books, games] = legacyRows;
-		const bikeGiftId = await createGiftFixture(wishlistId, { categoryId: kola!.id });
-		const bookGiftId = await createGiftFixture(wishlistId, { categoryId: books!.id });
+		const bikeGiftId = await createGiftFixture(wishlistId, { categoryIds: [kola!.id] });
+		const bookGiftId = await createGiftFixture(wishlistId, { categoryIds: [books!.id] });
 
 		const categories = await executeOperation(recipientActor, readGiftCategoriesOperation, {
 			wishlistId,
@@ -428,8 +428,8 @@ describe.skipIf(!DB_READY)('saving the ordered category list [real DB]', () => {
 			{ id: toys!.id, presetKey: 'toys', customLabel: null, sortOrder: 2, usedCount: 0 },
 			{ id: books!.id, presetKey: 'books', customLabel: null, sortOrder: 3, usedCount: 1 },
 		]);
-		expect((await readGift(bikeGiftId)).categoryId).toBe(kola!.id);
-		expect((await readGift(bookGiftId)).categoryId).toBe(books!.id);
+		expect((await readGift(bikeGiftId)).categoryIds).toEqual([kola!.id]);
+		expect((await readGift(bookGiftId)).categoryIds).toEqual([books!.id]);
 		const storedRows = await getDb()
 			.select()
 			.from(giftCategory)

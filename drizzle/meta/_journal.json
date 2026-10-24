@@ -218,6 +218,13 @@
       "when": 1792788101286,
       "tag": "0030_add-wishlist-themes",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1792808281163,
+      "tag": "0031_add-gift-category-ids",
+      "breakpoints": true
     }
   ]
 }

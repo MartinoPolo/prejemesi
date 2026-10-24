@@ -40,8 +40,8 @@ function gift(overrides: Partial<GiftForVisitor> = {}): GiftForVisitor {
 		priorityLevelId: null,
 		priorityLabel: null,
 		prioritySortOrder: null,
-		categoryId: null,
-		category: null,
+		categoryIds: [],
+		categories: [],
 		likeCount: 0,
 		reservedCount: 0,
 		isFullyReserved: false,
@@ -88,13 +88,16 @@ describe('GiftCard collection alignment', () => {
 	it('measures categorized recipient cards without a Like control', async () => {
 		await page.viewport(900, 900);
 		const categorized = gift({
-			category: {
-				id: 'books',
-				presetKey: null,
-				customLabel: 'Knihy',
-				color: '#0369A1',
-				sortOrder: 0,
-			},
+			categoryIds: ['books'],
+			categories: [
+				{
+					id: 'books',
+					presetKey: null,
+					customLabel: 'Knihy',
+					color: '#0369A1',
+					sortOrder: 0,
+				},
+			],
 		});
 		const screen = await render(WishlistGiftDisplayTestHost, {
 			...defaultProps,
@@ -379,14 +382,16 @@ describe('GiftCard collection alignment', () => {
 			id: 'crowded',
 			imageUrl: IMAGE_URL,
 			imageMeta: imageMeta('#ffffff'),
-			categoryId: 'category-crowded',
-			category: {
-				id: 'category-crowded',
-				presetKey: null,
-				customLabel: 'Mimořádně dlouhá kategorie sportovního vybavení',
-				color: '#0369A1',
-				sortOrder: 0,
-			},
+			categoryIds: ['category-crowded'],
+			categories: [
+				{
+					id: 'category-crowded',
+					presetKey: null,
+					customLabel: 'Mimořádně dlouhá kategorie sportovního vybavení',
+					color: '#0369A1',
+					sortOrder: 0,
+				},
+			],
 			priorityLabel: 'Vysoka',
 			reservedCount: 1,
 			isFullyReserved: true,

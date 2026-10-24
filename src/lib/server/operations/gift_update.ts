@@ -21,7 +21,11 @@ import {
 	isPreShareOwnerFullEditGraceOpen,
 } from '$lib/modules/gifts/gift_deletion_rules.js';
 import { isWithinGraceWindow } from '$lib/modules/sharing/grace_window.js';
-import { assertActiveGiftCategoryAssignment } from '$lib/modules/gift-categories/gift_categories_service.js';
+import { assertActiveGiftCategoryAssignments } from '$lib/modules/gift-categories/gift_categories_service.js';
+import {
+	requestedGiftCategoryIds,
+	sameGiftCategoryIds,
+} from '$lib/modules/gift-categories/gift_category_assignment.js';
 import type { MutationOperationContext } from './operation.js';
 import {
 	assertWishlistPriorityLevel,
@@ -144,7 +148,7 @@ function fullWriteUpdateData(giftRow: GiftRow, input: UpdateGiftInput): GiftUpda
 		imageMeta: input.imageMeta,
 		quantity: input.quantity,
 		priorityLevelId: input.priorityLevelId,
-		categoryId: input.categoryId,
+		categoryIds: input.categoryIds,
 	};
 	return Object.fromEntries(
 		Object.entries(requestedValues).filter(
@@ -294,6 +298,19 @@ function noteReservedGiftEdit(
 	]);
 }
 
+/** Resolves the superseded single `categoryId` into the full list the edit engine compares. */
+function withRequestedCategoryIds(request: GiftUpdateRequest): GiftUpdateRequest {
+	const { categoryId: legacyCategoryId, ...input } = request.input;
+	if (legacyCategoryId === undefined) {
+		return request;
+	}
+	const categoryIds = requestedGiftCategoryIds(
+		{ categoryId: legacyCategoryId },
+		request.giftRow.categoryIds,
+	);
+	return { ...request, input: { ...input, categoryIds } };
+}
+
 /**
  * The single gift-edit engine: price-range merge guard, the recipient's per-field post-share
  * rules (name freeze, raise-only quantity, append-only description) unless the gift is exempt on a
@@ -302,13 +319,15 @@ function noteReservedGiftEdit(
  */
 export async function applyGiftUpdate(
 	context: MutationOperationContext,
-	request: GiftUpdateRequest,
+	requestedEdit: GiftUpdateRequest,
 ): Promise<GiftUpdateResult> {
+	const request = withRequestedCategoryIds(requestedEdit);
 	const { giftRow, input, restoring } = request;
 	const { wishlistRow } = request.managedWishlist;
 	const { transaction, now } = context;
 	const didCategoryChange =
-		input.categoryId !== undefined && input.categoryId !== giftRow.categoryId;
+		input.categoryIds !== undefined &&
+		!sameGiftCategoryIds(input.categoryIds, giftRow.categoryIds);
 
 	assertMergedPriceRangeValid(giftRow, input);
 	const followsStrictRules = await lockedGiftFollowsStrictPostShareRules(
@@ -326,11 +345,11 @@ export async function applyGiftUpdate(
 	}
 	Object.assign(updateData, restoredStateUpdateData(restoring), { updatedAt: now });
 
-	if (input.categoryId !== undefined && updateData.categoryId !== undefined) {
-		updateData.categoryId = await assertActiveGiftCategoryAssignment(
+	if (updateData.categoryIds !== undefined) {
+		updateData.categoryIds = await assertActiveGiftCategoryAssignments(
 			transaction,
 			giftRow.wishlistId,
-			input.categoryId,
+			updateData.categoryIds,
 		);
 	}
 	// The foreign key alone accepts another wishlist's level, and an undo may target a removed one.

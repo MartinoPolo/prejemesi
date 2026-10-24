@@ -1,9 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { CHANGE_DECISION, CHANGE_FIELD } from './change_field_decisions.js';
+import {
+	CHANGE_DECISION,
+	CHANGE_FIELD,
+	FIELD_DECISION,
+	effectiveChangeInput,
+	fieldDecisionsProblem,
+} from './change_field_decisions.js';
 import {
 	ROW_REVIEW_KIND,
 	changeRowDecisions,
 	fieldEditInput,
+	fieldEditorText,
 	includedRowCount,
 	initialChangeReview,
 	isGiftDropped,
@@ -36,7 +43,7 @@ function gift(overrides: Partial<ChangeProposalGift> = {}): ChangeProposalGift {
 		imageMeta: null,
 		quantity: null,
 		priorityLevelId: null,
-		categoryId: null,
+		categoryIds: [],
 		received: false,
 		deleted: false,
 		editedAfterShareAt: null,
@@ -240,5 +247,126 @@ describe('field edit input', () => {
 		expect(fieldEditInput(CHANGE_FIELD.quantity, '1.5', {})).toBeNull();
 		expect(fieldEditInput(CHANGE_FIELD.name, '   ', {})).toBeNull();
 		expect(fieldEditInput(CHANGE_FIELD.links, 'https://example.com', {})).toBeNull();
+	});
+});
+
+describe('category review', () => {
+	const categoryEdit = (input: Record<string, unknown>, before: string[], after: string[]) =>
+		reviewRow({
+			rowId: 'category',
+			input: { id: 'g-duna', ...input },
+			preview: {
+				gifts: [
+					{
+						giftId: 'g-duna',
+						before: gift({ categoryIds: before }),
+						after: gift({ categoryIds: after }),
+					},
+				],
+				result: null,
+			},
+		});
+
+	it('reviews the category field for a categoryIds proposal and a deprecated categoryId one', () => {
+		expect(
+			reviewedChangeFields(
+				categoryEdit({ categoryIds: ['toys', 'books'] }, ['books'], ['toys', 'books']),
+			),
+		).toEqual([CHANGE_FIELD.category]);
+		expect(
+			reviewedChangeFields(categoryEdit({ categoryId: 'toys' }, ['books'], ['toys'])),
+		).toEqual([CHANGE_FIELD.category]);
+	});
+
+	it('reviews a reordered category list because the primary changes', () => {
+		expect(
+			reviewedChangeFields(
+				categoryEdit(
+					{ categoryIds: ['toys', 'books'] },
+					['books', 'toys'],
+					['toys', 'books'],
+				),
+			),
+		).toEqual([CHANGE_FIELD.category]);
+	});
+
+	it('skips a category proposal that keeps the same list', () => {
+		expect(
+			reviewedChangeFields(
+				categoryEdit(
+					{ categoryIds: ['books', 'toys'] },
+					['books', 'toys'],
+					['books', 'toys'],
+				),
+			),
+		).toEqual([]);
+	});
+
+	it('starts the category editor at the proposed primary category', () => {
+		expect(fieldEditorText(CHANGE_FIELD.category, { categoryIds: ['toys', 'books'] })).toBe(
+			'toys',
+		);
+		expect(fieldEditorText(CHANGE_FIELD.category, { categoryIds: [] })).toBe('');
+		expect(fieldEditorText(CHANGE_FIELD.category, { categoryId: 'games' })).toBe('games');
+	});
+
+	it('replaces the first proposed category with the reviewer’s pick and keeps the rest', () => {
+		const proposed = { categoryIds: ['toys', 'books', 'games'] };
+
+		expect(fieldEditInput(CHANGE_FIELD.category, 'music', proposed)).toEqual({
+			categoryIds: ['music', 'books', 'games'],
+		});
+	});
+
+	it('promotes a proposed secondary picked as primary without duplicating it', () => {
+		expect(
+			fieldEditInput(CHANGE_FIELD.category, 'games', {
+				categoryIds: ['toys', 'books', 'games'],
+			}),
+		).toEqual({ categoryIds: ['games', 'books'] });
+	});
+
+	it('clears every proposed category when the reviewer picks none', () => {
+		expect(
+			fieldEditInput(CHANGE_FIELD.category, '', { categoryIds: ['toys', 'books'] }),
+		).toEqual({ categoryIds: [] });
+	});
+
+	it('accepts a reviewer’s category edit for either input key and drops both on reject', () => {
+		const input = { id: 'g-duna', name: 'Kniha Duna', categoryIds: ['toys', 'books'] };
+		const edited = {
+			category: {
+				decision: FIELD_DECISION.edited,
+				input: { categoryIds: ['music', 'books'] },
+			},
+		};
+
+		expect(fieldDecisionsProblem('updateGift', input, edited)).toBeNull();
+		expect(
+			fieldDecisionsProblem('updateGift', input, {
+				category: { decision: FIELD_DECISION.edited, input: { categoryId: 'music' } },
+			}),
+		).toBeNull();
+		expect(effectiveChangeInput('updateGift', input, edited)).toEqual({
+			id: 'g-duna',
+			name: 'Kniha Duna',
+			categoryIds: ['music', 'books'],
+		});
+		expect(
+			effectiveChangeInput(
+				'updateGift',
+				{ ...input, categoryId: 'toys' },
+				{ category: { decision: FIELD_DECISION.rejected } },
+			),
+		).toEqual({ id: 'g-duna', name: 'Kniha Duna' });
+	});
+
+	it('writes the deprecated categoryId when the proposal used it', () => {
+		expect(fieldEditInput(CHANGE_FIELD.category, 'music', { categoryId: 'toys' })).toEqual({
+			categoryId: 'music',
+		});
+		expect(fieldEditInput(CHANGE_FIELD.category, '', { categoryId: 'toys' })).toEqual({
+			categoryId: null,
+		});
 	});
 });

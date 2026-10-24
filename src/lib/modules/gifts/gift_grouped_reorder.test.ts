@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
 	applyReorderPlacement,
 	buildReorderSections,
+	categoryGroupChange,
 	categoryReorderGroups,
 	giftReorderGroupKey,
 	keyboardReorderPlacement,
@@ -9,6 +10,7 @@ import {
 	priorityReorderGroups,
 	reorderGroupKey,
 	resolveGroupedReorderMove,
+	withGiftCategoryIds,
 	withReorderGroup,
 } from './gift_grouped_reorder.js';
 import { GIFT_GROUPING_OPTIONS, type GiftByRole } from './types.js';
@@ -51,8 +53,8 @@ function giftWithPriority(id: string, levelId: string | null, sortOrder: number)
 		priorityLevelId: level?.id ?? null,
 		priorityLabel: level?.label ?? null,
 		prioritySortOrder: level?.sortOrder ?? null,
-		categoryId: null,
-		category: null,
+		categoryIds: [],
+		categories: [],
 	};
 }
 
@@ -130,8 +132,12 @@ describe('grouped reorder sections', () => {
 		const UNCATEGORIZED = reorderGroupKey(CATEGORY, null);
 
 		function giftInCategory(id: string, categoryId: string | null): GiftByRole {
-			const category = categories.find((candidate) => candidate.id === categoryId) ?? null;
-			return { ...giftWithPriority(id, null, 0), categoryId, category };
+			const giftCategories = categories.filter((candidate) => candidate.id === categoryId);
+			return {
+				...giftWithPriority(id, null, 0),
+				categoryIds: giftCategories.map((category) => category.id),
+				categories: giftCategories,
+			};
 		}
 
 		function categorySectionKeys(
@@ -421,8 +427,8 @@ describe('resolveGroupedReorderMove', () => {
 		};
 		const withBooks = (gift: GiftByRole): GiftByRole => ({
 			...gift,
-			categoryId: books.id,
-			category: books,
+			categoryIds: [books.id],
+			categories: [books],
 		});
 		const categoryGifts = [
 			withBooks(giftWithPriority('x1', null, 0)),
@@ -438,7 +444,9 @@ describe('resolveGroupedReorderMove', () => {
 		);
 		expect(move).toMatchObject({
 			orderedIds: ['x1', 'x2', 'y1'],
-			groupChanges: [{ giftId: 'y1', field: CATEGORY, value: 'books' }],
+			groupChanges: [
+				{ giftId: 'y1', field: CATEGORY, value: 'books', categoryIds: ['books'] },
+			],
 		});
 	});
 
@@ -450,6 +458,174 @@ describe('resolveGroupedReorderMove', () => {
 				index: 1,
 			}),
 		).toBeNull();
+	});
+
+	describe('with several categories per gift', () => {
+		const multiCategories = ['books', 'toys', 'games'].map((id, sortOrder) => ({
+			id,
+			presetKey: null,
+			customLabel: id,
+			color: '#112233',
+			sortOrder,
+		}));
+		const multiCategoryGroups = categoryReorderGroups(multiCategories, 'cs');
+		const multiGroupsByKey = new Map(multiCategoryGroups.map((group) => [group.key, group]));
+		const groupFor = (categoryId: string | null) =>
+			multiGroupsByKey.get(reorderGroupKey(CATEGORY, categoryId))!;
+
+		function giftInCategories(id: string, categoryIds: string[], sortOrder = 0): GiftByRole {
+			return {
+				...giftWithPriority(id, null, sortOrder),
+				categoryIds,
+				categories: categoryIds.map(
+					(categoryId) => multiCategories.find((category) => category.id === categoryId)!,
+				),
+			};
+		}
+
+		function categoryIdsOf(gift: GiftByRole) {
+			return {
+				categoryIds: gift.categoryIds,
+				categories: gift.categories.map((category) => category.id),
+			};
+		}
+
+		it('groups a gift by its primary category only', () => {
+			const gift = giftInCategories('g', ['toys', 'books']);
+			expect(giftReorderGroupKey(gift, CATEGORY)).toBe(reorderGroupKey(CATEGORY, 'toys'));
+			expect(
+				buildReorderSections([gift], CATEGORY, multiCategoryGroups)
+					.filter((section) => section.gifts.length > 0)
+					.map((section) => section.key),
+			).toEqual([reorderGroupKey(CATEGORY, 'toys')]);
+		});
+
+		it('a cross-group move replaces only the primary and keeps the secondaries', () => {
+			expect(
+				categoryIdsOf(
+					withReorderGroup(giftInCategories('g', ['books', 'toys']), groupFor('games')),
+				),
+			).toEqual({ categoryIds: ['games', 'toys'], categories: ['games', 'toys'] });
+		});
+
+		it('a move into a secondary category makes it primary without a duplicate', () => {
+			expect(
+				categoryIdsOf(
+					withReorderGroup(
+						giftInCategories('g', ['books', 'toys', 'games']),
+						groupFor('games'),
+					),
+				),
+			).toEqual({ categoryIds: ['games', 'toys'], categories: ['games', 'toys'] });
+		});
+
+		it('a move into "Bez kategorie" drops the primary and promotes the next', () => {
+			expect(
+				categoryIdsOf(
+					withReorderGroup(giftInCategories('g', ['books', 'toys']), groupFor(null)),
+				),
+			).toEqual({ categoryIds: ['toys'], categories: ['toys'] });
+			expect(
+				categoryIdsOf(withReorderGroup(giftInCategories('g', ['books']), groupFor(null))),
+			).toEqual({ categoryIds: [], categories: [] });
+		});
+
+		it('sends the absolute resulting category list led by the new primary', () => {
+			const multiGifts = [
+				giftInCategories('m', ['books', 'toys'], 0),
+				giftInCategories('n', ['games'], 1),
+			];
+			expect(
+				resolveGroupedReorderMove(multiGifts, CATEGORY, multiGroupsByKey, {
+					giftId: 'm',
+					groupKey: reorderGroupKey(CATEGORY, 'games'),
+					index: 0,
+				})?.groupChanges,
+			).toEqual([
+				{ giftId: 'm', field: CATEGORY, value: 'games', categoryIds: ['games', 'toys'] },
+			]);
+		});
+
+		it('sends the promoted secondary when a gift is dropped into "Bez kategorie"', () => {
+			const multiGifts = [
+				giftInCategories('m', ['books', 'toys'], 0),
+				giftInCategories('n', ['games'], 1),
+			];
+			expect(
+				resolveGroupedReorderMove(multiGifts, CATEGORY, multiGroupsByKey, {
+					giftId: 'm',
+					groupKey: reorderGroupKey(CATEGORY, null),
+					index: 0,
+				})?.groupChanges,
+			).toEqual([{ giftId: 'm', field: CATEGORY, value: 'toys', categoryIds: ['toys'] }]);
+			expect(
+				resolveGroupedReorderMove(multiGifts, CATEGORY, multiGroupsByKey, {
+					giftId: 'n',
+					groupKey: reorderGroupKey(CATEGORY, null),
+					index: 0,
+				})?.groupChanges,
+			).toEqual([{ giftId: 'n', field: CATEGORY, value: null, categoryIds: [] }]);
+		});
+
+		it('an undo change restores the full previous list with its primary as value', () => {
+			expect(categoryGroupChange('m', ['books', 'toys', 'games'])).toEqual({
+				giftId: 'm',
+				field: CATEGORY,
+				value: 'books',
+				categoryIds: ['books', 'toys', 'games'],
+			});
+			expect(categoryGroupChange('m', [])).toEqual({
+				giftId: 'm',
+				field: CATEGORY,
+				value: null,
+				categoryIds: [],
+			});
+		});
+
+		it('applying the undo list shows the gift with exactly its previous categories', () => {
+			const moved = withReorderGroup(
+				giftInCategories('m', ['books', 'toys']),
+				groupFor('games'),
+			);
+			const restored = withGiftCategoryIds(
+				moved,
+				categoryGroupChange('m', ['books', 'toys']).categoryIds!,
+				multiCategories,
+			);
+			expect(categoryIdsOf(restored)).toEqual({
+				categoryIds: ['books', 'toys'],
+				categories: ['books', 'toys'],
+			});
+		});
+
+		it('drops ids that name no known category when applying a list', () => {
+			expect(
+				categoryIdsOf(
+					withGiftCategoryIds(
+						giftInCategories('m', ['books']),
+						['deleted', 'toys', 'books'],
+						multiCategories,
+					),
+				),
+			).toEqual({ categoryIds: ['toys', 'books'], categories: ['toys', 'books'] });
+		});
+
+		it('keeps the latest absolute category list when merging queued reorders', () => {
+			expect(
+				mergeReorderGiftsInputs(
+					{
+						wishlistId: 'wishlist',
+						orderedGiftIds: ['m'],
+						groupChanges: [categoryGroupChange('m', ['games', 'toys'])],
+					},
+					{
+						wishlistId: 'wishlist',
+						orderedGiftIds: ['m'],
+						groupChanges: [categoryGroupChange('m', ['books', 'toys'])],
+					},
+				).groupChanges,
+			).toEqual([categoryGroupChange('m', ['books', 'toys'])]);
+		});
 	});
 
 	it('rejects an unknown gift or a target group that is not shown', () => {

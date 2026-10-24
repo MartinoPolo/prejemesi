@@ -34,8 +34,8 @@ function makeGift(overrides: Partial<GiftForVisitor> = {}): GiftForVisitor {
 		priorityLevelId: null,
 		priorityLabel: null,
 		prioritySortOrder: null,
-		categoryId: null,
-		category: null,
+		categoryIds: [],
+		categories: [],
 		likeCount: 0,
 		reservedCount: 0,
 		isFullyReserved: false,
@@ -43,6 +43,20 @@ function makeGift(overrides: Partial<GiftForVisitor> = {}): GiftForVisitor {
 		myReservationId: null,
 		myReservationPurchasedAt: null,
 		...overrides,
+	};
+}
+
+/** The gift's ordered categories; the first is primary. */
+function inCategories(...categoryIds: string[]): Partial<GiftForVisitor> {
+	return {
+		categoryIds,
+		categories: categoryIds.map((id, sortOrder) => ({
+			id,
+			presetKey: null,
+			customLabel: id,
+			color: '#2563EB',
+			sortOrder,
+		})),
 	};
 }
 
@@ -68,14 +82,7 @@ describe('facet gift filters (issue #246)', () => {
 		expect(
 			giftMatchesFacetFilters(
 				makeGift({
-					categoryId: 'category-books',
-					category: {
-						id: 'category-books',
-						presetKey: null,
-						customLabel: 'Knihy',
-						color: '#2563EB',
-						sortOrder: 0,
-					},
+					...inCategories('category-books'),
 					priorityLevelId: 'priority-high',
 					prioritySortOrder: 0,
 				}),
@@ -85,19 +92,30 @@ describe('facet gift filters (issue #246)', () => {
 		expect(
 			giftMatchesFacetFilters(
 				makeGift({
-					categoryId: 'category-toys',
-					category: {
-						id: 'category-toys',
-						presetKey: null,
-						customLabel: 'Hračky',
-						color: '#2563EB',
-						sortOrder: 1,
-					},
+					...inCategories('category-toys'),
 					priorityLevelId: 'priority-low',
 					prioritySortOrder: 1,
 				}),
 				filters,
 			),
+		).toBe(false);
+	});
+
+	it('matches a gift through any of its categories, not only the primary', () => {
+		const gift = makeGift(inCategories('category-books', 'category-toys', 'category-games'));
+		const filterBy = (...categoryValues: string[]) => ({
+			...emptyGiftFilters(),
+			categoryValues,
+		});
+
+		expect(giftMatchesFacetFilters(gift, filterBy('category-books'))).toBe(true);
+		expect(giftMatchesFacetFilters(gift, filterBy('category-games'))).toBe(true);
+		expect(giftMatchesFacetFilters(gift, filterBy('category-music', 'category-toys'))).toBe(
+			true,
+		);
+		expect(giftMatchesFacetFilters(gift, filterBy('category-music'))).toBe(false);
+		expect(
+			giftMatchesFacetFilters(gift, filterBy(UNCATEGORIZED_GIFT_CATEGORY_FILTER_VALUE)),
 		).toBe(false);
 	});
 
@@ -109,21 +127,9 @@ describe('facet gift filters (issue #246)', () => {
 		};
 
 		expect(giftMatchesFacetFilters(makeGift(), filters)).toBe(true);
-		expect(
-			giftMatchesFacetFilters(
-				makeGift({
-					categoryId: 'category-books',
-					category: {
-						id: 'category-books',
-						presetKey: null,
-						customLabel: 'Knihy',
-						color: '#2563EB',
-						sortOrder: 0,
-					},
-				}),
-				filters,
-			),
-		).toBe(false);
+		expect(giftMatchesFacetFilters(makeGift(inCategories('category-books')), filters)).toBe(
+			false,
+		);
 	});
 
 	it('uses per-wishlist storage keys for sort and grouping while filters stay plain state', () => {

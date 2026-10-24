@@ -48,6 +48,8 @@ function makeReservedGift(overrides: Partial<GiftForVisitor> = {}): GiftForVisit
 		priorityLevelId: null,
 		priorityLabel: null,
 		prioritySortOrder: null,
+		categoryIds: [],
+		categories: [],
 		likeCount: 4,
 		reservedCount: 2,
 		isFullyReserved: true,

@@ -41,14 +41,16 @@ describe('GiftListItem centralized state overlay parity (issue #224 REQ-7)', () 
 	it('renders the assigned category over the list image', async () => {
 		const host = await renderItem(
 			makeVisitorGift({
-				categoryId: 'category-sport',
-				category: {
-					id: 'category-sport',
-					presetKey: null,
-					customLabel: 'Sport',
-					color: '#0369A1',
-					sortOrder: 0,
-				},
+				categoryIds: ['category-sport'],
+				categories: [
+					{
+						id: 'category-sport',
+						presetKey: null,
+						customLabel: 'Sport',
+						color: '#0369A1',
+						sortOrder: 0,
+					},
+				],
 			}),
 			WISHLIST_ROLES.visitor,
 		);
@@ -62,14 +64,16 @@ describe('GiftListItem centralized state overlay parity (issue #224 REQ-7)', () 
 		await page.viewport(344, 800);
 		const host = await renderItem(
 			makeVisitorGift({
-				categoryId: 'category-sport',
-				category: {
-					id: 'category-sport',
-					presetKey: null,
-					customLabel: 'Sportovní vybavení',
-					color: '#0369A1',
-					sortOrder: 0,
-				},
+				categoryIds: ['category-sport'],
+				categories: [
+					{
+						id: 'category-sport',
+						presetKey: null,
+						customLabel: 'Sportovní vybavení',
+						color: '#0369A1',
+						sortOrder: 0,
+					},
+				],
 				priorityLabel: 'Vysoka',
 				isFullyReserved: true,
 				reservedCount: 1,
@@ -110,14 +114,16 @@ describe('GiftListItem centralized state overlay parity (issue #224 REQ-7)', () 
 		try {
 			const host = await renderItem(
 				makeVisitorGift({
-					categoryId: 'category-sport',
-					category: {
-						id: 'category-sport',
-						presetKey: null,
-						customLabel: categoryLabel,
-						color: '#0369A1',
-						sortOrder: 0,
-					},
+					categoryIds: ['category-sport'],
+					categories: [
+						{
+							id: 'category-sport',
+							presetKey: null,
+							customLabel: categoryLabel,
+							color: '#0369A1',
+							sortOrder: 0,
+						},
+					],
 					priorityLabel: 'Vysoka',
 					isFullyReserved: true,
 					reservedCount: 1,

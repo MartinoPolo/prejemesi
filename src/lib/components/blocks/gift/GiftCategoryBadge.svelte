@@ -9,23 +9,30 @@
 	interface Props {
 		category: PublicGiftCategory;
 		isDimmed?: boolean;
+		/** One line with an ellipsis instead of the two-line clamp, for multi-category lanes. */
+		singleLine?: boolean;
 		class?: string;
 	}
 
-	let { category, isDimmed = false, class: className }: Props = $props();
+	let { category, isDimmed = false, singleLine = false, class: className }: Props = $props();
 	const label = $derived(
 		labelForGiftCategory(category, getLocale().startsWith('en') ? 'en' : 'cs'),
 	);
 	const foreground = $derived(foregroundForCategoryColor(category.color));
 </script>
 
-<!-- Prefer one line, clamp at two with an ellipsis; words break only when a single word cannot
-     fit. The full label stays in the DOM for assistive technology and in the title tooltip. -->
+<!-- Prefer one line, clamp at two with an ellipsis (or stay on one line when `singleLine`); words
+     break only when a single word cannot fit. The full label stays in the DOM for assistive
+     technology and in the title tooltip. -->
 <span
 	data-testid="gift-category-badge"
+	data-single-line={singleLine || undefined}
 	class={cn(
 		badgeShape,
-		'max-w-full overflow-hidden border-ink px-2.5 py-0.5 text-xs leading-4 font-extrabold [display:-webkit-inline-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] [overflow-wrap:break-word]',
+		'max-w-full overflow-hidden border-ink px-2.5 py-0.5 text-xs leading-4 font-extrabold',
+		singleLine
+			? 'inline-block text-ellipsis whitespace-nowrap'
+			: '[display:-webkit-inline-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] [overflow-wrap:break-word]',
 		isDimmed && 'opacity-50',
 		className,
 	)}
