@@ -25,6 +25,9 @@
 
 	const popoverTitleId = $props.id();
 	let measurement = $state<CategoryLaneMeasurement | null>(null);
+	let popoverOpen = $state(false);
+	let triggerElement = $state<HTMLElement | null>(null);
+	let popoverElement = $state<HTMLElement | null>(null);
 
 	// Until the lane is measured (SSR, first frame), the primary and "+X" always fit.
 	const layout = $derived(
@@ -77,6 +80,56 @@
 	function keepPressOffCard(event: MouseEvent) {
 		event.stopPropagation();
 	}
+
+	function isInsidePopover(target: EventTarget | null) {
+		return (
+			target instanceof Node &&
+			(popoverElement?.contains(target) === true || triggerElement?.contains(target) === true)
+		);
+	}
+
+	/** Lets the dismissing tap only dismiss, instead of also opening the gift underneath. */
+	function swallowClickOfCurrentPress() {
+		function swallowClick(event: MouseEvent) {
+			event.preventDefault();
+			event.stopPropagation();
+			release();
+		}
+		function release() {
+			document.removeEventListener('click', swallowClick, true);
+			document.removeEventListener('pointerdown', release, true);
+		}
+		document.addEventListener('click', swallowClick, true);
+		// A press that turned into a scroll never clicks, so the next press releases the guard.
+		document.addEventListener('pointerdown', release, true);
+	}
+
+	$effect(() => {
+		if (!popoverOpen) {
+			return;
+		}
+		// Gift cards stop touch pointerdown propagation for their gestures, which hides the tap
+		// from the popover's own bubble-phase outside detection.
+		function closeOnOutsideTouch(event: PointerEvent) {
+			if (event.pointerType === 'mouse' || isInsidePopover(event.target)) {
+				return;
+			}
+			popoverOpen = false;
+			swallowClickOfCurrentPress();
+		}
+		// The portaled popover cannot follow a scrolling list smoothly, so scrolling dismisses it.
+		function closeOnScroll(event: Event) {
+			if (!isInsidePopover(event.target)) {
+				popoverOpen = false;
+			}
+		}
+		document.addEventListener('pointerdown', closeOnOutsideTouch, true);
+		document.addEventListener('scroll', closeOnScroll, true);
+		return () => {
+			document.removeEventListener('pointerdown', closeOnOutsideTouch, true);
+			document.removeEventListener('scroll', closeOnScroll, true);
+		};
+	});
 </script>
 
 {#if categories.length === 1}
@@ -126,8 +179,9 @@
 			{#if hiddenCategories.length > 0}
 				<span class="sr-only">{hiddenLabels}</span>
 				{#if interactive}
-					<Popover.Root>
+					<Popover.Root bind:open={popoverOpen}>
 						<Popover.Trigger
+							bind:ref={triggerElement}
 							openOnHover
 							class={cn(
 								moreChipClass,
@@ -142,6 +196,7 @@
 							+{hiddenCategories.length}
 						</Popover.Trigger>
 						<Popover.Content
+							bind:ref={popoverElement}
 							class="w-max max-w-[min(18rem,calc(100vw-1rem))] min-w-0"
 							shadowedTrigger={false}
 							role="dialog"

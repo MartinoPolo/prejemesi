@@ -145,6 +145,51 @@ test('mobile long press supports drill-in, Back, and entering selection', async 
 	await page.context().close();
 });
 
+test('mobile long press that also fires a native contextmenu leaves the page usable', async ({
+	browser,
+	request,
+	baseURL,
+}) => {
+	const page = await registerAndGetPage(
+		browser,
+		request,
+		baseURL!,
+		createTestUser('gift-actions-mobile-native-contextmenu'),
+	);
+	await page.setViewportSize({ width: 390, height: 844 });
+	await createActionFixture(page);
+
+	const target = gift(page, 'Kolo pro výlety');
+	const point = await beginTouchLongPress(target);
+	// Android fires contextmenu mid-press, before the long-press recognizer completes.
+	const nativeContextMenu = await target.evaluate((element, { x, y }) => {
+		let reachedDocument = false;
+		const markReached = () => (reachedDocument = true);
+		document.addEventListener('contextmenu', markReached);
+		const event = new PointerEvent('contextmenu', {
+			bubbles: true,
+			cancelable: true,
+			pointerType: 'touch',
+			clientX: x,
+			clientY: y,
+		});
+		element.dispatchEvent(event);
+		document.removeEventListener('contextmenu', markReached);
+		return { reachedDocument, defaultPrevented: event.defaultPrevented };
+	}, point);
+	expect(nativeContextMenu).toEqual({ reachedDocument: false, defaultPrevented: true });
+	const sheet = page.getByRole('dialog');
+	await expect(sheet.getByRole('heading', { name: 'Kolo pro výlety' })).toBeVisible();
+	await target.dispatchEvent('pointerup', { pointerType: 'touch' });
+	await expect(page.getByRole('menu')).toHaveCount(0);
+
+	await page.keyboard.press('Escape');
+	await expect(sheet).toBeHidden();
+	await expect(page.getByRole('menu')).toHaveCount(0);
+	await expectBodyPointerEventsRestored(page);
+	await page.context().close();
+});
+
 test('mobile scroll cancels a pending long press', async ({ browser, request, baseURL }) => {
 	const page = await registerAndGetPage(
 		browser,
