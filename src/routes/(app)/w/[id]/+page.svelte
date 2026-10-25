@@ -1056,6 +1056,8 @@
 		};
 		queuedContextAction = null;
 		if (invocation.kind !== 'native') {
+			// The native menu's content unmounts with this session, so it must not stay open.
+			nativeContextOpen = false;
 			programmaticOpen = true;
 		}
 		void ensurePriorityLevels();

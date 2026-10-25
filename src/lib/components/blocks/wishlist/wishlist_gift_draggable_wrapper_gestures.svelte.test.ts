@@ -128,6 +128,51 @@ describe('WishlistGiftDraggableWrapper — pointer gestures', () => {
 		await unmount();
 	});
 
+	it('leaves the contextmenu a mobile long press fires to the long-press recognizer', async () => {
+		vi.useFakeTimers();
+		const openNativeContext = vi.fn(() => true);
+		const openLongPressContext = vi.fn(() => true);
+		const bubbledContextMenu = vi.fn();
+		const { container, unmount } = await render(WishlistGiftDraggableWrapperTestHost, {
+			...baseProps,
+			reorderEnabled: false,
+			oncontextmenu: openNativeContext,
+			onlongpress: openLongPressContext,
+		});
+		const wrapper = container.querySelector('[data-gift-item]') as HTMLElement;
+		// Svelte delegates contextmenu to the mount root, so only listeners above it observe bubbling.
+		document.addEventListener('contextmenu', bubbledContextMenu);
+
+		wrapper.dispatchEvent(pointerEvent('pointerdown', 'touch'));
+		vi.advanceTimersByTime(450);
+		const contextMenu = new MouseEvent('contextmenu', { bubbles: true, cancelable: true });
+		wrapper.dispatchEvent(contextMenu);
+		vi.advanceTimersByTime(150);
+
+		expect(contextMenu.defaultPrevented).toBe(true);
+		expect(bubbledContextMenu).not.toHaveBeenCalled();
+		expect(openNativeContext).not.toHaveBeenCalled();
+		expect(openLongPressContext).toHaveBeenCalledOnce();
+		document.removeEventListener('contextmenu', bubbledContextMenu);
+		await unmount();
+	});
+
+	it('still opens the native context menu for a mouse right-click', async () => {
+		const openNativeContext = vi.fn(() => true);
+		const { container, unmount } = await render(WishlistGiftDraggableWrapperTestHost, {
+			...baseProps,
+			reorderEnabled: false,
+			oncontextmenu: openNativeContext,
+		});
+		const wrapper = container.querySelector('[data-gift-item]') as HTMLElement;
+
+		wrapper.dispatchEvent(pointerEvent('pointerdown', 'mouse', { button: 2 }));
+		wrapper.dispatchEvent(pointerEvent('contextmenu', 'mouse', { button: 2 }));
+
+		expect(openNativeContext).toHaveBeenCalledOnce();
+		await unmount();
+	});
+
 	it.each(['mouse', 'pen'])(
 		'starts a reorder drag when a %s press lands anywhere on the card (#530)',
 		async (pointerType) => {

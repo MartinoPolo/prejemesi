@@ -80,6 +80,7 @@
 	);
 
 	let longPressPending = $state(false);
+	let touchPressActive = false;
 	let suppressNextClickAfterLongPress = $state(false);
 	const longPress = createGiftLongPressRecognizer(
 		() => {
@@ -178,6 +179,11 @@
 			event.stopPropagation();
 			return;
 		}
+		if (touchPressActive || isTouchOrPenEvent(event)) {
+			// Mobile browsers fire contextmenu mid long-press; the recognizer owns that gesture.
+			suppressSelectionContext(event);
+			return;
+		}
 		if (!(oncontextmenu?.(event) ?? false)) {
 			event.preventDefault();
 		}
@@ -193,8 +199,16 @@
 		reorderLongPress.start(event.clientX, event.clientY);
 	}
 
+	function isTouchOrPenEvent(event: MouseEvent) {
+		return (
+			event instanceof PointerEvent &&
+			(event.pointerType === 'touch' || event.pointerType === 'pen')
+		);
+	}
+
 	function handlePointerDown(event: PointerEvent) {
 		suppressNextClickAfterLongPress = false;
+		touchPressActive = event.pointerType !== 'mouse';
 		if (selectionMode) {
 			suppressSelectionContext(event);
 			return;
@@ -220,6 +234,7 @@
 	}
 
 	function endLongPresses() {
+		touchPressActive = false;
 		longPress.end();
 		reorderLongPress.end();
 	}
