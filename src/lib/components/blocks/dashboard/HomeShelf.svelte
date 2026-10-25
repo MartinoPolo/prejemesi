@@ -1,10 +1,6 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import * as Carousel from '$lib/components/base/carousel/index.js';
-	import type { CarouselAPI, CarouselOptions } from '$lib/components/base/carousel/context.js';
-	import { resolveCarouselScrollability } from '$lib/components/base/carousel/carousel_scrollability.js';
-	import { SoftenedDragMomentum } from '$lib/components/base/carousel/softened_drag_momentum.js';
-	import { WheelHorizontalScroll } from '$lib/components/base/carousel/wheel_horizontal_scroll.js';
 	import ViewAllCard from './ViewAllCard.svelte';
 	import { HOME_SHELF_SIZES, type HomeShelfSize } from './home_shelf_sizes.js';
 	import * as m from '$lib/paraglide/messages.js';
@@ -35,42 +31,18 @@
 		children,
 	}: HomeShelfProps = $props();
 
-	const carouselOptions = {
-		align: 'start',
-		dragFree: true,
-		duration: 50,
-	} satisfies CarouselOptions;
-
-	// Plain vertical wheel keeps scrolling the page — only Shift+wheel and horizontal deltas move the shelf.
-	const plugins = [WheelHorizontalScroll(), SoftenedDragMomentum({ remainingMomentum: 0.5 })];
-
 	const presentation = $derived(HOME_SHELF_SIZES[size]);
 
 	// The trailing „Zobrazit vše" card appears only when the row was capped (more lists exist).
 	const remaining = $derived(Math.max(0, total - visibleCount));
 	const showTrailingCard = $derived(viewAllHref !== undefined && remaining > 0);
 
-	// The arrow pair is shown only when the row overflows (either direction scrollable). Tracked
-	// off the embla api because canScrollPrev/Next live in carousel context, not here.
-	let canScroll = $state(false);
+	let canScrollPrev = $state(false);
 	// Drives the right-edge fade: while more cards exist past the viewport, a mask gradient
 	// signals scrollable content; it clears once the row is scrolled to the end (or fits).
 	let canScrollNext = $state(false);
-	function trackApi(api: CarouselAPI | undefined) {
-		if (api === undefined) {
-			return;
-		}
-		const update = () => {
-			const scrollability = resolveCarouselScrollability(api, carouselOptions);
-			canScrollNext = scrollability.canScrollNext;
-			canScroll = scrollability.canScrollPrev || canScrollNext;
-		};
-		update();
-		api.on('select', update);
-		api.on('scroll', update);
-		api.on('settle', update);
-		api.on('reInit', update);
-	}
+	// The arrow pair is shown only when the row overflows (either direction scrollable).
+	const canScroll = $derived(canScrollPrev || canScrollNext);
 </script>
 
 <section
@@ -78,7 +50,7 @@
 	data-testid="home-shelf"
 	data-can-scroll-next={canScrollNext}
 >
-	<Carousel.Root opts={carouselOptions} {plugins} setApi={trackApi}>
+	<Carousel.Root bind:canScrollPrev bind:canScrollNext>
 		<div class="shelf-head">
 			<h2 class="shelf-title">
 				{#if icon}
@@ -204,7 +176,7 @@
 	}
 
 	/* Bleed the viewport to the content-padding right edge so the cut-off card is flush with the
-	   page edge, and pad the overflow-hidden viewport vertically so the card hover-lift and hard
+	   page edge, and pad the scrolling viewport vertically so the card hover-lift and hard
 	   shadows are not clipped (issue #225 peek geometry). */
 	.shelf :global([data-slot='carousel-content']) {
 		margin-right: calc(var(--space-6) * -1);

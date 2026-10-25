@@ -144,16 +144,16 @@ test.describe('Home overview (issue #225)', () => {
 			.filter({ has: page.getByRole('button', { name: 'Další' }) })
 			.first();
 		await expect(row).toHaveCount(1);
-		const container = row.locator('[data-embla-container]');
+		const viewport = row.locator('[data-slot="carousel-content"]');
 		await row.scrollIntoViewIfNeeded();
-		const rowBox = await row.locator('[data-slot="carousel-content"]').boundingBox();
+		const rowBox = await viewport.boundingBox();
 		await page.mouse.move(rowBox!.x + rowBox!.width / 2, rowBox!.y + rowBox!.height / 2);
 
-		// Records the track's translateX every frame, so backward jumps and overshoot are observable.
-		await container.evaluate((element) => {
+		// Records the row's scroll offset every frame, so backward jumps and overshoot are observable.
+		await viewport.evaluate((element) => {
 			const samples: number[] = [];
 			const record = () => {
-				samples.push(new DOMMatrixReadOnly(getComputedStyle(element).transform).m41);
+				samples.push(element.scrollLeft);
 				requestAnimationFrame(record);
 			};
 			record();
@@ -168,9 +168,7 @@ test.describe('Home overview (issue #225)', () => {
 			let previous = Number.NaN;
 			await expect
 				.poll(async () => {
-					const current = await container.evaluate(
-						(element) => new DOMMatrixReadOnly(getComputedStyle(element).transform).m41,
-					);
+					const current = await viewport.evaluate((element) => element.scrollLeft);
 					const settled = current === previous;
 					previous = current;
 					return settled;
@@ -184,7 +182,7 @@ test.describe('Home overview (issue #225)', () => {
 				await page.waitForTimeout(50);
 			}
 		};
-		/** Every frame moved toward `direction` (−1 = toward the end) and never went past `final`. */
+		/** Every frame moved toward `direction` (1 = toward the end) and never went past `final`. */
 		const expectMonotonicWithoutOvershoot = (
 			samples: number[],
 			direction: number,
@@ -205,20 +203,20 @@ test.describe('Home overview (issue #225)', () => {
 		await page.keyboard.down('Shift');
 		await wheelNotches(1, 0, 100);
 		const afterNotch = await settledPosition();
-		expect(afterNotch).toBeCloseTo(-100, 0);
-		expectMonotonicWithoutOvershoot(await takeSamples(), -1, afterNotch);
+		expect(afterNotch).toBeCloseTo(100, 0);
+		expectMonotonicWithoutOvershoot(await takeSamples(), 1, afterNotch);
 
 		// Spinning far past the end stops exactly at the end edge.
 		await wheelNotches(30, 0, 100);
 		await page.keyboard.up('Shift');
 		const end = await settledPosition();
-		expectMonotonicWithoutOvershoot(await takeSamples(), -1, end);
+		expectMonotonicWithoutOvershoot(await takeSamples(), 1, end);
 		await expect(row.getByRole('button', { name: 'Další' })).toBeDisabled();
 
 		// Horizontal (trackpad) deltas back past the start stop exactly at the start edge.
 		await wheelNotches(30, -100, 0);
 		expect(await settledPosition()).toBe(0);
-		expectMonotonicWithoutOvershoot(await takeSamples(), 1, 0);
+		expectMonotonicWithoutOvershoot(await takeSamples(), -1, 0);
 
 		// A plain vertical wheel is left to scroll the page and does not move the row.
 		await page.evaluate(() => {
@@ -240,6 +238,51 @@ test.describe('Home overview (issue #225)', () => {
 			)
 			.toBe(false);
 		expect(await settledPosition()).toBe(0);
+
+		await page.context().close();
+	});
+
+	test('mouse click-and-drag scrolls the row without opening the card under the pointer', async ({
+		browser,
+		request,
+		baseURL,
+	}) => {
+		const page = await signInAs(browser, request, baseURL!, MARTIN);
+		await page.setViewportSize({ width: 1280, height: 900 });
+		await page.goto('/home');
+		await waitForAppHydration(page);
+
+		const row = page
+			.getByTestId('home-shelf')
+			.filter({ has: page.getByRole('button', { name: 'Další' }) })
+			.first();
+		const viewport = row.locator('[data-slot="carousel-content"]');
+		await row.scrollIntoViewIfNeeded();
+		const rowBox = await viewport.boundingBox();
+		const homeUrl = page.url();
+		const y = rowBox!.y + rowBox!.height / 2;
+		const startX = rowBox!.x + rowBox!.width * 0.75;
+
+		// Moving slowly, then pausing before release, so the row stops where the pointer left it.
+		await page.mouse.move(startX, y);
+		await page.mouse.down();
+		for (let step = 1; step <= 10; step++) {
+			await page.mouse.move(startX - step * 20, y);
+		}
+		await page.waitForTimeout(150);
+		await page.mouse.up();
+		await expect.poll(() => viewport.evaluate((element) => element.scrollLeft)).toBe(200);
+		await expect(row.getByRole('button', { name: 'Předchozí' })).toBeEnabled();
+		await page.waitForTimeout(300);
+		expect(page.url()).toBe(homeUrl);
+
+		// A plain click on a card still opens it.
+		const card = viewport.getByTestId('wishlist-card').first();
+		const href = await card.getAttribute('href');
+		await card.click();
+		await expect(page).toHaveURL(
+			new RegExp(`${href!.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/?$`),
+		);
 
 		await page.context().close();
 	});

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { WithoutChildren } from 'bits-ui';
 	import ChevronRightIcon from '@lucide/svelte/icons/chevron-right';
-	import { getEmblaContext } from './context.js';
+	import { useCarousel } from './context.js';
 	import { cn } from '$lib/utils.js';
 	import { Button, type Props } from '$lib/components/base/button/index.js';
 
@@ -13,7 +13,7 @@
 		...restProps
 	}: WithoutChildren<Props> = $props();
 
-	const emblaCtx = getEmblaContext('<Carousel.Next/>');
+	const carousel = useCarousel();
 </script>
 
 <Button
@@ -21,11 +21,11 @@
 	{intent}
 	{size}
 	format="icon"
-	aria-disabled={!emblaCtx.canScrollNext}
-	disabled={!emblaCtx.canScrollNext}
+	aria-disabled={!carousel.canScrollNext}
+	disabled={!carousel.canScrollNext}
 	class={cn('touch-manipulation', className)}
-	onclick={emblaCtx.scrollNext}
-	onkeydown={emblaCtx.handleKeyDown}
+	onclick={carousel.scrollNext}
+	onkeydown={carousel.handleKeyDown}
 	bind:ref
 	{...restProps}
 >
