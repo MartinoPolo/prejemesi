@@ -370,9 +370,14 @@
 		);
 	}
 
+	/* An owner overlaying controls on the bottom edge reserves their lane, so the item grows rather
+	   than letting them cover content. */
 	.gift-list-content {
 		padding-block: var(--gift-content-inset, 0.5rem)
-			var(--gift-content-inset-bottom, var(--gift-content-inset, 0.5rem));
+			calc(
+				var(--gift-content-inset-bottom, var(--gift-content-inset, 0.5rem)) +
+					var(--gift-list-reserved-bottom-lane, 0px)
+			);
 		padding-inline: var(--gift-content-inset, 0.5rem)
 			var(--gift-content-inset-end, var(--gift-content-inset, 0.5rem));
 	}
