@@ -1,7 +1,6 @@
 <script lang="ts">
-	import emblaCarouselSvelte from 'embla-carousel-svelte';
 	import type { HTMLAttributes } from 'svelte/elements';
-	import { getEmblaContext } from './context.js';
+	import { useCarousel } from './context.js';
 	import { cn, type WithElementRef } from '$lib/utils.js';
 
 	let {
@@ -11,33 +10,29 @@
 		...restProps
 	}: WithElementRef<HTMLAttributes<HTMLDivElement>> = $props();
 
-	const emblaCtx = getEmblaContext('<Carousel.Content/>');
+	const carousel = useCarousel();
 </script>
 
+<!-- A native scroller keeps touch, trackpad and Shift+wheel scrolling on the compositor thread, so
+     the row stays smooth however busy the page's main thread is. -->
 <div
 	data-slot="carousel-content"
-	class="overflow-hidden"
-	use:emblaCarouselSvelte={{
-		options: {
-			container: '[data-embla-container]',
-			slides: '[data-embla-slide]',
-			...emblaCtx.options,
-			axis: emblaCtx.orientation === 'horizontal' ? 'x' : 'y',
-		},
-		plugins: emblaCtx.plugins,
-	}}
-	onemblaInit={emblaCtx.onInit}
+	class="carousel-viewport overflow-x-auto overflow-y-hidden overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+	{@attach carousel.attachViewport}
 >
 	<div
 		bind:this={ref}
-		class={cn(
-			'flex',
-			emblaCtx.orientation === 'horizontal' ? '-ms-4' : '-mt-4 flex-col',
-			className,
-		)}
-		data-embla-container=""
+		data-slot="carousel-container"
+		class={cn('flex -ms-4', className)}
 		{...restProps}
 	>
 		{@render children?.()}
 	</div>
 </div>
+
+<style>
+	.carousel-viewport:global([data-dragging]) {
+		cursor: grabbing;
+		user-select: none;
+	}
+</style>

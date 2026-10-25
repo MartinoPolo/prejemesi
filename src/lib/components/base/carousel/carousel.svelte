@@ -1,112 +1,112 @@
 <script lang="ts">
-	import {
-		type CarouselAPI,
-		type CarouselProps,
-		type EmblaContext,
-		setEmblaContext,
-	} from './context.js';
-	import { resolveCarouselScrollability } from './carousel_scrollability.js';
+	import type { HTMLAttributes } from 'svelte/elements';
+	import type { Attachment } from 'svelte/attachments';
+	import { setCarouselContext } from './context.js';
+	import { attachMouseDragScroll } from './mouse_drag_scroll.js';
+	import { resolveScrollability, resolveSlideTarget } from './scroll_row.js';
 	import { cn, type WithElementRef } from '$lib/utils.js';
+
+	type CarouselProps = WithElementRef<HTMLAttributes<HTMLDivElement>> & {
+		canScrollPrev?: boolean;
+		canScrollNext?: boolean;
+	};
 
 	let {
 		ref = $bindable(null),
-		opts = {},
-		plugins = [],
-		setApi = () => {},
-		orientation = 'horizontal',
+		canScrollPrev = $bindable(false),
+		canScrollNext = $bindable(false),
 		class: className,
 		children,
 		...restProps
-	}: WithElementRef<CarouselProps> = $props();
+	}: CarouselProps = $props();
 
-	// svelte-ignore state_referenced_locally
-	let carouselState = $state<EmblaContext>({
-		api: undefined,
-		scrollPrev,
-		scrollNext,
-		orientation,
-		canScrollNext: false,
-		canScrollPrev: false,
-		handleKeyDown,
-		options: opts,
-		plugins,
-		onInit,
-		scrollSnaps: [],
-		selectedIndex: 0,
-		scrollTo,
-	});
-
-	setEmblaContext(carouselState);
-
-	function scrollPrev() {
-		carouselState.api?.scrollPrev();
-	}
-
-	function scrollNext() {
-		carouselState.api?.scrollNext();
-	}
-
-	function scrollTo(index: number, jump?: boolean) {
-		carouselState.api?.scrollTo(index, jump);
-	}
+	let viewport: HTMLElement | null = null;
+	// Target of an arrow-button glide still in flight, so repeated presses advance slide by slide
+	// instead of re-aiming at the slide the glide is already heading to.
+	let pendingTarget: number | null = null;
 
 	function updateScrollability() {
-		if (!carouselState.api) {
+		if (viewport === null) {
 			return;
 		}
-		const { canScrollPrev, canScrollNext } = resolveCarouselScrollability(
-			carouselState.api,
-			opts,
+		const scrollability = resolveScrollability(
+			viewport.scrollLeft,
+			viewport.scrollWidth,
+			viewport.clientWidth,
 		);
-		carouselState.canScrollPrev = canScrollPrev;
-		carouselState.canScrollNext = canScrollNext;
+		canScrollPrev = scrollability.canScrollPrev;
+		canScrollNext = scrollability.canScrollNext;
 	}
 
-	function onSelect() {
-		if (!carouselState.api) {
+	function scrollByDirection(direction: 1 | -1) {
+		if (viewport === null) {
 			return;
 		}
-		carouselState.selectedIndex = carouselState.api.selectedScrollSnap();
+		const viewportLeft = viewport.getBoundingClientRect().left - viewport.scrollLeft;
+		const slideStarts = Array.from(
+			viewport.querySelectorAll<HTMLElement>('[data-slot="carousel-item"]'),
+			(slide) => slide.getBoundingClientRect().left - viewportLeft,
+		);
+		const target = resolveSlideTarget(
+			slideStarts,
+			pendingTarget ?? viewport.scrollLeft,
+			viewport.scrollWidth - viewport.clientWidth,
+			direction,
+		);
+		pendingTarget = target;
+		viewport.scrollTo({ left: target, behavior: 'smooth' });
+	}
+
+	function clearPendingTarget() {
+		pendingTarget = null;
+	}
+
+	function handleKeyDown(event: KeyboardEvent) {
+		if (event.key === 'ArrowLeft') {
+			event.preventDefault();
+			scrollByDirection(-1);
+		} else if (event.key === 'ArrowRight') {
+			event.preventDefault();
+			scrollByDirection(1);
+		}
+	}
+
+	const attachViewport: Attachment<HTMLElement> = (element) => {
+		viewport = element;
+		const resizeObserver = new ResizeObserver(updateScrollability);
+		resizeObserver.observe(element);
+		for (const child of element.children) {
+			resizeObserver.observe(child);
+		}
+		const detachMouseDrag = attachMouseDragScroll(element);
+		const userScrollEvents = ['scrollend', 'wheel', 'touchstart', 'pointerdown'] as const;
+		element.addEventListener('scroll', updateScrollability, { passive: true });
+		for (const type of userScrollEvents) {
+			element.addEventListener(type, clearPendingTarget, { passive: true });
+		}
 		updateScrollability();
-	}
-
-	function onReInit() {
-		if (!carouselState.api) {
-			return;
-		}
-		carouselState.scrollSnaps = carouselState.api.scrollSnapList();
-		onSelect();
-	}
-
-	function handleKeyDown(e: KeyboardEvent) {
-		if (e.key === 'ArrowLeft') {
-			e.preventDefault();
-			scrollPrev();
-		} else if (e.key === 'ArrowRight') {
-			e.preventDefault();
-			scrollNext();
-		}
-	}
-
-	function onInit(event: CustomEvent<CarouselAPI>) {
-		carouselState.api = event.detail;
-		setApi(carouselState.api);
-
-		carouselState.scrollSnaps = carouselState.api.scrollSnapList();
-		carouselState.api.on('select', onSelect);
-		carouselState.api.on('scroll', updateScrollability);
-		carouselState.api.on('settle', updateScrollability);
-		carouselState.api.on('reInit', onReInit);
-		onSelect();
-	}
-
-	$effect(() => {
 		return () => {
-			carouselState.api?.off('select', onSelect);
-			carouselState.api?.off('scroll', updateScrollability);
-			carouselState.api?.off('settle', updateScrollability);
-			carouselState.api?.off('reInit', onReInit);
+			resizeObserver.disconnect();
+			detachMouseDrag();
+			element.removeEventListener('scroll', updateScrollability);
+			for (const type of userScrollEvents) {
+				element.removeEventListener(type, clearPendingTarget);
+			}
+			viewport = null;
 		};
+	};
+
+	setCarouselContext({
+		get canScrollPrev() {
+			return canScrollPrev;
+		},
+		get canScrollNext() {
+			return canScrollNext;
+		},
+		scrollPrev: () => scrollByDirection(-1),
+		scrollNext: () => scrollByDirection(1),
+		handleKeyDown,
+		attachViewport,
 	});
 </script>
 
