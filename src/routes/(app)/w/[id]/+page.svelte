@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
 	import { page } from '$app/state';
-	import { afterNavigate, replaceState, goto } from '$app/navigation';
+	import { replaceState, goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { onMount, tick } from 'svelte';
 	import { SvelteSet } from 'svelte/reactivity';
@@ -2325,16 +2325,24 @@
 
 	// The legacy /w/<id>/settings route redirects here with ?settings=<tab>; open the
 	// modal on the requested tab, then strip the marker so reload/share won't reopen it.
-	afterNavigate(() => {
-		const requestedTab = page.url.searchParams.get(WISHLIST_SETTINGS_QUERY_PARAM);
-		if (requestedTab === null) {
+	// An $effect, not afterNavigate: the top-level awaits above register afterNavigate after
+	// SvelteKit has already dispatched the initial 'enter' navigation, so a fresh load of the
+	// marked URL never reached the callback. The consumed set mirrors the gift deep link below.
+	// Opening waits a tick because Bits UI's PresenceManager ignores the first `open` value its
+	// watcher sees, so flipping it in the same flush the dialog mounts in never renders it.
+	const consumedSettingsDeepLinkUrls = new WeakSet<URL>();
+	$effect(() => {
+		const currentUrl = page.url;
+		const requestedTab = currentUrl.searchParams.get(WISHLIST_SETTINGS_QUERY_PARAM);
+		if (requestedTab === null || consumedSettingsDeepLinkUrls.has(currentUrl)) {
 			return;
 		}
+		consumedSettingsDeepLinkUrls.add(currentUrl);
 		settingsModalTab = isWishlistSettingsTab(requestedTab)
 			? requestedTab
 			: WISHLIST_SETTINGS_TABS.details;
-		settingsModalOpen = true;
-		const cleanedUrl = new URL(page.url);
+		void tick().then(() => (settingsModalOpen = true));
+		const cleanedUrl = new URL(currentUrl);
 		cleanedUrl.searchParams.delete(WISHLIST_SETTINGS_QUERY_PARAM);
 		// eslint-disable-next-line svelte/no-navigation-without-resolve -- shallow cleanup of the current URL's query marker, not a route navigation
 		replaceState(cleanedUrl, {});
