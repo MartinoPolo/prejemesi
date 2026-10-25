@@ -295,6 +295,7 @@
 	data-gift-reorder-group={reorderGroupKey}
 	data-long-press-pending={longPressPending || undefined}
 	class:gift-reorder-grip-owner={reorderGripVisible}
+	class:gift-reorder-list-owner={reorderGripVisible && selectionLayout === 'list'}
 	class:gift-selection-owner={selectionMode}
 	class:gift-selection-list-owner={selectionMode && selectionLayout === 'list'}
 	class={cn(
@@ -498,6 +499,15 @@
 		inset-inline-end: var(--gift-context-shadow-inset);
 		inset-block-end: var(--gift-context-shadow-inset);
 		gap: var(--nested-control-gap);
+	}
+
+	/* Mobile List arrows get their own row below the content, like the browse actions. */
+	@media (width < 640px) {
+		.gift-reorder-list-owner {
+			--gift-list-reserved-bottom-lane: calc(
+				var(--size-control-lg) + var(--nested-control-gap)
+			);
+		}
 	}
 
 	/* Selection follows the moving Card paint and the flat List surface. */
