@@ -169,6 +169,47 @@ describe('GiftCategoryBadges', () => {
 		expect(onopen).not.toHaveBeenCalled();
 	});
 
+	it('lets a touch on the card only dismiss the open "+X" popover', async () => {
+		const onopen = vi.fn();
+		const host = await renderGift(categorizedGift(LABELS), { width: 220, onopen });
+		// The wishlist card wrapper keeps touch presses to itself for its long-press gesture.
+		host.addEventListener('pointerdown', (event) => {
+			if (event.pointerType !== 'mouse') {
+				event.stopPropagation();
+			}
+		});
+		await expect.poll(() => visibleBadgeLabels(host).length).toBeLessThan(LABELS.length);
+		await userEvent.click(moreButton(LABELS.length - visibleBadgeLabels(host).length));
+		const popover = page.getByRole('dialog');
+		await expect.element(popover).toBeVisible();
+
+		host.dispatchEvent(
+			new PointerEvent('pointerdown', {
+				bubbles: true,
+				pointerType: 'touch',
+				isPrimary: true,
+			}),
+		);
+		host.click();
+
+		await expect.element(popover).not.toBeInTheDocument();
+		expect(onopen).not.toHaveBeenCalled();
+		host.click();
+		expect(onopen).toHaveBeenCalledOnce();
+	});
+
+	it('closes the open "+X" popover when the page scrolls', async () => {
+		const host = await renderGift(categorizedGift(LABELS), { width: 220 });
+		await expect.poll(() => visibleBadgeLabels(host).length).toBeLessThan(LABELS.length);
+		await userEvent.click(moreButton(LABELS.length - visibleBadgeLabels(host).length));
+		const popover = page.getByRole('dialog');
+		await expect.element(popover).toBeVisible();
+
+		host.dispatchEvent(new Event('scroll'));
+
+		await expect.element(popover).not.toBeInTheDocument();
+	});
+
 	it('gives a too-narrow primary the whole List lane and moves "+X" below it', async () => {
 		const host = await renderGift(
 			categorizedGift(['Výpravné ilustrované edice', 'Knihy', 'Hry']),
