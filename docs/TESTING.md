@@ -10,13 +10,25 @@ To run only the server project, use `pnpm exec vitest run --project server`.
 
 For browser verification without automatic failure screenshots, set `VITEST_SCREENSHOT_FAILURES=false`. This opt-out is applied inside both browser project configurations; a top-level CLI flag alone may be overridden by their project settings. Run browser projects serially in the same checkout to avoid races in generated SvelteKit state. Wishlist E2E attachment helpers accept `E2E_SCREENSHOT_ATTACHMENTS=false` for numeric-only verification; behavioral assertions still run.
 
-`pnpm run test:e2e` starts its own localhost-only development server with a non-production signing secret. R2 variables are intentionally absent, so uploads use the local in-memory fallback. It uses `PLAYWRIGHT_BASE_URL=http://localhost:8300` by default. Every automation server uses that exact port with Vite strict-port mode, preventing a test from attaching to a different process.
+`pnpm run test:e2e` and `pnpm run test:release` ([test tiers](#test-tiers)) start their own localhost-only development server with a non-production signing secret. R2 variables are intentionally absent, so uploads use the local in-memory fallback. They use `PLAYWRIGHT_BASE_URL=http://localhost:8300` by default. Every automation server uses that exact port with Vite strict-port mode, preventing a test from attaching to a different process.
 
 When the default port is occupied, choose an explicit free origin rather than reusing that server:
 
 ```bash
 PLAYWRIGHT_BASE_URL=http://localhost:8301 pnpm run test:e2e
 ```
+
+## Test tiers
+
+Playwright specs belong to exactly one tier; both share `tests/e2e/fixtures/` and the `setup` warmup project.
+
+- **CI tier** (`tests/e2e`, `pnpm test:e2e`, every PR and `dev` push): critical flows — auth, wishlist/gift create-edit-delete, reservations including anonymous, recipient surprise protection and other privacy/permission rules, sharing, agent access/OAuth security, data-integrity failure paths — plus regression tests for real bugs whose failure would break those.
+- **Release tier** (`tests/release`, `pnpm test:release`, CI only on PRs targeting `production`, enforced by `checks / required`): interaction, keyboard, scrolling, layout, motion and visual-geometry behavior, and secondary flows. Specs needing mobile or touch create their own contexts.
+- **Interaction suite** (`tests/release/interaction/`): driven by the capability inventory `tests/release/interaction/inventory.ts`. Each surface declares only the interactions it really supports; never test an interaction a surface does not offer. The riskiest surface gets the full matrix, other surfaces pairwise sampling. Test titles carry one category tag (`@gesture`, `@keyboard`, `@scroll`, `@layout`, `@motion`) and one surface tag (e.g. `@gift-card`, `@carousel`). Touch goes through real CDP input (`support/touch.ts`, which documents where emulation differs from phones), every case ends with `expectPageSettled` (`support/settled.ts`), a spec that needs its own account creates it once per run through `oncePerRun` (`support/run-fixture.ts`) because Playwright restarts a worker after any failure, and `describeSurfaceCases` (`support/cases.ts`) fails collection when the inventory and a spec's implementations drift apart. A known product bug names the one assertion it breaks: affected cases skip only that assertion, and a dedicated `[known bug: …]` case expects exactly that assertion to fail, turning red on any other failure and once the bug is fixed.
+
+Every new Playwright test picks its tier by these criteria and derives expectations from requirements. Show it can fail once: temporarily break the behavior, see it red, revert. A test that cannot fail is not added.
+
+Implementers run `pnpm test:e2e:changed` (new and edited specs of both tiers) plus `pnpm test:release --grep @<surface>` for each touched surface. The full release tier runs at release time; the `/release-check` project skill reports and fixes its failures.
 
 ## Parallel work and browser ownership
 

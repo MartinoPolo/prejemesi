@@ -4,15 +4,21 @@ name: Checks
 # deploy.yml (production), so a production deploy always verifies the exact
 # commit being deployed (issue #110).
 #
-# The e2e job runs whenever a caller passes `run_e2e: true`. Both callers do:
-# ci.yml (PRs + `dev` pushes) and deploy.yml (production). The `run_e2e` input
-# is retained (default `false`) so this suite stays reusable for a fast-only
-# caller. Production deploys require e2e via REQ-1.
+# Playwright runs in two tiers (docs/TESTING.md#test-tiers):
+# - `e2e` (CI tier, tests/e2e) runs when a caller passes `run_e2e: true`; both
+#   callers do. The input stays (default `false`) for a fast-only caller.
+#   Production deploys require e2e via REQ-1.
+# - `release` (release tier, tests/release) runs when a caller passes
+#   `run_release: true`; ci.yml does so only for PRs targeting `production`.
+#   Its test-results/ are always uploaded for the release-check skill.
 
 on:
     workflow_call:
         inputs:
             run_e2e:
+                type: boolean
+                default: false
+            run_release:
                 type: boolean
                 default: false
 
@@ -64,7 +70,8 @@ jobs:
             fail-fast: false
             matrix:
                 shard: [1, 2, 3, 4]
-        services:
+        # Shared with the release job through YAML aliases.
+        services: &playwright-services
             postgres:
                 image: postgres:17
                 env:
@@ -77,7 +84,7 @@ jobs:
                     --health-cmd "pg_isready -U root -d local" --health-interval 5s --health-timeout 5s --health-retries 20
 
 
-        env:
+        env: &playwright-env
             DATABASE_URL: postgres://root:mysecretpassword@localhost:5432/local
             DEMO_TEST_ISOLATED_DATABASE: '1'
             # CI-only secret; production uses the Cloudflare-stored secret.
@@ -85,27 +92,7 @@ jobs:
             ORIGIN: http://localhost:5173
         steps:
             - uses: actions/checkout@v4
-            - uses: pnpm/action-setup@v4
-            - uses: actions/setup-node@v4
-              with:
-                  node-version: 22
-                  cache: pnpm
-            - run: pnpm install --frozen-lockfile
-            - run: pnpm exec playwright install --with-deps chrome chromium
-            # Apply the committed migrations (production path) instead of
-            # `db:push`, so e2e also fails when migrations lag behind schema.ts.
-            - run: pnpm run db:migrate
-            # Most specs register fresh users via the API, but admin-release-reservation.spec.ts
-            # (issue #213) depends on the seeded personas (petr@test.cz, tomas@test.cz). Seed is
-            # idempotent, so this is safe to run unconditionally.
-            #
-            # seed.ts is executed directly via tsx (no Vite), so it needs the generated
-            # `$lib` path mapping (`svelte-kit sync`) and the compiled Paraglide runtime
-            # (`paraglide:compile`, gitignored) already on disk before it runs — the `checks`
-            # job produces both as a side effect of `check:all`, but this is a separate runner.
-            - run: pnpm run paraglide:compile
-            - run: pnpm exec svelte-kit sync
-            - run: pnpm run db:seed
+            - uses: ./.github/actions/prepare-e2e
             # The demo integration suite owns a separate local database, never the seeded E2E fixture.
             - if: ${{ matrix.shard == 1 }}
               run: |
@@ -118,8 +105,6 @@ jobs:
                   DEMO_TEST_DATABASE_URL: postgres://root:mysecretpassword@localhost:5432/demo_verify
                   DEMO_TEST_ISOLATED_DATABASE: '1'
               run: pnpm exec vitest run --project server
-            # The real-browser-zoom regression loads an unpacked Chromium extension,
-            # which requires headed mode; provide a virtual display on Linux CI.
             - run: xvfb-run --auto-servernum pnpm run test:e2e --shard=${{ matrix.shard }}/4
             - uses: actions/upload-artifact@v4
               if: failure()
@@ -128,12 +113,36 @@ jobs:
                   path: test-results/
                   retention-days: 7
 
+    release:
+        if: ${{ inputs.run_release }}
+        runs-on: ubuntu-latest
+        timeout-minutes: 35
+        strategy:
+            fail-fast: false
+            matrix:
+                shard: [1, 2, 3, 4]
+        services: *playwright-services
+        env: *playwright-env
+        steps:
+            - uses: actions/checkout@v4
+            - uses: ./.github/actions/prepare-e2e
+            # Virtual display for specs that launch their own Chromium, such as the
+            # real-browser-zoom regression with its unpacked extension.
+            - run: xvfb-run --auto-servernum pnpm run test:release --shard=${{ matrix.shard }}/4
+            # Always uploaded (including results.json): the release-check skill reads it.
+            - uses: actions/upload-artifact@v4
+              if: always()
+              with:
+                  name: release-results-shard-${{ matrix.shard }}
+                  path: test-results/
+                  retention-days: 7
+
     # Stable branch-protection target. The caller job and this reusable job
     # are reported as `checks / required` on PRs and dev pushes.
     required:
         name: required
         if: ${{ always() }}
-        needs: [checks, unit_tests, e2e]
+        needs: [checks, unit_tests, e2e, release]
         runs-on: ubuntu-latest
         steps:
             - name: Verify required checks
@@ -142,6 +151,8 @@ jobs:
                   UNIT_TESTS_RESULT: ${{ needs.unit_tests.result }}
                   E2E_RESULT: ${{ needs.e2e.result }}
                   RUN_E2E: ${{ inputs.run_e2e }}
+                  RELEASE_RESULT: ${{ needs.release.result }}
+                  RUN_RELEASE: ${{ inputs.run_release }}
               run: |
                   if [ "$CHECKS_RESULT" != "success" ]; then
                     echo "Static checks ended with: $CHECKS_RESULT"
@@ -152,6 +163,10 @@ jobs:
                     exit 1
                   fi
                   if [ "$RUN_E2E" = "true" ] && [ "$E2E_RESULT" != "success" ]; then
-                    echo "Production E2E checks ended with: $E2E_RESULT"
+                    echo "CI-tier E2E checks ended with: $E2E_RESULT"
+                    exit 1
+                  fi
+                  if [ "$RUN_RELEASE" = "true" ] && [ "$RELEASE_RESULT" != "success" ]; then
+                    echo "Release-tier E2E checks ended with: $RELEASE_RESULT"
                     exit 1
                   fi

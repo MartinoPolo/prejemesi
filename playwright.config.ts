@@ -1,4 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
+import { randomUUID } from 'node:crypto';
 import { loadEnv } from 'vite';
 import { resolveDatabaseUrl } from './src/lib/config/runtime_environment.js';
 import { sharedBrowserTestLaunchOptions } from './scripts/browser-automation.mjs';
@@ -12,9 +13,11 @@ if (!databaseUrl) {
 	);
 }
 const server = resolvePlaywrightServer({ environment, databaseUrl });
+// Workers inherit this from the runner process; tests/release/interaction/support/run-fixture.ts
+// keys its shared files by it so one run never reads another run's fixtures.
+process.env.PLAYWRIGHT_RUN_ID ??= randomUUID();
 
 export default defineConfig({
-	testDir: 'tests/e2e',
 	fullyParallel: true,
 	retries: process.env.CI ? 1 : 0,
 	reporter: [['list'], ['json', { outputFile: 'test-results/results.json' }]],
@@ -38,14 +41,23 @@ export default defineConfig({
 				reuseExistingServer: false,
 				env: server.environment,
 			},
+	// Test tiers: docs/TESTING.md#test-tiers.
 	projects: [
 		{
 			name: 'setup',
+			testDir: 'tests/e2e',
 			testMatch: /global-setup\.spec\.ts/,
 		},
 		{
 			name: 'chromium',
+			testDir: 'tests/e2e',
 			testIgnore: /global-setup\.spec\.ts/,
+			use: { ...devices['Desktop Chrome'] },
+			dependencies: ['setup'],
+		},
+		{
+			name: 'release',
+			testDir: 'tests/release',
 			use: { ...devices['Desktop Chrome'] },
 			dependencies: ['setup'],
 		},

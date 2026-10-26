@@ -27,13 +27,14 @@ When debugging or analyzing issues related to third-party libraries, delegate ex
 ## Testing
 
 - When writing tests, always derive expected behavior from requirements (GitHub issue descriptions and comments, `DECISIONS.md`, `CONTEXT.md`, or other docs) — never adapt tests to match the implementation. If a test reveals a bug, report it to the user or fix it immediately.
+- Playwright specs belong to one of two tiers: lean CI (`tests/e2e`) or release (`tests/release`, including the interaction suite and its capability inventory). Choose the tier, tags and local runs per [docs/TESTING.md#test-tiers](docs/TESTING.md#test-tiers).
 
 ## Visual / Browser Testing
 
 - Chrome DevTools MCP and Playwright MCP are unreliable in this project (they routinely fail to connect — the plugin pins a `chrome-devtools-mcp` version blocked by the global npm `before` time-pin, and Playwright MCP isn't registered here). Do NOT burn time trying to (re)connect them.
 - **Default to raw Playwright** via the project's own installed `playwright` dependency — it has no MCP layer, so it works in every session:
     - Quick screenshot / crawl / click: `node scripts/shot.mjs <route> --base <origin> [--user martin|jana|petr|eva|tomas] [--mobile] [--dark] [--full] [--wait <sel>]`. Prints the PNG path; Read it back to view. Run from **PowerShell** (Git Bash mangles leading-slash args; from Bash prefix `MSYS_NO_PATHCONV=1`).
-    - Repeatable verification: a `tests/e2e/*.spec.ts` with `@playwright/test`, reusing `tests/e2e/fixtures/{auth,wishlist}-helpers.ts`.
+    - Repeatable verification: a `@playwright/test` spec in the right tier (`tests/e2e` or `tests/release`), reusing `tests/e2e/fixtures/{auth,wishlist}-helpers.ts`.
 - Run focused local Playwright specs for affected browser behavior; leave the full E2E suite to CI. Visible changes still require visual acceptance. Coordinate parallel sessions using `docs/TESTING.md#parallel-work-and-browser-ownership`.
 - Prereqs: dev server (`pnpm run dev`) + seeded DB (`pnpm db:seed`). Authed routes are under the `(app)` group: `/my-lists`, `/followed`, `/moderated`, `/settings`, `/w/<id>`.
 - Prefer explicit `waitForSelector` over `waitUntil: 'networkidle'` (networkidle hangs on SSE/long-poll surfaces).
@@ -47,24 +48,25 @@ When debugging or analyzing issues related to third-party libraries, delegate ex
 - `pnpm run check:vykani` -- fails if Czech copy slips into tykání (informal address); see `scripts/check_vykani.mjs`
 - `pnpm run test` -- all client, server, and Storybook unit tests
 - `pnpm exec vitest run --project server` -- server unit tests only
-- `pnpm run test:e2e` -- E2E tests
+- `pnpm run test:e2e` -- CI-tier E2E tests
+- `pnpm run test:release` -- release-tier E2E tests (CI runs them only on PRs to `production`)
 - `pnpm run db:seed` -- populate DB with test data (idempotent, safe to re-run)
 - `pnpm loadtest --profile smoke|sustained-10|burst-100|contention` -- load tests (fixtures: `pnpm loadtest:setup` / `pnpm loadtest:cleanup`; runbook: `docs/LOAD_TESTING.md`)
 
 ## Deployment
 
-- Production deploys are gated: push to `production` → checks for the exact SHA → GitHub `production` environment approval → `wrangler deploy`. Schema changes follow expand → migrate → deploy → contract, enforced by `pnpm check:migrations`. Runbook: `docs/DEPLOYMENT.md`.
+- Production deploys are automatic once green: the `dev` → `production` PR must pass `checks / required`, which there includes the release tier; the push to `production` re-runs checks for the exact SHA, applies pending migrations, requires EXACT, then runs `wrangler deploy`, with no manual approval. Schema changes follow expand → migrate → deploy → contract, enforced by `pnpm check:migrations`. Runbook: `docs/DEPLOYMENT.md`.
 - Every `dev` push auto-deploys to https://staging.prejemesi.cz (production snapshot, migrations auto-applied, no email). Runbook: `docs/STAGING.md`.
 
 ## Git Workflow
 
-- Branch model: feature PRs → `dev` (default branch); releases via PR `dev` → `production` (merge auto-deploys). `master` was deleted — do not recreate. `production` enforces the `checks` gate for admins too, so a red `dev` CI blocks releases.
+- Branch model: feature PRs → `dev` (default branch); releases via PR `dev` → `production` (merge auto-deploys). `master` was deleted — do not recreate. `production` enforces the `checks` gate for admins too, so a red `dev` CI or release tier blocks releases.
 - For verified branch-delete-only pushes, use `git push --no-verify origin --delete ...` unless the user explicitly wants hooks run.
 
 ## Database
 
 - Drizzle with `strict: true` -- always enabled to prevent data loss on renames.
-- Use file-based migrations (`pnpm db:migrate` locally). Before every production deployment, run `pnpm db:verify:prod`; if PENDING migrations are reviewed and explicitly authorized, run `pnpm db:migrate:prod -- --yes`, then verify again and require EXACT. DRIFT blocks migration and deployment. `drizzle-kit push` is never used in production.
+- Use file-based migrations (`pnpm db:migrate` locally). The production deploy job applies pending migrations (`db:migrate:prod -- --yes`) and requires EXACT before deploying; DRIFT blocks migration and deployment. `pnpm db:verify:prod` remains a manual diagnostic. `drizzle-kit push` is never used in production.
 - Schema in `src/lib/server/db/schema.ts`
 - Seed script: `src/lib/server/db/seed.ts` — run `pnpm db:seed` to populate test data.
 
