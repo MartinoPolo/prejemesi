@@ -1,6 +1,7 @@
 # Project Instructions
 
 - App is in production (prejemesi.cz) with real user data. Preserve data integrity: avoid destructive schema operations, and migrate existing rows rather than dropping or recreating tables. Code may still be freely refactored, but breaking schema/API changes need a migration plan.
+- Run every implementation request, including inline bug reports and quick fixes, through `/mpx-execute` (inline mode when there is no Issue) in a separate worktree based on `origin/dev`. Create it with `orca worktree create --repo path:<repo-root> --name <task> --base-branch origin/dev` when the `orca` CLI is available, otherwise `git worktree add`. Auto-merge to `dev` is allowed.
 - Before implementation, read `.mpx/CONTEXT.md` and all of `.mpx/DECISIONS.md`, including its design sections for styling/UI work.
 - Keep decisions as confirmed `YYYY-MM-DD: sentence` bullets, categorized and date-sorted within each category; replace superseded rules, inline rationale only when useful, and record rejected alternatives only when explicitly rejected by the user.
 - Always fix unrelated errors you encounter (merge artifacts, stale imports, broken references, prior bugs) — they accumulate if ignored. Commit fixes separately from main work. If a fix fails after two attempts, revert and continue with the main task. Always notify user — both for fixes made and problems left unresolved.
