@@ -16,8 +16,8 @@ Steps this release needs on top of the standard runbook in [docs/DEPLOYMENT.md](
 
 ## 3. Database (from a clean checkout at the exact production SHA)
 
-1. `pnpm db:verify:prod`. Expect **PENDING** with `0022`–`0031`; anything else (or DRIFT) stops the release.
-2. Review the listed SQL. All ten are additive expand migrations (none is in `drizzle/contract-migrations.json`), so the running app keeps working against them. Order matters for the new app: `0025` backfills `first_shared_at`, `0028` holds the OAuth tables that better-auth validates at runtime (sign-in breaks without it), `0029` holds the chat tables, `0030` adds the nullable wishlist theme columns, and `0031` adds `gift.category_ids`, backfills it from `category_id` and installs the `gift_category_ids_legacy_mirror` trigger that keeps the old column in sync while the previous app still runs.
+1. `pnpm db:verify:prod`. Expect **PENDING** with only `0032` (`0022`–`0031` were applied ahead of the release); anything else (or DRIFT) stops the release.
+2. Review the listed SQL. All of `0022`–`0032` are additive expand migrations (none is in `drizzle/contract-migrations.json`), so the running app keeps working against them. Order matters for the new app: `0025` backfills `first_shared_at` and `0032` repeats that backfill for wishlists the previous app shared afterwards, `0028` holds the OAuth tables that better-auth validates at runtime (sign-in breaks without it), `0029` holds the chat tables, `0030` adds the nullable wishlist theme columns, and `0031` adds `gift.category_ids`, backfills it from `category_id` and installs the `gift_category_ids_legacy_mirror` trigger that keeps the old column in sync while the previous app still runs.
 3. `pnpm db:migrate:prod -- --yes`, then `pnpm db:verify:prod` again and record **EXACT**.
 
 ## 4. Deploy

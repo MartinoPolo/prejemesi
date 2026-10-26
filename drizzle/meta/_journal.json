@@ -225,6 +225,13 @@
       "when": 1792808281163,
       "tag": "0031_add-gift-category-ids",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1793021106295,
+      "tag": "0032_rebackfill-wishlist-first-shared-at",
+      "breakpoints": true
     }
   ]
 }
