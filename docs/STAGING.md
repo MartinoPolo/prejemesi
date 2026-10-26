@@ -40,4 +40,4 @@ Resetting keeps the branch's connection string, so `STAGING_DATABASE_URL` and th
 
 1. Push to `dev`; wait for **Deploy (staging)**.
 2. Test on staging. A failed migration there is the same failure production would hit.
-3. Release through `docs/DEPLOYMENT.md` as usual; staging does not replace the production database gate.
+3. Release through `docs/DEPLOYMENT.md`; the production deploy job still applies and verifies migrations against the production database itself.

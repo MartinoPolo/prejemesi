@@ -12,19 +12,31 @@ Steps this release needs on top of the standard runbook in [docs/DEPLOYMENT.md](
 
 ## 2. Release PR
 
-1. Open the PR `dev` → `production`, run `update-branch`, wait for green checks, merge with a merge commit (not squash).
+1. `PRODUCTION_DATABASE_URL` is set in the `production` environment (already done; the deploy job fails before migrating without it). It must be the **direct** Neon connection string (host without `-pooler`), because `scripts/migrate-prod.ts` rejects pooled hosts. To check or replace it (`gh` prompts for the value, keeping it out of shell history):
 
-## 3. Database (from a clean checkout at the exact production SHA)
+    ```bash
+    gh secret list --env production --repo MartinoPolo/prejemesi
+    gh secret set PRODUCTION_DATABASE_URL --env production --repo MartinoPolo/prejemesi
+    ```
 
-1. `pnpm db:verify:prod`. Expect **PENDING** with only `0032` (`0022`–`0031` were applied ahead of the release); anything else (or DRIFT) stops the release.
-2. Review the listed SQL. All of `0022`–`0032` are additive expand migrations (none is in `drizzle/contract-migrations.json`), so the running app keeps working against them. Order matters for the new app: `0025` backfills `first_shared_at` and `0032` repeats that backfill for wishlists the previous app shared afterwards, `0028` holds the OAuth tables that better-auth validates at runtime (sign-in breaks without it), `0029` holds the chat tables, `0030` adds the nullable wishlist theme columns, and `0031` adds `gift.category_ids`, backfills it from `category_id` and installs the `gift_category_ids_legacy_mirror` trigger that keeps the old column in sync while the previous app still runs.
-3. `pnpm db:migrate:prod -- --yes`, then `pnpm db:verify:prod` again and record **EXACT**.
+2. Open the PR `dev` → `production`, run `update-branch`, wait for green checks (this PR also runs the release tier), merge with a merge commit (not squash).
+
+## 3. Database (applied by the deploy job)
+
+1. The deploy job's migration summary should show **PENDING** with only `0032` (`0022`–`0031` were applied ahead of the release), then **EXACT**; DRIFT fails the deploy before `wrangler deploy`.
+2. All of `0022`–`0032` are additive expand migrations (none is in `drizzle/contract-migrations.json`), so the running app keeps working against them. `0032` repeats the `0025` `first_shared_at` backfill for wishlists the previous app shared afterwards.
 
 ## 4. Deploy
 
-1. Approve the `production` environment gate for the exact SHA.
-2. `pnpm exec wrangler versions view <id>`: the new binding `AGENT_API_RATE_LIMIT` (120 per 60 s) is present; the old `GIFT_INGESTION_RATE_LIMIT` is gone. Without the binding the agent API answers 503.
-3. `pnpm exec wrangler tail` shows no errors while you smoke test.
+1. This release brings the automatic deploy workflow, but the `production` environment still has its manual reviewer, so approve this one deploy run for the exact SHA and wait for it to finish.
+2. After it succeeds, remove the reviewer so later releases deploy automatically (from a checkout of `production`):
+
+    ```bash
+    gh api -X PUT repos/MartinoPolo/prejemesi/environments/production --input .github/production-environment.json
+    ```
+
+3. `pnpm exec wrangler versions view <id>`: the new binding `AGENT_API_RATE_LIMIT` (120 per 60 s) is present; the old `GIFT_INGESTION_RATE_LIMIT` is gone. Without the binding the agent API answers 503.
+4. `pnpm exec wrangler tail` shows no errors while you smoke test.
 
 Rollback is app-only (`wrangler rollback`): every migration in this release is additive.
 

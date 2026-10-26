@@ -23,9 +23,9 @@
 				<li><code>docs/PRODUCTION_OPERATIONS.md</code> — operational verification.</li>
 			</ul>
 			<p>
-				Read these files in the current checkout. Production releases require checks for the
-				exact commit and environment approval; schema verification must report EXACT before
-				deployment. Do not use a local deploy command to bypass those gates.
+				Read these files in the current checkout. Production releases require green checks
+				for the exact commit; the deploy workflow applies pending migrations and must reach
+				EXACT before deployment. Do not use a local deploy command to bypass those gates.
 			</p>
 		</main>
 	</body>
