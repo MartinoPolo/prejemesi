@@ -147,15 +147,19 @@ export async function createTouchInput(page: Page): Promise<TouchInput> {
 			return;
 		}
 		await page.evaluate((windowMs) => {
+			// A release without a click (two fingers) must not leave the dropper armed for the next press.
+			const disarm = () => {
+				window.removeEventListener('click', dropClick, { capture: true });
+				window.removeEventListener('pointerdown', disarm, { capture: true });
+			};
 			const dropClick = (event: Event) => {
 				event.preventDefault();
 				event.stopImmediatePropagation();
+				disarm();
 			};
-			window.addEventListener('click', dropClick, { capture: true, once: true });
-			setTimeout(
-				() => window.removeEventListener('click', dropClick, { capture: true }),
-				windowMs,
-			);
+			window.addEventListener('click', dropClick, { capture: true });
+			window.addEventListener('pointerdown', disarm, { capture: true });
+			setTimeout(disarm, windowMs);
 		}, CLICK_AFTER_RELEASE_WINDOW_MS);
 		await touchEnd();
 	}

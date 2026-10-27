@@ -1,6 +1,6 @@
 import '../../../../app.css';
 import { render } from 'vitest-browser-svelte';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
 import { page, userEvent } from 'vitest/browser';
 import * as m from '$lib/paraglide/messages.js';
@@ -21,6 +21,13 @@ const baseProps = {
 	onreorderpointerdown: () => {},
 	onreordermove: () => {},
 };
+
+// Touch presses register window-wide fingers; release them so no test inherits another's.
+afterEach(() => {
+	window.dispatchEvent(
+		new PointerEvent('pointercancel', { pointerId: 1, pointerType: 'touch', isPrimary: true }),
+	);
+});
 
 describe('WishlistGiftDraggableWrapper — gift card opening (#284)', () => {
 	it('opens the primary link in a new tab on middle-click', async () => {

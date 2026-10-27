@@ -1,5 +1,5 @@
 import '../../../../app.css';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
 import type { GiftReorderPlacement } from '$lib/modules/gifts/gift_grouped_reorder.js';
 import {
@@ -114,6 +114,79 @@ describe('gift pointer reorder controller (#239)', () => {
 			}
 		},
 	);
+
+	it('absorbs the native contextmenu only while a drag is in progress (#530)', () => {
+		const items = createItems();
+		const neighbourContextMenu = vi.fn();
+		items[1]!.addEventListener('contextmenu', neighbourContextMenu);
+		const controller = createGiftPointerReorderController({
+			getItemElements: () => items,
+			getItemIds: () => ['a', 'b', 'c'],
+			onPreviewOrder: () => {},
+			onCommitOrder: () => {},
+			onCancelOrder: () => {},
+		});
+		function contextMenuOnNeighbour() {
+			const event = new PointerEvent('contextmenu', {
+				bubbles: true,
+				cancelable: true,
+				pointerType: 'touch',
+			});
+			items[1]!.dispatchEvent(event);
+			return event;
+		}
+		try {
+			controller.start(pointer('pointerdown', 7, 20, 40), 0);
+			expect(contextMenuOnNeighbour().defaultPrevented).toBe(true);
+			expect(neighbourContextMenu).not.toHaveBeenCalled();
+
+			window.dispatchEvent(pointer('pointerup', 7, 20, 40));
+			expect(contextMenuOnNeighbour().defaultPrevented).toBe(false);
+			expect(neighbourContextMenu).toHaveBeenCalledOnce();
+		} finally {
+			controller.destroy();
+			items.forEach((item) => item.remove());
+		}
+	});
+
+	it.each([
+		[
+			'a pointercancel',
+			() => {
+				window.dispatchEvent(pointer('pointercancel', 7, 20, 40));
+			},
+		],
+		['cancel()', (controller: { cancel: () => void }) => controller.cancel()],
+		['destroy()', (controller: { destroy: () => void }) => controller.destroy()],
+	])('stops absorbing the native contextmenu once %s ends the drag (#530)', (_name, endDrag) => {
+		const items = createItems();
+		const neighbourContextMenu = vi.fn();
+		items[1]!.addEventListener('contextmenu', neighbourContextMenu);
+		const controller = createGiftPointerReorderController({
+			getItemElements: () => items,
+			getItemIds: () => ['a', 'b', 'c'],
+			onPreviewOrder: () => {},
+			onCommitOrder: () => {},
+			onCancelOrder: () => {},
+		});
+		try {
+			controller.start(pointer('pointerdown', 7, 20, 40), 0);
+			window.dispatchEvent(pointer('pointermove', 7, 140, 40));
+			endDrag(controller);
+			const contextMenu = new PointerEvent('contextmenu', {
+				bubbles: true,
+				cancelable: true,
+				pointerType: 'touch',
+			});
+			items[1]!.dispatchEvent(contextMenu);
+
+			expect(contextMenu.defaultPrevented).toBe(false);
+			expect(neighbourContextMenu).toHaveBeenCalledOnce();
+		} finally {
+			controller.destroy();
+			items.forEach((item) => item.remove());
+		}
+	});
 
 	it('retains inherited wishlist theme properties and card layout in the body overlay', () => {
 		const theme = document.createElement('div');

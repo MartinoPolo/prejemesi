@@ -16,12 +16,7 @@ import {
 	startGiftReorder,
 	waitForDialogOverlayRemoval,
 } from '../../e2e/fixtures/wishlist-helpers.js';
-import {
-	GIFT_CARD_SURFACE,
-	type GiftCardOutcome,
-	type GiftCardState,
-	type SurfaceCase,
-} from './inventory.js';
+import { GIFT_CARD_SURFACE, type GiftCardOutcome, type GiftCardState } from './inventory.js';
 import { describeSurfaceCases, type AssertionGuard } from './support/cases.js';
 import { oncePerRun } from './support/run-fixture.js';
 import {
@@ -115,7 +110,6 @@ const DRAG_ABSORBS_CONTEXT_MENU =
 
 type Role = GiftCardState['role'];
 type Viewport = GiftCardState['viewport'];
-type GiftCardCase = SurfaceCase<typeof GIFT_CARD_SURFACE.dimensions, GiftCardOutcome>;
 /**
  * Visitors need a shared wishlist. Managers browse an unshared copy because a shared list's editor
  * shows a two-minute post-share countdown that would shift its layout for part of a run. Reorder
@@ -910,41 +904,6 @@ const OUTCOME_CHECKS: Record<GiftCardOutcome, OutcomeCheck> = {
 	},
 };
 
-const KNOWN_PRODUCT_BUGS = [
-	{
-		assertion: LONG_PRESS_TIMING,
-		bug: 'The touch long press opens the actions after 600 ms instead of 500 ms, even when the native contextmenu fires earlier',
-		issue: undefined,
-		affects: ({ capability, state }: GiftCardCase) =>
-			state.mode === 'browse' &&
-			['hold 900 ms', 'hold with 4 px drift', 'long press with native contextmenu'].includes(
-				capability.interaction,
-			),
-	},
-	{
-		assertion: NO_LONG_PRESS,
-		bug: 'A second finger restarts the long press instead of cancelling it, so the actions still open',
-		issue: undefined,
-		affects: ({ capability }: GiftCardCase) =>
-			capability.interaction === 'second finger during hold',
-	},
-	{
-		assertion: SELECTION_TOGGLES,
-		bug: 'In selection mode a long press drops the release click and toggles nothing',
-		issue: undefined,
-		affects: ({ capability, state }: GiftCardCase) =>
-			capability.interaction === 'hold 900 ms' && state.mode === 'selection',
-	},
-	{
-		assertion: DRAG_ABSORBS_CONTEXT_MENU,
-		bug: 'In reorder mode the dragged card is hidden when Android fires contextmenu, so the event falls through to whatever lies under the finger: a gift context menu opens over the drag, or the browser menu is left unprevented',
-		issue: undefined,
-		affects: ({ capability, state }: GiftCardCase) =>
-			capability.interaction === 'long press with native contextmenu' &&
-			state.mode === 'reorder',
-	},
-];
-
 function fixtureList(state: GiftCardState): FixtureList {
 	if (state.mode === 'reorder') {
 		return 'reorder';
@@ -957,7 +916,7 @@ describeSurfaceCases(
 	{
 		surface: GIFT_CARD_SURFACE,
 		interactions: Object.keys(INTERACTIONS),
-		knownBugs: KNOWN_PRODUCT_BUGS,
+		knownBugs: [],
 		// Reorder and like cases change shared data, so each kind runs in one worker, in order.
 		groupKey: ({ state }) => {
 			if (state.mode === 'reorder') {

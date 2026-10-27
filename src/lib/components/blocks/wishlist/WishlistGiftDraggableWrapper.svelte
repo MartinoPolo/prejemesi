@@ -85,6 +85,12 @@
 	let suppressNextClickAfterLongPress = $state(false);
 	const longPress = createGiftLongPressRecognizer(
 		() => {
+			if (selectionMode) {
+				onselectiontoggle?.(giftId);
+				// The release may still click, which would toggle the gift back.
+				suppressNextClickAfterLongPress = true;
+				return;
+			}
 			suppressNextClickAfterLongPress = onlongpress?.() === true;
 		},
 		(pending) => {
@@ -172,17 +178,23 @@
 	}
 
 	function handleContextMenu(event: MouseEvent) {
+		const touchContextMenu = touchPressActive || isTouchOrPenEvent(event);
 		if (selectionMode || reorderEnabled) {
 			suppressSelectionContext(event);
+			if (selectionMode && touchContextMenu) {
+				longPress.complete();
+			}
 			return;
 		}
 		if (eventStartedInsideInteractiveElement(event)) {
 			event.stopPropagation();
 			return;
 		}
-		if (touchPressActive || isTouchOrPenEvent(event)) {
-			// Mobile browsers fire contextmenu mid long-press; the recognizer owns that gesture.
+		if (touchContextMenu) {
+			// Mobile browsers fire contextmenu at their own long-press delay, which may come before
+			// the recognizer's; the press completes then instead of showing the browser menu.
 			suppressSelectionContext(event);
+			longPress.complete();
 			return;
 		}
 		if (!(oncontextmenu?.(event, keyboardContextRequest) ?? false)) {
@@ -212,6 +224,9 @@
 		touchPressActive = event.pointerType !== 'mouse';
 		if (selectionMode) {
 			suppressSelectionContext(event);
+			if (event.pointerType !== 'mouse') {
+				longPress.start(event.clientX, event.clientY);
+			}
 			return;
 		}
 		if (event.pointerType !== 'mouse') {
@@ -331,7 +346,6 @@
 		selectionMode &&
 			selectionLayout === 'list' &&
 			'sm:grid sm:grid-cols-[var(--size-control-md)_minmax(0,1fr)] sm:gap-(--nested-control-gap)',
-		longPressPending && 'ring-2 ring-inset ring-primary/35',
 	)}
 	data-selected={selectionMode && selected ? true : undefined}
 	role={selectionMode ? 'checkbox' : reorderEnabled ? undefined : 'button'}
@@ -553,7 +567,9 @@
 		border-radius: calc(var(--radius-panel) - 2px);
 	}
 
-	[data-gift-item]:focus-visible::after {
+	/* Painted above the card's opaque surface, which would cover a ring on the wrapper itself. */
+	[data-gift-item]:focus-visible::after,
+	[data-gift-item][data-long-press-pending]::after {
 		position: absolute;
 		z-index: 40;
 		inset: 0;
@@ -561,6 +577,10 @@
 		box-shadow: inset 0 0 0 2px var(--ring);
 		content: '';
 		pointer-events: none;
+	}
+
+	[data-gift-item][data-long-press-pending]::after {
+		box-shadow: inset 0 0 0 2px color-mix(in oklab, var(--primary) 35%, transparent);
 	}
 
 	.gift-card-directional-actions {
