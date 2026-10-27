@@ -37,6 +37,7 @@
 		GiftContextSession,
 	} from '$lib/components/blocks/wishlist/gift_context_invocation.js';
 	import {
+		resolveGiftCardFocusTarget,
 		resolveGiftContextFocusTarget,
 		resolveGiftReorderGripFocusTarget,
 	} from '$lib/components/blocks/wishlist/gift_context_focus.js';
@@ -1119,6 +1120,10 @@
 				session.gift.id,
 				wishlistPageElement ?? document,
 			)?.focus({ preventScroll: true });
+		} else if (session.invocation.kind === 'native' && session.invocation.fromKeyboard) {
+			resolveGiftCardFocusTarget(session.gift.id, wishlistPageElement ?? document)?.focus({
+				preventScroll: true,
+			});
 		}
 		if (contextSession?.id === sessionId) {
 			contextSession = null;

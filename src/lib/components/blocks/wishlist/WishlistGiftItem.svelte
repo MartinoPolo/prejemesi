@@ -74,10 +74,11 @@
 	{selectionLayout}
 	{selected}
 	{onselectiontoggle}
-	oncontextmenu={(event) =>
+	oncontextmenu={(event, fromKeyboard) =>
 		oncontextactions?.(gift, {
 			kind: 'native',
 			point: { x: event.clientX, y: event.clientY },
+			fromKeyboard,
 		}) ?? false}
 	onlongpress={() => oncontextactions?.(gift, { kind: 'longpress' })}
 	onopendetail={() => onedit(gift)}

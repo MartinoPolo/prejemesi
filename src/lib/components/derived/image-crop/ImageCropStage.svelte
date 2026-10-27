@@ -34,6 +34,8 @@
 		type ImageTokenScope,
 	} from '$lib/components/derived/image-frame/index.js';
 	import {
+		KEYBOARD_PAN_FRACTION,
+		KEYBOARD_PAN_FRACTION_LARGE,
 		centeredVisibleBand,
 		cropWindowBox,
 		photoBoxBehindWindow,
@@ -106,8 +108,6 @@
 	const SLIDER_STEP = 5;
 	const BUTTON_ZOOM_STEP = 0.1;
 	const WHEEL_ZOOM_SENSITIVITY = 0.0015;
-	const KEYBOARD_PAN_FRACTION = 0.05;
-	const KEYBOARD_PAN_FRACTION_LARGE = 0.25;
 	const INTERACTION_LINGER_MS = 700;
 	const HINT_CLEARANCE = 26;
 	// Sub-percent layout rounding still counts as drawn at true size.

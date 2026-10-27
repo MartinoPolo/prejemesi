@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import {
+	resolveGiftCardFocusTarget,
 	resolveGiftContextFocusTarget,
 	resolveGiftReorderGripFocusTarget,
 } from './gift_context_focus.js';
@@ -135,5 +136,28 @@ describe('gift reorder grip focus target', () => {
 
 		expect(resolveGiftReorderGripFocusTarget('gift-two', document.body)).toBe(grip);
 		expect(resolveGiftReorderGripFocusTarget('gift-three', document.body)).toBeNull();
+	});
+});
+
+describe('gift card focus target', () => {
+	function giftCard(giftId: string, options: { focusable?: boolean; inert?: boolean } = {}) {
+		const card = moreButton(giftId).closest<HTMLElement>('[data-gift-item]')!;
+		if (options.focusable ?? true) {
+			card.tabIndex = 0;
+		}
+		if (options.inert === true) {
+			card.setAttribute('inert', '');
+		}
+		return card;
+	}
+
+	it("resolves the requested gift's focusable card, skipping outgoing or unfocusable copies", () => {
+		giftCard('gift-one');
+		giftCard('gift-two', { inert: true });
+		giftCard('gift-two', { focusable: false });
+		const card = giftCard('gift-two');
+
+		expect(resolveGiftCardFocusTarget('gift-two', document.body)).toBe(card);
+		expect(resolveGiftCardFocusTarget('gift-three', document.body)).toBeNull();
 	});
 });

@@ -36,7 +36,7 @@
 		selectionLayout?: 'overlay' | 'list';
 		selected?: boolean;
 		onselectiontoggle?: (giftId: string) => void;
-		oncontextmenu?: (event: MouseEvent) => boolean;
+		oncontextmenu?: (event: MouseEvent, fromKeyboard: boolean) => boolean;
 		onlongpress?: () => boolean | void;
 		/** Grouped reorder: the priority or category group this gift belongs to while reordering. */
 		reorderGroupKey?: string;
@@ -81,6 +81,7 @@
 
 	let longPressPending = $state(false);
 	let touchPressActive = false;
+	let keyboardContextRequest = false;
 	let suppressNextClickAfterLongPress = $state(false);
 	const longPress = createGiftLongPressRecognizer(
 		() => {
@@ -196,7 +197,7 @@
 			longPress.complete();
 			return;
 		}
-		if (!(oncontextmenu?.(event) ?? false)) {
+		if (!(oncontextmenu?.(event, keyboardContextRequest) ?? false)) {
 			event.preventDefault();
 		}
 	}
@@ -287,14 +288,19 @@
 			event.preventDefault();
 			const element = event.currentTarget as HTMLElement;
 			const rect = element.getBoundingClientRect();
-			element.dispatchEvent(
-				new MouseEvent('contextmenu', {
-					bubbles: true,
-					cancelable: true,
-					clientX: rect.left + rect.width / 2,
-					clientY: rect.top + rect.height / 2,
-				}),
-			);
+			keyboardContextRequest = true;
+			try {
+				element.dispatchEvent(
+					new MouseEvent('contextmenu', {
+						bubbles: true,
+						cancelable: true,
+						clientX: rect.left + rect.width / 2,
+						clientY: rect.top + rect.height / 2,
+					}),
+				);
+			} finally {
+				keyboardContextRequest = false;
+			}
 			return;
 		}
 		if (event.key === 'Enter' || event.key === ' ') {

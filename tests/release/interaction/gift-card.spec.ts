@@ -16,12 +16,7 @@ import {
 	startGiftReorder,
 	waitForDialogOverlayRemoval,
 } from '../../e2e/fixtures/wishlist-helpers.js';
-import {
-	GIFT_CARD_SURFACE,
-	type GiftCardOutcome,
-	type GiftCardState,
-	type SurfaceCase,
-} from './inventory.js';
+import { GIFT_CARD_SURFACE, type GiftCardOutcome, type GiftCardState } from './inventory.js';
 import { describeSurfaceCases, type AssertionGuard } from './support/cases.js';
 import { oncePerRun } from './support/run-fixture.js';
 import {
@@ -115,7 +110,6 @@ const DRAG_ABSORBS_CONTEXT_MENU =
 
 type Role = GiftCardState['role'];
 type Viewport = GiftCardState['viewport'];
-type GiftCardCase = SurfaceCase<typeof GIFT_CARD_SURFACE.dimensions, GiftCardOutcome>;
 /**
  * Visitors need a shared wishlist. Managers browse an unshared copy because a shared list's editor
  * shows a two-minute post-share countdown that would shift its layout for part of a run. Reorder
@@ -910,15 +904,6 @@ const OUTCOME_CHECKS: Record<GiftCardOutcome, OutcomeCheck> = {
 	},
 };
 
-const KNOWN_PRODUCT_BUGS = [
-	{
-		assertion: FOCUS_RETURNS,
-		bug: 'Escape from the keyboard-opened gift context menu leaves focus on <body>, not the card',
-		issue: undefined,
-		affects: ({ capability }: GiftCardCase) => capability.interaction === 'Shift+F10 on card',
-	},
-];
-
 function fixtureList(state: GiftCardState): FixtureList {
 	if (state.mode === 'reorder') {
 		return 'reorder';
@@ -931,7 +916,7 @@ describeSurfaceCases(
 	{
 		surface: GIFT_CARD_SURFACE,
 		interactions: Object.keys(INTERACTIONS),
-		knownBugs: KNOWN_PRODUCT_BUGS,
+		knownBugs: [],
 		// Reorder and like cases change shared data, so each kind runs in one worker, in order.
 		groupKey: ({ state }) => {
 			if (state.mode === 'reorder') {
