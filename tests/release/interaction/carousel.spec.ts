@@ -34,7 +34,7 @@ import { pointOf, type ScreenPoint } from './support/touch.js';
 
 /** HOME_CATEGORY_CAP + 1, so the category row is capped and gets its trailing card. */
 const FIXTURE_LIST_COUNT = 11;
-const PARALLEL_CREATORS = 6;
+const PARALLEL_CREATORS = 3;
 const SWIPE_DISTANCE_PX = 200;
 const PAGE_SPACER_MARKER = 'data-interaction-page-spacer';
 const MOUSE_DRAG_DISTANCE_PX = 160;
