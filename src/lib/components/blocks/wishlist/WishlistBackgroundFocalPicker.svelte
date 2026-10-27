@@ -1,5 +1,9 @@
 <script lang="ts">
 	import * as m from '$lib/paraglide/messages.js';
+	import {
+		KEYBOARD_PAN_FRACTION,
+		KEYBOARD_PAN_FRACTION_LARGE,
+	} from '$lib/components/derived/image-crop/crop_stage_geometry.js';
 
 	interface FocalPoint {
 		x: number;
@@ -13,9 +17,6 @@
 		disabled?: boolean;
 		describedBy?: string;
 	}
-
-	const KEYBOARD_STEP_PERCENT = 5;
-	const FINE_KEYBOARD_STEP_PERCENT = 1;
 
 	let {
 		imageUrl,
@@ -87,7 +88,7 @@
 			return;
 		}
 		event.preventDefault();
-		const step = event.shiftKey ? FINE_KEYBOARD_STEP_PERCENT : KEYBOARD_STEP_PERCENT;
+		const step = 100 * (event.shiftKey ? KEYBOARD_PAN_FRACTION_LARGE : KEYBOARD_PAN_FRACTION);
 		onchange({
 			x: clampPercent(focal.x + direction.x * step),
 			y: clampPercent(focal.y + direction.y * step),

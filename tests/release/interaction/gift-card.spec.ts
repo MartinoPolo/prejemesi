@@ -912,12 +912,6 @@ const OUTCOME_CHECKS: Record<GiftCardOutcome, OutcomeCheck> = {
 
 const KNOWN_PRODUCT_BUGS = [
 	{
-		assertion: FOCUS_RETURNS,
-		bug: 'Escape from the keyboard-opened gift context menu leaves focus on <body>, not the card',
-		issue: undefined,
-		affects: ({ capability }: GiftCardCase) => capability.interaction === 'Shift+F10 on card',
-	},
-	{
 		assertion: LONG_PRESS_TIMING,
 		bug: 'The touch long press opens the actions after 600 ms instead of 500 ms, even when the native contextmenu fires earlier',
 		issue: undefined,

@@ -5,7 +5,6 @@ import {
 	FOCAL_PICKER_SURFACE,
 	type FocalPickerOutcome,
 	type FocalPickerState,
-	type SurfaceCase,
 } from './inventory.js';
 import { describeSurfaceCases, type AssertionGuard } from './support/cases.js';
 import { oncePerRun } from './support/run-fixture.js';
@@ -47,8 +46,6 @@ const PAST_EDGE_PX = 24;
 /** Pointer positions round to whole percent, so the point may sit this far from the press. */
 const POSITION_TOLERANCE_PX = 3;
 const LARGER_SHIFT_STEP = 'Shift+Arrow moves farther than a plain arrow step';
-
-type FocalPickerCase = SurfaceCase<typeof FOCAL_PICKER_SURFACE.dimensions, FocalPickerOutcome>;
 
 const test = testWithWorld(async ({ browser, playwright, workerInfo, baseURL, sessions }) => {
 	const account = await oncePerRun(workerInfo, 'focal-picker-account', async () => {
@@ -319,21 +316,12 @@ const OUTCOME_CHECKS: Record<FocalPickerOutcome, (context: OutcomeContext) => Pr
 	},
 };
 
-const KNOWN_PRODUCT_BUGS = [
-	{
-		assertion: LARGER_SHIFT_STEP,
-		bug: 'Shift+Arrow moves the focal point a finer 1 % step instead of the crop stage’s larger step',
-		issue: undefined,
-		affects: ({ outcome }: FocalPickerCase) => outcome === 'moves-a-larger-step',
-	},
-];
-
 describeSurfaceCases(
 	test,
 	{
 		surface: FOCAL_PICKER_SURFACE,
 		interactions: Object.keys(INTERACTIONS),
-		knownBugs: KNOWN_PRODUCT_BUGS,
+		knownBugs: [],
 		groupKey: ({ state }) => state.viewport,
 	},
 	async (world, { capability, state, outcome }, guard) => {

@@ -292,8 +292,10 @@ describe('WishlistGiftDraggableWrapper — explicit reorder mode (#239)', () => 
 });
 
 describe('WishlistGiftDraggableWrapper — context actions and selection', () => {
-	it('dispatches keyboard context invocation outside selection mode', async () => {
-		const openContext = vi.fn(() => true);
+	it('dispatches keyboard context invocation outside selection mode, marked as keyboard', async () => {
+		const openContext = vi.fn<(event: MouseEvent, fromKeyboard: boolean) => boolean>(
+			() => true,
+		);
 		const { container, unmount } = await render(WishlistGiftDraggableWrapperTestHost, {
 			...baseProps,
 			reorderEnabled: false,
@@ -309,8 +311,12 @@ describe('WishlistGiftDraggableWrapper — context actions and selection', () =>
 				cancelable: true,
 			}),
 		);
+		wrapper.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }));
 
-		expect(openContext).toHaveBeenCalledOnce();
+		expect(openContext.mock.calls.map(([, fromKeyboard]) => fromKeyboard)).toEqual([
+			true,
+			false,
+		]);
 		await unmount();
 	});
 

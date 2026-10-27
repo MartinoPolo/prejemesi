@@ -1,5 +1,9 @@
 import { clamp01, type ImageCropRect } from '$lib/modules/images/index.js';
 
+/** Arrow-key steps as a fraction of the framed extent; Shift takes the larger step. */
+export const KEYBOARD_PAN_FRACTION = 0.05;
+export const KEYBOARD_PAN_FRACTION_LARGE = 0.25;
+
 export interface StageBox {
 	left: number;
 	top: number;
