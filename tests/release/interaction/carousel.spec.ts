@@ -2,12 +2,7 @@ import { expect, type Browser, type Locator, type Page } from '@playwright/test'
 import * as m from '../../../src/lib/paraglide/messages.js';
 import { parseCookiesForContext, waitForAppHydration } from '../../e2e/fixtures/auth-helpers.js';
 import { createWishlistAndNavigate } from '../../e2e/fixtures/wishlist-helpers.js';
-import {
-	CAROUSEL_SURFACE,
-	type CarouselOutcome,
-	type CarouselState,
-	type SurfaceCase,
-} from './inventory.js';
+import { CAROUSEL_SURFACE, type CarouselOutcome, type CarouselState } from './inventory.js';
 import { describeSurfaceCases, type AssertionGuard } from './support/cases.js';
 import { oncePerRun } from './support/run-fixture.js';
 import {
@@ -45,7 +40,6 @@ const ROW_TITLES = { recent: m.nav_recent(), category: m.nav_my_lists() } as con
 type Row = CarouselState['row'];
 type Viewport = CarouselState['viewport'];
 type Motion = CarouselState['motion'];
-type CarouselCase = SurfaceCase<typeof CAROUSEL_SURFACE.dimensions, CarouselOutcome>;
 
 async function createFixtureLists(browser: Browser, baseURL: string, cookies: string[]) {
 	const context = await browser.newContext({ baseURL });
@@ -435,53 +429,12 @@ const OUTCOME_CHECKS: Record<CarouselOutcome, OutcomeCheck> = {
 	'glides-two-cards': glidesCards(2),
 };
 
-const ARROW_INTERACTIONS = new Set(['tap arrow', 'click arrow', 'Enter on an arrow button']);
-/** Rows whose end position leaves the first visible card inside its slide's 16 px gutter. */
-const GUTTER_ALIGNED_ENDS = new Set(['narrow category', 'tablet recent']);
-
-const KNOWN_PRODUCT_BUGS = [
-	{
-		assertion: movesByCards(1),
-		bug: 'Previous at a row end moves only the 0–16 px slide gutter when the first visible card already sits inside it (resolveSlideTarget aligns slide starts, not cards), so the arrow does not glide a card',
-		issue: undefined,
-		affects: ({ capability, state }: CarouselCase) =>
-			ARROW_INTERACTIONS.has(capability.interaction) &&
-			state.position === 'end' &&
-			GUTTER_ALIGNED_ENDS.has(`${state.viewport} ${state.row}`),
-	},
-	{
-		assertion: NEXT_CARD_PEEKS,
-		bug: 'At 768 px the compact Moje seznamy row shows exactly three cards ending at the page edge, so no next card peeks',
-		issue: undefined,
-		affects: ({ capability, state }: CarouselCase) =>
-			capability.interaction === 'row at rest' &&
-			state.viewport === 'tablet' &&
-			state.row === 'category' &&
-			state.position === 'start',
-	},
-	{
-		assertion: LAST_CARD_VISIBLE,
-		bug: 'Below desktop the row scroller runs past the right page edge, so at the row end the page edge cuts the last card',
-		issue: undefined,
-		affects: ({ outcome, state }: CarouselCase) =>
-			outcome === 'reaches-row-end' && state.viewport !== 'desktop',
-	},
-	{
-		assertion: REDUCED_MOTION_JUMPS,
-		bug: 'The arrows scroll with `behavior: "smooth"` regardless of prefers-reduced-motion, so the row still glides',
-		issue: undefined,
-		affects: ({ outcome, state }: CarouselCase) =>
-			state.motion === 'reduced' &&
-			(outcome === 'glides-one-card' || outcome === 'glides-two-cards'),
-	},
-];
-
 describeSurfaceCases(
 	test,
 	{
 		surface: CAROUSEL_SURFACE,
 		interactions: Object.keys(INTERACTIONS),
-		knownBugs: KNOWN_PRODUCT_BUGS,
+		knownBugs: [],
 		groupKey: ({ state }) => `${state.viewport} ${state.motion}`,
 	},
 	async (world, { capability, state, outcome }, guard) => {

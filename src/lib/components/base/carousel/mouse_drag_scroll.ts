@@ -1,3 +1,4 @@
+import { prefersReducedMotion } from 'svelte/motion';
 import { resolveReleaseGlide, type PointerSample } from './scroll_row.js';
 
 const DRAG_THRESHOLD = 6;
@@ -66,7 +67,10 @@ export function attachMouseDragScroll(viewport: HTMLElement): () => void {
 		setTimeout(() => {
 			suppressClick = false;
 		});
-		const glideDistance = glide ? resolveReleaseGlide(samples, event.timeStamp) : 0;
+		const glideDistance =
+			glide && !prefersReducedMotion.current
+				? resolveReleaseGlide(samples, event.timeStamp)
+				: 0;
 		if (glideDistance !== 0) {
 			viewport.scrollBy({ left: glideDistance, behavior: 'smooth' });
 		}
