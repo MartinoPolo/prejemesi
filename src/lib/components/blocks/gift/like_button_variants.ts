@@ -10,7 +10,6 @@ import {
  * Anime-sky like control (issue #102 REQ-14 + round-2 delta): ghost ink chip
  * with the colored heart; hover tints it with the like blush and lifts it as one surface.
  * Omitted size follows the shared responsive action scale and explicit sizes stay fixed.
- * `sm` remains the compact-row exception.
  */
 export const likeButtonVariants = tv({
 	slots: {

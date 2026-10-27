@@ -156,33 +156,6 @@ describe('GiftViewSwitcher toggle selection (fixes: re-click deselects both item
 		await screen.unmount();
 	});
 
-	it('projects legacy compact mode to exactly one checked card radio', async () => {
-		const screen = await render(GiftViewSwitcher, {
-			value: GIFT_VIEW_MODES.compact,
-			onchange: vi.fn(),
-		});
-		const group = screen.getByTestId('gift-view-switcher').element();
-
-		expect(group.querySelectorAll('[role="radio"][aria-checked="true"]')).toHaveLength(1);
-		await expect
-			.element(screen.getByTestId(`gift-view-${GIFT_VIEW_MODES.card}`))
-			.toHaveAttribute('aria-checked', 'true');
-		await screen.unmount();
-	});
-
-	it('leaves legacy compact mode when the projected card radio is clicked', async () => {
-		const onchange = vi.fn();
-		const screen = await render(GiftViewSwitcher, {
-			value: GIFT_VIEW_MODES.compact,
-			onchange,
-		});
-
-		await screen.getByTestId(`gift-view-${GIFT_VIEW_MODES.card}`).click();
-
-		expect(onchange).toHaveBeenCalledExactlyOnceWith(GIFT_VIEW_MODES.card);
-		await screen.unmount();
-	});
-
 	it('moves focus and requests the next selection with arrow navigation', async () => {
 		const onchange = vi.fn();
 		const screen = await render(GiftViewSwitcher, {

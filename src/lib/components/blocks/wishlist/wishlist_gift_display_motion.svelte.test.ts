@@ -246,20 +246,6 @@ describe('WishlistGiftDisplay collection transition', () => {
 		await screen.unmount();
 	});
 
-	it('keeps transitions into and out of compact mode immediate', async () => {
-		const animate = vi.spyOn(HTMLElement.prototype, 'animate');
-		const screen = await render(WishlistGiftDisplayTestHost, defaultProps);
-		const collection = document.querySelector<HTMLElement>('[data-wishlist-gift-collection]')!;
-
-		await screen.rerender({ ...defaultProps, viewMode: 'compact' });
-		expect(collection.dataset.viewMode).toBe('compact');
-		await screen.rerender({ ...defaultProps, viewMode: 'list' });
-
-		expect(collection.dataset.viewMode).toBe('list');
-		expect(animate).not.toHaveBeenCalled();
-		await screen.unmount();
-	});
-
 	it('cancels collection animation and leaves no inline motion styles on teardown', async () => {
 		const pending = deferredAnimation();
 		vi.spyOn(HTMLElement.prototype, 'animate').mockReturnValue(pending.animation);

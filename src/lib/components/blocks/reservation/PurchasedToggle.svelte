@@ -1,7 +1,6 @@
 <script lang="ts">
 	import Undo2Icon from '@lucide/svelte/icons/undo-2';
 	import { Button } from '$lib/components/base/button/index.js';
-	import type { ControlSize } from '$lib/components/base/control_sizing.js';
 	import { toastSuccess, toastError } from '$lib/components/base/toast/index.js';
 	import * as m from '$lib/paraglide/messages.js';
 	import { useGifts } from '$lib/modules/gifts/gifts.context.svelte.js';
@@ -11,10 +10,9 @@
 
 	interface PurchasedToggleProps {
 		gift: GiftForVisitor;
-		size?: ControlSize;
 	}
 
-	let { gift, size }: PurchasedToggleProps = $props();
+	let { gift }: PurchasedToggleProps = $props();
 
 	const giftsContext = useGifts();
 
@@ -54,7 +52,6 @@
 
 {#if canTrack}
 	<Button
-		{size}
 		intent={purchased ? 'danger' : 'secondary-filled'}
 		disabled={isSaving}
 		aria-pressed={purchased}

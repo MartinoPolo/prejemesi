@@ -65,7 +65,7 @@ describe('recipient-view preview reservation privacy (#241)', () => {
 		await page.viewport(800, 720);
 	});
 
-	it.each(['card', 'list', 'compact', 'detail'] as const)(
+	it.each(['card', 'list', 'detail'] as const)(
 		'hides reservation presentation and controls on the %s surface',
 		async (surface) => {
 			const screen = await render(RecipientViewPreviewTestHost, {
@@ -106,7 +106,7 @@ describe('recipient-view preview reservation privacy (#241)', () => {
 		await screen.unmount();
 	});
 
-	it.each(['card', 'list', 'compact'] as const)(
+	it.each(['card', 'list'] as const)(
 		'shows received and omits release as browse actions on the %s surface',
 		async (surface) => {
 			const screen = await render(RecipientViewPreviewTestHost, {
@@ -126,27 +126,24 @@ describe('recipient-view preview reservation privacy (#241)', () => {
 		},
 	);
 
-	it.each(['compact', 'detail'] as const)(
-		'shows counts without identity or gifter actions to a self-promoted recipient in %s',
-		async (surface) => {
-			const screen = await render(RecipientViewPreviewTestHost, {
-				gift: makeReservedGift({ isFullyReserved: false, myReservationId: null }),
-				role: WISHLIST_ROLES.recipient,
-				surface,
-				hideReservationState: false,
-				onreceived: vi.fn(),
-			});
+	it('shows counts without identity or gifter actions to a self-promoted recipient in detail', async () => {
+		const screen = await render(RecipientViewPreviewTestHost, {
+			gift: makeReservedGift({ isFullyReserved: false, myReservationId: null }),
+			role: WISHLIST_ROLES.recipient,
+			surface: 'detail',
+			hideReservationState: false,
+			onreceived: vi.fn(),
+		});
 
-			await expect.element(screen.getByText('2 rezervováno', { exact: true })).toBeVisible();
-			await expect.element(screen.getByText('Babička')).not.toBeInTheDocument();
-			await expect.element(screen.getByTestId('reserve-button')).not.toBeInTheDocument();
-			await expect
-				.element(screen.getByRole('button', { name: /oblíbených/ }))
-				.not.toBeInTheDocument();
+		await expect.element(screen.getByText('2 rezervováno', { exact: true })).toBeVisible();
+		await expect.element(screen.getByText('Babička')).not.toBeInTheDocument();
+		await expect.element(screen.getByTestId('reserve-button')).not.toBeInTheDocument();
+		await expect
+			.element(screen.getByRole('button', { name: /oblíbených/ }))
+			.not.toBeInTheDocument();
 
-			await screen.unmount();
-		},
-	);
+		await screen.unmount();
+	});
 
 	it.each(['card', 'list'] as const)(
 		'restores exactly one reservation action without a received callback on %s',

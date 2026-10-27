@@ -75,6 +75,7 @@
 </script>
 
 <div data-testid="grouping">{context.grouping.current}</div>
+<div data-testid="view-mode">{context.viewMode.current}</div>
 <div data-testid="card-column-option">{context.cardColumnOption.current}</div>
 <div data-testid="effective-grouping">{context.effectiveGrouping.current}</div>
 <div data-testid="priority-filter-options">

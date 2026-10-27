@@ -176,11 +176,7 @@ const ungrouped = ['none'] as const;
 
 const capability = capabilityFactory<typeof GIFT_CARD_DIMENSIONS, GiftCardOutcome>();
 
-/**
- * Gift cards on the wishlist page, in the image-bearing Card and List views. Compact is left out:
- * the view switcher no longer offers it (`GiftViewSwitcher.svelte`), although DECISIONS
- * 2026-05-30 still lists it.
- */
+/** Gift cards on the wishlist page, in its Card and List views. */
 export const GIFT_CARD_SURFACE: Surface<typeof GIFT_CARD_DIMENSIONS, GiftCardOutcome> = {
 	surfaceTag: '@gift-card',
 	name: 'Gift card',

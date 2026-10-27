@@ -18,16 +18,8 @@ function giftItem(page: Page, name: string) {
 	});
 }
 
-async function selectGiftView(page: Page, mode: 'card' | 'list' | 'compact') {
-	if (mode === 'compact') {
-		// Compact is a persisted fallback, not an option in the current two-button switcher.
-		await page.evaluate(() =>
-			localStorage.setItem('prejemesi-gift-view-mode', JSON.stringify('compact')),
-		);
-		await page.reload();
-	} else {
-		await page.getByTestId(`gift-view-${mode}`).click();
-	}
+async function selectGiftView(page: Page, mode: 'card' | 'list') {
+	await page.getByTestId(`gift-view-${mode}`).click();
 	await expect(
 		page.locator(`[data-wishlist-gift-collection][data-view-mode=${mode}]`),
 	).toBeVisible();
@@ -551,13 +543,16 @@ test.describe('issue #269 integrated motion strategy', () => {
 			if (zetaId === null) {
 				throw new Error('Missing stable gift identity');
 			}
+			await expectVisibleEndpoint(giftItem(page, 'Zeta Motion'));
 			await installTransformAnimationRecorder(page);
 			await chooseDesktopDisplayOption(page, /^Řadit podle/, /^Název$/);
 			await expectGiftTravel(page, zetaId);
+			await expectProportionalTravel(page, zetaId);
 			await expect
 				.poll(() => giftItems(page).getByRole('heading', { level: 3 }).allTextContents())
 				.toEqual(['Alpha Motion', 'Mu Motion', 'Zeta Motion']);
 			await expectCleanSettlement(page);
+			await expectVisibleEndpoint(giftItem(page, 'Zeta Motion'));
 
 			await clearTransformAnimationRecords(page);
 			await chooseDesktopDisplayOption(page, /^Seskupení/, /^Podle kategorie$/);
@@ -699,7 +694,7 @@ test.describe('issue #269 integrated motion strategy', () => {
 		});
 	}
 
-	for (const viewMode of ['card', 'list', 'compact'] as const) {
+	for (const viewMode of ['card', 'list'] as const) {
 		for (const viewport of [
 			{ width: 1280, height: 1100 },
 			{ width: 390, height: 1800 },
@@ -787,43 +782,6 @@ test.describe('issue #269 integrated motion strategy', () => {
 			});
 		}
 	}
-
-	test('compact sort animates visible gift identity without switching views', async ({
-		browser,
-		request,
-		baseURL,
-	}) => {
-		const page = await registerAndGetPage(
-			browser,
-			request,
-			baseURL!,
-			createTestUser('motion-compact-sort'),
-		);
-		await createWishlistAndNavigate(page, 'Compact sort motion');
-		await addGift(page, 'Zeta Compact');
-		await addGift(page, 'Alpha Compact');
-		await selectGiftView(page, 'compact');
-		const movingGift = giftItems(page).filter({
-			has: page.getByText('Zeta Compact', { exact: true }),
-		});
-		const giftId = await movingGift.getAttribute('data-gift-id');
-		expect(giftId).toBeTruthy();
-		if (giftId === null) {
-			throw new Error('Missing stable gift identity');
-		}
-		await expectVisibleEndpoint(movingGift);
-		await installTransformAnimationRecorder(page);
-		await chooseDesktopDisplayOption(page, /^Řadit podle/, /^Název$/);
-		await expectGiftTravel(page, giftId);
-		await expectProportionalTravel(page, giftId);
-		await expect(giftItems(page).locator('td:first-child')).toHaveText([
-			'Alpha Compact',
-			'Zeta Compact',
-		]);
-		await expectCleanSettlement(page);
-		await expectVisibleEndpoint(movingGift);
-		await page.context().close();
-	});
 
 	test('responsive card reflow travels only when the gift remains visible', async ({
 		browser,

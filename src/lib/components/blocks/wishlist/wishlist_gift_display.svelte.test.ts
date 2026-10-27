@@ -99,7 +99,7 @@ afterEach(() => {
 });
 
 describe('WishlistGiftDisplay received pending state', () => {
-	it.each(['card', 'list', 'compact'] as const)(
+	it.each(['card', 'list'] as const)(
 		'forwards the route-owned pending state through the %s view',
 		async (viewMode) => {
 			const screen = await render(WishlistGiftDisplayTestHost, {
