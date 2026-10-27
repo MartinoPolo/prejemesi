@@ -340,7 +340,6 @@
 		selectionMode &&
 			selectionLayout === 'list' &&
 			'sm:grid sm:grid-cols-[var(--size-control-md)_minmax(0,1fr)] sm:gap-(--nested-control-gap)',
-		longPressPending && 'ring-2 ring-inset ring-primary/35',
 	)}
 	data-selected={selectionMode && selected ? true : undefined}
 	role={selectionMode ? 'checkbox' : reorderEnabled ? undefined : 'button'}
@@ -562,7 +561,9 @@
 		border-radius: calc(var(--radius-panel) - 2px);
 	}
 
-	[data-gift-item]:focus-visible::after {
+	/* Painted above the card's opaque surface, which would cover a ring on the wrapper itself. */
+	[data-gift-item]:focus-visible::after,
+	[data-gift-item][data-long-press-pending]::after {
 		position: absolute;
 		z-index: 40;
 		inset: 0;
@@ -570,6 +571,10 @@
 		box-shadow: inset 0 0 0 2px var(--ring);
 		content: '';
 		pointer-events: none;
+	}
+
+	[data-gift-item][data-long-press-pending]::after {
+		box-shadow: inset 0 0 0 2px color-mix(in oklab, var(--primary) 35%, transparent);
 	}
 
 	.gift-card-directional-actions {
