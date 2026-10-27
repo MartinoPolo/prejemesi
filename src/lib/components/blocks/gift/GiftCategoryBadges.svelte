@@ -88,7 +88,7 @@
 		);
 	}
 
-	/** Lets the dismissing tap only dismiss, instead of also opening the gift underneath. */
+	/** Lets the dismissing press only dismiss, instead of also opening the gift underneath. */
 	function swallowClickOfCurrentPress() {
 		function swallowClick(event: MouseEvent) {
 			event.preventDefault();
@@ -109,9 +109,10 @@
 			return;
 		}
 		// Gift cards stop touch pointerdown propagation for their gestures, which hides the tap
-		// from the popover's own bubble-phase outside detection.
-		function closeOnOutsideTouch(event: PointerEvent) {
-			if (event.pointerType === 'mouse' || isInsidePopover(event.target)) {
+		// from the popover's own bubble-phase outside detection, and that detection lets the
+		// dismissing click through to whatever lies beneath.
+		function closeOnOutsidePress(event: PointerEvent) {
+			if (isInsidePopover(event.target)) {
 				return;
 			}
 			popoverOpen = false;
@@ -123,10 +124,10 @@
 				popoverOpen = false;
 			}
 		}
-		document.addEventListener('pointerdown', closeOnOutsideTouch, true);
+		document.addEventListener('pointerdown', closeOnOutsidePress, true);
 		document.addEventListener('scroll', closeOnScroll, true);
 		return () => {
-			document.removeEventListener('pointerdown', closeOnOutsideTouch, true);
+			document.removeEventListener('pointerdown', closeOnOutsidePress, true);
 			document.removeEventListener('scroll', closeOnScroll, true);
 		};
 	});
@@ -182,7 +183,6 @@
 					<Popover.Root bind:open={popoverOpen}>
 						<Popover.Trigger
 							bind:ref={triggerElement}
-							openOnHover
 							class={cn(
 								moreChipClass,
 								'cursor-pointer hover:bg-[color-mix(in_oklab,var(--brand)_12%,var(--card))] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',

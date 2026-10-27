@@ -5,7 +5,6 @@ import {
 	CATEGORY_POPOVER_SURFACE,
 	type CategoryPopoverOutcome,
 	type CategoryPopoverState,
-	type SurfaceCase,
 } from './inventory.js';
 import { describeSurfaceCases, type AssertionGuard } from './support/cases.js';
 import { oncePerRun } from './support/run-fixture.js';
@@ -41,11 +40,6 @@ const SCROLL_DISTANCE_PX = 200;
 const SPACER_ID = 'interaction-scroll-room';
 /** Longer than common hover-intent delays, so a hover that opens the popover would have. */
 const HOVER_WINDOW_MS = 1_200;
-
-type CategoryPopoverCase = SurfaceCase<
-	typeof CATEGORY_POPOVER_SURFACE.dimensions,
-	CategoryPopoverOutcome
->;
 
 const test = testWithWorld(async ({ browser, playwright, workerInfo, baseURL, sessions }) => {
 	const account = await oncePerRun(workerInfo, 'category-popover-account', async () => {
@@ -164,10 +158,7 @@ async function arrange(
 		return;
 	}
 	if (session.touch === undefined) {
-		// A click would leave the pointer resting on the chip, where hover (see the known bugs)
-		// also toggles the popover.
-		await moreChip(page).focus();
-		await page.keyboard.press('Enter');
+		await moreChip(page).click();
 	} else {
 		await session.touch.tap(moreChip(page));
 	}
@@ -283,28 +274,12 @@ const OUTCOME_CHECKS: Record<
 	},
 };
 
-const KNOWN_PRODUCT_BUGS = [
-	{
-		assertion: POPOVER_STAYS_CLOSED,
-		bug: 'The "+X" trigger sets `openOnHover`, so resting the pointer on it opens the popover',
-		issue: undefined,
-		affects: ({ outcome }: CategoryPopoverCase) => outcome === 'stays-closed',
-	},
-	{
-		assertion: NOTHING_BENEATH_PRESSED,
-		bug: 'A mouse click outside the open "+X" popover closes it and also opens the gift beneath',
-		issue: undefined,
-		affects: ({ capability }: CategoryPopoverCase) =>
-			capability.interaction === 'click another gift while open',
-	},
-];
-
 describeSurfaceCases(
 	test,
 	{
 		surface: CATEGORY_POPOVER_SURFACE,
 		interactions: Object.keys(INTERACTIONS),
-		knownBugs: KNOWN_PRODUCT_BUGS,
+		knownBugs: [],
 		groupKey: ({ state }) => state.viewport,
 	},
 	async (world, { capability, state, outcome }, guard) => {
