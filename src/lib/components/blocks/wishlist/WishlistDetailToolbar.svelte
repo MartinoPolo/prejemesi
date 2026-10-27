@@ -144,8 +144,7 @@
 		canManage &&
 			(role === WISHLIST_ROLES.recipient || role === WISHLIST_ROLES.moderator) &&
 			!isArchived &&
-			giftDataReady &&
-			(viewMode === 'card' || viewMode === 'list'),
+			giftDataReady,
 	);
 	const reorderDoneLabel = $derived(
 		reorderRecoveryPending

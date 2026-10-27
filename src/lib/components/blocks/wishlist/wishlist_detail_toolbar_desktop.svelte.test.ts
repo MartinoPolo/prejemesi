@@ -236,7 +236,6 @@ describe('WishlistDetailToolbar consolidated desktop display (#359)', () => {
 	it.each([
 		{ viewMode: GIFT_VIEW_MODES.card, offersColumns: true },
 		{ viewMode: GIFT_VIEW_MODES.list, offersColumns: false },
-		{ viewMode: GIFT_VIEW_MODES.compact, offersColumns: false },
 	])(
 		'offers the card column choice in $viewMode view: $offersColumns',
 		async ({ viewMode, offersColumns }) => {
@@ -346,7 +345,6 @@ describe('WishlistDetailToolbar consolidated desktop display (#359)', () => {
 	it.each([
 		{ label: 'gift data is pending', overrides: { giftDataReady: false } },
 		{ label: 'the wishlist is archived', overrides: { isArchived: true } },
-		{ label: 'the view is compact', overrides: { viewMode: GIFT_VIEW_MODES.compact } },
 		{
 			label: 'the viewer is not a manager',
 			overrides: { canManage: false, role: WISHLIST_ROLES.visitor },

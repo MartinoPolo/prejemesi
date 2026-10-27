@@ -122,7 +122,6 @@ export type GiftByRole = GiftForVisitor | GiftForRecipient;
 export const GIFT_VIEW_MODES = {
 	card: 'card',
 	list: 'list',
-	compact: 'compact',
 } as const;
 
 export type GiftViewMode = (typeof GIFT_VIEW_MODES)[keyof typeof GIFT_VIEW_MODES];
