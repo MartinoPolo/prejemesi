@@ -526,7 +526,17 @@ export function createGiftPointerReorderController(options: GiftPointerReorderOp
 		}
 	}
 
+	/**
+	 * Android fires its touch-and-hold `contextmenu` mid drag, and with the source card hidden it
+	 * would reach whatever lies under the finger and open a menu over the drag.
+	 */
+	function absorbContextMenu(event: Event) {
+		event.preventDefault();
+		event.stopImmediatePropagation();
+	}
+
 	function removeListeners() {
+		window.removeEventListener('contextmenu', absorbContextMenu, { capture: true });
 		window.removeEventListener('pointermove', handlePointerMove);
 		window.removeEventListener('pointerup', handlePointerUp);
 		window.removeEventListener('pointercancel', handlePointerCancel);
@@ -667,6 +677,7 @@ export function createGiftPointerReorderController(options: GiftPointerReorderOp
 			void refreshOverlayAfterRender();
 		}
 
+		window.addEventListener('contextmenu', absorbContextMenu, { capture: true });
 		window.addEventListener('pointermove', handlePointerMove, { passive: false });
 		window.addEventListener('pointerup', handlePointerUp);
 		window.addEventListener('pointercancel', handlePointerCancel);

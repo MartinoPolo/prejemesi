@@ -917,38 +917,6 @@ const KNOWN_PRODUCT_BUGS = [
 		issue: undefined,
 		affects: ({ capability }: GiftCardCase) => capability.interaction === 'Shift+F10 on card',
 	},
-	{
-		assertion: LONG_PRESS_TIMING,
-		bug: 'The touch long press opens the actions after 600 ms instead of 500 ms, even when the native contextmenu fires earlier',
-		issue: undefined,
-		affects: ({ capability, state }: GiftCardCase) =>
-			state.mode === 'browse' &&
-			['hold 900 ms', 'hold with 4 px drift', 'long press with native contextmenu'].includes(
-				capability.interaction,
-			),
-	},
-	{
-		assertion: NO_LONG_PRESS,
-		bug: 'A second finger restarts the long press instead of cancelling it, so the actions still open',
-		issue: undefined,
-		affects: ({ capability }: GiftCardCase) =>
-			capability.interaction === 'second finger during hold',
-	},
-	{
-		assertion: SELECTION_TOGGLES,
-		bug: 'In selection mode a long press drops the release click and toggles nothing',
-		issue: undefined,
-		affects: ({ capability, state }: GiftCardCase) =>
-			capability.interaction === 'hold 900 ms' && state.mode === 'selection',
-	},
-	{
-		assertion: DRAG_ABSORBS_CONTEXT_MENU,
-		bug: 'In reorder mode the dragged card is hidden when Android fires contextmenu, so the event falls through to whatever lies under the finger: a gift context menu opens over the drag, or the browser menu is left unprevented',
-		issue: undefined,
-		affects: ({ capability, state }: GiftCardCase) =>
-			capability.interaction === 'long press with native contextmenu' &&
-			state.mode === 'reorder',
-	},
 ];
 
 function fixtureList(state: GiftCardState): FixtureList {

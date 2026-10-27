@@ -84,6 +84,12 @@
 	let suppressNextClickAfterLongPress = $state(false);
 	const longPress = createGiftLongPressRecognizer(
 		() => {
+			if (selectionMode) {
+				onselectiontoggle?.(giftId);
+				// The release may still click, which would toggle the gift back.
+				suppressNextClickAfterLongPress = true;
+				return;
+			}
 			suppressNextClickAfterLongPress = onlongpress?.() === true;
 		},
 		(pending) => {
@@ -171,17 +177,23 @@
 	}
 
 	function handleContextMenu(event: MouseEvent) {
+		const touchContextMenu = touchPressActive || isTouchOrPenEvent(event);
 		if (selectionMode || reorderEnabled) {
 			suppressSelectionContext(event);
+			if (selectionMode && touchContextMenu) {
+				longPress.complete();
+			}
 			return;
 		}
 		if (eventStartedInsideInteractiveElement(event)) {
 			event.stopPropagation();
 			return;
 		}
-		if (touchPressActive || isTouchOrPenEvent(event)) {
-			// Mobile browsers fire contextmenu mid long-press; the recognizer owns that gesture.
+		if (touchContextMenu) {
+			// Mobile browsers fire contextmenu at their own long-press delay, which may come before
+			// the recognizer's; the press completes then instead of showing the browser menu.
 			suppressSelectionContext(event);
+			longPress.complete();
 			return;
 		}
 		if (!(oncontextmenu?.(event) ?? false)) {
@@ -211,6 +223,9 @@
 		touchPressActive = event.pointerType !== 'mouse';
 		if (selectionMode) {
 			suppressSelectionContext(event);
+			if (event.pointerType !== 'mouse') {
+				longPress.start(event.clientX, event.clientY);
+			}
 			return;
 		}
 		if (event.pointerType !== 'mouse') {
