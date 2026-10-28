@@ -32,31 +32,43 @@ export async function oncePerRun<T>(
 			return existing;
 		}
 		if (await acquireLock(lockPath)) {
-			try {
-				const value = await create();
-				await writeFile(`${valuePath}.tmp`, JSON.stringify(value));
-				await rename(`${valuePath}.tmp`, valuePath);
-				return value;
-			} catch (error) {
-				await rm(lockPath, { force: true });
-				throw error;
-			}
+			return createAndPublish(valuePath, lockPath, create);
 		}
-		const holder = await lockHolder(lockPath);
-		if (holder === 'released') {
-			const created = await readValue<T>(valuePath);
-			if (created !== undefined) {
-				return created;
-			}
-			throw new Error(`Another worker failed to create ${valuePath}`);
-		}
-		if (holder !== 'unknown' && !isRunning(holder)) {
-			await releaseStaleLock(lockPath, holder);
-			continue;
-		}
-		await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
+		await awaitLockHolder(valuePath, lockPath);
 	}
 	throw new Error(`Timed out waiting for another worker to create ${valuePath}`);
+}
+
+async function createAndPublish<T>(
+	valuePath: string,
+	lockPath: string,
+	create: () => Promise<T>,
+): Promise<T> {
+	try {
+		const value = await create();
+		await writeFile(`${valuePath}.tmp`, JSON.stringify(value));
+		await rename(`${valuePath}.tmp`, valuePath);
+		return value;
+	} catch (error) {
+		await rm(lockPath, { force: true });
+		throw error;
+	}
+}
+
+/** Waits one poll for the worker creating the value, taking over a lock its dead creator left. */
+async function awaitLockHolder(valuePath: string, lockPath: string): Promise<void> {
+	const holder = await lockHolder(lockPath);
+	if (holder === 'released') {
+		if ((await readValue(valuePath)) === undefined) {
+			throw new Error(`Another worker failed to create ${valuePath}`);
+		}
+		return;
+	}
+	if (holder !== 'unknown' && !isRunning(holder)) {
+		await releaseStaleLock(lockPath, holder);
+		return;
+	}
+	await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
 }
 
 async function readValue<T>(valuePath: string): Promise<T | undefined> {
