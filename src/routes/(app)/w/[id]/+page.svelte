@@ -37,6 +37,7 @@
 		GiftContextSession,
 	} from '$lib/components/blocks/wishlist/gift_context_invocation.js';
 	import {
+		resolveGiftCardFocusTarget,
 		resolveGiftContextFocusTarget,
 		resolveGiftReorderGripFocusTarget,
 	} from '$lib/components/blocks/wishlist/gift_context_focus.js';
@@ -207,7 +208,6 @@
 	import type { PageProps } from './$types';
 	import {
 		GIFT_GROUPING_OPTIONS,
-		GIFT_VIEW_MODES,
 		type GiftReorderGroupField,
 		type ReorderGiftGroupChange,
 		type ReorderGiftsInput,
@@ -706,10 +706,7 @@
 	);
 	const viewMode = $derived(giftsContext.viewMode.current);
 	let cardColumnCapacity = $state<number | null>(null);
-	const reorderLayoutSupported = $derived(
-		viewMode === GIFT_VIEW_MODES.card || viewMode === GIFT_VIEW_MODES.list,
-	);
-	const canMaintainReorderMode = $derived(canManage && !isArchived && reorderLayoutSupported);
+	const canMaintainReorderMode = $derived(canManage && !isArchived);
 	// Grouped reorder shows every level or category, so their definitions must be loaded first.
 	const reorderGroupDefinitionsReady = $derived.by(() => {
 		switch (giftsContext.effectiveGrouping.current) {
@@ -1119,6 +1116,10 @@
 				session.gift.id,
 				wishlistPageElement ?? document,
 			)?.focus({ preventScroll: true });
+		} else if (session.invocation.kind === 'native' && session.invocation.fromKeyboard) {
+			resolveGiftCardFocusTarget(session.gift.id, wishlistPageElement ?? document)?.focus({
+				preventScroll: true,
+			});
 		}
 		if (contextSession?.id === sessionId) {
 			contextSession = null;
@@ -1673,10 +1674,7 @@
 	}
 
 	function handleViewModeChange(mode: GiftViewMode) {
-		if (
-			(!reorderMode || mode === GIFT_VIEW_MODES.card || mode === GIFT_VIEW_MODES.list) &&
-			mode !== giftsContext.viewMode.current
-		) {
+		if (mode !== giftsContext.viewMode.current) {
 			giftsContext.viewMode.current = mode;
 		}
 	}

@@ -3,7 +3,6 @@
 	import CheckIcon from '@lucide/svelte/icons/check';
 	import Undo2Icon from '@lucide/svelte/icons/undo-2';
 	import { Button } from '$lib/components/base/button/index.js';
-	import type { ControlSize } from '$lib/components/base/control_sizing.js';
 	import * as m from '$lib/paraglide/messages.js';
 	import type { WishlistRole } from '$lib/modules/wishlists/types.js';
 	import { canManageWishlist } from '$lib/modules/wishlists/wishlist_capabilities.js';
@@ -13,7 +12,6 @@
 		received: boolean;
 		role: WishlistRole;
 		isArchived?: boolean;
-		size?: ControlSize;
 		compactLabel?: boolean;
 		pending?: boolean;
 		class?: string;
@@ -26,7 +24,6 @@
 		received,
 		role,
 		isArchived = false,
-		size,
 		compactLabel = false,
 		pending = false,
 		class: className,
@@ -85,7 +82,6 @@
 {#if visible}
 	<Button
 		bind:ref={action}
-		{size}
 		intent={received ? 'danger' : 'secondary-filled'}
 		class={className}
 		{surfaceClass}

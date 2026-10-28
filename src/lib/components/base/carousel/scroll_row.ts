@@ -24,17 +24,17 @@ export function resolveScrollability(
 	};
 }
 
-/** The scroll offset that aligns the next (or previous) slide start with the row's start edge. */
-export function resolveSlideTarget(
-	slideStarts: readonly number[],
+/** The scroll offset that aligns the next (or previous) card start with the row's start edge. */
+export function resolveCardTarget(
+	cardStarts: readonly number[],
 	from: number,
 	maxScroll: number,
 	direction: 1 | -1,
 ): number {
 	const target =
 		direction === 1
-			? Math.min(maxScroll, ...slideStarts.filter((start) => start > from + EDGE_EPSILON))
-			: Math.max(0, ...slideStarts.filter((start) => start < from - EDGE_EPSILON));
+			? Math.min(maxScroll, ...cardStarts.filter((start) => start > from + EDGE_EPSILON))
+			: Math.max(0, ...cardStarts.filter((start) => start < from - EDGE_EPSILON));
 	return Math.min(maxScroll, Math.max(0, target));
 }
 

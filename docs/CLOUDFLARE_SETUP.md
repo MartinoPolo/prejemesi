@@ -142,28 +142,17 @@ The AI assistant's family allowlist `CHAT_ALLOWED_EMAILS` (comma-separated email
 
 ### F. Confirm the build tooling
 
-`package.json` retains a direct deploy command for controlled recovery work, but normal production releases must use the gated GitHub workflow in `docs/DEPLOYMENT.md`. Do not run the direct command as a shortcut around exact-SHA checks, database reconciliation, or environment approval.
+`package.json` retains a direct deploy command for controlled recovery work, but normal production releases must use the gated GitHub workflow in `docs/DEPLOYMENT.md`. Do not run the direct command as a shortcut around exact-SHA checks or the migrate → EXACT database step.
 
 ### G. Production migrations
 
-Use generated migrations for production. The committed history lives in `drizzle/`. Create the gitignored `.env.production` with the direct Neon URL, then reconcile before every deployment:
+Use generated migrations for production. The committed history lives in `drizzle/`. The deploy workflow applies pending migrations and requires EXACT before every deployment; it reads the direct Neon URL from the `PRODUCTION_DATABASE_URL` secret of the GitHub `production` environment (`docs/DEPLOYMENT.md`). DRIFT blocks migration and deployment. Never migrate through Hyperdrive, `db:push`, or seeding.
 
-```bash
-pnpm db:verify:prod
-```
-
-If the result is PENDING, review and authorize every listed SQL file before applying it:
-
-```bash
-pnpm db:migrate:prod -- --yes
-pnpm db:verify:prod
-```
-
-The final result must be EXACT. DRIFT blocks migration and deployment. Never migrate through Hyperdrive, `db:push`, or seeding.
+For a read-only local diagnostic, create the gitignored `.env.production` with the direct Neon URL and run `pnpm db:verify:prod`.
 
 ### H. First deploy
 
-Follow the gated `dev` → `production` release procedure in `docs/DEPLOYMENT.md`, including the production database gate and explicit GitHub environment approval.
+Follow the `dev` → `production` release procedure in `docs/DEPLOYMENT.md`.
 
 Current production Cloudflare resources:
 
@@ -239,9 +228,9 @@ To test against **real Cloudflare bindings** locally: `wrangler dev --remote` (a
 
 ## 5. Deploy / CI-CD
 
-Production deploys are **gated GitHub Actions** (issue #110): pushing to the `production` branch runs the full check suite for the exact commit, then waits for the `production` environment approval before `wrangler deploy`. The full pipeline, the expand → migrate → deploy → contract migration sequence, and rollback are documented in **`docs/DEPLOYMENT.md`**.
+Production deploys are **gated GitHub Actions** (issue #110): pushing to the `production` branch runs the full check suite for the exact commit, applies pending migrations, requires EXACT, then runs `wrangler deploy` with no manual approval. The full pipeline, the expand → migrate → deploy → contract migration sequence, and rollback are documented in **`docs/DEPLOYMENT.md`**.
 
-Do not use `pnpm run deploy` as a production shortcut. Recovery deployments still use the gated workflow or the documented rollback procedure so the exact SHA, database state, approval, and deployed Worker identity remain auditable.
+Do not use `pnpm run deploy` as a production shortcut. Recovery deployments still use the gated workflow or the documented rollback procedure so the exact SHA, database state, and deployed Worker identity remain auditable.
 
 ---
 

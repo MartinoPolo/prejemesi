@@ -1,7 +1,6 @@
 import * as m from '$lib/paraglide/messages.js';
 import { getLocale } from '$lib/paraglide/runtime.js';
-import { extractGiftUrlDomain, getPrimaryGiftLink } from './gift_url.js';
-import { MAX_GIFT_PRICE, type GiftLink } from './types.js';
+import { MAX_GIFT_PRICE } from './types.js';
 import type { WishlistRole } from '$lib/modules/wishlists/types.js';
 import type { GiftOverlayEntry, OtherReserverIdentity } from './gift_display_state.js';
 
@@ -68,11 +67,6 @@ export function formatPrice(
 	} catch {
 		return isRange ? `${price}–${priceMax} ${currencyCode}` : `${price} ${currencyCode}`;
 	}
-}
-
-/** Extract the display domain of a gift's primary link (`links[0]`). */
-export function extractGiftDomain(links: readonly GiftLink[] | null | undefined): string | null {
-	return extractGiftUrlDomain(getPrimaryGiftLink(links)?.url ?? null);
 }
 
 /** @public Priority label display */

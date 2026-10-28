@@ -21,7 +21,6 @@
 		class?: string;
 		children?: Snippet;
 		onValueChange?: (value: string) => void;
-		onReselect?: (value: string) => void;
 		presentation?: SegmentedTogglePresentation;
 	};
 
@@ -30,7 +29,6 @@
 		class: className,
 		children,
 		onValueChange,
-		onReselect,
 		presentation = 'default',
 		size,
 		...restProps
@@ -42,7 +40,6 @@
 	function handleValueChange(nextValue: string) {
 		if (nextValue === '') {
 			selected = value;
-			onReselect?.(value);
 			return;
 		}
 

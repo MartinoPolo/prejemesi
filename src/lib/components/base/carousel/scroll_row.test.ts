@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { resolveReleaseGlide, resolveScrollability, resolveSlideTarget } from './scroll_row.js';
+import { resolveCardTarget, resolveReleaseGlide, resolveScrollability } from './scroll_row.js';
 
 describe('resolveScrollability', () => {
 	it('allows neither direction when the row fits', () => {
@@ -26,23 +26,28 @@ describe('resolveScrollability', () => {
 	});
 });
 
-describe('resolveSlideTarget', () => {
-	const slideStarts = [-16, 284, 584, 884, 1184];
+describe('resolveCardTarget', () => {
+	const cardStarts = [0, 300, 600, 900, 1200];
 
-	it('advances to the next slide start past the current offset', () => {
-		expect(resolveSlideTarget(slideStarts, 0, 1000, 1)).toBe(284);
-		expect(resolveSlideTarget(slideStarts, 300, 1000, 1)).toBe(584);
+	it('advances to the next card start past the current offset', () => {
+		expect(resolveCardTarget(cardStarts, 0, 1000, 1)).toBe(300);
+		expect(resolveCardTarget(cardStarts, 300, 1000, 1)).toBe(600);
 	});
 
-	it('goes back to the previous slide start before the current offset', () => {
-		expect(resolveSlideTarget(slideStarts, 584, 1000, -1)).toBe(284);
-		expect(resolveSlideTarget(slideStarts, 300, 1000, -1)).toBe(284);
+	it('goes back to the previous card start before the current offset', () => {
+		expect(resolveCardTarget(cardStarts, 600, 1000, -1)).toBe(300);
+		expect(resolveCardTarget(cardStarts, 400, 1000, -1)).toBe(300);
+	});
+
+	it('moves Previous one whole card from a row end whose leading card starts just past it', () => {
+		// At offset 890 the card starting at 900 leads the row, so Previous brings the card before it.
+		expect(resolveCardTarget(cardStarts, 890, 890, -1)).toBe(600);
 	});
 
 	it('clamps to the row edges', () => {
-		expect(resolveSlideTarget(slideStarts, 900, 1000, 1)).toBe(1000);
-		expect(resolveSlideTarget(slideStarts, 1000, 1000, 1)).toBe(1000);
-		expect(resolveSlideTarget(slideStarts, 200, 1000, -1)).toBe(0);
+		expect(resolveCardTarget(cardStarts, 950, 1000, 1)).toBe(1000);
+		expect(resolveCardTarget(cardStarts, 1000, 1000, 1)).toBe(1000);
+		expect(resolveCardTarget(cardStarts, 200, 1000, -1)).toBe(0);
 	});
 });
 

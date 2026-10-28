@@ -7,13 +7,12 @@
 	import type { WishlistRole } from '$lib/modules/wishlists/types.js';
 	import GiftCard from './GiftCard.svelte';
 	import GiftListItem from './GiftListItem.svelte';
-	import GiftCompactRow from './GiftCompactRow.svelte';
 	import GiftDetailModal from './GiftDetailModal.svelte';
 
 	interface Props {
 		gift: GiftForVisitor;
 		role: WishlistRole;
-		surface: 'card' | 'list' | 'compact' | 'detail';
+		surface: 'card' | 'list' | 'detail';
 		hideReservationState?: boolean;
 		onreceived?: (giftId: string, received: boolean) => void;
 	}
@@ -53,10 +52,6 @@
 	<GiftCard {gift} {role} {hideReservationState} {onreceived} />
 {:else if surface === 'list'}
 	<GiftListItem {gift} {role} {hideReservationState} {onreceived} />
-{:else if surface === 'compact'}
-	<table>
-		<tbody><GiftCompactRow {gift} {role} {hideReservationState} {onreceived} /></tbody>
-	</table>
 {:else}
 	<GiftDetailModal
 		open

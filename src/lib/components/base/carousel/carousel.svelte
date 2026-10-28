@@ -1,9 +1,10 @@
 <script lang="ts">
 	import type { HTMLAttributes } from 'svelte/elements';
 	import type { Attachment } from 'svelte/attachments';
+	import { prefersReducedMotion } from 'svelte/motion';
 	import { setCarouselContext } from './context.js';
 	import { attachMouseDragScroll } from './mouse_drag_scroll.js';
-	import { resolveScrollability, resolveSlideTarget } from './scroll_row.js';
+	import { resolveCardTarget, resolveScrollability } from './scroll_row.js';
 	import { cn, type WithElementRef } from '$lib/utils.js';
 
 	type CarouselProps = WithElementRef<HTMLAttributes<HTMLDivElement>> & {
@@ -43,18 +44,26 @@
 			return;
 		}
 		const viewportLeft = viewport.getBoundingClientRect().left - viewport.scrollLeft;
-		const slideStarts = Array.from(
+		// Cards start after each slide's leading gutter; aligning slide starts instead would let
+		// Previous move only that gutter when the leading card already sits inside it.
+		const cardStarts = Array.from(
 			viewport.querySelectorAll<HTMLElement>('[data-slot="carousel-item"]'),
-			(slide) => slide.getBoundingClientRect().left - viewportLeft,
+			(slide) =>
+				slide.getBoundingClientRect().left +
+				parseFloat(getComputedStyle(slide).paddingLeft) -
+				viewportLeft,
 		);
-		const target = resolveSlideTarget(
-			slideStarts,
+		const target = resolveCardTarget(
+			cardStarts,
 			pendingTarget ?? viewport.scrollLeft,
 			viewport.scrollWidth - viewport.clientWidth,
 			direction,
 		);
 		pendingTarget = target;
-		viewport.scrollTo({ left: target, behavior: 'smooth' });
+		viewport.scrollTo({
+			left: target,
+			behavior: prefersReducedMotion.current ? 'instant' : 'smooth',
+		});
 	}
 
 	function clearPendingTarget() {

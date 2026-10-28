@@ -39,8 +39,8 @@ Dedicated icon-sizing and component-reuse agents reviewed shared components and 
 ## Regression coverage
 
 - [Rendered primitive matrix](../src/lib/components/base/control_sizing.svelte.test.ts): fixed and responsive geometry, icons, InputGroup inheritance, checkbox states, and focus.
-- [Showcase browser tests](../tests/e2e/control-sizing-showcase.spec.ts): all button treatments, compatible peers, interactive Select, real depth preferences, and keyboard focus.
-- [Shell alignment](../tests/e2e/header-control-spacing.spec.ts): narrow and centered desktop layouts.
+- [Showcase browser tests](../tests/release/control-sizing-showcase.spec.ts): all button treatments, compatible peers, interactive Select, real depth preferences, and keyboard focus.
+- [Shell alignment](../tests/release/header-control-spacing.spec.ts): narrow and centered desktop layouts.
 - Gift/wishlist component tests cover action geometry, role-dependent states, selection, wrapping, and real card/list overlay clearance. The synthetic wrapper fixture does not offset status badges to manufacture clearance; collision assertions use the production display components.
 
 ## Deliberate exceptions

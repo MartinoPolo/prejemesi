@@ -13,14 +13,9 @@
 
 	let { value, onchange, disabled = false }: GiftViewSwitcherProps = $props();
 
-	type SelectableGiftViewMode = typeof GIFT_VIEW_MODES.card | typeof GIFT_VIEW_MODES.list;
-
-	// Compact remains a supported content fallback, but this two-option control represents it as card.
 	// Bits UI's single ToggleGroup writes an empty bound value when its active item is re-clicked;
-	// SegmentedToggle's writable derived state restores this projected value instead of deselecting it.
-	let selected = $derived<SelectableGiftViewMode>(
-		value === GIFT_VIEW_MODES.compact ? GIFT_VIEW_MODES.card : value,
-	);
+	// SegmentedToggle's writable derived state restores this value instead of deselecting it.
+	let selected = $derived(value);
 
 	const modes = [
 		{ key: GIFT_VIEW_MODES.card, icon: LayoutGridIcon },
@@ -40,7 +35,7 @@
 		}
 	}
 
-	function modeLabel(key: SelectableGiftViewMode): string {
+	function modeLabel(key: GiftViewMode): string {
 		switch (key) {
 			case GIFT_VIEW_MODES.card:
 				return m.gift_view_card();
@@ -52,12 +47,7 @@
 
 <SegmentedToggle.Root
 	bind:value={selected}
-	onValueChange={(newValue) => onchange(newValue as SelectableGiftViewMode)}
-	onReselect={(reselectedValue) => {
-		if (value === GIFT_VIEW_MODES.compact && reselectedValue === GIFT_VIEW_MODES.card) {
-			onchange(GIFT_VIEW_MODES.card);
-		}
-	}}
+	onValueChange={(newValue) => onchange(newValue as GiftViewMode)}
 	intent="default"
 	format="icon"
 	presentation="connected"

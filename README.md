@@ -124,12 +124,13 @@ pnpm exec playwright install chromium
 
 On Windows, use `pnpm.cmd` instead of `pnpm`.
 
-| Script                      | Description                                                    |
-| --------------------------- | -------------------------------------------------------------- |
-| `pnpm run test`             | Unit tests with Vitest                                         |
-| `pnpm run test:scripts`     | Node tests for project scripts                                 |
-| `pnpm run test:e2e`         | Full E2E suite with Playwright (Chromium; required in CI)      |
-| `pnpm run test:e2e:changed` | E2E tests changed since or statically affected relative to dev |
+| Script                      | Description                                                  |
+| --------------------------- | ------------------------------------------------------------ |
+| `pnpm run test`             | Unit tests with Vitest                                       |
+| `pnpm run test:scripts`     | Node tests for project scripts                               |
+| `pnpm run test:e2e`         | CI-tier Playwright E2E suite (required on every PR)          |
+| `pnpm run test:release`     | Release-tier Playwright suite (required on `production` PRs) |
+| `pnpm run test:e2e:changed` | E2E tests of both tiers changed or affected relative to dev  |
 
 ### Database
 
@@ -214,7 +215,8 @@ src/
                              #   w/[id]/settings – owner-only wishlist appearance (image, theme, per-slot crop)
     +page.svelte             # Landing page
 messages/                    # Translation files (cs.json, en.json)
-tests/e2e/                   # Playwright E2E tests
+tests/e2e/                   # Playwright CI tier (docs/TESTING.md#test-tiers)
+tests/release/               # Playwright release tier
 ```
 
 Each domain module exposes a small public API via `index.ts`. Client–server communication uses SvelteKit **remote functions** (`*.remote.ts`) by default – `query` for reads, `form` for progressive-enhancement mutations, `command` for JS-only actions – wrapped in guarded helpers that enforce auth. The deliberate `/home` exception uses a `+page.server.ts` load for its latency-sensitive authenticated overview: it awaits parent layout authentication and invokes a server-only database service directly, avoiding an intra-server remote request. General REST-style `+server.ts` routes are not used; the purpose-specific route exceptions are the BetterAuth catch-all with its `/.well-known/` discovery forwarder, the upload proxy, and the token-authenticated agent API under `/api/v1` with its MCP endpoint `/mcp` ([docs/API.md](docs/API.md)).

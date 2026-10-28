@@ -8,10 +8,7 @@
 	import { SEGMENTED_TOGGLE_PRESENTATIONS } from './index.js';
 
 	type SegmentedToggleArgs = Partial<
-		Omit<
-			ComponentProps<typeof SegmentedToggle.Root>,
-			'children' | 'value' | 'onValueChange' | 'onReselect'
-		>
+		Omit<ComponentProps<typeof SegmentedToggle.Root>, 'children' | 'value' | 'onValueChange'>
 	>;
 
 	const { Story } = defineMeta({

@@ -6,6 +6,7 @@ import { wishlistGiftGroupingStorageKey } from './gifts.context.svelte.js';
 import {
 	GIFT_CARD_COLUMN_OPTIONS,
 	GIFT_GROUPING_OPTIONS,
+	GIFT_VIEW_MODES,
 	UNCATEGORIZED_GIFT_CATEGORY_FILTER_VALUE,
 	type GiftForVisitor,
 } from './types.js';
@@ -308,5 +309,18 @@ describe('card column choice persistence (issue #451)', () => {
 		expect(localStorage.getItem(storageKey)).toBe(
 			JSON.stringify(GIFT_CARD_COLUMN_OPTIONS.automatic),
 		);
+	});
+});
+
+describe('gift view mode persistence', () => {
+	const storageKey = 'prejemesi-gift-view-mode';
+
+	it('falls back to Card for the retired compact view', async () => {
+		localStorage.setItem(storageKey, JSON.stringify('compact'));
+		const screen = render(GiftsContextTestHost);
+		await expect
+			.element(screen.getByTestId('view-mode'))
+			.toHaveTextContent(GIFT_VIEW_MODES.card);
+		expect(localStorage.getItem(storageKey)).toBe(JSON.stringify(GIFT_VIEW_MODES.card));
 	});
 });

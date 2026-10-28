@@ -8,7 +8,6 @@ import {
 	ensureGiftLinkIds,
 	canonicalGiftLinkKey,
 } from './gift_url.js';
-import { extractGiftDomain } from './gift_display.js';
 import { MAX_GIFT_LINKS } from './types.js';
 
 describe('normalizeGiftUrl', () => {
@@ -167,21 +166,5 @@ describe('getPrimaryGiftLink', () => {
 		expect(getPrimaryGiftLink([])).toBeNull();
 		expect(getPrimaryGiftLink(null)).toBeNull();
 		expect(getPrimaryGiftLink(undefined)).toBeNull();
-	});
-});
-
-describe('extractGiftDomain', () => {
-	it('returns the primary link domain', () => {
-		expect(
-			extractGiftDomain([
-				{ url: 'https://www.alza.cz/x' },
-				{ url: 'https://www.datart.cz/x' },
-			]),
-		).toBe('alza.cz');
-	});
-
-	it('returns null when there are no links', () => {
-		expect(extractGiftDomain([])).toBeNull();
-		expect(extractGiftDomain(null)).toBeNull();
 	});
 });

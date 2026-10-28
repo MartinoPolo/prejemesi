@@ -537,10 +537,8 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 	it.each([
 		{ viewMode: 'card' as const, width: 320 },
 		{ viewMode: 'list' as const, width: 320 },
-		{ viewMode: 'compact' as const, width: 320 },
 		{ viewMode: 'card' as const, width: 768 },
 		{ viewMode: 'list' as const, width: 768 },
-		{ viewMode: 'compact' as const, width: 768 },
 	])(
 		'shows localized high and low priority badges in $viewMode at $width px',
 		async ({ viewMode, width }) => {

@@ -16,4 +16,4 @@ DELETE FROM demo_session WHERE id IN (SELECT id FROM expired_demo_ids);
 COMMIT;
 ```
 
-Deploy the additive migration before application code. Migration execution, scheduler configuration, and production access require separate operator approval.
+The production deploy workflow applies the additive migration before deploying application code. Scheduler configuration and production database access require separate operator approval.

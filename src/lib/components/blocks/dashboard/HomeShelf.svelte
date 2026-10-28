@@ -175,11 +175,12 @@
 		gap: 6px;
 	}
 
-	/* Bleed the viewport to the content-padding right edge so the cut-off card is flush with the
-	   page edge, and pad the scrolling viewport vertically so the card hover-lift and hard
-	   shadows are not clipped (issue #225 peek geometry). */
+	/* Bleed the viewport through the content padding to the page edge so the cut-off card is flush
+	   with it, and pad the scrolling viewport vertically so the card hover-lift and hard shadows
+	   are not clipped (issue #225 peek geometry). Slides size from this visible row width. */
 	.shelf :global([data-slot='carousel-content']) {
-		margin-right: calc(var(--space-6) * -1);
+		container-type: inline-size;
+		margin-right: calc(var(--page-gutter) * -1);
 		padding: 6px 0 14px;
 	}
 
