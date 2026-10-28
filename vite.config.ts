@@ -128,7 +128,6 @@ export default defineConfig({
 	server: {
 		host: 'localhost',
 		port: PREFERRED_APPLICATION_PORT,
-		open: !isVitest,
 		watch: {
 			ignored: ['**/.mpx/**', './*.html'],
 		},
