@@ -39,7 +39,7 @@ For every supplied URL, use this order:
 2. Inspect OpenGraph fields, the canonical URL, and ordinary page metadata.
 3. Only when direct extraction is incomplete, perform an **exact brand/model** web search. Accept a search result only when its identity is unambiguous and matches the source evidence exactly.
 
-Preserve the user-supplied source URL as the primary link even when a canonical URL is recorded as metadata. Never replace it with a searched retailer URL. Leave uncertain fields empty and ask a targeted question rather than inferring them.
+Keep every user-supplied URL as a link even when a canonical URL is recorded as metadata; the link order is set under **Links** below. Leave uncertain fields empty and ask a targeted question rather than inferring them.
 
 ## Price references
 
@@ -56,7 +56,7 @@ Always research reference prices, even when the source page shows one. Search by
 Also record a foreign reference (manufacturer store, Steam, or a major foreign retailer) whenever the product is sold internationally. When the gift has several plausible formats (boxed vs. digital key, Czech vs. English edition, platform), ask which the user prefers instead of choosing.
 
 - **Price fields:** use the lowest–highest **new, in-stock** exact-match Heureka offer range in CZK, widened to include the Alza price; a single value when they agree. Without a Czech reference, use the category reference: for Steam, `price` is the current final price and `priceMax` the regular price when on sale. Keep the currency shown (`CZK`, `EUR`, or `USD`) and never convert; other currencies are reported only.
-- **Links:** after the source link, add each exact-match reference page with a short label (`Heureka`, `Alza`, `Steam`, or an edition qualifier such as `Heureka – PS5`). Skip duplicates of the source and respect the link limit.
+- **Links:** add each exact-match reference page with a short label (`Heureka`, `Alza`, `Steam`, or an edition qualifier such as `Heureka – PS5`), skip duplicates and respect the link limit. `links[0]` is the gift's primary link, so it must be a page where the gift can be bought: the exact-match Heureka page first, then shops (Alza, the source shop, Steam), then pages that sell nothing (BoardGameGeek, reviews, manufacturer info) last. When no Czech reference exists, a shop selling the product comes first.
 
 ### Bot-protected sites
 
@@ -74,10 +74,10 @@ Keep a research record per gift in the scratch directory: for each field, the ex
 
 Gift fields follow the `createGift` and `updateGift` inputs in the API reference (`GET /api/v1/openapi.json`):
 
-- Every new gift has at least one link, and `links[0].url` is exactly the source URL; other URLs the user supplied for that gift follow it, before reference links.
+- Every new gift has at least one link, ordered as in **Links** above, and includes every URL the user supplied for that gift.
 - `categoryIds` is optional: up to five of the wishlist's existing categories, the primary first, each matched by `customLabel` or by the preset (`presetKey`) the user or the evidence names. Unknown categories are HITL; never create one.
 - `priorityLevelId` and `quantity` only when the user gave them.
-- Images: store the selected image with `prejemesi images add --wishlist <shortId> --url <image URL> --idempotency-key <key>` or `uploadImage`, then set `"imageReference": "<reference>"` on the gift. Report a refused image (`AGENT_IMAGE_*`) and propose the gift without it.
+- Images: compare the source's OpenGraph image with the Product JSON-LD `image` entries of the exact-match Heureka and Alza pages (the first entry is the main packshot), view the candidates, and pick the sharpest clean product or box shot of the exact edition, preferring the highest resolution; a small `og:image` is usually a thumbnail. Store the selected image with `prejemesi images add --wishlist <shortId> --url <image URL> --idempotency-key <key>` or `uploadImage`, then set `"imageReference": "<reference>"` on the gift. Report a refused image (`AGENT_IMAGE_*`) and propose the gift without it.
 
 ## Proposing changes
 
