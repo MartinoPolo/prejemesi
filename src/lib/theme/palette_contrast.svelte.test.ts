@@ -5,6 +5,12 @@ import { PALETTES } from './palettes.js';
 import { badgeVariants, BADGE_STYLES } from '../components/base/badge/badge_variants.js';
 import { avatarVariants } from '../components/derived/avatar/avatar_variants.js';
 import { buttonVariants } from '../components/base/button/button_variants.js';
+import { helpTextVariants } from '../components/base/help-text/help_text_variants.js';
+import { toastTitleColors, toastVariants } from '../components/base/toast/toast_variants.js';
+import { statusBadgeVariants } from '../components/derived/status-badge/status_badge_variants.js';
+import { alertVariants } from '../components/base/alert/alert_variants.js';
+import { fieldErrorVariants } from '../components/derived/field/field_variants.js';
+import { moderatorPanelVariants } from '../components/blocks/moderator/moderator_panel_variants.js';
 
 const originalClass = document.documentElement.className;
 const originalPalette = document.documentElement.getAttribute('data-palette');
@@ -51,6 +57,64 @@ function contrastRatio(text: number, surface: number): number {
 	return (Math.max(text, surface) + 0.05) / (Math.min(text, surface) + 0.05);
 }
 
+/** Contrast of a styled sample's text over its own background composited on `--card`. */
+function sampleContrast(scope: HTMLElement, className: string): number {
+	const sample = document.createElement('span');
+	sample.className = className;
+	scope.append(sample);
+	const style = getComputedStyle(sample);
+	const backing = document.createElement('span');
+	backing.style.color = 'var(--card)';
+	scope.append(backing);
+	const surfaces = [getComputedStyle(backing).color, style.backgroundColor];
+	const surface = compositedLuminance(surfaces);
+	const text = compositedLuminance([...surfaces, style.color]);
+	sample.remove();
+	backing.remove();
+	return contrastRatio(text, surface);
+}
+
+type ButtonIntent = keyof typeof buttonVariants.variants.intent;
+
+/** Contrast of a rendered button's label over its face, resting and hovered, composited on `--card`. */
+async function buttonContrast(
+	scope: HTMLElement,
+	intent: ButtonIntent,
+): Promise<{ resting: number; hovered: number; hoverChangesFill: boolean }> {
+	const { owner, surface: surfaceClass } = buttonVariants({ intent });
+	const button = document.createElement('button');
+	button.className = owner();
+	const testId = `contrast-button-${crypto.randomUUID()}`;
+	button.dataset.testid = testId;
+	const face = document.createElement('span');
+	face.className = surfaceClass();
+	button.append(face);
+	scope.append(button);
+	const card = document.createElement('span');
+	card.style.color = 'var(--card)';
+	scope.append(card);
+	const base = getComputedStyle(card).color;
+	const faceContrast = () => {
+		const style = getComputedStyle(face);
+		const surface = compositedLuminance([base, style.backgroundColor]);
+		const text = compositedLuminance([base, style.backgroundColor, style.color]);
+		return { contrast: contrastRatio(text, surface), fill: style.backgroundColor };
+	};
+	try {
+		const resting = faceContrast();
+		await page.getByTestId(testId).hover();
+		const hovered = faceContrast();
+		return {
+			resting: resting.contrast,
+			hovered: hovered.contrast,
+			hoverChangesFill: hovered.fill !== resting.fill,
+		};
+	} finally {
+		button.remove();
+		card.remove();
+	}
+}
+
 const textPairs = [
 	['--foreground', '--background'],
 	['--card-foreground', '--card'],
@@ -64,6 +128,10 @@ const textPairs = [
 	['--accent-foreground', '--accent'],
 	['--accent-loud-foreground', '--accent-loud'],
 	['--note-ink', '--note-tint'],
+	['--foreground', '--wishlist-card-body'],
+	['--muted-foreground', '--wishlist-card-body'],
+	['--brand-link', '--wishlist-card-body'],
+	['--wishlist-card-plate-foreground', '--wishlist-card-plate'],
 	...['--background', '--card', '--secondary', '--muted', '--accent'].map((surface) => [
 		'--muted-foreground',
 		surface,
@@ -92,37 +160,49 @@ describe('danger text across palette surfaces', () => {
 							`${palette} ${mode} ${scopeName}: danger on ${surfaceToken}: ${contrast.toFixed(2)}`,
 						).toBeGreaterThanOrEqual(4.5);
 					}
-					const { owner, surface: surfaceClass } = buttonVariants({ intent: 'danger' });
-					const button = document.createElement('button');
-					button.className = owner();
-					button.dataset.testid = 'contrast-danger-button';
-					const face = document.createElement('span');
-					face.className = surfaceClass();
-					button.append(face);
-					scope.append(button);
-					try {
-						const restingBackground = getComputedStyle(face).backgroundColor;
-						await page.getByTestId('contrast-danger-button').hover();
-						const style = getComputedStyle(face);
-						expect(style.backgroundColor).not.toBe(restingBackground);
-						const card = document.createElement('span');
-						card.style.color = 'var(--card)';
-						scope.append(card);
-						const base = getComputedStyle(card).color;
-						card.remove();
-						const surface = compositedLuminance([base, style.backgroundColor]);
-						const text = compositedLuminance([
-							base,
-							style.backgroundColor,
-							style.color,
-						]);
-						const contrast = contrastRatio(text, surface);
+					const { hovered, hoverChangesFill } = await buttonContrast(scope, 'danger');
+					expect(hoverChangesFill).toBe(true);
+					expect(
+						hovered,
+						`${palette} ${mode} ${scopeName}: danger button hover: ${hovered.toFixed(2)}`,
+					).toBeGreaterThanOrEqual(4.5);
+				}
+			}
+		} finally {
+			nested.remove();
+		}
+	});
+});
+
+describe('filled buttons across palettes', () => {
+	const filledIntents = ['primary', 'primary-destructive'] as const satisfies ButtonIntent[];
+
+	it.each(PALETTES)('%s keeps labels readable at rest and on hover', async (palette) => {
+		const nested = document.createElement('div');
+		nested.setAttribute('data-palette', palette);
+		document.body.append(nested);
+		try {
+			for (const mode of ['light', 'dark']) {
+				document.documentElement.classList.toggle('dark', mode === 'dark');
+				document.documentElement.setAttribute('data-palette', palette);
+				for (const [scopeName, scope] of [
+					['root', document.documentElement],
+					['nested', nested],
+				] as const) {
+					for (const intent of filledIntents) {
+						const { resting, hovered, hoverChangesFill } = await buttonContrast(
+							scope,
+							intent,
+						);
+						const label = `${palette} ${mode} ${scopeName}: ${intent}`;
+						expect(hoverChangesFill, `${label} hover changes fill`).toBe(true);
+						expect(resting, `${label}: ${resting.toFixed(2)}`).toBeGreaterThanOrEqual(
+							4.5,
+						);
 						expect(
-							contrast,
-							`${palette} ${mode} ${scopeName}: danger button hover: ${contrast.toFixed(2)}`,
+							hovered,
+							`${label} hover: ${hovered.toFixed(2)}`,
 						).toBeGreaterThanOrEqual(4.5);
-					} finally {
-						button.remove();
 					}
 				}
 			}
@@ -131,6 +211,74 @@ describe('danger text across palette surfaces', () => {
 		}
 	});
 });
+
+const statusTextSamples = {
+	success: [
+		...BADGE_STYLES.filter((badgeStyle) => badgeStyle !== 'solid').map((badgeStyle) =>
+			badgeVariants({ tone: 'success', badgeStyle }),
+		),
+		statusBadgeVariants({ status: 'success' }),
+		`${toastVariants({ tone: 'success' })} ${toastTitleColors.success}`,
+		helpTextVariants({ state: 'success' }),
+	],
+	warning: [
+		...BADGE_STYLES.map((badgeStyle) => badgeVariants({ tone: 'warning', badgeStyle })),
+		statusBadgeVariants({ status: 'warning' }),
+		`${toastVariants({ tone: 'warning' })} ${toastTitleColors.warning}`,
+		moderatorPanelVariants().selfPromoteWarning(),
+	],
+	danger: [
+		...BADGE_STYLES.map((badgeStyle) => badgeVariants({ tone: 'danger', badgeStyle })),
+		statusBadgeVariants({ status: 'danger' }),
+		`${toastVariants({ tone: 'danger' })} ${toastTitleColors.danger}`,
+		helpTextVariants({ state: 'error' }),
+		fieldErrorVariants(),
+		alertVariants({ tone: 'destructive' }),
+	],
+	link: [
+		...BADGE_STYLES.filter((badgeStyle) => badgeStyle !== 'solid').flatMap((badgeStyle) => [
+			badgeVariants({ tone: 'info', badgeStyle }),
+			badgeVariants({ tone: 'primary', badgeStyle }),
+		]),
+		statusBadgeVariants({ status: 'info' }),
+		`${toastVariants({ tone: 'info' })} ${toastTitleColors.info}`,
+		`${toastVariants({ tone: 'loading' })} ${toastTitleColors.loading}`,
+		moderatorPanelVariants().disclosureBanner(),
+		moderatorPanelVariants().moderatorAvatar(),
+		buttonVariants({ intent: 'link' }).surface(),
+	],
+};
+
+describe.each(Object.entries(statusTextSamples))(
+	'%s text across palette surfaces',
+	(_, samples) => {
+		it.each(PALETTES)('%s stays readable in light and dark root/nested scopes', (palette) => {
+			const nested = document.createElement('div');
+			nested.setAttribute('data-palette', palette);
+			document.body.append(nested);
+			try {
+				for (const mode of ['light', 'dark']) {
+					document.documentElement.classList.toggle('dark', mode === 'dark');
+					document.documentElement.setAttribute('data-palette', palette);
+					for (const [scopeName, scope] of [
+						['root', document.documentElement],
+						['nested', nested],
+					] as const) {
+						for (const className of samples) {
+							const contrast = sampleContrast(scope, className);
+							expect(
+								contrast,
+								`${palette} ${mode} ${scopeName}: ${className}: ${contrast.toFixed(2)}`,
+							).toBeGreaterThanOrEqual(4.5);
+						}
+					}
+				}
+			} finally {
+				nested.remove();
+			}
+		});
+	},
+);
 
 describe('restrained dark palettes', () => {
 	it.each(PALETTES)(
@@ -156,20 +304,8 @@ describe('restrained dark palettes', () => {
 						avatarVariants({ appearance: 'recipient' }).fallback(),
 					];
 					for (const className of samples) {
-						const sample = document.createElement('span');
-						sample.className = className;
-						scope.append(sample);
-						const style = getComputedStyle(sample);
-						const backing = document.createElement('span');
-						backing.style.color = 'var(--card)';
-						scope.append(backing);
-						const surfaces = [getComputedStyle(backing).color, style.backgroundColor];
-						const surface = compositedLuminance(surfaces);
-						const text = compositedLuminance([...surfaces, style.color]);
-						sample.remove();
-						backing.remove();
 						expect(
-							(Math.max(text, surface) + 0.05) / (Math.min(text, surface) + 0.05),
+							sampleContrast(scope, className),
 							`${palette}: ${className}`,
 						).toBeGreaterThanOrEqual(4.5);
 					}
@@ -189,4 +325,39 @@ describe('restrained dark palettes', () => {
 			}
 		},
 	);
+});
+
+describe('light palettes', () => {
+	// Light `--brand` is a fill and icon colour; coloured light text uses `--brand-link` or status text tokens.
+	const lightTextPairs = [
+		...textPairs.filter(([foreground]) => foreground !== '--brand'),
+		...['--background', '--card', '--secondary', '--muted', '--accent'].map((surface) => [
+			'--brand-link',
+			surface,
+		]),
+	];
+
+	it.each(PALETTES)('%s keeps token text pairs readable in both scopes', (palette) => {
+		document.documentElement.classList.remove('dark');
+		document.documentElement.setAttribute('data-palette', palette);
+		const nested = document.createElement('div');
+		nested.setAttribute('data-palette', palette);
+		document.body.append(nested);
+		try {
+			for (const scope of [document.documentElement, nested]) {
+				for (const [foreground, background] of lightTextPairs) {
+					const contrast = contrastRatio(
+						luminance(scope, foreground!, background!),
+						luminance(scope, background!),
+					);
+					expect(
+						contrast,
+						`${palette}: ${foreground} on ${background}: ${contrast.toFixed(2)}`,
+					).toBeGreaterThanOrEqual(4.5);
+				}
+			}
+		} finally {
+			nested.remove();
+		}
+	});
 });

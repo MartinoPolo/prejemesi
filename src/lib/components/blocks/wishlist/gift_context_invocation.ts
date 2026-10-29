@@ -16,8 +16,15 @@ export interface GiftMoreProps {
 	moreSurface?: GiftMoreSurface;
 }
 
+/** A browser context menu request; Shift+F10 and the ContextMenu key arrive `fromKeyboard`. */
+interface NativeGiftContextInvocation {
+	kind: 'native';
+	point: { x: number; y: number };
+	fromKeyboard: boolean;
+}
+
 export type GiftContextInvocation =
-	| { kind: 'native'; point: { x: number; y: number } }
+	| NativeGiftContextInvocation
 	| { kind: 'longpress' }
 	| { kind: 'more'; anchor: HTMLButtonElement; placementSnapshot: GiftActionPlacementSnapshot };
 
@@ -29,7 +36,7 @@ export interface GiftContextSession<Gift> {
 	origin: GiftContextOrigin;
 	viewportAtOpen: boolean;
 	invocation:
-		| { kind: 'native'; point: { x: number; y: number } }
+		| NativeGiftContextInvocation
 		| { kind: 'longpress'; surface: 'sheet' }
 		| {
 				kind: 'more';
@@ -45,10 +52,17 @@ export type GiftContextFinishPolicy = 'restore-focus' | 'handoff';
 export interface GiftContextCommandCallbacks {
 	onfinish: (policy: GiftContextFinishPolicy, callback: () => void) => void;
 	onedit: () => void;
+	/** Present only when the AI assistant is offered. */
+	onenrich?: () => void;
 	onpriority: (id: string | null) => void;
-	oncategory: (id: string | null) => void;
+	/** Adds (`checked`) or removes one category; `null` removes every category. */
+	oncategory: (id: string | null, checked: boolean) => void;
+	/** Present only when the viewer may manage the wishlist's categories. */
+	oncreatecategory?: () => void;
 	onreceived: () => void;
 	onselect: () => void;
+	/** Present only while reorder mode can start. */
+	onreorder?: () => void;
 	onreserve?: () => void;
 	oncancelreservation?: () => void;
 	onpurchased?: () => void;

@@ -24,6 +24,7 @@ const demoAppPaths =
 const demoLifecyclePaths = /^\/(?:en\/)?demo(?:\/(?:start|reset|exit))?\/?$/;
 const demoEntryPaths = /^\/(?:en\/)?demo(?:\/start)?\/?$/;
 const demoExitPath = /^\/(?:en\/)?demo\/exit\/?$/;
+const demoChatTurnPath = /^\/(?:en\/)?chat\/[^/]+\/turns\/?$/;
 const demoResetPath = /^\/(?:en\/)?demo\/reset\/?$/;
 const demoStartPath = /^\/(?:en\/)?demo\/start\/?$/;
 const publicWishlistPaths = /^\/(?:en\/)?w\//;
@@ -100,6 +101,10 @@ function assertLiveDemoPath(event: RequestEvent, path: string): void {
 		redirect(303, localizedRoute(event, '/home'));
 	}
 	if (demoAppPaths.test(path) || demoLifecyclePaths.test(path)) {
+		return;
+	}
+	// The scripted demo chat; the endpoint itself keeps demo turns off the model API.
+	if (demoChatTurnPath.test(path) && event.request.method === 'POST') {
 		return;
 	}
 	if (isPageNavigation(event)) {

@@ -6,6 +6,7 @@ import { getDb } from '$lib/server/db/index.js';
 import { notification } from '$lib/server/db/notification.schema.js';
 import { getActiveLocaleForUrl, localizeInternalHref } from '$lib/i18n/locale.js';
 import { notificationIsVisible } from '$lib/modules/notifications/notification_visibility.js';
+import { isChatOfferedTo } from '$lib/server/chat/chat_availability.js';
 
 const PUBLIC_PATH_PREFIXES = ['/w/', '/en/w/'];
 
@@ -18,7 +19,7 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
 			const loginHref = localizeInternalHref(resolve('/login'), getActiveLocaleForUrl(url));
 			throw redirect(303, `${loginHref}?${new URLSearchParams({ redirect: redirectParam })}`);
 		}
-		return { user: null, unreadNotificationCount: 0, demoExpiresAt: null };
+		return { user: null, unreadNotificationCount: 0, demoExpiresAt: null, chatOffered: false };
 	}
 
 	const database = getDb();
@@ -38,5 +39,7 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
 		user: locals.user,
 		unreadNotificationCount,
 		demoExpiresAt: locals.demoSession?.expiresAt.toISOString() ?? null,
+		// An env allowlist check, so the wishlist page skips the availability request for everyone else.
+		chatOffered: isChatOfferedTo(locals.user.email),
 	};
 };

@@ -237,14 +237,14 @@
 						<div class={styles.authPromptLinks()}>
 							<a
 								href={getLocalizedAuthHref(resolve('/login'), redirectHref)}
-								class="text-brand hover:underline"
+								class="text-brand-link hover:underline"
 							>
 								{m.reserve_login()}
 							</a>
 							<span class={styles.separator()}>{m.or()}</span>
 							<a
 								href={getLocalizedAuthHref(resolve('/register'), redirectHref)}
-								class="text-brand hover:underline"
+								class="text-brand-link hover:underline"
 							>
 								{m.reserve_register()}
 							</a>

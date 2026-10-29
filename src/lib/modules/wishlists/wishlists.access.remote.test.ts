@@ -41,8 +41,8 @@ describe('followWishlist', () => {
 			mockDbInstance.pushResult([{ recipientUserId: RECIPIENT_ID }]);
 			// DB call 2: existing follower check – none found
 			mockDbInstance.pushResult([]);
-			// DB call 3: insert follower
-			mockDbInstance.pushResult([]);
+			// DB call 3: insert follower → returns the inserted row
+			mockDbInstance.pushResult([{ userId: OTHER_USER_ID }]);
 
 			const result = await callFollowWishlist(makeOtherAuthContext(), WISHLIST_ID);
 
@@ -206,7 +206,7 @@ describe('getWishlistByShortId', () => {
 			mockDbInstance.pushResult([
 				{ wishlist: wishlistRow, recipientDisplayName: 'Recipient Alice' },
 			]);
-			// DB call 2: hasActiveModeratorAssignment → found
+			// DB call 2: správce assignment lookup → found
 			mockDbInstance.pushResult([{ id: 'assignment-1' }]);
 			// DB call 3: managerNames query (runs for all lists) → none
 			mockDbInstance.pushResult([]);
@@ -225,7 +225,7 @@ describe('getWishlistByShortId', () => {
 			const wishlistRow = makeForSomeoneWishlistRow();
 			// DB call 1: wishlist + user leftJoin (no linked user → recipientName wins)
 			mockDbInstance.pushResult([{ wishlist: wishlistRow, recipientDisplayName: 'Grandma' }]);
-			// DB call 2: hasActiveModeratorAssignment → found (caller is a správce)
+			// DB call 2: správce assignment lookup → found (caller is a správce)
 			mockDbInstance.pushResult([{ id: 'assignment-1' }]);
 			// DB call 3: managerNames query (runs for all lists)
 			mockDbInstance.pushResult([{ name: 'Martin' }, { name: 'Jana' }]);
@@ -303,7 +303,7 @@ describe('getWishlistByShortId', () => {
 			mockDbInstance.pushResult([
 				{ wishlist: wishlistRow, recipientDisplayName: 'Recipient Alice' },
 			]);
-			// DB call 2: hasActiveModeratorAssignment → none found
+			// DB call 2: správce assignment lookup → none found
 			mockDbInstance.pushResult([]);
 			// DB call 3: managerNames query (runs for all lists) → none
 			mockDbInstance.pushResult([]);

@@ -124,18 +124,27 @@ vi.mock('drizzle-orm', () => ({
 
 // Auth is exercised through the mocked BetterAuth surface: getSession supplies
 // `locals.user`, svelteKitHandler just resolves.
-const { mockGetSession, mockSignInEmail, mockCleanExpiredDemos, mockFindDemoSession } = vi.hoisted(
-	() => ({
-		mockGetSession: vi.fn(),
-		mockSignInEmail: vi.fn(),
-		mockCleanExpiredDemos: vi.fn(),
-		mockFindDemoSession: vi.fn(),
-	}),
-);
+const {
+	mockGetSession,
+	mockSignInEmail,
+	mockCleanExpiredDemos,
+	mockFindDemoSession,
+	mockHandleDemoRequest,
+} = vi.hoisted(() => ({
+	mockGetSession: vi.fn(),
+	mockSignInEmail: vi.fn(),
+	mockCleanExpiredDemos: vi.fn(),
+	mockFindDemoSession: vi.fn(),
+	mockHandleDemoRequest: vi.fn(),
+}));
 
 vi.mock('$lib/server/demo/session.js', () => ({
 	cleanExpiredDemos: mockCleanExpiredDemos,
 	findDemoSession: mockFindDemoSession,
+}));
+
+vi.mock('$lib/server/demo/request.js', () => ({
+	handleDemoRequest: mockHandleDemoRequest,
 }));
 
 vi.mock('$lib/server/auth.js', () => ({
@@ -162,6 +171,7 @@ vi.mock('better-auth/svelte-kit', () => ({
 }));
 
 import { handle } from './hooks.server.js';
+import { CONTENT_SECURITY_POLICY_HEADER } from '$lib/server/content_security_policy.js';
 import { createAuth } from '$lib/server/auth.js';
 import { DEMO_CLEANUP_INTERVAL_MS, DEMO_COOKIE_NAME } from '$lib/server/demo/constants.js';
 
@@ -267,6 +277,7 @@ beforeEach(() => {
 	mockIsDatabaseConfigured.mockReturnValue(true);
 	mockGetSession.mockResolvedValue({ session: { id: 'session-1' }, user: SESSION_USER });
 	setPreferenceRow({ preferredLocale: 'en', palette: 'grape', depthStyle: 'ink' });
+	mockHandleDemoRequest.mockResolvedValue(new Response('demo response', { status: 200 }));
 });
 
 describe('expired demo maintenance', () => {
@@ -370,6 +381,31 @@ describe('demo cookie at the auth API', () => {
 		await runHandle(createEvent({ path: '/api/auth/get-session' }));
 		await runHandle(createEvent({ path: '/' }));
 		expect(mockFindDemoSession).not.toHaveBeenCalled();
+	});
+});
+
+describe('demo cookie at the agent API', () => {
+	const demoCookies = { [DEMO_COOKIE_NAME]: 'a'.repeat(64) };
+
+	it.each(['/api/v1/me', '/mcp'])(
+		'serves %s outside demo session and transaction setup',
+		async (path) => {
+			const { html } = await runHandle(
+				createEvent({ path, accept: 'application/json', cookies: demoCookies }),
+			);
+			// The terminal resolve renders the app template; demo handling would answer instead.
+			expect(html).toContain('%sveltekit.head%');
+			expect(mockHandleDemoRequest).not.toHaveBeenCalled();
+			expect(mockFindDemoSession).not.toHaveBeenCalled();
+		},
+	);
+
+	it('keeps demo handling for the same cookie outside the agent API', async () => {
+		const { html } = await runHandle(
+			createEvent({ path: '/my-lists', accept: 'application/json', cookies: demoCookies }),
+		);
+		expect(html).toBe('demo response');
+		expect(mockHandleDemoRequest).toHaveBeenCalledOnce();
 	});
 });
 
@@ -597,5 +633,41 @@ describe('user preference reads (issue #108, REQ-1/REQ-2)', () => {
 		expect(mockGetDb).not.toHaveBeenCalled();
 		expect(html).toContain('data-palette="sky"');
 		expect(html).toContain('data-depth="soft"');
+	});
+});
+
+describe('content security policy', () => {
+	async function responseWithRouteHeaders(path: string, routeHeaders: Record<string, string>) {
+		return (handle as unknown as (input: unknown) => Promise<Response>)({
+			event: createEvent({ path }),
+			resolve: vi.fn(
+				async () =>
+					new Response('<html></html>', {
+						headers: { 'content-type': 'text/html', ...routeHeaders },
+					}),
+			),
+		});
+	}
+
+	it('sets the site policy, limiting form submissions to the site', async () => {
+		const response = await responseWithRouteHeaders('/my-lists', {});
+
+		expect(response.headers.get(CONTENT_SECURITY_POLICY_HEADER)).toContain(
+			"form-action 'self'",
+		);
+		expect(response.headers.get(CONTENT_SECURITY_POLICY_HEADER)).toContain(
+			"frame-ancestors 'none'",
+		);
+	});
+
+	it('keeps the policy a route already set, such as OAuth consent naming the app', async () => {
+		const routePolicy = "base-uri 'self'; form-action 'self' https://claude.ai";
+
+		const response = await responseWithRouteHeaders('/oauth/consent', {
+			[CONTENT_SECURITY_POLICY_HEADER]: routePolicy,
+		});
+
+		expect(response.headers.get(CONTENT_SECURITY_POLICY_HEADER)).toBe(routePolicy);
+		expect(response.headers.get('x-frame-options')).toBe('DENY');
 	});
 });

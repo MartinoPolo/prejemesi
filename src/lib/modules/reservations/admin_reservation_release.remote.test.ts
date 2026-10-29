@@ -249,16 +249,14 @@ describe('unreserveGift — administrator release (issue #213)', () => {
 	});
 
 	it("an app administrator releases a signed-in gifter's reservation (REQ-1)", async () => {
-		// Call #1: reservation SELECT + soft-delete UPDATE.
-		const database = createMultiQueryChain([signedInGifterReservation], []);
-		// Call #2: getGiftWithWishlist. Call #3: moderator lookup (admin manages nothing here).
-		const giftDb = createChain([makeActiveWishlistRow()]);
-		const modDb = createChain([]);
-
-		mockGetDb
-			.mockReturnValueOnce(database as unknown as ReturnType<typeof getDb>)
-			.mockReturnValueOnce(giftDb as unknown as ReturnType<typeof getDb>)
-			.mockReturnValueOnce(modDb as unknown as ReturnType<typeof getDb>);
+		// The operation core runs every statement on one transaction, in the same order.
+		const database = createMultiQueryChain(
+			[signedInGifterReservation],
+			[makeActiveWishlistRow()],
+			[],
+			[],
+		);
+		mockGetDb.mockReturnValueOnce(database as unknown as ReturnType<typeof getDb>);
 
 		const result = await (unreserveGift as (...args: unknown[]) => unknown)(
 			makeAuthContext(fakeAdminUser),
@@ -269,14 +267,14 @@ describe('unreserveGift — administrator release (issue #213)', () => {
 	});
 
 	it('an app administrator releases a guest reservation on a list they neither own nor moderate (REQ-1)', async () => {
-		const database = createMultiQueryChain([guestReservation(null)], []);
-		const giftDb = createChain([makeActiveWishlistRow()]);
-		const modDb = createChain([]); // no moderator assignment → plain visitor role
-
-		mockGetDb
-			.mockReturnValueOnce(database as unknown as ReturnType<typeof getDb>)
-			.mockReturnValueOnce(giftDb as unknown as ReturnType<typeof getDb>)
-			.mockReturnValueOnce(modDb as unknown as ReturnType<typeof getDb>);
+		// The operation core runs every statement on one transaction, in the same order.
+		const database = createMultiQueryChain(
+			[guestReservation(null)],
+			[makeActiveWishlistRow()],
+			[],
+			[],
+		);
+		mockGetDb.mockReturnValueOnce(database as unknown as ReturnType<typeof getDb>);
 
 		const result = await (unreserveGift as (...args: unknown[]) => unknown)(
 			makeAuthContext(fakeAdminUser),
@@ -302,13 +300,12 @@ describe('unreserveGift — administrator release (issue #213)', () => {
 	});
 
 	it('the obdarovaný cannot release, even when they are the app administrator (REQ-6)', async () => {
-		const database = createChain([signedInGifterReservation]);
-		// The wishlist's linked recipient IS the caller.
-		const giftDb = createChain([makeActiveWishlistRow()]);
-
-		mockGetDb
-			.mockReturnValueOnce(database as unknown as ReturnType<typeof getDb>)
-			.mockReturnValueOnce(giftDb as unknown as ReturnType<typeof getDb>);
+		// The operation core runs every statement on one transaction, in the same order.
+		const database = createMultiQueryChain(
+			[signedInGifterReservation],
+			[makeActiveWishlistRow()],
+		);
+		mockGetDb.mockReturnValueOnce(database as unknown as ReturnType<typeof getDb>);
 
 		await expect(
 			(unreserveGift as (...args: unknown[]) => unknown)(
@@ -319,14 +316,14 @@ describe('unreserveGift — administrator release (issue #213)', () => {
 	});
 
 	it('notifies the released signed-in gifter, naming the gift (REQ-9)', async () => {
-		const database = createMultiQueryChain([signedInGifterReservation], []);
-		const giftDb = createChain([makeActiveWishlistRow()]);
-		const modDb = createChain([]);
-
-		mockGetDb
-			.mockReturnValueOnce(database as unknown as ReturnType<typeof getDb>)
-			.mockReturnValueOnce(giftDb as unknown as ReturnType<typeof getDb>)
-			.mockReturnValueOnce(modDb as unknown as ReturnType<typeof getDb>);
+		// The operation core runs every statement on one transaction, in the same order.
+		const database = createMultiQueryChain(
+			[signedInGifterReservation],
+			[makeActiveWishlistRow()],
+			[],
+			[],
+		);
+		mockGetDb.mockReturnValueOnce(database as unknown as ReturnType<typeof getDb>);
 
 		await (unreserveGift as (...args: unknown[]) => unknown)(
 			makeAuthContext(fakeAdminUser),
@@ -346,14 +343,14 @@ describe('unreserveGift — administrator release (issue #213)', () => {
 	});
 
 	it('emails a released guest who left an address (REQ-9)', async () => {
-		const database = createMultiQueryChain([guestReservation('babicka@example.com')], []);
-		const giftDb = createChain([makeActiveWishlistRow()]);
-		const modDb = createChain([]);
-
-		mockGetDb
-			.mockReturnValueOnce(database as unknown as ReturnType<typeof getDb>)
-			.mockReturnValueOnce(giftDb as unknown as ReturnType<typeof getDb>)
-			.mockReturnValueOnce(modDb as unknown as ReturnType<typeof getDb>);
+		// The operation core runs every statement on one transaction, in the same order.
+		const database = createMultiQueryChain(
+			[guestReservation('babicka@example.com')],
+			[makeActiveWishlistRow()],
+			[],
+			[],
+		);
+		mockGetDb.mockReturnValueOnce(database as unknown as ReturnType<typeof getDb>);
 
 		await (unreserveGift as (...args: unknown[]) => unknown)(
 			makeAuthContext(fakeAdminUser),
@@ -370,14 +367,14 @@ describe('unreserveGift — administrator release (issue #213)', () => {
 	});
 
 	it('notifies nobody when the released guest left no address (REQ-9)', async () => {
-		const database = createMultiQueryChain([guestReservation(null)], []);
-		const giftDb = createChain([makeActiveWishlistRow()]);
-		const modDb = createChain([]);
-
-		mockGetDb
-			.mockReturnValueOnce(database as unknown as ReturnType<typeof getDb>)
-			.mockReturnValueOnce(giftDb as unknown as ReturnType<typeof getDb>)
-			.mockReturnValueOnce(modDb as unknown as ReturnType<typeof getDb>);
+		// The operation core runs every statement on one transaction, in the same order.
+		const database = createMultiQueryChain(
+			[guestReservation(null)],
+			[makeActiveWishlistRow()],
+			[],
+			[],
+		);
+		mockGetDb.mockReturnValueOnce(database as unknown as ReturnType<typeof getDb>);
 
 		await (unreserveGift as (...args: unknown[]) => unknown)(
 			makeAuthContext(fakeAdminUser),
@@ -388,12 +385,13 @@ describe('unreserveGift — administrator release (issue #213)', () => {
 	});
 
 	it('dispatches no notification when a gifter cancels their OWN reservation (REQ-9)', async () => {
-		const database = createMultiQueryChain([signedInGifterReservation], []);
-		mockGetDb
-			.mockReturnValueOnce(database as unknown as ReturnType<typeof getDb>)
-			.mockReturnValueOnce(
-				createChain([makeActiveWishlistRow()]) as unknown as ReturnType<typeof getDb>,
-			);
+		// The operation core runs every statement on one transaction, in the same order.
+		const database = createMultiQueryChain(
+			[signedInGifterReservation],
+			[makeActiveWishlistRow()],
+			[],
+		);
+		mockGetDb.mockReturnValueOnce(database as unknown as ReturnType<typeof getDb>);
 
 		await (unreserveGift as (...args: unknown[]) => unknown)(
 			makeAuthContext(fakeVisitorUser),
@@ -404,12 +402,13 @@ describe('unreserveGift — administrator release (issue #213)', () => {
 	});
 
 	it('records the cancelling user on a self-cancel (REQ-10)', async () => {
-		const database = createMultiQueryChain([signedInGifterReservation], []);
-		mockGetDb
-			.mockReturnValueOnce(database as unknown as ReturnType<typeof getDb>)
-			.mockReturnValueOnce(
-				createChain([makeActiveWishlistRow()]) as unknown as ReturnType<typeof getDb>,
-			);
+		// The operation core runs every statement on one transaction, in the same order.
+		const database = createMultiQueryChain(
+			[signedInGifterReservation],
+			[makeActiveWishlistRow()],
+			[],
+		);
+		mockGetDb.mockReturnValueOnce(database as unknown as ReturnType<typeof getDb>);
 
 		await (unreserveGift as (...args: unknown[]) => unknown)(
 			makeAuthContext(fakeVisitorUser),
@@ -422,14 +421,14 @@ describe('unreserveGift — administrator release (issue #213)', () => {
 	});
 
 	it('records the administrator as the canceller on a release (REQ-10)', async () => {
-		const database = createMultiQueryChain([signedInGifterReservation], []);
-		const giftDb = createChain([makeActiveWishlistRow()]);
-		const modDb = createChain([]);
-
-		mockGetDb
-			.mockReturnValueOnce(database as unknown as ReturnType<typeof getDb>)
-			.mockReturnValueOnce(giftDb as unknown as ReturnType<typeof getDb>)
-			.mockReturnValueOnce(modDb as unknown as ReturnType<typeof getDb>);
+		// The operation core runs every statement on one transaction, in the same order.
+		const database = createMultiQueryChain(
+			[signedInGifterReservation],
+			[makeActiveWishlistRow()],
+			[],
+			[],
+		);
+		mockGetDb.mockReturnValueOnce(database as unknown as ReturnType<typeof getDb>);
 
 		await (unreserveGift as (...args: unknown[]) => unknown)(
 			makeAuthContext(fakeAdminUser),
@@ -444,12 +443,13 @@ describe('unreserveGift — administrator release (issue #213)', () => {
 	// A guest self-cancel has no account to record — the NULL is what makes an override
 	// (`cancelledByUserId !== null && !== userId`) distinguishable from a self-cancel.
 	it('leaves the canceller NULL on a guest self-cancel (REQ-10)', async () => {
-		const database = createMultiQueryChain([guestReservation(null)], []);
-		mockGetDb
-			.mockReturnValueOnce(database as unknown as ReturnType<typeof getDb>)
-			.mockReturnValueOnce(
-				createChain([makeActiveWishlistRow()]) as unknown as ReturnType<typeof getDb>,
-			);
+		// The operation core runs every statement on one transaction, in the same order.
+		const database = createMultiQueryChain(
+			[guestReservation(null)],
+			[makeActiveWishlistRow()],
+			[],
+		);
+		mockGetDb.mockReturnValueOnce(database as unknown as ReturnType<typeof getDb>);
 		mockAnonCookie('anon-token-1');
 
 		await (unreserveGift as (...args: unknown[]) => unknown)(null, validInput);

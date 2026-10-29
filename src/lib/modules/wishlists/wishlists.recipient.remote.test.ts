@@ -29,9 +29,9 @@ describe('renameRecipient', () => {
 	describe('a správce can rename a for-someone recipient', () => {
 		it('updates recipientName and returns the updated row', async () => {
 			const renamedRow = makeForSomeoneWishlistRow({ recipientName: 'Aunt May' });
-			// DB call 1: requireWishlistRow (for-someone list, caller not recipient)
+			// DB call 1: wishlist lookup (for-someone list, caller not recipient)
 			mockDbInstance.pushResult([makeForSomeoneWishlistRow()]);
-			// DB call 2: hasActiveModeratorAssignment → found → manager
+			// DB call 2: správce assignment lookup → found → manager
 			mockDbInstance.pushResult([{ id: 'assignment-1' }]);
 			// DB call 3: update returning
 			mockDbInstance.pushResult([renamedRow]);
@@ -48,9 +48,9 @@ describe('renameRecipient', () => {
 
 	describe('non-manager cannot rename', () => {
 		it('throws 403 ACCESS_DENIED when caller is neither recipient nor správce', async () => {
-			// DB call 1: requireWishlistRow (for-someone list)
+			// DB call 1: wishlist lookup (for-someone list)
 			mockDbInstance.pushResult([makeForSomeoneWishlistRow()]);
-			// DB call 2: hasActiveModeratorAssignment → none
+			// DB call 2: správce assignment lookup → none
 			mockDbInstance.pushResult([]);
 
 			await expect(
@@ -64,7 +64,7 @@ describe('renameRecipient', () => {
 
 	describe('rejects a self / linked-recipient list', () => {
 		it('throws 400 RECIPIENT_RENAME_NOT_ALLOWED when recipientUserId is set (no free-text name to rename)', async () => {
-			// DB call 1: requireWishlistRow (self list, recipient = caller → manager, no mod query)
+			// DB call 1: wishlist lookup (self list, recipient = caller → manager, no mod query)
 			mockDbInstance.pushResult([makeWishlistRow()]);
 
 			await expect(
@@ -78,9 +78,9 @@ describe('renameRecipient', () => {
 
 	describe('rejects an archived wishlist', () => {
 		it('throws 400 CANNOT_MODIFY_ARCHIVED_WISHLIST before touching recipientName', async () => {
-			// DB call 1: requireWishlistRow (for-someone + archived)
+			// DB call 1: wishlist lookup (for-someone + archived)
 			mockDbInstance.pushResult([makeForSomeoneWishlistRow({ status: 'archived' })]);
-			// DB call 2: hasActiveModeratorAssignment → found → manager
+			// DB call 2: správce assignment lookup → found → manager
 			mockDbInstance.pushResult([{ id: 'assignment-1' }]);
 
 			await expect(
@@ -103,7 +103,7 @@ describe('flipRecipientToFreeText', () => {
 	describe('the linked recipient converts their own list', () => {
 		it('clears recipientUserId, sets the free-text name, and resets recipientIsModerator', async () => {
 			const flippedRow = makeForSomeoneWishlistRow({ recipientName: 'Rosie' });
-			// DB call 1: requireWishlistRow (caller IS the linked recipient; self-promoted before)
+			// DB call 1: wishlist lookup (caller IS the linked recipient; self-promoted before)
 			mockDbInstance.pushResult([makeWishlistRow({ recipientIsModerator: true })]);
 			// DB call 2 (in tx): update wishlist returning
 			mockDbInstance.pushResult([flippedRow]);
@@ -143,7 +143,7 @@ describe('flipRecipientToFreeText', () => {
 
 	describe('actor gating: only the linked recipient may flip', () => {
 		it('throws 403 ACCESS_DENIED for a správce (no evicting a linked recipient)', async () => {
-			// DB call 1: requireWishlistRow — caller is MODERATOR_ID, recipient is RECIPIENT_ID.
+			// DB call 1: wishlist lookup — caller is MODERATOR_ID, recipient is RECIPIENT_ID.
 			// Rejected before any moderator-assignment lookup: správce status is irrelevant.
 			mockDbInstance.pushResult([makeWishlistRow()]);
 
@@ -277,7 +277,7 @@ describe('archiveWishlist', () => {
 	describe('recipient can archive', () => {
 		it('returns the archived wishlist row', async () => {
 			const archivedRow = makeWishlistRow({ status: 'archived', archivedAt: new Date() });
-			// DB call 1: requireWishlistRow (recipient = manager, no mod query)
+			// DB call 1: wishlist lookup (recipient = manager, no mod query)
 			mockDbInstance.pushResult([makeWishlistRow()]);
 			// DB call 2: update returning
 			mockDbInstance.pushResult([archivedRow]);
@@ -294,9 +294,9 @@ describe('archiveWishlist', () => {
 
 	describe('non-manager cannot archive', () => {
 		it('throws 403 ACCESS_DENIED when caller is neither recipient nor správce', async () => {
-			// DB call 1: requireWishlistRow (recipient is RECIPIENT_ID, caller is OTHER_USER_ID)
+			// DB call 1: wishlist lookup (recipient is RECIPIENT_ID, caller is OTHER_USER_ID)
 			mockDbInstance.pushResult([makeWishlistRow()]);
-			// DB call 2: hasActiveModeratorAssignment → none found
+			// DB call 2: správce assignment lookup → none found
 			mockDbInstance.pushResult([]);
 
 			await expect(

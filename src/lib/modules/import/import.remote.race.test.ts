@@ -43,12 +43,13 @@ vi.mock('$lib/modules/gifts/gifts.remote.js', () => ({
 	getGiftsByWishlistShortId: vi.fn(),
 }));
 vi.mock('$lib/modules/gift-categories/gift_category_queries.remote.js', () => ({
-	getGiftCategorySettingsRows: vi.fn(),
+	getGiftCategories: vi.fn(),
 }));
 
 import { closeDb, getDb } from '$lib/server/db/index.js';
 import { user } from '$lib/server/db/auth.schema.js';
 import { gift } from '$lib/server/db/gift.schema.js';
+import { giftRevision } from '$lib/server/db/gift_revision.schema.js';
 import { wishlist } from '$lib/server/db/wishlist.schema.js';
 import { importGifts } from './import.remote.js';
 import type { ImportGiftsResult } from './import.remote.js';
@@ -153,5 +154,17 @@ describe.skipIf(!DB_READY)('import duplicate advisory race [real DB]', () => {
 		const rows = await getDb().select().from(gift).where(eq(gift.wishlistId, WISHLIST_ID));
 		expect(rows).toHaveLength(1);
 		expect(rows[0]?.links).toEqual([{ url: SOURCE_URL }]);
+		const revisions = await getDb()
+			.select()
+			.from(giftRevision)
+			.where(eq(giftRevision.wishlistId, WISHLIST_ID));
+		expect(revisions).toHaveLength(1);
+		expect(revisions[0]).toMatchObject({
+			giftId: rows[0]?.id,
+			actorUserId: USER_ID,
+			channel: 'ui',
+			before: null,
+			after: { name: `${PREFIX}gift` },
+		});
 	});
 });

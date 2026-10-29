@@ -61,8 +61,8 @@ export function projectGiftForRecipient(gift: GiftByRole): GiftForRecipient {
 		priorityLevelId: gift.priorityLevelId,
 		priorityLabel: gift.priorityLabel,
 		prioritySortOrder: gift.prioritySortOrder,
-		categoryId: gift.categoryId ?? null,
-		category: gift.category ?? null,
+		categoryIds: gift.categoryIds,
+		categories: gift.categories,
 	};
 }
 
@@ -255,23 +255,20 @@ function buildCategoryGroups(
 	const uncategorized: GiftByRole[] = [];
 
 	for (const gift of gifts) {
-		if (
-			gift.categoryId !== null &&
-			gift.categoryId !== undefined &&
-			gift.category !== null &&
-			gift.category !== undefined
-		) {
-			let group = groupsByCategory.get(gift.categoryId);
+		// Only the primary (first) category groups, so every gift appears in exactly one group.
+		const primaryCategory = gift.categories[0];
+		if (primaryCategory !== undefined) {
+			let group = groupsByCategory.get(primaryCategory.id);
 			if (group === undefined) {
 				group = {
-					rank: gift.category.sortOrder,
-					key: `category:${gift.categoryId}`,
-					label: labelForGiftCategory(gift.category, language),
+					rank: primaryCategory.sortOrder,
+					key: `category:${primaryCategory.id}`,
+					label: labelForGiftCategory(primaryCategory, language),
 					priorityKey: null,
 					kind: GIFT_SECTION_KINDS.categoryGroup,
 					gifts: [],
 				};
-				groupsByCategory.set(gift.categoryId, group);
+				groupsByCategory.set(primaryCategory.id, group);
 			}
 			group.gifts.push(gift);
 		} else {

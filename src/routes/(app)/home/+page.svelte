@@ -5,7 +5,9 @@
 	import * as m from '$lib/paraglide/messages.js';
 	import * as Carousel from '$lib/components/base/carousel/index.js';
 	import HomeShelf from '$lib/components/blocks/dashboard/HomeShelf.svelte';
+	import { HOME_SHELF_SIZES } from '$lib/components/blocks/dashboard/home_shelf_sizes.js';
 	import WishlistCard from '$lib/components/blocks/dashboard/WishlistCard.svelte';
+	import type { WishlistCardSize } from '$lib/components/blocks/dashboard/wishlist_card_variants.js';
 	import EmptyState from '$lib/components/blocks/dashboard/EmptyState.svelte';
 	import { Button } from '$lib/components/base/button/index.js';
 	import { CreateWishlistModal } from '$lib/components/blocks/wishlist/index.js';
@@ -19,13 +21,11 @@
 	} from '$lib/modules/wishlists/home_overview_types.js';
 	import PlusIcon from '@lucide/svelte/icons/plus';
 	import FileUpIcon from '@lucide/svelte/icons/file-up';
+	import ClockIcon from '@lucide/svelte/icons/clock';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
 	const overview = $derived(data.overview);
-
-	// Every slide keeps the same width so the peek geometry stays consistent across rows.
-	const SLIDE_CLASS = 'basis-[80vw] sm:basis-[320px]';
 
 	const followedHref = localizeInternalHref(resolve('/(app)/followed'));
 	const moderatedHref = localizeInternalHref(resolve('/(app)/moderated'));
@@ -39,21 +39,23 @@
 	let isImportWizardOpen = $state(false);
 </script>
 
-{#snippet ownCard(item: OwnHomeItem)}
-	<WishlistCard wishlist={item} giftCount={item.totalGifts} />
+{#snippet ownCard(item: OwnHomeItem, size: WishlistCardSize)}
+	<WishlistCard wishlist={item} giftCount={item.totalGifts} {size} />
 {/snippet}
 
-{#snippet moderatedCard(item: ModeratedHomeItem)}
+{#snippet moderatedCard(item: ModeratedHomeItem, size: WishlistCardSize)}
 	<WishlistCard
 		wishlist={item}
+		{size}
 		recipientDisplayName={item.recipientDisplayName}
 		reservationProgress={{ reserved: item.reservedGifts, total: item.totalGifts }}
 	/>
 {/snippet}
 
-{#snippet followedCard(item: FollowedHomeItem)}
+{#snippet followedCard(item: FollowedHomeItem, size: WishlistCardSize)}
 	<WishlistCard
 		wishlist={item}
+		{size}
 		recipientDisplayName={item.recipientDisplayName}
 		availableGifts={item.availableGifts}
 		myReservations={item.myReservations}
@@ -62,11 +64,11 @@
 
 {#snippet recentCard(item: RecentHomeItem)}
 	{#if item.role === 'own'}
-		{@render ownCard(item)}
+		{@render ownCard(item, 'large')}
 	{:else if item.role === 'moderated'}
-		{@render moderatedCard(item)}
+		{@render moderatedCard(item, 'large')}
 	{:else}
-		{@render followedCard(item)}
+		{@render followedCard(item, 'large')}
 	{/if}
 {/snippet}
 
@@ -87,10 +89,10 @@
 	</EmptyState>
 {:else}
 	{#if overview.recent.length > 0}
-		<HomeShelf title={m.nav_recent()} visibleCount={overview.recent.length}>
-			{#snippet icon()}🕐{/snippet}
+		<HomeShelf title={m.nav_recent()} size="large" visibleCount={overview.recent.length}>
+			{#snippet icon()}<ClockIcon />{/snippet}
 			{#each overview.recent as item (item.role + item.id)}
-				<Carousel.Item class={SLIDE_CLASS}>
+				<Carousel.Item class={HOME_SHELF_SIZES.large.slideClass}>
 					{@render recentCard(item)}
 				</Carousel.Item>
 			{/each}
@@ -100,13 +102,14 @@
 	{#if overview.followed.total > 0}
 		<HomeShelf
 			title={m.nav_followed()}
+			size="compact"
 			viewAllHref={followedHref}
 			total={overview.followed.total}
 			visibleCount={overview.followed.items.length}
 		>
 			{#each overview.followed.items as item (item.id)}
-				<Carousel.Item class={SLIDE_CLASS}>
-					{@render followedCard(item)}
+				<Carousel.Item class={HOME_SHELF_SIZES.compact.slideClass}>
+					{@render followedCard(item, 'compact')}
 				</Carousel.Item>
 			{/each}
 		</HomeShelf>
@@ -115,13 +118,14 @@
 	{#if overview.moderated.total > 0}
 		<HomeShelf
 			title={m.nav_moderated()}
+			size="compact"
 			viewAllHref={moderatedHref}
 			total={overview.moderated.total}
 			visibleCount={overview.moderated.items.length}
 		>
 			{#each overview.moderated.items as item (item.id)}
-				<Carousel.Item class={SLIDE_CLASS}>
-					{@render moderatedCard(item)}
+				<Carousel.Item class={HOME_SHELF_SIZES.compact.slideClass}>
+					{@render moderatedCard(item, 'compact')}
 				</Carousel.Item>
 			{/each}
 		</HomeShelf>
@@ -130,13 +134,14 @@
 	{#if overview.own.total > 0}
 		<HomeShelf
 			title={m.nav_my_lists()}
+			size="compact"
 			viewAllHref={ownHref}
 			total={overview.own.total}
 			visibleCount={overview.own.items.length}
 		>
 			{#each overview.own.items as item (item.id)}
-				<Carousel.Item class={SLIDE_CLASS}>
-					{@render ownCard(item)}
+				<Carousel.Item class={HOME_SHELF_SIZES.compact.slideClass}>
+					{@render ownCard(item, 'compact')}
 				</Carousel.Item>
 			{/each}
 		</HomeShelf>

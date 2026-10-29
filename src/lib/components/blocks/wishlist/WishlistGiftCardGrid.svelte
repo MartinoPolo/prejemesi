@@ -20,6 +20,8 @@
 	} from './gift_card_grid_columns.js';
 	import { giftCardGridVariants } from './gift_card_grid_variants.js';
 	import { GIFT_DISPLAY_ROW_KINDS } from './gift_section_rows.js';
+	import { GIFT_LIVE_PREVIEW } from '$lib/components/blocks/change-proposals/change_row_model.js';
+	import { WISHLIST_ROLES } from '$lib/modules/wishlists/types.js';
 
 	interface WishlistGiftCardGridProps extends WishlistGiftCollectionProps {
 		columnOption?: GiftCardColumnOption;
@@ -91,6 +93,15 @@
 				{/snippet}
 			</WishlistGiftItem>
 		{/if}
+	{/each}
+	{#each collection.livePreviews?.creations ?? [] as creation (creation.key)}
+		<div class="min-w-0 self-stretch" data-testid="gift-live-preview-creation">
+			<GiftCard
+				gift={creation.gift}
+				role={WISHLIST_ROLES.recipient}
+				livePreview={GIFT_LIVE_PREVIEW.creation}
+			/>
+		</div>
 	{/each}
 </div>
 

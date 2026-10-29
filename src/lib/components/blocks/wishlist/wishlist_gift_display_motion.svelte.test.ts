@@ -33,8 +33,8 @@ function visitorGift(): GiftForVisitor {
 		priorityLevelId: null,
 		priorityLabel: null,
 		prioritySortOrder: null,
-		categoryId: null,
-		category: null,
+		categoryIds: [],
+		categories: [],
 		likeCount: 0,
 		reservedCount: 0,
 		isFullyReserved: false,
@@ -242,20 +242,6 @@ describe('WishlistGiftDisplay collection transition', () => {
 
 		expect(collection.dataset.viewMode).toBe('list');
 		expect(collection.style.transform).toBe('');
-		expect(animate).not.toHaveBeenCalled();
-		await screen.unmount();
-	});
-
-	it('keeps transitions into and out of compact mode immediate', async () => {
-		const animate = vi.spyOn(HTMLElement.prototype, 'animate');
-		const screen = await render(WishlistGiftDisplayTestHost, defaultProps);
-		const collection = document.querySelector<HTMLElement>('[data-wishlist-gift-collection]')!;
-
-		await screen.rerender({ ...defaultProps, viewMode: 'compact' });
-		expect(collection.dataset.viewMode).toBe('compact');
-		await screen.rerender({ ...defaultProps, viewMode: 'list' });
-
-		expect(collection.dataset.viewMode).toBe('list');
 		expect(animate).not.toHaveBeenCalled();
 		await screen.unmount();
 	});

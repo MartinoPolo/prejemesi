@@ -4,12 +4,17 @@ import { wishlist, priorityLevel } from '$lib/server/db/wishlist.schema.js';
 import { moderatorAssignment } from '$lib/server/db/moderator.schema.js';
 import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
 import { DEFAULT_PALETTE, type Palette } from '$lib/theme/palettes.js';
+import { WISHLIST_THEMES, type WishlistThemeId } from '$lib/theme/wishlist_themes.js';
+import { inferOccasionThemeId } from '$lib/theme/wishlist_theme_occasion.js';
 import { demoSessionId } from '$lib/server/demo/scope.js';
 import { enforceDemoWishlistLimit } from '$lib/server/demo/limits.js';
+import { assertEventDateAllowed } from '$lib/server/operations/wishlist_kind_rules.js';
 import {
 	DEFAULT_PRIORITY_LEVELS,
 	DEFAULT_WISHLIST_THEME,
 	RECIPIENT_KIND,
+	WISHLIST_KIND,
+	type WishlistKind,
 	type WishlistTheme,
 } from './types.js';
 
@@ -24,9 +29,12 @@ type Transaction = Parameters<Parameters<ReturnType<typeof getDb>['transaction']
  */
 export type NewWishlistInput = {
 	title: string;
+	kind?: WishlistKind;
 	eventDate?: Date | null;
 	theme?: WishlistTheme;
 	palette?: Palette;
+	/** Omitted: inferred from the title or event date; null: explicitly no theme. */
+	themeId?: WishlistThemeId | null;
 	description?: string | null;
 } & ({ recipientKind: 'self' } | { recipientKind: 'other'; recipientName: string });
 
@@ -43,9 +51,15 @@ export async function seedNewWishlist(
 	input: NewWishlistInput,
 ): Promise<typeof wishlist.$inferSelect> {
 	const forSelf = input.recipientKind === RECIPIENT_KIND.self;
+	const kind = input.kind ?? WISHLIST_KIND.occasion;
+	assertEventDateAllowed(kind, input.eventDate);
 	// Normalize the optional description: trim, then collapse empty/whitespace-only to null
 	// (mirrors the settings-modal save path so both write the same shape).
 	const trimmedDescription = input.description?.trim() ?? '';
+	const themeId =
+		input.themeId === undefined
+			? inferOccasionThemeId({ title: input.title, eventDate: input.eventDate ?? null })
+			: input.themeId;
 	const sessionId = demoSessionId();
 	if (sessionId !== null) {
 		await enforceDemoWishlistLimit(tx, sessionId);
@@ -58,8 +72,12 @@ export async function seedNewWishlist(
 			recipientUserId: forSelf ? creatorUserId : null,
 			recipientName: forSelf ? null : input.recipientName,
 			title: input.title,
+			kind,
 			eventDate: input.eventDate ?? null,
-			palette: input.palette ?? DEFAULT_PALETTE,
+			palette:
+				input.palette ??
+				(themeId === null ? DEFAULT_PALETTE : WISHLIST_THEMES[themeId].palette),
+			themeId,
 			description: trimmedDescription === '' ? null : trimmedDescription,
 			theme: input.theme ?? DEFAULT_WISHLIST_THEME,
 		})

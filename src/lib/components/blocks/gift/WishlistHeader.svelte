@@ -10,7 +10,14 @@
 	import ArchiveIcon from '@lucide/svelte/icons/archive';
 	import EyeIcon from '@lucide/svelte/icons/eye';
 	import TriangleAlertIcon from '@lucide/svelte/icons/triangle-alert';
-	import { WISHLIST_ROLES, type WishlistRole } from '$lib/modules/wishlists/types.js';
+	import InfinityIcon from '@lucide/svelte/icons/infinity';
+	import RefreshCwIcon from '@lucide/svelte/icons/refresh-cw';
+	import {
+		WISHLIST_KIND,
+		WISHLIST_ROLES,
+		type WishlistKind,
+		type WishlistRole,
+	} from '$lib/modules/wishlists/types.js';
 	import { canManageWishlist } from '$lib/modules/wishlists/wishlist_capabilities.js';
 	import { Avatar } from '$lib/components/derived/avatar/index.js';
 	import { getInitials } from '$lib/utils/initials.js';
@@ -19,9 +26,11 @@
 		WISHLIST_STATUS_BADGE_MAP,
 	} from '$lib/modules/wishlists/dashboard_types.js';
 	import { eventCountdown } from '$lib/modules/wishlists/event_countdown.js';
+	import { hasUpcomingEventDate } from '$lib/modules/wishlists/event_date.js';
 	import { wishlistImageUrl, wishlistSlotToFrameProps } from '$lib/modules/images/index.js';
 	import type { WishlistImageSlots } from '$lib/modules/images/index.js';
 	import WishlistSlotImage from '$lib/components/blocks/wishlist/WishlistSlotImage.svelte';
+	import type { WishlistThemeMotif } from '$lib/components/blocks/wishlist/wishlist_theme_scope.js';
 	import WishlistHeaderActions from './WishlistHeaderActions.svelte';
 	import { wishlistHeaderVariants } from './wishlist_header_variants.js';
 
@@ -51,8 +60,11 @@
 		imageSlots: WishlistImageSlots | null;
 		/** Theme-derived emoji for the no-image polaroid fallback. */
 		themeEmoji: string;
+		/** Wishlist theme motif for the no-image polaroid on themed lists (#535). */
+		themeMotif?: WishlistThemeMotif | null;
 		eventDate: Date | null;
 		status: 'draft' | 'active' | 'archived';
+		kind?: WishlistKind;
 		role: WishlistRole;
 		giftCount: number | null;
 		/** True when the linked recipient self-promoted to also see reservation state (trust warning). */
@@ -84,8 +96,10 @@
 		imageSrc = null,
 		imageSlots,
 		themeEmoji,
+		themeMotif = null,
 		eventDate,
 		status,
+		kind = WISHLIST_KIND.occasion,
 		role,
 		giftCount,
 		recipientIsModerator,
@@ -110,8 +124,11 @@
 	// Management actions open to any manager — the linked recipient OR a správce (issue #99).
 	const canManage = $derived(canManageWishlist(role));
 	const isArchived = $derived(status === 'archived');
+	const isPermanent = $derived(kind === WISHLIST_KIND.permanent);
+	// Rendered as an expression because Svelte trims the spaces of literal element text.
+	const META_SEPARATOR = ' · ';
 	const settingsAvailable = $derived((canManage && !isArchived) || adminSettingsAvailable);
-	const isEventPast = $derived(eventDate !== null && new Date(eventDate) < new Date());
+	const isEventPast = $derived(eventDate !== null && !hasUpcomingEventDate(eventDate));
 	// Recipient edit pencil (issue #150): free-text lists → any manager may rename; linked
 	// lists → ONLY the linked recipient may flip to free-text (no evicting by správci).
 	// Archived lists are read-only, both actions are rejected server-side.
@@ -221,22 +238,26 @@
 				src={polaroidSrc}
 				frame={polaroidFrame}
 				{themeEmoji}
+				{themeMotif}
 				alt={title}
-				variant="thumbnail"
+				variant="banner"
 				eagerLoading
 			/>
 		</figure>
 		<div class="mobile-copy">
-			<p class="mobile-recipient">
-				{m.wishlist_header_for_prefix()}<strong>{recipientDisplayName}</strong>
+			<p class="mobile-recipient" data-testid="wishlist-mobile-recipient">
+				{m.wishlist_header_for_prefix()} <strong>{recipientDisplayName}</strong>
 			</p>
 			<svelte:element this={headingLevel === 1 ? 'h1' : 'h2'} class="mobile-title">
 				{title}
 			</svelte:element>
-			<p class="mobile-meta">
-				{statusLabel}{#if giftCountLabel !== null}<span aria-hidden="true">
-						·
-					</span>{giftCountLabel}{/if}
+			<p class="mobile-meta" data-testid="wishlist-mobile-meta">
+				<span class="mobile-meta-item">{statusLabel}</span>{#if isPermanent}<span
+						aria-hidden="true">{META_SEPARATOR}</span
+					><span class="mobile-meta-item">{m.wishlist_kind_permanent()}</span
+					>{/if}{#if giftCountLabel !== null}<span aria-hidden="true"
+						>{META_SEPARATOR}</span
+					><span class="mobile-meta-item">{giftCountLabel}</span>{/if}
 			</p>
 		</div>
 		{@render headerActions()}
@@ -261,8 +282,9 @@
 						src={polaroidSrc}
 						frame={polaroidFrame}
 						{themeEmoji}
+						{themeMotif}
 						alt={title}
-						variant="thumbnail"
+						variant="banner"
 						eagerLoading
 					/>
 					{#if canManage && !isArchived}
@@ -327,6 +349,13 @@
 				{/if}
 				<div class={styles.metaRow()}>
 					<Badge tone={statusBadgeTone} size="lg">{statusLabel}</Badge>
+					{#if isPermanent}
+						<!-- Takes the place of the event-date chip a permanent list never has. -->
+						<Badge tone="neutral" size="lg" data-testid="wishlist-kind-chip">
+							<InfinityIcon data-icon="inline-start" />
+							{m.wishlist_kind_permanent()}
+						</Badge>
+					{/if}
 					{#if giftCountLabel !== null}
 						<Badge tone="neutral" size="lg">{giftCountLabel}</Badge>
 					{/if}
@@ -366,6 +395,14 @@
 					{m.wishlist_archive_button()}
 				</Button>
 			</Alert.Action>
+		</Alert.Root>
+	{/if}
+
+	<!-- Visitors learn that a permanent list changes over time; managers shape it themselves. -->
+	{#if isPermanent && !canManage && !isArchived}
+		<Alert.Root data-testid="wishlist-permanent-note">
+			<RefreshCwIcon />
+			<Alert.Title>{m.wishlist_permanent_visitor_note()}</Alert.Title>
 		</Alert.Root>
 	{/if}
 
@@ -425,8 +462,8 @@
 			100% 100%,
 			100% 100%;
 		background-repeat: repeat-y, no-repeat, no-repeat;
-		border: 2.5px solid var(--ink);
-		border-radius: 14px;
+		border: var(--border-w) solid var(--ink);
+		border-radius: max(0px, calc(var(--radius-panel) - 2px));
 		box-shadow: var(--elevation-ordinary-strong);
 	}
 
@@ -562,8 +599,8 @@
 			padding: var(--space-2);
 			overflow: hidden;
 			background: var(--card);
-			border: 2px solid var(--ink);
-			border-radius: var(--radius-xl);
+			border: max(1px, calc(var(--border-w) - 0.5px)) solid var(--ink);
+			border-radius: max(0px, calc(var(--radius-panel) - 2px));
 			box-shadow: var(--elevation-ordinary);
 		}
 
@@ -572,8 +609,8 @@
 			height: 92px;
 			margin: 0;
 			overflow: hidden;
-			border: 2px solid var(--ink);
-			border-radius: var(--radius-lg);
+			border: max(1px, calc(var(--border-w) - 0.5px)) solid var(--ink);
+			border-radius: max(0px, calc(var(--radius-panel) - 6px));
 		}
 
 		.mobile-copy {
@@ -601,7 +638,7 @@
 			display: -webkit-box;
 			margin: 1px 0 0;
 			overflow: hidden;
-			font-family: var(--font-heading);
+			font-family: var(--font-head);
 			font-size: 16px;
 			font-weight: 700;
 			line-height: 1.15;
@@ -612,6 +649,11 @@
 
 		.mobile-meta {
 			margin-top: var(--space-1);
+		}
+
+		/* Wraps only between segments, never inside one such as "3 přání". */
+		.mobile-meta-item {
+			white-space: nowrap;
 		}
 	}
 </style>

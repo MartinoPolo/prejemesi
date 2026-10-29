@@ -50,6 +50,8 @@
 		graceMessage: (inputs: { time: string }) => string;
 		/** Reactive "now" from the page clock that keeps the grace countdown live. */
 		graceNow: Date;
+		/** Asked before the first change in the gift editor; false cancels the change. */
+		confirmGiftChange?: () => Promise<boolean>;
 		isSubmitting: boolean;
 		isDeleting: boolean;
 		// Reserve modal
@@ -106,6 +108,7 @@
 		graceExpiresAt,
 		graceMessage,
 		graceNow,
+		confirmGiftChange,
 		isSubmitting,
 		isDeleting,
 		reserveModalOpen = $bindable(),
@@ -147,6 +150,7 @@
 	{demo}
 	{priorityLevels}
 	{categoryOptions}
+	canCreateCategory={canManage && !isArchived}
 	{role}
 	readOnly={!canManage}
 	{isArchived}
@@ -156,6 +160,7 @@
 	{graceExpiresAt}
 	{graceMessage}
 	{graceNow}
+	confirmChange={confirmGiftChange}
 	{isSubmitting}
 	{isDeleting}
 	{oncreate}

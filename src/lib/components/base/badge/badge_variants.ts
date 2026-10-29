@@ -15,13 +15,13 @@ export const badgeVariants = tv({
 		tone: {
 			neutral: 'bg-card text-muted-foreground border-ink',
 			success:
-				'bg-[color-mix(in_oklab,var(--status-success)_14%,var(--card))] text-status-success border-ink',
+				'bg-[color-mix(in_oklab,var(--status-success)_14%,var(--card))] text-status-success-text border-ink',
 			warning:
-				'bg-[color-mix(in_oklab,var(--status-warning)_14%,var(--card))] text-[color-mix(in_oklab,var(--status-warning)_70%,var(--foreground))] border-ink',
-			danger: 'bg-[color-mix(in_oklab,var(--status-danger)_14%,var(--card))] text-status-danger border-ink',
-			info: 'bg-[color-mix(in_oklab,var(--status-info)_14%,var(--card))] text-status-info border-ink',
+				'bg-[color-mix(in_oklab,var(--status-warning)_14%,var(--card))] text-status-warning-text border-ink',
+			danger: 'bg-[color-mix(in_oklab,var(--status-danger)_14%,var(--card))] text-status-danger-text border-ink',
+			info: 'bg-[color-mix(in_oklab,var(--status-info)_14%,var(--card))] text-brand-link border-ink',
 			primary:
-				'bg-[color-mix(in_oklab,var(--primary)_14%,var(--card))] text-brand border-ink',
+				'bg-[color-mix(in_oklab,var(--primary)_14%,var(--card))] text-brand-link border-ink',
 			accent: 'bg-accent-loud text-accent-loud-foreground border-ink',
 		},
 		badgeStyle: {
@@ -38,7 +38,7 @@ export const badgeVariants = tv({
 	compoundVariants: [
 		{ badgeStyle: 'solid', tone: 'success', class: 'bg-status-success text-white' },
 		{ badgeStyle: 'solid', tone: 'warning', class: 'bg-status-warning text-black' },
-		{ badgeStyle: 'solid', tone: 'danger', class: 'bg-status-danger text-white' },
+		{ badgeStyle: 'solid', tone: 'danger', class: 'bg-status-danger-fill text-white' },
 		{ badgeStyle: 'solid', tone: 'info', class: 'bg-status-info text-white' },
 		{ badgeStyle: 'solid', tone: 'primary', class: 'bg-primary text-primary-foreground' },
 		{

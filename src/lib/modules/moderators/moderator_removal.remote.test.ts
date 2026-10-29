@@ -60,6 +60,11 @@ vi.mock('drizzle-orm', () => ({
 	and: vi.fn((...args: unknown[]) => args),
 	isNull: vi.fn((arg: unknown) => arg),
 	count: vi.fn(() => 'count()'),
+	// Schema modules loaded through the operation runner build column defaults with `sql`.
+	sql: Object.assign(
+		vi.fn(() => 'sql'),
+		{ join: vi.fn(() => 'sql') },
+	),
 }));
 
 vi.mock('$lib/server/db/wishlist.schema.js', () => ({
@@ -159,7 +164,7 @@ function createMockDb(queryResults: unknown[][]): ReturnType<typeof getDb> {
 // ── Shared fixtures ──────────────────────────────────────────────────────────
 
 // `recipientUser` is the linked recipient of the self list (`activeWishlistRow`) — manages it
-// inherently, so `verifyManagerAccess`/`resolveWishlistRole` match without a mod-assignment query.
+// inherently, so role resolution match without a mod-assignment query.
 const recipientUser = { id: 'recipient-1', email: 'recipient@example.com' };
 const regularUser = { id: 'user-2', email: 'user@example.com' };
 
@@ -241,7 +246,7 @@ beforeEach(() => {
 
 describe('revokeModeratorInvite', () => {
 	it('recipient revokes pending invite → succeeds (no return value)', async () => {
-		// 1: invite lookup, 2: requireWishlistRow (recipient = manager, no mod query), 3: update (revoke)
+		// 1: invite lookup, 2: wishlist lookup (recipient = manager, no mod query), 3: update (revoke)
 		mockGetDb.mockReturnValue(createMockDb([[pendingInviteRow], [activeWishlistRow], []]));
 
 		const result = await callRevokeModeratorInvite(recipientAuthContext, {
@@ -252,7 +257,7 @@ describe('revokeModeratorInvite', () => {
 	});
 
 	it('non-manager cannot revoke → throws 403 ACCESS_DENIED', async () => {
-		// 1: invite lookup, 2: requireWishlistRow (for-someone), 3: hasActiveModeratorAssignment → none
+		// 1: invite lookup, 2: wishlist lookup (for-someone), 3: správce assignment lookup → none
 		mockGetDb.mockReturnValue(createMockDb([[pendingInviteRow], [forSomeoneWishlistRow], []]));
 
 		await expect(
@@ -266,7 +271,7 @@ describe('revokeModeratorInvite', () => {
 			usedAt: new Date('2025-02-01'),
 			usedByUserId: regularUser.id,
 		};
-		// 1: invite lookup, 2: requireWishlistRow (recipient = manager, no mod query)
+		// 1: invite lookup, 2: wishlist lookup (recipient = manager, no mod query)
 		mockGetDb.mockReturnValue(createMockDb([[usedInvite], [activeWishlistRow]]));
 
 		await expect(
@@ -276,7 +281,7 @@ describe('revokeModeratorInvite', () => {
 
 	it('already revoked invite → throws 400', async () => {
 		const revokedInvite = { ...pendingInviteRow, revokedAt: new Date('2025-02-01') };
-		// 1: invite lookup, 2: requireWishlistRow (recipient = manager, no mod query)
+		// 1: invite lookup, 2: wishlist lookup (recipient = manager, no mod query)
 		mockGetDb.mockReturnValue(createMockDb([[revokedInvite], [activeWishlistRow]]));
 
 		await expect(
@@ -289,15 +294,33 @@ describe('revokeModeratorInvite', () => {
 
 describe('removeModerator', () => {
 	it('recipient removes a moderator on a self list → succeeds (orphan guard exempt)', async () => {
-		// 1: assignment lookup, 2: requireWishlistRow (recipient = manager, no mod query),
-		// assertNotLastManager returns early (recipientUserId set → no count query), 3: soft-delete update
-		mockGetDb.mockReturnValue(createMockDb([[activeAssignmentRow], [activeWishlistRow], []]));
+		// 1: assignment lookup, 2: wishlist lookup (recipient = manager, no mod query),
+		// 3: assignment re-check under the wishlist lock, assertNotLastManager returns early
+		// (recipientUserId set → no count query), 4: soft-delete update
+		mockGetDb.mockReturnValue(
+			createMockDb([
+				[activeAssignmentRow],
+				[activeWishlistRow],
+				[{ id: testAssignmentId }],
+				[],
+			]),
+		);
 
 		const result = await callRemoveModerator(recipientAuthContext, {
 			assignmentId: testAssignmentId,
 		});
 
 		expect(result).toBeUndefined();
+	});
+
+	it('assignment removed concurrently before the wishlist lock is granted → throws 404', async () => {
+		// 1: assignment lookup (still active), 2: wishlist lookup (recipient = manager),
+		// 3: assignment re-check under the wishlist lock → already removed
+		mockGetDb.mockReturnValue(createMockDb([[activeAssignmentRow], [activeWishlistRow], []]));
+
+		await expect(
+			callRemoveModerator(recipientAuthContext, { assignmentId: testAssignmentId }),
+		).rejects.toMatchObject({ status: 404, message: 'MODERATOR_NOT_FOUND' });
 	});
 
 	it('assignment not found → throws 404', async () => {
@@ -310,13 +333,14 @@ describe('removeModerator', () => {
 
 	it('orphan guard: removing the last správce on a for-someone list → throws 403 CANNOT_REMOVE_LAST_MANAGER', async () => {
 		// The sole moderator (regularUser) tries to remove themselves from a list with no linked recipient.
-		// 1: assignment lookup, 2: requireWishlistRow (for-someone), 3: hasActiveModeratorAssignment → found,
-		// 4: countActiveModerators → 1 (last one) → guard throws before the soft-delete.
+		// 1: assignment lookup, 2: wishlist lookup (for-someone), 3: správce assignment lookup → found,
+		// 4: assignment re-check, 5: countActiveModerators → 1 (last one) → guard throws before the soft-delete.
 		mockGetDb.mockReturnValue(
 			createMockDb([
 				[activeAssignmentRow],
 				[forSomeoneWishlistRow],
 				[{ id: 'assignment-1' }],
+				[{ id: testAssignmentId }],
 				[{ value: 1 }],
 			]),
 		);
@@ -327,13 +351,14 @@ describe('removeModerator', () => {
 	});
 
 	it('for-someone list with more than one správce → removal is allowed', async () => {
-		// 1: assignment lookup, 2: requireWishlistRow (for-someone), 3: hasActiveModeratorAssignment → found,
-		// 4: countActiveModerators → 2 (guard passes), 5: soft-delete update.
+		// 1: assignment lookup, 2: wishlist lookup (for-someone), 3: správce assignment lookup → found,
+		// 4: assignment re-check, 5: countActiveModerators → 2 (guard passes), 6: soft-delete update.
 		mockGetDb.mockReturnValue(
 			createMockDb([
 				[activeAssignmentRow],
 				[forSomeoneWishlistRow],
 				[{ id: 'assignment-1' }],
+				[{ id: testAssignmentId }],
 				[{ value: 2 }],
 				[],
 			]),
@@ -351,7 +376,7 @@ describe('removeModerator', () => {
 
 describe('selfPromoteToModerator', () => {
 	it('linked recipient promotes self → sets recipientIsModerator and returns success', async () => {
-		// 1: requireWishlistRow (recipientUserId === caller), 2: update wishlist, 3: follower select
+		// 1: wishlist lookup (recipientUserId === caller), 2: update wishlist, 3: follower select
 		mockGetDb.mockReturnValue(createMockDb([[activeWishlistRow], [], []]));
 
 		const result = await callSelfPromoteToModerator(recipientAuthContext, {
@@ -363,7 +388,7 @@ describe('selfPromoteToModerator', () => {
 
 	it('non-recipient (not the person the list is for) → throws 403 ACCESS_DENIED', async () => {
 		// Self-promote is a recipient-only action; a správce/visitor cannot opt into reservation state.
-		// 1: requireWishlistRow (recipientUserId is recipientUser, caller is regularUser)
+		// 1: wishlist lookup (recipientUserId is recipientUser, caller is regularUser)
 		mockGetDb.mockReturnValue(createMockDb([[activeWishlistRow]]));
 
 		await expect(
@@ -382,7 +407,7 @@ describe('selfPromoteToModerator', () => {
 
 	it('archived wishlist → throws 400', async () => {
 		const archivedWishlistRow = { ...activeWishlistRow, status: 'archived' };
-		// 1: requireWishlistRow (recipient match, then archived check throws)
+		// 1: wishlist lookup (recipient match, then archived check throws)
 		mockGetDb.mockReturnValue(createMockDb([[archivedWishlistRow]]));
 
 		await expect(

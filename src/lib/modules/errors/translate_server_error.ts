@@ -62,6 +62,14 @@ const TRANSLATIONS: Record<string, TranslatorFunction> = {
 	[SERVER_ERROR.BULK_COPY_DESTINATION_UNAVAILABLE]: () =>
 		m.server_error_bulk_copy_destination_unavailable(),
 	[SERVER_ERROR.BULK_COPY_FAILED]: () => m.server_error_bulk_copy_failed(),
+	[SERVER_ERROR.BULK_COPY_SOURCE_NOT_PERMANENT]: () =>
+		m.server_error_bulk_copy_source_not_permanent(),
+	[SERVER_ERROR.BULK_COPY_RECIPIENT_CANNOT_MOVE]: () =>
+		m.server_error_bulk_copy_recipient_cannot_move(),
+	[SERVER_ERROR.PERMANENT_WISHLIST_EVENT_DATE]: () =>
+		m.server_error_permanent_wishlist_event_date(),
+	[SERVER_ERROR.CANNOT_MAKE_WISHLIST_WITH_UPCOMING_EVENT_PERMANENT]: () =>
+		m.server_error_cannot_make_wishlist_with_upcoming_event_permanent(),
 	[SERVER_ERROR.GIFT_PRIORITY_WISHLIST_MISMATCH]: () =>
 		m.server_error_gift_priority_wishlist_mismatch(),
 	// Reuses the form's own range-error copy so toast and inline hint read identically.
@@ -93,6 +101,15 @@ const TRANSLATIONS: Record<string, TranslatorFunction> = {
 	[SERVER_ERROR.SHEETS_LINK_NOT_A_SHEET]: () => m.server_error_sheets_link_not_a_sheet(),
 	[SERVER_ERROR.SHEETS_PRIVATE]: () => m.server_error_sheets_private(),
 	[SERVER_ERROR.SHEETS_FETCH_FAILED]: () => m.server_error_sheets_fetch_failed(),
+
+	[SERVER_ERROR.AGENT_PROPOSAL_NOT_FOUND]: () => m.server_error_agent_proposal_not_found(),
+	[SERVER_ERROR.AGENT_PROPOSAL_NOT_PENDING]: () => m.server_error_agent_proposal_not_pending(),
+	[SERVER_ERROR.AGENT_PROPOSAL_EXPIRED]: () => m.server_error_agent_proposal_expired(),
+	[SERVER_ERROR.AGENT_PROPOSAL_NOT_APPLIED]: () => m.server_error_agent_proposal_not_applied(),
+	[SERVER_ERROR.AGENT_PROPOSAL_SELECTION_INVALID]: () =>
+		m.server_error_agent_proposal_selection_invalid(),
+	[SERVER_ERROR.AGENT_PROPOSAL_UNDO_UNSUPPORTED]: () =>
+		m.server_error_agent_proposal_undo_unsupported(),
 };
 
 /**
@@ -142,6 +159,16 @@ export function getServerErrorCode(thrown: unknown): string | null {
 		}
 	}
 	return message;
+}
+
+/** Translates a code already separated from its parameters, e.g. a change row's error. */
+export function translateServerErrorCode(
+	code: string,
+	params: Record<string, unknown>,
+	fallback?: string,
+): string {
+	const translator = TRANSLATIONS[code];
+	return translator === undefined ? (fallback ?? m.error_generic()) : translator(params);
 }
 
 export function translateServerError(thrown: unknown, fallback?: string): string {

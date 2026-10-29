@@ -40,11 +40,11 @@ export const toastIconColors = {
  * stays readable on the tinted surface in both light and dark themes.
  */
 export const toastTitleColors = {
-	info: 'text-[color-mix(in_oklab,var(--status-info)_60%,var(--foreground))]',
-	success: 'text-[color-mix(in_oklab,var(--status-success)_60%,var(--foreground))]',
-	warning: 'text-[color-mix(in_oklab,var(--status-warning)_60%,var(--foreground))]',
-	danger: 'text-[color-mix(in_oklab,var(--status-danger)_60%,var(--foreground))]',
-	loading: 'text-[color-mix(in_oklab,var(--primary)_60%,var(--foreground))]',
+	info: 'text-brand-link',
+	success: 'text-status-success-text',
+	warning: 'text-status-warning-text',
+	danger: 'text-status-danger-text',
+	loading: 'text-brand-link',
 } as const satisfies Record<ToastTone, string>;
 
 export type ToastProps = {

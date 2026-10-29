@@ -13,9 +13,10 @@ vi.mock('$env/dynamic/public', () => ({
 }));
 
 import {
-	transformedImageUrl,
+	responsiveImageSource,
+	ladderWidthFor,
 	socialCropImageUrl,
-	IMAGE_VARIANTS,
+	IMAGE_TRANSFORM_WIDTHS,
 	OG_IMAGE_WIDTH,
 	OG_IMAGE_HEIGHT,
 } from './variants.js';
@@ -86,45 +87,73 @@ describe('isStoredObjectKey / resolveUserImageUrl', () => {
 	});
 });
 
-describe('transformedImageUrl', () => {
-	it('builds a /cdn-cgi/image/ URL with bounded width for R2-hosted images (REQ-3)', () => {
+describe('responsiveImageSource', () => {
+	const transform = (width: number, path = 'gifts/a.jpg', extra = '') =>
+		`${PUBLIC_BASE}/cdn-cgi/image/width=${String(width)},fit=scale-down,format=auto${extra}/${path}`;
+
+	it('offers the bounded width ladder as srcset and declares the painted CSS width', () => {
 		mockEnv['PUBLIC_R2_URL'] = PUBLIC_BASE;
 
-		expect(transformedImageUrl(`${PUBLIC_BASE}/gifts/a.jpg`, 'card')).toBe(
-			`${PUBLIC_BASE}/cdn-cgi/image/width=${String(IMAGE_VARIANTS.card.width)},fit=scale-down,format=auto/gifts/a.jpg`,
+		const source = responsiveImageSource(`${PUBLIC_BASE}/gifts/a.jpg`, 'card', 225);
+
+		expect(source?.srcset).toBe(
+			IMAGE_TRANSFORM_WIDTHS.map((width) => `${transform(width)} ${String(width)}w`).join(
+				', ',
+			),
+		);
+		expect(source?.sizes).toBe('225px');
+	});
+
+	it('falls back to a src covering the painted width on a 2x display', () => {
+		mockEnv['PUBLIC_R2_URL'] = PUBLIC_BASE;
+
+		expect(responsiveImageSource(`${PUBLIC_BASE}/gifts/a.jpg`, 'banner', 225)?.src).toBe(
+			transform(480),
+		);
+	});
+
+	it('rounds fractional painted widths up so the browser never under-selects', () => {
+		mockEnv['PUBLIC_R2_URL'] = PUBLIC_BASE;
+
+		expect(responsiveImageSource(`${PUBLIC_BASE}/gifts/a.jpg`, 'card', 150.2)?.sizes).toBe(
+			'151px',
 		);
 	});
 
 	it('adds anim=false for GIF sources so cards load a still frame (REQ-5)', () => {
 		mockEnv['PUBLIC_R2_URL'] = PUBLIC_BASE;
 
-		expect(transformedImageUrl(`${PUBLIC_BASE}/gifts/a.GIF`, 'listThumb')).toBe(
-			`${PUBLIC_BASE}/cdn-cgi/image/width=${String(IMAGE_VARIANTS.listThumb.width)},fit=scale-down,format=auto,anim=false/gifts/a.GIF`,
-		);
+		const source = responsiveImageSource(`${PUBLIC_BASE}/gifts/a.GIF`, 'listThumb', 120);
+
+		expect(source?.src).toBe(transform(320, 'gifts/a.GIF', ',anim=false'));
+		expect(source?.srcset).not.toMatch(/format=auto\/gifts/);
 	});
 
-	it('returns the original for a null variant (the Gift viewer keeps originals)', () => {
+	it('returns null for a null variant (the Gift viewer keeps originals)', () => {
 		mockEnv['PUBLIC_R2_URL'] = PUBLIC_BASE;
-		const src = `${PUBLIC_BASE}/gifts/a.gif`;
 
-		expect(transformedImageUrl(src, null)).toBe(src);
+		expect(responsiveImageSource(`${PUBLIC_BASE}/gifts/a.gif`, null, 300)).toBeNull();
 	});
 
-	it('passes external URLs through untouched', () => {
+	it('returns null for external URLs, local-dev proxy paths, and missing sources', () => {
 		mockEnv['PUBLIC_R2_URL'] = PUBLIC_BASE;
-		const external = 'https://cdn.alza.cz/products/x.jpg';
 
-		expect(transformedImageUrl(external, 'card')).toBe(external);
+		expect(responsiveImageSource('https://cdn.alza.cz/products/x.jpg', 'card', 300)).toBeNull();
+		expect(responsiveImageSource(null, 'card', 300)).toBeNull();
+		delete mockEnv['PUBLIC_R2_URL'];
+		expect(responsiveImageSource('/api/upload/gifts/a.jpg', 'card', 300)).toBeNull();
+	});
+});
+
+describe('ladderWidthFor', () => {
+	it('picks the smallest rung delivering at least the required pixels', () => {
+		expect(ladderWidthFor(1)).toBe(IMAGE_TRANSFORM_WIDTHS[0]);
+		expect(ladderWidthFor(320)).toBe(320);
+		expect(ladderWidthFor(321)).toBe(480);
 	});
 
-	it('passes local-dev proxy paths through untouched (no transformations in dev)', () => {
-		expect(transformedImageUrl('/api/upload/gifts/a.jpg', 'card')).toBe(
-			'/api/upload/gifts/a.jpg',
-		);
-	});
-
-	it('handles null src', () => {
-		expect(transformedImageUrl(null, 'card')).toBeNull();
+	it('caps at the top rung', () => {
+		expect(ladderWidthFor(10_000)).toBe(IMAGE_TRANSFORM_WIDTHS.at(-1));
 	});
 });
 

@@ -149,7 +149,7 @@
 			</div>
 			{#if error === 'exit' && !registerOpen}<p
 					role="alert"
-					class="w-full text-sm text-destructive"
+					class="w-full text-sm text-status-danger-text"
 				>
 					{m.demo_exit_error()}
 				</p>{/if}
@@ -181,7 +181,7 @@
 					</Select.Group></Select.Content
 				>
 			</Select.Root>
-			{#if error === 'reset'}<p role="alert" class="text-sm text-destructive">
+			{#if error === 'reset'}<p role="alert" class="text-sm text-status-danger-text">
 					{m.demo_reset_error()}
 				</p>{/if}
 			<Dialog.Footer>
@@ -210,7 +210,7 @@
 				<Dialog.Title>{m.demo_register_title()}</Dialog.Title>
 				<Dialog.Description>{m.demo_register_description()}</Dialog.Description>
 			</Dialog.Header>
-			{#if error === 'exit'}<p role="alert" class="text-sm text-destructive">
+			{#if error === 'exit'}<p role="alert" class="text-sm text-status-danger-text">
 					{m.demo_exit_error()}
 				</p>{/if}
 			<Dialog.Footer>
@@ -240,7 +240,7 @@
 					>{m.demo_exit()}</Button
 				>
 			</div>
-			{#if error === 'exit'}<p role="alert" class="text-sm text-destructive">
+			{#if error === 'exit'}<p role="alert" class="text-sm text-status-danger-text">
 					{m.demo_exit_error()}
 				</p>{/if}
 		</div>

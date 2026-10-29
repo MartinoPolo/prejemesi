@@ -35,7 +35,7 @@ Variant A was chosen and refined with: nested desktop context menus retained, fu
 | Proposed Name | Description | Why existing components don't cover it |
 | --- | --- | --- |
 | GiftContextActions | Shared typed role-aware action tree with ContextMenu and Sheet renderers | Prevents desktop/mobile capability and copy drift |
-| GiftLongPressTarget | 600 ms touch recognizer with movement and scroll cancellation | Built-in floating touch context menu cannot become the required bottom sheet |
+| GiftLongPressTarget | 500 ms touch recognizer (earlier when the browser fires its native long-press `contextmenu`) with movement, scroll and second-finger cancellation | Built-in floating touch context menu cannot become the required bottom sheet |
 | WishlistSelectionToolbar | Selection counts, hidden warning, field controls, primary Hotovo | Existing import-grid bulk bar has unrelated actions and state |
 | WishlistGiftSelection | Selected-ID set and visible/group/hidden derivations | Wishlist display has no persistent cross-view selection model |
 | GiftCard/GiftList selection adapters | Whole-surface hit target, full-image tint, full-card ring, and aligned checkbox placement | Browse surfaces currently own ordinary card actions and have no inert selection mode |

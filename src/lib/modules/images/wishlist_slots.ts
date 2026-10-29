@@ -11,7 +11,7 @@ import { imagePublicUrl } from './public_url.js';
 import { imageMetaToFrameProps, type ImageFrameProps } from './crop.js';
 import { WISHLIST_EDITOR_SLOTS } from './crop_targets.js';
 import { fillImageMeta } from './editor_modes.js';
-import { socialCropImageUrl } from './variants.js';
+import { OG_IMAGE_HEIGHT, OG_IMAGE_WIDTH, socialCropImageUrl } from './variants.js';
 import type { WishlistImageSlot, WishlistImageSlots, ImageFocalPoint } from './types.js';
 
 /**
@@ -68,22 +68,32 @@ export function socialSlotFocalPoint(
 	return wishlistSlotToFrameProps(slots, 'social').focal;
 }
 
+/** An Open Graph / Twitter card image; dimensions are known only for fixed-size renders. */
+export interface SocialPreviewImage {
+	url: string;
+	width?: number;
+	height?: number;
+}
+
 /**
- * Resolves the Open Graph / Twitter card image URL for a wishlist (issue
- * #117): a fixed 1200×630 crop of the assigned image honoring the `social`
- * slot's saved focal point, or the generic fallback preview when no image is
- * assigned. `socialFallbackImageUrl` is the caller's already-absolute
- * `SOCIAL_PREVIEW_IMAGE_URL` (kept out of this module to avoid a dependency on
- * `$lib/config/site`).
+ * Resolves the Open Graph / Twitter card image for a wishlist (issue #117): a
+ * fixed 1200×630 crop of the assigned image honoring the `social` slot's saved
+ * focal point, or the caller's branded fallback when no image is assigned. When
+ * the image cannot be transformed the original is served without dimensions,
+ * because declaring 1200×630 for an arbitrary photo would misinform crawlers.
  */
-export function wishlistSocialImageUrl(
+export function wishlistSocialImage(
 	imageKey: string | null | undefined,
 	slots: WishlistImageSlots | null | undefined,
-	socialFallbackImageUrl: string,
-): string {
+	fallbackImage: SocialPreviewImage,
+): SocialPreviewImage {
 	const imagePath = wishlistImageUrl(imageKey);
 	if (imagePath === null) {
-		return socialFallbackImageUrl;
+		return fallbackImage;
 	}
-	return socialCropImageUrl(imagePath, socialSlotFocalPoint(slots)) ?? imagePath;
+	const croppedUrl = socialCropImageUrl(imagePath, socialSlotFocalPoint(slots));
+	if (croppedUrl === null || croppedUrl === imagePath) {
+		return { url: imagePath };
+	}
+	return { url: croppedUrl, width: OG_IMAGE_WIDTH, height: OG_IMAGE_HEIGHT };
 }

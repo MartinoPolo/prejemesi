@@ -51,27 +51,6 @@ export function canonicalGiftLinkKey(url: string | null | undefined): string | n
 	return `${host}${path}`;
 }
 
-/** Authoritative source identity for ingestion idempotency, including every query parameter. */
-export function canonicalIngestionSourceKey(url: string | null | undefined): string | null {
-	const normalizedUrl = normalizeGiftUrl(url);
-	if (normalizedUrl === null) {
-		return null;
-	}
-	const parsed = new URL(normalizedUrl);
-	const host = parsed.host.toLowerCase().replace(/^www\./, '');
-	const path = parsed.pathname.replace(/\/$/, '');
-	const queryEntries = [...parsed.searchParams.entries()].sort(
-		([leftKey, leftValue], [rightKey, rightValue]) => {
-			if (leftKey !== rightKey) {
-				return leftKey < rightKey ? -1 : 1;
-			}
-			return leftValue === rightValue ? 0 : leftValue < rightValue ? -1 : 1;
-		},
-	);
-	const query = new URLSearchParams(queryEntries).toString();
-	return `${host}${path}${query === '' ? '' : `?${query}`}`;
-}
-
 /** The primary link (`links[0]`), or null when the gift has no links. */
 export function getPrimaryGiftLink(links: readonly GiftLink[] | null | undefined): GiftLink | null {
 	return links && links.length > 0 ? links[0]! : null;

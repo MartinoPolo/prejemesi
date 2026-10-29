@@ -3,6 +3,7 @@ import {
 	loginViaApi,
 	createAuthenticatedContext,
 	registerAndGetPage,
+	waitForAppHydration,
 } from './fixtures/auth-helpers';
 import { createTestUser } from './fixtures/test-data';
 import { createPixelAssertions } from '../helpers/pixel-assertions.mjs';
@@ -128,6 +129,164 @@ test.describe('Home overview (issue #225)', () => {
 		await page.context().close();
 	});
 
+	test('Shift+wheel and horizontal wheel glide the row proportionally without overshooting its edges (issue #524)', async ({
+		browser,
+		request,
+		baseURL,
+	}) => {
+		const page = await signInAs(browser, request, baseURL!, MARTIN);
+		await page.setViewportSize({ width: 1280, height: 900 });
+		await page.goto('/home');
+		await waitForAppHydration(page);
+
+		const row = page
+			.getByTestId('home-shelf')
+			.filter({ has: page.getByRole('button', { name: 'Další' }) })
+			.first();
+		await expect(row).toHaveCount(1);
+		const viewport = row.locator('[data-slot="carousel-content"]');
+		await row.scrollIntoViewIfNeeded();
+		const rowBox = await viewport.boundingBox();
+		await page.mouse.move(rowBox!.x + rowBox!.width / 2, rowBox!.y + rowBox!.height / 2);
+
+		// Records the row's scroll offset every frame, so backward jumps and overshoot are observable.
+		await viewport.evaluate((element) => {
+			const samples: number[] = [];
+			const record = () => {
+				samples.push(element.scrollLeft);
+				requestAnimationFrame(record);
+			};
+			record();
+			Object.assign(window, { trackSamples: samples });
+		});
+		const takeSamples = () =>
+			page.evaluate(() => {
+				const samples = (window as unknown as { trackSamples: number[] }).trackSamples;
+				return samples.splice(0, samples.length);
+			});
+		const settledPosition = async () => {
+			let previous = Number.NaN;
+			await expect
+				.poll(async () => {
+					const current = await viewport.evaluate((element) => element.scrollLeft);
+					const settled = current === previous;
+					previous = current;
+					return settled;
+				})
+				.toBe(true);
+			return previous;
+		};
+		const wheelNotches = async (count: number, deltaX: number, deltaY: number) => {
+			for (let notch = 0; notch < count; notch++) {
+				await page.mouse.wheel(deltaX, deltaY);
+				await page.waitForTimeout(50);
+			}
+		};
+		/** Every frame moved toward `direction` (1 = toward the end) and never went past `final`. */
+		const expectMonotonicWithoutOvershoot = (
+			samples: number[],
+			direction: number,
+			final: number,
+		) => {
+			for (let index = 1; index < samples.length; index++) {
+				expect((samples[index] - samples[index - 1]) * direction).toBeGreaterThan(-0.5);
+			}
+			for (const sample of samples) {
+				expect((sample - final) * direction).toBeLessThan(0.5);
+			}
+		};
+
+		expect(await settledPosition()).toBe(0);
+		await takeSamples();
+
+		// One Shift+wheel notch moves the row by exactly its delta: a glide, not a fling.
+		await page.keyboard.down('Shift');
+		await wheelNotches(1, 0, 100);
+		const afterNotch = await settledPosition();
+		expect(afterNotch).toBeCloseTo(100, 0);
+		expectMonotonicWithoutOvershoot(await takeSamples(), 1, afterNotch);
+
+		// Spinning far past the end stops exactly at the end edge.
+		await wheelNotches(30, 0, 100);
+		await page.keyboard.up('Shift');
+		const end = await settledPosition();
+		expectMonotonicWithoutOvershoot(await takeSamples(), 1, end);
+		await expect(row.getByRole('button', { name: 'Další' })).toBeDisabled();
+
+		// Horizontal (trackpad) deltas back past the start stop exactly at the start edge.
+		await wheelNotches(30, -100, 0);
+		expect(await settledPosition()).toBe(0);
+		expectMonotonicWithoutOvershoot(await takeSamples(), -1, 0);
+
+		// A plain vertical wheel is left to scroll the page and does not move the row.
+		await page.evaluate(() => {
+			window.addEventListener(
+				'wheel',
+				(event) =>
+					Object.assign(window, { verticalWheelPrevented: event.defaultPrevented }),
+				{ once: true },
+			);
+		});
+		await wheelNotches(1, 0, 100);
+		await expect
+			.poll(() =>
+				page.evaluate(
+					() =>
+						(window as unknown as { verticalWheelPrevented?: boolean })
+							.verticalWheelPrevented,
+				),
+			)
+			.toBe(false);
+		expect(await settledPosition()).toBe(0);
+
+		await page.context().close();
+	});
+
+	test('mouse click-and-drag scrolls the row without opening the card under the pointer', async ({
+		browser,
+		request,
+		baseURL,
+	}) => {
+		const page = await signInAs(browser, request, baseURL!, MARTIN);
+		await page.setViewportSize({ width: 1280, height: 900 });
+		await page.goto('/home');
+		await waitForAppHydration(page);
+
+		const row = page
+			.getByTestId('home-shelf')
+			.filter({ has: page.getByRole('button', { name: 'Další' }) })
+			.first();
+		const viewport = row.locator('[data-slot="carousel-content"]');
+		await row.scrollIntoViewIfNeeded();
+		const rowBox = await viewport.boundingBox();
+		const homeUrl = page.url();
+		const y = rowBox!.y + rowBox!.height / 2;
+		const startX = rowBox!.x + rowBox!.width * 0.75;
+
+		// Moving slowly, then pausing before release, so the row stops where the pointer left it.
+		await page.mouse.move(startX, y);
+		await page.mouse.down();
+		for (let step = 1; step <= 10; step++) {
+			await page.mouse.move(startX - step * 20, y);
+		}
+		await page.waitForTimeout(150);
+		await page.mouse.up();
+		await expect.poll(() => viewport.evaluate((element) => element.scrollLeft)).toBe(200);
+		await expect(row.getByRole('button', { name: 'Předchozí' })).toBeEnabled();
+		await page.waitForTimeout(300);
+		expect(page.url()).toBe(homeUrl);
+
+		// A plain click on a card still opens it.
+		const card = viewport.getByTestId('wishlist-card').first();
+		const href = await card.getAttribute('href');
+		await card.click();
+		await expect(page).toHaveURL(
+			new RegExp(`${href!.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/?$`),
+		);
+
+		await page.context().close();
+	});
+
 	test('wishlist surface keeps its content, shadow clearance and lower-edge navigation in a carousel', async ({
 		browser,
 		request,
@@ -234,6 +393,34 @@ test.describe('Home overview (issue #225)', () => {
 		const recent = shelf(page, 'Nedávné');
 		await expect(recent).toHaveCount(1);
 		await expect(recent.getByText('Vánoce 2026').first()).toBeVisible({ timeout: 10_000 });
+
+		await page.context().close();
+	});
+
+	test('Nedávné is more prominent than the category rows on desktop (issue #532)', async ({
+		browser,
+		request,
+		baseURL,
+	}) => {
+		const page = await signInAs(browser, request, baseURL!, MARTIN);
+		await page.setViewportSize({ width: 1280, height: 900 });
+		await page.goto('/home');
+		await waitForAppHydration(page);
+
+		const recent = shelf(page, 'Nedávné');
+		const followed = shelf(page, 'Sledované');
+		await expect(recent.getByTestId('wishlist-card').first()).toBeVisible({ timeout: 10_000 });
+		await expect(followed.getByTestId('wishlist-card').first()).toBeVisible();
+
+		const recentCard = await recent.getByTestId('wishlist-card').first().boundingBox();
+		const categoryCard = await followed.getByTestId('wishlist-card').first().boundingBox();
+		expect(recentCard!.width).toBeGreaterThan(categoryCard!.width);
+
+		const headingFontSize = (row: ReturnType<typeof shelf>) =>
+			row
+				.getByRole('heading', { level: 2 })
+				.evaluate((heading) => Number.parseFloat(getComputedStyle(heading).fontSize));
+		expect(await headingFontSize(recent)).toBeGreaterThan(await headingFontSize(followed));
 
 		await page.context().close();
 	});

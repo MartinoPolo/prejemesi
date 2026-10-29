@@ -6,7 +6,6 @@
 	import GiftCardSkeleton from '$lib/components/blocks/gift/GiftCardSkeleton.svelte';
 	import WishlistGiftCardGrid from './WishlistGiftCardGrid.svelte';
 	import WishlistGiftListView from './WishlistGiftListView.svelte';
-	import WishlistGiftCompactTable from './WishlistGiftCompactTable.svelte';
 	import type { GiftReorderPlacement } from '$lib/modules/gifts/gift_grouped_reorder.js';
 	import type { GiftReorderPlacementCommitHandler } from './gift_reorder_view.svelte.js';
 	import {
@@ -35,6 +34,7 @@
 		widenPageForGiftCardColumns,
 	} from './gift_card_grid_columns.js';
 	import { giftCardGridVariants } from './gift_card_grid_variants.js';
+	import type { GiftLivePreviews } from '$lib/components/blocks/change-proposals/gift_live_preview.js';
 
 	interface WishlistGiftDisplayProps {
 		/** Shared display sections consumed identically by every view mode. */
@@ -76,6 +76,8 @@
 		receivedPendingGiftIds?: ReadonlySet<string>;
 		cardColumnOption?: GiftCardColumnOption;
 		oncardcolumncapacitychange?: (largestFittingColumnCount: number | null) => void;
+		/** The open chat's proposals as they are decided. */
+		livePreviews?: GiftLivePreviews;
 	}
 
 	let {
@@ -117,6 +119,7 @@
 		receivedPendingGiftIds = new Set<string>(),
 		cardColumnOption = GIFT_CARD_COLUMN_OPTIONS.automatic,
 		oncardcolumncapacitychange,
+		livePreviews,
 	}: WishlistGiftDisplayProps = $props();
 
 	// Management affordances (add/edit/reorder) open to recipient OR správce.
@@ -127,10 +130,13 @@
 	const reservationStateHidden = $derived(
 		hideReservationState || role === WISHLIST_ROLES.recipient,
 	);
-	const showPriority = $derived(grouping !== 'priority');
+	// Gifts the assistant proposes for an empty list preview in place of the empty state.
+	const showsEmptyState = $derived(
+		isFilteredEmpty || (isEmpty && (livePreviews?.creations.length ?? 0) === 0),
+	);
 	const STANDARD_EASING = 'cubic-bezier(0.2, 0.7, 0.3, 1)';
 	let displayedViewMode = $state(untrack(() => viewMode));
-	const ImageGiftView = $derived(
+	const GiftCollectionView = $derived(
 		displayedViewMode === 'card' ? WishlistGiftCardGrid : WishlistGiftListView,
 	);
 	let collectionElement = $state<HTMLElement | null>(null);
@@ -165,12 +171,7 @@
 		cancelActiveTransition();
 		const run = transitionRun;
 
-		if (
-			collectionElement === null ||
-			reducedMotionRequested() ||
-			displayedViewMode === 'compact' ||
-			nextViewMode === 'compact'
-		) {
+		if (collectionElement === null || reducedMotionRequested()) {
 			displayedViewMode = nextViewMode;
 			await tick();
 			motion?.reset(isLoading);
@@ -252,7 +253,6 @@
 			isArchived,
 			hideReservationState,
 			grouping,
-			showPriority,
 			reorderMode,
 			selectionMode,
 			receivedPendingGiftIds,
@@ -334,9 +334,7 @@
 </script>
 
 {#snippet giftCollection()}
-	<ContextMenu.Trigger
-		disabled={displayedViewMode === 'compact' || selectionMode || collectionIsOutgoing}
-	>
+	<ContextMenu.Trigger disabled={selectionMode || collectionIsOutgoing}>
 		{#snippet child({ props: triggerProps })}
 			<div
 				{...triggerProps}
@@ -351,54 +349,38 @@
 				role={selectionMode ? 'group' : undefined}
 				aria-label={selectionMode ? m.gift_selection_listbox_label() : undefined}
 			>
-				{#if displayedViewMode !== 'compact'}
-					<ImageGiftView
-						columnOption={cardColumnOption}
-						oncolumncapacitychange={oncardcolumncapacitychange}
-						{hascontextactions}
-						{activeContextGiftId}
-						{contextSurface}
-						{sections}
-						{role}
-						{showPriority}
-						{isArchived}
-						hideReservationState={reservationStateHidden}
-						reorderEnabled={reorderMode &&
-							reorderInteractionEnabled &&
-							canManage &&
-							!isArchived &&
-							!selectionMode}
-						{selectionMode}
-						{onselectiontoggle}
-						{oncontextactions}
-						{onedit}
-						{onreserve}
-						{onunreserve}
-						{onreceived}
-						{receivedPendingGiftIds}
-						{onreorderpreview}
-						{onreordercommit}
-						{onreordercancel}
-						reorderGrouping={reorderMode ? grouping : GIFT_GROUPING_OPTIONS.none}
-						{onreorderplacementpreview}
-						{onreorderplacementcommit}
-						{onreorderplacementcancel}
-					/>
-				{:else}
-					<WishlistGiftCompactTable
-						{sections}
-						{role}
-						{showPriority}
-						{isArchived}
-						hideReservationState={reservationStateHidden}
-						{canManage}
-						{onedit}
-						{onreserve}
-						{onunreserve}
-						{onreceived}
-						{receivedPendingGiftIds}
-					/>
-				{/if}
+				<GiftCollectionView
+					columnOption={cardColumnOption}
+					oncolumncapacitychange={oncardcolumncapacitychange}
+					{hascontextactions}
+					{activeContextGiftId}
+					{contextSurface}
+					{sections}
+					{role}
+					{isArchived}
+					hideReservationState={reservationStateHidden}
+					reorderEnabled={reorderMode &&
+						reorderInteractionEnabled &&
+						canManage &&
+						!isArchived &&
+						!selectionMode}
+					{selectionMode}
+					{onselectiontoggle}
+					{oncontextactions}
+					{onedit}
+					{onreserve}
+					{onunreserve}
+					{onreceived}
+					{receivedPendingGiftIds}
+					{onreorderpreview}
+					{onreordercommit}
+					{onreordercancel}
+					reorderGrouping={reorderMode ? grouping : GIFT_GROUPING_OPTIONS.none}
+					{onreorderplacementpreview}
+					{onreorderplacementcommit}
+					{onreorderplacementcancel}
+					{livePreviews}
+				/>
 			</div>
 		{/snippet}
 	</ContextMenu.Trigger>
@@ -435,7 +417,7 @@
 					<GiftCardSkeleton />
 				{/each}
 			</div>
-		{:else if isEmpty || isFilteredEmpty}
+		{:else if showsEmptyState}
 			<WishlistEmptyState
 				{isArchived}
 				{canManage}

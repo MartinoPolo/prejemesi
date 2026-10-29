@@ -96,8 +96,8 @@
 			{#if saveMessage !== null}
 				<p
 					class={saveMessageIsError
-						? 'text-sm text-status-danger'
-						: 'text-sm text-status-success'}
+						? 'text-sm text-status-danger-text'
+						: 'text-sm text-status-success-text'}
 				>
 					{saveMessage}
 				</p>
@@ -113,9 +113,9 @@
 				<Button type="submit" intent="danger">{m.unsubscribe_all_button()}</Button>
 			</form>
 			{#if isUnsubscribeAllSuccess(form)}
-				<p class="text-sm text-status-success">{m.unsubscribe_all_success()}</p>
+				<p class="text-sm text-status-success-text">{m.unsubscribe_all_success()}</p>
 			{:else if form?.action === 'unsubscribeAll'}
-				<p class="text-sm text-status-danger">{m.unsubscribe_all_error()}</p>
+				<p class="text-sm text-status-danger-text">{m.unsubscribe_all_error()}</p>
 			{/if}
 		</div>
 	{/if}

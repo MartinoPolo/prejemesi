@@ -15,6 +15,7 @@
 	import AuthFooterLink from '$lib/components/blocks/auth/AuthFooterLink.svelte';
 	import * as Alert from '$lib/components/base/alert/index.js';
 	import { authClient } from '$lib/auth_client.js';
+	import { isOauthAuthorizationQuery } from '$lib/modules/access_tokens/oauth_authorization.js';
 	import {
 		getLocalizedAuthCallback,
 		getLocalizedAuthHref,
@@ -42,11 +43,15 @@
 	let resending = $state(false);
 	let resendSent = $state(false);
 	let turnstileToken = $state<string | null>(null);
+	let turnstileUnavailable = $state(false);
 	let turnstileResetSignal = $state(0);
 
 	let callbackUrl = $derived(
 		getLocalizedAuthCallback(page.url.searchParams.get('redirect'), resolve('/home')),
 	);
+	// An app's authorization sent the user here; signing in answers with where it continues, and
+	// the auth client navigates there itself.
+	let continuesAppAuthorization = $derived(isOauthAuthorizationQuery(page.url.searchParams));
 
 	function validateEmail(): boolean {
 		if (!email.trim()) {
@@ -111,7 +116,7 @@
 				} else {
 					errorMessage = m.login_error_credentials();
 				}
-			} else {
+			} else if (!continuesAppAuthorization) {
 				await goto(callbackUrl);
 			}
 		} catch {
@@ -261,14 +266,14 @@
 		</div>
 
 		{#key turnstileResetSignal}
-			<TurnstileWidget bind:token={turnstileToken} />
+			<TurnstileWidget bind:token={turnstileToken} bind:unavailable={turnstileUnavailable} />
 		{/key}
 
 		<Button
 			type="submit"
 			class="mt-6 w-full"
 			size="lg"
-			disabled={loading || turnstileToken === null}
+			disabled={loading || (!turnstileUnavailable && turnstileToken === null)}
 		>
 			{#if loading}
 				<span class="spinner"></span>

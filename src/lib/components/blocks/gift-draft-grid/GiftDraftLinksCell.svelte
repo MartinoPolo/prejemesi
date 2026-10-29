@@ -100,7 +100,7 @@
 						size="sm"
 						format="icon"
 						class="flex-none"
-						surfaceClass="text-brand"
+						surfaceClass="text-brand-link"
 						aria-label={m.draft_grid_open_link({ label: labelOf(link) })}
 					>
 						<ExternalLinkIcon data-icon="solo" aria-hidden="true" />

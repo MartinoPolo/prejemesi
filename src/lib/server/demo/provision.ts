@@ -67,6 +67,7 @@ async function insertDemoWishlist(
 			palette: entry.palette,
 			status: entry.status === 'shared' ? 'active' : entry.status,
 			sharedAt: entry.status === 'draft' ? null : sharedAt,
+			firstSharedAt: entry.status === 'draft' ? null : sharedAt,
 			archivedAt: archive ? new Date(now.getTime() - 30 * 24 * HOUR_MS) : null,
 			createdAt,
 			eventDate,
@@ -136,10 +137,10 @@ async function insertDemoGifts(
 				links: [{ url: item.url }],
 				price: item.price,
 				currency: 'CZK',
-				categoryId:
-					categoryRows.find(
-						(_, categoryIndex) => categories[categoryIndex] === item.category,
-					)?.id ?? null,
+				categoryIds: categoryRows
+					.filter((_, categoryIndex) => categories[categoryIndex] === item.category)
+					.slice(0, 1)
+					.map((category) => category.id),
 				priorityLevelId: priorities[PRIORITY_LEVEL_INDEX[item.priority]]?.id ?? null,
 				sortOrder,
 				received: item.state === 'received',

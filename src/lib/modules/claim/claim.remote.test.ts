@@ -23,7 +23,7 @@ import {
 
 describe('generateClaimInviteLink', () => {
 	it('správce of a for-someone list generates a claim link (no email)', async () => {
-		// 1: requireWishlistRow, 2: hasActiveModeratorAssignment (Jana) → found, 3: insert → created
+		// 1: locked wishlist lookup, 2: správce assignment (Jana) → found, 3: insert → created
 		mockGetDb.mockReturnValue(
 			createMockDb([[forSomeoneShared], [{ id: 'assignment-1' }], [createdClaimInviteRow]]),
 		);
@@ -41,7 +41,7 @@ describe('generateClaimInviteLink', () => {
 	});
 
 	it('rejects generation on a linked-recipient list', async () => {
-		// caller IS the linked recipient → verifyManagerAccess passes with 1 query, then linked check throws
+		// caller IS the linked recipient → manages with only the wishlist lookup, then linked check throws
 		mockGetDb.mockReturnValue(
 			createMockDb([[{ ...linkedWishlist, recipientUserId: janaUser.id }]]),
 		);
@@ -52,7 +52,7 @@ describe('generateClaimInviteLink', () => {
 	});
 
 	it('rejects generation on an archived list', async () => {
-		// 1: requireWishlistRow (for-someone), 2: hasActiveModeratorAssignment → found, then archived check throws
+		// 1: wishlist lookup (for-someone), 2: správce assignment → found, then archived check throws
 		mockGetDb.mockReturnValue(createMockDb([[forSomeoneArchived], [{ id: 'assignment-1' }]]));
 
 		await expect(
@@ -61,7 +61,7 @@ describe('generateClaimInviteLink', () => {
 	});
 
 	it('non-manager cannot generate → 403 ACCESS_DENIED', async () => {
-		// 1: requireWishlistRow (for-someone), 2: hasActiveModeratorAssignment → none (Eva not a správce)
+		// 1: wishlist lookup (for-someone), 2: správce assignment → none (Eva not a správce)
 		mockGetDb.mockReturnValue(createMockDb([[forSomeoneShared], []]));
 
 		await expect(
@@ -71,7 +71,7 @@ describe('generateClaimInviteLink', () => {
 
 	it('with email → dispatches CLAIM_INVITED with the claim path as urlPathOverride', async () => {
 		const testEmail = 'klara@example.com';
-		// 1: requireWishlistRow, 2: mod assignment → found, 3: insert → created, 4: user lookup → none
+		// 1: wishlist lookup, 2: správce assignment → found, 3: insert → created, 4: user lookup → none
 		mockGetDb.mockReturnValue(
 			createMockDb([
 				[forSomeoneShared],

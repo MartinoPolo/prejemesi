@@ -32,23 +32,47 @@ describe('computePreShareOwnerEdit', () => {
 	});
 
 	describe('category', () => {
-		it('allows changing category without changing the frozen gift name', () => {
+		it('allows changing categories without changing the frozen gift name', () => {
 			const outcome = computePreShareOwnerEdit(
-				makeCurrent({ categoryId: 'category-old' }),
-				makeInput({ categoryId: 'category-new', name: 'Camera' }),
+				makeCurrent({ categoryIds: ['category-old'] }),
+				makeInput({ categoryIds: ['category-new', 'category-old'], name: 'Camera' }),
 				NOW,
 			);
 
 			expect(outcome.rejection).toBeNull();
-			expect(outcome.updateData.categoryId).toBe('category-new');
+			expect(outcome.updateData.categoryIds).toEqual(['category-new', 'category-old']);
 			expect('name' in outcome.updateData).toBe(false);
 			expect(outcome.changed).toBe(true);
 		});
 
-		it('keeps category assignment in the pre-share snapshot used for net-zero comparisons', () => {
+		it('treats a reordered category list as a change because the first is primary', () => {
+			const outcome = computePreShareOwnerEdit(
+				makeCurrent({ categoryIds: ['category-a', 'category-b'] }),
+				makeInput({ categoryIds: ['category-b', 'category-a'] }),
+				NOW,
+			);
+
+			expect(outcome.updateData.categoryIds).toEqual(['category-b', 'category-a']);
+			expect(outcome.changed).toBe(true);
+		});
+
+		it('treats the same category list as no change', () => {
+			const outcome = computePreShareOwnerEdit(
+				makeCurrent({ categoryIds: ['category-a', 'category-b'] }),
+				makeInput({ categoryIds: ['category-a', 'category-b'] }),
+				NOW,
+			);
+
+			expect('categoryIds' in outcome.updateData).toBe(false);
+			expect(outcome.changed).toBe(false);
+		});
+
+		it('keeps the category list in the pre-share snapshot used for net-zero comparisons', () => {
 			expect(
-				toPreShareGiftSnapshot(makeCurrent({ categoryId: 'category-books' })).categoryId,
-			).toBe('category-books');
+				toPreShareGiftSnapshot(
+					makeCurrent({ categoryIds: ['category-books', 'category-toys'] }),
+				).categoryIds,
+			).toEqual(['category-books', 'category-toys']);
 		});
 	});
 

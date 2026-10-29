@@ -62,8 +62,8 @@
 			priorityLevelId: 'priority-high',
 			priorityLabel: 'High',
 			prioritySortOrder: 0,
-			categoryId: null,
-			category: null,
+			categoryIds: [],
+			categories: [],
 			likeCount: 0,
 			reservedCount: 0,
 			isFullyReserved: false,
@@ -75,10 +75,14 @@
 </script>
 
 <div data-testid="grouping">{context.grouping.current}</div>
+<div data-testid="view-mode">{context.viewMode.current}</div>
 <div data-testid="card-column-option">{context.cardColumnOption.current}</div>
 <div data-testid="effective-grouping">{context.effectiveGrouping.current}</div>
 <div data-testid="priority-filter-options">
 	{JSON.stringify(context.priorityFilterOptions.current)}
+</div>
+<div data-testid="category-filter-options">
+	{JSON.stringify(context.categoryFilterOptions.current)}
 </div>
 <div data-testid="stored">
 	{localStorage.getItem(wishlistGiftGroupingStorageKey(wishlistId)) ?? ''}

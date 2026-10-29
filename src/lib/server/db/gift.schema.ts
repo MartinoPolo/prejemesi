@@ -15,10 +15,15 @@ import { sql } from 'drizzle-orm';
 import { user } from './auth.schema.js';
 import { wishlist, priorityLevel } from './wishlist.schema.js';
 import { generateId } from './id.js';
+import { cascadingReferenceColumn, softDeletableTimestampColumns } from './columns.js';
 import type { ImageMetadata } from '$lib/modules/images/types.js';
 import type { GiftLink, DescriptionAppend } from '$lib/modules/gifts/types.js';
 import type { PreShareGiftSnapshot } from '$lib/modules/gifts/gift_post_share.js';
-import { GIFT_CATEGORY_PRESET_KEYS } from '$lib/modules/gift-categories/presets.js';
+import {
+	GIFT_CATEGORY_PRESET_KEYS,
+	type GiftCategoryPresetKey,
+} from '$lib/modules/gift-categories/presets.js';
+import { MAX_GIFT_CATEGORIES } from '$lib/modules/gift-categories/gift_category_assignment.js';
 
 const presetKeySqlList = sql.join(
 	GIFT_CATEGORY_PRESET_KEYS.map((key) => sql`${key}`),
@@ -34,13 +39,11 @@ export const giftCategory = pgTable(
 		wishlistId: text('wishlist_id')
 			.notNull()
 			.references(() => wishlist.id, { onDelete: 'cascade' }),
-		presetKey: text('preset_key'),
+		presetKey: text('preset_key').$type<GiftCategoryPresetKey>(),
 		customLabel: text('custom_label'),
 		color: text('color').notNull(),
 		sortOrder: integer('sort_order').notNull().default(0),
-		deletedAt: timestamp('deleted_at', { withTimezone: true }),
-		createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-		updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+		...softDeletableTimestampColumns(),
 	},
 	(table) => ({
 		wishlistIdIdUnique: uniqueIndex('gift_category_wishlist_id_id_unique').on(
@@ -87,7 +90,16 @@ export const gift = pgTable(
 		priorityLevelId: text('priority_level_id').references(() => priorityLevel.id, {
 			onDelete: 'set null',
 		}),
+		// Legacy single category, kept equal to `category_ids[1]` by the
+		// `gift_category_ids_legacy_mirror` trigger until the contract step drops it. The application
+		// never writes it.
 		categoryId: text('category_id'),
+		// Ordered categories; the first is the primary one that category grouping uses. Not a foreign
+		// key: categories are soft-deleted, removing one strips it here, and reads keep active ones.
+		categoryIds: text('category_ids')
+			.array()
+			.notNull()
+			.default(sql`'{}'::text[]`),
 		name: text('name').notNull(),
 		description: text('description'),
 		// Post-share description edits accrue here as immutable, timestamped segments rendered as
@@ -122,19 +134,25 @@ export const gift = pgTable(
 		quantity: integer('quantity').default(1),
 		sortOrder: integer('sort_order').notNull().default(0),
 		received: boolean('received').notNull().default(false),
-		deletedAt: timestamp('deleted_at', { withTimezone: true }),
-		createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-		updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+		...softDeletableTimestampColumns(),
 	},
 	(table) => ({
 		wishlistSortIdx: index('gift_wishlist_sort_idx')
 			.on(table.wishlistId, table.sortOrder)
 			.where(sql`${table.deletedAt} IS NULL`),
+		// The agent image purge asks which stored keys gifts still use.
+		imageKeyIdx: index('gift_image_key_idx')
+			.on(table.imageKey)
+			.where(sql`${table.imageKey} IS NOT NULL`),
 		wishlistCategoryFk: foreignKey({
 			columns: [table.wishlistId, table.categoryId],
 			foreignColumns: [giftCategory.wishlistId, giftCategory.id],
 			name: 'gift_wishlist_category_fk',
 		}),
+		categoryIdsLimitCheck: check(
+			'gift_category_ids_limit_check',
+			sql`cardinality(${table.categoryIds}) <= ${sql.raw(String(MAX_GIFT_CATEGORIES))}`,
+		),
 	}),
 );
 
@@ -144,9 +162,7 @@ export const reservation = pgTable(
 		id: text('id')
 			.primaryKey()
 			.$defaultFn(() => generateId()),
-		giftId: text('gift_id')
-			.notNull()
-			.references(() => gift.id, { onDelete: 'cascade' }),
+		giftId: cascadingReferenceColumn('gift_id', () => gift.id),
 		userId: text('user_id').references(() => user.id, { onDelete: 'set null' }),
 		anonymousName: text('anonymous_name'),
 		anonymousEmail: text('anonymous_email'),
@@ -187,9 +203,7 @@ export const giftLike = pgTable(
 		id: text('id')
 			.primaryKey()
 			.$defaultFn(() => generateId()),
-		giftId: text('gift_id')
-			.notNull()
-			.references(() => gift.id, { onDelete: 'cascade' }),
+		giftId: cascadingReferenceColumn('gift_id', () => gift.id),
 		userId: text('user_id')
 			.notNull()
 			.references(() => user.id, { onDelete: 'cascade' }),

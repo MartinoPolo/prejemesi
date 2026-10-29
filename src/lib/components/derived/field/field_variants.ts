@@ -15,7 +15,7 @@ export const fieldVariants = tv({
 
 /** Error message text shown below a field's control and linked via aria-describedby. */
 export const fieldErrorVariants = tv({
-	base: 'flex items-center gap-1 text-(length:--text-xs) leading-snug text-destructive',
+	base: 'flex items-center gap-1 text-(length:--text-xs) leading-snug text-status-danger-text',
 });
 
 export type FieldGroupProps = WithElementRef<HTMLAttributes<HTMLDivElement>>;

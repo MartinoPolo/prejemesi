@@ -2,6 +2,7 @@ import * as v from 'valibot';
 import type { wishlist, priorityLevel } from '$lib/server/db/wishlist.schema.js';
 import { WishlistImageSlotsSchema, type WishlistImageSlots } from '$lib/modules/images/types.js';
 import { isPalette, type Palette } from '$lib/theme/palettes.js';
+import { WISHLIST_THEME_IDS, type WishlistThemeId } from '$lib/theme/wishlist_themes.js';
 
 /** Full wishlist row from DB */
 export type Wishlist = typeof wishlist.$inferSelect;
@@ -30,6 +31,19 @@ export const RECIPIENT_KIND = {
 } as const;
 
 export type RecipientKind = (typeof RECIPIENT_KIND)[keyof typeof RECIPIENT_KIND];
+
+/**
+ * An occasion wishlist follows the strict post-share gift rules; a permanent wishlist has no event
+ * date and keeps its unreserved gifts fully editable after sharing (issue #479).
+ */
+export const WISHLIST_KIND = {
+	occasion: 'occasion',
+	permanent: 'permanent',
+} as const;
+
+export type WishlistKind = (typeof WISHLIST_KIND)[keyof typeof WISHLIST_KIND];
+
+export const WISHLIST_KINDS = [WISHLIST_KIND.occasion, WISHLIST_KIND.permanent] as const;
 
 /** Max length of a free-text recipient name (issue #99 creation modal). */
 export const RECIPIENT_NAME_MAX_LENGTH = 100;
@@ -65,18 +79,24 @@ export type CreateWishlistInput =
 	| {
 			recipientKind: 'self';
 			title: string;
+			kind?: WishlistKind;
 			eventDate?: Date | null;
 			theme?: WishlistTheme;
 			palette?: Palette;
+			/** Omitted: inferred from the title or event date; null: explicitly no theme. */
+			themeId?: WishlistThemeId | null;
 			description?: string | null;
 	  }
 	| {
 			recipientKind: 'other';
 			recipientName: string;
 			title: string;
+			kind?: WishlistKind;
 			eventDate?: Date | null;
 			theme?: WishlistTheme;
 			palette?: Palette;
+			/** Omitted: inferred from the title or event date; null: explicitly no theme. */
+			themeId?: WishlistThemeId | null;
 			description?: string | null;
 	  };
 
@@ -85,9 +105,11 @@ const PaletteSchema = v.custom<Palette>(isPalette);
 
 const CreateWishlistBaseFields = {
 	title: WishlistTitleSchema,
+	kind: v.optional(v.picklist(WISHLIST_KINDS)),
 	eventDate: v.optional(v.nullable(v.date())),
 	theme: v.optional(v.picklist(WISHLIST_THEMES)),
 	palette: v.optional(PaletteSchema),
+	themeId: v.optional(v.nullable(v.picklist(WISHLIST_THEME_IDS))),
 	description: v.optional(v.nullable(v.string())),
 };
 
@@ -106,6 +128,7 @@ export interface UpdateWishlistInput {
 	title?: string;
 	description?: string | null;
 	eventDate?: Date | null;
+	kind?: WishlistKind;
 	imageKey?: string | null;
 	imageSlots?: WishlistImageSlots | null;
 	/** Upload proof, required only when assigning a newly uploaded non-null banner key. */
@@ -117,6 +140,7 @@ export const UpdateWishlistInputSchema = v.object({
 	title: v.optional(WishlistTitleSchema),
 	description: v.optional(v.nullable(v.string())),
 	eventDate: v.optional(v.nullable(v.date())),
+	kind: v.optional(v.picklist(WISHLIST_KINDS)),
 	imageKey: v.optional(v.nullable(v.string())),
 	imageSlots: v.optional(v.nullable(WishlistImageSlotsSchema)),
 	imageAssignmentToken: v.optional(v.string()),
@@ -163,6 +187,34 @@ export const FlipRecipientToFreeTextInputSchema = v.object({
 export interface WishlistWithRole extends Wishlist {
 	role: WishlistRole;
 }
+
+export const PRIORITY_LEVEL_LABEL_MAX_LENGTH = 80;
+
+export const MAX_PRIORITY_LEVELS = 20;
+
+/**
+ * The complete ordered set of a wishlist's priority levels: listed levels keep their id (renamed
+ * and reordered in place), levels without an id are added, and omitted levels are removed. At
+ * least one level remains.
+ */
+export const SavePriorityLevelsInputSchema = v.strictObject({
+	wishlistId: v.string(),
+	levels: v.pipe(
+		v.array(
+			v.strictObject({
+				id: v.nullable(v.string()),
+				label: v.pipe(
+					v.string(),
+					v.trim(),
+					v.minLength(1),
+					v.maxLength(PRIORITY_LEVEL_LABEL_MAX_LENGTH),
+				),
+			}),
+		),
+		v.minLength(1),
+		v.maxLength(MAX_PRIORITY_LEVELS),
+	),
+});
 
 /** Default priority levels created with each wishlist */
 export const DEFAULT_PRIORITY_LEVELS = [

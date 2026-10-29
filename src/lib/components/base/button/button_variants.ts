@@ -57,13 +57,13 @@ export const buttonVariants = tv({
 			},
 			'primary-destructive': {
 				owner: 'elevation-owner elevation-owner-raised elevation-owner-anchored',
-				surface: `border-ink bg-status-danger text-white group-hover:bg-[color-mix(in_oklab,var(--status-danger)_86%,white)] ${FILLED_BUTTON_KBD_CLASSES}`,
+				surface: `border-ink bg-status-danger-fill text-white group-hover:bg-[color-mix(in_oklab,var(--status-danger-fill)_86%,black)] ${FILLED_BUTTON_KBD_CLASSES}`,
 			},
 			outline: {
 				owner: 'elevation-owner elevation-owner-raised elevation-owner-anchored',
 				surface: OUTLINE_CONTROL_SURFACE_CLASSES,
 			},
-			link: { surface: 'text-brand underline-offset-4 group-hover:underline' },
+			link: { surface: 'text-brand-link underline-offset-4 group-hover:underline' },
 		},
 		size: {
 			responsive: {

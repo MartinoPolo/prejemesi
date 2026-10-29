@@ -53,7 +53,7 @@ import { wishlistFollower } from '$lib/server/db/follower.schema.js';
 import { gift, giftCategory } from '$lib/server/db/gift.schema.js';
 import { newGiftDigestState, notification } from '$lib/server/db/notification.schema.js';
 import { bulkUpdateGifts } from './gifts.remote.js';
-import { setBulkUpdateAfterRowsLockedHookForTest } from './gifts.remote.test-hook.js';
+import { setBulkUpdateAfterRowsLockedHookForTest } from '$lib/server/operations/gift_bulk_operations.test-hook.js';
 
 import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
 import type { BulkUpdateGiftsInput } from './types.js';
@@ -65,6 +65,7 @@ const WISHLIST_ID = `${PREFIX}wishlist`;
 const SECOND_WISHLIST_ID = `${PREFIX}second-wishlist`;
 const PRIORITY_ID = `${PREFIX}priority`;
 const CATEGORY_ID = `${PREFIX}category`;
+const SECOND_CATEGORY_ID = `${PREFIX}second-category`;
 const BULK_GIFT_ONE_ID = `${PREFIX}bulk-gift-one`;
 const BULK_GIFT_TWO_ID = `${PREFIX}bulk-gift-two`;
 const BULK_GIFT_UNSELECTED_ID = `${PREFIX}bulk-gift-unselected`;
@@ -133,13 +134,22 @@ describe.skipIf(!DB_READY)('bulkUpdateGifts remote boundary [real DB]', () => {
 			label: 'High',
 			sortOrder: 0,
 		});
-		await database.insert(giftCategory).values({
-			id: CATEGORY_ID,
-			wishlistId: WISHLIST_ID,
-			customLabel: 'Gear',
-			color: '#123456',
-			sortOrder: 0,
-		});
+		await database.insert(giftCategory).values([
+			{
+				id: CATEGORY_ID,
+				wishlistId: WISHLIST_ID,
+				customLabel: 'Gear',
+				color: '#123456',
+				sortOrder: 0,
+			},
+			{
+				id: SECOND_CATEGORY_ID,
+				wishlistId: WISHLIST_ID,
+				customLabel: 'Books',
+				color: '#654321',
+				sortOrder: 1,
+			},
+		]);
 		await database.insert(gift).values({
 			id: `${PREFIX}existing-gift`,
 			wishlistId: WISHLIST_ID,
@@ -227,7 +237,13 @@ describe.skipIf(!DB_READY)('bulkUpdateGifts remote boundary [real DB]', () => {
 					actionDescription: 'category',
 					input: { action: 'category' as const, categoryId: CATEGORY_ID },
 					assertPersisted: (row: typeof gift.$inferSelect) =>
-						expect(row.categoryId).toBe(CATEGORY_ID),
+						expect(row.categoryIds).toEqual([CATEGORY_ID]),
+				},
+				{
+					actionDescription: 'added category',
+					input: { action: 'addCategory' as const, categoryId: CATEGORY_ID },
+					assertPersisted: (row: typeof gift.$inferSelect) =>
+						expect(row.categoryIds).toEqual([CATEGORY_ID]),
 				},
 				{
 					actionDescription: 'image fit',
@@ -284,7 +300,7 @@ describe.skipIf(!DB_READY)('bulkUpdateGifts remote boundary [real DB]', () => {
 						} else {
 							expect(row).toMatchObject({
 								priorityLevelId: null,
-								categoryId: null,
+								categoryIds: [],
 								imageMeta: null,
 								editedAfterShareAt: null,
 								preEditShareSnapshot: null,
@@ -293,6 +309,82 @@ describe.skipIf(!DB_READY)('bulkUpdateGifts remote boundary [real DB]', () => {
 					}
 				},
 			);
+		});
+
+		describe('category actions on gifts with several categories', () => {
+			async function storedCategoryIds() {
+				const rows = await getDb()
+					.select({ id: gift.id, categoryIds: gift.categoryIds })
+					.from(gift)
+					.where(inArray(gift.id, bulkGiftIds));
+				return Object.fromEntries(rows.map((row) => [row.id, row.categoryIds]));
+			}
+
+			async function bulkCategoryAction(
+				input:
+					| { action: 'addCategory' | 'removeCategory'; categoryId: string }
+					| { action: 'category'; categoryId: string | null },
+			) {
+				await callBulkUpdateGifts(
+					{ user: { id: ACTOR_ID } },
+					{
+						wishlistId: WISHLIST_ID,
+						giftIds: [BULK_GIFT_ONE_ID, BULK_GIFT_TWO_ID],
+						...input,
+					},
+				);
+			}
+
+			beforeEach(async () => {
+				await getDb()
+					.update(gift)
+					.set({ categoryIds: [SECOND_CATEGORY_ID] })
+					.where(eq(gift.id, BULK_GIFT_ONE_ID));
+				await getDb()
+					.update(gift)
+					.set({ categoryIds: [CATEGORY_ID, SECOND_CATEGORY_ID] })
+					.where(eq(gift.id, BULK_GIFT_TWO_ID));
+			});
+
+			it('adds a category after the existing ones and never duplicates it', async () => {
+				await bulkCategoryAction({ action: 'addCategory', categoryId: CATEGORY_ID });
+
+				expect(await storedCategoryIds()).toEqual({
+					[BULK_GIFT_ONE_ID]: [SECOND_CATEGORY_ID, CATEGORY_ID],
+					[BULK_GIFT_TWO_ID]: [CATEGORY_ID, SECOND_CATEGORY_ID],
+					[BULK_GIFT_UNSELECTED_ID]: [],
+				});
+			});
+
+			it('removes one category and promotes the next one to primary', async () => {
+				await bulkCategoryAction({ action: 'removeCategory', categoryId: CATEGORY_ID });
+
+				expect(await storedCategoryIds()).toEqual({
+					[BULK_GIFT_ONE_ID]: [SECOND_CATEGORY_ID],
+					[BULK_GIFT_TWO_ID]: [SECOND_CATEGORY_ID],
+					[BULK_GIFT_UNSELECTED_ID]: [],
+				});
+			});
+
+			it('clears every category through the legacy category action', async () => {
+				await bulkCategoryAction({ action: 'category', categoryId: null });
+
+				expect(await storedCategoryIds()).toEqual({
+					[BULK_GIFT_ONE_ID]: [],
+					[BULK_GIFT_TWO_ID]: [],
+					[BULK_GIFT_UNSELECTED_ID]: [],
+				});
+			});
+
+			it('replaces only the primary category through the legacy category action', async () => {
+				await bulkCategoryAction({ action: 'category', categoryId: SECOND_CATEGORY_ID });
+
+				expect(await storedCategoryIds()).toEqual({
+					[BULK_GIFT_ONE_ID]: [SECOND_CATEGORY_ID],
+					[BULK_GIFT_TWO_ID]: [SECOND_CATEGORY_ID],
+					[BULK_GIFT_UNSELECTED_ID]: [],
+				});
+			});
 		});
 
 		describe('received action', () => {

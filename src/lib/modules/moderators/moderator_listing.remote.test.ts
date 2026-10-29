@@ -60,6 +60,11 @@ vi.mock('drizzle-orm', () => ({
 	and: vi.fn((...args: unknown[]) => args),
 	isNull: vi.fn((arg: unknown) => arg),
 	count: vi.fn(() => 'count()'),
+	// Schema modules loaded through the operation runner build column defaults with `sql`.
+	sql: Object.assign(
+		vi.fn(() => 'sql'),
+		{ join: vi.fn(() => 'sql') },
+	),
 }));
 
 vi.mock('$lib/server/db/wishlist.schema.js', () => ({
@@ -155,7 +160,7 @@ function createMockDb(queryResults: unknown[][]): ReturnType<typeof getDb> {
 // ── Shared fixtures ──────────────────────────────────────────────────────────
 
 // `recipientUser` is the linked recipient of the self list (`activeWishlistRow`) — manages it
-// inherently, so `verifyManagerAccess`/`resolveWishlistRole` match without a mod-assignment query.
+// inherently, so role resolution match without a mod-assignment query.
 const recipientUser = { id: 'recipient-1', email: 'recipient@example.com' };
 const regularUser = { id: 'user-2', email: 'user@example.com' };
 
@@ -227,7 +232,7 @@ describe('getModeratorsForWishlist', () => {
 			revokedAt: null,
 		};
 
-		// 1: requireWishlistRow (recipient match, no mod query), 2: moderators select, 3: invites select
+		// 1: wishlist lookup (recipient match, no mod query), 2: moderators select, 3: invites select
 		mockGetDb.mockReturnValue(createMockDb([[activeWishlistRow], [moderatorRow], [inviteRow]]));
 
 		const result = await callGetModeratorsForWishlist(recipientAuthContext, testWishlistId);
@@ -257,7 +262,7 @@ describe('getModeratorsForWishlist', () => {
 			revokedAt: null,
 		};
 
-		// 1: requireWishlistRow (for-someone), 2: resolveWishlistRole mod check → found,
+		// 1: wishlist lookup (for-someone), 2: správce assignment lookup → found,
 		// 3: moderators select, 4: invites select (invites now visible to any manager)
 		mockGetDb.mockReturnValue(
 			createMockDb([
@@ -288,7 +293,7 @@ describe('getModeratorsForWishlist', () => {
 	});
 
 	it('non-manager (neither recipient nor správce) → throws 403 ACCESS_DENIED', async () => {
-		// 1: requireWishlistRow (for-someone), 2: resolveWishlistRole mod check → empty (not a mod)
+		// 1: wishlist lookup (for-someone), 2: správce assignment lookup → empty (not a mod)
 		mockGetDb.mockReturnValue(createMockDb([[forSomeoneWishlistRow], []]));
 
 		await expect(

@@ -47,6 +47,11 @@ vi.mock('drizzle-orm', () => ({
 	and: vi.fn((...args: unknown[]) => args),
 	isNull: vi.fn((arg: unknown) => arg),
 	count: vi.fn(() => 'count'),
+	// Schema modules loaded through the operation runner build column defaults with `sql`.
+	sql: Object.assign(
+		vi.fn(() => 'sql'),
+		{ join: vi.fn(() => 'sql') },
+	),
 }));
 
 vi.mock('$lib/server/db/gift.schema.js', () => ({
@@ -111,7 +116,7 @@ function createMockDb(
 			},
 		);
 
-	return {
+	const database = {
 		select: vi.fn((...args: unknown[]) => {
 			calls.push({ method: 'select', args });
 			return createChain();
@@ -119,7 +124,12 @@ function createMockDb(
 		insert: vi.fn(() => createChain()),
 		update: vi.fn(() => createChain()),
 		delete: vi.fn(() => createChain()),
-	} as unknown as ReturnType<typeof getDb>;
+		// The like toggle runs inside the operation core's transaction on the same query queue.
+		transaction: vi.fn(async (callback: (transaction: unknown) => Promise<unknown>) =>
+			callback(database),
+		),
+	};
+	return database as unknown as ReturnType<typeof getDb>;
 }
 
 const testUser = { id: 'user-1', email: 'test@example.com' };

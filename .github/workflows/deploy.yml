@@ -1,24 +1,19 @@
 name: Deploy (production)
 
-# Deploys the production branch to Cloudflare Workers — gated (issue #110):
-#   1. `verify` re-runs the full check suite (format, lint, typecheck, unit +
-#      browser tests, migration safety) *and* e2e (`run_e2e: true`) for the
-#      exact deployed commit. PRs and `dev` pushes run the same suite (incl.
-#      e2e) via ci.yml; this re-verification pins the deployed SHA.
-#   2. `deploy` requires the GitHub `production` environment approval before it
-#      runs, and records the deployed commit (environment deployment + step
-#      summary + GIT_COMMIT_SHA Worker var).
+# Deploys the production branch to Cloudflare Workers once every gate is green. Merging
+# the `dev` → `production` release PR (gated by `checks / required`) is the approval;
+# there is no manual environment approval.
+#   1. `verify` re-runs the reusable check suite for the exact pushed commit.
+#   2. `migration-review` validates the committed migration manifest.
+#   3. `deploy` builds, applies pending migrations to the production database
+#      (`db:migrate:prod -- --yes`; DRIFT fails), requires EXACT (`db:verify:prod`),
+#      then runs `wrangler deploy` and records the deployed commit.
+# Runbook: docs/DEPLOYMENT.md.
 #
-# Every release: reconcile committed migrations with Neon manually
-# (`pnpm db:verify:prod`) before approval. Review and apply any PENDING migrations
-# with `pnpm db:migrate:prod -- --yes`, then require EXACT — see docs/DEPLOYMENT.md.
-#
-# Requires one repository secret named CLOUDFLARE_API_TOKEN.
-#   Create at: Cloudflare dashboard -> My Profile -> API Tokens
-#   -> "Edit Cloudflare Workers" template (scope to this account).
-#   Add it with:  gh secret set CLOUDFLARE_API_TOKEN --repo MartinoPolo/prejemesi
-# The CLOUDFLARE_ACCOUNT_ID repo variable (an identifier, not a secret) is set
-# via gh and read below.
+# Requires the CLOUDFLARE_API_TOKEN repository secret (Cloudflare → My Profile → API
+# Tokens → "Edit Cloudflare Workers" template), the CLOUDFLARE_ACCOUNT_ID repository
+# variable, and the PRODUCTION_DATABASE_URL secret of the `production` environment: the
+# direct (non-pooler) Neon URL matching the target pinned in scripts/migrate-prod.ts.
 
 on:
     push:
@@ -67,16 +62,7 @@ jobs:
                     echo ""
                     echo "Local manifest: \`$(pnpm --silent check:migration-history)\`"
                     echo ""
-                    echo "### ⛔ Production database not checked"
-                    echo ""
-                    echo "This job validates committed migration history only. It has no production database credentials."
-                    echo "Before approving the environment deployment, run these commands from a clean checkout at the target SHA:"
-                    echo ""
-                    echo '```bash'
-                    echo "pnpm db:verify:prod"
-                    echo "pnpm db:migrate:prod -- --yes  # only when PENDING migrations were reviewed and authorized"
-                    echo "pnpm db:verify:prod            # must report EXACT"
-                    echo '```'
+                    echo "The deploy job applies pending migrations to production and requires EXACT before \`wrangler deploy\`."
                     echo ""
                   } >> "$GITHUB_STEP_SUMMARY"
 
@@ -89,18 +75,18 @@ jobs:
                         echo "$NEW_MIGRATIONS" | sed 's/^/- `/;s/$/`/'
                       } >> "$GITHUB_STEP_SUMMARY"
                     else
-                      echo "No new migration files in this push. Production reconciliation is still mandatory." >> "$GITHUB_STEP_SUMMARY"
+                      echo "No new migration files in this push." >> "$GITHUB_STEP_SUMMARY"
                     fi
                   else
-                    echo "Manual dispatch: no push delta is available. Review the complete manifest and reconcile production before approval." >> "$GITHUB_STEP_SUMMARY"
+                    echo "Manual dispatch: no push delta is available; the deploy job reconciles the complete manifest." >> "$GITHUB_STEP_SUMMARY"
                   fi
 
     deploy:
         needs: [verify, migration-review]
         runs-on: ubuntu-latest
-        # Requires the GitHub `production` environment with a required reviewer:
-        # the deployment waits for explicit approval and records the deployed
-        # commit in the environment's deployment history.
+        # The `production` environment has no required reviewer, so a green run deploys
+        # without a hold. It records deployment history, scopes PRODUCTION_DATABASE_URL to
+        # this job, and its branch policy admits only the production branch.
         environment:
             name: production
             url: https://prejemesi.cz
@@ -134,19 +120,43 @@ jobs:
                   SENTRY_PROJECT: ${{ vars.SENTRY_PROJECT }}
                   SENTRY_RELEASE: ${{ github.sha }}
                   SENTRY_UPLOAD_SOURCE_MAPS: 'true'
-            - name: Deploy to Cloudflare Workers
+            # scripts/migrate-prod.ts reads DATABASE_URL from .env.production. The file is
+            # written only after the build so Vite never loads it, and removed before deploy.
+            - name: Provide production database credentials
               run: |
-                  deploy_arguments=(--var "GIT_COMMIT_SHA:${{ github.sha }}" --var "PUBLIC_SENTRY_DSN:${PUBLIC_SENTRY_DSN}")
-                  # Wrangler cannot set plain-text vars without deploying, so the allowlist lives in the environment.
-                  if [ -n "$GIFT_INGESTION_TARGET_SHORT_IDS" ]; then
-                    deploy_arguments+=(--var "GIFT_INGESTION_TARGET_SHORT_IDS:$GIFT_INGESTION_TARGET_SHORT_IDS")
+                  if [ -z "$PRODUCTION_DATABASE_URL" ]; then
+                    echo "The production environment secret PRODUCTION_DATABASE_URL is not set; refusing to migrate or deploy." >&2
+                    exit 1
                   fi
-                  pnpm exec wrangler deploy "${deploy_arguments[@]}"
+                  umask 077
+                  printf 'DATABASE_URL=%s\n' "$PRODUCTION_DATABASE_URL" > .env.production
+              env:
+                  PRODUCTION_DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
+            - name: Apply pending production migrations
+              run: |
+                  set -o pipefail
+                  migration_log="$RUNNER_TEMP/production-migrations.log"
+                  migration_status=0
+                  pnpm db:migrate:prod -- --yes 2>&1 | tee "$migration_log" || migration_status=$?
+                  {
+                    echo "## Production migrations"
+                    echo ""
+                    echo '```'
+                    grep -E '^(Manifest:|EXACT$|PENDING:|DRIFT:)' "$migration_log" || echo "No migration state reported; see the job log."
+                    echo '```'
+                  } >> "$GITHUB_STEP_SUMMARY"
+                  exit "$migration_status"
+            - name: Require EXACT production migration history
+              run: pnpm db:verify:prod
+            - name: Remove production database credentials
+              if: always()
+              run: rm -f .env.production
+            - name: Deploy to Cloudflare Workers
+              run: pnpm exec wrangler deploy --var "GIT_COMMIT_SHA:${{ github.sha }}" --var "PUBLIC_SENTRY_DSN:${PUBLIC_SENTRY_DSN}"
               env:
                   CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
                   CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
                   PUBLIC_SENTRY_DSN: ${{ vars.PUBLIC_SENTRY_DSN }}
-                  GIFT_INGESTION_TARGET_SHORT_IDS: ${{ vars.GIFT_INGESTION_TARGET_SHORT_IDS }}
             - name: Record deployed commit
               run: |
                   {
@@ -155,4 +165,5 @@ jobs:
                     echo "- Commit: \`${{ github.sha }}\`"
                     echo "- Worker: \`prejemesi\` → https://prejemesi.cz"
                     echo "- Var: \`GIT_COMMIT_SHA=${{ github.sha }}\`"
+                    echo "- Production migration history: EXACT before deploy"
                   } >> "$GITHUB_STEP_SUMMARY"

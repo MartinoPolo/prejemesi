@@ -648,6 +648,8 @@ test('grouped priority reorder moves gifts within and across levels and persists
 			.poll(() => groupedGiftNames(page))
 			.toMatchObject({ Vysoká: [names.B], Střední: [names.A, names.C] });
 		await expect(aHandle).toBeFocused();
+		await expect(page.getByText(`${names.A} přesunut do skupiny Střední.`)).toBeVisible();
+		await expect(page.getByRole('button', { name: 'Vrátit', exact: true })).toBeVisible();
 
 		// Focus stays on the moved gift's handle, so further presses keep moving it.
 		for (const [key, mediumGroup] of [
@@ -878,6 +880,52 @@ test('grouped category reorder on a shared wishlist changes the category with po
 		await expect(giftDialog.getByText(/Upraveno po sdílení/)).toBeVisible({
 			timeout: 10_000,
 		});
+	} finally {
+		await context.close();
+	}
+});
+
+test('mobile List reorder arrows get their own row below the gift content', async ({
+	browser,
+	request,
+	baseURL,
+}) => {
+	const user = createTestUser('gift-reorder-mobile-list-lane');
+	const page = await registerAndGetPage(browser, request, baseURL!, user);
+	const context = page.context();
+	try {
+		await page.setViewportSize({ width: 390, height: 844 });
+		await createWishlistAndNavigate(page, 'Gift Reorder Mobile List Lane');
+		const names = ['Mobile Lane Gift A', 'Mobile Lane Gift B'];
+		for (const name of names) {
+			await addGift(page, name, {
+				description:
+					'Dlouhý popis, který na mobilu zabere dva řádky a posune odkaz i cenu níže.',
+				primaryLink: 'https://www.example.com/darek',
+				price: '439',
+			});
+		}
+
+		await startGiftReorder(page);
+		const listMode = page.getByRole('radio', { name: 'Seznam', exact: true });
+		await listMode.click();
+		await expect(page.locator('[data-wishlist-gift-collection]')).toHaveAttribute(
+			'data-view-mode',
+			'list',
+		);
+
+		for (const name of names) {
+			const item = giftItem(page, name);
+			const arrows = item.getByTestId('gift-reorder-directional-actions');
+			await expect(arrows).toBeVisible();
+			const arrowsBox = await arrows.boundingBox();
+			const priceBox = await item.getByTestId('gift-list-price').boundingBox();
+			const linksBox = await item.getByTestId('gift-link-list').boundingBox();
+			expect(arrowsBox && priceBox && linksBox).toBeTruthy();
+			expect(priceBox!.y + priceBox!.height).toBeLessThanOrEqual(arrowsBox!.y);
+			expect(linksBox!.y + linksBox!.height).toBeLessThanOrEqual(arrowsBox!.y);
+		}
+		await page.getByRole('button', { name: 'Hotovo', exact: true }).click();
 	} finally {
 		await context.close();
 	}

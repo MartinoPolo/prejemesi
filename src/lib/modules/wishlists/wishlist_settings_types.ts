@@ -2,12 +2,22 @@ import * as v from 'valibot';
 import { SaveGiftCategorySettingsInputSchema } from '$lib/modules/gift-categories/types.js';
 import { WishlistImageSlotsSchema, type WishlistImageSlots } from '$lib/modules/images/types.js';
 import { isPalette, type Palette } from '$lib/theme/palettes.js';
-import { RECIPIENT_NAME_MAX_LENGTH, WISHLIST_TITLE_MAX_LENGTH } from './types.js';
+import {
+	RECIPIENT_NAME_MAX_LENGTH,
+	WISHLIST_KINDS,
+	WISHLIST_TITLE_MAX_LENGTH,
+	type WishlistKind,
+} from './types.js';
+import {
+	WishlistAppearanceInputSchema,
+	type WishlistAppearanceInput,
+} from './wishlist_appearance.js';
 
 const DetailsSchema = v.object({
 	title: v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(WISHLIST_TITLE_MAX_LENGTH)),
 	description: v.nullable(v.string()),
 	eventDate: v.optional(v.nullable(v.date())),
+	kind: v.optional(v.picklist(WISHLIST_KINDS)),
 	recipientName: v.optional(
 		v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(RECIPIENT_NAME_MAX_LENGTH)),
 	),
@@ -18,6 +28,7 @@ export const SaveWishlistSettingsInputSchema = v.object({
 	details: v.optional(DetailsSchema),
 	categories: v.optional(v.omit(SaveGiftCategorySettingsInputSchema, ['wishlistId'])),
 	palette: v.optional(v.custom<Palette>(isPalette)),
+	appearance: v.optional(WishlistAppearanceInputSchema),
 	image: v.optional(
 		v.object({
 			imageKey: v.nullable(v.string()),
@@ -33,10 +44,12 @@ export interface SaveWishlistSettingsInput {
 		title: string;
 		description: string | null;
 		eventDate?: Date | null;
+		kind?: WishlistKind;
 		recipientName?: string;
 	};
 	categories?: Omit<v.InferOutput<typeof SaveGiftCategorySettingsInputSchema>, 'wishlistId'>;
 	palette?: Palette;
+	appearance?: WishlistAppearanceInput;
 	image?: {
 		imageKey: string | null;
 		imageSlots: WishlistImageSlots | null;

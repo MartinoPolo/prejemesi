@@ -4,6 +4,7 @@ import { page, userEvent } from 'vitest/browser';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as m from '$lib/paraglide/messages.js';
 import type { UploadResult } from '$lib/modules/uploads/types.js';
+import type * as PrepareImageModule from '$lib/modules/uploads/prepare_image.js';
 
 vi.mock('$env/dynamic/public', () => ({
 	env: { PUBLIC_R2_URL: 'data:image/svg+xml,%3Csvg%2F%3E' },
@@ -24,6 +25,11 @@ const {
 		deletedKeys: [] as string[],
 		events: [] as string[],
 	},
+}));
+// Preparation has its own tests.
+vi.mock('$lib/modules/uploads/prepare_image.js', async (importOriginal) => ({
+	...(await importOriginal<typeof PrepareImageModule>()),
+	prepareImageForUpload: async (file: File) => file,
 }));
 vi.mock('$lib/modules/uploads/upload.js', () => ({
 	uploadFile: uploadFileMock,
@@ -84,9 +90,17 @@ function deferred<T>() {
 	return { promise, resolve, reject };
 }
 
+// A decodable image, because ImageUpload hides previews the browser cannot render.
+const ONE_PIXEL_PNG = Uint8Array.from(
+	atob(
+		'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
+	),
+	(character) => character.charCodeAt(0),
+);
+
 function selectImage(input: HTMLInputElement, name = 'selected.png') {
 	const transfer = new DataTransfer();
-	transfer.items.add(new File(['image'], name, { type: 'image/png' }));
+	transfer.items.add(new File([ONE_PIXEL_PNG], name, { type: 'image/png' }));
 	input.files = transfer.files;
 	input.dispatchEvent(new Event('change', { bubbles: true }));
 }
@@ -163,7 +177,6 @@ describe('GiftDetailForm pending image uploads', () => {
 		await nameInput.fill('Draft survives resize');
 		await screen.getByRole('radio', { name: m.image_fit_manual() }).click();
 		const cropStage = screen.getByTestId('crop-stage');
-		await expect.element(cropStage).toHaveAttribute('role', 'button');
 		const cropImage = cropStage.element().querySelector('img')!;
 		Object.defineProperties(cropImage, {
 			naturalWidth: { configurable: true, value: 400 },

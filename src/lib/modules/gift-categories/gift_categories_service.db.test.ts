@@ -64,7 +64,7 @@ async function isDbUsable(): Promise<boolean> {
 			await tx.insert(gift).values({
 				id: `${PREFIX}probe-gift`,
 				wishlistId: `${PREFIX}probe-wishlist`,
-				categoryId: `${PREFIX}probe-category`,
+				categoryIds: [`${PREFIX}probe-category`],
 				name: 'Gift category probe',
 			});
 			throw new ProbeRollback();
@@ -96,7 +96,7 @@ const preEditShareSnapshot = {
 	imageMeta: null,
 	links: [{ url: 'https://example.com/kolo' }],
 	priorityLevelId: null,
-	categoryId: CATEGORY_ID,
+	categoryIds: [CATEGORY_ID],
 };
 
 describe.skipIf(!DB_READY)('gift category color persistence [real DB]', () => {
@@ -125,7 +125,7 @@ describe.skipIf(!DB_READY)('gift category color persistence [real DB]', () => {
 		await database.insert(gift).values({
 			id: GIFT_ID,
 			wishlistId: WISHLIST_ID,
-			categoryId: CATEGORY_ID,
+			categoryIds: [CATEGORY_ID],
 			name: 'Kolo',
 			description: 'Původní popis',
 			links: [{ url: 'https://example.com/kolo' }],
@@ -154,13 +154,16 @@ describe.skipIf(!DB_READY)('gift category color persistence [real DB]', () => {
 		expect(beforeCategory?.color).toBe(INITIAL_COLOR);
 		expect(beforeGift).toBeDefined();
 
-		await saveGiftCategorySettings({
-			wishlistId: WISHLIST_ID,
-			customCategories: [{ id: CATEGORY_ID, label: CATEGORY_LABEL, color: UPDATED_COLOR }],
-			presetKeys: [],
-			presetColors: [],
-			confirmedRemovalCategoryIds: [],
-		});
+		await database.transaction((transaction) =>
+			saveGiftCategorySettings(
+				{
+					wishlistId: WISHLIST_ID,
+					categories: [{ id: CATEGORY_ID, label: CATEGORY_LABEL, color: UPDATED_COLOR }],
+					confirmedRemovalCategoryIds: [],
+				},
+				{ transaction, recordGiftRevisions: () => {}, now: new Date() },
+			),
+		);
 
 		const [afterCategory] = await database
 			.select()
@@ -174,7 +177,7 @@ describe.skipIf(!DB_READY)('gift category color persistence [real DB]', () => {
 			color: UPDATED_COLOR,
 			deletedAt: null,
 		});
-		expect(afterGift?.categoryId).toBe(CATEGORY_ID);
+		expect(afterGift?.categoryIds).toEqual([CATEGORY_ID]);
 		expect(afterGift).toEqual(beforeGift);
 	});
 });

@@ -3,6 +3,7 @@ import {
 	coverWindowLayout,
 	hasExplicitFrameFill,
 	normalizeFrameFill,
+	paintedImageWidth,
 	resolveAutoFit,
 	resolveFrameFill,
 	AUTO_CONTAIN_RATIO_THRESHOLD,
@@ -113,6 +114,95 @@ describe('coverWindowLayout', () => {
 	});
 });
 
+describe('paintedImageWidth', () => {
+	const squareBox = {
+		boxWidth: 150,
+		boxHeight: 150,
+		fallbackBoxWidth: 300,
+		zoomOutLayout: null,
+	} as const;
+
+	it('covers the overscanned width of a landscape source cropped into a square box', () => {
+		expect(
+			paintedImageWidth({
+				...squareBox,
+				fit: IMAGE_FIT_MODES.coverCrop,
+				zoom: 1,
+				naturalRatio: 1.5,
+			}),
+		).toBe(225);
+	});
+
+	it('uses the box width when a portrait source covers a square box', () => {
+		expect(
+			paintedImageWidth({
+				...squareBox,
+				fit: IMAGE_FIT_MODES.coverCrop,
+				zoom: 1,
+				naturalRatio: 0.75,
+			}),
+		).toBe(150);
+	});
+
+	it('multiplies by the focal zoom, since a zoomed crop shows fewer source pixels', () => {
+		expect(
+			paintedImageWidth({
+				...squareBox,
+				fit: IMAGE_FIT_MODES.coverCrop,
+				zoom: 3,
+				naturalRatio: 1.5,
+			}),
+		).toBe(675);
+	});
+
+	it('never exceeds the box for contained images', () => {
+		expect(
+			paintedImageWidth({
+				...squareBox,
+				fit: IMAGE_FIT_MODES.containPadded,
+				zoom: 2,
+				naturalRatio: 3,
+			}),
+		).toBe(150);
+	});
+
+	it('uses the explicit layout width when zoomed out below cover', () => {
+		expect(
+			paintedImageWidth({
+				...squareBox,
+				fit: IMAGE_FIT_MODES.coverCrop,
+				zoom: 0.8,
+				naturalRatio: 1.5,
+				zoomOutLayout: { left: 0, top: 10, width: 180, height: 120 },
+			}),
+		).toBe(180);
+	});
+
+	it('falls back to the surface width (times zoom) before the box is measured', () => {
+		expect(
+			paintedImageWidth({
+				...squareBox,
+				boxWidth: 0,
+				boxHeight: 0,
+				fit: IMAGE_FIT_MODES.coverCrop,
+				zoom: 2,
+				naturalRatio: null,
+			}),
+		).toBe(600);
+	});
+
+	it('uses the measured box width before the natural ratio is known', () => {
+		expect(
+			paintedImageWidth({
+				...squareBox,
+				fit: IMAGE_FIT_MODES.coverCrop,
+				zoom: 1,
+				naturalRatio: null,
+			}),
+		).toBe(150);
+	});
+});
+
 describe('resolveFrameFill', () => {
 	it('normalizes null, blank, and legacy transparent to the default fallback', () => {
 		expect(normalizeFrameFill(null)).toBeNull();
@@ -120,7 +210,7 @@ describe('resolveFrameFill', () => {
 		expect(normalizeFrameFill('transparent')).toBeNull();
 		expect(hasExplicitFrameFill('transparent')).toBe(false);
 		expect(resolveFrameFill({ fillColor: 'transparent', tokenScope: 'wishlist' })).toBe(
-			'var(--secondary)',
+			'var(--wishlist-image-mat, var(--secondary))',
 		);
 	});
 
@@ -141,7 +231,7 @@ describe('resolveFrameFill', () => {
 		// Redesign 2026: palette tokens re-derive per [data-palette] subtree, so the
 		// wishlist scope resolves through the semantic secondary-surface token.
 		expect(resolveFrameFill({ fillColor: null, tokenScope: 'wishlist' })).toBe(
-			'var(--secondary)',
+			'var(--wishlist-image-mat, var(--secondary))',
 		);
 	});
 

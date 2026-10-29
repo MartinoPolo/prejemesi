@@ -45,8 +45,12 @@ vi.mock('drizzle-orm', () => ({
 	eq: vi.fn((...args: unknown[]) => args),
 	and: vi.fn((...args: unknown[]) => args),
 	isNull: vi.fn((arg: unknown) => arg),
+	isNotNull: vi.fn((arg: unknown) => arg),
+	or: vi.fn((...args: unknown[]) => args),
 	inArray: vi.fn((...args: unknown[]) => args),
 	count: vi.fn(() => 'count'),
+	// Schema modules loaded through the operation runner build column defaults with `sql`.
+	sql: vi.fn(() => 'sql'),
 }));
 
 vi.mock('$lib/server/db/gift.schema.js', () => ({
@@ -297,8 +301,8 @@ describe('revertWishlistToDraft', () => {
 	it('a správce reverts a reservation-free list silently (no notifications)', async () => {
 		mockGetDb.mockReturnValue(
 			createMockDb([
-				[activeForSomeone], // requireWishlistRow
-				[{ id: 'ma-1' }], // hasActiveModeratorAssignment → moderator
+				[activeForSomeone], // wishlist lookup
+				[{ id: 'ma-1' }], // správce assignment lookup → moderator
 				[{ value: 0 }], // reservation count → clean
 				[], // tx: gift reset update
 				[], // tx: wishlist update
@@ -314,7 +318,7 @@ describe('revertWishlistToDraft', () => {
 	it('rejects a non-admin správce on a list that already has reservations', async () => {
 		mockGetDb.mockReturnValue(
 			createMockDb([
-				[activeForSomeone], // requireWishlistRow
+				[activeForSomeone], // wishlist lookup
 				[{ id: 'ma-1' }], // moderator
 				[{ value: 2 }], // reservation count → reserved
 			]),
@@ -330,8 +334,8 @@ describe('revertWishlistToDraft', () => {
 	it('an app admin reverts a reserved list: cancels reservations + notifies reservers', async () => {
 		mockGetDb.mockReturnValue(
 			createMockDb([
-				[activeForSomeone], // requireWishlistRow
-				[], // hasActiveModeratorAssignment → none (admin is a plain visitor here)
+				[activeForSomeone], // wishlist lookup
+				[], // správce assignment lookup → none (admin is a plain visitor here)
 				[{ value: 2 }], // reservation count → reserved
 				[
 					{ id: 'r1', userId: 'gifter-1', anonymousEmail: null },
@@ -363,8 +367,8 @@ describe('revertWishlistToDraft', () => {
 	it('records the reverting admin as the canceller on the bulk reservation cancel', async () => {
 		mockGetDb.mockReturnValue(
 			createMockDb([
-				[activeForSomeone], // requireWishlistRow
-				[], // hasActiveModeratorAssignment → none
+				[activeForSomeone], // wishlist lookup
+				[], // správce assignment lookup → none
 				[{ value: 1 }], // reservation count → reserved
 				[{ id: 'r1', userId: 'gifter-1', anonymousEmail: null }], // tx: active reservations
 				[], // tx: reservation soft-delete
@@ -383,7 +387,7 @@ describe('revertWishlistToDraft', () => {
 	it('rejects the recipient (they never see the revert option)', async () => {
 		mockGetDb.mockReturnValue(
 			createMockDb([
-				// requireWishlistRow: a self list whose linked recipient is the caller
+				// wishlist lookup: a self list whose linked recipient is the caller
 				[{ ...activeForSomeone, recipientUserId: recipientUser.id, recipientName: null }],
 			]),
 		);
@@ -398,8 +402,8 @@ describe('revertWishlistToDraft', () => {
 	it('rejects a plain visitor', async () => {
 		mockGetDb.mockReturnValue(
 			createMockDb([
-				[activeForSomeone], // requireWishlistRow
-				[], // hasActiveModeratorAssignment → none, not admin → visitor
+				[activeForSomeone], // wishlist lookup
+				[], // správce assignment lookup → none, not admin → visitor
 			]),
 		);
 
@@ -412,7 +416,7 @@ describe('revertWishlistToDraft', () => {
 	it('rejects an archived list (must be unarchived first)', async () => {
 		mockGetDb.mockReturnValue(
 			createMockDb([
-				[{ ...activeForSomeone, status: 'archived' }], // requireWishlistRow
+				[{ ...activeForSomeone, status: 'archived' }], // wishlist lookup
 				[{ id: 'ma-1' }], // moderator
 			]),
 		);

@@ -3,9 +3,11 @@
 	import ExternalLinkIcon from '@lucide/svelte/icons/external-link';
 	import CopyIcon from '@lucide/svelte/icons/copy';
 	import PencilIcon from '@lucide/svelte/icons/pencil';
+	import SparklesIcon from '@lucide/svelte/icons/sparkles';
 	import CheckIcon from '@lucide/svelte/icons/check';
 	import Undo2Icon from '@lucide/svelte/icons/undo-2';
 	import ListChecksIcon from '@lucide/svelte/icons/list-checks';
+	import HandIcon from '@lucide/svelte/icons/hand';
 	import BookmarkIcon from '@lucide/svelte/icons/bookmark';
 	import BookmarkXIcon from '@lucide/svelte/icons/bookmark-x';
 	import ShoppingBagIcon from '@lucide/svelte/icons/shopping-bag';
@@ -18,8 +20,10 @@
 		open: ExternalLinkIcon,
 		copy: CopyIcon,
 		edit: PencilIcon,
+		enrich: SparklesIcon,
 		received: CheckIcon,
 		multiselect: ListChecksIcon,
+		reorder: HandIcon,
 		reserve: BookmarkIcon,
 		'cancel-reservation': BookmarkXIcon,
 		purchased: ShoppingBagIcon,

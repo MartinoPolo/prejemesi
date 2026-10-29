@@ -3,6 +3,10 @@ import type { gift, reservation, giftLike } from '$lib/server/db/gift.schema.js'
 import type { priorityLevel } from '$lib/server/db/wishlist.schema.js';
 import { ImageMetadataSchema, type ImageMetadata } from '$lib/modules/images/types.js';
 import type { PublicGiftCategory } from '$lib/modules/gift-categories/types.js';
+import {
+	MAX_GIFT_CATEGORIES,
+	isValidGiftCategoryIdList,
+} from '$lib/modules/gift-categories/gift_category_assignment.js';
 
 /** Full gift row from DB */
 export type Gift = typeof gift.$inferSelect;
@@ -84,8 +88,10 @@ export interface GiftBase {
 	priorityLevelId: string | null;
 	priorityLabel: string | null;
 	prioritySortOrder: number | null;
-	categoryId?: string | null;
-	category?: PublicGiftCategory | null;
+	/** Active categories in the gift's order; the first is the primary one grouping uses. */
+	categoryIds: string[];
+	/** The categories of {@link categoryIds}, in the same order. */
+	categories: PublicGiftCategory[];
 }
 
 /** Gift with computed fields for visitor/moderator view */
@@ -116,7 +122,6 @@ export type GiftByRole = GiftForVisitor | GiftForRecipient;
 export const GIFT_VIEW_MODES = {
 	card: 'card',
 	list: 'list',
-	compact: 'compact',
 } as const;
 
 export type GiftViewMode = (typeof GIFT_VIEW_MODES)[keyof typeof GIFT_VIEW_MODES];
@@ -224,6 +229,9 @@ interface EditableGiftFields {
 	imageMeta?: ImageMetadata | null;
 	quantity?: number | null;
 	priorityLevelId?: string | null;
+	/** The complete ordered category list; the first is primary. */
+	categoryIds?: string[];
+	/** Superseded by {@link categoryIds}: a category replaces only the primary, null clears all. */
 	categoryId?: string | null;
 }
 
@@ -273,6 +281,19 @@ const GiftLinkAndPriceFieldEntries = {
 	currency: v.optional(v.nullable(v.picklist(GIFT_CURRENCY_VALUES))),
 };
 
+/** A gift's ordered category list: each category once, the first primary, at most the limit. */
+export const GiftCategoryIdsSchema = v.pipe(
+	v.array(v.string()),
+	v.maxLength(MAX_GIFT_CATEGORIES, `A gift has at most ${MAX_GIFT_CATEGORIES} categories.`),
+	v.check(
+		(ids: string[]) => isValidGiftCategoryIdList(ids),
+		'Each category may appear only once.',
+	),
+	v.description(
+		`The gift's categories in order; the first is the primary one that category grouping uses. At most ${MAX_GIFT_CATEGORIES}.`,
+	),
+);
+
 /** Optional gift fields that creating and updating a gift validate identically. */
 const EditableGiftFieldEntries = {
 	...GiftLinkAndPriceFieldEntries,
@@ -281,8 +302,22 @@ const EditableGiftFieldEntries = {
 	imageMeta: v.optional(v.nullable(ImageMetadataSchema)),
 	quantity: v.optional(v.nullable(v.pipe(v.number(), v.integer(), v.minValue(1)))),
 	priorityLevelId: v.optional(v.nullable(v.string())),
-	categoryId: v.optional(v.nullable(v.string())),
+	categoryIds: v.optional(GiftCategoryIdsSchema),
+	categoryId: v.optional(
+		v.pipe(
+			v.nullable(v.string()),
+			v.description(
+				'Deprecated: send `categoryIds` instead. A category replaces only the primary (first) category; null removes every category.',
+			),
+		),
+	),
 };
+
+function namesCategoriesOnce(input: { categoryIds?: unknown; categoryId?: unknown }): boolean {
+	return input.categoryIds === undefined || input.categoryId === undefined;
+}
+
+const CATEGORY_FIELDS_EXCLUSIVE_MESSAGE = 'Send either categoryIds or the deprecated categoryId.';
 
 export const CreateGiftInputSchema = v.pipe(
 	v.strictObject({
@@ -292,6 +327,7 @@ export const CreateGiftInputSchema = v.pipe(
 		...EditableGiftFieldEntries,
 	}),
 	v.check(isPriceRangeValid, 'priceMax must be greater than or equal to price'),
+	v.check((input) => namesCategoriesOnce(input), CATEGORY_FIELDS_EXCLUSIVE_MESSAGE),
 );
 
 /**
@@ -358,6 +394,7 @@ export const UpdateGiftInputSchema = v.pipe(
 		...EditableGiftFieldEntries,
 	}),
 	v.check(isPriceRangeValid, 'priceMax must be greater than or equal to price'),
+	v.check((input) => namesCategoriesOnce(input), CATEGORY_FIELDS_EXCLUSIVE_MESSAGE),
 );
 
 /** Gift properties a grouped reorder may change: the active priority or category grouping. */
@@ -368,12 +405,26 @@ export const GIFT_REORDER_GROUP_FIELDS = [
 
 export type GiftReorderGroupField = (typeof GIFT_REORDER_GROUP_FIELDS)[number];
 
-const ReorderGiftGroupChangeSchema = v.strictObject({
-	giftId: v.string(),
-	field: v.picklist(GIFT_REORDER_GROUP_FIELDS),
-	/** Priority level or category id; null moves the gift to "Bez priority" / "Bez kategorie". */
-	value: v.nullable(v.string()),
-});
+const ReorderGiftGroupChangeSchema = v.pipe(
+	v.strictObject({
+		giftId: v.string(),
+		field: v.picklist(GIFT_REORDER_GROUP_FIELDS),
+		/**
+		 * Priority level or category id; null moves the gift to "Bez priority" / "Bez kategorie".
+		 * A category replaces only the primary category; null drops it and promotes the next.
+		 */
+		value: v.nullable(v.string()),
+		/** The whole category list to restore, e.g. when undoing a move; it must lead with `value`. */
+		categoryIds: v.optional(GiftCategoryIdsSchema),
+	}),
+	v.check(
+		(change) =>
+			change.categoryIds === undefined ||
+			(change.field === GIFT_GROUPING_OPTIONS.category &&
+				(change.categoryIds[0] ?? null) === change.value),
+		'categoryIds must belong to a category change and lead with its value',
+	),
+);
 
 export type ReorderGiftGroupChange = v.InferOutput<typeof ReorderGiftGroupChangeSchema>;
 
@@ -420,7 +471,27 @@ export const BulkUpdateGiftsInputSchema = v.variant('action', [
 	v.strictObject({
 		...BulkGiftBaseSchema,
 		action: v.literal('category'),
-		categoryId: v.nullable(v.string()),
+		categoryId: v.pipe(
+			v.nullable(v.string()),
+			v.description(
+				'A category replaces each gift’s primary (first) category; null removes every category. Use `addCategory` or `removeCategory` to change one category.',
+			),
+		),
+	}),
+	v.strictObject({
+		...BulkGiftBaseSchema,
+		action: v.literal('addCategory'),
+		categoryId: v.pipe(
+			v.string(),
+			v.description(
+				`Appended to gifts without it; a gift that already has ${MAX_GIFT_CATEGORIES} categories stays unchanged.`,
+			),
+		),
+	}),
+	v.strictObject({
+		...BulkGiftBaseSchema,
+		action: v.literal('removeCategory'),
+		categoryId: v.string(),
 	}),
 	v.strictObject({
 		...BulkGiftBaseSchema,

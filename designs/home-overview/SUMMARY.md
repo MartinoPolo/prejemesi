@@ -22,9 +22,7 @@ Key structural changes from the base variant: card width grew from 280px to 320p
 
 | Component                     | Source                                                              | Install command                                             | Purpose                                        |
 | ----------------------------- | ------------------------------------------------------------------- | ----------------------------------------------------------- | ---------------------------------------------- |
-| Carousel                      | shadcn-svelte registry, vendored from `C:\_MP_github_cloned\shadcn-svelte` | done — vendored into `src/lib/components/base/carousel/`    | Row primitive: Root/Content/Item/Previous/Next |
-| embla-carousel-svelte         | npm                                                                 | done — `pnpm add embla-carousel-svelte`                     | Embla engine behind Carousel                   |
-| embla-carousel-wheel-gestures | npm                                                                 | done — `pnpm add embla-carousel-wheel-gestures`             | Shift+wheel / trackpad horizontal scrolling    |
+| Carousel                      | shadcn-svelte registry API, now a native scroller (see DECISIONS)   | done — `src/lib/components/base/carousel/`                  | Row primitive: Root/Content/Item/Previous/Next |
 
 `shadcn-svelte.com` was unreachable from this machine (TLS connect timeout, matches the known local ESET pattern), so the CLI `add carousel` failed and the registry files were vendored from the cloned repo instead. Deviations from upstream, all deliberate:
 
@@ -42,9 +40,9 @@ Key structural changes from the base variant: card width grew from 280px to 320p
 ## Implementation Notes
 
 - **Peek geometry**: slide basis 320px (`Carousel.Item class="basis-[320px]"` or equivalent), `opts={{ align: 'start' }}`, no loop. The carousel viewport bleeds to the content-padding edge (`margin-right: calc(var(--space-6) * -1)`) so the cut-off card is flush with the page edge, exactly as in `refined.html`.
-- **Wheel gestures**: add `WheelGesturesPlugin` from `embla-carousel-wheel-gestures` to `plugins`, configured `forceWheelAxis: 'x'` (or equivalent) so **plain vertical wheel keeps scrolling the page** — only shift+wheel / trackpad horizontal deltas move the shelf. Scroll-hijacking vertical wheel is explicitly rejected.
+- **Wheel gestures**: the native scroller moves the shelf by each Shift+wheel / trackpad horizontal delta, clamped to the row's edges, while **plain vertical wheel keeps scrolling the page**. Scroll-hijacking vertical wheel is explicitly rejected.
 - **Arrow state**: wire `Carousel.Previous/Next` disabled state via context (`canScrollPrev/Next` — automatic). Rows whose content fits get both arrows disabled; consider hiding the pair entirely when `!canScrollNext && !canScrollPrev` (mockup shows them only on overflowing rows).
 - **Counts**: „Zobrazit vše (N)" uses the row's total count, not the capped-at-10 slice length. Nedávné has no link. Trailing ViewAllCard shows `total - visible`.
 - **Keyboard**: arrow buttons already handle ArrowLeft/ArrowRight via the carousel context's `handleKeyDown`.
-- **Hover lift clearance**: shelves need vertical padding (~6px top / 14px bottom in the mockup) so card hover lift and hard shadows don't clip against the embla overflow-hidden viewport.
+- **Hover lift clearance**: shelves need vertical padding (~6px top / 14px bottom in the mockup) so card hover lift and hard shadows don't clip against the clipping scroll viewport.
 - **SSR**: all four row queries must be SSR-awaited with the issue #108 `$derived(query.current)` pattern — `getFollowedWishlists`/`getModeratedWishlists` are currently browser-gated and would flash skeletons.

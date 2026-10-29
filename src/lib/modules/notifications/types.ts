@@ -126,7 +126,7 @@ export function getNotificationEmailHeading(
 export function getNotificationEmailBody(
 	type: NotificationType,
 	locale: SupportedLocale | undefined,
-	params: { giftName?: string },
+	params: { giftName?: string; giftNames?: readonly string[] },
 ): string {
 	const genericGiftName = m.notification_body_generic_gift_name({}, { locale });
 	const giftName = params.giftName ?? genericGiftName;
@@ -135,7 +135,12 @@ export function getNotificationEmailBody(
 		case NOTIFICATION_TYPE.LIKED_GIFT_RESERVED:
 			return m.notification_body_liked_reserved({ giftName }, { locale });
 		case NOTIFICATION_TYPE.RESERVED_GIFT_EDITED:
-			return m.notification_body_reserved_edited({ giftName }, { locale });
+			return params.giftNames !== undefined && params.giftNames.length > 1
+				? m.notification_body_reserved_edited_multiple(
+						{ giftNames: params.giftNames.join(', ') },
+						{ locale },
+					)
+				: m.notification_body_reserved_edited({ giftName }, { locale });
 		case NOTIFICATION_TYPE.WISHLIST_ARCHIVED:
 			return m.notification_body_archived({}, { locale });
 		case NOTIFICATION_TYPE.RECIPIENT_SELF_PROMOTED:
@@ -248,6 +253,8 @@ export interface DispatchNotificationInput {
 	/** Gift name for the email body's detail sentence (issue #205) – gift-bearing dispatches
 	 *  pass this so the body can name the gift instead of repeating the subject. */
 	giftName?: string;
+	/** Every gift of a coalesced batch notification; such a dispatch carries no single `giftId`. */
+	giftNames?: readonly string[];
 	actorId?: string;
 	actorName?: string;
 	/** Overrides the email CTA link path (resolved against origin). Defaults to the wishlist URL. Use for links that aren't the plain wishlist page (e.g. an invite-acceptance URL). */

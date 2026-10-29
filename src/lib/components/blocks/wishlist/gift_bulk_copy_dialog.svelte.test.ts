@@ -4,7 +4,7 @@ import { page, userEvent } from 'vitest/browser';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
 import { expectContentClearsOverlayClose } from '$lib/components/base/dialog/overlay_close_geometry.test_fixtures.js';
-import GiftBulkCopyDialog from './GiftBulkCopyDialog.svelte';
+import GiftBulkCopyDialog, { NEW_WISHLIST_DESTINATION } from './GiftBulkCopyDialog.svelte';
 import * as m from '$lib/paraglide/messages.js';
 
 const { expectPixelsNear, expectPixelsAtMost } = createPixelAssertions(expect);
@@ -62,6 +62,67 @@ describe('GiftBulkCopyDialog', () => {
 		await screen.unmount();
 	});
 
+	it('offers a new wishlist after the existing destinations', async () => {
+		await page.viewport(1280, 760);
+		const handlers = props();
+		const screen = await render(GiftBulkCopyDialog, handlers);
+		await screen.getByTestId('bulk-copy-destination').click();
+		const options = screen.getByRole('option');
+		await expect.element(options.nth(0)).toHaveTextContent('Narozeniny · Jana');
+		await expect.element(options.nth(1)).toHaveTextContent(m.gift_bulk_copy_new_destination());
+		await options.nth(1).click();
+		expect(handlers.ondestinationchange).toHaveBeenCalledWith(NEW_WISHLIST_DESTINATION);
+		await screen.unmount();
+	});
+
+	it.each([
+		['desktop dialog', 1280],
+		['mobile sheet', 390],
+	])(
+		'offers a new wishlist instead of a dead end when no other wishlist exists (%s)',
+		async (_surface, viewportWidth) => {
+			await page.viewport(viewportWidth, 760);
+			const handlers = {
+				...props(),
+				destinations: [],
+				selectedDestinationId: NEW_WISHLIST_DESTINATION,
+			};
+			const screen = await render(GiftBulkCopyDialog, handlers);
+			const dialog = screen.getByRole('dialog', { name: m.gift_bulk_copy_title() });
+			await expect
+				.element(dialog.getByTestId('bulk-copy-destination'))
+				.toHaveTextContent(m.gift_bulk_copy_new_destination());
+			const confirm = dialog.getByRole('button', {
+				name: m.gift_bulk_copy_new_destination_confirm(),
+			});
+			await expect.element(confirm).toBeEnabled();
+			await confirm.click();
+			expect(handlers.onconfirm).toHaveBeenCalledOnce();
+			await screen.unmount();
+		},
+	);
+
+	it('keeps the move choice available while a new wishlist is the destination', async () => {
+		await page.viewport(1280, 760);
+		const screen = await render(GiftBulkCopyDialog, {
+			...props(),
+			selectedDestinationId: NEW_WISHLIST_DESTINATION,
+			offerSourceRemoval: true,
+			removeSources: true,
+			onremovesourceschange: vi.fn(),
+		});
+		const dialog = screen.getByRole('dialog', { name: m.gift_bulk_copy_move_title() });
+		await expect
+			.element(dialog.getByRole('checkbox', { name: m.gift_bulk_copy_remove_sources() }))
+			.toBeChecked();
+		await expect
+			.element(
+				dialog.getByRole('button', { name: m.gift_bulk_copy_new_destination_confirm() }),
+			)
+			.toBeEnabled();
+		await screen.unmount();
+	});
+
 	it('supports keyboard selection and Escape without dismissing the parent dialog', async () => {
 		await page.viewport(1280, 760);
 		const handlers = props();
@@ -69,7 +130,10 @@ describe('GiftBulkCopyDialog', () => {
 		const trigger = screen.getByTestId('bulk-copy-destination');
 		await trigger.click();
 		await userEvent.keyboard('{ArrowDown}{Enter}');
-		expect(handlers.ondestinationchange).toHaveBeenCalledWith('destination');
+		expect(handlers.ondestinationchange).toHaveBeenCalledWith(NEW_WISHLIST_DESTINATION);
+		await trigger.click();
+		await userEvent.keyboard('{ArrowDown}{ArrowUp}{Enter}');
+		expect(handlers.ondestinationchange).toHaveBeenLastCalledWith('destination');
 
 		await trigger.click();
 		await userEvent.keyboard('{Escape}');
@@ -155,6 +219,109 @@ describe('GiftBulkCopyDialog', () => {
 		expectPixelsNear(confirmRect.left, triggerRect.left);
 		await backButton.click();
 		expect(onback).toHaveBeenCalledOnce();
+		await screen.unmount();
+	});
+
+	it('offers no source removal for an occasion source wishlist', async () => {
+		await page.viewport(1280, 760);
+		const screen = await render(GiftBulkCopyDialog, props());
+		const dialog = screen.getByRole('dialog', { name: m.gift_bulk_copy_title() });
+		await expect.element(dialog).toBeVisible();
+		await expect
+			.element(dialog.getByRole('checkbox', { name: m.gift_bulk_copy_remove_sources() }))
+			.not.toBeInTheDocument();
+		await screen.unmount();
+	});
+
+	it('lets a permanent source opt in to removing the copied unreserved gifts', async () => {
+		await page.viewport(1280, 760);
+		const onremovesourceschange = vi.fn();
+		const screen = await render(GiftBulkCopyDialog, {
+			...props(),
+			selectedDestinationId: 'destination',
+			offerSourceRemoval: true,
+			onremovesourceschange,
+		});
+		const dialog = screen.getByRole('dialog', { name: m.gift_bulk_copy_title() });
+		const removal = dialog.getByRole('checkbox', { name: m.gift_bulk_copy_remove_sources() });
+		await expect.element(removal).toBeVisible();
+		await expect.element(removal).not.toBeChecked();
+		await expect
+			.element(removal)
+			.toHaveAccessibleDescription(m.gift_bulk_copy_remove_sources_help());
+		await expect.element(dialog.getByText(m.gift_bulk_copy_description())).toBeVisible();
+
+		await removal.click();
+		expect(onremovesourceschange).toHaveBeenCalledWith(true);
+		await screen.unmount();
+	});
+
+	it('copies without requesting source removal while the permanent-source checkbox stays unchecked', async () => {
+		await page.viewport(1280, 760);
+		const handlers = {
+			...props(),
+			selectedDestinationId: 'destination',
+			offerSourceRemoval: true,
+			removeSources: false,
+			onremovesourceschange: vi.fn(),
+		};
+		const screen = await render(GiftBulkCopyDialog, handlers);
+		const dialog = screen.getByRole('dialog', { name: m.gift_bulk_copy_title() });
+		await expect
+			.element(dialog.getByRole('checkbox', { name: m.gift_bulk_copy_remove_sources() }))
+			.not.toBeChecked();
+
+		await dialog.getByRole('button', { name: m.gift_bulk_copy_confirm() }).click();
+
+		expect(handlers.onconfirm).toHaveBeenCalledOnce();
+		expect(handlers.onremovesourceschange).not.toHaveBeenCalled();
+		await screen.unmount();
+	});
+
+	it.each([
+		['desktop dialog', 1280],
+		['mobile sheet', 390],
+	])('names the move once source removal is chosen (%s)', async (_surface, viewportWidth) => {
+		await page.viewport(viewportWidth, 760);
+		const screen = await render(GiftBulkCopyDialog, {
+			...props(),
+			selectedDestinationId: 'destination',
+			offerSourceRemoval: true,
+			removeSources: true,
+			onremovesourceschange: vi.fn(),
+		});
+		const dialog = screen.getByRole('dialog', { name: m.gift_bulk_copy_move_title() });
+		await expect.element(dialog).toBeVisible();
+		await expect
+			.element(dialog.getByRole('checkbox', { name: m.gift_bulk_copy_remove_sources() }))
+			.toBeChecked();
+		await expect.element(dialog.getByText(m.gift_bulk_copy_move_description())).toBeVisible();
+		await expect
+			.element(dialog.getByText(m.gift_bulk_copy_description()))
+			.not.toBeInTheDocument();
+		await expect
+			.element(dialog.getByRole('button', { name: m.gift_bulk_copy_move_confirm() }))
+			.toBeEnabled();
+		await expect
+			.element(dialog.getByRole('button', { name: m.gift_bulk_copy_confirm() }))
+			.not.toBeInTheDocument();
+		await screen.unmount();
+	});
+
+	it('keeps the copy wording while source removal is offered but not chosen', async () => {
+		await page.viewport(1280, 760);
+		const screen = await render(GiftBulkCopyDialog, {
+			...props(),
+			selectedDestinationId: 'destination',
+			offerSourceRemoval: true,
+			removeSources: false,
+			onremovesourceschange: vi.fn(),
+		});
+		const dialog = screen.getByRole('dialog', { name: m.gift_bulk_copy_title() });
+		await expect.element(dialog).toBeVisible();
+		await expect
+			.element(dialog.getByRole('button', { name: m.gift_bulk_copy_confirm() }))
+			.toBeEnabled();
 		await screen.unmount();
 	});
 

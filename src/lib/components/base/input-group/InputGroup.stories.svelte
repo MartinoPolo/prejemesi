@@ -5,6 +5,7 @@
 	import SearchIcon from '@lucide/svelte/icons/search';
 	import MailIcon from '@lucide/svelte/icons/mail';
 	import CopyIcon from '@lucide/svelte/icons/copy';
+	import CheckIcon from '@lucide/svelte/icons/check';
 	import EyeIcon from '@lucide/svelte/icons/eye';
 	import SendIcon from '@lucide/svelte/icons/send';
 	import LockIcon from '@lucide/svelte/icons/lock';
@@ -113,6 +114,24 @@
 				<InputGroup.Segment>
 					<CopyIcon />
 					Copy
+				</InputGroup.Segment>
+			</InputGroup.Root>
+		</div>
+	{/snippet}
+</Story>
+
+<Story name="URL Copied">
+	{#snippet template()}
+		<div class="w-80">
+			<InputGroup.Root>
+				<InputGroup.Input
+					value="https://prejemesi.cz/w/birthday"
+					readonly
+					aria-label="Share link"
+				/>
+				<InputGroup.Segment state="success">
+					<CheckIcon />
+					Copied
 				</InputGroup.Segment>
 			</InputGroup.Root>
 		</div>

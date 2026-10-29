@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
 	import { page } from '$app/state';
-	import { afterNavigate, replaceState, goto } from '$app/navigation';
+	import { replaceState, goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { onMount, tick } from 'svelte';
 	import { SvelteSet } from 'svelte/reactivity';
@@ -12,9 +12,23 @@
 	import WishlistGiftDisplay from '$lib/components/blocks/wishlist/WishlistGiftDisplay.svelte';
 	import WishlistSelectionToolbar from '$lib/components/blocks/wishlist/WishlistSelectionToolbar.svelte';
 	import GiftBulkCopyDialog, {
+		NEW_WISHLIST_DESTINATION,
 		type BulkCopyDestination,
 	} from '$lib/components/blocks/wishlist/GiftBulkCopyDialog.svelte';
+	import CreateWishlistModal, {
+		type CreatedWishlist,
+	} from '$lib/components/blocks/wishlist/CreateWishlistModal.svelte';
 	import GiftContextActions from '$lib/components/blocks/wishlist/GiftContextActions.svelte';
+	import WishlistAssistant from '$lib/components/blocks/chat/WishlistAssistant.svelte';
+	import { setAssistantContext } from '$lib/modules/chat/assistant.context.svelte.js';
+	import {
+		NO_GIFT_LIVE_PREVIEWS,
+		giftLivePreviews,
+		type DecidingProposalRegistry,
+	} from '$lib/components/blocks/change-proposals/gift_live_preview.js';
+	import { getChatAvailability } from '$lib/modules/chat/chat.remote.js';
+	import { CHAT_AVAILABILITY } from '$lib/modules/chat/types.js';
+	import { cn } from '$lib/utils.js';
 	import ReleaseReservationFlow from '$lib/components/blocks/reservation/ReleaseReservationFlow.svelte';
 	import type {
 		GiftActionPlacementSnapshot,
@@ -22,10 +36,17 @@
 		GiftContextInvocation,
 		GiftContextSession,
 	} from '$lib/components/blocks/wishlist/gift_context_invocation.js';
-	import { resolveGiftContextFocusTarget } from '$lib/components/blocks/wishlist/gift_context_focus.js';
+	import {
+		resolveGiftCardFocusTarget,
+		resolveGiftContextFocusTarget,
+		resolveGiftReorderGripFocusTarget,
+	} from '$lib/components/blocks/wishlist/gift_context_focus.js';
 	import { useNarrowViewportState } from '$lib/components/derived/narrow_viewport_state.svelte.js';
 	import WishlistPreparingNotice from '$lib/components/blocks/wishlist/WishlistPreparingNotice.svelte';
 	import WishlistModals from '$lib/components/blocks/wishlist/WishlistModals.svelte';
+	import GiftCategoryQuickAddDialog, {
+		type GiftCategoryQuickAddTarget,
+	} from '$lib/components/blocks/gift/GiftCategoryQuickAddDialog.svelte';
 	import WishlistSettingsModal from '$lib/components/blocks/wishlist/WishlistSettingsModal.svelte';
 	import EditRecipientDialog from '$lib/components/blocks/wishlist/EditRecipientDialog.svelte';
 	import * as Dialog from '$lib/components/base/dialog/index.js';
@@ -49,14 +70,23 @@
 	import { createLatestAsyncQueue } from '$lib/modules/gifts/latest_async_queue.js';
 	import { setLikesContext } from '$lib/modules/likes/likes.context.svelte.js';
 	import { setSharingContext } from '$lib/modules/sharing/sharing.context.svelte.js';
-	import { wishlistSocialDescription } from '$lib/modules/sharing/social_description.js';
+	import {
+		buildWishlistSocialMetaTags,
+		wishlistPageUrl,
+	} from '$lib/modules/sharing/social_meta.js';
 	import {
 		getWishlistByShortId,
 		archiveWishlist,
+		deleteWishlistIfEmpty,
 		unfollowWishlist,
 		recordWishlistVisit,
 	} from '$lib/modules/wishlists/wishlists.remote.js';
 	import { getGiftsByWishlistShortId } from '$lib/modules/gifts/gifts.remote.js';
+	import { PendingChangesBanner } from '$lib/components/blocks/change-proposals/index.js';
+	import {
+		getPendingChangeProposals,
+		type PendingChangeProposalSummary,
+	} from '$lib/modules/change_proposals/index.js';
 	import { getGiftCategories } from '$lib/modules/gift-categories/gift_category_queries.remote.js';
 	import { getUserLikesForWishlistScoped } from '$lib/modules/likes/likes.remote.js';
 	import {
@@ -70,20 +100,35 @@
 		ReserveGiftInput,
 		ReservationForModerator,
 	} from '$lib/modules/reservations/types.js';
-	import { WISHLIST_ROLES, type WishlistRole } from '$lib/modules/wishlists/types.js';
+	import {
+		WISHLIST_KIND,
+		WISHLIST_ROLES,
+		type WishlistRole,
+	} from '$lib/modules/wishlists/types.js';
 	import {
 		canManageWishlist,
+		recipientMayMoveGifts,
 		REVERT_CAPABILITY,
 		RESERVATION_RELEASE_CAPABILITY,
 	} from '$lib/modules/wishlists/wishlist_capabilities.js';
 	import type { Palette } from '$lib/theme/palettes.js';
+	import type { WishlistThemeId } from '$lib/theme/wishlist_themes.js';
+	import {
+		loadWishlistThemeArt,
+		type WishlistThemeArt,
+	} from '$lib/theme/wishlist_theme_art/index.js';
+	import WishlistThemeBackdrop from '$lib/components/blocks/wishlist/WishlistThemeBackdrop.svelte';
+	import {
+		resolveWishlistThemeScope,
+		wishlistThemeScopeAttributes,
+		type WishlistAppearancePreview,
+		type WishlistThemeMotif,
+	} from '$lib/components/blocks/wishlist/wishlist_theme_scope.js';
 	import { getWishlistEmoji } from '$lib/modules/wishlists/wishlist_theme.js';
-	import { wishlistSocialImageUrl } from '$lib/modules/images/index.js';
 	import {
 		giftEditorModeFromMeta,
 		IMAGE_EDITOR_MODES,
 	} from '$lib/modules/images/editor_modes.js';
-	import { SITE_URL, SOCIAL_PREVIEW_IMAGE_URL } from '$lib/config/site.js';
 	import { untrack } from 'svelte';
 	import {
 		dismissToast,
@@ -115,6 +160,10 @@
 	} from '$lib/modules/import/duplicate_aware_submission.js';
 	import { buildGiftCsv, giftCsvFilename, downloadGiftCsv } from '$lib/modules/import/index.js';
 	import { labelForGiftCategory } from '$lib/modules/gift-categories/types.js';
+	import {
+		giftCategoryChoices,
+		withGiftCategoryToggled,
+	} from '$lib/modules/gift-categories/gift_category_assignment.js';
 	import { getLocale } from '$lib/paraglide/runtime.js';
 	import {
 		GIFT_SECTION_KINDS,
@@ -129,6 +178,12 @@
 		ownerSharedGiftDeleteGraceExpiresAt,
 		preShareOwnerFullEditGraceExpiresAt,
 	} from '$lib/modules/gifts/gift_deletion_rules.js';
+	import { giftFollowsStrictPostShareRules } from '$lib/modules/gifts/gift_strict_post_share_rules.js';
+	import {
+		readRecipientGiftChangeWarningAcknowledged,
+		shouldWarnRecipientBeforeGiftChange,
+		storeRecipientGiftChangeWarningAcknowledged,
+	} from '$lib/modules/gifts/recipient_gift_change_warning.js';
 	import {
 		createGiftSelection,
 		shouldExitGiftSelectionOnEscape,
@@ -150,15 +205,14 @@
 		resetPriorityLevelLoaderForWishlistChange,
 		settlePriorityLevelLoad,
 	} from './priority_level_loader.js';
+	import type { PageProps } from './$types';
 	import {
 		GIFT_GROUPING_OPTIONS,
-		GIFT_VIEW_MODES,
 		type GiftReorderGroupField,
 		type ReorderGiftGroupChange,
 		type ReorderGiftsInput,
 	} from '$lib/modules/gifts/types.js';
 	import {
-		GIFT_REORDER_MOVE_SOURCES,
 		applyReorderPlacement,
 		buildReorderSections,
 		categoryReorderGroups,
@@ -168,8 +222,9 @@
 		reorderGroupKeyLookup,
 		resolveGroupedReorderMove,
 		withReorderGroup,
+		withGiftCategoryIds,
+		categoryGroupChange,
 		type GiftReorderGroup,
-		type GiftReorderMoveSource,
 		type GiftReorderPlacement,
 	} from '$lib/modules/gifts/gift_grouped_reorder.js';
 	import { giftSectionLabel } from '$lib/components/blocks/wishlist/gift_section_label.js';
@@ -194,7 +249,7 @@
 	type ReorderBaselineStatus =
 		(typeof REORDER_BASELINE_STATUS)[keyof typeof REORDER_BASELINE_STATUS];
 
-	let { data } = $props();
+	let { data }: PageProps = $props();
 
 	const shortId = $derived(page.params.id!);
 	const isAuthenticated = $derived(data.user !== null);
@@ -215,6 +270,12 @@
 	// Optimistic palette: the override paints instantly on selection; the persisted
 	// value rides back via setWishlistPalette's single-flight refresh.
 	let paletteOverride = $state<Palette | null>(null);
+	// Optimistic appearance preview from the settings editor, keyed by the wishlist it belongs
+	// to so in-place navigation to another wishlist never shows the previous one's draft.
+	let appearanceOverride = $state.raw<{
+		wishlistId: string;
+		appearance: WishlistAppearancePreview;
+	} | null>(null);
 
 	// Opens the "log in to like" prompt when an anonymous visitor taps the heart.
 	let authPromptOpen = $state(false);
@@ -236,6 +297,9 @@
 			() => isGiftDataLoading || wishlist.shortId !== shortId,
 		),
 	);
+
+	const assistant = setAssistantContext();
+	const decidingProposals: DecidingProposalRegistry = new SvelteSet();
 
 	untrack(() =>
 		setLikesContext(
@@ -266,10 +330,15 @@
 
 	// ── Remote data fetch ────────────────────────────────────────────────────
 
-	// SSR fetches only wishlist metadata for title/OG/header. The plain awaited value
+	// The submitter's own pending agent proposals load in parallel with the wishlist during
+	// SSR, so the banner adds no client request; nobody else gets any back.
+	// svelte-ignore state_referenced_locally
+	const pendingProposalsLoad = loadInitialPendingProposals(isAuthenticated, shortId);
+
+	// SSR fetches wishlist metadata for title/OG/header. The plain awaited value
 	// is required for <svelte:head> — reading post-await state through a memoized
 	// $derived there collapses to undefined during async SSR and 500s (see
-	// getSocialDescription). The reactive query shares the same client cache entry,
+	// getSocialMetaTags). The reactive query shares the same client cache entry,
 	// so hydration costs no second fetch and single-flight refreshes flow into
 	// `wishlist` below; the awaited value doubles as the fallback while a new
 	// shortId is loading after in-place navigation.
@@ -277,6 +346,36 @@
 	const initialWishlist = await getWishlistByShortId(shortId);
 	const wishlistQuery = $derived(getWishlistByShortId(shortId));
 	const wishlist = $derived(wishlistQuery.current ?? initialWishlist);
+	// The art is decorative, so a failed load leaves the theme without motifs.
+	async function loadThemeArtOrNone(themeId: WishlistThemeId): Promise<WishlistThemeArt | null> {
+		try {
+			return await loadWishlistThemeArt(themeId);
+		} catch (thrown) {
+			console.error('Failed to load wishlist theme art:', thrown);
+			return null;
+		}
+	}
+	// The first theme's art loads during SSR so the motifs paint before hydration; a theme
+	// picked later (another wishlist, a settings preview) loads lazily below.
+	// svelte-ignore state_referenced_locally
+	const initialThemeId = initialWishlist.themeId;
+	const initialThemeArt =
+		initialThemeId === null ? null : await loadThemeArtOrNone(initialThemeId);
+	let loadedThemeArt = $state.raw<{ themeId: WishlistThemeId; art: WishlistThemeArt } | null>(
+		initialThemeId === null || initialThemeArt === null
+			? null
+			: { themeId: initialThemeId, art: initialThemeArt },
+	);
+	// svelte-ignore state_referenced_locally
+	const initialPendingProposalsShortId = shortId;
+	const initialPendingProposals = await pendingProposalsLoad;
+	const pendingProposalsQuery = $derived(
+		isAuthenticated ? getPendingChangeProposals({ wishlistShortId: shortId }) : null,
+	);
+	const pendingProposals = $derived(
+		pendingProposalsQuery?.current ??
+			(shortId === initialPendingProposalsShortId ? initialPendingProposals : []),
+	);
 	const likesQuery = $derived(
 		browser && isAuthenticated
 			? getUserLikesForWishlistScoped({ wishlistId: wishlist.id })
@@ -284,12 +383,16 @@
 	);
 	const likedGiftIds = $derived(likesQuery?.current ?? []);
 	const role = $derived<WishlistRole>(giftsResult?.role ?? wishlist.role);
-	let filterStateWishlistId = $state<string | null>(null);
+	const giftSelection = untrack(() => createGiftSelection());
+	// The page component is reused across /w/A -> /w/B navigation, so per-wishlist view state
+	// (filters, gift selection) must reset when the wishlist changes.
+	let viewStateWishlistId = $state<string | null>(null);
 
 	$effect(() => {
-		if (filterStateWishlistId !== wishlist.id) {
-			filterStateWishlistId = wishlist.id;
+		if (viewStateWishlistId !== wishlist.id) {
+			viewStateWishlistId = wishlist.id;
 			giftsContext.filters.current = emptyGiftFilters();
+			giftSelection.exit();
 		}
 	});
 
@@ -328,12 +431,43 @@
 	// ── Derived values ───────────────────────────────────────────────────────
 
 	const activePalette = $derived(paletteOverride ?? wishlist.palette);
+	const themeScope = $derived(
+		resolveWishlistThemeScope(
+			appearanceOverride !== null && appearanceOverride.wishlistId === wishlist.id
+				? appearanceOverride.appearance
+				: {
+						themeId: wishlist.themeId,
+						styleTokens: wishlist.styleTokens,
+						background: wishlist.background,
+					},
+		),
+	);
+	const themeScopeAttributes = $derived(wishlistThemeScopeAttributes(themeScope));
+	const themeArt = $derived(
+		loadedThemeArt !== null && loadedThemeArt.themeId === themeScope.placeholderThemeId
+			? loadedThemeArt.art
+			: null,
+	);
+	const themeMotif = $derived<WishlistThemeMotif | null>(
+		themeScope.placeholderThemeId === null
+			? null
+			: { themeId: themeScope.placeholderThemeId, markup: themeArt?.motifs[0] ?? null },
+	);
 	const isArchived = $derived(wishlist.status === 'archived');
 	const isRecipient = $derived(role === 'recipient');
 	const hideReservationState = $derived(isRecipient || recipientViewPreview);
 	// Full management gate (add/edit gifts, share, archive, settings): recipient OR správce.
 	const canManage = $derived(canManageWishlist(role));
 	const categoriesQuery = $derived(browser && canManage ? getGiftCategories(wishlist.id) : null);
+	const chatAvailabilityQuery = $derived(
+		browser && data.chatOffered && canManage ? getChatAvailability() : null,
+	);
+	const chatAvailability = $derived(chatAvailabilityQuery?.current);
+	const chatOffered = $derived(
+		chatAvailability !== undefined &&
+			chatAvailability !== CHAT_AVAILABILITY.notAllowed &&
+			!isArchived,
+	);
 	const categoryOptions = $derived(categoriesQuery?.current ?? []);
 	const categoryActionOptions = $derived(
 		categoryOptions.map((category) => ({
@@ -344,6 +478,14 @@
 	const categoriesReady = $derived(
 		categoriesQuery !== null && categoriesQuery.current !== undefined,
 	);
+	const canCreateCategory = $derived(canManage && !isArchived && categoriesReady);
+	let categoryQuickAddOpen = $state(false);
+	let categoryQuickAddTarget = $state<GiftCategoryQuickAddTarget>({ kind: 'editor' });
+
+	function openCategoryQuickAdd(target: GiftCategoryQuickAddTarget) {
+		categoryQuickAddTarget = target;
+		categoryQuickAddOpen = true;
+	}
 	let priorityLevels = $state<Awaited<ReturnType<typeof getPriorityLevels>>>([]);
 	let priorityLevelsOwnerWishlistId = $state<string | null>(null);
 	let priorityLevelsWishlistId = $state<string | null>(null);
@@ -390,28 +532,27 @@
 	// For-someone-else ⇔ no linked recipient account (management is via správci rows only).
 	const isForSomeoneElse = $derived(wishlist?.recipientUserId == null);
 	const themeEmoji = $derived(getWishlistEmoji(wishlist?.theme));
-	function getWishlistPageUrl() {
-		return `${SITE_URL}/w/${wishlist.shortId}`;
-	}
-
-	// OG/Twitter image (issue #117): a fixed-aspect crop honoring the `social` slot's saved
-	// focal point, so the crawler-visible preview matches what the owner framed in the crop
-	// editor instead of always serving the unmodified source image.
-	function getWishlistSocialImageUrl() {
-		const url = wishlistSocialImageUrl(
-			wishlist.imageKey,
-			wishlist.imageSlots,
-			SOCIAL_PREVIEW_IMAGE_URL,
-		);
-		return url.startsWith('http') ? url : `${SITE_URL}${url}`;
-	}
-
-	// OG/Twitter description. A plain function (evaluated at render), NOT a $derived — reading
+	// OG/Twitter tags. A plain function (evaluated at render), NOT a $derived — reading
 	// post-await state through a memoized $derived inside <svelte:head> collapses to undefined
-	// during async SSR and 500s. Localized via Paraglide (issue #117). Sentence form
-	// „Seznam přání pro {recipient}" on ALL lists — self lists included (2026-07-14 decision).
-	function getSocialDescription() {
-		return wishlistSocialDescription(wishlist.recipientDisplayName);
+	// during async SSR and 500s. The image is the `social` slot crop the owner framed in the
+	// crop editor (issue #117), else the branded fallback.
+	function getSocialMetaTags() {
+		return buildWishlistSocialMetaTags(wishlist, getLocale());
+	}
+
+	/** A failing lookup only hides the banner; it never breaks the wishlist. */
+	async function loadInitialPendingProposals(
+		authenticated: boolean,
+		wishlistShortId: string,
+	): Promise<PendingChangeProposalSummary[]> {
+		if (!authenticated) {
+			return [];
+		}
+		try {
+			return await getPendingChangeProposals({ wishlistShortId });
+		} catch {
+			return [];
+		}
 	}
 
 	// ── Modal state ──────────────────────────────────────────────────────────
@@ -443,6 +584,16 @@
 	let settingsModalOpen = $state(false);
 	let settingsModalTab = $state<WishlistSettingsTab>(WISHLIST_SETTINGS_TABS.details);
 
+	// ── Recipient gift-change warning (issue #479) ───────────────────────────
+	// The in-memory set keeps the acknowledgement when session storage is unavailable.
+
+	let recipientGiftChangeWarningOpen = $state(false);
+	let pendingRecipientGiftChange = $state<{
+		wishlistId: string;
+		resolve: (confirmed: boolean) => void;
+	} | null>(null);
+	const recipientGiftChangeWarningAcknowledgedIds = new SvelteSet<string>();
+
 	// ── Archive confirmation dialog state ────────────────────────────────────
 
 	let archiveConfirmOpen = $state(false);
@@ -462,6 +613,12 @@
 	// ── Gift display ─────────────────────────────────────────────────────────
 
 	let reorderMode = $state(false);
+	// The list previews the proposals the open chat is deciding; reordering shows it as stored.
+	const giftPreviews = $derived(
+		assistant.open.current && !reorderMode
+			? giftLivePreviews(decidingProposals)
+			: NO_GIFT_LIVE_PREVIEWS,
+	);
 	let reorderActiveIds = $state<string[] | null>(null);
 	let reorderDonePending = $state(false);
 	let reorderBaselineStatus = $state<ReorderBaselineStatus>(REORDER_BASELINE_STATUS.verified);
@@ -549,10 +706,7 @@
 	);
 	const viewMode = $derived(giftsContext.viewMode.current);
 	let cardColumnCapacity = $state<number | null>(null);
-	const reorderLayoutSupported = $derived(
-		viewMode === GIFT_VIEW_MODES.card || viewMode === GIFT_VIEW_MODES.list,
-	);
-	const canMaintainReorderMode = $derived(canManage && !isArchived && reorderLayoutSupported);
+	const canMaintainReorderMode = $derived(canManage && !isArchived);
 	// Grouped reorder shows every level or category, so their definitions must be loaded first.
 	const reorderGroupDefinitionsReady = $derived.by(() => {
 		switch (giftsContext.effectiveGrouping.current) {
@@ -570,6 +724,7 @@
 			reorderBaselineVerified &&
 			canMaintainReorderMode,
 	);
+	const canStartReorderFromGift = $derived(canEnterReorderMode && !reorderMode);
 	const reorderGroups = $derived.by<GiftReorderGroup[]>(() => {
 		switch (reorderGroupField) {
 			case GIFT_GROUPING_OPTIONS.priority:
@@ -584,6 +739,9 @@
 
 	function withReorderGroupChange(giftItem: GiftByRole): GiftByRole {
 		const change = reorderGroupChanges[giftItem.id];
+		if (change?.categoryIds !== undefined) {
+			return withGiftCategoryIds(giftItem, change.categoryIds, categoryOptions);
+		}
 		const group =
 			change === undefined
 				? undefined
@@ -653,7 +811,6 @@
 	const headerGiftCount = $derived(isGiftDataLoading && gifts.length === 0 ? null : totalCount);
 	const isFilteredEmpty = $derived(!reorderMode && displayedGifts.length === 0 && totalCount > 0);
 	const isEmpty = $derived(reorderMode ? reorderModeGifts.length === 0 : totalCount === 0);
-	const giftSelection = untrack(() => createGiftSelection());
 	const visibleGiftIds = $derived(displayedGifts.map((giftItem) => giftItem.id));
 	const selectionSnapshot = $derived(giftSelection.snapshot(visibleGiftIds));
 	const selectedGiftRows = $derived(
@@ -668,8 +825,11 @@
 	const commonPriorityId = $derived(
 		commonSelectionValue(selectedGiftRows.map((giftItem) => giftItem.priorityLevelId)),
 	);
-	const commonCategoryId = $derived(
-		commonSelectionValue(selectedGiftRows.map((giftItem) => giftItem.categoryId ?? null)),
+	const selectionCategoryChoices = $derived(
+		giftCategoryChoices(
+			selectedGiftRows.map((giftItem) => giftItem.categoryIds),
+			categoryOptions.map((category) => category.id),
+		),
 	);
 	const commonImageFit = $derived(
 		commonSelectionValue(
@@ -694,6 +854,16 @@
 	let bulkCopyDestinationId = $state('');
 	let bulkCopyReturnToActions = $state<(() => void) | null>(null);
 	let bulkCopyDestinations = $state<BulkCopyDestination[]>([]);
+	let bulkCopyCreateOpen = $state(false);
+	// Set only for a list created by this flow, which a failed copy deletes while still empty (issue #557).
+	let bulkCopyCreatedDestination = $state<CreatedWishlist | null>(null);
+	// Moving gifts out (copy, then remove the unreserved sources) is a permanent wishlist's workflow;
+	// once the list was shared, its recipient may only copy (issue #479).
+	let bulkCopyRemovesSources = $state(false);
+	const bulkCopyOffersSourceRemoval = $derived(
+		wishlist.kind === WISHLIST_KIND.permanent &&
+			(!isRecipient || recipientMayMoveGifts(wishlist)),
+	);
 	let hiddenConfirmOpen = $state(false);
 	let deferredBulkAction = $state<GiftBulkAction | null>(null);
 	let contextSession = $state<GiftContextSession<GiftByRole> | null>(null);
@@ -798,6 +968,7 @@
 			primaryUrl: normalizeGiftUrl(primaryUrl),
 			readOnly: isArchived,
 			canEdit: true,
+			canReorder: canStartReorderFromGift,
 			...reservationContext,
 			...releaseContextFor(giftItem),
 			origin,
@@ -882,6 +1053,8 @@
 		};
 		queuedContextAction = null;
 		if (invocation.kind !== 'native') {
+			// The native menu's content unmounts with this session, so it must not stay open.
+			nativeContextOpen = false;
 			programmaticOpen = true;
 		}
 		void ensurePriorityLevels();
@@ -943,6 +1116,10 @@
 				session.gift.id,
 				wishlistPageElement ?? document,
 			)?.focus({ preventScroll: true });
+		} else if (session.invocation.kind === 'native' && session.invocation.fromKeyboard) {
+			resolveGiftCardFocusTarget(session.gift.id, wishlistPageElement ?? document)?.focus({
+				preventScroll: true,
+			});
 		}
 		if (contextSession?.id === sessionId) {
 			contextSession = null;
@@ -951,7 +1128,7 @@
 
 	async function updateContextGift(update: {
 		priorityLevelId?: string | null;
-		categoryId?: string | null;
+		categoryIds?: string[];
 	}) {
 		const gift = contextSession?.gift;
 		if (gift === undefined) {
@@ -1083,9 +1260,11 @@
 		bulkCopyOpen = true;
 		bulkCopyLoading = true;
 		bulkCopyDestinationId = '';
+		bulkCopyRemovesSources = false;
+		bulkCopyCreatedDestination = null;
 		try {
 			bulkCopyDestinations = await getBulkCopyDestinations(wishlist.id);
-			bulkCopyDestinationId = bulkCopyDestinations[0]?.id ?? '';
+			bulkCopyDestinationId = bulkCopyDestinations[0]?.id ?? NEW_WISHLIST_DESTINATION;
 		} catch (thrown) {
 			bulkCopyDestinations = [];
 			toastError(translateServerError(thrown));
@@ -1108,6 +1287,60 @@
 		returnToActions?.();
 	}
 
+	function bulkCopySuccessMessage(copiedCount: number, removedCount: number) {
+		return removedCount > 0
+			? m.gift_bulk_copy_moved_success({ count: copiedCount, removed: removedCount })
+			: m.gift_bulk_copy_success({ count: copiedCount });
+	}
+
+	function bulkCopySuccessToast(message: string, destinationId: string) {
+		const created = bulkCopyCreatedDestination;
+		if (created?.id !== destinationId) {
+			toastSuccess(message);
+			return;
+		}
+		showToast({
+			tone: 'success',
+			title: message,
+			actionLabel: m.gift_bulk_copy_open_destination(),
+			onAction: () =>
+				void goto(localizeInternalHref(resolve('/(app)/w/[id]', { id: created.shortId }))),
+		});
+	}
+
+	function confirmBulkCopy() {
+		if (bulkCopyDestinationId === NEW_WISHLIST_DESTINATION) {
+			// Hidden rather than stacked: the mobile copy sheet would otherwise sit above the modal.
+			bulkCopyOpen = false;
+			bulkCopyCreateOpen = true;
+			return;
+		}
+		void submitBulkCopy();
+	}
+
+	/** Closing creation, cancelled or done, returns to the copy dialog, which shows the copy's progress. */
+	function setBulkCopyCreateOpen(open: boolean) {
+		bulkCopyCreateOpen = open;
+		if (!open) {
+			bulkCopyOpen = true;
+		}
+	}
+
+	function copyIntoCreatedWishlist(created: CreatedWishlist) {
+		bulkCopyCreatedDestination = created;
+		bulkCopyDestinations = [
+			{
+				id: created.id,
+				title: created.title,
+				status: created.status,
+				recipientDisplayName: created.recipientName ?? data.user?.name ?? '',
+			},
+			...bulkCopyDestinations,
+		];
+		bulkCopyDestinationId = created.id;
+		void submitBulkCopy();
+	}
+
 	async function submitBulkCopy() {
 		if (
 			bulkCopySubmitting ||
@@ -1117,22 +1350,70 @@
 			return;
 		}
 		const selectedIds = [...selectionSnapshot.selectedIds];
+		const destinationWishlistId = bulkCopyDestinationId;
+		const removeUnreservedSources = bulkCopyOffersSourceRemoval && bulkCopyRemovesSources;
 		bulkCopySubmitting = true;
 		try {
-			await bulkCopyGifts({
+			const { removedSourceIds } = await bulkCopyGifts({
 				sourceWishlistId: wishlist.id,
-				destinationWishlistId: bulkCopyDestinationId,
+				destinationWishlistId,
 				giftIds: selectedIds,
+				...(removeUnreservedSources ? { removeUnreservedSources } : {}),
 			});
-			const returnToActions = bulkCopyReturnToActions;
-			toastSuccess(m.gift_bulk_copy_success({ count: selectedIds.length }));
-			bulkCopyOpen = false;
-			bulkCopyReturnToActions = null;
-			returnToActions?.();
+			bulkCopySuccessToast(
+				bulkCopySuccessMessage(selectedIds.length, removedSourceIds.length),
+				destinationWishlistId,
+			);
+			returnFromBulkCopy();
 		} catch (thrown) {
-			toastError(translateServerError(thrown));
+			await handleFailedBulkCopy(destinationWishlistId, thrown);
 		} finally {
 			bulkCopySubmitting = false;
+		}
+	}
+
+	/**
+	 * A list this flow created for the failed copy is deleted while still empty, returning the dialog
+	 * to its pre-creation state so a retry creates a fresh list (issue #557). If it already has gifts,
+	 * the copy committed before its response was lost, so the list is kept and stays selected.
+	 */
+	async function handleFailedBulkCopy(destinationWishlistId: string, thrown: unknown) {
+		const created = bulkCopyCreatedDestination;
+		const cleanup =
+			created?.id === destinationWishlistId
+				? await deleteCreatedDestinationIfEmpty(created.id)
+				: 'notCreated';
+		if (cleanup === 'kept' && created !== null) {
+			void getGiftsByWishlistShortId(shortId).refresh();
+			showToast({
+				tone: 'warning',
+				title: m.gift_bulk_copy_outcome_unknown(),
+				actionLabel: m.gift_bulk_copy_open_destination(),
+				onAction: () =>
+					void goto(
+						localizeInternalHref(resolve('/(app)/w/[id]', { id: created.shortId })),
+					),
+			});
+			return;
+		}
+		toastError(translateServerError(thrown));
+		if (cleanup === 'deleted') {
+			bulkCopyCreatedDestination = null;
+			bulkCopyDestinations = bulkCopyDestinations.filter(
+				(destination) => destination.id !== destinationWishlistId,
+			);
+			bulkCopyDestinationId = NEW_WISHLIST_DESTINATION;
+		}
+	}
+
+	async function deleteCreatedDestinationIfEmpty(
+		createdWishlistId: string,
+	): Promise<'deleted' | 'kept' | 'cleanupFailed'> {
+		try {
+			return (await deleteWishlistIfEmpty(createdWishlistId)) ? 'deleted' : 'kept';
+		} catch (thrown) {
+			console.error('Failed to delete the wishlist created for a failed bulk copy:', thrown);
+			return 'cleanupFailed';
 		}
 	}
 
@@ -1185,13 +1466,29 @@
 	// the effect below while the modal is open.
 	let graceClockNow = $state(new Date());
 
+	// On a permanent wishlist only reserved gifts keep the post-share locks. An ordinary recipient
+	// never sees reservations, so their gifts read as unreserved and the server rejects an edit to
+	// a reserved one; the recipient gift-change warning tells them so up front (issue #479).
+	const selectedGiftHasVisibleReservation = $derived(
+		selectedGift !== null && 'reservedCount' in selectedGift && selectedGift.reservedCount > 0,
+	);
+	const selectedGiftFollowsStrictPostShareRules = $derived(
+		selectedGift !== null &&
+			giftFollowsStrictPostShareRules(wishlist.kind, selectedGiftHasVisibleReservation),
+	);
+
 	// Full edit grace: a pre-share gift is fully editable for 2 minutes after sharing only.
 	// Later edits update the transparency badge but never reopen name/delete grace.
 	const selectedFullEditGraceExpiresAt = $derived.by(() => {
 		// Post-share edit locks bind the linked recipient (the person the list is for), never a
 		// správce — a moderator edits freely. Self-promotion changes only reservation visibility,
 		// so a self-promoted recipient stays subject to the lock.
-		if (selectedGift === null || !isRecipient || wishlist.sharedAt === null) {
+		if (
+			selectedGift === null ||
+			!isRecipient ||
+			wishlist.sharedAt === null ||
+			!selectedGiftFollowsStrictPostShareRules
+		) {
 			return null;
 		}
 		return preShareOwnerFullEditGraceExpiresAt({
@@ -1201,7 +1498,12 @@
 	});
 
 	const selectedDeleteGraceExpiresAt = $derived.by(() => {
-		if (selectedGift === null || !isRecipient || wishlist.sharedAt === null) {
+		if (
+			selectedGift === null ||
+			!isRecipient ||
+			wishlist.sharedAt === null ||
+			!selectedGiftFollowsStrictPostShareRules
+		) {
 			return null;
 		}
 		return ownerSharedGiftDeleteGraceExpiresAt({
@@ -1260,13 +1562,10 @@
 		if (postShareLockSelectedGift) {
 			return false;
 		}
-		if (
-			'reservedCount' in selectedGift &&
-			(selectedGift as { reservedCount: number }).reservedCount > 0
-		) {
+		if (selectedGiftHasVisibleReservation) {
 			return false;
 		}
-		if (isRecipient && wishlist.sharedAt !== null) {
+		if (isRecipient && wishlist.sharedAt !== null && selectedGiftFollowsStrictPostShareRules) {
 			return isSelectedGiftWithinDeleteGrace;
 		}
 		return true;
@@ -1356,6 +1655,16 @@
 		clearReorderSession();
 	}
 
+	/** Hands keyboard focus to the chosen gift's grip so arrow keys can move it right away. */
+	async function enterReorderModeFromGift(giftId: string) {
+		await enterReorderMode();
+		if (!reorderMode) {
+			return;
+		}
+		await tick();
+		resolveGiftReorderGripFocusTarget(giftId, wishlistPageElement ?? document)?.focus();
+	}
+
 	async function handleReorderModeChange(active: boolean) {
 		if (active) {
 			await enterReorderMode();
@@ -1365,10 +1674,7 @@
 	}
 
 	function handleViewModeChange(mode: GiftViewMode) {
-		if (
-			(!reorderMode || mode === GIFT_VIEW_MODES.card || mode === GIFT_VIEW_MODES.list) &&
-			mode !== giftsContext.viewMode.current
-		) {
+		if (mode !== giftsContext.viewMode.current) {
 			giftsContext.viewMode.current = mode;
 		}
 	}
@@ -1433,6 +1739,43 @@
 		giftModalMode = 'edit';
 		selectedGift = gifts.find((actualGift) => actualGift.id === gift.id) ?? gift;
 		giftModalOpen = true;
+	}
+
+	/** Resolves whether a gift change may go ahead, first asking the recipient of a shared permanent
+	 *  wishlist once per session. The gift editor asks on the first edit or Delete, never on open. */
+	function confirmRecipientGiftChange(): Promise<boolean> {
+		const wishlistId = wishlist.id;
+		const acknowledged =
+			recipientGiftChangeWarningAcknowledgedIds.has(wishlistId) ||
+			readRecipientGiftChangeWarningAcknowledged(wishlistId);
+		if (!shouldWarnRecipientBeforeGiftChange({ wishlist, role, acknowledged })) {
+			return Promise.resolve(true);
+		}
+		pendingRecipientGiftChange?.resolve(false);
+		return new Promise((resolve) => {
+			pendingRecipientGiftChange = { wishlistId, resolve };
+			recipientGiftChangeWarningOpen = true;
+		});
+	}
+
+	function confirmRecipientGiftChangeWarning() {
+		const pending = pendingRecipientGiftChange;
+		recipientGiftChangeWarningOpen = false;
+		pendingRecipientGiftChange = null;
+		if (pending === null) {
+			return;
+		}
+		recipientGiftChangeWarningAcknowledgedIds.add(pending.wishlistId);
+		storeRecipientGiftChangeWarningAcknowledged(pending.wishlistId);
+		pending.resolve(true);
+	}
+
+	function handleRecipientGiftChangeWarningOpenChange(open: boolean) {
+		recipientGiftChangeWarningOpen = open;
+		if (!open) {
+			pendingRecipientGiftChange?.resolve(false);
+			pendingRecipientGiftChange = null;
+		}
 	}
 
 	// Gift mutations rely on the command's server-side single-flight refresh: the
@@ -1623,13 +1966,9 @@
 				links: gift.links ?? [],
 				price: gift.price,
 				currency: gift.currency,
-				categoryLabel:
-					gift.category == null
-						? ''
-						: labelForGiftCategory(
-								gift.category,
-								getLocale().startsWith('en') ? 'en' : 'cs',
-							),
+				categoryLabels: gift.categories.map((category) =>
+					labelForGiftCategory(category, getLocale().startsWith('en') ? 'en' : 'cs'),
+				),
 			})),
 		);
 		downloadGiftCsv(csv, giftCsvFilename(wishlist.title, wishlist.shortId));
@@ -1714,6 +2053,27 @@
 		paletteOverride = palette;
 	}
 
+	// Settings appearance preview (#535): null drops the preview after a discard or save.
+	function handleAppearancePreview(appearance: WishlistAppearancePreview | null) {
+		appearanceOverride = appearance === null ? null : { wishlistId: wishlist.id, appearance };
+	}
+
+	$effect(() => {
+		const themeId = themeScope.placeholderThemeId;
+		if (themeId === null || untrack(() => loadedThemeArt?.themeId) === themeId) {
+			return;
+		}
+		let current = true;
+		void loadThemeArtOrNone(themeId).then((art) => {
+			if (current && art !== null) {
+				loadedThemeArt = { themeId, art };
+			}
+		});
+		return () => {
+			current = false;
+		};
+	});
+
 	// ── Reorder handler (pointer + keyboard, mouse/touch/pen) ─────────────────
 
 	function isExactActiveGiftOrder(orderedIds: readonly string[]): boolean {
@@ -1786,10 +2146,7 @@
 	}
 
 	/** Returns whether the move was accepted, so only accepted moves are announced. */
-	function handleReorderPlacementCommit(
-		placement: GiftReorderPlacement,
-		source: GiftReorderMoveSource,
-	): boolean {
+	function handleReorderPlacementCommit(placement: GiftReorderPlacement): boolean {
 		reorderPreviewPlacement = null;
 		const field = reorderGroupField;
 		if (field === null) {
@@ -1804,7 +2161,7 @@
 		if (move === null || !commitReorder(move.orderedIds, move.groupChanges)) {
 			return false;
 		}
-		if (move.targetGroup !== null && source === GIFT_REORDER_MOVE_SOURCES.pointer) {
+		if (move.targetGroup !== null) {
 			offerGroupMoveUndo(move.movedGift, field, move.targetGroup, move.previousOrder);
 		}
 		return true;
@@ -1817,14 +2174,10 @@
 		targetGroup: GiftReorderGroup,
 		previousOrder: readonly string[],
 	) {
-		const previousGroupChange: ReorderGiftGroupChange = {
-			giftId: movedGift.id,
-			field,
-			value:
-				field === GIFT_GROUPING_OPTIONS.priority
-					? movedGift.priorityLevelId
-					: (movedGift.categoryId ?? null),
-		};
+		const previousGroupChange: ReorderGiftGroupChange =
+			field === GIFT_GROUPING_OPTIONS.priority
+				? { giftId: movedGift.id, field, value: movedGift.priorityLevelId }
+				: categoryGroupChange(movedGift.id, movedGift.categoryIds);
 		const toastId = showToast({
 			tone: 'success',
 			title: m.gift_reorder_group_changed({
@@ -1972,16 +2325,24 @@
 
 	// The legacy /w/<id>/settings route redirects here with ?settings=<tab>; open the
 	// modal on the requested tab, then strip the marker so reload/share won't reopen it.
-	afterNavigate(() => {
-		const requestedTab = page.url.searchParams.get(WISHLIST_SETTINGS_QUERY_PARAM);
-		if (requestedTab === null) {
+	// An $effect, not afterNavigate: the top-level awaits above register afterNavigate after
+	// SvelteKit has already dispatched the initial 'enter' navigation, so a fresh load of the
+	// marked URL never reached the callback. The consumed set mirrors the gift deep link below.
+	// Opening waits a tick because Bits UI's PresenceManager ignores the first `open` value its
+	// watcher sees, so flipping it in the same flush the dialog mounts in never renders it.
+	const consumedSettingsDeepLinkUrls = new WeakSet<URL>();
+	$effect(() => {
+		const currentUrl = page.url;
+		const requestedTab = currentUrl.searchParams.get(WISHLIST_SETTINGS_QUERY_PARAM);
+		if (requestedTab === null || consumedSettingsDeepLinkUrls.has(currentUrl)) {
 			return;
 		}
+		consumedSettingsDeepLinkUrls.add(currentUrl);
 		settingsModalTab = isWishlistSettingsTab(requestedTab)
 			? requestedTab
 			: WISHLIST_SETTINGS_TABS.details;
-		settingsModalOpen = true;
-		const cleanedUrl = new URL(page.url);
+		void tick().then(() => (settingsModalOpen = true));
+		const cleanedUrl = new URL(currentUrl);
 		cleanedUrl.searchParams.delete(WISHLIST_SETTINGS_QUERY_PARAM);
 		// eslint-disable-next-line svelte/no-navigation-without-resolve -- shallow cleanup of the current URL's query marker, not a route navigation
 		replaceState(cleanedUrl, {});
@@ -2032,9 +2393,19 @@
 	bind:this={wishlistPageElement}
 	data-testid="wishlist-page-shell"
 	data-palette={activePalette}
+	{...themeScopeAttributes}
 	style="overflow-anchor: none"
-	class="mt-3 flex flex-col gap-3 pb-3 sm:mt-0 sm:gap-6 sm:py-6"
+	class={cn(
+		'wishlist-page-shell flex flex-col gap-3 pt-3 pb-3 sm:gap-6 sm:py-6',
+		chatOffered && 'pb-20 sm:pb-20',
+	)}
 >
+	<WishlistThemeBackdrop
+		mode={themeScope.backgroundMode}
+		art={themeArt}
+		imageUrl={themeScope.customImageUrl}
+		background={themeScope.background}
+	/>
 	<WishlistHeader
 		title={wishlist.title}
 		recipientDisplayName={wishlist.recipientDisplayName}
@@ -2045,8 +2416,10 @@
 		imageKey={wishlist.imageKey}
 		imageSlots={wishlist.imageSlots}
 		{themeEmoji}
+		{themeMotif}
 		eventDate={wishlist.eventDate}
 		status={wishlistStatus}
+		kind={wishlist.kind}
 		{role}
 		giftCount={headerGiftCount}
 		{recipientIsModerator}
@@ -2060,6 +2433,9 @@
 		onsettings={handleSettingsOpened}
 	/>
 
+	{#if pendingProposals.length > 0}
+		<PendingChangesBanner wishlistShortId={shortId} proposals={pendingProposals} />
+	{/if}
 	{#if page.data.demoExpiresAt !== null}
 		<p class="rounded-lg border border-border bg-card p-3 text-sm text-muted-foreground">
 			{m.demo_list_limits()}
@@ -2079,15 +2455,27 @@
 				priorityLevels={priorityActionOptions}
 				categories={categoryActionOptions}
 				{commonPriorityId}
-				{commonCategoryId}
+				categoryChoices={selectionCategoryChoices}
 				{commonImageFit}
 				{commonImageBackground}
 				{commonReceived}
 				onselectvisible={(checked) => giftSelection.setVisible(visibleGiftIds, checked)}
 				onpriority={(priorityLevelId) =>
 					void applyBulkAction({ action: 'priority', priorityLevelId })}
-				oncategory={(categoryId) =>
-					void applyBulkAction({ action: 'category', categoryId })}
+				oncategory={(categoryId: string | null, checked: boolean) =>
+					void applyBulkAction(
+						categoryId === null
+							? { action: 'category', categoryId: null }
+							: { action: checked ? 'addCategory' : 'removeCategory', categoryId },
+					)}
+				oncreatecategory={canCreateCategory
+					? () =>
+							openCategoryQuickAdd({
+								kind: 'gifts',
+								giftIds: [...selectionSnapshot.selectedIds],
+								hiddenCount: selectionSnapshot.hiddenIds.length,
+							})
+					: undefined}
 				onaction={(action) => void applyBulkAction(action)}
 				oncopy={(returnToActions) => void openBulkCopy(returnToActions)}
 				ondone={() => giftSelection.exit()}
@@ -2171,7 +2559,7 @@
 					priorityLevels={priorityActionOptions}
 					categories={categoryActionOptions}
 					priorityLevelId={contextActionGift.priorityLevelId}
-					categoryId={contextActionGift.categoryId ?? null}
+					categoryIds={contextActionGift.categoryIds}
 					placementSnapshot={contextPlacementSnapshot}
 					{...reservationContextFor(contextActionGift)}
 					{...releaseContextFor(contextActionGift)}
@@ -2180,11 +2568,38 @@
 					oncomplete={completeContextClose}
 					onfinish={finishContextAction}
 					onedit={() => void openEditModal(contextActionGift)}
+					onenrich={chatOffered
+						? () =>
+								assistant.startNewChat(
+									m.chat_enrich_prompt({ name: contextActionGift.name }),
+								)
+						: undefined}
 					onpriority={(priorityLevelId) => void updateContextGift({ priorityLevelId })}
-					oncategory={(categoryId) => void updateContextGift({ categoryId })}
+					oncategory={(categoryId, checked) =>
+						void updateContextGift({
+							categoryIds:
+								categoryId === null
+									? []
+									: withGiftCategoryToggled(
+											contextActionGift.categoryIds,
+											categoryId,
+											checked,
+										),
+						})}
+					oncreatecategory={canCreateCategory
+						? () =>
+								openCategoryQuickAdd({
+									kind: 'gifts',
+									giftIds: [contextActionGift.id],
+									giftName: contextActionGift.name,
+								})
+						: undefined}
 					onreceived={() =>
 						void handleReceived(contextActionGift.id, !contextActionGift.received)}
 					onselect={() => enterSelection(contextActionGift.id)}
+					onreorder={canStartReorderFromGift
+						? () => void enterReorderModeFromGift(contextActionGift.id)
+						: undefined}
 					onreserve={() => {
 						if ('myReservationId' in contextActionGift) {
 							handleOpenReserveModal(contextActionGift);
@@ -2224,7 +2639,7 @@
 			hascontextactions={hasAdditionalContextActions}
 			{activeContextGiftId}
 			{contextSurface}
-			onedit={openEditModal}
+			onedit={(gift) => void openEditModal(gift)}
 			onreserve={handleOpenReserveModal}
 			onunreserve={handleUnreserve}
 			onreceived={handleReceived}
@@ -2241,9 +2656,19 @@
 			nativeContextSessionId={contextSession?.id ?? 0}
 			onnativecontextcomplete={completeContextClose}
 			contextContent={contextActions}
+			livePreviews={giftPreviews}
 		/>
 	{/if}
 	<p class="sr-only" aria-live="polite" aria-atomic="true">{receivedAnnouncement}</p>
+	{#if chatOffered && chatAvailability !== undefined}
+		<WishlistAssistant
+			wishlistShortId={shortId}
+			wishlistTitle={wishlist.title}
+			availability={chatAvailability}
+			rowContext={{ currentGifts: gifts, categories: categoryOptions, priorityLevels }}
+			{decidingProposals}
+		/>
+	{/if}
 </div>
 
 <svelte:window
@@ -2270,7 +2695,16 @@
 	onopenchange={handleBulkCopyOpenChange}
 	onback={bulkCopyReturnToActions === null ? undefined : returnFromBulkCopy}
 	ondestinationchange={(id) => (bulkCopyDestinationId = id)}
-	onconfirm={() => void submitBulkCopy()}
+	offerSourceRemoval={bulkCopyOffersSourceRemoval}
+	removeSources={bulkCopyRemovesSources}
+	onremovesourceschange={(removeSources) => (bulkCopyRemovesSources = removeSources)}
+	onconfirm={confirmBulkCopy}
+/>
+
+<CreateWishlistModal
+	bind:open={() => bulkCopyCreateOpen, setBulkCopyCreateOpen}
+	demo={page.data.demoExpiresAt !== null}
+	oncreated={copyIntoCreatedWishlist}
 />
 
 <Dialog.Root bind:open={hiddenConfirmOpen}>
@@ -2316,6 +2750,7 @@
 	graceExpiresAt={selectedActiveGraceExpiresAt}
 	graceMessage={selectedGraceMessage}
 	graceNow={graceClockNow}
+	confirmGiftChange={confirmRecipientGiftChange}
 	{isSubmitting}
 	{isDeleting}
 	bind:reserveModalOpen
@@ -2342,6 +2777,38 @@
 	onbatchresetduplicatewarning={resetBatchDuplicateWarning}
 />
 
+{#if canCreateCategory}
+	<GiftCategoryQuickAddDialog
+		bind:open={categoryQuickAddOpen}
+		wishlistId={wishlist.id}
+		target={categoryQuickAddTarget}
+		categories={categoryOptions}
+	/>
+{/if}
+
+<!-- After the gift editor so its portal stacks above it: the editor asks on the first change. -->
+<Dialog.Root
+	open={recipientGiftChangeWarningOpen}
+	onOpenChange={handleRecipientGiftChangeWarningOpenChange}
+>
+	<Dialog.Content size="sm" data-testid="recipient-gift-change-warning">
+		<Dialog.Header>
+			<Dialog.Title>{m.gift_recipient_change_warning_title()}</Dialog.Title>
+			<Dialog.Description>{m.gift_recipient_change_warning_description()}</Dialog.Description>
+		</Dialog.Header>
+		<Dialog.Footer>
+			<Button
+				intent="outline"
+				onclick={() => handleRecipientGiftChangeWarningOpenChange(false)}
+				>{m.cancel()}</Button
+			>
+			<Button intent="primary" onclick={confirmRecipientGiftChangeWarning}
+				>{m.gift_recipient_change_warning_continue()}</Button
+			>
+		</Dialog.Footer>
+	</Dialog.Content>
+</Dialog.Root>
+
 {#if releaseFlowGift !== null}
 	<ReleaseReservationFlow
 		bind:open={releaseFlowOpen}
@@ -2353,23 +2820,27 @@
 
 <!-- Per-wishlist settings modal (details / appearance / image). Mounted for every viewer:
      non-managers and archived lists get the read-only notice inside the dialog, preserving
-     the old /w/<id>/settings deep-link behavior. -->
-<WishlistSettingsModal
-	bind:open={settingsModalOpen}
-	bind:activeTab={settingsModalTab}
-	{wishlist}
-	{canManage}
-	{role}
-	revertCapability={presentationRevertCapability}
-	recipientDisplayName={wishlist.recipientDisplayName}
-	{themeEmoji}
-	onsaved={async () => {}}
-	onpaletteselect={handlePaletteSelect}
-	ondeleted={handleWishlistDeleted}
-	onimport={openImportWizard}
-	onexport={handleExport}
-	oneditrecipient={handleEditRecipientOpened}
-/>
+     the old /w/<id>/settings deep-link behavior. Navigating between wishlists reuses this page,
+     so the key remounts the modal to drop the previous wishlist's settings drafts (#527). -->
+{#key wishlist.id}
+	<WishlistSettingsModal
+		bind:open={settingsModalOpen}
+		bind:activeTab={settingsModalTab}
+		{wishlist}
+		{canManage}
+		{role}
+		revertCapability={presentationRevertCapability}
+		recipientDisplayName={wishlist.recipientDisplayName}
+		{themeEmoji}
+		onsaved={async () => {}}
+		onpaletteselect={handlePaletteSelect}
+		onappearancepreview={handleAppearancePreview}
+		ondeleted={handleWishlistDeleted}
+		onimport={openImportWizard}
+		onexport={handleExport}
+		oneditrecipient={handleEditRecipientOpened}
+	/>
+{/key}
 
 <!-- Shared recipient dialog (issue #150): linked lists get the one-way flip with consequence
      copy (linked recipient only); free-text lists get the plain rename (any správce). -->
@@ -2420,17 +2891,8 @@
 
 <svelte:head>
 	<title>{wishlist.title} – Přejeme si</title>
-	<meta property="og:title" content={wishlist.title} />
-	<meta property="og:description" content={getSocialDescription()} />
-	<meta property="og:type" content="website" />
-	<meta property="og:url" content={getWishlistPageUrl()} />
-	<meta property="og:image" content={getWishlistSocialImageUrl()} />
-	<meta property="og:image:width" content="1200" />
-	<meta property="og:image:height" content="630" />
-	<meta property="og:image:alt" content={wishlist.title} />
-	<meta name="twitter:card" content="summary_large_image" />
-	<meta name="twitter:title" content={wishlist.title} />
-	<meta name="twitter:description" content={getSocialDescription()} />
-	<meta name="twitter:image" content={getWishlistSocialImageUrl()} />
-	<link rel="canonical" href={getWishlistPageUrl()} />
+	{#each getSocialMetaTags() as tag (tag.property ?? tag.name)}
+		<meta property={tag.property} name={tag.name} content={tag.content} />
+	{/each}
+	<link rel="canonical" href={wishlistPageUrl(wishlist.shortId)} />
 </svelte:head>

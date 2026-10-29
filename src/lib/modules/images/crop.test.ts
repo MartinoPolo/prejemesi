@@ -7,6 +7,10 @@ import {
 	centeredCropRect,
 	panCropRect,
 	zoomCropRect,
+	containCropRect,
+	centerCropRectOn,
+	alignCropRect,
+	reprojectCropRect,
 	fitCropRectToAspect,
 	seedCropRectFromLegacyMeta,
 	FULL_CROP_RECT,
@@ -256,6 +260,73 @@ describe('zoomCropRect', () => {
 		// Requests below the contain zoom stop exactly at contain: whole image,
 		// white space on one axis only.
 		expectRectClose(zoomCropRect(centered, 2, 0.1), { x: -0.5, y: 0, w: 2, h: 1 });
+	});
+});
+
+describe('zoomCropRect around an anchor (#533)', () => {
+	it('keeps the source point under the pointer fixed while zooming in', () => {
+		const rect: ImageCropRect = { x: 0, y: 0, w: 1, h: 1 };
+		const zoomed = zoomCropRect(rect, 1, 2, { x: 0.25, y: 0.25 });
+		// The source point (0.25, 0.25) stays at the same window fraction.
+		expect(zoomed.x + zoomed.w * 0.25).toBeCloseTo(0.25, 10);
+		expect(zoomed.y + zoomed.h * 0.25).toBeCloseTo(0.25, 10);
+		expectRectClose(zoomed, { x: 0.125, y: 0.125, w: 0.5, h: 0.5 });
+	});
+});
+
+describe('containCropRect', () => {
+	it('shows the whole image centered, letterboxed on one axis', () => {
+		expectRectClose(containCropRect(2), { x: -0.5, y: 0, w: 2, h: 1 });
+		expectRectClose(containCropRect(0.5), { x: 0, y: -0.5, w: 1, h: 2 });
+	});
+});
+
+describe('centerCropRectOn', () => {
+	it('moves the window center onto a source point without resizing', () => {
+		const rect: ImageCropRect = { x: 0, y: 0, w: 0.5, h: 0.5 };
+		expectRectClose(centerCropRectOn(rect, { x: 0.5, y: 0.5 }), {
+			x: 0.25,
+			y: 0.25,
+			w: 0.5,
+			h: 0.5,
+		});
+	});
+
+	it('stays inside the image near an edge', () => {
+		const rect: ImageCropRect = { x: 0.25, y: 0.25, w: 0.5, h: 0.5 };
+		expectRectClose(centerCropRectOn(rect, { x: 1, y: 0 }), { x: 0.5, y: 0, w: 0.5, h: 0.5 });
+	});
+});
+
+describe('alignCropRect', () => {
+	it('snaps the window to a corner, an edge or the center at its current size', () => {
+		const rect: ImageCropRect = { x: 0.1, y: 0.2, w: 0.5, h: 0.4 };
+		expectRectClose(alignCropRect(rect, { x: 0, y: 0 }), { x: 0, y: 0, w: 0.5, h: 0.4 });
+		expectRectClose(alignCropRect(rect, { x: 1, y: 1 }), { x: 0.5, y: 0.6, w: 0.5, h: 0.4 });
+		expectRectClose(alignCropRect(rect, { x: 0.5, y: 0.5 }), {
+			x: 0.25,
+			y: 0.3,
+			w: 0.5,
+			h: 0.4,
+		});
+	});
+
+	it('maps the alignment to the renderer focal percentage', () => {
+		const aligned = alignCropRect({ x: 0, y: 0, w: 0.5, h: 0.5 }, { x: 1, y: 0 });
+		expect(cropRectToFocalZoom(aligned).focal).toEqual({ x: 100, y: 0 });
+	});
+});
+
+describe('reprojectCropRect', () => {
+	it('keeps focal point and zoom when re-shaping for another target aspect', () => {
+		const card: ImageCropRect = { x: 0.2, y: 0.1, w: 0.5, h: 0.5 };
+		const thumb = reprojectCropRect(card, 0.75);
+		const source = cropRectToFocalZoom(card);
+		const reprojected = cropRectToFocalZoom(thumb);
+		expect(reprojected.zoom).toBeCloseTo(source.zoom, 6);
+		expect(reprojected.focal.x).toBeCloseTo(source.focal.x, 6);
+		expect(reprojected.focal.y).toBeCloseTo(source.focal.y, 6);
+		expect(thumb.w / thumb.h).toBeCloseTo(0.75, 6);
 	});
 });
 

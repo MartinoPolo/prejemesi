@@ -1,3 +1,5 @@
+import type { UploadTarget } from '$lib/server/storage/r2.js';
+
 /** Allowed image MIME types – shared between client and server. */
 export const ALLOWED_CONTENT_TYPES = [
 	'image/jpeg',
@@ -8,8 +10,25 @@ export const ALLOWED_CONTENT_TYPES = [
 
 export type AllowedContentType = (typeof ALLOWED_CONTENT_TYPES)[number];
 
-/** Maximum bytes accepted for a gift image across uploads and ingestion. */
+/** The file extension of a stored image's object key. */
+export const IMAGE_FILE_EXTENSIONS = {
+	'image/jpeg': 'jpg',
+	'image/png': 'png',
+	'image/webp': 'webp',
+	'image/gif': 'gif',
+} as const satisfies Record<AllowedContentType, string>;
+
+/** Maximum bytes accepted for a gift image across uploads and agent images. */
 export const MAX_GIFT_IMAGE_BYTES = 5 * 1024 * 1024;
+
+/** Maximum stored bytes per upload target; the browser downscales larger images to fit. */
+export const MAX_FILE_SIZE = {
+	'gift-image': MAX_GIFT_IMAGE_BYTES,
+	'wishlist-banner': 10 * 1024 * 1024,
+	'wishlist-background': 10 * 1024 * 1024,
+	'wishlist-thumbnail': 5 * 1024 * 1024,
+	avatar: 5 * 1024 * 1024,
+} as const satisfies Record<UploadTarget, number>;
 
 export function isAllowedContentType(value: string): value is AllowedContentType {
 	return (ALLOWED_CONTENT_TYPES as readonly string[]).includes(value);
@@ -61,7 +80,7 @@ export interface UploadResult {
 /** Upload progress state. */
 export interface UploadProgress {
 	/** Upload phase. */
-	status: 'idle' | 'authorizing' | 'uploading' | 'complete' | 'error';
+	status: 'idle' | 'preparing' | 'authorizing' | 'uploading' | 'complete' | 'error';
 	/** 0-100 percentage. */
 	percentage: number;
 	/** Error message when status is 'error'. */

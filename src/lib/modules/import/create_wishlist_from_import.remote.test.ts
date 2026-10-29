@@ -35,7 +35,7 @@ vi.mock('$lib/modules/gifts/gifts.remote.js', () => ({
 	getGiftsByWishlistShortId: vi.fn(),
 }));
 vi.mock('$lib/modules/gift-categories/gift_category_queries.remote.js', () => ({
-	getGiftCategorySettingsRows: vi.fn(),
+	getGiftCategories: vi.fn(),
 }));
 
 vi.mock('@sveltejs/kit', () => ({
@@ -69,7 +69,7 @@ vi.mock('$lib/server/db/gift.schema.js', () => ({
 		links: 'gift.links',
 		sortOrder: 'gift.sortOrder',
 		deletedAt: 'gift.deletedAt',
-		categoryId: 'gift.categoryId',
+		categoryIds: 'gift.categoryIds',
 	},
 	giftCategory: {
 		id: 'giftCategory.id',
@@ -385,7 +385,13 @@ describe('createWishlistFromImport', () => {
 		await callCreateFromImport(AUTH, {
 			recipientKind: RECIPIENT_KIND.self,
 			title: 'My List',
-			gifts: [{ ...draftB, links: [{ url: 'not a url' }, { url: 'https://example.com/x' }] }],
+			// A wire-valid link the gift normalization still drops: the operation re-validates input.
+			gifts: [
+				{
+					...draftB,
+					links: [{ url: 'ftp://example.com/x' }, { url: 'https://example.com/x' }],
+				},
+			],
 		});
 
 		expect(giftInsertRows()![0].links).toEqual([{ url: 'https://example.com/x' }]);

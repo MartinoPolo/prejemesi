@@ -26,9 +26,9 @@
 <Card.Root class="border-destructive/30">
 	<Card.Header>
 		<div class="flex items-center gap-2">
-			<TriangleAlertIcon class="size-5 text-destructive" />
+			<TriangleAlertIcon class="size-5 text-status-danger-text" />
 			<div>
-				<Card.Title class="text-destructive">{m.settings_danger_title()}</Card.Title>
+				<Card.Title class="text-status-danger-text">{m.settings_danger_title()}</Card.Title>
 				<Card.Description>{m.settings_danger_description()}</Card.Description>
 			</div>
 		</div>

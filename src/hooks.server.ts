@@ -8,15 +8,25 @@ import { paraglideMiddleware } from '$lib/paraglide/server';
 import { cookieName, getTextDirection, type Locale } from '$lib/paraglide/runtime';
 import { getDb, isDatabaseConfigured, rememberDatabaseBinding } from '$lib/server/db/index.js';
 import { DEMO_CLEANUP_INTERVAL_MS, DEMO_COOKIE_NAME } from '$lib/server/demo/constants.js';
+import { AGENT_API_BASE_PATH, AGENT_MCP_PATH } from '$lib/server/agent_access/api_paths.js';
 import {
 	DEV_AUTO_LOGIN_OPT_OUT_COOKIE_NAME,
 	devAutoLoginOptOutChange,
 	getDevAutoLoginEmail,
 	signInForDevelopment,
 } from '$lib/server/dev_auto_login.js';
-import { SITE_URL, WWW_HOSTNAME } from '$lib/config/site.js';
+import {
+	SITE_URL,
+	WWW_HOSTNAME,
+	deploymentEnvironment,
+	isStagingHostname,
+} from '$lib/config/site.js';
 import { ROBOTS_NOINDEX_CONTENT, shouldNoindexPath } from '$lib/seo/robots.js';
 import { requestTelemetryHandle } from '$lib/server/request_telemetry.js';
+import {
+	CONTENT_SECURITY_POLICY_HEADER,
+	contentSecurityPolicy,
+} from '$lib/server/content_security_policy.js';
 import { createSentryServerOptions } from '$lib/observability/sentry_server.js';
 import {
 	reportOperationalFailure,
@@ -61,7 +71,7 @@ const sentryInitializationHandle: Handle = ({ event, resolve }) => {
 	initializedSentryHandle ??= Sentry.initCloudflareSentryHandle(
 		createSentryServerOptions({
 			dsn,
-			environment: dev ? 'development' : 'production',
+			environment: deploymentEnvironment(event.url.hostname),
 			release: event.platform?.env.GIT_COMMIT_SHA,
 		}),
 	);
@@ -79,22 +89,15 @@ function setSecurityHeaders(headers: Headers, url: URL) {
 	headers.set('X-Frame-Options', 'DENY');
 	headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
 	headers.set('Permissions-Policy', 'camera=(), geolocation=(), microphone=(), payment=()');
-	headers.set(
-		'Content-Security-Policy',
-		[
-			"base-uri 'self'",
-			"object-src 'none'",
-			"frame-ancestors 'none'",
-			"form-action 'self'",
-			...(dev ? [] : ['upgrade-insecure-requests']),
-		].join('; '),
-	);
+	if (!headers.has(CONTENT_SECURITY_POLICY_HEADER)) {
+		headers.set(CONTENT_SECURITY_POLICY_HEADER, contentSecurityPolicy());
+	}
 
 	if (!dev) {
 		headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
 	}
 
-	if (shouldNoindexPath(url.pathname)) {
+	if (isStagingHostname(url.hostname) || shouldNoindexPath(url.pathname)) {
 		headers.set('X-Robots-Tag', ROBOTS_NOINDEX_CONTENT);
 	}
 }
@@ -130,6 +133,7 @@ const canonicalHostHandle: Handle = ({ event, resolve }) => {
 	return resolve(event);
 };
 
+const AGENT_API_PATH_PREFIX = `${AGENT_API_BASE_PATH}/`;
 const PUBLIC_WISHLIST_PATH_PREFIXES = ['/w/', '/en/w/'] as const;
 const LANDING_PATHS = new Set(['/', '/en', '/en/']);
 
@@ -496,12 +500,16 @@ export const demoHandle: Handle = async ({ event, resolve }) => {
 	await cleanDemosOnDocumentRequest(event);
 	const token = event.cookies.get(DEMO_COOKIE_NAME);
 	const requestedPath = new URL(event.request.url).pathname;
+	// The agent API and MCP reject a live demo themselves, in their own error shape, outside a
+	// demo transaction.
 	if (
 		token === undefined ||
 		token === '' ||
 		(!event.isRemoteRequest &&
 			(requestedPath.startsWith('/demo/v1/') ||
-				requestedPath.startsWith('/demo/playground/')))
+				requestedPath.startsWith('/demo/playground/') ||
+				requestedPath.startsWith(AGENT_API_PATH_PREFIX) ||
+				requestedPath === AGENT_MCP_PATH))
 	) {
 		return resolve(event);
 	}

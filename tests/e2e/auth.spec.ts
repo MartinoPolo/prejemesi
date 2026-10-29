@@ -48,6 +48,18 @@ test.describe('Authentication', () => {
 		await expect(page.getByRole('alert')).toBeVisible({ timeout: 15_000 });
 	});
 
+	test('auth forms stay submittable when Turnstile cannot load', async ({ page }) => {
+		await page.route('https://challenges.cloudflare.com/**', (route) => route.abort());
+		for (const [path, buttonName] of [
+			['/login', 'Přihlásit se'],
+			['/register', 'Vytvořit účet'],
+			['/reset-password', 'Odeslat odkaz pro obnovu'],
+		] as const) {
+			await page.goto(path);
+			await expect(page.getByRole('button', { name: buttonName, exact: true })).toBeEnabled();
+		}
+	});
+
 	test('unauthenticated user redirected from app routes to login', async ({ page }) => {
 		await page.goto('/my-lists');
 		await expect(page).toHaveURL(/\/login/);

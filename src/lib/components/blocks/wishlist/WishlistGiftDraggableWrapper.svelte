@@ -6,7 +6,11 @@
 	import { normalizeGiftUrl } from '$lib/modules/gifts/gift_url.js';
 	import { cn } from '$lib/utils.js';
 	import type { Snippet } from 'svelte';
-	import { createGiftLongPressRecognizer } from '$lib/modules/gifts/gift_long_press.js';
+	import type { Attachment } from 'svelte/attachments';
+	import {
+		createGiftLongPressRecognizer,
+		GIFT_REORDER_LONG_PRESS_MS,
+	} from '$lib/modules/gifts/gift_long_press.js';
 	import { GIFT_CARD_CONTROL_SELECTOR } from '$lib/components/blocks/gift/gift_card_controls.js';
 	import { Button } from '$lib/components/base/button/index.js';
 	import { CheckboxSurface, checkboxVariants } from '$lib/components/base/checkbox/index.js';
@@ -32,7 +36,7 @@
 		selectionLayout?: 'overlay' | 'list';
 		selected?: boolean;
 		onselectiontoggle?: (giftId: string) => void;
-		oncontextmenu?: (event: MouseEvent) => boolean;
+		oncontextmenu?: (event: MouseEvent, fromKeyboard: boolean) => boolean;
 		onlongpress?: () => boolean | void;
 		/** Grouped reorder: the priority or category group this gift belongs to while reordering. */
 		reorderGroupKey?: string;
@@ -76,14 +80,36 @@
 	);
 
 	let longPressPending = $state(false);
+	let touchPressActive = false;
+	let keyboardContextRequest = false;
 	let suppressNextClickAfterLongPress = $state(false);
 	const longPress = createGiftLongPressRecognizer(
 		() => {
+			if (selectionMode) {
+				onselectiontoggle?.(giftId);
+				// The release may still click, which would toggle the gift back.
+				suppressNextClickAfterLongPress = true;
+				return;
+			}
 			suppressNextClickAfterLongPress = onlongpress?.() === true;
 		},
 		(pending) => {
 			longPressPending = pending;
 		},
+	);
+	/** The touch press a reorder long-press turns into a drag once it completes. */
+	let pendingReorderPress: PointerEvent | null = null;
+	const reorderLongPress = createGiftLongPressRecognizer(
+		() => {
+			if (pendingReorderPress !== null) {
+				onreorderpointerdown(pendingReorderPress, index);
+				pendingReorderPress = null;
+			}
+		},
+		(pending) => {
+			longPressPending = pending;
+		},
+		GIFT_REORDER_LONG_PRESS_MS,
 	);
 	const reorderGripVisible = $derived(reorderEnabled && !selectionMode);
 	const isDragged = $derived(draggedGiftId === giftId);
@@ -91,7 +117,25 @@
 	const safePrimaryLink = $derived(normalizeGiftUrl(primaryLink));
 	const selectionCheckboxStyles = checkboxVariants({ size: 'responsive' });
 
-	$effect(() => () => longPress.cancel());
+	$effect(() => () => {
+		longPress.cancel();
+		reorderLongPress.cancel();
+	});
+
+	/**
+	 * Outside the grip the card keeps native touch scrolling, so a long-press drag cancels its
+	 * touch's scrolling itself. Browsers honour that only from a non-passive listener that existed
+	 * before the touch started.
+	 */
+	const blockTouchScrollWhileDragged: Attachment<HTMLElement> = (element) => {
+		function preventScroll(event: TouchEvent) {
+			if (draggedGiftId === giftId && event.cancelable) {
+				event.preventDefault();
+			}
+		}
+		element.addEventListener('touchmove', preventScroll, { passive: false });
+		return () => element.removeEventListener('touchmove', preventScroll);
+	};
 
 	function eventStartedInsideInteractiveElement(event: Event): boolean {
 		const target = event.target;
@@ -134,39 +178,81 @@
 	}
 
 	function handleContextMenu(event: MouseEvent) {
+		const touchContextMenu = touchPressActive || isTouchOrPenEvent(event);
 		if (selectionMode || reorderEnabled) {
 			suppressSelectionContext(event);
+			if (selectionMode && touchContextMenu) {
+				longPress.complete();
+			}
 			return;
 		}
 		if (eventStartedInsideInteractiveElement(event)) {
 			event.stopPropagation();
 			return;
 		}
-		if (!(oncontextmenu?.(event) ?? false)) {
+		if (touchContextMenu) {
+			// Mobile browsers fire contextmenu at their own long-press delay, which may come before
+			// the recognizer's; the press completes then instead of showing the browser menu.
+			suppressSelectionContext(event);
+			longPress.complete();
+			return;
+		}
+		if (!(oncontextmenu?.(event, keyboardContextRequest) ?? false)) {
 			event.preventDefault();
 		}
 	}
 
+	/** Mouse and pen drag the card at once; touch needs a long-press so swipes still scroll. */
+	function handleReorderPointerDown(event: PointerEvent) {
+		if (event.pointerType !== 'touch') {
+			onreorderpointerdown(event, index);
+			return;
+		}
+		pendingReorderPress = event;
+		reorderLongPress.start(event.clientX, event.clientY);
+	}
+
+	function isTouchOrPenEvent(event: MouseEvent) {
+		return (
+			event instanceof PointerEvent &&
+			(event.pointerType === 'touch' || event.pointerType === 'pen')
+		);
+	}
+
 	function handlePointerDown(event: PointerEvent) {
 		suppressNextClickAfterLongPress = false;
+		touchPressActive = event.pointerType !== 'mouse';
 		if (selectionMode) {
 			suppressSelectionContext(event);
+			if (event.pointerType !== 'mouse') {
+				longPress.start(event.clientX, event.clientY);
+			}
 			return;
 		}
-		if (event.pointerType === 'mouse') {
-			return;
+		if (event.pointerType !== 'mouse') {
+			event.stopPropagation();
 		}
-		event.stopPropagation();
 		if (eventStartedInsideInteractiveElement(event)) {
 			return;
 		}
-		longPress.start(event.clientX, event.clientY);
+		if (reorderEnabled) {
+			handleReorderPointerDown(event);
+		} else if (event.pointerType !== 'mouse') {
+			longPress.start(event.clientX, event.clientY);
+		}
 	}
 
 	function handlePointerMove(event: PointerEvent) {
 		if (event.pointerType !== 'mouse') {
 			longPress.move(event.clientX, event.clientY);
+			reorderLongPress.move(event.clientX, event.clientY);
 		}
+	}
+
+	function endLongPresses() {
+		touchPressActive = false;
+		longPress.end();
+		reorderLongPress.end();
 	}
 
 	function handleAuxclick(event: MouseEvent) {
@@ -202,14 +288,19 @@
 			event.preventDefault();
 			const element = event.currentTarget as HTMLElement;
 			const rect = element.getBoundingClientRect();
-			element.dispatchEvent(
-				new MouseEvent('contextmenu', {
-					bubbles: true,
-					cancelable: true,
-					clientX: rect.left + rect.width / 2,
-					clientY: rect.top + rect.height / 2,
-				}),
-			);
+			keyboardContextRequest = true;
+			try {
+				element.dispatchEvent(
+					new MouseEvent('contextmenu', {
+						bubbles: true,
+						cancelable: true,
+						clientX: rect.left + rect.width / 2,
+						clientY: rect.top + rect.height / 2,
+					}),
+				);
+			} finally {
+				keyboardContextRequest = false;
+			}
 			return;
 		}
 		if (event.key === 'Enter' || event.key === ' ') {
@@ -240,10 +331,14 @@
 	data-gift-reorder-group={reorderGroupKey}
 	data-long-press-pending={longPressPending || undefined}
 	class:gift-reorder-grip-owner={reorderGripVisible}
+	class:gift-reorder-list-owner={reorderGripVisible && selectionLayout === 'list'}
+	class:gift-selection-owner={selectionMode}
+	class:gift-selection-list-owner={selectionMode && selectionLayout === 'list'}
 	class={cn(
 		selectionMode
 			? 'relative h-full cursor-default rounded-panel transition-opacity focus-visible:outline-none'
 			: 'group/gift-card relative h-full cursor-pointer rounded-panel transition-opacity focus-visible:outline-none',
+		reorderGripVisible && 'cursor-grab active:cursor-grabbing',
 		className,
 		isDragged && 'invisible',
 		isDragOver && dragOverStyle === 'ring' && 'ring-2 ring-inset ring-primary',
@@ -251,7 +346,6 @@
 		selectionMode &&
 			selectionLayout === 'list' &&
 			'sm:grid sm:grid-cols-[var(--size-control-md)_minmax(0,1fr)] sm:gap-(--nested-control-gap)',
-		longPressPending && 'ring-2 ring-inset ring-primary/35',
 	)}
 	data-selected={selectionMode && selected ? true : undefined}
 	role={selectionMode ? 'checkbox' : reorderEnabled ? undefined : 'button'}
@@ -268,9 +362,10 @@
 	oncontextmenu={handleContextMenu}
 	onpointerdown={handlePointerDown}
 	onpointermove={handlePointerMove}
-	onpointerup={() => longPress.end()}
-	onpointercancel={() => longPress.cancel()}
+	onpointerup={endLongPresses}
+	onpointercancel={endLongPresses}
 	onkeydown={handleKeydown}
+	{@attach reorderGripVisible && blockTouchScrollWhileDragged}
 >
 	{#if selectionMode}
 		<span
@@ -394,6 +489,40 @@
 			var(--gift-reorder-grip-offset) + var(--gift-reorder-grip-face-inset) +
 				var(--gift-reorder-grip-face-size) + var(--nested-control-gap)
 		);
+
+		/* A press anywhere on the card drags it, where text selection and touch callouts get in the
+		   way. */
+		user-select: none;
+		-webkit-touch-callout: none;
+	}
+
+	/* The category badge starts after the selection checkbox, like it does after the reorder grip. */
+	.gift-selection-owner {
+		--gift-context-leading-clearance: calc(
+			var(--gift-context-face-inset) + var(--size-control-lg) + var(--nested-control-gap)
+		);
+	}
+
+	/* The narrow List image cannot fit both side by side, so the badge sits below the checkbox. */
+	.gift-selection-list-owner {
+		--gift-context-leading-clearance: initial;
+		--gift-context-top-clearance: calc(
+			var(--gift-context-face-inset) + var(--size-control-lg) + var(--nested-control-gap)
+		);
+	}
+
+	@media (width >= 640px) {
+		.gift-selection-owner {
+			--gift-context-leading-clearance: calc(
+				var(--gift-context-face-inset) + var(--size-control-md) + var(--nested-control-gap)
+			);
+		}
+
+		/* The List checkbox moves into its own gutter, so the badge keeps its ordinary place. */
+		.gift-selection-list-owner {
+			--gift-context-leading-clearance: initial;
+			--gift-context-top-clearance: initial;
+		}
 	}
 
 	.gift-selection-control {
@@ -405,6 +534,15 @@
 		inset-inline-end: var(--gift-context-shadow-inset);
 		inset-block-end: var(--gift-context-shadow-inset);
 		gap: var(--nested-control-gap);
+	}
+
+	/* Mobile List arrows get their own row below the content, like the browse actions. */
+	@media (width < 640px) {
+		.gift-reorder-list-owner {
+			--gift-list-reserved-bottom-lane: calc(
+				var(--size-control-lg) + var(--nested-control-gap)
+			);
+		}
 	}
 
 	/* Selection follows the moving Card paint and the flat List surface. */
@@ -429,7 +567,9 @@
 		border-radius: calc(var(--radius-panel) - 2px);
 	}
 
-	[data-gift-item]:focus-visible::after {
+	/* Painted above the card's opaque surface, which would cover a ring on the wrapper itself. */
+	[data-gift-item]:focus-visible::after,
+	[data-gift-item][data-long-press-pending]::after {
 		position: absolute;
 		z-index: 40;
 		inset: 0;
@@ -437,6 +577,10 @@
 		box-shadow: inset 0 0 0 2px var(--ring);
 		content: '';
 		pointer-events: none;
+	}
+
+	[data-gift-item][data-long-press-pending]::after {
+		box-shadow: inset 0 0 0 2px color-mix(in oklab, var(--primary) 35%, transparent);
 	}
 
 	.gift-card-directional-actions {

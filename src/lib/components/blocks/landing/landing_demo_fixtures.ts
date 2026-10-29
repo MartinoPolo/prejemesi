@@ -146,6 +146,8 @@ function buildDemoGift(
 		priorityLevelId: null,
 		priorityLabel: null,
 		prioritySortOrder: null,
+		categoryIds: [],
+		categories: [],
 		likeCount,
 		reservedCount: 0,
 		isFullyReserved: false,
@@ -262,5 +264,7 @@ export function toRecipientView(gift: GiftForVisitor): GiftForRecipient {
 		priorityLevelId: gift.priorityLevelId,
 		priorityLabel: gift.priorityLabel,
 		prioritySortOrder: gift.prioritySortOrder,
+		categoryIds: gift.categoryIds,
+		categories: gift.categories,
 	};
 }

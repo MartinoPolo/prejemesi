@@ -3,9 +3,7 @@ import * as m from '$lib/paraglide/messages.js';
 import type { GiftSection } from '$lib/modules/gifts/gift_ordering.js';
 import { GIFT_GROUPING_OPTIONS, type GiftGroupingOption } from '$lib/modules/gifts/types.js';
 import {
-	GIFT_REORDER_MOVE_SOURCES,
 	keyboardReorderPlacement,
-	type GiftReorderMoveSource,
 	type GiftReorderPlacement,
 } from '$lib/modules/gifts/gift_grouped_reorder.js';
 import {
@@ -27,10 +25,7 @@ export interface GiftReorderGroupPosition {
 }
 
 /** Reports whether the page accepted the placement; only accepted moves are announced. */
-export type GiftReorderPlacementCommitHandler = (
-	placement: GiftReorderPlacement,
-	source: GiftReorderMoveSource,
-) => boolean;
+export type GiftReorderPlacementCommitHandler = (placement: GiftReorderPlacement) => boolean;
 
 interface GiftReorderViewOptions {
 	getContainer: () => HTMLElement | null;
@@ -117,7 +112,7 @@ export function createGiftReorderView(options: GiftReorderViewOptions) {
 			isActive: () => groupedReorder,
 			onPreviewPlacement: options.onPreviewPlacement,
 			onCommitPlacement: (placement) => {
-				options.onCommitPlacement(placement, GIFT_REORDER_MOVE_SOURCES.pointer);
+				options.onCommitPlacement(placement);
 			},
 			onCancelPlacement: options.onCancelPlacement,
 		},
@@ -134,10 +129,7 @@ export function createGiftReorderView(options: GiftReorderViewOptions) {
 			return;
 		}
 		const move = groupedReorderKeyboardMove(options.getSections(), giftId, direction);
-		if (
-			move !== null &&
-			options.onCommitPlacement(move.placement, GIFT_REORDER_MOVE_SOURCES.keyboard)
-		) {
+		if (move !== null && options.onCommitPlacement(move.placement)) {
 			announcement = move.announcement;
 		}
 	}
@@ -192,19 +184,6 @@ export function createGiftReorderView(options: GiftReorderViewOptions) {
 		};
 	}
 
-	/** Only the dragged gift shows the live badge of the grouping it is being moved within. */
-	function groupBadgeProps(giftId: string, showPriority: boolean) {
-		const showsDraggedGroupBadge = groupedReorder && reorder.draggedGiftId.current === giftId;
-		return {
-			showPriority: showPriority || showsDraggedGroupBadge,
-			showCategory:
-				showsDraggedGroupBadge &&
-				options.getReorderGrouping() === GIFT_GROUPING_OPTIONS.category
-					? true
-					: undefined,
-		};
-	}
-
 	$effect(() => {
 		if (!options.isReorderEnabled()) {
 			reorder.cancel();
@@ -228,6 +207,5 @@ export function createGiftReorderView(options: GiftReorderViewOptions) {
 		moveGift,
 		headerGroupKey,
 		giftReorderProps,
-		groupBadgeProps,
 	};
 }

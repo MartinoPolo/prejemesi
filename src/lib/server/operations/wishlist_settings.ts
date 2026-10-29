@@ -1,0 +1,175 @@
+import { eq } from 'drizzle-orm';
+import { error } from '@sveltejs/kit';
+import { wishlist } from '$lib/server/db/wishlist.schema.js';
+import { rejectDemoImageUpload } from '$lib/server/demo/scope.js';
+import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
+import { saveGiftCategorySettings } from '$lib/modules/gift-categories/gift_categories_service.js';
+import {
+	wishlistBackgroundImageKey,
+	wishlistBackgroundLibraryImageId,
+} from '$lib/modules/wishlists/wishlist_appearance.js';
+import type { SaveWishlistSettingsInput } from '$lib/modules/wishlists/wishlist_settings_types.js';
+import {
+	DEFAULT_WISHLIST_BACKGROUND,
+	type WishlistBackground,
+} from '$lib/theme/wishlist_themes.js';
+import { OPERATION_CHANNEL, type OperationActor } from './actor.js';
+import type { MutationOperationContext } from './operation.js';
+import { requireMutableManagedWishlist, type WishlistRow } from './wishlist_management.js';
+import {
+	authorizeWishlistUploadReplacement,
+	planWishlistDetailEdit,
+} from './wishlist_edit_rules.js';
+
+type AppearanceInput = NonNullable<SaveWishlistSettingsInput['appearance']>;
+
+/**
+ * Agents can neither reference nor remove images, so an agent's background reset restores the
+ * default settings but keeps the stored upload; only the owner's UI clears it.
+ */
+function appearanceForActor(
+	actor: OperationActor,
+	wishlistRow: WishlistRow,
+	appearance: AppearanceInput | undefined,
+): AppearanceInput | undefined {
+	if (
+		appearance?.background !== null ||
+		actor.channel === OPERATION_CHANNEL.ui ||
+		wishlistBackgroundImageKey(wishlistRow.background) === null
+	) {
+		return appearance;
+	}
+	const { mode, focal, placement, dim, motion } = DEFAULT_WISHLIST_BACKGROUND;
+	return { ...appearance, background: { mode, focal, placement, dim, motion } };
+}
+
+/** The image key a background draft requests: undefined keeps the stored upload. */
+function requestedBackgroundImageKey(appearance: AppearanceInput): string | null | undefined {
+	return appearance.background === null ? null : appearance.background.imageKey;
+}
+
+/** Only explicit choices are stored, so an empty override set reads like no override. */
+function planAppearanceEdit(
+	wishlistRow: WishlistRow,
+	appearance: AppearanceInput | undefined,
+): Partial<WishlistRow> {
+	if (appearance === undefined) {
+		return {};
+	}
+	const { styleTokens, background } = appearance;
+	return {
+		themeId: appearance.themeId,
+		styleTokens:
+			styleTokens === null || Object.keys(styleTokens).length === 0 ? null : styleTokens,
+		background: background === null ? null : mergeStoredBackground(wishlistRow, background),
+	};
+}
+
+/** Omitted references keep the stored ones; library mode needs an image after that merge. */
+function mergeStoredBackground(
+	wishlistRow: WishlistRow,
+	background: NonNullable<AppearanceInput['background']>,
+): WishlistBackground {
+	const libraryImageId =
+		background.libraryImageId === undefined
+			? wishlistBackgroundLibraryImageId(wishlistRow.background)
+			: background.libraryImageId;
+	if (background.mode === 'library' && libraryImageId === null) {
+		error(400, SERVER_ERROR.INVALID_OPERATION_INPUT);
+	}
+	return {
+		...background,
+		imageKey:
+			background.imageKey === undefined
+				? wishlistBackgroundImageKey(wishlistRow.background)
+				: background.imageKey,
+		libraryImageId,
+	};
+}
+
+/** The wishlist columns a settings draft writes; a linked recipient's name is not editable. */
+function planSettingsEdit(
+	wishlistRow: WishlistRow,
+	input: SaveWishlistSettingsInput,
+	now: Date,
+): Partial<WishlistRow> {
+	const recipientName = input.details?.recipientName;
+	if (recipientName !== undefined && wishlistRow.recipientUserId !== null) {
+		error(400, SERVER_ERROR.RECIPIENT_RENAME_NOT_ALLOWED);
+	}
+	return {
+		...planWishlistDetailEdit(wishlistRow, { ...input.details, ...input.image }, now),
+		...(recipientName === undefined ? {} : { recipientName }),
+		...(input.palette === undefined ? {} : { palette: input.palette }),
+		...planAppearanceEdit(wishlistRow, input.appearance),
+	};
+}
+
+/** The stored custom background this save replaces or clears, after checking a new key's proof. */
+function authorizeBackgroundReplacement(
+	actorUserId: string,
+	wishlistRow: WishlistRow,
+	appearance: AppearanceInput | undefined,
+): Promise<string | null> {
+	if (appearance === undefined) {
+		return Promise.resolve(null);
+	}
+	const storedBackgroundKey = wishlistBackgroundImageKey(wishlistRow.background);
+	return authorizeWishlistUploadReplacement(
+		actorUserId,
+		storedBackgroundKey,
+		{
+			imageKey: requestedBackgroundImageKey(appearance),
+			assignmentToken: appearance.backgroundAssignmentToken,
+		},
+		'wishlist-background',
+	);
+}
+
+/**
+ * Locks and revalidates the mutable wishlist, then saves every settings domain inside the batch
+ * transaction. Returns the image keys this batch actually replaced so cleanup cannot race a later
+ * save.
+ */
+export async function saveLockedWishlistSettings(
+	context: MutationOperationContext,
+	requestedInput: SaveWishlistSettingsInput,
+): Promise<{ replacedImageKeys: string[]; shortId: string }> {
+	rejectDemoImageUpload(requestedInput.image?.imageKey);
+	rejectDemoImageUpload(requestedInput.appearance?.background?.imageKey);
+	const wishlistRow = await requireMutableManagedWishlist(context, requestedInput.wishlistId, {
+		lock: true,
+	});
+	const input = {
+		...requestedInput,
+		appearance: appearanceForActor(context.actor, wishlistRow, requestedInput.appearance),
+	};
+	const replacedBannerKey = await authorizeWishlistUploadReplacement(
+		context.actor.userId,
+		wishlistRow.imageKey,
+		input.image ?? {},
+		'wishlist-banner',
+	);
+	const replacedBackgroundKey = await authorizeBackgroundReplacement(
+		context.actor.userId,
+		wishlistRow,
+		input.appearance,
+	);
+	const settingsEdit = planSettingsEdit(wishlistRow, input, context.now);
+	if (Object.keys(settingsEdit).length > 0) {
+		await context.transaction
+			.update(wishlist)
+			.set({ ...settingsEdit, updatedAt: context.now })
+			.where(eq(wishlist.id, wishlistRow.id));
+	}
+	if (input.categories !== undefined) {
+		await saveGiftCategorySettings(
+			{ wishlistId: wishlistRow.id, ...input.categories },
+			context,
+		);
+	}
+	const replacedImageKeys = [replacedBannerKey, replacedBackgroundKey].filter(
+		(imageKey) => imageKey !== null,
+	);
+	return { replacedImageKeys, shortId: wishlistRow.shortId };
+}

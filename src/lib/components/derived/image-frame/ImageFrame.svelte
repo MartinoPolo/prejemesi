@@ -4,6 +4,7 @@
 	import { Skeleton } from '$lib/components/base/skeleton/index.js';
 	import {
 		coverWindowLayout,
+		paintedImageWidth,
 		resolveAutoFit,
 		resolveFrameFill,
 		hasExplicitFrameFill,
@@ -17,7 +18,11 @@
 		type ImageFrameResolvedFit,
 	} from './image_frame_variants.js';
 	import type { ImageFocalPoint } from '$lib/modules/images/types.js';
-	import { transformedImageUrl, type ImageVariant } from '$lib/modules/images/variants.js';
+	import {
+		IMAGE_VARIANTS,
+		responsiveImageSource,
+		type ImageVariant,
+	} from '$lib/modules/images/variants.js';
 
 	interface Props {
 		/** Image source. Null/empty renders the themed fallback. */
@@ -111,9 +116,6 @@
 	let boxHeight = $state(0);
 
 	const hasSrc = $derived(src !== null && src.trim() !== '');
-	const displaySrc = $derived(
-		!hasSrc || transformFailedSrc === src ? src : transformedImageUrl(src, variant),
-	);
 	const errored = $derived(hasSrc && erroredSrc === src);
 	// Skeleton shows while the image is in flight, or when the parent forces it.
 	const pending = $derived(hasSrc && loadedSrc !== src && erroredSrc !== src);
@@ -150,6 +152,25 @@
 			? coverWindowLayout({ focal, zoom, boxWidth, boxHeight, naturalRatio })
 			: null,
 	);
+
+	const responsiveSource = $derived(
+		!hasSrc || transformFailedSrc === src || natural
+			? null
+			: responsiveImageSource(
+					src,
+					variant,
+					paintedImageWidth({
+						fit: effectiveFit,
+						zoom,
+						boxWidth,
+						boxHeight,
+						naturalRatio,
+						fallbackBoxWidth: variant == null ? 0 : IMAGE_VARIANTS[variant].cssWidth,
+						zoomOutLayout,
+					}),
+				),
+	);
+	const displaySrc = $derived(responsiveSource?.src ?? src);
 
 	const rootClass = $derived(
 		cn(styles.root(), natural && 'bg-transparent', className, explicitFillClass),
@@ -265,6 +286,8 @@
 				{@attach trackImageLoad}
 				class={imageClass}
 				style={imageStyle}
+				sizes={responsiveSource?.sizes}
+				srcset={responsiveSource?.srcset}
 				src={displaySrc}
 				{alt}
 				loading={eagerLoading ? 'eager' : 'lazy'}

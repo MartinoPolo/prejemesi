@@ -1,0 +1,354 @@
+/* Wishlist theme art colours and backdrops (#535), keyed by the ids in `wishlist_themes.ts`.
+   Light themes declare their backdrop base colours as `--theme-light-*` so dark mode can sink
+   them toward the dark page background; motif colours stay full in both modes. Dark-native
+   themes paint their own backdrop and look the same in light and dark mode. */
+
+[data-wishlist-theme] {
+	--theme-top: var(--theme-light-top);
+	--theme-middle: var(--theme-light-middle);
+	--theme-bottom: var(--theme-light-bottom);
+	--theme-pattern: var(--theme-light-pattern);
+	--theme-wash: rgb(255 255 255 / 50%);
+}
+
+.dark
+	[data-wishlist-theme]:not(
+		[data-wishlist-theme='gamer'],
+		[data-wishlist-theme='christmas'],
+		[data-wishlist-theme='space']
+	) {
+	--theme-top: color-mix(in oklab, var(--theme-light-top) 18%, var(--background));
+	--theme-middle: color-mix(in oklab, var(--theme-light-middle) 18%, var(--background));
+	--theme-bottom: color-mix(in oklab, var(--theme-light-bottom) 18%, var(--background));
+	--theme-pattern: color-mix(in oklab, var(--theme-light-pattern) 22%, var(--background));
+	--theme-wash: color-mix(in oklab, var(--background) 50%, transparent);
+}
+
+[data-wishlist-theme='toys'] {
+	--m-a: #ff6b6b;
+	--m-b: #ffc93c;
+	--m-c: #4cc3ff;
+	--m-d: #7bd88f;
+	--m-ink: #16385c;
+	--m-paper: #fff;
+	--theme-light-top: #e6f5ff;
+	--theme-light-bottom: #fff7e0;
+	--theme-backdrop:
+		radial-gradient(
+				circle at 12px 12px,
+				color-mix(in oklab, var(--p-brand) 22%, transparent) 2.5px,
+				transparent 3px
+			)
+			0 0 / 28px 28px,
+		linear-gradient(180deg, var(--theme-top), var(--theme-bottom));
+}
+
+[data-wishlist-theme='kids_clothes'] {
+	--m-a: #f48fc0;
+	--m-b: #ffd166;
+	--m-c: #8ecae6;
+	--m-d: #b9e769;
+	--m-ink: #5f1d44;
+	--m-paper: #fff;
+	--theme-light-top: #fff0f6;
+	--theme-light-bottom: #fff8ec;
+	--theme-backdrop:
+		repeating-linear-gradient(
+			90deg,
+			color-mix(in oklab, var(--p-brand) 7%, transparent) 0 14px,
+			transparent 14px 28px
+		),
+		linear-gradient(180deg, var(--theme-top), var(--theme-bottom));
+}
+
+[data-wishlist-theme='gamer'] {
+	--m-a: #8b5cf6;
+	--m-b: #ff5fa2;
+	--m-c: #3ad1ce;
+	--m-d: #ffe14d;
+	--m-ink: #0d0820;
+	--m-paper: #f3eeff;
+	--theme-backdrop:
+		linear-gradient(color-mix(in oklab, #8b5cf6 22%, transparent) 1px, transparent 1px) 0 0 /
+			32px 32px,
+		linear-gradient(90deg, color-mix(in oklab, #8b5cf6 22%, transparent) 1px, transparent 1px) 0
+			0 / 32px 32px,
+		radial-gradient(ellipse at 50% 0%, #2c1766, #140b33 70%);
+	--theme-wash: rgb(0 0 0 / 16%);
+	--theme-shadow-override: #000;
+}
+
+[data-wishlist-theme='minimal'] {
+	--m-a: #c9b8a3;
+	--m-b: #e8ded1;
+	--m-c: #9fb1c2;
+	--m-d: #1d2b3a;
+	--m-ink: #1d2b3a;
+	--m-paper: #fff;
+	--theme-light-top: #f4f2ee;
+	--theme-backdrop:
+		linear-gradient(color-mix(in oklab, var(--p-ink) 6%, transparent) 1px, transparent 1px) 0
+			0 / 56px 56px,
+		linear-gradient(
+				90deg,
+				color-mix(in oklab, var(--p-ink) 6%, transparent) 1px,
+				transparent 1px
+			)
+			0 0 / 56px 56px,
+		var(--theme-top);
+}
+
+[data-wishlist-theme='wedding'] {
+	--m-a: #d9a441;
+	--m-b: #f6d8d2;
+	--m-c: #a8bf9a;
+	--m-d: #fff;
+	--m-ink: #59430d;
+	--m-paper: #fffdf8;
+	--theme-light-top: #fffaf0;
+	--theme-light-bottom: #fbf1ea;
+	--theme-backdrop:
+		radial-gradient(
+				circle at 50% 50%,
+				color-mix(in oklab, var(--p-brand) 10%, transparent) 1.5px,
+				transparent 2px
+			)
+			0 0 / 22px 22px,
+		linear-gradient(180deg, var(--theme-top), var(--theme-bottom));
+}
+
+[data-wishlist-theme='christmas'] {
+	--m-a: #e23a57;
+	--m-b: #ffcf4a;
+	--m-c: #2f8f5b;
+	--m-d: #fff;
+	--m-ink: #571726;
+	--m-paper: #fff;
+	--theme-backdrop:
+		radial-gradient(circle at 20px 20px, rgb(255 255 255 / 90%) 2px, transparent 2.5px) 0 0 /
+			46px 46px,
+		radial-gradient(circle at 8px 30px, rgb(255 255 255 / 70%) 1.5px, transparent 2px) 0 0 /
+			38px 38px,
+		linear-gradient(180deg, #1f5a43, #17432f);
+	--theme-wash: rgb(0 0 0 / 16%);
+	--theme-shadow-override: #000;
+}
+
+[data-wishlist-theme='outdoor'] {
+	--m-a: #e9734f;
+	--m-b: #ffd166;
+	--m-c: #5e8c31;
+	--m-d: #fff;
+	--m-ink: #33430f;
+	--m-paper: #fffef6;
+	--theme-light-top: #e8f3d6;
+	--theme-light-middle: #f6f1df;
+	--theme-light-bottom: #eef3e4;
+	--theme-backdrop: linear-gradient(
+		180deg,
+		var(--theme-top) 0%,
+		var(--theme-middle) 60%,
+		var(--theme-bottom) 100%
+	);
+}
+
+[data-wishlist-theme='books'] {
+	--m-a: #c8553d;
+	--m-b: #f2c14e;
+	--m-c: #2a7f80;
+	--m-d: #fff;
+	--m-ink: #10484a;
+	--m-paper: #fffaf0;
+	--theme-light-top: #f6efe2;
+	--theme-light-bottom: #ecf4f1;
+	--theme-backdrop:
+		repeating-linear-gradient(
+			0deg,
+			color-mix(in oklab, var(--p-ink) 6%, transparent) 0 1px,
+			transparent 1px 30px
+		),
+		linear-gradient(180deg, var(--theme-top), var(--theme-bottom));
+}
+
+[data-wishlist-theme='baby'] {
+	--m-a: #a6e3c8;
+	--m-b: #ffe08a;
+	--m-c: #b8d8ff;
+	--m-d: #fff;
+	--m-ink: #164a38;
+	--m-paper: #fff;
+	--theme-light-top: #e6f7ef;
+	--theme-light-bottom: #eef6ff;
+	--theme-light-pattern: rgb(255 255 255 / 90%);
+	--theme-backdrop:
+		radial-gradient(circle at 40px 44px, var(--theme-pattern) 0 13px, transparent 14px) 0 0 /
+			160px 120px,
+		radial-gradient(circle at 58px 36px, var(--theme-pattern) 0 17px, transparent 18px) 0 0 /
+			160px 120px,
+		radial-gradient(circle at 78px 46px, var(--theme-pattern) 0 11px, transparent 12px) 0 0 /
+			160px 120px,
+		linear-gradient(180deg, var(--theme-top), var(--theme-bottom));
+}
+
+[data-wishlist-theme='retro'] {
+	--m-a: #f97250;
+	--m-b: #f4b942;
+	--m-c: #8a6d3b;
+	--m-d: #fff4e0;
+	--m-ink: #6b2f1a;
+	--m-paper: #fff4e0;
+	--theme-light-top: #fde8cf;
+	--theme-light-middle: #fcd9b5;
+	--theme-light-bottom: #f9c49a;
+	--theme-backdrop: repeating-linear-gradient(
+		180deg,
+		var(--theme-top) 0 36px,
+		var(--theme-middle) 36px 48px,
+		var(--theme-bottom) 48px 56px,
+		var(--theme-top) 56px 92px
+	);
+}
+
+[data-wishlist-theme='party'] {
+	--m-a: #ff6fa5;
+	--m-b: #ffd23f;
+	--m-c: #5ec8f2;
+	--m-d: #8be08a;
+	--m-ink: #5a1840;
+	--m-paper: #fff;
+	--theme-light-top: #fff0f6;
+	--theme-light-bottom: #fff5e4;
+	--theme-backdrop:
+		radial-gradient(
+				circle at 10px 14px,
+				color-mix(in oklab, var(--m-a) 30%, transparent) 2.5px,
+				transparent 3px
+			)
+			0 0 / 64px 58px,
+		radial-gradient(
+				circle at 42px 34px,
+				color-mix(in oklab, var(--m-c) 30%, transparent) 2.5px,
+				transparent 3px
+			)
+			0 0 / 64px 58px,
+		radial-gradient(
+				circle at 24px 48px,
+				color-mix(in oklab, var(--m-b) 45%, transparent) 2px,
+				transparent 2.5px
+			)
+			0 0 / 64px 58px,
+		linear-gradient(180deg, var(--theme-top), var(--theme-bottom));
+}
+
+[data-wishlist-theme='space'] {
+	--m-a: #ff7a59;
+	--m-b: #ffd45c;
+	--m-c: #6fb6ff;
+	--m-d: #b69cff;
+	--m-ink: #0a1030;
+	--m-paper: #eef3ff;
+	--theme-backdrop:
+		radial-gradient(circle at 14px 18px, rgb(255 255 255 / 75%) 1.2px, transparent 1.8px) 0 0 /
+			58px 54px,
+		radial-gradient(circle at 36px 40px, rgb(255 255 255 / 45%) 1px, transparent 1.5px) 0 0 /
+			46px 50px,
+		radial-gradient(
+				circle at 30px 8px,
+				color-mix(in oklab, var(--m-b) 70%, transparent) 1.4px,
+				transparent 2px
+			)
+			0 0 / 97px 89px,
+		radial-gradient(ellipse at 50% 0%, #1f2c66, #0b1030 70%);
+	--theme-wash: rgb(0 0 0 / 16%);
+	--theme-shadow-override: #000;
+}
+
+[data-wishlist-theme='music'] {
+	--m-a: #e8445a;
+	--m-b: #ffc94a;
+	--m-c: #4fb3d9;
+	--m-d: #a8673d;
+	--m-ink: #3a0f1d;
+	--m-paper: #fffaf4;
+	--theme-light-top: #fdf2f2;
+	--theme-light-bottom: #f4effa;
+	--theme-staff-line: color-mix(in oklab, var(--p-ink) 8%, transparent);
+	--theme-backdrop:
+		linear-gradient(
+				180deg,
+				var(--theme-staff-line) 0 1px,
+				transparent 1px 9px,
+				var(--theme-staff-line) 9px 10px,
+				transparent 10px 18px,
+				var(--theme-staff-line) 18px 19px,
+				transparent 19px 27px,
+				var(--theme-staff-line) 27px 28px,
+				transparent 28px 36px,
+				var(--theme-staff-line) 36px 37px,
+				transparent 37px
+			)
+			0 40px / 100% 120px,
+		linear-gradient(180deg, var(--theme-top), var(--theme-bottom));
+}
+
+[data-wishlist-theme='pets'] {
+	--m-a: #f2a541;
+	--m-b: #ffe08a;
+	--m-c: #8fcde0;
+	--m-d: #e8806f;
+	--m-ink: #4a2f0b;
+	--m-paper: #fff;
+	--theme-light-top: #fff8ea;
+	--theme-light-bottom: #fdeedb;
+	--theme-paw: color-mix(in oklab, var(--p-brand) 12%, transparent);
+	--theme-paw-pad: radial-gradient(7px 6px at 30px 40px, var(--theme-paw) 0 96%, transparent);
+	--theme-paw-toes:
+		radial-gradient(circle at 21px 30px, var(--theme-paw) 0 2.6px, transparent 3px),
+		radial-gradient(circle at 30px 27px, var(--theme-paw) 0 2.8px, transparent 3.2px),
+		radial-gradient(circle at 39px 30px, var(--theme-paw) 0 2.6px, transparent 3px);
+	--theme-backdrop:
+		var(--theme-paw-pad) 0 0 / 96px 88px, var(--theme-paw-toes) 0 0 / 96px 88px,
+		var(--theme-paw-pad) 48px 44px / 96px 88px, var(--theme-paw-toes) 48px 44px / 96px 88px,
+		linear-gradient(180deg, var(--theme-top), var(--theme-bottom));
+}
+
+[data-wishlist-theme='gourmet'] {
+	--m-a: #e8603c;
+	--m-b: #f6c453;
+	--m-c: #7aa35a;
+	--m-d: #9a5b34;
+	--m-ink: #4a2414;
+	--m-paper: #fffaf3;
+	--theme-light-top: #fff8f1;
+	--theme-light-bottom: #fbefe4;
+	--theme-backdrop:
+		repeating-linear-gradient(
+			0deg,
+			color-mix(in oklab, var(--p-brand) 5%, transparent) 0 14px,
+			transparent 14px 28px
+		),
+		repeating-linear-gradient(
+			90deg,
+			color-mix(in oklab, var(--p-brand) 5%, transparent) 0 14px,
+			transparent 14px 28px
+		),
+		linear-gradient(180deg, var(--theme-top), var(--theme-bottom));
+}
+
+[data-wishlist-theme='travel'] {
+	--m-a: #f26b4f;
+	--m-b: #ffcb52;
+	--m-c: #3aa7c9;
+	--m-d: #8bcf8a;
+	--m-ink: #0f3d52;
+	--m-paper: #fff;
+	--theme-light-top: #e4f3fb;
+	--theme-light-bottom: #fbf1de;
+	--theme-route: color-mix(in oklab, var(--p-ink) 9%, transparent);
+	--theme-backdrop:
+		conic-gradient(from 270deg at 10px 2px, var(--theme-route) 0 25%, transparent 0) 0 0 / 20px
+			96px,
+		conic-gradient(from 270deg at 10px 2px, var(--theme-route) 0 25%, transparent 0) 10px 48px /
+			20px 96px,
+		linear-gradient(180deg, var(--theme-top), var(--theme-bottom));
+}

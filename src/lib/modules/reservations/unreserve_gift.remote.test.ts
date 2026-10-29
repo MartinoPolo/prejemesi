@@ -213,27 +213,19 @@ describe('unreserveGift', () => {
 		vi.resetAllMocks();
 	});
 
-	// unreserveGift stores ONE `database` from getDb() (call #1) and reuses it for:
-	//   - reservation SELECT (query 1 on database)
-	//   - soft-delete UPDATE (final query on database)
-	// For an anonymous reservation cancelled by an authenticated user, the handler also:
-	//   - getGiftWithWishlist(): its own getDb() call (call #2) → joined gift+wishlist row
-	//   - resolveWishlistRole(): if not the recipient, hasActiveModeratorAssignment()
-	//     makes its own getDb() call (call #3) for the mod check.
+	// The operation core runs unreserveGift on ONE transaction from getDb(), in order:
+	//   - reservation SELECT
+	//   - joined gift+wishlist row
+	//   - on a release of someone else's reservation by a non-recipient: the moderator check
+	//   - soft-delete UPDATE
 
 	it('authenticated user can unreserve their own reservation – returns { success: true }', async () => {
-		// Call #1: `database` – used for reservation SELECT then UPDATE
-		// Queue: [reservation row array, [] for update]
 		const database = createMultiQueryChain(
 			[{ id: RESERVATION_ID, giftId: GIFT_ID, userId: VISITOR_ID, deletedAt: null }],
+			[makeActiveWishlistRow()],
 			[], // update result (unused)
 		);
-
-		mockGetDb
-			.mockReturnValueOnce(database as unknown as ReturnType<typeof getDb>)
-			.mockReturnValueOnce(
-				createChain([makeActiveWishlistRow()]) as unknown as ReturnType<typeof getDb>,
-			);
+		mockGetDb.mockReturnValueOnce(database as unknown as ReturnType<typeof getDb>);
 
 		const result = await (unreserveGift as (...args: unknown[]) => unknown)(
 			makeAuthContext(fakeVisitorUser),
@@ -261,6 +253,7 @@ describe('unreserveGift', () => {
 
 	it('anonymous visitor with the matching cookie can unreserve their own reservation', async () => {
 		// Anonymous reservation whose anonymousVisitorId matches the visitor's cookie.
+		// The operation core runs every statement on one transaction, in the same order.
 		const database = createMultiQueryChain(
 			[
 				{
@@ -271,13 +264,10 @@ describe('unreserveGift', () => {
 					deletedAt: null,
 				},
 			],
-			[], // update result (unused)
+			[makeActiveWishlistRow()],
+			[],
 		);
-		mockGetDb
-			.mockReturnValueOnce(database as unknown as ReturnType<typeof getDb>)
-			.mockReturnValueOnce(
-				createChain([makeActiveWishlistRow()]) as unknown as ReturnType<typeof getDb>,
-			);
+		mockGetDb.mockReturnValueOnce(database as unknown as ReturnType<typeof getDb>);
 		mockAnonCookie('anon-token-1');
 
 		const result = await (unreserveGift as (...args: unknown[]) => unknown)(null, validInput);
@@ -322,20 +312,13 @@ describe('unreserveGift', () => {
 	});
 
 	it('moderator can unreserve an anonymous reservation – returns { success: true }', async () => {
-		// Call #1: `database` – reservation SELECT, then UPDATE.
+		// The operation core runs every statement on one transaction, in the same order.
 		const database = createMultiQueryChain(
-			[{ id: RESERVATION_ID, giftId: GIFT_ID, userId: null, deletedAt: null }], // reservation
-			[], // update (unused)
+			[{ id: RESERVATION_ID, giftId: GIFT_ID, userId: null, deletedAt: null }],
+			[makeActiveWishlistRow()],
+			[{ id: 'mod-assignment-1' }],
 		);
-		// Call #2: getGiftWithWishlist's own getDb() – joined gift+wishlist row (recipient ≠ mod)
-		const giftDb = createChain([makeActiveWishlistRow()]);
-		// Call #3: resolveWishlistRole → hasActiveModeratorAssignment's getDb() – assignment found
-		const modDb = createChain([{ id: 'mod-assignment-1' }]);
-
-		mockGetDb
-			.mockReturnValueOnce(database as unknown as ReturnType<typeof getDb>)
-			.mockReturnValueOnce(giftDb as unknown as ReturnType<typeof getDb>)
-			.mockReturnValueOnce(modDb as unknown as ReturnType<typeof getDb>);
+		mockGetDb.mockReturnValueOnce(database as unknown as ReturnType<typeof getDb>);
 
 		const result = await (unreserveGift as (...args: unknown[]) => unknown)(
 			makeAuthContext(fakeModeratorUser),
@@ -346,19 +329,13 @@ describe('unreserveGift', () => {
 	});
 
 	it('non-moderator authenticated user cannot unreserve an anonymous reservation – throws 403', async () => {
-		// Call #1: `database` – reservation SELECT (update never reached).
+		// The operation core runs every statement on one transaction, in the same order.
 		const database = createMultiQueryChain(
-			[{ id: RESERVATION_ID, giftId: GIFT_ID, userId: null, deletedAt: null }], // reservation
+			[{ id: RESERVATION_ID, giftId: GIFT_ID, userId: null, deletedAt: null }],
+			[makeActiveWishlistRow()],
+			[],
 		);
-		// Call #2: getGiftWithWishlist's own getDb() – joined gift+wishlist row (recipient ≠ visitor)
-		const giftDb = createChain([makeActiveWishlistRow()]);
-		// Call #3: resolveWishlistRole → hasActiveModeratorAssignment's getDb() – no assignment
-		const modDb = createChain([]);
-
-		mockGetDb
-			.mockReturnValueOnce(database as unknown as ReturnType<typeof getDb>)
-			.mockReturnValueOnce(giftDb as unknown as ReturnType<typeof getDb>)
-			.mockReturnValueOnce(modDb as unknown as ReturnType<typeof getDb>);
+		mockGetDb.mockReturnValueOnce(database as unknown as ReturnType<typeof getDb>);
 
 		await expect(
 			(unreserveGift as (...args: unknown[]) => unknown)(

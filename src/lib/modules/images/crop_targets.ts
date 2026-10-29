@@ -21,6 +21,24 @@ export interface CropTargetSpec {
 	realHeight: number;
 	/** Human-readable real-size hint shown on the crop stage window. */
 	realSizeText: string;
+	/** Rendered size on narrow (mobile) viewports, where it differs from the reference. */
+	compactRealWidth?: number;
+	compactRealHeight?: number;
+	/**
+	 * Share of the surface width a narrow frame still shows when it crops a
+	 * centered side-window out of the composition (worst case, mobile List row).
+	 */
+	compactVisibleWidthFraction?: number;
+}
+
+/** The CSS size a crop target renders at on the current device class. */
+export function cropTargetSurfaceSize(
+	spec: CropTargetSpec,
+	compact: boolean,
+): { width: number; height: number } {
+	return compact && spec.compactRealWidth !== undefined && spec.compactRealHeight !== undefined
+		? { width: spec.compactRealWidth, height: spec.compactRealHeight }
+		: { width: spec.realWidth, height: spec.realHeight };
 }
 
 /** Gift crop targets (D2), grouped by aspect family. */
@@ -57,6 +75,9 @@ export const GIFT_CROP_TARGET_SPECS = {
 		realWidth: 356,
 		realHeight: 267,
 		realSizeText: '356 × 267 px',
+		// Single-column mobile grid card.
+		compactRealWidth: 362,
+		compactRealHeight: 272,
 	},
 	// Mobile List clips the sides of this square composition; square consumers remain exact.
 	thumb: {
@@ -65,6 +86,10 @@ export const GIFT_CROP_TARGET_SPECS = {
 		realWidth: 146,
 		realHeight: 146,
 		realSizeText: '146 × 146 px',
+		// Mobile List row: the image column is narrower than the row is tall.
+		compactRealWidth: 150,
+		compactRealHeight: 150,
+		compactVisibleWidthFraction: 0.72,
 	},
 } as const satisfies Record<GiftCropTarget, CropTargetSpec>;
 
@@ -89,6 +114,8 @@ export const WISHLIST_SLOT_SPECS = {
 		realWidth: 364,
 		realHeight: 128,
 		realSizeText: '364 × 128 px',
+		compactRealWidth: 366,
+		compactRealHeight: 129,
 	},
 	// Header polaroid (D4, ~146px) + nav dropdown (34px) + list row (44px) 1:1 family.
 	thumbnail: {
@@ -97,6 +124,9 @@ export const WISHLIST_SLOT_SPECS = {
 		realWidth: 146,
 		realHeight: 146,
 		realSizeText: '146 × 146 px',
+		// Mobile wishlist hero photo.
+		compactRealWidth: 92,
+		compactRealHeight: 92,
 	},
 	// Open Graph preview image (rendered by social platforms at 1.91:1).
 	social: {

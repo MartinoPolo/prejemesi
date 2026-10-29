@@ -1,0 +1,1157 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Návrh změn · Vánoce pro babičku · Varianta A</title>
+<style>
+@font-face{font-family:'DynaPuff Variable';src:url('../../unavailable-gift-comparison/assets/dynapuff-latin-wght-normal.woff2') format('woff2');font-weight:400 700;unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+2000-206F,U+20AC,U+2190-21FF}
+@font-face{font-family:'DynaPuff Variable';src:url('../../unavailable-gift-comparison/assets/dynapuff-latin-ext-wght-normal.woff2') format('woff2');font-weight:400 700;unicode-range:U+0100-02BA,U+02BD-02FF,U+1E00-1EFF,U+20A0-20AB}
+@font-face{font-family:'Geist Variable';src:url('../../unavailable-gift-comparison/assets/geist-latin-wght-normal.woff2') format('woff2');font-weight:100 900;unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+2000-206F,U+20AC,U+2190-21FF}
+@font-face{font-family:'Geist Variable';src:url('../../unavailable-gift-comparison/assets/geist-latin-ext-wght-normal.woff2') format('woff2');font-weight:100 900;unicode-range:U+0100-02BA,U+02BD-02FF,U+1E00-1EFF,U+20A0-20AB}
+
+/* Standalone mirror of src/app.css (palette sky, light derivation, then .dark derivation). */
+:root{
+  --p-brand:#1e9be9;--p-deep:#1265a8;--p-ink:#16385c;--p-bright:#55b9f3;--p-accent:#ffc93c;--p-on-accent:#16385c;
+  color-scheme:light;
+  --ink:var(--p-ink);--brand:var(--p-brand);--brand-deep:var(--p-deep);
+  --tint:color-mix(in oklab,var(--p-brand) 21%,white);
+  --panel-hover:color-mix(in oklab,var(--p-brand) 6%,white);
+  --accent-loud:var(--p-accent);--accent-loud-foreground:var(--p-on-accent);
+  --background:color-mix(in oklab,var(--p-brand) 11%,white);
+  --foreground:var(--p-ink);--card:#fff;
+  --primary:var(--p-brand);--primary-hover:color-mix(in oklab,var(--primary) 86%,white);--primary-foreground:#fff;
+  --secondary:color-mix(in oklab,var(--p-brand) 6%,white);
+  --muted:color-mix(in oklab,var(--p-brand) 4%,white);
+  --muted-foreground:color-mix(in oklab,var(--p-ink) 62%,transparent);
+  --accent:color-mix(in oklab,var(--p-brand) 11%,white);
+  --border:color-mix(in oklab,var(--p-ink) 12%,transparent);
+  --border-strong:color-mix(in oklab,var(--p-ink) 30%,transparent);
+  --surface:var(--background);
+  --separator-ink:var(--ink);
+  --soft-shadow:color-mix(in oklab,var(--p-ink) 16%,transparent);
+  --soft-shadow-strong:color-mix(in oklab,var(--p-ink) 20%,transparent);
+  --hard-shadow:var(--soft-shadow);--hard-shadow-strong:var(--soft-shadow-strong);
+  --status-success:#14a56f;--status-warning:#efa00b;--status-danger:#e4574c;--status-info:#1e9be9;
+  --status-danger-text:color-mix(in oklab,var(--status-danger) 60%,var(--ink));
+  --gift-overlay-unavailable:#163b60;
+  --priority-bg:oklch(.93 .05 75);--priority-fg:oklch(.50 .12 75);
+  --pattern-dot:color-mix(in oklab,var(--ink) 13%,transparent);
+  /* Readable tone inks for 11–14 px text on 14 % tints (badge text AA). */
+  --success-ink:color-mix(in oklab,var(--status-success) 55%,var(--ink));
+  --warning-ink:color-mix(in oklab,var(--status-warning) 52%,var(--ink));
+  --info-ink:var(--brand-deep);
+  --eyebrow-ink:var(--brand-deep);
+  --nav-height:56px;--content-default-max-width:1200px;
+  --radius-panel:16px;--radius-btn:7px;--radius-badge:12px;--border-w:2.5px;
+  --size-control-sm:26px;--size-control-md:32px;--size-control-lg:40px;
+  --duration-fast:100ms;--duration-normal:200ms;--ease-standard:cubic-bezier(.2,.7,.3,1);
+  --font-head:'DynaPuff Variable',Arial,sans-serif;--font-body:'Geist Variable',Arial,sans-serif;
+  --mono:ui-monospace,'Cascadia Mono',Consolas,monospace;
+  /* Diff tints: oklab, never oklch (hue collapse). */
+  --diff-old-bg:color-mix(in oklab,var(--status-danger) 14%,var(--card));
+  --diff-old-ink:var(--status-danger-text);
+  --diff-new-bg:color-mix(in oklab,var(--status-success) 14%,var(--card));
+  --diff-new-ink:var(--success-ink);
+  --confirm-bg:color-mix(in oklab,var(--accent-loud) 14%,var(--card));
+  --confirm-frame:color-mix(in oklab,var(--status-warning) 80%,var(--ink));
+}
+html.dark{
+  color-scheme:dark;
+  --ink:color-mix(in oklab,var(--p-bright) 12%,#e6e8ec);
+  --brand:color-mix(in oklab,var(--p-bright) 70%,#b8bec8);
+  --tint:var(--accent);--panel-hover:var(--secondary);
+  --accent-loud:color-mix(in oklab,var(--p-accent) 65%,#b8bec8);--accent-loud-foreground:#18202b;
+  --background:color-mix(in oklab,var(--p-deep) 10%,#090b0f);
+  --foreground:var(--ink);
+  --card:color-mix(in oklab,var(--p-deep) 16%,#13161c);
+  --primary:color-mix(in oklab,var(--p-brand) 60%,#202630);--primary-hover:color-mix(in oklab,var(--primary) 92%,black);
+  --secondary:color-mix(in oklab,var(--p-deep) 22%,#1c2027);
+  --muted:color-mix(in oklab,var(--p-deep) 12%,#181b21);
+  --muted-foreground:color-mix(in oklab,var(--ink) 65%,transparent);
+  --accent:color-mix(in oklab,var(--p-deep) 26%,#222630);
+  --border:color-mix(in oklab,var(--ink) 16%,transparent);
+  --border-strong:color-mix(in oklab,var(--ink) 40%,transparent);
+  --separator-ink:var(--p-ink);
+  --soft-shadow:rgb(2 6 12 / 42%);--soft-shadow-strong:rgb(2 6 12 / 55%);
+  --status-success:#3bd598;--status-warning:#ffc24b;--status-danger:#f07a6e;--status-info:#55b9f3;
+  --status-danger-text:color-mix(in oklab,var(--status-danger) 90%,white);
+  --gift-overlay-unavailable:#2b5d91;
+  --priority-bg:oklch(.28 .04 75);--priority-fg:oklch(.78 .08 75);
+  --success-ink:var(--status-success);--warning-ink:var(--status-warning);--info-ink:var(--status-info);
+  --eyebrow-ink:var(--brand);
+  --confirm-frame:var(--status-warning);
+}
+
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{display:flex;flex-direction:column;background:#2a303a;font:14px/1.45 var(--font-body);color:var(--foreground)}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+[hidden]{display:none!important}
+h1,h2,h3,h4,p,ul,ol,figure,dl,dd{margin:0}
+ul,ol{padding:0;list-style:none}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.icon{width:16px;height:16px;flex-shrink:0;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+/* ── Review toolbar (mockup chrome, not part of the design) ── */
+.rt{flex-shrink:0;display:flex;flex-wrap:wrap;align-items:center;gap:8px 18px;padding:8px 16px;background:#111620;color:#e5e7eb;font:12px/1.3 Arial,sans-serif;border-bottom:1px solid #000}
+.rt-eyebrow{font-weight:800;letter-spacing:.08em;color:#ffd666;text-transform:uppercase;margin-right:auto}
+.rt-group{display:flex;align-items:center;gap:6px}
+.rt-group>span{color:#9aa3b2}
+.rt button,.rt select{min-height:26px;border:1px solid #3b4352;border-radius:6px;background:#1c2330;color:#e5e7eb;padding:2px 9px;font:inherit}
+.rt button[aria-pressed=true]{background:#e5e7eb;color:#111620;border-color:#e5e7eb;font-weight:700}
+.rt :focus-visible{outline:2px solid #ffd666;outline-offset:2px}
+
+/* ── Stage and device frame ── */
+.stage{flex:1;min-height:0;display:flex;justify-content:center;align-items:flex-start;overflow:auto}
+.device{position:relative;width:100%;height:100%;overflow:hidden;background:var(--background)}
+.device[data-viewport=mobile]{width:410px;height:864px;max-height:none;margin:20px auto;border:10px solid #0b0e13;border-radius:40px;flex-shrink:0;box-shadow:0 18px 50px rgb(0 0 0 / 45%)}
+.screen{height:100%;overflow:auto;container:app / inline-size;scroll-padding-top:calc(var(--nav-height) + 44px);scroll-padding-bottom:96px;background:var(--background)}
+
+/* ── App ── */
+.device,.app{
+  --gutter:12px;--elevation-ordinary-offset:3px;--elevation-lifted-offset:4px;--elevation-pressed-offset:1px;
+  --depth-clearance:0px;--nested-control-gap:calc(.5rem + var(--depth-clearance));--compact-control-gap:calc(.5rem + max(0px,var(--depth-clearance) - 2px));
+  --elevation-ordinary:var(--elevation-ordinary-offset) var(--elevation-ordinary-offset) 0 var(--hard-shadow);
+  --elevation-lifted:var(--elevation-lifted-offset) var(--elevation-lifted-offset) 0 var(--hard-shadow);
+  --elevation-pressed:var(--elevation-pressed-offset) var(--elevation-pressed-offset) 0 var(--hard-shadow);
+  --control:var(--size-control-lg)}
+.device[data-viewport=desktop]{--elevation-ordinary-offset:4px;--elevation-lifted-offset:7px;--elevation-pressed-offset:2px;
+  --elevation-ordinary:4px 4px 0 var(--hard-shadow);--elevation-lifted:7px 7px 0 var(--hard-shadow);--elevation-pressed:2px 2px 0 var(--hard-shadow);--control:var(--size-control-md)}
+.app{min-height:100%;display:flex;flex-direction:column;color:var(--foreground)}
+@container app (width >= 640px){
+  .app{--gutter:16px;--elevation-ordinary-offset:4px;--elevation-lifted-offset:7px;--elevation-pressed-offset:2px;
+    --elevation-ordinary:var(--elevation-ordinary-offset) var(--elevation-ordinary-offset) 0 var(--hard-shadow);
+    --elevation-lifted:var(--elevation-lifted-offset) var(--elevation-lifted-offset) 0 var(--hard-shadow);
+    --elevation-pressed:var(--elevation-pressed-offset) var(--elevation-pressed-offset) 0 var(--hard-shadow);
+    --control:var(--size-control-md)}
+}
+.app :focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+
+/* Buttons: stationary owner, moving surface (elevation contract). */
+.btn{position:relative;display:inline-flex;flex-shrink:0;height:var(--h,var(--control));min-width:var(--h,var(--control));padding:0;border:0;background:none;border-radius:var(--radius-btn);text-decoration:none;color:inherit;font-weight:600;line-height:1;white-space:nowrap}
+.btn-face{display:inline-flex;align-items:center;justify-content:center;gap:6px;width:100%;height:100%;padding:0 var(--pad,12px);border:2.5px solid transparent;border-radius:inherit;font-size:var(--fs,13px);transition:translate var(--duration-normal) var(--ease-standard),box-shadow var(--duration-normal) var(--ease-standard)}
+.btn.sm{--h:var(--size-control-sm);--pad:8px;--fs:12px}.btn.sm .icon{width:14px;height:14px}
+.btn.md{--h:var(--size-control-md);--pad:12px;--fs:13px}
+.btn.lg{--h:var(--size-control-lg);--pad:14px;--fs:14px}.btn.lg .icon{width:18px;height:18px}
+.btn.icon-only .btn-face{padding:0}
+.btn.raised .btn-face{box-shadow:var(--elevation-ordinary)}
+@media (hover:hover) and (pointer:fine){.btn.raised:not(:disabled,[aria-disabled=true]):hover .btn-face{translate:0 -2px;box-shadow:var(--elevation-lifted)}}
+.btn.raised:not(:disabled,[aria-disabled=true]):active .btn-face{translate:0;box-shadow:var(--elevation-pressed);scale:.98}
+.btn:disabled,.btn[aria-disabled=true]{cursor:not-allowed;opacity:.45}
+.btn:disabled .btn-face,.btn[aria-disabled=true] .btn-face{box-shadow:none}
+.i-primary .btn-face{background:var(--primary);color:var(--primary-foreground);border-color:var(--ink)}
+.i-primary:not(:disabled):hover .btn-face{background:var(--primary-hover)}
+.i-secondary .btn-face{background:var(--card);color:var(--ink);border-color:var(--ink)}
+.i-secondary:not(:disabled):hover .btn-face{background:var(--panel-hover)}
+.i-danger .btn-face{background:var(--card);color:var(--status-danger-text);border-color:var(--status-danger)}
+.i-danger:not(:disabled,[aria-disabled=true]):hover .btn-face{background:color-mix(in oklab,var(--status-danger) 10%,var(--card))}
+.i-destructive .btn-face{background:var(--status-danger);color:#fff;border-color:var(--ink)}
+.i-ghost .btn-face{background:transparent;color:var(--muted-foreground)}
+.i-ghost:hover .btn-face{background:var(--accent);color:var(--foreground)}
+.spin{animation:spin 0.9s linear infinite}
+@keyframes spin{to{rotate:360deg}}
+
+/* Checkbox: button-sized visible surface. */
+.cb{position:relative;display:inline-flex;width:var(--control);height:var(--control);padding:0;border:0;background:none;border-radius:var(--radius-btn);flex-shrink:0}
+.cb-face{display:grid;place-items:center;width:100%;height:100%;border:2px solid var(--ink);border-radius:inherit;background:var(--card);color:var(--primary-foreground);box-shadow:var(--elevation-ordinary);transition:translate var(--duration-normal) var(--ease-standard),box-shadow var(--duration-normal) var(--ease-standard)}
+.cb-face .icon{width:18px;height:18px;stroke-width:3;visibility:hidden}
+.cb[aria-checked=true] .cb-face,.cb[aria-checked=mixed] .cb-face{background:var(--primary)}
+.cb[aria-checked=true] .i-check,.cb[aria-checked=mixed] .i-minus{visibility:visible}
+@media (hover:hover) and (pointer:fine){.cb:not([aria-disabled=true]):hover .cb-face{translate:0 -2px;box-shadow:var(--elevation-lifted)}}
+.cb:not([aria-disabled=true]):active .cb-face{translate:0;box-shadow:var(--elevation-pressed)}
+.cb[aria-disabled=true]{cursor:not-allowed}
+.cb[aria-disabled=true] .cb-face{opacity:.45;box-shadow:none;background:repeating-linear-gradient(135deg,var(--card) 0 4px,var(--muted) 4px 8px)}
+
+/* Badges (flat, never shadowed). */
+.badge{display:inline-flex;align-items:center;gap:4px;height:20px;padding:0 7px;border:2px solid var(--ink);border-radius:var(--radius-badge);background:var(--card);color:var(--muted-foreground);font-size:11px;font-weight:700;letter-spacing:.01em;white-space:nowrap;max-width:100%}
+.badge .icon{width:12px;height:12px;stroke-width:2.5}
+.t-primary{background:color-mix(in oklab,var(--primary) 14%,var(--card));color:var(--info-ink)}
+.t-success{background:color-mix(in oklab,var(--status-success) 14%,var(--card));color:var(--success-ink)}
+.t-warning{background:color-mix(in oklab,var(--status-warning) 14%,var(--card));color:var(--warning-ink)}
+.t-danger{background:color-mix(in oklab,var(--status-danger) 14%,var(--card));color:var(--status-danger-text)}
+.t-info{background:color-mix(in oklab,var(--status-info) 14%,var(--card));color:var(--info-ink)}
+.t-accent{background:var(--accent-loud);color:var(--accent-loud-foreground)}
+.t-neutral{background:var(--card);color:var(--muted-foreground)}
+
+/* Navbar (unchanged app chrome). */
+.topbar{position:sticky;top:0;z-index:30;height:var(--nav-height);flex-shrink:0;background:var(--card);border-bottom:var(--border-w) solid var(--ink)}
+.topbar-inner{display:flex;align-items:center;gap:16px;max-width:var(--content-default-max-width);height:100%;margin-inline:auto;padding-inline:var(--gutter)}
+.logo{display:flex;align-items:center;gap:8px;font:700 17px/1 var(--font-head);letter-spacing:-.02em;color:var(--ink);text-decoration:none;flex-shrink:0}
+.logo-mark{display:flex;align-items:center;justify-content:center;width:30px;height:30px;border:2px solid var(--ink);border-radius:10px;background:linear-gradient(180deg,var(--brand),var(--brand-deep));color:#fff;transform:rotate(-4deg)}
+.logo-mark .icon{width:18px;height:18px}
+.logo-tld{opacity:.42;font-weight:500;font-size:15px;margin-left:3px}
+.nav-links{display:flex;align-items:center;gap:2px;flex:1}
+.nav-link{display:inline-flex;align-items:center;gap:5px;height:32px;padding:0 12px;border:2px solid transparent;border-radius:9px;color:var(--muted-foreground);font-weight:600;text-decoration:none;white-space:nowrap}
+.nav-link:hover{background:var(--accent);color:var(--foreground)}
+.nav-link .icon{width:14px;height:14px;opacity:.55}
+.nav-right{display:flex;align-items:center;gap:var(--compact-control-gap);margin-left:auto}
+.bell{position:relative}
+.notif-badge{position:absolute;top:0;right:0;min-width:16px;height:16px;padding:0 4px;border-radius:999px;background:var(--status-danger);color:#fff;font-size:10px;font-weight:700;line-height:16px;text-align:center}
+.avatar .btn-face{border-radius:999px;border-color:var(--ink);background:var(--accent-loud);color:var(--accent-loud-foreground);font-size:12px;font-weight:800}
+.avatar{border-radius:999px}
+.only-mobile{display:none}
+@container app (width < 768px){.nav-links,.only-wide{display:none}.only-mobile{display:inline-flex}}
+@container app (width < 640px){.topbar-inner{gap:8px}.logo{font-size:15px;gap:6px}.logo-mark{width:40px;height:40px;border-radius:var(--radius-btn)}.logo-mark .icon{width:20px;height:20px}.logo-tld{display:none}}
+
+/* ── Page ── */
+.page{flex:1;width:100%;max-width:var(--content-default-max-width);margin-inline:auto;padding:14px var(--gutter) 28px}
+.back{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 8px 0 4px;margin-left:-4px;border-radius:var(--radius-btn);color:var(--muted-foreground);font-size:12px;font-weight:600;text-decoration:none}
+.back:hover{background:var(--accent);color:var(--foreground)}
+.back .icon{width:14px;height:14px}
+.page-head{margin:8px 0 14px}
+.eyebrow{font-size:11px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--eyebrow-ink)}
+h1{font:600 clamp(26px,3.2vw,32px)/1.2 var(--font-head);margin:2px 0 3px;overflow-wrap:anywhere}
+.meta{font-size:13px;color:var(--muted-foreground);font-weight:600}
+
+.panel{background:var(--card);border:var(--border-w) solid var(--ink);border-radius:var(--radius-panel);box-shadow:var(--elevation-ordinary)}
+
+/* Summary strip */
+.summary{display:grid;grid-template-columns:minmax(0,1.6fr) auto auto minmax(0,2fr);align-items:start;gap:10px 22px;padding:12px 16px;margin-bottom:calc(16px + var(--depth-clearance))}
+.sum-item{min-width:0;display:flex;flex-direction:column;gap:2px}
+.sum-label{font-size:12px;color:var(--muted-foreground);font-weight:600}
+.sum-value{font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px;min-width:0}
+.sum-value .icon{width:15px;height:15px;color:var(--muted-foreground)}
+.sum-value.wrap{display:block}
+.token-name{font-weight:700}
+.sum-counts{display:flex;flex-wrap:wrap;gap:4px 6px;align-items:center}
+.sum-counts strong{font-size:13px;margin-right:2px}
+.count-chip{display:inline-flex;align-items:center;gap:4px;height:22px;padding:0 8px;border-radius:999px;background:var(--secondary);border:1.5px solid var(--border-strong);font-size:12px;font-weight:600;white-space:nowrap}
+.count-chip b{font-weight:800}
+.revoked{color:var(--status-danger-text);font-size:12px;font-weight:600}
+@container app (width < 900px){.summary{grid-template-columns:repeat(2,minmax(0,1fr))}.sum-item.counts{grid-column:1/-1}.sum-item.who{grid-column:1/-1}}
+
+/* Notices (Alert anatomy) */
+.notices{display:flex;flex-direction:column;gap:12px;margin-bottom:calc(14px + var(--depth-clearance))}
+.alert{display:grid;grid-template-columns:auto minmax(0,1fr);gap:2px 10px;padding:12px 16px;border:2.5px solid var(--ink);border-radius:12px;font-size:13px}
+.alert>.icon{grid-row:1/3;width:18px;height:18px;margin-top:2px}
+.alert-title{font-weight:700;font-size:14px}
+.alert-body{color:inherit}
+.alert-body ul{margin-top:4px;display:flex;flex-direction:column;gap:2px}
+.alert-body li::before{content:'• '}
+.alert-actions{grid-column:2;display:flex;flex-wrap:wrap;gap:var(--nested-control-gap);margin-top:10px}
+.a-default{background:var(--tint);color:var(--foreground)}
+.a-success{background:color-mix(in oklab,var(--status-success) 12%,var(--card));color:var(--foreground)}
+.a-success>.icon{color:var(--success-ink)}
+.a-warning{background:var(--accent-loud);color:var(--accent-loud-foreground);border-color:var(--accent-loud-foreground);font-weight:500;box-shadow:var(--elevation-ordinary)}
+.a-destructive{background:var(--card);color:var(--status-danger-text);border-color:var(--status-danger)}
+
+/* Table section header */
+.list-head{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;margin-bottom:10px}
+.list-head h2{font:600 22px/1.3 var(--font-head);margin-right:4px}
+.master{display:flex;align-items:center;gap:10px;min-width:0}
+.master-label{display:flex;flex-direction:column;line-height:1.25}
+.master-label b{font-size:13px}
+.master-label span{font-size:12px;color:var(--muted-foreground)}
+.seg-scroll{margin-left:auto;max-width:100%;overflow-x:auto;padding:2px 4px 6px 2px;scrollbar-width:thin}
+.seg{display:inline-flex;gap:1px;padding:1px;border-radius:var(--radius-btn);background:var(--accent);height:var(--control);flex-shrink:0}
+.seg button{display:inline-flex;align-items:center;gap:6px;height:100%;padding:0 12px;border:0;border-radius:var(--radius-btn);background:transparent;color:var(--muted-foreground);font-size:13px;font-weight:600;white-space:nowrap}
+.seg button[aria-pressed=true]{background:var(--card);color:var(--foreground);outline:2px solid var(--ink);outline-offset:-2px}
+.seg button:hover{color:var(--foreground)}
+.seg .n{font-size:11px;font-weight:800;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:color-mix(in oklab,var(--ink) 10%,transparent);display:inline-grid;place-items:center}
+.seg button:focus-visible{outline:2px solid var(--brand);outline-offset:1px}
+
+/* ── Change table ── */
+.table-panel{overflow:clip;padding:0;background:var(--card)}
+.ct{width:100%;border-collapse:separate;border-spacing:0;table-layout:fixed;background:var(--card)}
+.ct col.k-check{width:56px}.ct col.k-kind{width:146px}.ct col.k-ident{width:262px}.ct col.k-status{width:178px}
+.ct thead th{position:sticky;top:var(--nav-height);z-index:5;padding:8px 10px;background:var(--secondary);border-bottom:2px solid var(--ink);text-align:left;font-size:12px;font-weight:600;color:var(--muted-foreground)}
+.ct td{--row-bg:var(--card);--sh-t:0 0 0 transparent;--sh-b:0 0 0 transparent;--sh-l:0 0 0 transparent;--sh-r:0 0 0 transparent;
+  padding:10px;vertical-align:top;border-top:1.5px solid var(--border);background:var(--row-bg);background-clip:padding-box;box-shadow:var(--sh-t),var(--sh-b),var(--sh-l),var(--sh-r)}
+.ct tbody.op:first-of-type .main td{border-top-color:transparent}
+.ct .detail td{border-top:0;padding-top:2px;padding-bottom:18px}
+.ct .main:hover td{--row-bg:var(--panel-hover)}
+.c-kind{padding-top:16px!important}
+.c-status{padding-top:16px!important}
+.status-wrap{display:flex;flex-direction:column;align-items:flex-start;gap:4px}
+.status-note{font-size:11px;color:var(--muted-foreground);line-height:1.3}
+
+/* Confirmation rows: warning frame inset inside the table, consequence sentence, start unselected. */
+.op.is-confirm td{--row-bg:var(--confirm-bg);--frame:var(--confirm-frame)}
+.op.is-confirm .main:hover td{--row-bg:color-mix(in oklab,var(--accent-loud) 22%,var(--card))}
+.op.is-confirm .main td{border-top:6px solid transparent;--sh-t:inset 0 2.5px 0 var(--frame)}
+.op.is-confirm:not(.is-open) .main td,.op.is-confirm.is-open .detail td{border-bottom:6px solid transparent;--sh-b:inset 0 -2.5px 0 var(--frame)}
+.op.is-confirm td:first-child{border-left:6px solid transparent;--sh-l:inset 2.5px 0 0 var(--frame)}
+.op.is-confirm td:last-child{border-right:6px solid transparent;--sh-r:inset -2.5px 0 0 var(--frame)}
+.op.is-confirm .main td:first-child{border-top-left-radius:15px}
+.op.is-confirm .main td:last-child{border-top-right-radius:15px}
+.op.is-confirm:not(.is-open) .main td:first-child,.op.is-confirm.is-open .detail td:first-child{border-bottom-left-radius:15px}
+.op.is-confirm:not(.is-open) .main td:last-child,.op.is-confirm.is-open .detail td:last-child{border-bottom-right-radius:15px}
+.op.is-confirm+.op .main td{border-top-color:transparent}
+/* Conflict and rejected rows: tinted, stripe, disabled checkbox. */
+.op.is-conflict td{--row-bg:color-mix(in oklab,var(--status-warning) 9%,var(--card))}
+.op.is-rejected td{--row-bg:color-mix(in oklab,var(--status-danger) 6%,var(--card))}
+.op.is-conflict td:first-child{--sh-l:inset 4px 0 0 var(--status-warning)}
+.op.is-rejected td:first-child{--sh-l:inset 4px 0 0 var(--status-danger)}
+.op.is-conflict .main:hover td,.op.is-rejected .main:hover td{--row-bg:color-mix(in oklab,var(--status-warning) 12%,var(--card))}
+/* Deselected rows: diffs stay readable, identity and kind recede. */
+.op.is-off .c-kind,.op.is-off .c-ident,.op.is-off .c-status{opacity:.58}
+.op.is-off .diff{opacity:.8}
+/* Read-only states (expired, discarded, locked). */
+.table-panel.is-dim .ct tbody{opacity:.6;filter:saturate(.6)}
+.table-panel.is-locked{pointer-events:none}
+.table-panel.is-locked .ct tbody{opacity:.55}
+
+.ident{display:flex;gap:10px;align-items:flex-start;min-width:0}
+.thumb{flex-shrink:0;width:40px;height:40px;border:2px solid var(--ink);border-radius:var(--radius-btn);overflow:hidden;background:var(--surface);display:grid;place-items:center;color:var(--ink)}
+.thumb svg.art{width:100%;height:100%;display:block}
+.thumb.icon-box{background:var(--accent)}
+.thumb.icon-box .icon{width:20px;height:20px}
+.thumb.empty{background:radial-gradient(var(--pattern-dot) 1.2px,transparent 1.3px) 0 0/8px 8px,var(--surface)}
+.thumb.empty .icon{width:18px;height:18px;opacity:.6}
+.ident-text{min-width:0;flex:1;padding-top:1px}
+.gift-name{display:block;font-size:14px;font-weight:600;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ident-sub{font-size:12px;color:var(--muted-foreground);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.check-cell{padding-top:9px!important;padding-left:12px!important}
+
+/* Field diffs */
+.diffs{display:flex;flex-wrap:wrap;gap:6px 16px;align-items:baseline;padding-top:3px}
+.diff{display:inline-flex;flex-wrap:wrap;align-items:baseline;gap:3px 5px;min-width:0;max-width:100%;font-size:13px}
+.diff.block{display:block;flex-basis:100%}
+.d-label{font-size:12px;color:var(--muted-foreground);font-weight:600}
+del.old,ins.new,.val{display:inline;padding:1px 5px;border-radius:5px;font-weight:600;overflow-wrap:anywhere;box-decoration-break:clone;-webkit-box-decoration-break:clone}
+del.old{background:var(--diff-old-bg);color:var(--diff-old-ink);text-decoration:line-through;text-decoration-thickness:1.5px}
+ins.new{background:var(--diff-new-bg);color:var(--diff-new-ink);text-decoration:none}
+.val{background:var(--secondary)}
+.arrow{font-weight:700;color:var(--ink)}
+.mini-thumb{display:inline-block;width:18px;height:18px;vertical-align:-4px;border:1.5px solid var(--ink);border-radius:4px;overflow:hidden;margin-right:4px}
+.mini-thumb svg{width:100%;height:100%;display:block}
+.email{font-family:var(--mono);font-size:13px;font-weight:600;overflow-wrap:anywhere;word-break:break-all}
+.link-diff{display:inline-flex;align-items:center;gap:4px}
+.link-diff .icon{width:12px;height:12px}
+.append{flex-basis:100%;border-left:4px solid var(--accent-loud);border-radius:0 10px 10px 0;background:color-mix(in oklab,var(--accent-loud) 16%,var(--card));padding:6px 12px;font-size:13px}
+.append-meta{display:block;font-size:12px;font-weight:700;color:var(--muted-foreground)}
+.append ins.new{display:inline;padding:0 3px}
+.append-note{font-size:12px;color:var(--muted-foreground);margin-top:2px}
+.consequence{flex-basis:100%;display:flex;gap:7px;align-items:flex-start;margin-top:2px;font-size:13px;font-weight:600}
+.consequence .icon{margin-top:2px;color:var(--warning-ink)}
+.reason{flex-basis:100%;display:flex;gap:7px;align-items:flex-start;font-size:13px}
+.reason .icon{margin-top:2px}
+.is-conflict .reason .icon{color:var(--warning-ink)}
+.is-rejected .reason .icon{color:var(--status-danger-text)}
+.dep-note{flex-basis:100%;font-size:12px;color:var(--muted-foreground);display:flex;gap:6px;align-items:flex-start}
+.dep-note .icon{width:14px;height:14px;margin-top:1px}
+.disclose{margin-top:4px;flex-basis:100%;display:flex}
+.disclose .btn{margin-left:-8px}
+.disclose .chev{transition:rotate var(--duration-normal) var(--ease-standard)}
+.disclose [aria-expanded=true] .chev{rotate:180deg}
+
+/* Card comparison */
+.role-note{font-size:12px;color:var(--muted-foreground);padding-top:4px}
+.pair{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.pair-arrow{font:700 22px/1 var(--font-head);color:var(--ink);padding-top:22px}
+.pair-item{width:248px;flex-shrink:0;display:flex;flex-direction:column;gap:6px}
+.pair-cap{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700}
+.pair-switch{display:none}
+.pair-extra{font-size:12px;color:var(--muted-foreground);flex-basis:100%}
+
+.gift{position:relative;border:2.5px solid var(--ink);border-radius:var(--radius-panel);background:var(--card);box-shadow:var(--elevation-ordinary);overflow:hidden;display:flex;flex-direction:column;text-align:left}
+.gift .image-area{position:relative;aspect-ratio:4/3;background:var(--surface);border-bottom:3.5px solid var(--separator-ink);isolation:isolate}
+.image-pattern{position:absolute;inset:0;background-image:radial-gradient(var(--pattern-dot) 1.4px,transparent 1.5px);background-size:18px 18px}
+.image-art{position:absolute;inset:0;display:grid;place-items:center}
+.image-art svg.art{position:absolute;inset:0;width:100%;height:100%}
+.image-placeholder{display:grid;place-items:center;gap:6px;text-align:center;font-size:12px;font-weight:700;color:var(--muted-foreground)}
+.image-placeholder .icon{width:40px;height:40px;stroke-width:1.5}
+.category{position:absolute;z-index:2;top:8px;left:8px;max-width:calc(100% - 16px);transform:rotate(-3deg);border:2px solid #000;border-radius:6px;background:var(--cat,#a9dbff);color:#16385c;padding:2px 10px;font-size:12px;line-height:16px;font-weight:800;box-shadow:var(--elevation-ordinary)}
+.priority{position:absolute;z-index:2;bottom:12px;left:12px;height:20px;padding:0 7px;border:2px solid transparent;border-radius:999px;background:var(--priority-bg);color:var(--priority-fg);font-size:11px;line-height:16px;font-weight:700}
+.state{position:absolute;inset:0;z-index:3;display:flex;align-items:center;justify-content:center;pointer-events:none}
+.state span{max-width:calc(100% - 16px);transform:rotate(-1deg);border:2px solid var(--ink);border-radius:var(--radius-panel);padding:4px 8px;background:var(--gift-overlay-unavailable);color:#fff;font-size:12px;line-height:16px;font-weight:700;text-align:center;box-shadow:var(--elevation-ordinary)}
+.state.delete span{background:var(--status-danger);color:#fff}
+html:not(.dark) .state.delete span{background:#c2372d}
+.gift.is-faded{border-color:color-mix(in oklab,var(--ink) 50%,var(--card));box-shadow:var(--elevation-ordinary-offset) var(--elevation-ordinary-offset) 0 color-mix(in oklab,var(--hard-shadow) 50%,transparent)}
+.gift.is-faded .image-art,.gift.is-faded .category,.gift.is-faded .priority,.gift.is-faded .gift-body>*{opacity:.5}
+.gift.is-faded .image-area{border-bottom-color:color-mix(in oklab,var(--separator-ink) 50%,var(--card))}
+.gift-body{padding:14px 14px 14px;min-width:0}
+.gift-title{font:600 22px/1.3 var(--font-head);overflow-wrap:anywhere;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
+.gift-description{font-size:13px;color:var(--muted-foreground);margin:3px 0 8px;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:1;overflow:hidden}
+.gift-links{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.gift-link{display:inline-flex;align-items:center;gap:4px;max-width:100%;border:2px solid var(--ink);border-radius:999px;padding:1px 8px;font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gift-link .icon{width:12px;height:12px}
+.gift-price{font-size:12px;font-weight:700;margin-top:6px}
+.gift-price .qty{color:var(--muted-foreground);font-weight:600}
+/* Changed-field markers on the card pair: dashed = before, solid = after, dotted = current. */
+.chg-old{outline:2.5px dashed var(--status-danger);outline-offset:2px;border-radius:5px}
+.chg-new{outline:2.5px solid var(--status-success);outline-offset:2px;border-radius:5px}
+.chg-cur{outline:2.5px dotted var(--status-warning);outline-offset:2px;border-radius:5px}
+.image-area.chg-old,.image-area.chg-new,.image-area.chg-cur{outline-offset:-5px;border-radius:0}
+.gift-price.chg-old,.gift-price.chg-new,.gift-price.chg-cur,.gift-title.chg-old,.gift-title.chg-new{display:inline-block;padding:0 3px}
+
+.empty-filter{padding:28px 16px;text-align:center;color:var(--muted-foreground)}
+.mobile-discard{display:none;margin-top:18px;justify-content:center}
+
+/* Skeleton */
+.sk{display:block;border-radius:6px;background:color-mix(in oklab,var(--ink) 9%,var(--card));animation:pulse 1.4s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.55}}
+.sk-row{display:grid;grid-template-columns:32px 96px 40px minmax(0,1fr) 92px;gap:14px;align-items:center;padding:14px 12px;border-top:1.5px solid var(--border)}
+.sk-row:first-child{border-top:0}
+
+/* Sticky apply bar */
+.apply-bar{position:sticky;bottom:0;z-index:20;flex-shrink:0;background:var(--card);border-top:var(--border-w) solid var(--ink);box-shadow:0 -4px 0 var(--hard-shadow)}
+.apply-inner{display:flex;align-items:center;gap:var(--nested-control-gap);max-width:var(--content-default-max-width);height:64px;margin-inline:auto;padding-inline:var(--gutter)}
+.apply-count{display:flex;flex-direction:column;line-height:1.25;margin-right:auto;min-width:0}
+.apply-count b{font-size:14px}
+.apply-count span{font-size:12px;color:var(--muted-foreground)}
+.apply-bar .i-primary{min-width:236px}
+.app.is-busy .table-panel{cursor:progress}
+
+/* Dialog + toast inside the device frame */
+.overlay{position:absolute;inset:0;z-index:60;display:grid;place-items:center;padding:16px;background:rgb(5 10 20 / 48%)}
+.dialog{position:relative;width:min(520px,100%);max-height:100%;overflow:auto;padding:24px;background:var(--card);color:var(--foreground);border:var(--border-w) solid var(--ink);border-radius:var(--radius-panel);box-shadow:7px 7px 0 var(--hard-shadow-strong)}
+.dialog h2{font:600 22px/1.3 var(--font-head);padding-right:52px}
+.dialog-desc{margin-top:6px;font-size:13px;color:var(--muted-foreground)}
+.dialog-close{position:absolute;top:16px;right:16px;--h:40px}
+.confirm-list{margin-top:14px;display:flex;flex-direction:column;gap:8px}
+.confirm-list li{display:grid;grid-template-columns:28px minmax(0,1fr);gap:10px;align-items:start;padding:10px 12px;border:2px solid var(--confirm-frame);border-radius:12px;background:var(--confirm-bg);font-size:13px}
+.confirm-list .ci{display:grid;place-items:center;width:28px;height:28px;border-radius:8px;border:2px solid var(--ink);background:var(--card)}
+.confirm-list b{display:block;font-size:13px}
+.confirm-list .email{display:block;margin:3px 0;font-size:14px;padding:3px 6px;border-radius:6px;background:var(--card);border:1.5px solid var(--border-strong)}
+.dialog-foot{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:var(--nested-control-gap);margin-top:20px}
+.toast{position:absolute;left:50%;bottom:86px;z-index:70;transform:translateX(-50%);max-width:calc(100% - 24px);padding:9px 14px;border:2px solid var(--ink);border-radius:var(--radius-btn);background:var(--ink);color:var(--card);font-size:13px;font-weight:600;box-shadow:var(--elevation-ordinary)}
+
+/* ── Mobile: stacked row cards ── */
+@container app (width < 640px){
+  .page{padding-top:10px}
+  h1{font-size:26px}
+  .summary{padding:12px;gap:10px 14px}
+  .list-head{gap:10px}
+  .list-head h2{flex-basis:100%}
+  .seg-scroll{margin-left:0;flex-basis:100%}
+  .seg button{padding:0 14px}
+  .table-panel{background:transparent;border:0;box-shadow:none;overflow:visible}
+  .ct,.ct tbody,.ct tr,.ct td{display:block;width:auto}
+  .ct{background:transparent}
+  .ct thead,.ct colgroup{display:none}
+  .ct tbody.op{margin-bottom:12px;border:2px solid var(--border-strong);border-radius:14px;background:var(--card);overflow:clip}
+  .ct tbody.op.is-confirm{border:2.5px solid var(--confirm-frame);background:var(--confirm-bg)}
+  .ct tbody.op.is-conflict{border-color:var(--status-warning);background:color-mix(in oklab,var(--status-warning) 9%,var(--card))}
+  .ct tbody.op.is-rejected{border-color:color-mix(in oklab,var(--status-danger) 70%,var(--card));background:color-mix(in oklab,var(--status-danger) 6%,var(--card))}
+  .ct td,.op.is-confirm td,.op.is-confirm .main td,.op.is-confirm td:first-child,.op.is-confirm td:last-child{border:0!important;border-radius:0!important;box-shadow:none;background:transparent;padding:0!important}
+  .ct .main{display:grid;grid-template-columns:var(--control) minmax(0,1fr) auto;grid-template-areas:"check kind status" "ident ident ident" "diff diff diff";gap:10px 10px;padding:12px}
+  .ct .main:hover td{--row-bg:transparent}
+  .check-cell{grid-area:check}
+  .c-kind{grid-area:kind;align-self:center}
+  .c-status{grid-area:status;align-self:center}
+  .status-wrap{align-items:flex-end}
+  .status-note{display:none}
+  .c-ident{grid-area:ident}
+  .c-diff{grid-area:diff}
+  .diffs{gap:6px 12px}
+  .diff:not(.flat){flex-basis:100%}
+  .diff:not(.block):not(.flat){display:grid;grid-template-columns:minmax(0,1fr);gap:3px}
+  .diff:not(.block):not(.flat) .arrow{display:none}
+  .diff:not(.block):not(.flat) ins.new::before{content:'→ ';font-weight:700}
+  .diff:not(.block):not(.flat) del.old,.diff:not(.block):not(.flat) ins.new{justify-self:start}
+  .ct .detail{padding:0 12px 14px}
+  .ct .detail .spacer{display:none!important}
+  .pair-switch{display:inline-flex;margin-bottom:10px}
+  .pair{justify-content:center}
+  .pair-arrow{display:none}
+  .pair-item{width:min(100%,300px)}
+  .pair[data-side=before] .pair-item.after,.pair[data-side=after] .pair-item.before{display:none}
+  .pair[data-single] .pair-item{display:flex!important}
+  .gift-title{font-size:16px}
+  .gift-body{padding:9px 9px 10px}
+  .apply-inner{height:auto;min-height:72px;padding-block:12px max(12px,env(safe-area-inset-bottom))}
+  .apply-count{display:none}
+  .apply-bar .i-discard{display:none}
+  .apply-bar .i-primary{flex:1;min-width:0}
+  .mobile-discard{display:flex}
+  .sk-row{grid-template-columns:40px 40px minmax(0,1fr);row-gap:10px}
+  .sk-row .sk-diff{grid-column:1/-1}
+  .sk-row .sk-status,.sk-row .sk-kind{display:none}
+}
+.device[data-viewport=mobile] .dialog{padding:18px}
+.device[data-viewport=mobile] .dialog-foot{flex-direction:column-reverse}
+.device[data-viewport=mobile] .dialog-foot .btn{width:100%}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <symbol id="i-gift" viewBox="0 0 24 24"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13"/><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5"/></symbol>
+    <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14M12 5v14"/></symbol>
+    <symbol id="i-bell" viewBox="0 0 24 24"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></symbol>
+    <symbol id="i-palette" viewBox="0 0 24 24"><path d="M12 22a1 1 0 0 1 0-20 10 9 0 0 1 10 9 5 5 0 0 1-5 5h-2.25a1.75 1.75 0 0 0-1.4 2.8l.3.4a1.75 1.75 0 0 1-1.4 2.8z"/><circle cx="13.5" cy="6.5" r="1"/><circle cx="17.5" cy="10.5" r="1"/><circle cx="6.5" cy="12.5" r="1"/><circle cx="8.5" cy="7.5" r="1"/></symbol>
+    <symbol id="i-languages" viewBox="0 0 24 24"><path d="m5 8 6 6"/><path d="m4 14 6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="m22 22-5-10-5 10"/><path d="M14 18h6"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+    <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+    <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+    <symbol id="i-back" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></symbol>
+    <symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></symbol>
+    <symbol id="i-ok" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></symbol>
+    <symbol id="i-ban" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/></symbol>
+    <symbol id="i-key" viewBox="0 0 24 24"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r="1"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></symbol>
+    <symbol id="i-user-plus" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></symbol>
+    <symbol id="i-loader" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></symbol>
+    <symbol id="i-external" viewBox="0 0 24 24"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></symbol>
+    <symbol id="i-image" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></symbol>
+    <symbol id="i-bookmark" viewBox="0 0 24 24"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></symbol>
+    <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></symbol>
+
+    <!-- Local illustrations (4:3), not product photos. -->
+    <symbol id="art-reader" viewBox="0 0 120 90"><rect width="120" height="90" fill="#dfeaf5"/><rect x="38" y="10" width="44" height="70" rx="6" fill="#2b3442" stroke="#111" stroke-width="2"/><rect x="43" y="16" width="34" height="52" rx="2" fill="#f4f1e8"/><path d="M47 24h26M47 30h26M47 36h22M47 42h26M47 48h18M47 54h24" stroke="#9aa0a8" stroke-width="2"/><circle cx="60" cy="74" r="2.5" fill="#6b7686"/></symbol>
+    <symbol id="art-blanket" viewBox="0 0 120 90"><rect width="120" height="90" fill="#f6e7d8"/><rect x="16" y="30" width="88" height="44" rx="10" fill="#c84b3c" stroke="#111" stroke-width="2"/><path d="M16 44h88M16 58h88M38 30v44M60 30v44M82 30v44" stroke="#f2d3a8" stroke-width="3" opacity=".8"/><rect x="74" y="14" width="26" height="18" rx="4" fill="#fff" stroke="#111" stroke-width="2"/><text x="87" y="27" font-size="9" text-anchor="middle" font-family="Arial" font-weight="700" fill="#16385c">3 h</text></symbol>
+    <symbol id="art-scarf" viewBox="0 0 120 90"><rect width="120" height="90" fill="#e3efe6"/><path d="M30 18c20-6 40-6 60 0l-6 16c-16-5-32-5-48 0z" fill="#2f6b4f" stroke="#111" stroke-width="2"/><path d="M40 32l-6 44h18l2-42z" fill="#2f6b4f" stroke="#111" stroke-width="2"/><path d="M36 78v6M41 78v6M46 78v6M51 78v6" stroke="#2f6b4f" stroke-width="2"/><path d="M38 44h14M37 54h14M36 64h15" stroke="#4f9a74" stroke-width="2"/></symbol>
+    <symbol id="art-kettle" viewBox="0 0 120 90"><rect width="120" height="90" fill="#e6ecf2"/><rect x="34" y="70" width="52" height="8" rx="3" fill="#2b3442"/><path d="M40 70l4-44h32l4 44z" fill="#c9d3dc" stroke="#111" stroke-width="2"/><path d="M80 34c12 2 12 26 0 28" fill="none" stroke="#111" stroke-width="4"/><path d="M40 30l-10-6" stroke="#111" stroke-width="4" stroke-linecap="round"/><rect x="52" y="44" width="16" height="10" rx="2" fill="#1e9be9"/></symbol>
+    <symbol id="art-grinder" viewBox="0 0 120 90"><rect width="120" height="90" fill="#efe4d6"/><rect x="40" y="40" width="40" height="38" rx="3" fill="#8a5a33" stroke="#111" stroke-width="2"/><rect x="52" y="58" width="16" height="10" rx="2" fill="#5e3b1f"/><path d="M46 40l4-12h20l4 12z" fill="#b9b2a6" stroke="#111" stroke-width="2"/><path d="M60 28V18h20" stroke="#111" stroke-width="3" fill="none"/><circle cx="82" cy="18" r="5" fill="#5e3b1f" stroke="#111" stroke-width="2"/></symbol>
+    <symbol id="art-wafers" viewBox="0 0 120 90"><rect width="120" height="90" fill="#f3ead9"/><ellipse cx="60" cy="62" rx="36" ry="12" fill="#d9a85f" stroke="#111" stroke-width="2"/><ellipse cx="60" cy="52" rx="36" ry="12" fill="#e7bf7b" stroke="#111" stroke-width="2"/><ellipse cx="60" cy="42" rx="36" ry="12" fill="#f0cf91" stroke="#111" stroke-width="2"/><path d="M36 42h48M60 32v20" stroke="#c48d3f" stroke-width="1.5"/></symbol>
+    <symbol id="art-headphones" viewBox="0 0 120 90"><rect width="120" height="90" fill="#e4e7ef"/><path d="M34 58V46a26 26 0 0 1 52 0v12" fill="none" stroke="#2b3442" stroke-width="6"/><rect x="26" y="50" width="16" height="26" rx="6" fill="#2b3442" stroke="#111" stroke-width="2"/><rect x="78" y="50" width="16" height="26" rx="6" fill="#2b3442" stroke="#111" stroke-width="2"/></symbol>
+    <symbol id="art-photobook" viewBox="0 0 120 90"><rect width="120" height="90" fill="#e8f1ea"/><rect x="28" y="16" width="64" height="58" rx="3" fill="#f7f3ea" stroke="#111" stroke-width="2"/><rect x="36" y="24" width="48" height="32" fill="#9fd0f0"/><path d="M36 56l14-14 10 10 8-6 16 10z" fill="#5a9a52"/><circle cx="74" cy="32" r="4" fill="#ffc93c"/><path d="M40 64h40" stroke="#9aa0a8" stroke-width="2"/></symbol>
+    <symbol id="art-shears" viewBox="0 0 120 90"><rect width="120" height="90" fill="#eef2e3"/><path d="M60 46L32 20l6-4 26 26z" fill="#c9d3dc" stroke="#111" stroke-width="2"/><path d="M60 46L88 20l-6-4-26 26z" fill="#c9d3dc" stroke="#111" stroke-width="2"/><path d="M58 46l-18 32" stroke="#e4572e" stroke-width="10" stroke-linecap="round"/><path d="M62 46l18 32" stroke="#1d1d1d" stroke-width="10" stroke-linecap="round"/><circle cx="60" cy="46" r="3" fill="#111"/></symbol>
+    <symbol id="art-mug" viewBox="0 0 120 90"><rect width="120" height="90" fill="#eceaf4"/><rect x="38" y="24" width="38" height="48" rx="5" fill="#fff" stroke="#111" stroke-width="2"/><path d="M76 34c14 0 14 26 0 26" fill="none" stroke="#111" stroke-width="4"/><text x="57" y="56" font-size="20" text-anchor="middle" font-family="Georgia,serif" font-style="italic" fill="#1265a8">V</text></symbol>
+    <symbol id="art-bottle" viewBox="0 0 120 90"><rect width="120" height="90" fill="#f4e6ea"/><rect x="52" y="12" width="16" height="12" rx="2" fill="#c84b3c" stroke="#111" stroke-width="2"/><rect x="36" y="22" width="48" height="58" rx="14" fill="#d97a8a" stroke="#111" stroke-width="2"/><path d="M40 36h40M40 46h40M40 56h40M40 66h40" stroke="#f3c6cf" stroke-width="3" stroke-dasharray="4 3"/></symbol>
+  </defs>
+</svg>
+
+<div class="rt" role="region" aria-label="Ovládání ukázky">
+  <span class="rt-eyebrow">VARIANTA A: HUSTÁ TABULKA S ROZBALOVACÍMI KARTAMI</span>
+  <div class="rt-group" role="group" aria-label="Viewport"><span>Viewport</span><button type="button" data-viewport="desktop" aria-pressed="true">Desktop</button><button type="button" data-viewport="mobile" aria-pressed="false">Mobil 390 px</button></div>
+  <div class="rt-group" role="group" aria-label="Motiv"><span>Motiv</span><button type="button" data-theme="light" aria-pressed="true">Světlý</button><button type="button" data-theme="dark" aria-pressed="false">Tmavý</button></div>
+  <label class="rt-group"><span>Stav</span>
+    <select id="stateSelect">
+      <option value="pending">Čeká na kontrolu</option>
+      <option value="apply-conflict">Konflikt při použití</option>
+      <option value="applied">Použito + Vrátit</option>
+      <option value="undo-conflict">Konflikt při vracení</option>
+      <option value="undone">Vráceno</option>
+      <option value="expired">Platnost vypršela</option>
+      <option value="discarded">Zahozeno</option>
+      <option value="loading">Načítání</option>
+    </select>
+  </label>
+</div>
+
+<div class="stage" id="stage">
+  <div class="device" id="device" data-viewport="desktop">
+    <div class="screen" id="screen">
+      <div class="app" id="app" data-palette="sky">
+        <header class="topbar">
+          <div class="topbar-inner">
+            <button type="button" class="btn i-secondary raised icon-only only-mobile" aria-label="Otevřít menu"><span class="btn-face"><svg class="icon" aria-hidden="true"><use href="#i-menu"/></svg></span></button>
+            <a class="logo" href="/home" data-demo-link aria-label="Přejeme si, přehled"><span class="logo-mark" aria-hidden="true"><svg class="icon"><use href="#i-gift"/></svg></span><span>přejeme si<span class="logo-tld">.cz</span></span></a>
+            <nav class="nav-links" aria-label="Hlavní navigace">
+              <a class="nav-link" href="/my-lists" data-demo-link>Moje seznamy<svg class="icon" aria-hidden="true"><use href="#i-chevron"/></svg></a>
+              <a class="nav-link" href="/moderated" data-demo-link>Spravované<svg class="icon" aria-hidden="true"><use href="#i-chevron"/></svg></a>
+              <a class="nav-link" href="/followed" data-demo-link>Sledované<svg class="icon" aria-hidden="true"><use href="#i-chevron"/></svg></a>
+            </nav>
+            <div class="nav-right">
+              <button type="button" class="btn md i-primary raised only-wide"><span class="btn-face"><svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg>Vytvořit</span></button>
+              <button type="button" class="btn i-primary raised icon-only only-mobile" aria-label="Vytvořit"><span class="btn-face"><svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg></span></button>
+              <button type="button" class="btn md i-secondary raised icon-only only-wide" aria-label="Paleta"><span class="btn-face"><svg class="icon" aria-hidden="true"><use href="#i-palette"/></svg></span></button>
+              <button type="button" class="btn md i-secondary raised icon-only only-wide" aria-label="Jazyk"><span class="btn-face"><svg class="icon" aria-hidden="true"><use href="#i-languages"/></svg></span></button>
+              <button type="button" class="btn md i-secondary raised icon-only only-wide" aria-label="Motiv"><span class="btn-face"><svg class="icon" aria-hidden="true"><use href="#i-moon"/></svg></span></button>
+              <button type="button" class="btn i-ghost icon-only bell" aria-label="Oznámení, 2 nepřečtená"><span class="btn-face"><svg class="icon" aria-hidden="true"><use href="#i-bell"/></svg></span><span class="notif-badge" aria-hidden="true">2</span></button>
+              <button type="button" class="btn raised icon-only avatar" aria-label="Účet Petr Svoboda"><span class="btn-face">PS</span></button>
+            </div>
+          </div>
+        </header>
+        <main class="page" id="page"></main>
+        <div class="apply-bar" id="applyBar"></div>
+      </div>
+    </div>
+    <div class="overlay" id="overlay" hidden></div>
+    <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+  </div>
+</div>
+
+<script>
+const ICON = (id, cls = '') => `<svg class="icon ${cls}" aria-hidden="true"><use href="#i-${id}"/></svg>`;
+const ART = key => `<svg class="art" viewBox="0 0 120 90" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><use href="#art-${key}"/></svg>`;
+const escapeHtml = text => String(text).replace(/[&<>"]/g, character => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[character]);
+const czechPlural = (count, one, few, many) => count === 1 ? one : count >= 2 && count <= 4 ? few : many;
+
+const CATEGORY_COLORS = {'Čtení':'#d9ccff','Domácnost':'#ffd9a8','Oblečení':'#c7ecd9','Kuchyně':'#ffcfc4','Káva a čaj':'#ead8c4','Elektronika':'#a9dbff','Zahrada':'#d6efb0','Vzpomínky':'#ffd6e8','Na mlsání':'#fff0a8'};
+
+const GIFTS = {
+  reader:{title:'Čtečka knih PocketBook Verse',art:'reader',category:'Čtení',priority:'Vysoká',links:['pocketbook.cz · PocketBook'],price:'2 490 Kč',description:'Velká písmena a podsvícení na večerní čtení.'},
+  blanket:{title:'Vyhřívaná deka s časovačem',art:'blanket',category:'Domácnost',priority:'Vysoká',links:['alza.cz · Alza'],price:'1 890 Kč',description:'Automatické vypnutí po 3 hodinách.'},
+  scarf:{title:'Šála z merino vlny',art:'scarf',category:'Oblečení',priority:'Vysoká',links:['answear.cz · Answear'],price:'1 290 Kč',description:'Ideálně v tmavě zelené.'},
+  kettle:{title:'Elektrická konvice s regulací teploty a udržováním tepla Tefal',art:'kettle',category:'Kuchyně',priority:'Střední',links:['mall.cz · Mall','tefal.cz · Tefal'],price:'1 490 Kč',description:'Na zelený čaj stačí 80 °C.'},
+  grinder:{title:'Ruční mlýnek na kávu Hario',art:'grinder',category:'Káva a čaj',priority:'Nízká',links:['kavovarna.cz · Kavovarna'],price:'1 150 Kč',description:'Keramické kameny, nastavitelné hrubé mletí.',state:'Rezervoval(a) Tomáš Beneš'},
+  wafers:{title:'Lázeňské oplatky Kolonáda',art:'wafers',category:'Na mlsání',priority:'Nízká',links:['kolonada.cz · Kolonáda'],price:'189 Kč'},
+  headphones:{title:'Bezdrátová sluchátka',art:'headphones',category:'Elektronika',priority:'Nízká',links:['datart.cz · Datart'],price:'2 190 Kč',description:'Sony WH-CH720N, na rádio v kuchyni.'},
+  photobook:{title:'Fotokniha Léto na chalupě',art:'photobook',category:'Vzpomínky',priority:'Nízká',links:['cewe.cz · CEWE'],price:'1 450 Kč',description:'Fotky z Jizerek, 40 stran, tvrdé desky.'},
+  shears:{title:'Zahradní nůžky Fiskars',art:'shears',category:'Zahrada',priority:'Střední',links:['hornbach.cz · Hornbach'],price:'499 Kč'},
+  mug:{title:'Hrnek se jménem Věra',art:'mug',category:'Kuchyně',priority:'Nízká',links:['mujhrnek.cz · Můj hrnek'],price:'390 Kč'},
+  bottle:{title:'Termofor s pleteným obalem',art:'bottle',category:'Domácnost',priority:'Střední',links:['dm.cz · dm'],price:'349 Kč',quantity:'2 ks'},
+};
+const withChanges = (key, overrides) => ({...GIFTS[key], ...overrides});
+
+const KINDS = {
+  create:{label:'Nový dárek',tone:'t-primary'},
+  edit:{label:'Úprava',tone:'t-neutral'},
+  append:{label:'Doplnění popisu',tone:'t-accent'},
+  delete:{label:'Smazání',tone:'t-danger'},
+  reserve:{label:'Rezervace',tone:'t-info'},
+  invite:{label:'Pozvánka správce',tone:'t-info'},
+  reorder:{label:'Přesun pořadí',tone:'t-neutral'},
+};
+
+const diff = (label, oldValue, newValue) => ({label, oldValue, newValue});
+const CONFLICT_REASON = (who, when) => `Dárek se po odeslání návrhu změnil (${who}, ${when}).`;
+
+/* Rows in the agent's submitted order; one row per gift, `operations` counts the API operations it carries. */
+const ROWS = [
+  {id:'r1',kind:'edit',gift:'reader',operations:2,status:'ready',sub:'Čtení · pozice 1',
+    diffs:[diff('Cena','2 790 Kč','2 490 Kč'),{label:'Obrázek',oldValue:'bez obrázku',newValue:'fotografie z pocketbook.cz',newArt:'reader'}],
+    cards:{before:withChanges('reader',{art:null,price:'2 790 Kč'}),after:GIFTS.reader,beforeChanged:{image:'old',price:'old'},afterChanged:{image:'new',price:'new'}},openByDefault:true},
+  {id:'r2',kind:'create',gift:'blanket',operations:1,status:'ready',sub:'Nový dárek · Domácnost',
+    fields:[['Cena','1 890 Kč'],['Kategorie','Domácnost'],['Priorita','Vysoká'],['Odkaz','alza.cz · Alza',true],['Obrázek','fotografie z alza.cz']],
+    cards:{after:GIFTS.blanket}},
+  {id:'r3',kind:'edit',gift:'scarf',operations:1,status:'ready',sub:'Oblečení · pozice 3',
+    diffs:[diff('Priorita','Střední','Vysoká')],
+    cards:{before:withChanges('scarf',{priority:'Střední'}),after:GIFTS.scarf,beforeChanged:{priority:'old'},afterChanged:{priority:'new'}},
+    lateConflict:{who:'upravila Jana Dvořáková',when:'13. 10. v 21:51',current:withChanges('scarf',{priority:'Střední',price:'1 190 Kč'}),currentChanged:{price:'cur'},note:'Jana Dvořáková mezitím změnila cenu z 1 290 Kč na 1 190 Kč.'}},
+  {id:'r4',kind:'create',gift:'kettle',operations:1,status:'ready',sub:'Nový dárek · Kuchyně',
+    fields:[['Cena','1 490 Kč'],['Kategorie','Kuchyně'],['Priorita','Střední'],['Odkaz','mall.cz · Mall',true],['Odkaz','tefal.cz · Tefal',true]],
+    cards:{after:GIFTS.kettle}},
+  {id:'r5',kind:'edit',gift:'grinder',operations:1,status:'ready',sub:'Kuchyně · pozice 6',
+    diffs:[diff('Kategorie','Kuchyně','Káva a čaj')],
+    cards:{before:withChanges('grinder',{category:'Kuchyně'}),after:GIFTS.grinder,beforeChanged:{category:'old'},afterChanged:{category:'new'}},
+    lateConflict:{who:'upravila Jana Dvořáková',when:'13. 10. v 21:51',current:withChanges('grinder',{category:'Kuchyně',links:['kavovarna.cz · Kavovarna','alza.cz · Alza']}),currentChanged:{},note:'Jana Dvořáková mezitím přidala odkaz alza.cz.'}},
+  {id:'r6',kind:'append',gift:'wafers',operations:1,status:'ready',sub:'Na mlsání · pozice 8',
+    append:'Prosím oříškové nebo čokoládové, vanilkové už babička má.'},
+  {id:'r7',kind:'delete',gift:'headphones',operations:1,status:'confirm',sub:'Elektronika · bez rezervací',
+    consequence:'Dárek „Bezdrátová sluchátka“ bude trvale odstraněn.',
+    cards:{before:GIFTS.headphones,deleteOnly:true}},
+  {id:'r8',kind:'create',gift:'photobook',operations:1,status:'ready',sub:'Nový dárek · Vzpomínky',
+    fields:[['Cena','1 450 Kč'],['Kategorie','Vzpomínky'],['Priorita','Nízká'],['Odkaz','cewe.cz · CEWE',true]],
+    cards:{after:GIFTS.photobook}},
+  {id:'r9',kind:'reorder',gift:'blanket',operations:1,status:'ready',sub:'Nový dárek z této dávky',dependsOn:'r2',
+    reorder:{from:'16',to:'2',between:['Čtečka knih PocketBook Verse','Šála z merino vlny']}},
+  {id:'r10',kind:'edit',gift:'shears',operations:1,status:'conflict',sub:'Zahrada · pozice 11',
+    diffs:[diff('Cena','549 Kč','499 Kč')],
+    reason:CONFLICT_REASON('upravila Jana Dvořáková','13. 10. v 21:50'),
+    conflictCards:{current:withChanges('shears',{price:'529 Kč'}),proposed:GIFTS.shears,note:'Agent vycházel z ceny 549 Kč. Aktuální cena je 529 Kč.'}},
+  {id:'r11',kind:'edit',gift:'mug',operations:1,status:'rejected',sub:'Kuchyně · pozice 12',
+    diffs:[diff('Název','Hrnek se jménem Věra','Porcelánový hrnek s monogramem V')],
+    reason:'Název nelze po sdílení měnit, lhůta 2 minut uplynula. Název určuje, co si dárci rezervovali; upřesnění patří do doplnění popisu.'},
+  {id:'r12',kind:'reserve',gift:'bottle',operations:1,status:'confirm',sub:'Domácnost · 2 ks, volné 2',
+    flat:[['Množství','1 ks'],['Rezervuje','Petr Svoboda (vy)']],
+    consequence:'Zarezervujete 1 ks pod svým jménem Petr Svoboda.'},
+  {id:'r13',kind:'invite',operations:1,status:'confirm',title:'Nový správce seznamu',sub:'Uvidí rezervace a může upravovat',
+    email:'eva.kralova@email.cz',
+    consequence:'dostane e-mail s pozvánkou a uvidí rezervace.'},
+];
+const ROW_BY_ID = Object.fromEntries(ROWS.map(row => [row.id, row]));
+const rowTitle = row => row.title || GIFTS[row.gift].title;
+
+const UNDO_CONFLICT_GIFTS = [
+  'Čtečka knih PocketBook Verse: upravila Jana Dvořáková, 14. 10. v 8:12',
+  'Šála z merino vlny: upravil Tomáš Beneš, 14. 10. v 9:30',
+];
+
+const state = {
+  viewport:'desktop', theme:'light', page:'pending', filter:'all',
+  selected:new Map(), autoDeselected:new Set(), open:new Set(), side:new Map(),
+  lateConflicts:new Set(), appliedIds:new Set(), appliedCount:0,
+};
+
+function resetSelection() {
+  state.selected = new Map(ROWS.map(row => [row.id, row.status === 'ready']));
+  state.autoDeselected = new Set();
+  state.open = new Set(ROWS.filter(row => row.openByDefault).map(row => row.id));
+  state.lateConflicts = new Set();
+  state.filter = 'all';
+}
+
+const effectiveStatus = row => state.lateConflicts.has(row.id) ? 'conflict' : row.status;
+const isSelectable = row => ['ready','confirm'].includes(effectiveStatus(row)) && !(row.dependsOn && !state.selected.get(row.dependsOn));
+const isSelected = row => isSelectable(row) && state.selected.get(row.id) === true;
+const selectedRows = () => ROWS.filter(isSelected);
+const operationCount = rows => rows.reduce((sum, row) => sum + row.operations, 0);
+const isReadOnly = () => ['expired','discarded','applied','undo-conflict','undone','applying'].includes(state.page);
+
+/* ── Rendering ── */
+function badge(text, tone, icon) { return `<span class="badge ${tone}">${icon ? ICON(icon) : ''}${escapeHtml(text)}</span>`; }
+
+function giftCard(gift, {caption, captionBadge = '', changed = {}, stateText = gift.state, deleteState = false, faded = false, side = ''}) {
+  const mark = field => changed[field] ? ` chg-${changed[field]}` : '';
+  const image = gift.art ? ART(gift.art) : `<div class="image-placeholder" role="img" aria-label="Dárek bez obrázku">${ICON('image')}<span>Bez obrázku</span></div>`;
+  const links = (gift.links || []).map(link => `<span class="gift-link">${ICON('external')}${escapeHtml(link.split(' · ')[0])}</span>`).join('');
+  const isFaded = faded || Boolean(stateText);
+  return `<figure class="pair-item ${side}">
+    <figcaption class="pair-cap">${caption}${captionBadge}</figcaption>
+    <article class="gift${isFaded ? ' is-faded' : ''}" aria-label="${escapeHtml(gift.title)}, ${escapeHtml(caption.replace(/<[^>]+>/g,''))}">
+      <div class="image-area${mark('image')}"><div class="image-pattern" aria-hidden="true"></div><div class="image-art">${image}</div>
+        ${gift.category ? `<span class="category${mark('category')}" style="--cat:${CATEGORY_COLORS[gift.category]}">${escapeHtml(gift.category)}</span>` : ''}
+        ${gift.priority ? `<span class="priority${mark('priority')}">${escapeHtml(gift.priority)}</span>` : ''}
+        ${stateText ? `<div class="state${deleteState ? ' delete' : ''}"><span>${escapeHtml(stateText)}</span></div>` : ''}
+      </div>
+      <div class="gift-body">
+        <h4 class="gift-title${mark('title')}" title="${escapeHtml(gift.title)}">${escapeHtml(gift.title)}</h4>
+        ${gift.description ? `<p class="gift-description">${escapeHtml(gift.description)}</p>` : ''}
+        <div class="gift-links">${links}</div>
+        <p class="gift-price"><span class="${mark('price').trim()}">${escapeHtml(gift.price)}</span>${gift.quantity ? ` <span class="qty">· ${escapeHtml(gift.quantity)}</span>` : ''}</p>
+      </div>
+    </article>
+  </figure>`;
+}
+
+function renderDiffs(row) {
+  const parts = [];
+  for (const item of row.diffs || []) {
+    const newValue = item.newArt ? `<span class="mini-thumb" aria-hidden="true">${ART(item.newArt)}</span>${escapeHtml(item.newValue)}` : escapeHtml(item.newValue);
+    parts.push(`<span class="diff"><span class="d-label">${escapeHtml(item.label)}:</span><del class="old"><span class="sr-only">původně </span>${escapeHtml(item.oldValue)}</del><span class="arrow" aria-hidden="true">→</span><ins class="new"><span class="sr-only">nově </span>${newValue}</ins></span>`);
+  }
+  for (const [label, value, isLink] of row.fields || []) {
+    const content = isLink ? `<span class="link-diff">${ICON('link')}${escapeHtml(value)}</span>` : escapeHtml(value);
+    parts.push(`<span class="diff flat"><span class="d-label">${escapeHtml(label)}:</span><ins class="new"><span class="sr-only">přidáno </span>${content}</ins></span>`);
+  }
+  for (const [label, value] of row.flat || []) {
+    parts.push(`<span class="diff flat"><span class="d-label">${escapeHtml(label)}:</span><span class="val">${escapeHtml(value)}</span></span>`);
+  }
+  if (row.append) {
+    parts.push(`<div class="append"><span class="append-meta">Doplnění popisu · přidaný text</span><ins class="new"><span class="sr-only">přidáno: </span>${escapeHtml(row.append)}</ins><p class="append-note">Původní popis zůstává beze změny.</p></div>`);
+  }
+  if (row.reorder) {
+    parts.push(`<span class="diff"><span class="d-label">Pozice:</span><del class="old"><span class="sr-only">původně </span>${row.reorder.from}</del><span class="arrow" aria-hidden="true">→</span><ins class="new"><span class="sr-only">nově </span>${row.reorder.to}</ins></span>`);
+    parts.push(`<span class="diff block"><span class="d-label">Nově mezi:</span> „${escapeHtml(row.reorder.between[0])}“ a „${escapeHtml(row.reorder.between[1])}“</span>`);
+  }
+  if (row.kind === 'delete') {
+    parts.push(`<span class="diff flat"><span class="d-label">Dárek:</span><del class="old"><span class="sr-only">odstraní se </span>${escapeHtml(rowTitle(row))}</del></span>`);
+  }
+  if (row.email) {
+    parts.push(`<span class="diff block"><span class="d-label">E-mail:</span> <span class="email">${escapeHtml(row.email)}</span></span>`);
+  }
+  return parts.join('');
+}
+
+function statusFor(row) {
+  const status = effectiveStatus(row);
+  if (state.page === 'applied' || state.page === 'undo-conflict') {
+    return state.appliedIds.has(row.id) ? badge('Použito','t-success','check') : badge('Nepoužito','t-neutral');
+  }
+  if (state.page === 'undone') return state.appliedIds.has(row.id) ? badge('Vráceno','t-info','undo') : badge('Nepoužito','t-neutral');
+  if (status === 'conflict') return badge('Konflikt','t-warning','alert');
+  if (status === 'rejected') return badge('Nelze použít','t-danger','ban');
+  if (status === 'confirm') return badge('Vyžaduje potvrzení','t-accent','alert');
+  if (row.dependsOn && !state.selected.get(row.dependsOn)) return badge('Závisí na jiném řádku','t-neutral');
+  return badge('Připraveno','t-success','ok');
+}
+
+function statusNote(row) {
+  if (isReadOnly() && state.page !== 'expired' && state.page !== 'discarded') return '';
+  const status = effectiveStatus(row);
+  if (status === 'confirm') return isSelected(row) ? 'Potvrdíte v dialogu před použitím.' : 'Zaškrtnutím potvrdíte.';
+  if (status === 'conflict' || status === 'rejected') return 'Nelze vybrat';
+  if (status === 'ready' && !isSelected(row) && isSelectable(row)) return 'Nebude použito';
+  return '';
+}
+
+function checkboxCell(row) {
+  if (isReadOnly()) {
+    const applied = state.appliedIds.has(row.id);
+    const text = state.page === 'expired' || state.page === 'discarded' ? '' : applied ? ICON('check') : '';
+    return `<td class="check-cell" aria-hidden="${text ? 'false' : 'true'}">${text ? `<span class="thumb icon-box" style="width:var(--control);height:var(--control);border-width:0;background:transparent;color:var(--success-ink)">${text}</span>` : ''}</td>`;
+  }
+  const selectable = isSelectable(row);
+  const checked = isSelected(row);
+  const label = `Vybrat: ${KINDS[row.kind].label}, ${rowTitle(row)}`;
+  const describedBy = selectable ? '' : ` aria-describedby="reason-${row.id}"`;
+  return `<td class="check-cell"><button type="button" class="cb" role="checkbox" data-key="cb-${row.id}" data-row="${row.id}" aria-checked="${checked}" aria-label="${escapeHtml(label)}"${selectable ? '' : ' aria-disabled="true"'}${describedBy}><span class="cb-face">${ICON('check','i-check')}</span></button></td>`;
+}
+
+function identity(row) {
+  const visual = row.kind === 'invite'
+    ? `<span class="thumb icon-box" aria-hidden="true">${ICON('user-plus')}</span>`
+    : `<span class="thumb" aria-hidden="true">${ART(GIFTS[row.gift].art)}</span>`;
+  const title = rowTitle(row);
+  return `<div class="ident">${visual}<div class="ident-text"><span class="gift-name" title="${escapeHtml(title)}">${escapeHtml(title)}</span><span class="ident-sub" title="${escapeHtml(row.sub)}">${escapeHtml(row.sub)}</span></div></div>`;
+}
+
+function disclosure(row, label) {
+  const expanded = state.open.has(row.id);
+  return `<div class="disclose"><button type="button" class="btn sm i-ghost" data-key="dis-${row.id}" data-disclose="${row.id}" aria-expanded="${expanded}" aria-controls="detail-${row.id}"><span class="btn-face">${ICON('chevron','chev')}${expanded ? label[1] : label[0]}</span></button></div>`;
+}
+
+function diffCell(row) {
+  const status = effectiveStatus(row);
+  const parts = [renderDiffs(row)];
+  if (row.consequence && !['applied','undo-conflict','undone'].includes(state.page)) {
+    const text = row.email ? `<span class="email">${escapeHtml(row.email)}</span> ${escapeHtml(row.consequence)}` : escapeHtml(row.consequence);
+    parts.push(`<p class="consequence">${ICON('alert')}<span>${text}</span></p>`);
+  }
+  if (status === 'conflict') {
+    const late = state.lateConflicts.has(row.id) ? row.lateConflict : null;
+    parts.push(`<p class="reason" id="reason-${row.id}">${ICON('alert')}<span>${escapeHtml(late ? CONFLICT_REASON(late.who, late.when) : row.reason)}</span></p>`);
+  }
+  if (status === 'rejected') parts.push(`<p class="reason" id="reason-${row.id}">${ICON('ban')}<span>${escapeHtml(row.reason)}</span></p>`);
+  if (row.dependsOn && !state.selected.get(row.dependsOn) && !isReadOnly()) {
+    parts.push(`<p class="dep-note" id="reason-${row.id}">${ICON('info')}<span>Vypnuto spolu s řádkem Nový dárek „${escapeHtml(rowTitle(ROW_BY_ID[row.dependsOn]))}“: bez něj není co přesunout.</span></p>`);
+  }
+  if (hasDetail(row)) {
+    const label = status === 'conflict' ? ['Zobrazit aktuální stav','Skrýt aktuální stav'] : row.cards.deleteOnly || !row.cards.before ? ['Zobrazit kartu','Skrýt kartu'] : ['Zobrazit karty','Skrýt karty'];
+    parts.push(disclosure(row, label));
+  }
+  return `<div class="diffs">${parts.join('')}</div>`;
+}
+
+const hasDetail = row => effectiveStatus(row) === 'conflict' || Boolean(row.cards);
+
+function detailContent(row) {
+  const status = effectiveStatus(row);
+  let items, extra = '', single = false;
+  if (status === 'conflict') {
+    const late = state.lateConflicts.has(row.id) ? row.lateConflict : null;
+    const current = late ? late.current : row.conflictCards.current;
+    const proposed = late ? row.cards.after : row.conflictCards.proposed;
+    const currentChanged = late ? late.currentChanged : {price:'cur'};
+    const proposedChanged = late ? row.cards.afterChanged : {price:'new'};
+    items = [
+      giftCard(current, {caption:'Aktuálně', captionBadge:badge('upravila Jana Dvořáková','t-warning'), changed:currentChanged, side:'before'}),
+      giftCard(proposed, {caption:'Návrh agenta', changed:proposedChanged, side:'after'}),
+    ];
+    extra = `<p class="pair-extra">${escapeHtml(late ? late.note : row.conflictCards.note)}</p>`;
+  } else if (row.cards.deleteOnly) {
+    single = true;
+    items = [giftCard(row.cards.before, {caption:'Před', captionBadge:badge('bude smazán','t-danger','trash'), stateText:'Bude smazán', deleteState:true, faded:true, side:'before'})];
+  } else if (!row.cards.before) {
+    single = true;
+    items = [giftCard(row.cards.after, {caption:'Po', captionBadge:badge('nová karta','t-primary','plus'), side:'after'})];
+  } else {
+    items = [
+      giftCard(row.cards.before, {caption:'Před', changed:row.cards.beforeChanged, side:'before'}),
+      giftCard(row.cards.after, {caption:'Po', changed:row.cards.afterChanged, side:'after'}),
+    ];
+  }
+  const side = state.side.get(row.id) || 'after';
+  const switcher = single ? '' : `<div class="seg pair-switch" role="group" aria-label="Zobrazená karta"><button type="button" data-key="side-b-${row.id}" data-side="before" data-row="${row.id}" aria-pressed="${side === 'before'}">${status === 'conflict' ? 'Aktuálně' : 'Před'}</button><button type="button" data-key="side-a-${row.id}" data-side="after" data-row="${row.id}" aria-pressed="${side === 'after'}">${status === 'conflict' ? 'Návrh' : 'Po'}</button></div>`;
+  const pair = items.length === 2 ? `${items[0]}<span class="pair-arrow" aria-hidden="true">→</span>${items[1]}` : items[0];
+  return `${switcher}<div class="pair" data-side="${side}"${single ? ' data-single' : ''}>${pair}${extra}</div>`;
+}
+
+function rowClasses(row) {
+  const status = effectiveStatus(row);
+  const classes = ['op'];
+  if (status === 'confirm' && !['applied','undo-conflict','undone'].includes(state.page)) classes.push('is-confirm');
+  if (status === 'conflict' && !['applied','undo-conflict','undone'].includes(state.page)) classes.push('is-conflict');
+  if (status === 'rejected' && !['applied','undo-conflict','undone'].includes(state.page)) classes.push('is-rejected');
+  const off = ['applied','undo-conflict','undone'].includes(state.page) ? !state.appliedIds.has(row.id) : status === 'ready' && !isSelected(row);
+  if (off) classes.push('is-off');
+  if (state.open.has(row.id) && hasDetail(row)) classes.push('is-open');
+  return classes.join(' ');
+}
+
+const FILTERS = [
+  {id:'all', label:'Vše', test:() => true},
+  {id:'confirm', label:'Vyžaduje potvrzení', test:row => effectiveStatus(row) === 'confirm'},
+  {id:'conflict', label:'Konflikty', test:row => ['conflict','rejected'].includes(effectiveStatus(row))},
+];
+
+function renderTable() {
+  const filter = FILTERS.find(item => item.id === state.filter);
+  const visible = ROWS.filter(filter.test);
+  const bodies = visible.map(row => {
+    const detail = hasDetail(row) ? `<tr class="detail" id="detail-${row.id}"${state.open.has(row.id) ? '' : ' hidden'}><td class="spacer" colspan="2"></td><td class="spacer"><p class="role-note">${effectiveStatus(row) === 'conflict' ? 'Porovnání aktuálního stavu s návrhem.' : 'Karty vidíte jako správce, včetně stavu rezervace.'}</p></td><td colspan="2">${detailContent(row)}</td></tr>` : '';
+    return `<tbody class="${rowClasses(row)}" data-row-body="${row.id}"><tr class="main">${checkboxCell(row)}<td class="c-kind">${badge(KINDS[row.kind].label, KINDS[row.kind].tone)}</td><td class="c-ident">${identity(row)}</td><td class="c-diff">${diffCell(row)}</td><td class="c-status"><div class="status-wrap">${statusFor(row)}${statusNote(row) ? `<span class="status-note">${statusNote(row)}</span>` : ''}</div></td></tr>${detail}</tbody>`;
+  }).join('');
+  const empty = visible.length ? '' : `<tbody><tr><td colspan="5" class="empty-filter">V tomto filtru nejsou žádné změny.</td></tr></tbody>`;
+  const panelClass = ['expired','discarded'].includes(state.page) ? ' is-dim' : state.page === 'applying' ? ' is-locked' : '';
+  return `<div class="panel table-panel${panelClass}"${state.page === 'applying' ? ' aria-busy="true" inert' : ''}>
+    <table class="ct" aria-label="Navrhované změny seznamu Vánoce pro babičku">
+      <colgroup><col class="k-check"><col class="k-kind"><col class="k-ident"><col class="k-diff"><col class="k-status"></colgroup>
+      <thead><tr><th scope="col"><span class="sr-only">Výběr</span></th><th scope="col">Druh</th><th scope="col">Dárek</th><th scope="col">Změny</th><th scope="col">Stav</th></tr></thead>
+      ${bodies}${empty}
+    </table>
+  </div>`;
+}
+
+function renderListHead() {
+  const counts = Object.fromEntries(FILTERS.map(item => [item.id, ROWS.filter(item.test).length]));
+  const filters = `<div class="seg-scroll"><div class="seg" role="group" aria-label="Filtr změn">${FILTERS.map(item => `<button type="button" data-key="filter-${item.id}" data-filter="${item.id}" aria-pressed="${state.filter === item.id}">${item.label}<span class="n">${counts[item.id]}</span></button>`).join('')}</div></div>`;
+  if (isReadOnly()) return `<div class="list-head"><h2 id="changes-heading">Změny</h2>${filters}</div>`;
+  const ordinary = ROWS.filter(row => effectiveStatus(row) === 'ready' && isSelectable(row));
+  const ordinarySelected = ordinary.filter(isSelected).length;
+  const master = ordinarySelected === 0 ? 'false' : ordinarySelected === ordinary.length ? 'true' : 'mixed';
+  const selectableOperations = operationCount(ROWS.filter(row => ['ready','confirm'].includes(effectiveStatus(row))));
+  const selectedOperations = operationCount(selectedRows());
+  return `<div class="list-head"><h2 id="changes-heading">Změny</h2>
+    <div class="master"><button type="button" class="cb" role="checkbox" data-key="master" data-master aria-checked="${master}" aria-label="Vybrat vše" aria-describedby="master-help"><span class="cb-face">${ICON('check','i-check')}${ICON('minus','i-minus')}</span></button>
+      <div class="master-label"><b aria-hidden="true">Vybrat vše</b><span id="master-help">Vybráno ${selectedOperations} z ${selectableOperations}. Smazání, rezervace a pozvánky vybírejte jednotlivě.</span></div></div>
+    ${filters}</div>`;
+}
+
+function renderSummary() {
+  if (state.page === 'loading') {
+    return `<section class="panel summary" aria-label="Načítání souhrnu"><span class="sk" style="height:34px"></span><span class="sk" style="height:34px;width:120px"></span><span class="sk" style="height:34px;width:120px"></span><span class="sk" style="height:34px"></span></section>`;
+  }
+  const expiry = state.page === 'expired' ? `<span class="sum-value">${ICON('clock')}Vypršela 20. 10. 2026</span>` : ['applied','undo-conflict','undone'].includes(state.page) ? `<span class="sum-value">${ICON('ok')}Použito</span>` : state.page === 'discarded' ? `<span class="sum-value">${ICON('ban')}Zahozeno</span>` : `<span class="sum-value">${ICON('clock')}Ještě 6 dní 23 h</span>`;
+  return `<section class="panel summary" aria-label="Souhrn návrhu">
+    <div class="sum-item who"><span class="sum-label">Navrhl</span><span class="sum-value wrap">Petr Svoboda přes token <span class="token-name">${ICON('key')} „Claude – vánoční dárky“</span></span></div>
+    <div class="sum-item"><span class="sum-label">Odesláno</span><span class="sum-value">13. 10. 2026 v 21:47</span></div>
+    <div class="sum-item"><span class="sum-label">Platnost</span>${expiry}</div>
+    <div class="sum-item counts"><span class="sum-label">14 změn</span><span class="sum-counts"><span class="count-chip"><b>3</b> nové dárky</span><span class="count-chip"><b>8</b> úprav</span><span class="count-chip"><b>1</b> smazání</span><span class="count-chip"><b>1</b> rezervace</span><span class="count-chip"><b>1</b> pozvánka</span></span></div>
+  </section>`;
+}
+
+function renderNotices() {
+  const count = state.appliedCount;
+  const changesWord = czechPlural(count, 'změnu', 'změny', 'změn');
+  const appliedPanel = (undoDisabled) => `<div class="alert a-success" role="status">${ICON('ok')}<p class="alert-title">Použito ${count} ${czechPlural(count,'změna','změny','změn')} · 13. 10. 2026 v 21:52</p><p class="alert-body">Nevybrané řádky zůstaly nepoužité a návrh je uzavřený.</p><div class="alert-actions"><button type="button" class="btn i-danger raised" data-key="undo" data-action="undo"${undoDisabled ? ' aria-disabled="true" aria-describedby="undo-conflict-alert"' : ''}><span class="btn-face">${ICON('undo')}Vrátit celou dávku</span></button><a class="btn i-secondary raised" href="/w/k7m2qa" data-demo-link><span class="btn-face">Otevřít seznam</span></a></div></div>`;
+  switch (state.page) {
+    case 'apply-conflict':
+      return `<div class="notices"><div class="alert a-warning" role="alert">${ICON('alert')}<p class="alert-title">2 změny mezitím přestaly platit. Zkontrolujte je a použijte znovu.</p><p class="alert-body">Nic se nepoužilo. Ostatní výběr zůstal zachován.</p></div></div>`;
+    case 'applied':
+      return `<div class="notices">${appliedPanel(false)}</div>`;
+    case 'undo-conflict':
+      return `<div class="notices">${appliedPanel(true)}<div class="alert a-destructive" role="alert" id="undo-conflict-alert">${ICON('alert')}<p class="alert-title">Tyto dárky se od použití změnily, dávku nelze vrátit celou:</p><div class="alert-body"><ul>${UNDO_CONFLICT_GIFTS.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul></div></div></div>`;
+    case 'undone':
+      return `<div class="notices"><div class="alert a-default" role="status">${ICON('undo')}<p class="alert-title">Dávka vrácena · 13. 10. v 21:58</p><p class="alert-body">Všech ${count} ${changesWord} je zpět v původním stavu. Pozvánky a rezervace byly zrušeny, smazané dárky obnoveny.</p><div class="alert-actions"><a class="btn i-secondary raised" href="/w/k7m2qa" data-demo-link><span class="btn-face">Otevřít seznam</span></a></div></div></div>`;
+    case 'expired':
+      return `<div class="notices"><div class="alert a-warning" role="status">${ICON('clock')}<p class="alert-title">Platnost návrhu vypršela 20. 10. 2026. Požádejte svého agenta o nový návrh.</p><p class="alert-body">Změny si můžete dál prohlédnout, použít je už nelze.</p></div></div>`;
+    case 'discarded':
+      return `<div class="notices"><div class="alert a-default" role="status">${ICON('info')}<p class="alert-title">Návrh jste zahodili.</p><p class="alert-body">Žádná změna se nepoužila. O nový návrh můžete požádat svého agenta.</p></div></div>`;
+    default:
+      return '';
+  }
+}
+
+function renderLoading() {
+  const rows = Array.from({length:7}, () => `<div class="sk-row"><span class="sk" style="width:32px;height:32px"></span><span class="sk sk-kind" style="height:20px;border-radius:12px"></span><span class="sk" style="width:40px;height:40px"></span><span class="sk sk-diff" style="height:14px;width:70%"></span><span class="sk sk-status" style="height:20px;border-radius:12px"></span></div>`).join('');
+  return `<div class="list-head"><h2>Změny</h2></div><div class="panel table-panel" aria-busy="true" aria-label="Načítání změn">${rows}</div>`;
+}
+
+function renderPage() {
+  const head = `<a class="back" href="/w/k7m2qa" data-demo-link>${ICON('back')}Zpět na seznam</a>
+    <header class="page-head"><p class="eyebrow">Návrh změn</p><h1>Vánoce pro babičku</h1><p class="meta">Pro: Babička Věra</p></header>`;
+  const body = state.page === 'loading' ? renderLoading() : `${renderNotices()}<section aria-labelledby="changes-heading">${renderListHead()}${renderTable()}</section>${state.page === 'pending' || state.page === 'apply-conflict' ? `<div class="mobile-discard"><button type="button" class="btn i-danger raised" data-key="discard-m" data-action="discard"><span class="btn-face">Zahodit návrh</span></button></div>` : ''}`;
+  return head + renderSummary() + body;
+}
+
+function applyLabel(count) {
+  if (count === 0) return 'Použít vybrané změny';
+  return `Použít ${count} ${czechPlural(count,'vybranou změnu','vybrané změny','vybraných změn')}`;
+}
+
+function renderApplyBar() {
+  const bar = document.getElementById('applyBar');
+  if (!['pending','apply-conflict','applying','loading'].includes(state.page)) { bar.hidden = true; return; }
+  bar.hidden = false;
+  if (state.page === 'loading') {
+    bar.innerHTML = `<div class="apply-inner"><span class="apply-count"><span class="sk" style="height:14px;width:140px"></span></span><button type="button" class="btn i-primary raised" disabled><span class="btn-face">Načítám návrh…</span></button></div>`;
+    return;
+  }
+  const count = operationCount(selectedRows());
+  const confirmCount = selectedRows().filter(row => effectiveStatus(row) === 'confirm').length;
+  const applying = state.page === 'applying';
+  const countText = count === 0 ? '<b>Nic není vybráno</b><span>Vyberte alespoň jednu změnu.</span>' : `<b>${count} ${czechPlural(count,'změna vybrána','změny vybrány','změn vybráno')}</b><span>${confirmCount ? `Citlivé akce (${confirmCount}) potvrdíte v dalším kroku.` : 'Konflikty a odmítnuté řádky se nepoužijí.'}</span>`;
+  bar.innerHTML = `<div class="apply-inner" role="region" aria-label="Použití změn"><p class="apply-count" aria-live="polite">${countText}</p>
+    <button type="button" class="btn i-danger raised i-discard" data-key="discard" data-action="discard"${applying ? ' disabled' : ''}><span class="btn-face">Zahodit návrh</span></button>
+    <button type="button" class="btn i-primary raised" data-key="apply" data-action="apply"${count === 0 || applying ? ' disabled' : ''}${count === 0 ? ' aria-describedby="none-selected"' : ''}><span class="btn-face">${applying ? `${ICON('loader','spin')}Používám…` : applyLabel(count)}</span></button>
+    ${count === 0 ? '<span class="sr-only" id="none-selected">Nic není vybráno</span>' : ''}</div>`;
+}
+
+function render() {
+  const focusedKey = document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.key : null;
+  document.getElementById('page').innerHTML = renderPage();
+  renderApplyBar();
+  document.getElementById('app').classList.toggle('is-busy', state.page === 'applying');
+  if (focusedKey) {
+    const target = document.querySelector(`[data-key="${focusedKey}"]`);
+    if (target) target.focus({preventScroll:true});
+  }
+}
+
+/* ── Interaction ── */
+function toggleRow(rowId) {
+  const row = ROW_BY_ID[rowId];
+  if (!isSelectable(row) || isReadOnly()) return;
+  const next = !isSelected(row);
+  state.selected.set(rowId, next);
+  for (const dependent of ROWS.filter(candidate => candidate.dependsOn === rowId)) {
+    if (!next && state.selected.get(dependent.id)) { state.autoDeselected.add(dependent.id); }
+    if (next && state.autoDeselected.has(dependent.id)) { state.selected.set(dependent.id, true); state.autoDeselected.delete(dependent.id); }
+  }
+  render();
+}
+
+function toggleMaster() {
+  const ordinary = ROWS.filter(row => effectiveStatus(row) === 'ready');
+  const allSelected = ordinary.every(row => state.selected.get(row.id));
+  for (const row of ordinary) state.selected.set(row.id, !allSelected);
+  state.autoDeselected.clear();
+  render();
+}
+
+let dialogReturnFocus = null;
+function openDialog({title, description, body = '', actions}) {
+  dialogReturnFocus = document.activeElement;
+  const overlay = document.getElementById('overlay');
+  overlay.innerHTML = `<div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dialog-title" aria-describedby="dialog-desc">
+    <h2 id="dialog-title">${title}</h2><p class="dialog-desc" id="dialog-desc">${description}</p>${body}
+    <div class="dialog-foot">${actions.map(action => `<button type="button" class="btn md ${action.intent} raised" data-dialog-action="${action.id}"><span class="btn-face">${action.icon ? ICON(action.icon) : ''}${action.label}</span></button>`).join('')}</div>
+    <button type="button" class="btn i-ghost icon-only dialog-close" data-dialog-action="close" aria-label="Zavřít"><span class="btn-face">${ICON('x')}</span></button>
+  </div>`;
+  overlay.hidden = false;
+  document.getElementById('screen').inert = true;
+  overlay.dialogHandlers = Object.fromEntries(actions.map(action => [action.id, action.run]));
+  overlay.querySelector('[data-dialog-action]').focus();
+}
+function closeDialog() {
+  const overlay = document.getElementById('overlay');
+  overlay.hidden = true; overlay.innerHTML = '';
+  document.getElementById('screen').inert = false;
+  if (dialogReturnFocus && document.contains(dialogReturnFocus)) dialogReturnFocus.focus();
+}
+
+function confirmItem(row) {
+  if (row.kind === 'delete') return `<li><span class="ci" aria-hidden="true">${ICON('trash')}</span><span><b>Smazat dárek „${escapeHtml(rowTitle(row))}“</b>Dárek bude trvale odstraněn.</span></li>`;
+  if (row.kind === 'reserve') return `<li><span class="ci" aria-hidden="true">${ICON('bookmark')}</span><span><b>Rezervovat 1 ks „${escapeHtml(rowTitle(row))}“</b>Pod vaším jménem Petr Svoboda.</span></li>`;
+  return `<li><span class="ci" aria-hidden="true">${ICON('user-plus')}</span><span><b>Pozvat správce</b><span class="email">${escapeHtml(row.email)}</span>Dostane e-mail s pozvánkou a uvidí rezervace.</span></li>`;
+}
+
+function runApply() {
+  closeDialog();
+  state.page = 'applying';
+  render();
+  setTimeout(() => {
+    const rows = selectedRows();
+    state.appliedIds = new Set(rows.map(row => row.id));
+    state.appliedCount = operationCount(rows);
+    state.page = 'applied';
+    document.getElementById('stateSelect').value = 'applied';
+    render();
+    document.getElementById('screen').scrollTo({top:0});
+    const undoButton = document.querySelector('[data-action=undo]');
+    if (undoButton) undoButton.focus({preventScroll:true});
+  }, 1200);
+}
+
+function startApply() {
+  const confirmations = selectedRows().filter(row => effectiveStatus(row) === 'confirm');
+  if (!confirmations.length) { runApply(); return; }
+  const count = operationCount(selectedRows());
+  openDialog({
+    title:'Potvrďte citlivé změny',
+    description:`Spolu s ostatními ${czechPlural(count,'změnou','změnami','změnami')} (celkem ${count}) se provede i ${czechPlural(confirmations.length,'tato akce','tyto akce','těchto akcí')}:`,
+    body:`<ul class="confirm-list">${confirmations.map(confirmItem).join('')}</ul>`,
+    actions:[
+      {id:'back', label:'Zpět ke kontrole', intent:'i-secondary', run:closeDialog},
+      {id:'confirm', label:'Potvrdit a použít', intent:'i-primary', run:runApply},
+    ],
+  });
+}
+
+function startUndo() {
+  const count = state.appliedCount;
+  openDialog({
+    title:count === 1 ? 'Vrátit 1 změnu?' : `Vrátit ${czechPlural(count,'','všechny','všech')} ${count} ${czechPlural(count,'','změny','změn')}?`,
+    description:'Pozvánky a rezervace se zruší, smazané dárky se obnoví. Vrací se celá dávka najednou.',
+    actions:[
+      {id:'keep', label:'Ponechat změny', intent:'i-secondary', run:closeDialog},
+      {id:'undo', label:'Vrátit celou dávku', intent:'i-danger', icon:'undo', run:() => { closeDialog(); state.page = 'undone'; document.getElementById('stateSelect').value = 'undone'; render(); document.getElementById('screen').scrollTo({top:0}); }},
+    ],
+  });
+}
+
+function startDiscard() {
+  openDialog({
+    title:'Zahodit návrh?',
+    description:'Žádná ze 14 změn se nepoužije a návrh už nepůjde otevřít k použití. O nový návrh můžete později požádat svého agenta.',
+    actions:[
+      {id:'keep', label:'Ponechat návrh', intent:'i-secondary', run:closeDialog},
+      {id:'discard', label:'Zahodit návrh', intent:'i-destructive', run:() => { closeDialog(); setPage('discarded'); document.getElementById('screen').scrollTo({top:0}); }},
+    ],
+  });
+}
+
+let toastTimer;
+function showToast(text) {
+  const toast = document.getElementById('toast');
+  toast.textContent = text; toast.hidden = false;
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => { toast.hidden = true; }, 3200);
+}
+
+function setPage(page) {
+  resetSelection();
+  state.page = page;
+  document.getElementById('stateSelect').value = page;
+  if (page === 'apply-conflict') {
+    state.lateConflicts = new Set(['r3','r5']);
+    state.open.add('r3');
+  }
+  if (['applied','undo-conflict','undone'].includes(page)) {
+    const rows = selectedRows();
+    state.appliedIds = new Set(rows.map(row => row.id));
+    state.appliedCount = operationCount(rows);
+  } else {
+    state.appliedIds = new Set();
+  }
+  render();
+}
+
+document.addEventListener('click', event => {
+  const target = event.target.closest('button, a');
+  if (!target) return;
+  if (target.matches('[data-demo-link]')) { event.preventDefault(); showToast(`Ukázka: odkaz vede na ${target.getAttribute('href')}.`); return; }
+  if (target.dataset.viewport) {
+    state.viewport = target.dataset.viewport;
+    document.getElementById('device').dataset.viewport = state.viewport;
+    document.querySelectorAll('[data-viewport]').forEach(button => { if (button.tagName === 'BUTTON') button.setAttribute('aria-pressed', String(button.dataset.viewport === state.viewport)); });
+    return;
+  }
+  if (target.dataset.theme) {
+    state.theme = target.dataset.theme;
+    document.documentElement.classList.toggle('dark', state.theme === 'dark');
+    document.querySelectorAll('[data-theme]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.theme === state.theme)));
+    return;
+  }
+  if (target.dataset.dialogAction) {
+    const overlay = document.getElementById('overlay');
+    const handler = target.dataset.dialogAction === 'close' ? closeDialog : overlay.dialogHandlers[target.dataset.dialogAction];
+    handler();
+    return;
+  }
+  if (target.hasAttribute('data-master')) { toggleMaster(); return; }
+  if (target.matches('.cb[data-row]')) {
+    if (target.getAttribute('aria-disabled') === 'true') { showToast('Tento řádek nelze vybrat, důvod je uveden v řádku.'); return; }
+    toggleRow(target.dataset.row); return;
+  }
+  if (target.dataset.filter) { state.filter = target.dataset.filter; render(); return; }
+  if (target.dataset.disclose) {
+    const rowId = target.dataset.disclose;
+    state.open.has(rowId) ? state.open.delete(rowId) : state.open.add(rowId);
+    render(); return;
+  }
+  if (target.dataset.side) {
+    state.side.set(target.dataset.row, target.dataset.side);
+    const pair = target.closest('td').querySelector('.pair');
+    pair.dataset.side = target.dataset.side;
+    target.parentElement.querySelectorAll('button').forEach(button => button.setAttribute('aria-pressed', String(button === target)));
+    return;
+  }
+  if (target.dataset.action === 'apply') { startApply(); return; }
+  if (target.dataset.action === 'undo') {
+    if (target.getAttribute('aria-disabled') === 'true') return;
+    startUndo(); return;
+  }
+  if (target.dataset.action === 'discard') { startDiscard(); return; }
+});
+
+document.addEventListener('keydown', event => {
+  const overlay = document.getElementById('overlay');
+  if (overlay.hidden) return;
+  if (event.key === 'Escape') { event.preventDefault(); closeDialog(); return; }
+  if (event.key === 'Tab') {
+    const focusable = [...overlay.querySelectorAll('button')];
+    const first = focusable[0], last = focusable[focusable.length - 1];
+    if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+    else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+  }
+});
+
+document.getElementById('stateSelect').addEventListener('change', event => setPage(event.target.value));
+setPage('pending');
+</script>
+</body>
+</html>

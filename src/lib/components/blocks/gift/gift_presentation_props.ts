@@ -1,3 +1,4 @@
+import type { GiftLivePreviewKind } from '$lib/components/blocks/change-proposals/change_row_model.js';
 import type { GiftActionPlacementSnapshot } from '$lib/components/blocks/wishlist/gift_context_invocation.js';
 import type { GiftByRole, GiftForVisitor } from '$lib/modules/gifts/types.js';
 import type { WishlistRole } from '$lib/modules/wishlists/types.js';
@@ -22,6 +23,6 @@ export interface GiftPresentationProps extends GiftBrowseActionHandlers {
 	moreOpen?: boolean;
 	moreSurface?: 'menu' | 'dialog';
 	showPriority?: boolean;
-	/** Defaults to hidden in contextual mode; grouped reorder reveals it on the dragged gift. */
-	showCategory?: boolean;
+	/** How a chat proposal being decided would change the gift. */
+	livePreview?: GiftLivePreviewKind;
 }

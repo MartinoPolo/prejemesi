@@ -14,7 +14,6 @@ import {
 } from '$lib/modules/gifts/types.js';
 import { GIFT_SECTION_KINDS, type GiftSection } from '$lib/modules/gifts/gift_ordering.js';
 import {
-	GIFT_REORDER_MOVE_SOURCES,
 	applyReorderPlacement,
 	buildReorderSections,
 	categoryReorderGroups,
@@ -55,8 +54,8 @@ function visitorGift(): GiftForVisitor {
 		priorityLevelId: null,
 		priorityLabel: null,
 		prioritySortOrder: null,
-		categoryId: null,
-		category: null,
+		categoryIds: [],
+		categories: [],
 		likeCount: 0,
 		reservedCount: 0,
 		isFullyReserved: false,
@@ -100,7 +99,7 @@ afterEach(() => {
 });
 
 describe('WishlistGiftDisplay received pending state', () => {
-	it.each(['card', 'list', 'compact'] as const)(
+	it.each(['card', 'list'] as const)(
 		'forwards the route-owned pending state through the %s view',
 		async (viewMode) => {
 			const screen = await render(WishlistGiftDisplayTestHost, {
@@ -115,6 +114,31 @@ describe('WishlistGiftDisplay received pending state', () => {
 			await screen.unmount();
 		},
 	);
+});
+
+describe('WishlistGiftDisplay live preview', () => {
+	it('previews proposed gifts of an empty list instead of its empty state', async () => {
+		const emptyList = { ...defaultProps, sections: [], isEmpty: true };
+		const screen = await render(WishlistGiftDisplayTestHost, emptyList);
+		await expect
+			.element(page.getByText(m.wishlist_detail_owner_empty_title()))
+			.toBeInTheDocument();
+
+		await screen.rerender({
+			...emptyList,
+			livePreviews: {
+				edits: new Map(),
+				deletions: new Set(),
+				creations: [{ key: 'proposal-1:r1', gift: { ...visitorGift(), id: 'preview' } }],
+			},
+		});
+
+		await expect.element(page.getByTestId('gift-live-preview-creation')).toBeInTheDocument();
+		await expect
+			.element(page.getByText(m.wishlist_detail_owner_empty_title()))
+			.not.toBeInTheDocument();
+		await screen.unmount();
+	});
 });
 
 describe('WishlistGiftDisplay selection accessibility', () => {
@@ -534,10 +558,11 @@ describe('WishlistGiftDisplay grouped reorder (#454)', () => {
 			grips[1]!.element().focus();
 			await userEvent.keyboard('{ArrowDown}');
 
-			expect(onreorderplacementcommit).toHaveBeenCalledWith(
-				{ giftId: 'gift-kettle', groupKey: 'priority:level-soon', index: 0 },
-				GIFT_REORDER_MOVE_SOURCES.keyboard,
-			);
+			expect(onreorderplacementcommit).toHaveBeenCalledWith({
+				giftId: 'gift-kettle',
+				groupKey: 'priority:level-soon',
+				index: 0,
+			});
 			await expect.element(screen.getByRole('status')).toHaveTextContent(
 				m.gift_reorder_move_group_success({
 					name: 'Konvice',
@@ -579,74 +604,116 @@ describe('WishlistGiftDisplay grouped reorder (#454)', () => {
 		color: '#2563eb',
 		sortOrder: 0,
 	};
-	const categorySections = buildReorderSections(
-		[
-			{
-				...visitorGift(),
-				id: 'gift-lamp',
-				name: 'Lampa',
-				categoryId: books.id,
-				category: books,
-			},
-			{
-				...visitorGift(),
-				id: 'gift-kettle',
-				name: 'Konvice',
-				categoryId: books.id,
-				category: books,
-			},
-			{ ...visitorGift(), id: 'gift-book', name: 'Kniha' },
-		],
-		GIFT_GROUPING_OPTIONS.category,
-		categoryReorderGroups([books], 'cs'),
-	);
+	const badgedGifts: GiftForVisitor[] = [
+		{ ...lamp, categoryIds: [books.id], categories: [books] },
+		{ ...kettle, categoryIds: [books.id], categories: [books] },
+		book,
+	];
+	const badgedGroups = {
+		[GIFT_GROUPING_OPTIONS.priority]: priorityReorderGroups(LEVELS),
+		[GIFT_GROUPING_OPTIONS.category]: categoryReorderGroups([books], 'cs'),
+	};
 
-	it.each([
-		['card', GIFT_GROUPING_OPTIONS.priority],
-		['list', GIFT_GROUPING_OPTIONS.priority],
-		['card', GIFT_GROUPING_OPTIONS.category],
-		['list', GIFT_GROUPING_OPTIONS.category],
-	] as const)(
-		'shows the live grouping badge only on the dragged gift in %s view grouped by %s',
-		async (viewMode, grouping) => {
+	function badgedSections(grouping: GiftReorderGroupField | typeof GIFT_GROUPING_OPTIONS.none) {
+		return grouping === GIFT_GROUPING_OPTIONS.none
+			? [{ ...sections[0]!, gifts: badgedGifts }]
+			: buildReorderSections(badgedGifts, grouping, badgedGroups[grouping]);
+	}
+
+	it.each(
+		(['card', 'list'] as const).flatMap((viewMode) =>
+			[
+				GIFT_GROUPING_OPTIONS.none,
+				GIFT_GROUPING_OPTIONS.priority,
+				GIFT_GROUPING_OPTIONS.category,
+			].flatMap((grouping) =>
+				(['browse', 'reorder', 'selection'] as const).map((mode) => ({
+					viewMode,
+					grouping,
+					mode,
+				})),
+			),
+		),
+	)(
+		'shows category and priority badges on every gift in $viewMode view grouped by $grouping in $mode mode',
+		async ({ viewMode, grouping, mode }) => {
+			const reorderMode = mode === 'reorder';
 			const screen = await render(WishlistGiftDisplayTestHost, {
-				...groupedProps,
-				...(grouping === GIFT_GROUPING_OPTIONS.category
-					? { sections: categorySections, grouping }
-					: {}),
+				...defaultProps,
+				sections: badgedSections(grouping),
+				grouping,
 				viewMode,
-				reorderMode: true,
+				reorderMode,
+				selectionMode: mode === 'selection',
 			});
-			const badgeTestId =
-				grouping === GIFT_GROUPING_OPTIONS.category
-					? 'gift-category-badge'
-					: 'gift-priority-badge';
-			const groupingBadges = () =>
+			const badges = () =>
 				Array.from(
 					screen.container.querySelectorAll<HTMLElement>(
-						`[data-gift-item] [data-testid="${badgeTestId}"]`,
+						'[data-gift-item] [data-testid="gift-category-badge"], [data-gift-item] [data-testid="gift-priority-badge"]',
 					),
-					(badge) => badge.closest<HTMLElement>('[data-gift-item]')?.dataset.giftId,
-				);
+					(badge) =>
+						`${badge.closest<HTMLElement>('[data-gift-item]')?.dataset.giftId}/${badge.dataset.testid}`,
+				).sort();
+			const expectedBadges = [
+				'gift-kettle/gift-category-badge',
+				'gift-kettle/gift-priority-badge',
+				'gift-lamp/gift-category-badge',
+				'gift-lamp/gift-priority-badge',
+			];
 			await expect.element(screen.getByText('Lampa').first()).toBeVisible();
-			expect(groupingBadges()).toEqual([]);
+			expect(badges()).toEqual(expectedBadges);
 
-			const grip = screen
-				.getByRole('button', { name: m.gift_reorder_grip_label() })
-				.all()[0]!
-				.element();
-			grip.dispatchEvent(
-				new PointerEvent('pointerdown', {
-					bubbles: true,
-					button: 0,
-					pointerId: 1,
-					pointerType: 'mouse',
-				}),
-			);
-			await expect.poll(groupingBadges).toEqual(['gift-lamp']);
+			if (reorderMode) {
+				screen
+					.getByRole('button', { name: m.gift_reorder_grip_label() })
+					.all()[0]!
+					.element()
+					.dispatchEvent(
+						new PointerEvent('pointerdown', {
+							bubbles: true,
+							button: 0,
+							pointerId: 1,
+							pointerType: 'mouse',
+						}),
+					);
+				await expect.poll(badges).toEqual(expectedBadges);
 
-			window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
-			await expect.poll(groupingBadges).toEqual([]);
+				window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+				await expect.poll(badges).toEqual(expectedBadges);
+			}
+			await screen.unmount();
+		},
+	);
+
+	it.each(['card', 'list'] as const)(
+		'selects and deselects a gift through a click on its badges in %s view',
+		async (viewMode) => {
+			const onselectiontoggle = vi.fn();
+			const props = {
+				...defaultProps,
+				sections: badgedSections(GIFT_GROUPING_OPTIONS.none),
+				viewMode,
+				selectionMode: true,
+				onselectiontoggle,
+			};
+			const screen = await render(WishlistGiftDisplayTestHost, {
+				...props,
+				selectedIds: [],
+			});
+			const lamp = () =>
+				document.querySelector<HTMLElement>('[data-gift-item][data-gift-id="gift-lamp"]')!;
+			const lampBadge = (testId: string) =>
+				lamp().querySelector<HTMLElement>(`[data-testid="${testId}"]`)!;
+
+			// A forced click lands on whatever the badge's position hit-tests to, like a real press.
+			await userEvent.click(lampBadge('gift-category-badge'), { force: true });
+			expect(onselectiontoggle).toHaveBeenLastCalledWith('gift-lamp');
+
+			await screen.rerender({ ...props, selectedIds: ['gift-lamp'] });
+			expect(lamp().getAttribute('aria-checked')).toBe('true');
+			await userEvent.click(lampBadge('gift-priority-badge'), { force: true });
+			expect(onselectiontoggle).toHaveBeenCalledTimes(2);
+			expect(onselectiontoggle).toHaveBeenLastCalledWith('gift-lamp');
 			await screen.unmount();
 		},
 	);
@@ -660,13 +727,19 @@ describe('WishlistGiftDisplay grouped reorder (#454)', () => {
 	};
 	const categoryGroups = categoryReorderGroups([books, tools], 'cs');
 	const categoryGifts: GiftForVisitor[] = [
-		{ ...visitorGift(), id: 'gift-lamp', name: 'Lampa', categoryId: books.id, category: books },
+		{
+			...visitorGift(),
+			id: 'gift-lamp',
+			name: 'Lampa',
+			categoryIds: [books.id],
+			categories: [books],
+		},
 		{
 			...visitorGift(),
 			id: 'gift-kettle',
 			name: 'Konvice',
-			categoryId: books.id,
-			category: books,
+			categoryIds: [books.id],
+			categories: [books],
 		},
 		{ ...visitorGift(), id: 'gift-book', name: 'Kniha' },
 	];
@@ -758,7 +831,7 @@ describe('WishlistGiftDisplay grouped reorder (#454)', () => {
 			liveBadgeCases.map((liveBadgeCase) => ({ viewMode, ...liveBadgeCase })),
 		),
 	)(
-		'moves the dragged gift badge to the previewed $field group in $viewMode view',
+		'updates the dragged gift badge live to the previewed $field group in $viewMode view',
 		async ({
 			viewMode,
 			field,
@@ -785,7 +858,7 @@ describe('WishlistGiftDisplay grouped reorder (#454)', () => {
 						giftId: badge.closest<HTMLElement>('[data-gift-item]')?.dataset.giftId,
 						label: badge.textContent?.trim(),
 					}),
-				);
+				).filter((badge) => badge.giftId === 'gift-lamp');
 			await expect.element(screen.getByText('Lampa').first()).toBeVisible();
 
 			screen
@@ -831,7 +904,7 @@ describe('WishlistGiftDisplay grouped reorder (#454)', () => {
 			[1280, 390].map((viewportWidth) => ({ viewMode, viewportWidth })),
 		),
 	)(
-		'keeps the dragged gift category badge clear of the reorder grip in $viewMode view at $viewportWidth px',
+		'keeps every category badge clear of its reorder grip in $viewMode view at $viewportWidth px',
 		async ({ viewMode, viewportWidth }) => {
 			await page.viewport(viewportWidth, 720);
 			const screen = await render(WishlistGiftDisplayTestHost, {
@@ -846,41 +919,36 @@ describe('WishlistGiftDisplay grouped reorder (#454)', () => {
 				reorderMode: true,
 			});
 			await expect.element(screen.getByText('Lampa').first()).toBeVisible();
-			const draggedGift = screen.container.querySelector<HTMLElement>(
-				'[data-gift-item][data-gift-id="gift-lamp"]',
-			)!;
-			const grip = draggedGift.querySelector<HTMLElement>(
-				`button[aria-label="${m.gift_reorder_grip_label()}"]`,
-			)!;
-			grip.dispatchEvent(
-				new PointerEvent('pointerdown', {
-					bubbles: true,
-					button: 0,
-					pointerId: 1,
-					pointerType: 'mouse',
-				}),
-			);
-			await expect
-				.poll(() => draggedGift.querySelector('[data-testid="gift-category-badge"]'))
-				.not.toBeNull();
+			const categorizedGifts = Array.from(
+				screen.container.querySelectorAll<HTMLElement>('[data-gift-item]'),
+			).filter((giftItem) => giftItem.querySelector('[data-testid="gift-category-badge"]'));
+			expect(categorizedGifts.map((giftItem) => giftItem.dataset.giftId)).toEqual([
+				'gift-lamp',
+				'gift-kettle',
+			]);
 
-			const badgeRect = draggedGift
-				.querySelector<HTMLElement>('[data-testid="gift-category-badge"]')!
-				.getBoundingClientRect();
-			const gripSurfaceRect = (grip.firstElementChild as HTMLElement).getBoundingClientRect();
-			const imageRect = draggedGift
-				.querySelector<HTMLElement>(
-					viewMode === 'card'
-						? '[data-testid="gift-card-image-frame"]'
-						: '[data-testid="gift-list-image"]',
-				)!
-				.getBoundingClientRect();
-			expect(rectanglesIntersect(badgeRect, gripSurfaceRect)).toBe(false);
-			expectPixelsAtLeast(badgeRect.left, gripSurfaceRect.right);
-			expectPixelsAtMost(badgeRect.right, imageRect.right);
-			expectPixelsAtLeast(badgeRect.top, imageRect.top);
-
-			window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+			for (const giftItem of categorizedGifts) {
+				const badgeRect = giftItem
+					.querySelector<HTMLElement>('[data-testid="gift-category-badge"]')!
+					.getBoundingClientRect();
+				const grip = giftItem.querySelector<HTMLElement>(
+					`button[aria-label="${m.gift_reorder_grip_label()}"]`,
+				)!;
+				const gripSurfaceRect = (
+					grip.firstElementChild as HTMLElement
+				).getBoundingClientRect();
+				const imageRect = giftItem
+					.querySelector<HTMLElement>(
+						viewMode === 'card'
+							? '[data-testid="gift-card-image-frame"]'
+							: '[data-testid="gift-list-image"]',
+					)!
+					.getBoundingClientRect();
+				expect(rectanglesIntersect(badgeRect, gripSurfaceRect)).toBe(false);
+				expectPixelsAtLeast(badgeRect.left, gripSurfaceRect.right);
+				expectPixelsAtMost(badgeRect.right, imageRect.right);
+				expectPixelsAtLeast(badgeRect.top, imageRect.top);
+			}
 			await screen.unmount();
 		},
 	);

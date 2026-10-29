@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="cs" data-palette="sky">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI asistent · Refined A · #478</title>
+<style>
+@font-face{font-family:'DynaPuff Variable';src:url('../unavailable-gift-comparison/assets/dynapuff-latin-wght-normal.woff2') format('woff2');font-weight:400 700;font-display:swap;unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+20AC}
+@font-face{font-family:'DynaPuff Variable';src:url('../unavailable-gift-comparison/assets/dynapuff-latin-ext-wght-normal.woff2') format('woff2');font-weight:400 700;font-display:swap;unicode-range:U+0100-02BA,U+02BD-02FF,U+1E00-1EFF,U+20A0-20AB}
+@font-face{font-family:'Geist Variable';src:url('../unavailable-gift-comparison/assets/geist-latin-wght-normal.woff2') format('woff2');font-weight:100 900;font-display:swap;unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+2000-206F,U+20AC,U+2190-21FF}
+@font-face{font-family:'Geist Variable';src:url('../unavailable-gift-comparison/assets/geist-latin-ext-wght-normal.woff2') format('woff2');font-weight:100 900;font-display:swap;unicode-range:U+0100-02BA,U+02BD-02FF,U+1E00-1EFF,U+20A0-20AB}
+html{
+  --p-brand:#1e9be9;--p-deep:#1265a8;--p-ink:#16385c;
+  --ink:var(--p-ink);--brand-link:var(--p-deep);
+  --background:color-mix(in oklab,var(--p-brand) 11%,white);--foreground:var(--p-ink);--card:#fff;
+  --primary:color-mix(in oklab,var(--p-brand) 78%,var(--p-ink));--primary-foreground:#fff;
+  --muted-foreground:color-mix(in oklab,var(--p-ink) 72%,transparent);--tint:color-mix(in oklab,var(--p-brand) 21%,white);
+  --status-success:#14a56f;--status-warning:#efa00b;
+  --status-success-text:color-mix(in oklab,var(--status-success) 45%,var(--ink));
+  --hard-shadow:color-mix(in oklab,var(--p-ink) 16%,transparent);
+  --radius-panel:16px;--radius-btn:7px;--radius-badge:12px;
+  --font-head:'DynaPuff Variable',Arial,sans-serif;--font-body:'Geist Variable',Arial,sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;background:var(--background);color:var(--foreground);font:14px/1.5 var(--font-body)}
+h1,h2,h3{font-family:var(--font-head);font-weight:600;line-height:1.2;margin:0}
+p{margin:0}
+a{color:var(--brand-link);text-underline-offset:3px}
+a:focus-visible{outline:3px solid var(--p-brand);outline-offset:2px}
+main{max-width:1200px;margin:auto;padding:32px 16px 64px;display:grid;grid-template-columns:minmax(0,1fr);gap:24px}
+code{overflow-wrap:anywhere}
+.eyebrow{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted-foreground)}
+h1{font-size:28px}
+h2{font-size:22px}
+h3{font-size:17px}
+.lead{max-width:72ch;color:var(--muted-foreground)}
+.panel{background:var(--card);border:2.5px solid var(--ink);border-radius:var(--radius-panel);box-shadow:4px 4px 0 var(--hard-shadow);padding:20px;display:grid;gap:14px}
+.grid-2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
+.grid-3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px}
+.option{display:flex;flex-direction:column;gap:10px}
+.preview{position:relative;aspect-ratio:1440/900;overflow:hidden;border:2px solid var(--ink);border-radius:calc(var(--radius-panel) - 6px);background:#161a20}
+.preview iframe{position:absolute;inset:0;width:1440px;height:900px;border:0;transform-origin:0 0;pointer-events:none}
+.preview.phone{aspect-ratio:440/1010;max-width:300px;width:100%;justify-self:center}
+.preview.phone iframe{width:440px;height:1010px}
+.trade{font-size:13px}
+.trade strong{display:block}
+.open{display:inline-flex;align-items:center;justify-content:center;min-height:32px;padding:0 14px;border:2px solid var(--ink);border-radius:var(--radius-btn);background:var(--primary);color:var(--primary-foreground);font-weight:700;text-decoration:none;box-shadow:3px 3px 0 var(--hard-shadow);justify-self:start;align-self:flex-start}
+.option .open{margin-top:auto}
+.label{display:inline-block;padding:1px 8px;border:1.5px solid var(--ink);border-radius:var(--radius-badge);font:700 12px/1.5 var(--font-body);vertical-align:middle}
+.label-rec{background:color-mix(in oklab,var(--status-success) 18%,var(--card));color:var(--status-success-text)}
+.label-confirmed{background:color-mix(in oklab,var(--status-success) 18%,var(--card));color:var(--status-success-text)}
+.label-rejected{background:color-mix(in oklab,var(--ink) 8%,var(--card));color:var(--muted-foreground)}
+.label-assumption{background:color-mix(in oklab,var(--status-warning) 22%,var(--card));color:var(--foreground)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{text-align:left;vertical-align:top;padding:8px 10px;border-bottom:1px solid color-mix(in oklab,var(--ink) 18%,transparent)}
+th{font-weight:700}
+thead th{font-family:var(--font-head);font-weight:600;font-size:15px}
+.scenarios td a{margin-right:10px;white-space:nowrap}
+ul,ol{margin:0;padding-left:20px;display:grid;gap:6px}
+.answers li{list-style:none;margin-left:-20px}
+@media (max-width:900px){.grid-2,.grid-3{grid-template-columns:minmax(0,1fr)}.table-wrap{overflow-x:auto}}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <p class="eyebrow">Přejeme si · Vybraná varianta · <a href="https://github.com/MartinoPolo/prejemesi/issues/478">#478</a></p>
+    <h1>AI asistent: Refined A</h1>
+    <p class="lead">Varianta A doplněná o připomínky vlastníka ve třech kolech. Všechny volby jsou rozhodnuté: dvouřádková hlavička panelu, lišta rozhodnutí nad polem pro zprávu, plovoucí ikona vpravo dole a nerozhodnuté změny se nepoužijí. Lišta v mockupu přepíná zařízení, motiv, roli a scénář; stav jde nastavit adresou <code>?viewport=&amp;theme=&amp;scenario=&amp;role=&amp;panel=closed&amp;fab=label</code>. Požadavky: <a href="./DESIGN_BRIEF_AI_CHATBOT.md">brief</a>.</p>
+  </header>
+
+  <section class="panel" aria-labelledby="refined-title">
+    <h2 id="refined-title">Refined A</h2>
+    <div class="preview"><iframe title="Náhled Refined A" src="./refined.html?scenario=enrich" tabindex="-1"></iframe></div>
+    <ul>
+      <li><strong>Lišta rozhodnutí:</strong> počet a Zkontrolovat, pod nimi Zamítnout vše, Přijmout vše a Použít (N); N počítá dárky s aspoň jednou přijatou změnou.</li>
+      <li><strong>Předvybráno:</strong> přidání a úpravy polí začínají jako přijaté, mazání, rezervace a pozvánky jako nerozhodnuté. Dokud něco zbývá, Použít vypadá neaktivně; klepnutí orámuje nerozhodnuté volby červeně, posune k první a ukáže „Rozhodněte 2 změny“.</li>
+      <li><strong>Po polích, bez vstupů:</strong> každé pole ukazuje původní hodnotu červeně přeškrtnutou a novou zeleně; ✓ přijme, ✕ zamítne, opětovné klepnutí volbu zruší. Každý dárek má ✓ Vše a ✕ Vše, se smíšeným stavem.</li>
+      <li><strong>Úprava:</strong> ✎ změní jen tu jednu hodnotu na pole, výběr nebo výběr obrázku; Zrušit / Uložit, uložení pole přijme jako „Upraveno“, zamítnutí úpravu zahodí.</li>
+      <li><strong>Mazání v chatu:</strong> klepnutí na „Smazat 1 dárek“ je potvrzení, bez dalšího dialogu; Vrátit vrací volbu Smazat / Ponechat.</li>
+      <li><strong>Živý náhled:</strong> karty v seznamu ukazují návrh (štítek „Návrh“, přerušovaný okraj, nové a mazané dárky); stránka kontroly je volitelná, výchozí jen pro návrhy nad 5 dárků.</li>
+      <li><strong>Šířka panelu:</strong> tažením 360–640 px, pamatuje se, dvojklik vrací 420 px; na mobilu dvě výšky (náhled a celý chat).</li>
+    </ul>
+    <a class="open" href="./refined.html">Otevřít Refined A</a>
+  </section>
+
+  <section class="panel" aria-labelledby="entry-title">
+    <h2 id="entry-title">Plovoucí tlačítko <span class="label label-confirmed">Rozhodnuto</span></h2>
+    <div class="grid-2">
+      <article class="option">
+        <h3>Desktop: najetí nebo fokus</h3>
+        <div class="preview"><iframe title="Plovoucí tlačítko s popiskem" src="./refined.html?scenario=chat&amp;panel=closed&amp;fab=label" tabindex="-1"></iframe></div>
+        <p>V klidu jen ikona; popisek „AI asistent“ se vysune při najetí myší (jen zařízení s hover) a při fokusu z klávesnice, ne při posouvání. S omezeným pohybem bez animace.</p>
+      </article>
+      <article class="option">
+        <h3>Desktop: otevřený panel</h3>
+        <div class="preview"><iframe title="Plovoucí tlačítko u otevřeného panelu" src="./refined.html?scenario=chat" tabindex="-1"></iframe></div>
+        <p>Tlačítko zůstane u okraje panelu a zavírá ho („Zavřít AI asistenta“); ✕ v hlavičce panelu zůstává.</p>
+      </article>
+    </div>
+    <p>Na mobilu je vždy jen ikona s přístupným názvem a na posouvání nereaguje. Seznam má dole rezervované místo; na stránkách s vlastní spodní lištou se tlačítko nezobrazí a oznámení se objevují nad ním.</p>
+    <p><span class="label label-rejected">Zamítnuto</span> Tlačítko v hlavičce aplikace a spodní část panelu „Na kartě“ nebo „Zásuvka“; platí Lišta.</p>
+    <a class="open" href="./refined.html?scenario=chat&amp;panel=closed">Otevřít na desktopu</a>
+  </section>
+
+  <section class="panel" aria-labelledby="header-title">
+    <h2 id="header-title">Hlavička panelu <span class="label label-confirmed">Rozhodnuto</span></h2>
+    <div class="grid-3">
+      <article class="option">
+        <h3>Mobil: nová konverzace</h3>
+        <div class="preview phone"><iframe title="Dvouřádková hlavička na mobilu" src="./refined.html?scenario=chat&amp;viewport=mobile" tabindex="-1"></iframe></div>
+        <p>Řádek 1: ikona, název a seznam, ✕. Řádek 2: Náhled, historie, nová konverzace a přepínač Bez kontroly, vše ve stejném tichém stylu; nápověda hned pod ním.</p>
+      </article>
+      <article class="option">
+        <h3>Mobil: vypnuto globálně</h3>
+        <div class="preview phone"><iframe title="Hlavička s vypnutým asistentem" src="./refined.html?scenario=kill-switch&amp;viewport=mobile" tabindex="-1"></iframe></div>
+        <p>„Vypnuto“ sedí na řádku 2 místo přepínače. Pod tlačítkem odeslat už nic není.</p>
+      </article>
+      <article class="option">
+        <h3>Mobil: plovoucí ikona</h3>
+        <div class="preview phone"><iframe title="Plovoucí ikona na konci seznamu" src="./refined.html?scenario=chat&amp;viewport=mobile&amp;panel=closed&amp;scroll=end" tabindex="-1"></iframe></div>
+        <p>Poslední karta jde vždy odsunout nad ikonu.</p>
+      </article>
+    </div>
+    <p>Desktop používá stejné dva řádky: přepínač má jedno místo na všech zařízeních a název se nikdy nezkracuje.</p>
+    <a class="open" href="./refined.html?scenario=kill-switch&amp;viewport=mobile">Otevřít na mobilu</a>
+  </section>
+
+  <section class="panel" aria-labelledby="review-title">
+    <h2 id="review-title">Stránka kontroly</h2>
+    <p>Stejné řádky po polích jako v chatu: původní → nová hodnota, ✓ ✕ ✎, „Upraveno“ po uložení úpravy a ✓ Vše / ✕ Vše u každého dárku. Velký obrázek dárku, jména se nezkracují, na úzké šířce je dárek nad svými poli. Spodní lišta je orámovaná karta se Zamítnout vše, Přijmout vše a Použít, které nerozhodnuté volby orámuje červeně. Jen návrh, změna rozhraní přijde s implementací #478.</p>
+    <a class="open" href="../agent-change-review/refined.html">Otevřít návrh stránky kontroly</a>
+  </section>
+
+  <section class="panel scenarios" aria-labelledby="scenario-title">
+    <h2 id="scenario-title">Scénáře</h2>
+    <div class="table-wrap">
+    <table>
+      <thead><tr><th scope="col">Scénář</th><th scope="col">Odkazy</th></tr></thead>
+      <tbody id="scenario-rows"></tbody>
+    </table>
+    </div>
+  </section>
+
+  <section class="panel" aria-labelledby="answers-title">
+    <h2 id="answers-title">Odpovědi vlastníka a předpoklady</h2>
+    <ul class="answers">
+      <li><span class="label label-confirmed">Potvrzeno</span> Hodnocení produktu jde do popisu.</li>
+      <li><span class="label label-confirmed">Potvrzeno</span> Mimo allowlist se vstup do asistenta vůbec nezobrazí.</li>
+      <li><span class="label label-confirmed">Potvrzeno</span> Bez kontroly platí jen pro jednu konverzaci.</li>
+      <li><span class="label label-confirmed">Potvrzeno</span> Pruh Čekající změny má jeden řádek na návrh i se zdrojem.</li>
+      <li><span class="label label-confirmed">Potvrzeno</span> Na sdíleném seznamu vylepšení jen doplní popis.</li>
+      <li><span class="label label-confirmed">Potvrzeno</span> Změnu pořadí asistent použije bez potvrzení, i když je kontrola zapnutá; jde vrátit do původního pořadí, pokud se mezitím nezměnilo.</li>
+      <li><span class="label label-confirmed">Potvrzeno</span> Asistent má přesně práva obdarovaného: odmítne nebo varuje stejnou zprávou jako aplikace a nikdy nenaznačí rezervace.</li>
+      <li><span class="label label-confirmed">Potvrzeno</span> Použít z chatu i Bez kontroly mění seznam hned, na vlastní riziko; stránka kontroly je volitelná. Smazání, rezervace a pozvánky správců vždy potvrdíte, i se zapnutým Bez kontroly.</li>
+      <li><span class="label label-confirmed">Potvrzeno</span> Klepnutí na „Smazat 1 dárek“ v chatu je to potvrzení; Vrátit vrací rozhodnutí na výběr Smazat / Ponechat.</li>
+      <li><span class="label label-confirmed">Potvrzeno</span> Změny se počítají po dárcích.</li>
+      <li><span class="label label-confirmed">Potvrzeno</span> Uložená úprava hodnotu přijme („Upraveno“); zamítnutí úpravu zahodí.</li>
+      <li><span class="label label-confirmed">Potvrzeno</span> Nerozhodnuté změny se nepoužijí: úpravy polí začínají přijaté, mazání nerozhodnuté a dokud něco zbývá, Použít je blokované.</li>
+      <li><span class="label label-confirmed">Potvrzeno</span> Přijmout vše a Zamítnout vše u každého dárku i pro celý návrh.</li>
+      <li><span class="label label-confirmed">Potvrzeno</span> Hlavička panelu má dva řádky; přepínač Bez kontroly je na mobilu nahoře, ne pod polem pro zprávu.</li>
+      <li><span class="label label-confirmed">Potvrzeno</span> Čekající návrhy jde použít i při globálně vypnutém asistentovi.</li>
+      <li><span class="label label-confirmed">Potvrzeno</span> Spodní část panelu je lišta, vstup je plovoucí ikona vpravo dole: na desktopu s popiskem při najetí a u otevřeného panelu ho zavírá, na mobilu vždy jen ikona.</li>
+      <li><span class="label label-confirmed">Potvrzeno</span> Stránka kontroly používá stejné přijmout, zamítnout a upravit po polích jako chat.</li>
+      <li><span class="label label-assumption">Předpoklad</span> Návrh s více než 5 dárky se kontroluje na stránce kontroly, ne v panelu.</li>
+      <li><span class="label label-assumption">Předpoklad</span> Nerozhodnuté začínají mazání, rezervace a pozvánky správců.</li>
+      <li><span class="label label-assumption">Předpoklad</span> Přijmout vše nikdy nerozhodne mazání, rezervace ani pozvánky.</li>
+      <li><span class="label label-assumption">Předpoklad</span> Desktop má také dvouřádkovou hlavičku.</li>
+    </ul>
+  </section>
+
+  <section class="panel" aria-labelledby="origin-title">
+    <h2 id="origin-title">Původní varianty</h2>
+    <p>Pro srovnání: <a href="./variants/variant-a.html">A · Konverzace v panelu</a> (vybraná), <a href="./variants/variant-b.html">B · Úkoly a kontrola v panelu</a>, <a href="./variants/variant-c.html">C · Dílna dárku s náhledem</a> (zdroj rozhodování po polích a náhledu v seznamu).</p>
+  </section>
+</main>
+<script>
+const scenarios = [
+  ['chat', 'Prázdný chat'], ['enrich', 'Vylepšit dárek'], ['create', 'Dárky z odkazů a textu'],
+  ['bulk', 'Hromadná úprava'], ['big-batch', 'Velký návrh'], ['streaming', 'Asistent pracuje'],
+  ['handoff', 'Stránka kontroly'], ['fast-forward', 'Bez kontroly'], ['history', 'Historie 30 dní'],
+  ['not-allowlisted', 'Bez přístupu'], ['daily-cap', 'Denní limit'], ['kill-switch', 'Vypnuto globálně'],
+  ['provider-error', 'Chyba poskytovatele'], ['demo', 'Ukázka s předpřipravenými akcemi'],
+];
+const rows = document.getElementById('scenario-rows');
+for (const [id, label] of scenarios) {
+  const row = rows.insertRow();
+  const head = document.createElement('th');
+  head.scope = 'row';
+  head.textContent = label;
+  row.append(head);
+  const links = row.insertCell();
+  const targets = [['desktop', 'manager', 'Desktop'], ['mobile', 'manager', 'Mobil'], ['desktop', 'recipient', 'Obdarovaná']];
+  for (const [viewport, role, text] of targets) {
+    const link = document.createElement('a');
+    link.href = `./refined.html?scenario=${id}&viewport=${viewport}&role=${role}`;
+    link.textContent = text;
+    links.append(link);
+  }
+}
+function scalePreviews() {
+  for (const preview of document.querySelectorAll('.preview')) {
+    const frame = preview.querySelector('iframe');
+    frame.style.transform = `scale(${preview.clientWidth / frame.offsetWidth})`;
+  }
+}
+new ResizeObserver(scalePreviews).observe(document.body);
+</script>
+</body>
+</html>

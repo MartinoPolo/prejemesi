@@ -48,6 +48,8 @@ function makeGift(overrides: Partial<GiftByRole> = {}): GiftByRole {
 		priorityLevelId: null,
 		priorityLabel: null,
 		prioritySortOrder: null,
+		categoryIds: [],
+		categories: [],
 		...overrides,
 	};
 }
@@ -74,6 +76,17 @@ const categoryOptions: ManagedGiftCategory[] = [
 	},
 ];
 
+function namedCategories(labels: readonly string[]): ManagedGiftCategory[] {
+	return labels.map((label, index) => ({
+		id: `category-${label.toLowerCase()}`,
+		presetKey: null,
+		customLabel: label,
+		color: '#2563EB',
+		sortOrder: index,
+		usedCount: 0,
+	}));
+}
+
 describe('GiftDetailForm categories', () => {
 	it('renders category selection in create mode and submits the chosen category', async () => {
 		const oncreate = vi.fn();
@@ -88,10 +101,11 @@ describe('GiftDetailForm categories', () => {
 		await screen.getByRole('textbox', { name: m.gift_name_label() }).fill('New book');
 		await screen.getByRole('button', { name: m.gift_category_none() }).click();
 		await screen.getByRole('option', { name: 'Books' }).click();
+		await userEvent.keyboard('{Escape}');
 		await screen.getByRole('button', { name: m.gift_add_title() }).first().click();
 
 		expect(oncreate).toHaveBeenCalledWith(
-			expect.objectContaining({ categoryId: 'category-books' }),
+			expect.objectContaining({ categoryIds: ['category-books'] }),
 		);
 	});
 
@@ -143,7 +157,7 @@ describe('GiftDetailForm categories', () => {
 		trigger.element().scrollIntoView({ block: 'center' });
 		await trigger.click();
 		const viewport = document.querySelector<HTMLElement>('[data-select-viewport]')!;
-		expect(screen.getByRole('option').all()).toHaveLength(31);
+		expect(screen.getByRole('option').all()).toHaveLength(30);
 		await vi.waitFor(() => {
 			expect(viewport.clientHeight).toBeGreaterThan(0);
 			expect(Number.isFinite(viewport.clientHeight)).toBe(true);
@@ -164,24 +178,94 @@ describe('GiftDetailForm categories', () => {
 			expectPixelsAtMost(optionRect.bottom, viewportRect.bottom);
 		});
 		await userEvent.keyboard('{Enter}');
-		await expect.element(screen.getByRole('button', { name: 'Category 30' })).toBeVisible();
+		await expect
+			.element(screen.getByTestId('gift-category-select'))
+			.toHaveTextContent('Category 30');
 		overflowStyle.remove();
 	});
 
-	it('preselects an edit gift category and submits null when it is cleared', async () => {
+	it('preselects an edit gift category and submits no categories when it is removed', async () => {
 		const onupdate = vi.fn();
 		const screen = await render(GiftDetailForm, {
 			...baseProps,
-			gift: makeGift({ categoryId: 'category-books' }),
+			gift: makeGift({ categoryIds: ['category-books'] }),
 			categoryOptions,
 			onupdate,
 		});
 
-		await screen.getByRole('button', { name: 'Books' }).click();
-		await screen.getByRole('option', { name: m.gift_category_none() }).click();
+		await expect.element(screen.getByTestId('gift-category-select')).toHaveTextContent('Books');
+		await screen
+			.getByRole('button', { name: m.gift_category_chip_remove_label({ category: 'Books' }) })
+			.click();
+		await expect
+			.element(screen.getByTestId('gift-category-select'))
+			.toHaveTextContent(m.gift_category_none());
+		await expect.element(screen.getByTestId('gift-category-select')).toHaveFocus();
 		await screen.getByRole('button', { name: m.save() }).first().click();
 
-		expect(onupdate).toHaveBeenCalledWith(expect.objectContaining({ categoryId: null }));
+		expect(onupdate).toHaveBeenCalledWith(expect.objectContaining({ categoryIds: [] }));
+	});
+
+	it('keeps several categories in the chosen order and lets a later one become the primary', async () => {
+		const oncreate = vi.fn();
+		const screen = await render(GiftDetailForm, {
+			...baseProps,
+			mode: 'create' as const,
+			gift: null,
+			categoryOptions: namedCategories(['Books', 'Games', 'Toys']),
+			oncreate,
+		});
+
+		await screen.getByRole('textbox', { name: m.gift_name_label() }).fill('Bundle');
+		await screen.getByTestId('gift-category-select').click();
+		await screen.getByRole('option', { name: 'Toys' }).click();
+		await screen.getByRole('option', { name: 'Books' }).click();
+		await userEvent.keyboard('{Escape}');
+
+		const chips = screen.getByTestId('gift-category-chips');
+		await expect.element(chips).toHaveTextContent(/Toys.*Books/);
+		await expect.element(screen.getByText(m.gift_categories_primary_help())).toBeVisible();
+
+		await screen
+			.getByRole('button', {
+				name: m.gift_category_chip_promote_label({ category: 'Books' }),
+			})
+			.click();
+		await expect.element(chips).toHaveTextContent(/Books.*Toys/);
+		await expect
+			.element(
+				screen.getByRole('button', {
+					name: m.gift_category_chip_remove_label({ category: 'Books' }),
+				}),
+			)
+			.toHaveFocus();
+		await screen.getByRole('button', { name: m.gift_add_title() }).first().click();
+
+		expect(oncreate).toHaveBeenCalledWith(
+			expect.objectContaining({ categoryIds: ['category-books', 'category-toys'] }),
+		);
+	});
+
+	it('disables further categories once a gift has five', async () => {
+		const labels = ['One', 'Two', 'Three', 'Four', 'Five', 'Six'];
+		const screen = await render(GiftDetailForm, {
+			...baseProps,
+			gift: makeGift({
+				categoryIds: labels.slice(0, 5).map((label) => `category-${label.toLowerCase()}`),
+			}),
+			categoryOptions: namedCategories(labels),
+		});
+
+		await expect
+			.element(screen.getByText(m.gift_categories_limit_help({ count: 5 })))
+			.toBeVisible();
+		await screen.getByTestId('gift-category-select').click();
+		await expect
+			.element(screen.getByRole('option', { name: 'Six' }))
+			.toHaveAttribute('aria-disabled', 'true');
+		await expect
+			.element(screen.getByRole('option', { name: 'One' }))
+			.not.toHaveAttribute('aria-disabled', 'true');
 	});
 
 	it('renders a disabled empty state with settings guidance', async () => {

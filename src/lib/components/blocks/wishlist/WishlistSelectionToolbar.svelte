@@ -8,6 +8,7 @@
 	import CopyIcon from '@lucide/svelte/icons/copy';
 	import CheckIcon from '@lucide/svelte/icons/check';
 	import PaintBucketIcon from '@lucide/svelte/icons/paint-bucket';
+	import PlusIcon from '@lucide/svelte/icons/plus';
 	import ScalingIcon from '@lucide/svelte/icons/scaling';
 	import { Checkbox } from '$lib/components/base/checkbox/index.js';
 	import { Badge } from '$lib/components/base/badge/index.js';
@@ -15,6 +16,7 @@
 	import * as RadioGroup from '$lib/components/base/radio-group/index.js';
 	import * as DropdownMenu from '$lib/components/base/dropdown-menu/index.js';
 	import * as Sheet from '$lib/components/base/sheet/index.js';
+	import { Separator } from '$lib/components/base/separator/index.js';
 	import GiftContextActionIcon from './GiftContextActionIcon.svelte';
 	import WishlistBottomSheet from './WishlistBottomSheet.svelte';
 	import WishlistSheetAction from './WishlistSheetAction.svelte';
@@ -26,6 +28,10 @@
 		GiftBulkAction,
 		PendingGiftBulkActionDescriptor,
 	} from '$lib/modules/gifts/gift_bulk_update.js';
+	import type {
+		GiftCategoryCheckState,
+		GiftCategoryChoice,
+	} from '$lib/modules/gift-categories/gift_category_assignment.js';
 
 	interface Choice {
 		id: string;
@@ -41,13 +47,20 @@
 		priorityLevels: Choice[];
 		categories: Choice[];
 		commonPriorityId: string | null | undefined;
-		commonCategoryId: string | null | undefined;
+		/** Each category's state across the selection; a missing category is on none of them. */
+		categoryChoices: {
+			categories: ReadonlyMap<string, GiftCategoryChoice>;
+			uncategorized: GiftCategoryCheckState;
+		};
 		commonImageFit?: 'fill' | 'fit' | undefined;
 		commonImageBackground: string | null | undefined;
 		commonReceived?: boolean | undefined;
 		onselectvisible: (checked: boolean) => void;
 		onpriority: (id: string | null) => void;
-		oncategory: (id: string | null) => void;
+		/** Adds (`checked`) or removes one category on the selection; `null` removes every category. */
+		oncategory: (id: string | null, checked: boolean) => void;
+		/** Present only when the viewer may manage the wishlist's categories. */
+		oncreatecategory?: () => void;
 		onaction: (action: GiftBulkAction) => void;
 		oncopy?: (returnToActions?: () => void) => void;
 		ondone: () => void;
@@ -62,13 +75,14 @@
 		priorityLevels,
 		categories,
 		commonPriorityId,
-		commonCategoryId,
+		categoryChoices,
 		commonImageFit = undefined,
 		commonImageBackground,
 		commonReceived = undefined,
 		onselectvisible,
 		onpriority,
 		oncategory,
+		oncreatecategory,
 		onaction,
 		oncopy = () => undefined,
 		ondone,
@@ -85,14 +99,31 @@
 				: (priorityLevels.find((x) => x.id === commonPriorityId)?.label ??
 					m.gift_priority_none()),
 	);
-	const categorySummary = $derived(
-		commonCategoryId === undefined
-			? m.gift_selection_mixed()
-			: commonCategoryId === null
-				? m.gift_category_uncategorized()
-				: (categories.find((x) => x.id === commonCategoryId)?.label ??
-					m.gift_category_uncategorized()),
-	);
+	function categoryState(id: string): GiftCategoryCheckState {
+		return categoryChoices.categories.get(id)?.state ?? false;
+	}
+	/**
+	 * Category checkboxes only show the selection's state; a toggle requests a change and the
+	 * box follows once the gifts update, so re-choosing "Bez kategorie" never unticks it.
+	 */
+	function ignoreCheckboxToggle() {}
+	function categoryDisabled(id: string): boolean {
+		const choice = categoryChoices.categories.get(id);
+		return choice?.state === false && choice.addable === false;
+	}
+	const categorySummary = $derived.by(() => {
+		if (categoryChoices.uncategorized === true) {
+			return m.gift_category_uncategorized();
+		}
+		const states = categories.map((category) => categoryState(category.id));
+		if (categoryChoices.uncategorized !== false || states.includes('indeterminate')) {
+			return m.gift_selection_mixed();
+		}
+		return categories
+			.filter((category) => categoryState(category.id) === true)
+			.map((category) => category.label)
+			.join(', ');
+	});
 	const imageFitSummary = $derived(
 		commonImageFit === undefined
 			? m.gift_selection_mixed()
@@ -177,7 +208,7 @@
 						: destination?.kind === 'radio'
 							? Array.from(
 									mobileOptionsContainer?.querySelectorAll<HTMLButtonElement>(
-										'[role="radio"]',
+										'[role="radio"], [role="checkbox"]',
 									) ?? [],
 								).find((choice) => choice.id === destination.choiceId)
 							: destination?.target;
@@ -269,6 +300,26 @@
 		onchange();
 	}
 
+	function handleBulkCategoryToggle(id: string | null, checked: boolean) {
+		pendingFocusDestination = { kind: 'radio', choiceId: `bulk-category-${id ?? 'none'}` };
+		pendingFocusAction = mobileActiveAction;
+		pendingFocusCycleObserved = false;
+		oncategory(id, checked);
+	}
+
+	function handleCreateCategory() {
+		if (oncreatecategory === undefined) {
+			return;
+		}
+		if (mobileBulkSheetOpen) {
+			mobileBulkSheetOpen = false;
+			mobileActiveAction = null;
+			requestAnimationFrame(() => oncreatecategory());
+			return;
+		}
+		oncreatecategory();
+	}
+
 	function handleCopy() {
 		if (mobileBulkSheetOpen) {
 			mobileInvokingAction = 'copy';
@@ -300,22 +351,30 @@
 				disabled={disabled || !priorityReady}>{choice.label}</DropdownMenu.RadioItem
 			>{/each}</DropdownMenu.RadioGroup
 	>{/snippet}
-{#snippet categoryItems()}{#if commonCategoryId === undefined}<DropdownMenu.Label
-			>{m.gift_selection_mixed()}</DropdownMenu.Label
-		>{/if}<DropdownMenu.RadioGroup
-		value={commonCategoryId === undefined ? MIXED_RADIO_VALUE : (commonCategoryId ?? '')}
-		onValueChange={(id) => oncategory(id === '' ? null : id)}
-		><DropdownMenu.RadioItem
+{#snippet categoryItems()}<DropdownMenu.CheckboxItem
+		closeOnSelect={false}
+		bind:checked={() => categoryChoices.uncategorized === true, ignoreCheckboxToggle}
+		bind:indeterminate={
+			() => categoryChoices.uncategorized === 'indeterminate', ignoreCheckboxToggle
+		}
+		disabled={disabled || !categoryReady}
+		onCheckedChange={() => oncategory(null, true)}
+		>{m.gift_category_uncategorized()}</DropdownMenu.CheckboxItem
+	>{#each categories as choice (choice.id)}<DropdownMenu.CheckboxItem
 			closeOnSelect={false}
-			value=""
+			bind:checked={() => categoryState(choice.id) === true, ignoreCheckboxToggle}
+			bind:indeterminate={
+				() => categoryState(choice.id) === 'indeterminate', ignoreCheckboxToggle
+			}
+			disabled={disabled || !categoryReady || categoryDisabled(choice.id)}
+			onCheckedChange={(checked) => oncategory(choice.id, checked)}
+			>{choice.label}</DropdownMenu.CheckboxItem
+		>{/each}{#if oncreatecategory !== undefined}<DropdownMenu.Separator /><DropdownMenu.Item
+			data-testid="selection-category-create"
 			disabled={disabled || !categoryReady}
-			>{m.gift_category_uncategorized()}</DropdownMenu.RadioItem
-		>{#each categories as choice (choice.id)}<DropdownMenu.RadioItem
-				closeOnSelect={false}
-				value={choice.id}
-				disabled={disabled || !categoryReady}>{choice.label}</DropdownMenu.RadioItem
-			>{/each}</DropdownMenu.RadioGroup
-	>{/snippet}
+			onSelect={handleCreateCategory}
+			><PlusIcon />{m.gift_category_create()}</DropdownMenu.Item
+		>{/if}{/snippet}
 {#snippet imageFitItems()}{#if commonImageFit === undefined}<DropdownMenu.Label
 			>{m.gift_selection_mixed()}</DropdownMenu.Label
 		>{/if}<DropdownMenu.RadioGroup
@@ -385,6 +444,24 @@
 {#snippet bulkRadioChoice(group: string, value: string, label: string, optionDisabled: boolean)}
 	<WishlistSheetChoice for={`${group}-${value || 'none'}`} disabledStyle={optionDisabled}>
 		<RadioGroup.Item id={`${group}-${value || 'none'}`} {value} disabled={optionDisabled} />
+		<span>{label}</span>
+	</WishlistSheetChoice>
+{/snippet}
+
+{#snippet bulkCategoryChoice(
+	id: string | null,
+	label: string,
+	state: GiftCategoryCheckState,
+	optionDisabled: boolean,
+)}
+	<WishlistSheetChoice for={`bulk-category-${id ?? 'none'}`} disabledStyle={optionDisabled}>
+		<Checkbox
+			id={`bulk-category-${id ?? 'none'}`}
+			bind:checked={() => state === true, ignoreCheckboxToggle}
+			bind:indeterminate={() => state === 'indeterminate', ignoreCheckboxToggle}
+			disabled={optionDisabled}
+			onCheckedChange={(checked) => handleBulkCategoryToggle(id, id === null || checked)}
+		/>
 		<span>{label}</span>
 	</WishlistSheetChoice>
 {/snippet}
@@ -474,36 +551,35 @@
 				{/each}
 			</RadioGroup.Root>
 		{:else if mobileActiveAction === 'category'}
-			<RadioGroup.Root
-				value={commonCategoryId === undefined
-					? MIXED_RADIO_VALUE
-					: (commonCategoryId ?? '')}
-				aria-label={m.gift_context_category()}
-				class="gap-0"
-				disabled={disabled || !categoryReady}
-				onValueChange={(id) =>
-					handleBulkRadioChange('bulk-category', id, () =>
-						oncategory(id === '' ? null : id),
-					)}
-			>
-				{#if commonCategoryId === undefined}<p class="bulk-sheet-mixed">
-						{m.gift_selection_mixed()}
-					</p>{/if}
-				{@render bulkRadioChoice(
-					'bulk-category',
-					'',
+			<div role="group" aria-label={m.gift_context_category()} class="flex flex-col">
+				{@render bulkCategoryChoice(
+					null,
 					m.gift_category_uncategorized(),
+					categoryChoices.uncategorized,
 					disabled || !categoryReady,
 				)}
 				{#each categories as choice (choice.id)}
-					{@render bulkRadioChoice(
-						'bulk-category',
+					{@render bulkCategoryChoice(
 						choice.id,
 						choice.label,
-						disabled || !categoryReady,
+						categoryState(choice.id),
+						disabled || !categoryReady || categoryDisabled(choice.id),
 					)}
 				{/each}
-			</RadioGroup.Root>
+			</div>
+			{#if oncreatecategory !== undefined}
+				<Separator class="my-1" />
+				<WishlistSheetAction
+					data-testid="selection-category-create"
+					disabled={disabled || !categoryReady}
+					onclick={handleCreateCategory}
+				>
+					<PlusIcon
+						class="size-5 shrink-0"
+						aria-hidden="true"
+					/>{m.gift_category_create()}
+				</WishlistSheetAction>
+			{/if}
 		{:else if mobileActiveAction === 'imageFit'}
 			<RadioGroup.Root
 				value={commonImageFit ?? MIXED_RADIO_VALUE}

@@ -16,6 +16,7 @@
 	import { Separator } from '$lib/components/base/separator/index.js';
 	import RecipientPreview from './RecipientPreview.svelte';
 	import WishlistPalettePicker from './WishlistPalettePicker.svelte';
+	import WishlistKindField from './WishlistKindField.svelte';
 	import LoaderIcon from '@lucide/svelte/icons/loader';
 	import FileUpIcon from '@lucide/svelte/icons/file-up';
 	import SlidersHorizontalIcon from '@lucide/svelte/icons/sliders-horizontal';
@@ -23,18 +24,29 @@
 	import {
 		RECIPIENT_KIND,
 		RECIPIENT_NAME_MAX_LENGTH,
+		WISHLIST_KIND,
 		WISHLIST_TITLE_MAX_LENGTH,
+		type WishlistKind,
 	} from '$lib/modules/wishlists/types.js';
 	import { DEFAULT_PALETTE, type Palette } from '$lib/theme/palettes.js';
 	import type { Attachment } from 'svelte/attachments';
 
+	export type CreatedWishlist = Awaited<ReturnType<typeof createWishlist>>;
+
 	interface CreateWishlistModalProps {
 		open: boolean;
 		onimport?: () => void;
+		/** Replaces the default navigation to the new wishlist. */
+		oncreated?: (created: CreatedWishlist) => void;
 		demo?: boolean;
 	}
 
-	let { open = $bindable(false), onimport, demo = false }: CreateWishlistModalProps = $props();
+	let {
+		open = $bindable(false),
+		onimport,
+		oncreated,
+		demo = false,
+	}: CreateWishlistModalProps = $props();
 
 	// Typed as string (not RecipientKind) because ToggleGroup's single-select
 	// value binding is `string`; comparisons against RECIPIENT_KIND narrow it.
@@ -53,6 +65,7 @@
 	let selectedRecipientKind = $derived(recipientKind);
 	let recipientName = $state('');
 	let title = $state('');
+	let wishlistKind = $state<WishlistKind>(WISHLIST_KIND.occasion);
 	let eventDate = $state<Date | null>(null);
 	let isSubmitting = $state(false);
 	// Server/submit-level error (network or createWishlist failure). Field-level
@@ -60,7 +73,8 @@
 	let errorMessage = $state('');
 	// Optional metadata behind the "Další nastavení" accordion (issue #112).
 	let description = $state('');
-	let palette = $state<Palette>(DEFAULT_PALETTE);
+	// Null until the user picks one, so the server can default an occasion theme's palette.
+	let palette = $state<Palette | null>(null);
 	// Track whether the user has interacted with each required field so validation
 	// only surfaces after a submit attempt or after the user edits then clears the
 	// field — never on a freshly opened dialog.
@@ -89,9 +103,10 @@
 		recipientKind = RECIPIENT_KIND.self;
 		recipientName = '';
 		title = '';
+		wishlistKind = WISHLIST_KIND.occasion;
 		eventDate = null;
 		description = '';
-		palette = DEFAULT_PALETTE;
+		palette = null;
 		errorMessage = '';
 		isSubmitting = false;
 		titleTouched = false;
@@ -120,6 +135,12 @@
 		}
 
 		isSubmitting = true;
+		// A permanent wishlist has no event date; a date picked before switching kinds is dropped.
+		const kindFields =
+			wishlistKind === WISHLIST_KIND.permanent
+				? { kind: WISHLIST_KIND.permanent }
+				: { kind: WISHLIST_KIND.occasion, eventDate };
+		const paletteField = palette === null ? {} : { palette };
 
 		try {
 			const created = await createWishlist(
@@ -128,15 +149,15 @@
 							recipientKind: RECIPIENT_KIND.other,
 							recipientName: trimmedRecipientName,
 							title: trimmedTitle,
-							eventDate,
-							palette,
+							...kindFields,
+							...paletteField,
 							description: description.trim() || null,
 						}
 					: {
 							recipientKind: RECIPIENT_KIND.self,
 							title: trimmedTitle,
-							eventDate,
-							palette,
+							...kindFields,
+							...paletteField,
 							description: description.trim() || null,
 						},
 			);
@@ -145,6 +166,10 @@
 			// surfaces (pages, nav dropdowns) re-fetch when they are next opened (issue #108).
 			open = false;
 			resetForm();
+			if (oncreated !== undefined) {
+				oncreated(created);
+				return;
+			}
 			await goto(localizeInternalHref(resolve('/(app)/w/[id]', { id: created.shortId })));
 		} catch (error) {
 			errorMessage = error instanceof Error ? error.message : m.wishlist_create_error();
@@ -245,20 +270,31 @@
 					{/snippet}
 				</Field>
 
-				<div class="flex flex-col gap-2">
-					<Label id="wishlist-event-date-label">{m.wishlist_event_date_label()}</Label>
-					<DatePicker
-						id="wishlist-event-date"
-						ariaLabelledby="wishlist-event-date-label"
-						ariaDescribedby="wishlist-event-date-helper"
-						size="lg"
-						bind:value={eventDate}
-						disabled={isSubmitting}
-					/>
-					<HelpText id="wishlist-event-date-helper"
-						>{m.wishlist_event_date_helper()}</HelpText
-					>
-				</div>
+				<WishlistKindField
+					id="wishlist-create-kind"
+					size="lg"
+					value={wishlistKind}
+					onvaluechange={(kind) => (wishlistKind = kind)}
+					disabled={isSubmitting}
+				/>
+
+				{#if wishlistKind === WISHLIST_KIND.occasion}
+					<div class="flex flex-col gap-2">
+						<Label id="wishlist-event-date-label">{m.wishlist_event_date_label()}</Label
+						>
+						<DatePicker
+							id="wishlist-event-date"
+							ariaLabelledby="wishlist-event-date-label"
+							ariaDescribedby="wishlist-event-date-helper"
+							size="lg"
+							bind:value={eventDate}
+							disabled={isSubmitting}
+						/>
+						<HelpText id="wishlist-event-date-helper"
+							>{m.wishlist_event_date_helper()}</HelpText
+						>
+					</div>
+				{/if}
 
 				<!-- Optional metadata (issue #112): collapsed by default so the create flow stays
 			     one field + title; power users can name a description and pick a palette upfront.
@@ -302,7 +338,7 @@
 										aria-labelledby="wishlist-create-palette-label"
 									>
 										<WishlistPalettePicker
-											value={palette}
+											value={palette ?? DEFAULT_PALETTE}
 											onchange={(nextPalette) => (palette = nextPalette)}
 											disabled={isSubmitting}
 										/>
@@ -314,7 +350,7 @@
 				</Accordion.Root>
 
 				{#if errorMessage !== ''}
-					<p class="text-destructive text-sm">{errorMessage}</p>
+					<p class="text-status-danger-text text-sm">{errorMessage}</p>
 				{/if}
 
 				{#if demo}<p class="text-sm text-muted-foreground">{m.demo_import_limits()}</p>{/if}

@@ -23,10 +23,11 @@
 	import RotateCcwIcon from '@lucide/svelte/icons/rotate-ccw';
 	import XIcon from '@lucide/svelte/icons/x';
 	import WishlistCropEditor from './WishlistCropEditor.svelte';
-	import WishlistPaletteAutoSave from './WishlistPaletteAutoSave.svelte';
+	import WishlistAppearanceEditor from './WishlistAppearanceEditor.svelte';
 	import WishlistCategorySettings from './WishlistCategorySettings.svelte';
 	import WishlistSettingsSaveButton from './WishlistSettingsSaveButton.svelte';
 	import RecipientPreview from './RecipientPreview.svelte';
+	import WishlistKindField from './WishlistKindField.svelte';
 	import {
 		WISHLIST_SETTINGS_TABS,
 		type WishlistSettingsTab,
@@ -36,24 +37,27 @@
 	import type { SaveWishlistSettingsInput } from '$lib/modules/wishlists/wishlist_settings_types.js';
 	import { revertWishlistToDraft } from '$lib/modules/sharing/sharing.remote.js';
 	import { graceWindowExpiresAt } from '$lib/modules/sharing/grace_window.js';
+	import { hasUpcomingEventDate } from '$lib/modules/wishlists/event_date.js';
 	import {
 		getServerErrorCode,
 		translateServerError,
 	} from '$lib/modules/errors/translate_server_error.js';
 	import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
-	import { getGiftCategorySettingsRows } from '$lib/modules/gift-categories/gift_category_queries.remote.js';
+	import { getGiftCategories } from '$lib/modules/gift-categories/gift_category_queries.remote.js';
 	import {
 		REVERT_CAPABILITY,
 		type RevertCapability,
 	} from '$lib/modules/wishlists/wishlist_capabilities.js';
 	import {
 		RECIPIENT_NAME_MAX_LENGTH,
+		WISHLIST_KIND,
 		WISHLIST_TITLE_MAX_LENGTH,
 		WISHLIST_ROLES,
 		type Wishlist,
 		type WishlistRole,
 	} from '$lib/modules/wishlists/types.js';
 	import type { Palette } from '$lib/theme/palettes.js';
+	import type { WishlistAppearancePreview } from './wishlist_theme_scope.js';
 	import {
 		overlayCloseButtonClass,
 		overlayCloseButtonSurfaceClass,
@@ -79,6 +83,8 @@
 		onsaved: () => Promise<void>;
 		/** Optimistic palette update so the page's data-palette subtree re-themes instantly. */
 		onpaletteselect?: (palette: Palette) => void;
+		/** Live appearance preview on the page (#535); null drops it after a discard or save. */
+		onappearancepreview?: (appearance: WishlistAppearancePreview | null) => void;
 		/** Fires after a successful delete so the page can navigate away + refresh dashboards. */
 		ondeleted?: () => void;
 		/** Awaited page refresh after a successful revert-to-draft (issue #150). */
@@ -111,6 +117,7 @@
 		themeEmoji,
 		onsaved,
 		onpaletteselect,
+		onappearancepreview,
 		ondeleted,
 		onreverted,
 		onimport,
@@ -130,15 +137,27 @@
 	const isFreeTextRecipient = $derived(wishlist.recipientUserId === null);
 	const canFlipRecipient = $derived(role === WISHLIST_ROLES.recipient);
 
+	// Wishlist kind (issue #479): permanent → occasion is allowed any time, occasion → permanent
+	// only while the stored event date is not upcoming. A permanent wishlist has no event date.
+	const isStoredPermanent = $derived(wishlist.kind === WISHLIST_KIND.permanent);
+	const permanentKindUnavailable = $derived(
+		!isStoredPermanent && hasUpcomingEventDate(wishlist.eventDate),
+	);
+
 	// Event-date grace window (issue #83): after sharing, the event date stays editable for a
 	// debounced 2-min window before it locks. `eventDateEditedAt` drives the debounce, falling back
 	// to `sharedAt` until the first in-window edit. The countdown re-locks the field live at zero.
+	// A permanent wishlist never had a date gifters relied on, so turning it into an occasion
+	// leaves the date open (the server opens a fresh window).
 	let eventDateClockNow = $state(new Date());
 	const eventDateGraceExpiresAt = $derived(
-		isShared ? graceWindowExpiresAt(wishlist.eventDateEditedAt ?? wishlist.sharedAt) : null,
+		isShared && !isStoredPermanent
+			? graceWindowExpiresAt(wishlist.eventDateEditedAt ?? wishlist.sharedAt)
+			: null,
 	);
 	const eventDateEditable = $derived(
 		!isShared ||
+			isStoredPermanent ||
 			(eventDateGraceExpiresAt !== null &&
 				eventDateClockNow.getTime() < eventDateGraceExpiresAt.getTime()),
 	);
@@ -157,13 +176,19 @@
 		return () => clearInterval(id);
 	});
 
-	// One-time seed; handleOpenChange re-seeds on close so the next open starts fresh.
+	// Drafts seed once per mount; the wishlist page remounts this modal per wishlist id, and the
+	// id check below keeps a draft seeded for one wishlist from ever saving onto another (#527).
+	// svelte-ignore state_referenced_locally (the draft belongs to the wishlist it was seeded from)
+	const draftWishlistId = wishlist.id;
+	const draftBelongsToWishlist = $derived(wishlist.id === draftWishlistId);
 	// svelte-ignore state_referenced_locally (intentional one-time seed; the form owns its edit state)
 	let detailsTitle = $state(wishlist.title);
 	// svelte-ignore state_referenced_locally (intentional one-time seed; the form owns its edit state)
 	let detailsDescription = $state(wishlist.description ?? '');
 	// svelte-ignore state_referenced_locally (intentional one-time seed; the form owns its edit state)
 	let detailsEventDate = $state(toEventDate(wishlist.eventDate));
+	// svelte-ignore state_referenced_locally (intentional one-time seed; the form owns its edit state)
+	let detailsKind = $state(wishlist.kind);
 	// Free-text recipient name (issue #150): an inline field saved alongside the details form.
 	// svelte-ignore state_referenced_locally (intentional one-time seed; the form owns its edit state)
 	let recipientNameDraft = $state(recipientDisplayName);
@@ -175,6 +200,8 @@
 	let paletteDirty = $state(false);
 	// svelte-ignore state_referenced_locally (one-time modal draft seed)
 	let paletteDraft = $state<Palette>(wishlist.palette);
+	let appearanceDirty = $state(false);
+	let appearanceDraft = $state.raw<SaveWishlistSettingsInput['appearance']>();
 	let categoryDraft = $state<SaveWishlistSettingsInput['categories']>();
 	let imageDraft = $state<SaveWishlistSettingsInput['image']>();
 	let commitVersion = $state(0);
@@ -211,12 +238,14 @@
 		const recipientChanged =
 			isFreeTextRecipient && recipientNameDraft.trim() !== recipientDisplayName.trim();
 		const eventDateChanged =
+			detailsKind === WISHLIST_KIND.occasion &&
 			eventDateEditable &&
 			dateTimestamp(detailsEventDate) !== dateTimestamp(toEventDate(wishlist.eventDate));
 		return (
 			detailsTitle.trim() !== wishlist.title.trim() ||
 			normalizedDescription !== normalizeOptionalText(wishlist.description) ||
 			recipientChanged ||
+			detailsKind !== wishlist.kind ||
 			eventDateChanged
 		);
 	});
@@ -226,22 +255,29 @@
 		detailsTitle = wishlist.title;
 		detailsDescription = wishlist.description ?? '';
 		detailsEventDate = toEventDate(wishlist.eventDate);
+		detailsKind = wishlist.kind;
 		recipientNameDraft = recipientDisplayName;
 		detailsError = '';
 		recipientError = '';
 	}
 
-	const anyDirty = $derived(detailsDirty || categoriesDirty || paletteDirty || imageDirty);
+	const anyDirty = $derived(
+		draftBelongsToWishlist &&
+			(detailsDirty || categoriesDirty || paletteDirty || appearanceDirty || imageDirty),
+	);
 
 	function discardDrafts() {
 		onpaletteselect?.(wishlist.palette);
+		onappearancepreview?.(null);
 		discardVersion += 1;
 		seedDetailsForm();
 		categoryDraft = undefined;
 		imageDraft = undefined;
+		appearanceDraft = undefined;
 		categoriesDirty = false;
 		imageDirty = false;
 		paletteDirty = false;
+		appearanceDirty = false;
 	}
 
 	function requestGuarded(action: () => void) {
@@ -305,7 +341,7 @@
 	});
 
 	async function saveAll(afterSave?: () => void): Promise<boolean> {
-		if (!anyDirty || saving) {
+		if (!anyDirty || saving || !draftBelongsToWishlist) {
 			return false;
 		}
 		const trimmedTitle = detailsTitle.trim();
@@ -333,7 +369,11 @@
 				input.details = {
 					title: trimmedTitle,
 					description: description === '' ? null : description,
-					...(eventDateEditable ? { eventDate: detailsEventDate } : {}),
+					...(detailsKind === wishlist.kind ? {} : { kind: detailsKind }),
+					// Becoming permanent clears the date on the server; a permanent list sends none.
+					...(detailsKind === WISHLIST_KIND.occasion && eventDateEditable
+						? { eventDate: detailsEventDate }
+						: {}),
 					...(isFreeTextRecipient && recipientNameDraft.trim() !== recipientDisplayName
 						? { recipientName: recipientNameDraft.trim() }
 						: {}),
@@ -345,6 +385,9 @@
 			if (paletteDirty) {
 				input.palette = paletteDraft;
 			}
+			if (appearanceDirty && appearanceDraft !== undefined) {
+				input.appearance = appearanceDraft;
+			}
 			if (imageDirty && imageDraft !== undefined) {
 				input.image = imageDraft;
 			}
@@ -352,6 +395,8 @@
 			commitVersion += 1;
 			await tick();
 			await onsaved();
+			// The refreshed page now renders the saved appearance itself.
+			onappearancepreview?.(null);
 			toastSuccess(m.toast_wishlist_details_saved());
 			afterSave?.();
 			return true;
@@ -362,7 +407,7 @@
 				SERVER_ERROR.GIFT_CATEGORY_REMOVAL_CONFIRMATION_MISMATCH
 			) {
 				try {
-					await getGiftCategorySettingsRows(wishlist.id).refresh();
+					await getGiftCategories(wishlist.id).refresh();
 				} catch (refreshError) {
 					console.error(
 						'Failed to refresh category settings after conflict:',
@@ -460,12 +505,12 @@
      admin-only view. -->
 {#snippet revertSection()}
 	{#if revertCapability !== REVERT_CAPABILITY.hidden}
-		<Card.Root class="border-destructive/30">
+		<Card.Root elevation="flat" class="border-destructive/30">
 			<Card.Header>
 				<div class="flex items-center gap-2">
-					<RotateCcwIcon class="size-5 text-destructive" />
+					<RotateCcwIcon class="size-5 text-status-danger-text" />
 					<div>
-						<Card.Title class="text-destructive">
+						<Card.Title class="text-status-danger-text">
 							{m.wishlist_settings_revert_title()}
 						</Card.Title>
 						<Card.Description>{m.wishlist_settings_revert_hint()}</Card.Description>
@@ -533,11 +578,11 @@
 		</Dialog.Header>
 
 		{#if canManage && !isArchived}
-			<div inert={saving ? true : undefined} class="h-14 shrink-0 px-6 pb-4">
+			<div inert={saving ? true : undefined} class="shrink-0 px-6 pb-4">
 				<Tabs.Root
 					aria-label={m.wishlist_settings_title()}
 					aria-orientation="horizontal"
-					class="flex h-10 min-h-10 w-full max-w-full flex-nowrap overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [&>[role=tab]]:shrink-0 [&>[role=tab]]:whitespace-nowrap lg:[&>[role=tab]]:flex-1 lg:[&>[role=tab]]:justify-center"
+					class="flex w-full max-w-full flex-nowrap overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [&>[role=tab]]:shrink-0 [&>[role=tab]]:whitespace-nowrap lg:[&>[role=tab]]:flex-1 lg:[&>[role=tab]]:justify-center"
 				>
 					<Tabs.Tab
 						id="wishlist-settings-tab-details"
@@ -643,7 +688,7 @@
 									{#if recipientError !== ''}
 										<p
 											id="wishlist-recipient-error"
-											class="text-sm text-destructive"
+											class="text-sm text-status-danger-text"
 										>
 											{recipientError}
 										</p>
@@ -709,26 +754,48 @@
 								/>
 							</div>
 
-							<div class="flex flex-col gap-2">
-								<Label id="wishlist-event-date-label"
-									>{m.wishlist_event_date_label()}</Label
-								>
-								<DatePicker
-									id="wishlist-event-date"
-									ariaLabelledby="wishlist-event-date-label"
-									bind:value={detailsEventDate}
-									disabled={saving || !eventDateEditable}
-								/>
-								{#if isShared && eventDateEditable && eventDateGraceExpiresAt !== null}
-									<GraceCountdown
-										expiresAt={eventDateGraceExpiresAt}
-										now={eventDateClockNow}
-										message={m.wishlist_event_date_grace_hint}
+							<WishlistKindField
+								id="wishlist-settings-kind"
+								value={detailsKind}
+								onvaluechange={(kind) => (detailsKind = kind)}
+								disabled={saving}
+								permanentUnavailable={permanentKindUnavailable}
+							>
+								{#snippet notice()}
+									{#if permanentKindUnavailable}
+										<HelpText
+											>{m.wishlist_kind_permanent_unavailable_hint()}</HelpText
+										>
+									{:else if isShared && isStoredPermanent && detailsKind === WISHLIST_KIND.occasion}
+										<HelpText
+											>{m.wishlist_kind_occasion_after_share_hint()}</HelpText
+										>
+									{/if}
+								{/snippet}
+							</WishlistKindField>
+
+							{#if detailsKind === WISHLIST_KIND.occasion}
+								<div class="flex flex-col gap-2">
+									<Label id="wishlist-event-date-label"
+										>{m.wishlist_event_date_label()}</Label
+									>
+									<DatePicker
+										id="wishlist-event-date"
+										ariaLabelledby="wishlist-event-date-label"
+										bind:value={detailsEventDate}
+										disabled={saving || !eventDateEditable}
 									/>
-								{:else if isShared}
-									<HelpText>{m.wishlist_event_date_locked_hint()}</HelpText>
-								{/if}
-							</div>
+									{#if isShared && eventDateEditable && eventDateGraceExpiresAt !== null}
+										<GraceCountdown
+											expiresAt={eventDateGraceExpiresAt}
+											now={eventDateClockNow}
+											message={m.wishlist_event_date_grace_hint}
+										/>
+									{:else if isShared && !eventDateEditable}
+										<HelpText>{m.wishlist_event_date_locked_hint()}</HelpText>
+									{/if}
+								</div>
+							{/if}
 						</form>
 					</div>
 				</div>
@@ -754,14 +821,14 @@
 							<Button
 								type="button"
 								intent="outline"
-								size="sm"
+								size="md"
 								onclick={handleImport}
 								disabled={wishlist.demoSessionId !== null}
 							>
 								<FileUpIcon data-icon="inline-start" />
 								{m.import_toolbar_label()}
 							</Button>
-							<Button type="button" intent="outline" size="sm" onclick={onexport}>
+							<Button type="button" intent="outline" size="md" onclick={onexport}>
 								<FileDownIcon data-icon="inline-start" />
 								{m.export_toolbar_label()}
 							</Button>
@@ -788,7 +855,8 @@
 					{/key}
 				</div>
 
-				<!-- Vzhled: palette picker contributes a draft to the global composite save. -->
+				<!-- Vzhled: theme, palette, background and style drafts for the global composite save,
+				     previewed live on the page behind the dialog. -->
 				<div
 					role="tabpanel"
 					id="wishlist-settings-panel-appearance"
@@ -796,22 +864,27 @@
 					class="w-full min-w-0"
 					hidden={activeTab !== WISHLIST_SETTINGS_TABS.appearance}
 				>
-					<div class="flex flex-col gap-4">
-						<p class="text-sm text-muted-foreground">
-							{m.wishlist_palette_dialog_description()}
-						</p>
-						<WishlistPaletteAutoSave
+					{#key discardVersion}
+						<WishlistAppearanceEditor
 							palette={wishlist.palette}
-							onselect={onpaletteselect}
+							appearance={{
+								themeId: wishlist.themeId,
+								styleTokens: wishlist.styleTokens,
+								background: wishlist.background,
+							}}
+							allowCustomUpload={wishlist.demoSessionId === null}
 							{commitVersion}
-							{discardVersion}
 							disabled={saving}
-							ondirtychange={(dirty, palette) => {
-								paletteDirty = dirty;
-								paletteDraft = palette;
+							{onpaletteselect}
+							{onappearancepreview}
+							ondraftchange={(draft) => {
+								paletteDirty = draft.paletteDirty;
+								paletteDraft = draft.palette;
+								appearanceDirty = draft.appearanceDirty;
+								appearanceDraft = draft.appearance;
 							}}
 						/>
-					</div>
+					{/key}
 				</div>
 
 				<!-- Obrázek a ořezy: saved from the shared fixed dialog footer. -->
@@ -866,12 +939,12 @@
 								>
 							</Alert.Root>
 						{:else}
-							<Card.Root class="border-destructive/30">
+							<Card.Root elevation="flat" class="border-destructive/30">
 								<Card.Header>
 									<div class="flex items-center gap-2">
-										<TriangleAlertIcon class="size-5 text-destructive" />
+										<TriangleAlertIcon class="size-5 text-status-danger-text" />
 										<div>
-											<Card.Title class="text-destructive">
+											<Card.Title class="text-status-danger-text">
 												{m.wishlist_settings_danger_tab()}
 											</Card.Title>
 											<Card.Description

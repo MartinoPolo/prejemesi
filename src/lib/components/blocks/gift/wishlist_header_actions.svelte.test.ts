@@ -203,7 +203,7 @@ describe('WishlistHeaderActions', () => {
 		// Sheet rows are menu actions, not secondary text: they share the desktop menu's ink.
 		expect(actionSurfaceColor(shareAction)).toBe(tokenColor('text-foreground'));
 		expect(actionSurfaceColor(danger.querySelector('button')!)).toBe(
-			tokenColor('text-destructive'),
+			tokenColor('text-status-danger-text'),
 		);
 		await sheet.getByRole('button', { name: m.wishlist_share_button() }).click();
 		expect(callbacks.onshare).toHaveBeenCalledOnce();

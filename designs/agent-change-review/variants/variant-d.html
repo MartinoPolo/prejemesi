@@ -1,0 +1,999 @@
+<!doctype html>
+<html lang="cs" data-palette="sky">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Varianta D · Barevná hlavička řádku · Návrh změn · Vánoce pro babičku</title>
+<style>
+@font-face{font-family:'DynaPuff Variable';src:url('../../unavailable-gift-comparison/assets/dynapuff-latin-wght-normal.woff2') format('woff2');font-weight:400 700;font-display:swap;unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+20AC}
+@font-face{font-family:'DynaPuff Variable';src:url('../../unavailable-gift-comparison/assets/dynapuff-latin-ext-wght-normal.woff2') format('woff2');font-weight:400 700;font-display:swap;unicode-range:U+0100-02BA,U+02BD-02FF,U+1E00-1EFF,U+20A0-20AB}
+@font-face{font-family:'Geist Variable';src:url('../../unavailable-gift-comparison/assets/geist-latin-wght-normal.woff2') format('woff2');font-weight:100 900;font-display:swap;unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+2000-206F,U+20AC,U+2190-21FF}
+@font-face{font-family:'Geist Variable';src:url('../../unavailable-gift-comparison/assets/geist-latin-ext-wght-normal.woff2') format('woff2');font-weight:100 900;font-display:swap;unicode-range:U+0100-02BA,U+02BD-02FF,U+1E00-1EFF,U+20A0-20AB}
+
+/* Standalone mirror of src/app.css (palette sky, light source of truth, dark derived). */
+html{
+  --p-brand:#1e9be9;--p-deep:#1265a8;--p-ink:#16385c;--p-bright:#55b9f3;--p-accent:#ffc93c;--p-on-accent:#16385c;
+  --ink:var(--p-ink);--brand:var(--p-brand);--brand-deep:var(--p-deep);--brand-link:var(--brand-deep);
+  --tint:color-mix(in oklab,var(--p-brand) 21%,white);--panel-hover:color-mix(in oklab,var(--p-brand) 6%,white);
+  --accent-loud:var(--p-accent);--accent-loud-foreground:var(--p-on-accent);
+  --background:color-mix(in oklab,var(--p-brand) 11%,white);--foreground:var(--p-ink);--card:#fff;
+  --primary:var(--p-brand);--primary-hover:color-mix(in oklab,var(--primary) 86%,white);--primary-foreground:#fff;
+  --secondary:color-mix(in oklab,var(--p-brand) 6%,white);--muted:color-mix(in oklab,var(--p-brand) 4%,white);
+  --muted-foreground:color-mix(in oklab,var(--p-ink) 62%,transparent);--accent:color-mix(in oklab,var(--p-brand) 11%,white);
+  --destructive:#e4574c;--border-strong:color-mix(in oklab,var(--p-ink) 30%,transparent);--surface:var(--background);
+  --soft-shadow:color-mix(in oklab,var(--p-ink) 16%,transparent);--soft-shadow-strong:color-mix(in oklab,var(--p-ink) 20%,transparent);
+  --hard-shadow:var(--soft-shadow);--hard-shadow-strong:var(--soft-shadow-strong);
+  --status-success:#14a56f;--status-warning:#efa00b;--status-danger:#e4574c;--status-info:#1e9be9;
+  --status-danger-text:color-mix(in oklab,var(--status-danger) 60%,var(--ink));
+  --status-success-text:color-mix(in oklab,var(--status-success) 60%,var(--ink));
+  --gift-overlay-own-reservation:#16834f;--gift-overlay-unavailable:#163b60;
+  --priority-bg:oklch(.93 .05 75);--priority-fg:oklch(.50 .12 75);
+  --radius-panel:16px;--radius-btn:7px;--radius-badge:12px;
+  --elevation-compact-offset:2px;--elevation-ordinary-offset:4px;--elevation-lifted-offset:7px;
+  --depth-clearance:0px;--nested-control-gap:calc(.5rem + var(--depth-clearance));
+  --size-control-sm:26px;--size-control-md:32px;--size-control-lg:40px;
+  --font-head:'DynaPuff Variable',Arial,sans-serif;--font-body:'Geist Variable',Arial,sans-serif;
+  color-scheme:light;
+}
+html.dark{
+  --ink:color-mix(in oklab,var(--p-bright) 12%,#e6e8ec);--brand:color-mix(in oklab,var(--p-bright) 70%,#b8bec8);--brand-link:var(--brand);
+  --tint:var(--accent);--panel-hover:var(--secondary);
+  --accent-loud:color-mix(in oklab,var(--p-accent) 65%,#b8bec8);--accent-loud-foreground:#18202b;
+  --background:color-mix(in oklab,var(--p-deep) 10%,#090b0f);--foreground:var(--ink);
+  --card:color-mix(in oklab,var(--p-deep) 16%,#13161c);
+  --primary:color-mix(in oklab,var(--p-brand) 60%,#202630);--primary-hover:color-mix(in oklab,var(--primary) 92%,black);
+  --secondary:color-mix(in oklab,var(--p-deep) 22%,#1c2027);--muted:color-mix(in oklab,var(--p-deep) 12%,#181b21);
+  --muted-foreground:color-mix(in oklab,var(--ink) 65%,transparent);--accent:color-mix(in oklab,var(--p-deep) 26%,#222630);
+  --destructive:#f07a6e;--border-strong:color-mix(in oklab,var(--ink) 40%,transparent);
+  --soft-shadow:rgb(2 6 12 / 42%);--soft-shadow-strong:rgb(2 6 12 / 55%);
+  --status-success:#3bd598;--status-warning:#ffc24b;--status-danger:#f07a6e;--status-info:#55b9f3;
+  --status-danger-text:color-mix(in oklab,var(--status-danger) 90%,white);
+  --status-success-text:var(--status-success);
+  --gift-overlay-own-reservation:#13704a;--gift-overlay-unavailable:#2b5d91;
+  --priority-bg:oklch(.28 .04 75);--priority-fg:oklch(.78 .08 75);
+  color-scheme:dark;
+}
+html{
+  --elevation-compact:var(--elevation-compact-offset) var(--elevation-compact-offset) 0 var(--hard-shadow);
+  --elevation-ordinary:var(--elevation-ordinary-offset) var(--elevation-ordinary-offset) 0 var(--hard-shadow);
+  --elevation-ordinary-strong:var(--elevation-ordinary-offset) var(--elevation-ordinary-offset) 0 var(--hard-shadow-strong);
+  --elevation-lifted:var(--elevation-lifted-offset) var(--elevation-lifted-offset) 0 var(--hard-shadow);
+  --diff-removed-bg:color-mix(in oklab,var(--status-danger) 14%,var(--card));
+  --diff-added-bg:color-mix(in oklab,var(--status-success) 14%,var(--card));
+  --confirm-tint:color-mix(in oklab,var(--accent-loud) 22%,var(--card));
+  scroll-padding:64px 0 104px;
+}
+*,*::before,*::after{box-sizing:border-box}
+html,body{margin:0}
+body{background:#161a20;color:var(--foreground);font:14px/1.45 var(--font-body);-webkit-font-smoothing:antialiased}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+h1,h2,h3,p,ul,ol,dl,dd,figure{margin:0}
+ul,ol{padding:0;list-style:none}
+[hidden]{display:none!important}
+.sr-only{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+:focus-visible{outline:3px solid var(--brand);outline-offset:2px}
+svg.icon{width:16px;height:16px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+/* ── Review toolbar: tooling, deliberately outside the design tokens ── */
+.review-bar{position:relative;z-index:40;display:flex;flex-wrap:wrap;align-items:center;gap:8px 20px;padding:8px 16px;background:#0d1015;color:#e8ebf0;border-bottom:1px solid #2b323c;font:12px/1.3 'Geist Variable',Arial,sans-serif}
+.review-eyebrow{font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:#ffc93c;margin-right:auto}
+.review-group{display:flex;align-items:center;gap:6px}
+.review-group>span{color:#9aa4b2;font-weight:600}
+.review-group button,.review-group select{min-height:28px;padding:3px 9px;border:1px solid #3a4350;border-radius:6px;background:#1b222b;color:#e8ebf0;font-weight:600}
+.review-group button[aria-pressed=true]{background:#e8ebf0;color:#0d1015;border-color:#e8ebf0}
+.review-group :focus-visible{outline:2px solid #ffc93c;outline-offset:2px}
+
+/* ── Stage and device frame ── */
+.stage{display:flex;justify-content:center}
+.stage[data-viewport=mobile]{padding:24px 12px 48px}
+.device{container:device/inline-size;position:relative;width:100%;min-height:calc(100vh - 45px);background:var(--background);color:var(--foreground);display:flex;flex-direction:column}
+.stage[data-viewport=mobile] .device{width:390px;height:844px;min-height:0;flex:none;overflow-y:auto;border-radius:22px;border:1px solid #3a4350;box-shadow:0 24px 60px rgb(0 0 0 / 50%);scroll-padding:64px 0 120px}
+
+/* ── Navbar (unchanged app chrome) ── */
+.topbar{position:sticky;top:0;z-index:20;height:56px;flex:none;background:var(--card);border-bottom:2.5px solid var(--ink)}
+.topbar-inner{display:flex;align-items:center;gap:16px;max-width:1200px;height:100%;margin-inline:auto;padding-inline:16px}
+.logo{display:flex;align-items:center;gap:8px;flex:none;font:700 17px var(--font-head);color:var(--ink);letter-spacing:-.02em;text-decoration:none}
+.logo-mark{width:30px;height:30px;display:grid;place-items:center;flex:none;color:#fff;background:linear-gradient(180deg,var(--brand),var(--brand-deep));border:2px solid var(--ink);border-radius:10px;transform:rotate(-4deg)}
+.logo-mark svg.icon{width:18px;height:18px}
+.logo-text{display:flex;align-items:baseline;gap:3px;white-space:nowrap}
+.logo-tld{opacity:.42;font-weight:500;font-size:15px}
+.nav-links{display:flex;align-items:center;gap:2px;flex:1}
+.nav-link{display:inline-flex;align-items:center;gap:4px;height:32px;padding:0 12px;border-radius:999px;color:var(--foreground);font-weight:600;text-decoration:none}
+.nav-link:hover,.nav-link[aria-current=page]{background:var(--accent)}
+.nav-link svg.icon{width:14px;height:14px;opacity:.6}
+.nav-right{display:flex;align-items:center;gap:var(--nested-control-gap);margin-left:auto;flex:none}
+.appearance{display:flex;gap:var(--nested-control-gap)}
+.icon-btn{width:32px;height:32px;display:inline-grid;place-items:center;padding:0;border:2.5px solid var(--ink);border-radius:var(--radius-btn);background:var(--card);color:var(--ink);box-shadow:var(--elevation-ordinary)}
+.icon-btn:hover{background:var(--panel-hover)}
+.icon-btn.ghost{border-color:transparent;background:transparent;box-shadow:none;position:relative}
+.icon-btn.ghost:hover{background:var(--accent)}
+.bell-count{position:absolute;top:1px;right:0;min-width:15px;height:15px;padding:0 3px;border-radius:999px;background:var(--status-danger);color:#fff;font-size:10px;font-weight:800;line-height:15px;text-align:center}
+.avatar{width:32px;height:32px;display:grid;place-items:center;border:2px solid var(--ink);border-radius:999px;background:var(--tint);color:var(--ink);font-size:12px;font-weight:800;padding:0}
+.only-mobile,.only-mid{display:none!important}
+
+/* ── Page ── */
+.page{flex:1;width:100%;max-width:1200px;margin-inline:auto;padding:20px 16px 36px}
+.page-head{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px 24px}
+.back-link{display:inline-flex;align-items:center;gap:6px;min-height:32px;margin-left:-6px;padding:0 6px;border-radius:var(--radius-btn);color:var(--brand-link);font-weight:600;font-size:13px;text-decoration:none}
+.back-link:hover{text-decoration:underline;text-underline-offset:3px}
+.eyebrow{margin-top:6px;font-size:11px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--brand-link)}
+.for-line{margin-top:2px;font-size:13px;font-weight:600;color:var(--muted-foreground)}
+h1{margin-top:2px;font:600 clamp(26px,3.2vw,34px)/1.2 var(--font-head);overflow-wrap:anywhere}
+h2{font:600 22px/1.3 var(--font-head)}
+
+/* Summary strip */
+.summary{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 14px;align-items:start;margin-top:16px;padding:14px 16px;border:2px solid var(--ink);border-radius:var(--radius-panel);background:var(--card)}
+.summary-icon{grid-row:span 3;width:40px;height:40px;display:grid;place-items:center;border:2px solid var(--ink);border-radius:10px;background:var(--tint);color:var(--ink)}
+.summary-icon svg.icon{width:20px;height:20px}
+.summary-who{font-size:14px;overflow-wrap:anywhere}
+.summary-meta{display:flex;flex-wrap:wrap;gap:4px 16px;font-size:13px;color:var(--muted-foreground)}
+.summary-meta span{display:inline-flex;align-items:center;gap:5px}
+.summary-meta svg.icon{width:14px;height:14px}
+.summary-meta .expires{color:var(--foreground);font-weight:600}
+.summary-counts{display:flex;flex-wrap:wrap;align-items:center;gap:4px 16px;margin-top:6px}
+.summary-counts strong{font-size:13px}
+
+/* Change type tones: text colour, icon colour and band tint (AA-passing text tokens only) */
+[data-tone]{--tone:var(--foreground);--tone-icon:var(--muted-foreground);--tone-mix:var(--ink);--tone-strength:7%}
+[data-tone=danger]{--tone:var(--status-danger-text);--tone-icon:var(--status-danger-text);--tone-mix:var(--status-danger);--tone-strength:12%}
+[data-tone=success]{--tone:var(--status-success-text);--tone-icon:var(--status-success-text);--tone-mix:var(--status-success);--tone-strength:12%}
+[data-tone=link]{--tone:var(--brand-link);--tone-icon:var(--brand-link);--tone-mix:var(--status-info);--tone-strength:12%}
+.kind-title,.kind-count{display:inline-flex;align-items:center;gap:8px;min-width:0;color:var(--tone);font-family:var(--font-head);font-weight:600;white-space:nowrap}
+.kind-title svg.icon,.kind-count svg.icon{color:var(--tone-icon)}
+.kind-title{font-size:16px;line-height:20px}
+.kind-title svg.icon{width:18px;height:18px}
+.kind-title-text{display:block;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.kind-ops{font-weight:400}
+.kind-count{gap:5px;font-size:14px;line-height:20px}
+
+/* Badges (Badge tone mirror) */
+.badge{display:inline-flex;align-items:center;gap:6px;height:var(--size-control-sm);padding:0 10px;border:2px solid var(--ink);border-radius:var(--radius-badge);background:var(--card);color:var(--foreground);font-size:12px;font-weight:700;letter-spacing:.01em;white-space:nowrap}
+.badge svg.icon{width:14px;height:14px}
+.tone-success{background:color-mix(in oklab,var(--status-success) 14%,var(--card));color:var(--status-success-text)}
+.tone-warning{background:color-mix(in oklab,var(--status-warning) 22%,var(--card));color:var(--foreground)}
+.tone-danger{background:color-mix(in oklab,var(--status-danger) 14%,var(--card));color:var(--status-danger-text)}
+.tone-info{background:color-mix(in oklab,var(--status-info) 14%,var(--card));color:var(--brand-link)}
+.tone-primary{background:color-mix(in oklab,var(--primary) 14%,var(--card));color:var(--brand-link)}
+.tone-accent{background:var(--accent-loud);color:var(--accent-loud-foreground)}
+.tone-muted{border-color:var(--border-strong);color:var(--muted-foreground)}
+
+/* Buttons (Button intent mirror) */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:var(--size-control-md);padding:0 12px;border:2.5px solid var(--ink);border-radius:var(--radius-btn);background:var(--card);color:var(--ink);font:600 13px/1 var(--font-body);white-space:nowrap;text-decoration:none;box-shadow:var(--elevation-ordinary)}
+.btn.lg{height:var(--size-control-lg);padding:0 16px;font-size:15px}
+.btn.sm{height:var(--size-control-sm);padding:0 9px;font-size:12px;box-shadow:var(--elevation-compact)}
+.btn.primary{background:var(--primary);color:var(--primary-foreground)}
+.btn.primary:hover:not(:disabled){background:var(--primary-hover)}
+.btn.secondary:hover:not(:disabled){background:var(--panel-hover)}
+.btn.danger{border-color:var(--status-danger);color:var(--status-danger-text)}
+.btn.danger:hover:not(:disabled){background:color-mix(in oklab,var(--status-danger) 10%,var(--card))}
+.btn.destructive{background:var(--status-danger);color:#fff}
+.btn.ghost{border-color:transparent;background:transparent;box-shadow:none;color:var(--muted-foreground)}
+.btn.ghost:hover:not(:disabled){background:var(--accent);color:var(--foreground)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+@media (prefers-reduced-motion:no-preference){
+  .btn,.icon-btn{transition:translate .15s ease,box-shadow .15s ease}
+  .btn:not(.ghost):hover:not(:disabled),.icon-btn:not(.ghost):hover{translate:-1px -1px;box-shadow:var(--elevation-lifted)}
+  .btn:not(.ghost):active:not(:disabled){translate:1px 1px;box-shadow:var(--elevation-compact)}
+}
+.spinner{animation:spin .9s linear infinite}
+@keyframes spin{to{rotate:360deg}}
+@media (prefers-reduced-motion:reduce){.spinner{animation-duration:2.4s}}
+
+/* Alerts and outcome panels */
+.alert{display:grid;grid-template-columns:auto minmax(0,1fr);gap:2px 12px;margin-top:16px;padding:14px 16px;border:2.5px solid var(--ink);border-radius:12px;background:var(--tint);color:var(--foreground)}
+.alert>svg.icon{width:20px;height:20px;margin-top:2px;grid-row:span 3}
+.alert-title{font:600 17px/1.35 var(--font-head)}
+.alert-body{font-size:13px}
+.alert-body ul{margin-top:4px;display:grid;gap:2px;list-style:disc;padding-left:18px}
+.alert-actions{display:flex;flex-wrap:wrap;gap:var(--nested-control-gap);margin-top:10px}
+.alert.success{background:color-mix(in oklab,var(--status-success) 14%,var(--card))}
+.alert.success>svg.icon{color:var(--status-success-text)}
+.alert.warning{border-color:var(--accent-loud-foreground);background:var(--accent-loud);color:var(--accent-loud-foreground);box-shadow:var(--elevation-ordinary-strong)}
+.alert.destructive{background:var(--card);color:var(--status-danger-text);border-color:var(--status-danger)}
+.alert.destructive .alert-body{color:var(--foreground)}
+.alert:focus{outline:none}
+.alert:focus-visible{outline:3px solid var(--brand);outline-offset:2px}
+
+/* List controls */
+.list-controls{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px 16px;margin-top:24px}
+.master{display:flex;align-items:center;gap:10px;min-width:0}
+.master label{font-weight:700;cursor:pointer}
+.master-note{font-size:12px;color:var(--muted-foreground)}
+.master-count{font-size:13px;font-weight:600;padding-left:12px;border-left:2px solid var(--border-strong)}
+.segmented-scroll{max-width:100%;overflow-x:auto;scrollbar-width:thin;padding:0 6px 6px 0;margin:0 -6px -6px 0}
+.segmented{display:inline-flex;gap:2px;padding:3px;border-radius:10px;background:var(--accent);white-space:nowrap}
+.segmented button{display:inline-flex;align-items:center;gap:6px;height:var(--size-control-md);padding:0 12px;border:2.5px solid transparent;border-radius:var(--radius-btn);background:transparent;font-weight:600;font-size:13px}
+.segmented button[aria-pressed=true]{background:var(--card);border-color:var(--ink);box-shadow:var(--elevation-compact)}
+.segmented .seg-count{min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:color-mix(in oklab,var(--ink) 10%,transparent);font-size:11px;font-weight:800;line-height:18px;text-align:center}
+
+/* Sections */
+.section{margin-top:20px}
+.section-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px;margin-bottom:12px}
+.section-note{font-size:12px;color:var(--muted-foreground)}
+.confirm-section{padding:16px;border:2.5px solid var(--ink);border-radius:20px;background:var(--confirm-tint);box-shadow:var(--elevation-ordinary)}
+.confirm-section .section-head{align-items:center}
+.confirm-mark{width:32px;height:32px;display:grid;place-items:center;border:2px solid var(--ink);border-radius:9px;background:var(--accent-loud);color:var(--accent-loud-foreground);transform:rotate(-3deg)}
+.confirm-mark svg.icon{width:18px;height:18px}
+.confirm-section .section-note{flex-basis:100%;color:var(--foreground)}
+.blocked-section{margin-top:20px;border:2px solid var(--border-strong);border-radius:var(--radius-panel);background:color-mix(in oklab,var(--muted) 60%,transparent)}
+.blocked-section>summary{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px;padding:12px 16px;cursor:pointer;list-style:none;border-radius:14px}
+.blocked-section>summary::-webkit-details-marker{display:none}
+.blocked-section>summary:hover{background:var(--panel-hover)}
+.chev{display:grid;place-items:center;width:32px;height:32px;border:2.5px solid var(--ink);border-radius:var(--radius-btn);background:var(--card);box-shadow:var(--elevation-compact)}
+.chev svg.icon{transition:rotate .2s}
+.blocked-section[open] .chev svg.icon{rotate:180deg}
+.blocked-section>.table-wrap{padding:0 16px 16px}
+
+/* Change table: native table semantics, panel-row layout */
+.change-table{display:block;width:100%;border-collapse:separate}
+.change-table thead{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.change-table tbody{display:grid;gap:12px}
+.change-row{--select-size:var(--size-control-md);--band-pad:10px;--row-pad-x:16px;--row-border:2px;--row-surface:var(--card);--band-bg:color-mix(in oklab,var(--tone-mix) var(--tone-strength),var(--row-surface));--band-divider:var(--ink);display:grid;column-gap:14px;row-gap:10px;align-items:start;padding:0 var(--row-pad-x) 14px;border:var(--row-border) solid var(--ink);border-radius:var(--radius-panel);background:var(--row-surface);transition:background-color .15s}
+/* Header band: a grid item spanning the first track, bled to the padding edge; top corners = outer radius minus border (no inset). */
+.change-row::before{content:"";grid-row:1;grid-column:1/-1;align-self:stretch;margin-inline:calc(-1 * var(--row-pad-x));border-bottom:2px solid var(--band-divider);border-radius:calc(var(--radius-panel) - var(--row-border)) calc(var(--radius-panel) - var(--row-border)) 0 0;background:var(--band-bg)}
+.change-row:hover{--row-surface:color-mix(in oklab,var(--panel-hover) 70%,var(--card))}
+.change-row>td{display:block;padding:0;min-width:0}
+.cell-select{grid-area:select}.cell-kind{grid-area:kind}.cell-gift{grid-area:gift}.cell-diffs{grid-area:diffs}.cell-status{grid-area:status}.cell-cards{grid-area:cards}
+/* Band cells share padding and stretch to the band track, so checkbox, title and status centres coincide. */
+.change-row>td.cell-select,.change-row>td.cell-kind,.change-row>td.cell-status{display:flex;align-items:center;align-self:stretch;min-height:calc(var(--select-size) + 2 * var(--band-pad) + 2px);padding:var(--band-pad) 0 calc(var(--band-pad) + 2px)}
+.change-row.has-cards{grid-template-columns:var(--select-size) minmax(0,1fr) auto;grid-template-rows:auto auto 1fr;grid-template-areas:"select kind status" ". gift cards" ". diffs cards"}
+.change-row.slim{grid-template-columns:var(--select-size) minmax(180px,260px) minmax(0,1fr) auto;grid-template-areas:"select kind kind status" ". gift diffs diffs"}
+.change-row.slim .cell-gift{display:flex;align-items:center;min-height:40px}
+.cell-cards.is-empty{display:none}
+.has-cards .cell-cards{padding-left:16px;border-left:2px dashed var(--border-strong)}
+.change-row>td.cell-status{justify-content:flex-end}
+.change-row[data-selected=false]:not(.is-blocked){--row-surface:var(--muted)}
+.change-row[data-selected=false]:not(.is-blocked):not([data-group=confirm]) .gift-name{color:var(--muted-foreground)}
+.change-row[data-selected=false]:not(.is-blocked):not([data-group=confirm]) .card-pair{opacity:.55}
+.change-row.is-blocked{--row-surface:var(--muted);--band-bg:color-mix(in oklab,var(--ink) 6%,var(--muted));--band-divider:var(--border-strong);border-color:var(--border-strong)}
+.change-row.is-blocked .card-pair{opacity:.6}
+.change-row.is-new-conflict{border-color:var(--status-warning);box-shadow:0 0 0 2px color-mix(in oklab,var(--status-warning) 40%,transparent)}
+.change-row.is-changed-since{border-color:var(--status-danger)}
+.confirm-section .change-row{--row-border:2.5px}
+.confirm-section .change-row[data-selected=true]{box-shadow:var(--elevation-compact)}
+
+/* Selection checkbox: button-sized visible surface */
+.check{appearance:none;-webkit-appearance:none;margin:0;width:var(--select-size);height:var(--select-size);display:grid;place-items:center;flex:none;border:2.5px solid var(--ink);border-radius:var(--radius-btn);background:var(--card);box-shadow:var(--elevation-compact);cursor:pointer}
+.check::after{content:"";width:62%;height:62%;background:var(--primary-foreground);opacity:0;-webkit-mask:var(--mask-check) center/contain no-repeat;mask:var(--mask-check) center/contain no-repeat}
+.check:hover:not(:disabled){background:var(--panel-hover)}
+.check:checked,.check:indeterminate{background:var(--primary)}
+.check:checked::after{opacity:1}
+.check:indeterminate::after{opacity:1;-webkit-mask-image:var(--mask-dash);mask-image:var(--mask-dash)}
+.check:disabled{cursor:not-allowed;box-shadow:none;border-color:var(--border-strong);background:repeating-linear-gradient(-45deg,var(--muted) 0 4px,var(--card) 4px 8px)}
+html{--mask-check:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E");--mask-dash:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3.6' stroke-linecap='round'%3E%3Cpath d='M5 12h14'/%3E%3C/svg%3E")}
+.done-glyph{width:var(--select-size);height:var(--select-size);display:grid;place-items:center;border:2px solid var(--border-strong);border-radius:var(--radius-btn);color:var(--muted-foreground)}
+.done-glyph.on{border-color:var(--ink);background:color-mix(in oklab,var(--status-success) 14%,var(--card));color:var(--status-success-text)}
+
+/* Gift identity */
+.identity{display:flex;align-items:center;gap:10px;min-width:0}
+.thumb{position:relative;width:40px;height:40px;flex:none;display:grid;place-items:center;overflow:hidden;border:2px solid var(--ink);border-radius:9px;background:var(--surface);color:var(--ink)}
+.thumb svg.art{width:100%;height:100%}
+.thumb.icon-thumb{background:var(--tint)}
+.thumb.icon-thumb svg.icon{width:20px;height:20px}
+.identity-text{min-width:0}
+.gift-name{display:block;font-size:14px;font-weight:600;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gift-sub{display:block;font-size:12px;color:var(--muted-foreground);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* Field diffs */
+.diff-list{display:grid;gap:6px}
+.diff{display:grid;grid-template-columns:76px minmax(0,1fr);gap:8px;align-items:baseline}
+.diff-label{font-size:12px;font-weight:600;color:var(--muted-foreground)}
+.diff-values{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 6px;font-size:13px;min-width:0}
+.diff-after{display:inline-flex;align-items:baseline;gap:6px;min-width:0;flex-wrap:wrap}
+.diff-old,.diff-new{padding:1px 6px;border-radius:5px;overflow-wrap:anywhere;-webkit-box-decoration-break:clone;box-decoration-break:clone}
+del.diff-old{background:var(--diff-removed-bg);color:var(--status-danger-text);text-decoration:line-through;text-decoration-thickness:1.5px}
+ins.diff-new{background:var(--diff-added-bg);color:var(--status-success-text);font-weight:600;text-decoration:none}
+.diff-new.only::before{content:"+ ";font-weight:800}
+.diff-arrow{font-weight:800;color:var(--foreground)}
+.diff-context{font-size:12px;color:var(--muted-foreground)}
+.diff-context q{quotes:"„" "“";color:var(--foreground);font-weight:600}
+.append{padding:6px 12px;border-left:4px solid var(--accent-loud);border-radius:0 10px 10px 0;background:color-mix(in oklab,var(--accent-loud) 16%,var(--card));font-size:13px}
+.append-date{display:block;font-size:11px;font-weight:700;color:var(--muted-foreground)}
+.append ins{display:inline;padding:0 4px;border-radius:4px;background:var(--diff-added-bg);color:var(--status-success-text);font-weight:600;text-decoration:none}
+.append ins::before{content:"+ ";font-weight:800}
+.original-desc{margin-top:6px;font-size:12px;color:var(--muted-foreground)}
+
+/* Consequences and reasons */
+.consequence,.reason{display:flex;gap:8px;align-items:flex-start;padding:8px 10px;border-radius:10px;font-size:13px;line-height:1.4}
+.consequence{margin-bottom:8px;border:2px solid var(--ink);background:var(--confirm-tint);font-weight:600}
+.consequence svg.icon,.reason svg.icon{margin-top:1px}
+.reason{margin-top:8px}
+.reason.warning{background:color-mix(in oklab,var(--status-warning) 18%,var(--card));border:2px solid color-mix(in oklab,var(--status-warning) 60%,var(--ink))}
+.reason.danger{background:var(--diff-removed-bg);border:2px solid color-mix(in oklab,var(--status-danger) 60%,var(--ink))}
+.reason.muted{background:var(--card);border:2px dashed var(--border-strong);color:var(--muted-foreground)}
+code.email{display:inline;padding:0 5px;border:1.5px solid var(--ink);border-radius:5px;background:var(--card);font:600 13px/1.5 ui-monospace,'Cascadia Mono',Consolas,monospace;word-break:break-all;overflow-wrap:anywhere}
+.disclosure{margin-top:8px}
+.disclosure>summary{display:inline-flex;align-items:center;gap:6px;height:var(--size-control-sm);padding:0 9px;border:2.5px solid var(--ink);border-radius:var(--radius-btn);background:var(--card);box-shadow:var(--elevation-compact);font-size:12px;font-weight:600;cursor:pointer;list-style:none}
+.disclosure>summary::-webkit-details-marker{display:none}
+.disclosure>summary:hover{background:var(--panel-hover)}
+.disclosure[open]>summary svg.icon{rotate:180deg}
+.disclosure .card-pair{margin-top:10px;opacity:1!important}
+
+/* Card pair and compact GiftCard mirror */
+.card-pair{--card-w:208px;display:grid;grid-template-columns:repeat(2,var(--card-w));gap:14px;transition:opacity .15s}
+.card-slot{min-width:0;display:flex;flex-direction:column}
+.pair-caption{display:flex;align-items:center;gap:6px;margin-bottom:6px;font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted-foreground)}
+.pair-caption .dot{width:8px;height:8px;border-radius:2px;border:1.5px solid var(--ink)}
+.pair-caption.before .dot{background:var(--diff-removed-bg)}
+.pair-caption.after .dot{background:var(--status-success)}
+.card-ghost{flex:1;min-height:210px;display:grid;place-items:center;gap:6px;padding:14px;text-align:center;border:2.5px dashed var(--border-strong);border-radius:var(--radius-panel);color:var(--muted-foreground);font-size:12px;font-weight:600}
+.card-ghost svg.icon{width:22px;height:22px;margin-inline:auto}
+.gift{position:relative;min-width:0;display:grid;grid-template-rows:auto 1fr;border:2.5px solid var(--ink);border-radius:var(--radius-panel);background:var(--card);box-shadow:var(--elevation-ordinary);overflow:hidden}
+.gift.is-dimmed .image-art,.gift.is-dimmed .gift-body>*,.gift.is-dimmed .category,.gift.is-dimmed .priority{opacity:.5}
+.gift.is-dimmed{border-color:color-mix(in oklab,var(--ink) 50%,var(--card))}
+.image-area{position:relative;aspect-ratio:4/3;background:var(--surface);border-bottom:3px solid var(--ink);isolation:isolate}
+.image-pattern{position:absolute;inset:0;background-image:radial-gradient(color-mix(in oklab,var(--ink) 13%,transparent) 1.4px,transparent 1.5px);background-size:16px 16px}
+.image-art{position:absolute;inset:0;display:grid;place-items:center}
+.image-art svg.art{width:78%;height:78%}
+.image-placeholder{display:grid;place-items:center;gap:4px;color:var(--muted-foreground);font-size:11px;font-weight:700}
+.image-placeholder svg.icon{width:30px;height:30px;stroke-width:1.6}
+.category,.priority,.state{position:absolute;z-index:2}
+.category{top:7px;left:7px;max-width:calc(100% - 14px);padding:1px 7px;border:2px solid #000;border-radius:6px;color:#16385c;font-size:11px;line-height:15px;font-weight:800;transform:rotate(-3deg);box-shadow:var(--elevation-compact);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.priority{bottom:8px;left:8px;height:19px;padding:0 6px;border-radius:999px;background:var(--priority-bg);color:var(--priority-fg);font-size:10.5px;line-height:19px;font-weight:700}
+.state{inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none}
+.state span{max-width:calc(100% - 12px);padding:3px 8px;border:2px solid var(--ink);border-radius:var(--radius-panel);background:var(--gift-overlay-unavailable);color:#fff;font-size:11px;line-height:15px;font-weight:700;text-align:center;transform:rotate(-1deg);box-shadow:var(--elevation-compact)}
+.state.own span{background:var(--gift-overlay-own-reservation)}
+.state.removal span{background:#b4362c;display:inline-flex;align-items:center;gap:4px}
+.gift-body{min-width:0;padding:10px 10px 12px}
+.gift-title{font:600 17px/1.3 var(--font-head);display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;overflow-wrap:anywhere}
+.gift-links{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.gift-link{display:inline-flex;align-items:center;gap:3px;max-width:100%;padding:1px 7px;border:2px solid var(--ink);border-radius:999px;font-size:11px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gift-link svg.icon{width:11px;height:11px}
+.gift-price{margin-top:5px;font-size:12px;font-weight:700}
+.gift-price.empty{font-weight:500;color:var(--muted-foreground)}
+.mark-old,.mark-new{outline-offset:2px;border-radius:5px}
+.mark-old{outline:2px dashed var(--status-danger)}
+.mark-new{outline:2px dashed var(--status-success)}
+.image-area.mark-old,.image-area.mark-new{outline-offset:-5px;border-radius:0}
+.gift-price.mark-old{text-decoration:line-through}
+.art .fa{fill:color-mix(in oklab,var(--brand) 34%,var(--card))}
+.art .fb{fill:var(--accent-loud)}
+.art .fc{fill:var(--card)}
+.art .fn{fill:none}
+.art path,.art rect,.art circle,.art ellipse{stroke:var(--ink);stroke-width:2.6;stroke-linejoin:round;stroke-linecap:round}
+
+/* Skeleton */
+.skel{display:block;border-radius:8px;background:color-mix(in oklab,var(--ink) 9%,var(--card))}
+@media (prefers-reduced-motion:no-preference){.skel{animation:pulse 1.4s ease-in-out infinite}}
+@keyframes pulse{50%{opacity:.55}}
+.skel-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px 14px;padding:0 16px 14px;border:2px solid var(--border-strong);border-radius:var(--radius-panel);background:var(--card)}
+.skel-band{grid-column:1/-1;display:flex;align-items:center;gap:14px;margin-inline:-16px;padding:10px 16px 12px;border-bottom:2px solid var(--border-strong);border-radius:calc(var(--radius-panel) - 2px) calc(var(--radius-panel) - 2px) 0 0;background:var(--muted)}
+.skel-stack{display:grid;gap:8px;align-content:start}
+.skel-cards{display:grid;grid-template-columns:repeat(2,208px);gap:14px}
+
+/* Read-only states */
+.sections.is-readonly{opacity:.72}
+.sections[inert]{opacity:.6;cursor:progress}
+
+/* Sticky apply bar */
+.apply-bar{position:sticky;bottom:0;z-index:15;flex:none;background:var(--card);border-top:2.5px solid var(--ink);box-shadow:0 -4px 0 color-mix(in oklab,var(--hard-shadow) 60%,transparent)}
+.apply-inner{max-width:1200px;height:64px;margin-inline:auto;padding:0 16px;display:flex;align-items:center;justify-content:space-between;gap:16px}
+.apply-text{min-width:0}
+.apply-count{font-weight:700;font-size:14px}
+.apply-help{font-size:12px;color:var(--muted-foreground)}
+
+/* Dialog */
+dialog{width:min(520px,calc(100vw - 24px));max-height:calc(100vh - 32px);padding:24px;border:2.5px solid var(--ink);border-radius:var(--radius-panel);background:var(--card);color:var(--foreground);box-shadow:var(--elevation-lifted)}
+dialog::backdrop{background:rgb(8 12 20 / 55%)}
+.dialog-text{margin-top:8px;font-size:14px}
+.dialog-list{display:grid;gap:8px;margin-top:14px}
+.dialog-list li{display:grid;grid-template-columns:auto minmax(0,1fr);gap:10px;align-items:start;padding:10px 12px;border:2px solid var(--ink);border-radius:12px;background:var(--confirm-tint);font-size:13px}
+.dialog-list .thumb{width:32px;height:32px;border-radius:8px}
+.dialog-list strong{display:block;font-size:14px}
+.dialog-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:var(--nested-control-gap);margin-top:20px}
+
+.toast{position:fixed;left:50%;bottom:96px;z-index:60;max-width:calc(100vw - 24px);transform:translateX(-50%);padding:9px 14px;border:2px solid var(--ink);border-radius:var(--radius-btn);background:var(--ink);color:var(--card);font-weight:600;font-size:13px;box-shadow:var(--elevation-ordinary)}
+
+/* ── Narrow content: card pair moves below the diffs ── */
+@container device (max-width:899px){
+  .change-row.has-cards{grid-template-columns:var(--select-size) minmax(0,1fr) auto;grid-template-rows:auto;grid-template-areas:"select kind status" "gift gift gift" "diffs diffs diffs" "cards cards cards"}
+  .change-row.slim{grid-template-columns:var(--select-size) minmax(0,1fr) auto;grid-template-areas:"select kind status" "gift gift gift" "diffs diffs diffs"}
+  .has-cards .cell-cards{padding:12px 0 0;border-left:0;border-top:2px dashed var(--border-strong)}
+  .skel-row{grid-template-columns:minmax(0,1fr)}
+  .skel-cards{grid-column:1/-1}
+}
+@container device (max-width:1039px){
+  .appearance{display:none}
+  .only-mid{display:inline-grid!important}
+  .create-label{display:none}
+  .create-btn{width:32px;padding:0}
+}
+/* ── Mobile ── */
+@container device (max-width:639px){
+  .device{--elevation-compact-offset:1px;--elevation-ordinary-offset:3px;--elevation-lifted-offset:4px}
+  .topbar-inner{gap:8px;padding-inline:12px}
+  .nav-links,.create-btn,.only-mid{display:none!important}
+  .only-mobile{display:inline-grid!important}
+  .logo{gap:6px;font-size:15px}
+  .logo-mark{width:40px;height:40px;border-radius:var(--radius-btn)}
+  .logo-mark svg.icon{width:20px;height:20px}
+  .logo-tld{font-size:11px}
+  .nav-right .icon-btn,.nav-right .avatar{width:40px;height:40px}
+  .page{padding:14px 12px 28px}
+  .page-head .btn{height:var(--size-control-lg);font-size:14px}
+  .summary{padding:12px}
+  .summary-icon{grid-row:auto;width:32px;height:32px}
+  .summary-who{grid-column:2}
+  .summary-meta,.summary-counts{grid-column:1/-1}
+  .list-controls{flex-direction:column;align-items:stretch}
+  .master{flex-wrap:wrap}
+  .master-count{flex-basis:100%;padding-left:0;border-left:0}
+  .segmented button{height:var(--size-control-lg)}
+  .confirm-section{padding:12px;border-radius:18px}
+  .blocked-section>summary{padding:12px}
+  .blocked-section>.table-wrap{padding:0 12px 12px}
+  .change-row{--select-size:var(--size-control-lg);--band-pad:8px;--row-pad-x:12px;padding:0 12px 12px;column-gap:10px}
+  .change-row.has-cards,.change-row.slim{grid-template-columns:var(--select-size) minmax(0,1fr);row-gap:8px}
+  /* Title and status do not both fit a 390 px band, so the status always opens the row body. */
+  .change-row.has-cards{grid-template-areas:"select kind" "status status" "gift gift" "diffs diffs" "cards cards"}
+  .change-row.slim{grid-template-areas:"select kind" "status status" "gift gift" "diffs diffs"}
+  .change-row>td.cell-status{min-height:0;padding:0;align-self:start;justify-content:flex-start}
+  .diff{grid-template-columns:1fr;gap:2px}
+  .diff-values{flex-direction:column;align-items:flex-start;gap:3px}
+  .card-pair{--card-w:minmax(0,1fr);gap:10px}
+  .card-ghost{min-height:180px;padding:10px}
+  .gift-title{font-size:15px}
+  .gift-body{padding:8px 8px 10px}
+  .category{font-size:10px;line-height:13px;padding:1px 5px;top:5px;left:5px}
+  .priority{font-size:10px;bottom:6px;left:6px;height:18px;line-height:18px;padding:0 5px}
+  .disclosure>summary{height:var(--size-control-lg);font-size:13px}
+  .skel-cards{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .apply-inner{height:auto;min-height:72px;flex-direction:column;align-items:stretch;gap:6px;padding:8px 12px calc(10px + env(safe-area-inset-bottom))}
+  .apply-text{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+  .apply-inner .btn{width:100%;height:var(--size-control-lg);font-size:15px}
+  .alert-actions .btn{height:var(--size-control-lg);font-size:14px}
+  .dialog-actions .btn{flex:1 1 auto;height:var(--size-control-lg)}
+}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="review-bar" role="region" aria-label="Ovládání ukázky">
+  <span class="review-eyebrow">VARIANTA D: BAREVNÁ HLAVIČKA ŘÁDKU MÍSTO ŠTÍTKU</span>
+  <div class="review-group" role="group" aria-label="Zobrazení"><span>Viewport</span><button type="button" data-viewport="desktop" aria-pressed="true">Desktop</button><button type="button" data-viewport="mobile" aria-pressed="false">Mobil 390 px</button></div>
+  <div class="review-group" role="group" aria-label="Motiv"><span>Motiv</span><button type="button" data-theme="light" aria-pressed="true">Světlý</button><button type="button" data-theme="dark" aria-pressed="false">Tmavý</button></div>
+  <div class="review-group"><label for="state-select"><span style="color:#9aa4b2;font-weight:600">Stav</span></label>
+    <select id="state-select">
+      <option value="pending">Čeká na kontrolu (výchozí výběr)</option>
+      <option value="mixed">Smíšený výběr</option>
+      <option value="none">Nic nevybráno</option>
+      <option value="apply-conflict">Konflikt při použití</option>
+      <option value="applied">Použito + Vrátit</option>
+      <option value="undo-conflict">Konflikt při vracení</option>
+      <option value="undone">Vráceno</option>
+      <option value="expired">Platnost vypršela</option>
+      <option value="discarded">Zahozeno</option>
+      <option value="loading">Načítání</option>
+    </select>
+  </div>
+</div>
+
+<div class="stage" id="stage" data-viewport="desktop">
+  <div class="device" id="device">
+    <header class="topbar">
+      <div class="topbar-inner">
+        <a class="logo" href="#prehled" aria-label="Přejeme si – domovská stránka" data-demo>
+          <span class="logo-mark" aria-hidden="true"><span data-icon="gift"></span></span>
+          <span class="logo-text">přejeme si<span class="logo-tld">.cz</span></span>
+        </a>
+        <nav class="nav-links" aria-label="Hlavní navigace">
+          <a class="nav-link" href="#moje-seznamy" data-demo>Moje seznamy <span data-icon="chevron-down"></span></a>
+          <a class="nav-link" href="#spravovane" aria-current="page" data-demo>Spravované <span data-icon="chevron-down"></span></a>
+          <a class="nav-link" href="#sledovane" data-demo>Sledované <span data-icon="chevron-down"></span></a>
+        </nav>
+        <div class="nav-right">
+          <button type="button" class="btn primary create-btn" data-demo aria-label="Vytvořit"><span data-icon="plus"></span><span class="create-label">Vytvořit</span></button>
+          <div class="appearance">
+            <button type="button" class="icon-btn" aria-label="Paleta barev" data-demo><span data-icon="palette"></span></button>
+            <button type="button" class="icon-btn" aria-label="Jazyk: čeština" data-demo><span data-icon="globe"></span></button>
+            <button type="button" class="icon-btn" aria-label="Přepnout tmavý režim" id="nav-theme"><span data-icon="moon"></span></button>
+          </div>
+          <button type="button" class="icon-btn only-mid" aria-label="Vzhled" data-demo><span data-icon="palette"></span></button>
+          <button type="button" class="icon-btn ghost" aria-label="Oznámení, 2 nepřečtená" data-demo><span data-icon="bell"></span><span class="bell-count" aria-hidden="true">2</span></button>
+          <button type="button" class="avatar" aria-label="Účet: Petr Svoboda" data-demo>PS</button>
+          <button type="button" class="icon-btn ghost only-mobile" aria-label="Otevřít menu" data-demo><span data-icon="menu"></span></button>
+        </div>
+      </div>
+    </header>
+
+    <main class="page" id="page" data-palette="sky"></main>
+
+    <div class="apply-bar" id="apply-bar" role="region" aria-label="Použití vybraných změn"></div>
+  </div>
+</div>
+
+<dialog id="dialog" aria-labelledby="dialog-title"></dialog>
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+<script>
+const ICONS={
+  gift:'<rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13"/><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5"/>',
+  bell:'<path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/>',
+  plus:'<path d="M5 12h14"/><path d="M12 5v14"/>',
+  palette:'<circle cx="13.5" cy="6.5" r="1"/><circle cx="17.5" cy="10.5" r="1"/><circle cx="8.5" cy="7.5" r="1"/><circle cx="6.5" cy="12.5" r="1"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/>',
+  globe:'<circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/>',
+  moon:'<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>',
+  menu:'<path d="M4 6h16M4 12h16M4 18h16"/>',
+  'chevron-down':'<path d="m6 9 6 6 6-6"/>',
+  'arrow-left':'<path d="m12 19-7-7 7-7"/><path d="M19 12H5"/>',
+  check:'<path d="M20 6 9 17l-5-5"/>',
+  dash:'<path d="M5 12h14"/>',
+  alert:'<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
+  undo:'<path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11"/>',
+  'user-plus':'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/>',
+  trash:'<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>',
+  bookmark:'<path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2Z"/><path d="m9 10 2 2 4-4"/>',
+  key:'<path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r="1"/>',
+  clock:'<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
+  hourglass:'<path d="M5 22h14M5 2h14"/><path d="M17 22v-4.172a2 2 0 0 0-.586-1.414L12 12l-4.414 4.414A2 2 0 0 0 7 17.828V22"/><path d="M7 2v4.172a2 2 0 0 0 .586 1.414L12 12l4.414-4.414A2 2 0 0 0 17 6.172V2"/>',
+  external:'<path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>',
+  ban:'<circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/>',
+  reorder:'<path d="m21 16-4 4-4-4"/><path d="M17 20V4"/><path d="m3 8 4-4 4 4"/><path d="M7 4v16"/>',
+  info:'<circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>',
+  loader:'<path d="M21 12a9 9 0 1 1-6.219-8.56"/>',
+  image:'<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>',
+  sparkle:'<path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2 2M16 16l2 2M6 18l2-2M16 8l2-2"/>',
+  pencil:'<path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/>',
+  text:'<path d="M17 6.1H3M21 12.1H3M15.1 18H3"/>'
+};
+const icon=(name,extra='')=>`<svg class="icon ${extra}" viewBox="0 0 24 24" aria-hidden="true">${ICONS[name]}</svg>`;
+
+const ART={
+  kettle:'<path class="fa" d="M38 34h40l6 36H32z"/><path class="fn" d="M84 40c11 0 13 18 2 22"/><path class="fn" d="M37 45 22 34"/><rect class="fb" x="48" y="27" width="20" height="7" rx="3"/><rect class="fc" x="54" y="21" width="8" height="6" rx="2"/><path class="fn" d="M28 72h60"/>',
+  album:'<rect class="fa" x="30" y="14" width="60" height="62" rx="5"/><path class="fn" d="M39 14v62"/><rect class="fc" x="48" y="27" width="32" height="26" rx="2"/><path class="fn" d="M50 50l9-9 7 7 4-4 8 8"/><circle class="fb" cx="72" cy="34" r="3.5"/>',
+  gloves:'<g transform="translate(-8 0)"><path class="fa" d="M34 78V46c0-12 6-20 14-20s14 8 14 20v6l6-6c3-3 8 1 5 5L62 64v14z"/></g><g transform="translate(30 -6)"><path class="fb" d="M34 78V46c0-12 6-20 14-20s14 8 14 20v6l6-6c3-3 8 1 5 5L62 64v14z"/></g>',
+  tea:'<path class="fa" d="M28 66c-6-16 2-30 22-30s28 14 22 30z"/><path class="fn" d="M72 46c8-2 10 10 2 14"/><path class="fn" d="M30 48 18 40"/><rect class="fb" x="42" y="30" width="16" height="6" rx="3"/><path class="fc" d="M82 56h20l-3 14H85z"/><path class="fn" d="M22 72h84"/>',
+  blanket:'<rect class="fa" x="24" y="56" width="72" height="14" rx="4"/><rect class="fb" x="28" y="42" width="64" height="15" rx="4"/><rect class="fa" x="32" y="28" width="56" height="15" rx="4"/><path class="fn" d="M30 70v7M38 70v7M46 70v7M54 70v7M62 70v7M70 70v7M78 70v7M86 70v7"/>',
+  book:'<path class="fa" d="M38 14h44a4 4 0 0 1 4 4v54a4 4 0 0 1-4 4H38z"/><path class="fc" d="M38 14a6 6 0 0 0-6 6v54a6 6 0 0 1 6-6h48"/><path class="fn" d="M50 30h24M50 38h16"/><circle class="fb" cx="63" cy="54" r="7"/>',
+  slippers:'<path class="fa" d="M18 60c0-14 10-22 22-22s16 8 16 18-8 18-20 18-18-4-18-14z"/><path class="fb" d="M62 60c0-14 10-22 22-22s16 8 16 18-8 18-20 18-18-4-18-14z"/><path class="fn" d="M26 52c6-6 18-6 24 0M70 52c6-6 18-6 24 0"/>',
+  headphones:'<path class="fn" d="M34 58V46a26 26 0 0 1 52 0v12"/><rect class="fa" x="25" y="50" width="17" height="25" rx="6"/><rect class="fa" x="78" y="50" width="17" height="25" rx="6"/><path class="fn" d="M42 60h-4M82 60h-4"/>',
+  mug:'<path class="fc" d="M32 24h46v38a12 12 0 0 1-12 12H44a12 12 0 0 1-12-12z"/><path class="fn" d="M78 34h6a10 10 0 0 1 0 20h-6"/><path class="fn" d="M47 38l8 16 8-16"/><path class="fb" d="M32 24h46v6H32z"/>',
+  scarf:'<path class="fa" d="M24 26c22 9 44-9 72 0v16c-28-9-50 9-72 0z"/><path class="fb" d="M64 38v32h16V32"/><path class="fn" d="M66 70v7M72 70v7M78 70v7"/>',
+  socks:'<path class="fa" d="M40 12h22v40l14 10c7 5 2 15-6 13L46 66c-4-1-6-4-6-8z"/><path class="fb" d="M40 12h22v9H40z"/><path class="fn" d="M40 32h22M40 40h22"/>',
+  diffuser:'<path class="fa" d="M40 76 49 40h22l9 36z"/><ellipse class="fc" cx="60" cy="40" rx="11" ry="3.5"/><path class="fn" d="M55 32c-5-5 5-9 0-14M65 32c-5-5 5-9 0-14"/>',
+  needles:'<circle class="fa" cx="72" cy="54" r="19"/><path class="fn" d="M58 44c9 4 17 12 21 22M56 56c8 2 14 8 16 15"/><path class="fn" d="M26 18l52 30M32 14l42 46"/><circle class="fb" cx="26" cy="18" r="3.5"/><circle class="fb" cx="32" cy="14" r="3.5"/>'
+};
+const art=(key,thumb=false)=>`<svg class="art" viewBox="${thumb?'14 8 92 74':'0 0 120 90'}" preserveAspectRatio="xMidYMid ${thumb?'slice':'meet'}" aria-hidden="true">${ART[key]}</svg>`;
+
+const CATEGORY_COLORS={Domov:'#ffd9a8',Zahrada:'#bfe8b0',Knihy:'#e2d4ff',Oblečení:'#ffc9d6',Kuchyně:'#a9dbff',Elektronika:'#c7f0ef','Ruční práce':'#f6e3b4'};
+
+const GIFTS={
+  blanket:{name:'Vlněný pléd s třásněmi',art:'blanket',category:'Domov',priority:'Střední',price:'1 290 Kč',link:'ikea.com'},
+  book:{name:'Babiččiny recepty z Valašska',art:'book',category:'Knihy',priority:null,price:'449 Kč',link:'knihydobrovsky.cz'},
+  slippers:{name:'Hřejivé papuče z ovčí vlny, vel. 38',art:'slippers',category:'Oblečení',priority:'Vysoká',price:'890 Kč',link:'mall.cz'},
+  kettle:{name:'Elektrická konvice Bosch',art:'kettle',category:'Kuchyně',priority:'Vysoká',price:'1 190 Kč',link:'alza.cz'},
+  album:{name:'Fotoalbum na 200 fotografií',art:'album',category:'Domov',priority:'Střední',price:'560 Kč',link:'ikea.com'},
+  gloves:{name:'Zahradní rukavice s koženou dlaní',art:'gloves',category:'Domov',priority:'Nízká',price:'349 Kč',link:'hornbach.cz'},
+  tea:{name:'Čajová souprava Earl Grey',art:'tea',category:'Kuchyně',priority:'Nízká',price:'720 Kč',link:'kosik.cz'},
+  scarf:{name:'Kašmírová šála',art:'scarf',category:'Oblečení',priority:'Vysoká',price:'1 650 Kč',link:'zoot.cz'},
+  socks:{name:'Vlněné ponožky, 3 páry',art:'socks',category:'Oblečení',priority:'Nízká',price:'399 Kč',link:'mall.cz'},
+  headphones:{name:'Bezdrátová sluchátka Sony',art:'headphones',category:'Elektronika',priority:'Nízká',price:'2 190 Kč',link:'alza.cz'},
+  mug:{name:'Porcelánový hrnek s monogramem V',art:'mug',category:'Kuchyně',priority:'Střední',price:'390 Kč',link:'mall.cz'},
+  diffuser:{name:'Aroma difuzér s olejíčky',art:'diffuser',category:'Domov',priority:'Střední',price:'790 Kč',link:'notino.cz'},
+  needles:{name:'Pletací jehlice',art:'needles',category:'Ruční práce',priority:null,price:'260 Kč',link:'mall.cz'}
+};
+const withGift=(key,changes)=>({...GIFTS[key],...changes});
+
+/* Rows follow the agent's submitted order inside each section. `ops` counts operations grouped on one gift. */
+const ROWS=[
+  {id:'delete-headphones',group:'confirm',kind:['Smazání dárku','danger','trash'],gift:'headphones',sub:'alza.cz · bez rezervací',
+   consequence:'Dárek „Bezdrátová sluchátka Sony“ bude trvale odstraněn.',
+   diffs:[{label:'Dárek',old:'Bezdrátová sluchátka Sony',only:true}],
+   cards:{before:withGift('headphones',{state:['Bude smazán','removal'],dim:true}),afterGhost:['trash','Po použití dárek ze seznamu zmizí']},
+   confirmTitle:'Smazání dárku „Bezdrátová sluchátka Sony“',confirmDetail:'Dárek bude trvale odstraněn.'},
+  {id:'reserve-mug',group:'confirm',kind:['Rezervace','primary','bookmark'],gift:'mug',sub:'1 ks · mall.cz',
+   consequence:'Zarezervujete 1 ks pod svým jménem Petr Svoboda.',
+   diffs:[{label:'Rezervace',old:'Volné, 0 z 1 ks',new:'Rezervováno vámi, 1 z 1 ks'}],
+   cards:{before:withGift('mug',{}),after:withGift('mug',{state:['Vaše rezervace','own']}),marks:{after:['state']}},
+   confirmTitle:'Rezervace 1 ks: Porcelánový hrnek s monogramem V',confirmDetail:'Pod vaším jménem Petr Svoboda.'},
+  {id:'invite-eva',group:'confirm',kind:['Pozvánka správce','info','user-plus'],iconThumb:'user-plus',name:'Nový správce seznamu',sub:'Pozvánka e-mailem',
+   consequenceHtml:'<span><code class="email">eva.kralova@email.cz</code> dostane e-mail s pozvánkou a uvidí rezervace.</span>',
+   diffs:[{label:'Správci',old:null,newHtml:'<code class="email">eva.kralova@email.cz</code>',only:true}],
+   confirmTitle:'Pozvánka správce',confirmHtml:'<code class="email">eva.kralova@email.cz</code> dostane e-mail s pozvánkou a uvidí rezervace.'},
+
+  {id:'new-blanket',group:'normal',kind:['Nový dárek','success','plus'],gift:'blanket',sub:'Přidá se na konec seznamu',
+   diffs:[{label:'Název',new:'Vlněný pléd s třásněmi',only:true},{label:'Cena',new:'1 290 Kč',only:true},{label:'Kategorie',new:'Domov',only:true},{label:'Priorita',new:'Střední',only:true},{label:'Odkaz',new:'ikea.com · Pléd 130 × 170 cm',only:true,link:true}],
+   cards:{beforeGhost:['plus','Nový dárek, v seznamu zatím není'],after:withGift('blanket',{})}},
+  {id:'new-book',group:'normal',kind:['Nový dárek','success','plus'],gift:'book',sub:'Přidá se na konec seznamu',
+   diffs:[{label:'Název',new:'Babiččiny recepty z Valašska',only:true},{label:'Cena',new:'449 Kč',only:true},{label:'Kategorie',new:'Knihy',only:true},{label:'Odkaz',new:'knihydobrovsky.cz · Kniha, vázaná',only:true,link:true}],
+   cards:{beforeGhost:['plus','Nový dárek, v seznamu zatím není'],after:withGift('book',{})}},
+  {id:'new-slippers',group:'normal',kind:['Nový dárek','success','plus'],gift:'slippers',sub:'Přidá se na konec seznamu',
+   diffs:[{label:'Název',new:'Hřejivé papuče z ovčí vlny, vel. 38',only:true},{label:'Cena',new:'890 Kč',only:true},{label:'Množství',new:'1 pár',only:true},{label:'Kategorie',new:'Oblečení',only:true},{label:'Priorita',new:'Vysoká',only:true}],
+   cards:{beforeGhost:['plus','Nový dárek, v seznamu zatím není'],after:withGift('slippers',{})}},
+  {id:'edit-kettle',group:'normal',ops:2,kind:['Úprava','neutral','pencil'],gift:'kettle',noImage:true,sub:'Pozice 4 · alza.cz',
+   diffs:[{label:'Cena',old:'1 190 Kč',new:'990 Kč'},{label:'Obrázek',old:'Bez obrázku',new:'Fotografie z alza.cz'}],
+   cards:{before:withGift('kettle',{noImage:true}),after:withGift('kettle',{price:'990 Kč'}),marks:{before:['price','image'],after:['price','image']}}},
+  {id:'edit-album',group:'normal',kind:['Úprava','neutral','pencil'],gift:'album',noImage:true,sub:'Pozice 7 · ikea.com',
+   diffs:[{label:'Obrázek',old:'Bez obrázku',new:'Fotografie z ikea.com'}],
+   cards:{before:withGift('album',{noImage:true}),after:withGift('album',{}),marks:{before:['image'],after:['image']}}},
+  {id:'edit-gloves',group:'normal',kind:['Úprava','neutral','pencil'],gift:'gloves',sub:'Pozice 11 · hornbach.cz',
+   diffs:[{label:'Kategorie',old:'Domov',new:'Zahrada'}],
+   cards:{before:withGift('gloves',{}),after:withGift('gloves',{category:'Zahrada'}),marks:{before:['category'],after:['category']}}},
+  {id:'edit-tea',group:'normal',kind:['Úprava','neutral','pencil'],gift:'tea',sub:'Pozice 6 · kosik.cz',
+   diffs:[{label:'Priorita',old:'Nízká',new:'Vysoká'}],
+   cards:{before:withGift('tea',{}),after:withGift('tea',{priority:'Vysoká'}),marks:{before:['priority'],after:['priority']}}},
+  {id:'append-scarf',group:'normal',kind:['Doplnění popisu','accent','text'],gift:'scarf',sub:'Pozice 2 · zoot.cz',appendText:'Nejlépe v lahvově zelené, babička k ní nosí šedý vlněný kabát.',originalDescription:'Měkká, alespoň 180 cm dlouhá.'},
+  {id:'reorder-socks',group:'normal',kind:['Přesun pořadí','neutral','reorder'],gift:'socks',sub:'mall.cz',dependsOn:'new-blanket',
+   diffs:[{label:'Pozice',old:'9',new:'3'}],context:'Nově mezi <q>Kašmírová šála</q> a <q>Vlněný pléd s třásněmi</q>',
+   dependencyNote:'Přesun počítá s novým dárkem „Vlněný pléd s třásněmi“, který jste nevybrali. Vyberte ho a přesun se vrátí.'},
+
+  {id:'conflict-diffuser',group:'blocked',blocked:'conflict',kind:['Úprava','neutral','pencil'],gift:'diffuser',sub:'Pozice 5 · notino.cz',
+   diffs:[{label:'Cena',old:'790 Kč',new:'690 Kč'}],
+   reason:'Dárek se po odeslání návrhu změnil (upravila Jana Dvořáková, 14. 10. v 8:12).',
+   current:{now:withGift('diffuser',{price:'750 Kč'}),proposed:withGift('diffuser',{price:'690 Kč'})}},
+  {id:'rejected-needles',group:'blocked',blocked:'rejected',kind:['Úprava','neutral','pencil'],gift:'needles',sub:'Pozice 13 · mall.cz',
+   diffs:[{label:'Název',old:'Pletací jehlice',new:'Bambusové pletací jehlice, sada 10 párů'}],
+   reason:'Po sdílení už dárek nelze přejmenovat, lhůta pro úpravy skončila 2. 10. 2026. Upřesnění můžete přidat jako doplnění popisu.'}
+];
+const ROW_BY_ID=Object.fromEntries(ROWS.map(row=>[row.id,row]));
+const operationsOf=row=>row.ops||1;
+const NEW_CONFLICTS={'edit-kettle':'Dárek se mezitím změnil (upravila Jana Dvořáková, 14. 10. v 10:49).','edit-gloves':'Dárek se mezitím změnil (upravila Jana Dvořáková, 14. 10. v 10:50).'};
+const CHANGED_SINCE_APPLY={'edit-kettle':'Elektrická konvice Bosch (upravila Jana Dvořáková, 14. 10. v 11:20)','new-blanket':'Vlněný pléd s třásněmi (upravila Jana Dvořáková, 14. 10. v 11:34)'};
+
+const ui={viewport:'desktop',theme:'light',phase:'pending',filter:'all'};
+let selection={};
+let heldByDependency={};
+let appliedIds=new Set();
+let newConflicts={};
+
+const plural=(count,one,few,many)=>count===1?one:(count>=2&&count<=4?few:many);
+const changesWord=count=>plural(count,'změna','změny','změn');
+const isSelectable=row=>!row.blocked&&!newConflicts[row.id]&&!heldByDependency[row.id]&&row.id in selection;
+
+function resetSelection(){
+  selection={};heldByDependency={};newConflicts={};
+  for(const row of ROWS){if(!row.blocked)selection[row.id]=row.group==='normal'}
+}
+function selectedRows(){return ROWS.filter(row=>selection[row.id]&&!newConflicts[row.id]&&!row.blocked)}
+function selectedOperationCount(){return selectedRows().reduce((sum,row)=>sum+operationsOf(row),0)}
+function selectableOperationCount(){return ROWS.filter(row=>!row.blocked&&!newConflicts[row.id]).reduce((sum,row)=>sum+operationsOf(row),0)}
+function appliedOperationCount(){return ROWS.filter(row=>appliedIds.has(row.id)).reduce((sum,row)=>sum+operationsOf(row),0)}
+
+function applyDependencies(){
+  for(const row of ROWS){
+    if(!row.dependsOn)continue;
+    const parentSelected=!!selection[row.dependsOn];
+    if(!parentSelected&&!heldByDependency[row.id]){heldByDependency[row.id]={wasSelected:!!selection[row.id]};selection[row.id]=false}
+    else if(parentSelected&&heldByDependency[row.id]){selection[row.id]=heldByDependency[row.id].wasSelected;delete heldByDependency[row.id]}
+  }
+}
+
+/* ── Rendering helpers ── */
+function badge(label,tone,iconName){return `<span class="badge ${tone==='neutral'?'':'tone-'+tone}">${iconName?icon(iconName):''}${label}</span>`}
+/* Change type tone: deletion red, new gift green, reservation and invitation link blue, everything else ink. */
+const KIND_TONES={danger:"danger",success:"success",primary:"link",info:"link"};
+const kindTone=badgeTone=>KIND_TONES[badgeTone]||"ink";
+function kindTitle(row){
+  const ops=row.ops>1?`<span class="kind-ops"> · ${row.ops} ${changesWord(row.ops)}</span>`:"";
+  return `<span class="kind-title">${icon(row.kind[2])}<span class="kind-title-text" title="${row.kind[0]}">${row.kind[0]}${ops}</span></span>`;
+}
+function kindCount(label,tone,iconName){return `<span class="kind-count" data-tone="${tone}">${icon(iconName)}${label}</span>`}
+
+function giftCard(gift,marks=[],markClass='mark-new'){
+  const mark=field=>marks.includes(field)?` ${markClass}`:'';
+  const image=gift.noImage
+    ?`<div class="image-placeholder" role="img" aria-label="Dárek bez obrázku">${icon('image')}<span>Bez obrázku</span></div>`
+    :`<div role="img" aria-label="Ilustrace: ${gift.name}" style="display:contents">${art(gift.art)}</div>`;
+  const stateBadge=gift.state?`<div class="state ${gift.state[1]}${mark('state')}"><span>${gift.state[1]==='removal'?icon('trash'):''}${gift.state[0]}</span></div>`:'';
+  return `<article class="gift${gift.dim?' is-dimmed':''}" aria-label="Karta dárku ${gift.name}">
+    <div class="image-area${mark('image')}"><div class="image-pattern" aria-hidden="true"></div><div class="image-art">${image}</div>
+      ${gift.category?`<span class="category${mark('category')}" style="background:${CATEGORY_COLORS[gift.category]}">${gift.category}</span>`:''}
+      ${gift.priority?`<span class="priority${mark('priority')}">${gift.priority}</span>`:''}${stateBadge}</div>
+    <div class="gift-body"><h3 class="gift-title" title="${gift.name}">${gift.name}</h3>
+      <div class="gift-links"><span class="gift-link">${icon('external')}${gift.link}</span></div>
+      <p class="gift-price${mark('price')}">${gift.price}</p></div>
+  </article>`;
+}
+function ghostSlot([iconName,text]){return `<div class="card-ghost">${icon(iconName)}<span>${text}</span></div>`}
+function cardPair(cards,beforeLabel='Před',afterLabel='Po'){
+  const marks=cards.marks||{};
+  const before=cards.before?giftCard(cards.before,marks.before,'mark-old'):ghostSlot(cards.beforeGhost);
+  const after=cards.after?giftCard(cards.after,marks.after,'mark-new'):ghostSlot(cards.afterGhost);
+  return `<div class="card-pair" role="group" aria-label="Náhled karty ${beforeLabel.toLowerCase()} a ${afterLabel.toLowerCase()}">
+    <figure class="card-slot"><figcaption class="pair-caption before"><span class="dot" aria-hidden="true"></span>${beforeLabel}</figcaption>${before}</figure>
+    <figure class="card-slot"><figcaption class="pair-caption after"><span class="dot" aria-hidden="true"></span>${afterLabel}</figcaption>${after}</figure>
+  </div>`;
+}
+function diffLine(diff){
+  const linkIcon=diff.link?icon('external'):'';
+  let values;
+  if(diff.only&&diff.new==null&&!diff.newHtml){values=`<del class="diff-old only"><span class="sr-only">Odstraní se: </span>${diff.old}</del>`}
+  else if(diff.only){values=`<ins class="diff-new only"><span class="sr-only">Přidá se: </span>${linkIcon}${diff.newHtml||diff.new}</ins>`}
+  else{values=`<del class="diff-old"><span class="sr-only">Původně: </span>${diff.old}</del><span class="diff-after"><span class="diff-arrow" aria-hidden="true">→</span><ins class="diff-new"><span class="sr-only">Nově: </span>${diff.new}</ins></span>`}
+  return `<li class="diff"><span class="diff-label">${diff.label}</span><span class="diff-values">${values}</span></li>`;
+}
+function identity(row){
+  const gift=row.gift?GIFTS[row.gift]:null;
+  const name=gift?gift.name:row.name;
+  const thumb=row.iconThumb?`<span class="thumb icon-thumb" aria-hidden="true">${icon(row.iconThumb)}</span>`
+    :(row.noImage?`<span class="thumb" aria-hidden="true">${icon('image')}</span>`:`<span class="thumb" aria-hidden="true">${art(gift.art,true)}</span>`);
+  return `<div class="identity">${thumb}<span class="identity-text"><span class="gift-name" title="${name}">${name}</span><span class="gift-sub">${row.sub||''}</span></span></div>`;
+}
+
+function rowStatus(row){
+  const phase=ui.phase;
+  if(row.blocked==='conflict'||newConflicts[row.id])return ['Konflikt','warning','alert'];
+  if(row.blocked==='rejected')return ['Nelze použít','danger','ban'];
+  if(phase==='applied'||phase==='undo-conflict'){
+    if(phase==='undo-conflict'&&CHANGED_SINCE_APPLY[row.id])return ['Od použití změněno','danger','alert'];
+    return appliedIds.has(row.id)?['Použito','success','check']:['Nepoužito','muted',null];
+  }
+  if(phase==='undone')return appliedIds.has(row.id)?['Vráceno','info','undo']:['Nepoužito','muted',null];
+  if(phase==='expired')return ['Nepoužito','muted',null];
+  if(phase==='discarded')return ['Zahozeno','muted',null];
+  if(heldByDependency[row.id])return ['Závisí na jiné změně','muted',null];
+  if(row.group==='confirm')return selection[row.id]?['Potvrzeno','primary','check']:['Vyžaduje potvrzení','warning','alert'];
+  return selection[row.id]?['Připraveno','success','check']:['Nevybráno','muted',null];
+}
+const isInteractive=()=>ui.phase==='pending'||ui.phase==='apply-conflict'||ui.phase==='applying';
+
+function selectCell(row){
+  const name=row.gift?GIFTS[row.gift].name:row.name;
+  if(!isInteractive()){
+    const applied=appliedIds.has(row.id)&&(ui.phase==='applied'||ui.phase==='undo-conflict');
+    return `<span class="done-glyph${applied?' on':''}" aria-hidden="true">${icon(applied?'check':'dash')}</span>`;
+  }
+  const disabled=row.blocked||newConflicts[row.id]||heldByDependency[row.id];
+  const describedBy=row.consequence||row.consequenceHtml?` aria-describedby="consequence-${row.id}"`:'';
+  return `<input type="checkbox" class="check row-check" id="check-${row.id}" data-row="${row.id}" aria-label="Vybrat změnu: ${row.kind[0]}, ${name}"${describedBy}${selection[row.id]&&!disabled?' checked':''}${disabled?' disabled':''}>`;
+}
+
+function diffsCell(row){
+  let html='';
+  if(row.consequence||row.consequenceHtml){
+    html+=`<p class="consequence" id="consequence-${row.id}">${icon('alert')}${row.consequenceHtml||`<span>${row.consequence}</span>`}</p>`;
+  }
+  if(row.appendText){
+    html+=`<div class="append"><span class="append-date">Doplnění popisu · zobrazí se pod původním popisem</span><ins><span class="sr-only">Přidá se: </span>${row.appendText}</ins></div><p class="original-desc">Původní popis zůstává beze změny: „${row.originalDescription}“</p>`;
+  }
+  if(row.diffs)html+=`<ul class="diff-list">${row.diffs.map(diffLine).join('')}</ul>`;
+  if(row.context)html+=`<p class="diff-context" style="margin-top:4px">${row.context}</p>`;
+  if(row.reason)html+=`<p class="reason ${row.blocked==='conflict'?'warning':'danger'}">${icon(row.blocked==='conflict'?'alert':'ban')}<span>${row.reason}</span></p>`;
+  if(newConflicts[row.id])html+=`<p class="reason warning">${icon('alert')}<span>${newConflicts[row.id]} Tato změna se nepoužije.</span></p>`;
+  if(row.dependsOn)html+=`<p class="reason muted" data-dependency-note="${row.id}"${heldByDependency[row.id]&&isInteractive()?'':' hidden'}>${icon('info')}<span>${row.dependencyNote}</span></p>`;
+  if(ui.phase==='undo-conflict'&&CHANGED_SINCE_APPLY[row.id])html+=`<p class="reason danger">${icon('alert')}<span>Od použití změněno: ${CHANGED_SINCE_APPLY[row.id].replace(/^[^(]+\(/,'').replace(/\)$/,'')}.</span></p>`;
+  if(row.current){
+    html+=`<details class="disclosure"><summary>${icon('chevron-down')}Zobrazit aktuální stav</summary>${cardPair({before:row.current.now,after:row.current.proposed,marks:{before:['price'],after:['price']}},'Aktuálně','Podle návrhu')}<p class="diff-context" style="margin-top:8px">Návrh počítal s cenou 790 Kč. Jana Dvořáková ji mezitím změnila na 750 Kč.</p></details>`;
+  }
+  return html;
+}
+
+function rowHtml(row){
+  const hasCards=!!row.cards;
+  const [statusLabel,statusTone,statusIcon]=rowStatus(row);
+  const classes=['change-row',hasCards?'has-cards':'slim'];
+  if(row.blocked)classes.push('is-blocked');
+  if(newConflicts[row.id])classes.push('is-new-conflict','is-blocked');
+  if(ui.phase==='undo-conflict'&&CHANGED_SINCE_APPLY[row.id])classes.push('is-changed-since');
+  const selected=isInteractive()?!!(selection[row.id]&&!row.blocked&&!newConflicts[row.id]):(ui.phase==='applied'||ui.phase==='undo-conflict'||ui.phase==='undone'?appliedIds.has(row.id):true);
+  const tags=[row.group==='confirm'?'confirm':'',row.blocked||newConflicts[row.id]?'conflict':''].join(' ');
+  return `<tr class="${classes.join(" ")}" role="row" data-tone="${kindTone(row.kind[1])}" data-row-id="${row.id}" data-group="${row.group}" data-selected="${selected}" data-tags="${tags}">
+    <td class="cell-select" role="cell">${selectCell(row)}</td>
+    <td class="cell-kind" role="cell">${kindTitle(row)}</td>
+    <td class="cell-gift" role="cell">${identity(row)}</td>
+    <td class="cell-diffs" role="cell">${diffsCell(row)}</td>
+    <td class="cell-status" role="cell" data-status="${row.id}">${badge(statusLabel,statusTone,statusIcon)}</td>
+    <td class="cell-cards${hasCards?'':' is-empty'}" role="cell">${hasCards?cardPair(row.cards):''}</td>
+  </tr>`;
+}
+function tableHtml(rows,caption){
+  return `<table class="change-table" role="table"><caption class="sr-only">${caption}</caption>
+    <thead role="rowgroup"><tr role="row"><th role="columnheader" scope="col">Výběr</th><th role="columnheader" scope="col">Druh změny</th><th role="columnheader" scope="col">Dárek</th><th role="columnheader" scope="col">Změny</th><th role="columnheader" scope="col">Stav</th><th role="columnheader" scope="col">Karta před a po</th></tr></thead>
+    <tbody role="rowgroup">${rows.map(rowHtml).join('')}</tbody></table>`;
+}
+
+/* ── Page regions ── */
+function headerHtml(){
+  const canDiscard=ui.phase==='pending'||ui.phase==='apply-conflict';
+  return `<div class="page-head"><div>
+    <a class="back-link" href="#w-vanoce-pro-babicku" data-demo>${icon('arrow-left')}Zpět na seznam</a>
+    <p class="eyebrow">Návrh změn</p><p class="for-line">Pro: Babička Věra</p><h1>Vánoce pro babičku</h1></div>
+    ${canDiscard?`<button type="button" class="btn danger" data-action="discard">${icon('trash')}Zahodit návrh</button>`:''}
+  </div>`;
+}
+function summaryHtml(){
+  const expiry=ui.phase==='expired'?`<span class="expires">${icon('hourglass')}Platnost vypršela 20. 10. 2026</span>`
+    :(ui.phase==='pending'||ui.phase==='apply-conflict'||ui.phase==='applying')?`<span class="expires">${icon('hourglass')}Platnost ještě 6 dní 11 h</span>`:'';
+  return `<section class="summary" aria-label="Souhrn návrhu">
+    <span class="summary-icon" aria-hidden="true">${icon('key')}</span>
+    <p class="summary-who">Navrhl: <strong>Petr Svoboda</strong> přes token <strong>„Claude – vánoční dárky“</strong></p>
+    <p class="summary-meta"><span>${icon('clock')}Odesláno 13. 10. 2026 v 21:47</span>${expiry}</p>
+    <div class="summary-counts"><strong>15 změn:</strong>${kindCount("3 nové dárky","success","plus")}${kindCount("9 úprav","ink","pencil")}${kindCount("1 smazání","danger","trash")}${kindCount("1 rezervace","link","bookmark")}${kindCount("1 pozvánka","link","user-plus")}</div>
+  </section>`;
+}
+function outcomeHtml(){
+  const count=appliedOperationCount();
+  const verb=plural(count,'Použita','Použity','Použito');
+  if(ui.phase==='applied'||ui.phase==='undo-conflict'){
+    const blocked=ui.phase==='undo-conflict';
+    return `<div class="alert success" role="status" tabindex="-1" id="outcome">${icon('check')}
+      <p class="alert-title">${verb} ${count} ${changesWord(count)} · 14. 10. 2026 v 10:52</p>
+      <p class="alert-body">Nevybrané a konfliktní změny se nepoužily a návrh je uzavřený. Celou dávku můžete vrátit, dokud se dárky znovu nezmění.</p>
+      <div class="alert-actions"><button type="button" class="btn danger" data-action="undo"${blocked?' disabled aria-describedby="undo-block"':''}>${icon('undo')}Vrátit celou dávku</button><a class="btn secondary" href="#w-vanoce-pro-babicku" data-demo>Otevřít seznam</a></div>
+    </div>${blocked?`<div class="alert destructive" id="undo-block" role="alert">${icon('alert')}<p class="alert-title">Dávku nelze vrátit celou</p><div class="alert-body">Tyto dárky se od použití změnily, dávku nelze vrátit celou:<ul>${Object.values(CHANGED_SINCE_APPLY).map(item=>`<li>${item}</li>`).join('')}</ul></div></div>`:''}`;
+  }
+  if(ui.phase==='undone')return `<div class="alert" role="status" tabindex="-1" id="outcome">${icon('undo')}<p class="alert-title">Dávka vrácena · 14. 10. v 10:58</p><p class="alert-body">Seznam je zpět ve stavu před použitím návrhu. Pozvánka i rezervace jsou zrušené, smazané dárky obnovené.</p><div class="alert-actions"><a class="btn secondary" href="#w-vanoce-pro-babicku" data-demo>Otevřít seznam</a></div></div>`;
+  if(ui.phase==='expired')return `<div class="alert warning" role="status">${icon('hourglass')}<p class="alert-title">Platnost návrhu vypršela 20. 10. 2026.</p><p class="alert-body">Požádejte svého agenta o nový návrh. Změny níže zůstávají jen pro přehled.</p></div>`;
+  if(ui.phase==='discarded')return `<div class="alert" role="status" tabindex="-1" id="outcome">${icon('info')}<p class="alert-title">Návrh jste zahodili.</p><p class="alert-body">Žádná změna se nepoužila. Váš agent může poslat nový návrh.</p></div>`;
+  if(ui.phase==='apply-conflict')return `<div class="alert warning" role="alert">${icon('alert')}<p class="alert-title">2 změny mezitím přestaly platit. Zkontrolujte je a použijte znovu.</p><p class="alert-body">Nic se nepoužilo. Ostatní výběr zůstal zachovaný, změněné dárky jsou označené jako Konflikt.</p></div>`;
+  return '';
+}
+function controlsHtml(){
+  if(!isInteractive())return '';
+  const confirmCount=ROWS.filter(row=>row.group==='confirm').length;
+  const conflictCount=ROWS.filter(row=>row.blocked||newConflicts[row.id]).length;
+  const filters=[['all','Vše',ROWS.reduce((sum,row)=>sum+operationsOf(row),0)],['confirm','Vyžaduje potvrzení',confirmCount],['conflict','Konflikty',conflictCount]];
+  return `<div class="list-controls">
+    <div class="master"><input type="checkbox" class="check" id="master-check" style="--select-size:var(--size-control-md)" aria-describedby="master-note"><label for="master-check">Vybrat vše</label><span class="master-note" id="master-note">běžné změny, potvrzení zvlášť</span><span class="master-count" id="master-count" aria-live="polite"></span></div>
+    <div class="segmented-scroll"><div class="segmented" role="group" aria-label="Filtr změn">${filters.map(([value,label,count])=>`<button type="button" data-filter="${value}" aria-pressed="${ui.filter===value}">${label}<span class="seg-count">${count}</span></button>`).join('')}</div></div>
+  </div>`;
+}
+function sectionsHtml(){
+  const confirmRows=ROWS.filter(row=>row.group==='confirm');
+  const normalRows=ROWS.filter(row=>row.group==='normal');
+  const blockedRows=ROWS.filter(row=>row.group==='blocked');
+  const readonly=['expired','discarded'].includes(ui.phase);
+  const confirmNote=isInteractive()?'Tyto změny se nepoužijí, dokud je jednotlivě nezaškrtnete. Před použitím je ještě jednou shrneme.':'Smazání, rezervace a pozvánky vyžadují výslovné potvrzení.';
+  return `<div class="sections${readonly?' is-readonly':''}" id="sections">
+    <section class="section confirm-section" data-section="confirm" aria-labelledby="confirm-heading">
+      <div class="section-head"><span class="confirm-mark" aria-hidden="true">${icon('alert')}</span><h2 id="confirm-heading">Vyžaduje vaše potvrzení</h2><p class="section-note">${confirmNote}</p></div>
+      ${tableHtml(confirmRows,'Změny, které vyžadují potvrzení')}
+    </section>
+    <section class="section" data-section="normal" aria-labelledby="normal-heading">
+      <div class="section-head"><h2 id="normal-heading">Změny dárků</h2><p class="section-note">V pořadí, v jakém je agent odeslal. Karty vpravo ukazují dárek před změnou a po ní.</p></div>
+      ${tableHtml(normalRows,'Změny dárků')}
+    </section>
+    <details class="blocked-section" data-section="blocked"${ui.filter==='conflict'?' open':''}>
+      <summary><span class="chev" aria-hidden="true">${icon('chevron-down')}</span><h2>Nelze použít (${blockedRows.length})</h2><span class="section-note">Konflikty a změny, které pravidla seznamu nedovolí. Nikdy se nepoužijí.</span></summary>
+      <div class="table-wrap">${tableHtml(blockedRows,'Změny, které nelze použít')}</div>
+    </details>
+  </div>`;
+}
+function skeletonHtml(){
+  const row=(cards)=>`<div class="skel-row" aria-hidden="true"><div class="skel-band"><span class="skel" style="width:32px;height:32px;flex:none"></span><span class="skel" style="width:140px;height:20px"></span><span class="skel" style="width:110px;height:26px;margin-left:auto"></span></div><div class="skel-stack"><span class="skel" style="width:60%;height:16px"></span><span class="skel" style="width:80%;height:14px"></span><span class="skel" style="width:50%;height:14px"></span></div>${cards?'<div class="skel-cards"><span class="skel" style="height:230px;border-radius:16px"></span><span class="skel" style="height:230px;border-radius:16px"></span></div>':''}</div>`;
+  return `<div aria-busy="true" aria-label="Načítání návrhu změn"><div class="summary" aria-hidden="true"><span class="skel" style="width:40px;height:40px;grid-row:span 3"></span><span class="skel" style="width:55%;height:16px"></span><span class="skel" style="width:35%;height:14px"></span><span class="skel" style="width:70%;height:20px;margin-top:6px"></span></div>
+    <div style="display:grid;gap:12px;margin-top:28px"><span class="skel" style="width:240px;height:26px"></span>${row(true)}${row(false)}${row(true)}${row(true)}</div></div>`;
+}
+function applyBarHtml(){
+  if(!isInteractive())return '';
+  const count=selectedOperationCount();
+  const confirmSelected=selectedRows().filter(row=>row.group==='confirm').length;
+  const applying=ui.phase==='applying';
+  const help=count===0?'Nic není vybráno':confirmSelected?`Včetně ${confirmSelected} ${plural(confirmSelected,'změny','změn','změn')} s potvrzením, před použitím je shrneme.`:'Použije se najednou, celou dávku půjde vrátit.';
+  const label=applying?`${icon('loader','spinner')}Používám…`:`Použít ${count} ${plural(count,'vybranou změnu','vybrané změny','vybraných změn')}`;
+  return `<div class="apply-inner"><div class="apply-text"><span class="apply-count">Vybráno ${count} z ${selectableOperationCount()}</span><span class="apply-help" id="apply-help"> ${help}</span></div>
+    <button type="button" class="btn primary" data-action="apply" aria-describedby="apply-help"${count===0||applying?' disabled':''}${applying?' aria-busy="true"':''}>${label}</button></div>`;
+}
+
+function render(){
+  const page=document.getElementById('page');
+  if(ui.phase==='loading'){page.innerHTML=headerHtml().replace(/<button[^]*?<\/button>/,'')+skeletonHtml();document.getElementById('apply-bar').hidden=true;return}
+  page.innerHTML=headerHtml()+summaryHtml()+outcomeHtml()+controlsHtml()+sectionsHtml();
+  if(ui.phase==='applying')document.getElementById('sections').setAttribute('inert','');
+  renderApplyBar();applyFilter();updateMaster();
+}
+function renderApplyBar(){const bar=document.getElementById('apply-bar');const html=applyBarHtml();bar.hidden=!html;bar.innerHTML=html}
+function updateRow(row){
+  const element=document.querySelector(`tr[data-row-id="${row.id}"]`);if(!element)return;
+  const checkbox=element.querySelector('.row-check');
+  const disabled=!!(row.blocked||newConflicts[row.id]||heldByDependency[row.id]);
+  if(checkbox){checkbox.disabled=disabled;checkbox.checked=!!selection[row.id]&&!disabled}
+  element.dataset.selected=String(!!selection[row.id]&&!disabled);
+  const [label,tone,iconName]=rowStatus(row);
+  element.querySelector('[data-status]').innerHTML=badge(label,tone,iconName);
+  const note=element.querySelector('[data-dependency-note]');if(note)note.hidden=!heldByDependency[row.id];
+}
+function updateMaster(){
+  const master=document.getElementById('master-check');if(!master)return;
+  const ordinary=ROWS.filter(row=>row.group==='normal'&&!newConflicts[row.id]&&!heldByDependency[row.id]);
+  const chosen=ordinary.filter(row=>selection[row.id]).length;
+  master.checked=chosen===ordinary.length&&chosen>0;
+  master.indeterminate=chosen>0&&chosen<ordinary.length;
+  const count=selectedOperationCount();
+  document.getElementById('master-count').textContent=`${count} z ${selectableOperationCount()} ${plural(selectableOperationCount(),'změny','změn','změn')} vybráno`;
+}
+function refreshSelection(){applyDependencies();ROWS.forEach(updateRow);updateMaster();renderApplyBar()}
+function applyFilter(){
+  document.querySelectorAll('.change-row').forEach(row=>{row.hidden=ui.filter!=='all'&&!row.dataset.tags.includes(ui.filter)});
+  document.querySelectorAll('[data-section]').forEach(section=>{section.hidden=![...section.querySelectorAll('.change-row')].some(row=>!row.hidden)});
+  const blocked=document.querySelector('.blocked-section');if(blocked&&ui.filter==='conflict')blocked.open=true;
+}
+
+/* ── Dialogs and phase transitions ── */
+const dialog=document.getElementById('dialog');
+function openDialog(html){dialog.innerHTML=html;dialog.showModal();const primary=dialog.querySelector('[data-autofocus]');if(primary)primary.focus()}
+function thumbFor(row){return row.iconThumb?`<span class="thumb icon-thumb" aria-hidden="true">${icon(row.iconThumb)}</span>`:`<span class="thumb" aria-hidden="true">${art(GIFTS[row.gift].art,true)}</span>`}
+function openApplyConfirmation(){
+  const confirmRows=selectedRows().filter(row=>row.group==='confirm');
+  const others=selectedOperationCount()-confirmRows.length;
+  openDialog(`<h2 id="dialog-title">Potvrďte citlivé změny</h2>
+    <p class="dialog-text">${others>0?`Spolu s ${others} ${plural(others,'další změnou','dalšími změnami','dalšími změnami')} použijete i tyto změny, které vyžadují vaše potvrzení:`:'Použijete tyto změny, které vyžadují vaše potvrzení:'}</p>
+    <ul class="dialog-list">${confirmRows.map(row=>`<li>${thumbFor(row)}<span><strong>${row.confirmTitle}</strong>${row.confirmHtml||row.confirmDetail}</span></li>`).join('')}</ul>
+    <div class="dialog-actions"><button type="button" class="btn secondary" data-action="close-dialog">Zpět ke kontrole</button><button type="button" class="btn primary" data-action="confirm-apply" data-autofocus>Potvrdit a použít</button></div>`);
+}
+function openUndoConfirmation(){
+  const count=appliedOperationCount();
+  const question=count===1?'Vrátit 1 změnu?':count<=4?`Vrátit všechny ${count} změny?`:`Vrátit všech ${count} změn?`;
+  openDialog(`<h2 id="dialog-title">${question}</h2><p class="dialog-text">Pozvánky a rezervace se zruší, smazané dárky se obnoví.</p>
+    <div class="dialog-actions"><button type="button" class="btn secondary" data-action="close-dialog" data-autofocus>Zpět</button><button type="button" class="btn danger" data-action="confirm-undo">${icon('undo')}Vrátit celou dávku</button></div>`);
+}
+function openDiscardConfirmation(){
+  openDialog(`<h2 id="dialog-title">Zahodit návrh?</h2><p class="dialog-text">Žádná z 15 změn se nepoužije a odkaz na návrh přestane fungovat pro úpravy. Váš agent může poslat nový návrh.</p>
+    <div class="dialog-actions"><button type="button" class="btn secondary" data-action="close-dialog" data-autofocus>Zpět ke kontrole</button><button type="button" class="btn destructive" data-action="confirm-discard">${icon('trash')}Zahodit návrh</button></div>`);
+}
+function setPhase(phase,{focusOutcome=false,keepPreset=false}={}){
+  ui.phase=phase;if(!keepPreset)document.getElementById('state-select').value=phase==='applying'?'pending':phase;
+  render();
+  if(focusOutcome){const outcome=document.getElementById('outcome');if(outcome)outcome.focus()}
+}
+function runApply(){
+  appliedIds=new Set(selectedRows().map(row=>row.id));
+  ui.phase='applying';render();
+  setTimeout(()=>{ui.filter='all';setPhase('applied',{focusOutcome:true})},1200);
+}
+function presetState(phase){
+  resetSelection();ui.filter='all';
+  if(phase==='mixed'){
+    Object.assign(selection,{'edit-album':false,'edit-tea':false,'new-book':false,'reserve-mug':true});
+    applyDependencies();setPhase('pending',{keepPreset:true});return;
+  }
+  if(phase==='none'){
+    for(const id in selection)selection[id]=false;
+    applyDependencies();setPhase('pending',{keepPreset:true});return;
+  }
+  if(phase==='apply-conflict'){newConflicts={...NEW_CONFLICTS}}
+  if(['applied','undo-conflict','undone'].includes(phase)){selection['reserve-mug']=true;appliedIds=new Set(selectedRows().map(row=>row.id))}
+  if(['expired','discarded'].includes(phase))appliedIds=new Set();
+  setPhase(phase);
+}
+
+/* ── Events ── */
+const device=document.getElementById('device');
+device.addEventListener('change',event=>{
+  const target=event.target;
+  if(target.matches('.row-check')){selection[target.dataset.row]=target.checked;refreshSelection()}
+  else if(target.id==='master-check'){
+    const ordinary=ROWS.filter(row=>row.group==='normal'&&!newConflicts[row.id]&&!heldByDependency[row.id]);
+    const allSelected=ordinary.every(row=>selection[row.id]);
+    for(const row of ROWS.filter(row=>row.group==='normal'&&!newConflicts[row.id]))selection[row.id]=!allSelected;
+    refreshSelection();
+  }
+});
+function handleAction(action){
+  if(action==='apply'){if(selectedRows().some(row=>row.group==='confirm'))openApplyConfirmation();else runApply()}
+  else if(action==='confirm-apply'){dialog.close();runApply()}
+  else if(action==='close-dialog'){dialog.close()}
+  else if(action==='undo'){openUndoConfirmation()}
+  else if(action==='confirm-undo'){dialog.close();setPhase('undone',{focusOutcome:true})}
+  else if(action==='discard'){openDiscardConfirmation()}
+  else if(action==='confirm-discard'){dialog.close();appliedIds=new Set();setPhase('discarded',{focusOutcome:true})}
+}
+document.addEventListener('click',event=>{
+  const actionTarget=event.target.closest('[data-action]');
+  if(actionTarget&&!actionTarget.disabled){handleAction(actionTarget.dataset.action);return}
+  const filterButton=event.target.closest('[data-filter]');
+  if(filterButton){ui.filter=filterButton.dataset.filter;document.querySelectorAll('[data-filter]').forEach(button=>button.setAttribute('aria-pressed',String(button===filterButton)));applyFilter();return}
+  const demo=event.target.closest('[data-demo]');
+  if(demo){event.preventDefault();showToast(demo.closest('.topbar')?'Ukázka: navigace aplikace není součástí návrhu.':'Ukázka: odkaz vede na seznam Vánoce pro babičku.')}
+});
+let toastTimer;
+function showToast(text){const toast=document.getElementById('toast');toast.textContent=text;toast.hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>toast.hidden=true,3000)}
+
+document.querySelectorAll('[data-viewport]').forEach(button=>button.addEventListener('click',()=>{
+  ui.viewport=button.dataset.viewport;document.getElementById('stage').dataset.viewport=ui.viewport;
+  document.querySelectorAll('[data-viewport]').forEach(other=>other.setAttribute('aria-pressed',String(other===button)));
+}));
+function setTheme(theme){
+  ui.theme=theme;document.documentElement.classList.toggle('dark',theme==='dark');
+  document.querySelectorAll('[data-theme]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.theme===theme)));
+}
+document.querySelectorAll('[data-theme]').forEach(button=>button.addEventListener('click',()=>setTheme(button.dataset.theme)));
+document.getElementById('nav-theme').addEventListener('click',()=>setTheme(ui.theme==='dark'?'light':'dark'));
+document.getElementById('state-select').addEventListener('change',event=>presetState(event.target.value));
+
+document.querySelectorAll('[data-icon]').forEach(slot=>{slot.outerHTML=icon(slot.dataset.icon)});
+resetSelection();render();
+</script>
+</body>
+</html>

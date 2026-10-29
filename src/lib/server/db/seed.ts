@@ -29,6 +29,7 @@ import { wishlistVisit } from './wishlist_visit.schema.js';
 import { notification } from './notification.schema.js';
 import { prepareSeedImages } from './seed_images.js';
 import { SEED_PASSWORD } from './seed_credentials.js';
+import { WISHLIST_KIND } from '$lib/modules/wishlists/types.js';
 
 // ---------------------------------------------------------------------------
 // .env loader (avoids dotenv dependency)
@@ -94,6 +95,8 @@ const WL_DETSKY = 'seed-wl-detsky';
 const WL_JBDAY = 'seed-wl-jbday';
 const WL_BYT = 'seed-wl-byt';
 const WL_KNIHY = 'seed-wl-knihy';
+// Permanent wishlist (issue #479): no event date; unreserved gifts stay fully editable after sharing.
+const WL_STALY = 'seed-wl-staly';
 // Lists Martin follows – give his "Sledované" dropdown the full open/reserved/bought spread.
 const WL_PBDAY = 'seed-wl-pbday'; // Petr – Martin: open
 const WL_KUCHYNE = 'seed-wl-kuchyne'; // Eva – Martin: open
@@ -189,6 +192,10 @@ const G_SV_KABAT = 'seed-g-sv-kabat';
 const G_SV_CAJ = 'seed-g-sv-caj';
 const G_SV_DENIK = 'seed-g-sv-denik';
 const G_SV_SKLENICE = 'seed-g-sv-sklenice';
+// Martin's permanent list – one gift reserved by Petr (strict rules), the rest unreserved
+const G_ST_SLUCHATKA = 'seed-g-st-sluchatka';
+const G_ST_HRNEK = 'seed-g-st-hrnek';
+const G_ST_KNIHA = 'seed-g-st-kniha';
 // Gifts on the for-someone lists (Rosie / Miminko)
 const G_PANENKA = 'seed-g-panenka';
 const G_ODRAZEDLO = 'seed-g-odrazedlo';
@@ -333,11 +340,12 @@ async function seed() {
 		// Wishlists
 		// ---------------------------------------------------------------
 		console.log('Seeding wishlists...');
-		await db.insert(wishlist).values([
+		const seedWishlists: (typeof wishlist.$inferInsert)[] = [
 			// Martin – active, shared, christmas
 			{
 				id: WL_XMAS26,
 				shortId: 'xmas2026',
+				themeId: 'christmas',
 				recipientUserId: MARTIN,
 				recipientName: null,
 				// Linked recipient self-promoted to also see reservation state (disclosure only,
@@ -383,10 +391,30 @@ async function seed() {
 				createdAt: d('2026-01-20T11:00:00Z'),
 				updatedAt: d('2026-03-10T15:00:00Z'),
 			},
+			// Martin – active, shared, permanent (no event date)
+			{
+				id: WL_STALY,
+				shortId: 'stalymar',
+				// Theme defaults with one explicit override, kept apart from the theme.
+				themeId: 'minimal',
+				styleTokens: { corners: 'round' },
+				recipientUserId: MARTIN,
+				recipientName: null,
+				title: 'Co se mi vždycky hodí',
+				description: 'Seznam průběžně doplňuji.',
+				kind: WISHLIST_KIND.permanent,
+				status: 'active',
+				theme: 'default',
+				palette: 'graphite',
+				sharedAt: d('2026-04-01T09:00:00Z'),
+				createdAt: d('2026-03-25T10:00:00Z'),
+				updatedAt: d('2026-04-01T09:00:00Z'),
+			},
 			// Martin – draft
 			{
 				id: WL_DRAFT,
 				shortId: 'draftlst',
+				themeId: 'toys',
 				recipientUserId: MARTIN,
 				recipientName: null,
 				title: 'Nový seznam',
@@ -508,6 +536,7 @@ async function seed() {
 			{
 				id: WL_PBDAY,
 				shortId: 'petrbday',
+				themeId: 'gamer',
 				recipientUserId: PETR,
 				recipientName: null,
 				title: 'Petrovy narozeniny',
@@ -515,7 +544,7 @@ async function seed() {
 				eventDate: d('2026-07-15T00:00:00Z'),
 				status: 'active',
 				theme: 'birthday',
-				palette: 'sakura',
+				palette: 'grape',
 				sharedAt: d('2026-05-20T09:00:00Z'),
 				createdAt: d('2026-05-18T11:00:00Z'),
 				updatedAt: d('2026-06-05T15:00:00Z'),
@@ -623,7 +652,13 @@ async function seed() {
 				createdAt: d('2026-06-20T11:00:00Z'),
 				updatedAt: d('2026-06-22T15:00:00Z'),
 			},
-		]);
+		];
+		await db.insert(wishlist).values(
+			seedWishlists.map((seedWishlist) => ({
+				...seedWishlist,
+				firstSharedAt: seedWishlist.sharedAt ?? null,
+			})),
+		);
 
 		// ---------------------------------------------------------------
 		// Priority levels (3 per wishlist)
@@ -639,6 +674,7 @@ async function seed() {
 			WL_JBDAY,
 			WL_BYT,
 			WL_KNIHY,
+			WL_STALY,
 			WL_PBDAY,
 			WL_KUCHYNE,
 			WL_JXMAS,
@@ -712,7 +748,8 @@ async function seed() {
 				id: G_PS5,
 				wishlistId: WL_XMAS26,
 				priorityLevelId: plId('xmas26', 'h'),
-				categoryId: CAT_XMAS_ELECTRONICS,
+				// Several categories exercise the badge overflow ("+X") and primary-only grouping.
+				categoryIds: [CAT_XMAS_ELECTRONICS, CAT_XMAS_EXPERIENCES, CAT_XMAS_CLOTHING],
 				name: 'PlayStation 5',
 				description: 'Nejnovější verze, s mechanikou na disky',
 				links: [
@@ -730,7 +767,7 @@ async function seed() {
 				id: G_BUNDA,
 				wishlistId: WL_XMAS26,
 				priorityLevelId: plId('xmas26', 'm'),
-				categoryId: CAT_XMAS_CLOTHING,
+				categoryIds: [CAT_XMAS_CLOTHING],
 				name: 'Zimní bunda North Face',
 				description: 'Velikost L, černá nebo tmavě modrá',
 				links: [{ url: 'https://www.sportisimo.cz/north-face' }],
@@ -786,7 +823,7 @@ async function seed() {
 				id: G_POUKAZ,
 				wishlistId: WL_XMAS26,
 				priorityLevelId: plId('xmas26', 'm'),
-				categoryId: CAT_XMAS_EXPERIENCES,
+				categoryIds: [CAT_XMAS_EXPERIENCES],
 				name: 'Dárkový poukaz do restaurace',
 				description: 'Ideálně La Degustation nebo Alcron',
 				price: 2000,
@@ -1203,6 +1240,38 @@ async function seed() {
 				received: true,
 			},
 
+			// --- Co se mi vždycky hodí / Martin permanent (3 gifts) ---
+			{
+				id: G_ST_SLUCHATKA,
+				wishlistId: WL_STALY,
+				name: 'Bezdrátová sluchátka',
+				price: 2490,
+				currency: 'CZK',
+				priorityLevelId: plId('staly', 'h'),
+				sortOrder: 0,
+				createdAt: d('2026-03-25T10:05:00Z'),
+			},
+			{
+				id: G_ST_HRNEK,
+				wishlistId: WL_STALY,
+				name: 'Termohrnek',
+				description: 'Ideálně do 0,5 l.',
+				price: 590,
+				currency: 'CZK',
+				priorityLevelId: plId('staly', 'm'),
+				sortOrder: 1,
+				createdAt: d('2026-03-25T10:10:00Z'),
+			},
+			{
+				id: G_ST_KNIHA,
+				wishlistId: WL_STALY,
+				name: 'Kniha z oblíbené edice',
+				quantity: 3,
+				priorityLevelId: plId('staly', 'l'),
+				sortOrder: 2,
+				createdAt: d('2026-03-25T10:15:00Z'),
+			},
+
 			// --- Výbava do bytu / Tomáš archived (3 gifts) ---
 			{
 				id: G_MIXER,
@@ -1239,7 +1308,7 @@ async function seed() {
 				id: G_DUNE,
 				wishlistId: WL_KNIHY,
 				priorityLevelId: plId('knihy', 'h'),
-				categoryId: CAT_KNIHY_BOOKS,
+				categoryIds: [CAT_KNIHY_BOOKS],
 				name: 'Dune – Frank Herbert',
 				links: [{ url: 'https://www.kosmas.cz/dune' }],
 				price: 350,
@@ -1332,7 +1401,7 @@ async function seed() {
 			{
 				id: G_KN_STOLETI,
 				wishlistId: WL_KNIHY,
-				categoryId: CAT_KNIHY_BOOKS,
+				categoryIds: [CAT_KNIHY_BOOKS],
 				name: 'Století – Ken Follett',
 				links: [{ url: 'https://www.kosmas.cz/stoleti' }],
 				price: 680,
@@ -1345,7 +1414,7 @@ async function seed() {
 				id: G_KN_MAPY,
 				wishlistId: WL_KNIHY,
 				priorityLevelId: plId('knihy', 'm'),
-				categoryId: CAT_KNIHY_BOOKS,
+				categoryIds: [CAT_KNIHY_BOOKS],
 				name: 'Mapy – Aleksandra Mizielińska',
 				description: 'Velký ilustrovaný atlas světa',
 				links: [{ url: 'https://www.kosmas.cz/mapy' }],
@@ -1358,7 +1427,7 @@ async function seed() {
 				id: G_KN_CROWDED,
 				wishlistId: WL_KNIHY,
 				priorityLevelId: plId('knihy', 'h'),
-				categoryId: CAT_KNIHY_LONG,
+				categoryIds: [CAT_KNIHY_LONG, CAT_KNIHY_BOOKS],
 				name: 'Kompletní ilustrované dějiny fantastických světů ve sběratelském vydání',
 				description: 'Záměrně přeplněný stav s obrázkovým zástupným symbolem.',
 				price: 2490,
@@ -1627,6 +1696,9 @@ async function seed() {
 			{ id: 'seed-r-36', giftId: G_SV_CAJ, userId: EVA, quantity: 1 },
 			// Partially reserved multi-quantity (1 of 3):
 			{ id: 'seed-r-37', giftId: G_SV_SKLENICE, userId: JANA, quantity: 1 },
+
+			// Co se mi vždycky hodí (permanent) – the reserved gift keeps the strict rules.
+			{ id: 'seed-r-staly-petr', giftId: G_ST_SLUCHATKA, userId: PETR, quantity: 1 },
 		]);
 
 		// ---------------------------------------------------------------
@@ -1732,6 +1804,7 @@ async function seed() {
 			// Narozeniny – Eva unfollowed
 			{ wishlistId: WL_BDAY, userId: JANA, createdAt: d('2026-02-02T10:00:00Z') },
 			{ wishlistId: WL_BDAY, userId: PETR, createdAt: d('2026-02-03T11:00:00Z') },
+			{ wishlistId: WL_STALY, userId: PETR, createdAt: d('2026-04-02T10:00:00Z') },
 			{
 				wishlistId: WL_BDAY,
 				userId: EVA,

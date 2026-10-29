@@ -1,7 +1,8 @@
 import '../../../../app.css';
 import { render } from 'vitest-browser-svelte';
 import { userEvent } from 'vitest/browser';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
+import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
 import {
 	isFacePaintHidden,
 	isIndicatorOnFace,
@@ -12,6 +13,8 @@ import {
 	selectionIndicatorOf,
 } from '../../../../../tests/helpers/selection-slide-assertions.mjs';
 import TabsTestFixture from './tabs_test_fixture.svelte';
+
+const { expectPixelsNear } = createPixelAssertions(expect);
 
 describe('Tabs keyboard navigation', () => {
 	it('puts only the active tab in the sequential focus order', async () => {
@@ -105,7 +108,7 @@ describe('Tabs selected face slide', () => {
 		// Tailwind shadow utilities prepend transparent ring layers before the sticker shadow.
 		expect(
 			indicatorStyle.boxShadow.endsWith(
-				resolveCssValue(context, 'box-shadow', 'var(--shadow-sticker-sm)'),
+				resolveCssValue(context, 'box-shadow', 'var(--shadow-sticker)'),
 			),
 		).toBe(true);
 		expect(indicatorStyle.borderTopLeftRadius).toBe(
@@ -166,4 +169,44 @@ describe('Tabs selected face slide', () => {
 
 		expect(isIndicatorOnFace(tablist, tabs[0])).toBe(true);
 	});
+});
+
+describe('Tabs tray depth clearance', () => {
+	afterEach(() => {
+		delete document.documentElement.dataset.depth;
+	});
+
+	function lastShadowDropY(boxShadow: string): number {
+		const layers = [...boxShadow.matchAll(/(-?[\d.]+)px (-?[\d.]+)px [\d.]+px [\d.]+px/g)];
+		return Number.parseFloat(layers.at(-1)?.[2] ?? '0');
+	}
+
+	// Ink and Black shadows count as part of the selected tab; Soft shadows are ignored.
+	it.each(['soft', 'ink', 'black'] as const)(
+		'keeps the selected tab equidistant from the track top and bottom with %s depth',
+		async (depth) => {
+			document.documentElement.dataset.depth = depth;
+			const screen = render(TabsTestFixture);
+			const tablist = screen.getByRole('tablist').element() as HTMLElement;
+			const selectedTab = screen.getByRole('tab', { name: 'First' }).element() as HTMLElement;
+			await nextFrames();
+
+			const trackStyle = getComputedStyle(tablist);
+			const trackInnerTop =
+				tablist.getBoundingClientRect().top + Number.parseFloat(trackStyle.borderTopWidth);
+			const trackInnerBottom = trackInnerTop + tablist.clientHeight;
+			const tabRect = selectedTab.getBoundingClientRect();
+			const shadowDrop =
+				depth === 'soft'
+					? 0
+					: lastShadowDropY(getComputedStyle(selectionIndicatorOf(tablist)).boxShadow);
+			if (depth !== 'soft') {
+				expect(shadowDrop).toBeGreaterThan(0);
+			}
+
+			const topGap = tabRect.top - trackInnerTop;
+			expect(topGap).toBeGreaterThan(0);
+			expectPixelsNear(trackInnerBottom - (tabRect.bottom + shadowDrop), topGap);
+		},
+	);
 });

@@ -14,6 +14,8 @@ import {
 const capabilityFlags = [
 	'readOnly',
 	'canEdit',
+	'canEnrich',
+	'canReorder',
 	'canReserve',
 	'ownsReservation',
 	'canTrackPurchased',
@@ -61,6 +63,49 @@ describe('gift contextual actions', () => {
 				canEdit: true,
 			}),
 		).toEqual(['open', 'copy', 'edit', 'priority', 'category', 'received', 'multiselect']);
+	});
+
+	it('offers AI enrichment after edit to managers the assistant is offered to, never on archived lists', () => {
+		const manager: GiftContextActionContext = {
+			role: 'recipient',
+			primaryUrl: null,
+			readOnly: false,
+			canEdit: true,
+			canEnrich: true,
+		};
+		expect(groupGiftContextActions(giftContextActions(manager))).toContainEqual({
+			name: 'gift',
+			actions: ['edit', 'enrich', 'received', 'multiselect'],
+		});
+		expect(giftContextActions({ ...manager, canEnrich: false })).not.toContain('enrich');
+		expect(giftContextActions({ ...manager, readOnly: true })).not.toContain('enrich');
+		expect(giftContextActions({ ...manager, role: 'visitor' })).not.toContain('enrich');
+	});
+
+	it('offers reorder right after multiselect to managers while reorder mode can start (#521)', () => {
+		for (const role of [WISHLIST_ROLES.recipient, WISHLIST_ROLES.moderator]) {
+			const manager: GiftContextActionContext = {
+				role,
+				primaryUrl: null,
+				readOnly: false,
+				canEdit: true,
+				canReorder: true,
+			};
+			expect(groupGiftContextActions(giftContextActions(manager))).toContainEqual({
+				name: 'gift',
+				actions: ['edit', 'received', 'multiselect', 'reorder'],
+			});
+			expect(giftContextActions({ ...manager, canReorder: false })).not.toContain('reorder');
+			expect(giftContextActions({ ...manager, readOnly: true })).not.toContain('reorder');
+		}
+		expect(
+			giftContextActions({
+				role: WISHLIST_ROLES.visitor,
+				primaryUrl: null,
+				readOnly: false,
+				canReorder: true,
+			}),
+		).not.toContain('reorder');
 	});
 
 	it('offers reservation ownership and purchased actions from explicit capabilities', () => {

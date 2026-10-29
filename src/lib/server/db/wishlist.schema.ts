@@ -11,9 +11,15 @@ import {
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import { user, demoSession } from './auth.schema.js';
-import { paletteEnum, wishlistStatusEnum, wishlistThemeEnum } from './enums.js';
+import { paletteEnum, wishlistKindEnum, wishlistStatusEnum, wishlistThemeEnum } from './enums.js';
 import { generateId } from './id.js';
+import { softDeletableTimestampColumns } from './columns.js';
 import type { WishlistImageSlots } from '$lib/modules/images/types.js';
+import type {
+	WishlistBackground,
+	WishlistStyleTokens,
+	WishlistThemeId,
+} from '$lib/theme/wishlist_themes.js';
 
 export function generateShortId(): string {
 	return generateId(8);
@@ -43,11 +49,17 @@ export const wishlist = pgTable(
 		description: text('description'),
 		eventDate: timestamp('event_date', { withTimezone: true }),
 		status: wishlistStatusEnum('status').notNull().default('draft'),
+		kind: wishlistKindEnum('kind').notNull().default('occasion'),
 		// Superseded by `palette`; kept for rollback safety, no reader remains.
 		theme: wishlistThemeEnum('theme').notNull().default('default'),
 		customThemeColor: text('custom_theme_color'),
 		// Redesign 2026 per-wishlist palette (replaces theme presets + custom color).
 		palette: paletteEnum('palette').notNull().default('sky'),
+		// Wishlist theme (#535): registry key, not the legacy `theme` enum. Null keeps the default
+		// look; style tokens and background hold only what the manager chose explicitly.
+		themeId: text('theme_id').$type<WishlistThemeId>(),
+		styleTokens: jsonb('style_tokens').$type<Partial<WishlistStyleTokens>>(),
+		background: jsonb('background').$type<Partial<WishlistBackground>>(),
 		// One wishlist image assignment + per-slot crop metadata (REQ-2). Replaces
 		// the obsolete separate banner/thumbnail keys (no compatibility shim kept).
 		imageKey: text('image_key'),
@@ -56,14 +68,15 @@ export const wishlist = pgTable(
 		// state (self-promote). Not a management right — recipients manage inherently.
 		recipientIsModerator: boolean('recipient_is_moderator').notNull().default(false),
 		sharedAt: timestamp('shared_at', { withTimezone: true }),
+		// First time the wishlist was shared; unlike `sharedAt`, revert to draft never clears it, so
+		// rules that depend on "was ever shared" (issue #479) survive a later unshare.
+		firstSharedAt: timestamp('first_shared_at', { withTimezone: true }),
 		// Last edit to the event date during the post-share grace window (issue #83). Drives the
 		// debounced 2-min reversibility of the event-date lock; falls back to `sharedAt` when never
 		// re-edited. Server is the authority – the client countdown derives from this.
 		eventDateEditedAt: timestamp('event_date_edited_at', { withTimezone: true }),
 		archivedAt: timestamp('archived_at', { withTimezone: true }),
-		deletedAt: timestamp('deleted_at', { withTimezone: true }),
-		createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-		updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+		...softDeletableTimestampColumns(),
 	},
 	(table) => ({
 		recipientStatusIdx: index('wishlist_recipient_status_idx')

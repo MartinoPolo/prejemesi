@@ -1,6 +1,6 @@
 import '../../../../app.css';
 import { render } from 'vitest-browser-svelte';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
 import { page, userEvent } from 'vitest/browser';
 import * as m from '$lib/paraglide/messages.js';
@@ -21,6 +21,13 @@ const baseProps = {
 	onreorderpointerdown: () => {},
 	onreordermove: () => {},
 };
+
+// Touch presses register window-wide fingers; release them so no test inherits another's.
+afterEach(() => {
+	window.dispatchEvent(
+		new PointerEvent('pointercancel', { pointerId: 1, pointerType: 'touch', isPrimary: true }),
+	);
+});
 
 describe('WishlistGiftDraggableWrapper — gift card opening (#284)', () => {
 	it('opens the primary link in a new tab on middle-click', async () => {
@@ -292,8 +299,10 @@ describe('WishlistGiftDraggableWrapper — explicit reorder mode (#239)', () => 
 });
 
 describe('WishlistGiftDraggableWrapper — context actions and selection', () => {
-	it('dispatches keyboard context invocation outside selection mode', async () => {
-		const openContext = vi.fn(() => true);
+	it('dispatches keyboard context invocation outside selection mode, marked as keyboard', async () => {
+		const openContext = vi.fn<(event: MouseEvent, fromKeyboard: boolean) => boolean>(
+			() => true,
+		);
 		const { container, unmount } = await render(WishlistGiftDraggableWrapperTestHost, {
 			...baseProps,
 			reorderEnabled: false,
@@ -309,8 +318,12 @@ describe('WishlistGiftDraggableWrapper — context actions and selection', () =>
 				cancelable: true,
 			}),
 		);
+		wrapper.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }));
 
-		expect(openContext).toHaveBeenCalledOnce();
+		expect(openContext.mock.calls.map(([, fromKeyboard]) => fromKeyboard)).toEqual([
+			true,
+			false,
+		]);
 		await unmount();
 	});
 

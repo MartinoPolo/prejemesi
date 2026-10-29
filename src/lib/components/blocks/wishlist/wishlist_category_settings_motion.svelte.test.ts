@@ -1,15 +1,16 @@
 import { render } from 'vitest-browser-svelte';
+import { page, userEvent } from 'vitest/browser';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import * as m from '$lib/paraglide/messages.js';
-import type { ManagedGiftCategorySettingsRow } from '$lib/modules/gift-categories/types.js';
+import type { ManagedGiftCategory } from '$lib/modules/gift-categories/types.js';
 
 const remote = vi.hoisted(() => ({
-	query: null as unknown as { current: ManagedGiftCategorySettingsRow[] },
+	query: null as unknown as { current: ManagedGiftCategory[] },
 }));
 
 vi.mock('$env/dynamic/public', () => ({ env: {} }));
 vi.mock('$lib/modules/gift-categories/gift_category_queries.remote.js', () => ({
-	getGiftCategorySettingsRows: vi.fn(() => ({
+	getGiftCategories: vi.fn(() => ({
 		...remote.query,
 		refresh: () => Promise.resolve(),
 	})),
@@ -101,7 +102,7 @@ describe('wishlist category settings motion', () => {
 		motion.destroy();
 	});
 
-	it('settles local custom-category reordering by stable persisted identity', async () => {
+	it('settles a keyboard reorder by stable persisted identity', async () => {
 		remote.query = {
 			current: [
 				{
@@ -111,7 +112,6 @@ describe('wishlist category settings motion', () => {
 					color: '#111111',
 					sortOrder: 0,
 					usedCount: 0,
-					enabled: true,
 				},
 				{
 					id: 'category-db-2',
@@ -120,7 +120,6 @@ describe('wishlist category settings motion', () => {
 					color: '#222222',
 					sortOrder: 1,
 					usedCount: 0,
-					enabled: true,
 				},
 			],
 		};
@@ -137,7 +136,12 @@ describe('wishlist category settings motion', () => {
 			.mockReturnValue(RECT);
 		const animate = vi.spyOn(HTMLElement.prototype, 'animate').mockReturnValue(animation());
 
-		await screen.getByRole('button', { name: m.move_down() }).all()[0].click();
+		const grip = screen.getByRole('button', {
+			name: m.gift_category_move_label({ category: 'First' }),
+		});
+		await expect.element(grip).toBeEnabled();
+		grip.element().focus();
+		await userEvent.keyboard('{ArrowDown}');
 		await expect.poll(() => animate.mock.calls.length).toBe(2);
 		expect(animate.mock.contexts).toEqual([secondRow, firstRow]);
 	});
@@ -145,11 +149,15 @@ describe('wishlist category settings motion', () => {
 	it('animates an unsaved draft exit and surviving draft settlement', async () => {
 		remote.query = { current: [] };
 		const screen = render(WishlistCategorySettings, { wishlistId: 'wishlist-db-1' });
-		const input = screen.getByPlaceholder(m.gift_category_custom_placeholder());
+		const newCategory = screen.getByRole('button', { name: m.gift_category_new() });
+		await expect.element(newCategory).toBeEnabled();
+		await newCategory.click();
+		const input = page.getByRole('textbox', { name: m.gift_category_quick_add_name_label() });
 		await input.fill('First draft');
-		await screen.getByRole('button', { name: m.gift_category_create() }).click();
+		await userEvent.keyboard('{Enter}');
 		await input.fill('Second draft');
-		await screen.getByRole('button', { name: m.gift_category_create() }).click();
+		await userEvent.keyboard('{Enter}');
+		await expect.poll(() => document.querySelectorAll('[data-category-row]').length).toBe(2);
 
 		const rows = Array.from(document.querySelectorAll<HTMLElement>('[data-category-row]'));
 		const deleted = rows[0]!;
@@ -160,7 +168,11 @@ describe('wishlist category settings motion', () => {
 			.mockReturnValue(RECT);
 		const animate = vi.spyOn(HTMLElement.prototype, 'animate').mockReturnValue(animation());
 
-		await screen.getByRole('button', { name: m.delete() }).all()[0].click();
+		await screen
+			.getByRole('button', {
+				name: m.gift_category_remove_label({ category: 'First draft' }),
+			})
+			.click();
 		await expect.poll(() => animate.mock.calls.length).toBe(2);
 
 		expect(animate.mock.contexts[0]).toBe(survivor);

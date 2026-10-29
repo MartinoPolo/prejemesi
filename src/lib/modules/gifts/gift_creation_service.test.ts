@@ -64,6 +64,7 @@ describe('appendGifts', () => {
 			{
 				wishlistId: wishlist.id,
 				actorId: 'actor',
+				recordRevisions: () => {},
 				gifts: [giftInput, { name: 'Book' }],
 				notifyFollowers: false,
 			},
@@ -97,6 +98,7 @@ describe('appendGifts', () => {
 			{
 				wishlistId: wishlist.id,
 				actorId: 'actor',
+				recordRevisions: () => {},
 				notifyFollowers: false,
 				gifts: [{ name: 'Decimal price', price: 19.5, priceMax: 29.95, currency: 'EUR' }],
 			},
@@ -124,6 +126,7 @@ describe('appendGifts', () => {
 			{
 				wishlistId: wishlist.id,
 				actorId: 'actor',
+				recordRevisions: () => {},
 				notifyFollowers: false,
 				gifts: [{ name: 'Defaults', links }],
 			},
@@ -165,6 +168,7 @@ describe('appendGifts', () => {
 			{
 				wishlistId: wishlist.id,
 				actorId: 'actor',
+				recordRevisions: () => {},
 				notifyFollowers: false,
 				gifts: [
 					{ name: 'URL image', imageUrl: 'https://img.example/url.jpg' },
@@ -193,6 +197,7 @@ describe('appendGifts', () => {
 				{
 					wishlistId: wishlist.id,
 					actorId: 'actor',
+					recordRevisions: () => {},
 					gifts: [giftInput],
 					notifyFollowers: false,
 				},

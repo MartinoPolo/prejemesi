@@ -7,6 +7,7 @@ import {
 } from './types.js';
 import { GIFT_SECTION_KINDS, type GiftSection, type GiftSectionKind } from './gift_ordering.js';
 import { getPriorityKey, type PriorityKey } from './gift_display.js';
+import { withPrimaryGiftCategory } from '$lib/modules/gift-categories/gift_category_assignment.js';
 import {
 	labelForGiftCategory,
 	type PublicGiftCategory,
@@ -37,14 +38,6 @@ export interface GiftReorderPlacement {
 	index: number;
 }
 
-/** Pointer drops that change a group offer an undo toast; keyboard moves only announce. */
-export const GIFT_REORDER_MOVE_SOURCES = {
-	pointer: 'pointer',
-	keyboard: 'keyboard',
-} as const;
-export type GiftReorderMoveSource =
-	(typeof GIFT_REORDER_MOVE_SOURCES)[keyof typeof GIFT_REORDER_MOVE_SOURCES];
-
 export function reorderGroupKey(field: GiftReorderGroupField, value: string | null): string {
 	return `${field}:${value ?? 'none'}`;
 }
@@ -58,10 +51,7 @@ export function giftReorderGroupKey(gift: GiftByRole, field: GiftReorderGroupFie
 				: null,
 		);
 	}
-	return reorderGroupKey(
-		field,
-		gift.categoryId != null && gift.category != null ? gift.categoryId : null,
-	);
+	return reorderGroupKey(field, gift.categories[0]?.id ?? null);
 }
 
 export function priorityReorderGroups(
@@ -145,11 +135,54 @@ export function withReorderGroup<Gift extends GiftByRole>(
 			prioritySortOrder: group.prioritySortOrder,
 		};
 	}
-	return { ...gift, categoryId: group.value, category: group.category };
+	return withGiftCategoryIds(
+		gift,
+		withPrimaryGiftCategory(
+			gift.categories.map((category) => category.id),
+			group.category?.id ?? null,
+		),
+		group.category === null ? [] : [group.category],
+	);
 }
 
-function reorderGroupChange(giftId: string, group: GiftReorderGroup): ReorderGiftGroupChange {
-	return { giftId, field: group.field, value: group.value };
+/** The gift with exactly these categories, resolved from its own and the wishlist's categories. */
+export function withGiftCategoryIds<Gift extends GiftByRole>(
+	gift: Gift,
+	categoryIds: readonly string[],
+	wishlistCategories: readonly PublicGiftCategory[],
+): Gift {
+	const knownCategories = new Map(
+		[...wishlistCategories, ...gift.categories].map((category) => [category.id, category]),
+	);
+	const categories = categoryIds.flatMap((categoryId) => {
+		const category = knownCategories.get(categoryId);
+		return category === undefined ? [] : [category];
+	});
+	return { ...gift, categoryIds: categories.map((category) => category.id), categories };
+}
+
+/**
+ * The change that puts the gift into `group`. A category change names the whole resulting list
+ * and its primary, so applying it again, or restoring it on undo, changes nothing else.
+ */
+function reorderGroupChange(gift: GiftByRole, group: GiftReorderGroup): ReorderGiftGroupChange {
+	if (group.field === GIFT_GROUPING_OPTIONS.priority) {
+		return { giftId: gift.id, field: group.field, value: group.value };
+	}
+	return categoryGroupChange(gift.id, withReorderGroup(gift, group).categoryIds);
+}
+
+/** A category change that restores exactly `categoryIds`, e.g. when undoing a move. */
+export function categoryGroupChange(
+	giftId: string,
+	categoryIds: readonly string[],
+): ReorderGiftGroupChange {
+	return {
+		giftId,
+		field: GIFT_GROUPING_OPTIONS.category,
+		value: categoryIds[0] ?? null,
+		categoryIds: [...categoryIds],
+	};
 }
 
 /**
@@ -303,7 +336,7 @@ export function resolveGroupedReorderMove(
 		previousOrder,
 		orderedIds,
 		targetGroup,
-		groupChanges: targetGroup === null ? [] : [reorderGroupChange(movedGift.id, targetGroup)],
+		groupChanges: targetGroup === null ? [] : [reorderGroupChange(movedGift, targetGroup)],
 	};
 }
 
