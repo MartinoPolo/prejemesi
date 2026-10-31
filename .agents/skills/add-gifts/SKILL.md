@@ -78,6 +78,10 @@ Gift fields follow the `createGift` and `updateGift` inputs in the API reference
 - `categoryIds` is optional: up to five of the wishlist's existing categories, the primary first, each matched by `customLabel` or by the preset (`presetKey`) the user or the evidence names. Unknown categories are HITL; never create one.
 - `priorityLevelId` and `quantity` only when the user gave them.
 - Images: compare the source's OpenGraph image with the Product JSON-LD `image` entries of the exact-match Heureka and Alza pages (the first entry is the main packshot), view the candidates, and pick the sharpest clean product or box shot of the exact edition, preferring the highest resolution; a small `og:image` is usually a thumbnail. Store the selected image with `prejemesi images add --wishlist <shortId> --url <image URL> --idempotency-key <key>` or `uploadImage`, then set `"imageReference": "<reference>"` on the gift. Report a refused image (`AGENT_IMAGE_*`) and propose the gift without it.
+- Image framing: after viewing the stored image, always set `imageMeta` beside its `imageReference`, as in `"imageMeta": { "fitMode": "contain-padded", "bgColor": "#ffffff" }`.
+    - `fitMode`: `contain-padded` (Fit, whole image visible) for product and box shots whose edges must stay visible, such as a board game, LEGO or book box, or an isolated product on a plain background; `cover-crop` (Fill) only for full-bleed photos such as scenes or textures, where cropping the edges loses nothing.
+    - `bgColor` matches the image's background where the frame letterboxes it: `"#ffffff"` for white or near-white, `"#000000"` for black, otherwise `null` (the transparent, dotted mat).
+    - An `updateGift` row with `imageMeta` and no `imageReference` reframes the gift's current image.
 
 ## Proposing changes
 
@@ -91,4 +95,4 @@ After submitting, check every row's status: `ready`; `rejected` with its `error`
 
 ## Report
 
-For each wishlist: its title, each proposal's id, status and review link, and per row the gift, whether it is created or updated, and its status or error. Report skipped duplicates, omitted metadata, and image provenance. Include a per-gift price table with each reference's price, currency, and availability, and list references that were blocked or had no exact match. Never expose access tokens, cookies, or other credentials.
+For each wishlist: its title, each proposal's id, status and review link, and per row the gift, whether it is created or updated, and its status or error. Report skipped duplicates, omitted metadata, and image provenance and framing. Include a per-gift price table with each reference's price, currency, and availability, and list references that were blocked or had no exact match. Never expose access tokens, cookies, or other credentials.
