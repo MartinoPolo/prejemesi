@@ -27,7 +27,7 @@
 	import WishlistCategorySettings from './WishlistCategorySettings.svelte';
 	import WishlistSettingsSaveButton from './WishlistSettingsSaveButton.svelte';
 	import RecipientPreview from './RecipientPreview.svelte';
-	import WishlistKindField from './WishlistKindField.svelte';
+	import WishlistOccasionField from './WishlistOccasionField.svelte';
 	import {
 		WISHLIST_SETTINGS_TABS,
 		type WishlistSettingsTab,
@@ -38,6 +38,10 @@
 	import { revertWishlistToDraft } from '$lib/modules/sharing/sharing.remote.js';
 	import { graceWindowExpiresAt } from '$lib/modules/sharing/grace_window.js';
 	import { hasUpcomingEventDate } from '$lib/modules/wishlists/event_date.js';
+	import {
+		eventDateAfterOccasionChange,
+		wishlistKindForOccasion,
+	} from '$lib/modules/wishlists/wishlist_occasion.js';
 	import {
 		getServerErrorCode,
 		translateServerError,
@@ -54,6 +58,7 @@
 		WISHLIST_TITLE_MAX_LENGTH,
 		WISHLIST_ROLES,
 		type Wishlist,
+		type WishlistOccasion,
 		type WishlistRole,
 	} from '$lib/modules/wishlists/types.js';
 	import type { Palette } from '$lib/theme/palettes.js';
@@ -188,7 +193,10 @@
 	// svelte-ignore state_referenced_locally (intentional one-time seed; the form owns its edit state)
 	let detailsEventDate = $state(toEventDate(wishlist.eventDate));
 	// svelte-ignore state_referenced_locally (intentional one-time seed; the form owns its edit state)
-	let detailsKind = $state(wishlist.kind);
+	let detailsOccasion = $state(wishlist.occasion);
+	const detailsKind = $derived(wishlistKindForOccasion(detailsOccasion));
+	// True while the date is the Vánoce pre-fill, which a later occasion change may replace.
+	let detailsEventDatePrefilled = $state(false);
 	// Free-text recipient name (issue #150): an inline field saved alongside the details form.
 	// svelte-ignore state_referenced_locally (intentional one-time seed; the form owns its edit state)
 	let recipientNameDraft = $state(recipientDisplayName);
@@ -245,17 +253,31 @@
 			detailsTitle.trim() !== wishlist.title.trim() ||
 			normalizedDescription !== normalizeOptionalText(wishlist.description) ||
 			recipientChanged ||
-			detailsKind !== wishlist.kind ||
+			detailsOccasion !== wishlist.occasion ||
 			eventDateChanged
 		);
 	});
+
+	function selectDetailsOccasion(nextOccasion: WishlistOccasion) {
+		detailsOccasion = nextOccasion;
+		if (!eventDateEditable) {
+			return;
+		}
+		({ eventDate: detailsEventDate, eventDatePrefilled: detailsEventDatePrefilled } =
+			eventDateAfterOccasionChange(
+				nextOccasion,
+				{ eventDate: detailsEventDate, eventDatePrefilled: detailsEventDatePrefilled },
+				new Date(),
+			));
+	}
 
 	/** Re-seed the details form from the canonical server values (server trims/normalizes). */
 	function seedDetailsForm() {
 		detailsTitle = wishlist.title;
 		detailsDescription = wishlist.description ?? '';
 		detailsEventDate = toEventDate(wishlist.eventDate);
-		detailsKind = wishlist.kind;
+		detailsOccasion = wishlist.occasion;
+		detailsEventDatePrefilled = false;
 		recipientNameDraft = recipientDisplayName;
 		detailsError = '';
 		recipientError = '';
@@ -369,7 +391,7 @@
 				input.details = {
 					title: trimmedTitle,
 					description: description === '' ? null : description,
-					...(detailsKind === wishlist.kind ? {} : { kind: detailsKind }),
+					...(detailsOccasion === wishlist.occasion ? {} : { occasion: detailsOccasion }),
 					// Becoming permanent clears the date on the server; a permanent list sends none.
 					...(detailsKind === WISHLIST_KIND.occasion && eventDateEditable
 						? { eventDate: detailsEventDate }
@@ -754,10 +776,10 @@
 								/>
 							</div>
 
-							<WishlistKindField
-								id="wishlist-settings-kind"
-								value={detailsKind}
-								onvaluechange={(kind) => (detailsKind = kind)}
+							<WishlistOccasionField
+								id="wishlist-settings-occasion"
+								value={detailsOccasion}
+								onvaluechange={selectDetailsOccasion}
 								disabled={saving}
 								permanentUnavailable={permanentKindUnavailable}
 							>
@@ -772,7 +794,7 @@
 										>
 									{/if}
 								{/snippet}
-							</WishlistKindField>
+							</WishlistOccasionField>
 
 							{#if detailsKind === WISHLIST_KIND.occasion}
 								<div class="flex flex-col gap-2">
@@ -782,9 +804,19 @@
 									<DatePicker
 										id="wishlist-event-date"
 										ariaLabelledby="wishlist-event-date-label"
-										bind:value={detailsEventDate}
+										bind:value={
+											() => detailsEventDate,
+											(pickedDate) => {
+												detailsEventDate = pickedDate;
+												detailsEventDatePrefilled = false;
+											}
+										}
 										disabled={saving || !eventDateEditable}
 									/>
+									{#if detailsEventDatePrefilled}
+										<HelpText>{m.wishlist_event_date_prefilled_hint()}</HelpText
+										>
+									{/if}
 									{#if isShared && eventDateEditable && eventDateGraceExpiresAt !== null}
 										<GraceCountdown
 											expiresAt={eventDateGraceExpiresAt}

@@ -12,13 +12,14 @@ vi.mock('$env/dynamic/public', () => ({ env: {} }));
 
 const { default: WishlistCard } = await import('./WishlistCard.svelte');
 const { default: WishlistListView } = await import('./WishlistListView.svelte');
-const { expectPixelsNear } = createPixelAssertions(expect);
+const { expectPixelsNear, expectPixelsAtMost } = createPixelAssertions(expect);
 
 const wishlist = {
 	id: 'wishlist-1',
 	shortId: 'test-list',
 	title: 'Testovací seznam',
 	status: 'active',
+	occasion: 'other',
 	theme: 'default',
 	palette: 'sky',
 	themeId: null,
@@ -431,4 +432,72 @@ describe('WishlistCard compact size', () => {
 		expect(progress.getAttribute('aria-label')).toBe(m.wishlist_reservation_progress());
 		await screen.unmount();
 	});
+});
+
+describe('WishlistCard occasion badge', () => {
+	const christmasWishlist = { ...wishlist, occasion: 'christmas' } as Wishlist;
+	const christmasBadgeName = () =>
+		m.wishlist_occasion_badge_aria({ occasion: m.wishlist_occasion_christmas() });
+
+	it('names the occasion on the badge and on the card link without adding a tab stop', async () => {
+		const screen = await render(WishlistCard, { wishlist: christmasWishlist });
+		const badge = screen.getByRole('img', { name: christmasBadgeName() });
+
+		await expect.element(badge).toBeVisible();
+		await expect
+			.element(screen.getByRole('link', { name: wishlist.title }))
+			.toHaveAccessibleDescription(christmasBadgeName());
+		expect(badge.element().hasAttribute('tabindex')).toBe(false);
+		await screen.unmount();
+	});
+
+	it('shows the occasion label in a tooltip on hover', async () => {
+		const screen = await render(WishlistCard, { wishlist: christmasWishlist });
+
+		await userEvent.hover(screen.getByRole('img', { name: christmasBadgeName() }));
+
+		await expect
+			.poll(
+				() => document.querySelector('[data-slot="tooltip-content"]')?.textContent?.trim(),
+				{ timeout: 3_000 },
+			)
+			.toBe(m.wishlist_occasion_christmas());
+		await screen.unmount();
+	});
+
+	it.each(['other', 'permanent'])('shows no badge for the %s occasion', async (occasion) => {
+		const screen = await render(WishlistCard, {
+			wishlist: { ...wishlist, occasion } as Wishlist,
+		});
+
+		expect(screen.container.querySelector('[data-testid="wishlist-card-occasion-badge"]')).toBe(
+			null,
+		);
+		expect(
+			screen
+				.getByRole('link', { name: wishlist.title })
+				.element()
+				.hasAttribute('aria-describedby'),
+		).toBe(false);
+		await screen.unmount();
+	});
+
+	it.each(['default', 'large', 'compact'] as const)(
+		'pins the badge to the cover top-left, clear of the status chip, at the %s size',
+		async (size) => {
+			const screen = await render(WishlistCard, { wishlist: christmasWishlist, size });
+			const card = screen.getByRole('link', { name: wishlist.title }).element();
+			const cardRect = card.getBoundingClientRect();
+			const badgeRect = screen
+				.getByRole('img', { name: christmasBadgeName() })
+				.element()
+				.getBoundingClientRect();
+			const statusRect = card.querySelector('[data-slot="badge"]')!.getBoundingClientRect();
+
+			expectPixelsAtMost(badgeRect.left - cardRect.left, 16);
+			expectPixelsAtMost(badgeRect.top - cardRect.top, 16);
+			expect(badgeRect.right).toBeLessThan(statusRect.left);
+			await screen.unmount();
+		},
+	);
 });

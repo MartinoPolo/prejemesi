@@ -80,11 +80,15 @@ async function createPermanentWishlistAndNavigate(
 		await recipientInput.fill(recipientName);
 	}
 	await dialog.getByRole('textbox', { name: 'Název' }).fill(title);
-	const kindGroup = dialog.getByRole('group', { name: m.wishlist_kind_label() });
-	await expect(kindGroup.getByRole('radio', { name: m.wishlist_kind_occasion() })).toBeChecked();
+	const occasionGroup = dialog.getByRole('group', { name: m.wishlist_occasion_label() });
+	await expect(
+		occasionGroup.getByRole('radio', { name: m.wishlist_occasion_other() }),
+	).toBeChecked();
 	await expect(dialog.getByText(m.wishlist_event_date_label())).toBeVisible();
-	await kindGroup.getByRole('radio', { name: m.wishlist_kind_permanent() }).click();
-	await expect(kindGroup.getByRole('radio', { name: m.wishlist_kind_permanent() })).toBeChecked();
+	await occasionGroup.getByRole('radio', { name: m.wishlist_kind_permanent() }).click();
+	await expect(
+		occasionGroup.getByRole('radio', { name: m.wishlist_kind_permanent() }),
+	).toBeChecked();
 	await expect(dialog.getByText(m.wishlist_event_date_label())).toBeHidden();
 	await dialog.getByRole('button', { name: 'Vytvořit', exact: true }).click();
 

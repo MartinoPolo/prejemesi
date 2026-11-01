@@ -5,8 +5,10 @@ import { isPalette, type Palette } from '$lib/theme/palettes.js';
 import {
 	RECIPIENT_NAME_MAX_LENGTH,
 	WISHLIST_KINDS,
+	WISHLIST_OCCASIONS,
 	WISHLIST_TITLE_MAX_LENGTH,
 	type WishlistKind,
+	type WishlistOccasion,
 } from './types.js';
 import {
 	WishlistAppearanceInputSchema,
@@ -18,6 +20,7 @@ const DetailsSchema = v.object({
 	description: v.nullable(v.string()),
 	eventDate: v.optional(v.nullable(v.date())),
 	kind: v.optional(v.picklist(WISHLIST_KINDS)),
+	occasion: v.optional(v.picklist(WISHLIST_OCCASIONS)),
 	recipientName: v.optional(
 		v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(RECIPIENT_NAME_MAX_LENGTH)),
 	),
@@ -45,6 +48,7 @@ export interface SaveWishlistSettingsInput {
 		description: string | null;
 		eventDate?: Date | null;
 		kind?: WishlistKind;
+		occasion?: WishlistOccasion;
 		recipientName?: string;
 	};
 	categories?: Omit<v.InferOutput<typeof SaveGiftCategorySettingsInputSchema>, 'wishlistId'>;

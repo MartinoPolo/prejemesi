@@ -70,6 +70,8 @@ const TRANSLATIONS: Record<string, TranslatorFunction> = {
 		m.server_error_permanent_wishlist_event_date(),
 	[SERVER_ERROR.CANNOT_MAKE_WISHLIST_WITH_UPCOMING_EVENT_PERMANENT]: () =>
 		m.server_error_cannot_make_wishlist_with_upcoming_event_permanent(),
+	[SERVER_ERROR.WISHLIST_OCCASION_KIND_MISMATCH]: () =>
+		m.server_error_wishlist_occasion_kind_mismatch(),
 	[SERVER_ERROR.GIFT_PRIORITY_WISHLIST_MISMATCH]: () =>
 		m.server_error_gift_priority_wishlist_mismatch(),
 	// Reuses the form's own range-error copy so toast and inline hint read identically.

@@ -20,8 +20,9 @@ Přejeme si is a shareable wishlist web app where users create gift lists for th
 ### Sharing and lifecycle
 
 - **Sharing** — Distributing a wishlist link. Freezes each existing gift's identity (`name`) and blocks delete, but leaves presentation/info fields editable (image, links, price, priority, append-only description; quantity raise-only). On a permanent wishlist this applies only to reserved gifts. See Post-share editing.
+- **Occasion** (Příležitost) — What a wishlist is for, chosen in one field at creation and in settings: Vánoce, Narozeniny, Svátek, Svatba, Miminko, Promoce, Jiná (default) or Stálý seznam. It decides the kind: Stálý seznam is the permanent wishlist, every other occasion an occasion wishlist. Vánoce pre-fills the next 24. 12. when no date is set and suggests the Vánoce motif; neither overrides the user's choice. Wishlist cards badge the occasion, except Jiná and Stálý seznam. Registry: `src/lib/modules/wishlists/wishlist_occasion.ts` and `wishlist_occasion_display.ts`.
 - **Occasion wishlist** — The default wishlist kind, with or without an event date; sharing applies the strict post-share gift rules to every gift.
-- **Permanent wishlist** — A wishlist kind chosen at creation for a list that changes over time: no event date, and after sharing its unreserved gifts stay fully editable and deletable. It can become an occasion wishlist any time; an occasion wishlist can become permanent unless its event date is still upcoming.
+- **Permanent wishlist** (Stálý seznam) — The wishlist kind of the Stálý seznam occasion, for a list that changes over time: no event date, and after sharing its unreserved gifts stay fully editable and deletable. It can become an occasion wishlist any time; an occasion wishlist can become permanent unless its event date is still upcoming.
 - **Post-share grace window** — A 2-minute reversibility window for sharing, each description append, and the event-date lock; later gift edits never reopen gift name/delete grace.
 - **Description append** — A post-share description change: an immutable, accent-colored, timestamped addition. The original text freezes at share time and is preserved for the gifter; Card/List previews show only the latest append; full history remains available in detail and editors.
 - **Archive** — A read-only state for a completed wishlist; visually distinct, no new reservations accepted.
@@ -80,7 +81,7 @@ _Avoid_: "list" for Wishlist (ambiguous), "present" for Gift (confusing with tim
 ### Done
 
 - Accounts: email/password with optional Google sign-in; anonymous visitors with a display name and optional email.
-- Wishlists: create, edit, share, archive, revert to draft (správce when reservation-free, admin when reserved); occasion and permanent kinds; lists for someone else with claim links and recipient reassignment.
+- Wishlists: create, edit, share, archive, revert to draft (správce when reservation-free, admin when reserved); occasions (Vánoce, Narozeniny, …, Stálý seznam) with card badges; lists for someone else with claim links and recipient reassignment.
 - Gifts: add, edit, remove, reorder, up to 10 links, image galleries of up to 8 images with fit/crop, up to five categories (the first one groups) with priority/category grouping and facets, mark as received.
 - Bulk entry: shared draft grid and the CSV / Google Sheets import wizard.
 - Reservations with quantity support, single-reservation release, and likes.

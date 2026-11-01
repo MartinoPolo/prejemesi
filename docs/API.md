@@ -26,7 +26,7 @@ Every call acts with the user's current role: losing a role takes effect on the 
 ## Endpoints
 
 - `GET /api/v1/me` returns the token user and the token (name, prefix, scopes, wishlist restriction, expiry, fast-forward).
-- `GET /api/v1/wishlists` returns the wishlists the token reaches, with the user's role and the wishlist kind.
+- `GET /api/v1/wishlists` returns the wishlists the token reaches, with the user's role, the wishlist kind and its occasion. Wishlist inputs that take `kind` (`createWishlist`, `updateWishlist`, `saveWishlistSettings` details) also take `occasion`: it decides the kind (`permanent` is the permanent kind, every other occasion the occasion kind), a contradicting `kind` answers 400 `WISHLIST_OCCASION_KIND_MISMATCH`, and `kind` alone keeps a fitting occasion (`other` when a permanent wishlist becomes an occasion one).
 - `POST /api/v1/operations/{operationName}` runs an agent read; the JSON body is the operation input and the answer is `{ "result": … }`. Change operations answer 409 `AGENT_MUTATION_REQUIRES_PROPOSAL`, because changes are submitted as proposals the user reviews.
 - `POST /api/v1/proposals` submits changes as a proposal and answers 201 `{ "proposal": … }`; `GET /api/v1/proposals/{proposalId}` reads one with its current status; `POST /api/v1/proposals/{proposalId}/apply` applies a waiting one under the fast-forward rule.
 - `POST /api/v1/images` stores an image from a URL for a gift and answers 201 `{ "image": … }` with its `reference`.

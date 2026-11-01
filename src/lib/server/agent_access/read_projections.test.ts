@@ -83,6 +83,7 @@ describe('projectAgentWishlist', () => {
 			eventDate: null,
 			status: 'active',
 			kind: 'permanent',
+			occasion: 'permanent',
 			theme: 'default',
 			customThemeColor: '#123456',
 			palette: 'sky',
@@ -130,6 +131,8 @@ describe('projectAgentWishlist', () => {
 			recipientDisplayName: 'Martin Novák',
 			managerNames: ['Jana'],
 			role: WISHLIST_ROLES.moderator,
+			kind: 'permanent',
+			occasion: 'permanent',
 		});
 		expect(projected.imageUrl).toContain('wishlists/banner.webp');
 	});
@@ -147,6 +150,7 @@ describe('projectAgentWishlist', () => {
 			eventDate: null,
 			status: 'draft',
 			kind: 'occasion',
+			occasion: 'other',
 			palette: 'graphite',
 			themeId: 'minimal',
 			styleTokens: null,
@@ -188,6 +192,7 @@ describe('projectAgentWishlist', () => {
 			eventDate: null,
 			status: 'draft',
 			kind: 'occasion',
+			occasion: 'christmas',
 			palette: 'graphite',
 			themeId: 'minimal',
 			styleTokens: { corners: 'round' },
@@ -201,6 +206,7 @@ describe('projectAgentWishlist', () => {
 		});
 
 		expect(projected).toMatchObject({
+			occasion: 'christmas',
 			themeId: 'minimal',
 			style: { corners: 'round', border: 'fine', mat: 'white', heading: 'plain' },
 			backgroundMode: 'custom',

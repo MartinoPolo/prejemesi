@@ -35,7 +35,7 @@ import { wishlistVisit } from './wishlist_visit.schema.js';
 import { notification } from './notification.schema.js';
 import { prepareSeedImages } from './seed_images.js';
 import { SEED_PASSWORD } from './seed_credentials.js';
-import { WISHLIST_KIND } from '$lib/modules/wishlists/types.js';
+import { WISHLIST_KIND, WISHLIST_OCCASION } from '$lib/modules/wishlists/types.js';
 
 // ---------------------------------------------------------------------------
 // .env loader (avoids dotenv dependency)
@@ -365,6 +365,7 @@ async function seed() {
 			{
 				id: WL_XMAS26,
 				shortId: 'xmas2026',
+				occasion: WISHLIST_OCCASION.christmas,
 				themeId: 'christmas',
 				recipientUserId: MARTIN,
 				recipientName: null,
@@ -392,6 +393,7 @@ async function seed() {
 			{
 				id: WL_BDAY,
 				shortId: 'bdaymart',
+				occasion: WISHLIST_OCCASION.birthday,
 				recipientUserId: MARTIN,
 				recipientName: null,
 				title: 'Narozeniny Martina',
@@ -415,6 +417,7 @@ async function seed() {
 			{
 				id: WL_STALY,
 				shortId: 'stalymar',
+				occasion: WISHLIST_OCCASION.permanent,
 				// Theme defaults with one explicit override, kept apart from the theme.
 				themeId: 'minimal',
 				styleTokens: { corners: 'round' },
@@ -448,6 +451,7 @@ async function seed() {
 			{
 				id: WL_XMAS25,
 				shortId: 'xmas2025',
+				occasion: WISHLIST_OCCASION.christmas,
 				recipientUserId: MARTIN,
 				recipientName: null,
 				title: 'Vánoce 2025',
@@ -464,6 +468,7 @@ async function seed() {
 			{
 				id: WL_SVATEK,
 				shortId: 'svatekjn',
+				occasion: WISHLIST_OCCASION.nameDay,
 				recipientUserId: JANA,
 				recipientName: null,
 				title: 'Přání k svátku',
@@ -501,6 +506,7 @@ async function seed() {
 			{
 				id: WL_JBDAY,
 				shortId: 'janabday',
+				occasion: WISHLIST_OCCASION.birthday,
 				recipientUserId: JANA,
 				recipientName: null,
 				title: 'Minulé narozeniny',
@@ -556,6 +562,7 @@ async function seed() {
 			{
 				id: WL_PBDAY,
 				shortId: 'petrbday',
+				occasion: WISHLIST_OCCASION.birthday,
 				themeId: 'gamer',
 				recipientUserId: PETR,
 				recipientName: null,
@@ -589,6 +596,7 @@ async function seed() {
 			{
 				id: WL_JXMAS,
 				shortId: 'janaxm26',
+				occasion: WISHLIST_OCCASION.christmas,
 				recipientUserId: JANA,
 				recipientName: null,
 				title: 'Janiny Vánoce 2026',
@@ -625,6 +633,7 @@ async function seed() {
 			{
 				id: WL_ROSIE,
 				shortId: 'rosiewl1',
+				occasion: WISHLIST_OCCASION.birthday,
 				recipientUserId: null,
 				recipientName: 'Rosie',
 				title: 'Rosčiny narozeniny',
@@ -642,6 +651,7 @@ async function seed() {
 			{
 				id: WL_MIMINKO,
 				shortId: 'miminko1',
+				occasion: WISHLIST_OCCASION.baby,
 				recipientUserId: null,
 				recipientName: 'Miminko',
 				title: 'Výbavička pro miminko',
@@ -660,6 +670,7 @@ async function seed() {
 			{
 				id: WL_KLARA,
 				shortId: 'klarawl1',
+				occasion: WISHLIST_OCCASION.christmas,
 				recipientUserId: null,
 				recipientName: 'Klára',
 				title: 'Klářin adventní seznam',

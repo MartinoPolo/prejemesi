@@ -45,6 +45,35 @@ export type WishlistKind = (typeof WISHLIST_KIND)[keyof typeof WISHLIST_KIND];
 
 export const WISHLIST_KINDS = [WISHLIST_KIND.occasion, WISHLIST_KIND.permanent] as const;
 
+/**
+ * What a wishlist is for (#600), separate from its motif. `permanent` is the Stálý seznam: it is
+ * exactly the permanent kind, and every other occasion is the occasion kind.
+ */
+export const WISHLIST_OCCASION = {
+	christmas: 'christmas',
+	birthday: 'birthday',
+	nameDay: 'name_day',
+	wedding: 'wedding',
+	baby: 'baby',
+	graduation: 'graduation',
+	other: 'other',
+	permanent: 'permanent',
+} as const;
+
+export type WishlistOccasion = (typeof WISHLIST_OCCASION)[keyof typeof WISHLIST_OCCASION];
+
+/** Display and storage order. */
+export const WISHLIST_OCCASIONS = [
+	WISHLIST_OCCASION.christmas,
+	WISHLIST_OCCASION.birthday,
+	WISHLIST_OCCASION.nameDay,
+	WISHLIST_OCCASION.wedding,
+	WISHLIST_OCCASION.baby,
+	WISHLIST_OCCASION.graduation,
+	WISHLIST_OCCASION.other,
+	WISHLIST_OCCASION.permanent,
+] as const;
+
 /** Max length of a free-text recipient name (issue #99 creation modal). */
 export const RECIPIENT_NAME_MAX_LENGTH = 100;
 
@@ -80,6 +109,7 @@ export type CreateWishlistInput =
 			recipientKind: 'self';
 			title: string;
 			kind?: WishlistKind;
+			occasion?: WishlistOccasion;
 			eventDate?: Date | null;
 			theme?: WishlistTheme;
 			palette?: Palette;
@@ -92,6 +122,7 @@ export type CreateWishlistInput =
 			recipientName: string;
 			title: string;
 			kind?: WishlistKind;
+			occasion?: WishlistOccasion;
 			eventDate?: Date | null;
 			theme?: WishlistTheme;
 			palette?: Palette;
@@ -106,6 +137,7 @@ const PaletteSchema = v.custom<Palette>(isPalette);
 const CreateWishlistBaseFields = {
 	title: WishlistTitleSchema,
 	kind: v.optional(v.picklist(WISHLIST_KINDS)),
+	occasion: v.optional(v.picklist(WISHLIST_OCCASIONS)),
 	eventDate: v.optional(v.nullable(v.date())),
 	theme: v.optional(v.picklist(WISHLIST_THEMES)),
 	palette: v.optional(PaletteSchema),
@@ -129,6 +161,7 @@ export interface UpdateWishlistInput {
 	description?: string | null;
 	eventDate?: Date | null;
 	kind?: WishlistKind;
+	occasion?: WishlistOccasion;
 	imageKey?: string | null;
 	imageSlots?: WishlistImageSlots | null;
 	/** Upload proof, required only when assigning a newly uploaded non-null banner key. */
@@ -141,6 +174,7 @@ export const UpdateWishlistInputSchema = v.object({
 	description: v.optional(v.nullable(v.string())),
 	eventDate: v.optional(v.nullable(v.date())),
 	kind: v.optional(v.picklist(WISHLIST_KINDS)),
+	occasion: v.optional(v.picklist(WISHLIST_OCCASIONS)),
 	imageKey: v.optional(v.nullable(v.string())),
 	imageSlots: v.optional(v.nullable(WishlistImageSlotsSchema)),
 	imageAssignmentToken: v.optional(v.string()),

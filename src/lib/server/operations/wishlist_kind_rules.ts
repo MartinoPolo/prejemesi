@@ -3,7 +3,16 @@ import { error } from '@sveltejs/kit';
 import type { DatabaseTransaction } from '$lib/server/db/index.js';
 import { reservation } from '$lib/server/db/gift.schema.js';
 import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
-import { WISHLIST_KIND, WISHLIST_ROLES, type WishlistKind } from '$lib/modules/wishlists/types.js';
+import {
+	WISHLIST_KIND,
+	WISHLIST_ROLES,
+	type WishlistKind,
+	type WishlistOccasion,
+} from '$lib/modules/wishlists/types.js';
+import {
+	occasionAfterKindWrite,
+	wishlistKindForOccasion,
+} from '$lib/modules/wishlists/wishlist_occasion.js';
 import { giftFollowsStrictPostShareRules } from '$lib/modules/gifts/gift_strict_post_share_rules.js';
 import { hasUpcomingEventDate } from '$lib/modules/wishlists/event_date.js';
 import type { ManagedWishlist, WishlistRow } from './wishlist_management.js';
@@ -82,7 +91,7 @@ export function assertEventDateAllowed(
  * lock; a shared list becoming an occasion opens a fresh event-date window, since gifters never
  * relied on a date it did not have.
  */
-export function planWishlistKindChange(
+function planWishlistKindChange(
 	wishlistRow: Pick<WishlistRow, 'kind' | 'sharedAt' | 'eventDate'>,
 	requestedKind: WishlistKind | undefined,
 	now: Date,
@@ -99,4 +108,49 @@ export function planWishlistKindChange(
 		error(409, SERVER_ERROR.CANNOT_MAKE_WISHLIST_WITH_UPCOMING_EVENT_PERMANENT);
 	}
 	return { kind: requestedKind, eventDate: null, eventDateEditedAt: null };
+}
+
+export interface RequestedOccasion {
+	kind?: WishlistKind;
+	occasion?: WishlistOccasion;
+}
+
+/**
+ * The kind and occasion a write asks for, or null when it names neither. A write naming only the
+ * kind keeps its meaning and moves the occasion by {@link occasionAfterKindWrite}; an occasion
+ * alone decides the kind; both together must agree.
+ */
+export function resolveRequestedOccasion(
+	requested: RequestedOccasion,
+	currentOccasion: WishlistOccasion | null,
+): { kind: WishlistKind; occasion: WishlistOccasion } | null {
+	if (requested.occasion === undefined) {
+		return requested.kind === undefined
+			? null
+			: {
+					kind: requested.kind,
+					occasion: occasionAfterKindWrite(requested.kind, currentOccasion),
+				};
+	}
+	const kind = wishlistKindForOccasion(requested.occasion);
+	if (requested.kind !== undefined && requested.kind !== kind) {
+		error(400, SERVER_ERROR.WISHLIST_OCCASION_KIND_MISMATCH);
+	}
+	return { kind, occasion: requested.occasion };
+}
+
+/** An occasion change, with the kind change it implies under that change's rules. */
+export function planWishlistOccasionChange(
+	wishlistRow: Pick<WishlistRow, 'kind' | 'occasion' | 'sharedAt' | 'eventDate'>,
+	requested: RequestedOccasion,
+	now: Date,
+): Partial<Pick<WishlistRow, 'kind' | 'occasion' | 'eventDate' | 'eventDateEditedAt'>> {
+	const resolved = resolveRequestedOccasion(requested, wishlistRow.occasion);
+	if (resolved === null) {
+		return {};
+	}
+	return {
+		...planWishlistKindChange(wishlistRow, resolved.kind, now),
+		...(resolved.occasion === wishlistRow.occasion ? {} : { occasion: resolved.occasion }),
+	};
 }

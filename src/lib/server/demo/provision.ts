@@ -5,7 +5,11 @@ import { gift, giftCategory, giftImage, reservation } from '$lib/server/db/gift.
 import { moderatorAssignment } from '$lib/server/db/moderator.schema.js';
 import { wishlistFollower } from '$lib/server/db/follower.schema.js';
 import { generateId } from '$lib/server/db/id.js';
-import { DEFAULT_PRIORITY_LEVELS } from '$lib/modules/wishlists/types.js';
+import {
+	DEFAULT_PRIORITY_LEVELS,
+	WISHLIST_OCCASION,
+	type WishlistOccasion,
+} from '$lib/modules/wishlists/types.js';
 import { createDefaultWishlistSlots } from '$lib/modules/images/wishlist_slots.js';
 import {
 	GIFT_CATEGORY_PRESET_BY_KEY,
@@ -16,6 +20,12 @@ import { demoEmailAddress } from './constants.js';
 
 const HOUR_MS = 3_600_000;
 const PRIORITY_LEVEL_INDEX = { high: 0, medium: 1, low: 2 } as const;
+// An ongoing demo list keeps the occasion kind with no date, so its occasion is Jiná.
+const DEMO_WISHLIST_OCCASION: Record<DemoCatalogWishlist['occasion'], WishlistOccasion> = {
+	ongoing: WISHLIST_OCCASION.other,
+	birthday: WISHLIST_OCCASION.birthday,
+	christmas: WISHLIST_OCCASION.christmas,
+};
 
 function demoEventDate(entry: DemoCatalogWishlist, index: number, now: Date): Date | null {
 	if (entry.occasion === 'ongoing') {
@@ -64,6 +74,7 @@ async function insertDemoWishlist(
 			recipientUserId,
 			recipientName: entry.role === 'managed' ? entry.recipientName : null,
 			title: entry.title,
+			occasion: DEMO_WISHLIST_OCCASION[entry.occasion],
 			description: entry.description,
 			palette: entry.palette,
 			imageKey: entry.coverImageUrl,

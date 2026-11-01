@@ -20,6 +20,9 @@
 	import { Avatar } from '$lib/components/derived/avatar/index.js';
 	import { WishlistBadge } from '$lib/components/derived/wishlist-badge/index.js';
 	import { WishlistProgress } from '$lib/components/derived/wishlist-progress/index.js';
+	import { SimpleTooltip } from '$lib/components/base/tooltip/index.js';
+	import { occasionHasCardBadge } from '$lib/modules/wishlists/wishlist_occasion.js';
+	import { WISHLIST_OCCASION_DISPLAY } from '$lib/modules/wishlists/wishlist_occasion_display.js';
 
 	interface WishlistCardProps {
 		wishlist: Wishlist;
@@ -55,6 +58,9 @@
 		class: className,
 	}: WishlistCardProps = $props();
 
+	const componentId = $props.id();
+	const occasionBadgeId = `${componentId}-occasion`;
+
 	const isArchived = $derived(wishlistData.status === 'archived');
 	const themeEmoji = $derived(getWishlistEmoji(wishlistData.theme));
 	const cardSrc = $derived(wishlistImageUrl(wishlistData.imageKey));
@@ -71,6 +77,21 @@
 	);
 	const isCompact = $derived(size === 'compact');
 	const statusLabel = $derived(WISHLIST_STATUS_LABELS[wishlistData.status]());
+	const occasionDisplay = $derived(
+		occasionHasCardBadge(wishlistData.occasion)
+			? WISHLIST_OCCASION_DISPLAY[wishlistData.occasion]
+			: null,
+	);
+
+	/**
+	 * The occasion tooltip opens on hover only: the card link stays the single tab stop and
+	 * announces the occasion through its aria-describedby.
+	 */
+	function withoutTabStop(triggerProps: Record<string, unknown>): Record<string, unknown> {
+		const badgeProps = { ...triggerProps };
+		delete badgeProps.tabindex;
+		return badgeProps;
+	}
 
 	function formatDate(date: Date | null): string {
 		if (date === null) {
@@ -88,10 +109,28 @@
 	href={localizeInternalHref(resolve('/(app)/w/[id]', { id: wishlistData.shortId }))}
 	class={cn(variants.root(), className)}
 	aria-label={wishlistData.title}
+	aria-describedby={occasionDisplay === null ? undefined : occasionBadgeId}
 	data-testid="wishlist-card"
 >
 	<ElevationSurface class={variants.surface()}>
 		<span aria-hidden="true" class={variants.border()}></span>
+		{#if occasionDisplay !== null}
+			{@const occasionLabel = occasionDisplay.label()}
+			<SimpleTooltip text={occasionLabel}>
+				{#snippet asChild(triggerProps)}
+					<span
+						{...withoutTabStop(triggerProps)}
+						id={occasionBadgeId}
+						role="img"
+						aria-label={m.wishlist_occasion_badge_aria({ occasion: occasionLabel })}
+						class={variants.occasionBadge()}
+						data-testid="wishlist-card-occasion-badge"
+					>
+						<occasionDisplay.icon aria-hidden="true" />
+					</span>
+				{/snippet}
+			</SimpleTooltip>
+		{/if}
 		<!-- Banner: taped-notebook tint with dot pattern (photo replaces both when assigned) -->
 		<div class={variants.banner()} aria-hidden="true">
 			<div class={variants.bannerFill()} data-palette={wishlistData.palette}>

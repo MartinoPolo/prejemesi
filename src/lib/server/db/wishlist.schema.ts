@@ -11,7 +11,13 @@ import {
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import { user, demoSession } from './auth.schema.js';
-import { paletteEnum, wishlistKindEnum, wishlistStatusEnum, wishlistThemeEnum } from './enums.js';
+import {
+	paletteEnum,
+	wishlistKindEnum,
+	wishlistOccasionEnum,
+	wishlistStatusEnum,
+	wishlistThemeEnum,
+} from './enums.js';
 import { generateId } from './id.js';
 import { softDeletableTimestampColumns } from './columns.js';
 import type { WishlistImageSlots } from '$lib/modules/images/types.js';
@@ -50,6 +56,9 @@ export const wishlist = pgTable(
 		eventDate: timestamp('event_date', { withTimezone: true }),
 		status: wishlistStatusEnum('status').notNull().default('draft'),
 		kind: wishlistKindEnum('kind').notNull().default('occasion'),
+		// What the list is for (#600). Until the previous release, which writes only `kind`, is gone,
+		// a trigger turns its kind writes into the matching occasion (migration 0034).
+		occasion: wishlistOccasionEnum('occasion').notNull().default('other'),
 		// Superseded by `palette`; kept for rollback safety, no reader remains.
 		theme: wishlistThemeEnum('theme').notNull().default('default'),
 		customThemeColor: text('custom_theme_color'),
@@ -89,6 +98,11 @@ export const wishlist = pgTable(
 		recipientPresence: check(
 			'wishlist_recipient_presence_check',
 			sql`num_nonnulls(${table.recipientUserId}, ${table.recipientName}) = 1`,
+		),
+		// The Stálý seznam occasion is exactly the permanent kind.
+		occasionKind: check(
+			'wishlist_occasion_kind_check',
+			sql`(${table.occasion} = 'permanent') = (${table.kind} = 'permanent')`,
 		),
 	}),
 );

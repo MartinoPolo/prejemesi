@@ -15,6 +15,7 @@ export const wishlist: Wishlist = {
 	eventDate: null,
 	status: 'draft',
 	kind: 'occasion',
+	occasion: 'other',
 	theme: 'default',
 	customThemeColor: null,
 	palette: 'sky',

@@ -1,13 +1,17 @@
 import { isWithinGraceWindow } from '$lib/modules/sharing/grace_window.js';
-import { WISHLIST_KIND, type WishlistKind } from '$lib/modules/wishlists/types.js';
+import {
+	WISHLIST_KIND,
+	type WishlistKind,
+	type WishlistOccasion,
+} from '$lib/modules/wishlists/types.js';
 import type { WishlistUploadTarget } from '$lib/modules/wishlists/wishlist_image_assignment.js';
 import type { WishlistRow } from './wishlist_management.js';
-import { assertEventDateAllowed, planWishlistKindChange } from './wishlist_kind_rules.js';
+import { assertEventDateAllowed, planWishlistOccasionChange } from './wishlist_kind_rules.js';
 
 type EventDateEdit = Partial<Pick<WishlistRow, 'eventDate' | 'eventDateEditedAt'>>;
 type DetailEditedWishlist = Pick<
 	WishlistRow,
-	'kind' | 'sharedAt' | 'eventDate' | 'eventDateEditedAt'
+	'kind' | 'occasion' | 'sharedAt' | 'eventDate' | 'eventDateEditedAt'
 >;
 
 /**
@@ -38,6 +42,7 @@ interface WishlistDetailEdit {
 	description?: string | null;
 	eventDate?: Date | null;
 	kind?: WishlistKind;
+	occasion?: WishlistOccasion;
 	imageKey?: string | null;
 	imageSlots?: WishlistRow['imageSlots'];
 }
@@ -48,8 +53,12 @@ export function planWishlistDetailEdit(
 	edit: WishlistDetailEdit,
 	now: Date,
 ): Partial<WishlistRow> {
-	const kindChange = planWishlistKindChange(wishlistRow, edit.kind, now);
-	const nextKind = kindChange.kind ?? wishlistRow.kind;
+	const occasionChange = planWishlistOccasionChange(
+		wishlistRow,
+		{ kind: edit.kind, occasion: edit.occasion },
+		now,
+	);
+	const nextKind = occasionChange.kind ?? wishlistRow.kind;
 	assertEventDateAllowed(nextKind, edit.eventDate);
 	return {
 		...(edit.title === undefined ? {} : { title: edit.title }),
@@ -57,7 +66,7 @@ export function planWishlistDetailEdit(
 		...(nextKind === WISHLIST_KIND.permanent
 			? {}
 			: planEventDateEdit(wishlistRow, edit.eventDate, now)),
-		...kindChange,
+		...occasionChange,
 		...(edit.imageKey === undefined ? {} : { imageKey: edit.imageKey }),
 		...(edit.imageSlots === undefined ? {} : { imageSlots: edit.imageSlots }),
 	};
