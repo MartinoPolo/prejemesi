@@ -23,6 +23,7 @@ import {
 } from './wishlist_management.js';
 import { applyGiftUpdate, type GiftRow } from './gift_update.js';
 import { softDeleteGift } from './gift_deletion.js';
+import { giftColumnsWithImages } from './gift_gallery.js';
 import { lockedGiftFollowsStrictPostShareRules } from './wishlist_kind_rules.js';
 
 /**
@@ -53,7 +54,7 @@ async function lockManagedGift(
 	assertWishlistMutable(managedWishlist.wishlistRow);
 	// Re-checked under the lock: the gift may have been deleted while the wishlist lock was awaited.
 	const [giftRow] = await transaction
-		.select()
+		.select(giftColumnsWithImages())
 		.from(gift)
 		.where(and(activeGift, eq(gift.wishlistId, unlockedGift.wishlistId)))
 		.for('update');
@@ -203,11 +204,15 @@ export const markGiftReceivedOperation = defineOperation({
 			context.actor.userId,
 			input.giftId,
 		);
-		const [updated] = await context.transaction
+		const [updatedColumns] = await context.transaction
 			.update(gift)
 			.set({ received: input.received, updatedAt: context.now })
 			.where(eq(gift.id, input.giftId))
 			.returning();
+		const updated =
+			updatedColumns === undefined
+				? undefined
+				: { ...updatedColumns, images: giftRow.images };
 		if (updated !== undefined) {
 			context.recordGiftRevisions([
 				{

@@ -168,7 +168,7 @@ describe('agent API document', () => {
 		});
 	});
 
-	it('documents gift images by image reference only, never by URL or storage key', () => {
+	it('documents gift images by image references only, never by URL, storage key or raw gallery', () => {
 		for (const name of ['createGift', 'updateGift']) {
 			const properties = v.parse(
 				v.object({ properties: v.record(v.string(), v.unknown()) }),
@@ -177,6 +177,20 @@ describe('agent API document', () => {
 			expect(properties, name).toHaveProperty('imageReference');
 			expect(properties, name).not.toHaveProperty('imageUrl');
 			expect(properties, name).not.toHaveProperty('imageKey');
+			expect(properties, name).not.toHaveProperty('images');
+			expect(properties, name).toHaveProperty('imageReferences', {
+				type: 'array',
+				minItems: 1,
+				maxItems: 8,
+				description: expect.any(String),
+				items: expect.objectContaining({
+					required: ['imageReference'],
+					properties: {
+						imageReference: expect.objectContaining({ type: 'string' }),
+						imageMeta: expect.anything(),
+					},
+				}),
+			});
 		}
 	});
 

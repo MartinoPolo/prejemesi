@@ -36,14 +36,18 @@ import {
 } from './operation.js';
 import { assertWishlistPriorityLevel, requireWishlistManagement } from './wishlist_management.js';
 import {
+	giftRowAfterWrite,
 	planPresentationUpdate,
 	updateDataChangesGift,
 	type GiftRow,
 	type GiftUpdateData,
 } from './gift_update.js';
+import { jsonChanged } from '$lib/modules/gifts/gift_post_share.js';
+import type { GiftImage } from '$lib/modules/gifts/gift_images.js';
 import type { ManagedWishlist, WishlistRow } from './wishlist_management.js';
 import { loadReservedGiftIds, managerEditNotifiesReservers } from './wishlist_kind_rules.js';
 import { softDeleteGift } from './gift_deletion.js';
+import { giftColumnsWithImages, replaceGiftGalleries } from './gift_gallery.js';
 
 function bulkJsonbValue(value: unknown) {
 	return value === null ? sql`NULL::jsonb` : sql`${JSON.stringify(value)}::jsonb`;
@@ -90,7 +94,7 @@ export const reorderGiftsOperation = defineOperation({
 		assertWishlistMutable(wishlistRow);
 
 		const giftRows = await transaction
-			.select()
+			.select(giftColumnsWithImages())
 			.from(gift)
 			.where(and(eq(gift.wishlistId, wishlistId), isNull(gift.deletedAt)))
 			.for('update');
@@ -187,6 +191,8 @@ export const reorderGiftsOperation = defineOperation({
 interface BulkUpdatePlan {
 	row: GiftRow;
 	updateData: GiftUpdateData;
+	/** The complete next gallery when the action changes it. */
+	nextImages?: GiftImage[];
 	didChange: boolean;
 }
 
@@ -216,7 +222,7 @@ async function lockBulkSelection(
 	uniqueGiftIds: readonly string[],
 ): Promise<GiftRow[]> {
 	const rows = await transaction
-		.select()
+		.select(giftColumnsWithImages())
 		.from(gift)
 		.where(bulkSelectionFilter(input, uniqueGiftIds))
 		.for('update');
@@ -240,10 +246,31 @@ function planBulkUpdate(
 ): BulkUpdatePlan {
 	const updateData: GiftUpdateData = bulkGiftUpdateData(input, row);
 	if (isBulkPresentationAction(input)) {
-		const plan = planPresentationUpdate({ giftRow: row, updateData, now, wishlistRow });
-		return { row, updateData, didChange: plan.didChange };
+		const nextImages = bulkGalleryUpdate(input, row);
+		const plan = planPresentationUpdate({
+			giftRow: row,
+			updateData,
+			nextImages,
+			now,
+			wishlistRow,
+		});
+		return { row, updateData, nextImages, didChange: plan.didChange };
 	}
 	return { row, updateData, didChange: updateDataChangesGift(row, updateData) };
+}
+
+/** Image presentation actions restyle every image of the gallery, not only the cover. */
+function bulkGalleryUpdate(input: BulkUpdateGiftsInput, row: GiftRow): GiftImage[] | undefined {
+	if (input.action !== 'imageFit' && input.action !== 'imageBackground') {
+		return undefined;
+	}
+	const nextImages = row.images.map((image) => ({
+		...image,
+		imageMeta:
+			bulkGiftUpdateData(input, { imageMeta: image.imageMeta, categoryIds: row.categoryIds })
+				.imageMeta ?? image.imageMeta,
+	}));
+	return jsonChanged(nextImages, row.images) ? nextImages : undefined;
 }
 
 /** One CASE expression writes each planned gift its own value in a single UPDATE statement. */
@@ -380,6 +407,14 @@ export async function applyBulkGiftUpdate(
 		.where(bulkSelectionFilter(input, uniqueGiftIds))
 		.returning({ id: gift.id });
 	assertEveryGiftUpdated(updatedRows, uniqueGiftIds);
+	await replaceGiftGalleries(
+		transaction,
+		new Map(
+			updatePlans.flatMap((plan) =>
+				plan.nextImages === undefined ? [] : [[plan.row.id, plan.nextImages] as const],
+			),
+		),
+	);
 
 	// The CASE statements above write exactly each plan's update data, so the new state is known.
 	context.recordGiftRevisions(
@@ -387,7 +422,7 @@ export async function applyBulkGiftUpdate(
 			giftId: plan.row.id,
 			wishlistId: plan.row.wishlistId,
 			before: plan.row,
-			after: { ...plan.row, ...plan.updateData },
+			after: giftRowAfterWrite(plan.row, plan.updateData, plan.nextImages),
 		})),
 	);
 	noteManagerEdits(
@@ -428,7 +463,7 @@ async function removeUnreservedSourceGifts(
 		{ lock: true },
 	);
 	const sourceGiftRows = await transaction
-		.select()
+		.select(giftColumnsWithImages())
 		.from(gift)
 		.where(
 			and(

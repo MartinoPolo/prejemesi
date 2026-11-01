@@ -521,4 +521,36 @@ describe('statement budgets (issue #108, REQ-7)', () => {
 
 		expect(statementCount()).toBeLessThanOrEqual(6);
 	});
+
+	it('reads every gift’s gallery with the gift rows, adding no statement per gift', async () => {
+		const gallery = (giftName: string) =>
+			Array.from({ length: 8 }, (_, index) => ({
+				imageUrl: `https://shop.example/${giftName}-${index}.jpg`,
+				imageKey: null,
+				imageMeta: null,
+			}));
+		const giftRows = ['kolo', 'mic', 'kniha'].map((giftName, index) =>
+			makeGiftRow({
+				id: `gift-${giftName}`,
+				sortOrder: index,
+				imageUrl: `https://shop.example/${giftName}-0.jpg`,
+				images: gallery(giftName),
+			}),
+		);
+		mockDbInstance.pushResult([makeWishlistRow()]); // wishlist lookup
+		mockDbInstance.pushResult([]); // moderator check → visitor
+		mockDbInstance.pushResult(giftRows); // gift rows, galleries included
+		mockDbInstance.pushResult([]); // reservations
+		mockDbInstance.pushResult([]); // like counts
+		mockDbInstance.pushResult([]); // my reservations
+
+		const result = await callGetGifts(makeVisitorAuthContext(), WISHLIST_SHORT_ID);
+
+		const visibleGifts = result.gifts as { images: unknown }[];
+		expect(visibleGifts.map((visibleGift) => visibleGift.images)).toEqual([
+			gallery('kolo'),
+			gallery('mic'),
+			gallery('kniha'),
+		]);
+	});
 });

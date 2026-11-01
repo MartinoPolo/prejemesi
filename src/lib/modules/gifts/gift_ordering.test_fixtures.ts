@@ -19,6 +19,7 @@ export function makeGift(overrides: Partial<GiftForVisitor> = {}): GiftForVisito
 		imageUrl: null,
 		imageKey: null,
 		imageMeta: null,
+		images: [],
 		quantity: 1,
 		sortOrder: idCounter,
 		received: false,

@@ -56,8 +56,9 @@ export interface AgentOperationPolicy<TInput, TOutput> {
 	 */
 	setsImageReference(input: TInput): boolean;
 	/**
-	 * Whether the input may name an image from `POST /api/v1/images` in `imageReference`, which
-	 * authorization checks for ownership and replaces with the stored image's key.
+	 * Whether the input may name images from `POST /api/v1/images` in `imageReference` (the cover)
+	 * or `imageReferences` (the whole gallery), which authorization checks for ownership and
+	 * replaces with the stored images' keys.
 	 */
 	readonly acceptsImageReference: boolean;
 	/** What the API returns: listed fields only, no internal columns or out-of-scope identities. */
@@ -131,8 +132,14 @@ function byReservationId<TInput>(reservationIdOf: (input: TInput) => string) {
 	];
 }
 
-function setsGiftImage(input: { imageUrl?: string | null; imageKey?: string | null }): boolean {
-	return input.imageUrl !== undefined || input.imageKey !== undefined;
+function setsGiftImage(input: {
+	imageUrl?: string | null;
+	imageKey?: string | null;
+	images?: readonly unknown[];
+}): boolean {
+	return (
+		input.imageUrl !== undefined || input.imageKey !== undefined || input.images !== undefined
+	);
 }
 
 function setsDraftImage(input: { gifts: readonly GiftDraftInput[] }): boolean {

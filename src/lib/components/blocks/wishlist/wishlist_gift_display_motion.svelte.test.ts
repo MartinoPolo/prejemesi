@@ -26,6 +26,7 @@ function visitorGift(): GiftForVisitor {
 		imageUrl: null,
 		imageKey: null,
 		imageMeta: null,
+		images: [],
 		quantity: 1,
 		sortOrder: 0,
 		received: false,

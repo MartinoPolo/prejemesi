@@ -139,6 +139,13 @@ function buildDemoGift(
 		imageUrl: seed.imageUrl,
 		imageKey: null,
 		imageMeta: landingDemoImageMeta(seed.focal),
+		images: [
+			{
+				imageUrl: seed.imageUrl,
+				imageKey: null,
+				imageMeta: landingDemoImageMeta(seed.focal),
+			},
+		],
 		quantity: 1,
 		sortOrder,
 		received: false,
@@ -257,6 +264,7 @@ export function toRecipientView(gift: GiftForVisitor): GiftForRecipient {
 		imageUrl: gift.imageUrl,
 		imageKey: gift.imageKey,
 		imageMeta: gift.imageMeta,
+		images: gift.images,
 		quantity: gift.quantity,
 		sortOrder: gift.sortOrder,
 		received: gift.received,

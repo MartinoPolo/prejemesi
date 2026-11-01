@@ -66,6 +66,7 @@ vi.mock('@sveltejs/kit', () => ({
 
 // ── Mock drizzle-orm – inspectable where-clause builders ────────────────────
 vi.mock('drizzle-orm', () => ({
+	getTableColumns: vi.fn((table: Record<string, unknown>) => ({ ...table })),
 	eq: vi.fn((...args: unknown[]) => ({ op: 'eq', args })),
 	and: vi.fn((...args: unknown[]) => ({ op: 'and', args })),
 	or: vi.fn((...args: unknown[]) => ({ op: 'or', args })),
@@ -136,6 +137,14 @@ vi.mock('$lib/server/db/wishlist_visit.schema.js', () => ({
 }));
 
 vi.mock('$lib/server/db/gift.schema.js', () => ({
+	giftImage: {
+		id: 'giftImage.id',
+		giftId: 'giftImage.giftId',
+		position: 'giftImage.position',
+		imageUrl: 'giftImage.imageUrl',
+		imageKey: 'giftImage.imageKey',
+		imageMeta: 'giftImage.imageMeta',
+	},
 	gift: {
 		id: 'gift.id',
 		wishlistId: 'gift.wishlistId',

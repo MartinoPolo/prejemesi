@@ -3,6 +3,7 @@ import type { gift, reservation, giftLike } from '$lib/server/db/gift.schema.js'
 import type { priorityLevel } from '$lib/server/db/wishlist.schema.js';
 import { ImageMetadataSchema, type ImageMetadata } from '$lib/modules/images/types.js';
 import type { PublicGiftCategory } from '$lib/modules/gift-categories/types.js';
+import { GiftImagesSchema, type GiftImage } from './gift_images.js';
 import {
 	MAX_GIFT_CATEGORIES,
 	isValidGiftCategoryIdList,
@@ -10,6 +11,9 @@ import {
 
 /** Full gift row from DB */
 export type Gift = typeof gift.$inferSelect;
+
+/** Full gift row with its ordered gallery; the first image is the cover the row mirrors. */
+export type GiftWithImages = Gift & { images: GiftImage[] };
 
 /** Reservation row from DB */
 export type Reservation = typeof reservation.$inferSelect;
@@ -81,6 +85,8 @@ export interface GiftBase {
 	imageUrl: string | null;
 	imageKey: string | null;
 	imageMeta: ImageMetadata | null;
+	/** Ordered gallery; the first image is the cover that `imageUrl`/`imageKey`/`imageMeta` mirror. */
+	images: GiftImage[];
 	quantity: number | null;
 	sortOrder: number;
 	received: boolean;
@@ -227,6 +233,8 @@ interface EditableGiftFields {
 	imageUrl?: string | null;
 	imageKey?: string | null;
 	imageMeta?: ImageMetadata | null;
+	/** The complete ordered gallery, replacing every image; the single image fields edit only the cover. */
+	images?: GiftImage[];
 	quantity?: number | null;
 	priorityLevelId?: string | null;
 	/** The complete ordered category list; the first is primary. */
@@ -300,6 +308,7 @@ const EditableGiftFieldEntries = {
 	imageUrl: v.optional(v.nullable(v.string())),
 	imageKey: v.optional(v.nullable(v.string())),
 	imageMeta: v.optional(v.nullable(ImageMetadataSchema)),
+	images: v.optional(GiftImagesSchema),
 	quantity: v.optional(v.nullable(v.pipe(v.number(), v.integer(), v.minValue(1)))),
 	priorityLevelId: v.optional(v.nullable(v.string())),
 	categoryIds: v.optional(GiftCategoryIdsSchema),
@@ -319,6 +328,23 @@ function namesCategoriesOnce(input: { categoryIds?: unknown; categoryId?: unknow
 
 const CATEGORY_FIELDS_EXCLUSIVE_MESSAGE = 'Send either categoryIds or the deprecated categoryId.';
 
+function namesImagesOnce(input: {
+	images?: unknown;
+	imageUrl?: unknown;
+	imageKey?: unknown;
+	imageMeta?: unknown;
+}): boolean {
+	return (
+		input.images === undefined ||
+		(input.imageUrl === undefined &&
+			input.imageKey === undefined &&
+			input.imageMeta === undefined)
+	);
+}
+
+const IMAGE_FIELDS_EXCLUSIVE_MESSAGE =
+	'Send either images or the single cover fields imageUrl, imageKey and imageMeta.';
+
 export const CreateGiftInputSchema = v.pipe(
 	v.strictObject({
 		wishlistId: v.string(),
@@ -328,6 +354,7 @@ export const CreateGiftInputSchema = v.pipe(
 	}),
 	v.check(isPriceRangeValid, 'priceMax must be greater than or equal to price'),
 	v.check((input) => namesCategoriesOnce(input), CATEGORY_FIELDS_EXCLUSIVE_MESSAGE),
+	v.check((input) => namesImagesOnce(input), IMAGE_FIELDS_EXCLUSIVE_MESSAGE),
 );
 
 /**
@@ -395,6 +422,7 @@ export const UpdateGiftInputSchema = v.pipe(
 	}),
 	v.check(isPriceRangeValid, 'priceMax must be greater than or equal to price'),
 	v.check((input) => namesCategoriesOnce(input), CATEGORY_FIELDS_EXCLUSIVE_MESSAGE),
+	v.check((input) => namesImagesOnce(input), IMAGE_FIELDS_EXCLUSIVE_MESSAGE),
 );
 
 /** Gift properties a grouped reorder may change: the active priority or category grouping. */

@@ -26,7 +26,8 @@ import {
 	IDEMPOTENCY_KEY_RETENTION_MS,
 } from './limits.js';
 import { MAX_IMAGE_PIXELS, MAX_IMAGE_SIDE_PX } from '$lib/server/images/image_download.js';
-import { IMAGE_REFERENCE_FIELD } from './image_references.js';
+import { IMAGE_REFERENCE_FIELD, IMAGE_REFERENCES_FIELD } from './image_references.js';
+import { MAX_GIFT_IMAGES } from '$lib/modules/gifts/gift_images.js';
 import { AGENT_API_BASE_PATH } from './api_paths.js';
 import { DAY_MS } from '$lib/server/operations/constants.js';
 import { IDEMPOTENCY_KEY_MAX_LENGTH } from './idempotency.js';
@@ -79,13 +80,38 @@ function inputJsonSchema(operation: AnyOperation): Record<string, unknown> {
 	return schema;
 }
 
-const AGENT_IMAGE_INPUT_FIELDS = new Set(['imageUrl', 'imageKey']);
+const AGENT_IMAGE_INPUT_FIELDS = new Set(['imageUrl', 'imageKey', 'images']);
+
+const IMAGE_REFERENCE_DESCRIPTION = `The \`reference\` of an image from POST ${AGENT_API_BASE_PATH}/images for the wishlist this changes; a reference attaches to one gift, once. Image URLs and storage keys are not accepted.`;
 
 const IMAGE_REFERENCE_PROPERTY = {
 	type: 'string',
 	minLength: 1,
-	description: `The \`reference\` of an image from POST ${AGENT_API_BASE_PATH}/images for the wishlist this changes. The gift gets the stored copy with automatic framing unless \`imageMeta\` is given; a reference attaches to one gift, once. Image URLs and storage keys are not accepted.`,
+	description: `${IMAGE_REFERENCE_DESCRIPTION} Sets the gift's cover (its first image) with automatic framing unless \`imageMeta\` is given; the other images stay.`,
 };
+
+/** The gallery property; each entry frames itself with the core's `imageMeta` schema. */
+function imageReferencesProperty(imageMetaSchema: unknown): Record<string, unknown> {
+	return {
+		type: 'array',
+		minItems: 1,
+		maxItems: MAX_GIFT_IMAGES,
+		description: `The gift's whole ordered gallery, replacing every image; the first is the cover. Each entry has automatic framing unless its \`imageMeta\` is given. Not combined with \`${IMAGE_REFERENCE_FIELD}\` or a top-level \`imageMeta\` (400 ${SERVER_ERROR.AGENT_IMAGE_REFERENCES_INVALID}).`,
+		items: {
+			type: 'object',
+			additionalProperties: false,
+			required: [IMAGE_REFERENCE_FIELD],
+			properties: {
+				[IMAGE_REFERENCE_FIELD]: {
+					type: 'string',
+					minLength: 1,
+					description: IMAGE_REFERENCE_DESCRIPTION,
+				},
+				...(imageMetaSchema === undefined ? {} : { imageMeta: imageMetaSchema }),
+			},
+		},
+	};
+}
 
 function isJsonObject(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -105,7 +131,11 @@ function agentInputJsonSchema(
 	);
 	return {
 		...schema,
-		properties: { ...properties, [IMAGE_REFERENCE_FIELD]: IMAGE_REFERENCE_PROPERTY },
+		properties: {
+			...properties,
+			[IMAGE_REFERENCE_FIELD]: IMAGE_REFERENCE_PROPERTY,
+			[IMAGE_REFERENCES_FIELD]: imageReferencesProperty(schema.properties.imageMeta),
+		},
 	};
 }
 
@@ -309,7 +339,7 @@ const AGENT_IMAGE_RESPONSE_SCHEMA = {
 			properties: {
 				reference: {
 					type: 'string',
-					description: `Set as \`${IMAGE_REFERENCE_FIELD}\` in a createGift or updateGift row.`,
+					description: `Set as \`${IMAGE_REFERENCE_FIELD}\` or in \`${IMAGE_REFERENCES_FIELD}\` of a createGift or updateGift row.`,
 				},
 				url: {
 					type: 'string',
@@ -435,7 +465,7 @@ function buildOriginIndependentDocument() {
 				'Every call acts as the token user, with that user’s current rights, limited by the token scopes and wishlist restriction.',
 				`Scopes: ${Object.values(AGENT_SCOPE).join(', ')}; \`read\` is always granted.`,
 				`Limits: ${AGENT_API_RATE_LIMIT.requestsPerToken} requests per ${AGENT_API_RATE_LIMIT.periodSeconds} seconds per token (429 with Retry-After), ${AGENT_BATCH_MAX_ITEMS} items per batch, ${AGENT_API_MAX_BODY_BYTES} bytes per request body, ${AGENT_DAILY_CHANGE_BUDGET.rows} proposal rows per user over the trailing ${AGENT_DAILY_CHANGE_BUDGET.windowMs / HOUR_MS} hours across all tokens (429 ${SERVER_ERROR.AGENT_DAILY_CHANGE_BUDGET_EXCEEDED} with Retry-After), ${AGENT_DAILY_IMAGE_BUDGET.images} images per user over the trailing ${AGENT_DAILY_IMAGE_BUDGET.windowMs / HOUR_MS} hours across all tokens (429 ${SERVER_ERROR.AGENT_DAILY_IMAGE_BUDGET_EXCEEDED} with Retry-After).`,
-				`Gift images: POST ${AGENT_API_BASE_PATH}/images stores an image from a URL, and a createGift or updateGift row sets it by \`${IMAGE_REFERENCE_FIELD}\`.`,
+				`Gift images: POST ${AGENT_API_BASE_PATH}/images stores an image from a URL. A createGift or updateGift row sets the cover by \`${IMAGE_REFERENCE_FIELD}\`, or the whole ordered gallery of up to ${MAX_GIFT_IMAGES} images by \`${IMAGE_REFERENCES_FIELD}\`.`,
 				`Changes are proposals: POST ${AGENT_API_BASE_PATH}/proposals, which the user reviews and applies.`,
 			].join('\n\n'),
 		},

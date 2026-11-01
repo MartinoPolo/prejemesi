@@ -39,6 +39,7 @@ import type { StoredChangeRow } from './change_proposal_records.js';
 import { TARGET_KIND, type LookupDatabase, type TargetReference } from './policy_lookups.js';
 import { projectAgentGiftSnapshot } from './read_projections.js';
 import { describeServerError } from './server_error_description.js';
+import { giftColumnsWithImages } from '$lib/server/operations/gift_gallery.js';
 
 /** What each agent mutation does, for the review page's badges and summary counts. */
 const CHANGE_KIND_BY_OPERATION = {
@@ -129,7 +130,7 @@ export async function readGiftSnapshots(
 		return new Map();
 	}
 	const giftRows = await database
-		.select()
+		.select(giftColumnsWithImages())
 		.from(gift)
 		.where(inArray(gift.id, [...giftIds]));
 	return new Map(giftRows.map((giftRow) => [giftRow.id, toGiftRevisionSnapshot(giftRow)]));

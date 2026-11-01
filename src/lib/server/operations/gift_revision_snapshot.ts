@@ -1,5 +1,6 @@
 import type { gift } from '$lib/server/db/gift.schema.js';
 import { jsonChanged } from '$lib/modules/gifts/gift_post_share.js';
+import { galleryWithCover, type GiftImage } from '$lib/modules/gifts/gift_images.js';
 
 /** The gift state a revision records: user-visible fields plus the state undo must restore. */
 export type GiftRevisionSource = Pick<
@@ -21,7 +22,7 @@ export type GiftRevisionSource = Pick<
 	| 'deletedAt'
 	| 'editedAfterShareAt'
 	| 'preEditShareSnapshot'
->;
+> & { images: GiftImage[] };
 
 type GiftRevisionTimestampField = 'deletedAt' | 'editedAfterShareAt';
 
@@ -45,6 +46,7 @@ export function toGiftRevisionSnapshot(giftRow: GiftRevisionSource): GiftRevisio
 		imageUrl: giftRow.imageUrl,
 		imageKey: giftRow.imageKey,
 		imageMeta: giftRow.imageMeta,
+		images: giftRow.images,
 		quantity: giftRow.quantity,
 		priorityLevelId: giftRow.priorityLevelId,
 		categoryIds: giftRow.categoryIds,
@@ -57,16 +59,26 @@ export function toGiftRevisionSnapshot(giftRow: GiftRevisionSource): GiftRevisio
 
 /**
  * A stored snapshot in the current shape. Snapshots recorded before gifts carried several
- * categories hold only the single `categoryId`, which becomes the one-item list.
+ * categories hold only the single `categoryId`, which becomes the one-item list; snapshots
+ * recorded before galleries hold only the cover image, which becomes the one-image gallery.
  */
 export function currentGiftRevisionSnapshot(snapshot: GiftRevisionSnapshot): GiftRevisionSnapshot {
 	const { categoryId, ...current } = snapshot as GiftRevisionSnapshot & {
 		categoryId?: string | null;
 	};
-	if (Array.isArray(current.categoryIds)) {
-		return current;
-	}
-	return { ...current, categoryIds: categoryId == null ? [] : [categoryId] };
+	const categoryIds = Array.isArray(current.categoryIds)
+		? current.categoryIds
+		: categoryId == null
+			? []
+			: [categoryId];
+	const images = Array.isArray(current.images)
+		? current.images
+		: galleryWithCover([], {
+				imageUrl: current.imageUrl,
+				imageKey: current.imageKey,
+				imageMeta: current.imageMeta,
+			});
+	return { ...current, categoryIds, images };
 }
 
 /** Structural comparison that ignores jsonb key order and null/undefined differences. */

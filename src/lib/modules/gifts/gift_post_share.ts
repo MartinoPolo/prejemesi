@@ -3,6 +3,7 @@ import { normalizeGiftLinks } from './gift_url.js';
 import { isWithinGraceWindow } from '$lib/modules/sharing/grace_window.js';
 import type { DescriptionAppend, GiftLink, UpdateGiftInput } from './types.js';
 import type { ImageMetadata } from '$lib/modules/images/types.js';
+import type { GiftImage } from './gift_images.js';
 
 /** The subset of a gift row the per-field pre-share edit engine compares against. */
 export interface PreShareGiftSnapshot {
@@ -20,6 +21,8 @@ export interface PreShareGiftSnapshot {
 	links: GiftLink[];
 	priorityLevelId: string | null;
 	categoryIds?: string[];
+	/** Absent in snapshots captured before galleries. */
+	images?: GiftImage[];
 }
 
 /** Extracts the {@link PreShareGiftSnapshot}-comparable fields from a full gift row. */
@@ -38,6 +41,7 @@ export function toPreShareGiftSnapshot(giftRow: PreShareGiftSnapshot): PreShareG
 		links: giftRow.links,
 		priorityLevelId: giftRow.priorityLevelId,
 		categoryIds: giftRow.categoryIds,
+		images: giftRow.images,
 	};
 }
 

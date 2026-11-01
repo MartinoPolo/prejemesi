@@ -6,6 +6,7 @@ import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
 import { WISHLIST_ROLES } from '$lib/modules/wishlists/types.js';
 import { isOwnerSharedGiftDeleteGraceOpen } from '$lib/modules/gifts/gift_deletion_rules.js';
 import { giftFollowsStrictPostShareRules } from '$lib/modules/gifts/gift_strict_post_share_rules.js';
+import { galleryImageKeys } from '$lib/modules/gifts/gift_images.js';
 import type { MutationOperationContext } from './operation.js';
 import type { GiftRow } from './gift_update.js';
 import type { ManagedWishlist } from './wishlist_management.js';
@@ -60,7 +61,7 @@ export async function softDeleteGift(
 		},
 	]);
 
-	// Storage cleanup (issue #107): the uploaded image is unreachable once the gift is deleted.
-	const deletedImageKey = giftRow.imageKey;
-	context.deferEffect(() => deleteObjectsBestEffort([deletedImageKey]));
+	// Storage cleanup (issue #107): the uploaded images are unreachable once the gift is deleted.
+	const deletedImageKeys = galleryImageKeys(giftRow.images);
+	context.deferEffect(() => deleteObjectsBestEffort(deletedImageKeys));
 }

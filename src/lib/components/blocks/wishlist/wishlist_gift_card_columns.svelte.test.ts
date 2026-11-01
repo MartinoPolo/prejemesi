@@ -48,6 +48,7 @@ function gift(index: number, overrides: Partial<GiftForVisitor> = {}): GiftForVi
 		imageUrl: null,
 		imageKey: null,
 		imageMeta: null,
+		images: [],
 		quantity: 1,
 		sortOrder: index,
 		received: false,

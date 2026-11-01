@@ -32,6 +32,8 @@ import {
 	resolveRevertAccess,
 	type CancelledReserver,
 } from './wishlist_revert.js';
+import { giftImagesColumn } from './gift_gallery.js';
+import { galleryImageKeys } from '$lib/modules/gifts/gift_images.js';
 
 const WishlistLifecycleInputSchema = v.strictObject({ wishlistId: v.string() });
 const DeleteWishlistInputSchema = v.strictObject({
@@ -203,7 +205,7 @@ export const deleteWishlistOperation = defineOperation({
 			error(400, 'Cannot delete a shared wishlist. Archive it instead.');
 		}
 		const giftImageRows = await context.transaction
-			.select({ imageKey: gift.imageKey })
+			.select({ images: giftImagesColumn() })
 			.from(gift)
 			.where(and(eq(gift.wishlistId, input.wishlistId), isNull(gift.deletedAt)));
 		if (input.onlyIfEmpty === true && giftImageRows.length > 0) {
@@ -217,7 +219,7 @@ export const deleteWishlistOperation = defineOperation({
 		const unreachableImageKeys = [
 			wishlistRow.imageKey,
 			wishlistBackgroundImageKey(wishlistRow.background),
-			...giftImageRows.map((row) => row.imageKey),
+			...giftImageRows.flatMap((row) => galleryImageKeys(row.images)),
 		];
 		context.deferEffect(() => deleteObjectsBestEffort(unreachableImageKeys));
 		return { wishlistShortId: wishlistRow.shortId, deleted: true };

@@ -28,6 +28,7 @@ async function referencedKeys() {
 	try {
 		const rows = await sql`
 			select image_key as key from gift where image_key is not null and image_key <> ''
+			union select image_key from gift_image where image_key is not null and image_key <> ''
 			union select image_key from wishlist where image_key is not null and image_key <> ''
 			union select object_key from agent_image
 		`;

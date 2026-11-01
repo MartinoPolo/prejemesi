@@ -41,6 +41,7 @@ function gift(overrides: Partial<ChangeProposalGift> = {}): ChangeProposalGift {
 		currency: null,
 		imageUrl: null,
 		imageMeta: null,
+		images: [],
 		quantity: null,
 		priorityLevelId: null,
 		categoryIds: [],

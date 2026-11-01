@@ -98,7 +98,7 @@ export const SNAPSHOT_KEYS_BY_FIELD = {
 	category: ['categoryIds'],
 	priority: ['priorityLevelId'],
 	links: ['links'],
-	image: ['imageUrl', 'imageMeta'],
+	image: ['imageUrl', 'imageMeta', 'images'],
 } as const satisfies Record<ChangeField, readonly (keyof ChangeProposalGift)[]>;
 
 export function sameSnapshotValue(first: unknown, second: unknown): boolean {

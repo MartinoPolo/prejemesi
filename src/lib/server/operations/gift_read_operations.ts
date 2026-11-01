@@ -15,6 +15,7 @@ import {
 import { activeGiftCategoriesColumn } from '$lib/modules/gift-categories/gift_categories_service.js';
 import type { GiftForRecipient, GiftForVisitor } from '$lib/modules/gifts/types.js';
 import { OPERATION_EXPOSURE, OPERATION_KIND, defineOperation } from './operation.js';
+import { giftImagesColumn } from './gift_gallery.js';
 import {
 	requireLiveWishlistRowByShortId,
 	requireWishlistManagement,
@@ -56,6 +57,7 @@ function loadGiftRows(database: ReadDatabase, wishlistId: string) {
 			priorityLabel: priorityLevel.label,
 			prioritySortOrder: priorityLevel.sortOrder,
 			categories: activeGiftCategoriesColumn(),
+			images: giftImagesColumn(),
 		})
 		.from(gift)
 		.leftJoin(priorityLevel, eq(gift.priorityLevelId, priorityLevel.id))

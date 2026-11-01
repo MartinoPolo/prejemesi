@@ -19,7 +19,13 @@ vi.mock('$lib/server/storage/r2.js', () => storage);
 
 import { closeDb, getDb } from '$lib/server/db/index.js';
 import { user } from '$lib/server/db/auth.schema.js';
-import { gift, giftCategory, giftLike, reservation } from '$lib/server/db/gift.schema.js';
+import {
+	gift,
+	giftCategory,
+	giftImage,
+	giftLike,
+	reservation,
+} from '$lib/server/db/gift.schema.js';
 import { giftIngestionOrphan } from '$lib/server/db/ingestion.schema.js';
 import { wishlistFollower } from '$lib/server/db/follower.schema.js';
 import { moderatorAssignment } from '$lib/server/db/moderator.schema.js';
@@ -404,6 +410,58 @@ describe.skipIf(!DATABASE_READY)('bulk gift copy [real DB]', () => {
 				.from(giftIngestionOrphan)
 				.where(like(giftIngestionOrphan.itemId, `${PREFIX}%`)),
 		).toHaveLength(0);
+		await getDb().update(gift).set({ imageKey: null }).where(eq(gift.id, SOURCE_GIFT_ONE));
+	});
+
+	it('copies every gallery image in order, duplicating each upload under a new key', async () => {
+		const sourceCoverKey = `${PREFIX}gallery-cover.webp`;
+		const sourceDetailKey = `${PREFIX}gallery-detail.webp`;
+		const linkedImageUrl = 'https://shop.example/gallery-linked.jpg';
+		await getDb()
+			.update(gift)
+			.set({ imageKey: sourceCoverKey })
+			.where(eq(gift.id, SOURCE_GIFT_ONE));
+		await getDb()
+			.insert(giftImage)
+			.values([
+				{ giftId: SOURCE_GIFT_ONE, position: 1, imageUrl: linkedImageUrl },
+				{ giftId: SOURCE_GIFT_ONE, position: 2, imageKey: sourceDetailKey },
+			]);
+		storage.getObject.mockResolvedValue({
+			body: new ArrayBuffer(1),
+			contentType: 'image/webp',
+			etag: 'etag',
+		});
+		storage.putObject.mockResolvedValue(true);
+
+		await copyGifts(RECIPIENT_ID, {
+			sourceWishlistId: SOURCE_ID,
+			destinationWishlistId: DESTINATION_ID,
+			giftIds: [SOURCE_GIFT_ONE],
+		});
+
+		const [copy] = await getDb()
+			.select({ id: gift.id, imageKey: gift.imageKey })
+			.from(gift)
+			.where(eq(gift.wishlistId, DESTINATION_ID));
+		const copiedImages = await getDb()
+			.select()
+			.from(giftImage)
+			.where(eq(giftImage.giftId, copy?.id ?? ''))
+			.orderBy(giftImage.position);
+		expect(copiedImages.map((image) => image.imageUrl)).toEqual([null, linkedImageUrl, null]);
+		const [copiedCover, , copiedDetail] = copiedImages;
+		expect(copy?.imageKey).toBe(copiedCover?.imageKey);
+		expect(copiedCover?.imageKey).toMatch(/^gifts\/.+\.webp$/);
+		expect(copiedDetail?.imageKey).toMatch(/^gifts\/.+\.webp$/);
+		expect(storage.getObject.mock.calls.map(([key]) => key)).toEqual([
+			sourceCoverKey,
+			sourceDetailKey,
+		]);
+		expect(storage.putObject.mock.calls.map(([key]) => key)).toEqual([
+			copiedCover?.imageKey,
+			copiedDetail?.imageKey,
+		]);
 		await getDb().update(gift).set({ imageKey: null }).where(eq(gift.id, SOURCE_GIFT_ONE));
 	});
 

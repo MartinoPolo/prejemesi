@@ -108,6 +108,10 @@ const giftRow = {
 	imageUrl: null,
 	imageKey: 'gifts/kolo.webp',
 	imageMeta: null,
+	images: [
+		{ imageUrl: null, imageKey: 'gifts/kolo.webp', imageMeta: null },
+		{ imageUrl: null, imageKey: 'gifts/kolo-detail.webp', imageMeta: null },
+	],
 	quantity: 1,
 	sortOrder: 0,
 	received: false,
@@ -234,8 +238,18 @@ describe('agent output projections', () => {
 				id: 'gift-1',
 				name: 'Kolo',
 				imageUrl: expect.stringContaining('gifts/kolo.webp'),
+				images: [
+					{ imageUrl: expect.stringContaining('gifts/kolo.webp'), imageMeta: null },
+					{
+						imageUrl: expect.stringContaining('gifts/kolo-detail.webp'),
+						imageMeta: null,
+					},
+				],
 				categoryIds: ['category-sport', 'category-outdoor'],
 			});
+			for (const image of (projected.gift as { images: object[] }).images) {
+				expect(image, name).not.toHaveProperty('imageKey');
+			}
 			expect(JSON.stringify(projected), name).not.toContain('Staré kolo');
 		}
 	});

@@ -26,6 +26,7 @@ import { gift, reservation } from '$lib/server/db/gift.schema.js';
 import { giftRevision } from '$lib/server/db/gift_revision.schema.js';
 import type { WishlistKind } from '$lib/modules/wishlists/types.js';
 import { OPERATION_CHANNEL, tokenChannel, type OperationActor } from './actor.js';
+import { giftColumnsWithImages } from './gift_gallery.js';
 
 const databaseUrl = process.env.DATABASE_URL ?? '';
 
@@ -171,7 +172,10 @@ export async function reserveGift(giftId: string, userId: string): Promise<void>
 }
 
 export async function readGift(giftId: string) {
-	const [row] = await getDb().select().from(gift).where(eq(gift.id, giftId));
+	const [row] = await getDb()
+		.select(giftColumnsWithImages())
+		.from(gift)
+		.where(eq(gift.id, giftId));
 	if (row === undefined) {
 		throw new Error(`Missing gift ${giftId}`);
 	}

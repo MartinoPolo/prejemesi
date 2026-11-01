@@ -87,7 +87,26 @@ describe('appendGifts', () => {
 				sortOrder: 5,
 			}),
 		]);
-		expect(result).toEqual(created);
+		const [cameraRow, bookRow] = created;
+		expect(result).toEqual([
+			{
+				...cameraRow,
+				images: [
+					{
+						imageUrl: giftInput.imageUrl,
+						imageKey: giftInput.imageKey,
+						imageMeta: giftInput.imageMeta,
+					},
+				],
+			},
+			{ ...bookRow, images: [] },
+		]);
+		const galleryRows = calls.filter(
+			(call) => call.method === 'values' && Array.isArray(call.args[0]),
+		)[1]?.args[0];
+		expect(galleryRows).toEqual([
+			expect.objectContaining({ giftId: 'g-1', position: 0, imageKey: giftInput.imageKey }),
+		]);
 	});
 
 	it('persists decimal single and range prices without rounding (issue #250 REQ-2, REQ-4)', async () => {

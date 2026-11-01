@@ -32,6 +32,7 @@ function makeGift(overrides: Partial<GiftByRole> = {}): GiftByRole {
 		imageUrl: '',
 		imageKey: '',
 		imageMeta: null,
+		images: [],
 		quantity: 1,
 		sortOrder: 0,
 		received: false,

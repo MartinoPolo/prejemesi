@@ -123,7 +123,11 @@ function changedFieldDiff(
 	lookups: GiftLabelLookups,
 ): GiftFieldDiff | null {
 	if (field === GIFT_DIFF_FIELD.image) {
-		return before.imageUrl === after.imageUrl
+		const imageUrls = (gift: ChangeProposalGift) =>
+			(gift.images ?? []).map((image) => image.imageUrl).join('\n');
+		const sameImages =
+			before.imageUrl === after.imageUrl && imageUrls(before) === imageUrls(after);
+		return sameImages
 			? null
 			: {
 					field,
