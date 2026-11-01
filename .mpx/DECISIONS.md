@@ -204,6 +204,7 @@ Current product, architecture, and design decisions for Přejeme si. Entries are
 - 2026-10-23: The crop stage is keyboard operable (arrows pan, Shift for larger steps, +/− zoom, 0 recenters) alongside drag, wheel and pinch around the pointer, a navigator minimap and a 3×3 alignment pad.
 - 2026-10-23: A gift `thumb` without its own crop follows the `square` crop, and the editor shows and labels that inherited framing; saving pins only targets with their own crop, and “Převzít ořez z Karty” drops the thumbnail's own crop. Do not pin every target on the first edit.
 - 2026-10-26: The wishlist background focal picker uses the crop stage's keyboard steps, including its larger Shift+Arrow step.
+- 2026-11-01: Gallery editing uses a strip under the crop stage that selects, reorders (drag, or grip with ←/→) and adds/removes images; the crop stage edits only the selected image, saves send the whole ordered gallery, and change review states image-count changes in text.
 
 ## Architecture, data & delivery
 
