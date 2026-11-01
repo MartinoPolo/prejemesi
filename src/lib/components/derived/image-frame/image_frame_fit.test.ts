@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import {
 	coverWindowLayout,
+	fitMarginInset,
+	fitMarginShare,
 	hasExplicitFrameFill,
 	normalizeFrameFill,
 	paintedImageWidth,
@@ -9,6 +11,28 @@ import {
 	AUTO_CONTAIN_RATIO_THRESHOLD,
 	IMAGE_FIT_MODES,
 } from './image_frame_fit.js';
+
+describe('fitMarginShare', () => {
+	it('keeps the explicit Fit margin, capped at a fifth of the shorter side', () => {
+		expect(fitMarginShare({ fitMode: IMAGE_FIT_MODES.containPadded, margin: 0.05 })).toBe(0.05);
+		expect(fitMarginShare({ fitMode: IMAGE_FIT_MODES.containPadded, margin: 0.9 })).toBe(0.2);
+	});
+
+	it('ignores the margin outside explicit Fit or when it is not a positive number', () => {
+		expect(fitMarginShare({ fitMode: IMAGE_FIT_MODES.coverCrop, margin: 0.1 })).toBe(0);
+		expect(fitMarginShare({ fitMode: IMAGE_FIT_MODES.auto, margin: 0.1 })).toBe(0);
+		expect(fitMarginShare({ fitMode: IMAGE_FIT_MODES.containPadded, margin: Number.NaN })).toBe(
+			0,
+		);
+	});
+});
+
+describe('fitMarginInset', () => {
+	it('insets every side by the margin share of the shorter frame side', () => {
+		expect(fitMarginInset({ margin: 0.05, boxWidth: 400, boxHeight: 300 })).toBeCloseTo(15);
+		expect(fitMarginInset({ margin: 0.1, boxWidth: 200, boxHeight: 500 })).toBeCloseTo(20);
+	});
+});
 
 describe('resolveAutoFit', () => {
 	it('fills the box (cover-crop) when the image ratio matches the box', () => {

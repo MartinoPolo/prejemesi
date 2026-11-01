@@ -24,6 +24,13 @@ export type ImageEditorMode = (typeof IMAGE_EDITOR_MODES)[keyof typeof IMAGE_EDI
 
 export const IMAGE_EDITOR_MODE_VALUES = Object.values(IMAGE_EDITOR_MODES);
 
+/** Fit margins the gift editor offers, as a share of the frame's shorter side. */
+export const IMAGE_FIT_MARGIN_CHOICES = {
+	none: 0,
+	small: 0.05,
+	large: 0.1,
+} as const;
+
 /** Tolerances for "still the automatic centered framing" classification. */
 const CENTERED_FOCAL_EPSILON = 0.5;
 const CENTERED_ZOOM_EPSILON = 0.05;

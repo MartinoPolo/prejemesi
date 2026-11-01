@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import * as v from 'valibot';
 import {
 	IMAGE_EDITOR_MODES,
+	IMAGE_FIT_MARGIN_CHOICES,
 	fitModeForEditorMode,
 	giftEditorModeFromMeta,
 	slotEditorModeFromMeta,
@@ -10,6 +11,12 @@ import {
 } from './editor_modes.js';
 import { ImageMetadataSchema, type ImageMetadata } from './types.js';
 import { IMAGE_FIT_MODES } from '$lib/components/derived/image-frame/index.js';
+
+describe('IMAGE_FIT_MARGIN_CHOICES', () => {
+	it('offers no margin, a small and a large margin', () => {
+		expect(IMAGE_FIT_MARGIN_CHOICES).toEqual({ none: 0, small: 0.05, large: 0.1 });
+	});
+});
 
 describe('fitModeForEditorMode', () => {
 	it('maps fit to contain-padded and both fill and manual to cover-crop', () => {

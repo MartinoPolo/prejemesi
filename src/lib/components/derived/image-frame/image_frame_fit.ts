@@ -7,7 +7,7 @@
 
 import { IMAGE_FIT_MODES, type ImageFitMode } from '$lib/modules/images/fit_modes.js';
 import { focalZoomToWindowRect, normalizedCropAspect } from '$lib/modules/images/crop.js';
-import type { ImageFocalPoint } from '$lib/modules/images/types.js';
+import { IMAGE_FIT_MARGIN_MAX, type ImageFocalPoint } from '$lib/modules/images/types.js';
 
 export { IMAGE_FIT_MODES, type ImageFitMode };
 
@@ -106,6 +106,29 @@ export function coverWindowLayout(input: {
 	const height = width / naturalRatio;
 	// `0 -` (instead of unary minus) keeps a zero origin as +0 for exact equality.
 	return { left: 0 - rect.x * width, top: 0 - rect.y * height, width, height };
+}
+
+/** A Fit margin limited to the schema range; anything non-positive or non-finite means none. */
+function clampFitMargin(margin: number): number {
+	return Number.isFinite(margin) && margin > 0 ? Math.min(margin, IMAGE_FIT_MARGIN_MAX) : 0;
+}
+
+/**
+ * Share of the frame's shorter side kept clear on every side of an explicit Fit
+ * (`contain-padded`) image, capped at the schema maximum. Other fit modes, including
+ * legacy `auto` resolving to contain, ignore the margin.
+ */
+export function fitMarginShare(input: { fitMode: ImageFitMode; margin: number }): number {
+	return input.fitMode === IMAGE_FIT_MODES.containPadded ? clampFitMargin(input.margin) : 0;
+}
+
+/** Pixel inset of a Fit margin within a measured frame, equal on every side. */
+export function fitMarginInset(input: {
+	margin: number;
+	boxWidth: number;
+	boxHeight: number;
+}): number {
+	return clampFitMargin(input.margin) * Math.min(input.boxWidth, input.boxHeight);
 }
 
 /**

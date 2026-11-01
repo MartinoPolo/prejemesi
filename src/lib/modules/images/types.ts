@@ -29,6 +29,12 @@ export const IMAGE_ZOOM_BASE = 1;
 export const IMAGE_ZOOM_OUT_MIN = 0.05;
 export const IMAGE_ZOOM_MAX = 3;
 
+/**
+ * Largest Fit margin: the share of the frame's shorter side kept clear on every
+ * side of a `contain-padded` image, so a product floats on its background.
+ */
+export const IMAGE_FIT_MARGIN_MAX = 0.2;
+
 /** Normalized crop rectangle in 0..1 space (origin + size). */
 export interface ImageCropRect {
 	x: number;
@@ -101,6 +107,12 @@ export interface ImageMetadata {
 	zoom?: number;
 	bgColor?: string | null;
 	/**
+	 * Fit-only zoom-out (0..IMAGE_FIT_MARGIN_MAX): the share of the frame's shorter
+	 * side kept clear around a `contain-padded` image. Absent means none; other fit
+	 * modes ignore it.
+	 */
+	margin?: number;
+	/**
 	 * Per-target manual crop overrides (#116 REQ-8, additive extension). A target
 	 * without an entry keeps the automatic framing; rows persisted before #116
 	 * simply have no `targets` and render exactly as before.
@@ -144,6 +156,7 @@ export const ImageMetadataSchema = v.object({
 	focal: v.optional(ImageFocalPointSchema),
 	zoom: v.optional(ZoomSchema),
 	bgColor: v.optional(v.nullable(v.string())),
+	margin: v.optional(v.pipe(v.number(), v.minValue(0), v.maxValue(IMAGE_FIT_MARGIN_MAX))),
 	targets: v.optional(
 		v.object({
 			card: v.optional(ImageTargetCropSchema),

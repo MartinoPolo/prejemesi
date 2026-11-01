@@ -65,6 +65,7 @@
 	fitMode={frame.fitMode}
 	focal={frame.focal}
 	zoom={frame.zoom}
+	margin={frame.margin}
 	fillColor={frame.fillColor}
 	{tokenScope}
 />
