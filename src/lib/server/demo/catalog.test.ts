@@ -1,7 +1,18 @@
 import { describe, expect, it } from 'vitest';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { getDemoCatalog } from './catalog.js';
+import { MAX_GIFT_IMAGES } from '$lib/modules/gifts/gift_images.js';
+import {
+	demoViewer,
+	getDemoCatalog,
+	preparedDemoImageUrls,
+	preparedDemoWishlistCoverUrls,
+} from './catalog.js';
+
+function expectPreparedStaticImage(sitePath: string) {
+	expect(sitePath).toMatch(/^\/demo\//);
+	expect(existsSync(join('static', sitePath)), `${sitePath} exists under static/`).toBe(true);
+}
 
 for (const locale of ['cs', 'en'] as const) {
 	describe(`${locale} demo catalog`, () => {
@@ -61,12 +72,56 @@ for (const locale of ['cs', 'en'] as const) {
 				expect(gift.price).toBeGreaterThan(0);
 				expect(Number.isFinite(gift.price)).toBe(true);
 				expect(new URL(gift.url).protocol).toBe('https:');
-				expect(gift.imageUrl).toMatch(/^\/demo\//);
-				expect(existsSync(join('static', gift.imageUrl))).toBe(true);
+				expect(gift.images[0]).toBe(gift.imageUrl);
+				expect(gift.images.length).toBeLessThanOrEqual(MAX_GIFT_IMAGES);
+				for (const imageUrl of gift.images) {
+					expectPreparedStaticImage(imageUrl);
+					expect(preparedDemoImageUrls.has(imageUrl)).toBe(true);
+				}
 			}
 			for (const wishlist of wishlists.filter(({ status }) => status === 'draft')) {
 				expect(wishlist.gifts.every(({ state }) => state === 'available')).toBe(true);
 			}
+		});
+
+		it('gives every wishlist a prepared cover and every demo person a prepared photo', () => {
+			const wishlists = getDemoCatalog(locale);
+			for (const wishlist of wishlists) {
+				expect(wishlist.coverImageUrl).toBe(`/demo/wishlists/${wishlist.key}.webp`);
+				expectPreparedStaticImage(wishlist.coverImageUrl);
+				expect(preparedDemoWishlistCoverUrls.has(wishlist.coverImageUrl)).toBe(true);
+			}
+			expect(preparedDemoWishlistCoverUrls.size).toBe(wishlists.length);
+			expectPreparedStaticImage(demoViewer.image);
+			const followedRecipientImages = wishlists
+				.filter(({ role }) => role === 'followed')
+				.map(({ recipientImage }) => recipientImage);
+			expect(followedRecipientImages).toEqual([
+				'/demo/people/petr.webp',
+				'/demo/people/klara.webp',
+				'/demo/people/karel.webp',
+			]);
+			for (const image of followedRecipientImages) {
+				expectPreparedStaticImage(image!);
+			}
+		});
+
+		it('previews a gift gallery as owner and as visitor', () => {
+			const wishlists = getDemoCatalog(locale);
+			const firstGiftImages = (key: string) =>
+				wishlists.find((wishlist) => wishlist.key === key)!.gifts[0]!.images;
+			expect(firstGiftImages('my-everyday')).toEqual([
+				'/demo/v1/teapot.jpg',
+				'/demo/gallery/teapot-2.jpg',
+				'/demo/gallery/teapot-3.jpg',
+				'/demo/gallery/teapot-4.jpg',
+			]);
+			expect(firstGiftImages('friend-everyday')).toEqual([
+				'/demo/playground/batoh.jpg',
+				'/demo/gallery/hiking-backpack-2.jpg',
+				'/demo/gallery/hiking-backpack-3.jpg',
+				'/demo/gallery/hiking-backpack-4.jpg',
+			]);
 		});
 	});
 }

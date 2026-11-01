@@ -3,7 +3,7 @@ import { error } from '@sveltejs/kit';
 import { eq, isNull, type SQL } from 'drizzle-orm';
 import { wishlist } from '$lib/server/db/wishlist.schema.js';
 import { WISHLIST_NOT_FOUND_MESSAGE } from '$lib/modules/errors/server_error_codes.js';
-import { preparedDemoImageUrls } from './catalog.js';
+import { preparedDemoImageUrls, preparedDemoWishlistCoverUrls } from './catalog.js';
 
 export function isPreparedDemoImage(url: string | null | undefined): boolean {
 	return url == null || preparedDemoImageUrls.has(url);
@@ -36,8 +36,14 @@ export function rejectDemoOperation(): void {
 	}
 }
 
+/** Demo wishlists may keep a prepared cover, never an uploaded or arbitrary image key. */
 export function rejectDemoImageUpload(imageKey: string | null | undefined): void {
-	if (demoSessionId() !== null && (imageKey ?? '') !== '') {
+	const requestedKey = imageKey ?? '';
+	if (
+		demoSessionId() !== null &&
+		requestedKey !== '' &&
+		!preparedDemoWishlistCoverUrls.has(requestedKey)
+	) {
 		error(403, 'Image uploads are unavailable in the demo');
 	}
 }

@@ -20,7 +20,8 @@ vi.mock('$env/dynamic/public', () => ({
 	}),
 }));
 
-import { isAllowedContentType, getPublicUrl } from './r2.js';
+import { getRequestEvent } from '$app/server';
+import { deleteObjectsBestEffort, isAllowedContentType, getPublicUrl } from './r2.js';
 
 beforeEach(() => {
 	vi.clearAllMocks();
@@ -67,4 +68,34 @@ describe('getPublicUrl', () => {
 			expect(getPublicUrl('gifts/abc123.jpg')).toBe('/api/upload/gifts/abc123.jpg');
 		},
 	);
+});
+
+describe('deleteObjectsBestEffort', () => {
+	it('deletes only stored object keys, never prepared static paths or external URLs', async () => {
+		const deleteObjects = vi.fn(async () => {});
+		vi.mocked(getRequestEvent).mockReturnValueOnce({
+			platform: { env: { R2: { delete: deleteObjects } } },
+		} as unknown as ReturnType<typeof getRequestEvent>);
+
+		await deleteObjectsBestEffort([
+			'wishlists/banners/abc.jpg',
+			'/demo/wishlists/my-everyday.webp',
+			'https://lh3.googleusercontent.com/avatar.jpg',
+			null,
+			'',
+		]);
+
+		expect(deleteObjects).toHaveBeenCalledExactlyOnceWith(['wishlists/banners/abc.jpg']);
+	});
+
+	it('skips the bucket call when only static paths remain', async () => {
+		const deleteObjects = vi.fn(async () => {});
+		vi.mocked(getRequestEvent).mockReturnValueOnce({
+			platform: { env: { R2: { delete: deleteObjects } } },
+		} as unknown as ReturnType<typeof getRequestEvent>);
+
+		await deleteObjectsBestEffort(['/demo/wishlists/my-everyday.webp']);
+
+		expect(deleteObjects).not.toHaveBeenCalled();
+	});
 });
