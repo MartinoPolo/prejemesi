@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import * as v from 'valibot';
 import { bulkGiftUpdateData, isBulkPresentationAction } from './gift_bulk_update.js';
 import { BulkUpdateGiftsInputSchema, type BulkUpdateGiftsInput } from './types.js';
-import { fillImageMeta } from '$lib/modules/images/editor_modes.js';
+import { fillImageMeta, fitImageMeta } from '$lib/modules/images/editor_modes.js';
 
 const presentationActionCases = [
 	[{ action: 'priority', priorityLevelId: null, wishlistId: 'w', giftIds: ['g'] }, true],
@@ -70,6 +70,35 @@ describe('bulk gift updates', () => {
 				{ imageMeta, categoryIds: [] },
 			),
 		).toEqual({ imageMeta: { ...imageMeta, bgColor: '#ffffff' } });
+	});
+
+	describe('Fit margin', () => {
+		const fitWithMargin = { ...fitImageMeta('#ffffff'), margin: 0.05 };
+
+		it('bulk Fit keeps the margin of a gift already framed with Fit', () => {
+			const update = bulkGiftUpdateData(
+				{ action: 'imageFit', fit: 'fit', ...selection },
+				{ imageMeta: fitWithMargin, categoryIds: [] },
+			);
+			expect(update.imageMeta).toMatchObject({ fitMode: 'contain-padded', margin: 0.05 });
+		});
+
+		it('bulk Fill drops the margin', () => {
+			const update = bulkGiftUpdateData(
+				{ action: 'imageFit', fit: 'fill', ...selection },
+				{ imageMeta: fitWithMargin, categoryIds: [] },
+			);
+			expect(update.imageMeta?.fitMode).toBe('cover-crop');
+			expect(update.imageMeta?.margin).toBeUndefined();
+		});
+
+		it('bulk background change keeps the margin', () => {
+			const update = bulkGiftUpdateData(
+				{ action: 'imageBackground', background: '#000000', ...selection },
+				{ imageMeta: fitWithMargin, categoryIds: [] },
+			);
+			expect(update.imageMeta).toMatchObject({ bgColor: '#000000', margin: 0.05 });
+		});
 	});
 
 	describe('category actions', () => {

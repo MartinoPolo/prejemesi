@@ -63,6 +63,7 @@
 		GIFT_CROP_TARGET_SPECS,
 		IMAGE_EDITOR_MODES,
 		IMAGE_EDITOR_MODE_VALUES,
+		IMAGE_FIT_MARGIN_CHOICES,
 		type GiftEditorCropTarget,
 		type ImageEditorMode,
 	} from '$lib/modules/images/index.js';
@@ -203,6 +204,19 @@
 	const pendingUploads = createPendingUploads();
 
 	const IMAGE_BACKGROUND_VALUES = ['#ffffff', '#000000', 'transparent'] as const;
+	type ImageMarginChoice = keyof typeof IMAGE_FIT_MARGIN_CHOICES;
+	const IMAGE_MARGIN_LABELS = {
+		none: m.image_margin_none,
+		small: m.image_margin_small,
+		large: m.image_margin_large,
+	} satisfies Record<ImageMarginChoice, () => string>;
+	const IMAGE_MARGIN_OPTIONS = (Object.keys(IMAGE_FIT_MARGIN_CHOICES) as ImageMarginChoice[]).map(
+		(choice) => ({
+			choice,
+			margin: IMAGE_FIT_MARGIN_CHOICES[choice],
+			label: IMAGE_MARGIN_LABELS[choice],
+		}),
+	);
 	let activeTarget = $state<GiftEditorCropTarget>('square');
 
 	const styles = giftDetailModalVariants();
@@ -363,6 +377,12 @@
 				? selectedImageBackground
 				: '',
 	);
+	// A margin the editor does not offer (e.g. set by an agent) stays untouched and unselected.
+	const selectedImageMarginChoice = $derived(
+		IMAGE_MARGIN_OPTIONS.find((option) => option.margin === (selectedImage?.margin ?? 0))
+			?.choice ?? '',
+	);
+	let selectedMargin = $derived(selectedImageMarginChoice);
 
 	// The crop window is drawn at the target's real size on this device class (#533).
 	const compactViewport = useNarrowViewportState();
@@ -398,6 +418,15 @@
 		if (value === 'transparent' || value === '#ffffff' || value === '#000000') {
 			selectedImage.chooseBackground(value);
 		}
+	}
+
+	function setMargin(value: string) {
+		const option = IMAGE_MARGIN_OPTIONS.find((candidate) => candidate.choice === value);
+		if (mutationPending || option === undefined || selectedImage === null) {
+			selectedMargin = selectedImageMarginChoice;
+			return;
+		}
+		selectedImage.chooseMargin(option.margin);
 	}
 
 	/** Clicking a preview tile only picks the edited target; editing it promotes. */
@@ -1396,6 +1425,27 @@
 							</ToggleGroup.Item>
 						</ToggleGroup.Root>
 					</div>
+					{#if presentedEditorMode === IMAGE_EDITOR_MODES.fit}
+						<div class="flex flex-none justify-center pb-2.5">
+							<ToggleGroup.Root
+								type="single"
+								bind:value={selectedMargin}
+								onValueChange={setMargin}
+								aria-label={m.image_margin_label()}
+								class="max-w-full flex-wrap justify-center rounded-full border-2 border-ink bg-card px-1.5 py-1 shadow-sticker"
+							>
+								{#each IMAGE_MARGIN_OPTIONS as option (option.choice)}
+									<ToggleGroup.Item
+										value={option.choice}
+										class="rounded-full"
+										disabled={mutationPending}
+									>
+										{option.label()}
+									</ToggleGroup.Item>
+								{/each}
+							</ToggleGroup.Root>
+						</div>
+					{/if}
 					<!-- Fixed-window stage (#533): the window keeps the active target's
 				     real size while the photo pans and zooms behind it. Fill/Fit show
 				     their automatic framing; any edit promotes to Manual. Remounts per
@@ -1409,6 +1459,7 @@
 							surfaceSize={activeSurfaceSize}
 							framing={presentedEditorMode}
 							fillColor={selectedImage.bgColor}
+							fitMargin={selectedImage.margin}
 							tokenScope={IMAGE_TOKEN_SCOPES.wishlist}
 							disabled={mutationPending}
 							visibleWidthFraction={activeVisibleWidthFraction}

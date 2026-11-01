@@ -317,6 +317,8 @@ export interface ImageFrameProps {
 	focal: ImageFocalPoint;
 	zoom: number;
 	fillColor: string | null;
+	/** Fit margin; zero for every mode but `contain-padded`. */
+	margin: number;
 }
 
 /**
@@ -332,6 +334,7 @@ export function imageMetaToFrameProps(meta: ImageMetadata | null): ImageFramePro
 			focal: { ...CENTERED_FOCAL },
 			zoom: IMAGE_ZOOM_BASE,
 			fillColor: null,
+			margin: 0,
 		};
 	}
 
@@ -352,6 +355,7 @@ export function imageMetaToFrameProps(meta: ImageMetadata | null): ImageFramePro
 		focal,
 		zoom,
 		fillColor: meta.bgColor ?? null,
+		margin: meta.fitMode === IMAGE_FIT_MODES.containPadded ? (meta.margin ?? 0) : 0,
 	};
 }
 
@@ -396,6 +400,7 @@ export function giftTargetFrameProps(
 			focal: targetCrop.focal,
 			zoom: clampZoom(targetCrop.zoom),
 			fillColor: meta.bgColor ?? null,
+			margin: 0,
 		};
 	}
 	return imageMetaToFrameProps(meta);

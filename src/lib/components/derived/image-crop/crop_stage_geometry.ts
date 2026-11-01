@@ -58,6 +58,29 @@ export function photoBoxBehindWindow(rect: ImageCropRect, window: StageBox): Sta
 	};
 }
 
+/**
+ * The whole photo contained in the window shrunk by `inset` on every side: its
+ * natural aspect kept and centred, as the renderer `object-contain`s a Fit image
+ * inside its margin.
+ */
+export function photoBoxWithinInset(
+	photo: { width: number; height: number },
+	window: StageBox,
+	inset: number,
+): StageBox {
+	const innerWidth = window.width - 2 * inset;
+	const innerHeight = window.height - 2 * inset;
+	const scale = Math.min(innerWidth / photo.width, innerHeight / photo.height);
+	const width = photo.width * scale;
+	const height = photo.height * scale;
+	return {
+		width,
+		height,
+		left: window.left + (window.width - width) / 2,
+		top: window.top + (window.height - height) / 2,
+	};
+}
+
 /** The part of the photo the window shows, clipped to the photo (for the navigator). */
 export function visiblePhotoRegion(rect: ImageCropRect): ImageCropRect {
 	const left = clamp01(rect.x);

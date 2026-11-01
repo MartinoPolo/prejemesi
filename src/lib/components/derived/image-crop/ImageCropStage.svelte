@@ -29,6 +29,7 @@
 		type ImageCropRect,
 	} from '$lib/modules/images/index.js';
 	import {
+		fitMarginInset,
 		resolveFrameFill,
 		IMAGE_TOKEN_SCOPES,
 		type ImageTokenScope,
@@ -39,6 +40,7 @@
 		centeredVisibleBand,
 		cropWindowBox,
 		photoBoxBehindWindow,
+		photoBoxWithinInset,
 		visiblePhotoRegion,
 	} from './crop_stage_geometry.js';
 	import CropAnchorPad from './CropAnchorPad.svelte';
@@ -67,6 +69,8 @@
 		onchange?: (rect: ImageCropRect) => void;
 		/** Letterbox fill shown where a zoomed-out window overhangs the image (tier 1). */
 		fillColor?: string | null;
+		/** Fit margin the renderer keeps clear around the photo; shown only in Fit framing. */
+		fitMargin?: number;
 		/** Scopes the tier-2 letterbox fill token, mirroring ImageFrame. */
 		tokenScope?: ImageTokenScope;
 		/** Prevents crop edits while keeping the layout. */
@@ -93,6 +97,7 @@
 		framing = IMAGE_EDITOR_MODES.manual,
 		onchange,
 		fillColor = null,
+		fitMargin = 0,
 		tokenScope = IMAGE_TOKEN_SCOPES.global,
 		disabled = false,
 		visibleWidthFraction = null,
@@ -164,9 +169,22 @@
 			stageWidth < COMPACT_STAGE_WIDTH ? COMPACT_WINDOW_PADDING : WINDOW_PADDING,
 		),
 	);
-	const photoBox = $derived(
-		windowBox !== null ? photoBoxBehindWindow(shownRect, windowBox) : null,
-	);
+	const photoBox = $derived.by(() => {
+		if (windowBox === null) {
+			return null;
+		}
+		const behindWindow = photoBoxBehindWindow(shownRect, windowBox);
+		if (framing !== IMAGE_EDITOR_MODES.fit) {
+			return behindWindow;
+		}
+		// Fit shows the whole photo inside the window's margin inset, as the renderer does.
+		const inset = fitMarginInset({
+			margin: fitMargin,
+			boxWidth: windowBox.width,
+			boxHeight: windowBox.height,
+		});
+		return photoBoxWithinInset(behindWindow, windowBox, inset);
+	});
 	const windowFill = $derived(resolveFrameFill({ fillColor, tokenScope }));
 	const sizeLabel = $derived(
 		windowBox === null || windowBox.scale >= TRUE_SIZE_SCALE_TOLERANCE

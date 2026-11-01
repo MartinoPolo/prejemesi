@@ -57,6 +57,19 @@ describe('CreateGiftInputSchema', () => {
 		expect(result.success).toBe(true);
 	});
 
+	it('accepts a Fit margin within range and rejects one above a fifth of the frame', () => {
+		const withMargin = (margin: number) =>
+			parseSuccess(CreateGiftInputSchema, {
+				wishlistId: 'wl-1',
+				name: 'Nice Book',
+				imageMeta: { fitMode: 'contain-padded', margin },
+			});
+		const accepted = withMargin(0.05);
+		expect(accepted.success).toBe(true);
+		expect(accepted.output).toMatchObject({ imageMeta: { margin: 0.05 } });
+		expect(withMargin(0.5).success).toBe(false);
+	});
+
 	it('rejects empty gift name', () => {
 		const result = parseSuccess(CreateGiftInputSchema, {
 			wishlistId: 'wl-1',
@@ -325,6 +338,36 @@ describe('UpdateGiftInputSchema – image metadata', () => {
 			imageMeta: { fitMode: 'contain-padded' },
 		});
 		expect(result.success).toBe(true);
+	});
+
+	it('keeps a Fit margin on the cover and on every gallery image', () => {
+		const cover = v.parse(UpdateGiftInputSchema, {
+			id: 'gift-1',
+			imageMeta: { fitMode: 'contain-padded', margin: 0.05 },
+		});
+		const gallery = v.parse(UpdateGiftInputSchema, {
+			id: 'gift-1',
+			images: [
+				{
+					imageUrl: 'https://shop.example/a.jpg',
+					imageMeta: { fitMode: 'contain-padded', margin: 0.05 },
+				},
+				{
+					imageUrl: 'https://shop.example/b.jpg',
+					imageMeta: { fitMode: 'contain-padded', margin: 0.1 },
+				},
+			],
+		});
+		expect(cover.imageMeta?.margin).toBe(0.05);
+		expect(gallery.images?.map((image) => image.imageMeta?.margin)).toEqual([0.05, 0.1]);
+	});
+
+	it('rejects a margin above a fifth of the frame', () => {
+		const result = parseSuccess(UpdateGiftInputSchema, {
+			id: 'gift-1',
+			imageMeta: { fitMode: 'contain-padded', margin: 0.5 },
+		});
+		expect(result.success).toBe(false);
 	});
 });
 

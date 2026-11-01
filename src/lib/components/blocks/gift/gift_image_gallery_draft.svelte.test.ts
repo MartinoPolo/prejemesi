@@ -191,3 +191,101 @@ describe('GiftImageDraft', () => {
 		expect(Object.keys(image.imageMeta.targets ?? {})).toEqual(['square']);
 	});
 });
+
+describe('GiftImageDraft Fit margin', () => {
+	it('saves an untouched image without a margin exactly as persisted', () => {
+		const image = new GiftImageDraft(storedImage('photo'));
+
+		expect(image.changed).toBe(false);
+		expect(image.imageMeta).not.toHaveProperty('margin');
+	});
+
+	it('keeps a persisted Fit margin untouched and unchanged', () => {
+		const image = new GiftImageDraft(storedImage('box', { ...containMeta, margin: 0.05 }));
+
+		expect(image.margin).toBe(0.05);
+		expect(image.changed).toBe(false);
+		expect(image.imageMeta.margin).toBe(0.05);
+	});
+
+	it('saves a chosen margin with Fit and counts it as a change', () => {
+		const image = new GiftImageDraft(storedImage('box'));
+
+		image.chooseMargin(0.1);
+
+		expect(image.changed).toBe(true);
+		expect(image.imageMeta).toMatchObject({
+			fitMode: IMAGE_FIT_MODES.containPadded,
+			margin: 0.1,
+		});
+
+		image.chooseMargin(0);
+		expect(image.changed).toBe(false);
+		expect(image.imageMeta).not.toHaveProperty('margin');
+	});
+
+	it('drops the margin on save outside Fit and restores it when Fit returns', () => {
+		const image = new GiftImageDraft(storedImage('box', { ...containMeta, margin: 0.05 }));
+
+		image.chooseEditorMode(IMAGE_EDITOR_MODES.fill, 'square');
+		expect(image.imageMeta).not.toHaveProperty('margin');
+
+		image.chooseEditorMode(IMAGE_EDITOR_MODES.fit, 'square');
+		expect(image.imageMeta.margin).toBe(0.05);
+		expect(image.changed).toBe(false);
+	});
+
+	it('turns a legacy auto image into Fit when a margin is chosen', () => {
+		const legacy = new GiftImageDraft(
+			storedImage('legacy', { ...containMeta, fitMode: 'auto' }),
+		);
+
+		legacy.chooseMargin(0.05);
+
+		expect(legacy.imageMeta).toMatchObject({
+			fitMode: IMAGE_FIT_MODES.containPadded,
+			margin: 0.05,
+		});
+	});
+
+	it('keeps each gallery image’s own margin', () => {
+		const images = [
+			storedImage('first', { ...containMeta, margin: 0.1 }),
+			storedImage('second'),
+		];
+		const gallery = new GiftImageGalleryDraft({
+			imageUrl: images[0].imageUrl,
+			imageKey: null,
+			imageMeta: images[0].imageMeta,
+			images,
+		});
+
+		gallery.images[1].chooseMargin(0.05);
+
+		expect(gallery.toGiftImages().map((image) => image.imageMeta?.margin)).toEqual([0.1, 0.05]);
+	});
+
+	it('keeps a margin the editor does not offer when the rest of the image is edited', () => {
+		const image = new GiftImageDraft(storedImage('agent', { ...containMeta, margin: 0.07 }));
+
+		expect(image.changed).toBe(false);
+		image.chooseBackground('#ffffff');
+
+		expect(image.changed).toBe(true);
+		expect(image.imageMeta).toMatchObject({ bgColor: '#ffffff', margin: 0.07 });
+	});
+
+	it('does not carry the margin over to an uploaded replacement', () => {
+		const image = new GiftImageDraft(storedImage('box', { ...containMeta, margin: 0.1 }));
+
+		image.useUpload({
+			objectKey: 'gift-images/new.png',
+			publicUrl: 'https://cdn.example/gift-images/new.png',
+			deleteToken: 'token',
+		});
+		image.chooseEditorMode(IMAGE_EDITOR_MODES.fit, 'square');
+
+		expect(image.imageMeta.fitMode).toBe(IMAGE_FIT_MODES.containPadded);
+		expect(image.imageMeta).not.toHaveProperty('margin');
+	});
+});
