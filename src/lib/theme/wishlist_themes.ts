@@ -90,90 +90,72 @@ export const DEFAULT_WISHLIST_BACKGROUND: WishlistBackground = {
 export interface WishlistThemeDefinition {
 	palette: Palette;
 	style: WishlistStyleTokens;
-	/** Dark-native backdrops look the same in light and dark mode and use black hard shadows. */
-	darkBackdrop: boolean;
 }
 
 export const WISHLIST_THEMES: Record<WishlistThemeId, WishlistThemeDefinition> = {
 	toys: {
 		palette: 'sky',
 		style: { corners: 'round', border: 'bold', mat: 'dotted', heading: 'playful' },
-		darkBackdrop: false,
 	},
 	kids_clothes: {
 		palette: 'sakura',
 		style: { corners: 'round', border: 'bold', mat: 'white', heading: 'hand' },
-		darkBackdrop: false,
 	},
 	gamer: {
 		palette: 'grape',
 		style: { corners: 'soft', border: 'bold', mat: 'black', heading: 'plain' },
-		darkBackdrop: true,
 	},
 	minimal: {
 		palette: 'graphite',
 		style: { corners: 'sharp', border: 'fine', mat: 'white', heading: 'plain' },
-		darkBackdrop: false,
 	},
 	wedding: {
 		palette: 'honey',
 		style: { corners: 'soft', border: 'fine', mat: 'white', heading: 'elegant' },
-		darkBackdrop: false,
 	},
 	christmas: {
 		palette: 'ruby',
 		style: { corners: 'round', border: 'bold', mat: 'dotted', heading: 'playful' },
-		darkBackdrop: true,
 	},
 	outdoor: {
 		palette: 'matcha',
 		style: { corners: 'soft', border: 'bold', mat: 'dotted', heading: 'playful' },
-		darkBackdrop: false,
 	},
 	books: {
 		palette: 'ocean',
 		style: { corners: 'soft', border: 'fine', mat: 'white', heading: 'elegant' },
-		darkBackdrop: false,
 	},
 	baby: {
 		palette: 'mint',
 		style: { corners: 'round', border: 'fine', mat: 'dotted', heading: 'hand' },
-		darkBackdrop: false,
 	},
 	retro: {
 		palette: 'peach',
 		style: { corners: 'round', border: 'bold', mat: 'dotted', heading: 'playful' },
-		darkBackdrop: false,
 	},
 	party: {
 		palette: 'sakura',
 		style: { corners: 'round', border: 'bold', mat: 'dotted', heading: 'playful' },
-		darkBackdrop: false,
 	},
 	space: {
 		palette: 'sky',
 		style: { corners: 'soft', border: 'bold', mat: 'black', heading: 'plain' },
-		darkBackdrop: true,
 	},
 	music: {
 		palette: 'ruby',
 		style: { corners: 'soft', border: 'bold', mat: 'white', heading: 'plain' },
-		darkBackdrop: false,
 	},
 	pets: {
 		palette: 'honey',
 		style: { corners: 'round', border: 'bold', mat: 'dotted', heading: 'playful' },
-		darkBackdrop: false,
 	},
 	gourmet: {
 		palette: 'peach',
 		style: { corners: 'soft', border: 'fine', mat: 'white', heading: 'elegant' },
-		darkBackdrop: false,
 	},
 	travel: {
 		palette: 'ocean',
 		style: { corners: 'round', border: 'bold', mat: 'white', heading: 'hand' },
-		darkBackdrop: false,
 	},
 };
 

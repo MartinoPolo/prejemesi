@@ -75,7 +75,6 @@
 			0 / 32px 32px,
 		radial-gradient(ellipse at 50% 0%, #2c1766, #140b33 70%);
 	--theme-wash: rgb(0 0 0 / 16%);
-	--theme-shadow-override: #000;
 }
 
 [data-wishlist-theme='minimal'] {
@@ -131,7 +130,6 @@
 			38px 38px,
 		linear-gradient(180deg, #1f5a43, #17432f);
 	--theme-wash: rgb(0 0 0 / 16%);
-	--theme-shadow-override: #000;
 }
 
 [data-wishlist-theme='outdoor'] {
@@ -260,7 +258,6 @@
 			0 0 / 97px 89px,
 		radial-gradient(ellipse at 50% 0%, #1f2c66, #0b1030 70%);
 	--theme-wash: rgb(0 0 0 / 16%);
-	--theme-shadow-override: #000;
 }
 
 [data-wishlist-theme='music'] {

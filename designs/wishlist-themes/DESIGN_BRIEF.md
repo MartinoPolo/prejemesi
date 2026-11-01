@@ -36,7 +36,7 @@ Managers can personalize a wishlist beyond its palette with themed decorative ba
 
 ## Backgrounds
 
-**Desktop (gutters ≥ 1260 px container).** The live content container (1120 px plus gutters) leaves side gutters, and the background fills them. The theme layer is a CSS pattern plus 8 motifs per side at three depths (far, mid, near), placed deterministically. A soft center wash sits behind the content column. Content surfaces (notebook, toolbar, group plates and gift cards) stay opaque paper, so text never sits on artwork. On the dark-backdrop themes (Herní doupě, Vánoce, custom photo), the hard shadow switches to black for separation.
+**Desktop (gutters ≥ 1260 px container).** The live content container (1120 px plus gutters) leaves side gutters, and the background fills them. The theme layer is a CSS pattern plus 8 motifs per side at three depths (far, mid, near), placed deterministically. A soft center wash sits behind the content column. Content surfaces (notebook, toolbar, group plates and gift cards) stay opaque paper, so text never sits on artwork. Shadows always follow the viewer's depth style and mode; on a dark photo the bold card border separates the cards.
 
 **Tablet and mobile.** Gutters are only 12–16 px, so the motifs move to a short strip (about 64–84 px) above the notebook header, and the theme pattern shows faintly between cards. The strip scrolls away with the page. It is decoration, not the full-bleed hero that DECISIONS 2026-07-10 forbids.
 

@@ -67,22 +67,6 @@
 	--wishlist-gift-title-font: var(--font-body);
 }
 
-/* ── Dark backdrops: hard sticker shadows turn black, depth stays the viewer's ─ */
-[data-wishlist-background='custom'],
-[data-wishlist-background='library'] {
-	--theme-shadow-override: #000;
-}
-
-[data-palette][data-wishlist-dark-backdrop],
-.dark [data-palette][data-wishlist-dark-backdrop] {
-	--soft-shadow: color-mix(in oklab, var(--theme-shadow-override, #000) 35%, transparent);
-	--soft-shadow-strong: color-mix(in oklab, var(--theme-shadow-override, #000) 45%, transparent);
-	--ink-shadow: color-mix(in oklab, var(--theme-shadow-override, #000) 62%, transparent);
-	--ink-shadow-strong: color-mix(in oklab, var(--theme-shadow-override, #000) 72%, transparent);
-	--black-shadow: var(--theme-shadow-override, #000);
-	--black-shadow-strong: var(--theme-shadow-override, #000);
-}
-
 /* ── Backdrop layout ──────────────────────────────────── */
 
 /* Below the gutter breakpoint the decoration becomes a short strip above the header, so the

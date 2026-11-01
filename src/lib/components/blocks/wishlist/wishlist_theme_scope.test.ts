@@ -22,7 +22,6 @@ describe('wishlist theme scope', () => {
 			'data-wishlist-theme': undefined,
 			'data-wishlist-background': 'none',
 			'data-wishlist-backdrop': undefined,
-			'data-wishlist-dark-backdrop': undefined,
 			'data-wishlist-placement': undefined,
 			'data-corners': 'round',
 			'data-border': 'bold',
@@ -42,31 +41,10 @@ describe('wishlist theme scope', () => {
 			'data-wishlist-theme': 'gamer',
 			'data-wishlist-background': 'theme',
 			'data-wishlist-backdrop': '',
-			'data-wishlist-dark-backdrop': '',
 			'data-corners': 'soft',
 			'data-mat': 'black',
 			'data-heading': 'hand',
 		});
-	});
-
-	it('marks only dark-native themes as dark backdrops', () => {
-		expect(
-			scopeAttributes({ themeId: 'toys', styleTokens: null, background: null })[
-				'data-wishlist-dark-backdrop'
-			],
-		).toBeUndefined();
-	});
-
-	it.each([
-		['christmas', ''],
-		['space', ''],
-		['wedding', undefined],
-	] as const)('marks the %s backdrop dark: %s', (themeId, darkBackdrop) => {
-		expect(
-			scopeAttributes({ themeId, styleTokens: null, background: null })[
-				'data-wishlist-dark-backdrop'
-			],
-		).toBe(darkBackdrop);
 	});
 
 	it('drops the theme backdrop for mode none but keeps the theme for placeholders and tokens', () => {
@@ -94,10 +72,9 @@ describe('wishlist theme scope', () => {
 		});
 		expect(scope.backgroundMode).toBe('none');
 		expect(scope.customImageUrl).toBeNull();
-		expect(scope.darkBackdrop).toBe(false);
 	});
 
-	it('renders a stored custom photo as a dark backdrop with its placement', () => {
+	it('renders a stored custom photo with its placement', () => {
 		const scope = resolveWishlistThemeScope({
 			themeId: 'toys',
 			styleTokens: null,
@@ -112,12 +89,11 @@ describe('wishlist theme scope', () => {
 			'data-wishlist-theme': undefined,
 			'data-wishlist-background': 'custom',
 			'data-wishlist-backdrop': '',
-			'data-wishlist-dark-backdrop': '',
 			'data-wishlist-placement': 'gutters',
 		});
 	});
 
-	it('renders a library image as a dark photo backdrop with its placement', () => {
+	it('renders a library image with its placement', () => {
 		const scope = resolveWishlistThemeScope({
 			themeId: 'toys',
 			styleTokens: null,
@@ -128,7 +104,6 @@ describe('wishlist theme scope', () => {
 			'data-wishlist-theme': undefined,
 			'data-wishlist-background': 'library',
 			'data-wishlist-backdrop': '',
-			'data-wishlist-dark-backdrop': '',
 			'data-wishlist-placement': 'full',
 		});
 	});
