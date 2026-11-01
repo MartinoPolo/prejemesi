@@ -55,8 +55,10 @@ Always research reference prices, even when the source page shows one. Search by
 
 Also record a foreign reference (manufacturer store, Steam, or a major foreign retailer) whenever the product is sold internationally. When the gift has several plausible formats (boxed vs. digital key, Czech vs. English edition, platform), ask which the user prefers instead of choosing.
 
-- **Price fields:** use the lowest–highest **new, in-stock** exact-match Heureka offer range in CZK, widened to include the Alza price; a single value when they agree. Without a Czech reference, use the category reference: for Steam, `price` is the current final price and `priceMax` the regular price when on sale. Keep the currency shown (`CZK`, `EUR`, or `USD`) and never convert; other currencies are reported only.
-- **Links:** add each exact-match reference page with a short label (`Heureka`, `Alza`, `Steam`, or an edition qualifier such as `Heureka – PS5`), skip duplicates and respect the link limit. `links[0]` is the gift's primary link, so it must be a page where the gift can be bought: the exact-match Heureka page first, then shops (Alza, the source shop, Steam), then pages that sell nothing (BoardGameGeek, reviews, manufacturer info) last. When no Czech reference exists, a shop selling the product comes first.
+A user-supplied shop link is enough on its own: a missing Heureka or Alza match is reported, never a reason to stop, and the source shop's price is then the price.
+
+- **Price fields:** the price is an anchor that keeps gifters from overpaying, not an exact quote. Pool the **new, in-stock** exact-match offers (Heureka shop offers, Alza, the source shop), sort them ascending, drop clear outliers, and keep the cheapest `min(5, ceil(n / 2))`: one offer stands alone, two or more keep the cheaper half, ten or more keep five. `price` is the lowest kept offer and `priceMax` the highest when it differs. For Steam, `price` is the current final price and `priceMax` the regular price when on sale. Keep the currency shown (`CZK`, `EUR`, or `USD`) and never convert; other currencies are reported only.
+- **Links:** add each exact-match reference page with a short label (`Heureka`, `Alza`, `Steam`, or an edition qualifier such as `Heureka – PS5`), skip duplicates and respect the link limit. `links[0]` is the gift's primary link: a reliably matched Heureka or Alza page, otherwise the user-supplied link; then other shops, then pages that sell nothing (BoardGameGeek, reviews, manufacturer info) last.
 
 ### Bot-protected sites
 
@@ -70,12 +72,12 @@ Search URLs: `https://www.heureka.cz/?h%5Bfraze%5D=<query>` and `https://www.alz
 
 ## Evidence
 
-Keep a research record per gift in the scratch directory: for each field, the extraction method (`json-ld`, `opengraph`, `page-metadata`, `exact-search`) and the evidence, such as `exact-search: Heureka new offers 1108–1571 CZK, Alza 1369 CZK`; the selected image's HTTPS URL and method. If several products or images plausibly match, do not choose one silently: list every unresolved decision with the affected gift, field, and evidence-backed reason. **Any open ambiguity is a HITL stop**: submit nothing until the user resolves it.
+Keep a research record per gift in the scratch directory: for each field, the extraction method (`json-ld`, `opengraph`, `page-metadata`, `exact-search`) and the evidence, such as `exact-search: Heureka new offers 1108–1571 CZK, Alza 1369 CZK`; the selected image's HTTPS URL and method. If several products or images plausibly match, do not choose one silently: list every unresolved decision with the affected gift, field, and evidence-backed reason. **Any open ambiguity is a HITL stop**: submit nothing until the user resolves it. A reference with no exact match is not ambiguity.
 
 Gift fields follow the `createGift` and `updateGift` inputs in the API reference (`GET /api/v1/openapi.json`):
 
 - Every new gift has at least one link, ordered as in **Links** above, and includes every URL the user supplied for that gift.
-- `categoryIds` is optional: up to five of the wishlist's existing categories, the primary first, each matched by `customLabel` or by the preset (`presetKey`) the user or the evidence names. Unknown categories are HITL; never create one.
+- `categoryIds`: infer them from the gift's content, up to five of the wishlist's existing categories (`customLabel` or `presetKey`), the primary first. Ask only when no existing category plausibly fits; never create one.
 - `priorityLevelId` and `quantity` only when the user gave them.
 - Images: compare the source's OpenGraph image with the Product JSON-LD `image` entries of the exact-match Heureka and Alza pages (the first entry is the main packshot), view the candidates, and pick the sharpest clean product or box shot of the exact edition, preferring the highest resolution; a small `og:image` is usually a thumbnail. Store the selected image with `prejemesi images add --wishlist <shortId> --url <image URL> --idempotency-key <key>` or `uploadImage`, then set `"imageReference": "<reference>"` on the gift. Report a refused image (`AGENT_IMAGE_*`) and propose the gift without it.
 - Several images: when more photos help, such as several acceptable colours, store each with `images add` and set `"imageReferences": [{ "imageReference": "<reference>", "imageMeta": { … } }, …]` instead of `imageReference`: up to 8 in order, the first is the cover, and the list replaces the gift's whole gallery. Each entry's optional `imageMeta` follows the framing rules below.
