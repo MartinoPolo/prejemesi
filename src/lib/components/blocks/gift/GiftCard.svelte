@@ -24,7 +24,7 @@
 	import { GIFT_LIVE_PREVIEW } from '$lib/components/blocks/change-proposals/change_row_model.js';
 	import { giftLivePreviewMarks } from '$lib/components/blocks/change-proposals/gift_live_preview.js';
 	import { restingShadowNesting } from '$lib/utils/resting_shadow_nesting.js';
-	import { wrapGalleryIndex } from '$lib/modules/gifts/gift_gallery.js';
+	import { clampGalleryIndex } from '$lib/modules/gifts/gift_gallery.js';
 	import { useGiftGalleryPositions } from '$lib/modules/gifts/gift_gallery_positions.js';
 	import type { GiftPresentationProps } from './gift_presentation_props.js';
 	import GiftCardGallery from './GiftCardGallery.svelte';
@@ -98,7 +98,9 @@
 	let gallerySwiping = $state(false);
 	// Reorder and selection modes show the cover; browsing resumes where it was afterwards.
 	const shownImageIndex = $derived(
-		hasGallery && !contextualMode ? wrapGalleryIndex(browsedImageIndex, gift.images.length) : 0,
+		hasGallery && !contextualMode
+			? clampGalleryIndex(browsedImageIndex, gift.images.length)
+			: 0,
 	);
 	const shownImageMeta = $derived(
 		hasGallery ? gift.images[shownImageIndex].imageMeta : gift.imageMeta,

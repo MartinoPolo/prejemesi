@@ -52,8 +52,8 @@
 		imageKey: string | null;
 		/**
 		 * Ready-made polaroid URL that bypasses `imageKey` resolution. Only fixture surfaces
-		 * (the landing demo) pass it: their photo is a static asset, not an R2 object, so
-		 * `wishlistImageUrl` would prepend the upload base and break the src. Unset everywhere
+		 * (the landing demo) pass it: their `asset()` URL is document-relative (`./demo/…`)
+		 * during SSR, which `wishlistImageUrl` would take for an object key. Unset everywhere
 		 * else, leaving the `imageKey` path untouched.
 		 */
 		imageSrc?: string | null;

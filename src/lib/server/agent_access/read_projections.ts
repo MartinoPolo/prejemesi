@@ -1,4 +1,5 @@
-import { imagePublicUrl, resolveGiftImageUrl } from '$lib/modules/images/public_url.js';
+import { resolveGiftImageUrl } from '$lib/modules/images/public_url.js';
+import { wishlistImageUrl } from '$lib/modules/images/wishlist_slots.js';
 import type { GiftBase, GiftByRole, GiftForRecipient } from '$lib/modules/gifts/types.js';
 import type { GiftImage, PublicGiftImage } from '$lib/modules/gifts/gift_images.js';
 import type { wishlist } from '$lib/server/db/wishlist.schema.js';
@@ -74,7 +75,7 @@ export function projectAgentWishlistRow(wishlistRow: AgentWishlistSource) {
 		kind: wishlistRow.kind,
 		palette: wishlistRow.palette,
 		...projectAgentAppearance(wishlistRow),
-		imageUrl: wishlistRow.imageKey === null ? null : imagePublicUrl(wishlistRow.imageKey),
+		imageUrl: wishlistImageUrl(wishlistRow.imageKey),
 		recipientIsModerator: wishlistRow.recipientIsModerator,
 		sharedAt: wishlistRow.sharedAt,
 		archivedAt: wishlistRow.archivedAt,

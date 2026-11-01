@@ -134,7 +134,10 @@ describe('projectAgentWishlist', () => {
 		expect(projected.imageUrl).toContain('wishlists/banner.webp');
 	});
 
-	function projectRowWithBackground(background: Partial<WishlistBackground> | null) {
+	function projectRowWithBackground(
+		background: Partial<WishlistBackground> | null,
+		imageKey: string | null = null,
+	) {
 		return projectAgentWishlistRow({
 			id: 'wishlist-1',
 			shortId: 'short-1',
@@ -148,7 +151,7 @@ describe('projectAgentWishlist', () => {
 			themeId: 'minimal',
 			styleTokens: null,
 			background,
-			imageKey: null,
+			imageKey,
 			recipientIsModerator: false,
 			sharedAt: null,
 			archivedAt: null,
@@ -156,6 +159,12 @@ describe('projectAgentWishlist', () => {
 			updatedAt: createdAt,
 		});
 	}
+
+	it('exposes a prepared demo cover by its site path unchanged', () => {
+		expect(projectRowWithBackground(null, '/demo/wishlists/x.webp').imageUrl).toBe(
+			'/demo/wishlists/x.webp',
+		);
+	});
 
 	it('exposes the id of a stored library background', () => {
 		expect(

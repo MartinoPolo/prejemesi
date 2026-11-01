@@ -1,4 +1,5 @@
 import { observeDepthChange } from '$lib/theme/depth_change.js';
+import { mutationsMayChangeCardLayout } from '../gift/gift_card_layout_inert.js';
 import { GIFT_MOTION_DRAGGING_ATTRIBUTE } from './gift_pointer_reorder.svelte.js';
 
 const GIFT_CARD_TRACKS = ['title', 'description', 'links', 'price', 'actions'] as const;
@@ -192,7 +193,11 @@ export function giftCardCollectionLayout(collection: HTMLElement) {
 	});
 	resizeObserver.observe(collection);
 
-	const mutationObserver = new MutationObserver(scheduleMeasurement);
+	const mutationObserver = new MutationObserver((records) => {
+		if (mutationsMayChangeCardLayout(records)) {
+			scheduleMeasurement();
+		}
+	});
 	mutationObserver.observe(collection, {
 		subtree: true,
 		childList: true,

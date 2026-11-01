@@ -1,11 +1,12 @@
 import type { DatabaseTransaction } from '$lib/server/db/index.js';
 import { user } from '$lib/server/db/auth.schema.js';
 import { wishlist, priorityLevel } from '$lib/server/db/wishlist.schema.js';
-import { gift, giftCategory, reservation } from '$lib/server/db/gift.schema.js';
+import { gift, giftCategory, giftImage, reservation } from '$lib/server/db/gift.schema.js';
 import { moderatorAssignment } from '$lib/server/db/moderator.schema.js';
 import { wishlistFollower } from '$lib/server/db/follower.schema.js';
 import { generateId } from '$lib/server/db/id.js';
 import { DEFAULT_PRIORITY_LEVELS } from '$lib/modules/wishlists/types.js';
+import { createDefaultWishlistSlots } from '$lib/modules/images/wishlist_slots.js';
 import {
 	GIFT_CATEGORY_PRESET_BY_KEY,
 	isGiftCategoryPresetKey,
@@ -65,6 +66,8 @@ async function insertDemoWishlist(
 			title: entry.title,
 			description: entry.description,
 			palette: entry.palette,
+			imageKey: entry.coverImageUrl,
+			imageSlots: createDefaultWishlistSlots(),
 			status: entry.status === 'shared' ? 'active' : entry.status,
 			sharedAt: entry.status === 'draft' ? null : sharedAt,
 			firstSharedAt: entry.status === 'draft' ? null : sharedAt,
@@ -147,7 +150,19 @@ async function insertDemoGifts(
 			})),
 		)
 		.returning({ id: gift.id });
-	return gifts.map((row) => row.id);
+	const giftIds = gifts.map((row) => row.id);
+	// The cover-mirror trigger already created each gift's position 0 from its `imageUrl`.
+	const laterGalleryImages = entry.gifts.flatMap((item, giftIndex) =>
+		item.images.slice(1).map((imageUrl, laterIndex) => ({
+			giftId: giftIds[giftIndex]!,
+			position: laterIndex + 1,
+			imageUrl,
+		})),
+	);
+	if (laterGalleryImages.length > 0) {
+		await tx.insert(giftImage).values(laterGalleryImages);
+	}
+	return giftIds;
 }
 
 async function insertDemoReservations(
@@ -189,6 +204,7 @@ export async function provisionDemoCatalog(
 				demoSessionId: sessionId,
 				name: entry.recipientName,
 				email: demoEmailAddress(otherUserId),
+				image: entry.recipientImage ?? null,
 			});
 		}
 		const created = await insertDemoWishlist(

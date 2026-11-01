@@ -953,7 +953,7 @@ const OUTCOME_CHECKS: Record<GiftCardOutcome, OutcomeCheck> = {
 		});
 		await expect
 			.poll(() => shownGalleryImage(page), { message: 'the next image shows' })
-			.toBe(String((shownBefore + 1) % GALLERY_IMAGE_PATHS.length));
+			.toBe(String(shownBefore + 1));
 		await page.waitForTimeout(SETTLE_AFTER_GESTURE_MS);
 		await expect(page.locator(OPEN_LAYERS), 'the swipe opens no viewer').toHaveCount(0);
 		await expectNoCardPress(page, state.role);
