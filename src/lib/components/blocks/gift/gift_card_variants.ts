@@ -32,7 +32,7 @@ export const giftCardVariants = tv({
 		separator: 'pointer-events-none absolute inset-x-0 bottom-0 z-10 h-[3.5px]',
 		// Desktop Grid content uses one inset for the title's top and start edges; the end edge
 		// never drops below the footer's shadow clearance.
-		body: 'row-start-2 flex min-h-0 flex-col ps-[var(--gift-content-inset,9px)] pe-[var(--gift-content-inset-end,var(--gift-content-inset,9px))] pt-2 pb-1.5 [--gift-card-desktop-content-inset:0.875rem] sm:ps-(--gift-card-desktop-content-inset) sm:pe-[max(var(--gift-card-desktop-content-inset),var(--gift-content-inset-end,var(--gift-content-inset,9px)))] sm:pt-(--gift-card-desktop-content-inset) sm:pb-4',
+		body: 'row-start-2 flex min-h-0 flex-col ps-(--gift-content-inset) pe-(--gift-content-inset-end) pt-2 pb-1.5 [--gift-card-desktop-content-inset:0.875rem] sm:ps-(--gift-card-desktop-content-inset) sm:pe-[max(var(--gift-card-desktop-content-inset),var(--gift-content-inset-end))] sm:pt-(--gift-card-desktop-content-inset) sm:pb-4',
 		nameRow:
 			'flex min-w-0 items-start gap-1.5 [min-height:var(--gift-card-title-track-height,auto)]',
 		name: 'line-clamp-2 min-w-0 flex-1 [font-family:var(--wishlist-gift-title-font,var(--font-head))] text-[1rem] font-semibold leading-[1.3] text-foreground [overflow-wrap:anywhere] sm:text-[1.5rem]',
@@ -40,7 +40,7 @@ export const giftCardVariants = tv({
 		priceEmpty: 'block text-sm text-muted-foreground italic',
 		priorityEyebrow: 'mt-2 flex min-w-0 items-center gap-1',
 		linkList: 'min-w-[min(9rem,100%)] max-w-full basis-auto',
-		footer: 'row-start-3 flex min-w-0 items-stretch justify-between gap-(--nested-control-gap) ps-[var(--gift-content-inset,9px)] pe-[var(--gift-content-inset-end,var(--gift-content-inset,9px))] pb-[var(--gift-content-inset-bottom,var(--gift-content-inset,9px))] [min-height:var(--gift-card-actions-track-height,auto)]',
+		footer: 'row-start-3 flex min-w-0 items-stretch justify-between gap-(--nested-control-gap) ps-(--gift-content-inset) pe-(--gift-content-inset-end) pb-(--gift-content-inset-bottom) [min-height:var(--gift-card-actions-track-height,auto)]',
 		reservationActions: 'ml-auto flex min-w-0 flex-1 flex-col gap-(--nested-control-gap)',
 	},
 	variants: {

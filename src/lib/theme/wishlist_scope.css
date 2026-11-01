@@ -10,7 +10,7 @@
 
 [data-corners='soft'] {
 	--radius: 0.375rem;
-	--radius-panel: 8px;
+	--radius-panel: 12px;
 	--radius-btn: 4px;
 	--radius-badge: 6px;
 	--wishlist-pill-radius: 6px;

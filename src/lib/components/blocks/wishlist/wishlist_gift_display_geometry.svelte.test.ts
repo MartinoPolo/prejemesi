@@ -20,6 +20,7 @@ vi.mock('$env/dynamic/public', () => ({ env: {} }));
 const { default: WishlistGiftDisplayTestHost } =
 	await import('./WishlistGiftDisplayTestHost.svelte');
 const { expectPixelsNear, expectPixelsAtLeast, expectPixelsAtMost } = createPixelAssertions(expect);
+const MINIMUM_CONTROL_GAP = 9;
 
 function visitorGift(): GiftForVisitor {
 	return {
@@ -489,7 +490,6 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 			const control = wrapper.querySelector<HTMLElement>(
 				'[data-testid="gift-selection-control"]',
 			)!;
-			const wrapperRect = wrapper.getBoundingClientRect();
 			const imageRect = image.getBoundingClientRect();
 			const contentRect = content.getBoundingClientRect();
 			const controlRect = control.getBoundingClientRect();
@@ -499,9 +499,8 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 
 			expectPixelsNear(controlRect.width, 40);
 			expectPixelsNear(controlRect.height, 40);
-			expectPixelsNear(controlRect.left - wrapperRect.left, 9);
-			expectPixelsNear(controlRect.top - wrapperRect.top, 9);
-			expectPixelsNear(controlRect.left - imageRect.left, 7);
+			expectPixelsAtLeast(controlRect.left - imageRect.left, MINIMUM_CONTROL_GAP);
+			expectPixelsAtLeast(controlRect.top - imageRect.top, MINIMUM_CONTROL_GAP);
 			expectPixelsAtMost(controlRect.right, imageRect.right);
 			expectPixelsAtMost(controlRect.right, contentRect.left);
 			expect(getComputedStyle(control).borderRadius).toBe(

@@ -7,6 +7,15 @@ import * as m from '$lib/paraglide/messages.js';
 import WishlistGiftDraggableWrapperTestHost from './WishlistGiftDraggableWrapperTestHost.svelte';
 
 const { expectPixelsNear, expectPixelsAtLeast, expectPixelsAtMost } = createPixelAssertions(expect);
+const MINIMUM_CONTROL_GAP = 9;
+
+/** Context controls sit the card border plus its nested-corner inset, never under the gap floor. */
+function contextFaceInset(wrapper: HTMLElement, controlRadius: number): number {
+	const wrapperStyle = getComputedStyle(wrapper);
+	const cardBorder = parseFloat(wrapperStyle.getPropertyValue('--border-w'));
+	const concentricInset = parseFloat(wrapperStyle.borderRadius) - controlRadius - cardBorder;
+	return cardBorder + Math.max(MINIMUM_CONTROL_GAP, concentricInset);
+}
 
 const baseProps = {
 	index: 0,
@@ -213,8 +222,10 @@ describe('WishlistGiftDraggableWrapper — explicit reorder mode (#239)', () => 
 			.element() as HTMLButtonElement;
 		const styles = getComputedStyle(wrapper);
 		const shadowOffset = parseFloat(styles.getPropertyValue('--elevation-ordinary-offset'));
-		const faceInset =
-			parseFloat(styles.borderRadius) - parseFloat(getComputedStyle(moveDown).borderRadius);
+		const faceInset = contextFaceInset(
+			wrapper,
+			parseFloat(getComputedStyle(moveDown).borderRadius),
+		);
 
 		expect(styles.getPropertyValue('--gift-context-face-inset')).not.toBe('');
 		expect(styles.getPropertyValue('--gift-context-shadow-inset')).not.toBe('');
@@ -445,15 +456,13 @@ describe('WishlistGiftDraggableWrapper — context actions and selection', () =>
 			const shadowOffset = parseFloat(
 				wrapperStyle.getPropertyValue('--elevation-ordinary-offset'),
 			);
-			const parentRadius = parseFloat(wrapperStyle.borderRadius);
 			const markerRadius = parseFloat(getComputedStyle(marker).borderRadius);
-			const faceInset = parentRadius - markerRadius;
+			const faceInset = contextFaceInset(wrapper, markerRadius);
 
 			expect(wrapperStyle.getPropertyValue('--gift-context-face-inset')).not.toBe('');
 			expect(wrapperStyle.getPropertyValue('--gift-context-shadow-inset')).not.toBe('');
 			expectPixelsNear(markerRect.left - wrapperRect.left, faceInset);
 			expectPixelsNear(markerRect.top - wrapperRect.top, faceInset);
-			expectPixelsNear(parentRadius - faceInset, markerRadius);
 			expectPixelsAtMost(markerRect.right + shadowOffset, wrapperRect.right);
 			expectPixelsAtMost(markerRect.bottom + shadowOffset, wrapperRect.bottom);
 			await unmount();
@@ -501,8 +510,12 @@ describe('WishlistGiftDraggableWrapper — context actions and selection', () =>
 		expectPixelsNear(imageRect.width, imageRect.height);
 		expectPixelsNear(controlRect.width, 40);
 		expectPixelsNear(controlRect.height, 40);
-		expectPixelsNear(controlRect.left - wrapperRect.left, 9);
-		expectPixelsNear(controlRect.top - wrapperRect.top, 9);
+		const faceInset = contextFaceInset(
+			wrapper,
+			parseFloat(getComputedStyle(checkboxControl).borderRadius),
+		);
+		expectPixelsNear(controlRect.left - wrapperRect.left, faceInset);
+		expectPixelsNear(controlRect.top - wrapperRect.top, faceInset);
 		expectPixelsAtLeast(controlRect.left, imageRect.left);
 		expectPixelsAtLeast(controlRect.top, imageRect.top);
 		expectPixelsAtMost(controlRect.right, imageRect.right);
