@@ -28,14 +28,14 @@ None.
 | Proposed Name         | Description                                                                 | Why existing components don't cover it                                                     |
 | --------------------- | --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
 | `GiftGalleryIndicator` | Dots with an elongated active dot, or an `n/8` pill above 6 images          | No position indicator exists                                                                |
-| `GiftCardGallery`     | Card image area cycling images: hover/focus arrows, touch swipe, wrap-around | `base/carousel` is a scrolling row of many items, not a single-frame image cycler with overlays |
+| `GiftCardGallery`     | Card image area sliding between images: hover/focus arrows, touch swipe; stops at both ends | `base/carousel` is a scrolling row of many items, not a single-frame image cycler with overlays |
 | `GiftGalleryCountChip` | List `+N` chip with image icon, top-right of the list image                 | New badge content; reuse badge border/shadow tokens                                         |
 | `GiftViewerGallery`   | Viewer photo with counter, arrows, thumbnail strip, ←/→ keys               | GiftViewer shows one natural photo today                                                    |
 | `GiftImageStrip`      | Editor strip: select, drag/keyboard reorder, remove, cover pill, add tile, limit message | No sortable thumbnail strip exists                                                          |
 
 ## Implementation Notes
 
-- **Card events:** arrows and swipe mark themselves as nested gift-card controls (`GIFT_CARD_CONTROL_SELECTOR`, `data-gift-control-press`) so they neither open the viewer nor trigger the card press state. Swipe uses horizontal-intent detection so vertical page scroll still wins; off in reorder and selection modes, where the card shows the cover.
+- **Card events:** arrows and swipe mark themselves as nested gift-card controls (`GIFT_CARD_CONTROL_SELECTOR`, `data-gift-control-press`) so they neither open the viewer nor trigger the card press state. Swipe uses horizontal-intent detection so vertical page scroll still wins, and a swipe past the first or last image resists and snaps back; off in reorder and selection modes, where the card shows the cover.
 - **Indicator placement:** centered on the priority row; when it would come within 8 px of the priority badge (narrow two-column mobile cards) it moves bottom-right. Implement with a container query on the image area, not runtime measurement, if a width threshold reproduces the mockup.
 - **Current index:** per card, client-only, reset on reload; the viewer opens at the card's current index. Images after the first load lazily; preload the neighbour on hover or first swipe.
 - **Viewer:** the photo column width is the widest gallery image at the height cap, so the dialog never resizes; narrower images letterbox with the image-frame fill. ←/→ act only while the viewer is open.

@@ -1,24 +1,24 @@
 <script lang="ts">
-	import { tick, untrack } from 'svelte';
+	import { untrack } from 'svelte';
 	import { SvelteSet } from 'svelte/reactivity';
 	import { prefersReducedMotion } from 'svelte/motion';
-	import ChevronLeftIcon from '@lucide/svelte/icons/chevron-left';
-	import ChevronRightIcon from '@lucide/svelte/icons/chevron-right';
-	import * as m from '$lib/paraglide/messages.js';
-	import { Button } from '$lib/components/base/button/index.js';
 	import { cn } from '$lib/utils.js';
 	import { resolveGiftImageUrl } from '$lib/modules/images/public_url.js';
 	import type { GiftImage as GiftGalleryImage } from '$lib/modules/gifts/gift_images.js';
 	import {
+		clampGalleryIndex,
 		classifyGallerySwipe,
+		galleryDragOffset,
 		galleryNeighbourIndexes,
 		gallerySwipeStep,
-		wrapGalleryIndex,
 		type GallerySwipeIntent,
 	} from '$lib/modules/gifts/gift_gallery.js';
 	import GiftImage from './GiftImage.svelte';
+	import GiftGalleryArrow from './GiftGalleryArrow.svelte';
 	import GiftGalleryIndicator from './GiftGalleryIndicator.svelte';
 	import { GIFT_CARD_CONTROL_SELECTOR } from './gift_card_controls.js';
+	import { GIFT_CARD_LAYOUT_INERT_ATTRIBUTE } from './gift_card_layout_inert.js';
+	import { browseKeepingArrowFocus, type GalleryStep } from './gift_gallery_arrows.js';
 
 	interface Props {
 		images: readonly GiftGalleryImage[];
@@ -50,17 +50,18 @@
 	/** A click the browser may still dispatch for a finished swipe arrives within this window. */
 	const SWIPE_CLICK_WINDOW_MS = 500;
 
-	const count = $derived(images.length);
-	// Only the cover loads up front; other images mount once the card is browsed or about to be.
-	const mountedIndexes = new SvelteSet<number>([0]);
-	// `bind:this` resets an entry to null when its slide unmounts.
-	const slideElements: (HTMLElement | null | undefined)[] = [];
+	// Browsing images never changes the card's size, so the collection layout skips re-measuring.
+	const layoutInert = { [GIFT_CARD_LAYOUT_INERT_ATTRIBUTE]: '' };
 
-	let outgoingIndex = $state<number | null>(null);
+	const count = $derived(images.length);
+	// Only the cover loads up front; other images mount once the card is browsed or about to be,
+	// so a neighbour already waits off-screen when the track slides to it.
+	const mountedIndexes = new SvelteSet<number>([0]);
+
 	let dragOffset = $state(0);
-	let dragNeighbourIndex = $state<number | null>(null);
-	let runningAnimations: Animation[] = [];
-	let animationRun = 0;
+	let dragging = $state(false);
+	let previousArrow = $state<HTMLElement | null>(null);
+	let nextArrow = $state<HTMLElement | null>(null);
 	let swipe: {
 		pointerId: number;
 		startX: number;
@@ -68,8 +69,6 @@
 		width: number;
 		intent: GallerySwipeIntent;
 	} | null = null;
-
-	const dragNeighbourSide = $derived(dragOffset < 0 ? 1 : -1);
 
 	function mountWithNeighbours(imageIndex: number) {
 		for (const mountedIndex of [imageIndex, ...galleryNeighbourIndexes(imageIndex, count)]) {
@@ -84,130 +83,30 @@
 		}
 	});
 
-	function slideTransform(imageIndex: number): string | undefined {
-		if (imageIndex === index && dragOffset !== 0) {
-			return `translateX(${dragOffset}px)`;
-		}
-		if (imageIndex === dragNeighbourIndex) {
-			return `translateX(calc(${dragNeighbourSide * 100}% + ${dragOffset}px))`;
-		}
-		return undefined;
+	/** Each slide sits at its distance from the shown image; the finger's drag shifts them all. */
+	function slideTransform(imageIndex: number): string {
+		return `translateX(calc(${String((imageIndex - index) * 100)}% + ${String(dragOffset)}px))`;
 	}
 
+	/** Hidden slides leave the accessibility tree; a dragged neighbour shows while it is pulled in. */
 	function isSlideVisible(imageIndex: number): boolean {
-		return (
-			imageIndex === index ||
-			imageIndex === outgoingIndex ||
-			imageIndex === dragNeighbourIndex
-		);
+		return imageIndex === index || (dragOffset !== 0 && Math.abs(imageIndex - index) === 1);
 	}
 
-	function stopAnimations() {
-		animationRun += 1;
-		for (const animation of runningAnimations) {
-			animation.cancel();
-		}
-		runningAnimations = [];
-		outgoingIndex = null;
-	}
-
-	/** Slides with the shared motion tokens, then settles state before dropping the held frames. */
-	async function animateSlides(
-		moves: readonly (readonly [number, Keyframe[]])[],
-		settle: () => void,
-	) {
-		const run = animationRun;
-		const reference = slideElements[index];
-		const style = reference == null ? null : getComputedStyle(reference);
-		const easing = style?.getPropertyValue('--ease-standard').trim() ?? '';
-		const timing: KeyframeAnimationOptions = {
-			duration: Number.parseFloat(style?.getPropertyValue('--duration-slow') ?? '') || 300,
-			easing: easing === '' ? 'ease-out' : easing,
-			fill: 'forwards',
-		};
-		const animations = moves.flatMap(([slideIndex, keyframes]) => {
-			const element = slideElements[slideIndex];
-			return element == null ? [] : [element.animate(keyframes, timing)];
-		});
-		runningAnimations = animations;
-		try {
-			await Promise.all(animations.map((animation) => animation.finished));
-		} catch {
-			return;
-		}
-		if (run !== animationRun) {
-			return;
-		}
-		settle();
-		await tick();
-		for (const animation of animations) {
-			animation.cancel();
-		}
-		runningAnimations = [];
-	}
-
-	async function navigate(step: -1 | 1, fromOffset = 0) {
-		stopAnimations();
-		const previousIndex = index;
-		const nextIndex = wrapGalleryIndex(previousIndex + step, count);
+	function navigate(step: GalleryStep) {
+		const nextIndex = clampGalleryIndex(index + step, count);
 		dragOffset = 0;
-		dragNeighbourIndex = null;
-		mountWithNeighbours(nextIndex);
-		onindexchange(nextIndex);
-		if (prefersReducedMotion.current || nextIndex === previousIndex) {
-			return;
+		if (nextIndex !== index) {
+			mountWithNeighbours(nextIndex);
+			onindexchange(nextIndex);
 		}
-		outgoingIndex = previousIndex;
-		await tick();
-		await animateSlides(
-			[
-				[
-					nextIndex,
-					[
-						{ transform: `translateX(calc(${step * 100}% + ${fromOffset}px))` },
-						{ transform: 'translateX(0)' },
-					],
-				],
-				[
-					previousIndex,
-					[
-						{ transform: `translateX(${fromOffset}px)` },
-						{ transform: `translateX(${-step * 100}%)` },
-					],
-				],
-			],
-			() => {
-				outgoingIndex = null;
-			},
-		);
 	}
 
-	async function snapBack() {
-		const neighbourIndex = dragNeighbourIndex;
-		const side = dragNeighbourSide;
-		if (dragOffset === 0 || neighbourIndex === null) {
-			dragOffset = 0;
-			dragNeighbourIndex = null;
-			return;
-		}
-		await animateSlides(
-			[
-				[
-					index,
-					[{ transform: `translateX(${dragOffset}px)` }, { transform: 'translateX(0)' }],
-				],
-				[
-					neighbourIndex,
-					[
-						{ transform: `translateX(calc(${side * 100}% + ${dragOffset}px))` },
-						{ transform: `translateX(${side * 100}%)` },
-					],
-				],
-			],
-			() => {
-				dragOffset = 0;
-				dragNeighbourIndex = null;
-			},
+	function browseWithArrow(step: GalleryStep) {
+		browseKeepingArrowFocus(
+			step,
+			() => ({ previous: previousArrow, next: nextArrow }),
+			() => navigate(step),
 		);
 	}
 
@@ -254,13 +153,12 @@
 				return;
 			}
 			if (swipe.intent === 'horizontal') {
-				stopAnimations();
 				onswipingchange(true);
 			}
 		}
 		if (swipe.intent === 'horizontal' && !prefersReducedMotion.current) {
-			dragOffset = deltaX;
-			dragNeighbourIndex = wrapGalleryIndex(index + (deltaX < 0 ? 1 : -1), count);
+			dragging = true;
+			dragOffset = galleryDragOffset(deltaX, swipe.width, index, count);
 		}
 	}
 
@@ -275,38 +173,51 @@
 		}
 		onswipingchange(false);
 		swallowClickAfterSwipe();
+		// The slides transition from where the finger left them: on to the next image, or back.
+		dragging = false;
 		const deltaX = event.clientX - finishedSwipe.startX;
 		const step = event.type === 'pointerup' ? gallerySwipeStep(deltaX, finishedSwipe.width) : 0;
 		if (step === 0) {
-			void snapBack();
+			dragOffset = 0;
 		} else {
-			void navigate(step, dragOffset);
+			navigate(step);
 		}
 	}
 </script>
 
-<!-- svelte-ignore a11y_no_static_element_interactions (swiping is a touch shortcut; the arrows,
-     indicator and Gift viewer keep browsing accessible) -->
+<!-- A static element may own the swipe handlers: swiping is a touch shortcut, and the arrows,
+     indicator and Gift viewer keep browsing accessible. -->
 <div
 	class={cn(
 		'absolute inset-x-0 top-0 bottom-(--border-w) flex items-center justify-center',
 		interactive && 'touch-pan-y',
 	)}
 	data-testid="gift-card-gallery"
+	{...layoutInert}
 	onpointerdown={startSwipe}
 	onpointermove={moveSwipe}
 	onpointerup={endSwipe}
 	onpointercancel={endSwipe}
 >
-	<div class={cn(compositionClass, 'relative')} data-testid="gift-card-crop-composition">
+	<div
+		class={cn(compositionClass, 'relative overflow-hidden')}
+		data-testid="gift-card-crop-composition"
+	>
 		{#each images as image, imageIndex (imageIndex)}
 			{#if mountedIndexes.has(imageIndex)}
+				<!-- Visibility transitions with the slide, so an outgoing image stays painted until
+				     it has left the frame. -->
 				<div
-					bind:this={slideElements[imageIndex]}
-					class={cn('absolute inset-0', !isSlideVisible(imageIndex) && 'invisible')}
+					class={cn(
+						'absolute inset-0',
+						!dragging &&
+							'motion-safe:transition-[transform,visibility] motion-safe:duration-(--duration-slow) motion-safe:ease-(--ease-standard)',
+						!isSlideVisible(imageIndex) && 'invisible',
+					)}
 					style:transform={slideTransform(imageIndex)}
 					data-gallery-slide={imageIndex}
 					data-current={imageIndex === index || undefined}
+					aria-hidden={imageIndex !== index || undefined}
 				>
 					<GiftImage
 						class="size-full rounded-none bg-transparent max-sm:[&_img]:p-0"
@@ -322,37 +233,36 @@
 	</div>
 </div>
 
-{#if interactive}
-	<span class="gift-card-gallery-arrow left-2">
-		<Button
-			intent="secondary"
+<!-- Only arrows that lead somewhere render, so they show where in the gallery the card is. Their
+     wrappers stay mounted so an arrow appearing or leaving mutates only a layout-inert subtree. -->
+<span class="gift-card-gallery-arrow left-2" {...layoutInert}>
+	{#if interactive && index > 0}
+		<GiftGalleryArrow
+			bind:ref={previousArrow}
+			direction="previous"
 			size="md"
-			format="icon"
-			aria-label={m.gift_gallery_previous_image()}
-			data-testid="gift-card-gallery-previous"
-			onclick={() => navigate(-1)}
-		>
-			<ChevronLeftIcon />
-		</Button>
-	</span>
-	<span class="gift-card-gallery-arrow right-[calc(0.5rem+var(--depth-clearance))]">
-		<Button
-			intent="secondary"
+			testId="gift-card-gallery-previous"
+			onclick={() => browseWithArrow(-1)}
+		/>
+	{/if}
+</span>
+<span class="gift-card-gallery-arrow right-[calc(0.5rem+var(--depth-clearance))]" {...layoutInert}>
+	{#if interactive && index < count - 1}
+		<GiftGalleryArrow
+			bind:ref={nextArrow}
+			direction="next"
 			size="md"
-			format="icon"
-			aria-label={m.gift_gallery_next_image()}
-			data-testid="gift-card-gallery-next"
-			onclick={() => navigate(1)}
-		>
-			<ChevronRightIcon />
-		</Button>
-	</span>
-{/if}
+			testId="gift-card-gallery-next"
+			onclick={() => browseWithArrow(1)}
+		/>
+	{/if}
+</span>
 
 <!-- Centered on the priority row; narrow cards move it to the end so it clears the priority badge. -->
 <GiftGalleryIndicator
 	{count}
 	{index}
+	{...layoutInert}
 	class="absolute bottom-3 left-1/2 z-20 -translate-x-1/2 @max-[16rem]:right-3 @max-[16rem]:left-auto @max-[16rem]:translate-x-0"
 />
 

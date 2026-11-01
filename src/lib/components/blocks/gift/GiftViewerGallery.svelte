@@ -1,10 +1,7 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import { SvelteMap } from 'svelte/reactivity';
-	import ChevronLeftIcon from '@lucide/svelte/icons/chevron-left';
-	import ChevronRightIcon from '@lucide/svelte/icons/chevron-right';
 	import * as m from '$lib/paraglide/messages.js';
-	import { Button } from '$lib/components/base/button/index.js';
 	import ImageFrame from '$lib/components/derived/image-frame/ImageFrame.svelte';
 	import {
 		IMAGE_TOKEN_SCOPES,
@@ -13,9 +10,11 @@
 	import { cn } from '$lib/utils.js';
 	import { resolveGiftImageUrl } from '$lib/modules/images/public_url.js';
 	import type { GiftImage as GiftGalleryImage } from '$lib/modules/gifts/gift_images.js';
-	import { wrapGalleryIndex } from '$lib/modules/gifts/gift_gallery.js';
+	import { clampGalleryIndex } from '$lib/modules/gifts/gift_gallery.js';
 	import GiftImage from './GiftImage.svelte';
+	import GiftGalleryArrow from './GiftGalleryArrow.svelte';
 	import GiftGalleryIndicator from './GiftGalleryIndicator.svelte';
+	import { browseKeepingArrowFocus, type GalleryStep } from './gift_gallery_arrows.js';
 	import { giftViewerVariants } from './gift_viewer_variants.js';
 
 	interface Props {
@@ -36,9 +35,11 @@
 	const count = $derived(images.length);
 	// The viewer mounts fresh on every open, so the opening index is read once.
 	// svelte-ignore state_referenced_locally
-	let index = $state(wrapGalleryIndex(initialIndex, images.length));
+	let index = $state(clampGalleryIndex(initialIndex, images.length));
 	const measuredAspectRatios = new SvelteMap<string, number>();
 	const thumbnailElements: (HTMLElement | undefined)[] = [];
+	let previousArrow = $state<HTMLElement | null>(null);
+	let nextArrow = $state<HTMLElement | null>(null);
 
 	const imageSources = $derived(
 		images.map((image) => resolveGiftImageUrl(image.imageUrl, image.imageKey)),
@@ -61,8 +62,16 @@
 	}
 
 	function showImage(imageIndex: number) {
-		index = wrapGalleryIndex(imageIndex, count);
+		index = clampGalleryIndex(imageIndex, count);
 		thumbnailElements[index]?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+	}
+
+	function browse(step: GalleryStep) {
+		browseKeepingArrowFocus(
+			step,
+			() => ({ previous: previousArrow, next: nextArrow }),
+			() => showImage(index + step),
+		);
 	}
 
 	function rememberAspectRatio(source: string | null, aspectRatio: number) {
@@ -97,7 +106,7 @@
 				return;
 			}
 			event.preventDefault();
-			showImage(index + (event.key === 'ArrowRight' ? 1 : -1));
+			browse(event.key === 'ArrowRight' ? 1 : -1);
 		};
 		dialogContent.addEventListener('keydown', browseWithKeys);
 		return () => dialogContent.removeEventListener('keydown', browseWithKeys);
@@ -127,26 +136,25 @@
 			/>
 		{/each}
 		<GiftGalleryIndicator {count} {index} kind="counter" class={styles.galleryCounter()} />
-		<Button
-			intent="secondary"
-			format="icon"
-			class={cn(styles.galleryArrow(), styles.galleryPreviousArrow())}
-			aria-label={m.gift_gallery_previous_image()}
-			data-testid="gift-viewer-gallery-previous"
-			onclick={() => showImage(index - 1)}
-		>
-			<ChevronLeftIcon />
-		</Button>
-		<Button
-			intent="secondary"
-			format="icon"
-			class={cn(styles.galleryArrow(), styles.galleryNextArrow())}
-			aria-label={m.gift_gallery_next_image()}
-			data-testid="gift-viewer-gallery-next"
-			onclick={() => showImage(index + 1)}
-		>
-			<ChevronRightIcon />
-		</Button>
+		<!-- Only arrows that lead somewhere render, so they show where in the gallery the viewer is. -->
+		{#if index > 0}
+			<GiftGalleryArrow
+				bind:ref={previousArrow}
+				direction="previous"
+				class={cn(styles.galleryArrow(), styles.galleryPreviousArrow())}
+				testId="gift-viewer-gallery-previous"
+				onclick={() => browse(-1)}
+			/>
+		{/if}
+		{#if index < count - 1}
+			<GiftGalleryArrow
+				bind:ref={nextArrow}
+				direction="next"
+				class={cn(styles.galleryArrow(), styles.galleryNextArrow())}
+				testId="gift-viewer-gallery-next"
+				onclick={() => browse(1)}
+			/>
+		{/if}
 		{@render photoOverlay?.()}
 	</figure>
 

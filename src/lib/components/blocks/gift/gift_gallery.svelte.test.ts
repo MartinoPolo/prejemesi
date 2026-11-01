@@ -84,11 +84,39 @@ function indicator(host: ParentNode): HTMLElement | null {
 	return host.querySelector<HTMLElement>('[data-testid="gift-gallery-indicator"]');
 }
 
-/** A primary touch pointer dragged leftward across most of the card image, then lifted. */
-async function swipeLeft(host: HTMLElement) {
+function nextAnimationFrame(): Promise<void> {
+	return new Promise((resolve) => requestAnimationFrame(() => resolve()));
+}
+
+/** The painted horizontal offset of a slide, read from its computed transform matrix. */
+function slideOffsetX(slide: HTMLElement): number {
+	return new DOMMatrixReadOnly(getComputedStyle(slide).transform).m41;
+}
+
+function currentSlideElement(host: HTMLElement): HTMLElement {
+	return host.querySelector<HTMLElement>('[data-gallery-slide][data-current]')!;
+}
+
+function arrow(host: HTMLElement, direction: 'previous' | 'next'): HTMLElement | null {
+	return host.querySelector<HTMLElement>(`[data-testid="gift-card-gallery-${direction}"]`);
+}
+
+/**
+ * A primary touch pointer dragged across most of the card image, then lifted; `beforeLift` runs
+ * while the finger still holds the image and receives how far the finger has travelled.
+ */
+async function swipe(
+	host: HTMLElement,
+	direction: 'left' | 'right',
+	beforeLift?: (fingerTravel: number) => void,
+) {
 	const gallery = host.querySelector<HTMLElement>('[data-testid="gift-card-gallery"]')!;
 	const rect = gallery.getBoundingClientRect();
 	const y = rect.top + rect.height / 2;
+	const [startX, endX] =
+		direction === 'left'
+			? [rect.right - 20, rect.left + 20]
+			: [rect.left + 20, rect.right - 20];
 	const pointer = (type: string, x: number) =>
 		gallery.dispatchEvent(
 			new PointerEvent(type, {
@@ -100,12 +128,15 @@ async function swipeLeft(host: HTMLElement) {
 				clientY: y,
 			}),
 		);
-	pointer('pointerdown', rect.right - 20);
+	pointer('pointerdown', startX);
+	let fingerX = startX;
 	for (const fraction of [0.2, 0.5, 0.8]) {
-		pointer('pointermove', rect.right - 20 - (rect.width - 40) * fraction);
-		await new Promise((resolve) => requestAnimationFrame(resolve));
+		fingerX = startX + (endX - startX) * fraction;
+		pointer('pointermove', fingerX);
+		await nextAnimationFrame();
 	}
-	pointer('pointerup', rect.left + 20);
+	beforeLift?.(fingerX - startX);
+	pointer('pointerup', endX);
 }
 
 afterEach(cleanupCardHosts);
@@ -120,23 +151,71 @@ describe('GiftCard gallery', () => {
 		expect(indicator(host)).toBeNull();
 	});
 
-	it('cycles images with the arrows, wrapping at both ends', async () => {
+	it('browses with the arrows and stops at both ends, showing only arrows that lead somewhere', async () => {
 		const host = await renderCard(3);
-		const next = host.querySelector<HTMLElement>('[data-testid="gift-card-gallery-next"]')!;
-		const previous = host.querySelector<HTMLElement>(
-			'[data-testid="gift-card-gallery-previous"]',
-		)!;
 
 		expect(currentSlide(host)).toBe('0');
-		previous.click();
-		await expect.poll(() => currentSlide(host)).toBe('2');
-		next.click();
-		await expect.poll(() => currentSlide(host)).toBe('0');
-		next.click();
+		expect(arrow(host, 'previous')).toBeNull();
+		arrow(host, 'next')!.click();
 		await expect.poll(() => currentSlide(host)).toBe('1');
+		expect(arrow(host, 'previous')).not.toBeNull();
 		expect(indicator(host)?.textContent).toContain(
 			m.gift_gallery_position({ position: 2, count: 3 }),
 		);
+		arrow(host, 'next')!.click();
+		await expect.poll(() => currentSlide(host)).toBe('2');
+		expect(arrow(host, 'next')).toBeNull();
+		arrow(host, 'previous')!.click();
+		await expect.poll(() => currentSlide(host)).toBe('1');
+		arrow(host, 'previous')!.click();
+		await expect.poll(() => currentSlide(host)).toBe('0');
+		expect(arrow(host, 'previous')).toBeNull();
+	});
+
+	it('keeps keyboard focus on the other arrow when the pressed one disappears at an end', async () => {
+		const host = await renderCard(2);
+
+		arrow(host, 'next')!.focus();
+		await userEvent.keyboard('{Enter}');
+
+		await expect.poll(() => currentSlide(host)).toBe('1');
+		expect(arrow(host, 'next')).toBeNull();
+		expect(document.activeElement).toBe(arrow(host, 'previous'));
+	});
+
+	it('hides every image but the shown one from assistive technology', async () => {
+		const host = await renderCard(3);
+		const next = arrow(host, 'next')!;
+		await userEvent.hover(next);
+		await expect.poll(() => host.querySelector('[data-gallery-slide="1"]')).not.toBeNull();
+		const hiddenSlides = () =>
+			[...host.querySelectorAll<HTMLElement>('[data-gallery-slide]')]
+				.filter((slide) => slide.getAttribute('aria-hidden') === 'true')
+				.map((slide) => slide.dataset.gallerySlide);
+
+		expect(hiddenSlides()).toEqual(['1']);
+
+		next.click();
+		await expect.poll(() => currentSlide(host)).toBe('1');
+		expect(hiddenSlides()).toEqual(['0', '2']);
+		for (const slide of host.querySelectorAll('[data-gallery-slide]')) {
+			expect(slide.querySelector('a, button, input, [tabindex]')).toBeNull();
+		}
+	});
+
+	it('slides the next image in from the side and brings it to rest', async () => {
+		const host = await renderCard(3);
+		const next = arrow(host, 'next')!;
+		await userEvent.hover(next);
+		await expect.poll(() => host.querySelector('[data-gallery-slide="1"]')).not.toBeNull();
+
+		next.click();
+		await nextAnimationFrame();
+
+		const incoming = currentSlideElement(host);
+		expect(incoming.dataset.gallerySlide).toBe('1');
+		expect(slideOffsetX(incoming), 'the image is not painted at rest yet').toBeGreaterThan(0);
+		await expect.poll(() => slideOffsetX(incoming)).toBe(0);
 	});
 
 	it('shows dots up to six images and an n/N counter above that', async () => {
@@ -159,15 +238,32 @@ describe('GiftCard gallery', () => {
 	it('changes the image on a horizontal touch swipe', async () => {
 		const host = await renderCard(3);
 
-		await swipeLeft(host);
+		await swipe(host, 'left');
 
 		await expect.poll(() => currentSlide(host)).toBe('1');
+	});
+
+	it('resists a swipe past the cover and snaps back without wrapping to the last image', async () => {
+		const host = await renderCard(3);
+		const cover = currentSlideElement(host);
+		let heldOffset = 0;
+		let fingerTravel = 0;
+
+		await swipe(host, 'right', (travelled) => {
+			heldOffset = slideOffsetX(cover);
+			fingerTravel = travelled;
+		});
+
+		expect(heldOffset, 'the cover follows the finger').toBeGreaterThan(0);
+		expect(heldOffset, 'the cover lags behind the finger').toBeLessThan(fingerTravel);
+		await expect.poll(() => slideOffsetX(cover)).toBe(0);
+		expect(currentSlide(host)).toBe('0');
 	});
 
 	it('keeps the cover and its dot when a swipe or arrow key is tried in reorder and selection modes', async () => {
 		const host = await renderCard(3, { contextualMode: true });
 
-		await swipeLeft(host);
+		await swipe(host, 'left');
 		host.querySelector<HTMLElement>('a[href], button')?.focus();
 		await userEvent.keyboard('{ArrowRight}');
 
@@ -276,12 +372,56 @@ describe('Gift viewer gallery', () => {
 		expect(currentThumbnail()).toBe(2);
 		expect(indicator(photoRegion)?.textContent).toContain('3/3');
 
-		await userEvent.keyboard('{ArrowRight}');
-		await expect.poll(() => photoRegion.dataset.galleryIndex).toBe('0');
-		await userEvent.keyboard('{ArrowLeft}');
 		await userEvent.keyboard('{ArrowLeft}');
 		await expect.poll(() => photoRegion.dataset.galleryIndex).toBe('1');
 		expect(currentThumbnail()).toBe(1);
+	});
+
+	it('stops the arrow keys and arrows at both ends, showing only arrows that lead somewhere', async () => {
+		const photoRegion = await renderViewer(3, 2);
+		const viewerArrow = (direction: 'previous' | 'next') =>
+			photoRegion.querySelector<HTMLElement>(
+				`[data-testid="gift-viewer-gallery-${direction}"]`,
+			);
+
+		expect(viewerArrow('next')).toBeNull();
+		await userEvent.keyboard('{ArrowRight}');
+		expect(photoRegion.dataset.galleryIndex).toBe('2');
+
+		await userEvent.keyboard('{ArrowLeft}');
+		await userEvent.keyboard('{ArrowLeft}');
+		await userEvent.keyboard('{ArrowLeft}');
+		await expect.poll(() => photoRegion.dataset.galleryIndex).toBe('0');
+		expect(viewerArrow('previous')).toBeNull();
+		expect(viewerArrow('next')).not.toBeNull();
+	});
+
+	it('keeps keyboard focus on the other arrow when the pressed one disappears at an end', async () => {
+		const photoRegion = await renderViewer(3, 1);
+		const previous = photoRegion.querySelector<HTMLElement>(
+			'[data-testid="gift-viewer-gallery-previous"]',
+		)!;
+
+		previous.focus();
+		await userEvent.keyboard('{Enter}');
+
+		await expect.poll(() => photoRegion.dataset.galleryIndex).toBe('0');
+		expect(document.activeElement).toBe(
+			photoRegion.querySelector('[data-testid="gift-viewer-gallery-next"]'),
+		);
+	});
+
+	it('keeps keyboard focus on the other arrow when an arrow key reaches an end', async () => {
+		const photoRegion = await renderViewer(3, 1);
+		photoRegion.querySelector<HTMLElement>('[data-testid="gift-viewer-gallery-next"]')!.focus();
+
+		await userEvent.keyboard('{ArrowRight}');
+
+		await expect.poll(() => photoRegion.dataset.galleryIndex).toBe('2');
+		expect(photoRegion.querySelector('[data-testid="gift-viewer-gallery-next"]')).toBeNull();
+		expect(document.activeElement).toBe(
+			photoRegion.querySelector('[data-testid="gift-viewer-gallery-previous"]'),
+		);
 	});
 
 	it('sizes the photo column for the widest image so browsing keeps the dialog width', async () => {

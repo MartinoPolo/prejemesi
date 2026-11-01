@@ -13,7 +13,7 @@ Show that a gift can have up to 8 ordered images (the first is the cover) on eve
 
 Follow the 2026-10-31 gallery bullets in `.mpx/DECISIONS.md` (Images & cropping):
 
-- **Desktop Card:** dots bottom-center, always visible; above 6 images an `n/8` pill replaces them. Left/right arrows appear on card hover or keyboard focus, vertically centered on the image edges, and cycle with wrap-around without opening the viewer. Category stays top-left, Like top-right, priority bottom-left, state badges centered; the indicator must not collide with any of them.
+- **Desktop Card:** dots bottom-center, always visible; above 6 images an `n/8` pill replaces them. Left/right arrows appear on card hover or keyboard focus, vertically centered on the image edges, and browse without opening the viewer; browsing stops at both ends, where the arrow leading nowhere is hidden. Category stays top-left, Like top-right, priority bottom-left, state badges centered; the indicator must not collide with any of them.
 - **Touch Card:** horizontal swipe plus dots, no arrows. Show the swipe affordance (for example a mid-swipe frame) and that reorder and selection modes disable it.
 - **List (desktop and mobile):** a small `+N` corner chip on the image only, no arrows; it must coexist with category/selection badges on the narrow mobile List image.
 - **Unavailable gifts:** reserved/received dimming (`designs/unavailable-gift-comparison/`) keeps arrows and indicator crisp while the photo fades.
