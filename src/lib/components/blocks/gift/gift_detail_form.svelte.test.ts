@@ -397,8 +397,12 @@ describe('GiftDetailForm stored images', () => {
 
 		expect(onupdate).toHaveBeenCalledWith(
 			expect.objectContaining({
-				imageUrl: 'https://shop.example/original.jpg',
-				imageKey: 'demo/v1/backpack.jpg',
+				images: [
+					expect.objectContaining({
+						imageUrl: 'https://shop.example/original.jpg',
+						imageKey: 'demo/v1/backpack.jpg',
+					}),
+				],
 			}),
 		);
 	});
@@ -452,7 +456,13 @@ describe('GiftDetailForm image backgrounds (issue #252)', () => {
 
 			await screen.getByRole('button', { name: m.save() }).click();
 			expect(onupdate).toHaveBeenCalledWith(
-				expect.objectContaining({ imageMeta: expect.objectContaining({ bgColor: null }) }),
+				expect.objectContaining({
+					images: [
+						expect.objectContaining({
+							imageMeta: expect.objectContaining({ bgColor: null }),
+						}),
+					],
+				}),
 			);
 		} finally {
 			if (previousValue) {
@@ -479,7 +489,13 @@ describe('GiftDetailForm image backgrounds (issue #252)', () => {
 		).toBeTruthy();
 		await screen.getByRole('button', { name: m.save() }).click();
 		expect(onupdate).toHaveBeenCalledWith(
-			expect.objectContaining({ imageMeta: expect.objectContaining({ bgColor: null }) }),
+			expect.objectContaining({
+				images: [
+					expect.objectContaining({
+						imageMeta: expect.objectContaining({ bgColor: null }),
+					}),
+				],
+			}),
 		);
 	});
 
@@ -500,7 +516,13 @@ describe('GiftDetailForm image backgrounds (issue #252)', () => {
 		).toBeTruthy();
 		await screen.getByRole('button', { name: m.save() }).click();
 		expect(onupdate).toHaveBeenCalledWith(
-			expect.objectContaining({ imageMeta: expect.objectContaining({ bgColor: null }) }),
+			expect.objectContaining({
+				images: [
+					expect.objectContaining({
+						imageMeta: expect.objectContaining({ bgColor: null }),
+					}),
+				],
+			}),
 		);
 	});
 
@@ -529,7 +551,13 @@ describe('GiftDetailForm image backgrounds (issue #252)', () => {
 		await screen.getByRole('button', { name: m.save() }).click();
 
 		expect(onupdate).toHaveBeenCalledWith(
-			expect.objectContaining({ imageMeta: expect.objectContaining({ bgColor: value }) }),
+			expect.objectContaining({
+				images: [
+					expect.objectContaining({
+						imageMeta: expect.objectContaining({ bgColor: value }),
+					}),
+				],
+			}),
 		);
 	});
 

@@ -326,7 +326,9 @@ describe('GiftDetailModal editor layout and exit safety', () => {
 		});
 		await secondScreen.getByRole('button', { name: m.save() }).first().click();
 		expect(onupdate).toHaveBeenCalledWith(
-			expect.objectContaining({ imageMeta: legacyImageMeta }),
+			expect.objectContaining({
+				images: [expect.objectContaining({ imageMeta: legacyImageMeta })],
+			}),
 		);
 	});
 
@@ -664,7 +666,7 @@ describe('GiftDetailModal fixed-window image editor (#533)', () => {
 			.toHaveTextContent(m.image_crop_status_follows_card());
 
 		await screen.getByRole('button', { name: m.save() }).first().click();
-		const imageMeta = onupdate.mock.calls[0]![0].imageMeta;
+		const imageMeta = onupdate.mock.calls[0]![0].images[0].imageMeta;
 		expect(imageMeta.fitMode).toBe(IMAGE_FIT_MODES.coverCrop);
 		expect(Object.keys(imageMeta.targets)).toEqual(['square']);
 		expect(imageMeta.targets.square.zoom).toBeGreaterThan(1);
@@ -708,7 +710,7 @@ describe('GiftDetailModal fixed-window image editor (#533)', () => {
 		pressOnStage(screen, 'ArrowDown');
 
 		await screen.getByRole('button', { name: m.save() }).first().click();
-		const square = onupdate.mock.calls[0]![0].imageMeta.targets.square;
+		const square = onupdate.mock.calls[0]![0].images[0].imageMeta.targets.square;
 		expect(square.zoom).toBeGreaterThan(1);
 		expect(square.focal.x).toBeGreaterThan(50);
 		expect(square.focal.y).toBeGreaterThan(50);
@@ -726,7 +728,9 @@ describe('GiftDetailModal fixed-window image editor (#533)', () => {
 			.toHaveTextContent(m.image_crop_status_automatic());
 
 		await screen.getByRole('button', { name: m.save() }).first().click();
-		expect(Object.keys(onupdate.mock.calls[0]![0].imageMeta.targets)).toEqual(['thumb']);
+		expect(Object.keys(onupdate.mock.calls[0]![0].images[0].imageMeta.targets)).toEqual([
+			'thumb',
+		]);
 	});
 
 	it('starts an edit in Fit from the whole photo it shows', async () => {
@@ -740,7 +744,7 @@ describe('GiftDetailModal fixed-window image editor (#533)', () => {
 
 		await screen.getByRole('button', { name: m.save() }).first().click();
 		// The whole 4:3 photo in the square window is zoom 0.75; Fill would start at 1.
-		const thumb = onupdate.mock.calls[0]![0].imageMeta.targets.thumb;
+		const thumb = onupdate.mock.calls[0]![0].images[0].imageMeta.targets.thumb;
 		expect(thumb.zoom).toBeGreaterThan(0.75);
 		expect(thumb.zoom).toBeLessThan(1);
 	});
@@ -766,6 +770,6 @@ describe('GiftDetailModal fixed-window image editor (#533)', () => {
 			.toHaveTextContent(m.image_crop_status_follows_card());
 
 		await screen.getByRole('button', { name: m.save() }).first().click();
-		expect(onupdate.mock.calls[0]![0].imageMeta.targets).not.toHaveProperty('thumb');
+		expect(onupdate.mock.calls[0]![0].images[0].imageMeta.targets).not.toHaveProperty('thumb');
 	});
 });

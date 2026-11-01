@@ -166,6 +166,30 @@ describe('GiftListItem gallery count', () => {
 		host.remove();
 	});
 
+	it('keeps a single category beside the chip on one line instead of breaking a word', async () => {
+		await page.viewport(390, 844);
+		const gift = galleryGift(3, {
+			categories: [
+				{
+					id: 'category-clothes',
+					presetKey: null,
+					customLabel: 'Oblečení',
+					color: '#2563EB',
+					sortOrder: 0,
+				},
+			],
+			categoryIds: ['category-clothes'],
+		});
+		const host = await renderItem(gift, WISHLIST_ROLES.visitor, null, 358);
+		const badge = host.querySelector<HTMLElement>('[data-testid="gift-category-badge"]')!;
+		const chip = host.querySelector<HTMLElement>('[data-testid="gift-gallery-count-chip"]')!;
+		const lineHeight = Number.parseFloat(getComputedStyle(badge).lineHeight);
+
+		expect(badge.getBoundingClientRect().height).toBeLessThan(lineHeight * 2);
+		expectRectanglesSeparated(badge.getBoundingClientRect(), chip.getBoundingClientRect());
+		host.remove();
+	});
+
 	it('shows no chip for a single image', async () => {
 		const host = await renderItem(galleryGift(1), WISHLIST_ROLES.visitor);
 

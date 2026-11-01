@@ -246,6 +246,7 @@
 							categories={gift.categories}
 							{isDimmed}
 							interactive={!contextualMode}
+							singleLine={additionalImageCount > 0}
 						/>
 					{/if}
 				</div>

@@ -19,9 +19,11 @@
 		isDimmed?: boolean;
 		/** When false, "+X" is a static chip so a card's selection or reorder press owns it. */
 		interactive?: boolean;
+		/** Keeps a lone category on one line with an ellipsis, e.g. when a corner chip narrows its lane. */
+		singleLine?: boolean;
 	}
 
-	let { categories, isDimmed = false, interactive = true }: Props = $props();
+	let { categories, isDimmed = false, interactive = true, singleLine = false }: Props = $props();
 
 	const popoverTitleId = $props.id();
 	let measurement = $state<CategoryLaneMeasurement | null>(null);
@@ -134,7 +136,7 @@
 </script>
 
 {#if categories.length === 1}
-	<GiftCategoryBadge category={categories[0]} {isDimmed} />
+	<GiftCategoryBadge category={categories[0]} {isDimmed} {singleLine} />
 {:else if categories.length > 1}
 	<div
 		class="relative w-full min-w-0"
