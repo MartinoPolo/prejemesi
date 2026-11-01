@@ -33,6 +33,9 @@ export const giftViewerVariants = tv({
 		galleryPhotoRegion: 'border-b-0 sm:border-r-0',
 		galleryCounter: 'absolute top-3 left-3 z-20',
 		galleryArrow: 'absolute top-1/2 z-20 -translate-y-1/2',
+		galleryPreviousArrow: 'left-3',
+		// The next arrow's shadow falls to the right, so it keeps its depth clearance from the edge.
+		galleryNextArrow: 'right-[calc(0.75rem+var(--depth-clearance))]',
 		galleryStrip:
 			'flex gap-2.5 overflow-x-auto border-t-(length:--border-w) border-ink bg-card p-3 pe-[calc(0.75rem+var(--elevation-compact-offset))] pb-[calc(0.75rem+var(--elevation-compact-offset))] [scrollbar-width:thin]',
 		galleryThumb:

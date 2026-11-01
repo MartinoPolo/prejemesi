@@ -1,6 +1,7 @@
 import {
 	DB_READY,
 	createWishlistFixture,
+	expectRejection,
 	managerActor,
 	readGift,
 	recipientActor,
@@ -9,10 +10,18 @@ import {
 	seedFixtureUsers,
 } from './operations.db.test-setup.js';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { eq } from 'drizzle-orm';
 import { deleteObjectsBestEffort } from '$lib/server/storage/r2.js';
-import type { GiftImage } from '$lib/modules/gifts/gift_images.js';
+import { getDb } from '$lib/server/db/index.js';
+import { gift } from '$lib/server/db/gift.schema.js';
+import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
+import { MAX_GIFT_IMAGES, type GiftImage } from '$lib/modules/gifts/gift_images.js';
 import { executeOperation } from './runner.js';
-import { createGiftOperation, updateGiftOperation } from './gift_mutation_operations.js';
+import {
+	createGiftOperation,
+	deleteGiftOperation,
+	updateGiftOperation,
+} from './gift_mutation_operations.js';
 import { readWishlistGiftsOperation } from './gift_read_operations.js';
 import { undoGiftRevisionOperation } from './gift_undo_operations.js';
 
@@ -155,6 +164,54 @@ describe.skipIf(!DB_READY)('gift galleries [real DB]', () => {
 			imageUrl: 'https://shop.example/one.jpg',
 			images: original,
 		});
+	});
+
+	it('releases every gallery upload when the gift is deleted', async () => {
+		const { id: wishlistId } = await createWishlistFixture();
+		const giftId = await createGalleryGift(wishlistId, [
+			upload('deleted-cover'),
+			link('deleted-link'),
+			upload('deleted-detail'),
+		]);
+
+		await executeOperation(recipientActor, deleteGiftOperation, { giftId });
+
+		expect(releasedKeys().sort()).toEqual([
+			'gifts/gallery-deleted-cover.webp',
+			'gifts/gallery-deleted-detail.webp',
+		]);
+	});
+
+	it(`rejects a gallery of more than ${String(MAX_GIFT_IMAGES)} images on create and update`, async () => {
+		const { id: wishlistId } = await createWishlistFixture();
+		const tooManyImages = Array.from({ length: MAX_GIFT_IMAGES + 1 }, (_, index) =>
+			link(`too-many-${String(index)}`),
+		);
+		const fullGallery = tooManyImages.slice(0, MAX_GIFT_IMAGES);
+
+		await expectRejection(
+			executeOperation(recipientActor, createGiftOperation, {
+				wishlistId,
+				name: 'Too many images',
+				images: tooManyImages,
+			}),
+			400,
+			SERVER_ERROR.INVALID_OPERATION_INPUT,
+		);
+		expect(
+			await getDb().select({ id: gift.id }).from(gift).where(eq(gift.wishlistId, wishlistId)),
+		).toEqual([]);
+
+		const giftId = await createGalleryGift(wishlistId, fullGallery);
+		await expectRejection(
+			executeOperation(recipientActor, updateGiftOperation, {
+				id: giftId,
+				images: tooManyImages,
+			}),
+			400,
+			SERVER_ERROR.INVALID_OPERATION_INPUT,
+		);
+		expect((await readGift(giftId)).images).toEqual(fullGallery);
 	});
 
 	it('reads every gift with its gallery in order', async () => {

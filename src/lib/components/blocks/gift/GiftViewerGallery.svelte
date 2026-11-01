@@ -52,11 +52,13 @@
 		});
 		return ratios.length === 0 ? FALLBACK_PHOTO_ASPECT_RATIO : Math.max(...ratios);
 	});
-	const explicitPhotoFill = $derived.by(() => {
-		const fillColor = images[index]?.imageMeta?.bgColor;
-		return hasExplicitFrameFill(fillColor) ? fillColor : null;
-	});
+	const explicitPhotoFill = $derived(explicitFill(images[index]));
 	const styles = $derived(giftViewerVariants({ hasExplicitFill: explicitPhotoFill !== null }));
+
+	function explicitFill(image: GiftGalleryImage | undefined): string | null {
+		const fillColor = image?.imageMeta?.bgColor;
+		return hasExplicitFrameFill(fillColor) ? fillColor : null;
+	}
 
 	function showImage(imageIndex: number) {
 		index = wrapGalleryIndex(imageIndex, count);
@@ -118,9 +120,7 @@
 				class={cn(styles.photo(), imageIndex !== index && 'invisible')}
 				src={source}
 				{alt}
-				fillColor={hasExplicitFrameFill(image.imageMeta?.bgColor)
-					? image.imageMeta?.bgColor
-					: null}
+				fillColor={explicitFill(image)}
 				tokenScope={IMAGE_TOKEN_SCOPES.wishlist}
 				eagerLoading={imageIndex === index}
 				onmeasured={(aspectRatio) => rememberAspectRatio(source, aspectRatio)}
@@ -130,7 +130,7 @@
 		<Button
 			intent="secondary"
 			format="icon"
-			class={cn(styles.galleryArrow(), 'left-3')}
+			class={cn(styles.galleryArrow(), styles.galleryPreviousArrow())}
 			aria-label={m.gift_gallery_previous_image()}
 			data-testid="gift-viewer-gallery-previous"
 			onclick={() => showImage(index - 1)}
@@ -140,7 +140,7 @@
 		<Button
 			intent="secondary"
 			format="icon"
-			class={cn(styles.galleryArrow(), 'right-[calc(0.75rem+var(--depth-clearance))]')}
+			class={cn(styles.galleryArrow(), styles.galleryNextArrow())}
 			aria-label={m.gift_gallery_next_image()}
 			data-testid="gift-viewer-gallery-next"
 			onclick={() => showImage(index + 1)}

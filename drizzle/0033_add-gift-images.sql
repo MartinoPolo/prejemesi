@@ -14,6 +14,9 @@ CREATE TABLE "gift_image" (
 ALTER TABLE "gift_image" ADD CONSTRAINT "gift_image_gift_id_gift_id_fk" FOREIGN KEY ("gift_id") REFERENCES "public"."gift"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 CREATE UNIQUE INDEX "gift_image_gift_position_unique" ON "gift_image" USING btree ("gift_id","position");--> statement-breakpoint
 CREATE INDEX "gift_image_image_key_idx" ON "gift_image" USING btree ("image_key") WHERE "gift_image"."image_key" IS NOT NULL;--> statement-breakpoint
+-- Gift writes wait from the backfill until the cover-mirror trigger exists, so a cover the previous
+-- release writes in between cannot miss the gallery. The lock lasts until the migration commits.
+LOCK TABLE "gift" IN SHARE ROW EXCLUSIVE MODE;--> statement-breakpoint
 -- Every gift with an image, soft-deleted ones included (undo restores them), starts with that
 -- image as its one-image gallery.
 INSERT INTO "gift_image" ("id", "gift_id", "position", "image_url", "image_key", "image_meta")

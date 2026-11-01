@@ -54,6 +54,12 @@ const PRESSED_GIFT = 'Kolo pro výlety';
 const REORDER_TARGET = PRESSED_GIFT;
 const REORDER_SOURCE = 'Stan pro dva';
 const SOURCE_ORIGIN = 'https://example.com';
+const GALLERY_GIFT = 'Fotoaparát';
+const GALLERY_IMAGE_PATHS = [
+	'/demo/playground/kolo.jpg',
+	'/demo/playground/batoh.jpg',
+	'/demo/playground/kindle.jpg',
+];
 
 const FIXTURE_GIFTS: readonly FixtureGift[] = [
 	{
@@ -69,6 +75,7 @@ const FIXTURE_GIFTS: readonly FixtureGift[] = [
 	{ name: 'Teplé ponožky', priority: 'Nízká', categories: ['Oblečení'] },
 	{ name: 'Vonná svíčka' },
 	{ name: 'Turistický batoh', priority: 'Nízká' },
+	{ name: GALLERY_GIFT, imagePaths: GALLERY_IMAGE_PATHS },
 ];
 
 const ACTIVE_GIFTS =
@@ -537,6 +544,31 @@ function click(target: (page: Page) => Locator): Interaction {
 const pressedContent = (page: Page) => giftContent(page, PRESSED_GIFT);
 const pressedCard = (page: Page) => giftItem(page, PRESSED_GIFT);
 
+function galleryArea(page: Page): Locator {
+	return giftItem(page, GALLERY_GIFT).getByTestId('gift-card-gallery');
+}
+
+function shownGalleryImage(page: Page): Promise<string | null> {
+	return galleryArea(page)
+		.locator('[data-gallery-slide][data-current]')
+		.getAttribute('data-gallery-slide');
+}
+
+/** Drags a finger across the gallery image from one point to the other, as fractions of its box. */
+function swipeGallery(from: { x: number; y: number }, to: { x: number; y: number }): Interaction {
+	return async ({ page, session }, duringPress) => {
+		await centerGiftInView(page, GALLERY_GIFT);
+		const box = await galleryArea(page).boundingBox();
+		expect(box, 'the gallery image has a layout box').not.toBeNull();
+		const at = ({ x, y }: { x: number; y: number }) => ({
+			x: box!.x + box!.width * x,
+			y: box!.y + box!.height * y,
+		});
+		await requireTouch(session).drag([at(from), at(to)], { beforeRelease: duringPress });
+		return {};
+	};
+}
+
 const INTERACTIONS: Record<string, Interaction> = {
 	'tap content': tap(pressedContent),
 	'double tap content': async ({ page, session, state }) => {
@@ -614,6 +646,8 @@ const INTERACTIONS: Record<string, Interaction> = {
 	'tap source link': tap(sourceLink),
 	'tap category "+X"': tap(categoryMoreChip),
 	'tap Like': tap(likeButton),
+	'swipe gallery image sideways': swipeGallery({ x: 0.85, y: 0.5 }, { x: 0.15, y: 0.5 }),
+	'swipe gallery image vertically': swipeGallery({ x: 0.5, y: 0.8 }, { x: 0.5, y: 0.1 }),
 
 	'click content': click(pressedContent),
 	'right-click content': async ({ page }) => {
@@ -901,6 +935,40 @@ const OUTCOME_CHECKS: Record<GiftCardOutcome, OutcomeCheck> = {
 		await expect(page.locator(REORDER_OVERLAY)).toHaveCount(0);
 		await expectNoCardPress(page, state.role);
 		expect(await giftOrder(page)).toEqual(orderBefore);
+	},
+	'changes-image': async ({ page, state }, perform) => {
+		const card = giftItem(page, GALLERY_GIFT);
+		const shownBefore = Number(await shownGalleryImage(page));
+		await perform(async () => {
+			const surface = card.getByTestId('gift-card-surface');
+			await expect(surface, 'the swipe owns the press').toHaveAttribute(
+				'data-gift-control-press',
+				'true',
+				{ timeout: PRESS_PHASE_TIMEOUT_MS },
+			);
+			const pressScale = await surface
+				.locator(':scope > [data-slot="elevation-surface"]')
+				.evaluate((element) => getComputedStyle(element).scale);
+			expect(pressScale, 'the card is not pressed down').toMatch(/^(none|1)$/);
+		});
+		await expect
+			.poll(() => shownGalleryImage(page), { message: 'the next image shows' })
+			.toBe(String((shownBefore + 1) % GALLERY_IMAGE_PATHS.length));
+		await page.waitForTimeout(SETTLE_AFTER_GESTURE_MS);
+		await expect(page.locator(OPEN_LAYERS), 'the swipe opens no viewer').toHaveCount(0);
+		await expectNoCardPress(page, state.role);
+	},
+	'keeps-image': async (context, perform) => {
+		const { page, state } = context;
+		const shownBefore = await shownGalleryImage(page);
+		if (state.mode !== 'browse') {
+			expect(shownBefore, 'reorder and selection show the cover').toBe('0');
+		}
+		await OUTCOME_CHECKS['does-nothing'](context, perform);
+		// A vertical swipe scrolls the page; the settled check must not tap into its fling.
+		await expectScrollAtRest(scrollContainer(page), 'top');
+		expect(await shownGalleryImage(page), 'the image stays').toBe(shownBefore);
+		await expectNoCardPress(page, state.role);
 	},
 };
 

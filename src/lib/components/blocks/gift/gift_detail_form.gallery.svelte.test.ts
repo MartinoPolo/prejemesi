@@ -221,9 +221,62 @@ describe('GiftDetailForm image gallery (#591)', () => {
 		);
 		const { screen } = await renderGallery(eightImages);
 
-		await expect.element(screen.getByTestId('gift-image-strip-add')).toBeDisabled();
+		const addButton = screen.getByTestId('gift-image-strip-add');
+		const limitNote = screen.getByText(m.gift_image_strip_limit({ max: MAX_GIFT_IMAGES }));
+		await expect.element(limitNote).toBeVisible();
+		await expect.element(addButton).toHaveAttribute('aria-disabled', 'true');
+		await expect.element(addButton).toHaveAttribute('aria-describedby', limitNote.element().id);
+
+		(addButton.element() as HTMLElement).focus();
+		await expect.element(addButton).toHaveFocus();
+		await userEvent.keyboard('{Enter}');
+		await addButton.click({ force: true });
+		expect(screen.getByRole('menuitem').all()).toHaveLength(0);
+	});
+
+	it('keeps the strip controls focusable but inert while the gift saves', async () => {
+		const onupdate = vi.fn();
+		const screen = await render(GiftDetailForm, {
+			mode: 'edit',
+			gift: makeGift(threeImages),
+			wishlistId: 'wishlist-1',
+			priorityLevels: [],
+			role: 'recipient',
+			postShareLocked: false,
+			canDelete: false,
+			isSubmitting: true,
+			isDeleting: false,
+			onupdate,
+		});
+
+		const secondTile = tileButton(screen, m.gift_image_strip_select({ position: 2 }));
+		const lastGrip = screen.getByRole('button', {
+			name: m.gift_image_strip_move_label({ position: 3 }),
+		});
+		const secondRemove = screen.getByRole('button', {
+			name: m.gift_image_strip_remove_label({ position: 2 }),
+		});
+		for (const control of [secondTile, lastGrip, secondRemove]) {
+			await expect.element(control).toHaveAttribute('aria-disabled', 'true');
+			await expect.element(control).not.toHaveAttribute('disabled');
+		}
+		await expect.element(lastGrip).toHaveAttribute('aria-keyshortcuts', 'ArrowLeft ArrowRight');
+
+		await secondTile.click({ force: true });
+		await expect.element(secondTile).toHaveAttribute('aria-pressed', 'false');
+		(lastGrip.element() as HTMLElement).focus();
+		await expect.element(lastGrip).toHaveFocus();
+		await userEvent.keyboard('{ArrowLeft}');
+		await expect.element(lastGrip).toHaveFocus();
+		(secondRemove.element() as HTMLElement).focus();
+		await userEvent.keyboard('{Enter}');
 		await expect
-			.element(screen.getByText(m.gift_image_strip_limit({ max: MAX_GIFT_IMAGES })))
+			.element(
+				screen
+					.getByTestId('gift-image-strip')
+					.getByText(m.gift_image_strip_heading({ count: 3, max: MAX_GIFT_IMAGES })),
+			)
 			.toBeVisible();
+		expect(onupdate).not.toHaveBeenCalled();
 	});
 });

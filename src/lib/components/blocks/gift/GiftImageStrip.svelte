@@ -220,8 +220,12 @@
 					aria-pressed={item.id === selectedId}
 					aria-label={selectLabel(index, item)}
 					data-gift-image-select
-					{disabled}
-					onclick={() => onselect(item.id)}
+					aria-disabled={disabled}
+					onclick={() => {
+						if (!disabled) {
+							onselect(item.id);
+						}
+					}}
 				>
 					{#if item.src === null}
 						<span class={styles.emptySource()}><LinkIcon aria-hidden="true" /></span>
@@ -245,8 +249,9 @@
 						class={cn(styles.cornerControl(), styles.grip())}
 						aria-label={m.gift_image_strip_move_label({ position })}
 						title={m.gift_image_strip_move_hint()}
+						aria-keyshortcuts="ArrowLeft ArrowRight"
 						data-gift-image-grip
-						{disabled}
+						aria-disabled={disabled}
 						onpointerdown={(event: PointerEvent) => handleGripPointerDown(event, index)}
 						onkeydown={(event: KeyboardEvent) =>
 							void handleGripKeydown(event, index, item.id)}
@@ -261,7 +266,7 @@
 					format="icon"
 					class={cn(styles.cornerControl(), styles.remove())}
 					aria-label={m.gift_image_strip_remove_label({ position })}
-					{disabled}
+					aria-disabled={disabled}
 					onclick={() => void removeImage(index, item.id)}
 				>
 					<XIcon data-icon="solo" />
@@ -283,8 +288,12 @@
 			<DropdownMenu.Root>
 				<DropdownMenu.Trigger disabled={addDisabled}>
 					{#snippet child({ props })}
+						<!-- Focusable while unavailable so the limit note stays reachable; the
+						     disabled Trigger already ignores presses. -->
 						<button
 							{...props}
+							disabled={undefined}
+							aria-disabled={addDisabled}
 							bind:this={addTrigger}
 							type="button"
 							class={styles.addTile()}

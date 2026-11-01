@@ -84,6 +84,30 @@ function indicator(host: ParentNode): HTMLElement | null {
 	return host.querySelector<HTMLElement>('[data-testid="gift-gallery-indicator"]');
 }
 
+/** A primary touch pointer dragged leftward across most of the card image, then lifted. */
+async function swipeLeft(host: HTMLElement) {
+	const gallery = host.querySelector<HTMLElement>('[data-testid="gift-card-gallery"]')!;
+	const rect = gallery.getBoundingClientRect();
+	const y = rect.top + rect.height / 2;
+	const pointer = (type: string, x: number) =>
+		gallery.dispatchEvent(
+			new PointerEvent(type, {
+				bubbles: true,
+				pointerId: 7,
+				pointerType: 'touch',
+				isPrimary: true,
+				clientX: x,
+				clientY: y,
+			}),
+		);
+	pointer('pointerdown', rect.right - 20);
+	for (const fraction of [0.2, 0.5, 0.8]) {
+		pointer('pointermove', rect.right - 20 - (rect.width - 40) * fraction);
+		await new Promise((resolve) => requestAnimationFrame(resolve));
+	}
+	pointer('pointerup', rect.left + 20);
+}
+
 afterEach(cleanupCardHosts);
 
 describe('GiftCard gallery', () => {
@@ -130,6 +154,29 @@ describe('GiftCard gallery', () => {
 
 		expect(currentSlide(host)).toBe('0');
 		expect(host.querySelector('[data-testid="gift-card-gallery-next"]')).toBeNull();
+	});
+
+	it('changes the image on a horizontal touch swipe', async () => {
+		const host = await renderCard(3);
+
+		await swipeLeft(host);
+
+		await expect.poll(() => currentSlide(host)).toBe('1');
+	});
+
+	it('keeps the cover and its dot when a swipe or arrow key is tried in reorder and selection modes', async () => {
+		const host = await renderCard(3, { contextualMode: true });
+
+		await swipeLeft(host);
+		host.querySelector<HTMLElement>('a[href], button')?.focus();
+		await userEvent.keyboard('{ArrowRight}');
+
+		await expect.poll(() => currentSlide(host)).toBe('0');
+		// The dots stay as the gallery's size cue, pinned to the cover.
+		expect(indicator(host)?.dataset.kind).toBe('dots');
+		expect(indicator(host)?.textContent).toContain(
+			m.gift_gallery_position({ position: 1, count: 3 }),
+		);
 	});
 
 	it.each([MOBILE_TWO_COLUMN_CARD_WIDTH, 280])(

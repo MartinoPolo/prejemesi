@@ -522,7 +522,7 @@ describe('statement budgets (issue #108, REQ-7)', () => {
 		expect(statementCount()).toBeLessThanOrEqual(6);
 	});
 
-	it('reads every gift’s gallery with the gift rows, adding no statement per gift', async () => {
+	it('reads every gift’s gallery with the gift rows, staying within the same 6 statements', async () => {
 		const gallery = (giftName: string) =>
 			Array.from({ length: 8 }, (_, index) => ({
 				imageUrl: `https://shop.example/${giftName}-${index}.jpg`,
@@ -552,5 +552,6 @@ describe('statement budgets (issue #108, REQ-7)', () => {
 			gallery('mic'),
 			gallery('kniha'),
 		]);
+		expect(statementCount()).toBeLessThanOrEqual(6);
 	});
 });

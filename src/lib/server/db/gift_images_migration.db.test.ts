@@ -65,11 +65,14 @@ beforeAll(async () => {
 	);
 	// The temporary schema stands in for "public".
 	const schemaLocalSql = migrationSql.replaceAll('"public".', '');
-	for (const statement of schemaLocalSql.split('--> statement-breakpoint')) {
-		if (statement.trim() !== '') {
-			await database.unsafe(statement);
+	// Drizzle applies migrations in one transaction, which the migration's table lock requires.
+	await database.begin(async (transaction) => {
+		for (const statement of schemaLocalSql.split('--> statement-breakpoint')) {
+			if (statement.trim() !== '') {
+				await transaction.unsafe(statement);
+			}
 		}
-	}
+	});
 });
 
 afterAll(async () => {
@@ -165,9 +168,15 @@ describe.skipIf(!databaseReady)('0033 gift images migration [real DB]', () => {
 
 	it('clears the whole gallery when a write clears the cover', async () => {
 		const sql = database!;
-		await insertLaterImages('gift-uploaded', ['b', 'c']);
-		await sql`UPDATE gift SET image_url = NULL, image_key = NULL, image_meta = NULL WHERE id = 'gift-uploaded'`;
-		expect(await galleryOf('gift-uploaded')).toEqual([]);
+		await sql`
+			INSERT INTO gift (id, name, image_url, image_key)
+			VALUES ('gift-cleared', 'Cleared', '/api/upload/a', 'a')
+		`;
+		await insertLaterImages('gift-cleared', ['b', 'c']);
+		expect(await galleryOf('gift-cleared')).toHaveLength(3);
+
+		await sql`UPDATE gift SET image_url = NULL, image_key = NULL, image_meta = NULL WHERE id = 'gift-cleared'`;
+		expect(await galleryOf('gift-cleared')).toEqual([]);
 	});
 
 	it('leaves a gallery the application already wrote untouched', async () => {
@@ -191,11 +200,12 @@ describe.skipIf(!databaseReady)('0033 gift images migration [real DB]', () => {
 
 	it('rejects a ninth image and an image without a source', async () => {
 		const sql = database!;
+		await sql`INSERT INTO gift (id, name) VALUES ('gift-constraints', 'Constraints')`;
 		await expect(
-			sql`INSERT INTO gift_image (id, gift_id, position, image_key) VALUES ('ninth', 'gift-app', 8, 'x')`,
+			sql`INSERT INTO gift_image (id, gift_id, position, image_key) VALUES ('ninth', 'gift-constraints', 8, 'x')`,
 		).rejects.toThrow(/gift_image_position_range_check/);
 		await expect(
-			sql`INSERT INTO gift_image (id, gift_id, position) VALUES ('empty', 'gift-app', 2)`,
+			sql`INSERT INTO gift_image (id, gift_id, position) VALUES ('empty', 'gift-constraints', 2)`,
 		).rejects.toThrow(/gift_image_source_check/);
 	});
 });
