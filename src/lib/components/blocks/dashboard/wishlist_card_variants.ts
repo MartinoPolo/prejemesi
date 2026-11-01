@@ -3,23 +3,28 @@ import { tv } from 'tailwind-variants';
 /**
  * Anime-sky sticker wishlist card (issue #102 REQ-16, `anime-dashboard.html`):
  * ink border, hard offset shadow, coherent lift, banner with the title on a small
- * rotated label sticker and the status chip pinned top-right. The body and title
- * plate take the wishlist's own palette (#532). Archived cards dim, desaturate,
- * and stop lifting. The overview uses `large` (Nedávné) and `compact` (category
- * rows); other pages keep `default`.
+ * rotated label sticker and the status chip pinned top-right. Body, meta, border
+ * and shadow stay in the viewer's look so cards in a row match; the cover fill and
+ * the title plate carry the wishlist: its palette's primary plus the motif's
+ * corners and heading font (#600). Archived cards dim, desaturate, and stop
+ * lifting. The overview uses `large` (Nedávné) and `compact` (category rows);
+ * other pages keep `default`.
  */
 export const wishlistCardVariants = tv({
 	slots: {
 		root: 'group/card relative isolate flex h-full cursor-pointer flex-col rounded-panel',
 		surface:
-			'elevation-ordinary pointer-events-auto relative flex size-full flex-col rounded-panel bg-wishlist-card-body transition-[translate,scale,box-shadow] duration-(--duration-normal) ease-(--ease-standard)',
+			'elevation-ordinary pointer-events-auto relative flex size-full flex-col rounded-panel bg-card transition-[translate,scale,box-shadow] duration-(--duration-normal) ease-(--ease-standard)',
 		border: 'pointer-events-none absolute inset-0 z-[1] rounded-panel border-[2.5px] border-ink',
+		/** The plate sits bottom-left, keeping the top-left corner free for an occasion badge. */
 		banner: 'relative flex shrink-0 flex-col items-start justify-end overflow-hidden rounded-t-[calc(var(--radius-panel)-2.5px)] border-b-[2.5px] border-ink',
+		bannerFill: 'absolute inset-0',
 		/** Notebook dot pattern over the tint fallback (hidden when a real photo fills the banner). */
 		bannerPattern:
 			'pointer-events-none absolute inset-0 bg-[radial-gradient(var(--pattern-dot)_1.4px,transparent_1.5px)] bg-size-[18px_18px]',
+		/** `rounded-lg` follows the motif's `--radius`; the border stays bold for every motif. */
 		bannerTitle:
-			'relative z-[1] max-w-full -rotate-1 truncate rounded-[10px] border-2 border-ink bg-wishlist-card-plate font-heading font-semibold text-wishlist-card-plate-foreground shadow-sticker-sm',
+			'relative z-[1] max-w-full -rotate-1 truncate rounded-lg border-2 border-ink bg-wishlist-card-plate font-heading font-semibold text-wishlist-card-plate-foreground shadow-sticker-sm',
 		statusBadge: 'absolute z-[1]',
 		body: 'flex flex-1 flex-col',
 		metaRow: 'flex flex-wrap items-center gap-1.5',
@@ -39,9 +44,14 @@ export const wishlistCardVariants = tv({
 		archived: {
 			true: {
 				root: 'opacity-70 grayscale-[0.7]',
-				surface: 'bg-[color-mix(in_oklab,var(--wishlist-card-body)_82%,var(--surface))]',
+				surface: 'bg-[color-mix(in_oklab,var(--card)_82%,var(--surface))]',
 			},
 			false: { root: 'elevation-owner elevation-owner-raised' },
+		},
+		/** Caveat has a small x-height, so hand lettering renders larger and bolder in the same plate height. */
+		handLettering: {
+			true: { bannerTitle: 'font-bold' },
+			false: {},
 		},
 		size: {
 			default: {
@@ -64,8 +74,26 @@ export const wishlistCardVariants = tv({
 			},
 		},
 	},
+	compoundVariants: [
+		{
+			handLettering: true,
+			size: 'default',
+			class: { bannerTitle: 'text-[20.5px] leading-[1.25]' },
+		},
+		{
+			handLettering: true,
+			size: 'large',
+			class: { bannerTitle: 'text-[24px] leading-[1.25] max-sm:text-[21.5px]' },
+		},
+		{
+			handLettering: true,
+			size: 'compact',
+			class: { bannerTitle: 'text-[18px] leading-[1.25] max-sm:text-[17.5px]' },
+		},
+	],
 	defaultVariants: {
 		archived: false,
+		handLettering: false,
 		size: 'default',
 	},
 });

@@ -6,6 +6,7 @@
 	import { getWishlistEmoji } from '$lib/modules/wishlists/wishlist_theme.js';
 	import { WISHLIST_STATUS_LABELS } from '$lib/modules/wishlists/dashboard_types.js';
 	import type { Wishlist } from '$lib/modules/wishlists/types.js';
+	import { resolveWishlistStyle } from '$lib/theme/wishlist_themes.js';
 	import { wishlistImageUrl, wishlistSlotToFrameProps } from '$lib/modules/images/index.js';
 	import WishlistSlotImage from '$lib/components/blocks/wishlist/WishlistSlotImage.svelte';
 	import { getLocale } from '$lib/paraglide/runtime.js';
@@ -58,7 +59,16 @@
 	const themeEmoji = $derived(getWishlistEmoji(wishlistData.theme));
 	const cardSrc = $derived(wishlistImageUrl(wishlistData.imageKey));
 	const cardFrame = $derived(wishlistSlotToFrameProps(wishlistData.imageSlots, 'card'));
-	const variants = $derived(wishlistCardVariants({ archived: isArchived, size }));
+	const wishlistStyle = $derived(
+		resolveWishlistStyle(wishlistData.themeId, wishlistData.styleTokens),
+	);
+	const variants = $derived(
+		wishlistCardVariants({
+			archived: isArchived,
+			handLettering: wishlistStyle.heading === 'hand',
+			size,
+		}),
+	);
 	const isCompact = $derived(size === 'compact');
 	const statusLabel = $derived(WISHLIST_STATUS_LABELS[wishlistData.status]());
 
@@ -78,14 +88,13 @@
 	href={localizeInternalHref(resolve('/(app)/w/[id]', { id: wishlistData.shortId }))}
 	class={cn(variants.root(), className)}
 	aria-label={wishlistData.title}
-	data-palette={wishlistData.palette}
 	data-testid="wishlist-card"
 >
 	<ElevationSurface class={variants.surface()}>
 		<span aria-hidden="true" class={variants.border()}></span>
 		<!-- Banner: taped-notebook tint with dot pattern (photo replaces both when assigned) -->
 		<div class={variants.banner()} aria-hidden="true">
-			<div class="absolute inset-0">
+			<div class={variants.bannerFill()} data-palette={wishlistData.palette}>
 				<WishlistSlotImage
 					class="size-full rounded-none"
 					src={cardSrc}
@@ -94,11 +103,18 @@
 					alt={wishlistData.title}
 					variant="card"
 				/>
+				{#if cardSrc === null}
+					<div class={variants.bannerPattern()}></div>
+				{/if}
 			</div>
-			{#if cardSrc === null}
-				<div class={variants.bannerPattern()}></div>
-			{/if}
-			<div class={variants.bannerTitle()}>{wishlistData.title}</div>
+			<div
+				class={variants.bannerTitle()}
+				data-palette={wishlistData.palette}
+				data-corners={wishlistStyle.corners}
+				data-heading={wishlistStyle.heading}
+			>
+				{wishlistData.title}
+			</div>
 			<WishlistBadge
 				class={variants.statusBadge()}
 				presentation="card-status"
