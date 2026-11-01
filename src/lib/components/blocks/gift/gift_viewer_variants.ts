@@ -24,6 +24,22 @@ export const giftViewerVariants = tv({
 		photoSizer:
 			'aspect-(--photo-aspect-ratio) max-h-[55dvh] min-h-[200px] w-full sm:max-h-(--gift-viewer-photo-height-cap) sm:min-h-[400px] sm:w-[calc(var(--gift-viewer-photo-height-cap)*var(--photo-aspect-ratio))] sm:max-w-full sm:min-w-[min(var(--gift-viewer-photo-min-width),100%)]',
 		photo: 'absolute inset-0 size-full rounded-none',
+		// A gallery column holds the photo and its thumbnail strip, so the column takes the border
+		// and the photo cap leaves room for the strip within the dialog height.
+		galleryColumn: [
+			'relative flex min-w-0 shrink-0 flex-col border-b-(length:--border-w) border-ink sm:border-r-(length:--border-w) sm:border-b-0',
+			'[--gift-viewer-strip-height:calc(3.5rem+1.5rem+var(--elevation-compact-offset)+var(--border-w))] [--gift-viewer-photo-height-cap:min(720px,calc(var(--gift-viewer-inner-max-height)-var(--gift-viewer-strip-height)))]',
+		],
+		galleryPhotoRegion: 'border-b-0 sm:border-r-0',
+		galleryCounter: 'absolute top-3 left-3 z-20',
+		galleryArrow: 'absolute top-1/2 z-20 -translate-y-1/2',
+		galleryPreviousArrow: 'left-3',
+		// The next arrow's shadow falls to the right, so it keeps its depth clearance from the edge.
+		galleryNextArrow: 'right-[calc(0.75rem+var(--depth-clearance))]',
+		galleryStrip:
+			'flex gap-2.5 overflow-x-auto border-t-(length:--border-w) border-ink bg-card p-3 pe-[calc(0.75rem+var(--elevation-compact-offset))] pb-[calc(0.75rem+var(--elevation-compact-offset))] [scrollbar-width:thin]',
+		galleryThumb:
+			'size-13 shrink-0 overflow-hidden rounded-badge border-2 border-ink-faint bg-surface p-0 hover:border-ink aria-[current=true]:border-(length:--border-w) aria-[current=true]:border-ink aria-[current=true]:shadow-sticker-sm sm:size-14',
 		// Same insets as the footer actions, so photo badges and actions share one baseline.
 		photoStates:
 			'absolute right-(--gift-content-inset) bottom-(--gift-content-inset-bottom) left-(--gift-content-inset) max-sm:hidden',

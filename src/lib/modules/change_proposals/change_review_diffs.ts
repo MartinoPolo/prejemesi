@@ -1,5 +1,9 @@
 import * as m from '$lib/paraglide/messages.js';
-import { formatPieceCount, formatPrice } from '$lib/modules/gifts/gift_display.js';
+import {
+	czechPluralCategory,
+	formatPieceCount,
+	formatPrice,
+} from '$lib/modules/gifts/gift_display.js';
 import { extractGiftUrlDomain } from '$lib/modules/gifts/gift_url.js';
 import type { DescriptionAppend, GiftLink } from '$lib/modules/gifts/types.js';
 import type { ChangeProposalGift } from './types.js';
@@ -91,7 +95,14 @@ function giftFieldValues(
 		category: categoryText(gift.categoryIds, lookups),
 		priority:
 			gift.priorityLevelId === null ? null : lookups.priorityLabel(gift.priorityLevelId),
-		image: gift.imageUrl === null ? null : m.change_review_image_present(),
+		image:
+			gift.imageUrl === null
+				? null
+				: withImageCount(
+						m.change_review_image_present(),
+						galleryImageCount(gift) > 1,
+						gift,
+					),
 		received: gift.received ? m.change_review_received_yes() : null,
 	};
 }
@@ -107,8 +118,43 @@ const COMPARED_FIELDS = [
 	GIFT_DIFF_FIELD.received,
 ] as const;
 
-function imageText(imageUrl: string | null, presentText: () => string): string {
-	return imageUrl === null ? m.change_review_image_none() : presentText();
+/** Images in the gift's gallery, counting a cover-only snapshot as one. */
+function galleryImageCount(gift: ChangeProposalGift): number {
+	const count = gift.images?.length ?? 0;
+	return count === 0 && gift.imageUrl !== null ? 1 : count;
+}
+
+function imageCountText(count: number): string {
+	const category = czechPluralCategory(count);
+	if (category === 'one') {
+		return m.change_review_image_count_one();
+	}
+	return category === 'few'
+		? m.change_review_image_count_few({ count })
+		: m.change_review_image_count_other({ count });
+}
+
+function withImageCount(text: string, showsCount: boolean, gift: ChangeProposalGift): string {
+	return showsCount ? `${text} · ${imageCountText(galleryImageCount(gift))}` : text;
+}
+
+/**
+ * A gallery that changes size reads as its image count; the cover wording stays when the cover
+ * itself changes or the size does not.
+ */
+function imageText(
+	gift: ChangeProposalGift,
+	coverText: () => string,
+	coverChanged: boolean,
+	countChanged: boolean,
+): string {
+	if (gift.imageUrl === null) {
+		return m.change_review_image_none();
+	}
+	if (countChanged && !coverChanged) {
+		return imageCountText(galleryImageCount(gift));
+	}
+	return withImageCount(coverText(), countChanged, gift);
 }
 
 function receivedText(received: boolean): string {
@@ -123,13 +169,21 @@ function changedFieldDiff(
 	lookups: GiftLabelLookups,
 ): GiftFieldDiff | null {
 	if (field === GIFT_DIFF_FIELD.image) {
-		return before.imageUrl === after.imageUrl
-			? null
-			: {
-					field,
-					before: imageText(before.imageUrl, m.change_review_image_previous),
-					after: imageText(after.imageUrl, m.change_review_image_new),
-				};
+		const imageUrls = (gift: ChangeProposalGift) =>
+			(gift.images ?? []).map((image) => image.imageUrl).join('\n');
+		const coverChanged = before.imageUrl !== after.imageUrl;
+		const beforeCount = galleryImageCount(before);
+		const afterCount = galleryImageCount(after);
+		// Gaining or losing the only image already reads as the cover change.
+		const countChanged = beforeCount !== afterCount && Math.max(beforeCount, afterCount) > 1;
+		if (!coverChanged && imageUrls(before) === imageUrls(after)) {
+			return null;
+		}
+		return {
+			field,
+			before: imageText(before, m.change_review_image_previous, coverChanged, countChanged),
+			after: imageText(after, m.change_review_image_new, coverChanged, countChanged),
+		};
 	}
 	if (field === GIFT_DIFF_FIELD.received) {
 		return before.received === after.received

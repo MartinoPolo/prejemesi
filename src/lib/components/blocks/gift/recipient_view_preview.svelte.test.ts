@@ -41,6 +41,7 @@ function makeReservedGift(overrides: Partial<GiftForVisitor> = {}): GiftForVisit
 		imageUrl: null,
 		imageKey: null,
 		imageMeta: null,
+		images: [],
 		quantity: 3,
 		sortOrder: 0,
 		received: false,

@@ -15,9 +15,10 @@
 	import { HelpText } from '$lib/components/base/help-text/index.js';
 	import { SimpleTooltip } from '$lib/components/base/tooltip/index.js';
 	import ImageCropStage from '$lib/components/derived/image-crop/ImageCropStage.svelte';
-	import { editorModeStatusLabel } from '$lib/components/derived/image-crop/editor_mode_status_label.js';
 	import { useNarrowViewportState } from '$lib/components/derived/narrow_viewport_state.svelte.js';
 	import GiftImagePreviewSlots from './GiftImagePreviewSlots.svelte';
+	import GiftImageStrip from './GiftImageStrip.svelte';
+	import { GiftImageDraft, GiftImageGalleryDraft } from './gift_image_gallery_draft.svelte.js';
 	import GiftLinkEditor from './GiftLinkEditor.svelte';
 	import GiftDescription from './GiftDescription.svelte';
 	import GraceCountdown from '$lib/components/derived/grace-countdown/GraceCountdown.svelte';
@@ -56,35 +57,17 @@
 	import ReleaseReservationButton from '$lib/components/blocks/reservation/ReleaseReservationButton.svelte';
 	import { createPendingUploads } from '$lib/modules/uploads/upload.js';
 	import type { UploadResult } from '$lib/modules/uploads/types.js';
+	import { IMAGE_TOKEN_SCOPES } from '$lib/components/derived/image-frame/index.js';
 	import {
-		IMAGE_FIT_MODES,
-		IMAGE_TOKEN_SCOPES,
-		normalizeFrameFill,
-		resolveAutoFit,
-	} from '$lib/components/derived/image-frame/index.js';
-	import {
-		buildManualGiftTargets,
 		cropTargetSurfaceSize,
-		normalizedCropAspect,
-		ownGiftTargets,
-		reprojectCropRect,
-		fitModeForEditorMode,
-		giftEditorModeFromMeta,
-		resolveGiftTargetCrop,
-		seedCropRectFromLegacyMeta,
-		FULL_CROP_RECT,
 		GIFT_CROP_TARGET_SPECS,
-		GIFT_EDITOR_CROP_TARGET_VALUES,
 		IMAGE_EDITOR_MODES,
 		IMAGE_EDITOR_MODE_VALUES,
 		type GiftEditorCropTarget,
-		type ImageCropRect,
 		type ImageEditorMode,
-		type ImageMetadata,
 	} from '$lib/modules/images/index.js';
-	import { SvelteSet } from 'svelte/reactivity';
 	import { ensureGiftLinkIds, normalizeGiftLinks } from '$lib/modules/gifts/gift_url.js';
-	import { resolveGiftImageUrl } from '$lib/modules/images/public_url.js';
+	import { galleryImageKeys } from '$lib/modules/gifts/gift_images.js';
 	import {
 		labelForGiftCategory,
 		type ManagedGiftCategory,
@@ -102,8 +85,6 @@
 	import { getLocale } from '$lib/paraglide/runtime.js';
 
 	type GiftSaveResult = boolean | void | Promise<boolean | void>;
-
-	const CROP_RECT_EQUALITY_EPSILON = 1e-9;
 
 	interface Props {
 		mode: GiftDetailModalMode;
@@ -184,102 +165,45 @@
 	let priceMaxInput = $state<HTMLInputElement | null>(null);
 	// svelte-ignore state_referenced_locally
 	let currency = $state<GiftCurrency>((gift?.currency as GiftCurrency) ?? 'CZK');
+	// Ordered images; the selected one drives the crop stage, mode selector and previews (#591).
 	// svelte-ignore state_referenced_locally
-	let imageUrl = $state(gift?.imageUrl ?? '');
-	// svelte-ignore state_referenced_locally
-	let imageKey = $state(gift?.imageKey ?? '');
+	const gallery = new GiftImageGalleryDraft(gift);
+	const selectedImage = $derived(gallery.selected);
 	// svelte-ignore state_referenced_locally
 	let quantity = $state<number>(gift?.quantity ?? 1);
 	// svelte-ignore state_referenced_locally
 	let priorityLevelId = $state(gift?.priorityLevelId ?? '');
 	// svelte-ignore state_referenced_locally
 	let categoryIds = $state<string[]>([...(gift?.categoryIds ?? [])]);
-	// Editing an uploaded image (imageKey set) opens on the Upload tab so the user sees
-	// the current image with replace/remove – not its resolved URL in the URL field.
-	// Editing a URL image (imageUrl set, no imageKey) opens on the URL tab. A brand-new
-	// gift (no image at all) defaults to Upload (issue #143).
-	// svelte-ignore state_referenced_locally
-	let imageMode = $state<'url' | 'upload'>(
-		(gift?.imageKey ?? '') !== '' || (gift?.imageUrl ?? '') === '' ? 'upload' : 'url',
-	);
+	/**
+	 * An uploaded image (imageKey set) opens on the Upload tab so the user sees the current image
+	 * with replace/remove – not its resolved URL in the URL field. A URL image opens on the URL
+	 * tab, as does an image still waiting for its link; no image at all defaults to Upload
+	 * (issue #143).
+	 */
+	function sourceTabFor(image: GiftImageDraft | null): 'url' | 'upload' {
+		return image === null || image.imageKey !== '' ? 'upload' : 'url';
+	}
+	let imageMode = $state<'url' | 'upload'>(sourceTabFor(gallery.selected));
 	let showDeleteConfirm = $state(false);
 	let nameError = $state('');
 	// Component instance ref (issue #131): lets the image-column click-to-edit
 	// affordance open the file picker owned by the Upload-tab ImageUpload.
 	let imageUploadRef: ReturnType<typeof ImageUpload> | undefined = $state();
-	let isImageUploadPending = $state(false);
+	let imageUrlInput = $state<HTMLInputElement | null>(null);
+	// Bumped when the strip changes the selection, remounting the Upload-tab field for that image.
+	let sourceFieldVersion = $state(0);
+	let isSourceUploadPending = $state(false);
+	let isStripUploadPending = $state(false);
+	const isImageUploadPending = $derived(isSourceUploadPending || isStripUploadPending);
 	let isLocalMutationPending = $state(false);
 
 	// Uploads made in this form session that are not persisted yet (issue #107,
-	// REQ-6). Successful saves commit the selected key; every other unmount discards all.
+	// REQ-6). Successful saves commit the saved gallery's keys; every other unmount discards all.
 	const pendingUploads = createPendingUploads();
 
-	// Image presentation metadata (#116 D1/D2 + follow-up). The editor offers three
-	// modes – Fill / Fit / Manual – mapped onto the persisted fitMode enum.
-	// Manual crops are edited PER TARGET: each target keeps its own rect, locked to
-	// the target's aspect by the stage. A target without its own crop inherits
-	// (`thumb` follows `square`, #533) and the editor shows that inherited framing.
-	// An untouched session passes persisted targets through verbatim (legacy base
-	// focal/zoom rows included, D5) – see `buildManualGiftTargets`.
-	// svelte-ignore state_referenced_locally
-	let editorMode = $state<ImageEditorMode>(giftEditorModeFromMeta(gift?.imageMeta));
-	// Whether the user touched the display mode this session; an untouched form keeps
-	// the persisted (possibly legacy `auto`) fitMode verbatim on save (REQ-8).
-	let modeDirty = $state(false);
-	type ExplicitImageBackground = '#ffffff' | '#000000';
 	const IMAGE_BACKGROUND_VALUES = ['#ffffff', '#000000', 'transparent'] as const;
-	// `null` is the canonical dotted/theme-derived default. Legacy metadata containing
-	// the CSS keyword `transparent` is normalized here and becomes null on the next save.
-	// svelte-ignore state_referenced_locally
-	let bgColor = $state(normalizeFrameFill(gift?.imageMeta?.bgColor));
-	// svelte-ignore state_referenced_locally
-	const initialImageUrl = gift?.imageUrl ?? '';
-	// svelte-ignore state_referenced_locally
-	const initialImageKey = gift?.imageKey ?? '';
-	const hadImageInitially = initialImageUrl !== '' || initialImageKey !== '';
-	// svelte-ignore state_referenced_locally
-	const legacyFitMode = hadImageInitially
-		? (gift?.imageMeta?.fitMode ?? IMAGE_FIT_MODES.auto)
-		: null;
-
-	function initTargetRects(meta: ImageMetadata | null | undefined) {
-		const rects = {} as Record<GiftEditorCropTarget, ImageCropRect>;
-		for (const target of GIFT_EDITOR_CROP_TARGET_VALUES) {
-			// A persisted per-target rect restores exactly; the shared carry-over chain
-			// (`resolveGiftTargetCrop`) keeps this editor seed in lockstep with the
-			// renderer's fallback. Otherwise seed from the base-level metadata (issue
-			// #123: a legacy row with focal/zoom but no cropRect must reconstruct its
-			// real framing via seedCropRectFromLegacyMeta, not silently fall back to the
-			// always-centered FULL_CROP_RECT – the stage snaps this seed to the target's
-			// real aspect once the image is measured).
-			const targetCrop = resolveGiftTargetCrop(meta?.targets, target);
-			rects[target] =
-				targetCrop !== undefined
-					? { ...targetCrop.cropRect }
-					: seedCropRectFromLegacyMeta(meta ?? {});
-		}
-		return rects;
-	}
-
-	// svelte-ignore state_referenced_locally
-	const initialTargetRects = initTargetRects(gift?.imageMeta);
-	let targetRects = $state(
-		Object.fromEntries(
-			Object.entries(initialTargetRects).map(([target, rect]) => [target, { ...rect }]),
-		) as Record<GiftEditorCropTarget, ImageCropRect>,
-	);
 	let activeTarget = $state<GiftEditorCropTarget>('square');
-	// Targets whose rect differs from the persisted one in this session.
-	const dirtyTargets = new SvelteSet<GiftEditorCropTarget>();
-	// Targets with their own crop (persisted or drawn this session); the rest inherit.
-	// svelte-ignore state_referenced_locally
-	const initialOwnTargets = ownGiftTargets(gift?.imageMeta?.targets);
-	const ownTargets = new SvelteSet<GiftEditorCropTarget>(initialOwnTargets);
-	const ownershipChanged = $derived(
-		ownTargets.size !== initialOwnTargets.size ||
-			[...ownTargets].some((target) => !initialOwnTargets.has(target)),
-	);
-	const hasCropSessionEdits = $derived(dirtyTargets.size > 0 || ownershipChanged);
 
 	const styles = giftDetailModalVariants();
 
@@ -322,43 +246,11 @@
 	);
 	const currentQuantity = $derived(gift?.quantity ?? 1);
 	const submitLabel = $derived(isEdit ? m.save() : m.gift_add_title());
-	const hasImage = $derived(imageUrl !== '' || imageKey !== '');
+	const hasImage = $derived(gallery.sourcedImages.length > 0);
 	const mutationPending = $derived(isSubmitting || isDeleting || isLocalMutationPending);
-	// svelte-ignore state_referenced_locally (one-time draft baseline)
-	const initialEditorMode = giftEditorModeFromMeta(gift?.imageMeta);
-	// svelte-ignore state_referenced_locally (one-time draft baseline)
-	const initialBgColor = normalizeFrameFill(gift?.imageMeta?.bgColor);
 
 	function valuesEqual(left: unknown, right: unknown): boolean {
 		return JSON.stringify(left) === JSON.stringify(right);
-	}
-
-	function cropRectsEqual(left: ImageCropRect, right: ImageCropRect): boolean {
-		return (
-			Math.abs(left.x - right.x) < CROP_RECT_EQUALITY_EPSILON &&
-			Math.abs(left.y - right.y) < CROP_RECT_EQUALITY_EPSILON &&
-			Math.abs(left.w - right.w) < CROP_RECT_EQUALITY_EPSILON &&
-			Math.abs(left.h - right.h) < CROP_RECT_EQUALITY_EPSILON
-		);
-	}
-
-	/**
-	 * A pan or zoom on the stage is a manual-crop intent (#533): in Fill/Fit it
-	 * promotes the editor to Manual with only the edited target owning a crop, so
-	 * the other target keeps inheriting instead of freezing a stale framing.
-	 */
-	function handleCropChange(target: GiftEditorCropTarget, rect: ImageCropRect) {
-		if (editorMode !== IMAGE_EDITOR_MODES.manual) {
-			editorMode = IMAGE_EDITOR_MODES.manual;
-			modeDirty = true;
-			ownTargets.clear();
-		}
-		ownTargets.add(target);
-		if (cropRectsEqual(rect, initialTargetRects[target])) {
-			dirtyTargets.delete(target);
-		} else {
-			dirtyTargets.add(target);
-		}
 	}
 
 	/** Drops the thumbnail's own crop so it follows the card crop again. */
@@ -366,8 +258,7 @@
 		if (mutationPending) {
 			return;
 		}
-		ownTargets.delete('thumb');
-		dirtyTargets.delete('thumb');
+		selectedImage?.followSquareCrop();
 	}
 
 	const giftDetailsChanged = $derived(
@@ -393,117 +284,52 @@
 				editingAppendText.trim() !==
 					(gift?.descriptionAppends[editingAppendIndex]?.text.trim() ?? '')),
 	);
-	const initialFillWasCentered = $derived(
-		(gift?.imageMeta?.cropRect ?? null) === null &&
-			(gift?.imageMeta?.focal?.x ?? 50) === 50 &&
-			(gift?.imageMeta?.focal?.y ?? 50) === 50 &&
-			(gift?.imageMeta?.zoom ?? 1) === 1,
-	);
-	// A different source invalidates the persisted geometry: crops and focal points
-	// target the old pixels, so a replaced image starts from the automatic framing.
-	const imageReplaced = $derived(
-		imageUrl.trim() !== initialImageUrl || imageKey !== initialImageKey,
-	);
-	const imageModeChanged = $derived(
-		legacyFitMode === IMAGE_FIT_MODES.auto
-			? modeDirty
-			: editorMode !== initialEditorMode ||
-					(modeDirty &&
-						editorMode === IMAGE_EDITOR_MODES.fill &&
-						!initialFillWasCentered),
-	);
-	const imagePresentationChanged = $derived(
-		hasImage &&
-			(imageModeChanged ||
-				bgColor !== initialBgColor ||
-				(editorMode === IMAGE_EDITOR_MODES.manual && hasCropSessionEdits)),
-	);
 	const dirty = $derived(
 		giftDetailsChanged ||
 			giftPriceChanged ||
 			giftQuantityChanged ||
 			descriptionDraftChanged ||
-			imageReplaced ||
-			imagePresentationChanged,
+			gallery.changed,
 	);
 
 	$effect(() => {
 		ondirtychange?.(dirty);
 	});
 
-	const previewSrc = $derived(
-		resolveGiftImageUrl(imageUrl.trim() === '' ? null : imageUrl.trim(), imageKey),
+	const previewSrc = $derived(selectedImage?.previewSrc ?? null);
+	/** The selected image's 1-based gallery position, named only once there is more than one. */
+	const selectedImagePosition = $derived(
+		selectedImage === null || gallery.images.length < 2
+			? null
+			: gallery.images.indexOf(selectedImage) + 1,
 	);
-	const isCropMode = $derived(editorMode === IMAGE_EDITOR_MODES.manual);
-
-	// The fitMode a save would persist: legacy rows keep their stored value (incl.
-	// `auto`) until the user touches the mode or replaces the image (REQ-8).
-	const savedFitMode = $derived(
-		modeDirty || imageReplaced || legacyFitMode === null
-			? fitModeForEditorMode(editorMode)
-			: legacyFitMode,
+	const stripItems = $derived(
+		gallery.images.map((image) => ({
+			id: image.id,
+			src: image.previewSrc,
+			imageMeta: image.imageMeta,
+		})),
 	);
-
-	/**
-	 * Outside Manual mode there are no manual crops: leaving Manual drops them on
-	 * save (Fill/Fit own the framing), and a replaced image never inherits crops
-	 * drawn for the old pixels. Inside Manual mode, `buildManualGiftTargets` pins
-	 * the targets that own a crop and lets the rest inherit.
-	 */
-	function buildTargets(): ImageMetadata['targets'] {
-		if (editorMode !== IMAGE_EDITOR_MODES.manual) {
-			return undefined;
-		}
-		return buildManualGiftTargets(
-			targetRects,
-			ownTargets,
-			hasCropSessionEdits,
-			imageReplaced ? undefined : gift?.imageMeta?.targets,
-		);
-	}
-
-	// Base focal/zoom/cropRect stay exactly as persisted for an unreplaced image so
-	// legacy rows render unchanged (#116 REQ-8). Explicitly choosing Fill re-centers
-	// the framing, and a replaced image starts from the automatic centered default.
-	const currentImageMeta = $derived.by((): ImageMetadata => {
-		const base = imageReplaced ? null : gift?.imageMeta;
-		const recentered = base == null || (modeDirty && editorMode === IMAGE_EDITOR_MODES.fill);
-		return {
-			fitMode: savedFitMode,
-			cropRect: recentered ? null : (base?.cropRect ?? null),
-			focal: recentered ? { x: 50, y: 50 } : (base?.focal ?? { x: 50, y: 50 }),
-			zoom: recentered ? 1 : (base?.zoom ?? 1),
-			bgColor,
-			targets: buildTargets(),
-		};
-	});
+	const isCropMode = $derived(selectedImage?.editorMode === IMAGE_EDITOR_MODES.manual);
 
 	const targetLabels = {
 		square: () => m.gift_image_target_card(),
 		thumb: () => m.gift_image_target_thumb(),
 	} as const satisfies Record<GiftEditorCropTarget, () => string>;
 
-	// Legacy `auto` honesty (#183 EXTRA): a persisted `auto` fitMode resolves to
-	// cover or contain PER IMAGE at real render time (`resolveAutoFit`, comparing
-	// the image's natural ratio against the target box ratio), while every
-	// legacy `auto` row reads as Fill in this editor (`giftEditorModeFromMeta`).
-	// Measuring the image lets the initial toggle selection – and the WYSIWYG
-	// preview below – match the real card/list render exactly, WITHOUT marking
-	// the form dirty or rewriting the persisted `auto` value: an untouched save
-	// still writes `auto` verbatim (`savedFitMode` only reads `modeDirty`).
-	let measuredNaturalRatio = $state<number | null>(null);
-
+	// Legacy `auto` honesty (#183 EXTRA): measuring the selected image lets its presented mode
+	// match the real card/list render without dirtying the form (see `GiftImageDraft`).
 	$effect(() => {
-		const src = previewSrc;
-		if (src === null) {
-			measuredNaturalRatio = null;
+		const image = selectedImage;
+		const src = image?.previewSrc ?? null;
+		if (image === null || src === null) {
 			return;
 		}
 		let cancelled = false;
 		const probe = new Image();
 		probe.onload = () => {
 			if (!cancelled && probe.naturalWidth > 0 && probe.naturalHeight > 0) {
-				measuredNaturalRatio = probe.naturalWidth / probe.naturalHeight;
+				image.measuredNaturalRatio = probe.naturalWidth / probe.naturalHeight;
 			}
 		};
 		probe.src = src;
@@ -512,25 +338,10 @@
 		};
 	});
 
-	const legacyAutoRendersAsFit = $derived(
-		legacyFitMode === IMAGE_FIT_MODES.auto &&
-			!modeDirty &&
-			!imageReplaced &&
-			measuredNaturalRatio !== null &&
-			resolveAutoFit(measuredNaturalRatio, GIFT_CROP_TARGET_SPECS.square.aspect) ===
-				IMAGE_FIT_MODES.containPadded,
-	);
-
-	/**
-	 * The mode actually presented (toggle selection + static preview): normalizes
-	 * an untouched legacy `auto` row to match its real render instead of the
-	 * always-Fill default `editorMode` starts at, so the toggle never
-	 * contradicts the WYSIWYG preview. `savedFitMode`/`currentImageMeta` are
-	 * unaffected – only the presentation is normalized, never the persisted data.
-	 */
 	const presentedEditorMode = $derived(
-		legacyAutoRendersAsFit ? IMAGE_EDITOR_MODES.fit : editorMode,
+		selectedImage?.presentedEditorMode ?? IMAGE_EDITOR_MODES.fill,
 	);
+	const selectedImageBackground = $derived(selectedImage?.bgColor ?? null);
 
 	// Bits UI's ToggleGroup.Root (type="single") mutates its own bindable `value`
 	// on every click, including a re-click of the already-active item (see
@@ -546,10 +357,10 @@
 	// The visible Transparent option represents the canonical null fallback. Preserve an
 	// unsupported historical literal untouched rather than falsely selecting a known fill.
 	let selectedBgColor = $derived(
-		bgColor === null
+		selectedImageBackground === null
 			? 'transparent'
-			: (IMAGE_BACKGROUND_VALUES as readonly string[]).includes(bgColor)
-				? bgColor
+			: (IMAGE_BACKGROUND_VALUES as readonly string[]).includes(selectedImageBackground)
+				? selectedImageBackground
 				: '',
 	);
 
@@ -565,73 +376,27 @@
 			: null,
 	);
 
-	// A thumbnail without its own crop follows the card crop (`resolveGiftTargetCrop`),
-	// so the editor mirrors the card's focal point and zoom at the thumbnail aspect.
 	$effect(() => {
-		if (ownTargets.has('thumb') || measuredNaturalRatio === null) {
-			return;
-		}
-		const followed = reprojectCropRect(
-			targetRects.square,
-			normalizedCropAspect(GIFT_CROP_TARGET_SPECS.thumb.aspect, measuredNaturalRatio),
-		);
-		if (!cropRectsEqual(followed, targetRects.thumb)) {
-			targetRects.thumb = followed;
-		}
-	});
-
-	const targetStatusLabels = $derived.by((): Record<GiftEditorCropTarget, string> => {
-		if (presentedEditorMode !== IMAGE_EDITOR_MODES.manual) {
-			const modeLabel = editorModeStatusLabel(presentedEditorMode);
-			return { square: modeLabel, thumb: modeLabel };
-		}
-		return {
-			square: ownTargets.has('square')
-				? m.image_crop_status_manual()
-				: m.image_crop_status_automatic(),
-			thumb: ownTargets.has('thumb')
-				? m.image_crop_status_manual()
-				: m.image_crop_status_follows_card(),
-		};
+		selectedImage?.syncFollowedThumbnail();
 	});
 
 	function setEditorMode(value: string) {
-		if (mutationPending) {
-			selectedEditorMode = presentedEditorMode;
-			return;
-		}
-		if (value === '') {
+		if (mutationPending || value === '' || selectedImage === null) {
 			selectedEditorMode = presentedEditorMode;
 			return;
 		}
 		if ((IMAGE_EDITOR_MODE_VALUES as string[]).includes(value)) {
-			const nextMode = value as ImageEditorMode;
-			if (nextMode === IMAGE_EDITOR_MODES.fill) {
-				// Explicit Fill re-centers the framing (the `recentered` branch of
-				// `currentImageMeta`), so a later switch back to Manual starts from that
-				// centered cover-crop: the "no framing yet" sentinel snaps to it.
-				targetRects[activeTarget] = { ...FULL_CROP_RECT };
-			}
-			editorMode = nextMode;
-			modeDirty = true;
+			selectedImage.chooseEditorMode(value as ImageEditorMode, activeTarget);
 		}
 	}
 
 	function setBgColor(value: string) {
-		if (mutationPending) {
-			selectedBgColor = bgColor ?? 'transparent';
+		if (mutationPending || value === '' || selectedImage === null) {
+			selectedBgColor = selectedImageBackground ?? 'transparent';
 			return;
 		}
-		if (value === '') {
-			selectedBgColor = bgColor ?? 'transparent';
-			return;
-		}
-		if (value === 'transparent') {
-			bgColor = null;
-			return;
-		}
-		if (value === '#ffffff' || value === '#000000') {
-			bgColor = value as ExplicitImageBackground;
+		if (value === 'transparent' || value === '#ffffff' || value === '#000000') {
+			selectedImage.chooseBackground(value);
 		}
 	}
 
@@ -736,8 +501,7 @@
 		const finalPriceMax = isPriceRange ? finalizeGiftPrice(priceMax) : null;
 		const finalQuantity = finalizeGiftQuantity(quantity);
 		const normalizedLinks = normalizeGiftLinks(links);
-		const imageMeta = hasImage ? currentImageMeta : null;
-		const submittedImageKey = imageKey || null;
+		const images = gallery.toGiftImages();
 		const descriptionPayload = descriptionFrozen
 			? descriptionAppendText.trim() || null
 			: description.trim() || null;
@@ -749,9 +513,7 @@
 			price: finalPrice,
 			priceMax: finalPriceMax,
 			currency,
-			imageUrl: imageUrl.trim() || null,
-			imageKey: submittedImageKey,
-			imageMeta,
+			images,
 			quantity: finalQuantity,
 			priorityLevelId: priorityLevelId || null,
 			categoryIds: [...categoryIds],
@@ -767,9 +529,7 @@
 						price: createInput.price,
 						priceMax: createInput.priceMax,
 						currency: createInput.currency,
-						imageUrl: createInput.imageUrl,
-						imageKey: createInput.imageKey,
-						imageMeta: createInput.imageMeta,
+						images: createInput.images,
 						quantity: createInput.quantity,
 						priorityLevelId: createInput.priorityLevelId,
 						categoryIds: createInput.categoryIds,
@@ -789,7 +549,7 @@
 			if (saveResult === false) {
 				return;
 			}
-			await pendingUploads.commit(submittedImageKey);
+			await pendingUploads.commit(...galleryImageKeys(images));
 			saveSucceeded = true;
 		} finally {
 			isLocalMutationPending = false;
@@ -921,30 +681,27 @@
 		}
 	}
 
-	/** A new source starts from the automatic centered Fill framing. */
-	function resetCropEditing() {
-		editorMode = IMAGE_EDITOR_MODES.fill;
-		targetRects = initTargetRects(null);
-		dirtyTargets.clear();
-	}
-
+	/** The source field edits the selected image; a gift without images starts its first one. */
 	function handleImageUpload(result: UploadResult) {
 		if (mutationPending) {
 			return;
 		}
-		imageKey = result.objectKey;
-		imageUrl = result.publicUrl;
 		pendingUploads.track(result);
-		resetCropEditing();
+		gallery.useUploadForSelected(result);
 	}
 
 	function handleImageRemove() {
+		if (mutationPending || selectedImage === null) {
+			return;
+		}
+		removeGalleryImage(selectedImage.id);
+	}
+
+	function handleImageUrlInput(imageUrl: string) {
 		if (mutationPending) {
 			return;
 		}
-		imageKey = '';
-		imageUrl = '';
-		resetCropEditing();
+		gallery.setSelectedImageUrl(imageUrl);
 	}
 
 	function handleImageUploadError(uploadError: Error) {
@@ -952,8 +709,49 @@
 	}
 
 	function handleImageUploadPendingChange(pending: boolean) {
-		isImageUploadPending = pending;
-		onpendingchange?.(pending || isLocalMutationPending);
+		isSourceUploadPending = pending;
+		onpendingchange?.(isImageUploadPending || isLocalMutationPending);
+	}
+
+	function handleStripUploadPendingChange(pending: boolean) {
+		isStripUploadPending = pending;
+		onpendingchange?.(isImageUploadPending || isLocalMutationPending);
+	}
+
+	/** After the strip changes the selection, the source field shows the newly selected image. */
+	function showSelectedImageSource(tab: 'url' | 'upload' = sourceTabFor(gallery.selected)) {
+		imageMode = tab;
+		sourceFieldVersion += 1;
+	}
+
+	function selectGalleryImage(id: string) {
+		gallery.select(id);
+		showSelectedImageSource();
+	}
+
+	function removeGalleryImage(id: string) {
+		gallery.remove(id);
+		showSelectedImageSource();
+	}
+
+	function handleStripUpload(result: UploadResult) {
+		if (mutationPending) {
+			return;
+		}
+		pendingUploads.track(result);
+		if (gallery.add(GiftImageDraft.fromUpload(result))) {
+			showSelectedImageSource('upload');
+		}
+	}
+
+	/** „Vložit odkaz na obrázek“ starts an image without a source and focuses its link field. */
+	async function addImageFromLink() {
+		if (mutationPending || !gallery.add(new GiftImageDraft())) {
+			return;
+		}
+		showSelectedImageSource('url');
+		await tick();
+		imageUrlInput?.focus();
 	}
 
 	/**
@@ -1453,7 +1251,14 @@
 					<p class="mt-3 text-sm text-muted-foreground">{m.demo_image_limits()}</p>
 				{:else}
 					<div class="mt-3 {styles.formField()}" data-testid="gift-image-source">
-						<Label>{m.gift_image_label()}</Label>
+						<Label>
+							{selectedImagePosition === null
+								? m.gift_image_label()
+								: m.gift_gallery_position({
+										position: selectedImagePosition,
+										count: gallery.images.length,
+									})}
+						</Label>
 						<SegmentedToggle.Root
 							bind:value={imageMode}
 							disabled={mutationPending || isImageUploadPending}
@@ -1470,22 +1275,28 @@
 						</SegmentedToggle.Root>
 						{#if imageMode === 'url'}
 							<Input
-								bind:value={imageUrl}
+								bind:ref={imageUrlInput}
+								bind:value={
+									() => selectedImage?.imageUrl ?? '', handleImageUrlInput
+								}
 								placeholder="https://example.com/image.jpg"
 								type="url"
 							/>
 						{:else}
-							<ImageUpload
-								bind:this={imageUploadRef}
-								target="gift-image"
-								disabled={mutationPending}
-								size="small"
-								initialPreviewUrl={previewSrc ?? undefined}
-								onUpload={handleImageUpload}
-								onPendingChange={handleImageUploadPendingChange}
-								onError={handleImageUploadError}
-								onRemove={handleImageRemove}
-							/>
+							<!-- Remounts when the strip selects another image, so its preview and replace/remove act on it. -->
+							{#key sourceFieldVersion}
+								<ImageUpload
+									bind:this={imageUploadRef}
+									target="gift-image"
+									disabled={mutationPending}
+									size="small"
+									initialPreviewUrl={previewSrc ?? undefined}
+									onUpload={handleImageUpload}
+									onPendingChange={handleImageUploadPendingChange}
+									onError={handleImageUploadError}
+									onRemove={handleImageRemove}
+								/>
+							{/key}
 						{/if}
 					</div>
 				{/if}
@@ -1506,10 +1317,11 @@
 			// Photo-workshop treatment (issue #189 REQ-6): the inset sticker panel below
 			// supplies the framing, so the shared dashed column seam stays dropped in edit
 			// mode (issue #156); the column is just the dotted mat the panel floats on.
-			// `h-auto` + `justify-center`: the panel takes its intrinsic (photo-aspect,
+			// `h-auto` + safe centering: the panel takes its intrinsic (photo-aspect,
 			// capped) height and centers on the mat — replacing the old fixed
-			// `h-[400px]` that clipped tall portraits (issue #189 REQ-5).
-			'flex h-auto flex-col justify-center border-none border-b-0 p-3 sm:border-r-0 sm:p-4',
+			// `h-[400px]` that clipped tall portraits (issue #189 REQ-5). A taller panel, e.g. a
+			// two-row image strip, scrolls in the column instead of overlapping itself (#591).
+			'flex h-auto flex-col justify-center-safe border-none border-b-0 p-3 sm:overflow-y-auto sm:border-r-0 sm:p-4',
 		)}
 		data-testid="gift-image-column"
 	>
@@ -1517,124 +1329,154 @@
 			<!-- Photo-workshop panel (issue #189 REQ-6): groups the mode pill + adaptive
 			     stage + preview tiles as one designed sticker unit on the dotted mat. -->
 			<div class={styles.modeSectionPanel()}>
-				<!-- Display-mode control (#116 round 3): lives with the preview it drives,
+				{#if selectedImage !== null && selectedImage.previewSrc !== null}
+					<!-- Display-mode control (#116 round 3): lives with the preview it drives,
 				     docked on the panel's top edge. `presentedEditorMode` (#183 EXTRA)
 				     normalizes an untouched legacy `auto` row to the mode it actually
 				     renders as, so the highlighted pill never contradicts the stage below. -->
-				<div class="flex flex-none justify-center pb-2.5">
-					<ToggleGroup.Root
-						type="single"
-						bind:value={selectedEditorMode}
-						onValueChange={setEditorMode}
-						aria-label={m.image_fit_label()}
-						class="max-w-full flex-wrap justify-center rounded-full border-2 border-ink bg-card px-1.5 py-1 shadow-sticker"
-					>
-						<ToggleGroup.Item
-							value={IMAGE_EDITOR_MODES.fill}
-							class="rounded-full"
-							disabled={mutationPending}
+					<div class="flex flex-none justify-center pb-2.5">
+						<ToggleGroup.Root
+							type="single"
+							bind:value={selectedEditorMode}
+							onValueChange={setEditorMode}
+							aria-label={m.image_fit_label()}
+							class="max-w-full flex-wrap justify-center rounded-full border-2 border-ink bg-card px-1.5 py-1 shadow-sticker"
 						>
-							{m.image_fit_fill()}
-						</ToggleGroup.Item>
-						<ToggleGroup.Item
-							value={IMAGE_EDITOR_MODES.fit}
-							class="rounded-full"
-							disabled={mutationPending}
+							<ToggleGroup.Item
+								value={IMAGE_EDITOR_MODES.fill}
+								class="rounded-full"
+								disabled={mutationPending}
+							>
+								{m.image_fit_fill()}
+							</ToggleGroup.Item>
+							<ToggleGroup.Item
+								value={IMAGE_EDITOR_MODES.fit}
+								class="rounded-full"
+								disabled={mutationPending}
+							>
+								{m.image_fit_fit()}
+							</ToggleGroup.Item>
+							<ToggleGroup.Item
+								value={IMAGE_EDITOR_MODES.manual}
+								class="rounded-full"
+								disabled={mutationPending}
+							>
+								{m.image_fit_manual()}
+							</ToggleGroup.Item>
+						</ToggleGroup.Root>
+					</div>
+					<div class="flex flex-none justify-center pb-2.5">
+						<ToggleGroup.Root
+							type="single"
+							bind:value={selectedBgColor}
+							onValueChange={setBgColor}
+							aria-label={m.image_background_label()}
+							class="max-w-full flex-wrap justify-center rounded-full border-2 border-ink bg-card px-1.5 py-1 shadow-sticker"
 						>
-							{m.image_fit_fit()}
-						</ToggleGroup.Item>
-						<ToggleGroup.Item
-							value={IMAGE_EDITOR_MODES.manual}
-							class="rounded-full"
-							disabled={mutationPending}
-						>
-							{m.image_fit_manual()}
-						</ToggleGroup.Item>
-					</ToggleGroup.Root>
-				</div>
-				<div class="flex flex-none justify-center pb-2.5">
-					<ToggleGroup.Root
-						type="single"
-						bind:value={selectedBgColor}
-						onValueChange={setBgColor}
-						aria-label={m.image_background_label()}
-						class="max-w-full flex-wrap justify-center rounded-full border-2 border-ink bg-card px-1.5 py-1 shadow-sticker"
-					>
-						<ToggleGroup.Item
-							value="#ffffff"
-							class="rounded-full"
-							disabled={mutationPending}
-						>
-							{m.image_background_white()}
-						</ToggleGroup.Item>
-						<ToggleGroup.Item
-							value="#000000"
-							class="rounded-full"
-							disabled={mutationPending}
-						>
-							{m.image_background_black()}
-						</ToggleGroup.Item>
-						<ToggleGroup.Item
-							value="transparent"
-							class="rounded-full"
-							disabled={mutationPending}
-						>
-							{m.image_background_transparent()}
-						</ToggleGroup.Item>
-					</ToggleGroup.Root>
-				</div>
-				{#if previewSrc !== null}
+							<ToggleGroup.Item
+								value="#ffffff"
+								class="rounded-full"
+								disabled={mutationPending}
+							>
+								{m.image_background_white()}
+							</ToggleGroup.Item>
+							<ToggleGroup.Item
+								value="#000000"
+								class="rounded-full"
+								disabled={mutationPending}
+							>
+								{m.image_background_black()}
+							</ToggleGroup.Item>
+							<ToggleGroup.Item
+								value="transparent"
+								class="rounded-full"
+								disabled={mutationPending}
+							>
+								{m.image_background_transparent()}
+							</ToggleGroup.Item>
+						</ToggleGroup.Root>
+					</div>
 					<!-- Fixed-window stage (#533): the window keeps the active target's
-					     real size while the photo pans and zooms behind it. Fill/Fit show
-					     their automatic framing; any edit promotes to Manual. -->
-					<ImageCropStage
-						src={previewSrc}
-						alt={name || m.gift_image_preview()}
-						targetAspect={GIFT_CROP_TARGET_SPECS[activeTarget].aspect}
-						targetLabel={targetLabels[activeTarget]()}
-						surfaceSize={activeSurfaceSize}
-						framing={presentedEditorMode}
-						fillColor={bgColor}
-						tokenScope={IMAGE_TOKEN_SCOPES.wishlist}
-						disabled={mutationPending}
-						visibleWidthFraction={activeVisibleWidthFraction}
-						stageClass="h-[min(340px,45dvh)] min-h-[220px]"
-						bind:cropRect={targetRects[activeTarget]}
-						onchange={(rect) => handleCropChange(activeTarget, rect)}
-					>
-						{#snippet heading()}
-							<span class="flex flex-wrap items-center gap-2">
-								<span data-testid="crop-stage-editing">
-									{m.image_crop_editing({ target: targetLabels[activeTarget]() })}
+				     real size while the photo pans and zooms behind it. Fill/Fit show
+				     their automatic framing; any edit promotes to Manual. Remounts per
+				     selected image so the stage never carries one image's view to another. -->
+					{#key selectedImage.id}
+						<ImageCropStage
+							src={selectedImage.previewSrc}
+							alt={name || m.gift_image_preview()}
+							targetAspect={GIFT_CROP_TARGET_SPECS[activeTarget].aspect}
+							targetLabel={targetLabels[activeTarget]()}
+							surfaceSize={activeSurfaceSize}
+							framing={presentedEditorMode}
+							fillColor={selectedImage.bgColor}
+							tokenScope={IMAGE_TOKEN_SCOPES.wishlist}
+							disabled={mutationPending}
+							visibleWidthFraction={activeVisibleWidthFraction}
+							stageClass="h-[min(340px,45dvh)] min-h-[220px]"
+							bind:cropRect={selectedImage.targetRects[activeTarget]}
+							onchange={(rect) => selectedImage.editCrop(activeTarget, rect)}
+						>
+							{#snippet heading()}
+								<span class="flex flex-wrap items-center gap-2">
+									<span data-testid="crop-stage-editing">
+										{selectedImagePosition === null
+											? m.image_crop_editing({
+													target: targetLabels[activeTarget](),
+												})
+											: m.gift_image_crop_editing_gallery({
+													target: targetLabels[activeTarget](),
+													position: selectedImagePosition,
+													count: gallery.images.length,
+												})}
+									</span>
+									{#if !demo}
+										<!-- Click-to-replace affordance (issue #131 REQ-1). -->
+										<Button
+											type="button"
+											intent="ghost"
+											size="sm"
+											format="icon"
+											onclick={openImageEditor}
+											disabled={mutationPending}
+											aria-label={m.gift_image_replace_cta()}
+										>
+											<PencilIcon data-icon="solo" />
+										</Button>
+									{/if}
 								</span>
-								{#if !demo}
-									<!-- Click-to-replace affordance (issue #131 REQ-1). -->
-									<Button
-										type="button"
-										intent="ghost"
-										size="sm"
-										format="icon"
-										onclick={openImageEditor}
-										disabled={mutationPending}
-										aria-label={m.gift_image_replace_cta()}
-									>
-										<PencilIcon data-icon="solo" />
-									</Button>
-								{/if}
-							</span>
-						{/snippet}
-					</ImageCropStage>
+							{/snippet}
+						</ImageCropStage>
+					{/key}
+				{:else}
+					<p class={styles.imagePendingSource()} data-testid="gift-image-pending-source">
+						<LinkIcon aria-hidden="true" />
+						{m.gift_image_strip_pending_hint()}
+					</p>
+				{/if}
+				<GiftImageStrip
+					items={stripItems}
+					selectedId={selectedImage?.id ?? null}
+					disabled={mutationPending || isImageUploadPending}
+					canAdd={!demo}
+					onselect={selectGalleryImage}
+					onremove={removeGalleryImage}
+					onreorder={(orderedIds) => gallery.reorder(orderedIds)}
+					onupload={handleStripUpload}
+					onuploadpendingchange={handleStripUploadPendingChange}
+					onaddurl={() => void addImageFromLink()}
+				/>
+				{#if selectedImage !== null && selectedImage.previewSrc !== null}
 					<!-- The tiles are the crop-target switcher and the in-context check:
-					     each renders what Save persists, with its framing status. -->
+				     each renders what Save persists, with its framing status. -->
 					<GiftImagePreviewSlots
 						class="flex-none pt-2.5"
-						src={previewSrc}
+						src={selectedImage.previewSrc}
 						alt={name || m.gift_image_preview()}
-						imageMeta={currentImageMeta}
+						imageMeta={selectedImage.imageMeta}
 						{activeTarget}
-						statusLabels={targetStatusLabels}
+						statusLabels={selectedImage.targetStatusLabels}
 						onTileSelect={handleTileSelect}
-						onFollowSquare={isCropMode && ownTargets.has('thumb')
+						onFollowSquare={isCropMode && selectedImage.ownTargets.has('thumb')
 							? followSquareCrop
 							: undefined}
 						disabled={mutationPending}

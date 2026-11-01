@@ -48,6 +48,7 @@ Přejeme si is a shareable wishlist web app where users create gift lists for th
 - **Crop target** — A gift consumer surface group by aspect family. Two ACTIVE, editor-offered targets (issue #189): `square` (4:3 gift-card-grid family — the name stays `square` for backward-compatible persistence despite the aspect no longer being square, issue #183) and `thumb` (true 1:1 — the reservation-modal thumb and the saved square List composition; full-height mobile List frames and taller desktop List frames show a portrait side-window of that composition). Plus two retired legacy fallbacks kept only to parse old rows: `card` (~2.78:1) and `detail` (~0.5 — the **Gift viewer** now shows the uncropped photo instead, see below). The 1:1 `thumb` reads `targets.thumb ?? targets.square` and reprojects the same focal+zoom at render time, so pre-#183 crops carry over with no migration. Manual crops persist per target in `image_meta.targets`; targets without one keep automatic center cover-fit framing. Aspect specs live in `crop_targets.ts` (single source for editor stage, previews, and e2e asserts). The **Gift viewer** is NOT a crop-target consumer — it renders the full photo at its natural aspect ratio inside a height cap.
 - **Image slot** — A named display position on a wishlist: `card` (dashboard banner ~2.84:1), `thumbnail` (1:1 — header polaroid, nav, list rows), or `social` (1.91:1 OG preview). Each slot carries its own independent crop metadata (`image_slots` JSON column). The legacy `banner` slot is retired from the editor (persisted JSON retained).
 - **Image-frame fill** — The independently selected background behind letterboxed images, including white, black, or the default transparent/dotted mat.
+- **Gift gallery** — A gift's ordered images (up to 8); the first is the cover used wherever a single image is shown.
 
 ### Appearance
 
@@ -79,7 +80,7 @@ _Avoid_: "list" for Wishlist (ambiguous), "present" for Gift (confusing with tim
 
 - Accounts: email/password with optional Google sign-in; anonymous visitors with a display name and optional email.
 - Wishlists: create, edit, share, archive, revert to draft (správce when reservation-free, admin when reserved); occasion and permanent kinds; lists for someone else with claim links and recipient reassignment.
-- Gifts: add, edit, remove, reorder, up to 10 links, image fit/crop, up to five categories (the first one groups) with priority/category grouping and facets, mark as received.
+- Gifts: add, edit, remove, reorder, up to 10 links, image galleries of up to 8 images with fit/crop, up to five categories (the first one groups) with priority/category grouping and facets, mark as received.
 - Bulk entry: shared draft grid and the CSV / Google Sheets import wizard.
 - Reservations with quantity support, single-reservation release, and likes.
 - Roles and privacy: recipient, správce, visitor, admin; recipient surprise protection and post-share edit rules.

@@ -1,6 +1,7 @@
 import * as v from 'valibot';
 import type { DescriptionAppend, GiftLink } from '$lib/modules/gifts/types.js';
 import type { ImageMetadata } from '$lib/modules/images/types.js';
+import type { PublicGiftImage } from '$lib/modules/gifts/gift_images.js';
 import type { WishlistRole } from '$lib/modules/wishlists/types.js';
 import { ChangeRowDecisionSchema, type FieldDecisions } from './change_field_decisions.js';
 
@@ -117,6 +118,8 @@ export interface ChangeProposalGift {
 	currency: string | null;
 	imageUrl: string | null;
 	imageMeta: ImageMetadata | null;
+	/** The ordered gallery; the first image is the cover `imageUrl`/`imageMeta` show. */
+	images: PublicGiftImage[];
 	quantity: number | null;
 	priorityLevelId: string | null;
 	categoryIds: string[];

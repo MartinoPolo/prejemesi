@@ -196,9 +196,16 @@ describe('GiftDetailForm pending image uploads', () => {
 		expect(screen.getByTestId('gift-image-column').all()).toHaveLength(1);
 		await screen.getByRole('button', { name: m.gift_add_title() }).first().click();
 		const payload = oncreate.mock.calls[0]![0];
-		expect(payload.imageKey).toBe(uploaded.objectKey);
-		expect(payload.imageMeta.targets.square.cropRect).not.toEqual({ x: 0, y: 0, w: 1, h: 1 });
-		expect(payload.imageMeta.targets.square.zoom).toBeGreaterThan(1);
+		expect(payload.images).toHaveLength(1);
+		const [submittedImage] = payload.images;
+		expect(submittedImage.imageKey).toBe(uploaded.objectKey);
+		expect(submittedImage.imageMeta.targets.square.cropRect).not.toEqual({
+			x: 0,
+			y: 0,
+			w: 1,
+			h: 1,
+		});
+		expect(submittedImage.imageMeta.targets.square.zoom).toBeGreaterThan(1);
 	});
 
 	it('enables saving after completion and submits the exact uploaded key', async () => {
@@ -216,7 +223,14 @@ describe('GiftDetailForm pending image uploads', () => {
 		await expect.element(submitButton).toBeEnabled();
 		await submitButton.click();
 		expect(oncreate).toHaveBeenCalledWith(
-			expect.objectContaining({ imageKey: uploaded.objectKey, imageUrl: uploaded.publicUrl }),
+			expect.objectContaining({
+				images: [
+					expect.objectContaining({
+						imageKey: uploaded.objectKey,
+						imageUrl: uploaded.publicUrl,
+					}),
+				],
+			}),
 		);
 		expect(pendingUploadsCommitMock).toHaveBeenCalledWith(uploaded.objectKey);
 	});
@@ -245,7 +259,9 @@ describe('GiftDetailForm pending image uploads', () => {
 		await screen.getByRole('button', { name: m.gift_add_title() }).first().click();
 		expect(oncreate).toHaveBeenCalledOnce();
 		const submittedPayload = oncreate.mock.calls[0]![0];
-		expect(submittedPayload.imageKey).toBe(selectedUpload.objectKey);
+		expect(
+			submittedPayload.images.map((image: { imageKey: string }) => image.imageKey),
+		).toEqual([selectedUpload.objectKey]);
 		await expect
 			.element(screen.getByRole('radio', { name: m.gift_image_url_tab() }))
 			.toBeDisabled();
@@ -259,7 +275,10 @@ describe('GiftDetailForm pending image uploads', () => {
 		expect(lockedFileInput.disabled).toBe(true);
 		selectImage(lockedFileInput, 'during-save.png');
 		expect(uploadFileMock).toHaveBeenCalledTimes(2);
-		const removeButton = screen.getByRole('button', { name: m.image_upload_remove() });
+		const removeButton = screen.getByRole('button', {
+			name: m.image_upload_remove(),
+			exact: true,
+		});
 		await expect.element(removeButton).toBeDisabled();
 		await removeButton.click({ force: true });
 		for (const submitButton of submitButtons()) {
@@ -274,7 +293,9 @@ describe('GiftDetailForm pending image uploads', () => {
 		);
 		expect(pendingUploadTracker.retainedKey).toBe(selectedUpload.objectKey);
 		expect(pendingUploadTracker.deletedKeys).toEqual([abandonedUpload.objectKey]);
-		expect(submittedPayload.imageKey).toBe(selectedUpload.objectKey);
+		expect(
+			submittedPayload.images.map((image: { imageKey: string }) => image.imageKey),
+		).toEqual([selectedUpload.objectKey]);
 	});
 
 	it('closes a successful modal only after upload cleanup commits', async () => {

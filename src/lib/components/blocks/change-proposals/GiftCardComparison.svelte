@@ -26,7 +26,8 @@
 		</figcaption>
 		{#if gift !== null}
 			<div class="card-frame" class:is-removal={side === 'before' && pair.removal}>
-				<GiftCard {gift} role="recipient" />
+				<!-- Cover-only: the diff lists a gallery's size change in words. -->
+				<GiftCard gift={{ ...gift, images: gift.images.slice(0, 1) }} role="recipient" />
 				{#if side === 'before' && pair.removal}
 					<span class="removal-badge"
 						><Trash2Icon aria-hidden="true" />{m.change_review_removal_overlay()}</span

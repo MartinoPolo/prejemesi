@@ -1,6 +1,9 @@
 import {
 	DB_READY,
 	RECIPIENT_ID,
+	createGiftFixture,
+	createWishlistFixture,
+	fixtureId,
 	removeFixtureRows,
 	seedFixtureUsers,
 } from '$lib/server/operations/operations.db.test-setup.js';
@@ -8,6 +11,9 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import * as v from 'valibot';
 import { eq, inArray } from 'drizzle-orm';
 import { getDb } from '$lib/server/db/index.js';
+import { agentImage } from '$lib/server/db/agent_image.schema.js';
+import { giftImage } from '$lib/server/db/gift.schema.js';
+import type { AgentImageStorage } from '$lib/server/storage/r2.js';
 import {
 	agentIdempotencyKey,
 	agentOauthIdempotencyKey,
@@ -26,6 +32,7 @@ import { saveOauthGrant } from './oauth_grants.js';
 import { createOauthClientFixture, removeOauthClientFixtures } from './oauth.db.test-setup.js';
 import {
 	AGENT_ACCESS_PURGE_CHUNK_SIZE,
+	AGENT_IMAGE_PURGE_DELAY_MS,
 	CHANGE_PROPOSAL_EXPIRED_RETENTION_MS,
 	CHANGE_PROPOSAL_LIFETIME_MS,
 	IDEMPOTENCY_KEY_RETENTION_MS,
@@ -227,5 +234,52 @@ describe.skipIf(!DB_READY)('agent access purge', () => {
 			.where(eq(agentOauthIdempotencyKey.grantId, grantId));
 		expect(keys).toEqual([{ key: 'fresh' }]);
 		expect(await remainingProposalIds([expiredProposal?.id ?? ''])).toEqual([]);
+	});
+
+	it('keeps the object of a settled agent image that a gift still uses as a later gallery image', async () => {
+		const now = new Date();
+		const { id: wishlistId } = await createWishlistFixture();
+		const coverKey = `gifts/${fixtureId('agent-cover')}.webp`;
+		const laterKey = `gifts/${fixtureId('agent-later')}.webp`;
+		const unusedKey = `gifts/${fixtureId('agent-unused')}.webp`;
+		const giftId = await createGiftFixture(wishlistId, { imageKey: coverKey });
+		await getDb().insert(giftImage).values({ giftId, position: 1, imageKey: laterKey });
+		const attachedAt = new Date(
+			now.getTime() - AGENT_IMAGE_PURGE_DELAY_MS - GIFT_REVISION_RETENTION_MS - DAY_MS,
+		);
+		await getDb()
+			.insert(agentImage)
+			.values(
+				[coverKey, laterKey, unusedKey].map((objectKey) => ({
+					userId: RECIPIENT_ID,
+					wishlistId,
+					objectKey,
+					contentType: 'image/webp',
+					byteLength: 1,
+					width: 1,
+					height: 1,
+					expiresAt: attachedAt,
+					attachedAt,
+				})),
+			);
+		const deletedObjectKeys: string[] = [];
+		const storage: AgentImageStorage = {
+			put: async () => undefined,
+			deleteBestEffort: async () => undefined,
+			deleteOrThrow: async (keys) => {
+				deletedObjectKeys.push(...keys);
+			},
+		};
+
+		await purgeAgentAccessRecords(now, storage);
+
+		const fixtureKeys = [coverKey, laterKey, unusedKey];
+		expect(deletedObjectKeys.filter((key) => fixtureKeys.includes(key))).toEqual([unusedKey]);
+		expect(
+			await getDb()
+				.select({ objectKey: agentImage.objectKey })
+				.from(agentImage)
+				.where(inArray(agentImage.objectKey, fixtureKeys)),
+		).toEqual([]);
 	});
 });

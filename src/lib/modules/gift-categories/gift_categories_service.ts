@@ -26,6 +26,7 @@ import type { GiftCreationTransaction } from '$lib/modules/gifts/gift_creation_s
 import type { GiftDraftInput } from '$lib/modules/gifts/types.js';
 import type { RecordGiftRevisions } from '$lib/server/operations/gift_revisions.js';
 import { giftCategoryColorForIndex } from './gift_category_colors.js';
+import { giftColumnsWithImages } from '$lib/server/operations/gift_gallery.js';
 
 type CategoryDatabase = ReturnType<typeof getDb> | GiftCreationTransaction;
 
@@ -54,21 +55,21 @@ export function activeGiftCategoriesColumn() {
 		SELECT coalesce(
 			json_agg(
 				json_build_object(
-					'id', ${giftCategory.id},
-					'presetKey', ${giftCategory.presetKey},
-					'customLabel', ${giftCategory.customLabel},
-					'color', ${giftCategory.color},
-					'sortOrder', ${giftCategory.sortOrder}
+					'id', active_category.id,
+					'presetKey', active_category.preset_key,
+					'customLabel', active_category.custom_label,
+					'color', active_category.color,
+					'sortOrder', active_category.sort_order
 				)
 				ORDER BY assigned.position
 			),
 			'[]'::json
 		)
-		FROM unnest(${gift.categoryIds}) WITH ORDINALITY AS assigned(category_id, position)
-		JOIN ${giftCategory}
-			ON ${giftCategory.id} = assigned.category_id
-			AND ${giftCategory.wishlistId} = ${gift.wishlistId}
-			AND ${giftCategory.deletedAt} IS NULL
+		FROM unnest("gift"."category_ids") WITH ORDINALITY AS assigned(category_id, position)
+		JOIN ${giftCategory} AS active_category
+			ON active_category.id = assigned.category_id
+			AND active_category.wishlist_id = "gift"."wishlist_id"
+			AND active_category.deleted_at IS NULL
 	)`;
 }
 
@@ -573,7 +574,7 @@ async function removeCategories(
 		isNull(gift.deletedAt),
 	);
 	const giftsBefore = await transaction
-		.select()
+		.select(giftColumnsWithImages())
 		.from(gift)
 		.where(assignedToRemoved)
 		.for('update');
@@ -583,7 +584,7 @@ async function removeCategories(
 		.set({
 			categoryIds: sql`ARRAY(
 				SELECT assigned.category_id
-				FROM unnest(${gift.categoryIds}) WITH ORDINALITY AS assigned(category_id, position)
+				FROM unnest("gift"."category_ids") WITH ORDINALITY AS assigned(category_id, position)
 				WHERE NOT (assigned.category_id = ANY(${textArraySql(removalIds)}))
 				ORDER BY assigned.position
 			)`,
@@ -592,12 +593,19 @@ async function removeCategories(
 		.where(assignedToRemoved)
 		.returning();
 	await recordGiftRevisions(
-		unassignedGifts.map((unassignedGift) => ({
-			giftId: unassignedGift.id,
-			wishlistId: unassignedGift.wishlistId,
-			before: giftBeforeById.get(unassignedGift.id) ?? unassignedGift,
-			after: unassignedGift,
-		})),
+		unassignedGifts.flatMap((unassignedGift) => {
+			const giftBefore = giftBeforeById.get(unassignedGift.id);
+			return giftBefore === undefined
+				? []
+				: [
+						{
+							giftId: unassignedGift.id,
+							wishlistId: unassignedGift.wishlistId,
+							before: giftBefore,
+							after: { ...unassignedGift, images: giftBefore.images },
+						},
+					];
+		}),
 	);
 	for (const categoryId of removalIds) {
 		await transaction

@@ -1,5 +1,5 @@
 import { and, eq, inArray, isNull, lt, or, sql, type SQL } from 'drizzle-orm';
-import type { AnyPgColumn, PgTable } from 'drizzle-orm/pg-core';
+import { union, type AnyPgColumn, type PgTable } from 'drizzle-orm/pg-core';
 import { getDb } from '$lib/server/db/index.js';
 import {
 	agentIdempotencyKey,
@@ -8,7 +8,7 @@ import {
 } from '$lib/server/db/change_proposal.schema.js';
 import { agentImage } from '$lib/server/db/agent_image.schema.js';
 import { chatSession } from '$lib/server/db/chat.schema.js';
-import { gift } from '$lib/server/db/gift.schema.js';
+import { gift, giftImage } from '$lib/server/db/gift.schema.js';
 import { runAfterResponse } from '$lib/server/background.js';
 import { agentImageStorage, getR2Bucket, type AgentImageStorage } from '$lib/server/storage/r2.js';
 import { demoSessionId } from '$lib/server/demo/scope.js';
@@ -73,12 +73,19 @@ async function deleteIdempotencyKeysInChunks(
 	}
 }
 
-/** The keys among `objectKeys` that no gift row, deleted or not, uses. */
+/** The keys among `objectKeys` that no gift, deleted or not, uses as its cover or in its gallery. */
 async function keysNoGiftUses(objectKeys: readonly string[]): Promise<string[]> {
-	const usedRows = await getDb()
-		.select({ imageKey: gift.imageKey })
-		.from(gift)
-		.where(inArray(gift.imageKey, [...objectKeys]));
+	const database = getDb();
+	const usedRows = await union(
+		database
+			.select({ imageKey: gift.imageKey })
+			.from(gift)
+			.where(inArray(gift.imageKey, [...objectKeys])),
+		database
+			.select({ imageKey: giftImage.imageKey })
+			.from(giftImage)
+			.where(inArray(giftImage.imageKey, [...objectKeys])),
+	);
 	const usedKeys = new Set(usedRows.map((row) => row.imageKey));
 	return objectKeys.filter((objectKey) => !usedKeys.has(objectKey));
 }

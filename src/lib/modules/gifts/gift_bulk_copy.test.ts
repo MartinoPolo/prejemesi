@@ -64,6 +64,15 @@ describe('bulk gift copy requirements', () => {
 				imageUrl: null,
 				imageKey: 'gifts/source.webp',
 				imageMeta: { fit: 'cover-crop' },
+				images: [
+					{
+						imageUrl: null,
+						imageKey: 'gifts/source.webp',
+						imageMeta: { fit: 'cover-crop' },
+					},
+					{ imageUrl: 'https://example.com/linked.png', imageKey: null, imageMeta: null },
+					{ imageUrl: null, imageKey: 'gifts/source-third.webp', imageMeta: null },
+				],
 				received: true,
 				editedAfterShareAt: new Date(),
 				preEditShareSnapshot: { name: 'old' },
@@ -71,7 +80,7 @@ describe('bulk gift copy requirements', () => {
 				likeCount: 3,
 			}),
 			destinationGiftId: 'destination-id',
-			destinationImageKey: 'gifts/destination.webp',
+			destinationImageKeys: ['gifts/destination.webp', null, 'gifts/destination-third.webp'],
 			taxonomy: {
 				priorityLevelId: 'destination-priority',
 				categoryIds: ['destination-primary', 'destination-secondary'],
@@ -80,7 +89,15 @@ describe('bulk gift copy requirements', () => {
 		expect(copied).toMatchObject({
 			id: 'destination-id',
 			description: 'Base\n\nAppend',
-			imageKey: 'gifts/destination.webp',
+			images: [
+				{
+					imageUrl: null,
+					imageKey: 'gifts/destination.webp',
+					imageMeta: { fit: 'cover-crop' },
+				},
+				{ imageUrl: 'https://example.com/linked.png', imageKey: null, imageMeta: null },
+				{ imageUrl: null, imageKey: 'gifts/destination-third.webp', imageMeta: null },
+			],
 			priorityLevelId: 'destination-priority',
 			categoryIds: ['destination-primary', 'destination-secondary'],
 		});

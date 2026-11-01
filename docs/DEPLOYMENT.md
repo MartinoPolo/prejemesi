@@ -86,3 +86,7 @@ The acknowledgment stays outside the SQL because Drizzle records the exact SQL h
 - [ ] Merge to `production` (merge commit, not squash).
 - [ ] The deploy run passes verify → migrate → EXACT → deploy; its step summary shows the migration state.
 - [ ] Verify: https://prejemesi.cz responds, the live Worker's `GIT_COMMIT_SHA` matches the production SHA, and `wrangler tail` shows no errors.
+
+## CLI package
+
+The `prejemesi` npm package (`packages/cli`) ships separately from the app. To publish, bump `packages/cli/package.json`, run `npm login`, then `pnpm --filter prejemesi publish --access public` from an up-to-date `dev` checkout, and approve the staged release on npmjs.com.

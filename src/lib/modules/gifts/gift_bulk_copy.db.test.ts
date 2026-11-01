@@ -19,7 +19,13 @@ vi.mock('$lib/server/storage/r2.js', () => storage);
 
 import { closeDb, getDb } from '$lib/server/db/index.js';
 import { user } from '$lib/server/db/auth.schema.js';
-import { gift, giftCategory, giftLike, reservation } from '$lib/server/db/gift.schema.js';
+import {
+	gift,
+	giftCategory,
+	giftImage,
+	giftLike,
+	reservation,
+} from '$lib/server/db/gift.schema.js';
 import { giftIngestionOrphan } from '$lib/server/db/ingestion.schema.js';
 import { wishlistFollower } from '$lib/server/db/follower.schema.js';
 import { moderatorAssignment } from '$lib/server/db/moderator.schema.js';
@@ -405,6 +411,109 @@ describe.skipIf(!DATABASE_READY)('bulk gift copy [real DB]', () => {
 				.where(like(giftIngestionOrphan.itemId, `${PREFIX}%`)),
 		).toHaveLength(0);
 		await getDb().update(gift).set({ imageKey: null }).where(eq(gift.id, SOURCE_GIFT_ONE));
+	});
+
+	it('copies every gallery image in order, duplicating each upload under a new key', async () => {
+		const sourceCoverKey = `${PREFIX}gallery-cover.webp`;
+		const sourceDetailKey = `${PREFIX}gallery-detail.webp`;
+		const linkedImageUrl = 'https://shop.example/gallery-linked.jpg';
+		try {
+			await getDb()
+				.update(gift)
+				.set({ imageKey: sourceCoverKey })
+				.where(eq(gift.id, SOURCE_GIFT_ONE));
+			await getDb()
+				.insert(giftImage)
+				.values([
+					{ giftId: SOURCE_GIFT_ONE, position: 1, imageUrl: linkedImageUrl },
+					{ giftId: SOURCE_GIFT_ONE, position: 2, imageKey: sourceDetailKey },
+				]);
+			storage.getObject.mockResolvedValue({
+				body: new ArrayBuffer(1),
+				contentType: 'image/webp',
+				etag: 'etag',
+			});
+			storage.putObject.mockResolvedValue(true);
+
+			await copyGifts(RECIPIENT_ID, {
+				sourceWishlistId: SOURCE_ID,
+				destinationWishlistId: DESTINATION_ID,
+				giftIds: [SOURCE_GIFT_ONE],
+			});
+
+			const [copy] = await getDb()
+				.select({ id: gift.id, imageKey: gift.imageKey })
+				.from(gift)
+				.where(eq(gift.wishlistId, DESTINATION_ID));
+			const copiedImages = await getDb()
+				.select()
+				.from(giftImage)
+				.where(eq(giftImage.giftId, copy?.id ?? ''))
+				.orderBy(giftImage.position);
+			expect(copiedImages.map((image) => image.imageUrl)).toEqual([
+				null,
+				linkedImageUrl,
+				null,
+			]);
+			const [copiedCover, , copiedDetail] = copiedImages;
+			expect(copy?.imageKey).toBe(copiedCover?.imageKey);
+			expect(copiedCover?.imageKey).toMatch(/^gifts\/.+\.webp$/);
+			expect(copiedDetail?.imageKey).toMatch(/^gifts\/.+\.webp$/);
+			expect(copiedCover?.imageKey).not.toBe(copiedDetail?.imageKey);
+			expect(storage.getObject.mock.calls.map(([key]) => key as string).sort()).toEqual(
+				[sourceCoverKey, sourceDetailKey].sort(),
+			);
+			expect(storage.putObject.mock.calls.map(([key]) => key as string).sort()).toEqual(
+				[String(copiedCover?.imageKey), String(copiedDetail?.imageKey)].sort(),
+			);
+		} finally {
+			// Clearing the cover clears the source gallery too.
+			await getDb().update(gift).set({ imageKey: null }).where(eq(gift.id, SOURCE_GIFT_ONE));
+		}
+	});
+
+	it('releases every gallery upload of a source gift it moves out of a permanent wishlist', async () => {
+		const sourceGiftId = `${PREFIX}permanent-gallery`;
+		const sourceCoverKey = `${PREFIX}permanent-gallery-cover.webp`;
+		const sourceDetailKey = `${PREFIX}permanent-gallery-detail.webp`;
+		await getDb()
+			.insert(gift)
+			.values({
+				id: sourceGiftId,
+				wishlistId: PERMANENT_SOURCE_ID,
+				name: 'Permanent gallery gift',
+				imageKey: sourceCoverKey,
+				createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000),
+			});
+		await getDb()
+			.insert(giftImage)
+			.values([
+				{
+					giftId: sourceGiftId,
+					position: 1,
+					imageUrl: 'https://shop.example/permanent-gallery.jpg',
+				},
+				{ giftId: sourceGiftId, position: 2, imageKey: sourceDetailKey },
+			]);
+		storage.getObject.mockResolvedValue({
+			body: new ArrayBuffer(1),
+			contentType: 'image/webp',
+			etag: 'etag',
+		});
+		storage.putObject.mockResolvedValue(true);
+
+		const result = await copyGifts(MANAGER_ID, {
+			sourceWishlistId: PERMANENT_SOURCE_ID,
+			destinationWishlistId: DESTINATION_ID,
+			giftIds: [sourceGiftId],
+			removeUnreservedSources: true,
+		});
+
+		expect(result.removedSourceIds).toEqual([sourceGiftId]);
+		const releasedKeys = storage.deleteObjectsBestEffort.mock.calls.flatMap(
+			([keys]) => keys as string[],
+		);
+		expect(releasedKeys.sort()).toEqual([sourceCoverKey, sourceDetailKey].sort());
 	});
 
 	it('revalidates stale manager access after image staging and compensates the object', async () => {

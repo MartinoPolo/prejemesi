@@ -1,5 +1,6 @@
 import { imagePublicUrl, resolveGiftImageUrl } from '$lib/modules/images/public_url.js';
 import type { GiftBase, GiftByRole, GiftForRecipient } from '$lib/modules/gifts/types.js';
+import type { GiftImage, PublicGiftImage } from '$lib/modules/gifts/gift_images.js';
 import type { wishlist } from '$lib/server/db/wishlist.schema.js';
 import type {
 	readBulkCopyDestinationsOperation,
@@ -108,6 +109,7 @@ type AgentGiftSource = Pick<
 	| 'imageUrl'
 	| 'imageKey'
 	| 'imageMeta'
+	| 'images'
 	| 'quantity'
 	| 'sortOrder'
 	| 'received'
@@ -115,6 +117,14 @@ type AgentGiftSource = Pick<
 	| 'priorityLevelId'
 	| 'categoryIds'
 >;
+
+/** A gallery as agents see it: each storage key becomes its public image URL. */
+function projectAgentGiftImages(images: readonly GiftImage[]): PublicGiftImage[] {
+	return images.map((image) => ({
+		imageUrl: resolveGiftImageUrl(image.imageUrl, image.imageKey),
+		imageMeta: image.imageMeta,
+	}));
+}
 
 /**
  * A gift as agents see it, from a read or a mutation's row: the storage key becomes its public
@@ -134,6 +144,7 @@ export function projectAgentGiftRow(giftRow: AgentGiftSource) {
 		currency: giftRow.currency,
 		imageUrl: resolveGiftImageUrl(giftRow.imageUrl, giftRow.imageKey),
 		imageMeta: giftRow.imageMeta,
+		images: projectAgentGiftImages(giftRow.images),
 		quantity: giftRow.quantity,
 		sortOrder: giftRow.sortOrder,
 		received: giftRow.received,
@@ -150,7 +161,8 @@ export function projectAgentGiftRow(giftRow: AgentGiftSource) {
  * and the share-time snapshot stays internal. Snapshots carry no reservation or like data, so the
  * same shape suits every viewer role.
  */
-export function projectAgentGiftSnapshot(snapshot: GiftRevisionSnapshot): ChangeProposalGift {
+export function projectAgentGiftSnapshot(storedSnapshot: GiftRevisionSnapshot): ChangeProposalGift {
+	const snapshot = currentGiftRevisionSnapshot(storedSnapshot);
 	return {
 		name: snapshot.name,
 		description: snapshot.description,
@@ -161,9 +173,10 @@ export function projectAgentGiftSnapshot(snapshot: GiftRevisionSnapshot): Change
 		currency: snapshot.currency,
 		imageUrl: resolveGiftImageUrl(snapshot.imageUrl, snapshot.imageKey),
 		imageMeta: snapshot.imageMeta,
+		images: projectAgentGiftImages(snapshot.images),
 		quantity: snapshot.quantity,
 		priorityLevelId: snapshot.priorityLevelId,
-		categoryIds: currentGiftRevisionSnapshot(snapshot).categoryIds,
+		categoryIds: snapshot.categoryIds,
 		received: snapshot.received,
 		deleted: snapshot.deletedAt !== null,
 		editedAfterShareAt: snapshot.editedAfterShareAt,

@@ -15,6 +15,8 @@ import {
 	publicCommand,
 } from '$lib/server/remote.js';
 import { deleteObjectsBestEffort } from '$lib/server/storage/r2.js';
+import { giftImagesColumn } from '$lib/server/operations/gift_gallery.js';
+import { galleryImageKeys } from '$lib/modules/gifts/gift_images.js';
 import { isStoredObjectKey, resolveUserImageUrl } from '$lib/modules/images/public_url.js';
 import { wishlistBackgroundImageKey } from '$lib/modules/wishlists/wishlist_appearance.js';
 import {
@@ -351,7 +353,7 @@ export const deleteAccount = guardedCommandNoArgs(async ({ user: authUser }) => 
 
 	if (ownWishlists.length > 0) {
 		const giftRows = await database
-			.select({ imageKey: gift.imageKey })
+			.select({ images: giftImagesColumn() })
 			.from(gift)
 			.where(
 				and(
@@ -362,7 +364,7 @@ export const deleteAccount = guardedCommandNoArgs(async ({ user: authUser }) => 
 					isNull(gift.deletedAt),
 				),
 			);
-		imageKeys.push(...giftRows.map((row) => row.imageKey));
+		imageKeys.push(...giftRows.flatMap((row) => galleryImageKeys(row.images)));
 	}
 
 	await database.delete(user).where(eq(user.id, authUser.id));

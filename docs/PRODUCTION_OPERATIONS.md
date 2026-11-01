@@ -100,17 +100,17 @@ The Free plan permits one rate-limiting rule. Configure exactly one rule named `
 | Expression | `(starts_with(http.request.uri.path, "/api/") or starts_with(http.request.uri.path, "/_app/remote/")) and not starts_with(http.request.uri.path, "/api/v1/") and not starts_with(http.request.uri.path, "/api/auth/oauth2/") and not cf.client.bot` |
 | Counting characteristic | IP |
 | Threshold | 20 requests per 10 seconds |
-| Action | Managed Challenge |
-| Mitigation timeout | `0` (challenge/throttle mode required on Free) |
+| Action | Block (the only rate-limit action on Free) |
+| Duration | 10 seconds (the only Free option) |
 
-Twenty requests/10 seconds/IP is a starting hypothesis, not measured capacity. It covers BetterAuth, upload/API, and SvelteKit remote-function traffic without counting ordinary page/static-asset requests. Shared NAT users still share the IP counter, so validate before lowering it. The agent API and the OAuth endpoints are excluded because agents and connector backends such as Claude's and ChatGPT's call them for many users from shared IPs and cannot solve a challenge; `/api/v1` has its own per-token limit (`AGENT_API_RATE_LIMIT`), and the OAuth endpoints act only on valid codes and tokens or a signed-in consent.
+Twenty requests/10 seconds/IP is a starting hypothesis, not measured capacity. It covers BetterAuth, upload/API, and SvelteKit remote-function traffic without counting ordinary page/static-asset requests. Shared NAT users still share the IP counter, so validate before lowering it. The agent API and the OAuth endpoints are excluded because agents and connector backends such as Claude's and ChatGPT's call them for many users from shared IPs and would be blocked; `/api/v1` has its own per-token limit (`AGENT_API_RATE_LIMIT`), and the OAuth endpoints act only on valid codes and tokens or a signed-in consent.
 
 Verification:
 
-1. From one browser/IP, complete normal interactive flows: sign in, open a wishlist, reserve/unreserve a test gift, and upload a permitted test image. No challenge should interrupt ordinary use.
-2. From a test client/IP, send one controlled burst above 20 matching requests within 10 seconds. Excess requests should receive a Managed Challenge; stop after confirming it once. Do not use production data mutations for the burst.
-3. Confirm the match in **Security > Events**, then confirm fewer excess requests reached Worker Metrics/Logs. Complete the challenge, then confirm ordinary interactive requests succeed again.
-4. Review false positives and peak legitimate per-IP rate after 24 hours and one week. Raise the threshold if ordinary use is challenged; lower only with measured headroom and repeat this verification.
+1. From one browser/IP, complete normal interactive flows: sign in, open a wishlist, reserve/unreserve a test gift, and upload a permitted test image. No block should interrupt ordinary use.
+2. From a test client/IP, send one controlled burst above 20 matching requests within 10 seconds. Excess requests should receive the Cloudflare block response; stop after confirming it once. Do not use production data mutations for the burst.
+3. Confirm the match in **Security > Events**, then confirm fewer excess requests reached Worker Metrics/Logs. After the 10-second block, confirm ordinary interactive requests succeed again.
+4. Review false positives and peak legitimate per-IP rate after 24 hours and one week. Raise the threshold if ordinary use is blocked; lower only with measured headroom and repeat this verification.
 
 ## Turnstile
 

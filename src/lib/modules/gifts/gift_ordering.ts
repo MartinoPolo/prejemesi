@@ -54,6 +54,7 @@ export function projectGiftForRecipient(gift: GiftByRole): GiftForRecipient {
 		imageUrl: gift.imageUrl,
 		imageKey: gift.imageKey,
 		imageMeta: gift.imageMeta,
+		images: gift.images,
 		quantity: gift.quantity,
 		sortOrder: gift.sortOrder,
 		received: gift.received,

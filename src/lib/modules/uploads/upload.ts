@@ -104,8 +104,8 @@ export async function deleteUploadedObject(objectKey: string, deleteToken: strin
 
 /**
  * Tracks objects uploaded during one edit session (dialog/form) that are not
- * persisted yet. `commit(finalKey)` deletes every tracked object except the one
- * that was saved; `discardAll()` deletes them all (cancel/unmount). Both clear
+ * persisted yet. `commit(...savedKeys)` deletes every tracked object except the
+ * ones that were saved; `discardAll()` deletes them all (cancel/unmount). Both clear
  * the tracker, so calling `discardAll` after `commit` is a safe no-op.
  */
 export function createPendingUploads() {
@@ -115,15 +115,17 @@ export function createPendingUploads() {
 		track(result: UploadResult): void {
 			pending.set(result.objectKey, result.deleteToken);
 		},
-		async commit(finalObjectKey: string | null): Promise<void> {
-			const toDelete = [...pending.entries()].filter(([key]) => key !== finalObjectKey);
+		async commit(...savedObjectKeys: readonly (string | null)[]): Promise<void> {
+			const toDelete = [...pending.entries()].filter(
+				([key]) => !savedObjectKeys.includes(key),
+			);
 			pending.clear();
 			await Promise.allSettled(
 				toDelete.map(([key, token]) => deleteUploadedObject(key, token)),
 			);
 		},
 		async discardAll(): Promise<void> {
-			await this.commit(null);
+			await this.commit();
 		},
 	};
 }

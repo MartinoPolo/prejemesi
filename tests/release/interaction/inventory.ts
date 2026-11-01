@@ -132,7 +132,11 @@ export type GiftCardOutcome =
 	| 'does-nothing'
 	| 'starts-drag-in-place'
 	| 'reorders'
-	| 'scrolls-page';
+	| 'scrolls-page'
+	/** The gallery card shows its next image; no layer opens and the card is not pressed. */
+	| 'changes-image'
+	/** The gallery card keeps the image it showed, the cover outside browse mode, and nothing else changes. */
+	| 'keeps-image';
 
 const CONTENT_PRESS =
 	'DECISIONS 2026-10-06 (#450): „Card press belongs to presses that start on card content; inner controls and open action surfaces never press the card"';
@@ -168,6 +172,10 @@ const RIGHT_CLICK_MENU =
 	'#286 design brief: the desktop context menu opens on „Right-click, `Shift+F10`, or Context Menu key"';
 const LAYER_KEYBOARD =
 	'WAI-ARIA APG dialog pattern: Escape closes the layer and focus returns to the element that opened it';
+const GALLERY_SWIPE =
+	'DECISIONS 2026-10-31 (#591): „swipe on touch; arrows and swipes never open the viewer, are off in reorder and selection modes"; design summary: swipe marks itself as a nested control „so they neither open the viewer nor trigger the card press state"';
+const GALLERY_SCROLL_WINS =
+	'#591 design summary: „Swipe uses horizontal-intent detection so vertical page scroll still wins"';
 
 const mobileTouch = { viewport: ['mobile'] } as const;
 const desktopPointer = { viewport: ['desktop'] } as const;
@@ -193,6 +201,7 @@ export const GIFT_CARD_SURFACE: Surface<typeof GIFT_CARD_DIMENSIONS, GiftCardOut
 		SELECTION_LONG_PRESS,
 		TOUCH_REORDER,
 		CATEGORY_MORE,
+		GALLERY_SWIPE,
 	],
 	capabilities: [
 		// Touch on phones.
@@ -343,6 +352,23 @@ export const GIFT_CARD_SURFACE: Surface<typeof GIFT_CARD_DIMENSIONS, GiftCardOut
 			{ ...mobileTouch, role: ['visitor'], grouping: ungrouped },
 			{ browse: 'toggles-like' },
 			`${CONTENT_PRESS}; ${LIKES}`,
+		),
+		// The List view shows only a „+N" chip, so only Card view galleries browse.
+		capability(
+			'swipe gallery image sideways',
+			'gesture',
+			'touch',
+			{ ...mobileTouch, view: ['card'], grouping: ungrouped },
+			{ browse: 'changes-image', selection: 'keeps-image', reorder: 'keeps-image' },
+			GALLERY_SWIPE,
+		),
+		capability(
+			'swipe gallery image vertically',
+			'gesture',
+			'touch',
+			{ ...mobileTouch, view: ['card'], grouping: ungrouped },
+			{ browse: 'keeps-image' },
+			GALLERY_SCROLL_WINS,
 		),
 
 		// Mouse on desktops.

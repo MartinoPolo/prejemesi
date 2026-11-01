@@ -2,6 +2,7 @@ import { expect, type Locator, type Page } from '@playwright/test';
 import * as m from '../../../../src/lib/paraglide/messages.js';
 import { waitForAppHydration } from '../../../e2e/fixtures/auth-helpers.js';
 import { waitForDialogOverlayRemoval } from '../../../e2e/fixtures/wishlist-helpers.js';
+import { MAX_GIFT_IMAGES } from '../../../../src/lib/modules/gifts/gift_images.js';
 
 export interface FixtureGift {
 	name: string;
@@ -9,6 +10,31 @@ export interface FixtureGift {
 	link?: string;
 	/** Several categories, in order; the first is the primary one. */
 	categories?: readonly string[];
+	/** Same-origin image paths of the gallery, in order; the first is the cover. */
+	imagePaths?: readonly string[];
+}
+
+const IMAGE_LINK_PLACEHOLDER = 'https://example.com/image.jpg';
+
+/** Links the cover through the URL source, then adds each later image from the gallery strip. */
+async function addFixtureImages(page: Page, dialog: Locator, imagePaths: readonly string[]) {
+	const strip = dialog.getByTestId('gift-image-strip');
+	for (const [index, imagePath] of imagePaths.entries()) {
+		if (index === 0) {
+			await dialog.getByRole('radio', { name: m.gift_image_url_tab(), exact: true }).click();
+		} else {
+			await strip.getByRole('button', { name: m.gift_image_strip_add_label() }).click();
+			await page.getByRole('menuitem', { name: m.gift_image_strip_add_url() }).click();
+		}
+		const linkInput = dialog.getByPlaceholder(IMAGE_LINK_PLACEHOLDER);
+		if (index > 0) {
+			await expect(linkInput).toBeFocused();
+		}
+		await linkInput.fill(new URL(imagePath, page.url()).href);
+		await expect(strip).toContainText(
+			m.gift_image_strip_heading({ count: index + 1, max: MAX_GIFT_IMAGES }),
+		);
+	}
 }
 
 /** Adds a gift through the editor, which the shared e2e helper offers only with one category. */
@@ -38,6 +64,9 @@ export async function addFixtureGift(page: Page, gift: FixtureGift): Promise<voi
 		await expect(dialog.getByTestId('gift-category-chips').getByRole('listitem')).toHaveCount(
 			gift.categories.length,
 		);
+	}
+	if (gift.imagePaths !== undefined) {
+		await addFixtureImages(page, dialog, gift.imagePaths);
 	}
 	await dialog.getByRole('button', { name: 'Přidat dárek' }).click();
 	await expect(dialog).toBeHidden({ timeout: 10_000 });

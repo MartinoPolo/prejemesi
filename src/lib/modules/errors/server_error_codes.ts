@@ -148,6 +148,8 @@ export const SERVER_ERROR = {
 	AGENT_IMAGE_REFERENCE_INVALID: 'AGENT_IMAGE_REFERENCE_INVALID',
 	AGENT_IMAGE_REFERENCE_EXPIRED: 'AGENT_IMAGE_REFERENCE_EXPIRED',
 	AGENT_IMAGE_REFERENCE_USED: 'AGENT_IMAGE_REFERENCE_USED',
+	// A malformed gallery: empty, too long, a bad entry, or mixed with imageReference or imageMeta.
+	AGENT_IMAGE_REFERENCES_INVALID: 'AGENT_IMAGE_REFERENCES_INVALID',
 	// Generic codes the agent API reports for plain-text errors, which carry no code of their own.
 	BAD_REQUEST: 'BAD_REQUEST',
 	UNAUTHORIZED: 'UNAUTHORIZED',

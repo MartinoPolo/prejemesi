@@ -356,6 +356,7 @@ describe.skipIf(!DB_READY)('gift operation core [real DB]', () => {
 					'imageUrl',
 					'imageKey',
 					'imageMeta',
+					'images',
 					'quantity',
 					'sortOrder',
 					'received',

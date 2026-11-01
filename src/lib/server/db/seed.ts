@@ -21,7 +21,13 @@ import { sql } from 'drizzle-orm';
 import { hashPassword } from 'better-auth/crypto';
 import { user, account } from './auth.schema.js';
 import { wishlist, priorityLevel } from './wishlist.schema.js';
-import { gift, giftCategory, reservation, giftLike } from './gift.schema.js';
+import {
+	gift,
+	giftCategory,
+	giftImage as giftImageTable,
+	reservation,
+	giftLike,
+} from './gift.schema.js';
 import { moderatorAssignment } from './moderator.schema.js';
 import { claimInvite } from './claim.schema.js';
 import { wishlistFollower } from './follower.schema.js';
@@ -203,6 +209,20 @@ const G_KNIZKA = 'seed-g-knizka';
 const G_KOCAREK = 'seed-g-kocarek';
 const G_DUPACKY = 'seed-g-dupacky';
 const G_CHRASTITKO = 'seed-g-chrastitko';
+
+// Later gallery images after each gift's cover: a full gallery and a short one.
+const SEED_GIFT_GALLERIES: Record<string, string[]> = {
+	[G_PS5]: [
+		'seed/g-sony.jpg',
+		'seed/g-monitor.jpg',
+		'seed/g-kindle.jpg',
+		'seed/g-kavovar.jpg',
+		'seed/g-lego.jpg',
+		'seed/g-catan.jpg',
+		'seed/g-sachy.jpg',
+	],
+	[G_BUNDA]: ['seed/g-batoh.jpg', 'seed/g-satek.jpg'],
+};
 
 // Date helper
 const d = (iso: string) => new Date(iso);
@@ -1587,6 +1607,19 @@ async function seed() {
 				sortOrder: 2,
 			},
 		]);
+
+		// The gift insert mirrored each cover into position 0; galleries add the later images.
+		console.log('Seeding gift galleries...');
+		await db.insert(giftImageTable).values(
+			Object.entries(SEED_GIFT_GALLERIES).flatMap(([giftId, laterKeys]) =>
+				laterKeys.map((key, index) => ({
+					id: `${giftId}-image-${index + 1}`,
+					giftId,
+					position: index + 1,
+					...giftImage(key),
+				})),
+			),
+		);
 
 		// ---------------------------------------------------------------
 		// Reservations

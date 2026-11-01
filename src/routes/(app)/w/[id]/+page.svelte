@@ -69,6 +69,7 @@
 	import { emptyGiftFilters, setGiftsContext } from '$lib/modules/gifts/gifts.context.svelte.js';
 	import { createLatestAsyncQueue } from '$lib/modules/gifts/latest_async_queue.js';
 	import { setLikesContext } from '$lib/modules/likes/likes.context.svelte.js';
+	import { provideGiftGalleryPositions } from '$lib/modules/gifts/gift_gallery_positions.js';
 	import { setSharingContext } from '$lib/modules/sharing/sharing.context.svelte.js';
 	import {
 		buildWishlistSocialMetaTags,
@@ -300,6 +301,7 @@
 
 	const assistant = setAssistantContext();
 	const decidingProposals: DecidingProposalRegistry = new SvelteSet();
+	provideGiftGalleryPositions();
 
 	untrack(() =>
 		setLikesContext(

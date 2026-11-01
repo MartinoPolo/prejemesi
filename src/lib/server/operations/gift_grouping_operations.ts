@@ -25,6 +25,7 @@ import {
 import { requireOperationActor, type OperationActor } from './actor.js';
 import { requireMutableManagedWishlist, requireWishlistManagement } from './wishlist_management.js';
 import { applyBulkGiftUpdate } from './gift_bulk_operations.js';
+import { giftColumnsWithImages } from './gift_gallery.js';
 
 /** Category settings, including usage counts, are for managers only. */
 async function requireCategoryManager(
@@ -135,7 +136,7 @@ async function removePriorityLevels(
 	);
 	// An UPDATE cannot return the replaced level, so the gifts are read and locked first.
 	const giftsBefore = await context.transaction
-		.select()
+		.select(giftColumnsWithImages())
 		.from(gift)
 		.where(assignedToRemovedLevel)
 		.orderBy(gift.id)
@@ -156,7 +157,7 @@ async function removePriorityLevels(
 							giftId: unassignedGift.id,
 							wishlistId,
 							before: giftBefore,
-							after: unassignedGift,
+							after: { ...unassignedGift, images: giftBefore.images },
 						},
 					];
 		}),
