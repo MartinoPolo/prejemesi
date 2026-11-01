@@ -1141,6 +1141,12 @@ main.app-content {
 		@apply bg-background text-foreground;
 	}
 
+	/* `color` resolves where it is declared and inherits as a value, so a nested palette
+	   scope re-applies its own foreground; otherwise its text keeps the viewer's ink. */
+	[data-palette]:not(:root) {
+		@apply text-foreground;
+	}
+
 	button:not(:disabled),
 	[role='button']:not(:disabled) {
 		cursor: pointer;
