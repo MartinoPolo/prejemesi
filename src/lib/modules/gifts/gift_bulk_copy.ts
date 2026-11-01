@@ -22,7 +22,9 @@ import {
 	appendGiftsUsingTransaction,
 	type GiftCreationTransaction,
 } from './gift_creation_service.js';
-import type { DescriptionAppend } from './types.js';
+import type { DescriptionAppend, GiftWithImages } from './types.js';
+import type { GiftImage } from './gift_images.js';
+import { giftImagesColumn } from '$lib/server/operations/gift_gallery.js';
 import type { RecordGiftRevisions } from '$lib/server/operations/gift_revisions.js';
 import { lockWishlistsInIdOrder } from '$lib/server/operations/wishlist_management.js';
 
@@ -42,6 +44,7 @@ type Database = ReturnType<typeof getDb>;
 type Transaction = GiftCreationTransaction;
 type SourceGift = typeof gift.$inferSelect & {
 	categories: readonly Pick<PublicGiftCategory, 'presetKey' | 'customLabel'>[];
+	images: GiftImage[];
 };
 
 export function flattenGiftDescription(
@@ -54,10 +57,14 @@ export function flattenGiftDescription(
 	return parts.length === 0 ? null : parts.join('\n\n');
 }
 
+/**
+ * The copy's gallery and portable fields. `destinationImageKeys` follows the source gallery: each
+ * uploaded image gets the key of its own copied object, a linked image stays a link (null).
+ */
 export function portableGiftCopy(input: {
 	source: SourceGift;
 	destinationGiftId: string;
-	destinationImageKey: string | null;
+	destinationImageKeys: readonly (string | null)[];
 	taxonomy: { priorityLevelId: string | null; categoryIds: string[] };
 }) {
 	return {
@@ -72,11 +79,20 @@ export function portableGiftCopy(input: {
 		priceMax: input.source.priceMax,
 		currency: input.source.currency,
 		quantity: input.source.quantity,
-		imageUrl: input.source.imageUrl,
-		imageKey: input.destinationImageKey,
-		imageMeta: input.source.imageMeta,
+		images: input.source.images.map((image, index) => ({
+			imageUrl: image.imageUrl,
+			imageKey: input.destinationImageKeys[index] ?? null,
+			imageMeta: image.imageMeta,
+		})),
 		...input.taxonomy,
 	};
+}
+
+function galleryKeysMatch(first: SourceGift, second: SourceGift): boolean {
+	return (
+		first.images.length === second.images.length &&
+		first.images.every((image, index) => image.imageKey === second.images[index]?.imageKey)
+	);
 }
 
 export function mapCopiedTaxonomy(input: {
@@ -185,7 +201,7 @@ async function loadSourceGifts(
 	lock: boolean,
 ): Promise<SourceGift[]> {
 	const query = database
-		.select({ gift, categories: activeGiftCategoriesColumn() })
+		.select({ gift, categories: activeGiftCategoriesColumn(), images: giftImagesColumn() })
 		.from(gift)
 		.where(
 			and(
@@ -199,7 +215,10 @@ async function loadSourceGifts(
 		error(400, SERVER_ERROR.BULK_COPY_INVALID_SELECTION);
 	}
 	const byId = new Map(
-		rows.map((row) => [row.gift.id, { ...row.gift, categories: row.categories }]),
+		rows.map((row) => [
+			row.gift.id,
+			{ ...row.gift, categories: row.categories, images: row.images },
+		]),
 	);
 	return input.giftIds.map((id) => byId.get(id)!);
 }
@@ -256,7 +275,14 @@ export async function compensateStagedImages(
 interface GiftCopyPlan {
 	source: SourceGift;
 	destinationGiftId: string;
-	destinationImageKey: string | null;
+	/** One per source gallery image: the copied object's key, or null for a linked image. */
+	destinationImageKeys: (string | null)[];
+}
+
+interface StagedImagePlan {
+	sourceGiftId: string;
+	sourceKey: string;
+	destinationKey: string;
 }
 
 /** The pre-transaction part of a copy: preflight checks, staged image objects and their journal. */
@@ -294,16 +320,25 @@ export async function prepareGiftCopy(
 		return {
 			source,
 			destinationGiftId,
-			destinationImageKey:
-				source.imageKey === null
-					? null
-					: copiedObjectKey(destinationGiftId, source.imageKey),
+			destinationImageKeys: source.images.map((image) =>
+				image.imageKey === null ? null : copiedObjectKey(destinationGiftId, image.imageKey),
+			),
 		};
 	});
-	const imagePlans = options.stageImages
-		? plans.filter(
-				(plan): plan is typeof plan & { destinationImageKey: string } =>
-					plan.destinationImageKey !== null,
+	const imagePlans: StagedImagePlan[] = options.stageImages
+		? plans.flatMap((plan) =>
+				plan.source.images.flatMap((image, index) => {
+					const destinationKey = plan.destinationImageKeys[index] ?? null;
+					return image.imageKey === null || destinationKey === null
+						? []
+						: [
+								{
+									sourceGiftId: plan.source.id,
+									sourceKey: image.imageKey,
+									destinationKey,
+								},
+							];
+				}),
 			)
 		: [];
 	const journalRows =
@@ -312,10 +347,10 @@ export async function prepareGiftCopy(
 			: await database
 					.insert(giftIngestionOrphan)
 					.values(
-						imagePlans.map((plan) => ({
+						imagePlans.map((imagePlan) => ({
 							manifestId: `bulk-copy:${operationId}`,
-							itemId: plan.source.id,
-							objectKey: plan.destinationImageKey,
+							itemId: imagePlan.sourceGiftId,
+							objectKey: imagePlan.destinationKey,
 							reason: 'Bulk gift copy staging journal',
 						})),
 					)
@@ -357,11 +392,11 @@ export async function prepareGiftCopy(
 		},
 	};
 	try {
-		for (const plan of imagePlans) {
-			const journalId = journalIdByKey.get(plan.destinationImageKey)!;
+		for (const imagePlan of imagePlans) {
+			const journalId = journalIdByKey.get(imagePlan.destinationKey)!;
 			attemptedJournalIds.add(journalId);
-			await stageCopiedImage(plan.source.imageKey!, plan.destinationImageKey);
-			staged.push({ key: plan.destinationImageKey, journalId });
+			await stageCopiedImage(imagePlan.sourceKey, imagePlan.destinationKey);
+			staged.push({ key: imagePlan.destinationKey, journalId });
 		}
 	} catch (thrown) {
 		await preparedCopy.abandon();
@@ -378,7 +413,7 @@ export async function copyPreparedGifts(
 	preparedCopy: Pick<PreparedGiftCopy, 'plans'>,
 	recordRevisions: RecordGiftRevisions,
 ): Promise<{
-	created: (typeof gift.$inferSelect)[];
+	created: GiftWithImages[];
 	destinationShortId: string;
 	sourceShortId: string;
 }> {
@@ -397,7 +432,7 @@ export async function copyPreparedGifts(
 		true,
 	);
 	const sourceRows = await loadSourceGifts(transaction, input, true);
-	if (sourceRows.some((source, index) => source.imageKey !== plans[index]!.source.imageKey)) {
+	if (sourceRows.some((source, index) => !galleryKeysMatch(source, plans[index]!.source))) {
 		error(400, SERVER_ERROR.BULK_COPY_INVALID_SELECTION);
 	}
 	const sourcePriorities = await transaction
@@ -434,7 +469,7 @@ export async function copyPreparedGifts(
 		return portableGiftCopy({
 			source,
 			destinationGiftId: plans[index]!.destinationGiftId,
-			destinationImageKey: plans[index]!.destinationImageKey,
+			destinationImageKeys: plans[index]!.destinationImageKeys,
 			taxonomy,
 		});
 	});

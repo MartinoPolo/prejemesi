@@ -52,7 +52,9 @@ Options:
 
 Changes become proposals the user reviews at the printed reviewLink, unless the token has
 fast-forward. \`gifts create\` takes an array as --input to propose several gifts at once.
-A gift takes a stored image as \`"imageReference": "<reference>"\` in its --input.
+A gift takes a stored image as its cover with \`"imageReference": "<reference>"\` in its --input,
+or its whole gallery (up to 8, the first the cover) with
+\`"imageReferences": [{ "imageReference": "<reference>" }, ...]\`.
 Output is JSON. PREJEMESI_TOKEN and PREJEMESI_URL override the stored login.
 API reference: ${DEFAULT_BASE_URL}/api/v1/openapi.json`;
 

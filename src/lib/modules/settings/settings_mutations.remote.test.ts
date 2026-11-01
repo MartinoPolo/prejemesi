@@ -79,10 +79,12 @@ vi.mock('$lib/server/db/auth.schema.js', () => ({
 }));
 
 vi.mock('drizzle-orm', () => ({
+	getTableColumns: vi.fn((table: Record<string, unknown>) => ({ ...table })),
 	eq: vi.fn((...a: unknown[]) => a),
 	and: vi.fn((...a: unknown[]) => a),
 	isNull: vi.fn((...a: unknown[]) => a),
 	inArray: vi.fn((...a: unknown[]) => a),
+	sql: vi.fn(() => ({})),
 }));
 
 vi.mock('$lib/server/db/wishlist.schema.js', () => ({
@@ -90,6 +92,14 @@ vi.mock('$lib/server/db/wishlist.schema.js', () => ({
 }));
 
 vi.mock('$lib/server/db/gift.schema.js', () => ({
+	giftImage: {
+		id: 'giftImage.id',
+		giftId: 'giftImage.giftId',
+		position: 'giftImage.position',
+		imageUrl: 'giftImage.imageUrl',
+		imageKey: 'giftImage.imageKey',
+		imageMeta: 'giftImage.imageMeta',
+	},
 	gift: { wishlistId: 'g.wishlistId', imageKey: 'g.imageKey', deletedAt: 'g.deletedAt' },
 }));
 
@@ -203,8 +213,21 @@ describe('deleteAccount', () => {
 					},
 					{ id: 'w2', imageKey: null, background: null },
 				],
-				// 3: gifts of those wishlists
-				[{ imageKey: 'gifts/g1.jpg' }, { imageKey: null }],
+				// 3: galleries of those wishlists' gifts
+				[
+					{
+						images: [
+							{ imageUrl: null, imageKey: 'gifts/g1.jpg', imageMeta: null },
+							{
+								imageUrl: 'https://shop.example/g1.jpg',
+								imageKey: null,
+								imageMeta: null,
+							},
+							{ imageUrl: null, imageKey: 'gifts/g1-detail.jpg', imageMeta: null },
+						],
+					},
+					{ images: [] },
+				],
 				// 4: user delete
 				[],
 			]),
@@ -219,7 +242,7 @@ describe('deleteAccount', () => {
 			null,
 			null,
 			'gifts/g1.jpg',
-			null,
+			'gifts/g1-detail.jpg',
 		]);
 	});
 

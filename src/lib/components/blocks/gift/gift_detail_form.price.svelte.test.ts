@@ -37,6 +37,7 @@ function makeGift(overrides: Partial<GiftByRole> = {}): GiftByRole {
 		imageUrl: '',
 		imageKey: '',
 		imageMeta: null,
+		images: [],
 		quantity: 1,
 		sortOrder: 0,
 		received: false,
@@ -353,7 +354,11 @@ describe('GiftDetailForm legacy `auto` normalization (issue #183 EXTRA)', () => 
 		expect(onupdate).toHaveBeenCalledTimes(1);
 		expect(onupdate).toHaveBeenCalledWith(
 			expect.objectContaining({
-				imageMeta: expect.objectContaining({ fitMode: IMAGE_FIT_MODES.auto }),
+				images: [
+					expect.objectContaining({
+						imageMeta: expect.objectContaining({ fitMode: IMAGE_FIT_MODES.auto }),
+					}),
+				],
 			}),
 		);
 	});

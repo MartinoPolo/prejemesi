@@ -28,6 +28,7 @@ import {
 import { AGENT_API_MAX_BODY_BYTES, AGENT_API_RATE_LIMIT } from './limits.js';
 import { describeServerError, isServerErrorCode } from './server_error_description.js';
 import { AGENT_API_BASE_PATH } from './api_paths.js';
+import { MAX_GIFT_IMAGES } from '$lib/modules/gifts/gift_images.js';
 import {
 	IDEMPOTENCY_CLAIM,
 	IDEMPOTENCY_KEY_HEADER,
@@ -117,7 +118,7 @@ const AGENT_ERROR_MESSAGES: Partial<Record<ServerErrorCode, string>> = {
 		'The applied proposal includes changes undo cannot reverse.',
 	[SERVER_ERROR.AGENT_PROPOSAL_REVIEW_REQUIRED]:
 		'The user applies this proposal on its review page: only the fast-forward token that submitted it applies it, and only while every row is ready.',
-	[SERVER_ERROR.AGENT_IMAGE_INPUT_UNSUPPORTED]: `Image URLs and storage keys are not accepted. Only operations whose input schema lists imageReference take an image, from POST ${AGENT_API_BASE_PATH}/images; wishlist images and imported drafts take none.`,
+	[SERVER_ERROR.AGENT_IMAGE_INPUT_UNSUPPORTED]: `Image URLs, storage keys and raw images are not accepted. Only operations whose input schema lists imageReference or imageReferences take images, from POST ${AGENT_API_BASE_PATH}/images; wishlist images and imported drafts take none.`,
 	[SERVER_ERROR.AGENT_IMAGE_REQUEST_INVALID]:
 		'The request must give an image url and exactly one of wishlistId or wishlistShortId.',
 	[SERVER_ERROR.AGENT_IMAGE_URL_INVALID]:
@@ -140,6 +141,7 @@ const AGENT_ERROR_MESSAGES: Partial<Record<ServerErrorCode, string>> = {
 		'The imageReference is unknown, belongs to another user or wishlist, or is repeated.',
 	[SERVER_ERROR.AGENT_IMAGE_REFERENCE_EXPIRED]: 'The imageReference has expired.',
 	[SERVER_ERROR.AGENT_IMAGE_REFERENCE_USED]: 'The imageReference is already attached to a gift.',
+	[SERVER_ERROR.AGENT_IMAGE_REFERENCES_INVALID]: `imageReferences must list 1 to ${MAX_GIFT_IMAGES} entries of { imageReference, imageMeta? } and cannot be combined with imageReference or a top-level imageMeta.`,
 };
 
 /** A failure the API answers with its own status, details and headers. */

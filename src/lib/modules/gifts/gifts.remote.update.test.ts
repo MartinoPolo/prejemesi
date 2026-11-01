@@ -129,6 +129,9 @@ describe('updateGift', () => {
 			mockDbInstance.pushResult([
 				makeGiftRow({ createdAt: AFTER_SHARING, imageKey: 'gifts/old.jpg' }),
 			]);
+			// gallery replaced: old rows deleted, the new cover inserted
+			mockDbInstance.pushResult([]);
+			mockDbInstance.pushResult([]);
 			mockDbInstance.pushResult([{ id: GIFT_ID, imageKey: 'gifts/new.jpg' }]);
 
 			await callUpdateGift(makeRecipientAuthContext(), {
@@ -148,6 +151,8 @@ describe('updateGift', () => {
 			mockDbInstance.pushResult([
 				makeGiftRow({ createdAt: AFTER_SHARING, imageKey: 'gifts/old.jpg' }),
 			]);
+			// gallery cleared
+			mockDbInstance.pushResult([]);
 			mockDbInstance.pushResult([{ id: GIFT_ID, imageKey: null }]);
 
 			await callUpdateGift(makeRecipientAuthContext(), { id: GIFT_ID, imageKey: null });

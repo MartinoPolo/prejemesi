@@ -1,0 +1,451 @@
+<!doctype html>
+<html lang="cs" data-palette="sky">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Varianta A · galerie obrázků dárku</title>
+<style>
+@font-face{font-family:'DynaPuff Variable';src:url('../assets/dynapuff-latin-wght-normal.woff2') format('woff2');font-weight:400 700;unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+20AC}
+@font-face{font-family:'DynaPuff Variable';src:url('../assets/dynapuff-latin-ext-wght-normal.woff2') format('woff2');font-weight:400 700;unicode-range:U+0100-02BA,U+02BD-02FF,U+1E00-1EFF,U+20A0-20AB}
+@font-face{font-family:'Geist Variable';src:url('../assets/geist-latin-wght-normal.woff2') format('woff2');font-weight:100 900;unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+20AC}
+@font-face{font-family:'Geist Variable';src:url('../assets/geist-latin-ext-wght-normal.woff2') format('woff2');font-weight:100 900;unicode-range:U+0100-02BA,U+02BD-02FF,U+1E00-1EFF,U+20A0-20AB}
+/* Standalone review file: values mirror src/app.css (sky palette); designs/tokens.css is legacy. */
+html{--p-brand:#1e9be9;--p-deep:#1265a8;--p-ink:#16385c;--p-bright:#55b9f3;--p-accent:#ffc93c;--p-primary:color-mix(in oklab,var(--p-brand) 20%,var(--p-deep));--ink:var(--p-ink);--ink-faint:color-mix(in oklab,var(--p-ink) 12%,transparent);--brand:var(--p-brand);--background:color-mix(in oklab,var(--p-brand) 11%,white);--foreground:var(--p-ink);--card:#fff;--surface:var(--background);--secondary:color-mix(in oklab,var(--p-brand) 6%,white);--panel-hover:color-mix(in oklab,var(--p-brand) 6%,white);--muted-foreground:color-mix(in oklab,var(--p-ink) 78%,transparent);--primary:var(--p-primary);--primary-hover:color-mix(in oklab,var(--primary) 86%,var(--p-ink));--primary-foreground:#fff;--brand-link:color-mix(in oklab,var(--p-deep) 75%,var(--p-ink));--hard-shadow:color-mix(in oklab,var(--p-ink) 16%,transparent);--pattern-dot:color-mix(in oklab,var(--ink) 13%,transparent);--heart:#e25563;--like-tint:#fdecec;--ring:var(--p-brand);--status-fill:#163b60;--status-danger:#e4574c;--status-danger-text:color-mix(in oklab,var(--status-danger) 50%,var(--ink));--priority-bg:oklch(.93 .05 75);--priority-fg:oklch(.50 .12 75);--category-bg:#a9dbff;--category-fg:#16385c;--gift-frame-ink:color-mix(in oklab,var(--ink) 50%,var(--card));--radius-panel:16px;--radius-btn:7px;--radius-badge:12px;--border-w:2.5px;--size-control-sm:26px;--size-control-md:32px;--size-control-lg:40px;--elevation-compact-offset:2px;--elevation-ordinary-offset:4px;--elevation-lifted-offset:7px;--depth-clearance:var(--elevation-ordinary-offset);--nested-control-gap:calc(.5rem + var(--depth-clearance));--duration-normal:200ms;--ease-standard:cubic-bezier(.2,.7,.3,1);--font-head:'DynaPuff Variable',Arial,sans-serif;--font-body:'Geist Variable',Arial,sans-serif;color-scheme:light}
+html.dark{--ink:color-mix(in oklab,var(--p-bright) 12%,#e6e8ec);--ink-faint:color-mix(in oklab,var(--ink) 16%,transparent);--brand:color-mix(in oklab,var(--p-bright) 70%,#b8bec8);--background:color-mix(in oklab,var(--p-deep) 10%,#090b0f);--foreground:var(--ink);--card:color-mix(in oklab,var(--p-deep) 16%,#13161c);--surface:var(--background);--secondary:color-mix(in oklab,var(--p-deep) 22%,#1c2027);--panel-hover:var(--secondary);--muted-foreground:color-mix(in oklab,var(--ink) 72%,transparent);--primary:color-mix(in oklab,var(--p-brand) 60%,#202630);--brand-link:var(--brand);--hard-shadow:rgb(2 6 12 / 42%);--heart:#f58a94;--like-tint:#57293a;--ring:var(--p-bright);--status-fill:#163b60;--priority-bg:oklch(.28 .04 75);--priority-fg:oklch(.78 .08 75);--category-bg:color-mix(in oklab,#a9dbff 30%,#1c2027);--category-fg:var(--ink);color-scheme:dark}
+.frame-mobile{--elevation-compact-offset:1px;--elevation-ordinary-offset:3px;--elevation-lifted-offset:4px}
+*{box-sizing:border-box}html,body{margin:0;min-width:0}body{background:var(--background);color:var(--foreground);font:14px/1.45 var(--font-body);overflow-x:hidden}
+button,input,select,textarea{font:inherit;color:inherit}button{cursor:pointer}[hidden]{display:none!important}
+h1,h2,h3,p,figure{margin:0}h1,h2,h3{font-family:var(--font-head);font-weight:600}
+:focus-visible{outline:2px solid var(--ring);outline-offset:2px}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+main{max-width:1200px;margin:auto;padding:28px 16px 72px}
+.eyebrow{text-transform:uppercase;font-size:11px;font-weight:800;letter-spacing:.09em;color:var(--brand-link)}
+.page-head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:end;gap:14px 24px}
+h1{font-size:clamp(24px,3vw,34px);line-height:1.25;margin:5px 0 8px}.lede{max-width:72ch}
+h2{font-size:22px;line-height:1.3}.section{margin-top:44px}.section-head{margin-bottom:14px}.section-head p{max-width:80ch;margin-top:4px}
+.spec-label{font-size:12px;font-weight:800;margin-bottom:8px;display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}.spec-label small{font-weight:600;color:var(--muted-foreground)}
+.segmented{display:inline-flex;gap:4px;padding:3px;border:2px solid var(--ink);border-radius:10px;background:var(--secondary)}.segmented button{min-height:32px;border:2px solid transparent;border-radius:var(--radius-btn);padding:3px 12px;background:none;font-weight:700}.segmented button[aria-pressed=true]{background:var(--card);border-color:var(--ink);box-shadow:var(--elevation-compact-offset) var(--elevation-compact-offset) 0 var(--hard-shadow)}
+
+/* Buttons: owner stays put, surface lifts (elevation contract). */
+.btn{position:relative;display:inline-flex;min-height:var(--size-control-md);min-width:var(--size-control-md);padding:0;border:0;background:none;border-radius:var(--radius-btn);font-weight:600;font-size:13px;white-space:nowrap;flex-shrink:0}
+.btn>span{display:inline-flex;align-items:center;justify-content:center;gap:6px;width:100%;min-height:inherit;padding:0 11px;border:var(--border-w) solid var(--ink);border-radius:inherit;background:var(--card);color:var(--ink);box-shadow:var(--elevation-ordinary-offset) var(--elevation-ordinary-offset) 0 var(--hard-shadow);transition:translate var(--duration-normal) var(--ease-standard),box-shadow var(--duration-normal) var(--ease-standard),opacity var(--duration-normal)}
+.btn:hover>span{background:var(--panel-hover);translate:-1px -1px;box-shadow:calc(var(--elevation-ordinary-offset) + 1px) calc(var(--elevation-ordinary-offset) + 1px) 0 var(--hard-shadow)}
+.btn:active>span{translate:2px 2px;box-shadow:1px 1px 0 var(--hard-shadow)}
+.btn.primary>span{background:var(--primary);color:var(--primary-foreground)}.btn.primary:hover>span{background:var(--primary-hover)}
+.btn.icon>span{padding:0;aspect-ratio:1}.btn svg{width:16px;height:16px;flex-shrink:0}
+.btn.sm{min-height:var(--size-control-sm);min-width:var(--size-control-sm);font-size:12px}.btn.sm svg{width:14px;height:14px}
+.btn.lg{min-height:var(--size-control-lg);min-width:var(--size-control-lg)}
+.btn:disabled{opacity:.45;cursor:not-allowed}.btn:disabled>span{translate:none;box-shadow:var(--elevation-ordinary-offset) var(--elevation-ordinary-offset) 0 var(--hard-shadow);background:var(--card)}
+.btn.is-focus{outline:2px solid var(--ring);outline-offset:2px}
+
+/* Shared badges (schematic stand-ins for the real badge components). */
+.category{display:inline-block;max-width:100%;transform:rotate(-3deg);border:2px solid #000;border-radius:6px;background:var(--category-bg);color:var(--category-fg);padding:2px 9px;font-size:12px;line-height:16px;font-weight:800;box-shadow:var(--elevation-ordinary-offset) var(--elevation-ordinary-offset) 0 var(--hard-shadow);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.priority{position:absolute;z-index:20;bottom:12px;left:12px;height:20px;border-radius:999px;background:var(--priority-bg);color:var(--priority-fg);padding:0 8px;font-size:11px;line-height:20px;font-weight:700}
+.state{position:absolute;inset:0;z-index:15;display:flex;align-items:center;justify-content:center;pointer-events:none}.state span{max-width:calc(100% - 96px);transform:rotate(-1deg);border:2px solid var(--ink);border-radius:var(--radius-panel);padding:4px 9px;background:var(--status-fill);color:#fff;font-size:12px;line-height:16px;font-weight:700;text-align:center;box-shadow:var(--elevation-ordinary-offset) var(--elevation-ordinary-offset) 0 var(--hard-shadow)}
+.like{display:inline-flex;align-items:center;gap:4px;min-height:var(--size-control-md);min-width:var(--size-control-md);padding:4px;border:0;border-radius:8px;background:transparent;font-weight:700;font-size:13px}.like:hover{background:var(--like-tint)}.like svg{width:16px;height:16px;fill:var(--card);stroke:var(--heart);filter:drop-shadow(0 1px 1px var(--card)) drop-shadow(0 -1px 1px var(--card))}.like span{filter:drop-shadow(0 1px 1px var(--card)) drop-shadow(0 -1px 1px var(--card))}
+
+/* Product photo stand-ins */
+.photo{display:block;width:100%;height:100%}
+
+/* ===== Gift Card ===== */
+.card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr));gap:26px 22px}
+.gift-card{position:relative;min-width:0;border-radius:var(--radius-panel)}
+.card-surface{position:relative;display:grid;grid-template-rows:auto 1fr auto;height:100%;border:var(--border-w) solid var(--ink);border-radius:inherit;background:var(--card);box-shadow:var(--elevation-ordinary-offset) var(--elevation-ordinary-offset) 0 var(--hard-shadow);overflow:hidden;transition:translate var(--duration-normal) var(--ease-standard),box-shadow var(--duration-normal) var(--ease-standard)}
+.gift-card:not([data-dimmed]):not([data-mode=reorder]):hover .card-surface,.gift-card[data-force=hover] .card-surface{translate:-3px -3px;box-shadow:var(--elevation-lifted-offset) var(--elevation-lifted-offset) 0 var(--hard-shadow)}
+.image-area{position:relative;aspect-ratio:4/3;background:var(--surface);border-bottom:3.5px solid var(--ink);isolation:isolate;overflow:hidden;cursor:pointer;touch-action:pan-y}
+.pattern{position:absolute;inset:0;z-index:-1;background-image:radial-gradient(var(--pattern-dot) 1.4px,transparent 1.5px);background-size:18px 18px}
+.track{position:absolute;inset:0;display:flex;transition:transform 260ms var(--ease-standard)}.track.dragging{transition:none}
+.slide{flex:0 0 100%;height:100%}
+.top-overlays{position:absolute;top:8px;left:8px;right:8px;z-index:20;display:flex;align-items:flex-start;gap:8px}.top-overlays .cat-zone{min-width:0;flex:1;display:flex;gap:8px;align-items:center}.top-overlays .like{margin-left:auto}
+.gallery-arrow{position:absolute;z-index:25;top:calc(50% - var(--size-control-md) / 2);opacity:0;transition:opacity 150ms var(--ease-standard)}
+.gallery-arrow.prev{left:10px}.gallery-arrow.next{right:calc(10px + var(--elevation-ordinary-offset))}
+.gift-card:hover .gallery-arrow,.gift-card:focus-within .gallery-arrow,.gift-card[data-force] .gallery-arrow{opacity:1}
+.gift-card[data-mode=reorder] .gallery-arrow,.gift-card[data-mode=select] .gallery-arrow,.frame-mobile .gift-card .gallery-arrow{display:none}
+.indicator{position:absolute;z-index:21;bottom:12px;left:50%;translate:-50% 0;height:20px;display:flex;align-items:center;gap:5px;padding:0 7px;border-radius:999px;background:color-mix(in oklab,var(--card) 88%,transparent);box-shadow:0 0 0 1.5px var(--ink-faint);pointer-events:none;transition:left 0s,right 0s}
+.indicator[data-crowded]{left:auto;right:12px;translate:none}
+.indicator i{display:block;width:6px;height:6px;border-radius:999px;background:color-mix(in oklab,var(--ink) 38%,transparent);transition:width var(--duration-normal) var(--ease-standard),background var(--duration-normal)}
+.indicator i.on{width:14px;background:var(--ink)}
+.indicator.count{font-size:11px;font-weight:800;font-variant-numeric:tabular-nums;color:var(--ink);padding:0 8px}
+.card-body{min-width:0;padding:14px 14px 10px}
+.gift-title{font:600 20px/1.3 var(--font-head);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
+.gift-desc{font-size:13px;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gift-meta{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;margin-top:8px}
+.gift-link{display:inline-flex;align-items:center;gap:4px;border:2px solid var(--ink);border-radius:999px;padding:1px 8px;color:var(--foreground);font-size:12px;font-weight:700;text-decoration:none}.gift-link svg{width:12px;height:12px}
+.gift-price{font-size:14px;font-weight:700}
+.card-footer{display:flex;justify-content:flex-end;gap:var(--nested-control-gap);padding:4px calc(9px + var(--depth-clearance)) calc(9px + var(--depth-clearance)) 9px}
+.gift-card[data-dimmed] .card-surface{border-color:var(--gift-frame-ink);background:color-mix(in oklab,var(--card) 82%,var(--surface))}
+.gift-card[data-dimmed] .image-area{border-bottom-color:var(--gift-frame-ink)}
+.gift-card[data-dimmed] .track,.gift-card[data-dimmed] .card-body,.gift-card[data-dimmed] .category,.gift-card[data-dimmed] .priority{opacity:.5}
+.grip,.select-box{flex-shrink:0;display:inline-grid;place-items:center;width:var(--size-control-md);height:var(--size-control-md);border:var(--border-w) solid var(--ink);border-radius:var(--radius-btn);background:var(--card);box-shadow:var(--elevation-ordinary-offset) var(--elevation-ordinary-offset) 0 var(--hard-shadow)}
+.grip svg{width:16px;height:16px}.select-box{width:26px;height:26px;border-radius:6px;box-shadow:none}.select-box[aria-checked=true]{background:var(--primary);color:var(--primary-foreground)}.select-box svg{width:14px;height:14px}
+.gift-card[data-mode=reorder] .card-surface{cursor:grab}
+
+/* Mobile frames */
+.frames{display:flex;flex-wrap:wrap;gap:28px;align-items:flex-start}
+.frame-mobile{width:390px;max-width:100%;border:2px solid var(--ink);border-radius:26px;background:var(--background);padding:14px 12px 18px;container-type:inline-size;min-width:0}
+.frame-mobile .frame-title{font-size:12px;font-weight:800;margin:0 2px 10px;color:var(--muted-foreground)}
+.frame-mobile .stack{display:grid;gap:22px}
+.frame-mobile .gift-title{font-size:16px}
+.frame-mobile .card-body{padding:9px 9px 4px}
+.frame-mobile .card-footer{padding:4px calc(9px + var(--depth-clearance)) calc(9px + var(--depth-clearance)) 9px}
+.frame-mobile .btn{min-height:var(--size-control-lg);min-width:var(--size-control-lg);font-size:14px}
+.frame-mobile .grip{width:var(--size-control-lg);height:var(--size-control-lg)}
+.pair{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.pair .gift-title{font-size:14px}.pair .btn{font-size:13px}.pair .btn>span{padding:0 8px}.pair .card-footer{gap:6px;padding-right:calc(6px + var(--depth-clearance));padding-left:6px}.pair .gift-desc{display:none}
+.swipe-hint{position:absolute;z-index:26;top:50%;left:58%;width:44px;height:44px;margin:-22px;border-radius:999px;background:color-mix(in oklab,var(--ink) 22%,transparent);box-shadow:0 0 0 2px color-mix(in oklab,var(--card) 80%,transparent);pointer-events:none}
+.swipe-hint::after{content:'';position:absolute;top:50%;right:52px;width:60px;height:2px;background:linear-gradient(to left,color-mix(in oklab,var(--ink) 50%,transparent),transparent)}
+.mode-note{display:inline-flex;align-items:center;gap:6px;margin-top:6px;font-size:12px;font-weight:600;color:var(--muted-foreground)}
+
+/* ===== List ===== */
+.list{display:grid;gap:18px}
+.gift-row{position:relative;display:grid;grid-template-columns:min(35%,225px) minmax(0,1fr);grid-template-rows:1fr auto;min-height:190px;border:var(--border-w) solid var(--ink);border-radius:var(--radius-panel);background:var(--card);overflow:hidden}
+.gift-row .image-area{grid-row:1/3;aspect-ratio:auto;border-bottom:0;border-right:2.5px solid var(--ink);min-height:100%}
+.gift-row .image-area .photo{position:absolute;inset:0}
+.gift-row .row-body{min-width:0;padding:13px 14px 6px}
+.gift-row .title-line{display:flex;align-items:flex-start;gap:8px}.gift-row .title-line .gift-title{flex:1;min-width:0;font-size:18px;-webkit-line-clamp:1}.gift-row .title-line .like{margin:-4px -4px 0 0}
+.gift-row .card-footer{grid-column:2}
+.plus-chip{position:absolute;z-index:20;top:8px;right:8px;display:inline-flex;align-items:center;gap:3px;height:22px;padding:0 7px;border:2px solid var(--ink);border-radius:var(--radius-badge);background:var(--card);color:var(--ink);font-size:11px;font-weight:800;font-variant-numeric:tabular-nums;box-shadow:var(--elevation-compact-offset) var(--elevation-compact-offset) 0 var(--hard-shadow)}.plus-chip svg{width:11px;height:11px}
+.gift-row .top-overlays{right:auto;max-width:calc(100% - 64px);flex-direction:column;align-items:flex-start;gap:8px}
+.gift-row .top-overlays .cat-zone{flex:none;max-width:100%}
+.gift-row[data-dimmed]{border-color:var(--gift-frame-ink);background:color-mix(in oklab,var(--card) 82%,var(--surface))}.gift-row[data-dimmed] .image-area{border-right-color:var(--gift-frame-ink)}
+.gift-row[data-dimmed] .photo,.gift-row[data-dimmed] .gift-title,.gift-row[data-dimmed] .gift-desc,.gift-row[data-dimmed] .gift-meta,.gift-row[data-dimmed] .category,.gift-row[data-dimmed] .priority{opacity:.5}
+.gift-row[data-dimmed] .state span{max-width:calc(100% - 16px)}
+.frame-mobile .gift-row{grid-template-columns:min(35%,9.5rem) minmax(0,1fr);min-height:200px}
+.frame-mobile .gift-row .image-area .photo{left:50%;width:auto;height:100%;aspect-ratio:1;translate:-50% 0}
+.frame-mobile .gift-row .row-body{padding:8px 8px 2px}.frame-mobile .gift-row .title-line .gift-title{font-size:15px;-webkit-line-clamp:2}
+.frame-mobile .gift-row .gift-desc{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.frame-mobile .gift-row .card-footer{padding:3px calc(7px + var(--depth-clearance)) calc(8px + var(--depth-clearance)) 7px}
+.frame-mobile .gift-row .priority{left:8px;bottom:8px}
+.frame-mobile .gift-row .category{padding:1px 6px}
+.frame-mobile .gift-row .plus-chip{top:9px;right:7px}
+
+/* ===== Viewer ===== */
+.viewer-wrap{container-type:inline-size}
+.viewer{position:relative;display:grid;grid-template-columns:auto minmax(300px,340px);width:max-content;max-width:100%;margin:auto;border:var(--border-w) solid var(--ink);border-radius:var(--radius-panel);background:var(--card);box-shadow:var(--elevation-ordinary-offset) var(--elevation-ordinary-offset) 0 var(--hard-shadow);overflow:hidden}
+.viewer:focus{outline:none}.viewer:focus-visible{outline:2px solid var(--ring);outline-offset:3px}
+.viewer .close{position:absolute;top:10px;right:calc(10px + var(--depth-clearance));z-index:30}
+.photo-col{display:grid;grid-template-rows:auto auto;border-right:2.5px solid var(--ink);background:var(--surface);min-width:0}
+.photo-region{position:relative;height:var(--photo-cap,440px);width:calc(var(--photo-cap,440px) * var(--widest,1.3333));max-width:100%;isolation:isolate;overflow:hidden}
+.photo-region .stage-photo{position:absolute;inset:0;display:grid;place-items:center}
+.photo-region .stage-photo svg{display:block;height:100%;width:auto;max-width:100%;object-fit:contain}
+.photo-region .gallery-arrow{opacity:1;top:calc(50% - var(--size-control-md) / 2)}
+.photo-region .viewer-count{position:absolute;z-index:21;top:12px;left:12px;height:22px;padding:0 9px;border-radius:999px;background:color-mix(in oklab,var(--card) 88%,transparent);box-shadow:0 0 0 1.5px var(--ink-faint);font-size:12px;font-weight:800;line-height:22px;font-variant-numeric:tabular-nums}
+.thumbs{display:flex;gap:10px;padding:12px calc(12px + var(--elevation-compact-offset)) calc(12px + var(--elevation-compact-offset)) 12px;overflow-x:auto;border-top:2.5px solid var(--ink);background:var(--card);scrollbar-width:thin}
+.thumb{flex:0 0 auto;width:56px;height:56px;padding:0;border:2px solid var(--ink-faint);border-radius:10px;background:var(--surface);overflow:hidden;transition:translate var(--duration-normal) var(--ease-standard),box-shadow var(--duration-normal)}
+.thumb svg{display:block;width:100%;height:100%}
+.thumb:hover{border-color:var(--ink)}
+.thumb[aria-current=true]{border:var(--border-w) solid var(--ink);translate:-1px -1px;box-shadow:var(--elevation-compact-offset) var(--elevation-compact-offset) 0 var(--hard-shadow)}
+.caption-col{display:flex;flex-direction:column;min-width:0}
+.caption{padding:18px 18px 12px;display:grid;gap:10px;align-content:start;flex:1}
+.caption h3{font-size:22px;line-height:1.3;padding-right:44px;overflow-wrap:anywhere}
+.price-line{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-weight:700}.price-line .dot{color:var(--muted-foreground)}
+.cat-row{display:flex;flex-wrap:wrap;gap:8px}
+.text-link{display:inline-flex;align-items:center;gap:4px;color:var(--brand-link);font-weight:700;text-decoration:underline;text-underline-offset:3px}.text-link svg{width:13px;height:13px}
+.viewer-footer{display:flex;justify-content:space-between;align-items:center;gap:var(--nested-control-gap);padding:10px calc(14px + var(--depth-clearance)) calc(14px + var(--depth-clearance)) 14px;border-top:2px solid var(--ink-faint)}
+.key-hint{font-size:12px;color:var(--muted-foreground);margin-top:10px;text-align:center}
+kbd{display:inline-block;min-width:20px;padding:0 5px;border:1.5px solid var(--ink);border-radius:5px;font:700 11px/18px var(--font-body);text-align:center;background:var(--card)}
+@container (max-width:760px){
+ .viewer{grid-template-columns:minmax(0,1fr);width:100%}
+ .photo-col{border-right:0;border-bottom:2.5px solid var(--ink)}
+ .photo-region{width:100%;height:auto;aspect-ratio:var(--widest,1.3333);max-height:var(--photo-cap-mobile,320px)}
+ .photo-region .gallery-arrow{top:calc(50% - var(--size-control-lg) / 2)}
+ .photo-region .gallery-arrow,.photo-region .gallery-arrow{min-height:var(--size-control-lg);min-width:var(--size-control-lg)}
+ .viewer .close{top:8px}
+ .viewer .close,.viewer-footer .btn{min-height:var(--size-control-lg);min-width:var(--size-control-lg)}
+ .thumbs{gap:8px}.thumb{width:52px;height:52px}
+ .caption h3{font-size:18px}
+}
+.frame-mobile .viewer-wrap .viewer{border-radius:18px}
+
+/* ===== Editor ===== */
+.editor-wrap{container-type:inline-size}
+.editor{border:var(--border-w) solid var(--ink);border-radius:var(--radius-panel);background:var(--card);box-shadow:var(--elevation-ordinary-offset) var(--elevation-ordinary-offset) 0 var(--hard-shadow);overflow:hidden}
+.editor-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px calc(14px + var(--depth-clearance)) 12px 18px;border-bottom:2px solid var(--ink-faint)}.editor-head h3{font-size:19px}
+.editor-body{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:26px;padding:18px}
+.workshop{display:grid;gap:14px;align-content:start;min-width:0}
+.mode-row{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between}
+.stage{position:relative;aspect-ratio:44/30;border:2px solid var(--ink);border-radius:12px;background:var(--surface);overflow:hidden;isolation:isolate}
+.stage .ghost{position:absolute;width:110%;height:121%;left:-5%;top:-10.5%;opacity:.35}
+.stage .window{position:absolute;left:13.64%;top:10%;width:72.73%;height:80%;overflow:hidden;outline:2.5px solid var(--ink);box-shadow:0 0 0 999px color-mix(in oklab,var(--background) 35%,transparent)}
+.stage .window .inner{position:absolute;width:151.25%;height:151.25%;left:-25.63%;top:-25.625%}
+.stage svg{display:block;width:100%;height:100%}
+.stage .scale-badge{position:absolute;z-index:2;top:8px;right:8px;height:22px;padding:0 8px;border-radius:999px;background:var(--card);border:2px solid var(--ink);font-size:11px;font-weight:800;line-height:18px}
+.strip-head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:4px 12px}
+.strip-head strong{font-size:13px}.strip-head span{font-size:12px;color:var(--muted-foreground)}
+.strip{display:flex;flex-wrap:wrap;gap:12px;padding:7px calc(7px + var(--elevation-compact-offset)) calc(7px + var(--elevation-compact-offset)) 7px;list-style:none;margin:0}
+.tile{position:relative;width:68px;height:68px;flex:0 0 auto}
+.tile .select{display:block;width:100%;height:100%;padding:0;border:2px solid var(--ink-faint);border-radius:10px;background:var(--surface);overflow:hidden}
+.tile .select svg{display:block;width:100%;height:100%}
+.tile .select:hover{border-color:var(--ink)}
+.tile[data-selected] .select{border:var(--border-w) solid var(--ink);box-shadow:0 0 0 3px var(--card),0 0 0 5.5px var(--brand)}
+.tile .cover{position:absolute;left:4px;right:4px;bottom:4px;height:17px;border-radius:999px;background:var(--status-fill);color:#fff;font-size:10px;font-weight:800;line-height:17px;text-align:center;pointer-events:none}
+.tile .handle{position:absolute;top:3px;left:3px;width:22px;height:22px;display:grid;place-items:center;padding:0;border:2px solid var(--ink);border-radius:6px;background:var(--card);cursor:grab;opacity:0;transition:opacity 150ms}
+.tile .handle svg{width:12px;height:12px}
+.tile .remove{position:absolute;top:3px;right:3px;width:22px;height:22px;display:grid;place-items:center;padding:0;border:2px solid var(--ink);border-radius:6px;background:var(--card);color:var(--status-danger-text);opacity:0;transition:opacity 150ms}
+.tile .remove svg{width:12px;height:12px}
+.tile:hover .handle,.tile:hover .remove,.tile:focus-within .handle,.tile:focus-within .remove,.tile[data-selected] .handle,.tile[data-selected] .remove{opacity:1}
+.tile.is-dragging{rotate:4deg;translate:-4px -6px;z-index:3}.tile.is-dragging .select{border:var(--border-w) solid var(--ink);box-shadow:var(--elevation-lifted-offset) var(--elevation-lifted-offset) 0 var(--hard-shadow)}
+.tile.ghost-slot .select{border:2px dashed var(--ink);background:var(--secondary)}.tile.ghost-slot .select>*{opacity:0}
+.drop-line{flex:0 0 4px;width:4px;height:68px;margin:0 -8px;border-radius:2px;background:var(--brand)}
+.add-tile{position:relative;width:68px;height:68px;flex:0 0 auto}
+.add-tile>button{width:100%;height:100%;display:grid;place-items:center;align-content:center;gap:2px;padding:0;border:2px dashed var(--ink);border-radius:10px;background:var(--card);font-size:11px;font-weight:700}
+.add-tile>button svg{width:18px;height:18px}.add-tile>button:hover:not(:disabled){background:var(--panel-hover)}
+.add-tile>button:disabled{opacity:.45;cursor:not-allowed}
+.add-menu{position:absolute;z-index:40;top:calc(100% + 8px);left:0;min-width:190px;padding:5px;border:var(--border-w) solid var(--ink);border-radius:12px;background:var(--card);box-shadow:var(--elevation-ordinary-offset) var(--elevation-ordinary-offset) 0 var(--hard-shadow)}
+.add-menu button{display:flex;align-items:center;gap:8px;width:100%;min-height:34px;padding:4px 8px;border:0;border-radius:7px;background:none;font-weight:600;text-align:left}.add-menu button:hover{background:var(--panel-hover)}.add-menu svg{width:15px;height:15px}
+.strip-note{font-size:12px;color:var(--muted-foreground)}.strip-note.limit{color:var(--foreground);font-weight:600}
+.previews{display:flex;flex-wrap:wrap;gap:14px}
+.preview{display:grid;gap:5px;padding:7px 9px 9px 7px;border:2px solid var(--ink-faint);border-radius:12px;background:var(--card);text-align:left}
+.preview[aria-pressed=true]{border:var(--border-w) solid var(--ink);box-shadow:var(--elevation-compact-offset) var(--elevation-compact-offset) 0 var(--hard-shadow)}
+.preview .pv{overflow:hidden;border:2px solid var(--ink);border-radius:6px;background:var(--surface)}.preview .pv svg{display:block;width:100%;height:100%}
+.preview strong{font-size:12px}.preview small{font-size:11px;color:var(--muted-foreground)}
+.fields{display:grid;gap:13px;align-content:start;min-width:0}
+.field{display:grid;gap:5px;min-width:0}.field label,.field .label{font-size:13px;font-weight:700}
+.input{min-height:38px;width:100%;border:2px solid var(--ink);border-radius:var(--radius-btn);background:var(--card);padding:6px 10px}
+textarea.input{min-height:72px;resize:vertical}
+.field-row{display:grid;grid-template-columns:minmax(0,1fr) 92px minmax(0,1fr);gap:10px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.editor-foot{display:flex;justify-content:flex-end;gap:var(--nested-control-gap);padding:12px calc(18px + var(--depth-clearance)) calc(12px + var(--depth-clearance)) 18px;border-top:2px solid var(--ink-faint)}
+@container (max-width:760px){
+ .editor-body{grid-template-columns:minmax(0,1fr);padding:14px}
+ .editor-head{padding-left:14px}
+ .editor-head .btn,.editor-foot .btn{min-height:var(--size-control-lg);min-width:var(--size-control-lg)}
+ .strip{flex-wrap:nowrap;overflow-x:auto;padding-bottom:10px}
+ .tile,.add-tile{width:60px;height:60px}.drop-line{height:60px}
+ .field-row{grid-template-columns:minmax(0,1fr) 80px}
+ .field-row .field:last-child{grid-column:1/-1}
+}
+.state-strips{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:18px;margin-top:20px}
+.state-card{padding:14px;border:2px solid var(--ink);border-radius:var(--radius-panel);background:var(--card);display:grid;gap:10px;min-width:0}
+.state-card h3{font:800 13px/1.3 var(--font-body)}
+.notes{margin-top:44px;padding:14px 18px;border-left:3px solid var(--brand);background:var(--card);border-radius:0 12px 12px 0;font-size:13px;max-width:90ch}.notes ul{margin:6px 0 0;padding-left:18px}
+.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--card);padding:8px 14px;border-radius:var(--radius-btn);z-index:50;max-width:calc(100vw - 24px);font-weight:600}
+@media(max-width:700px){main{padding:18px 12px 56px}.frames{gap:22px}.gift-row .title-line .gift-title{font-size:16px}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+<main>
+<header class="page-head">
+ <div><p class="eyebrow">VARIANTA A — TICHÉ TEČKY A OKRAJOVÉ ŠIPKY</p><h1>Galerie obrázků dárku</h1><p class="lede">Dárek může mít až 8 obrázků, první je obálka. Ukázky používají kresby silikonových pásků, ne skutečné produktové fotografie. Na kartách najeďte myší nebo použijte Tab, v prohlížeči fungují klávesy ← a →.</p></div>
+ <div class="segmented" role="group" aria-label="Motiv"><button type="button" data-theme="light" aria-pressed="true">Světlý</button><button type="button" data-theme="dark" aria-pressed="false">Tmavý</button></div>
+</header>
+
+<section class="section" aria-labelledby="h-card-desktop">
+ <div class="section-head"><h2 id="h-card-desktop">Karta · počítač</h2><p>Tečky dole uprostřed jsou vidět vždy a sdílejí řádek s prioritou. Šipky se objeví při najetí nebo fokusu, sedí uprostřed svislých okrajů obrázku a listují dokola bez otevření prohlížeče. Klepnutí mimo šipky otevře prohlížeč na zobrazeném obrázku.</p></div>
+ <div class="card-grid" id="desktop-cards"></div>
+</section>
+
+<section class="section" aria-labelledby="h-card-mobile">
+ <div class="section-head"><h2 id="h-card-mobile">Karta · mobil</h2><p>Na dotyku se listuje přejetím do stran, šipky nejsou. Tečky zůstávají i v režimu řazení a výběru, ale karta se vrátí na obálku a přejetí je vypnuté. Když se tečky nevejdou vedle priority, posunou se k pravému okraji.</p></div>
+ <div class="frames" id="mobile-card-frames"></div>
+</section>
+
+<section class="section" aria-labelledby="h-list">
+ <div class="section-head"><h2 id="h-list">Seznam · počítač a mobil</h2><p>Seznam ukazuje jen štítek <strong>+N</strong> v pravém horním rohu obrázku. Šipky ani tečky tu nejsou; kategorie zleva a výběrové pole se mu vyhnou.</p></div>
+ <div class="list" id="desktop-list"></div>
+ <div class="frames" style="margin-top:26px" id="mobile-list-frames"></div>
+</section>
+
+<section class="section" aria-labelledby="h-viewer">
+ <div class="section-head"><h2 id="h-viewer">Prohlížeč dárku</h2><p>Neořezaná fotografie v přirozeném poměru do výškového limitu. Sloupec fotografie má šířku nejširšího obrázku galerie, užší obrázky mají po stranách podložku. Pás miniatur je pod fotografií; ← a → přepínají, prohlížeč se otevírá na obrázku z karty.</p></div>
+ <div class="viewer-wrap" id="viewer-desktop-wrap"></div>
+ <p class="key-hint"><kbd>←</kbd> <kbd>→</kbd> přepínají obrázky, když je prohlížeč aktivní</p>
+ <div class="frames" style="margin-top:26px;justify-content:center" id="viewer-mobile-frames"></div>
+</section>
+
+<section class="section" aria-labelledby="h-editor">
+ <div class="section-head"><h2 id="h-editor">Úprava dárku · pás obrázků</h2><p>Pás miniatur je přímo pod ořezovou plochou. Výběr miniatury přepne ořez, režim i náhledy Karta / Seznam a rezervace na daný obrázek. Přetažením za úchyt (nebo šipkami na úchytu) změníte pořadí; první obrázek je obálka.</p></div>
+ <div class="editor-wrap" id="editor-desktop"></div>
+ <div class="state-strips" id="editor-states"></div>
+ <div class="frames" style="margin-top:26px" id="editor-mobile"></div>
+</section>
+
+<aside class="notes" aria-label="Poznámky k návrhu"><strong>Poznámky k variantě A</strong><ul>
+ <li>Indikátor je tichá podložka v barvě karty; aktivní tečka je delší, takže stav nezávisí jen na barvě.</li>
+ <li>Šipky používají sdílené tlačítko s ikonou (secondary, md; na mobilu v prohlížeči lg) a mají vlastní stín i u rezervovaného dárku.</li>
+ <li>Rezervované dárky: fotografie, text, kategorie a priorita na 50 %, šipky, indikátor, stav a akce zůstávají ostré.</li>
+</ul></aside>
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+</main>
+
+<script>
+const COLORS=[['#2f7fd8','modrá'],['#2fae63','zelená'],['#f08a24','oranžová'],['#e85a9b','růžová'],['#8a5cd6','fialová'],['#f2c230','žlutá'],['#e04545','červená'],['#7d8794','šedá']];
+function shade(hex,amount){const n=parseInt(hex.slice(1),16);const channel=shift=>Math.max(0,Math.min(255,Math.round(((n>>shift)&255)*(1-amount))));return `rgb(${channel(16)},${channel(8)},${channel(0)})`}
+function ring(cx,cy,rx,ry,color,width){return `<ellipse cx="${cx}" cy="${cy+5}" rx="${rx}" ry="${ry}" fill="none" stroke="${shade(color,.28)}" stroke-width="${width}"/><ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="none" stroke="${color}" stroke-width="${width}"/><ellipse cx="${cx-rx*.35}" cy="${cy-ry*.92}" rx="${rx*.28}" ry="2" fill="#fff" opacity=".45"/>`}
+function bottle(x,y,w,h,bandColors,body='#dde6ee'){const bands=bandColors.map((color,index)=>{const by=y+h*.32+index*(h*.16);return `<rect x="${x-4}" y="${by}" width="${w+8}" height="${h*.075}" rx="${h*.035}" fill="${color}"/><rect x="${x-4}" y="${by+h*.05}" width="${w+8}" height="${h*.025}" rx="2" fill="${shade(color,.25)}"/>`}).join('');return `<ellipse cx="${x+w/2}" cy="${y+h+6}" rx="${w*.75}" ry="9" fill="#000" opacity=".08"/><rect x="${x+w*.22}" y="${y-h*.1}" width="${w*.56}" height="${h*.13}" rx="5" fill="#8f9dab"/><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${w*.3}" fill="${body}" stroke="#b6c3cf" stroke-width="2"/><rect x="${x+w*.16}" y="${y+h*.08}" width="${w*.1}" height="${h*.7}" rx="4" fill="#fff" opacity=".55"/>${bands}`}
+function photoSvg(image){const portrait=image.aspect==='portrait';const width=portrait?300:400,height=portrait?400:300;const backdrop=`<rect width="${width}" height="${height}" fill="#f4f0e8"/><rect y="${height*.72}" width="${width}" height="${height*.28}" fill="#ebe5d9"/>`;let art='';
+ if(image.kind==='cover')art=bottle(165,55,70,200,['#2f7fd8','#2fae63','#f08a24'])+ring(85,250,42,13,'#e85a9b',9)+ring(318,246,40,12,'#8a5cd6',9);
+ else if(image.kind==='bottle')art=bottle(portrait?115:165,portrait?80:55,70,portrait?260:200,[],'#7fc8c2');
+ else if(portrait)art=bottle(115,80,70,250,[COLORS[image.color][0],COLORS[image.color][0]]);
+ else{const color=COLORS[image.color][0];const offset=(image.color%3)*14;art=`<ellipse cx="200" cy="232" rx="150" ry="22" fill="#000" opacity=".07"/>`+ring(200,175-offset/2,96,34,color,15)+ring(140+offset,210,68,24,color,13)+ring(268-offset,214,58,21,color,12)}
+ return `<svg class="photo" viewBox="0 0 ${width} ${height}" preserveAspectRatio="${image.fit??'xMidYMid slice'}" role="img" aria-label="${image.alt}">${backdrop}${art}</svg>`}
+const bandsTitle='Silikonové pásky Acha na láhev (5–10 ks, více barev)';
+const coverImage={kind:'cover',alt:'Láhev se třemi barevnými pásky'};
+const colorImage=(color,aspect)=>({kind:'color',color,aspect,alt:`Pásky, ${COLORS[color][1]} barva`});
+const gifts={
+ bands5:{title:bandsTitle,images:[coverImage,colorImage(0),colorImage(1),colorImage(2,'portrait'),colorImage(3)]},
+ bands8:{title:bandsTitle,images:[coverImage,...[0,1,2,3,4,5,6].map(color=>colorImage(color))]},
+ single:{title:'Lahev na vodu Tritan 1 l',images:[{kind:'bottle',alt:'Tyrkysová lahev na vodu'}],price:'349 Kč',priority:'Střední',desc:'Nejlépe s pítkem, které jde umýt v myčce.',link:'decathlon.cz'}
+};
+const defaults={price:'12 Kč',priority:'Vysoká',desc:'Barva je mi jedno, klidně mix. Stačí jedno balení.',link:'acha.cz',likes:3};
+const icon={
+ left:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>',
+ right:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>',
+ heart:'<svg viewBox="0 0 24 24" stroke-width="2.2" stroke-linejoin="round" aria-hidden="true"><path d="M19 14c1.5-1.5 3-3.2 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.8 0-3 .5-4.5 2-1.5-1.5-2.7-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4 3 5.5l7 7Z"/></svg>',
+ more:'<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>',
+ external:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>',
+ grip:'<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="9" cy="6" r="1.8"/><circle cx="15" cy="6" r="1.8"/><circle cx="9" cy="12" r="1.8"/><circle cx="15" cy="12" r="1.8"/><circle cx="9" cy="18" r="1.8"/><circle cx="15" cy="18" r="1.8"/></svg>',
+ check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg>',
+ close:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>',
+ plus:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>',
+ image:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="9" cy="9" r="2"/><path d="m21 15-5-5L5 21"/></svg>',
+ upload:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>',
+ link:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></svg>'
+};
+const giftData=key=>({...defaults,...gifts[key]});
+function indicatorMarkup(count,index){if(count<2)return '';if(count>6)return `<div class="indicator count" aria-hidden="true">${index+1}/${count}</div>`;return `<div class="indicator" aria-hidden="true">${Array.from({length:count},(_,dot)=>`<i${dot===index?' class="on"':''}></i>`).join('')}</div>`}
+function arrows(name){return `<button type="button" class="btn icon gallery-arrow prev" data-step="-1" aria-label="Předchozí obrázek: ${name}"><span>${icon.left}</span></button><button type="button" class="btn icon gallery-arrow next" data-step="1" aria-label="Další obrázek: ${name}"><span>${icon.right}</span></button>`}
+function card(key,options={}){const gift=giftData(key);const count=gift.images.length;const index=options.index??0;const mode=options.mode??'browse';const reserved=options.reserved;
+ const lead=mode==='reorder'?`<span class="grip" aria-hidden="true">${icon.grip}</span>`:mode==='select'?`<span class="select-box" role="checkbox" aria-checked="true" aria-label="Vybrat dárek">${icon.check}</span>`:'';
+ const actions=reserved?`<button type="button" class="btn icon" aria-label="Další možnosti"><span>${icon.more}</span></button>`:mode==='browse'?`<button type="button" class="btn primary"><span>Rezervovat</span></button><button type="button" class="btn icon" aria-label="Další možnosti"><span>${icon.more}</span></button>`:'';
+ return `<article class="gift-card" data-gallery data-count="${count}" data-index="${index}" data-mode="${mode}"${reserved?' data-dimmed':''}${options.force?` data-force="${options.force}"`:''} aria-label="${gift.title}">
+ <div class="card-surface">
+  <div class="image-area" data-open-viewer>
+   <div class="pattern" aria-hidden="true"></div>
+   <div class="track" style="transform:translateX(${options.swipeOffset??-index*100}%)">${gift.images.map(image=>`<div class="slide">${photoSvg(image)}</div>`).join('')}</div>
+   <div class="top-overlays"><div class="cat-zone">${lead}<span class="category">Sport</span></div><button type="button" class="like" aria-label="To se mi líbí, ${gift.likes}">${icon.heart}<span>${gift.likes}</span></button></div>
+   ${reserved?'<div class="state"><span>Rezervováno</span></div>':''}
+   <span class="priority">${gift.priority}</span>
+   ${count>1&&mode==='browse'?arrows(gift.title):''}
+   ${indicatorMarkup(count,index)}
+   ${options.swipeHint?'<span class="swipe-hint" aria-hidden="true"></span>':''}
+   ${count>1?`<span class="sr-only" data-live aria-live="polite">Obrázek ${index+1} z ${count}</span>`:''}
+  </div>
+  <div class="card-body"><h3 class="gift-title">${gift.title}</h3><p class="gift-desc">${gift.desc}</p><div class="gift-meta"><span class="gift-price">${gift.price}</span><a class="gift-link" href="#" data-demo>${icon.external}${gift.link}</a></div></div>
+  <div class="card-footer">${actions}</div>
+ </div></article>`}
+function labeled(label,note,html){return `<div><p class="spec-label">${label}${note?` <small>${note}</small>`:''}</p>${html}</div>`}
+
+document.getElementById('desktop-cards').innerHTML=[
+ labeled('Klid','5 obrázků · tečky',card('bands5')),
+ labeled('Najetí myší','šipky, zvednutí',card('bands5',{index:1,force:'hover'})),
+ labeled('Fokus z klávesnice','Tab na šipku',card('bands5',{index:2,force:'focus'})),
+ labeled('8 obrázků','štítek n/8 místo teček',card('bands8',{index:2})),
+ labeled('Rezervováno','obsah na 50 %, šipky ostré',card('bands5',{index:1,reserved:true,force:'hover'})),
+ labeled('Jeden obrázek','beze změny oproti dnešku',card('single'))
+].join('');
+document.querySelector('#desktop-cards [data-force=focus] .gallery-arrow.next').classList.add('is-focus');
+
+function mobileFrame(title,content){return `<div class="frame-mobile"><p class="frame-title">${title}</p><div class="stack">${content}</div></div>`}
+document.getElementById('mobile-card-frames').innerHTML=
+ mobileFrame('Prohlížení · 390 px',labeled('Klid','přejeďte prstem po obrázku',card('bands5'))+labeled('Uprostřed přejetí','obrázek 1 → 2, tečka se přesouvá',card('bands5',{swipeOffset:-42,swipeHint:true})))+
+ mobileFrame('Režimy a úzké karty · 390 px',labeled('Řazení','přejetí vypnuto, zobrazena obálka',card('bands5',{mode:'reorder'}))+labeled('Výběr','přejetí vypnuto',card('bands8',{mode:'select'}))+labeled('Dva sloupce','tečky ustoupí prioritě doprava',`<div class="pair">${card('bands5')}${card('bands8',{index:4})}</div>`));
+
+function row(key,options={}){const gift=giftData(key);const count=gift.images.length;const reserved=options.reserved;
+ const lead=options.select?`<span class="select-box" role="checkbox" aria-checked="${options.select==='on'}" aria-label="Vybrat dárek">${options.select==='on'?icon.check:''}</span>`:'';
+ const actions=reserved?`<button type="button" class="btn icon" aria-label="Další možnosti"><span>${icon.more}</span></button>`:`<button type="button" class="btn primary"><span>Rezervovat</span></button><button type="button" class="btn icon" aria-label="Další možnosti"><span>${icon.more}</span></button>`;
+ return `<article class="gift-row"${reserved?' data-dimmed':''} aria-label="${gift.title}">
+ <div class="image-area"><div class="pattern" aria-hidden="true"></div>${photoSvg(gift.images[0])}
+  <div class="top-overlays">${lead}<div class="cat-zone"><span class="category">Sport</span></div></div>
+  ${count>1?`<span class="plus-chip" aria-label="a další ${count-1} obrázky">${icon.image}+${count-1}</span>`:''}
+  ${reserved?'<div class="state"><span>Rezervováno</span></div>':''}
+  <span class="priority">${gift.priority}</span></div>
+ <div class="row-body"><div class="title-line"><h3 class="gift-title">${gift.title}</h3><button type="button" class="like" aria-label="To se mi líbí, ${gift.likes}">${icon.heart}<span>${gift.likes}</span></button></div><p class="gift-desc">${gift.desc}</p><div class="gift-meta"><span class="gift-price">${gift.price}</span><a class="gift-link" href="#" data-demo>${icon.external}${gift.link}</a></div></div>
+ <div class="card-footer">${actions}</div></article>`}
+document.getElementById('desktop-list').innerHTML=row('bands5')+row('bands8')+row('bands5',{reserved:true})+row('single');
+document.getElementById('mobile-list-frames').innerHTML=mobileFrame('Seznam · 390 px',row('bands5')+row('bands8',{reserved:true})+row('single'))+mobileFrame('Seznam ve výběru · 390 px',row('bands5',{select:'on'})+row('bands8',{select:'off'}));
+
+/* Viewer */
+const viewers=[];
+function aspectOf(image){return image.aspect==='portrait'?.75:4/3}
+function viewer(key,id){const gift=giftData(key);const widest=Math.max(...gift.images.map(aspectOf));return `<div class="viewer" role="dialog" aria-modal="false" aria-labelledby="${id}-title" tabindex="-1" data-viewer="${id}" data-key="${key}" data-index="0" style="--widest:${widest}">
+ <button type="button" class="btn icon close" aria-label="Zavřít"><span>${icon.close}</span></button>
+ <div class="photo-col"><figure class="photo-region"><div class="pattern" aria-hidden="true"></div><div class="stage-photo" data-stage></div>
+  <span class="viewer-count" data-count aria-hidden="true"></span>${arrows(gift.title)}<span class="sr-only" data-live aria-live="polite"></span></figure>
+  <div class="thumbs" role="group" aria-label="Obrázky dárku">${gift.images.map((image,index)=>`<button type="button" class="thumb" data-thumb="${index}" aria-label="Obrázek ${index+1} z ${gift.images.length}">${photoSvg(image)}</button>`).join('')}</div></div>
+ <div class="caption-col"><div class="caption"><h3 id="${id}-title">${gift.title}</h3><p class="price-line"><span>${gift.price}</span><span class="dot" aria-hidden="true">·</span><span>5–10 ks</span></p><div class="cat-row"><span class="category">Sport</span><span class="category">Na kolo</span></div><a class="text-link" href="#" data-demo>Acha · sada pásků (acha.cz)${icon.external}</a><p>${gift.desc} Nejvíc se hodí na láhev o průměru 7–8 cm.</p></div>
+ <div class="viewer-footer"><button type="button" class="like" aria-label="To se mi líbí, ${gift.likes}">${icon.heart}<span>${gift.likes}</span></button><button type="button" class="btn primary"><span>Rezervovat</span></button></div></div></div>`}
+document.getElementById('viewer-desktop-wrap').innerHTML=viewer('bands5','viewer-desktop');
+document.getElementById('viewer-mobile-frames').innerHTML=`<div class="frame-mobile"><p class="frame-title">Prohlížeč · 390 px</p><div class="viewer-wrap">${viewer('bands5','viewer-mobile')}</div></div><div class="frame-mobile"><p class="frame-title">Prohlížeč · 8 obrázků, posunutý pás</p><div class="viewer-wrap">${viewer('bands8','viewer-mobile-8')}</div></div>`;
+function setViewer(element,index){const gift=giftData(element.dataset.key);const count=gift.images.length;index=(index+count)%count;element.dataset.index=index;const image=gift.images[index];element.querySelector('[data-stage]').innerHTML=photoSvg({...image,fit:'xMidYMid meet'});element.querySelector('[data-count]').textContent=`${index+1} / ${count}`;element.querySelector('[data-live]').textContent=`Obrázek ${index+1} z ${count}`;element.querySelectorAll('[data-thumb]').forEach(thumb=>{const current=Number(thumb.dataset.thumb)===index;thumb.setAttribute('aria-current',String(current));if(current){const strip=thumb.parentElement;const left=thumb.offsetLeft-strip.offsetLeft;if(left<strip.scrollLeft)strip.scrollLeft=left-12;else if(left+thumb.offsetWidth>strip.scrollLeft+strip.clientWidth)strip.scrollLeft=left+thumb.offsetWidth-strip.clientWidth+12}})}
+let activeViewer=null;
+document.querySelectorAll('[data-viewer]').forEach(element=>{setViewer(element,0);element.addEventListener('pointerdown',()=>activeViewer=element);element.addEventListener('focusin',()=>activeViewer=element);
+ element.addEventListener('click',event=>{const step=event.target.closest('[data-step]');const thumb=event.target.closest('[data-thumb]');if(step)setViewer(element,Number(element.dataset.index)+Number(step.dataset.step));if(thumb)setViewer(element,Number(thumb.dataset.thumb))})});
+setViewer(document.querySelector('[data-viewer="viewer-mobile-8"]'),6);
+document.addEventListener('keydown',event=>{if(event.key!=='ArrowLeft'&&event.key!=='ArrowRight')return;if(event.target.closest('input,textarea,select,.strip'))return;const target=activeViewer??document.querySelector('[data-viewer="viewer-desktop"]');const rect=target.getBoundingClientRect();if(!activeViewer&&(rect.bottom<0||rect.top>innerHeight))return;event.preventDefault();setViewer(target,Number(target.dataset.index)+(event.key==='ArrowRight'?1:-1))});
+
+/* Card galleries */
+function setCard(cardElement,index){const count=Number(cardElement.dataset.count);index=(index+count)%count;cardElement.dataset.index=index;cardElement.querySelector('.track').style.transform=`translateX(${-index*100}%)`;const indicator=cardElement.querySelector('.indicator');if(indicator){if(indicator.classList.contains('count'))indicator.textContent=`${index+1}/${count}`;else indicator.querySelectorAll('i').forEach((dot,dotIndex)=>dot.classList.toggle('on',dotIndex===index))}const live=cardElement.querySelector('[data-live]');if(live)live.textContent=`Obrázek ${index+1} z ${count}`}
+document.addEventListener('click',event=>{const step=event.target.closest('.gift-card [data-step]');if(step){event.stopPropagation();const cardElement=step.closest('.gift-card');setCard(cardElement,Number(cardElement.dataset.index)+Number(step.dataset.step));return}
+ const demo=event.target.closest('[data-demo]');if(demo){event.preventDefault();toast('Ukázkový odkaz, obchod se neotevírá.');return}
+ const open=event.target.closest('[data-open-viewer]');if(open&&!event.target.closest('button')){const cardElement=open.closest('.gift-card');if(cardElement.dataset.mode!=='browse')return;const target=document.querySelector(cardElement.dataset.count==='8'?'[data-viewer="viewer-mobile-8"]':'[data-viewer="viewer-desktop"]');setViewer(target,Number(cardElement.dataset.index));activeViewer=target;target.scrollIntoView({behavior:'smooth',block:'center'});target.focus({preventScroll:true});toast(`Prohlížeč otevřen na obrázku ${Number(cardElement.dataset.index)+1}.`)}});
+/* Touch-style swipe on mobile cards (pointer drag), disabled outside browse mode. */
+document.querySelectorAll('.frame-mobile .gift-card[data-count]').forEach(cardElement=>{if(cardElement.dataset.count==='1'||cardElement.dataset.mode!=='browse')return;const area=cardElement.querySelector('.image-area');const track=cardElement.querySelector('.track');let startX=null,width=1,moved=false;
+ area.addEventListener('pointerdown',event=>{if(event.target.closest('button'))return;startX=event.clientX;width=area.clientWidth;moved=false;track.classList.add('dragging');area.setPointerCapture(event.pointerId);cardElement.querySelector('.swipe-hint')?.remove()});
+ area.addEventListener('pointermove',event=>{if(startX===null)return;const delta=event.clientX-startX;if(Math.abs(delta)>6)moved=true;track.style.transform=`translateX(calc(${-Number(cardElement.dataset.index)*100}% + ${delta}px))`});
+ const end=event=>{if(startX===null)return;const delta=event.clientX-startX;track.classList.remove('dragging');startX=null;const index=Number(cardElement.dataset.index);setCard(cardElement,Math.abs(delta)>width*.2?index-Math.sign(delta):index);if(moved)area.addEventListener('click',stop=>stop.stopPropagation(),{capture:true,once:true})};
+ area.addEventListener('pointerup',end);area.addEventListener('pointercancel',end)});
+/* Mid-swipe frame: show the dot already heading to image 2. */
+document.querySelectorAll('.swipe-hint').forEach(hint=>{const dots=hint.closest('.image-area').querySelectorAll('.indicator i');dots[0].style.width='10px';dots[1].style.width='10px';dots[1].style.background='color-mix(in oklab,var(--ink) 70%,transparent)'});
+/* Indicator yields to the priority badge on narrow cards. */
+function placeIndicators(){document.querySelectorAll('.gift-card .indicator').forEach(indicator=>{indicator.removeAttribute('data-crowded');const priority=indicator.parentElement.querySelector('.priority');if(!priority)return;const indicatorRect=indicator.getBoundingClientRect(),priorityRect=priority.getBoundingClientRect();if(indicatorRect.left<priorityRect.right+8)indicator.setAttribute('data-crowded','')})}
+addEventListener('resize',placeIndicators);document.fonts.ready.then(placeIndicators);placeIndicators();
+
+/* Editor */
+const editors=[];
+function editorMarkup(id,compact){return `<div class="editor" role="dialog" aria-modal="false" aria-labelledby="${id}-title" data-editor="${id}">
+ <div class="editor-head"><h3 id="${id}-title">Upravit dárek</h3><button type="button" class="btn icon" aria-label="Zavřít"><span>${icon.close}</span></button></div>
+ <div class="editor-body">
+  ${compact?'<p class="strip-note">Název, cena, odkazy a zdroj obrázku jsou na mobilu nad touto dílnou.</p>':''}
+  <div class="workshop">
+   <div class="mode-row"><div class="segmented" role="group" aria-label="Režim obrázku"><button type="button" aria-pressed="false">Vyplnit</button><button type="button" aria-pressed="false">Přizpůsobit</button><button type="button" aria-pressed="true">Ručně</button></div><span class="strip-note" data-edit-label></span></div>
+   <div class="stage" tabindex="0" aria-label="Ořez vybraného obrázku, šipkami posunete"><div class="ghost" data-ghost></div><div class="window"><div class="inner" data-window></div></div><span class="scale-badge">zmenšeno na 80 %</span></div>
+   <div class="strip-head"><strong id="${id}-strip">Obrázky · <span data-count></span></strong><span>Přetažením změníte pořadí. První obrázek je obálka.</span></div>
+   <ul class="strip" aria-labelledby="${id}-strip" data-strip></ul>
+   <p class="strip-note" data-limit aria-live="polite"></p>
+   <div class="previews" role="group" aria-label="Upravovaný cíl"><button type="button" class="preview" aria-pressed="true"><span class="pv" style="width:120px;height:90px" data-pv-card></span><strong>Karta</strong><small>Ruční ořez</small></button><button type="button" class="preview" aria-pressed="false"><span class="pv" style="width:90px;height:90px" data-pv-thumb></span><strong>Seznam a rezervace</strong><small>Převzato z Karty</small></button></div>
+  </div>
+  ${compact?'':`<div class="fields">
+   <div class="field"><label for="${id}-name">Název</label><input class="input" id="${id}-name" value="${bandsTitle}"></div>
+   <div class="field-row"><div class="field"><label for="${id}-price">Cena</label><input class="input" id="${id}-price" value="12"></div><div class="field"><label for="${id}-cur">Měna</label><select class="input" id="${id}-cur"><option>Kč</option><option>€</option></select></div><div class="field"><label for="${id}-prio">Priorita</label><select class="input" id="${id}-prio"><option>Vysoká</option><option>Střední</option><option>Nízká</option></select></div></div>
+   <div class="field"><span class="label">Kategorie</span><div class="chips"><span class="category">Sport</span><span class="category">Na kolo</span></div></div>
+   <div class="field"><label for="${id}-link">Odkaz</label><input class="input" id="${id}-link" value="https://acha.cz/silikonove-pasky"></div>
+   <div class="field"><label for="${id}-label">Viditelný popisek</label><input class="input" id="${id}-label" value="Acha · sada pásků"></div>
+   <div class="field"><label for="${id}-desc">Popis</label><textarea class="input" id="${id}-desc">Barva je mi jedno, klidně mix. Stačí jedno balení.</textarea></div>
+  </div>`}
+ </div>
+ <div class="editor-foot"><button type="button" class="btn"><span>Zrušit</span></button><button type="button" class="btn primary"><span>Uložit změny</span></button></div></div>`}
+function stripTiles(images,selected,options={}){const tiles=images.map((image,index)=>{if(options.dropBefore===index&&options.dragging!==undefined)return `<li class="drop-line" aria-hidden="true"></li>`+tile(image,index,selected,options);return tile(image,index,selected,options)}).join('');const atLimit=images.length>=8;return tiles+`<li class="add-tile"><button type="button" data-add aria-haspopup="menu" aria-expanded="false" ${atLimit?'disabled aria-describedby="limit-note"':''}>${icon.plus}<span>Přidat</span></button><div class="add-menu" role="menu" hidden><button type="button" role="menuitem" data-add-kind="upload">${icon.upload}Nahrát soubor</button><button type="button" role="menuitem" data-add-kind="url">${icon.link}Vložit odkaz na obrázek</button></div></li>`}
+function tile(image,index,selected,options){return `<li class="tile${options.dragging===index?' is-dragging':''}${options.ghost===index?' ghost-slot':''}" ${index===selected?'data-selected':''} draggable="true" data-tile="${index}"><button type="button" class="select" data-select="${index}" aria-pressed="${index===selected}" aria-label="Obrázek ${index+1}${index===0?', obálka':''}">${photoSvg(image)}</button><button type="button" class="handle" data-handle="${index}" aria-label="Změnit pořadí obrázku ${index+1}, šipkami vlevo a vpravo">${icon.grip}</button><button type="button" class="remove" data-remove="${index}" aria-label="Odebrat obrázek ${index+1}">${icon.close}</button>${index===0?'<span class="cover">Obálka</span>':''}</li>`}
+function mountEditor(container,id,compact){container.innerHTML=editorMarkup(id,compact);const element=container.querySelector('[data-editor]');const state={images:[...gifts.bands5.images],selected:1,nextColor:4};editors.push({element,state});renderEditor(element,state);
+ element.addEventListener('click',event=>{const target=event.target.closest('button');if(!target)return;
+  if(target.dataset.select!==undefined){state.selected=Number(target.dataset.select)}
+  else if(target.dataset.remove!==undefined){const index=Number(target.dataset.remove);if(state.images.length<=1)return;state.images.splice(index,1);state.selected=Math.min(state.selected>=index&&state.selected>0?state.selected-1:state.selected,state.images.length-1);toast(index===0?'Obálkou se stal další obrázek.':'Obrázek odebrán (ukázka).')}
+  else if(target.dataset.add!==undefined){const menu=target.nextElementSibling;const open=menu.hidden;menu.hidden=!open;target.setAttribute('aria-expanded',String(open));return}
+  else if(target.dataset.addKind){if(state.images.length>=8)return;state.images.push(colorImage(state.nextColor%8));state.nextColor++;state.selected=state.images.length-1}
+  else return;renderEditor(element,state)});
+ element.addEventListener('keydown',event=>{const handle=event.target.closest('[data-handle]');if(!handle||(event.key!=='ArrowLeft'&&event.key!=='ArrowRight'))return;event.preventDefault();const from=Number(handle.dataset.handle);const to=from+(event.key==='ArrowRight'?1:-1);if(to<0||to>=state.images.length)return;move(state,from,to);renderEditor(element,state);element.querySelector(`[data-handle="${to}"]`).focus()});
+ let dragFrom=null;element.addEventListener('dragstart',event=>{const tileElement=event.target.closest('[data-tile]');if(!tileElement)return;dragFrom=Number(tileElement.dataset.tile);event.dataTransfer.effectAllowed='move';tileElement.classList.add('ghost-slot')});
+ element.addEventListener('dragover',event=>{if(dragFrom!==null&&event.target.closest('[data-tile]'))event.preventDefault()});
+ element.addEventListener('drop',event=>{const tileElement=event.target.closest('[data-tile]');if(dragFrom===null||!tileElement)return;event.preventDefault();move(state,dragFrom,Number(tileElement.dataset.tile));dragFrom=null;renderEditor(element,state)});
+ element.addEventListener('dragend',()=>{dragFrom=null;renderEditor(element,state)})}
+function move(state,from,to){const [image]=state.images.splice(from,1);state.images.splice(to,0,image);if(state.selected===from)state.selected=to;else if(from<state.selected&&to>=state.selected)state.selected--;else if(from>state.selected&&to<=state.selected)state.selected++}
+function renderEditor(element,state){const image=state.images[state.selected];element.querySelector('[data-strip]').innerHTML=stripTiles(state.images,state.selected);element.querySelector('[data-count]').textContent=`${state.images.length} z 8`;element.querySelector('[data-ghost]').innerHTML=photoSvg(image);element.querySelector('[data-window]').innerHTML=photoSvg(image);element.querySelector('[data-pv-card]').innerHTML=photoSvg(image);element.querySelector('[data-pv-thumb]').innerHTML=photoSvg(image);element.querySelector('[data-edit-label]').textContent=`Upravujete obrázek ${state.selected+1}${state.selected===0?' (obálka)':''}`;element.querySelector('[data-limit]').textContent=state.images.length>=8?'Dosáhli jste limitu 8 obrázků. Pro přidání nejprve některý odeberte.':''}
+mountEditor(document.getElementById('editor-desktop'),'editor-desktop',false);
+const allEight=gifts.bands8.images;
+document.getElementById('editor-states').innerHTML=
+ `<div class="state-card"><h3>Limit 8 obrázků · Přidat je vypnuté</h3><div class="strip-head"><strong>Obrázky · 8 z 8</strong></div><ul class="strip">${stripTiles(allEight,3)}</ul><p class="strip-note limit" id="limit-note">Dosáhli jste limitu 8 obrázků. Pro přidání nejprve některý odeberte.</p></div>`+
+ `<div class="state-card"><h3>Přetahování · obrázek 4 míří na začátek</h3><div class="strip-head"><strong>Obrázky · 5 z 8</strong><span>Pustíte-li ho tady, stane se obálkou.</span></div><ul class="strip">${stripTiles(gifts.bands5.images,3,{dragging:3,dropBefore:0})}</ul></div>`+
+ `<div class="state-card"><h3>Jeden obrázek · jako dnes, jen s možností přidat</h3><div class="strip-head"><strong>Obrázky · 1 z 8</strong><span>Další obrázky ukážou třeba jiné barvy.</span></div><ul class="strip">${stripTiles(gifts.single.images,0)}</ul></div>`;
+document.querySelectorAll('#editor-states .tile').forEach(tileElement=>{tileElement.removeAttribute('draggable')});
+document.getElementById('editor-mobile').innerHTML=`<div class="frame-mobile"><p class="frame-title">Úprava dárku · 390 px</p><div class="editor-wrap" id="editor-mobile-mount"></div></div>`;
+mountEditor(document.getElementById('editor-mobile-mount'),'editor-mobile',true);
+
+/* Theme + toast */
+document.querySelectorAll('[data-theme]').forEach(button=>button.addEventListener('click',()=>setTheme(button.dataset.theme)));
+function setTheme(theme){document.documentElement.classList.toggle('dark',theme==='dark');document.querySelectorAll('[data-theme]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.theme===theme)))}
+if(location.hash==='#dark')setTheme('dark');
+let toastTimer;function toast(message){const element=document.getElementById('toast');element.textContent=message;element.hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>element.hidden=true,3000)}
+document.addEventListener('click',event=>{if(!event.target.closest('.add-tile'))document.querySelectorAll('.add-menu').forEach(menu=>{if(!menu.hidden){menu.hidden=true;menu.previousElementSibling.setAttribute('aria-expanded','false')}})});
+</script>
+</body></html>

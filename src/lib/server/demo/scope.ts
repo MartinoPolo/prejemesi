@@ -42,10 +42,18 @@ export function rejectDemoImageUpload(imageKey: string | null | undefined): void
 	}
 }
 
+interface DemoImageSource {
+	imageKey?: string | null;
+	imageUrl?: string | null;
+}
+
 /** Demo gifts may only show the prepared catalog images, never uploads or arbitrary URLs. */
 export function rejectDemoGiftImages(
-	images: ReadonlyArray<{ imageKey?: string | null; imageUrl?: string | null }>,
+	gifts: ReadonlyArray<
+		DemoImageSource & { images?: readonly DemoImageSource[] | null | undefined }
+	>,
 ): void {
+	const images = gifts.flatMap((giftInput) => [giftInput, ...(giftInput.images ?? [])]);
 	if (
 		demoSessionId() !== null &&
 		images.some(

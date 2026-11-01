@@ -11,6 +11,7 @@ import {
 } from '$lib/modules/wishlists/wishlist_capabilities.js';
 import type { MutationOperationContext } from './operation.js';
 import type { WishlistRow } from './wishlist_management.js';
+import { giftColumnsWithImages } from './gift_gallery.js';
 
 interface RevertAccess {
 	capability: RevertCapability;
@@ -123,7 +124,7 @@ export async function clearPostShareGiftState(
 	wishlistId: string,
 ): Promise<void> {
 	const giftsWithPostShareState = await context.transaction
-		.select()
+		.select(giftColumnsWithImages())
 		.from(gift)
 		.where(
 			and(

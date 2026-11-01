@@ -46,6 +46,7 @@ function giftWithPriority(id: string, levelId: string | null, sortOrder: number)
 		imageUrl: null,
 		imageKey: null,
 		imageMeta: null,
+		images: [],
 		quantity: 1,
 		sortOrder,
 		received: false,

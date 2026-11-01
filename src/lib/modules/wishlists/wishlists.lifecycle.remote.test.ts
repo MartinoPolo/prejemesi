@@ -48,7 +48,15 @@ describe('deleteWishlist', () => {
 					background: { mode: 'theme', imageKey: 'wishlists/backgrounds/w.jpg' },
 				}),
 			]);
-			mockDbInstance.pushResult([{ imageKey: 'gifts/a.jpg' }, { imageKey: null }]);
+			mockDbInstance.pushResult([
+				{
+					images: [
+						{ imageUrl: null, imageKey: 'gifts/a.jpg', imageMeta: null },
+						{ imageUrl: null, imageKey: 'gifts/a-detail.jpg', imageMeta: null },
+					],
+				},
+				{ images: [] },
+			]);
 			mockDbInstance.pushResult([]);
 
 			await callDeleteWishlist(makeRecipientAuthContext(), WISHLIST_ID);
@@ -57,7 +65,7 @@ describe('deleteWishlist', () => {
 				'wishlists/banners/w.jpg',
 				'wishlists/backgrounds/w.jpg',
 				'gifts/a.jpg',
-				null,
+				'gifts/a-detail.jpg',
 			]);
 		});
 	});

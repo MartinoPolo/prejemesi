@@ -12,7 +12,9 @@
 	import GiftDescription from './GiftDescription.svelte';
 	import GiftStateList from './GiftStateList.svelte';
 	import GiftViewerActions from './GiftViewerActions.svelte';
+	import GiftViewerGallery from './GiftViewerGallery.svelte';
 	import { giftViewerVariants } from './gift_viewer_variants.js';
+	import { useGiftGalleryPositions } from '$lib/modules/gifts/gift_gallery_positions.js';
 	import type { GiftMoreProps } from '$lib/components/blocks/wishlist/gift_context_invocation.js';
 	import type { GiftByRole, GiftForVisitor } from '$lib/modules/gifts/types.js';
 	import type { WishlistRole } from '$lib/modules/wishlists/types.js';
@@ -48,12 +50,16 @@
 
 	let measuredPhoto = $state<{ src: string; aspectRatio: number } | null>(null);
 	let failedPhotoSrc = $state<string | null>(null);
+	// The viewer mounts fresh on every open, so the card's position is read once.
+	// svelte-ignore state_referenced_locally
+	const initialGalleryIndex = useGiftGalleryPositions()?.indexOf(gift.id) ?? 0;
 
 	const { isVisitorOrModerator, visitorGift, reservationAwareGift, reservedCount, presentation } =
 		$derived(deriveGiftDisplayState(gift, role, hideReservationState));
 	const stateEntries = $derived(hideReservationState ? [] : presentation.overlay);
+	const hasGallery = $derived(gift.images.length > 1);
 	const photoSrc = $derived(resolveGiftImageUrl(gift.imageUrl, gift.imageKey));
-	const hasPhoto = $derived(photoSrc !== null && failedPhotoSrc !== photoSrc);
+	const hasPhoto = $derived(hasGallery || (photoSrc !== null && failedPhotoSrc !== photoSrc));
 	const photoAspectRatio = $derived(
 		measuredPhoto !== null && measuredPhoto.src === photoSrc
 			? measuredPhoto.aspectRatio
@@ -98,7 +104,21 @@
 	{@attach nestInsideDialogBorder}
 >
 	<div class={styles.layout()}>
-		{#if hasPhoto}
+		{#if hasGallery}
+			<GiftViewerGallery
+				images={gift.images}
+				alt={gift.name}
+				initialIndex={initialGalleryIndex}
+			>
+				{#snippet photoOverlay()}
+					<GiftStateList
+						entries={stateEntries}
+						class={styles.photoStates()}
+						data-placement="photo"
+					/>
+				{/snippet}
+			</GiftViewerGallery>
+		{:else if hasPhoto}
 			<figure
 				class={styles.photoRegion()}
 				data-testid="gift-viewer-photo"

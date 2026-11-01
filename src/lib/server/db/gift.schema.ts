@@ -24,6 +24,7 @@ import {
 	type GiftCategoryPresetKey,
 } from '$lib/modules/gift-categories/presets.js';
 import { MAX_GIFT_CATEGORIES } from '$lib/modules/gift-categories/gift_category_assignment.js';
+import { MAX_GIFT_IMAGES } from '$lib/modules/gifts/gift_images.js';
 
 const presetKeySqlList = sql.join(
 	GIFT_CATEGORY_PRESET_KEYS.map((key) => sql`${key}`),
@@ -152,6 +153,46 @@ export const gift = pgTable(
 		categoryIdsLimitCheck: check(
 			'gift_category_ids_limit_check',
 			sql`cardinality(${table.categoryIds}) <= ${sql.raw(String(MAX_GIFT_CATEGORIES))}`,
+		),
+	}),
+);
+
+/**
+ * A gift's ordered images; position 0 is the cover that `gift.image_*` mirrors. The application
+ * replaces a gift's whole gallery and its cover columns in one transaction; the
+ * `gift_image_cover_mirror` trigger keeps position 0 equal to the cover columns for writers that
+ * only know those columns.
+ */
+export const giftImage = pgTable(
+	'gift_image',
+	{
+		id: text('id')
+			.primaryKey()
+			.$defaultFn(() => generateId()),
+		giftId: cascadingReferenceColumn('gift_id', () => gift.id),
+		position: integer('position').notNull(),
+		imageUrl: text('image_url'),
+		imageKey: text('image_key'),
+		imageMeta: jsonb('image_meta').$type<ImageMetadata>(),
+		createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+		updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+	},
+	(table) => ({
+		giftPositionUnique: uniqueIndex('gift_image_gift_position_unique').on(
+			table.giftId,
+			table.position,
+		),
+		// The agent image purge and R2 cleanup ask which stored keys gifts still use.
+		imageKeyIdx: index('gift_image_image_key_idx')
+			.on(table.imageKey)
+			.where(sql`${table.imageKey} IS NOT NULL`),
+		positionRangeCheck: check(
+			'gift_image_position_range_check',
+			sql`${table.position} >= 0 AND ${table.position} < ${sql.raw(String(MAX_GIFT_IMAGES))}`,
+		),
+		sourceCheck: check(
+			'gift_image_source_check',
+			sql`num_nonnulls(${table.imageUrl}, ${table.imageKey}) >= 1`,
 		),
 	}),
 );

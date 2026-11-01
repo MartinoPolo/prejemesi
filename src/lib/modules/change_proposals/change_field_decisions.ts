@@ -35,7 +35,7 @@ const INPUT_KEYS_BY_FIELD = {
 	category: ['categoryIds', 'categoryId'],
 	priority: ['priorityLevelId'],
 	links: ['links'],
-	image: ['imageReference', 'imageUrl', 'imageKey', 'imageMeta'],
+	image: ['imageReference', 'imageReferences', 'imageUrl', 'imageKey', 'imageMeta', 'images'],
 } as const satisfies Record<ChangeField, readonly string[]>;
 
 /** Operations whose rows are decided field by field; every other row is decided whole. */

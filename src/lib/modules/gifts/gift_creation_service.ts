@@ -5,8 +5,10 @@ import { enforceDemoGiftLimit } from '$lib/server/demo/limits.js';
 import { gift } from '$lib/server/db/gift.schema.js';
 import { wishlist } from '$lib/server/db/wishlist.schema.js';
 import { normalizeGiftLinks } from './gift_url.js';
-import { DEFAULT_GIFT_CURRENCY, type GiftLink } from './types.js';
+import { DEFAULT_GIFT_CURRENCY, type GiftLink, type GiftWithImages } from './types.js';
+import { giftCover, hasImageSource, type GiftImage } from './gift_images.js';
 import { DEFAULT_IMAGE_METADATA, type ImageMetadata } from '$lib/modules/images/types.js';
+import { replaceGiftGalleries } from '$lib/server/operations/gift_gallery.js';
 import { coalesceNewGiftDigests } from '$lib/modules/notifications/new_gift_digest.js';
 import { assertActiveGiftCategoryAssignments } from '$lib/modules/gift-categories/gift_categories_service.js';
 import type { RecordGiftRevisions } from '$lib/server/operations/gift_revisions.js';
@@ -38,9 +40,30 @@ export interface NormalizedGiftCreationInput {
 	imageUrl?: string | null;
 	imageKey?: string | null;
 	imageMeta?: ImageMetadata | null;
+	/** The complete ordered gallery; when present the single image fields are ignored. */
+	images?: readonly GiftImage[];
 	quantity?: number | null;
 	priorityLevelId?: string | null;
 	categoryIds?: readonly string[];
+}
+
+/**
+ * A new gift's gallery from the complete `images` list or the single cover fields; a fresh image
+ * without presentation metadata gets the default.
+ */
+function creationGallery(item: NormalizedGiftCreationInput): GiftImage[] {
+	const requestedImages = item.images ?? [
+		{
+			imageUrl: item.imageUrl ?? null,
+			imageKey: item.imageKey ?? null,
+			imageMeta: item.imageMeta ?? null,
+		},
+	];
+	return requestedImages.filter(hasImageSource).map((image) => ({
+		imageUrl: image.imageUrl,
+		imageKey: image.imageKey,
+		imageMeta: image.imageMeta ?? DEFAULT_IMAGE_METADATA,
+	}));
 }
 
 export type GiftCreationDatabase = Pick<ReturnType<typeof getDb>, 'transaction'>;
@@ -60,7 +83,7 @@ export interface AppendGiftsInput {
 export async function appendGifts(
 	input: AppendGiftsInput,
 	options: { database?: GiftCreationDatabase; now?: Date } = {},
-): Promise<(typeof gift.$inferSelect)[]> {
+): Promise<GiftWithImages[]> {
 	if (input.gifts.length === 0) {
 		return [];
 	}
@@ -72,7 +95,7 @@ export async function appendGiftsUsingTransaction(
 	tx: GiftCreationTransaction,
 	input: AppendGiftsInput,
 	now = new Date(),
-): Promise<(typeof gift.$inferSelect)[]> {
+): Promise<GiftWithImages[]> {
 	if (input.gifts.length === 0) {
 		return [];
 	}
@@ -110,10 +133,10 @@ export async function appendGiftsUsingTransaction(
 			assertActiveGiftCategoryAssignments(tx, input.wishlistId, item.categoryIds ?? []),
 		),
 	);
+	const galleries = input.gifts.map(creationGallery);
 	const rows = input.gifts.map((item, index) => {
 		const allocatedSortOrder = nextSortOrder++;
-		const imageUrl = item.imageUrl ?? null;
-		const imageKey = item.imageKey ?? null;
+		const cover = giftCover(galleries[index] ?? []);
 		return {
 			...(item.id === undefined ? {} : { id: item.id }),
 			wishlistId: input.wishlistId,
@@ -123,25 +146,34 @@ export async function appendGiftsUsingTransaction(
 			price: item.price ?? null,
 			priceMax: item.priceMax ?? null,
 			currency: item.currency ?? DEFAULT_GIFT_CURRENCY,
-			imageUrl,
-			imageKey,
-			imageMeta:
-				imageUrl !== null || imageKey !== null
-					? (item.imageMeta ?? DEFAULT_IMAGE_METADATA)
-					: null,
+			imageUrl: cover.imageUrl,
+			imageKey: cover.imageKey,
+			imageMeta: cover.imageMeta,
 			quantity: item.quantity ?? 1,
 			priorityLevelId: item.priorityLevelId ?? null,
 			categoryIds: categoryIdLists[index] ?? [],
 			sortOrder: allocatedSortOrder,
 		};
 	});
-	const created = (await tx
+	const insertedRows = (await tx
 		.insert(gift)
 		.values(rows)
 		.returning()) as (typeof gift.$inferSelect)[];
-	if (created.length !== rows.length) {
+	if (insertedRows.length !== rows.length) {
 		throw new GiftCreationError('incomplete-insert', 'Gift insert returned incomplete rows');
 	}
+	const created: GiftWithImages[] = insertedRows.map((row, index) => ({
+		...row,
+		images: galleries[index] ?? [],
+	}));
+	await replaceGiftGalleries(
+		tx,
+		new Map(
+			created
+				.filter((row) => row.images.length > 0)
+				.map((row) => [row.id, row.images] as const),
+		),
+	);
 	if (input.notifyFollowers !== false) {
 		await coalesceNewGiftDigests(tx, {
 			wishlist: wishlistRow,

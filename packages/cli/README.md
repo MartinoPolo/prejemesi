@@ -33,7 +33,7 @@ prejemesi proposals apply <proposalId>
 - `--wishlist` takes the short id from the wishlist's link, or its id.
 - `--input` takes JSON, `@file` or `-` for standard input. Its fields are the operation inputs documented in the [API reference](https://prejemesi.cz/api/v1/openapi.json). `gifts create` takes an array to propose several gifts in one proposal.
 - `read` runs any agent read operation listed in the API reference.
-- `images add` has the server store a copy of an image and prints its `reference`; a gift's `--input` attaches it with `"imageReference": "<reference>"`.
+- `images add` has the server store a copy of an image and prints its `reference`; a gift's `--input` attaches it as the cover with `"imageReference": "<reference>"`, or sets the whole ordered gallery (up to 8, the first the cover) with `"imageReferences": [{ "imageReference": "<reference>" }, …]`.
 - `--idempotency-key` makes a retried change or image safe: the same key and input return the first result.
 - `proposals apply` applies a waiting proposal only for the fast-forward token that submitted it; otherwise it fails with the `reviewLink` where you review it.
 

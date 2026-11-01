@@ -20,6 +20,8 @@ import {
 } from './api.js';
 import { callAgentMcpTool, isAgentMcpTool, listAgentMcpTools } from './mcp_tools.js';
 import { AGENT_API_OPERATION_ID } from './openapi.js';
+import { IMAGE_REFERENCE_FIELD, IMAGE_REFERENCES_FIELD } from './image_references.js';
+import { MAX_GIFT_IMAGES } from '$lib/modules/gifts/gift_images.js';
 
 /**
  * The remote MCP server: stateless Streamable HTTP that answers every JSON-RPC request with one
@@ -55,7 +57,8 @@ const SERVER_INFO = { name: 'prejemesi', title: 'Přejeme si', version: '1' } as
 const SERVER_INSTRUCTIONS = [
 	'Přejeme si is a family wishlist app. Every tool acts as the user who created the access token or connected this app, with exactly that user’s rights; recipients never see reservations.',
 	`Start with ${AGENT_API_OPERATION_ID.listWishlists}. Changes are proposals: show the user the review link a change answers with, where they review and apply it. A fast-forward token applies ready changes at once, but deletions, reservations and manager invitations always wait for the user.`,
-	`Put related changes to one wishlist into one ${AGENT_API_OPERATION_ID.submitChangeProposal} call with an idempotencyKey, so a retry never repeats them. For a gift image, call ${AGENT_API_OPERATION_ID.uploadImage} and set its reference as imageReference.`,
+	`Put related changes to one wishlist into one ${AGENT_API_OPERATION_ID.submitChangeProposal} call with an idempotencyKey, so a retry never repeats them. For a gift image, call ${AGENT_API_OPERATION_ID.uploadImage} and set its reference as ${IMAGE_REFERENCE_FIELD}.`,
+	`For several photos of one gift, set ${IMAGE_REFERENCES_FIELD} to up to ${String(MAX_GIFT_IMAGES)} ordered references: the first is the cover and the list replaces the whole gallery, while ${IMAGE_REFERENCE_FIELD} changes only the cover.`,
 ].join('\n\n');
 
 type JsonRpcId = string | number;

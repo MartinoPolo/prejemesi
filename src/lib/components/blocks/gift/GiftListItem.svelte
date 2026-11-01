@@ -18,6 +18,7 @@
 	import GiftCategoryBadges from './GiftCategoryBadges.svelte';
 	import GiftLinkList from './GiftLinkList.svelte';
 	import GiftLivePreviewBadge from './GiftLivePreviewBadge.svelte';
+	import GiftGalleryCountChip from './GiftGalleryCountChip.svelte';
 	import { GIFT_LIVE_PREVIEW } from '$lib/components/blocks/change-proposals/change_row_model.js';
 	import { giftLivePreviewMarks } from '$lib/components/blocks/change-proposals/gift_live_preview.js';
 	import { restingShadowNesting } from '$lib/utils/resting_shadow_nesting.js';
@@ -77,6 +78,7 @@
 	// Content fades per element because the title row and content column also hold actions.
 	const dimmedContentClass = $derived(cn(isDimmed && 'opacity-50'));
 	const imageSrc = $derived(resolveGiftImageUrl(gift.imageUrl, gift.imageKey));
+	const additionalImageCount = $derived(Math.max(0, gift.images.length - 1));
 	const priceDisplay = $derived(formatPrice(gift.price, gift.currency, gift.priceMax));
 
 	function synchronizeListOverlayClearance(image: HTMLElement) {
@@ -110,7 +112,7 @@
 				resizeObserver.observe(control);
 			}
 			for (const element of image.querySelectorAll<HTMLElement>(
-				'.gift-list-top-row, [data-testid="gift-priority-badge"], [data-testid="gift-state-overlay"] > span',
+				'.gift-list-top-row, [data-testid="gift-gallery-count-chip"], [data-testid="gift-priority-badge"], [data-testid="gift-state-overlay"] > span',
 			)) {
 				resizeObserver.observe(element);
 			}
@@ -120,6 +122,9 @@
 		function measure() {
 			const imageRect = image.getBoundingClientRect();
 			const category = image.querySelector<HTMLElement>('.gift-list-top-row');
+			const countChip = image.querySelector<HTMLElement>(
+				'[data-testid="gift-gallery-count-chip"]',
+			);
 			const priority = image.querySelector<HTMLElement>(
 				'[data-testid="gift-priority-badge"]',
 			);
@@ -130,6 +135,7 @@
 			);
 			const separation = rootFontSize * 0.5;
 			const categoryRect = category?.getBoundingClientRect();
+			const countChipRect = countChip?.getBoundingClientRect();
 			const priorityRect = priority?.getBoundingClientRect();
 			const overlayGap = overlay
 				? Number.parseFloat(getComputedStyle(overlay).rowGap) || 0
@@ -151,9 +157,9 @@
 			);
 			const startClearance = Math.max(
 				contextualClearance,
-				categoryRect
-					? categoryRect.top - imageRect.top + categoryRect.height + separation
-					: 0,
+				...[categoryRect, countChipRect].map((rect) =>
+					rect ? rect.bottom - imageRect.top + separation : 0,
+				),
 			);
 			const endClearance = priorityRect
 				? imageRect.bottom - priorityRect.bottom + priorityRect.height + separation
@@ -221,9 +227,16 @@
 				alt={gift.name}
 				class={dimmedContentClass}
 			/>
+			{#if additionalImageCount > 0}
+				<GiftGalleryCountChip
+					additionalCount={additionalImageCount}
+					class="gift-list-count-chip absolute top-2 right-2 z-20"
+				/>
+			{/if}
 			{#if showsTopRow}
 				<div
 					class="gift-list-top-row absolute right-2 z-20 flex min-w-0 flex-wrap items-start gap-1"
+					data-clears-count-chip={additionalImageCount > 0 || undefined}
 				>
 					{#if previewMarks.proposed && livePreview !== undefined}
 						<GiftLivePreviewBadge kind={livePreview} />
@@ -233,6 +246,7 @@
 							categories={gift.categories}
 							{isDimmed}
 							interactive={!contextualMode}
+							singleLine={additionalImageCount > 0}
 						/>
 					{/if}
 				</div>
@@ -358,6 +372,22 @@
 		left: var(--gift-context-leading-clearance, 0.5rem);
 	}
 
+	/* The fixed-width count chip owns the top-right corner; categories wrap before it. */
+	:global(.gift-list-count-chip) {
+		width: var(--gift-list-count-chip-width);
+	}
+
+	.gift-list-top-row[data-clears-count-chip] {
+		right: calc(0.5rem + var(--gift-list-count-chip-width) + 0.25rem);
+	}
+
+	/* Mobile selection puts the categories below the checkbox, already clear of the chip. */
+	@media (width < 640px) {
+		:global(.gift-selection-list-owner) .gift-list-top-row[data-clears-count-chip] {
+			right: 0.5rem;
+		}
+	}
+
 	.gift-list-item {
 		box-sizing: border-box;
 
@@ -383,6 +413,8 @@
 	}
 
 	.gift-list-image {
+		--gift-list-count-chip-width: 2.75rem;
+
 		width: 100%;
 		min-width: 0;
 		border-top-left-radius: max(

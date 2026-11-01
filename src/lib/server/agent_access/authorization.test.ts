@@ -240,6 +240,35 @@ describe('authorizeAgentOperation', () => {
 			],
 			['updateGift', { id: 'gift', imageKey: 'gifts/foreign.webp' }],
 			['updateGift', { id: 'gift', imageUrl: null }],
+			[
+				'createGift',
+				{
+					wishlistId: ALLOWED_WISHLIST_ID,
+					name: 'Kolo',
+					images: [{ imageKey: 'gifts/foreign.webp' }],
+				},
+			],
+			['updateGift', { id: 'gift', images: [] }],
+			[
+				'createGift',
+				{
+					wishlistId: ALLOWED_WISHLIST_ID,
+					name: 'Kolo',
+					imageReferences: [{ imageReference: 'image-1' }],
+					imageUrl: 'https://example.com/kolo.jpg',
+				},
+			],
+			[
+				'updateWishlist',
+				{ id: ALLOWED_WISHLIST_ID, imageReferences: [{ imageReference: 'image-1' }] },
+			],
+			[
+				'importGifts',
+				{
+					wishlistId: ALLOWED_WISHLIST_ID,
+					gifts: [{ name: 'Kolo', imageReferences: [{ imageReference: 'image-1' }] }],
+				},
+			],
 			['updateWishlist', { id: ALLOWED_WISHLIST_ID, imageKey: 'wishlists/foreign.webp' }],
 			[
 				'saveWishlistSettings',
@@ -306,6 +335,67 @@ describe('authorizeAgentOperation', () => {
 				400,
 				SERVER_ERROR.AGENT_IMAGE_INPUT_UNSUPPORTED,
 				name,
+			);
+		}
+	});
+
+	it('rejects a malformed image gallery before looking up any reference', async () => {
+		const reference = (index: number) => ({ imageReference: `image-${index}` });
+		const malformedGalleries: Array<[string, Record<string, unknown>]> = [
+			['an empty gallery', { imageReferences: [] }],
+			[
+				'more than 8 images',
+				{ imageReferences: Array.from({ length: 9 }, (_, index) => reference(index)) },
+			],
+			['a gallery that is not a list', { imageReferences: reference(1) }],
+			[
+				'a gallery beside a cover reference',
+				{ imageReferences: [reference(1)], imageReference: 'image-2' },
+			],
+			[
+				'a gallery beside a cover framing',
+				{ imageReferences: [reference(1)], imageMeta: { fitMode: 'cover-crop' } },
+			],
+			[
+				'an entry with an image URL',
+				{
+					imageReferences: [
+						{ ...reference(1), imageUrl: 'https://example.com/kolo.jpg' },
+					],
+				},
+			],
+			['an entry that is not an object', { imageReferences: ['image-1'] }],
+			[
+				'an entry with invalid framing',
+				{ imageReferences: [{ ...reference(1), imageMeta: { fitMode: 'stretch' } }] },
+			],
+		];
+		for (const [label, gallery] of malformedGalleries) {
+			await expectServerError(
+				authorizeAgentOperation(grantWith(everyScope), 'createGift', {
+					wishlistId: ALLOWED_WISHLIST_ID,
+					name: 'Kolo',
+					...gallery,
+				}),
+				400,
+				SERVER_ERROR.AGENT_IMAGE_REFERENCES_INVALID,
+				label,
+			);
+		}
+		const invalidReferences: Array<[string, Record<string, unknown>]> = [
+			['an empty reference', { imageReferences: [{ imageReference: '' }] }],
+			['a repeated reference', { imageReferences: [reference(1), reference(1)] }],
+		];
+		for (const [label, gallery] of invalidReferences) {
+			await expectServerError(
+				authorizeAgentOperation(grantWith(everyScope), 'createGift', {
+					wishlistId: ALLOWED_WISHLIST_ID,
+					name: 'Kolo',
+					...gallery,
+				}),
+				400,
+				SERVER_ERROR.AGENT_IMAGE_REFERENCE_INVALID,
+				label,
 			);
 		}
 	});

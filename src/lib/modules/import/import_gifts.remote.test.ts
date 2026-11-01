@@ -49,6 +49,7 @@ vi.mock('@sveltejs/kit', () => ({
 
 // ── Mock drizzle-orm – used only as where-clause builders; no-ops are fine ──
 vi.mock('drizzle-orm', () => ({
+	getTableColumns: vi.fn((table: Record<string, unknown>) => ({ ...table })),
 	eq: vi.fn((...args: unknown[]) => args),
 	and: vi.fn((...args: unknown[]) => args),
 	isNull: vi.fn((arg: unknown) => arg),
@@ -63,6 +64,14 @@ vi.mock('drizzle-orm', () => ({
 }));
 
 vi.mock('$lib/server/db/gift.schema.js', () => ({
+	giftImage: {
+		id: 'giftImage.id',
+		giftId: 'giftImage.giftId',
+		position: 'giftImage.position',
+		imageUrl: 'giftImage.imageUrl',
+		imageKey: 'giftImage.imageKey',
+		imageMeta: 'giftImage.imageMeta',
+	},
 	gift: {
 		id: 'gift.id',
 		wishlistId: 'gift.wishlistId',

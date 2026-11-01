@@ -12,6 +12,8 @@ import {
 	type UpdateGiftInput,
 } from '$lib/modules/gifts/types.js';
 import { jsonChanged } from '$lib/modules/gifts/gift_post_share.js';
+import { releasedImageKeys } from '$lib/modules/gifts/gift_images.js';
+import { giftColumnsWithImages } from './gift_gallery.js';
 import {
 	OPERATION_EXPOSURE,
 	OPERATION_KIND,
@@ -44,29 +46,25 @@ function supportedCurrency(currency: string | null): GiftCurrency | null {
 }
 
 /**
- * Owning mutations delete the upload of a replaced, removed or deleted image after commit, so a
- * restored upload key that the undone change replaced or deleted may point at a missing object.
- * Undo never deletes storage, except that undoing a creation deletes the gift through the ordinary
- * delete path, which removes its upload. A restored deleted gift drops the missing upload like
- * removing it in the editor; an undone image change keeps the current image so it is not orphaned.
+ * Owning mutations delete the uploads a change drops from the gallery, or a deleted gift's uploads,
+ * after commit, so a restored upload key that the undone change dropped or deleted may point at a
+ * missing object. Undo never deletes storage, except that undoing a creation deletes the gift
+ * through the ordinary delete path, which removes its uploads. A restored deleted gift drops the
+ * missing uploads like removing them in the editor; an undone change that dropped an upload keeps
+ * the current gallery so no image is orphaned.
  */
 function planImageRestore(
 	before: GiftRevisionSnapshot,
 	after: GiftRevisionSnapshot,
 	undoesDeletion: boolean,
-): Pick<UpdateGiftInput, 'imageUrl' | 'imageKey' | 'imageMeta'> {
-	const restoresRemovedUpload =
-		before.imageKey !== null && (before.imageKey !== after.imageKey || undoesDeletion);
-	if (restoresRemovedUpload) {
-		return undoesDeletion ? { imageUrl: null, imageKey: null, imageMeta: null } : {};
+): Pick<UpdateGiftInput, 'images'> {
+	const restoredImages = undoesDeletion
+		? before.images.filter((image) => image.imageKey === null)
+		: before.images;
+	if (!undoesDeletion && releasedImageKeys(before.images, after.images).length > 0) {
+		return {};
 	}
-	const changed = (key: 'imageUrl' | 'imageKey' | 'imageMeta') =>
-		jsonChanged(before[key], after[key]);
-	return {
-		...(changed('imageUrl') ? { imageUrl: before.imageUrl } : {}),
-		...(changed('imageKey') ? { imageKey: before.imageKey } : {}),
-		...(changed('imageMeta') ? { imageMeta: before.imageMeta } : {}),
-	};
+	return jsonChanged(restoredImages, after.images) ? { images: restoredImages } : {};
 }
 
 /** Builds the edit and restored state that bring a gift from `after` back to `before`. */
@@ -148,7 +146,7 @@ async function undoRevisions(
 	}
 
 	const giftRows = await transaction
-		.select()
+		.select(giftColumnsWithImages())
 		.from(gift)
 		.where(inArray(gift.id, giftIds))
 		.orderBy(asc(gift.id))

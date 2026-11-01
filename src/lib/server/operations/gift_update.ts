@@ -7,6 +7,7 @@ import { WISHLIST_ROLES } from '$lib/modules/wishlists/types.js';
 import {
 	isPriceRangeValid,
 	type DescriptionAppend,
+	type GiftWithImages,
 	type UpdateGiftInput,
 } from '$lib/modules/gifts/types.js';
 import { normalizeGiftLinks } from '$lib/modules/gifts/gift_url.js';
@@ -26,7 +27,14 @@ import {
 	requestedGiftCategoryIds,
 	sameGiftCategoryIds,
 } from '$lib/modules/gift-categories/gift_category_assignment.js';
+import {
+	galleryWithCover,
+	giftCover,
+	releasedImageKeys,
+	type GiftImage,
+} from '$lib/modules/gifts/gift_images.js';
 import type { MutationOperationContext } from './operation.js';
+import { replaceGiftGalleries } from './gift_gallery.js';
 import {
 	assertWishlistPriorityLevel,
 	type ManagedWishlist,
@@ -37,7 +45,8 @@ import {
 	managerEditNotifiesReservers,
 } from './wishlist_kind_rules.js';
 
-export type GiftRow = typeof gift.$inferSelect;
+/** A locked gift with its ordered gallery; read it with `giftColumnsWithImages()`. */
+export type GiftRow = GiftWithImages;
 export type GiftUpdateData = Partial<typeof gift.$inferInsert>;
 
 /**
@@ -48,10 +57,11 @@ export type GiftUpdateData = Partial<typeof gift.$inferInsert>;
 function applyPostShareEditTransparency(params: {
 	giftRow: GiftRow;
 	updateData: GiftUpdateData;
+	nextImages?: GiftImage[];
 	now: Date;
 	wishlistRow: WishlistRow;
 }): void {
-	const { giftRow, updateData, now, wishlistRow } = params;
+	const { giftRow, updateData, nextImages, now, wishlistRow } = params;
 	const graceOpen = isOwnerSharedGiftDeleteGraceOpen(
 		{ wishlistSharedAt: wishlistRow.sharedAt, giftCreatedAt: giftRow.createdAt },
 		now,
@@ -60,16 +70,35 @@ function applyPostShareEditTransparency(params: {
 		existingSnapshot: giftRow.preEditShareSnapshot,
 		graceOpen,
 		beforeEdit: toPreShareGiftSnapshot(giftRow),
-		afterEdit: toPreShareGiftSnapshot({ ...giftRow, ...updateData }),
+		afterEdit: toPreShareGiftSnapshot(giftRowAfterWrite(giftRow, updateData, nextImages)),
 		now,
 	});
 	updateData.editedAfterShareAt = outcome.editedAfterShareAt;
 	updateData.preEditShareSnapshot = outcome.preEditShareSnapshot;
 }
 
-export function updateDataChangesGift(giftRow: GiftRow, updateData: GiftUpdateData): boolean {
-	return Object.entries(updateData).some(([key, value]) =>
-		jsonChanged(value, giftRow[key as keyof GiftRow]),
+/**
+ * The gift row as an edit leaves it, gallery included, for revisions and transparency.
+ * `nextImages` is the complete next gallery, or undefined when the edit keeps the images.
+ */
+export function giftRowAfterWrite(
+	giftRow: GiftRow,
+	updateData: GiftUpdateData,
+	nextImages: GiftImage[] | undefined,
+): GiftRow {
+	return { ...giftRow, ...updateData, images: nextImages ?? giftRow.images } as GiftRow;
+}
+
+export function updateDataChangesGift(
+	giftRow: GiftRow,
+	updateData: GiftUpdateData,
+	nextImages?: GiftImage[],
+): boolean {
+	return (
+		Object.entries(updateData).some(([key, value]) =>
+			jsonChanged(value, giftRow[key as keyof GiftRow]),
+		) ||
+		(nextImages !== undefined && jsonChanged(nextImages, giftRow.images))
 	);
 }
 
@@ -81,15 +110,21 @@ export function updateDataChangesGift(giftRow: GiftRow, updateData: GiftUpdateDa
 export function planPresentationUpdate(params: {
 	giftRow: GiftRow;
 	updateData: GiftUpdateData;
+	nextImages?: GiftImage[];
 	now: Date;
 	wishlistRow: WishlistRow;
-}): { giftRow: GiftRow; updateData: GiftUpdateData; didChange: boolean } {
-	const { giftRow, updateData, now, wishlistRow } = params;
-	const didChange = updateDataChangesGift(giftRow, updateData);
+}): {
+	giftRow: GiftRow;
+	updateData: GiftUpdateData;
+	nextImages?: GiftImage[];
+	didChange: boolean;
+} {
+	const { giftRow, updateData, nextImages, now, wishlistRow } = params;
+	const didChange = updateDataChangesGift(giftRow, updateData, nextImages);
 	if (didChange && wishlistRow.sharedAt !== null) {
-		applyPostShareEditTransparency({ giftRow, updateData, now, wishlistRow });
+		applyPostShareEditTransparency({ giftRow, updateData, nextImages, now, wishlistRow });
 	}
-	return { giftRow, updateData, didChange };
+	return { giftRow, updateData, nextImages, didChange };
 }
 
 /** State an undo restores beyond the editable fields; never counts as a post-share edit itself. */
@@ -264,21 +299,59 @@ function restoredStateUpdateData(restoring: RestoredGiftState | undefined): Gift
 }
 
 /**
- * Storage cleanup (issue #107): replacing or removing an uploaded image leaves no unreferenced R2
- * object behind.
+ * Storage cleanup (issue #107): replacing, removing or dropping an uploaded image from the gallery
+ * leaves no unreferenced R2 object behind. A key that only moved to another position stays.
  */
 function deferReplacedImageCleanup(
 	context: MutationOperationContext,
-	replacedImageKey: string | null,
-	nextImageKey: string | null | undefined,
+	previousImages: readonly GiftImage[],
+	nextImages: readonly GiftImage[],
 ): void {
-	if (
-		nextImageKey !== undefined &&
-		replacedImageKey !== null &&
-		replacedImageKey !== nextImageKey
-	) {
-		context.deferEffect(() => deleteObjectsBestEffort([replacedImageKey]));
+	const releasedKeys = releasedImageKeys(previousImages, nextImages);
+	if (releasedKeys.length > 0) {
+		context.deferEffect(() => deleteObjectsBestEffort(releasedKeys));
 	}
+}
+
+/**
+ * Resolves the requested images into the complete next gallery. A full `images` list replaces
+ * every image and becomes the cover fields the edit engines compare; the single cover fields
+ * replace only the cover and keep the later images. Undefined when the edit names no image field.
+ */
+function withRequestedGallery(request: GiftUpdateRequest): {
+	request: GiftUpdateRequest;
+	nextImages: GiftImage[] | undefined;
+} {
+	const { giftRow } = request;
+	const { images, ...input } = request.input;
+	if (images !== undefined) {
+		const cover = giftCover(images);
+		return {
+			request: {
+				...request,
+				input: {
+					...input,
+					imageUrl: cover.imageUrl,
+					imageKey: cover.imageKey,
+					imageMeta: cover.imageMeta,
+				},
+			},
+			nextImages: images,
+		};
+	}
+	if (
+		input.imageUrl === undefined &&
+		input.imageKey === undefined &&
+		input.imageMeta === undefined
+	) {
+		return { request, nextImages: undefined };
+	}
+	const nextCover: GiftImage = {
+		imageUrl: input.imageUrl === undefined ? giftRow.imageUrl : input.imageUrl,
+		imageKey: input.imageKey === undefined ? giftRow.imageKey : input.imageKey,
+		imageMeta: input.imageMeta === undefined ? giftRow.imageMeta : input.imageMeta,
+	};
+	return { request, nextImages: galleryWithCover(giftRow.images, nextCover) };
 }
 
 function noteReservedGiftEdit(
@@ -321,7 +394,9 @@ export async function applyGiftUpdate(
 	context: MutationOperationContext,
 	requestedEdit: GiftUpdateRequest,
 ): Promise<GiftUpdateResult> {
-	const request = withRequestedCategoryIds(requestedEdit);
+	const { request, nextImages: requestedImages } = withRequestedGallery(
+		withRequestedCategoryIds(requestedEdit),
+	);
 	const { giftRow, input, restoring } = request;
 	const { wishlistRow } = request.managedWishlist;
 	const { transaction, now } = context;
@@ -336,12 +411,18 @@ export async function applyGiftUpdate(
 		giftRow.id,
 	);
 	const appendEngine = usesAppendEngine(request, followsStrictRules, now);
-	const { updateData, didChange } = planGiftEdit(request, appendEngine, now);
+	const plannedEdit = planGiftEdit(request, appendEngine, now);
+	const { updateData } = plannedEdit;
+	const nextImages =
+		requestedImages !== undefined && jsonChanged(requestedImages, giftRow.images)
+			? requestedImages
+			: undefined;
+	const didChange = plannedEdit.didChange || nextImages !== undefined;
 
 	// Transparency: any post-share edit that actually changes a field flags the gift as edited
 	// after sharing, unless it nets out to a byte-identical revert within the grace window.
 	if (wishlistRow.sharedAt !== null && didChange) {
-		applyPostShareEditTransparency({ giftRow, updateData, now, wishlistRow });
+		applyPostShareEditTransparency({ giftRow, updateData, nextImages, now, wishlistRow });
 	}
 	Object.assign(updateData, restoredStateUpdateData(restoring), { updatedAt: now });
 
@@ -361,22 +442,26 @@ export async function applyGiftUpdate(
 		);
 	}
 
-	const [updated] = await transaction
+	if (nextImages !== undefined) {
+		await replaceGiftGalleries(transaction, new Map([[giftRow.id, nextImages]]));
+	}
+	const [updatedColumns] = await transaction
 		.update(gift)
 		.set(updateData)
 		.where(eq(gift.id, giftRow.id))
 		.returning();
-	if (updated === undefined) {
-		return { updated, didCategoryChange };
+	if (updatedColumns === undefined) {
+		return { updated: undefined, didCategoryChange };
 	}
+	const updated: GiftRow = { ...updatedColumns, images: nextImages ?? giftRow.images };
 	context.recordGiftRevisions([
 		{ giftId: giftRow.id, wishlistId: giftRow.wishlistId, before: giftRow, after: updated },
 	]);
 
 	// Undo never deletes storage here (only undoing a creation does, through the ordinary delete
 	// path); it drops uploads it cannot restore instead.
-	if (!appendEngine && restoring === undefined) {
-		deferReplacedImageCleanup(context, giftRow.imageKey, updateData.imageKey);
+	if (!appendEngine && restoring === undefined && nextImages !== undefined) {
+		deferReplacedImageCleanup(context, giftRow.images, nextImages);
 	}
 	if (managerEditNotifiesReservers(request.managedWishlist) && didChange) {
 		noteReservedGiftEdit(context, request, updated);

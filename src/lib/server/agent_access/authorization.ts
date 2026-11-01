@@ -34,10 +34,11 @@ import {
 import { AGENT_BATCH_MAX_ITEMS } from './limits.js';
 import {
 	attachImageReferences,
-	inputWithBoundImage,
+	inputWithBoundImages,
 	resolveImageReferences,
 	namesImageReference,
 	splitImageReference,
+	splitReferenceIds,
 	type AgentImageBinding,
 	type ImageReferenceSplit,
 } from './image_references.js';
@@ -51,12 +52,12 @@ export interface AgentOperationRequest {
 export interface AuthorizedAgentOperation {
 	operation: AnyOperation;
 	/**
-	 * The caller's input as received, an image reference replaced by its stored image; the runner
-	 * validates it again when it runs.
+	 * The caller's input as received, its image references replaced by their stored images; the
+	 * runner validates it again when it runs.
 	 */
 	input: unknown;
-	/** The image the input's reference resolved to; attached under the batch's locks. */
-	imageBinding: AgentImageBinding | null;
+	/** The images the input's references resolved to, in order; attached under the batch's locks. */
+	imageBindings: AgentImageBinding[];
 	/** Locked first when the call runs in a batch; re-checked under that lock. */
 	targetWishlistIds: readonly string[];
 	/** Fast-forward never applies such a call without the user's explicit selection. */
@@ -131,7 +132,7 @@ function splitAgentInput(
 	if (namesImageReference(rawInput)) {
 		error(400, SERVER_ERROR.AGENT_IMAGE_INPUT_UNSUPPORTED);
 	}
-	return { imageReference: null, coreInput: rawInput };
+	return { kind: 'none', coreInput: rawInput };
 }
 
 /**
@@ -192,14 +193,14 @@ export async function authorizeAgentOperations(
 		database,
 		grant.userId,
 		splitInputs.map((split, index) => ({
-			imageReference: split.imageReference,
+			imageReferences: splitReferenceIds(split),
 			targetWishlistIds: stepValue(targetWishlistIds, index),
 		})),
 	);
 	return checkedRequests.map(({ operation, policy, rawInput }, index) => ({
 		operation,
 		input: boundInput(rawInput, stepValue(splitInputs, index), stepValue(imageBindings, index)),
-		imageBinding: stepValue(imageBindings, index),
+		imageBindings: stepValue(imageBindings, index),
 		targetWishlistIds: stepValue(targetWishlistIds, index),
 		requiresConfirmation: stepValue(confirmations, index),
 		lookup: stepValue(lookups, index),
@@ -210,12 +211,12 @@ export async function authorizeAgentOperations(
 function boundInput(
 	rawInput: unknown,
 	split: ImageReferenceSplit,
-	binding: AgentImageBinding | null,
+	bindings: readonly AgentImageBinding[],
 ): unknown {
-	if (binding === null || split.imageReference === null) {
+	if (split.kind === 'none') {
 		return rawInput;
 	}
-	return inputWithBoundImage(split.coreInput, binding);
+	return inputWithBoundImages(split, bindings);
 }
 
 export async function authorizeAgentOperation(
@@ -322,7 +323,7 @@ function lockedBatchOptions(
 				grant.userId,
 				mutations.map((authorized) => ({
 					targetWishlistIds: authorized.targetWishlistIds,
-					binding: authorized.imageBinding,
+					bindings: authorized.imageBindings,
 				})),
 				onStepFailed,
 			);

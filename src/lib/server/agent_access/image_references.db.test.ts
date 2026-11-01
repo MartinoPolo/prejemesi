@@ -164,6 +164,90 @@ describe.skipIf(!DB_READY)('agent image references', () => {
 			expect(restored.imageKey).toBeNull();
 		});
 
+		it('sets a whole gallery from references, and a single reference then replaces only the cover', async () => {
+			const wishlist = await createWishlistFixture();
+			const token = await agentToken(MANAGER_ID);
+			const first = await uploadFor(token, wishlist.id);
+			const second = await uploadFor(token, wishlist.id);
+			const replacement = await uploadFor(token, wishlist.id);
+			const fill = { fitMode: 'cover-crop' as const };
+
+			const created = await applyAll(
+				(
+					await submit(token, wishlist.shortId, [
+						[
+							'createGift',
+							{
+								wishlistId: wishlist.id,
+								name: 'Kolo',
+								imageReferences: [
+									{ imageReference: first.id },
+									{ imageReference: second.id, imageMeta: fill },
+								],
+							},
+						],
+					])
+				).id,
+			);
+			const giftId = createdGiftIdOf(created.proposal.rows[0]?.appliedResult);
+			expect(await readGift(giftId)).toMatchObject({
+				imageKey: first.objectKey,
+				imageUrl: null,
+				images: [
+					{
+						imageUrl: null,
+						imageKey: first.objectKey,
+						imageMeta: DEFAULT_IMAGE_METADATA,
+					},
+					{ imageUrl: null, imageKey: second.objectKey, imageMeta: fill },
+				],
+			});
+			expect((await storedImage(first.id))?.attachedAt).not.toBeNull();
+			expect((await storedImage(second.id))?.attachedAt).not.toBeNull();
+
+			await applyAll(
+				(
+					await submit(token, wishlist.shortId, [
+						['updateGift', { id: giftId, imageReference: replacement.id }],
+					])
+				).id,
+			);
+
+			expect((await readGift(giftId)).images).toEqual([
+				{
+					imageUrl: null,
+					imageKey: replacement.objectKey,
+					imageMeta: DEFAULT_IMAGE_METADATA,
+				},
+				{ imageUrl: null, imageKey: second.objectKey, imageMeta: fill },
+			]);
+		});
+
+		it('rejects a gallery naming one reference twice', async () => {
+			const wishlist = await createWishlistFixture();
+			const token = await agentToken(MANAGER_ID);
+			const image = await uploadFor(token, wishlist.id);
+
+			await expectRejection(
+				submit(token, wishlist.shortId, [
+					[
+						'createGift',
+						{
+							wishlistId: wishlist.id,
+							name: 'Kolo',
+							imageReferences: [
+								{ imageReference: image.id },
+								{ imageReference: image.id },
+							],
+						},
+					],
+				]),
+				400,
+				SERVER_ERROR.AGENT_IMAGE_REFERENCE_INVALID,
+			);
+			expect((await storedImage(image.id))?.attachedAt).toBeNull();
+		});
+
 		it('still rejects an image URL or storage key in a gift input', async () => {
 			const wishlist = await createWishlistFixture();
 			const token = await agentToken(MANAGER_ID);
@@ -173,6 +257,7 @@ describe.skipIf(!DB_READY)('agent image references', () => {
 				{ imageUrl: 'https://shop.example/kolo.png' },
 				{ imageKey: image.objectKey },
 				{ imageReference: image.id, imageKey: image.objectKey },
+				{ images: [{ imageKey: image.objectKey }] },
 			]) {
 				await expectRejection(
 					submit(token, wishlist.shortId, [
