@@ -56,6 +56,8 @@ interface LandingDemoGiftSeed {
 	imageUrl: string;
 	/** Cover-crop focal point in percent; see {@link landingDemoImageMeta}. */
 	focal: ImageFocalPoint;
+	/** Closer crops of the same photo that follow the cover in the gift's gallery. */
+	detailViews?: readonly { focal: ImageFocalPoint; zoom: number }[];
 	links: readonly GiftLink[];
 }
 
@@ -69,6 +71,11 @@ const LANDING_DEMO_GIFT_SEEDS = [
 		imageUrl: asset('/demo/v1/teapot.jpg'),
 		// Portrait source: the pot sits just below center, so the 4:3 window drops a little.
 		focal: { x: 50, y: 56 },
+		// Shows a multi-image gift: the lid, then the handle.
+		detailViews: [
+			{ focal: { x: 48, y: 38 }, zoom: 2 },
+			{ focal: { x: 78, y: 50 }, zoom: 2 },
+		],
 		links: [{ url: 'https://www.alza.cz/' }],
 	},
 	{
@@ -139,13 +146,11 @@ function buildDemoGift(
 		imageUrl: seed.imageUrl,
 		imageKey: null,
 		imageMeta: landingDemoImageMeta(seed.focal),
-		images: [
-			{
-				imageUrl: seed.imageUrl,
-				imageKey: null,
-				imageMeta: landingDemoImageMeta(seed.focal),
-			},
-		],
+		images: [{ focal: seed.focal, zoom: 1 }, ...(seed.detailViews ?? [])].map((view) => ({
+			imageUrl: seed.imageUrl,
+			imageKey: null,
+			imageMeta: landingDemoImageMeta(view.focal, view.zoom),
+		})),
 		quantity: 1,
 		sortOrder,
 		received: false,

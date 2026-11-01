@@ -136,6 +136,62 @@ describe('gift field diffs', () => {
 			},
 		]);
 	});
+
+	describe('gallery size', () => {
+		const galleryImage = (name: string) => ({
+			imageUrl: `https://img.example/${name}.jpg`,
+			imageMeta: null,
+		});
+		const galleryGift = (...names: string[]) =>
+			gift({
+				imageUrl: names.length === 0 ? null : `https://img.example/${names[0]}.jpg`,
+				images: names.map(galleryImage),
+			});
+
+		it('shows the image count when images are added behind the same cover', () => {
+			expect(giftFieldDiffs(galleryGift('a'), galleryGift('a', 'b', 'c'), lookups)).toEqual([
+				{ field: GIFT_DIFF_FIELD.image, before: '1 obrázek', after: '3 obrázky' },
+			]);
+		});
+
+		it('names the cover change beside the count when both change', () => {
+			expect(
+				giftFieldDiffs(
+					galleryGift('a', 'b'),
+					galleryGift('c', 'd', 'e', 'f', 'g'),
+					lookups,
+				),
+			).toEqual([
+				{
+					field: GIFT_DIFF_FIELD.image,
+					before: `${m.change_review_image_previous()} · 2 obrázky`,
+					after: `${m.change_review_image_new()} · 5 obrázků`,
+				},
+			]);
+		});
+
+		it('keeps the cover wording when a same-size gallery is reordered', () => {
+			expect(giftFieldDiffs(galleryGift('a', 'b'), galleryGift('b', 'a'), lookups)).toEqual([
+				{
+					field: GIFT_DIFF_FIELD.image,
+					before: m.change_review_image_previous(),
+					after: m.change_review_image_new(),
+				},
+			]);
+		});
+
+		it('lists the image count of a new gift with a gallery', () => {
+			expect(
+				giftFieldDiffs(null, galleryGift('a', 'b', 'c'), lookups).find(
+					(diff) => diff.field === GIFT_DIFF_FIELD.image,
+				),
+			).toEqual({
+				field: GIFT_DIFF_FIELD.image,
+				before: null,
+				after: `${m.change_review_image_present()} · 3 obrázky`,
+			});
+		});
+	});
 });
 
 describe('gift cards and appends', () => {

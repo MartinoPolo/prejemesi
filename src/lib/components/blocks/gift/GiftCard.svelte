@@ -24,7 +24,10 @@
 	import { GIFT_LIVE_PREVIEW } from '$lib/components/blocks/change-proposals/change_row_model.js';
 	import { giftLivePreviewMarks } from '$lib/components/blocks/change-proposals/gift_live_preview.js';
 	import { restingShadowNesting } from '$lib/utils/resting_shadow_nesting.js';
+	import { wrapGalleryIndex } from '$lib/modules/gifts/gift_gallery.js';
+	import { useGiftGalleryPositions } from '$lib/modules/gifts/gift_gallery_positions.js';
 	import type { GiftPresentationProps } from './gift_presentation_props.js';
+	import GiftCardGallery from './GiftCardGallery.svelte';
 
 	interface GiftCardProps extends GiftPresentationProps {
 		allowArchivedLike?: boolean;
@@ -88,6 +91,29 @@
 	let actionContentWidth = $state(0);
 	let pressStartedOnControl = $state(false);
 
+	const galleryPositions = useGiftGalleryPositions();
+	const hasGallery = $derived(gift.images.length > 1);
+	let browsedImageIndex = $state(0);
+	let galleryWarm = $state(false);
+	let gallerySwiping = $state(false);
+	// Reorder and selection modes show the cover; browsing resumes where it was afterwards.
+	const shownImageIndex = $derived(
+		hasGallery && !contextualMode ? wrapGalleryIndex(browsedImageIndex, gift.images.length) : 0,
+	);
+	const shownImageMeta = $derived(
+		hasGallery ? gift.images[shownImageIndex].imageMeta : gift.imageMeta,
+	);
+
+	function showGalleryImage(imageIndex: number) {
+		browsedImageIndex = imageIndex;
+		galleryPositions?.remember(gift.id, imageIndex);
+	}
+
+	$effect(() => {
+		const giftId = gift.id;
+		return () => galleryPositions?.forget(giftId);
+	});
+
 	function recordPressOrigin(event: PointerEvent & { currentTarget: HTMLDivElement }) {
 		const control =
 			event.target instanceof Element
@@ -101,7 +127,7 @@
 
 	const imageSrc = $derived(resolveGiftImageUrl(gift.imageUrl, gift.imageKey));
 	const explicitImageFrameFill = $derived.by(() => {
-		const fillColor = gift.imageMeta?.bgColor;
+		const fillColor = shownImageMeta?.bgColor;
 		return hasExplicitFrameFill(fillColor) ? fillColor : null;
 	});
 	const priceDisplay = $derived(formatPrice(gift.price, gift.currency, gift.priceMax));
@@ -138,13 +164,17 @@
 	</div>
 {/snippet}
 
+<!-- svelte-ignore a11y_no_static_element_interactions (hover/focus only preloads neighbouring
+     gallery images; the card's controls stay fully accessible) -->
 <div
 	class={styles.card()}
 	data-testid="gift-card-surface"
 	data-gift-actions-open={moreOpen ? moreSurface : undefined}
-	data-gift-control-press={pressStartedOnControl || undefined}
+	data-gift-control-press={pressStartedOnControl || gallerySwiping || undefined}
 	data-live-preview={livePreview}
 	onpointerdowncapture={recordPressOrigin}
+	onpointerenter={hasGallery ? () => (galleryWarm = true) : undefined}
+	onfocusin={hasGallery ? () => (galleryWarm = true) : undefined}
 >
 	<div class={styles.surface()} use:restingShadowNesting data-slot="elevation-surface">
 		<!-- Image area: dotted mat behind the photo; letterboxed photos keep the mat visible -->
@@ -165,20 +195,22 @@
 				></div>
 			{/if}
 
-			<div
-				class="absolute inset-x-0 top-0 bottom-(--border-w) flex items-center justify-center"
-			>
-				<div class={styles.cropComposition()} data-testid="gift-card-crop-composition">
-					<GiftImage
-						class="size-full rounded-none bg-transparent max-sm:[&_img]:p-0"
-						imageUrl={imageSrc}
-						imageMeta={gift.imageMeta}
-						target="square"
-						alt={gift.name}
-						variant="card"
-					/>
+			{#if !hasGallery}
+				<div
+					class="absolute inset-x-0 top-0 bottom-(--border-w) flex items-center justify-center"
+				>
+					<div class={styles.cropComposition()} data-testid="gift-card-crop-composition">
+						<GiftImage
+							class="size-full rounded-none bg-transparent max-sm:[&_img]:p-0"
+							imageUrl={imageSrc}
+							imageMeta={gift.imageMeta}
+							target="square"
+							alt={gift.name}
+							variant="card"
+						/>
+					</div>
 				</div>
-			</div>
+			{/if}
 
 			<!-- The photo bleeds beneath this foreground separator; clipping it at the border
 			     edge would blend the mat into a pale line at fractional device pixels. -->
@@ -199,7 +231,13 @@
 					<GiftLivePreviewBadge kind={GIFT_LIVE_PREVIEW.deletion} />
 				</div>
 			{:else}
-				<GiftStateOverlay entries={presentation.overlay} avoidTopRight />
+				<GiftStateOverlay
+					entries={presentation.overlay}
+					avoidTopRight
+					class={hasGallery && !contextualMode
+						? 'gift-card-gallery-state-clearance'
+						: undefined}
+				/>
 			{/if}
 			<GiftPriorityBadge
 				priorityLabel={gift.priorityLabel}
@@ -207,6 +245,21 @@
 				{isDimmed}
 				class="absolute bottom-3 left-3 z-20 max-w-[calc(100%-1.5rem)]"
 			/>
+
+			<!-- Unlike the single image above, the gallery follows the overlays so its arrows come
+			     after them in focus order; overlays keep painting above it through their z-index. -->
+			{#if hasGallery}
+				<GiftCardGallery
+					images={gift.images}
+					alt={gift.name}
+					index={shownImageIndex}
+					interactive={!contextualMode}
+					compositionClass={styles.cropComposition()}
+					warm={galleryWarm}
+					onindexchange={showGalleryImage}
+					onswipingchange={(swiping) => (gallerySwiping = swiping)}
+				/>
+			{/if}
 		</div>
 
 		<!-- Body -->
@@ -329,6 +382,13 @@
 
 	.gift-card-top-overlays {
 		left: var(--gift-context-leading-clearance, 0.5rem);
+	}
+
+	/* Centered state badges stay clear of the gallery's edge arrows. */
+	@media (hover: hover) and (pointer: fine) {
+		:global(.gift-card-gallery-state-clearance) {
+			padding-inline: calc(0.5rem + var(--size-control-md) + var(--depth-clearance));
+		}
 	}
 
 	@container (width <= 10rem) {
