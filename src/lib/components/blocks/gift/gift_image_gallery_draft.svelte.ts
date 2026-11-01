@@ -169,6 +169,7 @@ export class GiftImageDraft {
 	/** Whether saving would persist anything different for this image. */
 	readonly changed = $derived(this.imageReplaced || this.#presentationChanged);
 
+	// fallow-ignore-next-line unused-class-member
 	readonly previewSrc = $derived(
 		resolveGiftImageUrl(
 			this.imageUrl.trim() === '' ? null : this.imageUrl.trim(),
@@ -238,6 +239,7 @@ export class GiftImageDraft {
 		this.#legacyAutoRendersAsFit ? IMAGE_EDITOR_MODES.fit : this.editorMode,
 	);
 
+	// fallow-ignore-next-line unused-class-member
 	readonly targetStatusLabels = $derived.by((): Record<GiftEditorCropTarget, string> => {
 		if (this.presentedEditorMode !== IMAGE_EDITOR_MODES.manual) {
 			const modeLabel = editorModeStatusLabel(this.presentedEditorMode);
@@ -272,12 +274,14 @@ export class GiftImageDraft {
 	}
 
 	/** Drops the thumbnail's own crop so it follows the card crop again. */
+	// fallow-ignore-next-line unused-class-member
 	followSquareCrop(): void {
 		this.ownTargets.delete('thumb');
 		this.dirtyTargets.delete('thumb');
 	}
 
 	/** A thumbnail without its own crop mirrors the card's focal point and zoom at its aspect. */
+	// fallow-ignore-next-line unused-class-member
 	syncFollowedThumbnail(): void {
 		if (this.ownTargets.has('thumb') || this.measuredNaturalRatio === null) {
 			return;
@@ -301,6 +305,7 @@ export class GiftImageDraft {
 		this.modeDirty = true;
 	}
 
+	// fallow-ignore-next-line unused-class-member
 	chooseBackground(value: ExplicitImageBackground | 'transparent'): void {
 		this.bgColor = value === 'transparent' ? null : value;
 	}

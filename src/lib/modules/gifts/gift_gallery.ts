@@ -1,5 +1,5 @@
 /** Most images the dot indicator shows; larger galleries show an `n/N` counter instead. */
-export const GIFT_GALLERY_MAX_DOTS = 6;
+const GIFT_GALLERY_MAX_DOTS = 6;
 
 export const GIFT_GALLERY_INDICATOR_KINDS = {
 	none: 'none',

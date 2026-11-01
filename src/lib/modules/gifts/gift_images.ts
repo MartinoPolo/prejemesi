@@ -30,7 +30,7 @@ export function hasImageSource(image: ImageSource): boolean {
 	return (image.imageUrl ?? null) !== null || (image.imageKey ?? null) !== null;
 }
 
-export const GiftImageSchema = v.pipe(
+const GiftImageSchema = v.pipe(
 	v.object({
 		imageUrl: v.optional(v.nullable(v.string()), null),
 		imageKey: v.optional(v.nullable(v.string()), null),

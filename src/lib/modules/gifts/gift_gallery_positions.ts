@@ -6,7 +6,7 @@ const GIFT_GALLERY_POSITIONS_KEY = Symbol('gift-gallery-positions');
  * The image each mounted gift card currently shows, so the Gift viewer opens on it. Client-only
  * browsing state: it is never persisted and resets on reload.
  */
-export class GiftGalleryPositions {
+class GiftGalleryPositions {
 	#indexes = new Map<string, number>();
 
 	remember(giftId: string, index: number): void {
