@@ -55,21 +55,21 @@ export function activeGiftCategoriesColumn() {
 		SELECT coalesce(
 			json_agg(
 				json_build_object(
-					'id', ${giftCategory.id},
-					'presetKey', ${giftCategory.presetKey},
-					'customLabel', ${giftCategory.customLabel},
-					'color', ${giftCategory.color},
-					'sortOrder', ${giftCategory.sortOrder}
+					'id', active_category.id,
+					'presetKey', active_category.preset_key,
+					'customLabel', active_category.custom_label,
+					'color', active_category.color,
+					'sortOrder', active_category.sort_order
 				)
 				ORDER BY assigned.position
 			),
 			'[]'::json
 		)
-		FROM unnest(${gift.categoryIds}) WITH ORDINALITY AS assigned(category_id, position)
-		JOIN ${giftCategory}
-			ON ${giftCategory.id} = assigned.category_id
-			AND ${giftCategory.wishlistId} = ${gift.wishlistId}
-			AND ${giftCategory.deletedAt} IS NULL
+		FROM unnest("gift"."category_ids") WITH ORDINALITY AS assigned(category_id, position)
+		JOIN ${giftCategory} AS active_category
+			ON active_category.id = assigned.category_id
+			AND active_category.wishlist_id = "gift"."wishlist_id"
+			AND active_category.deleted_at IS NULL
 	)`;
 }
 
@@ -584,7 +584,7 @@ async function removeCategories(
 		.set({
 			categoryIds: sql`ARRAY(
 				SELECT assigned.category_id
-				FROM unnest(${gift.categoryIds}) WITH ORDINALITY AS assigned(category_id, position)
+				FROM unnest("gift"."category_ids") WITH ORDINALITY AS assigned(category_id, position)
 				WHERE NOT (assigned.category_id = ANY(${textArraySql(removalIds)}))
 				ORDER BY assigned.position
 			)`,

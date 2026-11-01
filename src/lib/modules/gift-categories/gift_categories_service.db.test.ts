@@ -23,13 +23,15 @@ import { closeDb, getDb } from '$lib/server/db/index.js';
 import { user } from '$lib/server/db/auth.schema.js';
 import { gift, giftCategory } from '$lib/server/db/gift.schema.js';
 import { wishlist } from '$lib/server/db/wishlist.schema.js';
-import { saveGiftCategorySettings } from './gift_categories_service.js';
+import { activeGiftCategoriesColumn, saveGiftCategorySettings } from './gift_categories_service.js';
 
 const PREFIX = `test-gift-category-color-${randomUUID()}-`;
 const USER_ID = `${PREFIX}user`;
 const WISHLIST_ID = `${PREFIX}wishlist`;
 const CATEGORY_ID = `${PREFIX}category`;
 const GIFT_ID = `${PREFIX}gift`;
+const OTHER_WISHLIST_ID = `${PREFIX}other-wishlist`;
+const OTHER_CATEGORY_ID = `${PREFIX}other-category`;
 const INITIAL_COLOR = '#0369A1';
 const UPDATED_COLOR = '#B91C1C';
 const CATEGORY_LABEL = 'Sport';
@@ -139,6 +141,7 @@ describe.skipIf(!DB_READY)('gift category color persistence [real DB]', () => {
 	afterAll(async () => {
 		const database = getDb();
 		await database.delete(wishlist).where(eq(wishlist.id, WISHLIST_ID));
+		await database.delete(wishlist).where(eq(wishlist.id, OTHER_WISHLIST_ID));
 		await database.delete(user).where(eq(user.id, USER_ID));
 		await closeDb();
 	});
@@ -179,5 +182,35 @@ describe.skipIf(!DB_READY)('gift category color persistence [real DB]', () => {
 		});
 		expect(afterGift?.categoryIds).toEqual([CATEGORY_ID]);
 		expect(afterGift).toEqual(beforeGift);
+	});
+
+	it('reads only categories of the gift’s own wishlist', async () => {
+		const database = getDb();
+		await database.insert(wishlist).values({
+			id: OTHER_WISHLIST_ID,
+			shortId: `${PREFIX}other`,
+			recipientUserId: USER_ID,
+			recipientName: null,
+			title: 'Other wishlist',
+			status: 'active',
+		});
+		await database.insert(giftCategory).values({
+			id: OTHER_CATEGORY_ID,
+			wishlistId: OTHER_WISHLIST_ID,
+			customLabel: 'Cizí',
+			color: INITIAL_COLOR,
+			sortOrder: 0,
+		});
+		await database
+			.update(gift)
+			.set({ categoryIds: [CATEGORY_ID, OTHER_CATEGORY_ID] })
+			.where(eq(gift.id, GIFT_ID));
+
+		const [row] = await database
+			.select({ categories: activeGiftCategoriesColumn() })
+			.from(gift)
+			.where(eq(gift.id, GIFT_ID));
+
+		expect(row?.categories.map((category) => category.id)).toEqual([CATEGORY_ID]);
 	});
 });
