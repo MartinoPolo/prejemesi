@@ -1,0 +1,431 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>#580 Varianta B — Kompaktní police</title>
+<style>
+/* Fonts resolve from the worktree's installed packages; system fallbacks apply elsewhere. */
+@font-face { font-family: 'DynaPuff Variable'; font-weight: 400 700; font-display: swap;
+	unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2212;
+	src: url('../../../node_modules/@fontsource-variable/dynapuff/files/dynapuff-latin-wght-normal.woff2') format('woff2'); }
+@font-face { font-family: 'DynaPuff Variable'; font-weight: 400 700; font-display: swap;
+	unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+1E00-1E9F;
+	src: url('../../../node_modules/@fontsource-variable/dynapuff/files/dynapuff-latin-ext-wght-normal.woff2') format('woff2'); }
+@font-face { font-family: 'Geist Variable'; font-weight: 100 900; font-display: swap;
+	unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2212;
+	src: url('../../../node_modules/@fontsource-variable/geist/files/geist-latin-wght-normal.woff2') format('woff2'); }
+@font-face { font-family: 'Geist Variable'; font-weight: 100 900; font-display: swap;
+	unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+1E00-1E9F;
+	src: url('../../../node_modules/@fontsource-variable/geist/files/geist-latin-ext-wght-normal.woff2') format('woff2'); }
+
+/* Subset of src/app.css (light, default blue palette, Ink depth). */
+:root {
+	--p-brand: #1e9be9; --p-deep: #1265a8; --p-ink: #16385c; --p-accent: #ffc93c;
+	--ink: var(--p-ink);
+	--font-head: 'DynaPuff Variable', 'Trebuchet MS', sans-serif;
+	--font-body: 'Geist Variable', 'Segoe UI', system-ui, sans-serif;
+	--radius-panel: 16px; --radius-btn: 7px; --radius-badge: 12px;
+	--size-control-sm: 26px; --size-control-md: 32px; --size-control-lg: 40px;
+	--background: color-mix(in oklab, var(--p-brand) 11%, white);
+	--foreground: var(--p-ink);
+	--card: #fff;
+	--primary: color-mix(in oklab, var(--p-brand) 20%, var(--p-deep));
+	--muted-foreground: color-mix(in oklab, var(--p-ink) 78%, transparent);
+	--brand-link: color-mix(in oklab, var(--p-deep) 75%, var(--p-ink));
+	--pattern-dot: color-mix(in oklab, var(--ink) 13%, transparent);
+	--surface: var(--background);
+	--hard-shadow: #000;
+	--heart: #e4574c;
+	--status-danger-text: #b42318;
+	--gift-overlay-own-reservation: #16834f;
+	--gift-overlay-unavailable: #163b60;
+	--elevation-ordinary-offset: 3px;
+	--elevation-ordinary: 3px 3px 0 var(--hard-shadow);
+	--sticker: 2px 2px 0 var(--hard-shadow);
+	--depth-clearance: var(--elevation-ordinary-offset);
+	--nested-control-gap: calc(0.5rem + var(--depth-clearance));
+	--compact-control-gap: calc(0.5rem + max(0px, var(--depth-clearance) - 2px));
+	--minimum-nested-inset: 9px;
+	--gutter: 12px;
+	--shelf-card: 156px;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: color-mix(in oklab, var(--p-brand) 5%, white); color: var(--foreground); font-family: var(--font-body); font-size: 14px; }
+h1, h2, h3 { font-family: var(--font-head); font-weight: 600; margin: 0; }
+button { font: inherit; color: inherit; cursor: pointer; }
+:focus-visible { outline: 2px solid var(--p-brand); outline-offset: 2px; }
+
+/* ── Presentation page ─────────────────────────────── */
+.page { padding: 24px 32px 64px; }
+.eyebrow { font-size: 12px; font-weight: 800; letter-spacing: .08em; color: var(--brand-link); margin-bottom: 6px; }
+.intro { max-width: 980px; margin-bottom: 24px; }
+.intro h1 { font-size: 28px; margin-bottom: 6px; }
+.intro p { margin: 4px 0; color: var(--muted-foreground); line-height: 1.45; }
+.intro ul { margin: 8px 0 0; padding-left: 18px; color: var(--muted-foreground); line-height: 1.5; }
+.phones { display: flex; gap: 40px; flex-wrap: wrap; align-items: flex-start; }
+.frame-label { font-size: 12px; font-weight: 700; color: var(--muted-foreground); margin: 0 0 8px; text-transform: uppercase; letter-spacing: .04em; }
+.phone { width: 410px; height: 864px; border: 10px solid #1b2433; border-radius: 44px; overflow: hidden; background: #1b2433;
+	box-shadow: 0 18px 40px -18px rgb(0 0 0 / .45); }
+.screen { width: 390px; height: 844px; overflow-y: auto; overflow-x: hidden; background: var(--background); border-radius: 34px;
+	position: relative; scrollbar-width: none; }
+.screen::-webkit-scrollbar { display: none; }
+@media (prefers-reduced-motion: no-preference) { .screen, .shelf { scroll-behavior: smooth; } }
+
+/* ── App chrome (reduced emphasis) ─────────────────── */
+.navbar { position: sticky; top: 0; z-index: 50; height: 52px; display: flex; align-items: center; gap: 8px;
+	padding: 0 var(--gutter); background: var(--card); border-bottom: 2px solid var(--ink); }
+.brand { font-family: var(--font-head); font-weight: 700; font-size: 18px; color: var(--primary); margin-right: auto; }
+.nav-icon { width: var(--size-control-lg); height: var(--size-control-lg); border: 0; background: transparent; border-radius: 10px;
+	display: inline-flex; align-items: center; justify-content: center; }
+.nav-icon svg { width: 20px; height: 20px; stroke: var(--ink); fill: none; stroke-width: 2; }
+.avatar { width: 32px; height: 32px; border-radius: 50%; border: 2px solid var(--ink); background: var(--p-accent);
+	font-size: 12px; font-weight: 800; display: inline-flex; align-items: center; justify-content: center; }
+
+.hero { margin: 12px var(--gutter) 0; background: var(--card); border: 2.5px solid var(--ink); border-radius: var(--radius-panel);
+	box-shadow: var(--elevation-ordinary); padding: 12px 14px 12px 30px; position: relative; overflow: hidden; }
+.hero::before { content: ''; position: absolute; left: 10px; top: 10px; bottom: 10px; width: 8px;
+	background: radial-gradient(circle, var(--ink) 2.5px, transparent 3px) 0 0 / 8px 14px repeat-y; opacity: .55; }
+.hero .for { font-size: 12px; font-weight: 600; color: var(--muted-foreground); }
+.hero h1 { font-size: 26px; line-height: 1.2; margin: 2px 0 4px; }
+.hero .meta { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 12px; color: var(--muted-foreground); }
+.hero .chip { border: 2px solid var(--ink); border-radius: var(--radius-badge); padding: 0 8px; font-size: 11px; font-weight: 800; line-height: 18px;
+	background: color-mix(in oklab, var(--gift-overlay-own-reservation) 18%, white); color: var(--ink); }
+
+.toolbar { display: flex; align-items: center; gap: var(--compact-control-gap); padding: 12px var(--gutter) 6px; }
+.switcher { display: inline-flex; padding: 3px; gap: 2px; border: 2px solid var(--ink); border-radius: 10px; box-shadow: var(--elevation-ordinary);
+	background: color-mix(in oklab, var(--p-brand) 24%, white); }
+.switcher button { height: 30px; padding: 0 10px; border: 2px solid transparent; border-radius: 6px; background: transparent;
+	font-size: 13px; font-weight: 700; display: inline-flex; align-items: center; gap: 5px; }
+.switcher button svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 2; }
+.switcher button[aria-pressed='true'] { background: var(--card); border-color: var(--ink); box-shadow: 2px 2px 0 var(--hard-shadow); }
+.display-btn { margin-left: auto; height: var(--size-control-lg); border: 2px solid var(--ink); border-radius: var(--radius-btn); background: var(--card);
+	box-shadow: var(--elevation-ordinary); width: var(--size-control-lg); padding: 0; justify-content: center; font-weight: 700; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; }
+.display-btn svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 2; }
+.grouping-line { display: flex; align-items: center; gap: 6px; padding: 2px var(--gutter) 0; font-size: 12px; color: var(--muted-foreground); }
+.grouping-line button { border: 0; background: transparent; padding: 4px 2px; font-size: 12px; font-weight: 700; color: var(--brand-link);
+	text-decoration: underline; text-underline-offset: 2px; }
+
+/* ── Group index (sticky jump strip) ───────────────── */
+.group-index { position: sticky; top: 52px; z-index: 40; display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none;
+	padding: 8px var(--gutter); background: var(--background);
+	border-bottom: 2px solid color-mix(in oklab, var(--ink) 14%, transparent); }
+.group-index::-webkit-scrollbar { display: none; }
+.group-index a { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 5px; height: var(--size-control-sm); padding: 0 9px;
+	border: 2px solid color-mix(in oklab, var(--ink) 35%, transparent); border-radius: 999px; background: var(--card);
+	font-size: 12px; font-weight: 700; color: var(--foreground); text-decoration: none; white-space: nowrap; }
+.group-index a .dot { width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid var(--ink); }
+.group-index a .n { color: var(--muted-foreground); font-weight: 600; }
+.group-index a[aria-current='true'] { border-color: var(--ink); background: var(--primary); color: #fff; }
+.group-index a[aria-current='true'] .n { color: rgb(255 255 255 / .85); }
+
+/* ── Shelves ───────────────────────────────────────── */
+.shelves { padding: 6px 0 24px; }
+.shelf-group { padding-top: 10px; scroll-margin-top: 96px; }
+.shelf-head { display: flex; align-items: baseline; gap: 8px; padding: 0 var(--gutter); margin-bottom: 6px; min-width: 0; }
+.shelf-head h2 { font-size: 15px; line-height: 20px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 6px; }
+.shelf-head h2 .dot { width: 11px; height: 11px; border-radius: 50%; border: 2px solid var(--ink); flex-shrink: 0; align-self: center; }
+.shelf-head .count { font-size: 12px; font-weight: 700; color: var(--muted-foreground); white-space: nowrap; }
+.shelf-head .position { margin-left: auto; font-size: 11px; font-weight: 600; color: var(--muted-foreground); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.shelf { display: flex; gap: 8px; overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x mandatory;
+	scroll-padding-inline: var(--gutter); padding: 0 var(--gutter) calc(6px + var(--depth-clearance)); scrollbar-width: none; }
+.shelf::-webkit-scrollbar { display: none; }
+.shelf::after { content: ''; flex: 0 0 4px; }
+
+/* ── Badges (mirrors mobile Card) ──────────────────── */
+.badge { display: inline-block; border: 2px solid var(--ink); border-radius: var(--radius-badge); padding: 2px 8px; font-size: 11px;
+	line-height: 16px; font-weight: 800; max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; flex-shrink: 1; }
+.badge.clamp2 { white-space: normal; display: -webkit-inline-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow-wrap: break-word; }
+.prio { position: absolute; z-index: 20; left: 7px; bottom: 7px; border: 2px solid var(--ink); border-radius: var(--radius-badge);
+	height: 20px; padding: 0 7px; font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; }
+.prio.high { background: oklch(0.92 0.06 25); color: oklch(0.45 0.15 25); }
+.prio.mid { background: oklch(0.93 0.05 75); color: oklch(0.5 0.12 75); }
+.prio.low { background: oklch(0.93 0.06 145); color: oklch(0.38 0.12 145); }
+.states { position: absolute; inset: 0; z-index: 10; display: flex; flex-direction: column; align-items: center; justify-content: center;
+	gap: 6px; pointer-events: none; padding: 30px 6px 28px; }
+.state { border: 2px solid var(--ink); border-radius: var(--radius-badge); padding: 3px 10px; font-size: 11px; line-height: 15px; font-weight: 700;
+	box-shadow: var(--sticker); text-align: center; max-width: 100%; }
+.state.reserved { background: var(--gift-overlay-unavailable); color: #fff; }
+.state.mine { background: var(--gift-overlay-own-reservation); color: #fff; }
+.state.received { background: var(--primary); color: #fff; text-shadow: 0 1px 1px var(--ink); }
+.dim .badge, .dim .prio { opacity: .5; }
+
+/* ── Shelf card: reduced mobile Card ───────────────── */
+.card { flex: 0 0 var(--shelf-card); scroll-snap-align: start; background: var(--card); border: 2.5px solid var(--ink);
+	border-radius: var(--radius-panel); box-shadow: var(--elevation-ordinary); display: grid; grid-template-rows: auto 1fr auto; min-width: 0;
+	text-align: left; padding: 0; }
+.card.dim { border-color: color-mix(in oklab, var(--ink) 45%, transparent); box-shadow: none; }
+.img { position: relative; aspect-ratio: 1; overflow: hidden; border-radius: 13.5px 13.5px 0 0; border-bottom: 2.5px solid var(--ink); background: var(--surface); }
+.dim .img { border-bottom-color: color-mix(in oklab, var(--ink) 45%, transparent); }
+.mat { position: absolute; inset: 0; background: radial-gradient(var(--pattern-dot) 1.4px, transparent 1.5px); background-size: 16px 16px; opacity: .6; }
+.photo { position: absolute; inset: 18% 20%; border-radius: 10px; background: linear-gradient(140deg, hsl(var(--h) 70% 72%), hsl(calc(var(--h) + 40) 65% 52%)); }
+.photo::after { content: ''; position: absolute; inset: 28% 30%; border-radius: 50%; background: hsl(var(--h) 60% 88% / .7); }
+.dim .photo { opacity: .5; }
+.top { position: absolute; top: 7px; left: 7px; right: 4px; z-index: 20; display: flex; align-items: flex-start; gap: 4px; }
+.lane { flex: 1; min-width: 0; display: flex; }
+.like { margin-left: auto; margin-top: -3px; display: inline-flex; align-items: center; justify-content: center; gap: 3px;
+	height: var(--size-control-md); min-width: var(--size-control-md); padding: 0 4px; border: 0; background: transparent;
+	font-weight: 700; font-size: 12px; border-radius: 8px; flex-shrink: 0; }
+.like svg { width: 17px; height: 17px; fill: var(--card); stroke: var(--heart); stroke-width: 2.4; }
+.like.liked svg { fill: var(--heart); }
+.body { padding: 7px 9px 4px; display: flex; flex-direction: column; min-width: 0; }
+.dim .body { opacity: .5; }
+.body h3 { font-size: 16px; line-height: 1.2; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }
+.price { margin-top: 3px; font-size: 12px; line-height: 16px; font-weight: 700; }
+.price.none { font-weight: 400; font-style: italic; color: var(--muted-foreground); }
+.foot { display: flex; justify-content: flex-end; gap: var(--compact-control-gap); padding: 4px var(--minimum-nested-inset) var(--minimum-nested-inset); }
+.btn { font-weight: 700; font-size: 13px; height: var(--size-control-md); border: 2px solid var(--ink); border-radius: var(--radius-btn);
+	padding: 0 10px; background: var(--card); color: var(--foreground); box-shadow: var(--elevation-ordinary);
+	display: inline-flex; align-items: center; justify-content: center; gap: 5px; white-space: nowrap; position: relative; }
+.btn::before { content: ''; position: absolute; inset: -5px -3px; }
+.btn.primary { background: var(--primary); color: #fff; flex: 1; min-width: 0; }
+.btn.undo { color: var(--status-danger-text); border-color: var(--status-danger-text); flex: 1; min-width: 0; }
+.btn.undo svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2.2; }
+.btn.icon { width: var(--size-control-md); padding: 0; letter-spacing: 1px; flex-shrink: 0; }
+.btn:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--hard-shadow); }
+@media (prefers-reduced-motion: reduce) { .btn:active { transform: none; } }
+.btn.pending { opacity: .75; pointer-events: none; }
+.spinner { width: 13px; height: 13px; border: 2px solid rgb(255 255 255 / .4); border-top-color: #fff; border-radius: 50%; animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spinner { animation: none; border-top-color: rgb(255 255 255 / .4); border-right-color: #fff; } }
+
+.toast { position: sticky; bottom: 12px; margin: 0 var(--gutter); z-index: 60; background: var(--ink); color: #fff; border-radius: 10px;
+	padding: 10px 12px; font-size: 13px; font-weight: 600; box-shadow: var(--elevation-ordinary); display: none; }
+.toast.show { display: block; }
+
+.notes { margin-top: 28px; max-width: 900px; }
+.notes h2 { font-size: 20px; margin-bottom: 6px; }
+.notes p, .notes li { color: var(--muted-foreground); line-height: 1.5; font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="page">
+	<div class="intro">
+		<div class="eyebrow">VARIANTA B: KOMPAKTNÍ POLICE</div>
+		<h1>Karusel na mobilu — hustá police s menší kartou</h1>
+		<p>Karta zabírá zhruba 40 % šířky, takže jsou vidět dvě celé karty a začátek třetí. Zachovává čtvercový obrázek se všemi odznaky, dvouřádkový název, cenu a jednu kompaktní akci s „•••“. Odkazy a popis jsou v prohlížeči dárku.</p>
+		<ul>
+			<li>Hlavička skupiny má jeden řádek: barva kategorie, název, počet a vpravo pozice v řadě („1–2 z 12“).</li>
+			<li>Rychlý přechod mezi skupinami zajišťuje lepkavý pruh se skupinami pod navigací, který zvýrazňuje aktuální skupinu.</li>
+			<li>Pohled návštěvníka (Petr Svoboda) na seznam Martina Nováka: volné, rezervované jinými, rezervované vámi a přijaté dárky. Řady lze posouvat dotykem, trackpadem i Shift + kolečkem.</li>
+		</ul>
+	</div>
+
+	<div class="phones">
+		<div>
+			<div class="frame-label">390 × 844 — začátek stránky</div>
+			<div class="phone"><div class="screen" data-screen="top"></div></div>
+		</div>
+		<div>
+			<div class="frame-label">390 × 844 — posunuto dolů</div>
+			<div class="phone"><div class="screen" data-screen="scrolled"></div></div>
+		</div>
+	</div>
+
+	<div class="notes">
+		<h2>Co karta vynechává a proč</h2>
+		<p>Popis a odkazy se na 156 px široké kartě nedají číst a přidaly by zhruba 40 px výšky na řadu; zůstávají v prohlížeči dárku, který se otevře klepnutím na kartu. Primární akce a „•••“ mají kompaktní výšku 32 px (výjimka pro husté zobrazení) s rozšířenou plochou pro dotyk, takže se celá karta vejde do přibližně 270 px. Plně rezervované a přijaté dárky ukazují jen „•••“, bez zakázaného tlačítka. Prázdné skupiny se při procházení neukazují.</p>
+	</div>
+</div>
+
+<template id="page-template">
+	<header class="navbar">
+		<span class="brand">Přejeme si</span>
+		<button class="nav-icon" aria-label="Oznámení"><svg viewBox="0 0 24 24"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg></button>
+		<span class="avatar" aria-label="Petr Svoboda">PS</span>
+		<button class="nav-icon" aria-label="Menu"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+	</header>
+	<section class="hero" aria-label="Seznam přání">
+		<div class="for">Pro: Martin Novák</div>
+		<h1>Vánoce 2026</h1>
+		<div class="meta"><span>24. 12. 2026</span><span>Spravuje: Jana Nováková</span><span class="chip">Moje rezervace: 2</span></div>
+	</section>
+	<div class="toolbar">
+		<div class="switcher" role="group" aria-label="Zobrazení">
+			<button aria-pressed="false"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Karta</button>
+			<button aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>Seznam</button>
+			<button aria-pressed="true"><svg viewBox="0 0 24 24"><rect x="2" y="5" width="8" height="14" rx="1"/><rect x="12" y="5" width="8" height="14" rx="1"/><path d="M22 5v14"/></svg>Karusel</button>
+		</div>
+		<button class="display-btn" aria-label="Možnosti zobrazení"><svg viewBox="0 0 24 24"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg></button>
+	</div>
+	<div class="grouping-line">Seskupení: podle kategorie <button type="button" aria-label="Změnit seskupení">Změnit</button></div>
+	<nav class="group-index" aria-label="Přejít na skupinu"></nav>
+	<main class="shelves"></main>
+	<div class="toast" role="status" aria-live="polite"></div>
+</template>
+
+<script>
+const CATS = {
+	kn: { label: 'Knihy', color: '#B45309' },
+	el: { label: 'Elektronika', color: '#0F766E' },
+	hr: { label: 'Hry', color: '#7C3AED' },
+	ob: { label: 'Oblečení', color: '#DB2777' },
+	sp: { label: 'Sport', color: '#EA580C' },
+};
+const GROUP_ORDER = ['kn', 'el', 'hr', 'ob', 'sp', null];
+const PRIO = { high: 'Vysoká', mid: 'Střední', low: 'Nízká' };
+
+// state: undefined = available, 'reserved' = someone else, 'mine' = viewer, 'received'
+const GIFTS = [
+	{ name: 'Projekt Hail Mary', cat: 'kn', prio: 'high', price: '449 Kč', h: 30, like: 2 },
+	{ name: 'Duna — sběratelské vydání v plátně', cat: 'kn', prio: 'high', price: '1 290 Kč', h: 40, like: 4, liked: true },
+	{ name: 'Atomové návyky', cat: 'kn', prio: 'mid', price: '399 Kč', h: 10 },
+	{ name: 'Pán prstenů — trilogie v kazetě', cat: 'kn', prio: 'mid', price: '1 490 Kč', h: 120, like: 1 },
+	{ name: 'Sapiens: Stručné dějiny lidstva', cat: 'kn', prio: 'low', price: '499 Kč', h: 200 },
+	{ name: 'Zaklínač I: Poslední přání', cat: 'kn', prio: 'mid', price: '349 Kč', h: 160 },
+	{ name: 'Nekonečný příběh', cat: 'kn', prio: 'low', price: '459 Kč', h: 300 },
+	{ name: 'Cesta (Cormac McCarthy)', cat: 'kn', prio: 'low', price: '349 Kč', h: 20 },
+	{ name: 'Malý princ — ilustrované vydání', cat: 'kn', prio: 'low', price: '399 Kč', h: 220 },
+	{ name: 'Tři muži ve člunu', cat: 'kn', prio: 'mid', price: '279 Kč', h: 90, state: 'reserved' },
+	{ name: 'Kniha o čaji', cat: 'kn', prio: 'low', price: '520 Kč', h: 100, state: 'mine' },
+	{ name: 'Krysař', cat: 'kn', prio: 'low', price: '199 Kč', h: 50, state: 'received' },
+
+	{ name: 'Sluchátka Sony WH-1000XM5', cat: 'el', prio: 'high', price: '7 990 Kč', h: 200, like: 3, liked: true },
+	{ name: 'Powerbanka Anker 20 000 mAh', cat: 'el', prio: 'mid', price: '1 290 Kč', h: 180 },
+	{ name: 'Xiaomi Smart Band 9', cat: 'el', prio: 'low', price: '990 Kč', h: 260 },
+	{ name: 'Kindle Paperwhite', cat: 'el', prio: 'mid', price: '3 990 Kč', h: 160, state: 'reserved', like: 2 },
+	{ name: 'Chytrý termostat Netatmo', cat: 'el', prio: 'low', price: '4 290 Kč', h: 140, state: 'received' },
+
+	{ name: 'Desková hra Wingspan', cat: 'hr', prio: 'high', price: '1 290 Kč', h: 280, like: 5 },
+	{ name: 'Azul', cat: 'hr', prio: 'mid', price: '990 Kč', h: 210 },
+	{ name: 'Krycí jména', cat: 'hr', prio: 'low', price: '449 Kč', h: 330 },
+	{ name: 'Zelda: Tears of the Kingdom (Switch)', cat: 'hr', prio: 'mid', price: '1 590 Kč', h: 110, state: 'mine' },
+
+	{ name: 'Merino mikina na hory, vel. M', cat: 'ob', prio: 'mid', price: '2 490 Kč', h: 20 },
+	{ name: 'Happy Socks — 3 páry', cat: 'ob', prio: 'low', price: '690 Kč', h: 330 },
+	{ name: 'Čepice Buff Merino', cat: 'ob', prio: 'low', price: '590 Kč', h: 190, state: 'reserved' },
+
+	{ name: 'Lezecký sedák Ocún Twist', cat: 'sp', prio: 'high', price: '1 790 Kč', h: 25 },
+	{ name: 'Láhev Nalgene 1 l', cat: 'sp', prio: 'low', price: '449 Kč', h: 170 },
+	{ name: 'Poukaz do lanového centra pro dva', cat: 'sp', prio: 'mid', price: '1 200 Kč', h: 100, state: 'reserved' },
+
+	{ name: 'Ponožky s lamami', cat: null, prio: 'low', price: null, h: 320 },
+	{ name: 'Domácí švestková povidla od babičky', cat: null, prio: 'low', price: null, h: 280, like: 1 },
+];
+
+const HEART = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>';
+const UNDO = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>';
+const STATE_LABEL = { reserved: 'Rezervováno někým jiným', mine: 'Rezervováno vámi', received: 'Přijato' };
+const STATE_RANK = { undefined: 0, mine: 1, reserved: 2, received: 3 };
+
+function foregroundFor(hex) {
+	const value = parseInt(hex.slice(1), 16);
+	const [r, g, b] = [value >> 16, (value >> 8) & 255, value & 255].map((c) => { c /= 255; return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; });
+	return 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.4 ? 'var(--ink)' : '#fff';
+}
+function groupLabel(key) { return key ? CATS[key].label : 'Bez kategorie'; }
+function groupColor(key) { return key ? CATS[key].color : '#fff'; }
+function giftCountLabel(count) { return count === 1 ? '1 dárek' : count < 5 ? `${count} dárky` : `${count} dárků`; }
+
+function footerHtml(gift) {
+	const more = `<button class="btn icon" aria-label="Další akce: ${gift.name}">•••</button>`;
+	if (!gift.state) return `<button class="btn primary" data-action="reserve">Rezervovat</button>${more}`;
+	if (gift.state === 'mine') return `<button class="btn undo" data-action="cancel">${UNDO}Zrušit</button>${more}`;
+	return more;
+}
+function cardHtml(gift) {
+	const dim = gift.state === 'reserved' || gift.state === 'received';
+	const category = gift.cat ? CATS[gift.cat] : null;
+	const badge = category ? `<span class="badge clamp2" style="background:${category.color};color:${foregroundFor(category.color)}">${category.label}</span>` : '';
+	return `<article class="card ${dim ? 'dim' : ''}" aria-label="${gift.name}">
+		<div class="img">
+			<div class="mat"></div><div class="photo" style="--h:${gift.h}"></div>
+			${gift.state ? `<div class="states"><span class="state ${gift.state}">${STATE_LABEL[gift.state]}</span></div>` : ''}
+			<div class="top"><div class="lane">${badge}</div>
+				<button class="like ${gift.liked ? 'liked' : ''}" aria-pressed="${!!gift.liked}" aria-label="To se líbí${gift.like ? ', ' + gift.like : ''}">${HEART}${gift.like || ''}</button></div>
+			<span class="prio ${gift.prio}">${PRIO[gift.prio]}</span>
+		</div>
+		<div class="body"><h3 title="${gift.name}">${gift.name}</h3>
+			${gift.price ? `<div class="price">${gift.price}</div>` : '<div class="price none">Cena neuvedena</div>'}</div>
+		<div class="foot">${footerHtml(gift)}</div>
+	</article>`;
+}
+
+function buildScreen(screen) {
+	screen.append(document.getElementById('page-template').content.cloneNode(true));
+	const groups = GROUP_ORDER.map((key) => ({ key, gifts: GIFTS.filter((gift) => gift.cat === key)
+		.sort((a, b) => STATE_RANK[a.state] - STATE_RANK[b.state]) })).filter((group) => group.gifts.length > 0);
+	const id = screen.dataset.screen;
+	screen.querySelector('.group-index').innerHTML = groups.map((group, index) =>
+		`<a href="#${id}-${group.key ?? 'none'}" ${index === 0 ? 'aria-current="true"' : ''}><span class="dot" style="background:${groupColor(group.key)}"></span>${groupLabel(group.key)} <span class="n">${group.gifts.length}</span></a>`).join('');
+	screen.querySelector('.shelves').innerHTML = groups.map((group) => `
+		<section class="shelf-group" id="${id}-${group.key ?? 'none'}" aria-labelledby="${id}-${group.key ?? 'none'}-h">
+			<div class="shelf-head">
+				<h2 id="${id}-${group.key ?? 'none'}-h"><span class="dot" style="background:${groupColor(group.key)}"></span>${groupLabel(group.key)}</h2>
+				<span class="count">${giftCountLabel(group.gifts.length)}</span>
+				<span class="position" aria-hidden="true"></span>
+			</div>
+			<div class="shelf" role="region" tabindex="0" aria-label="${groupLabel(group.key)}, ${giftCountLabel(group.gifts.length)}, posouvejte vodorovně">
+				${group.gifts.map(cardHtml).join('')}
+			</div>
+		</section>`).join('');
+
+	screen.querySelectorAll('.shelf').forEach((shelf) => {
+		const position = shelf.parentElement.querySelector('.position');
+		const total = shelf.querySelectorAll('.card').length;
+		const update = () => {
+			const card = shelf.querySelector('.card');
+			const step = card.offsetWidth + 8;
+			const first = Math.min(total, Math.round(shelf.scrollLeft / step) + 1);
+			const visible = Math.floor((shelf.clientWidth - 12) / step);
+			const last = Math.min(total, first + visible - 1);
+			position.textContent = total <= visible ? '' : `${first}–${last} z ${total}`;
+		};
+		shelf.addEventListener('scroll', update, { passive: true });
+		update();
+	});
+
+	const links = [...screen.querySelectorAll('.group-index a')];
+	links.forEach((link) => link.addEventListener('click', (event) => {
+		event.preventDefault();
+		const target = screen.querySelector(link.getAttribute('href'));
+		screen.scrollTo({ top: target.offsetTop - 96 });
+	}));
+	const sections = [...screen.querySelectorAll('.shelf-group')];
+	const syncCurrent = () => {
+		let current = sections[0];
+		for (const section of sections) if (section.offsetTop - screen.scrollTop <= 140) current = section;
+		links.forEach((link) => {
+			const isCurrent = link.getAttribute('href') === '#' + current.id;
+			link.toggleAttribute('aria-current', isCurrent);
+			if (isCurrent) link.setAttribute('aria-current', 'true');
+			if (isCurrent) link.parentElement.scrollTo({ left: link.offsetLeft - 12 });
+		});
+	};
+	screen.addEventListener('scroll', syncCurrent, { passive: true });
+
+	const toast = screen.querySelector('.toast');
+	screen.addEventListener('click', (event) => {
+		const button = event.target.closest('[data-action]');
+		if (!button) return;
+		const card = button.closest('.card');
+		const name = card.getAttribute('aria-label');
+		button.classList.add('pending');
+		button.innerHTML = button.dataset.action === 'reserve' ? '<span class="spinner" aria-hidden="true"></span>Rezervuji…' : 'Ruším…';
+		setTimeout(() => {
+			const gift = GIFTS.find((candidate) => candidate.name === name);
+			gift.state = button.dataset.action === 'reserve' ? 'mine' : undefined;
+			card.outerHTML = cardHtml(gift);
+			toast.textContent = gift.state ? `Rezervováno: ${name}` : `Rezervace zrušena: ${name}`;
+			toast.classList.add('show');
+			setTimeout(() => toast.classList.remove('show'), 2200);
+		}, 700);
+	});
+	return syncCurrent;
+}
+
+document.querySelectorAll('.screen').forEach((screen) => {
+	const syncCurrent = buildScreen(screen);
+	if (screen.dataset.screen === 'scrolled') {
+		requestAnimationFrame(() => {
+			screen.style.scrollBehavior = 'auto';
+			screen.scrollTop = screen.querySelector('#scrolled-el').offsetTop - 96;
+			screen.querySelector('#scrolled-hr .shelf').scrollLeft = 164;
+			syncCurrent();
+			screen.style.scrollBehavior = '';
+		});
+	}
+});
+</script>
+</body>
+</html>

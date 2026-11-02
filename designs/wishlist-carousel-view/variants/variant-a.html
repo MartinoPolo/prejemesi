@@ -1,0 +1,370 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>#580 Varianta A — Plné karty v policích</title>
+<style>
+/* Fonts resolve from the worktree's installed packages; system fallbacks apply elsewhere. */
+@font-face { font-family: 'DynaPuff Variable'; font-weight: 400 700; font-display: swap;
+	unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2212;
+	src: url('../../../node_modules/@fontsource-variable/dynapuff/files/dynapuff-latin-wght-normal.woff2') format('woff2'); }
+@font-face { font-family: 'DynaPuff Variable'; font-weight: 400 700; font-display: swap;
+	unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+1E00-1E9F;
+	src: url('../../../node_modules/@fontsource-variable/dynapuff/files/dynapuff-latin-ext-wght-normal.woff2') format('woff2'); }
+@font-face { font-family: 'Geist Variable'; font-weight: 100 900; font-display: swap;
+	unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2212;
+	src: url('../../../node_modules/@fontsource-variable/geist/files/geist-latin-wght-normal.woff2') format('woff2'); }
+@font-face { font-family: 'Geist Variable'; font-weight: 100 900; font-display: swap;
+	unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+1E00-1E9F;
+	src: url('../../../node_modules/@fontsource-variable/geist/files/geist-latin-ext-wght-normal.woff2') format('woff2'); }
+
+/* Subset of src/app.css (light, default blue palette, Ink depth). */
+:root {
+	--p-brand: #1e9be9; --p-deep: #1265a8; --p-ink: #16385c; --p-accent: #ffc93c;
+	--ink: var(--p-ink);
+	--font-head: 'DynaPuff Variable', 'Trebuchet MS', sans-serif;
+	--font-body: 'Geist Variable', 'Segoe UI', system-ui, sans-serif;
+	--radius-panel: 16px; --radius-btn: 7px; --radius-badge: 12px;
+	--size-control-sm: 26px; --size-control-md: 32px; --size-control-lg: 40px;
+	--text-xs: 11px; --text-sm: 12px; --text-md: 13px; --text-base: 14px; --text-xl: 17px;
+	--background: color-mix(in oklab, var(--p-brand) 11%, white);
+	--foreground: var(--p-ink);
+	--card: #fff;
+	--primary: color-mix(in oklab, var(--p-brand) 20%, var(--p-deep));
+	--secondary: color-mix(in oklab, var(--p-brand) 6%, white);
+	--accent: color-mix(in oklab, var(--p-brand) 11%, white);
+	--muted-foreground: color-mix(in oklab, var(--p-ink) 78%, transparent);
+	--brand-link: color-mix(in oklab, var(--p-deep) 75%, var(--p-ink));
+	--border: color-mix(in oklab, var(--p-ink) 12%, transparent);
+	--border-strong: color-mix(in oklab, var(--p-ink) 30%, transparent);
+	--pattern-dot: color-mix(in oklab, var(--ink) 13%, transparent);
+	--surface: var(--background);
+	--hard-shadow: #000;
+	--heart: #e4574c;
+	--gift-overlay-unavailable: #163b60;
+	--elevation-ordinary-offset: 3px;
+	--depth-clearance: var(--elevation-ordinary-offset);
+	--nested-control-gap: calc(0.5rem + var(--depth-clearance));
+	--elevation-ordinary: 3px 3px 0 var(--hard-shadow);
+	--sticker: 2px 2px 0 var(--hard-shadow);
+	--gutter: 12px;
+	--shelf-card-width: 78%;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: #eef1f5; color: var(--foreground); font-family: var(--font-body); font-size: var(--text-base); }
+h1, h2, h3 { font-family: var(--font-head); font-weight: 600; margin: 0; }
+button { font: inherit; color: inherit; cursor: pointer; }
+:focus-visible { outline: 2px solid var(--p-brand); outline-offset: 2px; }
+
+/* ── Presentation page ─────────────────────────────── */
+.page { padding: 24px 32px 64px; }
+.eyebrow { font-size: var(--text-sm); font-weight: 800; letter-spacing: .08em; color: var(--brand-link); margin: 0 0 6px; }
+.intro { max-width: 900px; margin-bottom: 24px; }
+.intro h1 { font-size: 28px; margin-bottom: 6px; }
+.intro p { margin: 4px 0; color: var(--muted-foreground); line-height: 1.5; }
+.stage { display: flex; gap: 40px; flex-wrap: wrap; align-items: flex-start; }
+.frame-label { font-size: var(--text-sm); font-weight: 700; color: var(--muted-foreground); margin: 0 0 8px; text-transform: uppercase; letter-spacing: .04em; }
+.frame-note { font-size: var(--text-sm); color: var(--muted-foreground); max-width: 390px; margin: 10px 0 0; line-height: 1.45; }
+.phone { width: 414px; height: 868px; padding: 12px; border-radius: 52px; background: #1b2430; box-shadow: 0 18px 40px rgb(0 0 0 / .18); }
+.screen { position: relative; width: 390px; height: 844px; border-radius: 40px; overflow: hidden; background: var(--background); }
+.viewport { height: 100%; overflow-y: auto; overflow-x: hidden; scrollbar-width: none;
+	background-image: radial-gradient(var(--pattern-dot) 1px, transparent 1.2px); background-size: 22px 22px; }
+.viewport::-webkit-scrollbar { display: none; }
+.statusbar { position: sticky; top: 0; z-index: 41; height: 44px; display: flex; align-items: center; justify-content: space-between; padding: 0 28px;
+	font-size: 14px; font-weight: 700; background: var(--card); }
+
+/* ── App chrome (reduced emphasis) ─────────────────── */
+.navbar { position: sticky; top: 44px; z-index: 40; height: 52px; display: flex; align-items: center; gap: 8px;
+	padding: 0 var(--gutter); background: var(--card); border-bottom: 2px solid var(--ink); }
+.navbar .logo { font-family: var(--font-head); font-weight: 700; font-size: 18px; display: flex; align-items: center; gap: 6px; }
+.navbar .logo i { width: 24px; height: 24px; border-radius: 7px; border: 2px solid var(--ink); background: var(--p-accent); display: inline-block; }
+.navbar .spacer { flex: 1; }
+.icon-btn { width: var(--size-control-lg); height: var(--size-control-lg); display: inline-flex; align-items: center; justify-content: center;
+	border: 0; background: transparent; border-radius: var(--radius-btn); }
+.icon-btn svg { width: 20px; height: 20px; }
+.avatar { width: 32px; height: 32px; border-radius: 50%; border: 2px solid var(--ink); background: oklch(0.86 0.08 145);
+	display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; }
+
+.hero { margin: 12px var(--gutter) 0; padding: 14px; background: var(--card); border: 2.5px solid var(--ink);
+	border-radius: var(--radius-panel); box-shadow: var(--elevation-ordinary); display: flex; gap: 12px; align-items: center; }
+.hero .polaroid { width: 68px; flex-shrink: 0; padding: 4px 4px 14px; background: #fff; border: 2px solid var(--ink); border-radius: 4px;
+	transform: rotate(-3deg); box-shadow: var(--sticker); }
+.hero .polaroid div { aspect-ratio: 1; border-radius: 2px; background: linear-gradient(140deg, hsl(35 85% 72%), hsl(10 75% 60%)); }
+.hero .for { font-size: var(--text-sm); color: var(--muted-foreground); font-weight: 600; }
+.hero h1 { font-size: 22px; line-height: 1.2; margin: 2px 0 4px; }
+.hero .meta { font-size: var(--text-sm); color: var(--muted-foreground); }
+
+.toolbar { margin: 14px var(--gutter) 0; display: flex; align-items: center; gap: var(--nested-control-gap); }
+.switcher { display: inline-flex; padding: 3px calc(3px + var(--depth-clearance)) calc(3px + var(--depth-clearance)) 3px; gap: 2px;
+	background: var(--accent); border: 2px solid var(--ink); border-radius: calc(var(--radius-btn) + 4px); box-shadow: var(--elevation-ordinary); }
+.switcher button { width: 38px; height: 34px; border: 2px solid transparent; background: transparent; border-radius: var(--radius-btn);
+	display: inline-flex; align-items: center; justify-content: center; color: var(--muted-foreground); }
+.switcher button svg { width: 18px; height: 18px; }
+.switcher button[aria-pressed='true'] { background: var(--card); border-color: var(--ink); color: var(--foreground); box-shadow: var(--sticker); }
+.display-btn { height: var(--size-control-lg); display: inline-flex; align-items: center; gap: 6px; padding: 0 10px;
+	border: 2px solid var(--border-strong); border-radius: var(--radius-btn); background: var(--card); font-size: var(--text-md); font-weight: 600; color: var(--muted-foreground); }
+.display-btn svg { width: 16px; height: 16px; }
+.display-btn b { color: var(--foreground); font-weight: 700; }
+.toolbar .spacer { flex: 1; }
+.result-count { font-size: var(--text-sm); color: var(--muted-foreground); }
+
+/* ── Shelves (the designed part) ───────────────────── */
+.shelves { padding: 6px 0 40px; }
+.shelf { margin-top: 18px; }
+.shelf-header { display: flex; align-items: center; gap: 8px; padding: 0 var(--gutter) 2px; }
+.shelf-header h2 { font-size: var(--text-base); font-weight: 700; letter-spacing: .03em; text-transform: uppercase; word-spacing: .1em; }
+.count-pill { min-width: 24px; height: 20px; padding: 0 7px; border-radius: 10px; border: 2px solid var(--ink);
+	background: var(--p-accent); color: var(--ink); font-size: var(--text-xs); font-weight: 800; font-variant-numeric: tabular-nums;
+	display: inline-flex; align-items: center; justify-content: center; }
+.shelf-header .rule { flex: 1; height: 1px; background: var(--border); }
+.shelf-row { list-style: none; margin: 0; display: flex; gap: 12px; overflow-x: auto; overflow-y: hidden;
+	overscroll-behavior-x: contain; scroll-snap-type: x proximity; scroll-padding-inline: var(--gutter);
+	padding: 8px var(--gutter) calc(6px + var(--depth-clearance)); scrollbar-width: none; align-items: stretch; }
+.shelf-row::-webkit-scrollbar { display: none; }
+.shelf-row:focus-visible { outline-offset: -2px; border-radius: 8px; }
+.shelf-row > li { flex: 0 0 var(--shelf-card-width); scroll-snap-align: start; display: flex; min-width: 0; }
+.shelf-row > li > .card { flex: 1; }
+
+/* ── Mobile gift Card, mirrored from multi-category-badges/variant-a ── */
+.badge { display: inline-block; border: 2px solid var(--ink); border-radius: var(--radius-badge);
+	padding: 2px 10px; font-size: 11px; line-height: 16px; font-weight: 800; max-width: 100%;
+	overflow: hidden; white-space: nowrap; text-overflow: ellipsis; flex-shrink: 0; }
+.badge.cat-multi { max-width: 9.5rem; }
+.badge.clamp2 { white-space: normal; display: -webkit-inline-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow-wrap: break-word; }
+.lane.shrink-first .badge:first-child { flex-shrink: 1; min-width: 3.5rem; }
+.plus { font-size: 11px; line-height: 16px; font-weight: 800; border: 2px solid var(--ink); border-radius: var(--radius-badge);
+	background: var(--card); color: var(--ink); padding: 2px 7px; flex-shrink: 0; white-space: nowrap; }
+.prio { position: absolute; z-index: 20; left: 12px; bottom: 12px; border: 2px solid var(--ink); border-radius: var(--radius-badge);
+	height: 20px; padding: 0 7px; font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; }
+.prio.high { background: oklch(0.92 0.06 25); color: oklch(0.45 0.15 25); }
+.prio.mid { background: oklch(0.93 0.05 75); color: oklch(0.45 0.12 75); }
+.prio.low { background: oklch(0.93 0.06 145); color: oklch(0.38 0.12 145); }
+.states { position: absolute; inset: 0; z-index: 10; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; pointer-events: none; }
+.state { border: 2px solid var(--ink); border-radius: var(--radius-badge); padding: 4px 12px; font-size: 11px; line-height: 16px;
+	font-weight: 700; box-shadow: var(--sticker); text-align: center; max-width: calc(100% - .5rem); }
+.state.reserved { background: var(--gift-overlay-unavailable); color: #fff; }
+.state.received { background: var(--primary); color: #fff; text-shadow: 0 1px 1px var(--ink); }
+.dim .badge, .dim .plus, .dim .prio { opacity: .5; }
+.like { display: inline-flex; align-items: center; justify-content: center; gap: 4px; height: var(--size-control-lg);
+	min-width: var(--size-control-lg); padding: 0 4px; border: 0; background: transparent; font-weight: 700; font-size: 13px; border-radius: 8px; flex-shrink: 0; }
+.like svg { width: 18px; height: 18px; fill: var(--card); stroke: var(--heart); stroke-width: 2.4; }
+.like[aria-pressed='true'] svg { fill: var(--heart); }
+.btn { font-weight: 700; font-size: var(--text-base); height: var(--size-control-lg); border: 2px solid var(--ink); border-radius: var(--radius-btn);
+	padding: 0 14px; background: var(--card); color: var(--foreground); box-shadow: var(--elevation-ordinary);
+	display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.btn.primary { background: var(--primary); color: #fff; }
+.btn.icon { width: var(--size-control-lg); padding: 0; }
+.btn:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--hard-shadow); }
+.card { background: var(--card); border: 2.5px solid var(--ink); border-radius: var(--radius-panel); box-shadow: var(--elevation-ordinary);
+	display: grid; grid-template-rows: auto 1fr auto; min-width: 0; }
+.card.dim { border-color: color-mix(in oklab, var(--ink) 45%, transparent); box-shadow: none; }
+.img { position: relative; aspect-ratio: 4 / 3; overflow: hidden; border-radius: 13.5px 13.5px 0 0;
+	border-bottom: 2.5px solid var(--ink); background: var(--surface); }
+.dim .img { border-bottom-color: color-mix(in oklab, var(--ink) 45%, transparent); }
+.mat { position: absolute; inset: 0; background: radial-gradient(var(--pattern-dot) 1.4px, transparent 1.5px); background-size: 18px 18px; opacity: .6; }
+.photo { position: absolute; inset: 14% 22%; border-radius: 10px; background: linear-gradient(140deg, hsl(var(--h) 70% 72%), hsl(calc(var(--h) + 40) 65% 52%)); }
+.photo::after { content: ''; position: absolute; inset: 28% 30%; border-radius: 50%; background: hsl(var(--h) 60% 88% / .7); }
+.dim .photo { opacity: .5; }
+.top { position: absolute; top: 8px; left: 8px; right: 8px; z-index: 20; display: flex; align-items: flex-start; gap: 8px; }
+.lane { flex: 1; min-width: 0; display: flex; flex-wrap: nowrap; gap: 4px; align-items: flex-start; }
+.top .like { margin-left: auto; margin-top: -8px; margin-right: -8px; }
+.body { padding: 8px 9px 6px; display: flex; flex-direction: column; min-width: 0; }
+.dim .body { opacity: .5; }
+.body h3 { font-size: 16px; line-height: 1.3; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.desc { margin: 2px 0 0; font-size: 13px; color: var(--muted-foreground); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.links { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 12px; }
+.links a { color: var(--brand-link); font-weight: 600; text-decoration: underline; text-underline-offset: 2px; }
+.links .none { color: var(--muted-foreground); font-style: italic; }
+.price { margin-top: 4px; font-size: 12px; font-weight: 700; }
+.foot { display: flex; justify-content: flex-end; gap: var(--nested-control-gap); padding: 0 calc(9px + var(--depth-clearance)) calc(9px + var(--depth-clearance)) 9px; }
+@media (prefers-reduced-motion: no-preference) {
+	.card:not(.dim) { transition: transform .18s cubic-bezier(.34, 1.56, .64, 1), box-shadow .18s; }
+	.card:not(.dim):hover { transform: translate(-1px, -2px); box-shadow: 4px 5px 0 var(--hard-shadow); }
+}
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+</style>
+</head>
+<body>
+<div class="page">
+	<div class="intro">
+		<p class="eyebrow">VARIANTA A: PLNÉ KARTY V POLICÍCH</p>
+		<h1>Karusel přání na mobilu</h1>
+		<p>Každá skupina priority je jedna vodorovná police. Karta je beze změny mobilní Card (obrázek, odznaky, název, odkazy, cena, akce v patičce) na 78 % šířky obrazovky, takže další karta vykukuje o ~60 px. Záhlaví skupiny je stávající seskupené záhlaví s počtem v pilulce.</p>
+		<p>Police se posouvají nativně (dotyk, trackpad, Shift + kolečko), přichytávají se volně k začátku karty. Prázdné skupiny se při procházení nezobrazují. Přijatá přání jsou na konci své police.</p>
+	</div>
+
+	<div class="stage">
+		<div>
+			<p class="frame-label">1 · Celá stránka v kontextu (390 × 844)</p>
+			<div class="phone"><div class="screen"><div class="viewport" data-phone="top"></div></div></div>
+			<p class="frame-note">Na první obrazovce je celá první police a začátek druhé; zbytek skupin je pod ní.</p>
+		</div>
+		<div>
+			<p class="frame-label">2 · Posunuto dolů, police během posunu</p>
+			<div class="phone"><div class="screen"><div class="viewport" data-phone="scrolled"></div></div></div>
+			<p class="frame-note">Dlouhá police „Nejvíc si přeju“ uprostřed posunu mezi 3. a 5. kartou; pod ní police „Hodně“ na začátku.</p>
+		</div>
+	</div>
+</div>
+
+<template id="page-template">
+	<div class="statusbar" aria-hidden="true"><span>9:41</span><span>5G ▮▮▮</span></div>
+	<header class="navbar">
+		<button class="icon-btn" aria-label="Otevřít nabídku"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+		<span class="logo"><i aria-hidden="true"></i>Přejeme si</span>
+		<span class="spacer"></span>
+		<button class="icon-btn" aria-label="Oznámení"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.9 1.9 0 0 0 3.4 0"/></svg></button>
+		<span class="avatar" aria-label="Petr Svoboda">PS</span>
+	</header>
+	<main>
+		<section class="hero" aria-labelledby="hero-title">
+			<div class="polaroid" aria-hidden="true"><div></div></div>
+			<div>
+				<div class="for">Pro: Martin</div>
+				<h1 id="hero-title">Martinovy třicátiny</h1>
+				<div class="meta">14. 12. 2026 · Spravuje: Jana Nováková</div>
+			</div>
+		</section>
+		<div class="toolbar" role="toolbar" aria-label="Nástroje seznamu přání">
+			<div class="switcher" role="group" aria-label="Zobrazení přání">
+				<button aria-pressed="false" aria-label="Karty" title="Karty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg></button>
+				<button aria-pressed="false" aria-label="Seznam" title="Seznam"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="5" width="5" height="5" rx="1"/><rect x="3" y="14" width="5" height="5" rx="1"/><path d="M11 7.5h10M11 16.5h10"/></svg></button>
+				<button aria-pressed="true" aria-label="Karusel" title="Karusel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="13" height="6.5" rx="1.5"/><path d="M19 4h2.5M19 10.5h2.5"/><rect x="3" y="13.5" width="13" height="6.5" rx="1.5"/><path d="M19 13.5h2.5M19 20h2.5"/></svg></button>
+			</div>
+			<button class="display-btn" aria-haspopup="dialog" aria-label="Zobrazení: seskupeno podle priority">
+				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg>
+				Priorita
+			</button>
+			<span class="spacer"></span>
+			<span class="result-count">16 přání</span>
+		</div>
+		<div class="shelves"></div>
+	</main>
+</template>
+
+<script>
+const CATS = {
+	kn: { label: 'Knihy', color: '#B45309' },
+	el: { label: 'Elektronika', color: '#0F766E' },
+	hr: { label: 'Hry', color: '#7C3AED' },
+	ob: { label: 'Oblečení', color: '#DB2777' },
+	sp: { label: 'Sport', color: '#EA580C' },
+	za: { label: 'Společné zážitky', color: '#15803D' },
+	ku: { label: 'Kuchyně', color: '#0369A1' },
+};
+const GROUPS = [
+	{ key: 'high', label: 'Nejvíc si přeju', gifts: [
+		{ name: 'Bezdrátová sluchátka Sony WH-1000XM5', cats: ['el'], like: 3, liked: true, h: 200, desc: 'Černá barva, ideálně s pouzdrem.', links: ['alza.cz', 'heureka.cz'], price: '7 990 Kč' },
+		{ name: 'Desková hra Wingspan', cats: ['hr', 'za'], like: 5, h: 280, desc: 'České vydání od Mindoku.', links: ['mindok.cz', 'albi.cz'], price: '1 290 Kč' },
+		{ name: 'Kindle Paperwhite Signature Edition', cats: ['kn', 'el'], like: 2, h: 160, desc: '', links: ['alza.cz', 'datart.cz'], price: '4 690 Kč' },
+		{ name: 'Merino mikina na hory', cats: ['ob', 'sp'], like: 1, h: 20, desc: 'Velikost M, tmavě zelená nebo modrá.', links: ['hannah.cz'], price: '2 490 Kč', state: 'reserved' },
+		{ name: 'Terry Pratchett: Zeměplocha, komplet 1–5', cats: ['kn'], like: 0, h: 45, desc: 'Nové vydání Talpress.', links: ['knihydobrovsky.cz', 'kosmas.cz'], price: '1 850 Kč' },
+		{ name: 'Nintendo Switch OLED', cats: ['el', 'hr'], like: 4, liked: true, h: 0, desc: 'Bílá verze, stačí samotná konzole.', links: ['alza.cz'], price: '8 490 Kč' },
+		{ name: 'Běžecké boty Hoka Clifton 9', cats: ['sp', 'ob'], like: 1, h: 120, desc: 'Velikost 44 2/3.', links: ['sportisimo.cz', 'hoka.com'], price: '3 790 Kč' },
+		{ name: 'Poukaz na únikovou hru pro čtyři', cats: ['za'], like: 2, h: 300, desc: 'Praha nebo Brno, libovolný termín.', links: ['unikovky.cz'], price: '1 600 Kč' },
+		{ name: 'Lego Technic Ford Mustang Shelby', cats: ['hr'], like: 6, h: 230, desc: 'Sada 42154.', links: ['lego.com'], price: '2 299 Kč', state: 'received' },
+	] },
+	{ key: 'mid', label: 'Hodně', gifts: [
+		{ name: 'Litinová pánev Lodge 26 cm', cats: ['ku'], like: 1, h: 10, desc: 'Předem vypálená.', links: ['kuchynskepotreby.cz'], price: '1 190 Kč' },
+		{ name: 'Andy Weir: Projekt Hail Mary', cats: ['kn'], like: 2, h: 190, desc: 'Česky, pevná vazba.', links: ['kosmas.cz'], price: '449 Kč', state: 'reserved' },
+		{ name: 'Flanelová košile Carhartt', cats: ['ob'], like: 0, h: 340, desc: 'Velikost L, kostkovaná.', links: ['zoot.cz'], price: '1 590 Kč' },
+		{ name: 'Kurz vaření pro dva', cats: ['za', 'ku'], like: 3, h: 40, desc: 'Italská kuchyně.', links: ['zazitky.cz'], price: '3 200 Kč', state: 'received' },
+	] },
+	{ key: 'low', label: 'Trochu', gifts: [
+		{ name: 'Ponožky s lamami', cats: ['ob'], like: 0, h: 320, desc: 'Cokoli veselého.', links: [], price: null },
+		{ name: 'Hrnek s vlastní fotkou', cats: [], like: 1, h: 260, desc: '', links: ['fotolab.cz'], price: '299 Kč' },
+		{ name: 'Karetní hra Dobble', cats: ['hr'], like: 0, h: 150, desc: '', links: ['albi.cz'], price: '349 Kč' },
+	] },
+];
+const PRIO_LABEL = { high: 'Nejvíc si přeju', mid: 'Hodně', low: 'Trochu' };
+const STATE_LABEL = { reserved: 'Rezervováno', received: 'Přijato' };
+const HEART = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>';
+const MORE = '<button class="btn icon" aria-label="Další akce">•••</button>';
+
+function foregroundFor(hex) {
+	const value = parseInt(hex.slice(1), 16);
+	const [r, g, b] = [value >> 16, (value >> 8) & 255, value & 255].map((c) => { c /= 255; return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; });
+	return 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.4 ? 'var(--ink)' : '#fff';
+}
+function badgeHtml(key, className) {
+	const category = CATS[key];
+	return `<span class="badge ${className}" title="${category.label}" style="background:${category.color};color:${foregroundFor(category.color)}">${category.label}</span>`;
+}
+// One-row lane: the single category keeps its two-line clamp; several show what fits plus "+X".
+function laneHtml(gift) {
+	if (gift.cats.length === 0) return '<div class="lane"></div>';
+	const label = 'Kategorie: ' + gift.cats.map((key) => CATS[key].label).join(', ');
+	if (gift.cats.length === 1) return `<div class="lane" role="group" aria-label="${label}">${badgeHtml(gift.cats[0], 'clamp2')}</div>`;
+	return `<div class="lane" role="group" aria-label="${label}" data-cats='${JSON.stringify(gift.cats)}'></div>`;
+}
+function fitLane(lane) {
+	const keys = JSON.parse(lane.dataset.cats);
+	for (let visibleCount = keys.length; visibleCount >= 1; visibleCount--) {
+		lane.innerHTML = keys.slice(0, visibleCount).map((key) => badgeHtml(key, 'cat-multi')).join('') +
+			(visibleCount < keys.length ? `<button class="plus" aria-haspopup="dialog" aria-label="Další kategorie: ${keys.length - visibleCount}">+${keys.length - visibleCount}</button>` : '');
+		if (lane.scrollWidth <= lane.clientWidth + 0.5) return;
+	}
+	lane.classList.add('shrink-first');
+}
+function linksHtml(gift) {
+	if (!gift.links.length) return '<div class="links"><span class="none">Bez odkazu</span></div>';
+	return `<div class="links">${gift.links.map((link) => `<a href="#">${link}</a>`).join('')}</div>`;
+}
+function cardHtml(gift, priority) {
+	const dim = Boolean(gift.state);
+	return `<article class="card ${dim ? 'dim' : ''}" aria-label="${gift.name}">
+		<div class="img">
+			<div class="mat"></div><div class="photo" style="--h:${gift.h}"></div>
+			${gift.state ? `<div class="states"><span class="state ${gift.state}">${STATE_LABEL[gift.state]}</span></div>` : ''}
+			<div class="top">${laneHtml(gift)}<button class="like" aria-pressed="${gift.liked ? 'true' : 'false'}" aria-label="To se mi líbí (${gift.like})">${HEART}${gift.like > 0 ? gift.like : ''}</button></div>
+			<span class="prio ${priority}">${PRIO_LABEL[priority]}</span>
+		</div>
+		<div class="body">
+			<h3 title="${gift.name}">${gift.name}</h3>
+			${gift.desc ? `<p class="desc">${gift.desc}</p>` : ''}
+			${linksHtml(gift)}
+			<div class="price">${gift.price ?? '<span style="font-weight:400;font-style:italic;color:var(--muted-foreground)">Cena neuvedena</span>'}</div>
+		</div>
+		<div class="foot">${gift.state ? MORE : `<button class="btn primary">Rezervovat</button>${MORE}`}</div>
+	</article>`;
+}
+function shelfHtml(group, phoneId) {
+	const headingId = `${phoneId}-${group.key}`;
+	const count = group.gifts.length;
+	return `<section class="shelf" aria-labelledby="${headingId}">
+		<div class="shelf-header">
+			<h2 id="${headingId}">${group.label}<span class="sr-only">, ${count} přání</span></h2>
+			<span class="count-pill" aria-hidden="true">${count}</span>
+			<span class="rule" aria-hidden="true"></span>
+		</div>
+		<ul class="shelf-row" tabindex="0" aria-labelledby="${headingId}" data-group="${group.key}">
+			${group.gifts.map((gift) => `<li>${cardHtml(gift, group.key)}</li>`).join('')}
+		</ul>
+	</section>`;
+}
+
+const template = document.getElementById('page-template');
+document.querySelectorAll('[data-phone]').forEach((viewport) => {
+	viewport.append(template.content.cloneNode(true));
+	viewport.querySelector('.shelves').innerHTML = GROUPS.map((group) => shelfHtml(group, viewport.dataset.phone)).join('');
+	viewport.querySelectorAll('.lane[data-cats]').forEach(fitLane);
+});
+
+// Frame 2: scroll the page so the first shelf sits under the navbar, and leave that shelf mid-swipe.
+requestAnimationFrame(() => {
+	const viewport = document.querySelector('[data-phone="scrolled"]');
+	const firstShelf = viewport.querySelector('.shelf');
+	viewport.scrollTop = firstShelf.offsetTop - 96 - 4;
+	const row = firstShelf.querySelector('.shelf-row');
+	const card = row.querySelector('li');
+	const step = card.offsetWidth + 12;
+	row.style.scrollSnapType = 'none';
+	row.scrollLeft = step * 3 - 70;
+	// Restore snapping once the user touches the row, so it behaves like the live shelf.
+	row.addEventListener('pointerdown', () => { row.style.scrollSnapType = ''; }, { once: true });
+	row.addEventListener('wheel', () => { row.style.scrollSnapType = ''; }, { once: true });
+});
+</script>
+</body>
+</html>
