@@ -103,6 +103,7 @@
 	let creatingSession = $state(false);
 	let footerHeight = $state(0);
 	let threadAtEnd = true;
+	let toolsMenuOpen = $state(false);
 
 	const open = $derived(assistant.open.current);
 	/** The on-screen keyboard is open: the sheet sits on it and its chrome compacts. */
@@ -196,7 +197,9 @@
 	}
 
 	function onpanelkeydown(event: KeyboardEvent) {
-		if (event.key === 'Escape' && !event.defaultPrevented) {
+		// The menu keeps focus in the composer, so its Escape bubbles here before the menu's own
+		// document-level handler closes it.
+		if (event.key === 'Escape' && !event.defaultPrevented && !toolsMenuOpen) {
 			event.preventDefault();
 			void assistant.close();
 		}
@@ -528,6 +531,7 @@
 		{sheet}
 		{availability}
 		{fastForward}
+		bind:toolsMenuOpen
 		hintDismissed={assistant.hintDismissed.current}
 		onpreview={showPreview}
 		onclose={() => void assistant.close()}

@@ -1197,6 +1197,22 @@ main.app-content {
 		caret-color: auto;
 	}
 
+	/* iOS Safari zooms into a focused field whose text is under 16px. On phones the smaller text
+	   tokens resolve to 16px inside fields, so no size utility undercuts it, and a field without
+	   one inherits at least 16px; larger sizes keep theirs. */
+	@media (width < 40rem) {
+		:is(input, textarea, select, [contenteditable]) {
+			--text-2xs: 16px;
+			--text-xs: 16px;
+			--text-sm: 16px;
+			--text-md: 16px;
+			--text-base: 16px;
+			--text-lg: 16px;
+
+			font-size: max(16px, 1em);
+		}
+	}
+
 	/* type=search: strip native decorations/clear-button (off-design) + explicit caret */
 	input[type='search']::-webkit-search-decoration,
 	input[type='search']::-webkit-search-cancel-button,
