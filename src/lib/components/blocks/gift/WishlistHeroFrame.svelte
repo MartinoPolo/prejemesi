@@ -130,10 +130,12 @@ palette, corners, border and, through `--m-*`, the motif colours when its backdr
 		background-repeat: repeat-y, no-repeat, no-repeat;
 	}
 
+	/* Each punch hole sits centred in a tile that rounds to the hero height, so the first and
+	   last holes keep the same distance from the top and bottom edges as the hero grows. */
 	.hero-frame[data-hero-frame='notebook'][data-hero-layout='mobile'] {
 		background-image:
 			radial-gradient(
-				circle at 17px 18px,
+				circle at 17px 50%,
 				var(--hole-inner) 0 4px,
 				var(--hole-ring) 4px 6px,
 				transparent 6.5px
@@ -149,6 +151,10 @@ palette, corners, border and, through `--m-*`, the motif colours when its backdr
 			100% 28px,
 			100% 100%,
 			100% 100%;
+		background-repeat:
+			no-repeat round,
+			no-repeat,
+			no-repeat;
 	}
 
 	/* ── Dárek: striped band, vertical ribbon and bow in the motif's colours ── */

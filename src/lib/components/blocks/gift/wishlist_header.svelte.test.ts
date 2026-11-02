@@ -58,7 +58,7 @@ function computedRotation(element: HTMLElement) {
 }
 
 describe('WishlistHeader responsive presentation', () => {
-	it('renders a fixed compact mobile hero with an equally inset thumbnail and one management trigger', async () => {
+	it('renders a compact mobile hero with an equally inset thumbnail and one management trigger', async () => {
 		await page.viewport(390, 720);
 		// Visačka decorates only the end edge, so the thumbnail keeps equal start and top insets.
 		const screen = await render(WishlistHeader, { ...baseProps, heroFrame: 'tag' as const });
@@ -78,6 +78,76 @@ describe('WishlistHeader responsive presentation', () => {
 			.element(screen.getByRole('button', { name: m.gift_more_actions() }))
 			.toHaveStyle({ width: '40px', height: '40px' });
 		await screen.unmount();
+	});
+
+	it('grows every mobile hero frame around a two-line title and a wrapping meta line', async () => {
+		await page.viewport(390, 720);
+		const insetsByFrame = new Map<string, { top: number; bottom: number }>();
+		// The page gutter narrows the copy column to what a phone shows.
+		const pageHost = document.createElement('div');
+		pageHost.style.paddingInline = 'var(--page-gutter)';
+		document.body.appendChild(pageHost);
+		try {
+			for (const heroFrame of HERO_FRAMES) {
+				const screen = await render(
+					WishlistHeader,
+					{
+						...baseProps,
+						heroFrame,
+						occasion: 'birthday' as const,
+						eventDate: new Date('2020-01-01T12:00:00Z'),
+						giftCount: 3,
+					},
+					{ baseElement: pageHost },
+				);
+				const hero = screen.getByTestId('wishlist-mobile-hero').element() as HTMLElement;
+				const meta = screen.getByTestId('wishlist-mobile-meta').element();
+				const title = screen
+					.getByRole('heading', { level: 1, name: baseProps.title })
+					.element();
+				const contentBoxes = [
+					screen.getByTestId('wishlist-mobile-photo').element(),
+					screen.getByTestId('wishlist-mobile-recipient').element(),
+					title,
+					meta,
+					hero.querySelector('[data-testid="wishlist-header-actions"]')!,
+				].map((element) => element.getBoundingClientRect());
+				expect(title.getBoundingClientRect().height).toBeGreaterThan(
+					parseFloat(getComputedStyle(title).lineHeight) * 1.5,
+				);
+				expect(meta.getBoundingClientRect().height).toBeGreaterThan(
+					parseFloat(getComputedStyle(meta).lineHeight) * 1.5,
+				);
+
+				const heroBox = hero.getBoundingClientRect();
+				// The Dárek band belongs to the frame, so its paper starts below the band.
+				const topBand = hero.querySelector('.gift-band');
+				const paperTop =
+					topBand?.getBoundingClientRect().bottom ?? heroBox.top + hero.clientTop;
+				const paperBottom = heroBox.top + hero.clientTop + hero.clientHeight;
+				const contentTop = Math.min(...contentBoxes.map((box) => box.top));
+				const contentBottom = Math.max(...contentBoxes.map((box) => box.bottom));
+				insetsByFrame.set(heroFrame, {
+					top: contentTop - paperTop,
+					bottom: paperBottom - contentBottom,
+				});
+				await screen.unmount();
+			}
+		} finally {
+			pageHost.remove();
+		}
+
+		const plainPaperInset = insetsByFrame.get('notebook')!.top;
+		expectPixelsAtLeast(plainPaperInset, 4);
+		for (const [heroFrame, insets] of insetsByFrame) {
+			expectPixelsNear(insets.bottom, plainPaperInset, `${heroFrame} bottom inset`, 1);
+			// The Pozvánka flap only adds room above the content.
+			if (heroFrame === 'invitation') {
+				expectPixelsAtLeast(insets.top, insets.bottom, `${heroFrame} top inset`, 1);
+			} else {
+				expectPixelsNear(insets.top, insets.bottom, `${heroFrame} top inset`, 1);
+			}
+		}
 	});
 
 	it('opens hero More with the shared inset Wishlist bottom-sheet geometry', async () => {

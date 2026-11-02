@@ -558,11 +558,13 @@
 	}
 
 	@media (width < 640px) {
-		/* The frame shell draws the paper; its extras clear the frame's edge decorations. */
+		/* The frame shell draws the paper; its extras clear the frame's edge decorations.
+		   A minimum, not a fixed height: long titles and wrapped meta lines grow the hero
+		   instead of overflowing its bottom padding. */
 		.mobile-hero {
 			display: grid;
 			box-sizing: border-box;
-			height: calc(112px - 2 * var(--hero-mobile-border) + var(--hero-mobile-top-extra));
+			min-height: calc(112px - 2 * var(--hero-mobile-border) + var(--hero-mobile-top-extra));
 			grid-template-columns: 92px minmax(0, 1fr) auto;
 			align-items: center;
 			gap: var(--space-2);
