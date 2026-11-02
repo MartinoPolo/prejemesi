@@ -189,6 +189,7 @@ Current product, architecture, and design decisions for Přejeme si. Entries are
 - 2026-11-02: Vzhled starts with the motif grid, each tile showing the light and dark variant; „Přizpůsobit motiv“ groups Barva, Pozadí, Hlavička and Styl, each marked „Z motivu“ or offering a reset once overridden, beside a light and dark preview. Only explicit overrides are stored, so stored overrides keep their meaning (#600).
 - 2026-11-02: Phone layouts follow the on-screen keyboard measured from the visual viewport (`src/lib/reactivity/keyboard_inset.svelte.ts`, Tailwind `keyboard-open` variant), never a fixed offset, and only while a text field has focus. While typing, the chat sheet sits on the keyboard with a one-line header (Náhled, history and new chat behind ⋯), starter chips and a one-line decision bar; the gift editor moves Uložit into the title row beside ✕; other dialogs rise above the keyboard. Controls that must keep the keyboard open prevent focus on `pointerdown`. Reference: `designs/mobile-keyboard/refined.html`.
 - 2026-11-02: Every wishlist backdrop drifts subtly with page scrolling and stays static under reduced motion; the user rejected a per-wishlist scroll-motion control as low value. Stored `background.motion` values are ignored, and the API still accepts the field and drops it.
+- 2026-11-02: Picking a single-choice (radio) option in any dropdown, submenu or context menu closes the whole menu; checkbox options keep it open. Portalled submenus track their trigger every frame (#622).
 
 ## Images & cropping
 
