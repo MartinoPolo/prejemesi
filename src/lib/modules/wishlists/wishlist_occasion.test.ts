@@ -2,15 +2,18 @@ import { describe, expect, it } from 'vitest';
 import * as m from '$lib/paraglide/messages.js';
 import { WISHLIST_KIND, WISHLIST_OCCASION, WISHLIST_OCCASIONS } from './types.js';
 import {
-	displayedWishlistOccasion,
 	eventDateAfterOccasionChange,
 	nextChristmasEventDate,
 	occasionAfterKindWrite,
-	occasionHasCardBadge,
 	suggestWishlistThemeId,
 	wishlistKindForOccasion,
 } from './wishlist_occasion.js';
-import { WISHLIST_OCCASION_DISPLAY, occasionDisplayLabel } from './wishlist_occasion_display.js';
+import {
+	WISHLIST_OCCASION_DISPLAY,
+	displayedWishlistOccasion,
+	occasionDisplayLabel,
+	occasionHasCardBadge,
+} from './wishlist_occasion_display.js';
 
 describe('wishlist occasions', () => {
 	it('offers the eight occasions with Stálý seznam last', () => {

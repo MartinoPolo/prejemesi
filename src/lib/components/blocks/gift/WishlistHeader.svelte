@@ -18,9 +18,9 @@
 		type WishlistOccasion,
 		type WishlistRole,
 	} from '$lib/modules/wishlists/types.js';
-	import { displayedWishlistOccasion } from '$lib/modules/wishlists/wishlist_occasion.js';
 	import {
 		WISHLIST_OCCASION_DISPLAY,
+		displayedWishlistOccasion,
 		occasionDisplayLabel,
 	} from '$lib/modules/wishlists/wishlist_occasion_display.js';
 	import { INLINE_TEXT_SEPARATOR } from '$lib/utils/inline_text_separator.js';
