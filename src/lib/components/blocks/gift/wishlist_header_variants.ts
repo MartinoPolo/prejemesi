@@ -21,9 +21,8 @@ export const wishlistHeaderVariants = tv({
 		title: 'reveal reveal-2 mt-0.5 text-[clamp(28px,4vw,42px)] leading-tight font-semibold',
 		description: 'reveal reveal-2 mt-1 max-w-2xl text-base text-muted-foreground',
 		metaRow: 'reveal reveal-3 mt-2 flex flex-wrap items-center gap-2.5',
-		/** Emblem stand-ins: from 960 px the occasion emblem carries occasion and countdown. */
+		/** Emblem stand-in: from 960 px the occasion emblem carries occasion and countdown. */
 		occasionChip: 'min-[960px]:hidden',
-		countdownChip: 'hidden max-[960px]:inline-flex bg-accent-loud text-accent-loud-foreground',
 		managersLine: 'text-sm text-muted-foreground',
 		actionRow: 'reveal reveal-4 mt-3 flex flex-wrap items-center gap-2',
 		editImageButton:
