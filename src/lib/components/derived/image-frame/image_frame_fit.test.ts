@@ -9,6 +9,11 @@ import {
 	AUTO_CONTAIN_RATIO_THRESHOLD,
 	IMAGE_FIT_MODES,
 } from './image_frame_fit.js';
+import {
+	FULL_CROP_RECT,
+	framedGiftImageMeta,
+	giftTargetFrameProps,
+} from '$lib/modules/images/crop.js';
 
 describe('resolveAutoFit', () => {
 	it('fills the box (cover-crop) when the image ratio matches the box', () => {
@@ -49,6 +54,105 @@ describe('resolveAutoFit', () => {
 });
 
 describe('coverWindowLayout', () => {
+	it('renders an agent-framed 3:4 box shot inside both gift frames with the gap on every side', () => {
+		// A whole 600×800 px box shot framed with a 7.5 % gap: on the 400×300 card and
+		// the 300×300 thumb the photo is 85 % of the frame height (255 px, 22.5 px clear
+		// above and below), 255 × 3/4 = 191.25 px wide, and centered horizontally.
+		const meta = framedGiftImageMeta({
+			width: 600,
+			height: 800,
+			box: FULL_CROP_RECT,
+			gapPerSide: 0.075,
+			bgColor: '#ffffff',
+		});
+		const frames = [
+			{ target: 'square', boxWidth: 400, boxHeight: 300 },
+			{ target: 'thumb', boxWidth: 300, boxHeight: 300 },
+		] as const;
+		for (const { target, boxWidth, boxHeight } of frames) {
+			const { focal, zoom, fitMode, fillColor } = giftTargetFrameProps(meta, target);
+			expect(fitMode).toBe(IMAGE_FIT_MODES.coverCrop);
+			expect(fillColor).toBe('#ffffff');
+			const layout = coverWindowLayout({
+				focal,
+				zoom,
+				boxWidth,
+				boxHeight,
+				naturalRatio: 0.75,
+			});
+			expect(layout).not.toBeNull();
+			expect(layout!.height).toBeCloseTo(255, 6);
+			expect(layout!.top).toBeCloseTo(22.5, 6);
+			expect(layout!.width).toBeCloseTo(191.25, 6);
+			expect(layout!.left).toBeCloseTo((boxWidth - 191.25) / 2, 6);
+		}
+	});
+
+	it('renders agent-framed products in a landscape photo with the gap clear on every side of both gift frames', () => {
+		// 1500×1000 px photo, 7.5 % gap: every side of the product keeps at least 0.075 ×
+		// the frame dimension of its axis clear, and a side bounding the limiting span
+		// keeps exactly that (22.5 px of a 300 px side). Off-center product (0.3 × 0.4):
+		// on the 4:3 card (normalized aspect 8/9) its height limits (0.4 × 8/9 > 0.3), on
+		// the 1:1 thumb (2/3) its width does (0.3 > 0.4 × 2/3); neither window clamps.
+		// Top-edge product: the vertical span becomes the whole image height, which limits
+		// on both frames, so only its top side (the image's top edge) sits exactly at it.
+		const gapPerSide = 0.075;
+		const products = [
+			{
+				box: { x: 0.55, y: 0.15, w: 0.3, h: 0.4 },
+				sidesAtGap: { square: ['top', 'bottom'], thumb: ['left', 'right'] },
+			},
+			{
+				box: { x: 0.4, y: 0, w: 0.2, h: 0.3 },
+				sidesAtGap: { square: ['top'], thumb: ['top'] },
+			},
+		] as const;
+		const frames = [
+			{ target: 'square', boxWidth: 400, boxHeight: 300 },
+			{ target: 'thumb', boxWidth: 300, boxHeight: 300 },
+		] as const;
+		for (const { box, sidesAtGap } of products) {
+			const meta = framedGiftImageMeta({
+				width: 1500,
+				height: 1000,
+				box,
+				gapPerSide,
+				bgColor: '#ffffff',
+			});
+			for (const { target, boxWidth, boxHeight } of frames) {
+				const { focal, zoom } = giftTargetFrameProps(meta, target);
+				const layout = coverWindowLayout({
+					focal,
+					zoom,
+					boxWidth,
+					boxHeight,
+					naturalRatio: 1.5,
+				});
+				expect(layout).not.toBeNull();
+				const productLeft = layout!.left + box.x * layout!.width;
+				const productTop = layout!.top + box.y * layout!.height;
+				const clearance = {
+					left: productLeft,
+					right: boxWidth - (productLeft + box.w * layout!.width),
+					top: productTop,
+					bottom: boxHeight - (productTop + box.h * layout!.height),
+				};
+				const minimumClearance = {
+					left: gapPerSide * boxWidth,
+					right: gapPerSide * boxWidth,
+					top: gapPerSide * boxHeight,
+					bottom: gapPerSide * boxHeight,
+				};
+				for (const side of ['left', 'right', 'top', 'bottom'] as const) {
+					expect(clearance[side]).toBeGreaterThanOrEqual(minimumClearance[side] - 1e-6);
+				}
+				for (const side of sidesAtGap[target]) {
+					expect(clearance[side]).toBeCloseTo(minimumClearance[side], 6);
+				}
+			}
+		}
+	});
+
 	it('renders the contain framing at the contain zoom (letterbox on exactly one axis)', () => {
 		// Square image in a 200×100 box: normalized aspect 2, contain zoom 0.5.
 		// The whole 100×100 image sits centered with 50px fill bars left and right.

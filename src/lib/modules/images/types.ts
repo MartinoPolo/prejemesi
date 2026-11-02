@@ -36,6 +36,13 @@ export const IMAGE_ZOOM_MAX = 3;
  */
 export const IMAGE_ZOOM_OUT_GAP_PER_SIDE = 0.15;
 
+/**
+ * Gap per side the agent framing (`framedGiftImageMeta`) leaves by default: the
+ * product fills about 85 % of the frame's tighter axis, within common marketplace
+ * packshot guidance.
+ */
+export const GIFT_FRAMING_DEFAULT_GAP_PER_SIDE = 0.075;
+
 /** Normalized crop rectangle in 0..1 space (origin + size). */
 export interface ImageCropRect {
 	x: number;

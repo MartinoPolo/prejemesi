@@ -3,7 +3,6 @@ import type { RequestEvent } from '@sveltejs/kit';
 import { getRequestEvent } from '$app/server';
 import { getDb } from '$lib/server/db/index.js';
 import { demoSessionId, rejectDemoOperation } from '$lib/server/demo/scope.js';
-import { createAuth } from '$lib/server/auth.js';
 import { user } from '$lib/server/db/auth.schema.js';
 import { account } from '$lib/server/db/auth.schema.js';
 import { wishlist } from '$lib/server/db/wishlist.schema.js';
@@ -181,6 +180,9 @@ async function resolveGooglePictureUrl(
 	event: RequestEvent,
 	tokens: { idToken: string | null; accessToken: string | null },
 ): Promise<string | null> {
+	// Loaded on demand: pages that render appearance controls import this module, and better-auth
+	// costs Worker CPU at module load.
+	const { createAuth } = await import('$lib/server/auth.js');
 	const auth = createAuth(event);
 	const authContext = await auth.$context;
 	const googleProvider = authContext.socialProviders.find((provider) => provider.id === 'google');
