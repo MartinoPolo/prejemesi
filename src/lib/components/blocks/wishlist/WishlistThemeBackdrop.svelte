@@ -117,7 +117,6 @@
 		data-mode={mode}
 		data-placement={photo === null ? undefined : background.placement}
 		data-photo={photo === null ? undefined : ''}
-		data-motion={background.motion}
 		style:--photo-focal-x="{background.focal.x}%"
 		style:--photo-focal-y="{background.focal.y}%"
 		style:--photo-dim="{background.dim}%"
@@ -336,12 +335,12 @@
 
 	@media (prefers-reduced-motion: no-preference) {
 		@supports (animation-timeline: scroll()) {
-			.wishlist-backdrop:not([data-motion='off']) .wishlist-backdrop-motif {
+			.wishlist-backdrop .wishlist-backdrop-motif {
 				animation: wishlist-backdrop-motif-drift linear both;
 				animation-timeline: scroll(nearest block);
 			}
 
-			.wishlist-backdrop:not([data-motion='off']) .wishlist-backdrop-photo {
+			.wishlist-backdrop .wishlist-backdrop-photo {
 				animation: wishlist-backdrop-photo-drift linear both;
 				animation-timeline: scroll(nearest block);
 			}

@@ -46,7 +46,6 @@ const defaultBackgroundWithoutImage = {
 	focal: DEFAULT_WISHLIST_BACKGROUND.focal,
 	placement: DEFAULT_WISHLIST_BACKGROUND.placement,
 	dim: DEFAULT_WISHLIST_BACKGROUND.dim,
-	motion: DEFAULT_WISHLIST_BACKGROUND.motion,
 };
 
 const STORED_BACKGROUND_KEY = 'wishlists/backgrounds/stored.webp';
@@ -277,16 +276,52 @@ describe('WishlistSettingsModal appearance tab', () => {
 			activeTab: 'appearance',
 			wishlist: { ...wishlist, themeId: 'minimal', styleTokens: { corners: 'round' } },
 		});
+		await openCustomizeSection(screen);
 		await screen
-			.getByRole('radio', { name: m.wishlist_appearance_motion_off(), exact: true })
+			.getByRole('radio', { name: m.wishlist_appearance_background_none(), exact: true })
 			.click();
 		await screen.getByRole('button', { name: m.save() }).click();
 		await vi.waitFor(() => expect(remoteMocks.saveWishlistSettings).toHaveBeenCalledOnce());
 		expect(savedAppearance()).toMatchObject({
 			themeId: 'minimal',
 			styleTokens: { corners: 'round' },
-			background: expect.objectContaining({ motion: 'off' }),
+			background: expect.objectContaining({ mode: 'none' }),
 		});
+	});
+
+	it('names every customization group with a visible heading and offers no scroll motion control', async () => {
+		const screen = renderSettings({
+			activeTab: 'appearance',
+			wishlist: { ...wishlist, themeId: 'toys' },
+		});
+		await openCustomizeSection(screen);
+		for (const heading of [
+			m.wishlist_appearance_palette_heading(),
+			m.wishlist_appearance_background_heading(),
+			m.wishlist_appearance_hero_frame_heading(),
+			m.wishlist_appearance_style_heading(),
+		]) {
+			await expect
+				.element(screen.getByRole('heading', { name: heading, exact: true }))
+				.toBeVisible();
+		}
+		const backgroundModes = screen.getByRole('group', {
+			name: m.wishlist_appearance_background_heading(),
+			exact: true,
+		});
+		await expect
+			.element(
+				backgroundModes.getByRole('radio', {
+					name: m.wishlist_appearance_background_none(),
+					exact: true,
+				}),
+			)
+			.toBeVisible();
+		for (const removedMotionLabel of ['Jemný', 'Žádný']) {
+			expect(
+				screen.getByRole('radio', { name: removedMotionLabel, exact: true }).elements(),
+			).toHaveLength(0);
+		}
 	});
 
 	it('sends no image key when a stored custom background only changes its dim', async () => {

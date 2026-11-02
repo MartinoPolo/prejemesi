@@ -141,6 +141,21 @@ describe.skipIf(!DB_READY)('wishlist appearance [real DB]', () => {
 			});
 		});
 
+		it('accepts the retired scroll motion from an agent without storing it', async () => {
+			const { id: wishlistId } = await createWishlistFixture();
+			await executeOperation(managerActor, saveWishlistSettingsOperation, {
+				wishlistId,
+				appearance: {
+					themeId: 'toys',
+					styleTokens: null,
+					background: { ...DEFAULT_WISHLIST_BACKGROUND, motion: 'off' },
+				},
+			});
+			const storedBackground = (await readAppearance(wishlistId)).background;
+			expect(storedBackground).toEqual(DEFAULT_WISHLIST_BACKGROUND);
+			expect(storedBackground).not.toHaveProperty('motion');
+		});
+
 		it('keeps the stored appearance when the draft has no appearance changes', async () => {
 			const { id: wishlistId } = await createWishlistFixture();
 			await executeOperation(managerActor, saveWishlistSettingsOperation, {
@@ -294,8 +309,8 @@ describe.skipIf(!DB_READY)('wishlist appearance [real DB]', () => {
 		function withoutImageKey(
 			background: WishlistBackground,
 		): Omit<WishlistBackground, 'imageKey' | 'libraryImageId'> {
-			const { mode, focal, placement, dim, motion } = background;
-			return { mode, focal, placement, dim, motion };
+			const { mode, focal, placement, dim } = background;
+			return { mode, focal, placement, dim };
 		}
 
 		it('keeps the stored upload when a save omits the image key', async () => {
@@ -437,13 +452,13 @@ describe.skipIf(!DB_READY)('wishlist appearance [real DB]', () => {
 				wishlistId,
 				appearance: { themeId: 'books', styleTokens: null, background: libraryBackground },
 			});
-			const { mode, focal, placement, motion } = libraryBackground;
+			const { mode, focal, placement } = libraryBackground;
 			await executeOperation(managerActor, saveWishlistSettingsOperation, {
 				wishlistId,
 				appearance: {
 					themeId: 'books',
 					styleTokens: null,
-					background: { mode, focal, placement, dim: 45, motion },
+					background: { mode, focal, placement, dim: 45 },
 				},
 			});
 			expect((await readAppearance(wishlistId)).background).toMatchObject({
@@ -477,7 +492,6 @@ describe.skipIf(!DB_READY)('wishlist appearance [real DB]', () => {
 					focal: { x: 50, y: 50 },
 					placement: 'full',
 					dim: 20,
-					motion: 'off',
 				},
 			],
 			['with a null image id', { ...libraryBackground, libraryImageId: null }],
@@ -501,7 +515,7 @@ describe.skipIf(!DB_READY)('wishlist appearance [real DB]', () => {
 					background: sql`'{"mode":"theme","libraryImageId":"books-retired"}'::jsonb`,
 				})
 				.where(eq(wishlist.id, wishlistId));
-			const { mode, focal, placement, dim, motion } = DEFAULT_WISHLIST_BACKGROUND;
+			const { mode, focal, placement, dim } = DEFAULT_WISHLIST_BACKGROUND;
 
 			const libraryThrown = await captureError(
 				executeOperation(managerActor, saveWishlistSettingsOperation, {
@@ -509,7 +523,7 @@ describe.skipIf(!DB_READY)('wishlist appearance [real DB]', () => {
 					appearance: {
 						themeId: 'books',
 						styleTokens: null,
-						background: { mode: 'library', focal, placement, dim, motion },
+						background: { mode: 'library', focal, placement, dim },
 					},
 				}),
 			);
@@ -520,7 +534,7 @@ describe.skipIf(!DB_READY)('wishlist appearance [real DB]', () => {
 				appearance: {
 					themeId: 'books',
 					styleTokens: null,
-					background: { mode, focal, placement, dim, motion },
+					background: { mode, focal, placement, dim },
 				},
 			});
 			expect((await readAppearance(wishlistId)).background).toMatchObject({
@@ -543,9 +557,8 @@ describe.skipIf(!DB_READY)('wishlist appearance [real DB]', () => {
 				'an agent',
 				managerActor,
 				() => {
-					const { mode, libraryImageId, focal, placement, dim, motion } =
-						libraryBackground;
-					return { mode, libraryImageId, focal, placement, dim, motion };
+					const { mode, libraryImageId, focal, placement, dim } = libraryBackground;
+					return { mode, libraryImageId, focal, placement, dim };
 				},
 			],
 		])(

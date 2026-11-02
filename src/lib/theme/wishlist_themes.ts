@@ -65,11 +65,9 @@ export type WishlistViewerMode = (typeof WISHLIST_VIEWER_MODES)[number];
 
 export const WISHLIST_BACKGROUND_MODES = ['theme', 'library', 'custom', 'none'] as const;
 export const WISHLIST_BACKGROUND_PLACEMENTS = ['gutters', 'full'] as const;
-export const WISHLIST_BACKGROUND_MOTIONS = ['subtle', 'off'] as const;
 
 export type WishlistBackgroundMode = (typeof WISHLIST_BACKGROUND_MODES)[number];
 export type WishlistBackgroundPlacement = (typeof WISHLIST_BACKGROUND_PLACEMENTS)[number];
-export type WishlistBackgroundMotion = (typeof WISHLIST_BACKGROUND_MOTIONS)[number];
 
 export const WISHLIST_BACKGROUND_DIM_MAX = 60;
 
@@ -84,7 +82,6 @@ export interface WishlistBackground {
 	placement: WishlistBackgroundPlacement;
 	/** Percent 0–`WISHLIST_BACKGROUND_DIM_MAX`. */
 	dim: number;
-	motion: WishlistBackgroundMotion;
 }
 
 export const DEFAULT_WISHLIST_BACKGROUND: WishlistBackground = {
@@ -94,7 +91,6 @@ export const DEFAULT_WISHLIST_BACKGROUND: WishlistBackground = {
 	focal: { x: 50, y: 50 },
 	placement: 'gutters',
 	dim: 20,
-	motion: 'subtle',
 };
 
 export interface WishlistThemeDefinition {
