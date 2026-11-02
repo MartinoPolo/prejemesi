@@ -9,15 +9,13 @@
 	import { Button } from '$lib/components/base/button/index.js';
 	import { Input } from '$lib/components/base/input/index.js';
 	import { Textarea } from '$lib/components/base/textarea/index.js';
-	import { DatePicker } from '$lib/components/derived/date-picker/index.js';
 	import { Label } from '$lib/components/base/label/index.js';
 	import { HelpText } from '$lib/components/base/help-text/index.js';
 	import { Field, type FieldControlContext } from '$lib/components/derived/field/index.js';
 	import { Separator } from '$lib/components/base/separator/index.js';
 	import RecipientPreview from './RecipientPreview.svelte';
 	import WishlistPalettePicker from './WishlistPalettePicker.svelte';
-	import WishlistOccasionField from './WishlistOccasionField.svelte';
-	import * as Select from '$lib/components/base/select/index.js';
+	import CreateWishlistOccasionSection from './CreateWishlistOccasionSection.svelte';
 	import LoaderIcon from '@lucide/svelte/icons/loader';
 	import FileUpIcon from '@lucide/svelte/icons/file-up';
 	import SlidersHorizontalIcon from '@lucide/svelte/icons/sliders-horizontal';
@@ -29,17 +27,9 @@
 		WISHLIST_TITLE_MAX_LENGTH,
 		type WishlistOccasion,
 	} from '$lib/modules/wishlists/types.js';
-	import {
-		eventDateAfterOccasionChange,
-		suggestWishlistThemeId,
-	} from '$lib/modules/wishlists/wishlist_occasion.js';
+	import { suggestWishlistThemeId } from '$lib/modules/wishlists/wishlist_occasion.js';
 	import { DEFAULT_PALETTE, type Palette } from '$lib/theme/palettes.js';
-	import {
-		WISHLIST_THEME_IDS,
-		isWishlistThemeId,
-		type WishlistThemeId,
-	} from '$lib/theme/wishlist_themes.js';
-	import { wishlistThemeName } from '$lib/theme/wishlist_theme_messages.js';
+	import type { WishlistThemeId } from '$lib/theme/wishlist_themes.js';
 	import type { Attachment } from 'svelte/attachments';
 
 	export type CreatedWishlist = Awaited<ReturnType<typeof createWishlist>>;
@@ -110,22 +100,6 @@
 	const selectedThemeId = $derived(
 		chosenThemeId === undefined ? suggestedThemeId : chosenThemeId,
 	);
-
-	/** Select value of "no motif"; never a registry id. */
-	const NO_THEME_VALUE = 'no-theme';
-
-	function themeLabel(themeId: WishlistThemeId | null): string {
-		return themeId === null ? m.wishlist_appearance_no_theme() : wishlistThemeName(themeId);
-	}
-
-	function selectOccasion(nextOccasion: WishlistOccasion) {
-		occasion = nextOccasion;
-		({ eventDate, eventDatePrefilled } = eventDateAfterOccasionChange(
-			nextOccasion,
-			{ eventDate, eventDatePrefilled },
-			new Date(),
-		));
-	}
 
 	const titleError = $derived(
 		titleTouched && trimmedTitle === '' ? m.wishlist_name_required() : '',
@@ -313,85 +287,14 @@
 					{/snippet}
 				</Field>
 
-				<WishlistOccasionField
-					id="wishlist-create-occasion"
-					value={occasion}
-					onvaluechange={selectOccasion}
+				<CreateWishlistOccasionSection
+					bind:occasion
+					bind:eventDate
+					bind:eventDatePrefilled
+					bind:chosenThemeId
+					{suggestedThemeId}
 					disabled={isSubmitting}
 				/>
-
-				{#if !isPermanent}
-					<div class="flex flex-col gap-2">
-						<Label id="wishlist-event-date-label">{m.wishlist_event_date_label()}</Label
-						>
-						<DatePicker
-							id="wishlist-event-date"
-							ariaLabelledby="wishlist-event-date-label"
-							ariaDescribedby="wishlist-event-date-helper"
-							size="lg"
-							bind:value={
-								() => eventDate,
-								(pickedDate) => {
-									eventDate = pickedDate;
-									eventDatePrefilled = false;
-								}
-							}
-							disabled={isSubmitting}
-						/>
-						<HelpText id="wishlist-event-date-helper"
-							>{eventDatePrefilled
-								? m.wishlist_event_date_prefilled_hint()
-								: m.wishlist_event_date_helper()}</HelpText
-						>
-					</div>
-				{/if}
-
-				<div class="flex flex-col gap-2">
-					<Label for="wishlist-create-theme"
-						>{m.wishlist_appearance_theme_heading()}</Label
-					>
-					<Select.Root
-						type="single"
-						value={selectedThemeId ?? NO_THEME_VALUE}
-						onValueChange={(selected) => {
-							if (selected === NO_THEME_VALUE) {
-								chosenThemeId = null;
-							} else if (isWishlistThemeId(selected)) {
-								chosenThemeId = selected;
-							}
-						}}
-						disabled={isSubmitting}
-					>
-						<Select.Trigger
-							id="wishlist-create-theme"
-							size="lg"
-							class="w-full"
-							aria-describedby={chosenThemeId === undefined &&
-							suggestedThemeId !== null
-								? 'wishlist-create-theme-helper'
-								: undefined}
-						>
-							{themeLabel(selectedThemeId)}
-						</Select.Trigger>
-						<Select.Content>
-							<Select.Group>
-								<Select.Item value={NO_THEME_VALUE} label={themeLabel(null)}>
-									{themeLabel(null)}
-								</Select.Item>
-								{#each WISHLIST_THEME_IDS as themeId (themeId)}
-									<Select.Item value={themeId} label={themeLabel(themeId)}>
-										{themeLabel(themeId)}
-									</Select.Item>
-								{/each}
-							</Select.Group>
-						</Select.Content>
-					</Select.Root>
-					{#if chosenThemeId === undefined && suggestedThemeId !== null}
-						<HelpText id="wishlist-create-theme-helper"
-							>{m.create_theme_suggested_hint()}</HelpText
-						>
-					{/if}
-				</div>
 
 				<!-- Optional metadata (issue #112): collapsed by default so the create flow stays
 			     one field + title; power users can name a description and pick a palette upfront.
