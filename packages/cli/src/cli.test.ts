@@ -363,6 +363,7 @@ describe('prejemesi CLI', () => {
 				'gifts',
 				'reorder',
 				'-b2xQ',
+				'--rxq0T4guT6',
 				'gift-1',
 				'--wishlist',
 				WISHLIST.shortId,
@@ -370,8 +371,16 @@ describe('prejemesi CLI', () => {
 
 			expect(result.exitCode).toBe(EXIT_CODE.success);
 			expect(lastSubmission()?.body).toMatchObject({
-				operations: [{ input: { orderedGiftIds: ['-b2xQ', 'gift-1'] } }],
+				operations: [{ input: { orderedGiftIds: ['-b2xQ', '--rxq0T4guT6', 'gift-1'] } }],
 			});
+		});
+
+		it('still refuses a mistyped option', async () => {
+			const requestsBefore = server.requests.length;
+			const result = await run(['gifts', 'list', '--wishlst', WISHLIST.shortId]);
+
+			expect(result.exitCode).toBe(EXIT_CODE.usage);
+			expect(server.requests).toHaveLength(requestsBefore);
 		});
 
 		it('stores an image by URL for the wishlist and prints the reference a gift takes', async () => {

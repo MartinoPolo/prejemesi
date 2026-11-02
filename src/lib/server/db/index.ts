@@ -5,6 +5,7 @@ import { getRequestEvent } from '$app/server';
 import type { RequestEvent } from '@sveltejs/kit';
 import * as schema from './schema.js';
 import { resolveDatabaseUrl } from '$lib/config/runtime_environment.js';
+import { MAX_OPERATION_BATCH_STEPS } from '$lib/server/operations/constants.js';
 
 function getHyperdriveConnectionString(event: RequestEvent | undefined): string | undefined {
 	return event?.platform?.env?.HYPERDRIVE?.connectionString as string | undefined;
@@ -28,9 +29,55 @@ export function isDatabaseConfigured(event?: RequestEvent): boolean {
 	);
 }
 
+type PostgresClient = ReturnType<typeof postgres>;
+
+/**
+ * Makes every statement Drizzle sends a named prepared statement, in transactions and savepoints
+ * too. Drizzle sends through `unsafe`, which postgres.js leaves unprepared; an unprepared statement
+ * with parameters waits a round trip to describe them before it runs, so it costs two round trips
+ * and cannot be pipelined. Hyperdrive supports postgres.js's named prepared statements and warns
+ * that unprepared ones can hang in its transaction pooling. The client must enable `prepare` too:
+ * a connection without it ignores the per-statement option.
+ */
+function withPreparedStatements<TClient extends Pick<PostgresClient, 'unsafe'>>(
+	client: TClient,
+): TClient {
+	return new Proxy(client, {
+		get(target, property, receiver) {
+			if (property === 'unsafe') {
+				return (query: string, parameters?: never[], options?: object) =>
+					target.unsafe(query, parameters, { prepare: true, ...options });
+			}
+			if (property === 'begin' || property === 'savepoint') {
+				return (...parameters: unknown[]) => {
+					const method: unknown = Reflect.get(target, property, target);
+					const callback = parameters.pop();
+					if (typeof method !== 'function' || typeof callback !== 'function') {
+						throw new TypeError(`postgres ${property} needs a callback`);
+					}
+					return Reflect.apply(method, target, [
+						...parameters,
+						(scoped: Pick<PostgresClient, 'unsafe'>) =>
+							callback(withPreparedStatements(scoped)),
+					]);
+				};
+			}
+			return Reflect.get(target, property, receiver);
+		},
+	});
+}
+
+/**
+ * postgres.js reads `max_pipeline` but leaves it out of its option types. Statements queued beyond
+ * that many in flight go one round trip each, and a batch runs that many steps together, each with
+ * one statement in flight at a time.
+ */
+const pipelineOptions: { max_pipeline: number } = { max_pipeline: MAX_OPERATION_BATCH_STEPS };
+
 function createDb(connectionString: string) {
 	const client = postgres(connectionString, {
-		prepare: false,
+		...pipelineOptions,
+		prepare: true,
 		fetch_types: false,
 		// Bound the pool and reap idle/old connections. Without idle_timeout
 		// (postgres-js default is 0 = never close), pools orphaned by Vite HMR
@@ -40,7 +87,7 @@ function createDb(connectionString: string) {
 		idle_timeout: 20,
 		max_lifetime: 60 * 30,
 	});
-	return drizzle(client, { schema });
+	return drizzle(withPreparedStatements(client), { schema });
 }
 
 /**

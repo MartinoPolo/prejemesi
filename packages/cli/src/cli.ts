@@ -99,15 +99,24 @@ function isJsonObject(value: unknown): value is JsonObject {
 const HELP_FLAG = '-h';
 const SHIELD_PREFIX = '\u0000';
 
+/** A long option as typed, known or not, so a mistyped one is still reported. */
+const LONG_OPTION_PATTERN = /^--[a-z]+(?:-[a-z]+)*(?:=|$)/u;
+
 /**
- * Gift, proposal and wishlist ids may start with "-", which `parseArgs` would read as short flags.
- * The only short flag is -h, so every other single-dash argument is shielded from parsing and
- * restored in the positionals and option values.
+ * Gift, proposal and wishlist ids may start with "-" or "--", which `parseArgs` would read as
+ * flags. The only short flag is -h, so every other single-dash argument, and every double-dash one
+ * that does not look like a long option, is shielded from parsing and restored in the positionals
+ * and option values.
  */
 function parseCommand(argumentList: readonly string[]): ParsedCommand {
 	const shielded: string[] = [];
 	const shield = (argument: string) => {
-		if (argument === HELP_FLAG || !/^-[^-]/u.test(argument)) {
+		if (
+			argument === HELP_FLAG ||
+			argument === '--' ||
+			!argument.startsWith('-') ||
+			LONG_OPTION_PATTERN.test(argument)
+		) {
 			return argument;
 		}
 		shielded.push(argument);
