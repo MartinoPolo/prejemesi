@@ -128,6 +128,7 @@ export function changeProposal(overrides: Partial<ChangeProposalView> = {}): Cha
 		appliedAt: null,
 		discardedAt: null,
 		undoneAt: null,
+		fastForwardHold: null,
 		rowCount: rows.length,
 		kindCounts: { giftCreation: 1, giftEdit: 2, giftDeletion: 1 },
 		undo: null,

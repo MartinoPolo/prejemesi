@@ -246,6 +246,13 @@
       "when": 1793574068884,
       "tag": "0034_add-wishlist-occasion",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1793636613906,
+      "tag": "0035_change_proposal_fast_forward_hold",
+      "breakpoints": true
     }
   ]
 }

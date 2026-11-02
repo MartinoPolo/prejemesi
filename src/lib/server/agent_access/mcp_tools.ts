@@ -138,13 +138,14 @@ const OPERATION_TOOL_EXECUTORS = {
 
 const CONFIRMATION_NOTES: Readonly<Record<string, string>> = {
 	always: ' It always waits for the user on the review page, even with fast-forward.',
-	dependsOnInput: ' Some inputs wait for the user on the review page, even with fast-forward.',
+	dependsOnInput:
+		' Some inputs make it wait for the user on the review page, even with fast-forward.',
 };
 
 function toolDescription(operation: DocumentedOperation): string {
 	if (operation['x-operation-kind'] === OPERATION_KIND.mutation) {
 		const confirmationNote = CONFIRMATION_NOTES[operation['x-confirmation'] ?? ''] ?? '';
-		return `${operation.summary} Submits the change as a proposal of its own and answers it with its \`reviewUrl\`, where the user reviews and applies it; a fast-forward token applies it at once.${confirmationNote} Several changes to one wishlist belong in one ${AGENT_API_OPERATION_ID.submitChangeProposal} call instead.`;
+		return `${operation.summary} Submits the change as a proposal of its own and answers it with its \`reviewUrl\`, where the user reviews and applies it; a fast-forward personal access token applies it at once when it is ready, and connected apps never fast-forward.${confirmationNote} Several changes to one wishlist belong in one ${AGENT_API_OPERATION_ID.submitChangeProposal} call instead.`;
 	}
 	if (operation['x-operation-kind'] === OPERATION_KIND.read) {
 		return operation.summary;

@@ -9,6 +9,7 @@
 	import { OPERATION_CHANNEL } from '$lib/modules/change_proposals/operation_channel.js';
 	import {
 		countCopy,
+		fastForwardHoldCopy,
 		formatChangeReviewDate,
 		pluralCopy,
 		type PluralMessages,
@@ -18,6 +19,11 @@
 		one: m.pending_changes_item_one,
 		few: m.pending_changes_item_few,
 		other: m.pending_changes_item_other,
+	};
+	const APP_ITEM_TITLES: PluralMessages<{ count: number; app: string }> = {
+		one: m.pending_changes_item_app_one,
+		few: m.pending_changes_item_app_few,
+		other: m.pending_changes_item_app_other,
 	};
 	const CHAT_ITEM_TITLES: PluralMessages = {
 		one: m.pending_changes_item_chat_one,
@@ -34,6 +40,15 @@
 		proposals: readonly PendingChangeProposalSummary[];
 	} = $props();
 
+	function itemTitle(proposal: PendingChangeProposalSummary): string {
+		if (proposal.channel === OPERATION_CHANNEL.chatbot) {
+			return countCopy(CHAT_ITEM_TITLES, proposal.rowCount);
+		}
+		return proposal.viaApp
+			? pluralCopy(APP_ITEM_TITLES, { count: proposal.rowCount, app: proposal.tokenName })
+			: pluralCopy(ITEM_TITLES, { count: proposal.rowCount, token: proposal.tokenName });
+	}
+
 	function reviewHref(proposalId: string): string {
 		return localizeInternalHref(
 			resolve('/(app)/w/[id]/changes/[proposalId]', { id: wishlistShortId, proposalId }),
@@ -49,19 +64,17 @@
 		{#each proposals as proposal (proposal.id)}
 			<li class="proposal" data-testid="pending-changes-item">
 				<span class="summary">
-					<strong>
-						{proposal.channel === OPERATION_CHANNEL.chatbot
-							? countCopy(CHAT_ITEM_TITLES, proposal.rowCount)
-							: pluralCopy(ITEM_TITLES, {
-									count: proposal.rowCount,
-									token: proposal.tokenName,
-								})}
-					</strong>
+					<strong>{itemTitle(proposal)}</strong>
 					<span class="expiry">
 						{m.pending_changes_expires({
 							date: formatChangeReviewDate(proposal.expiresAt),
 						})}
 					</span>
+					{#if proposal.fastForwardHold !== null}
+						<span class="hold" data-testid="pending-changes-hold">
+							{fastForwardHoldCopy(proposal.fastForwardHold)}
+						</span>
+					{/if}
 				</span>
 				<Button
 					href={reviewHref(proposal.id)}
@@ -107,5 +120,10 @@
 	.expiry {
 		color: var(--muted-foreground);
 		white-space: nowrap;
+	}
+
+	.hold {
+		flex-basis: 100%;
+		color: var(--muted-foreground);
 	}
 </style>

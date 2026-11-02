@@ -1,0 +1,1 @@
+ALTER TABLE "change_proposal" ADD COLUMN "fast_forward_hold" text;
