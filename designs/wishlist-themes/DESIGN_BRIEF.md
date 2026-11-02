@@ -70,7 +70,7 @@ Fonts in the mockups are system look-alikes, because the files load no external 
 
 1. **How many themes at launch?** Recommendation: ship the ten shown and grow by occasion demand. Curation over volume is the point.
 2. **Should a theme also apply to the polaroid placeholder and the OG/social image?** Recommendation: yes for the placeholder (show a theme motif when there is no image). Defer the OG image to a separate issue.
-3. **Dark mode for light themes?** Recommendation: derive a dark backdrop by mixing the theme backdrop toward the dark-palette charcoal and keep the motifs at full color. The dark-native themes (Herní doupě, Vánoce) look the same in both modes.
+3. **Dark mode?** Every theme has a light and a dark backdrop, picked by the viewer's mode. Light-born themes derive the dark one by mixing their backdrop toward the dark-palette charcoal; Herní doupě, Vánoce and Vesmír pair their own deep dark backdrop with a pale light one (lavender, snowy paper, pale sky). Motifs stay at full color; outline-free line art takes a contrasting colour per mode.
 4. **Who can pick a theme: recipient, správci or both?** Recommendation: the same roles that can change the palette today. The theme belongs to the wishlist settings draft and the global Save.
 5. **Should custom uploads be moderated?** Recommendation: treat them like gift and wishlist images (same limits and reporting). No pre-moderation.
 6. **Should the theme be offered in the quick-create modal?** Recommendation: no. Keep creation quick (DECISIONS 2026-05-30), but default the theme by occasion when the title or date implies one (for example December leads to Vánoce), and let the manager change it in Settings.

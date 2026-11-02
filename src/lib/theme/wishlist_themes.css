@@ -1,27 +1,37 @@
 /* Wishlist theme art colours and backdrops (#535), keyed by the ids in `wishlist_themes.ts`.
-   Light themes declare their backdrop base colours as `--theme-light-*` so dark mode can sink
-   them toward the dark page background; motif colours stay full in both modes. Dark-native
-   themes paint their own backdrop and look the same in light and dark mode. */
+   Every motif has a light and a dark backdrop, picked by the viewer's mode. Themes declare their
+   base colours as `--theme-light-*`; the `--theme-dark-*` defaults sink them toward the dark page
+   background, and a theme with its own dark look overrides those. Motif colours stay full in
+   both modes, except `--m-line` for outline-free line art, which defaults to ink on the light
+   backdrop and paper on the dark one. */
 
 [data-wishlist-theme] {
+	--theme-light-wash: rgb(255 255 255 / 50%);
+	--theme-light-line: var(--m-ink);
+	--theme-dark-top: color-mix(in oklab, var(--theme-light-top) 18%, var(--background));
+	--theme-dark-middle: color-mix(in oklab, var(--theme-light-middle) 18%, var(--background));
+	--theme-dark-bottom: color-mix(in oklab, var(--theme-light-bottom) 18%, var(--background));
+	--theme-dark-pattern: color-mix(in oklab, var(--theme-light-pattern) 22%, var(--background));
+	--theme-dark-accent: color-mix(in oklab, var(--theme-light-accent) 22%, var(--background));
+	--theme-dark-wash: color-mix(in oklab, var(--background) 50%, transparent);
+	--theme-dark-line: var(--m-paper);
 	--theme-top: var(--theme-light-top);
 	--theme-middle: var(--theme-light-middle);
 	--theme-bottom: var(--theme-light-bottom);
 	--theme-pattern: var(--theme-light-pattern);
-	--theme-wash: rgb(255 255 255 / 50%);
+	--theme-accent: var(--theme-light-accent);
+	--theme-wash: var(--theme-light-wash);
+	--m-line: var(--theme-light-line);
 }
 
-.dark
-	[data-wishlist-theme]:not(
-		[data-wishlist-theme='gamer'],
-		[data-wishlist-theme='christmas'],
-		[data-wishlist-theme='space']
-	) {
-	--theme-top: color-mix(in oklab, var(--theme-light-top) 18%, var(--background));
-	--theme-middle: color-mix(in oklab, var(--theme-light-middle) 18%, var(--background));
-	--theme-bottom: color-mix(in oklab, var(--theme-light-bottom) 18%, var(--background));
-	--theme-pattern: color-mix(in oklab, var(--theme-light-pattern) 22%, var(--background));
-	--theme-wash: color-mix(in oklab, var(--background) 50%, transparent);
+.dark [data-wishlist-theme] {
+	--theme-top: var(--theme-dark-top);
+	--theme-middle: var(--theme-dark-middle);
+	--theme-bottom: var(--theme-dark-bottom);
+	--theme-pattern: var(--theme-dark-pattern);
+	--theme-accent: var(--theme-dark-accent);
+	--theme-wash: var(--theme-dark-wash);
+	--m-line: var(--theme-dark-line);
 }
 
 [data-wishlist-theme='toys'] {
@@ -68,13 +78,17 @@
 	--m-d: #ffe14d;
 	--m-ink: #0d0820;
 	--m-paper: #f3eeff;
+	--theme-light-top: #f8f5ff;
+	--theme-light-bottom: #ebe3ff;
+	--theme-dark-top: #2c1766;
+	--theme-dark-bottom: #140b33;
+	--theme-dark-wash: rgb(0 0 0 / 16%);
 	--theme-backdrop:
 		linear-gradient(color-mix(in oklab, #8b5cf6 22%, transparent) 1px, transparent 1px) 0 0 /
 			32px 32px,
 		linear-gradient(90deg, color-mix(in oklab, #8b5cf6 22%, transparent) 1px, transparent 1px) 0
 			0 / 32px 32px,
-		radial-gradient(ellipse at 50% 0%, #2c1766, #140b33 70%);
-	--theme-wash: rgb(0 0 0 / 16%);
+		radial-gradient(ellipse at 50% 0%, var(--theme-top), var(--theme-bottom) 70%);
 }
 
 [data-wishlist-theme='minimal'] {
@@ -123,13 +137,24 @@
 	--m-d: #fff;
 	--m-ink: #571726;
 	--m-paper: #fff;
+	--theme-light-line: #4a8bb5;
+	--theme-light-top: #fdf9f1;
+	--theme-light-bottom: #f5eee0;
+	--theme-light-pattern: color-mix(in oklab, #2f8f5b 50%, transparent);
+	--theme-dark-top: #1f5a43;
+	--theme-dark-bottom: #17432f;
+	--theme-dark-pattern: rgb(255 255 255 / 90%);
+	--theme-dark-wash: rgb(0 0 0 / 16%);
 	--theme-backdrop:
-		radial-gradient(circle at 20px 20px, rgb(255 255 255 / 90%) 2px, transparent 2.5px) 0 0 /
-			46px 46px,
-		radial-gradient(circle at 8px 30px, rgb(255 255 255 / 70%) 1.5px, transparent 2px) 0 0 /
-			38px 38px,
-		linear-gradient(180deg, #1f5a43, #17432f);
-	--theme-wash: rgb(0 0 0 / 16%);
+		radial-gradient(circle at 20px 20px, var(--theme-pattern) 2px, transparent 2.5px) 0 0 / 46px
+			46px,
+		radial-gradient(
+				circle at 8px 30px,
+				color-mix(in oklab, var(--theme-pattern) 78%, transparent) 1.5px,
+				transparent 2px
+			)
+			0 0 / 38px 38px,
+		linear-gradient(180deg, var(--theme-top), var(--theme-bottom));
 }
 
 [data-wishlist-theme='outdoor'] {
@@ -245,19 +270,27 @@
 	--m-d: #b69cff;
 	--m-ink: #0a1030;
 	--m-paper: #eef3ff;
+	--theme-light-top: #f2f7ff;
+	--theme-light-bottom: #dde9fb;
+	--theme-light-pattern: color-mix(in oklab, #0a1030 45%, transparent);
+	--theme-light-accent: #e2a72e;
+	--theme-dark-top: #1f2c66;
+	--theme-dark-bottom: #0b1030;
+	--theme-dark-pattern: rgb(255 255 255 / 75%);
+	--theme-dark-accent: color-mix(in oklab, var(--m-b) 70%, transparent);
+	--theme-dark-wash: rgb(0 0 0 / 16%);
 	--theme-backdrop:
-		radial-gradient(circle at 14px 18px, rgb(255 255 255 / 75%) 1.2px, transparent 1.8px) 0 0 /
+		radial-gradient(circle at 14px 18px, var(--theme-pattern) 1.2px, transparent 1.8px) 0 0 /
 			58px 54px,
-		radial-gradient(circle at 36px 40px, rgb(255 255 255 / 45%) 1px, transparent 1.5px) 0 0 /
-			46px 50px,
 		radial-gradient(
-				circle at 30px 8px,
-				color-mix(in oklab, var(--m-b) 70%, transparent) 1.4px,
-				transparent 2px
+				circle at 36px 40px,
+				color-mix(in oklab, var(--theme-pattern) 60%, transparent) 1px,
+				transparent 1.5px
 			)
-			0 0 / 97px 89px,
-		radial-gradient(ellipse at 50% 0%, #1f2c66, #0b1030 70%);
-	--theme-wash: rgb(0 0 0 / 16%);
+			0 0 / 46px 50px,
+		radial-gradient(circle at 30px 8px, var(--theme-accent) 1.4px, transparent 2px) 0 0 / 97px
+			89px,
+		radial-gradient(ellipse at 50% 0%, var(--theme-top), var(--theme-bottom) 70%);
 }
 
 [data-wishlist-theme='music'] {
