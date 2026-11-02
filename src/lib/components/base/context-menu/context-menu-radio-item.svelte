@@ -8,7 +8,7 @@
 		class: className,
 		children: childrenProp,
 		...restProps
-	}: WithoutChild<ContextMenuPrimitive.RadioItemProps> = $props();
+	}: Omit<WithoutChild<ContextMenuPrimitive.RadioItemProps>, 'closeOnSelect'> = $props();
 </script>
 
 <ContextMenuPrimitive.RadioItem

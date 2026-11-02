@@ -16,10 +16,13 @@
 	}: DropdownMenuPrimitive.SubContentProps = $props();
 </script>
 
-<!-- Keep floating coordinates independent of the parent menu's entrance transform. -->
+<!-- Keep floating coordinates independent of the parent menu's entrance transform. Its trigger sits
+     in the portalled parent menu, outside the page's scroll container, so scroll events never reach
+     the submenu's position updates; tracking every frame keeps it attached to the moving parent. -->
 <DropdownMenuPortal>
 	<DropdownMenuPrimitive.SubContent
 		bind:ref
+		updatePositionStrategy="always"
 		{align}
 		{alignOffset}
 		{sideOffset}
