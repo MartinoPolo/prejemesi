@@ -9,8 +9,10 @@
 	import {
 		WISHLIST_THEMES,
 		WISHLIST_THEME_IDS,
+		WISHLIST_VIEWER_MODES,
 		isWishlistThemeId,
 		type WishlistThemeId,
+		type WishlistViewerMode,
 	} from '$lib/theme/wishlist_themes.js';
 	import type { Palette } from '$lib/theme/palettes.js';
 	import { wishlistAppearanceChoiceVariants } from './wishlist_appearance_choice_variants.js';
@@ -26,7 +28,6 @@
 
 	/** Radio value of the "no theme" card; never a registry id. */
 	const NO_THEME_VALUE = 'no-theme';
-	const COLOR_MODES = ['light', 'dark'] as const;
 
 	let {
 		value,
@@ -91,7 +92,7 @@
 <!-- One half of a tile: the motif backdrop (or the bare palette page) forced into one mode, so
      every tile shows what light-mode and dark-mode visitors get. -->
 {#snippet modeVariant(
-	mode: (typeof COLOR_MODES)[number],
+	mode: WishlistViewerMode,
 	variantPalette: Palette,
 	themeId: WishlistThemeId | null,
 )}
@@ -138,7 +139,7 @@
 		aria-describedby="{idPrefix}-{itemValue}-description"
 	>
 		<span class="grid aspect-[2/1] w-full grid-cols-2 border-b-2 border-ink" aria-hidden="true">
-			{#each COLOR_MODES as mode (mode)}
+			{#each WISHLIST_VIEWER_MODES as mode (mode)}
 				{@render modeVariant(mode, tilePalette, themeId)}
 			{/each}
 		</span>

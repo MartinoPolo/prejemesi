@@ -1,7 +1,7 @@
 /**
  * Prompts for the curated wishlist background library (#531), kept free of side effects so a
  * test can check them against the theme and library registries. Every image has a light and a
- * dark file (#600): one is generated from its prompt and the other is an edit of it, so a pair
+ * dark file: one is generated from its prompt and the other is an edit of it, so a pair
  * keeps one composition.
  */
 

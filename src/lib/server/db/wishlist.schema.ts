@@ -56,7 +56,7 @@ export const wishlist = pgTable(
 		eventDate: timestamp('event_date', { withTimezone: true }),
 		status: wishlistStatusEnum('status').notNull().default('draft'),
 		kind: wishlistKindEnum('kind').notNull().default('occasion'),
-		// What the list is for (#600). Until the previous release, which writes only `kind`, is gone,
+		// What the list is for. Until the previous release, which writes only `kind`, is gone,
 		// a trigger turns its kind writes into the matching occasion (migration 0034).
 		occasion: wishlistOccasionEnum('occasion').notNull().default('other'),
 		// Superseded by `palette`; kept for rollback safety, no reader remains.

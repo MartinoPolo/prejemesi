@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import * as m from '$lib/paraglide/messages.js';
 import { WISHLIST_KIND, WISHLIST_OCCASION, WISHLIST_OCCASIONS } from './types.js';
 import {
+	displayedWishlistOccasion,
 	eventDateAfterOccasionChange,
 	nextChristmasEventDate,
 	occasionAfterKindWrite,
@@ -9,7 +10,7 @@ import {
 	suggestWishlistThemeId,
 	wishlistKindForOccasion,
 } from './wishlist_occasion.js';
-import { WISHLIST_OCCASION_DISPLAY } from './wishlist_occasion_display.js';
+import { WISHLIST_OCCASION_DISPLAY, occasionDisplayLabel } from './wishlist_occasion_display.js';
 
 describe('wishlist occasions', () => {
 	it('offers the eight occasions with Stálý seznam last', () => {
@@ -174,5 +175,24 @@ describe('occasionHasCardBadge', () => {
 			WISHLIST_OCCASION.baby,
 			WISHLIST_OCCASION.graduation,
 		]);
+	});
+});
+
+describe('occasion shown in the wishlist hero', () => {
+	it('shows a permanent list as the Stálý seznam whatever occasion it stores', () => {
+		expect(displayedWishlistOccasion(WISHLIST_KIND.permanent, WISHLIST_OCCASION.other)).toBe(
+			WISHLIST_OCCASION.permanent,
+		);
+		expect(displayedWishlistOccasion(WISHLIST_KIND.occasion, WISHLIST_OCCASION.birthday)).toBe(
+			WISHLIST_OCCASION.birthday,
+		);
+	});
+
+	it('names every occasion except Jiná', () => {
+		expect(occasionDisplayLabel(WISHLIST_OCCASION.other)).toBeNull();
+		expect(occasionDisplayLabel(WISHLIST_OCCASION.permanent)).toBe(m.wishlist_kind_permanent());
+		expect(occasionDisplayLabel(WISHLIST_OCCASION.christmas)).toBe(
+			m.wishlist_occasion_christmas(),
+		);
 	});
 });

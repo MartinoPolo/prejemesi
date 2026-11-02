@@ -46,7 +46,7 @@ export type WishlistKind = (typeof WISHLIST_KIND)[keyof typeof WISHLIST_KIND];
 export const WISHLIST_KINDS = [WISHLIST_KIND.occasion, WISHLIST_KIND.permanent] as const;
 
 /**
- * What a wishlist is for (#600), separate from its motif. `permanent` is the Stálý seznam: it is
+ * What a wishlist is for, separate from its motif. `permanent` is the Stálý seznam: it is
  * exactly the permanent kind, and every other occasion is the occasion kind.
  */
 export const WISHLIST_OCCASION = {

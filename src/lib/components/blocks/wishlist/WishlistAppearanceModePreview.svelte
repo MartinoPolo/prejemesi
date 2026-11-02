@@ -3,7 +3,11 @@
 	import { HelpText } from '$lib/components/base/help-text/index.js';
 	import type { Palette } from '$lib/theme/palettes.js';
 	import { loadWishlistThemeArt } from '$lib/theme/wishlist_theme_art/index.js';
-	import type { WishlistThemeId } from '$lib/theme/wishlist_themes.js';
+	import {
+		WISHLIST_VIEWER_MODES,
+		type WishlistThemeId,
+		type WishlistViewerMode,
+	} from '$lib/theme/wishlist_themes.js';
 	import WishlistAppearancePreviewPane from './WishlistAppearancePreviewPane.svelte';
 	import {
 		resolveWishlistThemeScope,
@@ -25,11 +29,10 @@
 		class: className,
 	}: WishlistAppearanceModePreviewProps = $props();
 
-	const COLOR_MODES = ['light', 'dark'] as const;
 	const MODE_LABELS = {
 		light: m.settings_mode_light,
 		dark: m.settings_mode_dark,
-	} satisfies Record<(typeof COLOR_MODES)[number], () => string>;
+	} satisfies Record<WishlistViewerMode, () => string>;
 
 	const headingId = $props.id();
 	const scope = $derived(resolveWishlistThemeScope(appearance));
@@ -75,7 +78,7 @@
 		<HelpText>{m.wishlist_appearance_preview_hint()}</HelpText>
 	</div>
 	<div class="grid grid-cols-2 gap-3">
-		{#each COLOR_MODES as mode (mode)}
+		{#each WISHLIST_VIEWER_MODES as mode (mode)}
 			<figure class="m-0 flex min-w-0 flex-col gap-1.5">
 				<figcaption class="text-(length:--text-sm) font-semibold text-muted-foreground">
 					{MODE_LABELS[mode]()}

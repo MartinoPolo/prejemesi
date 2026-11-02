@@ -6,7 +6,7 @@ import { WISHLIST_THEME_IDS, type WishlistThemeId } from './wishlist_themes.js';
 /**
  * The curated background library (#531): images generated offline per wishlist theme by
  * `scripts/generate_theme_backgrounds.mjs`, which also rewrites the manifest. Each image has a
- * file per viewer mode (#600) in `static/wishlist-backgrounds/<id>-<mode>-<width>.webp`; the
+ * file per viewer mode in `static/wishlist-backgrounds/<id>-<mode>-<width>.webp`; the
  * manifest lists the widths of the modes it has.
  */
 export const WISHLIST_LIBRARY_IMAGE_VARIANTS = ['illustrated', 'photo'] as const;
@@ -75,10 +75,7 @@ export function wishlistLibraryImagesForTheme(
 	];
 }
 
-/**
- * Without a dark file the light one shows in dark mode under the automatic dark-mode dim, like a
- * custom photo. A missing light file is not washed out: the dark one shows as it is.
- */
+/** Whether the image has a file of its own for dark mode (see `libraryBackgroundPhoto`). */
 export function wishlistLibraryImageHasDarkFile(image: WishlistLibraryImage): boolean {
 	return image.widthsByMode.dark !== undefined;
 }

@@ -19,7 +19,12 @@
 		type WishlistOccasion,
 		type WishlistRole,
 	} from '$lib/modules/wishlists/types.js';
-	import { WISHLIST_OCCASION_DISPLAY } from '$lib/modules/wishlists/wishlist_occasion_display.js';
+	import { displayedWishlistOccasion } from '$lib/modules/wishlists/wishlist_occasion.js';
+	import {
+		WISHLIST_OCCASION_DISPLAY,
+		occasionDisplayLabel,
+	} from '$lib/modules/wishlists/wishlist_occasion_display.js';
+	import { INLINE_TEXT_SEPARATOR } from '$lib/utils/inline_text_separator.js';
 	import type { WishlistHeroFrame } from '$lib/theme/wishlist_themes.js';
 	import { canManageWishlist } from '$lib/modules/wishlists/wishlist_capabilities.js';
 	import { Avatar } from '$lib/components/derived/avatar/index.js';
@@ -138,16 +143,10 @@
 	const canManage = $derived(canManageWishlist(role));
 	const isArchived = $derived(status === 'archived');
 	const isPermanent = $derived(kind === WISHLIST_KIND.permanent);
-	const displayedOccasion = $derived(isPermanent ? WISHLIST_OCCASION.permanent : occasion);
+	const displayedOccasion = $derived(displayedWishlistOccasion(kind, occasion));
 	const OccasionIcon = $derived(WISHLIST_OCCASION_DISPLAY[displayedOccasion].icon);
-	// Jiná names nothing, so its emblem and meta line show only the countdown.
-	const occasionLabel = $derived(
-		displayedOccasion === WISHLIST_OCCASION.other
-			? null
-			: WISHLIST_OCCASION_DISPLAY[displayedOccasion].label(),
-	);
-	// Rendered as an expression because Svelte trims the spaces of literal element text.
-	const META_SEPARATOR = ' · ';
+	// Without a label (Jiná) the emblem and meta line show only the countdown.
+	const occasionLabel = $derived(occasionDisplayLabel(displayedOccasion));
 	const settingsAvailable = $derived((canManage && !isArchived) || adminSettingsAvailable);
 	const isEventPast = $derived(eventDate !== null && !hasUpcomingEventDate(eventDate));
 	// Recipient edit pencil (issue #150): free-text lists → any manager may rename; linked
@@ -277,17 +276,18 @@
 				</svelte:element>
 				<p class="mobile-meta" data-testid="wishlist-mobile-meta">
 					<span class="mobile-meta-item">{statusLabel}</span
-					>{#if occasionLabel !== null}<span aria-hidden="true">{META_SEPARATOR}</span
+					>{#if occasionLabel !== null}<span aria-hidden="true"
+							>{INLINE_TEXT_SEPARATOR}</span
 						><span class="mobile-meta-item mobile-meta-occasion"
 							><OccasionIcon
 								class="mobile-meta-icon"
 								aria-hidden="true"
 							/>{occasionLabel}</span
 						>{/if}{#if countdownLabel !== null}<span aria-hidden="true"
-							>{META_SEPARATOR}</span
+							>{INLINE_TEXT_SEPARATOR}</span
 						><span class="mobile-meta-item">{countdownLabel}</span
 						>{/if}{#if giftCountLabel !== null}<span aria-hidden="true"
-							>{META_SEPARATOR}</span
+							>{INLINE_TEXT_SEPARATOR}</span
 						><span class="mobile-meta-item">{giftCountLabel}</span>{/if}
 				</p>
 			</div>
@@ -303,7 +303,13 @@
 
 			<!-- Blok: taped polaroid print — a physical photo, so frame + caption ink stay fixed.
 			     The other frames show the photo as a flat tile. -->
-			<figure class={[frameStyles.photo(), 'group/polaroid']}>
+			<figure
+				class={[
+					frameStyles.photo(),
+					heroFrame !== 'notebook' && frameStyles.photoTile(),
+					'group/polaroid',
+				]}
+			>
 				<div class={frameStyles.photoImage()}>
 					<WishlistSlotImage
 						class="size-full rounded-none"
@@ -414,7 +420,7 @@
 		</div>
 		<WishlistHeroEmblem
 			frame={heroFrame}
-			occasion={displayedOccasion}
+			occasionIcon={OccasionIcon}
 			{occasionLabel}
 			{countdownLabel}
 		/>

@@ -6,7 +6,7 @@ import { tv } from 'tailwind-variants';
  * rotated label sticker, the status chip pinned top-right and the occasion badge
  * top-left. Body, meta, border and shadow stay in the viewer's look so cards in a
  * row match; the cover fill and the title plate carry the wishlist: its palette's
- * primary plus the motif's corners and heading font (#600). Archived cards dim,
+ * primary plus the motif's corners and heading font. Archived cards dim,
  * desaturate, and stop lifting. The overview uses `large` (Nedávné) and `compact`
  * (category rows); other pages keep `default`.
  */

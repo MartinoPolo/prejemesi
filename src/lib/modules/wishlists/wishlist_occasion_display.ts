@@ -9,6 +9,7 @@ import SparklesIcon from '@lucide/svelte/icons/sparkles';
 import TreePineIcon from '@lucide/svelte/icons/tree-pine';
 import * as m from '$lib/paraglide/messages.js';
 import type { WishlistOccasion } from './types.js';
+import { occasionHasDisplayLabel } from './wishlist_occasion.js';
 
 interface WishlistOccasionDisplay {
 	icon: Component;
@@ -29,3 +30,8 @@ export const WISHLIST_OCCASION_DISPLAY: Record<WishlistOccasion, WishlistOccasio
 	other: { icon: SparklesIcon, label: m.wishlist_occasion_other },
 	permanent: { icon: InfinityIcon, label: m.wishlist_kind_permanent },
 };
+
+/** The occasion's label for the wishlist hero, or null when it names nothing (Jiná). */
+export function occasionDisplayLabel(occasion: WishlistOccasion): string | null {
+	return occasionHasDisplayLabel(occasion) ? WISHLIST_OCCASION_DISPLAY[occasion].label() : null;
+}

@@ -14,7 +14,7 @@
 </script>
 
 <!--
-Hero frame paper (#600): Blok notebook, Dárek wrapped present, Visačka kraft tag or Pozvánka
+Hero frame paper: Blok notebook, Dárek wrapped present, Visačka kraft tag or Pozvánka
 envelope. Decorations are aria-hidden and painted beneath the content; they take the wishlist
 palette, corners, border and, through `--m-*`, the motif colours when its backdrop is shown.
 -->

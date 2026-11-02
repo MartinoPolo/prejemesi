@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Generates the curated wishlist background library (#531) offline with Gemini image generation:
- * an illustrated and a photo variant per wishlist theme, each with a light and a dark file (#600),
+ * an illustrated and a photo variant per wishlist theme, each with a light and a dark file,
  * saved as `static/wishlist-backgrounds/<id>-<mode>-<width>.webp` and listed with their modes in
  * `src/lib/theme/wishlist_background_library.json`.
  *

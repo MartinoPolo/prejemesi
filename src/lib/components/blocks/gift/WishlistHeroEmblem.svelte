@@ -1,27 +1,25 @@
 <script lang="ts">
+	import type { Component } from 'svelte';
 	import type { WishlistHeroFrame } from '$lib/theme/wishlist_themes.js';
-	import type { WishlistOccasion } from '$lib/modules/wishlists/types.js';
-	import { WISHLIST_OCCASION_DISPLAY } from '$lib/modules/wishlists/wishlist_occasion_display.js';
+	import { INLINE_TEXT_SEPARATOR } from '$lib/utils/inline_text_separator.js';
 
 	interface Props {
 		frame: WishlistHeroFrame;
-		occasion: WishlistOccasion;
+		/** The displayed occasion's icon, shared with the header's meta line and chip. */
+		occasionIcon: Component;
 		/** Occasion label, or null for Jiná, which names nothing worth showing. */
 		occasionLabel: string | null;
 		/** „za 12 dní", „proběhlo" once the event passed, or null without an event date. */
 		countdownLabel: string | null;
 	}
 
-	let { frame, occasion, occasionLabel, countdownLabel }: Props = $props();
+	let { frame, occasionIcon: OccasionIcon, occasionLabel, countdownLabel }: Props = $props();
 
-	const OccasionIcon = $derived(WISHLIST_OCCASION_DISPLAY[occasion].icon);
 	const hasText = $derived(occasionLabel !== null || countdownLabel !== null);
-	// Rendered as an expression because Svelte trims the spaces of literal element text.
-	const PILL_SEPARATOR = ' · ';
 </script>
 
 <!--
-The occasion emblem from 960 px (#600): a postage stamp on Blok and Visačka, a kraft tag
+The occasion emblem from 960 px: a postage stamp on Blok and Visačka, a kraft tag
 hanging from the Dárek bow, a wax seal with a countdown pill on Pozvánka. Its text is the
 occasion for screen readers at that width; below it the header's meta line takes over.
 -->
@@ -49,7 +47,7 @@ occasion for screen readers at that width; below it the header's meta line takes
 {#snippet sealPillText()}
 	{#if occasionLabel !== null}<span>{occasionLabel}</span
 		>{/if}{#if occasionLabel !== null && countdownLabel !== null}<span aria-hidden="true"
-			>{PILL_SEPARATOR}</span
+			>{INLINE_TEXT_SEPARATOR}</span
 		>{/if}{#if countdownLabel !== null}<span>{countdownLabel}</span>{/if}
 {/snippet}
 

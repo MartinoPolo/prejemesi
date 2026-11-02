@@ -509,12 +509,12 @@
 	/* Dark crop-editor stage: photos read truer on a dark surround in both modes. */
 	--crop-stage: color-mix(in oklab, var(--p-ink) 82%, black);
 
-	/* Wishlist card title plate (#600): filled with the wishlist palette's primary. */
+	/* Wishlist card title plate: filled with the wishlist palette's primary. */
 	--wishlist-card-plate: var(--primary);
 	--wishlist-card-plate-foreground: var(--primary-foreground);
 
 	/* Background photos without a dark file (custom uploads, library images missing one) sink
-	   this far toward the page in dark mode, on top of the manager's own dim (#600). */
+	   this far toward the page in dark mode, on top of the manager's own dim. */
 	--wishlist-photo-dark-mode-dim: 40%;
 	--popover: #fff;
 	--popover-foreground: var(--p-ink);

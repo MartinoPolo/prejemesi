@@ -106,6 +106,19 @@ export function eventDateAfterOccasionChange(
 	return { eventDate: null, eventDatePrefilled: false };
 }
 
+/** The occasion a wishlist shows: a permanent list is always the Stálý seznam. */
+export function displayedWishlistOccasion(
+	kind: WishlistKind,
+	occasion: WishlistOccasion,
+): WishlistOccasion {
+	return kind === WISHLIST_KIND.permanent ? WISHLIST_OCCASION.permanent : occasion;
+}
+
+/** Jiná names nothing, so the wishlist hero shows no label for it; the Stálý seznam is named. */
+export function occasionHasDisplayLabel(occasion: WishlistOccasion): boolean {
+	return occasion !== WISHLIST_OCCASION.other;
+}
+
 /** Jiná and the Stálý seznam say nothing worth a badge on a wishlist card. */
 export function occasionHasCardBadge(occasion: WishlistOccasion): boolean {
 	return occasion !== WISHLIST_OCCASION.other && occasion !== WISHLIST_OCCASION.permanent;

@@ -2,15 +2,16 @@
 	import { IMAGE_VARIANTS, responsiveImageSource } from '$lib/modules/images/variants.js';
 	import {
 		findWishlistLibraryImage,
-		wishlistLibraryImageHasDarkFile,
 		wishlistLibraryImageLayers,
-		type WishlistBackgroundPhotoLayer,
 	} from '$lib/theme/wishlist_background_library.js';
 	import type { MotifPlacement, WishlistThemeArt } from '$lib/theme/wishlist_theme_art/index.js';
 	import type { WishlistBackground, WishlistBackgroundMode } from '$lib/theme/wishlist_themes.js';
 	import {
 		backgroundPhotoLayerDisplayClass,
 		backgroundPhotoLayerLoading,
+		customBackgroundPhoto,
+		libraryBackgroundPhoto,
+		type WishlistBackgroundPhoto,
 	} from './wishlist_background_photo.js';
 
 	interface WishlistThemeBackdropProps {
@@ -39,22 +40,13 @@
 		}
 		return sides;
 	});
-	interface BackdropPhoto {
-		layers: WishlistBackgroundPhotoLayer[];
-		/** A photo without a file of its own for dark mode gets the automatic dark-mode dim. */
-		dimsInDarkMode: boolean;
-	}
-
 	/** Custom uploads and library images share one photo rendering; only the source differs. */
-	const photo = $derived.by((): BackdropPhoto | null => {
+	const photo = $derived.by((): WishlistBackgroundPhoto | null => {
 		if (mode === 'library') {
 			const libraryImage = findWishlistLibraryImage(background.libraryImageId);
 			return libraryImage === null
 				? null
-				: {
-						layers: wishlistLibraryImageLayers(libraryImage),
-						dimsInDarkMode: !wishlistLibraryImageHasDarkFile(libraryImage),
-					};
+				: libraryBackgroundPhoto(libraryImage, wishlistLibraryImageLayers(libraryImage));
 		}
 		if (mode !== 'custom' || imageUrl === null) {
 			return null;
@@ -64,11 +56,11 @@
 			'background',
 			IMAGE_VARIANTS.background.cssWidth,
 		);
-		const layer: WishlistBackgroundPhotoLayer =
+		return customBackgroundPhoto(
 			responsiveSource === null
 				? { shownIn: null, src: imageUrl }
-				: { shownIn: null, src: responsiveSource.src, srcset: responsiveSource.srcset };
-		return { layers: [layer], dimsInDarkMode: true };
+				: { shownIn: null, src: responsiveSource.src, srcset: responsiveSource.srcset },
+		);
 	});
 </script>
 
@@ -92,7 +84,7 @@
 	{/each}
 {/snippet}
 
-{#snippet photoLayers(backdropPhoto: BackdropPhoto)}
+{#snippet photoLayers(backdropPhoto: WishlistBackgroundPhoto)}
 	<div class="wishlist-backdrop-photo">
 		{#each backdropPhoto.layers as layer (layer.src)}
 			<img

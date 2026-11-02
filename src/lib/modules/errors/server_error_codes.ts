@@ -74,7 +74,7 @@ export const SERVER_ERROR = {
 	CANNOT_MODIFY_ARCHIVED_WISHLIST: 'CANNOT_MODIFY_ARCHIVED_WISHLIST',
 	// Wishlist kinds (issue #479): a permanent wishlist has no event date, and an occasion wishlist
 	// with an upcoming event date cannot become permanent; a write naming both kind and occasion must
-	// pair the Stálý seznam with the permanent kind (#600).
+	// pair the Stálý seznam with the permanent kind.
 	PERMANENT_WISHLIST_EVENT_DATE: 'PERMANENT_WISHLIST_EVENT_DATE',
 	CANNOT_MAKE_WISHLIST_WITH_UPCOMING_EVENT_PERMANENT:
 		'CANNOT_MAKE_WISHLIST_WITH_UPCOMING_EVENT_PERMANENT',

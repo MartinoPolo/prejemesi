@@ -4,9 +4,14 @@
 	import type { Palette } from '$lib/theme/palettes.js';
 	import {
 		findWishlistLibraryImage,
-		wishlistLibraryImageHasDarkFile,
 		wishlistLibraryImageThumbnailLayers,
 	} from '$lib/theme/wishlist_background_library.js';
+	import {
+		backgroundPhotoLayerForMode,
+		customBackgroundPhoto,
+		libraryBackgroundPhoto,
+		type WishlistBackgroundPhoto,
+	} from './wishlist_background_photo.js';
 	import {
 		wishlistStyleTokenAttributes,
 		type WishlistThemeScope,
@@ -31,27 +36,32 @@
 	// their true proportions.
 	const scale = $derived(canvasWidth === 0 ? 0 : paneWidth / canvasWidth);
 	const heroFrameStyles = $derived(wishlistHeroFrameVariants({ frame: scope.style.heroFrame }));
-	/** The pane's mode is fixed, so it picks its file directly, like the page does through CSS. */
-	const photo = $derived.by((): { src: string; dimmed: boolean } | null => {
+	const backgroundPhoto = $derived.by((): WishlistBackgroundPhoto | null => {
 		if (scope.backgroundMode === 'custom') {
 			return scope.customImageUrl === null
 				? null
-				: { src: scope.customImageUrl, dimmed: mode === 'dark' };
+				: customBackgroundPhoto({ shownIn: null, src: scope.customImageUrl });
 		}
 		const libraryImage =
 			scope.backgroundMode === 'library'
 				? findWishlistLibraryImage(scope.background.libraryImageId)
 				: null;
-		if (libraryImage === null) {
-			return null;
-		}
-		const layers = wishlistLibraryImageThumbnailLayers(libraryImage);
-		const layer = layers.find((candidate) => candidate.shownIn === mode) ?? layers[0];
-		return {
-			src: layer.src,
-			dimmed: mode === 'dark' && !wishlistLibraryImageHasDarkFile(libraryImage),
-		};
+		return libraryImage === null
+			? null
+			: libraryBackgroundPhoto(
+					libraryImage,
+					wishlistLibraryImageThumbnailLayers(libraryImage),
+				);
 	});
+	/** The pane's mode is fixed, so it picks its file directly, like the page does through CSS. */
+	const photo = $derived(
+		backgroundPhoto === null
+			? null
+			: {
+					src: backgroundPhotoLayerForMode(backgroundPhoto, mode).src,
+					dimmed: mode === 'dark' && backgroundPhoto.dimsInDarkMode,
+				},
+	);
 </script>
 
 {#snippet photoTile(className: string)}
@@ -59,9 +69,7 @@
 		class={[
 			'block shrink-0 overflow-hidden border-(length:--border-w) border-ink bg-[color:var(--wishlist-image-mat,var(--secondary))]',
 			scope.style.mat === 'dotted' && 'bg-dots',
-			scope.style.heroFrame === 'tag'
-				? 'rounded-full'
-				: 'rounded-[calc(var(--radius-panel)/2)]',
+			heroFrameStyles.photoTile(),
 			className,
 		]}
 	></span>

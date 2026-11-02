@@ -58,6 +58,11 @@ const DEFAULT_WISHLIST_STYLE: WishlistStyleTokens = {
 	heroFrame: 'notebook',
 };
 
+/** Every motif has a variant for each viewer mode; previews show them side by side. */
+export const WISHLIST_VIEWER_MODES = ['light', 'dark'] as const;
+
+export type WishlistViewerMode = (typeof WISHLIST_VIEWER_MODES)[number];
+
 export const WISHLIST_BACKGROUND_MODES = ['theme', 'library', 'custom', 'none'] as const;
 export const WISHLIST_BACKGROUND_PLACEMENTS = ['gutters', 'full'] as const;
 export const WISHLIST_BACKGROUND_MOTIONS = ['subtle', 'off'] as const;
