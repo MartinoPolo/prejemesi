@@ -16,8 +16,10 @@
  * window.
  */
 
+import { GIFT_CROP_TARGET_SPECS } from './crop_targets.js';
 import { IMAGE_FIT_MODES, type ImageFitMode } from './fit_modes.js';
 import {
+	GIFT_FRAMING_DEFAULT_GAP_PER_SIDE,
 	IMAGE_ZOOM_BASE,
 	IMAGE_ZOOM_OUT_GAP_PER_SIDE,
 	IMAGE_ZOOM_OUT_MIN,
@@ -321,6 +323,106 @@ export function cropStateToImageMeta(
 		focal,
 		zoom,
 		bgColor,
+	};
+}
+
+/** Bounding boxes are estimated by eye, so a side this close to the image edge touches it. */
+const BOX_EDGE_TOUCH_TOLERANCE = 0.005;
+
+/** Absorbs rounding when a pixel box is normalized (e.g. `(600 + 900) / 1500`). */
+const BOX_BOUNDS_ROUNDING_TOLERANCE = 1e-9;
+
+function assertBoxInsideImage(box: ImageCropRect): void {
+	const insideImage =
+		box.x >= 0 &&
+		box.y >= 0 &&
+		box.w > 0 &&
+		box.h > 0 &&
+		box.x + box.w <= 1 + BOX_BOUNDS_ROUNDING_TOLERANCE &&
+		box.y + box.h <= 1 + BOX_BOUNDS_ROUNDING_TOLERANCE;
+	if (!insideImage) {
+		throw new RangeError(
+			`The product box ${JSON.stringify(box)} must have a positive size and lie inside the image (normalized 0..1).`,
+		);
+	}
+}
+
+function boxSpanTouchingEdges(start: number, size: number): { start: number; size: number } {
+	const touchesEdge =
+		start <= BOX_EDGE_TOUCH_TOLERANCE || start + size >= 1 - BOX_EDGE_TOUCH_TOLERANCE;
+	return touchesEdge ? { start: 0, size: 1 } : { start, size };
+}
+
+/**
+ * The aspect-locked window that frames a product's bounding box (normalized image
+ * coordinates): centered on the box and just large enough that the box spans
+ * `1 - 2 × gapPerSide` of the window on its limiting axis. The gap is capped at
+ * {@link IMAGE_ZOOM_OUT_GAP_PER_SIDE} and the window keeps the editor's zoom range
+ * and origin clamping. A box touching an image edge spans the whole image on that
+ * axis, so the window exceeds the photo there and the gap stays clear of the product.
+ * Throws a `RangeError` for a box outside the image or without a positive size.
+ */
+export function cropRectAroundBox(
+	productBox: ImageCropRect,
+	normalizedAspect: number,
+	gapPerSide: number,
+): ImageCropRect {
+	assertBoxInsideImage(productBox);
+	const horizontal = boxSpanTouchingEdges(productBox.x, productBox.w);
+	const vertical = boxSpanTouchingEdges(productBox.y, productBox.h);
+	const box = { x: horizontal.start, y: vertical.start, w: horizontal.size, h: vertical.size };
+	const gap = Math.min(Math.max(gapPerSide, 0), IMAGE_ZOOM_OUT_GAP_PER_SIDE);
+	const w = Math.max(box.w, box.h * normalizedAspect) / (1 - 2 * gap);
+	const h = w / normalizedAspect;
+	const windowAroundBox = {
+		x: box.x + box.w / 2 - w / 2,
+		y: box.y + box.h / 2 - h / 2,
+		w,
+		h,
+	};
+	return zoomCropRect(
+		windowAroundBox,
+		normalizedAspect,
+		Math.min(1 / Math.max(w, h), IMAGE_ZOOM_MAX),
+	);
+}
+
+/**
+ * Manual framing for a gift image whose product sits inside `box`: a
+ * {@link cropRectAroundBox} window per editor target, persisted as the gift editor
+ * saves Manual on a newly placed image (centered base focal + zoom, no base crop).
+ * Throws a `RangeError` for a non-positive image size or an invalid box.
+ */
+export function framedGiftImageMeta(framing: {
+	width: number;
+	height: number;
+	box: ImageCropRect;
+	gapPerSide?: number;
+	bgColor: string | null;
+}): ImageMetadata {
+	const { width, height, box, gapPerSide = GIFT_FRAMING_DEFAULT_GAP_PER_SIDE } = framing;
+	const sizeIsValid =
+		Number.isFinite(width) && Number.isFinite(height) && width > 0 && height > 0;
+	if (!sizeIsValid) {
+		throw new RangeError(`The image size ${width}×${height} px must be positive and finite.`);
+	}
+	const imageRatio = width / height;
+	const targets: Partial<Record<GiftEditorCropTarget, ImageTargetCrop>> = {};
+	for (const target of GIFT_EDITOR_CROP_TARGET_VALUES) {
+		const normalizedAspect = normalizedCropAspect(
+			GIFT_CROP_TARGET_SPECS[target].aspect,
+			imageRatio,
+		);
+		const cropRect = cropRectAroundBox(box, normalizedAspect, gapPerSide);
+		targets[target] = { cropRect, ...cropRectToFocalZoom(cropRect) };
+	}
+	return {
+		fitMode: IMAGE_FIT_MODES.coverCrop,
+		cropRect: null,
+		focal: { ...CENTERED_FOCAL },
+		zoom: IMAGE_ZOOM_BASE,
+		bgColor: framing.bgColor,
+		targets,
 	};
 }
 
