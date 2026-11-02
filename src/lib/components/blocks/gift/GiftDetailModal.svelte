@@ -6,6 +6,7 @@
 	import { Button } from '$lib/components/base/button/index.js';
 	import XIcon from '@lucide/svelte/icons/x';
 	import { cn } from '$lib/utils.js';
+	import { keepFocusOnPress } from '$lib/reactivity/keyboard_inset.svelte.js';
 	import {
 		overlayCloseButtonClass,
 		overlayCloseButtonSurfaceClass,
@@ -104,6 +105,7 @@
 	let changeConfirmationPending = false;
 	// Remounting the form is what reverts a change the user declined to confirm.
 	let formRevision = $state(0);
+	let form = $state<ReturnType<typeof GiftDetailForm>>();
 	let allowNavigation = false;
 	// svelte-ignore state_referenced_locally (identity baseline; the effect below tracks changes)
 	let formIdentity = $state(`${mode}:${gift?.id ?? 'new'}`);
@@ -254,6 +256,15 @@
 	<div class={styles.editorHeader()} data-testid="gift-editor-header">
 		<Dialog.Title class={styles.editorTitle()}>{title}</Dialog.Title>
 		<Button
+			class={styles.keyboardSave()}
+			disabled={mutationPending}
+			data-testid="gift-editor-keyboard-save"
+			onpointerdown={keepFocusOnPress}
+			onclick={() => form?.submit()}
+		>
+			{isSubmitting ? m.saving() : m.save()}
+		</Button>
+		<Button
 			intent="ghost"
 			size="sm"
 			format="icon"
@@ -274,6 +285,7 @@
 	     making that cross-gift write structurally impossible (incident 2026-08-04). -->
 	{#key `${mode}:${gift?.id ?? 'new'}:${formRevision}`}
 		<GiftDetailForm
+			bind:this={form}
 			{mode}
 			{gift}
 			{wishlistId}

@@ -45,6 +45,7 @@
 		type ChatStreamEvent,
 		type ChatTurnRequest,
 	} from '$lib/modules/chat/types.js';
+	import { keepFocusOnPress, keyboardInset } from '$lib/reactivity/keyboard_inset.svelte.js';
 	import { StateRaw } from '$lib/reactivity/state.svelte.js';
 	import AssistantHeader from './AssistantHeader.svelte';
 	import ChatComposer from './ChatComposer.svelte';
@@ -56,9 +57,17 @@
 	import type { DecidingProposalRegistry } from '$lib/components/blocks/change-proposals/gift_live_preview.js';
 	import ChatTurnError from './ChatTurnError.svelte';
 	import ChatWelcome from './ChatWelcome.svelte';
-	import type { DecisionBarControls } from './chat_presentation.js';
+	import {
+		CHAT_STARTERS,
+		composerMaxLines,
+		type DecisionBarControls,
+	} from './chat_presentation.js';
 
 	const RESIZE_STEP = 20;
+	/** Below this height above the keyboard, decorative spacing goes first. */
+	const TIGHT_VISIBLE_HEIGHT = 330;
+	/** How close to the end the thread counts as following the latest message. */
+	const THREAD_END_TOLERANCE = 24;
 
 	/**
 	 * The AI assistant for one wishlist: a docked, resizable panel on desktop and a half or full
@@ -93,8 +102,11 @@
 	let abortTurn: AbortController | null = null;
 	let creatingSession = $state(false);
 	let footerHeight = $state(0);
+	let threadAtEnd = true;
 
 	const open = $derived(assistant.open.current);
+	/** The on-screen keyboard is open: the sheet sits on it and its chrome compacts. */
+	const compact = $derived(mobile && keyboardInset.open);
 	const view = $derived(assistant.view.current);
 	const sheet = $derived(assistant.sheet.current);
 	const modal = $derived(open && mobile && sheet === ASSISTANT_SHEET.full);
@@ -134,6 +146,14 @@
 	const maxWidth = $derived(assistant.maxWidth.current);
 	const loading = $derived(
 		resolvingLatest || (sessionQuery !== null && sessionQuery.current === undefined),
+	);
+	const starterChips = $derived(
+		compact &&
+			available &&
+			!loading &&
+			items.length === 0 &&
+			liveTurn === null &&
+			assistant.draft.current.trim() === '',
 	);
 
 	/** The handle sits on the left edge, so dragging left widens the panel. */
@@ -185,6 +205,20 @@
 	async function scrollThreadToEnd() {
 		await tick();
 		thread?.scrollTo({ top: thread.scrollHeight });
+	}
+
+	function onthreadscroll() {
+		if (thread !== undefined) {
+			threadAtEnd =
+				thread.scrollHeight - thread.scrollTop - thread.clientHeight <=
+				THREAD_END_TOLERANCE;
+		}
+	}
+
+	/** Náhled shows the wishlist: the keyboard closes and the sheet shrinks to half height. */
+	function showPreview() {
+		composer?.blur();
+		assistant.sheet.current = ASSISTANT_SHEET.half;
 	}
 
 	/** A new chat is stored only once it is used, so empty chats never reach the history. */
@@ -306,6 +340,21 @@
 		};
 	});
 
+	/** A thread following its latest message keeps it visible as the keyboard resizes the sheet. */
+	$effect(() => {
+		if (thread === undefined) {
+			return;
+		}
+		const observed = thread;
+		const observer = new ResizeObserver(() => {
+			if (threadAtEnd) {
+				observed.scrollTo({ top: observed.scrollHeight });
+			}
+		});
+		observer.observe(observed);
+		return () => observer.disconnect();
+	});
+
 	$effect(() => {
 		dock.modal.current = modal;
 		return () => {
@@ -398,15 +447,37 @@
 			bind:textarea={composer}
 			streaming={streaming || creatingSession}
 			disabled={!available}
+			maxLines={compact ? composerMaxLines(keyboardInset.visibleHeight) : undefined}
 			onsend={send}
 			onstop={stop}
 		/>
 	{/if}
 {/snippet}
 
+{#snippet starterChipRow()}
+	<div class="chips" role="group" aria-label={m.chat_starters_label()}>
+		{#each CHAT_STARTERS as starter (starter.label)}
+			<button
+				type="button"
+				class="chip"
+				data-testid="assistant-starter-chip"
+				onpointerdown={keepFocusOnPress}
+				onclick={() => void useStarter(starter.prompt())}
+			>
+				<starter.icon aria-hidden="true" />{starter.label()}
+			</button>
+		{/each}
+	</div>
+{/snippet}
+
 {#snippet conversation()}
 	{#if items.length === 0 && liveTurn === null}
-		<ChatWelcome {available} {demo} onstarter={(prompt) => void useStarter(prompt)} />
+		<ChatWelcome
+			{available}
+			{demo}
+			showStarters={!compact}
+			onstarter={(prompt) => void useStarter(prompt)}
+		/>
 	{/if}
 	{#each items as item (item.id)}
 		{#if item.type === CHAT_ITEM.user}
@@ -435,6 +506,8 @@
 	id="assistant-panel"
 	class="panel"
 	data-sheet={mobile ? sheet : undefined}
+	data-compact={compact || undefined}
+	data-space={compact && keyboardInset.visibleHeight < TIGHT_VISIBLE_HEIGHT ? 'tight' : undefined}
 	data-testid="assistant-panel"
 	hidden={!open}
 	inert={!open}
@@ -451,10 +524,12 @@
 		{wishlistTitle}
 		{view}
 		{mobile}
+		{compact}
 		{sheet}
 		{availability}
 		{fastForward}
 		hintDismissed={assistant.hintDismissed.current}
+		onpreview={showPreview}
 		onclose={() => void assistant.close()}
 		onview={(next) => (assistant.view.current = next)}
 		onnew={() => assistant.startNewChat()}
@@ -470,6 +545,7 @@
 			: m.chat_thread_label()}
 		data-testid="assistant-thread"
 		bind:this={thread}
+		onscroll={onthreadscroll}
 	>
 		{#if view === ASSISTANT_VIEW.history}
 			<ChatHistory
@@ -494,8 +570,11 @@
 		<footer class="foot" bind:offsetHeight={footerHeight}>
 			{#if decisionBar.current !== null && !fastForward}
 				<section class="decision-bar" aria-label={m.chat_decision_bar_label()}>
-					{@render decisionBar.current.render()}
+					{@render decisionBar.current.render(compact)}
 				</section>
+			{/if}
+			{#if starterChips}
+				{@render starterChipRow()}
 			{/if}
 			{@render statusLine()}
 			{@render messageInput()}
@@ -627,5 +706,105 @@
 		.thread {
 			padding: var(--space-3);
 		}
+
+		.foot {
+			padding-bottom: calc(var(--space-3) + env(safe-area-inset-bottom));
+		}
+
+		/* Keyboard open: either sheet fills the space above the keyboard, leaving a thin peek of
+		   the page while space allows, and the composer sits flush on the keyboard. */
+		.panel[data-compact] {
+			--sheet-peek: 10px;
+
+			bottom: var(--keyboard-inset);
+			height: calc(var(--visual-viewport-height) - var(--sheet-peek));
+		}
+
+		.panel[data-space='tight'] {
+			--sheet-peek: 0px;
+		}
+
+		.panel[data-compact] .grabber {
+			display: none;
+		}
+
+		.panel[data-compact] .thread {
+			gap: 10px;
+			padding-block: 10px 12px;
+		}
+
+		.panel[data-space='tight'] .thread {
+			gap: var(--space-2);
+			padding-block: var(--space-2) 10px;
+		}
+
+		.panel[data-compact] .foot {
+			gap: 6px;
+			padding-block: 6px;
+		}
+
+		.panel[data-compact] .decision-bar {
+			padding-bottom: 6px;
+		}
+	}
+
+	@media (width < 640px) and (prefers-reduced-motion: no-preference) {
+		.panel {
+			transition:
+				height var(--duration-normal) var(--ease-standard),
+				bottom var(--duration-normal) var(--ease-standard);
+		}
+	}
+
+	/* One horizontally scrolling row directly above the composer; the fade shows there is more. */
+	.chips {
+		display: flex;
+		gap: var(--nested-control-gap);
+		margin-inline: calc(-1 * var(--space-3));
+		padding: 2px var(--space-3) 3px;
+		overflow-x: auto;
+		scrollbar-width: none;
+		mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent);
+	}
+
+	.chip {
+		position: relative;
+		display: inline-flex;
+		flex: none;
+		align-items: center;
+		gap: 6px;
+		height: 36px;
+		padding: 0 var(--space-3) 0 10px;
+		border: 2px solid var(--ink);
+		border-radius: 999px;
+		background: var(--card);
+		box-shadow: var(--elevation-compact);
+		color: var(--ink);
+		font-size: var(--text-md);
+		font-weight: 600;
+		white-space: nowrap;
+		cursor: pointer;
+	}
+
+	/* The hit target reaches 40px without changing the visible chip. */
+	.chip::before {
+		position: absolute;
+		inset: -3px 0;
+		content: '';
+	}
+
+	.chip:hover {
+		background: var(--panel-hover);
+	}
+
+	.chip:focus-visible {
+		outline: 2px solid var(--ring);
+		outline-offset: 2px;
+	}
+
+	.chip :global(svg) {
+		width: 14px;
+		height: 14px;
+		color: var(--brand-link);
 	}
 </style>

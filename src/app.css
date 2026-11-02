@@ -168,6 +168,17 @@
    specificity. */
 @custom-variant dark (&:is(.dark *):not(:where([data-light-scope], [data-light-scope] *)));
 
+/* A phone with its on-screen keyboard open (`src/lib/reactivity/keyboard_inset.svelte.ts`);
+   wider layouts keep their room, so they never compact. */
+@custom-variant keyboard-open {
+	@media (width < 40rem) {
+		/* stylelint-disable-next-line nesting-selector-no-missing-scoping-root -- Tailwind replaces `&` with the utility's selector. */
+		&:where([data-keyboard='open'] *) {
+			@slot;
+		}
+	}
+}
+
 /* Typed resolution freezes the root background color before nested wishlist palettes inherit it. */
 @property --app-page-background {
 	syntax: '<color>';
@@ -296,6 +307,11 @@
 	--z-modal: 50;
 	--z-toast: 60;
 	--z-tooltip: 70;
+
+	/* ── On-screen keyboard (measured in keyboard_inset.svelte.ts) ── */
+	--keyboard-inset: 0px;
+	--visual-viewport-top: 0px;
+	--visual-viewport-height: 100dvh;
 
 	/* ── Motion ────────────────────────────────────────────── */
 	--duration-fast: 100ms;
@@ -1374,4 +1390,9 @@ main.app-content {
 	.stagger-pop > :nth-child(6) {
 		animation-delay: 0.29s;
 	}
+}
+
+/* A field scrolled above the keyboard keeps its label in view. */
+[data-keyboard='open'] :is(input, textarea, [contenteditable]) {
+	scroll-margin-top: var(--space-8);
 }
