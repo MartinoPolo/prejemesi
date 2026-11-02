@@ -1,4 +1,3 @@
-import { imageMetaToFrameProps } from '$lib/modules/images/crop.js';
 import { fillImageMeta, fitImageMeta } from '$lib/modules/images/editor_modes.js';
 import type { ImageMetadata } from '$lib/modules/images/types.js';
 import {
@@ -71,15 +70,11 @@ export function bulkGiftUpdateData(
 			return { received: input.states[gift.id ?? ''] };
 		case 'imageFit': {
 			const background = gift.imageMeta?.bgColor ?? null;
-			if (input.fit === 'fill') {
-				return { imageMeta: { ...fillImageMeta(background), targets: undefined } };
-			}
-			// Re-applying Fit keeps the margin of a gift already framed with Fit.
-			const fitMargin = imageMetaToFrameProps(gift.imageMeta).margin;
 			return {
 				imageMeta: {
-					...fitImageMeta(background),
-					...(fitMargin > 0 ? { margin: fitMargin } : {}),
+					...(input.fit === 'fill'
+						? fillImageMeta(background)
+						: fitImageMeta(background)),
 					targets: undefined,
 				},
 			};

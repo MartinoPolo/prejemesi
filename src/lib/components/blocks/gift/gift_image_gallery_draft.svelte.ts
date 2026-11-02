@@ -10,7 +10,6 @@ import {
 	buildManualGiftTargets,
 	fitModeForEditorMode,
 	giftEditorModeFromMeta,
-	imageMetaToFrameProps,
 	normalizedCropAspect,
 	ownGiftTargets,
 	reprojectCropRect,
@@ -82,8 +81,6 @@ export class GiftImageDraft {
 	readonly #initialOwnTargets: ReadonlySet<GiftEditorCropTarget> = ownGiftTargets(undefined);
 	readonly #initialEditorMode: ImageEditorMode = IMAGE_EDITOR_MODES.fill;
 	readonly #initialBgColor: string | null = null;
-	/** The persisted Fit margin; zero when the image is not saved as Fit. */
-	readonly #initialMargin: number = 0;
 	/** The persisted fitMode an untouched save keeps (legacy `auto` included); null for a new image. */
 	readonly #legacyFitMode: ImageMetadata['fitMode'] | null = null;
 
@@ -94,8 +91,6 @@ export class GiftImageDraft {
 	modeDirty = $state(false);
 	/** `null` is the canonical dotted default; legacy `transparent` normalizes to it on save. */
 	bgColor = $state<string | null>(null);
-	/** Fit margin kept for this session; a save persists it only while the image is Fit. */
-	margin = $state(0);
 	targetRects = $state({} as Record<GiftEditorCropTarget, ImageCropRect>);
 	/** Natural width ÷ height once the preview has loaded. */
 	measuredNaturalRatio = $state<number | null>(null);
@@ -113,7 +108,6 @@ export class GiftImageDraft {
 		this.#initialOwnTargets = ownGiftTargets(meta?.targets);
 		this.#initialEditorMode = giftEditorModeFromMeta(meta);
 		this.#initialBgColor = normalizeFrameFill(meta?.bgColor);
-		this.#initialMargin = imageMetaToFrameProps(meta).margin;
 		this.#legacyFitMode =
 			this.#initialImageUrl !== '' || this.#initialImageKey !== ''
 				? (meta?.fitMode ?? IMAGE_FIT_MODES.auto)
@@ -122,7 +116,6 @@ export class GiftImageDraft {
 		this.imageKey = this.#initialImageKey;
 		this.editorMode = this.#initialEditorMode;
 		this.bgColor = this.#initialBgColor;
-		this.margin = this.#initialMargin;
 		this.targetRects = initTargetRects(meta);
 		for (const target of this.#initialOwnTargets) {
 			this.ownTargets.add(target);
@@ -166,23 +159,10 @@ export class GiftImageDraft {
 						!this.#initialFillWasCentered),
 	);
 
-	/** Legacy rows keep their stored fitMode (incl. `auto`) until the mode or image changes. */
-	readonly #savedFitMode = $derived(
-		this.modeDirty || this.imageReplaced || this.#legacyFitMode === null
-			? fitModeForEditorMode(this.editorMode)
-			: this.#legacyFitMode,
-	);
-
-	/** Like manual crops outside Manual, a margin outside Fit is dropped on save. */
-	readonly #savedMargin = $derived(
-		this.#savedFitMode === IMAGE_FIT_MODES.containPadded ? this.margin : 0,
-	);
-
 	readonly #presentationChanged = $derived(
 		this.hasImage &&
 			(this.#imageModeChanged ||
 				this.bgColor !== this.#initialBgColor ||
-				this.#savedMargin !== this.#initialMargin ||
 				(this.editorMode === IMAGE_EDITOR_MODES.manual && this.#hasCropSessionEdits)),
 	);
 
@@ -195,6 +175,13 @@ export class GiftImageDraft {
 			this.imageUrl.trim() === '' ? null : this.imageUrl.trim(),
 			this.imageKey,
 		),
+	);
+
+	/** Legacy rows keep their stored fitMode (incl. `auto`) until the mode or image changes. */
+	readonly #savedFitMode = $derived(
+		this.modeDirty || this.imageReplaced || this.#legacyFitMode === null
+			? fitModeForEditorMode(this.editorMode)
+			: this.#legacyFitMode,
 	);
 
 	/**
@@ -229,7 +216,6 @@ export class GiftImageDraft {
 			focal: recentered ? { x: 50, y: 50 } : (base?.focal ?? { x: 50, y: 50 }),
 			zoom: recentered ? 1 : (base?.zoom ?? 1),
 			bgColor: this.bgColor,
-			...(this.#savedMargin > 0 ? { margin: this.#savedMargin } : {}),
 			targets: this.#buildTargets(),
 		};
 	});
@@ -319,20 +305,9 @@ export class GiftImageDraft {
 		this.modeDirty = true;
 	}
 
+	// fallow-ignore-next-line unused-class-member
 	chooseBackground(value: ExplicitImageBackground | 'transparent'): void {
 		this.bgColor = value === 'transparent' ? null : value;
-	}
-
-	/**
-	 * Picking a margin is a Fit choice, so any other editor mode becomes Fit: Fill (including
-	 * legacy `auto`, which a measured image may present as Fit) or Manual.
-	 */
-	chooseMargin(margin: number): void {
-		if (this.editorMode !== IMAGE_EDITOR_MODES.fit) {
-			this.editorMode = IMAGE_EDITOR_MODES.fit;
-			this.modeDirty = true;
-		}
-		this.margin = margin;
 	}
 
 	/** A new source starts from the automatic centered Fill framing. */
@@ -340,7 +315,6 @@ export class GiftImageDraft {
 		this.imageKey = result.objectKey;
 		this.imageUrl = result.publicUrl;
 		this.editorMode = IMAGE_EDITOR_MODES.fill;
-		this.margin = 0;
 		this.targetRects = initTargetRects(null);
 		this.dirtyTargets.clear();
 	}

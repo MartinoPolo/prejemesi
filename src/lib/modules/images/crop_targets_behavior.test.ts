@@ -28,7 +28,6 @@ describe('imageMetaToFrameProps', () => {
 			focal: { x: 50, y: 50 },
 			zoom: 1,
 			fillColor: null,
-			margin: 0,
 		});
 	});
 
@@ -44,21 +43,7 @@ describe('imageMetaToFrameProps', () => {
 			focal: { x: 30, y: 70 },
 			zoom: 2,
 			fillColor: '#abcdef',
-			margin: 0,
 		});
-	});
-
-	it('passes the margin through for Fit only', () => {
-		expect(
-			imageMetaToFrameProps({ fitMode: IMAGE_FIT_MODES.containPadded, margin: 0.05 }).margin,
-		).toBe(0.05);
-		expect(imageMetaToFrameProps({ fitMode: IMAGE_FIT_MODES.containPadded }).margin).toBe(0);
-		expect(
-			imageMetaToFrameProps({ fitMode: IMAGE_FIT_MODES.coverCrop, margin: 0.05 }).margin,
-		).toBe(0);
-		expect(imageMetaToFrameProps({ fitMode: IMAGE_FIT_MODES.auto, margin: 0.05 }).margin).toBe(
-			0,
-		);
 	});
 
 	it('passes a persisted zoom-out through unclamped (#116 round 2)', () => {
@@ -422,44 +407,6 @@ describe('ownGiftTargets', () => {
 			'square',
 			'thumb',
 		]);
-	});
-});
-
-describe('Fit margin metadata', () => {
-	it('keeps a margin from none up to a fifth of the frame and rejects anything outside', () => {
-		for (const margin of [0, 0.05, 0.1, 0.2]) {
-			const parsed = v.parse(ImageMetadataSchema, {
-				fitMode: IMAGE_FIT_MODES.containPadded,
-				margin,
-			});
-			expect(parsed.margin).toBe(margin);
-		}
-		for (const margin of [-0.01, 0.21, 1, Number.NaN, '0.05']) {
-			expect(
-				v.safeParse(ImageMetadataSchema, { fitMode: IMAGE_FIT_MODES.containPadded, margin })
-					.success,
-			).toBe(false);
-		}
-	});
-
-	it('leaves metadata without a margin unchanged', () => {
-		const parsed = v.parse(ImageMetadataSchema, { fitMode: IMAGE_FIT_MODES.containPadded });
-		expect(parsed).not.toHaveProperty('margin');
-	});
-
-	it('ignores the margin on a manual target crop', () => {
-		const meta = {
-			fitMode: IMAGE_FIT_MODES.coverCrop,
-			margin: 0.1,
-			targets: {
-				square: {
-					cropRect: { x: 0.1, y: 0.1, w: 0.6, h: 0.6 },
-					focal: { x: 30, y: 40 },
-					zoom: 1.5,
-				},
-			},
-		};
-		expect(giftTargetFrameProps(meta, 'square').margin).toBe(0);
 	});
 });
 

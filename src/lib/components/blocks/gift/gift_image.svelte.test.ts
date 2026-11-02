@@ -114,33 +114,3 @@ describe('GiftImage persisted background fill', () => {
 		}
 	});
 });
-
-describe('GiftImage Fit margin', () => {
-	it('insets a Fit image by its saved margin share of the shorter side', async () => {
-		const screen = await render(GiftImage, {
-			props: {
-				class: 'h-24 w-32',
-				imageUrl,
-				imageMeta: { ...imageMeta(null), margin: 0.1 },
-				target: 'square',
-				alt: 'Gift with margin',
-			},
-		});
-
-		const image = screen.getByRole('img', { name: 'Gift with margin' });
-		await expect.element(image).toBeVisible();
-		const frame = screen.getByTestId('image-frame').element();
-		const insets = () => {
-			const frameBox = frame.getBoundingClientRect();
-			const imageBox = image.element().getBoundingClientRect();
-			return [
-				imageBox.left - frameBox.left,
-				imageBox.top - frameBox.top,
-				frameBox.right - imageBox.right,
-				frameBox.bottom - imageBox.bottom,
-			];
-		};
-		// 128 × 96 frame: a 0.1 margin of its 96px shorter side is 9.6px.
-		await expect.poll(insets).toEqual(Array(4).fill(expect.closeTo(9.6, 1)));
-	});
-});
