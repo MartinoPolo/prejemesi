@@ -163,8 +163,9 @@
 }
 
 /* Dark mode is `.dark` on <html>; a `.dark` wrapper also forces it on a subtree. A
-   `[data-light-scope]` subtree stays light inside dark mode (the Vzhled light preview); `:where`
-   keeps that exclusion out of every selector's specificity. */
+   `[data-light-scope]` subtree (the Vzhled light preview) takes precedence and stays light, even
+   under a `.dark` wrapper inside it; `:where` keeps that exclusion out of every selector's
+   specificity. */
 @custom-variant dark (&:is(.dark *):not(:where([data-light-scope], [data-light-scope] *)));
 
 /* Typed resolution freezes the root background color before nested wishlist palettes inherit it. */
