@@ -22,21 +22,29 @@ export const CHAT_RETENTION_MS = 30 * DAY_MS;
 
 const CHAT_TIME_ZONE = 'Europe/Prague';
 
-const dateTimeParts = new Intl.DateTimeFormat('en-US', {
-	timeZone: CHAT_TIME_ZONE,
-	hourCycle: 'h23',
-	year: 'numeric',
-	month: 'numeric',
-	day: 'numeric',
-	hour: 'numeric',
-	minute: 'numeric',
-	second: 'numeric',
-});
+let dateTimeParts: Intl.DateTimeFormat | undefined;
+
+// Built on first use: a time-zone formatter costs Worker CPU at module load even when unused.
+function getDateTimeParts(): Intl.DateTimeFormat {
+	dateTimeParts ??= new Intl.DateTimeFormat('en-US', {
+		timeZone: CHAT_TIME_ZONE,
+		hourCycle: 'h23',
+		year: 'numeric',
+		month: 'numeric',
+		day: 'numeric',
+		hour: 'numeric',
+		minute: 'numeric',
+		second: 'numeric',
+	});
+	return dateTimeParts;
+}
 
 /** The wall-clock time in the chat's time zone, read as if it were UTC. */
 function wallClockAsUtc(instant: number): number {
 	const parts = Object.fromEntries(
-		dateTimeParts.formatToParts(instant).map((part) => [part.type, Number(part.value)]),
+		getDateTimeParts()
+			.formatToParts(instant)
+			.map((part) => [part.type, Number(part.value)]),
 	);
 	return Date.UTC(
 		parts.year ?? 0,

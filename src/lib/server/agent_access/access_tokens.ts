@@ -7,7 +7,7 @@ import {
 	personalAccessToken,
 	personalAccessTokenWishlist,
 } from '$lib/server/db/access_token.schema.js';
-import { isReservedDemoEmail } from '$lib/server/auth.js';
+import { isReservedDemoEmail } from '$lib/server/demo/constants.js';
 import { runAfterResponse } from '$lib/server/background.js';
 import { toBase64Url } from '$lib/server/crypto/hmac.js';
 import { DAY_MS } from '$lib/server/operations/constants.js';
