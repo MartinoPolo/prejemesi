@@ -548,7 +548,7 @@
 						onValueChange={(value) => onsortchange(value as GiftSortOption)}
 					>
 						{#each GIFT_SORT_KEYS as option (option)}
-							<DropdownMenu.RadioItem value={option} closeOnSelect={false}
+							<DropdownMenu.RadioItem value={option}
 								>{GIFT_SORT_LABELS[option]()}</DropdownMenu.RadioItem
 							>
 						{/each}
@@ -576,7 +576,6 @@
 							<DropdownMenu.RadioItem
 								value={option}
 								disabled={!isGroupingOptionAvailable(option)}
-								closeOnSelect={false}
 								>{GROUPING_LABELS[option]()}</DropdownMenu.RadioItem
 							>
 						{/each}
@@ -604,8 +603,7 @@
 							data-filter-option
 							bind:checked={
 								() => definition.checked, (checked) => definition.onchange(checked)
-							}
-							closeOnSelect={false}>{definition.menuLabel}</DropdownMenu.CheckboxItem
+							}>{definition.menuLabel}</DropdownMenu.CheckboxItem
 						>
 					{/each}
 					{#each filterFacets.filter((facet) => facet.options.length > 0) as facet (facet.id)}
@@ -623,8 +621,7 @@
 									data-filter-option
 									bind:checked={
 										() => option.checked, (checked) => option.onchange(checked)
-									}
-									closeOnSelect={false}>{option.label}</DropdownMenu.CheckboxItem
+									}>{option.label}</DropdownMenu.CheckboxItem
 								>
 							{/each}
 						</DropdownMenu.Group>
@@ -667,9 +664,7 @@
 									disabled={!isGiftCardColumnOptionAvailable(
 										option,
 										cardColumnCapacity,
-									)}
-									closeOnSelect={false}
-									>{CARD_COLUMN_LABELS[option]()}</DropdownMenu.RadioItem
+									)}>{CARD_COLUMN_LABELS[option]()}</DropdownMenu.RadioItem
 								>
 							{/each}
 						</DropdownMenu.RadioGroup>

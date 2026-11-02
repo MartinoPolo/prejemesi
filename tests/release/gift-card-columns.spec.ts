@@ -81,8 +81,11 @@ test.describe('Gift card column choice (issue #451)', () => {
 		});
 		await expect(fiveColumns).not.toHaveAttribute('aria-disabled', 'true');
 		await fiveColumns.click();
-		await expect(fiveColumns).toHaveAttribute('aria-checked', 'true');
-		await closeDisplayMenus(page);
+		await expect(columnsMenu).not.toBeVisible();
+		await expect(page.getByTestId('desktop-display-trigger')).toHaveAttribute(
+			'aria-expanded',
+			'false',
+		);
 
 		await expect.poll(() => firstRowCardCount(page)).toBe(5);
 		const firstCardActions = page

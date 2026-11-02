@@ -400,10 +400,7 @@ async function chooseGrouping(
 	const item = submenu.getByRole('menuitemradio', { name: option, exact: true });
 	await item.focus();
 	await item.press('Enter');
-	await expect(item).toHaveAttribute('aria-checked', 'true');
-	await page.keyboard.press('Escape');
 	await expect(submenu).not.toBeVisible();
-	await page.keyboard.press('Escape');
 	await expect(page.getByTestId('desktop-display-trigger')).toHaveAttribute(
 		'aria-expanded',
 		'false',

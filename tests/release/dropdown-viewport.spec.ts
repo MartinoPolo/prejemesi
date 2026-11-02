@@ -5,6 +5,11 @@ import {
 	waitForAppHydration,
 } from '../e2e/fixtures/auth-helpers.js';
 import { openDesktopDisplaySubmenu } from '../e2e/fixtures/wishlist-helpers.js';
+import {
+	openMobileBulkAction,
+	openMobileGiftActions,
+} from '../e2e/wishlist-gift-actions.helpers.js';
+import * as m from '../../src/lib/paraglide/messages.js';
 import { createPixelAssertions } from '../helpers/pixel-assertions.mjs';
 
 const { expectPixelsAtLeast, expectPixelsAtMost, expectPixelsNear } = createPixelAssertions(expect);
@@ -397,8 +402,15 @@ test.describe('issue #364 dropdown viewport placement', () => {
 		const initialSort = await selectedSort.innerText();
 		await page.keyboard.press('ArrowDown');
 		await page.keyboard.press('Enter');
-		await expect(sortMenu).toBeVisible();
-		await expect.poll(() => selectedSort.innerText()).not.toBe(initialSort);
+		await expect(sortMenu).toBeHidden();
+		await expect(displayRoot).toBeHidden();
+		await expect(displayTrigger).toBeFocused();
+		const { submenu: reopenedSortMenu } = await openDisplaySubmenu(page, /Řadit podle/);
+		await expect
+			.poll(() =>
+				reopenedSortMenu.locator('[role="menuitemradio"][aria-checked="true"]').innerText(),
+			)
+			.not.toBe(initialSort);
 		await page.keyboard.press('Escape');
 		await expect(sortMenu).toBeHidden();
 		await expect(sortSubTrigger).toBeFocused();
@@ -441,5 +453,79 @@ test.describe('issue #364 dropdown viewport placement', () => {
 		await expectInsideViewport(topLeftMenu, 1000, 600);
 		await expectInsideViewport(topLeftSubmenu, 1000, 600);
 		await attachScreenshot(page, testInfo, 'submenu-top-left.png');
+	});
+});
+
+/**
+ * Scrolls the app content and reads the open submenu's offset from its trigger in the next frame,
+ * the frame that paints the scrolled parent menu. The scroller is not a scroll ancestor of the
+ * portalled submenu's trigger, so only per-frame tracking keeps the submenu attached there.
+ */
+function scrollAndReadSubmenuOffset(page: Page, scrollBy: number) {
+	return page.evaluate(async (distance) => {
+		document.querySelector('main.app-content')!.scrollBy(0, distance);
+		await new Promise((resolve) => requestAnimationFrame(resolve));
+		const trigger = document.querySelector(
+			'[data-slot="dropdown-menu-sub-trigger"][data-state="open"]',
+		)!;
+		const layer = document.querySelector(
+			'[data-slot="dropdown-menu-sub-content"][data-state="open"]',
+		)!;
+		const triggerTop = trigger.getBoundingClientRect().top;
+		return { triggerTop, offset: layer.getBoundingClientRect().top - triggerTop };
+	}, scrollBy);
+}
+
+test.describe('issue #622 nested layers stay attached and unclipped', () => {
+	test('an open submenu tracks the parent menu during page scroll', async ({
+		page,
+		request,
+		baseURL,
+	}) => {
+		await page.setViewportSize({ width: 1280, height: 800 });
+		await openSeedWishlist(page, request, baseURL!);
+		const { submenu } = await openDisplaySubmenu(page, /Řadit podle/);
+		await expect(submenu).toBeVisible();
+		const before = await scrollAndReadSubmenuOffset(page, 0);
+		const after = await scrollAndReadSubmenuOffset(page, 60);
+
+		expect(after.triggerTop).not.toBe(before.triggerTop);
+		expect(Math.abs(after.offset - before.offset)).toBeLessThanOrEqual(1);
+		await closeDropdownHierarchy(page);
+	});
+
+	test('a Select inside a mobile bottom sheet opens its listbox above the sheet', async ({
+		page,
+		request,
+		baseURL,
+	}) => {
+		await page.setViewportSize({ width: 390, height: 760 });
+		await openSeedWishlist(page, request, baseURL!);
+		const firstGift = page.locator('[data-gift-item]').first();
+		const giftName = (await firstGift.locator('h3').first().innerText()).trim();
+		const contextSheet = await openMobileGiftActions(page, firstGift, giftName);
+		await contextSheet.getByRole('button', { name: /Vybrat více dárků/ }).click();
+		await openMobileBulkAction(page, 'copy');
+		const copySheet = page.getByRole('dialog', { name: m.gift_bulk_copy_title() });
+		await expect(copySheet).toBeVisible();
+		await copySheet.getByTestId('bulk-copy-destination').click();
+		const listbox = page.getByRole('listbox');
+		await expect(listbox).toBeVisible();
+		await expectInsideViewport(listbox, 390, 760);
+
+		const placement = await listbox.evaluate((element) => {
+			const box = element.getBoundingClientRect();
+			const centerX = box.left + box.width / 2;
+			const owns = (y: number) => element.contains(document.elementFromPoint(centerX, y));
+			return {
+				insideSheet: element.closest('.wishlist-bottom-sheet') !== null,
+				topVisible: owns(box.top + 4),
+				bottomVisible: owns(box.bottom - 4),
+			};
+		});
+		expect(placement).toEqual({ insideSheet: false, topVisible: true, bottomVisible: true });
+		await page.keyboard.press('Escape');
+		await expect(listbox).toBeHidden();
+		await expect(copySheet).toBeVisible();
 	});
 });

@@ -1,6 +1,6 @@
 import '../../../../app.css';
 import { render } from 'vitest-browser-svelte';
-import { page, userEvent } from 'vitest/browser';
+import { page } from 'vitest/browser';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
 import type { ComponentProps } from 'svelte';
@@ -141,7 +141,7 @@ describe('WishlistDetailToolbar consolidated desktop display (#359)', () => {
 		},
 	);
 
-	it('places one Display trigger after View and opens persistent cascading categories', async () => {
+	it('places one Display trigger after View; single choices close it, filter toggles keep it open', async () => {
 		const onsortchange = vi.fn();
 		const ongroupingchange = vi.fn();
 		const onfilterchange = vi.fn();
@@ -187,12 +187,15 @@ describe('WishlistDetailToolbar consolidated desktop display (#359)', () => {
 		await expect.element(root).toBeVisible();
 		await page.getByRole('menuitemradio', { name: m.gift_sort_name() }).click();
 		expect(onsortchange).toHaveBeenCalledWith(GIFT_SORT_OPTIONS.name);
-		await expect.element(root).toBeVisible();
+		await expect.element(root).not.toBeInTheDocument();
 
+		await (display as HTMLButtonElement).click();
 		await root.getByRole('menuitem', { name: new RegExp(m.gift_grouping_label()) }).click();
 		await page.getByRole('menuitemradio', { name: m.gift_grouping_priority() }).click();
 		expect(ongroupingchange).toHaveBeenCalledWith(GIFT_GROUPING_OPTIONS.priority);
-		await expect.element(root).toBeVisible();
+		await expect.element(root).not.toBeInTheDocument();
+
+		await (display as HTMLButtonElement).click();
 		await root.getByRole('menuitem', { name: new RegExp(m.gift_filter()) }).click();
 		await page.getByRole('menuitemcheckbox', { name: 'Knihy' }).click();
 		expect(onfilterchange).toHaveBeenCalledWith({
@@ -294,7 +297,7 @@ describe('WishlistDetailToolbar consolidated desktop display (#359)', () => {
 		},
 	);
 
-	it('reports the chosen column count, keeps the menu open, and returns Escape focus to Columns', async () => {
+	it('reports the chosen column count and closes the whole menu', async () => {
 		const oncardcolumnoptionchange = vi.fn();
 		const screen = await renderToolbar(
 			{ oncardcolumnoptionchange, cardColumnCapacity: 5 },
@@ -309,14 +312,10 @@ describe('WishlistDetailToolbar consolidated desktop display (#359)', () => {
 		await columns.click();
 		await page.getByRole('menuitemradio', { name: m.gift_card_columns_five() }).click();
 		expect(oncardcolumnoptionchange).toHaveBeenCalledWith(GIFT_CARD_COLUMN_OPTIONS.five);
-		await expect.element(root).toBeVisible();
+		await expect.element(root).not.toBeInTheDocument();
 		await expect
 			.element(page.getByRole('menuitemradio', { name: m.gift_card_columns_five() }))
-			.toBeVisible();
-
-		await userEvent.keyboard('{Escape}');
-		await expect.element(root).toBeVisible();
-		await expect.element(columns).toHaveFocus();
+			.not.toBeInTheDocument();
 		await screen.unmount();
 	});
 

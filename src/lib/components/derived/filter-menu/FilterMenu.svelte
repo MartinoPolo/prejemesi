@@ -122,7 +122,6 @@
 						bind:checked={
 							() => definition.checked, (checked) => definition.onchange(checked)
 						}
-						closeOnSelect={false}
 					>
 						{definition.menuLabel}
 					</DropdownMenu.CheckboxItem>
@@ -146,7 +145,6 @@
 							bind:checked={
 								() => option.checked, (checked) => option.onchange(checked)
 							}
-							closeOnSelect={false}
 						>
 							{option.label}
 						</DropdownMenu.CheckboxItem>
