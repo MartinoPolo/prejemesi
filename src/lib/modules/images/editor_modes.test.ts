@@ -8,6 +8,7 @@ import {
 	fillImageMeta,
 	fitImageMeta,
 } from './editor_modes.js';
+import { centeredCropRect, cropStateToImageMeta, zoomCropRect } from './crop.js';
 import { ImageMetadataSchema, type ImageMetadata } from './types.js';
 import { IMAGE_FIT_MODES } from '$lib/components/derived/image-frame/index.js';
 
@@ -88,6 +89,22 @@ describe('slotEditorModeFromMeta', () => {
 				zoom: 1.2,
 			}),
 		).toBe(IMAGE_EDITOR_MODES.manual);
+	});
+
+	it('reads a centered crop one zoom-slider step from the cover as manual', () => {
+		const normalizedAspect = 0.75;
+		for (const zoom of [1.01, 0.99]) {
+			const steppedRect = zoomCropRect(
+				centeredCropRect(normalizedAspect),
+				normalizedAspect,
+				zoom,
+			);
+			expect(
+				slotEditorModeFromMeta(
+					cropStateToImageMeta(IMAGE_FIT_MODES.coverCrop, steppedRect),
+				),
+			).toBe(IMAGE_EDITOR_MODES.manual);
+		}
 	});
 
 	it('derives the framing from cropRect when focal/zoom are absent', () => {

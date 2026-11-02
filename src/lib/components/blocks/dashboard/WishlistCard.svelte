@@ -21,8 +21,10 @@
 	import { WishlistBadge } from '$lib/components/derived/wishlist-badge/index.js';
 	import { WishlistProgress } from '$lib/components/derived/wishlist-progress/index.js';
 	import { SimpleTooltip } from '$lib/components/base/tooltip/index.js';
-	import { occasionHasCardBadge } from '$lib/modules/wishlists/wishlist_occasion.js';
-	import { WISHLIST_OCCASION_DISPLAY } from '$lib/modules/wishlists/wishlist_occasion_display.js';
+	import {
+		WISHLIST_OCCASION_DISPLAY,
+		occasionHasCardBadge,
+	} from '$lib/modules/wishlists/wishlist_occasion_display.js';
 
 	interface WishlistCardProps {
 		wishlist: Wishlist;

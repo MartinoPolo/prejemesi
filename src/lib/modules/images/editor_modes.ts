@@ -24,9 +24,13 @@ export type ImageEditorMode = (typeof IMAGE_EDITOR_MODES)[keyof typeof IMAGE_EDI
 
 export const IMAGE_EDITOR_MODE_VALUES = Object.values(IMAGE_EDITOR_MODES);
 
-/** Tolerances for "still the automatic centered framing" classification. */
+/**
+ * Tolerances for "still the automatic centered framing" classification. The zoom
+ * tolerance absorbs only float noise: one whole-percent zoom-slider step is a user
+ * framing and must restore as Manual.
+ */
 const CENTERED_FOCAL_EPSILON = 0.5;
-const CENTERED_ZOOM_EPSILON = 0.05;
+const CENTERED_ZOOM_EPSILON = 1e-3;
 
 /** The persisted renderer fitMode an editor mode maps to. */
 export function fitModeForEditorMode(mode: ImageEditorMode): ImageFitMode {

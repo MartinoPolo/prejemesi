@@ -8,8 +8,12 @@ import InfinityIcon from '@lucide/svelte/icons/infinity';
 import SparklesIcon from '@lucide/svelte/icons/sparkles';
 import TreePineIcon from '@lucide/svelte/icons/tree-pine';
 import * as m from '$lib/paraglide/messages.js';
-import type { WishlistOccasion } from './types.js';
-import { occasionHasDisplayLabel } from './wishlist_occasion.js';
+import {
+	WISHLIST_KIND,
+	WISHLIST_OCCASION,
+	type WishlistKind,
+	type WishlistOccasion,
+} from './types.js';
 
 interface WishlistOccasionDisplay {
 	icon: Component;
@@ -31,7 +35,25 @@ export const WISHLIST_OCCASION_DISPLAY: Record<WishlistOccasion, WishlistOccasio
 	permanent: { icon: InfinityIcon, label: m.wishlist_kind_permanent },
 };
 
-/** The occasion's label for the wishlist hero, or null when it names nothing (Jiná). */
+/** The occasion a wishlist shows: a permanent list is always the Stálý seznam. */
+export function displayedWishlistOccasion(
+	kind: WishlistKind,
+	occasion: WishlistOccasion,
+): WishlistOccasion {
+	return kind === WISHLIST_KIND.permanent ? WISHLIST_OCCASION.permanent : occasion;
+}
+
+/**
+ * The occasion's label for the wishlist hero, or null for Jiná, which names nothing; the Stálý
+ * seznam is named.
+ */
 export function occasionDisplayLabel(occasion: WishlistOccasion): string | null {
-	return occasionHasDisplayLabel(occasion) ? WISHLIST_OCCASION_DISPLAY[occasion].label() : null;
+	return occasion === WISHLIST_OCCASION.other
+		? null
+		: WISHLIST_OCCASION_DISPLAY[occasion].label();
+}
+
+/** Jiná and the Stálý seznam say nothing worth a badge on a wishlist card. */
+export function occasionHasCardBadge(occasion: WishlistOccasion): boolean {
+	return occasion !== WISHLIST_OCCASION.other && occasion !== WISHLIST_OCCASION.permanent;
 }
