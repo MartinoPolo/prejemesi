@@ -5,7 +5,6 @@
 	import { Badge } from '$lib/components/base/badge/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
 	import CalendarIcon from '@lucide/svelte/icons/calendar';
-	import HourglassIcon from '@lucide/svelte/icons/hourglass';
 	import PencilIcon from '@lucide/svelte/icons/pencil';
 	import ArchiveIcon from '@lucide/svelte/icons/archive';
 	import EyeIcon from '@lucide/svelte/icons/eye';
@@ -40,6 +39,7 @@
 	import WishlistSlotImage from '$lib/components/blocks/wishlist/WishlistSlotImage.svelte';
 	import type { WishlistThemeMotif } from '$lib/components/blocks/wishlist/wishlist_theme_scope.js';
 	import WishlistHeaderActions from './WishlistHeaderActions.svelte';
+	import OccasionCountdownText from './OccasionCountdownText.svelte';
 	import WishlistHeroEmblem from './WishlistHeroEmblem.svelte';
 	import WishlistHeroFrameShell from './WishlistHeroFrame.svelte';
 	import { wishlistHeaderVariants } from './wishlist_header_variants.js';
@@ -183,20 +183,16 @@
 		}
 	});
 
-	// Emblem, meta-chip and mobile countdown (REQ-12): hidden without an event date,
+	// Emblem, 640–960 px chip and mobile countdown (REQ-12): hidden without an event date,
 	// „proběhlo" once the event passed (the manager archive prompt takes over).
-	const countdown = $derived(eventDate === null ? null : eventCountdown(new Date(eventDate)));
 	const countdownLabel = $derived(
-		eventDate === null ? null : (countdown ?? m.wishlist_countdown_passed()),
+		eventDate === null
+			? null
+			: (eventCountdown(new Date(eventDate)) ?? m.wishlist_countdown_passed()),
 	);
+	const hasEmblemText = $derived(occasionLabel !== null || countdownLabel !== null);
 	// The Pozvánka seal is part of the envelope; stamp and tag appear only with something to say.
-	const hasEmblem = $derived(
-		heroFrame === 'invitation' || occasionLabel !== null || countdownLabel !== null,
-	);
-	// The 640–960 px meta chip keeps the exclaimed note the sticky note used to carry.
-	const countdownChipLabel = $derived(
-		countdown === null ? countdownLabel : m.wishlist_countdown_note({ countdown }),
-	);
+	const hasEmblem = $derived(heroFrame === 'invitation' || hasEmblemText);
 
 	// Polaroid caption mimics a handwritten photo label: event date only („červenec 2026").
 	// The recipient name lives in the „Pro: {name}" line, never in the caption (2026-07-14
@@ -387,8 +383,8 @@
 					{#if giftCountLabel !== null}
 						<Badge tone="neutral" size="lg">{giftCountLabel}</Badge>
 					{/if}
-					{#if occasionLabel !== null}
-						<!-- The emblem names the occasion from 960 px. -->
+					{#if hasEmblemText}
+						<!-- Stands in for the emblem, which carries the same text from 960 px. -->
 						<Badge
 							tone="neutral"
 							size="lg"
@@ -396,20 +392,13 @@
 							data-testid="wishlist-occasion-chip"
 						>
 							<OccasionIcon data-icon="inline-start" />
-							{occasionLabel}
+							<OccasionCountdownText {occasionLabel} {countdownLabel} />
 						</Badge>
 					{/if}
 					{#if formattedDate !== null}
 						<Badge tone="neutral" size="lg">
 							<CalendarIcon data-icon="inline-start" />
 							{formattedDate}
-						</Badge>
-					{/if}
-					{#if countdownChipLabel !== null}
-						<!-- Stands in for the emblem countdown below 960 px -->
-						<Badge size="lg" class={styles.countdownChip()}>
-							<HourglassIcon data-icon="inline-start" />
-							{countdownChipLabel}
 						</Badge>
 					{/if}
 					{#if managedByLabel !== null}

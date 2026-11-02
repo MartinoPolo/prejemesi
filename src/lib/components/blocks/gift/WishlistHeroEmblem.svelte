@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { Component } from 'svelte';
 	import type { WishlistHeroFrame } from '$lib/theme/wishlist_themes.js';
-	import { INLINE_TEXT_SEPARATOR } from '$lib/utils/inline_text_separator.js';
+	import OccasionCountdownText from './OccasionCountdownText.svelte';
 
 	interface Props {
 		frame: WishlistHeroFrame;
@@ -44,18 +44,13 @@ occasion for screen readers at that width; below it the header's meta line takes
 	</div>
 {/snippet}
 
-{#snippet sealPillText()}
-	{#if occasionLabel !== null}<span>{occasionLabel}</span
-		>{/if}{#if occasionLabel !== null && countdownLabel !== null}<span aria-hidden="true"
-			>{INLINE_TEXT_SEPARATOR}</span
-		>{/if}{#if countdownLabel !== null}<span>{countdownLabel}</span>{/if}
-{/snippet}
-
 {#if frame === 'invitation'}
 	<div class="hero-emblem seal-emblem" data-testid="wishlist-hero-seal">
 		{@render waxSeal()}
 		{#if hasText}
-			<p class="seal-pill rounded-full">{@render sealPillText()}</p>
+			<p class="seal-pill rounded-full">
+				<OccasionCountdownText {occasionLabel} {countdownLabel} />
+			</p>
 		{/if}
 	</div>
 {:else if hasText && frame === 'gift'}

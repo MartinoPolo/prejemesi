@@ -431,6 +431,13 @@ function daysFromNow(days: number): Date {
 	return date;
 }
 
+/** Visible hero badges whose text mentions the given countdown. */
+function visibleCountdownChips(banner: Element, countdownLabel: string): Element[] {
+	return [...banner.querySelectorAll('[data-slot="badge"]')].filter(
+		(badge) => badge.checkVisibility() && badge.textContent?.includes(countdownLabel),
+	);
+}
+
 /** From 960 px: a stamp on Blok and Visačka, a kraft tag on Dárek, a wax seal on Pozvánka. */
 const EMBLEM_TEST_IDS = {
 	notebook: 'wishlist-hero-stamp',
@@ -541,18 +548,24 @@ describe('WishlistHeader hero frames', () => {
 			const screen = await render(WishlistHeader, props);
 
 			await expect.element(screen.getByTestId(EMBLEM_TEST_IDS[heroFrame])).not.toBeVisible();
-			const chip = screen.getByTestId('wishlist-occasion-chip');
-			await expect.element(chip).toBeVisible();
-			await expect.element(chip).toHaveTextContent(m.wishlist_occasion_birthday());
-			expect(chip.element().querySelector('svg')).not.toBeNull();
-			await screen.unmount();
-
-			await page.viewport(390, 720);
-			const mobileScreen = await render(WishlistHeader, props);
 			const occasionSegment = [
 				m.wishlist_occasion_birthday(),
 				m.countdown_days_many({ days: 12 }),
 			].join(' · ');
+			const chip = screen.getByTestId('wishlist-occasion-chip');
+			await expect.element(chip).toBeVisible();
+			expect(chip.element().textContent?.trim()).toBe(occasionSegment);
+			expect(chip.element().querySelector('svg')).not.toBeNull();
+			expect(
+				visibleCountdownChips(
+					screen.getByTestId('wishlist-banner').element(),
+					m.countdown_days_many({ days: 12 }),
+				),
+			).toEqual([chip.element()]);
+			await screen.unmount();
+
+			await page.viewport(390, 720);
+			const mobileScreen = await render(WishlistHeader, props);
 			expect(
 				mobileScreen.getByTestId('wishlist-mobile-meta').element().textContent?.trim(),
 			).toBe(
@@ -565,6 +578,67 @@ describe('WishlistHeader hero frames', () => {
 			await mobileScreen.unmount();
 		},
 	);
+
+	it('pairs the occasion with „proběhlo" in the chip below 960 px once the event passed', async () => {
+		await page.viewport(900, 720);
+		const screen = await render(WishlistHeader, {
+			...baseProps,
+			occasion: 'wedding' as const,
+			eventDate: daysFromNow(-3),
+		});
+		const chip = screen.getByTestId('wishlist-occasion-chip');
+
+		await expect.element(chip).toBeVisible();
+		expect(chip.element().textContent?.trim()).toBe(
+			[m.wishlist_occasion_wedding(), m.wishlist_countdown_passed()].join(' · '),
+		);
+		expect(
+			visibleCountdownChips(
+				screen.getByTestId('wishlist-banner').element(),
+				m.wishlist_countdown_passed(),
+			),
+		).toEqual([chip.element()]);
+		// Screen readers skip the dot but still hear a word boundary.
+		const accessibleChip = chip.element().cloneNode(true) as Element;
+		accessibleChip
+			.querySelectorAll('[aria-hidden="true"]')
+			.forEach((hidden) => hidden.remove());
+		expect(accessibleChip.textContent?.trim().replace(/\s+/g, ' ')).toBe(
+			`${m.wishlist_occasion_wedding()} ${m.wishlist_countdown_passed()}`,
+		);
+		await screen.unmount();
+	});
+
+	it('names only the occasion in the chip below 960 px without an event date', async () => {
+		await page.viewport(900, 720);
+		const screen = await render(WishlistHeader, {
+			...baseProps,
+			occasion: 'birthday' as const,
+		});
+		const chip = screen.getByTestId('wishlist-occasion-chip');
+
+		await expect.element(chip).toBeVisible();
+		expect(chip.element().textContent?.trim()).toBe(m.wishlist_occasion_birthday());
+		expect(chip.element().querySelector('svg')).not.toBeNull();
+		await screen.unmount();
+	});
+
+	it('shows only the countdown in the Jiná chip below 960 px', async () => {
+		await page.viewport(900, 720);
+		const screen = await render(WishlistHeader, { ...baseProps, eventDate: daysFromNow(12) });
+		const chip = screen.getByTestId('wishlist-occasion-chip');
+
+		await expect.element(chip).toBeVisible();
+		expect(chip.element().textContent?.trim()).toBe(m.countdown_days_many({ days: 12 }));
+		expect(chip.element().querySelector('svg')).not.toBeNull();
+		expect(
+			visibleCountdownChips(
+				screen.getByTestId('wishlist-banner').element(),
+				m.countdown_days_many({ days: 12 }),
+			),
+		).toEqual([chip.element()]);
+		await screen.unmount();
+	});
 
 	it.each(HERO_FRAMES)('%s keeps its decorations off a long title', async (heroFrame) => {
 		for (const width of [960, 1280]) {

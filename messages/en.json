@@ -371,7 +371,6 @@
 	"wishlist_moderator_sees_reservations": "As a manager you can see reservation status. {name} will never see it.",
 	"wishlist_permanent_visitor_note": "This list changes over time. Gifts may be added or removed.",
 	"wishlist_trust_warning": "{name} (the recipient) is also a manager and can see reservations.",
-	"wishlist_countdown_note": "{countdown}!",
 	"wishlist_countdown_passed": "already happened",
 	"wishlist_header_for_prefix": "For:",
 	"wishlist_managed_by_one": "Managed by {name}",

@@ -371,7 +371,6 @@
 	"wishlist_moderator_sees_reservations": "Jako správce vidíte stav rezervací. {name} je neuvidí nikdy.",
 	"wishlist_permanent_visitor_note": "Tento seznam se průběžně mění. Dárky mohou přibývat i ubývat.",
 	"wishlist_trust_warning": "{name} (obdarovaný) je zároveň správcem a vidí rezervace.",
-	"wishlist_countdown_note": "už {countdown}!",
 	"wishlist_countdown_passed": "proběhlo",
 	"wishlist_header_for_prefix": "Pro:",
 	"wishlist_managed_by_one": "Spravuje {name}",
