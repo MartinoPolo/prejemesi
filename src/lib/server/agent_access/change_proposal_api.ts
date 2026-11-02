@@ -8,8 +8,10 @@ import {
 	CHANGE_PROPOSAL_OUTCOME,
 	CHANGE_PROPOSAL_STATUS,
 	CHANGE_ROW_STATUS,
+	FAST_FORWARD_HOLD,
 	NonEmptyIdSchema,
 	type ChangeProposalView,
+	type FastForwardHold,
 } from '$lib/modules/change_proposals/types.js';
 import { OPERATION_KIND } from '$lib/server/operations/operation.js';
 import { credentialReference, type AgentCaller } from './agent_caller.js';
@@ -227,6 +229,7 @@ function projectChangeProposalForAgent(view: ChangeProposalView) {
 		appliedAt: view.appliedAt,
 		discardedAt: view.discardedAt,
 		undoneAt: view.undoneAt,
+		fastForwardHold: view.fastForwardHold,
 		rows: view.rows.map((row) => ({
 			rowId: row.rowId,
 			operation: row.operation,
@@ -325,6 +328,26 @@ export async function submitSingleChangeProposal(
 	);
 }
 
+/**
+ * Why a fast-forward proposal will wait for review. One about to apply is stored as `failed`
+ * until the apply commits, so a request cut off mid-apply still leaves an honest reason.
+ */
+function submissionHold(
+	rows: readonly StoredChangeRow[],
+	fastForwards: boolean,
+): FastForwardHold | null {
+	if (fastForwards) {
+		return FAST_FORWARD_HOLD.failed;
+	}
+	if (rows.some((row) => row.requiresConfirmation)) {
+		return FAST_FORWARD_HOLD.needsConfirmation;
+	}
+	if (rows.some((row) => row.rejection !== null)) {
+		return FAST_FORWARD_HOLD.rejected;
+	}
+	return null;
+}
+
 async function storeChangeProposal(
 	caller: AgentCaller,
 	proposalWishlist: { id: string; shortId: string } | null,
@@ -352,6 +375,9 @@ async function storeChangeProposal(
 	const fastForwards =
 		caller.fastForward &&
 		rows.every((row) => row.rejection === null && !row.requiresConfirmation);
+	const createsOnlyWishlists = proposalWishlist === null;
+	const fastForwardHold =
+		caller.fastForward && !createsOnlyWishlists ? submissionHold(rows, fastForwards) : null;
 	const proposalId = await database.transaction(async (transaction) => {
 		await lockTrailingBudget(transaction, CHANGE_BUDGET, grant.userId);
 		await assertWithinTrailingBudget(
@@ -361,7 +387,6 @@ async function storeChangeProposal(
 			rows.length,
 			now,
 		);
-		const createsOnlyWishlists = proposalWishlist === null;
 		const [inserted] = await transaction
 			.insert(changeProposal)
 			.values({
@@ -379,6 +404,7 @@ async function storeChangeProposal(
 						? CHANGE_PROPOSAL_STATUS.discarded
 						: CHANGE_PROPOSAL_STATUS.pending,
 				discardedAt: createsOnlyWishlists && !fastForwards ? now : null,
+				fastForwardHold,
 				rows,
 				rowCount: rows.length,
 				createdAt: now,
@@ -392,7 +418,7 @@ async function storeChangeProposal(
 	});
 
 	if (fastForwards) {
-		await fastForwardProposal(grant, proposalId, rows, proposalWishlist === null);
+		await fastForwardProposal(grant, proposalId, rows, createsOnlyWishlists);
 	}
 	scheduleAgentAccessPurge();
 	return agentProposalView(grant.userId, proposalId);
@@ -400,7 +426,8 @@ async function storeChangeProposal(
 
 /**
  * Applies a just-stored proposal at once. The proposal is already committed, so a failed apply
- * must not fail the request: the agent gets the pending proposal back to retry or review. A
+ * must not fail the request: the agent gets the pending proposal back to retry or review, held
+ * as `conflict` when a gift changed meanwhile and otherwise left as the stored `failed`. A
  * wishlist-creating proposal has no review page, so one that did not apply is discarded instead.
  */
 async function fastForwardProposal(
@@ -417,12 +444,27 @@ async function fastForwardProposal(
 			acceptEveryReadyRow(rows),
 		);
 		applied = result.outcome === CHANGE_PROPOSAL_OUTCOME.applied;
+		if (result.outcome === CHANGE_PROPOSAL_OUTCOME.conflict && !createsOnlyWishlists) {
+			await holdPendingProposal(proposalId, FAST_FORWARD_HOLD.conflict);
+		}
 	} catch (thrown) {
 		console.error('Fast-forwarding change proposal failed', proposalId, thrown);
 	}
 	if (!applied && createsOnlyWishlists) {
 		await discardUnappliedProposal(proposalId);
 	}
+}
+
+async function holdPendingProposal(proposalId: string, hold: FastForwardHold): Promise<void> {
+	await getDb()
+		.update(changeProposal)
+		.set({ fastForwardHold: hold })
+		.where(
+			and(
+				eq(changeProposal.id, proposalId),
+				eq(changeProposal.status, CHANGE_PROPOSAL_STATUS.pending),
+			),
+		);
 }
 
 /** The caller's user's own proposal; 403 when the caller's wishlist restriction excludes it. */
@@ -468,6 +510,9 @@ export async function applyChangeProposalForAgent(caller: AgentCaller, proposalI
 	if (!caller.fastForward || record.proposal.tokenId !== caller.credential.id) {
 		throw reviewRequired(view);
 	}
+	if (view.rows.some((row) => row.status === CHANGE_ROW_STATUS.conflict)) {
+		await holdPendingProposal(proposalId, FAST_FORWARD_HOLD.conflict);
+	}
 	if (view.rows.some((row) => row.status !== CHANGE_ROW_STATUS.ready)) {
 		throw reviewRequired(view);
 	}
@@ -476,6 +521,9 @@ export async function applyChangeProposalForAgent(caller: AgentCaller, proposalI
 		proposalId,
 		acceptEveryReadyRow(record.proposal.rows),
 	);
+	if (result.outcome === CHANGE_PROPOSAL_OUTCOME.conflict) {
+		await holdPendingProposal(proposalId, FAST_FORWARD_HOLD.conflict);
+	}
 	if (result.outcome !== CHANGE_PROPOSAL_OUTCOME.applied) {
 		throw reviewRequired(view, { outcome: result.outcome });
 	}

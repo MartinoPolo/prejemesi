@@ -12,7 +12,7 @@ import { getRequestEvent } from '$app/server';
 import { getDb } from './db/index.js';
 import { sendEmail, renderActionEmailParts } from './email.js';
 import { getTurnstileSecretKey } from './turnstile.js';
-import { isDemoEmailAddress } from './demo/constants.js';
+import { isReservedDemoEmail } from './demo/constants.js';
 import type { RequestEvent } from '@sveltejs/kit';
 import { AUTH_CAPTCHA_ENDPOINTS, AUTH_IP_ADDRESS_HEADERS, authRateLimit } from './auth_security.js';
 import { resolveApplicationOrigin, resolveAuthOrigins } from '$lib/config/runtime_environment.js';
@@ -33,14 +33,6 @@ import {
 // account owner), so verification links never arrive. Skip the verification gate
 // in dev – sign-up then auto-signs-in – while production still requires it.
 const requireEmailVerification = !import.meta.env.DEV;
-
-export function isReservedDemoEmail(value: unknown): boolean {
-	if (typeof value !== 'string') {
-		return false;
-	}
-	const normalized = value.normalize('NFKC').trim().toLowerCase();
-	return isDemoEmailAddress(normalized);
-}
 
 const OAUTH_ACCESS_TOKEN_SECONDS = 10 * 60;
 const OAUTH_REFRESH_TOKEN_SECONDS = 365 * 24 * 60 * 60;

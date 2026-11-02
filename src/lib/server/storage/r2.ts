@@ -1,5 +1,5 @@
 import { getRequestEvent } from '$app/server';
-import { imagePublicUrl } from '$lib/modules/images/public_url.js';
+import { imagePublicUrl, isStoredObjectKey } from '$lib/modules/images/public_url.js';
 export { isAllowedContentType, MAX_FILE_SIZE } from '$lib/modules/uploads/types.js';
 
 /**
@@ -151,7 +151,10 @@ async function deleteFromBucketBestEffort(
 	bucket: AgentImageBucket,
 	keys: readonly (string | null | undefined)[],
 ): Promise<void> {
-	const validKeys = keys.filter((key): key is string => key != null && key !== '');
+	// Image columns may also hold loadable URLs or prepared static paths, which are not R2 objects.
+	const validKeys = keys.filter(
+		(key): key is string => key != null && key !== '' && isStoredObjectKey(key),
+	);
 	if (validKeys.length === 0) {
 		return;
 	}

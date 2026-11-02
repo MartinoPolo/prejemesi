@@ -162,7 +162,22 @@
 	size-adjust: 80%;
 }
 
-@custom-variant dark (&:is(.dark *));
+/* Dark mode is `.dark` on <html>; a `.dark` wrapper also forces it on a subtree. A
+   `[data-light-scope]` subtree (the Vzhled light preview) takes precedence and stays light, even
+   under a `.dark` wrapper inside it; `:where` keeps that exclusion out of every selector's
+   specificity. */
+@custom-variant dark (&:is(.dark *):not(:where([data-light-scope], [data-light-scope] *)));
+
+/* A phone with its on-screen keyboard open (`src/lib/reactivity/keyboard_inset.svelte.ts`);
+   wider layouts keep their room, so they never compact. */
+@custom-variant keyboard-open {
+	@media (width < 40rem) {
+		/* stylelint-disable-next-line nesting-selector-no-missing-scoping-root -- Tailwind replaces `&` with the utility's selector. */
+		&:where([data-keyboard='open'] *) {
+			@slot;
+		}
+	}
+}
 
 /* Typed resolution freezes the root background color before nested wishlist palettes inherit it. */
 @property --app-page-background {
@@ -293,6 +308,11 @@
 	--z-toast: 60;
 	--z-tooltip: 70;
 
+	/* ── On-screen keyboard (measured in keyboard_inset.svelte.ts) ── */
+	--keyboard-inset: 0px;
+	--visual-viewport-top: 0px;
+	--visual-viewport-height: 100dvh;
+
 	/* ── Motion ────────────────────────────────────────────── */
 	--duration-fast: 100ms;
 	--duration-normal: 200ms;
@@ -329,6 +349,10 @@
 	--radius-panel: 16px;
 	--radius-btn: 7px;
 	--radius-badge: 12px;
+
+	/* Controls nested in a bordered panel keep at least this gap from its inner border, even where
+	   tight or square corners would derive a smaller concentric inset. */
+	--minimum-nested-inset: 9px;
 	--border-w: 2.5px;
 	--elevation-compact-offset: 1px;
 	--elevation-ordinary-offset: 3px;
@@ -416,12 +440,15 @@
 
 .resting-shadow-nesting {
 	--gift-content-inset: max(
-		0px,
+		var(--minimum-nested-inset),
 		calc(var(--radius-panel) - var(--radius-btn) - var(--nested-border-inline, 0px))
 	);
 	--gift-content-inset-end: calc(var(--gift-content-inset) + var(--depth-clearance));
 	--gift-content-inset-bottom: calc(
-		max(0px, calc(var(--radius-panel) - var(--radius-btn) - var(--nested-border-block, 0px))) +
+		max(
+				var(--minimum-nested-inset),
+				calc(var(--radius-panel) - var(--radius-btn) - var(--nested-border-block, 0px))
+			) +
 			var(--depth-clearance)
 	);
 }
@@ -471,6 +498,7 @@
 	--hole-ring: var(--ink);
 	--tape-bg: color-mix(in oklab, var(--tint) 65%, transparent);
 	--tape-border: color-mix(in oklab, var(--ink) 25%, transparent);
+	--kraft: color-mix(in oklab, #c99a5e 38%, var(--card));
 
 	/* Footer */
 	--footer-bg: var(--p-ink);
@@ -498,10 +526,13 @@
 	/* Dark crop-editor stage: photos read truer on a dark surround in both modes. */
 	--crop-stage: color-mix(in oklab, var(--p-ink) 82%, black);
 
-	/* Wishlist cards carry their own palette (#532): a tinted body with a primary title plate. */
-	--wishlist-card-body: color-mix(in oklab, var(--p-brand) 17%, var(--card));
+	/* Wishlist card title plate: filled with the wishlist palette's primary. */
 	--wishlist-card-plate: var(--primary);
 	--wishlist-card-plate-foreground: var(--primary-foreground);
+
+	/* Custom background photos have no dark file, so they sink this far toward the page in dark
+	   mode, on top of the manager's own dim. */
+	--wishlist-photo-dark-mode-dim: 40%;
 	--popover: #fff;
 	--popover-foreground: var(--p-ink);
 	--primary: var(--p-primary);
@@ -577,9 +608,10 @@
 
 /* ── Dark derivation — „midnight notebook" ──────────────────────────────
    Charcoal surfaces carry restrained palette tints; color stays in small accents.
-   `.dark [data-palette]` outranks the light `[data-palette]` block. */
+   `.dark [data-palette]` outranks the light `[data-palette]` block. A palette scope inside a
+   `[data-light-scope]` keeps the light derivation even in dark mode. */
 .dark,
-.dark [data-palette] {
+.dark [data-palette]:not(:where([data-light-scope], [data-light-scope] *)) {
 	color-scheme: dark;
 
 	--ink: color-mix(in oklab, var(--p-bright) 12%, #e6e8ec);
@@ -621,6 +653,7 @@
 	--hole-ring: color-mix(in oklab, var(--ink) 80%, transparent);
 	--tape-bg: rgb(255 255 255 / 14%);
 	--tape-border: color-mix(in oklab, var(--ink) 32%, transparent);
+	--kraft: color-mix(in oklab, #a8783f 32%, var(--card));
 
 	/* Footer (dark) */
 	--footer-bg: color-mix(in oklab, var(--p-deep) 24%, #04080e);
@@ -644,7 +677,6 @@
 	--card: color-mix(in oklab, var(--p-deep) 16%, #13161c);
 	--card-foreground: var(--ink);
 	--crop-stage: color-mix(in oklab, var(--p-deep) 8%, #050608);
-	--wishlist-card-body: color-mix(in oklab, var(--p-brand) 20%, var(--card));
 	--popover: var(--card);
 	--popover-foreground: var(--ink);
 	--primary: color-mix(in oklab, var(--p-brand) 60%, #202630);
@@ -990,7 +1022,6 @@
 	--color-foreground: var(--foreground);
 	--color-card: var(--card);
 	--color-card-foreground: var(--card-foreground);
-	--color-wishlist-card-body: var(--wishlist-card-body);
 	--color-wishlist-card-plate: var(--wishlist-card-plate);
 	--color-wishlist-card-plate-foreground: var(--wishlist-card-plate-foreground);
 	--color-popover: var(--popover);
@@ -1132,6 +1163,12 @@ main.app-content {
 
 	body {
 		@apply bg-background text-foreground;
+	}
+
+	/* `color` resolves where it is declared and inherits as a value, so a nested palette
+	   scope re-applies its own foreground; otherwise its text keeps the viewer's ink. */
+	[data-palette]:not(:root) {
+		@apply text-foreground;
 	}
 
 	button:not(:disabled),
@@ -1353,4 +1390,9 @@ main.app-content {
 	.stagger-pop > :nth-child(6) {
 		animation-delay: 0.29s;
 	}
+}
+
+/* A field scrolled above the keyboard keeps its label in view. */
+[data-keyboard='open'] :is(input, textarea, [contenteditable]) {
+	scroll-margin-top: var(--space-8);
 }

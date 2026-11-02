@@ -46,7 +46,7 @@ export function draftStyle(draft: WishlistAppearanceDraft): WishlistStyleTokens 
 	return resolveWishlistStyle(draft.themeId, draft.styleOverrides);
 }
 
-export function hasStyleOverrides(draft: WishlistAppearanceDraft): boolean {
+function hasStyleOverrides(draft: WishlistAppearanceDraft): boolean {
 	return Object.keys(draft.styleOverrides).length > 0;
 }
 
@@ -96,10 +96,76 @@ export function setWishlistStyleToken<Token extends StyleToken>(
 	return { ...draft, styleOverrides };
 }
 
-export function resetWishlistStyleOverrides(
+/**
+ * The parts of a motif the Vzhled editor lets the manager customize ("Přizpůsobit motiv"): Barva,
+ * Pozadí, Hlavička and Styl. Each comes from the motif until the manager overrides it.
+ */
+export const WISHLIST_MOTIF_FIELDS = ['palette', 'background', 'heroFrame', 'style'] as const;
+
+export type WishlistMotifField = (typeof WISHLIST_MOTIF_FIELDS)[number];
+
+/** Tokens of the Styl field; the hero frame is its own Hlavička field. */
+const STYLE_FIELD_TOKENS = ['corners', 'border', 'mat', 'heading'] as const satisfies StyleToken[];
+
+/**
+ * Whether a field no longer comes from the motif. The palette is copied from the motif on choice,
+ * so it counts as the motif's while it equals the motif palette; the background while it shows
+ * the motif backdrop; style fields while an override is stored, even one equal to the motif
+ * default, so a stored choice keeps its meaning. Without a motif nothing comes from one.
+ */
+export function isMotifFieldOverridden(
 	draft: WishlistAppearanceDraft,
+	palette: Palette,
+	field: WishlistMotifField,
+): boolean {
+	if (draft.themeId === null) {
+		return false;
+	}
+	switch (field) {
+		case 'palette':
+			return palette !== WISHLIST_THEMES[draft.themeId].palette;
+		case 'background':
+			return draft.background.mode !== 'theme';
+		case 'heroFrame':
+			return draft.styleOverrides.heroFrame !== undefined;
+		case 'style':
+			return STYLE_FIELD_TOKENS.some((token) => draft.styleOverrides[token] !== undefined);
+	}
+}
+
+function withoutStyleOverrides(
+	draft: WishlistAppearanceDraft,
+	tokens: readonly StyleToken[],
 ): WishlistAppearanceDraft {
-	return { ...draft, styleOverrides: {} };
+	const styleOverrides = { ...draft.styleOverrides };
+	for (const token of tokens) {
+		delete styleOverrides[token];
+	}
+	return { ...draft, styleOverrides };
+}
+
+/**
+ * Lets the motif supply a field again: its overrides are removed, the motif backdrop shows (a
+ * stored custom upload stays referenced, so switching back is free) or the palette returns to the
+ * motif palette, which the caller applies. Without a motif there is nothing to return to.
+ */
+export function resetMotifField(
+	draft: WishlistAppearanceDraft,
+	field: WishlistMotifField,
+): { draft: WishlistAppearanceDraft; palette: Palette | null } {
+	if (draft.themeId === null) {
+		return { draft, palette: null };
+	}
+	switch (field) {
+		case 'palette':
+			return { draft, palette: WISHLIST_THEMES[draft.themeId].palette };
+		case 'background':
+			return { draft: setWishlistBackground(draft, { mode: 'theme' }), palette: null };
+		case 'heroFrame':
+			return { draft: withoutStyleOverrides(draft, ['heroFrame']), palette: null };
+		case 'style':
+			return { draft: withoutStyleOverrides(draft, STYLE_FIELD_TOKENS), palette: null };
+	}
 }
 
 export function setWishlistBackground(

@@ -6,11 +6,17 @@ export const giftDetailModalVariants = tv({
 		// capped at 90dvh – that lets the detail column pin its footer and scroll
 		// only the fields (#116 follow-up, GiftDraftDialog precedent). Widened to
 		// ~1100px (issue #183 REQ-9) so the 4:3 crop preview does not read as cramped.
-		content:
+		// Keyboard open on a phone: the dialog reaches down to the keyboard so the fields gain
+		// every pixel, the footer hides and Save moves into the title row.
+		content: [
 			'flex flex-col sm:max-w-[1100px] max-h-[90dvh] overflow-hidden p-0 gap-0 max-w-[calc(100%-1rem)]',
+			'keyboard-open:top-[calc(var(--visual-viewport-top)+6px)] keyboard-open:bottom-(--keyboard-inset) keyboard-open:max-h-none keyboard-open:overflow-hidden keyboard-open:max-w-[calc(100%-12px)] keyboard-open:rounded-b-none keyboard-open:border-b-0',
+		],
 		editorHeader:
-			'flex shrink-0 items-center gap-3 border-b-2 border-dashed border-ink-faint py-2 pr-2.5 pl-5 sm:contents',
-		editorTitle: 'min-w-0 flex-1 break-words text-[1.1875rem] leading-tight sm:sr-only',
+			'flex shrink-0 items-center gap-3 border-b-2 border-dashed border-ink-faint py-2 pr-2.5 pl-5 sm:contents keyboard-open:gap-2 keyboard-open:py-1.5 keyboard-open:pr-2 keyboard-open:pl-4',
+		editorTitle:
+			'min-w-0 flex-1 break-words text-[1.1875rem] leading-tight sm:sr-only keyboard-open:text-xl',
+		keyboardSave: 'hidden shrink-0 keyboard-open:inline-flex',
 		// Mobile: a single scrolling flex column so the image and fields share one
 		// scroll region inside the 90dvh-capped dialog (issue: mobile edit dialog UX).
 		// Desktop: restores the exact 2-col grid + its own overflow-hidden. ~50/50
@@ -85,7 +91,7 @@ export const giftDetailModalVariants = tv({
 		// scroll, so it's always visible. Hidden on desktop, where
 		// `submitWrapper` already renders Save inline with the manager actions.
 		mobileSubmitFooter:
-			'flex shrink-0 flex-wrap gap-(--nested-control-gap) border-t-2 border-dashed border-ink-faint bg-card px-5 py-4 sm:hidden',
+			'flex shrink-0 flex-wrap gap-(--nested-control-gap) border-t-2 border-dashed border-ink-faint bg-card px-5 py-4 sm:hidden keyboard-open:hidden',
 		// The action pair shares a row when it fits and wraps under enlarged text.
 		submitButton: 'min-w-fit flex-1',
 		releaseButton: 'order-1 sm:order-2 w-full',

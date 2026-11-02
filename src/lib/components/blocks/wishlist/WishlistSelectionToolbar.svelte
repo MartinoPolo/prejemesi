@@ -341,18 +341,14 @@
 		>{/if}<DropdownMenu.RadioGroup
 		value={commonPriorityId === undefined ? MIXED_RADIO_VALUE : (commonPriorityId ?? '')}
 		onValueChange={(id) => onpriority(id === '' ? null : id)}
-		><DropdownMenu.RadioItem
-			closeOnSelect={false}
-			value=""
-			disabled={disabled || !priorityReady}>{m.gift_priority_none()}</DropdownMenu.RadioItem
+		><DropdownMenu.RadioItem value="" disabled={disabled || !priorityReady}
+			>{m.gift_priority_none()}</DropdownMenu.RadioItem
 		>{#each priorityLevels as choice (choice.id)}<DropdownMenu.RadioItem
-				closeOnSelect={false}
 				value={choice.id}
 				disabled={disabled || !priorityReady}>{choice.label}</DropdownMenu.RadioItem
 			>{/each}</DropdownMenu.RadioGroup
 	>{/snippet}
 {#snippet categoryItems()}<DropdownMenu.CheckboxItem
-		closeOnSelect={false}
 		bind:checked={() => categoryChoices.uncategorized === true, ignoreCheckboxToggle}
 		bind:indeterminate={
 			() => categoryChoices.uncategorized === 'indeterminate', ignoreCheckboxToggle
@@ -361,7 +357,6 @@
 		onCheckedChange={() => oncategory(null, true)}
 		>{m.gift_category_uncategorized()}</DropdownMenu.CheckboxItem
 	>{#each categories as choice (choice.id)}<DropdownMenu.CheckboxItem
-			closeOnSelect={false}
 			bind:checked={() => categoryState(choice.id) === true, ignoreCheckboxToggle}
 			bind:indeterminate={
 				() => categoryState(choice.id) === 'indeterminate', ignoreCheckboxToggle
@@ -382,16 +377,10 @@
 		onValueChange={(fit) => {
 			if (fit === 'fill' || fit === 'fit') handleImageFit(fit);
 		}}
-		><DropdownMenu.RadioItem
-			closeOnSelect={false}
-			data-testid="selection-image-fit-fill"
-			value="fill"
-			{disabled}>{m.image_fit_fill()}</DropdownMenu.RadioItem
-		><DropdownMenu.RadioItem
-			closeOnSelect={false}
-			data-testid="selection-image-fit-fit"
-			value="fit"
-			{disabled}>{m.image_fit_fit()}</DropdownMenu.RadioItem
+		><DropdownMenu.RadioItem data-testid="selection-image-fit-fill" value="fill" {disabled}
+			>{m.image_fit_fill()}</DropdownMenu.RadioItem
+		><DropdownMenu.RadioItem data-testid="selection-image-fit-fit" value="fit" {disabled}
+			>{m.image_fit_fit()}</DropdownMenu.RadioItem
 		></DropdownMenu.RadioGroup
 	>{/snippet}
 {#snippet imageBackgroundItems()}{#if commonImageBackground === undefined}<DropdownMenu.Label
@@ -405,17 +394,14 @@
 				background === '#ffffff' || background === '#000000' ? background : null,
 			)}
 		><DropdownMenu.RadioItem
-			closeOnSelect={false}
 			data-testid="selection-image-background-white"
 			value="#ffffff"
 			{disabled}>{m.image_background_white()}</DropdownMenu.RadioItem
 		><DropdownMenu.RadioItem
-			closeOnSelect={false}
 			data-testid="selection-image-background-black"
 			value="#000000"
 			{disabled}>{m.image_background_black()}</DropdownMenu.RadioItem
 		><DropdownMenu.RadioItem
-			closeOnSelect={false}
 			data-testid="selection-image-background-transparent"
 			value="transparent"
 			{disabled}>{m.image_background_transparent()}</DropdownMenu.RadioItem
@@ -428,16 +414,10 @@
 		onValueChange={(received) => {
 			if (received === 'true' || received === 'false') handleReceived(received === 'true');
 		}}
-		><DropdownMenu.RadioItem
-			closeOnSelect={false}
-			data-testid="selection-received-true"
-			value="true"
-			{disabled}>{m.gift_mark_received()}</DropdownMenu.RadioItem
-		><DropdownMenu.RadioItem
-			closeOnSelect={false}
-			data-testid="selection-received-false"
-			value="false"
-			{disabled}>{m.gift_mark_unreceived()}</DropdownMenu.RadioItem
+		><DropdownMenu.RadioItem data-testid="selection-received-true" value="true" {disabled}
+			>{m.gift_mark_received()}</DropdownMenu.RadioItem
+		><DropdownMenu.RadioItem data-testid="selection-received-false" value="false" {disabled}
+			>{m.gift_mark_unreceived()}</DropdownMenu.RadioItem
 		></DropdownMenu.RadioGroup
 	>{/snippet}
 

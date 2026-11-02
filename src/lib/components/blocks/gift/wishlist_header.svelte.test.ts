@@ -58,9 +58,10 @@ function computedRotation(element: HTMLElement) {
 }
 
 describe('WishlistHeader responsive presentation', () => {
-	it('renders a fixed compact mobile hero with an equally inset thumbnail and one management trigger', async () => {
+	it('renders a compact mobile hero with an equally inset thumbnail and one management trigger', async () => {
 		await page.viewport(390, 720);
-		const screen = await render(WishlistHeader, baseProps);
+		// Visačka decorates only the end edge, so the thumbnail keeps equal start and top insets.
+		const screen = await render(WishlistHeader, { ...baseProps, heroFrame: 'tag' as const });
 		const hero = screen.getByTestId('wishlist-mobile-hero');
 		const photo = screen.getByTestId('wishlist-mobile-photo');
 		const heroBox = await hero.element().getBoundingClientRect();
@@ -77,6 +78,76 @@ describe('WishlistHeader responsive presentation', () => {
 			.element(screen.getByRole('button', { name: m.gift_more_actions() }))
 			.toHaveStyle({ width: '40px', height: '40px' });
 		await screen.unmount();
+	});
+
+	it('grows every mobile hero frame around a two-line title and a wrapping meta line', async () => {
+		await page.viewport(390, 720);
+		const insetsByFrame = new Map<string, { top: number; bottom: number }>();
+		// The page gutter narrows the copy column to what a phone shows.
+		const pageHost = document.createElement('div');
+		pageHost.style.paddingInline = 'var(--page-gutter)';
+		document.body.appendChild(pageHost);
+		try {
+			for (const heroFrame of HERO_FRAMES) {
+				const screen = await render(
+					WishlistHeader,
+					{
+						...baseProps,
+						heroFrame,
+						occasion: 'birthday' as const,
+						eventDate: new Date('2020-01-01T12:00:00Z'),
+						giftCount: 3,
+					},
+					{ baseElement: pageHost },
+				);
+				const hero = screen.getByTestId('wishlist-mobile-hero').element() as HTMLElement;
+				const meta = screen.getByTestId('wishlist-mobile-meta').element();
+				const title = screen
+					.getByRole('heading', { level: 1, name: baseProps.title })
+					.element();
+				const contentBoxes = [
+					screen.getByTestId('wishlist-mobile-photo').element(),
+					screen.getByTestId('wishlist-mobile-recipient').element(),
+					title,
+					meta,
+					hero.querySelector('[data-testid="wishlist-header-actions"]')!,
+				].map((element) => element.getBoundingClientRect());
+				expect(title.getBoundingClientRect().height).toBeGreaterThan(
+					parseFloat(getComputedStyle(title).lineHeight) * 1.5,
+				);
+				expect(meta.getBoundingClientRect().height).toBeGreaterThan(
+					parseFloat(getComputedStyle(meta).lineHeight) * 1.5,
+				);
+
+				const heroBox = hero.getBoundingClientRect();
+				// The Dárek band belongs to the frame, so its paper starts below the band.
+				const topBand = hero.querySelector('.gift-band');
+				const paperTop =
+					topBand?.getBoundingClientRect().bottom ?? heroBox.top + hero.clientTop;
+				const paperBottom = heroBox.top + hero.clientTop + hero.clientHeight;
+				const contentTop = Math.min(...contentBoxes.map((box) => box.top));
+				const contentBottom = Math.max(...contentBoxes.map((box) => box.bottom));
+				insetsByFrame.set(heroFrame, {
+					top: contentTop - paperTop,
+					bottom: paperBottom - contentBottom,
+				});
+				await screen.unmount();
+			}
+		} finally {
+			pageHost.remove();
+		}
+
+		const plainPaperInset = insetsByFrame.get('notebook')!.top;
+		expectPixelsAtLeast(plainPaperInset, 4);
+		for (const [heroFrame, insets] of insetsByFrame) {
+			expectPixelsNear(insets.bottom, plainPaperInset, `${heroFrame} bottom inset`, 1);
+			// The Pozvánka flap only adds room above the content.
+			if (heroFrame === 'invitation') {
+				expectPixelsAtLeast(insets.top, insets.bottom, `${heroFrame} top inset`, 1);
+			} else {
+				expectPixelsNear(insets.top, insets.bottom, `${heroFrame} top inset`, 1);
+			}
+		}
 	});
 
 	it('opens hero More with the shared inset Wishlist bottom-sheet geometry', async () => {
@@ -277,13 +348,14 @@ describe('WishlistHeader responsive presentation', () => {
 
 describe('WishlistHeader permanent wishlist', () => {
 	it('shows visitors the permanent chip and a calm note that the list changes over time', async () => {
+		await page.viewport(900, 720);
 		const screen = await render(WishlistHeader, {
 			...baseProps,
 			kind: 'permanent' as const,
 			role: 'visitor' as const,
 		});
 
-		const chip = screen.getByTestId('wishlist-kind-chip');
+		const chip = screen.getByTestId('wishlist-occasion-chip');
 		await expect.element(chip).toBeVisible();
 		await expect.element(chip).toHaveTextContent(m.wishlist_kind_permanent());
 		const note = screen.getByTestId('wishlist-permanent-note');
@@ -294,9 +366,10 @@ describe('WishlistHeader permanent wishlist', () => {
 	});
 
 	it('shows managers the chip without the visitor note', async () => {
+		await page.viewport(900, 720);
 		const screen = await render(WishlistHeader, { ...baseProps, kind: 'permanent' as const });
 
-		await expect.element(screen.getByTestId('wishlist-kind-chip')).toBeVisible();
+		await expect.element(screen.getByTestId('wishlist-occasion-chip')).toBeVisible();
 		await expect.element(screen.getByTestId('wishlist-permanent-note')).not.toBeInTheDocument();
 		await screen.unmount();
 	});
@@ -304,7 +377,7 @@ describe('WishlistHeader permanent wishlist', () => {
 	it('marks neither chip nor note on an occasion wishlist', async () => {
 		const screen = await render(WishlistHeader, { ...baseProps, role: 'visitor' as const });
 
-		await expect.element(screen.getByTestId('wishlist-kind-chip')).not.toBeInTheDocument();
+		await expect.element(screen.getByTestId('wishlist-occasion-chip')).not.toBeInTheDocument();
 		await expect.element(screen.getByTestId('wishlist-permanent-note')).not.toBeInTheDocument();
 		await screen.unmount();
 	});
@@ -346,5 +419,251 @@ describe('WishlistHeader permanent wishlist', () => {
 			`${m.dashboard_status_shared()} · ${m.wishlist_gift_count_other({ count: 13 })}`,
 		);
 		await screen.unmount();
+	});
+});
+
+const HERO_FRAMES = ['notebook', 'gift', 'tag', 'invitation'] as const;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+function daysFromNow(days: number): Date {
+	const date = new Date(Date.now() + days * DAY_MS);
+	date.setHours(12, 0, 0, 0);
+	return date;
+}
+
+/** Visible hero badges whose text mentions the given countdown. */
+function visibleCountdownChips(banner: Element, countdownLabel: string): Element[] {
+	return [...banner.querySelectorAll('[data-slot="badge"]')].filter(
+		(badge) => badge.checkVisibility() && badge.textContent?.includes(countdownLabel),
+	);
+}
+
+/** From 960 px: a stamp on Blok and Visačka, a kraft tag on Dárek, a wax seal on Pozvánka. */
+const EMBLEM_TEST_IDS = {
+	notebook: 'wishlist-hero-stamp',
+	gift: 'wishlist-hero-tag',
+	tag: 'wishlist-hero-stamp',
+	invitation: 'wishlist-hero-seal',
+} as const;
+
+describe('WishlistHeader hero frames', () => {
+	it.each(HERO_FRAMES)('renders the %s frame on desktop and mobile', async (heroFrame) => {
+		const screen = await render(WishlistHeader, { ...baseProps, heroFrame });
+
+		expect(screen.getByTestId('wishlist-banner').element()).toHaveAttribute(
+			'data-hero-frame',
+			heroFrame,
+		);
+		expect(screen.getByTestId('wishlist-mobile-hero').element()).toHaveAttribute(
+			'data-hero-frame',
+			heroFrame,
+		);
+		await screen.unmount();
+	});
+
+	it('keeps the taped polaroid only on the Blok frame', async () => {
+		for (const heroFrame of HERO_FRAMES) {
+			const screen = await render(WishlistHeader, { ...baseProps, heroFrame });
+			const polaroid = screen
+				.getByTestId('wishlist-banner')
+				.element()
+				.querySelector('.polaroid');
+			expect(polaroid !== null).toBe(heroFrame === 'notebook');
+			await screen.unmount();
+		}
+	});
+
+	it.each(HERO_FRAMES)(
+		'%s names the occasion and counts down in its emblem from 960 px',
+		async (heroFrame) => {
+			await page.viewport(1280, 720);
+			const screen = await render(WishlistHeader, {
+				...baseProps,
+				heroFrame,
+				occasion: 'birthday' as const,
+				eventDate: daysFromNow(12),
+			});
+			const emblem = screen.getByTestId(EMBLEM_TEST_IDS[heroFrame]);
+
+			await expect.element(emblem).toBeVisible();
+			await expect.element(emblem).toHaveTextContent(m.wishlist_occasion_birthday());
+			await expect.element(emblem).toHaveTextContent(m.countdown_days_many({ days: 12 }));
+			await expect.element(screen.getByTestId('wishlist-occasion-chip')).not.toBeVisible();
+			await screen.unmount();
+		},
+	);
+
+	it.each(HERO_FRAMES)('%s shows the past-event state in its emblem', async (heroFrame) => {
+		await page.viewport(1280, 720);
+		const screen = await render(WishlistHeader, {
+			...baseProps,
+			heroFrame,
+			occasion: 'wedding' as const,
+			eventDate: daysFromNow(-3),
+		});
+		const emblem = screen.getByTestId(EMBLEM_TEST_IDS[heroFrame]);
+
+		await expect.element(emblem).toHaveTextContent(m.wishlist_occasion_wedding());
+		await expect.element(emblem).toHaveTextContent(m.wishlist_countdown_passed());
+		await screen.unmount();
+	});
+
+	it('shows only the countdown for Jiná and no stamp without a date', async () => {
+		await page.viewport(1280, 720);
+		const dated = await render(WishlistHeader, { ...baseProps, eventDate: daysFromNow(12) });
+		const stamp = dated.getByTestId('wishlist-hero-stamp');
+		await expect.element(stamp).toHaveTextContent(m.countdown_days_many({ days: 12 }));
+		await expect.element(stamp).not.toHaveTextContent(m.wishlist_occasion_other());
+		await dated.unmount();
+
+		const undated = await render(WishlistHeader, baseProps);
+		await expect.element(undated.getByTestId('wishlist-hero-stamp')).not.toBeInTheDocument();
+		await undated.unmount();
+	});
+
+	it('seals a Stálý seznam without a countdown', async () => {
+		await page.viewport(1280, 720);
+		const screen = await render(WishlistHeader, {
+			...baseProps,
+			heroFrame: 'invitation' as const,
+			kind: 'permanent' as const,
+		});
+		const seal = screen.getByTestId('wishlist-hero-seal');
+
+		await expect.element(seal).toBeVisible();
+		expect(seal.element().textContent?.trim()).toBe(m.wishlist_kind_permanent());
+		await screen.unmount();
+	});
+
+	it.each(HERO_FRAMES)(
+		'%s moves the occasion into the meta line below 960 px',
+		async (heroFrame) => {
+			await page.viewport(900, 720);
+			const props = {
+				...baseProps,
+				heroFrame,
+				occasion: 'birthday' as const,
+				eventDate: daysFromNow(12),
+			};
+			const screen = await render(WishlistHeader, props);
+
+			await expect.element(screen.getByTestId(EMBLEM_TEST_IDS[heroFrame])).not.toBeVisible();
+			const occasionSegment = [
+				m.wishlist_occasion_birthday(),
+				m.countdown_days_many({ days: 12 }),
+			].join(' · ');
+			const chip = screen.getByTestId('wishlist-occasion-chip');
+			await expect.element(chip).toBeVisible();
+			expect(chip.element().textContent?.trim()).toBe(occasionSegment);
+			expect(chip.element().querySelector('svg')).not.toBeNull();
+			expect(
+				visibleCountdownChips(
+					screen.getByTestId('wishlist-banner').element(),
+					m.countdown_days_many({ days: 12 }),
+				),
+			).toEqual([chip.element()]);
+			await screen.unmount();
+
+			await page.viewport(390, 720);
+			const mobileScreen = await render(WishlistHeader, props);
+			expect(
+				mobileScreen.getByTestId('wishlist-mobile-meta').element().textContent?.trim(),
+			).toBe(
+				[
+					m.dashboard_status_shared(),
+					occasionSegment,
+					m.wishlist_gift_count_other({ count: 13 }),
+				].join(' · '),
+			);
+			await mobileScreen.unmount();
+		},
+	);
+
+	it('pairs the occasion with „proběhlo" in the chip below 960 px once the event passed', async () => {
+		await page.viewport(900, 720);
+		const screen = await render(WishlistHeader, {
+			...baseProps,
+			occasion: 'wedding' as const,
+			eventDate: daysFromNow(-3),
+		});
+		const chip = screen.getByTestId('wishlist-occasion-chip');
+
+		await expect.element(chip).toBeVisible();
+		expect(chip.element().textContent?.trim()).toBe(
+			[m.wishlist_occasion_wedding(), m.wishlist_countdown_passed()].join(' · '),
+		);
+		expect(
+			visibleCountdownChips(
+				screen.getByTestId('wishlist-banner').element(),
+				m.wishlist_countdown_passed(),
+			),
+		).toEqual([chip.element()]);
+		// Screen readers skip the dot but still hear a word boundary.
+		const accessibleChip = chip.element().cloneNode(true) as Element;
+		accessibleChip
+			.querySelectorAll('[aria-hidden="true"]')
+			.forEach((hidden) => hidden.remove());
+		expect(accessibleChip.textContent?.trim().replace(/\s+/g, ' ')).toBe(
+			`${m.wishlist_occasion_wedding()} ${m.wishlist_countdown_passed()}`,
+		);
+		await screen.unmount();
+	});
+
+	it('names only the occasion in the chip below 960 px without an event date', async () => {
+		await page.viewport(900, 720);
+		const screen = await render(WishlistHeader, {
+			...baseProps,
+			occasion: 'birthday' as const,
+		});
+		const chip = screen.getByTestId('wishlist-occasion-chip');
+
+		await expect.element(chip).toBeVisible();
+		expect(chip.element().textContent?.trim()).toBe(m.wishlist_occasion_birthday());
+		expect(chip.element().querySelector('svg')).not.toBeNull();
+		await screen.unmount();
+	});
+
+	it('shows only the countdown in the Jiná chip below 960 px', async () => {
+		await page.viewport(900, 720);
+		const screen = await render(WishlistHeader, { ...baseProps, eventDate: daysFromNow(12) });
+		const chip = screen.getByTestId('wishlist-occasion-chip');
+
+		await expect.element(chip).toBeVisible();
+		expect(chip.element().textContent?.trim()).toBe(m.countdown_days_many({ days: 12 }));
+		expect(chip.element().querySelector('svg')).not.toBeNull();
+		expect(
+			visibleCountdownChips(
+				screen.getByTestId('wishlist-banner').element(),
+				m.countdown_days_many({ days: 12 }),
+			),
+		).toEqual([chip.element()]);
+		await screen.unmount();
+	});
+
+	it.each(HERO_FRAMES)('%s keeps its decorations off a long title', async (heroFrame) => {
+		for (const width of [960, 1280]) {
+			await page.viewport(width, 720);
+			const screen = await render(WishlistHeader, {
+				...baseProps,
+				heroFrame,
+				role: 'visitor' as const,
+				occasion: 'graduation' as const,
+				eventDate: daysFromNow(120),
+			});
+			const banner = screen.getByTestId('wishlist-banner').element();
+			const title = screen
+				.getByRole('heading', { level: 1, name: baseProps.title })
+				.element();
+			const titleBox = title.getBoundingClientRect();
+			const decorations = banner.querySelectorAll<Element>(
+				'[data-testid^="wishlist-hero-"], .gift-ribbon, .gift-bow, .tag-hole',
+			);
+
+			expect(decorations.length).toBeGreaterThan(0);
+			for (const decoration of decorations) {
+				expectRectanglesSeparated(titleBox, decoration.getBoundingClientRect());
+			}
+			await screen.unmount();
+		}
 	});
 });

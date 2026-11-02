@@ -153,6 +153,13 @@ test.describe('agent change review', () => {
 		await expect(changeRow(DELETED_GIFT)).toHaveAttribute('data-status', 'needsDecision');
 		await expect(applyButton).toHaveAttribute('aria-disabled', 'true');
 		await expect(applyButton).toHaveText('Použít (2)');
+		// Only the content area scrolls; the document itself never gets a second scrollbar.
+		expect(
+			await page.evaluate(
+				() =>
+					document.documentElement.scrollHeight <= document.documentElement.clientHeight,
+			),
+		).toBe(true);
 
 		// Použít stays clickable while blocked and points at the open decision.
 		await applyButton.click({ force: true });

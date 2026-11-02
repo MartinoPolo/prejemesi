@@ -12,6 +12,7 @@ import { notification } from '$lib/server/db/notification.schema.js';
 import { generateId } from '$lib/server/db/id.js';
 import type { SupportedLocale } from '$lib/i18n/locale.js';
 import { provisionDemoCatalog } from './provision.js';
+import { demoViewer } from './catalog.js';
 import {
 	DEMO_CLEANUP_BATCH_SIZE,
 	DEMO_CLIENT_WINDOW_MS,
@@ -215,7 +216,8 @@ export async function createDemo(event: RequestEvent, locale: SupportedLocale) {
 		});
 		await transaction.insert(user).values({
 			id: viewerUserId,
-			name: 'Tereza Novotná',
+			name: demoViewer.name,
+			image: demoViewer.image,
 			email: demoEmailAddress(viewerUserId),
 			demoSessionId: id,
 		});
@@ -248,6 +250,10 @@ export async function resetDemo(sessionId: string, locale: SupportedLocale) {
 			.where(
 				and(eq(user.demoSessionId, session.id), sql`${user.id} <> ${session.viewerUserId}`),
 			);
+		await transaction
+			.update(user)
+			.set({ image: demoViewer.image })
+			.where(eq(user.id, session.viewerUserId));
 		await provisionDemoCatalog(
 			transaction,
 			session.id,

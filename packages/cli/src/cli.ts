@@ -42,7 +42,8 @@ Commands:
                                           Stores an image for a gift; prints its reference
   proposals submit --input <json>         A proposal body as POST /api/v1/proposals takes it
   proposals show <proposalId>
-  proposals apply <proposalId>            Fast-forward tokens only; otherwise prints the reviewLink
+  proposals apply <proposalId>            Retries fast-forward for the token that submitted it;
+                                          otherwise prints the reviewLink
 
 Options:
   --input <json|@file|->                  JSON, a file to read it from, or standard input
@@ -50,8 +51,10 @@ Options:
   --base-url <url>                        Server; default the stored login's or ${DEFAULT_BASE_URL}
   --help
 
-Changes become proposals the user reviews at the printed reviewLink, unless the token has
-fast-forward. \`gifts create\` takes an array as --input to propose several gifts at once.
+Changes become proposals the user reviews at the printed reviewLink. With a fast-forward token a
+proposal applies at once only when every row is ready and none needs confirmation (a deletion,
+reservation or invitation); otherwise the whole proposal waits and fastForwardHold says why.
+Proposals expire 7 days after submission. \`gifts create\` takes an array as --input to propose several gifts at once.
 A gift takes a stored image as its cover with \`"imageReference": "<reference>"\` in its --input,
 or its whole gallery (up to 8, the first the cover) with
 \`"imageReferences": [{ "imageReference": "<reference>" }, ...]\`.

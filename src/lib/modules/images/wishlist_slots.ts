@@ -7,7 +7,7 @@
  * `crop.ts`.
  */
 
-import { imagePublicUrl } from './public_url.js';
+import { imagePublicUrl, isStoredObjectKey } from './public_url.js';
 import { imageMetaToFrameProps, type ImageFrameProps } from './crop.js';
 import { WISHLIST_EDITOR_SLOTS } from './crop_targets.js';
 import { fillImageMeta } from './editor_modes.js';
@@ -15,16 +15,17 @@ import { OG_IMAGE_HEIGHT, OG_IMAGE_WIDTH, socialCropImageUrl } from './variants.
 import type { WishlistImageSlot, WishlistImageSlots, ImageFocalPoint } from './types.js';
 
 /**
- * Resolve a wishlist image object key to a client-loadable URL. Production
- * serves straight from the R2 public domain (PUBLIC_R2_URL) so image bytes
- * never flow through the Worker; local dev falls back to the same-origin
- * upload API route. Returns null when no image is assigned.
+ * Resolve a wishlist image to a client-loadable URL. Production serves object
+ * keys straight from the R2 public domain (PUBLIC_R2_URL) so image bytes never
+ * flow through the Worker; local dev falls back to the same-origin upload API
+ * route. Site-relative paths (prepared demo covers) are already loadable.
+ * Returns null when no image is assigned.
  */
 export function wishlistImageUrl(imageKey: string | null | undefined): string | null {
 	if (imageKey == null || imageKey === '') {
 		return null;
 	}
-	return imagePublicUrl(imageKey);
+	return isStoredObjectKey(imageKey) ? imagePublicUrl(imageKey) : imageKey;
 }
 
 /**

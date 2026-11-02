@@ -80,11 +80,15 @@ async function createPermanentWishlistAndNavigate(
 		await recipientInput.fill(recipientName);
 	}
 	await dialog.getByRole('textbox', { name: 'Název' }).fill(title);
-	const kindGroup = dialog.getByRole('group', { name: m.wishlist_kind_label() });
-	await expect(kindGroup.getByRole('radio', { name: m.wishlist_kind_occasion() })).toBeChecked();
+	const occasionGroup = dialog.getByRole('group', { name: m.wishlist_occasion_label() });
+	await expect(
+		occasionGroup.getByRole('radio', { name: m.wishlist_occasion_other() }),
+	).toBeChecked();
 	await expect(dialog.getByText(m.wishlist_event_date_label())).toBeVisible();
-	await kindGroup.getByRole('radio', { name: m.wishlist_kind_permanent() }).click();
-	await expect(kindGroup.getByRole('radio', { name: m.wishlist_kind_permanent() })).toBeChecked();
+	await occasionGroup.getByRole('radio', { name: m.wishlist_kind_permanent() }).click();
+	await expect(
+		occasionGroup.getByRole('radio', { name: m.wishlist_kind_permanent() }),
+	).toBeChecked();
 	await expect(dialog.getByText(m.wishlist_event_date_label())).toBeHidden();
 	await dialog.getByRole('button', { name: 'Vytvořit', exact: true }).click();
 
@@ -99,6 +103,14 @@ async function openGiftEditor(page: Page, giftName: string) {
 	const dialog = page.getByRole('dialog', { name: m.gift_edit_title() });
 	await expect(dialog).toBeVisible({ timeout: 5_000 });
 	return dialog;
+}
+
+/** Below 960 px the meta chip names the occasion, from 960 px the hero emblem. */
+function visibleOccasionName(page: Page) {
+	return page
+		.getByTestId('wishlist-banner')
+		.getByText(m.wishlist_kind_permanent(), { exact: true })
+		.filter({ visible: true });
 }
 
 function recipientGiftChangeWarning(page: Page) {
@@ -124,18 +136,14 @@ test('creates a permanent wishlist without an event date and explains it to visi
 	const visitorContext = await createAuthenticatedContext(browser, visitorCookies, baseURL!);
 	try {
 		const wishlistPath = await createPermanentWishlistAndNavigate(ownerPage, 'Stálé přání');
-		await expect(ownerPage.getByTestId('wishlist-kind-chip')).toHaveText(
-			m.wishlist_kind_permanent(),
-		);
+		await expect(visibleOccasionName(ownerPage)).toBeVisible();
 		await addGift(ownerPage, 'Kniha o horách');
 		await shareWishlist(ownerPage);
 		await expect(ownerPage.getByTestId('wishlist-permanent-note')).toHaveCount(0);
 
 		const visitorPage = await visitorContext.newPage();
 		await visitorPage.goto(wishlistPath);
-		await expect(visitorPage.getByTestId('wishlist-kind-chip')).toHaveText(
-			m.wishlist_kind_permanent(),
-		);
+		await expect(visibleOccasionName(visitorPage)).toBeVisible();
 		await expect(visitorPage.getByTestId('wishlist-permanent-note')).toContainText(
 			m.wishlist_permanent_visitor_note(),
 		);

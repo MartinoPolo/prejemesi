@@ -20,14 +20,28 @@ export const IMAGE_FIT_MODE_VALUES = [
 
 /**
  * Zoom factor range for `cover-crop` (1 = 100 % cover baseline, 3 = 300 %).
- * Zooming OUT below the baseline (#116 round 2) letterboxes the image inside
- * the target window on ONE axis; the per-aspect floor is the contain zoom
- * (`containZoomForAspect`), and `IMAGE_ZOOM_OUT_MIN` is the absolute floor that
- * keeps degenerate aspect pairs (≥20× divergence) from persisting useless zooms.
+ * Zooming OUT below the baseline letterboxes the image inside the target window
+ * (geometry in `crop.ts`); the per-aspect floor is `zoomOutFloorForAspect`, and
+ * `IMAGE_ZOOM_OUT_MIN` is the absolute floor that keeps degenerate aspect pairs
+ * (≥20× divergence) from persisting useless zooms.
  */
 export const IMAGE_ZOOM_BASE = 1;
 export const IMAGE_ZOOM_OUT_MIN = 0.05;
 export const IMAGE_ZOOM_MAX = 3;
+
+/**
+ * Share of the crop window that may stay clear on each side of its tighter axis
+ * when zoomed out past the contain zoom: enough to float a product on its mat,
+ * not so much that the image turns into a speck.
+ */
+export const IMAGE_ZOOM_OUT_GAP_PER_SIDE = 0.15;
+
+/**
+ * Gap per side the agent framing (`framedGiftImageMeta`) leaves by default: the
+ * product fills about 85 % of the frame's tighter axis, within common marketplace
+ * packshot guidance.
+ */
+export const GIFT_FRAMING_DEFAULT_GAP_PER_SIDE = 0.075;
 
 /** Normalized crop rectangle in 0..1 space (origin + size). */
 export interface ImageCropRect {
@@ -110,10 +124,10 @@ export interface ImageMetadata {
 
 const PercentSchema = v.pipe(v.number(), v.minValue(0), v.maxValue(100));
 
-// A zoomed-out window may extend past the image on one axis (#116 round 2):
-// its size grows up to 1/IMAGE_ZOOM_OUT_MIN and its origin goes negative down
-// to `1 - size`. The editors keep `min(w, h) <= 1`; the schema only bounds the
-// per-field ranges.
+// A zoomed-out window may extend past the image on either or both axes: its
+// size grows up to 1/IMAGE_ZOOM_OUT_MIN and its origin goes negative down to
+// `1 - size`. The editors stop at `zoomOutFloorForAspect`; the schema only
+// bounds the per-field ranges.
 const MAX_RECT_SIZE = 1 / IMAGE_ZOOM_OUT_MIN;
 const RectOriginSchema = v.pipe(v.number(), v.minValue(1 - MAX_RECT_SIZE), v.maxValue(1));
 const RectSizeSchema = v.pipe(v.number(), v.minValue(0), v.maxValue(MAX_RECT_SIZE));

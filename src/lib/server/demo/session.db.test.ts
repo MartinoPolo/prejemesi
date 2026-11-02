@@ -16,7 +16,8 @@ import { getRequestEvent } from '$app/server';
 import { getDb, closeDb } from '$lib/server/db/index.js';
 import { demoClientThrottle, demoSession, user } from '$lib/server/db/auth.schema.js';
 import { wishlist } from '$lib/server/db/wishlist.schema.js';
-import { gift, reservation } from '$lib/server/db/gift.schema.js';
+import { gift, giftImage, reservation } from '$lib/server/db/gift.schema.js';
+import { createDefaultWishlistSlots } from '$lib/modules/images/wishlist_slots.js';
 import { moderatorInvite } from '$lib/server/db/moderator.schema.js';
 import { notification } from '$lib/server/db/notification.schema.js';
 import { NOTIFICATION_TYPE } from '$lib/modules/notifications/types.js';
@@ -28,7 +29,7 @@ import {
 	DEMO_EDIT_REQUEST_LIMIT,
 	DEMO_RESET_LIMIT,
 } from './constants.js';
-import { getDemoCatalog } from './catalog.js';
+import { demoViewer, getDemoCatalog } from './catalog.js';
 import { assertWishlistScope, wishlistScope } from './scope.js';
 import { requireWishlistManagement } from '$lib/server/operations/wishlist_management.js';
 import { demoHandle } from '../../../hooks.server.js';
@@ -115,6 +116,62 @@ async function playgroundRecords(sessionId: string) {
 	};
 }
 
+/** Covers, people photos and gallery images match the curated catalog. */
+async function expectPreparedImages(
+	session: Awaited<ReturnType<typeof createDemo>>,
+	locale: 'cs' | 'en',
+) {
+	const catalog = getDemoCatalog(locale);
+	const lists = await getDb()
+		.select()
+		.from(wishlist)
+		.where(eq(wishlist.demoSessionId, session.id));
+	for (const entry of catalog) {
+		const list = lists.find((row) => row.title === entry.title)!;
+		expect(list.imageKey).toBe(`/demo/wishlists/${entry.key}.webp`);
+		expect(list.imageSlots).toEqual(createDefaultWishlistSlots());
+		const galleries = await getDb()
+			.select({
+				sortOrder: gift.sortOrder,
+				position: giftImage.position,
+				imageUrl: giftImage.imageUrl,
+			})
+			.from(giftImage)
+			.innerJoin(gift, eq(gift.id, giftImage.giftId))
+			.where(eq(gift.wishlistId, list.id))
+			.orderBy(gift.sortOrder, giftImage.position);
+		expect(galleries).toEqual(
+			entry.gifts.flatMap((catalogGift, sortOrder) =>
+				catalogGift.images.map((imageUrl, position) => ({ sortOrder, position, imageUrl })),
+			),
+		);
+	}
+	const people = await getDb()
+		.select({ id: user.id, name: user.name, image: user.image })
+		.from(user)
+		.where(eq(user.demoSessionId, session.id));
+	expect(people.find((person) => person.id === session.viewerUserId)).toMatchObject({
+		name: demoViewer.name,
+		image: demoViewer.image,
+	});
+	const byName = (left: { name: string }, right: { name: string }) =>
+		left.name.localeCompare(right.name);
+	expect(
+		people
+			.filter((person) => person.id !== session.viewerUserId)
+			.map(({ name, image }) => ({ name, image }))
+			.sort(byName),
+	).toEqual(
+		catalog
+			.filter(({ role }) => role === 'followed')
+			.map(({ recipientName, recipientImage }) => ({
+				name: recipientName,
+				image: recipientImage,
+			}))
+			.sort(byName),
+	);
+}
+
 let sessionA: Awaited<ReturnType<typeof createDemo>>;
 let sessionB: Awaited<ReturnType<typeof createDemo>>;
 let ownerA: ReturnType<typeof visitor>;
@@ -177,6 +234,11 @@ describe.skipIf(isolatedDatabaseUrl === null)(
 				);
 			await closeDb();
 		}, DATABASE_SUITE_TIMEOUT_MS);
+
+		it('provisions prepared covers, people photos and gift galleries', async () => {
+			await expectPreparedImages(sessionA, 'cs');
+			await expectPreparedImages(sessionB, 'en');
+		});
 
 		it('provisions eight curated wishlists of fifteen gifts for each visitor', async () => {
 			for (const session of [sessionA, sessionB]) {
@@ -391,7 +453,16 @@ describe.skipIf(isolatedDatabaseUrl === null)(
 		it('resets one playground to the chosen catalog language without extending expiry', async () => {
 			const before = await playgroundRecords(sessionA.id);
 			const otherBefore = await playgroundRecords(sessionB.id);
+			await getDb()
+				.update(user)
+				.set({ image: '/demo/people/petr.webp' })
+				.where(eq(user.id, sessionA.viewerUserId));
 			await resetDemo(sessionA.id, 'en');
+			const [viewerAfterReset] = await getDb()
+				.select({ image: user.image })
+				.from(user)
+				.where(eq(user.id, sessionA.viewerUserId));
+			expect(viewerAfterReset?.image).toBe('/demo/people/tereza.webp');
 			const [sameSession] = await getDb()
 				.select()
 				.from(demoSession)
@@ -407,6 +478,7 @@ describe.skipIf(isolatedDatabaseUrl === null)(
 			expect(new Set(titles.map(({ title }) => title))).toEqual(
 				new Set(getDemoCatalog('en').map(({ title }) => title)),
 			);
+			await expectPreparedImages(sessionA, 'en');
 			expect(await playgroundRecords(sessionB.id)).toEqual(otherBefore);
 			expect(
 				await getDb().select().from(wishlist).where(eq(wishlist.id, realWishlist.id)),

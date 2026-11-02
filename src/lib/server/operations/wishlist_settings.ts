@@ -39,8 +39,8 @@ function appearanceForActor(
 	) {
 		return appearance;
 	}
-	const { mode, focal, placement, dim, motion } = DEFAULT_WISHLIST_BACKGROUND;
-	return { ...appearance, background: { mode, focal, placement, dim, motion } };
+	const { mode, focal, placement, dim } = DEFAULT_WISHLIST_BACKGROUND;
+	return { ...appearance, background: { mode, focal, placement, dim } };
 }
 
 /** The image key a background draft requests: undefined keeps the stored upload. */
@@ -77,8 +77,12 @@ function mergeStoredBackground(
 	if (background.mode === 'library' && libraryImageId === null) {
 		error(400, SERVER_ERROR.INVALID_OPERATION_INPUT);
 	}
+	// Copied field by field so the deprecated, ignored `motion` input is never stored.
 	return {
-		...background,
+		mode: background.mode,
+		focal: background.focal,
+		placement: background.placement,
+		dim: background.dim,
 		imageKey:
 			background.imageKey === undefined
 				? wishlistBackgroundImageKey(wishlistRow.background)

@@ -335,6 +335,7 @@
 	class:gift-selection-owner={selectionMode}
 	class:gift-selection-list-owner={selectionMode && selectionLayout === 'list'}
 	class={cn(
+		'resting-shadow-nesting',
 		selectionMode
 			? 'relative h-full cursor-default rounded-panel transition-opacity focus-visible:outline-none'
 			: 'group/gift-card relative h-full cursor-pointer rounded-panel transition-opacity focus-visible:outline-none',
@@ -451,8 +452,12 @@
 </div>
 
 <style>
+	/* Context controls are placed from the card's outer edge, so they sit the card border plus the
+	   shared nested inset from it. */
 	[data-gift-item] {
-		--gift-context-face-inset: max(0px, calc(var(--radius-panel) - var(--radius-btn)));
+		--nested-border-inline: var(--border-w);
+		--nested-border-block: var(--border-w);
+		--gift-context-face-inset: calc(var(--border-w) + var(--gift-content-inset));
 		--gift-context-shadow-inset: calc(var(--gift-context-face-inset) + var(--depth-clearance));
 		--gift-reorder-grip-offset: 0px;
 		--gift-reorder-grip-face-inset: 0.25rem;

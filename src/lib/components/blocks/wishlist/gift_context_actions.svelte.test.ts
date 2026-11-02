@@ -217,6 +217,7 @@ describe('GiftContextActions desktop ContextMenu', () => {
 		await expect.element(highPriorityOption).toBeInTheDocument();
 		await highPriorityOption.click();
 		expect(managerProps.onpriority).toHaveBeenCalledWith('high');
+		await expect.element(screen.getByRole('menu')).not.toBeInTheDocument();
 		await screen.unmount();
 	});
 
@@ -261,6 +262,10 @@ describe('GiftContextActions desktop ContextMenu', () => {
 			const adding = await openCategorySubmenu(['sport']);
 			await checkboxItem(adding.screen, 'Knihy').click();
 			expect(adding.oncategory).toHaveBeenCalledWith('books', true);
+			await expect.element(checkboxItem(adding.screen, 'Knihy')).toBeVisible();
+			await expect
+				.element(checkboxItem(adding.screen, 'Knihy'))
+				.toHaveAttribute('aria-checked', 'false');
 			await adding.screen.unmount();
 
 			const removing = await openCategorySubmenu(['sport', 'outdoor']);

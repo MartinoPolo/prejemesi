@@ -9,7 +9,14 @@ import {
 
 // The shipped library is empty until images are generated.
 vi.mock('$lib/theme/wishlist_background_library.json', () => ({
-	default: [{ id: 'gamer-photo', themeId: 'gamer', variant: 'photo', widths: [1280, 2560] }],
+	default: [
+		{
+			id: 'gamer-photo',
+			themeId: 'gamer',
+			variant: 'photo',
+			widthsByMode: { light: [1280, 2560], dark: [1280, 2560] },
+		},
+	],
 }));
 
 const validAppearance = {
@@ -37,14 +44,23 @@ describe('WishlistAppearanceInputSchema', () => {
 		expect(parsed.output).toMatchObject({ background: libraryBackground });
 	});
 
+	it('accepts a hero frame override', () => {
+		const parsed = v.safeParse(WishlistAppearanceInputSchema, {
+			...validAppearance,
+			styleTokens: { heroFrame: 'invitation' },
+		});
+		expect(parsed.success).toBe(true);
+		expect(parsed.output).toMatchObject({ styleTokens: { heroFrame: 'invitation' } });
+	});
+
 	it('accepts clearing every appearance field', () => {
 		const cleared = { themeId: null, styleTokens: null, background: null };
 		expect(v.safeParse(WishlistAppearanceInputSchema, cleared).success).toBe(true);
 	});
 
 	it('accepts a background without an image key, which keeps the stored upload', () => {
-		const { mode, focal, placement, dim, motion } = DEFAULT_WISHLIST_BACKGROUND;
-		const backgroundWithoutImageKey = { mode, focal, placement, dim, motion };
+		const { mode, focal, placement, dim } = DEFAULT_WISHLIST_BACKGROUND;
+		const backgroundWithoutImageKey = { mode, focal, placement, dim };
 		const parsed = v.safeParse(WishlistAppearanceInputSchema, {
 			...validAppearance,
 			background: backgroundWithoutImageKey,
@@ -54,10 +70,22 @@ describe('WishlistAppearanceInputSchema', () => {
 		expect(parsed.output).not.toHaveProperty('background.imageKey');
 	});
 
+	it.each(['subtle', 'off'] as const)(
+		'still accepts the retired scroll motion %s from older clients',
+		(motion) => {
+			const parsed = v.safeParse(WishlistAppearanceInputSchema, {
+				...validAppearance,
+				background: { ...DEFAULT_WISHLIST_BACKGROUND, motion },
+			});
+			expect(parsed.success).toBe(true);
+		},
+	);
+
 	it.each([
 		['an unknown theme', { ...validAppearance, themeId: 'halloween' }],
 		['an unknown token key', { ...validAppearance, styleTokens: { glow: 'neon' } }],
 		['an unknown token value', { ...validAppearance, styleTokens: { corners: 'wavy' } }],
+		['an unknown hero frame', { ...validAppearance, styleTokens: { heroFrame: 'scroll' } }],
 		[
 			'a dim above the maximum',
 			{ ...validAppearance, background: { ...DEFAULT_WISHLIST_BACKGROUND, dim: 61 } },
@@ -76,6 +104,10 @@ describe('WishlistAppearanceInputSchema', () => {
 				...validAppearance,
 				background: { ...DEFAULT_WISHLIST_BACKGROUND, focal: { x: 101, y: 50 } },
 			},
+		],
+		[
+			'an unknown retired scroll motion',
+			{ ...validAppearance, background: { ...DEFAULT_WISHLIST_BACKGROUND, motion: 'fast' } },
 		],
 		[
 			'an unknown background mode',
@@ -130,6 +162,23 @@ describe('sanitizeWishlistAppearance', () => {
 		).toEqual({ border: 'fine' });
 	});
 
+	it('keeps a stored hero frame and drops a retired one', () => {
+		expect(
+			sanitizeWishlistAppearance({
+				themeId: null,
+				styleTokens: { heroFrame: 'tag' },
+				background: null,
+			}).styleTokens,
+		).toEqual({ heroFrame: 'tag' });
+		expect(
+			sanitizeWishlistAppearance({
+				themeId: null,
+				styleTokens: { corners: 'soft', heroFrame: 'scroll' },
+				background: null,
+			}).styleTokens,
+		).toEqual({ corners: 'soft' });
+	});
+
 	it('reads overrides with nothing valid left, or malformed JSON, as null', () => {
 		expect(
 			sanitizeWishlistAppearance({
@@ -140,14 +189,14 @@ describe('sanitizeWishlistAppearance', () => {
 		).toEqual({ themeId: null, styleTokens: null, background: null });
 	});
 
-	it('drops out-of-range background fields', () => {
+	it('drops out-of-range and retired background fields', () => {
 		expect(
 			sanitizeWishlistAppearance({
 				themeId: null,
 				styleTokens: null,
 				background: { mode: 'custom', dim: 99, focal: { x: -5, y: 50 }, motion: 'off' },
 			}).background,
-		).toEqual({ mode: 'custom', motion: 'off' });
+		).toEqual({ mode: 'custom' });
 	});
 
 	it('keeps a stored library image that is still in the library', () => {

@@ -3,11 +3,11 @@ import { isWishlistLibraryImageId } from '$lib/theme/wishlist_background_library
 import {
 	WISHLIST_BACKGROUND_DIM_MAX,
 	WISHLIST_BACKGROUND_MODES,
-	WISHLIST_BACKGROUND_MOTIONS,
 	WISHLIST_BACKGROUND_PLACEMENTS,
 	WISHLIST_BORDER_STYLES,
 	WISHLIST_CORNER_STYLES,
 	WISHLIST_HEADING_FONTS,
+	WISHLIST_HERO_FRAMES,
 	WISHLIST_IMAGE_MATS,
 	WISHLIST_THEME_IDS,
 	isWishlistThemeId,
@@ -23,6 +23,7 @@ const STYLE_TOKEN_SCHEMAS = {
 	border: v.picklist(WISHLIST_BORDER_STYLES),
 	mat: v.picklist(WISHLIST_IMAGE_MATS),
 	heading: v.picklist(WISHLIST_HEADING_FONTS),
+	heroFrame: v.picklist(WISHLIST_HERO_FRAMES),
 } satisfies { [Token in keyof WishlistStyleTokens]: v.GenericSchema<WishlistStyleTokens[Token]> };
 
 const BACKGROUND_FIELD_SCHEMAS = {
@@ -37,7 +38,6 @@ const BACKGROUND_FIELD_SCHEMAS = {
 	focal: v.strictObject({ x: PercentSchema, y: PercentSchema }),
 	placement: v.picklist(WISHLIST_BACKGROUND_PLACEMENTS),
 	dim: v.pipe(v.number(), v.integer(), v.minValue(0), v.maxValue(WISHLIST_BACKGROUND_DIM_MAX)),
-	motion: v.picklist(WISHLIST_BACKGROUND_MOTIONS),
 } satisfies { [Field in keyof WishlistBackground]: v.GenericSchema<WishlistBackground[Field]> };
 
 /**
@@ -58,6 +58,14 @@ export const WishlistAppearanceInputSchema = v.strictObject({
 			...BACKGROUND_FIELD_SCHEMAS,
 			imageKey: v.optional(BACKGROUND_FIELD_SCHEMAS.imageKey),
 			libraryImageId: v.optional(BACKGROUND_FIELD_SCHEMAS.libraryImageId),
+			motion: v.optional(
+				v.pipe(
+					v.picklist(['subtle', 'off']),
+					v.description(
+						'Deprecated: ignored. The backdrop always drifts subtly with scrolling.',
+					),
+				),
+			),
 		}),
 	),
 	/** Upload proof, required only when assigning a newly uploaded background image key. */

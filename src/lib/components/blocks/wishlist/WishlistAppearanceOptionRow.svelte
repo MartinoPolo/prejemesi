@@ -10,21 +10,24 @@
 		disabled?: boolean;
 	}
 
-	interface WishlistAppearanceOptionRowProps {
+	/** A visible label beside the options, or the id of a heading that already names them. */
+	type RowLabel = { label: string; labelledBy?: never } | { label?: never; labelledBy: string };
+
+	type WishlistAppearanceOptionRowProps = RowLabel & {
 		/** Prefix for the label id, unique per editor. */
 		id: string;
-		label: string;
 		value: Value;
 		options: readonly AppearanceOption[];
 		onchange: (value: Value) => void;
 		disabled?: boolean;
 		/** Hint or notice under the options. */
 		help?: Snippet;
-	}
+	};
 
 	let {
 		id,
 		label,
+		labelledBy,
 		value,
 		options,
 		onchange,
@@ -45,15 +48,21 @@
 </script>
 
 <div
-	class="flex flex-col gap-2 sm:grid sm:grid-cols-[10rem_minmax(0,1fr)] sm:items-center sm:gap-3"
+	class={cn(
+		'flex flex-col gap-2',
+		label !== undefined &&
+			'sm:grid sm:grid-cols-[10rem_minmax(0,1fr)] sm:items-center sm:gap-3',
+	)}
 >
-	<Label id="{id}-label">{label}</Label>
+	{#if label !== undefined}
+		<Label id="{id}-label">{label}</Label>
+	{/if}
 	<div class="flex min-w-0 flex-col gap-1.5">
 		<SegmentedToggle.Root
 			{value}
 			onValueChange={handleValueChange}
 			{disabled}
-			aria-labelledby="{id}-label"
+			aria-labelledby={labelledBy ?? `${id}-label`}
 			class={cn(
 				'max-w-full self-start',
 				stacksOnPhones && 'max-sm:grid max-sm:h-auto max-sm:w-full max-sm:grid-cols-2',

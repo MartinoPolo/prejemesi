@@ -487,6 +487,11 @@
 		return true;
 	}
 
+	/** The editor's title-row Save, shown while the on-screen keyboard hides the footer. */
+	export function submit() {
+		void handleSubmit();
+	}
+
 	async function handleSubmit() {
 		if (mutationPending || isImageUploadPending) {
 			return;

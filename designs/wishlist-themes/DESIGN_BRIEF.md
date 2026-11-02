@@ -36,7 +36,7 @@ Managers can personalize a wishlist beyond its palette with themed decorative ba
 
 ## Backgrounds
 
-**Desktop (gutters ≥ 1260 px container).** The live content container (1120 px plus gutters) leaves side gutters, and the background fills them. The theme layer is a CSS pattern plus 8 motifs per side at three depths (far, mid, near), placed deterministically. A soft center wash sits behind the content column. Content surfaces (notebook, toolbar, group plates and gift cards) stay opaque paper, so text never sits on artwork. On the dark-backdrop themes (Herní doupě, Vánoce, custom photo), the hard shadow switches to black for separation.
+**Desktop (gutters ≥ 1260 px container).** The live content container (1120 px plus gutters) leaves side gutters, and the background fills them. The theme layer is a CSS pattern plus 8 motifs per side at three depths (far, mid, near), placed deterministically. A soft center wash sits behind the content column. Content surfaces (notebook, toolbar, group plates and gift cards) stay opaque paper, so text never sits on artwork. Shadows always follow the viewer's depth style and mode; on a dark photo the bold card border separates the cards.
 
 **Tablet and mobile.** Gutters are only 12–16 px, so the motifs move to a short strip (about 64–84 px) above the notebook header, and the theme pattern shows faintly between cards. The strip scrolls away with the page. It is decoration, not the full-bleed hero that DECISIONS 2026-07-10 forbids.
 
@@ -70,7 +70,7 @@ Fonts in the mockups are system look-alikes, because the files load no external 
 
 1. **How many themes at launch?** Recommendation: ship the ten shown and grow by occasion demand. Curation over volume is the point.
 2. **Should a theme also apply to the polaroid placeholder and the OG/social image?** Recommendation: yes for the placeholder (show a theme motif when there is no image). Defer the OG image to a separate issue.
-3. **Dark mode for light themes?** Recommendation: derive a dark backdrop by mixing the theme backdrop toward the dark-palette charcoal and keep the motifs at full color. The dark-native themes (Herní doupě, Vánoce) look the same in both modes.
+3. **Dark mode?** Every theme has a light and a dark backdrop, picked by the viewer's mode. Light-born themes derive the dark one by mixing their backdrop toward the dark-palette charcoal; Herní doupě, Vánoce and Vesmír pair their own deep dark backdrop with a pale light one (lavender, snowy paper, pale sky). Motifs stay at full color; outline-free line art takes a contrasting colour per mode.
 4. **Who can pick a theme: recipient, správci or both?** Recommendation: the same roles that can change the palette today. The theme belongs to the wishlist settings draft and the global Save.
 5. **Should custom uploads be moderated?** Recommendation: treat them like gift and wishlist images (same limits and reporting). No pre-moderation.
 6. **Should the theme be offered in the quick-create modal?** Recommendation: no. Keep creation quick (DECISIONS 2026-05-30), but default the theme by occasion when the title or date implies one (for example December leads to Vánoce), and let the manager change it in Settings.

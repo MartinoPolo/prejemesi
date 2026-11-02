@@ -17,19 +17,37 @@ const SWIPE_HORIZONTAL_DOMINANCE = 1.2;
 /** Share of the image width a released swipe must cover to change the image. */
 const SWIPE_COMMIT_SHARE = 0.2;
 
+/** Stiffness of the rubber band past the first or last image, which never travels a full width. */
+const EDGE_RESISTANCE = 0.55;
+
 export type GallerySwipeIntent = 'pending' | 'horizontal' | 'vertical';
 
-/** The gallery position an index lands on, wrapping around both ends. */
-export function wrapGalleryIndex(index: number, count: number): number {
-	if (count < 2) {
-		return 0;
-	}
-	return ((index % count) + count) % count;
+/** The gallery position an index lands on; browsing stops at the first and last image. */
+export function clampGalleryIndex(index: number, count: number): number {
+	return Math.min(Math.max(index, 0), Math.max(count - 1, 0));
 }
 
-/** The previous and next images of a position, each once. */
+/** The previous and next images of a position that exist. */
 export function galleryNeighbourIndexes(index: number, count: number): number[] {
-	return [...new Set([wrapGalleryIndex(index - 1, count), wrapGalleryIndex(index + 1, count)])];
+	return [index - 1, index + 1].filter((neighbour) => neighbour >= 0 && neighbour < count);
+}
+
+/**
+ * How far the shown image follows a finger dragged by `deltaX`: fully toward an existing
+ * neighbour, with rubber-band resistance past the first or last image.
+ */
+export function galleryDragOffset(
+	deltaX: number,
+	width: number,
+	index: number,
+	count: number,
+): number {
+	const towardIndex = index + (deltaX < 0 ? 1 : -1);
+	if (width <= 0 || (towardIndex >= 0 && towardIndex < count)) {
+		return deltaX;
+	}
+	const resisted = width * (1 - 1 / ((Math.abs(deltaX) * EDGE_RESISTANCE) / width + 1));
+	return Math.sign(deltaX) * resisted;
 }
 
 export function galleryIndicatorKind(count: number): GiftGalleryIndicatorKind {

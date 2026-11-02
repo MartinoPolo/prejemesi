@@ -1,15 +1,16 @@
 import { tv } from 'tailwind-variants';
 
 /**
- * Anime-sky notebook header (issue #102 REQ-12). The spiral-notebook panel
- * (punch holes, red margin line, ruled lines), the taped polaroid photo and the
- * sticky-note countdown are drawn in WishlistHeader's scoped <style> block —
- * the multi-layer background images don't translate to utility classes.
+ * Anime-sky wishlist header (issue #102 REQ-12). The hero frame paper is drawn by
+ * WishlistHeroFrame, the occasion emblem by WishlistHeroEmblem and the taped Blok
+ * polaroid in WishlistHeader's scoped <style> block — the multi-layer background
+ * images don't translate to utility classes.
  */
 export const wishlistHeaderVariants = tv({
 	slots: {
 		root: 'flex flex-col gap-3 sm:gap-6',
-		headerText: 'min-w-0 flex-1',
+		/** Keeps clear of the frame's end decoration even without hero actions. */
+		headerText: 'min-w-0 flex-1 sm:pe-(--hero-copy-end-minimum)',
 		/** „Pro: {recipient}" line above the title (name bold, prefix lighter) — all lists. */
 		recipientLine: 'reveal text-[17px] text-muted-foreground',
 		/** Groups the name with its edit pencil so the ghost button truly centers on the name's own box, not the line's mixed font sizes (issue #157). */
@@ -20,8 +21,8 @@ export const wishlistHeaderVariants = tv({
 		title: 'reveal reveal-2 mt-0.5 text-[clamp(28px,4vw,42px)] leading-tight font-semibold',
 		description: 'reveal reveal-2 mt-1 max-w-2xl text-base text-muted-foreground',
 		metaRow: 'reveal reveal-3 mt-2 flex flex-wrap items-center gap-2.5',
-		/** Sticky-note stand-in chip: only rendered below the sticky-note breakpoint. */
-		countdownChip: 'hidden max-[960px]:inline-flex bg-accent-loud text-accent-loud-foreground',
+		/** Emblem stand-in: from 960 px the occasion emblem carries occasion and countdown. */
+		occasionChip: 'min-[960px]:hidden',
 		managersLine: 'text-sm text-muted-foreground',
 		actionRow: 'reveal reveal-4 mt-3 flex flex-wrap items-center gap-2',
 		editImageButton:

@@ -12,21 +12,23 @@
 		WISHLIST_BACKGROUND_DIM_MAX,
 		type WishlistBackground,
 		type WishlistBackgroundMode,
-		type WishlistBackgroundMotion,
 		type WishlistBackgroundPlacement,
 		type WishlistThemeId,
 	} from '$lib/theme/wishlist_themes.js';
 	import {
 		WISHLIST_LIBRARY_IMAGES,
 		findWishlistLibraryImage,
-		wishlistLibraryImageThumbnailUrl,
+		wishlistLibraryImageThumbnailLayers,
 		wishlistLibraryImagesForTheme,
+		type WishlistBackgroundPhotoLayer,
 	} from '$lib/theme/wishlist_background_library.js';
 	import WishlistAppearanceOptionRow from './WishlistAppearanceOptionRow.svelte';
 	import WishlistBackgroundLibraryPicker from './WishlistBackgroundLibraryPicker.svelte';
 	import WishlistBackgroundFocalPicker from './WishlistBackgroundFocalPicker.svelte';
 
 	interface WishlistBackgroundEditorProps {
+		/** Id of the heading that names the background mode choice. */
+		labelledBy: string;
 		background: WishlistBackground;
 		/** Without a theme there is no theme backdrop to choose; its library images lead the picker. */
 		themeId: WishlistThemeId | null;
@@ -41,6 +43,7 @@
 	}
 
 	let {
+		labelledBy,
 		background,
 		themeId,
 		imageUrl,
@@ -74,10 +77,6 @@
 		{ value: 'gutters', label: m.wishlist_appearance_background_placement_gutters() },
 		{ value: 'full', label: m.wishlist_appearance_background_placement_full() },
 	] satisfies { value: WishlistBackgroundPlacement; label: string }[];
-	const motionOptions = [
-		{ value: 'subtle', label: m.wishlist_appearance_motion_subtle() },
-		{ value: 'off', label: m.wishlist_appearance_motion_off() },
-	] satisfies { value: WishlistBackgroundMotion; label: string }[];
 
 	const showsCustomControls = $derived(background.mode === 'custom' && allowCustomUpload);
 	const customImageUrl = $derived(background.imageKey === null ? null : imageUrl);
@@ -101,7 +100,7 @@
 	}
 </script>
 
-{#snippet photoControls(photoUrl: string, replaceable: boolean)}
+{#snippet photoControls(photoLayers: WishlistBackgroundPhotoLayer[], replaceable: boolean)}
 	<div class="flex flex-col gap-2">
 		<div class="flex flex-wrap items-center justify-between gap-2">
 			<Label id="{idPrefix}-focal-label">
@@ -125,7 +124,7 @@
 			{/if}
 		</div>
 		<WishlistBackgroundFocalPicker
-			imageUrl={photoUrl}
+			layers={photoLayers}
 			focal={background.focal}
 			onchange={(focal) => onchange({ focal })}
 			describedBy="{idPrefix}-focal-hint"
@@ -176,7 +175,7 @@
 <div class="flex flex-col gap-4">
 	<WishlistAppearanceOptionRow
 		id="wishlist-appearance-background"
-		label={m.wishlist_appearance_background_label()}
+		{labelledBy}
 		value={background.mode}
 		options={modeOptions}
 		onchange={selectMode}
@@ -202,7 +201,7 @@
 				<HelpText>{m.wishlist_appearance_background_upload_hint()}</HelpText>
 			</div>
 		{:else}
-			{@render photoControls(customImageUrl, true)}
+			{@render photoControls([{ shownIn: null, src: customImageUrl }], true)}
 		{/if}
 	{:else if selectedLibraryImage !== null}
 		<div class="flex flex-col gap-2">
@@ -217,21 +216,6 @@
 				{disabled}
 			/>
 		</div>
-		{@render photoControls(wishlistLibraryImageThumbnailUrl(selectedLibraryImage), false)}
-	{/if}
-
-	{#if background.mode !== 'none'}
-		<WishlistAppearanceOptionRow
-			id="wishlist-appearance-motion"
-			label={m.wishlist_appearance_motion_label()}
-			value={background.motion}
-			options={motionOptions}
-			onchange={(motion) => onchange({ motion })}
-			{disabled}
-		>
-			{#snippet help()}
-				<HelpText>{m.wishlist_appearance_motion_hint()}</HelpText>
-			{/snippet}
-		</WishlistAppearanceOptionRow>
+		{@render photoControls(wishlistLibraryImageThumbnailLayers(selectedLibraryImage), false)}
 	{/if}
 </div>

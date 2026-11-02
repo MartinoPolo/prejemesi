@@ -30,6 +30,9 @@
 	const CheckboxItem = $derived(
 		kind === 'dropdown' ? DropdownMenu.CheckboxItem : ContextMenu.CheckboxItem,
 	);
+
+	// The checklist stays open, so a toggle must show the gift's saved categories, not a local flip.
+	function ignoreCheckboxToggle() {}
 </script>
 
 {#snippet submenu(entry: GiftContextSubmenuEntry)}
@@ -47,8 +50,10 @@
 						>{/each}
 				</RadioGroup>{:else}{@const menu =
 					entry.menu}{#each menu.options as option (option.id)}<CheckboxItem
-						checked={option.state === true}
-						indeterminate={option.state === 'indeterminate'}
+						bind:checked={() => option.state === true, ignoreCheckboxToggle}
+						bind:indeterminate={
+							() => option.state === 'indeterminate', ignoreCheckboxToggle
+						}
 						disabled={option.disabled}
 						onCheckedChange={(checked) =>
 							menu.toggle(option.id, option.id === null || checked)}

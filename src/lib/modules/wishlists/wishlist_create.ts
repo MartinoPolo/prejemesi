@@ -5,16 +5,21 @@ import { moderatorAssignment } from '$lib/server/db/moderator.schema.js';
 import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
 import { DEFAULT_PALETTE, type Palette } from '$lib/theme/palettes.js';
 import { WISHLIST_THEMES, type WishlistThemeId } from '$lib/theme/wishlist_themes.js';
-import { inferOccasionThemeId } from '$lib/theme/wishlist_theme_occasion.js';
+import { suggestWishlistThemeId } from './wishlist_occasion.js';
 import { demoSessionId } from '$lib/server/demo/scope.js';
 import { enforceDemoWishlistLimit } from '$lib/server/demo/limits.js';
-import { assertEventDateAllowed } from '$lib/server/operations/wishlist_kind_rules.js';
+import {
+	assertEventDateAllowed,
+	resolveRequestedOccasion,
+} from '$lib/server/operations/wishlist_kind_rules.js';
 import {
 	DEFAULT_PRIORITY_LEVELS,
 	DEFAULT_WISHLIST_THEME,
 	RECIPIENT_KIND,
 	WISHLIST_KIND,
+	WISHLIST_OCCASION,
 	type WishlistKind,
+	type WishlistOccasion,
 	type WishlistTheme,
 } from './types.js';
 
@@ -30,10 +35,11 @@ type Transaction = Parameters<Parameters<ReturnType<typeof getDb>['transaction']
 export type NewWishlistInput = {
 	title: string;
 	kind?: WishlistKind;
+	occasion?: WishlistOccasion;
 	eventDate?: Date | null;
 	theme?: WishlistTheme;
 	palette?: Palette;
-	/** Omitted: inferred from the title or event date; null: explicitly no theme. */
+	/** Omitted: suggested by the occasion, title or event date; null: explicitly no theme. */
 	themeId?: WishlistThemeId | null;
 	description?: string | null;
 } & ({ recipientKind: 'self' } | { recipientKind: 'other'; recipientName: string });
@@ -51,14 +57,21 @@ export async function seedNewWishlist(
 	input: NewWishlistInput,
 ): Promise<typeof wishlist.$inferSelect> {
 	const forSelf = input.recipientKind === RECIPIENT_KIND.self;
-	const kind = input.kind ?? WISHLIST_KIND.occasion;
+	const { kind, occasion } = resolveRequestedOccasion(
+		{ kind: input.kind, occasion: input.occasion },
+		null,
+	) ?? { kind: WISHLIST_KIND.occasion, occasion: WISHLIST_OCCASION.other };
 	assertEventDateAllowed(kind, input.eventDate);
 	// Normalize the optional description: trim, then collapse empty/whitespace-only to null
 	// (mirrors the settings-modal save path so both write the same shape).
 	const trimmedDescription = input.description?.trim() ?? '';
 	const themeId =
 		input.themeId === undefined
-			? inferOccasionThemeId({ title: input.title, eventDate: input.eventDate ?? null })
+			? suggestWishlistThemeId({
+					occasion,
+					title: input.title,
+					eventDate: input.eventDate ?? null,
+				})
 			: input.themeId;
 	const sessionId = demoSessionId();
 	if (sessionId !== null) {
@@ -73,6 +86,7 @@ export async function seedNewWishlist(
 			recipientName: forSelf ? null : input.recipientName,
 			title: input.title,
 			kind,
+			occasion,
 			eventDate: input.eventDate ?? null,
 			palette:
 				input.palette ??

@@ -183,7 +183,9 @@
 		}
 		addsLinkOnMenuClose = false;
 		event.preventDefault();
-		onaddurl();
+		// bits-ui calls this from the closing menu's effect; runes created there would be
+		// owned by it and freeze once the menu unmounts, so the new draft must start outside it.
+		queueMicrotask(onaddurl);
 	}
 
 	function handleUploadPendingChange(pending: boolean) {

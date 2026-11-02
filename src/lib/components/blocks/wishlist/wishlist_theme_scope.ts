@@ -2,7 +2,6 @@ import type { WishlistAppearance } from '$lib/modules/wishlists/wishlist_appeara
 import { imagePublicUrl } from '$lib/modules/images/public_url.js';
 import { findWishlistLibraryImage } from '$lib/theme/wishlist_background_library.js';
 import {
-	WISHLIST_THEMES,
 	resolveWishlistBackground,
 	resolveWishlistStyle,
 	type WishlistBackground,
@@ -37,8 +36,6 @@ export interface WishlistThemeScope {
 	/** Resolved custom background URL, only while the custom backdrop is rendered. */
 	customImageUrl: string | null;
 	style: WishlistStyleTokens;
-	/** Dark backdrops (dark-native themes, photos) switch the hard shadow to black. */
-	darkBackdrop: boolean;
 }
 
 export function resolveWishlistThemeScope(
@@ -57,11 +54,6 @@ export function resolveWishlistThemeScope(
 		background,
 		customImageUrl: backgroundMode === 'custom' ? customImageUrl : null,
 		style: resolveWishlistStyle(themeId, appearance.styleTokens),
-		darkBackdrop:
-			isPhotoBackground(backgroundMode) ||
-			(backgroundMode === 'theme' &&
-				themeId !== null &&
-				WISHLIST_THEMES[themeId].darkBackdrop),
 	};
 }
 
@@ -97,7 +89,6 @@ export function wishlistThemeScopeAttributes(scope: WishlistThemeScope) {
 		'data-wishlist-theme': scope.backdropThemeId ?? undefined,
 		'data-wishlist-background': scope.backgroundMode,
 		'data-wishlist-backdrop': hasBackdrop ? '' : undefined,
-		'data-wishlist-dark-backdrop': scope.darkBackdrop ? '' : undefined,
 		'data-wishlist-placement': isPhotoBackground(scope.backgroundMode)
 			? scope.background.placement
 			: undefined,

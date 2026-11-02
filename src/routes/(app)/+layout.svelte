@@ -126,7 +126,10 @@
 		min-height: 0;
 	}
 
+	/* The scroller is the containing block for absolutely positioned content (sr-only labels),
+	   which otherwise resolves against the body and gives the document a second scrollbar. */
 	.app-content {
+		position: relative;
 		flex: 1;
 		min-width: 0;
 		overflow: hidden auto;

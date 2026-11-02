@@ -16,7 +16,7 @@ Run a release from remote `dev` to `production`. Treat `docs/DEPLOYMENT.md`, `.g
 
 ## 1. Qualify the Release
 
-1. Read the three sources of truth above.
+1. Read the three sources of truth above and `RELEASE_NEXT.md`. Carry out or schedule each of its items for this release, and keep the ones that belong to a later release.
 2. Fetch the remote and resolve the repository with `gh repo view --json nameWithOwner`.
 3. Compare `origin/production..origin/dev` and inspect every changed path and commit.
     - If changes exist, continue with a `dev` → `production` release PR.
@@ -65,7 +65,8 @@ Then watch the `Deploy (production)` run for the exact production SHA:
 2. Require the GitHub environment deployment, live Worker version, Worker `GIT_COMMIT_SHA`, and workflow head to identify the same production SHA.
 3. Confirm `https://prejemesi.cz` responds and exercise the smallest production smoke path covering the release. Do not create production users or mutate user data unless explicitly authorized.
 4. Inspect a bounded `wrangler tail` window, Sentry, and relevant Cloudflare metrics for new errors without retaining tokens, query strings, identities, or request data.
-5. Report the release PR or manual dispatch, production SHA, workflow URL, Worker version, migration result, smoke result, and rollback target.
+5. Reset `RELEASE_NEXT.md` on `dev` through a PR, keeping only items for a later release.
+6. Report the release PR or manual dispatch, production SHA, workflow URL, Worker version, migration result, smoke result, and rollback target.
 
 ## Rollback
 

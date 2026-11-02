@@ -180,10 +180,10 @@ If the refinement process revealed missing requirements or corrections, add/upda
 
 Ask for the associated GitHub issue number if not known (the **design issue** — the one this refinement satisfies).
 
-Post a comment recording the refinement:
+Screenshot `refined.html` into `MPX_TEMP` (never commit it) and post a comment recording the refinement; gh appends the attached image:
 
 ```bash
-gh issue comment <number> --body "## Design Refined
+gh issue comment <number> --attach '<screenshot>.png#Refined variant <X>' --body "## Design Refined
 
 Variant **<X>** refined: [comma-separated refinements]
 

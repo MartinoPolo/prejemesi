@@ -3,10 +3,11 @@ import { DEFAULT_WISHLIST_BACKGROUND, WISHLIST_THEMES } from '$lib/theme/wishlis
 import {
 	createWishlistAppearanceDraft,
 	draftStyle,
-	hasStyleOverrides,
+	isMotifFieldOverridden,
 	isSameWishlistAppearanceDraft,
-	resetWishlistStyleOverrides,
+	resetMotifField,
 	selectWishlistTheme,
+	WISHLIST_MOTIF_FIELDS,
 	setWishlistBackground,
 	setWishlistStyleToken,
 	wishlistAppearanceDraftToInput,
@@ -92,7 +93,6 @@ describe('wishlist appearance draft', () => {
 		const themed = selectWishlistTheme(unthemed, 'minimal').draft;
 		const overridden = setWishlistStyleToken(themed, 'corners', 'round');
 		expect(overridden.styleOverrides).toEqual({ corners: 'round' });
-		expect(hasStyleOverrides(overridden)).toBe(true);
 
 		const restored = setWishlistStyleToken(
 			overridden,
@@ -100,14 +100,158 @@ describe('wishlist appearance draft', () => {
 			WISHLIST_THEMES.minimal.style.corners,
 		);
 		expect(restored.styleOverrides).toEqual({});
-		expect(hasStyleOverrides(restored)).toBe(false);
 	});
 
-	it('resetting the style returns to the theme defaults', () => {
-		const themed = selectWishlistTheme(unthemed, 'wedding').draft;
-		const overridden = setWishlistStyleToken(themed, 'heading', 'hand');
-		const reset = resetWishlistStyleOverrides(overridden);
-		expect(draftStyle(reset)).toEqual(WISHLIST_THEMES.wedding.style);
+	it('stores a chosen hero frame as an override of the motif frame', () => {
+		const christmas = selectWishlistTheme(unthemed, 'christmas').draft;
+		expect(draftStyle(christmas).heroFrame).toBe(WISHLIST_THEMES.christmas.style.heroFrame);
+		const tagged = setWishlistStyleToken(christmas, 'heroFrame', 'tag');
+		expect(tagged.styleOverrides).toEqual({ heroFrame: 'tag' });
+		expect(wishlistAppearanceDraftToInput(tagged, null).styleTokens).toEqual({
+			heroFrame: 'tag',
+		});
+	});
+
+	describe('motif fields', () => {
+		const christmas = selectWishlistTheme(unthemed, 'christmas').draft;
+		const christmasPalette = WISHLIST_THEMES.christmas.palette;
+
+		function overriddenFields(draft: typeof christmas, palette = christmasPalette) {
+			return WISHLIST_MOTIF_FIELDS.filter((field) =>
+				isMotifFieldOverridden(draft, palette, field),
+			);
+		}
+
+		it('all come from a freshly chosen motif', () => {
+			expect(overriddenFields(christmas)).toEqual([]);
+		});
+
+		it('count a palette other than the motif palette as an override', () => {
+			expect(overriddenFields(christmas, 'ocean')).toEqual(['palette']);
+		});
+
+		it.each(['library', 'custom', 'none'] as const)(
+			'count a %s background as an override',
+			(mode) => {
+				expect(overriddenFields(setWishlistBackground(christmas, { mode }))).toEqual([
+					'background',
+				]);
+			},
+		);
+
+		it('keep photo settings of the motif backdrop as the motif background', () => {
+			expect(overriddenFields(setWishlistBackground(christmas, { dim: 45 }))).toEqual([]);
+		});
+
+		it('separate the hero frame from the other style tokens', () => {
+			expect(overriddenFields(setWishlistStyleToken(christmas, 'heroFrame', 'tag'))).toEqual([
+				'heroFrame',
+			]);
+			for (const [token, value] of [
+				['corners', 'sharp'],
+				['border', 'fine'],
+				['mat', 'black'],
+				['heading', 'elegant'],
+			] as const) {
+				expect(overriddenFields(setWishlistStyleToken(christmas, token, value))).toEqual([
+					'style',
+				]);
+			}
+		});
+
+		it('are never overridden without a motif, so there is nothing to reset to', () => {
+			const customized = setWishlistStyleToken(
+				setWishlistBackground(unthemed, { mode: 'none' }),
+				'corners',
+				'sharp',
+			);
+			expect(overriddenFields(customized, 'ruby')).toEqual([]);
+			expect(resetMotifField(customized, 'style')).toEqual({
+				draft: customized,
+				palette: null,
+			});
+		});
+
+		it('reset the palette to the motif palette', () => {
+			expect(resetMotifField(christmas, 'palette')).toEqual({
+				draft: christmas,
+				palette: christmasPalette,
+			});
+		});
+
+		it('reset the background to the motif backdrop and keep the stored upload', () => {
+			const withPhoto = setWishlistBackground(christmas, {
+				mode: 'custom',
+				imageKey: 'wishlists/backgrounds/photo.jpg',
+			});
+			const { draft, palette } = resetMotifField(withPhoto, 'background');
+			expect(palette).toBeNull();
+			expect(draft.background).toEqual({ ...withPhoto.background, mode: 'theme' });
+			expect(overriddenFields(draft)).toEqual([]);
+		});
+
+		it('reset the hero frame and the style apart from each other', () => {
+			const customized = setWishlistStyleToken(
+				setWishlistStyleToken(
+					setWishlistStyleToken(christmas, 'heroFrame', 'invitation'),
+					'corners',
+					'sharp',
+				),
+				'heading',
+				'hand',
+			);
+			const frameReset = resetMotifField(customized, 'heroFrame').draft;
+			expect(frameReset.styleOverrides).toEqual({ corners: 'sharp', heading: 'hand' });
+			const styleReset = resetMotifField(customized, 'style').draft;
+			expect(styleReset.styleOverrides).toEqual({ heroFrame: 'invitation' });
+			expect(draftStyle(resetMotifField(frameReset, 'style').draft)).toEqual(
+				WISHLIST_THEMES.christmas.style,
+			);
+		});
+
+		it('show a stored row exactly as stored and save it back unchanged', () => {
+			const stored = {
+				themeId: 'minimal',
+				// A stored override equal to the motif default stays an explicit choice.
+				styleTokens: { corners: 'sharp', heroFrame: 'gift' },
+				background: {
+					mode: 'library',
+					libraryImageId: 'christmas-photo',
+					imageKey: 'wishlists/backgrounds/kept.jpg',
+					focal: { x: 20, y: 70 },
+					placement: 'full',
+					dim: 35,
+				},
+			} as const;
+			const draft = createWishlistAppearanceDraft(stored);
+			expect(overriddenFields(draft, 'ocean')).toEqual([
+				'palette',
+				'background',
+				'heroFrame',
+				'style',
+			]);
+			expect(draftStyle(draft)).toEqual({
+				...WISHLIST_THEMES.minimal.style,
+				corners: 'sharp',
+				heroFrame: 'gift',
+			});
+			expect(
+				isSameWishlistAppearanceDraft(draft, createWishlistAppearanceDraft(stored)),
+			).toBe(true);
+
+			const input = wishlistAppearanceDraftToInput(draft, stored.background.imageKey);
+			expect(input).toEqual({
+				themeId: stored.themeId,
+				styleTokens: stored.styleTokens,
+				background: {
+					mode: stored.background.mode,
+					libraryImageId: stored.background.libraryImageId,
+					focal: stored.background.focal,
+					placement: stored.background.placement,
+					dim: stored.background.dim,
+				},
+			});
+		});
 	});
 
 	it('detects a change and its revert as clean again', () => {
@@ -126,7 +270,6 @@ describe('wishlist appearance draft', () => {
 		['focal point', { focal: { x: 10, y: 50 } }],
 		['placement', { placement: 'full' }],
 		['dim', { dim: 0 }],
-		['motion', { motion: 'off' }],
 	] as const)('counts a changed background %s as a change', (_field, changes) => {
 		expect(
 			isSameWishlistAppearanceDraft(setWishlistBackground(unthemed, changes), unthemed),

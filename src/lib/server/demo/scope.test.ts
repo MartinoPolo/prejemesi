@@ -6,6 +6,7 @@ import {
 	assertWishlistScope,
 	demoSessionId,
 	isPreparedDemoImage,
+	rejectDemoImageUpload,
 	rejectDemoOperation,
 } from './scope.js';
 
@@ -56,8 +57,26 @@ describe('demo wishlist boundary', () => {
 		expect(isPreparedDemoImage('https://example.com/demo/v1/teapot.jpg')).toBe(false);
 	});
 
+	it('lets a demo wishlist keep or remove its prepared cover but never take an uploaded key', () => {
+		requestEvent.mockReturnValue({ locals: { demoSession: { id: 'visitor-a' } } } as ReturnType<
+			typeof getRequestEvent
+		>);
+		expect(() => rejectDemoImageUpload('/demo/wishlists/my-everyday.webp')).not.toThrow();
+		expect(() => rejectDemoImageUpload(null)).not.toThrow();
+		expect(() => rejectDemoImageUpload(undefined)).not.toThrow();
+		for (const imageKey of [
+			'wishlist/visitor-upload.jpg',
+			'/demo/wishlists/unknown.webp',
+			'/demo/v1/teapot.jpg',
+			'https://images.example.com/cover.jpg',
+		]) {
+			expect(thrownBy(() => rejectDemoImageUpload(imageKey))).toMatchObject({ status: 403 });
+		}
+	});
+
 	it('allows normal account actions when no demo context exists', () => {
 		requestEvent.mockReturnValue({ locals: {} } as ReturnType<typeof getRequestEvent>);
 		expect(() => rejectDemoOperation()).not.toThrow();
+		expect(() => rejectDemoImageUpload('wishlist/real-upload.jpg')).not.toThrow();
 	});
 });

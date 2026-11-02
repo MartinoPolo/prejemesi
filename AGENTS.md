@@ -57,6 +57,7 @@ When debugging or analyzing issues related to third-party libraries, delegate ex
 
 - Production deploys are automatic once green: the `dev` → `production` PR must pass `checks / required`, which there includes the release tier; the push to `production` re-runs checks for the exact SHA, applies pending migrations, requires EXACT, then runs `wrangler deploy`, with no manual approval. Schema changes follow expand → migrate → deploy → contract, enforced by `pnpm check:migrations`. Runbook: `docs/DEPLOYMENT.md`.
 - Every `dev` push auto-deploys to https://staging.prejemesi.cz (production snapshot, migrations auto-applied, no email). Runbook: `docs/STAGING.md`.
+- Record any manual release step or later contract step your change needs in `RELEASE_NEXT.md`; `/deploy-to-production` works through it.
 
 ## Git Workflow
 

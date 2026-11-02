@@ -11,9 +11,22 @@ import WishlistThemeBackdrop from './WishlistThemeBackdrop.svelte';
 
 // The responsive photo source reads the image CDN base from `$env/dynamic/public`.
 vi.mock('$env/dynamic/public', () => ({ env: {} }));
-// The shipped library is empty until images are generated.
+// A fixture library; every image has a light and a dark file.
 vi.mock('$lib/theme/wishlist_background_library.json', () => ({
-	default: [{ id: 'space-photo', themeId: 'space', variant: 'photo', widths: [1280, 2560] }],
+	default: [
+		{
+			id: 'toys-illustrated',
+			themeId: 'toys',
+			variant: 'illustrated',
+			widthsByMode: { light: [1280, 2560], dark: [1280, 2560] },
+		},
+		{
+			id: 'space-photo',
+			themeId: 'space',
+			variant: 'photo',
+			widthsByMode: { light: [1280, 2560], dark: [1280, 2560] },
+		},
+	],
 }));
 
 // One motif per side is enough to tell the desktop gutters from the mobile strip.
@@ -32,6 +45,7 @@ interface BackdropRender {
 	imageUrl?: string | null;
 	background?: Partial<WishlistBackground>;
 	contentWidth?: number;
+	viewerMode?: 'light' | 'dark';
 }
 
 async function renderBackdrop({
@@ -40,6 +54,7 @@ async function renderBackdrop({
 	imageUrl = null,
 	background = {},
 	contentWidth = 1440,
+	viewerMode = 'light',
 }: BackdropRender): Promise<HTMLElement> {
 	const { container } = render(WishlistThemeBackdrop, {
 		mode,
@@ -52,10 +67,27 @@ async function renderBackdrop({
 	container.style.cssText = `container: app-content / inline-size; position: relative; width: ${String(contentWidth)}px; height: 900px; --content-max-width: 1168px`;
 	// The page shell's backdrop scope supplies the strip height.
 	container.dataset.wishlistBackdrop = '';
+	// mode-watcher puts `.dark` on <html>; any ancestor does the same.
+	container.classList.toggle('dark', viewerMode === 'dark');
 	await new Promise<void>((resolve) =>
 		requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
 	);
 	return container;
+}
+
+function visiblePhotoSources(container: HTMLElement): (string | null)[] {
+	return [
+		...container.querySelectorAll<HTMLImageElement>('[data-testid="wishlist-backdrop-photo"]'),
+	]
+		.filter((photo) => getComputedStyle(photo).display !== 'none')
+		.map((photo) => photo.getAttribute('src'));
+}
+
+function darkModeDimIsVisible(container: HTMLElement): boolean {
+	const dim = container.querySelector<HTMLElement>(
+		'[data-testid="wishlist-backdrop-dark-mode-dim"]',
+	);
+	return dim !== null && dim.getBoundingClientRect().height > 0;
 }
 
 function visibleMotifSides(container: HTMLElement): string[] {
@@ -128,10 +160,10 @@ describe('WishlistThemeBackdrop', () => {
 		);
 
 		expect(photo?.getAttribute('src')).toMatch(
-			/\/wishlist-backgrounds\/space-photo-2560\.webp$/,
+			/\/wishlist-backgrounds\/space-photo-light-2560\.webp$/,
 		);
 		expect(photo?.getAttribute('srcset')).toMatch(
-			/space-photo-1280\.webp 1280w, .*space-photo-2560\.webp 2560w$/,
+			/space-photo-light-1280\.webp 1280w, .*space-photo-light-2560\.webp 2560w$/,
 		);
 		expect(photo?.getAttribute('alt')).toBe('');
 		expect(getComputedStyle(photo!).objectPosition).toBe('20% 70%');
@@ -158,16 +190,95 @@ describe('WishlistThemeBackdrop', () => {
 	});
 
 	it.each([
-		['drifts with the page scroll by default', 'subtle', true],
-		['stays still when motion is off', 'off', false],
-	] as const)('library image %s', async (_label, motion, drifts) => {
+		['light', /toys-illustrated-light-2560\.webp$/],
+		['dark', /toys-illustrated-dark-2560\.webp$/],
+	] as const)(
+		'shows the %s file of a library image that has both, without the dark-mode dim',
+		async (viewerMode, expectedSource) => {
+			const container = await renderBackdrop({
+				mode: 'library',
+				background: { libraryImageId: 'toys-illustrated', placement: 'full' },
+				viewerMode,
+			});
+
+			expect(visiblePhotoSources(container)).toEqual([expect.stringMatching(expectedSource)]);
+			expect(darkModeDimIsVisible(container)).toBe(false);
+		},
+	);
+
+	it.each(['light', 'dark'] as const)(
+		'loads only the file of the %s viewer mode when a library image has both',
+		async (viewerMode) => {
+			const container = await renderBackdrop({
+				mode: 'library',
+				background: { libraryImageId: 'toys-illustrated' },
+				viewerMode,
+			});
+			const photos = [
+				...container.querySelectorAll<HTMLImageElement>(
+					'[data-testid="wishlist-backdrop-photo"]',
+				),
+			];
+
+			// A lazy image without a rendered box is never fetched.
+			expect(photos.map((photo) => photo.loading)).toEqual(['lazy', 'lazy']);
+			expect(
+				photos.map((photo) => ({
+					shownIn: photo.dataset.shownIn,
+					rendered: photo.getClientRects().length > 0,
+				})),
+			).toEqual([
+				{ shownIn: 'light', rendered: viewerMode === 'light' },
+				{ shownIn: 'dark', rendered: viewerMode === 'dark' },
+			]);
+		},
+	);
+
+	it.each([
+		['light', false],
+		['dark', true],
+	] as const)(
+		'adds the automatic dim to a custom photo in %s mode: %s',
+		async (viewerMode, dimmed) => {
+			const container = await renderBackdrop({
+				mode: 'custom',
+				imageUrl: '/demo/playground/advent.jpg',
+				background: { placement: 'full', dim: 20 },
+				viewerMode,
+			});
+
+			expect(darkModeDimIsVisible(container)).toBe(dimmed);
+			// The manager's own dim still applies in both modes.
+			const backdrop = container.querySelector<HTMLElement>(
+				'[data-testid="wishlist-theme-backdrop"]',
+			);
+			expect(backdrop?.style.getPropertyValue('--photo-dim')).toBe('20%');
+		},
+	);
+
+	it('keeps the dark-mode dim on the phone strip, where the manager dim is off', async () => {
+		const container = await renderBackdrop({
+			mode: 'custom',
+			imageUrl: '/demo/playground/advent.jpg',
+			background: { placement: 'full', dim: 20 },
+			viewerMode: 'dark',
+			contentWidth: 400,
+		});
+
+		expect(darkModeDimIsVisible(container)).toBe(true);
+		expect(getComputedStyle(container.querySelector('.wishlist-backdrop-dim')!).display).toBe(
+			'none',
+		);
+	});
+
+	it('drifts a library image with the page scroll', async () => {
 		const container = await renderBackdrop({
 			mode: 'library',
-			background: { libraryImageId: 'space-photo', motion },
+			background: { libraryImageId: 'space-photo' },
 		});
 		const photoFrame = container.querySelector<HTMLElement>('.wishlist-backdrop-photo');
 
-		expect(photoFrame!.getAnimations().length > 0).toBe(drifts);
+		expect(photoFrame!.getAnimations().length).toBeGreaterThan(0);
 	});
 
 	it('drifts motifs with the page scroll by default', async () => {
@@ -177,18 +288,5 @@ describe('WishlistThemeBackdrop', () => {
 		);
 
 		expect(motif!.getAnimations().length).toBeGreaterThan(0);
-	});
-
-	it('stops the scroll drift when motion is off', async () => {
-		const container = await renderBackdrop({
-			mode: 'theme',
-			art: ART,
-			background: { motion: 'off' },
-		});
-		const motif = container.querySelector<HTMLElement>(
-			'[data-testid="wishlist-backdrop-motif"]',
-		);
-
-		expect(motif!.getAnimations()).toHaveLength(0);
 	});
 });

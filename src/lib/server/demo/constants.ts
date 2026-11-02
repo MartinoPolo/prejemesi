@@ -19,6 +19,14 @@ export function demoEmailAddress(userId: string): string {
 	return `${userId}${DEMO_EMAIL_SUFFIX}`;
 }
 
-export function isDemoEmailAddress(normalizedEmail: string): boolean {
+function isDemoEmailAddress(normalizedEmail: string): boolean {
 	return normalizedEmail.endsWith(DEMO_EMAIL_SUFFIX);
+}
+
+export function isReservedDemoEmail(value: unknown): boolean {
+	if (typeof value !== 'string') {
+		return false;
+	}
+	const normalized = value.normalize('NFKC').trim().toLowerCase();
+	return isDemoEmailAddress(normalized);
 }

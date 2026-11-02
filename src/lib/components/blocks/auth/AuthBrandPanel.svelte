@@ -206,5 +206,14 @@
 		.brand-bottom {
 			display: none;
 		}
+
+		/* While typing, the brand gives its space to the form first. */
+		:global([data-keyboard='open']) .brand-panel {
+			padding-block: var(--space-2);
+		}
+
+		:global([data-keyboard='open']) .brand-tagline {
+			display: none;
+		}
 	}
 </style>

@@ -1,36 +1,30 @@
 <script lang="ts">
 	import * as m from '$lib/paraglide/messages.js';
 	import ChevronRightIcon from '@lucide/svelte/icons/chevron-right';
-	import ImageIcon from '@lucide/svelte/icons/image';
-	import LinkIcon from '@lucide/svelte/icons/link';
-	import ListIcon from '@lucide/svelte/icons/list';
-
-	const STARTERS = [
-		{ icon: ImageIcon, label: m.chat_starter_enrich, prompt: m.chat_starter_enrich_prompt },
-		{ icon: LinkIcon, label: m.chat_starter_add, prompt: m.chat_starter_add_prompt },
-		{ icon: ListIcon, label: m.chat_starter_bulk, prompt: m.chat_starter_bulk_prompt },
-	];
+	import { CHAT_STARTERS } from './chat_presentation.js';
 
 	/**
 	 * An empty chat's greeting; the starters put a prompt in the composer to finish. The demo
-	 * points to its prepared actions instead.
+	 * points to its prepared actions instead. While typing, the starters move to the chip row.
 	 */
 	let {
 		available,
 		demo,
+		showStarters,
 		onstarter,
 	}: {
 		available: boolean;
 		demo: boolean;
+		showStarters: boolean;
 		onstarter: (prompt: string) => void;
 	} = $props();
 </script>
 
 <div class="welcome">
 	<p class="welcome-title">{demo ? m.chat_demo_welcome() : m.chat_welcome()}</p>
-	{#if available}
+	{#if available && showStarters}
 		<div class="starters">
-			{#each STARTERS as starter (starter.label)}
+			{#each CHAT_STARTERS as starter (starter.label)}
 				<button type="button" class="starter" onclick={() => onstarter(starter.prompt())}>
 					<span class="starter-icon" aria-hidden="true"><starter.icon /></span>
 					<span>{starter.label()}</span>

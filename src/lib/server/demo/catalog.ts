@@ -6,6 +6,9 @@ export interface DemoCatalogWishlist {
 	description: string;
 	role: 'own' | 'managed' | 'followed';
 	recipientName: string;
+	/** Prepared avatar of a followed recipient's demo account. */
+	recipientImage?: string;
+	coverImageUrl: string;
 	status: 'draft' | 'shared' | 'archived';
 	occasion: 'ongoing' | 'birthday' | 'christmas';
 	palette: Palette;
@@ -13,6 +16,8 @@ export interface DemoCatalogWishlist {
 		name: string;
 		description: string;
 		imageUrl: string;
+		/** The whole ordered gallery; the first image is `imageUrl`. */
+		images: string[];
 		url: string;
 		price: number;
 		category: string;
@@ -27,6 +32,8 @@ interface Localized {
 }
 interface CatalogItem {
 	image: string;
+	/** Later gallery images after `image`, in order. */
+	gallery?: readonly string[];
 	name: Localized;
 	description: Localized;
 	category: Localized;
@@ -67,16 +74,19 @@ function item(
 
 // Photos are category-accurate examples, not claims that the pictured object is the linked SKU.
 const items = {
-	teaPot: item(
-		'v1/teapot.jpg',
-		'Keramická konvička',
-		'Ceramic teapot',
-		'Na nedělní čaj ve dvou.',
-		'For slow Sunday tea for two.',
-		categories.home,
-		690,
-		'keramická čajová konvice',
-	),
+	teaPot: {
+		...item(
+			'v1/teapot.jpg',
+			'Keramická konvička',
+			'Ceramic teapot',
+			'Na nedělní čaj ve dvou.',
+			'For slow Sunday tea for two.',
+			categories.home,
+			690,
+			'keramická čajová konvice',
+		),
+		gallery: ['gallery/teapot-2.jpg', 'gallery/teapot-3.jpg', 'gallery/teapot-4.jpg'],
+	},
 	headphones: item(
 		'v1/headphones.jpg',
 		'Bezdrátová sluchátka',
@@ -137,16 +147,23 @@ const items = {
 		420,
 		'dárková bonboniéra pralinky',
 	),
-	hikingBackpack: item(
-		'playground/batoh.jpg',
-		'Turistický batoh',
-		'Hiking backpack',
-		'Lehký batoh na celodenní výlety.',
-		'A light pack for day hikes.',
-		categories.outdoors,
-		1590,
-		'turistický batoh 25 l',
-	),
+	hikingBackpack: {
+		...item(
+			'playground/batoh.jpg',
+			'Turistický batoh',
+			'Hiking backpack',
+			'Lehký batoh na celodenní výlety.',
+			'A light pack for day hikes.',
+			categories.outdoors,
+			1590,
+			'turistický batoh 25 l',
+		),
+		gallery: [
+			'gallery/hiking-backpack-2.jpg',
+			'gallery/hiking-backpack-3.jpg',
+			'gallery/hiking-backpack-4.jpg',
+		],
+	},
 	winterCoat: item(
 		'playground/bunda.jpg',
 		'Teplý zimní kabát',
@@ -391,11 +408,17 @@ const items = {
 } satisfies Record<string, CatalogItem>;
 
 type ItemKey = keyof typeof items;
-type WishlistDefinition = Omit<DemoCatalogWishlist, 'title' | 'description' | 'gifts'> & {
+type WishlistDefinition = Omit<
+	DemoCatalogWishlist,
+	'title' | 'description' | 'gifts' | 'coverImageUrl'
+> & {
 	title: Localized;
 	description: Localized;
 	itemKeys: readonly ItemKey[];
 };
+
+/** The demo person every playground visitor acts as. */
+export const demoViewer = { name: 'Tereza Novotná', image: '/demo/people/tereza.webp' };
 
 const wishlists: readonly WishlistDefinition[] = [
 	{
@@ -406,7 +429,7 @@ const wishlists: readonly WishlistDefinition[] = [
 			en: 'A few ideas for ordinary days and special ones.',
 		},
 		role: 'own',
-		recipientName: 'Tereza Novotná',
+		recipientName: demoViewer.name,
 		status: 'shared',
 		occasion: 'ongoing',
 		palette: 'sky',
@@ -436,7 +459,7 @@ const wishlists: readonly WishlistDefinition[] = [
 			en: 'This year I would love to try something new.',
 		},
 		role: 'own',
-		recipientName: 'Tereza Novotná',
+		recipientName: demoViewer.name,
 		status: 'shared',
 		occasion: 'birthday',
 		palette: 'peach',
@@ -466,7 +489,7 @@ const wishlists: readonly WishlistDefinition[] = [
 			en: 'Saving ideas here for the family for now.',
 		},
 		role: 'own',
-		recipientName: 'Tereza Novotná',
+		recipientName: demoViewer.name,
 		status: 'draft',
 		occasion: 'christmas',
 		palette: 'grape',
@@ -557,6 +580,7 @@ const wishlists: readonly WishlistDefinition[] = [
 		},
 		role: 'followed',
 		recipientName: 'Petr Dvořák',
+		recipientImage: '/demo/people/petr.webp',
 		status: 'shared',
 		occasion: 'ongoing',
 		palette: 'mint',
@@ -587,6 +611,7 @@ const wishlists: readonly WishlistDefinition[] = [
 		},
 		role: 'followed',
 		recipientName: 'Klára Horáková',
+		recipientImage: '/demo/people/klara.webp',
 		status: 'shared',
 		occasion: 'christmas',
 		palette: 'ruby',
@@ -617,6 +642,7 @@ const wishlists: readonly WishlistDefinition[] = [
 		},
 		role: 'followed',
 		recipientName: 'Karel Veselý',
+		recipientImage: '/demo/people/karel.webp',
 		status: 'archived',
 		occasion: 'birthday',
 		palette: 'ocean',
@@ -640,21 +666,35 @@ const wishlists: readonly WishlistDefinition[] = [
 	},
 ];
 
-export const preparedDemoImageUrls = new Set(
-	Object.values(items).map((catalogItem) => `/demo/${catalogItem.image}`),
+function catalogItemImageUrls(catalogItem: CatalogItem): string[] {
+	return [catalogItem.image, ...(catalogItem.gallery ?? [])].map((image) => `/demo/${image}`);
+}
+
+function demoWishlistCoverUrl(key: string): string {
+	return `/demo/wishlists/${key}.webp`;
+}
+
+export const preparedDemoImageUrls = new Set(Object.values(items).flatMap(catalogItemImageUrls));
+
+/** Prepared wishlist covers, stored as site-relative paths in `wishlist.image_key`. */
+export const preparedDemoWishlistCoverUrls = new Set(
+	wishlists.map(({ key }) => demoWishlistCoverUrl(key)),
 );
 
 export function getDemoCatalog(locale: 'cs' | 'en'): DemoCatalogWishlist[] {
 	return wishlists.map(({ itemKeys, title, description, ...wishlist }) => ({
 		...wishlist,
+		coverImageUrl: demoWishlistCoverUrl(wishlist.key),
 		title: title[locale],
 		description: description[locale],
 		gifts: itemKeys.map((key, index) => {
-			const gift = items[key];
+			const gift: CatalogItem = items[key];
+			const images = catalogItemImageUrls(gift);
 			return {
 				name: gift.name[locale],
 				description: gift.description[locale],
-				imageUrl: `/demo/${gift.image}`,
+				imageUrl: images[0]!,
+				images,
 				url: `https://www.heureka.cz/?h%5Bfraze%5D=${encodeURIComponent(gift.search)}`,
 				price: gift.price,
 				category: gift.category[locale],

@@ -127,7 +127,7 @@
 					>
 						{selectedDestinationLabel}
 					</Select.Trigger>
-					<Select.Content portalProps={{ disabled: true }}>
+					<Select.Content>
 						{#each destinations as destination (destination.id)}
 							<Select.Item
 								value={destination.id}

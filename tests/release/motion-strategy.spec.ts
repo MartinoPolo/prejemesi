@@ -43,8 +43,10 @@ async function chooseDesktopDisplayOption(page: Page, section: RegExp, option: R
 	const item = submenu.getByRole('menuitemradio', { name: option });
 	await item.focus();
 	await item.press('Enter');
-	await expect(item).toHaveAttribute('aria-checked', 'true');
-	await closeDesktopDisplaySubmenu(page, submenu, section);
+	await expect(submenu).not.toBeVisible();
+	const displayTrigger = page.getByTestId('desktop-display-trigger');
+	await expect(displayTrigger).toHaveAttribute('aria-expanded', 'false');
+	await expect(displayTrigger).toBeFocused();
 }
 
 async function enableDesktopWithLinkFilter(page: Page) {

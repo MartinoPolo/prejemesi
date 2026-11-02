@@ -99,7 +99,7 @@ describe('WishlistSelectionToolbar consolidated desktop actions (#353)', () => {
 		await screen.unmount();
 	});
 
-	it('uses one Actions trigger with six persistent cascading categories and explicit copy choice', async () => {
+	it('uses one Actions trigger with six cascading categories, closing on a single choice, and explicit copy choice', async () => {
 		const props = {
 			...createProps(),
 			commonPriorityId: 'high',
@@ -145,7 +145,8 @@ describe('WishlistSelectionToolbar consolidated desktop actions (#353)', () => {
 		await root.getByRole('menuitem', { name: new RegExp(m.gift_priority_label()) }).click();
 		await page.getByRole('menuitemradio', { name: m.gift_priority_none() }).click();
 		expect(props.onpriority).toHaveBeenCalledExactlyOnceWith(null);
-		await expect.element(root).toBeVisible();
+		await expect.element(root).not.toBeInTheDocument();
+		await trigger.click();
 
 		const priority = root.getByRole('menuitem', {
 			name: new RegExp(m.gift_priority_label()),

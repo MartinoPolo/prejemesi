@@ -1010,7 +1010,9 @@ describe.skipIf(!DB_READY)('change proposals', () => {
 					createdAt: expect.any(Date),
 					expiresAt: expect.any(Date),
 					rowCount: 2,
+					viaApp: false,
 					kindCounts: { giftEdit: 1, giftDeletion: 1 },
+					fastForwardHold: null,
 				},
 			]);
 		});

@@ -1,11 +1,16 @@
 import type { DatabaseTransaction } from '$lib/server/db/index.js';
 import { user } from '$lib/server/db/auth.schema.js';
 import { wishlist, priorityLevel } from '$lib/server/db/wishlist.schema.js';
-import { gift, giftCategory, reservation } from '$lib/server/db/gift.schema.js';
+import { gift, giftCategory, giftImage, reservation } from '$lib/server/db/gift.schema.js';
 import { moderatorAssignment } from '$lib/server/db/moderator.schema.js';
 import { wishlistFollower } from '$lib/server/db/follower.schema.js';
 import { generateId } from '$lib/server/db/id.js';
-import { DEFAULT_PRIORITY_LEVELS } from '$lib/modules/wishlists/types.js';
+import {
+	DEFAULT_PRIORITY_LEVELS,
+	WISHLIST_OCCASION,
+	type WishlistOccasion,
+} from '$lib/modules/wishlists/types.js';
+import { createDefaultWishlistSlots } from '$lib/modules/images/wishlist_slots.js';
 import {
 	GIFT_CATEGORY_PRESET_BY_KEY,
 	isGiftCategoryPresetKey,
@@ -15,6 +20,12 @@ import { demoEmailAddress } from './constants.js';
 
 const HOUR_MS = 3_600_000;
 const PRIORITY_LEVEL_INDEX = { high: 0, medium: 1, low: 2 } as const;
+// An ongoing demo list keeps the occasion kind with no date, so its occasion is Jiná.
+const DEMO_WISHLIST_OCCASION: Record<DemoCatalogWishlist['occasion'], WishlistOccasion> = {
+	ongoing: WISHLIST_OCCASION.other,
+	birthday: WISHLIST_OCCASION.birthday,
+	christmas: WISHLIST_OCCASION.christmas,
+};
 
 function demoEventDate(entry: DemoCatalogWishlist, index: number, now: Date): Date | null {
 	if (entry.occasion === 'ongoing') {
@@ -63,8 +74,11 @@ async function insertDemoWishlist(
 			recipientUserId,
 			recipientName: entry.role === 'managed' ? entry.recipientName : null,
 			title: entry.title,
+			occasion: DEMO_WISHLIST_OCCASION[entry.occasion],
 			description: entry.description,
 			palette: entry.palette,
+			imageKey: entry.coverImageUrl,
+			imageSlots: createDefaultWishlistSlots(),
 			status: entry.status === 'shared' ? 'active' : entry.status,
 			sharedAt: entry.status === 'draft' ? null : sharedAt,
 			firstSharedAt: entry.status === 'draft' ? null : sharedAt,
@@ -147,7 +161,19 @@ async function insertDemoGifts(
 			})),
 		)
 		.returning({ id: gift.id });
-	return gifts.map((row) => row.id);
+	const giftIds = gifts.map((row) => row.id);
+	// The cover-mirror trigger already created each gift's position 0 from its `imageUrl`.
+	const laterGalleryImages = entry.gifts.flatMap((item, giftIndex) =>
+		item.images.slice(1).map((imageUrl, laterIndex) => ({
+			giftId: giftIds[giftIndex]!,
+			position: laterIndex + 1,
+			imageUrl,
+		})),
+	);
+	if (laterGalleryImages.length > 0) {
+		await tx.insert(giftImage).values(laterGalleryImages);
+	}
+	return giftIds;
 }
 
 async function insertDemoReservations(
@@ -189,6 +215,7 @@ export async function provisionDemoCatalog(
 				demoSessionId: sessionId,
 				name: entry.recipientName,
 				email: demoEmailAddress(otherUserId),
+				image: entry.recipientImage ?? null,
 			});
 		}
 		const created = await insertDemoWishlist(

@@ -17,7 +17,14 @@ vi.mock('$lib/server/db/index.js', async (importOriginal) => ({
 }));
 // The shipped library is empty until images are generated.
 vi.mock('$lib/theme/wishlist_background_library.json', () => ({
-	default: [{ id: 'space-photo', themeId: 'space', variant: 'photo', widths: [1280, 2560] }],
+	default: [
+		{
+			id: 'space-photo',
+			themeId: 'space',
+			variant: 'photo',
+			widthsByMode: { light: [1280, 2560], dark: [1280, 2560] },
+		},
+	],
 }));
 
 import { OPERATION_REGISTRY } from '$lib/server/operations/registry.js';
@@ -290,7 +297,6 @@ describe('authorizeAgentOperation', () => {
 							focal: { x: 50, y: 50 },
 							placement: 'gutters',
 							dim: 20,
-							motion: 'subtle',
 						},
 					},
 				},
@@ -308,7 +314,6 @@ describe('authorizeAgentOperation', () => {
 							focal: { x: 50, y: 50 },
 							placement: 'gutters',
 							dim: 20,
-							motion: 'subtle',
 						},
 					},
 				},
@@ -435,7 +440,6 @@ describe('authorizeAgentOperation', () => {
 						focal: { x: 50, y: 50 },
 						placement: 'gutters',
 						dim: 20,
-						motion: 'subtle',
 					},
 				},
 			}),
@@ -455,7 +459,6 @@ describe('authorizeAgentOperation', () => {
 						focal: { x: 50, y: 50 },
 						placement: 'full',
 						dim: 20,
-						motion: 'subtle',
 					},
 				},
 			}),

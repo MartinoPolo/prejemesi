@@ -45,6 +45,20 @@ describe('wishlistImageUrl', () => {
 			'/api/upload/wishlists/banners/abc.jpg',
 		);
 	});
+
+	it('resolves an object key to the public R2 base in production', () => {
+		mockEnv['PUBLIC_R2_URL'] = PUBLIC_BASE;
+		expect(wishlistImageUrl('wishlists/banners/abc.jpg')).toBe(
+			`${PUBLIC_BASE}/wishlists/banners/abc.jpg`,
+		);
+	});
+
+	it('serves a prepared site-relative image as stored', () => {
+		mockEnv['PUBLIC_R2_URL'] = PUBLIC_BASE;
+		expect(wishlistImageUrl('/demo/wishlists/my-everyday.webp')).toBe(
+			'/demo/wishlists/my-everyday.webp',
+		);
+	});
 });
 
 describe('createDefaultWishlistSlots', () => {
@@ -151,6 +165,17 @@ describe('wishlistSocialImage', () => {
 		expect(wishlistSocialImage('wishlists/a.jpg', {}, FALLBACK).url).toBe(
 			`${PUBLIC_BASE}/cdn-cgi/image/width=1200,height=630,fit=cover,gravity=0.50x0.50,format=jpeg/wishlists/a.jpg`,
 		);
+	});
+
+	it('serves a prepared site-relative image untransformed, without claiming dimensions', () => {
+		mockEnv['PUBLIC_R2_URL'] = PUBLIC_BASE;
+		expect(
+			wishlistSocialImage(
+				'/demo/wishlists/my-everyday.webp',
+				createDefaultWishlistSlots(),
+				FALLBACK,
+			),
+		).toEqual({ url: '/demo/wishlists/my-everyday.webp' });
 	});
 
 	it('serves an untransformable image without claiming 1200×630 dimensions', () => {

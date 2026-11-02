@@ -39,11 +39,26 @@ describe('photoBoxBehindWindow', () => {
 		const photo = photoBoxBehindWindow({ x: 0.25, y: 0.5, w: 0.5, h: 0.25 }, window);
 		expect(photo).toEqual({ width: 400, height: 400, left: -50, top: -180 });
 	});
+
+	it('places a photo zoomed out past contain inside the window on both axes', () => {
+		const window = { left: 50, top: 20, width: 200, height: 100 };
+		const photo = photoBoxBehindWindow({ x: -0.75, y: -0.125, w: 2.5, h: 1.25 }, window);
+		expect(photo).toEqual({ width: 80, height: 80, left: 110, top: 30 });
+	});
 });
 
 describe('visiblePhotoRegion', () => {
 	it('clips a letterboxed window to the photo', () => {
 		expect(visiblePhotoRegion({ x: -0.5, y: 0, w: 2, h: 1 })).toEqual({
+			x: 0,
+			y: 0,
+			w: 1,
+			h: 1,
+		});
+	});
+
+	it('shows the whole photo for a window larger than it on both axes', () => {
+		expect(visiblePhotoRegion({ x: -0.75, y: -0.125, w: 2.5, h: 1.25 })).toEqual({
 			x: 0,
 			y: 0,
 			w: 1,

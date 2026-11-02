@@ -143,10 +143,8 @@
 		imageFrameVariants({ fit: effectiveFit, shape, interactive, loadingOverlay: loading }),
 	);
 
-	// Zoomed OUT below the cover baseline (#116 round 2): object-fit clips to the
-	// element box, so the source window is rendered by positioning the image
-	// explicitly – the frame fill letterboxes the overhang on one axis. Null until
-	// the box/natural ratio are measured (the loading skeleton covers that gap).
+	// Zoomed OUT below the cover baseline (see `coverWindowLayout`). Null until the
+	// box/natural ratio are measured (the loading skeleton covers that gap).
 	const zoomOutLayout = $derived(
 		effectiveFit === IMAGE_FIT_MODES.coverCrop && zoom < 1 && naturalRatio !== null
 			? coverWindowLayout({ focal, zoom, boxWidth, boxHeight, naturalRatio })

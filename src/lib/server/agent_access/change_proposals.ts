@@ -381,6 +381,8 @@ export async function buildChangeProposalView(
 		appliedAt: proposal.appliedAt,
 		discardedAt: proposal.discardedAt,
 		undoneAt: proposal.undoneAt,
+		fastForwardHold:
+			proposal.status === CHANGE_PROPOSAL_STATUS.pending ? proposal.fastForwardHold : null,
 		rowCount: proposal.rowCount,
 		kindCounts: countChangeKinds(proposal.rows),
 		undo:
@@ -438,6 +440,7 @@ export async function listPendingChangeProposals(
 			createdAt: changeProposal.createdAt,
 			expiresAt: changeProposal.expiresAt,
 			rowCount: changeProposal.rowCount,
+			fastForwardHold: changeProposal.fastForwardHold,
 			operations:
 				sql`jsonb_path_query_array(${changeProposal.rows}, '$[*].operation')`.mapWith(
 					operationNamesOf,
@@ -456,6 +459,7 @@ export async function listPendingChangeProposals(
 	return pendingProposals.map(({ operations, ...proposal }) => ({
 		...proposal,
 		reviewUrl: changeProposalReviewPath(wishlistShortId, proposal.id),
+		viaApp: isAppChannel(proposal.channel),
 		kindCounts: countChangeKinds(operations.map((operation) => ({ operation }))),
 	}));
 }
@@ -760,6 +764,7 @@ export async function applyChangeProposalRows(
 					.update(changeProposal)
 					.set({
 						status: CHANGE_PROPOSAL_STATUS.applied,
+						fastForwardHold: null,
 						appliedAt: new Date(),
 						appliedBatchId: batch.batchId,
 						appliedRowIds: selectedRows.map((row) => row.rowId),

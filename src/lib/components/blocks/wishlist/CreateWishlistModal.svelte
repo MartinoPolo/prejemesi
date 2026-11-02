@@ -9,14 +9,13 @@
 	import { Button } from '$lib/components/base/button/index.js';
 	import { Input } from '$lib/components/base/input/index.js';
 	import { Textarea } from '$lib/components/base/textarea/index.js';
-	import { DatePicker } from '$lib/components/derived/date-picker/index.js';
 	import { Label } from '$lib/components/base/label/index.js';
 	import { HelpText } from '$lib/components/base/help-text/index.js';
 	import { Field, type FieldControlContext } from '$lib/components/derived/field/index.js';
 	import { Separator } from '$lib/components/base/separator/index.js';
 	import RecipientPreview from './RecipientPreview.svelte';
 	import WishlistPalettePicker from './WishlistPalettePicker.svelte';
-	import WishlistKindField from './WishlistKindField.svelte';
+	import CreateWishlistOccasionSection from './CreateWishlistOccasionSection.svelte';
 	import LoaderIcon from '@lucide/svelte/icons/loader';
 	import FileUpIcon from '@lucide/svelte/icons/file-up';
 	import SlidersHorizontalIcon from '@lucide/svelte/icons/sliders-horizontal';
@@ -24,11 +23,13 @@
 	import {
 		RECIPIENT_KIND,
 		RECIPIENT_NAME_MAX_LENGTH,
-		WISHLIST_KIND,
+		WISHLIST_OCCASION,
 		WISHLIST_TITLE_MAX_LENGTH,
-		type WishlistKind,
+		type WishlistOccasion,
 	} from '$lib/modules/wishlists/types.js';
+	import { suggestWishlistThemeId } from '$lib/modules/wishlists/wishlist_occasion.js';
 	import { DEFAULT_PALETTE, type Palette } from '$lib/theme/palettes.js';
+	import type { WishlistThemeId } from '$lib/theme/wishlist_themes.js';
 	import type { Attachment } from 'svelte/attachments';
 
 	export type CreatedWishlist = Awaited<ReturnType<typeof createWishlist>>;
@@ -65,8 +66,12 @@
 	let selectedRecipientKind = $derived(recipientKind);
 	let recipientName = $state('');
 	let title = $state('');
-	let wishlistKind = $state<WishlistKind>(WISHLIST_KIND.occasion);
+	let occasion = $state<WishlistOccasion>(WISHLIST_OCCASION.other);
 	let eventDate = $state<Date | null>(null);
+	// True while the date is the occasion's pre-fill, which a later occasion change may replace.
+	let eventDatePrefilled = $state(false);
+	// Undefined follows the suggested motif; null is an explicit "no motif".
+	let chosenThemeId = $state<WishlistThemeId | null | undefined>(undefined);
 	let isSubmitting = $state(false);
 	// Server/submit-level error (network or createWishlist failure). Field-level
 	// "required" validation is handled by the per-field derived errors below.
@@ -84,6 +89,17 @@
 	const trimmedTitle = $derived(title.trim());
 	const trimmedRecipientName = $derived(recipientName.trim());
 	const isRecipientRequired = $derived(recipientKind === RECIPIENT_KIND.other);
+	const isPermanent = $derived(occasion === WISHLIST_OCCASION.permanent);
+	const suggestedThemeId = $derived(
+		suggestWishlistThemeId({
+			occasion,
+			title: trimmedTitle,
+			eventDate: isPermanent ? null : eventDate,
+		}),
+	);
+	const selectedThemeId = $derived(
+		chosenThemeId === undefined ? suggestedThemeId : chosenThemeId,
+	);
 
 	const titleError = $derived(
 		titleTouched && trimmedTitle === '' ? m.wishlist_name_required() : '',
@@ -103,8 +119,10 @@
 		recipientKind = RECIPIENT_KIND.self;
 		recipientName = '';
 		title = '';
-		wishlistKind = WISHLIST_KIND.occasion;
+		occasion = WISHLIST_OCCASION.other;
 		eventDate = null;
+		eventDatePrefilled = false;
+		chosenThemeId = undefined;
 		description = '';
 		palette = null;
 		errorMessage = '';
@@ -135,11 +153,8 @@
 		}
 
 		isSubmitting = true;
-		// A permanent wishlist has no event date; a date picked before switching kinds is dropped.
-		const kindFields =
-			wishlistKind === WISHLIST_KIND.permanent
-				? { kind: WISHLIST_KIND.permanent }
-				: { kind: WISHLIST_KIND.occasion, eventDate };
+		// The Stálý seznam has no event date; a date picked before choosing it is dropped.
+		const occasionFields = isPermanent ? { occasion } : { occasion, eventDate };
 		const paletteField = palette === null ? {} : { palette };
 
 		try {
@@ -149,14 +164,16 @@
 							recipientKind: RECIPIENT_KIND.other,
 							recipientName: trimmedRecipientName,
 							title: trimmedTitle,
-							...kindFields,
+							...occasionFields,
+							themeId: selectedThemeId,
 							...paletteField,
 							description: description.trim() || null,
 						}
 					: {
 							recipientKind: RECIPIENT_KIND.self,
 							title: trimmedTitle,
-							...kindFields,
+							...occasionFields,
+							themeId: selectedThemeId,
 							...paletteField,
 							description: description.trim() || null,
 						},
@@ -270,31 +287,14 @@
 					{/snippet}
 				</Field>
 
-				<WishlistKindField
-					id="wishlist-create-kind"
-					size="lg"
-					value={wishlistKind}
-					onvaluechange={(kind) => (wishlistKind = kind)}
+				<CreateWishlistOccasionSection
+					bind:occasion
+					bind:eventDate
+					bind:eventDatePrefilled
+					bind:chosenThemeId
+					{suggestedThemeId}
 					disabled={isSubmitting}
 				/>
-
-				{#if wishlistKind === WISHLIST_KIND.occasion}
-					<div class="flex flex-col gap-2">
-						<Label id="wishlist-event-date-label">{m.wishlist_event_date_label()}</Label
-						>
-						<DatePicker
-							id="wishlist-event-date"
-							ariaLabelledby="wishlist-event-date-label"
-							ariaDescribedby="wishlist-event-date-helper"
-							size="lg"
-							bind:value={eventDate}
-							disabled={isSubmitting}
-						/>
-						<HelpText id="wishlist-event-date-helper"
-							>{m.wishlist_event_date_helper()}</HelpText
-						>
-					</div>
-				{/if}
 
 				<!-- Optional metadata (issue #112): collapsed by default so the create flow stays
 			     one field + title; power users can name a description and pick a palette upfront.

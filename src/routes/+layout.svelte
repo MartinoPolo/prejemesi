@@ -11,6 +11,7 @@
 	import { page } from '$app/state';
 	import { getLocaleForUrl, getTextDirection } from '$lib/paraglide/runtime.js';
 	import { SENTRY_REPLAY_NAVIGATION_EVENT } from '$lib/observability/sentry_replay_policy.js';
+	import { keyboardInset } from '$lib/reactivity/keyboard_inset.svelte.js';
 
 	// Dev-only tab title prefix – injected at dev-server start from git branch (vite.config.ts define).
 	// Lets you tell apart multiple worktrees/branches running simultaneously in the browser.
@@ -30,6 +31,8 @@
 			document.documentElement.dir = currentTextDirection;
 		}
 	});
+
+	onMount(() => keyboardInset.start());
 
 	onMount(() => {
 		document.documentElement.dataset.appHydrated = 'true';

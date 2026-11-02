@@ -41,7 +41,7 @@ import { getDb, closeDb } from '$lib/server/db/index.js';
 import { demoHandle } from '../../../hooks.server.js';
 import { demoClientThrottle, demoSession, user } from '$lib/server/db/auth.schema.js';
 import { wishlist } from '$lib/server/db/wishlist.schema.js';
-import { gift, reservation } from '$lib/server/db/gift.schema.js';
+import { gift, giftImage, reservation } from '$lib/server/db/gift.schema.js';
 import { createDemo, resetDemo } from './session.js';
 import { DEMO_COOKIE_NAME, DEMO_GIFT_LIMIT, DEMO_WISHLIST_LIMIT } from './constants.js';
 import { preparedDemoImageUrls } from './catalog.js';
@@ -68,6 +68,7 @@ import {
 	unreserveGift,
 } from '$lib/modules/reservations/reservations.remote.js';
 import { toggleLike } from '$lib/modules/likes/likes.remote.js';
+import { saveWishlistSettings } from '$lib/modules/wishlists/wishlist_settings.remote.js';
 import { authorizeUpload } from '$lib/modules/uploads/uploads.remote.js';
 import {
 	createWishlistFromImport,
@@ -1035,6 +1036,89 @@ describe.skipIf(isolatedDatabaseUrl === null)(
 				{ imageUrl: preparedImageUrl, imageKey: null },
 				{ imageUrl: preparedImageUrl, imageKey: null },
 			]);
+			await resetDemo(first.id, 'cs');
+		});
+
+		it('keeps prepared wishlist covers and gift galleries editable without accepting uploads', async () => {
+			const own = await demoWishlist(first, 'own');
+			const preparedCover = own.imageKey!;
+			expect(preparedCover).toMatch(/^\/demo\/wishlists\/.+\.webp$/);
+			await asViewer(first, 'POST', () =>
+				saveWishlistSettings({
+					wishlistId: own.id,
+					details: { title: 'Renamed with cover', description: null },
+					palette: 'ruby',
+					image: { imageKey: preparedCover, imageSlots: own.imageSlots },
+				}),
+			);
+			const [kept] = await getDb()
+				.select({ title: wishlist.title, imageKey: wishlist.imageKey })
+				.from(wishlist)
+				.where(eq(wishlist.id, own.id));
+			expect(kept).toEqual({ title: 'Renamed with cover', imageKey: preparedCover });
+			await denied(
+				() =>
+					saveWishlistSettings({
+						wishlistId: own.id,
+						image: { imageKey: 'wishlist/visitor-upload.jpg', imageSlots: null },
+					}),
+				403,
+			);
+			const [afterDeniedUpload] = await getDb()
+				.select({ imageKey: wishlist.imageKey })
+				.from(wishlist)
+				.where(eq(wishlist.id, own.id));
+			expect(afterDeniedUpload!.imageKey).toBe(preparedCover);
+			await asViewer(first, 'POST', () =>
+				saveWishlistSettings({
+					wishlistId: own.id,
+					image: { imageKey: null, imageSlots: null },
+				}),
+			);
+			const [removed] = await getDb()
+				.select({ imageKey: wishlist.imageKey })
+				.from(wishlist)
+				.where(eq(wishlist.id, own.id));
+			expect(removed!.imageKey).toBeNull();
+
+			const [galleryGift] = await getDb()
+				.select({ id: gift.id })
+				.from(giftImage)
+				.innerJoin(gift, eq(gift.id, giftImage.giftId))
+				.innerJoin(wishlist, eq(wishlist.id, gift.wishlistId))
+				.where(
+					and(
+						eq(wishlist.demoSessionId, first.id),
+						eq(wishlist.recipientUserId, first.viewerUserId),
+						eq(wishlist.status, 'active'),
+						eq(giftImage.position, 1),
+					),
+				)
+				.limit(1);
+			const gallery = await getDb()
+				.select({
+					imageUrl: giftImage.imageUrl,
+					imageKey: giftImage.imageKey,
+					imageMeta: giftImage.imageMeta,
+				})
+				.from(giftImage)
+				.where(eq(giftImage.giftId, galleryGift!.id))
+				.orderBy(giftImage.position);
+			expect(gallery.length).toBeGreaterThan(1);
+			await asViewer(first, 'POST', () =>
+				updateGift({ id: galleryGift!.id, images: [...gallery].reverse() }),
+			);
+			await denied(
+				() =>
+					updateGift({
+						id: galleryGift!.id,
+						images: [
+							...gallery,
+							{ imageUrl: null, imageKey: 'gift/upload.jpg', imageMeta: null },
+						],
+					}),
+				403,
+			);
 			await resetDemo(first.id, 'cs');
 		});
 
