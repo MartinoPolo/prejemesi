@@ -128,7 +128,7 @@ test('creates a permanent wishlist without an event date and explains it to visi
 	const visitorContext = await createAuthenticatedContext(browser, visitorCookies, baseURL!);
 	try {
 		const wishlistPath = await createPermanentWishlistAndNavigate(ownerPage, 'Stálé přání');
-		await expect(ownerPage.getByTestId('wishlist-kind-chip')).toHaveText(
+		await expect(ownerPage.getByTestId('wishlist-occasion-chip')).toHaveText(
 			m.wishlist_kind_permanent(),
 		);
 		await addGift(ownerPage, 'Kniha o horách');
@@ -137,7 +137,7 @@ test('creates a permanent wishlist without an event date and explains it to visi
 
 		const visitorPage = await visitorContext.newPage();
 		await visitorPage.goto(wishlistPath);
-		await expect(visitorPage.getByTestId('wishlist-kind-chip')).toHaveText(
+		await expect(visitorPage.getByTestId('wishlist-occasion-chip')).toHaveText(
 			m.wishlist_kind_permanent(),
 		);
 		await expect(visitorPage.getByTestId('wishlist-permanent-note')).toContainText(

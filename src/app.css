@@ -478,6 +478,7 @@
 	--hole-ring: var(--ink);
 	--tape-bg: color-mix(in oklab, var(--tint) 65%, transparent);
 	--tape-border: color-mix(in oklab, var(--ink) 25%, transparent);
+	--kraft: color-mix(in oklab, #c99a5e 38%, var(--card));
 
 	/* Footer */
 	--footer-bg: var(--p-ink);
@@ -627,6 +628,7 @@
 	--hole-ring: color-mix(in oklab, var(--ink) 80%, transparent);
 	--tape-bg: rgb(255 255 255 / 14%);
 	--tape-border: color-mix(in oklab, var(--ink) 32%, transparent);
+	--kraft: color-mix(in oklab, #a8783f 32%, var(--card));
 
 	/* Footer (dark) */
 	--footer-bg: color-mix(in oklab, var(--p-deep) 24%, #04080e);

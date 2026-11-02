@@ -2422,6 +2422,8 @@
 		eventDate={wishlist.eventDate}
 		status={wishlistStatus}
 		kind={wishlist.kind}
+		occasion={wishlist.occasion}
+		heroFrame={themeScope.style.heroFrame}
 		{role}
 		giftCount={headerGiftCount}
 		{recipientIsModerator}
