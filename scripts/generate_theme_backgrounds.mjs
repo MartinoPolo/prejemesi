@@ -3,7 +3,8 @@
  * Generates the curated wishlist background library (#531) offline with Gemini image generation:
  * an illustrated and a photo variant per wishlist theme, each with a light and a dark file,
  * saved as `static/wishlist-backgrounds/<id>-<mode>-<width>.webp` and listed with their modes in
- * `src/lib/theme/wishlist_background_library.json`.
+ * `src/lib/theme/wishlist_background_library.json`. The app requires both modes of every image, so
+ * the run fails while any image lacks one.
  *
  * Usage: GEMINI_API_KEY=... pnpm generate:theme-backgrounds [--model <id>] [--theme <id>] [--force]
  * Image generation needs a paid-tier key; the free tier has no image quota.
@@ -211,7 +212,10 @@ async function findImportedImage(directory, id, mode) {
 	return fileName === undefined ? undefined : path.join(directory, fileName);
 }
 
-/** Lists every id with saved files and the widths of each mode it has, in theme then variant order. */
+/**
+ * Lists every id with saved files and the widths of each mode it has, in theme then variant order,
+ * and returns the ids lacking a mode.
+ */
 async function writeManifest() {
 	const entries = [];
 	for (const themeId of Object.keys(THEME_PROMPTS)) {
@@ -231,6 +235,9 @@ async function writeManifest() {
 	}
 	await writeFile(MANIFEST_PATH, `${JSON.stringify(entries, null, '\t')}\n`);
 	console.log(`Manifest lists ${String(entries.length)} images.`);
+	return entries
+		.filter(({ widthsByMode }) => BACKGROUND_MODES.some((mode) => !(mode in widthsByMode)))
+		.map(({ id }) => id);
 }
 
 async function main() {
@@ -320,9 +327,15 @@ async function main() {
 			}
 		}
 	}
-	await writeManifest();
+	const imagesMissingAMode = await writeManifest();
 	if (failures.length > 0) {
 		console.error(`Failed: ${failures.join(', ')}. Re-run to resume.`);
+		process.exitCode = 1;
+	}
+	if (imagesMissingAMode.length > 0) {
+		console.error(
+			`Missing a light or dark file, which the app requires: ${imagesMissingAMode.join(', ')}.`,
+		);
 		process.exitCode = 1;
 	}
 }

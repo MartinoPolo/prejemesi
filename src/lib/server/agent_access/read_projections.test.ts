@@ -23,7 +23,7 @@ vi.mock('$lib/theme/wishlist_background_library.json', () => ({
 			id: 'minimal-photo',
 			themeId: 'minimal',
 			variant: 'photo',
-			widthsByMode: { light: [1280] },
+			widthsByMode: { light: [1280], dark: [1280] },
 		},
 	],
 }));

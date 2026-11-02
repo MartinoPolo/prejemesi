@@ -46,7 +46,7 @@
 			const libraryImage = findWishlistLibraryImage(background.libraryImageId);
 			return libraryImage === null
 				? null
-				: libraryBackgroundPhoto(libraryImage, wishlistLibraryImageLayers(libraryImage));
+				: libraryBackgroundPhoto(wishlistLibraryImageLayers(libraryImage));
 		}
 		if (mode !== 'custom' || imageUrl === null) {
 			return null;

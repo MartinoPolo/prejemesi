@@ -514,8 +514,8 @@
 	--wishlist-card-plate: var(--primary);
 	--wishlist-card-plate-foreground: var(--primary-foreground);
 
-	/* Background photos without a dark file (custom uploads, library images missing one) sink
-	   this far toward the page in dark mode, on top of the manager's own dim. */
+	/* Custom background photos have no dark file, so they sink this far toward the page in dark
+	   mode, on top of the manager's own dim. */
 	--wishlist-photo-dark-mode-dim: 40%;
 	--popover: #fff;
 	--popover-foreground: var(--p-ink);
