@@ -133,7 +133,11 @@ async function openLibraryBackground(page: Page, wishlistPath: string) {
 		.getByRole('radio', { name: m.wishlist_appearance_background_library(), exact: true })
 		.check();
 	await expect(frame(page)).toBeVisible();
-	await expect(frame(page).locator('img')).toHaveJSProperty('complete', true);
+	// A light and dark pair renders both files; only the viewer mode's one has a box and loads.
+	await expect(frame(page).locator('img').filter({ visible: true })).toHaveJSProperty(
+		'complete',
+		true,
+	);
 }
 
 async function arrange(session: InteractionSession, wishlistPath: string, state: FocalPickerState) {

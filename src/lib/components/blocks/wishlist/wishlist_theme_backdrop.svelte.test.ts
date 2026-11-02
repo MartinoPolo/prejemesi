@@ -212,17 +212,33 @@ describe('WishlistThemeBackdrop', () => {
 		},
 	);
 
-	it('loads only the file of the viewer mode when a library image has both', async () => {
-		const container = await renderBackdrop({
-			mode: 'library',
-			background: { libraryImageId: 'toys-illustrated' },
-		});
-		const photos = container.querySelectorAll<HTMLImageElement>(
-			'[data-testid="wishlist-backdrop-photo"]',
-		);
+	it.each(['light', 'dark'] as const)(
+		'loads only the file of the %s viewer mode when a library image has both',
+		async (viewerMode) => {
+			const container = await renderBackdrop({
+				mode: 'library',
+				background: { libraryImageId: 'toys-illustrated' },
+				viewerMode,
+			});
+			const photos = [
+				...container.querySelectorAll<HTMLImageElement>(
+					'[data-testid="wishlist-backdrop-photo"]',
+				),
+			];
 
-		expect([...photos].map((photo) => photo.loading)).toEqual(['lazy', 'lazy']);
-	});
+			// A lazy image without a rendered box is never fetched.
+			expect(photos.map((photo) => photo.loading)).toEqual(['lazy', 'lazy']);
+			expect(
+				photos.map((photo) => ({
+					shownIn: photo.dataset.shownIn,
+					rendered: photo.getClientRects().length > 0,
+				})),
+			).toEqual([
+				{ shownIn: 'light', rendered: viewerMode === 'light' },
+				{ shownIn: 'dark', rendered: viewerMode === 'dark' },
+			]);
+		},
+	);
 
 	it('dims a library image without a dark file in dark mode only', async () => {
 		const lightContainer = await renderBackdrop({

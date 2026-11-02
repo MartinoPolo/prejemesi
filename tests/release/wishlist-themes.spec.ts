@@ -38,6 +38,10 @@ test('a saved theme survives a reload and the background can be turned off', asy
 	await page.reload();
 	await expect(shell).toHaveAttribute('data-wishlist-theme', 'christmas');
 	await expect(page.getByTestId('wishlist-theme-backdrop')).toBeAttached();
+	await expect(
+		page.getByTestId('wishlist-banner'),
+		'the Vánoce motif wraps the hero as a present',
+	).toHaveAttribute('data-hero-frame', 'gift');
 
 	dialog = await openAppearanceSettings(page);
 	const customize = dialog.getByRole('button', { name: 'Přizpůsobit motiv' });
