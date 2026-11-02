@@ -12,18 +12,17 @@
 		FULL_CROP_RECT,
 		IMAGE_EDITOR_MODES,
 		IMAGE_ZOOM_MAX,
-		IMAGE_ZOOM_OUT_MIN,
 		alignCropRect,
 		clamp01,
 		centerCropRectOn,
 		centeredCropRect,
 		containCropRect,
-		containZoomForAspect,
 		cropRectToFocalZoom,
 		fitCropRectToAspect,
 		normalizedCropAspect,
 		panCropRect,
 		zoomCropRect,
+		zoomOutFloorForAspect,
 		type CropWindowPoint,
 		type ImageEditorMode,
 		type ImageCropRect,
@@ -105,7 +104,6 @@
 	const WINDOW_PADDING = 28;
 	const COMPACT_WINDOW_PADDING = 12;
 	const COMPACT_STAGE_WIDTH = 480;
-	const SLIDER_STEP = 5;
 	const BUTTON_ZOOM_STEP = 0.1;
 	const WHEEL_ZOOM_SENSITIVITY = 0.0015;
 	const INTERACTION_LINGER_MS = 700;
@@ -134,14 +132,7 @@
 	const isReady = $derived(!loadFailed && naturalRatio !== null);
 	const controlsDisabled = $derived(disabled || !isReady);
 	const normalizedAspect = $derived(normalizedCropAspect(targetAspect, naturalRatio ?? 1));
-	// Before the image is measured the real contain floor is unknown; the absolute
-	// floor keeps the native range input from clamping a legal seeded zoom upward.
-	const containZoom = $derived(
-		isReady ? containZoomForAspect(normalizedAspect) : IMAGE_ZOOM_OUT_MIN,
-	);
-	const sliderMinPercent = $derived(
-		100 - SLIDER_STEP * Math.floor((100 - Math.ceil(containZoom * 100)) / SLIDER_STEP),
-	);
+	const zoomOutFloor = $derived(zoomOutFloorForAspect(normalizedAspect));
 
 	/** The framing the window shows right now; every edit starts from it. */
 	const shownRect = $derived.by((): ImageCropRect => {
@@ -154,6 +145,12 @@
 		return cropRect;
 	});
 	const zoom = $derived(cropRectToFocalZoom(shownRect).zoom);
+	// Drops float noise first so a floor of 0.75 × 0.7 reads 53 %, not 52 %.
+	const zoomPercent = $derived(Math.round(Number((zoom * 100).toFixed(6))));
+	// Whole-percent steps let the slider land on the floor itself (zoomTo floors
+	// a value just below it), and never above a deeper inherited zoom, which the
+	// native input would otherwise clamp up to its min.
+	const sliderMinPercent = $derived(Math.floor(Math.min(zoomOutFloor, zoom) * 100));
 	const isCentered = $derived(rectsClose(shownRect, centeredCropRect(normalizedAspect)));
 	const isWhole = $derived(rectsClose(shownRect, containCropRect(normalizedAspect)));
 
@@ -544,7 +541,7 @@
 				intent="outline"
 				size="sm"
 				format="icon"
-				disabled={controlsDisabled || zoom <= containZoom + RECT_EPSILON}
+				disabled={controlsDisabled || zoom <= zoomOutFloor + RECT_EPSILON}
 				onclick={() => zoomTo(zoom - BUTTON_ZOOM_STEP)}
 				aria-label={m.image_crop_zoom_out()}
 			>
@@ -552,10 +549,10 @@
 			</Button>
 			<Slider
 				class="min-w-16 flex-1"
-				value={Math.round(zoom * 100)}
+				value={zoomPercent}
 				min={sliderMinPercent}
 				max={IMAGE_ZOOM_MAX * 100}
-				step={SLIDER_STEP}
+				step={1}
 				disabled={controlsDisabled}
 				onValueChange={(value: number) => zoomTo(value / 100)}
 				aria-label={m.image_crop_zoom_label()}
@@ -574,7 +571,7 @@
 				class="w-12 shrink-0 text-right text-xs text-muted-foreground tabular-nums"
 				data-testid="crop-stage-zoom"
 			>
-				{Math.round(zoom * 100)} %
+				{zoomPercent} %
 			</span>
 		</div>
 		<div class="flex items-center gap-3">

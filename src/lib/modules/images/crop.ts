@@ -9,16 +9,17 @@
  *
  * Renderer geometry (cover-crop): the visible source window has normalized size
  * `1/zoom` on the bounding axis and per-axis origin `f% * (1 - size)`. All
- * conversions below are exact inverses of that mapping. Since the #116 round-2
- * zoom-out the window may EXTEND PAST the image on one axis (size > 1, negative
- * origin): the overhang renders as letterbox fill. The invariant is
- * `min(w, h) <= 1` – the image always spans the window fully on at least one
- * axis, so fill never appears on both axes at once.
+ * conversions below are exact inverses of that mapping. A zoomed-out window may
+ * EXTEND PAST the image (size > 1, negative origin) on one axis down to the
+ * contain zoom and on both axes below it, down to {@link zoomOutFloorForAspect};
+ * the overhang renders as letterbox fill and the image always stays inside the
+ * window.
  */
 
 import { IMAGE_FIT_MODES, type ImageFitMode } from './fit_modes.js';
 import {
 	IMAGE_ZOOM_BASE,
+	IMAGE_ZOOM_OUT_GAP_PER_SIDE,
 	IMAGE_ZOOM_OUT_MIN,
 	IMAGE_ZOOM_MAX,
 	GIFT_EDITOR_CROP_TARGET_VALUES,
@@ -45,24 +46,36 @@ function clampZoom(zoom: number): number {
 export const clamp01 = (value: number) => Math.min(Math.max(value, 0), 1);
 
 /**
- * Clamp a rect origin so the image always covers the window's shorter side:
- * a window inside the image (size <= 1) stays inside the unit square, while an
- * oversized window (size > 1, zoomed out) keeps the image inside ITSELF – the
- * origin may go negative down to `1 - size` but the image never leaves the window.
+ * Clamp a rect origin on one axis: a window inside the image (size <= 1) stays
+ * inside the unit square, while an oversized window (size > 1, zoomed out)
+ * keeps the image inside ITSELF – the origin may go negative down to
+ * `1 - size` but the image never leaves the window.
  */
 const clampOrigin = (origin: number, size: number) =>
 	Math.min(Math.max(origin, Math.min(0, 1 - size)), Math.max(1 - size, 0));
 
 /**
  * The zoom that shows the ENTIRE image inside a window of the given normalized
- * aspect (white space on exactly one axis unless the aspects match). This is the
- * per-aspect zoom-out floor: below it white space would appear on both axes.
+ * aspect (white space on exactly one axis unless the aspects match). Below it
+ * white space appears on both axes.
  */
 export function containZoomForAspect(normalizedAspect: number): number {
 	if (!Number.isFinite(normalizedAspect) || normalizedAspect <= 0) {
 		return IMAGE_ZOOM_BASE;
 	}
 	return Math.max(1 / Math.max(normalizedAspect, 1 / normalizedAspect), IMAGE_ZOOM_OUT_MIN);
+}
+
+/**
+ * The per-aspect zoom-out floor: past the contain zoom until
+ * {@link IMAGE_ZOOM_OUT_GAP_PER_SIDE} of the window is clear on each side of
+ * its tighter axis (when centered).
+ */
+export function zoomOutFloorForAspect(normalizedAspect: number): number {
+	return Math.max(
+		containZoomForAspect(normalizedAspect) * (1 - 2 * IMAGE_ZOOM_OUT_GAP_PER_SIDE),
+		IMAGE_ZOOM_OUT_MIN,
+	);
 }
 
 /**
@@ -86,7 +99,7 @@ export function normalizedCropAspect(targetAspect: number, imageRatio: number): 
 /**
  * Normalized rect size for a zoom level at a normalized aspect. Zoom binds the
  * axis the target does not fully cover, so `max(w, h) = 1 / zoom` always holds;
- * zooms below 1 make that side exceed the image (letterboxed overhang).
+ * zooms below 1 overhang the image (see the module header).
  */
 function rectSizeForZoom(normalizedAspect: number, zoom: number): { w: number; h: number } {
 	const z = clampZoom(zoom);
@@ -125,9 +138,8 @@ const WINDOW_CENTER: CropWindowPoint = { x: 0.5, y: 0.5 };
 /**
  * Resize a crop rect to a zoom level, keeping the source point under `anchor`
  * (a window-relative point) fixed – the wheel/pinch zooms around the pointer,
- * the slider and buttons around the window center. The zoom floor is the
- * aspect's contain zoom, so zooming out stops exactly when the whole image is
- * visible (never white space on both axes).
+ * the slider and buttons around the window center. Zooming out continues past
+ * the whole-image contain zoom and stops at {@link zoomOutFloorForAspect}.
  */
 export function zoomCropRect(
 	rect: ImageCropRect,
@@ -135,7 +147,7 @@ export function zoomCropRect(
 	zoom: number,
 	anchor: CropWindowPoint = WINDOW_CENTER,
 ): ImageCropRect {
-	const flooredZoom = Math.max(zoom, containZoomForAspect(normalizedAspect));
+	const flooredZoom = Math.max(zoom, zoomOutFloorForAspect(normalizedAspect));
 	const { w, h } = rectSizeForZoom(normalizedAspect, flooredZoom);
 	const anchorX = rect.x + rect.w * anchor.x;
 	const anchorY = rect.y + rect.h * anchor.y;
@@ -187,10 +199,16 @@ export function reprojectCropRect(rect: ImageCropRect, normalizedAspect: number)
 
 /**
  * Re-shape an arbitrary rect to a target's normalized aspect: keep its center,
- * cover its extent, then clamp to the unit square and the renderer's zoom
- * bounds. Used when restoring a crop persisted for a different aspect (legacy
- * data, or a source-image swap) so the editor starts from the closest honest
- * framing rather than a silently distorted one.
+ * cover its extent, scale it into the absolute zoom range
+ * (`IMAGE_ZOOM_OUT_MIN`..`IMAGE_ZOOM_MAX`), then clamp its origin per axis: a
+ * side within the image stays inside it, an oversized side keeps the image
+ * inside the window on that axis. Used when restoring a crop
+ * persisted for a different aspect (legacy data, or a source-image swap) so the
+ * editor starts from the closest honest framing rather than a silently
+ * distorted one. Aspect-matched rects within those bounds pass through
+ * unchanged, even below the target's {@link zoomOutFloorForAspect}: a `thumb`
+ * following the `square` crop shows that crop's zoom, which may be deeper than
+ * the thumbnail's own floor, and reshaping it would fight the follow sync.
  */
 export function fitCropRectToAspect(rect: ImageCropRect, normalizedAspect: number): ImageCropRect {
 	if (rect.w <= 0 || rect.h <= 0 || normalizedAspect <= 0) {
@@ -198,11 +216,6 @@ export function fitCropRectToAspect(rect: ImageCropRect, normalizedAspect: numbe
 	}
 	let w = Math.max(rect.w, rect.h * normalizedAspect);
 	let h = w / normalizedAspect;
-	// Invariant min(w, h) <= 1: the image must span the window on at least one
-	// axis (zoom-out letterboxes one axis only), then respect both zoom bounds.
-	const shrinkToInvariant = Math.min(1, 1 / Math.min(w, h));
-	w *= shrinkToInvariant;
-	h *= shrinkToInvariant;
 	const shrinkToZoomFloor = Math.min(1, 1 / (IMAGE_ZOOM_OUT_MIN * Math.max(w, h)));
 	w *= shrinkToZoomFloor;
 	h *= shrinkToZoomFloor;

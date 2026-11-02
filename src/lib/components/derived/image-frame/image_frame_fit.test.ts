@@ -92,6 +92,35 @@ describe('coverWindowLayout', () => {
 		expect(layout!.top + layout!.height).toBeGreaterThan(100);
 	});
 
+	it('shrinks the whole image inside the box on both axes past the contain zoom', () => {
+		// Square image in a 400×300 box: contain zoom 0.75, the floor 0.525 leaves
+		// the 210 px image 15 % of the box height clear above and below.
+		const layout = coverWindowLayout({
+			focal: { x: 50, y: 50 },
+			zoom: 0.525,
+			boxWidth: 400,
+			boxHeight: 300,
+			naturalRatio: 1,
+		});
+		expect(layout).not.toBeNull();
+		expect(layout!.width).toBeCloseTo(210, 6);
+		expect(layout!.height).toBeCloseTo(210, 6);
+		expect(layout!.left).toBeCloseTo(95, 6);
+		expect(layout!.top).toBeCloseTo(45, 6);
+	});
+
+	it('pins an image smaller than the box to the corner of an edge focal point', () => {
+		const layout = coverWindowLayout({
+			focal: { x: 100, y: 0 },
+			zoom: 0.525,
+			boxWidth: 400,
+			boxHeight: 300,
+			naturalRatio: 1,
+		});
+		expect(layout!.left + layout!.width).toBeCloseTo(400, 6);
+		expect(layout!.top).toBeCloseTo(0, 6);
+	});
+
 	it('returns null for unmeasured or degenerate geometry', () => {
 		expect(
 			coverWindowLayout({

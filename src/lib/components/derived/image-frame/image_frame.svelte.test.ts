@@ -106,3 +106,43 @@ describe('ImageFrame wishlist image mat', () => {
 		expect(await frameBackground('black', '#ff0000')).toBe('rgb(255, 0, 0)');
 	});
 });
+
+describe('ImageFrame cover-crop zoomed out past the whole image', () => {
+	const squareImage =
+		'data:image/svg+xml,' +
+		encodeURIComponent(
+			'<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48"><rect width="48" height="48" fill="red"/></svg>',
+		);
+
+	it('floats the whole image inside the frame with the fill showing on all sides', async () => {
+		// A square image in a 4:3 frame is whole at 75 %; 60 % leaves fill on both axes.
+		const screen = await render(ImageFrame, {
+			props: {
+				class: 'h-24 w-32',
+				src: squareImage,
+				alt: 'Gift',
+				fitMode: 'cover-crop',
+				focal: { x: 50, y: 50 },
+				zoom: 0.6,
+				fillColor: '#ffffff',
+			},
+		});
+		const frame = screen.container.querySelector<HTMLElement>('[data-testid="image-frame"]')!;
+		const image = screen.container.querySelector('img')!;
+		await expect.poll(() => image.complete && image.naturalWidth > 0).toBe(true);
+
+		await expect
+			.poll(() => {
+				const frameBox = frame.getBoundingClientRect();
+				const imageBox = image.getBoundingClientRect();
+				return [
+					imageBox.left > frameBox.left,
+					imageBox.top > frameBox.top,
+					imageBox.right < frameBox.right,
+					imageBox.bottom < frameBox.bottom,
+				];
+			})
+			.toEqual([true, true, true, true]);
+		expect(getComputedStyle(frame).backgroundColor).toBe('rgb(255, 255, 255)');
+	});
+});

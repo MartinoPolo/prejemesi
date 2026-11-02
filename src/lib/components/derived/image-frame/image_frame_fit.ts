@@ -76,11 +76,10 @@ export interface CoverWindowLayout {
 
 /**
  * Explicit pixel layout for a cover-crop frame whose zoom is below the 100 %
- * cover baseline (#116 round 2). CSS `object-fit: cover` clips the image to the
- * element box, so `scale(zoom < 1)` would shrink the already-cropped view with
- * fill on BOTH axes instead of revealing more of the image. Positioning the
- * image explicitly renders the true source window: the box letterboxes on
- * exactly one axis (the frame fill shows through) while the other stays covered.
+ * cover baseline. CSS `object-fit: cover` clips the image to the element box, so
+ * `scale(zoom < 1)` would shrink the already-cropped view instead of revealing
+ * more of the image. Positioning the image explicitly renders the true source
+ * window, with the frame fill in the overhang (geometry in `crop.ts`).
  * Returns null until the box and the image's natural ratio are measured.
  */
 export function coverWindowLayout(input: {

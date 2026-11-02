@@ -21,8 +21,9 @@ it, and previews show the real outcome inside the real components, on desktop an
   `social`. Specs live in `src/lib/modules/images/crop_targets.ts`.
 - Fill / Fit / Manual map to `cover-crop` centred / `contain-padded` / `cover-crop` with
   per-target crops (`editor_modes.ts`). Legacy `auto` stays untouched until the mode is changed.
-- Manual zoom ranges from the target's contain zoom (the whole photo, letterboxed on one axis) to
-  300 %; letterbox areas use the image-frame fill (dots / white / black).
+- Manual zoom continues past the target's contain zoom (the whole photo) until 15 % of the window
+  is clear on each side of its tighter axis, up to 300 % in; letterbox areas use the image-frame
+  fill (dots / white / black).
 - Mobile List and taller desktop List frames show a centred side-window of the saved square
   composition; the editor must disclose this and must not reproject focal/zoom to portrait.
 - Zoom uses a native range input; tokens come from `src/app.css`.
@@ -53,7 +54,8 @@ where `imageSize = sourceSize × coverScale × zoom`. Therefore:
   Clamping focal to 0–100 is exactly the “photo never leaves the window” rule, including the
   letterboxed axis when zoom is below 1.
 - **Zoom** around point `p`: keep the source point under `p`, recompute `focal` with the formula
-  above, clamp `zoom` to `[containZoom(target aspect), 3]`.
+  above, clamp `zoom` to `[zoomOutFloor(target aspect), 3]` (`zoomOutFloorForAspect` in
+  `crop.ts`).
 - **Persist** `targets[target] = { cropRect, focal, zoom }` for gifts and
   `image_slots[slot] = { fitMode: 'cover-crop', cropRect, focal, zoom, bgColor }` for wishlists,
   where `cropRect` is derived from focal/zoom at the spec aspect (identical to
