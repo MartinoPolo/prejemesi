@@ -6,6 +6,7 @@
 		type Palette,
 	} from '$lib/theme/palettes.js';
 	import { ChoiceRow } from '$lib/components/derived/choice-row/index.js';
+	import { cn } from '$lib/utils.js';
 
 	interface WishlistPalettePickerProps {
 		/** Currently selected palette (drives aria-pressed). */
@@ -14,15 +15,21 @@
 		onchange: (palette: Palette) => void;
 		/** Disable all swatches (e.g. while a parent form submits). */
 		disabled?: boolean;
+		class?: string;
 	}
 
-	let { value, onchange, disabled = false }: WishlistPalettePickerProps = $props();
+	let {
+		value,
+		onchange,
+		disabled = false,
+		class: className,
+	}: WishlistPalettePickerProps = $props();
 </script>
 
 <!-- Pure controlled wishlist palette picker: selection is a local settings draft;
      the parent composite save owns persistence. -->
 <div
-	class="mx-auto flex max-w-[45rem] flex-wrap justify-center gap-2"
+	class={cn('mx-auto flex max-w-[45rem] flex-wrap justify-center gap-2', className)}
 	data-testid="wishlist-palette-picker"
 >
 	{#each PALETTES as paletteOption (paletteOption)}

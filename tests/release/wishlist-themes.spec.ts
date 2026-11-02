@@ -40,6 +40,12 @@ test('a saved theme survives a reload and the background can be turned off', asy
 	await expect(page.getByTestId('wishlist-theme-backdrop')).toBeAttached();
 
 	dialog = await openAppearanceSettings(page);
+	const customize = dialog.getByRole('button', { name: 'Přizpůsobit motiv' });
+	await expect(customize, 'an uncustomized motif starts collapsed').toHaveAttribute(
+		'aria-expanded',
+		'false',
+	);
+	await customize.click();
 	await dialog.getByRole('radio', { name: 'Žádné', exact: true }).click();
 	await dialog.getByTestId('wishlist-settings-save').click();
 	await expect(dialog).toBeHidden();

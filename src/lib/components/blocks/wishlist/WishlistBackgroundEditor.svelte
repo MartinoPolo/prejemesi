@@ -27,6 +27,8 @@
 	import WishlistBackgroundFocalPicker from './WishlistBackgroundFocalPicker.svelte';
 
 	interface WishlistBackgroundEditorProps {
+		/** Id of the heading that names the background mode choice. */
+		labelledBy: string;
 		background: WishlistBackground;
 		/** Without a theme there is no theme backdrop to choose; its library images lead the picker. */
 		themeId: WishlistThemeId | null;
@@ -41,6 +43,7 @@
 	}
 
 	let {
+		labelledBy,
 		background,
 		themeId,
 		imageUrl,
@@ -176,7 +179,7 @@
 <div class="flex flex-col gap-4">
 	<WishlistAppearanceOptionRow
 		id="wishlist-appearance-background"
-		label={m.wishlist_appearance_background_label()}
+		{labelledBy}
 		value={background.mode}
 		options={modeOptions}
 		onchange={selectMode}

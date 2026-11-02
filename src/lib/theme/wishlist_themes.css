@@ -3,7 +3,8 @@
    base colours as `--theme-light-*`; the `--theme-dark-*` defaults sink them toward the dark page
    background, and a theme with its own dark look overrides those. Motif colours stay full in
    both modes, except `--m-line` for outline-free line art, which defaults to ink on the light
-   backdrop and paper on the dark one. */
+   backdrop and paper on the dark one. A `.dark` wrapper or `[data-light-scope]` forces one
+   variant on a subtree (`src/app.css`). */
 
 [data-wishlist-theme] {
 	--theme-light-wash: rgb(255 255 255 / 50%);
@@ -24,7 +25,7 @@
 	--m-line: var(--theme-light-line);
 }
 
-.dark [data-wishlist-theme] {
+.dark [data-wishlist-theme]:not(:where([data-light-scope], [data-light-scope] *)) {
 	--theme-top: var(--theme-dark-top);
 	--theme-middle: var(--theme-dark-middle);
 	--theme-bottom: var(--theme-dark-bottom);

@@ -23,6 +23,7 @@ vi.mock('$lib/theme/wishlist_background_library.json', () => ({
 function renderEditor(background: Partial<WishlistBackground>, themeId: WishlistThemeId | null) {
 	const onchange = vi.fn();
 	const screen = render(WishlistBackgroundEditor, {
+		labelledBy: 'background-heading',
 		background: { ...DEFAULT_WISHLIST_BACKGROUND, ...background },
 		themeId,
 		imageUrl: null,

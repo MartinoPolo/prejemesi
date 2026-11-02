@@ -898,6 +898,7 @@
 				>
 					{#key discardVersion}
 						<WishlistAppearanceEditor
+							title={wishlist.title}
 							palette={wishlist.palette}
 							appearance={{
 								themeId: wishlist.themeId,
