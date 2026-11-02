@@ -4,7 +4,8 @@
 	import type { Palette } from '$lib/theme/palettes.js';
 	import {
 		findWishlistLibraryImage,
-		wishlistLibraryImageThumbnailUrl,
+		wishlistLibraryImageHasDarkFile,
+		wishlistLibraryImageThumbnailLayers,
 	} from '$lib/theme/wishlist_background_library.js';
 	import {
 		wishlistStyleTokenAttributes,
@@ -30,15 +31,26 @@
 	// their true proportions.
 	const scale = $derived(canvasWidth === 0 ? 0 : paneWidth / canvasWidth);
 	const heroFrameStyles = $derived(wishlistHeroFrameVariants({ frame: scope.style.heroFrame }));
-	const photoUrl = $derived.by(() => {
+	/** The pane's mode is fixed, so it picks its file directly, like the page does through CSS. */
+	const photo = $derived.by((): { src: string; dimmed: boolean } | null => {
 		if (scope.backgroundMode === 'custom') {
-			return scope.customImageUrl;
+			return scope.customImageUrl === null
+				? null
+				: { src: scope.customImageUrl, dimmed: mode === 'dark' };
 		}
 		const libraryImage =
 			scope.backgroundMode === 'library'
 				? findWishlistLibraryImage(scope.background.libraryImageId)
 				: null;
-		return libraryImage === null ? null : wishlistLibraryImageThumbnailUrl(libraryImage);
+		if (libraryImage === null) {
+			return null;
+		}
+		const layers = wishlistLibraryImageThumbnailLayers(libraryImage);
+		const layer = layers.find((candidate) => candidate.shownIn === mode) ?? layers[0];
+		return {
+			src: layer.src,
+			dimmed: mode === 'dark' && !wishlistLibraryImageHasDarkFile(libraryImage),
+		};
 	});
 </script>
 
@@ -113,10 +125,22 @@
 						{@html motif}
 					</svg>
 				{/each}
-			{:else if photoUrl !== null}
+			{:else if photo !== null}
 				<span class="preview-photo absolute inset-x-0 top-0 overflow-hidden">
-					<img src={photoUrl} alt="" class="size-full object-cover" decoding="async" />
+					<img
+						src={photo.src}
+						alt=""
+						class="size-full object-cover"
+						decoding="async"
+						data-testid="wishlist-appearance-preview-photo"
+					/>
 					<span class="preview-photo-dim absolute inset-0"></span>
+					{#if photo.dimmed}
+						<span
+							class="preview-photo-dark-mode-dim absolute inset-0"
+							data-testid="wishlist-appearance-preview-dark-mode-dim"
+						></span>
+					{/if}
 				</span>
 			{/if}
 
@@ -182,6 +206,14 @@
 	.preview-photo-dim {
 		display: none;
 		background: color-mix(in oklab, var(--background) var(--photo-dim), transparent);
+	}
+
+	.preview-photo-dark-mode-dim {
+		background: color-mix(
+			in oklab,
+			var(--background) var(--wishlist-photo-dark-mode-dim),
+			transparent
+		);
 	}
 
 	.preview-canvas[data-placement='full'] .preview-photo {

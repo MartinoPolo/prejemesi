@@ -4,6 +4,11 @@
 		KEYBOARD_PAN_FRACTION,
 		KEYBOARD_PAN_FRACTION_LARGE,
 	} from '$lib/components/derived/image-crop/crop_stage_geometry.js';
+	import type { WishlistBackgroundPhotoLayer } from '$lib/theme/wishlist_background_library.js';
+	import {
+		backgroundPhotoLayerDisplayClass,
+		backgroundPhotoLayerLoading,
+	} from './wishlist_background_photo.js';
 
 	interface FocalPoint {
 		x: number;
@@ -11,7 +16,8 @@
 	}
 
 	interface WishlistBackgroundFocalPickerProps {
-		imageUrl: string;
+		/** The photo's files; the viewer's mode shows its own. */
+		layers: readonly WishlistBackgroundPhotoLayer[];
 		focal: FocalPoint;
 		onchange: (focal: FocalPoint) => void;
 		disabled?: boolean;
@@ -19,7 +25,7 @@
 	}
 
 	let {
-		imageUrl,
+		layers,
 		focal,
 		onchange,
 		disabled = false,
@@ -111,7 +117,16 @@
 		onpointercancel={handlePointerEnd}
 		onlostpointercapture={handlePointerEnd}
 	>
-		<img src={imageUrl} alt="" draggable="false" class="block max-h-56 max-w-full rounded-sm" />
+		{#each layers as layer (layer.src)}
+			<img
+				src={layer.src}
+				alt=""
+				draggable="false"
+				loading={backgroundPhotoLayerLoading(layers)}
+				class={[backgroundPhotoLayerDisplayClass(layer), 'max-h-56 max-w-full rounded-sm']}
+				data-shown-in={layer.shownIn ?? undefined}
+			/>
+		{/each}
 		<button
 			bind:this={handleElement}
 			type="button"

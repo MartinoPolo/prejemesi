@@ -19,8 +19,9 @@
 	import {
 		WISHLIST_LIBRARY_IMAGES,
 		findWishlistLibraryImage,
-		wishlistLibraryImageThumbnailUrl,
+		wishlistLibraryImageThumbnailLayers,
 		wishlistLibraryImagesForTheme,
+		type WishlistBackgroundPhotoLayer,
 	} from '$lib/theme/wishlist_background_library.js';
 	import WishlistAppearanceOptionRow from './WishlistAppearanceOptionRow.svelte';
 	import WishlistBackgroundLibraryPicker from './WishlistBackgroundLibraryPicker.svelte';
@@ -104,7 +105,7 @@
 	}
 </script>
 
-{#snippet photoControls(photoUrl: string, replaceable: boolean)}
+{#snippet photoControls(photoLayers: WishlistBackgroundPhotoLayer[], replaceable: boolean)}
 	<div class="flex flex-col gap-2">
 		<div class="flex flex-wrap items-center justify-between gap-2">
 			<Label id="{idPrefix}-focal-label">
@@ -128,7 +129,7 @@
 			{/if}
 		</div>
 		<WishlistBackgroundFocalPicker
-			imageUrl={photoUrl}
+			layers={photoLayers}
 			focal={background.focal}
 			onchange={(focal) => onchange({ focal })}
 			describedBy="{idPrefix}-focal-hint"
@@ -205,7 +206,7 @@
 				<HelpText>{m.wishlist_appearance_background_upload_hint()}</HelpText>
 			</div>
 		{:else}
-			{@render photoControls(customImageUrl, true)}
+			{@render photoControls([{ shownIn: null, src: customImageUrl }], true)}
 		{/if}
 	{:else if selectedLibraryImage !== null}
 		<div class="flex flex-col gap-2">
@@ -220,7 +221,7 @@
 				{disabled}
 			/>
 		</div>
-		{@render photoControls(wishlistLibraryImageThumbnailUrl(selectedLibraryImage), false)}
+		{@render photoControls(wishlistLibraryImageThumbnailLayers(selectedLibraryImage), false)}
 	{/if}
 
 	{#if background.mode !== 'none'}

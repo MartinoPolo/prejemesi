@@ -9,7 +9,14 @@ import {
 
 // The shipped library is empty until images are generated.
 vi.mock('$lib/theme/wishlist_background_library.json', () => ({
-	default: [{ id: 'toys-photo', themeId: 'toys', variant: 'photo', widths: [1280, 2560] }],
+	default: [
+		{
+			id: 'toys-photo',
+			themeId: 'toys',
+			variant: 'photo',
+			widthsByMode: { light: [1280, 2560] },
+		},
+	],
 }));
 
 function scopeAttributes(appearance: WishlistAppearancePreview) {

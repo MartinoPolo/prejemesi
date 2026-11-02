@@ -38,7 +38,14 @@ vi.mock('$lib/server/crypto/auth_signing_key.js', () => ({
 }));
 // The shipped library is empty until images are generated.
 vi.mock('$lib/theme/wishlist_background_library.json', () => ({
-	default: [{ id: 'books-photo', themeId: 'books', variant: 'photo', widths: [1280, 2560] }],
+	default: [
+		{
+			id: 'books-photo',
+			themeId: 'books',
+			variant: 'photo',
+			widthsByMode: { light: [1280, 2560] },
+		},
+	],
 }));
 vi.mock('$app/server', () => ({
 	getRequestEvent: vi.fn(() => {

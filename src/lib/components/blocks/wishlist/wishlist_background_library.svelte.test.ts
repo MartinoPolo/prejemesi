@@ -11,14 +11,35 @@ import {
 import WishlistBackgroundEditor from './WishlistBackgroundEditor.svelte';
 
 vi.mock('$env/dynamic/public', () => ({ env: {} }));
-// The shipped library is empty until images are generated.
+// A fixture library: space-photo has a file for each mode, the others one file.
 vi.mock('$lib/theme/wishlist_background_library.json', () => ({
 	default: [
-		{ id: 'toys-photo', themeId: 'toys', variant: 'photo', widths: [1280, 2560] },
-		{ id: 'space-illustrated', themeId: 'space', variant: 'illustrated', widths: [1280, 2560] },
-		{ id: 'space-photo', themeId: 'space', variant: 'photo', widths: [1280, 2560] },
+		{
+			id: 'toys-photo',
+			themeId: 'toys',
+			variant: 'photo',
+			widthsByMode: { light: [1280, 2560] },
+		},
+		{
+			id: 'space-illustrated',
+			themeId: 'space',
+			variant: 'illustrated',
+			widthsByMode: { dark: [1280, 2560] },
+		},
+		{
+			id: 'space-photo',
+			themeId: 'space',
+			variant: 'photo',
+			widthsByMode: { light: [1280, 2560], dark: [1280, 2560] },
+		},
 	],
 }));
+
+function visibleImageSources(element: Element): (string | null)[] {
+	return [...element.querySelectorAll('img')]
+		.filter((image) => getComputedStyle(image).display !== 'none')
+		.map((image) => image.getAttribute('src'));
+}
 
 function renderEditor(background: Partial<WishlistBackground>, themeId: WishlistThemeId | null) {
 	const onchange = vi.fn();
@@ -95,7 +116,7 @@ describe('WishlistBackgroundEditor library mode', () => {
 				.element()
 				.querySelector('img')
 				?.getAttribute('src'),
-		).toMatch(/\/wishlist-backgrounds\/space-photo-1280\.webp$/);
+		).toMatch(/\/wishlist-backgrounds\/space-photo-light-1280\.webp$/);
 		await expect.element(screen.getByRole('slider')).toBeVisible();
 		await expect
 			.element(
@@ -111,4 +132,44 @@ describe('WishlistBackgroundEditor library mode', () => {
 			)
 			.not.toBeInTheDocument();
 	});
+
+	it.each([
+		['light', /space-photo-light-1280\.webp$/],
+		['dark', /space-photo-dark-1280\.webp$/],
+	] as const)(
+		'previews thumbnails and the focal point in %s mode with that mode file',
+		async (viewerMode, expectedSource) => {
+			document.documentElement.classList.toggle('dark', viewerMode === 'dark');
+			try {
+				const { screen } = renderEditor(
+					{ mode: 'library', libraryImageId: 'space-photo' },
+					'space',
+				);
+				const picker = screen.getByTestId('wishlist-background-library');
+				await expect.element(picker).toBeVisible();
+				const spaceName = wishlistThemeName('space');
+				const thumbnailSources = (variantLabel: string) =>
+					visibleImageSources(
+						picker
+							.getByRole('radio', { name: `${spaceName} ${variantLabel}` })
+							.element(),
+					);
+
+				expect(thumbnailSources(m.wishlist_appearance_background_library_photo())).toEqual([
+					expect.stringMatching(expectedSource),
+				]);
+				// An image with one file shows it in either mode.
+				expect(
+					thumbnailSources(m.wishlist_appearance_background_library_illustrated()),
+				).toEqual([expect.stringMatching(/space-illustrated-dark-1280\.webp$/)]);
+				expect(
+					visibleImageSources(
+						screen.getByTestId('wishlist-background-focal-frame').element(),
+					),
+				).toEqual([expect.stringMatching(expectedSource)]);
+			} finally {
+				document.documentElement.classList.remove('dark');
+			}
+		},
+	);
 });

@@ -512,6 +512,10 @@
 	/* Wishlist card title plate (#600): filled with the wishlist palette's primary. */
 	--wishlist-card-plate: var(--primary);
 	--wishlist-card-plate-foreground: var(--primary-foreground);
+
+	/* Background photos without a dark file (custom uploads, library images missing one) sink
+	   this far toward the page in dark mode, on top of the manager's own dim (#600). */
+	--wishlist-photo-dark-mode-dim: 40%;
 	--popover: #fff;
 	--popover-foreground: var(--p-ink);
 	--primary: var(--p-primary);

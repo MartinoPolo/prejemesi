@@ -18,7 +18,14 @@ import {
 
 // The shipped library is empty until images are generated.
 vi.mock('$lib/theme/wishlist_background_library.json', () => ({
-	default: [{ id: 'minimal-photo', themeId: 'minimal', variant: 'photo', widths: [1280] }],
+	default: [
+		{
+			id: 'minimal-photo',
+			themeId: 'minimal',
+			variant: 'photo',
+			widthsByMode: { light: [1280] },
+		},
+	],
 }));
 
 type ReadWishlistOutput = Awaited<ReturnType<typeof readWishlistOperation.run>>;
