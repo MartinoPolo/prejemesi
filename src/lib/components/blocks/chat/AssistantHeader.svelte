@@ -35,6 +35,7 @@
 		sheet,
 		availability,
 		fastForward,
+		toolsMenuOpen = $bindable(false),
 		hintDismissed,
 		onclose,
 		onview,
@@ -51,6 +52,8 @@
 		sheet: AssistantSheet;
 		availability: ChatAvailability;
 		fastForward: boolean;
+		/** The ⋯ tools menu is open. */
+		toolsMenuOpen?: boolean;
 		hintDismissed: boolean;
 		onclose: () => void;
 		onview: (view: AssistantView) => void;
@@ -76,6 +79,13 @@
 			event.preventDefault();
 		}
 	}
+
+	// The menu lives only in the compact header; unmounting it never reports a close.
+	$effect(() => {
+		if (!compactChat) {
+			toolsMenuOpen = false;
+		}
+	});
 </script>
 
 {#snippet closeButton()}
@@ -106,7 +116,7 @@
 {#snippet moreMenu()}
 	<!-- A tap keeps the composer focused so the keyboard stays open; keyboard and assistive
 	     technology users, whose activation has no pointer press, get focus moved into the menu. -->
-	<DropdownMenu.Root>
+	<DropdownMenu.Root bind:open={toolsMenuOpen}>
 		<DropdownMenu.Trigger>
 			{#snippet child({ props })}
 				<!-- Capture phase: the trigger's own handlers prevent default, which stops Bits from

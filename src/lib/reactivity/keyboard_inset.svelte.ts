@@ -1,6 +1,6 @@
 /**
- * Browser-bar collapse changes the visual viewport by less than this, so it never counts as an
- * on-screen keyboard.
+ * Browser toolbars collapsing or hiding change either viewport by less than this, so they never
+ * count as an on-screen keyboard.
  */
 const KEYBOARD_OPEN_MIN_INSET_PX = 120;
 
@@ -41,12 +41,15 @@ function scrollAncestors(element: HTMLElement): HTMLElement[] {
 }
 
 /**
- * The on-screen keyboard, measured from the visual viewport because keyboard heights differ
- * across devices and change while open. While it is open the root carries
- * `data-keyboard="open"` with `--keyboard-inset` (keyboard height above the layout viewport's
- * bottom), `--visual-viewport-top` and `--visual-viewport-height`, so bottom-anchored surfaces
- * sit on the keyboard. Chromium's default `resizes-visual` behaviour matches iOS Safari, so one
- * measurement serves both.
+ * The on-screen keyboard, measured from the viewports because keyboard heights differ across
+ * devices and change while open. iOS Safari shrinks only the visual viewport. Android browsers
+ * follow the viewport meta's `interactive-widget=resizes-content` and shrink the layout viewport
+ * itself, the only model in which Brave reports the true visible height
+ * (brave/brave-browser#60074). The keyboard is the layout viewport's shrink plus the visual
+ * inset. While it is open the root carries `data-keyboard="open"` with `--keyboard-inset` (the
+ * visual inset above the layout viewport's bottom, zero when the layout viewport shrinks),
+ * `--visual-viewport-top` and `--visual-viewport-height`, so bottom-anchored surfaces sit on the
+ * keyboard.
  */
 class KeyboardInset {
 	open = $state(false);
@@ -55,6 +58,9 @@ class KeyboardInset {
 	#savedScroll: [HTMLElement, number][] = [];
 	#focused: HTMLElement | null = null;
 	#frame = 0;
+	/** The layout viewport's height at the last measure without a focused field or keyboard. */
+	#keyboardFreeLayoutHeight = 0;
+	#layoutWidth = 0;
 
 	start(): () => void {
 		const viewport = window.visualViewport;
@@ -67,6 +73,7 @@ class KeyboardInset {
 		};
 		viewport.addEventListener('resize', schedule);
 		viewport.addEventListener('scroll', schedule);
+		window.addEventListener('resize', schedule);
 		document.addEventListener('focusin', schedule);
 		document.addEventListener('focusout', schedule);
 		schedule();
@@ -74,6 +81,7 @@ class KeyboardInset {
 			cancelAnimationFrame(this.#frame);
 			viewport.removeEventListener('resize', schedule);
 			viewport.removeEventListener('scroll', schedule);
+			window.removeEventListener('resize', schedule);
 			document.removeEventListener('focusin', schedule);
 			document.removeEventListener('focusout', schedule);
 			this.#close();
@@ -82,10 +90,24 @@ class KeyboardInset {
 
 	#measure(viewport: VisualViewport) {
 		const focused = document.activeElement;
+		// Without a focused field no keyboard is open, so toolbar and window resizes track; a
+		// rotation changes the width and the keyboard-free height together.
+		if (!isTextEditable(focused) || window.innerWidth !== this.#layoutWidth) {
+			this.#layoutWidth = window.innerWidth;
+			this.#keyboardFreeLayoutHeight = window.innerHeight;
+		}
+		// A desktop window resized while a field is focused shrinks the layout viewport too.
+		const layoutShrink = window.matchMedia('(pointer: coarse)').matches
+			? Math.max(0, this.#keyboardFreeLayoutHeight - window.innerHeight)
+			: 0;
 		const inset = window.innerHeight - viewport.height - viewport.offsetTop;
 		// A pinch zoom shrinks the visual viewport too; leave zoomed layouts to the browser.
 		const unzoomed = Math.abs(viewport.scale - 1) < 0.01;
-		if (!unzoomed || !isTextEditable(focused) || inset <= KEYBOARD_OPEN_MIN_INSET_PX) {
+		if (
+			!unzoomed ||
+			!isTextEditable(focused) ||
+			layoutShrink + inset <= KEYBOARD_OPEN_MIN_INSET_PX
+		) {
 			this.#close();
 			return;
 		}
