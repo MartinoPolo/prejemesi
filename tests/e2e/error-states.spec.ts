@@ -71,7 +71,21 @@ test.describe('Error states and edge cases', () => {
 		await waitForAppHydration(page);
 		await page.route('**/__data.json*', (route) => route.abort('internetdisconnected'));
 
-		await page.locator('a[href$="/login"]:visible').first().click();
+		// Hovering preloads the page data; let that preload fail first so the click always follows a
+		// failed preload, the order that once rendered a blank page.
+		const loginLink = page.locator('a[href$="/login"]:visible').first();
+		const preloadFailed = page.waitForEvent('requestfailed', {
+			predicate: (request) => request.url().includes('/login/__data.json'),
+			timeout: 10_000,
+		});
+		await loginLink.hover();
+		await preloadFailed.catch((error: unknown) => {
+			throw new Error(
+				'Hovering the login link did not preload its data; this test relies on data-sveltekit-preload-data="hover" in src/app.html',
+				{ cause: error },
+			);
+		});
+		await loginLink.click();
 		await expect(
 			page.getByRole('heading', { name: 'Stránku se nepodařilo načíst' }),
 		).toBeVisible();

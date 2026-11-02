@@ -21,6 +21,20 @@ import { resolvedCssLength } from './gift_action_geometry.test_fixtures.js';
 
 const { expectPixelsNear, expectPixelsAtLeast, expectPixelsAtMost } = createPixelAssertions(expect);
 
+// The runner downscales screenshots, so a corner sample's pixel spans several CSS pixels and picks
+// up anti-aliasing noise from the clip's edge; the tolerance absorbs that noise, while a leaked
+// opaque image layer changes the corner far beyond it.
+const CORNER_CHANNEL_TOLERANCE = 4;
+
+function largestChannelDifference(first: number[], second: number[]): number {
+	if (first.length === 0 || first.length !== second.length) {
+		throw new Error(
+			`Expected two non-empty pixel samples of equal length, got ${first.length} and ${second.length} channels`,
+		);
+	}
+	return Math.max(...first.map((channel, index) => Math.abs(channel - second[index])));
+}
+
 describe('GiftListItem responsive image dimensions (issues #328 and #336)', () => {
 	it.each([320, 480, 600])(
 		'keeps short rows portrait without unnecessary height at %d px',
@@ -185,6 +199,7 @@ describe('GiftListItem responsive image dimensions (issues #328 and #336)', () =
 				const imageRect = image.getBoundingClientRect();
 				const cornerX = imageRect.left + expectedInlineRadius / 5;
 				const cornerY = imageRect.top + expectedBlockRadius / 5;
+				const bottomCornerY = imageRect.bottom - expectedBlockRadius / 5;
 				const interiorX = imageRect.left + expectedInlineRadius + 2;
 				const interiorY = imageRect.top + expectedBlockRadius + 2;
 				const composition = image.querySelector(
@@ -253,13 +268,19 @@ describe('GiftListItem responsive image dimensions (issues #328 and #336)', () =
 				const withoutImage = await capturePixels();
 				image.style.visibility = '';
 				expect(
-					painted(cornerX, imageRect.bottom - expectedBlockRadius / 5),
+					largestChannelDifference(
+						painted(cornerX, bottomCornerY),
+						withoutImage(cornerX, bottomCornerY),
+					),
 					`${label} bottom corner must exclude image layers`,
-				).toEqual(withoutImage(cornerX, imageRect.bottom - expectedBlockRadius / 5));
+				).toBeLessThanOrEqual(CORNER_CHANNEL_TOLERANCE);
 				expect(
-					painted(cornerX, cornerY),
+					largestChannelDifference(
+						painted(cornerX, cornerY),
+						withoutImage(cornerX, cornerY),
+					),
 					`${label} top corner must exclude image layers`,
-				).toEqual(withoutImage(cornerX, cornerY));
+				).toBeLessThanOrEqual(CORNER_CHANNEL_TOLERANCE);
 				expect(
 					painted(interiorX, interiorY),
 					`${label} interior must show image layers`,
