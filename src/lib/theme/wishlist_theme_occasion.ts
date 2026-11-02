@@ -15,11 +15,17 @@ const OCCASION_TITLE_STEMS: ReadonlyArray<{ themeId: WishlistThemeId; stems: rea
 const OCCASION_TIME_ZONE = 'Europe/Prague';
 const LAST_CHRISTMAS_SEASON_DAY = 26;
 
-const occasionDateFormat = new Intl.DateTimeFormat('en-US', {
-	timeZone: OCCASION_TIME_ZONE,
-	month: 'numeric',
-	day: 'numeric',
-});
+let occasionDateFormat: Intl.DateTimeFormat | undefined;
+
+// Built on first use: a time-zone formatter costs Worker CPU at module load even when unused.
+function getOccasionDateFormat(): Intl.DateTimeFormat {
+	occasionDateFormat ??= new Intl.DateTimeFormat('en-US', {
+		timeZone: OCCASION_TIME_ZONE,
+		month: 'numeric',
+		day: 'numeric',
+	});
+	return occasionDateFormat;
+}
 
 function titleWords(title: string): string[] {
 	return title
@@ -31,7 +37,7 @@ function titleWords(title: string): string[] {
 }
 
 function isChristmasSeason(eventDate: Date): boolean {
-	const parts = occasionDateFormat.formatToParts(eventDate);
+	const parts = getOccasionDateFormat().formatToParts(eventDate);
 	const month = Number(parts.find((part) => part.type === 'month')?.value);
 	const day = Number(parts.find((part) => part.type === 'day')?.value);
 	return month === 12 && day >= 1 && day <= LAST_CHRISTMAS_SEASON_DAY;

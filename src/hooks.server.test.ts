@@ -151,7 +151,6 @@ vi.mock('$lib/server/auth.js', () => ({
 	createAuth: vi.fn(() => ({
 		api: { getSession: mockGetSession, signInEmail: mockSignInEmail },
 	})),
-	isReservedDemoEmail: vi.fn((email: string) => email.endsWith('@demo.invalid')),
 }));
 
 vi.mock('better-auth/svelte-kit', () => ({
@@ -458,6 +457,54 @@ describe('anonymous public page auth fast path', () => {
 			createEvent({ path: '/w/public', cookies: { 'better-auth.session_data': 'session' } }),
 		);
 		expect(createAuth).toHaveBeenCalledOnce();
+	});
+});
+
+describe('agent API auth fast path', () => {
+	const sessionCookies = { 'better-auth.session_token': 'session' };
+
+	it.each(['GET', 'POST'])(
+		'serves %s /api/v1 without resolving a cookie session',
+		async (method) => {
+			const event = createEvent({
+				path: '/api/v1/proposals',
+				method,
+				accept: 'application/json',
+				cookies: sessionCookies,
+			});
+			const { response } = await runHandle(event);
+			expect(response.status).toBe(200);
+			expect(createAuth).not.toHaveBeenCalled();
+			expect(mockGetSession).not.toHaveBeenCalled();
+			expect(event.locals.user).toBeUndefined();
+		},
+	);
+
+	it.each<EventOptions>([
+		{ path: '/mcp', method: 'GET' },
+		{ path: '/mcp', method: 'POST' },
+		{ path: '/my-lists', method: 'GET' },
+		{ path: '/api/auth/get-session', method: 'GET' },
+	])('still authenticates $method $path', async (options) => {
+		await runHandle(
+			createEvent({ ...options, accept: 'application/json', cookies: sessionCookies }),
+		);
+		expect(createAuth).toHaveBeenCalledOnce();
+		expect(mockGetSession).toHaveBeenCalledOnce();
+	});
+});
+
+describe('cookie session resolution', () => {
+	it("does not attach a reserved demo account's cookie session to locals", async () => {
+		mockGetSession.mockResolvedValue({
+			session: { id: 'session-1' },
+			user: { id: 'demo-user', email: ' Demo-User@DEMO.invalid ' },
+		});
+		const event = createEvent({ path: '/my-lists', accept: 'application/json' });
+		await runHandle(event);
+		expect(mockGetSession).toHaveBeenCalledOnce();
+		expect(event.locals.session).toBeUndefined();
+		expect(event.locals.user).toBeUndefined();
 	});
 });
 

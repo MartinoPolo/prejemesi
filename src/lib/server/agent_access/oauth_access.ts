@@ -4,7 +4,7 @@ import { verifyJwsAccessToken } from 'better-auth/oauth2';
 import { getDb } from '$lib/server/db/index.js';
 import { oauthClient, user } from '$lib/server/db/auth.schema.js';
 import { agentAccessOauthGrant } from '$lib/server/db/access_token.schema.js';
-import { isReservedDemoEmail } from '$lib/server/auth.js';
+import { isReservedDemoEmail } from '$lib/server/demo/constants.js';
 import { appChannel } from '$lib/server/operations/actor.js';
 import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
 import { AGENT_SCOPE, isAgentScope, type AgentScope } from '$lib/modules/access_tokens/scopes.js';

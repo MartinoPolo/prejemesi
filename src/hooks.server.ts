@@ -7,7 +7,11 @@ import * as Sentry from '@sentry/sveltekit';
 import { paraglideMiddleware } from '$lib/paraglide/server';
 import { cookieName, getTextDirection, type Locale } from '$lib/paraglide/runtime';
 import { getDb, isDatabaseConfigured, rememberDatabaseBinding } from '$lib/server/db/index.js';
-import { DEMO_CLEANUP_INTERVAL_MS, DEMO_COOKIE_NAME } from '$lib/server/demo/constants.js';
+import {
+	DEMO_CLEANUP_INTERVAL_MS,
+	DEMO_COOKIE_NAME,
+	isReservedDemoEmail,
+} from '$lib/server/demo/constants.js';
 import { AGENT_API_BASE_PATH, AGENT_MCP_PATH } from '$lib/server/agent_access/api_paths.js';
 import {
 	DEV_AUTO_LOGIN_OPT_OUT_COOKIE_NAME,
@@ -358,6 +362,10 @@ function canSkipAuthentication(
 	event: Parameters<Handle>[0]['event'],
 	attemptsDevAutoLogin: boolean,
 ): boolean {
+	// The agent API authenticates only its bearer token and never reads the cookie session.
+	if (event.url.pathname.startsWith(AGENT_API_PATH_PREFIX)) {
+		return true;
+	}
 	return (
 		(event.request.method === 'GET' || event.request.method === 'HEAD') &&
 		!event.isRemoteRequest &&
@@ -409,7 +417,7 @@ const authHandle: Handle = async ({ event, resolve }) => {
 		return resolve(event);
 	}
 
-	const { createAuth, isReservedDemoEmail } = await import('$lib/server/auth.js');
+	const { createAuth } = await import('$lib/server/auth.js');
 	const { svelteKitHandler } = await import('better-auth/svelte-kit');
 	const { building } = await import('$app/environment');
 	const auth = createAuth(event);
