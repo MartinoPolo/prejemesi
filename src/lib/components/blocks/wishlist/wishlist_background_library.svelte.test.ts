@@ -11,20 +11,20 @@ import {
 import WishlistBackgroundEditor from './WishlistBackgroundEditor.svelte';
 
 vi.mock('$env/dynamic/public', () => ({ env: {} }));
-// A fixture library: space-photo has a file for each mode, the others one file.
+// A fixture library; every image has a file for each mode.
 vi.mock('$lib/theme/wishlist_background_library.json', () => ({
 	default: [
 		{
 			id: 'toys-photo',
 			themeId: 'toys',
 			variant: 'photo',
-			widthsByMode: { light: [1280, 2560] },
+			widthsByMode: { light: [1280, 2560], dark: [1280, 2560] },
 		},
 		{
 			id: 'space-illustrated',
 			themeId: 'space',
 			variant: 'illustrated',
-			widthsByMode: { dark: [1280, 2560] },
+			widthsByMode: { light: [1280, 2560], dark: [1280, 2560] },
 		},
 		{
 			id: 'space-photo',
@@ -158,10 +158,13 @@ describe('WishlistBackgroundEditor library mode', () => {
 				expect(thumbnailSources(m.wishlist_appearance_background_library_photo())).toEqual([
 					expect.stringMatching(expectedSource),
 				]);
-				// An image with one file shows it in either mode.
 				expect(
 					thumbnailSources(m.wishlist_appearance_background_library_illustrated()),
-				).toEqual([expect.stringMatching(/space-illustrated-dark-1280\.webp$/)]);
+				).toEqual([
+					expect.stringMatching(
+						new RegExp(`space-illustrated-${viewerMode}-1280\\.webp$`),
+					),
+				]);
 				expect(
 					visibleImageSources(
 						screen.getByTestId('wishlist-background-focal-frame').element(),

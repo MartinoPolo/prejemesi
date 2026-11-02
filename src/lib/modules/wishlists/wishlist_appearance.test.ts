@@ -14,7 +14,7 @@ vi.mock('$lib/theme/wishlist_background_library.json', () => ({
 			id: 'gamer-photo',
 			themeId: 'gamer',
 			variant: 'photo',
-			widthsByMode: { light: [1280, 2560] },
+			widthsByMode: { light: [1280, 2560], dark: [1280, 2560] },
 		},
 	],
 }));

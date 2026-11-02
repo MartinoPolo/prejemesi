@@ -1,8 +1,6 @@
-import {
-	wishlistLibraryImageHasDarkFile,
-	type WishlistBackgroundPhotoLayer,
-	type WishlistLibraryImage,
-	type WishlistLibraryImageMode,
+import type {
+	WishlistBackgroundPhotoLayer,
+	WishlistLibraryImageMode,
 } from '$lib/theme/wishlist_background_library.js';
 
 /** A custom upload or library image ready to paint. */
@@ -19,18 +17,14 @@ export function customBackgroundPhoto(
 	return { layers: [layer], dimsInDarkMode: true };
 }
 
-/**
- * A light-only library image dims in dark mode like a custom upload; an image with a dark file,
- * a dark-only one included, shows as it is and is never washed out in light mode.
- */
+/** A library image has a file per mode, so it shows as it is in both. */
 export function libraryBackgroundPhoto(
-	image: WishlistLibraryImage,
 	layers: WishlistBackgroundPhotoLayer[],
 ): WishlistBackgroundPhoto {
-	return { layers, dimsInDarkMode: !wishlistLibraryImageHasDarkFile(image) };
+	return { layers, dimsInDarkMode: false };
 }
 
-/** The file a viewer mode shows: its own when the photo has one per mode, otherwise the only one. */
+/** The file a viewer mode shows: a library image's own file for that mode, a custom photo's only one. */
 export function backgroundPhotoLayerForMode(
 	photo: WishlistBackgroundPhoto,
 	mode: WishlistLibraryImageMode,

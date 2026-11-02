@@ -7,9 +7,10 @@ import {
 	backgroundCounterpartPrompt,
 	backgroundPrompt,
 } from '../../../scripts/theme_background_prompts.mjs';
+import type { WishlistLibraryImageMode } from './wishlist_background_library.js';
 import { WISHLIST_THEME_IDS } from './wishlist_themes.js';
 
-// A small fixture library: a pair with both modes, a dark-only and a light-only image.
+// A small fixture library; every image has a light and a dark file.
 vi.mock('./wishlist_background_library.json', () => ({
 	default: [
 		{
@@ -22,13 +23,13 @@ vi.mock('./wishlist_background_library.json', () => ({
 			id: 'christmas-illustrated',
 			themeId: 'christmas',
 			variant: 'illustrated',
-			widthsByMode: { dark: [1280] },
+			widthsByMode: { light: [1280], dark: [1280] },
 		},
 		{
 			id: 'christmas-photo',
 			themeId: 'christmas',
 			variant: 'photo',
-			widthsByMode: { light: [640, 1280, 2560] },
+			widthsByMode: { light: [640, 1280, 2560], dark: [640, 1280, 2560] },
 		},
 	],
 }));
@@ -38,7 +39,6 @@ const {
 	WISHLIST_LIBRARY_IMAGE_MODES,
 	WISHLIST_LIBRARY_IMAGE_VARIANTS,
 	isWishlistLibraryImageId,
-	wishlistLibraryImageHasDarkFile,
 	wishlistLibraryImageLayers,
 	wishlistLibraryImageThumbnailLayers,
 	wishlistLibraryImagesForTheme,
@@ -120,21 +120,6 @@ describe('wishlist background library', () => {
 		]);
 	});
 
-	it('shows the only file of a one-mode image in both modes', () => {
-		expect(wishlistLibraryImageThumbnailLayers(libraryImage('christmas-photo'))).toEqual([
-			{ shownIn: null, src: expect.stringMatching(/christmas-photo-light-640\.webp$/) },
-		]);
-		expect(wishlistLibraryImageThumbnailLayers(libraryImage('christmas-illustrated'))).toEqual([
-			{ shownIn: null, src: expect.stringMatching(/christmas-illustrated-dark-1280\.webp$/) },
-		]);
-	});
-
-	it('knows which images lack a dark file and so get the dark-mode dim', () => {
-		expect(wishlistLibraryImageHasDarkFile(libraryImage('toys-illustrated'))).toBe(true);
-		expect(wishlistLibraryImageHasDarkFile(libraryImage('christmas-illustrated'))).toBe(true);
-		expect(wishlistLibraryImageHasDarkFile(libraryImage('christmas-photo'))).toBe(false);
-	});
-
 	it.each([
 		{
 			problem: 'an unknown theme',
@@ -142,14 +127,19 @@ describe('wishlist background library', () => {
 				id: 'halloween-photo',
 				themeId: 'halloween',
 				variant: 'photo',
-				widthsByMode: { light: [1280] },
+				widthsByMode: { light: [1280], dark: [1280] },
 			},
 			message: /"halloween"/,
 		},
 		{
-			problem: 'no file in any mode',
-			entry: { id: 'toys-photo', themeId: 'toys', variant: 'photo', widthsByMode: {} },
-			message: /at least one mode/,
+			problem: 'no dark file',
+			entry: {
+				id: 'toys-photo',
+				themeId: 'toys',
+				variant: 'photo',
+				widthsByMode: { light: [1280] },
+			},
+			message: /"dark"/,
 		},
 	])(
 		'rejects a manifest entry with $problem when the module loads',
@@ -196,7 +186,10 @@ describe('wishlist background generator prompts', () => {
 });
 
 describe('shipped wishlist background manifest', () => {
-	const manifestEntries: { id: string; widthsByMode: Record<string, number[]> }[] = JSON.parse(
+	const manifestEntries: {
+		id: string;
+		widthsByMode: Partial<Record<WishlistLibraryImageMode, number[]>>;
+	}[] = JSON.parse(
 		readFileSync(new URL('./wishlist_background_library.json', import.meta.url), 'utf8'),
 	);
 
@@ -217,6 +210,18 @@ describe('shipped wishlist background manifest', () => {
 					),
 			);
 		expect(missingFiles).toEqual([]);
+	});
+
+	it('lists a light and a dark file for every image', () => {
+		expect(
+			manifestEntries
+				.filter(({ widthsByMode }) =>
+					WISHLIST_LIBRARY_IMAGE_MODES.some(
+						(mode) => (widthsByMode[mode]?.length ?? 0) === 0,
+					),
+				)
+				.map(({ id }) => id),
+		).toEqual([]);
 	});
 
 	it('keeps an entry for every theme and variant, so stored selections stay valid', () => {

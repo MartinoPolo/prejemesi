@@ -7,7 +7,7 @@ import { WISHLIST_THEME_IDS, type WishlistThemeId } from './wishlist_themes.js';
  * The curated background library (#531): images generated offline per wishlist theme by
  * `scripts/generate_theme_backgrounds.mjs`, which also rewrites the manifest. Each image has a
  * file per viewer mode in `static/wishlist-backgrounds/<id>-<mode>-<width>.webp`; the
- * manifest lists the widths of the modes it has.
+ * manifest lists the widths of both modes.
  */
 export const WISHLIST_LIBRARY_IMAGE_VARIANTS = ['illustrated', 'photo'] as const;
 
@@ -30,20 +30,14 @@ const WishlistLibraryImageSchema = v.strictObject({
 	id: v.pipe(v.string(), v.minLength(1)),
 	themeId: v.picklist(WISHLIST_THEME_IDS),
 	variant: v.picklist(WISHLIST_LIBRARY_IMAGE_VARIANTS),
-	widthsByMode: v.pipe(
-		v.strictObject({ light: v.optional(WidthsSchema), dark: v.optional(WidthsSchema) }),
-		v.check(
-			(widthsByMode) => widthsByMode.light !== undefined || widthsByMode.dark !== undefined,
-			'A library image needs a file for at least one mode.',
-		),
-	),
+	widthsByMode: v.strictObject({ light: WidthsSchema, dark: WidthsSchema }),
 });
 
 export type WishlistLibraryImage = v.InferOutput<typeof WishlistLibraryImageSchema>;
 
 /**
- * One file of a background photo. `shownIn` limits it to that viewer mode when the image has a
- * file per mode; null shows it in both.
+ * One file of a background photo. `shownIn` limits it to that viewer mode, as for every library
+ * image; null shows it in both, as for a custom photo.
  */
 export interface WishlistBackgroundPhotoLayer {
 	shownIn: WishlistLibraryImageMode | null;
@@ -75,11 +69,6 @@ export function wishlistLibraryImagesForTheme(
 	];
 }
 
-/** Whether the image has a file of its own for dark mode (see `libraryBackgroundPhoto`). */
-export function wishlistLibraryImageHasDarkFile(image: WishlistLibraryImage): boolean {
-	return image.widthsByMode.dark !== undefined;
-}
-
 function wishlistLibraryImageUrl(
 	image: WishlistLibraryImage,
 	mode: WishlistLibraryImageMode,
@@ -88,26 +77,13 @@ function wishlistLibraryImageUrl(
 	return asset(`/wishlist-backgrounds/${image.id}-${mode}-${String(width)}.webp`);
 }
 
-/** The modes the image has files for, with their widths; a lone file serves both modes. */
-function modeFiles(image: WishlistLibraryImage) {
-	const files = WISHLIST_LIBRARY_IMAGE_MODES.flatMap((mode) => {
-		const widths = image.widthsByMode[mode];
-		return widths === undefined ? [] : [{ mode, widths }];
-	});
-	return files.map(({ mode, widths }) => ({
-		shownIn: files.length > 1 ? mode : null,
-		mode,
-		widths,
-	}));
-}
-
 /** The smallest generated width per mode, for picker and focal-point previews. */
 export function wishlistLibraryImageThumbnailLayers(
 	image: WishlistLibraryImage,
 ): WishlistBackgroundPhotoLayer[] {
-	return modeFiles(image).map(({ shownIn, mode, widths }) => ({
-		shownIn,
-		src: wishlistLibraryImageUrl(image, mode, widths[0]),
+	return WISHLIST_LIBRARY_IMAGE_MODES.map((mode) => ({
+		shownIn: mode,
+		src: wishlistLibraryImageUrl(image, mode, image.widthsByMode[mode][0]),
 	}));
 }
 
@@ -115,11 +91,14 @@ export function wishlistLibraryImageThumbnailLayers(
 export function wishlistLibraryImageLayers(
 	image: WishlistLibraryImage,
 ): WishlistBackgroundPhotoLayer[] {
-	return modeFiles(image).map(({ shownIn, mode, widths }) => ({
-		shownIn,
-		src: wishlistLibraryImageUrl(image, mode, widths[widths.length - 1]),
-		srcset: widths
-			.map((width) => `${wishlistLibraryImageUrl(image, mode, width)} ${String(width)}w`)
-			.join(', '),
-	}));
+	return WISHLIST_LIBRARY_IMAGE_MODES.map((mode) => {
+		const widths = image.widthsByMode[mode];
+		return {
+			shownIn: mode,
+			src: wishlistLibraryImageUrl(image, mode, widths[widths.length - 1]),
+			srcset: widths
+				.map((width) => `${wishlistLibraryImageUrl(image, mode, width)} ${String(width)}w`)
+				.join(', '),
+		};
+	});
 }

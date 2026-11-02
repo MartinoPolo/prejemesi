@@ -11,7 +11,7 @@ import WishlistThemeBackdrop from './WishlistThemeBackdrop.svelte';
 
 // The responsive photo source reads the image CDN base from `$env/dynamic/public`.
 vi.mock('$env/dynamic/public', () => ({ env: {} }));
-// A fixture library: a light-only image, a light and dark pair, and a dark-only image.
+// A fixture library; every image has a light and a dark file.
 vi.mock('$lib/theme/wishlist_background_library.json', () => ({
 	default: [
 		{
@@ -21,16 +21,10 @@ vi.mock('$lib/theme/wishlist_background_library.json', () => ({
 			widthsByMode: { light: [1280, 2560], dark: [1280, 2560] },
 		},
 		{
-			id: 'christmas-photo',
-			themeId: 'christmas',
-			variant: 'photo',
-			widthsByMode: { dark: [1280, 2560] },
-		},
-		{
 			id: 'space-photo',
 			themeId: 'space',
 			variant: 'photo',
-			widthsByMode: { light: [1280, 2560] },
+			widthsByMode: { light: [1280, 2560], dark: [1280, 2560] },
 		},
 	],
 }));
@@ -239,41 +233,6 @@ describe('WishlistThemeBackdrop', () => {
 			]);
 		},
 	);
-
-	it('dims a library image without a dark file in dark mode only', async () => {
-		const lightContainer = await renderBackdrop({
-			mode: 'library',
-			background: { libraryImageId: 'space-photo', placement: 'full' },
-			viewerMode: 'light',
-		});
-		expect(visiblePhotoSources(lightContainer)).toEqual([
-			expect.stringMatching(/space-photo-light-2560\.webp$/),
-		]);
-		expect(darkModeDimIsVisible(lightContainer)).toBe(false);
-
-		const darkContainer = await renderBackdrop({
-			mode: 'library',
-			background: { libraryImageId: 'space-photo', placement: 'full' },
-			viewerMode: 'dark',
-		});
-		expect(visiblePhotoSources(darkContainer)).toEqual([
-			expect.stringMatching(/space-photo-light-2560\.webp$/),
-		]);
-		expect(darkModeDimIsVisible(darkContainer)).toBe(true);
-	});
-
-	it('shows a dark-only library image as it is in light mode', async () => {
-		const container = await renderBackdrop({
-			mode: 'library',
-			background: { libraryImageId: 'christmas-photo', placement: 'full' },
-			viewerMode: 'light',
-		});
-
-		expect(visiblePhotoSources(container)).toEqual([
-			expect.stringMatching(/christmas-photo-dark-2560\.webp$/),
-		]);
-		expect(darkModeDimIsVisible(container)).toBe(false);
-	});
 
 	it.each([
 		['light', false],

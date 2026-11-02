@@ -13,7 +13,8 @@
 		"themeId": "toys",
 		"variant": "photo",
 		"widthsByMode": {
-			"light": [640, 1280, 1672]
+			"light": [640, 1280, 1672],
+			"dark": [640, 1280, 1672]
 		}
 	},
 	{
@@ -21,7 +22,8 @@
 		"themeId": "kids_clothes",
 		"variant": "illustrated",
 		"widthsByMode": {
-			"light": [640, 1280, 1672]
+			"light": [640, 1280, 1672],
+			"dark": [640, 1280, 1672]
 		}
 	},
 	{
@@ -29,7 +31,8 @@
 		"themeId": "kids_clothes",
 		"variant": "photo",
 		"widthsByMode": {
-			"light": [640, 1280, 1672]
+			"light": [640, 1280, 1672],
+			"dark": [640, 1280, 1672]
 		}
 	},
 	{
@@ -37,6 +40,7 @@
 		"themeId": "gamer",
 		"variant": "illustrated",
 		"widthsByMode": {
+			"light": [640, 1280, 1672],
 			"dark": [640, 1280, 1672]
 		}
 	},
@@ -45,6 +49,7 @@
 		"themeId": "gamer",
 		"variant": "photo",
 		"widthsByMode": {
+			"light": [640, 1280, 1672],
 			"dark": [640, 1280, 1672]
 		}
 	},
@@ -53,7 +58,8 @@
 		"themeId": "minimal",
 		"variant": "illustrated",
 		"widthsByMode": {
-			"light": [640, 1280, 1672]
+			"light": [640, 1280, 1672],
+			"dark": [640, 1280, 1672]
 		}
 	},
 	{
@@ -61,7 +67,8 @@
 		"themeId": "minimal",
 		"variant": "photo",
 		"widthsByMode": {
-			"light": [640, 1280, 1672]
+			"light": [640, 1280, 1672],
+			"dark": [640, 1280, 1672]
 		}
 	},
 	{
@@ -69,7 +76,8 @@
 		"themeId": "wedding",
 		"variant": "illustrated",
 		"widthsByMode": {
-			"light": [640, 1280, 1672]
+			"light": [640, 1280, 1672],
+			"dark": [640, 1280, 1672]
 		}
 	},
 	{
@@ -77,7 +85,8 @@
 		"themeId": "wedding",
 		"variant": "photo",
 		"widthsByMode": {
-			"light": [640, 1280, 1672]
+			"light": [640, 1280, 1672],
+			"dark": [640, 1280, 1672]
 		}
 	},
 	{
@@ -85,6 +94,7 @@
 		"themeId": "christmas",
 		"variant": "illustrated",
 		"widthsByMode": {
+			"light": [640, 1280, 1672],
 			"dark": [640, 1280, 1672]
 		}
 	},
@@ -93,6 +103,7 @@
 		"themeId": "christmas",
 		"variant": "photo",
 		"widthsByMode": {
+			"light": [640, 1280, 1672],
 			"dark": [640, 1280, 1672]
 		}
 	},
@@ -101,7 +112,8 @@
 		"themeId": "outdoor",
 		"variant": "illustrated",
 		"widthsByMode": {
-			"light": [640, 1280, 1672]
+			"light": [640, 1280, 1672],
+			"dark": [640, 1280, 1672]
 		}
 	},
 	{
@@ -109,7 +121,8 @@
 		"themeId": "outdoor",
 		"variant": "photo",
 		"widthsByMode": {
-			"light": [640, 1280, 1672]
+			"light": [640, 1280, 1672],
+			"dark": [640, 1280, 1672]
 		}
 	},
 	{
@@ -117,7 +130,8 @@
 		"themeId": "books",
 		"variant": "illustrated",
 		"widthsByMode": {
-			"light": [640, 1280, 1672]
+			"light": [640, 1280, 1672],
+			"dark": [640, 1280, 1672]
 		}
 	},
 	{
@@ -125,7 +139,8 @@
 		"themeId": "books",
 		"variant": "photo",
 		"widthsByMode": {
-			"light": [640, 1280, 1672]
+			"light": [640, 1280, 1672],
+			"dark": [640, 1280, 1672]
 		}
 	},
 	{
@@ -133,7 +148,8 @@
 		"themeId": "baby",
 		"variant": "illustrated",
 		"widthsByMode": {
-			"light": [640, 1280, 1672]
+			"light": [640, 1280, 1672],
+			"dark": [640, 1280, 1672]
 		}
 	},
 	{
@@ -141,7 +157,8 @@
 		"themeId": "baby",
 		"variant": "photo",
 		"widthsByMode": {
-			"light": [640, 1280, 1672]
+			"light": [640, 1280, 1672],
+			"dark": [640, 1280, 1672]
 		}
 	},
 	{
@@ -149,7 +166,8 @@
 		"themeId": "retro",
 		"variant": "illustrated",
 		"widthsByMode": {
-			"light": [640, 1280, 1672]
+			"light": [640, 1280, 1672],
+			"dark": [640, 1280, 1672]
 		}
 	},
 	{
@@ -157,7 +175,8 @@
 		"themeId": "retro",
 		"variant": "photo",
 		"widthsByMode": {
-			"light": [640, 1280, 1672]
+			"light": [640, 1280, 1672],
+			"dark": [640, 1280, 1672]
 		}
 	},
 	{
@@ -165,7 +184,8 @@
 		"themeId": "party",
 		"variant": "illustrated",
 		"widthsByMode": {
-			"light": [640, 1280, 1672]
+			"light": [640, 1280, 1672],
+			"dark": [640, 1280, 1672]
 		}
 	},
 	{
@@ -173,7 +193,8 @@
 		"themeId": "party",
 		"variant": "photo",
 		"widthsByMode": {
-			"light": [640, 1280, 1672]
+			"light": [640, 1280, 1672],
+			"dark": [640, 1280, 1672]
 		}
 	},
 	{
@@ -181,6 +202,7 @@
 		"themeId": "space",
 		"variant": "illustrated",
 		"widthsByMode": {
+			"light": [640, 1280, 1672],
 			"dark": [640, 1280, 1672]
 		}
 	},
@@ -189,6 +211,7 @@
 		"themeId": "space",
 		"variant": "photo",
 		"widthsByMode": {
+			"light": [640, 1280, 1672],
 			"dark": [640, 1280, 1672]
 		}
 	},
@@ -197,7 +220,8 @@
 		"themeId": "music",
 		"variant": "illustrated",
 		"widthsByMode": {
-			"light": [640, 1280, 1672]
+			"light": [640, 1280, 1672],
+			"dark": [640, 1280, 1672]
 		}
 	},
 	{
@@ -205,7 +229,8 @@
 		"themeId": "music",
 		"variant": "photo",
 		"widthsByMode": {
-			"light": [640, 1280, 1672]
+			"light": [640, 1280, 1672],
+			"dark": [640, 1280, 1672]
 		}
 	},
 	{
@@ -213,7 +238,8 @@
 		"themeId": "pets",
 		"variant": "illustrated",
 		"widthsByMode": {
-			"light": [640, 1280, 1672]
+			"light": [640, 1280, 1672],
+			"dark": [640, 1280, 1672]
 		}
 	},
 	{
@@ -221,7 +247,8 @@
 		"themeId": "pets",
 		"variant": "photo",
 		"widthsByMode": {
-			"light": [640, 1280, 1672]
+			"light": [640, 1280, 1672],
+			"dark": [640, 1280, 1672]
 		}
 	},
 	{
@@ -229,7 +256,8 @@
 		"themeId": "gourmet",
 		"variant": "illustrated",
 		"widthsByMode": {
-			"light": [640, 1280, 1672]
+			"light": [640, 1280, 1672],
+			"dark": [640, 1280, 1672]
 		}
 	},
 	{
@@ -237,7 +265,8 @@
 		"themeId": "gourmet",
 		"variant": "photo",
 		"widthsByMode": {
-			"light": [640, 1280, 1672]
+			"light": [640, 1280, 1672],
+			"dark": [640, 1280, 1672]
 		}
 	},
 	{
@@ -245,7 +274,8 @@
 		"themeId": "travel",
 		"variant": "illustrated",
 		"widthsByMode": {
-			"light": [640, 1280, 1672]
+			"light": [640, 1280, 1672],
+			"dark": [640, 1280, 1672]
 		}
 	},
 	{
@@ -253,7 +283,8 @@
 		"themeId": "travel",
 		"variant": "photo",
 		"widthsByMode": {
-			"light": [640, 1280, 1672]
+			"light": [640, 1280, 1672],
+			"dark": [640, 1280, 1672]
 		}
 	}
 ]

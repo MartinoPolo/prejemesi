@@ -6,7 +6,7 @@ import WishlistAppearancePreviewPane from './WishlistAppearancePreviewPane.svelt
 import { resolveWishlistThemeScope } from './wishlist_theme_scope.js';
 
 vi.mock('$env/dynamic/public', () => ({ env: {} }));
-// A fixture library: a light and dark pair and a light-only image.
+// A fixture library: a light and dark pair.
 vi.mock('$lib/theme/wishlist_background_library.json', () => ({
 	default: [
 		{
@@ -14,12 +14,6 @@ vi.mock('$lib/theme/wishlist_background_library.json', () => ({
 			themeId: 'toys',
 			variant: 'illustrated',
 			widthsByMode: { light: [640, 1280], dark: [640, 1280] },
-		},
-		{
-			id: 'space-photo',
-			themeId: 'space',
-			variant: 'photo',
-			widthsByMode: { light: [640, 1280] },
 		},
 	],
 }));
@@ -54,23 +48,6 @@ describe('WishlistAppearancePreviewPane background photo', () => {
 			.element(screen.getByTestId('wishlist-appearance-preview-dark-mode-dim'))
 			.not.toBeInTheDocument();
 	});
-
-	it.each([
-		['light', false],
-		['dark', true],
-	] as const)(
-		'falls back to the light file of a library image in %s mode, dimmed only in dark',
-		async (mode, dimmed) => {
-			const screen = renderPane(mode, { mode: 'library', libraryImageId: 'space-photo' });
-
-			await expect
-				.element(screen.getByTestId('wishlist-appearance-preview-photo'))
-				.toHaveAttribute('src', expect.stringMatching(/space-photo-light-640\.webp$/));
-			expect(
-				screen.getByTestId('wishlist-appearance-preview-dark-mode-dim').query() !== null,
-			).toBe(dimmed);
-		},
-	);
 
 	it.each([
 		['light', false],

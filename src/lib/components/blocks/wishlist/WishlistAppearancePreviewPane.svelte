@@ -48,10 +48,7 @@
 				: null;
 		return libraryImage === null
 			? null
-			: libraryBackgroundPhoto(
-					libraryImage,
-					wishlistLibraryImageThumbnailLayers(libraryImage),
-				);
+			: libraryBackgroundPhoto(wishlistLibraryImageThumbnailLayers(libraryImage));
 	});
 	/** The pane's mode is fixed, so it picks its file directly, like the page does through CSS. */
 	const photo = $derived(
