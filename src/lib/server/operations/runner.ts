@@ -98,6 +98,8 @@ export interface OperationDryRunResult<TOutput> {
 
 interface PreparedStep {
 	operationName: string;
+	/** See {@link MutationOperation.isolatedGiftId}; null for a step that runs on its own. */
+	isolatedGiftId: string | null;
 	run(context: MutationOperationContext): Promise<unknown>;
 	onCommitted(): Promise<void>;
 	onAbandoned(): Promise<void>;
@@ -146,11 +148,13 @@ function bindMutationStep<TName extends string, TSchema extends OperationInputSc
 	onOutput: (output: TOutput) => void = () => {},
 ): BoundStep {
 	const input = parseOperationInput(operation.input, rawInput);
+	const isolatedGiftId = operation.isolatedGiftId?.(input) ?? null;
 	const toPreparedStep = (
 		execute: (context: MutationOperationContext) => Promise<TOutput>,
 		cleanup: Pick<PreparedStep, 'onCommitted' | 'onAbandoned'>,
 	): PreparedStep => ({
 		operationName: operation.name,
+		isolatedGiftId,
 		run: async (context) => {
 			const output = await execute(context);
 			onOutput(output);
@@ -206,18 +210,135 @@ interface BatchStepScope {
 	deferEffect: (deferredEffect: DeferredEffect) => void;
 }
 
-function stepContext(step: PreparedStep, scope: BatchStepScope): MutationOperationContext {
+/**
+ * A step's context, holding back what it reports until `reportToScope`, so steps run together
+ * still report in step order.
+ */
+function stepContext(
+	step: PreparedStep,
+	scope: BatchStepScope,
+): { context: MutationOperationContext; reportToScope: () => void } {
+	const reports: (() => void)[] = [];
 	return {
-		actor: scope.actor,
-		transaction: scope.transaction,
-		now: scope.now,
-		batchId: scope.batchId,
-		dryRun: scope.dryRun,
-		recordGiftRevisions: (changes) =>
-			scope.revisionCollector.record(step.operationName, changes),
-		noteReservedGiftEdits: scope.noteReservedGiftEdits,
-		deferEffect: (effect) => scope.deferEffect({ operationName: step.operationName, effect }),
+		context: {
+			actor: scope.actor,
+			transaction: scope.transaction,
+			now: scope.now,
+			batchId: scope.batchId,
+			dryRun: scope.dryRun,
+			recordGiftRevisions: (changes) =>
+				reports.push(() => scope.revisionCollector.record(step.operationName, changes)),
+			noteReservedGiftEdits: (edits) =>
+				reports.push(() => scope.noteReservedGiftEdits(edits)),
+			deferEffect: (effect) =>
+				reports.push(() =>
+					scope.deferEffect({ operationName: step.operationName, effect }),
+				),
+		},
+		reportToScope: () => reports.forEach((report) => report()),
 	};
+}
+
+interface IndexedStep {
+	stepIndex: number;
+	step: PreparedStep;
+}
+
+/**
+ * Splits the steps, in order, into runs that execute together: a step on its own, or consecutive
+ * steps that each change only their own distinct gift ({@link MutationOperation.isolatedGiftId}).
+ */
+function concurrentStepGroups(steps: readonly IndexedStep[]): IndexedStep[][] {
+	const groups: IndexedStep[][] = [];
+	let groupGiftIds = new Set<string>();
+	for (const indexedStep of steps) {
+		const giftId = indexedStep.step.isolatedGiftId;
+		const group = groups.at(-1);
+		if (
+			group !== undefined &&
+			giftId !== null &&
+			groupGiftIds.size > 0 &&
+			!groupGiftIds.has(giftId)
+		) {
+			group.push(indexedStep);
+			groupGiftIds.add(giftId);
+			continue;
+		}
+		groups.push([indexedStep]);
+		groupGiftIds = new Set(giftId === null ? [] : [giftId]);
+	}
+	return groups;
+}
+
+type StepGroupOutcome = { failed: false; results: unknown[] } | { failed: true; thrown: unknown };
+
+/**
+ * Runs a group's steps concurrently on the transaction's one connection, which pipelines their
+ * statements, then reports their effects in step order. A failure of a group of several steps may
+ * leave the transaction aborted and need not be the first failing step: see
+ * {@link runStepGroupInSavepoint}.
+ */
+async function runStepGroup(
+	group: readonly IndexedStep[],
+	scope: BatchStepScope,
+): Promise<StepGroupOutcome> {
+	const runs = group.map(({ step }) => ({ step, ...stepContext(step, scope) }));
+	type GroupRun = (typeof runs)[number];
+	const settledRuns = new Map<GroupRun, PromiseSettledResult<unknown>>();
+	const runTogether = async (selected: readonly GroupRun[]) => {
+		const settled = await Promise.allSettled(selected.map((run) => run.step.run(run.context)));
+		selected.forEach((run, index) => settledRuns.set(run, settled[index]));
+	};
+	// postgres.js pipelines only statements it has already prepared on the connection; one it has
+	// not described yet makes the statements queued behind it go one round trip each. So the first
+	// step of each operation runs ahead and prepares the statements the others repeat.
+	const leaders = new Map(runs.map((run) => [run.step.operationName, run] as const).reverse());
+	await runTogether([...leaders.values()]);
+	if ([...settledRuns.values()].every((settled) => settled.status === 'fulfilled')) {
+		await runTogether(runs.filter((run) => !settledRuns.has(run)));
+	}
+	const results: unknown[] = [];
+	for (const run of runs) {
+		const settled = settledRuns.get(run);
+		if (settled?.status !== 'fulfilled') {
+			return { failed: true, thrown: settled?.reason };
+		}
+		results.push(settled.value);
+	}
+	runs.forEach((run) => run.reportToScope());
+	return { failed: false, results };
+}
+
+class StepGroupRollback extends Error {
+	constructor() {
+		super('Operation step group rollback');
+	}
+}
+
+/**
+ * Runs a group together in a savepoint and finishes it there, or undoes it and returns null when a
+ * step fails or `finish` throws `StepGroupRollback`. The caller then runs the steps one by one, so a
+ * failure names the step a sequential run would have failed on.
+ */
+async function runStepGroupInSavepoint<T>(
+	group: readonly IndexedStep[],
+	scope: BatchStepScope,
+	finish: (savepoint: DatabaseTransaction, results: unknown[]) => Promise<T>,
+): Promise<T | null> {
+	try {
+		return await scope.transaction.transaction(async (savepoint) => {
+			const outcome = await runStepGroup(group, { ...scope, transaction: savepoint });
+			if (outcome.failed) {
+				throw new StepGroupRollback();
+			}
+			return finish(savepoint, outcome.results);
+		});
+	} catch (thrown) {
+		if (thrown instanceof StepGroupRollback) {
+			return null;
+		}
+		throw thrown;
+	}
 }
 
 async function runBoundSteps(
@@ -260,12 +381,23 @@ async function runBoundSteps(
 					deferEffect: (deferredEffect) => deferredEffects.push(deferredEffect),
 				};
 				const results: unknown[] = [];
-				for (const [stepIndex, preparedStep] of preparedSteps.entries()) {
-					try {
-						results.push(await preparedStep.run(stepContext(preparedStep, scope)));
-					} catch (thrown) {
-						options.onStepFailed?.(stepIndex, thrown);
-						throw thrown;
+				const indexedSteps = preparedSteps.map((step, stepIndex) => ({ stepIndex, step }));
+				for (const group of concurrentStepGroups(indexedSteps)) {
+					const groupResults =
+						group.length > 1
+							? await runStepGroupInSavepoint(group, scope, async (_, ran) => ran)
+							: null;
+					if (groupResults !== null) {
+						results.push(...groupResults);
+						continue;
+					}
+					for (const indexedStep of group) {
+						const outcome = await runStepGroup([indexedStep], scope);
+						if (outcome.failed) {
+							options.onStepFailed?.(indexedStep.stepIndex, outcome.thrown);
+							throw outcome.thrown;
+						}
+						results.push(...outcome.results);
 					}
 				}
 				const notifications = dryRun
@@ -399,7 +531,9 @@ class PreviewRollback extends Error {
 /**
  * Previews a batch step by step in one transaction that always rolls back: each step runs in its
  * own savepoint, so a step the core rejects is reported and undone while the following steps run
- * on the state the earlier accepted ones left. Nothing commits and no deferred effect runs.
+ * on the state the earlier accepted ones left. Steps that may run together first try as one group
+ * in one savepoint; when any of them is rejected, the group is undone and previewed step by step.
+ * Nothing commits and no deferred effect runs.
  */
 export async function previewOperationBatch(
 	actor: OperationActor,
@@ -413,6 +547,59 @@ export async function previewOperationBatch(
 	const now = new Date();
 	const entries: PreviewEntry[] = [];
 	const previews: OperationStepPreview[] = [];
+	const previewScope = (transaction: DatabaseTransaction): BatchStepScope => ({
+		actor,
+		transaction,
+		now,
+		batchId,
+		dryRun: true,
+		revisionCollector: new GiftRevisionCollector({
+			batchId,
+			actorUserId: actor.userId,
+			channel: actor.channel,
+		}),
+		noteReservedGiftEdits: () => {},
+		deferEffect: () => {},
+	});
+	/** Each step's preview, or null when a step was rejected and the savepoint rolled back. */
+	const previewTogether = (transaction: DatabaseTransaction, group: readonly IndexedStep[]) => {
+		const scope = previewScope(transaction);
+		return runStepGroupInSavepoint(group, scope, async (savepoint, results) => {
+			const revisions = await scope.revisionCollector.flush(savepoint);
+			// Each step of a group changes only its own gift, so the gift id assigns its revisions.
+			const stepRevisions = group.map(({ step }) =>
+				revisions.filter((revision) => revision.giftId === step.isolatedGiftId),
+			);
+			if (stepRevisions.flat().length !== revisions.length) {
+				throw new StepGroupRollback();
+			}
+			return group.map(
+				(_, index): OperationStepPreview => ({
+					accepted: true,
+					result: results[index],
+					revisions: stepRevisions[index],
+				}),
+			);
+		});
+	};
+	const previewAlone = async (
+		transaction: DatabaseTransaction,
+		indexedStep: IndexedStep,
+	): Promise<OperationStepPreview> => {
+		try {
+			return await transaction.transaction(async (savepoint) => {
+				const scope = previewScope(savepoint);
+				const outcome = await runStepGroup([indexedStep], scope);
+				if (outcome.failed) {
+					throw outcome.thrown;
+				}
+				const revisions = await scope.revisionCollector.flush(savepoint);
+				return { accepted: true, result: outcome.results[0], revisions } as const;
+			});
+		} catch (thrown) {
+			return { accepted: false, rejection: requireStepRejection(thrown) };
+		}
+	};
 	try {
 		for (const step of steps) {
 			try {
@@ -422,41 +609,23 @@ export async function previewOperationBatch(
 				entries.push({ rejection: requireStepRejection(thrown) });
 			}
 		}
+		const preparedSteps = entries.flatMap((entry, stepIndex) =>
+			'prepared' in entry ? [{ stepIndex, step: entry.prepared }] : [],
+		);
+		entries.forEach((entry, stepIndex) => {
+			if ('rejection' in entry) {
+				previews[stepIndex] = { accepted: false, rejection: entry.rejection };
+			}
+		});
 		await getDb().transaction(async (transaction) => {
 			await lockWishlistsInIdOrder(transaction, options.exclusiveWishlistIds ?? []);
 			await options.verifyLocked?.(transaction);
-			for (const entry of entries) {
-				if ('rejection' in entry) {
-					previews.push({ accepted: false, rejection: entry.rejection });
-					continue;
-				}
-				const { prepared } = entry;
-				const revisionCollector = new GiftRevisionCollector({
-					batchId,
-					actorUserId: actor.userId,
-					channel: actor.channel,
-				});
-				try {
-					previews.push(
-						await transaction.transaction(async (savepoint) => {
-							const result = await prepared.run(
-								stepContext(prepared, {
-									actor,
-									transaction: savepoint,
-									now,
-									batchId,
-									dryRun: true,
-									revisionCollector,
-									noteReservedGiftEdits: () => {},
-									deferEffect: () => {},
-								}),
-							);
-							const revisions = await revisionCollector.flush(savepoint);
-							return { accepted: true, result, revisions } as const;
-						}),
-					);
-				} catch (thrown) {
-					previews.push({ accepted: false, rejection: requireStepRejection(thrown) });
+			for (const group of concurrentStepGroups(preparedSteps)) {
+				const together =
+					group.length > 1 ? await previewTogether(transaction, group) : null;
+				for (const [index, indexedStep] of group.entries()) {
+					previews[indexedStep.stepIndex] =
+						together?.[index] ?? (await previewAlone(transaction, indexedStep));
 				}
 			}
 			throw new PreviewRollback();

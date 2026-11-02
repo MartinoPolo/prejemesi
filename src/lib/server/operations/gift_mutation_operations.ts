@@ -110,6 +110,7 @@ export const updateGiftOperation = defineOperation({
 	kind: OPERATION_KIND.mutation,
 	exposure: OPERATION_EXPOSURE.agent,
 	input: UpdateGiftInputSchema,
+	isolatedGiftId: (input) => input.id,
 	async run(context, input) {
 		rejectDemoGiftImages([input]);
 		const { giftRow, managedWishlist } = await lockManagedGift(
@@ -144,6 +145,7 @@ export const appendGiftDescriptionOperation = defineOperation({
 		giftId: v.string(),
 		text: v.pipe(v.string(), v.trim(), v.minLength(1)),
 	}),
+	isolatedGiftId: (input) => input.giftId,
 	async run(context, input) {
 		const { giftRow, managedWishlist } = await lockManagedGift(
 			context.transaction,
@@ -198,6 +200,7 @@ export const markGiftReceivedOperation = defineOperation({
 	kind: OPERATION_KIND.mutation,
 	exposure: OPERATION_EXPOSURE.agent,
 	input: MarkGiftReceivedInputSchema,
+	isolatedGiftId: (input) => input.giftId,
 	async run(context, input) {
 		const { giftRow, managedWishlist } = await lockManagedGift(
 			context.transaction,
