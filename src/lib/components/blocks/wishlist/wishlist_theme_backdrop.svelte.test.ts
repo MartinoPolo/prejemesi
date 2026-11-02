@@ -312,17 +312,14 @@ describe('WishlistThemeBackdrop', () => {
 		);
 	});
 
-	it.each([
-		['drifts with the page scroll by default', 'subtle', true],
-		['stays still when motion is off', 'off', false],
-	] as const)('library image %s', async (_label, motion, drifts) => {
+	it('drifts a library image with the page scroll', async () => {
 		const container = await renderBackdrop({
 			mode: 'library',
-			background: { libraryImageId: 'space-photo', motion },
+			background: { libraryImageId: 'space-photo' },
 		});
 		const photoFrame = container.querySelector<HTMLElement>('.wishlist-backdrop-photo');
 
-		expect(photoFrame!.getAnimations().length > 0).toBe(drifts);
+		expect(photoFrame!.getAnimations().length).toBeGreaterThan(0);
 	});
 
 	it('drifts motifs with the page scroll by default', async () => {
@@ -332,18 +329,5 @@ describe('WishlistThemeBackdrop', () => {
 		);
 
 		expect(motif!.getAnimations().length).toBeGreaterThan(0);
-	});
-
-	it('stops the scroll drift when motion is off', async () => {
-		const container = await renderBackdrop({
-			mode: 'theme',
-			art: ART,
-			background: { motion: 'off' },
-		});
-		const motif = container.querySelector<HTMLElement>(
-			'[data-testid="wishlist-backdrop-motif"]',
-		);
-
-		expect(motif!.getAnimations()).toHaveLength(0);
 	});
 });

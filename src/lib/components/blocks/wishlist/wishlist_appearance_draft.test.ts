@@ -140,9 +140,7 @@ describe('wishlist appearance draft', () => {
 		);
 
 		it('keep photo settings of the motif backdrop as the motif background', () => {
-			expect(overriddenFields(setWishlistBackground(christmas, { motion: 'off' }))).toEqual(
-				[],
-			);
+			expect(overriddenFields(setWishlistBackground(christmas, { dim: 45 }))).toEqual([]);
 		});
 
 		it('separate the hero frame from the other style tokens', () => {
@@ -223,7 +221,6 @@ describe('wishlist appearance draft', () => {
 					focal: { x: 20, y: 70 },
 					placement: 'full',
 					dim: 35,
-					motion: 'off',
 				},
 			} as const;
 			const draft = createWishlistAppearanceDraft(stored);
@@ -252,7 +249,6 @@ describe('wishlist appearance draft', () => {
 					focal: stored.background.focal,
 					placement: stored.background.placement,
 					dim: stored.background.dim,
-					motion: stored.background.motion,
 				},
 			});
 		});
@@ -274,7 +270,6 @@ describe('wishlist appearance draft', () => {
 		['focal point', { focal: { x: 10, y: 50 } }],
 		['placement', { placement: 'full' }],
 		['dim', { dim: 0 }],
-		['motion', { motion: 'off' }],
 	] as const)('counts a changed background %s as a change', (_field, changes) => {
 		expect(
 			isSameWishlistAppearanceDraft(setWishlistBackground(unthemed, changes), unthemed),

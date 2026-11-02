@@ -12,7 +12,6 @@
 		WISHLIST_BACKGROUND_DIM_MAX,
 		type WishlistBackground,
 		type WishlistBackgroundMode,
-		type WishlistBackgroundMotion,
 		type WishlistBackgroundPlacement,
 		type WishlistThemeId,
 	} from '$lib/theme/wishlist_themes.js';
@@ -78,10 +77,6 @@
 		{ value: 'gutters', label: m.wishlist_appearance_background_placement_gutters() },
 		{ value: 'full', label: m.wishlist_appearance_background_placement_full() },
 	] satisfies { value: WishlistBackgroundPlacement; label: string }[];
-	const motionOptions = [
-		{ value: 'subtle', label: m.wishlist_appearance_motion_subtle() },
-		{ value: 'off', label: m.wishlist_appearance_motion_off() },
-	] satisfies { value: WishlistBackgroundMotion; label: string }[];
 
 	const showsCustomControls = $derived(background.mode === 'custom' && allowCustomUpload);
 	const customImageUrl = $derived(background.imageKey === null ? null : imageUrl);
@@ -222,20 +217,5 @@
 			/>
 		</div>
 		{@render photoControls(wishlistLibraryImageThumbnailLayers(selectedLibraryImage), false)}
-	{/if}
-
-	{#if background.mode !== 'none'}
-		<WishlistAppearanceOptionRow
-			id="wishlist-appearance-motion"
-			label={m.wishlist_appearance_motion_label()}
-			value={background.motion}
-			options={motionOptions}
-			onchange={(motion) => onchange({ motion })}
-			{disabled}
-		>
-			{#snippet help()}
-				<HelpText>{m.wishlist_appearance_motion_hint()}</HelpText>
-			{/snippet}
-		</WishlistAppearanceOptionRow>
 	{/if}
 </div>
