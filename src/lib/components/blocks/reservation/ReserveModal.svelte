@@ -11,6 +11,7 @@
 	import { resolve } from '$app/paths';
 	import { getLocalizedAuthHref } from '$lib/i18n/locale.js';
 	import { reserveModalVariants } from './reserve_modal_variants.js';
+	import { keepFocusOnPress } from '$lib/reactivity/keyboard_inset.svelte.js';
 	import { formatPrice } from '$lib/modules/gifts/gift_display.js';
 	import type { GiftForVisitor } from '$lib/modules/gifts/types.js';
 	import type { ReserveGiftInput } from '$lib/modules/reservations/types.js';
@@ -260,6 +261,7 @@
 					<Button
 						disabled={isSubmitting ||
 							(!isAuthenticated && !turnstileUnavailable && turnstileToken === null)}
+						onpointerdown={keepFocusOnPress}
 						onclick={handleSubmit}
 					>
 						{#if isSubmitting}

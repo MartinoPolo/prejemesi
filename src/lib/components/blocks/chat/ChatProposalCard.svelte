@@ -213,7 +213,7 @@
 	});
 </script>
 
-{#snippet controls(onlocate?: () => void)}
+{#snippet controls(onlocate?: () => void, compact = false)}
 	<ProposalDecisionControls
 		{decisions}
 		rowCount={proposal.rowCount}
@@ -223,11 +223,12 @@
 		oninspect={() => (inspecting = !inspecting)}
 		onapply={requestApply}
 		{onlocate}
+		{compact}
 	/>
 {/snippet}
 
-{#snippet barControls()}
-	{@render controls(locate)}
+{#snippet barControls(compact: boolean)}
+	{@render controls(locate, compact)}
 {/snippet}
 
 {#snippet summaryRows()}

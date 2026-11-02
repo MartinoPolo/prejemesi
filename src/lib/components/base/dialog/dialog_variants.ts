@@ -2,7 +2,12 @@ import { tv } from 'tailwind-variants';
 import { asExhaustiveArray } from '$lib/utils/variants.js';
 
 export const dialogContentVariants = tv({
-	base: 'bg-card text-card-foreground data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95 fixed top-[50%] left-[50%] z-(--z-modal) grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-panel border-[2.5px] border-ink p-6 shadow-sticker duration-200',
+	base: [
+		'bg-card text-card-foreground data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95 fixed top-[50%] left-[50%] z-(--z-modal) grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-panel border-[2.5px] border-ink p-6 shadow-sticker duration-200',
+		// On a phone with the keyboard open the dialog rises to sit just above it, and scrolls
+		// when it is taller than the space left.
+		'keyboard-open:top-auto keyboard-open:bottom-[calc(var(--keyboard-inset)+0.5rem)] keyboard-open:max-h-[calc(var(--visual-viewport-height)-1rem)] keyboard-open:translate-y-0 keyboard-open:overflow-y-auto',
+	],
 	variants: {
 		size: {
 			// tailwind-merge treats each `sm:` breakpoint class as its own conflict group per

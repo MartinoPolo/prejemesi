@@ -11,6 +11,7 @@
 	import { CHANGE_DECISION } from '$lib/modules/change_proposals/change_field_decisions.js';
 	import { UNRESOLVED_DECISION_MESSAGES } from '$lib/components/blocks/change-proposals/change_review_presentation.js';
 	import type { ProposalDecisions } from '$lib/components/blocks/change-proposals/proposal_decisions.svelte.js';
+	import { keepFocusOnPress } from '$lib/reactivity/keyboard_inset.svelte.js';
 	import { PROPOSAL_TITLES } from './chat_presentation.js';
 
 	/**
@@ -26,6 +27,7 @@
 		oninspect,
 		onapply,
 		onlocate,
+		compact = false,
 	}: {
 		decisions: ProposalDecisions;
 		rowCount: number;
@@ -37,20 +39,75 @@
 		onapply: () => void;
 		/** The decision bar scrolls the chat to the proposal it acts on. */
 		onlocate?: () => void;
+		/**
+		 * While typing, one line of count and Použít; the count expands Zamítnout vše and Přijmout
+		 * vše. Its controls keep the composer's focus, so the keyboard stays open.
+		 */
+		compact?: boolean;
 	} = $props();
+
+	let expanded = $state(false);
 
 	const blocked = $derived(decisions.unresolvedCount > 0);
 	const declines = $derived(!blocked && decisions.includedCount === 0);
 	const title = $derived(countCopy(PROPOSAL_TITLES, rowCount));
+	const onpointerdown = $derived(compact ? keepFocusOnPress : undefined);
 </script>
 
-{#snippet count()}
+{#snippet countLabel()}
 	{#if decisions.showUnresolved && blocked}
 		<span class="count is-blocked" role="status" data-testid="chat-proposal-unresolved">
 			<TriangleAlertIcon aria-hidden="true" />
 			{countCopy(UNRESOLVED_DECISION_MESSAGES, decisions.unresolvedCount)}
 		</span>
-	{:else if onlocate !== undefined}
+	{:else}
+		<span class="count"><ClipboardListIcon aria-hidden="true" />{title}</span>
+	{/if}
+{/snippet}
+
+{#snippet bulkDecisions()}
+	<Button
+		intent="secondary"
+		size="md"
+		disabled={pending}
+		data-testid="chat-proposal-reject-all"
+		{onpointerdown}
+		onclick={() => decisions.decideEveryRow(CHANGE_DECISION.rejected)}
+	>
+		{m.change_review_reject_all()}
+	</Button>
+	<Button
+		intent="secondary"
+		size="md"
+		disabled={pending}
+		data-testid="chat-proposal-accept-all"
+		{onpointerdown}
+		onclick={() => decisions.decideEveryRow(CHANGE_DECISION.accepted)}
+	>
+		{m.change_review_accept_all()}
+	</Button>
+{/snippet}
+
+{#snippet applyButton()}
+	<Button
+		class={['apply', blocked && !pending && 'is-blocked']}
+		intent={declines ? 'secondary' : 'primary'}
+		size="md"
+		disabled={pending}
+		aria-disabled={blocked && !pending ? 'true' : undefined}
+		aria-busy={pending}
+		data-testid="chat-proposal-apply"
+		{onpointerdown}
+		onclick={onapply}
+	>
+		<ApplyProposalLabel {pending} {declines} includedCount={decisions.includedCount} />
+	</Button>
+{/snippet}
+
+{#snippet count()}
+	{#if (decisions.showUnresolved && blocked) || onlocate === undefined}
+		{@render countLabel()}
+	{:else}
 		<button
 			type="button"
 			class="count locate"
@@ -59,8 +116,6 @@
 		>
 			<ClipboardListIcon aria-hidden="true" />{title}
 		</button>
-	{:else}
-		<span class="count"><ClipboardListIcon aria-hidden="true" />{title}</span>
 	{/if}
 {/snippet}
 
@@ -87,44 +142,42 @@
 	{/if}
 {/snippet}
 
-<div class="controls" data-testid="chat-proposal-controls">
-	<p class="count-line">
-		{@render count()}
-		{@render reviewButton()}
-	</p>
-	<div class="actions">
-		<Button
-			intent="secondary"
-			size="md"
-			disabled={pending}
-			data-testid="chat-proposal-reject-all"
-			onclick={() => decisions.decideEveryRow(CHANGE_DECISION.rejected)}
-		>
-			{m.change_review_reject_all()}
-		</Button>
-		<Button
-			intent="secondary"
-			size="md"
-			disabled={pending}
-			data-testid="chat-proposal-accept-all"
-			onclick={() => decisions.decideEveryRow(CHANGE_DECISION.accepted)}
-		>
-			{m.change_review_accept_all()}
-		</Button>
-		<Button
-			class={['apply', blocked && !pending && 'is-blocked']}
-			intent={declines ? 'secondary' : 'primary'}
-			size="md"
-			disabled={pending}
-			aria-disabled={blocked && !pending ? 'true' : undefined}
-			aria-busy={pending}
-			data-testid="chat-proposal-apply"
-			onclick={onapply}
-		>
-			<ApplyProposalLabel {pending} {declines} includedCount={decisions.includedCount} />
-		</Button>
+{#if compact}
+	<div class="controls" data-testid="chat-proposal-controls" data-compact="">
+		<div class="compact-line">
+			<button
+				type="button"
+				class="expand"
+				aria-expanded={expanded}
+				aria-controls="chat-proposal-bulk-decisions"
+				title={m.chat_decision_bar_more()}
+				data-testid="chat-proposal-expand"
+				onpointerdown={keepFocusOnPress}
+				onclick={() => (expanded = !expanded)}
+			>
+				{@render countLabel()}
+				<ChevronUpIcon class="chevron" aria-hidden="true" />
+			</button>
+			{@render applyButton()}
+		</div>
+		{#if expanded}
+			<div class="bulk" id="chat-proposal-bulk-decisions">
+				{@render bulkDecisions()}
+			</div>
+		{/if}
 	</div>
-</div>
+{:else}
+	<div class="controls" data-testid="chat-proposal-controls">
+		<p class="count-line">
+			{@render count()}
+			{@render reviewButton()}
+		</p>
+		<div class="actions">
+			{@render bulkDecisions()}
+			{@render applyButton()}
+		</div>
+	</div>
+{/if}
 
 <style>
 	.controls {
@@ -178,7 +231,62 @@
 		gap: var(--space-2);
 	}
 
-	.actions :global(.is-blocked) {
+	.controls :global(.is-blocked) {
 		opacity: 0.55;
+	}
+
+	.compact-line {
+		display: flex;
+		align-items: center;
+		gap: var(--compact-control-gap);
+	}
+
+	.expand {
+		display: flex;
+		flex: 1;
+		align-items: center;
+		gap: var(--space-2);
+		min-width: 0;
+		min-height: var(--size-control-lg);
+		padding: 0 var(--space-1);
+		border: 0;
+		border-radius: var(--radius-btn);
+		background: none;
+		color: inherit;
+		text-align: start;
+		cursor: pointer;
+	}
+
+	.expand:hover {
+		background: var(--accent);
+	}
+
+	.expand:focus-visible {
+		outline: 2px solid var(--ring);
+		outline-offset: 2px;
+	}
+
+	.expand :global(.chevron) {
+		flex: none;
+		width: 16px;
+		height: 16px;
+		margin-inline-start: auto;
+		transition: rotate var(--duration-normal) var(--ease-standard);
+	}
+
+	.expand[aria-expanded='true'] :global(.chevron) {
+		rotate: 180deg;
+	}
+
+	.bulk {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: var(--compact-control-gap);
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.expand :global(.chevron) {
+			transition: none;
+		}
 	}
 </style>

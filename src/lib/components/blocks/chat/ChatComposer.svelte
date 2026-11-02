@@ -10,6 +10,7 @@
 		streaming,
 		disabled,
 		textarea = $bindable(),
+		maxLines,
 		onsend,
 		onstop,
 	}: {
@@ -18,6 +19,8 @@
 		/** The cap or the kill switch: the status line above says why. */
 		disabled: boolean;
 		textarea?: HTMLTextAreaElement;
+		/** Lines the box grows to before it scrolls; follows the space above the keyboard. */
+		maxLines?: number;
 		onsend: (text: string) => void;
 		onstop: () => void;
 	} = $props();
@@ -48,6 +51,8 @@
 		bind:this={textarea}
 		bind:value
 		rows="1"
+		class={[maxLines !== undefined && 'is-capped']}
+		style:--composer-max-lines={maxLines}
 		placeholder={m.chat_composer_placeholder()}
 		{disabled}
 		data-testid="assistant-composer"
@@ -101,10 +106,12 @@
 	}
 
 	textarea {
+		--composer-padding-block: 6px;
+
 		flex: 1;
 		min-width: 0;
 		max-height: 160px;
-		padding: 6px var(--space-2);
+		padding: var(--composer-padding-block) var(--space-2);
 		border: 0;
 		background: transparent;
 		font: inherit;
@@ -115,7 +122,18 @@
 		outline: none;
 	}
 
+	textarea.is-capped {
+		max-height: calc(var(--composer-max-lines) * 1.4em + 2 * var(--composer-padding-block));
+	}
+
 	textarea::placeholder {
 		color: var(--muted-foreground);
+	}
+
+	/* iOS Safari zooms into fields set below 16px on focus. */
+	@media (width < 640px) {
+		textarea {
+			font-size: 16px;
+		}
 	}
 </style>
