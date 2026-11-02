@@ -1,4 +1,9 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+const SENTRY_DSN = 'https://public@example.invalid/1';
+const publicEnv = vi.hoisted((): { PUBLIC_SENTRY_DSN: string | undefined } => ({
+	PUBLIC_SENTRY_DSN: undefined,
+}));
 
 const sentry = vi.hoisted(() => ({
 	init: vi.fn(),
@@ -13,9 +18,7 @@ const sentry = vi.hoisted(() => ({
 }));
 
 vi.mock('$app/environment', () => ({ dev: false }));
-vi.mock('$env/dynamic/public', () => ({
-	env: { PUBLIC_SENTRY_DSN: 'https://public@example.invalid/1' },
-}));
+vi.mock('$env/dynamic/public', () => ({ env: publicEnv }));
 vi.mock('$lib/observability/sentry_core_client.js', () => ({
 	init: sentry.init,
 	captureException: sentry.captureException,
@@ -42,6 +45,11 @@ describe('client observability hook', () => {
 		vi.resetModules();
 		vi.clearAllMocks();
 		sentry.replayModuleLoad = Promise.resolve();
+		publicEnv.PUBLIC_SENTRY_DSN = SENTRY_DSN;
+	});
+
+	afterEach(() => {
+		vi.restoreAllMocks();
 	});
 
 	it('loads core Sentry only after load, paint, delay, and idle, then flushes early errors', async () => {
@@ -186,4 +194,59 @@ describe('client observability hook', () => {
 		expect(sentry.init).toHaveBeenCalledOnce();
 		expect(sentry.handleError).toHaveBeenCalled();
 	});
+
+	it('resolves to the error page message when the Sentry handler returns nothing', async () => {
+		stubInertWindow();
+		const hooks = await import('./hooks.client.js');
+
+		const handledError = await hooks.handleError({
+			error: new TypeError('Failed to fetch'),
+			message: 'Internal Error',
+			status: 500,
+		} as never);
+
+		expect(handledError).toEqual({ message: 'Internal Error' });
+	});
+
+	it('passes through the error the Sentry handler returns', async () => {
+		stubInertWindow();
+		sentry.handleError.mockReturnValueOnce({ message: 'custom' });
+		const hooks = await import('./hooks.client.js');
+
+		const handledError = await hooks.handleError({
+			error: new TypeError('Failed to fetch'),
+			message: 'Internal Error',
+			status: 500,
+		} as never);
+
+		expect(handledError).toEqual({ message: 'custom' });
+	});
+
+	it('resolves to the error page message without Sentry', async () => {
+		publicEnv.PUBLIC_SENTRY_DSN = undefined;
+		stubInertWindow();
+		vi.spyOn(console, 'error').mockImplementation(() => {});
+		const hooks = await import('./hooks.client.js');
+
+		const handledError = await hooks.handleError({
+			error: new TypeError('Failed to fetch'),
+			message: 'Internal Error',
+			status: 500,
+		} as never);
+
+		expect(handledError).toEqual({ message: 'Internal Error' });
+		expect(sentry.init).not.toHaveBeenCalled();
+	});
 });
+
+function stubInertWindow() {
+	vi.stubGlobal('window', {
+		document: { readyState: 'complete' },
+		location: { href: 'https://prejemesi.cz/' },
+		addEventListener: vi.fn(),
+		removeEventListener: vi.fn(),
+		requestAnimationFrame: vi.fn(),
+		setTimeout: vi.fn(),
+		requestIdleCallback: vi.fn(),
+	});
+}
