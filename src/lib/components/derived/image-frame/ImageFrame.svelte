@@ -211,7 +211,11 @@
 	);
 
 	function markLoaded(img: HTMLImageElement) {
-		if (src !== null && img.naturalWidth > 0 && img.naturalHeight > 0) {
+		// A srcset image reports its natural size rescaled to the current `sizes` and rounded,
+		// so re-measuring the same source can jitter the ratio. The ratio feeds the layout and
+		// `sizes`, so accepting each re-measurement re-renders forever.
+		const alreadyMeasured = measured !== null && measured.src === src;
+		if (src !== null && !alreadyMeasured && img.naturalWidth > 0 && img.naturalHeight > 0) {
 			const ratio = img.naturalWidth / img.naturalHeight;
 			measured = { src, ratio };
 			onmeasured?.(ratio);
