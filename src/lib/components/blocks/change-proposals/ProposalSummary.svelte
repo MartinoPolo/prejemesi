@@ -2,6 +2,7 @@
 	import * as m from '$lib/paraglide/messages.js';
 	import ClockIcon from '@lucide/svelte/icons/clock';
 	import HourglassIcon from '@lucide/svelte/icons/hourglass';
+	import InfoIcon from '@lucide/svelte/icons/info';
 	import KeyRoundIcon from '@lucide/svelte/icons/key-round';
 	import {
 		CHANGE_KIND,
@@ -12,6 +13,7 @@
 	import {
 		changeReviewExpiryCopy,
 		countCopy,
+		fastForwardHoldCopy,
 		formatChangeReviewDate,
 		formatChangeReviewDateTime,
 	} from '$lib/modules/change_proposals/change_review_copy.js';
@@ -36,6 +38,9 @@
 	);
 	const revokedCopy = $derived(
 		proposal.viaApp ? m.change_review_app_revoked() : m.change_review_token_revoked(),
+	);
+	const fastForwardHold = $derived(
+		proposal.state === CHANGE_PROPOSAL_STATE.pending ? proposal.fastForwardHold : null,
 	);
 	const expiry = $derived.by(() => {
 		if (proposal.state === CHANGE_PROPOSAL_STATE.expired) {
@@ -76,6 +81,11 @@
 			<ChangeKindTitle kind={entry.kind} count={entry.count} />
 		{/each}
 	</div>
+	{#if fastForwardHold !== null}
+		<p class="summary-hold" data-testid="change-review-fast-forward-hold">
+			<InfoIcon aria-hidden="true" />{fastForwardHoldCopy(fastForwardHold)}
+		</p>
+	{/if}
 </section>
 
 <style>
@@ -153,6 +163,23 @@
 		font-size: var(--text-md);
 	}
 
+	.summary-hold {
+		display: flex;
+		grid-column: 2;
+		align-items: flex-start;
+		gap: 6px;
+		margin-top: 6px;
+		font-size: var(--text-md);
+	}
+
+	.summary-hold :global(svg) {
+		flex-shrink: 0;
+		width: 16px;
+		height: 16px;
+		margin-top: 2px;
+		color: var(--brand-link);
+	}
+
 	@media (width < 640px) {
 		.summary {
 			padding: var(--space-3);
@@ -165,7 +192,8 @@
 		}
 
 		.summary-meta,
-		.summary-counts {
+		.summary-counts,
+		.summary-hold {
 			grid-column: 1 / -1;
 		}
 	}

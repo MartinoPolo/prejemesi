@@ -1,6 +1,7 @@
 import * as m from '$lib/paraglide/messages.js';
 import { getLocale } from '$lib/paraglide/runtime.js';
 import { czechPluralCategory } from '$lib/modules/gifts/gift_display.js';
+import { FAST_FORWARD_HOLD, type FastForwardHold } from './types.js';
 
 /** One message per Czech plural category; English reuses `few` and `other` for its plural. */
 export interface PluralMessages<Inputs extends { count: number } = { count: number }> {
@@ -59,4 +60,16 @@ export function changeReviewExpiryCopy(expiresAt: Date, now: Date): string {
 		hours > 0 ? m.change_review_hours({ count: hours }) : null,
 	].filter((part) => part !== null);
 	return m.change_review_expires_in({ duration: parts.join(' ') });
+}
+
+const FAST_FORWARD_HOLD_COPY = {
+	[FAST_FORWARD_HOLD.needsConfirmation]: m.fast_forward_hold_needs_confirmation,
+	[FAST_FORWARD_HOLD.rejected]: m.fast_forward_hold_rejected,
+	[FAST_FORWARD_HOLD.conflict]: m.fast_forward_hold_conflict,
+	[FAST_FORWARD_HOLD.failed]: m.fast_forward_hold_failed,
+} satisfies Record<FastForwardHold, () => string>;
+
+/** Why a fast-forward proposal still waits for review, for the banner and the review page. */
+export function fastForwardHoldCopy(hold: FastForwardHold): string {
+	return FAST_FORWARD_HOLD_COPY[hold]();
 }

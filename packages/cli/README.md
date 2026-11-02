@@ -1,6 +1,6 @@
 # prejemesi
 
-Command-line client for [Přejeme si](https://prejemesi.cz) wishlists. It reads your wishlists and gifts and proposes gift changes with your personal access token, so you and your AI agents can script them. Every change becomes a proposal you review on its page before it applies, unless the token has fast-forward.
+Command-line client for [Přejeme si](https://prejemesi.cz) wishlists. It reads your wishlists and gifts and proposes gift changes with your personal access token, so you and your AI agents can script them. Every change becomes a proposal you review on its page before it applies. With a fast-forward token a proposal applies at once only when every row is ready and none needs confirmation (a gift deletion, reservation or manager invitation); otherwise the whole proposal waits for review and its `fastForwardHold` says why. Proposals expire 7 days after submission.
 
 ## Setup
 
@@ -35,7 +35,7 @@ prejemesi proposals apply <proposalId>
 - `read` runs any agent read operation listed in the API reference.
 - `images add` has the server store a copy of an image and prints its `reference`; a gift's `--input` attaches it as the cover with `"imageReference": "<reference>"`, or sets the whole ordered gallery (up to 8, the first the cover) with `"imageReferences": [{ "imageReference": "<reference>" }, …]`.
 - `--idempotency-key` makes a retried change or image safe: the same key and input return the first result.
-- `proposals apply` applies a waiting proposal only for the fast-forward token that submitted it; otherwise it fails with the `reviewLink` where you review it.
+- `proposals apply` only retries fast-forward: it applies a waiting proposal for the fast-forward token that submitted it while every row is still ready; otherwise it fails with the `reviewLink` where you review it.
 
 Output is JSON. Results go to standard output; failures go to standard error as the API's `{ "error": … }` body. Exit codes: `0` success, `1` request failure, `2` usage error. Proposal results carry a `reviewLink` to the review page.
 

@@ -6,6 +6,7 @@ import * as m from '$lib/paraglide/messages.js';
 import {
 	CHANGE_PROPOSAL_OUTCOME,
 	CHANGE_PROPOSAL_STATE,
+	FAST_FORWARD_HOLD,
 	type ApplyChangeProposalResult,
 	type ChangeProposalView,
 	type UndoChangeProposalResult,
@@ -272,5 +273,23 @@ describe('ChangeReview undo', () => {
 		});
 		await expect.element(page.getByTestId('change-review-undone')).toBeVisible();
 		await expect.element(page.getByTestId('change-review-applied')).not.toBeInTheDocument();
+	});
+});
+
+describe('ChangeReview fast-forward hold', () => {
+	it('says why a fast-forward proposal still waits for review', async () => {
+		await renderReview(changeProposal({ fastForwardHold: FAST_FORWARD_HOLD.conflict }));
+
+		await expect
+			.element(page.getByTestId('change-review-fast-forward-hold'))
+			.toHaveTextContent(m.fast_forward_hold_conflict());
+	});
+
+	it('gives no reason for a proposal submitted without fast-forward', async () => {
+		await renderReview(changeProposal());
+
+		await expect
+			.element(page.getByTestId('change-review-fast-forward-hold'))
+			.not.toBeInTheDocument();
 	});
 });

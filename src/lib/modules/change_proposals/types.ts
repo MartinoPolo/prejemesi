@@ -16,6 +16,20 @@ export const CHANGE_PROPOSAL_STATUS = {
 export type ChangeProposalStatus =
 	(typeof CHANGE_PROPOSAL_STATUS)[keyof typeof CHANGE_PROPOSAL_STATUS];
 
+/**
+ * Why a proposal submitted with fast-forward still waits for review: a row needs explicit
+ * confirmation, the dry run rejected a row, a gift changed before the apply, or the apply did not
+ * finish. Stored as `failed` before the apply runs, so an interrupted request leaves a reason.
+ */
+export const FAST_FORWARD_HOLD = {
+	needsConfirmation: 'needsConfirmation',
+	rejected: 'rejected',
+	conflict: 'conflict',
+	failed: 'failed',
+} as const;
+
+export type FastForwardHold = (typeof FAST_FORWARD_HOLD)[keyof typeof FAST_FORWARD_HOLD];
+
 /** What a viewer sees: a pending proposal past its expiry reads as expired. */
 export const CHANGE_PROPOSAL_STATE = {
 	...CHANGE_PROPOSAL_STATUS,
@@ -188,6 +202,8 @@ export interface ChangeProposalView {
 	appliedAt: Date | null;
 	discardedAt: Date | null;
 	undoneAt: Date | null;
+	/** Why fast-forward did not apply this pending proposal; null otherwise. */
+	fastForwardHold: FastForwardHold | null;
 	rowCount: number;
 	kindCounts: ChangeKindCounts;
 	/** For an applied proposal: undo refuses while rows it cannot reverse were applied. */
@@ -203,7 +219,11 @@ export interface PendingChangeProposalSummary {
 	createdAt: Date;
 	expiresAt: Date;
 	rowCount: number;
+	/** Submitted by a connected app, whose name is in `tokenName`. */
+	viaApp: boolean;
 	kindCounts: ChangeKindCounts;
+	/** Why fast-forward did not apply this proposal; null when submitted without it. */
+	fastForwardHold: FastForwardHold | null;
 }
 
 /** Rows the core refused; nothing applied or was undone. */

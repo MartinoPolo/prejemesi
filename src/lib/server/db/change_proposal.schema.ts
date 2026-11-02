@@ -1,5 +1,5 @@
 import { index, integer, jsonb, pgTable, primaryKey, text, timestamp } from 'drizzle-orm/pg-core';
-import type { ChangeProposalStatus } from '$lib/modules/change_proposals/types.js';
+import type { ChangeProposalStatus, FastForwardHold } from '$lib/modules/change_proposals/types.js';
 import type {
 	ChangeProposalGrantSnapshot,
 	ChangeProposalUndoTargets,
@@ -36,6 +36,8 @@ export const changeProposal = pgTable(
 		tokenName: text('token_name').notNull(),
 		grant: jsonb('grant').$type<ChangeProposalGrantSnapshot>().notNull(),
 		status: text('status').$type<ChangeProposalStatus>().notNull(),
+		// Why a fast-forward submission still waits for review; null without fast-forward.
+		fastForwardHold: text('fast_forward_hold').$type<FastForwardHold>(),
 		rows: jsonb('rows').$type<StoredChangeRow[]>().notNull(),
 		// Summed for the daily change budget without reading the rows.
 		rowCount: integer('row_count').notNull(),

@@ -13,6 +13,7 @@ import {
 	CHANGE_KIND,
 	CHANGE_PROPOSAL_STATE,
 	CHANGE_ROW_STATUS,
+	FAST_FORWARD_HOLD,
 } from '$lib/modules/change_proposals/types.js';
 import {
 	AGENT_API_MAX_BODY_BYTES,
@@ -219,6 +220,12 @@ const CHANGE_PROPOSAL_SCHEMA = {
 		appliedAt: { type: ['string', 'null'], format: 'date-time' },
 		discardedAt: { type: ['string', 'null'], format: 'date-time' },
 		undoneAt: { type: ['string', 'null'], format: 'date-time' },
+		fastForwardHold: {
+			type: ['string', 'null'],
+			enum: [...Object.values(FAST_FORWARD_HOLD), null],
+			description:
+				'Why a pending proposal of a fast-forward token did not apply at once: a row needs the user’s confirmation, the dry run rejected a row, a gift changed before the apply, or the apply failed. Null otherwise.',
+		},
 		rows: {
 			type: 'array',
 			items: {
@@ -262,7 +269,7 @@ function changeProposalPaths() {
 			post: {
 				operationId: AGENT_API_OPERATION_ID.submitChangeProposal,
 				summary: 'Submits changes for the user to review.',
-				description: `Authorizes every row with the token, dry-runs the rows and stores the proposal for ${CHANGE_PROPOSAL_LIFETIME_MS / DAY_MS} days; the user reviews it at \`reviewUrl\` and applies any rows. With a fast-forward token, a proposal whose rows are all \`ready\` applies at once; gift deletions, reservations and manager invitations always wait for the user. Rows count against the daily change budget whatever their outcome.`,
+				description: `Authorizes every row with the token, dry-runs the rows and stores the proposal for ${CHANGE_PROPOSAL_LIFETIME_MS / DAY_MS} days; the user reviews it at \`reviewUrl\` and applies any rows. With a fast-forward token, a proposal whose rows are all \`ready\` applies at once; one row that needs confirmation (gift deletions, reservations, manager invitations) or was rejected makes the whole proposal wait for the user, and \`fastForwardHold\` says why. Connected apps (OAuth) never fast-forward. Rows count against the daily change budget whatever their outcome.`,
 				parameters: [IDEMPOTENCY_KEY_PARAMETER],
 				requestBody: {
 					required: true,
