@@ -194,31 +194,6 @@ describe('agent API document', () => {
 		}
 	});
 
-	it('documents the Fit margin for the cover and every gallery image', () => {
-		// `imageMeta` is nullable, so its object schema is one branch of `anyOf`.
-		const imageMetaWithMargin = expect.objectContaining({
-			anyOf: expect.arrayContaining([
-				expect.objectContaining({
-					properties: expect.objectContaining({
-						margin: expect.objectContaining({
-							type: 'number',
-							minimum: 0,
-							maximum: 0.2,
-						}),
-					}),
-				}),
-			]),
-		});
-		for (const name of ['createGift', 'updateGift']) {
-			expect(documentedInputSchema(name), name).toMatchObject({
-				properties: {
-					imageMeta: imageMetaWithMargin,
-					imageReferences: { items: { properties: { imageMeta: imageMetaWithMargin } } },
-				},
-			});
-		}
-	});
-
 	it('documents a wishlist background whose image key may be omitted to keep the stored upload', () => {
 		const backgroundSchema = v
 			.parse(

@@ -1,8 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
 	coverWindowLayout,
-	fitMarginInset,
-	fitMarginShare,
 	hasExplicitFrameFill,
 	normalizeFrameFill,
 	paintedImageWidth,
@@ -11,28 +9,6 @@ import {
 	AUTO_CONTAIN_RATIO_THRESHOLD,
 	IMAGE_FIT_MODES,
 } from './image_frame_fit.js';
-
-describe('fitMarginShare', () => {
-	it('keeps the explicit Fit margin, capped at a fifth of the shorter side', () => {
-		expect(fitMarginShare({ fitMode: IMAGE_FIT_MODES.containPadded, margin: 0.05 })).toBe(0.05);
-		expect(fitMarginShare({ fitMode: IMAGE_FIT_MODES.containPadded, margin: 0.9 })).toBe(0.2);
-	});
-
-	it('ignores the margin outside explicit Fit or when it is not a positive number', () => {
-		expect(fitMarginShare({ fitMode: IMAGE_FIT_MODES.coverCrop, margin: 0.1 })).toBe(0);
-		expect(fitMarginShare({ fitMode: IMAGE_FIT_MODES.auto, margin: 0.1 })).toBe(0);
-		expect(fitMarginShare({ fitMode: IMAGE_FIT_MODES.containPadded, margin: Number.NaN })).toBe(
-			0,
-		);
-	});
-});
-
-describe('fitMarginInset', () => {
-	it('insets every side by the margin share of the shorter frame side', () => {
-		expect(fitMarginInset({ margin: 0.05, boxWidth: 400, boxHeight: 300 })).toBeCloseTo(15);
-		expect(fitMarginInset({ margin: 0.1, boxWidth: 200, boxHeight: 500 })).toBeCloseTo(20);
-	});
-});
 
 describe('resolveAutoFit', () => {
 	it('fills the box (cover-crop) when the image ratio matches the box', () => {
@@ -114,6 +90,35 @@ describe('coverWindowLayout', () => {
 		// Vertical axis still overflows the 100px box (no fill on that axis).
 		expect(layout!.top).toBeLessThan(0);
 		expect(layout!.top + layout!.height).toBeGreaterThan(100);
+	});
+
+	it('shrinks the whole image inside the box on both axes past the contain zoom', () => {
+		// Square image in a 400×300 box: contain zoom 0.75, the floor 0.525 leaves
+		// the 210 px image 15 % of the box height clear above and below.
+		const layout = coverWindowLayout({
+			focal: { x: 50, y: 50 },
+			zoom: 0.525,
+			boxWidth: 400,
+			boxHeight: 300,
+			naturalRatio: 1,
+		});
+		expect(layout).not.toBeNull();
+		expect(layout!.width).toBeCloseTo(210, 6);
+		expect(layout!.height).toBeCloseTo(210, 6);
+		expect(layout!.left).toBeCloseTo(95, 6);
+		expect(layout!.top).toBeCloseTo(45, 6);
+	});
+
+	it('pins an image smaller than the box to the corner of an edge focal point', () => {
+		const layout = coverWindowLayout({
+			focal: { x: 100, y: 0 },
+			zoom: 0.525,
+			boxWidth: 400,
+			boxHeight: 300,
+			naturalRatio: 1,
+		});
+		expect(layout!.left + layout!.width).toBeCloseTo(400, 6);
+		expect(layout!.top).toBeCloseTo(0, 6);
 	});
 
 	it('returns null for unmeasured or degenerate geometry', () => {

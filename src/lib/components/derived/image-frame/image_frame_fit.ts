@@ -7,7 +7,7 @@
 
 import { IMAGE_FIT_MODES, type ImageFitMode } from '$lib/modules/images/fit_modes.js';
 import { focalZoomToWindowRect, normalizedCropAspect } from '$lib/modules/images/crop.js';
-import { IMAGE_FIT_MARGIN_MAX, type ImageFocalPoint } from '$lib/modules/images/types.js';
+import type { ImageFocalPoint } from '$lib/modules/images/types.js';
 
 export { IMAGE_FIT_MODES, type ImageFitMode };
 
@@ -76,11 +76,10 @@ export interface CoverWindowLayout {
 
 /**
  * Explicit pixel layout for a cover-crop frame whose zoom is below the 100 %
- * cover baseline (#116 round 2). CSS `object-fit: cover` clips the image to the
- * element box, so `scale(zoom < 1)` would shrink the already-cropped view with
- * fill on BOTH axes instead of revealing more of the image. Positioning the
- * image explicitly renders the true source window: the box letterboxes on
- * exactly one axis (the frame fill shows through) while the other stays covered.
+ * cover baseline. CSS `object-fit: cover` clips the image to the element box, so
+ * `scale(zoom < 1)` would shrink the already-cropped view instead of revealing
+ * more of the image. Positioning the image explicitly renders the true source
+ * window, with the frame fill in the overhang (geometry in `crop.ts`).
  * Returns null until the box and the image's natural ratio are measured.
  */
 export function coverWindowLayout(input: {
@@ -106,29 +105,6 @@ export function coverWindowLayout(input: {
 	const height = width / naturalRatio;
 	// `0 -` (instead of unary minus) keeps a zero origin as +0 for exact equality.
 	return { left: 0 - rect.x * width, top: 0 - rect.y * height, width, height };
-}
-
-/** A Fit margin limited to the schema range; anything non-positive or non-finite means none. */
-function clampFitMargin(margin: number): number {
-	return Number.isFinite(margin) && margin > 0 ? Math.min(margin, IMAGE_FIT_MARGIN_MAX) : 0;
-}
-
-/**
- * Share of the frame's shorter side kept clear on every side of an explicit Fit
- * (`contain-padded`) image, capped at the schema maximum. Other fit modes, including
- * legacy `auto` resolving to contain, ignore the margin.
- */
-export function fitMarginShare(input: { fitMode: ImageFitMode; margin: number }): number {
-	return input.fitMode === IMAGE_FIT_MODES.containPadded ? clampFitMargin(input.margin) : 0;
-}
-
-/** Pixel inset of a Fit margin within a measured frame, equal on every side. */
-export function fitMarginInset(input: {
-	margin: number;
-	boxWidth: number;
-	boxHeight: number;
-}): number {
-	return clampFitMargin(input.margin) * Math.min(input.boxWidth, input.boxHeight);
 }
 
 /**

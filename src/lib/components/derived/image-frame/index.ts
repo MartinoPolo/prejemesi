@@ -5,7 +5,6 @@ export {
 	type ImageFrameResolvedFit,
 } from './image_frame_variants.js';
 export {
-	fitMarginInset,
 	resolveAutoFit,
 	resolveFrameFill,
 	normalizeFrameFill,

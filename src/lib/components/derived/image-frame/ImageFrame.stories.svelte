@@ -40,27 +40,6 @@
 	{/snippet}
 </Story>
 
-<!-- Fit margin: the product floats on its background with an equal gap on every side. -->
-<Story name="Fit – contain-padded with margin">
-	{#snippet template()}
-		<div class="flex gap-4">
-			{#each [0, 0.05, 0.1] as margin (margin)}
-				<div class="flex flex-col gap-1">
-					<ImageFrame
-						class="h-36 w-48"
-						src={NORMAL}
-						alt="Krabice"
-						fitMode="contain-padded"
-						{margin}
-						fillColor="#ffffff"
-					/>
-					<span class="text-muted-foreground text-xs">margin {margin}</span>
-				</div>
-			{/each}
-		</div>
-	{/snippet}
-</Story>
-
 <Story name="Fit – cover-crop">
 	{#snippet template()}
 		<ImageFrame class="h-40 w-60" src={NORMAL} alt="Sony sluchátka" fitMode="cover-crop" />

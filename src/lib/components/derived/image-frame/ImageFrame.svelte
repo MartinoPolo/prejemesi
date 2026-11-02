@@ -4,7 +4,6 @@
 	import { Skeleton } from '$lib/components/base/skeleton/index.js';
 	import {
 		coverWindowLayout,
-		fitMarginShare,
 		paintedImageWidth,
 		resolveAutoFit,
 		resolveFrameFill,
@@ -47,12 +46,6 @@
 		focal?: ImageFocalPoint;
 		/** Zoom factor (1 = 100%) honored in cover-crop, magnifying toward the focal point. */
 		zoom?: number;
-		/**
-		 * Share of the frame's shorter side kept clear around an explicit Fit
-		 * (`contain-padded`) image, on top of its passe-partout padding; the frame
-		 * fill paints the gap. Other fit modes ignore it.
-		 */
-		margin?: number;
 		/** Extracted/manual dominant color – tier 1 of the fill chain (REQ-3). */
 		fillColor?: string | null;
 		/** Scopes the tier-2 fill to the wishlist or the global surface (REQ-3). */
@@ -97,7 +90,6 @@
 		fitMode = IMAGE_FIT_MODES.auto,
 		focal = { x: 50, y: 50 },
 		zoom = 1,
-		margin = 0,
 		fillColor = null,
 		tokenScope = 'global',
 		fallbackEmoji = '🎁',
@@ -151,22 +143,13 @@
 		imageFrameVariants({ fit: effectiveFit, shape, interactive, loadingOverlay: loading }),
 	);
 
-	// Zoomed OUT below the cover baseline (#116 round 2): object-fit clips to the
-	// element box, so the source window is rendered by positioning the image
-	// explicitly – the frame fill letterboxes the overhang on one axis. Null until
-	// the box/natural ratio are measured (the loading skeleton covers that gap).
+	// Zoomed OUT below the cover baseline (see `coverWindowLayout`). Null until the
+	// box/natural ratio are measured (the loading skeleton covers that gap).
 	const zoomOutLayout = $derived(
 		effectiveFit === IMAGE_FIT_MODES.coverCrop && zoom < 1 && naturalRatio !== null
 			? coverWindowLayout({ focal, zoom, boxWidth, boxHeight, naturalRatio })
 			: null,
 	);
-
-	// The Fit margin is sized in container query units of a frame-filling layer, so it is
-	// equal on every side from the first (server-rendered) paint, before any measurement.
-	// Every explicit Fit image keeps that layer, so changing the margin never remounts it.
-	const FIT_MARGIN_INSET = 'calc(var(--fit-margin) * 100cqmin)';
-	const explicitFit = $derived(!natural && fitMode === IMAGE_FIT_MODES.containPadded);
-	const marginShare = $derived(explicitFit ? fitMarginShare({ fitMode, margin }) : 0);
 
 	const responsiveSource = $derived(
 		!hasSrc || transformFailedSrc === src || natural
@@ -211,10 +194,7 @@
 			);
 		}
 		if (effectiveFit !== IMAGE_FIT_MODES.coverCrop) {
-			return explicitFit
-				? `margin: ${FIT_MARGIN_INSET}; width: calc(100% - 2 * ${FIT_MARGIN_INSET});` +
-						` height: calc(100% - 2 * ${FIT_MARGIN_INSET});`
-				: undefined;
+			return undefined;
 		}
 		return (
 			`object-position: ${focal.x}% ${focal.y}%;` +
@@ -275,22 +255,6 @@
 	}
 </script>
 
-{#snippet image()}
-	<img
-		{@attach trackImageLoad}
-		class={imageClass}
-		style={imageStyle}
-		sizes={responsiveSource?.sizes}
-		srcset={responsiveSource?.srcset}
-		src={displaySrc}
-		{alt}
-		loading={eagerLoading ? 'eager' : 'lazy'}
-		decoding="async"
-		referrerpolicy={referrerPolicy}
-		aria-hidden={alt === '' ? 'true' : undefined}
-	/>
-{/snippet}
-
 <div
 	class={rootClass}
 	data-testid="image-frame"
@@ -315,17 +279,20 @@
 				aria-label={m.image_frame_loading()}
 			/>
 		{/if}
-		{#if hasSrc && explicitFit}
-			<!-- Absolutely filling the frame gives the query container a definite size that
-			     does not depend on the image it holds. -->
-			<div
-				class="absolute inset-0 z-10 [container-type:size]"
-				style:--fit-margin={marginShare}
-			>
-				{@render image()}
-			</div>
-		{:else if hasSrc}
-			{@render image()}
+		{#if hasSrc}
+			<img
+				{@attach trackImageLoad}
+				class={imageClass}
+				style={imageStyle}
+				sizes={responsiveSource?.sizes}
+				srcset={responsiveSource?.srcset}
+				src={displaySrc}
+				{alt}
+				loading={eagerLoading ? 'eager' : 'lazy'}
+				decoding="async"
+				referrerpolicy={referrerPolicy}
+				aria-hidden={alt === '' ? 'true' : undefined}
+			/>
 		{/if}
 	{/if}
 </div>

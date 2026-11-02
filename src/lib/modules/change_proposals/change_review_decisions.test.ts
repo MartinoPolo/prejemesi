@@ -121,27 +121,6 @@ describe('change review decisions', () => {
 		expect(reviewedChangeFields(edit)).toEqual([CHANGE_FIELD.price, CHANGE_FIELD.quantity]);
 	});
 
-	it('reviews a Fit margin change as an image change', () => {
-		const imageUrl = 'https://shop.example/box.jpg';
-		const fitMeta = { fitMode: 'contain-padded' as const, bgColor: '#ffffff' };
-		const marginEdit = reviewRow({
-			rowId: 'margin',
-			input: { id: 'g-duna', imageMeta: { ...fitMeta, margin: 0.05 } },
-			preview: {
-				gifts: [
-					{
-						giftId: 'g-duna',
-						before: gift({ imageUrl, imageMeta: fitMeta }),
-						after: gift({ imageUrl, imageMeta: { ...fitMeta, margin: 0.05 } }),
-					},
-				],
-				result: null,
-			},
-		});
-
-		expect(reviewedChangeFields(marginEdit)).toEqual([CHANGE_FIELD.image]);
-	});
-
 	it('never resolves a deletion with the global accept, but declines it with the global reject', () => {
 		const initial = initialChangeReview(rows);
 		const rejectedAll = withEveryRowDecided(initial, rows, CHANGE_DECISION.rejected);

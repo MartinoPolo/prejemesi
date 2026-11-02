@@ -94,14 +94,12 @@ describe('wishlistSlotToFrameProps', () => {
 			focal: { x: 50, y: 50 },
 			zoom: 1,
 			fillColor: null,
-			margin: 0,
 		});
 		expect(wishlistSlotToFrameProps({}, 'banner')).toEqual({
 			fitMode: IMAGE_FIT_MODES.auto,
 			focal: { x: 50, y: 50 },
 			zoom: 1,
 			fillColor: null,
-			margin: 0,
 		});
 	});
 

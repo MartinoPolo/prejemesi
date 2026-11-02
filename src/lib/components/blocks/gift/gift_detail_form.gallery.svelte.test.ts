@@ -6,11 +6,6 @@ import * as m from '$lib/paraglide/messages.js';
 import type { GiftByRole, UpdateGiftInput } from '$lib/modules/gifts/types.js';
 import { MAX_GIFT_IMAGES, type GiftImage } from '$lib/modules/gifts/gift_images.js';
 import { IMAGE_FIT_MODES, type ImageMetadata } from '$lib/modules/images/index.js';
-import {
-	gapsWithin,
-	paintedPhotoBox,
-	type PhotoBox,
-} from '$lib/components/derived/image-frame/painted_photo_box.test_fixtures.js';
 
 vi.mock('$env/dynamic/public', () => ({ env: { PUBLIC_R2_URL: '/' } }));
 
@@ -39,13 +34,11 @@ function galleryImage(width: number, bgColor: string | null = null): GiftImage {
 	return { imageUrl: svgUrl(width), imageKey: null, imageMeta: imageMeta(bgColor) };
 }
 
-const giftName = 'Herní konzole';
-
 function makeGift(images: GiftImage[]): GiftByRole {
 	return {
 		id: 'gift-1',
 		wishlistId: 'wishlist-1',
-		name: giftName,
+		name: 'Herní konzole',
 		description: null,
 		descriptionAppends: [],
 		editedAfterShareAt: null,
@@ -145,119 +138,6 @@ describe('GiftDetailForm image gallery (#591)', () => {
 			null,
 		]);
 		expect(onupdate.mock.calls[0]![0]).not.toHaveProperty('imageUrl');
-	});
-
-	it('offers the margin for Fit only and saves it for the selected image', async () => {
-		const { screen, onupdate, ondirtychange } = await renderGallery();
-
-		const marginGroup = screen.getByRole('group', { name: m.image_margin_label() });
-		await expect.element(marginGroup).toBeVisible();
-		await expect
-			.element(screen.getByRole('radio', { name: m.image_margin_none() }))
-			.toHaveAttribute('aria-checked', 'true');
-		expect(ondirtychange).toHaveBeenLastCalledWith(false);
-
-		await tileButton(screen, m.gift_image_strip_select({ position: 2 })).click();
-		await screen.getByRole('radio', { name: m.image_margin_small() }).click();
-		expect(ondirtychange).toHaveBeenLastCalledWith(true);
-
-		await screen.getByRole('radio', { name: m.image_fit_fill() }).click();
-		await expect.element(marginGroup).not.toBeInTheDocument();
-		await screen.getByRole('radio', { name: m.image_fit_fit() }).click();
-		await expect
-			.element(screen.getByRole('radio', { name: m.image_margin_small() }))
-			.toHaveAttribute('aria-checked', 'true');
-
-		await screen.getByRole('button', { name: m.save() }).first().click();
-		const savedImages = onupdate.mock.calls[0]![0].images!;
-		expect(savedImages.map((image) => image.imageMeta?.margin)).toEqual([
-			undefined,
-			0.05,
-			undefined,
-		]);
-	});
-
-	it('selects no margin choice for a margin the editor does not offer and saves it untouched', async () => {
-		const { screen, onupdate } = await renderGallery([
-			{ ...galleryImage(400), imageMeta: { ...imageMeta(null), margin: 0.07 } },
-		]);
-
-		const marginGroup = screen.getByRole('group', { name: m.image_margin_label() });
-		await expect.element(marginGroup).toBeVisible();
-		const marginRadios = marginGroup.getByRole('radio').all();
-		expect(marginRadios).toHaveLength(3);
-		for (const radio of marginRadios) {
-			await expect.element(radio).toHaveAttribute('aria-checked', 'false');
-		}
-
-		await screen.getByRole('radio', { name: m.image_background_white() }).click();
-		await screen.getByRole('button', { name: m.save() }).first().click();
-		expect(onupdate.mock.calls[0]![0].images![0]!.imageMeta).toMatchObject({
-			bgColor: '#ffffff',
-			margin: 0.07,
-		});
-	});
-
-	describe('Fit margin around a photo whose aspect differs from the 4:3 card', () => {
-		/** Gaps between a frame and the photo inside it, minus the 10% margin of the frame's shorter side. */
-		function gapsBeyondMargin(frame: Element, photo: PhotoBox) {
-			const frameBox = frame.getBoundingClientRect();
-			const margin = 0.1 * Math.min(frameBox.width, frameBox.height);
-			const gaps = gapsWithin(frameBox, photo);
-			return {
-				left: gaps.left - margin,
-				top: gaps.top - margin,
-				right: gaps.right - margin,
-				bottom: gaps.bottom - margin,
-			};
-		}
-
-		it.each([
-			{ shape: 'square', photoWidth: 300, tightSides: ['top', 'bottom'] as const },
-			{ shape: '2:1', photoWidth: 600, tightSides: ['left', 'right'] as const },
-		])(
-			'contains a $shape photo unstretched inside the margin in the stage and the preview',
-			async ({ photoWidth, tightSides }) => {
-				const { screen } = await renderGallery([
-					{ ...galleryImage(photoWidth), imageMeta: { ...imageMeta(null), margin: 0.1 } },
-				]);
-				const naturalAspect = photoWidth / 300;
-
-				const stage = screen.getByTestId('crop-stage');
-				const stageWindow = stage.getByTestId('crop-stage-window');
-				const stagePhoto = stage.getByRole('img', { name: giftName });
-				await expect.element(stageWindow).toBeVisible();
-				await expect
-					.poll(() => {
-						const photoBox = stagePhoto.element().getBoundingClientRect();
-						return photoBox.width / photoBox.height;
-					})
-					.toBeCloseTo(naturalAspect, 2);
-				const stageGaps = gapsBeyondMargin(
-					stageWindow.element(),
-					stagePhoto.element().getBoundingClientRect(),
-				);
-				for (const side of tightSides) {
-					expect(stageGaps[side]).toBeCloseTo(0, 0);
-				}
-				expect(Math.min(...Object.values(stageGaps))).toBeGreaterThan(-0.5);
-				expect(stageGaps.left).toBeCloseTo(stageGaps.right, 0);
-				expect(stageGaps.top).toBeCloseTo(stageGaps.bottom, 0);
-
-				const previewFrame = screen
-					.getByTestId('gift-preview-square')
-					.getByTestId('image-frame');
-				const previewImage = previewFrame.getByRole('img').element() as HTMLImageElement;
-				await expect.poll(() => previewImage.naturalWidth).toBeGreaterThan(0);
-				const previewGaps = gapsBeyondMargin(
-					previewFrame.element(),
-					paintedPhotoBox(previewImage),
-				);
-				expect(Math.min(...Object.values(previewGaps))).toBeGreaterThan(-0.5);
-				expect(previewGaps.left).toBeCloseTo(previewGaps.right, 0);
-				expect(previewGaps.top).toBeCloseTo(previewGaps.bottom, 0);
-			},
-		);
 	});
 
 	it('reorders with the arrow keys, announces the new cover and saves the new order', async () => {
@@ -398,5 +278,101 @@ describe('GiftDetailForm image gallery (#591)', () => {
 			)
 			.toBeVisible();
 		expect(onupdate).not.toHaveBeenCalled();
+	});
+});
+
+describe('GiftDetailForm crop zoom-out', () => {
+	// A square photo on the 4:3 card: Fit shows it whole at 75 %, and Manual may
+	// zoom on out until 15 % of the window stays clear on each side vertically,
+	// so the photo fills 70 % of the window height: 0.75 × 0.7 = 0.525.
+	const cardContainZoom = 0.75;
+	const cardZoomOutFloor = 0.525;
+
+	function zoomSlider(screen: Awaited<ReturnType<typeof renderGallery>>['screen']) {
+		return screen.getByRole('slider', { name: m.image_crop_zoom_label() });
+	}
+
+	it('switches Fill to Manual on zoom-out and continues past the whole-photo zoom', async () => {
+		const fillMeta: ImageMetadata = { ...imageMeta(null), fitMode: IMAGE_FIT_MODES.coverCrop };
+		const { screen, onupdate } = await renderGallery([
+			{ imageUrl: svgUrl(300), imageKey: null, imageMeta: fillMeta },
+		]);
+		await expect.element(screen.getByTestId('crop-stage-window')).toBeVisible();
+		await expect
+			.element(screen.getByRole('radio', { name: m.image_fit_fill() }))
+			.toHaveAttribute('aria-checked', 'true');
+		await expect
+			.element(screen.getByRole('button', { name: m.image_crop_zoom_out() }))
+			.toBeEnabled();
+
+		(screen.getByTestId('crop-stage').element() as HTMLElement).focus();
+		for (let press = 0; press < 4; press += 1) {
+			await userEvent.keyboard('-');
+		}
+		await expect
+			.element(screen.getByRole('radio', { name: m.image_fit_manual() }))
+			.toHaveAttribute('aria-checked', 'true');
+		await screen.getByRole('button', { name: m.save() }).first().click();
+
+		const savedMeta = onupdate.mock.calls[0]![0].images![0]!.imageMeta!;
+		expect(savedMeta.fitMode).toBe(IMAGE_FIT_MODES.coverCrop);
+		expect(savedMeta.targets!.square!.zoom).toBeLessThan(cardContainZoom);
+		expect(savedMeta.targets!.square!.zoom).toBeGreaterThanOrEqual(cardZoomOutFloor - 1e-6);
+	});
+
+	it('lets the zoom slider reach the zoom-out floor itself', async () => {
+		const { screen, onupdate } = await renderGallery([galleryImage(300)]);
+		const slider = zoomSlider(screen);
+		await expect.element(slider).toBeEnabled();
+
+		(slider.element() as HTMLElement).focus();
+		await userEvent.keyboard('{Home}');
+		await expect
+			.element(screen.getByRole('radio', { name: m.image_fit_manual() }))
+			.toHaveAttribute('aria-checked', 'true');
+		await expect.element(screen.getByTestId('crop-stage-zoom')).toHaveTextContent('53 %');
+		await expect
+			.element(screen.getByRole('button', { name: m.image_crop_zoom_out() }))
+			.toBeDisabled();
+		await screen.getByRole('button', { name: m.save() }).first().click();
+
+		const cardCrop = onupdate.mock.calls[0]![0].images![0]!.imageMeta!.targets!.square!;
+		expect(cardCrop.zoom).toBeCloseTo(cardZoomOutFloor, 6);
+	});
+
+	it('switches Fit to Manual on zoom-out and stops with a margin around the whole photo', async () => {
+		const { screen, onupdate } = await renderGallery([galleryImage(300)]);
+		const zoomOut = screen.getByRole('button', { name: m.image_crop_zoom_out() });
+		await expect.element(screen.getByTestId('crop-stage-window')).toBeVisible();
+		await expect.element(zoomOut).toBeEnabled();
+
+		await zoomOut.click();
+		await expect
+			.element(screen.getByRole('radio', { name: m.image_fit_manual() }))
+			.toHaveAttribute('aria-checked', 'true');
+		(screen.getByTestId('crop-stage').element() as HTMLElement).focus();
+		for (let press = 0; press < 10; press += 1) {
+			await userEvent.keyboard('-');
+		}
+		await expect.element(zoomOut).toBeDisabled();
+
+		// The thumbnail follows that card crop, deeper than its own 1:1 floor.
+		await screen.getByTestId('gift-preview-tile-thumb').click();
+		await expect
+			.element(screen.getByTestId('crop-stage-editing'))
+			.toHaveTextContent(m.image_crop_editing({ target: m.gift_image_target_thumb() }));
+		// The slider shows that inherited zoom instead of clamping to the 1:1 floor (70 %).
+		await expect.element(screen.getByTestId('crop-stage-zoom')).toHaveTextContent('53 %');
+		await expect.element(zoomSlider(screen)).toHaveValue('53');
+		await screen.getByRole('button', { name: m.save() }).first().click();
+
+		const savedMeta = onupdate.mock.calls[0]![0].images![0]!.imageMeta!;
+		expect(savedMeta.fitMode).toBe(IMAGE_FIT_MODES.coverCrop);
+		const cardCrop = savedMeta.targets!.square!;
+		expect(cardCrop.zoom).toBeCloseTo(cardZoomOutFloor, 6);
+		expect(cardCrop.cropRect.w).toBeGreaterThan(1);
+		// The photo spans 70 % of the window height, so the window is 1 / 0.7 photos tall.
+		expect(cardCrop.cropRect.h).toBeCloseTo(1 / 0.7, 6);
+		expect(savedMeta.targets!.thumb).toBeUndefined();
 	});
 });

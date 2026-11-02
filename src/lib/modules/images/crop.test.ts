@@ -13,6 +13,7 @@ import {
 	reprojectCropRect,
 	fitCropRectToAspect,
 	seedCropRectFromLegacyMeta,
+	zoomOutFloorForAspect,
 	FULL_CROP_RECT,
 } from './crop.js';
 import { IMAGE_ZOOM_MAX, IMAGE_ZOOM_OUT_MIN, type ImageCropRect } from './types.js';
@@ -45,6 +46,21 @@ describe('containZoomForAspect', () => {
 	it('falls back to the cover baseline for degenerate aspects', () => {
 		expect(containZoomForAspect(0)).toBe(1);
 		expect(containZoomForAspect(Number.NaN)).toBe(1);
+	});
+});
+
+describe('zoomOutFloorForAspect', () => {
+	it('lets the whole image shrink until 15 % of the window is clear on each side of the tighter axis', () => {
+		expect(zoomOutFloorForAspect(1)).toBeCloseTo(0.7, 10);
+		expect(zoomOutFloorForAspect(2)).toBeCloseTo(0.35, 10);
+		expect(zoomOutFloorForAspect(0.5)).toBeCloseTo(0.35, 10);
+		// The image covers 70 % of the window's tighter axis at the floor.
+		const { h } = focalZoomToWindowRect({ x: 50, y: 50 }, zoomOutFloorForAspect(2), 2);
+		expect(1 / h).toBeCloseTo(0.7, 10);
+	});
+
+	it('never drops below the absolute zoom-out floor', () => {
+		expect(zoomOutFloorForAspect(1000)).toBe(IMAGE_ZOOM_OUT_MIN);
 	});
 });
 
@@ -143,6 +159,8 @@ describe('focalZoomToWindowRect', () => {
 			{ rect: { x: -0.125, y: 0.1875, w: 1.25, h: 0.625 }, aspect: 2 },
 			// Tall normalized aspect letterboxes vertically instead.
 			{ rect: { x: 0.2, y: -0.3, w: 0.8, h: 1.6 }, aspect: 0.5 },
+			// Past the contain zoom: gaps on both axes, off-center.
+			{ rect: { x: -1.2, y: -0.1, w: 2.5, h: 1.25 }, aspect: 2 },
 		];
 		for (const { rect, aspect } of cases) {
 			const { focal, zoom } = cropRectToFocalZoom(rect);
@@ -233,6 +251,12 @@ describe('panCropRect', () => {
 		expectRectClose(panCropRect(rect, 9, 0), { x: 0, y: 0, w: 2, h: 1 });
 		expectRectClose(panCropRect(rect, -9, 0), { x: -1, y: 0, w: 2, h: 1 });
 	});
+
+	it('keeps the image inside a window oversized on both axes', () => {
+		const rect: ImageCropRect = { x: -0.75, y: -0.125, w: 2.5, h: 1.25 };
+		expectRectClose(panCropRect(rect, 9, 9), { x: 0, y: 0, w: 2.5, h: 1.25 });
+		expectRectClose(panCropRect(rect, -9, -9), { x: -1.5, y: -0.25, w: 2.5, h: 1.25 });
+	});
 });
 
 describe('zoomCropRect', () => {
@@ -248,7 +272,7 @@ describe('zoomCropRect', () => {
 		expectRectClose(zoomed, { x: 0.5, y: 0, w: 0.5, h: 1 });
 	});
 
-	it('zooms out below 100 % but floors at the contain zoom (#116 round 2)', () => {
+	it('zooms out below 100 %, keeping the covered axis covered down to the contain zoom', () => {
 		const centered = centeredCropRect(2);
 		// 80 % keeps the covered axis covered while the other overhangs.
 		expectRectClose(zoomCropRect(centered, 2, 0.8), {
@@ -257,9 +281,22 @@ describe('zoomCropRect', () => {
 			w: 1.25,
 			h: 0.625,
 		});
-		// Requests below the contain zoom stop exactly at contain: whole image,
-		// white space on one axis only.
-		expectRectClose(zoomCropRect(centered, 2, 0.1), { x: -0.5, y: 0, w: 2, h: 1 });
+	});
+
+	it('zooms out past the contain zoom with a gap on both axes', () => {
+		// Contain is 50 % at this aspect; 40 % shrinks the whole image on both axes.
+		expectRectClose(zoomCropRect(containCropRect(2), 2, 0.4), {
+			x: -0.75,
+			y: -0.125,
+			w: 2.5,
+			h: 1.25,
+		});
+	});
+
+	it('stops at 15 % clear per side of the tighter axis', () => {
+		const floored = zoomCropRect(centeredCropRect(2), 2, 0.1);
+		expectRectClose(floored, { x: 0.5 - 1 / 0.7, y: -0.15 / 0.7, w: 2 / 0.7, h: 1 / 0.7 });
+		expect(cropRectToFocalZoom(floored).zoom).toBeCloseTo(zoomOutFloorForAspect(2), 10);
 	});
 });
 
@@ -275,9 +312,10 @@ describe('zoomCropRect around an anchor (#533)', () => {
 });
 
 describe('containCropRect', () => {
-	it('shows the whole image centered, letterboxed on one axis', () => {
+	it('shows the whole image centered, letterboxed on one axis without a margin', () => {
 		expectRectClose(containCropRect(2), { x: -0.5, y: 0, w: 2, h: 1 });
 		expectRectClose(containCropRect(0.5), { x: 0, y: -0.5, w: 1, h: 2 });
+		expectRectClose(containCropRect(1), FULL_CROP_RECT);
 	});
 });
 
@@ -328,6 +366,20 @@ describe('reprojectCropRect', () => {
 		expect(reprojected.focal.y).toBeCloseTo(source.focal.y, 6);
 		expect(thumb.w / thumb.h).toBeCloseTo(0.75, 6);
 	});
+
+	it('keeps a crop zoomed out past contain inside its window on the other aspect', () => {
+		// A card crop at its floor (4:3 on a square photo) shown on the 1:1 thumb.
+		const card = zoomCropRect(centeredCropRect(4 / 3), 4 / 3, 0);
+		const thumb = reprojectCropRect(card, 1);
+		expect(cropRectToFocalZoom(thumb).zoom).toBeCloseTo(cropRectToFocalZoom(card).zoom, 6);
+		expectRectClose(thumb, {
+			x: 0.5 - thumb.w / 2,
+			y: 0.5 - thumb.h / 2,
+			w: thumb.w,
+			h: thumb.w,
+		});
+		expect(thumb.w).toBeGreaterThan(1);
+	});
 });
 
 describe('fitCropRectToAspect', () => {
@@ -354,10 +406,34 @@ describe('fitCropRectToAspect', () => {
 		expectRectClose(fitCropRectToAspect(contain, 2), contain);
 	});
 
-	it('shrinks a window oversized on both axes back to the contain limit', () => {
-		// White space on both axes is unrepresentable: min(w, h) must come back to 1.
-		const oversized: ImageCropRect = { x: -1, y: -1, w: 3, h: 3 };
-		expectRectClose(fitCropRectToAspect(oversized, 2), { x: -0.5, y: 0, w: 2, h: 1 });
+	it('preserves aspect-matched rects zoomed out past contain', () => {
+		const pastContain: ImageCropRect = { x: -1.2, y: -0.1, w: 2.5, h: 1.25 };
+		expectRectClose(fitCropRectToAspect(pastContain, 2), pastContain);
+		const atFloor = zoomCropRect(centeredCropRect(2), 2, 0);
+		expectRectClose(fitCropRectToAspect(atFloor, 2), atFloor);
+	});
+
+	it('keeps an aspect-matched rect below its target floor unchanged', () => {
+		// A 1:1 window twice the image's size is zoom 0.5, below the 1:1 floor of 0.7.
+		const belowFloor: ImageCropRect = { x: -0.5, y: -0.5, w: 2, h: 2 };
+		expect(cropRectToFocalZoom(belowFloor).zoom).toBeLessThan(zoomOutFloorForAspect(1));
+		expectRectClose(fitCropRectToAspect(belowFloor, 1), belowFloor);
+	});
+
+	it('preserves a thumbnail following a card crop zoomed out deeper than its own floor', () => {
+		// A square photo: the 4:3 card may zoom out further than the 1:1 thumb.
+		const card = zoomCropRect(centeredCropRect(4 / 3), 4 / 3, 0);
+		const followingThumb = reprojectCropRect(card, 1);
+		expect(cropRectToFocalZoom(followingThumb).zoom).toBeLessThan(zoomOutFloorForAspect(1));
+		expectRectClose(fitCropRectToAspect(followingThumb, 1), followingThumb);
+	});
+
+	it('shrinks a window beyond the renderer zoom-out bound back to it around its center', () => {
+		const oversized: ImageCropRect = { x: -24.5, y: -24.5, w: 50, h: 50 };
+		const fitted = fitCropRectToAspect(oversized, 1);
+		expect(Math.max(fitted.w, fitted.h)).toBeCloseTo(1 / IMAGE_ZOOM_OUT_MIN, 10);
+		expect(fitted.x + fitted.w / 2).toBeCloseTo(0.5, 10);
+		expect(fitted.y + fitted.h / 2).toBeCloseTo(0.5, 10);
 	});
 
 	it('falls back to the centered window for degenerate rects', () => {
