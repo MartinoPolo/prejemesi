@@ -196,7 +196,10 @@ describe('GiftDetailForm image gallery (#591)', () => {
 		const { screen, onupdate } = await renderGallery();
 
 		await screen.getByTestId('gift-image-strip-add').click();
-		await screen.getByRole('menuitem', { name: m.gift_image_strip_add_url() }).click();
+		const addLinkItem = screen.getByRole('menuitem', { name: m.gift_image_strip_add_url() });
+		await addLinkItem.click();
+		// Typing after the menu unmounts is the path that once froze the new image's state.
+		await expect.element(addLinkItem).not.toBeInTheDocument();
 		const linkInput = screen.getByPlaceholder('https://example.com/image.jpg');
 		await expect.element(linkInput).toHaveFocus();
 		await expect
