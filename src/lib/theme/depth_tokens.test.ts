@@ -47,7 +47,9 @@ describe('canonical semantic depth tokens', () => {
 	});
 
 	it('defines every approved dark recipe in the root and nested palette derivation rule', () => {
-		const darkRule = ruleBody('.dark,\n.dark [data-palette]');
+		const darkRule = ruleBody(
+			'.dark,\n.dark [data-palette]:not(:where([data-light-scope], [data-light-scope] *))',
+		);
 		expectDeclarations(darkRule, [
 			'--soft-shadow: rgb(2 6 12 / 42%)',
 			'--soft-shadow-strong: rgb(2 6 12 / 55%)',

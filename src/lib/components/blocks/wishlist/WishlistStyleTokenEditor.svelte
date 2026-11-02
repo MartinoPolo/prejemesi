@@ -1,8 +1,6 @@
 <script lang="ts">
 	import { RadioGroup as RadioGroupPrimitive } from 'bits-ui';
-	import RotateCcwIcon from '@lucide/svelte/icons/rotate-ccw';
 	import * as m from '$lib/paraglide/messages.js';
-	import { Button } from '$lib/components/base/button/index.js';
 	import { HelpText } from '$lib/components/base/help-text/index.js';
 	import { Label } from '$lib/components/base/label/index.js';
 	import {
@@ -19,12 +17,10 @@
 	interface WishlistStyleTokenEditorProps {
 		/** The resolved look: theme defaults merged under the overrides. */
 		style: WishlistStyleTokens;
-		hasOverrides: boolean;
 		onchange: <Token extends keyof WishlistStyleTokens>(
 			token: Token,
 			value: WishlistStyleTokens[Token],
 		) => void;
-		onreset: () => void;
 		disabled?: boolean;
 	}
 
@@ -49,13 +45,7 @@
 		hand: m.wishlist_appearance_heading_hand,
 	} satisfies Record<WishlistHeadingFont, () => string>;
 
-	let {
-		style,
-		hasOverrides,
-		onchange,
-		onreset,
-		disabled = false,
-	}: WishlistStyleTokenEditorProps = $props();
+	let { style, onchange, disabled = false }: WishlistStyleTokenEditorProps = $props();
 
 	const choiceStyles = wishlistAppearanceChoiceVariants();
 	let selectedHeadingFont = $derived<string>(style.heading);
@@ -122,15 +112,4 @@
 		</RadioGroupPrimitive.Root>
 	</div>
 	<HelpText>{m.wishlist_appearance_style_hint()}</HelpText>
-	<div>
-		<Button
-			type="button"
-			intent="outline"
-			disabled={disabled || !hasOverrides}
-			onclick={onreset}
-		>
-			<RotateCcwIcon data-icon="inline-start" />
-			{m.wishlist_appearance_style_reset()}
-		</Button>
-	</div>
 </div>

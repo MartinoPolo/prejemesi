@@ -2,8 +2,8 @@ import type { MotifPlacement } from './types.js';
 
 export const motifs: readonly string[] = [
 	`<path d="M18 92 V50 Q18 16 50 16 Q82 16 82 50 V92Z" fill="var(--m-b)" stroke="var(--m-ink)" stroke-width="2"/>`,
-	`<g stroke="var(--m-ink)" stroke-width="2" stroke-linecap="square"><path d="M10 20 H90"/><path d="M10 40 H70"/><path d="M10 60 H90"/><path d="M10 80 H50"/></g>`,
-	`<g fill="var(--m-ink)"><circle cx="20" cy="20" r="2.5"/><circle cx="40" cy="20" r="2.5"/><circle cx="60" cy="20" r="2.5"/><circle cx="80" cy="20" r="2.5"/><circle cx="20" cy="40" r="2.5"/><circle cx="40" cy="40" r="2.5"/><circle cx="60" cy="40" r="2.5"/><circle cx="80" cy="40" r="2.5"/><circle cx="20" cy="60" r="2.5"/><circle cx="40" cy="60" r="2.5"/><circle cx="60" cy="60" r="2.5"/><circle cx="80" cy="60" r="2.5"/><circle cx="20" cy="80" r="2.5"/><circle cx="40" cy="80" r="2.5"/><circle cx="60" cy="80" r="2.5"/><circle cx="80" cy="80" r="2.5"/></g>`,
+	`<g stroke="var(--m-line)" stroke-width="2" stroke-linecap="square"><path d="M10 20 H90"/><path d="M10 40 H70"/><path d="M10 60 H90"/><path d="M10 80 H50"/></g>`,
+	`<g fill="var(--m-line)"><circle cx="20" cy="20" r="2.5"/><circle cx="40" cy="20" r="2.5"/><circle cx="60" cy="20" r="2.5"/><circle cx="80" cy="20" r="2.5"/><circle cx="20" cy="40" r="2.5"/><circle cx="40" cy="40" r="2.5"/><circle cx="60" cy="40" r="2.5"/><circle cx="80" cy="40" r="2.5"/><circle cx="20" cy="60" r="2.5"/><circle cx="40" cy="60" r="2.5"/><circle cx="60" cy="60" r="2.5"/><circle cx="80" cy="60" r="2.5"/><circle cx="20" cy="80" r="2.5"/><circle cx="40" cy="80" r="2.5"/><circle cx="60" cy="80" r="2.5"/><circle cx="80" cy="80" r="2.5"/></g>`,
 	`<circle cx="50" cy="50" r="34" fill="none" stroke="var(--m-a)" stroke-width="6"/><circle cx="50" cy="50" r="34" fill="none" stroke="var(--m-ink)" stroke-width="1.5"/>`,
 	`<path d="M50 14 L88 84 H12Z" fill="var(--m-c)" stroke="var(--m-ink)" stroke-width="2"/>`,
 	`<path d="M38 12 H62 V24 Q78 40 74 66 Q70 90 50 90 Q30 90 26 66 Q22 40 38 24Z" fill="var(--m-a)" stroke="var(--m-ink)" stroke-width="2"/><path d="M50 12 Q46 2 40 4 M52 12 Q58 0 66 6" fill="none" stroke="var(--m-ink)" stroke-width="2"/>`,

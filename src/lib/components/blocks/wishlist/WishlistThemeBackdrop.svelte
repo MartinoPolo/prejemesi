@@ -2,10 +2,17 @@
 	import { IMAGE_VARIANTS, responsiveImageSource } from '$lib/modules/images/variants.js';
 	import {
 		findWishlistLibraryImage,
-		wishlistLibraryImageSource,
+		wishlistLibraryImageLayers,
 	} from '$lib/theme/wishlist_background_library.js';
 	import type { MotifPlacement, WishlistThemeArt } from '$lib/theme/wishlist_theme_art/index.js';
 	import type { WishlistBackground, WishlistBackgroundMode } from '$lib/theme/wishlist_themes.js';
+	import {
+		backgroundPhotoLayerDisplayClass,
+		backgroundPhotoLayerLoading,
+		customBackgroundPhoto,
+		libraryBackgroundPhoto,
+		type WishlistBackgroundPhoto,
+	} from './wishlist_background_photo.js';
 
 	interface WishlistThemeBackdropProps {
 		/** The backdrop actually rendered (see `resolveWishlistThemeScope`); `none` renders nothing. */
@@ -34,12 +41,12 @@
 		return sides;
 	});
 	/** Custom uploads and library images share one photo rendering; only the source differs. */
-	const photo = $derived.by((): { src: string; srcset?: string; sizes?: string } | null => {
+	const photo = $derived.by((): WishlistBackgroundPhoto | null => {
 		if (mode === 'library') {
 			const libraryImage = findWishlistLibraryImage(background.libraryImageId);
 			return libraryImage === null
 				? null
-				: { ...wishlistLibraryImageSource(libraryImage), sizes: '100vw' };
+				: libraryBackgroundPhoto(libraryImage, wishlistLibraryImageLayers(libraryImage));
 		}
 		if (mode !== 'custom' || imageUrl === null) {
 			return null;
@@ -49,9 +56,11 @@
 			'background',
 			IMAGE_VARIANTS.background.cssWidth,
 		);
-		return responsiveSource === null
-			? { src: imageUrl }
-			: { src: responsiveSource.src, srcset: responsiveSource.srcset, sizes: '100vw' };
+		return customBackgroundPhoto(
+			responsiveSource === null
+				? { shownIn: null, src: imageUrl }
+				: { shownIn: null, src: responsiveSource.src, srcset: responsiveSource.srcset },
+		);
 	});
 </script>
 
@@ -75,6 +84,31 @@
 	{/each}
 {/snippet}
 
+{#snippet photoLayers(backdropPhoto: WishlistBackgroundPhoto)}
+	<div class="wishlist-backdrop-photo">
+		{#each backdropPhoto.layers as layer (layer.src)}
+			<img
+				src={layer.src}
+				srcset={layer.srcset}
+				sizes={layer.srcset === undefined ? undefined : '100vw'}
+				alt=""
+				loading={backgroundPhotoLayerLoading(backdropPhoto.layers)}
+				decoding="async"
+				class={backgroundPhotoLayerDisplayClass(layer)}
+				data-testid="wishlist-backdrop-photo"
+				data-shown-in={layer.shownIn ?? undefined}
+			/>
+		{/each}
+		<div class="wishlist-backdrop-dim"></div>
+		{#if backdropPhoto.dimsInDarkMode}
+			<div
+				class="wishlist-backdrop-dark-mode-dim hidden dark:block"
+				data-testid="wishlist-backdrop-dark-mode-dim"
+			></div>
+		{/if}
+	</div>
+{/snippet}
+
 {#if mode !== 'none'}
 	<div
 		class="wishlist-backdrop"
@@ -90,17 +124,7 @@
 		style:--photo-drift={PHOTO_DRIFT_PX}
 	>
 		{#if photo !== null}
-			<div class="wishlist-backdrop-photo">
-				<img
-					src={photo.src}
-					srcset={photo.srcset}
-					sizes={photo.sizes}
-					alt=""
-					decoding="async"
-					data-testid="wishlist-backdrop-photo"
-				/>
-				<div class="wishlist-backdrop-dim"></div>
-			</div>
+			{@render photoLayers(photo)}
 			<div class="wishlist-backdrop-wash"></div>
 		{:else}
 			<div class="wishlist-backdrop-pattern"></div>
@@ -214,8 +238,8 @@
 		overflow: hidden;
 	}
 
+	/* Display comes from the layer's mode classes. */
 	.wishlist-backdrop-photo img {
-		display: block;
 		width: 100%;
 		height: 100%;
 		object-fit: cover;
@@ -226,6 +250,18 @@
 		position: absolute;
 		inset: 0;
 		background: color-mix(in oklab, var(--background) var(--photo-dim), transparent);
+	}
+
+	/* Unlike the manager's dim it stays on the strip and in the gutters: a light photo glares on
+	   a dark page wherever it shows. */
+	.wishlist-backdrop-dark-mode-dim {
+		position: absolute;
+		inset: 0;
+		background: color-mix(
+			in oklab,
+			var(--background) var(--wishlist-photo-dark-mode-dim),
+			transparent
+		);
 	}
 
 	.wishlist-backdrop[data-photo] .wishlist-backdrop-wash {

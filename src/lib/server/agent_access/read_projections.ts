@@ -34,6 +34,7 @@ type AgentWishlistSource = Pick<
 	| 'eventDate'
 	| 'status'
 	| 'kind'
+	| 'occasion'
 	| 'palette'
 	| 'themeId'
 	| 'styleTokens'
@@ -73,6 +74,7 @@ export function projectAgentWishlistRow(wishlistRow: AgentWishlistSource) {
 		eventDate: wishlistRow.eventDate,
 		status: wishlistRow.status,
 		kind: wishlistRow.kind,
+		occasion: wishlistRow.occasion,
 		palette: wishlistRow.palette,
 		...projectAgentAppearance(wishlistRow),
 		imageUrl: wishlistImageUrl(wishlistRow.imageKey),
@@ -260,6 +262,7 @@ export function projectAgentAccessibleWishlists(
 		recipientDisplayName: accessible.recipientDisplayName,
 		status: accessible.status,
 		kind: accessible.kind,
+		occasion: accessible.occasion,
 		eventDate: accessible.eventDate,
 		role: accessible.role,
 	}));

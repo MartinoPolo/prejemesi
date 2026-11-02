@@ -20,8 +20,9 @@ Přejeme si is a shareable wishlist web app where users create gift lists for th
 ### Sharing and lifecycle
 
 - **Sharing** — Distributing a wishlist link. Freezes each existing gift's identity (`name`) and blocks delete, but leaves presentation/info fields editable (image, links, price, priority, append-only description; quantity raise-only). On a permanent wishlist this applies only to reserved gifts. See Post-share editing.
+- **Occasion** (Příležitost) — What a wishlist is for, chosen in one field at creation and in settings: Vánoce, Narozeniny, Svátek, Svatba, Miminko, Promoce, Jiná (default) or Stálý seznam. It decides the kind: Stálý seznam is the permanent wishlist, every other occasion an occasion wishlist. Vánoce pre-fills the next 24. 12. when no date is set and suggests the Vánoce motif; neither overrides the user's choice. Wishlist cards badge the occasion, except Jiná and Stálý seznam. Registry: `src/lib/modules/wishlists/wishlist_occasion.ts` and `wishlist_occasion_display.ts`.
 - **Occasion wishlist** — The default wishlist kind, with or without an event date; sharing applies the strict post-share gift rules to every gift.
-- **Permanent wishlist** — A wishlist kind chosen at creation for a list that changes over time: no event date, and after sharing its unreserved gifts stay fully editable and deletable. It can become an occasion wishlist any time; an occasion wishlist can become permanent unless its event date is still upcoming.
+- **Permanent wishlist** (Stálý seznam) — The wishlist kind of the Stálý seznam occasion, for a list that changes over time: no event date, and after sharing its unreserved gifts stay fully editable and deletable. It can become an occasion wishlist any time; an occasion wishlist can become permanent unless its event date is still upcoming.
 - **Post-share grace window** — A 2-minute reversibility window for sharing, each description append, and the event-date lock; later gift edits never reopen gift name/delete grace.
 - **Description append** — A post-share description change: an immutable, accent-colored, timestamped addition. The original text freezes at share time and is preserved for the gifter; Card/List previews show only the latest append; full history remains available in detail and editors.
 - **Archive** — A read-only state for a completed wishlist; visually distinct, no new reservations accepted.
@@ -57,9 +58,11 @@ Přejeme si is a shareable wishlist web app where users create gift lists for th
 - **App palette** — A per-user appearance preference mirrored in a cookie and applied as SSR `data-palette` on `<html>`; the old app-background theme axis is retired.
 - **Scoped wishlist palette** — Palette-derived semantic tokens applied on the wishlist subtree without changing the viewer's app-shell palette.
 - **Palette derivation** — Curated primitives derive semantic colors through CSS `color-mix(in oklab, …)`; arbitrary category-picker hex colors are not custom wishlist palettes.
-- **Wishlist theme** (Motiv) — A curated wishlist preset of palette, decorative backdrop with motifs, and default style tokens; the registry is `src/lib/theme/wishlist_themes.ts`. Choosing one copies its palette into the wishlist palette.
-- **Style tokens** — Per-wishlist corners, card border, image mat and heading font; the theme supplies defaults and only the manager's explicit choices are stored as overrides.
-- **Wishlist background** (Pozadí) — The wishlist page backdrop: from the theme, a curated library image (Knihovna, generated offline per theme, `src/lib/theme/wishlist_background_library.ts`) or a custom uploaded photo, both with focal point, placement, dim and scroll motion, or none. A library image that leaves the library falls back to the theme backdrop. Content surfaces stay opaque over it.
+- **Wishlist theme** (Motiv) — A curated wishlist preset of palette, decorative backdrop with motifs, and default style tokens; the registry is `src/lib/theme/wishlist_themes.ts`. Choosing one copies its palette into the wishlist palette. Every motif has a light and a dark backdrop that follows the viewer's mode.
+- **Style tokens** — Per-wishlist corners, card border, image mat, heading font and hero frame; the theme supplies defaults and only the manager's explicit choices are stored as overrides.
+- **Přizpůsobit motiv** — The Vzhled disclosure under the motif grid grouping Barva, Pozadí, Hlavička and Styl. Each field shows Z motivu while the motif supplies it and a reset once overridden; the palette counts as the motif's while it equals the motif palette, and Pozadí only while it is set to Z motivu.
+- **Hero frame** — The wishlist header's frame: Blok (notebook), Dárek (gift), Visačka (tag) or Pozvánka (invitation). The motif picks it (no motif means Blok) unless a stored style-token override wins. From 960 px the frame carries an occasion emblem (postage stamp, kraft tag or wax seal with the occasion and countdown); below it the occasion joins the header meta line.
+- **Wishlist background** (Pozadí) — The wishlist page backdrop: from the theme, a curated library image (Knihovna, generated offline per theme, `src/lib/theme/wishlist_background_library.ts`) or a custom uploaded photo, both with focal point, placement, dim and scroll motion, or none. Library images have a light and a dark file and show the one for the viewer's mode; a photo without a dark file (every custom photo) gets an extra automatic dim in dark mode only. A library image that leaves the library falls back to the theme backdrop. Content surfaces stay opaque over it.
 
 ### Navigation
 
@@ -80,7 +83,7 @@ _Avoid_: "list" for Wishlist (ambiguous), "present" for Gift (confusing with tim
 ### Done
 
 - Accounts: email/password with optional Google sign-in; anonymous visitors with a display name and optional email.
-- Wishlists: create, edit, share, archive, revert to draft (správce when reservation-free, admin when reserved); occasion and permanent kinds; lists for someone else with claim links and recipient reassignment.
+- Wishlists: create, edit, share, archive, revert to draft (správce when reservation-free, admin when reserved); occasions (Vánoce, Narozeniny, …, Stálý seznam) with card badges; lists for someone else with claim links and recipient reassignment.
 - Gifts: add, edit, remove, reorder, up to 10 links, image galleries of up to 8 images with fit/crop, up to five categories (the first one groups) with priority/category grouping and facets, mark as received.
 - Bulk entry: shared draft grid and the CSV / Google Sheets import wizard.
 - Reservations with quantity support, single-reservation release, and likes.

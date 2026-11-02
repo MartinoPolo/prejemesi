@@ -239,6 +239,13 @@
       "when": 1793456640635,
       "tag": "0033_add-gift-images",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1793574068884,
+      "tag": "0034_add-wishlist-occasion",
+      "breakpoints": true
     }
   ]
 }

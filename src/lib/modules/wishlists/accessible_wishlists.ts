@@ -16,6 +16,7 @@ export interface AccessibleWishlist {
 	recipientDisplayName: string;
 	status: typeof wishlist.$inferSelect.status;
 	kind: typeof wishlist.$inferSelect.kind;
+	occasion: typeof wishlist.$inferSelect.occasion;
 	eventDate: typeof wishlist.$inferSelect.eventDate;
 	/** Recipient, then správce, then follower (`visitor`) when the user holds several. */
 	role: WishlistRole;
@@ -59,6 +60,7 @@ export async function listAccessibleWishlists(userId: string): Promise<Accessibl
 			recipientDisplayName: recipientDisplayNameSql(),
 			status: wishlist.status,
 			kind: wishlist.kind,
+			occasion: wishlist.occasion,
 			eventDate: wishlist.eventDate,
 			recipientUserId: wishlist.recipientUserId,
 			isManager: sql<boolean>`${exists(activeAssignment)}`.mapWith(Boolean),

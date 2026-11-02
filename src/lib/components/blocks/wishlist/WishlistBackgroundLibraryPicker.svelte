@@ -4,12 +4,13 @@
 	import {
 		isWishlistLibraryImageId,
 		wishlistLibraryImagesForTheme,
-		wishlistLibraryImageThumbnailUrl,
+		wishlistLibraryImageThumbnailLayers,
 		type WishlistLibraryImageVariant,
 	} from '$lib/theme/wishlist_background_library.js';
 	import { wishlistThemeName } from '$lib/theme/wishlist_theme_messages.js';
 	import type { WishlistThemeId } from '$lib/theme/wishlist_themes.js';
 	import { wishlistAppearanceChoiceVariants } from './wishlist_appearance_choice_variants.js';
+	import { backgroundPhotoLayerDisplayClass } from './wishlist_background_photo.js';
 
 	interface WishlistBackgroundLibraryPickerProps {
 		value: string | null;
@@ -64,13 +65,19 @@
 			class={styles.item()}
 			aria-labelledby="{idPrefix}-{libraryImage.id}-theme {idPrefix}-{libraryImage.id}-variant"
 		>
-			<img
-				src={wishlistLibraryImageThumbnailUrl(libraryImage)}
-				alt=""
-				loading="lazy"
-				decoding="async"
-				class="block aspect-video w-full border-b-2 border-ink object-cover"
-			/>
+			{#each wishlistLibraryImageThumbnailLayers(libraryImage) as layer (layer.src)}
+				<img
+					src={layer.src}
+					alt=""
+					loading="lazy"
+					decoding="async"
+					class={[
+						backgroundPhotoLayerDisplayClass(layer),
+						'aspect-video w-full border-b-2 border-ink object-cover',
+					]}
+					data-shown-in={layer.shownIn ?? undefined}
+				/>
+			{/each}
 			<span class={styles.label()}>
 				<span id="{idPrefix}-{libraryImage.id}-theme">
 					{wishlistThemeName(libraryImage.themeId)}

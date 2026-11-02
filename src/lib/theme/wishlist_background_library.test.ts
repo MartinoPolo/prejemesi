@@ -1,35 +1,56 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { describe, expect, it, vi } from 'vitest';
-import { BACKGROUND_VARIANTS, THEME_PROMPTS } from '../../../scripts/theme_background_prompts.mjs';
+import {
+	BACKGROUND_MODES,
+	BACKGROUND_VARIANTS,
+	THEME_PROMPTS,
+	backgroundCounterpartPrompt,
+	backgroundPrompt,
+} from '../../../scripts/theme_background_prompts.mjs';
 import { WISHLIST_THEME_IDS } from './wishlist_themes.js';
 
-// The shipped manifest is empty until the offline generator fills it.
+// A small fixture library: a pair with both modes, a dark-only and a light-only image.
 vi.mock('./wishlist_background_library.json', () => ({
 	default: [
-		{ id: 'toys-illustrated', themeId: 'toys', variant: 'illustrated', widths: [1280, 2560] },
+		{
+			id: 'toys-illustrated',
+			themeId: 'toys',
+			variant: 'illustrated',
+			widthsByMode: { light: [1280, 2560], dark: [1280, 2560] },
+		},
 		{
 			id: 'christmas-illustrated',
 			themeId: 'christmas',
 			variant: 'illustrated',
-			widths: [1280],
+			widthsByMode: { dark: [1280] },
 		},
 		{
 			id: 'christmas-photo',
 			themeId: 'christmas',
 			variant: 'photo',
-			widths: [640, 1280, 2560],
+			widthsByMode: { light: [640, 1280, 2560] },
 		},
 	],
 }));
 
 const {
 	findWishlistLibraryImage,
+	WISHLIST_LIBRARY_IMAGE_MODES,
 	WISHLIST_LIBRARY_IMAGE_VARIANTS,
 	isWishlistLibraryImageId,
-	wishlistLibraryImageSource,
-	wishlistLibraryImageThumbnailUrl,
+	wishlistLibraryImageHasDarkFile,
+	wishlistLibraryImageLayers,
+	wishlistLibraryImageThumbnailLayers,
 	wishlistLibraryImagesForTheme,
 } = await import('./wishlist_background_library.js');
+
+function libraryImage(id: string) {
+	const image = findWishlistLibraryImage(id);
+	if (image === null) {
+		throw new Error(`Fixture image ${id} is missing.`);
+	}
+	return image;
+}
 
 describe('wishlist background library', () => {
 	it('recognizes only ids listed in the manifest', () => {
@@ -61,38 +82,88 @@ describe('wishlist background library', () => {
 		]);
 	});
 
-	it('serves static WebP files with the smallest width as thumbnail and every width as srcset', () => {
-		const image = findWishlistLibraryImage('christmas-photo');
-		expect(image).not.toBeNull();
-		if (image === null) {
-			return;
-		}
-		expect(wishlistLibraryImageThumbnailUrl(image)).toMatch(
-			/\/wishlist-backgrounds\/christmas-photo-640\.webp$/,
-		);
-		const source = wishlistLibraryImageSource(image);
-		expect(source.src).toMatch(/\/wishlist-backgrounds\/christmas-photo-2560\.webp$/);
-		expect(source.srcset.split(', ')).toEqual([
-			expect.stringMatching(/christmas-photo-640\.webp 640w$/),
-			expect.stringMatching(/christmas-photo-1280\.webp 1280w$/),
-			expect.stringMatching(/christmas-photo-2560\.webp 2560w$/),
+	it('serves each mode of a pair from its own files, every width as srcset', () => {
+		const layers = wishlistLibraryImageLayers(libraryImage('toys-illustrated'));
+
+		expect(layers).toEqual([
+			{
+				shownIn: 'light',
+				src: expect.stringMatching(
+					/\/wishlist-backgrounds\/toys-illustrated-light-2560\.webp$/,
+				),
+				srcset: expect.stringMatching(
+					/toys-illustrated-light-1280\.webp 1280w, .*toys-illustrated-light-2560\.webp 2560w$/,
+				),
+			},
+			{
+				shownIn: 'dark',
+				src: expect.stringMatching(
+					/\/wishlist-backgrounds\/toys-illustrated-dark-2560\.webp$/,
+				),
+				srcset: expect.stringMatching(
+					/toys-illustrated-dark-1280\.webp 1280w, .*toys-illustrated-dark-2560\.webp 2560w$/,
+				),
+			},
 		]);
 	});
 
-	it('rejects a manifest entry for an unknown theme when the module loads', async () => {
-		vi.resetModules();
-		vi.doMock('./wishlist_background_library.json', () => ({
-			default: [
-				{ id: 'halloween-photo', themeId: 'halloween', variant: 'photo', widths: [1280] },
-			],
-		}));
-		try {
-			await expect(import('./wishlist_background_library.js')).rejects.toThrow(/"halloween"/);
-		} finally {
-			vi.doUnmock('./wishlist_background_library.json');
-			vi.resetModules();
-		}
+	it('previews each mode of a pair with its smallest file', () => {
+		expect(wishlistLibraryImageThumbnailLayers(libraryImage('toys-illustrated'))).toEqual([
+			{
+				shownIn: 'light',
+				src: expect.stringMatching(/toys-illustrated-light-1280\.webp$/),
+			},
+			{
+				shownIn: 'dark',
+				src: expect.stringMatching(/toys-illustrated-dark-1280\.webp$/),
+			},
+		]);
 	});
+
+	it('shows the only file of a one-mode image in both modes', () => {
+		expect(wishlistLibraryImageThumbnailLayers(libraryImage('christmas-photo'))).toEqual([
+			{ shownIn: null, src: expect.stringMatching(/christmas-photo-light-640\.webp$/) },
+		]);
+		expect(wishlistLibraryImageThumbnailLayers(libraryImage('christmas-illustrated'))).toEqual([
+			{ shownIn: null, src: expect.stringMatching(/christmas-illustrated-dark-1280\.webp$/) },
+		]);
+	});
+
+	it('knows which images lack a dark file and so get the dark-mode dim', () => {
+		expect(wishlistLibraryImageHasDarkFile(libraryImage('toys-illustrated'))).toBe(true);
+		expect(wishlistLibraryImageHasDarkFile(libraryImage('christmas-illustrated'))).toBe(true);
+		expect(wishlistLibraryImageHasDarkFile(libraryImage('christmas-photo'))).toBe(false);
+	});
+
+	it.each([
+		{
+			problem: 'an unknown theme',
+			entry: {
+				id: 'halloween-photo',
+				themeId: 'halloween',
+				variant: 'photo',
+				widthsByMode: { light: [1280] },
+			},
+			message: /"halloween"/,
+		},
+		{
+			problem: 'no file in any mode',
+			entry: { id: 'toys-photo', themeId: 'toys', variant: 'photo', widthsByMode: {} },
+			message: /at least one mode/,
+		},
+	])(
+		'rejects a manifest entry with $problem when the module loads',
+		async ({ entry, message }) => {
+			vi.resetModules();
+			vi.doMock('./wishlist_background_library.json', () => ({ default: [entry] }));
+			try {
+				await expect(import('./wishlist_background_library.js')).rejects.toThrow(message);
+			} finally {
+				vi.doUnmock('./wishlist_background_library.json');
+				vi.resetModules();
+			}
+		},
+	);
 });
 
 describe('wishlist background generator prompts', () => {
@@ -100,19 +171,42 @@ describe('wishlist background generator prompts', () => {
 		expect(Object.keys(THEME_PROMPTS)).toEqual([...WISHLIST_THEME_IDS]);
 	});
 
-	it('generate exactly the library variants', () => {
+	it('generate exactly the library variants and modes', () => {
 		expect(BACKGROUND_VARIANTS).toEqual([...WISHLIST_LIBRARY_IMAGE_VARIANTS]);
+		expect(BACKGROUND_MODES).toEqual([...WISHLIST_LIBRARY_IMAGE_MODES]);
+	});
+
+	it('describe each mode with its own palette, so a pair differs in ground and light', () => {
+		for (const themeId of WISHLIST_THEME_IDS) {
+			const lightPrompt = backgroundPrompt(themeId, 'photo', 'light');
+			const darkPrompt = backgroundPrompt(themeId, 'photo', 'dark');
+			expect(lightPrompt).toContain(THEME_PROMPTS[themeId].palette.light);
+			expect(darkPrompt).toContain(THEME_PROMPTS[themeId].palette.dark);
+			expect(lightPrompt).not.toEqual(darkPrompt);
+		}
+	});
+
+	it('edit the other mode into its counterpart while keeping the composition', () => {
+		const prompt = backgroundCounterpartPrompt('christmas', 'illustrated', 'light');
+
+		expect(prompt).toMatch(/^Edit the attached dark .* into its light version\./);
+		expect(prompt).toContain('Keep the exact composition');
+		expect(prompt).toContain(THEME_PROMPTS.christmas.palette.light);
 	});
 });
 
 describe('shipped wishlist background manifest', () => {
-	const manifestEntries: { id: string; widths: number[] }[] = JSON.parse(
+	const manifestEntries: { id: string; widthsByMode: Record<string, number[]> }[] = JSON.parse(
 		readFileSync(new URL('./wishlist_background_library.json', import.meta.url), 'utf8'),
 	);
 
-	it('has a static WebP file for every listed width', () => {
+	it('has a static WebP file for every listed mode and width', () => {
 		const missingFiles = manifestEntries
-			.flatMap(({ id, widths }) => widths.map((width) => `${id}-${String(width)}.webp`))
+			.flatMap(({ id, widthsByMode }) =>
+				Object.entries(widthsByMode).flatMap(([mode, widths]) =>
+					widths.map((width) => `${id}-${mode}-${String(width)}.webp`),
+				),
+			)
 			.filter(
 				(fileName) =>
 					!existsSync(
@@ -123,5 +217,13 @@ describe('shipped wishlist background manifest', () => {
 					),
 			);
 		expect(missingFiles).toEqual([]);
+	});
+
+	it('keeps an entry for every theme and variant, so stored selections stay valid', () => {
+		expect(manifestEntries.map(({ id }) => id)).toEqual(
+			WISHLIST_THEME_IDS.flatMap((themeId) =>
+				WISHLIST_LIBRARY_IMAGE_VARIANTS.map((variant) => `${themeId}-${variant}`),
+			),
+		);
 	});
 });

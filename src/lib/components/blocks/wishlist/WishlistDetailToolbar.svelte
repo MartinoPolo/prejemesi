@@ -1218,8 +1218,8 @@
 		container-type: inline-size;
 		max-width: 100%;
 		overflow: visible;
-		padding: 0.5rem calc(0.5rem + var(--depth-clearance)) calc(0.5rem + var(--depth-clearance))
-			0.5rem;
+		padding: var(--gift-content-inset) var(--gift-content-inset-end)
+			var(--gift-content-inset-bottom) var(--gift-content-inset);
 	}
 
 	.toolbar-responsive-carrier,
@@ -1231,8 +1231,8 @@
 	.toolbar-responsive-view-switcher {
 		position: absolute;
 		z-index: 1;
-		inset-block-start: 8px;
-		inset-inline-start: 8px;
+		inset-block-start: var(--gift-content-inset);
+		inset-inline-start: var(--gift-content-inset);
 	}
 
 	.toolbar-mobile {

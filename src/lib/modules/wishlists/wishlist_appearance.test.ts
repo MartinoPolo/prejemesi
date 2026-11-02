@@ -9,7 +9,14 @@ import {
 
 // The shipped library is empty until images are generated.
 vi.mock('$lib/theme/wishlist_background_library.json', () => ({
-	default: [{ id: 'gamer-photo', themeId: 'gamer', variant: 'photo', widths: [1280, 2560] }],
+	default: [
+		{
+			id: 'gamer-photo',
+			themeId: 'gamer',
+			variant: 'photo',
+			widthsByMode: { light: [1280, 2560] },
+		},
+	],
 }));
 
 const validAppearance = {
@@ -37,6 +44,15 @@ describe('WishlistAppearanceInputSchema', () => {
 		expect(parsed.output).toMatchObject({ background: libraryBackground });
 	});
 
+	it('accepts a hero frame override', () => {
+		const parsed = v.safeParse(WishlistAppearanceInputSchema, {
+			...validAppearance,
+			styleTokens: { heroFrame: 'invitation' },
+		});
+		expect(parsed.success).toBe(true);
+		expect(parsed.output).toMatchObject({ styleTokens: { heroFrame: 'invitation' } });
+	});
+
 	it('accepts clearing every appearance field', () => {
 		const cleared = { themeId: null, styleTokens: null, background: null };
 		expect(v.safeParse(WishlistAppearanceInputSchema, cleared).success).toBe(true);
@@ -58,6 +74,7 @@ describe('WishlistAppearanceInputSchema', () => {
 		['an unknown theme', { ...validAppearance, themeId: 'halloween' }],
 		['an unknown token key', { ...validAppearance, styleTokens: { glow: 'neon' } }],
 		['an unknown token value', { ...validAppearance, styleTokens: { corners: 'wavy' } }],
+		['an unknown hero frame', { ...validAppearance, styleTokens: { heroFrame: 'scroll' } }],
 		[
 			'a dim above the maximum',
 			{ ...validAppearance, background: { ...DEFAULT_WISHLIST_BACKGROUND, dim: 61 } },
@@ -128,6 +145,23 @@ describe('sanitizeWishlistAppearance', () => {
 				background: null,
 			}).styleTokens,
 		).toEqual({ border: 'fine' });
+	});
+
+	it('keeps a stored hero frame and drops a retired one', () => {
+		expect(
+			sanitizeWishlistAppearance({
+				themeId: null,
+				styleTokens: { heroFrame: 'tag' },
+				background: null,
+			}).styleTokens,
+		).toEqual({ heroFrame: 'tag' });
+		expect(
+			sanitizeWishlistAppearance({
+				themeId: null,
+				styleTokens: { corners: 'soft', heroFrame: 'scroll' },
+				background: null,
+			}).styleTokens,
+		).toEqual({ corners: 'soft' });
 	});
 
 	it('reads overrides with nothing valid left, or malformed JSON, as null', () => {

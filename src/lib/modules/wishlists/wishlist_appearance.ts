@@ -8,6 +8,7 @@ import {
 	WISHLIST_BORDER_STYLES,
 	WISHLIST_CORNER_STYLES,
 	WISHLIST_HEADING_FONTS,
+	WISHLIST_HERO_FRAMES,
 	WISHLIST_IMAGE_MATS,
 	WISHLIST_THEME_IDS,
 	isWishlistThemeId,
@@ -23,6 +24,7 @@ const STYLE_TOKEN_SCHEMAS = {
 	border: v.picklist(WISHLIST_BORDER_STYLES),
 	mat: v.picklist(WISHLIST_IMAGE_MATS),
 	heading: v.picklist(WISHLIST_HEADING_FONTS),
+	heroFrame: v.picklist(WISHLIST_HERO_FRAMES),
 } satisfies { [Token in keyof WishlistStyleTokens]: v.GenericSchema<WishlistStyleTokens[Token]> };
 
 const BACKGROUND_FIELD_SCHEMAS = {

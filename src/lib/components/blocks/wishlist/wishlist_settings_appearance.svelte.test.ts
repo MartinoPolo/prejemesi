@@ -69,6 +69,17 @@ function savedAppearance() {
 	return remoteMocks.saveWishlistSettings.mock.calls[0]![0].appearance;
 }
 
+function fieldResetName(field: string) {
+	return m.wishlist_appearance_reset_field_to_theme({ field });
+}
+
+async function openCustomizeSection(screen: ReturnType<typeof renderSettings>) {
+	const trigger = screen.getByRole('button', { name: m.wishlist_appearance_customize() });
+	if (trigger.element().getAttribute('aria-expanded') !== 'true') {
+		await trigger.click();
+	}
+}
+
 afterEach(() => {
 	cleanup();
 	vi.restoreAllMocks();
@@ -122,26 +133,31 @@ describe('WishlistSettingsModal appearance tab', () => {
 		});
 	});
 
-	it('resets style overrides to the theme defaults', async () => {
+	it('marks every customizable field as coming from the motif until it is overridden', async () => {
 		const screen = renderSettings({
 			activeTab: 'appearance',
 			wishlist: { ...wishlist, themeId: 'toys' },
 		});
-		const reset = screen.getByRole('button', {
-			name: m.wishlist_appearance_style_reset(),
+		await openCustomizeSection(screen);
+		const save = screen.getByRole('button', { name: m.save() });
+		const styleReset = screen.getByRole('button', {
+			name: fieldResetName(m.wishlist_appearance_style_heading()),
 			exact: true,
 		});
-		const save = screen.getByRole('button', { name: m.save() });
-		await expect.element(reset).toBeDisabled();
+		await expect
+			.element(screen.getByTestId('wishlist-motif-field-marker').nth(3))
+			.toBeVisible();
+		await expect.element(styleReset).not.toBeInTheDocument();
 
 		await screen
 			.getByRole('radio', { name: m.wishlist_appearance_corners_sharp(), exact: true })
 			.click();
-		await expect.element(reset).toBeEnabled();
+		await expect.element(styleReset).toBeVisible();
+		expect(screen.getByTestId('wishlist-motif-field-marker').elements()).toHaveLength(3);
 		await expect.element(save).toBeEnabled();
 
-		await reset.click();
-		await expect.element(reset).toBeDisabled();
+		await styleReset.click();
+		await expect.element(styleReset).not.toBeInTheDocument();
 		await expect
 			.element(
 				screen.getByRole('radio', {
@@ -153,6 +169,22 @@ describe('WishlistSettingsModal appearance tab', () => {
 		await expect.element(save).toBeDisabled();
 	});
 
+	it('resets a palette override back to the motif palette', async () => {
+		const onpaletteselect = vi.fn();
+		const screen = renderSettings({
+			activeTab: 'appearance',
+			wishlist: { ...wishlist, themeId: 'minimal' },
+			onpaletteselect,
+		});
+		const paletteReset = screen.getByRole('button', {
+			name: fieldResetName(m.wishlist_appearance_palette_heading()),
+			exact: true,
+		});
+		await paletteReset.click();
+		expect(onpaletteselect).toHaveBeenLastCalledWith(WISHLIST_THEMES.minimal.palette);
+		await expect.element(paletteReset).not.toBeInTheDocument();
+	});
+
 	it('reset clears stored overrides', async () => {
 		remoteMocks.saveWishlistSettings.mockReset().mockResolvedValue(undefined);
 		const screen = renderSettings({
@@ -160,14 +192,83 @@ describe('WishlistSettingsModal appearance tab', () => {
 			wishlist: { ...wishlist, themeId: 'minimal', styleTokens: { corners: 'round' } },
 		});
 		await screen
-			.getByRole('button', { name: m.wishlist_appearance_style_reset(), exact: true })
+			.getByRole('button', {
+				name: fieldResetName(m.wishlist_appearance_style_heading()),
+				exact: true,
+			})
 			.click();
 		await screen.getByRole('button', { name: m.save() }).click();
 		await vi.waitFor(() => expect(remoteMocks.saveWishlistSettings).toHaveBeenCalledOnce());
-		expect(remoteMocks.saveWishlistSettings.mock.calls[0]![0].appearance).toMatchObject({
+		expect(savedAppearance()).toMatchObject({
 			themeId: 'minimal',
 			styleTokens: null,
 		});
+	});
+
+	it('saves the chosen header frame as a style override', async () => {
+		remoteMocks.saveWishlistSettings.mockReset().mockResolvedValue(undefined);
+		const screen = renderSettings({
+			activeTab: 'appearance',
+			wishlist: { ...wishlist, themeId: 'toys' },
+		});
+		await openCustomizeSection(screen);
+		await screen
+			.getByRole('radio', { name: m.wishlist_appearance_hero_frame_tag(), exact: true })
+			.click();
+		await expect
+			.element(
+				screen.getByRole('button', {
+					name: fieldResetName(m.wishlist_appearance_hero_frame_heading()),
+					exact: true,
+				}),
+			)
+			.toBeVisible();
+		await screen.getByRole('button', { name: m.save() }).click();
+		await vi.waitFor(() => expect(remoteMocks.saveWishlistSettings).toHaveBeenCalledOnce());
+		expect(savedAppearance()).toMatchObject({
+			themeId: 'toys',
+			styleTokens: { heroFrame: 'tag' },
+		});
+	});
+
+	it('shows each motif tile in its light and its dark variant whatever the manager mode', async () => {
+		document.documentElement.classList.add('dark');
+		try {
+			const screen = renderSettings({ activeTab: 'appearance' });
+			const toysTile = screen.getByRole('radio', {
+				name: wishlistThemeName('toys'),
+				exact: true,
+			});
+			await expect.element(toysTile).toBeVisible();
+			const variants = toysTile.getByTestId('wishlist-theme-variant').elements();
+			expect(variants.map((variant) => variant.dataset.mode)).toEqual(['light', 'dark']);
+			const [lightTop, darkTop] = variants.map((variant) =>
+				getComputedStyle(variant.firstElementChild!).getPropertyValue('--theme-top').trim(),
+			);
+			expect(lightTop).toBe('#e6f5ff');
+			expect(darkTop).not.toBe(lightTop);
+		} finally {
+			document.documentElement.classList.remove('dark');
+		}
+	});
+
+	it('previews the draft in light and in dark mode side by side', async () => {
+		const screen = renderSettings({ activeTab: 'appearance' });
+		const panes = screen.getByTestId('wishlist-appearance-preview-pane');
+		await expect.element(panes.first()).toBeVisible();
+		const [lightPane, darkPane] = panes.elements();
+		expect([lightPane?.dataset.mode, darkPane?.dataset.mode]).toEqual(['light', 'dark']);
+		expect(lightPane?.textContent).toContain(wishlist.title);
+		expect(darkPane?.textContent).toContain(wishlist.title);
+		const paneBackground = (pane: Element | undefined) =>
+			getComputedStyle(pane!.firstElementChild!).backgroundColor;
+		expect(paneBackground(lightPane)).not.toBe(paneBackground(darkPane));
+
+		await screen.getByRole('radio', { name: wishlistThemeName('toys'), exact: true }).click();
+		await vi.waitFor(() =>
+			expect(lightPane?.querySelector('[data-wishlist-theme="toys"]')).not.toBeNull(),
+		);
+		expect(darkPane?.querySelector('[data-wishlist-theme="toys"]')).not.toBeNull();
 	});
 
 	it('keeps a stored override when only an unrelated field changes', async () => {
@@ -288,6 +389,7 @@ describe('WishlistSettingsModal appearance tab', () => {
 			activeTab: 'appearance',
 			wishlist: { ...wishlist, themeId: 'toys', demoSessionId: 'demo-session' },
 		});
+		await openCustomizeSection(screen);
 		await expect
 			.element(
 				screen.getByRole('radio', {

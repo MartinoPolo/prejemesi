@@ -10,14 +10,22 @@
 	import ArchiveIcon from '@lucide/svelte/icons/archive';
 	import EyeIcon from '@lucide/svelte/icons/eye';
 	import TriangleAlertIcon from '@lucide/svelte/icons/triangle-alert';
-	import InfinityIcon from '@lucide/svelte/icons/infinity';
 	import RefreshCwIcon from '@lucide/svelte/icons/refresh-cw';
 	import {
 		WISHLIST_KIND,
+		WISHLIST_OCCASION,
 		WISHLIST_ROLES,
 		type WishlistKind,
+		type WishlistOccasion,
 		type WishlistRole,
 	} from '$lib/modules/wishlists/types.js';
+	import { displayedWishlistOccasion } from '$lib/modules/wishlists/wishlist_occasion.js';
+	import {
+		WISHLIST_OCCASION_DISPLAY,
+		occasionDisplayLabel,
+	} from '$lib/modules/wishlists/wishlist_occasion_display.js';
+	import { INLINE_TEXT_SEPARATOR } from '$lib/utils/inline_text_separator.js';
+	import type { WishlistHeroFrame } from '$lib/theme/wishlist_themes.js';
 	import { canManageWishlist } from '$lib/modules/wishlists/wishlist_capabilities.js';
 	import { Avatar } from '$lib/components/derived/avatar/index.js';
 	import { getInitials } from '$lib/utils/initials.js';
@@ -32,7 +40,10 @@
 	import WishlistSlotImage from '$lib/components/blocks/wishlist/WishlistSlotImage.svelte';
 	import type { WishlistThemeMotif } from '$lib/components/blocks/wishlist/wishlist_theme_scope.js';
 	import WishlistHeaderActions from './WishlistHeaderActions.svelte';
+	import WishlistHeroEmblem from './WishlistHeroEmblem.svelte';
+	import WishlistHeroFrameShell from './WishlistHeroFrame.svelte';
 	import { wishlistHeaderVariants } from './wishlist_header_variants.js';
+	import { wishlistHeroFrameVariants } from './wishlist_hero_frame_variants.js';
 
 	interface WishlistHeaderProps {
 		title: string;
@@ -65,6 +76,10 @@
 		eventDate: Date | null;
 		status: 'draft' | 'active' | 'archived';
 		kind?: WishlistKind;
+		/** What the list is for; a permanent list is always the Stálý seznam. */
+		occasion?: WishlistOccasion;
+		/** The frame the motif chose, or the stored override. */
+		heroFrame?: WishlistHeroFrame;
 		role: WishlistRole;
 		giftCount: number | null;
 		/** True when the linked recipient self-promoted to also see reservation state (trust warning). */
@@ -100,6 +115,8 @@
 		eventDate,
 		status,
 		kind = WISHLIST_KIND.occasion,
+		occasion = WISHLIST_OCCASION.other,
+		heroFrame = 'notebook',
 		role,
 		giftCount,
 		recipientIsModerator,
@@ -115,6 +132,7 @@
 	}: WishlistHeaderProps = $props();
 
 	const styles = wishlistHeaderVariants();
+	const frameStyles = $derived(wishlistHeroFrameVariants({ frame: heroFrame }));
 
 	// The wishlist photo (image-slots crop) renders as the taped polaroid print.
 	// The photo area is exactly square, so it consumes the 1:1 `thumbnail` slot
@@ -125,8 +143,10 @@
 	const canManage = $derived(canManageWishlist(role));
 	const isArchived = $derived(status === 'archived');
 	const isPermanent = $derived(kind === WISHLIST_KIND.permanent);
-	// Rendered as an expression because Svelte trims the spaces of literal element text.
-	const META_SEPARATOR = ' · ';
+	const displayedOccasion = $derived(displayedWishlistOccasion(kind, occasion));
+	const OccasionIcon = $derived(WISHLIST_OCCASION_DISPLAY[displayedOccasion].icon);
+	// Without a label (Jiná) the emblem and meta line show only the countdown.
+	const occasionLabel = $derived(occasionDisplayLabel(displayedOccasion));
 	const settingsAvailable = $derived((canManage && !isArchived) || adminSettingsAvailable);
 	const isEventPast = $derived(eventDate !== null && !hasUpcomingEventDate(eventDate));
 	// Recipient edit pencil (issue #150): free-text lists → any manager may rename; linked
@@ -163,18 +183,20 @@
 		}
 	});
 
-	// Sticky-note / meta-chip countdown (REQ-12): hidden without an event date,
+	// Emblem, meta-chip and mobile countdown (REQ-12): hidden without an event date,
 	// „proběhlo" once the event passed (the manager archive prompt takes over).
-	const countdownLabel = $derived.by(() => {
-		if (eventDate === null) {
-			return null;
-		}
-		const countdown = eventCountdown(new Date(eventDate));
-		if (countdown !== null) {
-			return m.wishlist_countdown_note({ countdown });
-		}
-		return m.wishlist_countdown_passed();
-	});
+	const countdown = $derived(eventDate === null ? null : eventCountdown(new Date(eventDate)));
+	const countdownLabel = $derived(
+		eventDate === null ? null : (countdown ?? m.wishlist_countdown_passed()),
+	);
+	// The Pozvánka seal is part of the envelope; stamp and tag appear only with something to say.
+	const hasEmblem = $derived(
+		heroFrame === 'invitation' || occasionLabel !== null || countdownLabel !== null,
+	);
+	// The 640–960 px meta chip keeps the exclaimed note the sticky note used to carry.
+	const countdownChipLabel = $derived(
+		countdown === null ? countdownLabel : m.wishlist_countdown_note({ countdown }),
+	);
 
 	// Polaroid caption mimics a handwritten photo label: event date only („červenec 2026").
 	// The recipient name lives in the „Pro: {name}" line, never in the caption (2026-07-14
@@ -231,52 +253,64 @@
 <header class={styles.root()}>
 	<!-- Narrow screens use a standalone compact hero. The notices below intentionally remain
 	     siblings so lifecycle and reservation privacy messaging never gets clipped by it. -->
-	<div class="mobile-hero" data-testid="wishlist-mobile-hero">
-		<figure class="mobile-photo" data-testid="wishlist-mobile-photo">
-			<WishlistSlotImage
-				class="size-full rounded-none"
-				src={polaroidSrc}
-				frame={polaroidFrame}
-				{themeEmoji}
-				{themeMotif}
-				alt={title}
-				variant="banner"
-				eagerLoading
-			/>
-		</figure>
-		<div class="mobile-copy">
-			<p class="mobile-recipient" data-testid="wishlist-mobile-recipient">
-				{m.wishlist_header_for_prefix()} <strong>{recipientDisplayName}</strong>
-			</p>
-			<svelte:element this={headingLevel === 1 ? 'h1' : 'h2'} class="mobile-title">
-				{title}
-			</svelte:element>
-			<p class="mobile-meta" data-testid="wishlist-mobile-meta">
-				<span class="mobile-meta-item">{statusLabel}</span>{#if isPermanent}<span
-						aria-hidden="true">{META_SEPARATOR}</span
-					><span class="mobile-meta-item">{m.wishlist_kind_permanent()}</span
-					>{/if}{#if giftCountLabel !== null}<span aria-hidden="true"
-						>{META_SEPARATOR}</span
-					><span class="mobile-meta-item">{giftCountLabel}</span>{/if}
-			</p>
+	<WishlistHeroFrameShell frame={heroFrame} layout="mobile" data-testid="wishlist-mobile-hero">
+		<div class="mobile-hero">
+			<figure class="mobile-photo" data-testid="wishlist-mobile-photo">
+				<WishlistSlotImage
+					class="size-full rounded-none"
+					src={polaroidSrc}
+					frame={polaroidFrame}
+					{themeEmoji}
+					{themeMotif}
+					alt={title}
+					variant="banner"
+					eagerLoading
+				/>
+			</figure>
+			<div class="mobile-copy">
+				<p class="mobile-recipient" data-testid="wishlist-mobile-recipient">
+					{m.wishlist_header_for_prefix()} <strong>{recipientDisplayName}</strong>
+				</p>
+				<svelte:element this={headingLevel === 1 ? 'h1' : 'h2'} class="mobile-title">
+					{title}
+				</svelte:element>
+				<p class="mobile-meta" data-testid="wishlist-mobile-meta">
+					<span class="mobile-meta-item">{statusLabel}</span
+					>{#if occasionLabel !== null}<span aria-hidden="true"
+							>{INLINE_TEXT_SEPARATOR}</span
+						><span class="mobile-meta-item mobile-meta-occasion"
+							><OccasionIcon
+								class="mobile-meta-icon"
+								aria-hidden="true"
+							/>{occasionLabel}</span
+						>{/if}{#if countdownLabel !== null}<span aria-hidden="true"
+							>{INLINE_TEXT_SEPARATOR}</span
+						><span class="mobile-meta-item">{countdownLabel}</span
+						>{/if}{#if giftCountLabel !== null}<span aria-hidden="true"
+							>{INLINE_TEXT_SEPARATOR}</span
+						><span class="mobile-meta-item">{giftCountLabel}</span>{/if}
+				</p>
+			</div>
+			{@render headerActions()}
 		</div>
-		{@render headerActions()}
-	</div>
+	</WishlistHeroFrameShell>
 
-	<!-- Spiral-notebook panel: punch holes, red margin line, ruled lines -->
-	<div class="notebook" data-testid="wishlist-banner">
-		<div class="notebook-face">
+	<WishlistHeroFrameShell frame={heroFrame} layout="desktop" data-testid="wishlist-banner">
+		<div class={frameStyles.face()}>
 			<div class="desktop-header-actions">
 				{@render headerActions()}
 			</div>
-			{#if countdownLabel !== null}
-				<!-- Sunshine sticky note pinned to the page's top-right corner (desktop only) -->
-				<div class="sticky-note" aria-hidden="true">{countdownLabel}</div>
-			{/if}
 
-			<!-- Taped polaroid print — a physical photo, so frame + caption ink stay fixed -->
-			<figure class="polaroid reveal group/polaroid">
-				<div class="polaroid-img">
+			<!-- Blok: taped polaroid print — a physical photo, so frame + caption ink stay fixed.
+			     The other frames show the photo as a flat tile. -->
+			<figure
+				class={[
+					frameStyles.photo(),
+					heroFrame !== 'notebook' && frameStyles.photoTile(),
+					'group/polaroid',
+				]}
+			>
+				<div class={frameStyles.photoImage()}>
 					<WishlistSlotImage
 						class="size-full rounded-none"
 						src={polaroidSrc}
@@ -300,7 +334,7 @@
 						</Button>
 					{/if}
 				</div>
-				{#if polaroidCaption !== null}
+				{#if heroFrame === 'notebook' && polaroidCaption !== null}
 					<figcaption>{polaroidCaption}</figcaption>
 				{/if}
 			</figure>
@@ -308,6 +342,7 @@
 			<div
 				class={styles.headerText()}
 				class:header-text-has-actions={settingsAvailable || canManage}
+				class:header-text-beside-emblem={hasEmblem}
 			>
 				<!-- Every list leads with „Pro: {recipient}" — colon form, prefix lighter, name bold
 				     (2026-07-14 header decision, self lists included). A `<div>`, not a `<p>`: the
@@ -349,15 +384,20 @@
 				{/if}
 				<div class={styles.metaRow()}>
 					<Badge tone={statusBadgeTone} size="lg">{statusLabel}</Badge>
-					{#if isPermanent}
-						<!-- Takes the place of the event-date chip a permanent list never has. -->
-						<Badge tone="neutral" size="lg" data-testid="wishlist-kind-chip">
-							<InfinityIcon data-icon="inline-start" />
-							{m.wishlist_kind_permanent()}
-						</Badge>
-					{/if}
 					{#if giftCountLabel !== null}
 						<Badge tone="neutral" size="lg">{giftCountLabel}</Badge>
+					{/if}
+					{#if occasionLabel !== null}
+						<!-- The emblem names the occasion from 960 px. -->
+						<Badge
+							tone="neutral"
+							size="lg"
+							class={styles.occasionChip()}
+							data-testid="wishlist-occasion-chip"
+						>
+							<OccasionIcon data-icon="inline-start" />
+							{occasionLabel}
+						</Badge>
 					{/if}
 					{#if formattedDate !== null}
 						<Badge tone="neutral" size="lg">
@@ -365,11 +405,11 @@
 							{formattedDate}
 						</Badge>
 					{/if}
-					{#if countdownLabel !== null}
-						<!-- Stands in for the sticky note below 960 px -->
+					{#if countdownChipLabel !== null}
+						<!-- Stands in for the emblem countdown below 960 px -->
 						<Badge size="lg" class={styles.countdownChip()}>
 							<HourglassIcon data-icon="inline-start" />
-							{countdownLabel}
+							{countdownChipLabel}
 						</Badge>
 					{/if}
 					{#if managedByLabel !== null}
@@ -378,7 +418,13 @@
 				</div>
 			</div>
 		</div>
-	</div>
+		<WishlistHeroEmblem
+			frame={heroFrame}
+			occasionIcon={OccasionIcon}
+			{occasionLabel}
+			{countdownLabel}
+		/>
+	</WishlistHeroFrameShell>
 
 	<!-- Lifecycle notices: calm tinted panels (the shared/draft strips are gone — REQ-12) -->
 	{#if isArchived}
@@ -426,85 +472,11 @@
 </header>
 
 <style>
-	.mobile-hero {
-		display: none;
-	}
-
 	.desktop-header-actions {
 		position: absolute;
 		z-index: 2;
-		top: 1rem;
-		right: 1rem;
-	}
-
-	/* Static „spiral notebook page": ruled lines, red margin, punch holes down the
-	   left edge. Layered backgrounds don't translate to utility classes, so the
-	   notebook motifs live here; colors come from the palette tokens in app.css. */
-	.notebook {
-		position: relative;
-		background-color: var(--card);
-		background-image:
-			radial-gradient(
-				circle at 34px 26px,
-				var(--hole-inner) 0 5.5px,
-				var(--hole-ring) 5.5px 8px,
-				transparent 8.5px
-			),
-			linear-gradient(
-				to right,
-				transparent 0 84px,
-				var(--margin-red) 84px 86.5px,
-				transparent 86.5px
-			),
-			repeating-linear-gradient(transparent 0 33px, var(--rule-line) 33px 35px);
-		background-size:
-			100% 52px,
-			100% 100%,
-			100% 100%;
-		background-repeat: repeat-y, no-repeat, no-repeat;
-		border: var(--border-w) solid var(--ink);
-		border-radius: max(0px, calc(var(--radius-panel) - 2px));
-		box-shadow: var(--elevation-ordinary-strong);
-	}
-
-	.notebook-face {
-		position: relative;
-		display: flex;
-		align-items: center;
-		gap: var(--space-6);
-		padding: var(--space-6) var(--space-8) var(--space-6) 116px;
-	}
-
-	/* Sunshine sticky note pinned to the page's top-right corner (static) */
-	.sticky-note {
-		position: absolute;
-		top: 18px;
-		right: 8rem;
-		z-index: 1;
-		padding: 14px 18px 12px;
-		font-family: var(--font-head);
-		font-size: 15px;
-		line-height: 1.25;
-		text-align: center;
-		color: var(--accent-loud-foreground);
-		background: var(--accent-loud);
-		border: 2.5px solid var(--accent-loud-foreground);
-		border-radius: 4px;
-		transform: rotate(4deg);
-		box-shadow: var(--elevation-ordinary-strong);
-	}
-
-	/* Strip of translucent tape over the note's top edge (tape belongs on paper) */
-	.sticky-note::before {
-		content: '';
-		position: absolute;
-		top: -12px;
-		left: 50%;
-		width: 62px;
-		height: 18px;
-		transform: translateX(-50%) rotate(-3deg);
-		background: var(--tape-bg);
-		border: 1.5px solid var(--tape-border);
+		top: var(--hero-actions-top);
+		right: var(--hero-actions-end);
 	}
 
 	/* Taped polaroid print — the print stays a physical photo, so its frame and
@@ -572,36 +544,39 @@
 		color: #6c6353;
 	}
 
-	@media (width <= 960px) {
-		.sticky-note {
-			display: none;
+	/* The copy keeps clear of the actions, the frame's own end decoration and, from 960 px,
+	   the occasion emblem, so decorations never overlap the title. */
+	@media (width >= 640px) {
+		.header-text-has-actions {
+			padding-inline-end: max(
+				var(--hero-copy-end-minimum),
+				calc(var(--hero-actions-end) + 7.5rem - var(--hero-face-end))
+			);
 		}
 	}
 
-	@media (width >= 640px) {
-		.header-text-has-actions {
-			padding-inline-end: 6.5rem;
+	@media (width >= 960px) {
+		.header-text-beside-emblem {
+			padding-inline-end: calc(
+				var(--hero-emblem-reserve) + var(--space-4) - var(--hero-face-end)
+			);
 		}
 	}
 
 	@media (width < 640px) {
-		.notebook {
-			display: none;
-		}
-
+		/* The frame shell draws the paper; its extras clear the frame's edge decorations.
+		   A minimum, not a fixed height: long titles and wrapped meta lines grow the hero
+		   instead of overflowing its bottom padding. */
 		.mobile-hero {
 			display: grid;
 			box-sizing: border-box;
-			height: 112px;
+			min-height: calc(112px - 2 * var(--hero-mobile-border) + var(--hero-mobile-top-extra));
 			grid-template-columns: 92px minmax(0, 1fr) auto;
 			align-items: center;
 			gap: var(--space-2);
-			padding: var(--space-2);
-			overflow: hidden;
-			background: var(--card);
-			border: max(1px, calc(var(--border-w) - 0.5px)) solid var(--ink);
-			border-radius: max(0px, calc(var(--radius-panel) - 2px));
-			box-shadow: var(--elevation-ordinary);
+			padding: calc(var(--space-2) + var(--hero-mobile-top-extra))
+				calc(var(--space-2) + var(--hero-mobile-end-extra)) var(--space-2)
+				calc(var(--space-2) + var(--hero-mobile-start-extra));
 		}
 
 		.mobile-photo {
@@ -611,6 +586,10 @@
 			overflow: hidden;
 			border: max(1px, calc(var(--border-w) - 0.5px)) solid var(--ink);
 			border-radius: max(0px, calc(var(--radius-panel) - 6px));
+		}
+
+		:global([data-hero-frame='tag']) .mobile-photo {
+			border-radius: var(--wishlist-pill-radius, 50%);
 		}
 
 		.mobile-copy {
@@ -654,6 +633,14 @@
 		/* Wraps only between segments, never inside one such as "3 přání". */
 		.mobile-meta-item {
 			white-space: nowrap;
+		}
+
+		.mobile-meta-occasion :global(.mobile-meta-icon) {
+			display: inline;
+			width: 11px;
+			height: 11px;
+			margin-inline-end: 3px;
+			vertical-align: -1px;
 		}
 	}
 </style>

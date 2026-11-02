@@ -32,17 +32,21 @@ export const WISHLIST_CORNER_STYLES = ['round', 'soft', 'sharp'] as const;
 export const WISHLIST_BORDER_STYLES = ['bold', 'fine'] as const;
 export const WISHLIST_IMAGE_MATS = ['dotted', 'white', 'black'] as const;
 export const WISHLIST_HEADING_FONTS = ['playful', 'elegant', 'plain', 'hand'] as const;
+/** Hero frames: Blok (spiral notebook), Dárek (wrapped present), Visačka (gift tag), Pozvánka (envelope). */
+export const WISHLIST_HERO_FRAMES = ['notebook', 'gift', 'tag', 'invitation'] as const;
 
 export type WishlistCornerStyle = (typeof WISHLIST_CORNER_STYLES)[number];
 export type WishlistBorderStyle = (typeof WISHLIST_BORDER_STYLES)[number];
 export type WishlistImageMat = (typeof WISHLIST_IMAGE_MATS)[number];
 export type WishlistHeadingFont = (typeof WISHLIST_HEADING_FONTS)[number];
+export type WishlistHeroFrame = (typeof WISHLIST_HERO_FRAMES)[number];
 
 export interface WishlistStyleTokens {
 	corners: WishlistCornerStyle;
 	border: WishlistBorderStyle;
 	mat: WishlistImageMat;
 	heading: WishlistHeadingFont;
+	heroFrame: WishlistHeroFrame;
 }
 
 /** Today's look: what a wishlist without a theme and without overrides renders. */
@@ -51,7 +55,13 @@ const DEFAULT_WISHLIST_STYLE: WishlistStyleTokens = {
 	border: 'bold',
 	mat: 'dotted',
 	heading: 'playful',
+	heroFrame: 'notebook',
 };
+
+/** Every motif has a variant for each viewer mode; previews show them side by side. */
+export const WISHLIST_VIEWER_MODES = ['light', 'dark'] as const;
+
+export type WishlistViewerMode = (typeof WISHLIST_VIEWER_MODES)[number];
 
 export const WISHLIST_BACKGROUND_MODES = ['theme', 'library', 'custom', 'none'] as const;
 export const WISHLIST_BACKGROUND_PLACEMENTS = ['gutters', 'full'] as const;
@@ -90,90 +100,168 @@ export const DEFAULT_WISHLIST_BACKGROUND: WishlistBackground = {
 export interface WishlistThemeDefinition {
 	palette: Palette;
 	style: WishlistStyleTokens;
-	/** Dark-native backdrops look the same in light and dark mode and use black hard shadows. */
-	darkBackdrop: boolean;
 }
 
 export const WISHLIST_THEMES: Record<WishlistThemeId, WishlistThemeDefinition> = {
 	toys: {
 		palette: 'sky',
-		style: { corners: 'round', border: 'bold', mat: 'dotted', heading: 'playful' },
-		darkBackdrop: false,
+		style: {
+			corners: 'round',
+			border: 'bold',
+			mat: 'dotted',
+			heading: 'playful',
+			heroFrame: 'notebook',
+		},
 	},
 	kids_clothes: {
 		palette: 'sakura',
-		style: { corners: 'round', border: 'bold', mat: 'white', heading: 'hand' },
-		darkBackdrop: false,
+		style: {
+			corners: 'round',
+			border: 'bold',
+			mat: 'white',
+			heading: 'hand',
+			heroFrame: 'tag',
+		},
 	},
 	gamer: {
 		palette: 'grape',
-		style: { corners: 'soft', border: 'bold', mat: 'black', heading: 'plain' },
-		darkBackdrop: true,
+		style: {
+			corners: 'soft',
+			border: 'bold',
+			mat: 'black',
+			heading: 'plain',
+			heroFrame: 'notebook',
+		},
 	},
 	minimal: {
 		palette: 'graphite',
-		style: { corners: 'sharp', border: 'fine', mat: 'white', heading: 'plain' },
-		darkBackdrop: false,
+		style: {
+			corners: 'sharp',
+			border: 'fine',
+			mat: 'white',
+			heading: 'plain',
+			heroFrame: 'invitation',
+		},
 	},
 	wedding: {
 		palette: 'honey',
-		style: { corners: 'soft', border: 'fine', mat: 'white', heading: 'elegant' },
-		darkBackdrop: false,
+		style: {
+			corners: 'soft',
+			border: 'fine',
+			mat: 'white',
+			heading: 'elegant',
+			heroFrame: 'invitation',
+		},
 	},
 	christmas: {
 		palette: 'ruby',
-		style: { corners: 'round', border: 'bold', mat: 'dotted', heading: 'playful' },
-		darkBackdrop: true,
+		style: {
+			corners: 'round',
+			border: 'bold',
+			mat: 'dotted',
+			heading: 'playful',
+			heroFrame: 'gift',
+		},
 	},
 	outdoor: {
 		palette: 'matcha',
-		style: { corners: 'soft', border: 'bold', mat: 'dotted', heading: 'playful' },
-		darkBackdrop: false,
+		style: {
+			corners: 'soft',
+			border: 'bold',
+			mat: 'dotted',
+			heading: 'playful',
+			heroFrame: 'notebook',
+		},
 	},
 	books: {
 		palette: 'ocean',
-		style: { corners: 'soft', border: 'fine', mat: 'white', heading: 'elegant' },
-		darkBackdrop: false,
+		style: {
+			corners: 'soft',
+			border: 'fine',
+			mat: 'white',
+			heading: 'elegant',
+			heroFrame: 'invitation',
+		},
 	},
 	baby: {
 		palette: 'mint',
-		style: { corners: 'round', border: 'fine', mat: 'dotted', heading: 'hand' },
-		darkBackdrop: false,
+		style: {
+			corners: 'round',
+			border: 'fine',
+			mat: 'dotted',
+			heading: 'hand',
+			heroFrame: 'tag',
+		},
 	},
 	retro: {
 		palette: 'peach',
-		style: { corners: 'round', border: 'bold', mat: 'dotted', heading: 'playful' },
-		darkBackdrop: false,
+		style: {
+			corners: 'round',
+			border: 'bold',
+			mat: 'dotted',
+			heading: 'playful',
+			heroFrame: 'notebook',
+		},
 	},
 	party: {
 		palette: 'sakura',
-		style: { corners: 'round', border: 'bold', mat: 'dotted', heading: 'playful' },
-		darkBackdrop: false,
+		style: {
+			corners: 'round',
+			border: 'bold',
+			mat: 'dotted',
+			heading: 'playful',
+			heroFrame: 'gift',
+		},
 	},
 	space: {
 		palette: 'sky',
-		style: { corners: 'soft', border: 'bold', mat: 'black', heading: 'plain' },
-		darkBackdrop: true,
+		style: {
+			corners: 'soft',
+			border: 'bold',
+			mat: 'black',
+			heading: 'plain',
+			heroFrame: 'notebook',
+		},
 	},
 	music: {
 		palette: 'ruby',
-		style: { corners: 'soft', border: 'bold', mat: 'white', heading: 'plain' },
-		darkBackdrop: false,
+		style: {
+			corners: 'soft',
+			border: 'bold',
+			mat: 'white',
+			heading: 'plain',
+			heroFrame: 'notebook',
+		},
 	},
 	pets: {
 		palette: 'honey',
-		style: { corners: 'round', border: 'bold', mat: 'dotted', heading: 'playful' },
-		darkBackdrop: false,
+		style: {
+			corners: 'round',
+			border: 'bold',
+			mat: 'dotted',
+			heading: 'playful',
+			heroFrame: 'tag',
+		},
 	},
 	gourmet: {
 		palette: 'peach',
-		style: { corners: 'soft', border: 'fine', mat: 'white', heading: 'elegant' },
-		darkBackdrop: false,
+		style: {
+			corners: 'soft',
+			border: 'fine',
+			mat: 'white',
+			heading: 'elegant',
+			heroFrame: 'invitation',
+		},
 	},
 	travel: {
 		palette: 'ocean',
-		style: { corners: 'round', border: 'bold', mat: 'white', heading: 'hand' },
-		darkBackdrop: false,
+		style: {
+			corners: 'round',
+			border: 'bold',
+			mat: 'white',
+			heading: 'hand',
+			heroFrame: 'notebook',
+		},
 	},
 };
 

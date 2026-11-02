@@ -1,9 +1,9 @@
 import '../../app.css';
-import { afterEach, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { createPixelAssertions } from '../../../tests/helpers/pixel-assertions.mjs';
 import { restingShadowNesting } from './resting_shadow_nesting.js';
 
-const { expectPixelsNear } = createPixelAssertions(expect);
+const { expectPixelsAtLeast, expectPixelsNear } = createPixelAssertions(expect);
 const cleanups: (() => void)[] = [];
 afterEach(() => {
 	for (const cleanup of cleanups.splice(0)) {
@@ -11,11 +11,11 @@ afterEach(() => {
 	}
 });
 
-it('derives a concentric contour from the rendered border plus the depth clearance on shadowed edges', () => {
+it('derives a concentric contour above the floor from the rendered border plus the depth clearance on shadowed edges', () => {
 	const panel = document.createElement('div');
 	panel.className = 'resting-shadow-nesting';
 	panel.style.cssText =
-		'border: 2.5px solid; width: 300px; --radius-panel: 16px; --radius-btn: 7px; --elevation-ordinary-offset: 4px';
+		'border: 2.5px solid; width: 300px; --radius-panel: 24px; --radius-btn: 7px; --elevation-ordinary-offset: 4px';
 	const control = document.createElement('div');
 	control.style.cssText =
 		'margin-left: var(--gift-content-inset-end); margin-top: var(--gift-content-inset-bottom)';
@@ -34,9 +34,73 @@ it('derives a concentric contour from the rendered border plus the depth clearan
 	] as const) {
 		panel.dataset.depth = depth;
 		const endInset = parseFloat(getComputedStyle(control).marginLeft);
-		expectPixelsNear(border + endInset - depthClearance + 7, 16);
+		expectPixelsNear(border + endInset - depthClearance + 7, 24);
 		expectPixelsNear(parseFloat(getComputedStyle(control).marginTop), endInset);
 	}
+});
+
+const MINIMUM_CONTROL_GAP = 9;
+
+function renderNestedPanel(corners: string, border: string) {
+	const scope = document.createElement('div');
+	scope.dataset.corners = corners;
+	scope.dataset.border = border;
+	const panel = document.createElement('div');
+	panel.className = 'resting-shadow-nesting';
+	panel.style.cssText =
+		'border: var(--border-w) solid; width: 300px; --elevation-ordinary-offset: 4px';
+	const control = document.createElement('div');
+	control.style.cssText =
+		'margin: var(--gift-content-inset) var(--gift-content-inset-end) var(--gift-content-inset-bottom) var(--gift-content-inset)';
+	panel.append(control);
+	scope.append(panel);
+	document.body.append(scope);
+	const geometry = restingShadowNesting(panel);
+	cleanups.push(() => {
+		geometry.destroy();
+		scope.remove();
+	});
+	return { scope, panel, control };
+}
+
+describe.each(['round', 'soft', 'sharp'])('%s corners', (corners) => {
+	it.each(['bold', 'fine'])(
+		'keeps nested controls at least the floor from a %s inner border, plus clearance on shadowed edges',
+		(border) => {
+			const { panel, control } = renderNestedPanel(corners, border);
+			for (const [depth, depthClearance] of [
+				['soft', 0],
+				['ink', 4],
+				['black', 4],
+			] as const) {
+				panel.dataset.depth = depth;
+				const margins = getComputedStyle(control);
+				const startGap = parseFloat(margins.marginLeft);
+				const topGap = parseFloat(margins.marginTop);
+				const endGap = parseFloat(margins.marginRight);
+				const bottomGap = parseFloat(margins.marginBottom);
+				expectPixelsAtLeast(
+					startGap,
+					MINIMUM_CONTROL_GAP,
+					`${depth} start gap ${startGap}px`,
+				);
+				expectPixelsAtLeast(topGap, MINIMUM_CONTROL_GAP, `${depth} top gap ${topGap}px`);
+				expectPixelsNear(endGap, startGap + depthClearance);
+				expectPixelsAtLeast(
+					bottomGap - depthClearance,
+					MINIMUM_CONTROL_GAP,
+					`${depth} bottom gap ${bottomGap}px`,
+				);
+			}
+		},
+	);
+});
+
+it('pairs Soft corners as a 12 px panel around 4 px controls', () => {
+	const { scope } = renderNestedPanel('soft', 'bold');
+	const tokens = getComputedStyle(scope);
+	expect(tokens.getPropertyValue('--radius-panel').trim()).toBe('12px');
+	expect(tokens.getPropertyValue('--radius-btn').trim()).toBe('4px');
 });
 
 it('measures an explicit painted border and restores owner styles on teardown', () => {

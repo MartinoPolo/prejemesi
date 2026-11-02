@@ -12,14 +12,18 @@ vi.mock('$env/dynamic/public', () => ({ env: {} }));
 
 const { default: WishlistCard } = await import('./WishlistCard.svelte');
 const { default: WishlistListView } = await import('./WishlistListView.svelte');
-const { expectPixelsNear } = createPixelAssertions(expect);
+const { expectPixelsNear, expectPixelsAtMost } = createPixelAssertions(expect);
 
 const wishlist = {
 	id: 'wishlist-1',
 	shortId: 'test-list',
 	title: 'Testovací seznam',
 	status: 'active',
+	occasion: 'other',
 	theme: 'default',
+	palette: 'sky',
+	themeId: null,
+	styleTokens: null,
 	imageKey: null,
 	imageSlots: null,
 	eventDate: null,
@@ -241,7 +245,7 @@ describe('WishlistCard reservation progress', () => {
 	});
 });
 
-describe('WishlistCard palette tint', () => {
+describe('WishlistCard appearance', () => {
 	function tokenColor(scope: HTMLElement, token: string): string {
 		const probe = document.createElement('span');
 		probe.style.backgroundColor = `var(${token})`;
@@ -251,54 +255,124 @@ describe('WishlistCard palette tint', () => {
 		return color;
 	}
 
-	it("tints the body and title plate from the wishlist's own palette", async () => {
+	function paletteToken(palette: Palette, token: string): string {
+		const scope = document.createElement('div');
+		scope.setAttribute('data-palette', palette);
+		document.body.append(scope);
+		try {
+			return tokenColor(scope, token);
+		} finally {
+			scope.remove();
+		}
+	}
+
+	async function renderCard(appearance: Partial<Wishlist>) {
 		const screen = await render(WishlistCard, {
-			wishlist: { ...wishlist, palette: 'ruby' },
+			wishlist: { ...wishlist, ...appearance },
+			recipientDisplayName: 'Marie',
 			giftCount: 3,
 		});
 		const card = screen.container.querySelector<HTMLElement>('[data-testid="wishlist-card"]')!;
-		expect(card.getAttribute('data-palette')).toBe('ruby');
+		const surface = card.querySelector<HTMLElement>(
+			':scope > [data-slot="elevation-surface"]',
+		)!;
+		const plate = card.querySelector<HTMLElement>('[data-corners]')!;
+		expect(plate.textContent?.trim()).toBe(wishlist.title);
+		return { screen, card, surface, plate };
+	}
 
-		const surface = card.querySelector<HTMLElement>('[data-slot="elevation-surface"]')!;
-		const plate = screen.getByText(wishlist.title).element() as HTMLElement;
-		const plainCard = tokenColor(card, '--card');
-		const surfaceBackground = getComputedStyle(surface).backgroundColor;
-		const plateBackground = getComputedStyle(plate).backgroundColor;
+	/** Everything the viewer's look owns: identical across cards whatever their wishlist. */
+	function viewerLook({ card, surface }: { card: HTMLElement; surface: HTMLElement }) {
+		const border = surface.querySelector<HTMLElement>(':scope > span[aria-hidden="true"]')!;
+		const banner = surface.querySelector<HTMLElement>(':scope > div[aria-hidden="true"]')!;
+		const recipient = [...card.querySelectorAll<HTMLElement>('span')].find((span) =>
+			span.textContent?.includes(m.wishlist_recipient_chip({ name: 'Marie' })),
+		)!;
+		const surfaceStyle = getComputedStyle(surface);
+		const borderStyle = getComputedStyle(border);
+		return {
+			body: surfaceStyle.backgroundColor,
+			shadow: surfaceStyle.boxShadow,
+			corners: surfaceStyle.borderTopLeftRadius,
+			borderColor: borderStyle.borderTopColor,
+			borderWidth: borderStyle.borderTopWidth,
+			coverDivider: getComputedStyle(banner).borderBottomColor,
+			meta: getComputedStyle(recipient).color,
+		};
+	}
 
-		expect(surfaceBackground).not.toBe(plainCard);
-		expect(surfaceBackground).toBe(tokenColor(card, '--wishlist-card-body'));
-		expect(plateBackground).not.toBe(plainCard);
-		expect(plateBackground).toBe(tokenColor(card, '--wishlist-card-plate'));
-		expect(tokenColor(card, '--wishlist-card-body')).not.toBe(
-			tokenColor(document.body, '--wishlist-card-body'),
-		);
+	it.each(['light', 'dark'])(
+		'keeps body, meta, border, shadow and corners in the viewer look across palettes and motifs in %s mode',
+		async (mode) => {
+			document.documentElement.classList.toggle('dark', mode === 'dark');
+			try {
+				const christmas = await renderCard({ palette: 'ruby', themeId: 'christmas' });
+				const minimal = await renderCard({ palette: 'graphite', themeId: 'minimal' });
+
+				expect(viewerLook(christmas)).toEqual(viewerLook(minimal));
+				expect(viewerLook(christmas).body).toBe(tokenColor(document.body, '--card'));
+				expect(getComputedStyle(christmas.plate).backgroundColor).not.toBe(
+					getComputedStyle(minimal.plate).backgroundColor,
+				);
+
+				await christmas.screen.unmount();
+				await minimal.screen.unmount();
+			} finally {
+				document.documentElement.classList.remove('dark');
+			}
+		},
+	);
+
+	it.each([
+		{ themeId: 'wedding', palette: 'honey', radius: '6px', font: 'Fraunces' },
+		{ themeId: 'minimal', palette: 'graphite', radius: '0px', font: 'Geist' },
+		{ themeId: 'christmas', palette: 'ruby', radius: '10px', font: 'DynaPuff' },
+	] as const)(
+		'fills the $themeId title plate with its palette primary, motif corners and heading font',
+		async ({ themeId, palette, radius, font }) => {
+			const { screen, plate } = await renderCard({ palette, themeId });
+			const plateStyle = getComputedStyle(plate);
+
+			expect(plateStyle.backgroundColor).toBe(paletteToken(palette, '--primary'));
+			expect(plateStyle.color).toBe(paletteToken(palette, '--primary-foreground'));
+			expect(plateStyle.borderTopLeftRadius).toBe(radius);
+			expect(plateStyle.fontFamily).toContain(font);
+			// Minimal and Wedding use fine borders on the wishlist page; the plate stays bold.
+			expect(plateStyle.borderTopWidth).toBe('2px');
+			await screen.unmount();
+		},
+	);
+
+	it('follows custom style overrides over the motif defaults', async () => {
+		const { screen, plate } = await renderCard({
+			palette: 'ruby',
+			themeId: 'christmas',
+			styleTokens: { corners: 'sharp', heading: 'elegant' },
+		});
+		const plateStyle = getComputedStyle(plate);
+
+		expect(plateStyle.borderTopLeftRadius).toBe('0px');
+		expect(plateStyle.fontFamily).toContain('Fraunces');
 		await screen.unmount();
 	});
 
-	it('gives cards with different palettes different surface and title plate colors', async () => {
-		async function paletteColors(palette: Palette) {
-			const screen = await render(WishlistCard, {
-				wishlist: { ...wishlist, palette },
-				giftCount: 3,
-			});
-			const card = screen.container.querySelector<HTMLElement>(
-				'[data-testid="wishlist-card"]',
-			)!;
-			const surface = card.querySelector<HTMLElement>('[data-slot="elevation-surface"]')!;
-			const plate = screen.getByText(wishlist.title).element() as HTMLElement;
-			const colors = {
-				surface: getComputedStyle(surface).backgroundColor,
-				plate: getComputedStyle(plate).backgroundColor,
-			};
-			await screen.unmount();
-			return colors;
-		}
+	it('renders hand lettering larger and bolder within the same plate height', async () => {
+		const playful = await renderCard({ palette: 'sakura', themeId: 'party' });
+		const hand = await renderCard({ palette: 'sakura', themeId: 'kids_clothes' });
+		const playfulStyle = getComputedStyle(playful.plate);
+		const handStyle = getComputedStyle(hand.plate);
 
-		const mint = await paletteColors('mint');
-		const ruby = await paletteColors('ruby');
-
-		expect(mint.surface).not.toBe(ruby.surface);
-		expect(mint.plate).not.toBe(ruby.plate);
+		expect(handStyle.fontFamily).toContain('Caveat');
+		expect(Number.parseFloat(handStyle.fontSize)).toBeGreaterThan(
+			Number.parseFloat(playfulStyle.fontSize),
+		);
+		expect(Number(handStyle.fontWeight)).toBeGreaterThan(Number(playfulStyle.fontWeight));
+		expectPixelsNear(
+			hand.plate.getBoundingClientRect().height,
+			playful.plate.getBoundingClientRect().height,
+		);
+		await playful.screen.unmount();
+		await hand.screen.unmount();
 	});
 });
 
@@ -358,4 +432,72 @@ describe('WishlistCard compact size', () => {
 		expect(progress.getAttribute('aria-label')).toBe(m.wishlist_reservation_progress());
 		await screen.unmount();
 	});
+});
+
+describe('WishlistCard occasion badge', () => {
+	const christmasWishlist = { ...wishlist, occasion: 'christmas' } as Wishlist;
+	const christmasBadgeName = () =>
+		m.wishlist_occasion_badge_aria({ occasion: m.wishlist_occasion_christmas() });
+
+	it('names the occasion on the badge and on the card link without adding a tab stop', async () => {
+		const screen = await render(WishlistCard, { wishlist: christmasWishlist });
+		const badge = screen.getByRole('img', { name: christmasBadgeName() });
+
+		await expect.element(badge).toBeVisible();
+		await expect
+			.element(screen.getByRole('link', { name: wishlist.title }))
+			.toHaveAccessibleDescription(christmasBadgeName());
+		expect(badge.element().hasAttribute('tabindex')).toBe(false);
+		await screen.unmount();
+	});
+
+	it('shows the occasion label in a tooltip on hover', async () => {
+		const screen = await render(WishlistCard, { wishlist: christmasWishlist });
+
+		await userEvent.hover(screen.getByRole('img', { name: christmasBadgeName() }));
+
+		await expect
+			.poll(
+				() => document.querySelector('[data-slot="tooltip-content"]')?.textContent?.trim(),
+				{ timeout: 3_000 },
+			)
+			.toBe(m.wishlist_occasion_christmas());
+		await screen.unmount();
+	});
+
+	it.each(['other', 'permanent'])('shows no badge for the %s occasion', async (occasion) => {
+		const screen = await render(WishlistCard, {
+			wishlist: { ...wishlist, occasion } as Wishlist,
+		});
+
+		expect(screen.container.querySelector('[data-testid="wishlist-card-occasion-badge"]')).toBe(
+			null,
+		);
+		expect(
+			screen
+				.getByRole('link', { name: wishlist.title })
+				.element()
+				.hasAttribute('aria-describedby'),
+		).toBe(false);
+		await screen.unmount();
+	});
+
+	it.each(['default', 'large', 'compact'] as const)(
+		'pins the badge to the cover top-left, clear of the status chip, at the %s size',
+		async (size) => {
+			const screen = await render(WishlistCard, { wishlist: christmasWishlist, size });
+			const card = screen.getByRole('link', { name: wishlist.title }).element();
+			const cardRect = card.getBoundingClientRect();
+			const badgeRect = screen
+				.getByRole('img', { name: christmasBadgeName() })
+				.element()
+				.getBoundingClientRect();
+			const statusRect = card.querySelector('[data-slot="badge"]')!.getBoundingClientRect();
+
+			expectPixelsAtMost(badgeRect.left - cardRect.left, 16);
+			expectPixelsAtMost(badgeRect.top - cardRect.top, 16);
+			expect(badgeRect.right).toBeLessThan(statusRect.left);
+			await screen.unmount();
+		},
+	);
 });

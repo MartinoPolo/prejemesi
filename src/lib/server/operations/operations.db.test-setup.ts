@@ -25,6 +25,7 @@ import { moderatorAssignment } from '$lib/server/db/moderator.schema.js';
 import { gift, reservation } from '$lib/server/db/gift.schema.js';
 import { giftRevision } from '$lib/server/db/gift_revision.schema.js';
 import type { WishlistKind } from '$lib/modules/wishlists/types.js';
+import { occasionAfterKindWrite } from '$lib/modules/wishlists/wishlist_occasion.js';
 import { OPERATION_CHANNEL, tokenChannel, type OperationActor } from './actor.js';
 import { giftColumnsWithImages } from './gift_gallery.js';
 
@@ -149,7 +150,9 @@ export async function createWishlistFixture(
 			sharedAt: options.sharedAt ?? null,
 			firstSharedAt: options.sharedAt ?? null,
 			recipientIsModerator: options.recipientIsModerator ?? false,
-			...(options.kind === undefined ? {} : { kind: options.kind }),
+			...(options.kind === undefined
+				? {}
+				: { kind: options.kind, occasion: occasionAfterKindWrite(options.kind, null) }),
 			eventDate: options.eventDate ?? null,
 		});
 	await getDb().insert(moderatorAssignment).values({ wishlistId: id, userId: MANAGER_ID });

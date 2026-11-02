@@ -20,7 +20,7 @@ import { giftLike, reservation } from '$lib/server/db/gift.schema.js';
 import { dispatchNotification } from '$lib/modules/notifications/notification_dispatcher.js';
 import { NOTIFICATION_TYPE } from '$lib/modules/notifications/types.js';
 import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
-import { RECIPIENT_KIND, WISHLIST_KIND } from '$lib/modules/wishlists/types.js';
+import { RECIPIENT_KIND, WISHLIST_KIND, WISHLIST_OCCASION } from '$lib/modules/wishlists/types.js';
 import { executeOperation } from './runner.js';
 import {
 	appendGiftDescriptionOperation,
@@ -597,6 +597,145 @@ describe.skipIf(!DB_READY)('permanent and occasion wishlists [real DB]', () => {
 				400,
 				SERVER_ERROR.CANNOT_MODIFY_ARCHIVED_WISHLIST,
 			);
+		});
+	});
+
+	describe('occasion', () => {
+		it('creates a Jiná occasion wishlist by default', async () => {
+			const created = await executeOperation(recipientActor, createWishlistOperation, {
+				recipientKind: RECIPIENT_KIND.self,
+				title: 'Gifts',
+			});
+
+			expect(created).toMatchObject({
+				kind: WISHLIST_KIND.occasion,
+				occasion: WISHLIST_OCCASION.other,
+			});
+		});
+
+		it('derives the kind from the chosen occasion', async () => {
+			const christmas = await executeOperation(recipientActor, createWishlistOperation, {
+				recipientKind: RECIPIENT_KIND.self,
+				title: 'Gifts',
+				occasion: WISHLIST_OCCASION.christmas,
+			});
+			const permanent = await executeOperation(recipientActor, createWishlistOperation, {
+				recipientKind: RECIPIENT_KIND.self,
+				title: 'Always wanted',
+				occasion: WISHLIST_OCCASION.permanent,
+			});
+
+			expect(christmas).toMatchObject({
+				kind: WISHLIST_KIND.occasion,
+				occasion: WISHLIST_OCCASION.christmas,
+				themeId: 'christmas',
+			});
+			expect(permanent).toMatchObject({
+				kind: WISHLIST_KIND.permanent,
+				occasion: WISHLIST_OCCASION.permanent,
+			});
+		});
+
+		it('makes a wishlist created with only the permanent kind the Stálý seznam', async () => {
+			const created = await executeOperation(recipientActor, createWishlistOperation, {
+				recipientKind: RECIPIENT_KIND.self,
+				title: 'Always wanted',
+				kind: WISHLIST_KIND.permanent,
+			});
+
+			expect(created.occasion).toBe(WISHLIST_OCCASION.permanent);
+		});
+
+		it.each([
+			[WISHLIST_KIND.occasion, WISHLIST_OCCASION.permanent],
+			[WISHLIST_KIND.permanent, WISHLIST_OCCASION.birthday],
+		])('rejects the contradictory kind %s with occasion %s', async (kind, occasion) => {
+			await expectRejected(
+				executeOperation(recipientActor, createWishlistOperation, {
+					recipientKind: RECIPIENT_KIND.self,
+					title: 'Contradiction',
+					kind,
+					occasion,
+				}),
+				400,
+				SERVER_ERROR.WISHLIST_OCCASION_KIND_MISMATCH,
+			);
+			const { id } = await createWishlistFixture();
+			await expectRejected(
+				executeOperation(recipientActor, updateWishlistOperation, { id, kind, occasion }),
+				400,
+				SERVER_ERROR.WISHLIST_OCCASION_KIND_MISMATCH,
+			);
+		});
+
+		it('changes the occasion of a shared wishlist whose event date is locked', async () => {
+			const eventDate = nextYear();
+			const { id } = await createWishlistFixture({ sharedAt: sharedLongAgo(), eventDate });
+
+			await executeOperation(managerActor, saveWishlistSettingsOperation, {
+				wishlistId: id,
+				details: {
+					title: 'Birthday',
+					description: null,
+					occasion: WISHLIST_OCCASION.birthday,
+				},
+			});
+
+			expect(await readWishlistRow(id)).toMatchObject({
+				kind: WISHLIST_KIND.occasion,
+				occasion: WISHLIST_OCCASION.birthday,
+				eventDate,
+			});
+		});
+
+		it('applies the kind rules when the occasion becomes the Stálý seznam', async () => {
+			const upcoming = await createWishlistFixture({ eventDate: nextYear() });
+			const passed = await createWishlistFixture({ eventDate: lastYear() });
+
+			await expectRejected(
+				executeOperation(recipientActor, updateWishlistOperation, {
+					id: upcoming.id,
+					occasion: WISHLIST_OCCASION.permanent,
+				}),
+				409,
+				SERVER_ERROR.CANNOT_MAKE_WISHLIST_WITH_UPCOMING_EVENT_PERMANENT,
+			);
+			await executeOperation(recipientActor, updateWishlistOperation, {
+				id: passed.id,
+				occasion: WISHLIST_OCCASION.permanent,
+			});
+			expect(await readWishlistRow(passed.id)).toMatchObject({
+				kind: WISHLIST_KIND.permanent,
+				occasion: WISHLIST_OCCASION.permanent,
+				eventDate: null,
+			});
+		});
+
+		it('makes a permanent wishlist turned into an occasion by kind alone Jiná', async () => {
+			const { id } = await createWishlistFixture({ kind: WISHLIST_KIND.permanent });
+
+			await executeOperation(recipientActor, updateWishlistOperation, {
+				id,
+				kind: WISHLIST_KIND.occasion,
+			});
+
+			expect(await readWishlistRow(id)).toMatchObject({
+				kind: WISHLIST_KIND.occasion,
+				occasion: WISHLIST_OCCASION.other,
+			});
+		});
+
+		it('reads the occasion back on the wishlist view', async () => {
+			const { id, shortId } = await createWishlistFixture();
+			await executeOperation(recipientActor, updateWishlistOperation, {
+				id,
+				occasion: WISHLIST_OCCASION.nameDay,
+			});
+
+			const view = await executeOperation(recipientActor, readWishlistOperation, {
+				wishlistShortId: shortId,
+			});
+			expect(view.occasion).toBe(WISHLIST_OCCASION.nameDay);
 		});
 	});
 });
