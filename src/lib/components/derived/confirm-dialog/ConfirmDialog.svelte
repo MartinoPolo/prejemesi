@@ -42,6 +42,7 @@
 <script lang="ts">
 	import * as m from '$lib/paraglide/messages.js';
 	import * as Dialog from '$lib/components/base/dialog/index.js';
+	import { createDialogActionLock } from '$lib/components/base/dialog/dialog_action_lock.svelte.js';
 	import { Button } from '$lib/components/base/button/index.js';
 	import { Spinner } from '$lib/components/base/spinner/index.js';
 
@@ -60,8 +61,9 @@
 		...contentProps
 	}: ConfirmDialogProps = $props();
 
-	let confirmRunning = $state(false);
-	const busy = $derived(pending || confirmRunning);
+	let contentRef = $state<HTMLElement | null>(null);
+	const lock = createDialogActionLock({ pending: () => pending, content: () => contentRef });
+	const busy = $derived(lock.busy);
 
 	function requestOpenChange(nextOpen: boolean) {
 		if (busy) {
@@ -72,22 +74,10 @@
 			oncancel?.();
 		}
 	}
-
-	async function confirm() {
-		if (busy) {
-			return;
-		}
-		confirmRunning = true;
-		try {
-			await onconfirm();
-		} finally {
-			confirmRunning = false;
-		}
-	}
 </script>
 
 <Dialog.Root bind:open={() => open, requestOpenChange}>
-	<Dialog.Content size="md" showCloseButton={!busy} {...contentProps}>
+	<Dialog.Content bind:ref={contentRef} size="md" showCloseButton={!busy} {...contentProps}>
 		<Dialog.Header>
 			<Dialog.Title>{title}</Dialog.Title>
 			<Dialog.Description>{description}</Dialog.Description>
@@ -101,7 +91,7 @@
 				intent={confirmIntent}
 				disabled={busy}
 				aria-busy={busy}
-				onclick={() => void confirm()}
+				onclick={() => void lock.run(onconfirm)}
 			>
 				{#if busy}
 					<Spinner data-icon="inline-start" />

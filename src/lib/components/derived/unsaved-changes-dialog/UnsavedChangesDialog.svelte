@@ -18,6 +18,7 @@
 <script lang="ts">
 	import * as m from '$lib/paraglide/messages.js';
 	import * as Dialog from '$lib/components/base/dialog/index.js';
+	import { createDialogActionLock } from '$lib/components/base/dialog/dialog_action_lock.svelte.js';
 	import { Button } from '$lib/components/base/button/index.js';
 	import { Spinner } from '$lib/components/base/spinner/index.js';
 
@@ -31,8 +32,9 @@
 		oncontinue,
 	}: UnsavedChangesDialogProps = $props();
 
-	let saveRunning = $state(false);
-	const busy = $derived(saving || saveRunning);
+	let contentRef = $state<HTMLElement | null>(null);
+	const lock = createDialogActionLock({ pending: () => saving, content: () => contentRef });
+	const busy = $derived(lock.busy);
 
 	function requestOpenChange(nextOpen: boolean) {
 		if (busy || nextOpen) {
@@ -41,22 +43,21 @@
 		oncontinue();
 	}
 
-	async function save() {
-		if (busy || saveDisabled) {
-			return;
-		}
-		saveRunning = true;
-		try {
-			await onsave();
-		} finally {
-			saveRunning = false;
+	function save() {
+		if (!saveDisabled) {
+			void lock.run(onsave);
 		}
 	}
 </script>
 
 <!-- lg keeps all three actions on one row on desktop; phones stack them with Save on top. -->
 <Dialog.Root bind:open={() => open, requestOpenChange}>
-	<Dialog.Content size="lg" showCloseButton={!busy} data-testid="unsaved-changes-dialog">
+	<Dialog.Content
+		bind:ref={contentRef}
+		size="lg"
+		showCloseButton={!busy}
+		data-testid="unsaved-changes-dialog"
+	>
 		<Dialog.Header>
 			<Dialog.Title>{m.unsaved_changes_title()}</Dialog.Title>
 			<Dialog.Description>{description}</Dialog.Description>
@@ -72,7 +73,7 @@
 				intent="primary"
 				disabled={busy || saveDisabled}
 				aria-busy={busy}
-				onclick={() => void save()}
+				onclick={save}
 			>
 				{#if busy}<Spinner data-icon="inline-start" />{/if}
 				{m.unsaved_changes_save_continue()}

@@ -14,7 +14,10 @@
 	import { Field, type FieldControlContext } from '$lib/components/derived/field/index.js';
 	import GraceCountdown from '$lib/components/derived/grace-countdown/GraceCountdown.svelte';
 	import { ConfirmDialog } from '$lib/components/derived/confirm-dialog/index.js';
-	import { UnsavedChangesDialog } from '$lib/components/derived/unsaved-changes-dialog/index.js';
+	import {
+		createUnsavedChangesGuard,
+		UnsavedChangesDialog,
+	} from '$lib/components/derived/unsaved-changes-dialog/index.js';
 	import { toastSuccess, toastError } from '$lib/components/base/toast/index.js';
 	import ArchiveIcon from '@lucide/svelte/icons/archive';
 	import FileDownIcon from '@lucide/svelte/icons/file-down';
@@ -218,8 +221,6 @@
 	let imageDraft = $state<SaveWishlistSettingsInput['image']>();
 	let commitVersion = $state(0);
 	let discardVersion = $state(0);
-	let guardOpen = $state(false);
-	let pendingAction = $state<null | (() => void)>(null);
 	let allowNavigation = false;
 	let categoryResetVersion = $state(0);
 
@@ -306,14 +307,14 @@
 		appearanceDirty = false;
 	}
 
-	function requestGuarded(action: () => void) {
-		if (!anyDirty) {
-			action();
-			return;
-		}
-		pendingAction = action;
-		guardOpen = true;
-	}
+	/** Continues only after a complete save; otherwise the settings stay open with their errors. */
+	const unsavedChangesGuard = createUnsavedChangesGuard({
+		isDirty: () => anyDirty,
+		save: () => saveAll(),
+		discard: discardDrafts,
+		continueEditing: () => (open = true),
+	});
+	const requestGuarded = unsavedChangesGuard.request;
 
 	function handleOpenChange(nextOpen: boolean) {
 		if (!nextOpen) {
@@ -334,12 +335,6 @@
 		}
 		event.preventDefault();
 		handleOpenChange(false);
-	}
-
-	function continueEditing() {
-		guardOpen = false;
-		pendingAction = null;
-		open = true;
 	}
 
 	function handleImport() {
@@ -454,25 +449,6 @@
 
 	async function handleGlobalSave() {
 		await saveAll(() => (open = false));
-	}
-
-	function discardAndContinue() {
-		const action = pendingAction;
-		guardOpen = false;
-		pendingAction = null;
-		discardDrafts();
-		action?.();
-	}
-
-	/** Continues only after a complete save; otherwise the settings stay open with their errors. */
-	async function saveAndContinue() {
-		const action = pendingAction;
-		const saved = await saveAll();
-		guardOpen = false;
-		pendingAction = null;
-		if (saved) {
-			action?.();
-		}
 	}
 
 	// ── Delete handler (issue #120) ────────────────────────────────────────────
@@ -1029,13 +1005,7 @@
 	</Dialog.Content>
 </Dialog.Root>
 
-<UnsavedChangesDialog
-	open={guardOpen}
-	{saving}
-	onsave={saveAndContinue}
-	ondiscard={discardAndContinue}
-	oncontinue={continueEditing}
-/>
+<UnsavedChangesDialog {...unsavedChangesGuard.dialogProps} {saving} />
 
 <!-- Delete confirmation dialog (issue #120) -->
 <ConfirmDialog

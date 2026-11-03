@@ -1,7 +1,7 @@
 import '../../../../app.css';
 import { render } from 'vitest-browser-svelte';
 import { page } from 'vitest/browser';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import * as m from '$lib/paraglide/messages.js';
 import { getLocale, setLocale, type Locale } from '$lib/paraglide/runtime.js';
 import UnsavedChangesDialog from './UnsavedChangesDialog.svelte';
@@ -48,4 +48,34 @@ describe('UnsavedChangesDialog actions', () => {
 			}
 		},
 	);
+});
+
+describe('UnsavedChangesDialog save', () => {
+	it('keeps focus inside the dialog while saving and stays open when the save rejects', async () => {
+		const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+		let rejectSave!: (reason: unknown) => void;
+		const oncontinue = vi.fn();
+		const screen = await render(UnsavedChangesDialog, {
+			open: true,
+			onsave: () => new Promise<void>((_resolve, reject) => (rejectSave = reject)),
+			ondiscard: noop,
+			oncontinue,
+		});
+		const saveButton = screen.getByRole('button', {
+			name: m.unsaved_changes_save_continue(),
+			exact: true,
+		});
+		const dialog = screen.getByTestId('unsaved-changes-dialog');
+
+		await saveButton.click();
+		await expect.element(saveButton).toBeDisabled();
+		expect(dialog.element().contains(document.activeElement)).toBe(true);
+
+		rejectSave(new Error('server down'));
+		await expect.element(saveButton).toBeEnabled();
+		await expect.element(dialog).toBeVisible();
+		expect(dialog.element().contains(document.activeElement)).toBe(true);
+		expect(oncontinue).not.toHaveBeenCalled();
+		consoleError.mockRestore();
+	});
 });
