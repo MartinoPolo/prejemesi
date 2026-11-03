@@ -11,6 +11,8 @@
 		gift: GiftForVisitor;
 		isArchived?: boolean;
 		size?: ControlSize;
+		/** Shortens the visible cancel label for narrow footers; the aria-label stays full. */
+		compactLabel?: boolean;
 		/** Extra classes on the underlying Button (issue #211: stacking this button
 		 *  with PurchasedToggle at equal width needs a `w-full` from the caller). */
 		class?: string;
@@ -23,6 +25,7 @@
 		gift,
 		isArchived = false,
 		size,
+		compactLabel = false,
 		class: className,
 		surfaceClass,
 		onreserve,
@@ -122,7 +125,7 @@
 				<CheckIcon data-icon aria-hidden="true" />
 				{m.reserve_button_reserved()}
 			{:else if hasMyReservation}
-				{m.reserve_button_cancel()}
+				{compactLabel ? m.cancel() : m.reserve_button_cancel()}
 			{:else}
 				{m.reserve_button_reserve()}
 			{/if}

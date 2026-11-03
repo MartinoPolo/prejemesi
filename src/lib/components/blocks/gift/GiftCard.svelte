@@ -361,6 +361,7 @@
 						{persistentMore}
 						{moreOpen}
 						{moreSurface}
+						compactReservationLabel={isCarouselCard}
 					/>
 				</div>
 			</div>

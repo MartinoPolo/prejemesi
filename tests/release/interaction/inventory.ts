@@ -133,6 +133,8 @@ export type GiftCardOutcome =
 	| 'starts-drag-in-place'
 	| 'reorders'
 	| 'scrolls-page'
+	/** The Carousel row scrolls sideways; the page, the card and its gestures stay put. */
+	| 'scrolls-row'
 	/** The gallery card shows its next image; no layer opens and the card is not pressed. */
 	| 'changes-image'
 	/** The gallery card keeps the image it showed, the cover outside browse mode, and nothing else changes. */
@@ -178,6 +180,8 @@ const GALLERY_SCROLL_WINS =
 	'#591 design summary: „Swipe uses horizontal-intent detection so vertical page scroll still wins"';
 const CAROUSEL_VIEW =
 	'#580: „On mobile (<640px) the switcher offers Carousel"; „Carousel always groups"; „Starting reorder or selection mode switches to Card until Done"';
+const CAROUSEL_ROW_SCROLL =
+	'#580 design summary: „Native scrollers with no snap, as on Přehled. Touch and trackpad scroll the row"';
 
 const mobileTouch = { viewport: ['mobile'] } as const;
 const desktopPointer = { viewport: ['desktop'] } as const;
@@ -201,6 +205,7 @@ export const GIFT_CARD_SURFACE: Surface<typeof GIFT_CARD_DIMENSIONS, GiftCardOut
 			(state.viewport === 'mobile' && state.mode === 'browse' && state.grouping !== 'none')),
 	requirementSources: [
 		CAROUSEL_VIEW,
+		CAROUSEL_ROW_SCROLL,
 		CONTENT_PRESS,
 		DETAIL_BY_ROLE,
 		LONG_PRESS,
@@ -283,9 +288,17 @@ export const GIFT_CARD_SURFACE: Surface<typeof GIFT_CARD_DIMENSIONS, GiftCardOut
 			'swipe over cards',
 			'scroll',
 			'touch',
-			{ ...mobileTouch, grouping: ungrouped },
+			{ ...mobileTouch, grouping: bothGroupings },
 			{ browse: 'scrolls-page', selection: 'scrolls-page', reorder: 'scrolls-page' },
-			TOUCH_REORDER,
+			`${TOUCH_REORDER}; ${CAROUSEL_ROW_SCROLL}`,
+		),
+		capability(
+			'swipe row sideways',
+			'scroll',
+			'touch',
+			{ ...mobileTouch, view: ['carousel'], grouping: ['priority'] },
+			{ browse: 'scrolls-row' },
+			`${CAROUSEL_ROW_SCROLL}; ${LONG_PRESS}`,
 		),
 		capability(
 			'long press with native contextmenu',

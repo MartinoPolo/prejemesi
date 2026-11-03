@@ -33,7 +33,9 @@
 
 	function rowLabel(label: string, count: number): string {
 		const countLabel = formatGiftCount(count);
-		return label === '' ? countLabel : `${label}, ${countLabel}`;
+		return label === ''
+			? m.gift_carousel_row_ungrouped_label({ count: countLabel })
+			: `${label}, ${countLabel}`;
 	}
 </script>
 

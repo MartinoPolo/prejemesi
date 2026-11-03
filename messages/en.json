@@ -951,6 +951,7 @@
 	"gift_view_list": "List",
 	"gift_view_carousel": "Carousel",
 	"gift_carousel_roledescription": "carousel",
+	"gift_carousel_row_ungrouped_label": "All gifts, {count}",
 	"gift_priority_eyebrow": "Priority",
 	"gift_band_own_reservations": "Your reservations",
 	"gift_band_other_gifts": "Other gifts",

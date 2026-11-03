@@ -8,6 +8,7 @@ import { GIFT_VIEW_MODES, type GiftForVisitor } from '$lib/modules/gifts/types.j
 import { GIFT_SECTION_KINDS, type GiftSection } from '$lib/modules/gifts/gift_ordering.js';
 import { formatGiftCount } from '$lib/modules/gifts/gift_display.js';
 import { WISHLIST_ROLES } from '$lib/modules/wishlists/types.js';
+import * as m from '$lib/paraglide/messages.js';
 
 vi.mock('$env/dynamic/public', () => ({ env: {} }));
 
@@ -173,8 +174,11 @@ describe('WishlistGiftCarousel (#580)', () => {
 
 	it.each([
 		{ width: 320, fullCards: 1, peek: 0.5 },
+		{ width: 359, fullCards: 1, peek: 0.5 },
+		{ width: 360, fullCards: 2, peek: 0.2 },
 		{ width: 375, fullCards: 2, peek: 0.2 },
 		{ width: 430, fullCards: 2, peek: 0.2 },
+		{ width: 539, fullCards: 2, peek: 0.2 },
 		{ width: 540, fullCards: 3, peek: 0.2 },
 	])(
 		'peeks the next card at the right edge at $width px (REQ-5)',
@@ -243,6 +247,65 @@ describe('WishlistGiftCarousel (#580)', () => {
 		},
 	);
 
+	it.each([
+		{ width: 375, faceHeight: 26 },
+		{ width: 430, faceHeight: 32 },
+	])(
+		'fits the compact cancel label on one line beside More at $width px (REQ-6)',
+		async ({ width, faceHeight }) => {
+			const reservedGift = visitorGift('a', {
+				reservedCount: 1,
+				isFullyReserved: true,
+				myReservationId: 'reservation-a',
+			});
+			const screen = await renderCarousel(width, {
+				sections: [
+					{
+						kind: GIFT_SECTION_KINDS.ownReservation,
+						key: 'own-reservations',
+						label: null,
+						gifts: [reservedGift, visitorGift('b')],
+					},
+				],
+				hascontextactions: () => true,
+				oncontextactions: () => true,
+			});
+			const card = rows()[0].querySelector<HTMLElement>('[data-gift-card-density]')!;
+			const footer = card.querySelector<HTMLElement>('[data-testid="gift-card-footer"]')!;
+			const cancel = card.querySelector<HTMLElement>('[data-testid="reserve-button"]')!;
+			const label = cancel.querySelector<HTMLElement>(
+				'[data-testid="reservation-button-content"]',
+			)!;
+			const more = card.querySelector<HTMLElement>('[data-testid="gift-more-actions"]')!;
+			expect(cancel).toHaveAttribute(
+				'aria-label',
+				m.reserve_button_cancel_aria({ name: reservedGift.name }),
+			);
+			expectPixelsNear(cancel.getBoundingClientRect().height, faceHeight);
+			expectPixelsAtMost(
+				label.getBoundingClientRect().height,
+				parseFloat(getComputedStyle(label).lineHeight),
+			);
+			expect(label.scrollWidth).toBeLessThanOrEqual(label.clientWidth);
+			expectPixelsAtMost(
+				cancel.getBoundingClientRect().right,
+				more.getBoundingClientRect().left,
+			);
+			const footerRect = footer.getBoundingClientRect();
+			const footerStyle = getComputedStyle(footer);
+			expectPixelsAtLeast(
+				cancel.getBoundingClientRect().left,
+				footerRect.left + parseFloat(footerStyle.paddingLeft),
+			);
+			expectPixelsAtMost(
+				more.getBoundingClientRect().right,
+				footerRect.right - parseFloat(footerStyle.paddingRight),
+			);
+			expect(label.textContent?.trim()).toBe(m.cancel());
+			await screen.unmount();
+		},
+	);
+
 	it('keeps a one-word category on one line on narrow cards (REQ-6)', async () => {
 		const screen = await renderCarousel(375);
 		const badge = rows()[0].querySelector<HTMLElement>('[data-testid="gift-category-badge"]')!;
@@ -252,7 +315,7 @@ describe('WishlistGiftCarousel (#580)', () => {
 		await screen.unmount();
 	});
 
-	it('shows an ungrouped list as a single row with a count-only header (REQ-3)', async () => {
+	it('shows an ungrouped list as a single row with a count-only header and a descriptive label (REQ-3)', async () => {
 		const screen = await renderCarousel(375, {
 			sections: [
 				{
@@ -271,7 +334,10 @@ describe('WishlistGiftCarousel (#580)', () => {
 		});
 		expect(rows()).toHaveLength(1);
 		expect(cardsOf(rows()[0])).toHaveLength(3);
-		expect(rows()[0]).toHaveAttribute('aria-label', formatGiftCount(3));
+		expect(rows()[0]).toHaveAttribute(
+			'aria-label',
+			m.gift_carousel_row_ungrouped_label({ count: formatGiftCount(3) }),
+		);
 		await screen.unmount();
 	});
 });
