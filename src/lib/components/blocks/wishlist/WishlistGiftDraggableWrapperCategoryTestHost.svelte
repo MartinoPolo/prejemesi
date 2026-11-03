@@ -8,8 +8,8 @@
 
 	/**
 	 * Test-only harness: a card wrapper whose content is a category lane that overflows into "+X",
-	 * optionally after a non-button element that only carries `data-prevent-gift-card-open`,
-	 * beside a page popover outside the card.
+	 * optionally after a non-button element that only carries `data-prevent-gift-card-open` and
+	 * followed by more card content, beside a page popover outside the card.
 	 */
 	type WrapperProps = Omit<ComponentProps<typeof WishlistGiftDraggableWrapper>, 'children'>;
 	let {
@@ -26,6 +26,7 @@
 				<span data-prevent-gift-card-open>Card marker</span>
 			{/if}
 			<GiftCategoryBadges {categories} />
+			<p>Card content after the categories</p>
 		</div>
 	</WishlistGiftDraggableWrapper>
 </ContextMenu.Root>

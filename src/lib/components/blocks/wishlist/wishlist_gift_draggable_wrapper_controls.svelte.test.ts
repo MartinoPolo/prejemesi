@@ -62,6 +62,20 @@ async function touchTap(target: HTMLElement) {
 	target.click();
 }
 
+/**
+ * Opens the page popover and waits for it to settle, as a person would before the next press:
+ * Bits UI re-arms the popover's outside-press detection while it mounts and ignores a press
+ * landing in that brief window.
+ */
+async function openPagePopover() {
+	await userEvent.click(page.getByRole('button', { name: 'Page popover' }));
+	const pagePopover = page.getByTestId('page-popover');
+	await expect.element(pagePopover).toBeVisible();
+	const pagePopoverElement = pagePopover.element() as HTMLElement;
+	await Promise.all(pagePopoverElement.getAnimations().map((animation) => animation.finished));
+	return pagePopover;
+}
+
 /** The "+X" chip's accessible name for any hidden count, which depends on the lane width. */
 const MORE_CHIP_NAME = new RegExp(`^${m.gift_category_more_label({ count: String.raw`\d+` })}$`);
 
@@ -94,9 +108,7 @@ describe('WishlistGiftDraggableWrapper — card controls', () => {
 			reorderEnabled: false,
 			onopendetail: () => {},
 		});
-		await userEvent.click(page.getByRole('button', { name: 'Page popover' }));
-		const pagePopover = page.getByTestId('page-popover');
-		await expect.element(pagePopover).toBeVisible();
+		const pagePopover = await openPagePopover();
 
 		await touchTap(await moreChip());
 
@@ -115,9 +127,7 @@ describe('WishlistGiftDraggableWrapper — card controls', () => {
 			onopendetail: openDetail,
 			preventOpenMarker: true,
 		});
-		await userEvent.click(page.getByRole('button', { name: 'Page popover' }));
-		const pagePopover = page.getByTestId('page-popover');
-		await expect.element(pagePopover).toBeVisible();
+		const pagePopover = await openPagePopover();
 
 		await touchTap(page.getByText('Card marker').element() as HTMLElement);
 
