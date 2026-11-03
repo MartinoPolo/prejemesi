@@ -30,6 +30,7 @@
 	import {
 		ActiveFilterPills,
 		FILTER_MENU_GROUP_HEADING_CLASS,
+		ActiveFilterCount,
 		FILTER_MENU_OPTION_CLASS,
 		normalizeActiveFilters,
 		type FilterDefinition,
@@ -521,9 +522,7 @@
 				>
 					<SlidersHorizontalIcon data-icon="inline-start" data-toolbar-icon="display" />
 					<span>{m.gift_display_options()}</span>
-					{#if activeFilters.length > 0}<span data-filter-count
-							>{activeFilters.length}</span
-						>{/if}
+					<ActiveFilterCount count={activeFilters.length} />
 					<ChevronDownIcon />
 				</Button>
 			{/snippet}
@@ -699,11 +698,10 @@
 				onclick={() => openMobileDisplaySheet()}
 			>
 				<SlidersHorizontalIcon data-toolbar-icon="display" />
-				{#if activeFilters.length > 0}
-					<span class="mobile-filter-count" data-filter-count aria-hidden="true"
-						>{activeFilters.length}</span
-					>
-				{/if}
+				<ActiveFilterCount
+					count={activeFilters.length}
+					class="absolute -top-1.5 -right-1.5"
+				/>
 			</Button>
 		</SimpleTooltip>
 		<div class="mobile-browse-spacer"></div>
@@ -1279,23 +1277,6 @@
 
 	:global(.mobile-display-trigger) {
 		position: relative;
-	}
-
-	.mobile-filter-count {
-		position: absolute;
-		top: -5px;
-		right: -5px;
-		display: grid;
-		min-width: 18px;
-		height: 18px;
-		place-items: center;
-		border: 2px solid var(--ink);
-		border-radius: 999px;
-		background: var(--status-warning);
-		color: var(--ink);
-		font-size: 0.625rem;
-		font-weight: 800;
-		line-height: 1;
 	}
 
 	.mobile-display-sections {

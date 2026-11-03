@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { Badge } from '$lib/components/base/badge/index.js';
 	import * as m from '$lib/paraglide/messages.js';
 	import * as SegmentedToggle from '$lib/components/derived/segmented-toggle/index.js';
 	import {
@@ -40,7 +41,9 @@
 					value={option.value}
 					data-testid="change-review-filter-{option.value}"
 				>
-					{option.label}<span class="filter-count">{filterCounts[option.value]}</span>
+					{option.label}<Badge tone="neutral" class="ml-1.5"
+						>{filterCounts[option.value]}</Badge
+					>
 				</SegmentedToggle.Item>
 			{/each}
 		</SegmentedToggle.Root>
@@ -61,19 +64,6 @@
 		min-width: 0;
 		color: var(--muted-foreground);
 		font-size: var(--text-sm);
-	}
-
-	.filter-count {
-		min-width: 18px;
-		height: 18px;
-		margin-left: 6px;
-		padding: 0 5px;
-		border-radius: 999px;
-		background: color-mix(in oklab, var(--ink) 10%, transparent);
-		font-size: var(--text-xs);
-		font-weight: 800;
-		line-height: 18px;
-		text-align: center;
 	}
 
 	@media (width < 640px) {
