@@ -280,7 +280,7 @@ function actionsSheet(page: Page): Locator {
 }
 
 function categoryPopover(page: Page): Locator {
-	return page.locator('[data-slot="overflow-chips-popover"]').filter({ visible: true });
+	return page.getByRole('dialog', { name: m.gift_category_more_title(), exact: true });
 }
 
 function scrollContainer(page: Page): Locator {
