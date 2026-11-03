@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { HelpText } from '$lib/components/base/help-text/index.js';
 	import * as m from '$lib/paraglide/messages.js';
 	import * as Card from '$lib/components/base/card/index.js';
 	import SettingsSectionHeader from './SettingsSectionHeader.svelte';
@@ -88,6 +89,6 @@
 		</div>
 	</Card.Content>
 	<Card.Footer>
-		<p class="text-sm text-muted-foreground">{m.settings_appearance_autosave_hint()}</p>
+		<HelpText>{m.settings_appearance_autosave_hint()}</HelpText>
 	</Card.Footer>
 </Card.Root>

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { HelpText } from '$lib/components/base/help-text/index.js';
 	import { resolve } from '$app/paths';
 	import { localizeInternalHref } from '$lib/i18n/locale.js';
 	import { Button } from '$lib/components/base/button/index.js';
@@ -40,7 +41,7 @@
 	</p>
 	<DemoStartForm label={data.hasLiveDemo ? m.demo_continue : m.demo_start_new} intent="primary" />
 	<Button intent="ghost" disabled={pending} onclick={exit}>{m.demo_exit()}</Button>
-	{#if error}<p role="alert" class="text-sm text-status-danger-text">
+	{#if error}<HelpText role="alert" state="error">
 			{m.demo_exit_error()}
-		</p>{/if}
+		</HelpText>{/if}
 </main>

@@ -343,10 +343,10 @@
 				</Accordion.Root>
 
 				{#if errorMessage !== ''}
-					<p class="text-status-danger-text text-sm">{errorMessage}</p>
+					<HelpText state="error">{errorMessage}</HelpText>
 				{/if}
 
-				{#if demo}<p class="text-sm text-muted-foreground">{m.demo_import_limits()}</p>{/if}
+				{#if demo}<HelpText>{m.demo_import_limits()}</HelpText>{/if}
 				{#if onimport}
 					<Separator class="my-1" />
 					<div class="flex items-center gap-2">

@@ -24,7 +24,6 @@ export const reserveModalVariants = tv({
 		authPromptText: 'text-xs text-muted-foreground',
 		authPromptLinks: 'flex items-center gap-2 text-xs',
 		separator: 'text-muted-foreground',
-		errorText: 'text-xs text-status-danger-text',
 		actions:
 			'flex items-center justify-end gap-(--nested-control-gap) keyboard-open:sticky keyboard-open:bottom-0 keyboard-open:-mx-6 keyboard-open:-mb-6 keyboard-open:border-t keyboard-open:border-border keyboard-open:bg-background keyboard-open:px-6 keyboard-open:py-3 keyboard-open:*:flex-1',
 	},

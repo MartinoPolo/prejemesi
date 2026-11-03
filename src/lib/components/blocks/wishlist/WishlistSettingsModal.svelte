@@ -547,9 +547,9 @@
 						</Alert.Description>
 					</Alert.Root>
 				{:else if revertCapability === REVERT_CAPABILITY.reservedAdmin}
-					<p class="text-xs text-muted-foreground">
+					<HelpText>
 						{m.wishlist_revert_reserved_warning()}
-					</p>
+					</HelpText>
 				{/if}
 			{/snippet}
 			{#snippet action()}
@@ -667,9 +667,9 @@
 					hidden={activeTab !== WISHLIST_SETTINGS_TABS.details}
 				>
 					<div class="flex flex-col gap-4">
-						<p class="text-sm text-muted-foreground">
+						<HelpText>
 							{m.wishlist_settings_details_hint()}
-						</p>
+						</HelpText>
 
 						<form
 							id="wishlist-details-form"
@@ -700,12 +700,9 @@
 											: undefined}
 									/>
 									{#if recipientError !== ''}
-										<p
-											id="wishlist-recipient-error"
-											class="text-sm text-status-danger-text"
-										>
+										<HelpText id="wishlist-recipient-error" state="error">
 											{recipientError}
-										</p>
+										</HelpText>
 									{/if}
 									<RecipientPreview name={recipientNameDraft} />
 								</div>
@@ -833,14 +830,12 @@
 					hidden={activeTab !== WISHLIST_SETTINGS_TABS.data}
 				>
 					<div class="flex flex-col gap-4">
-						<p class="text-sm text-muted-foreground">
+						<HelpText>
 							{m.wishlist_settings_data_hint()}
-						</p>
-						{#if wishlist.demoSessionId !== null}<p
-								class="text-sm text-muted-foreground"
-							>
+						</HelpText>
+						{#if wishlist.demoSessionId !== null}<HelpText>
 								{m.demo_import_limits()}
-							</p>{/if}
+							</HelpText>{/if}
 						<div class="flex flex-wrap gap-(--nested-control-gap)">
 							<Button
 								type="button"
@@ -921,11 +916,11 @@
 					hidden={activeTab !== WISHLIST_SETTINGS_TABS.image}
 				>
 					<div class="flex flex-col gap-4">
-						<p class="text-sm text-muted-foreground">
+						<HelpText>
 							{m.wishlist_settings_image_hint()}
-						</p>
+						</HelpText>
 						{#if wishlist.demoSessionId !== null}
-							<p class="text-sm text-muted-foreground">{m.demo_image_limits()}</p>
+							<HelpText>{m.demo_image_limits()}</HelpText>
 						{:else}
 							{#key discardVersion}
 								<WishlistCropEditor
@@ -991,9 +986,9 @@
 			{:else if isAdminRevertOnly}
 				<!-- App admin who does not manage this list: danger/admin actions only (revert). -->
 				<div class="flex flex-col gap-4">
-					<p class="text-sm text-muted-foreground">
+					<HelpText>
 						{m.wishlist_settings_admin_only_hint()}
-					</p>
+					</HelpText>
 					{@render revertSection()}
 				</div>
 			{:else if isArchived}

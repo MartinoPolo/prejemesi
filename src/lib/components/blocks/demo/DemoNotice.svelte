@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { HelpText } from '$lib/components/base/help-text/index.js';
 	import { tick } from 'svelte';
 	import { resolve } from '$app/paths';
 	import { localizeInternalHref } from '$lib/i18n/locale.js';
@@ -128,12 +129,13 @@
 					}}>{m.demo_register()}</Button
 				>
 			</div>
-			{#if error === 'exit' && !registerOpen}<p
+			{#if error === 'exit' && !registerOpen}<HelpText
 					role="alert"
-					class="w-full text-sm text-status-danger-text"
+					state="error"
+					class="w-full"
 				>
 					{m.demo_exit_error()}
-				</p>{/if}
+				</HelpText>{/if}
 		</div>
 	</div>
 
@@ -165,9 +167,9 @@
 				>
 			</Select.Root>
 		</div>
-		{#if error === 'reset'}<p role="alert" class="text-sm text-status-danger-text">
+		{#if error === 'reset'}<HelpText role="alert" state="error">
 				{m.demo_reset_error()}
-			</p>{/if}
+			</HelpText>{/if}
 	</ConfirmDialog>
 
 	<!-- Registering is the goal of the demo, so it stays a safe primary action. -->
@@ -181,9 +183,9 @@
 		confirmIntent="primary"
 		onconfirm={() => leave(true)}
 	>
-		{#if error === 'exit'}<p role="alert" class="text-sm text-status-danger-text">
+		{#if error === 'exit'}<HelpText role="alert" state="error">
 				{m.demo_exit_error()}
-			</p>{/if}
+			</HelpText>{/if}
 	</ConfirmDialog>
 {:else}
 	<div
@@ -202,9 +204,9 @@
 					>{m.demo_exit()}</Button
 				>
 			</div>
-			{#if error === 'exit'}<p role="alert" class="text-sm text-status-danger-text">
+			{#if error === 'exit'}<HelpText role="alert" state="error">
 					{m.demo_exit_error()}
-				</p>{/if}
+				</HelpText>{/if}
 		</div>
 	</div>
 {/if}

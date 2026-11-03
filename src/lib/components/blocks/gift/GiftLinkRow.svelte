@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { HelpText } from '$lib/components/base/help-text/index.js';
 	import * as m from '$lib/paraglide/messages.js';
 	import { Input } from '$lib/components/base/input/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
@@ -145,6 +146,6 @@
 	</div>
 
 	{#if hasUrlError}
-		<span id={urlErrorId} class="text-xs text-status-danger-text">{urlError}</span>
+		<HelpText id={urlErrorId} state="error">{urlError}</HelpText>
 	{/if}
 </div>

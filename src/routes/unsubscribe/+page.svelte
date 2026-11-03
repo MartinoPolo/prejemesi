@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { HelpText } from '$lib/components/base/help-text/index.js';
 	import { enhance } from '$app/forms';
 	import { deserialize } from '$app/forms';
 	import type { ActionResult } from '@sveltejs/kit';
@@ -94,13 +95,9 @@
 				{saving ? m.saving() : m.notification_prefs_save()}
 			</Button>
 			{#if saveMessage !== null}
-				<p
-					class={saveMessageIsError
-						? 'text-sm text-status-danger-text'
-						: 'text-sm text-status-success-text'}
-				>
+				<HelpText state={saveMessageIsError ? 'error' : 'success'}>
 					{saveMessage}
-				</p>
+				</HelpText>
 			{/if}
 		</div>
 
@@ -113,9 +110,9 @@
 				<Button type="submit" intent="danger">{m.unsubscribe_all_button()}</Button>
 			</form>
 			{#if isUnsubscribeAllSuccess(form)}
-				<p class="text-sm text-status-success-text">{m.unsubscribe_all_success()}</p>
+				<HelpText state="success">{m.unsubscribe_all_success()}</HelpText>
 			{:else if form?.action === 'unsubscribeAll'}
-				<p class="text-sm text-status-danger-text">{m.unsubscribe_all_error()}</p>
+				<HelpText state="error">{m.unsubscribe_all_error()}</HelpText>
 			{/if}
 		</div>
 	{/if}

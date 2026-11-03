@@ -331,7 +331,7 @@
 <svelte:window onkeydowncapture={cancelDragOnEscape} />
 
 <form id="wishlist-categories-form" class="category-settings flex flex-col gap-4" onsubmit={save}>
-	<p class="max-w-160 text-sm text-muted-foreground">{m.gift_categories_intro()}</p>
+	<HelpText class="max-w-160">{m.gift_categories_intro()}</HelpText>
 	{#if usageRefreshStatus === 'error'}
 		<Alert.Root tone="danger">
 			<CircleAlertIcon aria-hidden="true" />
@@ -443,7 +443,7 @@
 			data-testid="gift-category-order-preview"
 		>
 			<h3 class="mb-1.5 text-base font-semibold">{m.gift_categories_order_title()}</h3>
-			<p class="mb-3 text-sm text-muted-foreground">{m.gift_categories_order_hint()}</p>
+			<HelpText class="mb-3">{m.gift_categories_order_hint()}</HelpText>
 			<div class="flex flex-wrap gap-1.5">
 				{#each keptRows as row (row.key)}
 					<GiftCategoryBadge category={categoryForRow(row)} />

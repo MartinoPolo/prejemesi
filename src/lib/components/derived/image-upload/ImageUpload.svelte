@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { HelpText } from '$lib/components/base/help-text/index.js';
 	import { untrack } from 'svelte';
 	import { cn } from '$lib/utils.js';
 	import { uploadFile } from '$lib/modules/uploads/upload.js';
@@ -296,7 +297,7 @@
 		{/if}
 
 		{#if progress.status === 'error' && progress.errorMessage}
-			<p class={styles.errorText()}>{progress.errorMessage}</p>
+			<HelpText state="error">{progress.errorMessage}</HelpText>
 		{/if}
 	</div>
 {/if}
