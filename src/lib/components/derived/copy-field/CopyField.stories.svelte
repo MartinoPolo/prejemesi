@@ -67,9 +67,24 @@
 			writeText.mockRestore();
 		}
 	};
+
+	/** A dialog step that autofocuses the field must not show the link as selected. */
+	const playFocusKeepsLinkUnselected = async ({
+		canvasElement,
+	}: {
+		canvasElement: HTMLElement;
+	}) => {
+		const canvas = within(canvasElement);
+		const field = canvas.getByRole('textbox', { name: 'Odkaz na seznam' }) as HTMLInputElement;
+		field.focus();
+		await expect(field).toHaveFocus();
+		await expect(field.selectionStart).toBe(field.selectionEnd);
+	};
 </script>
 
 <Story name="Link" play={playCopy} />
+
+<Story name="Focused" play={playFocusKeepsLinkUnselected} />
 
 <Story name="Clipboard denied" play={playClipboardDenied} />
 

@@ -60,7 +60,6 @@
 		autocomplete="off"
 		aria-label={label}
 		class={styles.input()}
-		onfocus={(event) => event.currentTarget.select()}
 		onclick={(event) => event.currentTarget.select()}
 	/>
 	<InputGroup.Segment
