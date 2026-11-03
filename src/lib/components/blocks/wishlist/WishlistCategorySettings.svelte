@@ -338,7 +338,7 @@
 			<Alert.Description>{m.error_generic()}</Alert.Description>
 			<Alert.Action>
 				<Button type="button" size="sm" intent="outline" onclick={refreshCategoryUsage}>
-					{m.import_wizard_retry()}
+					{m.error_page_retry()}
 				</Button>
 			</Alert.Action>
 		</Alert.Root>
