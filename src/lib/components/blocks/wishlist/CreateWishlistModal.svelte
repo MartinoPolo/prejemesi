@@ -5,7 +5,7 @@
 	import { localizeInternalHref } from '$lib/i18n/locale.js';
 	import * as Dialog from '$lib/components/base/dialog/index.js';
 	import * as Accordion from '$lib/components/base/accordion/index.js';
-	import * as ToggleGroup from '$lib/components/base/toggle-group/index.js';
+	import * as SegmentedToggle from '$lib/components/derived/segmented-toggle/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
 	import { Input } from '$lib/components/base/input/index.js';
 	import { Textarea } from '$lib/components/base/textarea/index.js';
@@ -49,21 +49,9 @@
 		demo = false,
 	}: CreateWishlistModalProps = $props();
 
-	// Typed as string (not RecipientKind) because ToggleGroup's single-select
-	// value binding is `string`; comparisons against RECIPIENT_KIND narrow it.
+	// Typed as string (not RecipientKind) because SegmentedToggle's value binding is
+	// `string`; comparisons against RECIPIENT_KIND narrow it.
 	let recipientKind = $state<string>(RECIPIENT_KIND.self);
-
-	// Bits UI's ToggleGroup.Root (type="single") mutates its own bindable `value`
-	// on every click, including a re-click of the already-active item (see
-	// GiftViewSwitcher.svelte for the full root-cause note). Passing `recipientKind`
-	// as a plain prop leaves the group uncontrolled, so that transient deselect is
-	// never undone. A writable `$derived` local, kept in sync with `recipientKind`
-	// automatically, makes the rendered state always resolvable, and resetting it
-	// inside onValueChange undoes the deselect. That reset always overwrites a
-	// value the two-way binding just set to "" (Bits UI writes through the bound
-	// value before calling onValueChange), so it's a genuine change and always
-	// re-renders.
-	let selectedRecipientKind = $derived(recipientKind);
 	let recipientName = $state('');
 	let title = $state('');
 	let occasion = $state<WishlistOccasion>(WISHLIST_OCCASION.other);
@@ -204,30 +192,23 @@
 
 		<form onsubmit={handleSubmit} novalidate>
 			<Dialog.Body class="space-y-4">
-				<ToggleGroup.Root
-					type="single"
-					intent="outline"
+				<SegmentedToggle.Root
 					size="lg"
-					bind:value={selectedRecipientKind}
-					onValueChange={(newValue) => {
-						if (newValue === '') {
-							selectedRecipientKind = recipientKind;
-							return;
-						}
-						recipientKind = newValue;
+					width="fill"
+					bind:value={recipientKind}
+					onValueChange={() => {
 						// Treat each switch into the recipient field as a fresh start — no error on appear.
 						recipientTouched = false;
 					}}
 					disabled={isSubmitting}
-					class="w-full gap-2"
 				>
-					<ToggleGroup.Item value={RECIPIENT_KIND.self} class="flex-1">
+					<SegmentedToggle.Item value={RECIPIENT_KIND.self}>
 						{m.create_for_toggle_self()}
-					</ToggleGroup.Item>
-					<ToggleGroup.Item value={RECIPIENT_KIND.other} class="flex-1">
+					</SegmentedToggle.Item>
+					<SegmentedToggle.Item value={RECIPIENT_KIND.other}>
 						{m.create_for_toggle_other()}
-					</ToggleGroup.Item>
-				</ToggleGroup.Root>
+					</SegmentedToggle.Item>
+				</SegmentedToggle.Root>
 
 				{#if recipientKind === RECIPIENT_KIND.other}
 					<Field

@@ -5,7 +5,7 @@
 	import { onDestroy } from 'svelte';
 	import GiftCard from '$lib/components/blocks/gift/GiftCard.svelte';
 	import WishlistHeader from '$lib/components/blocks/gift/WishlistHeader.svelte';
-	import * as ToggleGroup from '$lib/components/base/toggle-group/index.js';
+	import * as SegmentedToggle from '$lib/components/derived/segmented-toggle/index.js';
 	import LandingDemoPane from './LandingDemoPane.svelte';
 	import {
 		setLandingDemoGiftContexts,
@@ -53,9 +53,6 @@
 	let demoPalette = $state<Palette>(DEMO_DEFAULT_PALETTE);
 
 	let mobileViewpoint = $state<DemoViewpoint>(DEMO_VIEWPOINTS.gifter);
-	// Bits UI's single ToggleGroup writes '' through its bound value on a re-click of the
-	// active item; binding a writable $derived lets onValueChange undo that (see GiftViewSwitcher).
-	let selectedViewpoint = $derived(mobileViewpoint);
 
 	// Reservations are the one source of truth for the whole demo. Plain local state: they
 	// never leave the component, never reach the network, and a reload starts the visitor
@@ -218,29 +215,27 @@
 		<span class="text-(length:--text-base) font-semibold">
 			{m.landing_demo_role_label()}
 		</span>
-		<ToggleGroup.Root
-			type="single"
-			bind:value={selectedViewpoint}
+		<SegmentedToggle.Root
+			value={mobileViewpoint}
 			onValueChange={(newValue) => {
-				if (newValue === '') {
-					selectedViewpoint = mobileViewpoint;
-					return;
-				}
 				mobileViewpoint = newValue as DemoViewpoint;
 			}}
 			aria-label={m.landing_demo_role_toggle_aria()}
 			data-testid="landing-demo-role-toggle"
 		>
-			<ToggleGroup.Item value={DEMO_VIEWPOINTS.gifter} data-testid="landing-demo-role-gifter">
+			<SegmentedToggle.Item
+				value={DEMO_VIEWPOINTS.gifter}
+				data-testid="landing-demo-role-gifter"
+			>
 				{m.landing_demo_role_gifter()}
-			</ToggleGroup.Item>
-			<ToggleGroup.Item
+			</SegmentedToggle.Item>
+			<SegmentedToggle.Item
 				value={DEMO_VIEWPOINTS.recipient}
 				data-testid="landing-demo-role-recipient"
 			>
 				{m.landing_demo_role_recipient()}
-			</ToggleGroup.Item>
-		</ToggleGroup.Root>
+			</SegmentedToggle.Item>
+		</SegmentedToggle.Root>
 	</div>
 
 	<!-- Desktop: both panes at once, driven by the same local state. -->

@@ -22,14 +22,11 @@ export const segmentedToggleVariants = tv({
 		width: {
 			/** The tray hugs its options. */
 			hug: {},
-			/**
-			 * Equal-width options filling a narrow container, such as a sheet footer; compact
-			 * text keeps several labelled options on one row of a phone-width tray.
-			 */
+			/** Equal-width options filling their container. */
 			fill: {
 				root: 'w-full',
 				item: 'min-w-0 flex-1',
-				surface: 'min-w-0 px-1.5 text-(length:--text-xs)',
+				surface: 'min-w-0',
 			},
 		},
 	},

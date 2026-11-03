@@ -1,7 +1,7 @@
 <script lang="ts">
 	import * as m from '$lib/paraglide/messages.js';
 	import * as Dialog from '$lib/components/base/dialog/index.js';
-	import * as ToggleGroup from '$lib/components/base/toggle-group/index.js';
+	import * as SegmentedToggle from '$lib/components/derived/segmented-toggle/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
 	import { Input } from '$lib/components/base/input/index.js';
 	import { Label } from '$lib/components/base/label/index.js';
@@ -99,22 +99,10 @@
 	let duplicateSubmissionState = $state(createDuplicateAwareImportState<ValidatedGiftDraft>());
 	let selectedDraftSignature = $state('');
 
-	// Recipient choice (new-list mode only). Typed as string to match ToggleGroup's
-	// single-select value binding; comparisons against RECIPIENT_KIND narrow it.
+	// Recipient choice (new-list mode only). Typed as string to match SegmentedToggle's
+	// value binding; comparisons against RECIPIENT_KIND narrow it.
 	let recipientKind = $state<string>(RECIPIENT_KIND.self);
 	let recipientName = $state('');
-
-	// Bits UI's ToggleGroup.Root (type="single") mutates its own bindable `value`
-	// on every click, including a re-click of the already-active item (see
-	// GiftViewSwitcher.svelte for the full root-cause note). Passing `recipientKind`
-	// as a plain prop leaves the group uncontrolled, so that transient deselect is
-	// never undone. A writable `$derived` local, kept in sync with `recipientKind`
-	// automatically, makes the rendered state always resolvable, and resetting it
-	// inside onValueChange undoes the deselect. That reset always overwrites a
-	// value the two-way binding just set to "" (Bits UI writes through the bound
-	// value before calling onValueChange), so it's a genuine change and always
-	// re-renders.
-	let selectedRecipientKind = $derived(recipientKind);
 
 	// Forced-touched flag for the review step's title field (new-list mode only), set
 	// when the user clicks "Next" while the title is blank so the inline error surfaces
@@ -440,32 +428,14 @@
 			{:else if currentStep === WIZARD_STEP.review}
 				{#if mode === WIZARD_MODE.newList}
 					<div class="mb-4 flex flex-col gap-3">
-						<ToggleGroup.Root
-							type="single"
-							intent="outline"
-							bind:value={selectedRecipientKind}
-							onValueChange={(newValue) => {
-								if (newValue === '') {
-									selectedRecipientKind = recipientKind;
-									return;
-								}
-								recipientKind = newValue;
-							}}
-							class="w-full sm:w-fit"
-						>
-							<ToggleGroup.Item
-								value={RECIPIENT_KIND.self}
-								class="flex-1 sm:flex-none"
-							>
+						<SegmentedToggle.Root bind:value={recipientKind}>
+							<SegmentedToggle.Item value={RECIPIENT_KIND.self}>
 								{m.create_for_toggle_self()}
-							</ToggleGroup.Item>
-							<ToggleGroup.Item
-								value={RECIPIENT_KIND.other}
-								class="flex-1 sm:flex-none"
-							>
+							</SegmentedToggle.Item>
+							<SegmentedToggle.Item value={RECIPIENT_KIND.other}>
 								{m.create_for_toggle_other()}
-							</ToggleGroup.Item>
-						</ToggleGroup.Root>
+							</SegmentedToggle.Item>
+						</SegmentedToggle.Root>
 
 						{#if recipientKind === RECIPIENT_KIND.other}
 							<div class="flex max-w-sm flex-col gap-2">

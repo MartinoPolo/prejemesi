@@ -3,7 +3,7 @@
 	import * as m from '$lib/paraglide/messages.js';
 	import * as Card from '$lib/components/base/card/index.js';
 	import SettingsSectionHeader from './SettingsSectionHeader.svelte';
-	import * as ToggleGroup from '$lib/components/base/toggle-group/index.js';
+	import * as SegmentedToggle from '$lib/components/derived/segmented-toggle/index.js';
 	import { Label } from '$lib/components/base/label/index.js';
 	import { Separator } from '$lib/components/base/separator/index.js';
 	import LanguageToggle from '$lib/components/derived/language-toggle/LanguageToggle.svelte';
@@ -19,23 +19,7 @@
 
 	const currentMode = $derived((userPrefersMode.current ?? 'system') as Mode);
 
-	// Bits UI's ToggleGroup.Root (type="single") mutates its own bindable `value`
-	// on every click, including a re-click of the already-active item (see
-	// GiftViewSwitcher.svelte for the full root-cause note). Passing `currentMode`
-	// as a plain prop leaves the group uncontrolled, so that transient deselect is
-	// never undone. A writable `$derived` local, kept in sync with `currentMode`
-	// automatically, makes the rendered state always resolvable, and resetting it
-	// inside handleModeChange undoes the deselect. That reset always overwrites a
-	// value the two-way binding just set to "" (Bits UI writes through the bound
-	// value before calling onValueChange), so it's a genuine change and always
-	// re-renders.
-	let selected = $derived(currentMode);
-
 	function handleModeChange(value: string) {
-		if (value === '') {
-			selected = currentMode;
-			return;
-		}
 		if (value === 'light' || value === 'dark' || value === 'system') {
 			setMode(value);
 		}
@@ -53,24 +37,20 @@
 			<!-- Dark mode -->
 			<div class="flex flex-col gap-2">
 				<Label>{m.settings_dark_mode_label()}</Label>
-				<ToggleGroup.Root
-					type="single"
-					bind:value={selected}
-					onValueChange={handleModeChange}
-				>
-					<ToggleGroup.Item value="light" aria-label={m.settings_mode_light()}>
+				<SegmentedToggle.Root value={currentMode} onValueChange={handleModeChange}>
+					<SegmentedToggle.Item value="light" aria-label={m.settings_mode_light()}>
 						<SunIcon data-icon="inline-start" />
 						{m.settings_mode_light()}
-					</ToggleGroup.Item>
-					<ToggleGroup.Item value="dark" aria-label={m.settings_mode_dark()}>
+					</SegmentedToggle.Item>
+					<SegmentedToggle.Item value="dark" aria-label={m.settings_mode_dark()}>
 						<MoonIcon data-icon="inline-start" />
 						{m.settings_mode_dark()}
-					</ToggleGroup.Item>
-					<ToggleGroup.Item value="system" aria-label={m.settings_mode_system()}>
+					</SegmentedToggle.Item>
+					<SegmentedToggle.Item value="system" aria-label={m.settings_mode_system()}>
 						<MonitorIcon data-icon="inline-start" />
 						{m.settings_mode_system()}
-					</ToggleGroup.Item>
-				</ToggleGroup.Root>
+					</SegmentedToggle.Item>
+				</SegmentedToggle.Root>
 			</div>
 
 			<Separator />
