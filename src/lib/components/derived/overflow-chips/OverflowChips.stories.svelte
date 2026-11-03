@@ -37,6 +37,20 @@
 		);
 		await expect(pressBeneath).not.toHaveBeenCalled();
 	};
+
+	const playMatchesChipHeight = async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+		const canvas = within(canvasElement);
+		const chip = canvas.getByText('Knihy').closest('[data-slot="badge"]');
+		if (!chip) {
+			throw new Error('Visible chip not found');
+		}
+		const chipBox = chip.getBoundingClientRect();
+		const moreBox = canvas
+			.getByRole('button', { name: 'Další kategorie: 3' })
+			.getBoundingClientRect();
+		await expect(moreBox.height).toBeCloseTo(chipBox.height, 0);
+		await expect(moreBox.top).toBeCloseTo(chipBox.top, 0);
+	};
 </script>
 
 <script lang="ts">
@@ -46,6 +60,10 @@
 
 {#snippet categoryChip(category: (typeof categories)[number])}
 	<Badge tone="primary">{category.label}</Badge>
+{/snippet}
+
+{#snippet tallCategoryChip(category: (typeof categories)[number])}
+	<Badge tone="primary" size="lg">{category.label}</Badge>
 {/snippet}
 
 <Story name="Inline" play={playOpensOnClickOnly}>
@@ -62,6 +80,20 @@
 			/>
 			<Button intent="outline" size="sm" onclick={pressBeneath}>Beneath</Button>
 		</div>
+	{/snippet}
+</Story>
+
+<Story name="Inline Matches Chip Height" play={playMatchesChipHeight}>
+	{#snippet template()}
+		<OverflowChips
+			items={categories}
+			visibleCount={1}
+			itemKey={(category) => category.id}
+			itemLabel={(category) => category.label}
+			chip={tallCategoryChip}
+			moreLabel={(hiddenCount) => `Další kategorie: ${hiddenCount}`}
+			popoverTitle="Všechny kategorie"
+		/>
 	{/snippet}
 </Story>
 

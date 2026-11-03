@@ -16,8 +16,8 @@ export const overflowChipsVariants = tv({
 	},
 	variants: {
 		layout: {
-			/** "+N" follows the visible chips on the same line. */
-			inline: { root: 'items-start' },
+			/** "+N" follows the visible chips on the same line, as tall as the row's chips. */
+			inline: { root: 'items-stretch', moreChip: 'h-auto', moreTrigger: 'h-auto' },
 			/** The visible chips take the whole line and "+N" drops below them. */
 			stacked: { root: 'flex-col items-start' },
 		},
