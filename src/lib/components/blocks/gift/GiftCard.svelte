@@ -411,8 +411,10 @@
 		}
 	}
 
+	/* A narrow 4:3 image lifts Like to its top edge to clear the centered state labels; the square
+	   Carousel image has that room, so its overlays keep the inset of every other card width. */
 	@container (width <= 10rem) {
-		.gift-card-top-overlays {
+		.gift-card-root[data-gift-card-density='grid'] .gift-card-top-overlays {
 			top: 0;
 		}
 	}

@@ -315,6 +315,23 @@ describe('WishlistGiftCarousel (#580)', () => {
 		await screen.unmount();
 	});
 
+	it.each([359, 375, 430])(
+		'insets the category badge equally from the top and start of the card at %i px (REQ-6)',
+		async (width) => {
+			const screen = await renderCarousel(width);
+			const card = rows()[0].querySelector<HTMLElement>('[data-gift-card-density]')!;
+			const surface = card.querySelector<HTMLElement>('[data-slot="elevation-surface"]')!;
+			const badge = card.querySelector<HTMLElement>('[data-testid="gift-category-badge"]')!;
+			const surfaceRect = surface.getBoundingClientRect();
+			const badgeRect = badge.getBoundingClientRect();
+			const topInset = badgeRect.top - (surfaceRect.top + surface.clientTop);
+			const startInset = badgeRect.left - (surfaceRect.left + surface.clientLeft);
+			expectPixelsAtLeast(startInset, 4);
+			expectPixelsNear(topInset, startInset, undefined, 1);
+			await screen.unmount();
+		},
+	);
+
 	it('shows an ungrouped list as a single row with a count-only header and a descriptive label (REQ-3)', async () => {
 		const screen = await renderCarousel(375, {
 			sections: [
