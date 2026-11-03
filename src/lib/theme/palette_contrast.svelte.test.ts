@@ -362,3 +362,29 @@ describe('light palettes', () => {
 		}
 	});
 });
+
+describe('info callouts', () => {
+	// An info callout explains; on a green palette a brand tint would read as a success.
+	it.each(PALETTES)('%s tints info callouts blue in light and dark', (palette) => {
+		document.documentElement.setAttribute('data-palette', palette);
+		const callout = document.createElement('div');
+		callout.className = alertVariants({ tone: 'info' });
+		document.body.append(callout);
+		try {
+			for (const mode of ['light', 'dark']) {
+				document.documentElement.classList.toggle('dark', mode === 'dark');
+				const canvas = document.createElement('canvas');
+				canvas.width = canvas.height = 1;
+				const context = canvas.getContext('2d')!;
+				context.fillStyle = getComputedStyle(callout).backgroundColor;
+				context.fillRect(0, 0, 1, 1);
+				const [red, green, blue] = context.getImageData(0, 0, 1, 1).data;
+				expect(blue, `${palette} ${mode}: rgb(${red}, ${green}, ${blue})`).toBeGreaterThan(
+					Math.max(red!, green!),
+				);
+			}
+		} finally {
+			callout.remove();
+		}
+	});
+});

@@ -8,7 +8,7 @@ export const alertVariants = tv({
 	variants: {
 		tone: {
 			/** Explains or gives context. */
-			info: 'bg-tint text-card-foreground',
+			info: 'bg-[color-mix(in_oklab,var(--status-info)_14%,var(--card))] text-card-foreground',
 			/** Confirms that something worked. */
 			success:
 				'bg-[color-mix(in_oklab,var(--status-success)_14%,var(--card))] text-card-foreground *:[svg]:text-status-success-text',
