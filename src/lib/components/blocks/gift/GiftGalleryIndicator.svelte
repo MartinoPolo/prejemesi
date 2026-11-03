@@ -33,11 +33,11 @@
 {/snippet}
 
 {#if kind === GIFT_GALLERY_INDICATOR_KINDS.counter}
-	<!-- The card-coloured face and ink border keep the counter legible over any photo. -->
 	<Badge
 		{...props}
 		tone="neutral"
-		class={cn('pointer-events-none shadow-sticker-sm', className)}
+		badgeStyle="overlay"
+		class={cn('pointer-events-none', className)}
 		data-testid="gift-gallery-indicator"
 		data-kind={kind}
 	>

@@ -26,7 +26,8 @@
 
 <Badge
 	tone="neutral"
-	class={cn('pointer-events-none shadow-sticker-sm', className)}
+	badgeStyle="overlay"
+	class={cn('pointer-events-none', className)}
 	data-testid="gift-gallery-count-chip"
 >
 	<ImageIcon class="size-3 shrink-0" strokeWidth={2.6} aria-hidden="true" />

@@ -409,7 +409,7 @@
 	}
 
 	.gift-list-image {
-		--gift-list-count-chip-width: 2.75rem;
+		--gift-list-count-chip-width: 3.125rem;
 
 		width: 100%;
 		min-width: 0;

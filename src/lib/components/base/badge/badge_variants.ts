@@ -29,6 +29,8 @@ export const badgeVariants = tv({
 			solid: `${badgeShape} border-ink`,
 			/** Compact filled pill for a live number, such as the active-filter count on a trigger. */
 			count: 'rounded-full border-0',
+			/** Chip that sits on a photo: card face, ink border, ink text, sticker shadow. */
+			overlay: `${badgeShape} border-ink shadow-sticker-sm`,
 		},
 		size: {
 			default: 'h-5 px-1.75 text-[11px]',
@@ -68,6 +70,7 @@ export const badgeVariants = tv({
 			tone: 'neutral',
 			class: 'bg-muted-foreground text-background',
 		},
+		{ badgeStyle: 'overlay', tone: 'neutral', class: 'text-ink' },
 		{
 			badgeStyle: 'count',
 			class: 'h-4 min-w-4.25 px-1 text-[10.5px] leading-4 font-semibold tracking-normal',
@@ -89,15 +92,16 @@ export const BADGE_STYLES = Object.keys(badgeVariants.variants.badgeStyle) as Ba
 export const BADGE_SIZES = Object.keys(badgeVariants.variants.size) as BadgeSize[];
 
 /**
- * Flat information badge (category, priority, counts) that never carries a shadow. Gift state over
- * an image uses `GiftStateOverlay`, whose solid badges are the elevated exception.
+ * Flat information badge (category, priority, counts) without a shadow, except the `overlay` style
+ * for chips on a photo. Gift state over an image uses `GiftStateOverlay`.
  */
 export type BadgeProps = WithElementRef<HTMLAttributes<HTMLSpanElement>, HTMLSpanElement> & {
 	/** Semantic color family. */
 	tone?: BadgeTone;
 	/**
 	 * `outlined` tints the fill inside an ink border, `subtle` drops the border, `solid` fills with the
-	 * tone, and `count` is the compact filled pill for a live number (`tone="primary"` for active filters).
+	 * tone, `count` is the compact filled pill for a live number (`tone="primary"` for active filters),
+	 * and `overlay` is the raised chip that stays legible on a photo (`tone="neutral"` for counters).
 	 */
 	badgeStyle?: BadgeStyle;
 	size?: BadgeSize;
