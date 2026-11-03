@@ -1,8 +1,6 @@
 <script lang="ts">
 	import { onMount, type Component } from 'svelte';
-	import * as Alert from '$lib/components/base/alert/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
-	import CircleAlertIcon from '@lucide/svelte/icons/circle-alert';
 	import { Skeleton } from '$lib/components/base/skeleton/index.js';
 	import * as m from '$lib/paraglide/messages.js';
 	type DemoLoader = () => Promise<{ default: Component }>;
@@ -63,16 +61,12 @@
 		{#if Demo !== undefined}
 			<Demo />
 		{:else if loadFailed}
-			<div class="mx-auto flex min-h-80 max-w-lg items-center">
-				<Alert.Root tone="danger">
-					<CircleAlertIcon aria-hidden="true" />
-					<Alert.Description>{m.landing_demo_unavailable()}</Alert.Description>
-					<Alert.Action>
-						<Button intent="outline" size="sm" onclick={reloadPage}>
-							{m.import_wizard_reload()}
-						</Button>
-					</Alert.Action>
-				</Alert.Root>
+			<div
+				class="mx-auto flex min-h-80 max-w-md flex-col items-center justify-center gap-4 text-center"
+				role="alert"
+			>
+				<p>{m.landing_demo_unavailable()}</p>
+				<Button onclick={reloadPage}>{m.import_wizard_reload()}</Button>
 			</div>
 		{:else}
 			<div

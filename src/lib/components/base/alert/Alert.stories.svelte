@@ -37,6 +37,7 @@
 	import TriangleAlertIcon from '@lucide/svelte/icons/triangle-alert';
 	import CircleAlertIcon from '@lucide/svelte/icons/circle-alert';
 	import CircleCheckIcon from '@lucide/svelte/icons/circle-check';
+	import ArchiveIcon from '@lucide/svelte/icons/archive';
 	import { Button } from '$lib/components/base/button/index.js';
 
 	const toneIcons: Record<AlertTone, Component> = {
@@ -44,6 +45,7 @@
 		success: CircleCheckIcon,
 		warning: TriangleAlertIcon,
 		danger: CircleAlertIcon,
+		palette: ArchiveIcon,
 	};
 
 	const toneSentences: Record<AlertTone, string> = {
@@ -51,6 +53,7 @@
 		success: 'The gift was added to the wishlist.',
 		warning: 'Copy the token now. It will not be shown again.',
 		danger: 'Categories could not be saved.',
+		palette: 'Archived: the list is closed. New reservations are not possible.',
 	};
 </script>
 
@@ -106,6 +109,40 @@
 				<AlertDescription>{toneSentences.info}</AlertDescription>
 				<AlertAction>
 					<Button intent="secondary" size="sm">Review</Button>
+				</AlertAction>
+			</Alert>
+		</div>
+	{/snippet}
+</Story>
+
+<Story name="Wrapped Text Keeps Icon On First Line">
+	{#snippet template(args: AlertProps)}
+		<div class="w-72">
+			<Alert {...args} tone="danger">
+				<CircleAlertIcon aria-hidden="true" />
+				<AlertDescription
+					>Categories could not be saved. Check your connection and try again.</AlertDescription
+				>
+				<AlertAction>
+					<Button intent="outline" size="sm">Retry</Button>
+				</AlertAction>
+			</Alert>
+		</div>
+	{/snippet}
+</Story>
+
+<Story name="Warning With Action Below">
+	{#snippet template(args: AlertProps)}
+		<div class="w-96">
+			<Alert {...args} tone="warning">
+				<TriangleAlertIcon aria-hidden="true" />
+				<AlertTitle>See reservations?</AlertTitle>
+				<AlertDescription>
+					Visitors will be told that you see which gifts are reserved. This cannot be
+					undone.
+				</AlertDescription>
+				<AlertAction placement="below">
+					<Button intent="outline" size="sm">Show reservations</Button>
 				</AlertAction>
 			</Alert>
 		</div>

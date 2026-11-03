@@ -442,19 +442,20 @@
 								<Alert.Description>
 									{m.moderator_see_reservations_description()}
 								</Alert.Description>
+								<Alert.Action placement="below">
+									<Button
+										size="sm"
+										intent="outline"
+										disabled={isSelfPromoting}
+										onclick={handleSelfPromote}
+									>
+										<EyeIcon data-icon="inline-start" />
+										{isSelfPromoting
+											? m.moderator_activating()
+											: m.moderator_activate_button()}
+									</Button>
+								</Alert.Action>
 							</Alert.Root>
-							<Button
-								size="sm"
-								intent="outline"
-								class="self-start"
-								disabled={isSelfPromoting}
-								onclick={handleSelfPromote}
-							>
-								<EyeIcon data-icon="inline-start" />
-								{isSelfPromoting
-									? m.moderator_activating()
-									: m.moderator_activate_button()}
-							</Button>
 						</div>
 					{:else}
 						<div class={styles.section()}>
