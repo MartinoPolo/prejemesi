@@ -1,6 +1,7 @@
 <script lang="ts">
 	import * as m from '$lib/paraglide/messages.js';
 	import * as Card from '$lib/components/base/card/index.js';
+	import SettingsSectionHeader from './SettingsSectionHeader.svelte';
 	import * as ToggleGroup from '$lib/components/base/toggle-group/index.js';
 	import { Label } from '$lib/components/base/label/index.js';
 	import { Separator } from '$lib/components/base/separator/index.js';
@@ -41,15 +42,11 @@
 </script>
 
 <Card.Root>
-	<Card.Header>
-		<div class="flex items-center gap-2">
-			<PaletteIcon class="size-5 text-muted-foreground" />
-			<div>
-				<Card.Title>{m.settings_appearance_title()}</Card.Title>
-				<Card.Description>{m.settings_appearance_description()}</Card.Description>
-			</div>
-		</div>
-	</Card.Header>
+	<SettingsSectionHeader
+		icon={PaletteIcon}
+		title={m.settings_appearance_title()}
+		description={m.settings_appearance_description()}
+	/>
 	<Card.Content>
 		<div class="flex flex-col gap-6">
 			<!-- Dark mode -->

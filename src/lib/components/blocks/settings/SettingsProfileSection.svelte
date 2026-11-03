@@ -1,6 +1,7 @@
 <script lang="ts">
 	import * as m from '$lib/paraglide/messages.js';
 	import * as Card from '$lib/components/base/card/index.js';
+	import SettingsSectionHeader from './SettingsSectionHeader.svelte';
 	import { Input } from '$lib/components/base/input/index.js';
 	import { HelpText } from '$lib/components/base/help-text/index.js';
 	import { Label } from '$lib/components/base/label/index.js';
@@ -116,15 +117,11 @@
 </script>
 
 <Card.Root>
-	<Card.Header>
-		<div class="flex items-center gap-2">
-			<UserIcon class="size-5 text-muted-foreground" />
-			<div>
-				<Card.Title>{m.settings_profile_title()}</Card.Title>
-				<Card.Description>{m.settings_profile_description()}</Card.Description>
-			</div>
-		</div>
-	</Card.Header>
+	<SettingsSectionHeader
+		icon={UserIcon}
+		title={m.settings_profile_title()}
+		description={m.settings_profile_description()}
+	/>
 	<Card.Content>
 		<div class="flex flex-col gap-6">
 			<!-- Avatar -->

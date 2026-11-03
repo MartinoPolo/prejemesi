@@ -5,7 +5,6 @@
 	import * as Dialog from '$lib/components/base/dialog/index.js';
 	import * as Alert from '$lib/components/base/alert/index.js';
 	import * as Tabs from '$lib/components/base/tabs/index.js';
-	import * as Card from '$lib/components/base/card/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
 	import { Input } from '$lib/components/base/input/index.js';
 	import { Textarea } from '$lib/components/base/textarea/index.js';
@@ -28,6 +27,7 @@
 	import WishlistAppearanceEditor from './WishlistAppearanceEditor.svelte';
 	import WishlistCategorySettings from './WishlistCategorySettings.svelte';
 	import WishlistSettingsSaveButton from './WishlistSettingsSaveButton.svelte';
+	import DangerActionCard from '$lib/components/blocks/settings/DangerActionCard.svelte';
 	import RecipientPreview from './RecipientPreview.svelte';
 	import WishlistOccasionField from './WishlistOccasionField.svelte';
 	import {
@@ -530,55 +530,45 @@
      admin-only view. -->
 {#snippet revertSection()}
 	{#if revertCapability !== REVERT_CAPABILITY.hidden}
-		<Card.Root elevation="flat" class="border-destructive/30">
-			<Card.Header>
-				<div class="flex items-center gap-2">
-					<RotateCcwIcon class="size-5 text-status-danger-text" />
-					<div>
-						<Card.Title class="text-status-danger-text">
-							{m.wishlist_settings_revert_title()}
-						</Card.Title>
-						<Card.Description>{m.wishlist_settings_revert_hint()}</Card.Description>
-					</div>
-				</div>
-			</Card.Header>
-			<Card.Content>
+		<DangerActionCard
+			icon={RotateCcwIcon}
+			title={m.wishlist_settings_revert_title()}
+			description={m.wishlist_settings_revert_hint()}
+			elevation="flat"
+		>
+			{#snippet notice()}
 				{#if revertCapability === REVERT_CAPABILITY.reservedBlocked}
-					<div class="flex flex-col gap-3">
-						<Alert.Root tone="warning">
-							<Alert.Description>
-								{m.wishlist_revert_reserved_admin_only()}
-							</Alert.Description>
-						</Alert.Root>
-						<div class="flex justify-end">
-							<Button intent="danger" size="sm" disabled>
-								<RotateCcwIcon data-icon="inline-start" />
-								{m.wishlist_revert_button()}
-							</Button>
-						</div>
-					</div>
-				{:else}
-					<div class="flex flex-col gap-3">
-						{#if revertCapability === REVERT_CAPABILITY.reservedAdmin}
-							<p class="text-xs text-muted-foreground">
-								{m.wishlist_revert_reserved_warning()}
-							</p>
-						{/if}
-						<div class="flex justify-end">
-							<Button
-								intent="danger"
-								size="sm"
-								data-testid="settings-revert-to-draft"
-								onclick={() => requestGuarded(() => (revertConfirmOpen = true))}
-							>
-								<RotateCcwIcon data-icon="inline-start" />
-								{m.wishlist_revert_button()}
-							</Button>
-						</div>
-					</div>
+					<Alert.Root tone="warning">
+						<TriangleAlertIcon />
+						<Alert.Description>
+							{m.wishlist_revert_reserved_admin_only()}
+						</Alert.Description>
+					</Alert.Root>
+				{:else if revertCapability === REVERT_CAPABILITY.reservedAdmin}
+					<p class="text-xs text-muted-foreground">
+						{m.wishlist_revert_reserved_warning()}
+					</p>
 				{/if}
-			</Card.Content>
-		</Card.Root>
+			{/snippet}
+			{#snippet action()}
+				{#if revertCapability === REVERT_CAPABILITY.reservedBlocked}
+					<Button intent="danger" size="sm" disabled>
+						<RotateCcwIcon data-icon="inline-start" />
+						{m.wishlist_revert_button()}
+					</Button>
+				{:else}
+					<Button
+						intent="danger"
+						size="sm"
+						data-testid="settings-revert-to-draft"
+						onclick={() => requestGuarded(() => (revertConfirmOpen = true))}
+					>
+						<RotateCcwIcon data-icon="inline-start" />
+						{m.wishlist_revert_button()}
+					</Button>
+				{/if}
+			{/snippet}
+		</DangerActionCard>
 	{/if}
 {/snippet}
 
@@ -967,47 +957,32 @@
 						{@render revertSection()}
 						{#if isShared}
 							<Alert.Root tone="warning">
+								<TriangleAlertIcon />
 								<Alert.Description
 									>{m.wishlist_settings_danger_shared_notice()}</Alert.Description
 								>
 							</Alert.Root>
 						{:else}
-							<Card.Root elevation="flat" class="border-destructive/30">
-								<Card.Header>
-									<div class="flex items-center gap-2">
-										<TriangleAlertIcon class="size-5 text-status-danger-text" />
-										<div>
-											<Card.Title class="text-status-danger-text">
-												{m.wishlist_settings_danger_tab()}
-											</Card.Title>
-											<Card.Description
-												>{m.wishlist_settings_danger_hint()}</Card.Description
-											>
-										</div>
-									</div>
-								</Card.Header>
-								<Card.Content>
-									<div class="flex items-center justify-between gap-4">
-										<div>
-											<p class="text-sm font-medium">
-												{m.wishlist_delete_button()}
-											</p>
-											<p class="text-xs text-muted-foreground">
-												{m.wishlist_delete_confirm_description()}
-											</p>
-										</div>
-										<Button
-											intent="danger"
-											size="sm"
-											onclick={() =>
-												requestGuarded(() => (deleteConfirmOpen = true))}
-										>
-											<TrashIcon data-icon="inline-start" />
-											{m.wishlist_delete_button()}
-										</Button>
-									</div>
-								</Card.Content>
-							</Card.Root>
+							<DangerActionCard
+								icon={TriangleAlertIcon}
+								title={m.wishlist_settings_danger_tab()}
+								description={m.wishlist_settings_danger_hint()}
+								actionTitle={m.wishlist_delete_button()}
+								actionDescription={m.wishlist_delete_confirm_description()}
+								elevation="flat"
+							>
+								{#snippet action()}
+									<Button
+										intent="danger"
+										size="sm"
+										onclick={() =>
+											requestGuarded(() => (deleteConfirmOpen = true))}
+									>
+										<TrashIcon data-icon="inline-start" />
+										{m.wishlist_delete_button()}
+									</Button>
+								{/snippet}
+							</DangerActionCard>
 						{/if}
 					</div>
 				</div>
