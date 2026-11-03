@@ -193,7 +193,7 @@
 							</span>
 						</div>
 						{#if quantityError}
-							<HelpText state="error">{quantityError}</HelpText>
+							<HelpText state="error" class="mt-0">{quantityError}</HelpText>
 						{/if}
 					</div>
 				{/if}
@@ -211,7 +211,7 @@
 							aria-invalid={nameError !== '' ? true : undefined}
 						/>
 						{#if nameError}
-							<HelpText state="error">{nameError}</HelpText>
+							<HelpText state="error" class="mt-0">{nameError}</HelpText>
 						{/if}
 					</div>
 
