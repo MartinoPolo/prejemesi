@@ -4,7 +4,7 @@
 	import { resolve } from '$app/paths';
 	import * as m from '$lib/paraglide/messages.js';
 	import * as Card from '$lib/components/base/card/index.js';
-	import * as Dialog from '$lib/components/base/dialog/index.js';
+	import { ConfirmDialog } from '$lib/components/derived/confirm-dialog/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
 	import { Separator } from '$lib/components/base/separator/index.js';
 	import { Skeleton } from '$lib/components/base/skeleton/index.js';
@@ -34,7 +34,6 @@
 	import BookOpenIcon from '@lucide/svelte/icons/book-open';
 	import InfoIcon from '@lucide/svelte/icons/info';
 	import KeyRoundIcon from '@lucide/svelte/icons/key-round';
-	import LoaderIcon from '@lucide/svelte/icons/loader';
 	import PlugIcon from '@lucide/svelte/icons/plug';
 	import PlusIcon from '@lucide/svelte/icons/plus';
 
@@ -302,59 +301,25 @@
 {/snippet}
 
 {#snippet revokeDialog()}
-	<Dialog.Root
-		bind:open={
-			() => revokeOpen,
-			(nextOpen) => {
-				if (!revokePending) {
-					revokeOpen = nextOpen;
-				}
+	<ConfirmDialog
+		bind:open={revokeOpen}
+		pending={revokePending}
+		title={revokeCopy.title}
+		description={revokeCopy.description}
+		cancelLabel={m.access_tokens_back()}
+		confirmLabel={revokeCopy.confirm}
+		pendingLabel={revokeCopy.pending}
+		confirmIntent="primary-destructive"
+		data-testid="access-token-revoke-dialog"
+		onCloseAutoFocus={(event) => {
+			// The opening row is gone after a revoke, so focus moves to a neighbour instead.
+			if (revokeCompleted) {
+				event.preventDefault();
+				void focusAfterRemoval(focusAfterRevoke);
 			}
-		}
-	>
-		<Dialog.Content
-			size="md"
-			showCloseButton={false}
-			data-testid="access-token-revoke-dialog"
-			onCloseAutoFocus={(event) => {
-				// The opening row is gone after a revoke, so focus moves to a neighbour instead.
-				if (revokeCompleted) {
-					event.preventDefault();
-					void focusAfterRemoval(focusAfterRevoke);
-				}
-			}}
-		>
-			<Dialog.Header>
-				<Dialog.Title>
-					{revokeCopy.title}
-				</Dialog.Title>
-				<Dialog.Description class="text-(length:--text-base) text-foreground">
-					{revokeCopy.description}
-				</Dialog.Description>
-			</Dialog.Header>
-			<Dialog.Footer>
-				<Button
-					intent="secondary"
-					disabled={revokePending}
-					onclick={() => (revokeOpen = false)}
-				>
-					{m.access_tokens_back()}
-				</Button>
-				<Button
-					intent="primary-destructive"
-					disabled={revokePending}
-					onclick={confirmRevoke}
-				>
-					{#if revokePending}
-						<LoaderIcon class="animate-spin" data-icon="inline-start" />
-						{revokeCopy.pending}
-					{:else}
-						{revokeCopy.confirm}
-					{/if}
-				</Button>
-			</Dialog.Footer>
-		</Dialog.Content>
-	</Dialog.Root>
+		}}
+		onconfirm={confirmRevoke}
+	/>
 {/snippet}
 
 <Card.Root

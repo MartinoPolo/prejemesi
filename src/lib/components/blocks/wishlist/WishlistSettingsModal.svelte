@@ -14,6 +14,7 @@
 	import { DatePicker } from '$lib/components/derived/date-picker/index.js';
 	import { Field, type FieldControlContext } from '$lib/components/derived/field/index.js';
 	import GraceCountdown from '$lib/components/derived/grace-countdown/GraceCountdown.svelte';
+	import { ConfirmDialog } from '$lib/components/derived/confirm-dialog/index.js';
 	import { toastSuccess, toastError } from '$lib/components/base/toast/index.js';
 	import FileDownIcon from '@lucide/svelte/icons/file-down';
 	import FileUpIcon from '@lucide/svelte/icons/file-up';
@@ -503,6 +504,9 @@
 
 	let revertConfirmOpen = $state(false);
 	let reverting = $state(false);
+	const revertCancelsReservations = $derived(
+		revertCapability === REVERT_CAPABILITY.reservedAdmin,
+	);
 
 	async function handleRevertConfirmed() {
 		reverting = true;
@@ -1080,51 +1084,29 @@
 </Dialog.Root>
 
 <!-- Delete confirmation dialog (issue #120) -->
-<Dialog.Root bind:open={deleteConfirmOpen}>
-	<Dialog.Content size="md">
-		<Dialog.Header>
-			<Dialog.Title>{m.wishlist_delete_confirm_title({ title: wishlist.title })}</Dialog.Title
-			>
-			<Dialog.Description>{m.wishlist_delete_confirm_description()}</Dialog.Description>
-		</Dialog.Header>
-		<Dialog.Footer>
-			<Button
-				intent="outline"
-				onclick={() => (deleteConfirmOpen = false)}
-				disabled={deleting}
-			>
-				{m.cancel()}
-			</Button>
-			<Button intent="danger" onclick={handleDeleteConfirmed} disabled={deleting}>
-				{deleting ? m.deleting() : m.wishlist_delete_confirm_action()}
-			</Button>
-		</Dialog.Footer>
-	</Dialog.Content>
-</Dialog.Root>
+<ConfirmDialog
+	bind:open={deleteConfirmOpen}
+	title={m.wishlist_delete_confirm_title({ title: wishlist.title })}
+	description={m.wishlist_delete_confirm_description()}
+	confirmLabel={m.wishlist_delete_confirm_action()}
+	pendingLabel={m.deleting()}
+	confirmIntent="primary-destructive"
+	pending={deleting}
+	onconfirm={handleDeleteConfirmed}
+/>
 
 <!-- Revert-to-draft confirmation dialog (issue #150): the reserved variant spells out that all
-     reservations are cancelled and reservers notified; the clean variant is silent. -->
-<Dialog.Root bind:open={revertConfirmOpen}>
-	<Dialog.Content size="md">
-		<Dialog.Header>
-			<Dialog.Title>{m.wishlist_revert_confirm_title()}</Dialog.Title>
-			<Dialog.Description>
-				{revertCapability === REVERT_CAPABILITY.reservedAdmin
-					? m.wishlist_revert_confirm_reserved_description()
-					: m.wishlist_revert_confirm_clean_description()}
-			</Dialog.Description>
-		</Dialog.Header>
-		<Dialog.Footer>
-			<Button
-				intent="outline"
-				onclick={() => (revertConfirmOpen = false)}
-				disabled={reverting}
-			>
-				{m.cancel()}
-			</Button>
-			<Button intent="danger" onclick={handleRevertConfirmed} disabled={reverting}>
-				{reverting ? m.wishlist_reverting() : m.wishlist_revert_confirm_action()}
-			</Button>
-		</Dialog.Footer>
-	</Dialog.Content>
-</Dialog.Root>
+     reservations are cancelled and reservers notified, which cannot be undone; the clean
+     variant is silent and undone by sharing again. -->
+<ConfirmDialog
+	bind:open={revertConfirmOpen}
+	title={m.wishlist_revert_confirm_title()}
+	description={revertCancelsReservations
+		? m.wishlist_revert_confirm_reserved_description()
+		: m.wishlist_revert_confirm_clean_description()}
+	confirmLabel={m.wishlist_revert_confirm_action()}
+	pendingLabel={m.wishlist_reverting()}
+	confirmIntent={revertCancelsReservations ? 'primary-destructive' : 'danger'}
+	pending={reverting}
+	onconfirm={handleRevertConfirmed}
+/>

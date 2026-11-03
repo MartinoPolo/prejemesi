@@ -15,7 +15,7 @@
 	import { Button } from '$lib/components/base/button/index.js';
 	import { Separator } from '$lib/components/base/separator/index.js';
 	import AccessTokenBasicsStep from './AccessTokenBasicsStep.svelte';
-	import AccessTokenCloseGuard from './AccessTokenCloseGuard.svelte';
+	import { ConfirmDialog } from '$lib/components/derived/confirm-dialog/index.js';
 	import AccessTokenPermissionsStep from './AccessTokenPermissionsStep.svelte';
 	import AccessTokenSteps from './AccessTokenSteps.svelte';
 	import TokenRevealPanel from './TokenRevealPanel.svelte';
@@ -258,7 +258,17 @@
 			</Dialog.Footer>
 		</div>
 
-		<AccessTokenCloseGuard bind:open={closeGuardOpen} onconfirm={closeWithoutCopying} />
+		<!-- The secret is shown only once; losing it is recovered by regenerating, so red outline. -->
+		<ConfirmDialog
+			bind:open={closeGuardOpen}
+			title={m.access_tokens_close_guard_title()}
+			description={m.access_tokens_close_guard_description()}
+			cancelLabel={m.access_tokens_back()}
+			confirmLabel={m.access_tokens_close_guard_confirm()}
+			confirmIntent="danger"
+			data-testid="access-token-close-guard"
+			onconfirm={closeWithoutCopying}
+		/>
 	</Dialog.Content>
 </Dialog.Root>
 

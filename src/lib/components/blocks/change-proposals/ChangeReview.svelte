@@ -2,7 +2,6 @@
 	import { tick, untrack } from 'svelte';
 	import { prefersReducedMotion } from 'svelte/motion';
 	import * as m from '$lib/paraglide/messages.js';
-	import Trash2Icon from '@lucide/svelte/icons/trash-2';
 	import { toastError } from '$lib/components/base/toast/index.js';
 	import { setGiftsContext } from '$lib/modules/gifts/gifts.context.svelte.js';
 	import type { GiftByRole } from '$lib/modules/gifts/types.js';
@@ -31,7 +30,7 @@
 	import ChangeReviewSections from './ChangeReviewSections.svelte';
 	import ProposalApplyBar from './ProposalApplyBar.svelte';
 	import ProposalSummary from './ProposalSummary.svelte';
-	import ReviewActionDialog from './ReviewActionDialog.svelte';
+	import { ConfirmDialog } from '$lib/components/derived/confirm-dialog/index.js';
 	import {
 		CHANGE_KIND_PRESENTATION,
 		UNRESOLVED_DECISION_MESSAGES,
@@ -259,7 +258,7 @@
 	onconfirm={() => void runUndo()}
 />
 
-<ReviewActionDialog
+<ConfirmDialog
 	bind:open={discardOpen}
 	pending={pendingAction === 'discard'}
 	title={m.change_review_discard_title()}
@@ -268,8 +267,7 @@
 	confirmLabel={m.change_review_discard()}
 	pendingLabel={m.change_review_discarding()}
 	confirmIntent="primary-destructive"
-	confirmIcon={Trash2Icon}
-	testId="change-review-discard-dialog"
+	data-testid="change-review-discard-dialog"
 	onconfirm={() => void runDiscard()}
 />
 

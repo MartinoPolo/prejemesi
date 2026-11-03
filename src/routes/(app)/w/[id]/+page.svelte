@@ -49,7 +49,7 @@
 	} from '$lib/components/blocks/gift/GiftCategoryQuickAddDialog.svelte';
 	import WishlistSettingsModal from '$lib/components/blocks/wishlist/WishlistSettingsModal.svelte';
 	import EditRecipientDialog from '$lib/components/blocks/wishlist/EditRecipientDialog.svelte';
-	import * as Dialog from '$lib/components/base/dialog/index.js';
+	import { ConfirmDialog } from '$lib/components/derived/confirm-dialog/index.js';
 	import * as Alert from '$lib/components/base/alert/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
 	import InfoIcon from '@lucide/svelte/icons/info';
@@ -1780,12 +1780,9 @@
 		pending.resolve(true);
 	}
 
-	function handleRecipientGiftChangeWarningOpenChange(open: boolean) {
-		recipientGiftChangeWarningOpen = open;
-		if (!open) {
-			pendingRecipientGiftChange?.resolve(false);
-			pendingRecipientGiftChange = null;
-		}
+	function declineRecipientGiftChange() {
+		pendingRecipientGiftChange?.resolve(false);
+		pendingRecipientGiftChange = null;
 	}
 
 	// Gift mutations rely on the command's server-side single-flight refresh: the
@@ -2720,26 +2717,16 @@
 	oncreated={copyIntoCreatedWishlist}
 />
 
-<Dialog.Root bind:open={hiddenConfirmOpen}>
-	<Dialog.Content size="sm">
-		<Dialog.Header>
-			<Dialog.Title>{m.gift_hidden_selection_title()}</Dialog.Title>
-			<Dialog.Description
-				>{m.gift_hidden_selection_description({
-					count: selectionSnapshot.hiddenIds.length,
-				})}</Dialog.Description
-			>
-		</Dialog.Header>
-		<Dialog.Footer>
-			<Button intent="outline" onclick={() => (hiddenConfirmOpen = false)}
-				>{m.cancel()}</Button
-			>
-			<Button intent="primary" onclick={confirmHiddenBulkAction}
-				>{m.gift_hidden_selection_continue()}</Button
-			>
-		</Dialog.Footer>
-	</Dialog.Content>
-</Dialog.Root>
+<ConfirmDialog
+	bind:open={hiddenConfirmOpen}
+	title={m.gift_hidden_selection_title()}
+	description={m.gift_hidden_selection_description({
+		count: selectionSnapshot.hiddenIds.length,
+	})}
+	confirmLabel={m.gift_hidden_selection_continue()}
+	confirmIntent="primary"
+	onconfirm={confirmHiddenBulkAction}
+/>
 
 <WishlistModals
 	demo={page.data.demoExpiresAt !== null}
@@ -2800,27 +2787,16 @@
 {/if}
 
 <!-- After the gift editor so its portal stacks above it: the editor asks on the first change. -->
-<Dialog.Root
-	open={recipientGiftChangeWarningOpen}
-	onOpenChange={handleRecipientGiftChangeWarningOpenChange}
->
-	<Dialog.Content size="sm" data-testid="recipient-gift-change-warning">
-		<Dialog.Header>
-			<Dialog.Title>{m.gift_recipient_change_warning_title()}</Dialog.Title>
-			<Dialog.Description>{m.gift_recipient_change_warning_description()}</Dialog.Description>
-		</Dialog.Header>
-		<Dialog.Footer>
-			<Button
-				intent="outline"
-				onclick={() => handleRecipientGiftChangeWarningOpenChange(false)}
-				>{m.cancel()}</Button
-			>
-			<Button intent="primary" onclick={confirmRecipientGiftChangeWarning}
-				>{m.gift_recipient_change_warning_continue()}</Button
-			>
-		</Dialog.Footer>
-	</Dialog.Content>
-</Dialog.Root>
+<ConfirmDialog
+	bind:open={recipientGiftChangeWarningOpen}
+	title={m.gift_recipient_change_warning_title()}
+	description={m.gift_recipient_change_warning_description()}
+	confirmLabel={m.gift_recipient_change_warning_continue()}
+	confirmIntent="primary"
+	data-testid="recipient-gift-change-warning"
+	onconfirm={confirmRecipientGiftChangeWarning}
+	oncancel={declineRecipientGiftChange}
+/>
 
 {#if releaseFlowGift !== null}
 	<ReleaseReservationFlow
@@ -2867,26 +2843,16 @@
 />
 
 <!-- Archive confirmation dialog: archiving hides the list from the dashboards, so it asks first. -->
-<Dialog.Root bind:open={archiveConfirmOpen}>
-	<Dialog.Content size="md">
-		<Dialog.Header>
-			<Dialog.Title>{m.wishlist_archive_confirm_title()}</Dialog.Title>
-			<Dialog.Description>{m.wishlist_archive_confirm_description()}</Dialog.Description>
-		</Dialog.Header>
-		<Dialog.Footer>
-			<Button
-				intent="outline"
-				onclick={() => (archiveConfirmOpen = false)}
-				disabled={archiving}
-			>
-				{m.cancel()}
-			</Button>
-			<Button intent="danger" onclick={handleArchiveConfirmed} disabled={archiving}>
-				{archiving ? m.wishlist_archiving() : m.wishlist_archive_confirm_action()}
-			</Button>
-		</Dialog.Footer>
-	</Dialog.Content>
-</Dialog.Root>
+<ConfirmDialog
+	bind:open={archiveConfirmOpen}
+	title={m.wishlist_archive_confirm_title()}
+	description={m.wishlist_archive_confirm_description()}
+	confirmLabel={m.wishlist_archive_confirm_action()}
+	pendingLabel={m.wishlist_archiving()}
+	confirmIntent="primary-destructive"
+	pending={archiving}
+	onconfirm={handleArchiveConfirmed}
+/>
 
 {#if canManage && page.data.demoExpiresAt === null}
 	<LazyImportWizard

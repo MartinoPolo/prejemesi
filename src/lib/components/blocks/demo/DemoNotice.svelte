@@ -5,7 +5,7 @@
 	import { getLocale } from '$lib/paraglide/runtime.js';
 	import * as m from '$lib/paraglide/messages.js';
 	import { Button } from '$lib/components/base/button/index.js';
-	import * as Dialog from '$lib/components/base/dialog/index.js';
+	import { ConfirmDialog } from '$lib/components/derived/confirm-dialog/index.js';
 	import * as Select from '$lib/components/base/select/index.js';
 	import { demoNoticeVariants } from './demo_notice_variants.js';
 
@@ -90,28 +90,9 @@
 		}
 	}
 
-	// A pending reset or exit navigates away, so its dialog must not be dismissed mid-request.
-	function keepOpenWhilePending(event: Event) {
-		if (pending) {
-			event.preventDefault();
-		}
-	}
-
 	function changeCatalogLocale(value: string) {
 		if (value === 'cs' || value === 'en') {
 			catalogLocale = value;
-		}
-	}
-
-	function changeResetOpen(open: boolean) {
-		if (!pending) {
-			resetOpen = open;
-		}
-	}
-
-	function changeRegisterOpen(open: boolean) {
-		if (!pending) {
-			registerOpen = open;
 		}
 	}
 </script>
@@ -156,17 +137,19 @@
 		</div>
 	</div>
 
-	<Dialog.Root bind:open={resetOpen} onOpenChange={changeResetOpen}>
-		<Dialog.Content
-			size="lg"
-			showCloseButton={!pending}
-			onEscapeKeydown={keepOpenWhilePending}
-			onInteractOutside={keepOpenWhilePending}
-		>
-			<Dialog.Header>
-				<Dialog.Title>{m.demo_reset_title()}</Dialog.Title>
-				<Dialog.Description>{m.demo_reset_description()}</Dialog.Description>
-			</Dialog.Header>
+	<!-- A pending reset or exit navigates away, so the dialog locks until the request settles. -->
+	<ConfirmDialog
+		bind:open={resetOpen}
+		{pending}
+		title={m.demo_reset_title()}
+		description={m.demo_reset_description()}
+		cancelLabel={m.demo_cancel()}
+		confirmLabel={m.demo_reset_confirm()}
+		pendingLabel={m.demo_reset_pending()}
+		confirmIntent="primary-destructive"
+		onconfirm={reset}
+	>
+		<div class="flex flex-col gap-2">
 			<label for="demo-catalog-language" class="text-sm font-semibold"
 				>{m.demo_catalog_language()}</label
 			>
@@ -181,48 +164,27 @@
 					</Select.Group></Select.Content
 				>
 			</Select.Root>
-			{#if error === 'reset'}<p role="alert" class="text-sm text-status-danger-text">
-					{m.demo_reset_error()}
-				</p>{/if}
-			<Dialog.Footer>
-				<Button intent="outline" disabled={pending} onclick={() => (resetOpen = false)}
-					>{m.demo_cancel()}</Button
-				>
-				<Button
-					intent="primary-destructive"
-					disabled={pending}
-					aria-busy={pending}
-					onclick={reset}
-					>{pending ? m.demo_reset_pending() : m.demo_reset_confirm()}</Button
-				>
-			</Dialog.Footer>
-		</Dialog.Content>
-	</Dialog.Root>
+		</div>
+		{#if error === 'reset'}<p role="alert" class="text-sm text-status-danger-text">
+				{m.demo_reset_error()}
+			</p>{/if}
+	</ConfirmDialog>
 
-	<Dialog.Root bind:open={registerOpen} onOpenChange={changeRegisterOpen}>
-		<Dialog.Content
-			size="lg"
-			showCloseButton={!pending}
-			onEscapeKeydown={keepOpenWhilePending}
-			onInteractOutside={keepOpenWhilePending}
-		>
-			<Dialog.Header>
-				<Dialog.Title>{m.demo_register_title()}</Dialog.Title>
-				<Dialog.Description>{m.demo_register_description()}</Dialog.Description>
-			</Dialog.Header>
-			{#if error === 'exit'}<p role="alert" class="text-sm text-status-danger-text">
-					{m.demo_exit_error()}
-				</p>{/if}
-			<Dialog.Footer>
-				<Button intent="outline" disabled={pending} onclick={() => (registerOpen = false)}
-					>{m.demo_cancel()}</Button
-				>
-				<Button disabled={pending} aria-busy={pending} onclick={() => leave(true)}
-					>{m.demo_continue()}</Button
-				>
-			</Dialog.Footer>
-		</Dialog.Content>
-	</Dialog.Root>
+	<!-- Registering is the goal of the demo, so it stays a safe primary action. -->
+	<ConfirmDialog
+		bind:open={registerOpen}
+		{pending}
+		title={m.demo_register_title()}
+		description={m.demo_register_description()}
+		cancelLabel={m.demo_cancel()}
+		confirmLabel={m.demo_continue()}
+		confirmIntent="primary"
+		onconfirm={() => leave(true)}
+	>
+		{#if error === 'exit'}<p role="alert" class="text-sm text-status-danger-text">
+				{m.demo_exit_error()}
+			</p>{/if}
+	</ConfirmDialog>
 {:else}
 	<div
 		class="fixed inset-0 z-40 flex items-center justify-center bg-background p-6"

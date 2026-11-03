@@ -2,8 +2,8 @@
 	import { resolve } from '$app/paths';
 	import * as m from '$lib/paraglide/messages.js';
 	import * as Card from '$lib/components/base/card/index.js';
-	import * as Dialog from '$lib/components/base/dialog/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
+	import { ConfirmDialog } from '$lib/components/derived/confirm-dialog/index.js';
 	import { authClient } from '$lib/auth_client.js';
 	import { deleteAccount } from '$lib/modules/settings/settings.remote.js';
 	import TriangleAlertIcon from '@lucide/svelte/icons/triangle-alert';
@@ -48,22 +48,13 @@
 	</Card.Content>
 </Card.Root>
 
-<!-- Delete account confirmation dialog -->
-<Dialog.Root bind:open={deleteDialogOpen}>
-	<Dialog.Content size="md">
-		<Dialog.Header>
-			<Dialog.Title>{m.settings_delete_confirm_title()}</Dialog.Title>
-			<Dialog.Description>
-				{m.settings_delete_confirm_description()}
-			</Dialog.Description>
-		</Dialog.Header>
-		<Dialog.Footer>
-			<Button intent="outline" onclick={() => (deleteDialogOpen = false)} disabled={deleting}>
-				{m.cancel()}
-			</Button>
-			<Button intent="danger" onclick={handleDeleteAccount} disabled={deleting}>
-				{deleting ? m.deleting() : m.settings_delete_confirm_button()}
-			</Button>
-		</Dialog.Footer>
-	</Dialog.Content>
-</Dialog.Root>
+<ConfirmDialog
+	bind:open={deleteDialogOpen}
+	title={m.settings_delete_confirm_title()}
+	description={m.settings_delete_confirm_description()}
+	confirmLabel={m.settings_delete_confirm_button()}
+	pendingLabel={m.deleting()}
+	confirmIntent="primary-destructive"
+	pending={deleting}
+	onconfirm={handleDeleteAccount}
+/>
