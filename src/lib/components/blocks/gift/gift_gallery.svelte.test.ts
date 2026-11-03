@@ -2,6 +2,7 @@ import '../../../../app.css';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
 import { render } from 'vitest-browser-svelte';
+import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
 import type { GiftImage } from '$lib/modules/gifts/gift_images.js';
 import type { GiftForVisitor } from '$lib/modules/gifts/types.js';
 import { WISHLIST_ROLES } from '$lib/modules/wishlists/types.js';
@@ -17,6 +18,8 @@ import {
 import { renderItem } from './gift_list_item.test_fixtures.js';
 
 vi.mock('$env/dynamic/public', () => ({ env: {} }));
+
+const { expectPixelsAtLeast, expectPixelsAtMost } = createPixelAssertions(expect);
 
 const { default: GiftDetailModalTestHost } = await import('./GiftDetailModalTestHost.svelte');
 
@@ -274,6 +277,91 @@ describe('GiftCard gallery', () => {
 			m.gift_gallery_position({ position: 1, count: 3 }),
 		);
 	});
+
+	describe.each([136, 144, MOBILE_TWO_COLUMN_CARD_WIDTH, 280])(
+		'state labels on a %ipx gallery card',
+		(width) => {
+			it.each([
+				{
+					label: 'Rezervováno někým jiným',
+					role: WISHLIST_ROLES.visitor,
+					overrides: { reservedCount: 1, isFullyReserved: true },
+				},
+				{
+					label: 'Rezervováno vámi',
+					role: WISHLIST_ROLES.visitor,
+					overrides: { reservedCount: 1, isFullyReserved: true, myReservationId: 'mine' },
+				},
+				{
+					label: 'Rezervoval(a) Jana',
+					role: WISHLIST_ROLES.moderator,
+					overrides: { reservedCount: 1, isFullyReserved: true, reserverNames: ['Jana'] },
+				},
+				{
+					label: 'Přijato',
+					role: WISHLIST_ROLES.visitor,
+					overrides: { received: true },
+				},
+			])(
+				'wraps $label only between words, inside the image, clear of Like and roomy arrows',
+				async ({ label, role, overrides }) => {
+					await page.viewport(1280, 900);
+					const host = document.createElement('div');
+					host.style.width = `${width}px`;
+					document.body.appendChild(host);
+					fixedHosts.add(host);
+					await render(
+						GiftCardTestHost,
+						{
+							gift: galleryGift(3, { likeCount: 12, ...overrides }),
+							role,
+							isArchived: false,
+							onmore: () => {},
+							onreceived: () => {},
+						},
+						{ baseElement: host },
+					);
+					await document.fonts.ready;
+
+					const pill = [
+						...host.querySelectorAll<HTMLElement>(
+							'[data-testid="gift-state-overlay"] > span',
+						),
+					].find((candidate) => candidate.textContent === label);
+					expect(pill, `pill „${label}“`).toBeDefined();
+					const text = pill!.firstChild!;
+					let wordStart = 0;
+					for (const word of label.split(' ')) {
+						const range = document.createRange();
+						range.setStart(text, wordStart);
+						range.setEnd(text, wordStart + word.length);
+						expect(range.getClientRects(), `„${word}“ stays on one line`).toHaveLength(
+							1,
+						);
+						wordStart += word.length + 1;
+					}
+
+					const pillRect = pill!.getBoundingClientRect();
+					const frameRect = host
+						.querySelector<HTMLElement>('[data-testid="gift-card-image-frame"]')!
+						.getBoundingClientRect();
+					expectPixelsAtLeast(pillRect.left, frameRect.left);
+					expectPixelsAtMost(pillRect.right, frameRect.right);
+					for (const likePart of host.querySelectorAll<HTMLElement>(
+						'[data-like-heart], [data-like-count]',
+					)) {
+						expectRectanglesSeparated(likePart.getBoundingClientRect(), pillRect);
+					}
+					if (width >= 280) {
+						expectRectanglesSeparated(
+							arrow(host, 'next')!.getBoundingClientRect(),
+							pillRect,
+						);
+					}
+				},
+			);
+		},
+	);
 
 	it.each([MOBILE_TWO_COLUMN_CARD_WIDTH, 280])(
 		'keeps the six-dot indicator clear of the priority badge on a %ipx card',

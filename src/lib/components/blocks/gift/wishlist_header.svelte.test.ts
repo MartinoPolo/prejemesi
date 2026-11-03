@@ -150,6 +150,123 @@ describe('WishlistHeader responsive presentation', () => {
 		}
 	});
 
+	it.each([
+		{ width: 320, actionsBesideCopy: false },
+		{ width: 359, actionsBesideCopy: false },
+		{ width: 360, actionsBesideCopy: true },
+		{ width: 375, actionsBesideCopy: true },
+	])(
+		'keeps every mobile title word whole and clear of the hero actions at $width px',
+		async ({ width, actionsBesideCopy }) => {
+			await page.viewport(width, 720);
+			const pageHost = document.createElement('div');
+			pageHost.style.paddingInline = 'var(--page-gutter)';
+			document.body.appendChild(pageHost);
+			const title = 'Vánoce 2026';
+			try {
+				for (const heroFrame of HERO_FRAMES) {
+					const screen = await render(
+						WishlistHeader,
+						{
+							...baseProps,
+							title,
+							recipientDisplayName: 'Martin Novák',
+							description: null,
+							heroFrame,
+							occasion: 'christmas' as const,
+							eventDate: daysFromNow(51),
+						},
+						{ baseElement: pageHost },
+					);
+					await document.fonts.ready;
+					const hero = screen.getByTestId('wishlist-mobile-hero').element();
+					const heading = screen
+						.getByRole('heading', { level: 1, name: title })
+						.element() as HTMLElement;
+					const copyBoxes = [
+						screen.getByTestId('wishlist-mobile-recipient').element(),
+						heading,
+						screen.getByTestId('wishlist-mobile-meta').element(),
+					].map((element) => element.getBoundingClientRect());
+					const actionsBox = hero
+						.querySelector('[data-testid="wishlist-header-actions"]')!
+						.getBoundingClientRect();
+					const heroBox = hero.getBoundingClientRect();
+
+					expect(heading.scrollWidth, `${heroFrame} title clipped`).toBeLessThanOrEqual(
+						heading.clientWidth,
+					);
+					const text = heading.firstChild!;
+					const titleStart = text.textContent!.indexOf(title);
+					let wordStart = titleStart;
+					for (const word of title.split(' ')) {
+						const range = document.createRange();
+						range.setStart(text, wordStart);
+						range.setEnd(text, wordStart + word.length);
+						expect(range.getClientRects(), `${heroFrame} „${word}“`).toHaveLength(1);
+						wordStart += word.length + 1;
+					}
+					for (const copyBox of copyBoxes) {
+						expectRectanglesSeparated(actionsBox, copyBox);
+						if (actionsBesideCopy) {
+							expectPixelsAtLeast(actionsBox.left, copyBox.right);
+						} else {
+							expectPixelsAtMost(actionsBox.bottom, copyBox.top);
+						}
+					}
+					expectPixelsAtLeast(actionsBox.left, heroBox.left);
+					expectPixelsAtMost(actionsBox.right, heroBox.right);
+					await screen.unmount();
+				}
+			} finally {
+				pageHost.remove();
+			}
+		},
+	);
+
+	it('breaks a single mobile title word too long for the copy column instead of clipping it at 320 px', async () => {
+		await page.viewport(320, 720);
+		const pageHost = document.createElement('div');
+		pageHost.style.paddingInline = 'var(--page-gutter)';
+		document.body.appendChild(pageHost);
+		const title = 'Nejneobhospodařovávatelnějšími';
+		try {
+			for (const heroFrame of HERO_FRAMES) {
+				const screen = await render(
+					WishlistHeader,
+					{ ...baseProps, title, description: null, heroFrame },
+					{ baseElement: pageHost },
+				);
+				await document.fonts.ready;
+				const heroBox = screen
+					.getByTestId('wishlist-mobile-hero')
+					.element()
+					.getBoundingClientRect();
+				const heading = screen
+					.getByRole('heading', { level: 1, name: title })
+					.element() as HTMLElement;
+				const headingBox = heading.getBoundingClientRect();
+
+				expect(heading.scrollWidth, `${heroFrame} title clipped`).toBeLessThanOrEqual(
+					heading.clientWidth,
+				);
+				expectPixelsAtMost(headingBox.right, heroBox.right, `${heroFrame} title box`);
+				const text = heading.firstChild!;
+				const titleRange = document.createRange();
+				const titleStart = text.textContent!.indexOf(title);
+				titleRange.setStart(text, titleStart);
+				titleRange.setEnd(text, titleStart + title.length);
+				for (const lineBox of titleRange.getClientRects()) {
+					expectPixelsAtLeast(lineBox.left, headingBox.left, `${heroFrame} title line`);
+					expectPixelsAtMost(lineBox.right, headingBox.right, `${heroFrame} title line`);
+				}
+				await screen.unmount();
+			}
+		} finally {
+			pageHost.remove();
+		}
+	});
+
 	it('opens hero More with the shared inset Wishlist bottom-sheet geometry', async () => {
 		await page.viewport(390, 720);
 		const screen = await render(WishlistHeader, baseProps);
