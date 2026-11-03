@@ -33,7 +33,7 @@ export const badgeVariants = tv({
 			overlay: `${badgeShape} border-ink shadow-sticker-sm`,
 		},
 		size: {
-			default: 'h-5 px-1.75 text-[11px]',
+			default: 'h-5.5 px-2 text-(length:--text-xs)',
 			/** Matches Button `sm` metrics — for prominent chips (e.g. wishlist header meta row). */
 			lg: 'h-(--size-control-sm) gap-1.5 px-2.5 text-(length:--text-sm) [&_[data-icon]]:size-3.5',
 		},
