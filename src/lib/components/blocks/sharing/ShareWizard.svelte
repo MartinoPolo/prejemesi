@@ -153,7 +153,7 @@
 
 		<!-- Step Progress Indicator -->
 		<div class="shrink-0 {styles.progressBar()}" data-testid="share-wizard-stepper">
-			<div class={styles.step()}>
+			<div class={styles.step()} aria-current={step1State === 'active' ? 'step' : undefined}>
 				<div class="{styles.stepDot()} {getDotClass(step1State)}">
 					{#if step1State === 'done'}
 						<CheckIcon class="size-2.5" />
@@ -166,7 +166,7 @@
 			<div
 				class={connector1State === 'done' ? styles.connectorDone() : styles.connector()}
 			></div>
-			<div class={styles.step()}>
+			<div class={styles.step()} aria-current={step2State === 'active' ? 'step' : undefined}>
 				<div class="{styles.stepDot()} {getDotClass(step2State)}">
 					{#if step2State === 'done'}
 						<CheckIcon class="size-2.5" />
@@ -179,7 +179,7 @@
 			<div
 				class={connector2State === 'done' ? styles.connectorDone() : styles.connector()}
 			></div>
-			<div class={styles.step()}>
+			<div class={styles.step()} aria-current={step3State === 'active' ? 'step' : undefined}>
 				<div class="{styles.stepDot()} {getDotClass(step3State)}">
 					{#if step3State === 'done'}
 						<CheckIcon class="size-2.5" />
