@@ -3,8 +3,9 @@
 	import * as ToggleGroup from '$lib/components/base/toggle-group/index.js';
 	import { cn } from '$lib/utils.js';
 	import {
-		SEGMENTED_TOGGLE_WIDTH_CONTEXT,
+		SEGMENTED_TOGGLE_CONTEXT,
 		segmentedToggleVariants,
+		type SegmentedToggleContext,
 		type SegmentedTogglePresentation,
 		type SegmentedToggleWidth,
 	} from './segmented_toggle_classes.js';
@@ -38,7 +39,7 @@
 		...restProps
 	}: Props = $props();
 
-	setContext(SEGMENTED_TOGGLE_WIDTH_CONTEXT, () => width);
+	setContext(SEGMENTED_TOGGLE_CONTEXT, (): SegmentedToggleContext => ({ presentation, width }));
 	const styles = $derived(segmentedToggleVariants({ presentation, width }));
 	let selected = $derived(value);
 

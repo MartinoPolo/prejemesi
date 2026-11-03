@@ -997,6 +997,7 @@
 						onValueChange={(control) =>
 							openMobileDisplaySheet(control as OpenDisplayControl)}
 						aria-label={m.gift_display_options()}
+						presentation="tab-bar"
 						width="fill"
 					>
 						<SegmentedToggle.Item value="sort" data-testid="mobile-sheet-sort-switch"

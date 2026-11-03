@@ -42,8 +42,8 @@
 		);
 	};
 
-	const playFillSharesTray = async ({ canvasElement }: { canvasElement: HTMLElement }) => {
-		const tray = within(canvasElement).getByRole('group', { name: 'Display section' });
+	const playOptionsShareContainer = async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+		const tray = within(canvasElement).getByRole('group');
 		const container = tray.parentElement!;
 		const containerStyle = getComputedStyle(container);
 		const containerContentWidth =
@@ -74,7 +74,8 @@
 	let keyboardValue = $state('grid');
 	let responsiveValue = $state('grid');
 	let stretchingParentValue = $state('upload');
-	let fillValue = $state('sort');
+	let fillValue = $state('self');
+	let tabBarValue = $state('filter');
 	let motionValues = $state<Record<string, string>>(
 		Object.fromEntries(
 			SEGMENTED_TOGGLE_PRESENTATIONS.map((presentation) => [presentation, 'short']),
@@ -213,13 +214,31 @@
 	{/snippet}
 </Story>
 
-<Story name="Fill width [play: options share the tray]" play={playFillSharesTray}>
+<Story name="Fill width [play: options share the tray]" play={playOptionsShareContainer}>
 	{#snippet template(args: SegmentedToggleArgs)}
-		<div class="w-80 border-t border-border p-2">
+		<div class="w-96">
 			<SegmentedToggle.Root
 				bind:value={fillValue}
+				aria-label="Recipient"
+				{...args}
+				width="fill"
+			>
+				<SegmentedToggle.Item value="self">For me</SegmentedToggle.Item>
+				<SegmentedToggle.Item value="other">For someone else</SegmentedToggle.Item>
+			</SegmentedToggle.Root>
+		</div>
+	{/snippet}
+</Story>
+
+<!-- The mobile Display sheet switches its sections with a tab bar along the sheet's footer. -->
+<Story name="Tab bar [play: options share the bar]" play={playOptionsShareContainer}>
+	{#snippet template(args: SegmentedToggleArgs)}
+		<div class="w-90 border-t border-border p-2">
+			<SegmentedToggle.Root
+				bind:value={tabBarValue}
 				aria-label="Display section"
 				{...args}
+				presentation="tab-bar"
 				width="fill"
 			>
 				<SegmentedToggle.Item value="sort">

@@ -41,13 +41,15 @@ function expectShippedSelectedFacePaint(
 	const indicatorStyle = getComputedStyle(selectionIndicatorOf(group));
 	const ink = resolveCssValue(context, 'color', 'var(--ink)');
 
+	const selectedFill = presentation === 'tab-bar' ? 'var(--accent)' : 'var(--card)';
+
 	expect(indicatorStyle.backgroundColor).toBe(
-		resolveCssValue(context, 'background-color', 'var(--card)'),
+		resolveCssValue(context, 'background-color', selectedFill),
 	);
 	expect(indicatorStyle.borderTopLeftRadius).toBe(
 		getComputedStyle(selectedItem).borderTopLeftRadius,
 	);
-	if (presentation === 'default') {
+	if (presentation !== 'connected') {
 		expect(indicatorStyle.outlineStyle).toBe('solid');
 		expect(indicatorStyle.outlineWidth).toBe('2px');
 		expect(indicatorStyle.outlineOffset).toBe('-2px');
@@ -213,6 +215,55 @@ describe('SegmentedToggle tray', () => {
 			expect(style.scale).toBe('none');
 			expect(style.transform).toBe('none');
 		}
+		await screen.unmount();
+	});
+});
+
+/** Paints a CSS colour so colours serialized in different spaces compare as pixels. */
+function canvasColor(color: string): number[] {
+	const canvas = document.createElement('canvas');
+	canvas.width = canvas.height = 1;
+	const context = canvas.getContext('2d')!;
+	context.fillStyle = color;
+	context.fillRect(0, 0, 1, 1);
+	return [...context.getImageData(0, 0, 1, 1).data];
+}
+
+describe('SegmentedToggle tab-bar presentation', () => {
+	it('lays its options out without a tray', async () => {
+		const { screen, group } = await renderToggle('tab-bar');
+		const groupStyle = getComputedStyle(group);
+
+		expect(groupStyle.backgroundColor).toBe('rgba(0, 0, 0, 0)');
+		expect(groupStyle.paddingLeft).toBe('0px');
+		expect(groupStyle.columnGap).toBe(resolveCssValue(group, 'column-gap', '0.25rem'));
+		await screen.unmount();
+	});
+
+	it('mutes unselected options', async () => {
+		const { screen, group, radios } = await renderToggle('tab-bar');
+		const unselectedSurface = radios[1].querySelector<HTMLElement>('.elevation-surface')!;
+		// An earlier test may have left the pointer resting where this option renders.
+		await userEvent.unhover(radios[1]);
+
+		expect(canvasColor(getComputedStyle(unselectedSurface).color)).toEqual(
+			canvasColor(resolveCssValue(group, 'color', 'var(--muted-foreground)')),
+		);
+		await screen.unmount();
+	});
+
+	it('paints the accent face with an ink outline on the selected option before the slide places', async () => {
+		const { screen, group, radios } = await renderToggle('tab-bar');
+		group.removeAttribute('data-selection-placed');
+		const selectedStyle = getComputedStyle(radios[0]);
+
+		expect(selectedStyle.backgroundColor).toBe(
+			resolveCssValue(group, 'background-color', 'var(--accent)'),
+		);
+		expect(selectedStyle.outlineStyle).toBe('solid');
+		expect(selectedStyle.outlineWidth).toBe('2px');
+		expect(selectedStyle.outlineOffset).toBe('-2px');
+		expect(selectedStyle.outlineColor).toBe(resolveCssValue(group, 'color', 'var(--ink)'));
 		await screen.unmount();
 	});
 });

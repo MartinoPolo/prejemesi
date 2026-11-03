@@ -18,6 +18,15 @@ export const segmentedToggleVariants = tv({
 				root: "segmented-toggle-connected relative isolate bg-transparent before:pointer-events-none before:absolute before:inset-0 before:z-0 before:rounded-btn before:bg-accent before:shadow-elevation-ordinary before:content-['']",
 				indicator: 'border-(length:--border-w) border-solid border-ink',
 			},
+			/**
+			 * A bar of equal options that switches between panels, such as a sheet's sections: no tray,
+			 * the selected option gets the accent face with an ink outline.
+			 */
+			'tab-bar': {
+				root: 'gap-1 bg-transparent p-0',
+				item: 'data-[state=on]:bg-accent',
+				indicator: 'bg-accent outline-2 outline-offset-[-2px] outline-ink outline-solid',
+			},
 		},
 		width: {
 			/** The tray hugs its options. */
@@ -36,11 +45,16 @@ export const segmentedToggleVariants = tv({
 	},
 });
 
-/** Lets items follow their tray's `width` without repeating it on every item. */
-export const SEGMENTED_TOGGLE_WIDTH_CONTEXT = Symbol('segmented-toggle-width');
+/** Lets items follow their tray's `presentation` and `width` without repeating them on every item. */
+export const SEGMENTED_TOGGLE_CONTEXT = Symbol('segmented-toggle');
 
 export type SegmentedTogglePresentation =
 	keyof typeof segmentedToggleVariants.variants.presentation;
+
+export interface SegmentedToggleContext {
+	presentation: SegmentedTogglePresentation;
+	width: SegmentedToggleWidth;
+}
 export const SEGMENTED_TOGGLE_PRESENTATIONS = Object.keys(
 	segmentedToggleVariants.variants.presentation,
 ) as SegmentedTogglePresentation[];
