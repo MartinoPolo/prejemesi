@@ -1,4 +1,5 @@
 import { tv } from 'tailwind-variants';
+import type { HTMLOlAttributes } from 'svelte/elements';
 
 export const stepperVariants = tv({
 	slots: {
@@ -40,7 +41,11 @@ export function stepProgress(stepIndex: number, currentStepIndex: number): StepP
 	return stepIndex === currentStepIndex ? 'current' : 'upcoming';
 }
 
-export interface StepperProps {
+/** Extra attributes such as `data-testid` land on the step list; its look stays fixed. */
+export interface StepperProps extends Omit<
+	HTMLOlAttributes,
+	'children' | 'class' | 'style' | 'aria-label'
+> {
 	/** Visible step names, in order. */
 	stepLabels: readonly string[];
 	/** Zero-based index of the step the user is on. */

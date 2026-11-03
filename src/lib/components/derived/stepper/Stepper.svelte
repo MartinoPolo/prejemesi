@@ -2,12 +2,18 @@
 	import CheckIcon from '@lucide/svelte/icons/check';
 	import { stepperVariants, stepProgress, type StepperProps } from './stepper_variants.js';
 
-	let { stepLabels, currentStepIndex, label, ref = $bindable(null) }: StepperProps = $props();
+	let {
+		stepLabels,
+		currentStepIndex,
+		label,
+		ref = $bindable(null),
+		...restProps
+	}: StepperProps = $props();
 
 	const styles = stepperVariants();
 </script>
 
-<ol bind:this={ref} class={styles.root()} aria-label={label} data-slot="stepper">
+<ol bind:this={ref} class={styles.root()} aria-label={label} data-slot="stepper" {...restProps}>
 	{#each stepLabels as stepLabel, index (index)}
 		{@const progress = stepProgress(index, currentStepIndex)}
 		{@const stepStyles = stepperVariants({ progress })}
