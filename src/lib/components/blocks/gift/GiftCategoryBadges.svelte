@@ -1,7 +1,10 @@
 <script lang="ts">
 	import * as m from '$lib/paraglide/messages.js';
-	import { badgeVariants } from '$lib/components/base/badge/index.js';
-	import { OverflowChips } from '$lib/components/derived/overflow-chips/index.js';
+	import {
+		OverflowChips,
+		overflowMoreChipClass,
+	} from '$lib/components/derived/overflow-chips/index.js';
+	import { cn } from '$lib/utils.js';
 	import type { PublicGiftCategory } from '$lib/modules/gift-categories/types.js';
 	import { labelForGiftCategory } from '$lib/modules/gift-categories/types.js';
 	import { getLocale } from '$lib/paraglide/runtime.js';
@@ -88,7 +91,7 @@
 						class="max-w-none"
 					/>
 				{/each}
-				<span class={badgeVariants({ tone: 'neutral' })}>+{categories.length - 1}</span>
+				<span class={cn(overflowMoreChipClass)}>+{categories.length - 1}</span>
 			</div>
 		</div>
 

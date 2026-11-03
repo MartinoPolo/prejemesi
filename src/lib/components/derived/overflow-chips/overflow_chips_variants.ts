@@ -1,14 +1,23 @@
 import type { Snippet } from 'svelte';
 import type { HTMLAttributes } from 'svelte/elements';
 import { tv } from 'tailwind-variants';
-import { badgeVariants } from '$lib/components/base/badge/index.js';
+import { badgeShape } from '$lib/components/base/badge/index.js';
+
+/**
+ * "+N" is one more chip of the row, not a counter: it takes the chips' shape, type and ink text so
+ * it reads at the same height and baseline as the chips beside it.
+ */
+export const overflowMoreChipClass = [
+	badgeShape,
+	'inline-flex shrink-0 items-center border-ink bg-card px-2 py-0.5 text-xs leading-4 font-extrabold whitespace-nowrap text-foreground tabular-nums',
+];
 
 export const overflowChipsVariants = tv({
 	slots: {
 		root: 'flex min-w-0 gap-1',
-		moreChip: badgeVariants({ tone: 'neutral' }),
+		moreChip: overflowMoreChipClass,
 		moreTrigger: [
-			badgeVariants({ tone: 'neutral' }),
+			overflowMoreChipClass,
 			'cursor-pointer hover:bg-[color-mix(in_oklab,var(--brand)_12%,var(--card))] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
 		],
 		popover: 'w-max max-w-[min(18rem,calc(100vw-1rem))] min-w-0',
@@ -17,7 +26,7 @@ export const overflowChipsVariants = tv({
 	variants: {
 		layout: {
 			/** "+N" follows the visible chips on the same line, as tall as the row's chips. */
-			inline: { root: 'items-stretch', moreChip: 'h-auto', moreTrigger: 'h-auto' },
+			inline: { root: 'items-stretch' },
 			/** The visible chips take the whole line and "+N" drops below them. */
 			stacked: { root: 'flex-col items-start' },
 		},
