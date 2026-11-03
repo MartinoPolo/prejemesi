@@ -1030,7 +1030,7 @@
 		: m.wishlist_revert_confirm_clean_description()}
 	confirmLabel={m.wishlist_revert_confirm_action()}
 	pendingLabel={m.wishlist_reverting()}
-	confirmIntent={revertCancelsReservations ? 'primary-destructive' : 'danger'}
+	confirmIntent="primary-destructive"
 	pending={reverting}
 	onconfirm={handleRevertConfirmed}
 />

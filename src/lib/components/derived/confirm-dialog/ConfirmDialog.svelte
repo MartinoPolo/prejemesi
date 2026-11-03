@@ -3,15 +3,16 @@
 	import type { Dialog as DialogPrimitive } from 'bits-ui';
 	import { asExhaustiveArray } from '$lib/utils/variants.js';
 
+	import type { DialogContentSize } from '$lib/components/base/dialog/dialog_variants.js';
+
 	/**
-	 * The confirm button's intent, picked by the action's consequence: `primary-destructive` when it
-	 * cannot be undone, `danger` when it can be undone or only discards a draft, `primary` when safe.
+	 * The confirm is the dialog's one solid button: `primary-destructive` when it discards or deletes
+	 * anything, `primary` when it is safe.
 	 */
-	export type ConfirmIntent = 'primary-destructive' | 'danger' | 'primary';
+	export type ConfirmIntent = 'primary-destructive' | 'primary';
 
 	export const CONFIRM_INTENTS = asExhaustiveArray<ConfirmIntent>()([
 		'primary-destructive',
-		'danger',
 		'primary',
 	]);
 
@@ -36,6 +37,8 @@
 		oncancel?: () => void;
 		/** Extra body content between the description and the actions. */
 		children?: Snippet;
+		/** Widen past `md` when the title would otherwise wrap beside the close button. */
+		size?: DialogContentSize;
 	}
 </script>
 
@@ -58,6 +61,7 @@
 		onconfirm,
 		oncancel,
 		children,
+		size = 'md',
 		...contentProps
 	}: ConfirmDialogProps = $props();
 
@@ -77,7 +81,7 @@
 </script>
 
 <Dialog.Root bind:open={() => open, requestOpenChange}>
-	<Dialog.Content bind:ref={contentRef} size="md" showCloseButton={!busy} {...contentProps}>
+	<Dialog.Content bind:ref={contentRef} {size} showCloseButton={!busy} {...contentProps}>
 		<Dialog.Header>
 			<Dialog.Title>{title}</Dialog.Title>
 			<Dialog.Description>{description}</Dialog.Description>

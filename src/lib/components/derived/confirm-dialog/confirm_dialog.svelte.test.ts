@@ -27,7 +27,6 @@ const APP_LABEL_PAIRS: ReadonlyArray<readonly [cancel: () => string, confirm: ()
 /** The face paint each confirm intent must show, as resolved colour tokens. */
 const INTENT_FACES: Record<ConfirmIntent, { background: string; border: string }> = {
 	primary: { background: '--primary', border: '--ink' },
-	danger: { background: '--card', border: '--status-danger' },
 	'primary-destructive': { background: '--status-danger-fill', border: '--ink' },
 };
 

@@ -4,9 +4,9 @@
 	import { CONFIRM_INTENTS, ConfirmDialog } from './index.js';
 
 	/**
-	 * One confirm dialog for every "are you sure?" question. Pick `confirmIntent` by the action's
-	 * consequence: `primary-destructive` (solid red) when it cannot be undone, `danger` (red outline)
-	 * when it can be undone or only discards a draft, `primary` when it is safe. The confirm label
+	 * One confirm dialog for every "are you sure?" question. The confirm is the dialog's one solid
+	 * button, rightmost: `primary-destructive` (solid red) when it discards or deletes anything,
+	 * `primary` when it is safe. The confirm label
 	 * names the action and carries no icon; while the action runs it shows a spinner and both
 	 * buttons lock.
 	 */
@@ -64,7 +64,7 @@
 	import { Button } from '$lib/components/base/button/index.js';
 
 	let irreversibleOpen = $state(false);
-	let reversibleOpen = $state(false);
+	let wideDiscardOpen = $state(false);
 	let safeOpen = $state(false);
 
 	function runForAMoment() {
@@ -80,18 +80,20 @@
 </Story>
 
 <Story
-	name="Reversible"
+	name="Wide Discard"
 	args={{
-		title: 'Vrátit seznam do konceptu?',
-		description: 'Seznam se vrátí do konceptu a ostatní ho neuvidí, dokud ho znovu nesdílíte.',
-		confirmLabel: 'Vrátit do konceptu',
+		title: 'Zavřít bez zkopírování?',
+		description: 'Token už nezobrazíme. Pokud si ho neuložíte, vytvořte později nový.',
+		confirmLabel: 'Přesto zavřít',
+		cancelLabel: 'Zpět',
 		pendingLabel: undefined,
-		confirmIntent: 'danger',
+		confirmIntent: 'primary-destructive',
+		size: 'lg',
 	}}
 >
 	{#snippet template(args)}
-		<Button onclick={() => (reversibleOpen = true)}>Open</Button>
-		<ConfirmDialog {...args} bind:open={reversibleOpen} onconfirm={runForAMoment} />
+		<Button onclick={() => (wideDiscardOpen = true)}>Open</Button>
+		<ConfirmDialog {...args} bind:open={wideDiscardOpen} onconfirm={runForAMoment} />
 	{/snippet}
 </Story>
 

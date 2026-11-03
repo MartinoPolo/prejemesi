@@ -77,7 +77,8 @@
 <Dialog.Root bind:open={() => open, handleOpenChange}>
 	<Dialog.Content bind:ref={contentRef} size="md" showCloseButton={!lock.busy} {onCloseAutoFocus}>
 		{#if pickedReservation !== null}
-			<div data-testid="release-reservation-confirm">
+			<!-- Repeats the dialog's own gap so the actions sit as far below the text as in ConfirmDialog. -->
+			<div data-testid="release-reservation-confirm" class="grid gap-4">
 				<Dialog.Header>
 					<Dialog.Title>{m.reserve_release_confirm_title()}</Dialog.Title>
 					<Dialog.Description class={styles.confirmBody()}>
@@ -96,7 +97,7 @@
 						{m.cancel()}
 					</Button>
 					<Button
-						intent="danger"
+						intent="primary-destructive"
 						disabled={lock.busy}
 						aria-busy={lock.busy}
 						data-testid="release-reservation-confirm-action"

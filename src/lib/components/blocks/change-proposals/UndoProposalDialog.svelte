@@ -27,7 +27,7 @@
 	} = $props();
 </script>
 
-<!-- An explicit reversal keeps the red outline (DECISIONS 2026-09-23). -->
+<!-- Undoing throws the applied changes away, so the confirm is solid red. -->
 <ConfirmDialog
 	bind:open
 	{pending}
@@ -36,7 +36,7 @@
 	cancelLabel={m.change_review_back_short()}
 	{confirmLabel}
 	pendingLabel={m.change_review_undoing()}
-	confirmIntent="danger"
+	confirmIntent="primary-destructive"
 	data-testid={testId}
 	{onconfirm}
 />

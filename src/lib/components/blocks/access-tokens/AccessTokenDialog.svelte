@@ -249,14 +249,15 @@
 			{@render footerActions()}
 		</Dialog.Footer>
 
-		<!-- The secret is shown only once; losing it is recovered by regenerating, so red outline. -->
+		<!-- Closing discards the only copy of the secret, so the confirm is solid red; the wider dialog keeps the title on one line. -->
 		<ConfirmDialog
 			bind:open={closeGuardOpen}
 			title={m.access_tokens_close_guard_title()}
 			description={m.access_tokens_close_guard_description()}
 			cancelLabel={m.access_tokens_back()}
 			confirmLabel={m.access_tokens_close_guard_confirm()}
-			confirmIntent="danger"
+			confirmIntent="primary-destructive"
+			size="lg"
 			data-testid="access-token-close-guard"
 			onconfirm={closeWithoutCopying}
 		/>
