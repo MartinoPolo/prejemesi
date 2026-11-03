@@ -1338,6 +1338,7 @@
 							bind:value={selectedEditorMode}
 							onValueChange={setEditorMode}
 							aria-label={m.image_fit_label()}
+							class="max-w-full flex-wrap"
 						>
 							<SegmentedToggle.Item
 								value={IMAGE_EDITOR_MODES.fill}
@@ -1364,6 +1365,7 @@
 							bind:value={selectedBgColor}
 							onValueChange={setBgColor}
 							aria-label={m.image_background_label()}
+							class="max-w-full flex-wrap"
 						>
 							<SegmentedToggle.Item value="#ffffff" disabled={mutationPending}>
 								{m.image_background_white()}
