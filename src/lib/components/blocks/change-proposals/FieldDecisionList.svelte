@@ -6,6 +6,7 @@
 	import PencilIcon from '@lucide/svelte/icons/pencil';
 	import XIcon from '@lucide/svelte/icons/x';
 	import { Button } from '$lib/components/base/button/index.js';
+	import { HelpText } from '$lib/components/base/help-text/index.js';
 	import { Input } from '$lib/components/base/input/index.js';
 	import * as Select from '$lib/components/base/select/index.js';
 	import { Textarea } from '$lib/components/base/textarea/index.js';
@@ -252,7 +253,9 @@
 					<div class="field-control">
 						{@render editorControl(field, field.editor)}
 						{#if editorInvalid}
-							<p class="field-error" role="alert">{m.change_review_edit_invalid()}</p>
+							<HelpText state="error" role="alert" class="m-0">
+								{m.change_review_edit_invalid()}
+							</HelpText>
 						{/if}
 					</div>
 					<span class="field-edit-actions">
@@ -368,12 +371,6 @@
 		flex: 1 1 220px;
 		gap: var(--space-1);
 		min-width: 0;
-	}
-
-	.field-error {
-		color: var(--status-danger-text);
-		font-size: var(--text-sm);
-		font-weight: 600;
 	}
 
 	.field-edit-actions {

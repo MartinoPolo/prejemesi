@@ -9,6 +9,7 @@
 	import SparklesIcon from '@lucide/svelte/icons/sparkles';
 	import SquarePenIcon from '@lucide/svelte/icons/square-pen';
 	import XIcon from '@lucide/svelte/icons/x';
+	import * as Alert from '$lib/components/base/alert/index.js';
 	import { Badge } from '$lib/components/base/badge/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
 	import * as DropdownMenu from '$lib/components/base/dropdown-menu/index.js';
@@ -270,19 +271,25 @@
 			{@render chatState()}
 		</div>
 		{#if showHint}
-			<div class="hint" role="note">
+			<!-- Compact padding keeps the one-time hint from crowding the panel header. -->
+			<Alert.Root tone="info" class="py-1.5 pr-1 pl-2.5 whitespace-normal">
 				<InfoIcon aria-hidden="true" />
-				<span><strong>{m.chat_fast_forward()}:</strong> {m.chat_fast_forward_hint()}</span>
-				<Button
-					intent="ghost"
-					size="sm"
-					format="icon"
-					aria-label={m.chat_hint_dismiss()}
-					onclick={ondismisshint}
-				>
-					<XIcon />
-				</Button>
-			</div>
+				<Alert.Description>
+					<strong>{m.chat_fast_forward()}:</strong>
+					{m.chat_fast_forward_hint()}
+				</Alert.Description>
+				<Alert.Action>
+					<Button
+						intent="ghost"
+						size="sm"
+						format="icon"
+						aria-label={m.chat_hint_dismiss()}
+						onclick={ondismisshint}
+					>
+						<XIcon />
+					</Button>
+				</Alert.Action>
+			</Alert.Root>
 		{/if}
 	{/if}
 </header>
@@ -408,23 +415,5 @@
 		color: var(--muted-foreground);
 		font-size: var(--text-xs);
 		font-weight: 500;
-	}
-
-	.hint {
-		display: grid;
-		grid-template-columns: auto minmax(0, 1fr) auto;
-		align-items: start;
-		gap: var(--space-2);
-		padding: 6px 4px 6px var(--space-2);
-		border-radius: 10px;
-		background: var(--tint);
-		font-size: var(--text-sm);
-		line-height: 1.4;
-	}
-
-	.hint > :global(svg) {
-		width: 14px;
-		height: 14px;
-		margin-top: 2px;
 	}
 </style>
