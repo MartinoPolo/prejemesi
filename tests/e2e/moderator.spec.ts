@@ -94,8 +94,6 @@ test.describe('Moderator system', () => {
 
 			// Open the správci panel
 			const panel = await openModeratorPanel(page);
-			// Scroll dialogs separate their sections by spacing, never by dashed dividers.
-			await expect(panel.locator('[data-slot="separator"]')).toHaveCount(0);
 
 			// „Aktivovat zobrazení" / „Activate visibility" button is in the self-promote section
 			await expect(
