@@ -7,16 +7,20 @@ export const alertVariants = tv({
 	base: "grid gap-0.5 rounded-[12px] border-[2.5px] border-ink px-4 py-3 text-left text-sm has-[>svg]:grid-cols-[auto_1fr] has-data-[slot=alert-action]:grid-cols-[1fr_auto] has-[>svg]:has-data-[slot=alert-action]:grid-cols-[auto_1fr_auto] has-data-[slot=alert-action]:gap-x-3 has-[>svg]:gap-x-2.5 *:[svg]:row-span-2 *:[svg]:translate-y-0.5 *:[svg]:text-current *:[svg:not([class*='size-'])]:size-4 group/alert relative w-full",
 	variants: {
 		tone: {
-			default: 'bg-tint text-card-foreground',
+			/** Explains or gives context. */
+			info: 'bg-tint text-card-foreground',
+			/** Confirms that something worked. */
 			success:
 				'bg-[color-mix(in_oklab,var(--status-success)_14%,var(--card))] text-card-foreground *:[svg]:text-status-success-text',
-			destructive: 'text-status-danger-text bg-card *:[svg]:text-current',
+			/** The user must act now or lose something. */
 			warning:
 				'border-accent-loud-foreground bg-accent-loud text-accent-loud-foreground font-semibold shadow-sticker-strong *:data-[slot=alert-description]:text-accent-loud-foreground/90 *:[svg]:text-current',
+			/** Reports an error, usually with a Retry action when retryable. */
+			danger: 'bg-[color-mix(in_oklab,var(--status-danger)_14%,var(--card))] text-card-foreground *:[svg]:text-status-danger-text',
 		},
 	},
 	defaultVariants: {
-		tone: 'default',
+		tone: 'info',
 	},
 });
 

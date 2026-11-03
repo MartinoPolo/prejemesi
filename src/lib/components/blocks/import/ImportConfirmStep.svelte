@@ -136,7 +136,7 @@
 
 			<!-- Error state -->
 			{#if isError}
-				<Alert.Root tone="destructive">
+				<Alert.Root tone="danger">
 					<AlertCircleIcon class="size-4" />
 					<Alert.Description
 						>{commitError ?? m.import_wizard_error_commit()}</Alert.Description

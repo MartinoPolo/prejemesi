@@ -103,7 +103,7 @@
 	/>
 	{#if undoBlocked}
 		<OutcomeAlert
-			tone="destructive"
+			tone="danger"
 			icon={TriangleAlertIcon}
 			title={m.change_review_undo_conflict_title()}
 			urgent
@@ -119,7 +119,7 @@
 	{/if}
 {:else if proposal.state === CHANGE_PROPOSAL_STATE.undone && proposal.undoneAt !== null}
 	<OutcomeAlert
-		tone="default"
+		tone="info"
 		icon={Undo2Icon}
 		title={m.change_review_undone_title({
 			date: formatChangeReviewDateTime(proposal.undoneAt),
@@ -139,7 +139,7 @@
 	/>
 {:else if proposal.state === CHANGE_PROPOSAL_STATE.discarded}
 	<OutcomeAlert
-		tone="default"
+		tone="info"
 		icon={InfoIcon}
 		title={m.change_review_discarded_title()}
 		body={m.change_review_discarded_body()}
@@ -157,7 +157,7 @@
 	/>
 {:else if applyFailed}
 	<OutcomeAlert
-		tone="destructive"
+		tone="danger"
 		icon={BanIcon}
 		title={m.change_review_apply_failed_title()}
 		body={m.change_review_apply_failed_body()}

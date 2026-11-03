@@ -330,7 +330,7 @@
 		</div>
 
 		{#if importedUnresolvedCategoryLabels.length > 0}
-			<Alert.Root tone={hasIncompleteCategoryResolution ? 'warning' : 'default'}>
+			<Alert.Root tone={hasIncompleteCategoryResolution ? 'warning' : 'info'}>
 				<AlertCircleIcon class="size-4" />
 				<div class="flex flex-col gap-3">
 					<div>

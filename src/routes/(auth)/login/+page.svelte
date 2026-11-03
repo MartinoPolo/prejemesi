@@ -201,7 +201,7 @@
 
 	{#if unverifiedEmail}
 		{#if resendSent}
-			<Alert.Root tone="default" class="mb-5">
+			<Alert.Root tone="info" class="mb-5">
 				<MailCheckIcon />
 				<Alert.Description>{m.login_resend_success()}</Alert.Description>
 			</Alert.Root>

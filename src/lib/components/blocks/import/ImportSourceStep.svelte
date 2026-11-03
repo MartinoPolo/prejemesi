@@ -125,7 +125,7 @@
 
 	<!-- Error message -->
 	{#if errorMessage}
-		<Alert.Root tone="destructive">
+		<Alert.Root tone="danger">
 			<AlertCircleIcon class="size-4" />
 			<Alert.Description>{errorMessage}</Alert.Description>
 		</Alert.Root>

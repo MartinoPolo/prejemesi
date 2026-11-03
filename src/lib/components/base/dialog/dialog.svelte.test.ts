@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { page } from 'vitest/browser';
 import { render } from 'vitest-browser-svelte';
 import DialogTestFixture from './dialog_test_fixture.svelte';
+import DialogScrollTestFixture from './dialog_scroll_test_fixture.svelte';
 import { expectContentClearsOverlayClose } from './overlay_close_geometry.test_fixtures.js';
 
 afterEach(async () => {
@@ -71,5 +72,56 @@ describe('Dialog title and close button', () => {
 		const style = getComputedStyle(title.element());
 		expect(style.paddingInlineStart).toBe('0px');
 		expect(style.paddingInlineEnd).toBe('0px');
+	});
+});
+
+describe('Dialog scroll layout', () => {
+	function scrollDialogPart(slot: string): HTMLElement {
+		const element = document.querySelector<HTMLElement>(`[data-slot="${slot}"]`);
+		if (element === null) {
+			throw new Error(`Missing ${slot}`);
+		}
+		return element;
+	}
+
+	it('caps the height, pins header and footer, and scrolls only the body', async () => {
+		await page.viewport(390, 844);
+		render(DialogScrollTestFixture, { paragraphCount: 80 });
+		await expect.element(page.getByRole('heading', { name: 'Scrolling dialog' })).toBeVisible();
+		await Promise.all(document.getAnimations().map((animation) => animation.finished));
+		const content = scrollDialogPart('dialog-content');
+		const header = scrollDialogPart('dialog-header');
+		const body = scrollDialogPart('dialog-body');
+		const footer = scrollDialogPart('dialog-footer');
+
+		expect(content.getBoundingClientRect().height).toBeLessThanOrEqual(844 * 0.85 + 1);
+		expect(body.scrollHeight).toBeGreaterThan(body.clientHeight);
+
+		const footerTopBeforeScroll = footer.getBoundingClientRect().top;
+		const headerTopBeforeScroll = header.getBoundingClientRect().top;
+		body.scrollTop = body.scrollHeight;
+		expect(body.scrollTop).toBeGreaterThan(0);
+		expect(footer.getBoundingClientRect().top).toBe(footerTopBeforeScroll);
+		expect(header.getBoundingClientRect().top).toBe(headerTopBeforeScroll);
+		await expect.element(page.getByRole('button', { name: 'Save' })).toBeInViewport();
+	});
+
+	it('tints the footer above one thin border and divides the header only on request', async () => {
+		render(DialogScrollTestFixture, { paragraphCount: 3, divided: true });
+		await expect.element(page.getByRole('heading', { name: 'Scrolling dialog' })).toBeVisible();
+		const footerStyle = getComputedStyle(scrollDialogPart('dialog-footer'));
+
+		expect(footerStyle.borderTopWidth).toBe('1px');
+		expect(footerStyle.borderBottomWidth).toBe('0px');
+		expect(footerStyle.backgroundColor).not.toBe(
+			getComputedStyle(scrollDialogPart('dialog-content')).backgroundColor,
+		);
+		expect(getComputedStyle(scrollDialogPart('dialog-header')).borderBottomWidth).toBe('1px');
+	});
+
+	it('leaves the header without a border by default', async () => {
+		render(DialogScrollTestFixture, { paragraphCount: 3 });
+		await expect.element(page.getByRole('heading', { name: 'Scrolling dialog' })).toBeVisible();
+		expect(getComputedStyle(scrollDialogPart('dialog-header')).borderBottomWidth).toBe('0px');
 	});
 });

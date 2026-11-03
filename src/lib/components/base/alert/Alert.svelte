@@ -5,7 +5,7 @@
 	let {
 		ref = $bindable(null),
 		class: className,
-		tone = 'default',
+		tone = 'info',
 		children,
 		...restProps
 	}: AlertProps = $props();

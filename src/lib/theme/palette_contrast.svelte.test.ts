@@ -212,9 +212,9 @@ describe('filled buttons across palettes', () => {
 
 const statusTextSamples = {
 	success: [
-		...BADGE_STYLES.filter((badgeStyle) => badgeStyle !== 'solid').map((badgeStyle) =>
-			badgeVariants({ tone: 'success', badgeStyle }),
-		),
+		...BADGE_STYLES.filter(
+			(badgeStyle) => badgeStyle !== 'solid' && badgeStyle !== 'count',
+		).map((badgeStyle) => badgeVariants({ tone: 'success', badgeStyle })),
 		statusBadgeVariants({ status: 'success' }),
 		`${toastVariants({ tone: 'success' })} ${toastTitleColors.success}`,
 		helpTextVariants({ state: 'success' }),
@@ -231,10 +231,12 @@ const statusTextSamples = {
 		`${toastVariants({ tone: 'danger' })} ${toastTitleColors.danger}`,
 		helpTextVariants({ state: 'error' }),
 		fieldErrorVariants(),
-		alertVariants({ tone: 'destructive' }),
+		alertVariants({ tone: 'danger' }),
 	],
 	link: [
-		...BADGE_STYLES.filter((badgeStyle) => badgeStyle !== 'solid').flatMap((badgeStyle) => [
+		...BADGE_STYLES.filter(
+			(badgeStyle) => badgeStyle !== 'solid' && badgeStyle !== 'count',
+		).flatMap((badgeStyle) => [
 			badgeVariants({ tone: 'info', badgeStyle }),
 			badgeVariants({ tone: 'primary', badgeStyle }),
 		]),

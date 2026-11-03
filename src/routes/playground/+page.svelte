@@ -151,7 +151,7 @@
 						>This is an informational alert using the default variant.</Alert.Description
 					>
 				</Alert.Root>
-				<Alert.Root tone="destructive">
+				<Alert.Root tone="danger">
 					<TriangleAlertIcon size={16} />
 					<Alert.Title>Error</Alert.Title>
 					<Alert.Description

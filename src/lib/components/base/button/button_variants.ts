@@ -46,6 +46,11 @@ export const buttonVariants = tv({
 				surface:
 					'bg-transparent text-muted-foreground group-hover:bg-accent group-hover:text-foreground',
 			},
+			/** A quiet removal action in a row, such as removing a moderator or revoking an invite. */
+			'ghost-danger': {
+				surface:
+					'bg-transparent text-status-danger-text group-hover:bg-accent group-hover:text-status-danger-text',
+			},
 			'ghost-overlay': {
 				surface:
 					'bg-transparent text-current opacity-60 group-hover:opacity-90 group-hover:bg-[color-mix(in_oklab,currentColor_10%,transparent)]',
