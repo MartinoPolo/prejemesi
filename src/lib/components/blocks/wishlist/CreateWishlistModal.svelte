@@ -16,7 +16,7 @@
 	import RecipientPreview from './RecipientPreview.svelte';
 	import WishlistPalettePicker from './WishlistPalettePicker.svelte';
 	import CreateWishlistOccasionSection from './CreateWishlistOccasionSection.svelte';
-	import LoaderIcon from '@lucide/svelte/icons/loader';
+	import { Spinner } from '$lib/components/base/spinner/index.js';
 	import FileUpIcon from '@lucide/svelte/icons/file-up';
 	import SlidersHorizontalIcon from '@lucide/svelte/icons/sliders-horizontal';
 	import { createWishlist } from '$lib/modules/wishlists/wishlists.remote.js';
@@ -380,7 +380,7 @@
 				</Button>
 				<Button type="submit" size="lg" disabled={isSubmitting}>
 					{#if isSubmitting}
-						<LoaderIcon class="animate-spin" data-icon="inline-start" />
+						<Spinner data-icon="inline-start" />
 						{m.creating()}
 					{:else}
 						{m.create()}

@@ -14,7 +14,7 @@
 	} from '$lib/modules/access_tokens/index.js';
 	import BanIcon from '@lucide/svelte/icons/ban';
 	import CheckIcon from '@lucide/svelte/icons/check';
-	import LoaderIcon from '@lucide/svelte/icons/loader';
+	import { Spinner } from '$lib/components/base/spinner/index.js';
 	import RefreshCwIcon from '@lucide/svelte/icons/refresh-cw';
 
 	interface TokenRegenerateDialogProps {
@@ -108,7 +108,7 @@
 			</Button>
 			<Button disabled={pending} onclick={confirm}>
 				{#if pending}
-					<LoaderIcon class="animate-spin" data-icon="inline-start" />
+					<Spinner data-icon="inline-start" />
 					{m.access_tokens_regenerating()}
 				{:else}
 					<RefreshCwIcon data-icon="inline-start" />

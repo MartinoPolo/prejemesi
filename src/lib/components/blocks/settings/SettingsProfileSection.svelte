@@ -7,6 +7,7 @@
 	import { Label } from '$lib/components/base/label/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
 	import { Separator } from '$lib/components/base/separator/index.js';
+	import { Spinner } from '$lib/components/base/spinner/index.js';
 	import ImageUpload from '$lib/components/derived/image-upload/ImageUpload.svelte';
 	import ImageFrame from '$lib/components/derived/image-frame/ImageFrame.svelte';
 	import { untrack } from 'svelte';
@@ -154,10 +155,11 @@
 								onclick={handleFetchGoogleAvatar}
 								disabled={fetchingGoogle}
 							>
-								<RefreshCwIcon
-									data-icon="inline-start"
-									class={fetchingGoogle ? 'animate-spin' : undefined}
-								/>
+								{#if fetchingGoogle}
+									<Spinner data-icon="inline-start" />
+								{:else}
+									<RefreshCwIcon data-icon="inline-start" />
+								{/if}
 								{fetchingGoogle
 									? m.settings_avatar_fetching_google()
 									: m.settings_avatar_use_google()}

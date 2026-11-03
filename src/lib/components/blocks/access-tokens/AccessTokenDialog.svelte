@@ -25,7 +25,7 @@
 		type AgentScope,
 	} from '$lib/modules/access_tokens/index.js';
 	import type { CreateAccessTokenInput } from '$lib/modules/access_tokens/types.js';
-	import LoaderIcon from '@lucide/svelte/icons/loader';
+	import { Spinner } from '$lib/components/base/spinner/index.js';
 
 	interface AccessTokenDialogProps {
 		open: boolean;
@@ -177,7 +177,7 @@
 		</Button>
 		<Button disabled={pending} onclick={create}>
 			{#if pending}
-				<LoaderIcon class="animate-spin" data-icon="inline-start" />
+				<Spinner data-icon="inline-start" />
 				{m.access_tokens_creating()}
 			{:else}
 				{m.access_tokens_create()}

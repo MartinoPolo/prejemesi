@@ -5,7 +5,7 @@
 <script lang="ts">
 	import * as m from '$lib/paraglide/messages.js';
 	import { Button } from '$lib/components/base/button/index.js';
-	import LoaderIcon from '@lucide/svelte/icons/loader';
+	import { Spinner } from '$lib/components/base/spinner/index.js';
 
 	interface Props {
 		form?: string;
@@ -39,11 +39,7 @@
 	aria-busy={saving}
 >
 	{#if showPendingIndicator}
-		<LoaderIcon
-			class="animate-spin"
-			data-icon="inline-start"
-			data-testid="save-pending-indicator"
-		/>
+		<Spinner data-icon="inline-start" data-testid="save-pending-indicator" />
 	{/if}
 	{m.save()}
 </Button>

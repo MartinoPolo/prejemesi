@@ -27,7 +27,7 @@
 	import PlusIcon from '@lucide/svelte/icons/plus';
 	import UploadIcon from '@lucide/svelte/icons/upload';
 	import LinkIcon from '@lucide/svelte/icons/link';
-	import LoaderIcon from '@lucide/svelte/icons/loader-circle';
+	import { Spinner } from '$lib/components/base/spinner/index.js';
 
 	interface Props {
 		items: readonly GiftImageStripItem[];
@@ -282,7 +282,7 @@
 		{/each}
 		{#if isAddUploadPending}
 			<li class={styles.pendingTile()} data-testid="gift-image-strip-uploading">
-				<LoaderIcon aria-hidden="true" />
+				<Spinner size="xl" />
 				<span class="sr-only">{m.gift_image_strip_uploading()}</span>
 			</li>
 		{/if}

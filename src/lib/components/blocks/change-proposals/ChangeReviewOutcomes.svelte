@@ -4,10 +4,10 @@
 	import CheckIcon from '@lucide/svelte/icons/check';
 	import HourglassIcon from '@lucide/svelte/icons/hourglass';
 	import InfoIcon from '@lucide/svelte/icons/info';
-	import LoaderIcon from '@lucide/svelte/icons/loader';
 	import TriangleAlertIcon from '@lucide/svelte/icons/triangle-alert';
 	import Undo2Icon from '@lucide/svelte/icons/undo-2';
 	import { Button } from '$lib/components/base/button/index.js';
+	import { Spinner } from '$lib/components/base/spinner/index.js';
 	import {
 		CHANGE_PROPOSAL_STATE,
 		CHANGE_ROW_STATUS,
@@ -74,10 +74,7 @@
 			onclick={onundo}
 		>
 			{#if undoPending}
-				<LoaderIcon
-					class="animate-spin"
-					data-icon="inline-start"
-				/>{m.change_review_undoing()}
+				<Spinner data-icon="inline-start" />{m.change_review_undoing()}
 			{:else}
 				<Undo2Icon data-icon="inline-start" />{m.change_review_undo()}
 			{/if}
