@@ -62,8 +62,11 @@ async function touchTap(target: HTMLElement) {
 	target.click();
 }
 
+/** The "+X" chip's accessible name for any hidden count, which depends on the lane width. */
+const MORE_CHIP_NAME = new RegExp(`^${m.gift_category_more_label({ count: String.raw`\d+` })}$`);
+
 async function moreChip(): Promise<HTMLElement> {
-	const chip = page.getByRole('button', { name: /^Další kategorie: \d+$/ });
+	const chip = page.getByRole('button', { name: MORE_CHIP_NAME });
 	await expect.element(chip).toBeVisible();
 	return chip.element() as HTMLElement;
 }
@@ -101,6 +104,25 @@ describe('WishlistGiftDraggableWrapper — card controls', () => {
 		await expect
 			.element(page.getByRole('dialog', { name: m.gift_category_more_title() }))
 			.toBeVisible();
+		await unmount();
+	});
+
+	it('lets a touch press on any element marked data-prevent-gift-card-open through without opening the gift', async () => {
+		const openDetail = vi.fn();
+		const { unmount } = await render(WishlistGiftDraggableWrapperCategoryTestHost, {
+			...baseProps,
+			reorderEnabled: false,
+			onopendetail: openDetail,
+			preventOpenMarker: true,
+		});
+		await userEvent.click(page.getByRole('button', { name: 'Page popover' }));
+		const pagePopover = page.getByTestId('page-popover');
+		await expect.element(pagePopover).toBeVisible();
+
+		await touchTap(page.getByText('Card marker').element() as HTMLElement);
+
+		await expect.element(pagePopover).not.toBeInTheDocument();
+		expect(openDetail).not.toHaveBeenCalled();
 		await unmount();
 	});
 });

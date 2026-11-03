@@ -102,6 +102,13 @@ function moreButton(count: number) {
 	return page.getByRole('button', { name: m.gift_category_more_label({ count }) });
 }
 
+/** A "+X" button for any hidden count inside `host`. */
+function anyMoreButton(host: HTMLElement) {
+	return page.elementLocator(host).getByRole('button', {
+		name: new RegExp(`^${m.gift_category_more_label({ count: String.raw`\d+` })}$`),
+	});
+}
+
 afterEach(() => {
 	cleanupCardHosts();
 	document.body.querySelectorAll('[data-slot="popover-content"]').forEach((popover) => {
@@ -121,14 +128,14 @@ describe('GiftCategoryBadges', () => {
 		const badges = host.querySelectorAll<HTMLElement>('[data-testid="gift-category-badge"]');
 		expect(badges).toHaveLength(1);
 		expect(getComputedStyle(badges[0]!).webkitLineClamp).toBe('2');
-		expect(host.querySelector('[data-slot="overflow-chips-trigger"]')).toBeNull();
+		expect(anyMoreButton(host).query()).toBeNull();
 	});
 
 	it('shows every category on one line when the lane is wide enough', async () => {
 		const host = await renderGift(categorizedGift(LABELS.slice(0, 2)), { width: 360 });
 
 		await expect.poll(() => visibleBadgeLabels(host)).toEqual(LABELS.slice(0, 2));
-		expect(host.querySelector('[data-slot="overflow-chips-trigger"]')).toBeNull();
+		expect(anyMoreButton(host).query()).toBeNull();
 	});
 
 	it('shows leading one-line badges in order and collapses the rest into "+X" on a narrow card', async () => {

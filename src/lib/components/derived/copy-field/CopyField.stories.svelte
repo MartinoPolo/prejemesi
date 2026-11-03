@@ -42,9 +42,36 @@
 			writeText.mockRestore();
 		}
 	};
+
+	const playClipboardDenied = async ({
+		canvasElement,
+		args,
+	}: {
+		canvasElement: HTMLElement;
+		args: { oncopied?: unknown };
+	}) => {
+		const canvas = within(canvasElement);
+		const field = canvas.getByRole('textbox', { name: 'Odkaz na seznam' }) as HTMLInputElement;
+		const writeText = spyOn(navigator.clipboard, 'writeText').mockRejectedValue(
+			new DOMException('Clipboard access denied', 'NotAllowedError'),
+		);
+		try {
+			await userEvent.click(canvas.getByRole('button', { name: 'Kopírovat' }));
+			await expect(writeText).toHaveBeenCalledOnce();
+			await expect(field.selectionStart).toBe(0);
+			await expect(field.selectionEnd).toBe(field.value.length);
+			await expect(canvas.getByRole('button', { name: 'Kopírovat' })).toBeVisible();
+			await expect(canvas.queryByText('Zkopírováno')).toBeNull();
+			await expect(args.oncopied).not.toHaveBeenCalled();
+		} finally {
+			writeText.mockRestore();
+		}
+	};
 </script>
 
 <Story name="Link" play={playCopy} />
+
+<Story name="Clipboard denied" play={playClipboardDenied} />
 
 <Story
 	name="Secret"

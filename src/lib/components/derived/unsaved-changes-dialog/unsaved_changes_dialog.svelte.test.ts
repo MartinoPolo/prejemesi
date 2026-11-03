@@ -48,6 +48,25 @@ describe('UnsavedChangesDialog actions', () => {
 			}
 		},
 	);
+
+	it('stacks Save on top, then Discard, then Continue editing on a phone', async () => {
+		await page.viewport(390, 800);
+		const screen = await render(UnsavedChangesDialog, {
+			open: true,
+			onsave: noop,
+			ondiscard: noop,
+			oncontinue: noop,
+		});
+		const [saveRect, discardRect, continueRect] = [
+			m.unsaved_changes_save_continue(),
+			m.unsaved_changes_discard(),
+			m.unsaved_changes_continue_editing(),
+		].map((name) =>
+			screen.getByRole('button', { name, exact: true }).element().getBoundingClientRect(),
+		);
+		expect(saveRect!.bottom).toBeLessThanOrEqual(discardRect!.top);
+		expect(discardRect!.bottom).toBeLessThanOrEqual(continueRect!.top);
+	});
 });
 
 describe('UnsavedChangesDialog save', () => {

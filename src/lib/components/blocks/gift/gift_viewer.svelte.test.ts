@@ -1035,7 +1035,10 @@ describe('Gift viewer caption order', () => {
 			(badge) => badge.textContent?.trim(),
 		);
 		expect(badges).toEqual(labels);
-		expect(document.querySelector('[data-slot="overflow-chips-trigger"]')).toBeNull();
+		const anyMoreButton = page.getByRole('button', {
+			name: new RegExp(`^${m.gift_category_more_label({ count: String.raw`\d+` })}$`),
+		});
+		expect(anyMoreButton.query()).toBeNull();
 	});
 });
 

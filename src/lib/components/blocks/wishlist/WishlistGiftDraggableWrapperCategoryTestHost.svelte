@@ -8,15 +8,23 @@
 
 	/**
 	 * Test-only harness: a card wrapper whose content is a category lane that overflows into "+X",
+	 * optionally after a non-button element that only carries `data-prevent-gift-card-open`,
 	 * beside a page popover outside the card.
 	 */
 	type WrapperProps = Omit<ComponentProps<typeof WishlistGiftDraggableWrapper>, 'children'>;
-	let { categories, ...props }: WrapperProps & { categories: PublicGiftCategory[] } = $props();
+	let {
+		categories,
+		preventOpenMarker = false,
+		...props
+	}: WrapperProps & { categories: PublicGiftCategory[]; preventOpenMarker?: boolean } = $props();
 </script>
 
 <ContextMenu.Root>
 	<WishlistGiftDraggableWrapper {...props}>
 		<div class="w-[220px] p-2" data-testid="card-placeholder">
+			{#if preventOpenMarker}
+				<span data-prevent-gift-card-open>Card marker</span>
+			{/if}
 			<GiftCategoryBadges {categories} />
 		</div>
 	</WishlistGiftDraggableWrapper>

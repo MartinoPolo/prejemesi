@@ -218,11 +218,13 @@ const statusTextSamples = {
 		statusBadgeVariants({ status: 'success' }),
 		`${toastVariants({ tone: 'success' })} ${toastTitleColors.success}`,
 		helpTextVariants({ state: 'success' }),
+		alertVariants({ tone: 'success' }),
 	],
 	warning: [
 		...BADGE_STYLES.map((badgeStyle) => badgeVariants({ tone: 'warning', badgeStyle })),
 		statusBadgeVariants({ status: 'warning' }),
 		`${toastVariants({ tone: 'warning' })} ${toastTitleColors.warning}`,
+		alertVariants({ tone: 'warning' }),
 	],
 	danger: [
 		...BADGE_STYLES.map((badgeStyle) => badgeVariants({ tone: 'danger', badgeStyle })),
@@ -244,6 +246,7 @@ const statusTextSamples = {
 		`${toastVariants({ tone: 'loading' })} ${toastTitleColors.loading}`,
 		moderatorPanelVariants().moderatorAvatar(),
 		buttonVariants({ intent: 'link' }).surface(),
+		alertVariants({ tone: 'info' }),
 	],
 };
 
