@@ -478,7 +478,7 @@
 
 		<!-- Name column required warning -->
 		{#if !hasNameColumn}
-			<Alert.Root tone="warning">
+			<Alert.Root tone="warning" role="alert">
 				<AlertCircleIcon class="size-4" />
 				<Alert.Description>{m.import_wizard_name_required()}</Alert.Description>
 			</Alert.Root>

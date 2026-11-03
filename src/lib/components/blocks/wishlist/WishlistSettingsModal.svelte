@@ -992,12 +992,12 @@
 					{@render revertSection()}
 				</div>
 			{:else if isArchived}
-				<Alert.Root tone="info" role="note">
+				<Alert.Root tone="info">
 					<ArchiveIcon aria-hidden="true" />
 					<Alert.Description>{m.wishlist_settings_archived_readonly()}</Alert.Description>
 				</Alert.Root>
 			{:else}
-				<Alert.Root tone="info" role="note">
+				<Alert.Root tone="info">
 					<LockIcon aria-hidden="true" />
 					<Alert.Description>{m.wishlist_settings_owner_only()}</Alert.Description>
 				</Alert.Root>

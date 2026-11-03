@@ -440,7 +440,7 @@
 							</div>
 						</div>
 						<!-- Restriction warning -->
-						<Alert.Root tone="info" role="note">
+						<Alert.Root tone="info">
 							<LockIcon aria-hidden="true" />
 							<Alert.Description>{m.share_permissions_warning()}</Alert.Description>
 						</Alert.Root>

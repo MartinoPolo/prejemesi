@@ -118,7 +118,7 @@
 			{/if}
 
 			{#if serverDuplicateCount > 0}
-				<Alert.Root tone="warning">
+				<Alert.Root tone="warning" role="alert">
 					<AlertTriangleIcon class="size-4" />
 					<Alert.Description>
 						{m.import_wizard_server_duplicates({ count: serverDuplicateCount })}

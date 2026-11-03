@@ -241,7 +241,7 @@
 				     Mirrors the správce-invite generate/email/copy/revoke flow. -->
 					<div class={styles.section()}>
 						<div class={styles.sectionTitle()}>{m.claim_section_title()}</div>
-						<Alert.Root tone="info" role="note">
+						<Alert.Root tone="info">
 							<LinkIcon aria-hidden="true" />
 							<Alert.Title>{m.claim_nudge_title()}</Alert.Title>
 							<Alert.Description>{m.claim_nudge_description()}</Alert.Description>
@@ -436,7 +436,7 @@
 								{m.moderator_reservations_title()}
 							</div>
 
-							<Alert.Root tone="warning" role="note">
+							<Alert.Root tone="warning">
 								<AlertTriangleIcon aria-hidden="true" />
 								<Alert.Title>{m.moderator_see_reservations_title()}</Alert.Title>
 								<Alert.Description>
@@ -461,7 +461,7 @@
 							<div class={styles.sectionTitle()}>
 								{m.moderator_reservations_title()}
 							</div>
-							<Alert.Root tone="info" role="note">
+							<Alert.Root tone="info">
 								<EyeIcon aria-hidden="true" />
 								<Alert.Description
 									>{m.moderator_active_disclosure()}</Alert.Description

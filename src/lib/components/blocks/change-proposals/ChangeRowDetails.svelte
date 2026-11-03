@@ -91,7 +91,7 @@
 {/snippet}
 
 {#if model.consequence !== null}
-	<Alert.Root tone="warning" role="note" class="mb-2" id={consequenceId}>
+	<Alert.Root tone="warning" class="mb-2" id={consequenceId}>
 		<TriangleAlertIcon aria-hidden="true" />
 		<Alert.Description>{@render consequenceText(model.consequence)}</Alert.Description>
 	</Alert.Root>

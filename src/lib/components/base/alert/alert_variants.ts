@@ -28,6 +28,18 @@ export type AlertTone = keyof typeof alertVariants.variants.tone;
 
 export const ALERT_TONES = Object.keys(alertVariants.variants.tone) as AlertTone[];
 
+/**
+ * Default ARIA role per tone: only errors interrupt the screen reader, successes are announced
+ * politely, and static info or warning callouts are read in place. Pass `role="alert"` to a
+ * non-danger callout that appears in response to an action and must be announced.
+ */
+export const ALERT_TONE_ROLES = {
+	danger: 'alert',
+	success: 'status',
+	warning: 'note',
+	info: 'note',
+} as const satisfies Record<AlertTone, string>;
+
 export type AlertProps = WithElementRef<HTMLAttributes<HTMLDivElement>> & {
 	tone?: AlertTone;
 	children?: Snippet;

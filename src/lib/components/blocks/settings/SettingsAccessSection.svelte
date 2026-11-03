@@ -384,7 +384,7 @@
 
 	<Card.Content class="flex flex-col px-(--access-grant-inset)">
 		{#if demo}
-			<Alert.Root tone="info" role="note">
+			<Alert.Root tone="info">
 				<InfoIcon aria-hidden="true" />
 				<Alert.Description id="access-tokens-demo-note">
 					{m.access_tokens_demo()}

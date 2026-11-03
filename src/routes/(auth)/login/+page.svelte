@@ -207,7 +207,7 @@
 				<Alert.Description>{m.login_resend_success()}</Alert.Description>
 			</Alert.Root>
 		{:else}
-			<Alert.Root tone="warning" class="mb-5">
+			<Alert.Root tone="warning" role="alert" class="mb-5">
 				<MailIcon />
 				<Alert.Description>{m.login_error_unverified()}</Alert.Description>
 			</Alert.Root>

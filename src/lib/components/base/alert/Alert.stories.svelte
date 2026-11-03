@@ -19,6 +19,14 @@
 				options: [...ALERT_TONES],
 			},
 		},
+		parameters: {
+			docs: {
+				description: {
+					component:
+						'The tone sets the default role: `danger` is an `alert`, `success` a `status`, and `info` and `warning` a static `note`. Pass `role="alert"` to a non-danger callout that appears in response to an action.',
+				},
+			},
+		},
 	});
 </script>
 

@@ -2446,7 +2446,7 @@
 		<PendingChangesBanner wishlistShortId={shortId} proposals={pendingProposals} />
 	{/if}
 	{#if page.data.demoExpiresAt !== null}
-		<Alert.Root tone="info" role="note">
+		<Alert.Root tone="info">
 			<InfoIcon aria-hidden="true" />
 			<Alert.Description>{m.demo_list_limits()}</Alert.Description>
 		</Alert.Root>
@@ -2526,7 +2526,7 @@
 		/>
 
 		{#if reorderMode && !reorderBaselineVerified}
-			<Alert.Root tone="warning" data-testid="gift-reorder-recovery-notice">
+			<Alert.Root tone="warning" role="alert" data-testid="gift-reorder-recovery-notice">
 				<TriangleAlertIcon />
 				<Alert.Description>
 					{reorderBaselineStatus === REORDER_BASELINE_STATUS.refreshing

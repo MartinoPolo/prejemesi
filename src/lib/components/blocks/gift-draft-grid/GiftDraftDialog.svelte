@@ -118,7 +118,7 @@
 
 		{#if serverDuplicateCount > 0}
 			<div class="shrink-0 px-6 pb-4">
-				<Alert.Root tone="warning">
+				<Alert.Root tone="warning" role="alert">
 					<AlertTriangleIcon class="size-4" />
 					<Alert.Description>
 						{m.batch_add_server_duplicates({ count: serverDuplicateCount })}
