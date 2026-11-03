@@ -20,7 +20,7 @@ import {
 	type GiftReorderPlacementCommitHandler,
 } from './gift_reorder_view.svelte.js';
 
-/** Props shared by the image-bearing gift collections: the Card grid and the List view. */
+/** Props shared by the gift collections: the Card grid and the List view. */
 export interface WishlistGiftCollectionProps {
 	sections: GiftSection[];
 	role: WishlistRole;
