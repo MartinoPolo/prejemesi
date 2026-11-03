@@ -7,6 +7,7 @@ import {
 	DEFAULT_PIXEL_TOLERANCE,
 } from '../../../../../tests/helpers/pixel-assertions.mjs';
 import type { ComponentProps } from 'svelte';
+import { flushSync } from 'svelte';
 import {
 	GIFT_GROUPING_OPTIONS,
 	type GiftForVisitor,
@@ -1122,6 +1123,34 @@ describe('WishlistGiftDisplay grouped reorder (#454)', () => {
 					`button[aria-label="${m.gift_reorder_grip_label()}"]`,
 				),
 			);
+		await screen.unmount();
+	});
+});
+
+describe('WishlistGiftDisplay touch presses on card controls', () => {
+	it('never opens the gift context menu from a touch hold on a card control', async () => {
+		const screen = await render(WishlistGiftDisplayTestHost, defaultProps);
+		const control = page.getByRole('button', { name: m.gift_mark_received() });
+		await expect.element(control).toBeVisible();
+		const collection = document.querySelector<HTMLElement>('[data-wishlist-gift-collection]')!;
+		const press: PointerEventInit = {
+			bubbles: true,
+			cancelable: true,
+			pointerId: 1,
+			pointerType: 'touch',
+			isPrimary: true,
+		};
+
+		vi.useFakeTimers();
+		try {
+			control.element().dispatchEvent(new PointerEvent('pointerdown', press));
+			vi.advanceTimersByTime(1_000);
+			flushSync();
+			expect(collection.dataset.state).toBe('closed');
+		} finally {
+			control.element().dispatchEvent(new PointerEvent('pointerup', press));
+			vi.useRealTimers();
+		}
 		await screen.unmount();
 	});
 });

@@ -341,8 +341,11 @@
 {#snippet giftCollection()}
 	<ContextMenu.Trigger disabled={selectionMode || collectionIsOutgoing}>
 		{#snippet child({ props: triggerProps })}
+			<!-- Bits UI's pointerdown only starts its own touch long press; the gift wrapper's
+			     recognizer owns touch long presses, and card controls must never open the menu. -->
 			<div
 				{...triggerProps}
+				onpointerdown={undefined}
 				style={undefined}
 				bind:this={collectionElement}
 				use:giftCardCollectionLayout

@@ -8,6 +8,7 @@ import type { PublicGiftCategory } from '$lib/modules/gift-categories/types.js';
 import type { GiftForVisitor } from '$lib/modules/gifts/types.js';
 import { WISHLIST_ROLES, type WishlistRole } from '$lib/modules/wishlists/types.js';
 import * as m from '$lib/paraglide/messages.js';
+import { GIFT_CARD_CONTROL_SELECTOR } from './gift_card_controls.js';
 import {
 	GiftCardTestHost,
 	cleanupCardHosts,
@@ -45,7 +46,10 @@ interface RenderOptions {
 	onopen?: () => void;
 }
 
-/** Mounts the gift inside a press target standing in for the wishlist's card wrapper. */
+/**
+ * Mounts the gift inside a press target standing in for the wishlist's card wrapper, which opens
+ * the gift on a click that does not start on a card control.
+ */
 async function renderGift(gift: GiftForVisitor, options: RenderOptions) {
 	const { view = 'card', width, role = WISHLIST_ROLES.recipient, onopen } = options;
 	await page.viewport(Math.max(width + 40, 390), 900);
@@ -53,7 +57,16 @@ async function renderGift(gift: GiftForVisitor, options: RenderOptions) {
 	host.style.width = `${width}px`;
 	host.dataset.palette = 'sky';
 	if (onopen !== undefined) {
-		host.addEventListener('click', onopen);
+		host.addEventListener('click', (event) => {
+			if (
+				!(
+					event.target instanceof Element &&
+					event.target.closest(GIFT_CARD_CONTROL_SELECTOR)
+				)
+			) {
+				onopen();
+			}
+		});
 	}
 	document.body.appendChild(host);
 	fixedHosts.add(host);
@@ -172,9 +185,11 @@ describe('GiftCategoryBadges', () => {
 	it('lets a touch on the card only dismiss the open "+X" popover', async () => {
 		const onopen = vi.fn();
 		const host = await renderGift(categorizedGift(LABELS), { width: 220, onopen });
-		// The wishlist card wrapper keeps touch presses to itself for its long-press gesture.
+		// The wishlist card wrapper keeps touch presses on card content to itself for its long press.
 		host.addEventListener('pointerdown', (event) => {
-			if (event.pointerType !== 'mouse') {
+			const startedOnControl =
+				event.target instanceof Element && event.target.closest(GIFT_CARD_CONTROL_SELECTOR);
+			if (event.pointerType !== 'mouse' && !startedOnControl) {
 				event.stopPropagation();
 			}
 		});

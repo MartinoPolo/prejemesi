@@ -79,10 +79,6 @@
 		return () => resizeObserver.disconnect();
 	}
 
-	function keepPressOffCard(event: MouseEvent) {
-		event.stopPropagation();
-	}
-
 	function isInsidePopover(target: EventTarget | null) {
 		return (
 			target instanceof Node &&
@@ -193,7 +189,6 @@
 								count: hiddenCategories.length,
 							})}
 							data-testid="gift-category-more"
-							onclick={keepPressOffCard}
 						>
 							+{hiddenCategories.length}
 						</Popover.Trigger>
