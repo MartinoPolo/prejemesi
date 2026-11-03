@@ -404,10 +404,18 @@
 		left: var(--gift-context-leading-clearance, 0.5rem);
 	}
 
-	/* Centered state badges stay clear of the gallery's edge arrows. */
+	/* Centered state badges stay clear of the gallery's edge arrows while the image leaves room for
+	   the longest state-label word; narrower images give that room to the badge, so a word never
+	   breaks and the hover-only arrows may overlap the badge's edges instead. */
 	@media (hover: hover) and (pointer: fine) {
 		:global(.gift-card-gallery-state-clearance) {
-			padding-inline: calc(0.5rem + var(--size-control-md) + var(--depth-clearance));
+			--gift-state-label-room: 8rem;
+
+			padding-inline: clamp(
+				0px,
+				(100% - var(--gift-state-label-room)) / 2,
+				0.5rem + var(--size-control-md) + var(--depth-clearance)
+			);
 		}
 	}
 
