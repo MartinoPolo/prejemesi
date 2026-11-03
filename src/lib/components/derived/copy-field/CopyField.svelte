@@ -70,10 +70,10 @@
 	>
 		{#if copiedLabelShown}
 			<CheckIcon aria-hidden="true" />
-			{m.copy_field_copied()}
+			<span class={styles.copyLabel()}>{m.copy_field_copied()}</span>
 		{:else}
 			<CopyIcon aria-hidden="true" />
-			{m.copy_field_copy()}
+			<span class={styles.copyLabel()}>{m.copy_field_copy()}</span>
 		{/if}
 	</InputGroup.Segment>
 </InputGroup.Root>

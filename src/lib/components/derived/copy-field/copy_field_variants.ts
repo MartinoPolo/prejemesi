@@ -3,10 +3,16 @@ import type { ControlSize } from '$lib/components/base/control_sizing.js';
 
 export const copyFieldVariants = tv({
 	slots: {
-		root: '',
-		input: '',
-		/** A stable width keeps the field from jumping when "Copy" turns into "Copied". */
-		copyButton: 'min-w-33',
+		/** A size container, so a narrow field can give the value the room the copy label needs. */
+		root: '@container/copy-field w-full',
+		input: 'text-ellipsis',
+		/**
+		 * Icon-only in a narrow field; from 22rem a stable width keeps the field from jumping when
+		 * "Copy" turns into "Copied".
+		 */
+		copyButton: '@min-[22rem]/copy-field:min-w-33',
+		/** Hidden in a narrow field, where it still names the icon-only button. */
+		copyLabel: 'sr-only @min-[22rem]/copy-field:not-sr-only',
 	},
 	variants: {
 		kind: {

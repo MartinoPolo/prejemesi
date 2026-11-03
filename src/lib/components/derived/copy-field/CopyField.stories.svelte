@@ -68,6 +68,33 @@
 		}
 	};
 
+	const playFieldWidths = async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+		const canvas = within(canvasElement);
+		for (const [fieldName, labelShown] of [
+			['Úzké pole', false],
+			['Široké pole', true],
+		] as const) {
+			const group = canvas
+				.getByRole('textbox', { name: fieldName })
+				.closest('[role="group"]');
+			if (!(group instanceof HTMLElement)) {
+				throw new Error('Copy field group not found');
+			}
+			const field = within(group).getByRole('textbox');
+			const button = within(group).getByRole('button', { name: 'Kopírovat' });
+			const labelWidth = within(button).getByText('Kopírovat').getBoundingClientRect().width;
+			await expect(getComputedStyle(field).textOverflow).toBe('ellipsis');
+			if (labelShown) {
+				await expect(labelWidth).toBeGreaterThan(1);
+			} else {
+				await expect(labelWidth).toBeLessThanOrEqual(1);
+				await expect(button.getBoundingClientRect().width).toBeLessThan(
+					group.getBoundingClientRect().width / 4,
+				);
+			}
+		}
+	};
+
 	/** A dialog step that autofocuses the field must not show the link as selected. */
 	const playFocusKeepsLinkUnselected = async ({
 		canvasElement,
@@ -87,6 +114,20 @@
 <Story name="Focused" play={playFocusKeepsLinkUnselected} />
 
 <Story name="Clipboard denied" play={playClipboardDenied} />
+
+<!-- Below 22rem the copy segment is icon-only, so the value keeps room and ends with an ellipsis. -->
+<Story name="Narrow And Wide" play={playFieldWidths}>
+	{#snippet template(args)}
+		<div class="flex flex-col gap-4">
+			<div class="w-72">
+				<CopyField {...args} label="Úzké pole" />
+			</div>
+			<div class="w-md">
+				<CopyField {...args} label="Široké pole" />
+			</div>
+		</div>
+	{/snippet}
+</Story>
 
 <Story
 	name="Secret"
