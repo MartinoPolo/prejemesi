@@ -4,7 +4,7 @@
 	import { translateServerError } from '$lib/modules/errors/translate_server_error.js';
 	import * as Dialog from '$lib/components/base/dialog/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
-	import * as InputGroup from '$lib/components/base/input-group/index.js';
+	import { CopyField } from '$lib/components/derived/copy-field/index.js';
 	import ShareMethodButton from './ShareMethodButton.svelte';
 	import { shareWizardVariants } from './share_wizard_variants.js';
 	import {
@@ -20,7 +20,6 @@
 	import CheckIcon from '@lucide/svelte/icons/check';
 	import ArrowRightIcon from '@lucide/svelte/icons/arrow-right';
 	import AlertTriangleIcon from '@lucide/svelte/icons/triangle-alert';
-	import CopyIcon from '@lucide/svelte/icons/copy';
 	import XIcon from '@lucide/svelte/icons/x';
 	import CircleCheckBigIcon from '@lucide/svelte/icons/circle-check-big';
 	import Share2Icon from '@lucide/svelte/icons/share-2';
@@ -47,7 +46,6 @@
 
 	const step = $derived(sharing.wizardStep.current);
 	const isOpen = $derived(sharing.wizardOpen.current);
-	const linkCopied = $derived(sharing.linkCopied.current);
 	const shareUrl = $derived(sharing.shareUrl.current);
 	const shareUrlDisplay = $derived(sharing.shareUrlDisplay.current);
 	const shareMessage = $derived(buildShareMessage(wishlistTitle));
@@ -137,19 +135,12 @@
 </script>
 
 {#snippet copyLinkField()}
-	<InputGroup.Root size="xl">
-		<InputGroup.Input value={shareUrlDisplay} readonly aria-label={m.share_link_eyebrow()} />
-		<InputGroup.Segment onclick={() => sharing.copyLink()}>
-			{#if linkCopied}
-				<CheckIcon />
-				{m.share_copied()}
-			{:else}
-				<CopyIcon />
-				{m.share_copy()}
-			{/if}
-		</InputGroup.Segment>
-	</InputGroup.Root>
-	<p class="sr-only" role="status">{linkCopied ? m.share_copied() : ''}</p>
+	<CopyField
+		value={shareUrl}
+		displayValue={shareUrlDisplay}
+		size="xl"
+		label={m.share_link_eyebrow()}
+	/>
 {/snippet}
 
 <Dialog.Root open={isOpen} onOpenChange={handleOpenChange}>

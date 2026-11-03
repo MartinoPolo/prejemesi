@@ -45,11 +45,11 @@ describe('TokenRevealPanel', () => {
 		const oncopied = vi.fn();
 		const screen = await renderPanel({ oncopied });
 
-		await screen.getByRole('button', { name: m.access_tokens_copy() }).click();
+		await screen.getByRole('button', { name: m.copy_field_copy() }).click();
 
 		expect(writeText).toHaveBeenCalledWith(TOKEN_VALUE);
 		await expect
-			.element(screen.getByRole('button', { name: m.access_tokens_copied() }))
+			.element(screen.getByRole('button', { name: m.copy_field_copied() }))
 			.toBeVisible();
 		expect(oncopied).toHaveBeenCalledOnce();
 	});
@@ -59,7 +59,7 @@ describe('TokenRevealPanel', () => {
 		const oncopied = vi.fn();
 		const screen = await renderPanel({ oncopied });
 
-		await screen.getByRole('button', { name: m.access_tokens_copy() }).click();
+		await screen.getByRole('button', { name: m.copy_field_copy() }).click();
 
 		const input = screen
 			.getByLabelText(m.access_tokens_value_label())
@@ -70,7 +70,7 @@ describe('TokenRevealPanel', () => {
 		});
 		expect(oncopied).not.toHaveBeenCalled();
 		await expect
-			.element(screen.getByRole('button', { name: m.access_tokens_copy() }))
+			.element(screen.getByRole('button', { name: m.copy_field_copy() }))
 			.toBeVisible();
 	});
 });

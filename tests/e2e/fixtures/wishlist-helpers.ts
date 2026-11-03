@@ -330,7 +330,7 @@ export async function generateInviteLink(page: Page): Promise<string> {
 	// Link element appears in the panel – grab the full URL shown
 	const linkBox = panel.getByTestId('invite-link');
 	await expect(linkBox).toBeVisible({ timeout: 5_000 });
-	const inviteUrl = (await linkBox.textContent()) ?? '';
+	const inviteUrl = await linkBox.getByRole('textbox').inputValue();
 	return inviteUrl.trim();
 }
 

@@ -177,10 +177,10 @@ describe('ShareWizard (issue #442)', () => {
 		'joins the %s step copy field with its filled copy segment',
 		async (step) => {
 			await renderStep(step);
-			const field = dialog().querySelector<HTMLElement>('[data-slot="input-group"]')!;
+			const field = dialog().querySelector<HTMLElement>('[data-slot="copy-field"]')!;
 			const input = field.querySelector<HTMLInputElement>('input')!;
 			const copyControls = page
-				.getByRole('button', { name: m.share_copy() })
+				.getByRole('button', { name: m.copy_field_copy() })
 				.elements()
 				.filter((control) => dialog().contains(control));
 			const fieldBorder = Number.parseFloat(getComputedStyle(field).borderTopWidth);
@@ -205,14 +205,14 @@ describe('ShareWizard (issue #442)', () => {
 		async (step) => {
 			vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue();
 			await renderStep(step);
-			const copy = page.getByRole('button', { name: m.share_copy() });
+			const copy = page.getByRole('button', { name: m.copy_field_copy() });
 			const status = page.getByRole('status');
 
 			expect(copy.element().hasAttribute('aria-live')).toBe(false);
 			await expect.element(status).toHaveTextContent('');
 			await copy.click();
 
-			await expect.element(status).toHaveTextContent(m.share_copied());
+			await expect.element(status).toHaveTextContent(m.copy_field_copied());
 			expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
 				expect.stringContaining('/w/abc123'),
 			);

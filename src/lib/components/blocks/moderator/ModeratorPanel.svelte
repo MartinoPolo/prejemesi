@@ -23,11 +23,10 @@
 	import type { ModeratorWithUser, PendingInvite } from '$lib/modules/moderators/types.js';
 	import type { PendingClaimInvite } from '$lib/modules/claim/types.js';
 	import { toastSuccess, toastError, toastInfo } from '$lib/components/base/toast/index.js';
+	import { CopyField } from '$lib/components/derived/copy-field/index.js';
 	import { translateServerError } from '$lib/modules/errors/translate_server_error.js';
 	import { getApplicationUrl } from '$lib/config/site.js';
 	import LinkIcon from '@lucide/svelte/icons/link';
-	import CopyIcon from '@lucide/svelte/icons/copy';
-	import CheckIcon from '@lucide/svelte/icons/check';
 	import XIcon from '@lucide/svelte/icons/x';
 	import EyeIcon from '@lucide/svelte/icons/eye';
 	import AlertTriangleIcon from '@lucide/svelte/icons/triangle-alert';
@@ -60,7 +59,6 @@
 	let isRemoving = $state(false);
 	let isRevokingId = $state<string | null>(null);
 	let isSelfPromoting = $state(false);
-	let linkCopied = $state(false);
 	let generatedInvitePath = $state<string | null>(null);
 	let inviteEmail = $state('');
 
@@ -69,7 +67,6 @@
 	let claimInvites = $state.raw<PendingClaimInvite[]>([]);
 	let isGeneratingClaim = $state(false);
 	let isRevokingClaimId = $state<string | null>(null);
-	let claimLinkCopied = $state(false);
 	let generatedClaimPath = $state<string | null>(null);
 	let claimEmail = $state('');
 
@@ -93,7 +90,6 @@
 
 	async function handleGenerateInvite() {
 		isGenerating = true;
-		linkCopied = false;
 		generatedInvitePath = null;
 		try {
 			const trimmed = inviteEmail.trim();
@@ -123,23 +119,6 @@
 		}
 	}
 
-	async function handleCopyLink() {
-		if (generatedInvitePath === null) {
-			return;
-		}
-		try {
-			const fullUrl = getApplicationUrl(generatedInvitePath, window.location.origin);
-			await navigator.clipboard.writeText(fullUrl);
-			linkCopied = true;
-			toastSuccess(m.moderator_toast_link_copied());
-			setTimeout(() => {
-				linkCopied = false;
-			}, 3000);
-		} catch {
-			toastError(m.moderator_error_copy());
-		}
-	}
-
 	async function handleRevokeInvite(inviteId: string) {
 		isRevokingId = inviteId;
 		try {
@@ -157,7 +136,6 @@
 
 	async function handleGenerateClaim() {
 		isGeneratingClaim = true;
-		claimLinkCopied = false;
 		generatedClaimPath = null;
 		try {
 			const trimmed = claimEmail.trim();
@@ -182,23 +160,6 @@
 			toastError(translateServerError(thrown, m.claim_error_generate()));
 		} finally {
 			isGeneratingClaim = false;
-		}
-	}
-
-	async function handleCopyClaimLink() {
-		if (generatedClaimPath === null) {
-			return;
-		}
-		try {
-			const fullUrl = getApplicationUrl(generatedClaimPath, window.location.origin);
-			await navigator.clipboard.writeText(fullUrl);
-			claimLinkCopied = true;
-			toastSuccess(m.claim_toast_link_copied());
-			setTimeout(() => {
-				claimLinkCopied = false;
-			}, 3000);
-		} catch {
-			toastError(m.claim_error_copy());
 		}
 	}
 
@@ -258,10 +219,8 @@
 		} else {
 			// Reset transient state when the panel closes.
 			generatedInvitePath = null;
-			linkCopied = false;
 			inviteEmail = '';
 			generatedClaimPath = null;
-			claimLinkCopied = false;
 			claimEmail = '';
 		}
 	});
@@ -290,26 +249,14 @@
 						</div>
 
 						{#if generatedClaimPath !== null}
-							<div class="flex items-center gap-2">
-								<div
-									class="flex-1 truncate rounded-md border border-border bg-muted/50 px-3 py-2 font-mono text-xs"
-									data-testid="claim-link"
-								>
-									{getApplicationUrl(generatedClaimPath, window.location.origin)}
-								</div>
-								<Button
-									size="sm"
-									intent={claimLinkCopied ? 'primary' : 'outline'}
-									aria-label={m.claim_copy_link()}
-									data-testid="copy-claim-link"
-									onclick={handleCopyClaimLink}
-								>
-									{#if claimLinkCopied}
-										<CheckIcon data-icon="solo" />
-									{:else}
-										<CopyIcon data-icon="solo" />
-									{/if}
-								</Button>
+							<div data-testid="claim-link">
+								<CopyField
+									value={getApplicationUrl(
+										generatedClaimPath,
+										window.location.origin,
+									)}
+									label={m.claim_link_label()}
+								/>
 							</div>
 						{/if}
 
@@ -406,26 +353,14 @@
 					</div>
 
 					{#if generatedInvitePath !== null}
-						<div class="flex items-center gap-2">
-							<div
-								class="flex-1 truncate rounded-md border border-border bg-muted/50 px-3 py-2 font-mono text-xs"
-								data-testid="invite-link"
-							>
-								{getApplicationUrl(generatedInvitePath, window.location.origin)}
-							</div>
-							<Button
-								size="sm"
-								intent={linkCopied ? 'primary' : 'outline'}
-								aria-label={m.moderator_copy_link()}
-								data-testid="copy-invite-link"
-								onclick={handleCopyLink}
-							>
-								{#if linkCopied}
-									<CheckIcon data-icon="solo" />
-								{:else}
-									<CopyIcon data-icon="solo" />
-								{/if}
-							</Button>
+						<div data-testid="invite-link">
+							<CopyField
+								value={getApplicationUrl(
+									generatedInvitePath,
+									window.location.origin,
+								)}
+								label={m.moderator_invite_link_label()}
+							/>
 						</div>
 					{/if}
 
