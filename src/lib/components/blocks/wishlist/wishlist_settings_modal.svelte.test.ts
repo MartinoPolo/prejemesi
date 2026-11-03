@@ -83,10 +83,10 @@ describe('WishlistSettingsModal import and export tab', () => {
 		await screen.getByRole('tab', { name: m.wishlist_settings_data_title() }).click();
 		await screen.getByRole('button', { name: m.import_toolbar_label() }).click();
 		expect(onimport).not.toHaveBeenCalled();
-		await screen.getByRole('button', { name: m.wishlist_settings_continue_editing() }).click();
+		await screen.getByRole('button', { name: m.unsaved_changes_continue_editing() }).click();
 		expect(onimport).not.toHaveBeenCalled();
 		await screen.getByRole('button', { name: m.import_toolbar_label() }).click();
-		await screen.getByRole('button', { name: m.wishlist_settings_discard() }).click();
+		await screen.getByRole('button', { name: m.unsaved_changes_discard() }).click();
 		expect(onimport).toHaveBeenCalledOnce();
 	});
 
@@ -210,9 +210,9 @@ describe('WishlistSettingsModal import and export tab', () => {
 
 		await userEvent.keyboard('{Escape}');
 		await expect
-			.element(screen.getByRole('dialog', { name: m.wishlist_settings_unsaved_title() }))
+			.element(screen.getByRole('dialog', { name: m.unsaved_changes_title() }))
 			.toBeVisible();
-		await screen.getByRole('button', { name: m.wishlist_settings_continue_editing() }).click();
+		await screen.getByRole('button', { name: m.unsaved_changes_continue_editing() }).click();
 
 		await expect
 			.element(screen.getByRole('dialog', { name: m.wishlist_settings_title() }))
@@ -454,7 +454,7 @@ describe('WishlistSettingsModal draft ownership (#527)', () => {
 		await expect.element(screen.getByRole('button', { name: m.save() })).toBeDisabled();
 		await openDeleteFromDangerZone(screen);
 		await expect
-			.element(screen.getByRole('dialog', { name: m.wishlist_settings_unsaved_title() }))
+			.element(screen.getByRole('dialog', { name: m.unsaved_changes_title() }))
 			.not.toBeInTheDocument();
 	});
 
@@ -467,7 +467,7 @@ describe('WishlistSettingsModal draft ownership (#527)', () => {
 		await expect.element(screen.getByRole('button', { name: m.save() })).toBeDisabled();
 		await openDeleteFromDangerZone(screen);
 		await expect
-			.element(screen.getByRole('dialog', { name: m.wishlist_settings_unsaved_title() }))
+			.element(screen.getByRole('dialog', { name: m.unsaved_changes_title() }))
 			.not.toBeInTheDocument();
 		expect(remoteMocks.saveWishlistSettings).not.toHaveBeenCalled();
 	});

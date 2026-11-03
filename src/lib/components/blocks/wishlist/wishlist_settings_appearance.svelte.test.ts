@@ -396,7 +396,7 @@ describe('WishlistSettingsModal appearance tab', () => {
 		);
 
 		await userEvent.keyboard('{Escape}');
-		await screen.getByRole('button', { name: m.wishlist_settings_discard() }).click();
+		await screen.getByRole('button', { name: m.unsaved_changes_discard() }).click();
 
 		await vi.waitFor(() => expect(onappearancepreview).toHaveBeenLastCalledWith(null));
 	});

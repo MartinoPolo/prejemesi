@@ -15,6 +15,7 @@
 	import { Field, type FieldControlContext } from '$lib/components/derived/field/index.js';
 	import GraceCountdown from '$lib/components/derived/grace-countdown/GraceCountdown.svelte';
 	import { ConfirmDialog } from '$lib/components/derived/confirm-dialog/index.js';
+	import { UnsavedChangesDialog } from '$lib/components/derived/unsaved-changes-dialog/index.js';
 	import { toastSuccess, toastError } from '$lib/components/base/toast/index.js';
 	import FileDownIcon from '@lucide/svelte/icons/file-down';
 	import FileUpIcon from '@lucide/svelte/icons/file-up';
@@ -461,16 +462,14 @@
 		action?.();
 	}
 
+	/** Continues only after a complete save; otherwise the settings stay open with their errors. */
 	async function saveAndContinue() {
 		const action = pendingAction;
-		if (
-			await saveAll(() => {
-				guardOpen = false;
-				pendingAction = null;
-				action?.();
-			})
-		) {
-			return;
+		const saved = await saveAll();
+		guardOpen = false;
+		pendingAction = null;
+		if (saved) {
+			action?.();
 		}
 	}
 
@@ -1063,25 +1062,13 @@
 	</Dialog.Content>
 </Dialog.Root>
 
-<Dialog.Root bind:open={guardOpen}>
-	<Dialog.Content size="md">
-		<Dialog.Header>
-			<Dialog.Title>{m.wishlist_settings_unsaved_title()}</Dialog.Title>
-			<Dialog.Description>{m.wishlist_settings_unsaved_description()}</Dialog.Description>
-		</Dialog.Header>
-		<Dialog.Footer class="flex-wrap">
-			<Button intent="outline" onclick={continueEditing}>
-				{m.wishlist_settings_continue_editing()}
-			</Button>
-			<Button intent="outline" onclick={discardAndContinue} disabled={saving}>
-				{m.wishlist_settings_discard()}
-			</Button>
-			<Button onclick={() => void saveAndContinue()} disabled={saving}>
-				{m.wishlist_settings_save_continue()}
-			</Button>
-		</Dialog.Footer>
-	</Dialog.Content>
-</Dialog.Root>
+<UnsavedChangesDialog
+	open={guardOpen}
+	{saving}
+	onsave={saveAndContinue}
+	ondiscard={discardAndContinue}
+	oncontinue={continueEditing}
+/>
 
 <!-- Delete confirmation dialog (issue #120) -->
 <ConfirmDialog

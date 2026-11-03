@@ -487,18 +487,18 @@
 		return true;
 	}
 
-	/** The editor's title-row Save, shown while the on-screen keyboard hides the footer. */
-	export function submit() {
-		void handleSubmit();
+	/** Runs the footer Save from outside the form; resolves whether the gift was saved. */
+	export function submit(): Promise<boolean> {
+		return handleSubmit();
 	}
 
-	async function handleSubmit() {
+	async function handleSubmit(): Promise<boolean> {
 		if (mutationPending || isImageUploadPending) {
-			return;
+			return false;
 		}
 
 		if (!validateForm()) {
-			return;
+			return false;
 		}
 
 		const finalPrice = finalizeGiftPrice(price);
@@ -549,10 +549,10 @@
 			} else if (mode === 'edit' && updateInput !== null) {
 				saveResult = await onupdate?.(updateInput);
 			} else {
-				return;
+				return false;
 			}
 			if (saveResult === false) {
-				return;
+				return false;
 			}
 			await pendingUploads.commit(...galleryImageKeys(images));
 			saveSucceeded = true;
@@ -563,6 +563,7 @@
 		if (saveSucceeded) {
 			onsavesuccess?.();
 		}
+		return saveSucceeded;
 	}
 
 	function startEditAppend(index: number, text: string) {

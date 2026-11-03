@@ -231,22 +231,22 @@ describe('GiftDetailModal editor layout and exit safety', () => {
 		await nameInput.fill('Changed gift');
 		await screen.getByRole('button', { name: m.cancel() }).first().click();
 		await expect
-			.element(screen.getByRole('heading', { name: m.wishlist_settings_unsaved_title() }))
+			.element(screen.getByRole('heading', { name: m.unsaved_changes_title() }))
 			.toBeVisible();
-		await screen.getByRole('button', { name: m.wishlist_settings_continue_editing() }).click();
+		await screen.getByRole('button', { name: m.unsaved_changes_continue_editing() }).click();
 		await expect.element(nameInput).toHaveValue('Changed gift');
 
 		await screen.getByRole('button', { name: m.close() }).first().click();
 		await expect
-			.element(screen.getByRole('heading', { name: m.wishlist_settings_unsaved_title() }))
+			.element(screen.getByRole('heading', { name: m.unsaved_changes_title() }))
 			.toBeVisible();
-		await screen.getByRole('button', { name: m.wishlist_settings_continue_editing() }).click();
+		await screen.getByRole('button', { name: m.unsaved_changes_continue_editing() }).click();
 
 		await userEvent.keyboard('{Escape}');
 		await expect
-			.element(screen.getByRole('heading', { name: m.wishlist_settings_unsaved_title() }))
+			.element(screen.getByRole('heading', { name: m.unsaved_changes_title() }))
 			.toBeVisible();
-		await screen.getByRole('button', { name: m.wishlist_settings_discard() }).click();
+		await screen.getByRole('button', { name: m.unsaved_changes_discard() }).click();
 		await expect.element(screen.getByRole('dialog')).not.toBeInTheDocument();
 	});
 
@@ -262,7 +262,7 @@ describe('GiftDetailModal editor layout and exit safety', () => {
 		await expect.element(cancelButton).toBeVisible();
 		await cancelButton.click();
 		await expect
-			.element(screen.getByRole('heading', { name: m.wishlist_settings_unsaved_title() }))
+			.element(screen.getByRole('heading', { name: m.unsaved_changes_title() }))
 			.toBeVisible();
 	});
 
@@ -290,8 +290,73 @@ describe('GiftDetailModal editor layout and exit safety', () => {
 			}),
 		);
 		await expect
-			.element(screen.getByRole('heading', { name: m.wishlist_settings_unsaved_title() }))
+			.element(screen.getByRole('heading', { name: m.unsaved_changes_title() }))
 			.toBeVisible();
+	});
+
+	it('saves through the unsaved-changes guard and then closes the editor', async () => {
+		const onupdate = vi.fn(() => true);
+		const onclose = vi.fn();
+		const screen = await render(GiftDetailModal, {
+			...baseProps,
+			mode: 'edit' as const,
+			gift: makeGift(),
+			onupdate,
+			onclose,
+		});
+		await screen.getByRole('textbox', { name: m.gift_name_label() }).fill('Saved gift');
+		await screen.getByRole('button', { name: m.cancel() }).first().click();
+		await screen.getByRole('button', { name: m.unsaved_changes_save_continue() }).click();
+
+		await expect.element(screen.getByRole('dialog')).not.toBeInTheDocument();
+		expect(onupdate).toHaveBeenCalledWith(expect.objectContaining({ name: 'Saved gift' }));
+		await expect.poll(() => onclose.mock.calls.length).toBe(1);
+	});
+
+	it('keeps the editor open with its error when the guard save fails validation', async () => {
+		const onupdate = vi.fn(() => true);
+		const onclose = vi.fn();
+		const screen = await render(GiftDetailModal, {
+			...baseProps,
+			mode: 'edit' as const,
+			gift: makeGift(),
+			onupdate,
+			onclose,
+		});
+		await screen.getByRole('textbox', { name: m.gift_name_label() }).fill('');
+		await screen.getByRole('button', { name: m.cancel() }).first().click();
+		await screen.getByRole('button', { name: m.unsaved_changes_save_continue() }).click();
+
+		await expect
+			.element(screen.getByRole('heading', { name: m.unsaved_changes_title() }))
+			.not.toBeInTheDocument();
+		await expect.element(screen.getByText(m.gift_name_required())).toBeVisible();
+		await expect
+			.element(screen.getByRole('heading', { name: m.gift_edit_title() }))
+			.toBeVisible();
+		expect(onupdate).not.toHaveBeenCalled();
+		expect(onclose).not.toHaveBeenCalled();
+	});
+
+	it('keeps the editor open when the guard save is rejected', async () => {
+		const onclose = vi.fn();
+		const screen = await render(GiftDetailModal, {
+			...baseProps,
+			mode: 'edit' as const,
+			gift: makeGift(),
+			onupdate: () => false,
+			onclose,
+		});
+		const nameInput = screen.getByRole('textbox', { name: m.gift_name_label() });
+		await nameInput.fill('Unsaved gift');
+		await screen.getByRole('button', { name: m.cancel() }).first().click();
+		await screen.getByRole('button', { name: m.unsaved_changes_save_continue() }).click();
+
+		await expect
+			.element(screen.getByRole('heading', { name: m.unsaved_changes_title() }))
+			.not.toBeInTheDocument();
+		await expect.element(nameInput).toHaveValue('Unsaved gift');
+		expect(onclose).not.toHaveBeenCalled();
 	});
 
 	it('keeps programmatically normalized legacy manual geometry clean and unchanged on save', async () => {
@@ -379,7 +444,7 @@ describe('GiftDetailModal editor layout and exit safety', () => {
 		await screen.getByRole('radio', { name: m.image_background_black() }).click();
 		await screen.getByRole('button', { name: m.cancel() }).first().click();
 		await expect
-			.element(screen.getByRole('heading', { name: m.wishlist_settings_unsaved_title() }))
+			.element(screen.getByRole('heading', { name: m.unsaved_changes_title() }))
 			.toBeVisible();
 	});
 
@@ -417,18 +482,16 @@ describe('GiftDetailModal editor layout and exit safety', () => {
 			.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
 		await screen.getByRole('button', { name: m.cancel() }).first().click();
 		await expect
-			.element(screen.getByRole('heading', { name: m.wishlist_settings_unsaved_title() }))
+			.element(screen.getByRole('heading', { name: m.unsaved_changes_title() }))
 			.toBeVisible();
-		await screen.getByRole('button', { name: m.wishlist_settings_continue_editing() }).click();
+		await screen.getByRole('button', { name: m.unsaved_changes_continue_editing() }).click();
 
 		cropStage
 			.element()
 			.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
 		await screen.getByRole('button', { name: m.cancel() }).first().click();
 		await expect.element(screen.getByRole('dialog')).not.toBeInTheDocument();
-		expect(document.body.textContent?.includes(m.wishlist_settings_unsaved_title())).toBe(
-			false,
-		);
+		expect(document.body.textContent?.includes(m.unsaved_changes_title())).toBe(false);
 	});
 
 	it('treats a draft reverted to its initial values as clean', async () => {
@@ -443,9 +506,7 @@ describe('GiftDetailModal editor layout and exit safety', () => {
 		await nameInput.fill('Ledové království');
 		await screen.getByRole('button', { name: m.cancel() }).first().click();
 		await expect.element(screen.getByRole('dialog')).not.toBeInTheDocument();
-		expect(document.body.textContent?.includes(m.wishlist_settings_unsaved_title())).toBe(
-			false,
-		);
+		expect(document.body.textContent?.includes(m.unsaved_changes_title())).toBe(false);
 	});
 
 	it('keeps dirty state after a failed save and closes after a successful save', async () => {
@@ -462,9 +523,9 @@ describe('GiftDetailModal editor layout and exit safety', () => {
 		await expect.element(screen.getByRole('dialog')).toBeVisible();
 		await screen.getByRole('button', { name: m.cancel() }).first().click();
 		await expect
-			.element(screen.getByRole('heading', { name: m.wishlist_settings_unsaved_title() }))
+			.element(screen.getByRole('heading', { name: m.unsaved_changes_title() }))
 			.toBeVisible();
-		await screen.getByRole('button', { name: m.wishlist_settings_continue_editing() }).click();
+		await screen.getByRole('button', { name: m.unsaved_changes_continue_editing() }).click();
 
 		await screen.getByRole('button', { name: m.save() }).first().click();
 		await expect.element(screen.getByRole('dialog')).not.toBeInTheDocument();

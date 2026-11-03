@@ -4,6 +4,7 @@
 	import * as m from '$lib/paraglide/messages.js';
 	import * as Dialog from '$lib/components/base/dialog/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
+	import { UnsavedChangesDialog } from '$lib/components/derived/unsaved-changes-dialog/index.js';
 	import XIcon from '@lucide/svelte/icons/x';
 	import { cn } from '$lib/utils.js';
 	import { keepFocusOnPress } from '$lib/reactivity/keyboard_inset.svelte.js';
@@ -168,6 +169,23 @@
 		guardOpen = false;
 		pendingAction = null;
 		open = true;
+	}
+
+	/** Runs the footer Save; only a successful save continues, so a failure keeps the editor
+	 *  open with its validation errors or the save error toast. */
+	async function saveAndContinue() {
+		const action = pendingAction;
+		let saved = false;
+		try {
+			saved = (await form?.submit()) ?? false;
+		} catch (thrown) {
+			console.error('Failed to save gift from the unsaved-changes guard:', thrown);
+		}
+		guardOpen = false;
+		pendingAction = null;
+		if (saved) {
+			action?.();
+		}
 	}
 
 	function discardAndContinue() {
@@ -355,19 +373,10 @@
 	</Dialog.Content>
 </Dialog.Root>
 
-<Dialog.Root bind:open={guardOpen}>
-	<Dialog.Content size="md">
-		<Dialog.Header>
-			<Dialog.Title>{m.wishlist_settings_unsaved_title()}</Dialog.Title>
-			<Dialog.Description>{m.gift_unsaved_description()}</Dialog.Description>
-		</Dialog.Header>
-		<Dialog.Footer class="flex-wrap">
-			<Button intent="outline" onclick={continueEditing}>
-				{m.wishlist_settings_continue_editing()}
-			</Button>
-			<Button intent="danger" onclick={discardAndContinue} disabled={mutationPending}>
-				{m.wishlist_settings_discard()}
-			</Button>
-		</Dialog.Footer>
-	</Dialog.Content>
-</Dialog.Root>
+<UnsavedChangesDialog
+	open={guardOpen}
+	saving={mutationPending}
+	onsave={saveAndContinue}
+	ondiscard={discardAndContinue}
+	oncontinue={continueEditing}
+/>
