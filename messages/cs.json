@@ -1278,7 +1278,7 @@
 	"access_tokens_count_expired_other": "{count} vypršelo",
 	"access_tokens_count_with_expired": "{active}, {expired}",
 	"access_tokens_loading": "Načítání tokenů",
-	"access_tokens_load_error": "Tokeny se nepodařilo načíst. Zkuste stránku obnovit.",
+	"access_tokens_load_error": "Tokeny se nepodařilo načíst.",
 	"access_tokens_empty_title": "Zatím nemáte žádný token.",
 	"access_tokens_empty_description": "Token dá vašemu AI asistentovi, třeba Claude nebo ChatGPT, přístup jen k tomu, co mu povolíte, a kdykoli ho můžete zrušit.",
 	"access_tokens_demo": "V ukázce nelze vytvářet tokeny ani používat API. Zaregistrujte se a připojte vlastního AI asistenta.",

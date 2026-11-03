@@ -1,6 +1,7 @@
 <script lang="ts">
 	import * as m from '$lib/paraglide/messages.js';
 	import { getLocale } from '$lib/paraglide/runtime.js';
+	import * as Alert from '$lib/components/base/alert/index.js';
 	import * as Dialog from '$lib/components/base/dialog/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
 	import { Input } from '$lib/components/base/input/index.js';
@@ -240,13 +241,11 @@
 				     Mirrors the správce-invite generate/email/copy/revoke flow. -->
 					<div class={styles.section()}>
 						<div class={styles.sectionTitle()}>{m.claim_section_title()}</div>
-						<div class={styles.disclosureBanner()}>
-							<LinkIcon class="size-4 flex-shrink-0" />
-							<div class="flex flex-col gap-0.5">
-								<span class="font-medium">{m.claim_nudge_title()}</span>
-								<span class="text-xs">{m.claim_nudge_description()}</span>
-							</div>
-						</div>
+						<Alert.Root tone="info" role="note">
+							<LinkIcon aria-hidden="true" />
+							<Alert.Title>{m.claim_nudge_title()}</Alert.Title>
+							<Alert.Description>{m.claim_nudge_description()}</Alert.Description>
+						</Alert.Root>
 
 						{#if generatedClaimPath !== null}
 							<div data-testid="claim-link">
@@ -437,39 +436,37 @@
 								{m.moderator_reservations_title()}
 							</div>
 
-							<div class={styles.selfPromoteWarning()}>
-								<div class="flex items-center gap-2">
-									<AlertTriangleIcon class="size-4 flex-shrink-0" />
-									<div class={styles.selfPromoteTitle()}>
-										{m.moderator_see_reservations_title()}
-									</div>
-								</div>
-								<div class={styles.selfPromoteDescription()}>
+							<Alert.Root tone="warning" role="note">
+								<AlertTriangleIcon aria-hidden="true" />
+								<Alert.Title>{m.moderator_see_reservations_title()}</Alert.Title>
+								<Alert.Description>
 									{m.moderator_see_reservations_description()}
-								</div>
-								<Button
-									size="sm"
-									intent="outline"
-									class="mt-1 self-start"
-									disabled={isSelfPromoting}
-									onclick={handleSelfPromote}
-								>
-									<EyeIcon data-icon="inline-start" />
-									{isSelfPromoting
-										? m.moderator_activating()
-										: m.moderator_activate_button()}
-								</Button>
-							</div>
+								</Alert.Description>
+							</Alert.Root>
+							<Button
+								size="sm"
+								intent="outline"
+								class="self-start"
+								disabled={isSelfPromoting}
+								onclick={handleSelfPromote}
+							>
+								<EyeIcon data-icon="inline-start" />
+								{isSelfPromoting
+									? m.moderator_activating()
+									: m.moderator_activate_button()}
+							</Button>
 						</div>
 					{:else}
 						<div class={styles.section()}>
 							<div class={styles.sectionTitle()}>
 								{m.moderator_reservations_title()}
 							</div>
-							<div class={styles.disclosureBanner()}>
-								<EyeIcon class="size-4 flex-shrink-0" />
-								<span>{m.moderator_active_disclosure()}</span>
-							</div>
+							<Alert.Root tone="info" role="note">
+								<EyeIcon aria-hidden="true" />
+								<Alert.Description
+									>{m.moderator_active_disclosure()}</Alert.Description
+								>
+							</Alert.Root>
 						</div>
 					{/if}
 				{/if}

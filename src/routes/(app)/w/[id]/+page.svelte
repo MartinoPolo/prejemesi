@@ -2446,9 +2446,10 @@
 		<PendingChangesBanner wishlistShortId={shortId} proposals={pendingProposals} />
 	{/if}
 	{#if page.data.demoExpiresAt !== null}
-		<p class="rounded-lg border border-border bg-card p-3 text-sm text-muted-foreground">
-			{m.demo_list_limits()}
-		</p>
+		<Alert.Root tone="info" role="note">
+			<InfoIcon aria-hidden="true" />
+			<Alert.Description>{m.demo_list_limits()}</Alert.Description>
+		</Alert.Root>
 	{/if}
 	{#if isPreparing}
 		<WishlistPreparingNotice />

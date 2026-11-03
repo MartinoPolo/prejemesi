@@ -16,7 +16,9 @@
 	import { ConfirmDialog } from '$lib/components/derived/confirm-dialog/index.js';
 	import { UnsavedChangesDialog } from '$lib/components/derived/unsaved-changes-dialog/index.js';
 	import { toastSuccess, toastError } from '$lib/components/base/toast/index.js';
+	import ArchiveIcon from '@lucide/svelte/icons/archive';
 	import FileDownIcon from '@lucide/svelte/icons/file-down';
+	import LockIcon from '@lucide/svelte/icons/lock';
 	import FileUpIcon from '@lucide/svelte/icons/file-up';
 	import PencilIcon from '@lucide/svelte/icons/pencil';
 	import TriangleAlertIcon from '@lucide/svelte/icons/triangle-alert';
@@ -995,11 +997,13 @@
 					{@render revertSection()}
 				</div>
 			{:else if isArchived}
-				<Alert.Root tone="warning">
+				<Alert.Root tone="info" role="note">
+					<ArchiveIcon aria-hidden="true" />
 					<Alert.Description>{m.wishlist_settings_archived_readonly()}</Alert.Description>
 				</Alert.Root>
 			{:else}
-				<Alert.Root tone="warning">
+				<Alert.Root tone="info" role="note">
+					<LockIcon aria-hidden="true" />
 					<Alert.Description>{m.wishlist_settings_owner_only()}</Alert.Description>
 				</Alert.Root>
 			{/if}

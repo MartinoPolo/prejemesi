@@ -1,5 +1,6 @@
 <script lang="ts">
 	import * as m from '$lib/paraglide/messages.js';
+	import * as Alert from '$lib/components/base/alert/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
 	import { Input } from '$lib/components/base/input/index.js';
 	import { HelpText } from '$lib/components/base/help-text/index.js';
@@ -19,6 +20,7 @@
 		translateServerError,
 	} from '$lib/modules/errors/translate_server_error.js';
 	import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
+	import CircleAlertIcon from '@lucide/svelte/icons/circle-alert';
 	import PlusIcon from '@lucide/svelte/icons/plus';
 	import { onDestroy, onMount, tick } from 'svelte';
 	import WishlistCategorySettingsRow from './WishlistCategorySettingsRow.svelte';
@@ -331,15 +333,15 @@
 <form id="wishlist-categories-form" class="category-settings flex flex-col gap-4" onsubmit={save}>
 	<p class="max-w-160 text-sm text-muted-foreground">{m.gift_categories_intro()}</p>
 	{#if usageRefreshStatus === 'error'}
-		<div
-			class="flex items-center justify-between gap-3 rounded-lg border border-destructive/30 p-3"
-			role="alert"
-		>
-			<p class="text-sm text-status-danger-text">{m.error_generic()}</p>
-			<Button type="button" size="sm" intent="outline" onclick={refreshCategoryUsage}>
-				{m.import_wizard_retry()}
-			</Button>
-		</div>
+		<Alert.Root tone="danger">
+			<CircleAlertIcon aria-hidden="true" />
+			<Alert.Description>{m.error_generic()}</Alert.Description>
+			<Alert.Action>
+				<Button type="button" size="sm" intent="outline" onclick={refreshCategoryUsage}>
+					{m.import_wizard_retry()}
+				</Button>
+			</Alert.Action>
+		</Alert.Root>
 	{/if}
 
 	<div class="grid gap-6 lg:grid-cols-[minmax(0,600px)_minmax(0,1fr)]">

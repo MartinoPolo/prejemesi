@@ -61,9 +61,5 @@ export const shareWizardVariants = tv({
 		permissionCheck:
 			'flex size-[19px] flex-shrink-0 -rotate-3 items-center justify-center rounded-[6px] border-2 border-ink bg-primary text-primary-foreground',
 		permissionText: 'text-sm leading-snug text-foreground',
-		permissionsWarning:
-			'flex items-start gap-2.5 rounded-[10px] border-2 border-ink bg-card px-3 py-3',
-		warnX: 'mt-0.5 flex size-[18px] flex-shrink-0 items-center justify-center rounded-full border-2 border-ink bg-card text-status-danger',
-		permissionsWarningText: 'text-xs font-semibold leading-relaxed text-foreground',
 	},
 });

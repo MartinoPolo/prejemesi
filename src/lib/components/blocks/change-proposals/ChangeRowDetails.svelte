@@ -1,5 +1,6 @@
 <script lang="ts">
 	import * as m from '$lib/paraglide/messages.js';
+	import * as Alert from '$lib/components/base/alert/index.js';
 	import BanIcon from '@lucide/svelte/icons/ban';
 	import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
 	import TriangleAlertIcon from '@lucide/svelte/icons/triangle-alert';
@@ -90,10 +91,10 @@
 {/snippet}
 
 {#if model.consequence !== null}
-	<p class="consequence" id={consequenceId}>
+	<Alert.Root tone="warning" role="note" class="mb-2" id={consequenceId}>
 		<TriangleAlertIcon aria-hidden="true" />
-		{@render consequenceText(model.consequence)}
-	</p>
+		<Alert.Description>{@render consequenceText(model.consequence)}</Alert.Description>
+	</Alert.Root>
 {/if}
 {#each model.giftChanges as change (change.giftId)}
 	{@render giftChange(change, model.giftChanges.length > 1)}
@@ -102,14 +103,16 @@
 	<p class="note">{m.change_review_reorder_more({ count: model.moreCount })}</p>
 {/if}
 {#each model.reasons as reason, index (index)}
-	<p class={['reason', reasonTone]}>
+	<Alert.Root tone={reasonTone} role="note" class="mt-2">
 		{#if reasonTone === 'warning'}
 			<TriangleAlertIcon aria-hidden="true" />
 		{:else}
 			<BanIcon aria-hidden="true" />
 		{/if}
-		<span>{reasonSuffix === null ? reason : `${reason} ${reasonSuffix}`}</span>
-	</p>
+		<Alert.Description>
+			{reasonSuffix === null ? reason : `${reason} ${reasonSuffix}`}
+		</Alert.Description>
+	</Alert.Root>
 {/each}
 {#if showCurrentCards && model.currentCards !== null}
 	<details class="disclosure">
@@ -150,46 +153,6 @@
 		color: var(--muted-foreground);
 		font-size: var(--text-sm);
 		font-weight: 600;
-	}
-
-	.consequence,
-	.reason {
-		display: flex;
-		align-items: flex-start;
-		gap: var(--space-2);
-		padding: var(--space-2) 10px;
-		border-radius: 10px;
-		font-size: var(--text-md);
-		line-height: 1.4;
-	}
-
-	.consequence :global(svg),
-	.reason :global(svg) {
-		flex: none;
-		width: 16px;
-		height: 16px;
-		margin-top: 1px;
-	}
-
-	.consequence {
-		margin-bottom: var(--space-2);
-		border: 2px solid var(--ink);
-		background: color-mix(in oklab, var(--accent-loud) 22%, var(--card));
-		font-weight: 600;
-	}
-
-	.reason {
-		margin-top: var(--space-2);
-	}
-
-	.reason.warning {
-		border: 2px solid color-mix(in oklab, var(--status-warning) 60%, var(--ink));
-		background: color-mix(in oklab, var(--status-warning) 18%, var(--card));
-	}
-
-	.reason.danger {
-		border: 2px solid color-mix(in oklab, var(--status-danger) 60%, var(--ink));
-		background: color-mix(in oklab, var(--status-danger) 14%, var(--card));
 	}
 
 	.disclosure {

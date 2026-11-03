@@ -8,6 +8,7 @@
 	import { accessTokenAbilitySentence } from '$lib/modules/access_tokens/access_token_display.js';
 	import type { CreatedAccessToken } from '$lib/modules/access_tokens/index.js';
 	import BotIcon from '@lucide/svelte/icons/bot';
+	import CircleAlertIcon from '@lucide/svelte/icons/circle-alert';
 	import TriangleAlertIcon from '@lucide/svelte/icons/triangle-alert';
 
 	interface TokenRevealPanelProps {
@@ -39,9 +40,12 @@
 	</Alert.Root>
 
 	{#if replacedPrefix !== null}
-		<p class="replaced-note">
-			{m.access_tokens_replaced_note({ prefix: `${replacedPrefix}…` })}
-		</p>
+		<Alert.Root tone="danger" role="note">
+			<CircleAlertIcon aria-hidden="true" />
+			<Alert.Description>
+				{m.access_tokens_replaced_note({ prefix: `${replacedPrefix}…` })}
+			</Alert.Description>
+		</Alert.Root>
 	{/if}
 
 	<div class="flex flex-col gap-1.5">
@@ -80,13 +84,6 @@
 </div>
 
 <style>
-	.replaced-note {
-		padding: var(--space-2) var(--space-3);
-		border-radius: var(--radius-btn);
-		background: color-mix(in oklab, var(--status-danger) 10%, var(--card));
-		font-size: var(--text-md);
-	}
-
 	.quick-start {
 		display: grid;
 		grid-template-columns: max-content max-content;
