@@ -188,7 +188,8 @@ describe('GiftCategoryBadges', () => {
 		// The wishlist card wrapper keeps touch presses on card content to itself for its long press.
 		host.addEventListener('pointerdown', (event) => {
 			const startedOnControl =
-				event.target instanceof Element && event.target.closest(GIFT_CARD_CONTROL_SELECTOR);
+				event.target instanceof Element &&
+				event.target.closest(GIFT_CARD_CONTROL_SELECTOR) !== null;
 			if (event.pointerType !== 'mouse' && !startedOnControl) {
 				event.stopPropagation();
 			}
