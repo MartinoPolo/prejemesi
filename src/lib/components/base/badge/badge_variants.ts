@@ -27,7 +27,7 @@ export const badgeVariants = tv({
 			outlined: badgeShape,
 			subtle: `${badgeShape} border-transparent`,
 			solid: `${badgeShape} border-ink`,
-			/** Compact filled pill for a live number, such as the active-filter count on a trigger. */
+			/** Compact pill for a live number: the active-filter count (primary) or a tab total (neutral). */
 			count: 'rounded-full border-0',
 			/** Chip that sits on a photo: card face, ink border, ink text, sticker shadow. */
 			overlay: `${badgeShape} border-ink shadow-sticker-sm`,
@@ -70,6 +70,12 @@ export const badgeVariants = tv({
 			tone: 'neutral',
 			class: 'bg-muted-foreground text-background',
 		},
+		/** An item total, such as a tab count: a light grey pill that sits quietly beside its label. */
+		{
+			badgeStyle: 'count',
+			tone: 'neutral',
+			class: 'bg-[color-mix(in_oklab,var(--ink)_10%,transparent)] text-foreground',
+		},
 		{ badgeStyle: 'overlay', tone: 'neutral', class: 'text-ink' },
 		{
 			badgeStyle: 'count',
@@ -100,7 +106,8 @@ export type BadgeProps = WithElementRef<HTMLAttributes<HTMLSpanElement>, HTMLSpa
 	tone?: BadgeTone;
 	/**
 	 * `outlined` tints the fill inside an ink border, `subtle` drops the border, `solid` fills with the
-	 * tone, `count` is the compact filled pill for a live number (`tone="primary"` for active filters),
+	 * tone, `count` is the compact pill for a live number (`tone="primary"` for active filters,
+	 * `tone="neutral"` for tab totals),
 	 * and `overlay` is the raised chip that stays legible on a photo (`tone="neutral"` for counters).
 	 */
 	badgeStyle?: BadgeStyle;

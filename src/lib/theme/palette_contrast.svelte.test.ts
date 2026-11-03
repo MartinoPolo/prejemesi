@@ -211,6 +211,10 @@ describe('filled buttons across palettes', () => {
 });
 
 const statusTextSamples = {
+	neutral: [
+		badgeVariants({ tone: 'neutral', badgeStyle: 'count' }),
+		badgeVariants({ tone: 'neutral', badgeStyle: 'overlay' }),
+	],
 	success: [
 		...BADGE_STYLES.filter(
 			(badgeStyle) => badgeStyle !== 'solid' && badgeStyle !== 'count',

@@ -41,7 +41,7 @@
 					value={option.value}
 					data-testid="change-review-filter-{option.value}"
 				>
-					{option.label}<Badge tone="neutral" class="ml-1.5"
+					{option.label}<Badge tone="neutral" badgeStyle="count" class="ml-1.5"
 						>{filterCounts[option.value]}</Badge
 					>
 				</SegmentedToggle.Item>
