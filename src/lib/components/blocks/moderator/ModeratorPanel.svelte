@@ -306,9 +306,7 @@
 									</div>
 									<Button
 										size="sm"
-										intent="ghost"
-										class=""
-										surfaceClass="text-status-danger-text group-hover:text-status-danger-text"
+										intent="ghost-danger"
 										disabled={isRevokingClaimId === invite.id}
 										aria-label={m.claim_revoke_invite()}
 										onclick={() => handleRevokeClaim(invite.id)}
@@ -416,9 +414,7 @@
 								</div>
 								<Button
 									size="sm"
-									intent="ghost"
-									class=""
-									surfaceClass="text-status-danger-text group-hover:text-status-danger-text"
+									intent="ghost-danger"
 									disabled={isRevokingId === invite.id}
 									aria-label={m.moderator_revoke_invite()}
 									onclick={() => handleRevokeInvite(invite.id)}

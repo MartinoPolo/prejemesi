@@ -224,6 +224,22 @@
 	{/snippet}
 </Story>
 
+<Story name="Ghost Danger Quiet">
+	{#snippet template(args: ButtonProps)}
+		<div class="flex items-center gap-2">
+			<Button
+				intent="ghost-danger-quiet"
+				size="sm"
+				format="icon"
+				aria-label="Odebrat odkaz"
+				{...args}
+			>
+				<TrashIcon data-icon="inline-start" />
+			</Button>
+		</div>
+	{/snippet}
+</Story>
+
 <Story name="Ghost on Backgrounds">
 	{#snippet template(args: ButtonProps)}
 		<div class="flex flex-wrap gap-4">

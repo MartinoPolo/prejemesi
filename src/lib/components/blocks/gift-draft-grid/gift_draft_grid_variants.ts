@@ -38,7 +38,3 @@ export const DRAFT_GRID_COLUMNS_NO_PRIORITY =
 /** Column / field-label typography – shared by the desktop header and mobile cell labels. */
 export const DRAFT_COL_LABEL_CLASS =
 	'text-xs font-bold tracking-wide text-muted-foreground uppercase';
-
-/** Hover treatment for destructive icon buttons (remove row / remove link). */
-export const DRAFT_DESTRUCTIVE_HOVER_CLASS =
-	'group-hover:bg-[color-mix(in_oklch,var(--destructive)_12%,transparent)] group-hover:text-status-danger-text';

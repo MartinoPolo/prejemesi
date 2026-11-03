@@ -111,11 +111,10 @@
 		{/if}
 
 		<Button
-			intent="ghost"
+			intent="ghost-danger-quiet"
 			size="sm"
 			format="icon"
 			class="shrink-0"
-			surfaceClass="text-muted-foreground group-hover:text-status-danger-text"
 			{disabled}
 			onclick={onremove}
 			aria-label={m.gift_link_remove()}
