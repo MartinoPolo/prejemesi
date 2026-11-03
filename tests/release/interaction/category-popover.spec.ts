@@ -66,11 +66,11 @@ function giftItem(page: Page, name: string): Locator {
 }
 
 function moreChip(page: Page): Locator {
-	return giftItem(page, CATEGORIZED_GIFT).getByTestId('gift-category-more');
+	return giftItem(page, CATEGORIZED_GIFT).locator('[data-slot="overflow-chips-trigger"]');
 }
 
 function popover(page: Page): Locator {
-	return page.getByTestId('gift-category-popover').filter({ visible: true });
+	return page.locator('[data-slot="overflow-chips-popover"]').filter({ visible: true });
 }
 
 function giftDetail(page: Page): Locator {
@@ -128,7 +128,7 @@ async function arrange(
 		await waitForAppHydration(page);
 	}
 	// A known-bug case ends where the bug left the page, possibly with a layer open.
-	const openLayers = page.locator('[role="dialog"], [data-testid="gift-category-popover"]');
+	const openLayers = page.locator('[role="dialog"], [data-slot="overflow-chips-popover"]');
 	for (
 		let attempt = 0;
 		attempt < 3 && (await openLayers.filter({ visible: true }).count()) > 0;
@@ -163,7 +163,7 @@ async function arrange(
 		await session.touch.tap(moreChip(page));
 	}
 	await expect(popover(page)).toBeVisible();
-	await expectAnimationsFinished(page, '[data-testid="gift-category-popover"]');
+	await expectAnimationsFinished(page, '[data-slot="overflow-chips-popover"]');
 	await expect(giftDetail(page), 'opening the popover does not press the card').toHaveCount(0);
 }
 

@@ -121,14 +121,14 @@ describe('GiftCategoryBadges', () => {
 		const badges = host.querySelectorAll<HTMLElement>('[data-testid="gift-category-badge"]');
 		expect(badges).toHaveLength(1);
 		expect(getComputedStyle(badges[0]!).webkitLineClamp).toBe('2');
-		expect(host.querySelector('[data-testid="gift-category-more"]')).toBeNull();
+		expect(host.querySelector('[data-slot="overflow-chips-trigger"]')).toBeNull();
 	});
 
 	it('shows every category on one line when the lane is wide enough', async () => {
 		const host = await renderGift(categorizedGift(LABELS.slice(0, 2)), { width: 360 });
 
 		await expect.poll(() => visibleBadgeLabels(host)).toEqual(LABELS.slice(0, 2));
-		expect(host.querySelector('[data-testid="gift-category-more"]')).toBeNull();
+		expect(host.querySelector('[data-slot="overflow-chips-trigger"]')).toBeNull();
 	});
 
 	it('shows leading one-line badges in order and collapses the rest into "+X" on a narrow card', async () => {
