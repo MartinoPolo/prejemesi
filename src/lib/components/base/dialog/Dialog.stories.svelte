@@ -80,10 +80,10 @@
 					<Dialog.Footer>
 						<Dialog.Close>
 							{#snippet child({ props })}
-								<Button intent="outline" size="lg" {...props}>Cancel</Button>
+								<Button intent="outline" {...props}>Cancel</Button>
 							{/snippet}
 						</Dialog.Close>
-						<Button type="submit" size="lg">Create</Button>
+						<Button type="submit">Create</Button>
 					</Dialog.Footer>
 				</form>
 			</Dialog.Content>
@@ -112,8 +112,8 @@
 					{/each}
 				</Dialog.Body>
 				<Dialog.Footer>
-					<Button intent="outline" size="lg">Back</Button>
-					<Button size="lg">Continue</Button>
+					<Button intent="outline">Back</Button>
+					<Button>Continue</Button>
 				</Dialog.Footer>
 			</Dialog.Content>
 		</Dialog.Root>

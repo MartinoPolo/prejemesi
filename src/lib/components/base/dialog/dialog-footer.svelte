@@ -11,7 +11,8 @@
 	}: WithElementRef<HTMLAttributes<HTMLDivElement>> = $props();
 </script>
 
-<!-- Phones stack the actions with the primary one on top; wider screens put them on one row. -->
+<!-- Phones stack the actions with the primary one on top; wider screens put them on one row.
+     Actions keep the default Button size so every dialog footer matches. -->
 <div
 	bind:this={ref}
 	data-slot="dialog-footer"
