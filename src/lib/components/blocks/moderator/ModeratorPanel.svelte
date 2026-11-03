@@ -6,7 +6,6 @@
 	import { Button } from '$lib/components/base/button/index.js';
 	import { Input } from '$lib/components/base/input/index.js';
 	import { Label } from '$lib/components/base/label/index.js';
-	import { Separator } from '$lib/components/base/separator/index.js';
 	import ModeratorListItem from './ModeratorListItem.svelte';
 	import { moderatorPanelVariants } from './moderator_panel_variants.js';
 	import {
@@ -235,7 +234,7 @@
 		</Dialog.Header>
 
 		<Dialog.Body>
-			<div class="flex flex-col gap-6">
+			<div class="flex flex-col gap-8">
 				{#if isForSomeoneElse}
 					<!-- Claim link (issue #150): nudge to link the free-text recipient's real account.
 				     Mirrors the správce-invite generate/email/copy/revoke flow. -->
@@ -316,8 +315,6 @@
 							{/each}
 						{/if}
 					</div>
-
-					<Separator />
 				{/if}
 
 				<!-- Active moderators -->
@@ -339,8 +336,6 @@
 						{/each}
 					{/if}
 				</div>
-
-				<Separator />
 
 				<!-- Generate invite -->
 				<div class={styles.section()}>
@@ -389,8 +384,6 @@
 
 				<!-- Pending invites -->
 				{#if pendingInvites.length > 0}
-					<Separator />
-
 					<div class={styles.section()}>
 						<div class={styles.sectionTitle()}>
 							{m.moderator_pending_title({ count: pendingInvites.length })}
@@ -427,8 +420,6 @@
 
 				<!-- Reservation visibility (self lists only): recipient self-promotion + disclosure -->
 				{#if !isForSomeoneElse}
-					<Separator />
-
 					<!-- Self-promote section -->
 					{#if !recipientIsModerator}
 						<div class={styles.section()}>
