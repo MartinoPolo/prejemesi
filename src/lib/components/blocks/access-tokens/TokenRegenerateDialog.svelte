@@ -56,7 +56,7 @@
 					? m.access_tokens_regenerate_expired_title()
 					: m.access_tokens_regenerate_title()}
 			</Dialog.Title>
-			<Dialog.Description class="text-(length:--text-base) text-foreground">
+			<Dialog.Description>
 				{token.expired
 					? m.access_tokens_regenerate_expired_lead()
 					: m.access_tokens_regenerate_lead()}

@@ -12,6 +12,6 @@ export const releaseReservationDialogVariants = tv({
 		rowMeta: 'text-xs font-semibold text-muted-foreground',
 		rowBlockedReason: 'text-xs text-muted-foreground',
 		rowAction: 'flex flex-none flex-col items-end gap-1',
-		confirmBody: 'min-w-0 text-sm break-words text-muted-foreground',
+		confirmBody: 'min-w-0',
 	},
 });

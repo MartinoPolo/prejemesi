@@ -12,6 +12,6 @@
 <DialogPrimitive.Description
 	bind:ref
 	data-slot="dialog-description"
-	class={cn('text-muted-foreground text-sm break-words', className)}
+	class={cn('text-(length:--text-base) text-foreground break-words', className)}
 	{...restProps}
 />
