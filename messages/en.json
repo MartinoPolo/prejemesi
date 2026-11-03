@@ -1035,6 +1035,7 @@
 	"import_wizard_step_source": "Source",
 	"import_wizard_step_review": "Review",
 	"import_wizard_step_confirm": "Confirm",
+	"import_wizard_steps_label": "Import steps",
 	"import_wizard_next": "Continue",
 	"import_wizard_back": "Back",
 	"import_wizard_cancel": "Cancel",

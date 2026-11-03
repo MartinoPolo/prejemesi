@@ -13,11 +13,10 @@
 	import * as m from '$lib/paraglide/messages.js';
 	import * as Dialog from '$lib/components/base/dialog/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
-	import { Separator } from '$lib/components/base/separator/index.js';
 	import AccessTokenBasicsStep from './AccessTokenBasicsStep.svelte';
 	import { ConfirmDialog } from '$lib/components/derived/confirm-dialog/index.js';
 	import AccessTokenPermissionsStep from './AccessTokenPermissionsStep.svelte';
-	import AccessTokenSteps from './AccessTokenSteps.svelte';
+	import { Stepper } from '$lib/components/derived/stepper/index.js';
 	import TokenRevealPanel from './TokenRevealPanel.svelte';
 	import { WISHLIST_RESTRICTION, type WishlistRestriction } from './access_token_form.js';
 	import {
@@ -67,10 +66,17 @@
 	let copied = $state(false);
 	let closeGuardOpen = $state(false);
 	let nameInput = $state<HTMLInputElement | null>(null);
-	let body = $state<HTMLElement | null>(null);
+	let body = $state<HTMLDivElement | null>(null);
 	let revealPanel = $state<ReturnType<typeof TokenRevealPanel> | null>(null);
 
+	const stepLabels = [
+		m.access_tokens_step_basics(),
+		m.access_tokens_step_permissions(),
+		m.access_tokens_step_token(),
+	];
 	const currentStepIndex = $derived(revealed !== null ? 2 : step === STEP.permissions ? 1 : 0);
+	/** A regenerated token skips the basics and permissions, so it has no steps to show. */
+	const showsSteps = $derived(revealed?.replacedPrefix == null);
 	const title = $derived.by(() => {
 		if (revealed === null) {
 			return m.access_tokens_create_title();
@@ -161,12 +167,12 @@
 	{#if revealed !== null}
 		<Button onclick={() => requestOpenChange(false)}>{m.done()}</Button>
 	{:else if step === STEP.basics}
-		<Button intent="secondary" onclick={() => requestOpenChange(false)}>
+		<Button intent="outline" onclick={() => requestOpenChange(false)}>
 			{m.cancel()}
 		</Button>
 		<Button onclick={continueToPermissions}>{m.access_tokens_continue()}</Button>
 	{:else}
-		<Button intent="secondary" disabled={pending} onclick={backToBasics}>
+		<Button intent="outline" disabled={pending} onclick={backToBasics}>
 			{m.access_tokens_back()}
 		</Button>
 		<Button disabled={pending} onclick={create}>
@@ -191,7 +197,7 @@
 >
 	<Dialog.Content
 		size="xl"
-		class="gap-0 overflow-hidden p-0"
+		layout="scroll"
 		data-testid="access-token-dialog"
 		onOpenAutoFocus={(event) => {
 			if (revealed !== null) {
@@ -207,56 +213,41 @@
 			}
 		}}
 	>
-		<div class="dialog-frame">
-			<div class="flex flex-col gap-3 px-4 pt-(--overlay-close-inset) pb-3 sm:px-6 sm:pb-4">
-				<div
-					class="flex min-h-(--size-control-lg) items-center pe-(--overlay-close-clearance-inside-dialog-padding)"
-				>
-					<Dialog.Title class="text-start text-xl in-data-close-button:px-0 sm:text-2xl">
-						{title}
-					</Dialog.Title>
-				</div>
-				{#if revealed?.replacedPrefix == null}
-					<AccessTokenSteps {currentStepIndex} />
-				{/if}
-			</div>
+		<Dialog.Header divided={showsSteps}>
+			<Dialog.Title>{title}</Dialog.Title>
+			{#if showsSteps}
+				<Stepper {stepLabels} {currentStepIndex} label={m.access_tokens_steps_label()} />
+			{/if}
+		</Dialog.Header>
 
-			<Separator />
+		<Dialog.Body bind:ref={body} class="flex flex-col gap-5.5">
+			{#if revealed !== null}
+				<TokenRevealPanel
+					bind:this={revealPanel}
+					created={revealed.created}
+					replacedPrefix={revealed.replacedPrefix}
+					{apiBaseUrl}
+					oncopied={() => (copied = true)}
+				/>
+			{:else if step === STEP.basics}
+				<AccessTokenBasicsStep
+					bind:name
+					bind:restriction
+					bind:selectedWishlistIds
+					bind:wishlistSearch
+					bind:expiryDays
+					bind:nameError
+					bind:wishlistsError
+					bind:nameInput
+				/>
+			{:else}
+				<AccessTokenPermissionsStep bind:scopes bind:fastForward disabled={pending} />
+			{/if}
+		</Dialog.Body>
 
-			<div
-				bind:this={body}
-				class="flex min-h-0 flex-1 flex-col gap-5.5 overflow-y-auto px-4 py-4 sm:px-6 sm:pt-5 sm:pb-6"
-			>
-				{#if revealed !== null}
-					<TokenRevealPanel
-						bind:this={revealPanel}
-						created={revealed.created}
-						replacedPrefix={revealed.replacedPrefix}
-						{apiBaseUrl}
-						oncopied={() => (copied = true)}
-					/>
-				{:else if step === STEP.basics}
-					<AccessTokenBasicsStep
-						bind:name
-						bind:restriction
-						bind:selectedWishlistIds
-						bind:wishlistSearch
-						bind:expiryDays
-						bind:nameError
-						bind:wishlistsError
-						bind:nameInput
-					/>
-				{:else}
-					<AccessTokenPermissionsStep bind:scopes bind:fastForward disabled={pending} />
-				{/if}
-			</div>
-
-			<Separator />
-
-			<Dialog.Footer class="shrink-0 px-4 py-3 sm:px-6 sm:pt-4 sm:pb-5">
-				{@render footerActions()}
-			</Dialog.Footer>
-		</div>
+		<Dialog.Footer>
+			{@render footerActions()}
+		</Dialog.Footer>
 
 		<!-- The secret is shown only once; losing it is recovered by regenerating, so red outline. -->
 		<ConfirmDialog
@@ -271,13 +262,3 @@
 		/>
 	</Dialog.Content>
 </Dialog.Root>
-
-<style>
-	/* The header and footer stay put while the body scrolls on short screens. */
-	.dialog-frame {
-		display: flex;
-		min-height: 0;
-		max-height: 85dvh;
-		flex-direction: column;
-	}
-</style>

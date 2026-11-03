@@ -6,7 +6,7 @@
 	import { Input } from '$lib/components/base/input/index.js';
 	import { Label } from '$lib/components/base/label/index.js';
 	import { HelpText } from '$lib/components/base/help-text/index.js';
-	import { Separator } from '$lib/components/base/separator/index.js';
+	import { Stepper } from '$lib/components/derived/stepper/index.js';
 	import { RECIPIENT_KIND, RECIPIENT_NAME_MAX_LENGTH } from '$lib/modules/wishlists/types.js';
 	import type { Attachment } from 'svelte/attachments';
 	import ImportSourceStep from './ImportSourceStep.svelte';
@@ -32,7 +32,6 @@
 		submitDuplicateAwareImport,
 	} from '$lib/modules/import/duplicate_aware_submission.js';
 	import { findDuplicates } from '$lib/modules/gifts/gift_draft.js';
-	import CheckIcon from '@lucide/svelte/icons/check';
 	import ArrowLeftIcon from '@lucide/svelte/icons/arrow-left';
 	import { onDestroy } from 'svelte';
 
@@ -125,8 +124,8 @@
 	// Step indices drive directional panel and connector motion.
 	const currentStepIndex = $derived(WIZARD_STEPS.indexOf(currentStep));
 	let previousStepIndex = $state(WIZARD_STEPS.indexOf(WIZARD_STEP.source));
-	let stepPanel = $state<HTMLElement | null>(null);
-	let stepper = $state<HTMLElement | null>(null);
+	let stepPanel = $state<HTMLDivElement | null>(null);
+	let stepper = $state<HTMLOListElement | null>(null);
 	let activeStepAnimations: Animation[] = [];
 
 	function cancelStepAnimations() {
@@ -173,9 +172,9 @@
 		);
 
 		for (const connector of stepperElement.querySelectorAll<HTMLElement>(
-			'[data-import-connector]',
+			'[data-stepper-connector]',
 		)) {
-			const connectorIndex = Number(connector.dataset.importConnector);
+			const connectorIndex = Number(connector.dataset.stepperConnector);
 			const wasComplete = connectorIndex <= from;
 			const isComplete = connectorIndex <= to;
 			if (wasComplete === isComplete) {
@@ -406,89 +405,36 @@
 
 	const confirmFormId = 'import-wizard-confirm-form';
 
-	const STEP_LABELS: readonly (() => string)[] = [
-		() => m.import_wizard_step_source(),
-		() => m.import_wizard_step_review(),
-		() => m.import_wizard_step_confirm(),
+	const STEP_LABELS = [
+		m.import_wizard_step_source(),
+		m.import_wizard_step_review(),
+		m.import_wizard_step_confirm(),
 	];
 </script>
 
 <Dialog.Root {open} onOpenChange={handleOpenChange}>
-	<Dialog.Content
-		class="{dialogWidth} flex max-h-[90dvh] flex-col gap-0 overflow-hidden p-0 transition-[max-width] duration-200"
-	>
-		<Dialog.Title class="sr-only">{m.import_wizard_title()}</Dialog.Title>
-		<Dialog.Description class="sr-only">
-			{mode === WIZARD_MODE.newList
-				? m.import_wizard_subtitle_new()
-				: m.import_wizard_subtitle_append()}
-		</Dialog.Description>
-
-		<!-- Header: the title row shares the close button's row and height so the stepper below
-		     clears the button and its depth shadow. -->
-		<div class="flex flex-col gap-3 px-6 pt-(--overlay-close-inset) pb-4">
-			<div
-				class="flex min-h-(--size-control-lg) items-center justify-between pe-(--overlay-close-clearance-inside-dialog-padding)"
-				data-testid="import-wizard-title-row"
+	<Dialog.Content layout="scroll" class="{dialogWidth} transition-[max-width] duration-200">
+		<Dialog.Header divided>
+			<Dialog.Title data-testid="import-wizard-title-row"
+				>{m.import_wizard_title()}</Dialog.Title
 			>
-				<h2 class="font-heading text-lg font-semibold text-foreground">
-					{m.import_wizard_title()}
-				</h2>
-			</div>
-
-			<!-- Stepper: ink-bordered dots + dashed connectors (anime-sky design language) -->
-			<div
-				class="flex items-center gap-2"
-				bind:this={stepper}
+			<Dialog.Description class="sr-only">
+				{mode === WIZARD_MODE.newList
+					? m.import_wizard_subtitle_new()
+					: m.import_wizard_subtitle_append()}
+			</Dialog.Description>
+			<Stepper
+				bind:ref={stepper}
+				stepLabels={STEP_LABELS}
+				{currentStepIndex}
+				label={m.import_wizard_steps_label()}
 				data-testid="import-wizard-stepper"
-			>
-				{#each WIZARD_STEPS as step, index (step)}
-					{#if index > 0}
-						<div
-							class="relative flex-1 border-t-2 border-dashed border-ink-faint"
-							aria-hidden="true"
-						>
-							<div
-								data-import-connector={index}
-								class="absolute inset-x-0 top-[-2px] border-t-2 border-ink origin-left"
-								style:transform="scaleX({index <= currentStepIndex ? 1 : 0})"
-							></div>
-						</div>
-					{/if}
-					<div class="flex items-center gap-1.5">
-						<div
-							class="flex size-6 items-center justify-center rounded-full border-2 text-xs font-bold {index <=
-							currentStepIndex
-								? 'border-ink bg-primary text-primary-foreground'
-								: 'border-ink-faint bg-surface text-muted-foreground'}"
-						>
-							{#if index < currentStepIndex}
-								<CheckIcon class="size-3.5" />
-							{:else}
-								{index + 1}
-							{/if}
-						</div>
-						<span
-							class="text-xs {index === currentStepIndex
-								? 'font-bold text-foreground'
-								: 'font-semibold text-muted-foreground'}"
-						>
-							{STEP_LABELS[index]()}
-						</span>
-					</div>
-				{/each}
-			</div>
-		</div>
-
-		<Separator />
+			/>
+		</Dialog.Header>
 
 		<!-- Step content. Flex column so the review step's grid can fill the remaining
 		     height and own the only vertical scrollbar; short steps still scroll here. -->
-		<div
-			class="flex min-h-0 flex-1 flex-col overflow-y-auto px-6 py-5"
-			bind:this={stepPanel}
-			data-import-step-panel
-		>
+		<Dialog.Body bind:ref={stepPanel} class="flex flex-col" data-import-step-panel>
 			{#if currentStep === WIZARD_STEP.source}
 				<ImportSourceStep onparsed={handleSourceParsed} />
 			{:else if currentStep === WIZARD_STEP.review}
@@ -566,43 +512,39 @@
 					{suppressNavigation}
 				/>
 			{/if}
-		</div>
+		</Dialog.Body>
 
-		<!-- Footer -->
 		{#if commitStatus !== COMMIT_STATUS.success}
-			<Separator />
-			<div class="flex shrink-0 items-center justify-between px-6 py-4">
-				<div>
-					{#if currentStepIndex > 0 && commitStatus !== COMMIT_STATUS.committing}
-						<Button intent="ghost" onclick={handleBack}>
-							<ArrowLeftIcon data-icon="inline-start" />
-							{m.import_wizard_back()}
-						</Button>
-					{/if}
-				</div>
-				<div class="flex gap-(--nested-control-gap)">
-					{#if commitStatus !== COMMIT_STATUS.committing}
-						<Button intent="ghost" onclick={handleClose}>
-							{m.import_wizard_cancel()}
-						</Button>
-					{/if}
-					{#if currentStep === WIZARD_STEP.review}
-						<Button onclick={handleNext} disabled={!canProceed}>
-							{m.import_wizard_next()}
-						</Button>
-					{:else if currentStep === WIZARD_STEP.confirm && commitStatus !== COMMIT_STATUS.committing}
-						<Button type="submit" form={confirmFormId}>
-							{#if commitStatus === COMMIT_STATUS.error}
-								{m.import_wizard_retry()}
-							{:else if mode === WIZARD_MODE.newList}
-								{m.import_wizard_commit_new()}
-							{:else}
-								{m.import_wizard_commit_append()}
-							{/if}
-						</Button>
-					{/if}
-				</div>
-			</div>
+			<Dialog.Footer>
+				<!-- Back steps through the wizard rather than dismissing it, so it stays a quiet
+				     ghost action apart from Cancel and the primary action. -->
+				{#if currentStepIndex > 0 && commitStatus !== COMMIT_STATUS.committing}
+					<Button intent="ghost" class="sm:me-auto" onclick={handleBack}>
+						<ArrowLeftIcon data-icon="inline-start" />
+						{m.import_wizard_back()}
+					</Button>
+				{/if}
+				{#if commitStatus !== COMMIT_STATUS.committing}
+					<Button intent="outline" onclick={handleClose}>
+						{m.import_wizard_cancel()}
+					</Button>
+				{/if}
+				{#if currentStep === WIZARD_STEP.review}
+					<Button onclick={handleNext} disabled={!canProceed}>
+						{m.import_wizard_next()}
+					</Button>
+				{:else if currentStep === WIZARD_STEP.confirm && commitStatus !== COMMIT_STATUS.committing}
+					<Button type="submit" form={confirmFormId}>
+						{#if commitStatus === COMMIT_STATUS.error}
+							{m.import_wizard_retry()}
+						{:else if mode === WIZARD_MODE.newList}
+							{m.import_wizard_commit_new()}
+						{:else}
+							{m.import_wizard_commit_append()}
+						{/if}
+					</Button>
+				{/if}
+			</Dialog.Footer>
 		{/if}
 	</Dialog.Content>
 </Dialog.Root>

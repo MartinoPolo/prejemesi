@@ -4,6 +4,7 @@ import { render } from 'vitest-browser-svelte';
 import DialogTestFixture from './dialog_test_fixture.svelte';
 import DialogScrollTestFixture from './dialog_scroll_test_fixture.svelte';
 import { expectContentClearsOverlayClose } from './overlay_close_geometry.test_fixtures.js';
+import { resolvedCssLength } from '$lib/components/blocks/gift/gift_action_geometry.test_fixtures.js';
 
 afterEach(async () => {
 	delete document.documentElement.dataset.depth;
@@ -118,6 +119,29 @@ describe('Dialog scroll layout', () => {
 		);
 		expect(getComputedStyle(scrollDialogPart('dialog-header')).borderBottomWidth).toBe('1px');
 	});
+
+	it.each(['soft', 'ink', 'black'] as const)(
+		'keeps a divided header row below the close button and spaces the body from the divider at %s depth',
+		async (depth) => {
+			document.documentElement.dataset.depth = depth;
+			render(DialogScrollTestFixture, { paragraphCount: 3, divided: true });
+			await expect
+				.element(page.getByRole('heading', { name: 'Scrolling dialog' }))
+				.toBeVisible();
+			await Promise.all(document.getAnimations().map((animation) => animation.finished));
+			const header = scrollDialogPart('dialog-header');
+			const rowBelowTitle = scrollDialogPart('dialog-description');
+			const closeButton = scrollDialogPart('dialog-close');
+			const nestedControlGap = resolvedCssLength(header, 'var(--nested-control-gap)');
+
+			expect(rowBelowTitle.getBoundingClientRect().top).toBeGreaterThanOrEqual(
+				closeButton.getBoundingClientRect().bottom + nestedControlGap - 0.5,
+			);
+			expect(getComputedStyle(scrollDialogPart('dialog-body')).paddingTop).toBe(
+				getComputedStyle(header).paddingBottom,
+			);
+		},
+	);
 
 	it('leaves the header without a border by default', async () => {
 		render(DialogScrollTestFixture, { paragraphCount: 3 });

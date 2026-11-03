@@ -227,13 +227,13 @@
 </script>
 
 <Dialog.Root {open} onOpenChange={handleOpenChange}>
-	<Dialog.Content size="2xl" class="flex max-h-[85dvh] flex-col gap-0 overflow-hidden p-0">
-		<Dialog.Header class="shrink-0 px-6 pt-6 pb-4">
+	<Dialog.Content size="2xl" layout="scroll">
+		<Dialog.Header>
 			<Dialog.Title>{m.moderator_title()}</Dialog.Title>
 			<Dialog.Description>{m.moderator_description()}</Dialog.Description>
 		</Dialog.Header>
 
-		<div class="min-h-0 flex-1 overflow-y-auto px-6 pb-6">
+		<Dialog.Body>
 			<div class="flex flex-col gap-6">
 				{#if isForSomeoneElse}
 					<!-- Claim link (issue #150): nudge to link the free-text recipient's real account.
@@ -478,6 +478,6 @@
 					{/if}
 				{/if}
 			</div>
-		</div>
+		</Dialog.Body>
 	</Dialog.Content>
 </Dialog.Root>

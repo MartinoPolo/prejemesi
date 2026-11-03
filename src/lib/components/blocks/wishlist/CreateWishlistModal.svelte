@@ -196,21 +196,14 @@
 </script>
 
 <Dialog.Root bind:open onOpenChange={handleOpenChange}>
-	<!-- Top-anchored (override the base's vertical centering) so height changes from the
-	     recipient toggle, the "more settings" accordion, or validation errors grow the box
-	     downward instead of re-centering it — otherwise every height change shifts the top
-	     edge and the modal "jumps". `max-h`/`overflow` still cap tall content on short/mobile
-	     viewports; horizontal centering (left-1/2, -translate-x-1/2) is inherited unchanged. -->
-	<Dialog.Content
-		class="top-[10vh] flex max-h-[85dvh] translate-y-0 flex-col gap-0 overflow-hidden p-0"
-	>
-		<Dialog.Header class="shrink-0 px-6 pt-6 pb-4">
+	<Dialog.Content layout="scroll">
+		<Dialog.Header>
 			<Dialog.Title>{m.wishlist_create_title()}</Dialog.Title>
 			<Dialog.Description>{m.wishlist_create_description()}</Dialog.Description>
 		</Dialog.Header>
 
-		<form onsubmit={handleSubmit} novalidate class="flex min-h-0 flex-1 flex-col">
-			<div class="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 pt-1 pb-6">
+		<form onsubmit={handleSubmit} novalidate>
+			<Dialog.Body class="space-y-4">
 				<ToggleGroup.Root
 					type="single"
 					intent="outline"
@@ -374,8 +367,8 @@
 						</Button>
 					</div>
 				{/if}
-			</div>
-			<Dialog.Footer class="shrink-0 border-t border-border bg-background px-6 py-4">
+			</Dialog.Body>
+			<Dialog.Footer>
 				<Button
 					type="button"
 					intent="outline"

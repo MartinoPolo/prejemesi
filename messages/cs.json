@@ -1035,6 +1035,7 @@
 	"import_wizard_step_source": "Zdroj",
 	"import_wizard_step_review": "Kontrola",
 	"import_wizard_step_confirm": "Potvrzení",
+	"import_wizard_steps_label": "Postup importu",
 	"import_wizard_next": "Pokračovat",
 	"import_wizard_back": "Zpět",
 	"import_wizard_cancel": "Zrušit",

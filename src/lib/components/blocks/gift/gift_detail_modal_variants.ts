@@ -3,36 +3,36 @@ import { tv } from 'tailwind-variants';
 export const giftDetailModalVariants = tv({
 	slots: {
 		// Flex column so the body inherits a definite height when the dialog is
-		// capped at 90dvh – that lets the detail column pin its footer and scroll
+		// capped at 85dvh – that lets the detail column pin its footer and scroll
 		// only the fields (#116 follow-up, GiftDraftDialog precedent). Widened to
 		// ~1100px (issue #183 REQ-9) so the 4:3 crop preview does not read as cramped.
 		// Keyboard open on a phone: the dialog reaches down to the keyboard so the fields gain
 		// every pixel, the footer hides and Save moves into the title row.
 		content: [
-			'flex flex-col sm:max-w-[1100px] max-h-[90dvh] overflow-hidden p-0 gap-0 max-w-[calc(100%-1rem)]',
+			'flex flex-col sm:max-w-[1100px] max-h-[85dvh] overflow-hidden p-0 gap-0 max-w-[calc(100%-1rem)]',
 			'keyboard-open:top-[calc(var(--visual-viewport-top)+6px)] keyboard-open:bottom-(--keyboard-inset) keyboard-open:max-h-none keyboard-open:overflow-hidden keyboard-open:max-w-[calc(100%-12px)] keyboard-open:rounded-b-none keyboard-open:border-b-0',
 		],
 		editorHeader:
-			'flex shrink-0 items-center gap-3 border-b-2 border-dashed border-ink-faint py-2 pr-2.5 pl-5 sm:contents keyboard-open:gap-2 keyboard-open:py-1.5 keyboard-open:pr-2 keyboard-open:pl-4',
+			'flex shrink-0 items-center gap-3 py-2 pr-2.5 pl-5 sm:contents keyboard-open:gap-2 keyboard-open:py-1.5 keyboard-open:pr-2 keyboard-open:pl-4',
 		editorTitle:
 			'min-w-0 flex-1 break-words text-[1.1875rem] leading-tight sm:sr-only keyboard-open:text-xl',
 		keyboardSave: 'hidden shrink-0 keyboard-open:inline-flex',
 		// Mobile: a single scrolling flex column so the image and fields share one
-		// scroll region inside the 90dvh-capped dialog (issue: mobile edit dialog UX).
+		// scroll region inside the 85dvh-capped dialog (issue: mobile edit dialog UX).
 		// Desktop: restores the exact 2-col grid + its own overflow-hidden. ~50/50
 		// split (issue #183 REQ-9, revises the earlier 45/55 split). No min-height:
 		// the grid takes its height from the columns' content (form column /
-		// adaptive stage), capped at 90dvh by `content` above (#189 REQ-5).
+		// adaptive stage), capped at 85dvh by `content` above (#189 REQ-5).
 		body: 'flex min-h-0 flex-1 flex-col overflow-y-auto sm:grid sm:grid-cols-[50%_50%] sm:grid-rows-[minmax(0,1fr)_auto] sm:flex-initial sm:overflow-hidden',
 		// Dotted notebook mat behind the photo (issue #102 round-2 delta): letterboxed
-		// images keep the mat visible; a dashed ink seam separates image and form columns.
+		// images keep the mat visible; a thin seam separates image and form columns.
 		// The mobile height fits the display-mode toggle + preview + tile row (#116 round 3).
 		// shrink-0: `body` is a bounded-height flex column on mobile – without this, the
 		// default flex-shrink:1 compresses this column below its intended height and,
 		// combined with overflow-hidden, crushes/clips its content instead of letting
 		// `body` scroll (mobile edit dialog UX fix).
 		imageColumn:
-			'relative shrink-0 overflow-hidden border-b-2 border-dashed border-ink-faint bg-surface bg-[radial-gradient(var(--pattern-dot)_1.4px,transparent_1.5px)] bg-size-[18px_18px] sm:col-start-1 sm:row-span-2 sm:row-start-1 sm:border-b-0 sm:border-r-2 h-[260px] sm:h-auto',
+			'relative shrink-0 overflow-hidden border-b border-border bg-surface bg-[radial-gradient(var(--pattern-dot)_1.4px,transparent_1.5px)] bg-size-[18px_18px] sm:col-start-1 sm:row-span-2 sm:row-start-1 sm:border-b-0 sm:border-r h-[260px] sm:h-auto',
 		// Photo-workshop panel (issue #189 REQ-6): an inset sticker panel that groups
 		// the mode pill + adaptive stage + preview tiles as one designed unit on the
 		// dotted mat, visually distinct from the form column — replaces the de-seamed
@@ -72,9 +72,9 @@ export const giftDetailModalVariants = tv({
 		// Mobile: manager release/delete actions flow with the form scroll; Save
 		// itself is hidden here and rendered instead in `mobileSubmitFooter`
 		// below (see there for why). Desktop: sm:static – already pinned by flex
-		// in the right column, whole block bordered/bg as before.
+		// in the right column, painted like a scroll-layout Dialog.Footer (tint, one thin line).
 		formActions:
-			'flex flex-col gap-(--nested-control-gap) px-5 pb-4 sm:static sm:col-start-2 sm:row-start-2 sm:border-t-2 sm:border-dashed sm:border-ink-faint sm:bg-card sm:px-7 sm:py-4',
+			'flex flex-col gap-(--nested-control-gap) px-5 pb-4 sm:static sm:col-start-2 sm:row-start-2 sm:border-t sm:border-border sm:bg-background sm:px-7 sm:py-4',
 		// Desktop-only Save/Cancel pair, grouped with the manager release/delete
 		// actions in the one pinned block (`sm:order-1` keeps the pair first). Hidden
 		// on mobile: a `position: sticky` copy nested this deep in the mobile
@@ -89,9 +89,10 @@ export const giftDetailModalVariants = tv({
 		// Mobile-only pinned Save/Cancel footer (see `submitWrapper` above for why it's
 		// a separate element): a true sibling of `body`, not nested inside its
 		// scroll, so it's always visible. Hidden on desktop, where
-		// `submitWrapper` already renders Save inline with the manager actions.
+		// `submitWrapper` already renders Save inline with the manager actions. Painted like a
+		// scroll-layout Dialog.Footer.
 		mobileSubmitFooter:
-			'flex shrink-0 flex-wrap gap-(--nested-control-gap) border-t-2 border-dashed border-ink-faint bg-card px-5 py-4 sm:hidden keyboard-open:hidden',
+			'flex shrink-0 flex-wrap gap-(--nested-control-gap) border-t border-border bg-background px-5 py-4 sm:hidden keyboard-open:hidden',
 		// The action pair shares a row when it fits and wraps under enlarged text.
 		submitButton: 'min-w-fit flex-1',
 		releaseButton: 'order-1 sm:order-2 w-full',

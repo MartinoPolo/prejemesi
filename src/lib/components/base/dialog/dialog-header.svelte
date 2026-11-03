@@ -18,6 +18,7 @@
 <div
 	bind:this={ref}
 	data-slot="dialog-header"
+	data-header-divided={divided || undefined}
 	class={cn(
 		'gap-2 flex flex-col text-center sm:text-left',
 		dialogScrollSectionVariants({ divided }).header(),

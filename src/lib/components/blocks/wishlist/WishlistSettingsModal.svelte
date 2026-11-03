@@ -594,79 +594,76 @@
 		data-close-button
 		onEscapeKeydown={handleDismiss}
 		onInteractOutside={handleDismiss}
-		class="flex flex-col gap-0 overflow-hidden p-0 sm:max-w-[calc(100%-2rem)] xl:max-w-5xl"
-		style="height: min(52rem, 85dvh); max-height: calc(100dvh - 2rem);"
+		layout="scroll"
+		class="h-[min(52rem,85dvh)] sm:max-w-[calc(100%-2rem)] xl:max-w-5xl"
 	>
-		<Dialog.Header class="shrink-0 px-6 pt-6 pb-4">
+		<Dialog.Header divided={canManage && !isArchived}>
 			<Dialog.Title>{m.wishlist_settings_title()}</Dialog.Title>
 			<Dialog.Description>{wishlist.title}</Dialog.Description>
+			{#if canManage && !isArchived}
+				<div inert={saving ? true : undefined}>
+					<Tabs.Root
+						aria-label={m.wishlist_settings_title()}
+						aria-orientation="horizontal"
+						class="flex w-full max-w-full flex-nowrap overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [&>[role=tab]]:shrink-0 [&>[role=tab]]:whitespace-nowrap lg:[&>[role=tab]]:flex-1 lg:[&>[role=tab]]:justify-center"
+					>
+						<Tabs.Tab
+							id="wishlist-settings-tab-details"
+							aria-controls="wishlist-settings-panel-details"
+							active={activeTab === WISHLIST_SETTINGS_TABS.details}
+							onclick={() => (activeTab = WISHLIST_SETTINGS_TABS.details)}
+						>
+							{m.wishlist_settings_details_section()}
+						</Tabs.Tab>
+						<Tabs.Tab
+							id="wishlist-settings-tab-categories"
+							aria-controls="wishlist-settings-panel-categories"
+							active={activeTab === WISHLIST_SETTINGS_TABS.categories}
+							onclick={() => (activeTab = WISHLIST_SETTINGS_TABS.categories)}
+						>
+							{m.wishlist_settings_categories_tab()}
+						</Tabs.Tab>
+						<Tabs.Tab
+							id="wishlist-settings-tab-appearance"
+							aria-controls="wishlist-settings-panel-appearance"
+							active={activeTab === WISHLIST_SETTINGS_TABS.appearance}
+							onclick={() => (activeTab = WISHLIST_SETTINGS_TABS.appearance)}
+						>
+							{m.wishlist_settings_appearance_tab()}
+						</Tabs.Tab>
+						<Tabs.Tab
+							id="wishlist-settings-tab-image"
+							aria-controls="wishlist-settings-panel-image"
+							active={activeTab === WISHLIST_SETTINGS_TABS.image}
+							onclick={() => (activeTab = WISHLIST_SETTINGS_TABS.image)}
+						>
+							{m.wishlist_settings_image_section()}
+						</Tabs.Tab>
+						<Tabs.Tab
+							id="wishlist-settings-tab-data"
+							aria-controls="wishlist-settings-panel-data"
+							active={activeTab === WISHLIST_SETTINGS_TABS.data}
+							onclick={() => (activeTab = WISHLIST_SETTINGS_TABS.data)}
+						>
+							{m.wishlist_settings_data_title()}
+						</Tabs.Tab>
+						<Tabs.Tab
+							id="wishlist-settings-tab-danger"
+							aria-controls="wishlist-settings-panel-danger"
+							active={activeTab === WISHLIST_SETTINGS_TABS.danger}
+							onclick={() => (activeTab = WISHLIST_SETTINGS_TABS.danger)}
+						>
+							{m.wishlist_settings_danger_tab()}
+						</Tabs.Tab>
+					</Tabs.Root>
+				</div>
+			{/if}
 		</Dialog.Header>
 
-		{#if canManage && !isArchived}
-			<div inert={saving ? true : undefined} class="shrink-0 px-6 pb-4">
-				<Tabs.Root
-					aria-label={m.wishlist_settings_title()}
-					aria-orientation="horizontal"
-					class="flex w-full max-w-full flex-nowrap overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [&>[role=tab]]:shrink-0 [&>[role=tab]]:whitespace-nowrap lg:[&>[role=tab]]:flex-1 lg:[&>[role=tab]]:justify-center"
-				>
-					<Tabs.Tab
-						id="wishlist-settings-tab-details"
-						aria-controls="wishlist-settings-panel-details"
-						active={activeTab === WISHLIST_SETTINGS_TABS.details}
-						onclick={() => (activeTab = WISHLIST_SETTINGS_TABS.details)}
-					>
-						{m.wishlist_settings_details_section()}
-					</Tabs.Tab>
-					<Tabs.Tab
-						id="wishlist-settings-tab-categories"
-						aria-controls="wishlist-settings-panel-categories"
-						active={activeTab === WISHLIST_SETTINGS_TABS.categories}
-						onclick={() => (activeTab = WISHLIST_SETTINGS_TABS.categories)}
-					>
-						{m.wishlist_settings_categories_tab()}
-					</Tabs.Tab>
-					<Tabs.Tab
-						id="wishlist-settings-tab-appearance"
-						aria-controls="wishlist-settings-panel-appearance"
-						active={activeTab === WISHLIST_SETTINGS_TABS.appearance}
-						onclick={() => (activeTab = WISHLIST_SETTINGS_TABS.appearance)}
-					>
-						{m.wishlist_settings_appearance_tab()}
-					</Tabs.Tab>
-					<Tabs.Tab
-						id="wishlist-settings-tab-image"
-						aria-controls="wishlist-settings-panel-image"
-						active={activeTab === WISHLIST_SETTINGS_TABS.image}
-						onclick={() => (activeTab = WISHLIST_SETTINGS_TABS.image)}
-					>
-						{m.wishlist_settings_image_section()}
-					</Tabs.Tab>
-					<Tabs.Tab
-						id="wishlist-settings-tab-data"
-						aria-controls="wishlist-settings-panel-data"
-						active={activeTab === WISHLIST_SETTINGS_TABS.data}
-						onclick={() => (activeTab = WISHLIST_SETTINGS_TABS.data)}
-					>
-						{m.wishlist_settings_data_title()}
-					</Tabs.Tab>
-					<Tabs.Tab
-						id="wishlist-settings-tab-danger"
-						aria-controls="wishlist-settings-panel-danger"
-						active={activeTab === WISHLIST_SETTINGS_TABS.danger}
-						onclick={() => (activeTab = WISHLIST_SETTINGS_TABS.danger)}
-					>
-						{m.wishlist_settings_danger_tab()}
-					</Tabs.Tab>
-				</Tabs.Root>
-			</div>
-		{/if}
-
-		<div
+		<Dialog.Body
 			data-testid="wishlist-settings-scroll-region"
 			inert={saving ? true : undefined}
-			class="min-h-0 flex-1 overflow-y-auto px-6 pb-6 {canManage && !isArchived
-				? 'flex w-full min-w-0 flex-col gap-4'
-				: ''}"
+			class={canManage && !isArchived ? 'flex w-full min-w-0 flex-col gap-4' : undefined}
 		>
 			{#if canManage && !isArchived}
 				<!-- Podrobnosti: title / description / event date, saved by the global composite save. -->
@@ -1031,13 +1028,9 @@
 					<Alert.Description>{m.wishlist_settings_owner_only()}</Alert.Description>
 				</Alert.Root>
 			{/if}
-		</div>
+		</Dialog.Body>
 
-		<Dialog.Footer
-			data-testid="wishlist-settings-footer"
-			class="shrink-0 border-t border-border bg-background px-6 py-4"
-			style="min-height: 4.25rem;"
-		>
+		<Dialog.Footer data-testid="wishlist-settings-footer" style="min-height: 4.25rem;">
 			{#if canManage && !isArchived}
 				<WishlistSettingsSaveButton
 					dirty={anyDirty}

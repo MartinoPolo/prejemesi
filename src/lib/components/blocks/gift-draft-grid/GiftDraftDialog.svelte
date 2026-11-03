@@ -92,23 +92,20 @@
 </script>
 
 <Dialog.Root bind:open onOpenChange={handleOpenChange}>
-	<Dialog.Content
-		class="flex max-h-[90dvh] w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-[1180px]"
-	>
-		<Dialog.Header class="border-b border-border px-6 py-5 text-left">
-			<Dialog.Title class="font-heading text-2xl font-semibold tracking-tight">
-				{m.draft_grid_dialog_title()}
-			</Dialog.Title>
-			<p class="mt-1 text-xs text-muted-foreground">
+	<!-- The draft grid is table-wide, wider than every Dialog size. -->
+	<Dialog.Content layout="scroll" class="sm:max-w-[1180px]">
+		<Dialog.Header>
+			<Dialog.Title>{m.draft_grid_dialog_title()}</Dialog.Title>
+			<Dialog.Description>
 				{#if wishlistTitle}
 					{m.batch_add_dialog_subtitle({ wishlistTitle })}
 				{:else}
 					{m.draft_grid_dialog_subtitle()}
 				{/if}
-			</p>
+			</Dialog.Description>
 		</Dialog.Header>
 
-		<div class="min-h-0 flex-1 overflow-auto px-4 py-4">
+		<Dialog.Body>
 			{#key gridKey}
 				<GiftDraftGrid
 					context={DRAFT_GRID_CONTEXT.batch}
@@ -117,10 +114,10 @@
 					onchange={handleChange}
 				/>
 			{/key}
-		</div>
+		</Dialog.Body>
 
 		{#if serverDuplicateCount > 0}
-			<div class="border-t border-border px-6 pt-4">
+			<div class="shrink-0 px-6 pb-4">
 				<Alert.Root tone="warning">
 					<AlertTriangleIcon class="size-4" />
 					<Alert.Description>
@@ -130,20 +127,21 @@
 			</div>
 		{/if}
 
-		<Dialog.Footer class="flex flex-wrap items-center border-t border-border px-6 py-4">
+		<Dialog.Footer class="sm:flex-wrap sm:items-center">
 			{#if blockingCount > 0 && !isSubmitting}
-				<HelpText state="error" class="m-0">
+				<HelpText state="error" class="m-0 max-sm:order-last sm:me-auto">
 					{m.draft_grid_commit_hint_blocked_rows()}
 				</HelpText>
 			{:else if validCount === 0 && !isSubmitting}
-				<HelpText state="error" class="m-0">{m.draft_grid_commit_hint_blocking()}</HelpText>
+				<HelpText state="error" class="m-0 max-sm:order-last sm:me-auto">
+					{m.draft_grid_commit_hint_blocking()}
+				</HelpText>
 			{:else if validCount > 0}
-				<span class="text-xs text-muted-foreground">
+				<span class="text-xs text-muted-foreground max-sm:order-last sm:me-auto">
 					{m.batch_add_hint_enabled({ count: validCount })}
 				</span>
 			{/if}
-			<div class="flex-1"></div>
-			<Button intent="ghost" onclick={handleCancel} disabled={isSubmitting}>
+			<Button intent="outline" onclick={handleCancel} disabled={isSubmitting}>
 				{m.draft_grid_dialog_cancel()}
 			</Button>
 			<Button intent="primary" disabled={!canSubmit || isSubmitting} onclick={handleSubmit}>
