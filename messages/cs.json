@@ -586,6 +586,8 @@
 	"share_link_eyebrow": "Odkaz pro návštěvníky",
 	"share_copied": "Zkopírováno!",
 	"share_copy": "Kopírovat",
+	"copy_field_copy": "Kopírovat",
+	"copy_field_copied": "Zkopírováno",
 	"share_via_eyebrow": "Sdílet přes",
 	"share_message_label": "Předvyplněná zpráva",
 	"share_message_template": "Ahoj! Tady je můj seznam přání: {title}",
