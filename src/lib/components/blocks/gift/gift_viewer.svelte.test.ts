@@ -363,7 +363,7 @@ describe('Gift viewer footer actions', () => {
 		},
 	);
 
-	it('orders Like, Koupeno and Zrušit for a signed-in reserver', async () => {
+	it('orders Like, Zrušit and the solid Koupeno last for a signed-in reserver', async () => {
 		await renderViewer(makeGift(ownReservation));
 
 		const labels = visibleFooterButtons().map(
@@ -371,8 +371,8 @@ describe('Gift viewer footer actions', () => {
 		);
 		expect(labels).toEqual([
 			m.gift_like_add_aria({ name: 'Sluchátka Sony WH-1000XM5' }),
-			m.gift_mark_bought(),
 			m.reserve_button_cancel_aria({ name: 'Sluchátka Sony WH-1000XM5' }),
+			m.gift_mark_bought(),
 		]);
 	});
 
@@ -473,9 +473,9 @@ describe('Gift viewer footer overflow', () => {
 			.poll(inlineLabels)
 			.toEqual([
 				m.gift_like_add_aria(giftName),
-				m.gift_mark_unbought(),
 				m.reserve_button_cancel_aria(giftName),
 				m.reserve_release_button_aria(giftName),
+				m.gift_mark_unbought(),
 			]);
 		expectOneUnwrappedLane();
 	});
@@ -494,8 +494,8 @@ describe('Gift viewer footer overflow', () => {
 			gift: makeGift(ownReservation),
 			expectedLabels: () => [
 				m.gift_like_add_aria(giftName),
-				m.gift_mark_bought(),
 				m.reserve_button_cancel_aria(giftName),
+				m.gift_mark_bought(),
 			],
 		},
 	])(

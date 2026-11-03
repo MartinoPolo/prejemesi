@@ -779,6 +779,14 @@
 
 {#snippet submitActions()}
 	<Button
+		intent="outline"
+		class={styles.submitButton()}
+		disabled={mutationPending || isImageUploadPending}
+		onclick={oncancel}
+	>
+		{m.cancel()}
+	</Button>
+	<Button
 		class={styles.submitButton()}
 		disabled={mutationPending || isImageUploadPending}
 		onclick={() => void handleSubmit()}
@@ -788,14 +796,6 @@
 		{:else}
 			{submitLabel}
 		{/if}
-	</Button>
-	<Button
-		intent="outline"
-		class={styles.submitButton()}
-		disabled={mutationPending || isImageUploadPending}
-		onclick={oncancel}
-	>
-		{m.cancel()}
 	</Button>
 {/snippet}
 
