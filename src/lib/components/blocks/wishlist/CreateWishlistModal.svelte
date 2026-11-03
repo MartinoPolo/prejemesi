@@ -195,6 +195,7 @@
 				<SegmentedToggle.Root
 					size="lg"
 					width="fill"
+					presentation="cards"
 					bind:value={recipientKind}
 					onValueChange={() => {
 						// Treat each switch into the recipient field as a fresh start — no error on appear.
@@ -353,13 +354,12 @@
 				<Button
 					type="button"
 					intent="outline"
-					size="lg"
 					onclick={() => handleOpenChange(false)}
 					disabled={isSubmitting}
 				>
 					{m.cancel()}
 				</Button>
-				<Button type="submit" size="lg" disabled={isSubmitting}>
+				<Button type="submit" disabled={isSubmitting}>
 					{#if isSubmitting}
 						<Spinner data-icon="inline-start" />
 						{m.creating()}

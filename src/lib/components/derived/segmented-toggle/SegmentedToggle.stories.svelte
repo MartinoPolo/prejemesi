@@ -76,6 +76,7 @@
 	let stretchingParentValue = $state('upload');
 	let fillValue = $state('self');
 	let tabBarValue = $state('filter');
+	let cardsValue = $state('self');
 	let motionValues = $state<Record<string, string>>(
 		Object.fromEntries(
 			SEGMENTED_TOGGLE_PRESENTATIONS.map((presentation) => [presentation, 'short']),
@@ -250,6 +251,24 @@
 				<SegmentedToggle.Item value="filter">
 					<ListFilterIcon data-icon="inline-start" />Filter
 				</SegmentedToggle.Item>
+			</SegmentedToggle.Root>
+		</div>
+	{/snippet}
+</Story>
+
+<!-- A choice between described options, such as the create-wishlist recipient. -->
+<Story name="Cards [play: options share the row]" play={playOptionsShareContainer}>
+	{#snippet template(args: SegmentedToggleArgs)}
+		<div class="w-120">
+			<SegmentedToggle.Root
+				bind:value={cardsValue}
+				aria-label="Recipient"
+				{...args}
+				presentation="cards"
+				width="fill"
+			>
+				<SegmentedToggle.Item value="self">For me</SegmentedToggle.Item>
+				<SegmentedToggle.Item value="other">For someone else</SegmentedToggle.Item>
 			</SegmentedToggle.Root>
 		</div>
 	{/snippet}

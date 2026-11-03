@@ -64,113 +64,134 @@ function expectShippedSelectedFacePaint(
 	}
 }
 
-describe.each(SEGMENTED_TOGGLE_PRESENTATIONS)(
-	'SegmentedToggle selected face slide (%s)',
-	(presentation) => {
-		it('places the shipped selected face on the initial selection without animating', async () => {
-			const { screen, group, radios, faceOf } = await renderToggle(presentation);
-
-			expect(isIndicatorOnFace(group, faceOf(radios[0]))).toBe(true);
-			expect(isSlideRunning(selectionIndicatorOf(group))).toBe(false);
-			expectShippedSelectedFacePaint(presentation, group, radios[0]);
-			expect(isFacePaintHidden(faceOf(radios[0]))).toBe(true);
-			await screen.unmount();
-		});
-
-		it('slides with the shared motion tokens', async () => {
-			const { screen, group } = await renderToggle(presentation);
-			const indicatorStyle = getComputedStyle(selectionIndicatorOf(group));
-
-			// Font loading may reposition instantly first, pausing transitions until the next frame.
-			await expect
-				.poll(() => indicatorStyle.transitionDuration)
-				.toBe(resolveCssValue(group, 'transition-duration', 'var(--duration-normal)'));
-			expect(indicatorStyle.transitionTimingFunction).toBe(
-				resolveCssValue(group, 'transition-timing-function', 'var(--ease-standard)'),
-			);
-			await screen.unmount();
-		});
-
-		it('slides the selected face to a clicked option', async () => {
-			const { screen, group, radios, faceOf } = await renderToggle(presentation);
-			const slides = recordSlides(selectionIndicatorOf(group));
-
-			await userEvent.click(radios[1]);
-
-			await expect.element(radios[1]).toHaveAttribute('aria-checked', 'true');
-			await expect.poll(() => isIndicatorOnFace(group, faceOf(radios[1]))).toBe(true);
-			expect(slides.hasSlid()).toBe(true);
-			expect(isFacePaintHidden(faceOf(radios[1]))).toBe(true);
-			slides.stop();
-			await screen.unmount();
-		});
-
-		it('slides the selected face with keyboard selection', async () => {
-			const { screen, group, radios, faceOf } = await renderToggle(presentation);
-			const slides = recordSlides(selectionIndicatorOf(group));
-
-			radios[0].focus();
-			await userEvent.keyboard('{ArrowRight}');
-			await userEvent.keyboard(' ');
-
-			await expect.element(radios[1]).toHaveAttribute('aria-checked', 'true');
-			await expect.poll(() => isIndicatorOnFace(group, faceOf(radios[1]))).toBe(true);
-			expect(slides.hasSlid()).toBe(true);
-			slides.stop();
-			await screen.unmount();
-		});
-
-		it('slides the selected face when the bound value changes programmatically', async () => {
-			const { screen, group, radios, faceOf } = await renderToggle(presentation);
-			const slides = recordSlides(selectionIndicatorOf(group));
-
-			await screen.getByRole('button', { name: 'Select third programmatically' }).click();
-
-			await expect.element(radios[2]).toHaveAttribute('aria-checked', 'true');
-			await expect.poll(() => isIndicatorOnFace(group, faceOf(radios[2]))).toBe(true);
-			expect(slides.hasSlid()).toBe(true);
-			slides.stop();
-			await screen.unmount();
-		});
-
-		it('repositions the selected face without animating when an option resizes', async () => {
-			const { screen, group, radios, faceOf } = await renderToggle(presentation);
-
-			radios[0].style.paddingInline = '40px';
-			await nextFrames();
-
-			expect(isSlideRunning(selectionIndicatorOf(group))).toBe(false);
-			expect(isIndicatorOnFace(group, faceOf(radios[0]))).toBe(true);
-			await screen.unmount();
-		});
-
-		it('keeps the selected face in place without animating when the depth changes', async () => {
-			const root = document.documentElement;
-			const previousDepth = root.dataset.depth;
-			const { screen, group, radios, faceOf } = await renderToggle(presentation);
-			const slides = recordSlides(selectionIndicatorOf(group));
-
-			try {
-				for (const depth of ['soft', 'ink', 'black']) {
-					root.dataset.depth = depth;
-					await nextFrames();
-
-					expect(isSlideRunning(selectionIndicatorOf(group))).toBe(false);
-					expect(isIndicatorOnFace(group, faceOf(radios[0]))).toBe(true);
-				}
-				expect(slides.hasSlid()).toBe(false);
-			} finally {
-				slides.stop();
-				if (previousDepth === undefined) {
-					delete root.dataset.depth;
-				} else {
-					root.dataset.depth = previousDepth;
-				}
-				await screen.unmount();
-			}
-		});
-	},
+// Cards fill the selected option itself, so only the other presentations slide a selected face.
+const SLIDING_PRESENTATIONS = SEGMENTED_TOGGLE_PRESENTATIONS.filter(
+	(presentation) => presentation !== 'cards',
 );
+
+describe.each(SLIDING_PRESENTATIONS)('SegmentedToggle selected face slide (%s)', (presentation) => {
+	it('places the shipped selected face on the initial selection without animating', async () => {
+		const { screen, group, radios, faceOf } = await renderToggle(presentation);
+
+		expect(isIndicatorOnFace(group, faceOf(radios[0]))).toBe(true);
+		expect(isSlideRunning(selectionIndicatorOf(group))).toBe(false);
+		expectShippedSelectedFacePaint(presentation, group, radios[0]);
+		expect(isFacePaintHidden(faceOf(radios[0]))).toBe(true);
+		await screen.unmount();
+	});
+
+	it('slides with the shared motion tokens', async () => {
+		const { screen, group } = await renderToggle(presentation);
+		const indicatorStyle = getComputedStyle(selectionIndicatorOf(group));
+
+		// Font loading may reposition instantly first, pausing transitions until the next frame.
+		await expect
+			.poll(() => indicatorStyle.transitionDuration)
+			.toBe(resolveCssValue(group, 'transition-duration', 'var(--duration-normal)'));
+		expect(indicatorStyle.transitionTimingFunction).toBe(
+			resolveCssValue(group, 'transition-timing-function', 'var(--ease-standard)'),
+		);
+		await screen.unmount();
+	});
+
+	it('slides the selected face to a clicked option', async () => {
+		const { screen, group, radios, faceOf } = await renderToggle(presentation);
+		const slides = recordSlides(selectionIndicatorOf(group));
+
+		await userEvent.click(radios[1]);
+
+		await expect.element(radios[1]).toHaveAttribute('aria-checked', 'true');
+		await expect.poll(() => isIndicatorOnFace(group, faceOf(radios[1]))).toBe(true);
+		expect(slides.hasSlid()).toBe(true);
+		expect(isFacePaintHidden(faceOf(radios[1]))).toBe(true);
+		slides.stop();
+		await screen.unmount();
+	});
+
+	it('slides the selected face with keyboard selection', async () => {
+		const { screen, group, radios, faceOf } = await renderToggle(presentation);
+		const slides = recordSlides(selectionIndicatorOf(group));
+
+		radios[0].focus();
+		await userEvent.keyboard('{ArrowRight}');
+		await userEvent.keyboard(' ');
+
+		await expect.element(radios[1]).toHaveAttribute('aria-checked', 'true');
+		await expect.poll(() => isIndicatorOnFace(group, faceOf(radios[1]))).toBe(true);
+		expect(slides.hasSlid()).toBe(true);
+		slides.stop();
+		await screen.unmount();
+	});
+
+	it('slides the selected face when the bound value changes programmatically', async () => {
+		const { screen, group, radios, faceOf } = await renderToggle(presentation);
+		const slides = recordSlides(selectionIndicatorOf(group));
+
+		await screen.getByRole('button', { name: 'Select third programmatically' }).click();
+
+		await expect.element(radios[2]).toHaveAttribute('aria-checked', 'true');
+		await expect.poll(() => isIndicatorOnFace(group, faceOf(radios[2]))).toBe(true);
+		expect(slides.hasSlid()).toBe(true);
+		slides.stop();
+		await screen.unmount();
+	});
+
+	it('repositions the selected face without animating when an option resizes', async () => {
+		const { screen, group, radios, faceOf } = await renderToggle(presentation);
+
+		radios[0].style.paddingInline = '40px';
+		await nextFrames();
+
+		expect(isSlideRunning(selectionIndicatorOf(group))).toBe(false);
+		expect(isIndicatorOnFace(group, faceOf(radios[0]))).toBe(true);
+		await screen.unmount();
+	});
+
+	it('keeps the selected face in place without animating when the depth changes', async () => {
+		const root = document.documentElement;
+		const previousDepth = root.dataset.depth;
+		const { screen, group, radios, faceOf } = await renderToggle(presentation);
+		const slides = recordSlides(selectionIndicatorOf(group));
+
+		try {
+			for (const depth of ['soft', 'ink', 'black']) {
+				root.dataset.depth = depth;
+				await nextFrames();
+
+				expect(isSlideRunning(selectionIndicatorOf(group))).toBe(false);
+				expect(isIndicatorOnFace(group, faceOf(radios[0]))).toBe(true);
+			}
+			expect(slides.hasSlid()).toBe(false);
+		} finally {
+			slides.stop();
+			if (previousDepth === undefined) {
+				delete root.dataset.depth;
+			} else {
+				root.dataset.depth = previousDepth;
+			}
+			await screen.unmount();
+		}
+	});
+});
+
+describe('SegmentedToggle cards presentation', () => {
+	it('fills the selected card itself instead of sliding a face', async () => {
+		const { screen, group, radios } = await renderToggle('cards');
+		const primary = resolveCssValue(group, 'background-color', 'var(--primary)');
+		const surfaceOf = (radio: HTMLElement) =>
+			radio.querySelector<HTMLElement>('.elevation-surface') ?? radio;
+
+		expect(group.querySelector("[data-slot='selection-indicator']")).toBeNull();
+		expect(getComputedStyle(surfaceOf(radios[0])).backgroundColor).toBe(primary);
+		expect(getComputedStyle(surfaceOf(radios[1])).backgroundColor).not.toBe(primary);
+
+		await userEvent.click(radios[1]);
+		await expect
+			.poll(() => getComputedStyle(surfaceOf(radios[1])).backgroundColor)
+			.toBe(primary);
+		await screen.unmount();
+	});
+});
 
 describe('SegmentedToggle default presentation focus', () => {
 	it('shows only the focus ring on a keyboard-focused selected item', async () => {

@@ -57,6 +57,7 @@
 <ToggleGroup.Root
 	{...restProps}
 	{size}
+	intent={presentation === 'cards' ? 'outline' : restProps.intent}
 	type="single"
 	bind:value={selected}
 	onValueChange={handleValueChange}
@@ -72,7 +73,10 @@
 	})}
 >
 	{@render children?.()}
-	<span data-slot="selection-indicator" aria-hidden="true" class={styles.indicator()}></span>
+	<!-- Cards fill the selected option itself, so nothing slides between them. -->
+	{#if presentation !== 'cards'}
+		<span data-slot="selection-indicator" aria-hidden="true" class={styles.indicator()}></span>
+	{/if}
 </ToggleGroup.Root>
 
 <style>
