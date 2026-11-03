@@ -12,7 +12,7 @@ selected-side backing. Production uses the scoped `connected` segmented-toggle p
 
 | Existing component                                                | Implementation role                                                                                    |
 | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| `src/lib/components/blocks/gift/GiftViewSwitcher.svelte`          | Preserve view values, Compact fallback and accessible selection behavior.                              |
+| `src/lib/components/blocks/gift/GiftViewSwitcher.svelte`          | Preserve view values and accessible selection behavior.                                                |
 | `src/lib/components/derived/segmented-toggle/`                    | Add a scoped presentation option for the approved switcher; preserve other consumers.                  |
 | `src/lib/components/base/button/`                                 | Reuse authoritative face sizing, border, radius and icon treatment; do not change neighboring buttons. |
 | `src/lib/components/blocks/wishlist/WishlistDetailToolbar.svelte` | Preserve existing mobile/desktop composition and spacing.                                              |

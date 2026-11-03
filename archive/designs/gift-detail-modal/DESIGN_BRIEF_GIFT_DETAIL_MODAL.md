@@ -3,8 +3,8 @@
 > **Historical scoped reference:** This document preserves its original design scope. For current requirements, see `designs/README.md`, `.mpx/DECISIONS.md`, `src/app.css`, and the current components; older auth, role, visual, and geometry copy here is not authoritative.
 
 > **Status**: Refined (Variant 1 – Center modal 2-column)
-> **Refined mockup**: `designs/gift-detail-modal/refined.html`
-> **Summary**: `designs/gift-detail-modal/SUMMARY.md`
+> **Refined mockup**: `archive/designs/gift-detail-modal/refined.html`
+> **Summary**: `archive/designs/gift-detail-modal/SUMMARY.md`
 > **Refinements**: Approved app shell nav as backdrop context, visitor states (default/reserved/fully reserved), full detail layout, reserve button, like toggle, light-mode only
 
 **Component:** `GiftDetailModal` (`src/lib/components/blocks/gift-detail-modal/`)

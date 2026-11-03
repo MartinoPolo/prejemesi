@@ -3,11 +3,11 @@
 > **Historical scoped reference:** This document preserves its original design scope. For current requirements, see `designs/README.md`, `.mpx/DECISIONS.md`, `src/app.css`, and the current components; older auth, role, visual, and geometry copy here is not authoritative.
 
 > **Status**: Refined (Variant A + C cherry-picks)
-> **Refined mockup**: `designs/gift-detail-modal/refined-v2.html`
-> **Summary**: `designs/gift-detail-modal/SUMMARY-v2.md`
+> **Refined mockup**: `archive/designs/gift-detail-modal/refined-v2.html`
+> **Summary**: `archive/designs/gift-detail-modal/SUMMARY-v2.md`
 > **Refinements**: C link editor container, "Zobrazení:" label prefix, C compact footer, C enrich bar
 
-> **Layers on:** `designs/gift-detail-modal/DESIGN_BRIEF_GIFT_DETAIL_MODAL.md` (v1).
+> **Layers on:** `archive/designs/gift-detail-modal/DESIGN_BRIEF_GIFT_DETAIL_MODAL.md` (v1).
 > This brief documents **only the deltas** v2 adds to the modal's **edit mode**. Everything not mentioned here is **unchanged from v1** – read v1 first. Where v1 and v2 conflict (e.g. the single-URL field), v2 wins.
 
 **Component:** `GiftDetailModal` / `GiftDetailForm` (`src/lib/components/blocks/gift/`)
@@ -186,7 +186,7 @@ No new color tokens – semantic tokens only (per project styling rules).
 
 ## 10. Visual References
 
-- v1 brief + `designs/gift-detail-modal/refined.html` – the modal frame, 2-column layout, field styling these deltas slot into.
+- v1 brief + `archive/designs/gift-detail-modal/refined.html` – the modal frame, 2-column layout, field styling these deltas slot into.
 - v1 single-URL affordance ("Koupit na alza.cz ↗") – the visual seed for the view-mode **primary** link.
 - Existing image field (URL/upload tabs + fit toggle + `GiftImageCropCanvas`) in `GiftDetailForm.svelte` – the flow enrichment pre-fills into.
 - Current visual fidelity, palette, and component requirements come from `src/app.css` and current components. `archive/designs/style-exploration/direction-b-sage.html` is historical provenance only.

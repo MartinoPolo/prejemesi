@@ -74,6 +74,6 @@ Fonts in the mockups are system look-alikes, because the files load no external 
 4. **Who can pick a theme: recipient, správci or both?** Recommendation: the same roles that can change the palette today. The theme belongs to the wishlist settings draft and the global Save.
 5. **Should custom uploads be moderated?** Recommendation: treat them like gift and wishlist images (same limits and reporting). No pre-moderation.
 6. **Should the theme be offered in the quick-create modal?** Recommendation: no. Keep creation quick (DECISIONS 2026-05-30), but default the theme by occasion when the title or date implies one (for example December leads to Vánoce), and let the manager change it in Settings.
-7. **Should text-heavy views (List, Compact) keep the gutters?** Recommendation: yes. The gutters are outside the content container, so view density is unaffected.
+7. **Should the text-heavy List view keep the gutters?** Recommendation: yes. The gutters are outside the content container, so view density is unaffected.
 8. **Does the image-mat token replace the per-image fill?** Recommendation: it sets the wishlist default, and an explicit per-image fill (if one exists) still wins.
 9. **Should Ručně psané (Caveat) be kept?** Recommendation: keep it, limited to titles. If Czech diacritics render poorly at small sizes after font QA, drop it rather than widening its use.

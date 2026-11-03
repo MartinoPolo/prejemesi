@@ -179,8 +179,8 @@ None – all primitives exist.
 ## 10. Visual References
 
 - **Target language**: `designs/redesign-2026/sky-final/anime-gift-detail-modal.html` (sticker modal, action bar, desc-append, states) + `anime-sky-final.html`.
-- **Visual sibling**: `designs/gift-card-v2/refined.html` + `variants/variant-d.html` (accepted #163 mobile hierarchy: big square image, heart overlay, info control).
-- **Prior rounds**: `designs/gift-detail-modal/refined.html` (v1 visitor states), `refined-v2.html` (edit-mode multi-link – unchanged).
+- **Visual sibling**: `archive/designs/gift-card-v2/refined.html` + `variants/variant-d.html` (accepted #163 mobile hierarchy: big square image, heart overlay, info control).
+- **Prior rounds**: `archive/designs/gift-detail-modal/refined.html` (v1 visitor states), `refined-v2.html` (edit-mode multi-link – unchanged).
 - **Current broken state**: `.mpx/board-files/Pasted image 20260716082938.png`.
 - Tokens: `designs/tokens.css` (structural), `src/app.css` (canonical).
 

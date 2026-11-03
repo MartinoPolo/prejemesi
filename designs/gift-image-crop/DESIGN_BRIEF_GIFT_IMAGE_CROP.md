@@ -42,7 +42,7 @@ The modal is a centered `Dialog` (`max-w-[900px]`, `max-h-[90dvh]`) over a dimme
 
 **Mockup rendering instructions:**
 
-- Show the full modal at ~900px wide centered on a dimmed wishlist backdrop (reuse the backdrop + blur treatment from `designs/gift-detail-modal/refined.html`).
+- Show the full modal at ~900px wide centered on a dimmed wishlist backdrop (reuse the backdrop + blur treatment from `archive/designs/gift-detail-modal/refined.html`).
 - The image fit controls + crop canvas + the 4-slot preview cluster are the **focus** – render them at full fidelity. The rest of the form fields are shown realistically but are not the design exploration.
 - Show the **edit** mode (an image already present) since that is where crop matters most. A short note may indicate the create-mode difference (controls appear once an image is added).
 - Provide a light AND dark rendering path (tokens drive both; no hard-coded colors).
@@ -232,7 +232,7 @@ From `designs/tokens.css` (structural) and `src/app.css` (theme) – **never inl
 ## 10. Visual References
 
 - **Internal**:
-    - `designs/gift-detail-modal/refined.html` – exact modal shell, backdrop, two-column body, close button, typography. Match this fidelity.
+    - `archive/designs/gift-detail-modal/refined.html` – exact modal shell, backdrop, two-column body, close button, typography. Match this fidelity.
     - `src/lib/components/blocks/gift/GiftDetailForm.svelte` – current form fields + Image tabs to preserve.
     - `src/lib/components/blocks/gift/GiftCard.svelte` + `gift_card_variants.ts` – card image ratio (`h-40`).
     - `src/lib/components/blocks/gift/GiftListItem.svelte` – `size-16` thumbnail.

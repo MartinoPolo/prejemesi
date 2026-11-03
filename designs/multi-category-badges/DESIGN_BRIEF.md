@@ -7,7 +7,7 @@ popover. Mockups: `index.html` → `variant-a.html`, `variant-b.html`, `variant-
 ## Fixed constraints (from `.mpx/DECISIONS.md` and the real components)
 
 - Badge placement stays (2026-09-14): categories top-left on the image, priority bottom-left,
-  state badges centered as one group; Compact stays image-free and badge-free.
+  state badges centered as one group.
 - Grid Like sits top-right on the image with a separate category lane (2026-10-02); List Like
   stays beside the title, so the List category lane gets the full image width.
 - Real `GiftCategoryBadge`: category color fill, 2 px ink border, `rounded-badge` (12 px),

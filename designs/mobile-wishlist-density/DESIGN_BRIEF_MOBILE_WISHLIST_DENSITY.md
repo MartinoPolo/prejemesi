@@ -304,7 +304,7 @@ Reference `designs/tokens.css` via `<link rel="stylesheet" href="../../tokens.cs
 - **Current wishlist card implementation**: `src/lib/components/blocks/gift/GiftCard.svelte`.
 - **Current transparent list implementation**: `src/lib/components/blocks/gift/GiftListItem.svelte`.
 - **Established app direction**: `designs/redesign-2026/refined.html`.
-- **Prior wishlist-page exploration**: `designs/wishlist-page/refined.html` and its design brief.
+- **Prior wishlist-page exploration**: `archive/designs/wishlist-page/refined.html` and its design brief.
 
 ---
 

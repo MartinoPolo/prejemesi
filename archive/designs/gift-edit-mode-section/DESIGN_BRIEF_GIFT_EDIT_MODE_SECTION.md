@@ -190,7 +190,7 @@ None expected. The deliverable is a restyle of the edit-mode slots (`imageColumn
 - **Current implementation (source of truth for behavior)**: `src/lib/components/blocks/gift/GiftDetailForm.svelte` (lines ~472–598), `src/lib/components/blocks/gift/gift_detail_modal_variants.ts`, `src/lib/components/blocks/gift/GiftImagePreviewSlots.svelte`, `src/lib/components/base/toggle-group/`, `src/lib/components/base/toggle/toggle_variants.ts`.
 - **Pre-#174 state (what the issue complains about)**: board screenshot `.mpx/board-files/Pasted image 20260715145125.png` (note: old teal palette + 3 tiles — both since replaced).
 - **Design language**: `designs/redesign-2026/sky-final/anime-sky-final.html`, `anime-gift-detail-modal.html`; v3 accepted design `designs/gift-detail-modal-v3/refined.html` + `SUMMARY.md` (the sibling surface this section must feel related to).
-- **Sibling briefs (consistency)**: `designs/control-heights/DESIGN_BRIEF_CONTROL_HEIGHTS.md` (md step), `designs/unified-filters/DESIGN_BRIEF_UNIFIED_FILTERS.md` (token-inheritance rule), `designs/gift-detail-modal/DESIGN_BRIEF_GIFT_DETAIL_MODAL_V2.md` (edit-mode form column).
+- **Sibling briefs (consistency)**: `designs/control-heights/DESIGN_BRIEF_CONTROL_HEIGHTS.md` (md step), `designs/unified-filters/DESIGN_BRIEF_UNIFIED_FILTERS.md` (token-inheritance rule), `archive/designs/gift-detail-modal/DESIGN_BRIEF_GIFT_DETAIL_MODAL_V2.md` (edit-mode form column).
 - Tokens: `src/app.css` (canonical), `designs/tokens.css`.
 
 ---

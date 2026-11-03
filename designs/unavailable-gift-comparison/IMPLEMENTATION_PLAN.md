@@ -25,7 +25,7 @@ The design directory is untracked and `.mpx/DECISIONS.md` is modified. Preserve 
 | Reservation/received status and authorized identity/support group | Full contrast |
 | Action controls, including Like, More, footer and selection/reorder controls | No additional dimming; preserve their existing disabled/pending semantics |
 
-Available appearance remains unchanged. Keep a visible horizontal image/body separator in Grid and vertical separator in List, for both states. Replace the existing image veil; do not stack it with opacity. Use existing `presentation.isDimmed` eligibility, not a second reservation calculation. Preserve image-free Compact, privacy, crops, responsive layout, and action permissions. Quantity is treated as ordinary content under the user's “everything except action buttons” instruction; authorized reservation support remains with the crisp state group.
+Available appearance remains unchanged. Keep a visible horizontal image/body separator in Grid and vertical separator in List, for both states. Replace the existing image veil; do not stack it with opacity. Use existing `presentation.isDimmed` eligibility, not a second reservation calculation. Preserve privacy, crops, responsive layout, and action permissions. Quantity is treated as ordinary content under the user's “everything except action buttons” instruction; authorized reservation support remains with the crisp state group.
 
 ## Why the previous fix was insufficient
 
@@ -54,7 +54,7 @@ Production paths under `src/lib/components/blocks/gift/`:
 - `GiftCard.svelte`: fade image composition separately from image overlays. Body may fade once because footer actions are siblings. Category and Like share a top-overlay container: never fade that entire container. Preserve overlay clearance and collection alignment selectors.
 - `GiftListItem.svelte`: keep content-column/title-row ancestors opaque because they contain Like and actions. Fade ordinary content regions independently. Preserve genuine horizontal mobile List and current crop window.
 - `gift_card_variants.ts`: remove obsolete veil slot; retain available elevation and dimmed non-lift behavior.
-- `GiftCategoryBadge.svelte`, `GiftPriorityBadge.svelte`: replace `opacity-90 saturate-50` with `opacity-50` for `isDimmed`, retaining the default false. Do not fade their parent again. Compact's priority badge remains unaffected.
+- `GiftCategoryBadge.svelte`, `GiftPriorityBadge.svelte`: replace `opacity-90 saturate-50` with `opacity-50` for `isDimmed`, retaining the default false. Do not fade their parent again.
 
 Reuse `GiftStateOverlay` and `GiftActionRow` without changing capabilities. Avoid global `ImageFrame` changes for a browse-only treatment. Keep source links operable despite their content fade.
 
@@ -70,7 +70,7 @@ Keep separator thickness and layout unchanged. Preserve Grid's foreground separa
 
 Cover available, fully reserved by self/others, partial reservations, received, contextual display, hidden reservation state, self-promoted recipient and moderator identity. Keep `src/lib/modules/gifts/gift_display_state.ts` semantics unchanged. Hidden reservation differences must not affect recipient appearance. Preserve archived action rules.
 
-Exercise Like, Reserve/Cancel, Received/Undo, Purchased/Undo and More where eligible. Use local mocked mutations or established seeded fixtures, never production. Verify Compact stays unchanged.
+Exercise Like, Reserve/Cancel, Received/Undo, Purchased/Undo and More where eligible. Use local mocked mutations or established seeded fixtures, never production.
 
 Relevant existing suites in the gift directory:
 
@@ -78,7 +78,6 @@ Relevant existing suites in the gift directory:
 - Card actions/responsive-actions tests.
 - `gift_list_item.svelte.test.ts` (old veil assertions), List actions/responsive tests.
 - `gift_state_overlay.svelte.test.ts`.
-- Compact: `src/lib/components/blocks/wishlist/wishlist_gift_compact_table.svelte.test.ts`.
 
 Add durable matched comparison stories/fixtures using actual components, not a hand-coded HTML recreation. Capture and inspect identical available/unavailable gifts with both badges for desktop/mobile, light/dark, Grid/List and photo/placeholder. Include received and authorized identity, long labels and depth preferences. Check separators in rendered pixels, not only CSS declarations. Save links to screenshots and record exact states inspected.
 
@@ -95,7 +94,7 @@ pnpm.cmd run check:all
 pnpm.cmd run build
 ```
 
-Run Compact and focused Playwright privacy/action coverage as appropriate, plus exact configured fast/full checks discovered for the execution workflow. `check:all` may format files: inspect the resulting diff. Full E2E belongs to CI. Do not overlap browser tests/builds/servers that share generated SvelteKit state.
+Run focused Playwright privacy/action coverage as appropriate, plus exact configured fast/full checks discovered for the execution workflow. `check:all` may format files: inspect the resulting diff. Full E2E belongs to CI. Do not overlap browser tests/builds/servers that share generated SvelteKit state.
 
 Discover Storybook/dev commands and verify actual readiness/URL. Use raw Playwright, not browser MCP. Retain existing native-pixel seam regression (`scripts/verify-gift-card-image-seam.mjs --base <verified-storybook-origin>`); it alone is not coverage for all new states. Stop only workflow-owned servers; preserve shared DB services/data.
 

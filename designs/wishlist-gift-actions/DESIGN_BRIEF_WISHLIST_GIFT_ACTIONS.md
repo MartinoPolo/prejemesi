@@ -32,7 +32,7 @@ The mockup **must** show the full viewport with all chrome at correct proportion
 - **Wishlist page container — FINAL:** centered, maximum **1200 px**, with **24 px** app-shell outer padding and the route's `px-4 py-6` inner rhythm. At 1440 px the working page reads as approximately 1200 px wide with generous side margins.
 - **Wishlist notebook header — FINAL:** reproduce the current spiral-notebook header, recipient-first `Pro: Martin Novák`, wishlist title `Vánoce 2026`, date/status/meta chips, taped polaroid, sticky countdown, and management actions. It occupies roughly **236 px** before the toolbar. It is settled context, not a redesign target.
 - **Wishlist toolbar — DESIGNED HERE:** full container width. Normal content is the implemented view → sort → grouping → filter → reset → separated reorder sequence, with the management-action cluster aligned right. The toolbar shell is a **16 px** rounded panel with a **2.5 px** ink border, card background, `10px 14px` padding, and hard `shadow-sticker` offset. It starts in normal flow and becomes sticky at **12 px** below the top of `.app-content`; because the navbar occupies its own 56 px shell row, its viewport position is effectively about **68 px** from the top. It remains a full responsive toolbar; it does not transform into a compact mini-bar while sticky.
-- **Gift display — FINAL except selection additions:** begins **20 px** below the toolbar. Card view is an auto-fill grid using `minmax(280px, 1fr)` with **20 px** gaps and 4:3 card images. List view is a vertical stack with 1:1 thumbnails. Group headings span the display width. The currently broken compact view remains hidden and is outside this feature.
+- **Gift display — FINAL except selection additions:** begins **20 px** below the toolbar. Card view is an auto-fill grid using `minmax(280px, 1fr)` with **20 px** gaps and 4:3 card images. List view is a vertical stack with 1:1 thumbnails. Group headings span the display width.
 - **Overlays — DESIGNED HERE:** desktop contextual menu appears at the pointer above gift content and below modal surfaces. Mobile contextual actions use the existing bottom `Sheet`. Toasts remain at the global toast layer.
 
 **What the parent provides**: the 56 px app navbar, the `.app-content` scroll container, route padding, wishlist palette scope, notebook header, gift data, role/capability data, filtering/grouping/sorting state, modal hosts, and global toast host.
@@ -316,7 +316,7 @@ The first mockup must make every settled option inspectable in one file:
 
 - **Current visual source:** `src/app.css` and `designs/redesign-2026/sky-final/anime-sky-final.html` — Anime Sky palette, sticker geometry, notebook motifs, DynaPuff/Geist, motion.
 - **Current toolbar:** `src/lib/components/blocks/wishlist/WishlistDetailToolbar.svelte`, `designs/unified-filters/refined.html`, and `designs/unified-filters/SUMMARY.md` — final bordered toolbar shell, labeled control families, active pills, responsive rows.
-- **Current gift surfaces:** `src/lib/components/blocks/gift/GiftCard.svelte`, `GiftListItem.svelte`, and `designs/gift-card-v2/refined.html` — real badges, photos, roles, actions, and card proportions.
+- **Current gift surfaces:** `src/lib/components/blocks/gift/GiftCard.svelte` and `GiftListItem.svelte` — real badges, photos, roles, actions, and card proportions.
 - **Existing bulk precedent:** `designs/gift-draft-grid/refined.html` and `SUMMARY.md` — detached sticky bulk card and tri-state selection language. Reuse the pattern, not its import-grid actions.
 - **Current group headers:** `src/lib/components/blocks/wishlist/GiftSectionHeader.svelte` — uppercase DynaPuff heading plus divider.
 - **External implementation reference:** shadcn-svelte Context Menu registry and Bits UI 2.17 ContextMenu primitive for pointer anchoring, focus, typeahead, and submenus.
@@ -331,7 +331,6 @@ The first mockup must make every settled option inspectable in one file:
 - Bulk name, description, links, price, quantity, delete, reserve, unreserve, like, or reorder.
 - A bought/purchased workflow distinct from received.
 - Redesigning the notebook wishlist header, navbar, gift detail/editor modal, cards, category badges, filters, sorting, or grouping semantics.
-- Repairing, exposing, rebuilding, or adding multiselect support to the currently hidden compact view.
 - The optional hard-shadow appearance setting, tracked separately by #290; this design keeps the existing dark sticker shadow as visual context only.
 - Changing post-share permissions, archived behavior, recipient privacy, or reservation release authorization.
 - Exact remote-function/database implementation and schema design; the visual contract only requires atomic behavior, pending/error feedback, and exact received undo.

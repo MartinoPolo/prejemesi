@@ -22,7 +22,7 @@ not correspond to the real editor. See the design brief for full requirements.
 | --- | --- | --- | --- |
 | `WishlistDetailToolbar` | `src/lib/components/blocks/wishlist/WishlistDetailToolbar.svelte` | Toolbar shell and display state | `filters`, `viewMode`, `reorderMode`, change callbacks |
 | `ActiveFilterPills` | `src/lib/components/derived/filter-menu/ActiveFilterPills.svelte` | Keyed pills and focus restoration | `items`, `triggerElement`, `onclearall` |
-| `GiftViewSwitcher` | `src/lib/components/blocks/gift/GiftViewSwitcher.svelte` | Card/list/compact trigger | `value`, `onchange` |
+| `GiftViewSwitcher` | `src/lib/components/blocks/gift/GiftViewSwitcher.svelte` | Card/list trigger | `value`, `onchange` |
 | `GiftCard` | `src/lib/components/blocks/gift/GiftCard.svelte` | Card surface keyed by gift ID | existing gift and role props |
 | `GiftListItem` | `src/lib/components/blocks/gift/GiftListItem.svelte` | List destination for view crossfade | existing gift and role props |
 | `GiftReceivedToggle` | `src/lib/components/blocks/gift/GiftReceivedToggle.svelte` | Received/unreceived action | `giftId`, `received`, `onreceived` |
@@ -47,8 +47,8 @@ None.
 - Use stable gift IDs. Capture only attached, rendered elements with non-zero rectangles, update the
   Svelte state after `tick()`, then FLIP only identities with valid visible rectangles in both states.
 - The current gift-motion contract supersedes this study's original timing and view exclusions;
-  see [DECISIONS.md](../../.mpx/DECISIONS.md#visual-design--component-conventions). Within Card,
-  List and Compact, actions and layout changes share identity-based movement with distance-based
+  see [DECISIONS.md](../../.mpx/DECISIONS.md#visual-design--component-conventions). Within Card
+  and List, actions and layout changes share identity-based movement with distance-based
   timing. Unknown endpoints fade with subtle scale in place; surviving siblings move concurrently.
   Never derive travel from a missing, zero-size or offscreen endpoint.
 - Announce completion through the existing polite live region. Keep undo in a stable control area.
