@@ -24,6 +24,7 @@ import {
 	type GiftViewMode,
 } from './types.js';
 import { computeGiftSections } from './gift_ordering.js';
+import { carouselGrouping } from './gift_view_mode.js';
 import { getPriorityDisplayLabel } from './gift_display.js';
 import { labelForGiftCategory } from '$lib/modules/gift-categories/types.js';
 import type { WishlistRole } from '$lib/modules/wishlists/types.js';
@@ -135,6 +136,7 @@ export function setGiftsContext(
 	getIsAuthenticated: () => boolean,
 	getLikedIds: () => string[],
 	getIsGiftDataLoading: () => boolean = () => false,
+	getIsNarrowViewport: () => boolean = () => false,
 ) {
 	const context = createGiftsContext(
 		getWishlistId,
@@ -144,6 +146,7 @@ export function setGiftsContext(
 		getIsAuthenticated,
 		getLikedIds,
 		getIsGiftDataLoading,
+		getIsNarrowViewport,
 	);
 	setGiftsInternal(context);
 	return context;
@@ -224,6 +227,7 @@ function createGiftsContext(
 	getIsAuthenticated: () => boolean,
 	getLikedIds: () => string[],
 	getIsGiftDataLoading: () => boolean,
+	getIsNarrowViewport: () => boolean,
 ) {
 	const gifts = new Derived(getGifts);
 	const viewerRole = new Derived(getRole);
@@ -349,7 +353,7 @@ function createGiftsContext(
 		priority: hasAnyPriority.current,
 		category: hasAnyCategory.current,
 	}));
-	const effectiveGrouping = new Derived(() => {
+	const availableGrouping = new Derived(() => {
 		const current = grouping.current;
 		return (current === GIFT_GROUPING_OPTIONS.priority &&
 			!groupingAvailability.current.priority) ||
@@ -357,14 +361,24 @@ function createGiftsContext(
 			? GIFT_GROUPING_OPTIONS.none
 			: current;
 	});
+	/** The mobile Carousel preference; it keeps its grouping through reorder and selection. */
+	const carouselViewActive = new Derived(
+		() => viewMode.current === GIFT_VIEW_MODES.carousel && getIsNarrowViewport(),
+	);
+	const effectiveGrouping = new Derived(() =>
+		carouselViewActive.current
+			? carouselGrouping(availableGrouping.current, groupingAvailability.current)
+			: availableGrouping.current,
+	);
 
+	// Persists only the availability coercion; the Carousel's derived grouping stays unsaved.
 	$effect(() => {
 		if (getIsGiftDataLoading()) {
 			return;
 		}
-		const effective = effectiveGrouping.current;
-		if (browser && grouping.current !== effective) {
-			grouping.current = effective;
+		const available = availableGrouping.current;
+		if (browser && grouping.current !== available) {
+			grouping.current = available;
 		}
 	});
 
@@ -427,6 +441,7 @@ function createGiftsContext(
 		archived,
 		isAuthenticated,
 		viewMode,
+		carouselViewActive,
 		cardColumnOption,
 		grouping,
 		effectiveGrouping,

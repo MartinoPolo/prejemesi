@@ -11,7 +11,7 @@ export interface GiftBrowseActionHandlers {
 	onmore?: (anchor: HTMLButtonElement, placementSnapshot: GiftActionPlacementSnapshot) => void;
 }
 
-/** Props shared by the image-bearing gift presentations: the Card and the List item. */
+/** Props shared by the gift presentations: the Card and the List item. */
 export interface GiftPresentationProps extends GiftBrowseActionHandlers {
 	gift: GiftByRole;
 	role: WishlistRole;

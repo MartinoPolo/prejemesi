@@ -67,3 +67,36 @@ export function toGiftDisplayRows(
 export function countGiftsInSections(sections: readonly GiftSection[]): number {
 	return sections.reduce((sum, section) => sum + section.gifts.length, 0);
 }
+
+type GiftDisplayGiftRow = Extract<GiftDisplayRow, { kind: typeof GIFT_DISPLAY_ROW_KINDS.gift }>;
+
+export interface GiftCarouselRow {
+	key: string;
+	/** The section whose header introduces the row; a headerless one gets a count-only header. */
+	section: GiftSection;
+	giftRows: GiftDisplayGiftRow[];
+}
+
+/**
+ * Splits display rows into one Carousel row per section header. A headerless section joins the
+ * row before it, matching how its gifts flow under that header in the Card grid, so a list
+ * without headers is one row.
+ */
+export function toGiftCarouselRows(displayRows: readonly GiftDisplayRow[]): GiftCarouselRow[] {
+	const carouselRows: GiftCarouselRow[] = [];
+	for (const row of displayRows) {
+		if (row.kind !== GIFT_DISPLAY_ROW_KINDS.gift) {
+			continue;
+		}
+		const currentRow = carouselRows.at(-1);
+		const startsRow =
+			currentRow === undefined ||
+			(giftSectionHasHeader(row.section) && currentRow.section.key !== row.section.key);
+		if (startsRow) {
+			carouselRows.push({ key: row.section.key, section: row.section, giftRows: [row] });
+		} else {
+			currentRow.giftRows.push(row);
+		}
+	}
+	return carouselRows;
+}

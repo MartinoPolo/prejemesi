@@ -28,9 +28,13 @@
 	import { useGiftGalleryPositions } from '$lib/modules/gifts/gift_gallery_positions.js';
 	import type { GiftPresentationProps } from './gift_presentation_props.js';
 	import GiftCardGallery from './GiftCardGallery.svelte';
+	import GiftGalleryCountChip from './GiftGalleryCountChip.svelte';
+	import { GIFT_CARD_DENSITIES, type GiftCardDensity } from './gift_card_variants.js';
 
 	interface GiftCardProps extends GiftPresentationProps {
 		allowArchivedLike?: boolean;
+		/** `carousel` is the reduced Carousel card: square cover, no description, one link. */
+		density?: GiftCardDensity;
 	}
 
 	let {
@@ -50,7 +54,10 @@
 		moreSurface = 'menu',
 		showPriority = true,
 		livePreview,
+		density = GIFT_CARD_DENSITIES.grid,
 	}: GiftCardProps = $props();
+
+	const isCarouselCard = $derived(density === GIFT_CARD_DENSITIES.carousel);
 
 	const previewMarks = $derived(giftLivePreviewMarks(livePreview));
 	const showsTopOverlays = $derived(
@@ -93,12 +100,14 @@
 
 	const galleryPositions = useGiftGalleryPositions();
 	const hasGallery = $derived(gift.images.length > 1);
+	// Carousel cards show the cover with a count chip instead of the swipeable gallery.
+	const showsGallery = $derived(hasGallery && !isCarouselCard);
 	let browsedImageIndex = $state(0);
 	let galleryWarm = $state(false);
 	let gallerySwiping = $state(false);
 	// Reorder and selection modes show the cover; browsing resumes where it was afterwards.
 	const shownImageIndex = $derived(
-		hasGallery && !contextualMode
+		showsGallery && !contextualMode
 			? clampGalleryIndex(browsedImageIndex, gift.images.length)
 			: 0,
 	);
@@ -125,7 +134,7 @@
 	}
 
 	const isDimmed = $derived(presentation.isDimmed || previewMarks.deletion);
-	const styles = $derived(giftCardVariants({ dimmed: isDimmed }));
+	const styles = $derived(giftCardVariants({ dimmed: isDimmed, density }));
 
 	const imageSrc = $derived(resolveGiftImageUrl(gift.imageUrl, gift.imageKey));
 	const explicitImageFrameFill = $derived.by(() => {
@@ -174,9 +183,10 @@
 	data-gift-actions-open={moreOpen ? moreSurface : undefined}
 	data-gift-control-press={pressStartedOnControl || gallerySwiping || undefined}
 	data-live-preview={livePreview}
+	data-gift-card-density={density}
 	onpointerdowncapture={recordPressOrigin}
-	onpointerenter={hasGallery ? () => (galleryWarm = true) : undefined}
-	onfocusin={hasGallery ? () => (galleryWarm = true) : undefined}
+	onpointerenter={showsGallery ? () => (galleryWarm = true) : undefined}
+	onfocusin={showsGallery ? () => (galleryWarm = true) : undefined}
 >
 	<div class={styles.surface()} use:restingShadowNesting data-slot="elevation-surface">
 		<!-- Image area: dotted mat behind the photo; letterboxed photos keep the mat visible -->
@@ -197,7 +207,7 @@
 				></div>
 			{/if}
 
-			{#if !hasGallery}
+			{#if !showsGallery}
 				<div
 					class="absolute inset-x-0 top-0 bottom-(--border-w) flex items-center justify-center"
 				>
@@ -206,7 +216,7 @@
 							class="size-full rounded-none bg-transparent max-sm:[&_img]:p-0"
 							imageUrl={imageSrc}
 							imageMeta={gift.imageMeta}
-							target="square"
+							target={isCarouselCard ? 'thumb' : 'square'}
 							alt={gift.name}
 							variant="card"
 						/>
@@ -236,7 +246,7 @@
 				<GiftStateOverlay
 					entries={presentation.overlay}
 					avoidTopRight
-					class={hasGallery && !contextualMode
+					class={showsGallery && !contextualMode
 						? 'gift-card-gallery-state-clearance'
 						: undefined}
 				/>
@@ -250,7 +260,7 @@
 
 			<!-- Unlike the single image above, the gallery follows the overlays so its arrows come
 			     after them in focus order; overlays keep painting above it through their z-index. -->
-			{#if hasGallery}
+			{#if showsGallery}
 				<GiftCardGallery
 					images={gift.images}
 					alt={gift.name}
@@ -260,6 +270,11 @@
 					warm={galleryWarm}
 					onindexchange={showGalleryImage}
 					onswipingchange={(swiping) => (gallerySwiping = swiping)}
+				/>
+			{:else if hasGallery}
+				<GiftGalleryCountChip
+					additionalCount={gift.images.length - 1}
+					class="absolute right-3 bottom-3 z-20"
 				/>
 			{/if}
 		</div>
@@ -280,21 +295,23 @@
 				</span>
 			</div>
 
-			<div
-				class="[min-height:var(--gift-card-description-track-height,auto)] data-[has-content=true]:pt-0.5"
-				data-gift-card-track="description"
-				data-has-content={hasDescriptionContent ? 'true' : 'false'}
-				data-testid={hasDescriptionContent ? 'gift-card-description-stack' : undefined}
-			>
-				{#if hasDescriptionContent}
-					<GiftDescription
-						description={gift.description}
-						descriptionAppends={gift.descriptionAppends}
-						preview
-						descriptionClass="line-clamp-2 sm:line-clamp-1"
-					/>
-				{/if}
-			</div>
+			{#if !isCarouselCard}
+				<div
+					class="[min-height:var(--gift-card-description-track-height,auto)] data-[has-content=true]:pt-0.5"
+					data-gift-card-track="description"
+					data-has-content={hasDescriptionContent ? 'true' : 'false'}
+					data-testid={hasDescriptionContent ? 'gift-card-description-stack' : undefined}
+				>
+					{#if hasDescriptionContent}
+						<GiftDescription
+							description={gift.description}
+							descriptionAppends={gift.descriptionAppends}
+							preview
+							descriptionClass="line-clamp-2 sm:line-clamp-1"
+						/>
+					{/if}
+				</div>
+			{/if}
 
 			<div
 				class="mt-2 min-w-0 [min-height:var(--gift-card-links-track-height,auto)]"
@@ -302,7 +319,7 @@
 				data-testid="gift-card-links"
 			>
 				<div class={styles.linkList()}>
-					<GiftLinkList links={gift.links} maxVisible={3} />
+					<GiftLinkList links={gift.links} maxVisible={isCarouselCard ? 1 : 3} />
 				</div>
 			</div>
 			<div
@@ -344,6 +361,7 @@
 						{persistentMore}
 						{moreOpen}
 						{moreSurface}
+						compactReservationLabel={isCarouselCard}
 					/>
 				</div>
 			</div>
@@ -393,10 +411,65 @@
 		}
 	}
 
+	/* A narrow 4:3 image lifts Like to its top edge to clear the centered state labels; the square
+	   Carousel image has that room, so its overlays keep the inset of every other card width. */
 	@container (width <= 10rem) {
-		.gift-card-top-overlays {
+		.gift-card-root[data-gift-card-density='grid'] .gift-card-top-overlays {
 			top: 0;
 		}
+	}
+
+	/* Carousel cards fill the row height and size their footer from their own width. */
+	.gift-card-root[data-gift-card-density='carousel'] {
+		container: gift-carousel-card / inline-size;
+		height: 100%;
+	}
+
+	.gift-card-root[data-gift-card-density='carousel'] :global(.gift-card-painted-surface) {
+		height: 100%;
+	}
+
+	/* Dense footer: Button md faces, sm below 170px so Reserve and More stay on one line. */
+	.gift-card-root[data-gift-card-density='carousel'] :global(.gift-action-row) {
+		--gift-action-control-size: var(--size-control-md);
+		--gift-card-action-padding-inline: 0.75rem;
+		--gift-card-action-font-size: var(--text-md);
+		--gift-card-action-icon-size: 1rem;
+	}
+
+	@container gift-carousel-card (width < 170px) {
+		.gift-card-root[data-gift-card-density='carousel'] :global(.gift-action-row) {
+			--gift-action-control-size: var(--size-control-sm);
+			--gift-card-action-padding-inline: 0.5625rem;
+			--gift-card-action-font-size: var(--text-sm);
+			--gift-card-action-icon-size: 0.875rem;
+		}
+
+		/* One-word categories such as „Elektronika" stay on one line beside Like. */
+		.gift-card-root[data-gift-card-density='carousel']
+			:global([data-slot='gift-category-badge']) {
+			padding-inline: 0.375rem;
+		}
+	}
+
+	.gift-card-root[data-gift-card-density='carousel']
+		:global(.gift-action-slot > [data-slot='button'] > .elevation-surface) {
+		padding-inline: var(--gift-card-action-padding-inline);
+		font-size: var(--gift-card-action-font-size);
+	}
+
+	.gift-card-root[data-gift-card-density='carousel']
+		:global(.gift-action-row [data-slot='button'] svg) {
+		width: var(--gift-card-action-icon-size);
+		height: var(--gift-card-action-icon-size);
+	}
+
+	/* The smaller faces keep a 40px touch target. */
+	.gift-card-root[data-gift-card-density='carousel']
+		:global(.gift-action-row [data-slot='button']::before) {
+		content: '';
+		position: absolute;
+		inset: calc((var(--gift-action-control-size) - 2.5rem) / 2);
 	}
 
 	:global([data-gift-card-image-crowded='true']) .gift-card-top-overlays {

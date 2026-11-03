@@ -287,6 +287,14 @@ function scrollContainer(page: Page): Locator {
 	return page.locator('main');
 }
 
+/** The native scroller of the Carousel row that holds the pressed gift. */
+function pressedRowScroller(page: Page): Locator {
+	return page
+		.getByTestId('gift-carousel-row')
+		.filter({ has: page.getByRole('heading', { name: PRESSED_GIFT, exact: true, level: 3 }) })
+		.locator('[data-slot="carousel-content"]');
+}
+
 function selectionToolbar(page: Page): Locator {
 	return page.getByRole('region', { name: m.gift_selection_toolbar() });
 }
@@ -593,6 +601,21 @@ const INTERACTIONS: Record<string, Interaction> = {
 	'swipe over cards': async ({ page, session }) => {
 		const start = await pointOf(pressedContent(page));
 		await requireTouch(session).swipe(start, { x: start.x, y: start.y - 250 });
+		return {};
+	},
+	'swipe row sideways': async ({ page, session }, duringPress) => {
+		const scroller = pressedRowScroller(page);
+		await scroller.evaluate((element) => (element.scrollLeft = 0));
+		const box = await scroller.boundingBox();
+		expect(box, 'the row has a layout box').not.toBeNull();
+		const { y } = await pointOf(pressedContent(page));
+		await requireTouch(session).drag(
+			[
+				{ x: box!.x + box!.width * 0.85, y },
+				{ x: box!.x + box!.width * 0.15, y },
+			],
+			{ beforeRelease: duringPress },
+		);
 		return {};
 	},
 	'long press with native contextmenu': async ({ page, session }, duringPress) => {
@@ -935,6 +958,38 @@ const OUTCOME_CHECKS: Record<GiftCardOutcome, OutcomeCheck> = {
 		await expect(page.locator(REORDER_OVERLAY)).toHaveCount(0);
 		await expectNoCardPress(page, state.role);
 		expect(await giftOrder(page)).toEqual(orderBefore);
+	},
+	'scrolls-row': async ({ page, session, state }, perform) => {
+		const scroller = pressedRowScroller(page);
+		const pageScrollBefore = await scrollContainer(page).evaluate((main) => main.scrollTop);
+		const orderBefore = await giftOrder(page);
+		const mutationsBefore = session.mutationRequests.length;
+		await perform(async () => {
+			await expect(
+				page.locator(LONG_PRESS_PENDING),
+				'the sideways swipe cancels the pending long press',
+			).toHaveCount(0, { timeout: PRESS_PHASE_TIMEOUT_MS });
+		});
+		await expect
+			.poll(() => scroller.evaluate((element) => element.scrollLeft), {
+				message: 'the row scrolls sideways',
+			})
+			.toBeGreaterThan(40);
+		// A tap during the fling would only stop it, so the settled check waits for it to end.
+		await expectScrollAtRest(scroller, 'left');
+		expect(
+			await scrollContainer(page).evaluate((main) => main.scrollTop),
+			'the page does not scroll vertically',
+		).toBe(pageScrollBefore);
+		await page.waitForTimeout(SETTLE_AFTER_GESTURE_MS);
+		await expect(page.locator(OPEN_LAYERS), 'the swipe opens nothing').toHaveCount(0);
+		await expect(page.locator(REORDER_OVERLAY), 'no drag starts').toHaveCount(0);
+		await expectNoCardPress(page, state.role);
+		expect(await giftOrder(page), 'the order is unchanged').toEqual(orderBefore);
+		expect(
+			session.mutationRequests.slice(mutationsBefore).map((request) => request.url()),
+			'nothing is saved',
+		).toEqual([]);
 	},
 	'changes-image': async ({ page, state }, perform) => {
 		const card = giftItem(page, GALLERY_GIFT);

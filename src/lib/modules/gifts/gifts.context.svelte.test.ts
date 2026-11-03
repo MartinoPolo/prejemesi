@@ -324,4 +324,76 @@ describe('gift view mode persistence', () => {
 			.toHaveTextContent(GIFT_VIEW_MODES.card);
 		expect(localStorage.getItem(storageKey)).toBe(JSON.stringify(GIFT_VIEW_MODES.card));
 	});
+
+	it('restores a saved Carousel per device after a reload (#580 REQ-2)', async () => {
+		const first = render(GiftsContextTestHost, { initialNarrowViewport: true });
+		await first.getByRole('button', { name: 'Save carousel' }).click();
+		expect(localStorage.getItem(storageKey)).toBe(JSON.stringify(GIFT_VIEW_MODES.carousel));
+		await first.unmount();
+
+		const reloaded = render(GiftsContextTestHost, { initialWishlistId: 'wishlist-b' });
+		await expect
+			.element(reloaded.getByTestId('view-mode'))
+			.toHaveTextContent(GIFT_VIEW_MODES.carousel);
+	});
+
+	it('keeps a saved Carousel on desktop without rewriting it (#580 REQ-1)', async () => {
+		localStorage.setItem(storageKey, JSON.stringify(GIFT_VIEW_MODES.carousel));
+		const screen = render(GiftsContextTestHost, {
+			initialGifts: [makeGift({ priority: true })],
+		});
+		await expect
+			.element(screen.getByTestId('view-mode'))
+			.toHaveTextContent(GIFT_VIEW_MODES.carousel);
+		await expect.element(screen.getByTestId('carousel-view-active')).toHaveTextContent('false');
+		expect(localStorage.getItem(storageKey)).toBe(JSON.stringify(GIFT_VIEW_MODES.carousel));
+	});
+});
+
+describe('Carousel grouping (#580 REQ-3)', () => {
+	const viewModeKey = 'prejemesi-gift-view-mode';
+	const groupingKey = wishlistGiftGroupingStorageKey('wishlist-a');
+
+	function renderCarousel(gifts: GiftForVisitor[]) {
+		localStorage.setItem(viewModeKey, JSON.stringify(GIFT_VIEW_MODES.carousel));
+		return render(GiftsContextTestHost, { initialGifts: gifts, initialNarrowViewport: true });
+	}
+
+	it('groups by priority over a saved „no grouping" without saving it', async () => {
+		localStorage.setItem(groupingKey, JSON.stringify(GIFT_GROUPING_OPTIONS.none));
+		const screen = renderCarousel([makeGift({ priority: true, category: true })]);
+		await expect
+			.element(screen.getByTestId('effective-grouping'))
+			.toHaveTextContent(GIFT_GROUPING_OPTIONS.priority);
+		expect(localStorage.getItem(groupingKey)).toBe(JSON.stringify(GIFT_GROUPING_OPTIONS.none));
+	});
+
+	it('groups by category when no gift has a priority', async () => {
+		const screen = renderCarousel([makeGift({ category: true })]);
+		await expect
+			.element(screen.getByTestId('effective-grouping'))
+			.toHaveTextContent(GIFT_GROUPING_OPTIONS.category);
+		expect(localStorage.getItem(groupingKey)).toBeNull();
+	});
+
+	it('keeps a saved category grouping when gifts also have priorities', async () => {
+		localStorage.setItem(groupingKey, JSON.stringify(GIFT_GROUPING_OPTIONS.category));
+		const screen = renderCarousel([makeGift({ priority: true, category: true })]);
+		await expectGrouping(screen, GIFT_GROUPING_OPTIONS.category);
+	});
+
+	it('shows one row for gifts without a priority or a category', async () => {
+		const screen = renderCarousel([makeGift()]);
+		await expectGrouping(screen, GIFT_GROUPING_OPTIONS.none);
+	});
+
+	it('returns to the saved grouping on desktop', async () => {
+		localStorage.setItem(groupingKey, JSON.stringify(GIFT_GROUPING_OPTIONS.none));
+		const screen = renderCarousel([makeGift({ category: true })]);
+		await expect
+			.element(screen.getByTestId('effective-grouping'))
+			.toHaveTextContent(GIFT_GROUPING_OPTIONS.category);
+		await screen.getByRole('button', { name: 'Toggle narrow viewport' }).click();
+		await expectGrouping(screen, GIFT_GROUPING_OPTIONS.none);
+	});
 });

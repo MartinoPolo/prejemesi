@@ -4,6 +4,7 @@
 	import {
 		GIFT_CARD_COLUMN_OPTIONS,
 		GIFT_GROUPING_OPTIONS,
+		GIFT_VIEW_MODES,
 		type GiftForVisitor,
 	} from './types.js';
 	import type { WishlistRole } from '$lib/modules/wishlists/types.js';
@@ -14,17 +15,20 @@
 		initialLoading = false,
 		loadedGifts = [],
 		role = 'visitor',
+		initialNarrowViewport = false,
 	}: {
 		initialWishlistId?: string;
 		initialGifts?: GiftForVisitor[];
 		initialLoading?: boolean;
 		loadedGifts?: GiftForVisitor[];
 		role?: WishlistRole;
+		initialNarrowViewport?: boolean;
 	} = $props();
 
 	let wishlistId = $state(untrack(() => initialWishlistId));
 	let gifts = $state(untrack(() => initialGifts));
 	let loading = $state(untrack(() => initialLoading));
+	let narrowViewport = $state(untrack(() => initialNarrowViewport));
 	const context = setGiftsContext(
 		() => wishlistId,
 		() => gifts,
@@ -33,6 +37,7 @@
 		() => true,
 		() => [],
 		() => loading,
+		() => narrowViewport,
 	);
 
 	function loadGifts() {
@@ -77,6 +82,7 @@
 
 <div data-testid="grouping">{context.grouping.current}</div>
 <div data-testid="view-mode">{context.viewMode.current}</div>
+<div data-testid="carousel-view-active">{context.carouselViewActive.current}</div>
 <div data-testid="card-column-option">{context.cardColumnOption.current}</div>
 <div data-testid="effective-grouping">{context.effectiveGrouping.current}</div>
 <div data-testid="priority-filter-options">
@@ -103,3 +109,5 @@
 <button onclick={() => (context.cardColumnOption.current = GIFT_CARD_COLUMN_OPTIONS.five)}
 	>Save five columns</button
 >
+<button onclick={() => (context.viewMode.current = GIFT_VIEW_MODES.carousel)}>Save carousel</button>
+<button onclick={() => (narrowViewport = !narrowViewport)}>Toggle narrow viewport</button>

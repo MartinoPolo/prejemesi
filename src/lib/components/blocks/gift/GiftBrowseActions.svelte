@@ -20,6 +20,7 @@
 		persistentMore: boolean;
 		moreOpen: boolean;
 		moreSurface: 'menu' | 'dialog';
+		compactReservationLabel?: boolean;
 		class?: string;
 	}
 
@@ -38,6 +39,7 @@
 		persistentMore,
 		moreOpen,
 		moreSurface,
+		compactReservationLabel = false,
 		class: className,
 	}: GiftBrowseActionsProps = $props();
 </script>
@@ -76,6 +78,12 @@
 	{#if actions.primaryAction === 'received'}
 		{@render receivedToggle()}
 	{:else if actions.primaryAction !== undefined && visitorGift}
-		<ReserveButton gift={visitorGift} {isArchived} {onreserve} {onunreserve} />
+		<ReserveButton
+			gift={visitorGift}
+			{isArchived}
+			compactLabel={compactReservationLabel}
+			{onreserve}
+			{onunreserve}
+		/>
 	{/if}
 </GiftActionRow>

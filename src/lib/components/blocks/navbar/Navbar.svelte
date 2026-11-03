@@ -18,7 +18,7 @@
 	import PlusIcon from '@lucide/svelte/icons/plus';
 	import GiftIcon from '@lucide/svelte/icons/gift';
 	import { localizeInternalHref } from '$lib/i18n/locale.js';
-	import { czechPluralCategory } from '$lib/modules/gifts/gift_display.js';
+	import { czechPluralCategory, formatGiftCount } from '$lib/modules/gifts/gift_display.js';
 	import * as m from '$lib/paraglide/messages.js';
 	import {
 		getMyWishlists,
@@ -153,16 +153,6 @@
 		};
 	}
 
-	/** Czech-pluralized gift count for owner list cards. */
-	function giftCountLabel(count: number): string {
-		const category = czechPluralCategory(count);
-		return category === 'one'
-			? m.nav_gift_count_one()
-			: category === 'few'
-				? m.nav_gift_count_few({ count })
-				: m.nav_gift_count_other({ count });
-	}
-
 	/** Czech-pluralized count of gifts still available to claim. */
 	function availableCountLabel(count: number): string {
 		const category = czechPluralCategory(count);
@@ -178,7 +168,7 @@
 		// Owner invariant: gift count + event countdown only – never reservation data.
 		return {
 			name: wishlistRecord.title,
-			meta: giftCountLabel(wishlistRecord.totalGifts),
+			meta: formatGiftCount(wishlistRecord.totalGifts),
 			countdown: eventCountdown(wishlistRecord.eventDate) ?? undefined,
 			href: localizeInternalHref(resolve('/(app)/w/[id]', { id: wishlistRecord.shortId })),
 			emoji: getWishlistEmoji(wishlistRecord.theme),

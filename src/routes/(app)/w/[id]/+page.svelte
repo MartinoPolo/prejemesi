@@ -67,6 +67,7 @@
 	import { LazyImportWizard } from '$lib/components/blocks/import/index.js';
 	import { WIZARD_MODE } from '$lib/components/blocks/import/import_wizard_types.js';
 	import { emptyGiftFilters, setGiftsContext } from '$lib/modules/gifts/gifts.context.svelte.js';
+	import { presentedGiftViewMode } from '$lib/modules/gifts/gift_view_mode.js';
 	import { createLatestAsyncQueue } from '$lib/modules/gifts/latest_async_queue.js';
 	import { setLikesContext } from '$lib/modules/likes/likes.context.svelte.js';
 	import { provideGiftGalleryPositions } from '$lib/modules/gifts/gift_gallery_positions.js';
@@ -287,6 +288,8 @@
 
 	// ── Context setup (must be synchronous – before any await) ───────────────
 
+	// False until mount, so a saved mobile-only Carousel hydrates as the server-rendered Card.
+	const narrowViewport = useNarrowViewportState();
 	const giftsContext = untrack(() =>
 		setGiftsContext(
 			() => wishlist.id,
@@ -296,6 +299,7 @@
 			() => isAuthenticated,
 			() => likedGiftIds,
 			() => isGiftDataLoading || wishlist.shortId !== shortId,
+			() => narrowViewport.current,
 		),
 	);
 
@@ -706,7 +710,12 @@
 		},
 		mergeReorderGiftsInputs,
 	);
-	const viewMode = $derived(giftsContext.viewMode.current);
+	const viewMode = $derived(
+		presentedGiftViewMode(giftsContext.viewMode.current, {
+			narrowViewport: narrowViewport.current,
+			temporaryCardView: reorderMode || giftSelection.active,
+		}),
+	);
 	let cardColumnCapacity = $state<number | null>(null);
 	const canMaintainReorderMode = $derived(canManage && !isArchived);
 	// Grouped reorder shows every level or category, so their definitions must be loaded first.
@@ -912,7 +921,6 @@
 			? contextSession.invocation.point
 			: { x: 0, y: 0 },
 	);
-	const narrowViewport = useNarrowViewportState();
 	const activeContextGiftId = $derived(
 		programmaticOpen && contextAnchor !== null ? contextSession?.gift.id : null,
 	);
@@ -2495,6 +2503,7 @@
 			filters={giftsContext.filters.current}
 			grouping={giftsContext.effectiveGrouping.current}
 			groupingAvailability={giftsContext.groupingAvailability.current}
+			groupingRequired={giftsContext.carouselViewActive.current}
 			categoryFilterOptions={giftsContext.categoryFilterOptions.current}
 			priorityFilterOptions={giftsContext.priorityFilterOptions.current}
 			cardColumnOption={giftsContext.cardColumnOption.current}
