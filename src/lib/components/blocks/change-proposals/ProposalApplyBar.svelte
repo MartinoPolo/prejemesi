@@ -4,6 +4,7 @@
 	import { countCopy } from '$lib/modules/change_proposals/change_review_copy.js';
 	import { UNRESOLVED_DECISION_MESSAGES } from './change_review_presentation.js';
 	import ApplyProposalLabel from './ApplyProposalLabel.svelte';
+	import ProposalDecisionButtons from './ProposalDecisionButtons.svelte';
 
 	const INCLUDED_COUNTS = {
 		one: m.change_review_included_count_one,
@@ -74,22 +75,12 @@
 			{/if}
 		</p>
 		<div class="apply-actions">
-			<Button
-				intent="secondary"
+			<ProposalDecisionButtons
+				testIdPrefix="change-review"
 				disabled={pending}
-				data-testid="change-review-reject-all"
-				onclick={onrejectall}
-			>
-				{m.change_review_reject_all()}
-			</Button>
-			<Button
-				intent="secondary"
-				disabled={pending}
-				data-testid="change-review-accept-all"
-				onclick={onacceptall}
-			>
-				{m.change_review_accept_all()}
-			</Button>
+				{onrejectall}
+				{onacceptall}
+			/>
 			<Button
 				class={['apply-primary', blocked && !pending && 'is-blocked']}
 				disabled={pending}

@@ -7,6 +7,7 @@
 	import TriangleAlertIcon from '@lucide/svelte/icons/triangle-alert';
 	import { Button } from '$lib/components/base/button/index.js';
 	import ApplyProposalLabel from '$lib/components/blocks/change-proposals/ApplyProposalLabel.svelte';
+	import ProposalDecisionButtons from '$lib/components/blocks/change-proposals/ProposalDecisionButtons.svelte';
 	import { countCopy } from '$lib/modules/change_proposals/change_review_copy.js';
 	import { CHANGE_DECISION } from '$lib/modules/change_proposals/change_field_decisions.js';
 	import { UNRESOLVED_DECISION_MESSAGES } from '$lib/components/blocks/change-proposals/change_review_presentation.js';
@@ -66,26 +67,14 @@
 {/snippet}
 
 {#snippet bulkDecisions()}
-	<Button
-		intent="secondary"
+	<ProposalDecisionButtons
+		testIdPrefix="chat-proposal"
 		size="md"
 		disabled={pending}
-		data-testid="chat-proposal-reject-all"
 		{onpointerdown}
-		onclick={() => decisions.decideEveryRow(CHANGE_DECISION.rejected)}
-	>
-		{m.change_review_reject_all()}
-	</Button>
-	<Button
-		intent="secondary"
-		size="md"
-		disabled={pending}
-		data-testid="chat-proposal-accept-all"
-		{onpointerdown}
-		onclick={() => decisions.decideEveryRow(CHANGE_DECISION.accepted)}
-	>
-		{m.change_review_accept_all()}
-	</Button>
+		onrejectall={() => decisions.decideEveryRow(CHANGE_DECISION.rejected)}
+		onacceptall={() => decisions.decideEveryRow(CHANGE_DECISION.accepted)}
+	/>
 {/snippet}
 
 {#snippet applyButton()}
