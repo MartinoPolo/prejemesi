@@ -69,6 +69,8 @@
 		filters: GiftFilters;
 		grouping: GiftGroupingOption;
 		groupingAvailability: { priority: boolean; category: boolean };
+		/** The Carousel view always groups, so „Bez seskupení" is unavailable. */
+		groupingRequired?: boolean;
 		categoryFilterOptions: GiftFilterOption<GiftCategoryFilterValue>[];
 		priorityFilterOptions: GiftFilterOption<GiftPriorityFilterValue>[];
 		cardColumnOption: GiftCardColumnOption;
@@ -103,6 +105,7 @@
 		filters,
 		grouping,
 		groupingAvailability,
+		groupingRequired = false,
 		categoryFilterOptions,
 		priorityFilterOptions,
 		cardColumnOption,
@@ -200,7 +203,7 @@
 
 	function isGroupingOptionAvailable(option: GiftGroupingOption) {
 		return (
-			option === GIFT_GROUPING_OPTIONS.none ||
+			(option === GIFT_GROUPING_OPTIONS.none && !groupingRequired) ||
 			(option === GIFT_GROUPING_OPTIONS.priority && groupingAvailability.priority) ||
 			(option === GIFT_GROUPING_OPTIONS.category && groupingAvailability.category)
 		);
@@ -677,7 +680,7 @@
 
 {#snippet mobileDisplayControls()}
 	<div class="mobile-browse-row" data-mobile-toolbar-row>
-		<GiftViewSwitcher value={viewMode} onchange={onviewmodechange} />
+		<GiftViewSwitcher value={viewMode} onchange={onviewmodechange} includeCarousel />
 		<SimpleTooltip text={m.gift_display_options()}>
 			<Button
 				bind:ref={mobileDisplayTrigger}

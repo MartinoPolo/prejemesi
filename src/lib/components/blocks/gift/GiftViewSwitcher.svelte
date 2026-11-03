@@ -1,6 +1,7 @@
 <script lang="ts">
 	import LayoutGridIcon from '@lucide/svelte/icons/layout-grid';
 	import ListIcon from '@lucide/svelte/icons/list';
+	import GalleryHorizontalIcon from '@lucide/svelte/icons/gallery-horizontal';
 	import { GIFT_VIEW_MODES, type GiftViewMode } from '$lib/modules/gifts/types.js';
 	import * as SegmentedToggle from '$lib/components/derived/segmented-toggle/index.js';
 	import * as m from '$lib/paraglide/messages.js';
@@ -9,18 +10,28 @@
 		value: GiftViewMode;
 		onchange: (mode: GiftViewMode) => void;
 		disabled?: boolean;
+		/** Offers the mobile-only Carousel as the third segment. */
+		includeCarousel?: boolean;
 	}
 
-	let { value, onchange, disabled = false }: GiftViewSwitcherProps = $props();
+	let {
+		value,
+		onchange,
+		disabled = false,
+		includeCarousel = false,
+	}: GiftViewSwitcherProps = $props();
 
 	// Bits UI's single ToggleGroup writes an empty bound value when its active item is re-clicked;
 	// SegmentedToggle's writable derived state restores this value instead of deselecting it.
 	let selected = $derived(value);
 
-	const modes = [
+	const modes = $derived([
 		{ key: GIFT_VIEW_MODES.card, icon: LayoutGridIcon },
 		{ key: GIFT_VIEW_MODES.list, icon: ListIcon },
-	] as const;
+		...(includeCarousel
+			? [{ key: GIFT_VIEW_MODES.carousel, icon: GalleryHorizontalIcon }]
+			: []),
+	]);
 
 	function handleArrowKey(event: KeyboardEvent) {
 		if (disabled || !['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) {
@@ -41,6 +52,8 @@
 				return m.gift_view_card();
 			case GIFT_VIEW_MODES.list:
 				return m.gift_view_list();
+			case GIFT_VIEW_MODES.carousel:
+				return m.gift_view_carousel();
 		}
 	}
 </script>

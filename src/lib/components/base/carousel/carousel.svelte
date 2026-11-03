@@ -125,6 +125,12 @@
 	class={cn('relative', className)}
 	role="region"
 	aria-roledescription="carousel"
+	onkeydown={(event) => {
+		// Only a region its consumer made focusable scrolls; arrows inside slides stay theirs.
+		if (event.target === event.currentTarget) {
+			handleKeyDown(event);
+		}
+	}}
 	{...restProps}
 >
 	{@render children?.()}

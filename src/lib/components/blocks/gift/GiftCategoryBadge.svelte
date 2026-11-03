@@ -33,6 +33,7 @@
      break only when a single word cannot fit. The full label stays in the DOM for assistive
      technology and in the title tooltip. -->
 <span
+	data-slot="gift-category-badge"
 	data-testid={testId}
 	data-single-line={singleLine || undefined}
 	class={cn(

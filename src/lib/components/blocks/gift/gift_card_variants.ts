@@ -1,5 +1,9 @@
 import { tv } from 'tailwind-variants';
 
+export const GIFT_CARD_DENSITIES = { grid: 'grid', carousel: 'carousel' } as const;
+
+export type GiftCardDensity = (typeof GIFT_CARD_DENSITIES)[keyof typeof GIFT_CARD_DENSITIES];
+
 /**
  * Anime-sky sticker gift card (issue #102 REQ-14): ink border, hard offset
  * shadow, coherent lift of the direct surface and all nested content on hover,
@@ -61,8 +65,14 @@ export const giftCardVariants = tv({
 				separator: 'bg-ink',
 			},
 		},
+		density: {
+			grid: {},
+			// The reduced Carousel card shows the square `thumb` crop.
+			carousel: { imageArea: 'aspect-square', cropComposition: 'aspect-square' },
+		},
 	},
 	defaultVariants: {
 		dimmed: false,
+		density: GIFT_CARD_DENSITIES.grid,
 	},
 });

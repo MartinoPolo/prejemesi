@@ -186,7 +186,7 @@ describe('WishlistDetailToolbar mobile command surfaces (#340)', () => {
 		}
 	});
 
-	it('keeps the integrated view tray and both items at the toolbar control height', async () => {
+	it('keeps the integrated view tray and every item at the toolbar control height', async () => {
 		const screen = await renderToolbar({}, 320);
 
 		for (const viewportWidth of [320, 800] as const) {
@@ -199,7 +199,12 @@ describe('WishlistDetailToolbar mobile command surfaces (#340)', () => {
 			);
 
 			expectPixelsNear(tray.getBoundingClientRect().height, expectedSize);
-			expect(items).toHaveLength(2);
+			// Card and List everywhere, plus the mobile-only Carousel (#580).
+			expect(items).toHaveLength(viewportWidth < 640 ? 3 : 2);
+			if (viewportWidth < 640) {
+				const row = tray.closest<HTMLElement>('[data-mobile-toolbar-row]')!;
+				expectPixelsAtMost(row.scrollWidth, row.clientWidth);
+			}
 			for (const item of items) {
 				expectPixelsNear(
 					item.getBoundingClientRect().width,

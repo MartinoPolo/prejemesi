@@ -124,10 +124,11 @@ export type GiftForRecipient = GiftBase;
 /** Union type for gift based on role */
 export type GiftByRole = GiftForVisitor | GiftForRecipient;
 
-/** View mode for gift display */
+/** View mode for gift display; Carousel is offered on mobile only. */
 export const GIFT_VIEW_MODES = {
 	card: 'card',
 	list: 'list',
+	carousel: 'carousel',
 } as const;
 
 export type GiftViewMode = (typeof GIFT_VIEW_MODES)[keyof typeof GIFT_VIEW_MODES];

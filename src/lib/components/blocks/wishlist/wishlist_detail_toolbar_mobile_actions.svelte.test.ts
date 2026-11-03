@@ -306,6 +306,41 @@ describe('WishlistDetailToolbar mobile actions (#340)', () => {
 		},
 	);
 
+	it('offers Carousel as the third mobile view after Card and List (#580 REQ-1)', async () => {
+		const onviewmodechange = vi.fn();
+		const screen = await renderToolbar({ onviewmodechange });
+		const switcher = screen
+			.getByTestId('wishlist-toolbar-mobile')
+			.element()
+			.querySelector('[data-testid="gift-view-switcher"]')!;
+		expect(
+			Array.from(switcher.querySelectorAll('[role="radio"]'), (mode) =>
+				mode.getAttribute('aria-label'),
+			),
+		).toEqual([m.gift_view_card(), m.gift_view_list(), m.gift_view_carousel()]);
+		await screen.getByRole('radio', { name: m.gift_view_carousel() }).click();
+		expect(onviewmodechange).toHaveBeenCalledWith(GIFT_VIEW_MODES.carousel);
+		await screen.unmount();
+	});
+
+	it('makes no grouping unavailable while Carousel requires a grouping (#580 REQ-3)', async () => {
+		const screen = await renderToolbar({
+			viewMode: GIFT_VIEW_MODES.carousel,
+			grouping: GIFT_GROUPING_OPTIONS.priority,
+			groupingAvailability: { priority: true, category: true },
+			groupingRequired: true,
+		});
+		await screen.getByTestId('mobile-display-trigger').click();
+		await screen.getByTestId('mobile-sheet-grouping-switch').click();
+		await expect
+			.element(screen.getByRole('radio', { name: m.gift_grouping_none() }))
+			.toBeDisabled();
+		await expect
+			.element(screen.getByRole('radio', { name: m.gift_grouping_category() }))
+			.not.toBeDisabled();
+		await screen.unmount();
+	});
+
 	it('does not offer mobile reorder before gift data is ready', async () => {
 		const screen = await renderToolbar({
 			canManage: true,

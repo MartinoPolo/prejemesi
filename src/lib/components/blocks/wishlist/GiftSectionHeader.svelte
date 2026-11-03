@@ -4,6 +4,7 @@
 	import { Checkbox } from '$lib/components/base/checkbox/index.js';
 	import { getContext } from 'svelte';
 	import { giftSectionLabel } from './gift_section_label.js';
+	import { formatGiftCount } from '$lib/modules/gifts/gift_display.js';
 
 	interface GiftSectionHeaderProps {
 		section: GiftSection;
@@ -11,6 +12,8 @@
 		onselectiontoggle?: (giftId: string) => void;
 		/** Marks the header as part of a grouped-reorder drop target. */
 		reorderGroupKey?: string;
+		/** Gifts in the row the header introduces, shown after the label. */
+		count?: number;
 	}
 
 	let {
@@ -18,6 +21,7 @@
 		selectionMode = false,
 		onselectiontoggle,
 		reorderGroupKey,
+		count,
 	}: GiftSectionHeaderProps = $props();
 	const isSelected = getContext<((giftId: string) => boolean) | undefined>(
 		'wishlist-gift-selection',
@@ -47,11 +51,19 @@
 	{/if}
 	<!-- The plate only paints over a wishlist theme backdrop, keeping text off the artwork. -->
 	<span class="wishlist-backdrop-plate inline-flex min-w-0 items-center gap-2">
-		<h2
-			class="font-heading text-sm font-bold tracking-wide text-foreground uppercase [word-spacing:0.1em]"
-		>
-			{label}
-		</h2>
+		{#if label !== ''}
+			<h2
+				class="font-heading text-sm font-bold tracking-wide text-foreground uppercase [word-spacing:0.1em]"
+			>
+				{label}
+			</h2>
+		{/if}
+		{#if count !== undefined}
+			<span
+				class="text-sm font-semibold whitespace-nowrap text-muted-foreground"
+				data-testid="gift-section-count">{formatGiftCount(count)}</span
+			>
+		{/if}
 		{#if selectionMode}<span class="text-xs text-muted-foreground"
 				>{m.gift_selection_section_count({
 					selectedCount,
