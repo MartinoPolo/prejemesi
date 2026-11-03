@@ -250,7 +250,7 @@
 	<!-- Narrow screens use a standalone compact hero. The notices below intentionally remain
 	     siblings so lifecycle and reservation privacy messaging never gets clipped by it. -->
 	<WishlistHeroFrameShell frame={heroFrame} layout="mobile" data-testid="wishlist-mobile-hero">
-		<div class="mobile-hero">
+		<div class="mobile-hero" class:mobile-hero-has-actions={settingsAvailable || canManage}>
 			<figure class="mobile-photo" data-testid="wishlist-mobile-photo">
 				<WishlistSlotImage
 					class="size-full rounded-none"
@@ -613,6 +613,7 @@
 			-webkit-box-orient: vertical;
 			-webkit-line-clamp: 2;
 			line-clamp: 2;
+			overflow-wrap: break-word;
 		}
 
 		.mobile-meta {
@@ -630,6 +631,30 @@
 			height: 11px;
 			margin-inline-end: 3px;
 			vertical-align: -1px;
+		}
+	}
+
+	/* Beside the actions the copy column would be too narrow for a title word, so the actions
+	   take their own row above the copy and the title gets the full width beside the photo. */
+	@media (width < 360px) {
+		.mobile-hero-has-actions {
+			grid-template-columns: 92px minmax(0, 1fr);
+			grid-template-areas:
+				'photo actions'
+				'photo copy';
+		}
+
+		.mobile-hero-has-actions .mobile-photo {
+			grid-area: photo;
+		}
+
+		.mobile-hero-has-actions .mobile-copy {
+			grid-area: copy;
+		}
+
+		.mobile-hero-has-actions :global([data-testid='wishlist-header-actions']) {
+			grid-area: actions;
+			justify-self: end;
 		}
 	}
 </style>
