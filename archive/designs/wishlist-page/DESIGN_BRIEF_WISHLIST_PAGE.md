@@ -3,8 +3,8 @@
 > **Historical scoped reference:** This document preserves its original design scope. For current requirements, see `designs/README.md`, `.mpx/DECISIONS.md`, `src/app.css`, and the current components; older auth, role, visual, and geometry copy here is not authoritative.
 
 > **Status**: Refined (Variant 2 – E-commerce grid)
-> **Refined mockup**: `designs/wishlist-page/refined.html`
-> **Summary**: `designs/wishlist-page/SUMMARY.md`
+> **Refined mockup**: `archive/designs/wishlist-page/refined.html`
+> **Summary**: `archive/designs/wishlist-page/SUMMARY.md`
 > **Refinements**: Approved app shell nav, visitor + owner role views, 3-way view toggle, sort/filter dropdown, gift cards with link/priority/quantity/like/reserve, drag-and-drop hints for owner, light-mode only, 4 role views (visitor, owner-draft, owner-shared, moderator), gift card component reference with all states
 
 **Page:** `/w/<short-id>` – the core shareable wishlist view

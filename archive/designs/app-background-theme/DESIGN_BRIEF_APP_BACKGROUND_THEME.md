@@ -247,7 +247,7 @@ The three palettes (exact, from source):
     - `src/routes/(app)/settings/+page.svelte` – settings page layout (`max-w-3xl`, stacked cards).
     - `designs/app-shell/variant-1.html` – navbar chrome to reproduce as context.
     - `src/palette-colors.css` – the exact bg-theme palettes.
-    - `designs/dashboard/` & `designs/wishlist-page/` variants – card/badge styling consistency.
+    - `designs/dashboard/` & `archive/designs/wishlist-page/` variants – card/badge styling consistency.
 - **External**: OS-style appearance pickers (macOS System Settings Appearance row, VS Code theme tiles) – labelled preview tiles with a selected ring.
 
 ## 11. Not Included (Scope Exclusions)

@@ -3,13 +3,13 @@
 > **Historical scoped reference:** This document preserves its original design scope. For current requirements, see `designs/README.md`, `.mpx/DECISIONS.md`, `src/app.css`, and the current components; older auth, role, visual, and geometry copy here is not authoritative.
 
 > **Status**: Refined (Variant C)
-> **Refined mockup**: `designs/gift-card-v2/refined.html`
-> **Summary**: `designs/gift-card-v2/SUMMARY.md`
+> **Refined mockup**: `archive/designs/gift-card-v2/refined.html`
+> **Summary**: `archive/designs/gift-card-v2/SUMMARY.md`
 > **Refinements**: priority badge reads "Priorita · {level}" – a leading uppercase "Priorita" eyebrow precedes the colour-coded level word so it can't be read as price/size/importance (colour is secondary reinforcement only); links restyled to Variant A's subtle ghost rows on hairline dividers (no chip background); the whole gift image is the drag trigger (six-dot handle stays a hover-revealed hint, grab/grabbing cursor); cards in a grid row share the tallest card's height (link list bottom-aligned so rows line up).
 
 > **Status**: Design phase – supersedes the current `GiftCard` / `GiftListItem` / `GiftCompactRow` trio
 > **Replaces**: corner `×3` quantity badge, single-link row (`gift.url`), `gift_card_variants.ts` slots
-> **Related**: `designs/wishlist-page/DESIGN_BRIEF_WISHLIST_PAGE.md` (§4 Gift Card Anatomy), `designs/gift-detail-modal/DESIGN_BRIEF_GIFT_DETAIL_MODAL.md`
+> **Related**: `archive/designs/wishlist-page/DESIGN_BRIEF_WISHLIST_PAGE.md` (§4 Gift Card Anatomy), `archive/designs/gift-detail-modal/DESIGN_BRIEF_GIFT_DETAIL_MODAL.md`
 
 **Component:** `GiftCard` v2 (`src/lib/components/blocks/gift/`)
 **Date:** 2026-06-03
@@ -239,8 +239,8 @@ Canonical in `src/app.css`; structural tokens mirrored in `designs/tokens.css`.
 
 ## 10. Visual References
 
-- `designs/wishlist-page/refined.html` – current gift card in context (the surface this card sits in)
-- `designs/gift-detail-modal/refined.html` – sibling surface; reserve/like/link patterns to stay consistent with
+- `archive/designs/wishlist-page/refined.html` – current gift card in context (the surface this card sits in)
+- `archive/designs/gift-detail-modal/refined.html` – sibling surface; reserve/like/link patterns to stay consistent with
 - Current visual fidelity, palette, and component requirements come from `src/app.css` and current components. `archive/designs/style-exploration/direction-b-sage.html` is historical provenance only.
 - `designs/tokens.css` – structural spacing / radius / motion tokens
 - `src/app.css` – canonical color values (sage green primary, reserved/liked/archived, light/dark)
@@ -254,7 +254,7 @@ Canonical in `src/app.css`; structural tokens mirrored in `designs/tokens.css`.
 
 ## 11. Not Included in This Card
 
-- **Gift Detail Modal** – full description, full URLs, who-reserved table, reserve quantity selector, edit (separate brief: `designs/gift-detail-modal/`).
+- **Gift Detail Modal** – full description, full URLs, who-reserved table, reserve quantity selector, edit (separate brief: `archive/designs/gift-detail-modal/`).
 - **Reservation flow internals** – the reserve dialog, anonymous identity capture, quantity selection, toasts. Only the **role-conditional display** of reserved state belongs here; the button itself is `ReserveButton` and its flow lives in the modal/reservation module.
 - **Import wizard / bulk paste grid** and the **enrichment** (auto image/price/title scraping) pipeline.
 - **Gift add/edit form** (`GiftDetailForm`) and image cropper (`GiftImageCropCanvas`).
