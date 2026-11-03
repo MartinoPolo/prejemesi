@@ -117,6 +117,30 @@
 		await userEvent.keyboard('{Escape}');
 		await waitFor(() => expectMenuClosed(canvasElement));
 	};
+
+	/** A highlighted destructive item keeps the ordinary highlight and its red text and icon. */
+	const playDestructiveHighlight = async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+		const trigger = findDropdownTrigger(canvasElement);
+		trigger.focus();
+		await userEvent.keyboard('{ArrowDown}');
+		await waitForMenuOpening(canvasElement);
+		const [ordinaryItem, destructiveItem] = menuItems(canvasElement);
+		await waitFor(() => expect(ordinaryItem).toHaveFocus());
+		const ordinaryHighlight = getComputedStyle(ordinaryItem!).backgroundColor;
+		await userEvent.keyboard('{ArrowDown}');
+		await waitFor(() => expect(destructiveItem).toHaveFocus());
+
+		const dangerText = document.createElement('span');
+		dangerText.style.color = 'var(--status-danger-text)';
+		destructiveItem!.append(dangerText);
+		const dangerColor = getComputedStyle(dangerText).color;
+		dangerText.remove();
+		await expect(getComputedStyle(destructiveItem!).backgroundColor).toBe(ordinaryHighlight);
+		await expect(getComputedStyle(destructiveItem!).color).toBe(dangerColor);
+		await expect(getComputedStyle(destructiveItem!.querySelector('svg')!).color).toBe(
+			dangerColor,
+		);
+	};
 </script>
 
 <Story name="Basic [play: opens on click]" play={playOpensOnClick}>
@@ -190,6 +214,30 @@
 					<DropdownMenu.Item variant="destructive">
 						<LogOutIcon />
 						Sign out
+					</DropdownMenu.Item>
+				</DropdownMenu.Content>
+			</DropdownMenu.Root>
+		</div>
+	{/snippet}
+</Story>
+
+<Story name="Destructive Item [play: highlight keeps red text]" play={playDestructiveHighlight}>
+	{#snippet template()}
+		<div class="flex h-36 items-start justify-center pt-4">
+			<DropdownMenu.Root>
+				<DropdownMenu.Trigger>
+					{#snippet child({ props })}
+						<Button intent="secondary" {...props}>Open Menu</Button>
+					{/snippet}
+				</DropdownMenu.Trigger>
+				<DropdownMenu.Content portalProps={{ disabled: true }}>
+					<DropdownMenu.Item>
+						<SettingsIcon />
+						Settings
+					</DropdownMenu.Item>
+					<DropdownMenu.Item variant="destructive">
+						<TrashIcon />
+						Delete
 					</DropdownMenu.Item>
 				</DropdownMenu.Content>
 			</DropdownMenu.Root>
