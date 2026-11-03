@@ -372,12 +372,13 @@
 				<Button
 					type="button"
 					intent="outline"
+					size="lg"
 					onclick={() => handleOpenChange(false)}
 					disabled={isSubmitting}
 				>
 					{m.cancel()}
 				</Button>
-				<Button type="submit" disabled={isSubmitting}>
+				<Button type="submit" size="lg" disabled={isSubmitting}>
 					{#if isSubmitting}
 						<LoaderIcon class="animate-spin" data-icon="inline-start" />
 						{m.creating()}
