@@ -2,6 +2,8 @@
 	import '../../../../app.css';
 	import * as Dialog from './index.js';
 
+	// fallow misses the read inside the `{#each { length: paragraphCount }}` object literal.
+	// fallow-ignore-next-line unused-component-prop
 	let { paragraphCount, divided = false }: { paragraphCount: number; divided?: boolean } =
 		$props();
 </script>
