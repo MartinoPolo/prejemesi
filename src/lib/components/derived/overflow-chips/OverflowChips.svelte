@@ -17,6 +17,8 @@
 		...restProps
 	}: OverflowChipsProps<Item> = $props();
 
+	const CLICK_AFTER_RELEASE_MS = 300;
+
 	const popoverTitleId = $props.id();
 	let popoverOpen = $state(false);
 	let triggerElement = $state<HTMLElement | null>(null);
@@ -34,20 +36,46 @@
 		);
 	}
 
-	/** Lets the dismissing press only dismiss, instead of also pressing what lies beneath. */
+	/**
+	 * Lets the dismissing press only dismiss, instead of also pressing what lies beneath. Bits UI's
+	 * own outside detection cannot do this: it misses presses a gift card stops from bubbling, and on
+	 * touch it closes on the click, which still reaches the element beneath.
+	 */
 	function swallowClickOfCurrentPress() {
+		let releaseTimer: ReturnType<typeof setTimeout> | undefined;
 		function swallowClick(event: MouseEvent) {
-			event.preventDefault();
-			event.stopPropagation();
+			if (!isInsidePopover(event.target)) {
+				event.preventDefault();
+				event.stopPropagation();
+			}
 			release();
 		}
+		// The press's click follows its release at once; a press that never clicks must not leave
+		// the guard armed for a later keyboard or programmatic click.
+		function releaseSoon() {
+			clearTimeout(releaseTimer);
+			releaseTimer = setTimeout(release, CLICK_AFTER_RELEASE_MS);
+		}
 		function release() {
+			clearTimeout(releaseTimer);
 			document.removeEventListener('click', swallowClick, true);
+			document.removeEventListener('pointerup', releaseSoon, true);
+			document.removeEventListener('pointercancel', release, true);
 			document.removeEventListener('pointerdown', release, true);
 		}
 		document.addEventListener('click', swallowClick, true);
-		// A press that turned into a scroll never clicks, so the next press releases the guard.
+		document.addEventListener('pointerup', releaseSoon, true);
+		// A press that turned into a scroll never clicks.
+		document.addEventListener('pointercancel', release, true);
 		document.addEventListener('pointerdown', release, true);
+	}
+
+	/** Whether a scroll moves the trigger, which the portaled popover cannot follow smoothly. */
+	function scrollMovesTrigger(target: EventTarget | null) {
+		return (
+			target === document ||
+			(target instanceof Node && triggerElement !== null && target.contains(triggerElement))
+		);
 	}
 
 	$effect(() => {
@@ -63,9 +91,8 @@
 			popoverOpen = false;
 			swallowClickOfCurrentPress();
 		}
-		// The portaled popover cannot follow a scrolling list smoothly, so scrolling dismisses it.
 		function closeOnScroll(event: Event) {
-			if (!isInsidePopover(event.target)) {
+			if (scrollMovesTrigger(event.target)) {
 				popoverOpen = false;
 			}
 		}

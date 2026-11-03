@@ -226,6 +226,42 @@ describe('GiftCategoryBadges', () => {
 		await expect.element(popover).not.toBeInTheDocument();
 	});
 
+	it('keeps the open "+X" popover while a container away from it scrolls', async () => {
+		const host = await renderGift(categorizedGift(LABELS), { width: 220 });
+		const unrelatedScroller = document.createElement('div');
+		document.body.appendChild(unrelatedScroller);
+		fixedHosts.add(unrelatedScroller);
+		await expect.poll(() => visibleBadgeLabels(host).length).toBeLessThan(LABELS.length);
+		await userEvent.click(moreButton(LABELS.length - visibleBadgeLabels(host).length));
+		const popover = page.getByRole('dialog');
+		await expect.element(popover).toBeVisible();
+
+		unrelatedScroller.dispatchEvent(new Event('scroll'));
+		await new Promise((resolve) => setTimeout(resolve, 500));
+		expect(popover.query()).not.toBeNull();
+
+		document.dispatchEvent(new Event('scroll'));
+		await expect.element(popover).not.toBeInTheDocument();
+	});
+
+	it('lets a later click through after a dismissing press that never clicked', async () => {
+		const onopen = vi.fn();
+		const host = await renderGift(categorizedGift(LABELS), { width: 220, onopen });
+		await expect.poll(() => visibleBadgeLabels(host).length).toBeLessThan(LABELS.length);
+		await userEvent.click(moreButton(LABELS.length - visibleBadgeLabels(host).length));
+		const popover = page.getByRole('dialog');
+		await expect.element(popover).toBeVisible();
+
+		const pressInit = { bubbles: true, pointerType: 'touch', isPrimary: true };
+		host.dispatchEvent(new PointerEvent('pointerdown', pressInit));
+		host.dispatchEvent(new PointerEvent('pointerup', pressInit));
+		await expect.element(popover).not.toBeInTheDocument();
+		await new Promise((resolve) => setTimeout(resolve, 500));
+
+		host.click();
+		expect(onopen).toHaveBeenCalledOnce();
+	});
+
 	it('gives a too-narrow primary the whole List lane and moves "+X" below it', async () => {
 		const host = await renderGift(
 			categorizedGift(['Výpravné ilustrované edice', 'Knihy', 'Hry']),
