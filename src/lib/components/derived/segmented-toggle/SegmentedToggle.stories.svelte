@@ -41,16 +41,40 @@
 			stretchingParent.getBoundingClientRect().width / 2,
 		);
 	};
+
+	const playFillSharesTray = async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+		const tray = within(canvasElement).getByRole('group', { name: 'Display section' });
+		const container = tray.parentElement!;
+		const containerStyle = getComputedStyle(container);
+		const containerContentWidth =
+			container.clientWidth -
+			parseFloat(containerStyle.paddingLeft) -
+			parseFloat(containerStyle.paddingRight);
+		await expect(
+			Math.abs(tray.getBoundingClientRect().width - containerContentWidth),
+		).toBeLessThan(1);
+		const optionWidths = within(tray)
+			.getAllByRole('radio')
+			.map((option) => option.getBoundingClientRect().width);
+		for (const optionWidth of optionWidths) {
+			await expect(Math.abs(optionWidth - optionWidths[0])).toBeLessThan(1);
+		}
+		await expect(tray.scrollWidth).toBeLessThanOrEqual(tray.clientWidth);
+	};
 </script>
 
 <script lang="ts">
+	import ArrowUpDownIcon from '@lucide/svelte/icons/arrow-up-down';
+	import LayersIcon from '@lucide/svelte/icons/layers';
 	import LayoutGridIcon from '@lucide/svelte/icons/layout-grid';
+	import ListFilterIcon from '@lucide/svelte/icons/list-filter';
 	import ListIcon from '@lucide/svelte/icons/list';
 
 	let exampleValue = $state('grid');
 	let keyboardValue = $state('grid');
 	let responsiveValue = $state('grid');
 	let stretchingParentValue = $state('upload');
+	let fillValue = $state('sort');
 	let motionValues = $state<Record<string, string>>(
 		Object.fromEntries(
 			SEGMENTED_TOGGLE_PRESENTATIONS.map((presentation) => [presentation, 'short']),
@@ -183,6 +207,29 @@
 				</SegmentedToggle.Item>
 				<SegmentedToggle.Item value="list" aria-label="List">
 					<ListIcon />
+				</SegmentedToggle.Item>
+			</SegmentedToggle.Root>
+		</div>
+	{/snippet}
+</Story>
+
+<Story name="Fill width [play: options share the tray]" play={playFillSharesTray}>
+	{#snippet template(args: SegmentedToggleArgs)}
+		<div class="w-80 border-t border-border p-2">
+			<SegmentedToggle.Root
+				bind:value={fillValue}
+				aria-label="Display section"
+				{...args}
+				width="fill"
+			>
+				<SegmentedToggle.Item value="sort">
+					<ArrowUpDownIcon data-icon="inline-start" />Sort by
+				</SegmentedToggle.Item>
+				<SegmentedToggle.Item value="grouping">
+					<LayersIcon data-icon="inline-start" />Grouping
+				</SegmentedToggle.Item>
+				<SegmentedToggle.Item value="filter">
+					<ListFilterIcon data-icon="inline-start" />Filter
 				</SegmentedToggle.Item>
 			</SegmentedToggle.Root>
 		</div>

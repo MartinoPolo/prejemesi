@@ -1,10 +1,12 @@
 <script lang="ts">
-	import type { Snippet } from 'svelte';
+	import { setContext, type Snippet } from 'svelte';
 	import * as ToggleGroup from '$lib/components/base/toggle-group/index.js';
 	import { cn } from '$lib/utils.js';
 	import {
+		SEGMENTED_TOGGLE_WIDTH_CONTEXT,
 		segmentedToggleVariants,
 		type SegmentedTogglePresentation,
+		type SegmentedToggleWidth,
 	} from './segmented_toggle_classes.js';
 	import {
 		CONTROL_SIZE_CLASSES,
@@ -22,6 +24,7 @@
 		children?: Snippet;
 		onValueChange?: (value: string) => void;
 		presentation?: SegmentedTogglePresentation;
+		width?: SegmentedToggleWidth;
 	};
 
 	let {
@@ -30,11 +33,13 @@
 		children,
 		onValueChange,
 		presentation = 'default',
+		width = 'hug',
 		size,
 		...restProps
 	}: Props = $props();
 
-	const styles = $derived(segmentedToggleVariants({ presentation }));
+	setContext(SEGMENTED_TOGGLE_WIDTH_CONTEXT, () => width);
+	const styles = $derived(segmentedToggleVariants({ presentation, width }));
 	let selected = $derived(value);
 
 	function handleValueChange(nextValue: string) {

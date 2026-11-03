@@ -268,7 +268,7 @@ describe('WishlistDetailToolbar mobile command surfaces (#340)', () => {
 		}
 		expect(
 			selectors.filter(
-				(selector) => selector.element().getAttribute('aria-pressed') === 'true',
+				(selector) => selector.element().getAttribute('aria-checked') === 'true',
 			),
 		).toHaveLength(1);
 		const selectedSort = screen
@@ -281,7 +281,7 @@ describe('WishlistDetailToolbar mobile command surfaces (#340)', () => {
 		expect(document.querySelectorAll('[role="dialog"]')).toHaveLength(1);
 		expect(
 			selectors.filter(
-				(selector) => selector.element().getAttribute('aria-pressed') === 'true',
+				(selector) => selector.element().getAttribute('aria-checked') === 'true',
 			),
 		).toHaveLength(1);
 		await expect
@@ -459,7 +459,7 @@ describe('WishlistDetailToolbar mobile command surfaces (#340)', () => {
 				expectPixelsNear(currentBounds.height, switcherBounds.height);
 				expect(
 					sectionButtons.filter(
-						(button) => button.element().getAttribute('aria-pressed') === 'true',
+						(button) => button.element().getAttribute('aria-checked') === 'true',
 					),
 				).toHaveLength(1);
 				expect(document.querySelectorAll('[role="dialog"]')).toHaveLength(1);

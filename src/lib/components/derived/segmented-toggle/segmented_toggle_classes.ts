@@ -19,14 +19,35 @@ export const segmentedToggleVariants = tv({
 				indicator: 'border-(length:--border-w) border-solid border-ink',
 			},
 		},
+		width: {
+			/** The tray hugs its options. */
+			hug: {},
+			/**
+			 * Equal-width options filling a narrow container, such as a sheet footer; compact
+			 * text keeps several labelled options on one row of a phone-width tray.
+			 */
+			fill: {
+				root: 'w-full',
+				item: 'min-w-0 flex-1',
+				surface: 'min-w-0 px-1.5 text-(length:--text-xs)',
+			},
+		},
 	},
 	defaultVariants: {
 		presentation: 'default',
+		width: 'hug',
 	},
 });
+
+/** Lets items follow their tray's `width` without repeating it on every item. */
+export const SEGMENTED_TOGGLE_WIDTH_CONTEXT = Symbol('segmented-toggle-width');
 
 export type SegmentedTogglePresentation =
 	keyof typeof segmentedToggleVariants.variants.presentation;
 export const SEGMENTED_TOGGLE_PRESENTATIONS = Object.keys(
 	segmentedToggleVariants.variants.presentation,
 ) as SegmentedTogglePresentation[];
+export type SegmentedToggleWidth = keyof typeof segmentedToggleVariants.variants.width;
+export const SEGMENTED_TOGGLE_WIDTHS = Object.keys(
+	segmentedToggleVariants.variants.width,
+) as SegmentedToggleWidth[];
