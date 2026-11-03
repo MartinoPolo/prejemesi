@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { Badge } from '$lib/components/base/badge/index.js';
 	import { onMount } from 'svelte';
 	import * as m from '$lib/paraglide/messages.js';
 	import { translateServerError } from '$lib/modules/errors/translate_server_error.js';
@@ -216,7 +217,7 @@
 							<div class={styles.previewName()}>{wishlistTitle}</div>
 							<div class={styles.previewMeta()}>{giftCountLabel}</div>
 						</div>
-						<span class={styles.previewBadge()}>{m.share_preview_badge()}</span>
+						<Badge class="shrink-0">{m.share_preview_badge()}</Badge>
 					</div>
 				</div>
 			</div>

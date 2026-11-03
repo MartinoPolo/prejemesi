@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { Badge } from '$lib/components/base/badge/index.js';
 	import * as m from '$lib/paraglide/messages.js';
 	import BanIcon from '@lucide/svelte/icons/ban';
 	import PlusIcon from '@lucide/svelte/icons/plus';
@@ -29,9 +30,14 @@
 				<!-- Cover-only: the diff lists a gallery's size change in words. -->
 				<GiftCard gift={{ ...gift, images: gift.images.slice(0, 1) }} role="recipient" />
 				{#if side === 'before' && pair.removal}
-					<span class="removal-badge"
-						><Trash2Icon aria-hidden="true" />{m.change_review_removal_overlay()}</span
-					>
+					<Badge tone="danger" badgeStyle="solid" class="removal-badge">
+						{#snippet icon()}<Trash2Icon
+								class="size-3"
+								data-icon
+								aria-hidden="true"
+							/>{/snippet}
+						{m.change_review_removal_overlay()}
+					</Badge>
 				{/if}
 			</div>
 		{:else}
@@ -107,28 +113,12 @@
 		opacity: 0.6;
 	}
 
-	.removal-badge {
+	.card-frame :global(.removal-badge) {
 		position: absolute;
 		top: 38%;
 		left: 50%;
-		display: inline-flex;
-		align-items: center;
-		gap: var(--space-1);
-		padding: 3px var(--space-2);
-		border: 2px solid var(--ink);
-		border-radius: var(--radius-panel);
-		background: var(--status-danger-fill);
 		box-shadow: var(--elevation-compact);
-		color: var(--color-destructive-foreground);
-		font-size: var(--text-xs);
-		font-weight: 700;
-		white-space: nowrap;
 		transform: translate(-50%, -50%) rotate(-1deg);
-	}
-
-	.removal-badge :global(svg) {
-		width: 12px;
-		height: 12px;
 	}
 
 	.card-ghost {

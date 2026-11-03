@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { Badge } from '$lib/components/base/badge/index.js';
 	import { tick } from 'svelte';
 	import * as m from '$lib/paraglide/messages.js';
 	import CheckIcon from '@lucide/svelte/icons/check';
@@ -233,11 +234,9 @@
 			<span class="field-values">{@render fieldValues(field)}</span>
 			<span class="field-side">
 				{#if pill !== null}
-					<span
-						class={[
-							'pill',
-							field.state === FIELD_REVIEW_STATE.rejected ? 'rejected' : 'accepted',
-						]}>{pill()}</span
+					<Badge
+						tone={field.state === FIELD_REVIEW_STATE.rejected ? 'neutral' : 'success'}
+						>{pill()}</Badge
 					>
 				{/if}
 				{#if actions !== undefined}
@@ -347,29 +346,6 @@
 		align-items: center;
 		justify-content: flex-end;
 		gap: var(--space-2);
-	}
-
-	.pill {
-		display: inline-flex;
-		align-items: center;
-		height: 22px;
-		padding: 0 var(--space-2);
-		border: 1.5px solid var(--ink);
-		border-radius: var(--radius-badge);
-		font-size: var(--text-xs);
-		font-weight: 700;
-		white-space: nowrap;
-	}
-
-	.pill.accepted {
-		background: color-mix(in oklab, var(--status-success) 18%, var(--card));
-		color: var(--status-success-text);
-	}
-
-	.pill.rejected {
-		border-color: var(--border-strong);
-		background: var(--card);
-		color: var(--muted-foreground);
 	}
 
 	.field-actions {

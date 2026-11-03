@@ -34,8 +34,6 @@ export const shareWizardVariants = tv({
 			'flex size-10 flex-shrink-0 -rotate-3 items-center justify-center rounded-[10px] border-2 border-ink bg-tint text-lg',
 		previewName: 'font-heading text-sm font-semibold text-foreground',
 		previewMeta: 'mt-0.5 text-xs text-muted-foreground',
-		previewBadge:
-			'flex-shrink-0 rounded-badge border-2 border-ink bg-card px-2.5 py-0.5 text-[11px] font-semibold text-foreground',
 		// Step 2
 		shareHeader: 'pt-2',
 		shareTitle: 'font-heading text-lg font-semibold tracking-tight text-foreground',
