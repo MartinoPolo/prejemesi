@@ -22,7 +22,7 @@ export const alertVariants = tv({
 				'bg-[color-mix(in_oklab,var(--status-success)_14%,var(--card))] text-card-foreground *:[svg]:text-status-success-text',
 			/** The user must act now or lose something. */
 			warning:
-				'border-accent-loud-foreground bg-accent-loud text-accent-loud-foreground font-semibold shadow-sticker-strong *:[svg]:text-current',
+				'border-accent-loud-foreground bg-accent-loud text-accent-loud-foreground shadow-sticker-strong *:[svg]:text-current',
 			/** States the list's own lifecycle (archived) in the list's palette tint, part of its look. */
 			palette: 'bg-tint text-card-foreground',
 			/** Reports an error, usually with a Retry action when retryable. */
