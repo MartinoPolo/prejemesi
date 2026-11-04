@@ -1409,7 +1409,7 @@
 	"access_tokens_value_label": "Your token",
 	"access_tokens_quick_start": "Quick start",
 	"access_tokens_granted": "What you allowed",
-	"access_tokens_close_guard_title": "Close without copying?",
+	"access_tokens_close_guard_title": "Token not copied",
 	"access_tokens_close_guard_description": "We will not show the token again. If you have not saved it, create a new one later.",
 	"access_tokens_close_guard_confirm": "Close anyway",
 	"access_tokens_created_toast": "Token created",

@@ -73,6 +73,42 @@ describe('ConfirmDialog', () => {
 	});
 });
 
+describe('ConfirmDialog title', () => {
+	it.each(['cs', 'en'] satisfies Locale[])(
+		'keeps the %s access-token close-guard title on one line on a phone',
+		async (locale) => {
+			const originalLocale = getLocale();
+			await page.viewport(390, 844);
+			await setLocale(locale, { reload: false });
+			try {
+				const title = m.access_tokens_close_guard_title();
+				const screen = await render(ConfirmDialog, {
+					open: true,
+					title,
+					description: m.access_tokens_close_guard_description(),
+					cancelLabel: m.access_tokens_back(),
+					confirmLabel: m.access_tokens_close_guard_confirm(),
+					confirmIntent: 'primary-destructive',
+					size: 'lg',
+					onconfirm: () => {},
+				});
+				const heading = screen.getByRole('heading', { name: title }).element();
+				await document.fonts.ready;
+				const range = document.createRange();
+				range.selectNodeContents(heading);
+				const lineTops = new Set(
+					[...range.getClientRects()].map((line) => Math.round(line.top)),
+				);
+				expect(lineTops.size, title).toBe(1);
+				await screen.unmount();
+			} finally {
+				await setLocale(originalLocale, { reload: false });
+				await page.viewport(1280, 720);
+			}
+		},
+	);
+});
+
 describe('ConfirmDialog actions', () => {
 	it.each(['cs', 'en'] satisfies Locale[])(
 		'keeps every app %s cancel and confirm pair on one row from the smallest desktop width',

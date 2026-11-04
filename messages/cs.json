@@ -1409,7 +1409,7 @@
 	"access_tokens_value_label": "Váš token",
 	"access_tokens_quick_start": "Rychlý start",
 	"access_tokens_granted": "Co jste povolili",
-	"access_tokens_close_guard_title": "Zavřít bez zkopírování?",
+	"access_tokens_close_guard_title": "Zavřít bez kopie?",
 	"access_tokens_close_guard_description": "Token už nezobrazíme. Pokud si ho neuložíte, vytvořte později nový.",
 	"access_tokens_close_guard_confirm": "Přesto zavřít",
 	"access_tokens_created_toast": "Token vytvořen",
