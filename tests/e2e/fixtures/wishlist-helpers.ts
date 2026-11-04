@@ -134,6 +134,9 @@ export async function addGift(
 	if (category !== undefined) {
 		await dialog.getByRole('button', { name: 'Bez kategorie' }).click();
 		await page.getByRole('option', { name: category, exact: true }).click();
+		// The multi-select listbox stays open after a pick and can cover the footer Save.
+		await page.keyboard.press('Escape');
+		await expect(page.getByRole('listbox')).toHaveCount(0);
 	}
 	await dialog.getByRole('button', { name: 'Přidat dárek' }).click();
 
