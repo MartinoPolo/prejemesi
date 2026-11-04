@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { Badge } from '$lib/components/base/badge/index.js';
 	import * as m from '$lib/paraglide/messages.js';
 	import { cn } from '$lib/utils.js';
 	import ImageFrame from '$lib/components/derived/image-frame/ImageFrame.svelte';
@@ -125,12 +126,9 @@
 					{tile.label()}
 				</span>
 				{#if statusLabels !== null}
-					<span
-						class="rounded-full border border-border px-1.5 text-[10px] text-muted-foreground"
-						data-testid="gift-preview-status-{tile.key}"
-					>
+					<Badge data-testid="gift-preview-status-{tile.key}">
 						{statusLabels[tile.target]}
-					</span>
+					</Badge>
 				{/if}
 			{/snippet}
 			<!-- A tile is a button when selectable (clicking picks its crop target). -->

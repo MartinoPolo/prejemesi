@@ -1,0 +1,69 @@
+import type { Snippet } from 'svelte';
+import type { HTMLAttributes } from 'svelte/elements';
+import { tv } from 'tailwind-variants';
+import { badgeShape } from '$lib/components/base/badge/index.js';
+
+/**
+ * "+N" is one more chip of the row, not a counter: it takes the chips' shape, type and ink text so
+ * it reads at the same height and baseline as the chips beside it.
+ */
+export const overflowMoreChipClass = [
+	badgeShape,
+	'inline-flex shrink-0 items-center border-ink bg-card px-2 py-0.5 text-xs leading-4 font-extrabold whitespace-nowrap text-foreground tabular-nums',
+];
+
+export const overflowChipsVariants = tv({
+	slots: {
+		root: 'flex min-w-0 gap-1',
+		moreChip: overflowMoreChipClass,
+		moreTrigger: [
+			overflowMoreChipClass,
+			'cursor-pointer hover:bg-[color-mix(in_oklab,var(--brand)_12%,var(--card))] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
+		],
+		popover: 'w-max max-w-[min(18rem,calc(100vw-1rem))] min-w-0',
+		popoverList: 'm-0 flex list-none flex-wrap gap-1.5 px-2 pt-0.5 pb-1.5',
+	},
+	variants: {
+		layout: {
+			/** "+N" follows the visible chips on the same line, as tall as the row's chips. */
+			inline: { root: 'items-stretch' },
+			/** The visible chips take the whole line and "+N" drops below them. */
+			stacked: { root: 'flex-col items-start' },
+		},
+		dimmed: {
+			true: { moreChip: 'opacity-50', moreTrigger: 'opacity-50' },
+			false: {},
+		},
+	},
+	defaultVariants: {
+		layout: 'inline',
+		dimmed: false,
+	},
+});
+
+export type OverflowChipsLayout = keyof typeof overflowChipsVariants.variants.layout;
+
+export const OVERFLOW_CHIPS_LAYOUTS = Object.keys(
+	overflowChipsVariants.variants.layout,
+) as OverflowChipsLayout[];
+
+export type OverflowChipsProps<Item> = Omit<HTMLAttributes<HTMLDivElement>, 'class'> & {
+	/** Every item in display order. */
+	items: readonly Item[];
+	/** How many leading items fit on the row; the rest collapse into "+N". */
+	visibleCount: number;
+	itemKey: (item: Item) => string | number;
+	/** Readable name of an item, listed for screen readers when it is hidden behind "+N". */
+	itemLabel: (item: Item) => string;
+	/** A chip on the row. */
+	chip: Snippet<[item: Item, index: number]>;
+	/** A chip in the popover list; defaults to `chip`. */
+	popoverChip?: Snippet<[item: Item]>;
+	/** Accessible name of the "+N" trigger. */
+	moreLabel: (hiddenCount: number) => string;
+	popoverTitle: string;
+	/** When false, "+N" is a static chip, so a surrounding press (selection, reorder) owns it. */
+	interactive?: boolean;
+	dimmed?: boolean;
+	layout?: OverflowChipsLayout;
+};

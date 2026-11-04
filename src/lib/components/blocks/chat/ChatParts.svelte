@@ -2,7 +2,7 @@
 	import type { Snippet } from 'svelte';
 	import * as m from '$lib/paraglide/messages.js';
 	import CheckIcon from '@lucide/svelte/icons/check';
-	import LoaderIcon from '@lucide/svelte/icons/loader';
+	import { Spinner } from '$lib/components/base/spinner/index.js';
 	import SparklesIcon from '@lucide/svelte/icons/sparkles';
 	import { CHAT_PART, type ChatPart, type ChatToolLine } from '$lib/modules/chat/chat_thread.js';
 	import { chatToolLabel } from './chat_presentation.js';
@@ -35,7 +35,7 @@
 		{#each tools as tool, toolIndex (toolIndex)}
 			<ChatNote as="li">
 				{#if streaming && toolIndex === tools.length - 1}
-					<LoaderIcon class="animate-spin" aria-hidden="true" />
+					<Spinner />
 				{:else}
 					<CheckIcon aria-hidden="true" />
 				{/if}

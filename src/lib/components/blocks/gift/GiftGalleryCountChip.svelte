@@ -25,10 +25,9 @@
 </script>
 
 <Badge
-	class={cn(
-		'pointer-events-none gap-0.5 px-1 text-ink tabular-nums shadow-sticker-sm',
-		className,
-	)}
+	tone="neutral"
+	badgeStyle="overlay"
+	class={cn('pointer-events-none', className)}
 	data-testid="gift-gallery-count-chip"
 >
 	<ImageIcon class="size-3 shrink-0" strokeWidth={2.6} aria-hidden="true" />

@@ -330,7 +330,7 @@
 		</div>
 
 		{#if importedUnresolvedCategoryLabels.length > 0}
-			<Alert.Root tone={hasIncompleteCategoryResolution ? 'warning' : 'default'}>
+			<Alert.Root tone={hasIncompleteCategoryResolution ? 'warning' : 'info'}>
 				<AlertCircleIcon class="size-4" />
 				<div class="flex flex-col gap-3">
 					<div>
@@ -478,7 +478,7 @@
 
 		<!-- Name column required warning -->
 		{#if !hasNameColumn}
-			<Alert.Root tone="warning">
+			<Alert.Root tone="warning" role="alert">
 				<AlertCircleIcon class="size-4" />
 				<Alert.Description>{m.import_wizard_name_required()}</Alert.Description>
 			</Alert.Root>

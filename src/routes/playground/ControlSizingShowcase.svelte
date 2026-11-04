@@ -1,7 +1,7 @@
 <script lang="ts">
 	import BellIcon from '@lucide/svelte/icons/bell';
 	import CheckIcon from '@lucide/svelte/icons/check';
-	import LoaderIcon from '@lucide/svelte/icons/loader';
+	import { Spinner } from '$lib/components/base/spinner/index.js';
 	import { Button, BUTTON_INTENTS } from '$lib/components/base/button/index.js';
 	import {
 		Checkbox,
@@ -226,7 +226,7 @@
 			<Input size="md" state="error" aria-label="Error input" value="Invalid value" />
 			<Button size="md" disabled>Disabled</Button>
 			<Button size="md" disabled aria-label="Pending action">
-				<LoaderIcon class="animate-spin" data-icon="inline-start" />
+				<Spinner data-icon="inline-start" />
 				Pending
 			</Button>
 			<Button size="md" data-focus-example>Focus with keyboard</Button>

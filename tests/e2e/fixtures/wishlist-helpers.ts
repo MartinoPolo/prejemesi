@@ -134,6 +134,9 @@ export async function addGift(
 	if (category !== undefined) {
 		await dialog.getByRole('button', { name: 'Bez kategorie' }).click();
 		await page.getByRole('option', { name: category, exact: true }).click();
+		// The multi-select listbox stays open after a pick and can cover the footer Save.
+		await page.keyboard.press('Escape');
+		await expect(page.getByRole('listbox')).toHaveCount(0);
 	}
 	await dialog.getByRole('button', { name: 'Přidat dárek' }).click();
 
@@ -330,7 +333,7 @@ export async function generateInviteLink(page: Page): Promise<string> {
 	// Link element appears in the panel – grab the full URL shown
 	const linkBox = panel.getByTestId('invite-link');
 	await expect(linkBox).toBeVisible({ timeout: 5_000 });
-	const inviteUrl = (await linkBox.textContent()) ?? '';
+	const inviteUrl = await linkBox.getByRole('textbox').inputValue();
 	return inviteUrl.trim();
 }
 

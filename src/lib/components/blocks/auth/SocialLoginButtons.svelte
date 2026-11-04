@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import { Button } from '$lib/components/base/button/index.js';
+	import { Spinner } from '$lib/components/base/spinner/index.js';
 	import { authClient } from '$lib/auth_client.js';
 	import { localizeInternalHref } from '$lib/i18n/locale.js';
 
@@ -36,7 +37,7 @@
 	onclick={handleGoogleLogin}
 >
 	{#if googleLoading}
-		<span class="spinner" data-icon="inline-start"></span>
+		<Spinner data-icon="inline-start" />
 	{:else}
 		<svg data-icon="inline-start" width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
 			<path
@@ -59,21 +60,3 @@
 	{/if}
 	{googleLabel}
 </Button>
-
-<style>
-	.spinner {
-		width: 18px;
-		height: 18px;
-		border: 2px solid oklch(from var(--foreground) l c h / 25%);
-		border-top-color: var(--foreground);
-		border-radius: 50%;
-		animation: spin 0.7s linear infinite;
-		flex-shrink: 0;
-	}
-
-	@keyframes spin {
-		to {
-			transform: rotate(360deg);
-		}
-	}
-</style>

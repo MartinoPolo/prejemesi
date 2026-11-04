@@ -1,6 +1,7 @@
 <script lang="ts">
 	import * as m from '$lib/paraglide/messages.js';
 	import { getLocale } from '$lib/paraglide/runtime.js';
+	import * as Alert from '$lib/components/base/alert/index.js';
 	import * as Dialog from '$lib/components/base/dialog/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
 	import { Input } from '$lib/components/base/input/index.js';
@@ -23,11 +24,10 @@
 	import type { ModeratorWithUser, PendingInvite } from '$lib/modules/moderators/types.js';
 	import type { PendingClaimInvite } from '$lib/modules/claim/types.js';
 	import { toastSuccess, toastError, toastInfo } from '$lib/components/base/toast/index.js';
+	import { CopyField } from '$lib/components/derived/copy-field/index.js';
 	import { translateServerError } from '$lib/modules/errors/translate_server_error.js';
 	import { getApplicationUrl } from '$lib/config/site.js';
 	import LinkIcon from '@lucide/svelte/icons/link';
-	import CopyIcon from '@lucide/svelte/icons/copy';
-	import CheckIcon from '@lucide/svelte/icons/check';
 	import XIcon from '@lucide/svelte/icons/x';
 	import EyeIcon from '@lucide/svelte/icons/eye';
 	import AlertTriangleIcon from '@lucide/svelte/icons/triangle-alert';
@@ -60,7 +60,6 @@
 	let isRemoving = $state(false);
 	let isRevokingId = $state<string | null>(null);
 	let isSelfPromoting = $state(false);
-	let linkCopied = $state(false);
 	let generatedInvitePath = $state<string | null>(null);
 	let inviteEmail = $state('');
 
@@ -69,7 +68,6 @@
 	let claimInvites = $state.raw<PendingClaimInvite[]>([]);
 	let isGeneratingClaim = $state(false);
 	let isRevokingClaimId = $state<string | null>(null);
-	let claimLinkCopied = $state(false);
 	let generatedClaimPath = $state<string | null>(null);
 	let claimEmail = $state('');
 
@@ -93,7 +91,6 @@
 
 	async function handleGenerateInvite() {
 		isGenerating = true;
-		linkCopied = false;
 		generatedInvitePath = null;
 		try {
 			const trimmed = inviteEmail.trim();
@@ -123,23 +120,6 @@
 		}
 	}
 
-	async function handleCopyLink() {
-		if (generatedInvitePath === null) {
-			return;
-		}
-		try {
-			const fullUrl = getApplicationUrl(generatedInvitePath, window.location.origin);
-			await navigator.clipboard.writeText(fullUrl);
-			linkCopied = true;
-			toastSuccess(m.moderator_toast_link_copied());
-			setTimeout(() => {
-				linkCopied = false;
-			}, 3000);
-		} catch {
-			toastError(m.moderator_error_copy());
-		}
-	}
-
 	async function handleRevokeInvite(inviteId: string) {
 		isRevokingId = inviteId;
 		try {
@@ -157,7 +137,6 @@
 
 	async function handleGenerateClaim() {
 		isGeneratingClaim = true;
-		claimLinkCopied = false;
 		generatedClaimPath = null;
 		try {
 			const trimmed = claimEmail.trim();
@@ -182,23 +161,6 @@
 			toastError(translateServerError(thrown, m.claim_error_generate()));
 		} finally {
 			isGeneratingClaim = false;
-		}
-	}
-
-	async function handleCopyClaimLink() {
-		if (generatedClaimPath === null) {
-			return;
-		}
-		try {
-			const fullUrl = getApplicationUrl(generatedClaimPath, window.location.origin);
-			await navigator.clipboard.writeText(fullUrl);
-			claimLinkCopied = true;
-			toastSuccess(m.claim_toast_link_copied());
-			setTimeout(() => {
-				claimLinkCopied = false;
-			}, 3000);
-		} catch {
-			toastError(m.claim_error_copy());
 		}
 	}
 
@@ -258,58 +220,42 @@
 		} else {
 			// Reset transient state when the panel closes.
 			generatedInvitePath = null;
-			linkCopied = false;
 			inviteEmail = '';
 			generatedClaimPath = null;
-			claimLinkCopied = false;
 			claimEmail = '';
 		}
 	});
 </script>
 
 <Dialog.Root {open} onOpenChange={handleOpenChange}>
-	<Dialog.Content size="2xl" class="flex max-h-[85dvh] flex-col gap-0 overflow-hidden p-0">
-		<Dialog.Header class="shrink-0 px-6 pt-6 pb-4">
+	<Dialog.Content size="2xl" layout="scroll">
+		<Dialog.Header>
 			<Dialog.Title>{m.moderator_title()}</Dialog.Title>
 			<Dialog.Description>{m.moderator_description()}</Dialog.Description>
 		</Dialog.Header>
 
-		<div class="min-h-0 flex-1 overflow-y-auto px-6 pb-6">
+		<Dialog.Body>
 			<div class="flex flex-col gap-6">
 				{#if isForSomeoneElse}
 					<!-- Claim link (issue #150): nudge to link the free-text recipient's real account.
 				     Mirrors the správce-invite generate/email/copy/revoke flow. -->
 					<div class={styles.section()}>
 						<div class={styles.sectionTitle()}>{m.claim_section_title()}</div>
-						<div class={styles.disclosureBanner()}>
-							<LinkIcon class="size-4 flex-shrink-0" />
-							<div class="flex flex-col gap-0.5">
-								<span class="font-medium">{m.claim_nudge_title()}</span>
-								<span class="text-xs">{m.claim_nudge_description()}</span>
-							</div>
-						</div>
+						<Alert.Root tone="info">
+							<LinkIcon aria-hidden="true" />
+							<Alert.Title>{m.claim_nudge_title()}</Alert.Title>
+							<Alert.Description>{m.claim_nudge_description()}</Alert.Description>
+						</Alert.Root>
 
 						{#if generatedClaimPath !== null}
-							<div class="flex items-center gap-2">
-								<div
-									class="flex-1 truncate rounded-md border border-border bg-muted/50 px-3 py-2 font-mono text-xs"
-									data-testid="claim-link"
-								>
-									{getApplicationUrl(generatedClaimPath, window.location.origin)}
-								</div>
-								<Button
-									size="sm"
-									intent={claimLinkCopied ? 'primary' : 'outline'}
-									aria-label={m.claim_copy_link()}
-									data-testid="copy-claim-link"
-									onclick={handleCopyClaimLink}
-								>
-									{#if claimLinkCopied}
-										<CheckIcon data-icon="solo" />
-									{:else}
-										<CopyIcon data-icon="solo" />
-									{/if}
-								</Button>
+							<div data-testid="claim-link">
+								<CopyField
+									value={getApplicationUrl(
+										generatedClaimPath,
+										window.location.origin,
+									)}
+									label={m.claim_link_label()}
+								/>
 							</div>
 						{/if}
 
@@ -359,9 +305,7 @@
 									</div>
 									<Button
 										size="sm"
-										intent="ghost"
-										class=""
-										surfaceClass="text-status-danger-text group-hover:text-status-danger-text"
+										intent="ghost-danger"
 										disabled={isRevokingClaimId === invite.id}
 										aria-label={m.claim_revoke_invite()}
 										onclick={() => handleRevokeClaim(invite.id)}
@@ -406,26 +350,14 @@
 					</div>
 
 					{#if generatedInvitePath !== null}
-						<div class="flex items-center gap-2">
-							<div
-								class="flex-1 truncate rounded-md border border-border bg-muted/50 px-3 py-2 font-mono text-xs"
-								data-testid="invite-link"
-							>
-								{getApplicationUrl(generatedInvitePath, window.location.origin)}
-							</div>
-							<Button
-								size="sm"
-								intent={linkCopied ? 'primary' : 'outline'}
-								aria-label={m.moderator_copy_link()}
-								data-testid="copy-invite-link"
-								onclick={handleCopyLink}
-							>
-								{#if linkCopied}
-									<CheckIcon data-icon="solo" />
-								{:else}
-									<CopyIcon data-icon="solo" />
-								{/if}
-							</Button>
+						<div data-testid="invite-link">
+							<CopyField
+								value={getApplicationUrl(
+									generatedInvitePath,
+									window.location.origin,
+								)}
+								label={m.moderator_invite_link_label()}
+							/>
 						</div>
 					{/if}
 
@@ -481,9 +413,7 @@
 								</div>
 								<Button
 									size="sm"
-									intent="ghost"
-									class=""
-									surfaceClass="text-status-danger-text group-hover:text-status-danger-text"
+									intent="ghost-danger"
 									disabled={isRevokingId === invite.id}
 									aria-label={m.moderator_revoke_invite()}
 									onclick={() => handleRevokeInvite(invite.id)}
@@ -506,43 +436,42 @@
 								{m.moderator_reservations_title()}
 							</div>
 
-							<div class={styles.selfPromoteWarning()}>
-								<div class="flex items-center gap-2">
-									<AlertTriangleIcon class="size-4 flex-shrink-0" />
-									<div class={styles.selfPromoteTitle()}>
-										{m.moderator_see_reservations_title()}
-									</div>
-								</div>
-								<div class={styles.selfPromoteDescription()}>
+							<Alert.Root tone="warning">
+								<AlertTriangleIcon aria-hidden="true" />
+								<Alert.Title>{m.moderator_see_reservations_title()}</Alert.Title>
+								<Alert.Description>
 									{m.moderator_see_reservations_description()}
-								</div>
-								<Button
-									size="sm"
-									intent="outline"
-									class="mt-1 self-start"
-									disabled={isSelfPromoting}
-									onclick={handleSelfPromote}
-								>
-									<EyeIcon data-icon="inline-start" />
-									{isSelfPromoting
-										? m.moderator_activating()
-										: m.moderator_activate_button()}
-								</Button>
-							</div>
+								</Alert.Description>
+								<Alert.Action placement="below">
+									<Button
+										size="sm"
+										intent="outline"
+										disabled={isSelfPromoting}
+										onclick={handleSelfPromote}
+									>
+										<EyeIcon data-icon="inline-start" />
+										{isSelfPromoting
+											? m.moderator_activating()
+											: m.moderator_activate_button()}
+									</Button>
+								</Alert.Action>
+							</Alert.Root>
 						</div>
 					{:else}
 						<div class={styles.section()}>
 							<div class={styles.sectionTitle()}>
 								{m.moderator_reservations_title()}
 							</div>
-							<div class={styles.disclosureBanner()}>
-								<EyeIcon class="size-4 flex-shrink-0" />
-								<span>{m.moderator_active_disclosure()}</span>
-							</div>
+							<Alert.Root tone="info">
+								<EyeIcon aria-hidden="true" />
+								<Alert.Description
+									>{m.moderator_active_disclosure()}</Alert.Description
+								>
+							</Alert.Root>
 						</div>
 					{/if}
 				{/if}
 			</div>
-		</div>
+		</Dialog.Body>
 	</Dialog.Content>
 </Dialog.Root>

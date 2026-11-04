@@ -1,6 +1,7 @@
 <script lang="ts">
 	import * as m from '$lib/paraglide/messages.js';
 	import * as Card from '$lib/components/base/card/index.js';
+	import SettingsSectionHeader from './SettingsSectionHeader.svelte';
 	import { HelpText } from '$lib/components/base/help-text/index.js';
 	import AuthPasswordInput from '$lib/components/blocks/auth/AuthPasswordInput.svelte';
 	import { Field, type FieldControlContext } from '$lib/components/derived/field/index.js';
@@ -81,15 +82,11 @@
 </script>
 
 <Card.Root>
-	<Card.Header>
-		<div class="flex items-center gap-2">
-			<ShieldIcon class="size-5 text-muted-foreground" />
-			<div>
-				<Card.Title>{m.settings_security_title()}</Card.Title>
-				<Card.Description>{m.settings_security_description()}</Card.Description>
-			</div>
-		</div>
-	</Card.Header>
+	<SettingsSectionHeader
+		icon={ShieldIcon}
+		title={m.settings_security_title()}
+		description={m.settings_security_description()}
+	/>
 	<Card.Content>
 		<div class="flex flex-col gap-4">
 			<!-- Current password -->

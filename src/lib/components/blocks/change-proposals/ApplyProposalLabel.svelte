@@ -1,6 +1,6 @@
 <script lang="ts">
 	import * as m from '$lib/paraglide/messages.js';
-	import LoaderIcon from '@lucide/svelte/icons/loader';
+	import { Spinner } from '$lib/components/base/spinner/index.js';
 
 	/** Použít's label, shared by the review page and the chat: applying, declining or the count. */
 	let {
@@ -16,7 +16,7 @@
 </script>
 
 {#if pending}
-	<LoaderIcon class="animate-spin" data-icon="inline-start" />{m.change_review_applying()}
+	<Spinner data-icon="inline-start" />{m.change_review_applying()}
 {:else if declines}
 	{m.change_review_decline_proposal()}
 {:else}

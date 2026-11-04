@@ -2,6 +2,8 @@
 	import * as m from '$lib/paraglide/messages.js';
 	import * as Dialog from '$lib/components/base/dialog/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
+	import { Spinner } from '$lib/components/base/spinner/index.js';
+	import { createDialogActionLock } from '$lib/components/base/dialog/dialog_action_lock.svelte.js';
 	import {
 		formatReservationTimestamp,
 		reservationGifterName,
@@ -32,10 +34,11 @@
 
 	const styles = releaseReservationDialogVariants();
 
-	// The picked row drives the two-state flow: null = picker, set = confirmation. Built inline
-	// from Dialog primitives + a danger Button, like the revert-to-draft confirm (issue #150) —
-	// this codebase has no shared confirm primitive.
+	// The picked row drives the two-state flow: null = picker, set = confirmation. The confirmation
+	// mirrors ConfirmDialog, which cannot host the picker step inside the same dialog.
 	let pickedReservationId = $state<string | null>(null);
+	let contentRef = $state<HTMLElement | null>(null);
+	const lock = createDialogActionLock({ pending: () => isReleasing, content: () => contentRef });
 
 	// A gift holding exactly one releasable reservation has nothing to pick (REQ-4), so the
 	// dialog opens straight on the confirmation. Any other shape — several rows, or a single
@@ -59,6 +62,9 @@
 	}
 
 	function handleOpenChange(nextOpen: boolean) {
+		if (lock.busy) {
+			return;
+		}
 		if (nextOpen) {
 			pickedReservationId = null;
 		} else {
@@ -68,10 +74,11 @@
 	}
 </script>
 
-<Dialog.Root {open} onOpenChange={handleOpenChange}>
-	<Dialog.Content size="md" {onCloseAutoFocus}>
+<Dialog.Root bind:open={() => open, handleOpenChange}>
+	<Dialog.Content bind:ref={contentRef} size="md" showCloseButton={!lock.busy} {onCloseAutoFocus}>
 		{#if pickedReservation !== null}
-			<div data-testid="release-reservation-confirm">
+			<!-- Repeats the dialog's own gap so the actions sit as far below the text as in ConfirmDialog. -->
+			<div data-testid="release-reservation-confirm" class="grid gap-4">
 				<Dialog.Header>
 					<Dialog.Title>{m.reserve_release_confirm_title()}</Dialog.Title>
 					<Dialog.Description class={styles.confirmBody()}>
@@ -84,20 +91,24 @@
 				<Dialog.Footer>
 					<Button
 						intent="outline"
-						disabled={isReleasing}
+						disabled={lock.busy}
 						onclick={() => handleOpenChange(false)}
 					>
 						{m.cancel()}
 					</Button>
 					<Button
-						intent="danger"
-						disabled={isReleasing}
+						intent="primary-destructive"
+						disabled={lock.busy}
+						aria-busy={lock.busy}
 						data-testid="release-reservation-confirm-action"
 						onclick={handleConfirm}
 					>
-						{isReleasing
-							? m.reserve_release_submitting()
-							: m.reserve_release_confirm_action()}
+						{#if lock.busy}
+							<Spinner data-icon="inline-start" />
+							{m.reserve_release_submitting()}
+						{:else}
+							{m.reserve_release_confirm_action()}
+						{/if}
 					</Button>
 				</Dialog.Footer>
 			</div>

@@ -22,7 +22,7 @@
 		contentWidth?: number;
 		/** Ordered left to right; the leftmost overflows into More first. */
 		secondaryActions?: readonly GiftContextAction[];
-		/** Secondary actions shown after the primary; they still overflow in `secondaryActions` order. */
+		/** Secondary actions shown after the primary, in this order; they still overflow in `secondaryActions` order. */
 		secondaryActionsAfterPrimary?: readonly GiftContextAction[];
 		primaryAction?: GiftContextAction;
 		persistentMore?: boolean;
@@ -73,7 +73,7 @@
 		renderedSecondaryActions.filter((action) => !secondaryActionsAfterPrimary.includes(action)),
 	);
 	const renderedSecondaryActionsAfterPrimary = $derived(
-		renderedSecondaryActions.filter((action) => secondaryActionsAfterPrimary.includes(action)),
+		secondaryActionsAfterPrimary.filter((action) => renderedSecondaryActions.includes(action)),
 	);
 	const availableContentWidth = $derived(
 		(contentWidth ?? observedContentWidth) -

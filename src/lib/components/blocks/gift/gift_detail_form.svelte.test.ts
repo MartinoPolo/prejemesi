@@ -322,7 +322,7 @@ describe('GiftDetailForm edit footer depth clearance (#442)', () => {
 		{ viewport: 390, depth: 'soft' as const },
 		{ viewport: 390, depth: 'black' as const },
 	])(
-		'separates Save and Cancel by the nested control gap at $depth depth and $viewport px',
+		'separates Cancel and the rightmost Save by the nested control gap at $depth depth and $viewport px',
 		async ({ viewport, depth }) => {
 			await page.viewport(viewport, 900);
 			const expectedGap = await renderEditFooterAtDepth(depth);
@@ -330,7 +330,7 @@ describe('GiftDetailForm edit footer depth clearance (#442)', () => {
 			const save = visibleButtonNamed(m.save()).getBoundingClientRect();
 			const cancel = visibleButtonNamed(m.cancel()).getBoundingClientRect();
 			expectPixelsNear(save.top, cancel.top);
-			expectPixelsNear(cancel.left - save.right, expectedGap);
+			expectPixelsNear(save.left - cancel.right, expectedGap);
 		},
 	);
 

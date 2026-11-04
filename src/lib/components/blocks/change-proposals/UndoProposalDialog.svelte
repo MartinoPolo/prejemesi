@@ -1,8 +1,7 @@
 <script lang="ts">
 	import * as m from '$lib/paraglide/messages.js';
-	import Undo2Icon from '@lucide/svelte/icons/undo-2';
 	import { countCopy } from '$lib/modules/change_proposals/change_review_copy.js';
-	import ReviewActionDialog from './ReviewActionDialog.svelte';
+	import { ConfirmDialog } from '$lib/components/derived/confirm-dialog/index.js';
 
 	const UNDO_TITLES = {
 		one: m.change_review_undo_title_one,
@@ -28,7 +27,8 @@
 	} = $props();
 </script>
 
-<ReviewActionDialog
+<!-- Undoing throws the applied changes away, so the confirm is solid red. -->
+<ConfirmDialog
 	bind:open
 	{pending}
 	title={countCopy(UNDO_TITLES, appliedCount)}
@@ -36,8 +36,7 @@
 	cancelLabel={m.change_review_back_short()}
 	{confirmLabel}
 	pendingLabel={m.change_review_undoing()}
-	confirmIntent="danger"
-	confirmIcon={Undo2Icon}
-	{testId}
+	confirmIntent="primary-destructive"
+	data-testid={testId}
 	{onconfirm}
 />

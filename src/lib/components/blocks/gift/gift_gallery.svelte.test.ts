@@ -421,6 +421,21 @@ describe('GiftListItem gallery count', () => {
 		host.remove();
 	});
 
+	it('shows the largest +N whole in ink on the list photo', async () => {
+		const host = await renderItem(galleryGift(PHOTOS.length), WISHLIST_ROLES.visitor);
+		const chip = host.querySelector<HTMLElement>('[data-testid="gift-gallery-count-chip"]')!;
+		const content = chip.querySelector<HTMLElement>('[data-badge-text]')!;
+		const ink = document.createElement('span');
+		ink.style.color = 'var(--ink)';
+		chip.parentElement!.append(ink);
+
+		expect(chip.textContent).toContain(`+${PHOTOS.length - 1}`);
+		expect(content.scrollWidth).toBeLessThanOrEqual(content.clientWidth);
+		expect(getComputedStyle(chip).color).toBe(getComputedStyle(ink).color);
+		ink.remove();
+		host.remove();
+	});
+
 	it('shows no chip for a single image', async () => {
 		const host = await renderItem(galleryGift(1), WISHLIST_ROLES.visitor);
 

@@ -18,13 +18,62 @@ export const dialogContentVariants = tv({
 			xl: 'sm:max-w-xl',
 			'2xl': 'sm:max-w-2xl',
 		},
+		layout: {
+			/** Short dialogs: padded content that centers vertically. */
+			default: '',
+			/**
+			 * Long dialogs: header and footer stay pinned while `Dialog.Body` scrolls. Top-anchored so
+			 * content that grows (accordions, validation errors) extends downward instead of re-centering
+			 * and jumping. A direct `form` child joins the column so Body and Footer can sit inside it.
+			 */
+			scroll: [
+				'top-[10vh] flex max-h-[85dvh] translate-y-0 flex-col gap-0 overflow-hidden p-0',
+				'*:[form]:flex *:[form]:min-h-0 *:[form]:flex-1 *:[form]:flex-col',
+				// The body starts as far below a divided header's line as the header content sits above it.
+				'[--dialog-body-padding-top:--spacing(1)] has-data-header-divided:[--dialog-body-padding-top:--spacing(4)]',
+			],
+		},
 	},
 	defaultVariants: {
 		size: 'lg',
+		layout: 'default',
 	},
 });
 
 export type DialogContentSize = keyof typeof dialogContentVariants.variants.size;
+export type DialogContentLayout = keyof typeof dialogContentVariants.variants.layout;
+
+export const DIALOG_CONTENT_LAYOUTS = Object.keys(
+	dialogContentVariants.variants.layout,
+) as DialogContentLayout[];
+
+/** Paint for the pinned header, scrolling body and pinned footer inside a `layout="scroll"` dialog. */
+export const dialogScrollSectionVariants = tv({
+	slots: {
+		header: 'in-data-[dialog-layout=scroll]:shrink-0 in-data-[dialog-layout=scroll]:px-6 in-data-[dialog-layout=scroll]:pt-6 in-data-[dialog-layout=scroll]:pb-4',
+		body: 'in-data-[dialog-layout=scroll]:min-h-0 in-data-[dialog-layout=scroll]:flex-1 in-data-[dialog-layout=scroll]:overflow-y-auto in-data-[dialog-layout=scroll]:px-6 in-data-[dialog-layout=scroll]:pt-(--dialog-body-padding-top) in-data-[dialog-layout=scroll]:pb-6',
+		footer: 'in-data-[dialog-layout=scroll]:shrink-0 in-data-[dialog-layout=scroll]:border-t in-data-[dialog-layout=scroll]:border-border in-data-[dialog-layout=scroll]:bg-background in-data-[dialog-layout=scroll]:px-6 in-data-[dialog-layout=scroll]:py-4',
+	},
+	variants: {
+		/**
+		 * Separates a header that carries a stepper or tabs from the scrolling body. The title row
+		 * shares the close button's row and height so the stepper or tabs below clear the button.
+		 */
+		divided: {
+			true: {
+				header: [
+					'border-b border-border',
+					'in-data-[dialog-layout=scroll]:gap-(--nested-control-gap) in-data-[dialog-layout=scroll]:pt-(--overlay-close-inset)',
+					'*:data-[slot=dialog-title]:min-h-(--size-control-lg) *:data-[slot=dialog-title]:content-center',
+				],
+			},
+			false: {},
+		},
+	},
+	defaultVariants: {
+		divided: false,
+	},
+});
 
 export const DIALOG_CONTENT_SIZES = asExhaustiveArray<DialogContentSize>()([
 	'sm',

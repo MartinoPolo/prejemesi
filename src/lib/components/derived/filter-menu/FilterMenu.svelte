@@ -5,6 +5,7 @@
 	import { Button } from '$lib/components/base/button/index.js';
 	import * as DropdownMenu from '$lib/components/base/dropdown-menu/index.js';
 	import { cn } from '$lib/utils.js';
+	import ActiveFilterCount from './ActiveFilterCount.svelte';
 	import ActiveFilterPills from './ActiveFilterPills.svelte';
 	import { normalizeActiveFilters, type ActiveFilterItem } from './active_filters.js';
 	import {
@@ -86,17 +87,7 @@
 						data-toolbar-icon="filter"
 					/>
 					<span class="min-w-0 truncate">{triggerLabel}</span>
-					{#if activeFilters.length > 0}
-						{#key activeFilters.length}
-							<span
-								class="filter-count grid min-w-4.25 shrink-0 place-items-center rounded-full bg-primary px-1 text-[10.5px] leading-4 text-primary-foreground"
-								data-filter-count
-								aria-hidden="true"
-							>
-								{activeFilters.length}
-							</span>
-						{/key}
-					{/if}
+					<ActiveFilterCount count={activeFilters.length} />
 					<ChevronDownIcon class="size-4 shrink-0 text-muted-foreground" />
 				</Button>
 			{/snippet}
@@ -180,21 +171,3 @@
 		/>
 	{/if}
 </div>
-
-<style>
-	@keyframes filter-acknowledge {
-		from {
-			opacity: 0;
-		}
-
-		to {
-			opacity: 1;
-		}
-	}
-
-	@media (prefers-reduced-motion: no-preference) {
-		.filter-count {
-			animation: filter-acknowledge 220ms cubic-bezier(0.2, 0.7, 0.3, 1);
-		}
-	}
-</style>

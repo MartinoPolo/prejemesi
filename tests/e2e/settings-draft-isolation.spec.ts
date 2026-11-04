@@ -46,7 +46,7 @@ test.describe('wishlist settings draft isolation (#527)', () => {
 		await dialog.getByRole('tab', { name: 'Nebezpečná zóna' }).click();
 		await dialog.getByRole('button', { name: 'Smazat seznam' }).click();
 		await expect(
-			page.getByRole('dialog', { name: /Smazat seznam "Druhý seznam"/ }),
+			page.getByRole('dialog', { name: /Smazat seznam „Druhý seznam“/ }),
 		).toBeVisible();
 		await expect(page.getByRole('dialog', { name: 'Máte neuložené změny' })).toHaveCount(0);
 

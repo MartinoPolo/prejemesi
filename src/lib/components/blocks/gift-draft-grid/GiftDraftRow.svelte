@@ -24,7 +24,6 @@
 		DRAFT_GRID_COLUMNS,
 		DRAFT_GRID_COLUMNS_NO_PRIORITY,
 		DRAFT_COL_LABEL_CLASS,
-		DRAFT_DESTRUCTIVE_HOVER_CLASS,
 	} from './gift_draft_grid_variants.js';
 	import type { DraftGridRow } from './gift_draft_grid_model.js';
 	import type { DraftPriority } from '$lib/modules/gifts/types.js';
@@ -143,12 +142,11 @@
 			<SparklesIcon aria-hidden="true" />
 		</Button>
 		<Button
-			intent="ghost"
+			intent="ghost-danger-quiet"
 			size="sm"
 			format="icon"
 			onclick={ondelete}
 			aria-label={m.draft_grid_remove_row()}
-			surfaceClass={cn('text-muted-foreground', DRAFT_DESTRUCTIVE_HOVER_CLASS)}
 		>
 			<Trash2Icon aria-hidden="true" />
 		</Button>
@@ -376,12 +374,11 @@
 			<SparklesIcon aria-hidden="true" />
 		</Button>
 		<Button
-			intent="ghost"
+			intent="ghost-danger-quiet"
 			size="sm"
 			format="icon"
 			onclick={ondelete}
 			aria-label={m.draft_grid_remove_row()}
-			surfaceClass={cn('text-muted-foreground', DRAFT_DESTRUCTIVE_HOVER_CLASS)}
 		>
 			<Trash2Icon aria-hidden="true" />
 		</Button>

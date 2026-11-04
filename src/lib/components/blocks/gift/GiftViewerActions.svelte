@@ -56,7 +56,11 @@
 		...browseActions.secondaryActions,
 		...(reservations.offersRelease(gift.id) ? [RELEASE_RESERVATION_ACTION] : []),
 	]);
-	const secondaryActionsAfterPrimary: readonly GiftContextAction[] = [RELEASE_RESERVATION_ACTION];
+	// The one solid action, Koupeno, sits rightmost like every dialog's solid action.
+	const secondaryActionsAfterPrimary: readonly GiftContextAction[] = [
+		RELEASE_RESERVATION_ACTION,
+		'purchased',
+	];
 </script>
 
 {#snippet like()}

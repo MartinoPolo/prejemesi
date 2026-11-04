@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { Button } from '$lib/components/base/button/index.js';
+	import * as SegmentedToggle from '$lib/components/derived/segmented-toggle/index.js';
 	import SimpleTooltip from '$lib/components/base/tooltip/SimpleTooltip.svelte';
 	import * as DropdownMenu from '$lib/components/base/dropdown-menu/index.js';
 	import * as Sheet from '$lib/components/base/sheet/index.js';
@@ -30,6 +31,7 @@
 	import {
 		ActiveFilterPills,
 		FILTER_MENU_GROUP_HEADING_CLASS,
+		ActiveFilterCount,
 		FILTER_MENU_OPTION_CLASS,
 		normalizeActiveFilters,
 		type FilterDefinition,
@@ -408,35 +410,6 @@
 		});
 	}
 
-	function handleFilterRowClick(
-		event: MouseEvent,
-		checked: boolean,
-		onchange: (checked: boolean) => void,
-	) {
-		if ((event.target as Element).closest("[data-slot='checkbox']")) {
-			return;
-		}
-		onchange(!checked);
-	}
-
-	function filterRowActivation(
-		node: HTMLElement,
-		state: { checked: boolean; onchange: (checked: boolean) => void },
-	) {
-		let currentState = state;
-		const handleClick = (event: MouseEvent) =>
-			handleFilterRowClick(event, currentState.checked, currentState.onchange);
-		node.addEventListener('click', handleClick);
-		return {
-			update(nextState: typeof state) {
-				currentState = nextState;
-			},
-			destroy() {
-				node.removeEventListener('click', handleClick);
-			},
-		};
-	}
-
 	function handleMobileSheetOpenChange(open: boolean) {
 		if (!open) {
 			closeMobileDisplaySheet();
@@ -521,9 +494,7 @@
 				>
 					<SlidersHorizontalIcon data-icon="inline-start" data-toolbar-icon="display" />
 					<span>{m.gift_display_options()}</span>
-					{#if activeFilters.length > 0}<span data-filter-count
-							>{activeFilters.length}</span
-						>{/if}
+					<ActiveFilterCount count={activeFilters.length} />
 					<ChevronDownIcon />
 				</Button>
 			{/snippet}
@@ -699,11 +670,10 @@
 				onclick={() => openMobileDisplaySheet()}
 			>
 				<SlidersHorizontalIcon data-toolbar-icon="display" />
-				{#if activeFilters.length > 0}
-					<span class="mobile-filter-count" data-filter-count aria-hidden="true"
-						>{activeFilters.length}</span
-					>
-				{/if}
+				<ActiveFilterCount
+					count={activeFilters.length}
+					class="absolute -top-1.5 -right-1.5"
+				/>
 			</Button>
 		</SimpleTooltip>
 		<div class="mobile-browse-spacer"></div>
@@ -977,39 +947,35 @@
 							inert={mobileOpenDisplayControl !== 'filter'}
 						>
 							{#each filterDefinitions as definition (definition.id)}
-								<div
-									class="mobile-sheet-choice"
-									use:filterRowActivation={{
-										checked: definition.checked,
-										onchange: definition.onchange,
-									}}
+								<WishlistSheetChoice
+									for={`mobile-gift-filter-${definition.id}`}
+									density="compact"
 								>
 									<Checkbox
+										id={`mobile-gift-filter-${definition.id}`}
 										checked={definition.checked}
 										onCheckedChange={definition.onchange}
 										aria-label={definition.menuLabel}
 									/>
 									<span>{definition.menuLabel}</span>
-								</div>
+								</WishlistSheetChoice>
 							{/each}
 							{#each filterFacets as facet (facet.id)}
 								<section class="mobile-filter-section">
 									<h3>{facet.label}</h3>
 									{#each facet.options as option (option.value)}
-										<div
-											class="mobile-sheet-choice"
-											use:filterRowActivation={{
-												checked: option.checked,
-												onchange: option.onchange,
-											}}
+										<WishlistSheetChoice
+											for={`mobile-gift-filter-${facet.id}-${option.value}`}
+											density="compact"
 										>
 											<Checkbox
+												id={`mobile-gift-filter-${facet.id}-${option.value}`}
 												checked={option.checked}
 												onCheckedChange={option.onchange}
 												aria-label={option.label}
 											/>
 											<span>{option.label}</span>
-										</div>
+										</WishlistSheetChoice>
 									{/each}
 								</section>
 							{/each}
@@ -1025,33 +991,35 @@
 						</div>
 					</div>
 				</WishlistSheetBody>
-				<div
-					class="mobile-sheet-switcher"
-					role="group"
-					aria-label={m.gift_display_options()}
-					data-testid="mobile-sheet-switcher"
-				>
-					<Button
-						intent="ghost"
-						aria-pressed={mobileOpenDisplayControl === 'sort'}
-						data-testid="mobile-sheet-sort-switch"
-						onclick={() => openMobileDisplaySheet('sort')}
-						><ArrowUpDownIcon data-icon="inline-start" />{m.gift_sort_by()}</Button
+				<div class="mobile-sheet-switcher" data-testid="mobile-sheet-switcher">
+					<SegmentedToggle.Root
+						value={mobileOpenDisplayControl ?? 'sort'}
+						onValueChange={(control) =>
+							openMobileDisplaySheet(control as OpenDisplayControl)}
+						aria-label={m.gift_display_options()}
+						presentation="tab-bar"
+						width="fill"
 					>
-					<Button
-						intent="ghost"
-						aria-pressed={mobileOpenDisplayControl === 'grouping'}
-						data-testid="mobile-sheet-grouping-switch"
-						onclick={() => openMobileDisplaySheet('grouping')}
-						><LayersIcon data-icon="inline-start" />{m.gift_grouping_label()}</Button
-					>
-					<Button
-						intent="ghost"
-						aria-pressed={mobileOpenDisplayControl === 'filter'}
-						data-testid="mobile-sheet-filter-switch"
-						onclick={() => openMobileDisplaySheet('filter')}
-						><ListFilterPlusIcon data-icon="inline-start" />{m.gift_filter()}</Button
-					>
+						<SegmentedToggle.Item value="sort" data-testid="mobile-sheet-sort-switch"
+							><ArrowUpDownIcon
+								data-icon="inline-start"
+							/>{m.gift_sort_by()}</SegmentedToggle.Item
+						>
+						<SegmentedToggle.Item
+							value="grouping"
+							data-testid="mobile-sheet-grouping-switch"
+							><LayersIcon
+								data-icon="inline-start"
+							/>{m.gift_grouping_label()}</SegmentedToggle.Item
+						>
+						<SegmentedToggle.Item
+							value="filter"
+							data-testid="mobile-sheet-filter-switch"
+							><ListFilterPlusIcon
+								data-icon="inline-start"
+							/>{m.gift_filter()}</SegmentedToggle.Item
+						>
+					</SegmentedToggle.Root>
 				</div>
 			</WishlistBottomSheet>
 		{/if}
@@ -1281,23 +1249,6 @@
 		position: relative;
 	}
 
-	.mobile-filter-count {
-		position: absolute;
-		top: -5px;
-		right: -5px;
-		display: grid;
-		min-width: 18px;
-		height: 18px;
-		place-items: center;
-		border: 2px solid var(--ink);
-		border-radius: 999px;
-		background: var(--status-warning);
-		color: var(--ink);
-		font-size: 0.625rem;
-		font-weight: 800;
-		line-height: 1;
-	}
-
 	.mobile-display-sections {
 		display: grid;
 	}
@@ -1314,40 +1265,10 @@
 	}
 
 	.mobile-sheet-switcher {
-		display: flex;
 		min-width: 0;
 		flex: 0 0 auto;
-		gap: 0.25rem;
 		border-top: 1px solid var(--border);
 		padding: 0.5rem;
-	}
-
-	.mobile-sheet-switcher :global(button) {
-		min-width: 0;
-		min-height: 40px;
-		flex: 1 1 0;
-		padding-inline: 0.375rem;
-		font-size: 0.6875rem;
-	}
-
-	.mobile-sheet-switcher :global(button[aria-pressed='true']) {
-		outline: 2px solid var(--ink);
-		outline-offset: -2px;
-		background: var(--accent);
-	}
-
-	.mobile-sheet-choice {
-		display: flex;
-		min-height: 40px;
-		align-items: center;
-		gap: 0.75rem;
-		border-radius: var(--radius-btn);
-		padding: 0.25rem 0.75rem;
-		font-weight: 650;
-	}
-
-	.mobile-sheet-choice:hover {
-		background: var(--accent);
 	}
 
 	.mobile-filter-section {

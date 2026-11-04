@@ -158,7 +158,7 @@ async function expectActiveSection(page: Page, section: Section) {
 	const sheet = displaySheet(page);
 	for (const candidate of Object.keys(SECTION_LABELS) as Section[]) {
 		await expect(sectionSwitch(page, candidate)).toHaveAttribute(
-			'aria-pressed',
+			'aria-checked',
 			String(candidate === section),
 		);
 	}

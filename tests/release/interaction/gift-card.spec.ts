@@ -280,7 +280,7 @@ function actionsSheet(page: Page): Locator {
 }
 
 function categoryPopover(page: Page): Locator {
-	return page.getByTestId('gift-category-popover').filter({ visible: true });
+	return page.getByRole('dialog', { name: m.gift_category_more_title(), exact: true });
 }
 
 function scrollContainer(page: Page): Locator {
@@ -310,8 +310,8 @@ async function centerGiftInView(page: Page, name: string) {
 
 async function closeOpenLayers(page: Page) {
 	const discardChanges = page
-		.getByRole('dialog', { name: m.wishlist_settings_unsaved_title() })
-		.getByRole('button', { name: m.wishlist_settings_discard() });
+		.getByRole('dialog', { name: m.unsaved_changes_title() })
+		.getByRole('button', { name: m.unsaved_changes_discard() });
 	await expect(async () => {
 		if (await discardChanges.isVisible()) {
 			await discardChanges.click();

@@ -1,10 +1,12 @@
 <script lang="ts">
+	import { Badge } from '$lib/components/base/badge/index.js';
 	import { tick } from 'svelte';
 	import * as m from '$lib/paraglide/messages.js';
 	import CheckIcon from '@lucide/svelte/icons/check';
 	import PencilIcon from '@lucide/svelte/icons/pencil';
 	import XIcon from '@lucide/svelte/icons/x';
 	import { Button } from '$lib/components/base/button/index.js';
+	import { HelpText } from '$lib/components/base/help-text/index.js';
 	import { Input } from '$lib/components/base/input/index.js';
 	import * as Select from '$lib/components/base/select/index.js';
 	import { Textarea } from '$lib/components/base/textarea/index.js';
@@ -15,6 +17,7 @@
 	} from '$lib/modules/change_proposals/change_field_decisions.js';
 	import { FIELD_REVIEW_STATE } from '$lib/modules/change_proposals/change_review_decisions.js';
 	import DescriptionAppend from './DescriptionAppend.svelte';
+	import DecisionToggle from './DecisionToggle.svelte';
 	import DiffValues from './DiffValues.svelte';
 	import type { ChangeReviewActions } from './change_review_rows.js';
 	import {
@@ -182,47 +185,44 @@
 		role="group"
 		aria-label={m.change_review_field_decision_label({ field: field.label })}
 	>
-		<button
-			type="button"
-			class="field-btn"
+		<DecisionToggle
+			format="icon"
+			tone="accept"
+			icon={CheckIcon}
+			label={m.change_review_field_accept_label({ field: field.label })}
 			data-field-action="accept"
-			aria-pressed={field.state === FIELD_REVIEW_STATE.accepted ||
+			pressed={field.state === FIELD_REVIEW_STATE.accepted ||
 				field.state === FIELD_REVIEW_STATE.edited}
-			aria-label={m.change_review_field_accept_label({ field: field.label })}
 			title={m.change_review_accept()}
 			onclick={() => toggle(field.field, CHANGE_DECISION.accepted)}
-		>
-			<CheckIcon aria-hidden="true" />
-		</button>
-		<button
-			type="button"
-			class="field-btn"
+		/>
+		<DecisionToggle
+			format="icon"
+			tone="reject"
+			icon={XIcon}
+			label={m.change_review_field_reject_label({ field: field.label })}
 			data-field-action="reject"
-			aria-pressed={field.state === FIELD_REVIEW_STATE.rejected}
-			aria-label={m.change_review_field_reject_label({ field: field.label })}
+			pressed={field.state === FIELD_REVIEW_STATE.rejected}
 			title={field.required
 				? m.change_review_field_required_title()
 				: m.change_review_reject()}
 			disabled={field.required}
 			onclick={() => toggle(field.field, CHANGE_DECISION.rejected)}
-		>
-			<XIcon aria-hidden="true" />
-		</button>
-		<button
-			bind:this={editButtons[field.field]}
-			type="button"
-			class="field-btn"
+		/>
+		<DecisionToggle
+			bind:ref={editButtons[field.field]}
+			format="icon"
+			tone="edit"
+			icon={PencilIcon}
+			label={m.change_review_field_edit_label({ field: field.label })}
 			data-field-action="edit"
 			aria-expanded={editing}
-			aria-label={m.change_review_field_edit_label({ field: field.label })}
 			title={field.editor === null
 				? m.change_review_field_edit_unavailable()
 				: m.change_review_edit()}
 			disabled={field.editor === null}
 			onclick={() => toggleEditor(field)}
-		>
-			<PencilIcon aria-hidden="true" />
-		</button>
+		/>
 	</span>
 {/snippet}
 
@@ -235,11 +235,9 @@
 			<span class="field-values">{@render fieldValues(field)}</span>
 			<span class="field-side">
 				{#if pill !== null}
-					<span
-						class={[
-							'pill',
-							field.state === FIELD_REVIEW_STATE.rejected ? 'rejected' : 'accepted',
-						]}>{pill()}</span
+					<Badge
+						tone={field.state === FIELD_REVIEW_STATE.rejected ? 'neutral' : 'success'}
+						>{pill()}</Badge
 					>
 				{/if}
 				{#if actions !== undefined}
@@ -255,7 +253,9 @@
 					<div class="field-control">
 						{@render editorControl(field, field.editor)}
 						{#if editorInvalid}
-							<p class="field-error" role="alert">{m.change_review_edit_invalid()}</p>
+							<HelpText state="error" role="alert" class="m-0">
+								{m.change_review_edit_invalid()}
+							</HelpText>
 						{/if}
 					</div>
 					<span class="field-edit-actions">
@@ -351,81 +351,10 @@
 		gap: var(--space-2);
 	}
 
-	.pill {
-		display: inline-flex;
-		align-items: center;
-		height: 22px;
-		padding: 0 var(--space-2);
-		border: 1.5px solid var(--ink);
-		border-radius: var(--radius-badge);
-		font-size: var(--text-xs);
-		font-weight: 700;
-		white-space: nowrap;
-	}
-
-	.pill.accepted {
-		background: color-mix(in oklab, var(--status-success) 18%, var(--card));
-		color: var(--status-success-text);
-	}
-
-	.pill.rejected {
-		border-color: var(--border-strong);
-		background: var(--card);
-		color: var(--muted-foreground);
-	}
-
 	.field-actions {
 		display: flex;
 		gap: var(--space-1);
 		border-radius: var(--radius-btn);
-	}
-
-	.field-btn {
-		display: grid;
-		place-items: center;
-		width: var(--size-control-sm);
-		height: var(--size-control-sm);
-		padding: 0;
-		border: 2px solid var(--ink);
-		border-radius: var(--radius-btn);
-		background: var(--card);
-		color: var(--ink);
-		cursor: pointer;
-	}
-
-	.field-btn:focus-visible {
-		outline: 2px solid var(--ring);
-		outline-offset: 2px;
-	}
-
-	.field-btn:disabled {
-		opacity: 0.4;
-		cursor: not-allowed;
-	}
-
-	.field-btn:hover:not(:disabled) {
-		background: var(--panel-hover);
-	}
-
-	.field-btn[data-field-action='accept'][aria-pressed='true'] {
-		border-color: var(--status-success-text);
-		background: var(--status-success-text);
-		color: var(--card);
-	}
-
-	.field-btn[data-field-action='reject'][aria-pressed='true'] {
-		background: var(--ink);
-		color: var(--card);
-	}
-
-	.field-btn[data-field-action='edit'][aria-expanded='true'] {
-		background: var(--primary);
-		color: var(--primary-foreground);
-	}
-
-	.field-btn :global(svg) {
-		width: 16px;
-		height: 16px;
 	}
 
 	.field-edit {
@@ -442,12 +371,6 @@
 		flex: 1 1 220px;
 		gap: var(--space-1);
 		min-width: 0;
-	}
-
-	.field-error {
-		color: var(--status-danger-text);
-		font-size: var(--text-sm);
-		font-weight: 600;
 	}
 
 	.field-edit-actions {

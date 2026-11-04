@@ -91,7 +91,7 @@
 	{#snippet template()}
 		<div class="max-w-135">
 			<Toast tone="info" title="Re-syncing…" body="Custom icon replaces the tone default.">
-				{#snippet icon()}<RefreshIcon class="size-4 animate-spin" />{/snippet}
+				{#snippet icon()}<RefreshIcon class="size-4" />{/snippet}
 			</Toast>
 		</div>
 	{/snippet}

@@ -4,10 +4,10 @@
 	import CheckIcon from '@lucide/svelte/icons/check';
 	import HourglassIcon from '@lucide/svelte/icons/hourglass';
 	import InfoIcon from '@lucide/svelte/icons/info';
-	import LoaderIcon from '@lucide/svelte/icons/loader';
 	import TriangleAlertIcon from '@lucide/svelte/icons/triangle-alert';
 	import Undo2Icon from '@lucide/svelte/icons/undo-2';
 	import { Button } from '$lib/components/base/button/index.js';
+	import { Spinner } from '$lib/components/base/spinner/index.js';
 	import {
 		CHANGE_PROPOSAL_STATE,
 		CHANGE_ROW_STATUS,
@@ -74,10 +74,7 @@
 			onclick={onundo}
 		>
 			{#if undoPending}
-				<LoaderIcon
-					class="animate-spin"
-					data-icon="inline-start"
-				/>{m.change_review_undoing()}
+				<Spinner data-icon="inline-start" />{m.change_review_undoing()}
 			{:else}
 				<Undo2Icon data-icon="inline-start" />{m.change_review_undo()}
 			{/if}
@@ -103,7 +100,7 @@
 	/>
 	{#if undoBlocked}
 		<OutcomeAlert
-			tone="destructive"
+			tone="danger"
 			icon={TriangleAlertIcon}
 			title={m.change_review_undo_conflict_title()}
 			urgent
@@ -119,7 +116,7 @@
 	{/if}
 {:else if proposal.state === CHANGE_PROPOSAL_STATE.undone && proposal.undoneAt !== null}
 	<OutcomeAlert
-		tone="default"
+		tone="info"
 		icon={Undo2Icon}
 		title={m.change_review_undone_title({
 			date: formatChangeReviewDateTime(proposal.undoneAt),
@@ -139,7 +136,7 @@
 	/>
 {:else if proposal.state === CHANGE_PROPOSAL_STATE.discarded}
 	<OutcomeAlert
-		tone="default"
+		tone="info"
 		icon={InfoIcon}
 		title={m.change_review_discarded_title()}
 		body={m.change_review_discarded_body()}
@@ -157,7 +154,7 @@
 	/>
 {:else if applyFailed}
 	<OutcomeAlert
-		tone="destructive"
+		tone="danger"
 		icon={BanIcon}
 		title={m.change_review_apply_failed_title()}
 		body={m.change_review_apply_failed_body()}

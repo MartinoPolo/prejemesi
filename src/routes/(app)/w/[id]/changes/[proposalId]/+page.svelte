@@ -88,7 +88,7 @@
 			recipientName={wishlist.recipientDisplayName}
 		/>
 		{#if proposalQuery?.error}
-			<Alert.Root tone="destructive" class="mt-4" data-testid="change-review-load-error">
+			<Alert.Root tone="danger" class="mt-4" data-testid="change-review-load-error">
 				<TriangleAlertIcon />
 				<Alert.Title>{m.change_review_load_error()}</Alert.Title>
 				<Alert.Description>

@@ -1,10 +1,12 @@
 <script lang="ts">
+	import { Badge } from '$lib/components/base/badge/index.js';
 	import { onMount } from 'svelte';
 	import * as m from '$lib/paraglide/messages.js';
 	import { translateServerError } from '$lib/modules/errors/translate_server_error.js';
+	import * as Alert from '$lib/components/base/alert/index.js';
 	import * as Dialog from '$lib/components/base/dialog/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
-	import * as InputGroup from '$lib/components/base/input-group/index.js';
+	import { CopyField } from '$lib/components/derived/copy-field/index.js';
 	import ShareMethodButton from './ShareMethodButton.svelte';
 	import { shareWizardVariants } from './share_wizard_variants.js';
 	import {
@@ -20,8 +22,7 @@
 	import CheckIcon from '@lucide/svelte/icons/check';
 	import ArrowRightIcon from '@lucide/svelte/icons/arrow-right';
 	import AlertTriangleIcon from '@lucide/svelte/icons/triangle-alert';
-	import CopyIcon from '@lucide/svelte/icons/copy';
-	import XIcon from '@lucide/svelte/icons/x';
+	import LockIcon from '@lucide/svelte/icons/lock';
 	import CircleCheckBigIcon from '@lucide/svelte/icons/circle-check-big';
 	import Share2Icon from '@lucide/svelte/icons/share-2';
 
@@ -47,7 +48,6 @@
 
 	const step = $derived(sharing.wizardStep.current);
 	const isOpen = $derived(sharing.wizardOpen.current);
-	const linkCopied = $derived(sharing.linkCopied.current);
 	const shareUrl = $derived(sharing.shareUrl.current);
 	const shareUrlDisplay = $derived(sharing.shareUrlDisplay.current);
 	const shareMessage = $derived(buildShareMessage(wishlistTitle));
@@ -137,19 +137,12 @@
 </script>
 
 {#snippet copyLinkField()}
-	<InputGroup.Root size="xl">
-		<InputGroup.Input value={shareUrlDisplay} readonly aria-label={m.share_link_eyebrow()} />
-		<InputGroup.Segment onclick={() => sharing.copyLink()}>
-			{#if linkCopied}
-				<CheckIcon />
-				{m.share_copied()}
-			{:else}
-				<CopyIcon />
-				{m.share_copy()}
-			{/if}
-		</InputGroup.Segment>
-	</InputGroup.Root>
-	<p class="sr-only" role="status">{linkCopied ? m.share_copied() : ''}</p>
+	<CopyField
+		value={shareUrl}
+		displayValue={shareUrlDisplay}
+		size="xl"
+		label={m.share_link_eyebrow()}
+	/>
 {/snippet}
 
 <Dialog.Root open={isOpen} onOpenChange={handleOpenChange}>
@@ -162,7 +155,7 @@
 
 		<!-- Step Progress Indicator -->
 		<div class="shrink-0 {styles.progressBar()}" data-testid="share-wizard-stepper">
-			<div class={styles.step()}>
+			<div class={styles.step()} aria-current={step1State === 'active' ? 'step' : undefined}>
 				<div class="{styles.stepDot()} {getDotClass(step1State)}">
 					{#if step1State === 'done'}
 						<CheckIcon class="size-2.5" />
@@ -175,7 +168,7 @@
 			<div
 				class={connector1State === 'done' ? styles.connectorDone() : styles.connector()}
 			></div>
-			<div class={styles.step()}>
+			<div class={styles.step()} aria-current={step2State === 'active' ? 'step' : undefined}>
 				<div class="{styles.stepDot()} {getDotClass(step2State)}">
 					{#if step2State === 'done'}
 						<CheckIcon class="size-2.5" />
@@ -188,7 +181,7 @@
 			<div
 				class={connector2State === 'done' ? styles.connectorDone() : styles.connector()}
 			></div>
-			<div class={styles.step()}>
+			<div class={styles.step()} aria-current={step3State === 'active' ? 'step' : undefined}>
 				<div class="{styles.stepDot()} {getDotClass(step3State)}">
 					{#if step3State === 'done'}
 						<CheckIcon class="size-2.5" />
@@ -224,7 +217,7 @@
 							<div class={styles.previewName()}>{wishlistTitle}</div>
 							<div class={styles.previewMeta()}>{giftCountLabel}</div>
 						</div>
-						<span class={styles.previewBadge()}>{m.share_preview_badge()}</span>
+						<Badge class="shrink-0">{m.share_preview_badge()}</Badge>
 					</div>
 				</div>
 			</div>
@@ -447,14 +440,10 @@
 							</div>
 						</div>
 						<!-- Restriction warning -->
-						<div class={styles.permissionsWarning()} role="note">
-							<div class={styles.warnX()} aria-hidden="true">
-								<XIcon class="size-[9px]" />
-							</div>
-							<span class={styles.permissionsWarningText()}>
-								{m.share_permissions_warning()}
-							</span>
-						</div>
+						<Alert.Root tone="info">
+							<LockIcon aria-hidden="true" />
+							<Alert.Description>{m.share_permissions_warning()}</Alert.Description>
+						</Alert.Root>
 					</div>
 
 					<!-- Close CTA -->

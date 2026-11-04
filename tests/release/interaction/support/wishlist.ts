@@ -110,7 +110,10 @@ export async function openSettingsTab(page: Page, wishlistPath: string, tab: Set
 /** Closes a dirty draft through the unsaved-changes guard, discarding it. */
 async function discardDraft(page: Page) {
 	await settingsDialog(page).getByRole('button', { name: m.close() }).click();
-	await page.getByRole('button', { name: m.wishlist_settings_discard() }).click();
+	await page
+		.getByTestId('unsaved-changes-dialog')
+		.getByRole('button', { name: m.unsaved_changes_discard(), exact: true })
+		.click();
 	await expect(settingsDialog(page)).toBeHidden();
 }
 

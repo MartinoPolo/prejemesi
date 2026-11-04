@@ -34,8 +34,6 @@ export const shareWizardVariants = tv({
 			'flex size-10 flex-shrink-0 -rotate-3 items-center justify-center rounded-[10px] border-2 border-ink bg-tint text-lg',
 		previewName: 'font-heading text-sm font-semibold text-foreground',
 		previewMeta: 'mt-0.5 text-xs text-muted-foreground',
-		previewBadge:
-			'flex-shrink-0 rounded-badge border-2 border-ink bg-card px-2.5 py-0.5 text-[11px] font-semibold text-foreground',
 		// Step 2
 		shareHeader: 'pt-2',
 		shareTitle: 'font-heading text-lg font-semibold tracking-tight text-foreground',
@@ -61,9 +59,5 @@ export const shareWizardVariants = tv({
 		permissionCheck:
 			'flex size-[19px] flex-shrink-0 -rotate-3 items-center justify-center rounded-[6px] border-2 border-ink bg-primary text-primary-foreground',
 		permissionText: 'text-sm leading-snug text-foreground',
-		permissionsWarning:
-			'flex items-start gap-2.5 rounded-[10px] border-2 border-ink bg-card px-3 py-3',
-		warnX: 'mt-0.5 flex size-[18px] flex-shrink-0 items-center justify-center rounded-full border-2 border-ink bg-card text-status-danger',
-		permissionsWarningText: 'text-xs font-semibold leading-relaxed text-foreground',
 	},
 });

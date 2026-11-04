@@ -11,7 +11,6 @@
 	import { normalizeGiftUrl } from '$lib/modules/gifts/gift_url.js';
 	import { MAX_GIFT_LINKS, type GiftLink } from '$lib/modules/gifts/types.js';
 	import * as m from '$lib/paraglide/messages.js';
-	import { DRAFT_DESTRUCTIVE_HOVER_CLASS } from './gift_draft_grid_variants.js';
 
 	interface Props {
 		/** The reactive row whose `links` array is edited in place (max {@link MAX_GIFT_LINKS}). */
@@ -126,11 +125,10 @@
 					class="h-auto min-h-0 flex-1 border-0 bg-transparent px-0 py-0 text-sm shadow-none focus-visible:ring-0"
 				/>
 				<Button
-					intent="ghost"
+					intent="ghost-danger-quiet"
 					size="sm"
 					format="icon"
 					class="flex-none"
-					surfaceClass={cn('text-muted-foreground', DRAFT_DESTRUCTIVE_HOVER_CLASS)}
 					onclick={() => removeLink(index)}
 					aria-label={m.draft_grid_remove_link({ label: labelOf(link) })}
 				>

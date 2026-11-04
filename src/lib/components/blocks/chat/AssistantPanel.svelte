@@ -4,6 +4,10 @@
 	import * as m from '$lib/paraglide/messages.js';
 	import ClockIcon from '@lucide/svelte/icons/clock';
 	import PowerIcon from '@lucide/svelte/icons/power';
+	import CircleAlertIcon from '@lucide/svelte/icons/circle-alert';
+	import RefreshCwIcon from '@lucide/svelte/icons/refresh-cw';
+	import * as Alert from '$lib/components/base/alert/index.js';
+	import { Button } from '$lib/components/base/button/index.js';
 	import { toastError } from '$lib/components/base/toast/index.js';
 	import type { ChangeRowContext } from '$lib/components/blocks/change-proposals/change_row_model.js';
 	import { localizeInternalHref } from '$lib/i18n/locale.js';
@@ -563,7 +567,15 @@
 				onnew={() => assistant.startNewChat()}
 			/>
 		{:else if sessionQuery?.error}
-			<p class="note" role="alert">{m.chat_load_error()}</p>
+			<Alert.Root tone="danger">
+				<CircleAlertIcon aria-hidden="true" />
+				<Alert.Description>{m.chat_load_error()}</Alert.Description>
+				<Alert.Action>
+					<Button intent="outline" size="sm" onclick={() => void sessionQuery?.refresh()}>
+						<RefreshCwIcon data-icon="inline-start" />{m.chat_retry()}
+					</Button>
+				</Alert.Action>
+			</Alert.Root>
 		{:else if loading}
 			<p class="note" aria-busy="true">{m.chat_history_loading()}</p>
 		{:else}

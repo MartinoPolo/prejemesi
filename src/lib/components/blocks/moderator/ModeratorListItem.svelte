@@ -59,9 +59,7 @@
 	{#if canRemove}
 		<Button
 			size="sm"
-			intent="ghost"
-			class=""
-			surfaceClass="text-status-danger-text group-hover:text-status-danger-text"
+			intent="ghost-danger"
 			disabled={isRemoving}
 			aria-label={m.moderator_remove_label({ name: moderator.userName })}
 			onclick={() => onremove?.(moderator.id)}

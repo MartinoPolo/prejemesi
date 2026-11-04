@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { HelpText } from '$lib/components/base/help-text/index.js';
 	import * as m from '$lib/paraglide/messages.js';
 	import { Input } from '$lib/components/base/input/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
@@ -111,11 +112,10 @@
 		{/if}
 
 		<Button
-			intent="ghost"
+			intent="ghost-danger-quiet"
 			size="sm"
 			format="icon"
 			class="shrink-0"
-			surfaceClass="text-muted-foreground group-hover:text-status-danger-text"
 			{disabled}
 			onclick={onremove}
 			aria-label={m.gift_link_remove()}
@@ -146,6 +146,6 @@
 	</div>
 
 	{#if hasUrlError}
-		<span id={urlErrorId} class="text-xs text-status-danger-text">{urlError}</span>
+		<HelpText id={urlErrorId} state="error">{urlError}</HelpText>
 	{/if}
 </div>

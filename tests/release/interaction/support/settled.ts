@@ -33,21 +33,23 @@ export function nextFrames(page: Page, count = 2): Promise<void> {
 }
 
 /** Waits until no animation in the subtree is still running toward a finite end. */
-export async function expectAnimationsFinished(page: Page, selector = 'body'): Promise<void> {
+export async function expectAnimationsFinished(
+	page: Page,
+	subtree: string | Locator = 'body',
+): Promise<void> {
+	const rootLocator = typeof subtree === 'string' ? page.locator(subtree) : subtree;
 	await expect
 		.poll(() =>
-			page
-				.locator(selector)
-				.evaluate(
-					(root) =>
-						root
-							.getAnimations({ subtree: true })
-							.filter(
-								(animation) =>
-									animation.playState === 'running' &&
-									animation.effect?.getComputedTiming().endTime !== Infinity,
-							).length,
-				),
+			rootLocator.evaluate(
+				(root) =>
+					root
+						.getAnimations({ subtree: true })
+						.filter(
+							(animation) =>
+								animation.playState === 'running' &&
+								animation.effect?.getComputedTiming().endTime !== Infinity,
+						).length,
+			),
 		)
 		.toBe(0);
 }

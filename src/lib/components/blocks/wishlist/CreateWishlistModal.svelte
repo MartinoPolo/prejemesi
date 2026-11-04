@@ -5,7 +5,7 @@
 	import { localizeInternalHref } from '$lib/i18n/locale.js';
 	import * as Dialog from '$lib/components/base/dialog/index.js';
 	import * as Accordion from '$lib/components/base/accordion/index.js';
-	import * as ToggleGroup from '$lib/components/base/toggle-group/index.js';
+	import * as SegmentedToggle from '$lib/components/derived/segmented-toggle/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
 	import { Input } from '$lib/components/base/input/index.js';
 	import { Textarea } from '$lib/components/base/textarea/index.js';
@@ -16,7 +16,7 @@
 	import RecipientPreview from './RecipientPreview.svelte';
 	import WishlistPalettePicker from './WishlistPalettePicker.svelte';
 	import CreateWishlistOccasionSection from './CreateWishlistOccasionSection.svelte';
-	import LoaderIcon from '@lucide/svelte/icons/loader';
+	import { Spinner } from '$lib/components/base/spinner/index.js';
 	import FileUpIcon from '@lucide/svelte/icons/file-up';
 	import SlidersHorizontalIcon from '@lucide/svelte/icons/sliders-horizontal';
 	import { createWishlist } from '$lib/modules/wishlists/wishlists.remote.js';
@@ -49,21 +49,9 @@
 		demo = false,
 	}: CreateWishlistModalProps = $props();
 
-	// Typed as string (not RecipientKind) because ToggleGroup's single-select
-	// value binding is `string`; comparisons against RECIPIENT_KIND narrow it.
+	// Typed as string (not RecipientKind) because SegmentedToggle's value binding is
+	// `string`; comparisons against RECIPIENT_KIND narrow it.
 	let recipientKind = $state<string>(RECIPIENT_KIND.self);
-
-	// Bits UI's ToggleGroup.Root (type="single") mutates its own bindable `value`
-	// on every click, including a re-click of the already-active item (see
-	// GiftViewSwitcher.svelte for the full root-cause note). Passing `recipientKind`
-	// as a plain prop leaves the group uncontrolled, so that transient deselect is
-	// never undone. A writable `$derived` local, kept in sync with `recipientKind`
-	// automatically, makes the rendered state always resolvable, and resetting it
-	// inside onValueChange undoes the deselect. That reset always overwrites a
-	// value the two-way binding just set to "" (Bits UI writes through the bound
-	// value before calling onValueChange), so it's a genuine change and always
-	// re-renders.
-	let selectedRecipientKind = $derived(recipientKind);
 	let recipientName = $state('');
 	let title = $state('');
 	let occasion = $state<WishlistOccasion>(WISHLIST_OCCASION.other);
@@ -196,45 +184,32 @@
 </script>
 
 <Dialog.Root bind:open onOpenChange={handleOpenChange}>
-	<!-- Top-anchored (override the base's vertical centering) so height changes from the
-	     recipient toggle, the "more settings" accordion, or validation errors grow the box
-	     downward instead of re-centering it — otherwise every height change shifts the top
-	     edge and the modal "jumps". `max-h`/`overflow` still cap tall content on short/mobile
-	     viewports; horizontal centering (left-1/2, -translate-x-1/2) is inherited unchanged. -->
-	<Dialog.Content
-		class="top-[10vh] flex max-h-[85dvh] translate-y-0 flex-col gap-0 overflow-hidden p-0"
-	>
-		<Dialog.Header class="shrink-0 px-6 pt-6 pb-4">
+	<Dialog.Content layout="scroll">
+		<Dialog.Header>
 			<Dialog.Title>{m.wishlist_create_title()}</Dialog.Title>
 			<Dialog.Description>{m.wishlist_create_description()}</Dialog.Description>
 		</Dialog.Header>
 
-		<form onsubmit={handleSubmit} novalidate class="flex min-h-0 flex-1 flex-col">
-			<div class="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 pt-1 pb-6">
-				<ToggleGroup.Root
-					type="single"
-					intent="outline"
+		<form onsubmit={handleSubmit} novalidate>
+			<Dialog.Body class="space-y-4">
+				<SegmentedToggle.Root
 					size="lg"
-					bind:value={selectedRecipientKind}
-					onValueChange={(newValue) => {
-						if (newValue === '') {
-							selectedRecipientKind = recipientKind;
-							return;
-						}
-						recipientKind = newValue;
+					width="fill"
+					presentation="cards"
+					bind:value={recipientKind}
+					onValueChange={() => {
 						// Treat each switch into the recipient field as a fresh start — no error on appear.
 						recipientTouched = false;
 					}}
 					disabled={isSubmitting}
-					class="w-full gap-2"
 				>
-					<ToggleGroup.Item value={RECIPIENT_KIND.self} class="flex-1">
+					<SegmentedToggle.Item value={RECIPIENT_KIND.self}>
 						{m.create_for_toggle_self()}
-					</ToggleGroup.Item>
-					<ToggleGroup.Item value={RECIPIENT_KIND.other} class="flex-1">
+					</SegmentedToggle.Item>
+					<SegmentedToggle.Item value={RECIPIENT_KIND.other}>
 						{m.create_for_toggle_other()}
-					</ToggleGroup.Item>
-				</ToggleGroup.Root>
+					</SegmentedToggle.Item>
+				</SegmentedToggle.Root>
 
 				{#if recipientKind === RECIPIENT_KIND.other}
 					<Field
@@ -350,10 +325,10 @@
 				</Accordion.Root>
 
 				{#if errorMessage !== ''}
-					<p class="text-status-danger-text text-sm">{errorMessage}</p>
+					<HelpText state="error">{errorMessage}</HelpText>
 				{/if}
 
-				{#if demo}<p class="text-sm text-muted-foreground">{m.demo_import_limits()}</p>{/if}
+				{#if demo}<HelpText>{m.demo_import_limits()}</HelpText>{/if}
 				{#if onimport}
 					<Separator class="my-1" />
 					<div class="flex items-center gap-2">
@@ -374,20 +349,19 @@
 						</Button>
 					</div>
 				{/if}
-			</div>
-			<Dialog.Footer class="shrink-0 border-t border-border bg-background px-6 py-4">
+			</Dialog.Body>
+			<Dialog.Footer>
 				<Button
 					type="button"
 					intent="outline"
-					size="lg"
 					onclick={() => handleOpenChange(false)}
 					disabled={isSubmitting}
 				>
 					{m.cancel()}
 				</Button>
-				<Button type="submit" size="lg" disabled={isSubmitting}>
+				<Button type="submit" disabled={isSubmitting}>
 					{#if isSubmitting}
-						<LoaderIcon class="animate-spin" data-icon="inline-start" />
+						<Spinner data-icon="inline-start" />
 						{m.creating()}
 					{:else}
 						{m.create()}

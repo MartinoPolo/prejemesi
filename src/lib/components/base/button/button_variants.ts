@@ -46,6 +46,19 @@ export const buttonVariants = tv({
 				surface:
 					'bg-transparent text-muted-foreground group-hover:bg-accent group-hover:text-foreground',
 			},
+			/** A quiet removal action in a row, such as removing a moderator or revoking an invite. */
+			'ghost-danger': {
+				surface:
+					'bg-transparent text-status-danger-text group-hover:bg-accent group-hover:text-status-danger-text',
+			},
+			/**
+			 * Removes one of many repeated entries the user is editing, such as a gift link or a draft
+			 * row; muted until hovered so a column of them stays calm.
+			 */
+			'ghost-danger-quiet': {
+				surface:
+					'bg-transparent text-muted-foreground group-hover:bg-[color-mix(in_oklab,var(--status-danger)_10%,transparent)] group-hover:text-status-danger-text',
+			},
 			'ghost-overlay': {
 				surface:
 					'bg-transparent text-current opacity-60 group-hover:opacity-90 group-hover:bg-[color-mix(in_oklab,currentColor_10%,transparent)]',

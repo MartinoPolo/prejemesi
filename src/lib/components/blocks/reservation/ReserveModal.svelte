@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { HelpText } from '$lib/components/base/help-text/index.js';
 	import * as m from '$lib/paraglide/messages.js';
 	import * as Dialog from '$lib/components/base/dialog/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
@@ -192,7 +193,7 @@
 							</span>
 						</div>
 						{#if quantityError}
-							<span class={styles.errorText()}>{quantityError}</span>
+							<HelpText state="error" class="mt-0">{quantityError}</HelpText>
 						{/if}
 					</div>
 				{/if}
@@ -210,7 +211,7 @@
 							aria-invalid={nameError !== '' ? true : undefined}
 						/>
 						{#if nameError}
-							<span class={styles.errorText()}>{nameError}</span>
+							<HelpText state="error" class="mt-0">{nameError}</HelpText>
 						{/if}
 					</div>
 

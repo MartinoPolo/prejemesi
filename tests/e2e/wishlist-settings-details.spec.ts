@@ -65,7 +65,7 @@ test.describe('Wishlist settings – details and categories', () => {
 			.locator('[data-slot="dialog-footer"]')
 			.getByRole('button', { name: 'Uložit' });
 		await expect(form.getByRole('button', { name: 'Uložit' })).toHaveCount(0);
-		await settingsDialog.locator('.overflow-y-auto').evaluate((content) => {
+		await settingsDialog.getByTestId('wishlist-settings-scroll-region').evaluate((content) => {
 			content.scrollTop = content.scrollHeight;
 		});
 		await expect(saveButton).toBeVisible();
@@ -281,6 +281,9 @@ test.describe('Wishlist settings – details and categories', () => {
 		await giftDialog.getByRole('textbox', { name: 'Název' }).fill(giftName);
 		await giftDialog.getByRole('button', { name: 'Bez kategorie' }).click();
 		await page.getByRole('option', { name: categoryLabel }).click();
+		// The multi-select listbox stays open after a pick and can cover the footer Save.
+		await page.keyboard.press('Escape');
+		await expect(page.getByRole('listbox')).toHaveCount(0);
 		await giftDialog.getByRole('button', { name: 'Přidat dárek' }).click();
 		await expect(giftDialog).not.toBeVisible({ timeout: 10_000 });
 		await expect(page.getByRole('heading', { name: giftName, level: 3 })).toBeVisible();

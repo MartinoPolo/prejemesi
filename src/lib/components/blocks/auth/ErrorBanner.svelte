@@ -10,7 +10,7 @@
 </script>
 
 {#if message}
-	<Alert.Root tone="destructive" class="mb-5">
+	<Alert.Root tone="danger" class="mb-5">
 		<CircleAlertIcon />
 		<Alert.Description>{message}</Alert.Description>
 	</Alert.Root>

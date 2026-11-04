@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import { Button } from '$lib/components/base/button/index.js';
+	import { Spinner } from '$lib/components/base/spinner/index.js';
 	import AuthFormField from '$lib/components/blocks/auth/AuthFormField.svelte';
 	import AuthPasswordInput from '$lib/components/blocks/auth/AuthPasswordInput.svelte';
 	import AuthFooterLink from '$lib/components/blocks/auth/AuthFooterLink.svelte';
@@ -134,7 +135,7 @@
 
 		<Button type="submit" class="mt-6 w-full" size="lg" disabled={loading}>
 			{#if loading}
-				<span class="spinner"></span>
+				<Spinner data-icon="inline-start" />
 			{/if}
 			{m.reset_submit()}
 		</Button>
@@ -168,21 +169,5 @@
 
 	.success-link:hover {
 		text-decoration: underline;
-	}
-
-	.spinner {
-		width: 18px;
-		height: 18px;
-		border: 2px solid oklch(from var(--primary-foreground) l c h / 35%);
-		border-top-color: var(--primary-foreground);
-		border-radius: 50%;
-		animation: spin 0.7s linear infinite;
-		flex-shrink: 0;
-	}
-
-	@keyframes spin {
-		to {
-			transform: rotate(360deg);
-		}
 	}
 </style>

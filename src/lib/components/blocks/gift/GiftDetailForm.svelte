@@ -11,7 +11,6 @@
 	import { Field, type FieldControlContext } from '$lib/components/derived/field/index.js';
 	import ImageUpload from '$lib/components/derived/image-upload/ImageUpload.svelte';
 	import * as SegmentedToggle from '$lib/components/derived/segmented-toggle/index.js';
-	import * as ToggleGroup from '$lib/components/base/toggle-group/index.js';
 	import { HelpText } from '$lib/components/base/help-text/index.js';
 	import { SimpleTooltip } from '$lib/components/base/tooltip/index.js';
 	import ImageCropStage from '$lib/components/derived/image-crop/ImageCropStage.svelte';
@@ -343,16 +342,10 @@
 	);
 	const selectedImageBackground = $derived(selectedImage?.bgColor ?? null);
 
-	// Bits UI's ToggleGroup.Root (type="single") mutates its own bindable `value`
-	// on every click, including a re-click of the already-active item (see
-	// GiftViewSwitcher.svelte for the full root-cause note). Passing
-	// `presentedEditorMode` as a plain prop leaves the group uncontrolled, so that
-	// transient deselect is never undone. A writable `$derived` local, kept in
-	// sync with `presentedEditorMode` automatically, makes the rendered state
-	// always resolvable, and resetting it inside setEditorMode undoes the
-	// deselect. That reset always overwrites a value the two-way binding just set
-	// to "" (Bits UI writes through the bound value before calling onValueChange),
-	// so it's a genuine change and always re-renders.
+	// SegmentedToggle writes the clicked value through the binding before calling
+	// onValueChange. A writable `$derived` local, kept in sync with
+	// `presentedEditorMode`, lets setEditorMode undo a refused change (pending
+	// mutation, no image) by resetting it, which always re-renders.
 	let selectedEditorMode = $derived(presentedEditorMode);
 	// The visible Transparent option represents the canonical null fallback. Preserve an
 	// unsupported historical literal untouched rather than falsely selecting a known fill.
@@ -487,18 +480,18 @@
 		return true;
 	}
 
-	/** The editor's title-row Save, shown while the on-screen keyboard hides the footer. */
-	export function submit() {
-		void handleSubmit();
+	/** Runs the footer Save from outside the form; resolves whether the gift was saved. */
+	export function submit(): Promise<boolean> {
+		return handleSubmit();
 	}
 
-	async function handleSubmit() {
+	async function handleSubmit(): Promise<boolean> {
 		if (mutationPending || isImageUploadPending) {
-			return;
+			return false;
 		}
 
 		if (!validateForm()) {
-			return;
+			return false;
 		}
 
 		const finalPrice = finalizeGiftPrice(price);
@@ -549,10 +542,10 @@
 			} else if (mode === 'edit' && updateInput !== null) {
 				saveResult = await onupdate?.(updateInput);
 			} else {
-				return;
+				return false;
 			}
 			if (saveResult === false) {
-				return;
+				return false;
 			}
 			await pendingUploads.commit(...galleryImageKeys(images));
 			saveSucceeded = true;
@@ -563,6 +556,7 @@
 		if (saveSucceeded) {
 			onsavesuccess?.();
 		}
+		return saveSucceeded;
 	}
 
 	function startEditAppend(index: number, text: string) {
@@ -785,6 +779,14 @@
 
 {#snippet submitActions()}
 	<Button
+		intent="outline"
+		class={styles.submitButton()}
+		disabled={mutationPending || isImageUploadPending}
+		onclick={oncancel}
+	>
+		{m.cancel()}
+	</Button>
+	<Button
 		class={styles.submitButton()}
 		disabled={mutationPending || isImageUploadPending}
 		onclick={() => void handleSubmit()}
@@ -794,14 +796,6 @@
 		{:else}
 			{submitLabel}
 		{/if}
-	</Button>
-	<Button
-		intent="outline"
-		class={styles.submitButton()}
-		disabled={mutationPending || isImageUploadPending}
-		onclick={oncancel}
-	>
-		{m.cancel()}
 	</Button>
 {/snippet}
 
@@ -1340,66 +1334,49 @@
 				     normalizes an untouched legacy `auto` row to the mode it actually
 				     renders as, so the highlighted pill never contradicts the stage below. -->
 					<div class="flex flex-none justify-center pb-2.5">
-						<ToggleGroup.Root
-							type="single"
+						<SegmentedToggle.Root
 							bind:value={selectedEditorMode}
 							onValueChange={setEditorMode}
 							aria-label={m.image_fit_label()}
-							class="max-w-full flex-wrap justify-center rounded-full border-2 border-ink bg-card px-1.5 py-1 shadow-sticker"
+							class="max-w-full flex-wrap"
 						>
-							<ToggleGroup.Item
+							<SegmentedToggle.Item
 								value={IMAGE_EDITOR_MODES.fill}
-								class="rounded-full"
 								disabled={mutationPending}
 							>
 								{m.image_fit_fill()}
-							</ToggleGroup.Item>
-							<ToggleGroup.Item
+							</SegmentedToggle.Item>
+							<SegmentedToggle.Item
 								value={IMAGE_EDITOR_MODES.fit}
-								class="rounded-full"
 								disabled={mutationPending}
 							>
 								{m.image_fit_fit()}
-							</ToggleGroup.Item>
-							<ToggleGroup.Item
+							</SegmentedToggle.Item>
+							<SegmentedToggle.Item
 								value={IMAGE_EDITOR_MODES.manual}
-								class="rounded-full"
 								disabled={mutationPending}
 							>
 								{m.image_fit_manual()}
-							</ToggleGroup.Item>
-						</ToggleGroup.Root>
+							</SegmentedToggle.Item>
+						</SegmentedToggle.Root>
 					</div>
 					<div class="flex flex-none justify-center pb-2.5">
-						<ToggleGroup.Root
-							type="single"
+						<SegmentedToggle.Root
 							bind:value={selectedBgColor}
 							onValueChange={setBgColor}
 							aria-label={m.image_background_label()}
-							class="max-w-full flex-wrap justify-center rounded-full border-2 border-ink bg-card px-1.5 py-1 shadow-sticker"
+							class="max-w-full flex-wrap"
 						>
-							<ToggleGroup.Item
-								value="#ffffff"
-								class="rounded-full"
-								disabled={mutationPending}
-							>
+							<SegmentedToggle.Item value="#ffffff" disabled={mutationPending}>
 								{m.image_background_white()}
-							</ToggleGroup.Item>
-							<ToggleGroup.Item
-								value="#000000"
-								class="rounded-full"
-								disabled={mutationPending}
-							>
+							</SegmentedToggle.Item>
+							<SegmentedToggle.Item value="#000000" disabled={mutationPending}>
 								{m.image_background_black()}
-							</ToggleGroup.Item>
-							<ToggleGroup.Item
-								value="transparent"
-								class="rounded-full"
-								disabled={mutationPending}
-							>
+							</SegmentedToggle.Item>
+							<SegmentedToggle.Item value="transparent" disabled={mutationPending}>
 								{m.image_background_transparent()}
-							</ToggleGroup.Item>
-						</ToggleGroup.Root>
+							</SegmentedToggle.Item>
+						</SegmentedToggle.Root>
 					</div>
 					<!-- Fixed-window stage (#533): the window keeps the active target's
 				     real size while the photo pans and zooms behind it. Fill/Fit show

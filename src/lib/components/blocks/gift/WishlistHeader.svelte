@@ -417,7 +417,7 @@
 
 	<!-- Lifecycle notices: calm tinted panels (the shared/draft strips are gone — REQ-12) -->
 	{#if isArchived}
-		<Alert.Root>
+		<Alert.Root tone="palette">
 			<ArchiveIcon />
 			<Alert.Title>{m.wishlist_archived_banner()}</Alert.Title>
 		</Alert.Root>

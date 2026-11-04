@@ -229,11 +229,13 @@
 			}
 			return;
 		}
-		if (event.pointerType !== 'mouse') {
-			event.stopPropagation();
-		}
+		// A control owns its press, so page-level outside-press detection still sees it.
 		if (eventStartedInsideInteractiveElement(event)) {
 			return;
+		}
+		// Touch and pen presses on card content belong to the card's own long-press recognizers.
+		if (event.pointerType !== 'mouse') {
+			event.stopPropagation();
 		}
 		if (reorderEnabled) {
 			handleReorderPointerDown(event);
