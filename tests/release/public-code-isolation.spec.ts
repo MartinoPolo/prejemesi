@@ -39,6 +39,7 @@ const LANDING_DEMO_PUBLIC_MODULE_PATHS = [
 	'/lib/modules/gifts/gift_url.ts',
 	'/lib/modules/gifts/gifts.context.svelte.ts',
 	'/lib/modules/gifts/gift_ordering.ts',
+	'/lib/modules/gifts/gift_view_mode.ts',
 	'/lib/modules/gifts/gift_images.ts',
 	'/lib/modules/gifts/gift_gallery.ts',
 	'/lib/modules/gifts/gift_gallery_positions.ts',
