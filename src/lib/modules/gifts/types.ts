@@ -164,9 +164,12 @@ export type GiftSortOption = (typeof GIFT_SORT_OPTIONS)[keyof typeof GIFT_SORT_O
 
 export const UNCATEGORIZED_GIFT_CATEGORY_FILTER_VALUE = '__uncategorized__' as const;
 export const NO_PRIORITY_GIFT_PRIORITY_FILTER_VALUE = '__no_priority__' as const;
+export const NO_LINK_GIFT_STORE_FILTER_VALUE = '__no_link__' as const;
 
 export type GiftCategoryFilterValue = string | typeof UNCATEGORIZED_GIFT_CATEGORY_FILTER_VALUE;
 export type GiftPriorityFilterValue = string | typeof NO_PRIORITY_GIFT_PRIORITY_FILTER_VALUE;
+/** A store domain (see `extractGiftStoreDomain`) or the no-link sentinel. */
+export type GiftStoreFilterValue = string | typeof NO_LINK_GIFT_STORE_FILTER_VALUE;
 
 export const GIFT_GROUPING_OPTIONS = {
 	none: 'none',
@@ -190,6 +193,7 @@ export interface GiftFilters {
 	showReceived: boolean;
 	categoryValues: GiftCategoryFilterValue[];
 	priorityValues: GiftPriorityFilterValue[];
+	storeValues: GiftStoreFilterValue[];
 }
 
 /** Supported currencies */

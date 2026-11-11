@@ -36,6 +36,7 @@ Přejeme si is a shareable wishlist web app where users create gift lists for th
 - **Batch add** — Adding multiple gifts at once via the shared draft grid (distinct from the import wizard, which sources data externally).
 - **Enrichment** — Auto-filling a gift's image / price / title from its link (and, in a later phase, by searching for it by name).
 - **Multi-link** — Multiple URLs attached to a single gift (up to 10); `links[0]` is treated as the primary link.
+- **Store** (Obchod) — The main domain (subdomains merged) of any of a gift's links, used to filter gifts by where they can be bought.
 - **Piece count** — Gift quantity; ordinary recipients see quantity without reserved counts, while disclosed self-promotion and other role capabilities govern reservation visibility.
 - **Gift viewer** — The read-only, photo-first gift detail with a caption and the viewer's applicable actions; managers get the gift editor instead.
 

@@ -11,6 +11,7 @@ import {
 	GIFT_GROUPING_OPTIONS,
 	GIFT_SORT_OPTIONS,
 	GIFT_VIEW_MODES,
+	NO_LINK_GIFT_STORE_FILTER_VALUE,
 } from '$lib/modules/gifts/types.js';
 import { WISHLIST_ROLES } from '$lib/modules/wishlists/types.js';
 import WishlistDetailToolbar from './WishlistDetailToolbar.svelte';
@@ -24,6 +25,7 @@ const defaultFilters = {
 	showReceived: false,
 	categoryValues: [],
 	priorityValues: [],
+	storeValues: [],
 };
 
 const defaultProps: ComponentProps<typeof WishlistDetailToolbar> = {
@@ -38,6 +40,7 @@ const defaultProps: ComponentProps<typeof WishlistDetailToolbar> = {
 	groupingAvailability: { priority: false, category: false },
 	categoryFilterOptions: [],
 	priorityFilterOptions: [],
+	storeFilterOptions: [],
 	cardColumnOption: GIFT_CARD_COLUMN_OPTIONS.automatic,
 	reorderMode: false,
 	recipientViewPreview: false,
@@ -190,6 +193,53 @@ describe('WishlistDetailToolbar mobile actions (#340)', () => {
 		await expect
 			.element(screen.getByRole('checkbox', { name: m.gift_filter_with_link() }))
 			.toBeVisible();
+		await screen.unmount();
+	});
+
+	it.each([WISHLIST_ROLES.visitor, WISHLIST_ROLES.recipient, WISHLIST_ROLES.moderator])(
+		'offers the store facet to the %s in the filter sheet, counted and cleared like other facets (#650)',
+		async (role) => {
+			const onfilterchange = vi.fn();
+			const screen = await renderToolbar({
+				role,
+				canManage: role !== WISHLIST_ROLES.visitor,
+				isAuthenticated: true,
+				onfilterchange,
+				filters: { ...defaultFilters, storeValues: ['alza.cz'] },
+				storeFilterOptions: [
+					{ value: 'alza.cz', label: 'alza.cz' },
+					{ value: NO_LINK_GIFT_STORE_FILTER_VALUE, label: m.gift_link_none() },
+				],
+			});
+			const trigger = screen.getByTestId('mobile-display-trigger');
+			expect(trigger.element().querySelector('[data-filter-count]')).toHaveTextContent('1');
+			await trigger.click();
+			await screen.getByTestId('mobile-sheet-filter-switch').click();
+			await expect
+				.element(screen.getByRole('heading', { name: m.gift_filter_store_heading() }))
+				.toBeVisible();
+			await expect.element(screen.getByRole('checkbox', { name: 'alza.cz' })).toBeChecked();
+			await screen.getByRole('checkbox', { name: m.gift_link_none() }).click();
+			expect(onfilterchange).toHaveBeenLastCalledWith({
+				...defaultFilters,
+				storeValues: ['alza.cz', NO_LINK_GIFT_STORE_FILTER_VALUE],
+			});
+			await screen.getByRole('button', { name: m.wishlist_detail_clear_filters() }).click();
+			expect(onfilterchange).toHaveBeenLastCalledWith(defaultFilters);
+			await screen.unmount();
+		},
+	);
+
+	it('omits the store facet when there are no store options (#650)', async () => {
+		const screen = await renderToolbar({
+			categoryFilterOptions: [{ value: 'books', label: 'Knihy' }],
+		});
+		await screen.getByTestId('mobile-display-trigger').click();
+		await screen.getByTestId('mobile-sheet-filter-switch').click();
+		await expect.element(screen.getByRole('checkbox', { name: 'Knihy' })).toBeVisible();
+		await expect
+			.element(screen.getByRole('heading', { name: m.gift_filter_store_heading() }))
+			.not.toBeInTheDocument();
 		await screen.unmount();
 	});
 
