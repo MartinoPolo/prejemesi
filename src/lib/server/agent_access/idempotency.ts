@@ -4,6 +4,7 @@ import {
 	agentIdempotencyKey,
 	agentOauthIdempotencyKey,
 } from '$lib/server/db/change_proposal.schema.js';
+import { sha256Hex } from '$lib/server/crypto/sha256.js';
 import { AGENT_CREDENTIAL_KIND, type IdempotentCredential } from './agent_caller.js';
 import { IDEMPOTENCY_KEY_ABANDONED_AFTER_MS, IDEMPOTENCY_KEY_RETENTION_MS } from './limits.js';
 
@@ -84,9 +85,7 @@ export async function fingerprintRequest(
 	path: string,
 	body: unknown,
 ): Promise<string> {
-	const text = `${method.toUpperCase()}\n${path}\n${canonicalJson(body)}`;
-	const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
-	return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
+	return sha256Hex(`${method.toUpperCase()}\n${path}\n${canonicalJson(body)}`);
 }
 
 function keyOf(scope: Pick<IdempotencyScope, 'credential' | 'key'>) {
