@@ -23,6 +23,11 @@ const ChatStreamEventSchema = v.variant('type', [
 	}),
 	v.object({ type: v.literal(CHAT_STREAM_EVENT.error), error: v.enum(CHAT_TURN_ERROR) }),
 	v.object({ type: v.literal(CHAT_STREAM_EVENT.done) }),
+	// Only the app's own turn streams are followed.
+	v.object({
+		type: v.literal(CHAT_STREAM_EVENT.continue),
+		url: v.pipe(v.string(), v.startsWith('/chat/')),
+	}),
 ]);
 
 const TurnRefusalSchema = v.object({
@@ -58,7 +63,8 @@ async function refusalOf(response: Response): Promise<ChatTurnRefusal> {
 
 /**
  * Posts one turn and hands each streamed event to `onEvent`; a refusal answers before streaming.
- * An event the client does not know is skipped, so the server can add kinds first.
+ * An event the client does not know is skipped, so the server can add kinds first. A turn that
+ * continues at another URL is followed there, so the caller sees one stream.
  */
 export async function streamChatTurn(options: {
 	url: string;
@@ -67,7 +73,8 @@ export async function streamChatTurn(options: {
 	onEvent: (event: ChatStreamEvent) => void;
 	fetch?: typeof fetch;
 }): Promise<ChatTurnRefusal | null> {
-	const response = await (options.fetch ?? fetch)(options.url, {
+	const fetchTurn = options.fetch ?? fetch;
+	const response = await fetchTurn(options.url, {
 		method: 'POST',
 		headers: { 'content-type': 'application/json' },
 		body: JSON.stringify(options.request),
@@ -76,11 +83,33 @@ export async function streamChatTurn(options: {
 	if (!response.ok || response.body === null) {
 		return refusalOf(response);
 	}
-	for await (const data of serverSentEventData(response.body)) {
-		const parsed = v.safeParse(ChatStreamEventSchema, parseJson(data));
-		if (parsed.success) {
-			options.onEvent(parsed.output);
+	let continuationUrl = await readTurnEvents(response.body, options.onEvent);
+	while (continuationUrl !== null) {
+		const continued = await fetchTurn(continuationUrl, { signal: options.signal });
+		if (!continued.ok || continued.body === null) {
+			throw new Error(`The turn's continuation answered ${String(continued.status)}`);
 		}
+		continuationUrl = await readTurnEvents(continued.body, options.onEvent);
 	}
 	return null;
+}
+
+/** Hands one response's events on; answers where the turn continues, if it does. */
+async function readTurnEvents(
+	body: ReadableStream<Uint8Array>,
+	onEvent: (event: ChatStreamEvent) => void,
+): Promise<string | null> {
+	let continuationUrl: string | null = null;
+	for await (const data of serverSentEventData(body)) {
+		const parsed = v.safeParse(ChatStreamEventSchema, parseJson(data));
+		if (!parsed.success) {
+			continue;
+		}
+		if (parsed.output.type === CHAT_STREAM_EVENT.continue) {
+			continuationUrl = parsed.output.url;
+		} else {
+			onEvent(parsed.output);
+		}
+	}
+	return continuationUrl;
 }

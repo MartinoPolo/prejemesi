@@ -10,6 +10,7 @@ import {
 import { isReservedDemoEmail } from '$lib/server/demo/constants.js';
 import { runAfterResponse } from '$lib/server/background.js';
 import { toBase64Url } from '$lib/server/crypto/hmac.js';
+import { sha256Hex } from '$lib/server/crypto/sha256.js';
 import { DAY_MS } from '$lib/server/operations/constants.js';
 import { tokenChannel } from '$lib/server/operations/actor.js';
 import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
@@ -40,17 +41,12 @@ const TOKEN_DISPLAY_RANDOM_CHARACTERS = 4;
 
 type AccessTokenRow = typeof personalAccessToken.$inferSelect;
 
-async function hashTokenValue(value: string): Promise<string> {
-	const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value));
-	return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
-}
-
 /** A fresh token value with what is stored about it: its hash and short display prefix. */
 async function issueTokenSecret() {
 	const value = `${TOKEN_VALUE_PREFIX}${toBase64Url(crypto.getRandomValues(new Uint8Array(TOKEN_RANDOM_BYTES)))}`;
 	return {
 		value,
-		tokenHash: await hashTokenValue(value),
+		tokenHash: await sha256Hex(value),
 		tokenPrefix: value.slice(0, TOKEN_VALUE_PREFIX.length + TOKEN_DISPLAY_RANDOM_CHARACTERS),
 	};
 }
@@ -364,7 +360,7 @@ export async function authenticateAccessToken(
 		})
 		.from(personalAccessToken)
 		.innerJoin(user, eq(user.id, personalAccessToken.userId))
-		.where(eq(personalAccessToken.tokenHash, await hashTokenValue(value)))
+		.where(eq(personalAccessToken.tokenHash, await sha256Hex(value)))
 		.limit(1);
 	if (found === undefined) {
 		error(401, SERVER_ERROR.AGENT_TOKEN_INVALID);

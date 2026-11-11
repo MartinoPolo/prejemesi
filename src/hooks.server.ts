@@ -138,6 +138,7 @@ const canonicalHostHandle: Handle = ({ event, resolve }) => {
 };
 
 const AGENT_API_PATH_PREFIX = `${AGENT_API_BASE_PATH}/`;
+const CHAT_RUNNER_PATH_PREFIX = '/chat-runner/';
 const PUBLIC_WISHLIST_PATH_PREFIXES = ['/w/', '/en/w/'] as const;
 const LANDING_PATHS = new Set(['/', '/en', '/en/']);
 
@@ -362,8 +363,11 @@ function canSkipAuthentication(
 	event: Parameters<Handle>[0]['event'],
 	attemptsDevAutoLogin: boolean,
 ): boolean {
-	// The agent API authenticates only its bearer token and never reads the cookie session.
-	if (event.url.pathname.startsWith(AGENT_API_PATH_PREFIX)) {
+	// The agent API and the chat runner authenticate only their bearer tokens, never the cookie session.
+	if (
+		event.url.pathname.startsWith(AGENT_API_PATH_PREFIX) ||
+		event.url.pathname.startsWith(CHAT_RUNNER_PATH_PREFIX)
+	) {
 		return true;
 	}
 	return (

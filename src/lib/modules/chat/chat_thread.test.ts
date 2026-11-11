@@ -30,8 +30,9 @@ function message(overrides: Partial<ChatMessageView> & Pick<ChatMessageView, 'id
 }
 
 describe('chatToolKind', () => {
-	it('tells web search, reads and changes apart', () => {
+	it('tells web search, page reads, reads and changes apart', () => {
 		expect(chatToolKind('web_search')).toBe(CHAT_TOOL_KIND.search);
+		expect(chatToolKind('web_fetch')).toBe(CHAT_TOOL_KIND.fetch);
 		expect(chatToolKind('readWishlistGifts')).toBe(CHAT_TOOL_KIND.read);
 		expect(chatToolKind('updateGift')).toBe(CHAT_TOOL_KIND.change);
 		expect(chatToolKind('reorderGifts')).toBe(CHAT_TOOL_KIND.change);

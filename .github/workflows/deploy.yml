@@ -31,7 +31,7 @@ jobs:
             run_e2e: true
 
     migration-review:
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-24.04
         steps:
             - uses: actions/checkout@v4
               with:
@@ -83,7 +83,7 @@ jobs:
 
     deploy:
         needs: [verify, migration-review]
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-24.04
         # The `production` environment has no required reviewer, so a green run deploys
         # without a hold. It records deployment history, scopes PRODUCTION_DATABASE_URL to
         # this job, and its branch policy admits only the production branch.

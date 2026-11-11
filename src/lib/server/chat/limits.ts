@@ -17,6 +17,30 @@ export const CHAT_LIMITS = {
 	turnTimeoutMs: 120_000,
 } as const;
 
+/**
+ * The chat runner's timing. The Workers Free plan bounds CPU per invocation, so a turn's stream
+ * and the runner's claim each hold one request for a short window only, polling the database.
+ */
+export const CHAT_RUNNER_LIMITS = {
+	/** How long one turn response relays events before handing over to a continuation. */
+	relayWindowMs: 20_000,
+	relayPollIntervalMs: 1_500,
+	/** How long one claim request waits for a pending job. */
+	claimWindowMs: 20_000,
+	claimPollIntervalMs: 2_000,
+	/** A job nobody claimed by then finds the runner offline. */
+	runnerOfflineMs: 30_000,
+	/** The runner reports at least this often while Claude Code works. */
+	heartbeatTimeoutMs: 90_000,
+	turnTimeoutMs: 600_000,
+	eventsPerReport: 100,
+	textEventMaxLength: 20_000,
+	/** A reported web search's query or page address. */
+	queryMaxLength: 2_000,
+} as const;
+
+export type ChatRunnerLimits = { [Limit in keyof typeof CHAT_RUNNER_LIMITS]: number };
+
 /** A chat is deleted this long after its last turn. */
 export const CHAT_RETENTION_MS = 30 * DAY_MS;
 

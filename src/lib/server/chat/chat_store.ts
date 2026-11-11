@@ -1,6 +1,6 @@
 import { error } from '@sveltejs/kit';
 import { and, asc, count, desc, eq, gt, gte, isNull, ne } from 'drizzle-orm';
-import { getDb } from '$lib/server/db/index.js';
+import { getDb, type DatabaseTransaction } from '$lib/server/db/index.js';
 import { chatMessage, chatSession } from '$lib/server/db/chat.schema.js';
 import { user } from '$lib/server/db/auth.schema.js';
 import { wishlist } from '$lib/server/db/wishlist.schema.js';
@@ -194,8 +194,9 @@ export async function storeAssistantMessage(
 	content: ChatContentBlock[],
 	proposalId: string | null,
 	now = new Date(),
+	database: DatabaseTransaction | ReturnType<typeof getDb> = getDb(),
 ): Promise<void> {
-	await getDb().insert(chatMessage).values({
+	await database.insert(chatMessage).values({
 		sessionId,
 		role: CHAT_ROLE.assistant,
 		content,

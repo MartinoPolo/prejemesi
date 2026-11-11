@@ -253,6 +253,13 @@
       "when": 1793636613906,
       "tag": "0035_change_proposal_fast_forward_hold",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1794361568372,
+      "tag": "0036_chat_runner_job",
+      "breakpoints": true
     }
   ]
 }
