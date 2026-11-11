@@ -23,6 +23,7 @@ const defaultFilters = {
 	showReceived: false,
 	categoryValues: [],
 	priorityValues: [],
+	storeValues: [],
 };
 
 const defaultProps: ComponentProps<typeof WishlistDetailToolbar> = {
@@ -37,6 +38,7 @@ const defaultProps: ComponentProps<typeof WishlistDetailToolbar> = {
 	groupingAvailability: { priority: false, category: false },
 	categoryFilterOptions: [],
 	priorityFilterOptions: [],
+	storeFilterOptions: [],
 	cardColumnOption: GIFT_CARD_COLUMN_OPTIONS.automatic,
 	reorderMode: false,
 	recipientViewPreview: false,
@@ -233,6 +235,54 @@ describe('WishlistDetailToolbar consolidated desktop display (#359)', () => {
 			m.gift_filter_category_heading(),
 			m.gift_filter_priority_heading(),
 		]);
+		await screen.unmount();
+	});
+
+	it('offers the store facet after priority with a removable pill and active count (#650)', async () => {
+		const onfilterchange = vi.fn();
+		const screen = await renderToolbar(
+			{
+				onfilterchange,
+				filters: { ...defaultFilters, storeValues: ['datart.cz'] },
+				categoryFilterOptions: [{ value: 'books', label: 'Knihy' }],
+				priorityFilterOptions: [{ value: 'high', label: 'Vysoká' }],
+				storeFilterOptions: [
+					{ value: 'alza.cz', label: 'alza.cz' },
+					{ value: 'datart.cz', label: 'datart.cz' },
+				],
+			},
+			1280,
+		);
+		await frames(1);
+		const display = screen.getByTestId('desktop-display-trigger');
+		expect(display.element().querySelector('[data-filter-count]')).toHaveTextContent('1');
+
+		await screen
+			.getByTestId('wishlist-toolbar-active-filters')
+			.getByRole('button', { name: m.filter_remove({ label: 'datart.cz' }), exact: true })
+			.click();
+		expect(onfilterchange).toHaveBeenLastCalledWith(defaultFilters);
+
+		await display.click();
+		const root = page.getByRole('menu', { name: m.gift_display_options() });
+		await root.getByRole('menuitem', { name: new RegExp(m.gift_filter()) }).click();
+		const submenu = document.querySelector<HTMLElement>(
+			'[data-slot="dropdown-menu-sub-content"]',
+		)!;
+		const headings = submenu.querySelectorAll<HTMLElement>('[data-filter-group-heading]');
+		expect(Array.from(headings, (heading) => heading.textContent?.trim())).toEqual([
+			m.gift_filter_category_heading(),
+			m.gift_filter_priority_heading(),
+			m.gift_filter_store_heading(),
+		]);
+		await expect
+			.element(page.getByRole('menuitemcheckbox', { name: 'datart.cz' }))
+			.toBeChecked();
+		await page.getByRole('menuitemcheckbox', { name: 'alza.cz' }).click();
+		expect(onfilterchange).toHaveBeenLastCalledWith({
+			...defaultFilters,
+			storeValues: ['datart.cz', 'alza.cz'],
+		});
 		await screen.unmount();
 	});
 

@@ -58,6 +58,7 @@
 		type GiftGroupingOption,
 		type GiftPriorityFilterValue,
 		type GiftSortOption,
+		type GiftStoreFilterValue,
 		type GiftViewMode,
 	} from '$lib/modules/gifts/types.js';
 
@@ -75,6 +76,8 @@
 		groupingRequired?: boolean;
 		categoryFilterOptions: GiftFilterOption<GiftCategoryFilterValue>[];
 		priorityFilterOptions: GiftFilterOption<GiftPriorityFilterValue>[];
+		/** Empty when the wishlist has fewer than two stores, which hides the facet. */
+		storeFilterOptions: GiftFilterOption<GiftStoreFilterValue>[];
 		cardColumnOption: GiftCardColumnOption;
 		/** Largest column count the card collection fits; null while unmeasured. */
 		cardColumnCapacity?: number | null;
@@ -110,6 +113,7 @@
 		groupingRequired = false,
 		categoryFilterOptions,
 		priorityFilterOptions,
+		storeFilterOptions,
 		cardColumnOption,
 		cardColumnCapacity = null,
 		reorderMode,
@@ -143,7 +147,8 @@
 			!filters.likedOnly &&
 			!filters.showReceived &&
 			filters.categoryValues.length === 0 &&
-			filters.priorityValues.length === 0,
+			filters.priorityValues.length === 0 &&
+			filters.storeValues.length === 0,
 	);
 	const canReorder = $derived(
 		canManage &&
@@ -216,6 +221,13 @@
 			? [...filters.priorityValues, value]
 			: filters.priorityValues.filter((selected) => selected !== value);
 		onfilterchange({ ...filters, priorityValues: [...new Set(values)] });
+	}
+
+	function updateStoreFilter(value: GiftStoreFilterValue, checked: boolean) {
+		const values = checked
+			? [...filters.storeValues, value]
+			: filters.storeValues.filter((selected) => selected !== value);
+		onfilterchange({ ...filters, storeValues: [...new Set(values)] });
 	}
 
 	const filterDefinitions = $derived<FilterDefinition[]>([
@@ -455,6 +467,21 @@
 				onchange: (checked: boolean) => updatePriorityFilter(option.value, checked),
 			})),
 		},
+		...(storeFilterOptions.length > 0
+			? [
+					{
+						id: 'store',
+						label: m.gift_filter_store_heading(),
+						options: storeFilterOptions.map((option) => ({
+							value: option.value,
+							label: option.label,
+							checked: filters.storeValues.includes(option.value),
+							onchange: (checked: boolean) =>
+								updateStoreFilter(option.value, checked),
+						})),
+					},
+				]
+			: []),
 	]);
 	const activeFilters = $derived(normalizeActiveFilters(filterDefinitions, filterFacets));
 

@@ -91,6 +91,9 @@
 <div data-testid="category-filter-options">
 	{JSON.stringify(context.categoryFilterOptions.current)}
 </div>
+<div data-testid="store-filter-options">
+	{JSON.stringify(context.storeFilterOptions.current)}
+</div>
 <div data-testid="stored">
 	{localStorage.getItem(wishlistGiftGroupingStorageKey(wishlistId)) ?? ''}
 </div>

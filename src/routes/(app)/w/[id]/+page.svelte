@@ -1707,7 +1707,8 @@
 		if (
 			scalarKeys.every((key) => previous[key] === filters[key]) &&
 			sameFilterValues(previous.categoryValues, filters.categoryValues) &&
-			sameFilterValues(previous.priorityValues, filters.priorityValues)
+			sameFilterValues(previous.priorityValues, filters.priorityValues) &&
+			sameFilterValues(previous.storeValues, filters.storeValues)
 		) {
 			return;
 		}
@@ -2504,6 +2505,7 @@
 			groupingRequired={giftsContext.carouselViewActive.current}
 			categoryFilterOptions={giftsContext.categoryFilterOptions.current}
 			priorityFilterOptions={giftsContext.priorityFilterOptions.current}
+			storeFilterOptions={giftsContext.storeFilterOptions.current}
 			cardColumnOption={giftsContext.cardColumnOption.current}
 			{cardColumnCapacity}
 			{reorderMode}

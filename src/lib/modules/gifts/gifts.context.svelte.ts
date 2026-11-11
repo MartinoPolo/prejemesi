@@ -9,6 +9,7 @@ import {
 	GIFT_GROUPING_OPTIONS,
 	GIFT_SORT_OPTIONS,
 	GIFT_VIEW_MODES,
+	NO_LINK_GIFT_STORE_FILTER_VALUE,
 	NO_PRIORITY_GIFT_PRIORITY_FILTER_VALUE,
 	UNCATEGORIZED_GIFT_CATEGORY_FILTER_VALUE,
 	isGiftCardColumnOption,
@@ -21,9 +22,11 @@ import {
 	type GiftGroupingOption,
 	type GiftPriorityFilterValue,
 	type GiftSortOption,
+	type GiftStoreFilterValue,
 	type GiftViewMode,
 } from './types.js';
 import { computeGiftSections } from './gift_ordering.js';
+import { extractGiftStoreDomain, type RegistrableDomainResolver } from './gift_store.js';
 import { carouselGrouping } from './gift_view_mode.js';
 import { getPriorityDisplayLabel } from './gift_display.js';
 import { labelForGiftCategory } from '$lib/modules/gift-categories/types.js';
@@ -117,6 +120,7 @@ export function emptyGiftFilters(): GiftFilters {
 		showReceived: false,
 		categoryValues: [],
 		priorityValues: [],
+		storeValues: [],
 	};
 }
 
@@ -209,14 +213,81 @@ function categoryFilterValues(gift: GiftByRole): GiftCategoryFilterValue[] {
 		: [UNCATEGORIZED_GIFT_CATEGORY_FILTER_VALUE];
 }
 
-export function giftMatchesFacetFilters(gift: GiftByRole, filters: GiftFilters): boolean {
+/** Every link counts, so a store matches a gift buyable there through any of its links. */
+function storeFilterValues(
+	gift: GiftByRole,
+	resolveRegistrableDomain: RegistrableDomainResolver,
+): GiftStoreFilterValue[] {
+	if (gift.links.length === 0) {
+		return [NO_LINK_GIFT_STORE_FILTER_VALUE];
+	}
+	const domains: string[] = [];
+	for (const link of gift.links) {
+		const domain = extractGiftStoreDomain(link.url, resolveRegistrableDomain);
+		if (domain !== null && !domains.includes(domain)) {
+			domains.push(domain);
+		}
+	}
+	return domains;
+}
+
+/**
+ * Store selections come only from store options, which need the lazily loaded resolver,
+ * so the store facet is inactive until it is available.
+ */
+export function giftMatchesFacetFilters(
+	gift: GiftByRole,
+	filters: GiftFilters,
+	resolveRegistrableDomain: RegistrableDomainResolver | null,
+): boolean {
 	const categoryMatches =
 		filters.categoryValues.length === 0 ||
 		categoryFilterValues(gift).some((value) => filters.categoryValues.includes(value));
 	const priorityMatches =
 		filters.priorityValues.length === 0 ||
 		filters.priorityValues.includes(priorityFilterValue(gift));
-	return categoryMatches && priorityMatches;
+	const storeMatches =
+		filters.storeValues.length === 0 ||
+		resolveRegistrableDomain === null ||
+		storeFilterValues(gift, resolveRegistrableDomain).some((value) =>
+			filters.storeValues.includes(value),
+		);
+	return categoryMatches && priorityMatches && storeMatches;
+}
+
+/**
+ * Store facet options: each store any gift links to, by gift count then name, with
+ * „Bez odkazu“ last when a gift has no link. Fewer than two options hide the facet.
+ */
+export function giftStoreFilterOptions(
+	gifts: readonly GiftByRole[],
+	resolveRegistrableDomain: RegistrableDomainResolver,
+): GiftFilterOption<GiftStoreFilterValue>[] {
+	const storeGiftCounts: Array<{ store: string; giftCount: number }> = [];
+	let hasLinkless = false;
+
+	for (const gift of gifts) {
+		for (const value of storeFilterValues(gift, resolveRegistrableDomain)) {
+			if (value === NO_LINK_GIFT_STORE_FILTER_VALUE) {
+				hasLinkless = true;
+				continue;
+			}
+			const counted = storeGiftCounts.find((entry) => entry.store === value);
+			if (counted) {
+				counted.giftCount += 1;
+			} else {
+				storeGiftCounts.push({ store: value, giftCount: 1 });
+			}
+		}
+	}
+
+	const options: GiftFilterOption<GiftStoreFilterValue>[] = storeGiftCounts
+		.sort((a, b) => b.giftCount - a.giftCount || (a.store < b.store ? -1 : 1))
+		.map(({ store }) => ({ value: store, label: store }));
+	if (hasLinkless) {
+		options.push({ value: NO_LINK_GIFT_STORE_FILTER_VALUE, label: m.gift_link_none() });
+	}
+	return options.length < 2 ? [] : options;
 }
 
 function createGiftsContext(
@@ -278,7 +349,8 @@ function createGiftsContext(
 			filters.current.likedOnly ||
 			filters.current.showReceived ||
 			filters.current.categoryValues.length > 0 ||
-			filters.current.priorityValues.length > 0,
+			filters.current.priorityValues.length > 0 ||
+			filters.current.storeValues.length > 0,
 	);
 
 	const categoryFilterOptions = new Derived<GiftFilterOption<GiftCategoryFilterValue>[]>(() => {
@@ -347,6 +419,22 @@ function createGiftsContext(
 		return options;
 	});
 
+	const registrableDomainResolver = new StateRaw<RegistrableDomainResolver | null>(null);
+	if (browser) {
+		import('tldts')
+			.then((tldts) => {
+				registrableDomainResolver.current = tldts.getDomain;
+			})
+			.catch(() => {
+				// The store facet stays hidden when its chunk cannot load.
+			});
+	}
+	const storeFilterOptions = new Derived<GiftFilterOption<GiftStoreFilterValue>[]>(() =>
+		registrableDomainResolver.current === null
+			? []
+			: giftStoreFilterOptions(effectiveGifts.current, registrableDomainResolver.current),
+	);
+
 	const hasAnyPriority = new Derived(() => effectiveGifts.current.some(hasPriorityValue));
 	const hasAnyCategory = new Derived(() => effectiveGifts.current.some(hasCategoryValue));
 	const groupingAvailability = new Derived(() => ({
@@ -401,7 +489,9 @@ function createGiftsContext(
 		if (shouldApplyLikedOnly(currentFilters.likedOnly, viewerRole.current)) {
 			result = result.filter((giftItem) => likedIdSet.current.has(giftItem.id));
 		}
-		result = result.filter((giftItem) => giftMatchesFacetFilters(giftItem, currentFilters));
+		result = result.filter((giftItem) =>
+			giftMatchesFacetFilters(giftItem, currentFilters, registrableDomainResolver.current),
+		);
 
 		return result;
 	});
@@ -451,6 +541,7 @@ function createGiftsContext(
 		hasActiveFilters,
 		categoryFilterOptions,
 		priorityFilterOptions,
+		storeFilterOptions,
 		hasAnyPriority,
 		hasAnyCategory,
 		giftSections,
