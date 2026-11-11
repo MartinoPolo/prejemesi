@@ -194,6 +194,7 @@ CHAT_RUNNER_SECRET="..."
 pnpm chat:runner
 ```
 
+- One runner answers one app. For staging, keep its URL and the staging Worker's secret in a second git-ignored file and run `node --env-file=.env.chat-runner.staging scripts/chat_runner.mjs`. For the local dev server, set `CHAT_RUNNER_SECRET` and `CHAT_RUNNER_EMAILS` in `.env` and point `CHAT_RUNNER_URL` at the dev server's origin.
 - `claude` must be installed and logged in. Its subscription pays for the turns. On Windows the runner starts only an executable: if `claude` resolves to an npm `.cmd` shim, set `CLAUDE_BIN` to the path of `claude.exe`.
 - Turns of listed users fail with "not running" while the runner is stopped. Other users keep the provider assistant.
 - The runner long-polls the app, so it keeps the Neon database awake while it runs. Stop it with Ctrl+C when it is not needed.
