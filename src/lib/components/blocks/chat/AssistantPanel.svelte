@@ -17,6 +17,7 @@
 	import { getWishlistByShortId } from '$lib/modules/wishlists/wishlists.remote.js';
 	import {
 		getChatAvailability,
+		getChatRunnerEnabled,
 		getChatSession,
 		getChatSessions,
 		setChatSessionFastForward,
@@ -47,6 +48,7 @@
 		CHAT_TURN_KIND,
 		type ChatAvailability,
 		type ChatStreamEvent,
+		type ChatTurnError as ChatTurnErrorKind,
 		type ChatTurnRequest,
 	} from '$lib/modules/chat/types.js';
 	import { keepFocusOnPress, keyboardInset } from '$lib/reactivity/keyboard_inset.svelte.js';
@@ -102,6 +104,8 @@
 	let thread = $state<HTMLElement>();
 	let composer = $state<HTMLTextAreaElement>();
 	let liveTurn = $state.raw<LiveChatTurn | null>(null);
+	/** Why the chat's last turn failed, kept once the stored chat replaces the live turn. */
+	let lastTurnFailure = $state.raw<{ sessionId: string; error: ChatTurnErrorKind } | null>(null);
 	let streaming = $state(false);
 	let abortTurn: AbortController | null = null;
 	let creatingSession = $state(false);
@@ -118,6 +122,7 @@
 	const available = $derived(availability === CHAT_AVAILABILITY.available);
 	const demo = $derived(availability === CHAT_AVAILABILITY.demo);
 	const takesMessages = $derived(available || demo);
+	const runnerEnabled = $derived(getChatRunnerEnabled().current === true);
 	const sessionsQuery = $derived(getChatSessions({ wishlistShortId }));
 	const sessionId = $derived.by(() => {
 		const selection = assistant.selection.current;
@@ -266,6 +271,7 @@
 		const userText = request.kind === CHAT_TURN_KIND.message ? request.text : null;
 		let turn = startLiveChatTurn(userText);
 		liveTurn = turn;
+		lastTurnFailure = null;
 		streaming = true;
 		const controller = new AbortController();
 		abortTurn = controller;
@@ -275,7 +281,9 @@
 				url: localizeInternalHref(
 					resolve('/chat/[sessionId]/turns', { sessionId: turnSessionId }),
 				),
-				request,
+				request: runnerEnabled
+					? { ...request, model: assistant.runnerModel.current }
+					: request,
 				signal: controller.signal,
 				onEvent: (event) => {
 					turn = withStreamEvent(turn, event);
@@ -296,11 +304,14 @@
 			streaming = false;
 			abortTurn = null;
 		}
+		const turnError = liveTurn?.error ?? null;
 		await Promise.allSettled([
 			getChatSession({ sessionId: turnSessionId }).refresh(),
 			getChatSessions({ wishlistShortId }).refresh(),
 			getChatAvailability().refresh(),
 		]);
+		lastTurnFailure =
+			turnError === null ? null : { sessionId: turnSessionId, error: turnError };
 		liveTurn = null;
 		void scrollThreadToEnd();
 	}
@@ -502,6 +513,8 @@
 	{#if unfinished || liveTurn?.error != null}
 		<ChatTurnError
 			proposed={liveTurn?.proposed === true}
+			error={liveTurn?.error ??
+				(lastTurnFailure?.sessionId === sessionId ? lastTurnFailure.error : null)}
 			onretry={unfinished && takesMessages
 				? () => void runTurn({ kind: CHAT_TURN_KIND.retry })
 				: undefined}
@@ -560,11 +573,13 @@
 				sessions={sessionsQuery.current}
 				activeSessionId={sessionId}
 				canStartNew={available}
+				runnerModel={runnerEnabled ? assistant.runnerModel.current : undefined}
 				onopen={(id) => {
 					assistant.selection.current = { type: CHAT_SELECTION.session, sessionId: id };
 					assistant.view.current = ASSISTANT_VIEW.chat;
 				}}
 				onnew={() => assistant.startNewChat()}
+				onrunnermodel={(model) => (assistant.runnerModel.current = model)}
 			/>
 		{:else if sessionQuery?.error}
 			<Alert.Root tone="danger">

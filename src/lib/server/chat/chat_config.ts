@@ -15,9 +15,26 @@ export type ChatProviderKind = (typeof CHAT_PROVIDER_KIND)[keyof typeof CHAT_PRO
 
 export const DEFAULT_CHAT_MODEL = 'claude-sonnet-5-5';
 
-/** The family allowlist: a plain-text comma-separated `CHAT_ALLOWED_EMAILS`, owned by the operator. */
+/**
+ * The family allowlist: a plain-text comma-separated `CHAT_ALLOWED_EMAILS`, owned by the operator,
+ * together with the chat runner's users.
+ */
 export function isChatAllowedFor(email: string | null | undefined): boolean {
-	return emailMatchesAdminList(email, env.CHAT_ALLOWED_EMAILS);
+	return emailMatchesAdminList(email, env.CHAT_ALLOWED_EMAILS) || isChatRunnerUser(email);
+}
+
+/**
+ * `CHAT_RUNNER_EMAILS`, a comma-separated list like `CHAT_ALLOWED_EMAILS`: these users' turns are
+ * answered by the chat runner, Claude Code on the owner's computer, instead of the model provider.
+ */
+export function isChatRunnerUser(email: string | null | undefined): boolean {
+	return emailMatchesAdminList(email, env.CHAT_RUNNER_EMAILS);
+}
+
+/** The bearer secret the chat runner claims jobs with; without it the runner endpoints are 404. */
+export function chatRunnerSecret(): string | null {
+	const secret = env.CHAT_RUNNER_SECRET?.trim() ?? '';
+	return secret === '' ? null : secret;
 }
 
 /** `CHAT_DISABLED=true` stops every new turn at once, without a deploy. */

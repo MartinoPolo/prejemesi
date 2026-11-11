@@ -182,6 +182,23 @@ Google OAuth is enabled automatically when both `GOOGLE_CLIENT_ID` and `GOOGLE_C
 
 Production errors are reported to Sentry without user identity, cookies, headers, query strings, HTTP bodies, database values, or stack-frame variables. Session Replay samples 10% of sessions and all sessions containing captured errors while masking all text and inputs and blocking media and network bodies. Replays stop and are discarded on authentication, token-bearing, and query-string URLs. Production source maps are uploaded only when the deployment workflow explicitly enables uploads and all three build-only Sentry settings are available.
 
+## AI asistent přes Claude Code
+
+For the users listed in `CHAT_RUNNER_EMAILS`, the in-app AI assistant is answered by Claude Code on the owner's computer instead of a model provider. The app queues each turn, and the chat runner claims it, runs `claude -p` with only the app's MCP tools and web search, and streams the answer back.
+
+```sh
+# .env.chat-runner (git-ignored): the same value as the app's CHAT_RUNNER_SECRET
+CHAT_RUNNER_SECRET="..."
+# Optional: CHAT_RUNNER_URL (default https://prejemesi.cz), CLAUDE_BIN (default claude)
+
+pnpm chat:runner
+```
+
+- `claude` must be installed and logged in. Its subscription pays for the turns. On Windows the runner starts only an executable: if `claude` resolves to an npm `.cmd` shim, set `CLAUDE_BIN` to the path of `claude.exe`.
+- Turns of listed users fail with "not running" while the runner is stopped. Other users keep the provider assistant.
+- The runner long-polls the app, so it keeps the Neon database awake while it runs. Stop it with Ctrl+C when it is not needed.
+- In the assistant's history view, the **Pokročilé** section chooses Opus, Sonnet or Haiku.
+
 ## Project Structure
 
 ```

@@ -39,13 +39,24 @@ export const ChatFastForwardInputSchema = v.strictObject({
 
 export const CHAT_TURN_KIND = { message: 'message', retry: 'retry' } as const;
 
+/** The Claude Code model aliases a chat runner turn may ask for. */
+export const CHAT_RUNNER_MODELS = ['opus', 'sonnet', 'haiku'] as const;
+
+export type ChatRunnerModel = (typeof CHAT_RUNNER_MODELS)[number];
+
+export const DEFAULT_CHAT_RUNNER_MODEL: ChatRunnerModel = 'opus';
+
+/** Only a chat runner turn reads it; the model provider has its own configured model. */
+const ChatRunnerModelSchema = v.optional(v.picklist(CHAT_RUNNER_MODELS));
+
 /** A turn: the user's message, or a retry of the last one after a failed answer. */
 export const ChatTurnRequestSchema = v.variant('kind', [
 	v.strictObject({
 		kind: v.literal(CHAT_TURN_KIND.message),
 		text: v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(CHAT_MESSAGE_MAX_LENGTH)),
+		model: ChatRunnerModelSchema,
 	}),
-	v.strictObject({ kind: v.literal(CHAT_TURN_KIND.retry) }),
+	v.strictObject({ kind: v.literal(CHAT_TURN_KIND.retry), model: ChatRunnerModelSchema }),
 ]);
 
 export type ChatTurnRequest = v.InferOutput<typeof ChatTurnRequestSchema>;
@@ -83,6 +94,8 @@ export const CHAT_STREAM_EVENT = {
 	proposal: 'proposal',
 	error: 'error',
 	done: 'done',
+	/** A chat runner turn outlived one response: the turn goes on at `url`. */
+	continue: 'continue',
 } as const;
 
 export const CHAT_TURN_ERROR = {
@@ -90,6 +103,8 @@ export const CHAT_TURN_ERROR = {
 	providerFailed: 'providerFailed',
 	/** The turn hit its time or step limit before the assistant finished. */
 	incomplete: 'incomplete',
+	/** Claude Code on the owner's computer did not pick the turn up. */
+	runnerOffline: 'runnerOffline',
 } as const;
 
 export type ChatTurnError = (typeof CHAT_TURN_ERROR)[keyof typeof CHAT_TURN_ERROR];
@@ -100,3 +115,8 @@ export type ChatStreamEvent =
 	| { type: typeof CHAT_STREAM_EVENT.proposal; proposalId: string; applied: boolean }
 	| { type: typeof CHAT_STREAM_EVENT.error; error: ChatTurnError }
 	| { type: typeof CHAT_STREAM_EVENT.done };
+
+/** What a chat runner turn streams: the turn's events, then where its stream continues. */
+export type ChatRelayEvent =
+	| ChatStreamEvent
+	| { type: typeof CHAT_STREAM_EVENT.continue; url: string };

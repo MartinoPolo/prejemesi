@@ -1,12 +1,20 @@
 import { demoSessionId } from '$lib/server/demo/scope.js';
 import { CHAT_AVAILABILITY, type ChatAvailability } from '$lib/modules/chat/types.js';
-import { isChatAllowedFor, isChatKillSwitchOn } from './chat_config.js';
+import { isChatAllowedFor, isChatKillSwitchOn, isChatRunnerUser } from './chat_config.js';
 import { countUserMessagesSince } from './chat_store.js';
 import { CHAT_LIMITS, chatDayStart } from './limits.js';
 
-/** Every demo visitor gets the scripted chat; elsewhere it exists only for the family allowlist. */
+/**
+ * Every demo visitor gets the scripted chat; elsewhere it exists only for the family allowlist
+ * and the chat runner's users.
+ */
 export function isChatOfferedTo(email: string): boolean {
 	return demoSessionId() !== null || isChatAllowedFor(email);
+}
+
+/** Whether the user's turns go to the chat runner; demo turns stay scripted. */
+export function usesChatRunner(email: string): boolean {
+	return demoSessionId() === null && isChatRunnerUser(email);
 }
 
 /**

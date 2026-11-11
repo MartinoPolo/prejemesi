@@ -78,6 +78,82 @@ describe('streamChatTurn', () => {
 		});
 	});
 
+	it('follows continuations as one turn without handing them on', async () => {
+		const events: ChatStreamEvent[] = [];
+		const requests: { url: string; init: RequestInit }[] = [];
+		const responses = [
+			new Response(
+				streamOf([
+					'data: {"type":"text","text":"Hledám"}\n\n',
+					'data: {"type":"continue","url":"/chat/session-1/turns/job-1?cursor=1"}\n\n',
+				]),
+			),
+			new Response(
+				streamOf([
+					'data: {"type":"tool","name":"web_fetch","query":"https://example.com"}\n\n',
+					'data: {"type":"continue","url":"/chat/session-1/turns/job-1?cursor=2"}\n\n',
+				]),
+			),
+			new Response(streamOf(['data: {"type":"done"}\n\n'])),
+		];
+		const signal = new AbortController().signal;
+
+		const refusal = await streamChatTurn({
+			url: '/chat/session-1/turns',
+			request: { kind: CHAT_TURN_KIND.message, text: 'Ahoj', model: 'sonnet' },
+			signal,
+			onEvent: (event) => events.push(event),
+			fetch: (url, init) => {
+				requests.push({ url: String(url), init: init ?? {} });
+				const response = responses.shift();
+				return response === undefined
+					? Promise.reject(new Error('Unexpected request'))
+					: Promise.resolve(response);
+			},
+		});
+
+		expect(refusal).toBeNull();
+		expect(events).toEqual([
+			{ type: CHAT_STREAM_EVENT.text, text: 'Hledám' },
+			{ type: CHAT_STREAM_EVENT.tool, name: 'web_fetch', query: 'https://example.com' },
+			{ type: CHAT_STREAM_EVENT.done },
+		]);
+		expect(requests.map(({ url, init }) => [url, init.method ?? 'GET'])).toEqual([
+			['/chat/session-1/turns', 'POST'],
+			['/chat/session-1/turns/job-1?cursor=1', 'GET'],
+			['/chat/session-1/turns/job-1?cursor=2', 'GET'],
+		]);
+		expect(requests.every(({ init }) => init.signal === signal)).toBe(true);
+	});
+
+	it('does not follow a continuation outside the app’s chat turns', async () => {
+		const requestedUrls: string[] = [];
+
+		const refusal = await streamChatTurn({
+			url: '/chat/session-1/turns',
+			request: { kind: CHAT_TURN_KIND.message, text: 'Ahoj' },
+			signal: new AbortController().signal,
+			onEvent: () => {},
+			fetch: (url) => {
+				requestedUrls.push(String(url));
+				return requestedUrls.length > 1
+					? Promise.reject(new Error('Followed a foreign continuation'))
+					: Promise.resolve(
+							new Response(
+								streamOf([
+									'data: {"type":"continue","url":"https://evil.example/chat/x"}\n\n',
+									'data: {"type":"continue","url":"//evil.example/chat/x"}\n\n',
+									'data: {"type":"continue","url":"/api/other"}\n\n',
+								]),
+							),
+						);
+			},
+		});
+
+		expect(refusal).toBeNull();
+		expect(requestedUrls).toEqual(['/chat/session-1/turns']);
+	});
+
 	it('reports a refusal without a JSON body by its status', async () => {
 		const { refusal } = await runTurn(new Response('Bad gateway', { status: 502 }));
 

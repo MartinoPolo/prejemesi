@@ -7,7 +7,11 @@ import {
 } from '$lib/server/remote.js';
 import { getDb } from '$lib/server/db/index.js';
 import { requireLiveWishlistRowByShortId } from '$lib/server/operations/wishlist_management.js';
-import { chatAvailability, isChatOfferedTo } from '$lib/server/chat/chat_availability.js';
+import {
+	chatAvailability,
+	isChatOfferedTo,
+	usesChatRunner,
+} from '$lib/server/chat/chat_availability.js';
 import {
 	chatMessageView,
 	createChatSession,
@@ -34,6 +38,9 @@ function requireChatUser(user: { email: string }): void {
 }
 
 export const getChatAvailability = guardedQuery(({ user }) => chatAvailability(user));
+
+/** Whether this user's turns go to the chat runner, which lets them choose its model. */
+export const getChatRunnerEnabled = guardedQuery(({ user }) => usesChatRunner(user.email));
 
 export const getChatSessions = guardedQueryWithArgs(
 	ChatWishlistInputSchema,
