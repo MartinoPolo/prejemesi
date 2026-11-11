@@ -47,7 +47,6 @@ Variant A was chosen and refined with: nested desktop context menus retained, fu
 - Render the image tint as a pointer-inert pseudo-element below badges and checkbox. Render the outer ring as a card-level overlay above every card child so the image cannot cover its top half.
 - Use one explicit list selection-column width and padding value for both `GiftSectionHeader` and `GiftListItem`; do not align them with separate magic offsets.
 - Consolidated Akce uses the project's Lucide `SlidersHorizontal` and `ChevronDown`. All mockup glyphs are illustrative only: implementation must use icons already exposed by the project's icon conventions or the matching Lucide icons, with project sizing and stroke treatment. Project component styling supersedes any custom icon markup visible in the HTML mockup.
-- Compact view stays hidden and receives no new context-menu or multiselect work.
 - Preserve the existing dark sticker shadows in this feature. The user-selectable hard-shadow experiment belongs to #290.
 - Use a normalized action descriptor for role/state filtering, but render nested choices with ContextMenu submenus on desktop and Sheet drill-in navigation on touch.
 - Restore heterogeneous received states by storing the exact pre-mutation map used by the undo action.

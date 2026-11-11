@@ -145,4 +145,30 @@ describe('ImageFrame cover-crop zoomed out past the whole image', () => {
 			.toEqual([true, true, true, true]);
 		expect(getComputedStyle(frame).backgroundColor).toBe('rgb(255, 255, 255)');
 	});
+
+	it('keeps the layout when the same source reloads with rounded, different dimensions', async () => {
+		const onmeasured = vi.fn();
+		const screen = await render(ImageFrame, {
+			props: {
+				class: 'h-24 w-32',
+				src: squareImage,
+				alt: 'Gift',
+				fitMode: 'cover-crop',
+				zoom: 0.6,
+				onmeasured,
+			},
+		});
+		const image = screen.container.querySelector('img')!;
+		await expect.poll(() => image.style.width).not.toBe('');
+		const settledStyle = image.getAttribute('style');
+
+		// A srcset candidate swap reports the natural size rescaled to `sizes` and rounded.
+		Object.defineProperty(image, 'naturalWidth', { configurable: true, value: 47 });
+		Object.defineProperty(image, 'naturalHeight', { configurable: true, value: 49 });
+		image.dispatchEvent(new Event('load'));
+		await new Promise((resolve) => requestAnimationFrame(resolve));
+
+		expect(image.getAttribute('style')).toBe(settledStyle);
+		expect(onmeasured).toHaveBeenCalledTimes(1);
+	});
 });

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { HelpText } from '$lib/components/base/help-text/index.js';
 	import { resolve } from '$app/paths';
 	import { Button } from '$lib/components/base/button/index.js';
 	import { modeStorageKey } from 'mode-watcher';
@@ -49,7 +50,7 @@
 	<Button {intent} size="xl" type="submit" disabled={pending} aria-busy={pending}>
 		{pending ? m.demo_start_pending() : label()}
 	</Button>
-	{#if error}<p role="alert" class="text-sm text-status-danger-text">
+	{#if error}<HelpText role="alert" state="error">
 			{m.demo_start_error()}
-		</p>{/if}
+		</HelpText>{/if}
 </form>

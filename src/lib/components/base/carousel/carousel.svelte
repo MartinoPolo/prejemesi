@@ -18,6 +18,7 @@
 		canScrollNext = $bindable(false),
 		class: className,
 		children,
+		onkeydown,
 		...restProps
 	}: CarouselProps = $props();
 
@@ -80,6 +81,14 @@
 		}
 	}
 
+	function handleRootKeyDown(event: KeyboardEvent & { currentTarget: HTMLDivElement }) {
+		onkeydown?.(event);
+		// Only a region its consumer made focusable scrolls; arrows inside slides stay theirs.
+		if (event.target === event.currentTarget) {
+			handleKeyDown(event);
+		}
+	}
+
 	const attachViewport: Attachment<HTMLElement> = (element) => {
 		viewport = element;
 		const resizeObserver = new ResizeObserver(updateScrollability);
@@ -125,6 +134,7 @@
 	class={cn('relative', className)}
 	role="region"
 	aria-roledescription="carousel"
+	onkeydown={handleRootKeyDown}
 	{...restProps}
 >
 	{@render children?.()}

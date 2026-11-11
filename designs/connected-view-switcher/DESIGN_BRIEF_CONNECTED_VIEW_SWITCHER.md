@@ -32,8 +32,7 @@ the shared accent backing.
 - **No switcher hover lift, press shrink, translation or interaction-driven shadow-depth change.**
   Both the visible surface and semantic owners remain stationary. Selection and focus provide
   feedback.
-- Exactly one option stays selected, including when clicking it again. Preserve view values and
-  existing Compact fallback behavior in production.
+- Exactly one option stays selected, including when clicking it again. Preserve view values.
 - Preserve accessible names, selected-state semantics, visible keyboard focus, arrow-key navigation
   and normal activation. The mockup also supports Home/End.
 - Respect depth preferences and light/dark appearances. Do not change shared animation policy or

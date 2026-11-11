@@ -24,7 +24,7 @@ on:
 
 jobs:
     checks:
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-24.04
         timeout-minutes: 25
         steps:
             - uses: actions/checkout@v4
@@ -48,7 +48,7 @@ jobs:
 
     unit_tests:
         name: unit-tests
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-24.04
         timeout-minutes: 25
         steps:
             - uses: actions/checkout@v4
@@ -64,7 +64,7 @@ jobs:
 
     e2e:
         if: ${{ inputs.run_e2e }}
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-24.04
         timeout-minutes: 35
         strategy:
             fail-fast: false
@@ -115,7 +115,7 @@ jobs:
 
     release:
         if: ${{ inputs.run_release }}
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-24.04
         timeout-minutes: 35
         strategy:
             fail-fast: false
@@ -143,7 +143,7 @@ jobs:
         name: required
         if: ${{ always() }}
         needs: [checks, unit_tests, e2e, release]
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-24.04
         steps:
             - name: Verify required checks
               env:

@@ -211,7 +211,7 @@ Variant C remains a reference artifact only and receives no further refinement. 
 | --- | --- |
 | `WishlistDetailToolbar.svelte` | Current toolbar shell, labeled control order, responsive row behavior |
 | `FilterMenu` + `ActiveFilterPills.svelte` | Filter trigger/count and removable active pill |
-| `GiftViewSwitcher.svelte` | Card/list/compact controls |
+| `GiftViewSwitcher.svelte` | Card/list controls |
 | `GiftCard.svelte` | Main gift surface, received sticker/action |
 | `GiftListItem.svelte` | Secondary view-change example |
 | `GiftReceivedToggle.svelte` | Mark received/unreceived labels and local pending state |
@@ -309,6 +309,6 @@ Mockups must link `../../tokens.css`, then map the current canonical `src/app.cs
 - New undo persistence behavior.
 - Full route transitions.
 - Continuous animation of long lists.
-- Compact-view motion or redesign; the refined core stage demonstrates only card/list switching.
+- Motion or redesign for the since-removed Compact view; the refined core stage demonstrates only card/list switching.
 - Production implementation of the three approved list-motion studies or the reorder-toolbar proposal; the refined study contains four demos, and the reorder proposal still requires user approval.
 - Image-editor border/frame-mode motion; the candidate was rejected because it does not correspond to the real editor.

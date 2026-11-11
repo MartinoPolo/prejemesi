@@ -211,19 +211,24 @@ describe('filled buttons across palettes', () => {
 });
 
 const statusTextSamples = {
+	neutral: [
+		badgeVariants({ tone: 'neutral', badgeStyle: 'count' }),
+		badgeVariants({ tone: 'neutral', badgeStyle: 'overlay' }),
+	],
 	success: [
-		...BADGE_STYLES.filter((badgeStyle) => badgeStyle !== 'solid').map((badgeStyle) =>
-			badgeVariants({ tone: 'success', badgeStyle }),
-		),
+		...BADGE_STYLES.filter(
+			(badgeStyle) => badgeStyle !== 'solid' && badgeStyle !== 'count',
+		).map((badgeStyle) => badgeVariants({ tone: 'success', badgeStyle })),
 		statusBadgeVariants({ status: 'success' }),
 		`${toastVariants({ tone: 'success' })} ${toastTitleColors.success}`,
 		helpTextVariants({ state: 'success' }),
+		alertVariants({ tone: 'success' }),
 	],
 	warning: [
 		...BADGE_STYLES.map((badgeStyle) => badgeVariants({ tone: 'warning', badgeStyle })),
 		statusBadgeVariants({ status: 'warning' }),
 		`${toastVariants({ tone: 'warning' })} ${toastTitleColors.warning}`,
-		moderatorPanelVariants().selfPromoteWarning(),
+		alertVariants({ tone: 'warning' }),
 	],
 	danger: [
 		...BADGE_STYLES.map((badgeStyle) => badgeVariants({ tone: 'danger', badgeStyle })),
@@ -231,19 +236,21 @@ const statusTextSamples = {
 		`${toastVariants({ tone: 'danger' })} ${toastTitleColors.danger}`,
 		helpTextVariants({ state: 'error' }),
 		fieldErrorVariants(),
-		alertVariants({ tone: 'destructive' }),
+		alertVariants({ tone: 'danger' }),
 	],
 	link: [
-		...BADGE_STYLES.filter((badgeStyle) => badgeStyle !== 'solid').flatMap((badgeStyle) => [
+		...BADGE_STYLES.filter(
+			(badgeStyle) => badgeStyle !== 'solid' && badgeStyle !== 'count',
+		).flatMap((badgeStyle) => [
 			badgeVariants({ tone: 'info', badgeStyle }),
 			badgeVariants({ tone: 'primary', badgeStyle }),
 		]),
 		statusBadgeVariants({ status: 'info' }),
 		`${toastVariants({ tone: 'info' })} ${toastTitleColors.info}`,
 		`${toastVariants({ tone: 'loading' })} ${toastTitleColors.loading}`,
-		moderatorPanelVariants().disclosureBanner(),
 		moderatorPanelVariants().moderatorAvatar(),
 		buttonVariants({ intent: 'link' }).surface(),
+		alertVariants({ tone: 'info' }),
 	],
 };
 
@@ -356,6 +363,32 @@ describe('light palettes', () => {
 			}
 		} finally {
 			nested.remove();
+		}
+	});
+});
+
+describe('info callouts', () => {
+	// An info callout explains; on a green palette a brand tint would read as a success.
+	it.each(PALETTES)('%s tints info callouts blue in light and dark', (palette) => {
+		document.documentElement.setAttribute('data-palette', palette);
+		const callout = document.createElement('div');
+		callout.className = alertVariants({ tone: 'info' });
+		document.body.append(callout);
+		try {
+			for (const mode of ['light', 'dark']) {
+				document.documentElement.classList.toggle('dark', mode === 'dark');
+				const canvas = document.createElement('canvas');
+				canvas.width = canvas.height = 1;
+				const context = canvas.getContext('2d')!;
+				context.fillStyle = getComputedStyle(callout).backgroundColor;
+				context.fillRect(0, 0, 1, 1);
+				const [red, green, blue] = context.getImageData(0, 0, 1, 1).data;
+				expect(blue, `${palette} ${mode}: rgb(${red}, ${green}, ${blue})`).toBeGreaterThan(
+					Math.max(red!, green!),
+				);
+			}
+		} finally {
+			callout.remove();
 		}
 	});
 });

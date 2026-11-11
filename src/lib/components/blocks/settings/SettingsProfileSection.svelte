@@ -1,11 +1,13 @@
 <script lang="ts">
 	import * as m from '$lib/paraglide/messages.js';
 	import * as Card from '$lib/components/base/card/index.js';
+	import SettingsSectionHeader from './SettingsSectionHeader.svelte';
 	import { Input } from '$lib/components/base/input/index.js';
 	import { HelpText } from '$lib/components/base/help-text/index.js';
 	import { Label } from '$lib/components/base/label/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
 	import { Separator } from '$lib/components/base/separator/index.js';
+	import { Spinner } from '$lib/components/base/spinner/index.js';
 	import ImageUpload from '$lib/components/derived/image-upload/ImageUpload.svelte';
 	import ImageFrame from '$lib/components/derived/image-frame/ImageFrame.svelte';
 	import { untrack } from 'svelte';
@@ -116,15 +118,11 @@
 </script>
 
 <Card.Root>
-	<Card.Header>
-		<div class="flex items-center gap-2">
-			<UserIcon class="size-5 text-muted-foreground" />
-			<div>
-				<Card.Title>{m.settings_profile_title()}</Card.Title>
-				<Card.Description>{m.settings_profile_description()}</Card.Description>
-			</div>
-		</div>
-	</Card.Header>
+	<SettingsSectionHeader
+		icon={UserIcon}
+		title={m.settings_profile_title()}
+		description={m.settings_profile_description()}
+	/>
 	<Card.Content>
 		<div class="flex flex-col gap-6">
 			<!-- Avatar -->
@@ -157,10 +155,11 @@
 								onclick={handleFetchGoogleAvatar}
 								disabled={fetchingGoogle}
 							>
-								<RefreshCwIcon
-									data-icon="inline-start"
-									class={fetchingGoogle ? 'animate-spin' : undefined}
-								/>
+								{#if fetchingGoogle}
+									<Spinner data-icon="inline-start" />
+								{:else}
+									<RefreshCwIcon data-icon="inline-start" />
+								{/if}
 								{fetchingGoogle
 									? m.settings_avatar_fetching_google()
 									: m.settings_avatar_use_google()}

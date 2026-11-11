@@ -29,7 +29,7 @@ The mockup **MUST** show the full viewport with the app shell at correct proport
 
 ### Full Viewport Structure (top to bottom)
 
-1. **App nav bar** (56px fixed, `--nav-height`): logo `prejemesi.cz` left (primary color), nav links center (`Moje seznamy` active), avatar chip right. Faithful reproduction of the established shell (see `designs/dashboard/variant-2.html`, `designs/wishlist-page/refined.html`). Render at full fidelity, slightly de-emphasized – it is context, not the focus.
+1. **App nav bar** (56px fixed, `--nav-height`): logo `prejemesi.cz` left (primary color), nav links center (`Moje seznamy` active), avatar chip right. Faithful reproduction of the established shell (see `designs/dashboard/variant-2.html`, `archive/designs/wishlist-page/refined.html`). Render at full fidelity, slightly de-emphasized – it is context, not the focus.
 2. **Settings page heading row**: back affordance + breadcrumb ("Moje seznamy / Vánoce 2026 / Nastavení vzhledu"), page title `Vzhled seznamu`, primary `Uložit změny` button right (sticky/affixed acceptable). The settings page also has other sections (Základní údaje, Sdílení, Moderátoři, Nebezpečná zóna) – represent these only as collapsed/adjacent nav or section stubs so the visuals section is clearly the focus.
 3. **The Visuals section – THE FOCUS** – contains three sub-areas:
     - **A. Image assignment** – drop/upload zone, current image, replace/remove.
@@ -224,7 +224,7 @@ Reference `designs/tokens.css` (link, never inline) plus the surface palette est
 
 - **Internal**:
     - `designs/dashboard/variant-2.html` + `refined.html` – nav shell, card/row patterns, `.theme-light`/`.theme-dark` palette blocks, badge styles.
-    - `designs/wishlist-page/refined.html` + brief – header/banner anatomy, gift card states, fallback gradient+emoji placeholder.
+    - `archive/designs/wishlist-page/refined.html` + brief – header/banner anatomy, gift card states, fallback gradient+emoji placeholder.
     - `designs/tokens.css` – typography, spacing, radii, shadows, motion, domain colors.
     - `src/app.css` – final color values, `--wishlist-*` theme vars.
     - `src/lib/modules/themes/theme_presets.ts` – preset emoji/palette/gradient (source of truth for fallback visuals).

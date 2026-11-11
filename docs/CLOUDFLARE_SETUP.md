@@ -11,7 +11,7 @@ How to deploy Přejeme si to Cloudflare, develop against it, and maintain it. Th
 | Concern | Service | Status in code |
 | --- | --- | --- |
 | **The app** | **Cloudflare Workers** (not Pages) | ✅ `adapter-cloudflare`, `wrangler.jsonc`, `_worker.js` output |
-| **Database** | **Neon Postgres** via **Hyperdrive** | ✅ `getDb()` reads `platform.env.HYPERDRIVE` → falls back to `DATABASE_URL`; `postgres({ prepare: false })` set |
+| **Database** | **Neon Postgres** via **Hyperdrive** | ✅ `getDb()` reads `platform.env.HYPERDRIVE` → falls back to `DATABASE_URL`; every Drizzle statement is a named prepared statement (Hyperdrive caches them; unprepared ones cost an extra round trip and can hang its pooling) |
 | **Images** | **R2** (`prejemesi-images`) | ✅ binding + upload proxy + public-URL logic |
 | **Email** | **Resend** | ✅ wrapper with console fallback |
 | **Auth** | better-auth (edge-compatible `minimal`) | ✅ email/password + optional Google |
@@ -24,7 +24,7 @@ How to deploy Přejeme si to Cloudflare, develop against it, and maintain it. Th
 
 ## 2. What's done vs. what you must do
 
-**Already wired (no action):** adapter, wrangler config, Hyperdrive/R2 code paths, `app.d.ts` platform types, `cf:types` + `preview` scripts, `.env` gitignored (only `.env.example` tracked), `prepare:false` for the pooler.
+**Already wired (no action):** adapter, wrangler config, Hyperdrive/R2 code paths, `app.d.ts` platform types, `cf:types` + `preview` scripts, `.env` gitignored (only `.env.example` tracked), prepared statements for the pooler.
 
 **Provisioning status:**
 

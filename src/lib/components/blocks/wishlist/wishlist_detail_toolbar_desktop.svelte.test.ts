@@ -297,6 +297,15 @@ describe('WishlistDetailToolbar consolidated desktop display (#359)', () => {
 		},
 	);
 
+	it('offers only Card and List on desktop (#580 REQ-1)', async () => {
+		const screen = await renderToolbar({}, 1280);
+		await expect.element(screen.getByRole('radio', { name: m.gift_view_list() })).toBeVisible();
+		await expect
+			.element(screen.getByRole('radio', { name: m.gift_view_carousel() }))
+			.not.toBeInTheDocument();
+		await screen.unmount();
+	});
+
 	it('reports the chosen column count and closes the whole menu', async () => {
 		const oncardcolumnoptionchange = vi.fn();
 		const screen = await renderToolbar(

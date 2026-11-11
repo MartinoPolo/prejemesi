@@ -1,6 +1,9 @@
 <script lang="ts">
 	import type { DecisionBarControls } from './chat_presentation.js';
 	import * as m from '$lib/paraglide/messages.js';
+	import CircleAlertIcon from '@lucide/svelte/icons/circle-alert';
+	import RefreshCwIcon from '@lucide/svelte/icons/refresh-cw';
+	import * as Alert from '$lib/components/base/alert/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
 	import { Skeleton } from '$lib/components/base/skeleton/index.js';
 	import type { ChangeRowContext } from '$lib/components/blocks/change-proposals/change_row_model.js';
@@ -34,26 +37,18 @@
 		<ChatProposalCard {proposal} {rowContext} {inBar} {decisionBar} {decidingProposals} />
 	{/key}
 {:else if proposalQuery.error}
-	<p class="error" role="alert">
-		{m.chat_proposal_error()}
-		<Button intent="secondary" size="sm" onclick={() => void proposalQuery.refresh()}>
-			{m.chat_retry()}
-		</Button>
-	</p>
+	<Alert.Root tone="danger">
+		<CircleAlertIcon aria-hidden="true" />
+		<Alert.Description>{m.chat_proposal_error()}</Alert.Description>
+		<Alert.Action>
+			<Button intent="outline" size="sm" onclick={() => void proposalQuery.refresh()}>
+				<RefreshCwIcon data-icon="inline-start" />{m.chat_retry()}
+			</Button>
+		</Alert.Action>
+	</Alert.Root>
 {:else}
 	<div aria-busy="true">
 		<span class="sr-only">{m.chat_proposal_loading()}</span>
 		<Skeleton class="h-24 w-full" />
 	</div>
 {/if}
-
-<style>
-	.error {
-		display: flex;
-		flex-wrap: wrap;
-		align-items: center;
-		gap: var(--space-2);
-		color: var(--status-danger-text);
-		font-size: var(--text-md);
-	}
-</style>

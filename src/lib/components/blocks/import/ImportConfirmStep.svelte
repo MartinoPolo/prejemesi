@@ -118,7 +118,7 @@
 			{/if}
 
 			{#if serverDuplicateCount > 0}
-				<Alert.Root tone="warning">
+				<Alert.Root tone="warning" role="alert">
 					<AlertTriangleIcon class="size-4" />
 					<Alert.Description>
 						{m.import_wizard_server_duplicates({ count: serverDuplicateCount })}
@@ -136,7 +136,7 @@
 
 			<!-- Error state -->
 			{#if isError}
-				<Alert.Root tone="destructive">
+				<Alert.Root tone="danger">
 					<AlertCircleIcon class="size-4" />
 					<Alert.Description
 						>{commitError ?? m.import_wizard_error_commit()}</Alert.Description

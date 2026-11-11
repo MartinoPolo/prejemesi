@@ -5,7 +5,6 @@
 	import * as Dialog from '$lib/components/base/dialog/index.js';
 	import * as Alert from '$lib/components/base/alert/index.js';
 	import * as Tabs from '$lib/components/base/tabs/index.js';
-	import * as Card from '$lib/components/base/card/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
 	import { Input } from '$lib/components/base/input/index.js';
 	import { Textarea } from '$lib/components/base/textarea/index.js';
@@ -14,8 +13,15 @@
 	import { DatePicker } from '$lib/components/derived/date-picker/index.js';
 	import { Field, type FieldControlContext } from '$lib/components/derived/field/index.js';
 	import GraceCountdown from '$lib/components/derived/grace-countdown/GraceCountdown.svelte';
+	import { ConfirmDialog } from '$lib/components/derived/confirm-dialog/index.js';
+	import {
+		createUnsavedChangesGuard,
+		UnsavedChangesDialog,
+	} from '$lib/components/derived/unsaved-changes-dialog/index.js';
 	import { toastSuccess, toastError } from '$lib/components/base/toast/index.js';
+	import ArchiveIcon from '@lucide/svelte/icons/archive';
 	import FileDownIcon from '@lucide/svelte/icons/file-down';
+	import LockIcon from '@lucide/svelte/icons/lock';
 	import FileUpIcon from '@lucide/svelte/icons/file-up';
 	import PencilIcon from '@lucide/svelte/icons/pencil';
 	import TriangleAlertIcon from '@lucide/svelte/icons/triangle-alert';
@@ -26,6 +32,7 @@
 	import WishlistAppearanceEditor from './WishlistAppearanceEditor.svelte';
 	import WishlistCategorySettings from './WishlistCategorySettings.svelte';
 	import WishlistSettingsSaveButton from './WishlistSettingsSaveButton.svelte';
+	import DangerActionCard from '$lib/components/blocks/settings/DangerActionCard.svelte';
 	import RecipientPreview from './RecipientPreview.svelte';
 	import WishlistOccasionField from './WishlistOccasionField.svelte';
 	import {
@@ -214,8 +221,6 @@
 	let imageDraft = $state<SaveWishlistSettingsInput['image']>();
 	let commitVersion = $state(0);
 	let discardVersion = $state(0);
-	let guardOpen = $state(false);
-	let pendingAction = $state<null | (() => void)>(null);
 	let allowNavigation = false;
 	let categoryResetVersion = $state(0);
 
@@ -302,14 +307,14 @@
 		appearanceDirty = false;
 	}
 
-	function requestGuarded(action: () => void) {
-		if (!anyDirty) {
-			action();
-			return;
-		}
-		pendingAction = action;
-		guardOpen = true;
-	}
+	/** Continues only after a complete save; otherwise the settings stay open with their errors. */
+	const unsavedChangesGuard = createUnsavedChangesGuard({
+		isDirty: () => anyDirty,
+		save: () => saveAll(),
+		discard: discardDrafts,
+		continueEditing: () => (open = true),
+	});
+	const requestGuarded = unsavedChangesGuard.request;
 
 	function handleOpenChange(nextOpen: boolean) {
 		if (!nextOpen) {
@@ -330,12 +335,6 @@
 		}
 		event.preventDefault();
 		handleOpenChange(false);
-	}
-
-	function continueEditing() {
-		guardOpen = false;
-		pendingAction = null;
-		open = true;
 	}
 
 	function handleImport() {
@@ -452,27 +451,6 @@
 		await saveAll(() => (open = false));
 	}
 
-	function discardAndContinue() {
-		const action = pendingAction;
-		guardOpen = false;
-		pendingAction = null;
-		discardDrafts();
-		action?.();
-	}
-
-	async function saveAndContinue() {
-		const action = pendingAction;
-		if (
-			await saveAll(() => {
-				guardOpen = false;
-				pendingAction = null;
-				action?.();
-			})
-		) {
-			return;
-		}
-	}
-
 	// ── Delete handler (issue #120) ────────────────────────────────────────────
 	// Delete is only possible for an unshared (draft) wishlist – the same rule the
 	// `deleteWishlist` command enforces server-side; a shared list must be archived instead.
@@ -503,6 +481,9 @@
 
 	let revertConfirmOpen = $state(false);
 	let reverting = $state(false);
+	const revertCancelsReservations = $derived(
+		revertCapability === REVERT_CAPABILITY.reservedAdmin,
+	);
 
 	async function handleRevertConfirmed() {
 		reverting = true;
@@ -527,55 +508,45 @@
      admin-only view. -->
 {#snippet revertSection()}
 	{#if revertCapability !== REVERT_CAPABILITY.hidden}
-		<Card.Root elevation="flat" class="border-destructive/30">
-			<Card.Header>
-				<div class="flex items-center gap-2">
-					<RotateCcwIcon class="size-5 text-status-danger-text" />
-					<div>
-						<Card.Title class="text-status-danger-text">
-							{m.wishlist_settings_revert_title()}
-						</Card.Title>
-						<Card.Description>{m.wishlist_settings_revert_hint()}</Card.Description>
-					</div>
-				</div>
-			</Card.Header>
-			<Card.Content>
+		<DangerActionCard
+			icon={RotateCcwIcon}
+			title={m.wishlist_settings_revert_title()}
+			description={m.wishlist_settings_revert_hint()}
+			elevation="flat"
+		>
+			{#snippet notice()}
 				{#if revertCapability === REVERT_CAPABILITY.reservedBlocked}
-					<div class="flex flex-col gap-3">
-						<Alert.Root tone="warning">
-							<Alert.Description>
-								{m.wishlist_revert_reserved_admin_only()}
-							</Alert.Description>
-						</Alert.Root>
-						<div class="flex justify-end">
-							<Button intent="danger" size="sm" disabled>
-								<RotateCcwIcon data-icon="inline-start" />
-								{m.wishlist_revert_button()}
-							</Button>
-						</div>
-					</div>
-				{:else}
-					<div class="flex flex-col gap-3">
-						{#if revertCapability === REVERT_CAPABILITY.reservedAdmin}
-							<p class="text-xs text-muted-foreground">
-								{m.wishlist_revert_reserved_warning()}
-							</p>
-						{/if}
-						<div class="flex justify-end">
-							<Button
-								intent="danger"
-								size="sm"
-								data-testid="settings-revert-to-draft"
-								onclick={() => requestGuarded(() => (revertConfirmOpen = true))}
-							>
-								<RotateCcwIcon data-icon="inline-start" />
-								{m.wishlist_revert_button()}
-							</Button>
-						</div>
-					</div>
+					<Alert.Root tone="warning">
+						<TriangleAlertIcon />
+						<Alert.Description>
+							{m.wishlist_revert_reserved_admin_only()}
+						</Alert.Description>
+					</Alert.Root>
+				{:else if revertCapability === REVERT_CAPABILITY.reservedAdmin}
+					<HelpText>
+						{m.wishlist_revert_reserved_warning()}
+					</HelpText>
 				{/if}
-			</Card.Content>
-		</Card.Root>
+			{/snippet}
+			{#snippet action()}
+				{#if revertCapability === REVERT_CAPABILITY.reservedBlocked}
+					<Button intent="danger" size="sm" disabled>
+						<RotateCcwIcon data-icon="inline-start" />
+						{m.wishlist_revert_button()}
+					</Button>
+				{:else}
+					<Button
+						intent="danger"
+						size="sm"
+						data-testid="settings-revert-to-draft"
+						onclick={() => requestGuarded(() => (revertConfirmOpen = true))}
+					>
+						<RotateCcwIcon data-icon="inline-start" />
+						{m.wishlist_revert_button()}
+					</Button>
+				{/if}
+			{/snippet}
+		</DangerActionCard>
 	{/if}
 {/snippet}
 
@@ -591,79 +562,76 @@
 		data-close-button
 		onEscapeKeydown={handleDismiss}
 		onInteractOutside={handleDismiss}
-		class="flex flex-col gap-0 overflow-hidden p-0 sm:max-w-[calc(100%-2rem)] xl:max-w-5xl"
-		style="height: min(52rem, 85dvh); max-height: calc(100dvh - 2rem);"
+		layout="scroll"
+		class="h-[min(52rem,85dvh)] sm:max-w-[calc(100%-2rem)] xl:max-w-5xl"
 	>
-		<Dialog.Header class="shrink-0 px-6 pt-6 pb-4">
+		<Dialog.Header divided={canManage && !isArchived}>
 			<Dialog.Title>{m.wishlist_settings_title()}</Dialog.Title>
 			<Dialog.Description>{wishlist.title}</Dialog.Description>
+			{#if canManage && !isArchived}
+				<div inert={saving ? true : undefined}>
+					<Tabs.Root
+						aria-label={m.wishlist_settings_title()}
+						aria-orientation="horizontal"
+						class="flex w-full max-w-full flex-nowrap overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [&>[role=tab]]:shrink-0 [&>[role=tab]]:whitespace-nowrap lg:[&>[role=tab]]:flex-1 lg:[&>[role=tab]]:justify-center"
+					>
+						<Tabs.Tab
+							id="wishlist-settings-tab-details"
+							aria-controls="wishlist-settings-panel-details"
+							active={activeTab === WISHLIST_SETTINGS_TABS.details}
+							onclick={() => (activeTab = WISHLIST_SETTINGS_TABS.details)}
+						>
+							{m.wishlist_settings_details_section()}
+						</Tabs.Tab>
+						<Tabs.Tab
+							id="wishlist-settings-tab-categories"
+							aria-controls="wishlist-settings-panel-categories"
+							active={activeTab === WISHLIST_SETTINGS_TABS.categories}
+							onclick={() => (activeTab = WISHLIST_SETTINGS_TABS.categories)}
+						>
+							{m.wishlist_settings_categories_tab()}
+						</Tabs.Tab>
+						<Tabs.Tab
+							id="wishlist-settings-tab-appearance"
+							aria-controls="wishlist-settings-panel-appearance"
+							active={activeTab === WISHLIST_SETTINGS_TABS.appearance}
+							onclick={() => (activeTab = WISHLIST_SETTINGS_TABS.appearance)}
+						>
+							{m.wishlist_settings_appearance_tab()}
+						</Tabs.Tab>
+						<Tabs.Tab
+							id="wishlist-settings-tab-image"
+							aria-controls="wishlist-settings-panel-image"
+							active={activeTab === WISHLIST_SETTINGS_TABS.image}
+							onclick={() => (activeTab = WISHLIST_SETTINGS_TABS.image)}
+						>
+							{m.wishlist_settings_image_section()}
+						</Tabs.Tab>
+						<Tabs.Tab
+							id="wishlist-settings-tab-data"
+							aria-controls="wishlist-settings-panel-data"
+							active={activeTab === WISHLIST_SETTINGS_TABS.data}
+							onclick={() => (activeTab = WISHLIST_SETTINGS_TABS.data)}
+						>
+							{m.wishlist_settings_data_title()}
+						</Tabs.Tab>
+						<Tabs.Tab
+							id="wishlist-settings-tab-danger"
+							aria-controls="wishlist-settings-panel-danger"
+							active={activeTab === WISHLIST_SETTINGS_TABS.danger}
+							onclick={() => (activeTab = WISHLIST_SETTINGS_TABS.danger)}
+						>
+							{m.wishlist_settings_danger_tab()}
+						</Tabs.Tab>
+					</Tabs.Root>
+				</div>
+			{/if}
 		</Dialog.Header>
 
-		{#if canManage && !isArchived}
-			<div inert={saving ? true : undefined} class="shrink-0 px-6 pb-4">
-				<Tabs.Root
-					aria-label={m.wishlist_settings_title()}
-					aria-orientation="horizontal"
-					class="flex w-full max-w-full flex-nowrap overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [&>[role=tab]]:shrink-0 [&>[role=tab]]:whitespace-nowrap lg:[&>[role=tab]]:flex-1 lg:[&>[role=tab]]:justify-center"
-				>
-					<Tabs.Tab
-						id="wishlist-settings-tab-details"
-						aria-controls="wishlist-settings-panel-details"
-						active={activeTab === WISHLIST_SETTINGS_TABS.details}
-						onclick={() => (activeTab = WISHLIST_SETTINGS_TABS.details)}
-					>
-						{m.wishlist_settings_details_section()}
-					</Tabs.Tab>
-					<Tabs.Tab
-						id="wishlist-settings-tab-categories"
-						aria-controls="wishlist-settings-panel-categories"
-						active={activeTab === WISHLIST_SETTINGS_TABS.categories}
-						onclick={() => (activeTab = WISHLIST_SETTINGS_TABS.categories)}
-					>
-						{m.wishlist_settings_categories_tab()}
-					</Tabs.Tab>
-					<Tabs.Tab
-						id="wishlist-settings-tab-appearance"
-						aria-controls="wishlist-settings-panel-appearance"
-						active={activeTab === WISHLIST_SETTINGS_TABS.appearance}
-						onclick={() => (activeTab = WISHLIST_SETTINGS_TABS.appearance)}
-					>
-						{m.wishlist_settings_appearance_tab()}
-					</Tabs.Tab>
-					<Tabs.Tab
-						id="wishlist-settings-tab-image"
-						aria-controls="wishlist-settings-panel-image"
-						active={activeTab === WISHLIST_SETTINGS_TABS.image}
-						onclick={() => (activeTab = WISHLIST_SETTINGS_TABS.image)}
-					>
-						{m.wishlist_settings_image_section()}
-					</Tabs.Tab>
-					<Tabs.Tab
-						id="wishlist-settings-tab-data"
-						aria-controls="wishlist-settings-panel-data"
-						active={activeTab === WISHLIST_SETTINGS_TABS.data}
-						onclick={() => (activeTab = WISHLIST_SETTINGS_TABS.data)}
-					>
-						{m.wishlist_settings_data_title()}
-					</Tabs.Tab>
-					<Tabs.Tab
-						id="wishlist-settings-tab-danger"
-						aria-controls="wishlist-settings-panel-danger"
-						active={activeTab === WISHLIST_SETTINGS_TABS.danger}
-						onclick={() => (activeTab = WISHLIST_SETTINGS_TABS.danger)}
-					>
-						{m.wishlist_settings_danger_tab()}
-					</Tabs.Tab>
-				</Tabs.Root>
-			</div>
-		{/if}
-
-		<div
+		<Dialog.Body
 			data-testid="wishlist-settings-scroll-region"
 			inert={saving ? true : undefined}
-			class="min-h-0 flex-1 overflow-y-auto px-6 pb-6 {canManage && !isArchived
-				? 'flex w-full min-w-0 flex-col gap-4'
-				: ''}"
+			class={canManage && !isArchived ? 'flex w-full min-w-0 flex-col gap-4' : undefined}
 		>
 			{#if canManage && !isArchived}
 				<!-- Podrobnosti: title / description / event date, saved by the global composite save. -->
@@ -675,9 +643,9 @@
 					hidden={activeTab !== WISHLIST_SETTINGS_TABS.details}
 				>
 					<div class="flex flex-col gap-4">
-						<p class="text-sm text-muted-foreground">
+						<HelpText>
 							{m.wishlist_settings_details_hint()}
-						</p>
+						</HelpText>
 
 						<form
 							id="wishlist-details-form"
@@ -708,12 +676,9 @@
 											: undefined}
 									/>
 									{#if recipientError !== ''}
-										<p
-											id="wishlist-recipient-error"
-											class="text-sm text-status-danger-text"
-										>
+										<HelpText id="wishlist-recipient-error" state="error">
 											{recipientError}
-										</p>
+										</HelpText>
 									{/if}
 									<RecipientPreview name={recipientNameDraft} />
 								</div>
@@ -841,14 +806,12 @@
 					hidden={activeTab !== WISHLIST_SETTINGS_TABS.data}
 				>
 					<div class="flex flex-col gap-4">
-						<p class="text-sm text-muted-foreground">
+						<HelpText>
 							{m.wishlist_settings_data_hint()}
-						</p>
-						{#if wishlist.demoSessionId !== null}<p
-								class="text-sm text-muted-foreground"
-							>
+						</HelpText>
+						{#if wishlist.demoSessionId !== null}<HelpText>
 								{m.demo_import_limits()}
-							</p>{/if}
+							</HelpText>{/if}
 						<div class="flex flex-wrap gap-(--nested-control-gap)">
 							<Button
 								type="button"
@@ -929,11 +892,11 @@
 					hidden={activeTab !== WISHLIST_SETTINGS_TABS.image}
 				>
 					<div class="flex flex-col gap-4">
-						<p class="text-sm text-muted-foreground">
+						<HelpText>
 							{m.wishlist_settings_image_hint()}
-						</p>
+						</HelpText>
 						{#if wishlist.demoSessionId !== null}
-							<p class="text-sm text-muted-foreground">{m.demo_image_limits()}</p>
+							<HelpText>{m.demo_image_limits()}</HelpText>
 						{:else}
 							{#key discardVersion}
 								<WishlistCropEditor
@@ -967,74 +930,57 @@
 						{@render revertSection()}
 						{#if isShared}
 							<Alert.Root tone="warning">
+								<TriangleAlertIcon />
 								<Alert.Description
 									>{m.wishlist_settings_danger_shared_notice()}</Alert.Description
 								>
 							</Alert.Root>
 						{:else}
-							<Card.Root elevation="flat" class="border-destructive/30">
-								<Card.Header>
-									<div class="flex items-center gap-2">
-										<TriangleAlertIcon class="size-5 text-status-danger-text" />
-										<div>
-											<Card.Title class="text-status-danger-text">
-												{m.wishlist_settings_danger_tab()}
-											</Card.Title>
-											<Card.Description
-												>{m.wishlist_settings_danger_hint()}</Card.Description
-											>
-										</div>
-									</div>
-								</Card.Header>
-								<Card.Content>
-									<div class="flex items-center justify-between gap-4">
-										<div>
-											<p class="text-sm font-medium">
-												{m.wishlist_delete_button()}
-											</p>
-											<p class="text-xs text-muted-foreground">
-												{m.wishlist_delete_confirm_description()}
-											</p>
-										</div>
-										<Button
-											intent="danger"
-											size="sm"
-											onclick={() =>
-												requestGuarded(() => (deleteConfirmOpen = true))}
-										>
-											<TrashIcon data-icon="inline-start" />
-											{m.wishlist_delete_button()}
-										</Button>
-									</div>
-								</Card.Content>
-							</Card.Root>
+							<DangerActionCard
+								icon={TriangleAlertIcon}
+								title={m.wishlist_settings_danger_tab()}
+								description={m.wishlist_settings_danger_hint()}
+								actionTitle={m.wishlist_delete_button()}
+								actionDescription={m.wishlist_delete_confirm_description()}
+								elevation="flat"
+							>
+								{#snippet action()}
+									<Button
+										intent="danger"
+										size="sm"
+										onclick={() =>
+											requestGuarded(() => (deleteConfirmOpen = true))}
+									>
+										<TrashIcon data-icon="inline-start" />
+										{m.wishlist_delete_button()}
+									</Button>
+								{/snippet}
+							</DangerActionCard>
 						{/if}
 					</div>
 				</div>
 			{:else if isAdminRevertOnly}
 				<!-- App admin who does not manage this list: danger/admin actions only (revert). -->
 				<div class="flex flex-col gap-4">
-					<p class="text-sm text-muted-foreground">
+					<HelpText>
 						{m.wishlist_settings_admin_only_hint()}
-					</p>
+					</HelpText>
 					{@render revertSection()}
 				</div>
 			{:else if isArchived}
-				<Alert.Root tone="warning">
+				<Alert.Root tone="info">
+					<ArchiveIcon aria-hidden="true" />
 					<Alert.Description>{m.wishlist_settings_archived_readonly()}</Alert.Description>
 				</Alert.Root>
 			{:else}
-				<Alert.Root tone="warning">
+				<Alert.Root tone="info">
+					<LockIcon aria-hidden="true" />
 					<Alert.Description>{m.wishlist_settings_owner_only()}</Alert.Description>
 				</Alert.Root>
 			{/if}
-		</div>
+		</Dialog.Body>
 
-		<Dialog.Footer
-			data-testid="wishlist-settings-footer"
-			class="shrink-0 border-t border-border bg-background px-6 py-4"
-			style="min-height: 4.25rem;"
-		>
+		<Dialog.Footer data-testid="wishlist-settings-footer" style="min-height: 4.25rem;">
 			{#if canManage && !isArchived}
 				<WishlistSettingsSaveButton
 					dirty={anyDirty}
@@ -1059,72 +1005,32 @@
 	</Dialog.Content>
 </Dialog.Root>
 
-<Dialog.Root bind:open={guardOpen}>
-	<Dialog.Content size="md">
-		<Dialog.Header>
-			<Dialog.Title>{m.wishlist_settings_unsaved_title()}</Dialog.Title>
-			<Dialog.Description>{m.wishlist_settings_unsaved_description()}</Dialog.Description>
-		</Dialog.Header>
-		<Dialog.Footer class="flex-wrap">
-			<Button intent="outline" onclick={continueEditing}>
-				{m.wishlist_settings_continue_editing()}
-			</Button>
-			<Button intent="outline" onclick={discardAndContinue} disabled={saving}>
-				{m.wishlist_settings_discard()}
-			</Button>
-			<Button onclick={() => void saveAndContinue()} disabled={saving}>
-				{m.wishlist_settings_save_continue()}
-			</Button>
-		</Dialog.Footer>
-	</Dialog.Content>
-</Dialog.Root>
+<UnsavedChangesDialog {...unsavedChangesGuard.dialogProps} {saving} />
 
 <!-- Delete confirmation dialog (issue #120) -->
-<Dialog.Root bind:open={deleteConfirmOpen}>
-	<Dialog.Content size="md">
-		<Dialog.Header>
-			<Dialog.Title>{m.wishlist_delete_confirm_title({ title: wishlist.title })}</Dialog.Title
-			>
-			<Dialog.Description>{m.wishlist_delete_confirm_description()}</Dialog.Description>
-		</Dialog.Header>
-		<Dialog.Footer>
-			<Button
-				intent="outline"
-				onclick={() => (deleteConfirmOpen = false)}
-				disabled={deleting}
-			>
-				{m.cancel()}
-			</Button>
-			<Button intent="danger" onclick={handleDeleteConfirmed} disabled={deleting}>
-				{deleting ? m.deleting() : m.wishlist_delete_confirm_action()}
-			</Button>
-		</Dialog.Footer>
-	</Dialog.Content>
-</Dialog.Root>
+<ConfirmDialog
+	bind:open={deleteConfirmOpen}
+	title={m.wishlist_delete_confirm_title({ title: wishlist.title })}
+	description={m.wishlist_delete_confirm_description()}
+	confirmLabel={m.wishlist_delete_confirm_action()}
+	pendingLabel={m.deleting()}
+	confirmIntent="primary-destructive"
+	pending={deleting}
+	onconfirm={handleDeleteConfirmed}
+/>
 
 <!-- Revert-to-draft confirmation dialog (issue #150): the reserved variant spells out that all
-     reservations are cancelled and reservers notified; the clean variant is silent. -->
-<Dialog.Root bind:open={revertConfirmOpen}>
-	<Dialog.Content size="md">
-		<Dialog.Header>
-			<Dialog.Title>{m.wishlist_revert_confirm_title()}</Dialog.Title>
-			<Dialog.Description>
-				{revertCapability === REVERT_CAPABILITY.reservedAdmin
-					? m.wishlist_revert_confirm_reserved_description()
-					: m.wishlist_revert_confirm_clean_description()}
-			</Dialog.Description>
-		</Dialog.Header>
-		<Dialog.Footer>
-			<Button
-				intent="outline"
-				onclick={() => (revertConfirmOpen = false)}
-				disabled={reverting}
-			>
-				{m.cancel()}
-			</Button>
-			<Button intent="danger" onclick={handleRevertConfirmed} disabled={reverting}>
-				{reverting ? m.wishlist_reverting() : m.wishlist_revert_confirm_action()}
-			</Button>
-		</Dialog.Footer>
-	</Dialog.Content>
-</Dialog.Root>
+     reservations are cancelled and reservers notified, which cannot be undone; the clean
+     variant is silent and undone by sharing again. -->
+<ConfirmDialog
+	bind:open={revertConfirmOpen}
+	title={m.wishlist_revert_confirm_title()}
+	description={revertCancelsReservations
+		? m.wishlist_revert_confirm_reserved_description()
+		: m.wishlist_revert_confirm_clean_description()}
+	confirmLabel={m.wishlist_revert_confirm_action()}
+	pendingLabel={m.wishlist_reverting()}
+	confirmIntent="primary-destructive"
+	pending={reverting}
+	onconfirm={handleRevertConfirmed}
+/>

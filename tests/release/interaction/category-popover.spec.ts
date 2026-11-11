@@ -1,4 +1,5 @@
 import { expect, type Locator, type Page } from '@playwright/test';
+import * as m from '../../../src/lib/paraglide/messages.js';
 import { waitForAppHydration } from '../../e2e/fixtures/auth-helpers.js';
 import { createWishlistAndNavigate } from '../../e2e/fixtures/wishlist-helpers.js';
 import {
@@ -65,12 +66,15 @@ function giftItem(page: Page, name: string): Locator {
 		.filter({ has: page.getByRole('heading', { name, exact: true, level: 3 }) });
 }
 
+/** The "+X" chip's accessible name for any hidden count, which depends on the lane width. */
+const MORE_CHIP_NAME = new RegExp(`^${m.gift_category_more_label({ count: String.raw`\d+` })}$`);
+
 function moreChip(page: Page): Locator {
-	return giftItem(page, CATEGORIZED_GIFT).getByTestId('gift-category-more');
+	return giftItem(page, CATEGORIZED_GIFT).getByRole('button', { name: MORE_CHIP_NAME });
 }
 
 function popover(page: Page): Locator {
-	return page.getByTestId('gift-category-popover').filter({ visible: true });
+	return page.getByRole('dialog', { name: m.gift_category_more_title(), exact: true });
 }
 
 function giftDetail(page: Page): Locator {
@@ -128,7 +132,7 @@ async function arrange(
 		await waitForAppHydration(page);
 	}
 	// A known-bug case ends where the bug left the page, possibly with a layer open.
-	const openLayers = page.locator('[role="dialog"], [data-testid="gift-category-popover"]');
+	const openLayers = page.locator('[role="dialog"]');
 	for (
 		let attempt = 0;
 		attempt < 3 && (await openLayers.filter({ visible: true }).count()) > 0;
@@ -163,7 +167,7 @@ async function arrange(
 		await session.touch.tap(moreChip(page));
 	}
 	await expect(popover(page)).toBeVisible();
-	await expectAnimationsFinished(page, '[data-testid="gift-category-popover"]');
+	await expectAnimationsFinished(page, popover(page));
 	await expect(giftDetail(page), 'opening the popover does not press the card').toHaveCount(0);
 }
 

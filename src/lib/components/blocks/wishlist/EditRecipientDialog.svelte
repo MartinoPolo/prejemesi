@@ -5,7 +5,7 @@
 	import { Button } from '$lib/components/base/button/index.js';
 	import { Input } from '$lib/components/base/input/index.js';
 	import { Label } from '$lib/components/base/label/index.js';
-	import LoaderIcon from '@lucide/svelte/icons/loader';
+	import { Spinner } from '$lib/components/base/spinner/index.js';
 	import TriangleAlertIcon from '@lucide/svelte/icons/triangle-alert';
 	import {
 		flipRecipientToFreeText,
@@ -136,7 +136,7 @@
 				</Button>
 				<Button type="submit" disabled={isSaving || trimmedName === ''}>
 					{#if isSaving}
-						<LoaderIcon class="animate-spin" data-icon="inline-start" />
+						<Spinner data-icon="inline-start" />
 					{/if}
 					{isLinkedRecipient
 						? m.recipient_flip_confirm_button()

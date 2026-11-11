@@ -4,6 +4,10 @@
 	import * as m from '$lib/paraglide/messages.js';
 	import ClockIcon from '@lucide/svelte/icons/clock';
 	import PowerIcon from '@lucide/svelte/icons/power';
+	import CircleAlertIcon from '@lucide/svelte/icons/circle-alert';
+	import RefreshCwIcon from '@lucide/svelte/icons/refresh-cw';
+	import * as Alert from '$lib/components/base/alert/index.js';
+	import { Button } from '$lib/components/base/button/index.js';
 	import { toastError } from '$lib/components/base/toast/index.js';
 	import type { ChangeRowContext } from '$lib/components/blocks/change-proposals/change_row_model.js';
 	import { localizeInternalHref } from '$lib/i18n/locale.js';
@@ -13,6 +17,7 @@
 	import { getWishlistByShortId } from '$lib/modules/wishlists/wishlists.remote.js';
 	import {
 		getChatAvailability,
+		getChatRunnerEnabled,
 		getChatSession,
 		getChatSessions,
 		setChatSessionFastForward,
@@ -43,6 +48,7 @@
 		CHAT_TURN_KIND,
 		type ChatAvailability,
 		type ChatStreamEvent,
+		type ChatTurnError as ChatTurnErrorKind,
 		type ChatTurnRequest,
 	} from '$lib/modules/chat/types.js';
 	import { keepFocusOnPress, keyboardInset } from '$lib/reactivity/keyboard_inset.svelte.js';
@@ -98,11 +104,14 @@
 	let thread = $state<HTMLElement>();
 	let composer = $state<HTMLTextAreaElement>();
 	let liveTurn = $state.raw<LiveChatTurn | null>(null);
+	/** Why the chat's last turn failed, kept once the stored chat replaces the live turn. */
+	let lastTurnFailure = $state.raw<{ sessionId: string; error: ChatTurnErrorKind } | null>(null);
 	let streaming = $state(false);
 	let abortTurn: AbortController | null = null;
 	let creatingSession = $state(false);
 	let footerHeight = $state(0);
 	let threadAtEnd = true;
+	let toolsMenuOpen = $state(false);
 
 	const open = $derived(assistant.open.current);
 	/** The on-screen keyboard is open: the sheet sits on it and its chrome compacts. */
@@ -113,6 +122,7 @@
 	const available = $derived(availability === CHAT_AVAILABILITY.available);
 	const demo = $derived(availability === CHAT_AVAILABILITY.demo);
 	const takesMessages = $derived(available || demo);
+	const runnerEnabled = $derived(getChatRunnerEnabled().current === true);
 	const sessionsQuery = $derived(getChatSessions({ wishlistShortId }));
 	const sessionId = $derived.by(() => {
 		const selection = assistant.selection.current;
@@ -196,7 +206,9 @@
 	}
 
 	function onpanelkeydown(event: KeyboardEvent) {
-		if (event.key === 'Escape' && !event.defaultPrevented) {
+		// The menu keeps focus in the composer, so its Escape bubbles here before the menu's own
+		// document-level handler closes it.
+		if (event.key === 'Escape' && !event.defaultPrevented && !toolsMenuOpen) {
 			event.preventDefault();
 			void assistant.close();
 		}
@@ -259,6 +271,7 @@
 		const userText = request.kind === CHAT_TURN_KIND.message ? request.text : null;
 		let turn = startLiveChatTurn(userText);
 		liveTurn = turn;
+		lastTurnFailure = null;
 		streaming = true;
 		const controller = new AbortController();
 		abortTurn = controller;
@@ -268,7 +281,9 @@
 				url: localizeInternalHref(
 					resolve('/chat/[sessionId]/turns', { sessionId: turnSessionId }),
 				),
-				request,
+				request: runnerEnabled
+					? { ...request, model: assistant.runnerModel.current }
+					: request,
 				signal: controller.signal,
 				onEvent: (event) => {
 					turn = withStreamEvent(turn, event);
@@ -289,11 +304,14 @@
 			streaming = false;
 			abortTurn = null;
 		}
+		const turnError = liveTurn?.error ?? null;
 		await Promise.allSettled([
 			getChatSession({ sessionId: turnSessionId }).refresh(),
 			getChatSessions({ wishlistShortId }).refresh(),
 			getChatAvailability().refresh(),
 		]);
+		lastTurnFailure =
+			turnError === null ? null : { sessionId: turnSessionId, error: turnError };
 		liveTurn = null;
 		void scrollThreadToEnd();
 	}
@@ -495,6 +513,8 @@
 	{#if unfinished || liveTurn?.error != null}
 		<ChatTurnError
 			proposed={liveTurn?.proposed === true}
+			error={liveTurn?.error ??
+				(lastTurnFailure?.sessionId === sessionId ? lastTurnFailure.error : null)}
 			onretry={unfinished && takesMessages
 				? () => void runTurn({ kind: CHAT_TURN_KIND.retry })
 				: undefined}
@@ -528,6 +548,7 @@
 		{sheet}
 		{availability}
 		{fastForward}
+		bind:toolsMenuOpen
 		hintDismissed={assistant.hintDismissed.current}
 		onpreview={showPreview}
 		onclose={() => void assistant.close()}
@@ -552,14 +573,24 @@
 				sessions={sessionsQuery.current}
 				activeSessionId={sessionId}
 				canStartNew={available}
+				runnerModel={runnerEnabled ? assistant.runnerModel.current : undefined}
 				onopen={(id) => {
 					assistant.selection.current = { type: CHAT_SELECTION.session, sessionId: id };
 					assistant.view.current = ASSISTANT_VIEW.chat;
 				}}
 				onnew={() => assistant.startNewChat()}
+				onrunnermodel={(model) => (assistant.runnerModel.current = model)}
 			/>
 		{:else if sessionQuery?.error}
-			<p class="note" role="alert">{m.chat_load_error()}</p>
+			<Alert.Root tone="danger">
+				<CircleAlertIcon aria-hidden="true" />
+				<Alert.Description>{m.chat_load_error()}</Alert.Description>
+				<Alert.Action>
+					<Button intent="outline" size="sm" onclick={() => void sessionQuery?.refresh()}>
+						<RefreshCwIcon data-icon="inline-start" />{m.chat_retry()}
+					</Button>
+				</Alert.Action>
+			</Alert.Root>
 		{:else if loading}
 			<p class="note" aria-busy="true">{m.chat_history_loading()}</p>
 		{:else}

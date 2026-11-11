@@ -255,7 +255,6 @@
 			.filter((group) => group.entries.length > 0),
 	);
 	const nestedActionSurfaceClass = 'grid grid-cols-[1.25rem_minmax(0,1fr)_1.25rem]';
-	const reversalSurfaceClass = 'text-status-danger-text group-hover:text-status-danger-text';
 	let mobileScreen = $state<'main' | GiftContextChoiceAction>('main');
 	let openedSessionId = $state(0);
 
@@ -359,7 +358,7 @@
 		>{:else}<WishlistSheetAction
 			aria-pressed={entry.pressed}
 			disabled={entry.disabled}
-			surfaceClass={entry.reversal === true ? reversalSurfaceClass : undefined}
+			tone={entry.reversal === true ? 'danger' : 'default'}
 			onclick={entry.select}
 			><GiftContextActionIcon
 				action={entry.action}

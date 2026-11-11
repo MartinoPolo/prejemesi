@@ -3,7 +3,7 @@
 	import { Button } from '$lib/components/base/button/index.js';
 	import { Label } from '$lib/components/base/label/index.js';
 	import { HelpText } from '$lib/components/base/help-text/index.js';
-	import * as ToggleGroup from '$lib/components/base/toggle-group/index.js';
+	import * as SegmentedToggle from '$lib/components/derived/segmented-toggle/index.js';
 	import ImageUpload from '$lib/components/derived/image-upload/ImageUpload.svelte';
 	import ImageCropStage from '$lib/components/derived/image-crop/ImageCropStage.svelte';
 	import { editorModeStatusLabel } from '$lib/components/derived/image-crop/editor_mode_status_label.js';
@@ -185,18 +185,6 @@
 	// The crop window is drawn at the slot's real size on this device class (#533).
 	const compactViewport = useNarrowViewportState();
 
-	// Bits UI's ToggleGroup.Root (type="single") mutates its own bindable `value`
-	// on every click, including a re-click of the already-active item (see
-	// GiftViewSwitcher.svelte for the full root-cause note). Passing `active.mode`
-	// as a plain prop leaves the group uncontrolled, so that transient deselect is
-	// never undone. A writable `$derived` local, kept in sync with `active.mode`
-	// automatically, makes the rendered state always resolvable, and resetting it
-	// inside setEditorMode undoes the deselect. That reset always overwrites a
-	// value the two-way binding just set to "" (Bits UI writes through the bound
-	// value before calling onValueChange), so it's a genuine change and always
-	// re-renders.
-	let selectedEditorMode = $derived(active.mode);
-
 	const slotLabels = {
 		card: () => m.wishlist_image_slot_card(),
 		thumbnail: () => m.wishlist_image_slot_thumbnail(),
@@ -268,10 +256,6 @@
 	}
 
 	function setEditorMode(value: string) {
-		if (value === '') {
-			selectedEditorMode = active.mode;
-			return;
-		}
 		if ((IMAGE_EDITOR_MODE_VALUES as string[]).includes(value)) {
 			slotState[activeSlot].mode = value as ImageEditorMode;
 			markDirty(activeSlot);
@@ -388,22 +372,21 @@
 			<!-- Display mode (three-mode model, #116 follow-up) -->
 			<div class="flex flex-col gap-2">
 				<Label>{m.image_fit_label()}</Label>
-				<ToggleGroup.Root
-					type="single"
-					bind:value={selectedEditorMode}
+				<SegmentedToggle.Root
+					value={active.mode}
 					onValueChange={setEditorMode}
 					aria-label={m.image_fit_label()}
 				>
-					<ToggleGroup.Item value={IMAGE_EDITOR_MODES.fill}>
+					<SegmentedToggle.Item value={IMAGE_EDITOR_MODES.fill}>
 						{m.image_fit_fill()}
-					</ToggleGroup.Item>
-					<ToggleGroup.Item value={IMAGE_EDITOR_MODES.fit}>
+					</SegmentedToggle.Item>
+					<SegmentedToggle.Item value={IMAGE_EDITOR_MODES.fit}>
 						{m.image_fit_fit()}
-					</ToggleGroup.Item>
-					<ToggleGroup.Item value={IMAGE_EDITOR_MODES.manual}>
+					</SegmentedToggle.Item>
+					<SegmentedToggle.Item value={IMAGE_EDITOR_MODES.manual}>
 						{m.image_fit_manual()}
-					</ToggleGroup.Item>
-				</ToggleGroup.Root>
+					</SegmentedToggle.Item>
+				</SegmentedToggle.Root>
 			</div>
 		</div>
 

@@ -222,7 +222,7 @@ Canonical source is `src/app.css`; `designs/tokens.css` is reference only.
 
 ## 10. Visual References
 
-- `designs/gift-detail-modal/DESIGN_BRIEF_GIFT_DETAIL_MODAL.md` – structural model for this brief
+- `archive/designs/gift-detail-modal/DESIGN_BRIEF_GIFT_DETAIL_MODAL.md` – structural model for this brief
 - `designs/sharing-flow/DESIGN_BRIEF_SHARING_FLOW.md` – multi-step wizard shell + table-driven Reuse Map precedent
 - `designs/gift-draft-grid/` – the embedded Review grid (its internals are defined there, not here)
 - Current visual fidelity, palette, and component requirements come from `src/app.css` and current components. `archive/designs/style-exploration/direction-b-sage.html` is historical provenance only.

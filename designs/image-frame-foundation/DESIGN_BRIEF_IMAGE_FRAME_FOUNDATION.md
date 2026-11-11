@@ -245,11 +245,11 @@ Reference `designs/tokens.css` (link in mockup `<head>`; never inline). Canonica
 ## 10. Visual References
 
 - **Internal**:
-    - `designs/gift-detail-modal/variant-1.html` – current `object-fit: cover` image column + placeholder SVG (the pattern being generalized).
+    - `archive/designs/gift-detail-modal/variant-1.html` – current `object-fit: cover` image column + placeholder SVG (the pattern being generalized).
     - `src/lib/components/blocks/gift/gift_card_variants.ts` – current `imageArea`/`image`/`imagePlaceholder` slots (`object-cover`, gradient placeholder) to be replaced.
     - `src/lib/components/derived/image-upload/image_upload_variants.ts` – `preview: object-cover` to refactor onto ImageFrame.
     - `src/app.css` – existing `--wishlist-*` tokens (lines ~119–129, 338–348) and preset/palette color scales; `palette-colors.css` (golden-hour/twilight bg themes – kept _separate_).
-    - `designs/wishlist-page/` and `designs/dashboard/` – slots that will consume the renderer.
+    - `archive/designs/wishlist-page/` and `designs/dashboard/` – slots that will consume the renderer.
 - **External**: Storybook component "stories" pages (titled specimens + controls); object-fit visual explainers.
 
 ---

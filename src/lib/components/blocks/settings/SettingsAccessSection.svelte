@@ -3,8 +3,9 @@
 	import { page } from '$app/state';
 	import { resolve } from '$app/paths';
 	import * as m from '$lib/paraglide/messages.js';
+	import * as Alert from '$lib/components/base/alert/index.js';
 	import * as Card from '$lib/components/base/card/index.js';
-	import * as Dialog from '$lib/components/base/dialog/index.js';
+	import { ConfirmDialog } from '$lib/components/derived/confirm-dialog/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
 	import { Separator } from '$lib/components/base/separator/index.js';
 	import { Skeleton } from '$lib/components/base/skeleton/index.js';
@@ -32,9 +33,9 @@
 	} from '$lib/modules/access_tokens/index.js';
 	import type { CreateAccessTokenInput } from '$lib/modules/access_tokens/types.js';
 	import BookOpenIcon from '@lucide/svelte/icons/book-open';
+	import CircleAlertIcon from '@lucide/svelte/icons/circle-alert';
 	import InfoIcon from '@lucide/svelte/icons/info';
 	import KeyRoundIcon from '@lucide/svelte/icons/key-round';
-	import LoaderIcon from '@lucide/svelte/icons/loader';
 	import PlugIcon from '@lucide/svelte/icons/plug';
 	import PlusIcon from '@lucide/svelte/icons/plus';
 
@@ -224,9 +225,28 @@
 	});
 </script>
 
+{#snippet loadError(message: string, failedQuery: { refresh: () => Promise<void> })}
+	<Alert.Root tone="danger">
+		<CircleAlertIcon aria-hidden="true" />
+		<Alert.Description>{message}</Alert.Description>
+		<Alert.Action>
+			<Button
+				intent="outline"
+				size="sm"
+				onclick={() => {
+					// A repeated failure stays visible through the query's error state.
+					failedQuery.refresh().catch(() => {});
+				}}
+			>
+				{m.error_page_retry()}
+			</Button>
+		</Alert.Action>
+	</Alert.Root>
+{/snippet}
+
 {#snippet tokenStates(tokenList: AccessTokenSummary[] | undefined)}
 	{#if tokensQuery?.error}
-		<p class="nested-panel error-panel" role="alert">{m.access_tokens_load_error()}</p>
+		{@render loadError(m.access_tokens_load_error(), tokensQuery)}
 	{:else if tokenList === undefined}
 		<div class="flex flex-col gap-2" aria-busy="true">
 			<span class="sr-only" role="status">{m.access_tokens_loading()}</span>
@@ -268,7 +288,7 @@
 			<p>{m.access_tokens_apps_demo()}</p>
 		</div>
 	{:else if appsQuery?.error}
-		<p class="nested-panel error-panel" role="alert">{m.access_tokens_apps_load_error()}</p>
+		{@render loadError(m.access_tokens_apps_load_error(), appsQuery)}
 	{:else if appList === undefined}
 		<div class="nested-panel skeleton-panel" aria-busy="true">
 			<span class="sr-only" role="status">{m.access_tokens_apps_loading()}</span>
@@ -302,59 +322,25 @@
 {/snippet}
 
 {#snippet revokeDialog()}
-	<Dialog.Root
-		bind:open={
-			() => revokeOpen,
-			(nextOpen) => {
-				if (!revokePending) {
-					revokeOpen = nextOpen;
-				}
+	<ConfirmDialog
+		bind:open={revokeOpen}
+		pending={revokePending}
+		title={revokeCopy.title}
+		description={revokeCopy.description}
+		cancelLabel={m.access_tokens_back()}
+		confirmLabel={revokeCopy.confirm}
+		pendingLabel={revokeCopy.pending}
+		confirmIntent="primary-destructive"
+		data-testid="access-token-revoke-dialog"
+		onCloseAutoFocus={(event) => {
+			// The opening row is gone after a revoke, so focus moves to a neighbour instead.
+			if (revokeCompleted) {
+				event.preventDefault();
+				void focusAfterRemoval(focusAfterRevoke);
 			}
-		}
-	>
-		<Dialog.Content
-			size="md"
-			showCloseButton={false}
-			data-testid="access-token-revoke-dialog"
-			onCloseAutoFocus={(event) => {
-				// The opening row is gone after a revoke, so focus moves to a neighbour instead.
-				if (revokeCompleted) {
-					event.preventDefault();
-					void focusAfterRemoval(focusAfterRevoke);
-				}
-			}}
-		>
-			<Dialog.Header>
-				<Dialog.Title>
-					{revokeCopy.title}
-				</Dialog.Title>
-				<Dialog.Description class="text-(length:--text-base) text-foreground">
-					{revokeCopy.description}
-				</Dialog.Description>
-			</Dialog.Header>
-			<Dialog.Footer>
-				<Button
-					intent="secondary"
-					disabled={revokePending}
-					onclick={() => (revokeOpen = false)}
-				>
-					{m.access_tokens_back()}
-				</Button>
-				<Button
-					intent="primary-destructive"
-					disabled={revokePending}
-					onclick={confirmRevoke}
-				>
-					{#if revokePending}
-						<LoaderIcon class="animate-spin" data-icon="inline-start" />
-						{revokeCopy.pending}
-					{:else}
-						{revokeCopy.confirm}
-					{/if}
-				</Button>
-			</Dialog.Footer>
-		</Dialog.Content>
-	</Dialog.Root>
+		}}
+		onconfirm={confirmRevoke}
+	/>
 {/snippet}
 
 <Card.Root
@@ -398,10 +384,12 @@
 
 	<Card.Content class="flex flex-col px-(--access-grant-inset)">
 		{#if demo}
-			<div class="nested-panel demo-panel">
-				<InfoIcon class="mt-px size-4.5 shrink-0 text-brand-link" aria-hidden="true" />
-				<p id="access-tokens-demo-note">{m.access_tokens_demo()}</p>
-			</div>
+			<Alert.Root tone="info">
+				<InfoIcon aria-hidden="true" />
+				<Alert.Description id="access-tokens-demo-note">
+					{m.access_tokens_demo()}
+				</Alert.Description>
+			</Alert.Root>
 		{:else}
 			{@render tokenGroup()}
 		{/if}
@@ -501,28 +489,13 @@
 		font-size: var(--text-md);
 	}
 
-	.error-panel {
-		border: 2px solid var(--border-strong);
-		color: var(--status-danger-text);
-		font-size: var(--text-md);
-	}
-
-	.demo-panel,
 	.placeholder-panel {
 		display: flex;
 		align-items: flex-start;
 		gap: 10px;
-		font-size: var(--text-md);
-	}
-
-	.demo-panel {
-		border: 2px solid var(--border-strong);
-		background: var(--tint);
-	}
-
-	.placeholder-panel {
 		border: 2px dashed var(--border-strong);
 		color: var(--muted-foreground);
+		font-size: var(--text-md);
 	}
 
 	@media (width >= 640px) {

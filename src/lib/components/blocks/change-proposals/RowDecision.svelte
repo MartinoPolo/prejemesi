@@ -11,6 +11,7 @@
 		wholeGiftPressed,
 	} from '$lib/modules/change_proposals/change_review_decisions.js';
 	import { CHANGE_KIND_PRESENTATION } from './change_review_presentation.js';
+	import DecisionToggle from './DecisionToggle.svelte';
 	import type { ChangeReviewActions, ReviewRowEntry } from './change_review_rows.js';
 	import { RESERVATION_OPERATION } from './change_row_model.js';
 
@@ -81,18 +82,17 @@
 	pressed: 'true' | 'mixed' | 'false',
 	action: string,
 	onclick: () => void,
+	compactOnPhone = false,
 )}
-	<button
-		type="button"
-		class="decide-btn"
+	<DecisionToggle
+		tone={choice.tone}
+		icon={choice.icon}
+		label={choice.label()}
+		{pressed}
+		{compactOnPhone}
 		data-row-action={action}
-		data-tone-choice={choice.tone}
-		aria-pressed={pressed}
 		{onclick}
-	>
-		<choice.icon aria-hidden="true" />
-		<span class="decide-label">{choice.label()}</span>
-	</button>
+	/>
 {/snippet}
 
 {#if entry.rowReview?.kind === ROW_REVIEW_KIND.fields}
@@ -107,12 +107,14 @@
 			wholeGiftPressed(entry.rowReview, CHANGE_DECISION.accepted),
 			'accept-all',
 			() => actions.decideRow(rowId, CHANGE_DECISION.accepted),
+			true,
 		)}
 		{@render decideButton(
 			{ label: m.change_review_reject_all, tone: CHOICE_TONE.reject, icon: XIcon },
 			wholeGiftPressed(entry.rowReview, CHANGE_DECISION.rejected),
 			'reject-all',
 			() => actions.decideRow(rowId, CHANGE_DECISION.rejected),
+			true,
 		)}
 	</span>
 {:else if entry.rowReview?.kind === ROW_REVIEW_KIND.whole}
@@ -141,82 +143,5 @@
 		display: flex;
 		gap: var(--space-1);
 		border-radius: var(--radius-btn);
-	}
-
-	.decide-btn {
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		gap: 6px;
-		min-width: var(--size-control-sm);
-		height: var(--size-control-sm);
-		padding: 0 10px;
-		border: 2px solid var(--ink);
-		border-radius: var(--radius-btn);
-		background: var(--card);
-		color: var(--ink);
-		font-size: var(--text-sm);
-		font-weight: 600;
-		line-height: 1;
-		white-space: nowrap;
-		cursor: pointer;
-	}
-
-	.decide-btn:hover {
-		background: var(--panel-hover);
-	}
-
-	.decide-btn:focus-visible {
-		outline: 2px solid var(--ring);
-		outline-offset: 2px;
-	}
-
-	.decide-btn :global(svg) {
-		width: 16px;
-		height: 16px;
-	}
-
-	.decide-btn[data-tone-choice='accept'][aria-pressed='true'] {
-		border-color: var(--status-success-text);
-		background: var(--status-success-text);
-		color: var(--card);
-	}
-
-	.decide-btn[data-tone-choice='reject'][aria-pressed='true'] {
-		background: var(--ink);
-		color: var(--card);
-	}
-
-	.decide-btn[data-tone-choice='danger'][aria-pressed='true'] {
-		border-color: var(--status-danger-text);
-		background: var(--status-danger-text);
-		color: var(--card);
-	}
-
-	.decide-btn[data-tone-choice='accept'][aria-pressed='mixed'] {
-		border-style: dashed;
-		background: color-mix(in oklab, var(--status-success) 14%, var(--card));
-	}
-
-	.decide-btn[data-tone-choice='reject'][aria-pressed='mixed'] {
-		border-style: dashed;
-		background: var(--muted);
-	}
-
-	@media (width < 640px) {
-		.decide-btn {
-			min-width: var(--size-control-lg);
-			height: var(--size-control-lg);
-		}
-
-		/* A phone band fits the two choices with words, but a gift's bulk buttons only as icons. */
-		[data-kind='bulk'] .decide-label {
-			position: absolute;
-			width: 1px;
-			height: 1px;
-			overflow: hidden;
-			clip-path: inset(50%);
-			white-space: nowrap;
-		}
 	}
 </style>

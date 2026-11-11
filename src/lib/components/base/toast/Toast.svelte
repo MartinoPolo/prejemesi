@@ -11,10 +11,10 @@
 	import CircleCheckIcon from '@lucide/svelte/icons/circle-check';
 	import CircleXIcon from '@lucide/svelte/icons/circle-x';
 	import InfoIcon from '@lucide/svelte/icons/info';
-	import LoaderCircleIcon from '@lucide/svelte/icons/loader-circle';
 	import TriangleAlertIcon from '@lucide/svelte/icons/triangle-alert';
 	import XIcon from '@lucide/svelte/icons/x';
 	import { Button } from '$lib/components/base/button/index.js';
+	import { Spinner } from '$lib/components/base/spinner/index.js';
 
 	/** Fallback icon per tone, rendered when no explicit `icon` snippet is passed. */
 	const DEFAULT_TONE_ICONS = {
@@ -22,7 +22,7 @@
 		success: CircleCheckIcon,
 		warning: TriangleAlertIcon,
 		danger: CircleXIcon,
-		loading: LoaderCircleIcon,
+		loading: Spinner,
 	} as const satisfies Record<ToastTone, Component<{ class?: string }>>;
 
 	let {
@@ -53,7 +53,7 @@
 		{#if icon}
 			{@render icon()}
 		{:else}
-			<DefaultToneIcon class={cn('size-4', tone === 'loading' && 'animate-spin')} />
+			<DefaultToneIcon class="size-4" />
 		{/if}
 	</div>
 

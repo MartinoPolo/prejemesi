@@ -68,6 +68,14 @@
 		outline-offset: 3px;
 	}
 
+	/* On Android the keyboard lifts fixed elements, so the button would cover the field; iOS hides
+	   it behind the keyboard anyway. */
+	@media (width < 640px) {
+		:global([data-keyboard='open']) .fab {
+			display: none;
+		}
+	}
+
 	.fab-icon {
 		display: grid;
 		flex: none;

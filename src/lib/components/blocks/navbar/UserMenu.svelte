@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { HelpText } from '$lib/components/base/help-text/index.js';
 	import { resolve } from '$app/paths';
 	import { goto } from '$app/navigation';
 	import * as DropdownMenu from '$lib/components/base/dropdown-menu/index.js';
@@ -110,8 +111,8 @@
 				{demo ? m.demo_exit_menu() : m.nav_logout()}
 			</DropdownMenu.Item>
 		</DropdownMenu.Group>
-		{#if demoExitFailed}<p role="alert" class="p-2 text-sm text-status-danger-text">
+		{#if demoExitFailed}<HelpText role="alert" state="error" class="p-2">
 				{m.demo_exit_error()}
-			</p>{/if}
+			</HelpText>{/if}
 	</DropdownMenu.Content>
 </DropdownMenu.Root>

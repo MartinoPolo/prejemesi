@@ -1,5 +1,21 @@
 import { describe, expect, it } from 'vitest';
-import { chatDayStart } from './limits.js';
+import { CHAT_RUNNER_LIMITS, chatDayStart } from './limits.js';
+
+// Imported by URL, so the type check leaves the plain-JavaScript runner script alone.
+const chatRunnerScriptUrl = new URL('../../../../scripts/chat_runner.mjs', import.meta.url).href;
+
+describe('the chat runner script', () => {
+	it('splits its reports by the limits the app accepts', async () => {
+		const runnerScript = (await import(/* @vite-ignore */ chatRunnerScriptUrl)) as {
+			REPORT_LIMITS: unknown;
+		};
+		expect(runnerScript.REPORT_LIMITS).toEqual({
+			eventsPerReport: CHAT_RUNNER_LIMITS.eventsPerReport,
+			textEventMaxLength: CHAT_RUNNER_LIMITS.textEventMaxLength,
+			queryMaxLength: CHAT_RUNNER_LIMITS.queryMaxLength,
+		});
+	});
+});
 
 describe('chatDayStart', () => {
 	it('starts the day at midnight Prague time in winter', () => {

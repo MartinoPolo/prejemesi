@@ -4,6 +4,7 @@
 	import { resolve } from '$app/paths';
 	import { Input } from '$lib/components/base/input/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
+	import { Spinner } from '$lib/components/base/spinner/index.js';
 	import AuthBrandPanel from '$lib/components/blocks/auth/AuthBrandPanel.svelte';
 	import AuthBrandFeature from '$lib/components/blocks/auth/AuthBrandFeature.svelte';
 	import AuthFormCard from '$lib/components/blocks/auth/AuthFormCard.svelte';
@@ -201,12 +202,12 @@
 
 	{#if unverifiedEmail}
 		{#if resendSent}
-			<Alert.Root tone="default" class="mb-5">
+			<Alert.Root tone="success" class="mb-5">
 				<MailCheckIcon />
 				<Alert.Description>{m.login_resend_success()}</Alert.Description>
 			</Alert.Root>
 		{:else}
-			<Alert.Root tone="warning" class="mb-5">
+			<Alert.Root tone="warning" role="alert" class="mb-5">
 				<MailIcon />
 				<Alert.Description>{m.login_error_unverified()}</Alert.Description>
 			</Alert.Root>
@@ -219,7 +220,7 @@
 				onclick={handleResendVerification}
 			>
 				{#if resending}
-					<span class="spinner"></span>
+					<Spinner data-icon="inline-start" />
 				{/if}
 				{m.login_resend_verification()}
 			</Button>
@@ -276,7 +277,7 @@
 			disabled={loading || (!turnstileUnavailable && turnstileToken === null)}
 		>
 			{#if loading}
-				<span class="spinner"></span>
+				<Spinner data-icon="inline-start" />
 			{/if}
 			{m.login_submit()}
 		</Button>
@@ -313,21 +314,5 @@
 
 	.forgot-link:hover {
 		text-decoration-thickness: 2px;
-	}
-
-	.spinner {
-		width: 18px;
-		height: 18px;
-		border: 2px solid oklch(from var(--primary-foreground) l c h / 35%);
-		border-top-color: var(--primary-foreground);
-		border-radius: 50%;
-		animation: spin 0.7s linear infinite;
-		flex-shrink: 0;
-	}
-
-	@keyframes spin {
-		to {
-			transform: rotate(360deg);
-		}
 	}
 </style>

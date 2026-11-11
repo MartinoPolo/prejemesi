@@ -34,7 +34,7 @@ Secondary purpose: provide enough feature context to remove doubt ("is this the 
 | 2   | **Hero**               | Headline, subheadline, primary CTA, optional social proof signal (e.g. "Vyzkoušeno v rodině") |
 | 3   | **How It Works**       | 4-step process: Vytvořte seznam → Přidejte přání → Sdílejte odkaz → Překvapení!               |
 | 4   | **Key Features**       | Tajné rezervace, Tematické seznamy, Sdílení jedním odkazem, Zdarma navždy                     |
-| 5   | **App Preview / Mock** | Visual preview of the wishlist UI (cards, list, compact view) – the product in action         |
+| 5   | **App Preview / Mock** | Visual preview of the wishlist UI (cards, list) – the product in action                       |
 | 6   | **Trust Signal**       | Small reassurance block: no ads, no payment required, no surprise spoiled                     |
 | 7   | **Final CTA**          | Repeat the "Začít zdarma" + "Přihlásit se" pair before the footer                             |
 | 8   | **Footer**             | © Přejeme si, language toggle                                                                    |

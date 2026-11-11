@@ -100,12 +100,17 @@ export const init: ClientInit = () => {
 	}
 };
 
+// SvelteKit's client substitutes `{ message }` only for a synchronous empty return, so this async
+// hook must resolve to an error itself: a failed data preload with an undefined error stays cached,
+// and the click that reuses it renders a blank page instead of the error page.
 export const handleError: HandleClientError = async (input) => {
+	const pageError: App.Error = { message: input.message };
 	if (hasDsn) {
 		const sentryErrorHandler = await loadSentry();
 		if (sentryErrorHandler !== undefined) {
-			return sentryErrorHandler(input);
+			return (await sentryErrorHandler(input)) ?? pageError;
 		}
 	}
 	console.error(input.error);
+	return pageError;
 };

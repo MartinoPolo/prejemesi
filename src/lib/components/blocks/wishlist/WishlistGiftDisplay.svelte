@@ -6,6 +6,7 @@
 	import GiftCardSkeleton from '$lib/components/blocks/gift/GiftCardSkeleton.svelte';
 	import WishlistGiftCardGrid from './WishlistGiftCardGrid.svelte';
 	import WishlistGiftListView from './WishlistGiftListView.svelte';
+	import WishlistGiftCarousel from './WishlistGiftCarousel.svelte';
 	import type { GiftReorderPlacement } from '$lib/modules/gifts/gift_grouped_reorder.js';
 	import type { GiftReorderPlacementCommitHandler } from './gift_reorder_view.svelte.js';
 	import {
@@ -137,7 +138,11 @@
 	const STANDARD_EASING = 'cubic-bezier(0.2, 0.7, 0.3, 1)';
 	let displayedViewMode = $state(untrack(() => viewMode));
 	const GiftCollectionView = $derived(
-		displayedViewMode === 'card' ? WishlistGiftCardGrid : WishlistGiftListView,
+		{
+			[GIFT_VIEW_MODES.card]: WishlistGiftCardGrid,
+			[GIFT_VIEW_MODES.list]: WishlistGiftListView,
+			[GIFT_VIEW_MODES.carousel]: WishlistGiftCarousel,
+		}[displayedViewMode],
 	);
 	let collectionElement = $state<HTMLElement | null>(null);
 	let motionHost = $state<HTMLElement | null>(null);
@@ -336,8 +341,11 @@
 {#snippet giftCollection()}
 	<ContextMenu.Trigger disabled={selectionMode || collectionIsOutgoing}>
 		{#snippet child({ props: triggerProps })}
+			<!-- Bits UI's pointerdown only starts its own touch long press; the gift wrapper's
+			     recognizer owns touch long presses, and card controls must never open the menu. -->
 			<div
 				{...triggerProps}
+				onpointerdown={undefined}
 				style={undefined}
 				bind:this={collectionElement}
 				use:giftCardCollectionLayout

@@ -140,3 +140,18 @@
 		</div>
 	{/snippet}
 </Story>
+
+<!-- Item counts ("+N", "1/8") are neutral, raised as an overlay on a photo; tab totals are a neutral
+     count and the number of active filters a primary count. -->
+<Story name="Counters">
+	{#snippet template(args: BadgeProps)}
+		<div class="flex flex-wrap items-center gap-3">
+			<Badge {...args} tone="neutral">+3</Badge>
+			<Badge {...args} tone="neutral" badgeStyle="overlay">+7</Badge>
+			<Badge {...args} tone="neutral" badgeStyle="overlay">1/8</Badge>
+			<Badge {...args} tone="neutral" badgeStyle="count">12</Badge>
+			<Badge {...args} tone="primary" badgeStyle="count">2</Badge>
+			<Badge {...args} tone="primary" badgeStyle="count">11</Badge>
+		</div>
+	{/snippet}
+</Story>

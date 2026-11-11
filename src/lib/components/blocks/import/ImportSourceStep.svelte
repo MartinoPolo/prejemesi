@@ -1,7 +1,7 @@
 <script lang="ts">
 	import * as m from '$lib/paraglide/messages.js';
 	import * as Alert from '$lib/components/base/alert/index.js';
-	import * as ToggleGroup from '$lib/components/base/toggle-group/index.js';
+	import * as SegmentedToggle from '$lib/components/derived/segmented-toggle/index.js';
 	import { HelpText } from '$lib/components/base/help-text/index.js';
 	import ImportSourceFileDrop from './ImportSourceFileDrop.svelte';
 	import ImportSourcePaste from './ImportSourcePaste.svelte';
@@ -27,18 +27,6 @@
 	let sourceMethod = $state<SourceMethod>(SOURCE_METHOD.file);
 	let parseStatus = $state<ParseStatus>(PARSE_STATUS.idle);
 	let errorMessage = $state<string | null>(null);
-
-	// Bits UI's ToggleGroup.Root (type="single") mutates its own bindable `value`
-	// on every click, including a re-click of the already-active item (see
-	// GiftViewSwitcher.svelte for the full root-cause note). Passing `sourceMethod`
-	// as a plain prop leaves the group uncontrolled, so that transient deselect is
-	// never undone. A writable `$derived` local, kept in sync with `sourceMethod`
-	// automatically, makes the rendered state always resolvable, and resetting it
-	// inside onValueChange undoes the deselect. That reset always overwrites a
-	// value the two-way binding just set to "" (Bits UI writes through the bound
-	// value before calling onValueChange), so it's a genuine change and always
-	// re-renders.
-	let selectedSourceMethod = $derived(sourceMethod);
 
 	const isDisabled = $derived(parseStatus === PARSE_STATUS.parsing);
 
@@ -72,33 +60,28 @@
 
 <div class="flex flex-col gap-5">
 	<!-- Source method toggle -->
-	<ToggleGroup.Root
-		type="single"
-		bind:value={selectedSourceMethod}
+	<SegmentedToggle.Root
+		value={sourceMethod}
 		onValueChange={(value) => {
-			if (value === '') {
-				selectedSourceMethod = sourceMethod;
-				return;
-			}
 			sourceMethod = value as SourceMethod;
 			errorMessage = null;
 			parseStatus = PARSE_STATUS.idle;
 		}}
-		class="grid w-full grid-cols-3"
+		width="fill"
 	>
-		<ToggleGroup.Item value={SOURCE_METHOD.file} class="flex items-center gap-2">
+		<SegmentedToggle.Item value={SOURCE_METHOD.file}>
 			<FileIcon class="size-4" />
 			{m.import_wizard_source_file()}
-		</ToggleGroup.Item>
-		<ToggleGroup.Item value={SOURCE_METHOD.paste} class="flex items-center gap-2">
+		</SegmentedToggle.Item>
+		<SegmentedToggle.Item value={SOURCE_METHOD.paste}>
 			<TableIcon class="size-4" />
 			{m.import_wizard_source_paste()}
-		</ToggleGroup.Item>
-		<ToggleGroup.Item value={SOURCE_METHOD.sheets} class="flex items-center gap-2">
+		</SegmentedToggle.Item>
+		<SegmentedToggle.Item value={SOURCE_METHOD.sheets}>
 			<GoogleSheetsIcon class="size-4" />
 			{m.import_wizard_source_sheets()}
-		</ToggleGroup.Item>
-	</ToggleGroup.Root>
+		</SegmentedToggle.Item>
+	</SegmentedToggle.Root>
 
 	<!-- Source sub-component – fixed height so the dialog does not jump between methods -->
 	<div class="flex h-48">
@@ -125,7 +108,7 @@
 
 	<!-- Error message -->
 	{#if errorMessage}
-		<Alert.Root tone="destructive">
+		<Alert.Root tone="danger">
 			<AlertCircleIcon class="size-4" />
 			<Alert.Description>{errorMessage}</Alert.Description>
 		</Alert.Root>

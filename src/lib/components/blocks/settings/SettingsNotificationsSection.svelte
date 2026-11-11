@@ -1,6 +1,7 @@
 <script lang="ts">
 	import * as m from '$lib/paraglide/messages.js';
 	import * as Card from '$lib/components/base/card/index.js';
+	import SettingsSectionHeader from './SettingsSectionHeader.svelte';
 	import { Button } from '$lib/components/base/button/index.js';
 	import { NotificationPreferencesForm } from '$lib/components/blocks/notification/index.js';
 	import type { NotificationPreferences } from '$lib/modules/notifications/types.js';
@@ -28,15 +29,11 @@
 </script>
 
 <Card.Root>
-	<Card.Header>
-		<div class="flex items-center gap-2">
-			<BellIcon class="size-5 text-muted-foreground" />
-			<div>
-				<Card.Title>{m.settings_notifications_title()}</Card.Title>
-				<Card.Description>{m.settings_notifications_description()}</Card.Description>
-			</div>
-		</div>
-	</Card.Header>
+	<SettingsSectionHeader
+		icon={BellIcon}
+		title={m.settings_notifications_title()}
+		description={m.settings_notifications_description()}
+	/>
 	<Card.Content>
 		<NotificationPreferencesForm
 			formId={NOTIFICATION_PREFERENCES_FORM_ID}

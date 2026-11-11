@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { HTMLAttributes } from 'svelte/elements';
 	import { cn, type WithElementRef } from '$lib/utils.js';
+	import { dialogScrollSectionVariants } from './dialog_variants.js';
 
 	let {
 		ref = $bindable(null),
@@ -10,11 +11,13 @@
 	}: WithElementRef<HTMLAttributes<HTMLDivElement>> = $props();
 </script>
 
+<!-- Phones stack the actions with the primary one on top; wider screens put them on one row. -->
 <div
 	bind:this={ref}
 	data-slot="dialog-footer"
 	class={cn(
 		'gap-(--nested-control-gap) flex flex-col-reverse sm:flex-row sm:justify-end',
+		dialogScrollSectionVariants().footer(),
 		className,
 	)}
 	{...restProps}

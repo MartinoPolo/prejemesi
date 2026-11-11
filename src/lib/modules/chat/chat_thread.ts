@@ -7,9 +7,12 @@ import {
 } from './types.js';
 
 const WEB_SEARCH_TOOL_NAME = 'web_search';
+/** Claude Code reading one web page, reported by the chat runner with the page's URL. */
+const WEB_FETCH_TOOL_NAME = 'web_fetch';
 
 export const CHAT_TOOL_KIND = {
 	search: 'search',
+	fetch: 'fetch',
 	read: 'read',
 	change: 'change',
 } as const;
@@ -22,6 +25,9 @@ const READ_TOOL_NAME = /^(?:read|get|list|search|find)[A-Z]/u;
 export function chatToolKind(name: string): ChatToolKind {
 	if (name === WEB_SEARCH_TOOL_NAME) {
 		return CHAT_TOOL_KIND.search;
+	}
+	if (name === WEB_FETCH_TOOL_NAME) {
+		return CHAT_TOOL_KIND.fetch;
 	}
 	return READ_TOOL_NAME.test(name) ? CHAT_TOOL_KIND.read : CHAT_TOOL_KIND.change;
 }

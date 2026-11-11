@@ -7,7 +7,7 @@
 
 <script lang="ts">
 	import { untrack } from 'svelte';
-	import LoaderIcon from '@lucide/svelte/icons/loader';
+	import { Spinner } from '$lib/components/base/spinner/index.js';
 	import * as m from '$lib/paraglide/messages.js';
 	import * as Dialog from '$lib/components/base/dialog/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
@@ -162,7 +162,7 @@
 					disabled={saving || trimmedLabel === '' || duplicatesExistingLabel}
 				>
 					{#if saving}
-						<LoaderIcon class="animate-spin" data-icon="inline-start" />
+						<Spinner data-icon="inline-start" />
 					{/if}
 					{target.kind === 'editor'
 						? m.gift_category_create()

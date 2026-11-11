@@ -49,7 +49,7 @@
 	} from '$lib/components/blocks/gift/GiftCategoryQuickAddDialog.svelte';
 	import WishlistSettingsModal from '$lib/components/blocks/wishlist/WishlistSettingsModal.svelte';
 	import EditRecipientDialog from '$lib/components/blocks/wishlist/EditRecipientDialog.svelte';
-	import * as Dialog from '$lib/components/base/dialog/index.js';
+	import { ConfirmDialog } from '$lib/components/derived/confirm-dialog/index.js';
 	import * as Alert from '$lib/components/base/alert/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
 	import InfoIcon from '@lucide/svelte/icons/info';
@@ -67,6 +67,7 @@
 	import { LazyImportWizard } from '$lib/components/blocks/import/index.js';
 	import { WIZARD_MODE } from '$lib/components/blocks/import/import_wizard_types.js';
 	import { emptyGiftFilters, setGiftsContext } from '$lib/modules/gifts/gifts.context.svelte.js';
+	import { presentedGiftViewMode } from '$lib/modules/gifts/gift_view_mode.js';
 	import { createLatestAsyncQueue } from '$lib/modules/gifts/latest_async_queue.js';
 	import { setLikesContext } from '$lib/modules/likes/likes.context.svelte.js';
 	import { provideGiftGalleryPositions } from '$lib/modules/gifts/gift_gallery_positions.js';
@@ -287,6 +288,8 @@
 
 	// ── Context setup (must be synchronous – before any await) ───────────────
 
+	// False until mount, so a saved mobile-only Carousel hydrates as the server-rendered Card.
+	const narrowViewport = useNarrowViewportState();
 	const giftsContext = untrack(() =>
 		setGiftsContext(
 			() => wishlist.id,
@@ -296,6 +299,7 @@
 			() => isAuthenticated,
 			() => likedGiftIds,
 			() => isGiftDataLoading || wishlist.shortId !== shortId,
+			() => narrowViewport.current,
 		),
 	);
 
@@ -706,7 +710,12 @@
 		},
 		mergeReorderGiftsInputs,
 	);
-	const viewMode = $derived(giftsContext.viewMode.current);
+	const viewMode = $derived(
+		presentedGiftViewMode(giftsContext.viewMode.current, {
+			narrowViewport: narrowViewport.current,
+			temporaryCardView: reorderMode || giftSelection.active,
+		}),
+	);
 	let cardColumnCapacity = $state<number | null>(null);
 	const canMaintainReorderMode = $derived(canManage && !isArchived);
 	// Grouped reorder shows every level or category, so their definitions must be loaded first.
@@ -912,7 +921,6 @@
 			? contextSession.invocation.point
 			: { x: 0, y: 0 },
 	);
-	const narrowViewport = useNarrowViewportState();
 	const activeContextGiftId = $derived(
 		programmaticOpen && contextAnchor !== null ? contextSession?.gift.id : null,
 	);
@@ -1772,12 +1780,9 @@
 		pending.resolve(true);
 	}
 
-	function handleRecipientGiftChangeWarningOpenChange(open: boolean) {
-		recipientGiftChangeWarningOpen = open;
-		if (!open) {
-			pendingRecipientGiftChange?.resolve(false);
-			pendingRecipientGiftChange = null;
-		}
+	function declineRecipientGiftChange() {
+		pendingRecipientGiftChange?.resolve(false);
+		pendingRecipientGiftChange = null;
 	}
 
 	// Gift mutations rely on the command's server-side single-flight refresh: the
@@ -2441,9 +2446,10 @@
 		<PendingChangesBanner wishlistShortId={shortId} proposals={pendingProposals} />
 	{/if}
 	{#if page.data.demoExpiresAt !== null}
-		<p class="rounded-lg border border-border bg-card p-3 text-sm text-muted-foreground">
-			{m.demo_list_limits()}
-		</p>
+		<Alert.Root tone="info">
+			<InfoIcon aria-hidden="true" />
+			<Alert.Description>{m.demo_list_limits()}</Alert.Description>
+		</Alert.Root>
 	{/if}
 	{#if isPreparing}
 		<WishlistPreparingNotice />
@@ -2495,6 +2501,7 @@
 			filters={giftsContext.filters.current}
 			grouping={giftsContext.effectiveGrouping.current}
 			groupingAvailability={giftsContext.groupingAvailability.current}
+			groupingRequired={giftsContext.carouselViewActive.current}
 			categoryFilterOptions={giftsContext.categoryFilterOptions.current}
 			priorityFilterOptions={giftsContext.priorityFilterOptions.current}
 			cardColumnOption={giftsContext.cardColumnOption.current}
@@ -2519,7 +2526,7 @@
 		/>
 
 		{#if reorderMode && !reorderBaselineVerified}
-			<Alert.Root tone="warning" data-testid="gift-reorder-recovery-notice">
+			<Alert.Root tone="warning" role="alert" data-testid="gift-reorder-recovery-notice">
 				<TriangleAlertIcon />
 				<Alert.Description>
 					{reorderBaselineStatus === REORDER_BASELINE_STATUS.refreshing
@@ -2711,26 +2718,16 @@
 	oncreated={copyIntoCreatedWishlist}
 />
 
-<Dialog.Root bind:open={hiddenConfirmOpen}>
-	<Dialog.Content size="sm">
-		<Dialog.Header>
-			<Dialog.Title>{m.gift_hidden_selection_title()}</Dialog.Title>
-			<Dialog.Description
-				>{m.gift_hidden_selection_description({
-					count: selectionSnapshot.hiddenIds.length,
-				})}</Dialog.Description
-			>
-		</Dialog.Header>
-		<Dialog.Footer>
-			<Button intent="outline" onclick={() => (hiddenConfirmOpen = false)}
-				>{m.cancel()}</Button
-			>
-			<Button intent="primary" onclick={confirmHiddenBulkAction}
-				>{m.gift_hidden_selection_continue()}</Button
-			>
-		</Dialog.Footer>
-	</Dialog.Content>
-</Dialog.Root>
+<ConfirmDialog
+	bind:open={hiddenConfirmOpen}
+	title={m.gift_hidden_selection_title()}
+	description={m.gift_hidden_selection_description({
+		count: selectionSnapshot.hiddenIds.length,
+	})}
+	confirmLabel={m.gift_hidden_selection_continue()}
+	confirmIntent="primary"
+	onconfirm={confirmHiddenBulkAction}
+/>
 
 <WishlistModals
 	demo={page.data.demoExpiresAt !== null}
@@ -2791,27 +2788,16 @@
 {/if}
 
 <!-- After the gift editor so its portal stacks above it: the editor asks on the first change. -->
-<Dialog.Root
-	open={recipientGiftChangeWarningOpen}
-	onOpenChange={handleRecipientGiftChangeWarningOpenChange}
->
-	<Dialog.Content size="sm" data-testid="recipient-gift-change-warning">
-		<Dialog.Header>
-			<Dialog.Title>{m.gift_recipient_change_warning_title()}</Dialog.Title>
-			<Dialog.Description>{m.gift_recipient_change_warning_description()}</Dialog.Description>
-		</Dialog.Header>
-		<Dialog.Footer>
-			<Button
-				intent="outline"
-				onclick={() => handleRecipientGiftChangeWarningOpenChange(false)}
-				>{m.cancel()}</Button
-			>
-			<Button intent="primary" onclick={confirmRecipientGiftChangeWarning}
-				>{m.gift_recipient_change_warning_continue()}</Button
-			>
-		</Dialog.Footer>
-	</Dialog.Content>
-</Dialog.Root>
+<ConfirmDialog
+	bind:open={recipientGiftChangeWarningOpen}
+	title={m.gift_recipient_change_warning_title()}
+	description={m.gift_recipient_change_warning_description()}
+	confirmLabel={m.gift_recipient_change_warning_continue()}
+	confirmIntent="primary"
+	data-testid="recipient-gift-change-warning"
+	onconfirm={confirmRecipientGiftChangeWarning}
+	oncancel={declineRecipientGiftChange}
+/>
 
 {#if releaseFlowGift !== null}
 	<ReleaseReservationFlow
@@ -2858,26 +2844,16 @@
 />
 
 <!-- Archive confirmation dialog: archiving hides the list from the dashboards, so it asks first. -->
-<Dialog.Root bind:open={archiveConfirmOpen}>
-	<Dialog.Content size="md">
-		<Dialog.Header>
-			<Dialog.Title>{m.wishlist_archive_confirm_title()}</Dialog.Title>
-			<Dialog.Description>{m.wishlist_archive_confirm_description()}</Dialog.Description>
-		</Dialog.Header>
-		<Dialog.Footer>
-			<Button
-				intent="outline"
-				onclick={() => (archiveConfirmOpen = false)}
-				disabled={archiving}
-			>
-				{m.cancel()}
-			</Button>
-			<Button intent="danger" onclick={handleArchiveConfirmed} disabled={archiving}>
-				{archiving ? m.wishlist_archiving() : m.wishlist_archive_confirm_action()}
-			</Button>
-		</Dialog.Footer>
-	</Dialog.Content>
-</Dialog.Root>
+<ConfirmDialog
+	bind:open={archiveConfirmOpen}
+	title={m.wishlist_archive_confirm_title()}
+	description={m.wishlist_archive_confirm_description()}
+	confirmLabel={m.wishlist_archive_confirm_action()}
+	pendingLabel={m.wishlist_archiving()}
+	confirmIntent="primary-destructive"
+	pending={archiving}
+	onconfirm={handleArchiveConfirmed}
+/>
 
 {#if canManage && page.data.demoExpiresAt === null}
 	<LazyImportWizard

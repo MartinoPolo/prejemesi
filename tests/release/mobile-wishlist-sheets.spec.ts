@@ -284,7 +284,7 @@ test.describe('mobile wishlist acceptance', () => {
 		];
 		for (const sectionSwitch of sectionSwitches) {
 			await sectionSwitch.click();
-			await expect(sectionSwitch).toHaveAttribute('aria-pressed', 'true');
+			await expect(sectionSwitch).toHaveAttribute('aria-checked', 'true');
 			await expect(sectionSwitch).toBeFocused();
 			await expect(page.getByRole('dialog')).toHaveCount(1);
 		}

@@ -463,22 +463,24 @@ describe('anonymous public page auth fast path', () => {
 describe('agent API auth fast path', () => {
 	const sessionCookies = { 'better-auth.session_token': 'session' };
 
-	it.each(['GET', 'POST'])(
-		'serves %s /api/v1 without resolving a cookie session',
-		async (method) => {
-			const event = createEvent({
-				path: '/api/v1/proposals',
-				method,
-				accept: 'application/json',
-				cookies: sessionCookies,
-			});
-			const { response } = await runHandle(event);
-			expect(response.status).toBe(200);
-			expect(createAuth).not.toHaveBeenCalled();
-			expect(mockGetSession).not.toHaveBeenCalled();
-			expect(event.locals.user).toBeUndefined();
-		},
-	);
+	it.each([
+		{ method: 'GET', path: '/api/v1/proposals' },
+		{ method: 'POST', path: '/api/v1/proposals' },
+		{ method: 'POST', path: '/chat-runner/claim' },
+		{ method: 'POST', path: '/chat-runner/jobs/job-1/mcp' },
+	])('serves $method $path without resolving a cookie session', async ({ method, path }) => {
+		const event = createEvent({
+			path,
+			method,
+			accept: 'application/json',
+			cookies: sessionCookies,
+		});
+		const { response } = await runHandle(event);
+		expect(response.status).toBe(200);
+		expect(createAuth).not.toHaveBeenCalled();
+		expect(mockGetSession).not.toHaveBeenCalled();
+		expect(event.locals.user).toBeUndefined();
+	});
 
 	it.each<EventOptions>([
 		{ path: '/mcp', method: 'GET' },

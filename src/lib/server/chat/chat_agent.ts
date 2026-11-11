@@ -42,7 +42,7 @@ const CHAT_SCOPES = Object.values(AGENT_SCOPE).filter(
 );
 
 /** The chat acts as its user, limited to its wishlist, with fast-forward as the chat sets it. */
-function chatCaller(
+export function chatCaller(
 	session: Pick<StoredChatSession, 'id' | 'wishlistId' | 'fastForward'>,
 	user: { id: string; name: string },
 ): AgentCaller {

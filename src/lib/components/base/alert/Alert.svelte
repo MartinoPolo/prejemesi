@@ -1,11 +1,11 @@
 <script lang="ts">
 	import { cn } from '$lib/utils.js';
-	import { alertVariants, type AlertProps } from './alert_variants.js';
+	import { ALERT_TONE_ROLES, alertVariants, type AlertProps } from './alert_variants.js';
 
 	let {
 		ref = $bindable(null),
 		class: className,
-		tone = 'default',
+		tone = 'info',
 		children,
 		...restProps
 	}: AlertProps = $props();
@@ -14,7 +14,7 @@
 <div
 	bind:this={ref}
 	data-slot="alert"
-	role="alert"
+	role={ALERT_TONE_ROLES[tone]}
 	class={cn(alertVariants({ tone }), className)}
 	{...restProps}
 >

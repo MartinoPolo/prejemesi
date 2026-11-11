@@ -4,6 +4,10 @@
 	import * as m from '$lib/paraglide/messages.js';
 	import * as Dialog from '$lib/components/base/dialog/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
+	import {
+		createUnsavedChangesGuard,
+		UnsavedChangesDialog,
+	} from '$lib/components/derived/unsaved-changes-dialog/index.js';
 	import XIcon from '@lucide/svelte/icons/x';
 	import { cn } from '$lib/utils.js';
 	import { keepFocusOnPress } from '$lib/reactivity/keyboard_inset.svelte.js';
@@ -100,8 +104,6 @@
 	let contentRef = $state<HTMLDivElement | null>(null);
 	let formDirty = $state(false);
 	let formPending = $state(false);
-	let guardOpen = $state(false);
-	let pendingAction = $state<null | (() => void)>(null);
 	let changeConfirmationPending = false;
 	// Remounting the form is what reverts a change the user declined to confirm.
 	let formRevision = $state(0);
@@ -132,16 +134,20 @@
 
 	const mutationPending = $derived(isSubmitting || isDeleting || formPending);
 
+	/** Only a successful footer Save continues; a failure keeps the editor open with its
+	 *  validation errors or the save error toast. */
+	const unsavedChangesGuard = createUnsavedChangesGuard({
+		isDirty: () => formDirty,
+		save: async () => (await form?.submit()) ?? false,
+		discard: () => (formDirty = false),
+		continueEditing: () => (open = true),
+	});
+
 	function requestGuarded(action: () => void) {
 		if (mutationPending) {
 			return;
 		}
-		if (!formDirty) {
-			action();
-			return;
-		}
-		pendingAction = action;
-		guardOpen = true;
+		unsavedChangesGuard.request(action);
 	}
 
 	function handleOpenChange(newOpen: boolean) {
@@ -162,23 +168,6 @@
 		}
 		event.preventDefault();
 		requestGuarded(() => (open = false));
-	}
-
-	function continueEditing() {
-		guardOpen = false;
-		pendingAction = null;
-		open = true;
-	}
-
-	function discardAndContinue() {
-		if (mutationPending) {
-			return;
-		}
-		const action = pendingAction;
-		guardOpen = false;
-		pendingAction = null;
-		formDirty = false;
-		action?.();
 	}
 
 	function handleFormDirtyChange(dirty: boolean) {
@@ -246,8 +235,7 @@
 			formIdentity = nextIdentity;
 			formDirty = false;
 			formPending = false;
-			guardOpen = false;
-			pendingAction = null;
+			unsavedChangesGuard.cancel();
 		}
 	});
 </script>
@@ -355,19 +343,4 @@
 	</Dialog.Content>
 </Dialog.Root>
 
-<Dialog.Root bind:open={guardOpen}>
-	<Dialog.Content size="md">
-		<Dialog.Header>
-			<Dialog.Title>{m.wishlist_settings_unsaved_title()}</Dialog.Title>
-			<Dialog.Description>{m.gift_unsaved_description()}</Dialog.Description>
-		</Dialog.Header>
-		<Dialog.Footer class="flex-wrap">
-			<Button intent="outline" onclick={continueEditing}>
-				{m.wishlist_settings_continue_editing()}
-			</Button>
-			<Button intent="danger" onclick={discardAndContinue} disabled={mutationPending}>
-				{m.wishlist_settings_discard()}
-			</Button>
-		</Dialog.Footer>
-	</Dialog.Content>
-</Dialog.Root>
+<UnsavedChangesDialog {...unsavedChangesGuard.dialogProps} saving={mutationPending} />

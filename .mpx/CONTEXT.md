@@ -74,6 +74,7 @@ Přejeme si is a shareable wishlist web app where users create gift lists for th
 - **Proposal** — A stored batch of agent changes, checked with a dry-run, that the user applies from the review page or the chat, or that fast-forward applies.
 - **Fast-forward** — A per-token or per-chat setting that applies proposals with no review step, never for deletions, reservations or manager invitations.
 - **Gift revision** — A before/after record of one gift change, with who made it and how, used for history and Undo.
+- **Chat runner** — `pnpm chat:runner` on the owner's computer, which answers the in-app chat of `CHAT_RUNNER_EMAILS` users with Claude Code instead of a model provider.
 
 _Avoid_: "list" for Wishlist (ambiguous), "present" for Gift (confusing with time), "bookmark" for Like, "claim" for Reservation.
 

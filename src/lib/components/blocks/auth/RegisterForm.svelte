@@ -2,6 +2,7 @@
 	import { goto } from '$app/navigation';
 	import { Input } from '$lib/components/base/input/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
+	import { Spinner } from '$lib/components/base/spinner/index.js';
 	import AuthFormField from '$lib/components/blocks/auth/AuthFormField.svelte';
 	import AuthPasswordInput from '$lib/components/blocks/auth/AuthPasswordInput.svelte';
 	import RegisterPasswordStrengthBar from '$lib/components/blocks/auth/RegisterPasswordStrengthBar.svelte';
@@ -189,7 +190,7 @@
 		disabled={loading || (!turnstileUnavailable && turnstileToken === null)}
 	>
 		{#if loading}
-			<span class="spinner"></span>
+			<Spinner data-icon="inline-start" />
 		{/if}
 		{m.register_submit()}
 	</Button>
@@ -210,21 +211,5 @@
 		display: flex;
 		flex-direction: column;
 		gap: var(--space-4);
-	}
-
-	.spinner {
-		width: 18px;
-		height: 18px;
-		border: 2px solid oklch(from var(--primary-foreground) l c h / 35%);
-		border-top-color: var(--primary-foreground);
-		border-radius: 50%;
-		animation: spin 0.7s linear infinite;
-		flex-shrink: 0;
-	}
-
-	@keyframes spin {
-		to {
-			transform: rotate(360deg);
-		}
 	}
 </style>

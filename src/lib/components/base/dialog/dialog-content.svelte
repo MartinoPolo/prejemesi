@@ -12,12 +12,17 @@
 		overlayCloseButtonSurfaceClass,
 	} from '$lib/components/base/dialog/dialog_close_button.js';
 	import * as m from '$lib/paraglide/messages.js';
-	import { dialogContentVariants, type DialogContentSize } from './dialog_variants.js';
+	import {
+		dialogContentVariants,
+		type DialogContentLayout,
+		type DialogContentSize,
+	} from './dialog_variants.js';
 
 	let {
 		ref = $bindable(null),
 		class: className,
 		size,
+		layout = 'default',
 		showCloseButton = true,
 		portalProps,
 		children,
@@ -25,6 +30,8 @@
 	}: WithoutChildrenOrChild<DialogPrimitive.ContentProps> & {
 		portalProps?: WithoutChildrenOrChild<ComponentProps<typeof DialogPortal>>;
 		size?: DialogContentSize;
+		/** `scroll` pins the header and footer and scrolls only `Dialog.Body`. */
+		layout?: DialogContentLayout;
 		showCloseButton?: boolean;
 		children: Snippet;
 	} = $props();
@@ -35,7 +42,8 @@
 	<DialogPrimitive.Content
 		bind:ref
 		data-slot="dialog-content"
-		class={cn(dialogContentVariants({ size }), className)}
+		class={cn(dialogContentVariants({ size, layout }), className)}
+		data-dialog-layout={layout}
 		data-close-button={showCloseButton || undefined}
 		{...restProps}
 	>

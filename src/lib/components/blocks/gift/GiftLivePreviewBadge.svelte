@@ -2,6 +2,7 @@
 	import * as m from '$lib/paraglide/messages.js';
 	import SparklesIcon from '@lucide/svelte/icons/sparkles';
 	import Trash2Icon from '@lucide/svelte/icons/trash-2';
+	import { Badge } from '$lib/components/base/badge/index.js';
 	import {
 		GIFT_LIVE_PREVIEW,
 		type GiftLivePreviewKind,
@@ -12,43 +13,23 @@
 	let { kind, class: className }: { kind: GiftLivePreviewKind; class?: string } = $props();
 </script>
 
-<span
-	class={cn('live-preview-badge', className)}
+<Badge
+	tone={kind === GIFT_LIVE_PREVIEW.deletion ? 'danger' : 'info'}
+	class={cn('shrink-0', className)}
 	data-kind={kind}
 	data-testid="gift-live-preview-badge"
 >
+	{#snippet icon()}
+		{#if kind === GIFT_LIVE_PREVIEW.deletion}
+			<Trash2Icon class="size-3" data-icon aria-hidden="true" />
+		{:else}
+			<SparklesIcon class="size-3" data-icon aria-hidden="true" />
+		{/if}
+	{/snippet}
 	{#if kind === GIFT_LIVE_PREVIEW.deletion}
-		<Trash2Icon aria-hidden="true" />{m.gift_live_preview_deletion()}
+		{m.gift_live_preview_deletion()}
 	{:else}
-		<SparklesIcon aria-hidden="true" />{m.gift_live_preview_proposed()}<span class="sr-only"
-			>{m.gift_live_preview_only_you()}</span
+		{m.gift_live_preview_proposed()}<span class="sr-only">{m.gift_live_preview_only_you()}</span
 		>
 	{/if}
-</span>
-
-<style>
-	.live-preview-badge {
-		display: inline-flex;
-		flex: none;
-		align-items: center;
-		gap: 4px;
-		padding: 2px 8px;
-		border: 2px solid var(--ink);
-		border-radius: var(--radius-badge);
-		background: var(--card);
-		box-shadow: var(--elevation-compact);
-		color: var(--brand-link);
-		font-size: var(--text-xs);
-		font-weight: 800;
-		white-space: nowrap;
-	}
-
-	.live-preview-badge[data-kind='deletion'] {
-		color: var(--status-danger-text);
-	}
-
-	.live-preview-badge :global(svg) {
-		width: 12px;
-		height: 12px;
-	}
-</style>
+</Badge>

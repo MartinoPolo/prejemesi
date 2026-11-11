@@ -20,7 +20,6 @@ function createSharingContext(getShortId: () => string, getIsShared: () => boole
 	const wizardStep = new StateRaw<ShareWizardStep>(SHARE_WIZARD_STEPS.confirm);
 	const wishlistShortId = new Derived(getShortId);
 	const shared = new Derived(getIsShared);
-	const linkCopied = new StateRaw(false);
 
 	const shareUrl = new Derived(() => {
 		const origin = typeof window !== 'undefined' ? window.location.origin : undefined;
@@ -43,34 +42,10 @@ function createSharingContext(getShortId: () => string, getIsShared: () => boole
 
 	function closeWizard() {
 		wizardOpen.current = false;
-		linkCopied.current = false;
 	}
 
 	function goToStep(step: ShareWizardStep) {
 		wizardStep.current = step;
-	}
-
-	async function copyLink() {
-		try {
-			await navigator.clipboard.writeText(shareUrl.current);
-			linkCopied.current = true;
-			setTimeout(() => {
-				linkCopied.current = false;
-			}, 2000);
-		} catch {
-			const textArea = document.createElement('textarea');
-			textArea.value = shareUrl.current;
-			textArea.style.position = 'fixed';
-			textArea.style.opacity = '0';
-			document.body.appendChild(textArea);
-			textArea.select();
-			document.execCommand('copy');
-			document.body.removeChild(textArea);
-			linkCopied.current = true;
-			setTimeout(() => {
-				linkCopied.current = false;
-			}, 2000);
-		}
 	}
 
 	return {
@@ -78,12 +53,10 @@ function createSharingContext(getShortId: () => string, getIsShared: () => boole
 		wizardStep,
 		wishlistShortId,
 		shared,
-		linkCopied,
 		shareUrl,
 		shareUrlDisplay,
 		openWizard,
 		closeWizard,
 		goToStep,
-		copyLink,
 	};
 }

@@ -218,8 +218,8 @@ test('keeps unreserved gifts editable on a shared permanent wishlist after the s
 		await expect(warning).toHaveCount(0);
 		await reopenedEditor.getByRole('button', { name: /^(Zrušit|Cancel)$/ }).click();
 		await page
-			.getByRole('dialog', { name: m.wishlist_settings_unsaved_title() })
-			.getByRole('button', { name: m.wishlist_settings_discard() })
+			.getByRole('dialog', { name: m.unsaved_changes_title() })
+			.getByRole('button', { name: m.unsaved_changes_discard() })
 			.click();
 		await expect(reopenedEditor).toBeHidden();
 		await waitForDialogOverlayRemoval(page);
@@ -321,8 +321,8 @@ test('lets a správce move gifts out of a permanent wishlist, leaving reserved o
 		await expect(ownerPage.getByTestId('recipient-gift-change-warning')).toHaveCount(0);
 		await editor.getByRole('button', { name: /^(Zrušit|Cancel)$/ }).click();
 		await ownerPage
-			.getByRole('dialog', { name: m.wishlist_settings_unsaved_title() })
-			.getByRole('button', { name: m.wishlist_settings_discard() })
+			.getByRole('dialog', { name: m.unsaved_changes_title() })
+			.getByRole('button', { name: m.unsaved_changes_discard() })
 			.click();
 		await expect(editor).toBeHidden();
 		await waitForDialogOverlayRemoval(ownerPage);

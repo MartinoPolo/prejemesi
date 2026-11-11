@@ -71,6 +71,13 @@ export interface MutationOperation<
 	readonly exposure: OperationExposure;
 	readonly input: TSchema;
 	readonly prepare?: undefined;
+	/**
+	 * The one gift a step changes, for an operation that changes nothing else and reads nothing a
+	 * step on another gift changes: a batch runs consecutive such steps on distinct gifts
+	 * concurrently, so their statements share round trips instead of queueing row by row. Such an
+	 * operation must not open a savepoint, which would interleave with the other steps' statements.
+	 */
+	isolatedGiftId?(input: v.InferOutput<TSchema>): string;
 	run(context: MutationOperationContext, input: v.InferOutput<TSchema>): Promise<TOutput>;
 }
 
@@ -85,6 +92,7 @@ export interface PreparedMutationOperation<
 	readonly kind: typeof OPERATION_KIND.mutation;
 	readonly exposure: OperationExposure;
 	readonly input: TSchema;
+	readonly isolatedGiftId?: undefined;
 	prepare(
 		actor: OperationActor,
 		input: v.InferOutput<TSchema>,

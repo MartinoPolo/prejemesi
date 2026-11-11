@@ -8,6 +8,7 @@ import type { PublicGiftCategory } from '$lib/modules/gift-categories/types.js';
 import type { GiftForVisitor } from '$lib/modules/gifts/types.js';
 import { WISHLIST_ROLES, type WishlistRole } from '$lib/modules/wishlists/types.js';
 import * as m from '$lib/paraglide/messages.js';
+import { GIFT_CARD_CONTROL_SELECTOR } from './gift_card_controls.js';
 import {
 	GiftCardTestHost,
 	cleanupCardHosts,
@@ -45,7 +46,10 @@ interface RenderOptions {
 	onopen?: () => void;
 }
 
-/** Mounts the gift inside a press target standing in for the wishlist's card wrapper. */
+/**
+ * Mounts the gift inside a press target standing in for the wishlist's card wrapper, which opens
+ * the gift on a click that does not start on a card control.
+ */
 async function renderGift(gift: GiftForVisitor, options: RenderOptions) {
 	const { view = 'card', width, role = WISHLIST_ROLES.recipient, onopen } = options;
 	await page.viewport(Math.max(width + 40, 390), 900);
@@ -53,7 +57,16 @@ async function renderGift(gift: GiftForVisitor, options: RenderOptions) {
 	host.style.width = `${width}px`;
 	host.dataset.palette = 'sky';
 	if (onopen !== undefined) {
-		host.addEventListener('click', onopen);
+		host.addEventListener('click', (event) => {
+			if (
+				!(
+					event.target instanceof Element &&
+					event.target.closest(GIFT_CARD_CONTROL_SELECTOR)
+				)
+			) {
+				onopen();
+			}
+		});
 	}
 	document.body.appendChild(host);
 	fixedHosts.add(host);
@@ -89,6 +102,13 @@ function moreButton(count: number) {
 	return page.getByRole('button', { name: m.gift_category_more_label({ count }) });
 }
 
+/** A "+X" button for any hidden count inside `host`. */
+function anyMoreButton(host: HTMLElement) {
+	return page.elementLocator(host).getByRole('button', {
+		name: new RegExp(`^${m.gift_category_more_label({ count: String.raw`\d+` })}$`),
+	});
+}
+
 afterEach(() => {
 	cleanupCardHosts();
 	document.body.querySelectorAll('[data-slot="popover-content"]').forEach((popover) => {
@@ -108,14 +128,14 @@ describe('GiftCategoryBadges', () => {
 		const badges = host.querySelectorAll<HTMLElement>('[data-testid="gift-category-badge"]');
 		expect(badges).toHaveLength(1);
 		expect(getComputedStyle(badges[0]!).webkitLineClamp).toBe('2');
-		expect(host.querySelector('[data-testid="gift-category-more"]')).toBeNull();
+		expect(anyMoreButton(host).query()).toBeNull();
 	});
 
 	it('shows every category on one line when the lane is wide enough', async () => {
 		const host = await renderGift(categorizedGift(LABELS.slice(0, 2)), { width: 360 });
 
 		await expect.poll(() => visibleBadgeLabels(host)).toEqual(LABELS.slice(0, 2));
-		expect(host.querySelector('[data-testid="gift-category-more"]')).toBeNull();
+		expect(anyMoreButton(host).query()).toBeNull();
 	});
 
 	it('shows leading one-line badges in order and collapses the rest into "+X" on a narrow card', async () => {
@@ -172,9 +192,12 @@ describe('GiftCategoryBadges', () => {
 	it('lets a touch on the card only dismiss the open "+X" popover', async () => {
 		const onopen = vi.fn();
 		const host = await renderGift(categorizedGift(LABELS), { width: 220, onopen });
-		// The wishlist card wrapper keeps touch presses to itself for its long-press gesture.
+		// The wishlist card wrapper keeps touch presses on card content to itself for its long press.
 		host.addEventListener('pointerdown', (event) => {
-			if (event.pointerType !== 'mouse') {
+			const startedOnControl =
+				event.target instanceof Element &&
+				event.target.closest(GIFT_CARD_CONTROL_SELECTOR) !== null;
+			if (event.pointerType !== 'mouse' && !startedOnControl) {
 				event.stopPropagation();
 			}
 		});
@@ -208,6 +231,42 @@ describe('GiftCategoryBadges', () => {
 		host.dispatchEvent(new Event('scroll'));
 
 		await expect.element(popover).not.toBeInTheDocument();
+	});
+
+	it('keeps the open "+X" popover while a container away from it scrolls', async () => {
+		const host = await renderGift(categorizedGift(LABELS), { width: 220 });
+		const unrelatedScroller = document.createElement('div');
+		document.body.appendChild(unrelatedScroller);
+		fixedHosts.add(unrelatedScroller);
+		await expect.poll(() => visibleBadgeLabels(host).length).toBeLessThan(LABELS.length);
+		await userEvent.click(moreButton(LABELS.length - visibleBadgeLabels(host).length));
+		const popover = page.getByRole('dialog');
+		await expect.element(popover).toBeVisible();
+
+		unrelatedScroller.dispatchEvent(new Event('scroll'));
+		await new Promise((resolve) => setTimeout(resolve, 500));
+		expect(popover.query()).not.toBeNull();
+
+		document.dispatchEvent(new Event('scroll'));
+		await expect.element(popover).not.toBeInTheDocument();
+	});
+
+	it('lets a later click through after a dismissing press that never clicked', async () => {
+		const onopen = vi.fn();
+		const host = await renderGift(categorizedGift(LABELS), { width: 220, onopen });
+		await expect.poll(() => visibleBadgeLabels(host).length).toBeLessThan(LABELS.length);
+		await userEvent.click(moreButton(LABELS.length - visibleBadgeLabels(host).length));
+		const popover = page.getByRole('dialog');
+		await expect.element(popover).toBeVisible();
+
+		const pressInit = { bubbles: true, pointerType: 'touch', isPrimary: true };
+		host.dispatchEvent(new PointerEvent('pointerdown', pressInit));
+		host.dispatchEvent(new PointerEvent('pointerup', pressInit));
+		await expect.element(popover).not.toBeInTheDocument();
+		await new Promise((resolve) => setTimeout(resolve, 500));
+
+		host.click();
+		expect(onopen).toHaveBeenCalledOnce();
 	});
 
 	it('gives a too-narrow primary the whole List lane and moves "+X" below it', async () => {

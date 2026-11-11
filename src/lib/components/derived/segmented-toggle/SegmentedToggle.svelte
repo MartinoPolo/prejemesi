@@ -1,10 +1,13 @@
 <script lang="ts">
-	import type { Snippet } from 'svelte';
+	import { setContext, type Snippet } from 'svelte';
 	import * as ToggleGroup from '$lib/components/base/toggle-group/index.js';
 	import { cn } from '$lib/utils.js';
 	import {
+		SEGMENTED_TOGGLE_CONTEXT,
 		segmentedToggleVariants,
+		type SegmentedToggleContext,
 		type SegmentedTogglePresentation,
+		type SegmentedToggleWidth,
 	} from './segmented_toggle_classes.js';
 	import {
 		CONTROL_SIZE_CLASSES,
@@ -22,6 +25,7 @@
 		children?: Snippet;
 		onValueChange?: (value: string) => void;
 		presentation?: SegmentedTogglePresentation;
+		width?: SegmentedToggleWidth;
 	};
 
 	let {
@@ -30,11 +34,13 @@
 		children,
 		onValueChange,
 		presentation = 'default',
+		width = 'hug',
 		size,
 		...restProps
 	}: Props = $props();
 
-	const styles = $derived(segmentedToggleVariants({ presentation }));
+	setContext(SEGMENTED_TOGGLE_CONTEXT, (): SegmentedToggleContext => ({ presentation, width }));
+	const styles = $derived(segmentedToggleVariants({ presentation, width }));
 	let selected = $derived(value);
 
 	function handleValueChange(nextValue: string) {
@@ -51,6 +57,7 @@
 <ToggleGroup.Root
 	{...restProps}
 	{size}
+	intent={presentation === 'cards' ? 'outline' : restProps.intent}
 	type="single"
 	bind:value={selected}
 	onValueChange={handleValueChange}
@@ -66,7 +73,10 @@
 	})}
 >
 	{@render children?.()}
-	<span data-slot="selection-indicator" aria-hidden="true" class={styles.indicator()}></span>
+	<!-- Cards fill the selected option itself, so nothing slides between them. -->
+	{#if presentation !== 'cards'}
+		<span data-slot="selection-indicator" aria-hidden="true" class={styles.indicator()}></span>
+	{/if}
 </ToggleGroup.Root>
 
 <style>

@@ -39,7 +39,7 @@ Full viewport, top to bottom (all elements FINAL except the toolbar filter area)
 1. **App header** (~56 px, FINAL): logo, nav pills (Moje seznamy / Spravované / Sledované), right cluster (Importovat dárky, Vytvořit, bell, palette, CZ, dark-mode, avatar).
 2. **Notebook header panel** (FINAL): spiral-notebook card with taped polaroid image, „Pro: Martin Novák", DynaPuff title „Vánoce 2026", description, meta chips (Sdíleno, event date, „Spravují …"), taped sticky-note countdown top-right.
 3. **Sticker toolbar panel** (THE DESIGN AREA): full-content-width rounded panel, `rounded-panel` (16 px), `border-[2.5px] border-ink`, `bg-card`, `px-3.5 py-2.5`, `shadow-sticker`, `flex flex-wrap items-center gap-2.5`. Current contents left→right:
-    - `GiftViewSwitcher` (grid/list/compact icon toggle, FINAL — keep)
+    - `GiftViewSwitcher` (grid/list icon toggle, FINAL — keep)
     - `GiftSortSelect` („Výchozí pořadí" select, height `--size-control-md` 32 px, FINAL — keep)
     - **permanent chip „Pouze dostupné"** (REMOVED by this design)
     - **filter icon button with dot-badge** (`GiftFilterOverflowMenu`, REPLACED by the new dropdown trigger + pills)

@@ -5,11 +5,16 @@ import Close from './dialog-close.svelte';
 import Overlay from './dialog-overlay.svelte';
 import Content from './dialog-content.svelte';
 import Header from './dialog-header.svelte';
+import Body from './dialog-body.svelte';
 import Footer from './dialog-footer.svelte';
 import Title from './dialog-title.svelte';
 import Description from './dialog-description.svelte';
-import { dialogContentVariants, DIALOG_CONTENT_SIZES } from './dialog_variants.js';
-import type { DialogContentSize } from './dialog_variants.js';
+import {
+	dialogContentVariants,
+	DIALOG_CONTENT_LAYOUTS,
+	DIALOG_CONTENT_SIZES,
+} from './dialog_variants.js';
+import type { DialogContentLayout, DialogContentSize } from './dialog_variants.js';
 
 export {
 	Root,
@@ -19,6 +24,7 @@ export {
 	Overlay,
 	Content,
 	Header,
+	Body,
 	Footer,
 	Title,
 	Description,
@@ -30,11 +36,13 @@ export {
 	Overlay as DialogOverlay,
 	Content as DialogContent,
 	Header as DialogHeader,
+	Body as DialogBody,
 	Footer as DialogFooter,
 	Title as DialogTitle,
 	Description as DialogDescription,
 	//
 	dialogContentVariants,
+	DIALOG_CONTENT_LAYOUTS,
 	DIALOG_CONTENT_SIZES,
 };
-export type { DialogContentSize };
+export type { DialogContentLayout, DialogContentSize };

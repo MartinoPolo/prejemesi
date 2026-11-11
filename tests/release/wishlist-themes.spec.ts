@@ -86,7 +86,7 @@ test('discarding an unsaved theme leaves the wishlist unthemed', async ({
 	await dialog.getByRole('radio', { name: 'Vánoce', exact: true }).click();
 	await expect(shell).toHaveAttribute('data-wishlist-theme', 'christmas');
 	await page.keyboard.press('Escape');
-	await page.getByRole('button', { name: 'Zahodit změny' }).click();
+	await page.getByRole('button', { name: 'Zahodit', exact: true }).click();
 	await expect(dialog).toBeHidden();
 
 	await expect(shell).not.toHaveAttribute('data-wishlist-theme');

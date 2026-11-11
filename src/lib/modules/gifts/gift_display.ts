@@ -240,6 +240,16 @@ export function czechPluralCategory(count: number): 'one' | 'few' | 'other' {
 	return 'other';
 }
 
+/** Czech-pluralized gift count: „1 dárek", „3 dárky", „5 dárků". */
+export function formatGiftCount(count: number): string {
+	const category = czechPluralCategory(count);
+	return category === 'one'
+		? m.nav_gift_count_one()
+		: category === 'few'
+			? m.nav_gift_count_few({ count })
+			: m.nav_gift_count_other({ count });
+}
+
 /**
  * Format piece count with optional reserved suffix.
  * Owner NEVER sees the reserved portion -- only the bare piece count.

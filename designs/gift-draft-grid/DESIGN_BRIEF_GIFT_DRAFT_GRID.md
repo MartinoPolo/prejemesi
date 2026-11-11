@@ -232,9 +232,9 @@ Canonical source is `src/app.css` (design reference: `designs/tokens.css`). Neve
 
 ## 10. Visual References
 
-- `designs/gift-detail-modal/refined.html` + `DESIGN_BRIEF_GIFT_DETAIL_MODAL.md` – dialog shell, backdrop/blur, two-column body, close button, typography fidelity to match for the batch-add Host B dialog.
+- `archive/designs/gift-detail-modal/refined.html` + `DESIGN_BRIEF_GIFT_DETAIL_MODAL.md` – dialog shell, backdrop/blur, two-column body, close button, typography fidelity to match for the batch-add Host B dialog.
 - `designs/gift-image-crop/DESIGN_BRIEF_GIFT_IMAGE_CROP.md` – confirms gift-level fields (name, description, links, price, currency, quantity, priority, image) that the grid feeds; segmented-control / `input-group` patterns.
-- `designs/wishlist-page/refined.html` + `DESIGN_BRIEF_WISHLIST_PAGE.md` – toolbar where "Hromadně přidat dárky" launches; domain-chip / link affordance language ("↗ alza.cz", new-tab links).
+- `archive/designs/wishlist-page/refined.html` + `DESIGN_BRIEF_WISHLIST_PAGE.md` – toolbar where "Hromadně přidat dárky" launches; domain-chip / link affordance language ("↗ alza.cz", new-tab links).
 - `designs/dashboard/variant-2.html` / `refined.html` – `.theme-light` / `.theme-dark` palette blocks, badge and row patterns, surface hierarchy.
 - `designs/tokens.css` (structural reference) and `src/app.css` (canonical token values, light + dark).
 - Sage green primary: `oklch(52.7% 0.154 150.069deg)`.

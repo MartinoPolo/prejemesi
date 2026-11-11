@@ -48,12 +48,25 @@ export const APPLIED_TITLES: PluralMessages = {
 /** Proposals with more gifts than this are checked on the review page rather than inline. */
 export const INLINE_CHECK_MAX_ROWS = 5;
 
+/** A page by its host, which reads shorter than the whole address. */
+function pageName(url: string): string {
+	try {
+		return new URL(url).host || url;
+	} catch {
+		return url;
+	}
+}
+
 export function chatToolLabel(line: ChatToolLine): string {
 	switch (line.kind) {
 		case CHAT_TOOL_KIND.search:
 			return line.query === null
 				? m.chat_tool_search_plain()
 				: m.chat_tool_search({ query: line.query });
+		case CHAT_TOOL_KIND.fetch:
+			return line.query === null
+				? m.chat_tool_fetch_plain()
+				: m.chat_tool_fetch({ page: pageName(line.query) });
 		case CHAT_TOOL_KIND.read:
 			return m.chat_tool_read();
 		case CHAT_TOOL_KIND.change:
