@@ -3,7 +3,14 @@ import { innerWidth } from 'svelte/reactivity/window';
 import { Derived } from '$lib/reactivity/derived.svelte.js';
 import { StateRaw } from '$lib/reactivity/state.svelte.js';
 import { Persisted, jsonSerde } from '$lib/reactivity/persisted.svelte.js';
-import { CHAT_RUNNER_MODELS, DEFAULT_CHAT_RUNNER_MODEL, type ChatRunnerModel } from './types.js';
+import {
+	DEFAULT_CHAT_RUNNER_EFFORT,
+	DEFAULT_CHAT_RUNNER_MODEL,
+	isChatRunnerEffort,
+	isChatRunnerModel,
+	type ChatRunnerEffort,
+	type ChatRunnerModel,
+} from './types.js';
 
 export const ASSISTANT_PANEL_WIDTH = { min: 360, max: 640, default: 420 } as const;
 /** The panel never takes more than half the viewport. */
@@ -46,10 +53,6 @@ function isBoolean(value: unknown): value is boolean {
 	return typeof value === 'boolean';
 }
 
-function isChatRunnerModel(value: unknown): value is ChatRunnerModel {
-	return CHAT_RUNNER_MODELS.some((model) => model === value);
-}
-
 function createAssistantContext() {
 	const open = new StateRaw(false);
 	const view = new StateRaw<AssistantView>(ASSISTANT_VIEW.chat);
@@ -74,6 +77,12 @@ function createAssistantContext() {
 		key: 'prejemesi-assistant-model',
 		serde: jsonSerde(isChatRunnerModel),
 		defaultValue: DEFAULT_CHAT_RUNNER_MODEL,
+	});
+	/** The reasoning effort a chat runner turn asks Claude Code for. */
+	const runnerEffort = new Persisted<ChatRunnerEffort>({
+		key: 'prejemesi-assistant-effort',
+		serde: jsonSerde(isChatRunnerEffort),
+		defaultValue: DEFAULT_CHAT_RUNNER_EFFORT,
 	});
 	const maxWidth = new Derived(() =>
 		Math.max(
@@ -130,6 +139,7 @@ function createAssistantContext() {
 		panelWidth,
 		hintDismissed,
 		runnerModel,
+		runnerEffort,
 		show,
 		close,
 		resize,

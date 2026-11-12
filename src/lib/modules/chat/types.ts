@@ -46,8 +46,25 @@ export type ChatRunnerModel = (typeof CHAT_RUNNER_MODELS)[number];
 
 export const DEFAULT_CHAT_RUNNER_MODEL: ChatRunnerModel = 'opus';
 
-/** Only a chat runner turn reads it; the model provider has its own configured model. */
+export function isChatRunnerModel(value: unknown): value is ChatRunnerModel {
+	return CHAT_RUNNER_MODELS.some((model) => model === value);
+}
+
+/** The reasoning effort levels Claude Code's `--effort` accepts. */
+export const CHAT_RUNNER_EFFORTS = ['low', 'medium', 'high', 'xhigh', 'max'] as const;
+
+export type ChatRunnerEffort = (typeof CHAT_RUNNER_EFFORTS)[number];
+
+/** Matches what the runner used before effort was selectable. */
+export const DEFAULT_CHAT_RUNNER_EFFORT: ChatRunnerEffort = 'medium';
+
+export function isChatRunnerEffort(value: unknown): value is ChatRunnerEffort {
+	return CHAT_RUNNER_EFFORTS.some((effort) => effort === value);
+}
+
+/** Only a chat runner turn reads these; the model provider has its own configured model. */
 const ChatRunnerModelSchema = v.optional(v.picklist(CHAT_RUNNER_MODELS));
+const ChatRunnerEffortSchema = v.optional(v.picklist(CHAT_RUNNER_EFFORTS));
 
 /** A turn: the user's message, or a retry of the last one after a failed answer. */
 export const ChatTurnRequestSchema = v.variant('kind', [
@@ -55,8 +72,13 @@ export const ChatTurnRequestSchema = v.variant('kind', [
 		kind: v.literal(CHAT_TURN_KIND.message),
 		text: v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(CHAT_MESSAGE_MAX_LENGTH)),
 		model: ChatRunnerModelSchema,
+		effort: ChatRunnerEffortSchema,
 	}),
-	v.strictObject({ kind: v.literal(CHAT_TURN_KIND.retry), model: ChatRunnerModelSchema }),
+	v.strictObject({
+		kind: v.literal(CHAT_TURN_KIND.retry),
+		model: ChatRunnerModelSchema,
+		effort: ChatRunnerEffortSchema,
+	}),
 ]);
 
 export type ChatTurnRequest = v.InferOutput<typeof ChatTurnRequestSchema>;

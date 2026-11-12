@@ -116,8 +116,17 @@ export function readClaudeStreamLine(line) {
 	return { events: [], finalStatus: null };
 }
 
-/** `claude -p` arguments for one job; the prompt itself goes on stdin. */
-export function claudeArguments({ model, mcpConfigPath, systemPromptPath }) {
+/** Claude Code ranks `CLAUDE_CODE_EFFORT_LEVEL` above `--effort`, so it would mask the chat's choice. */
+export function claudeEnvironment(environment) {
+	const { CLAUDE_CODE_EFFORT_LEVEL: _maskingEffort, ...rest } = environment;
+	return rest;
+}
+
+/**
+ * `claude -p` arguments for one job; the prompt itself goes on stdin. An app released before the
+ * effort choice names none, so the model keeps its default effort.
+ */
+export function claudeArguments({ model, effort, mcpConfigPath, systemPromptPath }) {
 	return [
 		'-p',
 		'--output-format',
@@ -125,6 +134,7 @@ export function claudeArguments({ model, mcpConfigPath, systemPromptPath }) {
 		'--verbose',
 		'--model',
 		model,
+		...(effort === undefined ? [] : ['--effort', effort]),
 		'--setting-sources',
 		'',
 		'--strict-mcp-config',
@@ -388,9 +398,15 @@ async function runJob(config, job, runState) {
 
 		child = spawn(
 			config.claudeBin,
-			claudeArguments({ model: job.model, mcpConfigPath, systemPromptPath }),
+			claudeArguments({
+				model: job.model,
+				effort: job.effort,
+				mcpConfigPath,
+				systemPromptPath,
+			}),
 			{
 				cwd: workDirectory,
+				env: claudeEnvironment(process.env),
 				stdio: ['pipe', 'pipe', 'pipe'],
 				windowsHide: true,
 				detached: process.platform !== 'win32',
@@ -526,7 +542,7 @@ async function main() {
 		if (job === null) {
 			continue;
 		}
-		log(`[${job.id}] claimed, ${job.model}`);
+		log(`[${job.id}] claimed, ${[job.model, job.effort].filter(Boolean).join(' ')}`);
 		try {
 			await runJob(config, job, runState);
 		} catch (error) {

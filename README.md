@@ -199,7 +199,7 @@ pnpm chat:runner
 - Turns of listed users fail with "not running" while the runner is stopped. Other users keep the provider assistant.
 - A report lost to a network failure, a timeout or a server error is retried until the app takes it, never twice; when the app stays unreachable for as long as it waits for a silent runner, the runner stops the turn.
 - The runner long-polls the app, so it keeps the Neon database awake while it runs. Stop it with Ctrl+C when it is not needed.
-- In the assistant's history view, the **Pokročilé** section chooses Opus, Sonnet or Haiku.
+- The sliders button in the assistant header opens **Pokročilé**: the model (Opus, Sonnet or Haiku) and the reasoning effort (`claude --effort`, medium by default) for the next turns. The runner removes `CLAUDE_CODE_EFFORT_LEVEL` from Claude Code's environment, because it would override that choice.
 
 ## Project Structure
 

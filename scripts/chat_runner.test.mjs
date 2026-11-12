@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
 	claudeArguments,
+	claudeEnvironment,
 	createJobReporter,
 	readClaudeStreamLine,
 	REPORT_STOP_REASON,
@@ -108,6 +109,36 @@ test('claude runs with only the app MCP server and the web tools, without --bare
 	assert.equal(args[args.indexOf('--system-prompt-file') + 1], 'C:/job/system-prompt.md');
 	assert.equal(args[args.indexOf('--setting-sources') + 1], '');
 	assert.equal(args[args.indexOf('--permission-mode') + 1], 'dontAsk');
+});
+
+test('claude reasons at the effort the job asks for', () => {
+	const args = claudeArguments({
+		model: 'opus',
+		effort: 'xhigh',
+		mcpConfigPath: 'C:/job/mcp.json',
+		systemPromptPath: 'C:/job/system-prompt.md',
+	});
+
+	assert.deepEqual(args.slice(args.indexOf('--effort'), args.indexOf('--effort') + 2), [
+		'--effort',
+		'xhigh',
+	]);
+});
+
+test('a job from an app that names no effort leaves the model its default effort', () => {
+	const args = claudeArguments({
+		model: 'opus',
+		mcpConfigPath: 'C:/job/mcp.json',
+		systemPromptPath: 'C:/job/system-prompt.md',
+	});
+
+	assert.equal(args.includes('--effort'), false);
+});
+
+test('an effort level in the environment cannot override the job effort', () => {
+	const environment = claudeEnvironment({ PATH: 'C:/npm', CLAUDE_CODE_EFFORT_LEVEL: 'low' });
+
+	assert.deepEqual(environment, { PATH: 'C:/npm' });
 });
 
 test('a CLAUDE_BIN naming a .cmd or .bat script is found, on any platform', () => {

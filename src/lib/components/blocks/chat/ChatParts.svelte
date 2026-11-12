@@ -68,6 +68,9 @@
 
 <style>
 	.answer {
+		--answer-avatar-size: 28px;
+		--answer-line-height: calc(var(--text-md) * 1.5);
+
 		display: grid;
 		grid-template-columns: auto minmax(0, 1fr);
 		gap: var(--space-2);
@@ -77,8 +80,8 @@
 	.avatar {
 		display: grid;
 		place-items: center;
-		width: 28px;
-		height: 28px;
+		width: var(--answer-avatar-size);
+		height: var(--answer-avatar-size);
 		border: 2px solid var(--ink);
 		border-radius: 50%;
 		background: var(--tint);
@@ -89,15 +92,18 @@
 		height: 14px;
 	}
 
+	/* The first line, text or tool line, is centred on the avatar while later lines flow down,
+	   so a growing answer never moves the line already shown. */
 	.answer-body {
 		display: grid;
 		gap: var(--space-2);
 		min-width: 0;
+		padding-top: max(0px, calc((var(--answer-avatar-size) - var(--answer-line-height)) / 2));
 	}
 
 	.text {
 		font-size: var(--text-md);
-		line-height: 1.5;
+		line-height: var(--answer-line-height);
 		white-space: pre-wrap;
 		overflow-wrap: anywhere;
 	}
@@ -110,12 +116,19 @@
 		list-style: none;
 	}
 
+	.tools > :global(li) {
+		min-height: var(--answer-line-height);
+	}
+
 	.caret {
 		display: inline-block;
 		width: 7px;
 		height: 1em;
+
+		/* Its margin box fills the line exactly, so the caret centres on the line and the avatar. */
+		margin-block: calc((var(--answer-line-height) - 1em) / 2);
 		margin-inline-start: 2px;
-		vertical-align: text-bottom;
+		vertical-align: top;
 		background: var(--ink);
 		animation: caret-blink 1s steps(2, start) infinite;
 	}

@@ -49,7 +49,13 @@ export function isActiveChatRunnerJob(job: Pick<ChatRunnerJob, 'status'>): boole
 }
 
 export async function createChatRunnerJob(
-	values: { sessionId: string; model: string; systemPrompt: string; prompt: string },
+	values: {
+		sessionId: string;
+		model: string;
+		effort: string;
+		systemPrompt: string;
+		prompt: string;
+	},
 	now = new Date(),
 ): Promise<ChatRunnerJob> {
 	const [created] = await getDb()
