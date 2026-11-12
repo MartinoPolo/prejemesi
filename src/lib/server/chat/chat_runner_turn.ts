@@ -2,6 +2,7 @@ import {
 	CHAT_STREAM_EVENT,
 	CHAT_TURN_ERROR,
 	CHAT_TURN_KIND,
+	DEFAULT_CHAT_RUNNER_EFFORT,
 	DEFAULT_CHAT_RUNNER_MODEL,
 	type ChatRelayEvent,
 	type ChatTurnRequest,
@@ -192,6 +193,7 @@ export async function startChatRunnerTurn(turn: {
 	const job = await createChatRunnerJob({
 		sessionId: session.id,
 		model: request.model ?? DEFAULT_CHAT_RUNNER_MODEL,
+		effort: request.effort ?? DEFAULT_CHAT_RUNNER_EFFORT,
 		systemPrompt: chatRunnerSystemPrompt({
 			wishlistId: session.wishlistId,
 			wishlistShortId: session.wishlistShortId,

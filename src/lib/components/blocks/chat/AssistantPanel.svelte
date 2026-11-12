@@ -60,6 +60,7 @@
 	import ChatNote from './ChatNote.svelte';
 	import ChatParts from './ChatParts.svelte';
 	import ChatProposal from './ChatProposal.svelte';
+	import ChatRunnerSettings from './ChatRunnerSettings.svelte';
 	import type { DecidingProposalRegistry } from '$lib/components/blocks/change-proposals/gift_live_preview.js';
 	import ChatTurnError from './ChatTurnError.svelte';
 	import ChatWelcome from './ChatWelcome.svelte';
@@ -282,7 +283,11 @@
 					resolve('/chat/[sessionId]/turns', { sessionId: turnSessionId }),
 				),
 				request: runnerEnabled
-					? { ...request, model: assistant.runnerModel.current }
+					? {
+							...request,
+							model: assistant.runnerModel.current,
+							effort: assistant.runnerEffort.current,
+						}
 					: request,
 				signal: controller.signal,
 				onEvent: (event) => {
@@ -488,6 +493,15 @@
 	</div>
 {/snippet}
 
+{#snippet runnerSettings()}
+	<ChatRunnerSettings
+		model={assistant.runnerModel.current}
+		effort={assistant.runnerEffort.current}
+		onmodel={(model) => (assistant.runnerModel.current = model)}
+		oneffort={(effort) => (assistant.runnerEffort.current = effort)}
+	/>
+{/snippet}
+
 {#snippet conversation()}
 	{#if items.length === 0 && liveTurn === null}
 		<ChatWelcome
@@ -557,6 +571,7 @@
 		onfastforward={(next) => void setFastForward(next)}
 		ondismisshint={() => (assistant.hintDismissed.current = true)}
 		onsheet={(next) => (assistant.sheet.current = next)}
+		runnerSettings={runnerEnabled ? runnerSettings : undefined}
 	/>
 	<div
 		class="thread"
@@ -573,13 +588,11 @@
 				sessions={sessionsQuery.current}
 				activeSessionId={sessionId}
 				canStartNew={available}
-				runnerModel={runnerEnabled ? assistant.runnerModel.current : undefined}
 				onopen={(id) => {
 					assistant.selection.current = { type: CHAT_SELECTION.session, sessionId: id };
 					assistant.view.current = ASSISTANT_VIEW.chat;
 				}}
 				onnew={() => assistant.startNewChat()}
-				onrunnermodel={(model) => (assistant.runnerModel.current = model)}
 			/>
 		{:else if sessionQuery?.error}
 			<Alert.Root tone="danger">

@@ -21,6 +21,7 @@
 <SelectPrimitive.Item
 	bind:ref
 	{value}
+	{label}
 	{disabled}
 	aria-disabled={disabled === true ? 'true' : undefined}
 	data-slot="select-item"

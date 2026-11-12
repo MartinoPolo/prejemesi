@@ -151,6 +151,7 @@ export async function handleChatRunnerClaim(
 					id: job.id,
 					token,
 					model: job.model,
+					effort: job.effort,
 					systemPrompt: job.systemPrompt,
 					prompt: job.prompt,
 					mcpUrl: new URL(

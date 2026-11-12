@@ -148,6 +148,7 @@ interface ClaimedJob {
 	id: string;
 	token: string;
 	model: string;
+	effort: string;
 	systemPrompt: string;
 	prompt: string;
 	mcpUrl: string;
@@ -191,7 +192,7 @@ async function callMcp(jobId: string, token: string | null, method: string, para
 
 function createJobForChat(sessionId: string, createdAt = new Date()) {
 	return createChatRunnerJob(
-		{ sessionId, model: 'opus', systemPrompt: 'system', prompt: 'prompt' },
+		{ sessionId, model: 'opus', effort: 'medium', systemPrompt: 'system', prompt: 'prompt' },
 		createdAt,
 	);
 }
@@ -282,12 +283,17 @@ describe.skipIf(!DB_READY)('chat runner turns', () => {
 				kind: CHAT_TURN_KIND.message,
 				text: 'Přidejte kolo',
 				model: 'sonnet',
+				effort: 'high',
 			}),
 		);
 
 		const [job, ...others] = await sessionJobs(session.id);
 		expect(others).toEqual([]);
-		expect(job).toMatchObject({ status: CHAT_RUNNER_JOB_STATUS.pending, model: 'sonnet' });
+		expect(job).toMatchObject({
+			status: CHAT_RUNNER_JOB_STATUS.pending,
+			model: 'sonnet',
+			effort: 'high',
+		});
 		expect(job?.prompt).toContain('Přidejte kolo');
 		expect(readChatContext(job?.systemPrompt ?? '')).toMatchObject({
 			wishlistId: wishlist.id,
@@ -305,7 +311,7 @@ describe.skipIf(!DB_READY)('chat runner turns', () => {
 		]);
 	});
 
-	it('asks Claude Code for Opus unless the turn names a model', async () => {
+	it('asks Claude Code for Opus at medium effort unless the turn names them', async () => {
 		const { session } = await newChat();
 
 		await streamedEvents(
@@ -313,7 +319,7 @@ describe.skipIf(!DB_READY)('chat runner turns', () => {
 		);
 
 		const [job] = await sessionJobs(session.id);
-		expect(job?.model).toBe('opus');
+		expect(job).toMatchObject({ model: 'opus', effort: 'medium' });
 	});
 
 	it('refuses a second turn while the runner still has one of the chat', async () => {
@@ -391,6 +397,7 @@ describe.skipIf(!DB_READY)('chat runner turns', () => {
 		expect(claimed).toMatchObject({
 			id: queued?.id,
 			model: 'opus',
+			effort: 'medium',
 			systemPrompt: queued?.systemPrompt,
 			prompt: queued?.prompt,
 			mcpUrl: `${ORIGIN}/chat-runner/jobs/${queued?.id ?? ''}/mcp`,
