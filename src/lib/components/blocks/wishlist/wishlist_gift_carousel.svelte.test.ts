@@ -332,6 +332,61 @@ describe('WishlistGiftCarousel (#580)', () => {
 		},
 	);
 
+	it.each([
+		{ width: 320, truncatesDomain: false },
+		{ width: 359, truncatesDomain: false },
+		{ width: 375, truncatesDomain: true },
+		{ width: 400, truncatesDomain: true },
+		{ width: 430, truncatesDomain: true },
+		{ width: 540, truncatesDomain: true },
+	])(
+		'keeps the square image, a long link domain and the footer inside the card at $width px (REQ-6)',
+		async ({ width, truncatesDomain }) => {
+			const longDomainGift = visitorGift('a', {
+				links: [{ url: 'https://store.steampowered.com/app/1145360/Hades/' }],
+			});
+			const screen = await renderCarousel(width, {
+				sections: [
+					{
+						kind: GIFT_SECTION_KINDS.available,
+						key: 'available',
+						label: null,
+						gifts: [longDomainGift, visitorGift('b'), visitorGift('c')],
+					},
+				],
+				hascontextactions: () => true,
+				oncontextactions: () => true,
+			});
+			const card = rows()[0].querySelector<HTMLElement>('[data-gift-card-density]')!;
+			const surface = card.querySelector<HTMLElement>('[data-slot="elevation-surface"]')!;
+			const contentLeft = surface.getBoundingClientRect().left + surface.clientLeft;
+			const contentRight = contentLeft + surface.clientWidth;
+			const image = card.querySelector<HTMLElement>('[data-testid="gift-card-image-frame"]')!;
+			const imageRect = image.getBoundingClientRect();
+			expectPixelsNear(imageRect.width, surface.clientWidth);
+			expectPixelsNear(
+				imageRect.height - parseFloat(getComputedStyle(image).paddingBottom),
+				imageRect.width,
+			);
+			const linkLabel = card.querySelector<HTMLElement>('a[href*="steampowered"] > span')!;
+			expect(linkLabel.scrollWidth > linkLabel.clientWidth).toBe(truncatesDomain);
+			expect(getComputedStyle(linkLabel).textOverflow).toBe('ellipsis');
+			const contained = [
+				image,
+				card.querySelector<HTMLElement>('[data-testid="gift-card-body"]')!,
+				card.querySelector<HTMLElement>('a[href*="steampowered"]')!,
+				card.querySelector<HTMLElement>('[data-testid="reserve-button"]')!,
+				card.querySelector<HTMLElement>('[data-testid="gift-more-actions"]')!,
+			];
+			for (const element of contained) {
+				const rect = element.getBoundingClientRect();
+				expectPixelsAtLeast(rect.left, contentLeft);
+				expectPixelsAtMost(rect.right, contentRight);
+			}
+			await screen.unmount();
+		},
+	);
+
 	it('shows an ungrouped list as a single row with a count-only header and a descriptive label (REQ-3)', async () => {
 		const screen = await renderCarousel(375, {
 			sections: [
