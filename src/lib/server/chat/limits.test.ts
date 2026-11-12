@@ -5,7 +5,7 @@ import { CHAT_RUNNER_LIMITS, chatDayStart } from './limits.js';
 const chatRunnerScriptUrl = new URL('../../../../scripts/chat_runner.mjs', import.meta.url).href;
 
 describe('the chat runner script', () => {
-	it('splits its reports by the limits the app accepts', async () => {
+	it('splits its reports by the limits the app accepts and retries them while the app waits', async () => {
 		const runnerScript = (await import(/* @vite-ignore */ chatRunnerScriptUrl)) as {
 			REPORT_LIMITS: unknown;
 		};
@@ -13,6 +13,7 @@ describe('the chat runner script', () => {
 			eventsPerReport: CHAT_RUNNER_LIMITS.eventsPerReport,
 			textEventMaxLength: CHAT_RUNNER_LIMITS.textEventMaxLength,
 			queryMaxLength: CHAT_RUNNER_LIMITS.queryMaxLength,
+			heartbeatTimeoutMs: CHAT_RUNNER_LIMITS.heartbeatTimeoutMs,
 		});
 	});
 });

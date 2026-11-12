@@ -4,6 +4,7 @@ import {
 	claudeArguments,
 	createJobReporter,
 	readClaudeStreamLine,
+	REPORT_STOP_REASON,
 	windowsBatchScriptFor,
 } from './chat_runner.mjs';
 
@@ -136,23 +137,43 @@ test('a bare claude resolving only to a .cmd on the Windows PATH is found', () =
 	assert.equal(windowsBatchScriptFor('claude', { ...options, platform: 'linux' }), null);
 });
 
-test('reports are numbered in order, and a retried report keeps its number', async (context) => {
+/** Retries in milliseconds, so a test waits through many of them at once. */
+const QUICK_RETRY = { requestTimeoutMs: 1_000, firstDelayMs: 1, maxDelayMs: 4, giveUpAfterMs: 200 };
+
+/** Answers each report with the next of `answers`, then with the job still running. */
+function mockReportAnswers(context, answers) {
 	const sentBodies = [];
-	let failNext = true;
+	const signals = [];
 	context.mock.method(globalThis, 'fetch', async (_url, init) => {
 		sentBodies.push(JSON.parse(init.body));
-		if (failNext) {
-			failNext = false;
-			throw new Error('connection reset');
+		signals.push(init.signal);
+		const answer = answers.shift() ?? Response.json({ cancelled: false });
+		if (answer instanceof Error) {
+			throw answer;
 		}
-		return Response.json({ cancelled: false });
+		return answer;
 	});
 	context.mock.method(console, 'log', () => {});
-	const reporter = createJobReporter({
+	return { sentBodies, signals };
+}
+
+function reporterFor(onStop = (reason) => assert.fail(`the job was stopped: ${reason}`)) {
+	return createJobReporter({
 		appUrl: 'https://app.example',
 		job: { id: 'job-1', token: 'token-1' },
-		onCancelled: () => assert.fail('the job was not cancelled'),
+		onStop,
+		retry: QUICK_RETRY,
 	});
+}
+
+const networkFailure = () =>
+	new TypeError('fetch failed', {
+		cause: Object.assign(new Error('reset'), { code: 'ECONNRESET' }),
+	});
+
+test('reports are numbered in order, and a retried report keeps its number', async (context) => {
+	const { sentBodies } = mockReportAnswers(context, [networkFailure()]);
+	const reporter = reporterFor();
 
 	await reporter.report([{ type: 'text', text: 'Ahoj' }]);
 	await reporter.report([], 'done');
@@ -162,4 +183,73 @@ test('reports are numbered in order, and a retried report keeps its number', asy
 		{ sequence: 1, events: [{ type: 'text', text: 'Ahoj' }] },
 		{ sequence: 2, events: [], status: 'done' },
 	]);
+});
+
+test('a report keeps being retried through a longer outage until the app takes it', async (context) => {
+	const outage = [
+		networkFailure(),
+		new DOMException('The operation was aborted due to timeout', 'TimeoutError'),
+		new Response(null, { status: 502 }),
+		new Response(null, { status: 503 }),
+		new Response(null, { status: 429 }),
+		networkFailure(),
+	];
+	const { sentBodies, signals } = mockReportAnswers(context, [...outage]);
+	const reporter = reporterFor();
+
+	await reporter.report([{ type: 'text', text: 'Hotovo.' }]);
+	await reporter.report([], 'done');
+
+	const textReport = { sequence: 1, events: [{ type: 'text', text: 'Hotovo.' }] };
+	assert.deepEqual(sentBodies, [
+		...outage.map(() => textReport),
+		textReport,
+		{ sequence: 2, events: [], status: 'done' },
+	]);
+	assert.equal(reporter.stopReason, null);
+	assert.ok(signals.every((signal) => signal instanceof AbortSignal));
+});
+
+test('the job stops once the app stays unreachable for as long as it waits for the runner', async (context) => {
+	const { sentBodies } = mockReportAnswers(
+		context,
+		Array.from({ length: 1_000 }, () => networkFailure()),
+	);
+	const stopReasons = [];
+	const reporter = reporterFor((reason) => stopReasons.push(reason));
+
+	await reporter.report([{ type: 'text', text: 'Ahoj' }]);
+	const attempts = sentBodies.length;
+	await reporter.report([], 'done');
+
+	assert.deepEqual(stopReasons, [REPORT_STOP_REASON.appUnreachable]);
+	assert.equal(reporter.stopReason, REPORT_STOP_REASON.appUnreachable);
+	assert.ok(attempts > 3, `retried ${attempts} times`);
+	assert.ok(sentBodies.every((body) => body.sequence === 1));
+	assert.equal(sentBodies.length, attempts, 'nothing is sent after stopping');
+});
+
+test('a report the app refuses is not retried, and the next one is still sent', async (context) => {
+	const { sentBodies } = mockReportAnswers(context, [new Response(null, { status: 400 })]);
+	const reporter = reporterFor();
+
+	await reporter.report([{ type: 'text', text: 'Ahoj' }]);
+	await reporter.report([], 'done');
+
+	assert.deepEqual(
+		sentBodies.map((body) => body.sequence),
+		[1, 2],
+	);
+});
+
+test('the job stops when the app no longer runs it', async (context) => {
+	const { sentBodies } = mockReportAnswers(context, [Response.json({ cancelled: true })]);
+	const stopReasons = [];
+	const reporter = reporterFor((reason) => stopReasons.push(reason));
+
+	await reporter.report([{ type: 'text', text: 'Ahoj' }]);
+	await reporter.report([], 'done');
+
+	assert.deepEqual(stopReasons, [REPORT_STOP_REASON.cancelled]);
+	assert.equal(sentBodies.length, 1);
 });

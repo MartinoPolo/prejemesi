@@ -35,7 +35,15 @@ import { runAfterResponse } from '$lib/server/background.js';
 import { getDb } from '$lib/server/db/index.js';
 import { chatMessage, chatRunnerJob } from '$lib/server/db/chat.schema.js';
 import { changeProposal } from '$lib/server/db/change_proposal.schema.js';
+import { gift } from '$lib/server/db/gift.schema.js';
+import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
+import {
+	acceptEveryReadyRow,
+	applyChangeProposalRows,
+	discardChangeProposal,
+} from '$lib/server/agent_access/change_proposals.js';
 import { OPERATION_CHANNEL } from '$lib/server/operations/actor.js';
+import { CHANGE_PROPOSAL_STATE } from '$lib/modules/change_proposals/types.js';
 import {
 	CHAT_STREAM_EVENT,
 	CHAT_TURN_ERROR,
@@ -676,6 +684,68 @@ describe.skipIf(!DB_READY)('chat runner turns', () => {
 			type: CHAT_STREAM_EVENT.proposal,
 			proposalId: toolOutput.proposalId,
 			applied: true,
+		});
+	});
+
+	it('tells the next turn which proposals the user rejected and which applied, with the applied gift', async () => {
+		const { wishlist, session, job } = await startClaimedTurn();
+		async function proposeGift(name: string): Promise<string> {
+			const called = (await (
+				await callMcp(job.id, job.token, 'tools/call', {
+					name: 'createGift',
+					arguments: { wishlistId: wishlist.id, name },
+				})
+			).json()) as { result: { content: { text: string }[] } };
+			return (JSON.parse(called.result.content[0]?.text ?? '{}') as { proposalId: string })
+				.proposalId;
+		}
+		const rejectedId = await proposeGift('Sagrada');
+		const appliedId = await proposeGift('Kolo');
+		await discardChangeProposal({ id: MANAGER_ID }, rejectedId);
+		const [appliedProposal] = await getDb()
+			.select({ rows: changeProposal.rows })
+			.from(changeProposal)
+			.where(eq(changeProposal.id, appliedId));
+		await applyChangeProposalRows(
+			MANAGER,
+			appliedId,
+			acceptEveryReadyRow(appliedProposal?.rows ?? []),
+		);
+		await reportEvents(job.id, job.token, { status: 'done' });
+
+		await streamedEvents(
+			await postTurn(session.id, { kind: CHAT_TURN_KIND.message, text: 'Přidejte obrázek' }),
+		);
+
+		const [, nextJob] = await sessionJobs(session.id);
+		const [createdGift] = await getDb()
+			.select({ id: gift.id })
+			.from(gift)
+			.where(and(eq(gift.wishlistId, wishlist.id), eq(gift.name, 'Kolo')));
+		expect(createdGift).toBeDefined();
+		expect(nextJob?.prompt).toContain(`[Proposal ${rejectedId} is now discarded]`);
+		expect(nextJob?.prompt).toContain(
+			`[Proposal ${appliedId} is now applied]\ncreateGift applied, result `,
+		);
+		expect(nextJob?.prompt).toContain(createdGift?.id);
+		for (const state of Object.values(CHANGE_PROPOSAL_STATE)) {
+			expect(nextJob?.systemPrompt).toContain(state);
+		}
+	});
+
+	it('answers an MCP change to a gift that does not exist as the gift not being found', async () => {
+		const { job } = await startClaimedTurn();
+
+		const called = (await (
+			await callMcp(job.id, job.token, 'tools/call', {
+				name: 'updateGift',
+				arguments: { id: 'gift-of-a-rejected-proposal', name: 'Sagrada' },
+			})
+		).json()) as { result: { content: { text: string }[]; isError: boolean } };
+
+		expect(called.result.isError).toBe(true);
+		expect(JSON.parse(called.result.content[0]?.text ?? '{}')).toMatchObject({
+			error: { code: SERVER_ERROR.GIFT_NOT_FOUND },
 		});
 	});
 

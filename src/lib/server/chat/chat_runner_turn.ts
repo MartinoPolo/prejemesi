@@ -6,7 +6,11 @@ import {
 	type ChatRelayEvent,
 	type ChatTurnRequest,
 } from '$lib/modules/chat/types.js';
+import { isHttpError } from '@sveltejs/kit';
 import { runAfterResponse } from '$lib/server/background.js';
+import type { AgentCaller } from '$lib/server/agent_access/agent_caller.js';
+import { AgentApiFailure } from '$lib/server/agent_access/api.js';
+import { readChangeProposalForAgent } from '$lib/server/agent_access/change_proposal_api.js';
 import {
 	CHAT_RUNNER_JOB_STATUS,
 	cancelChatRunnerJob,
@@ -16,8 +20,18 @@ import {
 	settleChatRunnerJob,
 	type ChatRunnerJob,
 } from './chat_runner_jobs.js';
-import { chatRunnerPrompt, chatRunnerSystemPrompt } from './chat_runner_prompt.js';
-import { readRecentChatMessages, storeUserMessage, type StoredChatSession } from './chat_store.js';
+import {
+	chatRunnerPrompt,
+	chatRunnerSystemPrompt,
+	type ChatProposalOutcome,
+} from './chat_runner_prompt.js';
+import {
+	readRecentChatMessages,
+	storeUserMessage,
+	type StoredChatMessage,
+	type StoredChatSession,
+} from './chat_store.js';
+import { chatCaller } from './chat_agent.js';
 import { CHAT_LIMITS, CHAT_RUNNER_LIMITS, type ChatRunnerLimits } from './limits.js';
 import { waitUnlessAborted } from './wait.js';
 
@@ -130,6 +144,32 @@ export function chatRunnerRelayResponse(options: {
 }
 
 /**
+ * What became of each proposal the messages made, as the chat's own agent reads it now. A
+ * proposal the chat can no longer read, such as one on a deleted wishlist, is left out.
+ */
+async function readProposalOutcomes(
+	caller: AgentCaller,
+	messages: readonly StoredChatMessage[],
+): Promise<Map<string, ChatProposalOutcome>> {
+	const proposalIds = new Set(
+		messages.flatMap((message) => (message.proposalId === null ? [] : [message.proposalId])),
+	);
+	const outcomes = new Map<string, ChatProposalOutcome>();
+	await Promise.all(
+		[...proposalIds].map(async (proposalId) => {
+			try {
+				outcomes.set(proposalId, await readChangeProposalForAgent(caller, proposalId));
+			} catch (thrown) {
+				if (!isHttpError(thrown) && !(thrown instanceof AgentApiFailure)) {
+					throw thrown;
+				}
+			}
+		}),
+	);
+	return outcomes;
+}
+
+/**
  * A turn the chat runner answers: the user's message is stored, the job waits for the runner with
  * the chat as a transcript, and the response relays what the runner reports.
  */
@@ -145,6 +185,10 @@ export async function startChatRunnerTurn(turn: {
 		await storeUserMessage(session, request.text);
 	}
 	const history = await readRecentChatMessages(session.id, CHAT_LIMITS.contextMessages);
+	const proposalOutcomes = await readProposalOutcomes(
+		chatCaller(session, { id: session.userId, name: turn.user.name }),
+		history,
+	);
 	const job = await createChatRunnerJob({
 		sessionId: session.id,
 		model: request.model ?? DEFAULT_CHAT_RUNNER_MODEL,
@@ -155,7 +199,7 @@ export async function startChatRunnerTurn(turn: {
 			userName: turn.user.name,
 			locale: turn.locale,
 		}),
-		prompt: chatRunnerPrompt(history),
+		prompt: chatRunnerPrompt(history, proposalOutcomes),
 	});
 	return chatRunnerRelayResponse({
 		sessionId: session.id,
