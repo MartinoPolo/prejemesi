@@ -18,8 +18,10 @@ export const giftCardVariants = tv({
 		// reserved for keeping the drag grip in lock-step with card elevation.
 		card: 'gift-card-root group/gift-card-decoration relative isolate rounded-panel',
 		// Paint over fractional edge antialiasing without changing the surface's border box or hit targets.
+		// The shrinkable column keeps unbreakable content, such as a long link domain, from widening
+		// the image and body past the frame; that content truncates instead.
 		surface:
-			'gift-card-painted-surface resting-shadow-nesting elevation-surface relative grid grid-rows-[auto_minmax(0,1fr)_auto] rounded-[inherit] border-(length:--border-w) bg-card transition-[translate,scale,box-shadow] duration-(--duration-normal) ease-(--ease-standard) after:pointer-events-none after:absolute after:inset-0 after:z-30 after:rounded-[calc(var(--radius-panel)-var(--border-w))] after:border',
+			'gift-card-painted-surface resting-shadow-nesting elevation-surface relative grid grid-cols-[minmax(0,1fr)] grid-rows-[auto_minmax(0,1fr)_auto] rounded-[inherit] border-(length:--border-w) bg-card transition-[translate,scale,box-shadow] duration-(--duration-normal) ease-(--ease-standard) after:pointer-events-none after:absolute after:inset-0 after:z-30 after:rounded-[calc(var(--radius-panel)-var(--border-w))] after:border',
 		// 4:3 (issue #183, revises the earlier 1:1 shape): shorter cards, same
 		// `minmax(280px, 1fr)` grid column sizing.
 		imageArea:
