@@ -577,7 +577,8 @@ describe.skipIf(!DB_READY)('change proposals', () => {
 				['updateGift', { id: keptGiftId, name: 'Fotbalový míč' }],
 				['updateGift', { id: purgedGiftId, name: 'Pryč' }],
 			]);
-			// Gone for good: the restricted grant can no longer place the row on its wishlist.
+			// Gone for good: the restricted grant can no longer place the row on its wishlist, and
+			// answers the gift as not found.
 			await getDb().delete(gift).where(eq(gift.id, purgedGiftId));
 
 			const result = await applyRows(MANAGER, submitted.id, ['r1', 'r2']);
@@ -588,8 +589,8 @@ describe.skipIf(!DB_READY)('change proposals', () => {
 					{
 						rowId: 'r2',
 						error: {
-							status: 403,
-							code: SERVER_ERROR.AGENT_WISHLIST_NOT_ALLOWED,
+							status: 404,
+							code: SERVER_ERROR.GIFT_NOT_FOUND,
 							details: {},
 						},
 					},

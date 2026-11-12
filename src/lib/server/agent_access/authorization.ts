@@ -27,6 +27,8 @@ import {
 import {
 	resolveConfirmations,
 	resolveTargetWishlistIds,
+	TARGET_NOT_FOUND_ERROR,
+	WISHLIST_TARGET_KINDS,
 	type ConfirmationRule,
 	type LookupDatabase,
 	type TargetReference,
@@ -102,6 +104,22 @@ function isWithinWishlistRestriction(
 	);
 }
 
+/**
+ * A wishlist named outside the restriction is 403. A gift, reservation or revision batch the
+ * restriction does not reach is not found, missing or not, so it cannot probe which ids exist
+ * on other wishlists, and an agent naming a gift that does not exist learns just that.
+ */
+function rejectOutsideRestriction(targets: readonly TargetReference[]): never {
+	const [firstTarget] = targets;
+	if (
+		firstTarget === undefined ||
+		targets.some((target) => WISHLIST_TARGET_KINDS.has(target.kind))
+	) {
+		error(403, SERVER_ERROR.AGENT_WISHLIST_NOT_ALLOWED);
+	}
+	error(404, TARGET_NOT_FOUND_ERROR[firstTarget.kind]);
+}
+
 /** 404 for unknown and human-only operations alike; 403 without the policy's scope. */
 function checkOperationAndScope(
 	grant: AgentAccessGrant,
@@ -140,8 +158,8 @@ function splitAgentInput(
  * only within the token's scopes and wishlist restriction, and without image URLs or storage
  * keys; an image reference must be the user's own for the wishlist the call changes. Every
  * call's operation and scope are checked before any input is validated, and every input before
- * any wishlist is looked up. A restricted token gets 403 for a target that does not exist too,
- * so it cannot probe which ids exist outside its wishlists. The core still checks the user's
+ * any wishlist is looked up; a call outside the wishlist restriction answers as
+ * {@link rejectOutsideRestriction} says. The core still checks the user's
  * current role on every call, so a token never exceeds its user's rights.
  */
 export async function authorizeAgentOperations(
@@ -175,15 +193,16 @@ export async function authorizeAgentOperations(
 		database,
 		lookups.map((lookup) => lookup.targets),
 	);
-	const withinRestriction = checkedRequests.every(({ operation }, index) =>
-		isWithinWishlistRestriction(
-			grant,
-			{ operation, targets: stepValue(lookups, index).targets },
-			stepValue(targetWishlistIds, index),
-		),
+	const outsideIndex = checkedRequests.findIndex(
+		({ operation }, index) =>
+			!isWithinWishlistRestriction(
+				grant,
+				{ operation, targets: stepValue(lookups, index).targets },
+				stepValue(targetWishlistIds, index),
+			),
 	);
-	if (!withinRestriction) {
-		error(403, SERVER_ERROR.AGENT_WISHLIST_NOT_ALLOWED);
+	if (outsideIndex !== -1) {
+		rejectOutsideRestriction(stepValue(lookups, outsideIndex).targets);
 	}
 	const confirmations = await resolveConfirmations(
 		database,
