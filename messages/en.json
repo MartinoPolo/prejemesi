@@ -1747,6 +1747,7 @@
 	"chat_composer_placeholder": "Tell me what to do…",
 	"chat_send": "Send",
 	"chat_stop": "Stop",
+	"chat_stop_error": "The answer could not be stopped.",
 	"chat_welcome": "What can I help you with?",
 	"chat_starter_enrich": "Enrich a gift without an image",
 	"chat_starter_enrich_prompt": "Enrich ",

@@ -48,8 +48,13 @@ export function isActiveChatRunnerJob(job: Pick<ChatRunnerJob, 'status'>): boole
 	return ACTIVE_STATUSES.includes(job.status);
 }
 
+/**
+ * Queues a turn for the runner, under the id the panel named it by if it did. Null when that id
+ * is taken, which means a Stop overtook the turn's request.
+ */
 export async function createChatRunnerJob(
 	values: {
+		id?: string;
 		sessionId: string;
 		model: string;
 		effort: string;
@@ -57,7 +62,7 @@ export async function createChatRunnerJob(
 		prompt: string;
 	},
 	now = new Date(),
-): Promise<ChatRunnerJob> {
+): Promise<ChatRunnerJob | null> {
 	const [created] = await getDb()
 		.insert(chatRunnerJob)
 		.values({
@@ -66,11 +71,9 @@ export async function createChatRunnerJob(
 			createdAt: now,
 			updatedAt: now,
 		})
+		.onConflictDoNothing({ target: chatRunnerJob.id })
 		.returning();
-	if (created === undefined) {
-		throw new Error('Inserting the chat runner job returned no row');
-	}
-	return created;
+	return created ?? null;
 }
 
 export async function readChatRunnerJob(
@@ -122,12 +125,12 @@ export async function settleChatRunnerJob(
 	return settled ?? (await readChatRunnerJob(job.sessionId, job.id)) ?? job;
 }
 
-/** Whether the chat has a turn the runner has not finished yet; stale ones are failed first. */
-export async function hasActiveChatRunnerJob(
+/** The chat's turn the runner has not finished yet, if any; stale ones are failed first. */
+export async function readActiveChatRunnerJob(
 	sessionId: string,
 	limits: ChatRunnerLimits,
 	now = new Date(),
-): Promise<boolean> {
+): Promise<ChatRunnerJob | null> {
 	const active = await getDb()
 		.select()
 		.from(chatRunnerJob)
@@ -139,18 +142,49 @@ export async function hasActiveChatRunnerJob(
 		)
 		.orderBy(desc(chatRunnerJob.createdAt));
 	for (const job of active) {
-		if (isActiveChatRunnerJob(await settleChatRunnerJob(job, limits, now))) {
-			return true;
+		const settled = await settleChatRunnerJob(job, limits, now);
+		if (isActiveChatRunnerJob(settled)) {
+			return settled;
 		}
 	}
-	return false;
+	return null;
 }
 
-export async function cancelChatRunnerJob(jobId: string, now = new Date()): Promise<void> {
+/**
+ * The user's Stop: ends the chat's unfinished turn; the runner learns it from its next report.
+ * A Stop may reach the server before the turn it names, so it takes that turn's id first with a
+ * cancelled job holding nothing to run, and the turn's own request then finds the id taken.
+ */
+export async function stopChatRunnerTurn(
+	sessionId: string,
+	turnId: string | null,
+	now = new Date(),
+): Promise<void> {
+	if (turnId !== null) {
+		await getDb()
+			.insert(chatRunnerJob)
+			.values({
+				id: turnId,
+				sessionId,
+				status: CHAT_RUNNER_JOB_STATUS.cancelled,
+				model: '',
+				systemPrompt: '',
+				prompt: '',
+				createdAt: now,
+				updatedAt: now,
+				finishedAt: now,
+			})
+			.onConflictDoNothing({ target: chatRunnerJob.id });
+	}
 	await getDb()
 		.update(chatRunnerJob)
 		.set({ status: CHAT_RUNNER_JOB_STATUS.cancelled, finishedAt: now })
-		.where(and(eq(chatRunnerJob.id, jobId), inArray(chatRunnerJob.status, ACTIVE_STATUSES)));
+		.where(
+			and(
+				eq(chatRunnerJob.sessionId, sessionId),
+				inArray(chatRunnerJob.status, ACTIVE_STATUSES),
+			),
+		);
 }
 
 /**

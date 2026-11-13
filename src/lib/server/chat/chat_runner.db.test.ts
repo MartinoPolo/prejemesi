@@ -57,7 +57,12 @@ import {
 	handleChatRunnerEvents,
 	handleChatRunnerMcp,
 } from './chat_runner_api.js';
-import { CHAT_RUNNER_JOB_STATUS, createChatRunnerJob } from './chat_runner_jobs.js';
+import {
+	CHAT_RUNNER_JOB_STATUS,
+	createChatRunnerJob,
+	stopChatRunnerTurn,
+} from './chat_runner_jobs.js';
+import { activeChatTurnUrl } from './chat_runner_turn.js';
 import { CHAT_BLOCK, CHAT_ROLE } from './chat_model.js';
 import { readChatContext } from './chat_prompt.js';
 import { createChatSession, setChatFastForward } from './chat_store.js';
@@ -190,11 +195,20 @@ async function callMcp(jobId: string, token: string | null, method: string, para
 	});
 }
 
-function createJobForChat(sessionId: string, createdAt = new Date()) {
-	return createChatRunnerJob(
+async function createJobForChat(sessionId: string, createdAt = new Date()) {
+	const job = await createChatRunnerJob(
 		{ sessionId, model: 'opus', effort: 'medium', systemPrompt: 'system', prompt: 'prompt' },
 		createdAt,
 	);
+	if (job === null) {
+		throw new Error('The job was not created');
+	}
+	return job;
+}
+
+/** Long enough for a relay whose browser left to notice it and end. */
+function relayWindowsPass() {
+	return new Promise((resolve) => setTimeout(resolve, TEST_LIMITS.relayWindowMs * 2));
 }
 
 async function readJob(jobId: string) {
@@ -235,7 +249,7 @@ describe.skipIf(!DB_READY)('chat runner turns', () => {
 	beforeEach(() => {
 		chatSwitches.runner = true;
 		chatSwitches.secret = 'runner-secret';
-		// The shared database setup drops background work, but the relay streams from it.
+		// The shared database setup drops background work, but a model provider's turn runs as one.
 		vi.mocked(runAfterResponse).mockImplementation((task) => void task());
 		// chat.db.test.ts counts every user's messages since today's start in parallel; these
 		// turns store theirs on an earlier day so they do not move that count. Only Date is
@@ -570,33 +584,141 @@ describe.skipIf(!DB_READY)('chat runner turns', () => {
 		expect((await readJob(job.id)).events).toEqual([]);
 	});
 
-	it('cancels a still unclaimed job once the browser drops the turn’s first response', async () => {
+	it('keeps an unclaimed job waiting for the runner when the browser drops the first response', async () => {
 		const { session } = await newChat();
 		const response = await postTurn(session.id, { kind: CHAT_TURN_KIND.message, text: 'Ahoj' });
 
 		await response.body?.cancel();
+		await relayWindowsPass();
 
-		await vi.waitFor(async () => {
-			const [cancelled] = await sessionJobs(session.id);
-			expect(cancelled?.status).toBe(CHAT_RUNNER_JOB_STATUS.cancelled);
-		});
-		expect((await claim()).status).toBe(204);
+		const [waiting] = await sessionJobs(session.id);
+		expect(waiting?.status).toBe(CHAT_RUNNER_JOB_STATUS.pending);
+		expect((await claimJob()).id).toBe(waiting?.id);
 	});
 
-	it('tells the runner to stop once the browser drops a continuation of the turn', async () => {
+	it('keeps the job running when the browser drops a continuation, as a reload does', async () => {
 		const { session, job } = await startClaimedTurn();
 		const continuation = await continueTurn(`/chat/${session.id}/turns/${job.id}?cursor=0`);
 
 		await continuation.body?.cancel();
+		await relayWindowsPass();
 
-		await vi.waitFor(async () => {
-			expect((await readJob(job.id)).status).toBe(CHAT_RUNNER_JOB_STATUS.cancelled);
+		expect((await readJob(job.id)).status).toBe(CHAT_RUNNER_JOB_STATUS.running);
+		const report = await reportEvents(job.id, job.token, {
+			events: [{ type: CHAT_STREAM_EVENT.text, text: 'Pořád hledám.' }],
 		});
+		expect(await report.json()).toEqual({ cancelled: false });
+		expect((await storedMessages(session.id)).at(-1)?.content).toEqual([
+			{ type: CHAT_BLOCK.text, text: 'Pořád hledám.' },
+		]);
+	});
+
+	it('rejoins an unfinished turn after the text the chat already shows', async () => {
+		const { session, job } = await startClaimedTurn();
+		await reportEvents(job.id, job.token, {
+			events: [
+				{ type: CHAT_STREAM_EVENT.tool, name: 'web_search', query: 'dětské kolo' },
+				{ type: CHAT_STREAM_EVENT.text, text: 'Hledám kola.' },
+			],
+		});
+
+		const rejoinUrl = await activeChatTurnUrl(session.id, TEST_LIMITS);
+
+		expect(rejoinUrl).toBe(`/chat/${session.id}/turns/${job.id}?cursor=2`);
+		await reportEvents(job.id, job.token, {
+			events: [{ type: CHAT_STREAM_EVENT.text, text: 'Našel jsem kolo.' }],
+			status: 'done',
+		});
+		expect(await streamedEvents(await continueTurn(rejoinUrl ?? ''))).toEqual([
+			{ type: CHAT_STREAM_EVENT.text, text: '\n\nNašel jsem kolo.' },
+			{ type: CHAT_STREAM_EVENT.done },
+		]);
+		expect(await activeChatTurnUrl(session.id, TEST_LIMITS)).toBeNull();
+	});
+
+	it('stops the turn on the user’s Stop and tells the runner', async () => {
+		const { session, job } = await startClaimedTurn();
+
+		await stopChatRunnerTurn(session.id, null);
+
+		expect((await readJob(job.id)).status).toBe(CHAT_RUNNER_JOB_STATUS.cancelled);
+		expect(await activeChatTurnUrl(session.id, TEST_LIMITS)).toBeNull();
 		const report = await reportEvents(job.id, job.token, {
 			events: [{ type: CHAT_STREAM_EVENT.text, text: 'Pozdě' }],
 		});
 		expect(await report.json()).toEqual({ cancelled: true });
 		expect((await readJob(job.id)).events).toEqual([]);
+		expect(
+			await streamedEvents(
+				await continueTurn(`/chat/${session.id}/turns/${job.id}?cursor=0`),
+			),
+		).toEqual([{ type: CHAT_STREAM_EVENT.error, error: CHAT_TURN_ERROR.incomplete }]);
+	});
+
+	it('stops the turn the user named once it runs', async () => {
+		const { session } = await newChat();
+		const turnId = crypto.randomUUID();
+		await streamedEvents(
+			await postTurn(session.id, { kind: CHAT_TURN_KIND.message, text: 'Ahoj', turnId }),
+		);
+
+		await stopChatRunnerTurn(session.id, turnId);
+
+		expect((await sessionJobs(session.id)).map((job) => job.status)).toEqual([
+			CHAT_RUNNER_JOB_STATUS.cancelled,
+		]);
+	});
+
+	it('stops a turn whose Stop reached the server before the turn did', async () => {
+		const { session } = await newChat();
+		const turnId = crypto.randomUUID();
+
+		await stopChatRunnerTurn(session.id, turnId);
+		const turn = await postTurn(session.id, {
+			kind: CHAT_TURN_KIND.message,
+			text: 'Ahoj',
+			turnId,
+		});
+
+		expect(turn.status).toBe(409);
+		expect(await activeChatTurnUrl(session.id, TEST_LIMITS)).toBeNull();
+		expect((await sessionJobs(session.id)).map((job) => job.status)).toEqual([
+			CHAT_RUNNER_JOB_STATUS.cancelled,
+		]);
+		// The message stays, unanswered, so the chat offers to retry it.
+		expect((await storedMessages(session.id)).map((message) => message.role)).toEqual([
+			CHAT_ROLE.user,
+		]);
+	});
+
+	it('starts each further text block of the answer on a new paragraph', async () => {
+		const { session, job } = await startClaimedTurn();
+		await reportEvents(job.id, job.token, {
+			events: [
+				{ type: CHAT_STREAM_EVENT.text, text: 'Hledám.' },
+				{ type: CHAT_STREAM_EVENT.text, text: 'Našel jsem kolo.' },
+				{ type: CHAT_STREAM_EVENT.tool, name: 'web_search', query: 'kolo' },
+				{ type: CHAT_STREAM_EVENT.text, text: 'Přidávám ho.' },
+			],
+			status: 'done',
+		});
+
+		const relayed = await streamedEvents(
+			await continueTurn(`/chat/${session.id}/turns/${job.id}?cursor=0`),
+		);
+		const rejoined = await streamedEvents(
+			await continueTurn(`/chat/${session.id}/turns/${job.id}?cursor=1`),
+		);
+
+		const answer = [
+			{ type: CHAT_STREAM_EVENT.text, text: 'Hledám.' },
+			{ type: CHAT_STREAM_EVENT.text, text: '\n\nNašel jsem kolo.' },
+			{ type: CHAT_STREAM_EVENT.tool, name: 'web_search', query: 'kolo' },
+			{ type: CHAT_STREAM_EVENT.text, text: 'Přidávám ho.' },
+			{ type: CHAT_STREAM_EVENT.done },
+		];
+		expect(relayed).toEqual(answer);
+		expect(rejoined).toEqual(answer.slice(1));
 	});
 
 	it('keeps a turn running when a relay window ends without the browser leaving', async () => {
