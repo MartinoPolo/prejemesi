@@ -5,18 +5,20 @@ import {
 	DEFAULT_CHAT_RUNNER_EFFORT,
 	DEFAULT_CHAT_RUNNER_MODEL,
 	type ChatRelayEvent,
+	type ChatStreamEvent,
 	type ChatTurnRequest,
 } from '$lib/modules/chat/types.js';
 import { isHttpError } from '@sveltejs/kit';
-import { runAfterResponse } from '$lib/server/background.js';
 import type { AgentCaller } from '$lib/server/agent_access/agent_caller.js';
 import { AgentApiFailure } from '$lib/server/agent_access/api.js';
 import { readChangeProposalForAgent } from '$lib/server/agent_access/change_proposal_api.js';
+import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
+import { chatFailure } from './chat_failure.js';
 import {
 	CHAT_RUNNER_JOB_STATUS,
-	cancelChatRunnerJob,
 	createChatRunnerJob,
 	isActiveChatRunnerJob,
+	readActiveChatRunnerJob,
 	readChatRunnerJob,
 	settleChatRunnerJob,
 	type ChatRunnerJob,
@@ -51,6 +53,29 @@ function chatRunnerContinuationUrl(sessionId: string, jobId: string, cursor: num
 	return `/chat/${encodeURIComponent(sessionId)}/turns/${encodeURIComponent(jobId)}?cursor=${String(cursor)}`;
 }
 
+/**
+ * Where a panel opened after its turn started rejoins the stream of the chat's unfinished runner
+ * turn, if it has one. The stored chat already shows the text reported so far, so the stream
+ * starts after it; read the chat's messages first.
+ */
+export async function activeChatTurnUrl(
+	sessionId: string,
+	limits: ChatRunnerLimits = CHAT_RUNNER_LIMITS,
+): Promise<string | null> {
+	const job = await readActiveChatRunnerJob(sessionId, limits);
+	return job === null ? null : chatRunnerContinuationUrl(sessionId, job.id, job.events.length);
+}
+
+/**
+ * The runner reports each text block of Claude Code's answer whole, so text after text is a
+ * further step and starts a new paragraph, as the stored chat shows it.
+ */
+function relayedEvent(event: ChatStreamEvent, previous: ChatStreamEvent | undefined) {
+	return event.type === CHAT_STREAM_EVENT.text && previous?.type === CHAT_STREAM_EVENT.text
+		? { ...event, text: `\n\n${event.text}` }
+		: event;
+}
+
 /** The event that ends a finished job's stream. */
 function finalEvent(job: ChatRunnerJob): ChatRelayEvent {
 	if (job.status === CHAT_RUNNER_JOB_STATUS.done) {
@@ -66,10 +91,10 @@ function finalEvent(job: ChatRunnerJob): ChatRelayEvent {
 /**
  * Streams a runner job's events from `cursor` on. The Worker must not hold one invocation for the
  * whole turn, so the response relays for one window, then names its continuation and closes. A
- * browser that goes away stops the turn; the window ending does not.
+ * browser that goes away only ends the relay: the job runs on for the panel to rejoin, and only
+ * the user's Stop or the job's own limits end it.
  *
- * The relay loop runs within the request's async context, which the database client needs, and
- * `cancel()` runs outside it; so `cancel()` only signals and the loop cancels the job.
+ * The relay loop runs within the request's async context, which the database client needs.
  */
 export function chatRunnerRelayResponse(options: {
 	sessionId: string;
@@ -91,14 +116,17 @@ export function chatRunnerRelayResponse(options: {
 					const stored = await readChatRunnerJob(options.sessionId, options.jobId);
 					const job = stored === null ? null : await settleChatRunnerJob(stored, limits);
 					if (browserLeft.signal.aborted) {
-						await cancelChatRunnerJob(options.jobId);
 						return;
 					}
 					if (job === null) {
 						emit({ type: CHAT_STREAM_EVENT.error, error: CHAT_TURN_ERROR.incomplete });
 						return;
 					}
-					job.events.slice(cursor).forEach(emit);
+					job.events
+						.slice(cursor)
+						.forEach((event, offset) =>
+							emit(relayedEvent(event, job.events[cursor + offset - 1])),
+						);
 					cursor = Math.max(cursor, job.events.length);
 					if (!isActiveChatRunnerJob(job)) {
 						emit(finalEvent(job));
@@ -118,24 +146,18 @@ export function chatRunnerRelayResponse(options: {
 					await waitUnlessAborted(limits.relayPollIntervalMs, browserLeft.signal);
 				}
 			};
-			// Kept alive past a browser disconnect, so the loop can still cancel the job.
-			runAfterResponse(() =>
-				relay()
-					.catch((thrown: unknown) => {
-						console.error('[chat-runner] relay failed', options.jobId, thrown);
-						if (!browserLeft.signal.aborted) {
-							emit({
-								type: CHAT_STREAM_EVENT.error,
-								error: CHAT_TURN_ERROR.incomplete,
-							});
-						}
-					})
-					.finally(() => {
-						if (!browserLeft.signal.aborted) {
-							controller.close();
-						}
-					}),
-			);
+			void relay()
+				.catch((thrown: unknown) => {
+					console.error('[chat-runner] relay failed', options.jobId, thrown);
+					if (!browserLeft.signal.aborted) {
+						emit({ type: CHAT_STREAM_EVENT.error, error: CHAT_TURN_ERROR.incomplete });
+					}
+				})
+				.finally(() => {
+					if (!browserLeft.signal.aborted) {
+						controller.close();
+					}
+				});
 		},
 		cancel() {
 			browserLeft.abort();
@@ -172,7 +194,8 @@ async function readProposalOutcomes(
 
 /**
  * A turn the chat runner answers: the user's message is stored, the job waits for the runner with
- * the chat as a transcript, and the response relays what the runner reports.
+ * the chat as a transcript, and the response relays what the runner reports. A turn its Stop
+ * overtook is refused and leaves the message unanswered, as a turn stopped later does.
  */
 export async function startChatRunnerTurn(turn: {
 	session: StoredChatSession;
@@ -191,6 +214,7 @@ export async function startChatRunnerTurn(turn: {
 		history,
 	);
 	const job = await createChatRunnerJob({
+		id: request.turnId,
 		sessionId: session.id,
 		model: request.model ?? DEFAULT_CHAT_RUNNER_MODEL,
 		effort: request.effort ?? DEFAULT_CHAT_RUNNER_EFFORT,
@@ -203,6 +227,9 @@ export async function startChatRunnerTurn(turn: {
 		}),
 		prompt: chatRunnerPrompt(history, proposalOutcomes),
 	});
+	if (job === null) {
+		return chatFailure(409, SERVER_ERROR.CONFLICT);
+	}
 	return chatRunnerRelayResponse({
 		sessionId: session.id,
 		jobId: job.id,

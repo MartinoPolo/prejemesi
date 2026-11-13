@@ -14,6 +14,7 @@ import {
 	includedRowCount,
 	initialChangeReview,
 	isGiftDropped,
+	isRowDeclined,
 	reviewedChangeFields,
 	unresolvedChangeCount,
 	wholeGiftPressed,
@@ -132,6 +133,24 @@ describe('change review decisions', () => {
 		const acceptedAll = withEveryRowDecided(unresolvedDeletion, rows, CHANGE_DECISION.accepted);
 		expect(acceptedAll.deletion).toEqual({ kind: ROW_REVIEW_KIND.whole, accepted: null });
 		expect(includedRowCount(acceptedAll)).toBe(2);
+	});
+
+	it('marks every row declined after the global reject, but not an open or accepted one', () => {
+		const initial = initialChangeReview(rows);
+		const rejectedAll = withEveryRowDecided(initial, rows, CHANGE_DECISION.rejected);
+		const decidableRowIds = ['new', 'edit', 'deletion'];
+
+		expect(decidableRowIds.map((rowId) => isRowDeclined(rejectedAll[rowId]))).toEqual([
+			true,
+			true,
+			true,
+		]);
+		expect(decidableRowIds.map((rowId) => isRowDeclined(initial[rowId]))).toEqual([
+			false,
+			false,
+			false,
+		]);
+		expect(isRowDeclined(undefined)).toBe(false);
 	});
 
 	it('clears a field back to unresolved when its active choice is pressed again', () => {

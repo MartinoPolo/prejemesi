@@ -55,6 +55,17 @@ function isBoolean(value: unknown): value is boolean {
 
 function createAssistantContext() {
 	const open = new StateRaw(false);
+	/**
+	 * Whether the user's last show() or close() on this device left the panel open, so a wishlist
+	 * page loaded later reopens it.
+	 */
+	const rememberedOpen = new Persisted<boolean>({
+		key: 'prejemesi-assistant-open',
+		serde: jsonSerde(isBoolean),
+		defaultValue: false,
+	});
+	/** Only a panel the user opens takes focus; one reopened on load leaves focus on the page. */
+	let focusRequested = false;
 	const view = new StateRaw<AssistantView>(ASSISTANT_VIEW.chat);
 	const sheet = new StateRaw<AssistantSheet>(ASSISTANT_SHEET.full);
 	const selection = new StateRaw<ChatSelection>({ type: CHAT_SELECTION.latest });
@@ -110,12 +121,29 @@ function createAssistantContext() {
 		}
 		view.current = ASSISTANT_VIEW.chat;
 		sheet.current = ASSISTANT_SHEET.full;
+		focusRequested = true;
 		open.current = true;
+		rememberedOpen.current = true;
+	}
+
+	/** Reopens the panel the user left open, after hydration so the server markup still matches. */
+	function restore() {
+		if (rememberedOpen.current) {
+			open.current = true;
+		}
+	}
+
+	/** True once after the user opened the panel, for it to move focus into the chat. */
+	function takeFocusRequest(): boolean {
+		const requested = focusRequested;
+		focusRequested = false;
+		return requested;
 	}
 
 	/** Escape and ✕ return focus to whatever opened the panel. */
 	async function close() {
 		open.current = false;
+		rememberedOpen.current = false;
 		await tick();
 		trigger?.focus();
 		trigger = null;
@@ -141,6 +169,8 @@ function createAssistantContext() {
 		runnerModel,
 		runnerEffort,
 		show,
+		restore,
+		takeFocusRequest,
 		close,
 		resize,
 		startNewChat,

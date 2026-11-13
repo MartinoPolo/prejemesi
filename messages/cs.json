@@ -1747,6 +1747,7 @@
 	"chat_composer_placeholder": "Napište, co mám udělat…",
 	"chat_send": "Odeslat",
 	"chat_stop": "Zastavit",
+	"chat_stop_error": "Odpověď se nepodařilo zastavit.",
 	"chat_welcome": "S čím vám pomohu?",
 	"chat_starter_enrich": "Vylepšit dárek bez obrázku",
 	"chat_starter_enrich_prompt": "Vylepšete ",

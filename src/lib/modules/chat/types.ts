@@ -32,6 +32,18 @@ export const ChatWishlistInputSchema = v.strictObject({
 
 export const ChatSessionInputSchema = v.strictObject({ sessionId: ChatSessionIdSchema });
 
+/**
+ * Names a chat runner turn before its request reaches the server, so a Stop that overtakes the
+ * request still stops it.
+ */
+const ChatTurnIdSchema = v.optional(v.pipe(v.string(), v.uuid()));
+
+/** Stop for the chat's unfinished turn, naming it when the panel started it. */
+export const ChatStopInputSchema = v.strictObject({
+	sessionId: ChatSessionIdSchema,
+	turnId: ChatTurnIdSchema,
+});
+
 export const ChatFastForwardInputSchema = v.strictObject({
 	sessionId: ChatSessionIdSchema,
 	fastForward: v.boolean(),
@@ -73,11 +85,13 @@ export const ChatTurnRequestSchema = v.variant('kind', [
 		text: v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(CHAT_MESSAGE_MAX_LENGTH)),
 		model: ChatRunnerModelSchema,
 		effort: ChatRunnerEffortSchema,
+		turnId: ChatTurnIdSchema,
 	}),
 	v.strictObject({
 		kind: v.literal(CHAT_TURN_KIND.retry),
 		model: ChatRunnerModelSchema,
 		effort: ChatRunnerEffortSchema,
+		turnId: ChatTurnIdSchema,
 	}),
 ]);
 
@@ -105,6 +119,8 @@ export interface ChatMessageView {
 export interface ChatSessionView extends ChatSessionSummary {
 	wishlistShortId: string;
 	messages: ChatMessageView[];
+	/** Where the panel rejoins a turn still being answered, which `messages` show only in part. */
+	activeTurnUrl: string | null;
 }
 
 /** The server-sent events of one streamed turn. */

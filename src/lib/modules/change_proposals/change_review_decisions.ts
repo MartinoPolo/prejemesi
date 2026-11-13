@@ -405,6 +405,13 @@ export function isRowIncluded(rowReview: RowReview | undefined): boolean {
 		: acceptedFieldCount(rowReview) > 0;
 }
 
+/** The reviewer decided the whole row away: nothing of it applies and nothing is left open. */
+export function isRowDeclined(rowReview: RowReview | undefined): boolean {
+	return (
+		rowReview !== undefined && !isRowIncluded(rowReview) && rowUnresolvedCount(rowReview) === 0
+	);
+}
+
 export function includedRowCount(review: ChangeReview): number {
 	return Object.values(review).filter(isRowIncluded).length;
 }

@@ -13,11 +13,14 @@
 	} from '$lib/components/blocks/change-proposals/index.js';
 	import { localizeInternalHref } from '$lib/i18n/locale.js';
 	import {
+		CHANGE_PROPOSAL_STATE,
 		applyChangeProposal,
 		discardChangeProposal,
 		getChangeProposal,
 		undoChangeProposal,
 	} from '$lib/modules/change_proposals/index.js';
+	import { isOutdatedChangeProposalError } from '$lib/modules/change_proposals/outdated_change_proposal.js';
+	import { refreshOnPageReturn } from '$lib/reactivity/page_return.js';
 	import { getGiftCategories } from '$lib/modules/gift-categories/gift_category_queries.remote.js';
 	import {
 		getGiftsByWishlistShortId,
@@ -58,8 +61,29 @@
 		return m.change_review_page_title({ title: wishlist.title });
 	}
 
+	/** Decided in the chat or in another tab, the proposal shows its real state once the user is back. */
+	$effect(() => {
+		const query = proposalQuery;
+		if (query === null || proposal?.state !== CHANGE_PROPOSAL_STATE.pending) {
+			return;
+		}
+		return refreshOnPageReturn(() => query.refresh());
+	});
+
+	/** An action that found the proposal decided elsewhere still reports why, then shows its real state. */
+	async function refreshingOutdated<T>(action: () => Promise<T>): Promise<T> {
+		try {
+			return await action();
+		} catch (thrown) {
+			if (isOutdatedChangeProposalError(thrown)) {
+				void proposalQuery?.refresh();
+			}
+			throw thrown;
+		}
+	}
+
 	async function discard() {
-		await discardChangeProposal({ proposalId });
+		await refreshingOutdated(() => discardChangeProposal({ proposalId }));
 	}
 </script>
 
@@ -77,8 +101,9 @@
 			currentGifts={giftsQuery?.current?.gifts ?? []}
 			categories={categoriesQuery?.current ?? []}
 			priorityLevels={priorityLevelsQuery?.current ?? []}
-			onapply={(decisions) => applyChangeProposal({ proposalId, decisions })}
-			onundo={() => undoChangeProposal({ proposalId })}
+			onapply={(decisions) =>
+				refreshingOutdated(() => applyChangeProposal({ proposalId, decisions }))}
+			onundo={() => refreshingOutdated(() => undoChangeProposal({ proposalId }))}
 			ondiscard={discard}
 		/>
 	{:else}

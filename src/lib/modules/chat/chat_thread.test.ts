@@ -5,10 +5,12 @@ import {
 	CHAT_TOOL_KIND,
 	chatThreadItems,
 	chatToolKind,
+	continuedAnswerParts,
 	isChatTurnUnfinished,
 	latestChatProposalId,
 	startLiveChatTurn,
 	withStreamEvent,
+	type ChatPart,
 } from './chat_thread.js';
 import {
 	CHAT_ROLE,
@@ -72,6 +74,41 @@ describe('chatThreadItems', () => {
 				],
 			},
 		]);
+	});
+
+	it('starts the text of each further step of an answer on a new paragraph', () => {
+		const items = chatThreadItems([
+			message({ id: 'u1', role: CHAT_ROLE.user, text: 'Najděte kolo' }),
+			message({ id: 'a1', text: 'Hledám.' }),
+			message({ id: 'a2', text: 'Našel jsem kolo.' }),
+		]);
+
+		expect(items.at(-1)).toEqual({
+			type: CHAT_ITEM.assistant,
+			id: 'a1',
+			parts: [{ type: CHAT_PART.text, text: 'Hledám.\n\nNašel jsem kolo.' }],
+		});
+	});
+});
+
+describe('continuedAnswerParts', () => {
+	it('continues the stored answer with the rejoined turn, its text as a new paragraph', () => {
+		const stored: ChatPart[] = [
+			{ type: CHAT_PART.tools, tools: [{ kind: CHAT_TOOL_KIND.search, query: 'kolo' }] },
+			{ type: CHAT_PART.text, text: 'Hledám.' },
+		];
+
+		expect(
+			continuedAnswerParts(stored, [
+				{ type: CHAT_PART.text, text: '\n\nNašel jsem kolo.' },
+				{ type: CHAT_PART.proposal, proposalId: 'p1' },
+			]),
+		).toEqual([
+			stored[0],
+			{ type: CHAT_PART.text, text: 'Hledám.\n\nNašel jsem kolo.' },
+			{ type: CHAT_PART.proposal, proposalId: 'p1' },
+		]);
+		expect(continuedAnswerParts(stored, [])).toEqual(stored);
 	});
 });
 

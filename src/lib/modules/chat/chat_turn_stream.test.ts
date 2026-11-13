@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { streamChatTurn } from './chat_turn_stream.js';
+import { followChatTurn, streamChatTurn } from './chat_turn_stream.js';
 import {
 	CHAT_AVAILABILITY,
 	CHAT_STREAM_EVENT,
@@ -124,6 +124,42 @@ describe('streamChatTurn', () => {
 			['/chat/session-1/turns/job-1?cursor=2', 'GET'],
 		]);
 		expect(requests.every(({ init }) => init.signal === signal)).toBe(true);
+	});
+
+	it('rejoins a turn at its continuation and follows it to the end', async () => {
+		const events: ChatStreamEvent[] = [];
+		const requests: { url: string; method: string }[] = [];
+		const responses = [
+			new Response(
+				streamOf([
+					'data: {"type":"text","text":"Ještě hledám"}\n\n',
+					'data: {"type":"continue","url":"/chat/session-1/turns/job-1?cursor=4"}\n\n',
+				]),
+			),
+			new Response(streamOf(['data: {"type":"done"}\n\n'])),
+		];
+
+		await followChatTurn({
+			url: '/chat/session-1/turns/job-1?cursor=3',
+			signal: new AbortController().signal,
+			onEvent: (event) => events.push(event),
+			fetch: (url, init) => {
+				requests.push({ url: String(url), method: init?.method ?? 'GET' });
+				const response = responses.shift();
+				return response === undefined
+					? Promise.reject(new Error('Unexpected request'))
+					: Promise.resolve(response);
+			},
+		});
+
+		expect(events).toEqual([
+			{ type: CHAT_STREAM_EVENT.text, text: 'Ještě hledám' },
+			{ type: CHAT_STREAM_EVENT.done },
+		]);
+		expect(requests).toEqual([
+			{ url: '/chat/session-1/turns/job-1?cursor=3', method: 'GET' },
+			{ url: '/chat/session-1/turns/job-1?cursor=4', method: 'GET' },
+		]);
 	});
 
 	it('does not follow a continuation outside the app’s chat turns', async () => {

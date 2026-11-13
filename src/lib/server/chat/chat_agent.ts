@@ -102,13 +102,18 @@ interface ModelResponse {
 	stopReason: ChatStopReason;
 }
 
+/** The text of the response being streamed, which the user already reads before it is stored. */
+interface StreamedText {
+	text: string;
+}
+
 async function streamModelResponse(
 	turn: ChatTurn,
 	system: string,
 	tools: ReturnType<typeof chatTools>,
+	streamed: StreamedText,
 ): Promise<ModelResponse> {
 	const history = await readRecentChatMessages(turn.session.id, CHAT_LIMITS.contextMessages);
-	let text = '';
 	const calls: ChatToolCall[] = [];
 	let stopReason: ChatStopReason | null = null;
 	const events = turn.provider.stream(
@@ -123,7 +128,7 @@ async function streamModelResponse(
 	for await (const event of events) {
 		switch (event.type) {
 			case CHAT_MODEL_EVENT.textDelta:
-				text += event.text;
+				streamed.text += event.text;
 				turn.emit({ type: CHAT_STREAM_EVENT.text, text: event.text });
 				break;
 			case CHAT_MODEL_EVENT.webSearch:
@@ -141,6 +146,7 @@ async function streamModelResponse(
 	if (stopReason === null) {
 		throw new ChatProviderError('The model response ended without a stop reason', true);
 	}
+	const { text } = streamed;
 	const content: ChatContentBlock[] = text === '' ? [] : [{ type: CHAT_BLOCK.text, text }];
 	for (const call of calls) {
 		content.push({ type: CHAT_BLOCK.toolCall, ...call });
@@ -151,7 +157,8 @@ async function streamModelResponse(
 /**
  * One turn: the user's message (or a retry after a failed answer), then model responses until the
  * model answers without tools, each response stored with its tool results. A failure stops the
- * turn and leaves what was stored, so a retry resumes from there.
+ * turn and leaves what was stored, so a retry resumes from there. A turn cut short by Stop, a
+ * browser that went away or the time limit also keeps the text it already streamed.
  */
 export async function runChatTurn(turn: ChatTurn): Promise<void> {
 	const { session } = turn;
@@ -164,12 +171,14 @@ export async function runChatTurn(turn: ChatTurn): Promise<void> {
 		userName: turn.user.name,
 		locale: turn.locale,
 	});
+	const streamed: StreamedText = { text: '' };
 	try {
 		if (turn.request.kind === CHAT_TURN_KIND.message) {
 			await storeUserMessage(session, turn.request.text);
 		}
 		for (let call = 0; call < CHAT_LIMITS.modelCallsPerTurn; call += 1) {
-			const response = await streamModelResponse(turn, system, tools);
+			streamed.text = '';
+			const response = await streamModelResponse(turn, system, tools, streamed);
 			if (response.stopReason !== CHAT_STOP_REASON.toolUse || response.calls.length === 0) {
 				if (response.content.length > 0) {
 					await storeAssistantMessage(session.id, response.content, null);
@@ -189,6 +198,7 @@ export async function runChatTurn(turn: ChatTurn): Promise<void> {
 				[...response.content, ...round.results],
 				round.proposal?.id ?? null,
 			);
+			streamed.text = '';
 			if (round.proposal !== null) {
 				turn.emit({
 					type: CHAT_STREAM_EVENT.proposal,
@@ -200,6 +210,7 @@ export async function runChatTurn(turn: ChatTurn): Promise<void> {
 		emitTurnError(turn, CHAT_TURN_ERROR.incomplete);
 	} catch (thrown) {
 		if (turn.signal.aborted) {
+			await keepStreamedText(session.id, streamed.text);
 			emitTurnError(turn, CHAT_TURN_ERROR.incomplete);
 		} else {
 			console.error('[chat] turn failed', session.id, thrown);
@@ -207,6 +218,18 @@ export async function runChatTurn(turn: ChatTurn): Promise<void> {
 		}
 	} finally {
 		scheduleAgentAccessPurge();
+	}
+}
+
+/** Stored as the assistant's message, so a reload still shows what the user read. */
+async function keepStreamedText(sessionId: string, text: string): Promise<void> {
+	if (text.trim() === '') {
+		return;
+	}
+	try {
+		await storeAssistantMessage(sessionId, [{ type: CHAT_BLOCK.text, text }], null);
+	} catch (thrown) {
+		console.error('[chat] keeping the streamed text failed', sessionId, thrown);
 	}
 }
 

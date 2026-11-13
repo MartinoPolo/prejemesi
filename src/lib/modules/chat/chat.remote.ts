@@ -20,10 +20,13 @@ import {
 	requireOwnChatSession,
 	setChatFastForward,
 } from '$lib/server/chat/chat_store.js';
+import { stopChatRunnerTurn } from '$lib/server/chat/chat_runner_jobs.js';
+import { activeChatTurnUrl } from '$lib/server/chat/chat_runner_turn.js';
 import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
 import {
 	ChatFastForwardInputSchema,
 	ChatSessionInputSchema,
+	ChatStopInputSchema,
 	ChatWishlistInputSchema,
 	type ChatSessionView,
 } from './types.js';
@@ -65,7 +68,21 @@ export const getChatSession = guardedQueryWithArgs(
 			lastTurnAt: session.lastTurnAt,
 			wishlistShortId: session.wishlistShortId,
 			messages: messages.map(chatMessageView),
+			activeTurnUrl: await activeChatTurnUrl(session.id),
 		};
+	},
+);
+
+/**
+ * Stop for a turn the chat runner answers, which a browser going away does not end. A model
+ * provider's turn stops once its stream is aborted.
+ */
+export const stopChatTurn = guardedCommand(
+	ChatStopInputSchema,
+	async ({ user }, { sessionId, turnId }) => {
+		requireChatUser(user);
+		const session = await requireOwnChatSession(user.id, sessionId);
+		await stopChatRunnerTurn(session.id, turnId ?? null);
 	},
 );
 

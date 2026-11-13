@@ -84,12 +84,12 @@ export function chatThreadItems(messages: readonly ChatMessageView[]): ChatItem[
 		if (message.role === CHAT_ROLE.user) {
 			items.push({ type: CHAT_ITEM.user, id: message.id, text: message.text });
 		} else if (last?.type === CHAT_ITEM.assistant) {
-			last.parts = messageParts(message).reduce(withPart, last.parts);
+			last.parts = messageParts(message).reduce(withStepPart, last.parts);
 		} else {
 			items.push({
 				type: CHAT_ITEM.assistant,
 				id: message.id,
-				parts: messageParts(message).reduce(withPart, []),
+				parts: messageParts(message).reduce(withStepPart, []),
 			});
 		}
 	}
@@ -124,16 +124,46 @@ export function startLiveChatTurn(userText: string | null): LiveChatTurn {
 	return { userText, parts: [], error: null, proposed: false };
 }
 
-function withPart(parts: readonly ChatPart[], part: ChatPart): ChatPart[] {
+/** Streamed text arrives in fragments of one paragraph. */
+function joinedStreamText(text: string, next: string): string {
+	return text + next;
+}
+
+/** The text of a further step of an answer starts a new paragraph. */
+function joinedStepText(text: string, next: string): string {
+	return `${text.trimEnd()}\n\n${next.trimStart()}`;
+}
+
+function withPart(
+	parts: readonly ChatPart[],
+	part: ChatPart,
+	joinText: (text: string, next: string) => string = joinedStreamText,
+): ChatPart[] {
 	const last = parts.at(-1);
 	if (part.type === CHAT_PART.text && last?.type === CHAT_PART.text) {
-		return [...parts.slice(0, -1), { type: CHAT_PART.text, text: last.text + part.text }];
+		return [
+			...parts.slice(0, -1),
+			{ type: CHAT_PART.text, text: joinText(last.text, part.text) },
+		];
 	}
 	if (part.type === CHAT_PART.tools && last?.type === CHAT_PART.tools) {
 		const tools = part.tools.reduce(withToolLine, last.tools);
 		return [...parts.slice(0, -1), { type: CHAT_PART.tools, tools }];
 	}
 	return [...parts, part];
+}
+
+function withStepPart(parts: readonly ChatPart[], part: ChatPart): ChatPart[] {
+	return withPart(parts, part, joinedStepText);
+}
+
+/** A rejoined turn shown as the rest of the answer the stored chat already shows in part. */
+export function continuedAnswerParts(
+	storedParts: readonly ChatPart[],
+	liveParts: readonly ChatPart[],
+): ChatPart[] {
+	const [first, ...rest] = liveParts;
+	return first === undefined ? [...storedParts] : [...withStepPart(storedParts, first), ...rest];
 }
 
 export function withStreamEvent(turn: LiveChatTurn, event: ChatStreamEvent): LiveChatTurn {

@@ -36,6 +36,8 @@
 		countCopy,
 		formatChangeReviewDateTime,
 	} from '$lib/modules/change_proposals/change_review_copy.js';
+	import { isRowDeclined } from '$lib/modules/change_proposals/change_review_decisions.js';
+	import { isOutdatedChangeProposalError } from '$lib/modules/change_proposals/outdated_change_proposal.js';
 	import ProposalDecisionControls from './ProposalDecisionControls.svelte';
 	import {
 		APPLIED_TITLES,
@@ -62,6 +64,7 @@
 		inBar,
 		decisionBar,
 		decidingProposals,
+		onoutdated,
 	}: {
 		proposal: ChangeProposalView;
 		rowContext: Omit<ChangeRowContext, 'submitterName' | 'kindTitle'>;
@@ -70,6 +73,8 @@
 		decisionBar: StateRaw<DecisionBarControls | null>;
 		/** Pending proposals register here so the wishlist behind the panel previews them. */
 		decidingProposals: DecidingProposalRegistry;
+		/** An action found the proposal decided elsewhere, so its real state should load. */
+		onoutdated: () => void;
 	} = $props();
 
 	let card = $state<HTMLElement>();
@@ -133,6 +138,9 @@
 			await work();
 		} catch (error) {
 			toastError(translateServerError(error, fallback));
+			if (isOutdatedChangeProposalError(error)) {
+				onoutdated();
+			}
 		} finally {
 			pendingAction = null;
 		}
@@ -234,9 +242,13 @@
 {#snippet summaryRows()}
 	<ul class="summary-rows">
 		{#each decisions.entries as entry (entry.row.rowId)}
-			<li class="summary-row">
+			{@const declined = decisions.interactive && isRowDeclined(entry.rowReview)}
+			<li class="summary-row" data-declined={declined || undefined}>
 				<ChangeKindTitle kind={entry.row.kind} />
 				<span class="summary-name">{entry.model.identity.name}</span>
+				{#if declined}
+					<span class="sr-only">{m.change_review_pill_rejected()}</span>
+				{/if}
 			</li>
 		{/each}
 	</ul>
@@ -441,6 +453,12 @@
 		min-width: 0;
 		font-weight: 600;
 		overflow-wrap: anywhere;
+	}
+
+	/* Zamítnout vše and per-row rejections show at once, before Použít declines them. */
+	.summary-row[data-declined] .summary-name {
+		color: var(--muted-foreground);
+		text-decoration: line-through;
 	}
 
 	.inspect-row {
