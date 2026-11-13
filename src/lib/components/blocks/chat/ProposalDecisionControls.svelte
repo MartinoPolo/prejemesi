@@ -214,10 +214,15 @@
 		color: var(--status-danger-text);
 	}
 
+	/* Použít fills the rest of the row and wraps below whole when its label does not fit. */
 	.actions {
-		display: grid;
-		grid-template-columns: auto auto minmax(0, 1fr);
+		display: flex;
+		flex-wrap: wrap;
 		gap: var(--space-2);
+	}
+
+	.actions :global(.apply) {
+		flex: 1 0 auto;
 	}
 
 	.controls :global(.is-blocked) {
