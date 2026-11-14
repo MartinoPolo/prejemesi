@@ -47,6 +47,7 @@
 	import WishlistSheetChoice from './WishlistSheetChoice.svelte';
 	import WishlistSheetHeader from './WishlistSheetHeader.svelte';
 	import { isGiftCardColumnOptionAvailable } from './gift_card_grid_columns.js';
+	import { getWishlistStickyChrome } from './wishlist_sticky_chrome.svelte.js';
 	import {
 		GIFT_CARD_COLUMN_OPTIONS,
 		GIFT_GROUPING_OPTIONS,
@@ -290,6 +291,8 @@
 	let mobileViewportMode = $state<boolean | null>(null);
 	let mobileSheetScrollPosition = $state({ x: 0, y: 0 });
 	let mobileSheetRestoreTrigger = $state<HTMLButtonElement | null>(null);
+	let toolbarStickyElement = $state<HTMLElement | null>(null);
+	const stickyChrome = getWishlistStickyChrome();
 	let mobileSheetFocusRestorationScheduled = false;
 	let mobileSheetScrollCapturedFromPointer = false;
 	let mobileSheetFocusFrame: number | null = null;
@@ -362,6 +365,24 @@
 		if (reorderMode) {
 			resetMobileSheetState();
 		}
+	});
+
+	// The sticky offset changes at the mobile breakpoint, so the bottom is remeasured there too.
+	$effect(() => {
+		const stickyElement = toolbarStickyElement;
+		if (stickyChrome === undefined || stickyElement === null || mobileViewportMode === null) {
+			return;
+		}
+		const publishToolbarBottom = () => {
+			const stickyTop = parseFloat(getComputedStyle(stickyElement).top);
+			stickyChrome.toolbarBottom =
+				(Number.isFinite(stickyTop) ? stickyTop : 0) +
+				stickyElement.getBoundingClientRect().height;
+		};
+		const resizeObserver = new ResizeObserver(publishToolbarBottom);
+		resizeObserver.observe(stickyElement);
+		publishToolbarBottom();
+		return () => resizeObserver.disconnect();
 	});
 
 	function captureMobileSheetScrollPosition() {
@@ -1105,7 +1126,11 @@
 	{reorderAnnouncement}
 </div>
 
-<div class="wishlist-toolbar-sticky sticky z-(--z-sticky) min-w-0">
+<div
+	bind:this={toolbarStickyElement}
+	class="wishlist-toolbar-sticky sticky z-(--z-sticky) min-w-0"
+	class:wishlist-toolbar-sticky-continued={(stickyChrome?.stripsBelowToolbar ?? 0) > 0}
+>
 	<div class="wishlist-toolbar-mask" data-testid="wishlist-toolbar-mask" aria-hidden="true"></div>
 	<div
 		class="wishlist-toolbar resting-shadow-nesting relative z-[1] min-w-0 rounded-panel border-(length:--border-w) border-ink bg-card shadow-sticker"
@@ -1251,6 +1276,11 @@
 		content: '';
 		mask-image: linear-gradient(to bottom, #000, transparent);
 		pointer-events: none;
+	}
+
+	/* A strip sticking right below the toolbar carries on its surface; the fade would wash it out. */
+	.wishlist-toolbar-sticky-continued .wishlist-toolbar-mask::after {
+		display: none;
 	}
 
 	.wishlist-toolbar {

@@ -10,6 +10,7 @@
 	import WishlistHeader from '$lib/components/blocks/gift/WishlistHeader.svelte';
 	import WishlistDetailToolbar from '$lib/components/blocks/wishlist/WishlistDetailToolbar.svelte';
 	import WishlistGiftDisplay from '$lib/components/blocks/wishlist/WishlistGiftDisplay.svelte';
+	import { setWishlistStickyChrome } from '$lib/components/blocks/wishlist/wishlist_sticky_chrome.svelte.js';
 	import WishlistSelectionToolbar from '$lib/components/blocks/wishlist/WishlistSelectionToolbar.svelte';
 	import GiftBulkCopyDialog, {
 		NEW_WISHLIST_DESTINATION,
@@ -306,6 +307,7 @@
 	const assistant = setAssistantContext();
 	const decidingProposals: DecidingProposalRegistry = new SvelteSet();
 	provideGiftGalleryPositions();
+	setWishlistStickyChrome();
 
 	untrack(() =>
 		setLikesContext(
