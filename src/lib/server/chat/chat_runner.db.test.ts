@@ -9,6 +9,8 @@ import {
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type * as ChatAvailabilityModule from './chat_availability.js';
 import type * as ChatConfigModule from './chat_config.js';
+import type * as ChatRunnerJobsModule from './chat_runner_jobs.js';
+import type * as OperationalFailuresModule from '$lib/observability/operational_failures.js';
 
 const chatSwitches = vi.hoisted(() => ({
 	runner: true,
@@ -30,8 +32,24 @@ vi.mock('./chat_availability.js', async (importOriginal) => ({
 	chatAvailability: vi.fn(() => Promise.resolve('available')),
 }));
 
+// Wrapped, so a test can fail one claim poll while every other poll queries the database.
+vi.mock('./chat_runner_jobs.js', async (importOriginal) => {
+	const original = await importOriginal<typeof ChatRunnerJobsModule>();
+	return { ...original, claimChatRunnerJob: vi.fn(original.claimChatRunnerJob) };
+});
+
+vi.mock('$lib/observability/operational_failures.js', async (importOriginal) => {
+	const original = await importOriginal<typeof OperationalFailuresModule>();
+	return { ...original, reportOperationalFailure: vi.fn(original.reportOperationalFailure) };
+});
+
 import { and, asc, eq, gte, inArray } from 'drizzle-orm';
+import { reportOperationalFailure } from '$lib/observability/operational_failures.js';
 import { runAfterResponse } from '$lib/server/background.js';
+import {
+	failedDatabaseQuery,
+	postgresConnectionError,
+} from '$lib/server/db/connection_errors.test-setup.js';
 import { getDb } from '$lib/server/db/index.js';
 import { chatMessage, chatRunnerJob } from '$lib/server/db/chat.schema.js';
 import { changeProposal } from '$lib/server/db/change_proposal.schema.js';
@@ -59,6 +77,7 @@ import {
 } from './chat_runner_api.js';
 import {
 	CHAT_RUNNER_JOB_STATUS,
+	claimChatRunnerJob,
 	createChatRunnerJob,
 	stopChatRunnerTurn,
 } from './chat_runner_jobs.js';
@@ -80,6 +99,9 @@ const TEST_LIMITS: ChatRunnerLimits = {
 	claimWindowMs: 40,
 	claimPollIntervalMs: 10,
 };
+
+/** A claim window that outlasts a stalled poll, for tests that need a second poll to run. */
+const LOADED_MACHINE_CLAIM_LIMITS: ChatRunnerLimits = { ...TEST_LIMITS, claimWindowMs: 2_000 };
 
 const CHAT_RUNNER_TEST_DAY_OFFSET_MS = 2 * 24 * 60 * 60 * 1000;
 
@@ -138,14 +160,17 @@ function runnerRequest(path: string, authorization: string | null, body?: unknow
 	});
 }
 
-function claim(authorization: string | null = `Bearer ${chatSwitches.secret ?? ''}`) {
+function claim(
+	authorization: string | null = `Bearer ${chatSwitches.secret ?? ''}`,
+	limits: ChatRunnerLimits = TEST_LIMITS,
+) {
 	return handleChatRunnerClaim(
 		{
 			request: runnerRequest('/chat-runner/claim', authorization),
 			url: new URL(`${ORIGIN}/chat-runner/claim`),
 			params: {},
 		},
-		TEST_LIMITS,
+		limits,
 	);
 }
 
@@ -159,8 +184,8 @@ interface ClaimedJob {
 	mcpUrl: string;
 }
 
-async function claimJob(): Promise<ClaimedJob> {
-	const response = await claim();
+async function claimJob(limits: ChatRunnerLimits = TEST_LIMITS): Promise<ClaimedJob> {
+	const response = await claim(undefined, limits);
 	expect(response.status).toBe(200);
 	return (await response.json()) as ClaimedJob;
 }
@@ -263,6 +288,8 @@ describe.skipIf(!DB_READY)('chat runner turns', () => {
 	// Each test leaves no job waiting, so the next claim takes that test's own job.
 	afterEach(async () => {
 		vi.useRealTimers();
+		vi.mocked(claimChatRunnerJob).mockReset();
+		vi.mocked(reportOperationalFailure).mockReset();
 		if (createdSessionIds.length > 0) {
 			const storedSinceToday = await getDb()
 				.select({ id: chatMessage.id })
@@ -460,6 +487,54 @@ describe.skipIf(!DB_READY)('chat runner turns', () => {
 
 		expect((await claim()).status).toBe(204);
 		expect((await readJob(stale.id)).status).toBe(CHAT_RUNNER_JOB_STATUS.pending);
+	});
+
+	it('hands out a waiting job on a later poll when the database connection closed during one', async () => {
+		const { session } = await newChat();
+		const queued = await createJobForChat(session.id);
+		vi.mocked(reportOperationalFailure).mockImplementation(() => undefined);
+		vi.mocked(claimChatRunnerJob).mockRejectedValueOnce(
+			failedDatabaseQuery(postgresConnectionError('CONNECTION_CLOSED')),
+		);
+
+		expect((await claimJob(LOADED_MACHINE_CLAIM_LIMITS)).id).toBe(queued.id);
+		expect(claimChatRunnerJob).toHaveBeenCalledTimes(2);
+		expect(reportOperationalFailure).toHaveBeenCalledOnce();
+		expect(reportOperationalFailure).toHaveBeenCalledWith(
+			'database',
+			'chat_runner_claim_connection_closed',
+			'warning',
+		);
+	});
+
+	it('answers that no job waits when the database connection closed on every poll', async () => {
+		vi.mocked(reportOperationalFailure).mockImplementation(() => undefined);
+		vi.mocked(claimChatRunnerJob).mockRejectedValue(
+			failedDatabaseQuery(postgresConnectionError('CONNECTION_CLOSED')),
+		);
+
+		expect((await claim()).status).toBe(204);
+		expect(reportOperationalFailure).toHaveBeenCalledWith(
+			'database',
+			'chat_runner_claim_connection_closed',
+			'warning',
+		);
+	});
+
+	it.each([
+		[
+			'a statement timeout',
+			Object.assign(new Error('canceling statement due to statement timeout'), {
+				code: '57014',
+			}),
+		],
+		['a connection that never opened', postgresConnectionError('CONNECT_TIMEOUT')],
+	])('fails the claim on %s', async (_description, cause) => {
+		const failure = failedDatabaseQuery(cause);
+		vi.mocked(claimChatRunnerJob).mockRejectedValueOnce(failure);
+
+		await expect(claim()).rejects.toBe(failure);
+		expect(reportOperationalFailure).not.toHaveBeenCalled();
 	});
 
 	it('hides every runner endpoint while no runner secret is configured', async () => {
