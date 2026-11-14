@@ -100,8 +100,35 @@ function prewarmServerModuleGraph(): Plugin {
 	};
 }
 
+/**
+ * Dev-only: leave closing idle keep-alive connections to the clients. Node closes them after a
+ * few seconds, while Playwright's API client keeps its connections without an idle limit, so a
+ * request that reuses one at the moment the server closes it fails with ECONNRESET.
+ */
+function keepIdleConnectionsOpen(): Plugin {
+	return {
+		name: 'keep-idle-connections-open',
+		apply: 'serve',
+		configureServer(server) {
+			if (server.httpServer !== null && 'keepAliveTimeout' in server.httpServer) {
+				server.httpServer.keepAliveTimeout = 0;
+			}
+		},
+	};
+}
+
 export default defineConfig({
 	optimizeDeps: {
+		// A dependency the scan misses is found when a page first loads it; Vite then re-bundles and
+		// reloads every open page, aborting navigations in progress. SvelteKit's own scan entries are
+		// absolute Windows paths that match nothing there, and neither covers the client hook.
+		entries: isVitest
+			? undefined
+			: [
+					'src/routes/**/+*.{svelte,js,ts}',
+					'!src/routes/**/+*server.*',
+					'src/hooks.client.ts',
+				],
 		include: [
 			'@lucide/svelte/icons/archive',
 			'@lucide/svelte/icons/arrow-right',
@@ -178,6 +205,7 @@ export default defineConfig({
 		// Vitest browser projects extend this config and spin up their own Vite
 		// servers; they never serve SvelteKit SSR, so skip the warmup there.
 		...(isVitest ? [] : [prewarmServerModuleGraph()]),
+		keepIdleConnectionsOpen(),
 	],
 	test: {
 		passWithNoTests: true,
