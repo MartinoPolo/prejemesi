@@ -19,6 +19,8 @@ const { expectPixelsNear, expectPixelsAtLeast, expectPixelsAtMost } = createPixe
 const PAGE_GUTTER = 12;
 const CARD_GAP = 8;
 const TOUCH_TARGET = 40;
+/** A chip jump scrolls smoothly, which a loaded machine can stretch well past the poll default. */
+const SMOOTH_SCROLL_TIMEOUT = 5000;
 
 function visitorGift(id: string, overrides: Partial<GiftForVisitor> = {}): GiftForVisitor {
 	return {
@@ -139,6 +141,7 @@ function cardsOf(row: HTMLElement): HTMLElement[] {
 }
 
 afterEach(async () => {
+	window.scrollTo({ top: 0, behavior: 'instant' });
 	for (const host of hosts) {
 		host.remove();
 	}
@@ -408,8 +411,242 @@ describe('WishlistGiftCarousel (#580)', () => {
 		expect(cardsOf(rows()[0])).toHaveLength(3);
 		expect(rows()[0]).toHaveAttribute(
 			'aria-label',
-			m.gift_carousel_row_ungrouped_label({ count: formatGiftCount(3) }),
+			`${m.gift_carousel_ungrouped_label()}, ${formatGiftCount(3)}`,
 		);
+		expect(chipBar()).toBeNull();
+		await screen.unmount();
+	});
+});
+
+function chipBar(): HTMLElement | null {
+	return document.querySelector<HTMLElement>(`nav[aria-label="${m.gift_carousel_jump_aria()}"]`);
+}
+
+function chips(): HTMLAnchorElement[] {
+	return Array.from(chipBar()?.querySelectorAll<HTMLAnchorElement>('a') ?? []);
+}
+
+function positionOf(groupIndex: number): HTMLElement | null {
+	const group = document.querySelectorAll('[data-testid="gift-carousel-group"]')[groupIndex];
+	return group.querySelector<HTMLElement>('[data-testid="gift-section-position"]');
+}
+
+function categorySection(key: string, label: string, giftIds: string[]): GiftSection {
+	return {
+		kind: GIFT_SECTION_KINDS.categoryGroup,
+		key,
+		label,
+		gifts: giftIds.map((id) => visitorGift(id)),
+	};
+}
+
+describe('WishlistGiftCarousel group chip bar (#640)', () => {
+	it('hides the chip bar for a single group row', async () => {
+		const screen = await renderCarousel(375, {
+			sections: [categorySection('category:books', 'Knihy', ['a', 'b', 'c'])],
+		});
+		expect(rows()).toHaveLength(1);
+		expect(chipBar()).toBeNull();
+		await screen.unmount();
+	});
+
+	it('hides the chip bar when an empty group leaves a single row', async () => {
+		const screen = await renderCarousel(375, {
+			sections: [
+				categorySection('category:books', 'Knihy', ['a', 'b', 'c']),
+				categorySection('category:empty', 'Prázdná', []),
+			],
+		});
+		expect(rows()).toHaveLength(1);
+		expect(chipBar()).toBeNull();
+		await screen.unmount();
+	});
+
+	it('shows one in-page chip per row in row order, skipping empty groups', async () => {
+		const ownReservation = visitorGift('own', {
+			reservedCount: 1,
+			isFullyReserved: true,
+			myReservationId: 'reservation-own',
+		});
+		const screen = await renderCarousel(375, {
+			sections: [
+				{
+					kind: GIFT_SECTION_KINDS.ownReservation,
+					key: 'own-reservations',
+					label: null,
+					gifts: [ownReservation],
+				},
+				categorySection('category:electronics', 'Elektronika', ['a', 'b', 'c', 'd', 'e']),
+				categorySection('category:empty', 'Prázdná', []),
+				categorySection('category:books', 'Knihy', ['f', 'g']),
+				{
+					kind: GIFT_SECTION_KINDS.received,
+					key: 'received',
+					label: null,
+					gifts: [visitorGift('r', { received: true })],
+				},
+			],
+		});
+		const groups = Array.from(
+			document.querySelectorAll<HTMLElement>('[data-testid="gift-carousel-group"]'),
+		);
+		expect(groups).toHaveLength(4);
+		expect(chips().map((chip) => chip.getAttribute('aria-label'))).toEqual([
+			`${m.gift_band_own_reservations()}, ${formatGiftCount(1)}`,
+			`Elektronika, ${formatGiftCount(5)}`,
+			`Knihy, ${formatGiftCount(2)}`,
+			`${m.gift_band_received()}, ${formatGiftCount(1)}`,
+		]);
+		chips().forEach((chip, index) => {
+			expect(chip.getAttribute('href')).toBe(`#${groups[index].id}`);
+		});
+		expect(new Set(groups.map((group) => group.id)).size).toBe(4);
+		expect(chipBar()!.querySelectorAll('[aria-current="location"]')).toHaveLength(1);
+		expect(chips()[0]).toHaveAttribute('aria-current', 'location');
+		expect(groups[2].querySelector('[data-slot="carousel"]')).toHaveAttribute(
+			'aria-label',
+			`Knihy, ${formatGiftCount(2)}`,
+		);
+		await screen.unmount();
+	});
+
+	it('moves focus to the section heading when a chip is activated', async () => {
+		const screen = await renderCarousel(375);
+		chips()[1].click();
+		const heading = document.activeElement as HTMLElement;
+		expect(heading.tagName).toBe('H2');
+		expect(heading).toHaveTextContent('Knihy');
+		expect(heading).toHaveAttribute('tabindex', '-1');
+		expect(window.location.hash).toBe('');
+		await screen.unmount();
+	});
+
+	it('moves focus to the row of a count-only section', async () => {
+		const screen = await renderCarousel(375, {
+			sections: [
+				{
+					kind: GIFT_SECTION_KINDS.available,
+					key: 'available',
+					label: null,
+					gifts: ['a', 'b'].map((id) => visitorGift(id)),
+				},
+				{
+					kind: GIFT_SECTION_KINDS.received,
+					key: 'received',
+					label: null,
+					gifts: [visitorGift('r', { received: true })],
+				},
+			],
+		});
+		expect(chips()[0]).toHaveAttribute(
+			'aria-label',
+			`${m.gift_carousel_ungrouped_label()}, ${formatGiftCount(2)}`,
+		);
+		chips()[0].click();
+		expect(document.activeElement).toBe(rows()[0]);
+		await screen.unmount();
+	});
+
+	it('marks the chip of the section whose header passed the chip bar, and the last one at the page bottom', async () => {
+		const screen = await renderCarousel(375, {
+			sections: [
+				categorySection('category:one', 'Jedna', ['a', 'b', 'c']),
+				categorySection('category:two', 'Dvě', ['d', 'e', 'f']),
+				categorySection('category:three', 'Tři', ['g', 'h', 'i']),
+				categorySection('category:four', 'Čtyři', ['j']),
+			],
+		});
+		const groups = Array.from(
+			document.querySelectorAll<HTMLElement>('[data-testid="gift-carousel-group"]'),
+		);
+		// Without a sticky toolbar above it, the stuck chip bar's bottom edge is the line.
+		const stuckChipBarBottom = chipBar()!.getBoundingClientRect().height;
+		window.scrollTo({
+			top: groups[1].getBoundingClientRect().top + window.scrollY - stuckChipBarBottom + 4,
+			behavior: 'instant',
+		});
+		await expect.poll(() => chipBar()!.getBoundingClientRect().top).toBe(0);
+		await expect.poll(() => chips()[1].getAttribute('aria-current')).toBe('location');
+		expect(chipBar()!.querySelectorAll('[aria-current="location"]')).toHaveLength(1);
+		window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'instant' });
+		await expect.poll(() => chips()[3].getAttribute('aria-current')).toBe('location');
+		await screen.unmount();
+	});
+
+	it('aligns a jumped-to section below the chip bar and marks its chip', async () => {
+		const screen = await renderCarousel(375, {
+			sections: [
+				categorySection('category:one', 'Jedna', ['a', 'b', 'c']),
+				categorySection('category:two', 'Dvě', ['d', 'e', 'f']),
+				categorySection('category:three', 'Tři', ['g', 'h', 'i']),
+				categorySection('category:four', 'Čtyři', ['j', 'k', 'l']),
+			],
+		});
+		const target = document.querySelectorAll<HTMLElement>(
+			'[data-testid="gift-carousel-group"]',
+		)[1];
+		chips()[1].click();
+		await vi.waitFor(
+			() =>
+				expectPixelsNear(
+					target.getBoundingClientRect().top,
+					chipBar()!.getBoundingClientRect().bottom,
+				),
+			{ timeout: SMOOTH_SCROLL_TIMEOUT },
+		);
+		await expect
+			.poll(() => chips()[1].getAttribute('aria-current'), { timeout: SMOOTH_SCROLL_TIMEOUT })
+			.toBe('location');
+		await screen.unmount();
+	});
+
+	it('scrolls the current chip into view inside the chip bar', async () => {
+		const screen = await renderCarousel(320, {
+			sections: [
+				categorySection('category:one', 'Elektronika a hry', ['a', 'b']),
+				categorySection('category:two', 'Knihy a časopisy', ['c', 'd']),
+				categorySection('category:three', 'Sport a outdoor', ['e', 'f']),
+				categorySection('category:four', 'Domácnost a zahrada', ['g', 'h']),
+			],
+		});
+		const bar = chipBar()!;
+		expect(bar.scrollWidth).toBeGreaterThan(bar.clientWidth);
+		window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'instant' });
+		await expect.poll(() => chips()[3].getAttribute('aria-current')).toBe('location');
+		await expect.poll(() => bar.scrollLeft).toBeGreaterThan(0);
+		const barRect = bar.getBoundingClientRect();
+		const lastChip = chips()[3].getBoundingClientRect();
+		expectPixelsAtLeast(lastChip.left, barRect.left);
+		expectPixelsAtMost(lastChip.right, barRect.right);
+		await screen.unmount();
+	});
+});
+
+describe('WishlistGiftCarousel row position (#640)', () => {
+	it('shows the visible card range of a row as hidden header text', async () => {
+		const screen = await renderCarousel(375);
+		const position = positionOf(0)!;
+		expect(position).toHaveTextContent('1–2 z 5');
+		expect(position).toHaveAttribute('aria-hidden', 'true');
+		const header = position.parentElement!;
+		expect(header.lastElementChild).toBe(position);
+		expect(rows()[0]).toHaveAttribute('aria-label', `Elektronika, ${formatGiftCount(5)}`);
+		await screen.unmount();
+	});
+
+	it('updates the position as the row scrolls', async () => {
+		const screen = await renderCarousel(375);
+		const viewport = rows()[0].querySelector<HTMLElement>('[data-slot="carousel-content"]')!;
+		viewport.scrollLeft = viewport.scrollWidth;
+		await expect
+			.poll(() => positionOf(0)?.textContent?.trim())
+			.toBe(m.gift_carousel_position({ first: 4, last: 5, total: 5 }));
+		await screen.unmount();
+	});
+
+	it('omits the position when every card of the row fits', async () => {
+		const screen = await renderCarousel(375);
+		expect(positionOf(1)).toBeNull();
 		await screen.unmount();
 	});
 });
