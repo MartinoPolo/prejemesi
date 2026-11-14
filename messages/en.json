@@ -424,6 +424,8 @@
 	"gift_filter_with_link": "With link",
 	"gift_filter_liked": "Liked by me",
 	"gift_filter_show_received": "Show received",
+	"gift_filter_show_results_one": "Show 1 wish",
+	"gift_filter_show_results_other": "Show {count} wishes",
 	"filter_remove": "Remove filter {label}",
 	"filter_active_count": "Active filters: {count}",
 	"gift_price_not_listed": "Price not listed",

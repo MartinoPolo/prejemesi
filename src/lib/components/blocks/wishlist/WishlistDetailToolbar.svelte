@@ -23,6 +23,7 @@
 	import SlidersHorizontalIcon from '@lucide/svelte/icons/sliders-horizontal';
 	import Columns3Icon from '@lucide/svelte/icons/columns-3';
 	import MoreHorizontalIcon from '@lucide/svelte/icons/ellipsis';
+	import XIcon from '@lucide/svelte/icons/x';
 	import {
 		GIFT_SORT_KEYS,
 		GIFT_SORT_LABELS,
@@ -78,6 +79,8 @@
 		priorityFilterOptions: GiftFilterOption<GiftPriorityFilterValue>[];
 		/** Empty when the wishlist has fewer than two stores, which hides the facet. */
 		storeFilterOptions: GiftFilterOption<GiftStoreFilterValue>[];
+		/** Gifts left after the active filters; the mobile filter sheet offers to show them. */
+		filteredGiftCount: number;
 		cardColumnOption: GiftCardColumnOption;
 		/** Largest column count the card collection fits; null while unmeasured. */
 		cardColumnCapacity?: number | null;
@@ -114,6 +117,7 @@
 		categoryFilterOptions,
 		priorityFilterOptions,
 		storeFilterOptions,
+		filteredGiftCount,
 		cardColumnOption,
 		cardColumnCapacity = null,
 		reorderMode,
@@ -280,6 +284,7 @@
 	let mobileReorderDoneButton = $state<HTMLButtonElement | null>(null);
 	let mobileDisplayTrigger = $state<HTMLButtonElement | null>(null);
 	let mobileMoreTrigger = $state<HTMLButtonElement | null>(null);
+	let mobileShowResultsButton = $state<HTMLButtonElement | null>(null);
 	let mobileOpenDisplayControl = $state<OpenDisplayControl | null>(null);
 	let mobileMoreOpen = $state(false);
 	let mobileViewportMode = $state<boolean | null>(null);
@@ -422,6 +427,13 @@
 		});
 	}
 
+	async function clearGiftFiltersInMobileSheet() {
+		clearGiftFilters();
+		await tick();
+		// The clear button disables itself, so focus moves to the sheet's other footer action.
+		mobileShowResultsButton?.focus();
+	}
+
 	function handleMobileSheetOpenChange(open: boolean) {
 		if (!open) {
 			closeMobileDisplaySheet();
@@ -484,6 +496,11 @@
 			: []),
 	]);
 	const activeFilters = $derived(normalizeActiveFilters(filterDefinitions, filterFacets));
+	const showResultsLabel = $derived(
+		filteredGiftCount === 1
+			? m.gift_filter_show_results_one()
+			: m.gift_filter_show_results_other({ count: filteredGiftCount }),
+	);
 
 	let previousReorderMode = $state<boolean | null>(null);
 	let reorderAnnouncement = $state('');
@@ -1006,18 +1023,33 @@
 									{/each}
 								</section>
 							{/each}
-							{#if activeFilters.length > 0}
-								<Button
-									class="m-3"
-									intent="ghost"
-									size="lg"
-									onclick={clearGiftFilters}
-									>{m.wishlist_detail_clear_filters()}</Button
-								>
-							{/if}
 						</div>
 					</div>
 				</WishlistSheetBody>
+				<!-- Hidden but kept in layout outside Filter, so the sheet height stays stable across sections. -->
+				<div
+					class="mobile-sheet-footer"
+					class:mobile-sheet-footer-active={mobileOpenDisplayControl === 'filter'}
+					data-testid="mobile-sheet-footer"
+					inert={mobileOpenDisplayControl !== 'filter'}
+				>
+					<Button
+						intent="secondary"
+						size="lg"
+						disabled={activeFilters.length === 0}
+						onclick={clearGiftFiltersInMobileSheet}
+					>
+						<XIcon data-icon="inline-start" />{m.wishlist_detail_clear_filters()}
+					</Button>
+					<Button
+						bind:ref={mobileShowResultsButton}
+						intent="primary"
+						size="lg"
+						onclick={closeMobileDisplaySheet}
+					>
+						{showResultsLabel}
+					</Button>
+				</div>
 				<div class="mobile-sheet-switcher" data-testid="mobile-sheet-switcher">
 					<SegmentedToggle.Root
 						value={mobileOpenDisplayControl ?? 'sort'}
@@ -1173,6 +1205,21 @@
 	</div>
 </div>
 
+{#if mobileViewportMode !== false && !selectionContent && activeFilters.length > 0}
+	<div class="mobile-active-filters" data-testid="wishlist-mobile-active-filters">
+		<ActiveFilterPills
+			layout="scroll"
+			class="px-(--page-gutter) scroll-px-(--page-gutter)"
+			items={activeFilters}
+			disabled={reorderMode}
+			clearAllLabel={m.wishlist_detail_clear_filters()}
+			onclearall={clearGiftFilters}
+			removeFilterLabel={(label) => m.filter_remove({ label })}
+			triggerElement={mobileDisplayTrigger}
+		/>
+	</div>
+{/if}
+
 <style>
 	.wishlist-toolbar-sticky {
 		--wishlist-toolbar-sticky-top: 0.75rem;
@@ -1298,6 +1345,54 @@
 		padding: 0.5rem;
 	}
 
+	/* Equal-width items cannot fit „Řadit podle“ with its icon on the narrowest phones, so the items
+	   size by their labels and the spacing tightens. */
+	@media (width < 360px) {
+		.mobile-sheet-switcher {
+			padding-inline: 0.25rem;
+		}
+
+		.mobile-sheet-switcher :global([data-slot='toggle-group-item']) {
+			flex: 1 1 auto;
+		}
+
+		.mobile-sheet-switcher :global([data-slot='toggle-group-item'] > *) {
+			gap: 0.25rem;
+			padding-inline: 0.25rem;
+		}
+	}
+
+	.mobile-sheet-footer {
+		display: grid;
+		min-width: 0;
+		flex: 0 0 auto;
+		grid-template-columns: auto minmax(0, 1fr);
+		gap: var(--nested-control-gap);
+		visibility: hidden;
+		border-top: 1px solid var(--border);
+		padding: 0.625rem calc(0.75rem + var(--depth-clearance))
+			calc(0.625rem + var(--depth-clearance)) 0.75rem;
+	}
+
+	.mobile-sheet-footer-active {
+		visibility: visible;
+	}
+
+	/* Touch-sized pill targets surround smaller pill faces, so a slight negative block margin keeps
+	   the visible gaps near the page rhythm; the row bleeds to the screen edges like the carousel. */
+	.mobile-active-filters {
+		min-width: 0;
+		margin-block: -0.25rem;
+		margin-inline: calc(-1 * var(--page-gutter));
+		mask-image: linear-gradient(
+			to right,
+			transparent,
+			#000 var(--page-gutter),
+			#000 calc(100% - var(--page-gutter)),
+			transparent
+		);
+	}
+
 	.mobile-filter-section {
 		border-top: 1px solid var(--border);
 		padding-top: 0.5rem;
@@ -1385,7 +1480,8 @@
 			flex: 0 0 auto;
 		}
 
-		.toolbar-mobile {
+		.toolbar-mobile,
+		.mobile-active-filters {
 			display: none;
 		}
 

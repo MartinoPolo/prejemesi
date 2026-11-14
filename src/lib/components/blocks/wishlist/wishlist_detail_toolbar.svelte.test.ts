@@ -41,6 +41,7 @@ const defaultProps: ComponentProps<typeof WishlistDetailToolbar> = {
 	categoryFilterOptions: [],
 	priorityFilterOptions: [],
 	storeFilterOptions: [],
+	filteredGiftCount: 13,
 	cardColumnOption: GIFT_CARD_COLUMN_OPTIONS.automatic,
 	reorderMode: false,
 	recipientViewPreview: false,

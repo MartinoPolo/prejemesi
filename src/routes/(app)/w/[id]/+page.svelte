@@ -2506,6 +2506,7 @@
 			categoryFilterOptions={giftsContext.categoryFilterOptions.current}
 			priorityFilterOptions={giftsContext.priorityFilterOptions.current}
 			storeFilterOptions={giftsContext.storeFilterOptions.current}
+			filteredGiftCount={giftsContext.sortedAndFilteredGifts.current.length}
 			cardColumnOption={giftsContext.cardColumnOption.current}
 			{cardColumnCapacity}
 			{reorderMode}
