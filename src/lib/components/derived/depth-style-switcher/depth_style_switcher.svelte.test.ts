@@ -18,6 +18,7 @@ const { persistDepthMock, persistPaletteMock, updatePreferredLocaleMock, setMode
 );
 vi.mock('$lib/modules/settings/settings.remote.js', () => ({
 	setUserDepthStyle: persistDepthMock,
+	setUserDarkWishlistBackground: vi.fn(),
 	setUserPalette: persistPaletteMock,
 	updatePreferredLocale: updatePreferredLocaleMock,
 }));

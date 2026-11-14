@@ -102,7 +102,7 @@ describe('PurchasedToggle', () => {
 				expect(action.querySelector('.border-status-danger')).toBeTruthy();
 				expect(action.querySelector('.lucide-undo-2[aria-hidden="true"]')).toBeTruthy();
 			} else {
-				expect(action.querySelector('.bg-foreground')).toBeTruthy();
+				expect(action.querySelector('.bg-ink-fill')).toBeTruthy();
 				expect(action.querySelector('svg')).toBeNull();
 			}
 		},

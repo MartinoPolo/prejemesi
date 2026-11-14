@@ -101,13 +101,9 @@
 	--m-paper: #fff;
 	--theme-light-top: #f4f2ee;
 	--theme-backdrop:
-		linear-gradient(color-mix(in oklab, var(--p-ink) 6%, transparent) 1px, transparent 1px) 0
-			0 / 56px 56px,
-		linear-gradient(
-				90deg,
-				color-mix(in oklab, var(--p-ink) 6%, transparent) 1px,
-				transparent 1px
-			)
+		linear-gradient(color-mix(in oklab, var(--ink) 6%, transparent) 1px, transparent 1px) 0 0 /
+			56px 56px,
+		linear-gradient(90deg, color-mix(in oklab, var(--ink) 6%, transparent) 1px, transparent 1px)
 			0 0 / 56px 56px,
 		var(--theme-top);
 }
@@ -142,10 +138,10 @@
 	--theme-light-top: #fdf9f1;
 	--theme-light-bottom: #f5eee0;
 	--theme-light-pattern: color-mix(in oklab, #2f8f5b 50%, transparent);
-	--theme-dark-top: #1f5a43;
-	--theme-dark-bottom: #17432f;
-	--theme-dark-pattern: rgb(255 255 255 / 90%);
-	--theme-dark-wash: rgb(0 0 0 / 16%);
+	--theme-dark-top: oklch(35% 0.04 158deg);
+	--theme-dark-bottom: oklch(32% 0.035 158deg);
+	--theme-dark-pattern: oklch(96% 0.01 158deg / 34%);
+	--theme-dark-wash: rgb(0 0 0 / 8%);
 	--theme-backdrop:
 		radial-gradient(circle at 20px 20px, var(--theme-pattern) 2px, transparent 2.5px) 0 0 / 46px
 			46px,
@@ -188,7 +184,7 @@
 	--theme-backdrop:
 		repeating-linear-gradient(
 			0deg,
-			color-mix(in oklab, var(--p-ink) 6%, transparent) 0 1px,
+			color-mix(in oklab, var(--ink) 6%, transparent) 0 1px,
 			transparent 1px 30px
 		),
 		linear-gradient(180deg, var(--theme-top), var(--theme-bottom));
@@ -303,7 +299,7 @@
 	--m-paper: #fffaf4;
 	--theme-light-top: #fdf2f2;
 	--theme-light-bottom: #f4effa;
-	--theme-staff-line: color-mix(in oklab, var(--p-ink) 8%, transparent);
+	--theme-staff-line: color-mix(in oklab, var(--ink) 8%, transparent);
 	--theme-backdrop:
 		linear-gradient(
 				180deg,
@@ -375,7 +371,7 @@
 	--m-paper: #fff;
 	--theme-light-top: #e4f3fb;
 	--theme-light-bottom: #fbf1de;
-	--theme-route: color-mix(in oklab, var(--p-ink) 9%, transparent);
+	--theme-route: color-mix(in oklab, var(--ink) 9%, transparent);
 	--theme-backdrop:
 		conic-gradient(from 270deg at 10px 2px, var(--theme-route) 0 25%, transparent 0) 0 0 / 20px
 			96px,

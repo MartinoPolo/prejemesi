@@ -274,6 +274,13 @@
       "when": 1794651870021,
       "tag": "0038_add-gift-priority-level-index",
       "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1794687609541,
+      "tag": "0039_add-dark-wishlist-background",
+      "breakpoints": true
     }
   ]
 }

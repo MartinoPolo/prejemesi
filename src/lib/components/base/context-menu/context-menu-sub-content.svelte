@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { getLayerPalette } from '$lib/theme/layer_palette.js';
 	import { ContextMenu as ContextMenuPrimitive } from 'bits-ui';
 	import { cn } from '$lib/utils.js';
 	import { floatingDepthClearance } from '../floating_depth_clearance.js';
@@ -11,9 +12,12 @@
 		class: className,
 		...restProps
 	}: ContextMenuPrimitive.SubContentProps = $props();
+
+	const layerPalette = getLayerPalette();
 </script>
 
 <ContextMenuPrimitive.SubContent
+	data-dark-palette={layerPalette()}
 	bind:ref
 	{align}
 	{alignOffset}

@@ -97,7 +97,7 @@
 		flex: none;
 		width: 150px;
 		margin: 0;
-		background: #fffdf6;
+		background: var(--paper);
 		border: 2px solid #4a443a;
 		border-radius: 3px;
 		padding: 8px 8px 0;

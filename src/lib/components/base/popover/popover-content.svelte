@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { getLayerPalette } from '$lib/theme/layer_palette.js';
 	import { Popover as PopoverPrimitive } from 'bits-ui';
 	import type { Snippet } from 'svelte';
 	import { cn } from '$lib/utils.js';
@@ -20,6 +21,8 @@
 		/** Set false when the trigger has no resting shadow, so the layer needs no depth clearance. */
 		shadowedTrigger?: boolean;
 	} = $props();
+
+	const layerPalette = getLayerPalette();
 </script>
 
 <PopoverPrimitive.Portal {...portalProps}>
@@ -30,6 +33,7 @@
 	     - Escape closes via bits-ui's escape-layer system (topmost layer only)
 	  -->
 	<PopoverPrimitive.Content
+		data-dark-palette={layerPalette()}
 		bind:ref
 		data-slot="popover-content"
 		{sideOffset}
