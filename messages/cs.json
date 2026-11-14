@@ -424,6 +424,8 @@
 	"gift_filter_with_link": "S odkazem",
 	"gift_filter_liked": "Oblíbené",
 	"gift_filter_show_received": "Zobrazit obdržené",
+	"gift_filter_show_results_one": "Zobrazit 1 přání",
+	"gift_filter_show_results_other": "Zobrazit {count} přání",
 	"filter_remove": "Odebrat filtr {label}",
 	"filter_active_count": "Aktivní filtry: {count}",
 	"gift_price_not_listed": "Cena neuvedena",

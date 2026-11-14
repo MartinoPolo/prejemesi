@@ -4,9 +4,11 @@
 
 	interface Props {
 		initialActiveIds?: string[];
+		layout?: 'wrap' | 'scroll';
+		disabled?: boolean;
 	}
 
-	let { initialActiveIds = ['first', 'second'] }: Props = $props();
+	let { initialActiveIds = ['first', 'second'], layout, disabled }: Props = $props();
 
 	function getInitialActiveIds(): string[] {
 		return [...initialActiveIds];
@@ -14,7 +16,12 @@
 
 	let triggerElement = $state<HTMLButtonElement | null>(null);
 	let activeIds = $state(getInitialActiveIds());
-	const labels: Record<string, string> = { first: 'První', second: 'Druhý' };
+	const labels: Record<string, string> = {
+		first: 'První',
+		second: 'Druhý',
+		third: 'Třetí obchod s dlouhým názvem',
+		fourth: 'Čtvrtý obchod s dlouhým názvem',
+	};
 	let items = $derived<ActiveFilterItem[]>(
 		activeIds.map((id) => ({
 			id,
@@ -31,4 +38,6 @@
 	onclearall={() => (activeIds = [])}
 	removeFilterLabel={(label) => `Odebrat ${label}`}
 	{triggerElement}
+	{layout}
+	{disabled}
 />
