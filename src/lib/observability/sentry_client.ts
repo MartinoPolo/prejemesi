@@ -19,20 +19,26 @@ interface ClientSentryEvent {
 const CLOUDFLARE_BEACON_URL = 'https://static.cloudflareinsights.com/beacon.min.js/';
 const BROWSER_NETWORK_FAILURE_PATTERN =
 	/^(Load failed|Failed to fetch|NetworkError when attempting to fetch resource\.?)( \(.+\))?$/;
+const MODULE_LOAD_FAILURE_PATTERN =
+	/^(Failed to fetch dynamically imported module|error loading dynamically imported module|Importing a module script failed)(: .+|\.)?$/;
 
 export function filterAndSanitizeSentryClientEvent<T>(event: T): T | null {
 	const clientEvent = event as ClientSentryEvent;
 	const exceptions = clientEvent.exception?.values ?? [];
-	const isBrowserNetworkFailure =
+	const isBrowserLoadFailure =
 		exceptions.length > 0 &&
-		exceptions.every(
-			(exception) =>
+		exceptions.every((exception) => {
+			const message = exception.value ?? '';
+			return (
 				exception.type === 'TypeError' &&
-				BROWSER_NETWORK_FAILURE_PATTERN.test(exception.value ?? ''),
-		);
-	if (isBrowserNetworkFailure) {
-		// A request that never completed is a connectivity outcome, not an application defect;
-		// warning level keeps sustained outages visible without triggering error alerts.
+				(BROWSER_NETWORK_FAILURE_PATTERN.test(message) ||
+					MODULE_LOAD_FAILURE_PATTERN.test(message))
+			);
+		});
+	if (isBrowserLoadFailure) {
+		// A request or module load that never completed is a connectivity or deployment outcome
+		// the user already sees handled, not an application defect; warning level keeps sustained
+		// outages visible without triggering error alerts.
 		clientEvent.level = 'warning';
 	}
 
