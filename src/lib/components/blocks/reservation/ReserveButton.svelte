@@ -112,7 +112,7 @@
 			surfaceClass,
 			'duration-[160ms]',
 			showReservationAcknowledgement &&
-				'border-ink bg-status-success text-white group-hover:bg-[color-mix(in_oklab,var(--status-success)_86%,white)]',
+				'border-edge bg-status-success text-white group-hover:bg-[color-mix(in_oklab,var(--status-success)_86%,white)]',
 		)}
 		class={className}
 	>

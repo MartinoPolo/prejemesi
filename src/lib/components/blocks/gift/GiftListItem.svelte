@@ -207,9 +207,9 @@
 		use:restingShadowNesting
 		class={cn(
 			'gift-list-item resting-shadow-nesting relative grid items-start gap-0 rounded-panel border-2 bg-card',
-			!isDimmed && 'elevation-ordinary border-ink',
+			!isDimmed && 'elevation-ordinary border-edge',
 			isDimmed &&
-				'gift-frame-softened border-(--gift-frame-ink) [box-shadow:var(--gift-frame-elevation)]',
+				'gift-frame-softened border-(--gift-frame-edge) [box-shadow:var(--gift-frame-elevation)]',
 		)}
 	>
 		<div
@@ -217,8 +217,8 @@
 			use:synchronizeListOverlayClearance
 			class={cn(
 				'gift-list-image relative self-stretch overflow-hidden border-r-2',
-				!isDimmed && 'border-ink',
-				isDimmed && 'border-(--gift-frame-ink)',
+				!isDimmed && 'border-edge',
+				isDimmed && 'border-(--gift-frame-edge)',
 			)}
 		>
 			<GiftListImage

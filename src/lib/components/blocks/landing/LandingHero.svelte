@@ -319,7 +319,7 @@
 		font-weight: 600;
 		padding: 4px 12px;
 		border-radius: 999px;
-		border: 2px solid var(--ink);
+		border: 2px solid var(--edge);
 		background: var(--card);
 		color: var(--ink);
 		white-space: nowrap;
@@ -361,7 +361,7 @@
 		position: absolute;
 		inset: 0;
 		z-index: -1;
-		border: var(--border-w) solid var(--ink);
+		border: var(--border-w) solid var(--edge);
 		transition: transform 0.28s var(--ease-spring);
 	}
 
@@ -387,7 +387,7 @@
 	.fan-face {
 		position: relative;
 		background: var(--card);
-		border: var(--border-w) solid var(--ink);
+		border: var(--border-w) solid var(--edge);
 	}
 
 	.mock-row {
@@ -408,7 +408,7 @@
 		display: grid;
 		place-items: center;
 		background: var(--background);
-		border: 2px solid var(--ink);
+		border: 2px solid var(--edge);
 		border-radius: 9px;
 	}
 
@@ -419,7 +419,7 @@
 		max-width: 250px;
 		background: var(--note-tint);
 		color: var(--note-ink);
-		border: var(--border-w) solid var(--ink);
+		border: var(--border-w) solid var(--edge);
 		border-radius: 12px;
 		padding: 10px 14px;
 		font-size: 13.5px;

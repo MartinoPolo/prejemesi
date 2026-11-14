@@ -14,9 +14,9 @@ export const giftImageStripVariants = tv({
 		list: 'm-0 flex list-none flex-nowrap gap-3 overflow-x-auto p-[0.4375rem] pe-[calc(0.4375rem+var(--elevation-compact-offset))] pb-[calc(0.625rem+var(--elevation-compact-offset))] [scrollbar-width:thin] sm:flex-wrap sm:overflow-x-visible sm:pb-[calc(0.4375rem+var(--elevation-compact-offset))]',
 		tile: 'group/tile relative size-15 shrink-0 sm:size-17',
 		select: [
-			'block size-full cursor-pointer overflow-hidden rounded-[0.625rem] border-2 border-ink-faint bg-surface p-0 outline-none hover:border-ink',
+			'block size-full cursor-pointer overflow-hidden rounded-[0.625rem] border-2 border-ink-faint bg-surface p-0 outline-none hover:border-edge',
 			'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring aria-disabled:cursor-not-allowed',
-			'group-data-selected/tile:border-(length:--border-w) group-data-selected/tile:border-ink group-data-selected/tile:ring-[2.5px] group-data-selected/tile:ring-brand group-data-selected/tile:ring-offset-[3px] group-data-selected/tile:ring-offset-card',
+			'group-data-selected/tile:border-(length:--border-w) group-data-selected/tile:border-edge group-data-selected/tile:ring-[2.5px] group-data-selected/tile:ring-brand group-data-selected/tile:ring-offset-[3px] group-data-selected/tile:ring-offset-card',
 		],
 		emptySource:
 			'flex size-full items-center justify-center text-muted-foreground [&_svg]:size-5',
@@ -34,9 +34,9 @@ export const giftImageStripVariants = tv({
 		],
 		cover: 'pointer-events-none absolute inset-x-1 bottom-1 truncate rounded-full bg-primary px-1 text-center text-[0.625rem] leading-[1.0625rem] font-extrabold text-primary-foreground',
 		pendingTile:
-			'flex size-15 shrink-0 items-center justify-center rounded-[0.625rem] border-2 border-dashed border-ink bg-surface text-muted-foreground sm:size-17',
+			'flex size-15 shrink-0 items-center justify-center rounded-[0.625rem] border-2 border-dashed border-edge bg-surface text-muted-foreground sm:size-17',
 		addTile: [
-			'flex size-15 shrink-0 cursor-pointer flex-col items-center justify-center gap-0.5 rounded-[0.625rem] border-2 border-dashed border-ink bg-card p-0 text-[0.6875rem] font-bold sm:size-17 [&_svg]:size-4.5',
+			'flex size-15 shrink-0 cursor-pointer flex-col items-center justify-center gap-0.5 rounded-[0.625rem] border-2 border-dashed border-edge bg-card p-0 text-[0.6875rem] font-bold sm:size-17 [&_svg]:size-4.5',
 			'outline-none hover:bg-panel-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring aria-disabled:cursor-not-allowed aria-disabled:opacity-45 aria-disabled:hover:bg-card',
 		],
 		limitNote: 'text-xs font-semibold text-foreground',

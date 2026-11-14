@@ -573,7 +573,7 @@
 			height: 92px;
 			margin: 0;
 			overflow: hidden;
-			border: max(1px, calc(var(--border-w) - 0.5px)) solid var(--ink);
+			border: max(1px, calc(var(--border-w) - 0.5px)) solid var(--edge);
 			border-radius: max(0px, calc(var(--radius-panel) - 6px));
 		}
 

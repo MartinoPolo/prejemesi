@@ -147,13 +147,13 @@
 		--row-border: 2px;
 		--row-surface: var(--card);
 		--band-bg: color-mix(in oklab, var(--band-mix) var(--band-strength), var(--row-surface));
-		--band-divider: var(--ink);
+		--band-divider: var(--edge);
 
 		display: grid;
 		align-items: start;
 		gap: 10px 14px;
 		padding: 0 var(--row-pad-x) 14px;
-		border: var(--row-border) solid var(--ink);
+		border: var(--row-border) solid var(--edge);
 		border-radius: var(--radius-panel);
 		background: var(--row-surface);
 		transition: background-color var(--duration-normal) var(--ease-standard);
@@ -302,7 +302,7 @@
 		width: 64px;
 		height: 64px;
 		overflow: hidden;
-		border: 2.5px solid var(--ink);
+		border: 2.5px solid var(--edge);
 		border-radius: var(--radius-badge);
 		background: var(--surface);
 		color: var(--ink);

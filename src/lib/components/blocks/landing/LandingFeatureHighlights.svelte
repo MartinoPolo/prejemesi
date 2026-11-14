@@ -40,7 +40,9 @@
 		</div>
 
 		<div class="grid min-w-0 grid-cols-1 gap-8 lg:grid-cols-3">
-			<article class="feature rounded-panel border-ink bg-card border-[2.5px] shadow-sticker">
+			<article
+				class="feature rounded-panel border-edge bg-card border-[2.5px] shadow-sticker"
+			>
 				<h3 class="text-xl font-semibold">
 					<span aria-hidden="true">🙈</span>
 					{m.landing_feat1_title()}
@@ -72,7 +74,9 @@
 				</div>
 			</article>
 
-			<article class="feature rounded-panel border-ink bg-card border-[2.5px] shadow-sticker">
+			<article
+				class="feature rounded-panel border-edge bg-card border-[2.5px] shadow-sticker"
+			>
 				<h3 class="text-xl font-semibold">
 					<span aria-hidden="true">🔗</span>
 					{m.landing_feat2_title()}
@@ -114,7 +118,9 @@
 				</div>
 			</article>
 
-			<article class="feature rounded-panel border-ink bg-card border-[2.5px] shadow-sticker">
+			<article
+				class="feature rounded-panel border-edge bg-card border-[2.5px] shadow-sticker"
+			>
 				<h3 class="text-xl font-semibold">
 					<span aria-hidden="true">🎨</span>
 					{m.landing_feat3_title()}
@@ -153,7 +159,7 @@
 	.feature-demo {
 		margin-top: auto;
 		background: var(--background);
-		border: 2px solid var(--ink);
+		border: 2px solid var(--edge);
 		border-radius: var(--radius);
 		padding: 14px;
 		display: grid;
@@ -182,7 +188,7 @@
 		gap: 8px;
 		min-width: 0;
 		background: var(--card);
-		border: 2px solid var(--ink);
+		border: 2px solid var(--edge);
 		border-radius: var(--radius-btn);
 		padding: 8px 10px;
 	}
@@ -204,7 +210,7 @@
 		font-weight: 600;
 		padding: 2px 8px;
 		border-radius: 999px;
-		border: 2px solid var(--ink);
+		border: 2px solid var(--edge);
 		background: var(--card);
 		color: var(--ink);
 		white-space: nowrap;
@@ -226,7 +232,7 @@
 		height: 44px;
 		border-radius: 50%;
 		background: var(--card);
-		border: 2px solid var(--ink);
+		border: 2px solid var(--edge);
 		display: grid;
 		place-items: center;
 		color: var(--ink);
@@ -248,7 +254,7 @@
 		font-weight: 600;
 		padding: 6px 12px;
 		background: var(--card);
-		border: 2px solid var(--ink);
+		border: 2px solid var(--edge);
 		border-radius: 999px;
 		transition: transform 0.15s ease;
 	}
@@ -261,7 +267,7 @@
 		display: inline-block;
 		width: 14px;
 		height: 14px;
-		border: 2px solid var(--ink);
+		border: 2px solid var(--edge);
 		border-radius: 50%;
 	}
 

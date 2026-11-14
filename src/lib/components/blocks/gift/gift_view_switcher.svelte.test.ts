@@ -246,7 +246,7 @@ describe('GiftViewSwitcher toggle selection (fixes: re-click deselects both item
 			{
 				'--accent': 'rgb(11, 22, 33)',
 				'--card': 'rgb(44, 55, 66)',
-				'--ink': 'rgb(77, 88, 99)',
+				'--edge': 'rgb(77, 88, 99)',
 			},
 			async () => {
 				const { screen, group, card, list, cardSurface, listSurface } =

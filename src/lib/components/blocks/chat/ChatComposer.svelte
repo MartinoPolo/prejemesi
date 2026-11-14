@@ -91,7 +91,7 @@
 		align-items: flex-end;
 		gap: var(--space-2);
 		padding: 6px;
-		border: 2px solid var(--ink);
+		border: 2px solid var(--edge);
 		border-radius: var(--chat-surface-radius);
 		background: var(--card);
 	}

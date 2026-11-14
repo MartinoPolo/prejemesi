@@ -11,7 +11,7 @@ export const checkboxVariants = tv({
 	slots: {
 		owner: 'group elevation-owner elevation-owner-raised elevation-owner-anchored relative inline-flex aspect-square shrink-0 rounded-btn outline-none focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-offset-2 focus-visible:outline-ring disabled:cursor-not-allowed',
 		surface:
-			'elevation-surface pointer-events-none grid size-full place-content-center rounded-[inherit] border-2 border-ink bg-card text-current transition-[translate,scale,box-shadow,background-color] data-[checked]:bg-primary data-[checked]:text-primary-foreground data-[indeterminate]:bg-primary data-[indeterminate]:text-primary-foreground data-[disabled]:opacity-50 group-aria-invalid:border-invalid-border group-aria-invalid:ring-3 group-aria-invalid:ring-invalid-ring',
+			'elevation-surface pointer-events-none grid size-full place-content-center rounded-[inherit] border-2 border-edge bg-card text-current transition-[translate,scale,box-shadow,background-color] data-[checked]:bg-primary data-[checked]:text-primary-foreground data-[indeterminate]:bg-primary data-[indeterminate]:text-primary-foreground data-[disabled]:opacity-50 group-aria-invalid:border-invalid-border group-aria-invalid:ring-3 group-aria-invalid:ring-invalid-ring',
 		indicator: 'grid place-content-center text-current transition-none',
 	},
 	variants: {

@@ -79,7 +79,7 @@
 	<!-- Icon: tilted sticker tile, filled while unread -->
 	<span
 		class={cn(
-			'mt-0.5 flex size-8 shrink-0 -rotate-3 items-center justify-center rounded-[9px] border-2 border-ink',
+			'mt-0.5 flex size-8 shrink-0 -rotate-3 items-center justify-center rounded-[9px] border-2 border-edge',
 			notification.read
 				? 'bg-surface text-muted-foreground'
 				: 'bg-primary text-primary-foreground',
@@ -119,7 +119,7 @@
 	<!-- Unread dot -->
 	{#if !notification.read}
 		<span
-			class="mt-2 size-2.5 shrink-0 rounded-full border-2 border-ink bg-primary"
+			class="mt-2 size-2.5 shrink-0 rounded-full border-2 border-edge bg-primary"
 			aria-label={m.notification_unread()}
 		></span>
 	{/if}

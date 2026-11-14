@@ -35,7 +35,7 @@
 		margin-top: 2px;
 		border-radius: 8px;
 		background: var(--primary);
-		border: 2px solid var(--ink);
+		border: 2px solid var(--edge);
 		display: flex;
 		align-items: center;
 		justify-content: center;

@@ -9,7 +9,7 @@
 <section class="bg-stripes text-center" aria-label={m.landing_cta_label()}>
 	<div class="mx-auto max-w-[var(--content-max-width)] px-4 py-16 md:px-8 md:py-24">
 		<div
-			class="rounded-panel border-ink bg-card relative mx-auto max-w-[720px] border-[2.5px] px-6 py-12 shadow-sticker md:px-10 md:py-16"
+			class="rounded-panel border-edge bg-card relative mx-auto max-w-[720px] border-[2.5px] px-6 py-12 shadow-sticker md:px-10 md:py-16"
 		>
 			<span class="free-sticker motion-safe:animate-bob">
 				{m.landing_cta_free_sticker()}
@@ -37,7 +37,7 @@
 		right: -14px;
 		background: var(--accent-loud);
 		color: var(--accent-loud-foreground);
-		border: var(--border-w) solid var(--ink);
+		border: var(--border-w) solid var(--edge);
 		border-radius: 999px;
 		font-family: var(--font-head);
 		font-size: 15px;

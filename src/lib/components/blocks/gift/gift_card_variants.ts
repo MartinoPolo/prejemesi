@@ -5,7 +5,7 @@ export const GIFT_CARD_DENSITIES = { grid: 'grid', carousel: 'carousel' } as con
 export type GiftCardDensity = (typeof GIFT_CARD_DENSITIES)[keyof typeof GIFT_CARD_DENSITIES];
 
 /**
- * Anime-sky sticker gift card (issue #102 REQ-14): ink border, hard offset
+ * Anime-sky sticker gift card (issue #102 REQ-14): edge border, hard offset
  * shadow, coherent lift of the direct surface and all nested content on hover,
  * dotted-mat image background that brightens on hover. `dimmed` covers fully
  * reserved (visitor/moderator view) and received gifts: image art and body content
@@ -53,18 +53,18 @@ export const giftCardVariants = tv({
 		dimmed: {
 			true: {
 				surface:
-					'gift-frame-softened border-(--gift-frame-ink) bg-[color-mix(in_oklab,var(--card)_82%,var(--surface))] [box-shadow:var(--gift-frame-elevation)] after:border-(--gift-frame-ink) after:shadow-[0_0_0_var(--border-w)_var(--gift-frame-ink)]',
+					'gift-frame-softened border-(--gift-frame-edge) bg-[color-mix(in_oklab,var(--card)_82%,var(--surface))] [box-shadow:var(--gift-frame-elevation)] after:border-(--gift-frame-edge) after:shadow-[0_0_0_var(--border-w)_var(--gift-frame-edge)]',
 				imagePattern:
 					'group-hover/gift-card-decoration:opacity-60 group-focus-within/gift-card-decoration:opacity-60',
 				cropComposition: 'opacity-50',
-				separator: 'bg-(--gift-frame-ink)',
+				separator: 'bg-(--gift-frame-edge)',
 				body: 'opacity-50',
 			},
 			false: {
 				card: 'elevation-owner elevation-owner-raised',
 				surface:
-					'border-ink after:border-ink after:shadow-[0_0_0_var(--border-w)_var(--ink)]',
-				separator: 'bg-ink',
+					'border-edge after:border-edge after:shadow-[0_0_0_var(--border-w)_var(--edge)]',
+				separator: 'bg-edge',
 			},
 		},
 		density: {

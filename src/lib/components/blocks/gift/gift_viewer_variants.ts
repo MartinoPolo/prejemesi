@@ -18,7 +18,7 @@ export const giftViewerVariants = tv({
 		root: 'resting-shadow-nesting flex min-h-0 max-w-full flex-1 flex-col',
 		layout: 'flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain pt-[env(safe-area-inset-top)] sm:grid sm:overflow-visible sm:pt-0',
 		photoRegion:
-			'relative m-0 shrink-0 border-b-(length:--border-w) border-ink sm:border-r-(length:--border-w) sm:border-b-0',
+			'relative m-0 shrink-0 border-b-(length:--border-w) border-edge sm:border-r-(length:--border-w) sm:border-b-0',
 		// The column takes the photo's width at the height cap, so a tall photo leaves no side mat;
 		// only a caption taller than the photo letterboxes it vertically.
 		photoSizer:
@@ -27,7 +27,7 @@ export const giftViewerVariants = tv({
 		// A gallery column holds the photo and its thumbnail strip, so the column takes the border
 		// and the photo cap leaves room for the strip within the dialog height.
 		galleryColumn: [
-			'relative flex min-w-0 shrink-0 flex-col border-b-(length:--border-w) border-ink sm:border-r-(length:--border-w) sm:border-b-0',
+			'relative flex min-w-0 shrink-0 flex-col border-b-(length:--border-w) border-edge sm:border-r-(length:--border-w) sm:border-b-0',
 			'[--gift-viewer-strip-height:calc(3.5rem+1.5rem+var(--elevation-compact-offset)+var(--border-w))] [--gift-viewer-photo-height-cap:min(720px,calc(var(--gift-viewer-inner-max-height)-var(--gift-viewer-strip-height)))]',
 		],
 		galleryPhotoRegion: 'border-b-0 sm:border-r-0',
@@ -37,9 +37,9 @@ export const giftViewerVariants = tv({
 		// The next arrow's shadow falls to the right, so it keeps its depth clearance from the edge.
 		galleryNextArrow: 'right-[calc(0.75rem+var(--depth-clearance))]',
 		galleryStrip:
-			'flex gap-2.5 overflow-x-auto border-t-(length:--border-w) border-ink bg-card p-3 pe-[calc(0.75rem+var(--elevation-compact-offset))] pb-[calc(0.75rem+var(--elevation-compact-offset))] [scrollbar-width:thin]',
+			'flex gap-2.5 overflow-x-auto border-t-(length:--border-w) border-edge bg-card p-3 pe-[calc(0.75rem+var(--elevation-compact-offset))] pb-[calc(0.75rem+var(--elevation-compact-offset))] [scrollbar-width:thin]',
 		galleryThumb:
-			'size-13 shrink-0 overflow-hidden rounded-badge border-2 border-ink-faint bg-surface p-0 hover:border-ink aria-[current=true]:border-(length:--border-w) aria-[current=true]:border-ink aria-[current=true]:shadow-sticker-sm sm:size-14',
+			'size-13 shrink-0 overflow-hidden rounded-badge border-2 border-ink-faint bg-surface p-0 hover:border-edge aria-[current=true]:border-(length:--border-w) aria-[current=true]:border-edge aria-[current=true]:shadow-sticker-sm sm:size-14',
 		// Same insets as the footer actions, so photo badges and actions share one baseline.
 		photoStates:
 			'absolute right-(--gift-content-inset) bottom-(--gift-content-inset-bottom) left-(--gift-content-inset) max-sm:hidden',
@@ -59,7 +59,7 @@ export const giftViewerVariants = tv({
 		captionStates: 'sm:hidden',
 		description: 'border-t-2 border-dashed border-ink-faint pt-3',
 		editedLine: 'm-0 text-xs text-muted-foreground',
-		footer: 'flex items-center bg-card ps-(--gift-content-inset) pe-(--gift-content-inset-end) pt-(--gift-content-inset) pb-(--gift-content-inset-bottom) max-sm:sticky max-sm:bottom-0 max-sm:z-10 max-sm:border-t-(length:--border-w) max-sm:border-ink max-sm:pb-[calc(var(--gift-content-inset-bottom)+env(safe-area-inset-bottom))]',
+		footer: 'flex items-center bg-card ps-(--gift-content-inset) pe-(--gift-content-inset-end) pt-(--gift-content-inset) pb-(--gift-content-inset-bottom) max-sm:sticky max-sm:bottom-0 max-sm:z-10 max-sm:border-t-(length:--border-w) max-sm:border-edge max-sm:pb-[calc(var(--gift-content-inset-bottom)+env(safe-area-inset-bottom))]',
 	},
 	variants: {
 		hasPhoto: {

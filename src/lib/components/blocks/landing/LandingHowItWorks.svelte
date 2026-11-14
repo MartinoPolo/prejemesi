@@ -42,7 +42,7 @@
 		<div class="steps-grid grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
 			{#each steps as step, index (step.title)}
 				<article
-					class="step rounded-panel border-ink bg-card border-[2.5px] p-6 shadow-sticker"
+					class="step rounded-panel border-edge bg-card border-[2.5px] p-6 shadow-sticker"
 				>
 					<div
 						class="step-num font-heading mb-2.5 flex items-center gap-2.5 text-brand-link"
