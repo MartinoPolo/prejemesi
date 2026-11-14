@@ -47,7 +47,7 @@ Default to **one browser-heavy workflow at a time on this machine**, coordinated
 
 Keep reports checkout-local and runs in that checkout sequential. After cancellation, confirm the owned browser/server has stopped before starting the next workflow; never kill all Chrome or Node processes. These are operating rules, not enforced isolation. Port changes alone cannot provide safe shared-database concurrency or prevent laptop overload.
 
-The setup project allows extra navigation time for cold Vite compilation without relaxing the warmed application's navigation limits. Interaction tests must await actual readiness: opening autofocus before moving keyboard focus, and accordion height animations before filling or scrolling clipped descendants. Visibility alone does not establish either condition; use focus assertions and animation completion rather than fixed sleeps.
+The setup project allows extra navigation time for cold Vite compilation without relaxing the warmed application's navigation limits. Interaction tests must await actual readiness: opening autofocus before moving keyboard focus, and accordion height animations before filling or scrolling clipped descendants. Visibility alone does not establish either condition; use focus assertions and animation completion rather than fixed sleeps. Web fonts can still be loading after hydration or after a test first renders text, so await `document.fonts.ready` before taking geometry baselines.
 
 Never point either command at production.
 

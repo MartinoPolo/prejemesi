@@ -35,6 +35,15 @@ async function rect(locator: Locator): Promise<RectSnapshot> {
 	});
 }
 
+/**
+ * Web fonts may still be loading once the app has hydrated; until they arrive, text is laid out in
+ * the fallback font, so resting geometry measured earlier is not the geometry later samples see.
+ */
+async function waitForRestingLayout(page: Page) {
+	await waitForAppHydration(page);
+	await page.evaluate(() => document.fonts.ready.then(() => undefined));
+}
+
 function expectSameRect(actual: RectSnapshot, expected: RectSnapshot) {
 	for (const key of ['x', 'y', 'width', 'height'] as const) {
 		expectPixelsNear(actual[key], expected[key]);
@@ -382,7 +391,7 @@ test.describe('Elevated interaction behavior', () => {
 		const page = await registerAndGetPage(browser, request, baseURL!, user);
 		await page.emulateMedia({ reducedMotion: 'no-preference' });
 		await page.goto('/my-lists');
-		await waitForAppHydration(page);
+		await waitForRestingLayout(page);
 
 		const button = page.getByRole('button', { name: 'Vytvořit', exact: true });
 		await expect(button).toBeVisible();
@@ -458,7 +467,7 @@ test.describe('Elevated interaction behavior', () => {
 		await createWishlistAndNavigate(page, 'Reduced motion surface');
 		await page.emulateMedia({ reducedMotion: 'reduce' });
 		await page.goto('/my-lists');
-		await waitForAppHydration(page);
+		await waitForRestingLayout(page);
 
 		const create = page.getByRole('button', { name: 'Vytvořit', exact: true });
 		const card = page
