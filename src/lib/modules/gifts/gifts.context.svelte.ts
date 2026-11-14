@@ -26,7 +26,7 @@ import {
 	type GiftViewMode,
 } from './types.js';
 import { computeGiftSections } from './gift_ordering.js';
-import { extractGiftStoreDomain, type RegistrableDomainResolver } from './gift_store.js';
+import { extractGiftStoreDomain, type RegistrableDomainResolver } from './gift_url.js';
 import { carouselGrouping } from './gift_view_mode.js';
 import { getPriorityDisplayLabel } from './gift_display.js';
 import { labelForGiftCategory } from '$lib/modules/gift-categories/types.js';
