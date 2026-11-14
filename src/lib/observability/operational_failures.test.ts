@@ -22,7 +22,10 @@ describe('operational failure reporting', () => {
 		reportOperationalFailure('resend', 'provider_unavailable');
 
 		expect(captureEvent).toHaveBeenCalledWith(
-			expect.objectContaining({ fingerprint: ['operational:resend:provider_unavailable'] }),
+			expect.objectContaining({
+				level: 'error',
+				fingerprint: ['operational:resend:provider_unavailable'],
+			}),
 		);
 		expect(console.error).toHaveBeenCalledWith({
 			event: 'operational_failure',
@@ -31,6 +34,27 @@ describe('operational failure reporting', () => {
 			deploymentVersionId: 'deployment-1',
 			fingerprint: 'operational:resend:provider_unavailable',
 		});
+	});
+
+	it('reports a warning at warning level and logs it as a warning', () => {
+		vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+		setOperationalDeployment('deployment-1');
+		reportOperationalFailure('database', 'connection_closed', 'warning');
+
+		expect(captureEvent).toHaveBeenCalledWith(
+			expect.objectContaining({
+				level: 'warning',
+				fingerprint: ['operational:database:connection_closed'],
+			}),
+		);
+		expect(console.warn).toHaveBeenCalledWith({
+			event: 'operational_failure',
+			component: 'database',
+			reason: 'connection_closed',
+			deploymentVersionId: 'deployment-1',
+			fingerprint: 'operational:database:connection_closed',
+		});
+		expect(console.error).not.toHaveBeenCalled();
 	});
 
 	it('logs a missing Sentry DSN without trying to report through Sentry', () => {

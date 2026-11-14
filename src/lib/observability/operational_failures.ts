@@ -1,6 +1,7 @@
 import * as Sentry from '@sentry/sveltekit';
 
 export type OperationalComponent = 'database' | 'auth' | 'sentry' | 'resend' | 'turnstile';
+export type OperationalSeverity = 'error' | 'warning';
 
 const MAX_RECENT_FAILURES = 64;
 const recentFailures = new Map<string, true>();
@@ -28,7 +29,11 @@ function remember(key: string): boolean {
 }
 
 /** Reports only stable, non-user operational metadata. */
-export function reportOperationalFailure(component: OperationalComponent, reason: string): void {
+export function reportOperationalFailure(
+	component: OperationalComponent,
+	reason: string,
+	severity: OperationalSeverity = 'error',
+): void {
 	const fingerprint = `operational:${component}:${reason}`;
 	const key = `${deploymentId}:${fingerprint}`;
 	if (!remember(key)) {
@@ -42,12 +47,16 @@ export function reportOperationalFailure(component: OperationalComponent, reason
 		deploymentVersionId: deploymentId,
 		fingerprint,
 	};
-	console.error(metadata);
+	if (severity === 'warning') {
+		console.warn(metadata);
+	} else {
+		console.error(metadata);
+	}
 
 	if (component !== 'sentry') {
 		Sentry.captureEvent({
 			message: `Operational failure: ${component}/${reason}`,
-			level: 'error',
+			level: severity,
 			fingerprint: [fingerprint],
 			contexts: { operational: metadata },
 		});

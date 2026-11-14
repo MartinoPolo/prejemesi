@@ -1,7 +1,9 @@
 import { json } from '@sveltejs/kit';
 import * as v from 'valibot';
+import { reportOperationalFailure } from '$lib/observability/operational_failures.js';
 import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
 import { CHAT_STREAM_EVENT, type ChatStreamEvent } from '$lib/modules/chat/types.js';
+import { isDatabaseConnectionClosed } from '$lib/server/db/connection_errors.js';
 import { generateId } from '$lib/server/db/id.js';
 import { sha256Hex } from '$lib/server/crypto/sha256.js';
 import type { AgentImageBucket } from '$lib/server/storage/r2.js';
@@ -124,6 +126,20 @@ async function presentsSecret(authorization: string | null, secret: string): Pro
 	return !differsInConstantTime(encoder.encode(presentedHash), encoder.encode(secretHash));
 }
 
+async function claimChatRunnerJobUnlessConnectionClosed(limits: ChatRunnerLimits) {
+	try {
+		return await claimChatRunnerJob(limits);
+	} catch (error) {
+		if (!isDatabaseConnectionClosed(error)) {
+			throw error;
+		}
+		// The per-request client reconnects on the next poll's query; a claim committed before the
+		// socket closed is failed by the heartbeat timeout.
+		reportOperationalFailure('database', 'chat_runner_claim_connection_closed', 'warning');
+		return null;
+	}
+}
+
 /**
  * `POST /chat-runner/claim`: waits one window for a job and hands the oldest to this runner with
  * its token, or answers 204 so the runner asks again.
@@ -143,7 +159,7 @@ export async function handleChatRunnerClaim(
 	const deadline = Date.now() + limits.claimWindowMs;
 	// A runner that hung up must not claim a job it would never run.
 	while (!hungUp.aborted) {
-		const claimed = await claimChatRunnerJob(limits);
+		const claimed = await claimChatRunnerJobUnlessConnectionClosed(limits);
 		if (claimed !== null) {
 			const { job, token } = claimed;
 			return json(
