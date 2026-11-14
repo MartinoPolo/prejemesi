@@ -187,71 +187,112 @@
 }
 
 /* ── Palette primitives ──────────────────────────────────────────────────
-   10 curated palettes. Palettes without --p-accent inherit sky's yellow.
-   `data-palette` on <html> themes the app; on any wrapper element it
-   re-derives every token for that subtree (per-wishlist palette). */
+   Palettes without --p-accent inherit sky's yellow. `data-palette` on <html> themes the app; on
+   any wrapper element it re-derives every token for that subtree (per-wishlist palette).
+   `data-dark-palette` does the same in dark mode only (layers portalled from a wishlist page).
+   `--p-brand-chroma`/`--p-brand-hue` (and the accent pair) are the OKLCH components of the hex
+   primitives, checked by `palette_primitives.test.ts`: dark tones use plain `oklch()` because
+   relative colour syntax is missing in browsers production still serves. */
 
 /* Light filled controls: a deepened brand keeps white labels at AA. Declared on every
    palette scope so a nested palette never inherits an ancestor's override; zero
    specificity lets any palette block replace it. */
-:where(:root, [data-palette]) {
+:where(:root, [data-palette], .dark [data-dark-palette]) {
 	--p-primary: color-mix(in oklab, var(--p-brand) 20%, var(--p-deep));
 	--p-on-primary: #fff;
 	--p-link: color-mix(in oklab, var(--p-deep) 75%, var(--p-ink));
+
+	/* Dark surface tone: chroma cap and hue rotation per palette (how much colour a hue holds at
+	   low lightness before it greys or turns neon; yellow-green brands rotate away from olive). */
+	--p-dark-tone-cap: 0.036;
+	--p-dark-tone-hue-shift: 0;
 }
 
 :root,
-[data-palette='sky'] {
+[data-palette='sky'],
+.dark [data-dark-palette='sky'] {
 	--p-brand: #1e9be9;
 	--p-deep: #1265a8;
 	--p-ink: #16385c;
 	--p-bright: #55b9f3;
 	--p-accent: #ffc93c;
 	--p-on-accent: #16385c;
+	--p-brand-chroma: 0.1534;
+	--p-brand-hue: 243.47;
+	--p-accent-chroma: 0.1592;
+	--p-accent-hue: 86.42;
 }
 
-[data-palette='mint'] {
+[data-palette='mint'],
+.dark [data-dark-palette='mint'] {
 	--p-brand: #14a56f;
 	--p-deep: #0b7a4e;
 	--p-ink: #164a38;
 	--p-bright: #3bd598;
+	--p-brand-chroma: 0.1391;
+	--p-brand-hue: 160.64;
+	--p-dark-tone-cap: 0.034;
 }
 
-[data-palette='peach'] {
+[data-palette='peach'],
+.dark [data-dark-palette='peach'] {
 	--p-brand: #f97250;
 	--p-deep: #c2410c;
 	--p-ink: #6b2f1a;
 	--p-bright: #ff9b7a;
+	--p-brand-chroma: 0.1731;
+	--p-brand-hue: 35.29;
+	--p-dark-tone-cap: 0.044;
+	--p-dark-tone-hue-shift: -3;
 }
 
-[data-palette='grape'] {
+[data-palette='grape'],
+.dark [data-dark-palette='grape'] {
 	--p-brand: #8b5cf6;
 	--p-deep: #6023c0;
 	--p-ink: #35216b;
 	--p-bright: #a78bfa;
+	--p-brand-chroma: 0.2189;
+	--p-brand-hue: 292.72;
+	--p-dark-tone-cap: 0.048;
 }
 
-[data-palette='sakura'] {
+[data-palette='sakura'],
+.dark [data-dark-palette='sakura'] {
 	--p-brand: #ec5fa3;
 	--p-deep: #be3382;
 	--p-ink: #5f1d44;
 	--p-bright: #f48fc0;
+	--p-brand-chroma: 0.1866;
+	--p-brand-hue: 353.16;
+	--p-dark-tone-cap: 0.042;
 }
 
-[data-palette='ocean'] {
+[data-palette='ocean'],
+.dark [data-dark-palette='ocean'] {
 	--p-brand: #0fa8a8;
 	--p-deep: #0b7676;
 	--p-ink: #10484a;
 	--p-bright: #3ad1ce;
+	--p-brand-chroma: 0.1112;
+	--p-brand-hue: 194.8;
+	--p-dark-tone-cap: 0.032;
 }
 
-[data-palette='honey'] {
+[data-palette='honey'],
+.dark [data-dark-palette='honey'] {
 	--p-brand: #efa00b;
 	--p-deep: #b26e05;
 	--p-ink: #59430d;
 	--p-bright: #ffc24b;
 	--p-accent: #a9dbff;
 	--p-on-accent: #14486b;
+	--p-accent-chroma: 0.0721;
+	--p-accent-hue: 239.94;
+	--p-brand-chroma: 0.1609;
+	--p-brand-hue: 73.4;
+	--p-dark-tone-cap: 0.044;
+	--p-dark-tone-hue-shift: -16;
 
 	/* Yellow-green brands stay too light for white labels even when deepened. */
 	--p-primary: var(--p-brand);
@@ -259,27 +300,39 @@
 	--p-link: color-mix(in oklab, var(--p-deep) 60%, var(--p-ink));
 }
 
-[data-palette='ruby'] {
+[data-palette='ruby'],
+.dark [data-dark-palette='ruby'] {
 	--p-brand: #e23a57;
 	--p-deep: #a31335;
 	--p-ink: #571726;
 	--p-bright: #f7728b;
+	--p-brand-chroma: 0.203;
+	--p-brand-hue: 16.31;
+	--p-dark-tone-cap: 0.042;
 }
 
-[data-palette='matcha'] {
+[data-palette='matcha'],
+.dark [data-dark-palette='matcha'] {
 	--p-brand: #7fb023;
 	--p-deep: #557812;
 	--p-ink: #33430f;
 	--p-bright: #a3cc4e;
 	--p-primary: var(--p-brand);
 	--p-on-primary: color-mix(in oklab, var(--p-ink) 70%, black);
+	--p-brand-chroma: 0.1697;
+	--p-brand-hue: 127.79;
+	--p-dark-tone-cap: 0.038;
+	--p-dark-tone-hue-shift: 8;
 }
 
-[data-palette='graphite'] {
+[data-palette='graphite'],
+.dark [data-dark-palette='graphite'] {
 	--p-brand: #526a85;
 	--p-deep: #33465c;
 	--p-ink: #1d2b3a;
 	--p-bright: #8fa6bd;
+	--p-brand-chroma: 0.0517;
+	--p-brand-hue: 251.77;
 }
 
 /* ── Non-color tokens (palette-independent) ────────────────────────────── */
@@ -463,6 +516,11 @@
 	/* Anime-sky core */
 	--ink: var(--p-ink);
 	--ink-faint: color-mix(in oklab, var(--p-ink) 12%, transparent);
+
+	/* Outline and text are separate tokens so a palette can retune one without the other. Form
+	   controls get their own edge because their boundary must reach 3:1 (WCAG 1.4.11). */
+	--edge: var(--ink);
+	--edge-control: var(--edge);
 	--brand: var(--p-brand);
 	--brand-deep: var(--p-deep);
 	--brand-link: var(--p-link);
@@ -495,10 +553,11 @@
 	--pattern-stripe: color-mix(in oklab, var(--ink) 5%, transparent);
 	--rule-line: color-mix(in oklab, var(--ink) 10%, transparent);
 	--hole-inner: var(--background);
-	--hole-ring: var(--ink);
+	--hole-ring: var(--edge);
 	--tape-bg: color-mix(in oklab, var(--tint) 65%, transparent);
 	--tape-border: color-mix(in oklab, var(--ink) 25%, transparent);
 	--kraft: color-mix(in oklab, #c99a5e 38%, var(--card));
+	--paper: #fffdf6;
 
 	/* Footer */
 	--footer-bg: var(--p-ink);
@@ -517,6 +576,10 @@
 	--hard-shadow-strong: var(--soft-shadow-strong);
 	--glow-soft: color-mix(in oklab, var(--p-brand) 50%, transparent);
 
+	/* Ink-filled actions */
+	--ink-fill: var(--foreground);
+	--ink-fill-foreground: var(--background);
+
 	/* ── shadcn semantic tokens (names kept, values re-derived) ── */
 	--background: color-mix(in oklab, var(--p-brand) 11%, white);
 	--foreground: var(--p-ink);
@@ -525,6 +588,7 @@
 
 	/* Dark crop-editor stage: photos read truer on a dark surround in both modes. */
 	--crop-stage: color-mix(in oklab, var(--p-ink) 82%, black);
+	--scrim: color-mix(in oklab, var(--p-ink) 45%, transparent);
 
 	/* Wishlist card title plate: filled with the wishlist palette's primary. */
 	--wishlist-card-plate: var(--primary);
@@ -586,6 +650,7 @@
 	--status-danger-fill: color-mix(in oklab, var(--status-danger) 75%, var(--ink));
 	--status-info: #1e9be9;
 	--status-dup: oklch(72% 0.175 68deg);
+	--status-callout-tint: 14%;
 
 	/* Domain colors */
 	--reserved: #14a56f;
@@ -606,92 +671,115 @@
 	--switch-thumb-active: #fff;
 }
 
-/* ── Dark derivation — „midnight notebook" ──────────────────────────────
-   Charcoal surfaces carry restrained palette tints; color stays in small accents.
+/* ── Dark derivation — „lights-off sticker" ────────────────────────────
+   Surfaces sit above a dark, palette-hued edge that the hard shadows share, as light mode draws
+   ink on paper. Every palette scope builds its whole ladder from its own tone (brand hue, chroma
+   capped per palette), so a wishlist reads in its colour and app chrome in the viewer's.
    `.dark [data-palette]` outranks the light `[data-palette]` block. A palette scope inside a
    `[data-light-scope]` keeps the light derivation even in dark mode. */
 .dark,
-.dark [data-palette]:not(:where([data-light-scope], [data-light-scope] *)) {
+.dark
+	:is([data-palette], [data-dark-palette]):not(:where([data-light-scope], [data-light-scope] *)) {
 	color-scheme: dark;
 
-	--ink: color-mix(in oklab, var(--p-bright) 12%, #e6e8ec);
-	--ink-faint: color-mix(in oklab, var(--ink) 16%, transparent);
-	--brand: color-mix(in oklab, var(--p-bright) 70%, #b8bec8);
+	--dark-tone-chroma: min(var(--p-dark-tone-cap), calc(var(--p-brand-chroma) * 0.32));
+	--dark-tone-hue: calc(var(--p-brand-hue) + var(--p-dark-tone-hue-shift));
+
+	/* The page is calmer than the stickers on it, so cards and the hero carry the colour. */
+	--palette-page-background: oklch(30% calc(var(--dark-tone-chroma) * 0.85) var(--dark-tone-hue));
+	--ink: oklch(96% min(0.02, calc(var(--p-brand-chroma) * 0.2)) var(--p-brand-hue));
+	--ink-faint: color-mix(in oklab, var(--edge) 45%, transparent);
+
+	/* The sticker edge is the darkest ink, as in light; form controls need a light edge for 3:1. */
+	--edge: oklch(15% calc(var(--dark-tone-chroma) * 1.25) var(--dark-tone-hue));
+	--edge-control: oklch(76% min(0.04, calc(var(--p-brand-chroma) * 0.27)) var(--p-brand-hue));
+	--brand: oklch(85% min(0.125, var(--p-brand-chroma)) var(--p-brand-hue));
 	--brand-deep: var(--p-deep);
 	--brand-link: var(--brand);
-	--tint: var(--accent);
+	--tint: oklch(34% calc(var(--dark-tone-chroma) * 1.7) var(--dark-tone-hue));
 	--panel-hover: var(--secondary);
-	--accent-loud: color-mix(in oklab, var(--p-accent) 65%, #b8bec8);
-	--accent-loud-foreground: #18202b;
+	--accent-loud: oklch(82% min(0.14, var(--p-accent-chroma)) var(--p-accent-hue));
+	--accent-loud-foreground: oklch(25% 0.05 var(--p-accent-hue));
 	--selection-tint: color-mix(in oklab, var(--primary) 22%, var(--card));
 	--selection-image-tint: color-mix(in oklab, var(--primary) 28%, transparent);
-	--selection-ring: color-mix(in oklab, var(--primary) 75%, white);
+	--selection-ring: var(--brand);
 	--selection-on-ring: var(--primary-foreground);
-	--note-tint: #b9aa7e;
-	--note-ink: #24251f;
-	--link: #b39dfc;
-	--heart: #f58a94;
-	--margin-red: #f07a6e;
-	--ghost-hover: rgb(255 255 255 / 6%);
-	--fan-back-1: color-mix(in oklab, var(--p-deep) 12%, #111318);
-	--fan-back-2: color-mix(in oklab, var(--p-deep) 18%, #171a20);
-	--tag-priority-bg: #5a4a12;
-	--tag-edited-bg: #43356e;
-	--like-tint: #57293a;
+	--note-tint: oklch(85% 0.105 88deg);
+	--note-ink: oklch(27% 0.045 80deg);
+	--link: oklch(85% 0.1 288deg);
+	--heart: oklch(72% 0.15 15deg);
+	--margin-red: oklch(66% 0.15 25deg);
+	--ghost-hover: color-mix(in oklab, var(--ink) 8%, transparent);
+	--fan-back-1: color-mix(in oklab, var(--card) 45%, var(--background));
+	--fan-back-2: color-mix(in oklab, var(--card) 75%, var(--background));
+	--tag-priority-bg: color-mix(in oklab, oklch(82% 0.14 85deg) 26%, var(--card));
+	--tag-edited-bg: color-mix(in oklab, oklch(68% 0.15 295deg) 30%, var(--card));
+	--like-tint: color-mix(in oklab, oklch(68% 0.16 10deg) 28%, var(--card));
 
 	/* Calmer green and brown, lifted navy: each separates from the dark card and keeps white text at AA. */
 	--gift-overlay-own-reservation: #13704a;
 	--gift-overlay-unavailable: #2b5d91;
 	--gift-overlay-bought: #8a5530;
 
-	/* Notebook patterns (dark) */
-	--pattern-dot: color-mix(in oklab, var(--ink) 13%, transparent);
-	--pattern-line: color-mix(in oklab, var(--ink) 9%, transparent);
-	--pattern-stripe: color-mix(in oklab, var(--ink) 6%, transparent);
-	--rule-line: color-mix(in oklab, var(--ink) 15%, transparent);
-	--hole-inner: color-mix(in oklab, var(--p-deep) 20%, #04080e);
-	--hole-ring: color-mix(in oklab, var(--ink) 80%, transparent);
-	--tape-bg: rgb(255 255 255 / 14%);
-	--tape-border: color-mix(in oklab, var(--ink) 32%, transparent);
+	/* Notebook patterns (dark): the edge ink, stronger than in light to show on a dark page */
+	--pattern-dot: color-mix(in oklab, var(--edge) 26%, transparent);
+	--pattern-line: color-mix(in oklab, var(--edge) 19%, transparent);
+	--pattern-stripe: color-mix(in oklab, var(--edge) 10%, transparent);
+	--rule-line: color-mix(in oklab, var(--edge) 29%, transparent);
+	--hole-inner: var(--background);
+	--hole-ring: var(--edge);
+	--tape-bg: oklch(80% min(0.05, calc(var(--p-brand-chroma) * 0.35)) var(--p-brand-hue) / 32%);
+	--tape-border: color-mix(in oklab, var(--edge) 60%, transparent);
 	--kraft: color-mix(in oklab, #a8783f 32%, var(--card));
+	--paper: oklch(88% 0.022 90deg);
 
-	/* Footer (dark) */
-	--footer-bg: color-mix(in oklab, var(--p-deep) 24%, #04080e);
-	--footer-text: color-mix(in oklab, var(--p-bright) 40%, #e6eff8);
+	/* Footer (dark): a distinct band below the page */
+	--footer-bg: oklch(16% min(0.035, calc(var(--p-brand-chroma) * 0.25)) var(--p-brand-hue));
+	--footer-text: oklch(90% min(0.03, calc(var(--p-brand-chroma) * 0.2)) var(--p-brand-hue));
 	--footer-hover: color-mix(in oklab, var(--footer-text) 15%, transparent);
 
-	/* Semantic sticker-depth recipes (dark shadows intentionally stay dark). */
-	--soft-shadow: rgb(2 6 12 / 42%);
-	--soft-shadow-strong: rgb(2 6 12 / 55%);
-	--ink-shadow: rgb(2 6 12 / 48%);
-	--ink-shadow-strong: rgb(2 6 12 / 62%);
+	/* Hard shadows share the edge ink; Black stays black. */
+	--soft-shadow: color-mix(in oklab, var(--edge) 48%, transparent);
+	--soft-shadow-strong: color-mix(in oklab, var(--edge) 60%, transparent);
+	--ink-shadow: color-mix(in oklab, var(--edge) 84%, transparent);
+	--ink-shadow-strong: color-mix(in oklab, var(--edge) 94%, transparent);
 	--black-shadow: #000;
 	--black-shadow-strong: #000;
 	--hard-shadow: var(--soft-shadow);
 	--hard-shadow-strong: var(--soft-shadow-strong);
-	--glow-soft: color-mix(in oklab, var(--p-bright) 45%, transparent);
+	--glow-soft: color-mix(in oklab, var(--brand) 45%, transparent);
 
-	/* ── shadcn semantic tokens (dark) ── */
-	--background: color-mix(in oklab, var(--p-deep) 10%, #090b0f);
+	/* Ink-filled actions stay a dark slab rather than inverting into a pale one. */
+	--ink-fill: oklch(18% min(0.04, calc(var(--p-brand-chroma) * 0.27)) var(--p-brand-hue));
+	--ink-fill-foreground: var(--ink);
+
+	/* ── shadcn semantic tokens (dark) ──
+	   Ladder in OKLCH lightness: page < tray < secondary < muted < card < popover. */
+	--background: var(--palette-page-background);
 	--foreground: var(--ink);
-	--card: color-mix(in oklab, var(--p-deep) 16%, #13161c);
+	--card: oklch(36.5% var(--dark-tone-chroma) var(--dark-tone-hue));
 	--card-foreground: var(--ink);
-	--crop-stage: color-mix(in oklab, var(--p-deep) 8%, #050608);
-	--popover: var(--card);
+	--crop-stage: oklch(11% min(0.02, calc(var(--dark-tone-chroma) * 0.5)) var(--dark-tone-hue));
+	--scrim: oklch(12% 0.02 var(--dark-tone-hue) / 66%);
+	--popover: oklch(40.5% var(--dark-tone-chroma) var(--dark-tone-hue));
 	--popover-foreground: var(--ink);
-	--primary: color-mix(in oklab, var(--p-brand) 60%, #202630);
-	--primary-hover: color-mix(in oklab, var(--primary) 92%, black);
-	--primary-foreground: #fff;
-	--secondary: color-mix(in oklab, var(--p-deep) 22%, #1c2027);
+
+	/* The light theme's own primary, so plates and buttons stay saturated stickers. */
+	--primary: var(--p-primary);
+	--primary-hover: color-mix(in oklab, var(--primary) 86%, var(--p-ink));
+	--primary-foreground: var(--p-on-primary);
+	--secondary: oklch(33.5% var(--dark-tone-chroma) var(--dark-tone-hue));
 	--secondary-foreground: var(--ink);
-	--muted: color-mix(in oklab, var(--p-deep) 12%, #181b21);
-	--muted-foreground: color-mix(in oklab, var(--ink) 65%, transparent);
-	--accent: color-mix(in oklab, var(--p-deep) 26%, #222630);
+	--muted: oklch(34.3% var(--dark-tone-chroma) var(--dark-tone-hue));
+	--muted-foreground: oklch(
+		85% min(0.035, calc(var(--p-brand-chroma) * 0.23)) var(--p-brand-hue)
+	);
+	--accent: oklch(32% var(--dark-tone-chroma) var(--dark-tone-hue));
 	--accent-foreground: var(--ink);
-	--destructive: #f07a6e;
-	--border: color-mix(in oklab, var(--ink) 16%, transparent);
-	--input: color-mix(in oklab, var(--ink) 32%, transparent);
-	--ring: var(--p-bright);
+	--destructive: var(--status-danger);
+	--border: color-mix(in oklab, var(--edge) 36%, transparent);
+	--input: var(--edge-control);
+	--ring: var(--brand);
 	--chart-1: var(--p-bright);
 	--chart-2: var(--p-accent);
 	--chart-3: var(--p-brand);
@@ -699,79 +787,86 @@
 	--chart-5: var(--ink);
 	--sidebar: var(--card);
 	--sidebar-foreground: var(--ink);
-	--sidebar-primary: var(--p-bright);
-	--sidebar-primary-foreground: #04101c;
+	--sidebar-primary: var(--brand);
+	--sidebar-primary-foreground: var(--edge);
 	--sidebar-accent: var(--accent);
 	--sidebar-accent-foreground: var(--ink);
-	--sidebar-border: color-mix(in oklab, var(--ink) 16%, transparent);
-	--sidebar-ring: var(--p-bright);
+	--sidebar-border: var(--border);
+	--sidebar-ring: var(--brand);
 
-	/* Surface hierarchy (dark) */
-	--surface: var(--background);
+	/* Surface hierarchy (dark): wells such as the gift image stage keep the scope's hue. */
+	--surface: oklch(31.5% calc(var(--dark-tone-chroma) * 0.9) var(--dark-tone-hue));
 	--surface-2: var(--secondary);
 	--surface-3: var(--muted);
 	--surface-hover: var(--accent);
 
-	/* Text hierarchy (dark) */
-
 	/* Border (dark) */
-	--border-strong: color-mix(in oklab, var(--ink) 40%, transparent);
+	--border-strong: color-mix(in oklab, var(--edge) 79%, transparent);
 
 	/* Primary (dark) */
 	--primary-soft: color-mix(in oklab, var(--primary) 24%, var(--card));
 
-	/* Status (dark) */
-	--status-success: #3bd598;
-	--status-success-text: var(--status-success);
-	--status-warning: #ffc24b;
-	--status-warning-text: var(--status-warning);
-	--status-danger: #f07a6e;
-	--status-danger-text: color-mix(in oklab, var(--status-danger) 85%, white);
-	--status-danger-fill: color-mix(in oklab, var(--status-danger) 60%, #202630);
-	--status-info: #55b9f3;
-	--status-dup: oklch(76% 0.165 68deg);
+	/* Status (dark): fills share the primary's band so white labels reach AA; text is lifted. */
+	--status-success: oklch(55% 0.125 158deg);
+	--status-success-text: oklch(85% 0.125 158deg);
+	--status-warning: oklch(82% 0.14 82deg);
+	--status-warning-text: oklch(88% 0.125 85deg);
+	--status-danger: oklch(68% 0.16 27deg);
+	--status-danger-text: oklch(85% 0.115 27deg);
+	--status-danger-fill: oklch(53% 0.17 27deg);
+	--status-info: oklch(55% 0.125 245deg);
+	--status-dup: oklch(76% 0.15 68deg);
+
+	/* Tinted dark cards need a stronger wash before a callout reads as its status hue. */
+	--status-callout-tint: 30%;
 
 	/* Domain colors (dark) */
-	--reserved: #3bd598;
-	--liked: #f58a94;
-	--archived: #8fa6bd;
+	--reserved: var(--status-success-text);
+	--liked: oklch(74% 0.14 15deg);
+	--archived: oklch(74% 0.03 250deg);
 
 	/* Form control surfaces (dark) */
-	--input-surface: rgb(255 255 255 / 5%);
-	--input-surface-hover: rgb(255 255 255 / 8%);
+	--input-surface: color-mix(in oklab, var(--ink) 4%, transparent);
+	--input-surface-hover: color-mix(in oklab, var(--ink) 7%, transparent);
 
 	/* Validation emphasis (dark) */
 	--invalid-ring: color-mix(in oklab, var(--destructive) 40%, transparent);
 	--invalid-border: color-mix(in oklab, var(--destructive) 50%, transparent);
 
 	/* Switch (dark) */
-	--switch-track: color-mix(in oklab, var(--ink) 25%, transparent);
+	--switch-track: color-mix(in oklab, var(--ink) 24%, transparent);
 	--switch-thumb: var(--ink);
 	--switch-thumb-active: #fff;
+}
+
+/* Captured on <html> only, so a wishlist scope inherits the viewer's page colour as a resolved
+   value instead of re-deriving it from its own tone. */
+html.dark {
+	--viewer-page-background: var(--background);
 }
 
 /* The viewer depth lives on <html>. Repeat the mapping for nested wishlist
    palettes because their local recipe colors must win without changing geometry.
    A local `[data-depth]` (depth picker previews) re-derives the elevation recipes below. */
 [data-depth='soft'],
-[data-depth='soft'] [data-palette] {
+[data-depth='soft'] :is([data-palette], [data-dark-palette]) {
 	--hard-shadow: var(--soft-shadow);
 	--hard-shadow-strong: var(--soft-shadow-strong);
 }
 
 [data-depth='ink'],
-[data-depth='ink'] [data-palette] {
+[data-depth='ink'] :is([data-palette], [data-dark-palette]) {
 	--hard-shadow: var(--ink-shadow);
 	--hard-shadow-strong: var(--ink-shadow-strong);
 }
 
 [data-depth='black'],
-[data-depth='black'] [data-palette] {
+[data-depth='black'] :is([data-palette], [data-dark-palette]) {
 	--hard-shadow: var(--black-shadow);
 	--hard-shadow-strong: var(--black-shadow-strong);
 }
 
-:where(:root, [data-palette], [data-depth]) {
+:where(:root, [data-palette], [data-dark-palette], [data-depth]) {
 	--elevation-compact: var(--elevation-compact-offset) var(--elevation-compact-offset) 0
 		var(--hard-shadow);
 	--elevation-ordinary: var(--elevation-ordinary-offset) var(--elevation-ordinary-offset) 0
@@ -814,9 +909,9 @@
 	box-shadow: none;
 }
 
-/* Unavailable gifts soften only frame paint; nested controls keep the shared ink and shadow tokens. */
+/* Unavailable gifts soften only frame paint; nested controls keep the shared edge and shadow tokens. */
 .gift-frame-softened {
-	--gift-frame-ink: color-mix(in oklab, var(--ink) 50%, var(--card));
+	--gift-frame-edge: color-mix(in oklab, var(--edge) 50%, var(--card));
 	--gift-frame-elevation: var(--elevation-ordinary-offset) var(--elevation-ordinary-offset) 0
 		color-mix(in oklab, var(--hard-shadow) 50%, transparent);
 }
@@ -1080,6 +1175,11 @@
 
 	/* Anime-sky tokens as Tailwind utilities */
 	--color-ink: var(--ink);
+	--color-edge: var(--edge);
+	--color-edge-control: var(--edge-control);
+	--color-ink-fill: var(--ink-fill);
+	--color-ink-fill-foreground: var(--ink-fill-foreground);
+	--color-scrim: var(--scrim);
 	--color-crop-stage: var(--crop-stage);
 	--color-ink-faint: var(--ink-faint);
 	--color-brand: var(--brand);
@@ -1145,7 +1245,8 @@
 
 /* A nested sky palette represents a blue wishlist surface. Use its complementary
    accent for selected gifts while root/neutral surfaces retain primary treatment. */
-[data-palette='sky']:not(:root) {
+[data-palette='sky']:not(:root),
+.dark [data-dark-palette='sky'] {
 	--selection-tint: color-mix(in oklab, var(--accent-loud) 24%, var(--card));
 	--selection-image-tint: color-mix(in oklab, var(--accent-loud) 34%, transparent);
 	--selection-ring: var(--accent-loud);
@@ -1167,7 +1268,8 @@ main.app-content {
 
 	/* `color` resolves where it is declared and inherits as a value, so a nested palette
 	   scope re-applies its own foreground; otherwise its text keeps the viewer's ink. */
-	[data-palette]:not(:root) {
+	[data-palette]:not(:root),
+	.dark [data-dark-palette] {
 		@apply text-foreground;
 	}
 

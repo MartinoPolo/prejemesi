@@ -145,6 +145,10 @@ export const gift = pgTable(
 		imageKeyIdx: index('gift_image_key_idx')
 			.on(table.imageKey)
 			.where(sql`${table.imageKey} IS NOT NULL`),
+		// The ON DELETE SET NULL foreign key action looks gifts up by level when a priority level is deleted.
+		priorityLevelIdx: index('gift_priority_level_idx')
+			.on(table.priorityLevelId)
+			.where(sql`${table.priorityLevelId} IS NOT NULL`),
 		wishlistCategoryFk: foreignKey({
 			columns: [table.wishlistId, table.categoryId],
 			foreignColumns: [giftCategory.wishlistId, giftCategory.id],

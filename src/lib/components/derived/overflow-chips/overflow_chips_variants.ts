@@ -9,7 +9,7 @@ import { badgeShape } from '$lib/components/base/badge/index.js';
  */
 export const overflowMoreChipClass = [
 	badgeShape,
-	'inline-flex shrink-0 items-center border-ink bg-card px-2 py-0.5 text-xs leading-4 font-extrabold whitespace-nowrap text-foreground tabular-nums',
+	'inline-flex shrink-0 items-center border-edge bg-card px-2 py-0.5 text-xs leading-4 font-extrabold whitespace-nowrap text-foreground tabular-nums',
 ];
 
 export const overflowChipsVariants = tv({

@@ -38,13 +38,13 @@ export const giftDetailModalVariants = tv({
 		// dotted mat, visually distinct from the form column — replaces the de-seamed
 		// full-bleed mat that read as an unfinished wireframe. No thin grey seam.
 		modeSectionPanel:
-			'flex w-full shrink-0 flex-col rounded-panel border-2 border-ink bg-card p-2.5 shadow-sticker',
+			'flex w-full shrink-0 flex-col rounded-panel border-2 border-edge bg-card p-2.5 shadow-sticker',
 		// Empty-state click-to-upload affordance (issue #131 REQ-2/REQ-3): a real
 		// button so it is keyboard-focusable with a visible focus ring, not just a
 		// static label. Sticker-panel treatment (issue #189 REQ-6) so the empty column
 		// reads as intentional as the filled one.
 		imagePlaceholder:
-			'flex size-full cursor-pointer flex-col items-center justify-center gap-2 rounded-panel border-2 border-ink bg-card shadow-sticker outline-none transition-colors hover:bg-panel-hover focus-visible:ring-2 focus-visible:ring-ring',
+			'flex size-full cursor-pointer flex-col items-center justify-center gap-2 rounded-panel border-2 border-edge bg-card shadow-sticker outline-none transition-colors hover:bg-panel-hover focus-visible:ring-2 focus-visible:ring-ring',
 		// Stands in for the stage while the selected gallery image still waits for its link.
 		imagePendingSource:
 			'mb-2 flex min-h-[220px] flex-col items-center justify-center gap-2 rounded-[max(0px,calc(var(--radius-panel)-12px))] border-2 border-dashed border-ink-faint px-4 text-center text-sm text-muted-foreground [&_svg]:size-8 [&_svg]:text-ink-faint',

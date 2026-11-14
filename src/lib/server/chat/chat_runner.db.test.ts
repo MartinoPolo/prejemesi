@@ -9,6 +9,8 @@ import {
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type * as ChatAvailabilityModule from './chat_availability.js';
 import type * as ChatConfigModule from './chat_config.js';
+import type * as ChatRunnerJobsModule from './chat_runner_jobs.js';
+import type * as OperationalFailuresModule from '$lib/observability/operational_failures.js';
 
 const chatSwitches = vi.hoisted(() => ({
 	runner: true,
@@ -30,12 +32,36 @@ vi.mock('./chat_availability.js', async (importOriginal) => ({
 	chatAvailability: vi.fn(() => Promise.resolve('available')),
 }));
 
+// Wrapped, so a test can fail one claim poll while every other poll queries the database.
+vi.mock('./chat_runner_jobs.js', async (importOriginal) => {
+	const original = await importOriginal<typeof ChatRunnerJobsModule>();
+	return { ...original, claimChatRunnerJob: vi.fn(original.claimChatRunnerJob) };
+});
+
+vi.mock('$lib/observability/operational_failures.js', async (importOriginal) => {
+	const original = await importOriginal<typeof OperationalFailuresModule>();
+	return { ...original, reportOperationalFailure: vi.fn(original.reportOperationalFailure) };
+});
+
 import { and, asc, eq, gte, inArray } from 'drizzle-orm';
+import { reportOperationalFailure } from '$lib/observability/operational_failures.js';
 import { runAfterResponse } from '$lib/server/background.js';
+import {
+	failedDatabaseQuery,
+	postgresConnectionError,
+} from '$lib/server/db/connection_errors.test-setup.js';
 import { getDb } from '$lib/server/db/index.js';
 import { chatMessage, chatRunnerJob } from '$lib/server/db/chat.schema.js';
 import { changeProposal } from '$lib/server/db/change_proposal.schema.js';
+import { gift } from '$lib/server/db/gift.schema.js';
+import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
+import {
+	acceptEveryReadyRow,
+	applyChangeProposalRows,
+	discardChangeProposal,
+} from '$lib/server/agent_access/change_proposals.js';
 import { OPERATION_CHANNEL } from '$lib/server/operations/actor.js';
+import { CHANGE_PROPOSAL_STATE } from '$lib/modules/change_proposals/types.js';
 import {
 	CHAT_STREAM_EVENT,
 	CHAT_TURN_ERROR,
@@ -49,7 +75,13 @@ import {
 	handleChatRunnerEvents,
 	handleChatRunnerMcp,
 } from './chat_runner_api.js';
-import { CHAT_RUNNER_JOB_STATUS, createChatRunnerJob } from './chat_runner_jobs.js';
+import {
+	CHAT_RUNNER_JOB_STATUS,
+	claimChatRunnerJob,
+	createChatRunnerJob,
+	stopChatRunnerTurn,
+} from './chat_runner_jobs.js';
+import { activeChatTurnUrl } from './chat_runner_turn.js';
 import { CHAT_BLOCK, CHAT_ROLE } from './chat_model.js';
 import { readChatContext } from './chat_prompt.js';
 import { createChatSession, setChatFastForward } from './chat_store.js';
@@ -67,6 +99,9 @@ const TEST_LIMITS: ChatRunnerLimits = {
 	claimWindowMs: 40,
 	claimPollIntervalMs: 10,
 };
+
+/** A claim window that outlasts a stalled poll, for tests that need a second poll to run. */
+const LOADED_MACHINE_CLAIM_LIMITS: ChatRunnerLimits = { ...TEST_LIMITS, claimWindowMs: 2_000 };
 
 const CHAT_RUNNER_TEST_DAY_OFFSET_MS = 2 * 24 * 60 * 60 * 1000;
 
@@ -125,14 +160,17 @@ function runnerRequest(path: string, authorization: string | null, body?: unknow
 	});
 }
 
-function claim(authorization: string | null = `Bearer ${chatSwitches.secret ?? ''}`) {
+function claim(
+	authorization: string | null = `Bearer ${chatSwitches.secret ?? ''}`,
+	limits: ChatRunnerLimits = TEST_LIMITS,
+) {
 	return handleChatRunnerClaim(
 		{
 			request: runnerRequest('/chat-runner/claim', authorization),
 			url: new URL(`${ORIGIN}/chat-runner/claim`),
 			params: {},
 		},
-		TEST_LIMITS,
+		limits,
 	);
 }
 
@@ -140,13 +178,14 @@ interface ClaimedJob {
 	id: string;
 	token: string;
 	model: string;
+	effort: string;
 	systemPrompt: string;
 	prompt: string;
 	mcpUrl: string;
 }
 
-async function claimJob(): Promise<ClaimedJob> {
-	const response = await claim();
+async function claimJob(limits: ChatRunnerLimits = TEST_LIMITS): Promise<ClaimedJob> {
+	const response = await claim(undefined, limits);
 	expect(response.status).toBe(200);
 	return (await response.json()) as ClaimedJob;
 }
@@ -181,11 +220,20 @@ async function callMcp(jobId: string, token: string | null, method: string, para
 	});
 }
 
-function createJobForChat(sessionId: string, createdAt = new Date()) {
-	return createChatRunnerJob(
-		{ sessionId, model: 'opus', systemPrompt: 'system', prompt: 'prompt' },
+async function createJobForChat(sessionId: string, createdAt = new Date()) {
+	const job = await createChatRunnerJob(
+		{ sessionId, model: 'opus', effort: 'medium', systemPrompt: 'system', prompt: 'prompt' },
 		createdAt,
 	);
+	if (job === null) {
+		throw new Error('The job was not created');
+	}
+	return job;
+}
+
+/** Long enough for a relay whose browser left to notice it and end. */
+function relayWindowsPass() {
+	return new Promise((resolve) => setTimeout(resolve, TEST_LIMITS.relayWindowMs * 2));
 }
 
 async function readJob(jobId: string) {
@@ -226,7 +274,7 @@ describe.skipIf(!DB_READY)('chat runner turns', () => {
 	beforeEach(() => {
 		chatSwitches.runner = true;
 		chatSwitches.secret = 'runner-secret';
-		// The shared database setup drops background work, but the relay streams from it.
+		// The shared database setup drops background work, but a model provider's turn runs as one.
 		vi.mocked(runAfterResponse).mockImplementation((task) => void task());
 		// chat.db.test.ts counts every user's messages since today's start in parallel; these
 		// turns store theirs on an earlier day so they do not move that count. Only Date is
@@ -240,6 +288,8 @@ describe.skipIf(!DB_READY)('chat runner turns', () => {
 	// Each test leaves no job waiting, so the next claim takes that test's own job.
 	afterEach(async () => {
 		vi.useRealTimers();
+		vi.mocked(claimChatRunnerJob).mockReset();
+		vi.mocked(reportOperationalFailure).mockReset();
 		if (createdSessionIds.length > 0) {
 			const storedSinceToday = await getDb()
 				.select({ id: chatMessage.id })
@@ -274,12 +324,17 @@ describe.skipIf(!DB_READY)('chat runner turns', () => {
 				kind: CHAT_TURN_KIND.message,
 				text: 'Přidejte kolo',
 				model: 'sonnet',
+				effort: 'high',
 			}),
 		);
 
 		const [job, ...others] = await sessionJobs(session.id);
 		expect(others).toEqual([]);
-		expect(job).toMatchObject({ status: CHAT_RUNNER_JOB_STATUS.pending, model: 'sonnet' });
+		expect(job).toMatchObject({
+			status: CHAT_RUNNER_JOB_STATUS.pending,
+			model: 'sonnet',
+			effort: 'high',
+		});
 		expect(job?.prompt).toContain('Přidejte kolo');
 		expect(readChatContext(job?.systemPrompt ?? '')).toMatchObject({
 			wishlistId: wishlist.id,
@@ -297,7 +352,7 @@ describe.skipIf(!DB_READY)('chat runner turns', () => {
 		]);
 	});
 
-	it('asks Claude Code for Opus unless the turn names a model', async () => {
+	it('asks Claude Code for Opus at medium effort unless the turn names them', async () => {
 		const { session } = await newChat();
 
 		await streamedEvents(
@@ -305,7 +360,7 @@ describe.skipIf(!DB_READY)('chat runner turns', () => {
 		);
 
 		const [job] = await sessionJobs(session.id);
-		expect(job?.model).toBe('opus');
+		expect(job).toMatchObject({ model: 'opus', effort: 'medium' });
 	});
 
 	it('refuses a second turn while the runner still has one of the chat', async () => {
@@ -383,6 +438,7 @@ describe.skipIf(!DB_READY)('chat runner turns', () => {
 		expect(claimed).toMatchObject({
 			id: queued?.id,
 			model: 'opus',
+			effort: 'medium',
 			systemPrompt: queued?.systemPrompt,
 			prompt: queued?.prompt,
 			mcpUrl: `${ORIGIN}/chat-runner/jobs/${queued?.id ?? ''}/mcp`,
@@ -431,6 +487,54 @@ describe.skipIf(!DB_READY)('chat runner turns', () => {
 
 		expect((await claim()).status).toBe(204);
 		expect((await readJob(stale.id)).status).toBe(CHAT_RUNNER_JOB_STATUS.pending);
+	});
+
+	it('hands out a waiting job on a later poll when the database connection closed during one', async () => {
+		const { session } = await newChat();
+		const queued = await createJobForChat(session.id);
+		vi.mocked(reportOperationalFailure).mockImplementation(() => undefined);
+		vi.mocked(claimChatRunnerJob).mockRejectedValueOnce(
+			failedDatabaseQuery(postgresConnectionError('CONNECTION_CLOSED')),
+		);
+
+		expect((await claimJob(LOADED_MACHINE_CLAIM_LIMITS)).id).toBe(queued.id);
+		expect(claimChatRunnerJob).toHaveBeenCalledTimes(2);
+		expect(reportOperationalFailure).toHaveBeenCalledOnce();
+		expect(reportOperationalFailure).toHaveBeenCalledWith(
+			'database',
+			'chat_runner_claim_connection_closed',
+			'warning',
+		);
+	});
+
+	it('answers that no job waits when the database connection closed on every poll', async () => {
+		vi.mocked(reportOperationalFailure).mockImplementation(() => undefined);
+		vi.mocked(claimChatRunnerJob).mockRejectedValue(
+			failedDatabaseQuery(postgresConnectionError('CONNECTION_CLOSED')),
+		);
+
+		expect((await claim()).status).toBe(204);
+		expect(reportOperationalFailure).toHaveBeenCalledWith(
+			'database',
+			'chat_runner_claim_connection_closed',
+			'warning',
+		);
+	});
+
+	it.each([
+		[
+			'a statement timeout',
+			Object.assign(new Error('canceling statement due to statement timeout'), {
+				code: '57014',
+			}),
+		],
+		['a connection that never opened', postgresConnectionError('CONNECT_TIMEOUT')],
+	])('fails the claim on %s', async (_description, cause) => {
+		const failure = failedDatabaseQuery(cause);
+		vi.mocked(claimChatRunnerJob).mockRejectedValueOnce(failure);
+
+		await expect(claim()).rejects.toBe(failure);
+		expect(reportOperationalFailure).not.toHaveBeenCalled();
 	});
 
 	it('hides every runner endpoint while no runner secret is configured', async () => {
@@ -555,33 +659,141 @@ describe.skipIf(!DB_READY)('chat runner turns', () => {
 		expect((await readJob(job.id)).events).toEqual([]);
 	});
 
-	it('cancels a still unclaimed job once the browser drops the turn’s first response', async () => {
+	it('keeps an unclaimed job waiting for the runner when the browser drops the first response', async () => {
 		const { session } = await newChat();
 		const response = await postTurn(session.id, { kind: CHAT_TURN_KIND.message, text: 'Ahoj' });
 
 		await response.body?.cancel();
+		await relayWindowsPass();
 
-		await vi.waitFor(async () => {
-			const [cancelled] = await sessionJobs(session.id);
-			expect(cancelled?.status).toBe(CHAT_RUNNER_JOB_STATUS.cancelled);
-		});
-		expect((await claim()).status).toBe(204);
+		const [waiting] = await sessionJobs(session.id);
+		expect(waiting?.status).toBe(CHAT_RUNNER_JOB_STATUS.pending);
+		expect((await claimJob()).id).toBe(waiting?.id);
 	});
 
-	it('tells the runner to stop once the browser drops a continuation of the turn', async () => {
+	it('keeps the job running when the browser drops a continuation, as a reload does', async () => {
 		const { session, job } = await startClaimedTurn();
 		const continuation = await continueTurn(`/chat/${session.id}/turns/${job.id}?cursor=0`);
 
 		await continuation.body?.cancel();
+		await relayWindowsPass();
 
-		await vi.waitFor(async () => {
-			expect((await readJob(job.id)).status).toBe(CHAT_RUNNER_JOB_STATUS.cancelled);
+		expect((await readJob(job.id)).status).toBe(CHAT_RUNNER_JOB_STATUS.running);
+		const report = await reportEvents(job.id, job.token, {
+			events: [{ type: CHAT_STREAM_EVENT.text, text: 'Pořád hledám.' }],
 		});
+		expect(await report.json()).toEqual({ cancelled: false });
+		expect((await storedMessages(session.id)).at(-1)?.content).toEqual([
+			{ type: CHAT_BLOCK.text, text: 'Pořád hledám.' },
+		]);
+	});
+
+	it('rejoins an unfinished turn after the text the chat already shows', async () => {
+		const { session, job } = await startClaimedTurn();
+		await reportEvents(job.id, job.token, {
+			events: [
+				{ type: CHAT_STREAM_EVENT.tool, name: 'web_search', query: 'dětské kolo' },
+				{ type: CHAT_STREAM_EVENT.text, text: 'Hledám kola.' },
+			],
+		});
+
+		const rejoinUrl = await activeChatTurnUrl(session.id, TEST_LIMITS);
+
+		expect(rejoinUrl).toBe(`/chat/${session.id}/turns/${job.id}?cursor=2`);
+		await reportEvents(job.id, job.token, {
+			events: [{ type: CHAT_STREAM_EVENT.text, text: 'Našel jsem kolo.' }],
+			status: 'done',
+		});
+		expect(await streamedEvents(await continueTurn(rejoinUrl ?? ''))).toEqual([
+			{ type: CHAT_STREAM_EVENT.text, text: '\n\nNašel jsem kolo.' },
+			{ type: CHAT_STREAM_EVENT.done },
+		]);
+		expect(await activeChatTurnUrl(session.id, TEST_LIMITS)).toBeNull();
+	});
+
+	it('stops the turn on the user’s Stop and tells the runner', async () => {
+		const { session, job } = await startClaimedTurn();
+
+		await stopChatRunnerTurn(session.id, null);
+
+		expect((await readJob(job.id)).status).toBe(CHAT_RUNNER_JOB_STATUS.cancelled);
+		expect(await activeChatTurnUrl(session.id, TEST_LIMITS)).toBeNull();
 		const report = await reportEvents(job.id, job.token, {
 			events: [{ type: CHAT_STREAM_EVENT.text, text: 'Pozdě' }],
 		});
 		expect(await report.json()).toEqual({ cancelled: true });
 		expect((await readJob(job.id)).events).toEqual([]);
+		expect(
+			await streamedEvents(
+				await continueTurn(`/chat/${session.id}/turns/${job.id}?cursor=0`),
+			),
+		).toEqual([{ type: CHAT_STREAM_EVENT.error, error: CHAT_TURN_ERROR.incomplete }]);
+	});
+
+	it('stops the turn the user named once it runs', async () => {
+		const { session } = await newChat();
+		const turnId = crypto.randomUUID();
+		await streamedEvents(
+			await postTurn(session.id, { kind: CHAT_TURN_KIND.message, text: 'Ahoj', turnId }),
+		);
+
+		await stopChatRunnerTurn(session.id, turnId);
+
+		expect((await sessionJobs(session.id)).map((job) => job.status)).toEqual([
+			CHAT_RUNNER_JOB_STATUS.cancelled,
+		]);
+	});
+
+	it('stops a turn whose Stop reached the server before the turn did', async () => {
+		const { session } = await newChat();
+		const turnId = crypto.randomUUID();
+
+		await stopChatRunnerTurn(session.id, turnId);
+		const turn = await postTurn(session.id, {
+			kind: CHAT_TURN_KIND.message,
+			text: 'Ahoj',
+			turnId,
+		});
+
+		expect(turn.status).toBe(409);
+		expect(await activeChatTurnUrl(session.id, TEST_LIMITS)).toBeNull();
+		expect((await sessionJobs(session.id)).map((job) => job.status)).toEqual([
+			CHAT_RUNNER_JOB_STATUS.cancelled,
+		]);
+		// The message stays, unanswered, so the chat offers to retry it.
+		expect((await storedMessages(session.id)).map((message) => message.role)).toEqual([
+			CHAT_ROLE.user,
+		]);
+	});
+
+	it('starts each further text block of the answer on a new paragraph', async () => {
+		const { session, job } = await startClaimedTurn();
+		await reportEvents(job.id, job.token, {
+			events: [
+				{ type: CHAT_STREAM_EVENT.text, text: 'Hledám.' },
+				{ type: CHAT_STREAM_EVENT.text, text: 'Našel jsem kolo.' },
+				{ type: CHAT_STREAM_EVENT.tool, name: 'web_search', query: 'kolo' },
+				{ type: CHAT_STREAM_EVENT.text, text: 'Přidávám ho.' },
+			],
+			status: 'done',
+		});
+
+		const relayed = await streamedEvents(
+			await continueTurn(`/chat/${session.id}/turns/${job.id}?cursor=0`),
+		);
+		const rejoined = await streamedEvents(
+			await continueTurn(`/chat/${session.id}/turns/${job.id}?cursor=1`),
+		);
+
+		const answer = [
+			{ type: CHAT_STREAM_EVENT.text, text: 'Hledám.' },
+			{ type: CHAT_STREAM_EVENT.text, text: '\n\nNašel jsem kolo.' },
+			{ type: CHAT_STREAM_EVENT.tool, name: 'web_search', query: 'kolo' },
+			{ type: CHAT_STREAM_EVENT.text, text: 'Přidávám ho.' },
+			{ type: CHAT_STREAM_EVENT.done },
+		];
+		expect(relayed).toEqual(answer);
+		expect(rejoined).toEqual(answer.slice(1));
 	});
 
 	it('keeps a turn running when a relay window ends without the browser leaving', async () => {
@@ -676,6 +888,68 @@ describe.skipIf(!DB_READY)('chat runner turns', () => {
 			type: CHAT_STREAM_EVENT.proposal,
 			proposalId: toolOutput.proposalId,
 			applied: true,
+		});
+	});
+
+	it('tells the next turn which proposals the user rejected and which applied, with the applied gift', async () => {
+		const { wishlist, session, job } = await startClaimedTurn();
+		async function proposeGift(name: string): Promise<string> {
+			const called = (await (
+				await callMcp(job.id, job.token, 'tools/call', {
+					name: 'createGift',
+					arguments: { wishlistId: wishlist.id, name },
+				})
+			).json()) as { result: { content: { text: string }[] } };
+			return (JSON.parse(called.result.content[0]?.text ?? '{}') as { proposalId: string })
+				.proposalId;
+		}
+		const rejectedId = await proposeGift('Sagrada');
+		const appliedId = await proposeGift('Kolo');
+		await discardChangeProposal({ id: MANAGER_ID }, rejectedId);
+		const [appliedProposal] = await getDb()
+			.select({ rows: changeProposal.rows })
+			.from(changeProposal)
+			.where(eq(changeProposal.id, appliedId));
+		await applyChangeProposalRows(
+			MANAGER,
+			appliedId,
+			acceptEveryReadyRow(appliedProposal?.rows ?? []),
+		);
+		await reportEvents(job.id, job.token, { status: 'done' });
+
+		await streamedEvents(
+			await postTurn(session.id, { kind: CHAT_TURN_KIND.message, text: 'Přidejte obrázek' }),
+		);
+
+		const [, nextJob] = await sessionJobs(session.id);
+		const [createdGift] = await getDb()
+			.select({ id: gift.id })
+			.from(gift)
+			.where(and(eq(gift.wishlistId, wishlist.id), eq(gift.name, 'Kolo')));
+		expect(createdGift).toBeDefined();
+		expect(nextJob?.prompt).toContain(`[Proposal ${rejectedId} is now discarded]`);
+		expect(nextJob?.prompt).toContain(
+			`[Proposal ${appliedId} is now applied]\ncreateGift applied, result `,
+		);
+		expect(nextJob?.prompt).toContain(createdGift?.id);
+		for (const state of Object.values(CHANGE_PROPOSAL_STATE)) {
+			expect(nextJob?.systemPrompt).toContain(state);
+		}
+	});
+
+	it('answers an MCP change to a gift that does not exist as the gift not being found', async () => {
+		const { job } = await startClaimedTurn();
+
+		const called = (await (
+			await callMcp(job.id, job.token, 'tools/call', {
+				name: 'updateGift',
+				arguments: { id: 'gift-of-a-rejected-proposal', name: 'Sagrada' },
+			})
+		).json()) as { result: { content: { text: string }[]; isError: boolean } };
+
+		expect(called.result.isError).toBe(true);
+		expect(JSON.parse(called.result.content[0]?.text ?? '{}')).toMatchObject({
+			error: { code: SERVER_ERROR.GIFT_NOT_FOUND },
 		});
 	});
 

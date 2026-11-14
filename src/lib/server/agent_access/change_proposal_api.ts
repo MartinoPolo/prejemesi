@@ -3,7 +3,7 @@ import { and, asc, eq, gt } from 'drizzle-orm';
 import { getDb } from '$lib/server/db/index.js';
 import { changeProposal } from '$lib/server/db/change_proposal.schema.js';
 import { resolveAddressedWishlist } from './wishlist_address.js';
-import { SERVER_ERROR, type ServerErrorCode } from '$lib/modules/errors/server_error_codes.js';
+import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
 import {
 	CHANGE_PROPOSAL_OUTCOME,
 	CHANGE_PROPOSAL_STATUS,
@@ -24,7 +24,7 @@ import {
 	type AuthorizedAgentOperation,
 } from './authorization.js';
 import type { StoredChangeRow, StoredGiftBaseline } from './change_proposal_records.js';
-import { TARGET_KIND, type TargetKind } from './policy_lookups.js';
+import { TARGET_KIND, TARGET_NOT_FOUND_ERROR } from './policy_lookups.js';
 import {
 	acceptEveryReadyRow,
 	applyChangeProposalRows,
@@ -284,15 +284,6 @@ export async function submitChangeProposal(caller: AgentCaller, body: unknown, n
 	return storeChangeProposal(caller, proposalWishlist, authorizedOperations, request, now);
 }
 
-/** What an existing target that names no live wishlist answers. */
-const MISSING_TARGET_ERROR = {
-	[TARGET_KIND.wishlistId]: SERVER_ERROR.WISHLIST_NOT_FOUND,
-	[TARGET_KIND.wishlistShortId]: SERVER_ERROR.WISHLIST_NOT_FOUND,
-	[TARGET_KIND.giftId]: SERVER_ERROR.GIFT_NOT_FOUND,
-	[TARGET_KIND.reservationId]: SERVER_ERROR.RESERVATION_NOT_FOUND,
-	[TARGET_KIND.revisionBatchId]: SERVER_ERROR.GIFT_REVISION_NOT_FOUND,
-} satisfies Record<TargetKind, ServerErrorCode>;
-
 /**
  * Submits one change as a proposal of its own, on the wishlist the change targets (the first one
  * when it names several, such as a copy's source). A change that only creates a wishlist names
@@ -313,7 +304,7 @@ export async function submitSingleChangeProposal(
 	const [targetWishlistId] = authorized.targetWishlistIds;
 	const [firstTarget] = authorized.lookup.targets;
 	if (targetWishlistId === undefined && firstTarget !== undefined) {
-		throw new AgentApiFailure(404, MISSING_TARGET_ERROR[firstTarget.kind]);
+		throw new AgentApiFailure(404, TARGET_NOT_FOUND_ERROR[firstTarget.kind]);
 	}
 	const proposalWishlist =
 		targetWishlistId === undefined

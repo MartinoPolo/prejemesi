@@ -32,6 +32,18 @@ export const ChatWishlistInputSchema = v.strictObject({
 
 export const ChatSessionInputSchema = v.strictObject({ sessionId: ChatSessionIdSchema });
 
+/**
+ * Names a chat runner turn before its request reaches the server, so a Stop that overtakes the
+ * request still stops it.
+ */
+const ChatTurnIdSchema = v.optional(v.pipe(v.string(), v.uuid()));
+
+/** Stop for the chat's unfinished turn, naming it when the panel started it. */
+export const ChatStopInputSchema = v.strictObject({
+	sessionId: ChatSessionIdSchema,
+	turnId: ChatTurnIdSchema,
+});
+
 export const ChatFastForwardInputSchema = v.strictObject({
 	sessionId: ChatSessionIdSchema,
 	fastForward: v.boolean(),
@@ -46,8 +58,25 @@ export type ChatRunnerModel = (typeof CHAT_RUNNER_MODELS)[number];
 
 export const DEFAULT_CHAT_RUNNER_MODEL: ChatRunnerModel = 'opus';
 
-/** Only a chat runner turn reads it; the model provider has its own configured model. */
+export function isChatRunnerModel(value: unknown): value is ChatRunnerModel {
+	return CHAT_RUNNER_MODELS.some((model) => model === value);
+}
+
+/** The reasoning effort levels Claude Code's `--effort` accepts. */
+export const CHAT_RUNNER_EFFORTS = ['low', 'medium', 'high', 'xhigh', 'max'] as const;
+
+export type ChatRunnerEffort = (typeof CHAT_RUNNER_EFFORTS)[number];
+
+/** Matches what the runner used before effort was selectable. */
+export const DEFAULT_CHAT_RUNNER_EFFORT: ChatRunnerEffort = 'medium';
+
+export function isChatRunnerEffort(value: unknown): value is ChatRunnerEffort {
+	return CHAT_RUNNER_EFFORTS.some((effort) => effort === value);
+}
+
+/** Only a chat runner turn reads these; the model provider has its own configured model. */
 const ChatRunnerModelSchema = v.optional(v.picklist(CHAT_RUNNER_MODELS));
+const ChatRunnerEffortSchema = v.optional(v.picklist(CHAT_RUNNER_EFFORTS));
 
 /** A turn: the user's message, or a retry of the last one after a failed answer. */
 export const ChatTurnRequestSchema = v.variant('kind', [
@@ -55,8 +84,15 @@ export const ChatTurnRequestSchema = v.variant('kind', [
 		kind: v.literal(CHAT_TURN_KIND.message),
 		text: v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(CHAT_MESSAGE_MAX_LENGTH)),
 		model: ChatRunnerModelSchema,
+		effort: ChatRunnerEffortSchema,
+		turnId: ChatTurnIdSchema,
 	}),
-	v.strictObject({ kind: v.literal(CHAT_TURN_KIND.retry), model: ChatRunnerModelSchema }),
+	v.strictObject({
+		kind: v.literal(CHAT_TURN_KIND.retry),
+		model: ChatRunnerModelSchema,
+		effort: ChatRunnerEffortSchema,
+		turnId: ChatTurnIdSchema,
+	}),
 ]);
 
 export type ChatTurnRequest = v.InferOutput<typeof ChatTurnRequestSchema>;
@@ -83,6 +119,8 @@ export interface ChatMessageView {
 export interface ChatSessionView extends ChatSessionSummary {
 	wishlistShortId: string;
 	messages: ChatMessageView[];
+	/** Where the panel rejoins a turn still being answered, which `messages` show only in part. */
+	activeTurnUrl: string | null;
 }
 
 /** The server-sent events of one streamed turn. */

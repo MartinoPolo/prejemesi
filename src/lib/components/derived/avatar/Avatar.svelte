@@ -19,7 +19,7 @@
 		size?: AvatarSize;
 		/** Crop shape. The default remains the established rounded square. */
 		shape?: AvatarShape;
-		/** Ink border + sticker shadow so the avatar matches neighboring header buttons. */
+		/** Edge border + sticker shadow so the avatar matches neighboring header buttons. */
 		bordered?: boolean;
 		/** Descriptive visual treatment for a known shared placement. */
 		appearance?: AvatarAppearance;

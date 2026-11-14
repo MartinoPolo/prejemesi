@@ -21,6 +21,7 @@
 <SelectPrimitive.Item
 	bind:ref
 	{value}
+	{label}
 	{disabled}
 	aria-disabled={disabled === true ? 'true' : undefined}
 	data-slot="select-item"
@@ -35,7 +36,7 @@
 		{#if indicator === 'checkbox'}
 			<span
 				class={cn(
-					'border-ink bg-card flex size-4 shrink-0 items-center justify-center rounded-[5px] border-2 [&_svg]:size-3.5',
+					'border-edge-control bg-card flex size-4 shrink-0 items-center justify-center rounded-[5px] border-2 [&_svg]:size-3.5',
 					selected === true && 'bg-primary text-primary-foreground',
 				)}
 			>

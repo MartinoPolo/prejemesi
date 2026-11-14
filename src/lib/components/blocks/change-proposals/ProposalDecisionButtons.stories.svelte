@@ -50,3 +50,20 @@
 		</div>
 	{/snippet}
 </Story>
+
+<!-- Every row needs its own confirmation, so Přijmout vše would do nothing. -->
+<Story
+	name="Reject Only"
+	args={{ onacceptall: undefined }}
+	play={async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await expect(canvas.getByTestId('change-review-reject-all')).toBeVisible();
+		await expect(canvas.queryByTestId('change-review-accept-all')).toBeNull();
+	}}
+>
+	{#snippet template(args)}
+		<div class="flex gap-(--nested-control-gap)">
+			<ProposalDecisionButtons {...args} />
+		</div>
+	{/snippet}
+</Story>

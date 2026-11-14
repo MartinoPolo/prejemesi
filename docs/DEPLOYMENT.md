@@ -59,7 +59,7 @@ Run `pnpm db:verify:prod` locally as a read-only diagnostic (for example to insp
 
 Migrations run before `wrangler deploy` while the previous app version serves traffic, so a failed deploy leaves the database ahead of the live Worker; the expand → migrate → deploy → contract sequence keeps that safe:
 
-1. **Expand** — additive migration only (new tables/columns, nullable or with defaults; backfills). Old app code must run unchanged against the new schema.
+1. **Expand** — additive migration only (new tables/columns, nullable or with defaults; backfills). Old app code must run unchanged against the new schema. Drizzle applies all pending migrations in one transaction, so `CREATE INDEX CONCURRENTLY` cannot be used; a plain `CREATE INDEX` blocks writes (not reads) to its table until that transaction commits, which is acceptable for small tables.
 2. **Migrate and verify** — the deploy job reaches EXACT.
 3. **Deploy** — the same job deploys; the new app version starts using the new schema shapes.
 4. **Contract** — only in a later release, after the deployed app no longer reads the old objects: drop/rename in a separate migration.

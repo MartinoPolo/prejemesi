@@ -25,6 +25,7 @@ const defaultFilters = {
 	showReceived: false,
 	categoryValues: [],
 	priorityValues: [],
+	storeValues: [],
 };
 
 const defaultProps: ComponentProps<typeof WishlistDetailToolbar> = {
@@ -39,6 +40,8 @@ const defaultProps: ComponentProps<typeof WishlistDetailToolbar> = {
 	groupingAvailability: { priority: false, category: false },
 	categoryFilterOptions: [],
 	priorityFilterOptions: [],
+	storeFilterOptions: [],
+	filteredGiftCount: 13,
 	cardColumnOption: GIFT_CARD_COLUMN_OPTIONS.automatic,
 	reorderMode: false,
 	recipientViewPreview: false,

@@ -143,6 +143,26 @@ describe('category filter options with several categories per gift', () => {
 	});
 });
 
+describe('store filter options (#650)', () => {
+	it('stay empty until the store resolver loads in the browser, then list the stores', async () => {
+		overwriteGetLocale(() => 'cs');
+		const screen = render(GiftsContextTestHost, {
+			initialGifts: [
+				{ ...makeGift(), id: 'gift-a', links: [{ url: 'https://eshop.alza.cz/a' }] },
+				{ ...makeGift(), id: 'gift-b', links: [{ url: 'https://www.datart.cz/b' }] },
+			],
+		});
+
+		expect(screen.getByTestId('store-filter-options').element()).toHaveTextContent('[]');
+		await expect.element(screen.getByTestId('store-filter-options')).toHaveTextContent(
+			JSON.stringify([
+				{ value: 'alza.cz', label: 'alza.cz' },
+				{ value: 'datart.cz', label: 'datart.cz' },
+			]),
+		);
+	});
+});
+
 describe('wishlist grouping preference default (#363)', () => {
 	it.each(Object.values(WISHLIST_ROLES))(
 		'defaults every %s role to priority when available',

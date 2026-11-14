@@ -229,7 +229,7 @@ describe.skipIf(!DB_READY)('agent access', () => {
 			]);
 		});
 
-		it('rejects a gift outside the allowed wishlists and, without telling them apart, a missing gift', async () => {
+		it('answers a missing gift and a gift on another wishlist the same: gift not found', async () => {
 			const allowed = await createWishlistFixture();
 			const other = await createWishlistFixture();
 			const otherGiftId = await createGiftFixture(other.id);
@@ -238,10 +238,33 @@ describe.skipIf(!DB_READY)('agent access', () => {
 			for (const giftId of [otherGiftId, 'missing-gift']) {
 				await expectRejection(
 					authorizeAgentOperation(restrictedGrant, 'deleteGift', { giftId }),
-					403,
-					SERVER_ERROR.AGENT_WISHLIST_NOT_ALLOWED,
+					404,
+					SERVER_ERROR.GIFT_NOT_FOUND,
+				);
+				await expectRejection(
+					authorizeAgentOperation(restrictedGrant, 'updateGift', {
+						id: giftId,
+						name: 'Kolo',
+					}),
+					404,
+					SERVER_ERROR.GIFT_NOT_FOUND,
 				);
 			}
+		});
+
+		it('still rejects a wishlist outside the allowed wishlists as not allowed', async () => {
+			const allowed = await createWishlistFixture();
+			const other = await createWishlistFixture();
+			const restrictedGrant = grantFor('manager', everyScope, [allowed.id]);
+
+			await expectRejection(
+				authorizeAgentOperation(restrictedGrant, 'createGift', {
+					wishlistId: other.id,
+					name: 'Kolo',
+				}),
+				403,
+				SERVER_ERROR.AGENT_WISHLIST_NOT_ALLOWED,
+			);
 		});
 	});
 

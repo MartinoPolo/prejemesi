@@ -260,6 +260,27 @@
       "when": 1794361568372,
       "tag": "0036_chat_runner_job",
       "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1794519980758,
+      "tag": "0037_chat_runner_job_effort",
+      "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1794651870021,
+      "tag": "0038_add-gift-priority-level-index",
+      "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1794687609541,
+      "tag": "0039_add-dark-wishlist-background",
+      "breakpoints": true
     }
   ]
 }

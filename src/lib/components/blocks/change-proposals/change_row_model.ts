@@ -33,14 +33,14 @@ import {
 	type ChangeField,
 } from '$lib/modules/change_proposals/change_field_decisions.js';
 import {
-	CHANGE_ROW_GROUP,
 	FIELD_REVIEW_STATE,
 	ROW_REVIEW_KIND,
 	SNAPSHOT_KEYS_BY_FIELD,
-	changeRowGroup,
 	fieldEditorText,
 	fieldReviewState,
+	isDecidableChangeRow,
 	isGiftDropped,
+	isRowDeclined,
 	isRowIncluded,
 	sameSnapshotValue,
 	type FieldReview,
@@ -614,6 +614,7 @@ function previewChange(
 	row: ChangeProposalRowView,
 	change: PreviewChange,
 	rowReview: RowReview | undefined,
+	withdrawn: boolean,
 	context: ChangeRowContext,
 	lookups: GiftLabelLookups,
 ): GiftChangeModel {
@@ -639,7 +640,7 @@ function previewChange(
 		originalDescription: hasAppends ? (before?.description ?? null) : null,
 		context: null,
 		cards: showsGiftCards(before, after, diffs)
-			? previewCards(change, shownAfter, dropped, context, lookups)
+			? previewCards(change, shownAfter, { dropped, withdrawn }, context, lookups)
 			: null,
 		livePreview: livePreview(change, rowReview, shownAfter, context, lookups),
 	};
@@ -648,11 +649,16 @@ function previewChange(
 function previewCards(
 	change: PreviewChange,
 	shownAfter: ChangeProposalGift,
-	dropped: boolean,
+	{ dropped, withdrawn }: { dropped: boolean; withdrawn: boolean },
 	context: ChangeRowContext,
 	lookups: GiftLabelLookups,
 ): CardPair {
 	const { before, after, giftId } = change;
+	// A deletion that will not apply keeps the gift, so both sides show it as it is.
+	if (before !== null && isGiftDeletion(before, after) && withdrawn) {
+		const kept = previewGift(before, giftId, context, lookups);
+		return { before: kept, after: kept, removal: false, dropped: false };
+	}
 	const removal = isGiftDeletion(before, after);
 	return {
 		before: before === null ? null : previewGift(before, giftId, context, lookups),
@@ -869,12 +875,15 @@ export function buildChangeRowModel(
 	context: ChangeRowContext,
 	lookups: GiftLabelLookups,
 	rowReview?: RowReview,
+	/** The proposal closed without applying this row, as when it was discarded or expired. */
+	closedUnapplied = false,
 ): ChangeRowModel {
+	const withdrawn = closedUnapplied || isRowDeclined(rowReview);
 	const allChanges =
 		row.kind === CHANGE_KIND.reorder
 			? reorderChanges(row, context)
 			: (row.preview?.gifts ?? []).map((change) =>
-					previewChange(row, change, rowReview, context, lookups),
+					previewChange(row, change, rowReview, withdrawn, context, lookups),
 				);
 	const visibleCount =
 		row.kind === CHANGE_KIND.reorder ? REORDER_VISIBLE_MOVES : allChanges.length;
@@ -887,8 +896,8 @@ export function buildChangeRowModel(
 		identity,
 		giftChanges,
 		moreCount: allChanges.length - giftChanges.length,
-		// A row that never applies has no consequence to warn about, only its reasons.
-		consequence: changeRowGroup(row) === CHANGE_ROW_GROUP.blocked ? null : consequence,
+		// The warning describes what applying will do, so only a row still awaiting a decision shows it.
+		consequence: !isDecidableChangeRow(row) || withdrawn ? null : consequence,
 		reasons: rowReasons(row),
 		currentCards: currentCards(row, context, lookups),
 		giftIds:

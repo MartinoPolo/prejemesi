@@ -374,7 +374,7 @@
 			</div>
 			{#if newCategoryOpen}
 				<div
-					class="flex flex-col gap-1 rounded-(--category-row-radius) border-(length:--category-new-row-border) border-ink bg-card p-(--category-row-padding) [--radius-btn:var(--category-new-row-inner-radius)]"
+					class="flex flex-col gap-1 rounded-(--category-row-radius) border-(length:--category-new-row-border) border-edge bg-card p-(--category-row-padding) [--radius-btn:var(--category-new-row-inner-radius)]"
 					data-testid="gift-category-new-row"
 				>
 					<div class="flex flex-wrap items-center gap-2 sm:flex-nowrap">

@@ -9,7 +9,6 @@
 	import ApplyProposalLabel from '$lib/components/blocks/change-proposals/ApplyProposalLabel.svelte';
 	import ProposalDecisionButtons from '$lib/components/blocks/change-proposals/ProposalDecisionButtons.svelte';
 	import { countCopy } from '$lib/modules/change_proposals/change_review_copy.js';
-	import { CHANGE_DECISION } from '$lib/modules/change_proposals/change_field_decisions.js';
 	import { UNRESOLVED_DECISION_MESSAGES } from '$lib/components/blocks/change-proposals/change_review_presentation.js';
 	import type { ProposalDecisions } from '$lib/components/blocks/change-proposals/proposal_decisions.svelte.js';
 	import { keepFocusOnPress } from '$lib/reactivity/keyboard_inset.svelte.js';
@@ -26,6 +25,8 @@
 		reviewHref,
 		pending,
 		oninspect,
+		onrejectall,
+		onacceptall,
 		onapply,
 		onlocate,
 		compact = false,
@@ -37,6 +38,9 @@
 		reviewHref: string | null;
 		pending: boolean;
 		oninspect: () => void;
+		/** Rejects the whole proposal at once. */
+		onrejectall: () => void;
+		onacceptall: () => void;
 		onapply: () => void;
 		/** The decision bar scrolls the chat to the proposal it acts on. */
 		onlocate?: () => void;
@@ -72,8 +76,8 @@
 		size="md"
 		disabled={pending}
 		{onpointerdown}
-		onrejectall={() => decisions.decideEveryRow(CHANGE_DECISION.rejected)}
-		onacceptall={() => decisions.decideEveryRow(CHANGE_DECISION.accepted)}
+		{onrejectall}
+		onacceptall={decisions.canAcceptAll ? onacceptall : undefined}
 	/>
 {/snippet}
 
@@ -214,10 +218,15 @@
 		color: var(--status-danger-text);
 	}
 
+	/* Použít fills the rest of the row and wraps below whole when its label does not fit. */
 	.actions {
-		display: grid;
-		grid-template-columns: auto auto minmax(0, 1fr);
+		display: flex;
+		flex-wrap: wrap;
 		gap: var(--space-2);
+	}
+
+	.actions :global(.apply) {
+		flex: 1 0 auto;
 	}
 
 	.controls :global(.is-blocked) {
@@ -267,9 +276,11 @@
 		rotate: 180deg;
 	}
 
+	/* Equal columns for however many bulk decisions the proposal offers. */
 	.bulk {
 		display: grid;
-		grid-template-columns: 1fr 1fr;
+		grid-auto-columns: 1fr;
+		grid-auto-flow: column;
 		gap: var(--compact-control-gap);
 	}
 

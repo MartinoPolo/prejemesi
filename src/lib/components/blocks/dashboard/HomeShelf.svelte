@@ -125,7 +125,7 @@
 		height: 40px;
 		flex: none;
 		justify-content: center;
-		border: 2px solid var(--ink);
+		border: 2px solid var(--edge);
 		border-radius: 999px;
 		background: var(--accent);
 		color: var(--brand);

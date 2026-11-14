@@ -117,7 +117,7 @@
 <div
 	class={[
 		'flex items-center gap-2 rounded-(--category-row-radius) border-(length:--category-row-border) p-(--category-row-padding)',
-		'data-[gift-reorder-overlay]:border-ink data-[gift-reorder-overlay]:bg-card',
+		'data-[gift-reorder-overlay]:border-edge data-[gift-reorder-overlay]:bg-card',
 		row.stagedForRemoval
 			? 'border-[color-mix(in_oklab,var(--status-danger)_40%,transparent)] bg-[color-mix(in_oklab,var(--status-danger)_8%,var(--card))]'
 			: 'border-border bg-background',

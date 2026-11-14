@@ -1,0 +1,1 @@
+ALTER TABLE "chat_runner_job" ADD COLUMN "effort" text DEFAULT 'medium' NOT NULL;

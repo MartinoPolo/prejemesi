@@ -468,8 +468,8 @@
 		right: var(--hero-actions-end);
 	}
 
-	/* Taped polaroid print — the print stays a physical photo, so its frame and
-	   caption ink are fixed and do NOT follow the palette or dark mode. */
+	/* Taped polaroid print — the print stays a physical photo, so its frame and caption ink are
+	   fixed and do NOT follow the palette; dark mode only dims the paper (`--paper`). */
 	.polaroid {
 		--polaroid-rotation: -3deg;
 
@@ -478,7 +478,7 @@
 		width: 172px;
 		margin: 0;
 		padding: 9px;
-		background: #fffdf6;
+		background: var(--paper);
 		border: 2px solid #4a443a;
 		border-radius: 3px;
 		transform: rotate(var(--polaroid-rotation));
@@ -573,7 +573,7 @@
 			height: 92px;
 			margin: 0;
 			overflow: hidden;
-			border: max(1px, calc(var(--border-w) - 0.5px)) solid var(--ink);
+			border: max(1px, calc(var(--border-w) - 0.5px)) solid var(--edge);
 			border-radius: max(0px, calc(var(--radius-panel) - 6px));
 		}
 

@@ -83,7 +83,7 @@ function inputJsonSchema(operation: AnyOperation): Record<string, unknown> {
 
 const AGENT_IMAGE_INPUT_FIELDS = new Set(['imageUrl', 'imageKey', 'images']);
 
-const IMAGE_REFERENCE_DESCRIPTION = `The \`reference\` of an image from POST ${AGENT_API_BASE_PATH}/images for the wishlist this changes; a reference attaches to one gift, once. Image URLs and storage keys are not accepted.`;
+const IMAGE_REFERENCE_DESCRIPTION = `The \`reference\` of an image from POST ${AGENT_API_BASE_PATH}/images (the ${AGENT_API_OPERATION_ID.uploadImage} tool over MCP) for the wishlist this changes; a reference attaches to one gift, once. Image URLs and storage keys are not accepted.`;
 
 const IMAGE_REFERENCE_PROPERTY = {
 	type: 'string',
@@ -372,7 +372,7 @@ function agentImagePaths() {
 		[`${AGENT_API_BASE_PATH}/images`]: {
 			post: {
 				operationId: AGENT_API_OPERATION_ID.uploadImage,
-				summary: 'Stores an image from a public HTTPS URL for a gift.',
+				summary: `Stores an image from a public HTTPS URL for a gift; a gift change attaches it by its \`reference\` as \`${IMAGE_REFERENCE_FIELD}\` or in \`${IMAGE_REFERENCES_FIELD}\`.`,
 				description: `Needs \`${AGENT_SCOPE.giftsWrite}\`. Downloads the image server-side and stores a copy; the URL itself is never kept. Every hop, including at most ${AGENT_IMAGE_MAX_REDIRECTS} redirects, must be HTTPS on the default port to a public host name: IP addresses and local names answer 400 ${SERVER_ERROR.AGENT_IMAGE_HOST_BLOCKED}. The image must be ${ALLOWED_CONTENT_TYPES.join(', ')} whose bytes match the declared type, at most ${MAX_GIFT_IMAGE_BYTES} bytes, with positive dimensions of at most ${MAX_IMAGE_SIDE_PX} px per side and ${MAX_IMAGE_PIXELS} pixels (422). The reference is valid for ${AGENT_IMAGE_REFERENCE_LIFETIME_MS / DAY_MS} days, for the token user on this wishlist; an unattached image is then deleted. Counts against the daily image budget.`,
 				'x-scope': AGENT_SCOPE.giftsWrite,
 				parameters: [IDEMPOTENCY_KEY_PARAMETER],

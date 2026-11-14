@@ -207,6 +207,103 @@ describe('FilterMenu facets', () => {
 		);
 	});
 
+	it('keeps the default layout wrapping with compact remove buttons', async () => {
+		const host = document.createElement('div');
+		host.style.width = '160px';
+		document.body.appendChild(host);
+		const screen = await render(
+			ActiveFilterPillsTestHost,
+			{ initialActiveIds: ['first', 'second', 'third', 'fourth'] },
+			{ baseElement: host },
+		);
+
+		const pillFaceTops = Array.from(
+			host.querySelectorAll<HTMLElement>('[data-active-filter-pill]'),
+			(pillFace) => pillFace.getBoundingClientRect().top,
+		);
+		expect(pillFaceTops.at(-1)!).toBeGreaterThan(pillFaceTops[0]!);
+		const remove = screen.getByRole('button', { name: 'Odebrat První' }).element();
+		expectPixelsNear(remove.getBoundingClientRect().height, 24);
+		expectPixelsNear(remove.getBoundingClientRect().width, 24);
+		host.remove();
+	});
+
+	it('keeps the scroll layout on one horizontally scrolling row of 40 px pill targets', async () => {
+		const host = document.createElement('div');
+		host.style.width = '240px';
+		document.body.appendChild(host);
+		const screen = await render(
+			ActiveFilterPillsTestHost,
+			{ initialActiveIds: ['first', 'second', 'third', 'fourth'], layout: 'scroll' },
+			{ baseElement: host },
+		);
+
+		const row = host.querySelector<HTMLElement>('[data-filter-pills]')!;
+		expect(row.scrollWidth).toBeGreaterThan(row.clientWidth);
+
+		const targets = [
+			...[
+				'První',
+				'Druhý',
+				'Třetí obchod s dlouhým názvem',
+				'Čtvrtý obchod s dlouhým názvem',
+			].map((label) => screen.getByRole('button', { name: `Odebrat ${label}` }).element()),
+			screen.getByRole('button', { name: 'Vymazat' }).element(),
+		];
+		const firstTop = targets[0]!.getBoundingClientRect().top;
+		for (const target of targets) {
+			const bounds = target.getBoundingClientRect();
+			expectPixelsAtLeast(bounds.height, 40);
+			expectPixelsNear(bounds.top, firstTop);
+		}
+		await expect
+			.element(screen.getByRole('button', { name: 'Odebrat Třetí obchod s dlouhým názvem' }))
+			.toHaveAttribute('title', 'Třetí obchod s dlouhým názvem');
+		host.remove();
+	});
+
+	it('removes a whole scroll-layout pill and moves focus like the wrapping layout', async () => {
+		const host = document.createElement('div');
+		document.body.appendChild(host);
+		const screen = await render(
+			ActiveFilterPillsTestHost,
+			{ layout: 'scroll' },
+			{ baseElement: host },
+		);
+
+		await screen.getByText('První').click();
+		await expect
+			.element(screen.getByRole('button', { name: 'Odebrat První' }))
+			.not.toBeInTheDocument();
+		expect(document.activeElement).toBe(
+			screen.getByRole('button', { name: 'Odebrat Druhý' }).element(),
+		);
+
+		await screen.getByRole('button', { name: 'Odebrat Druhý' }).click();
+		await expect
+			.element(screen.getByRole('button', { name: 'Odebrat Druhý' }))
+			.not.toBeInTheDocument();
+		expect(document.activeElement).toBe(
+			screen.getByRole('button', { name: 'Filtr' }).element(),
+		);
+		host.remove();
+	});
+
+	it('disables every scroll-layout pill and the clear action together', async () => {
+		const host = document.createElement('div');
+		document.body.appendChild(host);
+		const screen = await render(
+			ActiveFilterPillsTestHost,
+			{ layout: 'scroll', disabled: true },
+			{ baseElement: host },
+		);
+
+		await expect.element(screen.getByRole('button', { name: 'Odebrat První' })).toBeDisabled();
+		await expect.element(screen.getByRole('button', { name: 'Odebrat Druhý' })).toBeDisabled();
+		await expect.element(screen.getByRole('button', { name: 'Vymazat' })).toBeDisabled();
+		host.remove();
+	});
+
 	it('renders no facet group when the prop is omitted', async () => {
 		const definitions: FilterDefinition[] = [
 			{ id: 'available', menuLabel: 'Dostupné', checked: false, onchange: () => {} },

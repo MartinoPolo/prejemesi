@@ -1,0 +1,1020 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Variant C: page pills + sticky sheet footer</title>
+<link rel="stylesheet" href="../assets/app.css" />
+<style>
+	body {
+		margin: 0;
+		background: var(--muted);
+		color: var(--foreground);
+		font-family: var(--font-body);
+	}
+
+	.board {
+		padding: 1.5rem;
+	}
+
+	.eyebrow {
+		margin: 0 0 0.25rem;
+		color: var(--muted-foreground);
+		font-family: var(--font-heading);
+		font-size: var(--text-sm);
+		letter-spacing: 0.08em;
+	}
+
+	.board-title {
+		margin: 0 0 1.25rem;
+		font-family: var(--font-heading);
+		font-size: var(--text-xl);
+	}
+
+	.frames {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: flex-start;
+		gap: 2rem;
+	}
+
+	.frame-column {
+		display: grid;
+		width: 390px;
+		gap: 0.75rem;
+	}
+
+	.caption {
+		margin: 0;
+		font-size: var(--text-base);
+		line-height: 1.4;
+	}
+
+	.caption strong {
+		font-family: var(--font-heading);
+		font-weight: 600;
+	}
+
+	.caption span {
+		display: block;
+		color: var(--muted-foreground);
+		font-size: var(--text-md);
+	}
+
+	/* ── Phone frame (presentation only) ─────────────────────── */
+	.phone {
+		position: relative;
+		width: 390px;
+		height: 844px;
+		overflow: hidden;
+		border: 1px solid var(--border);
+		border-radius: 28px;
+		background: var(--app-page-background);
+		box-shadow: var(--elevation-lifted);
+	}
+
+	.icon {
+		width: 1rem;
+		height: 1rem;
+		flex: 0 0 auto;
+		fill: none;
+		stroke: currentColor;
+		stroke-linecap: round;
+		stroke-linejoin: round;
+		stroke-width: 2;
+	}
+
+	/* ── Shared button (base/button: owner + elevation surface) ── */
+	.btn {
+		position: relative;
+		display: inline-flex;
+		height: var(--size-control-lg);
+		flex: 0 0 auto;
+		padding: 0;
+		border: 0;
+		border-radius: var(--radius-btn);
+		background: none;
+		color: inherit;
+		font: inherit;
+		font-weight: 600;
+		line-height: 1;
+		white-space: nowrap;
+		cursor: pointer;
+		outline: none;
+	}
+
+	.btn:focus-visible,
+	.btn.is-focus-visible {
+		outline: 2px solid var(--ring);
+		outline-offset: 2px;
+	}
+
+	.btn:disabled {
+		cursor: not-allowed;
+		opacity: 0.45;
+	}
+
+	.btn > .elevation-surface {
+		display: inline-flex;
+		width: 100%;
+		height: 100%;
+		align-items: center;
+		justify-content: center;
+		gap: 0.375rem;
+		border: 2.5px solid transparent;
+		border-radius: inherit;
+		padding-inline: 1rem;
+		font-size: var(--text-base);
+		transition:
+			translate var(--duration-normal) var(--ease-standard),
+			box-shadow var(--duration-normal) var(--ease-standard);
+	}
+
+	.btn-icon {
+		aspect-ratio: 1;
+	}
+
+	.btn-icon > .elevation-surface {
+		padding: 0;
+	}
+
+	.btn-primary > .elevation-surface {
+		border-color: var(--ink);
+		background: var(--primary);
+		color: var(--primary-foreground);
+	}
+
+	.btn-primary:hover > .elevation-surface {
+		background: var(--primary-hover);
+	}
+
+	.btn-secondary > .elevation-surface {
+		border-color: var(--ink);
+		background: var(--card);
+		color: var(--ink);
+	}
+
+	.btn-secondary:not(:disabled):hover > .elevation-surface {
+		background: var(--panel-hover);
+	}
+
+	.btn-outline > .elevation-surface {
+		border-color: var(--ink);
+		background: var(--card);
+		color: var(--foreground);
+	}
+
+	.btn-outline:hover > .elevation-surface {
+		background: var(--accent);
+		color: var(--accent-foreground);
+	}
+
+	.btn-ghost > .elevation-surface {
+		background: transparent;
+		color: var(--muted-foreground);
+	}
+
+	.btn-ghost:hover > .elevation-surface {
+		background: var(--accent);
+		color: var(--foreground);
+	}
+
+	/* ── Navbar (root palette) ───────────────────────────────── */
+	.navbar {
+		display: flex;
+		height: 54px;
+		align-items: center;
+		gap: var(--nested-control-gap);
+		border-bottom: 2.5px solid var(--ink);
+		background: var(--card);
+		padding-inline: var(--page-gutter);
+	}
+
+	.logo-tile {
+		display: grid;
+		width: var(--size-control-lg);
+		height: var(--size-control-lg);
+		place-items: center;
+		border: 2.5px solid var(--ink);
+		border-radius: var(--radius-btn);
+		background: var(--p-brand);
+		color: var(--primary-foreground);
+		box-shadow: var(--elevation-ordinary);
+		rotate: -4deg;
+	}
+
+	.logo-tile .icon {
+		width: 1.25rem;
+		height: 1.25rem;
+	}
+
+	.wordmark {
+		flex: 1 1 auto;
+		color: var(--ink);
+		font-family: var(--font-heading);
+		font-size: var(--text-xl);
+		font-weight: 700;
+	}
+
+	.wordmark small {
+		color: var(--muted-foreground);
+		font-size: var(--text-sm);
+	}
+
+	/* ── Wishlist page ───────────────────────────────────────── */
+	.wishlist-page {
+		display: grid;
+		grid-auto-rows: max-content;
+		gap: 1rem;
+		height: calc(100% - 54px);
+		align-content: start;
+		overflow: hidden;
+		background-color: var(--app-page-background);
+		background-image: radial-gradient(var(--pattern-dot) 1.5px, transparent 1.6px);
+		background-size: 22px 22px;
+		color: var(--foreground);
+		padding: 1rem var(--page-gutter) 0;
+	}
+
+	.hero {
+		position: relative;
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+		overflow: hidden;
+		border: 2.5px solid var(--ink);
+		border-radius: var(--radius-panel);
+		background: var(--card);
+		box-shadow: var(--elevation-ordinary);
+		padding: 1.4rem 2.25rem 0.75rem 0.65rem;
+	}
+
+	.hero::before {
+		position: absolute;
+		inset: 0 0 auto;
+		height: 10px;
+		border-bottom: 2px solid var(--ink);
+		background: repeating-linear-gradient(
+			-45deg,
+			var(--p-brand) 0 8px,
+			var(--card) 8px 16px
+		);
+		content: '';
+	}
+
+	.hero::after {
+		position: absolute;
+		inset: 0 1.1rem 0 auto;
+		width: 8px;
+		border-inline: 2px solid var(--ink);
+		background: var(--status-success);
+		content: '';
+	}
+
+	.hero-image {
+		width: 92px;
+		height: 92px;
+		flex: 0 0 auto;
+		border: 2.5px solid var(--ink);
+		border-radius: 12px;
+		background-color: color-mix(in oklab, var(--status-success) 35%, black);
+		background-image: radial-gradient(var(--accent-loud) 2px, transparent 3px);
+		background-size: 17px 19px;
+	}
+
+	.hero-for {
+		margin: 0;
+		color: var(--muted-foreground);
+		font-size: var(--text-base);
+	}
+
+	.hero-for b {
+		color: var(--foreground);
+	}
+
+	.hero-title {
+		margin: 0.1rem 0;
+		font-family: var(--font-heading);
+		font-size: 1.4rem;
+		font-weight: 700;
+		line-height: 1.1;
+	}
+
+	.hero-meta {
+		margin: 0;
+		color: var(--muted-foreground);
+		font-size: var(--text-md);
+	}
+
+	/* ── Toolbar (WishlistDetailToolbar, mobile) ─────────────── */
+	.wishlist-toolbar {
+		border: 2.5px solid var(--ink);
+		border-radius: var(--radius-panel);
+		background: var(--card);
+		box-shadow: var(--elevation-ordinary);
+		padding: var(--gift-content-inset) var(--gift-content-inset-end)
+			var(--gift-content-inset-bottom) var(--gift-content-inset);
+	}
+
+	.toolbar-mobile {
+		display: grid;
+		min-width: 0;
+		grid-auto-rows: minmax(var(--size-control-lg), auto);
+		gap: var(--nested-control-gap);
+	}
+
+	.mobile-browse-row {
+		display: flex;
+		min-width: 0;
+		align-items: center;
+		gap: var(--nested-control-gap);
+		white-space: nowrap;
+	}
+
+	.mobile-browse-spacer {
+		min-width: 0;
+		flex: 1 1 auto;
+		margin-inline-end: calc(-1 * var(--nested-control-gap));
+	}
+
+	.view-switcher {
+		display: inline-flex;
+		border-radius: var(--radius-btn);
+		background: var(--accent);
+	}
+
+	.view-switcher .btn > .elevation-surface {
+		color: var(--muted-foreground);
+	}
+
+	.view-switcher .btn[aria-checked='true'] > .elevation-surface {
+		border-color: var(--ink);
+		background: var(--card);
+		color: var(--foreground);
+		box-shadow: var(--elevation-ordinary);
+	}
+
+	.active-filter-count {
+		position: absolute;
+		top: -0.375rem;
+		right: -0.375rem;
+		display: grid;
+		min-width: 1.25rem;
+		height: 1.25rem;
+		place-items: center;
+		border: 2px solid var(--card);
+		border-radius: 999px;
+		background: var(--primary);
+		color: var(--primary-foreground);
+		font-size: var(--text-sm);
+		font-weight: 700;
+		padding-inline: 0.25rem;
+	}
+
+	/* Designed: mobile active-filter row, reuses the desktop ActiveFilterPills face. */
+	.mobile-active-filters {
+		display: flex;
+		min-width: 0;
+		align-items: center;
+		gap: 0.375rem;
+		margin-inline: calc(-1 * var(--gift-content-inset)) calc(-1 * var(--gift-content-inset-end));
+		border-top: 1px solid var(--border);
+		padding: calc(var(--nested-control-gap) - 0.25rem) var(--gift-content-inset-end) 0
+			var(--gift-content-inset);
+		overflow-x: auto;
+		overscroll-behavior-inline: contain;
+		scrollbar-width: none;
+		white-space: nowrap;
+	}
+
+	.mobile-active-filters::-webkit-scrollbar {
+		display: none;
+	}
+
+	.active-filter-pill {
+		position: relative;
+		display: inline-flex;
+		height: var(--size-control-md);
+		max-width: 12.5rem;
+		flex: 0 0 auto;
+		align-items: center;
+		gap: 0.25rem;
+		border: 2px solid var(--ink);
+		border-radius: 999px;
+		background: var(--primary);
+		color: var(--primary-foreground);
+		font-size: var(--text-md);
+		font-weight: 600;
+		margin-block: 0.25rem;
+		padding: 0 0.1875rem 0 0.75rem;
+	}
+
+	.active-filter-pill:has(button:focus-visible) {
+		outline: 2px solid var(--ring);
+		outline-offset: 2px;
+	}
+
+	.active-filter-pill-label {
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	.active-filter-pill-remove {
+		display: grid;
+		width: 1.5rem;
+		height: 1.5rem;
+		flex: 0 0 auto;
+		place-items: center;
+		border: 0;
+		border-radius: 999px;
+		background: transparent;
+		color: currentColor;
+		cursor: pointer;
+		outline: none;
+	}
+
+	/* The whole pill plus 4px above and below is the remove target: 40px tall on touch. */
+	.active-filter-pill-remove::after {
+		position: absolute;
+		inset: -6px -2px;
+		border-radius: 999px;
+		content: '';
+	}
+
+	.active-filter-pill:hover .active-filter-pill-remove {
+		background: color-mix(in oklab, currentColor 24%, transparent);
+	}
+
+	.active-filter-pill-remove .icon {
+		width: 0.875rem;
+		height: 0.875rem;
+		stroke-width: 2.5;
+	}
+
+	.mobile-active-filters .btn-ghost > .elevation-surface {
+		padding-inline: 0.75rem;
+		color: var(--foreground);
+		text-decoration: underline;
+		text-decoration-color: var(--rule-line);
+		text-underline-offset: 3px;
+	}
+
+	/* ── Gifts ───────────────────────────────────────────────── */
+	.group-heading {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+	}
+
+	.group-heading span {
+		border: 2.5px solid var(--ink);
+		border-radius: 999px;
+		background: var(--card);
+		font-family: var(--font-heading);
+		font-size: var(--text-base);
+		font-weight: 700;
+		padding: 0.35rem 1rem;
+		text-transform: uppercase;
+	}
+
+	.group-heading::after {
+		height: 1px;
+		flex: 1 1 auto;
+		background: var(--border);
+		content: '';
+	}
+
+	.gift-card {
+		overflow: hidden;
+		border: 2.5px solid var(--ink);
+		border-radius: var(--radius-panel);
+		background: var(--card);
+		box-shadow: var(--elevation-ordinary);
+	}
+
+	.gift-image {
+		position: relative;
+		height: 176px;
+		border-bottom: 2px solid var(--ink);
+		background: var(--gift-tint);
+	}
+
+	.gift-image::before {
+		position: absolute;
+		inset: 30% 34%;
+		border: 2.5px solid color-mix(in oklab, var(--ink) 35%, transparent);
+		border-radius: 14px;
+		content: '';
+	}
+
+	.gift-likes {
+		position: absolute;
+		top: 0.6rem;
+		right: 0.75rem;
+		display: inline-flex;
+		align-items: center;
+		gap: 0.25rem;
+		border-radius: 999px;
+		background: var(--card);
+		font-weight: 700;
+		padding: 0.15rem 0.5rem;
+	}
+
+	.gift-likes .icon {
+		color: var(--primary);
+	}
+
+	.gift-body {
+		display: grid;
+		gap: 0.2rem;
+		padding: 0.6rem 0.85rem 0.75rem;
+	}
+
+	.gift-title {
+		margin: 0;
+		font-family: var(--font-body);
+		font-size: var(--text-lg);
+		font-weight: 700;
+	}
+
+	.gift-meta {
+		margin: 0;
+		color: var(--muted-foreground);
+		font-size: var(--text-md);
+	}
+
+	.tint-coffee {
+		--gift-tint: color-mix(in oklab, var(--p-deep) 45%, #6b4a2b);
+	}
+
+	.tint-audio {
+		--gift-tint: color-mix(in oklab, var(--p-ink) 70%, var(--muted));
+	}
+
+	.tint-book {
+		--gift-tint: color-mix(in oklab, var(--accent-loud) 60%, var(--card));
+	}
+
+	/* ── Bottom sheet (WishlistBottomSheet + header + choice) ── */
+	.sheet-overlay {
+		position: absolute;
+		inset: 0;
+		background: color-mix(in oklab, var(--ink) 42%, transparent);
+	}
+
+	.wishlist-bottom-sheet {
+		position: absolute;
+		right: 0.5rem;
+		bottom: 0;
+		left: 0.5rem;
+		display: flex;
+		max-height: 80%;
+		height: 80%;
+		flex-direction: column;
+		overflow: hidden;
+		border: 2.5px solid var(--ink);
+		border-bottom: 0;
+		border-radius: var(--radius-panel) var(--radius-panel) 0 0;
+		background: var(--card);
+		padding-bottom: 0.75rem;
+	}
+
+	.sheet-header {
+		position: relative;
+		flex: 0 0 auto;
+		border-bottom: 1px solid var(--border);
+		padding: 0.75rem var(--overlay-close-clearance) 0.75rem 1rem;
+	}
+
+	.sheet-title {
+		margin: 0;
+		font-family: var(--font-heading);
+		font-size: var(--text-lg);
+		font-weight: 700;
+	}
+
+	.sheet-description {
+		margin: 0.25rem 0 0;
+		color: var(--muted-foreground);
+		font-size: var(--text-base);
+	}
+
+	.sheet-close {
+		position: absolute;
+		top: 0.75rem;
+		right: 0.75rem;
+		width: 40px;
+		height: 40px;
+		border-radius: 999px;
+	}
+
+	.sheet-close > .elevation-surface {
+		border-width: 2px;
+		border-color: var(--ink);
+		background: var(--card);
+	}
+
+	.mobile-sheet-scroll {
+		min-height: 0;
+		flex: 1 1 auto;
+		overflow-y: auto;
+		overscroll-behavior: contain;
+		padding: 0.5rem 0.5rem 0.75rem;
+	}
+
+	.mobile-filter-section {
+		border-top: 1px solid var(--border);
+		padding-top: 0.5rem;
+	}
+
+	.mobile-filter-section:first-child {
+		border-top: 0;
+	}
+
+	.mobile-filter-section h3 {
+		margin: 0;
+		color: var(--muted-foreground);
+		font-family: var(--font-heading);
+		font-size: 0.75rem;
+		font-weight: 800;
+		padding: 0.25rem 0.75rem;
+		text-transform: uppercase;
+	}
+
+	.sheet-choice {
+		display: flex;
+		min-height: 2.5rem;
+		align-items: center;
+		gap: 0.75rem;
+		border-radius: var(--radius-btn);
+		font-size: var(--text-lg);
+		font-weight: 650;
+		padding: 0.25rem 0.75rem;
+		cursor: pointer;
+	}
+
+	.sheet-choice:hover {
+		background: var(--accent);
+	}
+
+	.sheet-choice input {
+		position: absolute;
+		opacity: 0;
+		pointer-events: none;
+	}
+
+	.checkbox-surface {
+		display: grid;
+		width: var(--size-control-lg);
+		height: var(--size-control-lg);
+		flex: 0 0 auto;
+		place-content: center;
+		border: 2px solid var(--ink);
+		border-radius: var(--radius-btn);
+		background: var(--card);
+		box-shadow: var(--elevation-ordinary);
+		color: var(--primary-foreground);
+	}
+
+	.sheet-choice input:checked + .checkbox-surface {
+		background: var(--primary);
+	}
+
+	.sheet-choice input:not(:checked) + .checkbox-surface .icon {
+		visibility: hidden;
+	}
+
+	.sheet-choice input:focus-visible + .checkbox-surface {
+		outline: 2px solid var(--ring);
+		outline-offset: 2px;
+	}
+
+	/* Designed: sticky sheet footer between the scroll body and the tab bar. */
+	.mobile-sheet-footer {
+		display: grid;
+		flex: 0 0 auto;
+		grid-template-columns: auto minmax(0, 1fr);
+		gap: var(--nested-control-gap);
+		border-top: 1px solid var(--border);
+		background: var(--card);
+		box-shadow: 0 -10px 14px -12px var(--soft-shadow-strong);
+		padding: 0.625rem calc(0.75rem + var(--depth-clearance)) calc(0.625rem + var(--depth-clearance))
+			0.75rem;
+	}
+
+	.mobile-sheet-footer .btn {
+		width: 100%;
+	}
+
+	.mobile-sheet-switcher {
+		min-width: 0;
+		flex: 0 0 auto;
+		border-top: 1px solid var(--border);
+		padding: 0.5rem;
+	}
+
+	.tab-bar {
+		display: flex;
+		gap: 0.25rem;
+	}
+
+	.tab-bar-item {
+		display: inline-flex;
+		height: var(--size-control-lg);
+		min-width: 0;
+		flex: 1 1 0;
+		align-items: center;
+		justify-content: center;
+		gap: 0.375rem;
+		border: 0;
+		border-radius: var(--radius-btn);
+		background: transparent;
+		color: var(--muted-foreground);
+		font: inherit;
+		font-size: var(--text-base);
+		font-weight: 600;
+		cursor: pointer;
+	}
+
+	.tab-bar-item[aria-checked='true'] {
+		background: var(--accent);
+		color: var(--foreground);
+		outline: 2px solid var(--ink);
+		outline-offset: -2px;
+	}
+
+	/* ── Disabled-footer detail ──────────────────────────────── */
+	.detail {
+		width: 374px;
+		overflow: hidden;
+		border: 2.5px solid var(--ink);
+		border-radius: var(--radius-panel);
+		background: var(--card);
+	}
+
+	.detail .mobile-sheet-footer {
+		box-shadow: none;
+		border-top: 0;
+	}
+
+	.notes {
+		max-width: 1234px;
+		margin: 1.75rem 0 0;
+		color: var(--muted-foreground);
+		font-size: var(--text-base);
+		line-height: 1.5;
+		padding-left: 1.1rem;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.btn > .elevation-surface {
+			transition: none;
+		}
+	}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+	<defs>
+		<symbol id="i-gift" viewBox="0 0 24 24"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13"/><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5"/></symbol>
+		<symbol id="i-settings" viewBox="0 0 24 24"><path d="M14 17H5"/><path d="M19 7h-9"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/></symbol>
+		<symbol id="i-grid" viewBox="0 0 24 24"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></symbol>
+		<symbol id="i-list" viewBox="0 0 24 24"><path d="M3 12h.01"/><path d="M3 18h.01"/><path d="M3 6h.01"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M8 6h13"/></symbol>
+		<symbol id="i-carousel" viewBox="0 0 24 24"><path d="M2 3v18"/><rect width="12" height="18" x="6" y="3" rx="2"/><path d="M22 3v18"/></symbol>
+		<symbol id="i-sliders" viewBox="0 0 24 24"><path d="M21 4h-7"/><path d="M10 4H3"/><path d="M21 12h-9"/><path d="M8 12H3"/><path d="M21 20h-5"/><path d="M12 20H3"/><path d="M14 2v4"/><path d="M8 10v4"/><path d="M16 18v4"/></symbol>
+		<symbol id="i-ellipsis" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></symbol>
+		<symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol>
+		<symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+		<symbol id="i-sort" viewBox="0 0 24 24"><path d="m21 16-4 4-4-4"/><path d="M17 20V4"/><path d="m3 8 4-4 4 4"/><path d="M7 4v16"/></symbol>
+		<symbol id="i-layers" viewBox="0 0 24 24"><path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/></symbol>
+		<symbol id="i-filter" viewBox="0 0 24 24"><path d="M10 18h4"/><path d="M11 6H3"/><path d="M15 6h6"/><path d="M18 9V3"/><path d="M7 12h8"/></symbol>
+		<symbol id="i-heart" viewBox="0 0 24 24"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></symbol>
+	</defs>
+</svg>
+
+<main class="board">
+	<p class="eyebrow">VARIANT C: PAGE PILLS + STICKY SHEET FOOTER</p>
+	<h1 class="board-title">Seznam „Vánoce 2026“, mobil 390 px</h1>
+
+	<div class="frames">
+		<!-- ═══════════ State 1: closed page, two store filters ═══════════ -->
+		<section class="frame-column" aria-labelledby="state-1-caption">
+			<div class="phone">
+				<header class="navbar">
+					<span class="logo-tile"><svg class="icon"><use href="#i-gift"/></svg></span>
+					<span class="wordmark">přejeme si <small>.cz</small></span>
+					<button class="btn btn-outline btn-icon elevation-owner elevation-owner-raised" type="button" aria-label="Nastavení"><span class="elevation-surface"><svg class="icon"><use href="#i-settings"/></svg></span></button>
+					<button class="btn btn-primary elevation-owner elevation-owner-raised" type="button"><span class="elevation-surface">Přihlásit se</span></button>
+				</header>
+				<div class="wishlist-page" data-palette="ruby">
+					<article class="hero">
+						<div class="hero-image" role="img" aria-label="Rozsvícený vánoční stromek"></div>
+						<div>
+							<p class="hero-for">Pro: <b>Martin Novák</b></p>
+							<h2 class="hero-title">Vánoce 2026</h2>
+							<p class="hero-meta">Sdíleno · Vánoce · za 42 dní · 13 přání</p>
+						</div>
+					</article>
+
+					<div class="wishlist-toolbar">
+						<div class="toolbar-mobile">
+							<div class="mobile-browse-row">
+								<div class="view-switcher" role="radiogroup" aria-label="Zobrazení přání">
+									<button class="btn btn-icon" role="radio" aria-checked="true" aria-label="Mřížka" type="button"><span class="elevation-surface"><svg class="icon"><use href="#i-grid"/></svg></span></button>
+									<button class="btn btn-icon" role="radio" aria-checked="false" aria-label="Seznam" type="button"><span class="elevation-surface"><svg class="icon"><use href="#i-list"/></svg></span></button>
+									<button class="btn btn-icon" role="radio" aria-checked="false" aria-label="Karusel" type="button"><span class="elevation-surface"><svg class="icon"><use href="#i-carousel"/></svg></span></button>
+								</div>
+								<button class="btn btn-outline btn-icon elevation-owner elevation-owner-raised elevation-owner-anchored" type="button" aria-haspopup="dialog" aria-expanded="false" aria-label="Možnosti zobrazení: Aktivní filtry: 2">
+									<span class="elevation-surface"><svg class="icon"><use href="#i-sliders"/></svg></span>
+									<span class="active-filter-count" aria-hidden="true">2</span>
+								</button>
+								<div class="mobile-browse-spacer"></div>
+								<button class="btn btn-outline btn-icon elevation-owner elevation-owner-raised" type="button" aria-haspopup="dialog" aria-label="Další akce"><span class="elevation-surface"><svg class="icon"><use href="#i-ellipsis"/></svg></span></button>
+							</div>
+
+							<div class="mobile-active-filters" role="group" aria-label="Aktivní filtry: 2">
+								<span class="active-filter-pill">
+									<span class="active-filter-pill-label">alza.cz</span>
+									<button class="active-filter-pill-remove" type="button" aria-label="Odebrat filtr alza.cz"><svg class="icon"><use href="#i-x"/></svg></button>
+								</span>
+								<span class="active-filter-pill">
+									<span class="active-filter-pill-label">datart.cz</span>
+									<button class="active-filter-pill-remove" type="button" aria-label="Odebrat filtr datart.cz"><svg class="icon"><use href="#i-x"/></svg></button>
+								</span>
+								<button class="btn btn-ghost" type="button"><span class="elevation-surface">Zrušit filtry</span></button>
+							</div>
+						</div>
+					</div>
+					<p class="sr-only" aria-live="polite">Zobrazeno 4 z 13 přání</p>
+
+					<div class="group-heading"><span>Vysoká</span></div>
+					<article class="gift-card tint-coffee">
+						<div class="gift-image"><span class="gift-likes"><svg class="icon"><use href="#i-heart"/></svg>2</span></div>
+						<div class="gift-body">
+							<h3 class="gift-title">Kávovar De’Longhi Dedica EC685</h3>
+							<p class="gift-meta">datart.cz · 5 990 Kč</p>
+						</div>
+					</article>
+					<article class="gift-card tint-audio">
+						<div class="gift-image"><span class="gift-likes"><svg class="icon"><use href="#i-heart"/></svg>0</span></div>
+						<div class="gift-body">
+							<h3 class="gift-title">Sluchátka Sony WH-1000XM5</h3>
+							<p class="gift-meta">alza.cz · 8 490 Kč</p>
+						</div>
+					</article>
+				</div>
+			</div>
+			<p class="caption" id="state-1-caption"><strong>1 · Filtry aktivní</strong><span>alza.cz + datart.cz, 4 ze 13 přání. Řada pilulek pod nástroji, celá pilulka maže svou hodnotu (40 px cíl), „Zrušit filtry“ na konci. Řada se posouvá vodorovně, nezalamuje.</span></p>
+		</section>
+
+		<!-- ═══════════ State 2: Display sheet, Filtrovat, store facet ═══════════ -->
+		<section class="frame-column" aria-labelledby="state-2-caption">
+			<div class="phone" aria-hidden="false">
+				<header class="navbar" inert>
+					<span class="logo-tile"><svg class="icon"><use href="#i-gift"/></svg></span>
+					<span class="wordmark">přejeme si <small>.cz</small></span>
+					<span class="btn btn-outline btn-icon elevation-owner elevation-owner-raised"><span class="elevation-surface"><svg class="icon"><use href="#i-settings"/></svg></span></span>
+					<span class="btn btn-primary elevation-owner elevation-owner-raised"><span class="elevation-surface">Přihlásit se</span></span>
+				</header>
+				<div class="wishlist-page" data-palette="ruby" inert>
+					<article class="hero">
+						<div class="hero-image"></div>
+						<div>
+							<p class="hero-for">Pro: <b>Martin Novák</b></p>
+							<h2 class="hero-title">Vánoce 2026</h2>
+							<p class="hero-meta">Sdíleno · Vánoce · za 42 dní · 13 přání</p>
+						</div>
+					</article>
+				</div>
+
+				<div data-palette="ruby">
+					<div class="sheet-overlay"></div>
+					<div class="wishlist-bottom-sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title" aria-describedby="sheet-description">
+						<div class="sheet-header">
+							<h2 class="sheet-title" id="sheet-title">Možnosti zobrazení</h2>
+							<p class="sheet-description" id="sheet-description">Filtrovat: Aktivní filtry: 2</p>
+							<button class="btn btn-icon sheet-close elevation-owner elevation-owner-raised" type="button" aria-label="Zavřít"><span class="elevation-surface"><svg class="icon"><use href="#i-x"/></svg></span></button>
+						</div>
+
+						<div class="mobile-sheet-scroll" data-scroll-to-store>
+							<section class="mobile-filter-section">
+								<h3>Kategorie</h3>
+								<label class="sheet-choice"><input type="checkbox" /><span class="checkbox-surface"><svg class="icon"><use href="#i-check"/></svg></span>Elektronika</label>
+								<label class="sheet-choice"><input type="checkbox" /><span class="checkbox-surface"><svg class="icon"><use href="#i-check"/></svg></span>Knihy</label>
+								<label class="sheet-choice"><input type="checkbox" /><span class="checkbox-surface"><svg class="icon"><use href="#i-check"/></svg></span>Sport</label>
+							</section>
+							<section class="mobile-filter-section">
+								<h3>Priorita</h3>
+								<label class="sheet-choice"><input type="checkbox" /><span class="checkbox-surface"><svg class="icon"><use href="#i-check"/></svg></span>Vysoká</label>
+								<label class="sheet-choice"><input type="checkbox" /><span class="checkbox-surface"><svg class="icon"><use href="#i-check"/></svg></span>Střední</label>
+								<label class="sheet-choice"><input type="checkbox" /><span class="checkbox-surface"><svg class="icon"><use href="#i-check"/></svg></span>Nízká</label>
+								<label class="sheet-choice"><input type="checkbox" /><span class="checkbox-surface"><svg class="icon"><use href="#i-check"/></svg></span>Bez priority</label>
+							</section>
+							<section class="mobile-filter-section" data-store-facet>
+								<h3>Obchod</h3>
+								<label class="sheet-choice"><input type="checkbox" checked /><span class="checkbox-surface"><svg class="icon"><use href="#i-check"/></svg></span>alza.cz</label>
+								<label class="sheet-choice"><input type="checkbox" checked /><span class="checkbox-surface"><svg class="icon"><use href="#i-check"/></svg></span>datart.cz</label>
+								<label class="sheet-choice"><input type="checkbox" /><span class="checkbox-surface"><svg class="icon"><use href="#i-check"/></svg></span>kosmas.cz</label>
+								<label class="sheet-choice"><input type="checkbox" /><span class="checkbox-surface"><svg class="icon"><use href="#i-check"/></svg></span>sportisimo.cz</label>
+								<label class="sheet-choice"><input type="checkbox" /><span class="checkbox-surface"><svg class="icon"><use href="#i-check"/></svg></span>Bez odkazu</label>
+							</section>
+						</div>
+
+						<div class="mobile-sheet-footer">
+							<button class="btn btn-secondary elevation-owner elevation-owner-raised elevation-owner-anchored" type="button"><span class="elevation-surface"><svg class="icon"><use href="#i-x"/></svg>Zrušit filtry</span></button>
+							<button class="btn btn-primary elevation-owner elevation-owner-raised elevation-owner-anchored" type="button"><span class="elevation-surface">Zobrazit 4 přání</span></button>
+						</div>
+
+						<div class="mobile-sheet-switcher">
+							<div class="tab-bar" role="radiogroup" aria-label="Možnosti zobrazení">
+								<button class="tab-bar-item" type="button" role="radio" aria-checked="false"><svg class="icon"><use href="#i-sort"/></svg>Řadit podle</button>
+								<button class="tab-bar-item" type="button" role="radio" aria-checked="false"><svg class="icon"><use href="#i-layers"/></svg>Seskupení</button>
+								<button class="tab-bar-item" type="button" role="radio" aria-checked="true"><svg class="icon"><use href="#i-filter"/></svg>Filtrovat</button>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+			<p class="caption" id="state-2-caption"><strong>2 · Sheet, Filtrovat</strong><span>Pevná patička nad lištou záložek: „Zrušit filtry“ (sekundární) a „Zobrazit 4 přání“ (zavře sheet). Spodní ghost tlačítko v seznamu je odstraněno.</span></p>
+			<div class="detail" data-palette="ruby" aria-label="Patička bez aktivních filtrů">
+				<div class="mobile-sheet-footer">
+					<button class="btn btn-secondary elevation-owner elevation-owner-raised elevation-owner-anchored" type="button" disabled><span class="elevation-surface"><svg class="icon"><use href="#i-x"/></svg>Zrušit filtry</span></button>
+					<button class="btn btn-primary elevation-owner elevation-owner-raised elevation-owner-anchored" type="button"><span class="elevation-surface">Zobrazit 13 přání</span></button>
+				</div>
+			</div>
+			<p class="caption"><span>Bez aktivních filtrů: „Zrušit filtry“ je neaktivní, počet ukazuje celý seznam.</span></p>
+		</section>
+
+		<!-- ═══════════ State 3: closed page after clearing ═══════════ -->
+		<section class="frame-column" aria-labelledby="state-3-caption">
+			<div class="phone">
+				<header class="navbar">
+					<span class="logo-tile"><svg class="icon"><use href="#i-gift"/></svg></span>
+					<span class="wordmark">přejeme si <small>.cz</small></span>
+					<button class="btn btn-outline btn-icon elevation-owner elevation-owner-raised" type="button" aria-label="Nastavení"><span class="elevation-surface"><svg class="icon"><use href="#i-settings"/></svg></span></button>
+					<button class="btn btn-primary elevation-owner elevation-owner-raised" type="button"><span class="elevation-surface">Přihlásit se</span></button>
+				</header>
+				<div class="wishlist-page" data-palette="ruby">
+					<article class="hero">
+						<div class="hero-image" role="img" aria-label="Rozsvícený vánoční stromek"></div>
+						<div>
+							<p class="hero-for">Pro: <b>Martin Novák</b></p>
+							<h2 class="hero-title">Vánoce 2026</h2>
+							<p class="hero-meta">Sdíleno · Vánoce · za 42 dní · 13 přání</p>
+						</div>
+					</article>
+
+					<div class="wishlist-toolbar">
+						<div class="toolbar-mobile">
+							<div class="mobile-browse-row">
+								<div class="view-switcher" role="radiogroup" aria-label="Zobrazení přání">
+									<button class="btn btn-icon" role="radio" aria-checked="true" aria-label="Mřížka" type="button"><span class="elevation-surface"><svg class="icon"><use href="#i-grid"/></svg></span></button>
+									<button class="btn btn-icon" role="radio" aria-checked="false" aria-label="Seznam" type="button"><span class="elevation-surface"><svg class="icon"><use href="#i-list"/></svg></span></button>
+									<button class="btn btn-icon" role="radio" aria-checked="false" aria-label="Karusel" type="button"><span class="elevation-surface"><svg class="icon"><use href="#i-carousel"/></svg></span></button>
+								</div>
+								<button class="btn btn-outline btn-icon is-focus-visible elevation-owner elevation-owner-raised elevation-owner-anchored" type="button" aria-haspopup="dialog" aria-expanded="false" aria-label="Možnosti zobrazení">
+									<span class="elevation-surface"><svg class="icon"><use href="#i-sliders"/></svg></span>
+								</button>
+								<div class="mobile-browse-spacer"></div>
+								<button class="btn btn-outline btn-icon elevation-owner elevation-owner-raised" type="button" aria-haspopup="dialog" aria-label="Další akce"><span class="elevation-surface"><svg class="icon"><use href="#i-ellipsis"/></svg></span></button>
+							</div>
+						</div>
+					</div>
+					<p class="sr-only" aria-live="polite">Filtry zrušeny, zobrazeno 13 přání</p>
+
+					<div class="group-heading"><span>Vysoká</span></div>
+					<article class="gift-card tint-coffee">
+						<div class="gift-image"><span class="gift-likes"><svg class="icon"><use href="#i-heart"/></svg>2</span></div>
+						<div class="gift-body">
+							<h3 class="gift-title">Kávovar De’Longhi Dedica EC685</h3>
+							<p class="gift-meta">datart.cz · 5 990 Kč</p>
+						</div>
+					</article>
+					<article class="gift-card tint-book">
+						<div class="gift-image"><span class="gift-likes"><svg class="icon"><use href="#i-heart"/></svg>1</span></div>
+						<div class="gift-body">
+							<h3 class="gift-title">Karel Čapek: Povídky z jedné kapsy</h3>
+							<p class="gift-meta">kosmas.cz · 349 Kč</p>
+						</div>
+					</article>
+				</div>
+			</div>
+			<p class="caption" id="state-3-caption"><strong>3 · Po zrušení</strong><span>Řada pilulek zmizí, odznak počtu také; nástroje jsou ve výchozím stavu a fokus se vrací na tlačítko Možnosti zobrazení.</span></p>
+		</section>
+	</div>
+
+	<ul class="notes">
+		<li>Pilulky přebírají vzhled desktopových ActiveFilterPills (primární výplň, inkoustový obrys); na mobilu mají 32 px vizuál a 40 px dotykový cíl přes celou pilulku.</li>
+		<li>Odebrání pilulky přesune fokus na další pilulku, poslední na tlačítko Možnosti zobrazení (stejně jako na desktopu).</li>
+		<li>Patička sheetu je mimo posuvnou oblast, takže je dosažitelná bez posouvání přes všechny filtry.</li>
+	</ul>
+</main>
+<script>
+	for (const scroller of document.querySelectorAll('[data-scroll-to-store]')) {
+		const storeFacet = scroller.querySelector('[data-store-facet]');
+		scroller.scrollTop = storeFacet.offsetTop - scroller.offsetTop - 56;
+	}
+</script>
+</body>
+</html>

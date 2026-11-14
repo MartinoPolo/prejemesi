@@ -8,9 +8,9 @@ export const reserveModalVariants = tv({
 		body: 'min-w-0 flex flex-col gap-4 px-6 pb-6 pt-2',
 		// Keyboard open on a phone: context compacts and the actions stay pinned above the keyboard.
 		giftSummary:
-			'flex items-center gap-3 rounded-[12px] border-2 border-ink bg-surface p-3 keyboard-open:p-1.5',
+			'flex items-center gap-3 rounded-[12px] border-2 border-edge bg-surface p-3 keyboard-open:p-1.5',
 		giftImage:
-			'size-12 flex-shrink-0 -rotate-3 overflow-hidden rounded-[10px] border-2 border-ink bg-tint keyboard-open:size-8',
+			'size-12 flex-shrink-0 -rotate-3 overflow-hidden rounded-[10px] border-2 border-edge bg-tint keyboard-open:size-8',
 		giftImageElement: 'size-full object-cover',
 		giftImagePlaceholder: 'flex size-full items-center justify-center',
 		giftInfo: 'min-w-0 flex-1',

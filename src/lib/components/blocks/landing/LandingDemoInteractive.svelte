@@ -158,8 +158,8 @@
 			<button
 				type="button"
 				class={cn(
-					'size-6 cursor-pointer rounded-full border-2 border-ink transition-transform',
-					palette === demoPalette && 'scale-110 ring-2 ring-ink ring-offset-2',
+					'size-6 cursor-pointer rounded-full border-2 border-edge transition-transform',
+					palette === demoPalette && 'scale-110 ring-2 ring-edge ring-offset-2',
 				)}
 				style:background-color={PALETTE_SWATCHES[palette]}
 				aria-pressed={palette === demoPalette}
@@ -320,7 +320,7 @@
 		/* The pane card tucks under the print's bottom edge — laid on top, not stacked. */
 		margin-bottom: -0.5rem;
 		padding: 8px 8px 0;
-		background: #fffdf6;
+		background: var(--paper);
 		border: 2px solid #4a443a;
 		border-radius: 3px;
 		box-shadow: var(--elevation-lifted-strong);

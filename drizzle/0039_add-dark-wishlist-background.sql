@@ -1,0 +1,2 @@
+CREATE TYPE "public"."dark_wishlist_background" AS ENUM('wishlist', 'app', 'tint');--> statement-breakpoint
+ALTER TABLE "user" ADD COLUMN "dark_wishlist_background" "dark_wishlist_background" DEFAULT 'app' NOT NULL;

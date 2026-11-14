@@ -17,7 +17,7 @@
 </script>
 
 <nav
-	class="landing-nav sticky top-0 z-30 border-b-(length:--border-w) border-ink bg-card"
+	class="landing-nav sticky top-0 z-30 border-b-(length:--border-w) border-edge bg-card"
 	aria-label={m.landing_nav_label()}
 >
 	<div

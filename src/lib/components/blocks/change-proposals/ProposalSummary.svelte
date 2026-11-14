@@ -96,7 +96,7 @@
 		gap: var(--space-1) 14px;
 		margin-top: var(--space-4);
 		padding: 14px var(--space-4);
-		border: 2px solid var(--ink);
+		border: 2px solid var(--edge);
 		border-radius: var(--radius-panel);
 		background: var(--card);
 	}
@@ -107,7 +107,7 @@
 		place-items: center;
 		width: 40px;
 		height: 40px;
-		border: 2px solid var(--ink);
+		border: 2px solid var(--edge);
 		border-radius: 10px;
 		background: var(--tint);
 		color: var(--ink);

@@ -373,7 +373,7 @@
 
 <style>
 	/* Mockup pill states: hover = subtle surface pill, active = filled pill
-	   with an ink border (no underline). The dropdown panel content below uses the shared
+	   with an edge border (no underline). The dropdown panel content below uses the shared
 	   DropdownMenu.* components + design-system Tailwind tokens instead of custom CSS. */
 	.nav-link {
 		display: inline-flex;
@@ -404,7 +404,7 @@
 	.nav-link.is-active {
 		background: var(--accent);
 		color: var(--foreground);
-		border-color: var(--ink);
+		border-color: var(--edge);
 	}
 
 	.nav-link:hover :global(.nav-chevron),

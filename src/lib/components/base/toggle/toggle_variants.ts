@@ -13,9 +13,9 @@ export const togglePressedVariants = tv({
 	variants: {
 		intent: {
 			default:
-				'group-data-[state=on]:bg-accent group-data-[state=on]:text-foreground group-data-[state=on]:border-ink',
+				'group-data-[state=on]:bg-accent group-data-[state=on]:text-foreground group-data-[state=on]:border-edge',
 			outline:
-				'group-data-[state=on]:bg-primary group-data-[state=on]:text-primary-foreground group-data-[state=on]:border-ink',
+				'group-data-[state=on]:bg-primary group-data-[state=on]:text-primary-foreground group-data-[state=on]:border-edge',
 		},
 	},
 	defaultVariants: {

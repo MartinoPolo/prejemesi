@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { untrack } from 'svelte';
+	import { onMount, untrack } from 'svelte';
 	import { MediaQuery } from 'svelte/reactivity';
 	import type { ChangeRowContext } from '$lib/components/blocks/change-proposals/change_row_model.js';
 	import type { DecidingProposalRegistry } from '$lib/components/blocks/change-proposals/gift_live_preview.js';
@@ -41,6 +41,8 @@
 	$effect(() => () => {
 		dock.panel.current = null;
 	});
+
+	onMount(() => assistant.restore());
 </script>
 
 {#snippet panel()}

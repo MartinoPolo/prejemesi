@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { tick } from 'svelte';
+	import { tick, untrack } from 'svelte';
 	import { resolve } from '$app/paths';
 	import * as m from '$lib/paraglide/messages.js';
 	import ClockIcon from '@lucide/svelte/icons/clock';
@@ -12,7 +12,11 @@
 	import type { ChangeRowContext } from '$lib/components/blocks/change-proposals/change_row_model.js';
 	import { localizeInternalHref } from '$lib/i18n/locale.js';
 	import { translateServerError } from '$lib/modules/errors/translate_server_error.js';
-	import { getPendingChangeProposals } from '$lib/modules/change_proposals/index.js';
+	import {
+		CHANGE_PROPOSAL_STATE,
+		getChangeProposal,
+		getPendingChangeProposals,
+	} from '$lib/modules/change_proposals/index.js';
 	import { getGiftsByWishlistShortId } from '$lib/modules/gifts/gifts.remote.js';
 	import { getWishlistByShortId } from '$lib/modules/wishlists/wishlists.remote.js';
 	import {
@@ -22,6 +26,7 @@
 		getChatSessions,
 		setChatSessionFastForward,
 		startChatSession,
+		stopChatTurn,
 	} from '$lib/modules/chat/chat.remote.js';
 	import {
 		ASSISTANT_PANEL_WIDTH,
@@ -33,14 +38,22 @@
 	import type { useAssistantDock } from '$lib/modules/chat/assistant_dock.context.svelte.js';
 	import {
 		CHAT_ITEM,
+		CHAT_PART,
+		CHAT_PROPOSAL_STATUS,
 		chatThreadItems,
+		continuedAnswerParts,
+		decisionBarProposalId,
 		isChatTurnUnfinished,
-		latestChatProposalId,
 		startLiveChatTurn,
 		withStreamEvent,
+		type ChatProposalStatus,
 		type LiveChatTurn,
 	} from '$lib/modules/chat/chat_thread.js';
-	import { streamChatTurn } from '$lib/modules/chat/chat_turn_stream.js';
+	import {
+		followChatTurn,
+		streamChatTurn,
+		type ChatTurnRefusal,
+	} from '$lib/modules/chat/chat_turn_stream.js';
 	import {
 		CHAT_AVAILABILITY,
 		CHAT_STREAM_EVENT,
@@ -60,6 +73,7 @@
 	import ChatNote from './ChatNote.svelte';
 	import ChatParts from './ChatParts.svelte';
 	import ChatProposal from './ChatProposal.svelte';
+	import ChatRunnerSettings from './ChatRunnerSettings.svelte';
 	import type { DecidingProposalRegistry } from '$lib/components/blocks/change-proposals/gift_live_preview.js';
 	import ChatTurnError from './ChatTurnError.svelte';
 	import ChatWelcome from './ChatWelcome.svelte';
@@ -74,6 +88,9 @@
 	const TIGHT_VISIBLE_HEIGHT = 330;
 	/** How close to the end the thread counts as following the latest message. */
 	const THREAD_END_TOLERANCE = 24;
+	/** How often and how long a stopped answer is awaited in the stored chat. */
+	const STOPPED_ANSWER_CHECKS = 5;
+	const STOPPED_ANSWER_CHECK_MS = 300;
 
 	/**
 	 * The AI assistant for one wishlist: a docked, resizable panel on desktop and a half or full
@@ -107,7 +124,10 @@
 	/** Why the chat's last turn failed, kept once the stored chat replaces the live turn. */
 	let lastTurnFailure = $state.raw<{ sessionId: string; error: ChatTurnErrorKind } | null>(null);
 	let streaming = $state(false);
-	let abortTurn: AbortController | null = null;
+	/** Stops the turn being streamed. */
+	let stopShownTurn: (() => Promise<void>) | null = null;
+	/** The unfinished turn the panel last rejoined, so a failed rejoin is not retried in a loop. */
+	let rejoinedTurnUrl: string | null = null;
 	let creatingSession = $state(false);
 	let footerHeight = $state(0);
 	let threadAtEnd = true;
@@ -144,14 +164,50 @@
 	const messages = $derived(sessionQuery?.current?.messages ?? []);
 	const items = $derived(chatThreadItems(messages));
 	const fastForward = $derived(sessionQuery?.current?.fastForward ?? false);
-	const latestProposalId = $derived(latestChatProposalId(messages));
+	/**
+	 * Only stored proposals take the bar: decisions made on a live turn's copy would be lost when
+	 * the stored chat replaces it.
+	 */
+	const barProposalId = $derived(
+		decisionBarProposalId({ messages, fastForward, proposalStatus: chatProposalStatus }),
+	);
+
+	function chatProposalStatus(proposalId: string): ChatProposalStatus {
+		const proposalQuery = getChangeProposal({ wishlistShortId, proposalId });
+		if (proposalQuery.current !== undefined) {
+			return proposalQuery.current.state === CHANGE_PROPOSAL_STATE.pending
+				? CHAT_PROPOSAL_STATUS.pending
+				: CHAT_PROPOSAL_STATUS.unavailable;
+		}
+		return proposalQuery.error === undefined
+			? CHAT_PROPOSAL_STATUS.loading
+			: CHAT_PROPOSAL_STATUS.unavailable;
+	}
+
 	const sentTexts = $derived(
 		new Set([
 			...items.flatMap((item) => (item.type === CHAT_ITEM.user ? [item.text] : [])),
 			...(liveTurn?.userText == null ? [] : [liveTurn.userText]),
 		]),
 	);
-	const unfinished = $derived(!streaming && liveTurn === null && isChatTurnUnfinished(messages));
+	/** A retried or rejoined turn has no message of its own, so it goes on with the answer shown last. */
+	const continuedAnswer = $derived.by(() => {
+		const last = items.at(-1);
+		return liveTurn !== null && liveTurn.userText === null && last?.type === CHAT_ITEM.assistant
+			? { id: last.id, parts: continuedAnswerParts(last.parts, liveTurn.parts) }
+			: null;
+	});
+	/** A turn that went on while no panel showed it, such as across a reload. */
+	const activeTurnUrl = $derived(sessionQuery?.current?.activeTurnUrl ?? null);
+	const unfinished = $derived(
+		!streaming && liveTurn === null && activeTurnUrl === null && isChatTurnUnfinished(messages),
+	);
+	/** A cut-off answer keeps its text, so its failure stays shown even with nothing to retry. */
+	const shownTurnFailure = $derived(
+		liveTurn === null && lastTurnFailure?.sessionId === sessionId
+			? lastTurnFailure.error
+			: null,
+	);
 	const width = $derived(assistant.panelWidth.current);
 	const maxWidth = $derived(assistant.maxWidth.current);
 	const loading = $derived(
@@ -263,33 +319,69 @@
 		}
 	}
 
-	async function runTurn(request: ChatTurnRequest) {
-		const turnSessionId = await ensureSession();
-		if (turnSessionId === null) {
-			return;
+	/**
+	 * A stopped model turn stores the text it streamed once the server notices the aborted stream,
+	 * shortly after Stop; the live text stays until the stored chat shows it.
+	 */
+	async function waitForStoppedAnswer(turnSessionId: string) {
+		for (
+			let check = 0;
+			check < STOPPED_ANSWER_CHECKS &&
+			sessionId === turnSessionId &&
+			isChatTurnUnfinished(messages);
+			check += 1
+		) {
+			await new Promise((resolve) => setTimeout(resolve, STOPPED_ANSWER_CHECK_MS));
+			await getChatSession({ sessionId: turnSessionId })
+				.refresh()
+				.catch(() => undefined);
 		}
-		const userText = request.kind === CHAT_TURN_KIND.message ? request.text : null;
+	}
+
+	/**
+	 * Shows one turn as it streams, then the stored chat it left. A runner turn names what its
+	 * Stop asks the server to end; a model provider's turn ends with its stream.
+	 */
+	async function showTurn(
+		turnSessionId: string,
+		userText: string | null,
+		stream: (
+			signal: AbortSignal,
+			onEvent: (event: ChatStreamEvent) => void,
+		) => Promise<ChatTurnRefusal | null>,
+		runnerStop: { turnId?: string } | null,
+	) {
 		let turn = startLiveChatTurn(userText);
 		liveTurn = turn;
 		lastTurnFailure = null;
 		streaming = true;
 		const controller = new AbortController();
-		abortTurn = controller;
+		let stopped = false;
+		// A browser going away does not end a runner turn, so Stop asks the server first; the
+		// stream ends after it, and the chat refreshes once the turn has stopped. A Stop the
+		// server refused leaves the turn running, so the panel keeps following it.
+		stopShownTurn = async () => {
+			stopped = true;
+			if (runnerStop !== null) {
+				try {
+					await stopChatTurn({ sessionId: turnSessionId, ...runnerStop });
+				} catch (error) {
+					stopped = false;
+					toastError(translateServerError(error, m.chat_stop_error()));
+					return;
+				}
+			}
+			controller.abort();
+		};
 		void scrollThreadToEnd();
 		try {
-			const refusal = await streamChatTurn({
-				url: localizeInternalHref(
-					resolve('/chat/[sessionId]/turns', { sessionId: turnSessionId }),
-				),
-				request: runnerEnabled
-					? { ...request, model: assistant.runnerModel.current }
-					: request,
-				signal: controller.signal,
-				onEvent: (event) => {
-					turn = withStreamEvent(turn, event);
-					liveTurn = turn;
-					followStreamEvent(event);
-				},
+			const refusal = await stream(controller.signal, (event) => {
+				if (stopped && event.type === CHAT_STREAM_EVENT.error) {
+					return;
+				}
+				turn = withStreamEvent(turn, event);
+				liveTurn = turn;
+				followStreamEvent(event);
 			});
 			if (refusal !== null) {
 				// Nothing was stored, so the message goes back to the composer.
@@ -302,7 +394,7 @@
 			}
 		} finally {
 			streaming = false;
-			abortTurn = null;
+			stopShownTurn = null;
 		}
 		const turnError = liveTurn?.error ?? null;
 		await Promise.allSettled([
@@ -310,10 +402,45 @@
 			getChatSessions({ wishlistShortId }).refresh(),
 			getChatAvailability().refresh(),
 		]);
+		if (stopped && turn.parts.some((part) => part.type === CHAT_PART.text)) {
+			await waitForStoppedAnswer(turnSessionId);
+		}
 		lastTurnFailure =
 			turnError === null ? null : { sessionId: turnSessionId, error: turnError };
 		liveTurn = null;
 		void scrollThreadToEnd();
+	}
+
+	async function runTurn(request: ChatTurnRequest) {
+		const turnSessionId = await ensureSession();
+		if (turnSessionId === null) {
+			return;
+		}
+		// Awaited, because `runnerEnabled` may still be loading when the first message goes out.
+		// Without the flag the turn still runs, but Stop only ends its stream and the panel then
+		// rejoins it.
+		const answeredByRunner = await getChatRunnerEnabled().catch(() => false);
+		const runnerTurn = answeredByRunner
+			? {
+					turnId: crypto.randomUUID(),
+					model: assistant.runnerModel.current,
+					effort: assistant.runnerEffort.current,
+				}
+			: null;
+		await showTurn(
+			turnSessionId,
+			request.kind === CHAT_TURN_KIND.message ? request.text : null,
+			(signal, onEvent) =>
+				streamChatTurn({
+					url: localizeInternalHref(
+						resolve('/chat/[sessionId]/turns', { sessionId: turnSessionId }),
+					),
+					request: runnerTurn === null ? request : { ...request, ...runnerTurn },
+					signal,
+					onEvent,
+				}),
+			runnerTurn === null ? null : { turnId: runnerTurn.turnId },
+		);
 	}
 
 	function send(text: string) {
@@ -322,7 +449,7 @@
 	}
 
 	function stop() {
-		abortTurn?.abort();
+		void stopShownTurn?.();
 	}
 
 	async function setFastForward(next: boolean) {
@@ -381,9 +508,36 @@
 	});
 
 	$effect(() => {
-		if (open) {
+		if (open && assistant.takeFocusRequest()) {
 			void tick().then(() => (composer ?? panel)?.focus());
 		}
+	});
+
+	/** A panel opened while its chat's turn goes on, such as after a reload, shows it streaming. */
+	$effect(() => {
+		if (
+			sessionId === null ||
+			activeTurnUrl === null ||
+			activeTurnUrl === rejoinedTurnUrl ||
+			streaming ||
+			liveTurn !== null
+		) {
+			return;
+		}
+		const url = activeTurnUrl;
+		const rejoinedSessionId = sessionId;
+		rejoinedTurnUrl = url;
+		untrack(() => {
+			void showTurn(
+				rejoinedSessionId,
+				null,
+				async (signal, onEvent) => {
+					await followChatTurn({ url, signal, onEvent });
+					return null;
+				},
+				{},
+			);
+		});
 	});
 
 	/** A prompt queued from the gift menu goes out once its new chat is showing. */
@@ -402,7 +556,7 @@
 		{proposalId}
 		{wishlistShortId}
 		{rowContext}
-		inBar={proposalId === latestProposalId && !fastForward}
+		inBar={proposalId === barProposalId}
 		{decisionBar}
 		{decidingProposals}
 	/>
@@ -488,6 +642,15 @@
 	</div>
 {/snippet}
 
+{#snippet runnerSettings()}
+	<ChatRunnerSettings
+		model={assistant.runnerModel.current}
+		effort={assistant.runnerEffort.current}
+		onmodel={(model) => (assistant.runnerModel.current = model)}
+		oneffort={(effort) => (assistant.runnerEffort.current = effort)}
+	/>
+{/snippet}
+
 {#snippet conversation()}
 	{#if items.length === 0 && liveTurn === null}
 		<ChatWelcome
@@ -500,21 +663,22 @@
 	{#each items as item (item.id)}
 		{#if item.type === CHAT_ITEM.user}
 			<p class="bubble">{item.text}</p>
+		{:else if item.id === continuedAnswer?.id}
+			<ChatParts parts={continuedAnswer.parts} live={streaming} {proposal} />
 		{:else}
 			<ChatParts parts={item.parts} {proposal} />
 		{/if}
 	{/each}
-	{#if liveTurn !== null}
+	{#if liveTurn !== null && continuedAnswer === null}
 		{#if liveTurn.userText !== null}
 			<p class="bubble">{liveTurn.userText}</p>
 		{/if}
 		<ChatParts parts={liveTurn.parts} live={streaming} {proposal} />
 	{/if}
-	{#if unfinished || liveTurn?.error != null}
+	{#if unfinished || liveTurn?.error != null || shownTurnFailure !== null}
 		<ChatTurnError
 			proposed={liveTurn?.proposed === true}
-			error={liveTurn?.error ??
-				(lastTurnFailure?.sessionId === sessionId ? lastTurnFailure.error : null)}
+			error={liveTurn?.error ?? shownTurnFailure}
 			onretry={unfinished && takesMessages
 				? () => void runTurn({ kind: CHAT_TURN_KIND.retry })
 				: undefined}
@@ -557,6 +721,7 @@
 		onfastforward={(next) => void setFastForward(next)}
 		ondismisshint={() => (assistant.hintDismissed.current = true)}
 		onsheet={(next) => (assistant.sheet.current = next)}
+		runnerSettings={runnerEnabled ? runnerSettings : undefined}
 	/>
 	<div
 		class="thread"
@@ -573,13 +738,11 @@
 				sessions={sessionsQuery.current}
 				activeSessionId={sessionId}
 				canStartNew={available}
-				runnerModel={runnerEnabled ? assistant.runnerModel.current : undefined}
 				onopen={(id) => {
 					assistant.selection.current = { type: CHAT_SELECTION.session, sessionId: id };
 					assistant.view.current = ASSISTANT_VIEW.chat;
 				}}
 				onnew={() => assistant.startNewChat()}
-				onrunnermodel={(model) => (assistant.runnerModel.current = model)}
 			/>
 		{:else if sessionQuery?.error}
 			<Alert.Root tone="danger">
@@ -624,7 +787,7 @@
 		flex-direction: column;
 		width: var(--assistant-width);
 		min-height: 0;
-		border-left: 2.5px solid var(--ink);
+		border-left: 2.5px solid var(--edge);
 		background: var(--background);
 	}
 
@@ -673,7 +836,7 @@
 		justify-self: end;
 		max-width: 85%;
 		padding: var(--space-2) var(--space-3);
-		border: 2px solid var(--ink);
+		border: 2px solid var(--edge);
 		border-radius: var(--chat-surface-radius) var(--chat-surface-radius) 4px;
 		background: var(--tint);
 		font-size: var(--text-md);
@@ -686,7 +849,7 @@
 		display: grid;
 		gap: var(--space-2);
 		padding: var(--space-3);
-		border-top: 2px solid var(--ink);
+		border-top: 2px solid var(--edge);
 		background: var(--card);
 	}
 
@@ -724,7 +887,7 @@
 			z-index: var(--z-overlay);
 			width: auto;
 			height: calc(100dvh - var(--space-12));
-			border-top: 2.5px solid var(--ink);
+			border-top: 2.5px solid var(--edge);
 			border-left: 0;
 			border-radius: var(--radius-panel) var(--radius-panel) 0 0;
 			box-shadow: var(--elevation-ordinary);
@@ -806,7 +969,7 @@
 		gap: 6px;
 		height: 36px;
 		padding: 0 var(--space-3) 0 10px;
-		border: 2px solid var(--ink);
+		border: 2px solid var(--edge);
 		border-radius: 999px;
 		background: var(--card);
 		box-shadow: var(--elevation-compact);

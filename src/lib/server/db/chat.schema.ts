@@ -76,6 +76,8 @@ export const chatRunnerJob = pgTable(
 		sessionId: cascadingReferenceColumn('session_id', () => chatSession.id),
 		status: text('status').$type<ChatRunnerJobStatus>().notNull(),
 		model: text('model').notNull(),
+		// Jobs from before the effort choice, or from an older release, get the level the runner used then.
+		effort: text('effort').notNull().default('medium'),
 		systemPrompt: text('system_prompt').notNull(),
 		prompt: text('prompt').notNull(),
 		events: jsonb('events').$type<ChatStreamEvent[]>().notNull().default([]),

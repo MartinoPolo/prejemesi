@@ -2,7 +2,7 @@ import { tv } from 'tailwind-variants';
 
 /**
  * Anime-sky sticker wishlist card (issue #102 REQ-16, `anime-dashboard.html`):
- * ink border, hard offset shadow, coherent lift, banner with the title on a small
+ * edge border, hard offset shadow, coherent lift, banner with the title on a small
  * rotated label sticker, the status chip pinned top-right and the occasion badge
  * top-left. Body, meta, border and shadow stay in the viewer's look so cards in a
  * row match; the cover fill and the title plate carry the wishlist: its palette's
@@ -15,20 +15,20 @@ export const wishlistCardVariants = tv({
 		root: 'group/card relative isolate flex h-full cursor-pointer flex-col rounded-panel',
 		surface:
 			'elevation-ordinary pointer-events-auto relative flex size-full flex-col rounded-panel bg-card transition-[translate,scale,box-shadow] duration-(--duration-normal) ease-(--ease-standard)',
-		border: 'pointer-events-none absolute inset-0 z-[1] rounded-panel border-[2.5px] border-ink',
+		border: 'pointer-events-none absolute inset-0 z-[1] rounded-panel border-[2.5px] border-edge',
 		/** The plate sits bottom-left, keeping the top-left corner free for an occasion badge. */
-		banner: 'relative flex shrink-0 flex-col items-start justify-end overflow-hidden rounded-t-[calc(var(--radius-panel)-2.5px)] border-b-[2.5px] border-ink',
+		banner: 'relative flex shrink-0 flex-col items-start justify-end overflow-hidden rounded-t-[calc(var(--radius-panel)-2.5px)] border-b-[2.5px] border-edge',
 		bannerFill: 'absolute inset-0',
 		/** Notebook dot pattern over the tint fallback (hidden when a real photo fills the banner). */
 		bannerPattern:
 			'pointer-events-none absolute inset-0 bg-[radial-gradient(var(--pattern-dot)_1.4px,transparent_1.5px)] bg-size-[18px_18px]',
 		/** `rounded-lg` follows the motif's `--radius`; the border stays bold for every motif. */
 		bannerTitle:
-			'relative z-[1] max-w-full -rotate-1 truncate rounded-lg border-2 border-ink bg-wishlist-card-plate font-heading font-semibold text-wishlist-card-plate-foreground shadow-sticker-sm',
+			'relative z-[1] max-w-full -rotate-1 truncate rounded-lg border-2 border-edge bg-wishlist-card-plate font-heading font-semibold text-wishlist-card-plate-foreground shadow-sticker-sm',
 		statusBadge: 'absolute z-[1]',
 		/** Above the card border so the circle reads as a sticker on the cover's top-left corner. */
 		occasionBadge:
-			'absolute z-[2] grid place-items-center rounded-full border-2 border-ink bg-card text-foreground shadow-sticker-sm',
+			'absolute z-[2] grid place-items-center rounded-full border-2 border-edge bg-card text-foreground shadow-sticker-sm',
 		body: 'flex flex-1 flex-col',
 		metaRow: 'flex flex-wrap items-center gap-1.5',
 		metaStack: 'flex min-w-0 flex-col gap-1.5',

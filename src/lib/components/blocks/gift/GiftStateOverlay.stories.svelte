@@ -42,7 +42,7 @@
 	{#snippet template()}
 		<div class="grid grid-cols-2 gap-4 sm:grid-cols-4">
 			{#each STATE_GROUPS as entries, index (index)}
-				<div class="relative aspect-square rounded-panel border-2 border-ink bg-muted">
+				<div class="relative aspect-square rounded-panel border-2 border-edge bg-muted">
 					<GiftStateOverlay {entries} />
 				</div>
 			{/each}
@@ -53,7 +53,7 @@
 <Story name="Narrow Image">
 	{#snippet template()}
 		<div
-			class="relative aspect-square w-36 rounded-panel border-2 border-ink bg-muted @container"
+			class="relative aspect-square w-36 rounded-panel border-2 border-edge bg-muted @container"
 		>
 			<GiftStateOverlay
 				entries={[

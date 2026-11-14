@@ -54,7 +54,7 @@
 		align-items: center;
 		height: var(--fab-size);
 		padding: 0;
-		border: 2.5px solid var(--ink);
+		border: 2.5px solid var(--edge);
 		border-radius: calc(var(--fab-size) / 2);
 		background: var(--primary);
 		box-shadow: var(--elevation-ordinary);

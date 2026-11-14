@@ -111,6 +111,51 @@ describe('createSentryClientOptions', () => {
 		expect(filterAndSanitizeSentryClientEvent(event)).toMatchObject({ level: 'warning' });
 	});
 
+	it.each([
+		'Failed to fetch dynamically imported module: https://prejemesi.cz/_app/immutable/nodes/10.DQQDbFcG.js',
+		'Importing a module script failed.',
+		'error loading dynamically imported module: https://prejemesi.cz/_app/immutable/nodes/10.DQQDbFcG.js',
+	])('reports the module load failure "%s" as a warning', (message) => {
+		const event = {
+			level: 'error',
+			exception: { values: [{ type: 'TypeError', value: message }] },
+		};
+
+		expect(filterAndSanitizeSentryClientEvent(event)).toMatchObject({ level: 'warning' });
+	});
+
+	it('keeps unrelated type errors at error level', () => {
+		const event = {
+			level: 'error',
+			exception: {
+				values: [
+					{
+						type: 'TypeError',
+						value: "Cannot read properties of undefined (reading 'id')",
+					},
+				],
+			},
+		};
+
+		expect(filterAndSanitizeSentryClientEvent(event)).toMatchObject({ level: 'error' });
+	});
+
+	it('keeps application errors that mention a module load failure at error level', () => {
+		const event = {
+			level: 'error',
+			exception: {
+				values: [
+					{
+						type: 'TypeError',
+						value: 'Gift editor: Failed to fetch dynamically imported module: https://prejemesi.cz/a.js',
+					},
+				],
+			},
+		};
+
+		expect(filterAndSanitizeSentryClientEvent(event)).toMatchObject({ level: 'error' });
+	});
+
 	it('keeps application errors that mention a network failure at error level', () => {
 		const event = {
 			level: 'error',

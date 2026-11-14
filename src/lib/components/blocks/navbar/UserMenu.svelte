@@ -73,7 +73,7 @@
 				{size}
 				format="icon"
 				class={`rounded-full ${ANCHORED_CIRCULAR_STICKER_OWNER_CLASSES}`}
-				surfaceClass={`border-[2.5px] border-ink bg-card group-hover:bg-card ${CIRCULAR_STICKER_SURFACE_CLASSES}`}
+				surfaceClass={`border-[2.5px] border-edge bg-card group-hover:bg-card ${CIRCULAR_STICKER_SURFACE_CLASSES}`}
 				aria-label={m.nav_user_menu({ name: userName })}
 			>
 				<Avatar

@@ -99,9 +99,9 @@ occasion for screen readers at that width; below it the header's meta line takes
 		padding: 14px 12px 12px;
 		text-align: center;
 		background: var(--card);
-		border: var(--border-w) solid var(--ink);
+		border: var(--border-w) solid var(--edge);
 		border-radius: 3px;
-		outline: 1.5px dashed color-mix(in oklab, var(--ink) 60%, transparent);
+		outline: 1.5px dashed color-mix(in oklab, var(--edge) 60%, transparent);
 		outline-offset: -8px;
 		box-shadow: var(--elevation-ordinary-strong);
 		rotate: 4deg;
@@ -144,7 +144,7 @@ occasion for screen readers at that width; below it the header's meta line takes
 		height: 58px;
 		overflow: visible;
 		fill: none;
-		stroke: color-mix(in oklab, var(--kraft) 35%, var(--ink));
+		stroke: color-mix(in oklab, var(--kraft) 35%, var(--edge));
 		stroke-width: 2;
 		stroke-linecap: round;
 	}
@@ -163,7 +163,7 @@ occasion for screen readers at that width; below it the header's meta line takes
 		padding: 24px 10px 12px;
 		text-align: center;
 		background: var(--kraft);
-		border: var(--border-w) solid var(--ink);
+		border: var(--border-w) solid var(--edge);
 		border-radius: 6px;
 		box-shadow: var(--elevation-ordinary-strong);
 		transform-origin: 50% 10px;
@@ -180,7 +180,7 @@ occasion for screen readers at that width; below it the header's meta line takes
 		width: 10px;
 		height: 10px;
 		background: var(--card);
-		border: 1.5px solid var(--ink);
+		border: 1.5px solid var(--edge);
 		border-radius: 50%;
 		translate: -50% 0;
 	}
@@ -217,7 +217,7 @@ occasion for screen readers at that width; below it the header's meta line takes
 		inset: 0;
 		overflow: visible;
 		fill: var(--primary);
-		stroke: color-mix(in oklab, var(--primary) 70%, var(--ink));
+		stroke: color-mix(in oklab, var(--primary) 70%, var(--edge));
 		stroke-width: 1.5;
 	}
 
@@ -243,6 +243,6 @@ occasion for screen readers at that width; below it the header's meta line takes
 		line-height: 1.4;
 		white-space: nowrap;
 		background: var(--card);
-		border: var(--border-w) solid var(--ink);
+		border: var(--border-w) solid var(--edge);
 	}
 </style>

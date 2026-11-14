@@ -58,7 +58,7 @@
 		left: max(0.5rem, env(safe-area-inset-left));
 		right: max(0.5rem, env(safe-area-inset-right));
 		width: auto;
-		border: 2.5px solid var(--ink);
+		border: 2.5px solid var(--edge);
 		border-bottom: 0;
 		border-radius: var(--radius-panel) var(--radius-panel) 0 0;
 	}

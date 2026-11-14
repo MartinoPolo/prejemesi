@@ -15,7 +15,7 @@
 </a>
 
 <style>
-	/* Mockup wordmark: ink text, tilted brand-gradient mark with an ink border. */
+	/* Mockup wordmark: ink text, tilted brand-gradient mark with an edge border. */
 	.logo {
 		font-family: var(--font-heading);
 		font-weight: var(--weight-bold);
@@ -37,7 +37,7 @@
 		width: 30px;
 		height: 30px;
 		background: linear-gradient(180deg, var(--brand), var(--brand-deep));
-		border: 2px solid var(--ink);
+		border: 2px solid var(--edge);
 		border-radius: 10px;
 		display: flex;
 		align-items: center;

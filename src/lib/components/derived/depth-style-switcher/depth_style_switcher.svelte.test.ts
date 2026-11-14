@@ -18,6 +18,7 @@ const { persistDepthMock, persistPaletteMock, updatePreferredLocaleMock, setMode
 );
 vi.mock('$lib/modules/settings/settings.remote.js', () => ({
 	setUserDepthStyle: persistDepthMock,
+	setUserDarkWishlistBackground: vi.fn(),
 	setUserPalette: persistPaletteMock,
 	updatePreferredLocale: updatePreferredLocaleMock,
 }));
@@ -396,7 +397,7 @@ describe('DepthStyleSwitcher', () => {
 				const primaryFill = resolvedColor('backgroundColor', '--primary');
 				const primaryText = resolvedColor('color', '--primary-foreground');
 				const cardFill = resolvedColor('backgroundColor', '--card');
-				const inkBorder = resolvedColor('color', '--ink');
+				const edgeBorder = resolvedColor('color', '--edge');
 
 				for (const selectedDepth of DEPTH_STYLES) {
 					choiceElements[selectedDepth].click();
@@ -407,7 +408,7 @@ describe('DepthStyleSwitcher', () => {
 						const surfaceStyle = getComputedStyle(
 							choiceSurface(choiceElements[optionDepth]),
 						);
-						expect(surfaceStyle.borderTopColor, `${context} border`).toBe(inkBorder);
+						expect(surfaceStyle.borderTopColor, `${context} border`).toBe(edgeBorder);
 						if (optionDepth === selectedDepth) {
 							expect(surfaceStyle.backgroundColor, `${context} fill`).toBe(
 								primaryFill,

@@ -36,6 +36,7 @@ Přejeme si is a shareable wishlist web app where users create gift lists for th
 - **Batch add** — Adding multiple gifts at once via the shared draft grid (distinct from the import wizard, which sources data externally).
 - **Enrichment** — Auto-filling a gift's image / price / title from its link (and, in a later phase, by searching for it by name).
 - **Multi-link** — Multiple URLs attached to a single gift (up to 10); `links[0]` is treated as the primary link.
+- **Store** (Obchod) — The main domain (subdomains merged) of any of a gift's links, used to filter gifts by where they can be bought.
 - **Piece count** — Gift quantity; ordinary recipients see quantity without reserved counts, while disclosed self-promotion and other role capabilities govern reservation visibility.
 - **Gift viewer** — The read-only, photo-first gift detail with a caption and the viewer's applicable actions; managers get the gift editor instead.
 
@@ -62,6 +63,7 @@ Přejeme si is a shareable wishlist web app where users create gift lists for th
 - **Přizpůsobit motiv** — The Vzhled disclosure under the motif grid grouping Barva, Pozadí, Hlavička and Styl. Each field shows Z motivu while the motif supplies it and a reset once overridden; the palette counts as the motif's while it equals the motif palette, and Pozadí only while it is set to Z motivu.
 - **Hero frame** — The wishlist header's frame: Blok (notebook), Dárek (gift), Visačka (tag) or Pozvánka (invitation). The motif picks it (no motif means Blok) unless a stored style-token override wins. From 960 px the frame carries an occasion emblem (postage stamp, kraft tag or wax seal with the occasion and countdown); below it occasion and countdown move into one hero chip (from 640 px) or the header meta line.
 - **Wishlist background** (Pozadí) — The wishlist page backdrop: from the theme, a curated library image (Knihovna, generated offline per theme, `src/lib/theme/wishlist_background_library.ts`) or a custom uploaded photo, both with focal point, placement and dim, or none. Any backdrop drifts subtly with page scroll and stays static under reduced motion. Library images have a light and a dark file and show the one for the viewer's mode; a custom photo has no dark file, so it gets an extra automatic dim in dark mode only. A library image that leaves the library falls back to the theme backdrop. Content surfaces stay opaque over it.
+- **Dark wishlist background** (Pozadí seznamu v tmavém režimu) — The viewer's choice of page colour behind a wishlist in dark mode: Barvy aplikace (their app page, default), Barvy seznamu (the wishlist palette) or Jemný nádech (the app page faintly tinted by the wishlist palette); `src/lib/theme/dark_wishlist_background.ts`.
 
 ### Navigation
 

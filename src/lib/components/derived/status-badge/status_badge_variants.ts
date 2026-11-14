@@ -2,7 +2,7 @@ import { tv } from 'tailwind-variants';
 import { asExhaustiveArray } from '$lib/utils/variants.js';
 
 export const statusBadgeVariants = tv({
-	base: 'inline-flex items-center gap-1.5 rounded-badge border-2 border-ink px-2.5 py-0.5 text-xs font-medium',
+	base: 'inline-flex items-center gap-1.5 rounded-badge border-2 border-edge px-2.5 py-0.5 text-xs font-medium',
 	variants: {
 		status: {
 			success: 'bg-status-success/10 text-status-success-text',

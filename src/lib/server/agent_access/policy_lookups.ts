@@ -3,6 +3,7 @@ import type { DatabaseTransaction, getDb } from '$lib/server/db/index.js';
 import { gift, reservation } from '$lib/server/db/gift.schema.js';
 import { giftRevision } from '$lib/server/db/gift_revision.schema.js';
 import { wishlist } from '$lib/server/db/wishlist.schema.js';
+import { SERVER_ERROR, type ServerErrorCode } from '$lib/modules/errors/server_error_codes.js';
 
 export type LookupDatabase = DatabaseTransaction | ReturnType<typeof getDb>;
 
@@ -18,6 +19,21 @@ export const TARGET_KIND = {
 } as const;
 
 export type TargetKind = (typeof TARGET_KIND)[keyof typeof TARGET_KIND];
+
+/** What a reference answers when it resolves to no wishlist the caller may reach. */
+export const TARGET_NOT_FOUND_ERROR = {
+	[TARGET_KIND.wishlistId]: SERVER_ERROR.WISHLIST_NOT_FOUND,
+	[TARGET_KIND.wishlistShortId]: SERVER_ERROR.WISHLIST_NOT_FOUND,
+	[TARGET_KIND.giftId]: SERVER_ERROR.GIFT_NOT_FOUND,
+	[TARGET_KIND.reservationId]: SERVER_ERROR.RESERVATION_NOT_FOUND,
+	[TARGET_KIND.revisionBatchId]: SERVER_ERROR.GIFT_REVISION_NOT_FOUND,
+} satisfies Record<TargetKind, ServerErrorCode>;
+
+/** References naming a wishlist itself, not something on one. */
+export const WISHLIST_TARGET_KINDS: ReadonlySet<TargetKind> = new Set([
+	TARGET_KIND.wishlistId,
+	TARGET_KIND.wishlistShortId,
+]);
 
 export interface TargetReference {
 	kind: TargetKind;

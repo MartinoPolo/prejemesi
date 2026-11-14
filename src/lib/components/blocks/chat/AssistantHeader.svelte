@@ -1,4 +1,5 @@
 <script lang="ts">
+	import type { Snippet } from 'svelte';
 	import * as m from '$lib/paraglide/messages.js';
 	import ArrowLeftIcon from '@lucide/svelte/icons/arrow-left';
 	import EllipsisIcon from '@lucide/svelte/icons/ellipsis';
@@ -45,6 +46,7 @@
 		ondismisshint,
 		onsheet,
 		onpreview,
+		runnerSettings,
 	}: {
 		wishlistTitle: string;
 		view: AssistantView;
@@ -64,6 +66,8 @@
 		onsheet: (sheet: AssistantSheet) => void;
 		/** Shows the wishlist: closes the keyboard and shrinks the sheet. */
 		onpreview: () => void;
+		/** Pokročilé, only for users whose turns go to the chat runner. */
+		runnerSettings?: Snippet;
 	} = $props();
 
 	let menuOpenedByPointer = false;
@@ -268,6 +272,7 @@
 					<SquarePenIcon />
 				</Button>
 			{/if}
+			{@render runnerSettings?.()}
 			{@render chatState()}
 		</div>
 		{#if showHint}
@@ -299,7 +304,7 @@
 		display: grid;
 		gap: var(--space-1);
 		padding: var(--space-2) var(--space-3) var(--space-2) var(--space-4);
-		border-bottom: 2px solid var(--ink);
+		border-bottom: 2px solid var(--edge);
 	}
 
 	.line {
@@ -314,7 +319,7 @@
 		place-items: center;
 		width: 32px;
 		height: 32px;
-		border: 2px solid var(--ink);
+		border: 2px solid var(--edge);
 		border-radius: 10px;
 		background: var(--tint);
 	}

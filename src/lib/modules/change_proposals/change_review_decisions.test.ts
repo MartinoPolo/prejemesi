@@ -13,7 +13,9 @@ import {
 	fieldEditorText,
 	includedRowCount,
 	initialChangeReview,
+	isBulkAcceptableRow,
 	isGiftDropped,
+	isRowDeclined,
 	reviewedChangeFields,
 	unresolvedChangeCount,
 	wholeGiftPressed,
@@ -98,6 +100,22 @@ const deletion = reviewRow({
 	requiresConfirmation: true,
 	status: CHANGE_ROW_STATUS.needsConfirmation,
 });
+const reservation = reviewRow({
+	rowId: 'reservation',
+	operation: 'reserveGift',
+	kind: CHANGE_KIND.reservation,
+	input: { giftId: 'g-lego' },
+	requiresConfirmation: true,
+	status: CHANGE_ROW_STATUS.needsConfirmation,
+});
+const invitation = reviewRow({
+	rowId: 'invitation',
+	operation: 'generateModeratorInviteLink',
+	kind: CHANGE_KIND.managerInvitation,
+	input: { email: 'jana@test.cz' },
+	requiresConfirmation: true,
+	status: CHANGE_ROW_STATUS.needsConfirmation,
+});
 const conflict = reviewRow({ rowId: 'conflict', status: CHANGE_ROW_STATUS.conflict });
 const rejected = reviewRow({
 	rowId: 'rejected',
@@ -132,6 +150,45 @@ describe('change review decisions', () => {
 		const acceptedAll = withEveryRowDecided(unresolvedDeletion, rows, CHANGE_DECISION.accepted);
 		expect(acceptedAll.deletion).toEqual({ kind: ROW_REVIEW_KIND.whole, accepted: null });
 		expect(includedRowCount(acceptedAll)).toBe(2);
+	});
+
+	it('lets Přijmout vše accept new gifts and edits but never a deletion, reservation or manager invitation', () => {
+		expect(isBulkAcceptableRow(newGift)).toBe(true);
+		expect(isBulkAcceptableRow(edit)).toBe(true);
+		expect(isBulkAcceptableRow(deletion)).toBe(false);
+		expect(isBulkAcceptableRow(reservation)).toBe(false);
+		expect(isBulkAcceptableRow(invitation)).toBe(false);
+
+		const confirmationRows = [deletion, reservation, invitation];
+		const acceptedAll = withEveryRowDecided(
+			initialChangeReview(confirmationRows),
+			confirmationRows,
+			CHANGE_DECISION.accepted,
+		);
+		const unresolved = { kind: ROW_REVIEW_KIND.whole, accepted: null };
+		expect(acceptedAll).toEqual({
+			deletion: unresolved,
+			reservation: unresolved,
+			invitation: unresolved,
+		});
+	});
+
+	it('marks every row declined after the global reject, but not an open or accepted one', () => {
+		const initial = initialChangeReview(rows);
+		const rejectedAll = withEveryRowDecided(initial, rows, CHANGE_DECISION.rejected);
+		const decidableRowIds = ['new', 'edit', 'deletion'];
+
+		expect(decidableRowIds.map((rowId) => isRowDeclined(rejectedAll[rowId]))).toEqual([
+			true,
+			true,
+			true,
+		]);
+		expect(decidableRowIds.map((rowId) => isRowDeclined(initial[rowId]))).toEqual([
+			false,
+			false,
+			false,
+		]);
+		expect(isRowDeclined(undefined)).toBe(false);
 	});
 
 	it('clears a field back to unresolved when its active choice is pressed again', () => {

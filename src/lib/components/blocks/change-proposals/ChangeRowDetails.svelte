@@ -165,7 +165,7 @@
 		gap: 6px;
 		height: var(--size-control-sm);
 		padding: 0 9px;
-		border: 2.5px solid var(--ink);
+		border: 2.5px solid var(--edge);
 		border-radius: var(--radius-btn);
 		background: var(--card);
 		box-shadow: var(--elevation-compact);

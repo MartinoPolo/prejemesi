@@ -29,10 +29,16 @@ import {
 	type DepthStyle,
 } from '$lib/theme/depth_styles.js';
 import {
+	DARK_WISHLIST_BACKGROUND_COOKIE_MAX_AGE_SECONDS,
+	DARK_WISHLIST_BACKGROUND_COOKIE_NAME,
+	type DarkWishlistBackground,
+} from '$lib/theme/dark_wishlist_background.js';
+import {
 	UpdateProfileInputSchema,
 	UpdatePreferredLocaleInputSchema,
 	SetUserPaletteInputSchema,
 	SetUserDepthStyleInputSchema,
+	SetUserDarkWishlistBackgroundInputSchema,
 	type UserProfile,
 } from './types.js';
 
@@ -262,6 +268,15 @@ type AppearancePreference =
 				maxAge: typeof DEPTH_STYLE_COOKIE_MAX_AGE_SECONDS;
 			};
 			fields: { depthStyle: DepthStyle };
+	  }
+	| {
+			kind: 'darkWishlistBackground';
+			cookie: {
+				name: typeof DARK_WISHLIST_BACKGROUND_COOKIE_NAME;
+				value: DarkWishlistBackground;
+				maxAge: typeof DARK_WISHLIST_BACKGROUND_COOKIE_MAX_AGE_SECONDS;
+			};
+			fields: { darkWishlistBackground: DarkWishlistBackground };
 	  };
 
 async function persistAppearancePreference(
@@ -319,6 +334,20 @@ export const setUserDepthStyle = publicCommand(
 				maxAge: DEPTH_STYLE_COOKIE_MAX_AGE_SECONDS,
 			},
 			fields: { depthStyle },
+		}),
+);
+
+export const setUserDarkWishlistBackground = publicCommand(
+	SetUserDarkWishlistBackgroundInputSchema,
+	(authContext, darkWishlistBackground) =>
+		persistAppearancePreference(authContext, {
+			kind: 'darkWishlistBackground',
+			cookie: {
+				name: DARK_WISHLIST_BACKGROUND_COOKIE_NAME,
+				value: darkWishlistBackground,
+				maxAge: DARK_WISHLIST_BACKGROUND_COOKIE_MAX_AGE_SECONDS,
+			},
+			fields: { darkWishlistBackground },
 		}),
 );
 

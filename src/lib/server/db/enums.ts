@@ -7,6 +7,7 @@ import {
 } from '$lib/modules/wishlists/types.js';
 import { PALETTES } from '$lib/theme/palettes.js';
 import { DEPTH_STYLES } from '$lib/theme/depth_styles.js';
+import { DARK_WISHLIST_BACKGROUNDS } from '$lib/theme/dark_wishlist_background.js';
 
 export const wishlistStatusEnum = pgEnum('wishlist_status', ['draft', 'active', 'archived']);
 
@@ -38,3 +39,9 @@ export const paletteEnum = pgEnum('palette', PALETTES);
 
 /** Viewer-owned semantic sticker depth. */
 export const depthStyleEnum = pgEnum('depth_style', DEPTH_STYLES);
+
+/** Viewer-owned dark-mode page background behind a wishlist. */
+export const darkWishlistBackgroundEnum = pgEnum(
+	'dark_wishlist_background',
+	DARK_WISHLIST_BACKGROUNDS,
+);

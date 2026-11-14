@@ -52,6 +52,11 @@
 	--wishlist-image-mat: #17161c;
 }
 
+/* A white mat would be the brightest area of a dark page; dim it toward paper. */
+.dark [data-mat='white']:not(:where([data-light-scope], [data-light-scope] *)) {
+	--wishlist-image-mat: oklch(91% 0.008 var(--dark-tone-hue));
+}
+
 /* ── Heading font ─────────────────────────────────────── */
 [data-heading='elegant'] {
 	--font-head: 'Fraunces Variable', 'Fraunces Fallback', serif;
@@ -101,7 +106,7 @@
 [data-wishlist-backdrop] .wishlist-backdrop-plate {
 	padding: 4px 14px;
 	background: var(--card);
-	border: var(--border-w) solid var(--ink);
+	border: var(--border-w) solid var(--edge);
 	border-radius: var(--wishlist-pill-radius);
 	box-shadow: var(--elevation-compact);
 }
@@ -119,4 +124,59 @@
 
 .wishlist-page-shell[data-wishlist-backdrop] .wishlist-toolbar-mask::after {
 	background: transparent;
+}
+
+/* ── Dark mode: the wishlist carries its own colour ───────────────────
+   The hero, toolbar, gift cards, wells, edges, shadows, headings and primary all derive from the
+   wishlist palette. Behind them the page follows the viewer's choice on <html>
+   (`data-dark-wishlist-background`): `wishlist` keeps the wishlist's own page tone, `app` (the
+   default) the viewer's app page, and `tint` the app page with a little of the wishlist tone. The
+   shell paints that colour across the whole scroller width, and the sticky toolbar mask follows. */
+.dark .wishlist-page-shell[data-palette] {
+	--app-page-background: var(--background);
+	--wishlist-heading-ink: oklch(
+		90% min(0.08, calc(var(--p-brand-chroma) * 0.55))
+			calc(var(--p-brand-hue) + var(--p-dark-tone-hue-shift) * 0.5)
+	);
+}
+
+.dark:not([data-dark-wishlist-background='wishlist']) .wishlist-page-shell[data-palette] {
+	--background: var(--viewer-page-background, var(--palette-page-background));
+}
+
+/* Both tones sit at the same lightness, so the tint never changes text contrast. */
+.dark[data-dark-wishlist-background='tint'] .wishlist-page-shell[data-palette] {
+	--background: color-mix(
+		in oklab,
+		var(--palette-page-background) 30%,
+		var(--viewer-page-background, var(--palette-page-background))
+	);
+}
+
+.dark .wishlist-page-shell[data-palette]::before {
+	position: absolute;
+	z-index: -1;
+	top: 0;
+	bottom: 0;
+	left: 50%;
+	width: 100cqi;
+	pointer-events: none;
+	content: '';
+	background: var(--background);
+	translate: -50% 0;
+}
+
+/* The hero is the wishlist's flag: its paper takes a little more of the tone than gift cards. */
+.dark .wishlist-page-shell[data-palette] .hero-frame {
+	--card: oklch(36.5% calc(var(--dark-tone-chroma) * 1.2) var(--dark-tone-hue));
+}
+
+/* Headings carry a light tint of the wishlist hue, as light mode prints them in palette ink. */
+.dark .wishlist-page-shell[data-palette] :is(h1, h2, h3, [class*='--wishlist-gift-title-font']) {
+	color: var(--wishlist-heading-ink);
+}
+
+/* Section rules under category headings: a palette-tinted line instead of a grey hairline. */
+.dark .wishlist-page-shell[data-palette] [data-gift-reorder-group] > .h-px.bg-border {
+	background: color-mix(in oklab, var(--brand) 38%, transparent);
 }

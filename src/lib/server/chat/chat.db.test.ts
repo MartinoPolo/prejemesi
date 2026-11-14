@@ -20,6 +20,7 @@ vi.mock('./chat_config.js', async (importOriginal) => ({
 }));
 
 import { asc, eq } from 'drizzle-orm';
+import { runAfterResponse } from '$lib/server/background.js';
 import { getDb } from '$lib/server/db/index.js';
 import { chatMessage, chatSession } from '$lib/server/db/chat.schema.js';
 import { changeProposal } from '$lib/server/db/change_proposal.schema.js';
@@ -179,6 +180,8 @@ describe.skipIf(!DB_READY)('chat turns', () => {
 	beforeEach(() => {
 		chatSwitches.allowed = true;
 		chatSwitches.killSwitch = false;
+		// The shared database setup drops background work, but a turn runs as one.
+		vi.mocked(runAfterResponse).mockImplementation((task) => void task());
 	});
 
 	it('streams a turn whose changes become a proposal the user reviews', async () => {
@@ -317,6 +320,41 @@ describe.skipIf(!DB_READY)('chat turns', () => {
 		expect(proposalEvent(retried).applied).toBe(false);
 		const nothingToRetry = await postTurn(MANAGER, session.id, { kind: CHAT_TURN_KIND.retry });
 		expect(nothingToRetry.status).toBe(409);
+	});
+
+	it('keeps the text the user already read when the browser goes away mid-answer', async () => {
+		const { session } = await newChat();
+		const provider: ChatModelProvider = {
+			async *stream(_request, signal) {
+				yield { type: CHAT_MODEL_EVENT.textDelta, text: 'Hledám vhodné ' };
+				yield { type: CHAT_MODEL_EVENT.textDelta, text: 'dárky…' };
+				await new Promise((_resolve, reject) => {
+					signal.addEventListener('abort', () => reject(signal.reason as Error));
+				});
+			},
+		};
+		const response = await postTurn(
+			MANAGER,
+			session.id,
+			{ kind: CHAT_TURN_KIND.message, text: 'Najděte dárky' },
+			provider,
+		);
+		const reader = response.body!.getReader();
+		let streamed = '';
+		while (!streamed.includes('dárky…')) {
+			const { value } = await reader.read();
+			streamed += new TextDecoder().decode(value);
+		}
+
+		await reader.cancel();
+
+		await vi.waitFor(async () => {
+			const messages = await storedMessages(session.id);
+			expect(messages.map((message) => [message.role, message.content])).toEqual([
+				[CHAT_ROLE.user, [{ type: CHAT_BLOCK.text, text: 'Najděte dárky' }]],
+				[CHAT_ROLE.assistant, [{ type: CHAT_BLOCK.text, text: 'Hledám vhodné dárky…' }]],
+			]);
+		});
 	});
 
 	it('stops a turn that keeps calling tools at the step limit', async () => {

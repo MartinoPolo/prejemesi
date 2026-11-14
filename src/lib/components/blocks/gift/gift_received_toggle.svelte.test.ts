@@ -75,7 +75,7 @@ describe('GiftReceivedToggle', () => {
 		{
 			received: false,
 			accessible: m.gift_mark_received(),
-			intentClass: '.bg-foreground',
+			intentClass: '.bg-ink-fill',
 			iconClass: '.lucide-check',
 		},
 		{

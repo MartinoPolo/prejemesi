@@ -23,6 +23,7 @@
 	import SlidersHorizontalIcon from '@lucide/svelte/icons/sliders-horizontal';
 	import Columns3Icon from '@lucide/svelte/icons/columns-3';
 	import MoreHorizontalIcon from '@lucide/svelte/icons/ellipsis';
+	import XIcon from '@lucide/svelte/icons/x';
 	import {
 		GIFT_SORT_KEYS,
 		GIFT_SORT_LABELS,
@@ -46,6 +47,7 @@
 	import WishlistSheetChoice from './WishlistSheetChoice.svelte';
 	import WishlistSheetHeader from './WishlistSheetHeader.svelte';
 	import { isGiftCardColumnOptionAvailable } from './gift_card_grid_columns.js';
+	import { getWishlistStickyChrome } from './wishlist_sticky_chrome.svelte.js';
 	import {
 		GIFT_CARD_COLUMN_OPTIONS,
 		GIFT_GROUPING_OPTIONS,
@@ -58,6 +60,7 @@
 		type GiftGroupingOption,
 		type GiftPriorityFilterValue,
 		type GiftSortOption,
+		type GiftStoreFilterValue,
 		type GiftViewMode,
 	} from '$lib/modules/gifts/types.js';
 
@@ -75,6 +78,10 @@
 		groupingRequired?: boolean;
 		categoryFilterOptions: GiftFilterOption<GiftCategoryFilterValue>[];
 		priorityFilterOptions: GiftFilterOption<GiftPriorityFilterValue>[];
+		/** Empty when the wishlist has fewer than two stores, which hides the facet. */
+		storeFilterOptions: GiftFilterOption<GiftStoreFilterValue>[];
+		/** Gifts left after the active filters; the mobile filter sheet offers to show them. */
+		filteredGiftCount: number;
 		cardColumnOption: GiftCardColumnOption;
 		/** Largest column count the card collection fits; null while unmeasured. */
 		cardColumnCapacity?: number | null;
@@ -110,6 +117,8 @@
 		groupingRequired = false,
 		categoryFilterOptions,
 		priorityFilterOptions,
+		storeFilterOptions,
+		filteredGiftCount,
 		cardColumnOption,
 		cardColumnCapacity = null,
 		reorderMode,
@@ -143,7 +152,8 @@
 			!filters.likedOnly &&
 			!filters.showReceived &&
 			filters.categoryValues.length === 0 &&
-			filters.priorityValues.length === 0,
+			filters.priorityValues.length === 0 &&
+			filters.storeValues.length === 0,
 	);
 	const canReorder = $derived(
 		canManage &&
@@ -218,6 +228,13 @@
 		onfilterchange({ ...filters, priorityValues: [...new Set(values)] });
 	}
 
+	function updateStoreFilter(value: GiftStoreFilterValue, checked: boolean) {
+		const values = checked
+			? [...filters.storeValues, value]
+			: filters.storeValues.filter((selected) => selected !== value);
+		onfilterchange({ ...filters, storeValues: [...new Set(values)] });
+	}
+
 	const filterDefinitions = $derived<FilterDefinition[]>([
 		...(showAvailableFilter
 			? [
@@ -268,11 +285,14 @@
 	let mobileReorderDoneButton = $state<HTMLButtonElement | null>(null);
 	let mobileDisplayTrigger = $state<HTMLButtonElement | null>(null);
 	let mobileMoreTrigger = $state<HTMLButtonElement | null>(null);
+	let mobileShowResultsButton = $state<HTMLButtonElement | null>(null);
 	let mobileOpenDisplayControl = $state<OpenDisplayControl | null>(null);
 	let mobileMoreOpen = $state(false);
 	let mobileViewportMode = $state<boolean | null>(null);
 	let mobileSheetScrollPosition = $state({ x: 0, y: 0 });
 	let mobileSheetRestoreTrigger = $state<HTMLButtonElement | null>(null);
+	let toolbarStickyElement = $state<HTMLElement | null>(null);
+	const stickyChrome = getWishlistStickyChrome();
 	let mobileSheetFocusRestorationScheduled = false;
 	let mobileSheetScrollCapturedFromPointer = false;
 	let mobileSheetFocusFrame: number | null = null;
@@ -347,6 +367,24 @@
 		}
 	});
 
+	// The sticky offset changes at the mobile breakpoint, so the bottom is remeasured there too.
+	$effect(() => {
+		const stickyElement = toolbarStickyElement;
+		if (stickyChrome === undefined || stickyElement === null || mobileViewportMode === null) {
+			return;
+		}
+		const publishToolbarBottom = () => {
+			const stickyTop = parseFloat(getComputedStyle(stickyElement).top);
+			stickyChrome.toolbarBottom =
+				(Number.isFinite(stickyTop) ? stickyTop : 0) +
+				stickyElement.getBoundingClientRect().height;
+		};
+		const resizeObserver = new ResizeObserver(publishToolbarBottom);
+		resizeObserver.observe(stickyElement);
+		publishToolbarBottom();
+		return () => resizeObserver.disconnect();
+	});
+
 	function captureMobileSheetScrollPosition() {
 		if (mobileOpenDisplayControl === null) {
 			mobileSheetScrollPosition = { x: window.scrollX, y: window.scrollY };
@@ -410,6 +448,13 @@
 		});
 	}
 
+	async function clearGiftFiltersInMobileSheet() {
+		clearGiftFilters();
+		await tick();
+		// The clear button disables itself, so focus moves to the sheet's other footer action.
+		mobileShowResultsButton?.focus();
+	}
+
 	function handleMobileSheetOpenChange(open: boolean) {
 		if (!open) {
 			closeMobileDisplaySheet();
@@ -455,8 +500,28 @@
 				onchange: (checked: boolean) => updatePriorityFilter(option.value, checked),
 			})),
 		},
+		...(storeFilterOptions.length > 0
+			? [
+					{
+						id: 'store',
+						label: m.gift_filter_store_heading(),
+						options: storeFilterOptions.map((option) => ({
+							value: option.value,
+							label: option.label,
+							checked: filters.storeValues.includes(option.value),
+							onchange: (checked: boolean) =>
+								updateStoreFilter(option.value, checked),
+						})),
+					},
+				]
+			: []),
 	]);
 	const activeFilters = $derived(normalizeActiveFilters(filterDefinitions, filterFacets));
+	const showResultsLabel = $derived(
+		filteredGiftCount === 1
+			? m.gift_filter_show_results_one()
+			: m.gift_filter_show_results_other({ count: filteredGiftCount }),
+	);
 
 	let previousReorderMode = $state<boolean | null>(null);
 	let reorderAnnouncement = $state('');
@@ -979,18 +1044,33 @@
 									{/each}
 								</section>
 							{/each}
-							{#if activeFilters.length > 0}
-								<Button
-									class="m-3"
-									intent="ghost"
-									size="lg"
-									onclick={clearGiftFilters}
-									>{m.wishlist_detail_clear_filters()}</Button
-								>
-							{/if}
 						</div>
 					</div>
 				</WishlistSheetBody>
+				<!-- Hidden but kept in layout outside Filter, so the sheet height stays stable across sections. -->
+				<div
+					class="mobile-sheet-footer"
+					class:mobile-sheet-footer-active={mobileOpenDisplayControl === 'filter'}
+					data-testid="mobile-sheet-footer"
+					inert={mobileOpenDisplayControl !== 'filter'}
+				>
+					<Button
+						intent="secondary"
+						size="lg"
+						disabled={activeFilters.length === 0}
+						onclick={clearGiftFiltersInMobileSheet}
+					>
+						<XIcon data-icon="inline-start" />{m.wishlist_detail_clear_filters()}
+					</Button>
+					<Button
+						bind:ref={mobileShowResultsButton}
+						intent="primary"
+						size="lg"
+						onclick={closeMobileDisplaySheet}
+					>
+						{showResultsLabel}
+					</Button>
+				</div>
 				<div class="mobile-sheet-switcher" data-testid="mobile-sheet-switcher">
 					<SegmentedToggle.Root
 						value={mobileOpenDisplayControl ?? 'sort'}
@@ -1046,10 +1126,14 @@
 	{reorderAnnouncement}
 </div>
 
-<div class="wishlist-toolbar-sticky sticky z-(--z-sticky) min-w-0">
+<div
+	bind:this={toolbarStickyElement}
+	class="wishlist-toolbar-sticky sticky z-(--z-sticky) min-w-0"
+	class:wishlist-toolbar-sticky-continued={(stickyChrome?.stripsBelowToolbar ?? 0) > 0}
+>
 	<div class="wishlist-toolbar-mask" data-testid="wishlist-toolbar-mask" aria-hidden="true"></div>
 	<div
-		class="wishlist-toolbar resting-shadow-nesting relative z-[1] min-w-0 rounded-panel border-(length:--border-w) border-ink bg-card shadow-sticker"
+		class="wishlist-toolbar resting-shadow-nesting relative z-[1] min-w-0 rounded-panel border-(length:--border-w) border-edge bg-card shadow-sticker"
 		data-testid="wishlist-toolbar"
 	>
 		{#if selectionContent}
@@ -1146,6 +1230,21 @@
 	</div>
 </div>
 
+{#if mobileViewportMode !== false && !selectionContent && activeFilters.length > 0}
+	<div class="mobile-active-filters" data-testid="wishlist-mobile-active-filters">
+		<ActiveFilterPills
+			layout="scroll"
+			class="px-(--page-gutter) scroll-px-(--page-gutter)"
+			items={activeFilters}
+			disabled={reorderMode}
+			clearAllLabel={m.wishlist_detail_clear_filters()}
+			onclearall={clearGiftFilters}
+			removeFilterLabel={(label) => m.filter_remove({ label })}
+			triggerElement={mobileDisplayTrigger}
+		/>
+	</div>
+{/if}
+
 <style>
 	.wishlist-toolbar-sticky {
 		--wishlist-toolbar-sticky-top: 0.75rem;
@@ -1177,6 +1276,11 @@
 		content: '';
 		mask-image: linear-gradient(to bottom, #000, transparent);
 		pointer-events: none;
+	}
+
+	/* A strip sticking right below the toolbar carries on its surface; the fade would wash it out. */
+	.wishlist-toolbar-sticky-continued .wishlist-toolbar-mask::after {
+		display: none;
 	}
 
 	.wishlist-toolbar {
@@ -1271,6 +1375,54 @@
 		padding: 0.5rem;
 	}
 
+	/* Equal-width items cannot fit „Řadit podle“ with its icon on the narrowest phones, so the items
+	   size by their labels and the spacing tightens. */
+	@media (width < 360px) {
+		.mobile-sheet-switcher {
+			padding-inline: 0.25rem;
+		}
+
+		.mobile-sheet-switcher :global([data-slot='toggle-group-item']) {
+			flex: 1 1 auto;
+		}
+
+		.mobile-sheet-switcher :global([data-slot='toggle-group-item'] > *) {
+			gap: 0.25rem;
+			padding-inline: 0.25rem;
+		}
+	}
+
+	.mobile-sheet-footer {
+		display: grid;
+		min-width: 0;
+		flex: 0 0 auto;
+		grid-template-columns: auto minmax(0, 1fr);
+		gap: var(--nested-control-gap);
+		visibility: hidden;
+		border-top: 1px solid var(--border);
+		padding: 0.625rem calc(0.75rem + var(--depth-clearance))
+			calc(0.625rem + var(--depth-clearance)) 0.75rem;
+	}
+
+	.mobile-sheet-footer-active {
+		visibility: visible;
+	}
+
+	/* Touch-sized pill targets surround smaller pill faces, so a slight negative block margin keeps
+	   the visible gaps near the page rhythm; the row bleeds to the screen edges like the carousel. */
+	.mobile-active-filters {
+		min-width: 0;
+		margin-block: -0.25rem;
+		margin-inline: calc(-1 * var(--page-gutter));
+		mask-image: linear-gradient(
+			to right,
+			transparent,
+			#000 var(--page-gutter),
+			#000 calc(100% - var(--page-gutter)),
+			transparent
+		);
+	}
+
 	.mobile-filter-section {
 		border-top: 1px solid var(--border);
 		padding-top: 0.5rem;
@@ -1358,7 +1510,8 @@
 			flex: 0 0 auto;
 		}
 
-		.toolbar-mobile {
+		.toolbar-mobile,
+		.mobile-active-filters {
 			display: none;
 		}
 

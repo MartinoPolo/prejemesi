@@ -83,7 +83,27 @@ export async function streamChatTurn(options: {
 	if (!response.ok || response.body === null) {
 		return refusalOf(response);
 	}
-	let continuationUrl = await readTurnEvents(response.body, options.onEvent);
+	const continuationUrl = await readTurnEvents(response.body, options.onEvent);
+	if (continuationUrl !== null) {
+		await followChatTurn({
+			url: continuationUrl,
+			signal: options.signal,
+			onEvent: options.onEvent,
+			fetch: fetchTurn,
+		});
+	}
+	return null;
+}
+
+/** Follows a turn's stream from one of its continuations, such as a rejoined turn's, to its end. */
+export async function followChatTurn(options: {
+	url: string;
+	signal: AbortSignal;
+	onEvent: (event: ChatStreamEvent) => void;
+	fetch?: typeof fetch;
+}): Promise<void> {
+	const fetchTurn = options.fetch ?? fetch;
+	let continuationUrl: string | null = options.url;
 	while (continuationUrl !== null) {
 		const continued = await fetchTurn(continuationUrl, { signal: options.signal });
 		if (!continued.ok || continued.body === null) {
@@ -91,7 +111,6 @@ export async function streamChatTurn(options: {
 		}
 		continuationUrl = await readTurnEvents(continued.body, options.onEvent);
 	}
-	return null;
 }
 
 /** Hands one response's events on; answers where the turn continues, if it does. */

@@ -73,7 +73,7 @@
 					decoding="async"
 					class={[
 						backgroundPhotoLayerDisplayClass(layer),
-						'aspect-video w-full border-b-2 border-ink object-cover',
+						'aspect-video w-full border-b-2 border-edge object-cover',
 					]}
 					data-shown-in={layer.shownIn ?? undefined}
 				/>

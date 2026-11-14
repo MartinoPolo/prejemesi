@@ -395,7 +395,7 @@
 			onkeydown={handleGripKeydown}
 		>
 			<ElevationSurface
-				class="ml-(--gift-reorder-grip-face-inset) mt-(--gift-reorder-grip-face-inset) grid size-(--gift-reorder-grip-face-size) place-items-center rounded-(--gift-reorder-grip-face-radius) border-2 border-ink bg-card transition-[translate,scale,box-shadow,background-color,opacity] duration-200 ease-spring group-hover/grip:bg-accent"
+				class="ml-(--gift-reorder-grip-face-inset) mt-(--gift-reorder-grip-face-inset) grid size-(--gift-reorder-grip-face-size) place-items-center rounded-(--gift-reorder-grip-face-radius) border-2 border-edge bg-card transition-[translate,scale,box-shadow,background-color,opacity] duration-200 ease-spring group-hover/grip:bg-accent"
 			>
 				<GripVerticalIcon class="size-5 text-muted-foreground sm:size-4" />
 			</ElevationSurface>

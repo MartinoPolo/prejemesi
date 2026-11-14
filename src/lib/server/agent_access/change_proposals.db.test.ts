@@ -52,6 +52,7 @@ import {
 	getChangeProposalForReview,
 	listPendingChangeProposals,
 	requireOwnChangeProposal,
+	restoreChangeProposal,
 	undoChangeProposal,
 } from './change_proposals.js';
 import { applyRows } from './change_proposals.db.test-setup.js';
@@ -577,7 +578,8 @@ describe.skipIf(!DB_READY)('change proposals', () => {
 				['updateGift', { id: keptGiftId, name: 'Fotbalový míč' }],
 				['updateGift', { id: purgedGiftId, name: 'Pryč' }],
 			]);
-			// Gone for good: the restricted grant can no longer place the row on its wishlist.
+			// Gone for good: the restricted grant can no longer place the row on its wishlist, and
+			// answers the gift as not found.
 			await getDb().delete(gift).where(eq(gift.id, purgedGiftId));
 
 			const result = await applyRows(MANAGER, submitted.id, ['r1', 'r2']);
@@ -588,8 +590,8 @@ describe.skipIf(!DB_READY)('change proposals', () => {
 					{
 						rowId: 'r2',
 						error: {
-							status: 403,
-							code: SERVER_ERROR.AGENT_WISHLIST_NOT_ALLOWED,
+							status: 404,
+							code: SERVER_ERROR.GIFT_NOT_FOUND,
 							details: {},
 						},
 					},
@@ -905,6 +907,60 @@ describe.skipIf(!DB_READY)('change proposals', () => {
 				SERVER_ERROR.AGENT_PROPOSAL_NOT_PENDING,
 			);
 			expect((await readGift(giftId)).name).not.toBe('Upraveno');
+		});
+
+		it('restores a discarded proposal to pending, so it applies again', async () => {
+			const wishlist = await createWishlistFixture();
+			const giftId = await createGiftFixture(wishlist.id);
+			const token = await agentToken(MANAGER_ID);
+			const submitted = await submit(token, wishlist.shortId, [
+				['updateGift', { id: giftId, name: 'Upraveno' }],
+			]);
+			await discardChangeProposal(MANAGER, submitted.id);
+
+			const restored = await restoreChangeProposal(MANAGER, submitted.id);
+
+			expect(restored.state).toBe(CHANGE_PROPOSAL_STATE.pending);
+			expect(restored.discardedAt).toBeNull();
+			expect(
+				(await listPendingChangeProposals(MANAGER, wishlist.shortId)).map(
+					(pending) => pending.id,
+				),
+			).toContain(submitted.id);
+			expect((await applyRows(MANAGER, submitted.id, ['r1'])).outcome).toBe(
+				CHANGE_PROPOSAL_OUTCOME.applied,
+			);
+			expect((await readGift(giftId)).name).toBe('Upraveno');
+		});
+
+		it('restores only a discarded proposal that has not expired, and only for its submitter', async () => {
+			const wishlist = await createWishlistFixture();
+			const giftId = await createGiftFixture(wishlist.id);
+			const token = await agentToken(MANAGER_ID);
+			const submitted = await submit(token, wishlist.shortId, [
+				['updateGift', { id: giftId, name: 'Upraveno' }],
+			]);
+
+			await expectRejection(
+				restoreChangeProposal(MANAGER, submitted.id),
+				409,
+				SERVER_ERROR.AGENT_PROPOSAL_NOT_DISCARDED,
+			);
+			await discardChangeProposal(MANAGER, submitted.id);
+			await expectRejection(
+				restoreChangeProposal(RECIPIENT, submitted.id),
+				404,
+				SERVER_ERROR.AGENT_PROPOSAL_NOT_FOUND,
+			);
+			await getDb()
+				.update(changeProposal)
+				.set({ expiresAt: new Date(Date.now() - 1000) })
+				.where(eq(changeProposal.id, submitted.id));
+			await expectRejection(
+				restoreChangeProposal(MANAGER, submitted.id),
+				410,
+				SERVER_ERROR.AGENT_PROPOSAL_EXPIRED,
+			);
 		});
 	});
 

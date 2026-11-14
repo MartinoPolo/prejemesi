@@ -9,6 +9,7 @@
 	import LanguageToggle from '$lib/components/derived/language-toggle/LanguageToggle.svelte';
 	import PaletteSwitcher from '$lib/components/derived/palette-switcher/PaletteSwitcher.svelte';
 	import DepthStyleSwitcher from '$lib/components/derived/depth-style-switcher/DepthStyleSwitcher.svelte';
+	import DarkWishlistBackgroundSwitcher from '$lib/components/derived/dark-wishlist-background-switcher/DarkWishlistBackgroundSwitcher.svelte';
 	import { userPrefersMode, setMode } from 'mode-watcher';
 	import PaletteIcon from '@lucide/svelte/icons/palette';
 	import SunIcon from '@lucide/svelte/icons/sun';
@@ -61,6 +62,10 @@
 			<Separator />
 
 			<DepthStyleSwitcher />
+
+			<Separator />
+
+			<DarkWishlistBackgroundSwitcher />
 
 			<Separator />
 

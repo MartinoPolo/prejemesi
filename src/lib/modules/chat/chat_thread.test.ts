@@ -2,13 +2,17 @@ import { describe, expect, it } from 'vitest';
 import {
 	CHAT_ITEM,
 	CHAT_PART,
+	CHAT_PROPOSAL_STATUS,
 	CHAT_TOOL_KIND,
 	chatThreadItems,
 	chatToolKind,
+	continuedAnswerParts,
+	decisionBarProposalId,
 	isChatTurnUnfinished,
-	latestChatProposalId,
 	startLiveChatTurn,
 	withStreamEvent,
+	type ChatPart,
+	type ChatProposalStatus,
 } from './chat_thread.js';
 import {
 	CHAT_ROLE,
@@ -73,6 +77,41 @@ describe('chatThreadItems', () => {
 			},
 		]);
 	});
+
+	it('starts the text of each further step of an answer on a new paragraph', () => {
+		const items = chatThreadItems([
+			message({ id: 'u1', role: CHAT_ROLE.user, text: 'Najděte kolo' }),
+			message({ id: 'a1', text: 'Hledám.' }),
+			message({ id: 'a2', text: 'Našel jsem kolo.' }),
+		]);
+
+		expect(items.at(-1)).toEqual({
+			type: CHAT_ITEM.assistant,
+			id: 'a1',
+			parts: [{ type: CHAT_PART.text, text: 'Hledám.\n\nNašel jsem kolo.' }],
+		});
+	});
+});
+
+describe('continuedAnswerParts', () => {
+	it('continues the stored answer with the rejoined turn, its text as a new paragraph', () => {
+		const stored: ChatPart[] = [
+			{ type: CHAT_PART.tools, tools: [{ kind: CHAT_TOOL_KIND.search, query: 'kolo' }] },
+			{ type: CHAT_PART.text, text: 'Hledám.' },
+		];
+
+		expect(
+			continuedAnswerParts(stored, [
+				{ type: CHAT_PART.text, text: '\n\nNašel jsem kolo.' },
+				{ type: CHAT_PART.proposal, proposalId: 'p1' },
+			]),
+		).toEqual([
+			stored[0],
+			{ type: CHAT_PART.text, text: 'Hledám.\n\nNašel jsem kolo.' },
+			{ type: CHAT_PART.proposal, proposalId: 'p1' },
+		]);
+		expect(continuedAnswerParts(stored, [])).toEqual(stored);
+	});
 });
 
 describe('isChatTurnUnfinished', () => {
@@ -88,16 +127,65 @@ describe('isChatTurnUnfinished', () => {
 	});
 });
 
-describe('latestChatProposalId', () => {
-	it('returns the newest proposal', () => {
+describe('decisionBarProposalId', () => {
+	const messages = [
+		message({ id: 'a1', proposalId: 'p1' }),
+		message({ id: 'a2', proposalId: 'p2' }),
+		message({ id: 'a3', proposalId: 'p3' }),
+		message({ id: 'a4' }),
+	];
+
+	function statuses(byProposalId: Record<string, ChatProposalStatus>) {
+		return (proposalId: string) => byProposalId[proposalId] ?? CHAT_PROPOSAL_STATUS.pending;
+	}
+
+	it('returns the newest proposal still pending review', () => {
 		expect(
-			latestChatProposalId([
-				message({ id: 'a1', proposalId: 'p1' }),
-				message({ id: 'a2', proposalId: 'p2' }),
-				message({ id: 'a3' }),
-			]),
-		).toBe('p2');
-		expect(latestChatProposalId([message({ id: 'a1' })])).toBeNull();
+			decisionBarProposalId({ messages, fastForward: false, proposalStatus: statuses({}) }),
+		).toBe('p3');
+	});
+
+	it('skips newer proposals that were decided or failed to load', () => {
+		expect(
+			decisionBarProposalId({
+				messages,
+				fastForward: false,
+				proposalStatus: statuses({
+					p2: CHAT_PROPOSAL_STATUS.unavailable,
+					p3: CHAT_PROPOSAL_STATUS.unavailable,
+				}),
+			}),
+		).toBe('p1');
+	});
+
+	it('keeps the slot for the newest proposal while its state is still loading', () => {
+		expect(
+			decisionBarProposalId({
+				messages,
+				fastForward: false,
+				proposalStatus: statuses({ p3: CHAT_PROPOSAL_STATUS.loading }),
+			}),
+		).toBe('p3');
+	});
+
+	it('returns null when no proposal is pending', () => {
+		const nonePending = () => CHAT_PROPOSAL_STATUS.unavailable;
+		expect(
+			decisionBarProposalId({ messages, fastForward: false, proposalStatus: nonePending }),
+		).toBeNull();
+		expect(
+			decisionBarProposalId({
+				messages: [message({ id: 'a1' })],
+				fastForward: false,
+				proposalStatus: statuses({}),
+			}),
+		).toBeNull();
+	});
+
+	it('returns null while fast-forward applies proposals without review', () => {
+		expect(
+			decisionBarProposalId({ messages, fastForward: true, proposalStatus: statuses({}) }),
+		).toBeNull();
 	});
 });
 

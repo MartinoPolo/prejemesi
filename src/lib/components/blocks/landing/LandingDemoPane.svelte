@@ -101,7 +101,7 @@
 
 <div
 	class={cn(
-		'flex min-w-0 flex-col gap-3 rounded-panel border-[2.5px] border-ink bg-card p-4 shadow-sticker',
+		'flex min-w-0 flex-col gap-3 rounded-panel border-[2.5px] border-edge bg-card p-4 shadow-sticker',
 		className,
 	)}
 	data-testid={testId}
@@ -131,7 +131,7 @@
 					<!-- Measure the real list content edge and place the explainer below Like, so
 					     the full-height square image and the corner action both remain uncovered. -->
 					<p
-						class="absolute z-20 rounded-lg border-2 border-ink bg-note px-3 py-2 text-(length:--text-sm) leading-snug text-note-ink shadow-sticker"
+						class="absolute z-20 rounded-lg border-2 border-edge bg-note px-3 py-2 text-(length:--text-sm) leading-snug text-note-ink shadow-sticker"
 						style="left: var(--landing-like-popup-left); right: var(--landing-like-popup-right); top: var(--landing-like-popup-top);"
 						role="status"
 						data-testid="landing-demo-like-popup"
@@ -142,7 +142,7 @@
 				<GiftListItem {gift} {role} {onreserve} {onunreserve} />
 				{#if isNarrated}
 					<p
-						class="my-3 rounded-lg border-2 border-ink bg-note px-3 py-2 text-(length:--text-base) font-semibold text-note-ink lg:hidden"
+						class="my-3 rounded-lg border-2 border-edge bg-note px-3 py-2 text-(length:--text-base) font-semibold text-note-ink lg:hidden"
 						data-testid="landing-demo-invariant-caption"
 					>
 						{m.landing_demo_invariant_caption()}

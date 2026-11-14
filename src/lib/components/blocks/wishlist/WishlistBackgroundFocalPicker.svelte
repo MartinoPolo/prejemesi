@@ -104,7 +104,7 @@
 
 <!-- The frame hugs the image so pointer percentages map straight onto the photo. The handle is the
      keyboard and screen-reader control; the frame only adds pointer placement. -->
-<div class="flex justify-center rounded-lg border-2 border-ink bg-muted p-2">
+<div class="flex justify-center rounded-lg border-2 border-edge bg-muted p-2">
 	<div
 		bind:this={frameElement}
 		class="relative inline-block max-w-full cursor-crosshair touch-none select-none data-[disabled]:cursor-not-allowed"
@@ -130,7 +130,7 @@
 		<button
 			bind:this={handleElement}
 			type="button"
-			class="absolute size-7 -translate-1/2 rounded-full border-[3px] border-card bg-ink/40 shadow-[0_0_0_2px_var(--ink)] outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+			class="absolute size-7 -translate-1/2 rounded-full border-[3px] border-card bg-ink/40 shadow-[0_0_0_2px_var(--edge)] outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
 			style:left="{focal.x}%"
 			style:top="{focal.y}%"
 			aria-label={m.wishlist_appearance_background_focal_value({

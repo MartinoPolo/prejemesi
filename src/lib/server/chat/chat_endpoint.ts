@@ -6,13 +6,14 @@ import {
 	CHAT_TURN_KIND,
 	ChatTurnRequestSchema,
 } from '$lib/modules/chat/types.js';
+import { runAfterResponse } from '$lib/server/background.js';
 import type { AgentImageBucket } from '$lib/server/storage/r2.js';
 import { canRetryChatTurn, runChatTurn, type ChatTurn } from './chat_agent.js';
 import { chatAvailability, usesChatRunner } from './chat_availability.js';
 import { createChatProvider } from './chat_config.js';
 import { chatFailure } from './chat_failure.js';
 import { ChatProviderError, type ChatModelProvider } from './chat_model.js';
-import { hasActiveChatRunnerJob, readChatRunnerJob } from './chat_runner_jobs.js';
+import { readActiveChatRunnerJob, readChatRunnerJob } from './chat_runner_jobs.js';
 import {
 	CHAT_SSE_HEADERS,
 	chatRunnerRelayResponse,
@@ -92,7 +93,7 @@ export async function handleChatTurnRequest(
 		return chatFailure(409, SERVER_ERROR.CONFLICT);
 	}
 	if (usesChatRunner(user.email)) {
-		if (await hasActiveChatRunnerJob(session.id, runnerLimits)) {
+		if ((await readActiveChatRunnerJob(session.id, runnerLimits)) !== null) {
 			return chatFailure(409, SERVER_ERROR.CONFLICT);
 		}
 		return startChatRunnerTurn({
@@ -136,12 +137,17 @@ export async function handleChatTurnRequest(
 					controller.enqueue(new TextEncoder().encode(serverSentEvent(streamEvent)));
 				}
 			};
-			// Started here, within the request's async context, which the database client needs.
-			void runChatTurn({ ...turn, emit, signal }).finally(() => {
-				if (!cancelled.signal.aborted) {
-					controller.close();
-				}
-			});
+			// Started here, within the request's async context, which the database client needs,
+			// and kept alive past a browser that goes away, so the turn stores what it streamed.
+			// Leaving aborts a model turn as Stop does: the two arrive alike, and `waitUntil`
+			// outlives a disconnect by 30 seconds, less than a turn may take.
+			runAfterResponse(() =>
+				runChatTurn({ ...turn, emit, signal }).finally(() => {
+					if (!cancelled.signal.aborted) {
+						controller.close();
+					}
+				}),
+			);
 		},
 		cancel() {
 			cancelled.abort();

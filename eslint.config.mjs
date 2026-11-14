@@ -9,6 +9,10 @@ import globals from 'globals';
 const eslintSvelteConfig = {
 	compilerOptions: { runes: true },
 };
+// esquery regex literals cannot contain a slash; `ink(?![-\w])` still catches opacity forms like `border-ink/40`.
+const inkOutlineUtility = String.raw`/\b(border|ring(-offset)?|outline|divide|stroke|shadow)(-[xytrblse])?-(\[[^\]]*var\(--ink\)[^\]]*\]|\(--ink\)|ink(?![-\w]))/`;
+const inkOutlineMessage =
+	'Outlines use `edge` (border-edge, outline-edge, ring-edge); `ink` is for text and fills.';
 
 export default [
 	{
@@ -83,6 +87,18 @@ export default [
 				{ fixStyle: 'inline-type-imports' },
 			],
 			'@typescript-eslint/no-import-type-side-effects': 'warn',
+			'no-restricted-syntax': [
+				'error',
+				{ selector: `Literal[value=${inkOutlineUtility}]`, message: inkOutlineMessage },
+				{
+					selector: `TemplateElement[value.raw=${inkOutlineUtility}]`,
+					message: inkOutlineMessage,
+				},
+				{
+					selector: `SvelteLiteral[value=${inkOutlineUtility}]`,
+					message: inkOutlineMessage,
+				},
+			],
 		},
 	},
 	...sveltePlugin.configs['flat/recommended'],
@@ -148,5 +164,10 @@ export default [
 	{
 		...tseslint.configs.disableTypeChecked,
 		files: ['designs/**/*.{js,mjs}'],
+	},
+	{
+		// Design mockups are historical references that predate the outline token.
+		files: ['designs/**/*.{js,mjs}'],
+		rules: { 'no-restricted-syntax': 'off' },
 	},
 ];

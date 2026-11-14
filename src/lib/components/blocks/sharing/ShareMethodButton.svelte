@@ -25,7 +25,7 @@
 	}: ShareMethodButtonProps = $props();
 </script>
 
-<!-- Sticker share row (issue #102 REQ-16): ink border, hard shadow lift on hover. -->
+<!-- Sticker share row (issue #102 REQ-16): edge border, hard shadow lift on hover. -->
 <Button
 	intent="secondary"
 	size="xl"
@@ -39,7 +39,7 @@
 	data-share-platform={methodId}
 >
 	<span
-		class="{colorClass} flex size-8 -rotate-3 items-center justify-center rounded-[9px] border-2 border-ink text-white"
+		class="{colorClass} flex size-8 -rotate-3 items-center justify-center rounded-[9px] border-2 border-edge text-white"
 	>
 		{@render icon()}
 	</span>

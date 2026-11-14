@@ -71,7 +71,7 @@ palette, corners, border and, through `--m-*`, the motif colours when its backdr
 		position: relative;
 		isolation: isolate;
 		background-color: var(--card);
-		border: var(--border-w) solid var(--ink);
+		border: var(--border-w) solid var(--edge);
 		border-radius: max(0px, calc(var(--radius-panel) - 2px));
 		box-shadow: var(--elevation-ordinary-strong);
 	}
@@ -190,7 +190,7 @@ palette, corners, border and, through `--m-*`, the motif colours when its backdr
 			var(--hero-gift-stripe) 0 9px,
 			var(--card) 9px 18px
 		);
-		border-bottom: var(--border-w) solid var(--ink);
+		border-bottom: var(--border-w) solid var(--edge);
 	}
 
 	.gift-ribbon {
@@ -199,7 +199,7 @@ palette, corners, border and, through `--m-*`, the motif colours when its backdr
 		right: var(--hero-ribbon-end);
 		width: var(--hero-ribbon-width);
 		background: var(--hero-gift-ribbon);
-		border-inline: var(--border-w) solid var(--ink);
+		border-inline: var(--border-w) solid var(--edge);
 	}
 
 	.gift-bow {
@@ -211,7 +211,7 @@ palette, corners, border and, through `--m-*`, the motif colours when its backdr
 		height: 30px;
 		overflow: visible;
 		fill: var(--hero-gift-ribbon);
-		stroke: var(--ink);
+		stroke: var(--edge);
 		stroke-width: var(--border-w);
 		stroke-linejoin: round;
 	}
@@ -236,7 +236,7 @@ palette, corners, border and, through `--m-*`, the motif colours when its backdr
 		width: 16px;
 		height: 16px;
 		background: var(--background);
-		border: var(--border-w) solid var(--ink);
+		border: var(--border-w) solid var(--edge);
 		border-radius: 50%;
 		translate: 0 -50%;
 	}
@@ -257,7 +257,7 @@ palette, corners, border and, through `--m-*`, the motif colours when its backdr
 		height: 70px;
 		overflow: visible;
 		fill: none;
-		stroke: color-mix(in oklab, var(--kraft) 35%, var(--ink));
+		stroke: color-mix(in oklab, var(--kraft) 35%, var(--edge));
 		stroke-width: 2;
 		stroke-linecap: round;
 	}
@@ -281,7 +281,7 @@ palette, corners, border and, through `--m-*`, the motif colours when its backdr
 		height: var(--hero-flap);
 		overflow: visible;
 		fill: var(--secondary);
-		stroke: var(--ink);
+		stroke: var(--edge);
 		stroke-width: var(--border-w);
 		stroke-linejoin: round;
 		vector-effect: non-scaling-stroke;

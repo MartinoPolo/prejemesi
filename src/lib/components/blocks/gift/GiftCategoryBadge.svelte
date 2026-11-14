@@ -38,7 +38,7 @@
 	data-single-line={singleLine || undefined}
 	class={cn(
 		badgeShape,
-		'max-w-full overflow-hidden border-ink px-2.5 py-0.5 text-xs leading-4 font-extrabold',
+		'max-w-full overflow-hidden border-edge px-2.5 py-0.5 text-xs leading-4 font-extrabold',
 		singleLine
 			? 'inline-block text-ellipsis whitespace-nowrap'
 			: '[display:-webkit-inline-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] [overflow-wrap:break-word]',

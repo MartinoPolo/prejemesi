@@ -68,6 +68,7 @@ vi.mock('$lib/server/db/auth.schema.js', () => ({
 		preferredLocale: 'u.preferredLocale',
 		palette: 'u.palette',
 		depthStyle: 'u.depthStyle',
+		darkWishlistBackground: 'u.darkWishlistBackground',
 		updatedAt: 'u.updatedAt',
 	},
 	account: {

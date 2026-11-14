@@ -18,12 +18,14 @@
 	import type { ChangeRowContext } from '$lib/components/blocks/change-proposals/change_row_model.js';
 	import type { DecidingProposalRegistry } from '$lib/components/blocks/change-proposals/gift_live_preview.js';
 	import { ProposalDecisions } from '$lib/components/blocks/change-proposals/proposal_decisions.svelte.js';
+	import { showRejectedProposalToast } from '$lib/components/blocks/change-proposals/rejected_proposal_toast.js';
 	import { localizeInternalHref } from '$lib/i18n/locale.js';
 	import type { StateRaw } from '$lib/reactivity/state.svelte.js';
 	import { translateServerError } from '$lib/modules/errors/translate_server_error.js';
 	import {
 		applyChangeProposal,
 		discardChangeProposal,
+		restoreChangeProposal,
 		undoChangeProposal,
 	} from '$lib/modules/change_proposals/index.js';
 	import {
@@ -36,6 +38,9 @@
 		countCopy,
 		formatChangeReviewDateTime,
 	} from '$lib/modules/change_proposals/change_review_copy.js';
+	import { CHANGE_DECISION } from '$lib/modules/change_proposals/change_field_decisions.js';
+	import { isRowDeclined } from '$lib/modules/change_proposals/change_review_decisions.js';
+	import { isOutdatedChangeProposalError } from '$lib/modules/change_proposals/outdated_change_proposal.js';
 	import ProposalDecisionControls from './ProposalDecisionControls.svelte';
 	import {
 		APPLIED_TITLES,
@@ -62,6 +67,7 @@
 		inBar,
 		decisionBar,
 		decidingProposals,
+		onoutdated,
 	}: {
 		proposal: ChangeProposalView;
 		rowContext: Omit<ChangeRowContext, 'submitterName' | 'kindTitle'>;
@@ -70,6 +76,8 @@
 		decisionBar: StateRaw<DecisionBarControls | null>;
 		/** Pending proposals register here so the wishlist behind the panel previews them. */
 		decidingProposals: DecidingProposalRegistry;
+		/** An action found the proposal decided elsewhere, so its real state should load. */
+		onoutdated: () => void;
 	} = $props();
 
 	let card = $state<HTMLElement>();
@@ -127,14 +135,31 @@
 		});
 	}
 
+	/** Rows needing their own confirmation stay open, so the summary points at them. */
+	function acceptAll() {
+		decisions.decideEveryRow(CHANGE_DECISION.accepted);
+		if (decisions.unresolvedCount > 0) {
+			void revealUnresolved();
+		}
+	}
+
 	async function run(action: CardAction, work: () => Promise<void>, fallback: string) {
+		const focused = document.activeElement;
 		pendingAction = action;
 		try {
 			await work();
 		} catch (error) {
 			toastError(translateServerError(error, fallback));
+			if (isOutdatedChangeProposalError(error)) {
+				onoutdated();
+			}
 		} finally {
 			pendingAction = null;
+		}
+		await tick();
+		// Deciding the proposal removes the pressed control; keep focus in the panel for Escape.
+		if (focused !== null && !focused.isConnected && document.activeElement === document.body) {
+			card?.focus();
 		}
 	}
 
@@ -154,17 +179,35 @@
 		);
 	}
 
+	async function restore(proposalId: string) {
+		try {
+			await restoreChangeProposal({ proposalId });
+		} catch (error) {
+			if (isOutdatedChangeProposalError(error)) {
+				onoutdated();
+			}
+			throw error;
+		}
+	}
+
+	/** Rejecting needs no second click: it discards at once and the toast offers to restore. */
+	function reject() {
+		const proposalId = proposal.id;
+		void run(
+			'discard',
+			async () => {
+				await discardChangeProposal({ proposalId });
+				showRejectedProposalToast(() => restore(proposalId));
+			},
+			m.change_review_discard_error(),
+		);
+	}
+
 	function requestApply() {
 		if (decisions.unresolvedCount > 0) {
 			void revealUnresolved();
 		} else if (decisions.includedCount === 0) {
-			void run(
-				'discard',
-				async () => {
-					await discardChangeProposal({ proposalId: proposal.id });
-				},
-				m.change_review_discard_error(),
-			);
+			reject();
 		} else {
 			void run('apply', apply, m.change_review_apply_error());
 		}
@@ -221,6 +264,8 @@
 		reviewHref={checksInline ? null : reviewHref}
 		pending={pendingAction !== null}
 		oninspect={() => (inspecting = !inspecting)}
+		onrejectall={reject}
+		onacceptall={acceptAll}
 		onapply={requestApply}
 		{onlocate}
 		{compact}
@@ -234,9 +279,13 @@
 {#snippet summaryRows()}
 	<ul class="summary-rows">
 		{#each decisions.entries as entry (entry.row.rowId)}
-			<li class="summary-row">
+			{@const declined = decisions.interactive && isRowDeclined(entry.rowReview)}
+			<li class="summary-row" data-declined={declined || undefined}>
 				<ChangeKindTitle kind={entry.row.kind} />
 				<span class="summary-name">{entry.model.identity.name}</span>
+				{#if declined}
+					<span class="sr-only">{m.change_review_pill_rejected()}</span>
+				{/if}
 			</li>
 		{/each}
 	</ul>
@@ -347,6 +396,7 @@
 	data-state={proposal.state}
 	data-testid="chat-proposal"
 	aria-labelledby={titleId}
+	tabindex="-1"
 	bind:this={card}
 >
 	{#if proposal.state === CHANGE_PROPOSAL_STATE.applied}
@@ -372,7 +422,7 @@
 	/* Nested in the 16px panel with a 2px border and a 12px inset: 16 - 2 - 2 = 12px corners. */
 	.card {
 		overflow: hidden;
-		border: 2px solid var(--ink);
+		border: 2px solid var(--edge);
 		border-radius: var(--chat-surface-radius);
 		background: var(--card);
 	}
@@ -384,7 +434,7 @@
 		justify-content: space-between;
 		gap: 4px var(--space-2);
 		padding: var(--space-2) var(--space-3);
-		border-bottom: 2px solid var(--ink);
+		border-bottom: 2px solid var(--edge);
 		background: var(--tint);
 	}
 
@@ -441,6 +491,12 @@
 		min-width: 0;
 		font-weight: 600;
 		overflow-wrap: anywhere;
+	}
+
+	/* Per-row rejections show at once, before Použít declines them. */
+	.summary-row[data-declined] .summary-name {
+		color: var(--muted-foreground);
+		text-decoration: line-through;
 	}
 
 	.inspect-row {

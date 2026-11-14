@@ -93,7 +93,7 @@
 	.dot {
 		width: 8px;
 		height: 8px;
-		border: 1.5px solid var(--ink);
+		border: 1.5px solid var(--edge);
 		border-radius: 2px;
 	}
 

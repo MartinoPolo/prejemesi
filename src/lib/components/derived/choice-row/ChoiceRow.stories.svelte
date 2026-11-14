@@ -13,7 +13,8 @@
 	{#snippet template()}
 		<div class="grid w-44 gap-1">
 			<ChoiceRow selected={true} onSelect={() => {}}>
-				{#snippet leading()}<span class="size-4 rounded-full border-2 border-ink bg-primary"
+				{#snippet leading()}<span
+						class="size-4 rounded-full border-2 border-edge bg-primary"
 					></span>{/snippet}
 				Selected choice
 			</ChoiceRow>

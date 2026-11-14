@@ -60,7 +60,7 @@
 	}
 
 	.fast-forward.is-on {
-		border-color: color-mix(in oklab, var(--status-warning) 70%, var(--ink));
+		border-color: color-mix(in oklab, var(--status-warning) 70%, var(--edge));
 		background: color-mix(in oklab, var(--status-warning) 8%, var(--card));
 	}
 </style>

@@ -10,6 +10,7 @@
 	import WishlistHeader from '$lib/components/blocks/gift/WishlistHeader.svelte';
 	import WishlistDetailToolbar from '$lib/components/blocks/wishlist/WishlistDetailToolbar.svelte';
 	import WishlistGiftDisplay from '$lib/components/blocks/wishlist/WishlistGiftDisplay.svelte';
+	import { setWishlistStickyChrome } from '$lib/components/blocks/wishlist/wishlist_sticky_chrome.svelte.js';
 	import WishlistSelectionToolbar from '$lib/components/blocks/wishlist/WishlistSelectionToolbar.svelte';
 	import GiftBulkCopyDialog, {
 		NEW_WISHLIST_DESTINATION,
@@ -115,6 +116,7 @@
 	} from '$lib/modules/wishlists/wishlist_capabilities.js';
 	import type { Palette } from '$lib/theme/palettes.js';
 	import type { WishlistThemeId } from '$lib/theme/wishlist_themes.js';
+	import { setLayerPalette } from '$lib/theme/layer_palette.js';
 	import {
 		loadWishlistThemeArt,
 		type WishlistThemeArt,
@@ -306,6 +308,9 @@
 	const assistant = setAssistantContext();
 	const decidingProposals: DecidingProposalRegistry = new SvelteSet();
 	provideGiftGalleryPositions();
+	setWishlistStickyChrome();
+	// Menus and dialogs opened here take the wishlist palette in dark mode.
+	setLayerPalette(() => activePalette);
 
 	untrack(() =>
 		setLikesContext(
@@ -1707,7 +1712,8 @@
 		if (
 			scalarKeys.every((key) => previous[key] === filters[key]) &&
 			sameFilterValues(previous.categoryValues, filters.categoryValues) &&
-			sameFilterValues(previous.priorityValues, filters.priorityValues)
+			sameFilterValues(previous.priorityValues, filters.priorityValues) &&
+			sameFilterValues(previous.storeValues, filters.storeValues)
 		) {
 			return;
 		}
@@ -2504,6 +2510,8 @@
 			groupingRequired={giftsContext.carouselViewActive.current}
 			categoryFilterOptions={giftsContext.categoryFilterOptions.current}
 			priorityFilterOptions={giftsContext.priorityFilterOptions.current}
+			storeFilterOptions={giftsContext.storeFilterOptions.current}
+			filteredGiftCount={giftsContext.sortedAndFilteredGifts.current.length}
 			cardColumnOption={giftsContext.cardColumnOption.current}
 			{cardColumnCapacity}
 			{reorderMode}

@@ -104,7 +104,9 @@ describe('Tabs selected face slide', () => {
 		);
 		expect(indicatorStyle.borderTopWidth).toBe('2px');
 		expect(indicatorStyle.borderTopStyle).toBe('solid');
-		expect(indicatorStyle.borderTopColor).toBe(resolveCssValue(context, 'color', 'var(--ink)'));
+		expect(indicatorStyle.borderTopColor).toBe(
+			resolveCssValue(context, 'color', 'var(--edge)'),
+		);
 		// Tailwind shadow utilities prepend transparent ring layers before the sticker shadow.
 		expect(
 			indicatorStyle.boxShadow.endsWith(

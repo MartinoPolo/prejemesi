@@ -14,6 +14,10 @@
 		reorderGroupKey?: string;
 		/** Gifts in the row the header introduces, shown after the label. */
 		count?: number;
+		/** Visible card range of the row, shown at the end of the line; sighted-only. */
+		position?: string;
+		/** Id that makes the heading an in-page jump target. */
+		jumpTargetId?: string;
 	}
 
 	let {
@@ -22,6 +26,8 @@
 		onselectiontoggle,
 		reorderGroupKey,
 		count,
+		position,
+		jumpTargetId,
 	}: GiftSectionHeaderProps = $props();
 	const isSelected = getContext<((giftId: string) => boolean) | undefined>(
 		'wishlist-gift-selection',
@@ -30,6 +36,10 @@
 	const selectedCount = $derived(sectionIds.filter((id) => isSelected?.(id) ?? false).length);
 
 	const label = $derived(giftSectionLabel(section));
+	// Focusable only by script, so a jump can land on it without adding a tab stop.
+	const jumpTargetAttributes = $derived(
+		jumpTargetId === undefined ? {} : { id: jumpTargetId, tabindex: -1 },
+	);
 </script>
 
 <div class="flex items-center gap-2 pt-1 pb-0.5" data-gift-reorder-group={reorderGroupKey}>
@@ -53,7 +63,12 @@
 	<span class="wishlist-backdrop-plate inline-flex min-w-0 items-center gap-2">
 		{#if label !== ''}
 			<h2
-				class="font-heading text-sm font-bold tracking-wide text-foreground uppercase [word-spacing:0.1em]"
+				{...jumpTargetAttributes}
+				class={[
+					'font-heading text-sm font-bold tracking-wide text-foreground uppercase [word-spacing:0.1em]',
+					jumpTargetId !== undefined &&
+						'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
+				]}
 			>
 				{label}
 			</h2>
@@ -72,4 +87,11 @@
 			>{/if}
 	</span>
 	<span class="h-px flex-1 bg-border" aria-hidden="true"></span>
+	{#if position}
+		<span
+			class="wishlist-backdrop-plate text-xs font-semibold whitespace-nowrap text-muted-foreground tabular-nums"
+			aria-hidden="true"
+			data-testid="gift-section-position">{position}</span
+		>
+	{/if}
 </div>

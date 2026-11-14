@@ -135,7 +135,7 @@
 
 	.confirm-section {
 		padding: var(--space-4);
-		border: 2.5px solid var(--ink);
+		border: 2.5px solid var(--edge);
 		border-radius: 20px;
 		background: color-mix(in oklab, var(--accent-loud) 22%, var(--card));
 		box-shadow: var(--elevation-ordinary);
@@ -155,7 +155,7 @@
 		place-items: center;
 		width: 32px;
 		height: 32px;
-		border: 2px solid var(--ink);
+		border: 2px solid var(--edge);
 		border-radius: 9px;
 		background: var(--accent-loud);
 		color: var(--accent-loud-foreground);
@@ -197,7 +197,7 @@
 		place-items: center;
 		width: 32px;
 		height: 32px;
-		border: 2.5px solid var(--ink);
+		border: 2.5px solid var(--edge);
 		border-radius: var(--radius-btn);
 		background: var(--card);
 		box-shadow: var(--elevation-compact);

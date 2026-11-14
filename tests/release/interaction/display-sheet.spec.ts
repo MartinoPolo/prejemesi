@@ -231,7 +231,7 @@ const OUTCOME_CHECKS: Record<DisplaySheetOutcome, (context: OutcomeContext) => P
 		const filter = sectionContent(displaySheet(page), 'filter');
 		await requireTouch(session).tap(filter);
 		await expect(filter, 'the filter is active').toBeChecked();
-		await expect(resetButton(page), 'the Filter section offers Reset').toBeVisible();
+		await expect(resetButton(page), 'the Filter section footer offers Reset').toBeVisible();
 		await expect(
 			displaySheet(page).getByRole('button', {
 				name: new RegExp(`^${m.filter_remove({ label: '' }).trim()}`),

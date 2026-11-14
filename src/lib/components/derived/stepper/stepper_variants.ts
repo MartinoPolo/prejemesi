@@ -6,7 +6,7 @@ export const stepperVariants = tv({
 		root: 'flex items-center gap-2',
 		connector: 'relative min-w-3 flex-1 border-t-2 border-dashed border-ink-faint',
 		/** Solid ink over the dashed track; its `transform` lets a host animate the progress. */
-		connectorFill: 'absolute inset-x-0 -top-0.5 origin-left border-t-2 border-ink',
+		connectorFill: 'absolute inset-x-0 -top-0.5 origin-left border-t-2 border-edge',
 		step: 'flex items-center gap-1.5 whitespace-nowrap text-(length:--text-sm)',
 		marker: 'flex size-6 items-center justify-center rounded-full border-2 text-xs font-bold',
 		label: '',
@@ -21,11 +21,11 @@ export const stepperVariants = tv({
 			},
 			current: {
 				step: 'font-bold text-foreground',
-				marker: 'border-ink bg-primary text-primary-foreground',
+				marker: 'border-edge bg-primary text-primary-foreground',
 			},
 			completed: {
 				step: 'font-semibold text-muted-foreground',
-				marker: 'border-ink bg-primary text-primary-foreground',
+				marker: 'border-edge bg-primary text-primary-foreground',
 				label: 'max-[400px]:hidden',
 			},
 		},

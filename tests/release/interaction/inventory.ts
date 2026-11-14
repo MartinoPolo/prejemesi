@@ -1400,13 +1400,13 @@ export type DisplaySheetOutcome =
 	| 'cascades-and-closes-one-layer'
 	/** One press closes Display and opens More. */
 	| 'swaps-menus-in-one-press'
-	/** With a filter active, the Filter section offers Reset and no active-filter pills; Reset clears it. */
+	/** With a filter active, the Filter section's footer offers Reset and the sheet shows no active-filter pills; Reset clears it. */
 	| 'resets-filters';
 
 const MOBILE_DISPLAY_SHEET =
 	'DECISIONS 2026-09-04: „Mobile Display is one stable, labeled bottom sheet switching sort/group/filter sections in place"';
 const MOBILE_FILTER_RESET =
-	'DECISIONS 2026-10-26: „The mobile Display sheet offers Reset next to its Filter selector, without active-filter pills"';
+	'DECISIONS 2026-11-13: „The Display sheet\'s Filter section has a footer outside its scroll area with „Zrušit filtry“ and „Zobrazit N přání“"';
 const DESKTOP_DISPLAY_MENUS =
 	'DECISIONS 2026-09-10: „Desktop Display/bulk categories use adjacent cascading dropdowns with their parent menus still visible"; „Switching an available sibling control closes the old surface and opens the new one in one action"';
 

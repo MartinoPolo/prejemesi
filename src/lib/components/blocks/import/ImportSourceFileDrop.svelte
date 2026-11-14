@@ -94,8 +94,8 @@
 
 <button
 	type="button"
-	class="flex h-full w-full flex-col items-center justify-center gap-3 rounded-panel border-[3px] border-dashed border-muted-foreground px-6 transition-colors hover:border-ink hover:bg-tint {isDragOver
-		? 'border-ink bg-tint'
+	class="flex h-full w-full flex-col items-center justify-center gap-3 rounded-panel border-[3px] border-dashed border-muted-foreground px-6 transition-colors hover:border-edge hover:bg-tint {isDragOver
+		? 'border-edge bg-tint'
 		: ''} {disabled ? 'pointer-events-none opacity-50' : 'cursor-pointer'}"
 	ondrop={handleDrop}
 	ondragover={handleDragOver}
@@ -112,12 +112,12 @@
 	</div>
 	<div class="flex gap-2">
 		<span
-			class="rounded-full border-2 border-ink bg-card px-2.5 py-0.5 text-xs font-semibold text-foreground"
+			class="rounded-full border-2 border-edge bg-card px-2.5 py-0.5 text-xs font-semibold text-foreground"
 		>
 			.CSV
 		</span>
 		<span
-			class="rounded-full border-2 border-ink bg-card px-2.5 py-0.5 text-xs font-semibold text-foreground"
+			class="rounded-full border-2 border-edge bg-card px-2.5 py-0.5 text-xs font-semibold text-foreground"
 		>
 			.TSV
 		</span>

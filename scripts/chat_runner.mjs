@@ -21,17 +21,33 @@ export const REPORT_LIMITS = {
 	eventsPerReport: 100,
 	textEventMaxLength: 20_000,
 	queryMaxLength: 2_000,
+	/** The app fails a job it has not heard from for this long. */
+	heartbeatTimeoutMs: 90_000,
 };
 
 const RUNNER_TIMING = {
 	heartbeatMs: 20_000,
 	turnTimeoutMs: 10 * 60_000,
 	maxBackoffMs: 30_000,
-	requestTimeoutMs: 15_000,
 	// The app holds a claim open for its own polling window, so this only bounds a hung connection.
 	claimTimeoutMs: 60_000,
-	reportAttempts: 3,
 };
+
+/**
+ * How a report that failed in transit is retried: with doubling waits, until the app would have
+ * failed the silent job anyway.
+ */
+const REPORT_RETRY = {
+	requestTimeoutMs: 15_000,
+	firstDelayMs: 1_000,
+	maxDelayMs: 10_000,
+	giveUpAfterMs: REPORT_LIMITS.heartbeatTimeoutMs,
+};
+
+/** Why the reporter stopped a job. */
+export const REPORT_STOP_REASON = { cancelled: 'cancelled', appUnreachable: 'app unreachable' };
+
+const REPORT_OUTCOME = { running: 'running', retry: 'retry', ...REPORT_STOP_REASON };
 
 function textChunks(text) {
 	const chunks = [];
@@ -100,8 +116,17 @@ export function readClaudeStreamLine(line) {
 	return { events: [], finalStatus: null };
 }
 
-/** `claude -p` arguments for one job; the prompt itself goes on stdin. */
-export function claudeArguments({ model, mcpConfigPath, systemPromptPath }) {
+/** Claude Code ranks `CLAUDE_CODE_EFFORT_LEVEL` above `--effort`, so it would mask the chat's choice. */
+export function claudeEnvironment(environment) {
+	const { CLAUDE_CODE_EFFORT_LEVEL: _maskingEffort, ...rest } = environment;
+	return rest;
+}
+
+/**
+ * `claude -p` arguments for one job; the prompt itself goes on stdin. An app released before the
+ * effort choice names none, so the model keeps its default effort.
+ */
+export function claudeArguments({ model, effort, mcpConfigPath, systemPromptPath }) {
 	return [
 		'-p',
 		'--output-format',
@@ -109,6 +134,7 @@ export function claudeArguments({ model, mcpConfigPath, systemPromptPath }) {
 		'--verbose',
 		'--model',
 		model,
+		...(effort === undefined ? [] : ['--effort', effort]),
 		'--setting-sources',
 		'',
 		'--strict-mcp-config',
@@ -213,49 +239,86 @@ function killProcessTree(child) {
 	}
 }
 
+/** Node's fetch reports every network failure as "fetch failed", with the reason as its cause. */
+function failureMessage(error) {
+	if (!(error instanceof Error)) {
+		return String(error);
+	}
+	const cause = error.cause instanceof Error ? (error.cause.code ?? error.cause.message) : null;
+	return cause === null ? error.message : `${error.message} (${cause})`;
+}
+
+function isTransientStatus(status) {
+	return status === 408 || status === 429 || status >= 500;
+}
+
 /**
- * Sends a job's events in order; tells `onCancelled` when the app no longer wants the job. Each
- * report carries the next number, and its retries repeat it, so the app applies it only once.
+ * Sends a job's events in order; tells `onStop` when the app no longer wants the job or stayed
+ * unreachable for as long as it waits for a silent job. Each report carries the next number and
+ * its retries repeat it, so the app applies a report that arrived only once, even when its
+ * answer was lost.
  */
-export function createJobReporter({ appUrl, job, onCancelled }) {
+export function createJobReporter({ appUrl, job, onStop, retry = REPORT_RETRY }) {
 	const eventsUrl = `${appUrl}/chat-runner/jobs/${job.id}/events`;
 	let queue = Promise.resolve();
-	let cancelled = false;
+	let stopReason = null;
 	let lastSequence = 0;
+
+	async function postOnce(body) {
+		try {
+			const response = await fetch(eventsUrl, {
+				method: 'POST',
+				headers: {
+					authorization: `Bearer ${job.token}`,
+					'content-type': 'application/json',
+				},
+				body,
+				signal: AbortSignal.timeout(retry.requestTimeoutMs),
+			});
+			if (response.ok) {
+				const answer = await response.json();
+				return answer?.cancelled === true
+					? REPORT_OUTCOME.cancelled
+					: REPORT_OUTCOME.running;
+			}
+			// The app forgets a job's token once it ended the job itself.
+			if (response.status === 401 || response.status === 404) {
+				return REPORT_OUTCOME.cancelled;
+			}
+			if (isTransientStatus(response.status)) {
+				log(`[${job.id}] report answered ${response.status}`);
+				return REPORT_OUTCOME.retry;
+			}
+			// Sending the same report again cannot change the answer.
+			log(`[${job.id}] report refused with ${response.status}; skipping it`);
+			return REPORT_OUTCOME.running;
+		} catch (error) {
+			log(`[${job.id}] report failed: ${failureMessage(error)}`);
+			return REPORT_OUTCOME.retry;
+		}
+	}
 
 	async function post(report) {
 		lastSequence += 1;
-		const body = { sequence: lastSequence, ...report };
-		for (let attempt = 1; attempt <= RUNNER_TIMING.reportAttempts; attempt += 1) {
-			try {
-				const response = await fetch(eventsUrl, {
-					method: 'POST',
-					headers: {
-						authorization: `Bearer ${job.token}`,
-						'content-type': 'application/json',
-					},
-					body: JSON.stringify(body),
-					signal: AbortSignal.timeout(RUNNER_TIMING.requestTimeoutMs),
-				});
-				if (response.ok) {
-					const answer = await response.json();
-					return answer?.cancelled === true;
-				}
-				// The app forgets a job's token once it ended the job itself.
-				if (response.status === 401 || response.status === 404) {
-					return true;
-				}
-				log(`[${job.id}] report answered ${response.status}`);
-			} catch (error) {
-				log(`[${job.id}] report failed: ${error instanceof Error ? error.message : error}`);
+		const body = JSON.stringify({ sequence: lastSequence, ...report });
+		const giveUpAt = Date.now() + retry.giveUpAfterMs;
+		let delayMs = retry.firstDelayMs;
+		while (true) {
+			const outcome = await postOnce(body);
+			if (outcome !== REPORT_OUTCOME.retry) {
+				return outcome;
 			}
-			await delay(attempt * 1_000);
+			if (Date.now() + delayMs >= giveUpAt) {
+				log(`[${job.id}] the app stayed unreachable; stopping the job`);
+				return REPORT_OUTCOME.appUnreachable;
+			}
+			await delay(delayMs);
+			delayMs = Math.min(delayMs * 2, retry.maxDelayMs);
 		}
-		return false;
 	}
 
 	async function send(events, status) {
-		if (cancelled) {
+		if (stopReason !== null) {
 			return;
 		}
 		const batches = [];
@@ -267,12 +330,12 @@ export function createJobReporter({ appUrl, job, onCancelled }) {
 		}
 		for (const [index, batch] of batches.entries()) {
 			const isLastBatch = index === batches.length - 1;
-			const wasCancelled = await post(
+			const outcome = await post(
 				isLastBatch && status !== undefined ? { events: batch, status } : { events: batch },
 			);
-			if (wasCancelled) {
-				cancelled = true;
-				onCancelled();
+			if (outcome !== REPORT_OUTCOME.running) {
+				stopReason = outcome;
+				onStop(outcome);
 				return;
 			}
 		}
@@ -284,8 +347,9 @@ export function createJobReporter({ appUrl, job, onCancelled }) {
 			queue = queue.then(() => send(events, status));
 			return queue;
 		},
-		get cancelled() {
-			return cancelled;
+		/** A `REPORT_STOP_REASON` once the reporter stopped the job, otherwise null. */
+		get stopReason() {
+			return stopReason;
 		},
 	};
 }
@@ -325,7 +389,7 @@ async function runJob(config, job, runState) {
 		const reporter = createJobReporter({
 			appUrl: config.appUrl,
 			job,
-			onCancelled: () => stop('cancelled'),
+			onStop: stop,
 		});
 		runState.stopCurrentJob = stop;
 		if (runState.stopping) {
@@ -334,9 +398,15 @@ async function runJob(config, job, runState) {
 
 		child = spawn(
 			config.claudeBin,
-			claudeArguments({ model: job.model, mcpConfigPath, systemPromptPath }),
+			claudeArguments({
+				model: job.model,
+				effort: job.effort,
+				mcpConfigPath,
+				systemPromptPath,
+			}),
 			{
 				cwd: workDirectory,
+				env: claudeEnvironment(process.env),
 				stdio: ['pipe', 'pipe', 'pipe'],
 				windowsHide: true,
 				detached: process.platform !== 'win32',
@@ -374,8 +444,13 @@ async function runJob(config, job, runState) {
 		clearInterval(heartbeat);
 		clearTimeout(timeout);
 
-		if (stopReason === 'cancelled' || reporter.cancelled) {
+		if (reporter.stopReason === REPORT_STOP_REASON.cancelled) {
 			log(`[${job.id}] cancelled in the app`);
+			return;
+		}
+		// The app has failed the silent job by now, so no final status would reach it.
+		if (reporter.stopReason === REPORT_STOP_REASON.appUnreachable) {
+			log(`[${job.id}] stopped: the app stayed unreachable`);
 			return;
 		}
 		if (exit.error !== null) {
@@ -467,7 +542,7 @@ async function main() {
 		if (job === null) {
 			continue;
 		}
-		log(`[${job.id}] claimed, ${job.model}`);
+		log(`[${job.id}] claimed, ${[job.model, job.effort].filter(Boolean).join(' ')}`);
 		try {
 			await runJob(config, job, runState);
 		} catch (error) {

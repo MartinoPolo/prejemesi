@@ -137,6 +137,17 @@ export function changeProposal(overrides: Partial<ChangeProposalView> = {}): Cha
 	};
 }
 
+/** Only the fixture's deletion of Lego Titanic, which awaits the reviewer's own decision. */
+export function deletionChangeProposal(
+	overrides: Partial<ChangeProposalView> = {},
+): ChangeProposalView {
+	return changeProposal({
+		rows: proposalRows().filter((row) => row.kind === CHANGE_KIND.giftDeletion),
+		kindCounts: { giftDeletion: 1 },
+		...overrides,
+	});
+}
+
 /** The fixture after Apply with the ordinary rows: they applied, the rest did not. */
 export function appliedChangeProposal(
 	overrides: Partial<ChangeProposalView> = {},

@@ -2,6 +2,8 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { page } from 'vitest/browser';
 import '../../app.css';
 import { PALETTES } from './palettes.js';
+import { DEPTH_STYLES } from './depth_styles.js';
+import { DARK_WISHLIST_BACKGROUNDS } from './dark_wishlist_background.js';
 import { badgeVariants, BADGE_STYLES } from '../components/base/badge/badge_variants.js';
 import { avatarVariants } from '../components/derived/avatar/avatar_variants.js';
 import { buttonVariants } from '../components/base/button/button_variants.js';
@@ -17,6 +19,8 @@ const originalPalette = document.documentElement.getAttribute('data-palette');
 
 afterEach(() => {
 	document.documentElement.className = originalClass;
+	document.documentElement.removeAttribute('data-depth');
+	document.documentElement.removeAttribute('data-dark-wishlist-background');
 	if (originalPalette === null) {
 		document.documentElement.removeAttribute('data-palette');
 	} else {
@@ -285,51 +289,187 @@ describe.each(Object.entries(statusTextSamples))(
 	},
 );
 
-describe('restrained dark palettes', () => {
+function tokenContrast(scope: HTMLElement, foreground: string, background: string): number {
+	return contrastRatio(luminance(scope, foreground, background), luminance(scope, background));
+}
+
+describe('lights-off dark palettes', () => {
+	const darkTextPairs = [
+		...textPairs,
+		['--foreground', '--surface'],
+		['--muted-foreground', '--popover'],
+		['--muted-foreground', '--surface'],
+		['--link', '--card'],
+		['--link', '--background'],
+	];
+	// Ascending lightness keeps each raised layer distinct; the dark outline sits below the page.
+	const surfaceLadder = ['--accent', '--secondary', '--muted', '--card', '--popover'];
+
 	it.each(PALETTES)(
-		'%s keeps dark surfaces and readable semantic text in both scopes',
+		'%s keeps the surface ladder and readable text at every depth in page, nested and layer scopes',
 		(palette) => {
 			document.documentElement.classList.add('dark');
 			document.documentElement.setAttribute('data-palette', palette);
 			const nested = document.createElement('div');
 			nested.setAttribute('data-palette', palette);
-			document.body.append(nested);
+			const layer = document.createElement('div');
+			layer.setAttribute('data-dark-palette', palette);
+			document.body.append(nested, layer);
 			try {
-				for (const scope of [document.documentElement, nested]) {
-					expect(luminance(scope, '--background')).toBeLessThan(0.01);
-					expect(luminance(scope, '--card')).toBeGreaterThan(
-						luminance(scope, '--background'),
-					);
-					expect(luminance(scope, '--card')).toBeLessThan(0.025);
-					const samples = [
-						...BADGE_STYLES.map((badgeStyle) =>
-							badgeVariants({ tone: 'primary', badgeStyle }),
-						),
-						avatarVariants().fallback(),
-						avatarVariants({ appearance: 'recipient' }).fallback(),
-					];
-					for (const className of samples) {
+				for (const depth of DEPTH_STYLES) {
+					document.documentElement.setAttribute('data-depth', depth);
+					for (const scope of [document.documentElement, nested, layer]) {
+						const label = `${palette} ${depth}`;
+						let previous = luminance(scope, '--background');
 						expect(
-							sampleContrast(scope, className),
-							`${palette}: ${className}`,
-						).toBeGreaterThanOrEqual(4.5);
-					}
-					for (const [foreground, background] of textPairs) {
-						const text = luminance(scope, foreground!, background!);
-						const surface = luminance(scope, background!);
-						const contrast =
-							(Math.max(text, surface) + 0.05) / (Math.min(text, surface) + 0.05);
-						expect(
-							contrast,
-							`${palette}: ${foreground} on ${background}`,
-						).toBeGreaterThanOrEqual(4.5);
+							luminance(scope, '--edge'),
+							`${label}: edge below page`,
+						).toBeLessThan(previous);
+						for (const surface of surfaceLadder) {
+							const current = luminance(scope, surface);
+							expect(
+								current,
+								`${label}: ${surface} above the layer below`,
+							).toBeGreaterThan(previous);
+							previous = current;
+						}
+						const samples = [
+							...BADGE_STYLES.map((badgeStyle) =>
+								badgeVariants({ tone: 'primary', badgeStyle }),
+							),
+							...['success', 'info'].map((tone) =>
+								badgeVariants({
+									tone: tone as 'success' | 'info',
+									badgeStyle: 'solid',
+								}),
+							),
+							avatarVariants().fallback(),
+							avatarVariants({ appearance: 'recipient' }).fallback(),
+						];
+						for (const className of samples) {
+							const contrast = sampleContrast(scope, className);
+							expect(
+								contrast,
+								`${label}: ${className}: ${contrast.toFixed(2)}`,
+							).toBeGreaterThanOrEqual(4.5);
+						}
+						for (const [foreground, background] of darkTextPairs) {
+							const contrast = tokenContrast(scope, foreground!, background!);
+							expect(
+								contrast,
+								`${label}: ${foreground} on ${background}: ${contrast.toFixed(2)}`,
+							).toBeGreaterThanOrEqual(4.5);
+						}
+						for (const surface of ['--background', ...surfaceLadder]) {
+							const contrast = tokenContrast(scope, '--edge-control', surface);
+							expect(
+								contrast,
+								`${label}: control outline on ${surface}: ${contrast.toFixed(2)}`,
+							).toBeGreaterThanOrEqual(3);
+						}
 					}
 				}
 			} finally {
 				nested.remove();
+				layer.remove();
 			}
 		},
 	);
+});
+
+describe('dark wishlist page backgrounds', () => {
+	const wishlistTextPairs = [
+		['--foreground', '--background'],
+		['--muted-foreground', '--background'],
+		['--wishlist-heading-ink', '--background'],
+		['--brand', '--background'],
+		['--wishlist-heading-ink', '--card'],
+	];
+
+	it.each(PALETTES)(
+		'%s wishlist text stays readable on every background option for cool and warm viewers',
+		(palette) => {
+			document.documentElement.classList.add('dark');
+			const shell = document.createElement('div');
+			shell.className = 'wishlist-page-shell';
+			shell.setAttribute('data-palette', palette);
+			document.body.append(shell);
+			try {
+				for (const viewer of ['sky', 'peach']) {
+					document.documentElement.setAttribute('data-palette', viewer);
+					for (const option of DARK_WISHLIST_BACKGROUNDS) {
+						document.documentElement.setAttribute(
+							'data-dark-wishlist-background',
+							option,
+						);
+						for (const [foreground, background] of wishlistTextPairs) {
+							const contrast = tokenContrast(shell, foreground!, background!);
+							expect(
+								contrast,
+								`${palette} for ${viewer} viewer, ${option}: ${foreground} on ${background}: ${contrast.toFixed(2)}`,
+							).toBeGreaterThanOrEqual(4.5);
+						}
+						for (const surface of ['--background', '--card']) {
+							const contrast = tokenContrast(shell, '--edge-control', surface);
+							expect(
+								contrast,
+								`${palette} for ${viewer} viewer, ${option}: control outline on ${surface}: ${contrast.toFixed(2)}`,
+							).toBeGreaterThanOrEqual(3);
+						}
+					}
+				}
+			} finally {
+				shell.remove();
+			}
+		},
+	);
+
+	it('the page background follows the selected option', () => {
+		document.documentElement.classList.add('dark');
+		document.documentElement.setAttribute('data-palette', 'sky');
+		const shell = document.createElement('div');
+		shell.className = 'wishlist-page-shell';
+		shell.setAttribute('data-palette', 'honey');
+		document.body.append(shell);
+		const backgroundOf = (option: string) => {
+			document.documentElement.setAttribute('data-dark-wishlist-background', option);
+			const probe = document.createElement('span');
+			probe.style.color = 'var(--background)';
+			shell.append(probe);
+			const color = getComputedStyle(probe).color;
+			probe.remove();
+			return color;
+		};
+		const viewerProbe = document.createElement('span');
+		viewerProbe.style.color = 'var(--background)';
+		document.body.append(viewerProbe);
+		try {
+			const viewerBackground = getComputedStyle(viewerProbe).color;
+			const [wishlist, app, tint] = ['wishlist', 'app', 'tint'].map(backgroundOf);
+			expect(app).toBe(viewerBackground);
+			const honeyPage = document.createElement('div');
+			honeyPage.setAttribute('data-palette', 'honey');
+			document.body.append(honeyPage);
+			const honeyProbe = document.createElement('span');
+			honeyProbe.style.color = 'var(--palette-page-background)';
+			honeyPage.append(honeyProbe);
+			expect(wishlist).toBe(getComputedStyle(honeyProbe).color);
+			honeyPage.remove();
+			// The tint stays nearer the viewer's page than the wishlist's.
+			const [wishlistLuminance, appLuminance, tintLuminance] = [wishlist, app, tint].map(
+				(color) => compositedLuminance([color!]),
+			);
+			expect(Math.abs(tintLuminance! - appLuminance!)).toBeLessThan(
+				Math.abs(wishlistLuminance! - appLuminance!),
+			);
+			expect(wishlist).not.toBe(viewerBackground);
+			expect(tint).not.toBe(viewerBackground);
+			expect(tint).not.toBe(wishlist);
+		} finally {
+			shell.remove();
+			viewerProbe.remove();
+		}
+	});
 });
 
 describe('light palettes', () => {
@@ -389,6 +529,26 @@ describe('info callouts', () => {
 			}
 		} finally {
 			callout.remove();
+		}
+	});
+});
+
+describe('light wishlist page background', () => {
+	it('ignores the dark-only background preference', () => {
+		document.documentElement.classList.remove('dark');
+		document.documentElement.setAttribute('data-palette', 'sky');
+		const shell = document.createElement('div');
+		shell.className = 'wishlist-page-shell';
+		shell.setAttribute('data-palette', 'honey');
+		document.body.append(shell);
+		try {
+			const backgrounds = DARK_WISHLIST_BACKGROUNDS.map((option) => {
+				document.documentElement.setAttribute('data-dark-wishlist-background', option);
+				return luminance(shell, '--background');
+			});
+			expect(new Set(backgrounds).size).toBe(1);
+		} finally {
+			shell.remove();
 		}
 	});
 });

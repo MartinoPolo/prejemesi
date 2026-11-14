@@ -41,7 +41,7 @@
 		>
 			{#snippet leading()}
 				<span
-					class="size-4 shrink-0 rounded-full border-2 border-ink"
+					class="size-4 shrink-0 rounded-full border-2 border-edge"
 					style:background-color={PALETTE_SWATCHES[paletteOption]}
 					aria-hidden="true"
 				></span>

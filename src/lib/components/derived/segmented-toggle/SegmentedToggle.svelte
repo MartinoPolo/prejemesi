@@ -116,7 +116,7 @@
 			> [data-slot='toggle-group-item'][data-state='on']
 			> .elevation-surface
 	) {
-		border: var(--border-w) solid var(--ink) !important;
+		border: var(--border-w) solid var(--edge) !important;
 		background: var(--card) !important;
 	}
 

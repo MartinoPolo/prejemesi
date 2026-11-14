@@ -112,6 +112,10 @@ it('ignores gallery browsing but re-measures when anything else in the card chan
 	gallery.append(slide, counter);
 	card.prepend(gallery);
 	await nextLayout();
+	// The counter is the file's first text, so its web font is still loading here; the measurement
+	// a finished font load rightly triggers must not land inside the window checked below.
+	await document.fonts.ready;
+	await nextLayout();
 	const trackHeight = () =>
 		Number.parseFloat(collection.style.getPropertyValue('--gift-card-actions-track-height'));
 	expectPixelsNear(trackHeight(), 20);

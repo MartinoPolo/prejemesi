@@ -65,8 +65,8 @@
 					<button
 						type="button"
 						class="size-5 rounded-full border-2 {palette === paletteOption
-							? 'border-ink ring-2 ring-ring ring-offset-1'
-							: 'border-ink/40'}"
+							? 'border-edge ring-2 ring-ring ring-offset-1'
+							: 'border-edge/40'}"
 						style="background: {PALETTE_SWATCHES[paletteOption]}"
 						title={PALETTE_LABELS[paletteOption]}
 						aria-label={PALETTE_LABELS[paletteOption]}
