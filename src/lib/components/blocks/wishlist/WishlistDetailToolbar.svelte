@@ -1345,6 +1345,23 @@
 		padding: 0.5rem;
 	}
 
+	/* Equal-width items cannot fit „Řadit podle“ with its icon on the narrowest phones, so the items
+	   size by their labels and the spacing tightens. */
+	@media (width < 360px) {
+		.mobile-sheet-switcher {
+			padding-inline: 0.25rem;
+		}
+
+		.mobile-sheet-switcher :global([data-slot='toggle-group-item']) {
+			flex: 1 1 auto;
+		}
+
+		.mobile-sheet-switcher :global([data-slot='toggle-group-item'] > *) {
+			gap: 0.25rem;
+			padding-inline: 0.25rem;
+		}
+	}
+
 	.mobile-sheet-footer {
 		display: grid;
 		min-width: 0;
