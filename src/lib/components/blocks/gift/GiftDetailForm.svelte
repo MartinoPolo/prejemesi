@@ -1120,7 +1120,7 @@
 													disabled={isAtCategoryLimit &&
 														!categoryIds.includes(category.id)}
 													><span
-														class="size-3 shrink-0 rounded-full border border-ink"
+														class="size-3 shrink-0 rounded-full border border-edge"
 														style:background-color={category.color}
 														aria-hidden="true"
 													></span>{label}</Select.Item

@@ -78,7 +78,7 @@
 		gap: 2px;
 		width: 100%;
 		padding: var(--space-2) var(--space-3);
-		border: 2px solid var(--ink);
+		border: 2px solid var(--edge);
 		border-radius: var(--chat-surface-radius);
 		background: var(--card);
 		color: inherit;

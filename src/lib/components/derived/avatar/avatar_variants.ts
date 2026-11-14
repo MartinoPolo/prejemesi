@@ -15,17 +15,17 @@ export const avatarVariants = tv({
 			md: { root: 'size-10', fallback: 'text-base' },
 			lg: { root: 'size-12', fallback: 'text-lg' },
 		},
-		/* Anime-sky sticker treatment: ink border + hard offset shadow, matching the
+		/* Anime-sky sticker treatment: edge border + hard offset shadow, matching the
 		   outline header buttons it sits next to. The crop radius is the single source
 		   of truth for the photo/initials corners (it overrides ImageFrame's own
 		   shape radius via tailwind-merge). When bordered, keep the crop CONCENTRIC
-		   with the ink border — inner radius = outer rounded-xl minus the 2.5px border
+		   with the edge border — inner radius = outer rounded-xl minus the 2.5px border
 		   width — so the photo and border corners align instead of the photo reading
 		   rounder (#137). Without a border there is nothing to inset, so the crop just
 		   matches the container's rounded-xl. */
 		bordered: {
 			true: {
-				root: 'border-[2.5px] border-ink bg-card shadow-sticker-sm',
+				root: 'border-[2.5px] border-edge bg-card shadow-sticker-sm',
 			},
 			false: {},
 		},
@@ -44,7 +44,7 @@ export const avatarVariants = tv({
 		appearance: {
 			default: {},
 			recipient: {
-				root: 'size-6 rounded-full border-2 border-ink bg-primary shadow-none',
+				root: 'size-6 rounded-full border-2 border-edge bg-primary shadow-none',
 				image: 'rounded-[10px] [&>img]:rounded-[10px]',
 				fallback:
 					'rounded-[10px] bg-primary text-[10px] font-extrabold text-primary-foreground',

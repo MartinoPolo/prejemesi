@@ -4,7 +4,7 @@ import { tv } from 'tailwind-variants';
 export const decisionToggleVariants = tv({
 	slots: {
 		root: [
-			'inline-flex cursor-pointer items-center justify-center rounded-btn border-2 border-ink bg-card text-ink [&_svg]:size-4',
+			'inline-flex cursor-pointer items-center justify-center rounded-btn border-2 border-edge bg-card text-ink [&_svg]:size-4',
 			'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring focus-visible:outline-solid',
 			'disabled:cursor-not-allowed disabled:opacity-40',
 			// Hover only paints a resting choice, so an active choice keeps its fill under the pointer.

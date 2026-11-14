@@ -12,25 +12,25 @@ export const badgeVariants = tv({
 	base: 'inline-flex items-center justify-center gap-1 font-bold tracking-[0.01em] whitespace-nowrap tabular-nums [&_[data-icon]]:shrink-0',
 	variants: {
 		tone: {
-			neutral: 'bg-card text-muted-foreground border-ink',
+			neutral: 'bg-card text-muted-foreground border-edge',
 			success:
-				'bg-[color-mix(in_oklab,var(--status-success)_14%,var(--card))] text-status-success-text border-ink',
+				'bg-[color-mix(in_oklab,var(--status-success)_14%,var(--card))] text-status-success-text border-edge',
 			warning:
-				'bg-[color-mix(in_oklab,var(--status-warning)_14%,var(--card))] text-status-warning-text border-ink',
-			danger: 'bg-[color-mix(in_oklab,var(--status-danger)_14%,var(--card))] text-status-danger-text border-ink',
-			info: 'bg-[color-mix(in_oklab,var(--status-info)_14%,var(--card))] text-brand-link border-ink',
+				'bg-[color-mix(in_oklab,var(--status-warning)_14%,var(--card))] text-status-warning-text border-edge',
+			danger: 'bg-[color-mix(in_oklab,var(--status-danger)_14%,var(--card))] text-status-danger-text border-edge',
+			info: 'bg-[color-mix(in_oklab,var(--status-info)_14%,var(--card))] text-brand-link border-edge',
 			primary:
-				'bg-[color-mix(in_oklab,var(--primary)_14%,var(--card))] text-brand-link border-ink',
-			accent: 'bg-accent-loud text-accent-loud-foreground border-ink',
+				'bg-[color-mix(in_oklab,var(--primary)_14%,var(--card))] text-brand-link border-edge',
+			accent: 'bg-accent-loud text-accent-loud-foreground border-edge',
 		},
 		badgeStyle: {
 			outlined: badgeShape,
 			subtle: `${badgeShape} border-transparent`,
-			solid: `${badgeShape} border-ink`,
+			solid: `${badgeShape} border-edge`,
 			/** Compact pill for a live number: the active-filter count (primary) or a tab total (neutral). */
 			count: 'rounded-full border-0',
-			/** Chip that sits on a photo: card face, ink border, ink text, sticker shadow. */
-			overlay: `${badgeShape} border-ink shadow-sticker-sm`,
+			/** Chip that sits on a photo: card face, edge border, ink text, sticker shadow. */
+			overlay: `${badgeShape} border-edge shadow-sticker-sm`,
 		},
 		size: {
 			default: 'h-5.5 px-2 text-(length:--text-xs)',
@@ -105,7 +105,7 @@ export type BadgeProps = WithElementRef<HTMLAttributes<HTMLSpanElement>, HTMLSpa
 	/** Semantic color family. */
 	tone?: BadgeTone;
 	/**
-	 * `outlined` tints the fill inside an ink border, `subtle` drops the border, `solid` fills with the
+	 * `outlined` tints the fill inside an edge border, `subtle` drops the border, `solid` fills with the
 	 * tone, `count` is the compact pill for a live number (`tone="primary"` for active filters,
 	 * `tone="neutral"` for tab totals),
 	 * and `overlay` is the raised chip that stays legible on a photo (`tone="neutral"` for counters).

@@ -4,4 +4,4 @@ import {
 } from '$lib/components/base/button/button_variants.js';
 
 export const overlayCloseButtonClass = `absolute top-(--overlay-close-inset) end-(--overlay-close-inset) size-(--size-control-lg) rounded-full ${CIRCULAR_STICKER_OWNER_CLASSES}`;
-export const overlayCloseButtonSurfaceClass = `dialog-close-surface border-[2.5px] border-ink bg-card text-ink hover:bg-card hover:text-ink [&_svg]:size-4 [&_svg]:transition-[rotate] [&_svg]:duration-(--duration-normal) [&_svg]:ease-(--ease-standard) [&_svg]:delay-0 ${CIRCULAR_STICKER_SURFACE_CLASSES}`;
+export const overlayCloseButtonSurfaceClass = `dialog-close-surface border-[2.5px] border-edge bg-card text-ink hover:bg-card hover:text-ink [&_svg]:size-4 [&_svg]:transition-[rotate] [&_svg]:duration-(--duration-normal) [&_svg]:ease-(--ease-standard) [&_svg]:delay-0 ${CIRCULAR_STICKER_SURFACE_CLASSES}`;

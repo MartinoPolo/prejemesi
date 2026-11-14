@@ -59,14 +59,14 @@
 
 	.view-all-card:hover {
 		transform: translateY(-4px);
-		border-color: var(--ink);
+		border-color: var(--edge);
 	}
 
 	.circle {
 		width: 44px;
 		height: 44px;
 		border-radius: 999px;
-		border: 2px solid var(--ink);
+		border: 2px solid var(--edge);
 		background: var(--card);
 		box-shadow: var(--shadow-sticker-sm);
 		display: grid;

@@ -11,7 +11,7 @@ import {
 } from '../control_sizing.js';
 
 export const inputVariants = tv({
-	base: 'w-full rounded-btn border-[2.5px] border-ink bg-card font-sans font-medium text-foreground outline-none transition-[border-color,box-shadow] placeholder:text-muted-foreground disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground disabled:opacity-70 read-only:bg-muted read-only:text-muted-foreground focus-visible:border-ring focus-visible:shadow-[0_0_0_3px_color-mix(in_oklab,var(--ring)_22%,transparent)]',
+	base: 'w-full rounded-btn border-[2.5px] border-edge bg-card font-sans font-medium text-foreground outline-none transition-[border-color,box-shadow] placeholder:text-muted-foreground disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground disabled:opacity-70 read-only:bg-muted read-only:text-muted-foreground focus-visible:border-ring focus-visible:shadow-[0_0_0_3px_color-mix(in_oklab,var(--ring)_22%,transparent)]',
 	variants: {
 		size: {
 			responsive: `${RESPONSIVE_CONTROL_SIZE_CLASSES} ${RESPONSIVE_CONTROL_TEXT_SIZE_CLASSES}`,

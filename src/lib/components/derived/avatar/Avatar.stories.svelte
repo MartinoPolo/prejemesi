@@ -62,7 +62,7 @@
 	{/snippet}
 </Story>
 
-<!-- Sticker treatment for header placement: ink border + hard offset shadow. -->
+<!-- Sticker treatment for header placement: edge border + hard offset shadow. -->
 <Story name="Bordered">
 	{#snippet template()}
 		<div class="flex items-center gap-4">

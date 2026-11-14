@@ -394,7 +394,7 @@
 	/* Nested in the 16px panel with a 2px border and a 12px inset: 16 - 2 - 2 = 12px corners. */
 	.card {
 		overflow: hidden;
-		border: 2px solid var(--ink);
+		border: 2px solid var(--edge);
 		border-radius: var(--chat-surface-radius);
 		background: var(--card);
 	}
@@ -406,7 +406,7 @@
 		justify-content: space-between;
 		gap: 4px var(--space-2);
 		padding: var(--space-2) var(--space-3);
-		border-bottom: 2px solid var(--ink);
+		border-bottom: 2px solid var(--edge);
 		background: var(--tint);
 	}
 

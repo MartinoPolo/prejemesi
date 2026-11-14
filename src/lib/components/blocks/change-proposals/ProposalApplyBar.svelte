@@ -116,7 +116,7 @@
 		gap: 10px var(--space-4);
 		min-height: 64px;
 		padding: 10px var(--space-3) 10px var(--space-4);
-		border: 2.5px solid var(--ink);
+		border: 2.5px solid var(--edge);
 		border-radius: var(--radius-panel);
 		background: var(--card);
 		box-shadow: var(--elevation-ordinary);

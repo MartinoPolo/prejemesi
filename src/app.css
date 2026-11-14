@@ -463,6 +463,9 @@
 	/* Anime-sky core */
 	--ink: var(--p-ink);
 	--ink-faint: color-mix(in oklab, var(--p-ink) 12%, transparent);
+
+	/* Outline and text are separate tokens so a palette can retune one without the other. */
+	--edge: var(--ink);
 	--brand: var(--p-brand);
 	--brand-deep: var(--p-deep);
 	--brand-link: var(--p-link);
@@ -495,7 +498,7 @@
 	--pattern-stripe: color-mix(in oklab, var(--ink) 5%, transparent);
 	--rule-line: color-mix(in oklab, var(--ink) 10%, transparent);
 	--hole-inner: var(--background);
-	--hole-ring: var(--ink);
+	--hole-ring: var(--edge);
 	--tape-bg: color-mix(in oklab, var(--tint) 65%, transparent);
 	--tape-border: color-mix(in oklab, var(--ink) 25%, transparent);
 	--kraft: color-mix(in oklab, #c99a5e 38%, var(--card));
@@ -616,6 +619,9 @@
 
 	--ink: color-mix(in oklab, var(--p-bright) 12%, #e6e8ec);
 	--ink-faint: color-mix(in oklab, var(--ink) 16%, transparent);
+
+	/* Redeclared so it follows this scope's `--ink`: `var()` resolves where a property is declared. */
+	--edge: var(--ink);
 	--brand: color-mix(in oklab, var(--p-bright) 70%, #b8bec8);
 	--brand-deep: var(--p-deep);
 	--brand-link: var(--brand);
@@ -650,7 +656,7 @@
 	--pattern-stripe: color-mix(in oklab, var(--ink) 6%, transparent);
 	--rule-line: color-mix(in oklab, var(--ink) 15%, transparent);
 	--hole-inner: color-mix(in oklab, var(--p-deep) 20%, #04080e);
-	--hole-ring: color-mix(in oklab, var(--ink) 80%, transparent);
+	--hole-ring: color-mix(in oklab, var(--edge) 80%, transparent);
 	--tape-bg: rgb(255 255 255 / 14%);
 	--tape-border: color-mix(in oklab, var(--ink) 32%, transparent);
 	--kraft: color-mix(in oklab, #a8783f 32%, var(--card));
@@ -814,9 +820,9 @@
 	box-shadow: none;
 }
 
-/* Unavailable gifts soften only frame paint; nested controls keep the shared ink and shadow tokens. */
+/* Unavailable gifts soften only frame paint; nested controls keep the shared edge and shadow tokens. */
 .gift-frame-softened {
-	--gift-frame-ink: color-mix(in oklab, var(--ink) 50%, var(--card));
+	--gift-frame-edge: color-mix(in oklab, var(--edge) 50%, var(--card));
 	--gift-frame-elevation: var(--elevation-ordinary-offset) var(--elevation-ordinary-offset) 0
 		color-mix(in oklab, var(--hard-shadow) 50%, transparent);
 }
@@ -1080,6 +1086,7 @@
 
 	/* Anime-sky tokens as Tailwind utilities */
 	--color-ink: var(--ink);
+	--color-edge: var(--edge);
 	--color-crop-stage: var(--crop-stage);
 	--color-ink-faint: var(--ink-faint);
 	--color-brand: var(--brand);

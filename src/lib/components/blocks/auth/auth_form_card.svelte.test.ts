@@ -82,7 +82,9 @@ describe('AuthFormCard tab slide', () => {
 		);
 		expect(indicatorStyle.borderTopWidth).toBe('2px');
 		expect(indicatorStyle.borderTopStyle).toBe('solid');
-		expect(indicatorStyle.borderTopColor).toBe(resolveCssValue(context, 'color', 'var(--ink)'));
+		expect(indicatorStyle.borderTopColor).toBe(
+			resolveCssValue(context, 'color', 'var(--edge)'),
+		);
 		expect(indicatorStyle.boxShadow).toBe(
 			resolveCssValue(context, 'box-shadow', 'var(--elevation-ordinary)'),
 		);

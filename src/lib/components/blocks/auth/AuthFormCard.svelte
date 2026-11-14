@@ -123,7 +123,7 @@
 		width: min(440px, 100%);
 		padding: var(--space-8);
 		background: var(--card);
-		border: 2.5px solid var(--ink);
+		border: 2.5px solid var(--edge);
 		border-radius: var(--radius-panel);
 		box-shadow: var(--shadow-sticker);
 	}
@@ -137,7 +137,7 @@
 		z-index: 2;
 		background: var(--accent-loud);
 		color: var(--accent-loud-foreground);
-		border: 2.5px solid var(--ink);
+		border: 2.5px solid var(--edge);
 		border-radius: 999px;
 		font-family: var(--font-head);
 		font-size: 14px;
@@ -150,7 +150,7 @@
 		display: flex;
 		gap: 4px;
 		background: var(--surface);
-		border: 2.5px solid var(--ink);
+		border: 2.5px solid var(--edge);
 		border-radius: 12px;
 		margin-bottom: var(--space-6);
 	}
@@ -185,7 +185,7 @@
 	.auth-tabs a[aria-current='page'],
 	.tab-indicator {
 		background: var(--card);
-		border-color: var(--ink);
+		border-color: var(--edge);
 		box-shadow: var(--elevation-ordinary);
 	}
 

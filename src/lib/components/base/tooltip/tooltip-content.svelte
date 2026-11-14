@@ -46,7 +46,7 @@
 						// erasing the seam so the arrow reads as the bubble's mouth — while
 						// the two bordered outer faces form the tip. bits-ui's own transform
 						// is stripped above so only these `translate`/`rotate` props apply.
-						'size-2.5 rotate-45 bg-card z-(--z-tooltip) border-ink',
+						'size-2.5 rotate-45 bg-card z-(--z-tooltip) border-edge',
 						'data-[side=top]:translate-y-1/2 data-[side=top]:border-r-2 data-[side=top]:border-b-2',
 						'data-[side=bottom]:-translate-y-1/2 data-[side=bottom]:border-t-2 data-[side=bottom]:border-l-2',
 						'data-[side=left]:translate-x-1/2 data-[side=left]:border-t-2 data-[side=left]:border-r-2',

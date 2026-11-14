@@ -118,7 +118,7 @@
 				</svg>
 			{:else if themeId === null}
 				<span
-					class="absolute inset-x-[22%] top-[22%] bottom-0 rounded-t-sm border-2 border-b-0 border-ink bg-card"
+					class="absolute inset-x-[22%] top-[22%] bottom-0 rounded-t-sm border-2 border-b-0 border-edge bg-card"
 				></span>
 			{/if}
 		</span>
@@ -138,7 +138,10 @@
 		aria-labelledby="{idPrefix}-{itemValue}-name"
 		aria-describedby="{idPrefix}-{itemValue}-description"
 	>
-		<span class="grid aspect-[2/1] w-full grid-cols-2 border-b-2 border-ink" aria-hidden="true">
+		<span
+			class="grid aspect-[2/1] w-full grid-cols-2 border-b-2 border-edge"
+			aria-hidden="true"
+		>
 			{#each WISHLIST_VIEWER_MODES as mode (mode)}
 				{@render modeVariant(mode, tilePalette, themeId)}
 			{/each}

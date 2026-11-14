@@ -5,7 +5,7 @@ import type { WithElementRef } from '$lib/utils.js';
 
 export const alertVariants = tv({
 	base: [
-		'group/alert relative grid w-full rounded-[12px] border-[2.5px] border-ink px-4 py-3 text-left text-base leading-5',
+		'group/alert relative grid w-full rounded-[12px] border-[2.5px] border-edge px-4 py-3 text-left text-base leading-5',
 		'has-[>svg]:grid-cols-[auto_1fr] has-[>svg]:gap-x-2.5 has-[>svg]:[&>*:not(svg,[data-slot=alert-action])]:col-start-2',
 		'has-[>[data-slot=alert-action][data-placement=end]]:grid-cols-[1fr_auto] has-[>svg]:has-[>[data-slot=alert-action][data-placement=end]]:grid-cols-[auto_1fr_auto] has-[>[data-slot=alert-action][data-placement=end]]:gap-x-3',
 		// The icon sits on the first line, so it centres on a one-line callout and stays with the

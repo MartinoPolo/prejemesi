@@ -787,7 +787,7 @@
 		flex-direction: column;
 		width: var(--assistant-width);
 		min-height: 0;
-		border-left: 2.5px solid var(--ink);
+		border-left: 2.5px solid var(--edge);
 		background: var(--background);
 	}
 
@@ -836,7 +836,7 @@
 		justify-self: end;
 		max-width: 85%;
 		padding: var(--space-2) var(--space-3);
-		border: 2px solid var(--ink);
+		border: 2px solid var(--edge);
 		border-radius: var(--chat-surface-radius) var(--chat-surface-radius) 4px;
 		background: var(--tint);
 		font-size: var(--text-md);
@@ -849,7 +849,7 @@
 		display: grid;
 		gap: var(--space-2);
 		padding: var(--space-3);
-		border-top: 2px solid var(--ink);
+		border-top: 2px solid var(--edge);
 		background: var(--card);
 	}
 
@@ -887,7 +887,7 @@
 			z-index: var(--z-overlay);
 			width: auto;
 			height: calc(100dvh - var(--space-12));
-			border-top: 2.5px solid var(--ink);
+			border-top: 2.5px solid var(--edge);
 			border-left: 0;
 			border-radius: var(--radius-panel) var(--radius-panel) 0 0;
 			box-shadow: var(--elevation-ordinary);
@@ -969,7 +969,7 @@
 		gap: 6px;
 		height: 36px;
 		padding: 0 var(--space-3) 0 10px;
-		border: 2px solid var(--ink);
+		border: 2px solid var(--edge);
 		border-radius: 999px;
 		background: var(--card);
 		box-shadow: var(--elevation-compact);

@@ -44,6 +44,27 @@ describe('GiftSectionHeader selection', () => {
 	});
 });
 
+describe('GiftSectionHeader jump target (#640)', () => {
+	it('makes only a jump-target heading programmatically focusable', async () => {
+		const jumpTarget = await render(GiftSectionHeader, {
+			section: section(GIFT_SECTION_KINDS.categoryGroup, 'Knihy'),
+			jumpTargetId: 'books-heading',
+		});
+		const jumpHeading = jumpTarget.getByRole('heading', { name: 'Knihy' }).element();
+		expect(jumpHeading).toHaveAttribute('id', 'books-heading');
+		expect(jumpHeading).toHaveAttribute('tabindex', '-1');
+		await jumpTarget.unmount();
+
+		const plain = await render(GiftSectionHeader, {
+			section: section(GIFT_SECTION_KINDS.categoryGroup, 'Knihy'),
+		});
+		const plainHeading = plain.getByRole('heading', { name: 'Knihy' }).element();
+		expect(plainHeading).not.toHaveAttribute('id');
+		expect(plainHeading).not.toHaveAttribute('tabindex');
+		await plain.unmount();
+	});
+});
+
 describe('GiftSectionHeader copy (issue #224 follow-up)', () => {
 	it('renders the „other gifts" header for the band after the own-reservation band', async () => {
 		const screen = await render(GiftSectionHeader, {

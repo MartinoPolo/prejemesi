@@ -8,6 +8,7 @@ import {
 	clickWishlistToolbarMoreAction,
 	startGiftReorder,
 } from '../e2e/fixtures/wishlist-helpers.js';
+import { DEFAULT_PIXEL_TOLERANCE } from '../helpers/pixel-assertions.mjs';
 import * as m from '../../src/lib/paraglide/messages.js';
 import { SEED_PASSWORD } from '../../src/lib/server/db/seed_credentials.js';
 
@@ -143,6 +144,95 @@ test.describe('Wishlist Carousel view (#580)', () => {
 			.click();
 		await expect(page.getByTestId('gift-reorder-temporary-notice')).toBeHidden();
 		await expect(collection(page, 'carousel')).toHaveCount(1);
+	});
+
+	test('jumps from a group chip to that group, focusing its heading below the sticky chrome (#640)', async ({
+		page,
+		baseURL,
+	}) => {
+		await openSeedWishlist(page, baseURL!, 375, 'carousel');
+		const chipBar = page.getByRole('navigation', { name: m.gift_carousel_jump_aria() });
+		const groups = page.getByTestId('gift-carousel-group');
+		await expect(chipBar.getByRole('link')).toHaveCount(await groups.count());
+		const targetGroup = groups.nth(1);
+		const targetHeading = targetGroup.getByRole('heading', { level: 2 });
+
+		await chipBar.getByRole('link').nth(1).click();
+
+		await expect(targetHeading).toBeFocused();
+		await expect(chipBar.getByRole('link').nth(1)).toHaveAttribute('aria-current', 'location');
+		await expect
+			.poll(async () => {
+				const toolbarBox = (await page.getByTestId('wishlist-toolbar').boundingBox())!;
+				const chipBarBox = (await chipBar.boundingBox())!;
+				return Math.abs(chipBarBox.y - (toolbarBox.y + toolbarBox.height));
+			}, 'chip bar distance from the toolbar bottom')
+			.toBeLessThanOrEqual(DEFAULT_PIXEL_TOLERANCE);
+		await expect
+			.poll(async () => {
+				const chipBarBox = (await chipBar.boundingBox())!;
+				const groupTop = (await targetGroup.boundingBox())!.y;
+				return Math.abs(groupTop - (chipBarBox.y + chipBarBox.height));
+			}, 'jumped-to group distance from the chip bar bottom')
+			.toBeLessThanOrEqual(DEFAULT_PIXEL_TOLERANCE);
+		expect(new URL(page.url()).hash).toBe('');
+	});
+
+	test('marks the chip of the group whose header passed the sticky chrome, and the last at the bottom (#640)', async ({
+		page,
+		baseURL,
+	}) => {
+		await openSeedWishlist(page, baseURL!, 375, 'carousel');
+		const chipBar = page.getByRole('navigation', { name: m.gift_carousel_jump_aria() });
+		const chips = chipBar.getByRole('link');
+		await expect.poll(() => chips.count()).toBeGreaterThan(2);
+		await expect(chips.first()).toHaveAttribute('aria-current', 'location');
+		const scroller = page.getByRole('main');
+
+		// Scroll the second group's top edge a few pixels past the bottom of the chip bar as it will
+		// stick, at its sticky `top` inside the scroller, rather than where it rests before scrolling.
+		const stuckChipBarBottom = await chipBar.evaluate(
+			(bar) =>
+				bar.closest('main')!.getBoundingClientRect().top +
+				parseFloat(getComputedStyle(bar).top) +
+				bar.getBoundingClientRect().height,
+		);
+		const groupTop = (await page.getByTestId('gift-carousel-group').nth(1).boundingBox())!.y;
+		await scroller.evaluate(
+			(element, distance) => {
+				element.scrollBy({ top: distance, behavior: 'instant' });
+			},
+			groupTop - stuckChipBarBottom + 4,
+		);
+		await expect(chips.nth(1)).toHaveAttribute('aria-current', 'location');
+		await expect(chipBar.locator('[aria-current="location"]')).toHaveCount(1);
+
+		await scroller.evaluate((element) =>
+			element.scrollTo({ top: element.scrollHeight, behavior: 'instant' }),
+		);
+		await expect(chips.last()).toHaveAttribute('aria-current', 'location');
+		await expect(chipBar.locator('[aria-current="location"]')).toHaveCount(1);
+	});
+
+	test('updates the row position text as the row scrolls (#640)', async ({ page, baseURL }) => {
+		await openSeedWishlist(page, baseURL!, 375, 'carousel');
+		const firstGroup = page.getByTestId('gift-carousel-group').first();
+		const cardCount = await firstGroup.locator('[data-gift-item]').count();
+		expect(cardCount).toBeGreaterThan(2);
+		const position = firstGroup.getByTestId('gift-section-position');
+		await expect(position).toHaveText(
+			m.gift_carousel_position({ first: 1, last: 2, total: cardCount }),
+		);
+		await expect(position).toHaveAttribute('aria-hidden', 'true');
+
+		await firstGroup
+			.locator('[data-slot="carousel-content"]')
+			.evaluate((viewport) =>
+				viewport.scrollTo({ left: viewport.scrollWidth, behavior: 'instant' }),
+			);
+		await expect(position).toHaveText(
+			m.gift_carousel_position({ first: cardCount - 1, last: cardCount, total: cardCount }),
+		);
 	});
 
 	test('shows Card while selecting and returns to Carousel after leaving selection', async ({

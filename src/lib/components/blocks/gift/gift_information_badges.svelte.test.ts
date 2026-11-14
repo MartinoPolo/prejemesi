@@ -20,9 +20,9 @@ function createHost(width: number): HTMLElement {
 	return host;
 }
 
-function inkColor(): string {
+function edgeColor(): string {
 	const probe = document.createElement('span');
-	probe.className = 'border-2 border-ink';
+	probe.className = 'border-2 border-edge';
 	document.body.append(probe);
 	const color = getComputedStyle(probe).borderTopColor;
 	probe.remove();
@@ -57,7 +57,7 @@ function expectFlatSharedShape(badge: HTMLElement) {
 	expect(style.borderBottomRightRadius).toBe(SHARED_BADGE_RADIUS);
 	expect(style.borderTopWidth).toBe(SHARED_BADGE_BORDER_WIDTH);
 	expect(style.borderTopStyle).toBe('solid');
-	expect(style.borderTopColor).toBe(inkColor());
+	expect(style.borderTopColor).toBe(edgeColor());
 }
 
 afterEach(() => {
@@ -67,7 +67,7 @@ afterEach(() => {
 });
 
 describe('Gift information badges (issue #442)', () => {
-	it('renders the category badge flat with the shared radius and ink border', async () => {
+	it('renders the category badge flat with the shared radius and edge border', async () => {
 		const host = createHost(320);
 		await render(GiftCategoryBadge, { category: category('Sport') }, { baseElement: host });
 		const badge = host.querySelector<HTMLElement>('[data-testid="gift-category-badge"]')!;

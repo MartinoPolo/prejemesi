@@ -158,8 +158,8 @@
 			<button
 				type="button"
 				class={cn(
-					'size-6 cursor-pointer rounded-full border-2 border-ink transition-transform',
-					palette === demoPalette && 'scale-110 ring-2 ring-ink ring-offset-2',
+					'size-6 cursor-pointer rounded-full border-2 border-edge transition-transform',
+					palette === demoPalette && 'scale-110 ring-2 ring-edge ring-offset-2',
 				)}
 				style:background-color={PALETTE_SWATCHES[palette]}
 				aria-pressed={palette === demoPalette}
