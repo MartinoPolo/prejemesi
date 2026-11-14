@@ -105,9 +105,41 @@ export function isChatTurnUnfinished(messages: readonly ChatMessageView[]): bool
 	return last !== undefined && (last.role === CHAT_ROLE.user || last.toolNames.length > 0);
 }
 
-/** The newest proposal in the chat, which the decision bar acts on. */
-export function latestChatProposalId(messages: readonly ChatMessageView[]): string | null {
-	return messages.filter((message) => message.proposalId !== null).at(-1)?.proposalId ?? null;
+/** `unavailable` covers proposals already decided and proposals whose state failed to load. */
+export const CHAT_PROPOSAL_STATUS = {
+	loading: 'loading',
+	pending: 'pending',
+	unavailable: 'unavailable',
+} as const;
+
+export type ChatProposalStatus = (typeof CHAT_PROPOSAL_STATUS)[keyof typeof CHAT_PROPOSAL_STATUS];
+
+/**
+ * The newest proposal in the chat still awaiting review, which the decision bar acts on. A
+ * proposal still loading keeps the slot so the bar never jumps to an older one meanwhile.
+ */
+export function decisionBarProposalId({
+	messages,
+	fastForward,
+	proposalStatus,
+}: {
+	messages: readonly ChatMessageView[];
+	fastForward: boolean;
+	proposalStatus: (proposalId: string) => ChatProposalStatus;
+}): string | null {
+	if (fastForward) {
+		return null;
+	}
+	for (let index = messages.length - 1; index >= 0; index -= 1) {
+		const proposalId = messages[index]?.proposalId ?? null;
+		if (
+			proposalId !== null &&
+			proposalStatus(proposalId) !== CHAT_PROPOSAL_STATUS.unavailable
+		) {
+			return proposalId;
+		}
+	}
+	return null;
 }
 
 /** The turn being streamed, shown until the stored chat catches up with it. */

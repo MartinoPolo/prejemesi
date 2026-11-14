@@ -2,15 +2,17 @@ import { describe, expect, it } from 'vitest';
 import {
 	CHAT_ITEM,
 	CHAT_PART,
+	CHAT_PROPOSAL_STATUS,
 	CHAT_TOOL_KIND,
 	chatThreadItems,
 	chatToolKind,
 	continuedAnswerParts,
+	decisionBarProposalId,
 	isChatTurnUnfinished,
-	latestChatProposalId,
 	startLiveChatTurn,
 	withStreamEvent,
 	type ChatPart,
+	type ChatProposalStatus,
 } from './chat_thread.js';
 import {
 	CHAT_ROLE,
@@ -125,16 +127,65 @@ describe('isChatTurnUnfinished', () => {
 	});
 });
 
-describe('latestChatProposalId', () => {
-	it('returns the newest proposal', () => {
+describe('decisionBarProposalId', () => {
+	const messages = [
+		message({ id: 'a1', proposalId: 'p1' }),
+		message({ id: 'a2', proposalId: 'p2' }),
+		message({ id: 'a3', proposalId: 'p3' }),
+		message({ id: 'a4' }),
+	];
+
+	function statuses(byProposalId: Record<string, ChatProposalStatus>) {
+		return (proposalId: string) => byProposalId[proposalId] ?? CHAT_PROPOSAL_STATUS.pending;
+	}
+
+	it('returns the newest proposal still pending review', () => {
 		expect(
-			latestChatProposalId([
-				message({ id: 'a1', proposalId: 'p1' }),
-				message({ id: 'a2', proposalId: 'p2' }),
-				message({ id: 'a3' }),
-			]),
-		).toBe('p2');
-		expect(latestChatProposalId([message({ id: 'a1' })])).toBeNull();
+			decisionBarProposalId({ messages, fastForward: false, proposalStatus: statuses({}) }),
+		).toBe('p3');
+	});
+
+	it('skips newer proposals that were decided or failed to load', () => {
+		expect(
+			decisionBarProposalId({
+				messages,
+				fastForward: false,
+				proposalStatus: statuses({
+					p2: CHAT_PROPOSAL_STATUS.unavailable,
+					p3: CHAT_PROPOSAL_STATUS.unavailable,
+				}),
+			}),
+		).toBe('p1');
+	});
+
+	it('keeps the slot for the newest proposal while its state is still loading', () => {
+		expect(
+			decisionBarProposalId({
+				messages,
+				fastForward: false,
+				proposalStatus: statuses({ p3: CHAT_PROPOSAL_STATUS.loading }),
+			}),
+		).toBe('p3');
+	});
+
+	it('returns null when no proposal is pending', () => {
+		const nonePending = () => CHAT_PROPOSAL_STATUS.unavailable;
+		expect(
+			decisionBarProposalId({ messages, fastForward: false, proposalStatus: nonePending }),
+		).toBeNull();
+		expect(
+			decisionBarProposalId({
+				messages: [message({ id: 'a1' })],
+				fastForward: false,
+				proposalStatus: statuses({}),
+			}),
+		).toBeNull();
+	});
+
+	it('returns null while fast-forward applies proposals without review', () => {
+		expect(
+			decisionBarProposalId({ messages, fastForward: true, proposalStatus: statuses({}) }),
+		).toBeNull();
 	});
 });
 
