@@ -267,6 +267,13 @@
       "when": 1794519980758,
       "tag": "0037_chat_runner_job_effort",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1794651870021,
+      "tag": "0038_add-gift-priority-level-index",
+      "breakpoints": true
     }
   ]
 }
