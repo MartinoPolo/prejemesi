@@ -360,7 +360,7 @@ describe.skipIf(!DB_READY)('wishlist operation core [real DB]', () => {
 			);
 		});
 
-		it('leaves soft-deleted gifts without a revision when their level is removed', async () => {
+		it('unassigns soft-deleted gifts without a revision when their level is removed', async () => {
 			const { id: wishlistId } = await createWishlistFixture();
 			const created = await saveLevels(managerActor, wishlistId, [
 				{ id: null, label: 'High' },
@@ -375,11 +375,14 @@ describe.skipIf(!DB_READY)('wishlist operation core [real DB]', () => {
 				deletedAt: new Date(),
 			});
 			const deletedGiftBefore = await readGift(deletedGiftId);
+			expect(deletedGiftBefore.priorityLevelId).toBe(high.id);
 
 			await saveLevels(managerActor, wishlistId, [{ id: low.id, label: 'Low' }]);
 
+			const deletedGiftAfter = await readGift(deletedGiftId);
+			expect(deletedGiftAfter.priorityLevelId).toBeNull();
 			expect(await revisionsForGift(deletedGiftId)).toEqual([]);
-			expect((await readGift(deletedGiftId)).updatedAt).toEqual(deletedGiftBefore.updatedAt);
+			expect(deletedGiftAfter.updatedAt).toEqual(deletedGiftBefore.updatedAt);
 		});
 
 		it('rejects a level of another wishlist', async () => {

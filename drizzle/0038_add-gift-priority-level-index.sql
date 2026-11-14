@@ -1,0 +1,1 @@
+CREATE INDEX "gift_priority_level_idx" ON "gift" USING btree ("priority_level_id") WHERE "gift"."priority_level_id" IS NOT NULL;
