@@ -132,6 +132,17 @@ describe('ChangeReview decisions', () => {
 			.toHaveAttribute('aria-pressed', 'false');
 	});
 
+	it('points at the deletion Přijmout vše left for its own action', async () => {
+		await renderReview(changeProposal());
+
+		await page.getByTestId('change-review-accept-all').click();
+
+		await expect
+			.element(page.getByTestId('change-review-unresolved-message'))
+			.toHaveTextContent(m.change_review_unresolved_message_one());
+		await expect.element(rowButton('r3', m.change_review_choice_delete())).toHaveFocus();
+	});
+
 	it('offers no Přijmout vše when every row needs its own confirmation', async () => {
 		await renderReview(deletionChangeProposal());
 

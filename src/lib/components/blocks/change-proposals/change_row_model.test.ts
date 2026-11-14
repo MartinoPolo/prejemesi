@@ -251,6 +251,17 @@ describe('change row consequence', () => {
 		expect(consequenceAfter(deletionRow, [false, false])).not.toBeNull();
 	});
 
+	it('drops the deletion warning once the proposal is no longer awaiting a decision', () => {
+		const settledStatuses = [
+			CHANGE_ROW_STATUS.applied,
+			CHANGE_ROW_STATUS.notApplied,
+			CHANGE_ROW_STATUS.undone,
+		];
+		for (const status of settledStatuses) {
+			expect(consequenceAfter({ ...deletionRow, status }, [])).toBeNull();
+		}
+	});
+
 	it('drops the invitation warning once the invitation is declined', () => {
 		expect(consequenceAfter(invitationRow, [])).not.toBeNull();
 		expect(consequenceAfter(invitationRow, [false])).toBeNull();
