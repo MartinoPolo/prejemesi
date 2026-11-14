@@ -82,7 +82,7 @@
 		place-items: center;
 		width: var(--answer-avatar-size);
 		height: var(--answer-avatar-size);
-		border: 2px solid var(--ink);
+		border: 2px solid var(--edge);
 		border-radius: 50%;
 		background: var(--tint);
 	}

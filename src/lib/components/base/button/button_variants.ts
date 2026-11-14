@@ -20,7 +20,7 @@ export const ANCHORED_CIRCULAR_STICKER_OWNER_CLASSES = `${CIRCULAR_STICKER_OWNER
 
 /** Paint-only classes for raised outline control surfaces (selects use this on their surface). */
 export const OUTLINE_CONTROL_SURFACE_CLASSES =
-	'border-ink bg-card text-foreground group-hover:bg-accent group-hover:text-accent-foreground';
+	'border-edge bg-card text-foreground group-hover:bg-accent group-hover:text-accent-foreground';
 
 export const buttonVariants = tv({
 	slots: {
@@ -32,15 +32,15 @@ export const buttonVariants = tv({
 		intent: {
 			primary: {
 				owner: 'elevation-owner elevation-owner-raised elevation-owner-anchored',
-				surface: `border-ink bg-primary text-primary-foreground group-hover:bg-(--primary-hover) ${FILLED_BUTTON_KBD_CLASSES}`,
+				surface: `border-edge bg-primary text-primary-foreground group-hover:bg-(--primary-hover) ${FILLED_BUTTON_KBD_CLASSES}`,
 			},
 			secondary: {
 				owner: 'elevation-owner elevation-owner-raised elevation-owner-anchored',
-				surface: 'border-ink bg-card text-ink group-hover:bg-panel-hover',
+				surface: 'border-edge bg-card text-ink group-hover:bg-panel-hover',
 			},
 			'secondary-filled': {
 				owner: 'elevation-owner elevation-owner-raised elevation-owner-anchored',
-				surface: `border-ink bg-foreground text-background group-hover:bg-[color-mix(in_oklab,var(--foreground)_86%,var(--background))] ${FILLED_BUTTON_KBD_CLASSES}`,
+				surface: `border-edge bg-foreground text-background group-hover:bg-[color-mix(in_oklab,var(--foreground)_86%,var(--background))] ${FILLED_BUTTON_KBD_CLASSES}`,
 			},
 			ghost: {
 				surface:
@@ -70,7 +70,7 @@ export const buttonVariants = tv({
 			},
 			'primary-destructive': {
 				owner: 'elevation-owner elevation-owner-raised elevation-owner-anchored',
-				surface: `border-ink bg-status-danger-fill text-white group-hover:bg-[color-mix(in_oklab,var(--status-danger-fill)_86%,black)] ${FILLED_BUTTON_KBD_CLASSES}`,
+				surface: `border-edge bg-status-danger-fill text-white group-hover:bg-[color-mix(in_oklab,var(--status-danger-fill)_86%,black)] ${FILLED_BUTTON_KBD_CLASSES}`,
 			},
 			outline: {
 				owner: 'elevation-owner elevation-owner-raised elevation-owner-anchored',

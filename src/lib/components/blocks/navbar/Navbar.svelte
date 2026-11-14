@@ -442,14 +442,14 @@
 {/if}
 
 <style>
-	/* Mockup topbar treatment: solid panel + ink rule (no translucency). */
+	/* Mockup topbar treatment: solid panel + edge rule (no translucency). */
 	.topbar {
 		position: sticky;
 		top: 0;
 		z-index: var(--z-sticky);
 		height: var(--nav-height);
 		background: var(--card);
-		border-bottom: var(--border-w) solid var(--ink);
+		border-bottom: var(--border-w) solid var(--edge);
 		flex-shrink: 0;
 	}
 

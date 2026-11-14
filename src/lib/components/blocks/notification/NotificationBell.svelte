@@ -77,7 +77,7 @@
 		align-items: center;
 		justify-content: center;
 		line-height: 1;
-		border: 2px solid var(--ink);
+		border: 2px solid var(--edge);
 		transform: rotate(6deg);
 		pointer-events: none;
 	}

@@ -49,7 +49,7 @@
 		justify-content: center;
 		padding: var(--space-16) var(--space-10);
 		background-color: var(--tint);
-		border-right: 2.5px solid var(--ink);
+		border-right: 2.5px solid var(--edge);
 		overflow: hidden;
 		min-height: 100dvh;
 	}
@@ -187,7 +187,7 @@
 		.brand-panel {
 			min-height: auto;
 			border-right: none;
-			border-bottom: 2.5px solid var(--ink);
+			border-bottom: 2.5px solid var(--edge);
 			padding: var(--space-8) var(--space-4) var(--space-6);
 		}
 

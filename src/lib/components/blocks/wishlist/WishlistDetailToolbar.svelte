@@ -1108,7 +1108,7 @@
 <div class="wishlist-toolbar-sticky sticky z-(--z-sticky) min-w-0">
 	<div class="wishlist-toolbar-mask" data-testid="wishlist-toolbar-mask" aria-hidden="true"></div>
 	<div
-		class="wishlist-toolbar resting-shadow-nesting relative z-[1] min-w-0 rounded-panel border-(length:--border-w) border-ink bg-card shadow-sticker"
+		class="wishlist-toolbar resting-shadow-nesting relative z-[1] min-w-0 rounded-panel border-(length:--border-w) border-edge bg-card shadow-sticker"
 		data-testid="wishlist-toolbar"
 	>
 		{#if selectionContent}

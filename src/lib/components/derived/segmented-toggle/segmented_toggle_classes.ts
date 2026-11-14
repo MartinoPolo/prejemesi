@@ -11,19 +11,19 @@ export const segmentedToggleVariants = tv({
 	variants: {
 		presentation: {
 			default: {
-				indicator: 'outline-2 outline-offset-[-2px] outline-ink outline-solid',
+				indicator: 'outline-2 outline-offset-[-2px] outline-edge outline-solid',
 			},
 			connected: {
 				root: "segmented-toggle-connected relative isolate bg-transparent before:pointer-events-none before:absolute before:inset-0 before:z-0 before:rounded-btn before:bg-accent before:shadow-elevation-ordinary before:content-['']",
-				indicator: 'border-(length:--border-w) border-solid border-ink',
+				indicator: 'border-(length:--border-w) border-solid border-edge',
 			},
 			/**
 			 * A bar of equal options that switches between panels, such as a sheet's sections: no tray,
-			 * the selected option gets the accent face with an ink outline.
+			 * the selected option gets the accent face with an edge outline.
 			 */
 			'tab-bar': {
 				root: 'gap-1 bg-transparent p-0',
-				indicator: 'bg-accent outline-2 outline-offset-[-2px] outline-ink outline-solid',
+				indicator: 'bg-accent outline-2 outline-offset-[-2px] outline-edge outline-solid',
 			},
 			/**
 			 * Equal-weight choices that each stand on their own, such as who a new wishlist is for:
@@ -50,7 +50,7 @@ export const segmentedToggleVariants = tv({
 			class: {
 				surface: 'border-0 bg-transparent group-data-[state=on]:bg-transparent',
 				/** Items keep the Button owner's `rounded-btn` corners. */
-				item: 'h-full border-0 bg-transparent shadow-none focus-visible:!outline-offset-2 focus-visible:!outline-ring data-[state=on]:bg-card data-[state=on]:text-foreground data-[state=on]:outline-2 data-[state=on]:outline-solid data-[state=on]:outline-offset-[-2px] data-[state=on]:outline-ink',
+				item: 'h-full border-0 bg-transparent shadow-none focus-visible:!outline-offset-2 focus-visible:!outline-ring data-[state=on]:bg-card data-[state=on]:text-foreground data-[state=on]:outline-2 data-[state=on]:outline-solid data-[state=on]:outline-offset-[-2px] data-[state=on]:outline-edge',
 			},
 		},
 		{ presentation: 'tab-bar', class: { item: 'data-[state=on]:bg-accent' } },

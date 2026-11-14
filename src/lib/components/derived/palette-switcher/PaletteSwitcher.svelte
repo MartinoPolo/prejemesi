@@ -64,7 +64,7 @@
 			>
 				{#snippet leading()}
 					<span
-						class="size-4 shrink-0 rounded-full border-2 border-ink"
+						class="size-4 shrink-0 rounded-full border-2 border-edge"
 						style:background-color={PALETTE_SWATCHES[palette]}
 						aria-hidden="true"
 					></span>
@@ -95,7 +95,7 @@
 					>
 						<!-- Dot inherits the active palette via the cascade (--primary = --p-brand). -->
 						<span
-							class="size-4 shrink-0 rounded-full border-2 border-ink bg-primary"
+							class="size-4 shrink-0 rounded-full border-2 border-edge bg-primary"
 							aria-hidden="true"
 						></span>
 					</Button>

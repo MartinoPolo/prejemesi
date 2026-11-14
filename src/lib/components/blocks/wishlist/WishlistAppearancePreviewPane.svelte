@@ -64,7 +64,7 @@
 {#snippet photoTile(className: string)}
 	<span
 		class={[
-			'block shrink-0 overflow-hidden border-(length:--border-w) border-ink bg-[color:var(--wishlist-image-mat,var(--secondary))]',
+			'block shrink-0 overflow-hidden border-(length:--border-w) border-edge bg-[color:var(--wishlist-image-mat,var(--secondary))]',
 			scope.style.mat === 'dotted' && 'bg-dots',
 			heroFrameStyles.photoTile(),
 			className,
@@ -74,11 +74,11 @@
 
 {#snippet giftCard()}
 	<span
-		class="flex flex-col overflow-hidden rounded-(--radius-panel) border-(length:--border-w) border-ink bg-card shadow-(--elevation-ordinary)"
+		class="flex flex-col overflow-hidden rounded-(--radius-panel) border-(length:--border-w) border-edge bg-card shadow-(--elevation-ordinary)"
 	>
 		<span
 			class={[
-				'block aspect-[4/3] border-b-(length:--border-w) border-ink bg-[color:var(--wishlist-image-mat,var(--secondary))]',
+				'block aspect-[4/3] border-b-(length:--border-w) border-edge bg-[color:var(--wishlist-image-mat,var(--secondary))]',
 				scope.style.mat === 'dotted' && 'bg-dots',
 			]}
 		></span>
@@ -86,7 +86,7 @@
 			<span class="h-3 w-4/5 rounded-full bg-foreground/70"></span>
 			<span class="h-2 w-1/2 rounded-full bg-muted-foreground/40"></span>
 			<span
-				class="mt-1 h-7 w-20 self-end rounded-(--radius-btn) border-(length:--border-w) border-ink bg-primary shadow-(--elevation-compact)"
+				class="mt-1 h-7 w-20 self-end rounded-(--radius-btn) border-(length:--border-w) border-edge bg-primary shadow-(--elevation-compact)"
 			></span>
 		</span>
 	</span>
@@ -99,7 +99,7 @@
 	data-mode={mode}
 >
 	<div
-		class="relative overflow-hidden rounded-[10px] border-2 border-ink bg-background"
+		class="relative overflow-hidden rounded-[10px] border-2 border-edge bg-background"
 		data-palette={palette}
 		data-wishlist-theme={scope.backdropThemeId ?? undefined}
 		{...wishlistStyleTokenAttributes(scope.style)}

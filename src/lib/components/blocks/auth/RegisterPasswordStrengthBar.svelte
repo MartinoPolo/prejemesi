@@ -83,7 +83,7 @@
 		flex: 1;
 		height: 9px;
 		border-radius: 999px;
-		border: 2px solid var(--ink);
+		border: 2px solid var(--edge);
 		background: var(--surface);
 		transition: background var(--duration-normal);
 	}

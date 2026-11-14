@@ -95,7 +95,7 @@ try {
 					}
 					if (baseline) {
 						element.style.paddingBottom = '0';
-						element.style.borderBottom = '2.5px solid var(--ink)';
+						element.style.borderBottom = '2.5px solid var(--edge)';
 						separator.style.display = 'none';
 						const wrapper = composition.parentElement;
 						if (!wrapper) {
@@ -251,7 +251,7 @@ try {
 						)
 					) {
 						throw new Error(
-							`Expected dark ink at ${side} border endpoint (${caseName}): ${sample.ink}`,
+							`Expected dark outline at ${side} border endpoint (${caseName}): ${sample.ink}`,
 						);
 					}
 					for (const { coordinate, rgb } of sample.boundary) {

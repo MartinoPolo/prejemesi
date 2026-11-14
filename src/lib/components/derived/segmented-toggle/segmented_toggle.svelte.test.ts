@@ -39,7 +39,7 @@ function expectShippedSelectedFacePaint(
 ) {
 	const context = group.parentElement!;
 	const indicatorStyle = getComputedStyle(selectionIndicatorOf(group));
-	const ink = resolveCssValue(context, 'color', 'var(--ink)');
+	const edge = resolveCssValue(context, 'color', 'var(--edge)');
 
 	const selectedFill = presentation === 'tab-bar' ? 'var(--accent)' : 'var(--card)';
 
@@ -53,14 +53,14 @@ function expectShippedSelectedFacePaint(
 		expect(indicatorStyle.outlineStyle).toBe('solid');
 		expect(indicatorStyle.outlineWidth).toBe('2px');
 		expect(indicatorStyle.outlineOffset).toBe('-2px');
-		expect(indicatorStyle.outlineColor).toBe(ink);
+		expect(indicatorStyle.outlineColor).toBe(edge);
 	} else {
 		expectPixelsNear(
 			parseFloat(indicatorStyle.borderTopWidth),
 			parseFloat(getComputedStyle(group).getPropertyValue('--border-w')),
 		);
 		expect(indicatorStyle.borderTopStyle).toBe('solid');
-		expect(indicatorStyle.borderTopColor).toBe(ink);
+		expect(indicatorStyle.borderTopColor).toBe(edge);
 	}
 }
 
@@ -273,7 +273,7 @@ describe('SegmentedToggle tab-bar presentation', () => {
 		await screen.unmount();
 	});
 
-	it('paints the accent face with an ink outline on the selected option before the slide places', async () => {
+	it('paints the accent face with an edge outline on the selected option before the slide places', async () => {
 		const { screen, group, radios } = await renderToggle('tab-bar');
 		group.removeAttribute('data-selection-placed');
 		const selectedStyle = getComputedStyle(radios[0]);
@@ -284,7 +284,7 @@ describe('SegmentedToggle tab-bar presentation', () => {
 		expect(selectedStyle.outlineStyle).toBe('solid');
 		expect(selectedStyle.outlineWidth).toBe('2px');
 		expect(selectedStyle.outlineOffset).toBe('-2px');
-		expect(selectedStyle.outlineColor).toBe(resolveCssValue(group, 'color', 'var(--ink)'));
+		expect(selectedStyle.outlineColor).toBe(resolveCssValue(group, 'color', 'var(--edge)'));
 		await screen.unmount();
 	});
 });

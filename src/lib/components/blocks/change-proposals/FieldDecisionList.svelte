@@ -308,7 +308,7 @@
 	.field[data-decision='edited'] {
 		--field-surface: color-mix(in oklab, var(--status-success) 12%, var(--card));
 
-		border-color: color-mix(in oklab, var(--status-success) 55%, var(--ink));
+		border-color: color-mix(in oklab, var(--status-success) 55%, var(--edge));
 	}
 
 	.field[data-decision='rejected'] {

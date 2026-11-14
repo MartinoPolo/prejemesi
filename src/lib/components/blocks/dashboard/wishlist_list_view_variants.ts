@@ -11,9 +11,9 @@ export const wishlistListViewVariants = tv({
 		row: 'group/row relative isolate flex rounded-panel',
 		surface:
 			'relative flex w-full items-center gap-3.5 rounded-panel bg-card px-4 py-3 transition-[translate,scale,box-shadow] duration-(--duration-normal) ease-(--ease-standard)',
-		border: 'pointer-events-none absolute inset-0 rounded-panel border-[2.5px] border-ink',
+		border: 'pointer-events-none absolute inset-0 rounded-panel border-[2.5px] border-edge',
 		bannerMini:
-			'relative flex size-11 shrink-0 -rotate-3 items-center justify-center overflow-hidden rounded-[10px] border-2 border-ink',
+			'relative flex size-11 shrink-0 -rotate-3 items-center justify-center overflow-hidden rounded-[10px] border-2 border-edge',
 		info: 'flex min-w-0 flex-1 flex-col gap-0.5',
 		title: 'truncate font-heading text-[16px] font-semibold text-foreground',
 		subtitle: 'truncate text-xs text-muted-foreground',

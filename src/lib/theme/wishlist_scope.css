@@ -101,7 +101,7 @@
 [data-wishlist-backdrop] .wishlist-backdrop-plate {
 	padding: 4px 14px;
 	background: var(--card);
-	border: var(--border-w) solid var(--ink);
+	border: var(--border-w) solid var(--edge);
 	border-radius: var(--wishlist-pill-radius);
 	box-shadow: var(--elevation-compact);
 }

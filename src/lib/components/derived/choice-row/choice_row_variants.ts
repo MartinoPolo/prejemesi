@@ -10,7 +10,7 @@ export const choiceRowVariants = tv({
 	],
 	variants: {
 		selected: {
-			true: 'border-ink bg-accent',
+			true: 'border-edge bg-accent',
 			false: '',
 		},
 	},

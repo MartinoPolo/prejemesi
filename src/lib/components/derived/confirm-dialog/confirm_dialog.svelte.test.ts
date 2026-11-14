@@ -26,8 +26,8 @@ const APP_LABEL_PAIRS: ReadonlyArray<readonly [cancel: () => string, confirm: ()
 
 /** The face paint each confirm intent must show, as resolved colour tokens. */
 const INTENT_FACES: Record<ConfirmIntent, { background: string; border: string }> = {
-	primary: { background: '--primary', border: '--ink' },
-	'primary-destructive': { background: '--status-danger-fill', border: '--ink' },
+	primary: { background: '--primary', border: '--edge' },
+	'primary-destructive': { background: '--status-danger-fill', border: '--edge' },
 };
 
 function resolvedColor(scope: Element, token: string): string {

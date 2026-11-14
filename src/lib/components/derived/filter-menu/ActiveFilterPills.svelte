@@ -30,7 +30,7 @@
 	}: ActiveFilterPillsProps = $props();
 
 	const PILL_FACE_CLASS =
-		'inline-flex h-(--size-control-sm) min-w-0 max-w-[min(12.5rem,100%)] items-center gap-1 rounded-full border-2 border-ink bg-primary py-0 pr-0.5 pl-2.5 text-(length:--text-sm) font-semibold text-primary-foreground';
+		'inline-flex h-(--size-control-sm) min-w-0 max-w-[min(12.5rem,100%)] items-center gap-1 rounded-full border-2 border-edge bg-primary py-0 pr-0.5 pl-2.5 text-(length:--text-sm) font-semibold text-primary-foreground';
 
 	let pillRemoveButtons = $state<Record<string, HTMLButtonElement | undefined>>({});
 

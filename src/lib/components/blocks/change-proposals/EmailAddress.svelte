@@ -8,7 +8,7 @@
 <style>
 	.email {
 		padding: 0 5px;
-		border: 1.5px solid var(--ink);
+		border: 1.5px solid var(--edge);
 		border-radius: 5px;
 		background: var(--card);
 		font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;

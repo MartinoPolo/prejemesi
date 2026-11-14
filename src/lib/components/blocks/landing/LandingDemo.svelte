@@ -102,7 +102,7 @@
 		align-items: center;
 		gap: 8px;
 		padding: 6px 16px;
-		border: 2px dashed var(--ink);
+		border: 2px dashed var(--edge);
 		border-radius: 999px;
 		background: var(--note-tint);
 		color: var(--note-ink);

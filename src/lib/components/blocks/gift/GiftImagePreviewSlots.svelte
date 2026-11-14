@@ -94,7 +94,7 @@
 				     would otherwise stretch the tile past its true aspect. -->
 				<div
 					class={cn(
-						'relative overflow-hidden rounded-md border-2 border-ink bg-card shadow-sticker',
+						'relative overflow-hidden rounded-md border-2 border-edge bg-card shadow-sticker',
 						tile.sizing,
 						activeTarget === tile.target && 'ring-2 ring-primary',
 					)}

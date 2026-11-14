@@ -43,8 +43,8 @@
 		lg: `${CONTROL_SIZE_CLASSES.lg} ${CONTROL_TEXT_SIZE_CLASSES.lg} ${CONTROL_ICON_SIZE_CLASSES.lg}`,
 		xl: `${CONTROL_SIZE_CLASSES.xl} ${CONTROL_TEXT_SIZE_CLASSES.xl} ${CONTROL_ICON_SIZE_CLASSES.xl}`,
 	} as const;
-	const flatOwnerClasses = `border-[2.5px] border-ink bg-card transition-[color,box-shadow,border-color] ${selectValueClasses} ${iconBaseClasses} data-[state=error]:border-status-danger data-[state=error]:shadow-[0_0_0_3px_color-mix(in_oklch,var(--status-danger)_18%,transparent)]`;
-	const raisedSurfaceBaseClasses = `elevation-surface flex size-full items-center justify-between gap-1.5 rounded-[inherit] border-[2.5px] border-ink bg-card transition-[translate,scale,box-shadow] duration-(--duration-normal) ease-(--ease-standard) ${selectValueClasses} ${iconBaseClasses}`;
+	const flatOwnerClasses = `border-[2.5px] border-edge bg-card transition-[color,box-shadow,border-color] ${selectValueClasses} ${iconBaseClasses} data-[state=error]:border-status-danger data-[state=error]:shadow-[0_0_0_3px_color-mix(in_oklch,var(--status-danger)_18%,transparent)]`;
+	const raisedSurfaceBaseClasses = `elevation-surface flex size-full items-center justify-between gap-1.5 rounded-[inherit] border-[2.5px] border-edge bg-card transition-[translate,scale,box-shadow] duration-(--duration-normal) ease-(--ease-standard) ${selectValueClasses} ${iconBaseClasses}`;
 	const raisedSurfaceErrorClasses =
 		'group-aria-invalid:border-status-danger group-aria-invalid:shadow-[0_0_0_3px_color-mix(in_oklch,var(--status-danger)_18%,transparent)] group-data-[state=error]:border-status-danger group-data-[state=error]:shadow-[0_0_0_3px_color-mix(in_oklch,var(--status-danger)_18%,transparent)]';
 </script>
