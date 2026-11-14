@@ -17,6 +17,7 @@ import {
 	fieldEditorText,
 	includedRowCount,
 	initialChangeReview,
+	isBulkAcceptableRow,
 	unresolvedChangeCount,
 	withEveryRowDecided,
 	withFieldDecisionToggled,
@@ -78,6 +79,11 @@ export class ProposalDecisions {
 	readonly activeReview = $derived(activeChangeReview(this.entries));
 	readonly unresolvedCount = $derived(unresolvedChangeCount(this.activeReview));
 	readonly includedCount = $derived(includedRowCount(this.activeReview));
+	readonly #decidableRows = $derived(
+		this.entries.filter((entry) => entry.rowReview !== undefined).map((entry) => entry.row),
+	);
+	/** Přijmout vše has a row it may accept, so offering it does something. */
+	readonly canAcceptAll = $derived(this.#decidableRows.some(isBulkAcceptableRow));
 
 	readonly actions: ChangeReviewActions = {
 		decideRow: (rowId, decision) => {
@@ -117,10 +123,7 @@ export class ProposalDecisions {
 	}
 
 	decideEveryRow(decision: ChangeDecision): void {
-		const decidableRows = this.entries
-			.filter((entry) => entry.rowReview !== undefined)
-			.map((entry) => entry.row);
-		this.review = withEveryRowDecided(this.review, decidableRows, decision);
+		this.review = withEveryRowDecided(this.review, this.#decidableRows, decision);
 	}
 
 	decisions(): ChangeRowDecision[] {

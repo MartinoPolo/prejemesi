@@ -337,7 +337,12 @@ export function withFieldEdited(
 	});
 }
 
-/** Přijmout vše never resolves deletions, reservations or invitations; Zamítnout vše declines all. */
+/** Deletions, reservations and invitations are confirmed only by the row's own action. */
+export function isBulkAcceptableRow(row: Pick<ReviewRow, 'requiresConfirmation'>): boolean {
+	return !row.requiresConfirmation;
+}
+
+/** Přijmout vše accepts only bulk-acceptable rows; Zamítnout vše declines all. */
 export function withEveryRowDecided(
 	review: ChangeReview,
 	rows: readonly Pick<ReviewRow, 'rowId' | 'requiresConfirmation'>[],
@@ -345,7 +350,7 @@ export function withEveryRowDecided(
 ): ChangeReview {
 	return rows.reduce(
 		(next, row) =>
-			decision === CHANGE_DECISION.accepted && row.requiresConfirmation
+			decision === CHANGE_DECISION.accepted && !isBulkAcceptableRow(row)
 				? next
 				: withRowDecided(next, row.rowId, decision),
 		review,

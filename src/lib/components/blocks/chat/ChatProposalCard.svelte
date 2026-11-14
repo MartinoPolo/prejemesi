@@ -36,6 +36,7 @@
 		countCopy,
 		formatChangeReviewDateTime,
 	} from '$lib/modules/change_proposals/change_review_copy.js';
+	import { CHANGE_DECISION } from '$lib/modules/change_proposals/change_field_decisions.js';
 	import { isRowDeclined } from '$lib/modules/change_proposals/change_review_decisions.js';
 	import { isOutdatedChangeProposalError } from '$lib/modules/change_proposals/outdated_change_proposal.js';
 	import ProposalDecisionControls from './ProposalDecisionControls.svelte';
@@ -130,6 +131,14 @@
 		first?.querySelector<HTMLButtonElement>('button:not(:disabled)')?.focus({
 			preventScroll: true,
 		});
+	}
+
+	/** Rows needing their own confirmation stay open, so the summary points at them. */
+	function acceptAll() {
+		decisions.decideEveryRow(CHANGE_DECISION.accepted);
+		if (decisions.unresolvedCount > 0) {
+			void revealUnresolved();
+		}
 	}
 
 	async function run(action: CardAction, work: () => Promise<void>, fallback: string) {
@@ -229,6 +238,7 @@
 		reviewHref={checksInline ? null : reviewHref}
 		pending={pendingAction !== null}
 		oninspect={() => (inspecting = !inspecting)}
+		onacceptall={acceptAll}
 		onapply={requestApply}
 		{onlocate}
 		{compact}

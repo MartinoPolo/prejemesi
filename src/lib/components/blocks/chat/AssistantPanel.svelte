@@ -12,7 +12,11 @@
 	import type { ChangeRowContext } from '$lib/components/blocks/change-proposals/change_row_model.js';
 	import { localizeInternalHref } from '$lib/i18n/locale.js';
 	import { translateServerError } from '$lib/modules/errors/translate_server_error.js';
-	import { getPendingChangeProposals } from '$lib/modules/change_proposals/index.js';
+	import {
+		CHANGE_PROPOSAL_STATE,
+		getChangeProposal,
+		getPendingChangeProposals,
+	} from '$lib/modules/change_proposals/index.js';
 	import { getGiftsByWishlistShortId } from '$lib/modules/gifts/gifts.remote.js';
 	import { getWishlistByShortId } from '$lib/modules/wishlists/wishlists.remote.js';
 	import {
@@ -35,12 +39,14 @@
 	import {
 		CHAT_ITEM,
 		CHAT_PART,
+		CHAT_PROPOSAL_STATUS,
 		chatThreadItems,
 		continuedAnswerParts,
+		decisionBarProposalId,
 		isChatTurnUnfinished,
-		latestChatProposalId,
 		startLiveChatTurn,
 		withStreamEvent,
+		type ChatProposalStatus,
 		type LiveChatTurn,
 	} from '$lib/modules/chat/chat_thread.js';
 	import {
@@ -158,7 +164,26 @@
 	const messages = $derived(sessionQuery?.current?.messages ?? []);
 	const items = $derived(chatThreadItems(messages));
 	const fastForward = $derived(sessionQuery?.current?.fastForward ?? false);
-	const latestProposalId = $derived(latestChatProposalId(messages));
+	/**
+	 * Only stored proposals take the bar: decisions made on a live turn's copy would be lost when
+	 * the stored chat replaces it.
+	 */
+	const barProposalId = $derived(
+		decisionBarProposalId({ messages, fastForward, proposalStatus: chatProposalStatus }),
+	);
+
+	function chatProposalStatus(proposalId: string): ChatProposalStatus {
+		const proposalQuery = getChangeProposal({ wishlistShortId, proposalId });
+		if (proposalQuery.current !== undefined) {
+			return proposalQuery.current.state === CHANGE_PROPOSAL_STATE.pending
+				? CHAT_PROPOSAL_STATUS.pending
+				: CHAT_PROPOSAL_STATUS.unavailable;
+		}
+		return proposalQuery.error === undefined
+			? CHAT_PROPOSAL_STATUS.loading
+			: CHAT_PROPOSAL_STATUS.unavailable;
+	}
+
 	const sentTexts = $derived(
 		new Set([
 			...items.flatMap((item) => (item.type === CHAT_ITEM.user ? [item.text] : [])),
@@ -531,7 +556,7 @@
 		{proposalId}
 		{wishlistShortId}
 		{rowContext}
-		inBar={proposalId === latestProposalId && !fastForward}
+		inBar={proposalId === barProposalId}
 		{decisionBar}
 		{decidingProposals}
 	/>

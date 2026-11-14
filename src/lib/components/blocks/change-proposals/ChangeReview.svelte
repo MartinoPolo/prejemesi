@@ -150,6 +150,14 @@
 		});
 	}
 
+	/** Rows needing their own confirmation stay open, so the review points at them. */
+	function acceptAll() {
+		decisions.decideEveryRow(CHANGE_DECISION.accepted);
+		if (decisions.unresolvedCount > 0) {
+			void revealUnresolved();
+		}
+	}
+
 	function requestApply() {
 		if (unresolvedCount > 0) {
 			void revealUnresolved();
@@ -243,7 +251,7 @@
 			{announcement}
 			pending={pendingAction === 'apply'}
 			onrejectall={() => decisions.decideEveryRow(CHANGE_DECISION.rejected)}
-			onacceptall={() => decisions.decideEveryRow(CHANGE_DECISION.accepted)}
+			onacceptall={decisions.canAcceptAll ? acceptAll : undefined}
 			onapply={requestApply}
 		/>
 	{/if}

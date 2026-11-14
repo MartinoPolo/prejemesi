@@ -4,6 +4,7 @@ import {
 	fieldEditInput,
 	initialChangeReview,
 	withFieldEdited,
+	withRowChoiceToggled,
 } from '$lib/modules/change_proposals/change_review_decisions.js';
 import {
 	CHANGE_KIND,
@@ -99,6 +100,34 @@ function categoryField(row: ChangeProposalRowView, review = initialChangeReview(
 		livePreview: model.giftChanges[0]?.livePreview,
 	};
 }
+
+function confirmationRow(
+	overrides: Pick<ChangeProposalRowView, 'rowId' | 'operation' | 'kind' | 'input'>,
+): ChangeProposalRowView {
+	return {
+		requiresConfirmation: true,
+		status: CHANGE_ROW_STATUS.needsConfirmation,
+		error: null,
+		conflicts: [],
+		preview: null,
+		appliedResult: null,
+		appliedFields: null,
+		...overrides,
+	};
+}
+
+const deletionRow = confirmationRow({
+	rowId: 'deletion',
+	operation: 'deleteGift',
+	kind: CHANGE_KIND.giftDeletion,
+	input: { giftId: 'g-lego' },
+});
+const invitationRow = confirmationRow({
+	rowId: 'invitation',
+	operation: 'generateModeratorInviteLink',
+	kind: CHANGE_KIND.managerInvitation,
+	input: { email: 'jana@test.cz' },
+});
 
 function previewedCategories(livePreview: ReturnType<typeof categoryField>['livePreview']) {
 	if (livePreview?.kind !== GIFT_LIVE_PREVIEW.edit) {
@@ -200,5 +229,41 @@ describe('change row category field', () => {
 			categoryIds: [],
 			categories: [],
 		});
+	});
+});
+
+describe('change row consequence', () => {
+	function consequenceAfter(row: ChangeProposalRowView, choices: boolean[]) {
+		const review = choices.reduce(
+			(next, accepted) => withRowChoiceToggled(next, row.rowId, accepted),
+			initialChangeReview([row]),
+		);
+		return buildChangeRowModel(row, context, lookups, review[row.rowId]).consequence;
+	}
+
+	it('warns about a deletion while it is undecided or accepted', () => {
+		expect(consequenceAfter(deletionRow, [])).not.toBeNull();
+		expect(consequenceAfter(deletionRow, [true])).not.toBeNull();
+	});
+
+	it('drops the deletion warning once the gift is kept, and shows it again when cleared', () => {
+		expect(consequenceAfter(deletionRow, [false])).toBeNull();
+		expect(consequenceAfter(deletionRow, [false, false])).not.toBeNull();
+	});
+
+	it('drops the deletion warning once the proposal is no longer awaiting a decision', () => {
+		const settledStatuses = [
+			CHANGE_ROW_STATUS.applied,
+			CHANGE_ROW_STATUS.notApplied,
+			CHANGE_ROW_STATUS.undone,
+		];
+		for (const status of settledStatuses) {
+			expect(consequenceAfter({ ...deletionRow, status }, [])).toBeNull();
+		}
+	});
+
+	it('drops the invitation warning once the invitation is declined', () => {
+		expect(consequenceAfter(invitationRow, [])).not.toBeNull();
+		expect(consequenceAfter(invitationRow, [false])).toBeNull();
 	});
 });

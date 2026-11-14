@@ -24,6 +24,17 @@ async function loginAsMartin(
 	await waitForAppHydration(page);
 }
 
+/** Sends a message and waits until its turn has finished with the given number of proposals. */
+async function sendAndAwaitProposals(page: Page, text: string, proposalCount: number) {
+	const panel = page.getByTestId('assistant-panel');
+	await page.getByTestId('assistant-composer').fill(text);
+	await page.getByTestId('assistant-send').click();
+	await expect(panel.getByTestId('chat-proposal')).toHaveCount(proposalCount, {
+		timeout: 15_000,
+	});
+	await expect(page.getByTestId('assistant-send')).toBeVisible({ timeout: 15_000 });
+}
+
 test.describe('AI assistant on a wishlist (issue #478)', () => {
 	test('enriches a gift from its menu and applies the proposal from the panel', async ({
 		page,
@@ -121,5 +132,75 @@ test.describe('AI assistant on a wishlist (issue #478)', () => {
 		await page.keyboard.press('Escape');
 		await expect(panel).toBeHidden();
 		await expect(ghost).toHaveCount(0);
+	});
+
+	test('the decision bar follows the newest pending proposal', async ({
+		page,
+		request,
+		baseURL,
+	}) => {
+		await loginAsMartin(page, request, baseURL!);
+		await createWishlistAndNavigate(page, `Asistent lišta ${Date.now()}`);
+		await addGift(page, GIFT_NAME);
+
+		const panel = page.getByTestId('assistant-panel');
+		await page.getByTestId('assistant-fab').click();
+		await expect(panel).toBeVisible();
+		await sendAndAwaitProposals(page, `Vylepšete ${GIFT_NAME}`, 1);
+		await sendAndAwaitProposals(page, 'Přidejte Stolní hra Azul', 2);
+
+		const proposals = panel.getByTestId('chat-proposal');
+		const olderProposal = proposals.filter({ hasText: GIFT_NAME });
+		const newestProposal = proposals.filter({ hasText: 'Stolní hra Azul' });
+		const decisionBar = panel.getByRole('region', { name: 'Rozhodnutí o návrhu' });
+		const banner = page.getByTestId('pending-changes-item');
+		await expect(decisionBar).toBeVisible();
+		await expect(newestProposal.getByTestId('chat-proposal-controls')).toHaveCount(0);
+		await expect(olderProposal.getByTestId('chat-proposal-controls')).toBeVisible();
+		await expect(banner).toHaveCount(2);
+
+		await decisionBar.getByTestId('chat-proposal-reject-all').click();
+		const declineButton = decisionBar.getByTestId('chat-proposal-apply');
+		await expect(declineButton).toHaveText('Zamítnout návrh');
+		await declineButton.click();
+		await expect(newestProposal).toContainText('Zamítnuto');
+
+		// The older proposal is still pending, so the bar takes it over from its card.
+		await expect(decisionBar).toBeVisible();
+		await expect(olderProposal.getByTestId('chat-proposal-controls')).toHaveCount(0);
+		await expect(banner).toHaveCount(1);
+
+		await decisionBar.getByTestId('chat-proposal-apply').click();
+		await expect(olderProposal.getByTestId('chat-proposal-undo')).toBeVisible();
+		await expect(decisionBar).toHaveCount(0);
+		await expect(banner).toHaveCount(0);
+	});
+
+	test('a deletion needs its own action', async ({ page, request, baseURL }) => {
+		await loginAsMartin(page, request, baseURL!);
+		await createWishlistAndNavigate(page, `Asistent mazání ${Date.now()}`);
+		await addGift(page, GIFT_NAME);
+
+		const panel = page.getByTestId('assistant-panel');
+		await page.getByTestId('assistant-fab').click();
+		await expect(panel).toBeVisible();
+		await sendAndAwaitProposals(page, `Smažte ${GIFT_NAME}`, 1);
+
+		const decisionBar = panel.getByRole('region', { name: 'Rozhodnutí o návrhu' });
+		await expect(decisionBar.getByTestId('chat-proposal-reject-all')).toBeVisible();
+		await expect(decisionBar.getByTestId('chat-proposal-accept-all')).toHaveCount(0);
+
+		await decisionBar.getByTestId('chat-proposal-inspect').click();
+		const row = panel.getByTestId('chat-proposal-row');
+		const warning = row.getByText('trvale odstraněn');
+		const keep = row.getByRole('button', { name: 'Ponechat', exact: true });
+		await expect(warning).toBeVisible();
+
+		await keep.click();
+		await expect(warning).toHaveCount(0);
+
+		// Pressing the active choice again clears it, so the deletion is possible again.
+		await keep.click();
+		await expect(warning).toBeVisible();
 	});
 });

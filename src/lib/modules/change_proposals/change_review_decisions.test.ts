@@ -13,6 +13,7 @@ import {
 	fieldEditorText,
 	includedRowCount,
 	initialChangeReview,
+	isBulkAcceptableRow,
 	isGiftDropped,
 	isRowDeclined,
 	reviewedChangeFields,
@@ -99,6 +100,22 @@ const deletion = reviewRow({
 	requiresConfirmation: true,
 	status: CHANGE_ROW_STATUS.needsConfirmation,
 });
+const reservation = reviewRow({
+	rowId: 'reservation',
+	operation: 'reserveGift',
+	kind: CHANGE_KIND.reservation,
+	input: { giftId: 'g-lego' },
+	requiresConfirmation: true,
+	status: CHANGE_ROW_STATUS.needsConfirmation,
+});
+const invitation = reviewRow({
+	rowId: 'invitation',
+	operation: 'generateModeratorInviteLink',
+	kind: CHANGE_KIND.managerInvitation,
+	input: { email: 'jana@test.cz' },
+	requiresConfirmation: true,
+	status: CHANGE_ROW_STATUS.needsConfirmation,
+});
 const conflict = reviewRow({ rowId: 'conflict', status: CHANGE_ROW_STATUS.conflict });
 const rejected = reviewRow({
 	rowId: 'rejected',
@@ -133,6 +150,27 @@ describe('change review decisions', () => {
 		const acceptedAll = withEveryRowDecided(unresolvedDeletion, rows, CHANGE_DECISION.accepted);
 		expect(acceptedAll.deletion).toEqual({ kind: ROW_REVIEW_KIND.whole, accepted: null });
 		expect(includedRowCount(acceptedAll)).toBe(2);
+	});
+
+	it('lets Přijmout vše accept new gifts and edits but never a deletion, reservation or manager invitation', () => {
+		expect(isBulkAcceptableRow(newGift)).toBe(true);
+		expect(isBulkAcceptableRow(edit)).toBe(true);
+		expect(isBulkAcceptableRow(deletion)).toBe(false);
+		expect(isBulkAcceptableRow(reservation)).toBe(false);
+		expect(isBulkAcceptableRow(invitation)).toBe(false);
+
+		const confirmationRows = [deletion, reservation, invitation];
+		const acceptedAll = withEveryRowDecided(
+			initialChangeReview(confirmationRows),
+			confirmationRows,
+			CHANGE_DECISION.accepted,
+		);
+		const unresolved = { kind: ROW_REVIEW_KIND.whole, accepted: null };
+		expect(acceptedAll).toEqual({
+			deletion: unresolved,
+			reservation: unresolved,
+			invitation: unresolved,
+		});
 	});
 
 	it('marks every row declined after the global reject, but not an open or accepted one', () => {

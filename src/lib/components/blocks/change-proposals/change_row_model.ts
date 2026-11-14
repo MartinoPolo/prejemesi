@@ -33,14 +33,14 @@ import {
 	type ChangeField,
 } from '$lib/modules/change_proposals/change_field_decisions.js';
 import {
-	CHANGE_ROW_GROUP,
 	FIELD_REVIEW_STATE,
 	ROW_REVIEW_KIND,
 	SNAPSHOT_KEYS_BY_FIELD,
-	changeRowGroup,
 	fieldEditorText,
 	fieldReviewState,
+	isDecidableChangeRow,
 	isGiftDropped,
+	isRowDeclined,
 	isRowIncluded,
 	sameSnapshotValue,
 	type FieldReview,
@@ -887,8 +887,8 @@ export function buildChangeRowModel(
 		identity,
 		giftChanges,
 		moreCount: allChanges.length - giftChanges.length,
-		// A row that never applies has no consequence to warn about, only its reasons.
-		consequence: changeRowGroup(row) === CHANGE_ROW_GROUP.blocked ? null : consequence,
+		// The warning describes what applying will do, so only a row still awaiting a decision shows it.
+		consequence: !isDecidableChangeRow(row) || isRowDeclined(rowReview) ? null : consequence,
 		reasons: rowReasons(row),
 		currentCards: currentCards(row, context, lookups),
 		giftIds:
