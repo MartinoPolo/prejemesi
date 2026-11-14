@@ -102,6 +102,16 @@ function prewarmServerModuleGraph(): Plugin {
 
 export default defineConfig({
 	optimizeDeps: {
+		// A dependency the scan misses is found when a page first loads it; Vite then re-bundles and
+		// reloads every open page, aborting navigations in progress. SvelteKit's own scan entries are
+		// absolute Windows paths that match nothing there, and neither covers the client hook.
+		entries: isVitest
+			? undefined
+			: [
+					'src/routes/**/+*.{svelte,js,ts}',
+					'!src/routes/**/+*server.*',
+					'src/hooks.client.ts',
+				],
 		include: [
 			'@lucide/svelte/icons/archive',
 			'@lucide/svelte/icons/arrow-right',
