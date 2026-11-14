@@ -23,34 +23,109 @@ import { applyRows } from './change_proposals.db.test-setup.js';
 /** Long enough that statements sent together reach the server as one flight. */
 const ONE_WAY_DELAY_MS = 10;
 
+const POSTGRES_PROTOCOL_VERSION = 196608;
+const STARTUP_PACKET = 'startup';
+/** Client messages the server answers with exactly one ReadyForQuery: Sync and simple Query. */
+const REQUEST_ENDING_MESSAGES = new Set(['S', 'Q']);
+const READY_FOR_QUERY = 'Z';
+
+/**
+ * Reads the type of each complete PostgreSQL protocol message in one direction of a connection,
+ * across chunk boundaries. The client's first message, the startup packet, has no type byte.
+ */
+function messageTypeReader({ startsWithStartupPacket }: { startsWithStartupPacket: boolean }) {
+	let unread = Buffer.alloc(0);
+	let expectsStartupPacket = startsWithStartupPacket;
+	return (chunk: Buffer): string[] => {
+		unread = Buffer.concat([unread, chunk]);
+		const types: string[] = [];
+		for (;;) {
+			const lengthOffset = expectsStartupPacket ? 0 : 1;
+			if (unread.length < lengthOffset + 4) {
+				return types;
+			}
+			const messageEnd = lengthOffset + unread.readUInt32BE(lengthOffset);
+			if (unread.length < messageEnd) {
+				return types;
+			}
+			if (expectsStartupPacket && unread.readUInt32BE(4) !== POSTGRES_PROTOCOL_VERSION) {
+				throw new Error('The round trip proxy needs an unencrypted PostgreSQL connection');
+			}
+			types.push(expectsStartupPacket ? STARTUP_PACKET : String.fromCharCode(unread[0]));
+			unread = unread.subarray(messageEnd);
+			expectsStartupPacket = false;
+		}
+	};
+}
+
 /**
  * A TCP proxy in front of the test database that delays traffic like a remote database and counts
- * round trips: client flights sent after the client last received a response.
+ * round trips: client flights sent after the client last received a response. It reads the
+ * protocol to hand the client a response only once the server has answered every request in
+ * flight. Otherwise a busy server that spreads one flight's answers over more than the delay makes
+ * the client follow up in several flights, and the count would measure the server's pace.
  */
 async function startRoundTripProxy(databaseUrl: URL) {
 	let roundTrips = 0;
-	const delayed = (from: net.Socket, to: net.Socket, onChunk: () => void) => {
+	const delayedWriter = (to: net.Socket) => {
 		let previous = Promise.resolve();
-		from.on('data', (chunk) => {
-			onChunk();
-			const arrival = new Promise((resolve) => setTimeout(resolve, ONE_WAY_DELAY_MS));
-			previous = previous.then(() => arrival).then(() => void to.write(chunk));
-		});
-		from.on('end', () => void previous.then(() => to.end()));
-		from.on('error', () => to.destroy());
+		return {
+			write(chunk: Buffer) {
+				const arrival = new Promise((resolve) => setTimeout(resolve, ONE_WAY_DELAY_MS));
+				previous = previous.then(() => arrival).then(() => void to.write(chunk));
+			},
+			end: () => void previous.then(() => to.end()),
+		};
 	};
 	const server = net.createServer((client) => {
 		const database = net.connect(Number(databaseUrl.port || 5432), databaseUrl.hostname);
+		const toDatabase = delayedWriter(database);
+		const toClient = delayedWriter(client);
+		const requestMessageTypes = messageTypeReader({ startsWithStartupPacket: true });
+		const responseMessageTypes = messageTypeReader({ startsWithStartupPacket: false });
 		let awaitingResponse = false;
-		delayed(client, database, () => {
+		let sessionStarted = false;
+		let unansweredRequests = 0;
+		let heldResponse: Buffer[] = [];
+		client.on('data', (chunk: Buffer) => {
 			if (!awaitingResponse) {
 				roundTrips += 1;
 				awaitingResponse = true;
 			}
+			unansweredRequests += requestMessageTypes(chunk).filter((type) =>
+				REQUEST_ENDING_MESSAGES.has(type),
+			).length;
+			toDatabase.write(chunk);
 		});
-		delayed(database, client, () => {
-			awaitingResponse = false;
+		database.on('data', (chunk: Buffer) => {
+			for (const type of responseMessageTypes(chunk)) {
+				if (type !== READY_FOR_QUERY) {
+					continue;
+				}
+				// The startup exchange ends with a ReadyForQuery that answers no request.
+				if (sessionStarted) {
+					unansweredRequests -= 1;
+				} else {
+					sessionStarted = true;
+				}
+			}
+			heldResponse.push(chunk);
+			if (unansweredRequests === 0) {
+				toClient.write(Buffer.concat(heldResponse));
+				heldResponse = [];
+				awaitingResponse = false;
+			}
 		});
+		client.on('end', toDatabase.end);
+		database.on('end', () => {
+			// A server closing mid-request still owes the client its last messages, such as an error.
+			if (heldResponse.length > 0) {
+				toClient.write(Buffer.concat(heldResponse));
+			}
+			toClient.end();
+		});
+		client.on('error', () => database.destroy());
+		database.on('error', () => client.destroy());
 	});
 	await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
 	const address = server.address();
