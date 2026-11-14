@@ -2,6 +2,10 @@ import * as v from 'valibot';
 import { SUPPORTED_LOCALES, type SupportedLocale } from '$lib/i18n/locale.js';
 import { isPalette, type Palette } from '$lib/theme/palettes.js';
 import { isDepthStyle, type DepthStyle } from '$lib/theme/depth_styles.js';
+import {
+	isDarkWishlistBackground,
+	type DarkWishlistBackground,
+} from '$lib/theme/dark_wishlist_background.js';
 
 /** User profile returned to the settings UI. */
 export interface UserProfile {
@@ -32,3 +36,7 @@ export const SetUserPaletteInputSchema = v.custom<Palette>(isPalette);
 
 /** App-level semantic sticker depth preference. */
 export const SetUserDepthStyleInputSchema = v.custom<DepthStyle>(isDepthStyle);
+
+/** App-level dark-mode wishlist page background preference. */
+export const SetUserDarkWishlistBackgroundInputSchema =
+	v.custom<DarkWishlistBackground>(isDarkWishlistBackground);

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { getLayerPalette } from '$lib/theme/layer_palette.js';
 	import { Dialog as SheetPrimitive } from 'bits-ui';
 	import type { Snippet } from 'svelte';
 	import SheetPortal from './sheet-portal.svelte';
@@ -28,11 +29,14 @@
 		showCloseButton?: boolean;
 		children: Snippet;
 	} = $props();
+
+	const layerPalette = getLayerPalette();
 </script>
 
 <SheetPortal {...portalProps}>
 	<SheetOverlay />
 	<SheetPrimitive.Content
+		data-dark-palette={layerPalette()}
 		bind:ref
 		data-slot="sheet-content"
 		data-side={side}

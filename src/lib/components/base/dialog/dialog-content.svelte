@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { getLayerPalette } from '$lib/theme/layer_palette.js';
 	import { Dialog as DialogPrimitive } from 'bits-ui';
 	import type { Snippet } from 'svelte';
 	import DialogPortal from './dialog-portal.svelte';
@@ -35,11 +36,14 @@
 		showCloseButton?: boolean;
 		children: Snippet;
 	} = $props();
+
+	const layerPalette = getLayerPalette();
 </script>
 
 <DialogPortal {...portalProps}>
 	<DialogOverlay />
 	<DialogPrimitive.Content
+		data-dark-palette={layerPalette()}
 		bind:ref
 		data-slot="dialog-content"
 		class={cn(dialogContentVariants({ size, layout }), className)}

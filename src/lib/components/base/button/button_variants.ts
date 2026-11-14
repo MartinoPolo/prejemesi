@@ -40,7 +40,7 @@ export const buttonVariants = tv({
 			},
 			'secondary-filled': {
 				owner: 'elevation-owner elevation-owner-raised elevation-owner-anchored',
-				surface: `border-edge bg-foreground text-background group-hover:bg-[color-mix(in_oklab,var(--foreground)_86%,var(--background))] ${FILLED_BUTTON_KBD_CLASSES}`,
+				surface: `border-edge bg-ink-fill text-ink-fill-foreground group-hover:bg-[color-mix(in_oklab,var(--ink-fill)_86%,var(--background))] ${FILLED_BUTTON_KBD_CLASSES}`,
 			},
 			ghost: {
 				surface:

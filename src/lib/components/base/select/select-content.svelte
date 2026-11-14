@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { getLayerPalette } from '$lib/theme/layer_palette.js';
 	import { Select as SelectPrimitive } from 'bits-ui';
 	import SelectPortal from './select-portal.svelte';
 	import {
@@ -22,10 +23,13 @@
 	}: WithoutChild<SelectPrimitive.ContentProps> & {
 		portalProps?: WithoutChildrenOrChild<ComponentProps<typeof SelectPortal>>;
 	} = $props();
+
+	const layerPalette = getLayerPalette();
 </script>
 
 <SelectPortal {...portalProps}>
 	<SelectPrimitive.Content
+		data-dark-palette={layerPalette()}
 		bind:ref
 		{sideOffset}
 		{sticky}

@@ -68,6 +68,7 @@ vi.mock('$lib/server/db/auth.schema.js', () => ({
 		preferredLocale: 'u.preferredLocale',
 		palette: 'u.palette',
 		depthStyle: 'u.depthStyle',
+		darkWishlistBackground: 'u.darkWishlistBackground',
 		updatedAt: 'u.updatedAt',
 	},
 	account: {
@@ -117,9 +118,14 @@ import {
 	updatePreferredLocale,
 	setUserPalette,
 	setUserDepthStyle,
+	setUserDarkWishlistBackground,
 	deleteAccount,
 } from './settings.remote.js';
-import { SetUserDepthStyleInputSchema, SetUserPaletteInputSchema } from './types.js';
+import {
+	SetUserDarkWishlistBackgroundInputSchema,
+	SetUserDepthStyleInputSchema,
+	SetUserPaletteInputSchema,
+} from './types.js';
 import { getDb } from '$lib/server/db/index.js';
 import { getRequestEvent } from '$app/server';
 import { deleteObjectsBestEffort } from '$lib/server/storage/r2.js';
@@ -355,6 +361,73 @@ describe('setUserDepthStyle', () => {
 		expect(updateMock).toHaveBeenCalledWith(mockedUserTable);
 		expect(setMock).toHaveBeenCalledWith({
 			depthStyle: 'black',
+			updatedAt: expect.any(Date),
+		});
+		expect(whereMock).toHaveBeenCalledWith(['u.id', 'user-1']);
+	});
+});
+
+describe('setUserDarkWishlistBackground', () => {
+	function mockCookies() {
+		const cookieSet = vi.fn();
+		mockGetRequestEvent.mockReturnValue({
+			cookies: { set: cookieSet },
+		} as unknown as ReturnType<typeof getRequestEvent>);
+		return cookieSet;
+	}
+
+	it('validates exactly the three approved backgrounds', () => {
+		expect(
+			['wishlist', 'app', 'tint'].every((value) =>
+				v.is(SetUserDarkWishlistBackgroundInputSchema, value),
+			),
+		).toBe(true);
+		expect(
+			['palette', '', 'App', null].some((value) =>
+				v.is(SetUserDarkWishlistBackgroundInputSchema, value),
+			),
+		).toBe(false);
+	});
+
+	it('anonymous viewers get only a one-year non-httpOnly cookie', async () => {
+		const cookieSet = mockCookies();
+		const mockDb = createMockDb([[]]);
+		mockGetDb.mockReturnValue(mockDb);
+
+		await (setUserDarkWishlistBackground as unknown as (...args: unknown[]) => Promise<void>)(
+			null,
+			'tint',
+		);
+
+		expect(cookieSet).toHaveBeenCalledWith('app-dark-wishlist-background', 'tint', {
+			path: '/',
+			maxAge: 31_536_000,
+			httpOnly: false,
+			sameSite: 'lax',
+		});
+		expect(mockDb.update).not.toHaveBeenCalled();
+	});
+
+	it('authenticated viewers get the cookie and persist the background on the current user row', async () => {
+		const cookieSet = mockCookies();
+		const whereMock = vi.fn(() => Promise.resolve());
+		const setMock = vi.fn(() => ({ where: whereMock }));
+		const updateMock = vi.fn(() => ({ set: setMock }));
+		mockGetDb.mockReturnValue({ update: updateMock } as unknown as ReturnType<typeof getDb>);
+
+		await (setUserDarkWishlistBackground as unknown as (...args: unknown[]) => Promise<void>)(
+			testAuthContext,
+			'wishlist',
+		);
+
+		expect(cookieSet).toHaveBeenCalledWith(
+			'app-dark-wishlist-background',
+			'wishlist',
+			expect.any(Object),
+		);
+		expect(updateMock).toHaveBeenCalledWith(mockedUserTable);
+		expect(setMock).toHaveBeenCalledWith({
+			darkWishlistBackground: 'wishlist',
 			updatedAt: expect.any(Date),
 		});
 		expect(whereMock).toHaveBeenCalledWith(['u.id', 'user-1']);

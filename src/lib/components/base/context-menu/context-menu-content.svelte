@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { getLayerPalette } from '$lib/theme/layer_palette.js';
 	import { cn, type WithoutChildrenOrChild } from '$lib/utils.js';
 	import ContextMenuPortal from './context-menu-portal.svelte';
 	import {
@@ -18,10 +19,13 @@
 	}: ContextMenuPrimitive.ContentProps & {
 		portalProps?: WithoutChildrenOrChild<ComponentProps<typeof ContextMenuPortal>>;
 	} = $props();
+
+	const layerPalette = getLayerPalette();
 </script>
 
 <ContextMenuPortal {...portalProps}>
 	<ContextMenuPrimitive.Content
+		data-dark-palette={layerPalette()}
 		bind:ref
 		data-slot="context-menu-content"
 		{sideOffset}

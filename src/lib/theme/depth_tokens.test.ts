@@ -48,13 +48,13 @@ describe('canonical semantic depth tokens', () => {
 
 	it('defines every approved dark recipe in the root and nested palette derivation rule', () => {
 		const darkRule = ruleBody(
-			'.dark,\n.dark [data-palette]:not(:where([data-light-scope], [data-light-scope] *))',
+			'.dark,\n.dark\n\t:is([data-palette], [data-dark-palette]):not(:where([data-light-scope], [data-light-scope] *))',
 		);
 		expectDeclarations(darkRule, [
-			'--soft-shadow: rgb(2 6 12 / 42%)',
-			'--soft-shadow-strong: rgb(2 6 12 / 55%)',
-			'--ink-shadow: rgb(2 6 12 / 48%)',
-			'--ink-shadow-strong: rgb(2 6 12 / 62%)',
+			'--soft-shadow: color-mix(in oklab, var(--edge) 48%, transparent)',
+			'--soft-shadow-strong: color-mix(in oklab, var(--edge) 60%, transparent)',
+			'--ink-shadow: color-mix(in oklab, var(--edge) 84%, transparent)',
+			'--ink-shadow-strong: color-mix(in oklab, var(--edge) 94%, transparent)',
 			'--black-shadow: #000',
 			'--black-shadow-strong: #000',
 		]);
@@ -68,7 +68,7 @@ describe('canonical semantic depth tokens', () => {
 		'maps %s to shadow tokens without changing any boundary or geometry token',
 		(depth, shadow, strong) => {
 			const mappingRule = ruleBody(
-				`[data-depth='${depth}'],\n[data-depth='${depth}'] [data-palette]`,
+				`[data-depth='${depth}'],\n[data-depth='${depth}'] :is([data-palette], [data-dark-palette])`,
 			);
 			const declarations = mappingRule
 				.split(';')
@@ -89,7 +89,9 @@ describe('canonical semantic depth tokens', () => {
 			'--elevation-lifted-offset: 4px',
 			'--elevation-pressed-offset: 1px',
 		]);
-		const recipeRule = ruleBody(':where(:root, [data-palette], [data-depth])');
+		const recipeRule = ruleBody(
+			':where(:root, [data-palette], [data-dark-palette], [data-depth])',
+		);
 		expect(recipeRule).toContain(
 			'--elevation-ordinary: var(--elevation-ordinary-offset) var(--elevation-ordinary-offset) 0\n\t\tvar(--hard-shadow)',
 		);

@@ -49,6 +49,13 @@ import {
 	isDepthStyle,
 	type DepthStyle,
 } from '$lib/theme/depth_styles.js';
+import {
+	DARK_WISHLIST_BACKGROUND_COOKIE_MAX_AGE_SECONDS,
+	DARK_WISHLIST_BACKGROUND_COOKIE_NAME,
+	DEFAULT_DARK_WISHLIST_BACKGROUND,
+	isDarkWishlistBackground,
+	type DarkWishlistBackground,
+} from '$lib/theme/dark_wishlist_background.js';
 
 let initializedSentryHandle: Handle | undefined;
 
@@ -240,53 +247,70 @@ function isHtmlDocumentRequest(event: Parameters<Handle>[0]['event']): boolean {
 
 /**
  * Decides which preferences need the authenticated user-row fallback. A demo always reads its
- * persona's palette and depth from the database (the visitor's cookies belong to their real
- * account) and keeps the visitor's current locale.
+ * persona's palette, depth, and dark wishlist background from the database (the visitor's
+ * cookies belong to their real account) and keeps the visitor's current locale.
  */
 function preferenceFallbacksFor(
 	event: Parameters<Handle>[0]['event'],
 	cookiePalette: string | undefined,
 	cookieDepthStyle: string | undefined,
-): { wantsLocale: boolean; wantsPalette: boolean; wantsDepthStyle: boolean } {
+	cookieDarkWishlistBackground: string | undefined,
+): {
+	wantsLocale: boolean;
+	wantsPalette: boolean;
+	wantsDepthStyle: boolean;
+	wantsDarkWishlistBackground: boolean;
+} {
 	if (event.locals.demoSession !== undefined) {
-		return { wantsLocale: false, wantsPalette: true, wantsDepthStyle: true };
+		return {
+			wantsLocale: false,
+			wantsPalette: true,
+			wantsDepthStyle: true,
+			wantsDarkWishlistBackground: true,
+		};
 	}
 	return {
 		wantsLocale: !hasExplicitUrlLocale(event.url) && event.url.pathname !== '/',
 		wantsPalette: !isPalette(cookiePalette),
 		wantsDepthStyle: !isDepthStyle(cookieDepthStyle),
+		wantsDarkWishlistBackground: !isDarkWishlistBackground(cookieDarkWishlistBackground),
 	};
 }
 
 /** The cookie mirror must keep reflecting the visitor's real account, never a demo persona. */
-function mirrorDepthStyleCookie(event: Parameters<Handle>[0]['event'], depthStyle: DepthStyle) {
+function mirrorPreferenceCookie(
+	event: Parameters<Handle>[0]['event'],
+	cookie: { name: string; value: string; maxAge: number },
+) {
 	if (event.locals.demoSession !== undefined) {
 		return;
 	}
-	event.cookies.set(DEPTH_STYLE_COOKIE_NAME, depthStyle, {
+	event.cookies.set(cookie.name, cookie.value, {
 		path: '/',
-		maxAge: DEPTH_STYLE_COOKIE_MAX_AGE_SECONDS,
+		maxAge: cookie.maxAge,
 		httpOnly: false,
 		sameSite: 'lax',
 	});
 }
 
 /**
- * Resolves the viewer's locale, app palette, and depth style for HTML document
- * loads only. Locale starts from the request cookie and an authenticated account
- * preference can override it; palette and depth use their cookie mirrors as fast
- * paths, with missing authenticated values falling back to the user row. All
- * required authenticated fallbacks are fetched in the same combined database
- * statement (at most one per document request; issue #108, REQ-1/REQ-2).
+ * Resolves the viewer's locale, app palette, depth style, and dark wishlist
+ * background for HTML document loads only. Locale starts from the request cookie
+ * and an authenticated account preference can override it; the appearance
+ * preferences use their cookie mirrors as fast paths, with missing authenticated
+ * values falling back to the user row. All required authenticated fallbacks are
+ * fetched in the same combined database statement (at most one per document
+ * request; issue #108, REQ-1/REQ-2).
  *
- * Palette and depth are written to the root <html> data attributes server-side,
- * so both styles are correct before paint. Sequencing after authHandle provides
+ * The appearance preferences are written to the root <html> data attributes
+ * server-side, so every style is correct before paint. Sequencing after authHandle provides
  * `locals.user`, while sequencing before paraglideHandle exposes the resolved
  * locale to SSR.
  */
 const userPreferencesHandle: Handle = async ({ event, resolve }) => {
 	let palette: Palette = DEFAULT_PALETTE;
 	let depthStyle: DepthStyle = DEFAULT_DEPTH_STYLE;
+	let darkWishlistBackground: DarkWishlistBackground = DEFAULT_DARK_WISHLIST_BACKGROUND;
 
 	const cookiePalette = event.cookies.get(PALETTE_COOKIE_NAME);
 	if (isPalette(cookiePalette)) {
@@ -296,15 +320,21 @@ const userPreferencesHandle: Handle = async ({ event, resolve }) => {
 	if (isDepthStyle(cookieDepthStyle)) {
 		depthStyle = cookieDepthStyle;
 	}
+	const cookieDarkWishlistBackground = event.cookies.get(DARK_WISHLIST_BACKGROUND_COOKIE_NAME);
+	if (isDarkWishlistBackground(cookieDarkWishlistBackground)) {
+		darkWishlistBackground = cookieDarkWishlistBackground;
+	}
 
 	if (event.locals.user != null && isDatabaseConfigured(event) && isHtmlDocumentRequest(event)) {
-		const { wantsLocale, wantsPalette, wantsDepthStyle } = preferenceFallbacksFor(
-			event,
-			cookiePalette,
-			cookieDepthStyle,
-		);
+		const { wantsLocale, wantsPalette, wantsDepthStyle, wantsDarkWishlistBackground } =
+			preferenceFallbacksFor(
+				event,
+				cookiePalette,
+				cookieDepthStyle,
+				cookieDarkWishlistBackground,
+			);
 
-		if (wantsLocale || wantsPalette || wantsDepthStyle) {
+		if (wantsLocale || wantsPalette || wantsDepthStyle || wantsDarkWishlistBackground) {
 			try {
 				const { getDb } = await import('$lib/server/db/index.js');
 				const { user } = await import('$lib/server/db/auth.schema.js');
@@ -315,6 +345,7 @@ const userPreferencesHandle: Handle = async ({ event, resolve }) => {
 						preferredLocale: user.preferredLocale,
 						palette: user.palette,
 						depthStyle: user.depthStyle,
+						darkWishlistBackground: user.darkWishlistBackground,
 					})
 					.from(user)
 					.where(eq(user.id, event.locals.user.id))
@@ -332,7 +363,22 @@ const userPreferencesHandle: Handle = async ({ event, resolve }) => {
 				}
 				if (wantsDepthStyle && isDepthStyle(preferences?.depthStyle)) {
 					depthStyle = preferences.depthStyle;
-					mirrorDepthStyleCookie(event, depthStyle);
+					mirrorPreferenceCookie(event, {
+						name: DEPTH_STYLE_COOKIE_NAME,
+						value: depthStyle,
+						maxAge: DEPTH_STYLE_COOKIE_MAX_AGE_SECONDS,
+					});
+				}
+				if (
+					wantsDarkWishlistBackground &&
+					isDarkWishlistBackground(preferences?.darkWishlistBackground)
+				) {
+					darkWishlistBackground = preferences.darkWishlistBackground;
+					mirrorPreferenceCookie(event, {
+						name: DARK_WISHLIST_BACKGROUND_COOKIE_NAME,
+						value: darkWishlistBackground,
+						maxAge: DARK_WISHLIST_BACKGROUND_COOKIE_MAX_AGE_SECONDS,
+					});
 				}
 			} catch (err) {
 				console.error('[userPreferencesHandle] failed to read user preferences', err);
@@ -342,7 +388,10 @@ const userPreferencesHandle: Handle = async ({ event, resolve }) => {
 
 	return resolve(event, {
 		transformPageChunk: ({ html }) =>
-			html.replaceAll('%app.palette%', palette).replaceAll('%app.depth%', depthStyle),
+			html
+				.replaceAll('%app.palette%', palette)
+				.replaceAll('%app.depth%', depthStyle)
+				.replaceAll('%app.darkWishlistBackground%', darkWishlistBackground),
 	});
 };
 

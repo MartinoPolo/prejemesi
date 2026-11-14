@@ -10,6 +10,7 @@ import {
 } from 'drizzle-orm/pg-core';
 import {
 	appBackgroundThemeEnum,
+	darkWishlistBackgroundEnum,
 	depthStyleEnum,
 	paletteEnum,
 	preferredLocaleEnum,
@@ -33,6 +34,11 @@ export const user = pgTable('user', {
 	palette: paletteEnum('palette').notNull().default('sky'),
 	// Viewer sticker depth (mirrored in the `app-depth` cookie for SSR).
 	depthStyle: depthStyleEnum('depth_style').notNull().default('soft'),
+	// Viewer dark-mode page background behind a wishlist (mirrored in the
+	// `app-dark-wishlist-background` cookie for SSR).
+	darkWishlistBackground: darkWishlistBackgroundEnum('dark_wishlist_background')
+		.notNull()
+		.default('app'),
 	// Per-user in-app/email notification toggles. Nullable: NULL = "never customized",
 	// interpreted as DEFAULT_NOTIFICATION_PREFERENCES by readers (dispatcher + settings).
 	notificationPreferences: jsonb('notification_preferences').$type<NotificationPreferences>(),

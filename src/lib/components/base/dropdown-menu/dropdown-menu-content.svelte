@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { getLayerPalette } from '$lib/theme/layer_palette.js';
 	import { cn, type WithoutChildrenOrChild } from '$lib/utils.js';
 	import DropdownMenuPortal from './dropdown-menu-portal.svelte';
 	import { floatingDepthClearance } from '../floating_depth_clearance.js';
@@ -20,10 +21,13 @@
 		/** Set false when the trigger has no resting shadow, so the layer needs no depth clearance. */
 		shadowedTrigger?: boolean;
 	} = $props();
+
+	const layerPalette = getLayerPalette();
 </script>
 
 <DropdownMenuPortal {...portalProps}>
 	<DropdownMenuPrimitive.Content
+		data-dark-palette={layerPalette()}
 		bind:ref
 		data-slot="dropdown-menu-content"
 		{sideOffset}

@@ -115,6 +115,7 @@ vi.mock('$lib/server/db/auth.schema.js', () => ({
 		preferredLocale: 'user.preferredLocale',
 		palette: 'user.palette',
 		depthStyle: 'user.depthStyle',
+		darkWishlistBackground: 'user.darkWishlistBackground',
 	},
 }));
 
@@ -180,6 +181,7 @@ function setPreferenceRow(row: {
 	preferredLocale: string | null;
 	palette: string | null;
 	depthStyle: string | null;
+	darkWishlistBackground: string | null;
 }) {
 	mockSelect.mockReturnValue({
 		from: vi.fn(() => ({
@@ -275,7 +277,12 @@ beforeEach(() => {
 	delete privateEnvironment.DEV_AUTO_LOGIN_EMAIL;
 	mockIsDatabaseConfigured.mockReturnValue(true);
 	mockGetSession.mockResolvedValue({ session: { id: 'session-1' }, user: SESSION_USER });
-	setPreferenceRow({ preferredLocale: 'en', palette: 'grape', depthStyle: 'ink' });
+	setPreferenceRow({
+		preferredLocale: 'en',
+		palette: 'grape',
+		depthStyle: 'ink',
+		darkWishlistBackground: 'tint',
+	});
 	mockHandleDemoRequest.mockResolvedValue(new Response('demo response', { status: 200 }));
 });
 
@@ -661,7 +668,36 @@ describe('user preference reads (issue #108, REQ-1/REQ-2)', () => {
 		});
 	});
 
-	it('skips the read entirely when all preference cookies exist and the URL carries an explicit locale', async () => {
+	it('resolves a valid dark wishlist background cookie before the DB value without adding a preference query', async () => {
+		const { html } = await runHandle(
+			createEvent({ cookies: { 'app-dark-wishlist-background': 'wishlist' } }),
+		);
+
+		expect(html).toContain('data-dark-wishlist-background="wishlist"');
+		expect(mockSelect).toHaveBeenCalledTimes(1);
+	});
+
+	it.each([
+		['invalid', { 'app-dark-wishlist-background': 'neon' }],
+		['missing', {}],
+	])(
+		'%s dark wishlist background cookie is restored from the authenticated DB fallback',
+		async (_case, cookies) => {
+			const event = createEvent({ cookies });
+			const { html } = await runHandle(event);
+
+			expect(html).toContain('data-dark-wishlist-background="tint"');
+			expect(mockSelect).toHaveBeenCalledTimes(1);
+			expect(event.cookies.set).toHaveBeenCalledWith('app-dark-wishlist-background', 'tint', {
+				path: '/',
+				maxAge: 31_536_000,
+				httpOnly: false,
+				sameSite: 'lax',
+			});
+		},
+	);
+
+	it('reads the user row when only the dark wishlist background cookie is missing', async () => {
 		const { html } = await runHandle(
 			createEvent({
 				path: '/en/my-lists',
@@ -669,9 +705,28 @@ describe('user preference reads (issue #108, REQ-1/REQ-2)', () => {
 			}),
 		);
 
+		expect(mockSelect).toHaveBeenCalledTimes(1);
+		expect(html).toContain('data-palette="mint"');
+		expect(html).toContain('data-depth="black"');
+		expect(html).toContain('data-dark-wishlist-background="tint"');
+	});
+
+	it('skips the read entirely when all preference cookies exist and the URL carries an explicit locale', async () => {
+		const { html } = await runHandle(
+			createEvent({
+				path: '/en/my-lists',
+				cookies: {
+					'app-palette': 'mint',
+					'app-depth': 'black',
+					'app-dark-wishlist-background': 'wishlist',
+				},
+			}),
+		);
+
 		expect(mockGetDb).not.toHaveBeenCalled();
 		expect(html).toContain('data-palette="mint"');
 		expect(html).toContain('data-depth="black"');
+		expect(html).toContain('data-dark-wishlist-background="wishlist"');
 	});
 
 	it('anonymous HTML requests never read preferences and fall back to the default palette', async () => {
@@ -682,6 +737,7 @@ describe('user preference reads (issue #108, REQ-1/REQ-2)', () => {
 		expect(mockGetDb).not.toHaveBeenCalled();
 		expect(html).toContain('data-palette="sky"');
 		expect(html).toContain('data-depth="soft"');
+		expect(html).toContain('data-dark-wishlist-background="app"');
 	});
 });
 

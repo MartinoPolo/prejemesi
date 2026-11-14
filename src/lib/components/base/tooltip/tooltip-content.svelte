@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { getLayerPalette } from '$lib/theme/layer_palette.js';
 	import { Tooltip as TooltipPrimitive } from 'bits-ui';
 	import { cn } from '$lib/utils.js';
 	import TooltipPortal from './tooltip-portal.svelte';
@@ -19,10 +20,13 @@
 		arrowClasses?: string;
 		portalProps?: WithoutChildrenOrChild<ComponentProps<typeof TooltipPortal>>;
 	} = $props();
+
+	const layerPalette = getLayerPalette();
 </script>
 
 <TooltipPortal {...portalProps}>
 	<TooltipPrimitive.Content
+		data-dark-palette={layerPalette()}
 		bind:ref
 		data-slot="tooltip-content"
 		{sideOffset}

@@ -36,7 +36,9 @@ function fontUrl(packageName, fileName) {
 }
 
 function readPalettePrimitives(appCss) {
-	const block = new RegExp(`\\[data-palette='${BRAND_PALETTE}'\\]\\s*\\{([^}]*)\\}`).exec(appCss);
+	const block = new RegExp(`\\[data-palette='${BRAND_PALETTE}'\\][^{]*\\{([^}]*)\\}`).exec(
+		appCss,
+	);
 	if (block === null) {
 		throw new Error(`Palette '${BRAND_PALETTE}' not found in src/app.css`);
 	}

@@ -320,7 +320,7 @@
 		/* The pane card tucks under the print's bottom edge — laid on top, not stacked. */
 		margin-bottom: -0.5rem;
 		padding: 8px 8px 0;
-		background: #fffdf6;
+		background: var(--paper);
 		border: 2px solid #4a443a;
 		border-radius: 3px;
 		box-shadow: var(--elevation-lifted-strong);
