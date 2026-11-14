@@ -141,7 +141,13 @@ export function buildReviewRowEntries(input: ReviewRowsInput): ReviewRowEntry[] 
 			: submittedRow;
 		const decidable = !interactive || isDecidableChangeRow(row);
 		const rowReview = decidable ? input.review[row.rowId] : undefined;
-		const model = buildChangeRowModel(row, input.context, input.lookups, rowReview);
+		const model = buildChangeRowModel(
+			row,
+			input.context,
+			input.lookups,
+			rowReview,
+			!interactive && row.status !== CHANGE_ROW_STATUS.applied,
+		);
 		const blocked = changeRowGroup(row) === CHANGE_ROW_GROUP.blocked;
 		const group = changeRowGroup(submittedRow);
 		return {
