@@ -41,6 +41,7 @@ import {
 	fieldEditorText,
 	fieldReviewState,
 	isGiftDropped,
+	isRowDeclined,
 	isRowIncluded,
 	sameSnapshotValue,
 	type FieldReview,
@@ -887,8 +888,11 @@ export function buildChangeRowModel(
 		identity,
 		giftChanges,
 		moreCount: allChanges.length - giftChanges.length,
-		// A row that never applies has no consequence to warn about, only its reasons.
-		consequence: changeRowGroup(row) === CHANGE_ROW_GROUP.blocked ? null : consequence,
+		// A row that never applies, or that the reviewer declined, has no consequence to warn about.
+		consequence:
+			changeRowGroup(row) === CHANGE_ROW_GROUP.blocked || isRowDeclined(rowReview)
+				? null
+				: consequence,
 		reasons: rowReasons(row),
 		currentCards: currentCards(row, context, lookups),
 		giftIds:

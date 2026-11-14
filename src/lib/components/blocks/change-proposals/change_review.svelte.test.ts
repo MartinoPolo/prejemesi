@@ -17,7 +17,11 @@ import ChangeReview from './ChangeReview.svelte';
 
 // Gift thumbnails import the images module barrel, which reads `$env/dynamic/public`.
 vi.mock('$env/dynamic/public', () => ({ env: {} }));
-import { appliedChangeProposal, changeProposal } from './change_review_test_data.js';
+import {
+	appliedChangeProposal,
+	changeProposal,
+	deletionChangeProposal,
+} from './change_review_test_data.js';
 
 function renderReview(
 	proposal: ChangeProposalView,
@@ -126,6 +130,27 @@ describe('ChangeReview decisions', () => {
 		await expect
 			.element(rowButton('r3', m.change_review_choice_delete()))
 			.toHaveAttribute('aria-pressed', 'false');
+	});
+
+	it('offers no Přijmout vše when every row needs its own confirmation', async () => {
+		await renderReview(deletionChangeProposal());
+
+		await expect.element(page.getByTestId('change-review-reject-all')).toBeInTheDocument();
+		await expect.element(page.getByTestId('change-review-accept-all')).not.toBeInTheDocument();
+	});
+
+	it('drops the deletion warning once the gift is kept', async () => {
+		await renderReview(deletionChangeProposal());
+		const warning = changeRow('r3').getByText(
+			m.change_review_deletion_consequence({ name: 'Lego Titanic' }),
+		);
+		await expect.element(warning).toBeVisible();
+
+		await rowButton('r3', m.change_review_choice_keep()).click();
+		await expect.element(warning).not.toBeInTheDocument();
+
+		await rowButton('r3', m.change_review_choice_keep()).click();
+		await expect.element(warning).toBeVisible();
 	});
 
 	it('applies only the accepted fields, with the reviewer’s own values', async () => {

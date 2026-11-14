@@ -243,7 +243,9 @@
 			{announcement}
 			pending={pendingAction === 'apply'}
 			onrejectall={() => decisions.decideEveryRow(CHANGE_DECISION.rejected)}
-			onacceptall={() => decisions.decideEveryRow(CHANGE_DECISION.accepted)}
+			onacceptall={decisions.canAcceptAll
+				? () => decisions.decideEveryRow(CHANGE_DECISION.accepted)
+				: undefined}
 			onapply={requestApply}
 		/>
 	{/if}

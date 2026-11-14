@@ -39,7 +39,8 @@
 		announcement: string;
 		pending: boolean;
 		onrejectall: () => void;
-		onacceptall: () => void;
+		/** Without it Přijmout vše is not offered, as when every row needs its own confirmation. */
+		onacceptall?: () => void;
 		/** Applies, discards when everything is rejected, or points at the open decisions. */
 		onapply: () => void;
 	} = $props();
@@ -74,7 +75,7 @@
 				<span class="apply-help" id="change-review-apply-help">{help}</span>
 			{/if}
 		</p>
-		<div class="apply-actions">
+		<div class="apply-actions" data-single-bulk={onacceptall === undefined || undefined}>
 			<ProposalDecisionButtons
 				testIdPrefix="change-review"
 				disabled={pending}
@@ -178,6 +179,10 @@
 
 		.apply-actions :global(.apply-primary) {
 			grid-column: 1 / -1;
+		}
+
+		.apply-actions[data-single-bulk] {
+			grid-template-columns: 1fr;
 		}
 	}
 </style>

@@ -26,6 +26,7 @@
 		reviewHref,
 		pending,
 		oninspect,
+		onacceptall,
 		onapply,
 		onlocate,
 		compact = false,
@@ -37,6 +38,7 @@
 		reviewHref: string | null;
 		pending: boolean;
 		oninspect: () => void;
+		onacceptall: () => void;
 		onapply: () => void;
 		/** The decision bar scrolls the chat to the proposal it acts on. */
 		onlocate?: () => void;
@@ -73,7 +75,7 @@
 		disabled={pending}
 		{onpointerdown}
 		onrejectall={() => decisions.decideEveryRow(CHANGE_DECISION.rejected)}
-		onacceptall={() => decisions.decideEveryRow(CHANGE_DECISION.accepted)}
+		onacceptall={decisions.canAcceptAll ? onacceptall : undefined}
 	/>
 {/snippet}
 
@@ -272,9 +274,11 @@
 		rotate: 180deg;
 	}
 
+	/* Equal columns for however many bulk decisions the proposal offers. */
 	.bulk {
 		display: grid;
-		grid-template-columns: 1fr 1fr;
+		grid-auto-columns: 1fr;
+		grid-auto-flow: column;
 		gap: var(--compact-control-gap);
 	}
 

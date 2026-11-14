@@ -175,4 +175,32 @@ test.describe('AI assistant on a wishlist (issue #478)', () => {
 		await expect(decisionBar).toHaveCount(0);
 		await expect(banner).toHaveCount(0);
 	});
+
+	test('a deletion needs its own action', async ({ page, request, baseURL }) => {
+		await loginAsMartin(page, request, baseURL!);
+		await createWishlistAndNavigate(page, `Asistent mazání ${Date.now()}`);
+		await addGift(page, GIFT_NAME);
+
+		const panel = page.getByTestId('assistant-panel');
+		await page.getByTestId('assistant-fab').click();
+		await expect(panel).toBeVisible();
+		await sendAndAwaitProposals(page, `Smažte ${GIFT_NAME}`, 1);
+
+		const decisionBar = panel.getByRole('region', { name: 'Rozhodnutí o návrhu' });
+		await expect(decisionBar.getByTestId('chat-proposal-reject-all')).toBeVisible();
+		await expect(decisionBar.getByTestId('chat-proposal-accept-all')).toHaveCount(0);
+
+		await decisionBar.getByTestId('chat-proposal-inspect').click();
+		const row = panel.getByTestId('chat-proposal-row');
+		const warning = row.getByText('trvale odstraněn');
+		const keep = row.getByRole('button', { name: 'Ponechat', exact: true });
+		await expect(warning).toBeVisible();
+
+		await keep.click();
+		await expect(warning).toHaveCount(0);
+
+		// Pressing the active choice again clears it, so the deletion is possible again.
+		await keep.click();
+		await expect(warning).toBeVisible();
+	});
 });
