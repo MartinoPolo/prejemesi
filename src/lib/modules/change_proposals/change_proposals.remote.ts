@@ -5,6 +5,7 @@ import {
 	getChangeProposalForReview,
 	listPendingChangeProposals,
 	rejectDemoAgentProposal,
+	restoreChangeProposal as restoreOwnChangeProposal,
 	undoChangeProposal as undoOwnChangeProposal,
 } from '$lib/server/agent_access/change_proposals.js';
 import { getGiftsByWishlistShortId } from '$lib/modules/gifts/gifts.remote.js';
@@ -65,6 +66,17 @@ export const discardChangeProposal = guardedCommand(
 	async ({ user }, { proposalId }) => {
 		await rejectDemoAgentProposal(user.id, proposalId);
 		const proposal = await discardOwnChangeProposal(user, proposalId);
+		await refreshProposalViews(proposal, false);
+		return proposal;
+	},
+);
+
+/** Undoes a discard, as the Vrátit of the rejected-proposal toast. */
+export const restoreChangeProposal = guardedCommand(
+	ChangeProposalIdInputSchema,
+	async ({ user }, { proposalId }) => {
+		await rejectDemoAgentProposal(user.id, proposalId);
+		const proposal = await restoreOwnChangeProposal(user, proposalId);
 		await refreshProposalViews(proposal, false);
 		return proposal;
 	},

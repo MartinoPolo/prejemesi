@@ -9,7 +9,6 @@
 	import ApplyProposalLabel from '$lib/components/blocks/change-proposals/ApplyProposalLabel.svelte';
 	import ProposalDecisionButtons from '$lib/components/blocks/change-proposals/ProposalDecisionButtons.svelte';
 	import { countCopy } from '$lib/modules/change_proposals/change_review_copy.js';
-	import { CHANGE_DECISION } from '$lib/modules/change_proposals/change_field_decisions.js';
 	import { UNRESOLVED_DECISION_MESSAGES } from '$lib/components/blocks/change-proposals/change_review_presentation.js';
 	import type { ProposalDecisions } from '$lib/components/blocks/change-proposals/proposal_decisions.svelte.js';
 	import { keepFocusOnPress } from '$lib/reactivity/keyboard_inset.svelte.js';
@@ -26,6 +25,7 @@
 		reviewHref,
 		pending,
 		oninspect,
+		onrejectall,
 		onacceptall,
 		onapply,
 		onlocate,
@@ -38,6 +38,8 @@
 		reviewHref: string | null;
 		pending: boolean;
 		oninspect: () => void;
+		/** Rejects the whole proposal at once. */
+		onrejectall: () => void;
 		onacceptall: () => void;
 		onapply: () => void;
 		/** The decision bar scrolls the chat to the proposal it acts on. */
@@ -74,7 +76,7 @@
 		size="md"
 		disabled={pending}
 		{onpointerdown}
-		onrejectall={() => decisions.decideEveryRow(CHANGE_DECISION.rejected)}
+		{onrejectall}
 		onacceptall={decisions.canAcceptAll ? onacceptall : undefined}
 	/>
 {/snippet}

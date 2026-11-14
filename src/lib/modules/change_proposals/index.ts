@@ -3,6 +3,7 @@ export {
 	discardChangeProposal,
 	getChangeProposal,
 	getPendingChangeProposals,
+	restoreChangeProposal,
 	undoChangeProposal,
 } from './change_proposals.remote.js';
 export {

@@ -150,8 +150,11 @@ test.describe('AI assistant on a wishlist (issue #478)', () => {
 		await sendAndAwaitProposals(page, 'Přidejte Stolní hra Azul', 2);
 
 		const proposals = panel.getByTestId('chat-proposal');
-		const olderProposal = proposals.filter({ hasText: GIFT_NAME });
-		const newestProposal = proposals.filter({ hasText: 'Stolní hra Azul' });
+		// By position: a declined card shows only its state, not the gifts it named.
+		const olderProposal = proposals.first();
+		const newestProposal = proposals.last();
+		await expect(olderProposal).toContainText(GIFT_NAME);
+		await expect(newestProposal).toContainText('Stolní hra Azul');
 		const decisionBar = panel.getByRole('region', { name: 'Rozhodnutí o návrhu' });
 		const banner = page.getByTestId('pending-changes-item');
 		await expect(decisionBar).toBeVisible();
@@ -159,10 +162,20 @@ test.describe('AI assistant on a wishlist (issue #478)', () => {
 		await expect(olderProposal.getByTestId('chat-proposal-controls')).toBeVisible();
 		await expect(banner).toHaveCount(2);
 
-		await decisionBar.getByTestId('chat-proposal-reject-all').click();
-		const declineButton = decisionBar.getByTestId('chat-proposal-apply');
-		await expect(declineButton).toHaveText('Zamítnout návrh');
-		await declineButton.click();
+		// Zamítnout vše rejects the whole proposal at once; the toast's Vrátit makes it pending again.
+		const rejectAll = decisionBar.getByTestId('chat-proposal-reject-all');
+		await rejectAll.click();
+		await expect(newestProposal).toContainText('Zamítnuto');
+		await expect(banner).toHaveCount(1);
+		await page
+			.locator('[data-sonner-toast]')
+			.getByRole('button', { name: 'Vrátit', exact: true })
+			.click();
+		await expect(newestProposal).not.toContainText('Zamítnuto');
+		await expect(banner).toHaveCount(2);
+		await expect(newestProposal.getByTestId('chat-proposal-controls')).toHaveCount(0);
+
+		await rejectAll.click();
 		await expect(newestProposal).toContainText('Zamítnuto');
 
 		// The older proposal is still pending, so the bar takes it over from its card.

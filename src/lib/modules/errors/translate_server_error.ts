@@ -108,6 +108,8 @@ const TRANSLATIONS: Record<string, TranslatorFunction> = {
 	[SERVER_ERROR.AGENT_PROPOSAL_NOT_PENDING]: () => m.server_error_agent_proposal_not_pending(),
 	[SERVER_ERROR.AGENT_PROPOSAL_EXPIRED]: () => m.server_error_agent_proposal_expired(),
 	[SERVER_ERROR.AGENT_PROPOSAL_NOT_APPLIED]: () => m.server_error_agent_proposal_not_applied(),
+	[SERVER_ERROR.AGENT_PROPOSAL_NOT_DISCARDED]: () =>
+		m.server_error_agent_proposal_not_discarded(),
 	[SERVER_ERROR.AGENT_PROPOSAL_SELECTION_INVALID]: () =>
 		m.server_error_agent_proposal_selection_invalid(),
 	[SERVER_ERROR.AGENT_PROPOSAL_UNDO_UNSUPPORTED]: () =>

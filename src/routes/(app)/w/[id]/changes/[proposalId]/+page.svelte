@@ -17,6 +17,7 @@
 		applyChangeProposal,
 		discardChangeProposal,
 		getChangeProposal,
+		restoreChangeProposal,
 		undoChangeProposal,
 	} from '$lib/modules/change_proposals/index.js';
 	import { isOutdatedChangeProposalError } from '$lib/modules/change_proposals/outdated_change_proposal.js';
@@ -85,6 +86,10 @@
 	async function discard() {
 		await refreshingOutdated(() => discardChangeProposal({ proposalId }));
 	}
+
+	async function restore() {
+		await refreshingOutdated(() => restoreChangeProposal({ proposalId }));
+	}
 </script>
 
 <svelte:head>
@@ -105,6 +110,7 @@
 				refreshingOutdated(() => applyChangeProposal({ proposalId, decisions }))}
 			onundo={() => refreshingOutdated(() => undoChangeProposal({ proposalId }))}
 			ondiscard={discard}
+			onrestore={restore}
 		/>
 	{:else}
 		<ChangeReviewHeader

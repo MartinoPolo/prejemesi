@@ -37,6 +37,7 @@
 	} from './change_review_presentation.js';
 	import { CHANGE_REVIEW_FILTER, type ChangeReviewFilter } from './change_review_rows.js';
 	import { ProposalDecisions } from './proposal_decisions.svelte.js';
+	import { showRejectedProposalToast } from './rejected_proposal_toast.js';
 	import UndoProposalDialog from './UndoProposalDialog.svelte';
 
 	type ReviewAction = 'apply' | 'undo' | 'discard';
@@ -49,8 +50,8 @@
 
 	/**
 	 * The submitter's review of one agent proposal: decide each change or field, apply the accepted
-	 * ones as one batch, undo the batch or discard the proposal. The parent refreshes `proposal`
-	 * after each action.
+	 * ones as one batch, undo the batch or discard the proposal, which its toast can restore. The
+	 * parent refreshes `proposal` after each action.
 	 */
 	let {
 		proposal,
@@ -64,6 +65,7 @@
 		onapply,
 		onundo,
 		ondiscard,
+		onrestore,
 	}: {
 		proposal: ChangeProposalView;
 		wishlistTitle: string;
@@ -76,6 +78,8 @@
 		onapply: (decisions: ChangeRowDecision[]) => Promise<ApplyChangeProposalResult>;
 		onundo: () => Promise<UndoChangeProposalResult>;
 		ondiscard: () => Promise<void>;
+		/** Makes the discarded proposal pending again. */
+		onrestore: () => Promise<void>;
 	} = $props();
 
 	untrack(() =>
@@ -205,6 +209,7 @@
 		try {
 			await ondiscard();
 			focusOutcome = true;
+			showRejectedProposalToast(onrestore);
 		} catch (error) {
 			toastError(translateServerError(error, m.change_review_discard_error()));
 		} finally {
@@ -249,8 +254,8 @@
 			{unresolvedCount}
 			showUnresolved={decisions.showUnresolved}
 			{announcement}
-			pending={pendingAction === 'apply'}
-			onrejectall={() => decisions.decideEveryRow(CHANGE_DECISION.rejected)}
+			pending={pendingAction === 'apply' || pendingAction === 'discard'}
+			onrejectall={() => void runDiscard()}
 			onacceptall={decisions.canAcceptAll ? acceptAll : undefined}
 			onapply={requestApply}
 		/>

@@ -267,3 +267,48 @@ describe('change row consequence', () => {
 		expect(consequenceAfter(invitationRow, [false])).toBeNull();
 	});
 });
+
+describe('change row deletion cards', () => {
+	const previewedDeletionRow: ChangeProposalRowView = {
+		...deletionRow,
+		preview: {
+			gifts: [{ giftId: 'g-lego', before: gift(), after: gift({ deleted: true }) }],
+			result: null,
+		},
+	};
+
+	function cardsAfter(choices: boolean[], closedUnapplied = false) {
+		const review = choices.reduce(
+			(next, accepted) => withRowChoiceToggled(next, previewedDeletionRow.rowId, accepted),
+			initialChangeReview([previewedDeletionRow]),
+		);
+		return buildChangeRowModel(
+			previewedDeletionRow,
+			context,
+			lookups,
+			review[previewedDeletionRow.rowId],
+			closedUnapplied,
+		).giftChanges[0]?.cards;
+	}
+
+	it('marks the gift for removal while the deletion is undecided or accepted', () => {
+		for (const choices of [[], [true]]) {
+			expect(cardsAfter(choices)).toMatchObject({ removal: true, after: null });
+		}
+	});
+
+	it('shows a kept gift on both sides, without the removal mark, once the deletion is declined', () => {
+		const cards = cardsAfter([false]);
+
+		expect(cards?.removal).toBe(false);
+		expect(cards?.before?.name).toBe('Kniha Duna');
+		expect(cards?.after?.name).toBe('Kniha Duna');
+	});
+
+	it('shows a kept gift once the proposal closed without applying the deletion', () => {
+		expect(cardsAfter([], true)).toMatchObject({
+			removal: false,
+			after: { name: 'Kniha Duna' },
+		});
+	});
+});
