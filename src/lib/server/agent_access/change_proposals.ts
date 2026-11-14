@@ -828,6 +828,28 @@ export async function discardChangeProposal(
 	return ownChangeProposalView(reviewer.id, proposal.id);
 }
 
+/** Undoes a discard: the proposal is pending again until it expires. 409 unless discarded. */
+export async function restoreChangeProposal(
+	reviewer: Pick<ChangeProposalReviewer, 'id'>,
+	proposalId: string,
+): Promise<ChangeProposalView> {
+	const { proposal } = await requireOwnChangeProposal(reviewer.id, proposalId);
+	await getDb().transaction(async (transaction) => {
+		const locked = await lockChangeProposal(transaction, proposal.id);
+		if (locked.status !== CHANGE_PROPOSAL_STATUS.discarded) {
+			error(409, SERVER_ERROR.AGENT_PROPOSAL_NOT_DISCARDED);
+		}
+		if (isExpired(locked, new Date())) {
+			error(410, SERVER_ERROR.AGENT_PROPOSAL_EXPIRED);
+		}
+		await transaction
+			.update(changeProposal)
+			.set({ status: CHANGE_PROPOSAL_STATUS.pending, discardedAt: null })
+			.where(eq(changeProposal.id, proposal.id));
+	});
+	return ownChangeProposalView(reviewer.id, proposal.id);
+}
+
 /** One undo step and the proposal rows whose effect it reverses. */
 interface UndoStep {
 	step: OperationBatchStep;

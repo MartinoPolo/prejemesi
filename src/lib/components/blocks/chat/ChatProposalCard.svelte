@@ -18,12 +18,14 @@
 	import type { ChangeRowContext } from '$lib/components/blocks/change-proposals/change_row_model.js';
 	import type { DecidingProposalRegistry } from '$lib/components/blocks/change-proposals/gift_live_preview.js';
 	import { ProposalDecisions } from '$lib/components/blocks/change-proposals/proposal_decisions.svelte.js';
+	import { showRejectedProposalToast } from '$lib/components/blocks/change-proposals/rejected_proposal_toast.js';
 	import { localizeInternalHref } from '$lib/i18n/locale.js';
 	import type { StateRaw } from '$lib/reactivity/state.svelte.js';
 	import { translateServerError } from '$lib/modules/errors/translate_server_error.js';
 	import {
 		applyChangeProposal,
 		discardChangeProposal,
+		restoreChangeProposal,
 		undoChangeProposal,
 	} from '$lib/modules/change_proposals/index.js';
 	import {
@@ -142,6 +144,7 @@
 	}
 
 	async function run(action: CardAction, work: () => Promise<void>, fallback: string) {
+		const focused = document.activeElement;
 		pendingAction = action;
 		try {
 			await work();
@@ -152,6 +155,11 @@
 			}
 		} finally {
 			pendingAction = null;
+		}
+		await tick();
+		// Deciding the proposal removes the pressed control; keep focus in the panel for Escape.
+		if (focused !== null && !focused.isConnected && document.activeElement === document.body) {
+			card?.focus();
 		}
 	}
 
@@ -171,17 +179,35 @@
 		);
 	}
 
+	async function restore(proposalId: string) {
+		try {
+			await restoreChangeProposal({ proposalId });
+		} catch (error) {
+			if (isOutdatedChangeProposalError(error)) {
+				onoutdated();
+			}
+			throw error;
+		}
+	}
+
+	/** Rejecting needs no second click: it discards at once and the toast offers to restore. */
+	function reject() {
+		const proposalId = proposal.id;
+		void run(
+			'discard',
+			async () => {
+				await discardChangeProposal({ proposalId });
+				showRejectedProposalToast(() => restore(proposalId));
+			},
+			m.change_review_discard_error(),
+		);
+	}
+
 	function requestApply() {
 		if (decisions.unresolvedCount > 0) {
 			void revealUnresolved();
 		} else if (decisions.includedCount === 0) {
-			void run(
-				'discard',
-				async () => {
-					await discardChangeProposal({ proposalId: proposal.id });
-				},
-				m.change_review_discard_error(),
-			);
+			reject();
 		} else {
 			void run('apply', apply, m.change_review_apply_error());
 		}
@@ -238,6 +264,7 @@
 		reviewHref={checksInline ? null : reviewHref}
 		pending={pendingAction !== null}
 		oninspect={() => (inspecting = !inspecting)}
+		onrejectall={reject}
 		onacceptall={acceptAll}
 		onapply={requestApply}
 		{onlocate}
@@ -369,6 +396,7 @@
 	data-state={proposal.state}
 	data-testid="chat-proposal"
 	aria-labelledby={titleId}
+	tabindex="-1"
 	bind:this={card}
 >
 	{#if proposal.state === CHANGE_PROPOSAL_STATE.applied}
@@ -465,7 +493,7 @@
 		overflow-wrap: anywhere;
 	}
 
-	/* Zamítnout vše and per-row rejections show at once, before Použít declines them. */
+	/* Per-row rejections show at once, before Použít declines them. */
 	.summary-row[data-declined] .summary-name {
 		color: var(--muted-foreground);
 		text-decoration: line-through;

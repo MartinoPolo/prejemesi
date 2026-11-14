@@ -6,6 +6,7 @@ import * as m from '$lib/paraglide/messages.js';
 import {
 	CHANGE_PROPOSAL_OUTCOME,
 	CHANGE_PROPOSAL_STATE,
+	CHANGE_ROW_STATUS,
 	FAST_FORWARD_HOLD,
 	type ApplyChangeProposalResult,
 	type ChangeProposalView,
@@ -14,6 +15,9 @@ import {
 import type { ChangeRowDecision } from '$lib/modules/change_proposals/change_field_decisions.js';
 import { CHANGE_ROW_DISPLAY_STATUS } from '$lib/modules/change_proposals/change_review_decisions.js';
 import ChangeReview from './ChangeReview.svelte';
+import { showRejectedProposalToast } from './rejected_proposal_toast.js';
+
+vi.mock('./rejected_proposal_toast.js', () => ({ showRejectedProposalToast: vi.fn() }));
 
 // Gift thumbnails import the images module barrel, which reads `$env/dynamic/public`.
 vi.mock('$env/dynamic/public', () => ({ env: {} }));
@@ -28,6 +32,8 @@ function renderReview(
 	handlers: {
 		onapply?: (decisions: ChangeRowDecision[]) => Promise<ApplyChangeProposalResult>;
 		onundo?: () => Promise<UndoChangeProposalResult>;
+		ondiscard?: () => Promise<void>;
+		onrestore?: () => Promise<void>;
 	} = {},
 ) {
 	return render(ChangeReview, {
@@ -40,7 +46,8 @@ function renderReview(
 		priorityLevels: [],
 		onapply: handlers.onapply ?? vi.fn(),
 		onundo: handlers.onundo ?? vi.fn(),
-		ondiscard: vi.fn(),
+		ondiscard: handlers.ondiscard ?? vi.fn(),
+		onrestore: handlers.onrestore ?? vi.fn(),
 	});
 }
 
@@ -116,11 +123,8 @@ describe('ChangeReview decisions', () => {
 	it('never resolves a deletion with the global Přijmout vše', async () => {
 		await renderReview(changeProposal());
 
-		await page.getByTestId('change-review-reject-all').click();
-		await expect.element(fieldAccept('r2', QUANTITY)).toHaveAttribute('aria-pressed', 'false');
-		await expect
-			.element(rowButton('r3', m.change_review_choice_keep()))
-			.toHaveAttribute('aria-pressed', 'true');
+		await fieldReject('r2', QUANTITY).click();
+		await rowButton('r3', m.change_review_choice_keep()).click();
 
 		await page.getByTestId('change-review-accept-all').click();
 		await expect.element(fieldAccept('r2', QUANTITY)).toHaveAttribute('aria-pressed', 'true');
@@ -212,14 +216,82 @@ describe('ChangeReview decisions', () => {
 		await expect.element(fieldAccept('r1', PRICE)).toHaveAttribute('aria-pressed', 'true');
 	});
 
-	it('offers to reject the proposal once everything is rejected', async () => {
-		await renderReview(changeProposal());
+	it('rejects the whole proposal in one click and offers to restore it', async () => {
+		const ondiscard = vi.fn().mockResolvedValue(undefined);
+		const onrestore = vi.fn().mockResolvedValue(undefined);
+		vi.mocked(showRejectedProposalToast).mockClear();
+		await renderReview(changeProposal(), { ondiscard, onrestore });
 
 		await page.getByTestId('change-review-reject-all').click();
+
+		await expect.poll(() => ondiscard.mock.calls.length).toBe(1);
+		await expect.poll(() => vi.mocked(showRejectedProposalToast).mock.calls.length).toBe(1);
+		await expect
+			.element(page.getByTestId('change-review-discard-dialog'))
+			.not.toBeInTheDocument();
+		const [restore] = vi.mocked(showRejectedProposalToast).mock.calls[0] ?? [];
+		await restore?.();
+		expect(onrestore).toHaveBeenCalledTimes(1);
+	});
+
+	it('confirms the rejection once every row was rejected one by one', async () => {
+		await renderReview(changeProposal());
+
+		await fieldReject('r1', PRICE).click();
+		await fieldReject('r2', NAME).click();
+		await fieldReject('r2', QUANTITY).click();
+		await rowButton('r3', m.change_review_choice_keep()).click();
 		await expect.element(applyButton()).toHaveTextContent(m.change_review_decline_proposal());
 		await applyButton().click();
 
 		await expect.element(page.getByTestId('change-review-discard-dialog')).toBeVisible();
+	});
+});
+
+describe('ChangeReview deletion cards by proposal state', () => {
+	const removalMark = () => changeRow('r3').getByText(m.change_review_removal_overlay());
+	const deletionWarning = () =>
+		page.getByText(m.change_review_deletion_consequence({ name: 'Lego Titanic' }));
+
+	it('marks a pending deletion for removal and warns about it', async () => {
+		await renderReview(deletionChangeProposal());
+
+		await expect.element(removalMark()).toBeVisible();
+		await expect.element(deletionWarning()).toBeVisible();
+	});
+
+	it('shows a discarded proposal’s deletion as keeping the gift', async () => {
+		await renderReview(deletionChangeProposal({ state: CHANGE_PROPOSAL_STATE.discarded }));
+
+		await expect.element(changeRow('r3')).toHaveTextContent('Lego Titanic');
+		await expect.element(removalMark()).not.toBeInTheDocument();
+		await expect.element(deletionWarning()).not.toBeInTheDocument();
+	});
+
+	it('shows an expired proposal’s deletion as keeping the gift', async () => {
+		await renderReview(deletionChangeProposal({ state: CHANGE_PROPOSAL_STATE.expired }));
+
+		await expect.element(changeRow('r3')).toHaveTextContent('Lego Titanic');
+		await expect.element(removalMark()).not.toBeInTheDocument();
+	});
+
+	it('keeps the removal mark on a deletion that applied', async () => {
+		const applied = appliedChangeProposal();
+		await renderReview({
+			...applied,
+			rows: applied.rows.map((row) =>
+				row.rowId === 'r3' ? { ...row, status: CHANGE_ROW_STATUS.applied } : row,
+			),
+		});
+
+		await expect.element(removalMark()).toBeVisible();
+	});
+
+	it('shows an applied proposal’s skipped deletion as keeping the gift', async () => {
+		await renderReview(appliedChangeProposal());
+
+		await expect.element(changeRow('r3')).toHaveTextContent('Lego Titanic');
+		await expect.element(removalMark()).not.toBeInTheDocument();
 	});
 });
 

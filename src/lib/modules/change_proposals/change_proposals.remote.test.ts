@@ -12,6 +12,7 @@ const { requestEvent, changeProposalService } = vi.hoisted(() => ({
 		getChangeProposalForReview: vi.fn(),
 		listPendingChangeProposals: vi.fn(),
 		rejectDemoAgentProposal: vi.fn(),
+		restoreChangeProposal: vi.fn(),
 		undoChangeProposal: vi.fn(),
 	},
 }));
@@ -50,6 +51,7 @@ import {
 	discardChangeProposal,
 	getChangeProposal,
 	getPendingChangeProposals,
+	restoreChangeProposal,
 	undoChangeProposal,
 } from './change_proposals.remote.js';
 import * as v from 'valibot';
@@ -100,6 +102,7 @@ describe('change proposal remote functions', () => {
 		expect(inputSchemaOf(applyChangeProposal)).toBe(ApplyChangeProposalInputSchema);
 		expect(inputSchemaOf(discardChangeProposal)).toBe(ChangeProposalIdInputSchema);
 		expect(inputSchemaOf(undoChangeProposal)).toBe(ChangeProposalIdInputSchema);
+		expect(inputSchemaOf(restoreChangeProposal)).toBe(ChangeProposalIdInputSchema);
 	});
 
 	it('accept only a bounded list of decisions on distinct non-empty row ids', () => {
@@ -157,6 +160,7 @@ describe('change proposal remote functions', () => {
 			[applyChangeProposal, applyInput],
 			[discardChangeProposal, { proposalId: 'proposal-1' }],
 			[undoChangeProposal, { proposalId: 'proposal-1' }],
+			[restoreChangeProposal, { proposalId: 'proposal-1' }],
 		] as const) {
 			await expect(call(remoteFunction, arg)).rejects.toMatchObject({ status: 401 });
 		}
@@ -185,8 +189,12 @@ describe('change proposal remote functions', () => {
 		);
 	});
 
-	it('apply, discard and undo as the signed-in user and return the outcome', async () => {
+	it('apply, discard, restore and undo as the signed-in user and return the outcome', async () => {
 		signIn();
+		changeProposalService.restoreChangeProposal.mockResolvedValue({
+			id: 'proposal-1',
+			wishlistShortId: 'abc123',
+		});
 		const conflict = { outcome: 'conflict', rows: [] };
 		changeProposalService.applyChangeProposalRows.mockResolvedValue(conflict);
 		changeProposalService.discardChangeProposal.mockResolvedValue({
@@ -200,6 +208,7 @@ describe('change proposal remote functions', () => {
 
 		await expect(call(applyChangeProposal, applyInput)).resolves.toBe(conflict);
 		await call(discardChangeProposal, { proposalId: 'proposal-1' });
+		await call(restoreChangeProposal, { proposalId: 'proposal-1' });
 		await call(undoChangeProposal, { proposalId: 'proposal-1' });
 
 		expect(changeProposalService.applyChangeProposalRows).toHaveBeenCalledWith(
@@ -211,8 +220,12 @@ describe('change proposal remote functions', () => {
 			USER,
 			'proposal-1',
 		);
+		expect(changeProposalService.restoreChangeProposal).toHaveBeenCalledWith(
+			USER,
+			'proposal-1',
+		);
 		expect(changeProposalService.undoChangeProposal).toHaveBeenCalledWith(USER, 'proposal-1');
-		expect(changeProposalService.rejectDemoAgentProposal).toHaveBeenCalledTimes(3);
+		expect(changeProposalService.rejectDemoAgentProposal).toHaveBeenCalledTimes(4);
 		expect(changeProposalService.rejectDemoAgentProposal).toHaveBeenCalledWith(
 			USER.id,
 			'proposal-1',
@@ -268,6 +281,15 @@ describe('change proposal remote functions', () => {
 			expect(refreshedQueries()).toEqual(proposalViews);
 		});
 
+		it('refreshes the proposal views but not the unchanged gifts after a restore', async () => {
+			signIn();
+			changeProposalService.restoreChangeProposal.mockResolvedValue(proposal);
+
+			await call(restoreChangeProposal, { proposalId: 'proposal-1' });
+
+			expect(refreshedQueries()).toEqual(proposalViews);
+		});
+
 		it('refreshes nothing after a conflict, which changed nothing', async () => {
 			signIn();
 			changeProposalService.applyChangeProposalRows.mockResolvedValue({
@@ -301,6 +323,10 @@ describe('change proposal remote functions', () => {
 		});
 		expect(changeProposalService.applyChangeProposalRows).not.toHaveBeenCalled();
 		expect(changeProposalService.discardChangeProposal).not.toHaveBeenCalled();
+		await expect(
+			call(restoreChangeProposal, { proposalId: 'proposal-1' }),
+		).rejects.toMatchObject({ status: 403 });
+		expect(changeProposalService.restoreChangeProposal).not.toHaveBeenCalled();
 		expect(changeProposalService.undoChangeProposal).not.toHaveBeenCalled();
 	});
 });
