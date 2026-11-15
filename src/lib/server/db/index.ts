@@ -37,6 +37,11 @@ type PostgresClient = ReturnType<typeof postgres>;
  * itself, so an own `then` times each query exactly once however it is chained. A Proxy would not
  * do: the query's `catch`, `finally` and `handle` would run with the Proxy as `this` and hand it to
  * the connection internals.
+ *
+ * Only execution driven through `then` is timed: awaiting, and `catch`/`finally`, which delegate to
+ * it. That is Drizzle's path; `execute()`, `cursor()` and `forEach()` would run untimed. postgres.js
+ * sends BEGIN, SAVEPOINT and COMMIT/ROLLBACK itself rather than through `unsafe`, so those round
+ * trips are not counted.
  */
 function withQueryTiming<TQuery extends PromiseLike<unknown>>(query: TQuery): TQuery {
 	const originalThen = query.then;

@@ -13,7 +13,8 @@ Public pages stay lean while the first in-app navigation stays fast:
 
 ## Server timing
 
-- Every response carries a `Server-Timing` header (`src/lib/server/server_timing.ts`), visible in the browser's network panel: `auth` (session lookup), `app` (load functions and SSR render), `db` (summed duration of the request's queries, so overlapping pipelined queries can exceed wall time, with the query count in `desc`) and `total`; unrecorded metrics are omitted.
+- Local dev, `pnpm preview` and staging responses carry a `Server-Timing` header (`src/lib/server/server_timing.ts`), visible in the browser's network panel: `auth` (session lookup), `app` (only the innermost resolve: load functions and SSR render), `db` (summed duration of the request's queries, so overlapping pipelined queries can exceed wall time, with the query count in `desc`; BEGIN/COMMIT round trips are not counted) and `total` (time to response headers, so a streamed response's later chunks are excluded); unrecorded metrics are omitted.
+- Production sends no `Server-Timing`, because auth and database timings would be a side channel on real data. `exposesServerTiming` decides by the configured `ORIGIN`, not the request host, so preview URLs of production versions stay hidden too; an unset `ORIGIN` counts as production.
 
 ## Public code isolation
 

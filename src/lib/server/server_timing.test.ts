@@ -5,11 +5,26 @@ const getRequestEvent = vi.hoisted(() => vi.fn<() => RequestEvent>());
 
 vi.mock('$app/server', () => ({ getRequestEvent }));
 
-const { measureServerTiming, recordDatabaseQuery, serverTimingHeader, startServerTiming } =
-	await import('./server_timing.js');
+const {
+	exposesServerTiming,
+	measureServerTiming,
+	recordDatabaseQuery,
+	serverTimingHeader,
+	startServerTiming,
+	stopServerTiming,
+} = await import('./server_timing.js');
+
+const timedEvents: RequestEvent[] = [];
 
 function createEvent(): RequestEvent {
 	return { locals: {} } as RequestEvent;
+}
+
+function createTimedEvent(): RequestEvent {
+	const event = createEvent();
+	startServerTiming(event);
+	timedEvents.push(event);
+	return event;
 }
 
 /** SvelteKit hands each hook and load function its own event copy sharing one `locals`. */
@@ -26,6 +41,9 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+	for (const event of timedEvents.splice(0)) {
+		stopServerTiming(event);
+	}
 	vi.restoreAllMocks();
 });
 
@@ -39,10 +57,28 @@ async function measureFor(
 	});
 }
 
+describe('server timing exposure', () => {
+	it('hides timings on the production origin', () => {
+		expect(exposesServerTiming('https://prejemesi.cz')).toBe(false);
+		expect(exposesServerTiming('https://prejemesi.cz/')).toBe(false);
+	});
+
+	it('hides timings when the origin is unset or invalid', () => {
+		expect(exposesServerTiming(undefined)).toBe(false);
+		expect(exposesServerTiming('')).toBe(false);
+		expect(exposesServerTiming('not an origin')).toBe(false);
+	});
+
+	it('exposes timings on staging, preview and local origins', () => {
+		expect(exposesServerTiming('https://staging.prejemesi.cz')).toBe(true);
+		expect(exposesServerTiming('http://localhost:4173')).toBe(true);
+		expect(exposesServerTiming('http://localhost:8300')).toBe(true);
+	});
+});
+
 describe('server timing', () => {
 	it('reports auth, database, app and total durations rounded to one decimal', async () => {
-		const event = createEvent();
-		startServerTiming(event);
+		const event = createTimedEvent();
 		await measureFor(copyOf(event), 'auth', 12.34);
 		await measureFor(copyOf(event), 'app', 40.25);
 		getRequestEvent.mockReturnValue(copyOf(event));
@@ -55,8 +91,7 @@ describe('server timing', () => {
 	});
 
 	it('names a single database query in the singular', () => {
-		const event = createEvent();
-		startServerTiming(event);
+		const event = createTimedEvent();
 		getRequestEvent.mockReturnValue(event);
 		recordDatabaseQuery(1.25);
 
@@ -64,15 +99,13 @@ describe('server timing', () => {
 	});
 
 	it('omits metrics the request did not record', () => {
-		const event = createEvent();
-		startServerTiming(event);
+		const event = createTimedEvent();
 
 		expect(serverTimingHeader(event, 7.25)).toBe('total;dur=7.3');
 	});
 
 	it('returns the measured work result and still records failed work', async () => {
-		const event = createEvent();
-		startServerTiming(event);
+		const event = createTimedEvent();
 
 		await expect(measureServerTiming(event, 'app', () => 'rendered')).resolves.toBe('rendered');
 		await expect(
@@ -85,7 +118,14 @@ describe('server timing', () => {
 		expect(serverTimingHeader(event, 10)).toBe('auth;dur=4.0, app;dur=0.0, total;dur=10.0');
 	});
 
-	it('ignores database queries outside a request', () => {
+	it('skips the request lookup for queries while no request is timed', () => {
+		recordDatabaseQuery(3);
+
+		expect(getRequestEvent).not.toHaveBeenCalled();
+	});
+
+	it('ignores database queries outside a request while another request is timed', () => {
+		createTimedEvent();
 		getRequestEvent.mockImplementation(() => {
 			throw new Error('Can only read the current request event inside functions');
 		});
@@ -94,8 +134,7 @@ describe('server timing', () => {
 	});
 
 	it('ignores database queries of a request that is not being timed', () => {
-		const timedEvent = createEvent();
-		startServerTiming(timedEvent);
+		const timedEvent = createTimedEvent();
 		getRequestEvent.mockReturnValue(createEvent());
 
 		recordDatabaseQuery(3);
@@ -103,10 +142,22 @@ describe('server timing', () => {
 		expect(serverTimingHeader(timedEvent, 5)).toBe('total;dur=5.0');
 	});
 
-	it('runs measured work untimed when the request is not being timed', async () => {
+	it('builds no header and runs measured work untimed when timing was never started', async () => {
 		const event = createEvent();
 
 		await expect(measureServerTiming(event, 'auth', () => 'session')).resolves.toBe('session');
-		expect(serverTimingHeader(event, 1)).toBe('total;dur=1.0');
+		expect(serverTimingHeader(event, 1)).toBeUndefined();
+	});
+
+	it('builds no header and records no queries once timing stopped', () => {
+		const event = createEvent();
+		startServerTiming(event);
+		stopServerTiming(event);
+		getRequestEvent.mockReturnValue(event);
+
+		recordDatabaseQuery(3);
+
+		expect(getRequestEvent).not.toHaveBeenCalled();
+		expect(serverTimingHeader(event, 1)).toBeUndefined();
 	});
 });

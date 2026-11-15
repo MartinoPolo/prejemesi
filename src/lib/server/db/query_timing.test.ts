@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { RequestEvent } from '@sveltejs/kit';
 
 const getRequestEvent = vi.hoisted(() => vi.fn<() => RequestEvent>());
@@ -6,7 +6,8 @@ const getRequestEvent = vi.hoisted(() => vi.fn<() => RequestEvent>());
 vi.mock('$app/server', () => ({ getRequestEvent }));
 
 const { withPreparedStatements } = await import('./index.js');
-const { serverTimingHeader, startServerTiming } = await import('../server_timing.js');
+const { serverTimingHeader, startServerTiming, stopServerTiming } =
+	await import('../server_timing.js');
 
 /**
  * Mirrors the postgres.js query contract the timing relies on: it runs once, when first awaited
@@ -69,9 +70,12 @@ class FakeQuery extends Promise<unknown> {
 	}
 }
 
+const timedEvents: RequestEvent[] = [];
+
 function createTimedRequest(): RequestEvent {
 	const event = { locals: {} } as RequestEvent;
 	startServerTiming(event);
+	timedEvents.push(event);
 	getRequestEvent.mockReturnValue(event);
 	return event;
 }
@@ -86,8 +90,54 @@ function databaseClientReturning(query: FakeQuery) {
 	};
 }
 
+interface FakeTransactionScope {
+	unsafe: (statement: string, parameters?: unknown[], options?: object) => FakeQuery;
+	savepoint: <T>(callback: (scope: FakeTransactionScope) => Promise<T>) => Promise<T>;
+}
+
+/**
+ * Mirrors postgres.js transactions: `begin` and `savepoint` hand their callback a scoped client and
+ * send the transaction-control statements themselves, never through the wrapped `unsafe`.
+ */
+function createTransactionalClient(createQuery = () => new FakeQuery()) {
+	const statementLog: string[] = [];
+	const unsafe = vi.fn((statement: string) => {
+		statementLog.push(statement);
+		return createQuery();
+	});
+	const createScope = (): FakeTransactionScope => ({
+		unsafe,
+		async savepoint(callback) {
+			statementLog.push('SAVEPOINT');
+			const result = await callback(createScope());
+			statementLog.push('RELEASE SAVEPOINT');
+			return result;
+		},
+	});
+	const client = {
+		unsafe,
+		async begin<T>(options: string, callback: (scope: FakeTransactionScope) => Promise<T>) {
+			statementLog.push(`BEGIN ${options}`);
+			const result = await callback(createScope());
+			statementLog.push('COMMIT');
+			return result;
+		},
+	};
+	return {
+		database: withPreparedStatements(client as never) as unknown as typeof client,
+		statementLog,
+		unsafe,
+	};
+}
+
 beforeEach(() => {
 	getRequestEvent.mockReset();
+});
+
+afterEach(() => {
+	for (const event of timedEvents.splice(0)) {
+		stopServerTiming(event);
+	}
 });
 
 describe('database query timing', () => {
@@ -137,5 +187,49 @@ describe('database query timing', () => {
 		await Promise.all([database.unsafe('select 1'), database.unsafe('select 2').values()]);
 
 		expect(serverTimingHeader(event, 10)).toContain('desc="2 queries"');
+	});
+
+	it('times queries inside a transaction and its savepoint, but not the control statements', async () => {
+		const event = createTimedRequest();
+		const { database, statementLog, unsafe } = createTransactionalClient();
+
+		const result = await database.begin('read write', async (transaction) => {
+			await transaction.unsafe('insert into gift values ($1)', ['first']);
+			return transaction.savepoint(async (savepoint) => {
+				await savepoint.unsafe('insert into gift values ($1)', ['second']).values();
+				return 'committed';
+			});
+		});
+
+		expect(result).toBe('committed');
+		expect(statementLog).toEqual([
+			'BEGIN read write',
+			'insert into gift values ($1)',
+			'SAVEPOINT',
+			'insert into gift values ($1)',
+			'RELEASE SAVEPOINT',
+			'COMMIT',
+		]);
+		expect(unsafe).toHaveBeenNthCalledWith(1, 'insert into gift values ($1)', ['first'], {
+			prepare: true,
+		});
+		expect(unsafe).toHaveBeenNthCalledWith(2, 'insert into gift values ($1)', ['second'], {
+			prepare: true,
+		});
+		expect(serverTimingHeader(event, 10)).toContain('desc="2 queries"');
+	});
+
+	it('times a failed query inside a savepoint and keeps its rejection', async () => {
+		const event = createTimedRequest();
+		const failure = new Error('unique violation');
+		const { database } = createTransactionalClient(() => new FakeQuery(failure));
+
+		await expect(
+			database.begin('read write', (transaction) =>
+				transaction.savepoint(async (savepoint) => savepoint.unsafe('insert into gift')),
+			),
+		).rejects.toBe(failure);
+
+		expect(serverTimingHeader(event, 10)).toContain('desc="1 query"');
 	});
 });

@@ -1,5 +1,11 @@
 import type { Handle } from '@sveltejs/kit';
-import { serverTimingHeader, startServerTiming } from './server_timing.js';
+import { env } from '$env/dynamic/private';
+import {
+	exposesServerTiming,
+	serverTimingHeader,
+	startServerTiming,
+	stopServerTiming,
+} from './server_timing.js';
 
 type RequestOutcome = 'success' | 'client_error' | 'server_error' | 'unhandled_error';
 
@@ -25,6 +31,7 @@ type RequestTelemetry = RequestStartTelemetry | RequestCompleteTelemetry;
 interface RequestTelemetryDependencies {
 	write?: (telemetry: RequestTelemetry) => void;
 	now?: () => number;
+	exposeServerTiming?: () => boolean;
 }
 
 function classifyOutcome(status: number): Exclude<RequestOutcome, 'unhandled_error'> {
@@ -49,6 +56,7 @@ function setServerTimingHeader(response: Response, value: string): void {
 export function createRequestTelemetryHandle({
 	write = (telemetry) => console.info(telemetry),
 	now = () => performance.now(),
+	exposeServerTiming = () => exposesServerTiming(env.ORIGIN),
 }: RequestTelemetryDependencies = {}): Handle {
 	return async ({ event, resolve }) => {
 		const startedAt = now();
@@ -59,7 +67,9 @@ export function createRequestTelemetryHandle({
 		};
 
 		write({ phase: 'start', ...commonTelemetry });
-		startServerTiming(event);
+		if (exposeServerTiming()) {
+			startServerTiming(event);
+		}
 
 		try {
 			const response = await resolve(event);
@@ -71,7 +81,10 @@ export function createRequestTelemetryHandle({
 				outcome: classifyOutcome(response.status),
 				durationMilliseconds: Math.round(durationMilliseconds),
 			});
-			setServerTimingHeader(response, serverTimingHeader(event, durationMilliseconds));
+			const timingHeader = serverTimingHeader(event, durationMilliseconds);
+			if (timingHeader !== undefined) {
+				setServerTimingHeader(response, timingHeader);
+			}
 			return response;
 		} catch (error) {
 			write({
@@ -82,6 +95,8 @@ export function createRequestTelemetryHandle({
 				durationMilliseconds: Math.round(now() - startedAt),
 			});
 			throw error;
+		} finally {
+			stopServerTiming(event);
 		}
 	};
 }
