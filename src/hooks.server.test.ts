@@ -829,7 +829,10 @@ describe('asset preloading', () => {
 	);
 
 	it('applies the predicate to every rendered page', async () => {
-		const resolve = vi.fn(
+		interface PreloadOptions {
+			preload?: (input: { type: string; path: string }) => boolean;
+		}
+		const resolve = vi.fn<(event: unknown, options?: PreloadOptions) => Promise<Response>>(
 			async () => new Response('<html></html>', { headers: { 'content-type': 'text/html' } }),
 		);
 
@@ -838,9 +841,7 @@ describe('asset preloading', () => {
 			resolve,
 		});
 
-		const options = resolve.mock.calls[0]?.[1] as
-			| { preload?: (input: { type: string; path: string }) => boolean }
-			| undefined;
+		const options = resolve.mock.calls[0]?.[1];
 		const fraunces = { type: 'font', path: fontPath('fraunces-latin-wght-normal') };
 		const dynapuff = { type: 'font', path: fontPath('dynapuff-latin-wght-normal') };
 		expect(options?.preload?.(fraunces)).toBe(false);
