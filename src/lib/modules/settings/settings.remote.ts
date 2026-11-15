@@ -12,6 +12,7 @@ import {
 	guardedCommand,
 	guardedCommandNoArgs,
 	publicCommand,
+	singleFlightRefresh,
 } from '$lib/server/remote.js';
 import { deleteObjectsBestEffort } from '$lib/server/storage/r2.js';
 import { giftImagesColumn } from '$lib/server/operations/gift_gallery.js';
@@ -117,6 +118,7 @@ export const updateProfile = guardedCommand(
 		) {
 			await deleteObjectsBestEffort([previousImage]);
 		}
+		await singleFlightRefresh(getUserProfile);
 	},
 );
 
@@ -177,6 +179,7 @@ export const refreshGoogleAvatar = guardedCommandNoArgs(
 		) {
 			await deleteObjectsBestEffort([previousImage]);
 		}
+		await singleFlightRefresh(getUserProfile);
 
 		return { ok: true, image: picture, imageUrl: resolveUserImageUrl(picture) };
 	},
