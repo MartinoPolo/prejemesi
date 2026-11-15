@@ -2,9 +2,9 @@
 
 `src/lib/server/demo/catalog.ts` is curated starting content for the temporary playground, not product inventory or live prices. The Czech and English copy is selected when the visitor creates or resets the playground; interface language changes do not translate existing gifts. CZK estimates are illustrative. Outbound Heureka URLs search for the gift category or type, **not an exact pictured SKU**; merchants and prices may change. Automated HEAD requests to Heureka returned 403, so individual shopping-result availability is unverified.
 
-Images under `static/demo/playground/` are locally hosted, resized copies of photos from the existing development seed image manifest (`src/lib/server/db/seed_images.ts`), covered by the [Unsplash License](https://unsplash.com/license). Photos were visually reviewed as a contact sheet against the gift text; they represent categories, not exact merchant products. The source URLs below are the manifest originals (downloads used `w=480` instead of `w=800`). Existing landing images reused via `/demo/v1/` have their individual photographer, page and license credits in [`static/demo/CREDITS.md`](../static/demo/CREDITS.md). These shared files are immutable; no seed-cache, database or upload path is required to render the playground.
+Images under `static/demo/v1/playground/` are locally hosted, resized copies of photos from the existing development seed image manifest (`src/lib/server/db/seed_images.ts`), covered by the [Unsplash License](https://unsplash.com/license). Photos were visually reviewed as a contact sheet against the gift text; they represent categories, not exact merchant products. The source URLs below are the manifest originals (downloads used `w=480` instead of `w=800`). Landing images reused from the `/demo/v1/` root have their individual photographer, page and license credits in [`static/demo/CREDITS.md`](../static/demo/CREDITS.md). These shared files are immutable; no seed-cache, database or upload path is required to render the playground.
 
-| Local file (`static/demo/playground/`) | Source |
+| Local file (`static/demo/v1/playground/`) | Source |
 | --- | --- |
 | `advent.jpg` | https://images.unsplash.com/photo-1481391319762-47dff72954d9?w=800&q=80 |
 | `batoh.jpg` | https://images.unsplash.com/photo-1503220317375-aaad61436b1b?w=800&q=80 |

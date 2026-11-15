@@ -615,12 +615,12 @@ const writeParams=()=>{
 /* ── Wishlist page behind every overlay ── */
 const CATEGORY_COLORS={Domov:'#ffd9a8',Oblečení:'#ffc9d6',Kuchyně:'#a9dbff',Elektronika:'#c7f0ef',Hry:'#bfe8b0'};
 const GIFTS=[
-  {name:'Kávovar De’Longhi Dedica EC685',category:'Kuchyně',priority:'Vysoká',price:'5 990 Kč',link:'alza.cz',image:'playground/kavovar.jpg'},
-  {name:'Čtečka Kindle Paperwhite 16 GB',category:'Elektronika',priority:'Střední',price:'3 790 Kč',link:'alza.cz',image:'playground/kindle.jpg'},
-  {name:'Hedvábný šátek s potiskem',category:'Oblečení',priority:'Vysoká',price:'1 650 Kč',link:'zoot.cz',image:'playground/satek.jpg',reserved:true},
+  {name:'Kávovar De’Longhi Dedica EC685',category:'Kuchyně',priority:'Vysoká',price:'5 990 Kč',link:'alza.cz',image:'v1/playground/kavovar.jpg'},
+  {name:'Čtečka Kindle Paperwhite 16 GB',category:'Elektronika',priority:'Střední',price:'3 790 Kč',link:'alza.cz',image:'v1/playground/kindle.jpg'},
+  {name:'Hedvábný šátek s potiskem',category:'Oblečení',priority:'Vysoká',price:'1 650 Kč',link:'zoot.cz',image:'v1/playground/satek.jpg',reserved:true},
   {name:'Porcelánová konvička na čaj',category:'Kuchyně',priority:'Střední',price:'890 Kč',link:'bonami.cz',image:'v1/teapot.jpg'},
-  {name:'Šachy z ořechového dřeva',category:'Hry',priority:'Vysoká',price:'3 290 Kč',link:'drevenehracky.cz',image:'playground/sachy.jpg'},
-  {name:'Monstera v keramickém květináči',category:'Domov',priority:'Nízká',price:'890 Kč',link:'florea.cz',image:'playground/monstera.jpg'}
+  {name:'Šachy z ořechového dřeva',category:'Hry',priority:'Vysoká',price:'3 290 Kč',link:'drevenehracky.cz',image:'v1/playground/sachy.jpg'},
+  {name:'Monstera v keramickém květináči',category:'Domov',priority:'Nízká',price:'890 Kč',link:'florea.cz',image:'v1/playground/monstera.jpg'}
 ];
 function giftCard(gift){
   return `<article class="gift" aria-label="${gift.name}"><div class="image-area"><img src="${photo(gift.image)}" alt="${gift.name}" decoding="async">
@@ -648,8 +648,8 @@ const toolList=steps=>`<ul class="tools" aria-label="Postup asistenta">${steps.m
 const STARTERS=[['image','Vylepšit dárek bez obrázku'],['link','Přidat dárky z odkazů'],['list','Upravit více dárků najednou']];
 const FOLLOW_UPS=['Seřadit podle ceny','Doplnit cenu sluchátek','Najít levnější robot','Přidat dárek do 500 Kč'];
 const PROPOSAL=[
-  {name:'Sklenice na červené víno, 4 ks',sub:'790 Kč · Kuchyně · bonami.cz',image:'playground/sklenice.jpg'},
-  {name:'Dárková sada čajů Dilmah',sub:'590 Kč · Kuchyně · alza.cz',image:'playground/caj.jpg'},
+  {name:'Sklenice na červené víno, 4 ks',sub:'790 Kč · Kuchyně · bonami.cz',image:'v1/playground/sklenice.jpg'},
+  {name:'Dárková sada čajů Dilmah',sub:'590 Kč · Kuchyně · alza.cz',image:'v1/playground/caj.jpg'},
   {name:'Vonná svíčka z včelího vosku',sub:'450 Kč · Domov · svickarna.cz',image:'v1/candle.jpg'}
 ];
 const LONG_TEXT='Přidej prosím dárky z odkazů:\nbonami.cz/p/sklenice-na-vino\nalza.cz/dilmah-darkova-sada\nsvickarna.cz/vcelia-svicka\nSklenicím dej prioritu Vysoká,\nceny zaokrouhli na stovky.';
@@ -760,7 +760,7 @@ function reserveHtml(){
   <div class="modal-wrap"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="reserve-title" aria-describedby="reserve-description">
     <header class="modal-head"><h2 id="reserve-title">Rezervovat dárek</h2><p class="sr-only" id="reserve-description">Formulář pro rezervaci dárku</p><button type="button" class="icon-btn ghost" aria-label="Zavřít dialog" data-act="close">${icon('x')}</button></header>
     <div class="modal-body" id="modal-body" data-kb-scroller>
-      <div class="modal-gift"><span class="thumb" aria-hidden="true"><img src="${photo('playground/kavovar.jpg')}" alt=""></span><span style="min-width:0"><strong>Kávovar De’Longhi Dedica EC685</strong><span>5 990 Kč</span></span></div>
+      <div class="modal-gift"><span class="thumb" aria-hidden="true"><img src="${photo('v1/playground/kavovar.jpg')}" alt=""></span><span style="min-width:0"><strong>Kávovar De’Longhi Dedica EC685</strong><span>5 990 Kč</span></span></div>
       <div class="field"><label class="field-label" for="reserve-name">Vaše jméno *</label><input class="control" id="reserve-name" value="Petr Svoboda" placeholder="Jan Novák" autocomplete="name"></div>
       <div class="field" id="focus-start"><label class="field-label" for="reserve-email">E-mail (volitelné)</label><input class="control" id="reserve-email" type="email" placeholder="jan@email.cz" value="petr.svoboda@" autocomplete="email" enterkeyhint="done" data-focus-target></div>
       <div class="modal-auth"><p>Pro správu rezervací se můžete přihlásit.</p><p class="modal-auth-links"><a href="#login">Přihlásit se</a><span>nebo</span><a href="#register">Registrovat</a></p></div>

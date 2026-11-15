@@ -1,6 +1,7 @@
 import '../../../../app.css';
 import { render } from 'vitest-browser-svelte';
 import { describe, expect, it, vi } from 'vitest';
+import { libraryFileUrlPattern } from '$lib/theme/wishlist_background_library.test_fixtures.js';
 import type { WishlistBackground } from '$lib/theme/wishlist_themes.js';
 import WishlistAppearancePreviewPane from './WishlistAppearancePreviewPane.svelte';
 import { resolveWishlistThemeScope } from './wishlist_theme_scope.js';
@@ -23,7 +24,7 @@ function renderPane(mode: 'light' | 'dark', background: Partial<WishlistBackgrou
 		themeId: 'toys',
 		styleTokens: null,
 		background: { placement: 'full', ...background },
-		previewImageUrl: '/demo/playground/advent.jpg',
+		previewImageUrl: '/demo/v1/playground/advent.jpg',
 	});
 	return render(WishlistAppearancePreviewPane, {
 		mode,
@@ -36,8 +37,8 @@ function renderPane(mode: 'light' | 'dark', background: Partial<WishlistBackgrou
 
 describe('WishlistAppearancePreviewPane background photo', () => {
 	it.each([
-		['light', /toys-illustrated-light-640\.webp$/],
-		['dark', /toys-illustrated-dark-640\.webp$/],
+		['light', libraryFileUrlPattern('toys-illustrated-light-640')],
+		['dark', libraryFileUrlPattern('toys-illustrated-dark-640')],
 	] as const)('shows the %s file of a library pair, undimmed', async (mode, source) => {
 		const screen = renderPane(mode, { mode: 'library', libraryImageId: 'toys-illustrated' });
 
@@ -60,7 +61,7 @@ describe('WishlistAppearancePreviewPane background photo', () => {
 
 		await expect
 			.element(screen.getByTestId('wishlist-appearance-preview-photo'))
-			.toHaveAttribute('src', '/demo/playground/advent.jpg');
+			.toHaveAttribute('src', '/demo/v1/playground/advent.jpg');
 		expect(
 			screen.getByTestId('wishlist-appearance-preview-dark-mode-dim').query() !== null,
 		).toBe(dimmed);

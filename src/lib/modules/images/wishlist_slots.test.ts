@@ -55,8 +55,8 @@ describe('wishlistImageUrl', () => {
 
 	it('serves a prepared site-relative image as stored', () => {
 		mockEnv['PUBLIC_R2_URL'] = PUBLIC_BASE;
-		expect(wishlistImageUrl('/demo/wishlists/my-everyday.webp')).toBe(
-			'/demo/wishlists/my-everyday.webp',
+		expect(wishlistImageUrl('/demo/v1/wishlists/my-everyday.webp')).toBe(
+			'/demo/v1/wishlists/my-everyday.webp',
 		);
 	});
 });
@@ -171,11 +171,11 @@ describe('wishlistSocialImage', () => {
 		mockEnv['PUBLIC_R2_URL'] = PUBLIC_BASE;
 		expect(
 			wishlistSocialImage(
-				'/demo/wishlists/my-everyday.webp',
+				'/demo/v1/wishlists/my-everyday.webp',
 				createDefaultWishlistSlots(),
 				FALLBACK,
 			),
-		).toEqual({ url: '/demo/wishlists/my-everyday.webp' });
+		).toEqual({ url: '/demo/v1/wishlists/my-everyday.webp' });
 	});
 
 	it('serves an untransformable image without claiming 1200×630 dimensions', () => {

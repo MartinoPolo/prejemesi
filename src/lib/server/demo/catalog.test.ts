@@ -10,7 +10,7 @@ import {
 } from './catalog.js';
 
 function expectPreparedStaticImage(sitePath: string) {
-	expect(sitePath).toMatch(/^\/demo\//);
+	expect(sitePath, `${sitePath} is in the immutable /demo/v1/ folder`).toMatch(/^\/demo\/v1\//);
 	expect(existsSync(join('static', sitePath)), `${sitePath} exists under static/`).toBe(true);
 }
 
@@ -87,7 +87,7 @@ for (const locale of ['cs', 'en'] as const) {
 		it('gives every wishlist a prepared cover and every demo person a prepared photo', () => {
 			const wishlists = getDemoCatalog(locale);
 			for (const wishlist of wishlists) {
-				expect(wishlist.coverImageUrl).toBe(`/demo/wishlists/${wishlist.key}.webp`);
+				expect(wishlist.coverImageUrl).toBe(`/demo/v1/wishlists/${wishlist.key}.webp`);
 				expectPreparedStaticImage(wishlist.coverImageUrl);
 				expect(preparedDemoWishlistCoverUrls.has(wishlist.coverImageUrl)).toBe(true);
 			}
@@ -97,9 +97,9 @@ for (const locale of ['cs', 'en'] as const) {
 				.filter(({ role }) => role === 'followed')
 				.map(({ recipientImage }) => recipientImage);
 			expect(followedRecipientImages).toEqual([
-				'/demo/people/petr.webp',
-				'/demo/people/klara.webp',
-				'/demo/people/karel.webp',
+				'/demo/v1/people/petr.webp',
+				'/demo/v1/people/klara.webp',
+				'/demo/v1/people/karel.webp',
 			]);
 			for (const image of followedRecipientImages) {
 				expectPreparedStaticImage(image!);
@@ -112,15 +112,15 @@ for (const locale of ['cs', 'en'] as const) {
 				wishlists.find((wishlist) => wishlist.key === key)!.gifts[0]!.images;
 			expect(firstGiftImages('my-everyday')).toEqual([
 				'/demo/v1/teapot.jpg',
-				'/demo/gallery/teapot-2.jpg',
-				'/demo/gallery/teapot-3.jpg',
-				'/demo/gallery/teapot-4.jpg',
+				'/demo/v1/gallery/teapot-2.jpg',
+				'/demo/v1/gallery/teapot-3.jpg',
+				'/demo/v1/gallery/teapot-4.jpg',
 			]);
 			expect(firstGiftImages('friend-everyday')).toEqual([
-				'/demo/playground/batoh.jpg',
-				'/demo/gallery/hiking-backpack-2.jpg',
-				'/demo/gallery/hiking-backpack-3.jpg',
-				'/demo/gallery/hiking-backpack-4.jpg',
+				'/demo/v1/playground/batoh.jpg',
+				'/demo/v1/gallery/hiking-backpack-2.jpg',
+				'/demo/v1/gallery/hiking-backpack-3.jpg',
+				'/demo/v1/gallery/hiking-backpack-4.jpg',
 			]);
 		});
 	});

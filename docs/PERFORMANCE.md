@@ -22,6 +22,14 @@ Public pages stay lean while the first in-app navigation stays fast:
 
 The landing demo server-renders the real gift views, so a small set of gift and wishlist presentation modules is allowed **on `/` only**, enumerated file by file in the spec. A forbidden request is a regression to fix by moving the needed logic into an allowed presentation module, not by widening the list. Add a file only after deciding it is public by design. `/login` allows nothing.
 
+## Static asset caching
+
+Never mark a URL `immutable` when its content can change in place.
+
+- Vite-bundled assets (`src/lib/assets/`, including the wishlist background library) get content-hashed `/_app/immutable/` URLs, so changing a file changes its URL.
+- Files under `static/demo/v1/` are served immutable by the root `_headers` rule. Changing an image means a new file name or a new version folder; never edit one in place. Other `static/` files keep the default revalidating cache.
+- Server-side R2 puts set `UPLOADED_OBJECT_CACHE_CONTROL` (`src/lib/server/storage/r2.ts`) because every upload gets a fresh key. Presigned browser uploads cannot send `Cache-Control` while the bucket CORS (`scripts/generate-r2-cors.ts`) allows only `Content-Type`.
+
 ## Production delta report
 
 The CI performance-report job runs only for PRs whose head branch starts with `perf/` or that carry the `performance-report` label. It builds the base and head commits and compares the production JS/CSS assets that `/` and `/login` load during startup.

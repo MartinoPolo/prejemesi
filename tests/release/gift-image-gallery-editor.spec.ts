@@ -7,9 +7,9 @@ import {
 } from '../e2e/fixtures/wishlist-helpers.js';
 
 // A new account owns every gift here, so the shared seeded rows stay untouched.
-const COVER_IMAGE_PATH = '/demo/playground/kolo.jpg';
-const ADDED_IMAGE_PATH = '/demo/playground/kytara.jpg';
-const THIRD_IMAGE_PATH = '/demo/playground/batoh.jpg';
+const COVER_IMAGE_PATH = '/demo/v1/playground/kolo.jpg';
+const ADDED_IMAGE_PATH = '/demo/v1/playground/kytara.jpg';
+const THIRD_IMAGE_PATH = '/demo/v1/playground/batoh.jpg';
 const IMAGE_LINK_PLACEHOLDER = 'https://example.com/image.jpg';
 const DRAG_STEPS = 12;
 

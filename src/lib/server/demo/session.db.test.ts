@@ -128,7 +128,7 @@ async function expectPreparedImages(
 		.where(eq(wishlist.demoSessionId, session.id));
 	for (const entry of catalog) {
 		const list = lists.find((row) => row.title === entry.title)!;
-		expect(list.imageKey).toBe(`/demo/wishlists/${entry.key}.webp`);
+		expect(list.imageKey).toBe(`/demo/v1/wishlists/${entry.key}.webp`);
 		expect(list.imageSlots).toEqual(createDefaultWishlistSlots());
 		const galleries = await getDb()
 			.select({
@@ -455,14 +455,14 @@ describe.skipIf(isolatedDatabaseUrl === null)(
 			const otherBefore = await playgroundRecords(sessionB.id);
 			await getDb()
 				.update(user)
-				.set({ image: '/demo/people/petr.webp' })
+				.set({ image: '/demo/v1/people/petr.webp' })
 				.where(eq(user.id, sessionA.viewerUserId));
 			await resetDemo(sessionA.id, 'en');
 			const [viewerAfterReset] = await getDb()
 				.select({ image: user.image })
 				.from(user)
 				.where(eq(user.id, sessionA.viewerUserId));
-			expect(viewerAfterReset?.image).toBe('/demo/people/tereza.webp');
+			expect(viewerAfterReset?.image).toBe('/demo/v1/people/tereza.webp');
 			const [sameSession] = await getDb()
 				.select()
 				.from(demoSession)

@@ -85,7 +85,7 @@ const items = {
 			690,
 			'keramická čajová konvice',
 		),
-		gallery: ['gallery/teapot-2.jpg', 'gallery/teapot-3.jpg', 'gallery/teapot-4.jpg'],
+		gallery: ['v1/gallery/teapot-2.jpg', 'v1/gallery/teapot-3.jpg', 'v1/gallery/teapot-4.jpg'],
 	},
 	headphones: item(
 		'v1/headphones.jpg',
@@ -138,7 +138,7 @@ const items = {
 		'akvarelové barvy sada',
 	),
 	chocolates: item(
-		'playground/advent.jpg',
+		'v1/playground/advent.jpg',
 		'Výběr pralinek',
 		'Box of chocolates',
 		'Různé příchutě ke společnému ochutnávání.',
@@ -149,7 +149,7 @@ const items = {
 	),
 	hikingBackpack: {
 		...item(
-			'playground/batoh.jpg',
+			'v1/playground/batoh.jpg',
 			'Turistický batoh',
 			'Hiking backpack',
 			'Lehký batoh na celodenní výlety.',
@@ -159,13 +159,13 @@ const items = {
 			'turistický batoh 25 l',
 		),
 		gallery: [
-			'gallery/hiking-backpack-2.jpg',
-			'gallery/hiking-backpack-3.jpg',
-			'gallery/hiking-backpack-4.jpg',
+			'v1/gallery/hiking-backpack-2.jpg',
+			'v1/gallery/hiking-backpack-3.jpg',
+			'v1/gallery/hiking-backpack-4.jpg',
 		],
 	},
 	winterCoat: item(
-		'playground/bunda.jpg',
+		'v1/playground/bunda.jpg',
 		'Teplý zimní kabát',
 		'Warm winter coat',
 		'Do mrazivých ranních procházek.',
@@ -175,7 +175,7 @@ const items = {
 		'zimní kabát',
 	),
 	looseTea: item(
-		'playground/caj.jpg',
+		'v1/playground/caj.jpg',
 		'Sypaný čaj',
 		'Loose-leaf tea',
 		'Něco voňavého do nové konvičky.',
@@ -185,7 +185,7 @@ const items = {
 		'sypaný čaj dárková sada',
 	),
 	boardGame: item(
-		'playground/catan.jpg',
+		'v1/playground/catan.jpg',
 		'Rodinná desková hra',
 		'Family board game',
 		'Ať máme co hrát při návštěvách.',
@@ -195,7 +195,7 @@ const items = {
 		'desková hra pro rodinu',
 	),
 	watch: item(
-		'playground/hodinky-d.jpg',
+		'v1/playground/hodinky-d.jpg',
 		'Klasické hodinky',
 		'Classic watch',
 		'Jednoduchý ciferník a kožený řemínek.',
@@ -205,7 +205,7 @@ const items = {
 		'analogové hodinky kožený řemínek',
 	),
 	handbag: item(
-		'playground/kabelka.jpg',
+		'v1/playground/kabelka.jpg',
 		'Malá kabelka',
 		'Small handbag',
 		'Na klíče, telefon a drobnosti.',
@@ -215,7 +215,7 @@ const items = {
 		'malá kabelka přes rameno',
 	),
 	coffeeBeans: item(
-		'playground/kavovar.jpg',
+		'v1/playground/kavovar.jpg',
 		'Zrnková káva',
 		'Whole-bean coffee',
 		'Středně pražená na domácí espresso.',
@@ -225,7 +225,7 @@ const items = {
 		'zrnková káva 500 g',
 	),
 	eReader: item(
-		'playground/kindle.jpg',
+		'v1/playground/kindle.jpg',
 		'Čtečka knih',
 		'E-reader',
 		'Aby se do batohu vešlo víc příběhů.',
@@ -235,7 +235,7 @@ const items = {
 		'čtečka elektronických knih',
 	),
 	bicycle: item(
-		'playground/kolo.jpg',
+		'v1/playground/kolo.jpg',
 		'Městské kolo',
 		'City bicycle',
 		'Na cesty parkem místo tramvaje.',
@@ -245,7 +245,7 @@ const items = {
 		'městské kolo',
 	),
 	guitar: item(
-		'playground/kytara.jpg',
+		'v1/playground/kytara.jpg',
 		'Elektrická kytara',
 		'Electric guitar',
 		'Na první hraní s kapelou.',
@@ -255,7 +255,7 @@ const items = {
 		'elektrická kytara',
 	),
 	flowers: item(
-		'playground/kytice.jpg',
+		'v1/playground/kytice.jpg',
 		'Kytice sezónních květin',
 		'Seasonal flowers',
 		'Pestrá kytice jen tak pro radost.',
@@ -265,7 +265,7 @@ const items = {
 		'kytice sezonní květiny',
 	),
 	standMixer: item(
-		'playground/lampicka.jpg',
+		'v1/playground/lampicka.jpg',
 		'Robot KitchenAid',
 		'KitchenAid stand mixer',
 		'Na těsta, která se špatně míchají rukou.',
@@ -275,7 +275,7 @@ const items = {
 		'robot KitchenAid Artisan',
 	),
 	buildingBricks: item(
-		'playground/lego.jpg',
+		'v1/playground/lego.jpg',
 		'Stavebnice kostek',
 		'Building bricks set',
 		'Na společné stavění o prázdninách.',
@@ -285,7 +285,7 @@ const items = {
 		'stavebnice kostky',
 	),
 	cake: item(
-		'playground/mixer.jpg',
+		'v1/playground/mixer.jpg',
 		'Čokoládový dort',
 		'Chocolate cake',
 		'Narozeninový dort pro celou rodinu.',
@@ -295,7 +295,7 @@ const items = {
 		'čokoládový dort objednávka',
 	),
 	monitor: item(
-		'playground/monitor.jpg',
+		'v1/playground/monitor.jpg',
 		'Monitor k počítači',
 		'Computer monitor',
 		'Větší obrazovka k pracovnímu stolu.',
@@ -305,7 +305,7 @@ const items = {
 		'monitor 27 palců',
 	),
 	monstera: item(
-		'playground/monstera.jpg',
+		'v1/playground/monstera.jpg',
 		'Monstera',
 		'Monstera plant',
 		'Zelený společník do obýváku.',
@@ -315,7 +315,7 @@ const items = {
 		'monstera pokojová rostlina',
 	),
 	fragrance: item(
-		'playground/parfem.jpg',
+		'v1/playground/parfem.jpg',
 		'Svěží parfém',
 		'Fresh fragrance',
 		'Lehká vůně na každý den.',
@@ -325,7 +325,7 @@ const items = {
 		'svěží parfém',
 	),
 	socks: item(
-		'playground/ponozky.jpg',
+		'v1/playground/ponozky.jpg',
 		'Veselé ponožky',
 		'Colourful socks',
 		'Pár barev do zimních bot.',
@@ -335,7 +335,7 @@ const items = {
 		'barevné ponožky dárkové',
 	),
 	restaurant: item(
-		'playground/poukaz.jpg',
+		'v1/playground/poukaz.jpg',
 		'Večeře pro dva',
 		'Dinner for two',
 		'Večer bez vaření a mytí nádobí.',
@@ -345,7 +345,7 @@ const items = {
 		'dárkový poukaz restaurace',
 	),
 	console: item(
-		'playground/ps5.jpg',
+		'v1/playground/ps5.jpg',
 		'Herní konzole PlayStation 5',
 		'PlayStation 5 console',
 		'Na společné hraní o víkendech.',
@@ -355,7 +355,7 @@ const items = {
 		'PlayStation 5 konzole',
 	),
 	chess: item(
-		'playground/sachy.jpg',
+		'v1/playground/sachy.jpg',
 		'Šachová sada',
 		'Chess set',
 		'Dřevěná šachovnice na dlouhé partie.',
@@ -365,7 +365,7 @@ const items = {
 		'dřevěné šachy sada',
 	),
 	readingBook: item(
-		'playground/sapiens.jpg',
+		'v1/playground/sapiens.jpg',
 		'Kniha o světě kolem nás',
 		'A book about our world',
 		'Zajímavé čtení ke kávě.',
@@ -375,7 +375,7 @@ const items = {
 		'populárně naučná kniha',
 	),
 	shawl: item(
-		'playground/satek.jpg',
+		'v1/playground/satek.jpg',
 		'Lehký šátek',
 		'Lightweight scarf',
 		'Na větrné dny u vody.',
@@ -385,7 +385,7 @@ const items = {
 		'lehký šátek',
 	),
 	wineGlasses: item(
-		'playground/sklenice.jpg',
+		'v1/playground/sklenice.jpg',
 		'Sklenice na víno',
 		'Wine glasses',
 		'Nové sklenice na oslavy s přáteli.',
@@ -396,7 +396,7 @@ const items = {
 	),
 
 	tent: item(
-		'playground/stan.jpg',
+		'v1/playground/stan.jpg',
 		'Stan pro dva',
 		'Two-person tent',
 		'Na letní noci pod hvězdami.',
@@ -418,7 +418,7 @@ type WishlistDefinition = Omit<
 };
 
 /** The demo person every playground visitor acts as. */
-export const demoViewer = { name: 'Tereza Novotná', image: '/demo/people/tereza.webp' };
+export const demoViewer = { name: 'Tereza Novotná', image: '/demo/v1/people/tereza.webp' };
 
 const wishlists: readonly WishlistDefinition[] = [
 	{
@@ -580,7 +580,7 @@ const wishlists: readonly WishlistDefinition[] = [
 		},
 		role: 'followed',
 		recipientName: 'Petr Dvořák',
-		recipientImage: '/demo/people/petr.webp',
+		recipientImage: '/demo/v1/people/petr.webp',
 		status: 'shared',
 		occasion: 'ongoing',
 		palette: 'mint',
@@ -611,7 +611,7 @@ const wishlists: readonly WishlistDefinition[] = [
 		},
 		role: 'followed',
 		recipientName: 'Klára Horáková',
-		recipientImage: '/demo/people/klara.webp',
+		recipientImage: '/demo/v1/people/klara.webp',
 		status: 'shared',
 		occasion: 'christmas',
 		palette: 'ruby',
@@ -642,7 +642,7 @@ const wishlists: readonly WishlistDefinition[] = [
 		},
 		role: 'followed',
 		recipientName: 'Karel Veselý',
-		recipientImage: '/demo/people/karel.webp',
+		recipientImage: '/demo/v1/people/karel.webp',
 		status: 'archived',
 		occasion: 'birthday',
 		palette: 'ocean',
@@ -671,7 +671,7 @@ function catalogItemImageUrls(catalogItem: CatalogItem): string[] {
 }
 
 function demoWishlistCoverUrl(key: string): string {
-	return `/demo/wishlists/${key}.webp`;
+	return `/demo/v1/wishlists/${key}.webp`;
 }
 
 export const preparedDemoImageUrls = new Set(Object.values(items).flatMap(catalogItemImageUrls));

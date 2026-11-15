@@ -561,7 +561,7 @@ describe('development auto-login', () => {
 		[
 			'a demo visitor',
 			() => {},
-			{ path: '/demo/playground/start', cookies: { [DEMO_COOKIE_NAME]: 'a'.repeat(64) } },
+			{ path: '/demo/v1/playground/start', cookies: { [DEMO_COOKIE_NAME]: 'a'.repeat(64) } },
 		],
 	])('does not sign in for %s', async (_case, arrange, options) => {
 		arrange();
