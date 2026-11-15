@@ -23,6 +23,11 @@ export const moderatorAssignment = pgTable(
 		uniqueActiveAssignment: uniqueIndex('moderator_assignment_unique_active')
 			.on(table.wishlistId, table.userId)
 			.where(sql`${table.deletedAt} IS NULL`),
+		// The managed-lists dashboards look up a user's active assignments, and user_id does not
+		// lead the unique index.
+		userActiveIdx: index('moderator_assignment_user_active_idx')
+			.on(table.userId)
+			.where(sql`${table.deletedAt} IS NULL`),
 	}),
 );
 

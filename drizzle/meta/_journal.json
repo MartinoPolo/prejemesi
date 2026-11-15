@@ -281,6 +281,13 @@
       "when": 1794687609541,
       "tag": "0039_add-dark-wishlist-background",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1794731730920,
+      "tag": "0040_add-moderator-assignment-user-index",
+      "breakpoints": true
     }
   ]
 }
