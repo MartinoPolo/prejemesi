@@ -35,7 +35,9 @@
 
 <SheetPortal {...portalProps}>
 	<SheetOverlay />
+	<!-- The overlay already blocks the page; pointer-events on <body> would restyle every element. -->
 	<SheetPrimitive.Content
+		preventBodyPointerEvents={false}
 		data-dark-palette={layerPalette()}
 		bind:ref
 		data-slot="sheet-content"

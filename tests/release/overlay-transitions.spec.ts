@@ -92,7 +92,7 @@ test('gift details retain their identity throughout the closing animation', asyn
 		overlayRecording.finish(),
 	]);
 	expectStableExit(dialogSamples);
-	expectStableExit(overlaySamples);
+	expectStableExit(overlaySamples, { backdrop: true });
 	expect(
 		dialogSamples
 			.filter((sample) => sample.connected && sample.state === 'closed')

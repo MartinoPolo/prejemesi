@@ -988,12 +988,13 @@ html.dark {
 	}
 }
 
+/* Closing layers stop taking input. Overlays are left out: they keep the page beneath inert until
+   their exit animation ends. */
 [data-slot='dropdown-menu-content'][data-state='closed'],
 [data-slot='dropdown-menu-sub-content'][data-state='closed'],
 [data-slot='context-menu-content'][data-state='closed'],
 [data-slot='context-menu-sub-content'][data-state='closed'],
 [data-slot='dialog-content'][data-state='closed'],
-[data-slot='dialog-overlay'][data-state='closed'],
 [data-slot='popover-content'][data-state='closed'],
 [data-slot='select-content'][data-state='closed'],
 [data-slot='sheet-content'][data-state='closed'] {

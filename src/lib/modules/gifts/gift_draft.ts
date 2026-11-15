@@ -197,7 +197,10 @@ function linkKeys(links: readonly GiftLink[] | null | undefined): Set<string> {
 	return keys;
 }
 
-type DuplicateCandidate = { name: string; links?: readonly GiftLink[] | null };
+interface DuplicateCandidate {
+	name: string;
+	links?: readonly GiftLink[] | null;
+}
 
 /**
  * Indexes existing gifts once so every draft (one per grid row, re-checked on each keystroke)

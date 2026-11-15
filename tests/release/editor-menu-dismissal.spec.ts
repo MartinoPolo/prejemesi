@@ -152,8 +152,10 @@ test('mobile hero, gift and navigation sheets dismiss without rebound', async ({
 		const sheet = page.locator('[data-slot="sheet-content"]');
 		await expect(sheet).toBeVisible();
 		await expect
-			.poll(() => page.locator('body').evaluate((body) => body.style.pointerEvents))
-			.toBe('none');
+			.poll(() =>
+				page.evaluate(() => document.elementFromPoint(380, 20)?.getAttribute('data-slot')),
+			)
+			.toBe('sheet-overlay');
 		await expectAnimatedDismissal(page, sheet, () => page.keyboard.press('Escape'));
 		await expect(page.locator('[data-slot="sheet-overlay"]')).toHaveCount(0);
 		await expect

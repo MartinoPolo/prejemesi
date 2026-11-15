@@ -42,7 +42,9 @@
 
 <DialogPortal {...portalProps}>
 	<DialogOverlay />
+	<!-- The overlay already blocks the page; pointer-events on <body> would restyle every element. -->
 	<DialogPrimitive.Content
+		preventBodyPointerEvents={false}
 		data-dark-palette={layerPalette()}
 		bind:ref
 		data-slot="dialog-content"
