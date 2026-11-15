@@ -21,8 +21,10 @@
 	} from '$lib/components/blocks/settings/index.js';
 	import { pageHeaderVariants } from '$lib/components/blocks/page-header/index.js';
 
-	const profile = await getUserProfile();
-	const notificationPreferences = await getNotificationPreferences();
+	const [profile, notificationPreferences] = await Promise.all([
+		getUserProfile(),
+		getNotificationPreferences(),
+	]);
 
 	async function handleProfileSave(params: { name: string; image: string | null }) {
 		await updateProfile(params);

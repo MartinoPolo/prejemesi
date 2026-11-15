@@ -10,24 +10,42 @@ import { load } from './+page.server.js';
 const mockGetHomeOverview = vi.mocked(getHomeOverview);
 
 describe('/home server load', () => {
-	it('waits for authenticated parent data and loads the overview directly by user id', async () => {
-		const overview = {
-			recent: [],
-			own: { items: [], total: 0 },
-			moderated: { items: [], total: 0 },
-			followed: { items: [], total: 0 },
-		};
+	const overview = {
+		recent: [],
+		own: { items: [], total: 0 },
+		moderated: { items: [], total: 0 },
+		followed: { items: [], total: 0 },
+	};
+
+	it('loads the overview by the signed-in user id without waiting for the layout', async () => {
 		const depends = vi.fn();
-		const parent = vi.fn(async () => ({
-			user: { id: 'user-123' },
-			unreadNotificationCount: 0,
-		}));
+		const parent = vi.fn();
 		mockGetHomeOverview.mockResolvedValue(overview);
 
-		const result = await load({ depends, parent } as unknown as Parameters<typeof load>[0]);
+		const result = await load({
+			depends,
+			parent,
+			locals: { user: { id: 'user-123' } },
+		} as unknown as Parameters<typeof load>[0]);
 
 		expect(depends).toHaveBeenCalledWith('app:home-overview');
+		expect(parent).not.toHaveBeenCalled();
 		expect(mockGetHomeOverview).toHaveBeenCalledWith('user-123');
 		expect(result).toEqual({ overview });
+	});
+
+	it('lets the layout redirect a signed-out visitor before loading anything', async () => {
+		const layoutRedirect = new Error('redirect to sign-in');
+		const parent = vi.fn(async () => {
+			throw layoutRedirect;
+		});
+		mockGetHomeOverview.mockClear();
+
+		await expect(
+			load({ depends: vi.fn(), parent, locals: { user: null } } as unknown as Parameters<
+				typeof load
+			>[0]),
+		).rejects.toBe(layoutRedirect);
+		expect(mockGetHomeOverview).not.toHaveBeenCalled();
 	});
 });
