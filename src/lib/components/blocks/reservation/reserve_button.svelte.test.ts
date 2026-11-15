@@ -179,6 +179,31 @@ describe('ReserveButton', () => {
 		expect(onunreserve).toHaveBeenCalledOnce();
 	});
 
+	it('sends one cancel for a double click and re-enables once it settles', async () => {
+		let settle!: () => void;
+		const onunreserve = vi.fn(
+			() =>
+				new Promise<void>((resolve) => {
+					settle = resolve;
+				}),
+		);
+		await render(ReserveButton, {
+			gift: makeGift({ myReservationId: 'reservation-1' }),
+			onunreserve,
+		});
+		const cancel = page.getByRole('button', {
+			name: m.reserve_button_cancel_aria({ name: 'Kolo' }),
+		});
+
+		await cancel.click();
+		await expect.element(cancel).toBeDisabled();
+		await cancel.click({ force: true });
+		expect(onunreserve).toHaveBeenCalledOnce();
+
+		settle();
+		await expect.element(cancel).toBeEnabled();
+	});
+
 	it('preserves reserving an available gift on an active wishlist', async () => {
 		const onreserve = vi.fn();
 		const gift = makeGift({ reservedCount: 0, isFullyReserved: false });

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onDestroy } from 'svelte';
+	import { onDestroy, tick } from 'svelte';
 	import CheckIcon from '@lucide/svelte/icons/check';
 	import { Button } from '$lib/components/base/button/index.js';
 	import type { ControlSize } from '$lib/components/base/control_sizing.js';
@@ -19,7 +19,8 @@
 		class?: string;
 		surfaceClass?: string;
 		onreserve?: (gift: GiftForVisitor) => void;
-		onunreserve?: (gift: GiftForVisitor) => void;
+		/** A returned promise keeps the cancel action disabled until it settles. */
+		onunreserve?: (gift: GiftForVisitor) => void | Promise<unknown>;
 	}
 
 	let {
@@ -41,6 +42,7 @@
 	let buttonElement = $state<HTMLButtonElement | null>(null);
 	let contentElement = $state<HTMLSpanElement | null>(null);
 	let activeAnimation: Animation | null = null;
+	let unreservePending = $state(false);
 
 	$effect.pre(() => {
 		const currentHasMyReservation = gift.myReservationId !== null;
@@ -94,9 +96,27 @@
 		}
 	}
 
-	function handleUnreserveClick(event: MouseEvent) {
+	async function handleUnreserveClick(event: MouseEvent) {
 		event.stopPropagation();
-		onunreserve?.(gift);
+		if (unreservePending) {
+			return;
+		}
+		const initiatedWithFocus = document.activeElement === buttonElement;
+		const pendingUnreserve = onunreserve?.(gift);
+		if (!(pendingUnreserve instanceof Promise)) {
+			return;
+		}
+		unreservePending = true;
+		try {
+			await pendingUnreserve;
+		} finally {
+			unreservePending = false;
+			await tick();
+			// Disabling the focused button drops focus to the body; hand it back.
+			if (initiatedWithFocus && document.activeElement === document.body) {
+				buttonElement?.focus({ preventScroll: true });
+			}
+		}
 	}
 </script>
 
@@ -111,6 +131,9 @@
 			? m.reserve_button_cancel_aria({ name: gift.name })
 			: m.reserve_button_reserve_aria({ name: gift.name })}
 		onclick={hasMyReservation ? handleUnreserveClick : handleReserveClick}
+		disabled={unreservePending}
+		aria-busy={unreservePending || undefined}
+		data-pending={unreservePending}
 		data-testid="reserve-button"
 		surfaceClass={cn(
 			surfaceClass,
