@@ -563,7 +563,7 @@ describe('NotificationPanel loading handoff', () => {
 		expect(screen.getByText('První oznámení').query()).toBeNull();
 		expect(animate.mock.calls[0]).toEqual([
 			[{ opacity: 1 }, { opacity: 0 }],
-			{ duration: 420, easing: 'cubic-bezier(0.2, 0.7, 0.3, 1)', fill: 'both' },
+			{ duration: 100, easing: 'cubic-bezier(0.2, 0.7, 0.3, 1)', fill: 'both' },
 		]);
 
 		exit.finish();
@@ -575,7 +575,7 @@ describe('NotificationPanel loading handoff', () => {
 				{ opacity: 0, transform: 'translateY(3px)' },
 				{ opacity: 1, transform: 'none' },
 			],
-			{ duration: 460, easing: 'cubic-bezier(0.2, 0.7, 0.3, 1)', fill: 'both' },
+			{ duration: 200, easing: 'cubic-bezier(0.2, 0.7, 0.3, 1)', fill: 'both' },
 		]);
 
 		enter.finish();
