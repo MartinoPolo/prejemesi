@@ -6,7 +6,7 @@ import type { PageServerLoad } from './$types';
 export const load: PageServerLoad = async ({ depends, locals, parent }) => {
 	depends(HOME_OVERVIEW_DEPENDENCY);
 	const user = locals.user;
-	if (user == null) {
+	if (locals.session == null || user == null) {
 		// The (app) layout redirects signed-out visitors; awaiting it lets that redirect win.
 		await parent();
 		error(500, 'Authenticated layout returned no user');
