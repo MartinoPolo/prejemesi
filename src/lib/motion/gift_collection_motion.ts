@@ -1,4 +1,5 @@
-import { GIFT_MOTION_EASING, giftMotionDuration } from './gift_motion_timing.js';
+import { STANDARD_EASING } from './motion_tokens.js';
+import { giftMotionDuration } from './gift_motion_timing.js';
 import { LAYOUT_GIFT_MOTION_LIMIT } from './layout_motion.js';
 import { copyComputedCustomProperties } from '$lib/components/blocks/wishlist/copy_computed_custom_properties.js';
 import {
@@ -347,7 +348,7 @@ export function createGiftCollectionMotion(
 		duration: number,
 		overlay?: HTMLElement,
 	) {
-		const animation = element.animate(frames, { duration, easing: GIFT_MOTION_EASING });
+		const animation = element.animate(frames, { duration, easing: STANDARD_EASING });
 		animations.add(animation);
 		const currentGeneration = generation;
 		const cleanup = () => {

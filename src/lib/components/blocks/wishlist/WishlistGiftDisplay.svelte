@@ -35,6 +35,7 @@
 		widenPageForGiftCardColumns,
 	} from './gift_card_grid_columns.js';
 	import { giftCardGridVariants } from './gift_card_grid_variants.js';
+	import { STANDARD_EASING } from '$lib/motion/motion_tokens.js';
 	import type { GiftLivePreviews } from '$lib/components/blocks/change-proposals/gift_live_preview.js';
 
 	interface WishlistGiftDisplayProps {
@@ -135,7 +136,6 @@
 	const showsEmptyState = $derived(
 		isFilteredEmpty || (isEmpty && (livePreviews?.creations.length ?? 0) === 0),
 	);
-	const STANDARD_EASING = 'cubic-bezier(0.2, 0.7, 0.3, 1)';
 	let displayedViewMode = $state(untrack(() => viewMode));
 	const GiftCollectionView = $derived(
 		{

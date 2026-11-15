@@ -3,6 +3,7 @@ import { page } from 'vitest/browser';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { GiftForVisitor } from '$lib/modules/gifts/types.js';
 import * as m from '$lib/paraglide/messages.js';
+import { STANDARD_EASING } from '$lib/motion/motion_tokens.js';
 
 const { default: ReserveButton } = await import('./ReserveButton.svelte');
 
@@ -71,7 +72,10 @@ describe('ReserveButton', () => {
 			m.reserve_button_cancel_aria({ name: 'Kolo' }),
 		);
 		expect(animate.mock.instances[0]).toBe(content);
-		expect(animate).toHaveBeenCalledWith([{ opacity: 0 }, { opacity: 1 }], { duration: 160 });
+		expect(animate).toHaveBeenCalledWith([{ opacity: 0 }, { opacity: 1 }], {
+			duration: 160,
+			easing: STANDARD_EASING,
+		});
 
 		finishAnimation();
 		await expect.element(page.getByText(m.reserve_button_cancel())).toBeVisible();

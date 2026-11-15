@@ -15,7 +15,7 @@ export const shareWizardVariants = tv({
 			'mx-1 min-w-2 flex-1 border-t-2 border-dashed border-ink-faint transition-colors sm:mx-2',
 		connectorDone: 'mx-1 min-w-2 flex-1 border-t-2 border-edge transition-colors sm:mx-2',
 		stepDot:
-			'flex size-[26px] flex-shrink-0 items-center justify-center rounded-full border-2 border-edge text-[11px] font-bold transition-all',
+			'flex size-[26px] flex-shrink-0 items-center justify-center rounded-full border-2 border-edge text-[11px] font-bold transition-[background-color,color,border-color,box-shadow]',
 		stepDotActive: 'bg-primary text-primary-foreground shadow-sticker-sm',
 		stepDotDone: 'bg-primary text-primary-foreground',
 		stepDotPending: 'border-ink-faint bg-surface text-muted-foreground',

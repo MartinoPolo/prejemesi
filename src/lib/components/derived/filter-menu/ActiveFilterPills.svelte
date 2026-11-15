@@ -148,7 +148,7 @@
 
 	@media (prefers-reduced-motion: no-preference) {
 		[data-active-filter-pill] {
-			animation: filter-acknowledge 220ms cubic-bezier(0.2, 0.7, 0.3, 1);
+			animation: filter-acknowledge 220ms var(--ease-standard);
 		}
 	}
 </style>

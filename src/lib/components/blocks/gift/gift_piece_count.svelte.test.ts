@@ -1,6 +1,7 @@
 import { render } from 'vitest-browser-svelte';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { formatPieceCount } from '$lib/modules/gifts/gift_display.js';
+import { STANDARD_EASING } from '$lib/motion/motion_tokens.js';
 
 const { default: GiftPieceCount } = await import('./GiftPieceCount.svelte');
 
@@ -29,7 +30,10 @@ describe('GiftPieceCount', () => {
 		const expected = formatPieceCount(3, 'visitor', 1)!;
 		expect(count.textContent).toContain(expected.pieceText);
 		expect(count.textContent).toContain(expected.reservedText);
-		expect(animate).toHaveBeenCalledWith([{ opacity: 0 }, { opacity: 1 }], { duration: 140 });
+		expect(animate).toHaveBeenCalledWith([{ opacity: 0 }, { opacity: 1 }], {
+			duration: 140,
+			easing: STANDARD_EASING,
+		});
 	});
 
 	it('updates quantity, role, and other visitors counts without acknowledgement', async () => {
