@@ -4,6 +4,7 @@
 	import { cn } from '$lib/utils.js';
 	import DropdownMenuPortal from './dropdown-menu-portal.svelte';
 	import { floatingDepthClearance } from '../floating_depth_clearance.js';
+	import { fadeScaleOverlayMotionClass } from '../overlay_motion.js';
 
 	let {
 		ref = $bindable(null),
@@ -34,7 +35,8 @@
 		{collisionPadding}
 		data-slot="dropdown-menu-sub-content"
 		class={cn(
-			'origin-(--bits-menu-content-transform-origin) data-open:animate-in data-closed:animate-out data-closed:fade-out-0 data-open:fade-in-0 data-closed:zoom-out-95 data-open:zoom-in-95 bg-popover text-popover-foreground min-w-24 rounded-panel border-[2.5px] border-edge p-1.5 shadow-sticker duration-100 z-(--z-modal) max-h-[calc(100dvh-1rem-var(--depth-clearance))] w-auto overflow-x-hidden overflow-y-auto outline-none',
+			fadeScaleOverlayMotionClass,
+			'origin-(--bits-menu-content-transform-origin) bg-popover text-popover-foreground min-w-24 rounded-panel border-[2.5px] border-edge p-1.5 shadow-sticker duration-100 z-(--z-modal) max-h-[calc(100dvh-1rem-var(--depth-clearance))] w-auto overflow-x-hidden overflow-y-auto outline-none',
 			floatingDepthClearance,
 			className,
 		)}
