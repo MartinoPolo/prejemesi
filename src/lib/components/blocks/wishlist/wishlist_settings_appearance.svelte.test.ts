@@ -416,7 +416,11 @@ describe('WishlistSettingsModal appearance tab', () => {
 		await screen.getByRole('button', { name: m.save() }).click();
 
 		await vi.waitFor(() => expect(events.at(-1)).toBe('preview:null'));
-		expect(events.slice(-3)).toEqual(['preview', 'saved', 'preview:null']);
+		// Closing the saved modal may drop the preview once more; only the first drop's timing
+		// matters.
+		const sinceLastPreview = events.slice(events.lastIndexOf('preview'));
+		expect(sinceLastPreview.slice(0, 3)).toEqual(['preview', 'saved', 'preview:null']);
+		expect(sinceLastPreview.slice(3).every((event) => event === 'preview:null')).toBe(true);
 	});
 
 	it('offers no custom upload on a demo wishlist', async () => {

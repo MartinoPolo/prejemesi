@@ -53,22 +53,22 @@ afterEach(async () => {
 });
 
 describe('prepareSeedImages', () => {
-	it('prepares every declared image into an empty cache without database configuration', async () => {
+	it('prepares every image into an empty cache without database configuration', async () => {
 		const cacheDirectory = await temporaryCache();
 		const fetchImplementation = successfulFetch();
 		const previousDatabaseUrl = process.env.DATABASE_URL;
 		Reflect.deleteProperty(process.env, 'DATABASE_URL');
 
 		try {
-			const result = await prepareSeedImages({ cacheDirectory, fetchImplementation });
-
-			expect(result).toEqual({
-				cached: 0,
-				downloaded: SEED_IMAGE_MANIFEST.length,
-				total: SEED_IMAGE_MANIFEST.length,
+			const result = await prepareSeedImages({
+				cacheDirectory,
+				fetchImplementation,
+				manifest: TEST_MANIFEST,
 			});
-			expect(fetchImplementation).toHaveBeenCalledTimes(SEED_IMAGE_MANIFEST.length);
-			for (const definition of SEED_IMAGE_MANIFEST) {
+
+			expect(result).toEqual({ cached: 0, downloaded: 2, total: 2 });
+			expect(fetchImplementation).toHaveBeenCalledTimes(2);
+			for (const definition of TEST_MANIFEST) {
 				expect([...(await readFile(join(cacheDirectory, definition.objectKey)))]).toEqual([
 					...VALID_JPEG,
 				]);
@@ -80,6 +80,24 @@ describe('prepareSeedImages', () => {
 				process.env.DATABASE_URL = previousDatabaseUrl;
 			}
 		}
+	});
+
+	// Unavailable sources keep this cheap however large the manifest grows: writing every declared
+	// image timed out under parallel test load.
+	it('prepares every declared seed image by default', async () => {
+		const cacheDirectory = await temporaryCache();
+		const fetchImplementation = vi.fn(
+			async () => new Response(null, { status: 503 }),
+		) as unknown as typeof fetch;
+
+		await expect(prepareSeedImages({ cacheDirectory, fetchImplementation })).rejects.toThrow(
+			'Could not prepare required seed images',
+		);
+
+		expect(vi.mocked(fetchImplementation).mock.calls.map(([sourceUrl]) => sourceUrl)).toEqual(
+			SEED_IMAGE_MANIFEST.map(({ sourceUrl }) => sourceUrl),
+		);
+		expect(await readdir(cacheDirectory)).toEqual([]);
 	});
 
 	it('repairs only the missing entry in a partial cache', async () => {

@@ -22,6 +22,8 @@ async function visibleColumnCount(page: Page): Promise<number> {
 }
 
 async function expectPrimaryActionReachable(action: Locator): Promise<void> {
+	// After a viewport change, gifts travel to their new columns and can pass over this action.
+	await waitForGiftAnimationsToSettle(action.page());
 	await action.scrollIntoViewIfNeeded();
 	await expect(action).toBeVisible();
 	const geometry = await action.evaluate((element) => {
