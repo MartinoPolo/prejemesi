@@ -1,8 +1,3 @@
-<script module lang="ts">
-	/** Picker value that creates the destination first; `#` never occurs in generated wishlist ids. */
-	export const NEW_WISHLIST_DESTINATION = '#new-wishlist';
-</script>
-
 <script lang="ts">
 	import * as Dialog from '$lib/components/base/dialog/index.js';
 	import * as Sheet from '$lib/components/base/sheet/index.js';
@@ -15,13 +10,10 @@
 	import WishlistSheetBody from './WishlistSheetBody.svelte';
 	import WishlistSheetHeader from './WishlistSheetHeader.svelte';
 	import * as m from '$lib/paraglide/messages.js';
-
-	export interface BulkCopyDestination {
-		id: string;
-		title: string;
-		status: 'draft' | 'active' | 'archived';
-		recipientDisplayName: string;
-	}
+	import {
+		NEW_WISHLIST_DESTINATION,
+		type BulkCopyDestination,
+	} from './gift_bulk_copy_destination.js';
 
 	interface Props {
 		open: boolean;

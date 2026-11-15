@@ -51,6 +51,24 @@ const LANDING_DEMO_PUBLIC_MODULE_PATHS = [
 	'/lib/modules/wishlists/wishlist_occasion_display.ts',
 ] as const;
 
+// Manager-only and rarely opened dialogs load on demand (docs/PERFORMANCE.md, Lazy dialogs), so
+// an anonymous wishlist visitor never downloads them. GiftCategoryQuickAddDialog and
+// ReleaseReservationFlow stay eager: the gift detail form and release button import them statically.
+const LAZY_WISHLIST_DIALOG_MODULE_PATHS = [
+	'/lib/components/blocks/sharing/ShareWizard.svelte',
+	'/lib/components/blocks/moderator/ModeratorPanel.svelte',
+	'/lib/components/blocks/gift-draft-grid/GiftDraftDialog.svelte',
+	'/lib/components/blocks/wishlist/GiftBulkCopyDialog.svelte',
+	'/lib/components/blocks/wishlist/CreateWishlistModal.svelte',
+	'/lib/components/blocks/wishlist/WishlistSettingsModal.svelte',
+	'/lib/components/blocks/wishlist/EditRecipientDialog.svelte',
+	'/lib/components/blocks/chat/WishlistAssistant.svelte',
+	'/lib/components/blocks/import/ImportWizard.svelte',
+	'/lib/modules/import/gift_csv_export.ts',
+] as const;
+
+const SEEDED_SHARED_WISHLIST_PATH = '/w/xmas2026';
+
 // Locale-resilient: the link text differs per locale, but LandingNav always links to a
 // path ending in /login (with an optional locale prefix).
 function loginLink(page: Page) {
@@ -99,6 +117,18 @@ test.describe('Public code isolation', () => {
 		);
 
 		expect(findForbiddenRequests(urls)).toEqual([]);
+	});
+
+	test('anonymous wishlist view requests no lazily loaded manager dialogs', async ({ page }) => {
+		const urls = await collectInitialRequestUrls(page, SEEDED_SHARED_WISHLIST_PATH, (p) =>
+			p.getByRole('heading', { level: 1 }).first(),
+		);
+
+		expect(
+			urls.filter((url) =>
+				LAZY_WISHLIST_DIALOG_MODULE_PATHS.some((path) => url.includes(path)),
+			),
+		).toEqual([]);
 	});
 
 	test('hover intent preloads the login route code from the landing page', async ({ page }) => {

@@ -31,9 +31,11 @@
 		wishlistTitle: string;
 		giftCount: number;
 		onshared?: () => void;
+		/** Overrides the sharing context's open state, so a lazy mount can open one frame later. */
+		open?: boolean;
 	}
 
-	let { wishlistId, wishlistTitle, giftCount, onshared }: ShareWizardProps = $props();
+	let { wishlistId, wishlistTitle, giftCount, onshared, open }: ShareWizardProps = $props();
 
 	const sharing = useSharing();
 	const styles = shareWizardVariants();
@@ -47,7 +49,7 @@
 	});
 
 	const step = $derived(sharing.wizardStep.current);
-	const isOpen = $derived(sharing.wizardOpen.current);
+	const isOpen = $derived(open ?? sharing.wizardOpen.current);
 	const shareUrl = $derived(sharing.shareUrl.current);
 	const shareUrlDisplay = $derived(sharing.shareUrlDisplay.current);
 	const shareMessage = $derived(buildShareMessage(wishlistTitle));

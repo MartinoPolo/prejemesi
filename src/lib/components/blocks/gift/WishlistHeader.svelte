@@ -37,6 +37,7 @@
 	import { wishlistImageUrl, wishlistSlotToFrameProps } from '$lib/modules/images/index.js';
 	import type { WishlistImageSlots } from '$lib/modules/images/index.js';
 	import WishlistSlotImage from '$lib/components/blocks/wishlist/WishlistSlotImage.svelte';
+	import { editRecipientDialogLoader } from '$lib/components/blocks/wishlist/lazy_dialog_loaders.js';
 	import type { WishlistThemeMotif } from '$lib/components/blocks/wishlist/wishlist_theme_scope.js';
 	import WishlistHeaderActions from './WishlistHeaderActions.svelte';
 	import OccasionCountdownText from './OccasionCountdownText.svelte';
@@ -365,6 +366,8 @@
 								intent="ghost"
 								aria-label={m.wishlist_edit_recipient_label()}
 								data-testid="edit-recipient-button"
+								onpointerenter={editRecipientDialogLoader.preload}
+								onfocus={editRecipientDialogLoader.preload}
 								onclick={oneditrecipient}
 							>
 								<PencilIcon />

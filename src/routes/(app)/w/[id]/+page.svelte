@@ -12,15 +12,21 @@
 	import WishlistGiftDisplay from '$lib/components/blocks/wishlist/WishlistGiftDisplay.svelte';
 	import { setWishlistStickyChrome } from '$lib/components/blocks/wishlist/wishlist_sticky_chrome.svelte.js';
 	import WishlistSelectionToolbar from '$lib/components/blocks/wishlist/WishlistSelectionToolbar.svelte';
-	import GiftBulkCopyDialog, {
+	import {
 		NEW_WISHLIST_DESTINATION,
 		type BulkCopyDestination,
-	} from '$lib/components/blocks/wishlist/GiftBulkCopyDialog.svelte';
-	import CreateWishlistModal, {
-		type CreatedWishlist,
-	} from '$lib/components/blocks/wishlist/CreateWishlistModal.svelte';
+	} from '$lib/components/blocks/wishlist/gift_bulk_copy_destination.js';
+	import type { CreatedWishlist } from '$lib/components/blocks/wishlist/CreateWishlistModal.svelte';
 	import GiftContextActions from '$lib/components/blocks/wishlist/GiftContextActions.svelte';
-	import WishlistAssistant from '$lib/components/blocks/chat/WishlistAssistant.svelte';
+	import { LazyDialog } from '$lib/components/derived/lazy-dialog/index.js';
+	import {
+		createWishlistModalLoader,
+		editRecipientDialogLoader,
+		giftBulkCopyDialogLoader,
+		wishlistAssistantLoader,
+		wishlistSettingsModalLoader,
+	} from '$lib/components/blocks/wishlist/lazy_dialog_loaders.js';
+	import ReleaseReservationFlow from '$lib/components/blocks/reservation/ReleaseReservationFlow.svelte';
 	import { setAssistantContext } from '$lib/modules/chat/assistant.context.svelte.js';
 	import {
 		NO_GIFT_LIVE_PREVIEWS,
@@ -30,7 +36,6 @@
 	import { getChatAvailability } from '$lib/modules/chat/chat.remote.js';
 	import { CHAT_AVAILABILITY } from '$lib/modules/chat/types.js';
 	import { cn } from '$lib/utils.js';
-	import ReleaseReservationFlow from '$lib/components/blocks/reservation/ReleaseReservationFlow.svelte';
 	import type {
 		GiftActionPlacementSnapshot,
 		GiftContextFinishPolicy,
@@ -48,8 +53,6 @@
 	import GiftCategoryQuickAddDialog, {
 		type GiftCategoryQuickAddTarget,
 	} from '$lib/components/blocks/gift/GiftCategoryQuickAddDialog.svelte';
-	import WishlistSettingsModal from '$lib/components/blocks/wishlist/WishlistSettingsModal.svelte';
-	import EditRecipientDialog from '$lib/components/blocks/wishlist/EditRecipientDialog.svelte';
 	import { ConfirmDialog } from '$lib/components/derived/confirm-dialog/index.js';
 	import * as Alert from '$lib/components/base/alert/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
@@ -85,7 +88,7 @@
 		recordWishlistVisit,
 	} from '$lib/modules/wishlists/wishlists.remote.js';
 	import { getGiftsByWishlistShortId } from '$lib/modules/gifts/gifts.remote.js';
-	import { PendingChangesBanner } from '$lib/components/blocks/change-proposals/index.js';
+	import PendingChangesBanner from '$lib/components/blocks/change-proposals/PendingChangesBanner.svelte';
 	import {
 		getPendingChangeProposals,
 		type PendingChangeProposalSummary,
@@ -162,7 +165,6 @@
 		resetDuplicateAwareImportState,
 		submitDuplicateAwareImport,
 	} from '$lib/modules/import/duplicate_aware_submission.js';
-	import { buildGiftCsv, giftCsvFilename, downloadGiftCsv } from '$lib/modules/import/index.js';
 	import { labelForGiftCategory } from '$lib/modules/gift-categories/types.js';
 	import {
 		giftCategoryChoices,
@@ -479,6 +481,15 @@
 			chatAvailability !== CHAT_AVAILABILITY.notAllowed &&
 			!isArchived,
 	);
+	// The assistant loads only for viewers it is offered to; without its chunk it stays hidden.
+	$effect(() => {
+		if (!chatOffered) {
+			return;
+		}
+		wishlistAssistantLoader.load().catch((thrown: unknown) => {
+			console.error('[assistant] lazy chunk failed to load', thrown);
+		});
+	});
 	const categoryOptions = $derived(categoriesQuery?.current ?? []);
 	const categoryActionOptions = $derived(
 		categoryOptions.map((category) => ({
@@ -1027,7 +1038,8 @@
 		invocation: GiftContextInvocation,
 		origin: GiftContextOrigin = 'card',
 	): boolean {
-		if (giftSelection.active || contextActionsFor(giftItem, origin).length === 0) {
+		const availableActions = contextActionsFor(giftItem, origin);
+		if (giftSelection.active || availableActions.length === 0) {
 			return false;
 		}
 		const viewportAtOpen = narrowViewport.current;
@@ -1216,6 +1228,8 @@
 		clearReorderSession();
 		giftSelection.enter(giftId);
 		void ensurePriorityLevels();
+		// Selection is the intent signal for the bulk copy dialog its toolbar opens.
+		giftBulkCopyDialogLoader.preload();
 	}
 
 	async function applyBulkAction(action: GiftBulkAction, hiddenConfirmed = false) {
@@ -1273,6 +1287,8 @@
 		}
 		bulkCopyReturnToActions = returnToActions ?? null;
 		bulkCopyOpen = true;
+		// The copy dialog offers creating the destination list.
+		createWishlistModalLoader.preload();
 		bulkCopyLoading = true;
 		bulkCopyDestinationId = '';
 		bulkCopyRemovesSources = false;
@@ -1971,20 +1987,28 @@
 	// Exports gift DATA ONLY (name/notes/links/price), mirroring the import columns
 	// for a round-trip. Never emits reservation state – the recipient must not infer
 	// it, and reservations are not gift-catalog data (DECISIONS.md).
-	function handleExport() {
-		const csv = buildGiftCsv(
-			gifts.map((gift) => ({
-				name: gift.name,
-				description: gift.description,
-				links: gift.links ?? [],
-				price: gift.price,
-				currency: gift.currency,
-				categoryLabels: gift.categories.map((category) =>
-					labelForGiftCategory(category, getLocale().startsWith('en') ? 'en' : 'cs'),
-				),
-			})),
-		);
-		downloadGiftCsv(csv, giftCsvFilename(wishlist.title, wishlist.shortId));
+	async function handleExport() {
+		try {
+			// The CSV writer bundles papaparse, which only managers exporting a list need.
+			const { buildGiftCsv, giftCsvFilename, downloadGiftCsv } =
+				await import('$lib/modules/import/gift_csv_export.js');
+			const csv = buildGiftCsv(
+				gifts.map((gift) => ({
+					name: gift.name,
+					description: gift.description,
+					links: gift.links ?? [],
+					price: gift.price,
+					currency: gift.currency,
+					categoryLabels: gift.categories.map((category) =>
+						labelForGiftCategory(category, getLocale().startsWith('en') ? 'en' : 'cs'),
+					),
+				})),
+			);
+			downloadGiftCsv(csv, giftCsvFilename(wishlist.title, wishlist.shortId));
+		} catch (thrown) {
+			console.error('[export] CSV export failed', thrown);
+			toastError(m.error_generic());
+		}
 	}
 
 	// ── Batch add handlers ───────────────────────────────────────────────────
@@ -2679,7 +2703,8 @@
 		/>
 	{/if}
 	<p class="sr-only" aria-live="polite" aria-atomic="true">{receivedAnnouncement}</p>
-	{#if chatOffered && chatAvailability !== undefined}
+	{#if chatOffered && chatAvailability !== undefined && wishlistAssistantLoader.component !== undefined}
+		{@const WishlistAssistant = wishlistAssistantLoader.component}
 		<WishlistAssistant
 			wishlistShortId={shortId}
 			wishlistTitle={wishlist.title}
@@ -2704,27 +2729,41 @@
 	}}
 />
 
-<GiftBulkCopyDialog
-	open={bulkCopyOpen}
-	destinations={bulkCopyDestinations}
-	selectedDestinationId={bulkCopyDestinationId}
-	selectedCount={selectionSnapshot.selectedIds.length}
-	loading={bulkCopyLoading}
-	submitting={bulkCopySubmitting}
-	onopenchange={handleBulkCopyOpenChange}
-	onback={bulkCopyReturnToActions === null ? undefined : returnFromBulkCopy}
-	ondestinationchange={(id) => (bulkCopyDestinationId = id)}
-	offerSourceRemoval={bulkCopyOffersSourceRemoval}
-	removeSources={bulkCopyRemovesSources}
-	onremovesourceschange={(removeSources) => (bulkCopyRemovesSources = removeSources)}
-	onconfirm={confirmBulkCopy}
-/>
+<LazyDialog
+	bind:open={() => bulkCopyOpen, handleBulkCopyOpenChange}
+	loader={giftBulkCopyDialogLoader}
+>
+	{#snippet children(GiftBulkCopyDialog, dialog)}
+		<GiftBulkCopyDialog
+			open={dialog.open}
+			destinations={bulkCopyDestinations}
+			selectedDestinationId={bulkCopyDestinationId}
+			selectedCount={selectionSnapshot.selectedIds.length}
+			loading={bulkCopyLoading}
+			submitting={bulkCopySubmitting}
+			onopenchange={(open) => (dialog.open = open)}
+			onback={bulkCopyReturnToActions === null ? undefined : returnFromBulkCopy}
+			ondestinationchange={(id) => (bulkCopyDestinationId = id)}
+			offerSourceRemoval={bulkCopyOffersSourceRemoval}
+			removeSources={bulkCopyRemovesSources}
+			onremovesourceschange={(removeSources) => (bulkCopyRemovesSources = removeSources)}
+			onconfirm={confirmBulkCopy}
+		/>
+	{/snippet}
+</LazyDialog>
 
-<CreateWishlistModal
+<LazyDialog
 	bind:open={() => bulkCopyCreateOpen, setBulkCopyCreateOpen}
-	demo={page.data.demoExpiresAt !== null}
-	oncreated={copyIntoCreatedWishlist}
-/>
+	loader={createWishlistModalLoader}
+>
+	{#snippet children(CreateWishlistModal, dialog)}
+		<CreateWishlistModal
+			bind:open={dialog.open}
+			demo={page.data.demoExpiresAt !== null}
+			oncreated={copyIntoCreatedWishlist}
+		/>
+	{/snippet}
+</LazyDialog>
 
 <ConfirmDialog
 	bind:open={hiddenConfirmOpen}
@@ -2821,35 +2860,47 @@
      the old /w/<id>/settings deep-link behavior. Navigating between wishlists reuses this page,
      so the key remounts the modal to drop the previous wishlist's settings drafts (#527). -->
 {#key wishlist.id}
-	<WishlistSettingsModal
+	<LazyDialog
 		bind:open={settingsModalOpen}
-		bind:activeTab={settingsModalTab}
-		{wishlist}
-		{canManage}
-		{role}
-		revertCapability={presentationRevertCapability}
-		recipientDisplayName={wishlist.recipientDisplayName}
-		{themeEmoji}
-		onsaved={async () => {}}
-		onpaletteselect={handlePaletteSelect}
-		onappearancepreview={handleAppearancePreview}
-		ondeleted={handleWishlistDeleted}
-		onimport={openImportWizard}
-		onexport={handleExport}
-		oneditrecipient={handleEditRecipientOpened}
-	/>
+		loader={wishlistSettingsModalLoader}
+		preloadWhenIdle={canManage}
+	>
+		{#snippet children(WishlistSettingsModal, dialog)}
+			<WishlistSettingsModal
+				bind:open={dialog.open}
+				bind:activeTab={settingsModalTab}
+				{wishlist}
+				{canManage}
+				{role}
+				revertCapability={presentationRevertCapability}
+				recipientDisplayName={wishlist.recipientDisplayName}
+				{themeEmoji}
+				onsaved={async () => {}}
+				onpaletteselect={handlePaletteSelect}
+				onappearancepreview={handleAppearancePreview}
+				ondeleted={handleWishlistDeleted}
+				onimport={openImportWizard}
+				onexport={() => void handleExport()}
+				oneditrecipient={handleEditRecipientOpened}
+			/>
+		{/snippet}
+	</LazyDialog>
 {/key}
 
 <!-- Shared recipient dialog (issue #150): linked lists get the one-way flip with consequence
      copy (linked recipient only); free-text lists get the plain rename (any správce). -->
-<EditRecipientDialog
-	bind:open={recipientEditDialogOpen}
-	wishlistId={wishlist.id}
-	isLinkedRecipient={!isForSomeoneElse}
-	recipientDisplayName={wishlist.recipientDisplayName}
-	isShared={wishlist.sharedAt !== null}
-	onchanged={handleRecipientChanged}
-/>
+<LazyDialog bind:open={recipientEditDialogOpen} loader={editRecipientDialogLoader}>
+	{#snippet children(EditRecipientDialog, dialog)}
+		<EditRecipientDialog
+			bind:open={dialog.open}
+			wishlistId={wishlist.id}
+			isLinkedRecipient={!isForSomeoneElse}
+			recipientDisplayName={wishlist.recipientDisplayName}
+			isShared={wishlist.sharedAt !== null}
+			onchanged={handleRecipientChanged}
+		/>
+	{/snippet}
+</LazyDialog>
 
 <!-- Archive confirmation dialog: archiving hides the list from the dashboards, so it asks first. -->
 <ConfirmDialog
