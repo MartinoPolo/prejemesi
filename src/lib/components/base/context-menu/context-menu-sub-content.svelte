@@ -26,7 +26,7 @@
 	data-slot="context-menu-sub-content"
 	class={cn(
 		slidingFadeScaleOverlayMotionClass,
-		'origin-(--bits-menu-content-transform-origin) bg-popover text-popover-foreground min-w-24 rounded-panel border-[2.5px] border-edge p-1.5 shadow-sticker duration-100 z-(--z-modal) w-auto overflow-x-hidden overflow-y-auto outline-none',
+		'origin-(--bits-menu-content-transform-origin) bg-popover text-popover-foreground min-w-24 rounded-panel border-[2.5px] border-edge p-1.5 shadow-sticker duration-100 z-(--z-modal) w-auto overflow-x-hidden overflow-y-auto overscroll-contain outline-none',
 		floatingDepthClearance,
 		className,
 	)}

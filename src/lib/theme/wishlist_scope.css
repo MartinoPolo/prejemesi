@@ -116,14 +116,17 @@
 }
 
 /* The sticky toolbar mask hides gifts scrolling beneath it. Over a backdrop it stays inside the
-   content column, so gutter art is never cut, and only blurs what scrolls under it. */
+   content column, so gutter art is never cut, and only blurs what scrolls under it. The blur
+   lives only here: over the opaque page colour it would be hidden yet still repaint every frame. */
 .wishlist-page-shell[data-wishlist-backdrop] .wishlist-toolbar-mask {
 	inline-size: min(100cqw, var(--content-max-width));
 	background: transparent;
+	backdrop-filter: blur(10px);
 }
 
 .wishlist-page-shell[data-wishlist-backdrop] .wishlist-toolbar-mask::after {
 	background: transparent;
+	backdrop-filter: blur(10px);
 }
 
 /* ── Dark mode: the wishlist carries its own colour ───────────────────

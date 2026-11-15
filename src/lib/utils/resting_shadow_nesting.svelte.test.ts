@@ -103,6 +103,52 @@ it('pairs Soft corners as a 12 px panel around 4 px controls', () => {
 	expect(tokens.getPropertyValue('--radius-btn').trim()).toBe('4px');
 });
 
+it('follows a border width change of every observed surface', async () => {
+	const panels = [document.createElement('div'), document.createElement('div')];
+	const geometries = panels.map((panel) => {
+		panel.style.cssText = 'box-sizing: border-box; border: 2px solid; width: 300px';
+		document.body.append(panel);
+		return restingShadowNesting(panel);
+	});
+	cleanups.push(() => {
+		for (const geometry of geometries) {
+			geometry.destroy();
+		}
+		for (const panel of panels) {
+			panel.remove();
+		}
+	});
+	// Lets the observer deliver its initial notification, so only the border change can update.
+	await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+	for (const panel of panels) {
+		panel.style.borderWidth = '4px';
+	}
+	for (const panel of panels) {
+		await expect.poll(() => panel.style.getPropertyValue('--nested-border-inline')).toBe('4px');
+		expect(panel.style.getPropertyValue('--nested-border-block')).toBe('4px');
+	}
+});
+
+it('keeps tracking a shared surface after another owner of it is destroyed', async () => {
+	const surface = document.createElement('div');
+	surface.style.cssText = 'box-sizing: border-box; border: 2px solid; width: 300px';
+	const owners = [document.createElement('div'), document.createElement('div')];
+	surface.append(...owners);
+	document.body.append(surface);
+	const [firstGeometry, secondGeometry] = owners.map((owner) =>
+		restingShadowNesting(owner, surface),
+	);
+	cleanups.push(() => {
+		secondGeometry.destroy();
+		surface.remove();
+	});
+	firstGeometry.destroy();
+	await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+	surface.style.borderWidth = '5px';
+	await expect.poll(() => owners[1].style.getPropertyValue('--nested-border-inline')).toBe('5px');
+	expect(owners[0].style.getPropertyValue('--nested-border-inline')).toBe('');
+});
+
 it('measures an explicit painted border and restores owner styles on teardown', () => {
 	const owner = document.createElement('div');
 	const paint = document.createElement('div');

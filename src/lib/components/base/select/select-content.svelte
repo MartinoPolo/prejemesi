@@ -48,7 +48,7 @@
 	>
 		<SelectPrimitive.Viewport
 			class={cn(
-				'min-h-0 w-full min-w-(--bits-select-anchor-width) flex-1 scroll-my-1 overflow-y-auto',
+				'min-h-0 w-full min-w-(--bits-select-anchor-width) flex-1 scroll-my-1 overflow-y-auto overscroll-contain',
 			)}
 		>
 			{@render children?.()}
