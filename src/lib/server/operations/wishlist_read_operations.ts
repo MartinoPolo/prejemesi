@@ -83,15 +83,13 @@ export const readWishlistOperation = defineOperation({
 	async run({ actor }, { wishlistShortId }) {
 		const database = getDb();
 		const row = await loadWishlistWithRecipient(database, wishlistShortId);
-		const role = await resolveWishlistRole(
-			actor === null ? null : { user: { id: actor.userId } },
-			row.wishlist,
-		);
-		const managerNames = await loadManagerNames(
-			database,
-			row.wishlist,
-			row.recipientDisplayName,
-		);
+		const [role, managerNames] = await Promise.all([
+			resolveWishlistRole(
+				actor === null ? null : { user: { id: actor.userId } },
+				row.wishlist,
+			),
+			loadManagerNames(database, row.wishlist, row.recipientDisplayName),
+		]);
 		const isAppAdministrator = actor?.isAppAdministrator ?? false;
 		const { capability: revertCapability } = await resolveRevertAccess(database, {
 			role,

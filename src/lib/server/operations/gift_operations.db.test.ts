@@ -23,7 +23,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vites
 import { and, eq, inArray } from 'drizzle-orm';
 import { getDb } from '$lib/server/db/index.js';
 import { priorityLevel } from '$lib/server/db/wishlist.schema.js';
-import { gift, reservation } from '$lib/server/db/gift.schema.js';
+import { gift, giftLike, reservation } from '$lib/server/db/gift.schema.js';
 import { giftRevision } from '$lib/server/db/gift_revision.schema.js';
 import { dispatchNotification } from '$lib/modules/notifications/notification_dispatcher.js';
 import { deleteObjectsBestEffort } from '$lib/server/storage/r2.js';
@@ -368,6 +368,50 @@ describe.skipIf(!DB_READY)('gift operation core [real DB]', () => {
 					'categories',
 				].sort(),
 			);
+		});
+
+		it('gives a reserving visitor their own reservation and every active like', async () => {
+			const { shortId, giftId } = await reservedListFixture(false);
+			const purchasedAt = new Date(Date.now() - MINUTE_MS);
+			await getDb()
+				.update(reservation)
+				.set({ purchasedAt })
+				.where(eq(reservation.giftId, giftId));
+			await getDb()
+				.insert(giftLike)
+				.values([
+					{ giftId, userId: RESERVER_ID },
+					{ giftId, userId: SECOND_RESERVER_ID },
+					{ giftId, userId: MANAGER_ID, deletedAt: new Date() },
+				]);
+			const [ownReservation] = await getDb()
+				.select({ id: reservation.id })
+				.from(reservation)
+				.where(eq(reservation.giftId, giftId));
+			const reserverActor = {
+				userId: RESERVER_ID,
+				userName: RESERVER_NAME,
+				channel: OPERATION_CHANNEL.ui,
+				isAppAdministrator: false,
+			};
+
+			const reserver = await executeOperation(reserverActor, readWishlistGiftsOperation, {
+				wishlistShortId: shortId,
+			});
+			expect(reserver.gifts[0]).toMatchObject({
+				likeCount: 2,
+				myReservationId: ownReservation?.id,
+				myReservationPurchasedAt: purchasedAt,
+			});
+
+			const visitor = await executeOperation(outsiderActor, readWishlistGiftsOperation, {
+				wishlistShortId: shortId,
+			});
+			expect(visitor.gifts[0]).toMatchObject({
+				likeCount: 2,
+				myReservationId: null,
+				myReservationPurchasedAt: null,
+			});
 		});
 
 		it('shows counts but no names to a self-promoted recipient and a visitor, names to správci', async () => {

@@ -220,11 +220,13 @@ export const readWishlistGiftsOperation = defineOperation({
 	async run({ actor }, { wishlistShortId }) {
 		const database = getDb();
 		const wishlistRow = await requireLiveWishlistRowByShortId(database, wishlistShortId);
-		const role = await resolveWishlistRole(
-			actor === null ? null : { user: { id: actor.userId } },
-			wishlistRow,
-		);
-		const giftRows = await loadGiftRows(database, wishlistRow.id);
+		const [role, giftRows] = await Promise.all([
+			resolveWishlistRole(
+				actor === null ? null : { user: { id: actor.userId } },
+				wishlistRow,
+			),
+			loadGiftRows(database, wishlistRow.id),
+		]);
 
 		if (hidesReservationState(role, wishlistRow.recipientIsModerator)) {
 			// Recipient without self-promote: no reservation data, no like counts (protects the surprise)
@@ -233,10 +235,15 @@ export const readWishlistGiftsOperation = defineOperation({
 		}
 
 		const giftIds = giftRows.map((row) => row.id);
+		const [reservationSummaries, likeCounts, viewerReservations] = await Promise.all([
+			loadReservationSummaries(database, giftIds),
+			loadLikeCounts(database, giftIds),
+			loadViewerReservations(database, giftIds, actor),
+		]);
 		const readings: VisitorGiftReadings = {
-			reservationSummaries: await loadReservationSummaries(database, giftIds),
-			likeCounts: await loadLikeCounts(database, giftIds),
-			viewerReservations: await loadViewerReservations(database, giftIds, actor),
+			reservationSummaries,
+			likeCounts,
+			viewerReservations,
 			includeReserverNames: canSeeReserverNames(role),
 		};
 		const visitorGifts: GiftForVisitor[] = giftRows.map((row) => toVisitorGift(row, readings));
