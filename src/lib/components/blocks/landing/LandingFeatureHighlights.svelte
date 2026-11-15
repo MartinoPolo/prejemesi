@@ -242,8 +242,13 @@
 	}
 
 	.share-icon:hover {
-		transform: translateY(-3px) rotate(-4deg);
 		background: var(--tint);
+	}
+
+	@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+		.share-icon:hover {
+			transform: translateY(-3px) rotate(-4deg);
+		}
 	}
 
 	.theme-swatch {
@@ -259,8 +264,10 @@
 		transition: transform 0.15s ease;
 	}
 
-	.theme-swatch:hover {
-		transform: rotate(-2deg) scale(1.05);
+	@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+		.theme-swatch:hover {
+			transform: rotate(-2deg) scale(1.05);
+		}
 	}
 
 	.theme-swatch-dot {

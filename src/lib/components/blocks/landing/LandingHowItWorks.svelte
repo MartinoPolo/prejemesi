@@ -79,12 +79,14 @@
 		transform: rotate(0.5deg);
 	}
 
-	.step:nth-child(odd):hover {
-		transform: rotate(-0.6deg) translateY(-4px);
-	}
+	@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+		.step:nth-child(odd):hover {
+			transform: rotate(-0.6deg) translateY(-4px);
+		}
 
-	.step:nth-child(even):hover {
-		transform: rotate(0.5deg) translateY(-4px);
+		.step:nth-child(even):hover {
+			transform: rotate(0.5deg) translateY(-4px);
+		}
 	}
 
 	/* Staggered pop-in on load (mockup .steps-grid reveal) */
