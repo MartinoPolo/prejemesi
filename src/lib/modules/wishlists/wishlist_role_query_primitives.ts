@@ -45,7 +45,10 @@ function mapWishlist(row: WishlistRow): Wishlist {
 	};
 }
 
-const activeReservationExists = sql`exists (select 1 from ${reservation} where ${reservation.giftId} = ${gift.id} and ${reservation.deletedAt} is null)`;
+/** Correlated to the gift row of `liveGiftCountSql`, so it is only valid as its filter. */
+function activeReservationExistsSql() {
+	return sql`exists (select 1 from ${reservation} where ${reservation.giftId} = ${gift.id} and ${reservation.deletedAt} is null)`;
+}
 
 /**
  * Counts the live gifts of the outer query's wishlist row, optionally narrowed by `giftFilter`.
@@ -53,7 +56,11 @@ const activeReservationExists = sql`exists (select 1 from ${reservation} where $
  * through its indexes instead of aggregating every gift for each dashboard query.
  */
 function liveGiftCountSql(giftFilter?: SQL) {
-	return sql<number>`(select count(*) from ${gift} where ${gift.wishlistId} = ${wishlist.id} and ${gift.deletedAt} is null${giftFilter === undefined ? sql`` : sql` and ${giftFilter}`})`;
+	const filter = giftFilter === undefined ? sql`` : sql` and ${giftFilter}`;
+	// Nested so Drizzle keeps the table qualifiers: a single-table select strips them from the
+	// top-level columns of a selected expression, which would bind `id` to the inner gift.
+	const subquery = sql`select count(*) from ${gift} where ${gift.wishlistId} = ${wishlist.id} and ${gift.deletedAt} is null${filter}`;
+	return sql<number>`(${subquery})`;
 }
 
 /** SQL for the linked account name or free-text recipient. Requires a left join on user. */
@@ -82,7 +89,7 @@ export function createModeratedRolePrimitives(currentUserId: string) {
 			wishlist,
 			recipientDisplayName: recipientDisplayNameSql(),
 			totalGifts: liveGiftCountSql(),
-			reservedGifts: liveGiftCountSql(activeReservationExists),
+			reservedGifts: liveGiftCountSql(activeReservationExistsSql()),
 		},
 		predicate: and(
 			eq(moderatorAssignment.userId, currentUserId),
@@ -133,7 +140,7 @@ export function createFollowedRolePrimitives(database: Database, currentUserId: 
 		projection: {
 			wishlist,
 			recipientDisplayName: recipientDisplayNameSql(),
-			availableGifts: liveGiftCountSql(sql`not ${activeReservationExists}`),
+			availableGifts: liveGiftCountSql(sql`not ${activeReservationExistsSql()}`),
 			myReservations: sql<number>`coalesce(${myReservations.count}, 0)`,
 			myPurchased: sql<number>`coalesce(${myReservations.purchasedCount}, 0)`,
 			unfollowedAt: wishlistFollower.unfollowedAt,

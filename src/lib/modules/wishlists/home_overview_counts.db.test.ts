@@ -10,10 +10,13 @@ import {
 	seedFixtureUsers,
 } from '$lib/server/operations/operations.db.test-setup.js';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { and, isNull } from 'drizzle-orm';
 import { getDb } from '$lib/server/db/index.js';
 import { reservation } from '$lib/server/db/gift.schema.js';
 import { wishlistFollower } from '$lib/server/db/follower.schema.js';
+import { wishlist } from '$lib/server/db/wishlist.schema.js';
 import { getHomeOverview } from './home_overview_service.js';
+import { createOwnRolePrimitives } from './wishlist_role_query_primitives.js';
 
 /**
  * Dashboard counts per role, against a real database: totals count live gifts, správci see gifts
@@ -23,16 +26,19 @@ import { getHomeOverview } from './home_overview_service.js';
 describe.skipIf(!DB_READY)('dashboard gift counts', () => {
 	let countedWishlistId = '';
 	let neighbourWishlistId = '';
+	let emptyWishlistId = '';
 
 	beforeAll(async () => {
 		await seedFixtureUsers();
 		countedWishlistId = (await createWishlistFixture({ sharedAt: new Date() })).id;
 		neighbourWishlistId = (await createWishlistFixture({ sharedAt: new Date() })).id;
+		emptyWishlistId = (await createWishlistFixture({ sharedAt: new Date() })).id;
 
 		await createGiftFixture(countedWishlistId);
 		const purchasedGiftId = await createGiftFixture(countedWishlistId);
 		const sharedGiftId = await createGiftFixture(countedWishlistId, { quantity: 3 });
 		const releasedGiftId = await createGiftFixture(countedWishlistId);
+		const otherReserverGiftId = await createGiftFixture(countedWishlistId);
 		const deletedGiftId = await createGiftFixture(countedWishlistId, { deletedAt: new Date() });
 		const neighbourReservedGiftId = await createGiftFixture(neighbourWishlistId);
 		await createGiftFixture(neighbourWishlistId);
@@ -44,12 +50,17 @@ describe.skipIf(!DB_READY)('dashboard gift counts', () => {
 				{ giftId: sharedGiftId, userId: RESERVER_ID },
 				{ giftId: sharedGiftId, userId: SECOND_RESERVER_ID },
 				{ giftId: releasedGiftId, userId: SECOND_RESERVER_ID, deletedAt: new Date() },
+				{ giftId: otherReserverGiftId, userId: SECOND_RESERVER_ID },
 				{ giftId: deletedGiftId, userId: RESERVER_ID },
 				{ giftId: neighbourReservedGiftId, userId: SECOND_RESERVER_ID },
 			]);
 		await getDb()
 			.insert(wishlistFollower)
-			.values({ wishlistId: countedWishlistId, userId: RESERVER_ID });
+			.values([
+				{ wishlistId: countedWishlistId, userId: RESERVER_ID },
+				{ wishlistId: neighbourWishlistId, userId: RESERVER_ID },
+				{ wishlistId: emptyWishlistId, userId: RESERVER_ID },
+			]);
 	});
 
 	afterAll(removeFixtureRows);
@@ -58,11 +69,25 @@ describe.skipIf(!DB_READY)('dashboard gift counts', () => {
 		const overview = await getHomeOverview(RECIPIENT_ID);
 		const totals = new Map(overview.own.items.map((item) => [item.id, item.totalGifts]));
 
-		expect(totals.get(countedWishlistId)).toBe(4);
+		expect(totals.get(countedWishlistId)).toBe(5);
 		expect(totals.get(neighbourWishlistId)).toBe(2);
+		expect(totals.get(emptyWishlistId)).toBe(0);
 	});
 
-	it('counts live and reserved gifts on managed wishlists', async () => {
+	it('counts live gifts when the own-role projection is selected from the wishlist table alone', async () => {
+		const ownRole = createOwnRolePrimitives(RECIPIENT_ID);
+		const rows = await getDb()
+			.select(ownRole.projection)
+			.from(wishlist)
+			.where(and(ownRole.predicate, isNull(wishlist.deletedAt)));
+		const totals = new Map(rows.map(ownRole.map).map((item) => [item.id, item.totalGifts]));
+
+		expect(totals.get(countedWishlistId)).toBe(5);
+		expect(totals.get(neighbourWishlistId)).toBe(2);
+		expect(totals.get(emptyWishlistId)).toBe(0);
+	});
+
+	it('counts live gifts and gifts reserved by anyone on managed wishlists', async () => {
 		const overview = await getHomeOverview(MANAGER_ID);
 		const counts = new Map(
 			overview.moderated.items.map((item) => [
@@ -71,15 +96,24 @@ describe.skipIf(!DB_READY)('dashboard gift counts', () => {
 			]),
 		);
 
-		expect(counts.get(countedWishlistId)).toEqual([4, 2]);
+		expect(counts.get(countedWishlistId)).toEqual([5, 3]);
 		expect(counts.get(neighbourWishlistId)).toEqual([2, 1]);
+		expect(counts.get(emptyWishlistId)).toEqual([0, 0]);
 	});
 
-	it('counts available gifts and the follower’s own reservations on followed wishlists', async () => {
+	it('counts gifts nobody reserved and the follower’s own reservations on followed wishlists', async () => {
 		const overview = await getHomeOverview(RESERVER_ID);
-		const followed = overview.followed.items.find((item) => item.id === countedWishlistId);
+		const followed = new Map(overview.followed.items.map((item) => [item.id, item]));
 
-		expect(followed).toMatchObject({ availableGifts: 2, myReservations: 2, myPurchased: 1 });
-		expect(overview.followed.items.map((item) => item.id)).not.toContain(neighbourWishlistId);
+		expect(followed.get(countedWishlistId)).toMatchObject({
+			availableGifts: 2,
+			myReservations: 2,
+			myPurchased: 1,
+		});
+		expect(followed.get(neighbourWishlistId)).toMatchObject({
+			availableGifts: 1,
+			myReservations: 0,
+		});
+		expect(followed.get(emptyWishlistId)).toMatchObject({ availableGifts: 0 });
 	});
 });
