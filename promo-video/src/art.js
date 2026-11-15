@@ -967,7 +967,11 @@
 				});
 			}
 			context.restore();
-			text(context, label, 26, 2, { size: 50, font: P.font.hand, color: C.deep });
+			text(context, label, 26, 2, {
+				size: Math.min(50, 400 / label.length),
+				font: P.font.hand,
+				color: C.deep,
+			});
 		});
 
 	art.stickyNote = (label = '?', color = C.sunPale, key = 'a') =>
@@ -2166,8 +2170,9 @@
 		});
 
 	/* ---------- the end card ---------- */
-	art.adSign = () =>
-		P.sprite('ad-sign', 320, 320, (context) => {
+	/* The English sign keeps its original key, whose length seeds the paper border. */
+	art.adSign = (title = 'ADS', note = 'buy now!!') =>
+		P.sprite(title === 'ADS' ? 'ad-sign' : `ad-sign-${title}`, 320, 320, (context) => {
 			for (const side of [-1, 1]) {
 				part(context, S.rect(side * 70 - 12, 40, 24, 110), C.kraftDark, {
 					seed: 1751 + side,
@@ -2180,8 +2185,12 @@
 				shade: 0,
 				line: 2,
 			});
-			text(context, 'ADS', 0, -38, { size: 92, font: P.font.display, weight: 700 });
-			text(context, 'buy now!!', 0, 26, { size: 36, font: P.font.hand, color: C.grey });
+			text(context, title, 0, -38, {
+				size: Math.min(92, 330 / title.length),
+				font: P.font.display,
+				weight: 700,
+			});
+			text(context, note, 0, 26, { size: 36, font: P.font.hand, color: C.grey });
 		});
 
 	art.magnifier = () =>
