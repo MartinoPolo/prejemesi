@@ -5,6 +5,7 @@
 	import { resolve } from '$app/paths';
 	import { onMount, tick } from 'svelte';
 	import { SvelteSet } from 'svelte/reactivity';
+	import { runExclusively } from '$lib/utils/run_exclusively.js';
 	import * as m from '$lib/paraglide/messages.js';
 	import { localizeInternalHref } from '$lib/i18n/locale.js';
 	import WishlistHeader from '$lib/components/blocks/gift/WishlistHeader.svelte';
@@ -1944,31 +1945,27 @@
 	}
 
 	async function handleReceived(giftId: string, received: boolean) {
-		if (receivedPendingGiftIds.has(giftId)) {
-			return;
-		}
-		const root = wishlistPageElement;
-		const source = root === null ? null : findGiftElement(root, giftId);
-		const invokingControl =
-			source?.contains(document.activeElement) === true ? document.activeElement : null;
-		const giftName = gifts.find((giftItem) => giftItem.id === giftId)?.name ?? '';
-		const receivingWishlistId = shortId;
-		receivedPendingGiftIds.add(giftId);
-		try {
-			await markGiftReceived({ giftId, received });
-			await settleReceivedGift(
-				root,
-				giftId,
-				invokingControl,
-				receivingWishlistId,
-				giftName,
-				received,
-			);
-		} catch (thrown) {
-			toastError(translateServerError(thrown));
-		} finally {
-			receivedPendingGiftIds.delete(giftId);
-		}
+		await runExclusively(receivedPendingGiftIds, giftId, async () => {
+			const root = wishlistPageElement;
+			const source = root === null ? null : findGiftElement(root, giftId);
+			const invokingControl =
+				source?.contains(document.activeElement) === true ? document.activeElement : null;
+			const giftName = gifts.find((giftItem) => giftItem.id === giftId)?.name ?? '';
+			const receivingWishlistId = shortId;
+			try {
+				await markGiftReceived({ giftId, received });
+				await settleReceivedGift(
+					root,
+					giftId,
+					invokingControl,
+					receivingWishlistId,
+					giftName,
+					received,
+				);
+			} catch (thrown) {
+				toastError(translateServerError(thrown));
+			}
+		});
 	}
 
 	function handleGiftModalClose() {
@@ -2310,22 +2307,18 @@
 	const unreservePendingGiftIds = new SvelteSet<string>();
 
 	async function handleUnreserve(giftItem: GiftForVisitor) {
-		if (
-			hideReservationState ||
-			giftItem.myReservationId === null ||
-			unreservePendingGiftIds.has(giftItem.id)
-		) {
+		const reservationId = giftItem.myReservationId;
+		if (hideReservationState || reservationId === null) {
 			return;
 		}
-		unreservePendingGiftIds.add(giftItem.id);
-		try {
-			await unreserveGift({ reservationId: giftItem.myReservationId });
-			toastSuccess(m.toast_gift_unreserved());
-		} catch (thrown) {
-			toastError(translateServerError(thrown));
-		} finally {
-			unreservePendingGiftIds.delete(giftItem.id);
-		}
+		await runExclusively(unreservePendingGiftIds, giftItem.id, async () => {
+			try {
+				await unreserveGift({ reservationId });
+				toastSuccess(m.toast_gift_unreserved());
+			} catch (thrown) {
+				toastError(translateServerError(thrown));
+			}
+		});
 	}
 
 	function handleContextPurchased(giftItem: GiftByRole) {

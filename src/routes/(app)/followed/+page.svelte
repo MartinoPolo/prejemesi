@@ -16,6 +16,7 @@
 		refollowWishlist,
 	} from '$lib/modules/wishlists/wishlists.remote.js';
 	import { toastSuccess, toastError } from '$lib/components/base/toast/index.js';
+	import { runExclusively } from '$lib/utils/run_exclusively.js';
 	import type { SortOption, ViewMode } from '$lib/modules/wishlists/dashboard_types.js';
 	import type { FollowedWishlist } from '$lib/modules/wishlists/dashboard_types.js';
 
@@ -50,19 +51,15 @@
 		successMessage: string,
 		errorMessage: string,
 	) {
-		if (followChangePendingIds.has(wishlistId)) {
-			return;
-		}
-		followChangePendingIds.add(wishlistId);
-		try {
-			// Single-flight: the updated list rides back on the command response.
-			await command(wishlistId);
-			toastSuccess(successMessage);
-		} catch {
-			toastError(errorMessage);
-		} finally {
-			followChangePendingIds.delete(wishlistId);
-		}
+		await runExclusively(followChangePendingIds, wishlistId, async () => {
+			try {
+				// Single-flight: the updated list rides back on the command response.
+				await command(wishlistId);
+				toastSuccess(successMessage);
+			} catch {
+				toastError(errorMessage);
+			}
+		});
 	}
 
 	function handleUnfollow(wishlistId: string) {
