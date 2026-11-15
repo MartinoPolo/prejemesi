@@ -852,6 +852,7 @@
 	"toast_wishlist_details_saved": "Podrobnosti seznamu byly uloženy",
 	"toast_wishlist_details_save_error": "Nepodařilo se uložit podrobnosti seznamu",
 	"wishlist_detail_unfollow": "Přestat sledovat",
+	"wishlist_detail_refollow": "Znovu sledovat",
 	"wishlist_detail_add_gift_label": "Přidat dárek",
 	"wishlist_detail_add_wish": "Přidat přání",
 	"wishlist_detail_loading_gifts": "Načítání přání...",

@@ -134,7 +134,7 @@
 								handleRefollow(wishlistItem.id);
 							}}
 						>
-							Znovu sledovat
+							{m.wishlist_detail_refollow()}
 						</Button>
 					{:else}
 						<Button
