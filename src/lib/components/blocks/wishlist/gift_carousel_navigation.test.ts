@@ -8,38 +8,33 @@ import {
 	visibleCardRange,
 } from './gift_carousel_navigation.js';
 
-/** Cards 100 px wide with a 10 px gap, the first starting at 12 px. */
-function cardEdges(count: number) {
-	return Array.from({ length: count }, (_, index) => ({
-		start: 12 + index * 110,
-		end: 112 + index * 110,
-	}));
-}
-
 describe('visibleCardRange (#640)', () => {
 	it('reports the 1-based first and last fully visible cards with the total', () => {
-		expect(visibleCardRange(cardEdges(5), 0, 240)).toEqual({ first: 1, last: 2, total: 5 });
+		expect(visibleCardRange([true, true, false, false, false])).toEqual({
+			first: 1,
+			last: 2,
+			total: 5,
+		});
 	});
 
 	it('ignores partly visible cards at either edge', () => {
-		expect(visibleCardRange(cardEdges(5), 60, 400)).toEqual({ first: 2, last: 3, total: 5 });
-	});
-
-	it('counts a card overhanging the visible box by at most 1 px as fully visible', () => {
-		expect(visibleCardRange(cardEdges(5), 13, 221)).toEqual({ first: 1, last: 2, total: 5 });
-		expect(visibleCardRange(cardEdges(5), 13.5, 221)).toEqual({ first: 2, last: 2, total: 5 });
+		expect(visibleCardRange([false, true, true, false, false])).toEqual({
+			first: 2,
+			last: 3,
+			total: 5,
+		});
 	});
 
 	it('is empty when every card fits', () => {
-		expect(visibleCardRange(cardEdges(2), 0, 375)).toBeNull();
+		expect(visibleCardRange([true, true])).toBeNull();
 	});
 
 	it('is empty when no card is fully visible', () => {
-		expect(visibleCardRange(cardEdges(3), 50, 130)).toBeNull();
+		expect(visibleCardRange([false, false, false])).toBeNull();
 	});
 
 	it('is empty without cards', () => {
-		expect(visibleCardRange([], 0, 375)).toBeNull();
+		expect(visibleCardRange([])).toBeNull();
 	});
 });
 

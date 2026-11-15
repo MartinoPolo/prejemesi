@@ -4,11 +4,6 @@ import type { Attachment } from 'svelte/attachments';
 const EDGE_TOLERANCE = 1;
 const SCROLL_END_TOLERANCE = 2;
 
-interface CardEdges {
-	start: number;
-	end: number;
-}
-
 export interface VisibleCardRange {
 	/** 1-based index of the first fully visible card. */
 	first: number;
@@ -18,29 +13,23 @@ export interface VisibleCardRange {
 }
 
 /**
- * The cards fully inside a row's visible box. Empty when every card fits, so the row has nothing
- * to scroll to, or when no card is whole.
+ * The cards fully inside a row's visible box, given each card's full visibility in row order.
+ * Empty when every card fits, so the row has nothing to scroll to, or when no card is whole.
  */
-export function visibleCardRange(
-	cards: readonly CardEdges[],
-	visibleStart: number,
-	visibleEnd: number,
-): VisibleCardRange | null {
-	const fullyVisibleIndexes = cards.flatMap((card, index) =>
-		card.start >= visibleStart - EDGE_TOLERANCE && card.end <= visibleEnd + EDGE_TOLERANCE
-			? [index]
-			: [],
+export function visibleCardRange(cardsFullyVisible: readonly boolean[]): VisibleCardRange | null {
+	const fullyVisibleIndexes = cardsFullyVisible.flatMap((fullyVisible, index) =>
+		fullyVisible ? [index] : [],
 	);
 	const firstIndex = fullyVisibleIndexes.at(0);
 	const lastIndex = fullyVisibleIndexes.at(-1);
 	if (
 		firstIndex === undefined ||
 		lastIndex === undefined ||
-		fullyVisibleIndexes.length === cards.length
+		fullyVisibleIndexes.length === cardsFullyVisible.length
 	) {
 		return null;
 	}
-	return { first: firstIndex + 1, last: lastIndex + 1, total: cards.length };
+	return { first: firstIndex + 1, last: lastIndex + 1, total: cardsFullyVisible.length };
 }
 
 /**
@@ -157,7 +146,8 @@ export function verticalScrollContainerOf(element: HTMLElement): HTMLElement | n
 
 /**
  * Reports the visible card range of a Carousel row as it scrolls or resizes. Attach it to the
- * row's track, whose parent is the native scroller and whose children are the slides.
+ * row's track, whose parent is the native scroller and whose children are the slides. An
+ * intersection observer reports only cards crossing an edge, so scrolling reads no layout.
  */
 export function trackVisibleCardRange(
 	onchange: (range: VisibleCardRange | null) => void,
@@ -167,22 +157,47 @@ export function trackVisibleCardRange(
 		if (scroller === null) {
 			return;
 		}
+		const fullyVisibleSlides = new Map<Element, boolean>();
 		const reportRange = () => {
-			const visibleBox = scroller.getBoundingClientRect();
-			const cards = Array.from(track.children, (slide) => {
-				const slideBox = slide.getBoundingClientRect();
-				return { start: slideBox.left, end: slideBox.right };
-			});
-			onchange(visibleCardRange(cards, visibleBox.left, visibleBox.right));
+			onchange(
+				visibleCardRange(
+					Array.from(track.children, (slide) => fullyVisibleSlides.get(slide) === true),
+				),
+			);
 		};
-		const resizeObserver = new ResizeObserver(reportRange);
-		resizeObserver.observe(scroller);
-		resizeObserver.observe(track);
-		scroller.addEventListener('scroll', reportRange, { passive: true });
-		reportRange();
+		// The inline root margin lets a card overhang the row by the subpixel edge tolerance. The
+		// root clips at the scroller's content box, so the gutter padding stays on the track.
+		const intersectionObserver = new IntersectionObserver(
+			(entries) => {
+				for (const entry of entries) {
+					fullyVisibleSlides.set(entry.target, entry.intersectionRatio >= 1);
+				}
+				reportRange();
+			},
+			{ root: scroller, rootMargin: `0px ${EDGE_TOLERANCE}px`, threshold: [0, 1] },
+		);
+		const observeSlides = () => {
+			const slides = new Set(track.children);
+			for (const slide of fullyVisibleSlides.keys()) {
+				if (!slides.has(slide)) {
+					intersectionObserver.unobserve(slide);
+					fullyVisibleSlides.delete(slide);
+				}
+			}
+			for (const slide of slides) {
+				if (!fullyVisibleSlides.has(slide)) {
+					fullyVisibleSlides.set(slide, false);
+					intersectionObserver.observe(slide);
+				}
+			}
+			reportRange();
+		};
+		const mutationObserver = new MutationObserver(observeSlides);
+		mutationObserver.observe(track, { childList: true });
+		observeSlides();
 		return () => {
-			resizeObserver.disconnect();
-			scroller.removeEventListener('scroll', reportRange);
+			intersectionObserver.disconnect();
+			mutationObserver.disconnect();
 		};
 	};
 }
