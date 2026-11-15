@@ -8,7 +8,8 @@
 	import PaletteSwitcher from '$lib/components/derived/palette-switcher/PaletteSwitcher.svelte';
 	import { LazyImportWizard, WIZARD_MODE } from '$lib/components/blocks/import/index.js';
 	import { NotificationBell } from '$lib/components/blocks/notification/index.js';
-	import { LazyDialog, lazyComponent } from '$lib/components/derived/lazy-dialog/index.js';
+	import { LazyDialog } from '$lib/components/derived/lazy-dialog/index.js';
+	import { createWishlistModalLoader } from '$lib/components/blocks/wishlist/lazy_dialog_loaders.js';
 	import LogoMark from './LogoMark.svelte';
 	import NavDropdown from './NavDropdown.svelte';
 	import type { NavDropdownItem } from './navbar_types.js';
@@ -275,12 +276,9 @@
 	let isImportWizardOpen = $state(false);
 
 	// The create dialog pulls in the date picker calendar, so it loads on intent, not with every page.
-	const createWishlistModal = lazyComponent(
-		() => import('$lib/components/blocks/wishlist/CreateWishlistModal.svelte'),
-	);
 	const preloadCreateWishlistModalOnIntent = {
-		onpointerenter: createWishlistModal.preload,
-		onfocus: createWishlistModal.preload,
+		onpointerenter: createWishlistModalLoader.preload,
+		onfocus: createWishlistModalLoader.preload,
 	};
 
 	// A single shared "which nav dropdown is open" index guarantees at most one of the three
@@ -300,18 +298,11 @@
 <header class="topbar">
 	<div class="topbar-inner">
 		{#if user}
-			<!-- svelte-ignore a11y_no_static_element_interactions (opening the menu only preloads
-			     the create dialog; the menu trigger inside stays fully accessible) -->
-			<div
-				class="contents"
-				onpointerdown={createWishlistModal.preload}
-				onfocusin={createWishlistModal.preload}
-			>
-				<MobileNav
-					navLinks={MOBILE_NAV_LINKS}
-					oncreate={() => (isCreateModalOpen = true)}
-				/>
-			</div>
+			<MobileNav
+				navLinks={MOBILE_NAV_LINKS}
+				oncreate={() => (isCreateModalOpen = true)}
+				oncreateintent={createWishlistModalLoader.preload}
+			/>
 		{/if}
 
 		<!-- Logo -->
@@ -452,10 +443,10 @@
 </header>
 
 {#if user}
-	<LazyDialog open={isCreateModalOpen} loader={createWishlistModal}>
-		{#snippet children(CreateWishlistModal)}
+	<LazyDialog bind:open={isCreateModalOpen} loader={createWishlistModalLoader}>
+		{#snippet children(CreateWishlistModal, dialog)}
 			<CreateWishlistModal
-				bind:open={isCreateModalOpen}
+				bind:open={dialog.open}
 				{demo}
 				onimport={demo ? undefined : () => (isImportWizardOpen = true)}
 			/>

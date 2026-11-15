@@ -6,12 +6,20 @@
 	let {
 		open = $bindable(false),
 		loader,
-	}: { open: boolean; loader: LazyComponent<typeof LoadedDialogFixture> } = $props();
+		preloadWhenIdle = false,
+		reloadPage,
+	}: {
+		open: boolean;
+		loader: LazyComponent<typeof LoadedDialogFixture>;
+		preloadWhenIdle?: boolean;
+		reloadPage?: () => void;
+	} = $props();
 </script>
 
+<button onclick={() => (open = true)}>trigger</button>
 <span data-testid="host-open">{open}</span>
-<LazyDialog {open} {loader}>
-	{#snippet children(LoadedDialog)}
-		<LoadedDialog bind:open title="Nastavení" />
+<LazyDialog bind:open {loader} {preloadWhenIdle} {reloadPage}>
+	{#snippet children(LoadedDialog, dialog)}
+		<LoadedDialog bind:open={dialog.open} title="Nastavení" />
 	{/snippet}
 </LazyDialog>

@@ -48,6 +48,7 @@
 	import WishlistSheetHeader from './WishlistSheetHeader.svelte';
 	import { isGiftCardColumnOptionAvailable } from './gift_card_grid_columns.js';
 	import { getWishlistStickyChrome } from './wishlist_sticky_chrome.svelte.js';
+	import { giftDraftDialogLoader } from './lazy_dialog_loaders.js';
 	import {
 		GIFT_CARD_COLUMN_OPTIONS,
 		GIFT_GROUPING_OPTIONS,
@@ -408,7 +409,15 @@
 		mobileOpenDisplayControl = control;
 	}
 
+	// Opening More is the intent signal for the batch add dialog it offers.
+	function preloadMoreActionDialogs(open: boolean) {
+		if (open && showManagementActions) {
+			giftDraftDialogLoader.preload();
+		}
+	}
+
 	function handleMobileMoreOpenChange(open: boolean) {
+		preloadMoreActionDialogs(open);
 		mobileMoreOpen = open;
 		if (!open) {
 			requestAnimationFrame(() => mobileMoreTrigger?.focus({ preventScroll: true }));
@@ -799,7 +808,7 @@
 {/snippet}
 
 {#snippet desktopMoreMenu()}
-	<DropdownMenu.Root>
+	<DropdownMenu.Root onOpenChange={preloadMoreActionDialogs}>
 		<DropdownMenu.Trigger>
 			{#snippet child({ props })}
 				<Button

@@ -17,13 +17,22 @@
 	interface MobileNavProps {
 		navLinks: readonly NavLink[];
 		oncreate?: () => void;
+		/** Opening the menu signals a likely create, so the create dialog can load ahead. */
+		oncreateintent?: () => void;
 	}
 
-	let { navLinks, oncreate }: MobileNavProps = $props();
+	let { navLinks, oncreate, oncreateintent }: MobileNavProps = $props();
 	let open = $state(false);
 </script>
 
-<Sheet.Root bind:open>
+<Sheet.Root
+	bind:open
+	onOpenChange={(nextOpen: boolean) => {
+		if (nextOpen) {
+			oncreateintent?.();
+		}
+	}}
+>
 	<Sheet.Trigger>
 		{#snippet child({ props })}
 			<Button

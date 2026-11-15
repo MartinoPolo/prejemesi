@@ -15,6 +15,11 @@
 	import WishlistSheetBody from '$lib/components/blocks/wishlist/WishlistSheetBody.svelte';
 	import WishlistSheetHeader from '$lib/components/blocks/wishlist/WishlistSheetHeader.svelte';
 	import * as m from '$lib/paraglide/messages.js';
+	import {
+		editRecipientDialogLoader,
+		moderatorPanelLoader,
+		wishlistSettingsModalLoader,
+	} from '$lib/components/blocks/wishlist/lazy_dialog_loaders.js';
 
 	interface Props {
 		canManage: boolean;
@@ -52,6 +57,22 @@
 		interactionsReady = true;
 	});
 
+	// Opening More is the intent signal for the dialogs its actions open.
+	function preloadMoreActionDialogs(menuOpen: boolean) {
+		if (!menuOpen) {
+			return;
+		}
+		if (onmoderators !== undefined) {
+			moderatorPanelLoader.preload();
+		}
+		if (canEditRecipient) {
+			editRecipientDialogLoader.preload();
+		}
+		if (canEditImage) {
+			wishlistSettingsModalLoader.preload();
+		}
+	}
+
 	function run(callback?: () => void) {
 		callback?.();
 		open = false;
@@ -71,6 +92,8 @@
 				aria-label={m.wishlist_settings_title()}
 				title={m.wishlist_settings_title()}
 				disabled={!interactionsReady}
+				onpointerenter={wishlistSettingsModalLoader.preload}
+				onfocus={wishlistSettingsModalLoader.preload}
 				onclick={onsettings}
 			>
 				<SettingsIcon />
@@ -78,7 +101,7 @@
 		{/if}
 		{#if canManage}
 			<div class="hidden sm:block">
-				<DropdownMenu.Root>
+				<DropdownMenu.Root onOpenChange={preloadMoreActionDialogs}>
 					<DropdownMenu.Trigger>
 						{#snippet child({ props })}
 							<Button
@@ -121,7 +144,7 @@
 				</DropdownMenu.Root>
 			</div>
 			<div class="sm:hidden">
-				<Sheet.Root bind:open>
+				<Sheet.Root bind:open onOpenChange={preloadMoreActionDialogs}>
 					<Sheet.Trigger>
 						{#snippet child({ props })}
 							<Button
