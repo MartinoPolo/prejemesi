@@ -1,6 +1,6 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { vi, describe, it, expect, beforeEach } from 'vitest';
+import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 
 const appTemplate = readFileSync(new URL('./app.html', import.meta.url), 'utf8');
 
@@ -174,6 +174,7 @@ vi.mock('better-auth/svelte-kit', () => ({
 import { handle, shouldPreloadAsset } from './hooks.server.js';
 import { CONTENT_SECURITY_POLICY_HEADER } from '$lib/server/content_security_policy.js';
 import { createAuth } from '$lib/server/auth.js';
+import { getTextDirection } from '$lib/paraglide/runtime';
 import { DEMO_CLEANUP_INTERVAL_MS, DEMO_COOKIE_NAME } from '$lib/server/demo/constants.js';
 
 const SESSION_USER = { id: 'user-1', email: 'user@example.com' };
@@ -775,6 +776,51 @@ describe('content security policy', () => {
 
 		expect(response.headers.get(CONTENT_SECURITY_POLICY_HEADER)).toBe(routePolicy);
 		expect(response.headers.get('x-frame-options')).toBe('DENY');
+	});
+});
+
+describe('server timing', () => {
+	let clock = 0;
+
+	beforeEach(() => {
+		clock = 0;
+		vi.spyOn(performance, 'now').mockImplementation(() => clock);
+		mockGetSession.mockImplementation(async () => {
+			clock += 25;
+			return { session: { id: 'session-1' }, user: SESSION_USER };
+		});
+		// The page transform runs inside the innermost resolve, so it stands in for render time.
+		vi.mocked(getTextDirection).mockImplementation(() => {
+			clock += 40;
+			return 'ltr';
+		});
+	});
+
+	afterEach(() => {
+		vi.mocked(getTextDirection).mockImplementation(() => 'ltr');
+		vi.restoreAllMocks();
+		delete privateEnvironment.ORIGIN;
+	});
+
+	it('reports the session lookup as auth and the innermost resolve as app outside production', async () => {
+		privateEnvironment.ORIGIN = 'http://localhost:8300';
+
+		const { response } = await runHandle(createEvent());
+
+		expect(response.headers.get('Server-Timing')).toBe(
+			'auth;dur=25.0, app;dur=40.0, total;dur=65.0',
+		);
+	});
+
+	it.each([
+		['the production origin', 'https://prejemesi.cz'],
+		['an unset origin', undefined],
+	])('sends no Server-Timing header on %s', async (_label, origin) => {
+		privateEnvironment.ORIGIN = origin;
+
+		const { response } = await runHandle(createEvent());
+
+		expect(response.headers.has('Server-Timing')).toBe(false);
 	});
 });
 
