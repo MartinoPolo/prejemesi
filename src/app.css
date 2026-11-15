@@ -1110,6 +1110,16 @@ html.dark {
 	}
 }
 
+/* gift_card_collection_layout.ts reads natural track heights without touching the inherited
+   track properties, which would restyle every card descendant twice per measurement. */
+[data-gift-card-measuring] [data-gift-card-track] {
+	min-height: auto !important;
+}
+
+[data-gift-card-measuring] [data-testid='gift-card-image-frame'] {
+	height: auto !important;
+}
+
 @theme inline {
 	--radius-sm: calc(var(--radius) - 4px);
 	--radius-md: calc(var(--radius) - 2px);

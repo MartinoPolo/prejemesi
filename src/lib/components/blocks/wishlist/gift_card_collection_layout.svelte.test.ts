@@ -6,7 +6,10 @@ import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assert
 import type { GiftImage } from '$lib/modules/gifts/gift_images.js';
 import { WISHLIST_ROLES } from '$lib/modules/wishlists/types.js';
 import { GIFT_CARD_LAYOUT_INERT_ATTRIBUTE } from '../gift/gift_card_layout_inert.js';
-import { giftCardCollectionLayout } from './gift_card_collection_layout.js';
+import {
+	giftCardCollectionLayout,
+	measureGiftCardCollectionLayoutNow,
+} from './gift_card_collection_layout.js';
 
 vi.mock('$env/dynamic/public', () => ({ env: {} }));
 
@@ -147,15 +150,16 @@ function galleryPhoto(fill: string): GiftImage {
 	};
 }
 
-/** Counts layout measurements: every measurement rewrites the collection's description flag. */
+/** Counts layout measurements: every measurement marks the collection as measuring once. */
 function countMeasurements(collection: HTMLElement): { readonly count: number } {
 	const counter = { count: 0 };
 	const observer = new MutationObserver((records) => {
-		counter.count += records.length;
+		counter.count += records.filter((record) => record.oldValue === null).length;
 	});
 	observer.observe(collection, {
 		attributes: true,
-		attributeFilter: ['data-gift-card-has-descriptions'],
+		attributeOldValue: true,
+		attributeFilter: ['data-gift-card-measuring'],
 	});
 	cleanups.push(() => observer.disconnect());
 	return counter;
@@ -203,4 +207,49 @@ it('skips re-measuring when a real gift card browses its gallery but not when th
 
 	collection.querySelector('[data-gift-card-track="title"]')!.classList.add('changed');
 	await expect.poll(() => measurements.count).toBeGreaterThan(0);
+});
+
+it('leaves the inherited track heights untouched when a re-measurement finds the same heights', async () => {
+	await page.viewport(1280, 720);
+	const collection = renderCollectionWithDepthPaddedActions();
+	await document.fonts.ready;
+	await nextLayout();
+	const measurements = countMeasurements(collection);
+	const styleWrites: MutationRecord[] = [];
+	const observer = new MutationObserver((records) => styleWrites.push(...records));
+	observer.observe(collection, { attributes: true, attributeFilter: ['style'], subtree: true });
+	cleanups.push(() => observer.disconnect());
+
+	collection.querySelector('[data-gift-card-track="actions"]')!.classList.add('unchanged-size');
+	await nextLayout();
+	expect(measurements.count).toBe(1);
+	expect(styleWrites).toHaveLength(0);
+	expectPixelsNear(
+		Number.parseFloat(collection.style.getPropertyValue('--gift-card-actions-track-height')),
+		20,
+	);
+});
+
+it('measures once when a direct measurement follows changes the observers already saw', async () => {
+	await page.viewport(1280, 720);
+	const collection = renderCollectionWithDepthPaddedActions();
+	await document.fonts.ready;
+	await nextLayout();
+	const measurements = countMeasurements(collection);
+	const actions = collection.querySelector('[data-gift-card-track="actions"]')!;
+
+	actions.classList.add('observed-before');
+	await Promise.resolve();
+	measureGiftCardCollectionLayoutNow(collection);
+	await nextLayout();
+	expect(measurements.count, 'change seen by the observer first').toBe(1);
+
+	actions.classList.add('measured-before');
+	measureGiftCardCollectionLayoutNow(collection);
+	await nextLayout();
+	expect(measurements.count, 'change measured before the observer ran').toBe(2);
+
+	actions.classList.add('after-direct');
+	await nextLayout();
+	expect(measurements.count, 'a later change still re-measures').toBe(3);
 });
