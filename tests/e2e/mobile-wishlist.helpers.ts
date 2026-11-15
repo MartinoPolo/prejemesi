@@ -93,6 +93,10 @@ export async function resetAllScroll(page: Page) {
 export async function waitForGiftAnimationsToSettle(page: Page) {
 	await page.evaluate(async () => {
 		await document.fonts.ready;
+		// Gift motion starts in the frame after a layout change is observed.
+		await new Promise<void>((resolve) =>
+			requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+		);
 		const animations = document
 			.getAnimations()
 			.filter(
