@@ -109,14 +109,23 @@ export async function startExitRecording(surface: Locator): Promise<{
 	};
 }
 
-export function expectStableExit(samples: readonly ExitSample[]): void {
+/**
+ * A closing surface stops taking input, except a modal backdrop, which keeps the page beneath inert
+ * until its exit animation ends.
+ */
+export function expectStableExit(
+	samples: readonly ExitSample[],
+	{ backdrop = false }: { backdrop?: boolean } = {},
+): void {
 	const closingSamples = samples.filter(
 		(sample) => sample.connected && sample.state === 'closed',
 	);
 	expect(closingSamples.length, 'the closing surface was observed').toBeGreaterThan(0);
 	expect(
-		closingSamples.every((sample) => sample.pointerEvents === 'none'),
-		'a closing surface is not interactive',
+		closingSamples.every((sample) => sample.pointerEvents === (backdrop ? 'auto' : 'none')),
+		backdrop
+			? 'a closing backdrop keeps blocking the page'
+			: 'a closing surface is not interactive',
 	).toBe(true);
 	expect(
 		closingSamples.some((sample) => sample.source === 'exit-end'),
