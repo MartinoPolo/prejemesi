@@ -202,11 +202,22 @@ const botProbeHandle: Handle = ({ event, resolve }) => {
 	return resolve(event);
 };
 
+// Every page renders Czech copy in DynaPuff and Geist, so their latin and latin-ext subsets
+// are critical; the wishlist heading fonts (Fraunces, Caveat) load lazily on first use.
+const CRITICAL_FONT_PATH = /\/(?:dynapuff|geist)-latin(?:-ext)?-wght-normal\.[^/]*woff2$/;
+
+export function shouldPreloadAsset({ type, path }: { type: string; path: string }): boolean {
+	if (type === 'font') {
+		return CRITICAL_FONT_PATH.test(path);
+	}
+	return type === 'js' || type === 'css';
+}
+
 const paraglideHandle: Handle = ({ event, resolve }) =>
 	paraglideMiddleware(event.request, ({ request: localizedRequest, locale }) => {
 		event.request = localizedRequest;
 		return resolve(event, {
-			preload: ({ type }) => type === 'js' || type === 'css' || type === 'font',
+			preload: shouldPreloadAsset,
 			transformPageChunk: ({ html }) =>
 				html
 					.replace('%paraglide.lang%', locale)

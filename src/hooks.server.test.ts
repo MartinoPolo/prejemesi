@@ -1,4 +1,5 @@
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 
 const appTemplate = readFileSync(new URL('./app.html', import.meta.url), 'utf8');
@@ -170,7 +171,7 @@ vi.mock('better-auth/svelte-kit', () => ({
 	),
 }));
 
-import { handle } from './hooks.server.js';
+import { handle, shouldPreloadAsset } from './hooks.server.js';
 import { CONTENT_SECURITY_POLICY_HEADER } from '$lib/server/content_security_policy.js';
 import { createAuth } from '$lib/server/auth.js';
 import { DEMO_CLEANUP_INTERVAL_MS, DEMO_COOKIE_NAME } from '$lib/server/demo/constants.js';
@@ -774,5 +775,86 @@ describe('content security policy', () => {
 
 		expect(response.headers.get(CONTENT_SECURITY_POLICY_HEADER)).toBe(routePolicy);
 		expect(response.headers.get('x-frame-options')).toBe('DENY');
+	});
+});
+
+describe('asset preloading', () => {
+	const fontPath = (name: string) => `/_app/immutable/assets/${name}.Cyz4smvr.woff2`;
+
+	it.each([
+		'dynapuff-latin-wght-normal',
+		'dynapuff-latin-ext-wght-normal',
+		'geist-latin-wght-normal',
+		'geist-latin-ext-wght-normal',
+	])('preloads %s, which every Czech page renders', (name) => {
+		expect(shouldPreloadAsset({ type: 'font', path: fontPath(name) })).toBe(true);
+	});
+
+	it.each([
+		'fraunces-latin-wght-normal',
+		'fraunces-latin-ext-wght-normal',
+		'caveat-latin-wght-normal',
+		'caveat-latin-ext-wght-normal',
+		'geist-cyrillic-wght-normal',
+		'geist-vietnamese-wght-normal',
+		'geist-latin-wght-italic',
+		'dynapuff-cyrillic-ext-wght-normal',
+	])('leaves %s to load through @font-face on first use', (name) => {
+		expect(shouldPreloadAsset({ type: 'font', path: fontPath(name) })).toBe(false);
+	});
+
+	it.each(['dynapuff', 'geist'])(
+		'matches the installed %s font files, so a package rename cannot silently stop preloading',
+		(family) => {
+			const fontFiles = readdirSync(
+				fileURLToPath(
+					new URL(
+						`../node_modules/@fontsource-variable/${family}/files`,
+						import.meta.url,
+					),
+				),
+			);
+			const preloaded = fontFiles.filter((file) =>
+				shouldPreloadAsset({
+					type: 'font',
+					path: fontPath(file.replace(/\.woff2$/, '')),
+				}),
+			);
+
+			expect(preloaded.sort()).toEqual([
+				`${family}-latin-ext-wght-normal.woff2`,
+				`${family}-latin-wght-normal.woff2`,
+			]);
+		},
+	);
+
+	it('applies the predicate to every rendered page', async () => {
+		interface PreloadOptions {
+			preload?: (input: { type: string; path: string }) => boolean;
+		}
+		const resolve = vi.fn<(event: unknown, options?: PreloadOptions) => Promise<Response>>(
+			async () => new Response('<html></html>', { headers: { 'content-type': 'text/html' } }),
+		);
+
+		await (handle as unknown as (input: unknown) => Promise<Response>)({
+			event: createEvent({ path: '/login' }),
+			resolve,
+		});
+
+		const options = resolve.mock.calls[0]?.[1];
+		const fraunces = { type: 'font', path: fontPath('fraunces-latin-wght-normal') };
+		const dynapuff = { type: 'font', path: fontPath('dynapuff-latin-wght-normal') };
+		expect(options?.preload?.(fraunces)).toBe(false);
+		expect(options?.preload?.(dynapuff)).toBe(true);
+	});
+
+	it('keeps preloading scripts and styles', () => {
+		expect(shouldPreloadAsset({ type: 'js', path: '/_app/immutable/chunks/a.js' })).toBe(true);
+		expect(shouldPreloadAsset({ type: 'css', path: '/_app/immutable/assets/0.css' })).toBe(
+			true,
+		);
+		expect(shouldPreloadAsset({ type: 'asset', path: '/_app/immutable/assets/a.svg' })).toBe(
+			false,
+		);
 	});
 });

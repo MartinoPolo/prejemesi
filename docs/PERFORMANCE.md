@@ -7,6 +7,7 @@ Public pages stay lean while the first in-app navigation stays fast:
 - **No unconditional preloading.** The root `+layout.svelte` does **not** eagerly `preloadCode()` any routes, so public and auth pages never pull authenticated app code up front.
 - **Intent-based preloading (everyone).** `<body data-sveltekit-preload-data="hover">` (in `src/app.html`) lets SvelteKit preload a route's code and data on hover or tap intent. Anonymous visitors on public wishlist pages rely on this alone.
 - **Selective idle-time preloading (authenticated only).** `(app)/+layout.svelte` warms only `/followed` from the overview (the observed dominant destination), or `/home` from another authenticated route. It uses `requestIdleCallback` with a bounded Safari timer fallback and skips idle preloading when the optional Network Information API reports data-saving mode, `slow-2g`, or `2g`. Hover and tap intent remain the fallback everywhere.
+- **Fonts.** `shouldPreloadAsset` in `src/hooks.server.ts` is the only font preload source: it preloads the DynaPuff and Geist latin and latin-ext files, which every Czech page renders above the fold. Other fonts (Fraunces and Caveat wishlist headings, other subsets) load through `@font-face` on first use.
 
 > **Not the same as Vite dev warmup.** `server.warmup.clientFiles` in `vite.config.ts` also lists the primary routes, but it only makes the local dev server compile those modules ahead of time and has no effect on what a browser fetches in production. Do **not** add an unconditional root-layout `preloadCode()` to match the warmup list.
 
