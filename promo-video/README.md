@@ -1,8 +1,10 @@
 # Přejeme si – promo films
 
 Procedurally drawn cut-paper animations: pure JavaScript on a canvas, with narration, music and
-foley. Each film lives in `films/<name>/` (`cs` Czech, `en` English); its `cues.json` is the single
-timing source for both the animation marks and the mix.
+foley. Each film lives in `films/<name>/` (`cs` Czech, `en` English, `en-v2` the longer English cut
+that also covers accounts and list managers, `en-v3` its revision with a second manager, `cs-v3` the
+Czech version of `en-v3`); its `cues.json` is the single timing source for both the animation marks
+and the mix.
 
 ## Commands
 
