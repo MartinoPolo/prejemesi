@@ -12,6 +12,7 @@
 	import type {
 		GiftByRole,
 		GiftForVisitor,
+		GiftUnreserveHandler,
 		GiftPriorityLevel,
 		CreateGiftInput,
 		UpdateGiftInput,
@@ -79,7 +80,7 @@
 		 *  modal for quantity/anonymous identity input, distinct from `onreserve`
 		 *  below (the reserve modal's own submit handler). */
 		ongiftreserve: (gift: GiftForVisitor) => void;
-		ongiftunreserve: (gift: GiftForVisitor) => void;
+		ongiftunreserve: GiftUnreserveHandler;
 		onreservemodalclose: () => void;
 		onreserve: (input: ReserveGiftInput) => void;
 		/** Optional – share/self-promote already sync the page via single-flight refreshes (issue #108). */

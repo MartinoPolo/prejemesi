@@ -10,6 +10,7 @@ import {
 	GIFT_GROUPING_OPTIONS,
 	type GiftByRole,
 	type GiftForVisitor,
+	type GiftUnreserveHandler,
 	type GiftGroupingOption,
 } from '$lib/modules/gifts/types.js';
 import type { WishlistRole } from '$lib/modules/wishlists/types.js';
@@ -29,7 +30,7 @@ export interface WishlistGiftCollectionProps {
 	reorderEnabled: boolean;
 	onedit: (gift: GiftByRole) => void;
 	onreserve: (gift: GiftForVisitor) => void;
-	onunreserve: (gift: GiftForVisitor) => void;
+	onunreserve: GiftUnreserveHandler;
 	onreceived: (giftId: string, received: boolean) => void;
 	receivedPendingGiftIds?: ReadonlySet<string>;
 	onreorderpreview: (orderedIds: string[]) => void;

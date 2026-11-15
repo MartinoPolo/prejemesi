@@ -1,12 +1,12 @@
 import type { GiftLivePreviewKind } from '$lib/components/blocks/change-proposals/change_row_model.js';
 import type { GiftActionPlacementSnapshot } from '$lib/components/blocks/wishlist/gift_context_invocation.js';
-import type { GiftByRole, GiftForVisitor } from '$lib/modules/gifts/types.js';
+import type { GiftByRole, GiftForVisitor, GiftUnreserveHandler } from '$lib/modules/gifts/types.js';
 import type { WishlistRole } from '$lib/modules/wishlists/types.js';
 
 /** Action handlers a gift presentation forwards to its browse actions footer. */
 export interface GiftBrowseActionHandlers {
 	onreserve?: (gift: GiftForVisitor) => void;
-	onunreserve?: (gift: GiftForVisitor) => void;
+	onunreserve?: GiftUnreserveHandler;
 	onreceived?: (giftId: string, received: boolean) => void;
 	onmore?: (anchor: HTMLButtonElement, placementSnapshot: GiftActionPlacementSnapshot) => void;
 }

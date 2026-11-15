@@ -16,6 +16,7 @@
 		type GiftByRole,
 		type GiftCardColumnOption,
 		type GiftForVisitor,
+		type GiftUnreserveHandler,
 		type GiftGroupingOption,
 		type GiftViewMode,
 	} from '$lib/modules/gifts/types.js';
@@ -53,7 +54,7 @@
 		reorderInteractionEnabled?: boolean;
 		onedit: (gift: GiftByRole) => void;
 		onreserve: (gift: GiftForVisitor) => void;
-		onunreserve: (gift: GiftForVisitor) => void;
+		onunreserve: GiftUnreserveHandler;
 		onreceived: (giftId: string, received: boolean) => void;
 		onaddgift: () => void;
 		onclearfilters: () => void;

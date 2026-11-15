@@ -4,7 +4,7 @@
 	import { Button } from '$lib/components/base/button/index.js';
 	import type { ControlSize } from '$lib/components/base/control_sizing.js';
 	import * as m from '$lib/paraglide/messages.js';
-	import type { GiftForVisitor } from '$lib/modules/gifts/types.js';
+	import type { GiftForVisitor, GiftUnreserveHandler } from '$lib/modules/gifts/types.js';
 	import { cn } from '$lib/utils.js';
 	import { STANDARD_EASING } from '$lib/motion/motion_tokens.js';
 
@@ -19,8 +19,7 @@
 		class?: string;
 		surfaceClass?: string;
 		onreserve?: (gift: GiftForVisitor) => void;
-		/** A returned promise keeps the cancel action disabled until it settles. */
-		onunreserve?: (gift: GiftForVisitor) => void | Promise<unknown>;
+		onunreserve?: GiftUnreserveHandler;
 	}
 
 	let {
