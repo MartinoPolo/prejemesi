@@ -6,9 +6,9 @@
 	import DarkModeToggle from '$lib/components/derived/dark-mode-toggle/DarkModeToggle.svelte';
 	import LanguageToggle from '$lib/components/derived/language-toggle/LanguageToggle.svelte';
 	import PaletteSwitcher from '$lib/components/derived/palette-switcher/PaletteSwitcher.svelte';
-	import { CreateWishlistModal } from '$lib/components/blocks/wishlist/index.js';
 	import { LazyImportWizard, WIZARD_MODE } from '$lib/components/blocks/import/index.js';
 	import { NotificationBell } from '$lib/components/blocks/notification/index.js';
+	import { LazyDialog, lazyComponent } from '$lib/components/derived/lazy-dialog/index.js';
 	import LogoMark from './LogoMark.svelte';
 	import NavDropdown from './NavDropdown.svelte';
 	import type { NavDropdownItem } from './navbar_types.js';
@@ -274,6 +274,15 @@
 	let isCreateModalOpen = $state(false);
 	let isImportWizardOpen = $state(false);
 
+	// The create dialog pulls in the date picker calendar, so it loads on intent, not with every page.
+	const createWishlistModal = lazyComponent(
+		() => import('$lib/components/blocks/wishlist/CreateWishlistModal.svelte'),
+	);
+	const preloadCreateWishlistModalOnIntent = {
+		onpointerenter: createWishlistModal.preload,
+		onfocus: createWishlistModal.preload,
+	};
+
 	// A single shared "which nav dropdown is open" index guarantees at most one of the three
 	// hover dropdowns is visible: opening one closes any sibling before its own grace-period
 	// close can fire.
@@ -291,7 +300,18 @@
 <header class="topbar">
 	<div class="topbar-inner">
 		{#if user}
-			<MobileNav navLinks={MOBILE_NAV_LINKS} oncreate={() => (isCreateModalOpen = true)} />
+			<!-- svelte-ignore a11y_no_static_element_interactions (opening the menu only preloads
+			     the create dialog; the menu trigger inside stays fully accessible) -->
+			<div
+				class="contents"
+				onpointerdown={createWishlistModal.preload}
+				onfocusin={createWishlistModal.preload}
+			>
+				<MobileNav
+					navLinks={MOBILE_NAV_LINKS}
+					oncreate={() => (isCreateModalOpen = true)}
+				/>
+			</div>
 		{/if}
 
 		<!-- Logo -->
@@ -330,6 +350,7 @@
 									<Button
 										intent="link"
 										size="sm"
+										{...preloadCreateWishlistModalOnIntent}
 										onclick={() => (isCreateModalOpen = true)}
 									>
 										<PlusIcon data-icon="inline-start" />
@@ -368,6 +389,7 @@
 					intent="primary"
 					size="md"
 					class="hidden min-[1040px]:inline-flex"
+					{...preloadCreateWishlistModalOnIntent}
 					onclick={() => (isCreateModalOpen = true)}
 				>
 					<PlusIcon data-icon="inline-start" />
@@ -378,6 +400,7 @@
 					format="icon"
 					class="min-[1040px]:hidden"
 					aria-label={m.nav_create()}
+					{...preloadCreateWishlistModalOnIntent}
 					onclick={() => (isCreateModalOpen = true)}
 				>
 					<PlusIcon />
@@ -429,11 +452,15 @@
 </header>
 
 {#if user}
-	<CreateWishlistModal
-		bind:open={isCreateModalOpen}
-		{demo}
-		onimport={demo ? undefined : () => (isImportWizardOpen = true)}
-	/>
+	<LazyDialog open={isCreateModalOpen} loader={createWishlistModal}>
+		{#snippet children(CreateWishlistModal)}
+			<CreateWishlistModal
+				bind:open={isCreateModalOpen}
+				{demo}
+				onimport={demo ? undefined : () => (isImportWizardOpen = true)}
+			/>
+		{/snippet}
+	</LazyDialog>
 	{#if !demo}<LazyImportWizard
 			bind:open={isImportWizardOpen}
 			mode={WIZARD_MODE.newList}

@@ -16,6 +16,7 @@
 	"create": "Create",
 	"close": "Close",
 	"done": "Done",
+	"dialog_loading": "Loading…",
 	"back_to_login": "Back to login",
 	"error_generic": "An error occurred. Please try again.",
 	"error_page_not_found_heading": "Page not found",

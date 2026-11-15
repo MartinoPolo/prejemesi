@@ -12,15 +12,13 @@
 	import WishlistGiftDisplay from '$lib/components/blocks/wishlist/WishlistGiftDisplay.svelte';
 	import { setWishlistStickyChrome } from '$lib/components/blocks/wishlist/wishlist_sticky_chrome.svelte.js';
 	import WishlistSelectionToolbar from '$lib/components/blocks/wishlist/WishlistSelectionToolbar.svelte';
-	import GiftBulkCopyDialog, {
+	import {
 		NEW_WISHLIST_DESTINATION,
 		type BulkCopyDestination,
-	} from '$lib/components/blocks/wishlist/GiftBulkCopyDialog.svelte';
-	import CreateWishlistModal, {
-		type CreatedWishlist,
-	} from '$lib/components/blocks/wishlist/CreateWishlistModal.svelte';
+	} from '$lib/components/blocks/wishlist/gift_bulk_copy_destination.js';
+	import type { CreatedWishlist } from '$lib/components/blocks/wishlist/CreateWishlistModal.svelte';
 	import GiftContextActions from '$lib/components/blocks/wishlist/GiftContextActions.svelte';
-	import WishlistAssistant from '$lib/components/blocks/chat/WishlistAssistant.svelte';
+	import { LazyDialog, lazyComponent } from '$lib/components/derived/lazy-dialog/index.js';
 	import { setAssistantContext } from '$lib/modules/chat/assistant.context.svelte.js';
 	import {
 		NO_GIFT_LIVE_PREVIEWS,
@@ -30,7 +28,6 @@
 	import { getChatAvailability } from '$lib/modules/chat/chat.remote.js';
 	import { CHAT_AVAILABILITY } from '$lib/modules/chat/types.js';
 	import { cn } from '$lib/utils.js';
-	import ReleaseReservationFlow from '$lib/components/blocks/reservation/ReleaseReservationFlow.svelte';
 	import type {
 		GiftActionPlacementSnapshot,
 		GiftContextFinishPolicy,
@@ -45,11 +42,7 @@
 	import { useNarrowViewportState } from '$lib/components/derived/narrow_viewport_state.svelte.js';
 	import WishlistPreparingNotice from '$lib/components/blocks/wishlist/WishlistPreparingNotice.svelte';
 	import WishlistModals from '$lib/components/blocks/wishlist/WishlistModals.svelte';
-	import GiftCategoryQuickAddDialog, {
-		type GiftCategoryQuickAddTarget,
-	} from '$lib/components/blocks/gift/GiftCategoryQuickAddDialog.svelte';
-	import WishlistSettingsModal from '$lib/components/blocks/wishlist/WishlistSettingsModal.svelte';
-	import EditRecipientDialog from '$lib/components/blocks/wishlist/EditRecipientDialog.svelte';
+	import type { GiftCategoryQuickAddTarget } from '$lib/components/blocks/gift/GiftCategoryQuickAddDialog.svelte';
 	import { ConfirmDialog } from '$lib/components/derived/confirm-dialog/index.js';
 	import * as Alert from '$lib/components/base/alert/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
@@ -85,7 +78,7 @@
 		recordWishlistVisit,
 	} from '$lib/modules/wishlists/wishlists.remote.js';
 	import { getGiftsByWishlistShortId } from '$lib/modules/gifts/gifts.remote.js';
-	import { PendingChangesBanner } from '$lib/components/blocks/change-proposals/index.js';
+	import PendingChangesBanner from '$lib/components/blocks/change-proposals/PendingChangesBanner.svelte';
 	import {
 		getPendingChangeProposals,
 		type PendingChangeProposalSummary,
@@ -162,7 +155,6 @@
 		resetDuplicateAwareImportState,
 		submitDuplicateAwareImport,
 	} from '$lib/modules/import/duplicate_aware_submission.js';
-	import { buildGiftCsv, giftCsvFilename, downloadGiftCsv } from '$lib/modules/import/index.js';
 	import { labelForGiftCategory } from '$lib/modules/gift-categories/types.js';
 	import {
 		giftCategoryChoices,
@@ -252,6 +244,27 @@
 	} as const;
 	type ReorderBaselineStatus =
 		(typeof REORDER_BASELINE_STATUS)[keyof typeof REORDER_BASELINE_STATUS];
+
+	// Manager-only and rarely opened dialogs load on first open, keeping them out of the page
+	// chunk that every visitor downloads.
+	const giftBulkCopyDialog = lazyComponent(
+		() => import('$lib/components/blocks/wishlist/GiftBulkCopyDialog.svelte'),
+	);
+	const createWishlistModal = lazyComponent(
+		() => import('$lib/components/blocks/wishlist/CreateWishlistModal.svelte'),
+	);
+	const giftCategoryQuickAddDialog = lazyComponent(
+		() => import('$lib/components/blocks/gift/GiftCategoryQuickAddDialog.svelte'),
+	);
+	const releaseReservationFlow = lazyComponent(
+		() => import('$lib/components/blocks/reservation/ReleaseReservationFlow.svelte'),
+	);
+	const wishlistSettingsModal = lazyComponent(
+		() => import('$lib/components/blocks/wishlist/WishlistSettingsModal.svelte'),
+	);
+	const editRecipientDialog = lazyComponent(
+		() => import('$lib/components/blocks/wishlist/EditRecipientDialog.svelte'),
+	);
 
 	let { data }: PageProps = $props();
 
@@ -1971,7 +1984,19 @@
 	// Exports gift DATA ONLY (name/notes/links/price), mirroring the import columns
 	// for a round-trip. Never emits reservation state – the recipient must not infer
 	// it, and reservations are not gift-catalog data (DECISIONS.md).
-	function handleExport() {
+	async function handleExport() {
+		// The CSV writer bundles papaparse, which only managers exporting a list need.
+		const csvExport = await import('$lib/modules/import/gift_csv_export.js').catch(
+			(thrown: unknown) => {
+				console.error('[export] CSV chunk failed to load', thrown);
+				return null;
+			},
+		);
+		if (csvExport === null) {
+			toastError(m.error_generic());
+			return;
+		}
+		const { buildGiftCsv, giftCsvFilename, downloadGiftCsv } = csvExport;
 		const csv = buildGiftCsv(
 			gifts.map((gift) => ({
 				name: gift.name,
@@ -2680,13 +2705,15 @@
 	{/if}
 	<p class="sr-only" aria-live="polite" aria-atomic="true">{receivedAnnouncement}</p>
 	{#if chatOffered && chatAvailability !== undefined}
-		<WishlistAssistant
-			wishlistShortId={shortId}
-			wishlistTitle={wishlist.title}
-			availability={chatAvailability}
-			rowContext={{ currentGifts: gifts, categories: categoryOptions, priorityLevels }}
-			{decidingProposals}
-		/>
+		{#await import('$lib/components/blocks/chat/WishlistAssistant.svelte') then { default: WishlistAssistant }}
+			<WishlistAssistant
+				wishlistShortId={shortId}
+				wishlistTitle={wishlist.title}
+				availability={chatAvailability}
+				rowContext={{ currentGifts: gifts, categories: categoryOptions, priorityLevels }}
+				{decidingProposals}
+			/>
+		{/await}
 	{/if}
 </div>
 
@@ -2704,27 +2731,35 @@
 	}}
 />
 
-<GiftBulkCopyDialog
-	open={bulkCopyOpen}
-	destinations={bulkCopyDestinations}
-	selectedDestinationId={bulkCopyDestinationId}
-	selectedCount={selectionSnapshot.selectedIds.length}
-	loading={bulkCopyLoading}
-	submitting={bulkCopySubmitting}
-	onopenchange={handleBulkCopyOpenChange}
-	onback={bulkCopyReturnToActions === null ? undefined : returnFromBulkCopy}
-	ondestinationchange={(id) => (bulkCopyDestinationId = id)}
-	offerSourceRemoval={bulkCopyOffersSourceRemoval}
-	removeSources={bulkCopyRemovesSources}
-	onremovesourceschange={(removeSources) => (bulkCopyRemovesSources = removeSources)}
-	onconfirm={confirmBulkCopy}
-/>
+<LazyDialog open={bulkCopyOpen} loader={giftBulkCopyDialog}>
+	{#snippet children(GiftBulkCopyDialog)}
+		<GiftBulkCopyDialog
+			open={bulkCopyOpen}
+			destinations={bulkCopyDestinations}
+			selectedDestinationId={bulkCopyDestinationId}
+			selectedCount={selectionSnapshot.selectedIds.length}
+			loading={bulkCopyLoading}
+			submitting={bulkCopySubmitting}
+			onopenchange={handleBulkCopyOpenChange}
+			onback={bulkCopyReturnToActions === null ? undefined : returnFromBulkCopy}
+			ondestinationchange={(id) => (bulkCopyDestinationId = id)}
+			offerSourceRemoval={bulkCopyOffersSourceRemoval}
+			removeSources={bulkCopyRemovesSources}
+			onremovesourceschange={(removeSources) => (bulkCopyRemovesSources = removeSources)}
+			onconfirm={confirmBulkCopy}
+		/>
+	{/snippet}
+</LazyDialog>
 
-<CreateWishlistModal
-	bind:open={() => bulkCopyCreateOpen, setBulkCopyCreateOpen}
-	demo={page.data.demoExpiresAt !== null}
-	oncreated={copyIntoCreatedWishlist}
-/>
+<LazyDialog open={bulkCopyCreateOpen} loader={createWishlistModal}>
+	{#snippet children(CreateWishlistModal)}
+		<CreateWishlistModal
+			bind:open={() => bulkCopyCreateOpen, setBulkCopyCreateOpen}
+			demo={page.data.demoExpiresAt !== null}
+			oncreated={copyIntoCreatedWishlist}
+		/>
+	{/snippet}
+</LazyDialog>
 
 <ConfirmDialog
 	bind:open={hiddenConfirmOpen}
@@ -2787,12 +2822,16 @@
 />
 
 {#if canCreateCategory}
-	<GiftCategoryQuickAddDialog
-		bind:open={categoryQuickAddOpen}
-		wishlistId={wishlist.id}
-		target={categoryQuickAddTarget}
-		categories={categoryOptions}
-	/>
+	<LazyDialog open={categoryQuickAddOpen} loader={giftCategoryQuickAddDialog} preloadWhenIdle>
+		{#snippet children(GiftCategoryQuickAddDialog)}
+			<GiftCategoryQuickAddDialog
+				bind:open={categoryQuickAddOpen}
+				wishlistId={wishlist.id}
+				target={categoryQuickAddTarget}
+				categories={categoryOptions}
+			/>
+		{/snippet}
+	</LazyDialog>
 {/if}
 
 <!-- After the gift editor so its portal stacks above it: the editor asks on the first change. -->
@@ -2808,12 +2847,17 @@
 />
 
 {#if releaseFlowGift !== null}
-	<ReleaseReservationFlow
-		bind:open={releaseFlowOpen}
-		giftId={releaseFlowGift.id}
-		giftName={releaseFlowGift.name}
-		returnFocusTo={releaseFlowGift.moreAnchor}
-	/>
+	{@const releasedGift = releaseFlowGift}
+	<LazyDialog open={releaseFlowOpen} loader={releaseReservationFlow}>
+		{#snippet children(ReleaseReservationFlow)}
+			<ReleaseReservationFlow
+				bind:open={releaseFlowOpen}
+				giftId={releasedGift.id}
+				giftName={releasedGift.name}
+				returnFocusTo={releasedGift.moreAnchor}
+			/>
+		{/snippet}
+	</LazyDialog>
 {/if}
 
 <!-- Per-wishlist settings modal (details / appearance / image). Mounted for every viewer:
@@ -2821,35 +2865,43 @@
      the old /w/<id>/settings deep-link behavior. Navigating between wishlists reuses this page,
      so the key remounts the modal to drop the previous wishlist's settings drafts (#527). -->
 {#key wishlist.id}
-	<WishlistSettingsModal
-		bind:open={settingsModalOpen}
-		bind:activeTab={settingsModalTab}
-		{wishlist}
-		{canManage}
-		{role}
-		revertCapability={presentationRevertCapability}
-		recipientDisplayName={wishlist.recipientDisplayName}
-		{themeEmoji}
-		onsaved={async () => {}}
-		onpaletteselect={handlePaletteSelect}
-		onappearancepreview={handleAppearancePreview}
-		ondeleted={handleWishlistDeleted}
-		onimport={openImportWizard}
-		onexport={handleExport}
-		oneditrecipient={handleEditRecipientOpened}
-	/>
+	<LazyDialog open={settingsModalOpen} loader={wishlistSettingsModal} preloadWhenIdle={canManage}>
+		{#snippet children(WishlistSettingsModal)}
+			<WishlistSettingsModal
+				bind:open={settingsModalOpen}
+				bind:activeTab={settingsModalTab}
+				{wishlist}
+				{canManage}
+				{role}
+				revertCapability={presentationRevertCapability}
+				recipientDisplayName={wishlist.recipientDisplayName}
+				{themeEmoji}
+				onsaved={async () => {}}
+				onpaletteselect={handlePaletteSelect}
+				onappearancepreview={handleAppearancePreview}
+				ondeleted={handleWishlistDeleted}
+				onimport={openImportWizard}
+				onexport={handleExport}
+				oneditrecipient={handleEditRecipientOpened}
+			/>
+		{/snippet}
+	</LazyDialog>
 {/key}
 
 <!-- Shared recipient dialog (issue #150): linked lists get the one-way flip with consequence
      copy (linked recipient only); free-text lists get the plain rename (any správce). -->
-<EditRecipientDialog
-	bind:open={recipientEditDialogOpen}
-	wishlistId={wishlist.id}
-	isLinkedRecipient={!isForSomeoneElse}
-	recipientDisplayName={wishlist.recipientDisplayName}
-	isShared={wishlist.sharedAt !== null}
-	onchanged={handleRecipientChanged}
-/>
+<LazyDialog open={recipientEditDialogOpen} loader={editRecipientDialog}>
+	{#snippet children(EditRecipientDialog)}
+		<EditRecipientDialog
+			bind:open={recipientEditDialogOpen}
+			wishlistId={wishlist.id}
+			isLinkedRecipient={!isForSomeoneElse}
+			recipientDisplayName={wishlist.recipientDisplayName}
+			isShared={wishlist.sharedAt !== null}
+			onchanged={handleRecipientChanged}
+		/>
+	{/snippet}
+</LazyDialog>
 
 <!-- Archive confirmation dialog: archiving hides the list from the dashboards, so it asks first. -->
 <ConfirmDialog

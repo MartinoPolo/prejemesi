@@ -1,10 +1,9 @@
 <script lang="ts">
 	import GiftDetailModal from '$lib/components/blocks/gift/GiftDetailModal.svelte';
-	import { GiftDraftDialog } from '$lib/components/blocks/gift-draft-grid/index.js';
 	import ReserveModal from '$lib/components/blocks/reservation/ReserveModal.svelte';
-	import ShareWizard from '$lib/components/blocks/sharing/ShareWizard.svelte';
-	import ModeratorPanel from '$lib/components/blocks/moderator/ModeratorPanel.svelte';
 	import LoginPromptDialog from '$lib/components/blocks/auth/LoginPromptDialog.svelte';
+	import { LazyDialog, lazyComponent } from '$lib/components/derived/lazy-dialog/index.js';
+	import { useSharing } from '$lib/modules/sharing/sharing.context.svelte.js';
 	import type {
 		GiftByRole,
 		GiftForVisitor,
@@ -139,6 +138,18 @@
 
 	// Reservation availability: everyone except the recipient (their own surprise) may reserve.
 	const canReserve = $derived(canReserveGift(role));
+
+	const sharing = useSharing();
+	// Manager-only dialogs stay out of the page chunk that every visitor downloads.
+	const shareWizard = lazyComponent(
+		() => import('$lib/components/blocks/sharing/ShareWizard.svelte'),
+	);
+	const moderatorPanel = lazyComponent(
+		() => import('$lib/components/blocks/moderator/ModeratorPanel.svelte'),
+	);
+	const giftDraftDialog = lazyComponent(
+		() => import('$lib/components/blocks/gift-draft-grid/GiftDraftDialog.svelte'),
+	);
 </script>
 
 <!-- Gift detail opens in edit mode for managers and read-only mode for everyone else. -->
@@ -189,32 +200,44 @@
 
 <!-- Share Wizard (managers only) -->
 {#if canManage && !demo}
-	<ShareWizard {wishlistId} {wishlistTitle} {giftCount} {onshared} />
+	<LazyDialog open={sharing.wizardOpen.current} loader={shareWizard} preloadWhenIdle>
+		{#snippet children(ShareWizard)}
+			<ShareWizard {wishlistId} {wishlistTitle} {giftCount} {onshared} />
+		{/snippet}
+	</LazyDialog>
 {/if}
 
 <!-- Správci panel (managers only) -->
 {#if canManage && !demo}
-	<ModeratorPanel
-		{wishlistId}
-		{recipientIsModerator}
-		bind:open={moderatorPanelOpen}
-		onselfpromoted={onmoderatorselfpromoted}
-	/>
+	<LazyDialog open={moderatorPanelOpen} loader={moderatorPanel} preloadWhenIdle>
+		{#snippet children(ModeratorPanel)}
+			<ModeratorPanel
+				{wishlistId}
+				{recipientIsModerator}
+				bind:open={moderatorPanelOpen}
+				onselfpromoted={onmoderatorselfpromoted}
+			/>
+		{/snippet}
+	</LazyDialog>
 {/if}
 
 <!-- Batch Add Gifts Dialog (managers only) -->
 {#if canManage}
-	<GiftDraftDialog
-		bind:open={batchAddDialogOpen}
-		{wishlistTitle}
-		isSubmitting={isBatchSubmitting}
-		priorityAvailable={priorityLevels.length >= 2}
-		{categoryOptions}
-		serverDuplicateCount={batchServerDuplicateCount}
-		onsubmit={onbatchsubmit}
-		onresetduplicatewarning={onbatchresetduplicatewarning}
-		onOpenChange={onbatchdialogopenchange}
-	/>
+	<LazyDialog open={batchAddDialogOpen} loader={giftDraftDialog} preloadWhenIdle>
+		{#snippet children(GiftDraftDialog)}
+			<GiftDraftDialog
+				bind:open={batchAddDialogOpen}
+				{wishlistTitle}
+				isSubmitting={isBatchSubmitting}
+				priorityAvailable={priorityLevels.length >= 2}
+				{categoryOptions}
+				serverDuplicateCount={batchServerDuplicateCount}
+				onsubmit={onbatchsubmit}
+				onresetduplicatewarning={onbatchresetduplicatewarning}
+				onOpenChange={onbatchdialogopenchange}
+			/>
+		{/snippet}
+	</LazyDialog>
 {/if}
 
 <!-- Login prompt (shown when an anonymous visitor taps the like heart) -->

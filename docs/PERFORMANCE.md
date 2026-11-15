@@ -16,6 +16,10 @@ Public pages stay lean while the first in-app navigation stays fast:
 - Local dev, `pnpm preview` and staging responses carry a `Server-Timing` header (`src/lib/server/server_timing.ts`), visible in the browser's network panel: `auth` (session lookup), `app` (only the innermost resolve: load functions and SSR render), `db` (summed duration of the request's queries, so overlapping pipelined queries can exceed wall time, with the query count in `desc`; BEGIN/COMMIT round trips are not counted) and `total` (time to response headers, so a streamed response's later chunks are excluded); unrecorded metrics are omitted.
 - Production sends no `Server-Timing`, because auth and database timings would be a side channel on real data. `exposesServerTiming` decides by the configured `ORIGIN`, not the request host, so preview URLs of production versions stay hidden too; an unset `ORIGIN` counts as production.
 
+## Lazy dialogs
+
+Anonymous visitors download the `(app)` layout and `/w/[id]`, so manager-only or rarely opened dialogs load on demand through `LazyDialog` with a `lazyComponent` loader (`src/lib/components/derived/lazy-dialog/`). Opening imports the chunk behind a loading state with retry and reload fallbacks; the loaded dialog then stays mounted, so closing animates and focus returns normally. Start the import on trigger intent (`loader.preload` on hover or focus) or with `preloadWhenIdle` for viewers likely to open it, so the dialog is mounted before its first open. Keep eager only what anonymous visitors need on first paint, such as the gift viewer and reserve flow. A runtime value exported from a dialog's `<script module>` pulls the whole component into the importer's chunk; move it to a plain module.
+
 ## Public code isolation
 
 [`tests/release/public-code-isolation.spec.ts`](../tests/release/public-code-isolation.spec.ts) fails when `/` or `/login` requests authenticated app code before user intent: `(app)` routes, the import, wishlist, gift and notification modules, or the app-shell navbar components. The Vite dev server serves source modules unbundled, so request URLs name the exact files a page pulls in.

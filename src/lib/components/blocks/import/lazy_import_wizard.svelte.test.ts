@@ -63,7 +63,7 @@ describe('LazyImportWizard', () => {
 		await screen.getByRole('button', { name: m.import_wizard_reload() }).click();
 		expect(reloadPage).toHaveBeenCalledOnce();
 		expect(consoleError).toHaveBeenCalledWith(
-			'[ImportWizard] lazy chunk failed to load',
+			'[LazyDialog] lazy chunk failed to load',
 			failure,
 		);
 		consoleError.mockRestore();

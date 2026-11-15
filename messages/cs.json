@@ -16,6 +16,7 @@
 	"create": "Vytvořit",
 	"close": "Zavřít",
 	"done": "Hotovo",
+	"dialog_loading": "Načítání…",
 	"back_to_login": "Zpět na přihlášení",
 	"error_generic": "Došlo k chybě. Zkuste to prosím znovu.",
 	"error_page_not_found_heading": "Stránka nebyla nalezena",
