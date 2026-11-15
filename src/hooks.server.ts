@@ -27,6 +27,7 @@ import {
 } from '$lib/config/site.js';
 import { ROBOTS_NOINDEX_CONTENT, shouldNoindexPath } from '$lib/seo/robots.js';
 import { requestTelemetryHandle } from '$lib/server/request_telemetry.js';
+import { measureServerTiming } from '$lib/server/server_timing.js';
 import {
 	CONTENT_SECURITY_POLICY_HEADER,
 	contentSecurityPolicy,
@@ -216,13 +217,15 @@ export function shouldPreloadAsset({ type, path }: { type: string; path: string 
 const paraglideHandle: Handle = ({ event, resolve }) =>
 	paraglideMiddleware(event.request, ({ request: localizedRequest, locale }) => {
 		event.request = localizedRequest;
-		return resolve(event, {
-			preload: shouldPreloadAsset,
-			transformPageChunk: ({ html }) =>
-				html
-					.replace('%paraglide.lang%', locale)
-					.replace('%paraglide.dir%', getTextDirection(locale)),
-		});
+		return measureServerTiming(event, 'app', () =>
+			resolve(event, {
+				preload: shouldPreloadAsset,
+				transformPageChunk: ({ html }) =>
+					html
+						.replace('%paraglide.lang%', locale)
+						.replace('%paraglide.dir%', getTextDirection(locale)),
+			}),
+		);
 	});
 
 function hasExplicitUrlLocale(url: URL) {
@@ -486,7 +489,9 @@ const authHandle: Handle = async ({ event, resolve }) => {
 	const { building } = await import('$app/environment');
 	const auth = createAuth(event);
 
-	const sessionData = await auth.api.getSession({ headers: event.request.headers });
+	const sessionData = await measureServerTiming(event, 'auth', () =>
+		auth.api.getSession({ headers: event.request.headers }),
+	);
 
 	if (sessionData) {
 		if (!isReservedDemoEmail(sessionData.user.email)) {

@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { RequestEvent } from '@sveltejs/kit';
 import { createRequestTelemetryHandle } from './request_telemetry.js';
+import { measureServerTiming } from './server_timing.js';
 
 function createEvent(): RequestEvent {
 	return {
@@ -11,10 +12,56 @@ function createEvent(): RequestEvent {
 		}),
 		route: { id: '/[[lang=locale]]/w/[id]' },
 		platform: { env: { CF_VERSION_METADATA: { id: 'version-123' } } },
+		locals: {},
 	} as unknown as RequestEvent;
 }
 
 describe('request telemetry', () => {
+	it('sets a Server-Timing header with the total request duration', async () => {
+		const handle = createRequestTelemetryHandle({
+			write: vi.fn(),
+			now: vi.fn().mockReturnValueOnce(100).mockReturnValueOnce(112.64),
+		});
+
+		const response = await handle({
+			event: createEvent(),
+			resolve: vi.fn().mockResolvedValue(new Response('ok')),
+		});
+
+		expect(response.headers.get('Server-Timing')).toBe('total;dur=12.6');
+	});
+
+	it('includes timings recorded while resolving the request', async () => {
+		const handle = createRequestTelemetryHandle({
+			write: vi.fn(),
+			now: vi.fn().mockReturnValueOnce(0).mockReturnValueOnce(30),
+		});
+
+		const response = await handle({
+			event: createEvent(),
+			resolve: (event) =>
+				measureServerTiming({ ...event }, 'app', () => new Response('rendered')),
+		});
+
+		expect(response.headers.get('Server-Timing')).toMatch(/^app;dur=\d+\.\d, total;dur=30\.0$/);
+	});
+
+	it('returns a response with immutable headers unchanged', async () => {
+		const handle = createRequestTelemetryHandle({
+			write: vi.fn(),
+			now: vi.fn().mockReturnValueOnce(0).mockReturnValueOnce(1),
+		});
+		const immutableResponse = Response.redirect('https://prejemesi.cz/home', 303);
+
+		const response = await handle({
+			event: createEvent(),
+			resolve: vi.fn().mockResolvedValue(immutableResponse),
+		});
+
+		expect(response).toBe(immutableResponse);
+		expect(response.headers.get('Server-Timing')).toBeNull();
+	});
+
 	it('writes privacy-safe start and completion records', async () => {
 		const write = vi.fn();
 		const now = vi.fn().mockReturnValueOnce(100).mockReturnValueOnce(112.6);

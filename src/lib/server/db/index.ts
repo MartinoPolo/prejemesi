@@ -6,6 +6,7 @@ import type { RequestEvent } from '@sveltejs/kit';
 import * as schema from './schema.js';
 import { resolveDatabaseUrl } from '$lib/config/runtime_environment.js';
 import { MAX_OPERATION_BATCH_STEPS } from '$lib/server/operations/constants.js';
+import { recordDatabaseQuery } from '$lib/server/server_timing.js';
 
 function getHyperdriveConnectionString(event: RequestEvent | undefined): string | undefined {
 	return event?.platform?.env?.HYPERDRIVE?.connectionString as string | undefined;
@@ -32,6 +33,36 @@ export function isDatabaseConfigured(event?: RequestEvent): boolean {
 type PostgresClient = ReturnType<typeof postgres>;
 
 /**
+ * postgres.js queries run lazily when first awaited, and `.values()`/`.raw()` return the query
+ * itself, so an own `then` times each query exactly once however it is chained. A Proxy would not
+ * do: the query's `catch`, `finally` and `handle` would run with the Proxy as `this` and hand it to
+ * the connection internals.
+ */
+function withQueryTiming<TQuery extends PromiseLike<unknown>>(query: TQuery): TQuery {
+	const originalThen = query.then;
+	let timedResult: PromiseLike<unknown> | undefined;
+	const timedThen: PromiseLike<unknown>['then'] = (onFulfilled, onRejected) => {
+		if (timedResult === undefined) {
+			const startedAt = performance.now();
+			const recordQuery = () => recordDatabaseQuery(performance.now() - startedAt);
+			timedResult = originalThen.call(
+				query,
+				(rows) => {
+					recordQuery();
+					return rows;
+				},
+				(failure: unknown) => {
+					recordQuery();
+					throw failure;
+				},
+			);
+		}
+		return timedResult.then(onFulfilled, onRejected);
+	};
+	return Object.assign(query, { then: timedThen });
+}
+
+/**
  * Makes every statement Drizzle sends a named prepared statement, in transactions and savepoints
  * too. Drizzle sends through `unsafe`, which postgres.js leaves unprepared; an unprepared statement
  * with parameters waits a round trip to describe them before it runs, so it costs two round trips
@@ -39,14 +70,16 @@ type PostgresClient = ReturnType<typeof postgres>;
  * that unprepared ones can hang in its transaction pooling. The client must enable `prepare` too:
  * a connection without it ignores the per-statement option.
  */
-function withPreparedStatements<TClient extends Pick<PostgresClient, 'unsafe'>>(
+export function withPreparedStatements<TClient extends Pick<PostgresClient, 'unsafe'>>(
 	client: TClient,
 ): TClient {
 	return new Proxy(client, {
 		get(target, property, receiver) {
 			if (property === 'unsafe') {
 				return (query: string, parameters?: never[], options?: object) =>
-					target.unsafe(query, parameters, { prepare: true, ...options });
+					withQueryTiming(
+						target.unsafe(query, parameters, { prepare: true, ...options }),
+					);
 			}
 			if (property === 'begin' || property === 'savepoint') {
 				return (...parameters: unknown[]) => {

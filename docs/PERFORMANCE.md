@@ -11,6 +11,10 @@ Public pages stay lean while the first in-app navigation stays fast:
 
 > **Not the same as Vite dev warmup.** `server.warmup.clientFiles` in `vite.config.ts` also lists the primary routes, but it only makes the local dev server compile those modules ahead of time and has no effect on what a browser fetches in production. Do **not** add an unconditional root-layout `preloadCode()` to match the warmup list.
 
+## Server timing
+
+- Every response carries a `Server-Timing` header (`src/lib/server/server_timing.ts`), visible in the browser's network panel: `auth` (session lookup), `app` (load functions and SSR render), `db` (summed duration of the request's queries, so overlapping pipelined queries can exceed wall time, with the query count in `desc`) and `total`; unrecorded metrics are omitted.
+
 ## Public code isolation
 
 [`tests/release/public-code-isolation.spec.ts`](../tests/release/public-code-isolation.spec.ts) fails when `/` or `/login` requests authenticated app code before user intent: `(app)` routes, the import, wishlist, gift and notification modules, or the app-shell navbar components. The Vite dev server serves source modules unbundled, so request URLs name the exact files a page pulls in.
