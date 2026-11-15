@@ -98,7 +98,6 @@
 	import {
 		reserveGift,
 		unreserveGift,
-		setReservationPurchased,
 		getReservationLedgerForWishlist,
 	} from '$lib/modules/reservations/reservations.remote.js';
 	import { setReservationsContext } from '$lib/modules/reservations/reservations.context.svelte.js';
@@ -137,6 +136,7 @@
 		IMAGE_EDITOR_MODES,
 	} from '$lib/modules/images/editor_modes.js';
 	import { untrack } from 'svelte';
+	import { scheduleIdle } from '$lib/utils/schedule_idle.js';
 	import {
 		dismissToast,
 		showToast,
@@ -286,10 +286,6 @@
 	// Opens the "log in to like" prompt when an anonymous visitor taps the heart.
 	let authPromptOpen = $state(false);
 
-	// Client-only presentation state. It never enters a remote command or persisted preference.
-	let recipientViewPreview = $state(false);
-	let recipientPreviewWishlistShortId = $state<string | null>(null);
-
 	// ── Context setup (must be synchronous – before any await) ───────────────
 
 	// False until mount, so a saved mobile-only Carousel hydrates as the server-rendered Card.
@@ -409,14 +405,13 @@
 		}
 	});
 
-	$effect(() => {
-		if (recipientPreviewWishlistShortId !== shortId) {
-			recipientPreviewWishlistShortId = shortId;
-			recipientViewPreview = false;
-		}
-		if (role === 'recipient' && recipientViewPreview) {
-			recipientViewPreview = false;
-		}
+	// Client-only presentation state. It never enters a remote command or persisted preference,
+	// and resets when another list opens or the viewer's role changes. Recipients can never turn it
+	// on (handleRecipientViewPreviewChange), so a role change is the only recipient reset needed.
+	let recipientViewPreview = $derived.by(() => {
+		void shortId;
+		void role;
+		return false;
 	});
 
 	// One wishlist-level ledger replaces the former request per reserved gift. Unauthorized
@@ -508,7 +503,7 @@
 		categoryQuickAddTarget = target;
 		categoryQuickAddOpen = true;
 	}
-	let priorityLevels = $state<Awaited<ReturnType<typeof getPriorityLevels>>>([]);
+	let priorityLevels = $state.raw<Awaited<ReturnType<typeof getPriorityLevels>>>([]);
 	let priorityLevelsOwnerWishlistId = $state<string | null>(null);
 	let priorityLevelsWishlistId = $state<string | null>(null);
 	let priorityLevelsRequestedForWishlistId = $state<string | null>(null);
@@ -841,7 +836,9 @@
 	const visibleGiftIds = $derived(displayedGifts.map((giftItem) => giftItem.id));
 	const selectionSnapshot = $derived(giftSelection.snapshot(visibleGiftIds));
 	const selectedGiftRows = $derived(
-		gifts.filter((giftItem) => giftSelection.isSelected(giftItem.id)),
+		giftSelection.active
+			? gifts.filter((giftItem) => giftSelection.isSelected(giftItem.id))
+			: [],
 	);
 	function commonSelectionValue<Value>(values: Value[]): Value | undefined {
 		if (values.length === 0) {
@@ -880,7 +877,7 @@
 	let bulkCopySubmitting = $state(false);
 	let bulkCopyDestinationId = $state('');
 	let bulkCopyReturnToActions = $state<(() => void) | null>(null);
-	let bulkCopyDestinations = $state<BulkCopyDestination[]>([]);
+	let bulkCopyDestinations = $state.raw<BulkCopyDestination[]>([]);
 	let bulkCopyCreateOpen = $state(false);
 	// Set only for a list created by this flow, which a failed copy deletes while still empty (issue #557).
 	let bulkCopyCreatedDestination = $state<CreatedWishlist | null>(null);
@@ -945,7 +942,12 @@
 		selectedPresentationGift !== null && activeContextGiftId === selectedPresentationGift.id,
 	);
 
-	$effect(() => giftSelection.reconcileExisting(gifts.map((giftItem) => giftItem.id)));
+	// Exiting selection clears it, so only an active selection can hold removed gifts.
+	$effect(() => {
+		if (giftSelection.active) {
+			giftSelection.reconcileExisting(gifts.map((giftItem) => giftItem.id));
+		}
+	});
 	$effect(() => {
 		const session = contextSession;
 		if (
@@ -975,7 +977,7 @@
 			canReserve: ownsReservation || !giftItem.isFullyReserved,
 			ownsReservation,
 			canTrackPurchased: canTrackPurchase({ isAuthenticated, isArchived, ownsReservation }),
-			purchased: giftItem.myReservationPurchasedAt !== null,
+			purchased: giftsContext.purchased.isPurchased(giftItem),
 		};
 	}
 
@@ -1491,6 +1493,19 @@
 		}
 	});
 
+	// Warm priority levels while idle so the first gift modal opens without waiting on the fetch.
+	const PRIORITY_LEVELS_IDLE_PREFETCH_TIMEOUT_MS = 3_000;
+	$effect(() => {
+		if (!canManage) {
+			return;
+		}
+		const targetWishlistId = wishlist.id;
+		return scheduleIdle(
+			() => void ensurePriorityLevels(targetWishlistId),
+			PRIORITY_LEVELS_IDLE_PREFETCH_TIMEOUT_MS,
+		);
+	});
+
 	// ── Computed: can user edit/delete the selected gift? ────────────────────
 
 	// Ticking clock driving the live grace countdown + re-lock (issue #83); seeded now, advanced by
@@ -1961,20 +1976,34 @@
 		selectedGift = null;
 	}
 
+	let unfollowPending = $state(false);
+
+	const rowContext = $derived({
+		currentGifts: gifts,
+		categories: categoryOptions,
+		priorityLevels,
+	});
+
 	async function handleUnfollow() {
+		if (unfollowPending) {
+			return;
+		}
+		unfollowPending = true;
 		try {
 			await unfollowWishlist(wishlist.id);
 			toastSuccess(m.toast_unfollowed());
 		} catch (thrown) {
 			console.error('Failed to unfollow:', thrown);
 			toastError(m.toast_unfollow_error());
+		} finally {
+			unfollowPending = false;
 		}
 	}
 
 	// ── Import wizard handlers ───────────────────────────────────────────────
 
 	const importExistingGifts = $derived(
-		gifts.map((gift) => ({ name: gift.name, links: gift.links ?? [] })),
+		canManage ? gifts.map((gift) => ({ name: gift.name, links: gift.links ?? [] })) : [],
 	);
 
 	function openImportWizard() {
@@ -2277,19 +2306,29 @@
 		}
 	}
 
+	// Every entry point (card, viewer, context menu) shares this guard, so one cancel runs at a time.
+	const unreservePendingGiftIds = new SvelteSet<string>();
+
 	async function handleUnreserve(giftItem: GiftForVisitor) {
-		if (hideReservationState || giftItem.myReservationId === null) {
+		if (
+			hideReservationState ||
+			giftItem.myReservationId === null ||
+			unreservePendingGiftIds.has(giftItem.id)
+		) {
 			return;
 		}
+		unreservePendingGiftIds.add(giftItem.id);
 		try {
 			await unreserveGift({ reservationId: giftItem.myReservationId });
 			toastSuccess(m.toast_gift_unreserved());
 		} catch (thrown) {
 			toastError(translateServerError(thrown));
+		} finally {
+			unreservePendingGiftIds.delete(giftItem.id);
 		}
 	}
 
-	async function handleContextPurchased(giftItem: GiftByRole) {
+	function handleContextPurchased(giftItem: GiftByRole) {
 		if (
 			hideReservationState ||
 			!isAuthenticated ||
@@ -2298,16 +2337,7 @@
 		) {
 			return;
 		}
-		const purchased = giftItem.myReservationPurchasedAt === null;
-		try {
-			await setReservationPurchased({
-				reservationId: giftItem.myReservationId,
-				purchased,
-			});
-			toastSuccess(purchased ? m.toast_marked_bought() : m.toast_unmarked_bought());
-		} catch (thrown) {
-			toastError(translateServerError(thrown));
-		}
+		void giftsContext.purchased.toggle(giftItem);
 	}
 
 	// Outlives the More-menu session, which ends as soon as the menu hands off to this dialog.
@@ -2551,6 +2581,7 @@
 			onfilterchange={handleFilterChange}
 			ongroupingchange={handleGroupingChange}
 			onunfollow={handleUnfollow}
+			{unfollowPending}
 			onaddgift={openCreateModal}
 			onbatchadd={openBatchAddDialog}
 			onselectionstart={() => enterSelection()}
@@ -2653,7 +2684,7 @@
 							void handleUnreserve(contextActionGift);
 						}
 					}}
-					onpurchased={() => void handleContextPurchased(contextActionGift)}
+					onpurchased={() => handleContextPurchased(contextActionGift)}
 					onreleasereservation={() => openReleaseFlow(contextActionGift)}
 					oncopysuccess={() => toastSuccess(m.gift_context_copy_success())}
 					oncopyerror={() => toastError(m.gift_context_copy_error())}
@@ -2709,7 +2740,7 @@
 			wishlistShortId={shortId}
 			wishlistTitle={wishlist.title}
 			availability={chatAvailability}
-			rowContext={{ currentGifts: gifts, categories: categoryOptions, priorityLevels }}
+			{rowContext}
 			{decidingProposals}
 		/>
 	{/if}

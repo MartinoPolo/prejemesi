@@ -99,6 +99,7 @@
 		onfilterchange: (filters: GiftFilters) => void;
 		ongroupingchange: (grouping: GiftGroupingOption) => void;
 		onunfollow: () => void;
+		unfollowPending?: boolean;
 		onaddgift: () => void;
 		onbatchadd: () => void;
 		onselectionstart: () => void;
@@ -135,6 +136,7 @@
 		onfilterchange,
 		ongroupingchange,
 		onunfollow,
+		unfollowPending = false,
 		onaddgift,
 		onbatchadd,
 		onselectionstart,
@@ -849,7 +851,7 @@
 				</DropdownMenu.Item>
 			{/if}
 			{#if showUnfollowAction}
-				<DropdownMenu.Item onclick={onunfollow}
+				<DropdownMenu.Item onclick={onunfollow} disabled={unfollowPending}
 					><BellOffIcon />{m.wishlist_detail_unfollow()}</DropdownMenu.Item
 				>
 			{/if}
@@ -905,7 +907,11 @@
 						</WishlistSheetAction>
 					{/if}
 					{#if showUnfollowAction}
-						<WishlistSheetAction onclick={() => runMobileMoreAction(onunfollow)}>
+						<WishlistSheetAction
+							onclick={() => runMobileMoreAction(onunfollow)}
+							disabled={unfollowPending}
+							aria-busy={unfollowPending || undefined}
+						>
 							<BellOffIcon data-icon="inline-start" />{m.wishlist_detail_unfollow()}
 						</WishlistSheetAction>
 					{/if}
