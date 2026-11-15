@@ -33,14 +33,13 @@ export async function getHomeOverview(userId: string): Promise<HomeOverview> {
 	const visitJoin = (wishlistId: SQLWrapper) =>
 		and(eq(wishlistVisit.wishlistId, wishlistId), eq(wishlistVisit.userId, userId));
 
-	const ownRole = createOwnRolePrimitives(database, userId);
-	const moderatedRole = createModeratedRolePrimitives(database, userId);
+	const ownRole = createOwnRolePrimitives(userId);
+	const moderatedRole = createModeratedRolePrimitives(userId);
 	const followedRole = createFollowedRolePrimitives(database, userId);
 
 	const ownRowsPromise = database
 		.select({ ...ownRole.projection, lastVisitedAt: wishlistVisit.lastVisitedAt })
 		.from(wishlist)
-		.leftJoin(ownRole.totalGifts, eq(ownRole.totalGifts.wishlistId, wishlist.id))
 		.leftJoin(wishlistVisit, visitJoin(wishlist.id))
 		.where(and(ownRole.predicate, isNull(wishlist.deletedAt), wishlistScope()));
 
@@ -49,11 +48,6 @@ export async function getHomeOverview(userId: string): Promise<HomeOverview> {
 		.from(moderatorAssignment)
 		.innerJoin(wishlist, eq(moderatorAssignment.wishlistId, wishlist.id))
 		.leftJoin(user, eq(user.id, wishlist.recipientUserId))
-		.leftJoin(moderatedRole.totalGifts, eq(moderatedRole.totalGifts.wishlistId, wishlist.id))
-		.leftJoin(
-			moderatedRole.reservedGifts,
-			eq(moderatedRole.reservedGifts.wishlistId, wishlist.id),
-		)
 		.leftJoin(wishlistVisit, visitJoin(wishlist.id))
 		.where(and(moderatedRole.predicate, isNull(wishlist.deletedAt), wishlistScope()));
 
@@ -66,10 +60,6 @@ export async function getHomeOverview(userId: string): Promise<HomeOverview> {
 		.from(wishlistFollower)
 		.innerJoin(wishlist, eq(wishlistFollower.wishlistId, wishlist.id))
 		.leftJoin(user, eq(user.id, wishlist.recipientUserId))
-		.leftJoin(
-			followedRole.availableGifts,
-			eq(followedRole.availableGifts.wishlistId, wishlist.id),
-		)
 		.leftJoin(
 			followedRole.myReservations,
 			eq(followedRole.myReservations.wishlistId, wishlist.id),

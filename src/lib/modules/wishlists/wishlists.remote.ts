@@ -49,11 +49,10 @@ import {
 
 export const getMyWishlists = guardedQuery(async ({ user }) => {
 	const database = getDb();
-	const ownRole = createOwnRolePrimitives(database, user.id);
+	const ownRole = createOwnRolePrimitives(user.id);
 	const rows = await database
 		.select(ownRole.projection)
 		.from(wishlist)
-		.leftJoin(ownRole.totalGifts, eq(ownRole.totalGifts.wishlistId, wishlist.id))
 		.where(and(ownRole.predicate, isNull(wishlist.deletedAt), wishlistScope()))
 		.orderBy(wishlist.updatedAt);
 	return rows.map(ownRole.map);
@@ -69,14 +68,12 @@ export const getWishlistByShortId = publicQuery(v.string(), (authContext, shortI
 
 export const getModeratedWishlists = guardedQuery(async ({ user: currentUser }) => {
 	const database = getDb();
-	const role = createModeratedRolePrimitives(database, currentUser.id);
+	const role = createModeratedRolePrimitives(currentUser.id);
 	const rows = await database
 		.select(role.projection)
 		.from(moderatorAssignment)
 		.innerJoin(wishlist, eq(moderatorAssignment.wishlistId, wishlist.id))
 		.leftJoin(user, eq(user.id, wishlist.recipientUserId))
-		.leftJoin(role.totalGifts, eq(role.totalGifts.wishlistId, wishlist.id))
-		.leftJoin(role.reservedGifts, eq(role.reservedGifts.wishlistId, wishlist.id))
 		.where(and(role.predicate, isNull(wishlist.deletedAt), wishlistScope()))
 		.orderBy(wishlist.updatedAt);
 	return rows.map(role.map);
@@ -90,7 +87,6 @@ export const getFollowedWishlists = guardedQuery(async ({ user: currentUser }) =
 		.from(wishlistFollower)
 		.innerJoin(wishlist, eq(wishlistFollower.wishlistId, wishlist.id))
 		.leftJoin(user, eq(user.id, wishlist.recipientUserId))
-		.leftJoin(role.availableGifts, eq(role.availableGifts.wishlistId, wishlist.id))
 		.leftJoin(role.myReservations, eq(role.myReservations.wishlistId, wishlist.id))
 		// Dashboard history deliberately includes unfollowed and archived rows.
 		.where(and(role.predicate, isNull(wishlist.deletedAt), wishlistScope()))

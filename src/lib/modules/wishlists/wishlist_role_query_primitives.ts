@@ -1,4 +1,4 @@
-import { and, eq, isNull, ne, or, sql } from 'drizzle-orm';
+import { and, eq, isNull, ne, or, sql, type SQL } from 'drizzle-orm';
 import type { getDb } from '$lib/server/db/index.js';
 import { wishlist } from '$lib/server/db/wishlist.schema.js';
 import { moderatorAssignment } from '$lib/server/db/moderator.schema.js';
@@ -45,16 +45,15 @@ function mapWishlist(row: WishlistRow): Wishlist {
 	};
 }
 
-function totalGiftCount(database: Database, alias: string) {
-	return database
-		.select({
-			wishlistId: gift.wishlistId,
-			count: sql<number>`count(*)`.as(`${alias}_total_gifts`),
-		})
-		.from(gift)
-		.where(isNull(gift.deletedAt))
-		.groupBy(gift.wishlistId)
-		.as(`${alias}_total_gifts_sq`);
+const activeReservationExists = sql`exists (select 1 from ${reservation} where ${reservation.giftId} = ${gift.id} and ${reservation.deletedAt} is null)`;
+
+/**
+ * Counts the live gifts of the outer query's wishlist row, optionally narrowed by `giftFilter`.
+ * Correlated rather than a grouped derived table, so Postgres reads only that wishlist's gifts
+ * through its indexes instead of aggregating every gift for each dashboard query.
+ */
+function liveGiftCountSql(giftFilter?: SQL) {
+	return sql<number>`(select count(*) from ${gift} where ${gift.wishlistId} = ${wishlist.id} and ${gift.deletedAt} is null${giftFilter === undefined ? sql`` : sql` and ${giftFilter}`})`;
 }
 
 /** SQL for the linked account name or free-text recipient. Requires a left join on user. */
@@ -63,13 +62,11 @@ export function recipientDisplayNameSql() {
 }
 
 /** Shared recipient/own invariants; callers keep joins, filtering, sorting, and caps local. */
-export function createOwnRolePrimitives(database: Database, currentUserId: string) {
-	const totalGifts = totalGiftCount(database, 'own');
+export function createOwnRolePrimitives(currentUserId: string) {
 	return {
-		totalGifts,
 		projection: {
 			wishlist,
-			totalGifts: sql<number>`coalesce(${totalGifts.count}, 0)`,
+			totalGifts: liveGiftCountSql(),
 		},
 		predicate: eq(wishlist.recipientUserId, currentUserId),
 		map(row: WishlistRow & { totalGifts: unknown }): MyWishlist {
@@ -79,27 +76,13 @@ export function createOwnRolePrimitives(database: Database, currentUserId: strin
 }
 
 /** Shared správce reservation progress and assignment invariants. */
-export function createModeratedRolePrimitives(database: Database, currentUserId: string) {
-	const totalGifts = totalGiftCount(database, 'moderated');
-	const reservedGifts = database
-		.select({
-			wishlistId: gift.wishlistId,
-			count: sql<number>`count(distinct ${gift.id})`.as('moderated_reserved_gifts'),
-		})
-		.from(gift)
-		.innerJoin(reservation, and(eq(reservation.giftId, gift.id), isNull(reservation.deletedAt)))
-		.where(isNull(gift.deletedAt))
-		.groupBy(gift.wishlistId)
-		.as('moderated_reserved_gifts_sq');
-
+export function createModeratedRolePrimitives(currentUserId: string) {
 	return {
-		totalGifts,
-		reservedGifts,
 		projection: {
 			wishlist,
 			recipientDisplayName: recipientDisplayNameSql(),
-			totalGifts: sql<number>`coalesce(${totalGifts.count}, 0)`,
-			reservedGifts: sql<number>`coalesce(${reservedGifts.count}, 0)`,
+			totalGifts: liveGiftCountSql(),
+			reservedGifts: liveGiftCountSql(activeReservationExists),
 		},
 		predicate: and(
 			eq(moderatorAssignment.userId, currentUserId),
@@ -124,16 +107,6 @@ export function createModeratedRolePrimitives(database: Database, currentUserId:
 
 /** Shared follower counts and role predicate; active-follow filtering stays caller-local. */
 export function createFollowedRolePrimitives(database: Database, currentUserId: string) {
-	const availableGifts = database
-		.select({
-			wishlistId: gift.wishlistId,
-			count: sql<number>`count(*)`.as('followed_available_gifts'),
-		})
-		.from(gift)
-		.leftJoin(reservation, and(eq(reservation.giftId, gift.id), isNull(reservation.deletedAt)))
-		.where(and(isNull(gift.deletedAt), isNull(reservation.id)))
-		.groupBy(gift.wishlistId)
-		.as('followed_available_gifts_sq');
 	const myReservations = database
 		.select({
 			wishlistId: gift.wishlistId,
@@ -156,12 +129,11 @@ export function createFollowedRolePrimitives(database: Database, currentUserId: 
 		.as('followed_my_reservations_sq');
 
 	return {
-		availableGifts,
 		myReservations,
 		projection: {
 			wishlist,
 			recipientDisplayName: recipientDisplayNameSql(),
-			availableGifts: sql<number>`coalesce(${availableGifts.count}, 0)`,
+			availableGifts: liveGiftCountSql(sql`not ${activeReservationExists}`),
 			myReservations: sql<number>`coalesce(${myReservations.count}, 0)`,
 			myPurchased: sql<number>`coalesce(${myReservations.purchasedCount}, 0)`,
 			unfollowedAt: wishlistFollower.unfollowedAt,
