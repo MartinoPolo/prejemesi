@@ -37,6 +37,12 @@ export const UPLOAD_TARGETS = {
 
 export type UploadTarget = keyof typeof UPLOAD_TARGETS;
 
+/**
+ * Every upload, agent image and bulk copy is stored under a freshly generated key, so a stored
+ * object never changes in place and may be cached for good.
+ */
+export const UPLOADED_OBJECT_CACHE_CONTROL = 'public, max-age=31536000, immutable';
+
 /** The current request's R2 binding; undefined outside a request or without the binding. */
 export function getR2Bucket(): PlatformR2Bucket | undefined {
 	try {
@@ -77,7 +83,7 @@ export async function putObject(
 	}
 
 	await bucket.put(key, body, {
-		httpMetadata: { contentType },
+		httpMetadata: { contentType, cacheControl: UPLOADED_OBJECT_CACHE_CONTROL },
 	});
 
 	return true;
@@ -142,7 +148,7 @@ export interface AgentImageBucket {
 	put(
 		key: string,
 		value: Uint8Array,
-		options: { httpMetadata: { contentType: string } },
+		options: { httpMetadata: { contentType: string; cacheControl: string } },
 	): Promise<unknown>;
 	delete(keys: string[]): Promise<void>;
 }
@@ -180,7 +186,9 @@ export interface AgentImageStorage {
 export function agentImageStorage(bucket: AgentImageBucket): AgentImageStorage {
 	return {
 		put: async (key, body, contentType) => {
-			await bucket.put(key, body, { httpMetadata: { contentType } });
+			await bucket.put(key, body, {
+				httpMetadata: { contentType, cacheControl: UPLOADED_OBJECT_CACHE_CONTROL },
+			});
 		},
 		deleteBestEffort: (keys) => deleteFromBucketBestEffort(bucket, keys),
 		deleteOrThrow: (keys) => bucket.delete([...keys]),

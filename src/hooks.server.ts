@@ -584,7 +584,6 @@ export const demoHandle: Handle = async ({ event, resolve }) => {
 		token === '' ||
 		(!event.isRemoteRequest &&
 			(requestedPath.startsWith('/demo/v1/') ||
-				requestedPath.startsWith('/demo/playground/') ||
 				requestedPath.startsWith(AGENT_API_PATH_PREFIX) ||
 				requestedPath === AGENT_MCP_PATH))
 	) {

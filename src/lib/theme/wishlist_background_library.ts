@@ -1,4 +1,3 @@
-import { asset } from '$app/paths';
 import * as v from 'valibot';
 import libraryManifest from './wishlist_background_library.json';
 import { WISHLIST_THEME_IDS, type WishlistThemeId } from './wishlist_themes.js';
@@ -6,8 +5,9 @@ import { WISHLIST_THEME_IDS, type WishlistThemeId } from './wishlist_themes.js';
 /**
  * The curated background library (#531): images generated offline per wishlist theme by
  * `scripts/generate_theme_backgrounds.mjs`, which also rewrites the manifest. Each image has a
- * file per viewer mode in `static/wishlist-backgrounds/<id>-<mode>-<width>.webp`; the
- * manifest lists the widths of both modes.
+ * file per viewer mode in `src/lib/assets/wishlist-backgrounds/<id>-<mode>-<width>.webp`; the
+ * manifest lists the widths of both modes. Vite bundles the files under content-hashed URLs, so
+ * they are served immutable and a regenerated file gets a new URL.
  */
 export const WISHLIST_LIBRARY_IMAGE_VARIANTS = ['illustrated', 'photo'] as const;
 
@@ -69,12 +69,23 @@ export function wishlistLibraryImagesForTheme(
 	];
 }
 
+// `no-inline` keeps even small files as hashed asset URLs instead of data URIs in the JS chunk.
+const LIBRARY_IMAGE_URLS_BY_PATH: Partial<Record<string, string>> = import.meta.glob<string>(
+	'../assets/wishlist-backgrounds/*.webp',
+	{ eager: true, query: '?url&no-inline', import: 'default' },
+);
+
 function wishlistLibraryImageUrl(
 	image: WishlistLibraryImage,
 	mode: WishlistLibraryImageMode,
 	width: number,
 ): string {
-	return asset(`/wishlist-backgrounds/${image.id}-${mode}-${String(width)}.webp`);
+	const fileName = `${image.id}-${mode}-${String(width)}.webp`;
+	const url = LIBRARY_IMAGE_URLS_BY_PATH[`../assets/wishlist-backgrounds/${fileName}`];
+	if (url === undefined) {
+		throw new Error(`Wishlist background library file ${fileName} is missing.`);
+	}
+	return url;
 }
 
 /** The smallest generated width per mode, for picker and focal-point previews. */

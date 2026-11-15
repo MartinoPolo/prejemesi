@@ -50,23 +50,38 @@ describe('demo wishlist boundary', () => {
 
 	it('allows only exact reviewed image assets, never arbitrary relative or remote URLs', () => {
 		expect(isPreparedDemoImage('/demo/v1/teapot.jpg')).toBe(true);
-		expect(isPreparedDemoImage('/demo/playground/batoh.jpg')).toBe(true);
+		expect(isPreparedDemoImage('/demo/v1/playground/batoh.jpg')).toBe(true);
 		expect(isPreparedDemoImage(null)).toBe(true);
 		expect(isPreparedDemoImage('/demo/v1/../private.jpg')).toBe(false);
-		expect(isPreparedDemoImage('/demo/playground/other.jpg')).toBe(false);
+		expect(isPreparedDemoImage('/demo/v1/playground/other.jpg')).toBe(false);
 		expect(isPreparedDemoImage('https://example.com/demo/v1/teapot.jpg')).toBe(false);
+	});
+
+	it('still accepts the unversioned paths that demo sessions created before the move store', () => {
+		requestEvent.mockReturnValue({ locals: { demoSession: { id: 'visitor-a' } } } as ReturnType<
+			typeof getRequestEvent
+		>);
+		expect(isPreparedDemoImage('/demo/playground/batoh.jpg')).toBe(true);
+		expect(isPreparedDemoImage('/demo/gallery/teapot-2.jpg')).toBe(true);
+		expect(isPreparedDemoImage('/demo/playground/other.jpg')).toBe(false);
+		expect(() => rejectDemoImageUpload('/demo/wishlists/my-everyday.webp')).not.toThrow();
+		expect(thrownBy(() => rejectDemoImageUpload('/demo/wishlists/unknown.webp'))).toMatchObject(
+			{
+				status: 403,
+			},
+		);
 	});
 
 	it('lets a demo wishlist keep or remove its prepared cover but never take an uploaded key', () => {
 		requestEvent.mockReturnValue({ locals: { demoSession: { id: 'visitor-a' } } } as ReturnType<
 			typeof getRequestEvent
 		>);
-		expect(() => rejectDemoImageUpload('/demo/wishlists/my-everyday.webp')).not.toThrow();
+		expect(() => rejectDemoImageUpload('/demo/v1/wishlists/my-everyday.webp')).not.toThrow();
 		expect(() => rejectDemoImageUpload(null)).not.toThrow();
 		expect(() => rejectDemoImageUpload(undefined)).not.toThrow();
 		for (const imageKey of [
 			'wishlist/visitor-upload.jpg',
-			'/demo/wishlists/unknown.webp',
+			'/demo/v1/wishlists/unknown.webp',
 			'/demo/v1/teapot.jpg',
 			'https://images.example.com/cover.jpg',
 		]) {

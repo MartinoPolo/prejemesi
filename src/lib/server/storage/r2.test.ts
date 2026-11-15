@@ -21,7 +21,16 @@ vi.mock('$env/dynamic/public', () => ({
 }));
 
 import { getRequestEvent } from '$app/server';
-import { deleteObjectsBestEffort, isAllowedContentType, getPublicUrl } from './r2.js';
+import {
+	agentImageStorage,
+	deleteObjectsBestEffort,
+	getPublicUrl,
+	isAllowedContentType,
+	putObject,
+	type AgentImageBucket,
+} from './r2.js';
+
+const IMMUTABLE_CACHE_CONTROL = 'public, max-age=31536000, immutable';
 
 beforeEach(() => {
 	vi.clearAllMocks();
@@ -70,6 +79,34 @@ describe('getPublicUrl', () => {
 	);
 });
 
+describe('server-side puts', () => {
+	it('store an upload with its content type and a long-lived immutable cache policy', async () => {
+		const put = vi.fn(async () => null);
+		vi.mocked(getRequestEvent).mockReturnValueOnce({
+			platform: { env: { R2: { put } } },
+		} as unknown as ReturnType<typeof getRequestEvent>);
+		const body = Uint8Array.from([1, 2, 3]);
+
+		await expect(putObject('gifts/abc.webp', body, 'image/webp')).resolves.toBe(true);
+
+		expect(put).toHaveBeenCalledExactlyOnceWith('gifts/abc.webp', body, {
+			httpMetadata: { contentType: 'image/webp', cacheControl: IMMUTABLE_CACHE_CONTROL },
+		});
+	});
+
+	it('store an agent image with the same cache policy', async () => {
+		const put = vi.fn<AgentImageBucket['put']>(async () => null);
+		const storage = agentImageStorage({ put, delete: vi.fn(async () => {}) });
+		const body = Uint8Array.from([4]);
+
+		await storage.put('gifts/agent/list/abc.png', body, 'image/png');
+
+		expect(put).toHaveBeenCalledExactlyOnceWith('gifts/agent/list/abc.png', body, {
+			httpMetadata: { contentType: 'image/png', cacheControl: IMMUTABLE_CACHE_CONTROL },
+		});
+	});
+});
+
 describe('deleteObjectsBestEffort', () => {
 	it('deletes only stored object keys, never prepared static paths or external URLs', async () => {
 		const deleteObjects = vi.fn(async () => {});
@@ -79,7 +116,7 @@ describe('deleteObjectsBestEffort', () => {
 
 		await deleteObjectsBestEffort([
 			'wishlists/banners/abc.jpg',
-			'/demo/wishlists/my-everyday.webp',
+			'/demo/v1/wishlists/my-everyday.webp',
 			'https://lh3.googleusercontent.com/avatar.jpg',
 			null,
 			'',
@@ -94,7 +131,7 @@ describe('deleteObjectsBestEffort', () => {
 			platform: { env: { R2: { delete: deleteObjects } } },
 		} as unknown as ReturnType<typeof getRequestEvent>);
 
-		await deleteObjectsBestEffort(['/demo/wishlists/my-everyday.webp']);
+		await deleteObjectsBestEffort(['/demo/v1/wishlists/my-everyday.webp']);
 
 		expect(deleteObjects).not.toHaveBeenCalled();
 	});

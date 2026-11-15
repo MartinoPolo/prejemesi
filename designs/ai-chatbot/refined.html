@@ -715,9 +715,9 @@ const IMAGES={
   'hp-0':{src:'v1/headphones.jpg',label:'Celý produkt',source:'sony.cz'},
   'hp-1':{src:'v1/headphones.jpg',label:'Detail náušníku',source:'alza.cz',style:'object-position:30% 55%;transform:scale(1.9)'},
   'hp-2':{src:'v1/headphones.jpg',label:'Z druhé strany',source:'heureka.cz',style:'transform:scaleX(-1)'},
-  coffee:{src:'playground/kavovar.jpg'},kindle:{src:'playground/kindle.jpg'},scarf:{src:'playground/satek.jpg'},teapot:{src:'v1/teapot.jpg'},
-  chess:{src:'playground/sachy.jpg'},robot:{src:'playground/lampicka.jpg'},monstera:{src:'playground/monstera.jpg'},lego:{src:'playground/lego.jpg'},
-  glasses:{src:'playground/sklenice.jpg'},tea:{src:'playground/caj.jpg'},plantbook:{src:'v1/plant-book.jpg'},catan:{src:'playground/catan.jpg'},candle:{src:'v1/candle.jpg'}
+  coffee:{src:'v1/playground/kavovar.jpg'},kindle:{src:'v1/playground/kindle.jpg'},scarf:{src:'v1/playground/satek.jpg'},teapot:{src:'v1/teapot.jpg'},
+  chess:{src:'v1/playground/sachy.jpg'},robot:{src:'v1/playground/lampicka.jpg'},monstera:{src:'v1/playground/monstera.jpg'},lego:{src:'v1/playground/lego.jpg'},
+  glasses:{src:'v1/playground/sklenice.jpg'},tea:{src:'v1/playground/caj.jpg'},plantbook:{src:'v1/plant-book.jpg'},catan:{src:'v1/playground/catan.jpg'},candle:{src:'v1/candle.jpg'}
 };
 const imageTag=(key,alt='')=>{const image=IMAGES[key];return `<img src="../../static/demo/${image.src}" alt="${escapeHtml(alt)}" style="${image.style||''}" decoding="async">`};
 const thumb=(key,size='')=>`<span class="thumb ${size}" aria-hidden="true">${key?imageTag(key):icon('image')}</span>`;

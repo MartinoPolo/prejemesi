@@ -2,7 +2,8 @@
 /**
  * Generates the curated wishlist background library (#531) offline with Gemini image generation:
  * an illustrated and a photo variant per wishlist theme, each with a light and a dark file,
- * saved as `static/wishlist-backgrounds/<id>-<mode>-<width>.webp` and listed with their modes in
+ * saved as `src/lib/assets/wishlist-backgrounds/<id>-<mode>-<width>.webp` (bundled by Vite under
+ * content-hashed URLs) and listed with their modes in
  * `src/lib/theme/wishlist_background_library.json`. The app requires both modes of every image, so
  * the run fails while any image lacks one.
  *
@@ -31,7 +32,7 @@ import {
 } from './theme_background_prompts.mjs';
 
 const REPOSITORY_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const OUTPUT_DIRECTORY = path.join(REPOSITORY_ROOT, 'static', 'wishlist-backgrounds');
+const OUTPUT_DIRECTORY = path.join(REPOSITORY_ROOT, 'src', 'lib', 'assets', 'wishlist-backgrounds');
 const MANIFEST_PATH = path.join(
 	REPOSITORY_ROOT,
 	'src',

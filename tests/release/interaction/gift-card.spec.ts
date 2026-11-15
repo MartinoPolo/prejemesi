@@ -56,9 +56,9 @@ const REORDER_SOURCE = 'Stan pro dva';
 const SOURCE_ORIGIN = 'https://example.com';
 const GALLERY_GIFT = 'Fotoaparát';
 const GALLERY_IMAGE_PATHS = [
-	'/demo/playground/kolo.jpg',
-	'/demo/playground/batoh.jpg',
-	'/demo/playground/kindle.jpg',
+	'/demo/v1/playground/kolo.jpg',
+	'/demo/v1/playground/batoh.jpg',
+	'/demo/v1/playground/kindle.jpg',
 ];
 
 const FIXTURE_GIFTS: readonly FixtureGift[] = [

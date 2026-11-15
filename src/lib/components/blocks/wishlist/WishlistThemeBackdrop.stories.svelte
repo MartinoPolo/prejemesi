@@ -22,7 +22,7 @@
 	});
 
 	// A bundled demo photo, so the custom backdrop renders without an upload.
-	const CUSTOM_PHOTO_URL = '/demo/playground/advent.jpg';
+	const CUSTOM_PHOTO_URL = '/demo/v1/playground/advent.jpg';
 
 	// Full placement with a visible dim and an off-centre focal point exercises every photo control.
 	const customFullBackground: WishlistBackground = {
