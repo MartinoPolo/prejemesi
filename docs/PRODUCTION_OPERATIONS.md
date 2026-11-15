@@ -114,16 +114,16 @@ Verification:
 
 ## Turnstile
 
-Protect registration, password sign-in, password-reset request, and anonymous reservation. The widget is only a client signal; servers evaluate Siteverify before side effects. Authentication fails closed. Anonymous reservation deliberately fails open with a warning when configuration or Siteverify is unavailable, but rejects invalid/replayed tokens and missing tokens when the check is configured and running.
+Protect registration, password sign-in, password-reset request, and anonymous reservation. The widget is only a client signal; servers evaluate Siteverify before side effects. With `TURNSTILE_SECRET_KEY` set, authentication fails closed; without it (as on staging) the Better Auth captcha plugin is not registered, so authentication is unprotected. Anonymous reservation deliberately fails open with a warning when configuration or Siteverify is unavailable, but rejects invalid/replayed tokens and missing tokens when the check is configured and running.
 
 1. In **Turnstile > Add widget**, create a Managed widget for `prejemesi.cz` (and `www.prejemesi.cz` while it remains a routed hostname). Copy sitekey and secret separately.
-2. Set `PUBLIC_TURNSTILE_SITE_KEY` as a non-secret deploy variable. Store `TURNSTILE_SECRET_KEY` only as a Cloudflare secret:
+2. Commit `PUBLIC_TURNSTILE_SITE_KEY` in the `wrangler.jsonc` `vars`. Store `TURNSTILE_SECRET_KEY` only as a Cloudflare secret:
 
     ```powershell
     pnpm exec wrangler secret put TURNSTILE_SECRET_KEY
     ```
 
-    `wrangler.jsonc` sets `keep_vars: true`, so deployments preserve the dashboard-managed site key and secrets.
+    `wrangler.jsonc` sets `keep_vars: true`, so deployments preserve secrets and dashboard-only vars; the committed site key is deployed from the file.
 
 3. Render the widget on all five protected surfaces and submit its token with the form/remote-function payload.
 4. On the server, call `POST https://challenges.cloudflare.com/turnstile/v0/siteverify` with the secret and token. The widget hostname allowlist constrains token issuance to production domains. Reject invalid, expired, or replayed tokens before side effects. Require `success: true` for authentication; anonymous reservations additionally accept logged configuration/provider-unavailable outcomes, but not a configured missing token.
