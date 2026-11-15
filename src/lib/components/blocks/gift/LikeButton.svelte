@@ -7,6 +7,7 @@
 	import { toggleLike } from '$lib/modules/likes/likes.remote.js';
 	import { ElevationSurface } from '$lib/components/base/elevation-surface/index.js';
 	import { likeButtonVariants, type LikeButtonSize } from './like_button_variants.js';
+	import { STANDARD_EASING } from '$lib/motion/motion_tokens.js';
 	import { cn } from '$lib/utils.js';
 
 	interface LikeButtonProps {
@@ -73,7 +74,7 @@
 					{ transform: 'scale(1.16)' },
 					{ transform: 'scale(1)' },
 				],
-				{ duration: 160 },
+				{ duration: 160, easing: STANDARD_EASING },
 			),
 		);
 	}

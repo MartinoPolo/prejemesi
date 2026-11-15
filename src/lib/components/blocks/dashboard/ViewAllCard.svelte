@@ -58,8 +58,13 @@
 	}
 
 	.view-all-card:hover {
-		transform: translateY(-4px);
 		border-color: var(--edge);
+	}
+
+	@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+		.view-all-card:hover {
+			transform: translateY(-4px);
+		}
 	}
 
 	.circle {

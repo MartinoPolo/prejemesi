@@ -90,7 +90,12 @@
 
 	.footer-link:hover {
 		background: var(--footer-hover);
-		transform: translateY(-2px);
+	}
+
+	@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+		.footer-link:hover {
+			transform: translateY(-2px);
+		}
 	}
 
 	.footer-link:focus-visible {

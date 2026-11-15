@@ -26,7 +26,7 @@ export const inputVariants = tv({
 				'border-status-success shadow-[0_0_0_3px_color-mix(in_oklab,var(--status-success)_18%,transparent)]',
 			error: 'border-status-danger shadow-[0_0_0_3px_color-mix(in_oklab,var(--status-danger)_18%,transparent)]',
 			loading:
-				'animate-shimmer bg-[length:200%_100%] bg-[linear-gradient(90deg,transparent_0%,color-mix(in_oklab,var(--primary)_12%,transparent)_50%,transparent_100%)]',
+				'animate-shimmer motion-reduce:animate-none bg-[length:200%_100%] bg-[linear-gradient(90deg,transparent_0%,color-mix(in_oklab,var(--primary)_12%,transparent)_50%,transparent_100%)]',
 		},
 	},
 	defaultVariants: {

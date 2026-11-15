@@ -23,6 +23,7 @@
 	import GiftDraftBulkBar from './GiftDraftBulkBar.svelte';
 	import GiftDraftStatusLegend from './GiftDraftStatusLegend.svelte';
 	import { createIdentityLayoutMotion } from '$lib/motion/layout_motion.js';
+	import { STANDARD_EASING } from '$lib/motion/motion_tokens.js';
 	import {
 		DRAFT_GRID_COLUMNS,
 		DRAFT_GRID_COLUMNS_NO_PRIORITY,
@@ -39,7 +40,6 @@
 		type ExistingGiftRef,
 	} from './gift_draft_grid_model.js';
 
-	const STANDARD_EASING = 'cubic-bezier(0.2, 0.7, 0.3, 1)';
 	const ROW_INSERT_DURATION = 520;
 	const ROW_REMOVE_DURATION = 440;
 	/** Keep bulk removal work local; remaining selected rows leave in the authoritative update. */

@@ -2,6 +2,7 @@
 	import { onDestroy } from 'svelte';
 	import type { WishlistRole } from '$lib/modules/wishlists/types.js';
 	import { formatPieceCount } from '$lib/modules/gifts/gift_display.js';
+	import { STANDARD_EASING } from '$lib/motion/motion_tokens.js';
 
 	interface GiftPieceCountProps {
 		quantity: number | null;
@@ -62,7 +63,10 @@
 			return;
 		}
 
-		activeAnimation = element.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 140 });
+		activeAnimation = element.animate([{ opacity: 0 }, { opacity: 1 }], {
+			duration: 140,
+			easing: STANDARD_EASING,
+		});
 	});
 
 	onDestroy(() => activeAnimation?.cancel());

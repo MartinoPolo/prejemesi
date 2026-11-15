@@ -1,6 +1,6 @@
 import { SvelteMap, SvelteSet } from 'svelte/reactivity';
+import { STANDARD_EASING } from '$lib/motion/motion_tokens.js';
 
-const STANDARD_EASING = 'cubic-bezier(0.2, 0.7, 0.3, 1)';
 const CATEGORY_REFLOW_DURATION = 520;
 const CATEGORY_DELETE_DURATION = 440;
 

@@ -2,6 +2,7 @@
 	import '../app.css';
 	import { ModeWatcher, modeStorageKey, setMode } from 'mode-watcher';
 	import { AppToaster } from '$lib/components/base/toast/index.js';
+	import { TooltipProvider } from '$lib/components/base/tooltip/index.js';
 	import favicon from '$lib/assets/favicon.svg';
 	import dynapuffLatinUrl from '@fontsource-variable/dynapuff/files/dynapuff-latin-wght-normal.woff2?url';
 	import geistLatinUrl from '@fontsource-variable/geist/files/geist-latin-wght-normal.woff2?url';
@@ -101,8 +102,10 @@
 	<link rel="preload" href={geistLatinUrl} as="font" type="font/woff2" crossorigin="anonymous" />
 </svelte:head>
 
-{#key currentLocale}
-	{@render children()}
-{/key}
+<TooltipProvider>
+	{#key currentLocale}
+		{@render children()}
+	{/key}
+</TooltipProvider>
 
 <AppToaster />

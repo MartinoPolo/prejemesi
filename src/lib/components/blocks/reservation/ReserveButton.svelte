@@ -6,6 +6,7 @@
 	import * as m from '$lib/paraglide/messages.js';
 	import type { GiftForVisitor } from '$lib/modules/gifts/types.js';
 	import { cn } from '$lib/utils.js';
+	import { STANDARD_EASING } from '$lib/motion/motion_tokens.js';
 
 	interface ReserveButtonProps {
 		gift: GiftForVisitor;
@@ -71,7 +72,10 @@
 			return;
 		}
 
-		activeAnimation = element.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 160 });
+		activeAnimation = element.animate([{ opacity: 0 }, { opacity: 1 }], {
+			duration: 160,
+			easing: STANDARD_EASING,
+		});
 		void activeAnimation.finished
 			?.then(() => {
 				if (acknowledgementRun === run && gift.myReservationId !== null) {

@@ -1,4 +1,5 @@
-const STANDARD_EASING = 'cubic-bezier(0.2, 0.7, 0.3, 1)';
+import { STANDARD_EASING } from './motion_tokens.js';
+
 const GIFT_REFLOW_DURATION = 520;
 const TOOLBAR_REFLOW_DURATION = 320;
 

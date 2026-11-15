@@ -375,12 +375,14 @@
 		background: var(--fan-back-2);
 	}
 
-	.fan:hover::before {
-		transform: rotate(-3.2deg) translateY(2px);
-	}
+	@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+		.fan:hover::before {
+			transform: rotate(-3.2deg) translateY(2px);
+		}
 
-	.fan:hover::after {
-		transform: rotate(2.6deg) translateY(-2px);
+		.fan:hover::after {
+			transform: rotate(2.6deg) translateY(-2px);
+		}
 	}
 
 	/* fan cards keep square corners */
