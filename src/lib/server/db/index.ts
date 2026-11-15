@@ -112,10 +112,12 @@ const globalClientCache: Map<string, ReturnType<typeof drizzle>> = globalCacheHo
  * Per-request cache for the Cloudflare Workers runtime. On Workers the postgres
  * socket is request-scoped: an I/O object created in one request handler cannot
  * be used by another ("Cannot perform I/O on behalf of a different request").
- * Keying by the request event gives each request its own socket and lets it be
+ * Keyed by `locals`, not the event: SvelteKit hands each sequenced handle, load
+ * and remote function (and `getRequestEvent()`) a shallow copy of the event, but
+ * every copy shares one `locals` object, so one request gets one client that is
  * collected when the request ends.
  */
-const requestClientCache = new WeakMap<RequestEvent, ReturnType<typeof drizzle>>();
+const requestClientCache = new WeakMap<App.Locals, ReturnType<typeof drizzle>>();
 
 type Database = ReturnType<typeof drizzle>;
 export type DatabaseTransaction = Parameters<Parameters<Database['transaction']>[0]>[0];
@@ -170,12 +172,12 @@ export function getDb(event?: RequestEvent) {
 		requestEvent !== undefined &&
 		hyperdriveConnectionString !== undefined
 	) {
-		const cached = requestClientCache.get(requestEvent);
+		const cached = requestClientCache.get(requestEvent.locals);
 		if (cached !== undefined) {
 			return cached;
 		}
 		const db = createDb(connectionString);
-		requestClientCache.set(requestEvent, db);
+		requestClientCache.set(requestEvent.locals, db);
 		return db;
 	}
 
