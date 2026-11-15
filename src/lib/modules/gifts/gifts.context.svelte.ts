@@ -56,9 +56,11 @@ interface Serde<T> {
 type StoredPreference<T> = { found: true; value: T } | { found: false };
 
 /**
- * A per-scope localStorage preference. The parsed value is cached per key and revision, so
- * derivations re-run on gift refreshes without touching storage; `set`, a scope change and a
- * `storage` event from another tab invalidate it.
+ * A per-scope localStorage preference. While a reactive reader keeps the `storage` listener
+ * running, the parsed value is cached per key and revision, so derivations re-run on gift
+ * refreshes without touching storage; `set`, a scope change and a `storage` event from another
+ * tab invalidate it. Without a listener another tab's write would go unseen, so untracked reads
+ * and the first read of a new subscription go to storage.
  */
 class ScopedPersisted<T> {
 	#getDefaultValue: () => T;
@@ -67,6 +69,7 @@ class ScopedPersisted<T> {
 	#revision = new StateRaw(0);
 	#serde: Serde<T>;
 	#subscribe: (() => void) | undefined;
+	#listening = false;
 	#cache: { key: string; revision: number; stored: StoredPreference<T> } | null = null;
 
 	constructor(options: {
@@ -81,13 +84,19 @@ class ScopedPersisted<T> {
 		this.#getDefaultValue = options.getDefaultValue ?? (() => options.defaultValue);
 		this.#onBeforeRead = options.onBeforeRead;
 		if (browser) {
-			this.#subscribe = createSubscriber(() =>
-				on(window, 'storage', (event) => {
+			this.#subscribe = createSubscriber(() => {
+				this.#listening = true;
+				this.#cache = null;
+				const stopListening = on(window, 'storage', (event) => {
 					if (event.key === null || event.key === this.#cache?.key) {
 						this.#revision.current += 1;
 					}
-				}),
-			);
+				});
+				return () => {
+					this.#listening = false;
+					stopListening();
+				};
+			});
 		}
 	}
 
@@ -122,7 +131,7 @@ class ScopedPersisted<T> {
 		}
 		this.#subscribe?.();
 		const key = this.#getKey();
-		if (this.#cache?.key !== key || this.#cache.revision !== revision) {
+		if (!this.#listening || this.#cache?.key !== key || this.#cache.revision !== revision) {
 			this.#cache = { key, revision, stored: this.#readStorage(key) };
 		}
 		const stored = this.#cache.stored;
