@@ -31,7 +31,7 @@
 		resetDuplicateAwareImportState,
 		submitDuplicateAwareImport,
 	} from '$lib/modules/import/duplicate_aware_submission.js';
-	import { findDuplicates } from '$lib/modules/gifts/gift_draft.js';
+	import { createDuplicateFinder } from '$lib/modules/gifts/gift_draft.js';
 	import ArrowLeftIcon from '@lucide/svelte/icons/arrow-left';
 	import { STANDARD_EASING } from '$lib/motion/motion_tokens.js';
 	import { onDestroy } from 'svelte';
@@ -202,8 +202,9 @@
 			return 0;
 		}
 		let count = 0;
+		const findExistingDuplicates = createDuplicateFinder(existingGifts);
 		for (const draft of selectedDrafts) {
-			if (findDuplicates(draft, existingGifts).length > 0) {
+			if (findExistingDuplicates(draft).length > 0) {
 				count++;
 			}
 		}
