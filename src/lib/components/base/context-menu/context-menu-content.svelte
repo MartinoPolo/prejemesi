@@ -33,7 +33,7 @@
 		{align}
 		class={cn(
 			slidingFadeScaleOverlayMotionClass,
-			'origin-(--bits-context-menu-content-transform-origin) bg-popover text-popover-foreground min-w-32 rounded-panel border-[2.5px] border-edge p-1.5 shadow-sticker duration-100 z-(--z-modal) w-(--bits-context-menu-anchor-width) overflow-x-hidden overflow-y-auto outline-none data-closed:overflow-hidden',
+			'origin-(--bits-context-menu-content-transform-origin) bg-popover text-popover-foreground min-w-32 rounded-panel border-[2.5px] border-edge p-1.5 shadow-sticker duration-100 z-(--z-modal) w-(--bits-context-menu-anchor-width) overflow-x-hidden overflow-y-auto overscroll-contain outline-none data-closed:overflow-hidden',
 			floatingDepthClearance,
 			floatingAvailableSizeCap,
 			className,

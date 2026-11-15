@@ -8,7 +8,7 @@ export const dialogContentVariants = tv({
 		'bg-card text-card-foreground fixed top-[50%] left-[50%] z-(--z-modal) grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-panel border-[2.5px] border-edge p-6 shadow-sticker duration-200',
 		// On a phone with the keyboard open the dialog rises to sit just above it, and scrolls
 		// when it is taller than the space left.
-		'keyboard-open:top-auto keyboard-open:bottom-[calc(var(--keyboard-inset)+0.5rem)] keyboard-open:max-h-[calc(var(--visual-viewport-height)-1rem)] keyboard-open:translate-y-0 keyboard-open:overflow-y-auto',
+		'keyboard-open:top-auto keyboard-open:bottom-[calc(var(--keyboard-inset)+0.5rem)] keyboard-open:max-h-[calc(var(--visual-viewport-height)-1rem)] keyboard-open:translate-y-0 keyboard-open:overflow-y-auto keyboard-open:overscroll-contain',
 	],
 	variants: {
 		size: {
@@ -53,7 +53,7 @@ export const DIALOG_CONTENT_LAYOUTS = Object.keys(
 export const dialogScrollSectionVariants = tv({
 	slots: {
 		header: 'in-data-[dialog-layout=scroll]:shrink-0 in-data-[dialog-layout=scroll]:px-6 in-data-[dialog-layout=scroll]:pt-6 in-data-[dialog-layout=scroll]:pb-4',
-		body: 'in-data-[dialog-layout=scroll]:min-h-0 in-data-[dialog-layout=scroll]:flex-1 in-data-[dialog-layout=scroll]:overflow-y-auto in-data-[dialog-layout=scroll]:px-6 in-data-[dialog-layout=scroll]:pt-(--dialog-body-padding-top) in-data-[dialog-layout=scroll]:pb-6',
+		body: 'in-data-[dialog-layout=scroll]:min-h-0 in-data-[dialog-layout=scroll]:flex-1 in-data-[dialog-layout=scroll]:overflow-y-auto in-data-[dialog-layout=scroll]:overscroll-contain in-data-[dialog-layout=scroll]:px-6 in-data-[dialog-layout=scroll]:pt-(--dialog-body-padding-top) in-data-[dialog-layout=scroll]:pb-6',
 		footer: 'in-data-[dialog-layout=scroll]:shrink-0 in-data-[dialog-layout=scroll]:border-t in-data-[dialog-layout=scroll]:border-border in-data-[dialog-layout=scroll]:bg-background in-data-[dialog-layout=scroll]:px-6 in-data-[dialog-layout=scroll]:py-4',
 	},
 	variants: {
