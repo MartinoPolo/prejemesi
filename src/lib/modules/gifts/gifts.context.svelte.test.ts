@@ -2,10 +2,14 @@ import { render } from 'vitest-browser-svelte';
 import { afterEach, describe, expect, it } from 'vitest';
 import { overwriteGetLocale } from '$lib/paraglide/runtime.js';
 import { WISHLIST_ROLES, type WishlistRole } from '$lib/modules/wishlists/types.js';
-import { wishlistGiftGroupingStorageKey } from './gifts.context.svelte.js';
+import {
+	wishlistGiftGroupingStorageKey,
+	wishlistGiftSortStorageKey,
+} from './gifts.context.svelte.js';
 import {
 	GIFT_CARD_COLUMN_OPTIONS,
 	GIFT_GROUPING_OPTIONS,
+	GIFT_SORT_OPTIONS,
 	GIFT_VIEW_MODES,
 	UNCATEGORIZED_GIFT_CATEGORY_FILTER_VALUE,
 	type GiftForVisitor,
@@ -160,6 +164,41 @@ describe('store filter options (#650)', () => {
 				{ value: 'datart.cz', label: 'datart.cz' },
 			]),
 		);
+	});
+});
+
+describe('per-wishlist preference freshness', () => {
+	it('reads a sort another tab saved when an event handler reads it outside a reactive context', async () => {
+		const screen = render(GiftsContextTestHost);
+		const readSort = screen.getByRole('button', { name: 'Read sort' });
+		await readSort.click();
+		await expect
+			.element(screen.getByTestId('sort-read-in-handler'))
+			.toHaveTextContent(GIFT_SORT_OPTIONS.ownerOrder);
+
+		localStorage.setItem(
+			wishlistGiftSortStorageKey('wishlist-a'),
+			JSON.stringify(GIFT_SORT_OPTIONS.priceAsc),
+		);
+		await readSort.click();
+		await expect
+			.element(screen.getByTestId('sort-read-in-handler'))
+			.toHaveTextContent(GIFT_SORT_OPTIONS.priceAsc);
+	});
+
+	it('shows a grouping another tab saved', async () => {
+		const screen = render(GiftsContextTestHost, {
+			initialGifts: [makeGift({ category: true })],
+		});
+		await expectGrouping(screen, GIFT_GROUPING_OPTIONS.none);
+
+		const storageKey = wishlistGiftGroupingStorageKey('wishlist-a');
+		const savedValue = JSON.stringify(GIFT_GROUPING_OPTIONS.category);
+		localStorage.setItem(storageKey, savedValue);
+		window.dispatchEvent(
+			new StorageEvent('storage', { key: storageKey, newValue: savedValue }),
+		);
+		await expectGrouping(screen, GIFT_GROUPING_OPTIONS.category);
 	});
 });
 

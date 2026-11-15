@@ -16,7 +16,11 @@
 	import { giftViewerVariants } from './gift_viewer_variants.js';
 	import { useGiftGalleryPositions } from '$lib/modules/gifts/gift_gallery_positions.js';
 	import type { GiftMoreProps } from '$lib/components/blocks/wishlist/gift_context_invocation.js';
-	import type { GiftByRole, GiftForVisitor } from '$lib/modules/gifts/types.js';
+	import type {
+		GiftByRole,
+		GiftForVisitor,
+		GiftUnreserveHandler,
+	} from '$lib/modules/gifts/types.js';
 	import type { WishlistRole } from '$lib/modules/wishlists/types.js';
 	import { formatPrice, formatAppendDate } from '$lib/modules/gifts/gift_display.js';
 	import { deriveGiftDisplayState } from '$lib/modules/gifts/gift_display_state.js';
@@ -29,7 +33,7 @@
 		isArchived?: boolean;
 		hideReservationState?: boolean;
 		onreserve?: (gift: GiftForVisitor) => void;
-		onunreserve?: (gift: GiftForVisitor) => void;
+		onunreserve?: GiftUnreserveHandler;
 	}
 
 	// Stored image metadata carries no dimensions, so the photo column uses this ratio until the

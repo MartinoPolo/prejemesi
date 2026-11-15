@@ -22,6 +22,7 @@
 	import type {
 		GiftByRole,
 		GiftForVisitor,
+		GiftUnreserveHandler,
 		CreateGiftInput,
 		UpdateGiftInput,
 	} from '$lib/modules/gifts/types.js';
@@ -65,7 +66,7 @@
 		ondelete?: (giftId: string) => void | Promise<void>;
 		/** Gift viewer reservation action: opens the reserve modal / cancels an existing reservation. */
 		onreserve?: (gift: GiftForVisitor) => void;
-		onunreserve?: (gift: GiftForVisitor) => void;
+		onunreserve?: GiftUnreserveHandler;
 		onclose?: () => void;
 	}
 

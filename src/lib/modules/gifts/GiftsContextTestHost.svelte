@@ -29,6 +29,7 @@
 	let gifts = $state(untrack(() => initialGifts));
 	let loading = $state(untrack(() => initialLoading));
 	let narrowViewport = $state(untrack(() => initialNarrowViewport));
+	let sortReadInHandler = $state('');
 	const context = setGiftsContext(
 		() => wishlistId,
 		() => gifts,
@@ -114,3 +115,6 @@
 >
 <button onclick={() => (context.viewMode.current = GIFT_VIEW_MODES.carousel)}>Save carousel</button>
 <button onclick={() => (narrowViewport = !narrowViewport)}>Toggle narrow viewport</button>
+<!-- An event handler reads the sort untracked, like the wishlist page's sort change handler. -->
+<button onclick={() => (sortReadInHandler = context.sortOption.current)}>Read sort</button>
+<div data-testid="sort-read-in-handler">{sortReadInHandler}</div>
