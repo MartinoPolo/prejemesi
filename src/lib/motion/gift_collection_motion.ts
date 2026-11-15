@@ -1,6 +1,7 @@
 import { STANDARD_EASING } from './motion_tokens.js';
 import { giftMotionDuration } from './gift_motion_timing.js';
 import { LAYOUT_GIFT_MOTION_LIMIT } from './layout_motion.js';
+import { mutationsMayChangeCardLayout } from '$lib/components/blocks/gift/gift_card_layout_inert.js';
 import { copyComputedCustomProperties } from '$lib/components/blocks/wishlist/copy_computed_custom_properties.js';
 import {
 	detachedSubgridRows,
@@ -191,16 +192,15 @@ export function createGiftCollectionMotion(
 	const observed = new Set<HTMLElement>();
 	const resizeObserver = new ResizeObserver(() => schedule());
 	const mutationObserver = new MutationObserver((records) => {
-		if (
-			records.some(
-				(record) =>
-					record.type === 'childList' ||
-					(record.type === 'attributes' &&
-						!['style', GIFT_MOTION_DRAGGING_ATTRIBUTE].includes(
-							record.attributeName ?? '',
-						)),
-			)
-		) {
+		const relevant = records.filter(
+			(record) =>
+				record.type === 'childList' ||
+				(record.type === 'attributes' &&
+					!['style', GIFT_MOTION_DRAGGING_ATTRIBUTE].includes(
+						record.attributeName ?? '',
+					)),
+		);
+		if (relevant.length > 0 && mutationsMayChangeCardLayout(relevant)) {
 			schedule();
 		}
 	});
@@ -266,7 +266,11 @@ export function createGiftCollectionMotion(
 		return snapshot;
 	}
 
-	function captureGifts(withClones: boolean, endpoints: boolean): Map<string, GiftPosition> {
+	function captureGifts(
+		elements: readonly HTMLElement[],
+		withClones: boolean,
+		endpoints: boolean,
+	): Map<string, GiftPosition> {
 		const gifts = new Map<string, GiftPosition>();
 		// Clones only serve departures; a reorder drag makes none but settles on every slot change.
 		const cloned = withClones && !dragInProgress();
@@ -274,7 +278,7 @@ export function createGiftCollectionMotion(
 			HTMLElement,
 			{ bounds: DOMRect; clipsX: boolean; clipsY: boolean } | null
 		>();
-		for (const element of candidates(host)) {
+		for (const element of elements) {
 			const id = element.dataset.giftId;
 			if (
 				id === undefined ||
@@ -303,7 +307,20 @@ export function createGiftCollectionMotion(
 		return gifts;
 	}
 
-	function measure(withClones = false, endpoints = false): Snapshot {
+	/**
+	 * Sampling candidates hit-tests the viewport, so callers reuse one sample while the DOM is
+	 * unchanged. A running toolbar animation is revealed inside an endpoint measure, which moves the
+	 * window, so measure samples for itself then.
+	 */
+	function reusableCandidates(): HTMLElement[] | undefined {
+		return toolbarAnimation === null ? candidates(host) : undefined;
+	}
+
+	function measure(
+		withClones = false,
+		endpoints = false,
+		elements?: readonly HTMLElement[],
+	): Snapshot {
 		const bar = toolbar(host);
 		const revealToolbarLayout = endpoints && toolbarAnimation !== null && bar !== null;
 		const previousHeight = revealToolbarLayout ? bar.style.getPropertyValue('height') : '';
@@ -313,7 +330,7 @@ export function createGiftCollectionMotion(
 		}
 		try {
 			return {
-				gifts: captureGifts(withClones, endpoints),
+				gifts: captureGifts(elements ?? candidates(host), withClones, endpoints),
 				toolbarHeight:
 					bar?.isConnected === true ? bar.getBoundingClientRect().height : null,
 			};
@@ -496,8 +513,8 @@ export function createGiftCollectionMotion(
 		animateDepartures(previous, next);
 	}
 
-	function observe() {
-		const currentCandidates = new Set(candidates(host));
+	function observe(elements: readonly HTMLElement[] = candidates(host)) {
+		const currentCandidates = new Set(elements);
 		for (const element of currentCandidates) {
 			if (!observed.has(element)) {
 				resizeObserver.observe(element);
@@ -573,8 +590,9 @@ export function createGiftCollectionMotion(
 		if (destroyed) {
 			return;
 		}
-		const endpoint = measure(true, true);
-		observe();
+		const endpointCandidates = reusableCandidates();
+		const endpoint = measure(true, true, endpointCandidates);
+		observe(endpointCandidates);
 		if (baseline !== null && sameEndpoints(baseline, endpoint) && overrides.size === 0) {
 			baseline = endpoint;
 			return;
@@ -585,9 +603,14 @@ export function createGiftCollectionMotion(
 			return;
 		}
 		const source = pending ?? renderedBaseline() ?? previous;
+		// Cancelling moves animated gifts and removes overlays, which can shift the sampled window.
+		const visualStateCancelled = animations.size > 0 || overlays.size > 0;
 		cancel();
 		// Animations leave the DOM untouched, so the endpoint clones still match.
-		const destination = adoptClones(measure(false, true), endpoint);
+		const destination = adoptClones(
+			measure(false, true, visualStateCancelled ? undefined : endpointCandidates),
+			endpoint,
+		);
 		if (!suspended) {
 			play(source, destination);
 		}
@@ -632,10 +655,13 @@ export function createGiftCollectionMotion(
 		pending = null;
 		overrides.clear();
 		suspended = shouldSuspend;
-		baseline = shouldSuspend ? null : measure(true);
-		if (!shouldSuspend) {
-			observe();
+		if (shouldSuspend) {
+			baseline = null;
+			return;
 		}
+		const elements = candidates(host);
+		baseline = measure(true, false, elements);
+		observe(elements);
 	}
 
 	function onReducedMotionChange() {
@@ -685,12 +711,22 @@ export function createGiftCollectionMotion(
 		}
 	}
 
+	/** Only the page scroller, an ancestor of the collection, or a scroller inside it moves gifts. */
+	function collectionScrollTarget(event: Event): HTMLElement | null {
+		const scrollingElement = host.ownerDocument.scrollingElement;
+		const target = event.target === host.ownerDocument ? scrollingElement : event.target;
+		if (
+			!(target instanceof HTMLElement) ||
+			!(target === scrollingElement || target.contains(host) || host.contains(target))
+		) {
+			return null;
+		}
+		return target;
+	}
+
 	function onScroll(event: Event) {
-		const target =
-			event.target === host.ownerDocument
-				? host.ownerDocument.scrollingElement
-				: event.target;
-		if (!(target instanceof HTMLElement)) {
+		const target = collectionScrollTarget(event);
+		if (target === null) {
 			return;
 		}
 		const previous = scrollPositions.get(target);
@@ -703,8 +739,9 @@ export function createGiftCollectionMotion(
 		shiftSnapshot(baseline, target, deltaX, deltaY);
 		shiftSnapshot(pending, target, deltaX, deltaY);
 		if (pending === null && !suspended) {
-			baseline = adoptClones(measure(false, true), baseline);
-			observe();
+			const elements = reusableCandidates();
+			baseline = adoptClones(measure(false, true, elements), baseline);
+			observe(elements);
 		}
 		for (const [visual, position] of overlays) {
 			if (position.scrollAncestors.includes(target)) {
@@ -713,7 +750,10 @@ export function createGiftCollectionMotion(
 			}
 		}
 	}
-	function onScrollEnd() {
+	function onScrollEnd(event: Event) {
+		if (collectionScrollTarget(event) === null) {
+			return;
+		}
 		// Drag auto-scroll ends a scroll every frame; the drop settles a fresh baseline instead.
 		if (pending === null && !suspended && !destroyed && !dragInProgress()) {
 			baseline = measure(true, true);
