@@ -1262,7 +1262,6 @@
 		inline-size: 100cqw;
 		transform: translateX(-50%);
 		background: var(--app-page-background);
-		backdrop-filter: blur(10px);
 		pointer-events: auto;
 	}
 
@@ -1272,7 +1271,6 @@
 		inset-inline: 0;
 		block-size: 1.5rem;
 		background: var(--app-page-background);
-		backdrop-filter: blur(10px);
 		content: '';
 		mask-image: linear-gradient(to bottom, #000, transparent);
 		pointer-events: none;
