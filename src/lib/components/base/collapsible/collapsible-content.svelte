@@ -14,7 +14,7 @@
 	bind:ref
 	data-slot="collapsible-content"
 	class={cn(
-		'data-open:animate-accordion-down data-closed:animate-accordion-up overflow-hidden',
+		'data-open:animate-collapsible-down data-closed:animate-collapsible-up overflow-hidden',
 		className,
 	)}
 	{...restProps}
