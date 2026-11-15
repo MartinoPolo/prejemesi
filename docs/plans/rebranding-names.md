@@ -9,46 +9,31 @@ Goal: replace "Přejeme si" with a name that works internationally and still fee
 - Sounds good in English; nothing embarrassing or negative when a Czech reads it.
 - `.com`, `.app` and `.cz` all unregistered.
 
-Market context: the `Wish…` prefix is crowded (Wish.com marketplace, GoWish, Wishly, Wishfox, Wishdeck, Wishr,
-Wishbob, Wishwave, WishOwl, Wishfinity, HaveWish, Wishes). A `Wish…` name must earn its distinctiveness from the
-second half; names that lead with something else stand out more. Czechs read "wish" as "víš" ("you know"), which is
-harmless.
+Market context: the `Wish…` prefix is crowded (Wish.com marketplace, GoWish, Wishly, Wishfox, Wishdeck, Wishr, Wishbob, Wishwave, WishOwl, Wishfinity, HaveWish, Wishes). A `Wish…` name must earn its distinctiveness from the second half; names that lead with something else stand out more. Czechs read "wish" as "víš" ("you know"), which is harmless.
 
-Availability was checked on 2026-11-04 (`.com`/`.app` via registry RDAP, `.cz` via `whois.nic.cz`). "Free" means no
-registration record, not a guarantee; recheck right before registering. Clash notes come from quick web searches.
+Availability was checked on 2026-11-04 (`.com`/`.app` via registry RDAP, `.cz` via `whois.nic.cz`). "Free" means no registration record, not a guarantee; recheck right before registering. Clash notes come from quick web searches.
 
 ## Top 10
 
-1. **Hazelwish** – Nods to *Tři oříšky pro Popelku* (Three Hazelnuts for Cinderella), the Czech Christmas film
-   where each hazelnut holds a wish. That gives it a Czech story, while in English it reads as "hazel" plus a
-   "witch hazel" pun. It doesn't start with "Wish", so it stands apart from the crowd. All three domains are
-   free and no clash was found.
-2. **Bowerwish** – The bowerbird collects treasured objects to court a partner, a fitting gift metaphor that also
-   gives a mascot. Distinctive, all domains free, no clash. Minor risk: non-native speakers may be unsure how to say
-   "bower" (it rhymes with "flower").
-3. **Shushgift** – Names the product's core promise: no spoilers, so the surprise stays secret. Playful in English
-   and neutral in Czech. It doesn't lead with "Wish", all domains are free and no clash was found.
-4. **Wishfinch** – Short, light and friendly, with a bird mascot. All domains free. Minor clash with Finch, a
-   self-care app outside the gift space.
-5. **Wishrobin** – The robin is a Christmas symbol in the UK, and Czechs know "Robin" as a name. All domains free.
-   Distant echo of Robinhood (finance).
+1. **Hazelwish** – Nods to _Tři oříšky pro Popelku_ (Three Hazelnuts for Cinderella), the Czech Christmas film where each hazelnut holds a wish. That gives it a Czech story, while in English it reads as "hazel" plus a "witch hazel" pun. It doesn't start with "Wish", so it stands apart from the crowd. All three domains are free and no clash was found.
+2. **Bowerwish** – The bowerbird collects treasured objects to court a partner, a fitting gift metaphor that also gives a mascot. Distinctive, all domains free, no clash. Minor risk: non-native speakers may be unsure how to say "bower" (it rhymes with "flower").
+3. **Shushgift** – Names the product's core promise: no spoilers, so the surprise stays secret. Playful in English and neutral in Czech. It doesn't lead with "Wish", all domains are free and no clash was found.
+4. **Wishfinch** – Short, light and friendly, with a bird mascot. All domains free. Minor clash with Finch, a self-care app outside the gift space.
+5. **Wishrobin** – The robin is a Christmas symbol in the UK, and Czechs know "Robin" as a name. All domains free. Distant echo of Robinhood (finance).
 6. **Wishmaple** – Warm and calm, easy to say in both languages, all domains free, no clash.
 7. **Wishpuffin** – Cute, mascot-ready and memorable. All domains free, no clash. Slightly playful for weddings.
-8. **Unpeeked** – A non-"Wish" name for the spoiler-free promise; distinctive, all domains free. It says less about
-   gifts at first glance.
+8. **Unpeeked** – A non-"Wish" name for the spoiler-free promise; distinctive, all domains free. It says less about gifts at first glance.
 9. **Wishtoffee** – Sweet and cosy; Czechs know toffee from Toffifee. All domains free, no clash.
-10. **Wishacorn** – A small thing that grows, which suits a permanent list. All domains free. Distant echo of
-    Acorns (finance).
+10. **Wishacorn** – A small thing that grows, which suits a permanent list. All domains free. Distant echo of Acorns (finance).
 
-Honourable mentions: **Wishdibs** ("dibs" means claiming something, a neat fit for reserving, but non-native speakers
-may not know the word), **Giftbower**, **Secretbow** (could be read as "bow" the weapon or "bow" the bend).
+Honourable mentions: **Wishdibs** ("dibs" means claiming something, a neat fit for reserving, but non-native speakers may not know the word), **Giftbower**, **Secretbow** (could be read as "bow" the weapon or "bow" the bend).
 
 ## All candidates
 
 Y = free, – = registered.
 
 | Name | Meaning / origin | EN note | CZ note | .com | .app | .cz | Clash notes |
-|---|---|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- | --- | --- |
 | Hazelwish | hazelnut + wish; Three Hazelnuts for Cinderella | pleasant, "witch hazel" pun | strong cultural tie | Y | Y | Y | none found |
 | Hazellist | same, list form | double "l" reads awkwardly | same tie | Y | Y | Y | none found |
 | Bowerwish | bowerbird collects treasures | "bower" pronunciation unsure | neutral | Y | Y | Y | none found |
@@ -114,5 +99,4 @@ Y = free, – = registered.
 | Wishbox | box | generic | neutral | – | – | Y | many uses |
 | Wishly | wish + -ly | fine | neutral | – | – | – | Wishly app (direct clash) |
 
-Rejected without a full check: Twinklist (reads as "twink list" in English), Darky (English slur), Gifta (Swedish
-"to marry").
+Rejected without a full check: Twinklist (reads as "twink list" in English), Darky (English slur), Gifta (Swedish "to marry").
