@@ -53,7 +53,7 @@ const LANDING_DEMO_PUBLIC_MODULE_PATHS = [
 
 // Manager-only and rarely opened dialogs load on demand (docs/PERFORMANCE.md, Lazy dialogs), so
 // an anonymous wishlist visitor never downloads them. GiftCategoryQuickAddDialog and
-// ReleaseReservationFlow are absent: the gift detail form and release button import them.
+// ReleaseReservationFlow stay eager: the gift detail form and release button import them statically.
 const LAZY_WISHLIST_DIALOG_MODULE_PATHS = [
 	'/lib/components/blocks/sharing/ShareWizard.svelte',
 	'/lib/components/blocks/moderator/ModeratorPanel.svelte',

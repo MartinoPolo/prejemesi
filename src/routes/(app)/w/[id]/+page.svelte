@@ -23,11 +23,10 @@
 		createWishlistModalLoader,
 		editRecipientDialogLoader,
 		giftBulkCopyDialogLoader,
-		giftCategoryQuickAddDialogLoader,
-		releaseReservationFlowLoader,
 		wishlistAssistantLoader,
 		wishlistSettingsModalLoader,
 	} from '$lib/components/blocks/wishlist/lazy_dialog_loaders.js';
+	import ReleaseReservationFlow from '$lib/components/blocks/reservation/ReleaseReservationFlow.svelte';
 	import { setAssistantContext } from '$lib/modules/chat/assistant.context.svelte.js';
 	import {
 		NO_GIFT_LIVE_PREVIEWS,
@@ -51,7 +50,9 @@
 	import { useNarrowViewportState } from '$lib/components/derived/narrow_viewport_state.svelte.js';
 	import WishlistPreparingNotice from '$lib/components/blocks/wishlist/WishlistPreparingNotice.svelte';
 	import WishlistModals from '$lib/components/blocks/wishlist/WishlistModals.svelte';
-	import type { GiftCategoryQuickAddTarget } from '$lib/components/blocks/gift/GiftCategoryQuickAddDialog.svelte';
+	import GiftCategoryQuickAddDialog, {
+		type GiftCategoryQuickAddTarget,
+	} from '$lib/components/blocks/gift/GiftCategoryQuickAddDialog.svelte';
 	import { ConfirmDialog } from '$lib/components/derived/confirm-dialog/index.js';
 	import * as Alert from '$lib/components/base/alert/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
@@ -1041,13 +1042,6 @@
 		if (giftSelection.active || availableActions.length === 0) {
 			return false;
 		}
-		// Opening the actions is the intent signal for the dialogs they can hand off to.
-		if (availableActions.includes('release-reservation')) {
-			releaseReservationFlowLoader.preload();
-		}
-		if (canCreateCategory) {
-			giftCategoryQuickAddDialogLoader.preload();
-		}
 		const viewportAtOpen = narrowViewport.current;
 		const id = ++nextContextSessionId;
 		const placementSnapshot =
@@ -1234,11 +1228,8 @@
 		clearReorderSession();
 		giftSelection.enter(giftId);
 		void ensurePriorityLevels();
-		// Selection is the intent signal for the dialogs its toolbar opens.
+		// Selection is the intent signal for the bulk copy dialog its toolbar opens.
 		giftBulkCopyDialogLoader.preload();
-		if (canCreateCategory) {
-			giftCategoryQuickAddDialogLoader.preload();
-		}
 	}
 
 	async function applyBulkAction(action: GiftBulkAction, hiddenConfirmed = false) {
@@ -2835,16 +2826,12 @@
 />
 
 {#if canCreateCategory}
-	<LazyDialog bind:open={categoryQuickAddOpen} loader={giftCategoryQuickAddDialogLoader}>
-		{#snippet children(GiftCategoryQuickAddDialog, dialog)}
-			<GiftCategoryQuickAddDialog
-				bind:open={dialog.open}
-				wishlistId={wishlist.id}
-				target={categoryQuickAddTarget}
-				categories={categoryOptions}
-			/>
-		{/snippet}
-	</LazyDialog>
+	<GiftCategoryQuickAddDialog
+		bind:open={categoryQuickAddOpen}
+		wishlistId={wishlist.id}
+		target={categoryQuickAddTarget}
+		categories={categoryOptions}
+	/>
 {/if}
 
 <!-- After the gift editor so its portal stacks above it: the editor asks on the first change. -->
@@ -2860,17 +2847,12 @@
 />
 
 {#if releaseFlowGift !== null}
-	{@const releasedGift = releaseFlowGift}
-	<LazyDialog bind:open={releaseFlowOpen} loader={releaseReservationFlowLoader}>
-		{#snippet children(ReleaseReservationFlow, dialog)}
-			<ReleaseReservationFlow
-				bind:open={dialog.open}
-				giftId={releasedGift.id}
-				giftName={releasedGift.name}
-				returnFocusTo={releasedGift.moreAnchor}
-			/>
-		{/snippet}
-	</LazyDialog>
+	<ReleaseReservationFlow
+		bind:open={releaseFlowOpen}
+		giftId={releaseFlowGift.id}
+		giftName={releaseFlowGift.name}
+		returnFocusTo={releaseFlowGift.moreAnchor}
+	/>
 {/if}
 
 <!-- Per-wishlist settings modal (details / appearance / image). Mounted for every viewer:

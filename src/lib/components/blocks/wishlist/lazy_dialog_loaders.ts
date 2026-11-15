@@ -23,12 +23,6 @@ export const moderatorPanelLoader = lazyComponent(
 export const giftDraftDialogLoader = lazyComponent(
 	() => import('$lib/components/blocks/gift-draft-grid/GiftDraftDialog.svelte'),
 );
-export const giftCategoryQuickAddDialogLoader = lazyComponent(
-	() => import('$lib/components/blocks/gift/GiftCategoryQuickAddDialog.svelte'),
-);
-export const releaseReservationFlowLoader = lazyComponent(
-	() => import('$lib/components/blocks/reservation/ReleaseReservationFlow.svelte'),
-);
 export const wishlistAssistantLoader = lazyComponent(
 	() => import('$lib/components/blocks/chat/WishlistAssistant.svelte'),
 );
