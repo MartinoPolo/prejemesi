@@ -374,21 +374,34 @@
 			controller.abort();
 		};
 		void scrollThreadToEnd();
+		// Text deltas arrive faster than frames; render the turn at most once per frame.
+		let liveTurnFrame = 0;
+		const commitLiveTurn = () => {
+			cancelAnimationFrame(liveTurnFrame);
+			liveTurnFrame = 0;
+			liveTurn = turn;
+		};
 		try {
 			const refusal = await stream(controller.signal, (event) => {
 				if (stopped && event.type === CHAT_STREAM_EVENT.error) {
 					return;
 				}
 				turn = withStreamEvent(turn, event);
-				liveTurn = turn;
+				if (event.type !== CHAT_STREAM_EVENT.text) {
+					commitLiveTurn();
+				} else if (liveTurnFrame === 0) {
+					liveTurnFrame = requestAnimationFrame(commitLiveTurn);
+				}
 				followStreamEvent(event);
 			});
+			commitLiveTurn();
 			if (refusal !== null) {
 				// Nothing was stored, so the message goes back to the composer.
 				assistant.draft.current = userText ?? assistant.draft.current;
 				toastError(m.chat_error_title());
 			}
 		} catch {
+			commitLiveTurn();
 			if (!controller.signal.aborted) {
 				liveTurn = { ...turn, error: CHAT_TURN_ERROR.providerFailed };
 			}

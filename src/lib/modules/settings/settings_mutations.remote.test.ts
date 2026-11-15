@@ -49,6 +49,7 @@ vi.mock('$lib/server/remote.js', () => ({
 		(wrapped as unknown as Record<string, unknown>).__ = { type: 'query' };
 		return wrapped;
 	}),
+	singleFlightRefresh: vi.fn(),
 	publicCommand: vi.fn((_schema: unknown, handler: (...args: unknown[]) => unknown) => {
 		const wrapped = (...args: unknown[]) => handler(...args);
 		(wrapped as unknown as Record<string, unknown>).__ = { type: 'command' };
@@ -114,6 +115,7 @@ vi.mock('$lib/server/storage/r2.js', () => ({
 
 import * as v from 'valibot';
 import {
+	getUserProfile,
 	updateProfile,
 	updatePreferredLocale,
 	setUserPalette,
@@ -129,6 +131,7 @@ import {
 import { getDb } from '$lib/server/db/index.js';
 import { getRequestEvent } from '$app/server';
 import { deleteObjectsBestEffort } from '$lib/server/storage/r2.js';
+import { singleFlightRefresh } from '$lib/server/remote.js';
 import { user as mockedUserTable } from '$lib/server/db/auth.schema.js';
 
 const mockGetDb = vi.mocked(getDb);
@@ -176,6 +179,14 @@ beforeEach(() => {
 describe('updateProfile', () => {
 	const callUpdateProfile = (input: { name: string; image: string | null }) =>
 		(updateProfile as unknown as (...args: unknown[]) => Promise<void>)(testAuthContext, input);
+
+	it('returns the refreshed profile on the save response', async () => {
+		mockGetDb.mockReturnValue(createMockDb([[{ image: null }], []]));
+
+		await callUpdateProfile({ name: 'Name', image: null });
+
+		expect(vi.mocked(singleFlightRefresh)).toHaveBeenCalledWith(getUserProfile);
+	});
 
 	it('deletes the previous uploaded avatar object when replaced (REQ-6)', async () => {
 		mockGetDb.mockReturnValue(createMockDb([[{ image: 'avatars/old.jpg' }], []]));

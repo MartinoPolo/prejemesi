@@ -49,6 +49,7 @@ vi.mock('$lib/server/remote.js', () => ({
 		(wrapped as unknown as Record<string, unknown>).__ = { type: 'query' };
 		return wrapped;
 	}),
+	singleFlightRefresh: vi.fn(),
 	publicCommand: vi.fn((_schema: unknown, handler: (...args: unknown[]) => unknown) => {
 		const wrapped = (...args: unknown[]) => handler(...args);
 		(wrapped as unknown as Record<string, unknown>).__ = { type: 'command' };

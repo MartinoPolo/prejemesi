@@ -9,7 +9,7 @@
 	import { Field, type FieldControlContext } from '$lib/components/derived/field/index.js';
 	import { detectColumns, type DetectedColumn } from '$lib/modules/import/detect_columns.js';
 	import {
-		findDuplicates,
+		createDuplicateFinder,
 		type GiftDraft,
 		type ValidatedGiftDraft,
 	} from '$lib/modules/gifts/gift_draft.js';
@@ -262,8 +262,9 @@
 			return new SvelteSet<string>();
 		}
 		const matched = new SvelteSet<string>();
+		const findExistingDuplicates = createDuplicateFinder(existingGifts);
 		for (const draft of gridDrafts) {
-			const dupes = findDuplicates(draft, existingGifts);
+			const dupes = findExistingDuplicates(draft);
 			for (const dupe of dupes) {
 				matched.add(dupe.name);
 			}

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
+	import { SvelteSet } from 'svelte/reactivity';
 	import PageHeader from '$lib/components/blocks/page-header/PageHeader.svelte';
 	import DashboardToolbar from '$lib/components/blocks/dashboard/DashboardToolbar.svelte';
 	import WishlistCardGrid from '$lib/components/blocks/dashboard/WishlistCardGrid.svelte';
@@ -41,23 +42,45 @@
 		return sortFollowedWishlists(filtered, sortValue);
 	});
 
-	async function handleUnfollow(wishlistId: string) {
+	const followChangePendingIds = new SvelteSet<string>();
+
+	async function changeFollow(
+		wishlistId: string,
+		command: (wishlistId: string) => Promise<unknown>,
+		successMessage: string,
+		errorMessage: string,
+	) {
+		if (followChangePendingIds.has(wishlistId)) {
+			return;
+		}
+		followChangePendingIds.add(wishlistId);
 		try {
 			// Single-flight: the updated list rides back on the command response.
-			await unfollowWishlist(wishlistId);
-			toastSuccess(m.toast_unfollowed());
+			await command(wishlistId);
+			toastSuccess(successMessage);
 		} catch {
-			toastError(m.toast_unfollow_error());
+			toastError(errorMessage);
+		} finally {
+			followChangePendingIds.delete(wishlistId);
 		}
 	}
 
-	async function handleRefollow(wishlistId: string) {
-		try {
-			await refollowWishlist(wishlistId);
-			toastSuccess(m.toast_refollowed());
-		} catch {
-			toastError(m.toast_refollow_error());
-		}
+	function handleUnfollow(wishlistId: string) {
+		return changeFollow(
+			wishlistId,
+			unfollowWishlist,
+			m.toast_unfollowed(),
+			m.toast_unfollow_error(),
+		);
+	}
+
+	function handleRefollow(wishlistId: string) {
+		return changeFollow(
+			wishlistId,
+			refollowWishlist,
+			m.toast_refollowed(),
+			m.toast_refollow_error(),
+		);
 	}
 
 	function sortFollowedWishlists(
@@ -125,21 +148,26 @@
 				myReservations={wishlistItem.myReservations}
 			>
 				{#snippet actions()}
+					{@const followChangePending = followChangePendingIds.has(wishlistItem.id)}
 					{#if wishlistItem.unfollowedAt !== null}
 						<Button
 							size="sm"
 							intent="outline"
+							disabled={followChangePending}
+							aria-busy={followChangePending || undefined}
 							onclick={(e) => {
 								e.preventDefault();
 								handleRefollow(wishlistItem.id);
 							}}
 						>
-							Znovu sledovat
+							{m.wishlist_detail_refollow()}
 						</Button>
 					{:else}
 						<Button
 							size="sm"
 							intent="ghost"
+							disabled={followChangePending}
+							aria-busy={followChangePending || undefined}
 							onclick={(e) => {
 								e.preventDefault();
 								handleUnfollow(wishlistItem.id);

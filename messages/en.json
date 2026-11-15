@@ -852,6 +852,7 @@
 	"toast_wishlist_details_saved": "Wishlist details saved",
 	"toast_wishlist_details_save_error": "Failed to save wishlist details",
 	"wishlist_detail_unfollow": "Stop following",
+	"wishlist_detail_refollow": "Follow again",
 	"wishlist_detail_add_gift_label": "Add gift",
 	"wishlist_detail_add_wish": "Add wish",
 	"wishlist_detail_loading_gifts": "Loading wishes...",

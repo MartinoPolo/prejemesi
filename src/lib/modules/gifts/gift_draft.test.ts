@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parsePrice, validateDraft, findDuplicates, type GiftDraft } from './gift_draft.js';
+import { parsePrice, validateDraft, createDuplicateFinder, type GiftDraft } from './gift_draft.js';
 import { DEFAULT_DRAFT_PRIORITY, GIFT_CURRENCIES, MAX_GIFT_LINKS, type GiftLink } from './types.js';
 
 function makeDraft(overrides: Partial<GiftDraft> = {}): GiftDraft {
@@ -130,16 +130,16 @@ describe('validateDraft', () => {
 	});
 });
 
-describe('findDuplicates', () => {
+describe('createDuplicateFinder', () => {
 	it('matches names ignoring case and whitespace', () => {
 		const existing = [{ id: 'a', name: 'lego set' }];
-		const result = findDuplicates(makeDraft({ name: 'Lego  Set' }), existing);
+		const result = createDuplicateFinder(existing)(makeDraft({ name: 'Lego  Set' }));
 		expect(result).toEqual([{ id: 'a', name: 'lego set' }]);
 	});
 
 	it('matches names ignoring diacritics', () => {
 		const existing = [{ id: 'b', name: 'ruzova kniha' }];
-		const result = findDuplicates(makeDraft({ name: 'Růžová Kniha' }), existing);
+		const result = createDuplicateFinder(existing)(makeDraft({ name: 'Růžová Kniha' }));
 		expect(result).toEqual([{ id: 'b', name: 'ruzova kniha' }]);
 	});
 
@@ -147,9 +147,8 @@ describe('findDuplicates', () => {
 		const existing = [
 			{ id: 'c', name: 'Other', links: [{ url: 'https://alza.cz/lego-123?ref=x#top' }] },
 		];
-		const result = findDuplicates(
+		const result = createDuplicateFinder(existing)(
 			makeDraft({ name: 'Mismatch', links: [{ url: 'https://www.alza.cz/lego-123/' }] }),
-			existing,
 		);
 		expect(result).toEqual(existing);
 	});
@@ -158,16 +157,15 @@ describe('findDuplicates', () => {
 		const existing = [
 			{ id: 'd', name: 'Something Else', links: [{ url: 'https://other.com/x' }] },
 		];
-		const result = findDuplicates(
+		const result = createDuplicateFinder(existing)(
 			makeDraft({ name: 'Unique', links: [{ url: 'https://example.com/y' }] }),
-			existing,
 		);
 		expect(result).toEqual([]);
 	});
 
 	it('does not match two blank names', () => {
 		const existing = [{ id: 'e', name: '' }];
-		const result = findDuplicates(makeDraft({ name: '   ' }), existing);
+		const result = createDuplicateFinder(existing)(makeDraft({ name: '   ' }));
 		expect(result).toEqual([]);
 	});
 
@@ -176,8 +174,24 @@ describe('findDuplicates', () => {
 			{ id: '1', name: 'No Match', links: [] as GiftLink[] },
 			{ id: '2', name: 'Target', links: [] as GiftLink[] },
 		];
-		const result = findDuplicates(makeDraft({ name: 'target' }), existing);
+		const result = createDuplicateFinder(existing)(makeDraft({ name: 'target' }));
 		expect(result).toHaveLength(1);
 		expect(result[0]!.id).toBe('2');
+	});
+
+	it('reuses one index across drafts without carrying matches between them', () => {
+		const existing = [
+			{ id: 'f', name: 'Kolo', links: [{ url: 'https://alza.cz/kolo' }] },
+			{ id: 'g', name: 'Míč', links: [] as GiftLink[] },
+		];
+		const find = createDuplicateFinder(existing);
+
+		expect(find(makeDraft({ name: 'mic' })).map((gift) => gift.id)).toEqual(['g']);
+		expect(
+			find(makeDraft({ name: 'Jiné', links: [{ url: 'https://www.alza.cz/kolo' }] })).map(
+				(gift) => gift.id,
+			),
+		).toEqual(['f']);
+		expect(find(makeDraft({ name: 'Nic' }))).toEqual([]);
 	});
 });

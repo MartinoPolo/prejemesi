@@ -8,7 +8,7 @@
 	import { SimpleTooltip } from '$lib/components/base/tooltip/index.js';
 	import { cn } from '$lib/utils.js';
 	import {
-		findDuplicates,
+		createDuplicateFinder,
 		validateDraft,
 		type GiftDraft,
 	} from '$lib/modules/gifts/gift_draft.js';
@@ -109,12 +109,14 @@
 		return [];
 	}
 
+	const findExistingDuplicates = $derived(createDuplicateFinder(existingGifts));
+
 	/** A row has a possible duplicate only in import context. */
 	function rowHasDuplicateWarning(row: DraftGridRow): boolean {
 		if (context !== DRAFT_GRID_CONTEXT.import || existingGifts.length === 0) {
 			return false;
 		}
-		return findDuplicates(rowToDraft(row), existingGifts).length > 0;
+		return findExistingDuplicates(rowToDraft(row)).length > 0;
 	}
 
 	function rowStatus(row: DraftGridRow): RowStatus {

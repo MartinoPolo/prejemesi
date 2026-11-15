@@ -4,6 +4,7 @@
 	import { setNotificationsContext } from '$lib/modules/notifications/notifications.context.svelte.js';
 	import { setAssistantDockContext } from '$lib/modules/chat/assistant_dock.context.svelte.js';
 	import { resolveUserImageUrl } from '$lib/modules/images/public_url.js';
+	import { scheduleIdle } from '$lib/utils/schedule_idle.js';
 	import * as m from '$lib/paraglide/messages.js';
 	import { preloadCode } from '$app/navigation';
 	import { page } from '$app/state';
@@ -60,15 +61,7 @@
 				),
 			);
 		};
-		if (typeof window.requestIdleCallback === 'function') {
-			const idleHandle = window.requestIdleCallback(preloadPrimaryRouteCode, {
-				timeout: IDLE_PRELOAD_TIMEOUT_MS,
-			});
-			return () => window.cancelIdleCallback(idleHandle);
-		}
-		// Safari has no requestIdleCallback — fall back to a bounded timer.
-		const timeoutHandle = setTimeout(preloadPrimaryRouteCode, IDLE_PRELOAD_TIMEOUT_MS);
-		return () => clearTimeout(timeoutHandle);
+		return scheduleIdle(preloadPrimaryRouteCode, IDLE_PRELOAD_TIMEOUT_MS);
 	});
 </script>
 

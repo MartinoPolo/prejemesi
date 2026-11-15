@@ -25,7 +25,7 @@
 	import { canManageWishlist } from '$lib/modules/wishlists/wishlist_capabilities.js';
 	import {
 		giftCardCollectionLayout,
-		measureGiftCardCollectionLayout,
+		measureGiftCardCollectionLayoutNow,
 	} from './gift_card_collection_layout.js';
 	import { createGiftCollectionMotion } from '$lib/motion/gift_collection_motion.js';
 	import { cn } from '$lib/utils.js';
@@ -314,7 +314,7 @@
 				return;
 			}
 			if (collectionElement) {
-				measureGiftCardCollectionLayout(collectionElement);
+				measureGiftCardCollectionLayoutNow(collectionElement);
 			}
 			if (motionSuspended) {
 				if (activeAnimation !== null) {

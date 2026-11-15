@@ -264,7 +264,6 @@
 
 	onMount(() => {
 		mounted = true;
-		void tick().then(measureIntrinsicActions);
 		document.fonts?.addEventListener('loadingdone', measureIntrinsicActions);
 		const stopObservingDepth = observeDepthChange(measureIntrinsicActions);
 		return () => {

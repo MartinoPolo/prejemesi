@@ -16,6 +16,7 @@
 	import { cn } from '$lib/utils.js';
 	import { giftCardVariants } from './gift_card_variants.js';
 	import { GIFT_CARD_CONTROL_SELECTOR } from './gift_card_controls.js';
+	import { GIFT_CARD_LAYOUT_INERT_ATTRIBUTE } from './gift_card_layout_inert.js';
 	import GiftDescription from './GiftDescription.svelte';
 	import GiftCategoryBadges from './GiftCategoryBadges.svelte';
 	import GiftPriorityBadge from './GiftPriorityBadge.svelte';
@@ -210,6 +211,7 @@
 			{#if !showsGallery}
 				<div
 					class="absolute inset-x-0 top-0 bottom-(--border-w) flex items-center justify-center"
+					{...{ [GIFT_CARD_LAYOUT_INERT_ATTRIBUTE]: '' }}
 				>
 					<div class={styles.cropComposition()} data-testid="gift-card-crop-composition">
 						<GiftImage

@@ -1,6 +1,7 @@
 import { browser } from '$app/environment';
 import { createContext } from 'svelte';
-import { SvelteSet } from 'svelte/reactivity';
+import { on } from 'svelte/events';
+import { createSubscriber } from 'svelte/reactivity';
 import { StateRaw } from '$lib/reactivity/state.svelte.js';
 import { Derived } from '$lib/reactivity/derived.svelte.js';
 import { Persisted, jsonSerde } from '$lib/reactivity/persisted.svelte.js';
@@ -33,6 +34,7 @@ import { labelForGiftCategory } from '$lib/modules/gift-categories/types.js';
 import type { WishlistRole } from '$lib/modules/wishlists/types.js';
 import * as m from '$lib/paraglide/messages.js';
 import { getLocale } from '$lib/paraglide/runtime.js';
+import { createReservationPurchasedState } from '$lib/modules/reservations/reservation_purchased.svelte.js';
 
 type GiftsContext = ReturnType<typeof createGiftsContext>;
 
@@ -51,12 +53,21 @@ interface Serde<T> {
 	deserialize: (value: string) => { success: true; data: T } | { success: false };
 }
 
+type StoredPreference<T> = { found: true; value: T } | { found: false };
+
+/**
+ * A per-scope localStorage preference. The parsed value is cached per key and revision, so
+ * derivations re-run on gift refreshes without touching storage; `set`, a scope change and a
+ * `storage` event from another tab invalidate it.
+ */
 class ScopedPersisted<T> {
 	#getDefaultValue: () => T;
 	#getKey: () => string;
 	#onBeforeRead: ((key: string) => void) | undefined;
 	#revision = new StateRaw(0);
 	#serde: Serde<T>;
+	#subscribe: (() => void) | undefined;
+	#cache: { key: string; revision: number; stored: StoredPreference<T> } | null = null;
 
 	constructor(options: {
 		getKey: () => string;
@@ -69,35 +80,53 @@ class ScopedPersisted<T> {
 		this.#serde = options.serde;
 		this.#getDefaultValue = options.getDefaultValue ?? (() => options.defaultValue);
 		this.#onBeforeRead = options.onBeforeRead;
+		if (browser) {
+			this.#subscribe = createSubscriber(() =>
+				on(window, 'storage', (event) => {
+					if (event.key === null || event.key === this.#cache?.key) {
+						this.#revision.current += 1;
+					}
+				}),
+			);
+		}
 	}
 
-	get current(): T {
-		void this.#revision.current;
-		const defaultValue = this.#getDefaultValue();
-		if (!browser) {
-			return defaultValue;
-		}
-		const key = this.#getKey();
+	#readStorage(key: string): StoredPreference<T> {
 		this.#onBeforeRead?.(key);
 		let value: string | null;
 		try {
 			value = localStorage.getItem(key);
 		} catch {
-			return defaultValue;
+			return { found: false };
 		}
 		if (value === null) {
-			return defaultValue;
+			return { found: false };
 		}
 		const parsed = this.#serde.deserialize(value);
-		if (!parsed.success) {
-			try {
-				localStorage.setItem(key, this.#serde.serialize(defaultValue));
-			} catch {
-				// Repair is best effort when browser storage is unavailable.
-			}
-			return defaultValue;
+		if (parsed.success) {
+			return { found: true, value: parsed.data };
 		}
-		return parsed.data;
+		const repaired = this.#getDefaultValue();
+		try {
+			localStorage.setItem(key, this.#serde.serialize(repaired));
+		} catch {
+			// Repair is best effort when browser storage is unavailable.
+		}
+		return { found: true, value: repaired };
+	}
+
+	get current(): T {
+		const revision = this.#revision.current;
+		if (!browser) {
+			return this.#getDefaultValue();
+		}
+		this.#subscribe?.();
+		const key = this.#getKey();
+		if (this.#cache?.key !== key || this.#cache.revision !== revision) {
+			this.#cache = { key, revision, stored: this.#readStorage(key) };
+		}
+		const stored = this.#cache.stored;
+		return stored.found ? stored.value : this.#getDefaultValue();
 	}
 
 	set current(value: T) {
@@ -213,22 +242,40 @@ function categoryFilterValues(gift: GiftByRole): GiftCategoryFilterValue[] {
 		: [UNCATEGORIZED_GIFT_CATEGORY_FILTER_VALUE];
 }
 
-/** Every link counts, so a store matches a gift buyable there through any of its links. */
+const storeFilterValuesCache = new WeakMap<
+	RegistrableDomainResolver,
+	WeakMap<GiftByRole, GiftStoreFilterValue[]>
+>();
+
+/**
+ * Every link counts, so a store matches a gift buyable there through any of its links. Cached per
+ * gift object, which a gift refresh replaces, so filtering and option counting parse each URL once.
+ */
 function storeFilterValues(
 	gift: GiftByRole,
 	resolveRegistrableDomain: RegistrableDomainResolver,
 ): GiftStoreFilterValue[] {
-	if (gift.links.length === 0) {
-		return [NO_LINK_GIFT_STORE_FILTER_VALUE];
+	let cachedValues = storeFilterValuesCache.get(resolveRegistrableDomain);
+	if (cachedValues === undefined) {
+		cachedValues = new WeakMap();
+		storeFilterValuesCache.set(resolveRegistrableDomain, cachedValues);
 	}
-	const domains: string[] = [];
+	const cached = cachedValues.get(gift);
+	if (cached !== undefined) {
+		return cached;
+	}
+	const values: GiftStoreFilterValue[] = [];
+	if (gift.links.length === 0) {
+		values.push(NO_LINK_GIFT_STORE_FILTER_VALUE);
+	}
 	for (const link of gift.links) {
 		const domain = extractGiftStoreDomain(link.url, resolveRegistrableDomain);
-		if (domain !== null && !domains.includes(domain)) {
-			domains.push(domain);
+		if (domain !== null && !values.includes(domain)) {
+			values.push(domain);
 		}
 	}
-	return domains;
+	cachedValues.set(gift, values);
+	return values;
 }
 
 /**
@@ -263,27 +310,25 @@ export function giftStoreFilterOptions(
 	gifts: readonly GiftByRole[],
 	resolveRegistrableDomain: RegistrableDomainResolver,
 ): GiftFilterOption<GiftStoreFilterValue>[] {
-	const storeGiftCounts: Array<{ store: string; giftCount: number }> = [];
+	const storeGiftCounts: Record<string, number> = Object.create(null);
 	let hasLinkless = false;
 
 	for (const gift of gifts) {
 		for (const value of storeFilterValues(gift, resolveRegistrableDomain)) {
 			if (value === NO_LINK_GIFT_STORE_FILTER_VALUE) {
 				hasLinkless = true;
-				continue;
-			}
-			const counted = storeGiftCounts.find((entry) => entry.store === value);
-			if (counted) {
-				counted.giftCount += 1;
 			} else {
-				storeGiftCounts.push({ store: value, giftCount: 1 });
+				storeGiftCounts[value] = (storeGiftCounts[value] ?? 0) + 1;
 			}
 		}
 	}
 
-	const options: GiftFilterOption<GiftStoreFilterValue>[] = storeGiftCounts
-		.sort((a, b) => b.giftCount - a.giftCount || (a.store < b.store ? -1 : 1))
-		.map(({ store }) => ({ value: store, label: store }));
+	const options: GiftFilterOption<GiftStoreFilterValue>[] = Object.entries(storeGiftCounts)
+		.sort(
+			([firstStore, firstCount], [secondStore, secondCount]) =>
+				secondCount - firstCount || (firstStore < secondStore ? -1 : 1),
+		)
+		.map(([store]) => ({ value: store, label: store }));
 	if (hasLinkless) {
 		options.push({ value: NO_LINK_GIFT_STORE_FILTER_VALUE, label: m.gift_link_none() });
 	}
@@ -304,7 +349,9 @@ function createGiftsContext(
 	const viewerRole = new Derived(getRole);
 	const archived = new Derived(getIsArchived);
 	const isAuthenticated = new Derived(getIsAuthenticated);
-	const likedIdSet = new Derived(() => new SvelteSet(getLikedIds()));
+	const likedIdSet = new Derived(() => new Set(getLikedIds()));
+
+	const purchased = createReservationPurchasedState();
 
 	const reorderOverride = new StateRaw<GiftByRole[] | null>(null);
 	const effectiveGifts = new Derived<GiftByRole[]>(
@@ -530,6 +577,7 @@ function createGiftsContext(
 		viewerRole,
 		archived,
 		isAuthenticated,
+		purchased,
 		viewMode,
 		carouselViewActive,
 		cardColumnOption,
