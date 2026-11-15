@@ -997,7 +997,6 @@ html.dark {
 [data-slot='popover-content'][data-state='closed'],
 [data-slot='select-content'][data-state='closed'],
 [data-slot='sheet-content'][data-state='closed'] {
-	animation-fill-mode: forwards;
 	pointer-events: none !important;
 }
 
@@ -1087,6 +1086,7 @@ html.dark {
 	[data-slot='accordion-content'],
 	[data-slot='collapsible-content'] {
 		animation: none;
+		transition: none;
 	}
 
 	.elevation-surface {

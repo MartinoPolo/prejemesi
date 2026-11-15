@@ -3,6 +3,7 @@
 	import { cn, type WithoutChildrenOrChild } from '$lib/utils.js';
 	import DropdownMenuPortal from './dropdown-menu-portal.svelte';
 	import { floatingDepthClearance } from '../floating_depth_clearance.js';
+	import { fadeScaleOverlayMotionClass } from '../overlay_motion.js';
 	import { DropdownMenu as DropdownMenuPrimitive } from 'bits-ui';
 	import type { ComponentProps } from 'svelte';
 
@@ -35,7 +36,8 @@
 		{sticky}
 		{collisionPadding}
 		class={cn(
-			'origin-(--bits-dropdown-menu-content-transform-origin) data-open:animate-in data-closed:animate-out data-closed:fade-out-0 data-open:fade-in-0 data-closed:zoom-out-95 data-open:zoom-in-95 bg-popover text-popover-foreground min-w-32 rounded-panel border-[2.5px] border-edge p-1.5 shadow-sticker duration-100 z-(--z-modal) max-h-[calc(100dvh-1rem-var(--depth-clearance))] w-max max-w-[calc(100vw-1rem-var(--depth-clearance))] overflow-x-hidden overflow-y-auto outline-none data-closed:overflow-hidden',
+			fadeScaleOverlayMotionClass,
+			'origin-(--bits-dropdown-menu-content-transform-origin) bg-popover text-popover-foreground min-w-32 rounded-panel border-[2.5px] border-edge p-1.5 shadow-sticker duration-100 z-(--z-modal) max-h-[calc(100dvh-1rem-var(--depth-clearance))] w-max max-w-[calc(100vw-1rem-var(--depth-clearance))] overflow-x-hidden overflow-y-auto outline-none data-closed:overflow-hidden',
 			shadowedTrigger && floatingDepthClearance,
 			className,
 		)}

@@ -8,7 +8,7 @@ export interface ExitSample {
 	opacity: number;
 	pointerEvents: string;
 	text: string;
-	source: 'frame' | 'animation-end' | 'detached';
+	source: 'frame' | 'exit-end' | 'detached';
 }
 
 export async function waitForAnimations(surface: Locator): Promise<void> {
@@ -69,15 +69,21 @@ export async function startExitRecording(surface: Locator): Promise<{
 			childList: true,
 			subtree: true,
 		});
-		function handleAnimationEnd(event: Event) {
-			if (event.target !== element || element.getAttribute('data-state') !== 'closed') {
+		function handleExitEnd(event: Event) {
+			if (
+				event.target !== element ||
+				element.getAttribute('data-state') !== 'closed' ||
+				(event instanceof TransitionEvent && event.propertyName !== 'opacity')
+			) {
 				return;
 			}
-			record('animation-end');
-			queueMicrotask(() => record('animation-end'));
-			element.removeEventListener('animationend', handleAnimationEnd);
+			record('exit-end');
+			queueMicrotask(() => record('exit-end'));
+			element.removeEventListener('animationend', handleExitEnd);
+			element.removeEventListener('transitionend', handleExitEnd);
 		}
-		element.addEventListener('animationend', handleAnimationEnd);
+		element.addEventListener('animationend', handleExitEnd);
+		element.addEventListener('transitionend', handleExitEnd);
 
 		function sampleFrame() {
 			record('frame');
@@ -113,8 +119,8 @@ export function expectStableExit(samples: readonly ExitSample[]): void {
 		'a closing surface is not interactive',
 	).toBe(true);
 	expect(
-		closingSamples.some((sample) => sample.source === 'animation-end'),
-		'the exit animation completed before detach',
+		closingSamples.some((sample) => sample.source === 'exit-end'),
+		'the exit motion completed before detach',
 	).toBe(true);
 
 	let lowestOpacity = 1;
