@@ -4,8 +4,6 @@
 	import { AppToaster } from '$lib/components/base/toast/index.js';
 	import { TooltipProvider } from '$lib/components/base/tooltip/index.js';
 	import favicon from '$lib/assets/favicon.svg';
-	import dynapuffLatinUrl from '@fontsource-variable/dynapuff/files/dynapuff-latin-wght-normal.woff2?url';
-	import geistLatinUrl from '@fontsource-variable/geist/files/geist-latin-wght-normal.woff2?url';
 	import { afterNavigate } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import { browser, dev } from '$app/environment';
@@ -92,14 +90,6 @@
 
 <svelte:head>
 	<link rel="icon" href={favicon} />
-	<link
-		rel="preload"
-		href={dynapuffLatinUrl}
-		as="font"
-		type="font/woff2"
-		crossorigin="anonymous"
-	/>
-	<link rel="preload" href={geistLatinUrl} as="font" type="font/woff2" crossorigin="anonymous" />
 </svelte:head>
 
 <TooltipProvider>

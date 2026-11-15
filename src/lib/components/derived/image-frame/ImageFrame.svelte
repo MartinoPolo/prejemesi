@@ -36,8 +36,9 @@
 		 */
 		variant?: ImageVariant | null;
 		/**
-		 * Loads the image eagerly (above-the-fold surfaces like the page banner).
-		 * Everything else lazy-loads and decodes asynchronously (issue #107).
+		 * Loads the image eagerly at high fetch priority (above-the-fold surfaces like the page
+		 * banner, the likely LCP element). Everything else lazy-loads and decodes asynchronously
+		 * (issue #107).
 		 */
 		eagerLoading?: boolean;
 		/** Fit strategy for the box (REQ-1). */
@@ -293,7 +294,8 @@
 				src={displaySrc}
 				{alt}
 				loading={eagerLoading ? 'eager' : 'lazy'}
-				decoding="async"
+				fetchpriority={eagerLoading ? 'high' : undefined}
+				decoding={eagerLoading ? 'auto' : 'async'}
 				referrerpolicy={referrerPolicy}
 				aria-hidden={alt === '' ? 'true' : undefined}
 			/>

@@ -170,7 +170,7 @@ vi.mock('better-auth/svelte-kit', () => ({
 	),
 }));
 
-import { handle } from './hooks.server.js';
+import { handle, shouldPreloadAsset } from './hooks.server.js';
 import { CONTENT_SECURITY_POLICY_HEADER } from '$lib/server/content_security_policy.js';
 import { createAuth } from '$lib/server/auth.js';
 import { DEMO_CLEANUP_INTERVAL_MS, DEMO_COOKIE_NAME } from '$lib/server/demo/constants.js';
@@ -774,5 +774,41 @@ describe('content security policy', () => {
 
 		expect(response.headers.get(CONTENT_SECURITY_POLICY_HEADER)).toBe(routePolicy);
 		expect(response.headers.get('x-frame-options')).toBe('DENY');
+	});
+});
+
+describe('asset preloading', () => {
+	const fontPath = (name: string) => `/_app/immutable/assets/${name}.Cyz4smvr.woff2`;
+
+	it('preloads the DynaPuff and Geist latin and latin-ext fonts every page renders', () => {
+		for (const name of [
+			'dynapuff-latin-wght-normal',
+			'dynapuff-latin-ext-wght-normal',
+			'geist-latin-wght-normal',
+			'geist-latin-ext-wght-normal',
+		]) {
+			expect(shouldPreloadAsset({ type: 'font', path: fontPath(name) })).toBe(true);
+		}
+	});
+
+	it('leaves the lazy wishlist heading fonts to @font-face', () => {
+		for (const name of [
+			'fraunces-latin-wght-normal',
+			'fraunces-latin-ext-wght-normal',
+			'caveat-latin-wght-normal',
+			'caveat-latin-ext-wght-normal',
+		]) {
+			expect(shouldPreloadAsset({ type: 'font', path: fontPath(name) })).toBe(false);
+		}
+	});
+
+	it('keeps preloading scripts and styles', () => {
+		expect(shouldPreloadAsset({ type: 'js', path: '/_app/immutable/chunks/a.js' })).toBe(true);
+		expect(shouldPreloadAsset({ type: 'css', path: '/_app/immutable/assets/0.css' })).toBe(
+			true,
+		);
+		expect(shouldPreloadAsset({ type: 'asset', path: '/_app/immutable/assets/a.svg' })).toBe(
+			false,
+		);
 	});
 });

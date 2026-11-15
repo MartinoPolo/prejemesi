@@ -172,3 +172,27 @@ describe('ImageFrame cover-crop zoomed out past the whole image', () => {
 		expect(onmeasured).toHaveBeenCalledTimes(1);
 	});
 });
+
+describe('ImageFrame loading priority', () => {
+	it('fetches an eager above-the-fold image at high priority', async () => {
+		const screen = await render(ImageFrame, {
+			props: { class: 'h-24 w-32', src: IMAGE, alt: 'Banner', eagerLoading: true },
+		});
+		const image = screen.container.querySelector('img')!;
+
+		expect(image.getAttribute('loading')).toBe('eager');
+		expect(image.getAttribute('fetchpriority')).toBe('high');
+		expect(image.getAttribute('decoding')).toBe('auto');
+	});
+
+	it('lazy-loads other images without raising their priority', async () => {
+		const screen = await render(ImageFrame, {
+			props: { class: 'h-24 w-32', src: IMAGE, alt: 'Gift' },
+		});
+		const image = screen.container.querySelector('img')!;
+
+		expect(image.getAttribute('loading')).toBe('lazy');
+		expect(image.hasAttribute('fetchpriority')).toBe(false);
+		expect(image.getAttribute('decoding')).toBe('async');
+	});
+});
