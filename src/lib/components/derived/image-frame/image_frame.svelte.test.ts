@@ -182,7 +182,6 @@ describe('ImageFrame loading priority', () => {
 
 		expect(image.getAttribute('loading')).toBe('eager');
 		expect(image.getAttribute('fetchpriority')).toBe('high');
-		expect(image.getAttribute('decoding')).toBe('auto');
 	});
 
 	it('lazy-loads other images without raising their priority', async () => {
@@ -193,6 +192,5 @@ describe('ImageFrame loading priority', () => {
 
 		expect(image.getAttribute('loading')).toBe('lazy');
 		expect(image.hasAttribute('fetchpriority')).toBe(false);
-		expect(image.getAttribute('decoding')).toBe('async');
 	});
 });

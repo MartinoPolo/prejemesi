@@ -1,4 +1,5 @@
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 
 const appTemplate = readFileSync(new URL('./app.html', import.meta.url), 'utf8');
@@ -780,26 +781,70 @@ describe('content security policy', () => {
 describe('asset preloading', () => {
 	const fontPath = (name: string) => `/_app/immutable/assets/${name}.Cyz4smvr.woff2`;
 
-	it('preloads the DynaPuff and Geist latin and latin-ext fonts every page renders', () => {
-		for (const name of [
-			'dynapuff-latin-wght-normal',
-			'dynapuff-latin-ext-wght-normal',
-			'geist-latin-wght-normal',
-			'geist-latin-ext-wght-normal',
-		]) {
-			expect(shouldPreloadAsset({ type: 'font', path: fontPath(name) })).toBe(true);
-		}
+	it.each([
+		'dynapuff-latin-wght-normal',
+		'dynapuff-latin-ext-wght-normal',
+		'geist-latin-wght-normal',
+		'geist-latin-ext-wght-normal',
+	])('preloads %s, which every Czech page renders', (name) => {
+		expect(shouldPreloadAsset({ type: 'font', path: fontPath(name) })).toBe(true);
 	});
 
-	it('leaves the lazy wishlist heading fonts to @font-face', () => {
-		for (const name of [
-			'fraunces-latin-wght-normal',
-			'fraunces-latin-ext-wght-normal',
-			'caveat-latin-wght-normal',
-			'caveat-latin-ext-wght-normal',
-		]) {
-			expect(shouldPreloadAsset({ type: 'font', path: fontPath(name) })).toBe(false);
-		}
+	it.each([
+		'fraunces-latin-wght-normal',
+		'fraunces-latin-ext-wght-normal',
+		'caveat-latin-wght-normal',
+		'caveat-latin-ext-wght-normal',
+		'geist-cyrillic-wght-normal',
+		'geist-vietnamese-wght-normal',
+		'geist-latin-wght-italic',
+		'dynapuff-cyrillic-ext-wght-normal',
+	])('leaves %s to load through @font-face on first use', (name) => {
+		expect(shouldPreloadAsset({ type: 'font', path: fontPath(name) })).toBe(false);
+	});
+
+	it.each(['dynapuff', 'geist'])(
+		'matches the installed %s font files, so a package rename cannot silently stop preloading',
+		(family) => {
+			const fontFiles = readdirSync(
+				fileURLToPath(
+					new URL(
+						`../node_modules/@fontsource-variable/${family}/files`,
+						import.meta.url,
+					),
+				),
+			);
+			const preloaded = fontFiles.filter((file) =>
+				shouldPreloadAsset({
+					type: 'font',
+					path: fontPath(file.replace(/\.woff2$/, '')),
+				}),
+			);
+
+			expect(preloaded.sort()).toEqual([
+				`${family}-latin-ext-wght-normal.woff2`,
+				`${family}-latin-wght-normal.woff2`,
+			]);
+		},
+	);
+
+	it('applies the predicate to every rendered page', async () => {
+		const resolve = vi.fn(
+			async () => new Response('<html></html>', { headers: { 'content-type': 'text/html' } }),
+		);
+
+		await (handle as unknown as (input: unknown) => Promise<Response>)({
+			event: createEvent({ path: '/login' }),
+			resolve,
+		});
+
+		const options = resolve.mock.calls[0]?.[1] as
+			| { preload?: (input: { type: string; path: string }) => boolean }
+			| undefined;
+		const fraunces = { type: 'font', path: fontPath('fraunces-latin-wght-normal') };
+		const dynapuff = { type: 'font', path: fontPath('dynapuff-latin-wght-normal') };
+		expect(options?.preload?.(fraunces)).toBe(false);
+		expect(options?.preload?.(dynapuff)).toBe(true);
 	});
 
 	it('keeps preloading scripts and styles', () => {
