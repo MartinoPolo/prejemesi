@@ -223,7 +223,7 @@ async function resetAfterOneFailedAttempt(page: Page, notice: Locator, locale: D
 	const dialog = page.getByRole('dialog');
 	await notice.getByRole('button', { name: english ? 'Reset' : 'Obnovit' }).click();
 	if (english) {
-		await dialog.getByRole('button', { name: 'Sample content language' }).click();
+		await dialog.getByRole('combobox', { name: 'Sample content language' }).click();
 		await page.getByRole('option', { name: 'Čeština' }).click();
 	}
 	await failFirstResetRequest(page);
