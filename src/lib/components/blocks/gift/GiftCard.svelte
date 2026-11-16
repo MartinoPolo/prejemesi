@@ -25,6 +25,7 @@
 	import { GIFT_LIVE_PREVIEW } from '$lib/components/blocks/change-proposals/change_row_model.js';
 	import { giftLivePreviewMarks } from '$lib/components/blocks/change-proposals/gift_live_preview.js';
 	import { restingShadowNesting } from '$lib/utils/resting_shadow_nesting.js';
+	import { clientSize } from '$lib/utils/shared_resize_observer.js';
 	import { clampGalleryIndex } from '$lib/modules/gifts/gift_gallery.js';
 	import { useGiftGalleryPositions } from '$lib/modules/gifts/gift_gallery_positions.js';
 	import type { GiftPresentationProps } from './gift_presentation_props.js';
@@ -55,6 +56,7 @@
 		moreSurface = 'menu',
 		showPriority = true,
 		livePreview,
+		imageLoadPriority,
 		density = GIFT_CARD_DENSITIES.grid,
 	}: GiftCardProps = $props();
 
@@ -222,6 +224,7 @@
 							target={isCarouselCard ? 'thumb' : 'square'}
 							alt={gift.name}
 							variant="card"
+							loadPriority={imageLoadPriority}
 						/>
 					</div>
 				</div>
@@ -271,6 +274,7 @@
 					interactive={!contextualMode}
 					compositionClass={styles.cropComposition()}
 					warm={galleryWarm}
+					shownImageLoadPriority={imageLoadPriority}
 					onindexchange={showGalleryImage}
 					onswipingchange={(swiping) => (gallerySwiping = swiping)}
 				/>
@@ -345,7 +349,7 @@
 				data-testid="gift-card-footer"
 			>
 				<div
-					bind:clientWidth={actionContentWidth}
+					{@attach clientSize((size) => (actionContentWidth = size.width))}
 					data-testid="gift-card-reservation-actions"
 					class={styles.reservationActions()}
 				>

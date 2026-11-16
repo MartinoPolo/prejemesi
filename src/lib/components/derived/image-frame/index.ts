@@ -1,4 +1,5 @@
 export { default as ImageFrame } from './ImageFrame.svelte';
+export { IMAGE_LOAD_PRIORITIES, type ImageLoadPriority } from './image_load_priority.js';
 export {
 	imageFrameVariants,
 	type ImageFrameShape,

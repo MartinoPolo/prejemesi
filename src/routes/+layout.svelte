@@ -11,6 +11,7 @@
 	import { getLocaleForUrl, getTextDirection } from '$lib/paraglide/runtime.js';
 	import { SENTRY_REPLAY_NAVIGATION_EVENT } from '$lib/observability/sentry_replay_policy.js';
 	import { keyboardInset } from '$lib/reactivity/keyboard_inset.svelte.js';
+	import { markAppHydrated } from '$lib/utils/app_hydration.js';
 
 	// Dev-only tab title prefix – injected at dev-server start from git branch (vite.config.ts define).
 	// Lets you tell apart multiple worktrees/branches running simultaneously in the browser.
@@ -33,12 +34,7 @@
 
 	onMount(() => keyboardInset.start());
 
-	onMount(() => {
-		document.documentElement.dataset.appHydrated = 'true';
-		return () => {
-			delete document.documentElement.dataset.appHydrated;
-		};
-	});
+	onMount(markAppHydrated);
 
 	const modesSavedBeforeDemo = new Map<string, 'light' | 'dark' | 'system'>([
 		['"light"', 'light'],

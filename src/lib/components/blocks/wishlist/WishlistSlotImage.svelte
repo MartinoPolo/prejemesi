@@ -1,7 +1,11 @@
 <script lang="ts">
 	import { cn } from '$lib/utils.js';
 	import ImageFrame from '$lib/components/derived/image-frame/ImageFrame.svelte';
-	import { IMAGE_TOKEN_SCOPES } from '$lib/components/derived/image-frame/index.js';
+	import {
+		IMAGE_LOAD_PRIORITIES,
+		IMAGE_TOKEN_SCOPES,
+		type ImageLoadPriority,
+	} from '$lib/components/derived/image-frame/index.js';
 	import type { ImageFrameProps, ImageVariant } from '$lib/modules/images/index.js';
 	import WishlistFallbackHero from './WishlistFallbackHero.svelte';
 	import type { WishlistThemeMotif } from './wishlist_theme_scope.js';
@@ -22,8 +26,8 @@
 		 * (crop-editor previews, where framing accuracy matters most).
 		 */
 		variant?: ImageVariant | null;
-		/** Eager-load above-the-fold surfaces (page banner); the rest lazy-load. */
-		eagerLoading?: boolean;
+		/** Above-the-fold surfaces load eagerly, the page banner at high priority. */
+		loadPriority?: ImageLoadPriority;
 		class?: string;
 	}
 
@@ -34,7 +38,7 @@
 		themeMotif = null,
 		alt,
 		variant = null,
-		eagerLoading = false,
+		loadPriority = IMAGE_LOAD_PRIORITIES.lazy,
 		class: className,
 	}: Props = $props();
 </script>
@@ -51,7 +55,7 @@ presentation is identical everywhere; otherwise it shows the theme-aware fallbac
 		{src}
 		{alt}
 		{variant}
-		{eagerLoading}
+		{loadPriority}
 		fitMode={frame.fitMode}
 		focal={frame.focal}
 		zoom={frame.zoom}

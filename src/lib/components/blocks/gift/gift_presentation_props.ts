@@ -1,5 +1,6 @@
 import type { GiftLivePreviewKind } from '$lib/components/blocks/change-proposals/change_row_model.js';
 import type { GiftActionPlacementSnapshot } from '$lib/components/blocks/wishlist/gift_context_invocation.js';
+import type { ImageLoadPriority } from '$lib/components/derived/image-frame/index.js';
 import type { GiftByRole, GiftForVisitor, GiftUnreserveHandler } from '$lib/modules/gifts/types.js';
 import type { WishlistRole } from '$lib/modules/wishlists/types.js';
 
@@ -25,4 +26,6 @@ export interface GiftPresentationProps extends GiftBrowseActionHandlers {
 	showPriority?: boolean;
 	/** How a chat proposal being decided would change the gift. */
 	livePreview?: GiftLivePreviewKind;
+	/** Eager for gifts likely above the fold, high for the likely LCP image. */
+	imageLoadPriority?: ImageLoadPriority;
 }

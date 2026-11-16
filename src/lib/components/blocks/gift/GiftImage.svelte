@@ -1,7 +1,9 @@
 <script lang="ts">
 	import ImageFrame from '$lib/components/derived/image-frame/ImageFrame.svelte';
 	import {
+		IMAGE_LOAD_PRIORITIES,
 		IMAGE_TOKEN_SCOPES,
+		type ImageLoadPriority,
 		type ImageTokenScope,
 	} from '$lib/components/derived/image-frame/index.js';
 	import {
@@ -33,8 +35,8 @@
 		 * original (which also preserves GIF animation).
 		 */
 		variant?: ImageVariant | null;
-		/** Eager-load above-the-fold surfaces; everything else lazy-loads. */
-		eagerLoading?: boolean;
+		/** Above-the-fold surfaces load eagerly, the likely LCP image at high priority. */
+		loadPriority?: ImageLoadPriority;
 		/** Scopes the tier-2 background fill; gift images live inside a wishlist. */
 		tokenScope?: ImageTokenScope;
 		class?: string;
@@ -46,7 +48,7 @@
 		target,
 		alt,
 		variant = null,
-		eagerLoading = false,
+		loadPriority = IMAGE_LOAD_PRIORITIES.lazy,
 		tokenScope = IMAGE_TOKEN_SCOPES.wishlist,
 		class: className,
 	}: Props = $props();
@@ -61,7 +63,7 @@
 	src={imageUrl}
 	{alt}
 	{variant}
-	{eagerLoading}
+	{loadPriority}
 	fitMode={frame.fitMode}
 	focal={frame.focal}
 	zoom={frame.zoom}

@@ -20,6 +20,8 @@ import {
 	type GiftDisplayGiftRow,
 	type GiftReorderPlacementCommitHandler,
 } from './gift_reorder_view.svelte.js';
+import { GIFT_DISPLAY_ROW_KINDS } from './gift_section_rows.js';
+import { giftImageLoadPriorities } from './gift_image_load_priority.js';
 
 /** Props shared by the gift collections: the Card grid and the List view. */
 export interface WishlistGiftCollectionProps {
@@ -74,6 +76,14 @@ export function createWishlistGiftCollectionView(
 		onCancelPlacement: () => collection.onreorderplacementcancel?.(),
 	});
 
+	const imageLoadPriorities = $derived(
+		giftImageLoadPriorities(
+			reorderView.displayRows.flatMap((row) =>
+				row.kind === GIFT_DISPLAY_ROW_KINDS.gift ? [row.gift] : [],
+			),
+		),
+	);
+
 	function sectionHeaderProps(section: GiftSection) {
 		return {
 			section,
@@ -107,6 +117,7 @@ export function createWishlistGiftCollectionView(
 		return {
 			gift: previewed.gift,
 			livePreview: previewed.livePreview,
+			imageLoadPriority: imageLoadPriorities.get(gift.id),
 			role: collection.role,
 			isArchived: collection.isArchived,
 			hideReservationState: collection.hideReservationState,

@@ -11,7 +11,12 @@ afterEach(() => {
 	}
 });
 
-it('derives a concentric contour above the floor from the rendered border plus the depth clearance on shadowed edges', () => {
+// The border is measured with the first rendering update after the surface is observed.
+async function expectBorderMeasured(owner: HTMLElement) {
+	await expect.poll(() => owner.style.getPropertyValue('--nested-border-inline')).not.toBe('');
+}
+
+it('derives a concentric contour above the floor from the rendered border plus the depth clearance on shadowed edges', async () => {
 	const panel = document.createElement('div');
 	panel.className = 'resting-shadow-nesting';
 	panel.style.cssText =
@@ -26,6 +31,7 @@ it('derives a concentric contour above the floor from the rendered border plus t
 		geometry.destroy();
 		panel.remove();
 	});
+	await expectBorderMeasured(panel);
 	const border = parseFloat(getComputedStyle(panel).borderRightWidth);
 	for (const [depth, depthClearance] of [
 		['soft', 0],
@@ -41,7 +47,7 @@ it('derives a concentric contour above the floor from the rendered border plus t
 
 const MINIMUM_CONTROL_GAP = 9;
 
-function renderNestedPanel(corners: string, border: string) {
+async function renderNestedPanel(corners: string, border: string) {
 	const scope = document.createElement('div');
 	scope.dataset.corners = corners;
 	scope.dataset.border = border;
@@ -60,14 +66,15 @@ function renderNestedPanel(corners: string, border: string) {
 		geometry.destroy();
 		scope.remove();
 	});
+	await expectBorderMeasured(panel);
 	return { scope, panel, control };
 }
 
 describe.each(['round', 'soft', 'sharp'])('%s corners', (corners) => {
 	it.each(['bold', 'fine'])(
 		'keeps nested controls at least the floor from a %s inner border, plus clearance on shadowed edges',
-		(border) => {
-			const { panel, control } = renderNestedPanel(corners, border);
+		async (border) => {
+			const { panel, control } = await renderNestedPanel(corners, border);
 			for (const [depth, depthClearance] of [
 				['soft', 0],
 				['ink', 4],
@@ -96,8 +103,8 @@ describe.each(['round', 'soft', 'sharp'])('%s corners', (corners) => {
 	);
 });
 
-it('pairs Soft corners as a 12 px panel around 4 px controls', () => {
-	const { scope } = renderNestedPanel('soft', 'bold');
+it('pairs Soft corners as a 12 px panel around 4 px controls', async () => {
+	const { scope } = await renderNestedPanel('soft', 'bold');
 	const tokens = getComputedStyle(scope);
 	expect(tokens.getPropertyValue('--radius-panel').trim()).toBe('12px');
 	expect(tokens.getPropertyValue('--radius-btn').trim()).toBe('4px');
@@ -149,7 +156,7 @@ it('keeps tracking a shared surface after another owner of it is destroyed', asy
 	expect(owners[0].style.getPropertyValue('--nested-border-inline')).toBe('');
 });
 
-it('measures an explicit painted border and restores owner styles on teardown', () => {
+it('measures an explicit painted border and restores owner styles on teardown', async () => {
 	const owner = document.createElement('div');
 	const paint = document.createElement('div');
 	paint.style.border = '3px solid';
@@ -158,7 +165,7 @@ it('measures an explicit painted border and restores owner styles on teardown', 
 	document.body.append(owner);
 	cleanups.push(() => owner.remove());
 	const geometry = restingShadowNesting(owner, paint);
-	expect(owner.style.getPropertyValue('--nested-border-inline')).toBe('3px');
+	await expect.poll(() => owner.style.getPropertyValue('--nested-border-inline')).toBe('3px');
 	geometry.destroy();
 	expect(owner.style.getPropertyValue('--nested-border-inline')).toBe('1px');
 	expect(owner.style.getPropertyValue('--nested-border-block')).toBe('');
