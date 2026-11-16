@@ -92,6 +92,36 @@ test.describe('Request budgets (issue #108)', () => {
 		await page.context().close();
 	});
 
+	test('wishlist view: priority levels load on add-gift intent, not on page load', async ({
+		browser,
+		request,
+		baseURL,
+	}) => {
+		const owner = createTestUser('budget-intent');
+		const page = await registerAndGetPage(browser, request, baseURL!, owner);
+		const wishlistPath = await createWishlistAndNavigate(page, 'Budget Intent');
+		await addGift(page, 'Záměrný dárek');
+
+		const tracker = trackRemoteRequests(page);
+		await page.goto(wishlistPath, { waitUntil: 'load' });
+		await expect(page.getByRole('heading', { name: 'Záměrný dárek', level: 3 })).toBeVisible({
+			timeout: 10_000,
+		});
+		const addGiftTrigger = page.getByRole('button', { name: 'Přidat dárek' }).first();
+		await expect(addGiftTrigger).toBeVisible();
+		expect(countByFunction(tracker.names(), 'getPriorityLevels')).toBe(0);
+
+		await addGiftTrigger.hover();
+		await expect.poll(() => countByFunction(tracker.names(), 'getPriorityLevels')).toBe(1);
+
+		await addGiftTrigger.click();
+		await expect(page.getByRole('dialog')).toBeVisible();
+		tracker.stop();
+		expect(countByFunction(tracker.names(), 'getPriorityLevels')).toBe(1);
+
+		await page.context().close();
+	});
+
 	test('home overview: no hydration overview request or category fallback', async ({
 		browser,
 		request,

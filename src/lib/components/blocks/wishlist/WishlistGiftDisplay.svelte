@@ -58,6 +58,8 @@
 		onunreserve: GiftUnreserveHandler;
 		onreceived: (giftId: string, received: boolean) => void;
 		onaddgift: () => void;
+		/** Pointer or focus on an add-gift trigger, so the page can warm what the gift dialog needs. */
+		onaddgiftintent?: () => void;
 		onclearfilters: () => void;
 		onreorderpreview: (orderedIds: string[]) => void;
 		onreordercommit: (orderedIds: string[]) => void;
@@ -101,6 +103,7 @@
 		onunreserve,
 		onreceived,
 		onaddgift,
+		onaddgiftintent,
 		onclearfilters,
 		onreorderpreview,
 		onreordercommit,
@@ -440,6 +443,7 @@
 				{canManage}
 				{isFilteredEmpty}
 				{onaddgift}
+				{onaddgiftintent}
 				{onclearfilters}
 			/>
 		{:else}

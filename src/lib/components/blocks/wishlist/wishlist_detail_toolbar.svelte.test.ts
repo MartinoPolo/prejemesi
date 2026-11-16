@@ -489,3 +489,36 @@ describe('WishlistDetailToolbar mobile command surfaces (#340)', () => {
 		}
 	});
 });
+
+describe('WishlistDetailToolbar add-gift intent', () => {
+	afterEach(async () => {
+		for (const host of hosts) {
+			host.remove();
+		}
+		hosts.clear();
+		await page.viewport(1280, 760);
+	});
+
+	it.each([390, 1280])(
+		'signals intent when the add-gift trigger is hovered or focused at %ipx',
+		async (width) => {
+			const onaddgift = vi.fn();
+			const onaddgiftintent = vi.fn();
+			const screen = await renderToolbar(
+				{ canManage: true, role: WISHLIST_ROLES.moderator, onaddgift, onaddgiftintent },
+				width,
+			);
+			const add = screen.getByRole('button', { name: m.wishlist_detail_add_gift_label() });
+			expect(onaddgiftintent).not.toHaveBeenCalled();
+
+			await add.hover();
+			expect(onaddgiftintent).toHaveBeenCalled();
+
+			onaddgiftintent.mockClear();
+			(add.element() as HTMLButtonElement).focus();
+			expect(onaddgiftintent).toHaveBeenCalledTimes(1);
+			expect(onaddgift).not.toHaveBeenCalled();
+			await screen.unmount();
+		},
+	);
+});
