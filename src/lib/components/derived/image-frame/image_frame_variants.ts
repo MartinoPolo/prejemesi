@@ -12,9 +12,9 @@ export const imageFrameVariants = tv({
 	variants: {
 		/** Concrete fit applied to the image (after `auto` has been resolved). */
 		fit: {
-			/* Letterboxed photos keep breathing room so the frame fill (or a parent's
-			   dotted mat) reads as a passe-partout (Redesign 2026 round-2 delta). */
-			'contain-padded': { image: 'object-contain p-2' },
+			/* Edge to edge, exactly as the crop stage draws Fit, so stepping in from Fit
+			   to Manual zoom is a small continuous change. */
+			'contain-padded': { image: 'object-contain' },
 			'cover-crop': { image: 'object-cover' },
 		},
 		shape: {

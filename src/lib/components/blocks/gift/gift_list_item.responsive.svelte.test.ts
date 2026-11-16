@@ -18,6 +18,7 @@ import {
 	GiftListItemTestHost,
 } from './gift_list_item.test_fixtures.js';
 import { resolvedCssLength } from './gift_action_geometry.test_fixtures.js';
+import { expectPhotoEdgeToEdge } from '$lib/components/derived/image-frame/image_frame.test_fixtures.js';
 
 const { expectPixelsNear, expectPixelsAtLeast, expectPixelsAtMost } = createPixelAssertions(expect);
 
@@ -68,7 +69,7 @@ describe('GiftListItem responsive image dimensions (issues #328 and #336)', () =
 			host.remove();
 		},
 	);
-	it('removes only mobile Fit padding while keeping the square composition full-height', async () => {
+	it('draws Fit edge to edge while keeping the square composition full-height', async () => {
 		await page.viewport(390, 720);
 		const host = await renderItem(
 			makeVisitorGift({ imageUrl: IMAGE_URL, imageMeta: imageMeta('#ffffff') }),
@@ -78,12 +79,13 @@ describe('GiftListItem responsive image dimensions (issues #328 and #336)', () =
 		const frame = host.querySelector('[data-testid="image-frame"]') as HTMLElement;
 		const imageRegion = host.querySelector('[data-testid="gift-list-image"]') as HTMLElement;
 
-		expect(getComputedStyle(image).padding).toBe('0px');
+		// The tall photo spans the square frame's height, with fill only at the sides.
+		await expectPhotoEdgeToEdge(frame, image, 'height');
 		expectPixelsNear(frame.getBoundingClientRect().width, frame.getBoundingClientRect().height);
 		expect(frame.getBoundingClientRect().width).toBeGreaterThan(imageRegion.clientWidth);
 		expectPixelsNear(frame.getBoundingClientRect().height, imageRegion.clientHeight);
 		await page.viewport(800, 720);
-		expect(getComputedStyle(image).padding).toBe('8px');
+		await expectPhotoEdgeToEdge(frame, image, 'height');
 		host.remove();
 	});
 
