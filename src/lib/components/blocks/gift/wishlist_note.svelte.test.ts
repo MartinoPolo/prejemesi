@@ -22,9 +22,18 @@ function renderNote(
 		preview: boolean;
 		authorName: string | null;
 		ondismiss: () => void;
+		entranceClass: string;
 	}> = {},
 ) {
 	return render(WishlistNote, { wishlistId, description, authorName: 'Martin', ...overrides });
+}
+
+/** Lets any animation started by the last change dispatch its `animationstart`. */
+async function afterAnimationsStart(): Promise<void> {
+	await Promise.all(document.getAnimations().map((animation) => animation.ready));
+	for (let frame = 0; frame < 2; frame += 1) {
+		await new Promise((resolve) => requestAnimationFrame(resolve));
+	}
 }
 
 function storedNoteState(): unknown {
@@ -142,6 +151,71 @@ describe('WishlistNote', () => {
 		screen = await renderNote();
 		await expect.element(screen.getByTestId('wishlist-note')).not.toBeInTheDocument();
 		await screen.unmount();
+	});
+
+	it('reveals with the page but switches and restores instantly', async () => {
+		// Unlike `getAnimations()`, `animationstart` also reports an animation that already finished.
+		const startedAnimations: { step: string; animationName: string }[] = [];
+		let step = 'page entry';
+		const recordAnimation = (event: AnimationEvent) => {
+			startedAnimations.push({ step, animationName: event.animationName });
+		};
+		const pageEntryReveal = { step: 'page entry', animationName: 'fade-up' };
+		document.addEventListener('animationstart', recordAnimation, true);
+		try {
+			const screen = await renderNote({ entranceClass: 'reveal reveal-4' });
+			await expect
+				.poll(() => startedAnimations, { timeout: 3000 })
+				.toContainEqual(pageEntryReveal);
+
+			step = 'fold';
+			await screen.getByRole('button', { name: m.wishlist_note_fold() }).click();
+			await expect
+				.element(screen.getByRole('button', { name: m.wishlist_note_unfold() }))
+				.toHaveFocus();
+			await afterAnimationsStart();
+
+			step = 'unfold';
+			await screen.getByRole('button', { name: m.wishlist_note_unfold() }).click();
+			await expect
+				.element(screen.getByRole('button', { name: m.wishlist_note_fold() }))
+				.toHaveFocus();
+			await afterAnimationsStart();
+
+			step = 'start dismiss';
+			await screen.getByRole('button', { name: m.wishlist_note_dismiss() }).click();
+			await expect.element(screen.getByText(m.wishlist_note_dismiss_title())).toHaveFocus();
+			await afterAnimationsStart();
+
+			step = 'cancel dismiss';
+			await screen.getByRole('button', { name: m.wishlist_note_keep() }).click();
+			await expect
+				.element(screen.getByRole('button', { name: m.wishlist_note_dismiss() }))
+				.toHaveFocus();
+			await afterAnimationsStart();
+
+			step = 'start dismiss again';
+			await screen.getByRole('button', { name: m.wishlist_note_dismiss() }).click();
+			await expect.element(screen.getByText(m.wishlist_note_dismiss_title())).toHaveFocus();
+			await afterAnimationsStart();
+
+			step = 'confirm dismiss';
+			await screen
+				.getByRole('button', { name: m.wishlist_note_dismiss_confirm(), exact: true })
+				.click();
+			await expect.element(screen.getByTestId('wishlist-note')).not.toBeInTheDocument();
+
+			step = 'restore';
+			wishlistNoteVisibility(wishlistId).current = WISHLIST_NOTE_STATES.open;
+			flushSync();
+			await expect.element(screen.getByText(/Budu mít 30!/)).toBeVisible();
+			await afterAnimationsStart();
+
+			expect(startedAnimations).toEqual([pageEntryReveal]);
+			await screen.unmount();
+		} finally {
+			document.removeEventListener('animationstart', recordAnimation, true);
+		}
 	});
 
 	it('shows a note stored as folded folded on the first mount', async () => {

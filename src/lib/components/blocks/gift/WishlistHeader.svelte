@@ -440,7 +440,7 @@
 			description={noteText}
 			authorName={noteAuthorName}
 			ondismiss={onnotedismiss}
-			class="reveal reveal-4"
+			entranceClass="reveal reveal-4"
 		/>
 	{/if}
 

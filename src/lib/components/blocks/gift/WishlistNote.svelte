@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount, tick } from 'svelte';
+	import { onMount, tick, untrack } from 'svelte';
 	import * as m from '$lib/paraglide/messages.js';
 	import * as Alert from '$lib/components/base/alert/index.js';
 	import { ALERT_TONE_ROLES } from '$lib/components/base/alert/alert_variants.js';
@@ -27,7 +27,8 @@
 		preview?: boolean;
 		/** Called once the reader confirms hiding the note, so the page can move focus. */
 		ondismiss?: () => void;
-		class?: string;
+		/** Page-entry reveal classes; a note restored after the page rendered appears without them. */
+		entranceClass?: string;
 	}
 
 	const CONFIRM_DISMISS = 'confirm-dismiss';
@@ -38,7 +39,7 @@
 		wishlistId = null,
 		preview = false,
 		ondismiss,
-		class: className,
+		entranceClass,
 	}: WishlistNoteProps = $props();
 
 	const styles = wishlistNoteVariants();
@@ -48,6 +49,7 @@
 		wishlistId === null ? unsharedVisibility : wishlistNoteVisibility(wishlistId),
 	);
 	let confirmingDismiss = $state(false);
+	let mounted = $state(false);
 	let foldButton = $state<HTMLElement | null>(null);
 	let unfoldButton = $state<HTMLElement | null>(null);
 	let dismissButton = $state<HTMLElement | null>(null);
@@ -102,6 +104,7 @@
 	}
 
 	onMount(() => {
+		mounted = true;
 		if (!preview) {
 			visibility.markHydrated();
 		}
@@ -121,9 +124,10 @@
 {/snippet}
 
 {#if displayedState !== WISHLIST_NOTE_STATES.dismissed}
-	<div class={['wishlist-note', className]} data-testid="wishlist-note">
-		<!-- Each state switch mounts a fresh callout, which replays the short fade-in. -->
-		{#key displayedState}
+	<!-- Untracked, so the note rendered with the page keeps its reveal running after mount. -->
+	<div class={untrack(() => mounted) ? undefined : entranceClass} data-testid="wishlist-note">
+		<!-- A freshly inserted role="alert" is announced reliably; switching the role in place is not. -->
+		{#key confirmingDismiss}
 			<Alert.Root
 				tone="palette"
 				role={alertRole}
@@ -196,15 +200,3 @@
 		{/key}
 	</div>
 {/if}
-
-<style>
-	.wishlist-note > :global([data-slot='alert']) {
-		animation: wishlist-note-fade-in var(--duration-normal) var(--ease-standard);
-	}
-
-	@keyframes wishlist-note-fade-in {
-		from {
-			opacity: 0;
-		}
-	}
-</style>
