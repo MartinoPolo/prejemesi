@@ -295,3 +295,42 @@ describe('WishlistThemeBackdrop', () => {
 		expect(motif!.getAnimations().length).toBeGreaterThan(0);
 	});
 });
+
+describe('Wishlist page shell over the backdrop strip', () => {
+	function shellTopPadding(contentWidth: number, attributes: Record<string, string>): string {
+		const scroller = document.createElement('div');
+		scroller.style.cssText = `container: app-content / inline-size; width: ${String(contentWidth)}px`;
+		const shell = document.createElement('div');
+		shell.className = 'wishlist-page-shell';
+		shell.dataset.wishlistBackdrop = '';
+		for (const [name, value] of Object.entries(attributes)) {
+			shell.setAttribute(name, value);
+		}
+		scroller.append(shell);
+		document.body.append(scroller);
+		const paddingTop = getComputedStyle(shell).paddingTop;
+		scroller.remove();
+		return paddingTop;
+	}
+
+	const themeBackground = { 'data-wishlist-background': 'theme' };
+	const gutterPhoto = {
+		'data-wishlist-background': 'library',
+		'data-wishlist-placement': 'gutters',
+	};
+	const fullPhoto = { 'data-wishlist-background': 'library', 'data-wishlist-placement': 'full' };
+
+	it.each([themeBackground, gutterPhoto, fullPhoto])(
+		'lets the header overlap the 68px phone strip by 4px for %o',
+		(attributes) => {
+			expect(shellTopPadding(390, attributes)).toBe('64px');
+		},
+	);
+
+	it.each([themeBackground, gutterPhoto])(
+		'tucks the header into the 84px strip by the layout gap for %o',
+		(attributes) => {
+			expect(shellTopPadding(800, attributes)).toBe('60px');
+		},
+	);
+});
