@@ -14,3 +14,11 @@ Mockups and briefs capture scoped design reviews, not the current whole-app spec
 - Proposals within creation or motion studies require their own approval; approval of one aspect does not approve every alternative in the folder.
 
 Clearly superseded palette/background, toolbar, image-mode, Compact-era gift view, and rejected visual explorations live under `archive/designs/`. Exclude `archive/` from routine discovery and implementation context; consult it only for explicitly requested historical research.
+
+## Project rules for the MPX design skills
+
+The shared `mockup`, `design-brief` and `design-refine` skills apply with these overrides:
+
+- Style mockups with compiled app CSS (for example `mobile-filter-reset/assets/app.css`), or inline the custom properties they need from `src/app.css`; never link `tokens.css`.
+- When the active design folder or chosen variant is ambiguous, ask instead of picking by recency.
+- Reuse the managed primitives under `src/lib/components/base/`; never run a shadcn-svelte `add --overwrite` over one without the owner's approval.
