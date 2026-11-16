@@ -121,7 +121,7 @@ test.describe('Wishlist settings – details and categories', () => {
 			.first()
 			.click();
 		const giftDialog = page.getByRole('dialog');
-		await giftDialog.getByRole('button', { name: 'Bez kategorie' }).click();
+		await giftDialog.getByRole('combobox', { name: 'Kategorie', exact: true }).click();
 		await expect(page.getByRole('option', { name: categoryLabel, exact: true })).toBeVisible();
 
 		await page.context().close();
@@ -279,7 +279,7 @@ test.describe('Wishlist settings – details and categories', () => {
 			.click();
 		let giftDialog = page.getByRole('dialog');
 		await giftDialog.getByRole('textbox', { name: 'Název' }).fill(giftName);
-		await giftDialog.getByRole('button', { name: 'Bez kategorie' }).click();
+		await giftDialog.getByRole('combobox', { name: 'Kategorie', exact: true }).click();
 		await page.getByRole('option', { name: categoryLabel }).click();
 		// The multi-select listbox stays open after a pick and can cover the footer Save.
 		await page.keyboard.press('Escape');
@@ -310,7 +310,9 @@ test.describe('Wishlist settings – details and categories', () => {
 
 		await page.getByText(giftName, { exact: true }).click();
 		giftDialog = page.getByRole('dialog');
-		await expect(giftDialog.getByRole('button', { name: 'Bez kategorie' })).toBeVisible();
+		await expect(
+			giftDialog.getByRole('combobox', { name: 'Kategorie', exact: true }),
+		).toHaveText('Bez kategorie');
 
 		await page.context().close();
 	});

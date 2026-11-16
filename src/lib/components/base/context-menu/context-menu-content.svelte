@@ -16,6 +16,8 @@
 		align = 'start',
 		portalProps,
 		class: className,
+		// The lock toggles user-select on <body> per press, restyling the whole document.
+		preventOverflowTextSelection = false,
 		...restProps
 	}: ContextMenuPrimitive.ContentProps & {
 		portalProps?: WithoutChildrenOrChild<ComponentProps<typeof ContextMenuPortal>>;
@@ -38,6 +40,7 @@
 			floatingAvailableSizeCap,
 			className,
 		)}
+		{preventOverflowTextSelection}
 		{...restProps}
 	/>
 </ContextMenuPortal>

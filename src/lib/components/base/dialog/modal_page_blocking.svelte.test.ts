@@ -1,6 +1,6 @@
 import '../../../../app.css';
 import { describe, expect, it } from 'vitest';
-import { page, userEvent } from 'vitest/browser';
+import { page } from 'vitest/browser';
 import { render } from 'vitest-browser-svelte';
 import { toast } from 'svelte-sonner';
 import DialogTestFixture from './dialog_test_fixture.svelte';
@@ -40,8 +40,20 @@ describe.each([
 		expect(slotAtPagePoint()).toBe(overlaySlot);
 		expect(toastPointerEvents()).toBe('none');
 
-		await userEvent.keyboard('{Escape}');
+		// Dispatched in-page: a driver round trip can outlast the whole exit animation.
+		document.activeElement?.dispatchEvent(
+			new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }),
+		);
 		await expect.element(content).toHaveAttribute('data-state', 'closed');
+		expect(slotAtPagePoint()).toBe(overlaySlot);
+		const closingContent = content.element();
+		while (
+			closingContent.isConnected &&
+			Number(getComputedStyle(closingContent).opacity) > 0.5
+		) {
+			await new Promise((resolve) => requestAnimationFrame(resolve));
+		}
+		expect(closingContent.isConnected, 'the exit is observed midway').toBe(true);
 		expect(slotAtPagePoint()).toBe(overlaySlot);
 
 		await expect.element(content).not.toBeInTheDocument();

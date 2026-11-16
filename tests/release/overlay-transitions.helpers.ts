@@ -62,7 +62,28 @@ export async function startExitRecording(surface: Locator): Promise<{
 			});
 		}
 
-		const observer = new MutationObserver(() => record('frame'));
+		// bits-ui detaches in the same microtask checkpoint that resolves `finished`, before
+		// animationend/transitionend are dispatched, so completion is observed via `finished`.
+		let exitAnimationsObserved = false;
+		function observeExitAnimations() {
+			if (exitAnimationsObserved || element.getAttribute('data-state') !== 'closed') {
+				return;
+			}
+			const animations = element.getAnimations();
+			if (animations.length === 0) {
+				return;
+			}
+			exitAnimationsObserved = true;
+			void Promise.all(animations.map((animation) => animation.finished)).then(
+				() => record('exit-end'),
+				() => {},
+			);
+		}
+
+		const observer = new MutationObserver(() => {
+			record('frame');
+			observeExitAnimations();
+		});
 		observer.observe(document.documentElement, {
 			attributes: true,
 			attributeFilter: ['data-state'],
@@ -87,6 +108,7 @@ export async function startExitRecording(surface: Locator): Promise<{
 
 		function sampleFrame() {
 			record('frame');
+			observeExitAnimations();
 			if (element.isConnected) {
 				animationFrameRequest = requestAnimationFrame(sampleFrame);
 			}

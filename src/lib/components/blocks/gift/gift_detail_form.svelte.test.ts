@@ -100,7 +100,7 @@ describe('GiftDetailForm categories', () => {
 		});
 
 		await screen.getByRole('textbox', { name: m.gift_name_label() }).fill('New book');
-		await screen.getByRole('button', { name: m.gift_category_none() }).click();
+		await screen.getByRole('combobox', { name: m.gift_category_label() }).click();
 		await screen.getByRole('option', { name: 'Books' }).click();
 		await userEvent.keyboard('{Escape}');
 		await screen.getByRole('button', { name: m.gift_add_title() }).first().click();
@@ -118,7 +118,7 @@ describe('GiftDetailForm categories', () => {
 			categoryOptions,
 		});
 
-		await screen.getByRole('button', { name: m.gift_category_none() }).click();
+		await screen.getByRole('combobox', { name: m.gift_category_label() }).click();
 		await expect.element(screen.getByRole('option', { name: 'Books' })).toBeVisible();
 		await userEvent.keyboard('{Escape}');
 
@@ -130,7 +130,7 @@ describe('GiftDetailForm categories', () => {
 				},
 			],
 		});
-		await screen.getByRole('button', { name: m.gift_category_none() }).click();
+		await screen.getByRole('combobox', { name: m.gift_category_label() }).click();
 		await expect.element(screen.getByRole('option', { name: 'Renamed books' })).toBeVisible();
 		expect(document.body.textContent).not.toContain('Books');
 	});
@@ -154,7 +154,7 @@ describe('GiftDetailForm categories', () => {
 		const overflowStyle = document.createElement('style');
 		overflowStyle.textContent = '[data-select-viewport] { max-height: 120px !important; }';
 		document.head.append(overflowStyle);
-		const trigger = screen.getByRole('button', { name: m.gift_category_none() });
+		const trigger = screen.getByRole('combobox', { name: m.gift_category_label() });
 		trigger.element().scrollIntoView({ block: 'center' });
 		await trigger.click();
 		const viewport = document.querySelector<HTMLElement>('[data-select-viewport]')!;
@@ -272,9 +272,9 @@ describe('GiftDetailForm categories', () => {
 	it('renders a disabled empty state with settings guidance', async () => {
 		const screen = await render(GiftDetailForm, { ...baseProps, gift: makeGift() });
 
-		await expect
-			.element(screen.getByRole('button', { name: m.gift_category_none_enabled() }))
-			.toBeDisabled();
+		const trigger = screen.getByRole('combobox', { name: m.gift_category_label() });
+		await expect.element(trigger).toBeDisabled();
+		await expect.element(trigger).toHaveTextContent(m.gift_category_none_enabled());
 		await expect.element(screen.getByText(m.gift_category_none_enabled_help())).toBeVisible();
 	});
 });

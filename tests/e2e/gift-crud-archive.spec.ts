@@ -52,7 +52,7 @@ test.describe('Gift editing', () => {
 		const createDialog = page.getByRole('dialog');
 		await expect(createDialog).toBeVisible({ timeout: 5_000 });
 		await createDialog.getByRole('textbox', { name: 'Název' }).fill('Darek s prioritou');
-		await createDialog.getByRole('button', { name: 'Bez priority' }).click();
+		await createDialog.getByRole('combobox', { name: 'Priorita', exact: true }).click();
 		await page.getByRole('option', { name: 'Vysoká' }).click();
 		await createDialog.getByRole('button', { name: 'Přidat dárek' }).click();
 		await expect(createDialog).not.toBeVisible({ timeout: 10_000 });
@@ -67,7 +67,9 @@ test.describe('Gift editing', () => {
 		await page.getByText('Darek s prioritou').click();
 		const editDialog = page.getByRole('dialog');
 		await expect(editDialog).toBeVisible({ timeout: 5_000 });
-		await expect(editDialog.getByRole('button', { name: 'Vysoká' })).toBeVisible();
+		await expect(
+			editDialog.getByRole('combobox', { name: 'Priorita', exact: true }),
+		).toHaveText(/Vysoká/);
 		await editDialog.getByRole('button', { name: /^(Uložit|Ulozit|Save)$/ }).click();
 		await expect(editDialog).not.toBeVisible({ timeout: 5_000 });
 		await expect(card).toContainText('Vysoká', { timeout: 10_000 });

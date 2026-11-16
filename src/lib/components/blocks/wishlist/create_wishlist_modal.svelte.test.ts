@@ -191,7 +191,7 @@ describe('CreateWishlistModal Vánoce', () => {
 
 	const christmasThemeName = () => wishlistThemeName('christmas');
 	const themeTrigger = (screen: ReturnType<typeof renderModal>) =>
-		screen.getByRole('button', { name: m.wishlist_appearance_theme_heading(), exact: true });
+		screen.getByRole('combobox', { name: m.wishlist_appearance_theme_heading(), exact: true });
 
 	it('pre-fills the next 24. 12. and suggests the christmas motif', async () => {
 		const screen = renderModal();

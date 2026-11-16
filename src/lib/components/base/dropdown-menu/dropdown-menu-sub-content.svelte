@@ -13,6 +13,8 @@
 		sideOffset = 2,
 		sticky = 'always',
 		collisionPadding = 8,
+		// The lock toggles user-select on <body> per press, restyling the whole document.
+		preventOverflowTextSelection = false,
 		class: className,
 		...restProps
 	}: DropdownMenuPrimitive.SubContentProps = $props();
@@ -33,6 +35,7 @@
 		{sideOffset}
 		{sticky}
 		{collisionPadding}
+		{preventOverflowTextSelection}
 		data-slot="dropdown-menu-sub-content"
 		class={cn(
 			fadeScaleOverlayMotionClass,

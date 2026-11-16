@@ -1,0 +1,55 @@
+diff --git a/dist/bits/select/select.svelte.js b/dist/bits/select/select.svelte.js
+index c261563371dd8be73a7ca8006d3b5a94c9198e4f..5cd6e0c3786650161f6d3bc068acc4ff51d9c76f 100644
+--- a/dist/bits/select/select.svelte.js
++++ b/dist/bits/select/select.svelte.js
+@@ -114,15 +114,20 @@ class SelectBaseRootState {
+         // scrollable ancestor
+         const nodeRect = node.getBoundingClientRect();
+         const viewportRect = viewport.getBoundingClientRect();
++        // rects include a transformed ancestor's scale (e.g. an enter animation); scrollTop does not
++        const scale = viewport.offsetHeight > 0 && viewportRect.height > 0
++            ? viewportRect.height / viewport.offsetHeight
++            : 1;
+         if (this.opts.scrollAlignment.current === "center") {
+             viewport.scrollTop +=
+-                nodeRect.top + nodeRect.height / 2 - (viewportRect.top + viewportRect.height / 2);
++                (nodeRect.top + nodeRect.height / 2 - (viewportRect.top + viewportRect.height / 2)) /
++                    scale;
+         }
+         else if (nodeRect.top < viewportRect.top) {
+-            viewport.scrollTop -= viewportRect.top - nodeRect.top;
++            viewport.scrollTop -= (viewportRect.top - nodeRect.top) / scale;
+         }
+         else if (nodeRect.bottom > viewportRect.bottom) {
+-            viewport.scrollTop += nodeRect.bottom - viewportRect.bottom;
++            viewport.scrollTop += (nodeRect.bottom - viewportRect.bottom) / scale;
+         }
+     }
+     getCandidateNodes() {
+diff --git a/dist/bits/utilities/floating-layer/use-floating-layer.svelte.js b/dist/bits/utilities/floating-layer/use-floating-layer.svelte.js
+index dc1afb9856d69d3f4eb09c9a99034a4e1e71648f..df073bffd158eaea268d27d573436fc18908b4a1 100644
+--- a/dist/bits/utilities/floating-layer/use-floating-layer.svelte.js
++++ b/dist/bits/utilities/floating-layer/use-floating-layer.svelte.js
+@@ -64,13 +64,21 @@ export class FloatingContentState {
+             alignmentAxis: this.opts.alignOffset.current,
+         }),
+         this.opts.avoidCollisions.current &&
++            this.opts.sticky.current === "partial" &&
+             shift({
+                 mainAxis: true,
+                 crossAxis: false,
+-                limiter: this.opts.sticky.current === "partial" ? limitShift() : undefined,
++                limiter: limitShift(),
+                 ...this.detectOverflowOptions,
+             }),
+         this.opts.avoidCollisions.current && flip({ ...this.detectOverflowOptions }),
++        this.opts.avoidCollisions.current &&
++            this.opts.sticky.current === "always" &&
++            shift({
++                mainAxis: true,
++                crossAxis: true,
++                ...this.detectOverflowOptions,
++            }),
+         size({
+             ...this.detectOverflowOptions,
+             apply: ({ rects, availableWidth, availableHeight }) => {

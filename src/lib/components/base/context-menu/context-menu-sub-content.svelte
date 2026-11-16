@@ -11,6 +11,8 @@
 		alignOffset = -4,
 		sideOffset = 2,
 		class: className,
+		// The lock toggles user-select on <body> per press, restyling the whole document.
+		preventOverflowTextSelection = false,
 		...restProps
 	}: ContextMenuPrimitive.SubContentProps = $props();
 
@@ -30,5 +32,6 @@
 		floatingDepthClearance,
 		className,
 	)}
+	{preventOverflowTextSelection}
 	{...restProps}
 />
