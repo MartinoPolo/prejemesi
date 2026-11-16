@@ -1111,13 +1111,46 @@ html.dark {
 	}
 }
 
-/* gift_card_collection_layout.ts reads natural track heights without touching the inherited
-   track properties, which would restyle every card descendant twice per measurement. */
+/* gift_card_collection_layout.ts writes each track height on the element that consumes it; not
+   inheriting keeps a changed height from restyling every card descendant. */
+@property --gift-card-image-track-height {
+	syntax: '*';
+	inherits: false;
+}
+
+@property --gift-card-title-track-height {
+	syntax: '*';
+	inherits: false;
+}
+
+@property --gift-card-description-track-height {
+	syntax: '*';
+	inherits: false;
+}
+
+@property --gift-card-links-track-height {
+	syntax: '*';
+	inherits: false;
+}
+
+@property --gift-card-price-track-height {
+	syntax: '*';
+	inherits: false;
+}
+
+@property --gift-card-actions-track-height {
+	syntax: '*';
+	inherits: false;
+}
+
+/* A measurement reads natural track heights by toggling one collection attribute. Style
+   invalidation matches descendants by attribute name only, so these selectors use attributes that
+   exist on track elements alone. */
 [data-gift-card-measuring] [data-gift-card-track] {
 	min-height: auto !important;
 }
 
-[data-gift-card-measuring] [data-testid='gift-card-image-frame'] {
+[data-gift-card-measuring] [data-gift-card-image-track] {
 	height: auto !important;
 }
 
