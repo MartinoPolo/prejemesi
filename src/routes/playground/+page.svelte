@@ -318,7 +318,7 @@
 						>Select</span
 					>
 					<Select.Root type="single" bind:value={selectValue}>
-						<Select.Trigger>
+						<Select.Trigger aria-label="Select">
 							{selectValue || 'Choose...'}
 						</Select.Trigger>
 						<Select.Content>

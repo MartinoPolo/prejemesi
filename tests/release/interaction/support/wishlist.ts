@@ -51,7 +51,7 @@ export async function addFixtureGift(page: Page, gift: FixtureGift): Promise<voi
 		await dialog.getByTestId('gift-link-url').fill(gift.link);
 	}
 	if (gift.priority !== undefined) {
-		await dialog.getByRole('button', { name: 'Bez priority' }).click();
+		await dialog.getByRole('combobox', { name: 'Priorita', exact: true }).click();
 		await page.getByRole('option', { name: gift.priority, exact: true }).click();
 	}
 	if (gift.categories !== undefined) {

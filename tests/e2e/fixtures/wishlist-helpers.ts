@@ -128,11 +128,11 @@ export async function addGift(
 		await dialog.getByTestId('gift-link-url').fill(primaryLink);
 	}
 	if (priority !== undefined) {
-		await dialog.getByRole('button', { name: 'Bez priority' }).click();
+		await dialog.getByRole('combobox', { name: 'Priorita', exact: true }).click();
 		await page.getByRole('option', { name: priority, exact: true }).click();
 	}
 	if (category !== undefined) {
-		await dialog.getByRole('button', { name: 'Bez kategorie' }).click();
+		await dialog.getByRole('combobox', { name: 'Kategorie', exact: true }).click();
 		await page.getByRole('option', { name: category, exact: true }).click();
 		// The multi-select listbox stays open after a pick and can cover the footer Save.
 		await page.keyboard.press('Escape');

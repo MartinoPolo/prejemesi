@@ -1039,11 +1039,11 @@
 					</div>
 					<div class={styles.formRowField()}>
 						<div data-slot="gift-form-label-row" class={styles.formLabelRow()}>
-							<Label>{m.gift_currency_label()}</Label>
+							<Label for="gift-currency">{m.gift_currency_label()}</Label>
 						</div>
 						<div class={styles.formControlStack()}>
 							<Select.Root type="single" bind:value={currency}>
-								<Select.Trigger class="w-full">
+								<Select.Trigger id="gift-currency" class="w-full">
 									{GIFT_CURRENCY_LABELS[currency]}
 								</Select.Trigger>
 								<Select.Content>
@@ -1090,7 +1090,7 @@
 
 					<div class={styles.formRowField()}>
 						<div data-slot="gift-form-label-row" class={styles.formLabelRow()}>
-							<Label>{m.gift_category_label()}</Label>
+							<Label for="gift-category">{m.gift_category_label()}</Label>
 						</div>
 						<div class={styles.formControlStack()}>
 							{#if categorySelectOptions.length > 0 || canCreateCategory}
@@ -1100,6 +1100,7 @@
 									bind:value={() => categoryIds, chooseCategories}
 								>
 									<Select.Trigger
+										id="gift-category"
 										class="w-full"
 										data-testid="gift-category-select"
 									>
@@ -1193,7 +1194,7 @@
 								{/if}
 							{:else}
 								<Select.Root type="single" disabled>
-									<Select.Trigger class="w-full" disabled>
+									<Select.Trigger id="gift-category" class="w-full" disabled>
 										{m.gift_category_none_enabled()}
 									</Select.Trigger>
 								</Select.Root>
@@ -1205,11 +1206,11 @@
 					{#if priorityLevels.length > 0}
 						<div class={styles.formRowField()}>
 							<div data-slot="gift-form-label-row" class={styles.formLabelRow()}>
-								<Label>{m.gift_priority_label()}</Label>
+								<Label for="gift-priority">{m.gift_priority_label()}</Label>
 							</div>
 							<div class={styles.formControlStack()}>
 								<Select.Root type="single" bind:value={priorityLevelId}>
-									<Select.Trigger class="w-full">
+									<Select.Trigger id="gift-priority" class="w-full">
 										{#if priorityLevelId}
 											{@const selectedLabel =
 												priorityLevels.find((p) => p.id === priorityLevelId)

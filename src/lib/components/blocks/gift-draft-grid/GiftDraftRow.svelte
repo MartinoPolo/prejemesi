@@ -296,7 +296,7 @@
 					markTouched();
 				}}
 			>
-				<Select.Trigger size="md" class="w-full">
+				<Select.Trigger size="md" class="w-full" aria-label={m.draft_grid_col_category()}>
 					{#if row.categoryId}
 						{@const selectedCategory = categoryOptions.find(
 							(category) => category.id === row.categoryId,

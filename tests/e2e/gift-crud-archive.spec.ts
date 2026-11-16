@@ -52,7 +52,7 @@ test.describe('Gift editing', () => {
 		const createDialog = page.getByRole('dialog');
 		await expect(createDialog).toBeVisible({ timeout: 5_000 });
 		await createDialog.getByRole('textbox', { name: 'Název' }).fill('Darek s prioritou');
-		await createDialog.getByRole('button', { name: 'Bez priority' }).click();
+		await createDialog.getByRole('combobox', { name: 'Priorita', exact: true }).click();
 		await page.getByRole('option', { name: 'Vysoká' }).click();
 		await createDialog.getByRole('button', { name: 'Přidat dárek' }).click();
 		await expect(createDialog).not.toBeVisible({ timeout: 10_000 });
