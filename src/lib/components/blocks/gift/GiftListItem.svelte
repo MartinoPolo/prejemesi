@@ -22,6 +22,7 @@
 	import { GIFT_LIVE_PREVIEW } from '$lib/components/blocks/change-proposals/change_row_model.js';
 	import { giftLivePreviewMarks } from '$lib/components/blocks/change-proposals/gift_live_preview.js';
 	import { restingShadowNesting } from '$lib/utils/resting_shadow_nesting.js';
+	import { clientSize } from '$lib/utils/shared_resize_observer.js';
 	import { observeDepthChange } from '$lib/theme/depth_change.js';
 	import type { GiftPresentationProps } from './gift_presentation_props.js';
 
@@ -41,6 +42,7 @@
 		moreSurface = 'menu',
 		showPriority = true,
 		livePreview,
+		imageLoadPriority,
 	}: GiftPresentationProps = $props();
 
 	const previewMarks = $derived(giftLivePreviewMarks(livePreview));
@@ -225,6 +227,7 @@
 				imageUrl={imageSrc}
 				imageMeta={gift.imageMeta}
 				alt={gift.name}
+				loadPriority={imageLoadPriority}
 				class={dimmedContentClass}
 			/>
 			{#if additionalImageCount > 0}
@@ -335,7 +338,7 @@
 
 			{#if !contextualMode && !previewMarks.actionless && (browseActions.primaryAction !== undefined || (onmore && persistentMore))}
 				<div
-					bind:clientWidth={actionContentWidth}
+					{@attach clientSize((size) => (actionContentWidth = size.width))}
 					class="mt-auto flex min-w-0 flex-col gap-1.5 pt-1.5"
 					data-testid="gift-list-actions"
 				>

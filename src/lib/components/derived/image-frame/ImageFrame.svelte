@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import { cn } from '$lib/utils.js';
 	import * as m from '$lib/paraglide/messages.js';
 	import { Skeleton } from '$lib/components/base/skeleton/index.js';
@@ -18,6 +19,9 @@
 		type ImageFrameResolvedFit,
 	} from './image_frame_variants.js';
 	import type { ImageFocalPoint } from '$lib/modules/images/types.js';
+	import { clientSize } from '$lib/utils/shared_resize_observer.js';
+	import { appHydrated } from '$lib/utils/app_hydration.js';
+	import { IMAGE_LOAD_PRIORITIES, type ImageLoadPriority } from './image_load_priority.js';
 	import {
 		IMAGE_VARIANTS,
 		responsiveImageSource,
@@ -36,11 +40,10 @@
 		 */
 		variant?: ImageVariant | null;
 		/**
-		 * Loads the image eagerly at high fetch priority (above-the-fold surfaces like the page
-		 * banner, the likely LCP element). Everything else lazy-loads. Images decode asynchronously
-		 * (issue #107).
+		 * Above-the-fold surfaces load `eager`, and the likely LCP element (the page banner, the
+		 * first gift) `high`; everything else lazy-loads. Images decode asynchronously (issue #107).
 		 */
-		eagerLoading?: boolean;
+		loadPriority?: ImageLoadPriority;
 		/** Fit strategy for the box (REQ-1). */
 		fitMode?: ImageFitMode;
 		/** Focal point (%) honored in cover-crop. */
@@ -87,7 +90,7 @@
 		src = null,
 		alt,
 		variant = null,
-		eagerLoading = false,
+		loadPriority = IMAGE_LOAD_PRIORITIES.lazy,
 		fitMode = IMAGE_FIT_MODES.auto,
 		focal = { x: 50, y: 50 },
 		zoom = 1,
@@ -117,6 +120,13 @@
 	let boxHeight = $state(0);
 
 	const hasSrc = $derived(src !== null && src.trim() !== '');
+	// An eager image picks its srcset rung the moment it is inserted, so a client-created frame waits
+	// for its box: requesting at the fallback width would fetch a second rung once measured. Frames
+	// in server-rendered markup keep their source, which hydration must not remove.
+	const waitsForBox = untrack(
+		() => loadPriority !== IMAGE_LOAD_PRIORITIES.lazy && variant !== null && appHydrated(),
+	);
+	const sourceAwaitsBox = $derived(waitsForBox && (boxWidth === 0 || boxHeight === 0));
 	const errored = $derived(hasSrc && erroredSrc === src);
 	// Skeleton shows while the image is in flight, or when the parent forces it.
 	const pending = $derived(hasSrc && loadedSrc !== src && erroredSrc !== src);
@@ -264,8 +274,10 @@
 	class={rootClass}
 	data-testid="image-frame"
 	style:--frame-fill={frameFill}
-	bind:clientWidth={boxWidth}
-	bind:clientHeight={boxHeight}
+	{@attach clientSize((size) => {
+		boxWidth = size.width;
+		boxHeight = size.height;
+	})}
 	{...interactiveAttrs}
 >
 	{#if showFallback}
@@ -284,7 +296,7 @@
 				aria-label={m.image_frame_loading()}
 			/>
 		{/if}
-		{#if hasSrc}
+		{#if hasSrc && !sourceAwaitsBox}
 			<img
 				{@attach trackImageLoad}
 				class={imageClass}
@@ -293,8 +305,8 @@
 				srcset={responsiveSource?.srcset}
 				src={displaySrc}
 				{alt}
-				loading={eagerLoading ? 'eager' : 'lazy'}
-				fetchpriority={eagerLoading ? 'high' : undefined}
+				loading={loadPriority === IMAGE_LOAD_PRIORITIES.lazy ? 'lazy' : 'eager'}
+				fetchpriority={loadPriority === IMAGE_LOAD_PRIORITIES.high ? 'high' : undefined}
 				decoding="async"
 				referrerpolicy={referrerPolicy}
 				aria-hidden={alt === '' ? 'true' : undefined}

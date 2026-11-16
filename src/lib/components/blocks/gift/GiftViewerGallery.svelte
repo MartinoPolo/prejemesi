@@ -4,6 +4,7 @@
 	import * as m from '$lib/paraglide/messages.js';
 	import ImageFrame from '$lib/components/derived/image-frame/ImageFrame.svelte';
 	import {
+		IMAGE_LOAD_PRIORITIES,
 		IMAGE_TOKEN_SCOPES,
 		hasExplicitFrameFill,
 	} from '$lib/components/derived/image-frame/index.js';
@@ -131,7 +132,9 @@
 				{alt}
 				fillColor={explicitFill(image)}
 				tokenScope={IMAGE_TOKEN_SCOPES.wishlist}
-				eagerLoading={imageIndex === index}
+				loadPriority={imageIndex === index
+					? IMAGE_LOAD_PRIORITIES.high
+					: IMAGE_LOAD_PRIORITIES.lazy}
 				onmeasured={(aspectRatio) => rememberAspectRatio(source, aspectRatio)}
 			/>
 		{/each}

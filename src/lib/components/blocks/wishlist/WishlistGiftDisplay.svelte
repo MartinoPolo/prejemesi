@@ -29,6 +29,7 @@
 		measureGiftCardCollectionLayoutNow,
 	} from './gift_card_collection_layout.js';
 	import { createGiftCollectionMotion } from '$lib/motion/gift_collection_motion.js';
+	import { afterNextPaint } from '$lib/utils/after_next_paint.js';
 	import { cn } from '$lib/utils.js';
 	import {
 		GIFT_CARD_MINIMUM_WIDTH,
@@ -304,14 +305,11 @@
 			return;
 		}
 		let active = true;
+		let cancelDeferredBaseline: (() => void) | undefined;
+		const motionCanRun = () =>
+			active && !viewTransitioning && viewMode === displayedViewMode && !isLoading;
 		void tick().then(() => {
-			if (
-				!active ||
-				!motion ||
-				viewTransitioning ||
-				viewMode !== displayedViewMode ||
-				isLoading
-			) {
+			if (!motionCanRun() || !motion) {
 				return;
 			}
 			if (collectionElement) {
@@ -321,14 +319,22 @@
 				if (activeAnimation !== null) {
 					return;
 				}
-				motion.reset(false);
-				motionSuspended = false;
+				// The baseline samples the geometry of every visible gift without changing what is
+				// shown, so it waits until the gifts have painted instead of delaying that paint.
+				cancelDeferredBaseline = afterNextPaint(() => {
+					if (!motionCanRun() || !motion || activeAnimation !== null) {
+						return;
+					}
+					motion.reset(false);
+					motionSuspended = false;
+				});
 			} else {
 				motion.afterUpdate();
 			}
 		});
 		return () => {
 			active = false;
+			cancelDeferredBaseline?.();
 		};
 	});
 

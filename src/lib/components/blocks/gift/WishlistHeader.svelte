@@ -37,6 +37,7 @@
 	import { wishlistImageUrl, wishlistSlotToFrameProps } from '$lib/modules/images/index.js';
 	import type { WishlistImageSlots } from '$lib/modules/images/index.js';
 	import WishlistSlotImage from '$lib/components/blocks/wishlist/WishlistSlotImage.svelte';
+	import { IMAGE_LOAD_PRIORITIES } from '$lib/components/derived/image-frame/index.js';
 	import { editRecipientDialogLoader } from '$lib/components/blocks/wishlist/lazy_dialog_loaders.js';
 	import type { WishlistThemeMotif } from '$lib/components/blocks/wishlist/wishlist_theme_scope.js';
 	import WishlistHeaderActions from './WishlistHeaderActions.svelte';
@@ -261,7 +262,7 @@
 					{themeMotif}
 					alt={title}
 					variant="banner"
-					eagerLoading
+					loadPriority={IMAGE_LOAD_PRIORITIES.high}
 				/>
 			</figure>
 			<div class="mobile-copy">
@@ -316,7 +317,7 @@
 						{themeMotif}
 						alt={title}
 						variant="banner"
-						eagerLoading
+						loadPriority={IMAGE_LOAD_PRIORITIES.high}
 					/>
 					{#if canManage && !isArchived}
 						<Button

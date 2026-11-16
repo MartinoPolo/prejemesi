@@ -1,0 +1,49 @@
+import type { Attachment } from 'svelte/attachments';
+
+type ResizeListener = () => void;
+
+const listenersByElement = new Map<Element, Set<ResizeListener>>();
+let sharedResizeObserver: ResizeObserver | null = null;
+
+/**
+ * One observer serves every element, so a collection resize is one callback rather than one per
+ * card, and registering never reads layout: the first size arrives with the next rendering update.
+ */
+export function observeResize(element: Element, listener: ResizeListener): () => void {
+	sharedResizeObserver ??= new ResizeObserver((entries) => {
+		for (const entry of entries) {
+			listenersByElement.get(entry.target)?.forEach((notify) => notify());
+		}
+	});
+	const listeners = listenersByElement.get(element);
+	if (listeners === undefined) {
+		listenersByElement.set(element, new Set([listener]));
+		sharedResizeObserver.observe(element);
+	} else {
+		listeners.add(listener);
+	}
+	return () => {
+		const current = listenersByElement.get(element);
+		if (current === undefined) {
+			return;
+		}
+		current.delete(listener);
+		if (current.size === 0) {
+			listenersByElement.delete(element);
+			sharedResizeObserver?.unobserve(element);
+		}
+	};
+}
+
+/**
+ * Reports the element's client size whenever it resizes. Unlike `bind:clientWidth`, mounting does
+ * not read the size synchronously, which forces a layout per element while a list is inserted.
+ */
+export function clientSize(
+	onresize: (size: { width: number; height: number }) => void,
+): Attachment<HTMLElement> {
+	return (element) =>
+		observeResize(element, () =>
+			onresize({ width: element.clientWidth, height: element.clientHeight }),
+		);
+}

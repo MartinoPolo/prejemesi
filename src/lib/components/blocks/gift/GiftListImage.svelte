@@ -1,6 +1,7 @@
 <script lang="ts">
 	import GiftImage from './GiftImage.svelte';
 	import type { ImageMetadata, ImageVariant } from '$lib/modules/images/index.js';
+	import type { ImageLoadPriority } from '$lib/components/derived/image-frame/index.js';
 	import { cn } from '$lib/utils.js';
 	import { GIFT_CARD_LAYOUT_INERT_ATTRIBUTE } from './gift_card_layout_inert.js';
 
@@ -9,10 +10,18 @@
 		imageMeta: ImageMetadata | null;
 		alt: string;
 		variant?: ImageVariant | null;
+		loadPriority?: ImageLoadPriority;
 		class?: string;
 	}
 
-	let { imageUrl, imageMeta, alt, variant = 'listThumb', class: className }: Props = $props();
+	let {
+		imageUrl,
+		imageMeta,
+		alt,
+		variant = 'listThumb',
+		loadPriority,
+		class: className,
+	}: Props = $props();
 </script>
 
 <div
@@ -27,5 +36,6 @@
 		target="thumb"
 		{alt}
 		{variant}
+		{loadPriority}
 	/>
 </div>

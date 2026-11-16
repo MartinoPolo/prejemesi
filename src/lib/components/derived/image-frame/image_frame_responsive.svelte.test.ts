@@ -1,6 +1,7 @@
 import '../../../../app.css';
 import { render } from 'vitest-browser-svelte';
 import { describe, expect, it, vi } from 'vitest';
+import { markAppHydrated } from '$lib/utils/app_hydration.js';
 import ImageFrame from './ImageFrame.svelte';
 
 // A closed local port makes every transformation request fail fast.
@@ -46,6 +47,34 @@ describe('ImageFrame responsive transformations', () => {
 			);
 			expect(renderedImages).toContainEqual({ src: original, srcset: false, sizes: false });
 		} finally {
+			observer.disconnect();
+		}
+	});
+
+	it('inserts a client-created eager image only once its box sets the requested width', async () => {
+		const firstSizes: (string | null)[] = [];
+		const observer = new MutationObserver(() => {
+			const image = document.querySelector('[data-testid="image-frame"] img');
+			if (image !== null && firstSizes.length === 0) {
+				firstSizes.push(image.getAttribute('sizes'));
+			}
+		});
+		observer.observe(document.body, { subtree: true, childList: true });
+		const unmarkHydrated = markAppHydrated();
+		try {
+			await render(ImageFrame, {
+				props: {
+					class: 'h-24 w-32',
+					src: `${PUBLIC_BASE}/gifts/c.jpg`,
+					alt: 'Gift',
+					variant: 'card',
+					loadPriority: 'high',
+				},
+			});
+
+			await expect.poll(() => firstSizes).toEqual(['128px']);
+		} finally {
+			unmarkHydrated();
 			observer.disconnect();
 		}
 	});
