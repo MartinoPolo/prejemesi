@@ -198,6 +198,7 @@
 				explicitImageFrameFill !== null && 'bg-[var(--frame-fill)]',
 			)}
 			data-testid="gift-card-image-frame"
+			data-gift-card-image-track
 			style:--frame-fill={explicitImageFrameFill ?? undefined}
 		>
 			{#if explicitImageFrameFill === null}

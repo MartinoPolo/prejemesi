@@ -8,13 +8,22 @@ type GiftCardTrack = (typeof GIFT_CARD_TRACKS)[number];
 
 const trackProperty = (track: GiftCardTrack) => `--gift-card-${track}-track-height`;
 
-function gridHasMultipleColumns(collection: HTMLElement): boolean {
+/** Two columns give each card at most half the grid; one column gives it all of it. */
+const SINGLE_COLUMN_MINIMUM_WIDTH_SHARE = 0.75;
+
+/**
+ * A single-column card spans the grid while side-by-side cards share it, so a rendered card's
+ * layout width tells the cases apart without reading the grid template, which would restyle the
+ * whole collection. Layout widths also ignore the transforms motion animates.
+ */
+function gridHasMultipleColumns(collection: HTMLElement, cards: readonly HTMLElement[]): boolean {
 	const grid = collection.querySelector<HTMLElement>('[data-testid="wishlist-gift-card-grid"]');
-	if (grid === null) {
+	const cardWidth = cards.find((card) => card.offsetWidth > 0)?.offsetWidth;
+	if (grid === null || cardWidth === undefined) {
 		return false;
 	}
 
-	return getComputedStyle(grid).gridTemplateColumns.trim().split(/\s+/).length > 1;
+	return cardWidth < grid.clientWidth * SINGLE_COLUMN_MINIMUM_WIDTH_SHARE;
 }
 
 function cardElements(collection: HTMLElement): HTMLElement[] {
@@ -23,12 +32,19 @@ function cardElements(collection: HTMLElement): HTMLElement[] {
 	);
 }
 
+function trackElements(collection: HTMLElement, track: GiftCardTrack): HTMLElement[] {
+	return Array.from(
+		collection.querySelectorAll<HTMLElement>(`[data-gift-card-track="${track}"]`),
+	);
+}
+
 const IMAGE_TRACK_PROPERTY = '--gift-card-image-track-height';
+const IMAGE_TRACK_SELECTOR = '[data-gift-card-image-track]';
 
 /**
- * Track heights are inherited custom properties, so touching one restyles every descendant. A
- * measurement therefore suspends them through this attribute, whose rules only restyle the track
- * elements, and rewrites a property only when its value changes.
+ * Each track height is a non-inheriting property on the element that consumes it (`app.css`). A
+ * measurement suspends them through this attribute, whose rules only restyle the track elements,
+ * and rewrites a property only when its value changes.
  */
 const MEASURING_ATTRIBUTE = 'data-gift-card-measuring';
 
@@ -45,10 +61,14 @@ function setPropertyIfChanged(element: HTMLElement, property: string, value: str
 
 function removeTrackHeights(collection: HTMLElement, cards: readonly HTMLElement[]): void {
 	for (const track of GIFT_CARD_TRACKS) {
-		setPropertyIfChanged(collection, trackProperty(track), null);
+		for (const element of trackElements(collection, track)) {
+			setPropertyIfChanged(element, trackProperty(track), null);
+		}
+	}
+	for (const image of collection.querySelectorAll<HTMLElement>(IMAGE_TRACK_SELECTOR)) {
+		setPropertyIfChanged(image, IMAGE_TRACK_PROPERTY, null);
 	}
 	for (const card of cards) {
-		setPropertyIfChanged(card, IMAGE_TRACK_PROPERTY, null);
 		delete card.dataset.giftCardImageCrowded;
 	}
 	delete collection.dataset.giftCardTracksAligned;
@@ -94,14 +114,14 @@ function visibleChildrenBounds(element: HTMLElement | null): DOMRect[] {
 }
 
 interface ImageFrameMeasurement {
-	readonly card: HTMLElement;
+	readonly image: HTMLElement;
 	readonly requiredHeight: number;
 	/** Border and bottom padding around the image track, subtracted from the frame height. */
 	readonly verticalChrome: number;
 }
 
 function measureImageFrame(card: HTMLElement, zoneGap: number): ImageFrameMeasurement | null {
-	const image = card.querySelector<HTMLElement>('[data-testid="gift-card-image-frame"]');
+	const image = card.querySelector<HTMLElement>(IMAGE_TRACK_SELECTOR);
 	if (image === null) {
 		return null;
 	}
@@ -111,10 +131,17 @@ function measureImageFrame(card: HTMLElement, zoneGap: number): ImageFrameMeasur
 		Number.parseFloat(imageStyle.borderTopWidth) +
 		Number.parseFloat(imageStyle.borderBottomWidth) +
 		Number.parseFloat(imageStyle.paddingBottom);
+	// The frame is content-box, so its computed width is the layout width without the transform an
+	// entering gift scales in with; the rectangles below are scaled back by the same factor.
 	const contentWidth =
-		imageRect.width -
-		Number.parseFloat(imageStyle.borderLeftWidth) -
+		Number.parseFloat(imageStyle.width) +
+		Number.parseFloat(imageStyle.paddingLeft) +
+		Number.parseFloat(imageStyle.paddingRight);
+	const layoutWidth =
+		contentWidth +
+		Number.parseFloat(imageStyle.borderLeftWidth) +
 		Number.parseFloat(imageStyle.borderRightWidth);
+	const scale = layoutWidth > 0 && imageRect.width > 0 ? imageRect.width / layoutWidth : 1;
 	const naturalHeight = contentWidth * 0.75 + verticalChrome;
 	const topBounds = visibleChildrenBounds(
 		image.querySelector<HTMLElement>('[data-gift-card-top-overlays]'),
@@ -136,41 +163,36 @@ function measureImageFrame(card: HTMLElement, zoneGap: number): ImageFrameMeasur
 				Math.min(...stateBounds.map((rect) => rect.top));
 	const requiredHeight = Math.max(
 		naturalHeight,
-		2 * Math.max(topExtent, bottomExtent) + stateHeight + zoneGap * 2,
+		(2 * Math.max(topExtent, bottomExtent) + stateHeight) / scale + zoneGap * 2,
 	);
-	return { card, requiredHeight, verticalChrome };
+	return { image, requiredHeight, verticalChrome };
 }
 
 function imageTrackHeights(
 	cards: readonly HTMLElement[],
 	alignAcrossCollection: boolean,
-): Map<HTMLElement, string | null> {
+): Map<HTMLElement, string> {
 	const zoneGap = Number.parseFloat(getComputedStyle(document.documentElement).fontSize) * 0.5;
 	const measurements = cards
 		.map((card) => measureImageFrame(card, zoneGap))
 		.filter((measurement): measurement is ImageFrameMeasurement => measurement !== null);
 	const sharedHeight = Math.max(0, ...measurements.map(({ requiredHeight }) => requiredHeight));
-	const values = new Map<HTMLElement, string | null>(cards.map((card) => [card, null]));
-	for (const { card, requiredHeight, verticalChrome } of measurements) {
+	const values = new Map<HTMLElement, string>();
+	for (const { image, requiredHeight, verticalChrome } of measurements) {
 		const height = alignAcrossCollection ? sharedHeight : requiredHeight;
-		values.set(card, `${height - verticalChrome}px`);
+		values.set(image, `${height - verticalChrome}px`);
 	}
 	return values;
 }
 
-function naturalTrackHeights(collection: HTMLElement): Record<GiftCardTrack, number> {
-	const heights = Object.fromEntries(GIFT_CARD_TRACKS.map((track) => [track, 0])) as Record<
-		GiftCardTrack,
-		number
-	>;
-	for (const track of GIFT_CARD_TRACKS) {
-		for (const element of collection.querySelectorAll<HTMLElement>(
-			`[data-gift-card-track="${track}"]`,
-		)) {
-			heights[track] = Math.max(heights[track], element.getBoundingClientRect().height);
-		}
-	}
-	return heights;
+/** The used height ignores the transform an entering gift scales in with, unlike its rectangle. */
+function layoutHeight(element: HTMLElement): number {
+	const height = Number.parseFloat(getComputedStyle(element).height);
+	return Number.isNaN(height) ? element.getBoundingClientRect().height : height;
+}
+
+function naturalTrackHeight(elements: readonly HTMLElement[]): number {
+	return Math.max(0, ...elements.map(layoutHeight));
 }
 
 function measureGiftCardCollectionLayout(collection: HTMLElement): void {
@@ -194,26 +216,31 @@ function measureGiftCardCollectionLayout(collection: HTMLElement): void {
 	}
 	// The text tracks ignore the image zone, so they share the first layout with the crowding check;
 	// only the image pass must wait for the crowded flags, which rewrap the top overlays.
-	const alignAcrossCollection = gridHasMultipleColumns(collection);
+	const alignAcrossCollection = gridHasMultipleColumns(collection, cards);
 	const crowdedCards = crowdedTopZoneCards(cards);
-	const heights = alignAcrossCollection ? naturalTrackHeights(collection) : null;
+	const tracks = GIFT_CARD_TRACKS.map((track) => {
+		const elements = trackElements(collection, track);
+		return {
+			track,
+			elements,
+			height: alignAcrossCollection ? `${naturalTrackHeight(elements)}px` : null,
+		};
+	});
 	for (const card of crowdedCards) {
 		card.dataset.giftCardImageCrowded = 'true';
 	}
 	const imageHeights = imageTrackHeights(cards, alignAcrossCollection);
 
 	collection.removeAttribute(MEASURING_ATTRIBUTE);
-	for (const [card, height] of imageHeights) {
-		setPropertyIfChanged(card, IMAGE_TRACK_PROPERTY, height);
+	for (const [image, height] of imageHeights) {
+		setPropertyIfChanged(image, IMAGE_TRACK_PROPERTY, height);
 	}
-	for (const track of GIFT_CARD_TRACKS) {
-		setPropertyIfChanged(
-			collection,
-			trackProperty(track),
-			heights === null ? null : `${heights[track]}px`,
-		);
+	for (const { track, elements, height } of tracks) {
+		for (const element of elements) {
+			setPropertyIfChanged(element, trackProperty(track), height);
+		}
 	}
-	if (heights !== null) {
+	if (alignAcrossCollection) {
 		collection.dataset.giftCardTracksAligned = 'true';
 	}
 }

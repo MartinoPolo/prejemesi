@@ -68,7 +68,7 @@ describe('GiftCard saved composition containment', () => {
 			await expect
 				.poll(() =>
 					collection
-						.querySelector<HTMLElement>('[data-testid="gift-card-surface"]')
+						.querySelector<HTMLElement>('[data-testid="gift-card-image-frame"]')
 						?.style.getPropertyValue('--gift-card-image-track-height'),
 				)
 				.toBeTruthy();
