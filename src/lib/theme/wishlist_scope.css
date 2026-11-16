@@ -83,8 +83,8 @@
 }
 
 @container app-content (width < 1360px) {
-	/* Only photo backgrounds carry a placement. */
-	.wishlist-page-shell:is(
+	/* Only photo backgrounds carry a placement. `:where` keeps the phone rule below winning. */
+	.wishlist-page-shell:where(
 		[data-wishlist-background='theme'],
 		[data-wishlist-background][data-wishlist-placement='gutters']
 	) {
