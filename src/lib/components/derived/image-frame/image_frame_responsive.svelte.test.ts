@@ -80,9 +80,15 @@ describe('ImageFrame responsive transformations', () => {
 	});
 
 	it('still loads a client-created eager image whose box is never laid out', async () => {
+		// The request fails fast and the frame then drops its image, so record the insertion itself.
+		let imageInserted = false;
+		const observer = new MutationObserver(() => {
+			imageInserted ||= document.querySelector('[data-testid="image-frame"] img') !== null;
+		});
+		observer.observe(document.body, { subtree: true, childList: true });
 		const unmarkHydrated = markAppHydrated();
 		try {
-			const screen = await render(ImageFrame, {
+			await render(ImageFrame, {
 				props: {
 					class: 'hidden',
 					src: `${PUBLIC_BASE}/gifts/d.jpg`,
@@ -92,9 +98,10 @@ describe('ImageFrame responsive transformations', () => {
 				},
 			});
 
-			await expect.poll(() => screen.container.querySelector('img')).not.toBeNull();
+			await expect.poll(() => imageInserted).toBe(true);
 		} finally {
 			unmarkHydrated();
+			observer.disconnect();
 		}
 	});
 
