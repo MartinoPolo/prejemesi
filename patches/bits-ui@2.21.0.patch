@@ -1,0 +1,27 @@
+diff --git a/dist/bits/utilities/floating-layer/use-floating-layer.svelte.js b/dist/bits/utilities/floating-layer/use-floating-layer.svelte.js
+index dc1afb9856d69d3f4eb09c9a99034a4e1e71648f..df073bffd158eaea268d27d573436fc18908b4a1 100644
+--- a/dist/bits/utilities/floating-layer/use-floating-layer.svelte.js
++++ b/dist/bits/utilities/floating-layer/use-floating-layer.svelte.js
+@@ -64,13 +64,21 @@ export class FloatingContentState {
+             alignmentAxis: this.opts.alignOffset.current,
+         }),
+         this.opts.avoidCollisions.current &&
++            this.opts.sticky.current === "partial" &&
+             shift({
+                 mainAxis: true,
+                 crossAxis: false,
+-                limiter: this.opts.sticky.current === "partial" ? limitShift() : undefined,
++                limiter: limitShift(),
+                 ...this.detectOverflowOptions,
+             }),
+         this.opts.avoidCollisions.current && flip({ ...this.detectOverflowOptions }),
++        this.opts.avoidCollisions.current &&
++            this.opts.sticky.current === "always" &&
++            shift({
++                mainAxis: true,
++                crossAxis: true,
++                ...this.detectOverflowOptions,
++            }),
+         size({
+             ...this.detectOverflowOptions,
+             apply: ({ rects, availableWidth, availableHeight }) => {
