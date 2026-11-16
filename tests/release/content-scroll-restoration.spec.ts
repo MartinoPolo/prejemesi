@@ -12,9 +12,12 @@ const SEEDED_WISHLIST_PATH = '/w/xmas2026';
 const RESTORED_OFFSET_SHARE = 0.6;
 /** Card tracks may settle after the restore; scroll anchoring keeps the same gift in view. */
 const ANCHOR_TOLERANCE_PX = 32;
+/** Long enough for late mounting batches and image loads to move the content if they would. */
+const SETTLE_CHECK_DELAY_MS = 750;
 
 const viewports: { name: string; options: BrowserContextOptions }[] = [
-	{ name: 'desktop', options: { viewport: { width: 1280, height: 800 } } },
+	// A short desktop window, because the seeded list overview fits a tall one.
+	{ name: 'desktop', options: { viewport: { width: 1280, height: 540 } } },
 	{
 		name: 'mobile',
 		options: { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true },
@@ -53,6 +56,19 @@ function giftAtContentTop(page: Page): Promise<{ name: string; offset: number } 
 		}
 		return null;
 	});
+}
+
+/** Reaches `expected` within `tolerance`, then holds it, so a late jump fails too. */
+async function expectSettledContentTop(
+	page: Page,
+	expected: number,
+	tolerance: number,
+	message: string,
+): Promise<void> {
+	const distance = async () => Math.abs((await contentScrollTop(page)) - expected);
+	await expect.poll(distance, { message }).toBeLessThanOrEqual(tolerance);
+	await page.waitForTimeout(SETTLE_CHECK_DELAY_MS);
+	expect(await distance(), `${message}, and stays there`).toBeLessThanOrEqual(tolerance);
 }
 
 async function waitForAllGifts(page: Page): Promise<void> {
@@ -95,16 +111,24 @@ for (const { name, options } of viewports) {
 		const anchor = await giftAtContentTop(page);
 		expect(anchor?.name, 'a named gift sits at the saved offset').toBeTruthy();
 
-		await page.locator('a.logo').click();
-		await expect(page).toHaveURL(/\/home$/);
-		expect(await contentScrollTop(page), 'the overview opens at its top').toBe(0);
+		// The overview is tall as it commits, so only the reset keeps it from opening clamped at
+		// the wishlist's offset.
+		await page
+			.locator(`header a[href$="/my-lists"]`)
+			.first()
+			.evaluate((link: HTMLAnchorElement) => link.click());
+		await expect(page).toHaveURL(/\/my-lists$/);
+		await expectSettledContentTop(page, 0, 0, 'a link opens the overview at its top');
 
 		const expectWishlistRestored = async (direction: string) => {
 			await expect(page).toHaveURL(new RegExp(`${SEEDED_WISHLIST_PATH}$`));
 			await waitForAllGifts(page);
-			await expect
-				.poll(() => contentScrollTop(page), { message: `${direction} restores the offset` })
-				.toBeGreaterThan(savedTop - ANCHOR_TOLERANCE_PX);
+			await expectSettledContentTop(
+				page,
+				savedTop,
+				ANCHOR_TOLERANCE_PX,
+				`${direction} restores the offset`,
+			);
 			const restoredAnchor = await giftAtContentTop(page);
 			expect(restoredAnchor?.name, 'the same gift is back at the top').toBe(anchor!.name);
 			expect(Math.abs(restoredAnchor!.offset - anchor!.offset)).toBeLessThanOrEqual(
@@ -117,12 +141,14 @@ for (const { name, options } of viewports) {
 
 		await page.goBack();
 		await expect(page).toHaveURL(/\/my-lists$/);
-		await expect
-			.poll(() => contentScrollTop(page), { message: 'back restores the list overview too' })
-			.toBe(myListsTop);
+		await expectSettledContentTop(page, myListsTop, 0, 'back restores the list overview too');
 
 		await page.goForward();
 		await expectWishlistRestored('forward');
+
+		await page.goForward();
+		await expect(page).toHaveURL(/\/my-lists$/);
+		await expectSettledContentTop(page, 0, 0, 'forward returns to an overview left at its top');
 
 		await context.close();
 	});
