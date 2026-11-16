@@ -8,6 +8,13 @@ type GiftCardTrack = (typeof GIFT_CARD_TRACKS)[number];
 
 const trackProperty = (track: GiftCardTrack) => `--gift-card-${track}-track-height`;
 
+/**
+ * Marks a collection still mounting its gifts in batches below the fold. Each batch would make a
+ * measurement of the whole collection, so the gifts mounted meanwhile are measured once, when the
+ * marker goes; the gifts mounted with the collection are measured on its first frame.
+ */
+export const GIFT_COLLECTION_MOUNTING_ATTRIBUTE = 'data-gift-collection-mounting';
+
 /** Two columns give each card at most half the grid; one column gives it all of it. */
 const SINGLE_COLUMN_MINIMUM_WIDTH_SHARE = 0.75;
 
@@ -263,7 +270,10 @@ export function measureGiftCardCollectionLayoutNow(collection: HTMLElement): voi
 export function giftCardCollectionLayout(collection: HTMLElement) {
 	let animationFrame = 0;
 	let destroyed = false;
-	let observedWidth = collection.getBoundingClientRect().width;
+	// Reading the width on mount would force the whole collection's first layout inside the task
+	// that inserts it; the initial observation records it instead, since a measurement is already
+	// scheduled for that frame.
+	let observedWidth: number | null = null;
 
 	function scheduleMeasurement(): void {
 		if (destroyed || animationFrame !== 0) {
@@ -285,15 +295,25 @@ export function giftCardCollectionLayout(collection: HTMLElement) {
 
 	const resizeObserver = new ResizeObserver(([entry]) => {
 		const nextWidth = entry?.contentRect.width ?? collection.getBoundingClientRect().width;
+		const initialObservation = observedWidth === null;
 		if (nextWidth === observedWidth) {
 			return;
 		}
 		observedWidth = nextWidth;
-		scheduleMeasurement();
+		if (!initialObservation) {
+			scheduleMeasurement();
+		}
 	});
 	resizeObserver.observe(collection);
 
 	const mutationObserver = new MutationObserver((records) => {
+		if (records.some((record) => record.attributeName === GIFT_COLLECTION_MOUNTING_ATTRIBUTE)) {
+			scheduleMeasurement();
+			return;
+		}
+		if (collection.querySelector(`[${GIFT_COLLECTION_MOUNTING_ATTRIBUTE}]`) !== null) {
+			return;
+		}
 		if (mutationsMayChangeCardLayout(records)) {
 			scheduleMeasurement();
 		}
@@ -309,16 +329,18 @@ export function giftCardCollectionLayout(collection: HTMLElement) {
 			'aria-hidden',
 			'data-overflow-actions',
 			GIFT_MOTION_DRAGGING_ATTRIBUTE,
+			GIFT_COLLECTION_MOUNTING_ATTRIBUTE,
 		],
 	});
 
 	immediateMeasurements.set(collection, measureNow);
 
+	// Fonts still loading on mount also end with `loadingdone`. Reading `fonts.ready` here would
+	// force the whole collection's first layout inside the task that inserts it.
 	const fonts = document.fonts;
 	fonts?.addEventListener('loadingdone', scheduleMeasurement);
 	window.addEventListener('resize', scheduleMeasurement);
 	const stopObservingDepth = observeDepthChange(scheduleMeasurement);
-	void fonts?.ready.then(scheduleMeasurement);
 	scheduleMeasurement();
 
 	return {
