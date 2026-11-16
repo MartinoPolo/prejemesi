@@ -19,18 +19,10 @@ import { giftImagesColumn } from '$lib/server/operations/gift_gallery.js';
 import { galleryImageKeys } from '$lib/modules/gifts/gift_images.js';
 import { isStoredObjectKey, resolveUserImageUrl } from '$lib/modules/images/public_url.js';
 import { wishlistBackgroundImageKey } from '$lib/modules/wishlists/wishlist_appearance.js';
+import { APPEARANCE_COOKIE_OPTIONS } from '$lib/theme/appearance_cookie.js';
+import { PALETTE_COOKIE_NAME, type Palette } from '$lib/theme/palettes.js';
+import { DEPTH_STYLE_COOKIE_NAME, type DepthStyle } from '$lib/theme/depth_styles.js';
 import {
-	PALETTE_COOKIE_MAX_AGE_SECONDS,
-	PALETTE_COOKIE_NAME,
-	type Palette,
-} from '$lib/theme/palettes.js';
-import {
-	DEPTH_STYLE_COOKIE_MAX_AGE_SECONDS,
-	DEPTH_STYLE_COOKIE_NAME,
-	type DepthStyle,
-} from '$lib/theme/depth_styles.js';
-import {
-	DARK_WISHLIST_BACKGROUND_COOKIE_MAX_AGE_SECONDS,
 	DARK_WISHLIST_BACKGROUND_COOKIE_NAME,
 	type DarkWishlistBackground,
 } from '$lib/theme/dark_wishlist_background.js';
@@ -259,7 +251,6 @@ type AppearancePreference =
 			cookie: {
 				name: typeof PALETTE_COOKIE_NAME;
 				value: Palette;
-				maxAge: typeof PALETTE_COOKIE_MAX_AGE_SECONDS;
 			};
 			fields: { palette: Palette };
 	  }
@@ -268,7 +259,6 @@ type AppearancePreference =
 			cookie: {
 				name: typeof DEPTH_STYLE_COOKIE_NAME;
 				value: DepthStyle;
-				maxAge: typeof DEPTH_STYLE_COOKIE_MAX_AGE_SECONDS;
 			};
 			fields: { depthStyle: DepthStyle };
 	  }
@@ -277,7 +267,6 @@ type AppearancePreference =
 			cookie: {
 				name: typeof DARK_WISHLIST_BACKGROUND_COOKIE_NAME;
 				value: DarkWishlistBackground;
-				maxAge: typeof DARK_WISHLIST_BACKGROUND_COOKIE_MAX_AGE_SECONDS;
 			};
 			fields: { darkWishlistBackground: DarkWishlistBackground };
 	  };
@@ -287,12 +276,11 @@ async function persistAppearancePreference(
 	preference: AppearancePreference,
 ) {
 	if (demoSessionId() === null) {
-		getRequestEvent().cookies.set(preference.cookie.name, preference.cookie.value, {
-			path: '/',
-			maxAge: preference.cookie.maxAge,
-			httpOnly: false,
-			sameSite: 'lax',
-		});
+		getRequestEvent().cookies.set(
+			preference.cookie.name,
+			preference.cookie.value,
+			APPEARANCE_COOKIE_OPTIONS,
+		);
 	}
 
 	if (authContext === null) {
@@ -320,7 +308,6 @@ export const setUserPalette = publicCommand(SetUserPaletteInputSchema, (authCont
 		cookie: {
 			name: PALETTE_COOKIE_NAME,
 			value: palette,
-			maxAge: PALETTE_COOKIE_MAX_AGE_SECONDS,
 		},
 		fields: { palette },
 	}),
@@ -334,7 +321,6 @@ export const setUserDepthStyle = publicCommand(
 			cookie: {
 				name: DEPTH_STYLE_COOKIE_NAME,
 				value: depthStyle,
-				maxAge: DEPTH_STYLE_COOKIE_MAX_AGE_SECONDS,
 			},
 			fields: { depthStyle },
 		}),
@@ -348,7 +334,6 @@ export const setUserDarkWishlistBackground = publicCommand(
 			cookie: {
 				name: DARK_WISHLIST_BACKGROUND_COOKIE_NAME,
 				value: darkWishlistBackground,
-				maxAge: DARK_WISHLIST_BACKGROUND_COOKIE_MAX_AGE_SECONDS,
 			},
 			fields: { darkWishlistBackground },
 		}),

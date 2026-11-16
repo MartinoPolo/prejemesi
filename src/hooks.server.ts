@@ -37,6 +37,7 @@ import {
 	reportOperationalFailure,
 	setOperationalDeployment,
 } from '$lib/observability/operational_failures.js';
+import { APPEARANCE_COOKIE_OPTIONS } from '$lib/theme/appearance_cookie.js';
 import {
 	DEFAULT_PALETTE,
 	PALETTE_COOKIE_NAME,
@@ -45,13 +46,11 @@ import {
 } from '$lib/theme/palettes.js';
 import {
 	DEFAULT_DEPTH_STYLE,
-	DEPTH_STYLE_COOKIE_MAX_AGE_SECONDS,
 	DEPTH_STYLE_COOKIE_NAME,
 	isDepthStyle,
 	type DepthStyle,
 } from '$lib/theme/depth_styles.js';
 import {
-	DARK_WISHLIST_BACKGROUND_COOKIE_MAX_AGE_SECONDS,
 	DARK_WISHLIST_BACKGROUND_COOKIE_NAME,
 	DEFAULT_DARK_WISHLIST_BACKGROUND,
 	isDarkWishlistBackground,
@@ -294,17 +293,12 @@ function preferenceFallbacksFor(
 /** The cookie mirror must keep reflecting the visitor's real account, never a demo persona. */
 function mirrorPreferenceCookie(
 	event: Parameters<Handle>[0]['event'],
-	cookie: { name: string; value: string; maxAge: number },
+	cookie: { name: string; value: string },
 ) {
 	if (event.locals.demoSession !== undefined) {
 		return;
 	}
-	event.cookies.set(cookie.name, cookie.value, {
-		path: '/',
-		maxAge: cookie.maxAge,
-		httpOnly: false,
-		sameSite: 'lax',
-	});
+	event.cookies.set(cookie.name, cookie.value, APPEARANCE_COOKIE_OPTIONS);
 }
 
 /**
@@ -380,7 +374,6 @@ const userPreferencesHandle: Handle = async ({ event, resolve }) => {
 					mirrorPreferenceCookie(event, {
 						name: DEPTH_STYLE_COOKIE_NAME,
 						value: depthStyle,
-						maxAge: DEPTH_STYLE_COOKIE_MAX_AGE_SECONDS,
 					});
 				}
 				if (
@@ -391,7 +384,6 @@ const userPreferencesHandle: Handle = async ({ event, resolve }) => {
 					mirrorPreferenceCookie(event, {
 						name: DARK_WISHLIST_BACKGROUND_COOKIE_NAME,
 						value: darkWishlistBackground,
-						maxAge: DARK_WISHLIST_BACKGROUND_COOKIE_MAX_AGE_SECONDS,
 					});
 				}
 			} catch (err) {
