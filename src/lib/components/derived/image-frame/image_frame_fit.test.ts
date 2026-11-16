@@ -6,9 +6,9 @@ import {
 	paintedImageWidth,
 	resolveAutoFit,
 	resolveFrameFill,
-	AUTO_CONTAIN_RATIO_THRESHOLD,
 	IMAGE_FIT_MODES,
 } from './image_frame_fit.js';
+import { AUTO_CONTAIN_RATIO_THRESHOLD } from '$lib/modules/images/fit_modes.js';
 import {
 	FULL_CROP_RECT,
 	framedGiftImageMeta,

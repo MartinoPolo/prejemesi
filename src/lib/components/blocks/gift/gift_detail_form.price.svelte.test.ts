@@ -320,7 +320,7 @@ describe('GiftDetailForm legacy `auto` normalization (issue #183 EXTRA)', () => 
 		'data:image/svg+xml,' +
 		encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="400" height="100"/>');
 
-	it('normalizes an untouched legacy auto row to the Fit toggle without dirtying the mode (REQ-8)', async () => {
+	it('shows an untouched legacy auto row as the Celý it renders and saves it unchanged (REQ-8)', async () => {
 		const onupdate = vi.fn();
 		const screen = await render(GiftDetailForm, {
 			...baseProps,
@@ -337,18 +337,16 @@ describe('GiftDetailForm legacy `auto` normalization (issue #183 EXTRA)', () => 
 			onupdate,
 		});
 
-		// The toggle normalizes to Fit once the natural ratio is measured – purely
-		// a presentation normalization (`presentedEditorMode`); the internal
-		// `editorMode` stays at its `giftEditorModeFromMeta` default (`fill` for
-		// any `auto` row) the whole time.
+		// Once measured, both views open on the whole photo the surfaces render.
 		await expect
-			.element(screen.getByRole('radio', { name: m.image_fit_fit() }))
+			.element(screen.getByRole('radio', { name: m.image_crop_whole() }))
 			.toHaveAttribute('aria-checked', 'true');
+		await expect
+			.element(screen.getByTestId('gift-preview-status-thumb'))
+			.toHaveTextContent(m.image_crop_whole());
 
-		// Saving untouched must still persist `auto` verbatim (REQ-8). If the
-		// measurement had incorrectly dirtied the mode, `savedFitMode` would
-		// instead derive from the internal `fill` editorMode and persist
-		// `cover-crop` here.
+		// Saving untouched must still persist `auto` verbatim (REQ-8): measuring never
+		// counts as an edit.
 		await screen.getByRole('button', { name: m.save() }).click();
 
 		expect(onupdate).toHaveBeenCalledTimes(1);

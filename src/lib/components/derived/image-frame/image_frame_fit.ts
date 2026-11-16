@@ -5,16 +5,16 @@
  * component barrel keeps a single import surface.
  */
 
-import { IMAGE_FIT_MODES, type ImageFitMode } from '$lib/modules/images/fit_modes.js';
+import {
+	IMAGE_FIT_MODES,
+	resolveAutoFit,
+	type ImageFitMode,
+	type ResolvedImageFit,
+} from '$lib/modules/images/fit_modes.js';
 import { focalZoomToWindowRect, normalizedCropAspect } from '$lib/modules/images/crop.js';
 import type { ImageFocalPoint } from '$lib/modules/images/types.js';
 
-export { IMAGE_FIT_MODES, type ImageFitMode };
-
-/** Concrete fit applied to the rendered image once `auto` has been resolved. */
-export type ResolvedImageFit =
-	| typeof IMAGE_FIT_MODES.containPadded
-	| typeof IMAGE_FIT_MODES.coverCrop;
+export { IMAGE_FIT_MODES, resolveAutoFit, type ImageFitMode };
 
 /** Token source that scopes the tier-2 fill (REQ-3). */
 export const IMAGE_TOKEN_SCOPES = {
@@ -34,36 +34,6 @@ export function normalizeFrameFill(fillColor: string | null | undefined): string
 
 export function hasExplicitFrameFill(fillColor: string | null | undefined): fillColor is string {
 	return normalizeFrameFill(fillColor) !== null;
-}
-
-/**
- * Aspect-ratio divergence beyond which `auto` switches from cover to contain.
- * An image is "extreme" when it is more than this many times wider or taller
- * (relative to the box) than the box itself, e.g. a 32:9 panorama in a 4:3 box.
- */
-export const AUTO_CONTAIN_RATIO_THRESHOLD = 2;
-
-/**
- * Resolve the `auto` fit mode for a concrete image/box pair (REQ-1).
- * Normal aspect ratios fill the box (`cover-crop`); extreme ratios are contained
- * so no important content is cropped away.
- *
- * @param imageRatio width / height of the image's natural dimensions
- * @param boxRatio width / height of the destination box
- */
-export function resolveAutoFit(imageRatio: number, boxRatio: number): ResolvedImageFit {
-	if (
-		!Number.isFinite(imageRatio) ||
-		!Number.isFinite(boxRatio) ||
-		imageRatio <= 0 ||
-		boxRatio <= 0
-	) {
-		return IMAGE_FIT_MODES.coverCrop;
-	}
-	const divergence = Math.max(imageRatio / boxRatio, boxRatio / imageRatio);
-	return divergence > AUTO_CONTAIN_RATIO_THRESHOLD
-		? IMAGE_FIT_MODES.containPadded
-		: IMAGE_FIT_MODES.coverCrop;
 }
 
 /** Pixel geometry of an explicitly positioned image inside its frame box. */

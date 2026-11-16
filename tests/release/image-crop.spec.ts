@@ -61,7 +61,7 @@ test('uploaded manual crop reaches the gift card and restores after reload', asy
 		await uploadCompleted;
 		await expect(dialog.getByTestId('image-upload-preview')).toBeVisible({ timeout: 10_000 });
 
-		// Picking the card tile only selects it; the first crop edit promotes to Manual.
+		// Picking the card tile only selects it; the first crop edit makes the card Vlastní.
 		await dialog.getByTestId('gift-preview-tile-square').click();
 		await expect(dialog.getByRole('radio', { name: /Vyplnit/ })).toHaveAttribute(
 			'aria-checked',
@@ -77,10 +77,8 @@ test('uploaded manual crop reaches the gift card and restores after reload', asy
 		}
 		const chosenZoomValue = await zoomSlider.inputValue();
 		expect(chosenZoomValue).not.toBe(initialZoomValue);
-		await expect(dialog.getByRole('radio', { name: /Ručně/ })).toHaveAttribute(
-			'aria-checked',
-			'true',
-		);
+		await expect(dialog.getByTestId('gift-preview-status-square')).toHaveText('Vlastní');
+		await expect(dialog.getByTestId('gift-preview-status-thumb')).toHaveText('Vyplnit');
 		await dragStage(page, dialog.getByTestId('crop-stage'), 40, 24);
 
 		await dialog.getByRole('button', { name: 'Přidat dárek' }).click();
@@ -106,10 +104,8 @@ test('uploaded manual crop reaches the gift card and restores after reload', asy
 		await page.getByText(giftName, { exact: true }).first().click();
 		const editDialog = page.getByRole('dialog');
 		await expect(editDialog).toBeVisible({ timeout: 5_000 });
-		await expect(editDialog.getByRole('radio', { name: /Ručně/ })).toHaveAttribute(
-			'aria-checked',
-			'true',
-		);
+		await expect(editDialog.getByTestId('gift-preview-status-square')).toHaveText('Vlastní');
+		await expect(editDialog.getByTestId('gift-preview-status-thumb')).toHaveText('Vyplnit');
 		await expect(editDialog.getByRole('slider')).toHaveValue(chosenZoomValue, {
 			timeout: 10_000,
 		});

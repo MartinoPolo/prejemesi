@@ -285,8 +285,8 @@ describe('GiftDetailForm image gallery (#591)', () => {
 });
 
 describe('GiftDetailForm crop zoom-out', () => {
-	// A square photo on the 4:3 card: Fit shows it whole at 75 %, and Manual may
-	// zoom on out until 15 % of the window stays clear on each side vertically,
+	// A square photo on the 4:3 card: Celý shows it whole at 75 %, and a free zoom may
+	// go on out until 15 % of the window stays clear on each side vertically,
 	// so the photo fills 70 % of the window height: 0.75 × 0.7 = 0.525.
 	const cardContainZoom = 0.75;
 	const cardZoomOutFloor = 0.525;
@@ -295,7 +295,11 @@ describe('GiftDetailForm crop zoom-out', () => {
 		return screen.getByRole('slider', { name: m.image_crop_zoom_label() });
 	}
 
-	it('switches Fill to Manual on zoom-out and continues past the whole-photo zoom', async () => {
+	function cardStatus(screen: Awaited<ReturnType<typeof renderGallery>>['screen']) {
+		return screen.getByTestId('gift-preview-status-square');
+	}
+
+	it('turns Vyplnit into Vlastní on zoom-out and continues past the whole-photo zoom', async () => {
 		const fillMeta: ImageMetadata = { ...imageMeta(null), fitMode: IMAGE_FIT_MODES.coverCrop };
 		const { screen, onupdate } = await renderGallery([
 			{ imageUrl: svgUrl(300), imageKey: null, imageMeta: fillMeta },
@@ -312,9 +316,7 @@ describe('GiftDetailForm crop zoom-out', () => {
 		for (let press = 0; press < 4; press += 1) {
 			await userEvent.keyboard('-');
 		}
-		await expect
-			.element(screen.getByRole('radio', { name: m.image_fit_manual() }))
-			.toHaveAttribute('aria-checked', 'true');
+		await expect.element(cardStatus(screen)).toHaveTextContent(m.gift_image_framing_custom());
 		await screen.getByRole('button', { name: m.save() }).first().click();
 
 		const savedMeta = onupdate.mock.calls[0]![0].images![0]!.imageMeta!;
@@ -330,9 +332,7 @@ describe('GiftDetailForm crop zoom-out', () => {
 
 		(slider.element() as HTMLElement).focus();
 		await userEvent.keyboard('{Home}');
-		await expect
-			.element(screen.getByRole('radio', { name: m.image_fit_manual() }))
-			.toHaveAttribute('aria-checked', 'true');
+		await expect.element(cardStatus(screen)).toHaveTextContent(m.gift_image_framing_custom());
 		await expect.element(screen.getByTestId('crop-stage-zoom')).toHaveTextContent('53 %');
 		await expect
 			.element(screen.getByRole('button', { name: m.image_crop_zoom_out() }))
@@ -343,30 +343,26 @@ describe('GiftDetailForm crop zoom-out', () => {
 		expect(cardCrop.zoom).toBeCloseTo(cardZoomOutFloor, 6);
 	});
 
-	it('switches Fit to Manual on zoom-out and stops with a margin around the whole photo', async () => {
+	it('zooms Karta out from Celý to a margin around the whole photo and leaves Seznam as it was', async () => {
 		const { screen, onupdate } = await renderGallery([galleryImage(300)]);
 		const zoomOut = screen.getByRole('button', { name: m.image_crop_zoom_out() });
 		await expect.element(screen.getByTestId('crop-stage-window')).toBeVisible();
 		await expect.element(zoomOut).toBeEnabled();
 
 		await zoomOut.click();
-		await expect
-			.element(screen.getByRole('radio', { name: m.image_fit_manual() }))
-			.toHaveAttribute('aria-checked', 'true');
+		await expect.element(cardStatus(screen)).toHaveTextContent(m.gift_image_framing_custom());
 		(screen.getByTestId('crop-stage').element() as HTMLElement).focus();
 		for (let press = 0; press < 10; press += 1) {
 			await userEvent.keyboard('-');
 		}
 		await expect.element(zoomOut).toBeDisabled();
 
-		// The thumbnail follows that card framing: a card at its floor puts the square photo's
-		// 1:1 thumbnail at its own floor (70 %), not at the card's raw 53 %.
+		// The square photo's 1:1 list thumbnail still shows the whole photo at 100 %.
 		await screen.getByTestId('gift-preview-tile-thumb').click();
 		await expect
 			.element(screen.getByTestId('crop-stage-editing'))
 			.toHaveTextContent(m.image_crop_editing({ target: m.gift_image_target_thumb() }));
-		await expect.element(screen.getByTestId('crop-stage-zoom')).toHaveTextContent('70 %');
-		await expect.element(zoomSlider(screen)).toHaveValue('70');
+		await expect.element(screen.getByTestId('crop-stage-zoom')).toHaveTextContent('100 %');
 		await screen.getByRole('button', { name: m.save() }).first().click();
 
 		const savedMeta = onupdate.mock.calls[0]![0].images![0]!.imageMeta!;
@@ -376,6 +372,8 @@ describe('GiftDetailForm crop zoom-out', () => {
 		expect(cardCrop.cropRect.w).toBeGreaterThan(1);
 		// The photo spans 70 % of the window height, so the window is 1 / 0.7 photos tall.
 		expect(cardCrop.cropRect.h).toBeCloseTo(1 / 0.7, 6);
-		expect(savedMeta.targets!.thumb).toBeUndefined();
+		expect(savedMeta.targets!.thumb!.zoom).toBeCloseTo(1, 6);
+		expect(savedMeta.targets!.thumb!.cropRect.w).toBeCloseTo(1, 6);
+		expect(savedMeta.targets!.thumb!.cropRect.h).toBeCloseTo(1, 6);
 	});
 });

@@ -5,20 +5,16 @@ import {
 	giftTargetFrameProps,
 	resolveGiftTargetCrop,
 	mergeGiftTargetCrops,
-	buildManualGiftTargets,
-	ownGiftTargets,
 	cropRectToFocalZoom,
 	focalZoomToWindowRect,
-	followedGiftThumbRect,
+	renderedGiftTargetRect,
 	normalizedCropAspect,
-	FULL_CROP_RECT,
 	type ImageFrameProps,
 } from './crop.js';
 import {
 	DEFAULT_IMAGE_METADATA,
 	GIFT_EDITOR_CROP_TARGET_VALUES,
 	ImageMetadataSchema,
-	type GiftEditorCropTarget,
 	type ImageCropRect,
 } from './types.js';
 import { GIFT_CROP_TARGET_SPECS, cropTargetSurfaceSize } from './crop_targets.js';
@@ -276,7 +272,7 @@ describe('giftTargetFrameProps', () => {
 		[2, 0.8],
 		[2, 1.5],
 	])(
-		'shows a following thumb in the editor as the renderer does (photo ratio %s, card zoom %s)',
+		'opens a following thumb in the editor as the renderer shows it (photo ratio %s, card zoom %s)',
 		(imageRatio, cardZoom) => {
 			const cardRect = focalZoomToWindowRect(
 				{ x: 30, y: 70 },
@@ -289,7 +285,7 @@ describe('giftTargetFrameProps', () => {
 				targets: { square: { cropRect: cardRect, ...cropRectToFocalZoom(cardRect) } },
 			};
 
-			const editorThumb = followedGiftThumbRect(cardRect, imageRatio);
+			const editorThumb = renderedGiftTargetRect(meta, 'thumb', imageRatio);
 			const rendered = giftTargetFrameProps(meta, 'thumb', imageRatio);
 
 			expect(rendered.focal.x).toBeCloseTo(30, 10);
@@ -400,86 +396,6 @@ describe('mergeGiftTargetCrops', () => {
 				{ square: squareCrop, thumb: thumbCrop },
 			),
 		).toEqual({ square: squareCrop, thumb: thumbCrop });
-	});
-});
-
-describe('buildManualGiftTargets (owned targets pinned, the rest inherit)', () => {
-	const squareRect: ImageCropRect = { x: 0.1, y: 0.1, w: 0.5, h: 0.5 };
-	const thumbRect: ImageCropRect = { x: 0.25, y: 0, w: 0.5, h: 1 };
-	const sessionRects: Record<GiftEditorCropTarget, ImageCropRect> = {
-		square: squareRect,
-		thumb: thumbRect,
-	};
-	const pinned = (rect: ImageCropRect) => ({
-		cropRect: { ...rect },
-		...cropRectToFocalZoom(rect),
-	});
-	const bothOwned = new Set<GiftEditorCropTarget>(['square', 'thumb']);
-
-	it('passes existing targets through verbatim when the session has no manual edits', () => {
-		const existing = {
-			card: { cropRect: FULL_CROP_RECT, focal: { x: 50, y: 50 }, zoom: 1 },
-		};
-		expect(buildManualGiftTargets(sessionRects, bothOwned, false, existing)).toEqual(
-			mergeGiftTargetCrops(existing, {}),
-		);
-		expect(buildManualGiftTargets(sessionRects, bothOwned, false, undefined)).toBeUndefined();
-	});
-
-	it('pins each owned target from its own session rect', () => {
-		const result = buildManualGiftTargets(sessionRects, bothOwned, true, undefined);
-		expect(result).toEqual({ square: pinned(squareRect), thumb: pinned(thumbRect) });
-	});
-
-	it('leaves a thumbnail without its own crop to follow the card crop (#533)', () => {
-		const existing = { thumb: pinned(thumbRect) };
-		const result = buildManualGiftTargets(
-			sessionRects,
-			new Set<GiftEditorCropTarget>(['square']),
-			true,
-			existing,
-		);
-		expect(result).toEqual({ square: pinned(squareRect) });
-		expect(resolveGiftTargetCrop(result, 'thumb')).toEqual(result?.square);
-	});
-
-	it('keeps the automatic card framing when only the thumbnail owns a crop', () => {
-		const result = buildManualGiftTargets(
-			sessionRects,
-			new Set<GiftEditorCropTarget>(['thumb']),
-			true,
-			undefined,
-		);
-		expect(result).toEqual({ thumb: pinned(thumbRect) });
-	});
-
-	it('drops the legacy card fallback when pinning over an existing card target (#163 cleanup)', () => {
-		const existing = {
-			card: { cropRect: FULL_CROP_RECT, focal: { x: 50, y: 50 }, zoom: 1 },
-		};
-		const result = buildManualGiftTargets(sessionRects, bothOwned, true, existing);
-		expect(result).not.toHaveProperty('card');
-		expect(result?.square).toEqual(pinned(squareRect));
-	});
-});
-
-describe('ownGiftTargets', () => {
-	const crop = { cropRect: FULL_CROP_RECT, focal: { x: 50, y: 50 }, zoom: 1 };
-
-	it('reports no own crops for a gift without targets', () => {
-		expect([...ownGiftTargets(undefined)]).toEqual([]);
-	});
-
-	it('treats a retired card crop as the card target own crop', () => {
-		expect([...ownGiftTargets({ card: crop })]).toEqual(['square']);
-	});
-
-	it('reports a thumbnail as own only when it has a persisted crop', () => {
-		expect([...ownGiftTargets({ square: crop })]).toEqual(['square']);
-		expect([...ownGiftTargets({ square: crop, thumb: crop })].sort()).toEqual([
-			'square',
-			'thumb',
-		]);
 	});
 });
 

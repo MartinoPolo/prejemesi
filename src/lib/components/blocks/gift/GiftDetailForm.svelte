@@ -60,10 +60,9 @@
 	import {
 		cropTargetSurfaceSize,
 		GIFT_CROP_TARGET_SPECS,
-		IMAGE_EDITOR_MODES,
-		IMAGE_EDITOR_MODE_VALUES,
+		GIFT_FRAMINGS,
 		type GiftEditorCropTarget,
-		type ImageEditorMode,
+		type GiftFraming,
 	} from '$lib/modules/images/index.js';
 	import { ensureGiftLinkIds, normalizeGiftLinks } from '$lib/modules/gifts/gift_url.js';
 	import { galleryImageKeys } from '$lib/modules/gifts/gift_images.js';
@@ -164,7 +163,7 @@
 	let priceMaxInput = $state<HTMLInputElement | null>(null);
 	// svelte-ignore state_referenced_locally
 	let currency = $state<GiftCurrency>((gift?.currency as GiftCurrency) ?? 'CZK');
-	// Ordered images; the selected one drives the crop stage, mode selector and previews (#591).
+	// Ordered images; the selected one drives the crop stage, framing controls and previews (#591).
 	// svelte-ignore state_referenced_locally
 	const gallery = new GiftImageGalleryDraft(gift);
 	const selectedImage = $derived(gallery.selected);
@@ -252,14 +251,6 @@
 		return JSON.stringify(left) === JSON.stringify(right);
 	}
 
-	/** Drops the thumbnail's own crop so it follows the card crop again. */
-	function followSquareCrop() {
-		if (mutationPending) {
-			return;
-		}
-		selectedImage?.followSquareCrop();
-	}
-
 	const giftDetailsChanged = $derived(
 		name.trim() !== (gift?.name ?? '').trim() ||
 			(!descriptionFrozen && description.trim() !== (gift?.description ?? '').trim()) ||
@@ -309,44 +300,45 @@
 			imageMeta: image.imageMeta,
 		})),
 	);
-	const isCropMode = $derived(selectedImage?.editorMode === IMAGE_EDITOR_MODES.manual);
-
 	const targetLabels = {
 		square: () => m.gift_image_target_card(),
 		thumb: () => m.gift_image_target_thumb(),
 	} as const satisfies Record<GiftEditorCropTarget, () => string>;
 
-	// Legacy `auto` honesty (#183 EXTRA): measuring the selected image lets its presented mode
-	// match the real card/list render without dirtying the form (see `GiftImageDraft`).
-	$effect(() => {
-		const image = selectedImage;
-		const src = image?.previewSrc ?? null;
-		if (image === null || src === null) {
-			return;
-		}
-		let cancelled = false;
-		const probe = new Image();
-		probe.onload = () => {
-			if (!cancelled && probe.naturalWidth > 0 && probe.naturalHeight > 0) {
-				image.measuredNaturalRatio = probe.naturalWidth / probe.naturalHeight;
-			}
-		};
-		probe.src = src;
-		return () => {
-			cancelled = true;
-		};
-	});
+	const framingLabels = {
+		fill: () => m.image_fit_fill(),
+		whole: () => m.image_crop_whole(),
+		custom: () => m.gift_image_framing_custom(),
+	} as const satisfies Record<GiftFraming, () => string>;
 
-	const presentedEditorMode = $derived(
-		selectedImage?.presentedEditorMode ?? IMAGE_EDITOR_MODES.fill,
+	const copyFramingLabels = {
+		square: () => m.gift_image_copy_framing_to_thumb(),
+		thumb: () => m.gift_image_copy_framing_to_card(),
+	} as const satisfies Record<GiftEditorCropTarget, () => string>;
+
+	const otherTarget = $derived<GiftEditorCropTarget>(
+		activeTarget === 'square' ? 'thumb' : 'square',
+	);
+	/** Framing controls wait until the selected photo is measured and both views are open. */
+	const framingReady = $derived(selectedImage !== null && selectedImage.naturalRatio !== null);
+	const activeFraming = $derived(selectedImage?.framings[activeTarget] ?? GIFT_FRAMINGS.fill);
+	const framingStatusLabels = $derived(
+		selectedImage === null
+			? null
+			: {
+					square: framingLabels[selectedImage.framings.square](),
+					thumb: framingLabels[selectedImage.framings.thumb](),
+				},
 	);
 	const selectedImageBackground = $derived(selectedImage?.bgColor ?? null);
 
 	// SegmentedToggle writes the clicked value through the binding before calling
-	// onValueChange. A writable `$derived` local, kept in sync with
-	// `presentedEditorMode`, lets setEditorMode undo a refused change (pending
-	// mutation, no image) by resetting it, which always re-renders.
-	let selectedEditorMode = $derived(presentedEditorMode);
+	// onValueChange. A writable `$derived` local, kept in sync with the active view's
+	// framing, lets a refused change (pending mutation, unmeasured photo) reset it. A custom
+	// framing selects no preset.
+	let selectedFramingPreset = $derived<string>(
+		activeFraming === GIFT_FRAMINGS.custom ? '' : activeFraming,
+	);
 	// The visible Transparent option represents the canonical null fallback. Preserve an
 	// unsupported historical literal untouched rather than falsely selecting a known fill.
 	let selectedBgColor = $derived(
@@ -369,18 +361,24 @@
 			: null,
 	);
 
-	$effect(() => {
-		selectedImage?.syncFollowedThumbnail();
-	});
-
-	function setEditorMode(value: string) {
-		if (mutationPending || value === '' || selectedImage === null) {
-			selectedEditorMode = presentedEditorMode;
+	function applyFramingPreset(value: string) {
+		if (
+			mutationPending ||
+			!framingReady ||
+			selectedImage === null ||
+			(value !== GIFT_FRAMINGS.fill && value !== GIFT_FRAMINGS.whole)
+		) {
+			selectedFramingPreset = activeFraming === GIFT_FRAMINGS.custom ? '' : activeFraming;
 			return;
 		}
-		if ((IMAGE_EDITOR_MODE_VALUES as string[]).includes(value)) {
-			selectedImage.chooseEditorMode(value as ImageEditorMode, activeTarget);
+		selectedImage.applyPreset(activeTarget, value);
+	}
+
+	function copyFramingToOtherView() {
+		if (mutationPending) {
+			return;
 		}
+		selectedImage?.copyFraming(activeTarget, otherTarget);
 	}
 
 	function setBgColor(value: string) {
@@ -393,7 +391,7 @@
 		}
 	}
 
-	/** Clicking a preview tile only picks the edited target; editing it promotes. */
+	/** Clicking a preview tile only picks the edited view. */
 	function handleTileSelect(target: GiftEditorCropTarget) {
 		if (mutationPending) {
 			return;
@@ -1244,7 +1242,7 @@
 					{/if}
 				</div>
 
-				<!-- Image (last field: source input only – the display-mode control and
+				<!-- Image (last field: source input only – the framing controls and
 			     the clickable target tiles live in the image column with the
 			     preview they drive, #116 round 3) -->
 				{#if demo}
@@ -1304,11 +1302,8 @@
 		</div>
 	</div>
 
-	<!-- Left column: the display-mode control on top, then the WYSIWYG stage below
-	     it for all three modes (issue #183: Fill/Fit now render through the same
-	     bordered stage as Manual – a static, non-interactive preview – instead of
-	     a plain unbounded ImageFrame, so switching to Manual is visually
-	     seamless). The square live preview tile sits at the column's lower edge –
+	<!-- Left column: the framing controls on top, then the WYSIWYG stage below
+	     showing the edited view's window. The square live preview tile sits at the column's lower edge –
 	     it doubles as the crop target switcher (round 3) – so it costs no form
 	     space. -->
 	<div
@@ -1326,40 +1321,47 @@
 		data-testid="gift-image-column"
 	>
 		{#if hasImage}
-			<!-- Photo-workshop panel (issue #189 REQ-6): groups the mode pill + adaptive
+			<!-- Photo-workshop panel (issue #189 REQ-6): groups the framing controls + adaptive
 			     stage + preview tiles as one designed sticker unit on the dotted mat. -->
 			<div class={styles.modeSectionPanel()}>
 				{#if selectedImage !== null && selectedImage.previewSrc !== null}
-					<!-- Display-mode control (#116 round 3): lives with the preview it drives,
-				     docked on the panel's top edge. `presentedEditorMode` (#183 EXTRA)
-				     normalizes an untouched legacy `auto` row to the mode it actually
-				     renders as, so the highlighted pill never contradicts the stage below. -->
-					<div class="flex flex-none justify-center pb-2.5">
+					<!-- Framing presets of the edited view: each view keeps its own framing, so
+					     a preset or copy never moves the other one. A free pan or zoom selects
+					     neither preset (Vlastní). -->
+					<div
+						class="flex flex-none flex-wrap items-center justify-center gap-(--nested-control-gap) pb-2.5"
+					>
 						<SegmentedToggle.Root
-							bind:value={selectedEditorMode}
-							onValueChange={setEditorMode}
-							aria-label={m.image_fit_label()}
+							bind:value={selectedFramingPreset}
+							onValueChange={applyFramingPreset}
+							aria-label={m.gift_image_framing_label({
+								target: targetLabels[activeTarget](),
+							})}
 							class="max-w-full flex-wrap"
 						>
 							<SegmentedToggle.Item
-								value={IMAGE_EDITOR_MODES.fill}
-								disabled={mutationPending}
+								value={GIFT_FRAMINGS.fill}
+								disabled={mutationPending || !framingReady}
 							>
 								{m.image_fit_fill()}
 							</SegmentedToggle.Item>
 							<SegmentedToggle.Item
-								value={IMAGE_EDITOR_MODES.fit}
-								disabled={mutationPending}
+								value={GIFT_FRAMINGS.whole}
+								disabled={mutationPending || !framingReady}
 							>
-								{m.image_fit_fit()}
-							</SegmentedToggle.Item>
-							<SegmentedToggle.Item
-								value={IMAGE_EDITOR_MODES.manual}
-								disabled={mutationPending}
-							>
-								{m.image_fit_manual()}
+								{m.image_crop_whole()}
 							</SegmentedToggle.Item>
 						</SegmentedToggle.Root>
+						<Button
+							type="button"
+							intent="outline"
+							size="sm"
+							disabled={mutationPending || !framingReady}
+							onclick={copyFramingToOtherView}
+							data-testid="gift-image-copy-framing"
+						>
+							{copyFramingLabels[activeTarget]()}
+						</Button>
 					</div>
 					<div class="flex flex-none justify-center pb-2.5">
 						<SegmentedToggle.Root
@@ -1380,9 +1382,10 @@
 						</SegmentedToggle.Root>
 					</div>
 					<!-- Fixed-window stage (#533): the window keeps the active target's
-				     real size while the photo pans and zooms behind it. Fill/Fit show
-				     their automatic framing; any edit promotes to Manual. Remounts per
-				     selected image so the stage never carries one image's view to another. -->
+				     real size while the photo pans and zooms behind it, showing the edited
+				     view's own window. Its measurement opens both views on what the surfaces
+				     render. Remounts per selected image so the stage never carries one
+				     image's view to another. -->
 					{#key selectedImage.id}
 						<ImageCropStage
 							src={selectedImage.previewSrc}
@@ -1390,13 +1393,14 @@
 							targetAspect={GIFT_CROP_TARGET_SPECS[activeTarget].aspect}
 							targetLabel={targetLabels[activeTarget]()}
 							surfaceSize={activeSurfaceSize}
-							framing={presentedEditorMode}
 							fillColor={selectedImage.bgColor}
 							tokenScope={IMAGE_TOKEN_SCOPES.wishlist}
-							disabled={mutationPending}
+							disabled={mutationPending || !framingReady}
 							visibleWidthFraction={activeVisibleWidthFraction}
 							stageClass="h-[min(340px,45dvh)] min-h-[220px]"
-							bind:cropRect={selectedImage.targetRects[activeTarget]}
+							cropRect={selectedImage.targetRects[activeTarget]}
+							onmeasure={(ratio, measuredSrc) =>
+								selectedImage.measure(ratio, measuredSrc)}
 							onchange={(rect) => selectedImage.editCrop(activeTarget, rect)}
 						>
 							{#snippet heading()}
@@ -1457,11 +1461,8 @@
 						alt={name || m.gift_image_preview()}
 						imageMeta={selectedImage.imageMeta}
 						{activeTarget}
-						statusLabels={selectedImage.targetStatusLabels}
+						statusLabels={framingStatusLabels}
 						onTileSelect={handleTileSelect}
-						onFollowSquare={isCropMode && selectedImage.ownTargets.has('thumb')
-							? followSquareCrop
-							: undefined}
 						disabled={mutationPending}
 					/>
 				{/if}

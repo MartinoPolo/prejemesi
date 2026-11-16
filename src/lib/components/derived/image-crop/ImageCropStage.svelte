@@ -18,6 +18,7 @@
 		centeredCropRect,
 		containCropRect,
 		cropRectToFocalZoom,
+		cropRectsClose,
 		fitCropRectToAspect,
 		normalizedCropAspect,
 		panCropRect,
@@ -64,6 +65,11 @@
 		framing?: ImageEditorMode;
 		/** Notified on USER edits only – never on programmatic aspect snaps. */
 		onchange?: (rect: ImageCropRect) => void;
+		/**
+		 * Reports the photo's natural width ÷ height once it loads, before the stage enables edits,
+		 * with the source it was read from, which may already be stale when `src` just changed.
+		 */
+		onmeasure?: (ratio: number, measuredSrc: string) => void;
 		/** Letterbox fill shown where a zoomed-out window overhangs the image (tier 1). */
 		fillColor?: string | null;
 		/** Scopes the tier-2 letterbox fill token, mirroring ImageFrame. */
@@ -91,6 +97,7 @@
 		cropRect = $bindable(),
 		framing = IMAGE_EDITOR_MODES.manual,
 		onchange,
+		onmeasure,
 		fillColor = null,
 		tokenScope = IMAGE_TOKEN_SCOPES.global,
 		disabled = false,
@@ -110,7 +117,7 @@
 	const HINT_CLEARANCE = 26;
 	// Sub-percent layout rounding still counts as drawn at true size.
 	const TRUE_SIZE_SCALE_TOLERANCE = 0.995;
-	const RECT_EPSILON = 1e-3;
+	const ZOOM_LIMIT_TOLERANCE = 1e-3;
 	const GRID_CELLS = Array.from({ length: 9 }, (_unused, index) => index);
 	const GHOST_STORAGE_KEY = 'prejemesi:image-crop-ghost';
 
@@ -151,8 +158,8 @@
 	// a value just below it), and never above a deeper inherited zoom, which the
 	// native input would otherwise clamp up to its min.
 	const sliderMinPercent = $derived(Math.floor(Math.min(zoomOutFloor, zoom) * 100));
-	const isCentered = $derived(rectsClose(shownRect, centeredCropRect(normalizedAspect)));
-	const isWhole = $derived(rectsClose(shownRect, containCropRect(normalizedAspect)));
+	const isCentered = $derived(cropRectsClose(shownRect, centeredCropRect(normalizedAspect)));
+	const isWhole = $derived(cropRectsClose(shownRect, containCropRect(normalizedAspect)));
 
 	const windowBox = $derived(
 		cropWindowBox(
@@ -216,18 +223,9 @@
 		}
 	}
 
-	function rectsClose(a: ImageCropRect, b: ImageCropRect): boolean {
-		return (
-			Math.abs(a.x - b.x) < RECT_EPSILON &&
-			Math.abs(a.y - b.y) < RECT_EPSILON &&
-			Math.abs(a.w - b.w) < RECT_EPSILON &&
-			Math.abs(a.h - b.h) < RECT_EPSILON
-		);
-	}
-
 	function emit(rect: ImageCropRect) {
 		// A clamped no-op (e.g. panning against an edge) must not promote or dirty the form.
-		if (controlsDisabled || rectsClose(rect, shownRect)) {
+		if (controlsDisabled || cropRectsClose(rect, shownRect)) {
 			return;
 		}
 		cropRect = rect;
@@ -280,6 +278,7 @@
 		if (image.naturalWidth > 0 && image.naturalHeight > 0) {
 			loadFailed = false;
 			naturalRatio = image.naturalWidth / image.naturalHeight;
+			onmeasure?.(naturalRatio, image.getAttribute('src') ?? src);
 		}
 	}
 
@@ -383,10 +382,10 @@
 		if (!isReady || framing !== IMAGE_EDITOR_MODES.manual) {
 			return;
 		}
-		const snapped = rectsClose(cropRect, FULL_CROP_RECT)
+		const snapped = cropRectsClose(cropRect, FULL_CROP_RECT)
 			? centeredCropRect(normalizedAspect)
 			: fitCropRectToAspect(cropRect, normalizedAspect);
-		if (!rectsClose(snapped, cropRect)) {
+		if (!cropRectsClose(snapped, cropRect)) {
 			cropRect = snapped;
 		}
 	});
@@ -541,7 +540,7 @@
 				intent="outline"
 				size="sm"
 				format="icon"
-				disabled={controlsDisabled || zoom <= zoomOutFloor + RECT_EPSILON}
+				disabled={controlsDisabled || zoom <= zoomOutFloor + ZOOM_LIMIT_TOLERANCE}
 				onclick={() => zoomTo(zoom - BUTTON_ZOOM_STEP)}
 				aria-label={m.image_crop_zoom_out()}
 			>
@@ -561,7 +560,7 @@
 				intent="outline"
 				size="sm"
 				format="icon"
-				disabled={controlsDisabled || zoom >= IMAGE_ZOOM_MAX - RECT_EPSILON}
+				disabled={controlsDisabled || zoom >= IMAGE_ZOOM_MAX - ZOOM_LIMIT_TOLERANCE}
 				onclick={() => zoomTo(zoom + BUTTON_ZOOM_STEP)}
 				aria-label={m.image_crop_zoom_in()}
 			>
