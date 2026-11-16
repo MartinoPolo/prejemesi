@@ -403,7 +403,7 @@
 </script>
 
 <Dialog.Root {open} onOpenChange={handleOpenChange}>
-	<Dialog.Content layout="scroll" class="{dialogWidth} transition-[max-width] duration-200">
+	<Dialog.Content layout="scroll" class={dialogWidth}>
 		<Dialog.Header divided>
 			<Dialog.Title data-testid="import-wizard-title-row"
 				>{m.import_wizard_title()}</Dialog.Title
