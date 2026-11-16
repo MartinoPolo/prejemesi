@@ -31,7 +31,7 @@ describe('GiftDraftDialog server duplicate acknowledgement', () => {
 		const animate = vi
 			.spyOn(HTMLElement.prototype, 'animate')
 			.mockImplementation((_keyframes, options) =>
-				(options as KeyframeAnimationOptions).duration === 520
+				(options as KeyframeAnimationOptions).duration === 280
 					? insertion
 					: ({
 							cancel: vi.fn(),

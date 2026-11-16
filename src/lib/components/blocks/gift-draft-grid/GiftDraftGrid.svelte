@@ -40,8 +40,8 @@
 		type ExistingGiftRef,
 	} from './gift_draft_grid_model.js';
 
-	const ROW_INSERT_DURATION = 520;
-	const ROW_REMOVE_DURATION = 440;
+	const ROW_INSERT_DURATION = 280;
+	const ROW_REMOVE_DURATION = 220;
 	/** Keep bulk removal work local; remaining selected rows leave in the authoritative update. */
 	const BULK_EXIT_ANIMATION_LIMIT = 12;
 

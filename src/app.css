@@ -373,6 +373,7 @@
 	--ease-standard: cubic-bezier(0.2, 0.7, 0.3, 1);
 	--ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
 	--ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+	--ease-out-strong: cubic-bezier(0.23, 1, 0.32, 1);
 
 	/* ── Layout ────────────────────────────────────────────── */
 	--content-default-max-width: 1200px;
@@ -1465,29 +1466,31 @@ main.app-content {
 }
 
 /* ── Entrance reveals (staggered fadeUp) ─────────────────── */
+
+/* App surfaces visited repeatedly override the custom properties with a shorter reveal. */
 @media (prefers-reduced-motion: no-preference) {
 	.reveal {
-		animation: fade-up 0.6s ease backwards;
+		animation: fade-up var(--reveal-duration, 0.6s) var(--reveal-easing, ease) backwards;
 	}
 
 	.reveal-2 {
-		animation-delay: 0.12s;
+		animation-delay: calc(var(--reveal-step, 0.12s) * 1);
 	}
 
 	.reveal-3 {
-		animation-delay: 0.24s;
+		animation-delay: calc(var(--reveal-step, 0.12s) * 2);
 	}
 
 	.reveal-4 {
-		animation-delay: 0.36s;
+		animation-delay: calc(var(--reveal-step, 0.12s) * 3);
 	}
 
 	.reveal-5 {
-		animation-delay: 0.48s;
+		animation-delay: calc(var(--reveal-step, 0.12s) * 4);
 	}
 
 	.reveal-6 {
-		animation-delay: 0.6s;
+		animation-delay: calc(var(--reveal-step, 0.12s) * 5);
 	}
 
 	/* Staggered pop-in for grid/list children (first 6 delayed, rest immediate) */

@@ -14,6 +14,12 @@ import {
 const FILLED_BUTTON_KBD_CLASSES =
 	'[&_[data-slot=kbd]]:border-[color-mix(in_oklab,currentColor_28%,transparent)] [&_[data-slot=kbd]]:bg-[color-mix(in_oklab,currentColor_16%,transparent)] [&_[data-slot=kbd]]:text-current';
 
+/**
+ * Flat (non-raised) buttons acknowledge a press with the quick shrink the raised ones get; like
+ * theirs, it stays off under reduced motion.
+ */
+const FLAT_PRESS_CLASSES = 'motion-safe:group-active:scale-[0.97]';
+
 export const CIRCULAR_STICKER_OWNER_CLASSES = 'elevation-owner elevation-owner-raised';
 export const CIRCULAR_STICKER_SURFACE_CLASSES = 'elevation-surface rounded-full';
 export const ANCHORED_CIRCULAR_STICKER_OWNER_CLASSES = `${CIRCULAR_STICKER_OWNER_CLASSES} elevation-owner-anchored`;
@@ -43,25 +49,21 @@ export const buttonVariants = tv({
 				surface: `border-edge bg-ink-fill text-ink-fill-foreground group-hover:bg-[color-mix(in_oklab,var(--ink-fill)_86%,var(--background))] ${FILLED_BUTTON_KBD_CLASSES}`,
 			},
 			ghost: {
-				surface:
-					'bg-transparent text-muted-foreground group-hover:bg-accent group-hover:text-foreground',
+				surface: `bg-transparent text-muted-foreground group-hover:bg-accent group-hover:text-foreground ${FLAT_PRESS_CLASSES}`,
 			},
 			/** A quiet removal action in a row, such as removing a moderator or revoking an invite. */
 			'ghost-danger': {
-				surface:
-					'bg-transparent text-status-danger-text group-hover:bg-accent group-hover:text-status-danger-text',
+				surface: `bg-transparent text-status-danger-text group-hover:bg-accent group-hover:text-status-danger-text ${FLAT_PRESS_CLASSES}`,
 			},
 			/**
 			 * Removes one of many repeated entries the user is editing, such as a gift link or a draft
 			 * row; muted until hovered so a column of them stays calm.
 			 */
 			'ghost-danger-quiet': {
-				surface:
-					'bg-transparent text-muted-foreground group-hover:bg-[color-mix(in_oklab,var(--status-danger)_10%,transparent)] group-hover:text-status-danger-text',
+				surface: `bg-transparent text-muted-foreground group-hover:bg-[color-mix(in_oklab,var(--status-danger)_10%,transparent)] group-hover:text-status-danger-text ${FLAT_PRESS_CLASSES}`,
 			},
 			'ghost-overlay': {
-				surface:
-					'bg-transparent text-current opacity-60 group-hover:opacity-90 group-hover:bg-[color-mix(in_oklab,currentColor_10%,transparent)]',
+				surface: `bg-transparent text-current opacity-60 group-hover:opacity-90 group-hover:bg-[color-mix(in_oklab,currentColor_10%,transparent)] ${FLAT_PRESS_CLASSES}`,
 			},
 			danger: {
 				owner: 'elevation-owner elevation-owner-raised elevation-owner-anchored',
@@ -76,7 +78,9 @@ export const buttonVariants = tv({
 				owner: 'elevation-owner elevation-owner-raised elevation-owner-anchored',
 				surface: OUTLINE_CONTROL_SURFACE_CLASSES,
 			},
-			link: { surface: 'text-brand-link underline-offset-4 group-hover:underline' },
+			link: {
+				surface: `text-brand-link underline-offset-4 group-hover:underline ${FLAT_PRESS_CLASSES}`,
+			},
 		},
 		size: {
 			responsive: {

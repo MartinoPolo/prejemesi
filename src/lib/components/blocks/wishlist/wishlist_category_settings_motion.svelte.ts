@@ -1,8 +1,8 @@
 import { SvelteMap, SvelteSet } from 'svelte/reactivity';
 import { STANDARD_EASING } from '$lib/motion/motion_tokens.js';
 
-const CATEGORY_REFLOW_DURATION = 520;
-const CATEGORY_DELETE_DURATION = 440;
+const CATEGORY_REFLOW_DURATION = 280;
+const CATEGORY_DELETE_DURATION = 220;
 
 interface CategoryPosition {
 	left: number;

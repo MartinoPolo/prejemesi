@@ -76,7 +76,7 @@ describe('identity layout motion', () => {
 
 		expect(animate).toHaveBeenCalledWith(
 			[{ transform: 'translate(-30px, -40px)' }, { transform: 'translate(0, 0)' }],
-			{ duration: 520, easing: 'cubic-bezier(0.2, 0.7, 0.3, 1)' },
+			{ duration: 280, easing: 'cubic-bezier(0.2, 0.7, 0.3, 1)' },
 		);
 		motion.destroy();
 		document.body.replaceChildren();
@@ -116,7 +116,7 @@ describe('identity layout motion', () => {
 		void motion.play(next, document.body);
 		expect(animate).toHaveBeenLastCalledWith(
 			[{ transform: 'translate(-55px, 0px)' }, { transform: 'translate(0, 0)' }],
-			{ duration: 520, easing: 'cubic-bezier(0.2, 0.7, 0.3, 1)' },
+			{ duration: 280, easing: 'cubic-bezier(0.2, 0.7, 0.3, 1)' },
 		);
 		motion.destroy();
 		document.body.replaceChildren();
@@ -151,7 +151,7 @@ describe('identity layout motion', () => {
 		void motion.play(before, document.body);
 		expect(movingAnimate).toHaveBeenCalledWith(
 			[{ transform: 'translate(0px, -100px)' }, { transform: 'translate(0, 0)' }],
-			{ duration: 520, easing: 'cubic-bezier(0.2, 0.7, 0.3, 1)' },
+			{ duration: 280, easing: 'cubic-bezier(0.2, 0.7, 0.3, 1)' },
 		);
 		expect(offscreenAnimate).not.toHaveBeenCalled();
 		motion.destroy();
@@ -232,7 +232,7 @@ describe('identity layout motion', () => {
 		document.body.replaceChildren();
 	});
 
-	it('FLIPs a stable visible identity whose coordinates changed over 520 ms', () => {
+	it('FLIPs a stable visible identity whose coordinates changed over 280 ms', () => {
 		const element = gift('stable');
 		const animate = vi.fn(() => animation());
 		Object.defineProperty(element, 'animate', { value: animate });
@@ -252,7 +252,7 @@ describe('identity layout motion', () => {
 
 		expect(animate).toHaveBeenCalledWith(
 			[{ transform: 'translate(-30px, -60px)' }, { transform: 'translate(0, 0)' }],
-			{ duration: 520, easing: 'cubic-bezier(0.2, 0.7, 0.3, 1)' },
+			{ duration: 280, easing: 'cubic-bezier(0.2, 0.7, 0.3, 1)' },
 		);
 		motion.destroy();
 		document.body.replaceChildren();
@@ -333,7 +333,7 @@ describe('identity layout motion', () => {
 		document.body.replaceChildren();
 	});
 
-	it('interpolates the measured toolbar heights over 320 ms', () => {
+	it('interpolates the measured toolbar heights over 240 ms', () => {
 		const toolbar = document.createElement('div');
 		document.body.append(toolbar);
 		const animate = vi.fn(() => animation());
@@ -364,7 +364,7 @@ describe('identity layout motion', () => {
 				{ height: '40px', overflow: 'clip' },
 				{ height: '80px', overflow: 'clip' },
 			],
-			{ duration: 320, easing: 'cubic-bezier(0.2, 0.7, 0.3, 1)' },
+			{ duration: 240, easing: 'cubic-bezier(0.2, 0.7, 0.3, 1)' },
 		);
 		motion.destroy();
 		document.body.replaceChildren();
