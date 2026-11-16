@@ -22,6 +22,7 @@ import {
 } from './gift_reorder_view.svelte.js';
 import { GIFT_DISPLAY_ROW_KINDS } from './gift_section_rows.js';
 import { giftImageLoadPriorities } from './gift_image_load_priority.js';
+import { createProgressiveGiftRows } from './progressive_gift_rows.svelte.js';
 
 /** Props shared by the gift collections: the Card grid and the List view. */
 export interface WishlistGiftCollectionProps {
@@ -60,6 +61,7 @@ export interface WishlistGiftCollectionProps {
 export function createWishlistGiftCollectionView(
 	getCollection: () => WishlistGiftCollectionProps,
 	getContainer: () => HTMLElement | null,
+	initialGiftLimit = Number.POSITIVE_INFINITY,
 ) {
 	const collection = $derived(getCollection());
 	const selectionMode = $derived(collection.selectionMode ?? false);
@@ -74,6 +76,12 @@ export function createWishlistGiftCollectionView(
 		onPreviewPlacement: (placement) => collection.onreorderplacementpreview?.(placement),
 		onCommitPlacement: (placement) => collection.onreorderplacementcommit?.(placement) ?? false,
 		onCancelPlacement: () => collection.onreorderplacementcancel?.(),
+	});
+
+	const progressiveRows = createProgressiveGiftRows({
+		getRows: () => reorderView.displayRows,
+		initialGiftLimit,
+		needsEveryGift: () => selectionMode || collection.reorderEnabled,
 	});
 
 	const imageLoadPriorities = $derived(
@@ -142,7 +150,11 @@ export function createWishlistGiftCollectionView(
 			return reorderView.announcement;
 		},
 		get displayRows() {
-			return reorderView.displayRows;
+			return progressiveRows.rows;
+		},
+		/** True while later gifts are still mounting after the collection's first paint. */
+		get mounting() {
+			return !progressiveRows.complete;
 		},
 		sectionHeaderProps,
 		giftItemProps,

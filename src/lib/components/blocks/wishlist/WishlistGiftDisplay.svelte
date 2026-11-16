@@ -312,9 +312,6 @@
 			if (!motionCanRun() || !motion) {
 				return;
 			}
-			if (collectionElement) {
-				measureGiftCardCollectionLayoutNow(collectionElement);
-			}
 			if (motionSuspended) {
 				if (activeAnimation !== null) {
 					return;
@@ -329,6 +326,11 @@
 					motionSuspended = false;
 				});
 			} else {
+				// Motion reads the aligned endpoints now; a fresh baseline waits for the frame, whose
+				// scheduled collection measurement runs before it.
+				if (collectionElement) {
+					measureGiftCardCollectionLayoutNow(collectionElement);
+				}
 				motion.afterUpdate();
 			}
 		});

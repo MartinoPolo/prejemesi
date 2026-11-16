@@ -15,10 +15,12 @@
 	import {
 		GIFT_CARD_MINIMUM_WIDTH,
 		giftCardChosenColumnCount,
+		initialGiftCardMountLimit,
 		largestFittingGiftCardColumnCount,
 		measureGiftCardGridGeometry,
 	} from './gift_card_grid_columns.js';
 	import { giftCardGridVariants } from './gift_card_grid_variants.js';
+	import { GIFT_COLLECTION_MOUNTING_ATTRIBUTE } from './gift_card_collection_layout.js';
 	import { GIFT_DISPLAY_ROW_KINDS } from './gift_section_rows.js';
 	import { GIFT_LIVE_PREVIEW } from '$lib/components/blocks/change-proposals/change_row_model.js';
 	import { WISHLIST_ROLES } from '$lib/modules/wishlists/types.js';
@@ -41,6 +43,7 @@
 	const collectionView = createWishlistGiftCollectionView(
 		() => collection,
 		() => gridEl,
+		initialGiftCardMountLimit(),
 	);
 
 	$effect(() => {
@@ -49,9 +52,16 @@
 		if (grid === null || reportCapacity === undefined) {
 			return;
 		}
-		const observer = new ResizeObserver(() =>
-			reportCapacity(largestFittingGiftCardColumnCount(measureGiftCardGridGeometry(grid))),
-		);
+		const observer = new ResizeObserver(([entry]) => {
+			if (entry === undefined) {
+				return;
+			}
+			reportCapacity(
+				largestFittingGiftCardColumnCount(
+					measureGiftCardGridGeometry(grid, entry.contentRect.width),
+				),
+			);
+		});
 		observer.observe(grid);
 		return () => {
 			observer.disconnect();
@@ -67,6 +77,7 @@
 <div
 	bind:this={gridEl}
 	data-testid="wishlist-gift-card-grid"
+	{...{ [GIFT_COLLECTION_MOUNTING_ATTRIBUTE]: collectionView.mounting ? '' : undefined }}
 	style:--gift-card-minimum-width={GIFT_CARD_MINIMUM_WIDTH}
 	style:--gift-card-column-count={chosenColumnCount}
 	class={cn(

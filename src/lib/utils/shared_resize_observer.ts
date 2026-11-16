@@ -10,14 +10,17 @@ const listenersByElement = new Map<Element, Set<ResizeListener>>();
 let sharedResizeObserver: ResizeObserver | null = null;
 
 function notifyResizes(entries: ResizeObserverEntry[]): void {
-	const writes: (() => void)[] = [];
+	// A listener observing several elements re-measures all of them once per delivery.
+	const listeners = new Set<ResizeListener>();
 	for (const entry of entries) {
-		listenersByElement.get(entry.target)?.forEach((notify) => {
-			const write = notify();
-			if (write) {
-				writes.push(write);
-			}
-		});
+		listenersByElement.get(entry.target)?.forEach((listener) => listeners.add(listener));
+	}
+	const writes: (() => void)[] = [];
+	for (const notify of listeners) {
+		const write = notify();
+		if (write) {
+			writes.push(write);
+		}
 	}
 	for (const write of writes) {
 		write();

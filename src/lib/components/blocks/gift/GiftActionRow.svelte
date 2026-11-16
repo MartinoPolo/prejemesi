@@ -5,6 +5,7 @@
 	import * as m from '$lib/paraglide/messages.js';
 	import { cn } from '$lib/utils.js';
 	import { observeDepthChange } from '$lib/theme/depth_change.js';
+	import { observeResize } from '$lib/utils/shared_resize_observer.js';
 	import type { GiftContextAction } from '$lib/modules/gifts/gift_context_actions.js';
 	import type {
 		GiftActionPlacementSnapshot,
@@ -255,11 +256,11 @@
 			moreMeasureElement,
 			...renderedSecondaryActions.map((action) => secondaryElements[action]),
 		].filter((element): element is HTMLElement => element != null);
-		const observer = new ResizeObserver(measureIntrinsicActions);
-		for (const element of observedElements) {
-			observer.observe(element);
-		}
-		return () => observer.disconnect();
+		// The shared observer measures every card's row before Svelte re-renders any of them.
+		const stopObserving = observedElements.map((element) =>
+			observeResize(element, measureIntrinsicActions),
+		);
+		return () => stopObserving.forEach((stop) => stop());
 	});
 
 	onMount(() => {
