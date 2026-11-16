@@ -16,8 +16,9 @@ export const wishlistCardVariants = tv({
 		surface:
 			'elevation-ordinary pointer-events-auto relative flex size-full flex-col rounded-panel bg-card transition-[translate,scale,box-shadow] duration-(--duration-normal) ease-(--ease-standard)',
 		border: 'pointer-events-none absolute inset-0 z-[1] rounded-panel border-[2.5px] border-edge',
-		/** The plate sits bottom-left, keeping the top-left corner free for an occasion badge. */
-		banner: 'relative flex shrink-0 flex-col items-start justify-end overflow-hidden rounded-t-[calc(var(--radius-panel)-2.5px)] border-b-[2.5px] border-edge',
+		/** The plate sits bottom-left, keeping the top-left corner free for an occasion badge.
+		    The banner reaches the outer edge beneath the overlay border, so it clips to the outer radius. */
+		banner: 'relative flex shrink-0 flex-col items-start justify-end overflow-hidden rounded-t-panel border-b-[2.5px] border-edge',
 		bannerFill: 'absolute inset-0',
 		/** Notebook dot pattern over the tint fallback (hidden when a real photo fills the banner). */
 		bannerPattern:
