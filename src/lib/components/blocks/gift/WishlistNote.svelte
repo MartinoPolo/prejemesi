@@ -96,6 +96,11 @@
 		ondismiss?.();
 	}
 
+	// Untracked, so the note rendered with the page keeps its reveal running after mount.
+	function wrapperEntranceClass() {
+		return untrack(() => mounted) ? undefined : entranceClass;
+	}
+
 	function handleConfirmKeydown(event: KeyboardEvent) {
 		if (event.key === 'Escape') {
 			event.preventDefault();
@@ -124,8 +129,7 @@
 {/snippet}
 
 {#if displayedState !== WISHLIST_NOTE_STATES.dismissed}
-	<!-- Untracked, so the note rendered with the page keeps its reveal running after mount. -->
-	<div class={untrack(() => mounted) ? undefined : entranceClass} data-testid="wishlist-note">
+	<div class={wrapperEntranceClass()} data-testid="wishlist-note">
 		<!-- A freshly inserted role="alert" is announced reliably; switching the role in place is not. -->
 		{#key confirmingDismiss}
 			<Alert.Root
