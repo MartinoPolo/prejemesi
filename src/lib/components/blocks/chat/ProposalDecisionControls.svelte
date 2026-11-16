@@ -9,7 +9,10 @@
 	import ApplyProposalLabel from '$lib/components/blocks/change-proposals/ApplyProposalLabel.svelte';
 	import ProposalDecisionButtons from '$lib/components/blocks/change-proposals/ProposalDecisionButtons.svelte';
 	import { countCopy } from '$lib/modules/change_proposals/change_review_copy.js';
-	import { UNRESOLVED_DECISION_MESSAGES } from '$lib/components/blocks/change-proposals/change_review_presentation.js';
+	import {
+		UNRESOLVED_DECISION_MESSAGES,
+		type ProposalAction,
+	} from '$lib/components/blocks/change-proposals/change_review_presentation.js';
 	import type { ProposalDecisions } from '$lib/components/blocks/change-proposals/proposal_decisions.svelte.js';
 	import { keepFocusOnPress } from '$lib/reactivity/keyboard_inset.svelte.js';
 	import { PROPOSAL_TITLES } from './chat_presentation.js';
@@ -23,7 +26,7 @@
 		rowCount,
 		inspecting,
 		reviewHref,
-		pending,
+		pendingAction,
 		oninspect,
 		onrejectall,
 		onacceptall,
@@ -36,7 +39,7 @@
 		inspecting: boolean;
 		/** Large proposals are checked on the review page instead of inline. */
 		reviewHref: string | null;
-		pending: boolean;
+		pendingAction: ProposalAction | null;
 		oninspect: () => void;
 		/** Rejects the whole proposal at once. */
 		onrejectall: () => void;
@@ -53,6 +56,7 @@
 
 	let expanded = $state(false);
 
+	const busy = $derived(pendingAction !== null);
 	const blocked = $derived(decisions.unresolvedCount > 0);
 	const declines = $derived(!blocked && decisions.includedCount === 0);
 	const title = $derived(countCopy(PROPOSAL_TITLES, rowCount));
@@ -74,7 +78,7 @@
 	<ProposalDecisionButtons
 		testIdPrefix="chat-proposal"
 		size="md"
-		disabled={pending}
+		disabled={busy}
 		{onpointerdown}
 		{onrejectall}
 		onacceptall={decisions.canAcceptAll ? onacceptall : undefined}
@@ -83,17 +87,17 @@
 
 {#snippet applyButton()}
 	<Button
-		class={['apply', blocked && !pending && 'is-blocked']}
+		class={['apply', blocked && !busy && 'is-blocked']}
 		intent={declines ? 'secondary' : 'primary'}
 		size="md"
-		disabled={pending}
-		aria-disabled={blocked && !pending ? 'true' : undefined}
-		aria-busy={pending}
+		disabled={busy}
+		aria-disabled={blocked && !busy ? 'true' : undefined}
+		aria-busy={busy}
 		data-testid="chat-proposal-apply"
 		{onpointerdown}
 		onclick={onapply}
 	>
-		<ApplyProposalLabel {pending} {declines} includedCount={decisions.includedCount} />
+		<ApplyProposalLabel {pendingAction} {declines} includedCount={decisions.includedCount} />
 	</Button>
 {/snippet}
 

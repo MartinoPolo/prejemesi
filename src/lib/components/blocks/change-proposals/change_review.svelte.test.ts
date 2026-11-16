@@ -234,6 +234,18 @@ describe('ChangeReview decisions', () => {
 		expect(onrestore).toHaveBeenCalledTimes(1);
 	});
 
+	it('says it is rejecting, not applying, while Zamítnout vše runs', async () => {
+		let finishRejection: () => void = () => {};
+		const ondiscard = vi.fn(() => new Promise<void>((resolve) => (finishRejection = resolve)));
+		await renderReview(changeProposal(), { ondiscard });
+
+		await page.getByTestId('change-review-reject-all').click();
+
+		await expect.element(applyButton()).toHaveTextContent(m.change_review_rejecting());
+		await expect.element(applyButton()).not.toHaveTextContent(m.change_review_applying());
+		finishRejection();
+	});
+
 	it('confirms the rejection once every row was rejected one by one', async () => {
 		await renderReview(changeProposal());
 

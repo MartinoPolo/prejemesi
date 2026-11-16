@@ -1687,6 +1687,7 @@
 	"change_review_apply_included": "Apply ({count})",
 	"change_review_decline_proposal": "Reject proposal",
 	"change_review_applying": "Applying…",
+	"change_review_rejecting": "Rejecting…",
 	"change_review_apply_error": "The changes could not be applied.",
 	"change_review_back_to_review": "Back to the review",
 	"change_review_undo_title_one": "Undo 1 change?",

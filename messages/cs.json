@@ -1687,6 +1687,7 @@
 	"change_review_apply_included": "Použít ({count})",
 	"change_review_decline_proposal": "Zamítnout návrh",
 	"change_review_applying": "Používám…",
+	"change_review_rejecting": "Zamítám…",
 	"change_review_apply_error": "Změny se nepodařilo použít.",
 	"change_review_back_to_review": "Zpět ke kontrole",
 	"change_review_undo_title_one": "Vrátit 1 změnu?",

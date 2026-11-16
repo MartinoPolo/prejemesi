@@ -14,7 +14,10 @@
 	import ChangeRowDetails from '$lib/components/blocks/change-proposals/ChangeRowDetails.svelte';
 	import UndoProposalDialog from '$lib/components/blocks/change-proposals/UndoProposalDialog.svelte';
 	import RowDecision from '$lib/components/blocks/change-proposals/RowDecision.svelte';
-	import { CHANGE_KIND_PRESENTATION } from '$lib/components/blocks/change-proposals/change_review_presentation.js';
+	import {
+		CHANGE_KIND_PRESENTATION,
+		type ProposalAction,
+	} from '$lib/components/blocks/change-proposals/change_review_presentation.js';
 	import type { ChangeRowContext } from '$lib/components/blocks/change-proposals/change_row_model.js';
 	import type { DecidingProposalRegistry } from '$lib/components/blocks/change-proposals/gift_live_preview.js';
 	import { ProposalDecisions } from '$lib/components/blocks/change-proposals/proposal_decisions.svelte.js';
@@ -49,8 +52,6 @@
 		type DecisionBarControls,
 	} from './chat_presentation.js';
 
-	type CardAction = 'apply' | 'discard' | 'undo';
-
 	const APPLY_CONFLICT_TITLES = {
 		one: m.change_review_apply_conflict_title_one,
 		few: m.change_review_apply_conflict_title_few,
@@ -82,7 +83,7 @@
 
 	let card = $state<HTMLElement>();
 	let inspecting = $state(false);
-	let pendingAction = $state<CardAction | null>(null);
+	let pendingAction = $state<ProposalAction | null>(null);
 	let undoOpen = $state(false);
 
 	const decisions = new ProposalDecisions({
@@ -143,7 +144,7 @@
 		}
 	}
 
-	async function run(action: CardAction, work: () => Promise<void>, fallback: string) {
+	async function run(action: ProposalAction, work: () => Promise<void>, fallback: string) {
 		const focused = document.activeElement;
 		pendingAction = action;
 		try {
@@ -194,7 +195,7 @@
 	function reject() {
 		const proposalId = proposal.id;
 		void run(
-			'discard',
+			'reject',
 			async () => {
 				await discardChangeProposal({ proposalId });
 				showRejectedProposalToast(() => restore(proposalId));
@@ -262,7 +263,7 @@
 		rowCount={proposal.rowCount}
 		{inspecting}
 		reviewHref={checksInline ? null : reviewHref}
-		pending={pendingAction !== null}
+		{pendingAction}
 		oninspect={() => (inspecting = !inspecting)}
 		onrejectall={reject}
 		onacceptall={acceptAll}
