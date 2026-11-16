@@ -1220,8 +1220,9 @@
 		priorityLevelsLoadPromise = nextState.loadPromise;
 	}
 
-	// Loaded on demand, never prefetched on page load: that would add a Worker request to every
-	// manager visit, over the wishlist-view request budget (#108, `tests/release/request-budgets`).
+	// Prefetched on intent (pointer or focus on an add-gift trigger), never on page load: a load-time
+	// prefetch adds a Worker request to every manager visit, over the wishlist-view request budget
+	// (#108, `tests/release/request-budgets`); intent still lets the first gift dialog open at once.
 	async function ensurePriorityLevels(targetWishlistId = wishlist.id): Promise<void> {
 		if (!browser || !canManage) {
 			return;
@@ -1792,6 +1793,10 @@
 
 	function clearFilters() {
 		void handleFilterChange(emptyGiftFilters());
+	}
+
+	function prefetchPriorityLevels() {
+		void ensurePriorityLevels();
 	}
 
 	async function openCreateModal() {
@@ -2606,6 +2611,7 @@
 			onunfollow={handleUnfollow}
 			{unfollowPending}
 			onaddgift={openCreateModal}
+			onaddgiftintent={prefetchPriorityLevels}
 			onbatchadd={openBatchAddDialog}
 			onselectionstart={() => enterSelection()}
 			selectionContent={giftSelection.active ? selectionToolbar : undefined}
@@ -2742,6 +2748,7 @@
 			onreceived={handleReceived}
 			{receivedPendingGiftIds}
 			onaddgift={openCreateModal}
+			onaddgiftintent={prefetchPriorityLevels}
 			onclearfilters={clearFilters}
 			onreorderpreview={handleReorderPreview}
 			onreordercommit={handleReorderCommit}

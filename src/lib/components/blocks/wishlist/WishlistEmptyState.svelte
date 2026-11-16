@@ -10,6 +10,8 @@
 		canManage: boolean;
 		isFilteredEmpty: boolean;
 		onaddgift: () => void;
+		/** Pointer or focus on an add-gift trigger, so the page can warm what the gift dialog needs. */
+		onaddgiftintent?: () => void;
 		onclearfilters: () => void;
 	}
 
@@ -18,6 +20,7 @@
 		canManage,
 		isFilteredEmpty,
 		onaddgift,
+		onaddgiftintent,
 		onclearfilters,
 	}: WishlistEmptyStateProps = $props();
 </script>
@@ -50,7 +53,12 @@
 		description={m.wishlist_detail_owner_empty_description()}
 	>
 		{#snippet actions()}
-			<Button aria-label={m.wishlist_detail_add_first_wish_label()} onclick={onaddgift}>
+			<Button
+				aria-label={m.wishlist_detail_add_first_wish_label()}
+				onclick={onaddgift}
+				onpointerenter={onaddgiftintent}
+				onfocus={onaddgiftintent}
+			>
 				<PlusIcon data-icon="inline-start" />
 				{m.wishlist_detail_add_first_wish()}
 			</Button>

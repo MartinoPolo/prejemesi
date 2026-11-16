@@ -101,6 +101,8 @@
 		onunfollow: () => void;
 		unfollowPending?: boolean;
 		onaddgift: () => void;
+		/** Pointer or focus on an add-gift trigger, so the page can warm what the gift dialog needs. */
+		onaddgiftintent?: () => void;
 		onbatchadd: () => void;
 		onselectionstart: () => void;
 		selectionContent?: Snippet;
@@ -138,6 +140,7 @@
 		onunfollow,
 		unfollowPending = false,
 		onaddgift,
+		onaddgiftintent,
 		onbatchadd,
 		onselectionstart,
 		selectionContent,
@@ -779,6 +782,8 @@
 				aria-label={m.wishlist_detail_add_gift_label()}
 				title={m.wishlist_detail_add_wish()}
 				onclick={onaddgift}
+				onpointerenter={onaddgiftintent}
+				onfocus={onaddgiftintent}
 			>
 				<PlusIcon />
 			</Button>
@@ -1218,6 +1223,8 @@
 											aria-label={m.wishlist_detail_add_gift_label()}
 											title={m.wishlist_detail_add_wish()}
 											onclick={onaddgift}
+											onpointerenter={onaddgiftintent}
+											onfocus={onaddgiftintent}
 										>
 											<PlusIcon data-icon="inline-start" />
 											<span>{m.wishlist_detail_add_wish()}</span>
