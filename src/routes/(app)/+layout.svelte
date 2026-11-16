@@ -120,12 +120,14 @@
 	}
 
 	/* The scroller is the containing block for absolutely positioned content (sr-only labels),
-	   which otherwise resolves against the body and gives the document a second scrollbar. */
+	   which otherwise resolves against the body and gives the document a second scrollbar. The
+	   reserved gutter keeps the content column still when filtering shows or hides the scrollbar. */
 	.app-content {
 		position: relative;
 		flex: 1;
 		min-width: 0;
 		overflow: hidden auto;
+		scrollbar-gutter: stable;
 	}
 
 	.app-content-inner {
