@@ -140,6 +140,8 @@ Current product, architecture, and design decisions for Přejeme si. Entries are
 - 2026-11-11: Display → Filter offers an „Obchod“ facet to every role, built from the registrable domains (public-suffix aware, subdomains merged, country variants separate, no brand mapping) of all the wishlist's gift links; a gift matches a store through any of its links. Options are labelled by domain and sorted by gift count, then alphabetically, with „Bez odkazu“ last only when a gift has no link; the facet is hidden below two options. It behaves like the category facet and is never stored in the URL; a cross-wishlist store view is out of scope (#650).
 - 2026-11-13: Below 640 px, active filters show as a horizontally scrolling row of removable pills ending in „Zrušit filtry“, placed under the toolbar card outside the sticky toolbar so it scrolls away and adds no sticky row; the Display trigger keeps its count. The Display sheet's Filter section has a footer outside its scroll area with „Zrušit filtry“ and „Zobrazit N přání“, which closes the sheet (#658, `designs/mobile-filter-reset/`).
 - 2026-11-14: Carousel with two or more rows shows a chip bar of in-page links, one per row in row order, sticking directly below the sticky toolbar at its measured bottom (the app nav sits outside the scroller); a single row shows none. The current chip is the last row whose header passed the line below the sticky chrome, or the last row at the page bottom, and only the bar scrolls to keep it in view. A chip moves focus to the row heading (the row region for a count-only row) and aligns the row under the chrome without changing the URL. Each row header shows the fully visible card range as „1–2 z 10“, hidden from assistive technology, and empty when every card fits or none is whole (#640, `designs/wishlist-carousel-view/`).
+- 2026-11-16: The wishlist description is a note from the list author below the hero at every width, above lifecycle and trust notices: open on the first visit, folds to one line, hides after an inline confirmation and returns from „Zobrazit vzkaz“ in More. Fold and hide are remembered per wishlist per browser in localStorage, not in the database.
+- 2026-11-16: The note names the linked recipient, or the only správce of a list for someone else, otherwise „Vzkaz k seznamu“; names are never declined, and every role sees the same note and controls.
 
 ## Forms & settings
 
@@ -158,6 +160,7 @@ Current product, architecture, and design decisions for Přejeme si. Entries are
 - 2026-10-24: Wishlist categories are one list in manager order, reordered by grip drag or arrow keys, each renamable and recolorable. Presets are only default seeds: renaming one makes it a custom category that keeps its id, color and gifts, and its old label becomes free (#534).
 - 2026-10-24: Removing a category that gifts use is staged in the list with “Vrátit” and applied on Save, not confirmed in a dialog; the row shows how many gifts lose the category. An unused category leaves the list at once (#534).
 - 2026-10-24: New categories, from settings, quick-add or import, are appended at the end of the list (#534).
+- 2026-11-16: The description field is „Vzkaz pro návštěvníky“ with help text; settings previews the note in the wishlist palette.
 
 ## Visual design & component conventions
 
