@@ -77,6 +77,7 @@
 			reserverNames: [],
 			myReservationId: null,
 			myReservationPurchasedAt: null,
+			myReservationQuantity: 0,
 		};
 	}
 </script>

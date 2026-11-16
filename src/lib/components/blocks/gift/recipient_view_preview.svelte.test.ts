@@ -57,6 +57,7 @@ function makeReservedGift(overrides: Partial<GiftForVisitor> = {}): GiftForVisit
 		reserverNames: ['Babička', 'Martin'],
 		myReservationId: 'reservation-mine',
 		myReservationPurchasedAt: new Date('2026-01-02T00:00:00Z'),
+		myReservationQuantity: 1,
 		...overrides,
 	};
 }

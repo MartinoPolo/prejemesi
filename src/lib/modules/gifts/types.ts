@@ -116,6 +116,8 @@ export interface GiftForVisitor extends GiftBase {
 	myReservationId: string | null;
 	/** When the current user marked their reservation as bought (gifter-private), or null. */
 	myReservationPurchasedAt: Date | null;
+	/** Units held by the `myReservationId` reservation, or 0 without one. */
+	myReservationQuantity: number;
 }
 
 /**
