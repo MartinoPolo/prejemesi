@@ -120,14 +120,23 @@
 	}
 
 	/* The scroller is the containing block for absolutely positioned content (sr-only labels),
-	   which otherwise resolves against the body and gives the document a second scrollbar. The
-	   reserved gutter keeps the content column still when filtering shows or hides the scrollbar. */
+	   which otherwise resolves against the body and gives the document a second scrollbar. */
 	.app-content {
 		position: relative;
 		flex: 1;
 		min-width: 0;
 		overflow: hidden auto;
-		scrollbar-gutter: stable;
+	}
+
+	/* The reserved gutter keeps the content column still when filtering shows or hides a classic
+	   scrollbar; the navbar reserves the same one to keep its edges on the column. Below `lg` the
+	   layouts are sized for the full width: the md navbar row has no spare pixel for the gutter,
+	   and phone card columns and carousel cards would shrink in a narrow desktop window, while
+	   phones themselves overlay their scrollbars. */
+	@media (width >= 1024px) {
+		.app-content {
+			scrollbar-gutter: stable;
+		}
 	}
 
 	.app-content-inner {

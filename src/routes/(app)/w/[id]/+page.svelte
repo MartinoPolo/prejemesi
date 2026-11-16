@@ -145,7 +145,6 @@
 		IMAGE_EDITOR_MODES,
 	} from '$lib/modules/images/editor_modes.js';
 	import { untrack } from 'svelte';
-	import { scheduleIdle } from '$lib/utils/schedule_idle.js';
 	import {
 		dismissToast,
 		showToast,
@@ -1221,6 +1220,8 @@
 		priorityLevelsLoadPromise = nextState.loadPromise;
 	}
 
+	// Loaded on demand, never prefetched on page load: that would add a Worker request to every
+	// manager visit, over the wishlist-view request budget (#108, `tests/release/request-budgets`).
 	async function ensurePriorityLevels(targetWishlistId = wishlist.id): Promise<void> {
 		if (!browser || !canManage) {
 			return;
@@ -1525,19 +1526,6 @@
 		) {
 			untrack(() => void ensurePriorityLevels());
 		}
-	});
-
-	// Warm priority levels while idle so the first gift modal opens without waiting on the fetch.
-	const PRIORITY_LEVELS_IDLE_PREFETCH_TIMEOUT_MS = 3_000;
-	$effect(() => {
-		if (!canManage) {
-			return;
-		}
-		const targetWishlistId = wishlist.id;
-		return scheduleIdle(
-			() => void ensurePriorityLevels(targetWishlistId),
-			PRIORITY_LEVELS_IDLE_PREFETCH_TIMEOUT_MS,
-		);
 	});
 
 	// ── Computed: can user edit/delete the selected gift? ────────────────────
