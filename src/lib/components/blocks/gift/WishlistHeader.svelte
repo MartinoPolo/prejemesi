@@ -491,8 +491,8 @@
 
 	@media (prefers-reduced-motion: no-preference) {
 		.polaroid.reveal {
-			animation: polaroid-fade-up var(--reveal-duration, 0.6s) var(--reveal-easing, ease)
-				backwards;
+			animation: polaroid-fade-up var(--reveal-duration, var(--duration-reveal))
+				var(--reveal-easing, var(--ease-standard)) backwards;
 		}
 	}
 
