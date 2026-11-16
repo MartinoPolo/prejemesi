@@ -30,7 +30,7 @@ test.describe('wishlist settings global save', () => {
 		let dialog = await openSettings(page);
 
 		await dialog.getByLabel('Název').fill('Čtyři uložené oblasti');
-		await dialog.getByLabel('Popis').fill('Globálně uložený popis');
+		await dialog.getByLabel('Vzkaz pro návštěvníky').fill('Globálně uložený popis');
 		await dialog.getByRole('tab', { name: 'Kategorie' }).click();
 		await addCategoryDraft(dialog, 'Globální kategorie');
 		await dialog.getByRole('tab', { name: 'Vzhled' }).click();
@@ -49,7 +49,9 @@ test.describe('wishlist settings global save', () => {
 
 		dialog = await openSettings(page);
 		await expect(dialog.getByLabel('Název')).toHaveValue('Čtyři uložené oblasti');
-		await expect(dialog.getByLabel('Popis')).toHaveValue('Globálně uložený popis');
+		await expect(dialog.getByLabel('Vzkaz pro návštěvníky')).toHaveValue(
+			'Globálně uložený popis',
+		);
 		await dialog.getByRole('tab', { name: 'Kategorie' }).click();
 		await expect(categoryRow(dialog, 'Globální kategorie')).toBeVisible();
 		await dialog.getByRole('tab', { name: 'Vzhled' }).click();
@@ -76,12 +78,14 @@ test.describe('wishlist settings global save', () => {
 		);
 		await createWishlistAndNavigate(page, 'Guardovaný koncept');
 		let dialog = await openSettings(page);
-		await dialog.getByLabel('Popis').fill('Uložit před pokračováním');
+		await dialog.getByLabel('Vzkaz pro návštěvníky').fill('Uložit před pokračováním');
 		await dialog.getByRole('button', { name: 'Zavřít' }).click();
 		await page.getByRole('button', { name: 'Uložit a pokračovat' }).click();
 		await expect(dialog).not.toBeVisible();
 		dialog = await openSettings(page);
-		await expect(dialog.getByLabel('Popis')).toHaveValue('Uložit před pokračováním');
+		await expect(dialog.getByLabel('Vzkaz pro návštěvníky')).toHaveValue(
+			'Uložit před pokračováním',
+		);
 		await page.context().close();
 	});
 });

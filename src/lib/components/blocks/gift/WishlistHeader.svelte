@@ -44,10 +44,17 @@
 	import OccasionCountdownText from './OccasionCountdownText.svelte';
 	import WishlistHeroEmblem from './WishlistHeroEmblem.svelte';
 	import WishlistHeroFrameShell from './WishlistHeroFrame.svelte';
+	import WishlistNote from './WishlistNote.svelte';
+	import {
+		wishlistNoteAuthorName,
+		wishlistNoteText,
+	} from '$lib/modules/wishlists/wishlist_note.js';
 	import { wishlistHeaderVariants } from './wishlist_header_variants.js';
 	import { wishlistHeroFrameVariants } from './wishlist_hero_frame_variants.js';
 
 	interface WishlistHeaderProps {
+		/** Scopes the note's remembered fold/dismiss state; the landing demo has none. */
+		wishlistId?: string | null;
 		title: string;
 		/** Who the list is for: linked recipient's account name or the free-text recipient name. */
 		recipientDisplayName: string;
@@ -61,6 +68,7 @@
 		 * recipient is included by the server). Powers „Spravuje/Spravují".
 		 */
 		managerNames: string[];
+		/** Shown below the hero as a message from the list's author. */
 		description: string | null;
 		imageKey: string | null;
 		/**
@@ -100,9 +108,12 @@
 		oneditimage?: () => void;
 		oneditrecipient?: () => void;
 		onsettings?: () => void;
+		/** The reader confirmed hiding the note; the page moves focus to where it can be restored. */
+		onnotedismiss?: () => void;
 	}
 
 	let {
+		wishlistId = null,
 		title,
 		recipientDisplayName,
 		recipientImage,
@@ -131,6 +142,7 @@
 		oneditimage,
 		oneditrecipient,
 		onsettings,
+		onnotedismiss,
 	}: WishlistHeaderProps = $props();
 
 	const styles = wishlistHeaderVariants();
@@ -215,6 +227,11 @@
 
 	const statusLabel = $derived(WISHLIST_STATUS_LABELS[status]());
 	const statusBadgeTone = $derived(WISHLIST_STATUS_BADGE_MAP[status]);
+
+	const noteText = $derived(wishlistNoteText(description));
+	const noteAuthorName = $derived(
+		wishlistNoteAuthorName({ isForSomeoneElse, recipientDisplayName, managerNames }),
+	);
 
 	// Fallback initials for a broken/expired recipient avatar URL (Avatar's own onerror path).
 	const recipientInitials = $derived(getInitials(recipientDisplayName));
@@ -379,9 +396,6 @@
 				<svelte:element this={headingLevel === 1 ? 'h1' : 'h2'} class={styles.title()}>
 					{title}
 				</svelte:element>
-				{#if description}
-					<p class={styles.description()}>{description}</p>
-				{/if}
 				<div class={styles.metaRow()}>
 					<Badge tone={statusBadgeTone} size="lg">{statusLabel}</Badge>
 					{#if giftCountLabel !== null}
@@ -418,6 +432,17 @@
 			{countdownLabel}
 		/>
 	</WishlistHeroFrameShell>
+
+	<!-- One note for every width and role, so managers see what visitors see. -->
+	{#if noteText !== null}
+		<WishlistNote
+			{wishlistId}
+			description={noteText}
+			authorName={noteAuthorName}
+			ondismiss={onnotedismiss}
+			class="reveal reveal-4"
+		/>
+	{/if}
 
 	<!-- Lifecycle notices: calm tinted panels (the shared/draft strips are gone — REQ-12) -->
 	{#if isArchived}

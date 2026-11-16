@@ -555,4 +555,26 @@ describe('WishlistDetailToolbar consolidated desktop display (#359)', () => {
 		).toHaveTextContent(m.gift_reorder_action());
 		await screen.unmount();
 	});
+
+	it('offers „Zobrazit vzkaz“ first in toolbar More only while the note is dismissed', async () => {
+		let screen = await renderToolbar({}, 1280);
+		await screen.getByTestId('desktop-more-trigger').click();
+		let menu = page.getByRole('menu', { name: m.wishlist_more_actions() });
+		await expect.element(menu).toBeVisible();
+		await expect
+			.element(menu.getByRole('menuitem', { name: m.wishlist_note_show() }))
+			.not.toBeInTheDocument();
+		await screen.unmount();
+
+		const onshownote = vi.fn();
+		screen = await renderToolbar({ onshownote }, 1280);
+		await screen.getByTestId('desktop-more-trigger').click();
+		menu = page.getByRole('menu', { name: m.wishlist_more_actions() });
+		const showNote = menu.getByRole('menuitem', { name: m.wishlist_note_show() });
+		await expect.element(showNote).toBeVisible();
+		expect(menu.getByRole('menuitem').elements()[0]).toBe(showNote.element());
+		await showNote.click();
+		expect(onshownote).toHaveBeenCalledOnce();
+		await screen.unmount();
+	});
 });

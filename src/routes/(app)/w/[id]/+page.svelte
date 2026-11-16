@@ -141,6 +141,11 @@
 	} from '$lib/components/blocks/wishlist/wishlist_theme_scope.js';
 	import { getWishlistEmoji } from '$lib/modules/wishlists/wishlist_theme.js';
 	import {
+		WISHLIST_NOTE_STATES,
+		wishlistNoteText,
+		wishlistNoteVisibility,
+	} from '$lib/modules/wishlists/wishlist_note.js';
+	import {
 		giftEditorModeFromMeta,
 		IMAGE_EDITOR_MODES,
 	} from '$lib/modules/images/editor_modes.js';
@@ -557,6 +562,12 @@
 	// For-someone-else ⇔ no linked recipient account (management is via správci rows only).
 	const isForSomeoneElse = $derived(wishlist?.recipientUserId == null);
 	const themeEmoji = $derived(getWishlistEmoji(wishlist?.theme));
+	// Shared with the header note, whose dismissal the toolbar More menu can undo.
+	const wishlistNote = $derived(wishlistNoteVisibility(wishlist.id));
+	const wishlistNoteDismissed = $derived(
+		wishlistNoteText(wishlist.description) !== null &&
+			wishlistNote.current === WISHLIST_NOTE_STATES.dismissed,
+	);
 	// OG/Twitter tags. A plain function (evaluated at render), NOT a $derived — reading
 	// post-await state through a memoized $derived inside <svelte:head> collapses to undefined
 	// during async SSR and 500s. The image is the `social` slot crop the owner framed in the
@@ -2007,6 +2018,17 @@
 		priorityLevels,
 	});
 
+	function showWishlistNote() {
+		wishlistNote.current = WISHLIST_NOTE_STATES.open;
+	}
+
+	let detailToolbar = $state<ReturnType<typeof WishlistDetailToolbar> | null>(null);
+	// The focused Skrýt button is gone, so focus moves to More, which now offers the restore.
+	async function focusWishlistNoteRestore() {
+		await tick();
+		detailToolbar?.focusMoreTrigger();
+	}
+
 	async function handleUnfollow() {
 		if (unfollowPending) {
 			return;
@@ -2502,6 +2524,7 @@
 		background={themeScope.background}
 	/>
 	<WishlistHeader
+		wishlistId={wishlist.id}
 		title={wishlist.title}
 		recipientDisplayName={wishlist.recipientDisplayName}
 		recipientImage={wishlist.recipientImage}
@@ -2528,6 +2551,7 @@
 		oneditimage={handleEditImage}
 		oneditrecipient={handleEditRecipientOpened}
 		onsettings={handleSettingsOpened}
+		onnotedismiss={focusWishlistNoteRestore}
 	/>
 
 	{#if pendingProposals.length > 0}
@@ -2580,6 +2604,7 @@
 			/>
 		{/snippet}
 		<WishlistDetailToolbar
+			bind:this={detailToolbar}
 			{canManage}
 			{role}
 			{isArchived}
@@ -2609,6 +2634,7 @@
 			onfilterchange={handleFilterChange}
 			ongroupingchange={handleGroupingChange}
 			onunfollow={handleUnfollow}
+			onshownote={wishlistNoteDismissed ? showWishlistNote : undefined}
 			{unfollowPending}
 			onaddgift={openCreateModal}
 			onaddgiftintent={prefetchPriorityLevels}
@@ -2935,6 +2961,7 @@
 				{role}
 				revertCapability={presentationRevertCapability}
 				recipientDisplayName={wishlist.recipientDisplayName}
+				managerNames={wishlist.managerNames}
 				{themeEmoji}
 				onsaved={async () => {}}
 				onpaletteselect={handlePaletteSelect}

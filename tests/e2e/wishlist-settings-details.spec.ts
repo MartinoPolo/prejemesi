@@ -42,7 +42,9 @@ test.describe('Wishlist settings – details and categories', () => {
 
 		const form = detailsForm(page);
 		await form.getByRole('textbox', { name: 'Název' }).fill('Detaily po úpravě');
-		await form.getByRole('textbox', { name: 'Popis' }).fill('Popis seznamu darů');
+		await form
+			.getByRole('textbox', { name: 'Vzkaz pro návštěvníky' })
+			.fill('Popis seznamu darů');
 
 		const eventDateField = form.getByLabel('Datum události (volitelné)');
 		await eventDateField.click();
@@ -84,7 +86,7 @@ test.describe('Wishlist settings – details and categories', () => {
 		await expect(reloaded.getByRole('textbox', { name: 'Název' })).toHaveValue(
 			'Detaily po úpravě',
 		);
-		await expect(reloaded.getByRole('textbox', { name: 'Popis' })).toHaveValue(
+		await expect(reloaded.getByRole('textbox', { name: 'Vzkaz pro návštěvníky' })).toHaveValue(
 			'Popis seznamu darů',
 		);
 		await expect(reloaded.getByLabel('Datum události (volitelné)')).toContainText(
