@@ -190,13 +190,32 @@ export function alignCropRect(rect: ImageCropRect, alignment: CropWindowPoint): 
 }
 
 /**
- * The window a cover-crop surface of another aspect renders for the same
- * persisted focal + zoom – how a target without its own crop (the `thumb`
- * following `square`) frames the image.
+ * The zoom that frames an image in a window of the target aspect as tightly as
+ * `zoom` frames it at the source aspect, judged by position between each aspect's
+ * contain zoom and the cover zoom (1) rather than by the raw number, which means
+ * different framings per aspect. Zooms at or beyond cover carry over; below the
+ * source contain the zoom scales with the two contain zooms, so it stays as much
+ * looser than the target's contain and a source floor lands on the target floor.
+ * A source whose contain equals cover has no range to map and carries over.
+ * Shared by the editor's thumbnail follow and the renderer's fallback so both
+ * show the same following framing.
  */
-export function reprojectCropRect(rect: ImageCropRect, normalizedAspect: number): ImageCropRect {
-	const { focal, zoom } = cropRectToFocalZoom(rect);
-	return focalZoomToWindowRect(focal, zoom, normalizedAspect);
+export function followedZoomForAspect(
+	zoom: number,
+	sourceNormalizedAspect: number,
+	targetNormalizedAspect: number,
+): number {
+	const sourceContainZoom = containZoomForAspect(sourceNormalizedAspect);
+	const targetContainZoom = containZoomForAspect(targetNormalizedAspect);
+	if (zoom >= IMAGE_ZOOM_BASE || sourceContainZoom >= IMAGE_ZOOM_BASE) {
+		return clampZoom(zoom);
+	}
+	if (zoom >= sourceContainZoom) {
+		const containToCoverFraction =
+			(zoom - sourceContainZoom) / (IMAGE_ZOOM_BASE - sourceContainZoom);
+		return targetContainZoom + containToCoverFraction * (IMAGE_ZOOM_BASE - targetContainZoom);
+	}
+	return clampZoom((zoom * targetContainZoom) / sourceContainZoom);
 }
 
 /**
@@ -208,9 +227,9 @@ export function reprojectCropRect(rect: ImageCropRect, normalizedAspect: number)
  * persisted for a different aspect (legacy data, or a source-image swap) so the
  * editor starts from the closest honest framing rather than a silently
  * distorted one. Aspect-matched rects within those bounds pass through
- * unchanged, even below the target's {@link zoomOutFloorForAspect}: a `thumb`
- * following the `square` crop shows that crop's zoom, which may be deeper than
- * the thumbnail's own floor, and reshaping it would fight the follow sync.
+ * unchanged, even below the target's {@link zoomOutFloorForAspect}, so an
+ * oversized `thumb` following a zoomed-out `square` crop is never reshaped
+ * against the follow sync.
  */
 export function fitCropRectToAspect(rect: ImageCropRect, normalizedAspect: number): ImageCropRect {
 	if (rect.w <= 0 || rect.h <= 0 || normalizedAspect <= 0) {
@@ -473,9 +492,10 @@ export function imageMetaToFrameProps(meta: ImageMetadata | null): ImageFramePro
 /**
  * Resolve a gift crop target's stored crop, following the no-migration carry-over
  * chain: `square` falls back to the retired wide `card` crop (#163); the 1:1 `thumb`
- * falls back to the 4:3 `square` crop (#189). The same focal+zoom reprojects onto the
- * target's window at render time, so existing gifts get an immediate crop with no data
- * migration. Shared by the renderer (`giftTargetFrameProps`) and the editor seed
+ * falls back to the 4:3 `square` crop (#189). The crop applies to the target's window at
+ * render time (a following `thumb` through {@link followedGiftThumbZoom}), so existing gifts
+ * get an immediate crop with no data migration. Shared by the renderer
+ * (`giftTargetFrameProps`) and the editor seed
  * (`GiftDetailForm.initTargetRects`) so the two never desync.
  */
 export function resolveGiftTargetCrop(
@@ -489,13 +509,41 @@ export function resolveGiftTargetCrop(
 }
 
 /**
+ * The zoom a `thumb` without its own crop shows for the `square` (card) crop's
+ * zoom, at the photo's natural width ÷ height ratio ({@link followedZoomForAspect}).
+ */
+export function followedGiftThumbZoom(cardZoom: number, imageRatio: number): number {
+	return followedZoomForAspect(
+		cardZoom,
+		normalizedCropAspect(GIFT_CROP_TARGET_SPECS.square.aspect, imageRatio),
+		normalizedCropAspect(GIFT_CROP_TARGET_SPECS.thumb.aspect, imageRatio),
+	);
+}
+
+/**
+ * The editor window of a `thumb` following the `square` (card) crop: the card's
+ * focal point at {@link followedGiftThumbZoom}, as the renderer shows it.
+ */
+export function followedGiftThumbRect(cardRect: ImageCropRect, imageRatio: number): ImageCropRect {
+	const { focal, zoom } = cropRectToFocalZoom(cardRect);
+	return focalZoomToWindowRect(
+		focal,
+		followedGiftThumbZoom(zoom, imageRatio),
+		normalizedCropAspect(GIFT_CROP_TARGET_SPECS.thumb.aspect, imageRatio),
+	);
+}
+
+/**
  * Renderer props for one gift crop target (#116 D2): a manual per-target crop
  * overrides the automatic framing for that target only; without one the gift
- * renders exactly as before the per-target extension existed (REQ-8).
+ * renders exactly as before the per-target extension existed (REQ-8). A `thumb`
+ * following the card crop needs the photo's measured natural ratio to map the
+ * card's zoom; until it is known the card's zoom stands in.
  */
 export function giftTargetFrameProps(
 	meta: ImageMetadata | null,
 	target: GiftCropTarget,
+	naturalRatio: number | null = null,
 ): ImageFrameProps {
 	// Manual crops only apply on a cover-crop base: Fit (contain-padded) must
 	// letterbox both axes even when stale per-target crops linger in the metadata
@@ -506,10 +554,14 @@ export function giftTargetFrameProps(
 			? resolveGiftTargetCrop(meta.targets, target)
 			: undefined;
 	if (meta != null && targetCrop !== undefined) {
+		const followsCard =
+			target === 'thumb' && meta.targets?.thumb === undefined && naturalRatio !== null;
 		return {
 			fitMode: IMAGE_FIT_MODES.coverCrop,
 			focal: targetCrop.focal,
-			zoom: clampZoom(targetCrop.zoom),
+			zoom: followsCard
+				? followedGiftThumbZoom(targetCrop.zoom, naturalRatio)
+				: clampZoom(targetCrop.zoom),
 			fillColor: meta.bgColor ?? null,
 		};
 	}

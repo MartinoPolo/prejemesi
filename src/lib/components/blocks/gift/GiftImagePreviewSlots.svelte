@@ -2,14 +2,13 @@
 	import { Badge } from '$lib/components/base/badge/index.js';
 	import * as m from '$lib/paraglide/messages.js';
 	import { cn } from '$lib/utils.js';
-	import ImageFrame from '$lib/components/derived/image-frame/ImageFrame.svelte';
+	import GiftImage from './GiftImage.svelte';
 	import {
 		hasExplicitFrameFill,
 		IMAGE_TOKEN_SCOPES,
 		type ImageTokenScope,
 	} from '$lib/components/derived/image-frame/index.js';
 	import {
-		giftTargetFrameProps,
 		GIFT_CROP_TARGET_SPECS,
 		type GiftEditorCropTarget,
 		type ImageMetadata,
@@ -84,9 +83,8 @@
 
 <ul class={cn('pointer-events-none flex items-end justify-center gap-3', className)}>
 	{#each TILES as tile (tile.key)}
-		{@const frame = giftTargetFrameProps(imageMeta, tile.target)}
 		{@const showCardPattern =
-			tile.target === 'square' && !hasExplicitFrameFill(frame.fillColor)}
+			tile.target === 'square' && !hasExplicitFrameFill(imageMeta?.bgColor)}
 		<li class="flex min-w-0 flex-col items-center">
 			{#snippet tileFace()}
 				<!-- The frame is absolutely positioned: a %-height child inside an
@@ -108,14 +106,12 @@
 							aria-hidden="true"
 						></div>
 					{/if}
-					<ImageFrame
+					<GiftImage
 						class={cn('absolute inset-0', showCardPattern && 'bg-transparent')}
-						{src}
+						imageUrl={src}
+						{imageMeta}
+						target={tile.target}
 						{alt}
-						fitMode={frame.fitMode}
-						focal={frame.focal}
-						zoom={frame.zoom}
-						fillColor={frame.fillColor}
 						{tokenScope}
 						{loading}
 					/>

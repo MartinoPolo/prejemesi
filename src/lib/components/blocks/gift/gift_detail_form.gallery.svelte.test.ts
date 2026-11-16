@@ -359,14 +359,14 @@ describe('GiftDetailForm crop zoom-out', () => {
 		}
 		await expect.element(zoomOut).toBeDisabled();
 
-		// The thumbnail follows that card crop, deeper than its own 1:1 floor.
+		// The thumbnail follows that card framing: a card at its floor puts the square photo's
+		// 1:1 thumbnail at its own floor (70 %), not at the card's raw 53 %.
 		await screen.getByTestId('gift-preview-tile-thumb').click();
 		await expect
 			.element(screen.getByTestId('crop-stage-editing'))
 			.toHaveTextContent(m.image_crop_editing({ target: m.gift_image_target_thumb() }));
-		// The slider shows that inherited zoom instead of clamping to the 1:1 floor (70 %).
-		await expect.element(screen.getByTestId('crop-stage-zoom')).toHaveTextContent('53 %');
-		await expect.element(zoomSlider(screen)).toHaveValue('53');
+		await expect.element(screen.getByTestId('crop-stage-zoom')).toHaveTextContent('70 %');
+		await expect.element(zoomSlider(screen)).toHaveValue('70');
 		await screen.getByRole('button', { name: m.save() }).first().click();
 
 		const savedMeta = onupdate.mock.calls[0]![0].images![0]!.imageMeta!;

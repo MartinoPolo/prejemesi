@@ -227,7 +227,7 @@
 					aria-hidden={imageIndex !== index || undefined}
 				>
 					<GiftImage
-						class="size-full rounded-none bg-transparent max-sm:[&_img]:p-0"
+						class="size-full rounded-none bg-transparent"
 						imageUrl={resolveGiftImageUrl(image.imageUrl, image.imageKey)}
 						imageMeta={image.imageMeta}
 						target="square"

@@ -8,6 +8,9 @@ import {
 	buildManualGiftTargets,
 	ownGiftTargets,
 	cropRectToFocalZoom,
+	focalZoomToWindowRect,
+	followedGiftThumbRect,
+	normalizedCropAspect,
 	FULL_CROP_RECT,
 	type ImageFrameProps,
 } from './crop.js';
@@ -19,6 +22,7 @@ import {
 	type ImageCropRect,
 } from './types.js';
 import { GIFT_CROP_TARGET_SPECS, cropTargetSurfaceSize } from './crop_targets.js';
+import { expectRectClose } from './crop.test_fixtures.js';
 import { IMAGE_FIT_MODES } from '$lib/components/derived/image-frame/index.js';
 
 describe('imageMetaToFrameProps', () => {
@@ -234,6 +238,75 @@ describe('giftTargetFrameProps', () => {
 		expect(giftTargetFrameProps(editedMeta, 'thumb').focal).toEqual(thumbCrop.focal);
 		expect(giftTargetFrameProps(editedMeta, 'thumb').zoom).toBe(thumbCrop.zoom);
 	});
+
+	it('frames a following thumb by the card’s contain-to-cover position once the photo is measured', () => {
+		// A square photo: card Fit is zoom 0.75, the step in from it 0.85; the 1:1 thumb's
+		// contain equals cover, so both show the whole photo there.
+		const squareCrop = { cropRect: { x: 0, y: 0, w: 1, h: 0.75 }, focal: { x: 50, y: 40 } };
+		const followingMeta = (zoom: number) => ({
+			...baseMeta,
+			fitMode: IMAGE_FIT_MODES.coverCrop,
+			targets: { square: { ...squareCrop, zoom } },
+		});
+		expect(giftTargetFrameProps(followingMeta(0.75), 'thumb', 1).zoom).toBeCloseTo(1, 10);
+		expect(giftTargetFrameProps(followingMeta(0.85), 'thumb', 1).zoom).toBeCloseTo(1, 10);
+		expect(giftTargetFrameProps(followingMeta(0.85), 'thumb', 1).focal).toEqual(
+			squareCrop.focal,
+		);
+		expect(giftTargetFrameProps(followingMeta(1.5), 'thumb', 1).zoom).toBeCloseTo(1.5, 10);
+		// The card itself and a thumb with its own crop keep their stored zoom.
+		expect(giftTargetFrameProps(followingMeta(0.85), 'square', 1).zoom).toBe(0.85);
+		const ownThumbMeta = {
+			...followingMeta(0.85),
+			targets: { square: { ...squareCrop, zoom: 0.85 }, thumb: { ...squareCrop, zoom: 0.9 } },
+		};
+		expect(giftTargetFrameProps(ownThumbMeta, 'thumb', 1).zoom).toBe(0.9);
+	});
+
+	// Card zooms below the card's contain, between contain and cover, and beyond cover for a
+	// tall 1:2 (card contain 3/8), a square (3/4) and a wide 2:1 (2/3) photo.
+	it.each([
+		[0.5, 0.3],
+		[0.5, 0.7],
+		[0.5, 1.5],
+		[1, 0.6],
+		[1, 0.85],
+		[1, 1.5],
+		[2, 0.5],
+		[2, 0.8],
+		[2, 1.5],
+	])(
+		'shows a following thumb in the editor as the renderer does (photo ratio %s, card zoom %s)',
+		(imageRatio, cardZoom) => {
+			const cardRect = focalZoomToWindowRect(
+				{ x: 30, y: 70 },
+				cardZoom,
+				normalizedCropAspect(GIFT_CROP_TARGET_SPECS.square.aspect, imageRatio),
+			);
+			const meta = {
+				...baseMeta,
+				fitMode: IMAGE_FIT_MODES.coverCrop,
+				targets: { square: { cropRect: cardRect, ...cropRectToFocalZoom(cardRect) } },
+			};
+
+			const editorThumb = followedGiftThumbRect(cardRect, imageRatio);
+			const rendered = giftTargetFrameProps(meta, 'thumb', imageRatio);
+
+			expect(rendered.focal.x).toBeCloseTo(30, 10);
+			expect(rendered.focal.y).toBeCloseTo(70, 10);
+			expect(cropRectToFocalZoom(editorThumb).zoom).toBeCloseTo(rendered.zoom, 10);
+			// The same focal and zoom draw the same window; an axis the window spans fully has
+			// no focal to compare, so the window is the comparison.
+			expectRectClose(
+				editorThumb,
+				focalZoomToWindowRect(
+					rendered.focal,
+					rendered.zoom,
+					normalizedCropAspect(GIFT_CROP_TARGET_SPECS.thumb.aspect, imageRatio),
+				),
+			);
+		},
+	);
 
 	it('falls back to the base framing for thumb when neither thumb nor square exists (#189)', () => {
 		const meta = {

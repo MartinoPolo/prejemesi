@@ -10,7 +10,8 @@ import {
 	containCropRect,
 	centerCropRectOn,
 	alignCropRect,
-	reprojectCropRect,
+	followedGiftThumbRect,
+	followedZoomForAspect,
 	fitCropRectToAspect,
 	seedCropRectFromLegacyMeta,
 	zoomOutFloorForAspect,
@@ -365,30 +366,91 @@ describe('alignCropRect', () => {
 	});
 });
 
-describe('reprojectCropRect', () => {
-	it('keeps focal point and zoom when re-shaping for another target aspect', () => {
-		const card: ImageCropRect = { x: 0.2, y: 0.1, w: 0.5, h: 0.5 };
-		const thumb = reprojectCropRect(card, 0.75);
-		const source = cropRectToFocalZoom(card);
-		const reprojected = cropRectToFocalZoom(thumb);
-		expect(reprojected.zoom).toBeCloseTo(source.zoom, 6);
-		expect(reprojected.focal.x).toBeCloseTo(source.focal.x, 6);
-		expect(reprojected.focal.y).toBeCloseTo(source.focal.y, 6);
-		expect(thumb.w / thumb.h).toBeCloseTo(0.75, 6);
+// The 4:3 card and the 1:1 thumbnail at a photo's natural ratio.
+const cardAspect = (imageRatio: number) => normalizedCropAspect(4 / 3, imageRatio);
+const thumbAspect = (imageRatio: number) => normalizedCropAspect(1, imageRatio);
+
+describe('followedZoomForAspect', () => {
+	const follow = (cardZoom: number, imageRatio: number) =>
+		followedZoomForAspect(cardZoom, cardAspect(imageRatio), thumbAspect(imageRatio));
+
+	it('maps a square photo’s card Fit and the step in from it to the thumbnail’s Fit', () => {
+		// Card contain is 0.75, thumbnail contain equals cover (1).
+		expect(follow(0.75, 1)).toBeCloseTo(1, 10);
+		expect(follow(0.85, 1)).toBeCloseTo(1, 10);
 	});
 
-	it('keeps a crop zoomed out past contain inside its window on the other aspect', () => {
-		// A card crop at its floor (4:3 on a square photo) shown on the 1:1 thumb.
-		const card = zoomCropRect(centeredCropRect(4 / 3), 4 / 3, 0);
-		const thumb = reprojectCropRect(card, 1);
-		expect(cropRectToFocalZoom(thumb).zoom).toBeCloseTo(cropRectToFocalZoom(card).zoom, 6);
-		expectRectClose(thumb, {
-			x: 0.5 - thumb.w / 2,
-			y: 0.5 - thumb.h / 2,
-			w: thumb.w,
-			h: thumb.w,
-		});
+	it('keeps the relative position between contain and cover when both ranges are open', () => {
+		// Wide 2:1 photo: card contain 2/3, thumbnail contain 1/2.
+		expect(follow(2 / 3, 2)).toBeCloseTo(0.5, 10);
+		expect(follow(5 / 6, 2)).toBeCloseTo(0.75, 10);
+		// Tall 1:2 photo: card contain 3/8, thumbnail contain 1/2.
+		expect(follow(0.6875, 0.5)).toBeCloseTo(0.75, 10);
+	});
+
+	it('copies zooms at or beyond cover', () => {
+		expect(follow(1, 1)).toBeCloseTo(1, 10);
+		expect(follow(1.5, 1)).toBeCloseTo(1.5, 10);
+		expect(follow(2, 2)).toBeCloseTo(2, 10);
+		expect(follow(IMAGE_ZOOM_MAX, 0.5)).toBeCloseTo(IMAGE_ZOOM_MAX, 10);
+	});
+
+	it('keeps a card zoomed out past its contain proportionally looser than the thumbnail’s', () => {
+		expect(follow(0.6, 1)).toBeCloseTo(0.8, 10);
+		expect(follow(0.5, 2)).toBeCloseTo(0.375, 10);
+		expect(follow(0.3, 0.5)).toBeCloseTo(0.4, 10);
+	});
+
+	it('clamps a card zoomed out past its contain to the zoom-out minimum', () => {
+		// A 2:1 photo's thumbnail contain (1/2) is tighter than the card's (2/3), so the
+		// card's minimum maps below the minimum.
+		expect(follow(IMAGE_ZOOM_OUT_MIN, 2)).toBe(IMAGE_ZOOM_OUT_MIN);
+	});
+
+	it('lands a card at its zoom-out floor on the thumbnail’s floor', () => {
+		for (const imageRatio of [0.5, 1, 2]) {
+			expect(follow(zoomOutFloorForAspect(cardAspect(imageRatio)), imageRatio)).toBeCloseTo(
+				zoomOutFloorForAspect(thumbAspect(imageRatio)),
+				10,
+			);
+		}
+	});
+
+	it('copies the zoom when the photo already has the card’s aspect', () => {
+		expect(follow(0.8, 4 / 3)).toBeCloseTo(0.8, 10);
+		expect(follow(1.2, 4 / 3)).toBeCloseTo(1.2, 10);
+	});
+});
+
+describe('followedGiftThumbRect', () => {
+	it('frames a square photo’s card Fit and the step in from it as the whole thumbnail', () => {
+		const cardFit = containCropRect(cardAspect(1));
+		expectRectClose(followedGiftThumbRect(cardFit, 1), FULL_CROP_RECT);
+		const cardStepIn = zoomCropRect(cardFit, cardAspect(1), 0.85);
+		expectRectClose(followedGiftThumbRect(cardStepIn, 1), FULL_CROP_RECT);
+	});
+
+	it('keeps the card’s focal point and a zoom beyond cover at the thumbnail’s aspect', () => {
+		// A 4:3 window on a square photo at zoom 2.
+		const card: ImageCropRect = { x: 0.2, y: 0.1, w: 0.5, h: 0.375 };
+		const thumb = followedGiftThumbRect(card, 1);
+		const source = cropRectToFocalZoom(card);
+		const followed = cropRectToFocalZoom(thumb);
+		expect(followed.zoom).toBeCloseTo(2, 6);
+		expect(followed.focal.x).toBeCloseTo(source.focal.x, 6);
+		expect(followed.focal.y).toBeCloseTo(source.focal.y, 6);
+		expect(thumb.w / thumb.h).toBeCloseTo(1, 6);
+	});
+
+	it('keeps a card crop zoomed out past contain oversized and centered on the thumbnail', () => {
+		// A wide 2:1 photo, its card zoomed out to the floor around the center.
+		const card = zoomCropRect(centeredCropRect(cardAspect(2)), cardAspect(2), 0);
+		const thumb = followedGiftThumbRect(card, 2);
 		expect(thumb.w).toBeGreaterThan(1);
+		expect(thumb.h).toBeGreaterThan(1);
+		expect(thumb.w / thumb.h).toBeCloseTo(thumbAspect(2), 6);
+		expect(thumb.x + thumb.w / 2).toBeCloseTo(0.5, 6);
+		expect(thumb.y + thumb.h / 2).toBeCloseTo(0.5, 6);
 	});
 });
 
@@ -430,11 +492,10 @@ describe('fitCropRectToAspect', () => {
 		expectRectClose(fitCropRectToAspect(belowFloor, 1), belowFloor);
 	});
 
-	it('preserves a thumbnail following a card crop zoomed out deeper than its own floor', () => {
-		// A square photo: the 4:3 card may zoom out further than the 1:1 thumb.
-		const card = zoomCropRect(centeredCropRect(4 / 3), 4 / 3, 0);
-		const followingThumb = reprojectCropRect(card, 1);
-		expect(cropRectToFocalZoom(followingThumb).zoom).toBeLessThan(zoomOutFloorForAspect(1));
+	it('preserves a thumbnail following a card crop zoomed out to its floor', () => {
+		const card = zoomCropRect(centeredCropRect(cardAspect(1)), cardAspect(1), 0);
+		const followingThumb = followedGiftThumbRect(card, 1);
+		expect(followingThumb.w).toBeGreaterThan(1);
 		expectRectClose(fitCropRectToAspect(followingThumb, 1), followingThumb);
 	});
 

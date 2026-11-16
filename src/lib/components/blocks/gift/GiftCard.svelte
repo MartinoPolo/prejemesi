@@ -218,7 +218,7 @@
 				>
 					<div class={styles.cropComposition()} data-testid="gift-card-crop-composition">
 						<GiftImage
-							class="size-full rounded-none bg-transparent max-sm:[&_img]:p-0"
+							class="size-full rounded-none bg-transparent"
 							imageUrl={imageSrc}
 							imageMeta={gift.imageMeta}
 							target={isCarouselCard ? 'thumb' : 'square'}

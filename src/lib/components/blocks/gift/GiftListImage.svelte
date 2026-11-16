@@ -30,7 +30,7 @@
 	{...{ [GIFT_CARD_LAYOUT_INERT_ATTRIBUTE]: '' }}
 >
 	<GiftImage
-		class="size-full rounded-none max-sm:[&_img]:p-0"
+		class="size-full rounded-none"
 		{imageUrl}
 		{imageMeta}
 		target="thumb"
