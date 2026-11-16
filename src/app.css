@@ -376,6 +376,7 @@
 	--ease-out-strong: cubic-bezier(0.23, 1, 0.32, 1);
 	--duration-reveal: 600ms;
 	--duration-reveal-stagger: 120ms;
+	--press-scale: 0.98;
 
 	/* ── Layout ────────────────────────────────────────────── */
 	--content-default-max-width: 1200px;
@@ -975,7 +976,7 @@ html.dark {
 	> .elevation-surface {
 	box-shadow: var(--elevation-pressed);
 	translate: 0;
-	scale: 0.98;
+	scale: var(--press-scale);
 }
 
 /* Modal action menus block the page beneath them, so :hover cannot keep the open card lifted. */
