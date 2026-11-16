@@ -14,6 +14,7 @@
 		shouldIdlePreloadAuthenticatedRoutes,
 		type NetworkConnectionInfo,
 	} from './idle_preload_eligibility.js';
+	import { createContentScrollRestoration } from './content_scroll_restoration.svelte.js';
 
 	import type { Snippet } from 'svelte';
 	import type { LayoutData } from './$types.js';
@@ -47,6 +48,9 @@
 	// svelte-ignore state_referenced_locally (intentional initial seed; the count is owned/updated by the notifications context thereafter)
 	setNotificationsContext(data.unreadNotificationCount);
 	const assistantDock = setAssistantDockContext();
+
+	let contentScroller = $state<HTMLElement | null>(null);
+	export const snapshot = createContentScrollRestoration(() => contentScroller);
 
 	onMount(() => {
 		const connection = (navigator as Navigator & { connection?: NetworkConnectionInfo })
@@ -83,7 +87,11 @@
 			onexpired={() => (demoExpired = true)}
 		/>{/if}
 	{#if !demoExpired}<div class="app-body">
-			<main class="app-content" inert={assistantDock.modal.current}>
+			<main
+				bind:this={contentScroller}
+				class="app-content"
+				inert={assistantDock.modal.current}
+			>
 				<div
 					class="app-content-inner"
 					class:wishlist-detail-content={isWishlistDetailRoute}
