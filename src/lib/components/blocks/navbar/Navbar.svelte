@@ -471,6 +471,16 @@
 		flex-shrink: 0;
 	}
 
+	/* Reserves the scrollbar gutter `main.app-content` reserves from the same width, so the row
+	   keeps the content column's edges wherever classic scrollbars take space. The gutter needs
+	   hidden overflow, which clips nothing: the header's menus and popovers are portalled. */
+	@media (width >= 1024px) {
+		.topbar {
+			overflow: hidden;
+			scrollbar-gutter: stable;
+		}
+	}
+
 	.topbar-inner {
 		display: flex;
 		align-items: center;
