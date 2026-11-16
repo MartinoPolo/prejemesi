@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { getLayerPalette } from '$lib/theme/layer_palette.js';
+	import ModalPageBlocker from '../modal_page_blocker.svelte';
 	import { cn, type WithoutChildrenOrChild } from '$lib/utils.js';
 	import ContextMenuPortal from './context-menu-portal.svelte';
 	import {
@@ -15,6 +16,7 @@
 		sideOffset = 4,
 		align = 'start',
 		portalProps,
+		preventScroll = true,
 		class: className,
 		// The lock toggles user-select on <body> per press, restyling the whole document.
 		preventOverflowTextSelection = false,
@@ -27,7 +29,9 @@
 </script>
 
 <ContextMenuPortal {...portalProps}>
+	<ModalPageBlocker active={preventScroll && ref !== null} />
 	<ContextMenuPrimitive.Content
+		preventBodyPointerEvents={false}
 		data-dark-palette={layerPalette()}
 		bind:ref
 		data-slot="context-menu-content"
@@ -41,6 +45,7 @@
 			className,
 		)}
 		{preventOverflowTextSelection}
+		{preventScroll}
 		{...restProps}
 	/>
 </ContextMenuPortal>

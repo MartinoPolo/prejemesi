@@ -975,7 +975,7 @@ html.dark {
 	scale: 0.98;
 }
 
-/* Modal action menus disable body pointer events, so :hover cannot keep the open card lifted. */
+/* Modal action menus block the page beneath them, so :hover cannot keep the open card lifted. */
 @media (hover: hover) and (pointer: fine) {
 	.gift-card-root.elevation-owner-raised:not(
 			:disabled,

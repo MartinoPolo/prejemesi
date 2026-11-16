@@ -6,6 +6,7 @@
 	import DialogOverlay from './dialog-overlay.svelte';
 	import { Button } from '$lib/components/base/button/index.js';
 	import XIcon from '@lucide/svelte/icons/x';
+	import { markModalLayer } from '../modal_layer_context.js';
 	import { cn, type WithoutChildrenOrChild } from '$lib/utils.js';
 	import type { ComponentProps } from 'svelte';
 	import {
@@ -38,6 +39,7 @@
 	} = $props();
 
 	const layerPalette = getLayerPalette();
+	markModalLayer();
 </script>
 
 <DialogPortal {...portalProps}>

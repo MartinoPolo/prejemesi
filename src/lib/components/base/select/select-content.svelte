@@ -7,6 +7,7 @@
 		floatingDepthClearance,
 	} from '../floating_depth_clearance.js';
 	import { slidingFadeScaleOverlayMotionClass } from '../overlay_motion.js';
+	import ModalPageBlocker from '../modal_page_blocker.svelte';
 	import { cn, type WithoutChild } from '$lib/utils.js';
 	import type { ComponentProps } from 'svelte';
 	import type { WithoutChildrenOrChild } from '$lib/utils.js';
@@ -31,7 +32,9 @@
 </script>
 
 <SelectPortal {...portalProps}>
+	<ModalPageBlocker active={preventScroll && ref !== null} />
 	<SelectPrimitive.Content
+		preventBodyPointerEvents={false}
 		data-dark-palette={layerPalette()}
 		bind:ref
 		{sideOffset}
