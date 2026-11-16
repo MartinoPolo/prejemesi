@@ -6,6 +6,7 @@ import {
 	createPixelAssertions,
 	DEFAULT_PIXEL_TOLERANCE,
 } from '../../../../../tests/helpers/pixel-assertions.mjs';
+import { nextFrames } from '../../../../../tests/helpers/selection-slide-assertions.mjs';
 import type { ComponentProps } from 'svelte';
 import { flushSync } from 'svelte';
 import {
@@ -708,7 +709,9 @@ describe('WishlistGiftDisplay grouped reorder (#454)', () => {
 			const lampBadge = (testId: string) =>
 				lamp().querySelector<HTMLElement>(`[data-testid="${testId}"]`)!;
 
-			// A forced click lands on whatever the badge's position hit-tests to, like a real press.
+			// A forced click lands on whatever the badge's position hit-tests to, like a real press,
+			// which can only follow the first painted frame.
+			await nextFrames();
 			await userEvent.click(lampBadge('gift-category-badge'), { force: true });
 			expect(onselectiontoggle).toHaveBeenLastCalledWith('gift-lamp');
 
@@ -1151,6 +1154,52 @@ describe('WishlistGiftDisplay touch presses on card controls', () => {
 		} finally {
 			control.element().dispatchEvent(new PointerEvent('pointerup', press));
 			vi.useRealTimers();
+		}
+		await screen.unmount();
+	});
+});
+
+describe('WishlistGiftDisplay image load priority', () => {
+	const giftNames = ['Bez obrázku', 'První', 'Druhý', 'Třetí', 'Čtvrtý', 'Pátý'];
+	const giftsWithImages: GiftForVisitor[] = giftNames.map((name, index) => ({
+		...visitorGift(),
+		id: `gift-${String(index)}`,
+		name,
+		sortOrder: index,
+		imageUrl: index === 0 ? null : `https://example.test/${String(index)}.jpg`,
+	}));
+	const imageOf = (name: string) =>
+		document.querySelector<HTMLImageElement>(`img[alt="${name}"]`);
+
+	it.each([
+		['card', WISHLIST_ROLES.recipient],
+		['list', WISHLIST_ROLES.recipient],
+		['card', WISHLIST_ROLES.visitor],
+		['list', WISHLIST_ROLES.visitor],
+	] as const)('requests the leading %s images early for the %s', async (viewMode, role) => {
+		const screen = await render(WishlistGiftDisplayTestHost, {
+			...defaultProps,
+			viewMode,
+			role,
+			sections: [
+				{
+					kind: GIFT_SECTION_KINDS.available,
+					key: 'available',
+					label: null,
+					gifts: giftsWithImages,
+				},
+			],
+		});
+
+		await expect.poll(() => imageOf('Pátý')).not.toBeNull();
+		expect(imageOf('První')?.getAttribute('fetchpriority')).toBe('high');
+		expect(imageOf('První')?.getAttribute('loading')).toBe('eager');
+		for (const name of ['Druhý', 'Třetí']) {
+			expect(imageOf(name)?.getAttribute('loading')).toBe('eager');
+			expect(imageOf(name)?.hasAttribute('fetchpriority')).toBe(false);
+		}
+		for (const name of ['Čtvrtý', 'Pátý']) {
+			expect(imageOf(name)?.getAttribute('loading')).toBe('lazy');
 		}
 		await screen.unmount();
 	});

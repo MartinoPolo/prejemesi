@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { untrack } from 'svelte';
+	import { onMount, untrack } from 'svelte';
 	import { cn } from '$lib/utils.js';
 	import * as m from '$lib/paraglide/messages.js';
 	import { Skeleton } from '$lib/components/base/skeleton/index.js';
@@ -21,6 +21,7 @@
 	import type { ImageFocalPoint } from '$lib/modules/images/types.js';
 	import { clientSize } from '$lib/utils/shared_resize_observer.js';
 	import { appHydrated } from '$lib/utils/app_hydration.js';
+	import { afterNextPaint } from '$lib/utils/after_next_paint.js';
 	import { IMAGE_LOAD_PRIORITIES, type ImageLoadPriority } from './image_load_priority.js';
 	import {
 		IMAGE_VARIANTS,
@@ -122,11 +123,17 @@
 	const hasSrc = $derived(src !== null && src.trim() !== '');
 	// An eager image picks its srcset rung the moment it is inserted, so a client-created frame waits
 	// for its box: requesting at the fallback width would fetch a second rung once measured. Frames
-	// in server-rendered markup keep their source, which hydration must not remove.
+	// in server-rendered markup keep their source, which hydration must not remove. A laid-out box
+	// is reported before the first paint, so a box still empty after it (hidden, or sized by its
+	// own content) stops waiting rather than never loading.
 	const waitsForBox = untrack(
 		() => loadPriority !== IMAGE_LOAD_PRIORITIES.lazy && variant !== null && appHydrated(),
 	);
-	const sourceAwaitsBox = $derived(waitsForBox && (boxWidth === 0 || boxHeight === 0));
+	let boxWaitExpired = $state(false);
+	onMount(() => (waitsForBox ? afterNextPaint(() => (boxWaitExpired = true)) : undefined));
+	const sourceAwaitsBox = $derived(
+		waitsForBox && !boxWaitExpired && (boxWidth === 0 || boxHeight === 0),
+	);
 	const errored = $derived(hasSrc && erroredSrc === src);
 	// Skeleton shows while the image is in flight, or when the parent forces it.
 	const pending = $derived(hasSrc && loadedSrc !== src && erroredSrc !== src);

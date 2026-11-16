@@ -79,6 +79,39 @@ describe('ImageFrame responsive transformations', () => {
 		}
 	});
 
+	it('still loads a client-created eager image whose box is never laid out', async () => {
+		const unmarkHydrated = markAppHydrated();
+		try {
+			const screen = await render(ImageFrame, {
+				props: {
+					class: 'hidden',
+					src: `${PUBLIC_BASE}/gifts/d.jpg`,
+					alt: 'Gift',
+					variant: 'card',
+					loadPriority: 'eager',
+				},
+			});
+
+			await expect.poll(() => screen.container.querySelector('img')).not.toBeNull();
+		} finally {
+			unmarkHydrated();
+		}
+	});
+
+	it('keeps the image of an eager frame rendered before hydration in its first markup', async () => {
+		const screen = await render(ImageFrame, {
+			props: {
+				class: 'h-24 w-32',
+				src: `${PUBLIC_BASE}/gifts/e.jpg`,
+				alt: 'Gift',
+				variant: 'card',
+				loadPriority: 'high',
+			},
+		});
+
+		expect(screen.container.querySelector('img')).not.toBeNull();
+	});
+
 	it('loads the original without a srcset when no variant is requested', async () => {
 		const original = `${PUBLIC_BASE}/gifts/b.jpg`;
 		const screen = await render(ImageFrame, {

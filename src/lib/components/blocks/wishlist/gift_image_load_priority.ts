@@ -6,7 +6,7 @@ import { resolveGiftImageUrl } from '$lib/modules/images/public_url.js';
 import type { GiftByRole } from '$lib/modules/gifts/types.js';
 
 /** Leading gifts that load eagerly: a phone shows about the first row below the hero. */
-export const ABOVE_THE_FOLD_GIFT_COUNT = 4;
+const ABOVE_THE_FOLD_GIFT_COUNT = 4;
 
 /**
  * Load priority per gift id for gifts in display order: the leading gifts load eagerly so their
