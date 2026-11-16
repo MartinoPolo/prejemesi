@@ -39,6 +39,8 @@
 		loadPriority?: ImageLoadPriority;
 		/** Scopes the tier-2 background fill; gift images live inside a wishlist. */
 		tokenScope?: ImageTokenScope;
+		/** Force the loading skeleton (e.g. the editor previews). */
+		loading?: boolean;
 		class?: string;
 	}
 
@@ -50,12 +52,18 @@
 		variant = null,
 		loadPriority = IMAGE_LOAD_PRIORITIES.lazy,
 		tokenScope = IMAGE_TOKEN_SCOPES.wishlist,
+		loading = false,
 		class: className,
 	}: Props = $props();
 
+	// A thumbnail following the card crop maps its zoom by the photo's natural ratio,
+	// which no metadata stores, so it comes from the frame's own measurement.
+	let measuredImage = $state<{ src: string | null; ratio: number } | null>(null);
+	const naturalRatio = $derived(measuredImage?.src === imageUrl ? measuredImage.ratio : null);
+
 	// Single integration point: every gift image consumer renders through the shared
 	// #34 renderer with the saved metadata, so presentation is identical everywhere.
-	const frame = $derived(giftTargetFrameProps(imageMeta, target));
+	const frame = $derived(giftTargetFrameProps(imageMeta, target, naturalRatio));
 </script>
 
 <ImageFrame
@@ -69,4 +77,6 @@
 	zoom={frame.zoom}
 	fillColor={frame.fillColor}
 	{tokenScope}
+	{loading}
+	onmeasured={(ratio) => (measuredImage = { src: imageUrl, ratio })}
 />

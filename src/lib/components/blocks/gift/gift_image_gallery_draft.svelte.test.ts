@@ -1,10 +1,17 @@
 import { describe, expect, it, vi } from 'vitest';
 import { MAX_GIFT_IMAGES, type GiftImage } from '$lib/modules/gifts/gift_images.js';
 import {
+	containCropRect,
+	focalZoomToWindowRect,
+	normalizedCropAspect,
+	zoomCropRect,
+	FULL_CROP_RECT,
+	GIFT_CROP_TARGET_SPECS,
 	IMAGE_EDITOR_MODES,
 	IMAGE_FIT_MODES,
 	type ImageMetadata,
 } from '$lib/modules/images/index.js';
+import { expectRectClose } from '$lib/modules/images/crop.test_fixtures.js';
 import { GiftImageDraft, GiftImageGalleryDraft } from './gift_image_gallery_draft.svelte.js';
 
 vi.mock('$env/dynamic/public', () => ({ env: { PUBLIC_R2_URL: '/' } }));
@@ -189,5 +196,73 @@ describe('GiftImageDraft', () => {
 
 		expect(image.editorMode).toBe(IMAGE_EDITOR_MODES.manual);
 		expect(Object.keys(image.imageMeta.targets ?? {})).toEqual(['square']);
+	});
+
+	it('shows a square photo’s following thumbnail whole while the card zooms in from Fit', () => {
+		const image = new GiftImageDraft(storedImage('book'));
+		image.measuredNaturalRatio = 1;
+		const cardAspect = normalizedCropAspect(GIFT_CROP_TARGET_SPECS.square.aspect, 1);
+		const cardStepIn = zoomCropRect(containCropRect(cardAspect), cardAspect, 0.85);
+		image.targetRects.square = cardStepIn;
+		image.editCrop('square', cardStepIn);
+
+		image.syncFollowedThumbnail();
+
+		expectRectClose(image.targetRects.thumb, FULL_CROP_RECT);
+		expect(image.imageMeta.targets?.thumb).toBeUndefined();
+	});
+
+	it('follows a wide photo’s card at the same focal point and contain-to-cover position', () => {
+		// A 2:1 photo: card contain 2/3, thumbnail contain 1/2. Card zoom 5/6 sits halfway
+		// from contain to cover, so the thumbnail sits halfway too, at 3/4.
+		const image = new GiftImageDraft(storedImage('bench'));
+		image.measuredNaturalRatio = 2;
+		const focal = { x: 30, y: 70 };
+		const card = focalZoomToWindowRect(
+			focal,
+			5 / 6,
+			normalizedCropAspect(GIFT_CROP_TARGET_SPECS.square.aspect, 2),
+		);
+		image.targetRects.square = card;
+		image.editCrop('square', card);
+
+		image.syncFollowedThumbnail();
+
+		expectRectClose(
+			image.targetRects.thumb,
+			focalZoomToWindowRect(
+				focal,
+				0.75,
+				normalizedCropAspect(GIFT_CROP_TARGET_SPECS.thumb.aspect, 2),
+			),
+		);
+	});
+
+	it('leaves a thumbnail with its own crop untouched when the card changes', () => {
+		const image = new GiftImageDraft(storedImage('lamp'));
+		image.measuredNaturalRatio = 2;
+		const ownThumb = { x: 0.1, y: 0.2, w: 0.4, h: 0.8 };
+		image.targetRects.thumb = ownThumb;
+		image.editCrop('thumb', ownThumb);
+		const card = { x: 0.2, y: 0.1, w: 0.5, h: 0.75 };
+		image.targetRects.square = card;
+		image.editCrop('square', card);
+
+		image.syncFollowedThumbnail();
+
+		expect(image.targetRects.thumb).toEqual(ownThumb);
+	});
+
+	it('leaves the following thumbnail alone until the photo’s ratio is measured', () => {
+		const image = new GiftImageDraft(storedImage('vase'));
+		const thumbBefore = { ...image.targetRects.thumb };
+		const card = { x: 0.2, y: 0.1, w: 0.5, h: 0.375 };
+		image.targetRects.square = card;
+		image.editCrop('square', card);
+
+		image.syncFollowedThumbnail();
+
+		expect(image.measuredNaturalRatio).toBeNull();
+		expect(image.targetRects.thumb).toEqual(thumbBefore);
 	});
 });

@@ -10,9 +10,8 @@ import {
 	buildManualGiftTargets,
 	fitModeForEditorMode,
 	giftEditorModeFromMeta,
-	normalizedCropAspect,
 	ownGiftTargets,
-	reprojectCropRect,
+	followedGiftThumbRect,
 	resolveGiftTargetCrop,
 	seedCropRectFromLegacyMeta,
 	FULL_CROP_RECT,
@@ -280,16 +279,15 @@ export class GiftImageDraft {
 		this.dirtyTargets.delete('thumb');
 	}
 
-	/** A thumbnail without its own crop mirrors the card's focal point and zoom at its aspect. */
-	// fallow-ignore-next-line unused-class-member
+	/**
+	 * A thumbnail without its own crop shows the card's focal point at the card's framing
+	 * tightness, exactly as the renderer's fallback does (`giftTargetFrameProps`).
+	 */
 	syncFollowedThumbnail(): void {
 		if (this.ownTargets.has('thumb') || this.measuredNaturalRatio === null) {
 			return;
 		}
-		const followed = reprojectCropRect(
-			this.targetRects.square,
-			normalizedCropAspect(GIFT_CROP_TARGET_SPECS.thumb.aspect, this.measuredNaturalRatio),
-		);
+		const followed = followedGiftThumbRect(this.targetRects.square, this.measuredNaturalRatio);
 		if (!cropRectsEqual(followed, this.targetRects.thumb)) {
 			this.targetRects.thumb = followed;
 		}
