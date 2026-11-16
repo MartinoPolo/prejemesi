@@ -7,7 +7,7 @@ https://staging.prejemesi.cz runs the current `dev` branch so a release can be e
 | Concern | Staging |
 | --- | --- |
 | Worker | `prejemesi-staging`, `env.staging` in `wrangler.jsonc` |
-| Database | Neon branch `staging` (snapshot of production) behind its own Hyperdrive config; migrations run automatically on deploy |
+| Database | Neon branch `staging` (snapshot of production) behind its own Hyperdrive config with query caching disabled like production's, since cached reads show pre-save data after edits; migrations run automatically on deploy |
 | Images | R2 bucket `prejemesi-images-staging`, public at `staging-images.prejemesi.cz`; production objects are copied in, so staging deletes never reach production |
 | Email | Off: no `RESEND_API_KEY`, so sends are skipped and logged. Sign-up verification and password reset cannot complete; see [Sign in](#sign-in) |
 | AI assistant | Scripted fake provider (`CHAT_PROVIDER=fake`, no API cost), shown only to the emails in the `CHAT_ALLOWED_EMAILS` Worker secret; switch to `anthropic` and add an `ANTHROPIC_API_KEY` secret to test the real model |
