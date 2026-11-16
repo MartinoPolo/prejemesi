@@ -48,17 +48,19 @@ describe.each([
 		await expect.element(content).toHaveAttribute('data-state', 'closed');
 		expect(slotAtPagePoint()).toBe(overlaySlot);
 		const closingContent = content.element();
-		while (
-			closingContent.isConnected &&
-			Number(getComputedStyle(closingContent).opacity) > 0.5
-		) {
+		const slotsDuringExit = new Set<string | null | undefined>();
+		while (closingContent.isConnected) {
+			slotsDuringExit.add(slotAtPagePoint());
+			expect(document.body.style.pointerEvents).toBe('');
 			await new Promise((resolve) => requestAnimationFrame(resolve));
 		}
-		expect(closingContent.isConnected, 'the exit is observed midway').toBe(true);
-		expect(slotAtPagePoint()).toBe(overlaySlot);
-		expect(document.body.style.pointerEvents).toBe('');
+		expect(slotsDuringExit.size, 'the exit is observed').toBeGreaterThan(0);
+		for (const slot of slotsDuringExit) {
+			expect([overlaySlot, 'modal-page-blocker']).toContain(slot);
+		}
 
 		await expect.element(content).not.toBeInTheDocument();
+		expect(document.querySelector('[data-slot="modal-page-blocker"]')).toBeNull();
 		await expect.poll(() => document.querySelector(`[data-slot="${overlaySlot}"]`)).toBeNull();
 		expect(document.body.style.pointerEvents).toBe('');
 		expect(toastPointerEvents()).toBe('auto');
