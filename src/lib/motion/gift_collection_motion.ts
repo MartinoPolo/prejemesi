@@ -27,6 +27,21 @@ interface Snapshot {
 	toolbarHeight: number | null;
 }
 
+/** Quiet period that ends a scroll in browsers without `scrollend`. */
+const SCROLL_END_FALLBACK_DELAY = 150;
+
+interface Size {
+	width: number;
+	height: number;
+}
+
+/** Seeds come from whole-pixel offset sizes, so differences within half a pixel are rounding. */
+function sizeChanged(previous: Size, next: Size): boolean {
+	return (
+		Math.abs(previous.width - next.width) > 0.5 || Math.abs(previous.height - next.height) > 0.5
+	);
+}
+
 function intersectsViewport(rectangle: Rectangle, viewport: Window | null): boolean {
 	return (
 		viewport !== null &&
@@ -112,38 +127,40 @@ function cloneGift(element: HTMLElement): HTMLElement {
 	return clone;
 }
 
-function midpointIndex(elements: HTMLElement[], view: Window): number {
+/** First index whose rectangle has `reached`, for a condition that holds from some index on. */
+function firstIndexReaching(
+	elements: readonly HTMLElement[],
+	reached: (rectangle: DOMRect) => boolean,
+): number {
 	let lower = 0;
-	let upper = elements.length - 1;
+	let upper = elements.length;
 	while (lower < upper) {
 		const middle = Math.floor((lower + upper) / 2);
-		if (elements[middle]!.getBoundingClientRect().bottom < view.innerHeight / 2) {
-			lower = middle + 1;
-		} else {
+		if (reached(elements[middle]!.getBoundingClientRect())) {
 			upper = middle;
+		} else {
+			lower = middle + 1;
 		}
 	}
 	return lower;
 }
 
-function sampledGiftIndices(host: HTMLElement, elements: HTMLElement[], view: Window): number[] {
-	const indices: number[] = [];
-	for (const y of [1 / 6, 1 / 2, 5 / 6]) {
-		for (const x of [1 / 6, 1 / 2, 5 / 6]) {
-			for (const node of host.ownerDocument.elementsFromPoint(
-				view.innerWidth * x,
-				view.innerHeight * y,
-			)) {
-				const candidate = node.closest<HTMLElement>('[data-gift-item]');
-				const index = candidate === null ? -1 : elements.indexOf(candidate);
-				if (index >= 0) {
-					indices.push(index);
-					break;
-				}
-			}
+/**
+ * Gifts follow reading order, so the rows crossing the viewport form one range found by bisection;
+ * within it, horizontally scrolled rows keep only the gifts on screen. Plain geometry reads avoid
+ * the hit testing that forces style and layout of the whole page.
+ */
+function viewportCenterIndex(elements: readonly HTMLElement[], view: Window): number {
+	const first = firstIndexReaching(elements, (rectangle) => rectangle.bottom > 0);
+	const end = firstIndexReaching(elements, (rectangle) => rectangle.top >= view.innerHeight);
+	const onScreen: number[] = [];
+	for (let index = first; index < end; index++) {
+		const rectangle = elements[index]!.getBoundingClientRect();
+		if (rectangle.right > 0 && rectangle.left < view.innerWidth) {
+			onScreen.push(index);
 		}
 	}
-	return indices.sort((left, right) => left - right);
+	return onScreen[Math.floor(onScreen.length / 2)] ?? Math.min(first, elements.length - 1);
 }
 
 function candidates(host: HTMLElement): HTMLElement[] {
@@ -152,9 +169,8 @@ function candidates(host: HTMLElement): HTMLElement[] {
 	if (!view || elements.length <= LAYOUT_GIFT_MOTION_LIMIT) {
 		return elements;
 	}
-	// Sample the viewport rather than measuring every item in an unpaginated wishlist.
-	const indices = sampledGiftIndices(host, elements, view);
-	const index = indices[Math.floor(indices.length / 2)] ?? midpointIndex(elements, view);
+	// Center on the viewport rather than measuring every item in an unpaginated wishlist.
+	const index = viewportCenterIndex(elements, view);
 	const start = Math.min(
 		Math.max(0, index - Math.floor(LAYOUT_GIFT_MOTION_LIMIT / 2)),
 		elements.length - LAYOUT_GIFT_MOTION_LIMIT,
@@ -183,6 +199,8 @@ export function createGiftCollectionMotion(
 	let scheduled = 0;
 	let destroyed = false;
 	let suspended = false;
+	let scrollEndFallback: ReturnType<typeof setTimeout> | undefined;
+	const scrollEndSupported = 'onscrollend' in window;
 	const animations = new Set<Animation>();
 	const overlays = new Map<HTMLElement, GiftPosition>();
 	const scrollPositions = new Map<HTMLElement, { left: number; top: number }>();
@@ -190,7 +208,26 @@ export function createGiftCollectionMotion(
 	const movingElements = new Map<HTMLElement, Animation>();
 	let toolbarAnimation: Animation | null = null;
 	const observed = new Set<HTMLElement>();
-	const resizeObserver = new ResizeObserver(() => schedule());
+	const observedSizes = new WeakMap<Element, Size>();
+	// A notification, including the initial one, schedules a settle only for a size the last
+	// measurement did not see.
+	const resizeObserver = new ResizeObserver((entries) => {
+		let resized = false;
+		for (const entry of entries) {
+			const box = entry.borderBoxSize[0];
+			if (box === undefined) {
+				resized = true;
+				continue;
+			}
+			const size = { width: box.inlineSize, height: box.blockSize };
+			const previous = observedSizes.get(entry.target);
+			resized ||= previous === undefined || sizeChanged(previous, size);
+			observedSizes.set(entry.target, size);
+		}
+		if (resized) {
+			schedule();
+		}
+	});
 	const mutationObserver = new MutationObserver((records) => {
 		const relevant = records.filter(
 			(record) =>
@@ -308,9 +345,9 @@ export function createGiftCollectionMotion(
 	}
 
 	/**
-	 * Sampling candidates hit-tests the viewport, so callers reuse one sample while the DOM is
+	 * Choosing candidates reads gift geometry, so callers reuse one choice while the DOM is
 	 * unchanged. A running toolbar animation is revealed inside an endpoint measure, which moves the
-	 * window, so measure samples for itself then.
+	 * window, so `measure` chooses its own candidates then.
 	 */
 	function reusableCandidates(): HTMLElement[] | undefined {
 		return toolbarAnimation === null ? candidates(host) : undefined;
@@ -513,9 +550,16 @@ export function createGiftCollectionMotion(
 		animateDepartures(previous, next);
 	}
 
+	function seedObservedSize(element: HTMLElement) {
+		observedSizes.set(element, { width: element.offsetWidth, height: element.offsetHeight });
+	}
+
+	/** Records the sizes this measurement saw, so only later resizes schedule a settle. */
 	function observe(elements: readonly HTMLElement[] = candidates(host)) {
+		seedObservedSize(host);
 		const currentCandidates = new Set(elements);
 		for (const element of currentCandidates) {
+			seedObservedSize(element);
 			if (!observed.has(element)) {
 				resizeObserver.observe(element);
 				observed.add(element);
@@ -736,27 +780,39 @@ export function createGiftCollectionMotion(
 		const deltaX = target.scrollLeft - previous.left;
 		const deltaY = target.scrollTop - previous.top;
 		scrollPositions.set(target, { left: target.scrollLeft, top: target.scrollTop });
+		// Shifting keeps known gifts current without measuring during the gesture; gifts scrolled
+		// into view join the baseline at scroll end, so an action mid-gesture fades them in.
 		shiftSnapshot(baseline, target, deltaX, deltaY);
 		shiftSnapshot(pending, target, deltaX, deltaY);
-		if (pending === null && !suspended) {
-			const elements = reusableCandidates();
-			baseline = adoptClones(measure(false, true, elements), baseline);
-			observe(elements);
-		}
 		for (const [visual, position] of overlays) {
 			if (position.scrollAncestors.includes(target)) {
 				visual.style.left = `${Number.parseFloat(visual.style.left) - deltaX}px`;
 				visual.style.top = `${Number.parseFloat(visual.style.top) - deltaY}px`;
 			}
 		}
-	}
-	function onScrollEnd(event: Event) {
-		if (collectionScrollTarget(event) === null) {
-			return;
+		if (!scrollEndSupported) {
+			clearTimeout(scrollEndFallback);
+			scrollEndFallback = setTimeout(refreshScrolledBaseline, SCROLL_END_FALLBACK_DELAY);
 		}
+	}
+
+	function onScrollEnd(event: Event) {
+		if (collectionScrollTarget(event) !== null) {
+			refreshScrolledBaseline();
+		}
+	}
+
+	function refreshScrolledBaseline() {
 		// Drag auto-scroll ends a scroll every frame; the drop settles a fresh baseline instead.
 		if (pending === null && !suspended && !destroyed && !dragInProgress()) {
-			baseline = measure(true, true);
+			const elements = reusableCandidates();
+			const next = adoptClones(measure(false, true, elements), baseline);
+			// Scrolling changes no gift, so only gifts new to the baseline need a departure clone.
+			for (const position of next.gifts.values()) {
+				position.clone ??= cloneGift(position.element);
+			}
+			baseline = next;
+			observe(elements);
 		}
 	}
 
@@ -785,6 +841,7 @@ export function createGiftCollectionMotion(
 		destroy() {
 			destroyed = true;
 			cancelAnimationFrame(scheduled);
+			clearTimeout(scrollEndFallback);
 			cancel();
 			resizeObserver.disconnect();
 			mutationObserver.disconnect();
