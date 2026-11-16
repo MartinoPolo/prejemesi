@@ -1,0 +1,2827 @@
+<!doctype html>
+<html lang="cs">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>Upravit dárek: karta v hlavní roli + krok úpravy obrázku (refined)</title>
+		<link rel="stylesheet" href="assets/app.css" />
+		<style>
+			/* The compiled asset predates these tokens; values mirror src/app.css. */
+			:root {
+				--edge: var(--ink);
+				--edge-control: var(--edge);
+				--scrim: color-mix(in oklab, var(--p-ink) 45%, transparent);
+			}
+
+			/* ---------- Presentation board ---------- */
+			.board {
+				min-height: 100vh;
+				padding: 2.5rem 2.5rem 4rem;
+				background: var(--muted);
+				color: var(--foreground);
+				font-family: var(--font-body);
+			}
+
+			.board-eyebrow {
+				margin: 0 0 0.375rem;
+				color: var(--muted-foreground);
+				font-family: var(--font-head);
+				font-size: var(--text-sm);
+				font-weight: 700;
+				letter-spacing: var(--tracking-wide);
+			}
+
+			.board-title {
+				margin: 0 0 0.5rem;
+				font-family: var(--font-head);
+				font-size: var(--text-3xl);
+				font-weight: 600;
+				line-height: var(--leading-tight);
+			}
+
+			.board-rationale {
+				max-width: 96ch;
+				margin: 0 0 2.5rem;
+				font-size: var(--text-lg);
+				line-height: var(--leading-snug);
+			}
+
+			.board-section {
+				display: grid;
+				gap: 2.5rem;
+				margin-bottom: 3rem;
+			}
+
+			.board-row {
+				display: flex;
+				flex-wrap: wrap;
+				gap: 2.5rem;
+				align-items: flex-start;
+			}
+
+			.board-state {
+				display: grid;
+				gap: 0.75rem;
+				margin: 0;
+			}
+
+			.board-state > figcaption {
+				max-width: 1440px;
+				font-size: var(--text-base);
+				line-height: var(--leading-snug);
+			}
+
+			.board-row .board-state > figcaption {
+				max-width: 390px;
+			}
+
+			.board-state > figcaption strong {
+				font-family: var(--font-head);
+				font-weight: 600;
+			}
+
+			/* ---------- Device frames ---------- */
+			.desk {
+				position: relative;
+				width: 1440px;
+				height: 900px;
+				overflow: hidden;
+				border: var(--border-w) solid var(--edge);
+				border-radius: 14px;
+				background: var(--app-page-background);
+				isolation: isolate;
+
+				--ctl: var(--size-control-md);
+				--ctl-pad: 0.75rem;
+				--ctl-font: var(--text-md);
+				--gift-title-size: 1.5rem;
+				--gift-desc-lines: 1;
+			}
+
+			.phone {
+				position: relative;
+				width: 390px;
+				height: 844px;
+				overflow: hidden;
+				border: var(--border-w) solid var(--edge);
+				border-radius: 28px;
+				background: var(--card);
+				box-shadow: var(--elevation-ordinary);
+				isolation: isolate;
+
+				--ctl: var(--size-control-lg);
+				--ctl-pad: 1rem;
+				--ctl-font: var(--text-base);
+				--gift-title-size: 1rem;
+				--gift-desc-lines: 2;
+			}
+
+			/* ---------- Dimmed wishlist page behind the desktop dialog ---------- */
+			.page-nav {
+				display: flex;
+				height: 60px;
+				align-items: center;
+				gap: 1.5rem;
+				padding-inline: 2rem;
+				border-bottom: 1px solid var(--border);
+				background: var(--card);
+			}
+
+			.page-brand {
+				color: var(--brand-deep);
+				font-family: var(--font-head);
+				font-size: var(--text-xl);
+				font-weight: 700;
+			}
+
+			.page-nav-link {
+				color: var(--muted-foreground);
+				font-size: var(--text-base);
+				font-weight: 600;
+			}
+
+			.page-head {
+				padding: 2rem 2rem 1.25rem;
+			}
+
+			.page-head h2 {
+				margin: 0 0 0.25rem;
+				font-family: var(--font-head);
+				font-size: var(--text-3xl);
+				font-weight: 600;
+			}
+
+			.page-head p {
+				margin: 0;
+				color: var(--muted-foreground);
+				font-size: var(--text-base);
+			}
+
+			.page-grid {
+				display: grid;
+				grid-template-columns: repeat(4, minmax(0, 1fr));
+				gap: 1.25rem;
+				padding-inline: 2rem;
+			}
+
+			/* Dialog.Overlay: bg-scrim + 2.5px backdrop blur. */
+			.scrim {
+				position: absolute;
+				inset: 0;
+				z-index: 5;
+				background: var(--scrim);
+				backdrop-filter: blur(2.5px);
+			}
+
+			/* ---------- Dialog chrome: Dialog.Content layout="scroll" ---------- */
+			.dlg {
+				position: absolute;
+				display: flex;
+				flex-direction: column;
+				overflow: hidden;
+				background: var(--card);
+				color: var(--card-foreground);
+			}
+
+			/* top-[10vh], max-h-[85dvh], rounded-panel, 2.5px edge border, shadow-sticker; width from
+			   the gift modal's sm:max-w-[1100px]. Height pinned to the cap so the step switch never resizes. */
+			.desk .dlg {
+				top: 90px;
+				left: 50%;
+				z-index: 10;
+				width: 1100px;
+				height: 765px;
+				translate: -50% 0;
+				border: 2.5px solid var(--edge);
+				border-radius: var(--radius-panel);
+				box-shadow: var(--elevation-ordinary);
+			}
+
+			.phone .dlg {
+				inset: 0;
+			}
+
+			/* Dialog.Header: px-6 pt-6 pb-4, no divider; Dialog.Title: font-heading text-2xl leading-tight
+			   font-semibold, reserving the close-button clearance at the end (both ends on phones). */
+			.dlg-head {
+				display: flex;
+				flex-shrink: 0;
+				flex-direction: column;
+				gap: 0.5rem;
+				padding: 1.5rem 1.5rem 1rem;
+				text-align: left;
+			}
+
+			/* Compact phone header (owner's pick): left-aligned title on the close button's row. */
+			.phone .dlg-head {
+				padding: var(--overlay-close-inset) 1.5rem 0.75rem;
+			}
+
+			.phone .dlg-title {
+				padding-block: calc((var(--size-control-lg) - 1lh) / 2);
+			}
+
+			.dlg-title {
+				margin: 0;
+				padding-inline-end: var(--overlay-close-clearance-inside-dialog-padding);
+				font-family: var(--font-head);
+				font-size: var(--text-2xl);
+				font-weight: 600;
+				line-height: var(--leading-tight);
+				overflow-wrap: break-word;
+			}
+
+			.dlg-head.has-back .dlg-title {
+				padding-inline: var(--overlay-close-clearance-inside-dialog-padding);
+			}
+
+			.dlg-title .count {
+				color: var(--muted-foreground);
+				font-family: var(--font-body);
+				font-weight: 600;
+			}
+
+			/* overlayCloseButtonClass + overlayCloseButtonSurfaceClass (dialog_close_button.ts):
+			   40px circular sticker at --overlay-close-inset, card face, 2.5px edge, 16px icon. */
+			.overlay-btn {
+				position: absolute;
+				top: var(--overlay-close-inset);
+				z-index: 2;
+				width: var(--size-control-lg);
+				height: var(--size-control-lg);
+				padding: 0;
+				border: 0;
+				border-radius: 999px;
+				background: none;
+				color: var(--ink);
+				cursor: pointer;
+			}
+
+			.overlay-btn.close {
+				inset-inline-end: var(--overlay-close-inset);
+			}
+
+			.overlay-btn.back {
+				inset-inline-start: var(--overlay-close-inset);
+			}
+
+			.overlay-btn > .face {
+				display: grid;
+				width: 100%;
+				height: 100%;
+				box-sizing: border-box;
+				place-items: center;
+				border: 2.5px solid var(--edge);
+				border-radius: 999px;
+				background: var(--card);
+				transition:
+					translate var(--duration-normal) var(--ease-standard),
+					box-shadow var(--duration-normal) var(--ease-standard);
+			}
+
+			.overlay-btn .i {
+				transition: rotate var(--duration-normal) var(--ease-standard);
+			}
+
+			.overlay-btn.close:hover .i {
+				rotate: 90deg;
+			}
+
+			.overlay-btn:focus-visible {
+				outline: 2px solid var(--ring);
+				outline-offset: 2px;
+			}
+
+			/* Dialog.Body: px-6, pt = --dialog-body-padding-top (4px), pb-6; the only scroller. */
+			.dlg-body {
+				position: relative;
+				flex: 1;
+				min-height: 0;
+				overflow-y: auto;
+				overscroll-behavior: contain;
+				padding: 4px 1.5rem 1.5rem;
+			}
+
+			.dlg-body.no-scroll {
+				overflow: hidden;
+			}
+
+			/* Dialog.Footer: border-t border-border bg-background px-6 py-4, gap nested-control-gap,
+			   flex-col-reverse on phones (primary on top), row + justify-end from sm. */
+			.dlg-foot {
+				display: flex;
+				flex-shrink: 0;
+				flex-direction: row;
+				justify-content: flex-end;
+				align-items: center;
+				gap: var(--nested-control-gap);
+				padding: 1rem 1.5rem;
+				border-top: 1px solid var(--border);
+				background: var(--background);
+			}
+
+			/* Compact phone footer: one row, Uložit takes the remaining width. */
+			.phone .dlg-foot {
+				padding-block: 0.75rem;
+			}
+
+			.phone .dlg-foot .btn.primary {
+				flex: 1;
+			}
+
+			.dlg-foot .lead {
+				margin-inline-end: auto;
+			}
+
+			.dlg-foot .foot-hint {
+				margin-inline-end: auto;
+				color: var(--muted-foreground);
+				font-size: var(--text-md);
+			}
+
+			.dlg[data-step='main'] [data-step-only='frame'],
+			.dlg[data-step='frame'] [data-step-only='main'] {
+				display: none !important;
+			}
+
+			/* ---------- Icons ---------- */
+			.i {
+				width: 1rem;
+				height: 1rem;
+				flex-shrink: 0;
+				fill: none;
+				stroke: currentColor;
+				stroke-width: 2;
+				stroke-linecap: round;
+				stroke-linejoin: round;
+			}
+
+			.i-xs {
+				width: 0.75rem;
+				height: 0.75rem;
+			}
+
+			.i-sm {
+				width: 0.875rem;
+				height: 0.875rem;
+			}
+
+			.i-fill {
+				fill: currentColor;
+			}
+
+			/* ---------- Button (owner + moving surface, mirrors Button intents) ---------- */
+			.btn {
+				--h: var(--ctl);
+				--pad: var(--ctl-pad);
+				--fs: var(--ctl-font);
+
+				position: relative;
+				display: inline-flex;
+				flex-shrink: 0;
+				height: var(--h);
+				padding: 0;
+				border: 0;
+				border-radius: var(--radius-btn);
+				background: none;
+				color: inherit;
+				font: inherit;
+				font-weight: 600;
+				line-height: 1;
+				white-space: nowrap;
+				cursor: pointer;
+				user-select: none;
+			}
+
+			.btn.sm {
+				--h: var(--size-control-sm);
+				--pad: 0.5625rem;
+				--fs: var(--text-sm);
+			}
+
+			.btn.md {
+				--h: var(--size-control-md);
+				--pad: 0.75rem;
+				--fs: var(--text-md);
+			}
+
+			.btn:focus-visible {
+				outline: 2px solid var(--ring);
+				outline-offset: 2px;
+			}
+
+			.btn > .face {
+				display: inline-flex;
+				width: 100%;
+				height: 100%;
+				box-sizing: border-box;
+				align-items: center;
+				justify-content: center;
+				gap: 0.375rem;
+				padding-inline: var(--pad);
+				border: 2.5px solid transparent;
+				border-radius: inherit;
+				font-size: var(--fs);
+				transition:
+					translate var(--duration-normal) var(--ease-standard),
+					box-shadow var(--duration-normal) var(--ease-standard),
+					background-color var(--duration-fast) var(--ease-standard);
+			}
+
+			.btn.icon {
+				aspect-ratio: 1;
+			}
+
+			.btn.icon > .face {
+				padding: 0;
+			}
+
+			.btn.primary > .face {
+				border-color: var(--edge);
+				background: var(--primary);
+				color: var(--primary-foreground);
+			}
+
+			.btn.primary:hover > .face {
+				background: var(--primary-hover);
+			}
+
+			.btn.outline > .face {
+				border-color: var(--edge);
+				background: var(--card);
+				color: var(--foreground);
+			}
+
+			.btn.outline:hover > .face {
+				background: var(--accent);
+			}
+
+			.btn.ghost > .face {
+				color: var(--muted-foreground);
+			}
+
+			.btn.ghost:hover > .face {
+				background: var(--accent);
+				color: var(--foreground);
+			}
+
+			.btn.danger > .face {
+				border-color: var(--status-danger);
+				background: var(--card);
+				color: var(--status-danger-text);
+			}
+
+			.btn.danger:hover > .face {
+				background: color-mix(in oklab, var(--status-danger) 10%, var(--card));
+			}
+
+			.btn.quiet-danger > .face {
+				color: var(--muted-foreground);
+			}
+
+			.btn.quiet-danger:hover > .face {
+				background: color-mix(in oklab, var(--status-danger) 10%, transparent);
+				color: var(--status-danger-text);
+			}
+
+
+			/* Segmented ToggleGroup (default intent): ghost items, the pressed one gets the accent face. */
+			.seg {
+				display: flex;
+				align-items: center;
+				gap: 2px;
+			}
+
+			.seg .btn[aria-pressed='true'] > .face {
+				border-color: var(--edge);
+				background: var(--accent);
+				color: var(--foreground);
+			}
+
+			.seg.fill-width .btn {
+				flex: 1;
+			}
+
+			/* ---------- Form controls (mirror Input / Textarea / Select) ---------- */
+			.field {
+				display: flex;
+				min-width: 0;
+				flex-direction: column;
+				gap: 0.375rem;
+			}
+
+			.lbl {
+				display: flex;
+				min-height: 1rem;
+				align-items: center;
+				justify-content: space-between;
+				gap: 0.5rem;
+				font-size: var(--text-sm);
+				font-weight: 600;
+				line-height: 1;
+				white-space: nowrap;
+			}
+
+			.phone .lbl {
+				font-size: var(--text-md);
+			}
+
+			.lbl-aside {
+				min-width: 0;
+				overflow: hidden;
+				color: var(--muted-foreground);
+				font-weight: 500;
+				text-overflow: ellipsis;
+				white-space: nowrap;
+			}
+
+			.lbl-action {
+				padding: 0;
+				border: 0;
+				background: none;
+				color: var(--brand-link);
+				font: inherit;
+				font-weight: 600;
+				text-decoration: underline;
+				text-underline-offset: 2px;
+				cursor: pointer;
+			}
+
+			.help {
+				margin: 0;
+				color: var(--muted-foreground);
+				font-size: var(--text-sm);
+				line-height: var(--leading-snug);
+			}
+
+			.inp {
+				box-sizing: border-box;
+				width: 100%;
+				height: var(--ctl);
+				padding-inline: var(--ctl-pad);
+				border: 2.5px solid var(--edge-control);
+				border-radius: var(--radius-btn);
+				background: var(--card);
+				color: var(--foreground);
+				font: 500 var(--ctl-font) / 1 var(--font-body);
+				outline: none;
+				transition:
+					border-color var(--duration-fast),
+					box-shadow var(--duration-fast);
+			}
+
+			.inp:focus-visible {
+				border-color: var(--ring);
+				box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 22%, transparent);
+			}
+
+			textarea.inp {
+				height: auto;
+				padding-block: 0.375rem;
+				line-height: 1.45;
+				resize: none;
+			}
+
+			.inp-select {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				gap: 0.5rem;
+				cursor: pointer;
+			}
+
+			.inp-suffix {
+				position: relative;
+			}
+
+			.inp-suffix .inp {
+				padding-right: 2.75rem;
+				font-variant-numeric: tabular-nums;
+			}
+
+			.inp-suffix span {
+				position: absolute;
+				top: 50%;
+				right: var(--ctl-pad);
+				translate: 0 -50%;
+				color: var(--muted-foreground);
+				font-size: var(--ctl-font);
+				font-weight: 600;
+			}
+
+			.stepper {
+				display: flex;
+				box-sizing: border-box;
+				align-items: center;
+				height: var(--ctl);
+				border: 2.5px solid var(--edge-control);
+				border-radius: var(--radius-btn);
+				background: var(--card);
+			}
+
+			.stepper .btn {
+				--h: calc(var(--ctl) - 5px);
+			}
+
+			.stepper output {
+				flex: 1;
+				font-size: var(--ctl-font);
+				font-weight: 600;
+				text-align: center;
+				font-variant-numeric: tabular-nums;
+			}
+
+			.prio-dot {
+				width: 0.625rem;
+				height: 0.625rem;
+				border: 2px solid var(--edge);
+				border-radius: 50%;
+				background: oklch(0.92 0.06 25);
+			}
+
+			/* ---------- Badges ---------- */
+			.badge {
+				display: inline-flex;
+				height: 22px;
+				box-sizing: border-box;
+				align-items: center;
+				gap: 0.25rem;
+				padding-inline: 0.5rem;
+				border: 2px solid var(--edge);
+				border-radius: var(--radius-badge);
+				background: var(--card);
+				color: var(--muted-foreground);
+				font-size: var(--text-xs);
+				font-weight: 700;
+				letter-spacing: 0.01em;
+				white-space: nowrap;
+				font-variant-numeric: tabular-nums;
+			}
+
+			.badge.overlay {
+				box-shadow: var(--elevation-compact);
+				color: var(--ink);
+			}
+
+			/* PRIORITY_DISPLAY.Vysoka colours (gift_display.ts). */
+			.badge.prio {
+				background: oklch(0.92 0.06 25);
+				color: oklch(0.45 0.15 25);
+			}
+
+			.stat[data-state='custom'] {
+				background: color-mix(in oklab, var(--primary) 14%, var(--card));
+				color: var(--brand-link);
+			}
+
+			.cat {
+				display: inline-block;
+				max-width: 100%;
+				overflow: hidden;
+				padding: 0.125rem 0.625rem;
+				border: 2px solid var(--edge);
+				border-radius: var(--radius-badge);
+				font-size: var(--text-xs);
+				font-weight: 800;
+				line-height: 1rem;
+				text-overflow: ellipsis;
+				white-space: nowrap;
+			}
+
+			.cat-outdoor {
+				background: #047857;
+				color: #fff;
+			}
+
+			kbd {
+				display: inline-flex;
+				min-width: 1.25rem;
+				height: 1.25rem;
+				box-sizing: border-box;
+				align-items: center;
+				justify-content: center;
+				padding-inline: 0.3rem;
+				border: 1.5px solid color-mix(in oklab, var(--ink) 30%, transparent);
+				border-radius: 5px;
+				background: var(--card);
+				color: var(--foreground);
+				font: 600 var(--text-2xs) / 1 var(--font-body);
+			}
+
+			/* ---------- Text link (TextLink sm, external) ---------- */
+			.tlink {
+				display: inline-flex;
+				max-width: 100%;
+				min-width: 0;
+				align-items: center;
+				gap: 0.25rem;
+				color: var(--brand-link);
+				font-size: var(--text-sm);
+				font-weight: 600;
+				text-decoration: underline;
+				text-decoration-thickness: 1px;
+				text-underline-offset: 2px;
+			}
+
+			.tlink .i {
+				width: 1em;
+				height: 1em;
+			}
+
+			/* ---------- GiftCard reproduction ---------- */
+			.gcard {
+				position: relative;
+				width: var(--card-w, 100%);
+				border-radius: var(--radius-panel);
+			}
+
+			.gcard-surface {
+				display: grid;
+				grid-template-rows: auto minmax(0, 1fr) auto;
+				border: var(--border-w) solid var(--edge);
+				border-radius: inherit;
+				background: var(--card);
+				box-shadow: var(--elevation-ordinary);
+			}
+
+			.g-img {
+				position: relative;
+				isolation: isolate;
+				box-sizing: content-box;
+				aspect-ratio: 4 / 3;
+				overflow: hidden;
+				padding-bottom: var(--border-w);
+				border-radius: calc(var(--radius-panel) - var(--border-w))
+					calc(var(--radius-panel) - var(--border-w)) 0 0;
+				background: var(--surface);
+			}
+
+			.mat-pattern {
+				position: absolute;
+				inset: 0;
+				z-index: -1;
+				background: radial-gradient(var(--pattern-dot) 1.4px, transparent 1.5px);
+				background-size: 18px 18px;
+				opacity: 0.6;
+			}
+
+			[data-fill='white'] {
+				background: #fff;
+			}
+
+			[data-fill='black'] {
+				background: #000;
+			}
+
+			[data-fill='white'] > .mat-pattern,
+			[data-fill='black'] > .mat-pattern {
+				display: none;
+			}
+
+			.g-window {
+				position: absolute;
+				inset: 0 0 var(--border-w);
+				overflow: hidden;
+			}
+
+			.crop-img {
+				display: block;
+				width: 100%;
+				height: 100%;
+				pointer-events: none;
+				user-select: none;
+			}
+
+			.g-sep {
+				position: absolute;
+				inset: auto 0 0;
+				z-index: 10;
+				height: 3.5px;
+				background: var(--edge);
+			}
+
+			.g-top {
+				position: absolute;
+				top: 0.5rem;
+				right: 0.5rem;
+				left: 0.5rem;
+				z-index: 20;
+				display: flex;
+				align-items: flex-start;
+				gap: 0.5rem;
+			}
+
+			.like {
+				display: inline-flex;
+				height: var(--size-control-md);
+				align-items: center;
+				gap: 0.25rem;
+				margin-left: auto;
+				padding-inline: 0.25rem;
+				color: var(--foreground);
+				font-size: 13px;
+				font-weight: 700;
+				filter: drop-shadow(0 1px 1px var(--card)) drop-shadow(0 -1px 1px var(--card));
+			}
+
+			.like .i {
+				color: var(--heart);
+				fill: var(--card);
+			}
+
+			.g-prio {
+				position: absolute;
+				bottom: 0.75rem;
+				left: 0.75rem;
+				z-index: 20;
+			}
+
+			.dots {
+				position: absolute;
+				bottom: 0.75rem;
+				left: 50%;
+				z-index: 20;
+				display: flex;
+				height: 1.25rem;
+				align-items: center;
+				gap: 5px;
+				padding-inline: 7px;
+				translate: -50% 0;
+				border-radius: 999px;
+				background: color-mix(in oklab, var(--card) 88%, transparent);
+				box-shadow: 0 0 0 1.5px var(--ink-faint);
+			}
+
+			.dots span {
+				width: 6px;
+				height: 6px;
+				border-radius: 999px;
+				background: color-mix(in oklab, var(--ink) 38%, transparent);
+			}
+
+			.dots span[data-current] {
+				width: 14px;
+				background: var(--ink);
+			}
+
+			.narrow-card .dots {
+				right: 0.75rem;
+				left: auto;
+				translate: none;
+			}
+
+			.g-body {
+				display: flex;
+				min-height: 0;
+				flex-direction: column;
+				padding: 0.875rem 0.875rem 1rem;
+			}
+
+			.phone .g-body {
+				padding: 0.5rem 0.5625rem 0.375rem;
+			}
+
+			.g-name,
+			.gl-name {
+				display: -webkit-box;
+				min-width: 0;
+				margin: 0;
+				overflow: hidden;
+				color: var(--foreground);
+				font-family: var(--font-head);
+				font-size: var(--gift-title-size);
+				font-weight: 600;
+				line-height: 1.3;
+				overflow-wrap: anywhere;
+				-webkit-box-orient: vertical;
+				-webkit-line-clamp: 2;
+			}
+
+			.g-desc,
+			.gl-desc {
+				display: -webkit-box;
+				margin: 0;
+				overflow: hidden;
+				color: var(--muted-foreground);
+				font-size: var(--text-sm);
+				line-height: 1.45;
+				-webkit-box-orient: vertical;
+				-webkit-line-clamp: var(--gift-desc-lines);
+			}
+
+			.g-desc {
+				padding-top: 0.125rem;
+			}
+
+			.g-links,
+			.gl-links {
+				display: flex;
+				min-width: 0;
+				flex-wrap: wrap;
+				align-items: center;
+				gap: 0.25rem 0.75rem;
+			}
+
+			.g-links {
+				margin-top: 0.5rem;
+			}
+
+			.g-price,
+			.gl-price {
+				color: var(--secondary-foreground);
+				font-size: var(--text-sm);
+				font-weight: 700;
+			}
+
+			.g-price {
+				margin-top: 0.25rem;
+			}
+
+			.g-foot {
+				display: flex;
+				justify-content: flex-end;
+				padding: 0 0.5625rem 0.5625rem;
+			}
+
+			/* ---------- GiftListItem reproduction ---------- */
+			.gl-wrap {
+				width: 100%;
+				container: gift-list / inline-size;
+			}
+
+			.glist {
+				--gl-image: min(35cqw, 9.5rem);
+
+				position: relative;
+				display: grid;
+				grid-template-columns: var(--gl-image) minmax(0, 1fr);
+				min-height: max(9rem, calc(var(--gl-image) + 5px));
+				border: 2.5px solid var(--edge);
+				border-radius: var(--radius-panel);
+				background: var(--card);
+				box-shadow: var(--elevation-ordinary);
+			}
+
+			@container gift-list (width >= 40rem) {
+				.glist {
+					--gl-image: clamp(9rem, calc(100cqw - 31rem), 9.5rem);
+				}
+			}
+
+			.glist.enlarged {
+				--gl-image: var(--gl-enlarged, 13rem);
+			}
+
+			.phone .glist.enlarged {
+				--gl-enlarged: 56cqw;
+			}
+
+			.gl-img {
+				position: relative;
+				isolation: isolate;
+				overflow: hidden;
+				border-right: 2.5px solid var(--edge);
+				border-radius: calc(var(--radius-panel) - 2.5px) 0 0 calc(var(--radius-panel) - 2.5px);
+				background: var(--surface);
+			}
+
+			.gl-window {
+				position: absolute;
+				top: 0;
+				bottom: 0;
+				left: 50%;
+				aspect-ratio: 1;
+				height: 100%;
+				overflow: hidden;
+				translate: -50% 0;
+			}
+
+			.gl-count {
+				position: absolute;
+				top: 0.5rem;
+				right: 0.5rem;
+				z-index: 20;
+				width: 3.125rem;
+				justify-content: center;
+			}
+
+			.gl-top {
+				position: absolute;
+				top: 0.5rem;
+				right: calc(0.5rem + 3.125rem + 0.25rem);
+				left: 0.5rem;
+				z-index: 20;
+			}
+
+			.gl-prio {
+				position: absolute;
+				bottom: 0.5rem;
+				left: 0.5rem;
+				z-index: 20;
+				max-width: calc(100% - 1rem);
+			}
+
+			.gl-content {
+				display: flex;
+				min-width: 0;
+				flex-direction: column;
+				gap: 0.25rem;
+				padding: 0.5625rem;
+			}
+
+			.phone .gl-content {
+				gap: 0.125rem;
+			}
+
+			.desk .gl-name {
+				-webkit-line-clamp: 1;
+			}
+
+			.gl-links {
+				margin-top: 0.375rem;
+			}
+
+			.gl-actions {
+				display: flex;
+				justify-content: flex-end;
+				margin-top: auto;
+				padding-top: 0.375rem;
+			}
+
+			.zoom-flag {
+				position: absolute;
+				right: 0.5rem;
+				bottom: 0.5rem;
+				z-index: 20;
+			}
+
+			/* ---------- Framing entry on the preview image ---------- */
+			.editable {
+				cursor: pointer;
+				outline: none;
+			}
+
+			/* One centred edit button. At rest it is an icon-only circle; on hover or focus of a wide
+			   image the label column grows from 0fr to 1fr so the pill widens smoothly and stays centred. */
+			.edit-scrim {
+				position: absolute;
+				inset: 0;
+				z-index: 24;
+				background: color-mix(in oklab, var(--ink) 30%, transparent);
+				opacity: 0;
+				pointer-events: none;
+				transition: opacity var(--duration-normal) var(--ease-standard);
+			}
+
+			.edit-cta {
+				position: absolute;
+				top: 50%;
+				left: 50%;
+				z-index: 25;
+				display: inline-flex;
+				width: max-content;
+				min-width: var(--size-control-lg);
+				height: var(--size-control-lg);
+				box-sizing: border-box;
+				align-items: center;
+				translate: -50% -50%;
+				border: 2.5px solid var(--edge);
+				border-radius: 999px;
+				background: var(--card);
+				box-shadow: var(--elevation-compact);
+				color: var(--ink);
+				font-size: var(--text-base);
+				font-weight: 600;
+				white-space: nowrap;
+				pointer-events: none;
+				transition:
+					background-color var(--duration-fast) var(--ease-standard),
+					box-shadow var(--duration-normal) var(--ease-standard);
+			}
+
+			.edit-cta-icon {
+				display: grid;
+				width: calc(var(--size-control-lg) - 5px);
+				margin-inline: auto;
+				height: calc(var(--size-control-lg) - 5px);
+				flex-shrink: 0;
+				place-items: center;
+			}
+
+			.edit-cta-label {
+				display: grid;
+				grid-template-columns: 0fr;
+				transition: grid-template-columns var(--duration-normal) var(--ease-standard);
+			}
+
+			.edit-cta-label > span {
+				min-width: 0;
+				overflow: hidden;
+			}
+
+			.edit-cta-label > span > span {
+				display: inline-block;
+				padding-inline-end: 1rem;
+			}
+
+			.editable:is(:hover, :focus-visible, [data-force-hover]) .edit-scrim {
+				opacity: 1;
+			}
+
+			.editable:is(:hover, :focus-visible, [data-force-hover]) .edit-cta {
+				box-shadow: var(--elevation-ordinary);
+			}
+
+			.editable:not(.edit-compact):is(:hover, :focus-visible, [data-force-hover]) .edit-cta-label {
+				grid-template-columns: 1fr;
+			}
+
+			/* Narrow images and touch keep the icon-only button; hover only presses it. */
+			.editable.edit-compact:is(:hover, :focus-visible, [data-force-hover]) .edit-cta {
+				background: var(--accent);
+			}
+
+			.editable:focus-visible .edit-cta {
+				outline: 2px solid var(--ring);
+				outline-offset: 2px;
+			}
+
+			/* ---------- Gallery strip ---------- */
+			.strip-block {
+				display: flex;
+				flex-direction: column;
+				gap: 0.375rem;
+			}
+
+			.strip-head {
+				display: flex;
+				align-items: baseline;
+				justify-content: space-between;
+				gap: 0.5rem;
+				font-size: var(--text-sm);
+				font-weight: 600;
+			}
+
+			.strip-head .muted {
+				color: var(--muted-foreground);
+				font-weight: 500;
+			}
+
+			.strip {
+				display: flex;
+				gap: var(--strip-gap, 0.5rem);
+				padding: 8px 8px 6px 0;
+			}
+
+			.tile {
+				position: relative;
+				box-sizing: border-box;
+				width: var(--tile, 52px);
+				height: var(--tile, 52px);
+				flex-shrink: 0;
+				padding: 0;
+				border: 2.5px solid var(--edge);
+				border-radius: var(--radius-btn);
+				background: var(--surface);
+				cursor: pointer;
+			}
+
+			.tile > img {
+				width: 100%;
+				height: 100%;
+				border-radius: calc(var(--radius-btn) - 2.5px);
+				object-fit: cover;
+				pointer-events: none;
+			}
+
+			.tile:focus-visible {
+				outline: 2px solid var(--ring);
+				outline-offset: 2px;
+			}
+
+			.tile[aria-current='true'] {
+				box-shadow:
+					0 0 0 2px var(--card),
+					0 0 0 5px var(--ring);
+			}
+
+			.cover-mark {
+				position: absolute;
+				bottom: -6px;
+				left: 50%;
+				z-index: 2;
+				display: inline-flex;
+				height: 16px;
+				box-sizing: border-box;
+				align-items: center;
+				gap: 2px;
+				padding-inline: 4px;
+				translate: -50% 0;
+				border: 1.5px solid var(--edge);
+				border-radius: 999px;
+				background: var(--accent-loud);
+				color: var(--accent-loud-foreground);
+				font-size: 9.5px;
+				font-weight: 800;
+				white-space: nowrap;
+			}
+
+			.tile-ctl {
+				position: absolute;
+				z-index: 3;
+				display: none;
+				width: 22px;
+				height: 22px;
+				box-sizing: border-box;
+				align-items: center;
+				justify-content: center;
+				padding: 0;
+				border: 2px solid var(--edge);
+				border-radius: 999px;
+				background: var(--card);
+				color: var(--foreground);
+				cursor: pointer;
+			}
+
+			.tile-ctl.remove {
+				top: -9px;
+				right: -9px;
+			}
+
+
+
+			.tile-ctl.grip {
+				top: -9px;
+				left: -9px;
+				cursor: grab;
+			}
+
+			.tile:is(:hover, :focus-within, [data-demo-controls]) .tile-ctl {
+				display: inline-flex;
+			}
+
+			.tile-add {
+				display: inline-flex;
+				flex-direction: column;
+				align-items: center;
+				justify-content: center;
+				gap: 2px;
+				border-style: dashed;
+				border-color: var(--edge-control);
+				background: var(--card);
+				color: var(--muted-foreground);
+				font: 600 var(--text-2xs) / 1 var(--font-body);
+			}
+
+			.tile-add:hover {
+				background: var(--accent);
+				color: var(--foreground);
+			}
+
+			/* ---------- Main screen layout (desktop) ---------- */
+			.main-grid {
+				display: grid;
+				grid-template-columns: 300px minmax(0, 1fr);
+				gap: 2rem;
+				align-items: start;
+			}
+
+			.rail {
+				display: flex;
+				flex-direction: column;
+				gap: 0.875rem;
+			}
+
+			.rail-head {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				gap: 0.5rem;
+			}
+
+			.eyebrow {
+				color: var(--muted-foreground);
+				font-size: var(--text-sm);
+				font-weight: 600;
+			}
+
+			[data-view='card'] [data-preview='list'],
+			[data-view='list'] [data-preview='card'] {
+				display: none !important;
+			}
+
+			.form-grid {
+				display: grid;
+				grid-template-columns: repeat(6, minmax(0, 1fr));
+				gap: 1rem;
+			}
+
+			.span-6 {
+				grid-column: span 6;
+			}
+
+			.span-2 {
+				grid-column: span 2;
+			}
+
+			.span-1 {
+				grid-column: span 1;
+			}
+
+			.chips {
+				display: flex;
+				flex-wrap: wrap;
+				align-items: center;
+				gap: 0.5rem;
+			}
+
+			.chip-add {
+				display: inline-flex;
+				height: var(--ctl);
+				box-sizing: border-box;
+				align-items: center;
+				gap: 0.375rem;
+				padding-inline: 0.75rem;
+				border: 2.5px dashed var(--edge-control);
+				border-radius: 999px;
+				background: var(--card);
+				color: var(--muted-foreground);
+				font: 600 var(--ctl-font) / 1 var(--font-body);
+				cursor: pointer;
+			}
+
+			.cat-chip {
+				display: inline-flex;
+				height: var(--ctl);
+				box-sizing: border-box;
+				align-items: center;
+				gap: 0.375rem;
+				padding-inline: 0.625rem 0.25rem;
+				border: 2.5px solid var(--edge);
+				border-radius: 999px;
+				font-size: var(--ctl-font);
+				font-weight: 800;
+			}
+
+			.cat-chip .tag {
+				font-size: var(--text-2xs);
+				font-weight: 700;
+				opacity: 0.85;
+			}
+
+			.cat-chip button {
+				display: inline-flex;
+				width: calc(var(--ctl) - 11px);
+				height: calc(var(--ctl) - 11px);
+				align-items: center;
+				justify-content: center;
+				padding: 0;
+				border: 0;
+				border-radius: 999px;
+				background: color-mix(in oklab, #fff 18%, transparent);
+				color: inherit;
+				cursor: pointer;
+			}
+
+			/* ---------- Links: one line each, inline expansion (ported from variant A) ---------- */
+			.links-box {
+				border: 2.5px solid var(--edge-control);
+				border-radius: var(--radius-btn);
+				background: var(--card);
+			}
+
+			.link-item + .link-item,
+			.link-paste {
+				border-top: 1px solid var(--border);
+			}
+
+			.link-line {
+				display: flex;
+				width: 100%;
+				height: 30px;
+				align-items: center;
+				gap: 0.25rem;
+				padding: 0 2px 0 0;
+				border: 0;
+				background: none;
+				color: inherit;
+				font: inherit;
+				text-align: left;
+				cursor: pointer;
+			}
+
+			.link-line:hover {
+				background: var(--panel-hover);
+			}
+
+			.link-line:focus-visible {
+				outline: 2px solid var(--ring);
+				outline-offset: -2px;
+			}
+
+			.link-grip {
+				display: grid;
+				width: 1.5rem;
+				height: 100%;
+				flex-shrink: 0;
+				place-items: center;
+				color: color-mix(in oklab, var(--ink) 45%, transparent);
+				cursor: grab;
+			}
+
+			.link-url {
+				min-width: 0;
+				flex: 1;
+				overflow: hidden;
+				color: var(--muted-foreground);
+				font-size: var(--text-md);
+				text-overflow: ellipsis;
+				white-space: nowrap;
+			}
+
+			.link-url mark {
+				padding: 1px 3px;
+				border-radius: 4px;
+				background: color-mix(in oklab, var(--primary) 16%, var(--card));
+				color: var(--foreground);
+				font-weight: 700;
+			}
+
+			/* A custom label that is not part of the address sits before it as its own chip. */
+			.link-label-chip {
+				flex-shrink: 0;
+				margin-inline-end: 0.25rem;
+				padding: 2px 7px;
+				border-radius: 999px;
+				background: color-mix(in oklab, var(--primary) 16%, var(--card));
+				color: var(--foreground);
+				font-size: var(--text-sm);
+				font-weight: 700;
+			}
+
+			.link-edit {
+				display: grid;
+				width: var(--size-control-sm);
+				height: var(--size-control-sm);
+				flex-shrink: 0;
+				place-items: center;
+				border-radius: var(--radius-btn);
+				color: var(--muted-foreground);
+			}
+
+			.link-line:hover .link-edit {
+				background: var(--accent);
+				color: var(--foreground);
+			}
+
+			.link-edit .when-open,
+			.link-item[data-open] .link-edit .when-closed {
+				display: none;
+			}
+
+			.link-item[data-open] .link-edit .when-open {
+				display: block;
+			}
+
+			.link-panel {
+				display: none;
+				gap: 0.5rem;
+				padding: 2px 10px 10px 1.5rem;
+			}
+
+			.link-item[data-open] {
+				background: color-mix(in oklab, var(--primary) 5%, var(--card));
+			}
+
+			.link-item[data-open] .link-panel {
+				display: grid;
+			}
+
+			/* Desktop has the width to keep the expanded link on one row of fields. */
+			.desk .link-line,
+			.desk .link-paste {
+				height: 34px;
+			}
+
+			.desk .link-panel {
+				grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+				align-items: end;
+				padding: 0 10px 6px 1.5rem;
+			}
+
+			.desk .link-panel .field {
+				gap: 0.25rem;
+			}
+
+			.link-panel-row {
+				display: grid;
+				grid-template-columns: minmax(0, 1fr) auto;
+				align-items: end;
+				gap: 0.5rem;
+			}
+
+			.desk .link-panel-row {
+				display: contents;
+			}
+
+			.link-paste {
+				display: flex;
+				height: 30px;
+				align-items: center;
+				gap: 0.25rem;
+				color: var(--muted-foreground);
+			}
+
+			.link-paste > .i {
+				width: 0.875rem;
+				height: 0.875rem;
+				margin-inline: 5px;
+			}
+
+			.link-paste input {
+				min-width: 0;
+				flex: 1;
+				height: 100%;
+				padding: 0;
+				border: 0;
+				background: none;
+				color: var(--foreground);
+				font: 500 var(--text-md) / 1 var(--font-body);
+				outline: none;
+			}
+
+			.link-paste:focus-within {
+				border-radius: 0 0 4.5px 4.5px;
+				box-shadow: inset 0 0 0 2px var(--ring);
+			}
+
+			.link-paste kbd {
+				margin-right: 6px;
+			}
+
+			.phone .link-line,
+			.phone .link-paste {
+				height: 40px;
+			}
+
+			.phone .link-grip {
+				width: 2rem;
+			}
+
+			.phone .link-edit {
+				width: var(--size-control-lg);
+				height: var(--size-control-lg);
+			}
+
+			.phone .link-url,
+			.phone .link-paste input {
+				font-size: var(--text-base);
+			}
+
+			/* No room for the hint beside Odebrat; the input placeholder carries the same default. */
+			.phone .link-paste kbd,
+			.phone .link-panel .lbl-aside {
+				display: none;
+			}
+
+			/* ---------- Framing step ---------- */
+			.step-stack {
+				display: flex;
+				height: 100%;
+				flex-direction: column;
+				gap: 0.75rem;
+			}
+
+			.step-strip-row {
+				display: flex;
+				align-items: center;
+				gap: 1rem;
+			}
+
+			.step-strip-row .strip-head {
+				flex-direction: column;
+				gap: 0.25rem;
+			}
+
+			.step-grid {
+				display: grid;
+				grid-template-columns: 284px 168px minmax(0, 1fr);
+				gap: 1.25rem;
+				align-items: start;
+			}
+
+			.editor {
+				display: flex;
+				min-width: 0;
+				flex-direction: column;
+				gap: 0.5rem;
+			}
+
+			.editor-head {
+				display: flex;
+				min-height: 22px;
+				align-items: center;
+				justify-content: space-between;
+				gap: 0.5rem;
+			}
+
+			.editor-head h3 {
+				margin: 0;
+				font-family: var(--font-head);
+				font-size: var(--text-lg);
+				font-weight: 600;
+			}
+
+			.editor-head h3 span {
+				color: var(--muted-foreground);
+				font-family: var(--font-body);
+				font-size: var(--text-sm);
+				font-weight: 500;
+			}
+
+			.editor-controls {
+				display: flex;
+				align-items: center;
+				gap: 0.5rem;
+			}
+
+			.zoom {
+				display: flex;
+				min-width: 0;
+				flex: 1;
+				align-items: center;
+				gap: 0.375rem;
+				color: var(--muted-foreground);
+			}
+
+			.zoom input[type='range'] {
+				min-width: 0;
+				flex: 1;
+				height: var(--ctl);
+				margin: 0;
+				background: transparent;
+				appearance: none;
+				cursor: pointer;
+			}
+
+			.zoom input[type='range']::-webkit-slider-runnable-track {
+				height: 6px;
+				border-radius: 999px;
+				background: color-mix(in oklab, var(--ink) 16%, transparent);
+			}
+
+			.zoom input[type='range']::-webkit-slider-thumb {
+				width: 18px;
+				height: 18px;
+				margin-top: -6px;
+				border: 2.5px solid var(--edge);
+				border-radius: 999px;
+				background: var(--card);
+				box-shadow: var(--elevation-compact);
+				appearance: none;
+			}
+
+			.zoom input[type='range']::-moz-range-track {
+				height: 6px;
+				border-radius: 999px;
+				background: color-mix(in oklab, var(--ink) 16%, transparent);
+			}
+
+			.zoom input[type='range']::-moz-range-thumb {
+				width: 14px;
+				height: 14px;
+				border: 2.5px solid var(--edge);
+				border-radius: 999px;
+				background: var(--card);
+			}
+
+			.zoom input[type='range']:focus-visible {
+				border-radius: 4px;
+				outline: 2px solid var(--ring);
+				outline-offset: 2px;
+			}
+
+			.pan {
+				cursor: grab;
+				touch-action: none;
+				outline: none;
+			}
+
+			.pan:active {
+				cursor: grabbing;
+			}
+
+			.pan::after {
+				content: '';
+				position: absolute;
+				inset: 3px 3px calc(var(--border-w) + 3px);
+				z-index: 25;
+				border: 2px dashed color-mix(in oklab, var(--ring) 70%, transparent);
+				border-radius: calc(var(--radius-panel) - var(--border-w) - 3px)
+					calc(var(--radius-panel) - var(--border-w) - 3px) 3px 3px;
+				pointer-events: none;
+			}
+
+			.gl-img.pan::after {
+				inset: 3px;
+				border-radius: calc(var(--radius-panel) - 5.5px) 3px 3px calc(var(--radius-panel) - 5.5px);
+			}
+
+			.pan:focus-visible::after {
+				border-style: solid;
+				border-color: var(--ring);
+				box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 22%, transparent);
+			}
+
+			.pan-hint {
+				position: absolute;
+				top: 50%;
+				left: 50%;
+				z-index: 26;
+				translate: -50% -50%;
+				pointer-events: none;
+				transition: opacity var(--duration-fast);
+			}
+
+			.pan[data-dragging] .pan-hint {
+				opacity: 0;
+			}
+
+			.copy-col {
+				display: flex;
+				flex-direction: column;
+				gap: 0.625rem;
+				padding-top: 9rem;
+			}
+
+			.copy-col .btn {
+				width: 100%;
+			}
+
+			.copy-col .help {
+				text-align: center;
+			}
+
+			.btn[data-flash] > .face {
+				background: color-mix(in oklab, var(--status-success) 16%, var(--card));
+			}
+
+			.also-used {
+				display: flex;
+				flex-direction: column;
+				gap: 0.5rem;
+				margin-top: 0.375rem;
+				padding: 0.75rem;
+				border: 1px solid var(--border);
+				border-radius: var(--radius-panel);
+				background: var(--background);
+			}
+
+			.also-row {
+				display: flex;
+				align-items: center;
+				gap: 1rem;
+			}
+
+			.also-item {
+				display: flex;
+				align-items: center;
+				gap: 0.5rem;
+				font-size: var(--text-sm);
+				font-weight: 600;
+			}
+
+			.also-item .mini {
+				position: relative;
+				isolation: isolate;
+				overflow: hidden;
+				border: 2px solid var(--edge);
+				border-radius: var(--radius-btn);
+				background: var(--surface);
+			}
+
+			.fill-row {
+				display: flex;
+				align-items: center;
+				gap: 0.75rem;
+				margin-top: auto;
+				padding-top: 0.75rem;
+				border-top: 1px solid var(--border);
+			}
+
+			.fill-row .lbl {
+				min-height: 0;
+			}
+
+			.kbd-hint {
+				display: flex;
+				align-items: center;
+				gap: 0.375rem;
+				margin-left: auto;
+				color: var(--muted-foreground);
+				font-size: var(--text-sm);
+			}
+
+			.swatch {
+				width: 20px;
+				height: 20px;
+				flex: none;
+				box-sizing: border-box;
+				border: 1.5px solid var(--edge);
+				border-radius: 5px;
+			}
+
+			.m-step .swatch {
+				width: 24px;
+				height: 24px;
+				border-radius: 6px;
+			}
+
+			.swatch.swatch-dots {
+				background: radial-gradient(var(--ink) 1.2px, transparent 1.5px) 0 0 / 6px 6px var(--background);
+			}
+
+			.swatch.swatch-white {
+				background: #fff;
+			}
+
+			.swatch.swatch-black {
+				background: #000;
+			}
+
+			/* ---------- Mobile specifics ---------- */
+			.hero {
+				display: flex;
+				flex-direction: column;
+				gap: 0.75rem;
+				padding-bottom: 1.25rem;
+				border-bottom: 1px solid var(--border);
+			}
+
+			.hero-split {
+				display: grid;
+				grid-template-columns: 180px minmax(0, 1fr);
+				gap: 0.75rem;
+				align-items: start;
+			}
+
+			.hero-split .strip {
+				flex-wrap: wrap;
+			}
+
+			.m-form {
+				display: flex;
+				flex-direction: column;
+				gap: 1rem;
+				padding-top: 1.25rem;
+			}
+
+			.m-pair {
+				display: grid;
+				grid-template-columns: minmax(0, 1fr) 7.5rem;
+				gap: 0.75rem;
+			}
+
+			.hero.at-bottom {
+				margin-top: 1.5rem;
+				padding: 1.25rem 0 0;
+				border-top: 1px solid var(--border);
+				border-bottom: 0;
+			}
+
+			.m-delete {
+				display: flex;
+				flex-direction: column;
+				padding-top: 1.5rem;
+			}
+
+
+			.m-step {
+				display: flex;
+				height: 100%;
+				flex-direction: column;
+				gap: 0.5rem;
+			}
+
+			.m-step .seg .btn > .face {
+				gap: 0.5rem;
+			}
+
+			.m-step .seg .btn[data-act='fill'] {
+				width: 40px;
+				flex: none;
+			}
+
+			.m-step .seg .btn[data-act='fill'] > .face {
+				width: 100%;
+				justify-content: center;
+				padding: 0;
+			}
+
+			.m-step .seg .stat {
+				height: 20px;
+				padding-inline: 0.375rem;
+				border-width: 1.5px;
+			}
+
+			.m-editor[data-mview='card'] [data-m-editor='list'],
+			.m-editor[data-mview='list'] [data-m-editor='card'] {
+				display: none;
+			}
+
+			.m-row {
+				display: flex;
+				align-items: center;
+				gap: 0.5rem;
+			}
+
+			.m-row .grow {
+				flex: 1;
+			}
+
+			.sr-only {
+				position: absolute;
+				width: 1px;
+				height: 1px;
+				overflow: hidden;
+				clip: rect(0 0 0 0);
+				white-space: nowrap;
+			}
+
+			@media (prefers-reduced-motion: reduce) {
+				.btn > .face,
+				.overlay-btn > .face,
+				.overlay-btn .i,
+				.edit-scrim,
+				.edit-cta,
+				.edit-cta-label,
+				.pan-hint {
+					transition: none;
+				}
+			}
+		</style>
+	</head>
+	<body>
+		<svg width="0" height="0" style="position: absolute" aria-hidden="true">
+			<symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></symbol>
+			<symbol id="i-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7" /><path d="M19 12H5" /></symbol>
+			<symbol id="i-arrow-right" viewBox="0 0 24 24"><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></symbol>
+			<symbol id="i-crop" viewBox="0 0 24 24"><path d="M6 2v14a2 2 0 0 0 2 2h14" /><path d="M18 22V8a2 2 0 0 0-2-2H2" /></symbol>
+			<symbol id="i-grip" viewBox="0 0 24 24"><circle cx="9" cy="5" r="1" /><circle cx="9" cy="12" r="1" /><circle cx="9" cy="19" r="1" /><circle cx="15" cy="5" r="1" /><circle cx="15" cy="12" r="1" /><circle cx="15" cy="19" r="1" /></symbol>
+			<symbol id="i-star" viewBox="0 0 24 24"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z" /></symbol>
+			<symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18" /><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" /><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" /></symbol>
+			<symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14" /><path d="M12 5v14" /></symbol>
+			<symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14" /></symbol>
+			<symbol id="i-external" viewBox="0 0 24 24"><path d="M15 3h6v6" /><path d="M10 14 21 3" /><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /></symbol>
+			<symbol id="i-heart" viewBox="0 0 24 24"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" /></symbol>
+			<symbol id="i-image" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2" /><circle cx="9" cy="9" r="2" /><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" /></symbol>
+			<symbol id="i-locate" viewBox="0 0 24 24"><line x1="2" x2="5" y1="12" y2="12" /><line x1="19" x2="22" y1="12" y2="12" /><line x1="12" x2="12" y1="2" y2="5" /><line x1="12" x2="12" y1="19" y2="22" /><circle cx="12" cy="12" r="7" /><circle cx="12" cy="12" r="3" /></symbol>
+			<symbol id="i-move" viewBox="0 0 24 24"><path d="M12 2v20" /><path d="m15 19-3 3-3-3" /><path d="m19 9 3 3-3 3" /><path d="M2 12h20" /><path d="m5 9-3 3 3 3" /><path d="m9 5 3-3 3 3" /></symbol>
+			<symbol id="i-chevron-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6" /></symbol>
+			<symbol id="i-chevron-up" viewBox="0 0 24 24"><path d="m18 15-6-6-6 6" /></symbol>
+			<symbol id="i-zoom-in" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" /><line x1="21" x2="16.65" y1="21" y2="16.65" /><line x1="11" x2="11" y1="8" y2="14" /><line x1="8" x2="14" y1="11" y2="11" /></symbol>
+			<symbol id="i-zoom-out" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" /><line x1="21" x2="16.65" y1="21" y2="16.65" /><line x1="8" x2="14" y1="11" y2="11" /></symbol>
+			<symbol id="i-grid" viewBox="0 0 24 24"><rect width="7" height="7" x="3" y="3" rx="1" /><rect width="7" height="7" x="14" y="3" rx="1" /><rect width="7" height="7" x="14" y="14" rx="1" /><rect width="7" height="7" x="3" y="14" rx="1" /></symbol>
+			<symbol id="i-list" viewBox="0 0 24 24"><path d="M3 12h.01" /><path d="M3 18h.01" /><path d="M3 6h.01" /><path d="M8 12h13" /><path d="M8 18h13" /><path d="M8 6h13" /></symbol>
+			<symbol id="i-pencil" viewBox="0 0 24 24"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z" /></symbol>
+			<symbol id="i-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" /><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" /></symbol>
+		</svg>
+
+		<main class="board">
+			<p class="board-eyebrow">REFINED: KARTA V HLAVNÍ ROLI + KROK ÚPRAVY OBRÁZKU</p>
+			<h1 class="board-title">Upravit dárek: skutečná karta jako vstup do úprav obrázku</h1>
+			<p class="board-rationale">
+				Struktura varianty C: vlevo dárek přesně tak, jak ho uvidí ostatní, vpravo kompaktní
+				formulář; výřez obrázku se upravuje až v soustředěném kroku
+ ve stejném dialogu, kde jsou Karta a
+				Seznam nezávislé a kopírují se jen jednorázově. Vstupem do kroku je teď samotný obrázek
+				karty, odkazy jsou jednořádkové s popiskem zvýrazněným v adrese a chrom dialogu odpovídá
+				sdílené komponentě Dialog.
+			</p>
+
+			<section class="board-section" aria-label="Desktop">
+				<figure class="board-state">
+					<figcaption>
+						<strong>1 · Desktop, výchozí stav.</strong> Uprostřed obrázku karty je kulaté tlačítko
+						s tužkou, trvale viditelné (najdou ho dotyk i klávesnice). Klik na náhled v pásu jen
+						vybere, který obrázek karta ukazuje; stav výřezu je u pásu. Formulář a náhled končí na
+						stejné výšce, bez posouvání na 1440×900.
+					</figcaption>
+					<div class="desk" data-mount="desk-main"></div>
+				</figure>
+
+				<figure class="board-state">
+					<figcaption>
+						<strong>2 · Desktop, najetí na obrázek.</strong> Při najetí nebo fokusu se obrázek lehce
+						ztmaví a tlačítko se na místě plynule rozšíří na „Upravit obrázek“. Klik kamkoli na
+						obrázek otevře krok 3.
+					</figcaption>
+					<div class="desk" data-mount="desk-hover"></div>
+				</figure>
+
+				<figure class="board-state">
+					<figcaption>
+						<strong>3 · Desktop, krok „Úprava obrázku“.</strong> Šipka zpět má stejný styl jako
+						zavírací tlačítko. Nahoře pás obrázků, pod ním dva nezávislé výřezy ve skutečném
+						kontextu, uprostřed jednorázové kopírování, dole pozadí a klávesové zkratky.
+					</figcaption>
+					<div class="desk" data-mount="desk-frame"></div>
+				</figure>
+
+				<figure class="board-state">
+					<figcaption>
+						<strong>4 · Desktop, rozbalený odkaz.</strong> Každý odkaz je jeden řádek: tlumená adresa
+						se zvýrazněným viditelným popiskem. Vlastní popisek, který v adrese není („Obchod u
+						Nováků“), stojí před adresou jako štítek. Klik na řádek ho rozbalí na Adresu, Viditelný
+						popisek a Odebrat; poslední řádek je pole pro vložení odkazu.
+					</figcaption>
+					<div class="desk" data-mount="desk-link"></div>
+				</figure>
+			</section>
+
+			<section class="board-row" aria-label="Mobil: kde jsou obrázky">
+				<figure class="board-state">
+					<figcaption>
+						<strong>5A · Mobil, obrázky nahoře (ZAMÍTNUTO, jen pro srovnání).</strong> Kompaktní hlavička s nadpisem vlevo a
+						zavíráním na stejném řádku. Náhled „Tak to uvidí ostatní“ a pás obrázků jsou první;
+						na obrázku je jen kulaté tlačítko s tužkou 40 px. Patička: Zrušit a Uložit vedle sebe.
+					</figcaption>
+					<div class="phone" data-mount="phone-main"></div>
+				</figure>
+
+				<figure class="board-state">
+					<figcaption>
+						<strong>5B · Mobil, obrázky dole (SCHVÁLENO, začátek).</strong> Stejná obrazovka, ale tělo začíná
+						rovnou Názvem a Popisem; celý oddíl s obrázky je až za všemi poli.
+					</figcaption>
+					<div class="phone" data-mount="phone-main-bottom"></div>
+				</figure>
+
+				<figure class="board-state">
+					<figcaption>
+						<strong>5C · Mobil, obrázky dole (posunuto).</strong> Varianta 5B posunutá k oddílu s
+						obrázky: náhled a pás leží mezi Kategoriemi a tlačítkem „Smazat dárek“.
+					</figcaption>
+					<div class="phone" data-mount="phone-main-bottom-scrolled"></div>
+				</figure>
+			</section>
+
+			<section class="board-row" aria-label="Mobil">
+				<figure class="board-state">
+					<figcaption>
+						<strong>6 · Mobil, krok „Úprava obrázku“.</strong> Vnořená obrazovka bez posouvání:
+						přepínač Karta | Seznam vybírá jediný editor a ukazuje stav obou; pod editorem předvolby,
+						přiblížení, kopírování do druhého pohledu a pozadí.
+					</figcaption>
+					<div class="phone" data-mount="phone-frame"></div>
+				</figure>
+
+				<figure class="board-state">
+					<figcaption>
+						<strong>7 · Mobil, rozbalený odkaz.</strong> Stejné jednořádkové odkazy s řádky 40 px;
+						rozbalený odkaz skládá Adresu a Viditelný popisek pod sebe.
+					</figcaption>
+					<div class="phone" data-mount="phone-link"></div>
+				</figure>
+			</section>
+		</main>
+
+		<script>
+			const IMAGE_ROOT = '../../static/demo/v1/';
+			const IMAGES = [
+				IMAGE_ROOT + 'backpack.jpg',
+				IMAGE_ROOT + 'gallery/hiking-backpack-2.jpg',
+				IMAGE_ROOT + 'gallery/hiking-backpack-3.jpg',
+				IMAGE_ROOT + 'gallery/hiking-backpack-4.jpg',
+			];
+			const GIFT = {
+				name: 'Turistický batoh Osprey Talon 22',
+				description:
+					'Lehký 22litrový batoh na celodenní túry s odvětranými zády a bočním přístupem k lahvi. Nejradši v barvě Stealth Black, velikost M/L.',
+				price: '3 290',
+				priority: 'Vysoká',
+			};
+			const LINK_LIMIT = 10;
+			const STATUS_LABEL = { fill: 'Vyplnit', whole: 'Celý', custom: 'Vlastní' };
+			const FILL_OPTIONS = [
+				{ value: 'dots', label: 'Tečkované' },
+				{ value: 'white', label: 'Bílé' },
+				{ value: 'black', label: 'Černé' },
+			];
+
+			function initialLinks() {
+				return [
+					{ label: 'Hudy', url: 'https://www.hudy.cz/osprey-talon-22-stealth-black-m-l' },
+					{ label: 'Heureka', url: 'https://www.heureka.cz/?h[fraze]=osprey+talon+22' },
+					{ label: 'Obchod u Nováků', url: 'https://www.eshop-novak.cz/batohy/osprey-talon-22' },
+				];
+			}
+
+			function escapeHtml(text) {
+				return text.replace(/[&<>"]/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[character]);
+			}
+
+			function domainOf(url) {
+				return url.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0];
+			}
+
+			function icon(name, extraClass = '') {
+				return `<svg class="i ${extraClass}" aria-hidden="true"><use href="#i-${name}"/></svg>`;
+			}
+
+			function button({ label = '', intent = 'outline', size = '', iconStart = '', iconEnd = '', iconOnly = false, raised = true, attrs = '' }) {
+				const raisedOwner = raised && ['primary', 'outline', 'danger'].includes(intent);
+				const ownerClass = `btn ${intent} ${size} ${iconOnly ? 'icon' : ''} ${raisedOwner ? 'elevation-owner elevation-owner-raised elevation-owner-anchored' : ''}`;
+				const content = iconOnly
+					? `${icon(iconStart)}<span class="sr-only">${label}</span>`
+					: `${iconStart ? icon(iconStart) : ''}${label}${iconEnd ? icon(iconEnd) : ''}`;
+				return `<button type="button" class="${ownerClass}" ${attrs}><span class="face ${raisedOwner ? 'elevation-surface' : ''}">${content}</span></button>`;
+			}
+
+			/* Mirrors the shared overlay close button; the back arrow reuses it at the start edge. */
+			function overlayButton({ kind, label, iconName, attrs = '' }) {
+				return `<button type="button" class="overlay-btn ${kind} elevation-owner elevation-owner-raised" aria-label="${label}" ${attrs}><span class="face elevation-surface">${icon(iconName)}</span></button>`;
+			}
+
+			function initialFraming() {
+				return IMAGES.map((_, index) =>
+					index === 0
+						? {
+								card: { fit: 'cover', zoom: 1.15, x: 50, y: 34 },
+								list: { fit: 'contain', zoom: 1, x: 50, y: 50 },
+								fill: 'dots',
+							}
+						: {
+								card: { fit: 'cover', zoom: 1, x: 50, y: 50 },
+								list: { fit: 'cover', zoom: 1, x: 50, y: 50 },
+								fill: 'dots',
+							},
+				);
+			}
+
+			function statusOf(framing) {
+				const centered = framing.x === 50 && framing.y === 50 && framing.zoom === 1;
+				if (centered && framing.fit === 'contain') return 'whole';
+				if (centered && framing.fit === 'cover') return 'fill';
+				return 'custom';
+			}
+
+			/* ---------- Gift card / list row reproductions ---------- */
+
+			function cropImage(view, source) {
+				return `<img class="crop-img" alt="" draggable="false" data-crop="${view}" data-source="${source}" src="${IMAGES[0]}">`;
+			}
+
+			function priceText() {
+				return `<span data-out="price">${GIFT.price}</span>&nbsp;Kč`;
+			}
+
+			function giftLinks(links) {
+				return links
+					.map((link, index) => `<a class="tlink" href="${link.url}" tabindex="-1"><span data-out="link-${index}">${escapeHtml(link.label || domainOf(link.url))}</span>${icon('external')}</a>`)
+					.join('');
+			}
+
+			function imageModeAttributes({ base, view, pannable, editable, forceHover, compact = false }) {
+				if (pannable) {
+					return `class="${base} pan" tabindex="0" role="group" aria-roledescription="posuvný výřez" aria-label="Výřez pro ${view === 'card' ? 'Kartu' : 'Seznam'}. Táhněte nebo použijte šipky, plus a minus přibližují, nula vycentruje." data-pan="${view}"`;
+				}
+				if (editable) {
+					return `class="${base} editable ${compact ? 'edit-compact' : ''}" tabindex="0" role="button" aria-label="Upravit obrázek" data-act="open-step" ${forceHover ? 'data-force-hover' : ''}`;
+				}
+				return `class="${base}"`;
+			}
+
+			function editAffordance() {
+				return `<span class="edit-scrim" aria-hidden="true"></span>
+					<span class="edit-cta" aria-hidden="true"><span class="edit-cta-icon">${icon('pencil')}</span><span class="edit-cta-label"><span><span>Upravit obrázek</span></span></span></span>`;
+			}
+
+			function giftCard({ links, source = 'selected', pannable = false, editable = false, forceHover = false, width = '300px', narrow = false }) {
+				return `
+				<article class="gcard ${narrow ? 'narrow-card' : ''}" style="--card-w:${width}" aria-label="Náhled karty dárku">
+					<div class="gcard-surface">
+						<div ${imageModeAttributes({ base: 'g-img', view: 'card', pannable, editable, forceHover, compact: narrow })} data-fill-of="${source}">
+							<div class="mat-pattern" aria-hidden="true"></div>
+							<div class="g-window">${cropImage('card', source)}</div>
+							<div class="g-sep" aria-hidden="true"></div>
+							<div class="g-top">
+								<span class="cat cat-outdoor">Outdoor</span>
+								<span class="like">${icon('heart')}3</span>
+							</div>
+							<span class="badge prio g-prio">${GIFT.priority}</span>
+							<div class="dots" aria-hidden="true" data-dots="${source}">${IMAGES.map((_, index) => `<span ${index === 0 ? 'data-current' : ''}></span>`).join('')}</div>
+							${pannable ? `<span class="badge overlay pan-hint">${icon('move', 'i-xs')}Posuňte tažením</span>` : ''}
+							${editable ? editAffordance() : ''}
+						</div>
+						<div class="g-body">
+							<h3 class="g-name" data-out="name">${GIFT.name}</h3>
+							<p class="g-desc" data-out="description">${GIFT.description}</p>
+							<div class="g-links" data-out-links>${giftLinks(links)}</div>
+							<div class="g-price">${priceText()}</div>
+						</div>
+						<div class="g-foot">${button({ label: 'Rezervovat', intent: 'primary', attrs: 'tabindex="-1"' })}</div>
+					</div>
+				</article>`;
+			}
+
+			function giftListRow({ links, source = 'cover', pannable = false, editable = false, enlarged = false }) {
+				return `
+				<div class="gl-wrap">
+					<article class="glist ${enlarged ? 'enlarged' : ''}" aria-label="Náhled řádku seznamu">
+						<div ${imageModeAttributes({ base: 'gl-img', view: 'list', pannable, editable, compact: true })} data-fill-of="${source}">
+							<div class="mat-pattern" aria-hidden="true"></div>
+							<div class="gl-window">${cropImage('list', source)}</div>
+							<span class="badge overlay gl-count">${icon('image', 'i-xs')}+3</span>
+							<div class="gl-top"><span class="cat cat-outdoor">Outdoor</span></div>
+							<span class="badge prio gl-prio">${GIFT.priority}</span>
+							${enlarged ? `<span class="badge overlay zoom-flag">${icon('zoom-in', 'i-xs')}zvětšeno</span>` : ''}
+							${pannable ? `<span class="badge overlay pan-hint">${icon('move', 'i-xs')}Posuňte</span>` : ''}
+							${editable ? editAffordance() : ''}
+						</div>
+						<div class="gl-content">
+							<h3 class="gl-name" data-out="name">${GIFT.name}</h3>
+							<p class="gl-desc" data-out="description">${GIFT.description}</p>
+							<div class="gl-links" data-out-links>${giftLinks(links)}</div>
+							<div class="gl-price">${priceText()}</div>
+							<div class="gl-actions">${button({ label: 'Rezervovat', intent: 'primary', attrs: 'tabindex="-1"' })}</div>
+						</div>
+					</article>
+				</div>`;
+			}
+
+			/* ---------- Gallery strip ---------- */
+
+			function strip({ tile = '52px', gap = '0.5rem', demoControls = false }) {
+				const tiles = IMAGES.map(
+					(source, index) => `
+					<button type="button" class="tile" data-act="tile" data-index="${index}" aria-label="Obrázek ${index + 1} ze ${IMAGES.length}${index === 0 ? ', titulní' : ''}" ${index === 0 && demoControls ? 'data-demo-controls' : ''}>
+						<img src="${source}" alt="">
+						${index === 0 ? `<span class="cover-mark">${icon('star', 'i-xs i-fill')}Titulní</span>` : ''}
+						<span class="tile-ctl grip" aria-hidden="true">${icon('grip', 'i-xs')}</span>
+						<span class="tile-ctl remove" role="button" tabindex="-1" title="Odebrat obrázek">${icon('x', 'i-xs')}</span>
+					</button>`,
+				).join('');
+				const add = `<button type="button" class="tile tile-add" title="Přidat obrázek: nahrát soubor nebo vložit adresu">${icon('plus')}Přidat</button>`;
+				return `<div class="strip" style="--tile:${tile};--strip-gap:${gap}" role="list" aria-label="Obrázky dárku">${tiles}${add}</div>`;
+			}
+
+			function stripBlock(options) {
+				return `
+				<div class="strip-block">
+					<div class="strip-head"><span>Obrázky <span class="muted">4 / 8</span></span><span class="muted">Karta: <span data-status-text="card"></span> · Seznam: <span data-status-text="list"></span></span></div>
+					${strip(options)}
+				</div>`;
+			}
+
+			/* ---------- Links ---------- */
+
+			function linkLineContent(link) {
+				const address = link.url.replace(/^https?:\/\//, '');
+				const label = (link.label || domainOf(link.url)).trim();
+				const start = address.toLowerCase().indexOf(label.toLowerCase());
+				if (label !== '' && start >= 0) {
+					return `<span class="link-url">${escapeHtml(address.slice(0, start))}<mark>${escapeHtml(address.slice(start, start + label.length))}</mark>${escapeHtml(address.slice(start + label.length))}</span>`;
+				}
+				return `<span class="link-label-chip">${escapeHtml(label)}</span><span class="link-url">${escapeHtml(address)}</span>`;
+			}
+
+			function linkRows(links) {
+				const rows = links
+					.map(
+						(link, index) => `
+					<div class="link-item" role="listitem" data-link-index="${index}">
+						<button class="link-line" type="button" aria-expanded="false" data-act="link-toggle" aria-label="${index === 0 ? 'Hlavní odkaz' : 'Odkaz'} ${escapeHtml(link.label || domainOf(link.url))}, upravit">
+							<span class="link-grip" aria-hidden="true" title="Přetažením změníte pořadí">${icon('grip', 'i-sm')}</span>
+							<span style="display:contents" data-link-line="${index}">${linkLineContent(link)}</span>
+							<span class="link-edit" aria-hidden="true">${icon('pencil', 'i-sm when-closed')}${icon('chevron-up', 'i-sm when-open')}</span>
+						</button>
+						<div class="link-panel">
+							<label class="field">
+								<span class="lbl">Adresa</span>
+								<input class="inp" type="url" value="${escapeHtml(link.url)}" data-link-url="${index}">
+							</label>
+							<div class="link-panel-row">
+								<label class="field">
+									<span class="lbl">Viditelný popisek <span class="lbl-aside">Prázdné = ${domainOf(link.url)}</span></span>
+									<input class="inp" type="text" value="${escapeHtml(link.label)}" placeholder="${domainOf(link.url)}" data-link-label="${index}">
+								</label>
+								${button({ label: 'Odebrat', intent: 'quiet-danger', iconStart: 'trash', raised: false })}
+							</div>
+						</div>
+					</div>`,
+					)
+					.join('');
+				return `
+				<div class="links-box" role="list" aria-label="Odkazy, první je hlavní">
+					${rows}
+					<label class="link-paste">${icon('link')}<input type="url" placeholder="Vložte odkaz…" aria-label="Vložte odkaz na obchod"><kbd>Ctrl V</kbd></label>
+				</div>`;
+			}
+
+			function linksField(links) {
+				return `
+				<div class="field" data-links-field>
+					<span class="lbl">Odkazy <span class="lbl-aside">První je hlavní · ${links.length} / ${LINK_LIMIT}</span></span>
+					${linkRows(links)}
+				</div>`;
+			}
+
+			/* ---------- Form ---------- */
+
+			function prioritySelect() {
+				return `<button type="button" class="inp inp-select"><span style="display:inline-flex;align-items:center;gap:.5rem"><span class="prio-dot"></span>${GIFT.priority}</span>${icon('chevron-down', 'i-sm')}</button>`;
+			}
+
+			function quantityStepper() {
+				return `<div class="stepper">
+					${button({ label: 'Ubrat kus', intent: 'ghost', iconStart: 'minus', iconOnly: true, raised: false })}
+					<output>1</output>
+					${button({ label: 'Přidat kus', intent: 'ghost', iconStart: 'plus', iconOnly: true, raised: false })}
+				</div>`;
+			}
+
+			function categoriesField() {
+				return `
+				<div class="field">
+					<span class="lbl">Kategorie</span>
+					<div class="chips">
+						<span class="cat-chip cat-outdoor">${icon('star', 'i-sm i-fill')}Outdoor <span class="tag">hlavní</span><button type="button" aria-label="Odebrat kategorii Outdoor">${icon('x', 'i-xs')}</button></span>
+						<button type="button" class="chip-add">${icon('plus', 'i-sm')}Přidat kategorii</button>
+					</div>
+					<p class="help">První kategorie určuje skupinu při seskupení.</p>
+				</div>`;
+			}
+
+			function desktopForm(links) {
+				return `
+				<div class="form-grid">
+					<label class="field span-6">
+						<span class="lbl">Název *</span>
+						<input class="inp" data-live="name" value="${GIFT.name}">
+					</label>
+					<label class="field span-6">
+						<span class="lbl">Popis</span>
+						<textarea class="inp" rows="5" data-live="description">${GIFT.description}</textarea>
+					</label>
+					<div class="span-6">${linksField(links)}</div>
+					<div class="field span-2">
+						<span class="lbl">Cena <button type="button" class="lbl-action">Rozpětí od–do</button></span>
+						<div class="inp-suffix"><input class="inp" data-live="price" value="${GIFT.price}" inputmode="numeric" aria-label="Cena"><span>Kč</span></div>
+					</div>
+					<div class="field span-1"><span class="lbl">Měna</span><button type="button" class="inp inp-select">CZK ${icon('chevron-down', 'i-sm')}</button></div>
+					<div class="field span-1"><span class="lbl">Počet kusů</span>${quantityStepper()}</div>
+					<div class="field span-2"><span class="lbl">Priorita</span>${prioritySelect()}</div>
+					<div class="span-6">${categoriesField()}</div>
+				</div>`;
+			}
+
+			/* ---------- Framing editors ---------- */
+
+			function presetControls(view, { compact = false } = {}) {
+				return `
+				<div class="editor-controls">
+					<div class="seg" role="group" aria-label="Předvolba výřezu">
+						${button({ label: 'Vyplnit', intent: 'ghost', raised: false, attrs: `data-act="preset" data-view="${view}" data-value="fill" aria-pressed="false"` })}
+						${button({ label: 'Celý', intent: 'ghost', raised: false, attrs: `data-act="preset" data-view="${view}" data-value="whole" aria-pressed="false"` })}
+					</div>
+					<label class="zoom">
+						${compact ? '' : icon('zoom-out', 'i-sm')}
+						<span class="sr-only">Přiblížení</span>
+						<input type="range" min="1" max="3" step="0.01" value="1" data-act="zoom" data-view="${view}">
+						${compact ? '' : icon('zoom-in', 'i-sm')}
+					</label>
+					${button({ label: 'Vycentrovat', intent: 'outline', iconStart: 'locate', iconOnly: true, attrs: `data-act="recenter" data-view="${view}" title="Vycentrovat (0)"` })}
+				</div>`;
+			}
+
+			function fillControls({ labels = true } = {}) {
+				return `<div class="seg" role="group" aria-label="Pozadí obrázku">${FILL_OPTIONS.map((option) =>
+					button({
+						label: labels
+							? `<span class="swatch swatch-${option.value}"></span>${option.label}`
+							: `<span class="swatch swatch-${option.value}"></span><span class="sr-only">${option.label}</span>`,
+						intent: 'ghost',
+						raised: false,
+						attrs: `data-act="fill" data-value="${option.value}" aria-pressed="false" ${labels ? '' : `title="Pozadí: ${option.label}" style="aspect-ratio:1"`}`,
+					}),
+				).join('')}</div>`;
+			}
+
+			function statusChip(view) {
+				return `<span class="badge stat" data-status="${view}" aria-live="polite"></span>`;
+			}
+
+			function alsoUsed() {
+				const mini = (size) =>
+					`<span class="mini" style="width:${size}px;height:${size}px" data-fill-of="selected"><span class="mat-pattern"></span>${cropImage('list', 'selected')}</span>`;
+				return `
+				<div class="also-used">
+					<span class="eyebrow">Stejný čtverec uvidí ostatní také tady</span>
+					<div class="also-row">
+						<span class="also-item">${mini(40)}Rezervace</span>
+						<span class="also-item">${mini(72)}Karusel</span>
+					</div>
+				</div>`;
+			}
+
+			function desktopFramingStep(links) {
+				return `
+				<div class="step-stack">
+					<div class="step-strip-row">
+						<div class="strip-head"><span>Obrázky</span><span class="muted">4 / 8</span></div>
+						${strip({ tile: '52px', gap: '0.75rem', demoControls: true })}
+						<p class="help" style="margin-left:auto;max-width:15rem;text-align:right">Kliknutím vyberete obrázek, tažením změníte pořadí. První je titulní.</p>
+					</div>
+					<div class="step-grid">
+						<section class="editor" aria-label="Výřez pro Kartu">
+							<div class="editor-head"><h3>Karta <span>4:3 · mřížka dárků</span></h3>${statusChip('card')}</div>
+							${giftCard({ links, source: 'selected', pannable: true, width: '284px' })}
+							${presetControls('card')}
+						</section>
+						<div class="copy-col">
+							${button({ label: 'Použít i pro Seznam', intent: 'outline', size: 'sm', iconEnd: 'arrow-right', attrs: 'data-act="copy" data-from="card" data-to="list"' })}
+							${button({ label: 'Použít i pro Kartu', intent: 'outline', size: 'sm', iconStart: 'arrow-left', attrs: 'data-act="copy" data-from="list" data-to="card"' })}
+							<p class="help">Jednorázově zkopíruje výřez. Pohledy zůstávají nezávislé.</p>
+						</div>
+						<section class="editor" aria-label="Výřez pro Seznam">
+							<div class="editor-head"><h3>Seznam <span>1:1 · seznam, rezervace a karusel</span></h3>${statusChip('list')}</div>
+							${giftListRow({ links, source: 'selected', pannable: true, enlarged: true })}
+							${presetControls('list')}
+							${alsoUsed()}
+						</section>
+					</div>
+					<div class="fill-row">
+						<span class="lbl" data-out="fill-label">Pozadí obrázku 1</span>
+						${fillControls()}
+						<span class="kbd-hint"><kbd>←</kbd><kbd>↑</kbd><kbd>↓</kbd><kbd>→</kbd> posun · <kbd>+</kbd><kbd>−</kbd> přiblížení · <kbd>0</kbd> vycentrovat</span>
+					</div>
+				</div>`;
+			}
+
+			/* ---------- Dialog shells ---------- */
+
+			function dialogChrome({ phone }) {
+				return `
+				<header class="dlg-head" data-step-only="main">
+					<h2 class="dlg-title" id="t-${phone ? 'p' : 'd'}">Upravit dárek</h2>
+				</header>
+				<header class="dlg-head has-back" data-step-only="frame">
+					<h2 class="dlg-title">Úprava obrázku <span data-out="image-number">1</span> <span class="count">z ${IMAGES.length}</span></h2>
+				</header>
+				<span data-step-only="frame">${overlayButton({ kind: 'back', label: 'Zpět na úpravy dárku', iconName: 'arrow-left', attrs: 'data-act="back"' })}</span>
+				${overlayButton({ kind: 'close', label: 'Zavřít', iconName: 'x' })}`;
+			}
+
+			function dialogFoot({ phone }) {
+				const deleteButton = phone ? '' : `<span class="lead">${button({ label: 'Smazat dárek', intent: 'danger', iconStart: 'trash' })}</span>`;
+				return `
+				<footer class="dlg-foot" data-step-only="main">
+					${deleteButton}
+					${button({ label: 'Zrušit', intent: 'outline' })}
+					${button({ label: 'Uložit', intent: 'primary' })}
+				</footer>
+				<footer class="dlg-foot" data-step-only="frame">
+					${phone ? '' : '<span class="foot-hint">Úpravy obrázku se uloží spolu s ostatními změnami dárku.</span>'}
+					${button({ label: 'Hotovo', intent: 'outline', attrs: 'data-act="done"' })}
+					${button({ label: 'Uložit', intent: 'primary' })}
+				</footer>`;
+			}
+
+			function backgroundCards() {
+				const items = [
+					['headphones.jpg', 'Sluchátka Sony WH-1000XM5', '8 490'],
+					['teapot.jpg', 'Litinová konvice Tetsubin', '1 150'],
+					['candle.jpg', 'Sójová svíčka s levandulí', '390'],
+					['plant-book.jpg', 'Kniha Pokojové rostliny', '549'],
+				];
+				return items
+					.map(
+						([file, name, price]) => `
+					<div class="gcard" aria-hidden="true"><div class="gcard-surface">
+						<div class="g-img"><div class="mat-pattern"></div><div class="g-window"><img class="crop-img" style="object-fit:cover" src="${IMAGE_ROOT + file}" alt=""></div><div class="g-sep"></div></div>
+						<div class="g-body"><h3 class="g-name">${name}</h3><div class="g-price">${price}&nbsp;Kč</div></div>
+					</div></div>`,
+					)
+					.join('');
+			}
+
+			function desktopDialog({ links, step = 'main', forceHover = false }) {
+				return `
+				<div class="page-nav"><span class="page-brand">Přejeme si</span><span class="page-nav-link">Moje seznamy</span><span class="page-nav-link">Sledované</span></div>
+				<div class="page-head"><h2>Martinovy narozeniny</h2><p>12 dárků · sdíleno s rodinou</p></div>
+				<div class="page-grid">${backgroundCards()}</div>
+				<div class="scrim" aria-hidden="true"></div>
+				<div class="dlg" role="dialog" aria-modal="true" aria-labelledby="t-d" data-step="${step}">
+					${dialogChrome({ phone: false })}
+					<div class="dlg-body" data-step-only="main">
+						<div class="main-grid">
+							<aside class="rail" aria-label="Náhled dárku" data-view="card">
+								<div class="rail-head">
+									<span class="eyebrow">Tak to uvidí ostatní</span>
+									<div class="seg" role="group" aria-label="Náhled">
+										${button({ label: 'Karta', intent: 'ghost', size: 'sm', iconStart: 'grid', raised: false, attrs: 'data-act="hero" data-value="card" aria-pressed="true"' })}
+										${button({ label: 'Seznam', intent: 'ghost', size: 'sm', iconStart: 'list', raised: false, attrs: 'data-act="hero" data-value="list" aria-pressed="false"' })}
+									</div>
+								</div>
+								<div data-preview="card">${giftCard({ links, source: 'selected', editable: true, forceHover })}</div>
+								<div data-preview="list">${giftListRow({ links, source: 'selected', editable: true })}<p class="help" style="margin-top:.625rem">Řádek je zúžený na šířku náhledu; v seznamu se název vejde celý.</p></div>
+								${stripBlock({ tile: '52px' })}
+							</aside>
+							${desktopForm(links)}
+						</div>
+					</div>
+					<div class="dlg-body no-scroll" data-step-only="frame">${desktopFramingStep(links)}</div>
+					${dialogFoot({ phone: false })}
+				</div>`;
+			}
+
+			function phoneDialog({ links, step = 'main', imagesAtBottom = false }) {
+				const imageSection = `
+						<section class="hero ${imagesAtBottom ? 'at-bottom' : ''}" data-view="list" aria-label="Náhled dárku">
+							<div class="rail-head">
+								<span class="eyebrow">Tak to uvidí ostatní</span>
+								<div class="seg" role="group" aria-label="Náhled">
+									${button({ label: 'Karta', intent: 'ghost', raised: false, attrs: 'data-act="hero" data-value="card" aria-pressed="false"' })}
+									${button({ label: 'Seznam', intent: 'ghost', raised: false, attrs: 'data-act="hero" data-value="list" aria-pressed="true"' })}
+								</div>
+							</div>
+							<div data-preview="list">${giftListRow({ links, source: 'selected', editable: true })}</div>
+							<div data-preview="list">${stripBlock({ tile: '52px', gap: '0.75rem' })}</div>
+							<div data-preview="card" class="hero-split">
+								${giftCard({ links, source: 'selected', editable: true, width: '180px', narrow: true })}
+								${stripBlock({ tile: '44px', gap: '0.5rem' })}
+							</div>
+						</section>`;
+				const deleteButton = button({ label: 'Smazat dárek', intent: 'danger', iconStart: 'trash' });
+				return `
+				<div class="dlg" role="dialog" aria-modal="true" aria-labelledby="t-p" data-step="${step}">
+					${dialogChrome({ phone: true })}
+					<div class="dlg-body" data-step-only="main">
+						${imagesAtBottom ? '' : imageSection}
+						<div class="m-form">
+							<label class="field"><span class="lbl">Název *</span><input class="inp" data-live="name" value="${GIFT.name}"></label>
+							<label class="field"><span class="lbl">Popis</span><textarea class="inp" rows="3" data-live="description">${GIFT.description}</textarea></label>
+							${linksField(links)}
+							<div class="m-pair">
+								<div class="field"><span class="lbl">Cena <button type="button" class="lbl-action">Rozpětí</button></span><div class="inp-suffix"><input class="inp" data-live="price" value="${GIFT.price}" aria-label="Cena"><span>Kč</span></div></div>
+								<div class="field"><span class="lbl">Měna</span><button type="button" class="inp inp-select">CZK ${icon('chevron-down', 'i-sm')}</button></div>
+							</div>
+							<div class="m-pair">
+								<div class="field"><span class="lbl">Priorita</span>${prioritySelect()}</div>
+								<div class="field"><span class="lbl">Počet kusů</span>${quantityStepper()}</div>
+							</div>
+							${categoriesField()}
+						</div>
+						${imagesAtBottom ? imageSection : ''}
+						<div class="m-delete">${deleteButton}</div>
+					</div>
+					<div class="dlg-body no-scroll" data-step-only="frame">
+						<div class="m-step">
+							${strip({ tile: '44px', gap: '0.75rem', demoControls: true })}
+							<div class="seg fill-width" role="group" aria-label="Pohled">
+								${button({ label: `Karta ${statusChip('card')}`, intent: 'ghost', raised: false, attrs: 'data-act="mview" data-value="card" aria-pressed="true"' })}
+								${button({ label: `Seznam ${statusChip('list')}`, intent: 'ghost', raised: false, attrs: 'data-act="mview" data-value="list" aria-pressed="false"' })}
+							</div>
+							<div class="m-editor" data-mview="card">
+								<div data-m-editor="card" class="m-step">
+									${giftCard({ links, source: 'selected', pannable: true, width: '100%' })}
+									${presetControls('card', { compact: true })}
+									<div class="m-row">
+										${button({ label: 'Použít i pro Seznam', intent: 'outline', iconEnd: 'arrow-right', attrs: 'data-act="copy" data-from="card" data-to="list"' })}
+										<span class="grow"></span>
+										${fillControls({ labels: false })}
+									</div>
+								</div>
+								<div data-m-editor="list" class="m-step">
+									${giftListRow({ links, source: 'selected', pannable: true, enlarged: true })}
+									${presetControls('list', { compact: true })}
+									<div class="m-row">
+										${button({ label: 'Použít i pro Kartu', intent: 'outline', iconStart: 'arrow-left', attrs: 'data-act="copy" data-from="list" data-to="card"' })}
+										<span class="grow"></span>
+										${fillControls({ labels: false })}
+									</div>
+									${alsoUsed()}
+								</div>
+							</div>
+						</div>
+					</div>
+					${dialogFoot({ phone: true })}
+				</div>`;
+			}
+
+			/* ---------- Behaviour ---------- */
+
+			function setupDialog(root, { openLink = -1, scrollTo = '' } = {}) {
+				const dialog = root.querySelector('.dlg');
+				const state = { framing: initialFraming(), selected: 0, links: root.links };
+
+				function framingFor(source, view) {
+					const index = source === 'cover' ? 0 : state.selected;
+					return state.framing[index][view];
+				}
+
+				function render() {
+					root.querySelectorAll('[data-crop]').forEach((image) => {
+						const index = image.dataset.source === 'cover' ? 0 : state.selected;
+						const framing = framingFor(image.dataset.source, image.dataset.crop);
+						if (image.dataset.index !== String(index)) {
+							image.dataset.index = String(index);
+							image.src = IMAGES[index];
+						}
+						image.style.objectFit = framing.fit;
+						image.style.objectPosition = `${framing.x}% ${framing.y}%`;
+						image.style.transformOrigin = `${framing.x}% ${framing.y}%`;
+						image.style.transform = `scale(${framing.zoom})`;
+					});
+					root.querySelectorAll('[data-fill-of]').forEach((element) => {
+						const index = element.dataset.fillOf === 'cover' ? 0 : state.selected;
+						element.dataset.fill = state.framing[index].fill;
+					});
+					root.querySelectorAll('[data-dots="selected"] span').forEach((dot, index) => {
+						dot.toggleAttribute('data-current', index === state.selected);
+					});
+					['card', 'list'].forEach((view) => {
+						const status = statusOf(framingFor('selected', view));
+						root.querySelectorAll(`[data-status="${view}"]`).forEach((chip) => {
+							chip.textContent = STATUS_LABEL[status];
+							chip.dataset.state = status;
+						});
+						root.querySelectorAll(`[data-status-text="${view}"]`).forEach((text) => {
+							text.textContent = STATUS_LABEL[status].toLowerCase();
+						});
+						root.querySelectorAll(`[data-act="preset"][data-view="${view}"]`).forEach((preset) => {
+							preset.setAttribute('aria-pressed', String(preset.dataset.value === status));
+						});
+						root.querySelectorAll(`[data-act="zoom"][data-view="${view}"]`).forEach((slider) => {
+							slider.value = framingFor('selected', view).zoom;
+						});
+					});
+					root.querySelectorAll('[data-act="fill"]').forEach((option) => {
+						option.setAttribute('aria-pressed', String(option.dataset.value === state.framing[state.selected].fill));
+					});
+					root.querySelectorAll('[data-act="tile"]').forEach((tile) => {
+						tile.setAttribute('aria-current', String(Number(tile.dataset.index) === state.selected));
+					});
+					root.querySelectorAll('.editable').forEach((image) => {
+						image.setAttribute('aria-label', `Upravit obrázek ${state.selected + 1}`);
+					});
+					root.querySelectorAll('[data-out="image-number"]').forEach((element) => (element.textContent = state.selected + 1));
+					root.querySelectorAll('[data-out="fill-label"]').forEach((element) => (element.textContent = `Pozadí obrázku ${state.selected + 1}`));
+				}
+
+				function setPressed(group, value) {
+					group.forEach((element) => element.setAttribute('aria-pressed', String(element.dataset.value === value)));
+				}
+
+				function setLinkOpen(item, open) {
+					item.toggleAttribute('data-open', open);
+					item.querySelector('.link-line').setAttribute('aria-expanded', String(open));
+				}
+
+				root.addEventListener('click', (event) => {
+					const target = event.target.closest('[data-act]');
+					if (!target || !root.contains(target)) return;
+					const action = target.dataset.act;
+					const current = state.framing[state.selected];
+					if (action === 'hero') {
+						target.closest('.rail, .hero').dataset.view = target.dataset.value;
+						setPressed(target.parentElement.querySelectorAll('[data-act="hero"]'), target.dataset.value);
+					} else if (action === 'open-step') {
+						event.stopPropagation();
+						if (target.dataset.index !== undefined) state.selected = Number(target.dataset.index);
+						dialog.dataset.step = 'frame';
+					} else if (action === 'back' || action === 'done') {
+						dialog.dataset.step = 'main';
+					} else if (action === 'tile') {
+						state.selected = Number(target.dataset.index);
+					} else if (action === 'mview') {
+						target.closest('.m-step').querySelector('.m-editor').dataset.mview = target.dataset.value;
+						setPressed(target.parentElement.querySelectorAll('[data-act="mview"]'), target.dataset.value);
+					} else if (action === 'preset') {
+						current[target.dataset.view] = { fit: target.dataset.value === 'fill' ? 'cover' : 'contain', zoom: 1, x: 50, y: 50 };
+					} else if (action === 'recenter') {
+						Object.assign(current[target.dataset.view], { x: 50, y: 50 });
+					} else if (action === 'copy') {
+						current[target.dataset.to] = { ...current[target.dataset.from] };
+						target.setAttribute('data-flash', '');
+						setTimeout(() => target.removeAttribute('data-flash'), 700);
+					} else if (action === 'fill') {
+						current.fill = target.dataset.value;
+					} else if (action === 'link-toggle') {
+						const item = target.closest('.link-item');
+						const willOpen = !item.hasAttribute('data-open');
+						item.parentElement.querySelectorAll('.link-item').forEach((other) => setLinkOpen(other, false));
+						setLinkOpen(item, willOpen);
+					}
+					render();
+				});
+
+				root.addEventListener('keydown', (event) => {
+					const target = event.target;
+					if (target.getAttribute('role') === 'button' && target.dataset.act && (event.key === 'Enter' || event.key === ' ')) {
+						event.preventDefault();
+						target.click();
+					}
+				});
+
+				root.addEventListener('input', (event) => {
+					const target = event.target;
+					if (target.dataset.act === 'zoom') {
+						state.framing[state.selected][target.dataset.view].zoom = Number(target.value);
+						render();
+					}
+					if (target.dataset.live) {
+						root.querySelectorAll(`[data-out="${target.dataset.live}"]`).forEach((output) => (output.textContent = target.value));
+					}
+					const linkIndex = target.dataset.linkLabel ?? target.dataset.linkUrl;
+					if (linkIndex !== undefined) {
+						const link = state.links[Number(linkIndex)];
+						if (target.dataset.linkLabel !== undefined) link.label = target.value;
+						else link.url = target.value;
+						root.querySelectorAll(`[data-link-line="${linkIndex}"]`).forEach((line) => (line.innerHTML = linkLineContent(link)));
+						root.querySelectorAll(`[data-out="link-${linkIndex}"]`).forEach((output) => (output.textContent = link.label || domainOf(link.url)));
+					}
+				});
+
+				root.querySelectorAll('[data-pan]').forEach((surface) => {
+					const view = surface.dataset.pan;
+					let last = null;
+					surface.addEventListener('pointerdown', (event) => {
+						last = { x: event.clientX, y: event.clientY };
+						surface.setPointerCapture(event.pointerId);
+						surface.setAttribute('data-dragging', '');
+					});
+					surface.addEventListener('pointermove', (event) => {
+						if (!last) return;
+						const framing = state.framing[state.selected][view];
+						const bounds = surface.getBoundingClientRect();
+						framing.x = Math.round(Math.min(100, Math.max(0, framing.x - ((event.clientX - last.x) / bounds.width) * 100 / framing.zoom)));
+						framing.y = Math.round(Math.min(100, Math.max(0, framing.y - ((event.clientY - last.y) / bounds.height) * 100 / framing.zoom)));
+						last = { x: event.clientX, y: event.clientY };
+						render();
+					});
+					const end = () => {
+						last = null;
+						surface.removeAttribute('data-dragging');
+					};
+					surface.addEventListener('pointerup', end);
+					surface.addEventListener('pointercancel', end);
+					surface.addEventListener('wheel', (event) => {
+						event.preventDefault();
+						const framing = state.framing[state.selected][view];
+						framing.zoom = Math.min(3, Math.max(1, Math.round((framing.zoom - event.deltaY * 0.002) * 100) / 100));
+						render();
+					}, { passive: false });
+					surface.addEventListener('keydown', (event) => {
+						const framing = state.framing[state.selected][view];
+						const step = event.shiftKey ? 10 : 2;
+						const moves = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] };
+						if (moves[event.key]) {
+							framing.x = Math.min(100, Math.max(0, framing.x + moves[event.key][0]));
+							framing.y = Math.min(100, Math.max(0, framing.y + moves[event.key][1]));
+						} else if (event.key === '+' || event.key === '=') {
+							framing.zoom = Math.min(3, Math.round((framing.zoom + 0.1) * 100) / 100);
+						} else if (event.key === '-') {
+							framing.zoom = Math.max(1, Math.round((framing.zoom - 0.1) * 100) / 100);
+						} else if (event.key === '0') {
+							Object.assign(framing, { x: 50, y: 50 });
+						} else {
+							return;
+						}
+						event.preventDefault();
+						render();
+					});
+				});
+
+				if (openLink >= 0) {
+					const item = dialog.querySelector(`[data-step-only="main"] .link-item[data-link-index="${openLink}"]`);
+					setLinkOpen(item, true);
+				}
+				render();
+				if (scrollTo) {
+					const body = dialog.querySelector('.dlg-body');
+					body.scrollTop = body.querySelector(scrollTo).offsetTop - 12;
+				}
+			}
+
+			function mount(name, build, options = {}) {
+				const root = document.querySelector(`[data-mount="${name}"]`);
+				root.links = initialLinks();
+				root.innerHTML = build(root.links);
+				setupDialog(root, options);
+			}
+
+			mount('desk-main', (links) => desktopDialog({ links }));
+			mount('desk-hover', (links) => desktopDialog({ links, forceHover: true }));
+			mount('desk-frame', (links) => desktopDialog({ links, step: 'frame' }));
+			mount('desk-link', (links) => desktopDialog({ links }), { openLink: 2 });
+			mount('phone-main', (links) => phoneDialog({ links }));
+			mount('phone-main-bottom', (links) => phoneDialog({ links, imagesAtBottom: true }));
+			mount('phone-main-bottom-scrolled', (links) => phoneDialog({ links, imagesAtBottom: true }), { scrollTo: '.hero' });
+			mount('phone-frame', (links) => phoneDialog({ links, step: 'frame' }));
+			mount('phone-link', (links) => phoneDialog({ links }), { openLink: 0, scrollTo: '[data-links-field]' });
+
+		</script>
+	</body>
+</html>
