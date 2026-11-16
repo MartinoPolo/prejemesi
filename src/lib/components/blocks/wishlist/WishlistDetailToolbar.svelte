@@ -1270,6 +1270,7 @@
 <style>
 	.wishlist-toolbar-sticky {
 		--wishlist-toolbar-sticky-top: 0.75rem;
+		--wishlist-toolbar-bottom-fade: 1.5rem;
 
 		isolation: isolate;
 		top: var(--wishlist-toolbar-sticky-top);
@@ -1291,7 +1292,7 @@
 		position: absolute;
 		inset-block-start: 100%;
 		inset-inline: 0;
-		block-size: 1.5rem;
+		block-size: var(--wishlist-toolbar-bottom-fade);
 		background: var(--app-page-background);
 		content: '';
 		mask-image: linear-gradient(to bottom, #000, transparent);
@@ -1299,8 +1300,8 @@
 	}
 
 	/* A strip sticking right below the toolbar carries on its surface; the fade would wash it out. */
-	.wishlist-toolbar-sticky-continued .wishlist-toolbar-mask::after {
-		display: none;
+	.wishlist-toolbar-sticky-continued {
+		--wishlist-toolbar-bottom-fade: 0px;
 	}
 
 	.wishlist-toolbar {
