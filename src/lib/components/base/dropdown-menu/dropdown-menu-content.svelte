@@ -13,6 +13,8 @@
 		align = 'start',
 		sticky = 'always',
 		collisionPadding = 8,
+		// The lock toggles user-select on <body> per press, restyling the whole document.
+		preventOverflowTextSelection = false,
 		portalProps,
 		shadowedTrigger = true,
 		class: className,
@@ -35,6 +37,7 @@
 		{align}
 		{sticky}
 		{collisionPadding}
+		{preventOverflowTextSelection}
 		class={cn(
 			fadeScaleOverlayMotionClass,
 			'origin-(--bits-dropdown-menu-content-transform-origin) bg-popover text-popover-foreground min-w-32 rounded-panel border-[2.5px] border-edge p-1.5 shadow-sticker duration-100 z-(--z-modal) max-h-[calc(100dvh-1rem-var(--depth-clearance))] w-max max-w-[calc(100vw-1rem-var(--depth-clearance))] overflow-x-hidden overflow-y-auto overscroll-contain outline-none data-closed:overflow-hidden',

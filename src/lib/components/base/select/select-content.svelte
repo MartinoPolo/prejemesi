@@ -17,6 +17,8 @@
 		sideOffset = 4,
 		sticky = 'always',
 		collisionPadding = 8,
+		// The lock toggles user-select on <body> per press, restyling the whole document.
+		preventOverflowTextSelection = false,
 		portalProps,
 		children,
 		preventScroll = true,
@@ -35,6 +37,7 @@
 		{sideOffset}
 		{sticky}
 		{collisionPadding}
+		{preventOverflowTextSelection}
 		{preventScroll}
 		data-slot="select-content"
 		class={cn(
