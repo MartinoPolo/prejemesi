@@ -6,6 +6,8 @@
 	import SheetOverlay from './sheet-overlay.svelte';
 	import { Button } from '$lib/components/base/button/index.js';
 	import XIcon from '@lucide/svelte/icons/x';
+	import ModalPageBlocker from '../modal_page_blocker.svelte';
+	import { markModalLayer } from '../modal_layer_context.js';
 	import { cn, type WithoutChildrenOrChild } from '$lib/utils.js';
 	import type { ComponentProps } from 'svelte';
 	import type { Side } from './index.js';
@@ -31,11 +33,13 @@
 	} = $props();
 
 	const layerPalette = getLayerPalette();
+	markModalLayer();
 </script>
 
 <SheetPortal {...portalProps}>
+	<ModalPageBlocker active={ref !== null} blockEnclosingLayer />
 	<SheetOverlay />
-	<!-- The overlay already blocks the page; pointer-events on <body> would restyle every element. -->
+	<!-- The overlay and blocker cover the page; pointer-events on <body> would restyle every element. -->
 	<SheetPrimitive.Content
 		preventBodyPointerEvents={false}
 		data-dark-palette={layerPalette()}
