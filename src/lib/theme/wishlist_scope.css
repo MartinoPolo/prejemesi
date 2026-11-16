@@ -83,10 +83,10 @@
 }
 
 @container app-content (width < 1360px) {
+	/* Only photo backgrounds carry a placement. */
 	.wishlist-page-shell:is(
 		[data-wishlist-background='theme'],
-		[data-wishlist-background='custom'][data-wishlist-placement='gutters'],
-		[data-wishlist-background='library'][data-wishlist-placement='gutters']
+		[data-wishlist-background][data-wishlist-placement='gutters']
 	) {
 		padding-top: calc(var(--wishlist-band-height) - var(--space-6));
 	}
@@ -120,10 +120,9 @@
    lives only here: over the opaque page colour it would be hidden yet still repaint every frame. */
 .wishlist-page-shell[data-wishlist-backdrop] .wishlist-toolbar-mask {
 	inline-size: min(100cqw, var(--content-max-width));
-	background: transparent;
-	backdrop-filter: blur(10px);
 }
 
+.wishlist-page-shell[data-wishlist-backdrop] .wishlist-toolbar-mask,
 .wishlist-page-shell[data-wishlist-backdrop] .wishlist-toolbar-mask::after {
 	background: transparent;
 	backdrop-filter: blur(10px);
