@@ -6,6 +6,14 @@
 	import { onMount, tick } from 'svelte';
 	import { SvelteSet } from 'svelte/reactivity';
 	import { runExclusively } from '$lib/utils/run_exclusively.js';
+	import { runSerially } from '$lib/utils/run_serially.js';
+	import { sendWithOverrides } from '$lib/utils/send_with_overrides.js';
+	import {
+		withGiftCategories,
+		withGiftPriority,
+		withoutLedgerReservation,
+		withoutViewerReservation,
+	} from '$lib/modules/gifts/gift_optimistic_updates.js';
 	import * as m from '$lib/paraglide/messages.js';
 	import { localizeInternalHref } from '$lib/i18n/locale.js';
 	import WishlistHeader from '$lib/components/blocks/gift/WishlistHeader.svelte';
@@ -1156,16 +1164,41 @@
 		}
 	}
 
+	// Updates of one gift reach the server in call order; More-menu changes also show at once.
+	const giftUpdateQueueTails = new Map<string, Promise<void>>();
+
 	async function updateContextGift(update: {
 		priorityLevelId?: string | null;
 		categoryIds?: string[];
 	}) {
 		const gift = contextSession?.gift;
-		if (gift === undefined) {
+		if (gift === undefined || giftsQuery === null) {
 			return;
 		}
+		const giftId = gift.id;
+		const { priorityLevelId, categoryIds } = update;
+		// A level missing from the loaded list has no label to show, so only the server applies it.
+		const priorityLevel =
+			priorityLevelId === undefined
+				? undefined
+				: priorityLevelId === null
+					? null
+					: priorityLevels.find((level) => level.id === priorityLevelId);
+		const wishlistCategories = categoryOptions;
+		// Shown at once; only the queued send below releases it, so nothing may run in between.
+		const override = giftsQuery.withOverride((result) => {
+			const withPriority =
+				priorityLevel === undefined
+					? result
+					: withGiftPriority(result, giftId, priorityLevel);
+			return categoryIds === undefined
+				? withPriority
+				: withGiftCategories(withPriority, giftId, categoryIds, wishlistCategories);
+		});
 		try {
-			await updateGiftRemote({ id: gift.id, ...update });
+			await runSerially(giftUpdateQueueTails, giftId, () =>
+				sendWithOverrides([override], () => updateGiftRemote({ id: giftId, ...update })),
+			);
 			toastSuccess(m.toast_gift_updated());
 		} catch (thrown) {
 			toastError(translateServerError(thrown));
@@ -1845,7 +1878,7 @@
 	async function handleUpdate(input: UpdateGiftInput): Promise<boolean> {
 		isSubmitting = true;
 		try {
-			await updateGiftRemote(input);
+			await runSerially(giftUpdateQueueTails, input.id, () => updateGiftRemote(input));
 			selectedGift = gifts.find((giftItem) => giftItem.id === input.id) ?? selectedGift;
 			toastSuccess(m.toast_gift_updated());
 			return true;
@@ -2312,8 +2345,17 @@
 			return;
 		}
 		await runExclusively(unreservePendingGiftIds, giftItem.id, async () => {
+			const viewerName = data.user?.name ?? null;
+			const overrides = [
+				giftsQuery?.withOverride((result) =>
+					withoutViewerReservation(result, reservationId, viewerName),
+				),
+				releaseLedgerQuery?.withOverride((ledger) =>
+					withoutLedgerReservation(ledger, reservationId),
+				),
+			].filter((override) => override !== undefined);
 			try {
-				await unreserveGift({ reservationId });
+				await sendWithOverrides(overrides, () => unreserveGift({ reservationId }));
 				toastSuccess(m.toast_gift_unreserved());
 			} catch (thrown) {
 				toastError(translateServerError(thrown));

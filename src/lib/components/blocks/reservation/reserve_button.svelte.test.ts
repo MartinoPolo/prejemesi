@@ -38,6 +38,7 @@ function makeGift(overrides: Partial<GiftForVisitor> = {}): GiftForVisitor {
 		reserverNames: [],
 		myReservationId: null,
 		myReservationPurchasedAt: null,
+		myReservationQuantity: 0,
 		...overrides,
 	};
 }
@@ -100,9 +101,25 @@ describe('ReserveButton', () => {
 		expect(animate).toHaveBeenCalledTimes(1);
 		await expect.element(page.getByText(m.reserve_button_reserve())).toBeVisible();
 
-		await screen.rerender({ gift: ownReservation });
+		await screen.rerender({ gift: makeGift({ myReservationId: 'reservation-2' }) });
 		await expect.element(page.getByText(m.reserve_button_reserved())).toBeVisible();
 		expect(animate).toHaveBeenCalledTimes(2);
+	});
+
+	it('does not acknowledge the same reservation returning after a failed cancel', async () => {
+		const animate = vi.spyOn(HTMLElement.prototype, 'animate');
+		const ownReservation = makeGift({ myReservationId: 'reservation-1' });
+		const screen = await render(ReserveButton, { gift: ownReservation });
+
+		await screen.rerender({
+			gift: makeGift({ reservedCount: 0, isFullyReserved: false, myReservationId: null }),
+		});
+		await expect.element(page.getByText(m.reserve_button_reserve())).toBeVisible();
+		await screen.rerender({ gift: ownReservation });
+
+		await expect.element(page.getByText(m.reserve_button_cancel())).toBeVisible();
+		expect(page.getByText(m.reserve_button_reserved()).query()).toBeNull();
+		expect(animate).not.toHaveBeenCalled();
 	});
 
 	it('does not visually confirm when reserving leaves authoritative props unchanged', async () => {

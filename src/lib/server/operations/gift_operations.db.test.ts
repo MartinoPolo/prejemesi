@@ -375,7 +375,7 @@ describe.skipIf(!DB_READY)('gift operation core [real DB]', () => {
 			const purchasedAt = new Date(Date.now() - MINUTE_MS);
 			await getDb()
 				.update(reservation)
-				.set({ purchasedAt })
+				.set({ purchasedAt, quantity: 2 })
 				.where(eq(reservation.giftId, giftId));
 			await getDb()
 				.insert(giftLike)
@@ -402,6 +402,7 @@ describe.skipIf(!DB_READY)('gift operation core [real DB]', () => {
 				likeCount: 2,
 				myReservationId: ownReservation?.id,
 				myReservationPurchasedAt: purchasedAt,
+				myReservationQuantity: 2,
 			});
 
 			const visitor = await executeOperation(outsiderActor, readWishlistGiftsOperation, {
@@ -411,6 +412,7 @@ describe.skipIf(!DB_READY)('gift operation core [real DB]', () => {
 				likeCount: 2,
 				myReservationId: null,
 				myReservationPurchasedAt: null,
+				myReservationQuantity: 0,
 			});
 		});
 

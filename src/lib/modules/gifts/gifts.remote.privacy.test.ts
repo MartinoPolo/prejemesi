@@ -293,6 +293,7 @@ describe('getGiftsByWishlistShortId', () => {
 				'reserverNames',
 				'myReservationId',
 				'myReservationPurchasedAt',
+				'myReservationQuantity',
 			];
 			for (const field of visitorOnlyFields) {
 				expect(field in gift, `field "${field}" must not leak to the recipient`).toBe(

@@ -64,6 +64,7 @@ function visitorGift(): GiftForVisitor {
 		reserverNames: [],
 		myReservationId: null,
 		myReservationPurchasedAt: null,
+		myReservationQuantity: 0,
 	};
 }
 

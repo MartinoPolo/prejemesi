@@ -64,6 +64,7 @@ function gift(index: number, overrides: Partial<GiftForVisitor> = {}): GiftForVi
 		reserverNames: [],
 		myReservationId: null,
 		myReservationPurchasedAt: null,
+		myReservationQuantity: 0,
 		...overrides,
 	};
 }

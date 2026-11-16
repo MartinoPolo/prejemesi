@@ -35,7 +35,8 @@
 
 	const hasMyReservation = $derived(gift.myReservationId !== null);
 	const isFullyReserved = $derived(gift.isFullyReserved);
-	let previousHasMyReservation: boolean | undefined;
+	// A cancel that rolls back restores the same reservation, which must not read as a new one.
+	let lastShownReservationId: string | null | undefined;
 	let showReservationAcknowledgement = $state(false);
 	let acknowledgementRun = $state(0);
 	let buttonElement = $state<HTMLButtonElement | null>(null);
@@ -44,18 +45,20 @@
 	let unreservePending = $state(false);
 
 	$effect.pre(() => {
-		const currentHasMyReservation = gift.myReservationId !== null;
-		if (previousHasMyReservation === undefined) {
-			previousHasMyReservation = currentHasMyReservation;
+		const currentReservationId = gift.myReservationId;
+		if (lastShownReservationId === undefined) {
+			lastShownReservationId = currentReservationId;
 			return;
 		}
-		if (!previousHasMyReservation && currentHasMyReservation) {
+		if (currentReservationId === null) {
+			showReservationAcknowledgement = false;
+			return;
+		}
+		if (currentReservationId !== lastShownReservationId) {
 			showReservationAcknowledgement = true;
 			acknowledgementRun += 1;
-		} else if (!currentHasMyReservation) {
-			showReservationAcknowledgement = false;
 		}
-		previousHasMyReservation = currentHasMyReservation;
+		lastShownReservationId = currentReservationId;
 	});
 
 	$effect(() => {

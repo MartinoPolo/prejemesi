@@ -55,6 +55,7 @@ function makeGift(options: { priority?: boolean; category?: boolean } = {}): Gif
 		reserverNames: [],
 		myReservationId: null,
 		myReservationPurchasedAt: null,
+		myReservationQuantity: 0,
 	};
 }
 

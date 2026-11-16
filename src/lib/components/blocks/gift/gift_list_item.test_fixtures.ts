@@ -60,6 +60,7 @@ export function makeVisitorGift(overrides: Partial<GiftForVisitor> = {}): GiftFo
 		// REQ-1/2): both PurchasedToggle and ReserveButton render together.
 		myReservationId: 'reservation-1',
 		myReservationPurchasedAt: null,
+		myReservationQuantity: 1,
 		...overrides,
 	};
 }

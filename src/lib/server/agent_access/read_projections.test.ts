@@ -66,6 +66,7 @@ const visitorGift: GiftForVisitor = {
 	reserverNames: ['Petr Svoboda'],
 	myReservationId: null,
 	myReservationPurchasedAt: null,
+	myReservationQuantity: 0,
 };
 
 const RESERVATION_AND_LIKE_FIELDS = [

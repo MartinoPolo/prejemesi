@@ -146,6 +146,7 @@ function viewerReservationFilter(actor: OperationActor | null) {
 interface ViewerReservation {
 	id: string;
 	purchasedAt: Date | null;
+	quantity: number;
 }
 
 /** The viewer's own active reservation per gift powers the unreserve UI. */
@@ -164,6 +165,7 @@ async function loadViewerReservations(
 			id: reservation.id,
 			giftId: reservation.giftId,
 			purchasedAt: reservation.purchasedAt,
+			quantity: reservation.quantity,
 		})
 		.from(reservation)
 		.where(
@@ -178,7 +180,11 @@ async function loadViewerReservations(
 	for (const row of viewerReservationRows) {
 		// Keep the earliest active reservation per gift
 		if (!reservationsByGiftId.has(row.giftId)) {
-			reservationsByGiftId.set(row.giftId, { id: row.id, purchasedAt: row.purchasedAt });
+			reservationsByGiftId.set(row.giftId, {
+				id: row.id,
+				purchasedAt: row.purchasedAt,
+				quantity: row.quantity,
+			});
 		}
 	}
 	return reservationsByGiftId;
@@ -205,6 +211,7 @@ function toVisitorGift(row: GiftReadRow, readings: VisitorGiftReadings): GiftFor
 			: [],
 		myReservationId: viewerReservation?.id ?? null,
 		myReservationPurchasedAt: viewerReservation?.purchasedAt ?? null,
+		myReservationQuantity: viewerReservation?.quantity ?? 0,
 	};
 }
 
