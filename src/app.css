@@ -1466,6 +1466,7 @@ main.app-content {
 }
 
 /* ── Entrance reveals (staggered fadeUp) ─────────────────── */
+
 /* App surfaces visited repeatedly override the custom properties with a shorter reveal. */
 @media (prefers-reduced-motion: no-preference) {
 	.reveal {
