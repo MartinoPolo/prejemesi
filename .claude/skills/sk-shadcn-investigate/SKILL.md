@@ -2,7 +2,7 @@
 name: sk-shadcn-investigate
 description: 'Research shadcn-svelte and Bits UI source code and docs to inform decisions, debug issues, or understand component APIs. Use when: "shadcn", "shadcn-svelte", "bits-ui"'
 argument-hint: '<topic or question>'
-allowed-tools: Read, Grep, Glob, Agent, mcp__context7__resolve-library-id, mcp__context7__query-docs, mcp__svelte__get-documentation, mcp__svelte__svelte-autofixer
+allowed-tools: Read, Grep, Glob, Agent, mcp__context7__resolve-library-id, mcp__context7__query-docs
 metadata:
     author: MartinoPolo
     version: '0.1'
