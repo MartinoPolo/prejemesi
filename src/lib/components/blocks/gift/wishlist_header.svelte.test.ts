@@ -304,6 +304,86 @@ describe('WishlistHeader responsive presentation', () => {
 	});
 
 	it.each([390, 1280])(
+		'shows the description only as the note after the hero and before the notices at %ipx',
+		async (width) => {
+			await page.viewport(width, 720);
+			const screen = await render(WishlistHeader, {
+				...baseProps,
+				status: 'archived' as const,
+				recipientIsModerator: true,
+			});
+			const note = screen.getByTestId('wishlist-note');
+			await expect.element(note).toBeVisible();
+			await expect.element(note.getByText(baseProps.description)).toBeVisible();
+			const archivedNotice = screen.getByText(m.wishlist_archived_banner()).element();
+			const trustWarning = screen
+				.getByText(m.wishlist_trust_warning({ name: baseProps.recipientDisplayName }))
+				.element();
+			for (const hero of [
+				screen.getByTestId('wishlist-mobile-hero').element(),
+				screen.getByTestId('wishlist-banner').element(),
+			]) {
+				expect(hero.textContent).not.toContain(baseProps.description);
+				expect(
+					hero.compareDocumentPosition(note.element()) & Node.DOCUMENT_POSITION_FOLLOWING,
+				).toBeTruthy();
+			}
+			for (const notice of [archivedNotice, trustWarning]) {
+				expect(
+					note.element().compareDocumentPosition(notice) &
+						Node.DOCUMENT_POSITION_FOLLOWING,
+				).toBeTruthy();
+			}
+			await screen.unmount();
+		},
+	);
+
+	it.each(['visitor', 'recipient', 'moderator'] as const)(
+		'gives the %s the same note with fold and dismiss controls',
+		async (role) => {
+			const screen = await render(WishlistHeader, { ...baseProps, role });
+			const note = screen.getByTestId('wishlist-note');
+			await expect
+				.element(note.getByRole('button', { name: m.wishlist_note_fold() }))
+				.toBeVisible();
+			await expect
+				.element(note.getByRole('button', { name: m.wishlist_note_dismiss() }))
+				.toBeVisible();
+			await screen.unmount();
+		},
+	);
+
+	it('omits the note without a description', async () => {
+		const screen = await render(WishlistHeader, { ...baseProps, description: '  ' });
+		await expect.element(screen.getByTestId('wishlist-note')).not.toBeInTheDocument();
+		await screen.unmount();
+	});
+
+	it.each([
+		{
+			label: 'the linked recipient on a self list',
+			overrides: { isForSomeoneElse: false, managerNames: ['Jana', 'Petr'] },
+			expected: m.wishlist_note_author({ name: baseProps.recipientDisplayName }),
+		},
+		{
+			label: 'the single správce of a list for someone else',
+			overrides: { isForSomeoneElse: true, managerNames: ['Martin'] },
+			expected: m.wishlist_note_author({ name: 'Martin' }),
+		},
+		{
+			label: 'nobody when several správci manage a list for someone else',
+			overrides: { isForSomeoneElse: true, managerNames: ['Martin', 'Jana'] },
+			expected: m.wishlist_note_untitled(),
+		},
+	])('labels the note with $label', async ({ overrides, expected }) => {
+		const screen = await render(WishlistHeader, { ...baseProps, ...overrides });
+		await expect
+			.element(screen.getByTestId('wishlist-note').getByText(expected, { exact: true }))
+			.toBeVisible();
+		await screen.unmount();
+	});
+
+	it.each([390, 1280])(
 		'centers the archive action with its depth clearance at %ipx',
 		async (width) => {
 			await page.viewport(width, 720);

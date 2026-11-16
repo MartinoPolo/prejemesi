@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
 import * as m from '$lib/paraglide/messages.js';
 import { createDefaultWishlistSlots } from '$lib/modules/images/index.js';
-import { WISHLIST_KIND, WISHLIST_OCCASION } from '$lib/modules/wishlists/types.js';
+import { WISHLIST_KIND, WISHLIST_OCCASION, WISHLIST_ROLES } from '$lib/modules/wishlists/types.js';
 
 const remoteMocks = vi.hoisted(() => ({
 	refreshGiftCategorySettings: vi.fn().mockResolvedValue(undefined),
@@ -470,5 +470,45 @@ describe('WishlistSettingsModal draft ownership (#527)', () => {
 			.element(screen.getByRole('dialog', { name: m.unsaved_changes_title() }))
 			.not.toBeInTheDocument();
 		expect(remoteMocks.saveWishlistSettings).not.toHaveBeenCalled();
+	});
+});
+
+describe('WishlistSettingsModal visitor note', () => {
+	it('explains the field and previews the note live, without controls, once it has text', async () => {
+		const screen = renderSettings({ recipientDisplayName: 'Martin Novák' });
+		const field = screen.getByRole('textbox', { name: m.wishlist_note_field_label() });
+		await expect.element(field).toHaveAccessibleDescription(m.wishlist_note_field_help());
+		await expect.element(screen.getByTestId('wishlist-note-preview')).not.toBeInTheDocument();
+
+		await field.fill('Prosím žádné sladkosti.');
+
+		const preview = screen.getByTestId('wishlist-note-preview');
+		await expect
+			.element(preview.getByText(m.wishlist_note_author({ name: 'Martin Novák' })))
+			.toBeVisible();
+		await expect.element(preview.getByText('Prosím žádné sladkosti.')).toBeVisible();
+		expect(preview.element().querySelectorAll('button')).toHaveLength(0);
+	});
+
+	it('names the single správce of a list for someone else in the preview', async () => {
+		const screen = renderSettings({
+			wishlist: {
+				...wishlist,
+				recipientUserId: null,
+				recipientName: 'Anička',
+				description: 'Velikost 110.',
+				palette: 'sakura',
+			},
+			role: WISHLIST_ROLES.moderator,
+			recipientDisplayName: 'Anička',
+			managerNames: ['Jana Nováková'],
+		});
+		const preview = screen.getByTestId('wishlist-note-preview');
+		await expect
+			.element(preview.getByText(m.wishlist_note_author({ name: 'Jana Nováková' })))
+			.toBeVisible();
+		await expect.element(preview.getByText('Velikost 110.')).toBeVisible();
+		// Visitors see the note in the list's palette, not the viewer's.
+		await expect.element(preview).toHaveAttribute('data-palette', 'sakura');
 	});
 });

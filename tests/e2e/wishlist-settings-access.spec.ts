@@ -85,7 +85,9 @@ test.describe('Wishlist settings – immediate actions and access', () => {
 				/Nastavení seznamu může upravovat pouze obdarovaný nebo správce\.|Only the recipient or a manager can edit the wishlist settings\./,
 			),
 		).toBeVisible({ timeout: 10_000 });
-		await expect(visitorPage.getByRole('textbox', { name: 'Popis' })).not.toBeVisible();
+		await expect(
+			visitorPage.getByRole('textbox', { name: 'Vzkaz pro návštěvníky' }),
+		).not.toBeVisible();
 
 		await ownerPage.context().close();
 		await visitorPage.context().close();
@@ -113,7 +115,9 @@ test.describe('Wishlist settings – immediate actions and access', () => {
 		await expect(
 			page.getByText('Tento seznam je archivovaný a nelze jej upravovat.'),
 		).toBeVisible({ timeout: 10_000 });
-		await expect(page.getByRole('textbox', { name: 'Popis' })).not.toBeVisible();
+		await expect(
+			page.getByRole('textbox', { name: 'Vzkaz pro návštěvníky' }),
+		).not.toBeVisible();
 
 		await page.context().close();
 	});

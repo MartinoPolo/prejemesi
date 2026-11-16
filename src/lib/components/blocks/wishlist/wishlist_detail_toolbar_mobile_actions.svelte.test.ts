@@ -315,6 +315,46 @@ describe('WishlistDetailToolbar mobile actions (#340)', () => {
 		await screen.unmount();
 	});
 
+	it('offers „Zobrazit vzkaz“ first in More only while the note is dismissed', async () => {
+		let screen = await renderToolbar();
+		await screen.getByTestId('mobile-more-trigger').click();
+		await expect
+			.element(
+				screen
+					.getByRole('dialog', { name: m.wishlist_more_actions() })
+					.getByRole('button', { name: m.wishlist_note_show() }),
+			)
+			.not.toBeInTheDocument();
+		await screen.unmount();
+
+		const onshownote = vi.fn();
+		screen = await renderToolbar({ onshownote });
+		await screen.getByTestId('mobile-more-trigger').click();
+		const more = screen.getByRole('dialog', { name: m.wishlist_more_actions() });
+		const showNote = more.getByRole('button', { name: m.wishlist_note_show() });
+		await expect.element(showNote).toBeVisible();
+		const otherActions = more
+			.getByRole('button')
+			.elements()
+			.filter(
+				(button) =>
+					button !== showNote.element() &&
+					button.textContent?.trim() !== '' &&
+					button.getAttribute('aria-label') === null,
+			);
+		expect(otherActions.length).toBeGreaterThan(0);
+		for (const action of otherActions) {
+			expect(
+				showNote.element().compareDocumentPosition(action) &
+					Node.DOCUMENT_POSITION_FOLLOWING,
+			).toBeTruthy();
+		}
+		await showNote.click();
+		expect(onshownote).toHaveBeenCalledOnce();
+		await expect.element(more).not.toBeInTheDocument();
+		await screen.unmount();
+	});
+
 	it('restores Display focus, scroll, width, and toolbar geometry after Escape', async () => {
 		const screen = await renderToolbar({}, 390);
 		const trigger = screen.getByTestId('mobile-display-trigger').element() as HTMLButtonElement;

@@ -295,14 +295,18 @@
 							<div class="flex flex-col gap-4 pt-1">
 								<div class="flex flex-col gap-2">
 									<Label for="wishlist-create-description"
-										>{m.wishlist_description_label()}</Label
+										>{m.wishlist_note_field_label()}</Label
 									>
 									<Textarea
 										id="wishlist-create-description"
 										bind:value={description}
-										placeholder={m.wishlist_description_placeholder()}
+										placeholder={m.wishlist_note_field_placeholder()}
 										disabled={isSubmitting}
+										aria-describedby="wishlist-create-description-help"
 									/>
+									<HelpText id="wishlist-create-description-help"
+										>{m.wishlist_note_field_help()}</HelpText
+									>
 								</div>
 								<div class="flex flex-col gap-2">
 									<Label id="wishlist-create-palette-label"

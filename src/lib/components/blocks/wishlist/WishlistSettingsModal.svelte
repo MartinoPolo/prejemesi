@@ -34,6 +34,11 @@
 	import WishlistSettingsSaveButton from './WishlistSettingsSaveButton.svelte';
 	import DangerActionCard from '$lib/components/blocks/settings/DangerActionCard.svelte';
 	import RecipientPreview from './RecipientPreview.svelte';
+	import WishlistNote from '$lib/components/blocks/gift/WishlistNote.svelte';
+	import {
+		wishlistNoteAuthorName,
+		wishlistNoteText,
+	} from '$lib/modules/wishlists/wishlist_note.js';
 	import WishlistOccasionField from './WishlistOccasionField.svelte';
 	import {
 		WISHLIST_SETTINGS_TABS,
@@ -89,6 +94,8 @@
 		revertCapability: RevertCapability;
 		/** Who the list is for: linked account name or free-text name (shown in the recipient row). */
 		recipientDisplayName: string;
+		/** Names of the list's správci; the note preview names a single one as its author. */
+		managerNames: string[];
 		/** Theme-derived fallback emoji for the crop editor previews. */
 		themeEmoji: string;
 		/** Awaited page refresh after a save so the form can re-seed from fresh values. */
@@ -126,6 +133,7 @@
 		role,
 		revertCapability,
 		recipientDisplayName,
+		managerNames,
 		themeEmoji,
 		onsaved,
 		onpaletteselect,
@@ -148,6 +156,13 @@
 	// the shared dialog.
 	const isFreeTextRecipient = $derived(wishlist.recipientUserId === null);
 	const canFlipRecipient = $derived(role === WISHLIST_ROLES.recipient);
+	const noteAuthorName = $derived(
+		wishlistNoteAuthorName({
+			isForSomeoneElse: isFreeTextRecipient,
+			recipientDisplayName,
+			managerNames,
+		}),
+	);
 
 	// Wishlist kind (issue #479): permanent → occasion is allowed any time, occasion → permanent
 	// only while the stored event date is not upcoming. A permanent wishlist has no event date.
@@ -215,6 +230,9 @@
 	let paletteDirty = $state(false);
 	// svelte-ignore state_referenced_locally (one-time modal draft seed)
 	let paletteDraft = $state<Palette>(wishlist.palette);
+	const noteText = $derived(wishlistNoteText(detailsDescription));
+	// Visitors see the note in the list's palette, so the preview follows the staged one.
+	const notePreviewPalette = $derived(paletteDirty ? paletteDraft : wishlist.palette);
 	let appearanceDirty = $state(false);
 	let appearanceDraft = $state.raw<SaveWishlistSettingsInput['appearance']>();
 	let categoryDraft = $state<SaveWishlistSettingsInput['categories']>();
@@ -731,14 +749,33 @@
 
 							<div class="flex flex-col gap-2">
 								<Label for="wishlist-description"
-									>{m.wishlist_description_label()}</Label
+									>{m.wishlist_note_field_label()}</Label
 								>
 								<Textarea
 									id="wishlist-description"
 									bind:value={detailsDescription}
-									placeholder={m.wishlist_description_placeholder()}
+									placeholder={m.wishlist_note_field_placeholder()}
 									disabled={saving}
+									aria-describedby="wishlist-description-help"
 								/>
+								<HelpText id="wishlist-description-help"
+									>{m.wishlist_note_field_help()}</HelpText
+								>
+								{#if noteText !== null}
+									<!-- Visitors' view of the note in the list's palette, live while typing;
+									     never interactive. -->
+									<div
+										inert
+										data-palette={notePreviewPalette}
+										data-testid="wishlist-note-preview"
+									>
+										<WishlistNote
+											preview
+											description={noteText}
+											authorName={noteAuthorName}
+										/>
+									</div>
+								{/if}
 							</div>
 
 							<WishlistOccasionField
