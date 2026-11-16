@@ -8,7 +8,8 @@ import { tv } from 'tailwind-variants';
  */
 export const wishlistHeaderVariants = tv({
 	slots: {
-		root: 'flex flex-col gap-3 sm:gap-6',
+		/** Revisited on every list open, so the staggered reveal finishes within about 400 ms. */
+		root: 'flex flex-col gap-3 sm:gap-6 [--reveal-duration:260ms] [--reveal-easing:var(--ease-out-strong)] [--reveal-step:30ms]',
 		/** Keeps clear of the frame's end decoration even without hero actions. */
 		headerText: 'min-w-0 flex-1 sm:pe-(--hero-copy-end-minimum)',
 		/** „Pro: {recipient}" line above the title (name bold, prefix lighter) — all lists. */
