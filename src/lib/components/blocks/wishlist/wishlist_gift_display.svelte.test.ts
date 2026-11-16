@@ -1168,8 +1168,31 @@ describe('WishlistGiftDisplay image load priority', () => {
 		sortOrder: index,
 		imageUrl: index === 0 ? null : `https://example.test/${String(index)}.jpg`,
 	}));
-	const imageOf = (name: string) =>
-		document.querySelector<HTMLImageElement>(`img[alt="${name}"]`);
+	interface ImageRequest {
+		loading: string | null;
+		fetchPriority: string | null;
+	}
+
+	/**
+	 * The test URLs fail fast and a failed frame drops its image, so each image's request
+	 * attributes are recorded when it is inserted rather than read back later.
+	 */
+	function recordImageRequests() {
+		const requests = new Map<string, ImageRequest>();
+		const record = () => {
+			for (const image of document.querySelectorAll<HTMLImageElement>('img[alt]')) {
+				if (!requests.has(image.alt)) {
+					requests.set(image.alt, {
+						loading: image.getAttribute('loading'),
+						fetchPriority: image.getAttribute('fetchpriority'),
+					});
+				}
+			}
+		};
+		const observer = new MutationObserver(record);
+		observer.observe(document.body, { subtree: true, childList: true });
+		return { requests, stop: () => observer.disconnect() };
+	}
 
 	it.each([
 		['card', WISHLIST_ROLES.recipient],
@@ -1177,6 +1200,7 @@ describe('WishlistGiftDisplay image load priority', () => {
 		['card', WISHLIST_ROLES.visitor],
 		['list', WISHLIST_ROLES.visitor],
 	] as const)('requests the leading %s images early for the %s', async (viewMode, role) => {
+		const recorder = recordImageRequests();
 		const screen = await render(WishlistGiftDisplayTestHost, {
 			...defaultProps,
 			viewMode,
@@ -1191,16 +1215,18 @@ describe('WishlistGiftDisplay image load priority', () => {
 			],
 		});
 
-		await expect.poll(() => imageOf('Pátý')).not.toBeNull();
-		expect(imageOf('První')?.getAttribute('fetchpriority')).toBe('high');
-		expect(imageOf('První')?.getAttribute('loading')).toBe('eager');
-		for (const name of ['Druhý', 'Třetí']) {
-			expect(imageOf(name)?.getAttribute('loading')).toBe('eager');
-			expect(imageOf(name)?.hasAttribute('fetchpriority')).toBe(false);
+		try {
+			await expect.poll(() => recorder.requests.has('Pátý')).toBe(true);
+			expect(Object.fromEntries(recorder.requests)).toEqual({
+				První: { loading: 'eager', fetchPriority: 'high' },
+				Druhý: { loading: 'eager', fetchPriority: null },
+				Třetí: { loading: 'eager', fetchPriority: null },
+				Čtvrtý: { loading: 'lazy', fetchPriority: null },
+				Pátý: { loading: 'lazy', fetchPriority: null },
+			});
+		} finally {
+			recorder.stop();
+			await screen.unmount();
 		}
-		for (const name of ['Čtvrtý', 'Pátý']) {
-			expect(imageOf(name)?.getAttribute('loading')).toBe('lazy');
-		}
-		await screen.unmount();
 	});
 });
