@@ -21,14 +21,12 @@
 		alt: string;
 		/** Live editor metadata; each tile derives its own per-target framing. */
 		imageMeta: ImageMetadata | null;
-		/** Target highlighted as being edited (Manual mode) – null highlights none. */
+		/** Target highlighted as being edited – null highlights none. */
 		activeTarget?: GiftEditorCropTarget | null;
 		/** Makes tiles buttons: clicking one selects its crop target (#116 follow-up). */
 		onTileSelect?: (target: GiftEditorCropTarget) => void;
-		/** Framing status per target, shown as a chip under each tile (#533). */
+		/** Framing status per target (Vyplnit, Celý or Vlastní), shown as a chip under each tile. */
 		statusLabels?: Record<GiftEditorCropTarget, string> | null;
-		/** Offered while the thumbnail has its own crop: makes it follow the card again. */
-		onFollowSquare?: () => void;
 		tokenScope?: ImageTokenScope;
 		/** Force the loading skeleton across every tile. */
 		loading?: boolean;
@@ -44,7 +42,6 @@
 		activeTarget = null,
 		onTileSelect,
 		statusLabels = null,
-		onFollowSquare,
 		tokenScope = IMAGE_TOKEN_SCOPES.wishlist,
 		loading = false,
 		disabled = false,
@@ -79,86 +76,80 @@
 		sizing: string;
 		cssAspect: string;
 	}[];
+	type Tile = (typeof TILES)[number];
 </script>
+
+{#snippet tileFace(tile: Tile)}
+	{@const showCardPattern = tile.target === 'square' && !hasExplicitFrameFill(imageMeta?.bgColor)}
+	<!-- The frame is absolutely positioned: a %-height child inside an
+	     aspect-ratio box is circular, so the image's intrinsic height
+	     would otherwise stretch the tile past its true aspect. -->
+	<div
+		class={cn(
+			'relative overflow-hidden rounded-md border-2 border-edge bg-card shadow-sticker',
+			tile.sizing,
+			activeTarget === tile.target && 'ring-2 ring-primary',
+		)}
+		style:aspect-ratio={tile.cssAspect}
+		data-testid="gift-preview-{tile.key}"
+	>
+		{#if showCardPattern}
+			<div
+				class="pointer-events-none absolute inset-0 bg-[radial-gradient(var(--pattern-dot)_1.4px,transparent_1.5px)] bg-size-[18px_18px] opacity-60"
+				data-testid="gift-preview-card-pattern"
+				aria-hidden="true"
+			></div>
+		{/if}
+		<GiftImage
+			class={cn('absolute inset-0', showCardPattern && 'bg-transparent')}
+			imageUrl={src}
+			{imageMeta}
+			target={tile.target}
+			{alt}
+			{tokenScope}
+			{loading}
+		/>
+	</div>
+	<span
+		class="max-w-full rounded-full bg-surface/90 px-2 py-0.5 text-center text-[10px] font-semibold text-balance text-foreground"
+	>
+		{tile.label()}
+	</span>
+	{#if statusLabels !== null}
+		<Badge data-testid="gift-preview-status-{tile.key}">
+			{statusLabels[tile.target]}
+		</Badge>
+	{/if}
+{/snippet}
+
+<!-- A tile is a button when selectable (clicking picks its crop target). -->
+{#snippet tileControl(tile: Tile)}
+	{#if onTileSelect !== undefined}
+		<button
+			type="button"
+			onclick={() => onTileSelect?.(tile.target)}
+			{disabled}
+			aria-pressed={activeTarget === tile.target}
+			aria-describedby={tile.target === 'thumb' ? thumbnailHelpId : undefined}
+			data-testid="gift-preview-tile-{tile.key}"
+			class="pointer-events-auto flex cursor-pointer flex-col items-center gap-1 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring"
+		>
+			{@render tileFace(tile)}
+		</button>
+	{:else}
+		<div
+			class="pointer-events-auto flex flex-col items-center gap-1"
+			data-testid="gift-preview-tile-{tile.key}"
+		>
+			{@render tileFace(tile)}
+		</div>
+	{/if}
+{/snippet}
 
 <ul class={cn('pointer-events-none flex items-end justify-center gap-3', className)}>
 	{#each TILES as tile (tile.key)}
-		{@const showCardPattern =
-			tile.target === 'square' && !hasExplicitFrameFill(imageMeta?.bgColor)}
 		<li class="flex min-w-0 flex-col items-center">
-			{#snippet tileFace()}
-				<!-- The frame is absolutely positioned: a %-height child inside an
-				     aspect-ratio box is circular, so the image's intrinsic height
-				     would otherwise stretch the tile past its true aspect. -->
-				<div
-					class={cn(
-						'relative overflow-hidden rounded-md border-2 border-edge bg-card shadow-sticker',
-						tile.sizing,
-						activeTarget === tile.target && 'ring-2 ring-primary',
-					)}
-					style:aspect-ratio={tile.cssAspect}
-					data-testid="gift-preview-{tile.key}"
-				>
-					{#if showCardPattern}
-						<div
-							class="pointer-events-none absolute inset-0 bg-[radial-gradient(var(--pattern-dot)_1.4px,transparent_1.5px)] bg-size-[18px_18px] opacity-60"
-							data-testid="gift-preview-card-pattern"
-							aria-hidden="true"
-						></div>
-					{/if}
-					<GiftImage
-						class={cn('absolute inset-0', showCardPattern && 'bg-transparent')}
-						imageUrl={src}
-						{imageMeta}
-						target={tile.target}
-						{alt}
-						{tokenScope}
-						{loading}
-					/>
-				</div>
-				<span
-					class="max-w-full rounded-full bg-surface/90 px-2 py-0.5 text-center text-[10px] font-semibold text-balance text-foreground"
-				>
-					{tile.label()}
-				</span>
-				{#if statusLabels !== null}
-					<Badge data-testid="gift-preview-status-{tile.key}">
-						{statusLabels[tile.target]}
-					</Badge>
-				{/if}
-			{/snippet}
-			<!-- A tile is a button when selectable (clicking picks its crop target). -->
-			{#if onTileSelect !== undefined}
-				<button
-					type="button"
-					onclick={() => onTileSelect?.(tile.target)}
-					{disabled}
-					aria-pressed={activeTarget === tile.target}
-					aria-describedby={tile.target === 'thumb' ? thumbnailHelpId : undefined}
-					data-testid="gift-preview-tile-{tile.key}"
-					class="pointer-events-auto flex cursor-pointer flex-col items-center gap-1 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring"
-				>
-					{@render tileFace()}
-				</button>
-			{:else}
-				<div
-					class="pointer-events-auto flex flex-col items-center gap-1"
-					data-testid="gift-preview-tile-{tile.key}"
-				>
-					{@render tileFace()}
-				</div>
-			{/if}
-			{#if tile.target === 'thumb' && onFollowSquare !== undefined}
-				<button
-					type="button"
-					class="pointer-events-auto mt-1 text-[11px] font-medium text-brand-link underline-offset-2 hover:underline disabled:opacity-50"
-					{disabled}
-					onclick={onFollowSquare}
-					data-testid="gift-preview-follow-square"
-				>
-					{m.gift_image_thumb_follow_card()}
-				</button>
-			{/if}
+			{@render tileControl(tile)}
 		</li>
 	{/each}
 </ul>

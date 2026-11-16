@@ -19,6 +19,7 @@
 		type ImageFrameResolvedFit,
 	} from './image_frame_variants.js';
 	import type { ImageFocalPoint } from '$lib/modules/images/types.js';
+	import { CENTERED_FOCAL } from '$lib/modules/images/crop.js';
 	import { clientSize } from '$lib/utils/shared_resize_observer.js';
 	import { appHydrated } from '$lib/utils/app_hydration.js';
 	import { afterNextPaint } from '$lib/utils/after_next_paint.js';
@@ -93,7 +94,7 @@
 		variant = null,
 		loadPriority = IMAGE_LOAD_PRIORITIES.lazy,
 		fitMode = IMAGE_FIT_MODES.auto,
-		focal = { x: 50, y: 50 },
+		focal = { ...CENTERED_FOCAL },
 		zoom = 1,
 		fillColor = null,
 		tokenScope = 'global',

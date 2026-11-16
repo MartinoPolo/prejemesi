@@ -53,7 +53,7 @@ test.describe('Gift image background fill (issue #252)', () => {
 		await expect(createDialog.getByTestId('image-upload-preview')).toBeVisible({
 			timeout: 10_000,
 		});
-		await createDialog.getByRole('radio', { name: /Přizpůsobit/ }).click();
+		await createDialog.getByRole('radio', { name: 'Celý', exact: true }).click();
 		await expect(createDialog.getByRole('radio', { name: 'Průhledné' })).toBeChecked();
 		await expect(createDialog.getByTestId('gift-preview-card-pattern')).toBeVisible();
 		await createDialog.getByRole('radio', { name: 'Černé' }).click();

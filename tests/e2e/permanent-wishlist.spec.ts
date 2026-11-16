@@ -1,9 +1,8 @@
 import postgres from 'postgres';
-import { loadEnv } from 'vite';
 import { test, expect, type Page } from '@playwright/test';
 import * as m from '../../src/lib/paraglide/messages.js';
-import { resolveDatabaseUrl } from '../../src/lib/config/runtime_environment.js';
 import { createTestUser } from './fixtures/test-data.js';
+import { localDatabaseUrl } from './fixtures/local-database.js';
 import {
 	registerAndGetPage,
 	registerViaApi,
@@ -26,28 +25,16 @@ import {
 	waitForToast,
 } from './wishlist-gift-actions.helpers.js';
 
-const LOCAL_DATABASE_HOSTNAMES = new Set(['localhost', '127.0.0.1', '[::1]']);
-
-function localDatabaseUrl(): string {
-	const databaseUrl = resolveDatabaseUrl({
-		...loadEnv('development', process.cwd(), ''),
-		...process.env,
-	});
-	if (databaseUrl === undefined || !LOCAL_DATABASE_HOSTNAMES.has(new URL(databaseUrl).hostname)) {
-		throw new Error(
-			'The permanent wishlist spec rewrites share timestamps on a local database only',
-		);
-	}
-	return databaseUrl;
-}
-
 /**
  * Moves the share and the gifts' creation into the past so the post-share grace has closed,
  * instead of waiting out the real grace window.
  */
 async function expireShareGrace(wishlistPath: string): Promise<void> {
 	const shortId = wishlistPath.split('/').at(-1);
-	const database = postgres(localDatabaseUrl(), { max: 1, connect_timeout: 5 });
+	const database = postgres(
+		localDatabaseUrl('The permanent wishlist spec rewrites share timestamps'),
+		{ max: 1, connect_timeout: 5 },
+	);
 	try {
 		const sharedWishlists = await database<{ id: string }[]>`
 			update wishlist set shared_at = now() - interval '10 minutes'

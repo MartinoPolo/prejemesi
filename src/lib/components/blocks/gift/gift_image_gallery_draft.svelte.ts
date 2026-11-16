@@ -1,71 +1,122 @@
-import { SvelteSet } from 'svelte/reactivity';
-import * as m from '$lib/paraglide/messages.js';
+import { IMAGE_FIT_MODES, normalizeFrameFill } from '$lib/components/derived/image-frame/index.js';
 import {
-	IMAGE_FIT_MODES,
-	normalizeFrameFill,
-	resolveAutoFit,
-} from '$lib/components/derived/image-frame/index.js';
-import { editorModeStatusLabel } from '$lib/components/derived/image-crop/editor_mode_status_label.js';
-import {
-	buildManualGiftTargets,
-	fitModeForEditorMode,
-	giftEditorModeFromMeta,
-	ownGiftTargets,
-	followedGiftThumbRect,
-	resolveGiftTargetCrop,
-	seedCropRectFromLegacyMeta,
+	centeredCropRect,
+	classifyGiftFraming,
+	cropRectToFocalZoom,
+	giftFramingPresetRect,
+	giftTargetFrameProps,
+	mergeGiftTargetCrops,
+	normalizedCropAspect,
+	renderedGiftTargetRect,
+	sameCropRect,
+	CENTERED_FOCAL,
+	transferGiftFramingRect,
 	FULL_CROP_RECT,
 	GIFT_CROP_TARGET_SPECS,
 	GIFT_EDITOR_CROP_TARGET_VALUES,
-	IMAGE_EDITOR_MODES,
+	GIFT_FRAMINGS,
+	IMAGE_ZOOM_BASE,
 	type GiftEditorCropTarget,
+	type GiftFraming,
+	type GiftFramingPreset,
 	type ImageCropRect,
-	type ImageEditorMode,
 	type ImageMetadata,
+	type ImageTargetCrop,
 } from '$lib/modules/images/index.js';
 import { resolveGiftImageUrl } from '$lib/modules/images/public_url.js';
 import { MAX_GIFT_IMAGES, hasImageSource, type GiftImage } from '$lib/modules/gifts/gift_images.js';
 import type { UploadResult } from '$lib/modules/uploads/types.js';
 
-const CROP_RECT_EQUALITY_EPSILON = 1e-9;
-
 type ExplicitImageBackground = '#ffffff' | '#000000';
 
-function cropRectsEqual(left: ImageCropRect, right: ImageCropRect): boolean {
-	return (
-		Math.abs(left.x - right.x) < CROP_RECT_EQUALITY_EPSILON &&
-		Math.abs(left.y - right.y) < CROP_RECT_EQUALITY_EPSILON &&
-		Math.abs(left.w - right.w) < CROP_RECT_EQUALITY_EPSILON &&
-		Math.abs(left.h - right.h) < CROP_RECT_EQUALITY_EPSILON
-	);
+type TargetRects = Record<GiftEditorCropTarget, ImageCropRect>;
+
+function giftTargetAspect(target: GiftEditorCropTarget, imageRatio: number): number {
+	return normalizedCropAspect(GIFT_CROP_TARGET_SPECS[target].aspect, imageRatio);
 }
 
-function initTargetRects(meta: ImageMetadata | null | undefined) {
-	const rects = {} as Record<GiftEditorCropTarget, ImageCropRect>;
-	for (const target of GIFT_EDITOR_CROP_TARGET_VALUES) {
-		// A persisted per-target rect restores exactly; the shared carry-over chain
-		// (`resolveGiftTargetCrop`) keeps this editor seed in lockstep with the renderer's
-		// fallback. Otherwise seed from the base-level metadata (issue #123: a legacy row with
-		// focal/zoom but no cropRect must reconstruct its real framing, not fall back to the
-		// always-centered FULL_CROP_RECT – the stage snaps this seed to the target's real aspect
-		// once the image is measured).
-		const targetCrop = resolveGiftTargetCrop(meta?.targets, target);
-		rects[target] =
-			targetCrop !== undefined
-				? { ...targetCrop.cropRect }
-				: seedCropRectFromLegacyMeta(meta ?? {});
+function mapGiftTargets<Value>(
+	valueFor: (target: GiftEditorCropTarget) => Value,
+): Record<GiftEditorCropTarget, Value> {
+	return { square: valueFor('square'), thumb: valueFor('thumb') };
+}
+
+/** A stored framing's status before the photo is measured, from its focal point and zoom. */
+function unmeasuredFraming(meta: ImageMetadata | null, target: GiftEditorCropTarget): GiftFraming {
+	const { fitMode, focal, zoom } = giftTargetFrameProps(meta, target);
+	if (fitMode === IMAGE_FIT_MODES.containPadded) {
+		return GIFT_FRAMINGS.whole;
 	}
-	return rects;
+	const centered =
+		focal.x === CENTERED_FOCAL.x && focal.y === CENTERED_FOCAL.y && zoom === IMAGE_ZOOM_BASE;
+	return centered ? GIFT_FRAMINGS.fill : GIFT_FRAMINGS.custom;
+}
+
+function pinnedTargetCrop(rect: ImageCropRect): ImageTargetCrop {
+	return { cropRect: { ...rect }, ...cropRectToFocalZoom(rect) };
+}
+
+/**
+ * Untouched views keep the stored metadata verbatim. Only a stored fill already in canonical form
+ * stays as is; legacy `transparent` saves as the canonical `null`.
+ */
+function untouchedImageMeta(stored: ImageMetadata | null, bgColor: string | null): ImageMetadata {
+	const meta = stored ?? {
+		fitMode: IMAGE_FIT_MODES.auto,
+		cropRect: null,
+		focal: { ...CENTERED_FOCAL },
+		zoom: IMAGE_ZOOM_BASE,
+	};
+	return (meta.bgColor ?? null) === bgColor ? { ...meta } : { ...meta, bgColor };
+}
+
+/** Both views on the same preset persist as its plain fit mode. */
+function presetImageMeta(preset: GiftFramingPreset, bgColor: string | null): ImageMetadata {
+	return {
+		fitMode:
+			preset === GIFT_FRAMINGS.fill
+				? IMAGE_FIT_MODES.coverCrop
+				: IMAGE_FIT_MODES.containPadded,
+		cropRect: null,
+		focal: { ...CENTERED_FOCAL },
+		zoom: IMAGE_ZOOM_BASE,
+		bgColor,
+	};
+}
+
+/** Pins both views on a cover-crop that keeps the base and any target the editor does not offer. */
+function pinnedImageMeta(
+	base: ImageMetadata | null,
+	targetRects: TargetRects,
+	bgColor: string | null,
+): ImageMetadata {
+	const retiredTargets = { ...base?.targets };
+	for (const target of GIFT_EDITOR_CROP_TARGET_VALUES) {
+		delete retiredTargets[target];
+	}
+	return {
+		fitMode: IMAGE_FIT_MODES.coverCrop,
+		cropRect: base?.cropRect ?? null,
+		focal: base?.focal ?? { ...CENTERED_FOCAL },
+		zoom: base?.zoom ?? IMAGE_ZOOM_BASE,
+		bgColor,
+		targets: mergeGiftTargetCrops(
+			retiredTargets,
+			mapGiftTargets((target) => pinnedTargetCrop(targetRects[target])),
+		),
+	};
 }
 
 let createdDraftCount = 0;
 
 /**
- * One gallery image in the gift editor: its source and its own presentation (#116, #533).
- * The editor offers Fill / Fit / Manual, mapped onto the persisted fitMode. Manual crops are
- * edited per target, and a target without its own crop inherits (`thumb` follows `square`).
- * An untouched image passes its persisted metadata through (legacy `auto` and base focal/zoom
- * rows included), so opening and saving never silently rewrites old framing.
+ * One gallery image in the gift editor: its source and its own presentation. Karta (`square`)
+ * and Seznam (`thumb`) are independent views, each a concrete window on the photo: it opens on
+ * what that surface renders today, then changes only through its own pan/zoom, its Vyplnit or
+ * Celý preset, or a one-shot copy from the other view. The status of a view is derived from its
+ * window. An image whose views are untouched passes its persisted metadata through (legacy
+ * `auto`, base focal/zoom and retired targets included), so opening and saving never rewrites
+ * old framing.
  */
 export class GiftImageDraft {
 	/** Stable identity across reorders, for keyed rendering and selection. */
@@ -75,50 +126,29 @@ export class GiftImageDraft {
 	readonly #initialImageUrl: string = '';
 	readonly #initialImageKey: string = '';
 	readonly #initialMeta: ImageMetadata | null = null;
-	readonly #initialTargetRects: Record<GiftEditorCropTarget, ImageCropRect> =
-		initTargetRects(null);
-	readonly #initialOwnTargets: ReadonlySet<GiftEditorCropTarget> = ownGiftTargets(undefined);
-	readonly #initialEditorMode: ImageEditorMode = IMAGE_EDITOR_MODES.fill;
 	readonly #initialBgColor: string | null = null;
-	/** The persisted fitMode an untouched save keeps (legacy `auto` included); null for a new image. */
-	readonly #legacyFitMode: ImageMetadata['fitMode'] | null = null;
 
 	imageUrl = $state('');
 	imageKey = $state('');
-	editorMode = $state<ImageEditorMode>(IMAGE_EDITOR_MODES.fill);
-	/** Whether the user touched the display mode; an untouched image keeps its persisted fitMode. */
-	modeDirty = $state(false);
 	/** `null` is the canonical dotted default; legacy `transparent` normalizes to it on save. */
 	bgColor = $state<string | null>(null);
-	targetRects = $state({} as Record<GiftEditorCropTarget, ImageCropRect>);
-	/** Natural width ÷ height once the preview has loaded. */
-	measuredNaturalRatio = $state<number | null>(null);
-	/** Targets whose rect differs from the persisted one in this session. */
-	readonly dirtyTargets = new SvelteSet<GiftEditorCropTarget>();
-	/** Targets with their own crop (persisted or drawn this session); the rest inherit. */
-	readonly ownTargets = new SvelteSet<GiftEditorCropTarget>();
+	/** Natural width ÷ height of the source it was measured for. */
+	#measurement = $state.raw<{ sourceKey: string; ratio: number } | null>(null);
+	/** Windows the user set in this session, for the source they were set on. */
+	#edits = $state.raw<{ sourceKey: string; rects: Partial<TargetRects> }>({
+		sourceKey: '',
+		rects: {},
+	});
 
 	constructor(initial: GiftImage | null = null) {
 		const meta = initial?.imageMeta ?? null;
 		this.#initialImageUrl = initial?.imageUrl ?? '';
 		this.#initialImageKey = initial?.imageKey ?? '';
 		this.#initialMeta = meta;
-		this.#initialTargetRects = initTargetRects(meta);
-		this.#initialOwnTargets = ownGiftTargets(meta?.targets);
-		this.#initialEditorMode = giftEditorModeFromMeta(meta);
 		this.#initialBgColor = normalizeFrameFill(meta?.bgColor);
-		this.#legacyFitMode =
-			this.#initialImageUrl !== '' || this.#initialImageKey !== ''
-				? (meta?.fitMode ?? IMAGE_FIT_MODES.auto)
-				: null;
 		this.imageUrl = this.#initialImageUrl;
 		this.imageKey = this.#initialImageKey;
-		this.editorMode = this.#initialEditorMode;
 		this.bgColor = this.#initialBgColor;
-		this.targetRects = initTargetRects(meta);
-		for (const target of this.#initialOwnTargets) {
-			this.ownTargets.add(target);
-		}
 	}
 
 	/** A new image uploaded in this session, starting from the automatic centered framing. */
@@ -135,40 +165,8 @@ export class GiftImageDraft {
 		this.imageUrl.trim() !== this.#initialImageUrl || this.imageKey !== this.#initialImageKey,
 	);
 
-	readonly #ownershipChanged = $derived(
-		this.ownTargets.size !== this.#initialOwnTargets.size ||
-			[...this.ownTargets].some((target) => !this.#initialOwnTargets.has(target)),
-	);
+	readonly #sourceKey = $derived(`${this.imageUrl.trim()}\n${this.imageKey}`);
 
-	readonly #hasCropSessionEdits = $derived(this.dirtyTargets.size > 0 || this.#ownershipChanged);
-
-	readonly #initialFillWasCentered = $derived(
-		(this.#initialMeta?.cropRect ?? null) === null &&
-			(this.#initialMeta?.focal?.x ?? 50) === 50 &&
-			(this.#initialMeta?.focal?.y ?? 50) === 50 &&
-			(this.#initialMeta?.zoom ?? 1) === 1,
-	);
-
-	readonly #imageModeChanged = $derived(
-		this.#legacyFitMode === IMAGE_FIT_MODES.auto
-			? this.modeDirty
-			: this.editorMode !== this.#initialEditorMode ||
-					(this.modeDirty &&
-						this.editorMode === IMAGE_EDITOR_MODES.fill &&
-						!this.#initialFillWasCentered),
-	);
-
-	readonly #presentationChanged = $derived(
-		this.hasImage &&
-			(this.#imageModeChanged ||
-				this.bgColor !== this.#initialBgColor ||
-				(this.editorMode === IMAGE_EDITOR_MODES.manual && this.#hasCropSessionEdits)),
-	);
-
-	/** Whether saving would persist anything different for this image. */
-	readonly changed = $derived(this.imageReplaced || this.#presentationChanged);
-
-	// fallow-ignore-next-line unused-class-member
 	readonly previewSrc = $derived(
 		resolveGiftImageUrl(
 			this.imageUrl.trim() === '' ? null : this.imageUrl.trim(),
@@ -176,145 +174,138 @@ export class GiftImageDraft {
 		),
 	);
 
-	/** Legacy rows keep their stored fitMode (incl. `auto`) until the mode or image changes. */
-	readonly #savedFitMode = $derived(
-		this.modeDirty || this.imageReplaced || this.#legacyFitMode === null
-			? fitModeForEditorMode(this.editorMode)
-			: this.#legacyFitMode,
+	/** The current source's natural width ÷ height; framing edits wait for it. */
+	readonly naturalRatio = $derived(
+		this.#measurement?.sourceKey === this.#sourceKey ? this.#measurement.ratio : null,
+	);
+
+	readonly #editedRects = $derived(
+		this.#edits.sourceKey === this.#sourceKey ? this.#edits.rects : {},
 	);
 
 	/**
-	 * Outside Manual there are no manual crops: leaving Manual drops them on save, and a replaced
-	 * image never inherits crops drawn for the old pixels. Inside Manual, the targets that own a
-	 * crop are pinned and the rest inherit.
+	 * The windows each view opens on once measured: what the surface renders for the persisted
+	 * metadata, or the centered cover for a new source. Also the baseline that tells edits apart.
 	 */
-	#buildTargets(): ImageMetadata['targets'] {
-		if (this.editorMode !== IMAGE_EDITOR_MODES.manual) {
-			return undefined;
+	readonly #openingRects = $derived.by((): TargetRects | null => {
+		const ratio = this.naturalRatio;
+		if (ratio === null) {
+			return null;
 		}
-		return buildManualGiftTargets(
-			this.targetRects,
-			this.ownTargets,
-			this.#hasCropSessionEdits,
-			this.imageReplaced ? undefined : this.#initialMeta?.targets,
+		return mapGiftTargets((target) =>
+			this.imageReplaced
+				? centeredCropRect(giftTargetAspect(target, ratio))
+				: renderedGiftTargetRect(this.#initialMeta, target, ratio),
 		);
-	}
+	});
 
-	/**
-	 * The metadata a save persists. Base focal/zoom/cropRect stay as persisted for an unreplaced
-	 * image so legacy rows render unchanged (#116 REQ-8); explicitly choosing Fill re-centers, and
-	 * a replaced image starts from the automatic centered default.
-	 */
+	/** Each view's window; the identity rect stands in until the photo is measured. */
+	readonly targetRects = $derived(
+		mapGiftTargets(
+			(target) =>
+				this.#editedRects[target] ?? this.#openingRects?.[target] ?? { ...FULL_CROP_RECT },
+		),
+	);
+
+	/** Each view's status: Vyplnit, Celý or Vlastní. */
+	readonly framings = $derived(
+		mapGiftTargets((target): GiftFraming => {
+			const ratio = this.naturalRatio;
+			if (ratio !== null) {
+				return classifyGiftFraming(
+					this.targetRects[target],
+					giftTargetAspect(target, ratio),
+				);
+			}
+			return this.imageReplaced
+				? GIFT_FRAMINGS.fill
+				: unmeasuredFraming(this.#initialMeta, target);
+		}),
+	);
+
+	readonly #framingChanged = $derived(
+		GIFT_EDITOR_CROP_TARGET_VALUES.some((target) => {
+			const edited = this.#editedRects[target];
+			const opening = this.#openingRects?.[target];
+			return edited !== undefined && opening !== undefined && !sameCropRect(edited, opening);
+		}),
+	);
+
+	/** Whether saving would persist anything different for this image. */
+	readonly changed = $derived(
+		this.imageReplaced ||
+			(this.hasImage && (this.bgColor !== this.#initialBgColor || this.#framingChanged)),
+	);
+
+	/** The metadata a save persists: stored as is, a shared preset, or both views pinned. */
 	readonly imageMeta = $derived.by((): ImageMetadata => {
-		const base = this.imageReplaced ? null : this.#initialMeta;
-		const recentered =
-			base === null || (this.modeDirty && this.editorMode === IMAGE_EDITOR_MODES.fill);
-		return {
-			fitMode: this.#savedFitMode,
-			cropRect: recentered ? null : (base?.cropRect ?? null),
-			focal: recentered ? { x: 50, y: 50 } : (base?.focal ?? { x: 50, y: 50 }),
-			zoom: recentered ? 1 : (base?.zoom ?? 1),
-			bgColor: this.bgColor,
-			targets: this.#buildTargets(),
-		};
-	});
-
-	/**
-	 * Legacy `auto` honesty (#183): a persisted `auto` resolves to cover or contain per image at
-	 * render time, while the editor reads it as Fill. Once measured, the presented mode matches the
-	 * real render without dirtying the image or rewriting the persisted `auto`.
-	 */
-	readonly #legacyAutoRendersAsFit = $derived(
-		this.#legacyFitMode === IMAGE_FIT_MODES.auto &&
-			!this.modeDirty &&
-			!this.imageReplaced &&
-			this.measuredNaturalRatio !== null &&
-			resolveAutoFit(this.measuredNaturalRatio, GIFT_CROP_TARGET_SPECS.square.aspect) ===
-				IMAGE_FIT_MODES.containPadded,
-	);
-
-	/** The mode the toggle and preview show; persisted data stays untouched. */
-	readonly presentedEditorMode = $derived(
-		this.#legacyAutoRendersAsFit ? IMAGE_EDITOR_MODES.fit : this.editorMode,
-	);
-
-	// fallow-ignore-next-line unused-class-member
-	readonly targetStatusLabels = $derived.by((): Record<GiftEditorCropTarget, string> => {
-		if (this.presentedEditorMode !== IMAGE_EDITOR_MODES.manual) {
-			const modeLabel = editorModeStatusLabel(this.presentedEditorMode);
-			return { square: modeLabel, thumb: modeLabel };
+		if (!this.imageReplaced && !this.#framingChanged) {
+			return untouchedImageMeta(this.#initialMeta, this.bgColor);
 		}
-		return {
-			square: this.ownTargets.has('square')
-				? m.image_crop_status_manual()
-				: m.image_crop_status_automatic(),
-			thumb: this.ownTargets.has('thumb')
-				? m.image_crop_status_manual()
-				: m.image_crop_status_follows_card(),
-		};
+		const { square, thumb } = this.framings;
+		if (square === thumb && square !== GIFT_FRAMINGS.custom) {
+			return presetImageMeta(square, this.bgColor);
+		}
+		return pinnedImageMeta(
+			this.imageReplaced ? null : this.#initialMeta,
+			this.targetRects,
+			this.bgColor,
+		);
 	});
 
 	/**
-	 * A pan or zoom on the stage is a manual-crop intent (#533): in Fill/Fit it promotes the
-	 * image to Manual with only the edited target owning a crop, so the other keeps inheriting.
+	 * Records the current source's natural width ÷ height, which opens both views. A late load
+	 * of a source replaced since (`measuredSrc` differs from the preview) is ignored.
 	 */
+	measure(ratio: number, measuredSrc: string | null = this.previewSrc): void {
+		if (measuredSrc === this.previewSrc && Number.isFinite(ratio) && ratio > 0) {
+			this.#measurement = { sourceKey: this.#sourceKey, ratio };
+		}
+	}
+
+	#setTargetRect(target: GiftEditorCropTarget, rect: ImageCropRect): void {
+		this.#edits = {
+			sourceKey: this.#sourceKey,
+			rects: { ...this.#editedRects, [target]: { ...rect } },
+		};
+	}
+
+	/** A pan or zoom of one view; the other view never moves. */
 	editCrop(target: GiftEditorCropTarget, rect: ImageCropRect): void {
-		if (this.editorMode !== IMAGE_EDITOR_MODES.manual) {
-			this.editorMode = IMAGE_EDITOR_MODES.manual;
-			this.modeDirty = true;
-			this.ownTargets.clear();
-		}
-		this.ownTargets.add(target);
-		if (cropRectsEqual(rect, this.#initialTargetRects[target])) {
-			this.dirtyTargets.delete(target);
-		} else {
-			this.dirtyTargets.add(target);
+		if (this.naturalRatio !== null) {
+			this.#setTargetRect(target, rect);
 		}
 	}
 
-	/** Drops the thumbnail's own crop so it follows the card crop again. */
-	// fallow-ignore-next-line unused-class-member
-	followSquareCrop(): void {
-		this.ownTargets.delete('thumb');
-		this.dirtyTargets.delete('thumb');
-	}
-
-	/**
-	 * A thumbnail without its own crop shows the card's focal point at the card's framing
-	 * tightness, exactly as the renderer's fallback does (`giftTargetFrameProps`).
-	 */
-	syncFollowedThumbnail(): void {
-		if (this.ownTargets.has('thumb') || this.measuredNaturalRatio === null) {
-			return;
-		}
-		const followed = followedGiftThumbRect(this.targetRects.square, this.measuredNaturalRatio);
-		if (!cropRectsEqual(followed, this.targetRects.thumb)) {
-			this.targetRects.thumb = followed;
+	applyPreset(target: GiftEditorCropTarget, preset: GiftFramingPreset): void {
+		const ratio = this.naturalRatio;
+		if (ratio !== null) {
+			this.#setTargetRect(
+				target,
+				giftFramingPresetRect(preset, giftTargetAspect(target, ratio)),
+			);
 		}
 	}
 
-	chooseEditorMode(mode: ImageEditorMode, activeTarget: GiftEditorCropTarget): void {
-		if (mode === IMAGE_EDITOR_MODES.fill) {
-			// Explicit Fill re-centers the framing, so a later switch back to Manual starts from
-			// that centered cover-crop.
-			this.targetRects[activeTarget] = { ...FULL_CROP_RECT };
+	/** Copies one view's framing to the other once; later edits of either stay independent. */
+	copyFraming(fromTarget: GiftEditorCropTarget, toTarget: GiftEditorCropTarget): void {
+		const ratio = this.naturalRatio;
+		if (ratio !== null) {
+			this.#setTargetRect(
+				toTarget,
+				transferGiftFramingRect(this.targetRects[fromTarget], fromTarget, toTarget, ratio),
+			);
 		}
-		this.editorMode = mode;
-		this.modeDirty = true;
 	}
 
-	// fallow-ignore-next-line unused-class-member
 	chooseBackground(value: ExplicitImageBackground | 'transparent'): void {
 		this.bgColor = value === 'transparent' ? null : value;
 	}
 
-	/** A new source starts from the automatic centered Fill framing. */
+	/** A new source starts from the automatic centered framing on both views. */
 	useUpload(result: UploadResult): void {
 		this.imageKey = result.objectKey;
 		this.imageUrl = result.publicUrl;
-		this.editorMode = IMAGE_EDITOR_MODES.fill;
-		this.targetRects = initTargetRects(null);
-		this.dirtyTargets.clear();
 	}
 
 	/** The image as the gift save persists it; only meaningful while `hasImage`. */
@@ -355,7 +346,7 @@ interface GiftImageSource {
 
 /**
  * The editor's ordered gallery (#591): up to eight images, the first is the cover. One image is
- * selected and drives the crop stage, mode selector and previews. An image without a source
+ * selected and drives the crop stage, framing controls and previews. An image without a source
  * (a link being typed, or a cleared one) is a draft slot: it is neither saved nor counted as a
  * change, and selecting another image drops it.
  */

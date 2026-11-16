@@ -175,7 +175,6 @@ describe('GiftDetailForm pending image uploads', () => {
 
 		const nameInput = screen.getByRole('textbox', { name: m.gift_name_label() });
 		await nameInput.fill('Draft survives resize');
-		await screen.getByRole('radio', { name: m.image_fit_manual() }).click();
 		const cropStage = screen.getByTestId('crop-stage');
 		const cropImage = cropStage.element().querySelector('img')!;
 		Object.defineProperties(cropImage, {
@@ -269,7 +268,7 @@ describe('GiftDetailForm pending image uploads', () => {
 			.element(screen.getByRole('textbox', { name: m.gift_name_label() }))
 			.toBeDisabled();
 		await expect
-			.element(screen.getByRole('radio', { name: m.image_fit_manual() }))
+			.element(screen.getByRole('radio', { name: m.image_fit_fill() }))
 			.toBeDisabled();
 		const lockedFileInput = document.querySelector<HTMLInputElement>('input[type="file"]')!;
 		expect(lockedFileInput.disabled).toBe(true);
