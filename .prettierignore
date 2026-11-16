@@ -10,9 +10,7 @@ bun.lockb
 /static/
 /drizzle/
 
-# Agent tooling. The files under .claude/rules/ are symlinks whose link-target
-# text prettier rewrites as markdown (escaping `_` in paths), breaking them on
-# every check:all run.
+# Agent tooling, kept in its authoring format
 .claude/
 
 # Design mockups — reference-only artifacts, not gated source
