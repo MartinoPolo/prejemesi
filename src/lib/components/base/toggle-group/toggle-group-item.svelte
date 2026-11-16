@@ -38,7 +38,7 @@
 			surfaceClass={cn(
 				togglePressedVariants({ intent: resolvedIntent }),
 				// Segmented controls slide their selected face instead of pressing (decision 2026-10-07).
-				'group-active:scale-100',
+				'motion-safe:group-active:scale-100',
 				surfaceClass,
 			)}
 			data-slot="toggle-group-item"

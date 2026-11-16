@@ -14,8 +14,11 @@ import {
 const FILLED_BUTTON_KBD_CLASSES =
 	'[&_[data-slot=kbd]]:border-[color-mix(in_oklab,currentColor_28%,transparent)] [&_[data-slot=kbd]]:bg-[color-mix(in_oklab,currentColor_16%,transparent)] [&_[data-slot=kbd]]:text-current';
 
-/** Flat (non-raised) buttons acknowledge a press with the same quick shrink the raised ones get. */
-const FLAT_PRESS_CLASSES = 'group-active:scale-[0.97]';
+/**
+ * Flat (non-raised) buttons acknowledge a press with the quick shrink the raised ones get; like
+ * theirs, it stays off under reduced motion.
+ */
+const FLAT_PRESS_CLASSES = 'motion-safe:group-active:scale-[0.97]';
 
 export const CIRCULAR_STICKER_OWNER_CLASSES = 'elevation-owner elevation-owner-raised';
 export const CIRCULAR_STICKER_SURFACE_CLASSES = 'elevation-surface rounded-full';
