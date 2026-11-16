@@ -67,7 +67,9 @@ test.describe('Gift editing', () => {
 		await page.getByText('Darek s prioritou').click();
 		const editDialog = page.getByRole('dialog');
 		await expect(editDialog).toBeVisible({ timeout: 5_000 });
-		await expect(editDialog.getByRole('button', { name: 'Vysoká' })).toBeVisible();
+		await expect(
+			editDialog.getByRole('combobox', { name: 'Priorita', exact: true }),
+		).toHaveText(/Vysoká/);
 		await editDialog.getByRole('button', { name: /^(Uložit|Ulozit|Save)$/ }).click();
 		await expect(editDialog).not.toBeVisible({ timeout: 5_000 });
 		await expect(card).toContainText('Vysoká', { timeout: 10_000 });
