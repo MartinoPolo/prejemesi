@@ -213,6 +213,7 @@ Current product, architecture, and design decisions for Přejeme si. Entries are
 - 2026-11-16: Motion on often-revisited surfaces stays brief: the wishlist header's staggered reveal settles within about 400 ms (landing and auth keep the slower reveal through the `.reveal` custom properties), draft-grid and category-settings layout motion runs 220–280 ms with exits faster than entrances, overlays and sheets exit at 0.8× their entrance duration (`overlay_motion.ts`), and the import dialog snaps to each step's width. Every pressable surface, raised or flat (ghost, link), presses to the one `--press-scale` (0.98) and stays still under reduced motion; segmented controls never press-scale.
 - 2026-11-16: General motion rules (shared duration and easing tokens, reduced-motion gating, component-library transitions first) come from the shared MPX `ui-motion` rule; motion bullets here record only project-specific choices.
 - 2026-11-16: `main.app-content` and the navbar reserve the scrollbar gutter only from `lg`, because below that the navbar row and the phone and two-column card layouts are sized to the full width.
+- 2026-11-16: Over a wishlist backdrop the sticky toolbar blurs what scrolls under it with a 45 % page-tone tint, feathered past the content column and fading below the toolbar, so it blends into the art instead of ending on a hard edge (#709, `src/lib/theme/wishlist_scope.css`).
 
 ## Images & cropping
 
