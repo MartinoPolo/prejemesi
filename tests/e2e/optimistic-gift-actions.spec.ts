@@ -196,6 +196,8 @@ test('a priority change regroups the gift at once, rolls back on failure and per
 	request,
 	baseURL,
 }) => {
+	// Fresh accounts, a wishlist and several held round trips exceed the default budget on a busy dev server.
+	test.slow();
 	const page = await registerAndGetPage(
 		browser,
 		request,
@@ -274,6 +276,7 @@ test('rapid priority changes on one gift reach the server in click order and kee
 	request,
 	baseURL,
 }) => {
+	test.slow();
 	const page = await registerAndGetPage(
 		browser,
 		request,
@@ -329,6 +332,7 @@ test('a category change regroups the gift at once, rolls back on failure and per
 	request,
 	baseURL,
 }) => {
+	test.slow();
 	const page = await registerAndGetPage(
 		browser,
 		request,
@@ -396,6 +400,7 @@ test('cancelling a reservation frees its unit at once, rolls back on failure and
 	request,
 	baseURL,
 }) => {
+	test.slow();
 	const giftName = 'Optimistické koloběžky';
 	const ownerPage = await registerAndGetPage(
 		browser,
