@@ -376,6 +376,11 @@
 	--ease-out-strong: cubic-bezier(0.23, 1, 0.32, 1);
 	--duration-reveal: 600ms;
 	--duration-reveal-stagger: 120ms;
+
+	/* Gentler overshoot than --ease-spring: it eases each pop-in keyframe segment. */
+	--ease-pop: cubic-bezier(0.34, 1.4, 0.64, 1);
+	--duration-pop: 500ms;
+	--duration-pop-stagger: 50ms;
 	--press-scale: 0.98;
 
 	/* ── Layout ────────────────────────────────────────────── */
@@ -1270,7 +1275,7 @@ html.dark {
 	--font-heading: var(--font-head);
 	--default-transition-duration: var(--duration-normal);
 	--animate-fade-up: fade-up var(--duration-reveal) var(--ease-standard) backwards;
-	--animate-pop-in: pop-in 0.5s cubic-bezier(0.34, 1.4, 0.64, 1) backwards;
+	--animate-pop-in: pop-in var(--duration-pop) var(--ease-pop) backwards;
 	--animate-bob: bob 3.6s ease-in-out infinite alternate;
 	--animate-shimmer: shimmer 1.6s linear infinite;
 }
@@ -1497,33 +1502,33 @@ main.app-content {
 		animation-delay: calc(var(--reveal-step, var(--duration-reveal-stagger)) * 5);
 	}
 
-	/* Staggered pop-in for grid/list children (first 6 delayed, rest immediate) */
+	/* Staggered pop-in for grid/list children (first 6 delayed, rest immediate); each starts a fifth of a step early */
 	.stagger-pop > * {
-		animation: pop-in 0.5s cubic-bezier(0.34, 1.4, 0.64, 1) backwards;
+		animation: var(--animate-pop-in);
 	}
 
 	.stagger-pop > :nth-child(1) {
-		animation-delay: 0.04s;
+		animation-delay: calc(var(--duration-pop-stagger) * 0.8);
 	}
 
 	.stagger-pop > :nth-child(2) {
-		animation-delay: 0.09s;
+		animation-delay: calc(var(--duration-pop-stagger) * 1.8);
 	}
 
 	.stagger-pop > :nth-child(3) {
-		animation-delay: 0.14s;
+		animation-delay: calc(var(--duration-pop-stagger) * 2.8);
 	}
 
 	.stagger-pop > :nth-child(4) {
-		animation-delay: 0.19s;
+		animation-delay: calc(var(--duration-pop-stagger) * 3.8);
 	}
 
 	.stagger-pop > :nth-child(5) {
-		animation-delay: 0.24s;
+		animation-delay: calc(var(--duration-pop-stagger) * 4.8);
 	}
 
 	.stagger-pop > :nth-child(6) {
-		animation-delay: 0.29s;
+		animation-delay: calc(var(--duration-pop-stagger) * 5.8);
 	}
 }
 
