@@ -38,7 +38,7 @@ How to deploy Přejeme si to Cloudflare, develop against it, and maintain it. Th
 8. Production auth hardening: done
 9. Production site hygiene: done
 10. Google OAuth redirect URIs: pending only if Google login is used
-11. R2 image cache rule (§3.D): pending
+11. R2 image cache rule (§3.D): done
 
 ---
 
@@ -116,9 +116,10 @@ R2 serves an object with the `Cache-Control` stored at upload. Server-side puts 
 - Expression: `(http.host in {"images.prejemesi.cz" "staging-images.prejemesi.cz"})`
 - Cache eligibility: **Eligible for cache**
 - Edge TTL: **Ignore cache-control header and use this TTL** → 1 year
+- Status code TTL: status code ≥ 400 → **No store**, so errors such as 404 are never cached
 - Browser TTL: **Override origin and use this TTL** → 1 year
 
-Verify with `curl -sI https://images.prejemesi.cz/<object-key>`: `cache-control` shows `max-age=31536000` and a repeat request shows `cf-cache-status: HIT`. Wrangler cannot manage Cache Rules; only the dashboard, the Rulesets API or Terraform can.
+Verify with `curl -sI https://images.prejemesi.cz/<object-key>`: `cache-control` shows `max-age=31536000` and a repeat request shows `cf-cache-status: HIT`. A missing key returns 404 with `BYPASS`. Resized `/cdn-cgi/image/…` variants are covered by the same rule. Wrangler cannot manage Cache Rules; only the dashboard, the Rulesets API or Terraform can.
 
 ### E. Secrets & vars
 
