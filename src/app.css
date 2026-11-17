@@ -1502,6 +1502,13 @@ main.app-content {
 		animation-delay: calc(var(--reveal-step, var(--duration-reveal-stagger)) * 5);
 	}
 
+	/* An entrance waiting below the fold (`reveal_on_view.ts`); releasing it restarts the
+	   animation. Important because component styles set their own entrance animation. */
+	[data-reveal-held] {
+		opacity: 0;
+		animation-name: none !important;
+	}
+
 	/* Staggered pop-in for grid/list children (first 6 delayed, rest immediate); each starts a fifth of a step early */
 	.stagger-pop > * {
 		animation: var(--animate-pop-in);
