@@ -348,11 +348,14 @@ interface GiftImageSource {
  * The editor's ordered gallery (#591): up to eight images, the first is the cover. One image is
  * selected and drives the crop stage, framing controls and previews. An image without a source
  * (a link being typed, or a cleared one) is a draft slot: it is neither saved nor counted as a
- * change, and selecting another image drops it.
+ * change, and selecting another image drops it. The latest removal can be undone until the
+ * gallery changes in any other way.
  */
 export class GiftImageGalleryDraft {
 	images = $state.raw<GiftImageDraft[]>([]);
 	#selectedId = $state<string | null>(null);
+	/** Anchored on the preceding sourced image, which outlasts the draft slots selection drops. */
+	#removal = $state.raw<{ image: GiftImageDraft; after: GiftImageDraft | null } | null>(null);
 	readonly #initialIds: readonly string[] = [];
 
 	constructor(gift: GiftImageSource | null) {
@@ -369,6 +372,9 @@ export class GiftImageGalleryDraft {
 	readonly sourcedImages = $derived(this.images.filter((image) => image.hasImage));
 
 	readonly atLimit = $derived(this.images.length >= MAX_GIFT_IMAGES);
+
+	/** The most recently removed image while its removal can still be undone. */
+	readonly lastRemoved = $derived(this.#removal?.image ?? null);
 
 	/** Whether saving would change the gallery: an image added, removed, reordered or edited. */
 	readonly changed = $derived(
@@ -391,20 +397,50 @@ export class GiftImageGalleryDraft {
 		}
 		this.images = [...withoutDraftSlots, image];
 		this.#selectedId = image.id;
+		this.#removal = null;
 		return true;
 	}
 
-	/** Removes an image; the selection moves to the image that took its place, else the previous. */
+	/**
+	 * Removes an image; the selection moves to the image that took its place, else the previous.
+	 * An image with a source stays restorable; one without a source has nothing to bring back.
+	 */
 	remove(id: string): void {
 		const index = this.images.findIndex((image) => image.id === id);
-		if (index === -1) {
+		const image = this.images[index];
+		if (image === undefined) {
 			return;
 		}
-		const remaining = this.images.filter((image) => image.id !== id);
-		if (this.selected?.id === id) {
+		const remaining = this.images.filter((candidate) => candidate !== image);
+		if (this.selected === image) {
 			this.#selectedId = (remaining[index] ?? remaining[index - 1])?.id ?? null;
 		}
 		this.images = remaining;
+		const after = remaining
+			.slice(0, index)
+			.filter((candidate) => candidate.hasImage)
+			.at(-1);
+		this.#removal = image.hasImage ? { image, after: after ?? null } : null;
+	}
+
+	/**
+	 * Puts the last removed image back after the saved image it followed and selects it; null when
+	 * there is none.
+	 */
+	restoreRemoved(): GiftImageDraft | null {
+		const removal = this.#removal;
+		if (removal === null) {
+			return null;
+		}
+		const insertAt = removal.after === null ? 0 : this.images.indexOf(removal.after) + 1;
+		this.images = [
+			...this.images.slice(0, insertAt),
+			removal.image,
+			...this.images.slice(insertAt),
+		];
+		this.#selectedId = removal.image.id;
+		this.#removal = null;
+		return removal.image;
 	}
 
 	/** Applies an order of the current image ids; unknown or missing ids leave the order alone. */
@@ -412,13 +448,18 @@ export class GiftImageGalleryDraft {
 		const reordered = orderedIds.flatMap(
 			(id) => this.images.find((image) => image.id === id) ?? [],
 		);
-		if (reordered.length === this.images.length) {
+		if (
+			reordered.length === this.images.length &&
+			reordered.some((image, index) => image !== this.images[index])
+		) {
 			this.images = reordered;
+			this.#removal = null;
 		}
 	}
 
 	/** Sets the selected image's link, or starts the first image when the gift has none. */
 	setSelectedImageUrl(imageUrl: string): void {
+		this.#removal = null;
 		if (this.selected !== null) {
 			this.selected.imageUrl = imageUrl;
 			return;
@@ -433,6 +474,7 @@ export class GiftImageGalleryDraft {
 
 	/** Uses an upload for the selected image, or as the first image when the gift has none. */
 	useUploadForSelected(result: UploadResult): void {
+		this.#removal = null;
 		if (this.selected === null) {
 			this.add(GiftImageDraft.fromUpload(result));
 			return;

@@ -206,8 +206,10 @@
 	}
 
 	@media (prefers-reduced-motion: no-preference) {
+		/* Pops in beside the brand panel's tagline, one reveal step after the logo */
 		.auth-card:not(.continues-tab-switch) {
-			animation: pop-in 0.55s cubic-bezier(0.34, 1.4, 0.64, 1) 0.12s backwards;
+			animation: var(--animate-pop-in);
+			animation-delay: var(--duration-reveal-stagger);
 		}
 
 		.free-sticker {

@@ -99,24 +99,30 @@
 <section class="bg-dots relative" aria-label={m.landing_hero_section_label()}>
 	<!-- Living sky: drifting clouds (light) / twinkling stars (dark) -->
 	<div class="sky-layer" aria-hidden="true">
-		<svg class="sky-cloud sky-cloud-1" viewBox="0 0 200 70">
-			<ellipse cx="48" cy="48" rx="42" ry="17" />
-			<ellipse cx="98" cy="36" rx="40" ry="23" />
-			<ellipse cx="150" cy="48" rx="44" ry="17" />
-			<ellipse cx="100" cy="53" rx="72" ry="14" />
-		</svg>
-		<svg class="sky-cloud sky-cloud-2" viewBox="0 0 200 70">
-			<ellipse cx="48" cy="48" rx="42" ry="17" />
-			<ellipse cx="98" cy="36" rx="40" ry="23" />
-			<ellipse cx="150" cy="48" rx="44" ry="17" />
-			<ellipse cx="100" cy="53" rx="72" ry="14" />
-		</svg>
-		<svg class="sky-cloud sky-cloud-3" viewBox="0 0 200 70">
-			<ellipse cx="48" cy="48" rx="42" ry="17" />
-			<ellipse cx="98" cy="36" rx="40" ry="23" />
-			<ellipse cx="150" cy="48" rx="44" ry="17" />
-			<ellipse cx="100" cy="53" rx="72" ry="14" />
-		</svg>
+		<span class="sky-cloud sky-cloud-1">
+			<svg viewBox="0 0 200 70">
+				<ellipse cx="48" cy="48" rx="42" ry="17" />
+				<ellipse cx="98" cy="36" rx="40" ry="23" />
+				<ellipse cx="150" cy="48" rx="44" ry="17" />
+				<ellipse cx="100" cy="53" rx="72" ry="14" />
+			</svg>
+		</span>
+		<span class="sky-cloud sky-cloud-2">
+			<svg viewBox="0 0 200 70">
+				<ellipse cx="48" cy="48" rx="42" ry="17" />
+				<ellipse cx="98" cy="36" rx="40" ry="23" />
+				<ellipse cx="150" cy="48" rx="44" ry="17" />
+				<ellipse cx="100" cy="53" rx="72" ry="14" />
+			</svg>
+		</span>
+		<span class="sky-cloud sky-cloud-3">
+			<svg viewBox="0 0 200 70">
+				<ellipse cx="48" cy="48" rx="42" ry="17" />
+				<ellipse cx="98" cy="36" rx="40" ry="23" />
+				<ellipse cx="150" cy="48" rx="44" ry="17" />
+				<ellipse cx="100" cy="53" rx="72" ry="14" />
+			</svg>
+		</span>
 		{#each skyStars as star (star.left)}
 			<span
 				class="sky-star"
@@ -169,28 +175,29 @@
 					</Button>
 					<!-- positioned via left/top + --rot (NOT transform alone) so the bob
 					     animation, which overwrites the transform, keeps the rotation -->
-					<svg
-						class="pointer-events-none absolute -top-3 left-full hidden w-[90px] rotate-[12deg] text-brand lg:block motion-safe:animate-bob"
+					<span
+						class="bobbing-doodle pointer-events-none absolute -top-3 left-full hidden w-[90px] rotate-[12deg] text-brand lg:block motion-safe:animate-bob"
 						style:--rot="12deg"
-						viewBox="0 0 100 60"
 						aria-hidden="true"
 					>
-						<path
-							d="M92 8 C 70 38, 40 50, 12 46"
-							fill="none"
-							stroke="currentColor"
-							stroke-width="3.5"
-							stroke-linecap="round"
-						/>
-						<path
-							d="M24 38 L 11 46 L 22 55"
-							fill="none"
-							stroke="currentColor"
-							stroke-width="3.5"
-							stroke-linecap="round"
-							stroke-linejoin="round"
-						/>
-					</svg>
+						<svg viewBox="0 0 100 60">
+							<path
+								d="M92 8 C 70 38, 40 50, 12 46"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="3.5"
+								stroke-linecap="round"
+							/>
+							<path
+								d="M24 38 L 11 46 L 22 55"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="3.5"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+							/>
+						</svg>
+					</span>
 				</span>
 			</div>
 
@@ -284,29 +291,31 @@
 		</div>
 	</div>
 
-	<svg
-		class="pointer-events-none absolute left-[4%] top-4 w-[34px] text-brand motion-safe:animate-bob"
+	<span
+		class="bobbing-doodle pointer-events-none absolute left-[4%] top-4 w-[34px] text-brand motion-safe:animate-bob"
 		style:--rot="-10deg"
 		style:animation-duration="5s"
-		viewBox="0 0 24 24"
 		aria-hidden="true"
 	>
-		<path
-			d="M12 0 C13 7 17 11 24 12 C17 13 13 17 12 24 C11 17 7 13 0 12 C7 11 11 7 12 0 Z"
-			fill="currentColor"
-		/>
-	</svg>
-	<svg
-		class="pointer-events-none absolute bottom-[120px] right-[6%] w-[22px] text-brand motion-safe:animate-bob"
+		<svg viewBox="0 0 24 24">
+			<path
+				d="M12 0 C13 7 17 11 24 12 C17 13 13 17 12 24 C11 17 7 13 0 12 C7 11 11 7 12 0 Z"
+				fill="currentColor"
+			/>
+		</svg>
+	</span>
+	<span
+		class="bobbing-doodle pointer-events-none absolute bottom-[120px] right-[6%] w-[22px] text-brand motion-safe:animate-bob"
 		style:--rot="14deg"
-		viewBox="0 0 24 24"
 		aria-hidden="true"
 	>
-		<path
-			d="M12 0 C13 7 17 11 24 12 C17 13 13 17 12 24 C11 17 7 13 0 12 C7 11 11 7 12 0 Z"
-			fill="currentColor"
-		/>
-	</svg>
+		<svg viewBox="0 0 24 24">
+			<path
+				d="M12 0 C13 7 17 11 24 12 C17 13 13 17 12 24 C11 17 7 13 0 12 C7 11 11 7 12 0 Z"
+				fill="currentColor"
+			/>
+		</svg>
+	</span>
 </section>
 
 <style>
@@ -638,12 +647,20 @@
 		pointer-events: none;
 	}
 
-	/* Light mode: soft clouds drifting at different speeds (parallax) */
+	/* Light mode: soft clouds drifting at different speeds (parallax). Animated decorations wrap
+	   their SVG in HTML because Chrome animates SVG elements on the main thread, restyling every
+	   frame while the page is otherwise idle. */
 	.sky-cloud {
 		position: absolute;
 		left: -240px;
 		color: #fff;
 		fill: currentcolor;
+	}
+
+	.sky-cloud > svg,
+	.bobbing-doodle > svg {
+		display: block;
+		width: 100%;
 	}
 
 	:global(.dark) .sky-cloud {
