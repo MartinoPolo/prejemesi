@@ -49,6 +49,7 @@ const LANDING_DEMO_PUBLIC_MODULE_PATHS = [
 	'/lib/modules/wishlists/event_countdown.ts',
 	'/lib/modules/wishlists/event_date.ts',
 	'/lib/modules/wishlists/wishlist_occasion_display.ts',
+	'/lib/modules/wishlists/wishlist_note.ts',
 ] as const;
 
 // Manager-only and rarely opened dialogs load on demand (docs/PERFORMANCE.md, Lazy dialogs), so
