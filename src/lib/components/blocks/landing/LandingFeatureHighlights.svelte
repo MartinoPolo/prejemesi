@@ -1,5 +1,6 @@
 <script lang="ts">
 	import BrandShareIcon from './BrandShareIcon.svelte';
+	import { revealOnView } from '$lib/motion/reveal_on_view.js';
 	import * as m from '$lib/paraglide/messages.js';
 	import { SimpleTooltip } from '$lib/components/base/tooltip/index.js';
 	import * as InputGroup from '$lib/components/base/input-group/index.js';
@@ -31,7 +32,7 @@
 
 <section class="bg-dots scroll-mt-16" id="vyhody" aria-label={m.landing_features_headline()}>
 	<div class="mx-auto max-w-[var(--content-max-width)] px-4 py-16 md:px-8 md:py-24">
-		<div class="mx-auto max-w-[640px] text-center">
+		<div class="reveal mx-auto max-w-[640px] text-center" {@attach revealOnView}>
 			<span class="section-eyebrow">
 				<span aria-hidden="true">⭐</span>
 				{m.landing_features_eyebrow()}
@@ -42,6 +43,7 @@
 		<div class="grid min-w-0 grid-cols-1 gap-8 lg:grid-cols-3">
 			<article
 				class="feature rounded-panel border-edge bg-card border-[2.5px] shadow-sticker"
+				{@attach revealOnView}
 			>
 				<h3 class="text-xl font-semibold">
 					<span aria-hidden="true">🙈</span>
@@ -76,6 +78,7 @@
 
 			<article
 				class="feature rounded-panel border-edge bg-card border-[2.5px] shadow-sticker"
+				{@attach revealOnView}
 			>
 				<h3 class="text-xl font-semibold">
 					<span aria-hidden="true">🔗</span>
@@ -120,6 +123,7 @@
 
 			<article
 				class="feature rounded-panel border-edge bg-card border-[2.5px] shadow-sticker"
+				{@attach revealOnView}
 			>
 				<h3 class="text-xl font-semibold">
 					<span aria-hidden="true">🎨</span>
@@ -278,18 +282,19 @@
 		border-radius: 50%;
 	}
 
-	/* Staggered pop-in on load (mockup .features-grid reveal) */
+	/* Cards pop in one reveal step apart, after the section heading */
 	@media (prefers-reduced-motion: no-preference) {
 		.feature {
-			animation: pop-in 0.55s cubic-bezier(0.34, 1.4, 0.64, 1) backwards;
+			animation: var(--animate-pop-in);
+			animation-delay: var(--duration-reveal-stagger);
 		}
 
 		.feature:nth-child(2) {
-			animation-delay: 0.1s;
+			animation-delay: calc(var(--duration-reveal-stagger) * 2);
 		}
 
 		.feature:nth-child(3) {
-			animation-delay: 0.2s;
+			animation-delay: calc(var(--duration-reveal-stagger) * 3);
 		}
 	}
 </style>
