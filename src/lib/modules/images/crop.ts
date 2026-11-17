@@ -176,6 +176,11 @@ export function centerCropRectOn(rect: ImageCropRect, point: CropWindowPoint): I
 	return panCropRect(rect, point.x - (rect.x + rect.w / 2), point.y - (rect.y + rect.h / 2));
 }
 
+/** Center a crop rect on the image at its current size, so the zoom stays as it is. */
+export function recenterCropRect(rect: ImageCropRect): ImageCropRect {
+	return centerCropRectOn(rect, WINDOW_CENTER);
+}
+
 /**
  * Align a crop rect to an edge, corner or the center of the image at its current
  * size: each alignment is a fraction (0 = start, 0.5 = center, 1 = end) and maps

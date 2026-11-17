@@ -9,6 +9,7 @@ import {
 	zoomCropRect,
 	containCropRect,
 	centerCropRectOn,
+	recenterCropRect,
 	alignCropRect,
 	classifyGiftFraming,
 	giftFramingPresetRect,
@@ -350,6 +351,27 @@ describe('centerCropRectOn', () => {
 	it('stays inside the image near an edge', () => {
 		const rect: ImageCropRect = { x: 0.25, y: 0.25, w: 0.5, h: 0.5 };
 		expectRectClose(centerCropRectOn(rect, { x: 1, y: 0 }), { x: 0.5, y: 0, w: 0.5, h: 0.5 });
+	});
+});
+
+describe('recenterCropRect', () => {
+	it('centers a zoomed-in window on the image and keeps its zoom', () => {
+		const rect: ImageCropRect = { x: 0.6, y: 0.1, w: 0.4, h: 0.3 };
+		const recentered = recenterCropRect(rect);
+		expectRectClose(recentered, { x: 0.3, y: 0.35, w: 0.4, h: 0.3 });
+		expect(cropRectToFocalZoom(recentered).zoom).toBeCloseTo(cropRectToFocalZoom(rect).zoom);
+	});
+
+	it('centers the image inside a zoomed-out window', () => {
+		const normalizedAspect = 4 / 3;
+		const zoomedOut = zoomCropRect(centeredCropRect(normalizedAspect), normalizedAspect, 0.8, {
+			x: 0,
+			y: 0,
+		});
+		expectRectClose(
+			recenterCropRect(zoomedOut),
+			zoomCropRect(centeredCropRect(normalizedAspect), normalizedAspect, 0.8),
+		);
 	});
 });
 

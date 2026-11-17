@@ -1,6 +1,5 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
-	import { SvelteMap } from 'svelte/reactivity';
 	import * as m from '$lib/paraglide/messages.js';
 	import { cn } from '$lib/utils.js';
 	import { Button } from '$lib/components/base/button/index.js';
@@ -11,20 +10,13 @@
 	import {
 		FULL_CROP_RECT,
 		IMAGE_EDITOR_MODES,
-		IMAGE_ZOOM_MAX,
 		alignCropRect,
-		clamp01,
 		centerCropRectOn,
 		centeredCropRect,
 		containCropRect,
-		cropRectToFocalZoom,
 		cropRectsClose,
 		fitCropRectToAspect,
 		normalizedCropAspect,
-		panCropRect,
-		zoomCropRect,
-		zoomOutFloorForAspect,
-		type CropWindowPoint,
 		type ImageEditorMode,
 		type ImageCropRect,
 	} from '$lib/modules/images/index.js';
@@ -34,13 +26,13 @@
 		type ImageTokenScope,
 	} from '$lib/components/derived/image-frame/index.js';
 	import {
-		KEYBOARD_PAN_FRACTION,
-		KEYBOARD_PAN_FRACTION_LARGE,
 		centeredVisibleBand,
 		cropWindowBox,
 		photoBoxBehindWindow,
 		visiblePhotoRegion,
 	} from './crop_stage_geometry.js';
+	import { CropPanInteraction } from './crop_pan_interaction.svelte.js';
+	import { CROP_ZOOM_STEP, cropZoomControl } from './crop_zoom_control.js';
 	import CropAnchorPad from './CropAnchorPad.svelte';
 	import CropNavigator from './CropNavigator.svelte';
 
@@ -111,35 +103,23 @@
 	const WINDOW_PADDING = 28;
 	const COMPACT_WINDOW_PADDING = 12;
 	const COMPACT_STAGE_WIDTH = 480;
-	const BUTTON_ZOOM_STEP = 0.1;
-	const WHEEL_ZOOM_SENSITIVITY = 0.0015;
-	const INTERACTION_LINGER_MS = 700;
 	const HINT_CLEARANCE = 26;
 	// Sub-percent layout rounding still counts as drawn at true size.
 	const TRUE_SIZE_SCALE_TOLERANCE = 0.995;
-	const ZOOM_LIMIT_TOLERANCE = 1e-3;
 	const GRID_CELLS = Array.from({ length: 9 }, (_unused, index) => index);
 	const GHOST_STORAGE_KEY = 'prejemesi:image-crop-ghost';
 
 	const keyboardHintId = $props.id();
 
-	let stageElement = $state<HTMLDivElement | null>(null);
 	let stageWidth = $state(0);
 	let stageHeight = $state(0);
 	let naturalRatio = $state<number | null>(null);
 	let loadFailed = $state(false);
-	let interacting = $state(false);
 	let showGhost = $state(readGhostPreference());
-
-	// Pointer bookkeeping – only read inside handlers.
-	const activePointers = new SvelteMap<number, { x: number; y: number }>();
-	let pinchDistance: number | null = null;
-	let lingerTimer: ReturnType<typeof setTimeout> | undefined;
 
 	const isReady = $derived(!loadFailed && naturalRatio !== null);
 	const controlsDisabled = $derived(disabled || !isReady);
 	const normalizedAspect = $derived(normalizedCropAspect(targetAspect, naturalRatio ?? 1));
-	const zoomOutFloor = $derived(zoomOutFloorForAspect(normalizedAspect));
 
 	/** The framing the window shows right now; every edit starts from it. */
 	const shownRect = $derived.by((): ImageCropRect => {
@@ -151,13 +131,7 @@
 		}
 		return cropRect;
 	});
-	const zoom = $derived(cropRectToFocalZoom(shownRect).zoom);
-	// Drops float noise first so a floor of 0.75 × 0.7 reads 53 %, not 52 %.
-	const zoomPercent = $derived(Math.round(Number((zoom * 100).toFixed(6))));
-	// Whole-percent steps let the slider land on the floor itself (zoomTo floors
-	// a value just below it), and never above a deeper inherited zoom, which the
-	// native input would otherwise clamp up to its min.
-	const sliderMinPercent = $derived(Math.floor(Math.min(zoomOutFloor, zoom) * 100));
+	const zoomControl = $derived(cropZoomControl(shownRect, normalizedAspect));
 	const isCentered = $derived(cropRectsClose(shownRect, centeredCropRect(normalizedAspect)));
 	const isWhole = $derived(cropRectsClose(shownRect, containCropRect(normalizedAspect)));
 
@@ -206,6 +180,18 @@
 		);
 	});
 
+	const interaction = new CropPanInteraction({
+		shownRect: () => shownRect,
+		normalizedAspect: () => normalizedAspect,
+		windowBox: () => windowBox,
+		disabled: () => controlsDisabled,
+		recenteredRect: () => centeredCropRect(normalizedAspect),
+		onchange: (rect) => {
+			cropRect = rect;
+			onchange?.(rect);
+		},
+	});
+
 	function readGhostPreference(): boolean {
 		try {
 			return globalThis.localStorage?.getItem(GHOST_STORAGE_KEY) !== 'off';
@@ -223,56 +209,6 @@
 		}
 	}
 
-	function emit(rect: ImageCropRect) {
-		// A clamped no-op (e.g. panning against an edge) must not promote or dirty the form.
-		if (controlsDisabled || cropRectsClose(rect, shownRect)) {
-			return;
-		}
-		cropRect = rect;
-		onchange?.(rect);
-	}
-
-	function markInteracting() {
-		interacting = true;
-		clearTimeout(lingerTimer);
-		lingerTimer = setTimeout(() => {
-			if (activePointers.size === 0) {
-				interacting = false;
-			}
-		}, INTERACTION_LINGER_MS);
-	}
-
-	function panByPixels(deltaX: number, deltaY: number) {
-		if (windowBox === null) {
-			return;
-		}
-		// The photo follows the pointer, so the crop moves the opposite way.
-		const rect = shownRect;
-		emit(
-			panCropRect(
-				rect,
-				(-deltaX * rect.w) / windowBox.width,
-				(-deltaY * rect.h) / windowBox.height,
-			),
-		);
-	}
-
-	function zoomTo(nextZoom: number, anchor?: CropWindowPoint) {
-		emit(zoomCropRect(shownRect, normalizedAspect, nextZoom, anchor));
-	}
-
-	/** Window-relative position of a client point, clamped to the window. */
-	function windowPointAt(clientX: number, clientY: number): CropWindowPoint | undefined {
-		if (stageElement === null || windowBox === null) {
-			return undefined;
-		}
-		const bounds = stageElement.getBoundingClientRect();
-		return {
-			x: clamp01((clientX - bounds.left - windowBox.left) / windowBox.width),
-			y: clamp01((clientY - bounds.top - windowBox.top) / windowBox.height),
-		};
-	}
-
 	function handleImageLoad(event: Event) {
 		const image = event.currentTarget as HTMLImageElement;
 		if (image.naturalWidth > 0 && image.naturalHeight > 0) {
@@ -287,91 +223,12 @@
 		naturalRatio = null;
 	}
 
-	function handlePointerDown(event: PointerEvent) {
-		if (controlsDisabled || event.button !== 0) {
-			return;
-		}
-		event.preventDefault();
-		stageElement?.focus({ preventScroll: true });
-		stageElement?.setPointerCapture?.(event.pointerId);
-		activePointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
-		pinchDistance = null;
-		interacting = true;
-	}
-
-	function handlePointerMove(event: PointerEvent) {
-		const previous = activePointers.get(event.pointerId);
-		if (previous === undefined) {
-			return;
-		}
-		activePointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
-		if (activePointers.size === 1) {
-			panByPixels(event.clientX - previous.x, event.clientY - previous.y);
-			return;
-		}
-		const [first, second] = [...activePointers.values()];
-		const distance = Math.hypot(first.x - second.x, first.y - second.y);
-		if (pinchDistance !== null && pinchDistance > 0) {
-			const midpoint = windowPointAt((first.x + second.x) / 2, (first.y + second.y) / 2);
-			zoomTo((zoom * distance) / pinchDistance, midpoint);
-		}
-		pinchDistance = distance;
-	}
-
-	function handlePointerEnd(event: PointerEvent) {
-		activePointers.delete(event.pointerId);
-		pinchDistance = null;
-		if (activePointers.size === 0) {
-			markInteracting();
-		}
-	}
-
-	function handleWheel(event: WheelEvent) {
-		if (controlsDisabled) {
-			return;
-		}
-		event.preventDefault();
-		markInteracting();
-		zoomTo(
-			zoom * Math.exp(-event.deltaY * WHEEL_ZOOM_SENSITIVITY),
-			windowPointAt(event.clientX, event.clientY),
-		);
-	}
-
-	function handleKeydown(event: KeyboardEvent) {
-		// Leave browser and OS shortcuts such as Ctrl/Cmd + "+" to the browser.
-		if (controlsDisabled || event.ctrlKey || event.metaKey || event.altKey) {
-			return;
-		}
-		const fraction = event.shiftKey ? KEYBOARD_PAN_FRACTION_LARGE : KEYBOARD_PAN_FRACTION;
-		const rect = shownRect;
-		const moves: Record<string, [number, number]> = {
-			ArrowLeft: [-rect.w * fraction, 0],
-			ArrowRight: [rect.w * fraction, 0],
-			ArrowUp: [0, -rect.h * fraction],
-			ArrowDown: [0, rect.h * fraction],
-		};
-		const move = moves[event.key];
-		if (move !== undefined) {
-			emit(panCropRect(rect, move[0], move[1]));
-		} else if (event.key === '+' || event.key === '=') {
-			zoomTo(zoom + BUTTON_ZOOM_STEP);
-		} else if (event.key === '-') {
-			zoomTo(zoom - BUTTON_ZOOM_STEP);
-		} else if (event.key === '0') {
-			recenter();
-		} else {
-			return;
-		}
-		event.preventDefault();
-	}
-
 	function recenter() {
-		emit(centeredCropRect(normalizedAspect));
+		interaction.emit(centeredCropRect(normalizedAspect));
 	}
 
 	function showWhole() {
-		emit(containCropRect(normalizedAspect));
+		interaction.emit(containCropRect(normalizedAspect));
 	}
 
 	// Snap the bound manual rect to the target's aspect once the image is measured
@@ -389,19 +246,6 @@
 			cropRect = snapped;
 		}
 	});
-
-	// Svelte attaches inline `onwheel` as a passive listener, so `preventDefault()`
-	// would be ignored and the page would scroll while zooming. Register non-passive.
-	$effect(() => {
-		const element = stageElement;
-		if (element === null) {
-			return;
-		}
-		element.addEventListener('wheel', handleWheel, { passive: false });
-		return () => element.removeEventListener('wheel', handleWheel);
-	});
-
-	$effect(() => () => clearTimeout(lingerTimer));
 </script>
 
 <div class={cn('flex min-h-0 flex-col gap-2', className)}>
@@ -422,9 +266,9 @@
 	     pans and zooms behind it (#533). The stage is one focusable control: pointer
 	     drag pans, wheel/pinch zooms around the pointer, arrows/+/−/0 work from the
 	     keyboard. Svelte's a11y table does not count `application` as interactive. -->
-	<!-- svelte-ignore a11y_no_noninteractive_tabindex, a11y_no_noninteractive_element_interactions -->
+	<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
 	<div
-		bind:this={stageElement}
+		{@attach interaction.attach}
 		bind:clientWidth={stageWidth}
 		bind:clientHeight={stageHeight}
 		data-testid="crop-stage"
@@ -437,15 +281,10 @@
 			'relative min-h-0 w-full overflow-hidden rounded-lg bg-crop-stage select-none',
 			'focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none',
 			!disabled && 'cursor-grab touch-none',
-			!disabled && interacting && 'cursor-grabbing',
+			!disabled && interaction.interacting && 'cursor-grabbing',
 			stageClass,
 		)}
-		onpointerdown={handlePointerDown}
-		onpointermove={handlePointerMove}
-		onpointerup={handlePointerEnd}
-		onpointercancel={handlePointerEnd}
 		ondblclick={() => recenter()}
-		onkeydown={handleKeydown}
 	>
 		{#if isReady && windowBox !== null}
 			<!-- Letterbox fill behind the window, identical to the renderer's frame fill. -->
@@ -501,7 +340,7 @@
 						style:width="{(1 - band.to) * 100}%"
 					></div>
 				{/if}
-				{#if interacting}
+				{#if interaction.interacting}
 					<div class="absolute inset-0 grid grid-cols-3 grid-rows-3">
 						{#each GRID_CELLS as cell (cell)}
 							<div class="border border-white/25"></div>
@@ -540,28 +379,28 @@
 				intent="outline"
 				size="sm"
 				format="icon"
-				disabled={controlsDisabled || zoom <= zoomOutFloor + ZOOM_LIMIT_TOLERANCE}
-				onclick={() => zoomTo(zoom - BUTTON_ZOOM_STEP)}
+				disabled={controlsDisabled || !zoomControl.canZoomOut}
+				onclick={() => interaction.zoomTo(zoomControl.zoom - CROP_ZOOM_STEP)}
 				aria-label={m.image_crop_zoom_out()}
 			>
 				<MinusIcon data-icon="solo" />
 			</Button>
 			<Slider
 				class="min-w-16 flex-1"
-				value={zoomPercent}
-				min={sliderMinPercent}
-				max={IMAGE_ZOOM_MAX * 100}
+				value={zoomControl.percent}
+				min={zoomControl.minPercent}
+				max={zoomControl.maxPercent}
 				step={1}
 				disabled={controlsDisabled}
-				onValueChange={(value: number) => zoomTo(value / 100)}
+				onValueChange={(value: number) => interaction.zoomTo(value / 100)}
 				aria-label={m.image_crop_zoom_label()}
 			/>
 			<Button
 				intent="outline"
 				size="sm"
 				format="icon"
-				disabled={controlsDisabled || zoom >= IMAGE_ZOOM_MAX - ZOOM_LIMIT_TOLERANCE}
-				onclick={() => zoomTo(zoom + BUTTON_ZOOM_STEP)}
+				disabled={controlsDisabled || !zoomControl.canZoomIn}
+				onclick={() => interaction.zoomTo(zoomControl.zoom + CROP_ZOOM_STEP)}
 				aria-label={m.image_crop_zoom_in()}
 			>
 				<PlusIcon data-icon="solo" />
@@ -570,7 +409,7 @@
 				class="w-12 shrink-0 text-right text-xs text-muted-foreground tabular-nums"
 				data-testid="crop-stage-zoom"
 			>
-				{zoomPercent} %
+				{zoomControl.percent} %
 			</span>
 		</div>
 		<div class="flex items-center gap-3">
@@ -579,7 +418,7 @@
 				region={visiblePhotoRegion(shownRect)}
 				{naturalRatio}
 				disabled={controlsDisabled}
-				onjump={(point) => emit(centerCropRectOn(shownRect, point))}
+				onjump={(point) => interaction.emit(centerCropRectOn(shownRect, point))}
 			/>
 			<div class="flex min-w-0 flex-1 flex-wrap gap-(--nested-control-gap)">
 				<Button
@@ -601,7 +440,7 @@
 			</div>
 			<CropAnchorPad
 				disabled={controlsDisabled}
-				onalign={(alignment) => emit(alignCropRect(shownRect, alignment))}
+				onalign={(alignment) => interaction.emit(alignCropRect(shownRect, alignment))}
 			/>
 		</div>
 	</div>
