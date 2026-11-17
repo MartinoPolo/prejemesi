@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { tick, untrack } from 'svelte';
+	import { onDestroy, tick, untrack } from 'svelte';
 	import { resolve } from '$app/paths';
 	import * as m from '$lib/paraglide/messages.js';
 	import ClockIcon from '@lucide/svelte/icons/clock';
@@ -126,6 +126,10 @@
 	let streaming = $state(false);
 	/** Stops the turn being streamed. */
 	let stopShownTurn: (() => Promise<void>) | null = null;
+	/** Text deltas arrive faster than frames, so the streamed turn renders at most once per frame. */
+	let liveTurnFrame = 0;
+	/** A stream outlives the panel, so its late deltas must not schedule frames for a gone panel. */
+	let tornDown = false;
 	/** The unfinished turn the panel last rejoined, so a failed rejoin is not retried in a loop. */
 	let rejoinedTurnUrl: string | null = null;
 	let creatingSession = $state(false);
@@ -307,6 +311,16 @@
 		}
 	}
 
+	function cancelLiveTurnFrame() {
+		cancelAnimationFrame(liveTurnFrame);
+		liveTurnFrame = 0;
+	}
+
+	onDestroy(() => {
+		tornDown = true;
+		cancelLiveTurnFrame();
+	});
+
 	/** The list and the pending banner follow what the assistant did. */
 	function followStreamEvent(event: ChatStreamEvent) {
 		if (event.type !== CHAT_STREAM_EVENT.proposal) {
@@ -374,21 +388,31 @@
 			controller.abort();
 		};
 		void scrollThreadToEnd();
+		const commitLiveTurn = () => {
+			cancelLiveTurnFrame();
+			liveTurn = turn;
+		};
 		try {
 			const refusal = await stream(controller.signal, (event) => {
 				if (stopped && event.type === CHAT_STREAM_EVENT.error) {
 					return;
 				}
 				turn = withStreamEvent(turn, event);
-				liveTurn = turn;
+				if (event.type !== CHAT_STREAM_EVENT.text) {
+					commitLiveTurn();
+				} else if (liveTurnFrame === 0 && !tornDown) {
+					liveTurnFrame = requestAnimationFrame(commitLiveTurn);
+				}
 				followStreamEvent(event);
 			});
+			commitLiveTurn();
 			if (refusal !== null) {
 				// Nothing was stored, so the message goes back to the composer.
 				assistant.draft.current = userText ?? assistant.draft.current;
 				toastError(m.chat_error_title());
 			}
 		} catch {
+			commitLiveTurn();
 			if (!controller.signal.aborted) {
 				liveTurn = { ...turn, error: CHAT_TURN_ERROR.providerFailed };
 			}

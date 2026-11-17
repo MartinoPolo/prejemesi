@@ -1,7 +1,9 @@
 <script lang="ts">
 	import ImageFrame from '$lib/components/derived/image-frame/ImageFrame.svelte';
 	import {
+		IMAGE_LOAD_PRIORITIES,
 		IMAGE_TOKEN_SCOPES,
+		type ImageLoadPriority,
 		type ImageTokenScope,
 	} from '$lib/components/derived/image-frame/index.js';
 	import {
@@ -33,10 +35,12 @@
 		 * original (which also preserves GIF animation).
 		 */
 		variant?: ImageVariant | null;
-		/** Eager-load above-the-fold surfaces; everything else lazy-loads. */
-		eagerLoading?: boolean;
+		/** Above-the-fold surfaces load eagerly, the likely LCP image at high priority. */
+		loadPriority?: ImageLoadPriority;
 		/** Scopes the tier-2 background fill; gift images live inside a wishlist. */
 		tokenScope?: ImageTokenScope;
+		/** Force the loading skeleton (e.g. the editor previews). */
+		loading?: boolean;
 		class?: string;
 	}
 
@@ -46,14 +50,20 @@
 		target,
 		alt,
 		variant = null,
-		eagerLoading = false,
+		loadPriority = IMAGE_LOAD_PRIORITIES.lazy,
 		tokenScope = IMAGE_TOKEN_SCOPES.wishlist,
+		loading = false,
 		class: className,
 	}: Props = $props();
 
+	// A thumbnail following the card crop maps its zoom by the photo's natural ratio,
+	// which no metadata stores, so it comes from the frame's own measurement.
+	let measuredImage = $state<{ src: string | null; ratio: number } | null>(null);
+	const naturalRatio = $derived(measuredImage?.src === imageUrl ? measuredImage.ratio : null);
+
 	// Single integration point: every gift image consumer renders through the shared
 	// #34 renderer with the saved metadata, so presentation is identical everywhere.
-	const frame = $derived(giftTargetFrameProps(imageMeta, target));
+	const frame = $derived(giftTargetFrameProps(imageMeta, target, naturalRatio));
 </script>
 
 <ImageFrame
@@ -61,10 +71,12 @@
 	src={imageUrl}
 	{alt}
 	{variant}
-	{eagerLoading}
+	{loadPriority}
 	fitMode={frame.fitMode}
 	focal={frame.focal}
 	zoom={frame.zoom}
 	fillColor={frame.fillColor}
 	{tokenScope}
+	{loading}
+	onmeasured={(ratio) => (measuredImage = { src: imageUrl, ratio })}
 />

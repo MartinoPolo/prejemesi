@@ -189,15 +189,6 @@
 		}
 	}
 
-	/** Escape mid-drag cancels the drag before the settings dialog would treat it as dismissal. */
-	function cancelDragOnEscape(event: KeyboardEvent) {
-		if (event.key === 'Escape' && reorder.draggedGiftId.current !== null) {
-			event.preventDefault();
-			event.stopPropagation();
-			reorder.cancel();
-		}
-	}
-
 	function handleGripKeydown(event: KeyboardEvent, index: number, key: string) {
 		const direction = event.key === 'ArrowUp' ? -1 : event.key === 'ArrowDown' ? 1 : 0;
 		if (direction === 0 || categoryControlsDisabled) {
@@ -328,7 +319,7 @@
 	}
 </script>
 
-<svelte:window onkeydowncapture={cancelDragOnEscape} />
+<svelte:window onkeydowncapture={reorder.cancelOnEscape} />
 
 <form id="wishlist-categories-form" class="category-settings flex flex-col gap-4" onsubmit={save}>
 	<HelpText class="max-w-160">{m.gift_categories_intro()}</HelpText>

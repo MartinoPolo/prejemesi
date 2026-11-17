@@ -8,7 +8,7 @@ export interface ExitSample {
 	opacity: number;
 	pointerEvents: string;
 	text: string;
-	source: 'frame' | 'animation-end' | 'detached';
+	source: 'frame' | 'exit-end' | 'detached';
 }
 
 export async function waitForAnimations(surface: Locator): Promise<void> {
@@ -62,25 +62,53 @@ export async function startExitRecording(surface: Locator): Promise<{
 			});
 		}
 
-		const observer = new MutationObserver(() => record('frame'));
+		// bits-ui detaches in the same microtask checkpoint that resolves `finished`, before
+		// animationend/transitionend are dispatched, so completion is observed via `finished`.
+		let exitAnimationsObserved = false;
+		function observeExitAnimations() {
+			if (exitAnimationsObserved || element.getAttribute('data-state') !== 'closed') {
+				return;
+			}
+			const animations = element.getAnimations();
+			if (animations.length === 0) {
+				return;
+			}
+			exitAnimationsObserved = true;
+			void Promise.all(animations.map((animation) => animation.finished)).then(
+				() => record('exit-end'),
+				() => {},
+			);
+		}
+
+		const observer = new MutationObserver(() => {
+			record('frame');
+			observeExitAnimations();
+		});
 		observer.observe(document.documentElement, {
 			attributes: true,
 			attributeFilter: ['data-state'],
 			childList: true,
 			subtree: true,
 		});
-		function handleAnimationEnd(event: Event) {
-			if (event.target !== element || element.getAttribute('data-state') !== 'closed') {
+		function handleExitEnd(event: Event) {
+			if (
+				event.target !== element ||
+				element.getAttribute('data-state') !== 'closed' ||
+				(event instanceof TransitionEvent && event.propertyName !== 'opacity')
+			) {
 				return;
 			}
-			record('animation-end');
-			queueMicrotask(() => record('animation-end'));
-			element.removeEventListener('animationend', handleAnimationEnd);
+			record('exit-end');
+			queueMicrotask(() => record('exit-end'));
+			element.removeEventListener('animationend', handleExitEnd);
+			element.removeEventListener('transitionend', handleExitEnd);
 		}
-		element.addEventListener('animationend', handleAnimationEnd);
+		element.addEventListener('animationend', handleExitEnd);
+		element.addEventListener('transitionend', handleExitEnd);
 
 		function sampleFrame() {
 			record('frame');
+			observeExitAnimations();
 			if (element.isConnected) {
 				animationFrameRequest = requestAnimationFrame(sampleFrame);
 			}
@@ -103,18 +131,27 @@ export async function startExitRecording(surface: Locator): Promise<{
 	};
 }
 
-export function expectStableExit(samples: readonly ExitSample[]): void {
+/**
+ * A closing surface stops taking input, except a modal backdrop, which keeps the page beneath inert
+ * until its exit animation ends.
+ */
+export function expectStableExit(
+	samples: readonly ExitSample[],
+	{ backdrop = false }: { backdrop?: boolean } = {},
+): void {
 	const closingSamples = samples.filter(
 		(sample) => sample.connected && sample.state === 'closed',
 	);
 	expect(closingSamples.length, 'the closing surface was observed').toBeGreaterThan(0);
 	expect(
-		closingSamples.every((sample) => sample.pointerEvents === 'none'),
-		'a closing surface is not interactive',
+		closingSamples.every((sample) => sample.pointerEvents === (backdrop ? 'auto' : 'none')),
+		backdrop
+			? 'a closing backdrop keeps blocking the page'
+			: 'a closing surface is not interactive',
 	).toBe(true);
 	expect(
-		closingSamples.some((sample) => sample.source === 'animation-end'),
-		'the exit animation completed before detach',
+		closingSamples.some((sample) => sample.source === 'exit-end'),
+		'the exit motion completed before detach',
 	).toBe(true);
 
 	let lowestOpacity = 1;

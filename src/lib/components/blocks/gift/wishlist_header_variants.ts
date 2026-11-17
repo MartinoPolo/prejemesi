@@ -8,7 +8,8 @@ import { tv } from 'tailwind-variants';
  */
 export const wishlistHeaderVariants = tv({
 	slots: {
-		root: 'flex flex-col gap-3 sm:gap-6',
+		/** Revisited on every list open, so the staggered reveal finishes within about 400 ms. */
+		root: 'flex flex-col gap-3 sm:gap-6 [--reveal-duration:260ms] [--reveal-easing:var(--ease-out-strong)] [--reveal-step:30ms]',
 		/** Keeps clear of the frame's end decoration even without hero actions. */
 		headerText: 'min-w-0 flex-1 sm:pe-(--hero-copy-end-minimum)',
 		/** „Pro: {recipient}" line above the title (name bold, prefix lighter) — all lists. */
@@ -19,7 +20,6 @@ export const wishlistHeaderVariants = tv({
 		recipientAvatar: 'shrink-0',
 		recipientName: 'font-heading text-[26px] font-semibold text-ink',
 		title: 'reveal reveal-2 mt-0.5 text-[clamp(28px,4vw,42px)] leading-tight font-semibold',
-		description: 'reveal reveal-2 mt-1 max-w-2xl text-base text-muted-foreground',
 		metaRow: 'reveal reveal-3 mt-2 flex flex-wrap items-center gap-2.5',
 		/** Emblem stand-in: from 960 px the occasion emblem carries occasion and countdown. */
 		occasionChip: 'min-[960px]:hidden',

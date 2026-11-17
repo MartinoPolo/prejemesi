@@ -34,13 +34,12 @@
 	import {
 		CHANGE_KIND_PRESENTATION,
 		UNRESOLVED_DECISION_MESSAGES,
+		type ProposalAction,
 	} from './change_review_presentation.js';
 	import { CHANGE_REVIEW_FILTER, type ChangeReviewFilter } from './change_review_rows.js';
 	import { ProposalDecisions } from './proposal_decisions.svelte.js';
 	import { showRejectedProposalToast } from './rejected_proposal_toast.js';
 	import UndoProposalDialog from './UndoProposalDialog.svelte';
-
-	type ReviewAction = 'apply' | 'undo' | 'discard';
 
 	const DISCARD_BODIES = {
 		one: m.change_review_discard_body_one,
@@ -97,7 +96,7 @@
 	let announcement = $state('');
 	let filter = $state<ChangeReviewFilter>(CHANGE_REVIEW_FILTER.all);
 	let undoChangedGifts = $state.raw<{ giftId: string; name: string | null }[]>([]);
-	let pendingAction = $state<ReviewAction | null>(null);
+	let pendingAction = $state<ProposalAction | null>(null);
 	let focusOutcome = $state(false);
 	let undoOpen = $state(false);
 	let discardOpen = $state(false);
@@ -205,7 +204,7 @@
 	}
 
 	async function runDiscard() {
-		pendingAction = 'discard';
+		pendingAction = 'reject';
 		try {
 			await ondiscard();
 			focusOutcome = true;
@@ -254,7 +253,7 @@
 			{unresolvedCount}
 			showUnresolved={decisions.showUnresolved}
 			{announcement}
-			pending={pendingAction === 'apply' || pendingAction === 'discard'}
+			{pendingAction}
 			onrejectall={() => void runDiscard()}
 			onacceptall={decisions.canAcceptAll ? acceptAll : undefined}
 			onapply={requestApply}
@@ -273,7 +272,7 @@
 
 <ConfirmDialog
 	bind:open={discardOpen}
-	pending={pendingAction === 'discard'}
+	pending={pendingAction === 'reject'}
 	title={m.change_review_discard_title()}
 	description={countCopy(DISCARD_BODIES, proposal.rowCount)}
 	cancelLabel={m.change_review_back_to_review()}

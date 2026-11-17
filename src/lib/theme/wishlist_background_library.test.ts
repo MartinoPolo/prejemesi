@@ -8,6 +8,10 @@ import {
 	backgroundPrompt,
 } from '../../../scripts/theme_background_prompts.mjs';
 import type { WishlistLibraryImageMode } from './wishlist_background_library.js';
+import {
+	libraryFileUrlPattern,
+	librarySrcsetPattern,
+} from './wishlist_background_library.test_fixtures.js';
 import { WISHLIST_THEME_IDS } from './wishlist_themes.js';
 
 // A small fixture library; every image has a light and a dark file.
@@ -17,7 +21,7 @@ vi.mock('./wishlist_background_library.json', () => ({
 			id: 'toys-illustrated',
 			themeId: 'toys',
 			variant: 'illustrated',
-			widthsByMode: { light: [1280, 2560], dark: [1280, 2560] },
+			widthsByMode: { light: [1280, 1672], dark: [1280, 1672] },
 		},
 		{
 			id: 'christmas-illustrated',
@@ -29,7 +33,7 @@ vi.mock('./wishlist_background_library.json', () => ({
 			id: 'christmas-photo',
 			themeId: 'christmas',
 			variant: 'photo',
-			widthsByMode: { light: [640, 1280, 2560], dark: [640, 1280, 2560] },
+			widthsByMode: { light: [640, 1280, 1672], dark: [640, 1280, 1672] },
 		},
 	],
 }));
@@ -88,20 +92,22 @@ describe('wishlist background library', () => {
 		expect(layers).toEqual([
 			{
 				shownIn: 'light',
-				src: expect.stringMatching(
-					/\/wishlist-backgrounds\/toys-illustrated-light-2560\.webp$/,
-				),
+				src: expect.stringMatching(libraryFileUrlPattern('toys-illustrated-light-1672')),
 				srcset: expect.stringMatching(
-					/toys-illustrated-light-1280\.webp 1280w, .*toys-illustrated-light-2560\.webp 2560w$/,
+					librarySrcsetPattern([
+						['toys-illustrated-light-1280', 1280],
+						['toys-illustrated-light-1672', 1672],
+					]),
 				),
 			},
 			{
 				shownIn: 'dark',
-				src: expect.stringMatching(
-					/\/wishlist-backgrounds\/toys-illustrated-dark-2560\.webp$/,
-				),
+				src: expect.stringMatching(libraryFileUrlPattern('toys-illustrated-dark-1672')),
 				srcset: expect.stringMatching(
-					/toys-illustrated-dark-1280\.webp 1280w, .*toys-illustrated-dark-2560\.webp 2560w$/,
+					librarySrcsetPattern([
+						['toys-illustrated-dark-1280', 1280],
+						['toys-illustrated-dark-1672', 1672],
+					]),
 				),
 			},
 		]);
@@ -111,13 +117,37 @@ describe('wishlist background library', () => {
 		expect(wishlistLibraryImageThumbnailLayers(libraryImage('toys-illustrated'))).toEqual([
 			{
 				shownIn: 'light',
-				src: expect.stringMatching(/toys-illustrated-light-1280\.webp$/),
+				src: expect.stringMatching(libraryFileUrlPattern('toys-illustrated-light-1280')),
 			},
 			{
 				shownIn: 'dark',
-				src: expect.stringMatching(/toys-illustrated-dark-1280\.webp$/),
+				src: expect.stringMatching(libraryFileUrlPattern('toys-illustrated-dark-1280')),
 			},
 		]);
+	});
+
+	it('names the missing file when a manifest width has no bundled image', async () => {
+		vi.resetModules();
+		vi.doMock('./wishlist_background_library.json', () => ({
+			default: [
+				{
+					id: 'toys-illustrated',
+					themeId: 'toys',
+					variant: 'illustrated',
+					widthsByMode: { light: [1280, 9999], dark: [1280] },
+				},
+			],
+		}));
+		try {
+			const library = await import('./wishlist_background_library.js');
+			const image = library.WISHLIST_LIBRARY_IMAGES[0];
+			expect(() => library.wishlistLibraryImageLayers(image)).toThrow(
+				'toys-illustrated-light-9999.webp is missing',
+			);
+		} finally {
+			vi.doUnmock('./wishlist_background_library.json');
+			vi.resetModules();
+		}
 	});
 
 	it.each([
@@ -193,7 +223,7 @@ describe('shipped wishlist background manifest', () => {
 		readFileSync(new URL('./wishlist_background_library.json', import.meta.url), 'utf8'),
 	);
 
-	it('has a static WebP file for every listed mode and width', () => {
+	it('has a bundled WebP file for every listed mode and width', () => {
 		const missingFiles = manifestEntries
 			.flatMap(({ id, widthsByMode }) =>
 				Object.entries(widthsByMode).flatMap(([mode, widths]) =>
@@ -203,10 +233,7 @@ describe('shipped wishlist background manifest', () => {
 			.filter(
 				(fileName) =>
 					!existsSync(
-						new URL(
-							`../../../static/wishlist-backgrounds/${fileName}`,
-							import.meta.url,
-						),
+						new URL(`../assets/wishlist-backgrounds/${fileName}`, import.meta.url),
 					),
 			);
 		expect(missingFiles).toEqual([]);

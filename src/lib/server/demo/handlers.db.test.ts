@@ -1042,7 +1042,7 @@ describe.skipIf(isolatedDatabaseUrl === null)(
 		it('keeps prepared wishlist covers and gift galleries editable without accepting uploads', async () => {
 			const own = await demoWishlist(first, 'own');
 			const preparedCover = own.imageKey!;
-			expect(preparedCover).toMatch(/^\/demo\/wishlists\/.+\.webp$/);
+			expect(preparedCover).toMatch(/^\/demo\/v1\/wishlists\/.+\.webp$/);
 			await asViewer(first, 'POST', () =>
 				saveWishlistSettings({
 					wishlistId: own.id,

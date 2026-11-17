@@ -50,6 +50,7 @@ function makeGift(overrides: Partial<GiftForVisitor> = {}): GiftForVisitor {
 		reserverNames: [],
 		myReservationId: 'reservation-1',
 		myReservationPurchasedAt: null,
+		myReservationQuantity: 1,
 		...overrides,
 	};
 }
@@ -125,7 +126,7 @@ describe('PurchasedToggle', () => {
 		},
 	);
 
-	it('optimistically changes direction, blocks replay, and remains changed after success', async () => {
+	it('optimistically changes direction and blocks replay while saving', async () => {
 		let settle!: () => void;
 		mocks.setReservationPurchased.mockReturnValue(
 			new Promise<void>((resolve) => {
@@ -144,9 +145,32 @@ describe('PurchasedToggle', () => {
 			reservationId: 'reservation-1',
 			purchased: true,
 		});
+		await screen.rerender({
+			gift: makeGift({ myReservationPurchasedAt: new Date('2026-01-02') }),
+		});
 		settle();
 		await expect.element(reverse).toBeEnabled();
 		await expect.element(reverse).toHaveAttribute('aria-pressed', 'true');
+		expect(mocks.toastSuccess).toHaveBeenCalledOnce();
+	});
+
+	it('follows later server state once a save has succeeded', async () => {
+		mocks.setReservationPurchased.mockResolvedValue(undefined);
+		const screen = await render(PurchasedToggleTestHost, { gift: makeGift() });
+
+		await screen.getByRole('button', { name: 'Označit jako koupené' }).click();
+		await screen.rerender({
+			gift: makeGift({ myReservationPurchasedAt: new Date('2026-01-02') }),
+		});
+		await expect
+			.element(screen.getByRole('button', { name: 'Označit jako nekoupené' }))
+			.toBeEnabled();
+
+		// Another device unmarks the purchase; the refreshed gift must win over the old click.
+		await screen.rerender({ gift: makeGift({ myReservationPurchasedAt: null }) });
+		await expect
+			.element(screen.getByRole('button', { name: 'Označit jako koupené' }))
+			.toHaveAttribute('aria-pressed', 'false');
 	});
 
 	it('rolls back the optimistic direction and reports an error when saving fails', async () => {
@@ -158,6 +182,28 @@ describe('PurchasedToggle', () => {
 		await expect
 			.element(screen.getByRole('button', { name: 'Označit jako koupené' }))
 			.toBeEnabled();
+		expect(mocks.toastError).toHaveBeenCalledOnce();
+	});
+
+	it('shows the server state after a failed save instead of inverting the click', async () => {
+		let fail!: (reason: Error) => void;
+		mocks.setReservationPurchased.mockReturnValue(
+			new Promise<void>((_resolve, reject) => {
+				fail = reject;
+			}),
+		);
+		const screen = await render(PurchasedToggleTestHost, { gift: makeGift() });
+
+		await screen.getByRole('button', { name: 'Označit jako koupené' }).click();
+		// The purchase lands from elsewhere while this save is still in flight.
+		await screen.rerender({
+			gift: makeGift({ myReservationPurchasedAt: new Date('2026-01-02') }),
+		});
+		fail(new Error('failed'));
+
+		const action = screen.getByRole('button', { name: 'Označit jako nekoupené' });
+		await expect.element(action).toBeEnabled();
+		await expect.element(action).toHaveAttribute('aria-pressed', 'true');
 		expect(mocks.toastError).toHaveBeenCalledOnce();
 	});
 });

@@ -2,7 +2,11 @@ import { test, expect } from '@playwright/test';
 import { fileURLToPath } from 'node:url';
 import { createTestUser } from '../e2e/fixtures/test-data.js';
 import { registerAndGetPage } from '../e2e/fixtures/auth-helpers.js';
-import { createWishlistAndNavigate, shareWishlist } from '../e2e/fixtures/wishlist-helpers.js';
+import {
+	createWishlistAndNavigate,
+	shareWishlist,
+	uploadGiftEditorImage,
+} from '../e2e/fixtures/wishlist-helpers.js';
 
 const SAMPLE_IMAGE_PORTRAIT_PATH = fileURLToPath(
 	new URL('../e2e/fixtures/sample-image-portrait.png', import.meta.url),
@@ -30,13 +34,7 @@ test.describe('Gift detail image presentation', () => {
 		await expect(addDialog).toBeVisible({ timeout: 5_000 });
 		await addDialog.getByRole('textbox', { name: 'Název' }).fill(giftName);
 
-		await addDialog.getByRole('radio', { name: 'Nahrát', exact: true }).click();
-		const fileInput = addDialog.locator('input[type=file]');
-		await expect(fileInput).toBeAttached();
-		await fileInput.setInputFiles(SAMPLE_IMAGE_PORTRAIT_PATH);
-		await expect(addDialog.getByTestId('image-upload-preview')).toBeVisible({
-			timeout: 10_000,
-		});
+		await uploadGiftEditorImage(ownerPage, addDialog, SAMPLE_IMAGE_PORTRAIT_PATH);
 
 		await addDialog.getByRole('button', { name: 'Přidat dárek' }).click();
 		await expect(addDialog).not.toBeVisible({ timeout: 10_000 });

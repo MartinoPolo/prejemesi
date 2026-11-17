@@ -16,6 +16,7 @@
 	import { cn } from '$lib/utils.js';
 	import { giftCardVariants } from './gift_card_variants.js';
 	import { GIFT_CARD_CONTROL_SELECTOR } from './gift_card_controls.js';
+	import { GIFT_CARD_LAYOUT_INERT_ATTRIBUTE } from './gift_card_layout_inert.js';
 	import GiftDescription from './GiftDescription.svelte';
 	import GiftCategoryBadges from './GiftCategoryBadges.svelte';
 	import GiftPriorityBadge from './GiftPriorityBadge.svelte';
@@ -24,9 +25,13 @@
 	import { GIFT_LIVE_PREVIEW } from '$lib/components/blocks/change-proposals/change_row_model.js';
 	import { giftLivePreviewMarks } from '$lib/components/blocks/change-proposals/gift_live_preview.js';
 	import { restingShadowNesting } from '$lib/utils/resting_shadow_nesting.js';
+	import { clientSize } from '$lib/utils/shared_resize_observer.js';
 	import { clampGalleryIndex } from '$lib/modules/gifts/gift_gallery.js';
 	import { useGiftGalleryPositions } from '$lib/modules/gifts/gift_gallery_positions.js';
-	import type { GiftPresentationProps } from './gift_presentation_props.js';
+	import {
+		GIFT_EDITOR_IMAGE_PLACEMENTS,
+		type GiftPresentationProps,
+	} from './gift_presentation_props.js';
 	import GiftCardGallery from './GiftCardGallery.svelte';
 	import GiftGalleryCountChip from './GiftGalleryCountChip.svelte';
 	import { GIFT_CARD_DENSITIES, type GiftCardDensity } from './gift_card_variants.js';
@@ -54,10 +59,16 @@
 		moreSurface = 'menu',
 		showPriority = true,
 		livePreview,
+		imageLoadPriority,
 		density = GIFT_CARD_DENSITIES.grid,
+		editorImage,
 	}: GiftCardProps = $props();
 
 	const isCarouselCard = $derived(density === GIFT_CARD_DENSITIES.carousel);
+	const isEditorPreview = $derived(editorImage !== undefined);
+	const editorImageReplacesPhoto = $derived(
+		editorImage?.placement === GIFT_EDITOR_IMAGE_PLACEMENTS.instead,
+	);
 
 	const previewMarks = $derived(giftLivePreviewMarks(livePreview));
 	const showsTopOverlays = $derived(
@@ -151,6 +162,7 @@
 	<div
 		class="gift-card-top-overlays absolute top-2 right-2 z-20 flex items-start gap-2"
 		data-gift-card-top-overlays
+		inert={isEditorPreview}
 	>
 		{#if gift.categories.length > 0}
 			<div class="min-w-0 flex-1" data-gift-card-category-zone>
@@ -197,6 +209,7 @@
 				explicitImageFrameFill !== null && 'bg-[var(--frame-fill)]',
 			)}
 			data-testid="gift-card-image-frame"
+			data-gift-card-image-track
 			style:--frame-fill={explicitImageFrameFill ?? undefined}
 		>
 			{#if explicitImageFrameFill === null}
@@ -207,18 +220,24 @@
 				></div>
 			{/if}
 
-			{#if !showsGallery}
+			{#if editorImage !== undefined && editorImageReplacesPhoto}
+				<div class="absolute inset-x-0 top-0 bottom-(--border-w)">
+					{@render editorImage.content()}
+				</div>
+			{:else if !showsGallery}
 				<div
 					class="absolute inset-x-0 top-0 bottom-(--border-w) flex items-center justify-center"
+					{...{ [GIFT_CARD_LAYOUT_INERT_ATTRIBUTE]: '' }}
 				>
 					<div class={styles.cropComposition()} data-testid="gift-card-crop-composition">
 						<GiftImage
-							class="size-full rounded-none bg-transparent max-sm:[&_img]:p-0"
+							class="size-full rounded-none bg-transparent"
 							imageUrl={imageSrc}
 							imageMeta={gift.imageMeta}
 							target={isCarouselCard ? 'thumb' : 'square'}
 							alt={gift.name}
 							variant="card"
+							loadPriority={imageLoadPriority}
 						/>
 					</div>
 				</div>
@@ -260,14 +279,17 @@
 
 			<!-- Unlike the single image above, the gallery follows the overlays so its arrows come
 			     after them in focus order; overlays keep painting above it through their z-index. -->
-			{#if showsGallery}
+			{#if editorImageReplacesPhoto}
+				<!-- The editor's framing surface stands in for the photo and its gallery. -->
+			{:else if showsGallery}
 				<GiftCardGallery
 					images={gift.images}
 					alt={gift.name}
 					index={shownImageIndex}
-					interactive={!contextualMode}
+					interactive={!contextualMode && !isEditorPreview}
 					compositionClass={styles.cropComposition()}
 					warm={galleryWarm}
+					shownImageLoadPriority={imageLoadPriority}
 					onindexchange={showGalleryImage}
 					onswipingchange={(swiping) => (gallerySwiping = swiping)}
 				/>
@@ -277,10 +299,15 @@
 					class="absolute right-3 bottom-3 z-20"
 				/>
 			{/if}
+			{#if editorImage !== undefined && !editorImageReplacesPhoto}
+				<div class="absolute inset-x-0 top-0 bottom-(--border-w) z-20">
+					{@render editorImage.content()}
+				</div>
+			{/if}
 		</div>
 
 		<!-- Body -->
-		<div class={styles.body()} data-testid="gift-card-body">
+		<div class={styles.body()} data-testid="gift-card-body" inert={isEditorPreview}>
 			<!-- Name + piece count. Edited-after-share info surfaces only as a muted line
 		     in the gift detail modal (issue #185), not on the card. -->
 			<div class={styles.nameRow()} data-gift-card-track="title">
@@ -340,9 +367,10 @@
 				class={styles.footer()}
 				data-gift-card-track="actions"
 				data-testid="gift-card-footer"
+				inert={isEditorPreview}
 			>
 				<div
-					bind:clientWidth={actionContentWidth}
+					{@attach clientSize((size) => (actionContentWidth = size.width))}
 					data-testid="gift-card-reservation-actions"
 					class={styles.reservationActions()}
 				>

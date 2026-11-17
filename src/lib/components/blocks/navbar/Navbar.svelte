@@ -6,9 +6,10 @@
 	import DarkModeToggle from '$lib/components/derived/dark-mode-toggle/DarkModeToggle.svelte';
 	import LanguageToggle from '$lib/components/derived/language-toggle/LanguageToggle.svelte';
 	import PaletteSwitcher from '$lib/components/derived/palette-switcher/PaletteSwitcher.svelte';
-	import { CreateWishlistModal } from '$lib/components/blocks/wishlist/index.js';
 	import { LazyImportWizard, WIZARD_MODE } from '$lib/components/blocks/import/index.js';
 	import { NotificationBell } from '$lib/components/blocks/notification/index.js';
+	import { LazyDialog } from '$lib/components/derived/lazy-dialog/index.js';
+	import { createWishlistModalLoader } from '$lib/components/blocks/wishlist/lazy_dialog_loaders.js';
 	import LogoMark from './LogoMark.svelte';
 	import NavDropdown from './NavDropdown.svelte';
 	import type { NavDropdownItem } from './navbar_types.js';
@@ -274,6 +275,12 @@
 	let isCreateModalOpen = $state(false);
 	let isImportWizardOpen = $state(false);
 
+	// The create dialog pulls in the date picker calendar, so it loads on intent, not with every page.
+	const preloadCreateWishlistModalOnIntent = {
+		onpointerenter: createWishlistModalLoader.preload,
+		onfocus: createWishlistModalLoader.preload,
+	};
+
 	// A single shared "which nav dropdown is open" index guarantees at most one of the three
 	// hover dropdowns is visible: opening one closes any sibling before its own grace-period
 	// close can fire.
@@ -291,7 +298,11 @@
 <header class="topbar">
 	<div class="topbar-inner">
 		{#if user}
-			<MobileNav navLinks={MOBILE_NAV_LINKS} oncreate={() => (isCreateModalOpen = true)} />
+			<MobileNav
+				navLinks={MOBILE_NAV_LINKS}
+				oncreate={() => (isCreateModalOpen = true)}
+				oncreateintent={createWishlistModalLoader.preload}
+			/>
 		{/if}
 
 		<!-- Logo -->
@@ -330,6 +341,7 @@
 									<Button
 										intent="link"
 										size="sm"
+										{...preloadCreateWishlistModalOnIntent}
 										onclick={() => (isCreateModalOpen = true)}
 									>
 										<PlusIcon data-icon="inline-start" />
@@ -368,6 +380,7 @@
 					intent="primary"
 					size="md"
 					class="hidden min-[1040px]:inline-flex"
+					{...preloadCreateWishlistModalOnIntent}
 					onclick={() => (isCreateModalOpen = true)}
 				>
 					<PlusIcon data-icon="inline-start" />
@@ -378,6 +391,7 @@
 					format="icon"
 					class="min-[1040px]:hidden"
 					aria-label={m.nav_create()}
+					{...preloadCreateWishlistModalOnIntent}
 					onclick={() => (isCreateModalOpen = true)}
 				>
 					<PlusIcon />
@@ -429,11 +443,15 @@
 </header>
 
 {#if user}
-	<CreateWishlistModal
-		bind:open={isCreateModalOpen}
-		{demo}
-		onimport={demo ? undefined : () => (isImportWizardOpen = true)}
-	/>
+	<LazyDialog bind:open={isCreateModalOpen} loader={createWishlistModalLoader}>
+		{#snippet children(CreateWishlistModal, dialog)}
+			<CreateWishlistModal
+				bind:open={dialog.open}
+				{demo}
+				onimport={demo ? undefined : () => (isImportWizardOpen = true)}
+			/>
+		{/snippet}
+	</LazyDialog>
 	{#if !demo}<LazyImportWizard
 			bind:open={isImportWizardOpen}
 			mode={WIZARD_MODE.newList}
@@ -451,6 +469,16 @@
 		background: var(--card);
 		border-bottom: var(--border-w) solid var(--edge);
 		flex-shrink: 0;
+	}
+
+	/* Reserves the scrollbar gutter `main.app-content` reserves from the same width, so the row
+	   keeps the content column's edges wherever classic scrollbars take space. The gutter needs
+	   hidden overflow, which clips nothing: the header's menus and popovers are portalled. */
+	@media (width >= 1024px) {
+		.topbar {
+			overflow: hidden;
+			scrollbar-gutter: stable;
+		}
 	}
 
 	.topbar-inner {

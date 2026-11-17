@@ -13,6 +13,10 @@
 		gallerySwipeStep,
 		type GallerySwipeIntent,
 	} from '$lib/modules/gifts/gift_gallery.js';
+	import {
+		IMAGE_LOAD_PRIORITIES,
+		type ImageLoadPriority,
+	} from '$lib/components/derived/image-frame/index.js';
 	import GiftImage from './GiftImage.svelte';
 	import GiftGalleryArrow from './GiftGalleryArrow.svelte';
 	import GiftGalleryIndicator from './GiftGalleryIndicator.svelte';
@@ -31,6 +35,8 @@
 		compositionClass: string;
 		/** The card was hovered or focused, so the next and previous images preload. */
 		warm: boolean;
+		/** Load priority of the shown image; the other slides lazy-load. */
+		shownImageLoadPriority?: ImageLoadPriority;
 		onindexchange: (index: number) => void;
 		/** A horizontal swipe owns the press, so the card must not show its own press state. */
 		onswipingchange: (swiping: boolean) => void;
@@ -43,6 +49,7 @@
 		interactive,
 		compositionClass,
 		warm,
+		shownImageLoadPriority = IMAGE_LOAD_PRIORITIES.lazy,
 		onindexchange,
 		onswipingchange,
 	}: Props = $props();
@@ -220,12 +227,15 @@
 					aria-hidden={imageIndex !== index || undefined}
 				>
 					<GiftImage
-						class="size-full rounded-none bg-transparent max-sm:[&_img]:p-0"
+						class="size-full rounded-none bg-transparent"
 						imageUrl={resolveGiftImageUrl(image.imageUrl, image.imageKey)}
 						imageMeta={image.imageMeta}
 						target="square"
 						{alt}
 						variant="card"
+						loadPriority={imageIndex === index
+							? shownImageLoadPriority
+							: IMAGE_LOAD_PRIORITIES.lazy}
 					/>
 				</div>
 			{/if}

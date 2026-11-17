@@ -146,6 +146,7 @@ function viewerReservationFilter(actor: OperationActor | null) {
 interface ViewerReservation {
 	id: string;
 	purchasedAt: Date | null;
+	quantity: number;
 }
 
 /** The viewer's own active reservation per gift powers the unreserve UI. */
@@ -164,6 +165,7 @@ async function loadViewerReservations(
 			id: reservation.id,
 			giftId: reservation.giftId,
 			purchasedAt: reservation.purchasedAt,
+			quantity: reservation.quantity,
 		})
 		.from(reservation)
 		.where(
@@ -178,7 +180,11 @@ async function loadViewerReservations(
 	for (const row of viewerReservationRows) {
 		// Keep the earliest active reservation per gift
 		if (!reservationsByGiftId.has(row.giftId)) {
-			reservationsByGiftId.set(row.giftId, { id: row.id, purchasedAt: row.purchasedAt });
+			reservationsByGiftId.set(row.giftId, {
+				id: row.id,
+				purchasedAt: row.purchasedAt,
+				quantity: row.quantity,
+			});
 		}
 	}
 	return reservationsByGiftId;
@@ -205,6 +211,7 @@ function toVisitorGift(row: GiftReadRow, readings: VisitorGiftReadings): GiftFor
 			: [],
 		myReservationId: viewerReservation?.id ?? null,
 		myReservationPurchasedAt: viewerReservation?.purchasedAt ?? null,
+		myReservationQuantity: viewerReservation?.quantity ?? 0,
 	};
 }
 
@@ -220,11 +227,13 @@ export const readWishlistGiftsOperation = defineOperation({
 	async run({ actor }, { wishlistShortId }) {
 		const database = getDb();
 		const wishlistRow = await requireLiveWishlistRowByShortId(database, wishlistShortId);
-		const role = await resolveWishlistRole(
-			actor === null ? null : { user: { id: actor.userId } },
-			wishlistRow,
-		);
-		const giftRows = await loadGiftRows(database, wishlistRow.id);
+		const [role, giftRows] = await Promise.all([
+			resolveWishlistRole(
+				actor === null ? null : { user: { id: actor.userId } },
+				wishlistRow,
+			),
+			loadGiftRows(database, wishlistRow.id),
+		]);
 
 		if (hidesReservationState(role, wishlistRow.recipientIsModerator)) {
 			// Recipient without self-promote: no reservation data, no like counts (protects the surprise)
@@ -233,10 +242,15 @@ export const readWishlistGiftsOperation = defineOperation({
 		}
 
 		const giftIds = giftRows.map((row) => row.id);
+		const [reservationSummaries, likeCounts, viewerReservations] = await Promise.all([
+			loadReservationSummaries(database, giftIds),
+			loadLikeCounts(database, giftIds),
+			loadViewerReservations(database, giftIds, actor),
+		]);
 		const readings: VisitorGiftReadings = {
-			reservationSummaries: await loadReservationSummaries(database, giftIds),
-			likeCounts: await loadLikeCounts(database, giftIds),
-			viewerReservations: await loadViewerReservations(database, giftIds, actor),
+			reservationSummaries,
+			likeCounts,
+			viewerReservations,
 			includeReserverNames: canSeeReserverNames(role),
 		};
 		const visitorGifts: GiftForVisitor[] = giftRows.map((row) => toVisitorGift(row, readings));

@@ -40,13 +40,38 @@
 	:global(.prejemesi-card-shimmer) {
 		position: absolute;
 		inset: 0;
+		overflow: hidden;
+		pointer-events: none;
+	}
+
+	/* The gradient repeats every two card widths and slides one period per cycle, so the sweep
+	   moves on the compositor instead of repainting the card each frame. */
+	:global(.prejemesi-card-shimmer)::before {
+		content: '';
+		position: absolute;
+		inset-block: 0;
+		left: 0;
+		width: 400%;
 		background: linear-gradient(
-			90deg,
-			transparent 0%,
-			color-mix(in oklab, var(--foreground) 4%, transparent) 50%,
-			transparent 100%
-		);
-		background-size: 200% 100%;
-		animation: shimmer 2s infinite linear;
+				90deg,
+				transparent 0%,
+				color-mix(in oklab, var(--foreground) 4%, transparent) 50%,
+				transparent 100%
+			)
+			0 0 / 50% 100%;
+		translate: -50% 0;
+		animation: card-shimmer-sweep 1s infinite linear;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		:global(.prejemesi-card-shimmer)::before {
+			animation: none;
+		}
+	}
+
+	@keyframes card-shimmer-sweep {
+		to {
+			translate: 0 0;
+		}
 	}
 </style>

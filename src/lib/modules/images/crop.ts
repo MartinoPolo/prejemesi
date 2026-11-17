@@ -17,7 +17,7 @@
  */
 
 import { GIFT_CROP_TARGET_SPECS } from './crop_targets.js';
-import { IMAGE_FIT_MODES, type ImageFitMode } from './fit_modes.js';
+import { IMAGE_FIT_MODES, resolveAutoFit, type ImageFitMode } from './fit_modes.js';
 import {
 	GIFT_FRAMING_DEFAULT_GAP_PER_SIDE,
 	IMAGE_ZOOM_BASE,
@@ -33,7 +33,8 @@ import {
 	type ImageTargetCrop,
 } from './types.js';
 
-const CENTERED_FOCAL: ImageFocalPoint = { x: 50, y: 50 };
+/** The image centre, the focal point of every automatic framing. */
+export const CENTERED_FOCAL: Readonly<ImageFocalPoint> = { x: 50, y: 50 };
 
 /** Identity crop rectangle – the full image, no cropping applied. */
 export const FULL_CROP_RECT: ImageCropRect = { x: 0, y: 0, w: 1, h: 1 };
@@ -175,6 +176,11 @@ export function centerCropRectOn(rect: ImageCropRect, point: CropWindowPoint): I
 	return panCropRect(rect, point.x - (rect.x + rect.w / 2), point.y - (rect.y + rect.h / 2));
 }
 
+/** Center a crop rect on the image at its current size, so the zoom stays as it is. */
+export function recenterCropRect(rect: ImageCropRect): ImageCropRect {
+	return centerCropRectOn(rect, WINDOW_CENTER);
+}
+
 /**
  * Align a crop rect to an edge, corner or the center of the image at its current
  * size: each alignment is a fraction (0 = start, 0.5 = center, 1 = end) and maps
@@ -190,13 +196,32 @@ export function alignCropRect(rect: ImageCropRect, alignment: CropWindowPoint): 
 }
 
 /**
- * The window a cover-crop surface of another aspect renders for the same
- * persisted focal + zoom – how a target without its own crop (the `thumb`
- * following `square`) frames the image.
+ * The zoom that frames an image in a window of the target aspect as tightly as
+ * `zoom` frames it at the source aspect, judged by position between each aspect's
+ * contain zoom and the cover zoom (1) rather than by the raw number, which means
+ * different framings per aspect. Zooms at or beyond cover carry over; below the
+ * source contain the zoom scales with the two contain zooms, so it stays as much
+ * looser than the target's contain and a source floor lands on the target floor.
+ * A source whose contain equals cover has no range to map and carries over.
+ * Shared by the renderer's fallback for a `thumb` without its own crop and the
+ * editor's one-shot copy between views.
  */
-export function reprojectCropRect(rect: ImageCropRect, normalizedAspect: number): ImageCropRect {
-	const { focal, zoom } = cropRectToFocalZoom(rect);
-	return focalZoomToWindowRect(focal, zoom, normalizedAspect);
+export function followedZoomForAspect(
+	zoom: number,
+	sourceNormalizedAspect: number,
+	targetNormalizedAspect: number,
+): number {
+	const sourceContainZoom = containZoomForAspect(sourceNormalizedAspect);
+	const targetContainZoom = containZoomForAspect(targetNormalizedAspect);
+	if (zoom >= IMAGE_ZOOM_BASE || sourceContainZoom >= IMAGE_ZOOM_BASE) {
+		return clampZoom(zoom);
+	}
+	if (zoom >= sourceContainZoom) {
+		const containToCoverFraction =
+			(zoom - sourceContainZoom) / (IMAGE_ZOOM_BASE - sourceContainZoom);
+		return targetContainZoom + containToCoverFraction * (IMAGE_ZOOM_BASE - targetContainZoom);
+	}
+	return clampZoom((zoom * targetContainZoom) / sourceContainZoom);
 }
 
 /**
@@ -208,9 +233,9 @@ export function reprojectCropRect(rect: ImageCropRect, normalizedAspect: number)
  * persisted for a different aspect (legacy data, or a source-image swap) so the
  * editor starts from the closest honest framing rather than a silently
  * distorted one. Aspect-matched rects within those bounds pass through
- * unchanged, even below the target's {@link zoomOutFloorForAspect}: a `thumb`
- * following the `square` crop shows that crop's zoom, which may be deeper than
- * the thumbnail's own floor, and reshaping it would fight the follow sync.
+ * unchanged, even below the target's {@link zoomOutFloorForAspect}, so an
+ * oversized `thumb` opened from a zoomed-out `square` crop is never reshaped
+ * away from what the surfaces render.
  */
 export function fitCropRectToAspect(rect: ImageCropRect, normalizedAspect: number): ImageCropRect {
 	if (rect.w <= 0 || rect.h <= 0 || normalizedAspect <= 0) {
@@ -390,7 +415,7 @@ export function cropRectAroundBox(
 /**
  * Manual framing for a gift image whose product sits inside `box`: a
  * {@link cropRectAroundBox} window per editor target, persisted as the gift editor
- * saves Manual on a newly placed image (centered base focal + zoom, no base crop).
+ * saves two custom views on a newly placed image (centered base focal + zoom, no base crop).
  * Throws a `RangeError` for a non-positive image size or an invalid box.
  */
 export function framedGiftImageMeta(framing: {
@@ -473,10 +498,10 @@ export function imageMetaToFrameProps(meta: ImageMetadata | null): ImageFramePro
 /**
  * Resolve a gift crop target's stored crop, following the no-migration carry-over
  * chain: `square` falls back to the retired wide `card` crop (#163); the 1:1 `thumb`
- * falls back to the 4:3 `square` crop (#189). The same focal+zoom reprojects onto the
- * target's window at render time, so existing gifts get an immediate crop with no data
- * migration. Shared by the renderer (`giftTargetFrameProps`) and the editor seed
- * (`GiftDetailForm.initTargetRects`) so the two never desync.
+ * falls back to the 4:3 `square` crop (#189). The crop applies to the target's window at
+ * render time (a following `thumb` through {@link followedGiftThumbZoom}), so existing gifts
+ * get an immediate crop with no data migration. The editor opens each view on the
+ * rendered window ({@link renderedGiftTargetRect}), so the two never desync.
  */
 export function resolveGiftTargetCrop(
 	targets: ImageMetadata['targets'] | undefined,
@@ -489,27 +514,129 @@ export function resolveGiftTargetCrop(
 }
 
 /**
+ * The zoom a `thumb` without its own crop shows for the `square` (card) crop's
+ * zoom, at the photo's natural width ÷ height ratio ({@link followedZoomForAspect}).
+ */
+export function followedGiftThumbZoom(cardZoom: number, imageRatio: number): number {
+	return followedZoomForAspect(
+		cardZoom,
+		normalizedCropAspect(GIFT_CROP_TARGET_SPECS.square.aspect, imageRatio),
+		normalizedCropAspect(GIFT_CROP_TARGET_SPECS.thumb.aspect, imageRatio),
+	);
+}
+
+/** The normalized aspect of a gift crop target's window on a photo of the given ratio. */
+function giftTargetNormalizedAspect(target: GiftCropTarget, imageRatio: number): number {
+	return normalizedCropAspect(GIFT_CROP_TARGET_SPECS[target].aspect, imageRatio);
+}
+
+/**
+ * One-shot copy of a framing between gift editor targets: the source's focal point at
+ * {@link followedZoomForAspect}, so Vyplnit lands on the destination's centered cover and
+ * Celý on its whole image. The views stay independent afterwards.
+ */
+export function transferGiftFramingRect(
+	rect: ImageCropRect,
+	fromTarget: GiftEditorCropTarget,
+	toTarget: GiftEditorCropTarget,
+	imageRatio: number,
+): ImageCropRect {
+	const { focal, zoom } = cropRectToFocalZoom(rect);
+	const toAspect = giftTargetNormalizedAspect(toTarget, imageRatio);
+	return focalZoomToWindowRect(
+		focal,
+		followedZoomForAspect(zoom, giftTargetNormalizedAspect(fromTarget, imageRatio), toAspect),
+		toAspect,
+	);
+}
+
+/** How a gift editor view is framed: one of the two presets or a free pan/zoom. */
+export const GIFT_FRAMINGS = {
+	fill: 'fill',
+	whole: 'whole',
+	custom: 'custom',
+} as const;
+
+export type GiftFraming = (typeof GIFT_FRAMINGS)[keyof typeof GIFT_FRAMINGS];
+
+export type GiftFramingPreset = Exclude<GiftFraming, typeof GIFT_FRAMINGS.custom>;
+
+const CROP_RECT_TOLERANCE = 1e-3;
+
+function rectsWithin(left: ImageCropRect, right: ImageCropRect, epsilon: number): boolean {
+	return (
+		Math.abs(left.x - right.x) < epsilon &&
+		Math.abs(left.y - right.y) < epsilon &&
+		Math.abs(left.w - right.w) < epsilon &&
+		Math.abs(left.h - right.h) < epsilon
+	);
+}
+
+/**
+ * Whether two crop rects frame visibly the same window. The crop stage and the gift framing status
+ * share it, so a shown preset and its status always agree.
+ */
+export function cropRectsClose(left: ImageCropRect, right: ImageCropRect): boolean {
+	return rectsWithin(left, right, CROP_RECT_TOLERANCE);
+}
+
+/** Whether two crop rects frame the same window, up to float noise. */
+export function sameCropRect(left: ImageCropRect, right: ImageCropRect): boolean {
+	return rectsWithin(left, right, 1e-9);
+}
+
+/** The window a framing preset shows: the centered cover (Vyplnit) or the whole image (Celý). */
+export function giftFramingPresetRect(
+	preset: GiftFramingPreset,
+	normalizedAspect: number,
+): ImageCropRect {
+	return preset === GIFT_FRAMINGS.fill
+		? centeredCropRect(normalizedAspect)
+		: containCropRect(normalizedAspect);
+}
+
+/**
+ * Classify a view's window. Where cover already shows the whole image both presets match,
+ * and Vyplnit wins.
+ */
+export function classifyGiftFraming(rect: ImageCropRect, normalizedAspect: number): GiftFraming {
+	if (cropRectsClose(rect, centeredCropRect(normalizedAspect))) {
+		return GIFT_FRAMINGS.fill;
+	}
+	if (cropRectsClose(rect, containCropRect(normalizedAspect))) {
+		return GIFT_FRAMINGS.whole;
+	}
+	return GIFT_FRAMINGS.custom;
+}
+
+/**
  * Renderer props for one gift crop target (#116 D2): a manual per-target crop
  * overrides the automatic framing for that target only; without one the gift
- * renders exactly as before the per-target extension existed (REQ-8).
+ * renders exactly as before the per-target extension existed (REQ-8). A `thumb`
+ * following the card crop needs the photo's measured natural ratio to map the
+ * card's zoom; until it is known the card's zoom stands in.
  */
 export function giftTargetFrameProps(
 	meta: ImageMetadata | null,
 	target: GiftCropTarget,
+	naturalRatio: number | null = null,
 ): ImageFrameProps {
 	// Manual crops only apply on a cover-crop base: Fit (contain-padded) must
 	// letterbox both axes even when stale per-target crops linger in the metadata
-	// (#116 follow-up – the editor drops them on save, this guards rows persisted
-	// in between).
+	// (#116 follow-up – the editors drop them on save, this guards older rows).
 	const targetCrop =
 		meta?.fitMode === IMAGE_FIT_MODES.coverCrop
 			? resolveGiftTargetCrop(meta.targets, target)
 			: undefined;
 	if (meta != null && targetCrop !== undefined) {
+		const followsCard =
+			target === 'thumb' && meta.targets?.thumb === undefined && naturalRatio !== null;
 		return {
 			fitMode: IMAGE_FIT_MODES.coverCrop,
 			focal: targetCrop.focal,
-			zoom: clampZoom(targetCrop.zoom),
+			zoom: followsCard
+				? followedGiftThumbZoom(targetCrop.zoom, naturalRatio)
+				: clampZoom(targetCrop.zoom),
 			fillColor: meta.bgColor ?? null,
 		};
 	}
@@ -517,9 +644,32 @@ export function giftTargetFrameProps(
 }
 
 /**
- * Merge manual gift-target edits without destructively migrating untouched rows.
- * A newly saved square crop supersedes the legacy wide-card target, while an
- * edit to Detail alone preserves that fallback for existing square renderers.
+ * The window a gift target's surface shows for persisted metadata on a photo of the given
+ * natural ratio, mirroring {@link giftTargetFrameProps} and ImageFrame: Fit and a legacy
+ * `auto` that resolves to contain show the whole image; everything else is the cover-crop
+ * window of the resolved focal point and zoom. The gift editor opens each view on it, so an
+ * untouched view shows exactly what the surface renders.
+ */
+export function renderedGiftTargetRect(
+	meta: ImageMetadata | null,
+	target: GiftEditorCropTarget,
+	imageRatio: number,
+): ImageCropRect {
+	const normalizedAspect = giftTargetNormalizedAspect(target, imageRatio);
+	const { fitMode, focal, zoom } = giftTargetFrameProps(meta, target, imageRatio);
+	const resolvedFit =
+		fitMode === IMAGE_FIT_MODES.auto
+			? resolveAutoFit(imageRatio, GIFT_CROP_TARGET_SPECS[target].aspect)
+			: fitMode;
+	return resolvedFit === IMAGE_FIT_MODES.containPadded
+		? containCropRect(normalizedAspect)
+		: focalZoomToWindowRect(focal, zoom, normalizedAspect);
+}
+
+/**
+ * Merge pinned gift-target crops without destructively migrating other stored targets:
+ * a newly saved square crop supersedes the legacy wide-card target, while retired
+ * targets the editor does not offer (`detail`) are kept.
  */
 export function mergeGiftTargetCrops(
 	existingTargets: ImageMetadata['targets'] | undefined,
@@ -530,58 +680,4 @@ export function mergeGiftTargetCrops(
 		delete mergedTargets.card;
 	}
 	return Object.keys(mergedTargets).length > 0 ? mergedTargets : undefined;
-}
-
-/**
- * Build the `targets` a Manual-mode gift image save should persist, from the
- * editor's per-target session rects (`GiftDetailForm.targetRects`).
- *
- * An untouched session is a pure pass-through: whatever was persisted before
- * flows through `mergeGiftTargetCrops` verbatim, so a gift the user never
- * edited is never rewritten.
- *
- * Once the session changes any crop, only targets with their OWN crop are
- * pinned from their session rects; every other editor target is dropped so it
- * renders through the `resolveGiftTargetCrop` carry-over chain. The `thumb`
- * then follows the `square` crop, which the editor shows and labels while the
- * user edits (#533), and a `square` without its own crop keeps its automatic
- * (or retired `card`) framing.
- */
-export function buildManualGiftTargets(
-	sessionRects: Record<GiftEditorCropTarget, ImageCropRect>,
-	ownTargets: ReadonlySet<GiftEditorCropTarget>,
-	hasSessionEdits: boolean,
-	existingTargets: ImageMetadata['targets'] | undefined,
-): ImageMetadata['targets'] {
-	if (!hasSessionEdits) {
-		return mergeGiftTargetCrops(existingTargets, {});
-	}
-	const pinnedTargets: Partial<Record<GiftEditorCropTarget, ImageTargetCrop>> = {};
-	const inheritedTargets = { ...existingTargets };
-	for (const target of GIFT_EDITOR_CROP_TARGET_VALUES) {
-		delete inheritedTargets[target];
-		if (ownTargets.has(target)) {
-			const rect = sessionRects[target];
-			const { focal, zoom } = cropRectToFocalZoom(rect);
-			pinnedTargets[target] = { cropRect: { ...rect }, focal, zoom };
-		}
-	}
-	return mergeGiftTargetCrops(inheritedTargets, pinnedTargets);
-}
-
-/**
- * Editor targets whose persisted crop is their own rather than inherited. The
- * `square` also owns a retired `card` crop, which it supersedes on save (#163).
- */
-export function ownGiftTargets(
-	targets: ImageMetadata['targets'] | undefined,
-): Set<GiftEditorCropTarget> {
-	const owned = new Set<GiftEditorCropTarget>();
-	if (targets?.square !== undefined || targets?.card !== undefined) {
-		owned.add('square');
-	}
-	if (targets?.thumb !== undefined) {
-		owned.add('thumb');
-	}
-	return owned;
 }

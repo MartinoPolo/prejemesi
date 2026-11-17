@@ -1,106 +1,56 @@
 import { tv } from 'tailwind-variants';
 
+/**
+ * The gift editor dialog: a fixed-height desktop dialog whose main screen and framing step share
+ * one size, and a full-screen sheet on phones. With a phone keyboard open the dialog reaches down
+ * to the keyboard, the footer hides and Save moves into the title row.
+ */
 export const giftDetailModalVariants = tv({
 	slots: {
-		// Flex column so the body inherits a definite height when the dialog is
-		// capped at 85dvh – that lets the detail column pin its footer and scroll
-		// only the fields (#116 follow-up, GiftDraftDialog precedent). Widened to
-		// ~1100px (issue #183 REQ-9) so the 4:3 crop preview does not read as cramped.
-		// Keyboard open on a phone: the dialog reaches down to the keyboard so the fields gain
-		// every pixel, the footer hides and Save moves into the title row.
 		content: [
-			'flex flex-col sm:max-w-[1100px] max-h-[85dvh] overflow-hidden p-0 gap-0 max-w-[calc(100%-1rem)]',
-			'keyboard-open:top-[calc(var(--visual-viewport-top)+6px)] keyboard-open:bottom-(--keyboard-inset) keyboard-open:max-h-none keyboard-open:overflow-hidden keyboard-open:max-w-[calc(100%-12px)] keyboard-open:rounded-b-none keyboard-open:border-b-0',
+			'sm:h-[85dvh] sm:max-w-[1100px] sm:top-[7.5dvh]',
+			'max-sm:top-2 max-sm:h-[calc(100dvh-1rem)] max-sm:max-h-none max-sm:max-w-[calc(100%-1rem)]',
+			'keyboard-open:top-[calc(var(--visual-viewport-top)+6px)] keyboard-open:bottom-(--keyboard-inset) keyboard-open:h-auto keyboard-open:max-h-none keyboard-open:max-w-[calc(100%-12px)] keyboard-open:rounded-b-none keyboard-open:border-b-0',
 		],
-		editorHeader:
-			'flex shrink-0 items-center gap-3 py-2 pr-2.5 pl-5 sm:contents keyboard-open:gap-2 keyboard-open:py-1.5 keyboard-open:pr-2 keyboard-open:pl-4',
-		editorTitle:
-			'min-w-0 flex-1 break-words text-[1.1875rem] leading-tight sm:sr-only keyboard-open:text-xl',
+		// The title shares the close sticker's row and height at every width.
+		// Scoped like the scroll layout's own header padding so these insets replace it.
+		header: 'flex-row items-center gap-2 text-left in-data-[dialog-layout=scroll]:pt-(--overlay-close-inset) in-data-[dialog-layout=scroll]:pb-2 in-data-[dialog-layout=scroll]:pe-(--overlay-close-clearance)',
+		// The top padding centres the first line on the close sticker, so a title that wraps at
+		// enlarged text grows downward instead of drifting off the sticker.
+		title: 'min-h-(--size-control-lg) min-w-0 flex-1 pt-[max(0px,calc((var(--size-control-lg)_-_1lh)/2))] text-left break-words',
+		// The heading face reads „z“ like „2“, so the count uses the body face.
+		titleCount: 'font-sans text-xl font-medium text-muted-foreground max-sm:text-base',
 		keyboardSave: 'hidden shrink-0 keyboard-open:inline-flex',
-		// Mobile: a single scrolling flex column so the image and fields share one
-		// scroll region inside the 85dvh-capped dialog (issue: mobile edit dialog UX).
-		// Desktop: restores the exact 2-col grid + its own overflow-hidden. ~50/50
-		// split (issue #183 REQ-9, revises the earlier 45/55 split). No min-height:
-		// the grid takes its height from the columns' content (form column /
-		// adaptive stage), capped at 85dvh by `content` above (#189 REQ-5).
-		body: 'flex min-h-0 flex-1 flex-col overflow-y-auto sm:grid sm:grid-cols-[50%_50%] sm:grid-rows-[minmax(0,1fr)_auto] sm:flex-initial sm:overflow-hidden',
-		// Dotted notebook mat behind the photo (issue #102 round-2 delta): letterboxed
-		// images keep the mat visible; a thin seam separates image and form columns.
-		// The mobile height fits the display-mode toggle + preview + tile row (#116 round 3).
-		// shrink-0: `body` is a bounded-height flex column on mobile – without this, the
-		// default flex-shrink:1 compresses this column below its intended height and,
-		// combined with overflow-hidden, crushes/clips its content instead of letting
-		// `body` scroll (mobile edit dialog UX fix).
-		imageColumn:
-			'relative shrink-0 overflow-hidden border-b border-border bg-surface bg-[radial-gradient(var(--pattern-dot)_1.4px,transparent_1.5px)] bg-size-[18px_18px] sm:col-start-1 sm:row-span-2 sm:row-start-1 sm:border-b-0 sm:border-r h-[260px] sm:h-auto',
-		// Photo-workshop panel (issue #189 REQ-6): an inset sticker panel that groups
-		// the mode pill + adaptive stage + preview tiles as one designed unit on the
-		// dotted mat, visually distinct from the form column — replaces the de-seamed
-		// full-bleed mat that read as an unfinished wireframe. No thin grey seam.
-		modeSectionPanel:
-			'flex w-full shrink-0 flex-col rounded-panel border-2 border-edge bg-card p-2.5 shadow-sticker',
-		// Empty-state click-to-upload affordance (issue #131 REQ-2/REQ-3): a real
-		// button so it is keyboard-focusable with a visible focus ring, not just a
-		// static label. Sticker-panel treatment (issue #189 REQ-6) so the empty column
-		// reads as intentional as the filled one.
-		imagePlaceholder:
-			'flex size-full cursor-pointer flex-col items-center justify-center gap-2 rounded-panel border-2 border-edge bg-card shadow-sticker outline-none transition-colors hover:bg-panel-hover focus-visible:ring-2 focus-visible:ring-ring',
-		// Stands in for the stage while the selected gallery image still waits for its link.
-		imagePendingSource:
-			'mb-2 flex min-h-[220px] flex-col items-center justify-center gap-2 rounded-[max(0px,calc(var(--radius-panel)-12px))] border-2 border-dashed border-ink-faint px-4 text-center text-sm text-muted-foreground [&_svg]:size-8 [&_svg]:text-ink-faint',
-		image: 'size-full object-cover',
-		// Mobile: overflow-visible so the pinned actions bar sticks to the BODY scroll
-		// instead of clipping inside this column. shrink-0 (see imageColumn): keeps this
-		// column at its natural content height so `body` scrolls instead of compressing
-		// it – min-h-0 is kept for the sm: grid-cell scroll mechanism (harmless with
-		// shrink-0 on mobile, since flex-shrink:0 makes min-height moot there).
-		detailColumn:
-			'flex min-h-0 shrink-0 flex-col gap-0 overflow-visible sm:col-start-2 sm:row-start-1 sm:overflow-hidden',
-		// Mobile: no own scroll region – fields flow into the body scroll. Desktop:
-		// its own scroll region, unchanged.
-		detailScroll:
-			'min-h-0 overflow-visible p-5 sm:flex-1 sm:overflow-y-auto sm:p-7 sm:pt-(--overlay-close-clearance)',
+		// Same variant as the shared scroll-body padding so tailwind-merge replaces it.
+		body: 'in-data-[dialog-layout=scroll]:pb-4',
+		// Fields come first in the DOM for phones; desktop moves the preview rail to the left.
+		mainGrid:
+			'flex flex-col gap-6 sm:grid sm:grid-cols-[minmax(15rem,18.75rem)_minmax(0,1fr)] sm:items-start sm:gap-8',
+		fields: 'flex min-w-0 flex-col gap-4 sm:col-start-2 sm:row-start-1',
+		rail: 'flex min-w-0 flex-col gap-3 sm:col-start-1 sm:row-start-1',
 		formField: 'flex flex-col gap-1.5',
-		formLabel: 'text-sm font-medium text-foreground',
+		// Five lines plus the textarea's padding and border; the form column then ends near the rail.
+		descriptionInput: 'sm:min-h-[calc(5lh+1rem+5px)]',
+		// Price, currency, quantity and priority share one row on wide screens and pair up below.
 		formRow:
-			'grid grid-cols-[repeat(auto-fit,minmax(min(100%,9rem),1fr))] gap-3 sm:grid-cols-2',
+			'grid grid-cols-2 gap-x-3 gap-y-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,2fr)]',
 		// Fields in a row share its label and control tracks, so a label that wraps in one
 		// field moves every control in the row together instead of offsetting only its own.
 		formRowField: 'row-span-2 grid min-w-0 grid-rows-subgrid gap-y-1.5',
-		formControlStack: 'flex min-w-0 flex-col gap-1.5',
 		formLabelRow: 'flex min-h-6 items-center justify-between gap-2',
-		// Mobile: manager release/delete actions flow with the form scroll; Save
-		// itself is hidden here and rendered instead in `mobileSubmitFooter`
-		// below (see there for why). Desktop: sm:static – already pinned by flex
-		// in the right column, painted like a scroll-layout Dialog.Footer (tint, one thin line).
-		formActions:
-			'flex flex-col gap-(--nested-control-gap) px-5 pb-4 sm:static sm:col-start-2 sm:row-start-2 sm:border-t sm:border-border sm:bg-background sm:px-7 sm:py-4',
-		// Desktop-only Save/Cancel pair, grouped with the manager release/delete
-		// actions in the one pinned block (`sm:order-1` keeps the pair first). Hidden
-		// on mobile: a `position: sticky` copy nested this deep in the mobile
-		// scroll can't stay visible from scroll-top – sticky only re-enters view
-		// once you've scrolled down to the element's normal flow position, so on
-		// a long form it stayed invisible until the user scrolled most of the
-		// way down (mobile edit modal scroll fix, follow-up).
-		// `mobileSubmitFooter` below is the real mobile Save button instead: a
-		// true DOM sibling outside the scrolling body, always visible regardless
-		// of scroll position.
-		submitWrapper: 'hidden sm:order-1 sm:flex sm:flex-wrap sm:gap-(--nested-control-gap)',
-		// Mobile-only pinned Save/Cancel footer (see `submitWrapper` above for why it's
-		// a separate element): a true sibling of `body`, not nested inside its
-		// scroll, so it's always visible. Hidden on desktop, where
-		// `submitWrapper` already renders Save inline with the manager actions. Painted like a
-		// scroll-layout Dialog.Footer.
-		mobileSubmitFooter:
-			'flex shrink-0 flex-wrap gap-(--nested-control-gap) border-t border-border bg-background px-5 py-4 sm:hidden keyboard-open:hidden',
-		// The action pair shares a row when it fits and wraps under enlarged text.
-		submitButton: 'min-w-fit flex-1',
-		releaseButton: 'order-1 sm:order-2 w-full',
-		// order-*: DOM order is [release, delete, submit] (mobile edit modal
-		// scroll fix, see `submitWrapper`); sm:order-* restores Save-first
-		// visually on desktop where all three sit in one pinned block.
-		deleteButton: 'order-2 sm:order-3 w-full',
-		imageInputRow: 'flex flex-col gap-2',
+		// Phones end the body with the destructive actions; wider screens lead the footer with them.
+		bodyActions: 'flex flex-col gap-(--nested-control-gap)',
+		footer: 'max-sm:flex-row keyboard-open:hidden',
+		footerPrimary: 'max-sm:flex-1',
+		footerHint: 'text-sm text-muted-foreground',
+	},
+	variants: {
+		/** Without a back sticker the title starts at the header's edge; the header clears the close. */
+		withBack: {
+			// Phones keep the step title on the Back and Close row; the full title stays its accessible name.
+			true: { title: 'max-sm:truncate max-sm:text-xl' },
+			false: { title: 'in-data-close-button:px-0' },
+		},
 	},
 });
 

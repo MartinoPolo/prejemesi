@@ -49,6 +49,8 @@ Keep reports checkout-local and runs in that checkout sequential. After cancella
 
 The setup project allows extra navigation time for cold Vite compilation without relaxing the warmed application's navigation limits. Interaction tests must await actual readiness: opening autofocus before moving keyboard focus, and accordion height animations before filling or scrolling clipped descendants. Visibility alone does not establish either condition; use focus assertions and animation completion rather than fixed sleeps. Web fonts can still be loading after hydration or after a test first renders text, so await `document.fonts.ready` before taking geometry baselines.
 
+Touch `@gesture` cases (holds, drifts, swipes in `tests/release/interaction/`) run on wall-clock timers against the app's recognizer thresholds, with only the slack named in each spec. Under heavy CPU load from parallel Vite, Vitest, Playwright or performance runs, the harness overshoots those thresholds: a short hold opens the actions or starts a drag, and a swipe leaves a fling that swallows the settled check's tap. Run them on an otherwise idle machine before treating a failure as real; if they pass there and in CI, the failure was load, so never widen thresholds or press-phase timeouts to absorb it.
+
 Never point either command at production.
 
 The agent API's `AGENT_API_RATE_LIMIT` Workers binding fails closed with HTTP 503 in production builds but is skipped in the Vite dev server, so e2e can call `/api/v1`; `pnpm preview` uses local Wrangler, which simulates the binding from `wrangler.jsonc`.

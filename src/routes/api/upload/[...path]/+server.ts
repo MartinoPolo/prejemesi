@@ -25,6 +25,7 @@ import {
 	isR2Available,
 	MAX_FILE_SIZE,
 	UPLOAD_TARGETS,
+	UPLOADED_OBJECT_CACHE_CONTROL,
 } from '$lib/server/storage/r2.js';
 import { verifyUploadToken, TOKEN_PURPOSES } from '$lib/server/crypto/upload_token.js';
 import type { UploadTokenPayload, TokenPurpose } from '$lib/server/crypto/upload_token.js';
@@ -171,7 +172,7 @@ export const GET: RequestHandler = async ({ params }) => {
 			return new Response(object.body, {
 				headers: {
 					'content-type': object.contentType,
-					'cache-control': 'public, max-age=31536000, immutable',
+					'cache-control': UPLOADED_OBJECT_CACHE_CONTROL,
 					etag: object.etag,
 					'X-Content-Type-Options': 'nosniff',
 				},

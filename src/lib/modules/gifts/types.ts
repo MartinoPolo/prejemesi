@@ -116,7 +116,15 @@ export interface GiftForVisitor extends GiftBase {
 	myReservationId: string | null;
 	/** When the current user marked their reservation as bought (gifter-private), or null. */
 	myReservationPurchasedAt: Date | null;
+	/** Units held by the `myReservationId` reservation, or 0 without one. */
+	myReservationQuantity: number;
 }
+
+/**
+ * Cancels the viewer's reservation. A returned native Promise keeps the cancel action pending until
+ * it settles, so repeated clicks send one cancel; any other return value counts as finished.
+ */
+export type GiftUnreserveHandler = (gift: GiftForVisitor) => void | Promise<unknown>;
 
 /** Gift for the recipient's view – no reservation data (protects the surprise) */
 export type GiftForRecipient = GiftBase;

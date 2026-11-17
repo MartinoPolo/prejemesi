@@ -16,7 +16,7 @@ export const likeButtonVariants = tv({
 		root: 'group/like inline-flex cursor-pointer rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
 		surface:
 			'elevation-surface inline-flex size-full items-center justify-center gap-1 rounded-[inherit] border-0 bg-transparent font-bold text-foreground shadow-none transition-[background-color,translate,scale] duration-(--duration-normal) ease-(--ease-standard) group-hover/like:bg-like-tint',
-		icon: 'text-heart [filter:drop-shadow(0_1px_1px_var(--card))_drop-shadow(0_-1px_1px_var(--card))] transition-all duration-200',
+		icon: 'text-heart [filter:drop-shadow(0_1px_1px_var(--card))_drop-shadow(0_-1px_1px_var(--card))] transition-[fill] duration-(--duration-normal)',
 		count: 'whitespace-nowrap tabular-nums [filter:drop-shadow(0_1px_1px_var(--card))_drop-shadow(0_-1px_1px_var(--card))]',
 	},
 	variants: {

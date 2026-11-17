@@ -3,6 +3,7 @@
 	import { Tooltip as TooltipPrimitive } from 'bits-ui';
 	import TooltipTrigger from './tooltip-trigger.svelte';
 	import TooltipContent from './tooltip-content.svelte';
+	import { hasSharedTooltipProvider } from './tooltip_provider_context.js';
 
 	interface Props {
 		text: string;
@@ -18,6 +19,9 @@
 	}
 
 	const componentId = $props.id();
+	// The app shell's shared Provider lets a neighbouring tooltip open instantly; a tooltip rendered
+	// outside it (isolated tests, stories) brings its own.
+	const usesSharedProvider = hasSharedTooltipProvider();
 	const contentId = `${componentId}-content`;
 
 	let {
@@ -80,8 +84,8 @@
 	});
 </script>
 
-<TooltipPrimitive.Provider {delayDuration}>
-	<TooltipPrimitive.Root bind:open={getTooltipOpen, setTooltipOpen} {disabled}>
+{#snippet tooltip()}
+	<TooltipPrimitive.Root bind:open={getTooltipOpen, setTooltipOpen} {delayDuration} {disabled}>
 		<TooltipTrigger
 			onpointerenter={handleTriggerPointerEnter}
 			onpointerleave={handleTriggerPointerLeave}
@@ -108,4 +112,12 @@
 			</TooltipContent>
 		{/if}
 	</TooltipPrimitive.Root>
-</TooltipPrimitive.Provider>
+{/snippet}
+
+{#if usesSharedProvider}
+	{@render tooltip()}
+{:else}
+	<TooltipPrimitive.Provider>
+		{@render tooltip()}
+	</TooltipPrimitive.Provider>
+{/if}

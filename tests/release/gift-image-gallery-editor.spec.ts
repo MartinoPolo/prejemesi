@@ -7,10 +7,10 @@ import {
 } from '../e2e/fixtures/wishlist-helpers.js';
 
 // A new account owns every gift here, so the shared seeded rows stay untouched.
-const COVER_IMAGE_PATH = '/demo/playground/kolo.jpg';
-const ADDED_IMAGE_PATH = '/demo/playground/kytara.jpg';
-const THIRD_IMAGE_PATH = '/demo/playground/batoh.jpg';
-const IMAGE_LINK_PLACEHOLDER = 'https://example.com/image.jpg';
+const COVER_IMAGE_PATH = '/demo/v1/playground/kolo.jpg';
+const ADDED_IMAGE_PATH = '/demo/v1/playground/kytara.jpg';
+const THIRD_IMAGE_PATH = '/demo/v1/playground/batoh.jpg';
+const IMAGE_LINK_LABEL = /Odkaz na obrázek/;
 const DRAG_STEPS = 12;
 
 test.use({ viewport: { width: 1280, height: 900 } });
@@ -31,10 +31,7 @@ async function createGiftWithCover(page: Page, baseURL: string, giftName: string
 		.click();
 	const createDialog = page.getByRole('dialog');
 	await createDialog.getByRole('textbox', { name: 'Název' }).fill(giftName);
-	await createDialog.getByRole('radio', { name: 'URL', exact: true }).click();
-	await createDialog
-		.getByPlaceholder(IMAGE_LINK_PLACEHOLDER)
-		.fill(`${baseURL}${COVER_IMAGE_PATH}`);
+	await addLinkedImage(page, createDialog, `${baseURL}${COVER_IMAGE_PATH}`, 1);
 	await createDialog.getByRole('button', { name: 'Přidat dárek' }).click();
 	await expect(createDialog).not.toBeVisible({ timeout: 10_000 });
 	await waitForDialogOverlayRemoval(page);
@@ -46,7 +43,7 @@ async function addLinkedImage(page: Page, editDialog: Locator, imageUrl: string,
 	const strip = editDialog.getByTestId('gift-image-strip');
 	await strip.getByRole('button', { name: 'Přidat obrázek' }).click();
 	await page.getByRole('menuitem', { name: 'Vložit odkaz na obrázek' }).click();
-	const linkInput = editDialog.getByPlaceholder(IMAGE_LINK_PLACEHOLDER);
+	const linkInput = editDialog.getByRole('textbox', { name: IMAGE_LINK_LABEL });
 	await expect(linkInput).toBeFocused();
 	await linkInput.fill(imageUrl);
 	await expect(strip).toContainText(`Obrázky · ${String(count)} z 8`);

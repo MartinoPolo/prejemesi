@@ -97,7 +97,7 @@ describe('wishlist category settings motion', () => {
 		expect(animate.mock.contexts[0]).toBe(stable);
 		expect(animate).toHaveBeenCalledWith(
 			[{ transform: 'translate(0px, -120px)' }, { transform: 'translate(0, 0)' }],
-			{ duration: 520, easing: 'cubic-bezier(0.2, 0.7, 0.3, 1)' },
+			{ duration: 280, easing: 'cubic-bezier(0.2, 0.7, 0.3, 1)' },
 		);
 		motion.destroy();
 	});
@@ -178,7 +178,7 @@ describe('wishlist category settings motion', () => {
 		expect(animate.mock.contexts[0]).toBe(survivor);
 		expect(animate.mock.calls[0]).toEqual([
 			[{ transform: 'translate(0px, 100px)' }, { transform: 'translate(0, 0)' }],
-			{ duration: 520, easing: 'cubic-bezier(0.2, 0.7, 0.3, 1)' },
+			{ duration: 280, easing: 'cubic-bezier(0.2, 0.7, 0.3, 1)' },
 		]);
 		expect(animate.mock.contexts[1]).not.toBe(deleted);
 		expect(animate.mock.calls[1]).toEqual([
@@ -186,7 +186,7 @@ describe('wishlist category settings motion', () => {
 				{ opacity: 1, transform: 'scaleY(1)' },
 				{ opacity: 0, transform: 'scaleY(0)' },
 			],
-			{ duration: 440, easing: 'cubic-bezier(0.2, 0.7, 0.3, 1)', fill: 'both' },
+			{ duration: 220, easing: 'cubic-bezier(0.2, 0.7, 0.3, 1)', fill: 'both' },
 		]);
 	});
 
@@ -219,14 +219,14 @@ describe('wishlist category settings motion', () => {
 		expect(clone.querySelectorAll('[id]')).toHaveLength(0);
 		expect(animate.mock.calls[0]).toEqual([
 			[{ transform: 'translate(0px, 100px)' }, { transform: 'translate(0, 0)' }],
-			{ duration: 520, easing: 'cubic-bezier(0.2, 0.7, 0.3, 1)' },
+			{ duration: 280, easing: 'cubic-bezier(0.2, 0.7, 0.3, 1)' },
 		]);
 		expect(animate.mock.calls[1]).toEqual([
 			[
 				{ opacity: 1, transform: 'scaleY(1)' },
 				{ opacity: 0, transform: 'scaleY(0)' },
 			],
-			{ duration: 440, easing: 'cubic-bezier(0.2, 0.7, 0.3, 1)', fill: 'both' },
+			{ duration: 220, easing: 'cubic-bezier(0.2, 0.7, 0.3, 1)', fill: 'both' },
 		]);
 
 		exit.finish();

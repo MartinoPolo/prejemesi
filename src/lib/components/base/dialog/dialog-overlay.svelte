@@ -2,6 +2,7 @@
 	import { getLayerPalette } from '$lib/theme/layer_palette.js';
 	import { Dialog as DialogPrimitive } from 'bits-ui';
 	import { cn } from '$lib/utils.js';
+	import { fadeOverlayMotionClass } from '../overlay_motion.js';
 
 	let {
 		ref = $bindable(null),
@@ -17,7 +18,8 @@
 	bind:ref
 	data-slot="dialog-overlay"
 	class={cn(
-		'bg-scrim supports-backdrop-filter:backdrop-blur-[2.5px] data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0 fixed inset-0 z-(--z-modal)',
+		fadeOverlayMotionClass,
+		'bg-scrim supports-backdrop-filter:backdrop-blur-[2.5px] duration-150 fixed inset-0 z-(--z-modal)',
 		className,
 	)}
 	{...restProps}

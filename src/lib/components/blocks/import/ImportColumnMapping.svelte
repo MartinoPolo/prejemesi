@@ -81,7 +81,7 @@
 					value={selected.map((column) => String(column.index))}
 					onValueChange={(values) => setMulti(field.role, values)}
 				>
-					<Select.Trigger class="bg-background w-full">
+					<Select.Trigger class="bg-background w-full" aria-label={field.label()}>
 						<span
 							class={cn('truncate', selected.length === 0 && 'text-muted-foreground')}
 						>
@@ -114,6 +114,7 @@
 					<Select.Trigger
 						state={field.required && current === undefined ? 'error' : 'default'}
 						class="bg-background w-full"
+						aria-label={field.label()}
 					>
 						<span
 							class={cn('truncate', current === undefined && 'text-muted-foreground')}

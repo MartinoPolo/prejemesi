@@ -168,6 +168,7 @@ export function makeVisitorGift(overrides: Partial<GiftForVisitor> = {}): GiftFo
 		// reservation") render together – the exact case that overflowed.
 		myReservationId: 'reservation-1',
 		myReservationPurchasedAt: null,
+		myReservationQuantity: 1,
 		...overrides,
 	};
 }

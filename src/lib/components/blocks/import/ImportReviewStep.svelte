@@ -9,7 +9,7 @@
 	import { Field, type FieldControlContext } from '$lib/components/derived/field/index.js';
 	import { detectColumns, type DetectedColumn } from '$lib/modules/import/detect_columns.js';
 	import {
-		findDuplicates,
+		createDuplicateFinder,
 		type GiftDraft,
 		type ValidatedGiftDraft,
 	} from '$lib/modules/gifts/gift_draft.js';
@@ -262,8 +262,9 @@
 			return new SvelteSet<string>();
 		}
 		const matched = new SvelteSet<string>();
+		const findExistingDuplicates = createDuplicateFinder(existingGifts);
 		for (const draft of gridDrafts) {
-			const dupes = findDuplicates(draft, existingGifts);
+			const dupes = findExistingDuplicates(draft);
 			for (const dupe of dupes) {
 				matched.add(dupe.name);
 			}
@@ -363,7 +364,7 @@
 											value as CategoryResolutionDraft['action'],
 										)}
 								>
-									<Select.Trigger>
+									<Select.Trigger aria-label={label}>
 										{#if resolution.action === 'map-existing'}
 											{m.import_category_resolution_map_existing()}
 										{:else if resolution.action === 'enable-preset' && presetKey !== null}
@@ -429,7 +430,9 @@
 												presetKey: null,
 											})}
 									>
-										<Select.Trigger>
+										<Select.Trigger
+											aria-label={m.import_category_resolution_existing_label()}
+										>
 											{categoryOptions.find(
 												(category) => category.id === resolution.categoryId,
 											)

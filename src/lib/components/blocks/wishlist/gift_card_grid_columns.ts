@@ -78,11 +78,41 @@ export function widenPageForGiftCardColumns(columnCount: number): () => void {
 	return () => rootStyle.removeProperty(CHOSEN_COLUMN_COUNT_PROPERTY);
 }
 
-export function measureGiftCardGridGeometry(grid: HTMLElement): GiftCardGridGeometry {
+/**
+ * Narrower viewports always get one column: below `sm` the Automatic template applies, and its
+ * 280px cards need two widths plus a gap for a second column (`gift_card_grid_variants.ts`;
+ * `wishlist_gift_progressive_mount.svelte.test.ts` pins the widest such viewport to one column).
+ */
+const SINGLE_COLUMN_VIEWPORT_QUERY = '(max-width: 559.98px)';
+
+/** Every card keeps a 4:3 image zone across the column, alone taller than this on a phone. */
+const SINGLE_COLUMN_CARD_MINIMUM_HEIGHT_PX = 200;
+
+/**
+ * Gifts the Card grid mounts before its first paint: as many as a single-column viewport can
+ * show, with the rest mounted in batches after it. Multi-column grids align their tracks across
+ * the whole collection, so a later gift could resize visible ones; they mount every gift at once.
+ * Gifts load only in the browser, so no server-rendered grid hydrates against this limit.
+ */
+export function initialGiftCardMountLimit(): number {
+	if (typeof window === 'undefined' || !window.matchMedia(SINGLE_COLUMN_VIEWPORT_QUERY).matches) {
+		return Number.POSITIVE_INFINITY;
+	}
+	return Math.ceil(window.innerHeight / SINGLE_COLUMN_CARD_MINIMUM_HEIGHT_PX);
+}
+
+/**
+ * Takes the grid's observed content width, fractional unlike clientWidth, whose rounding up would
+ * report a column the grid drops. Observers already hold it, while reading it again could force
+ * a layout another observer callback just invalidated.
+ */
+export function measureGiftCardGridGeometry(
+	grid: HTMLElement,
+	contentWidth: number,
+): GiftCardGridGeometry {
 	const rootFontSize = Number.parseFloat(getComputedStyle(document.documentElement).fontSize);
 	return {
-		// Fractional, unlike clientWidth, whose rounding up would report a column the grid drops.
-		collectionWidth: grid.getBoundingClientRect().width,
+		collectionWidth: contentWidth,
 		columnGap: Number.parseFloat(getComputedStyle(grid).columnGap) || 0,
 		minimumCardWidth: GIFT_CARD_MINIMUM_WIDTH_REM * rootFontSize,
 	};

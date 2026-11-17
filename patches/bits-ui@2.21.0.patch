@@ -1,0 +1,115 @@
+diff --git a/dist/bits/dialog/components/dialog-content.svelte b/dist/bits/dialog/components/dialog-content.svelte
+index 5d26dd58d268ce8ba9ea7cfa0fa66878d74654fc..533522b7816e00ddcb0d9e3a8ee4c3c1993243df 100644
+--- a/dist/bits/dialog/components/dialog-content.svelte
++++ b/dist/bits/dialog/components/dialog-content.svelte
+@@ -37,7 +37,9 @@
+ 		),
+ 	});
+ 
+-	const blockPointer = () => preventBodyPointerEvents || !contentState.root.overlayNode;
++	// A closing dialog whose overlay finished its exit first must not start blocking the page.
++	const blockPointer = () =>
++		preventBodyPointerEvents || (contentState.root.opts.open.current && !contentState.root.overlayNode);
+ 	const mergedProps = $derived(mergeProps(restProps, contentState.props));
+ </script>
+ 
+diff --git a/dist/bits/select/select.svelte.js b/dist/bits/select/select.svelte.js
+index c261563371dd8be73a7ca8006d3b5a94c9198e4f..5cd6e0c3786650161f6d3bc068acc4ff51d9c76f 100644
+--- a/dist/bits/select/select.svelte.js
++++ b/dist/bits/select/select.svelte.js
+@@ -114,15 +114,20 @@ class SelectBaseRootState {
+         // scrollable ancestor
+         const nodeRect = node.getBoundingClientRect();
+         const viewportRect = viewport.getBoundingClientRect();
++        // rects include a transformed ancestor's scale (e.g. an enter animation); scrollTop does not
++        const scale = viewport.offsetHeight > 0 && viewportRect.height > 0
++            ? viewportRect.height / viewport.offsetHeight
++            : 1;
+         if (this.opts.scrollAlignment.current === "center") {
+             viewport.scrollTop +=
+-                nodeRect.top + nodeRect.height / 2 - (viewportRect.top + viewportRect.height / 2);
++                (nodeRect.top + nodeRect.height / 2 - (viewportRect.top + viewportRect.height / 2)) /
++                    scale;
+         }
+         else if (nodeRect.top < viewportRect.top) {
+-            viewport.scrollTop -= viewportRect.top - nodeRect.top;
++            viewport.scrollTop -= (viewportRect.top - nodeRect.top) / scale;
+         }
+         else if (nodeRect.bottom > viewportRect.bottom) {
+-            viewport.scrollTop += nodeRect.bottom - viewportRect.bottom;
++            viewport.scrollTop += (nodeRect.bottom - viewportRect.bottom) / scale;
+         }
+     }
+     getCandidateNodes() {
+diff --git a/dist/bits/utilities/floating-layer/use-floating-layer.svelte.js b/dist/bits/utilities/floating-layer/use-floating-layer.svelte.js
+index dc1afb9856d69d3f4eb09c9a99034a4e1e71648f..df073bffd158eaea268d27d573436fc18908b4a1 100644
+--- a/dist/bits/utilities/floating-layer/use-floating-layer.svelte.js
++++ b/dist/bits/utilities/floating-layer/use-floating-layer.svelte.js
+@@ -64,13 +64,21 @@ export class FloatingContentState {
+             alignmentAxis: this.opts.alignOffset.current,
+         }),
+         this.opts.avoidCollisions.current &&
++            this.opts.sticky.current === "partial" &&
+             shift({
+                 mainAxis: true,
+                 crossAxis: false,
+-                limiter: this.opts.sticky.current === "partial" ? limitShift() : undefined,
++                limiter: limitShift(),
+                 ...this.detectOverflowOptions,
+             }),
+         this.opts.avoidCollisions.current && flip({ ...this.detectOverflowOptions }),
++        this.opts.avoidCollisions.current &&
++            this.opts.sticky.current === "always" &&
++            shift({
++                mainAxis: true,
++                crossAxis: true,
++                ...this.detectOverflowOptions,
++            }),
+         size({
+             ...this.detectOverflowOptions,
+             apply: ({ rects, availableWidth, availableHeight }) => {
+diff --git a/dist/bits/utilities/popper-layer/popper-layer-inner.svelte b/dist/bits/utilities/popper-layer/popper-layer-inner.svelte
+index 0006e1347def2e231ddf006da959086f7b640336..c005e13427c5d1c5459c31eb7121a7edef8109b8 100644
+--- a/dist/bits/utilities/popper-layer/popper-layer-inner.svelte
++++ b/dist/bits/utilities/popper-layer/popper-layer-inner.svelte
+@@ -48,6 +48,7 @@
+ 		ref,
+ 		tooltip = false,
+ 		contentPointerEvents = "auto",
++		preventBodyPointerEvents = true,
+ 		...restProps
+ 	}: Omit<PopperLayerImplProps, "open" | "children" | "shouldRender"> & {
+ 		enabled: boolean;
+@@ -83,9 +84,9 @@
+ >
+ 	{#snippet content({ props: floatingProps, wrapperProps })}
+ 		{#if forceMount && enabled}
+-			<ScrollLock preventScroll={resolvedPreventScroll} />
++			<ScrollLock preventScroll={resolvedPreventScroll} blockPointer={() => preventBodyPointerEvents} />
+ 		{:else if !forceMount}
+-			<ScrollLock preventScroll={resolvedPreventScroll} />
++			<ScrollLock preventScroll={resolvedPreventScroll} blockPointer={() => preventBodyPointerEvents} />
+ 		{/if}
+ 		<FocusScope
+ 			{onOpenAutoFocus}
+diff --git a/dist/bits/utilities/popper-layer/types.d.ts b/dist/bits/utilities/popper-layer/types.d.ts
+index d0797c4b7147b522873352b68d394b6bc18bfe80..16104d3f36534f93c49caa59ff96803251217345 100644
+--- a/dist/bits/utilities/popper-layer/types.d.ts
++++ b/dist/bits/utilities/popper-layer/types.d.ts
+@@ -7,7 +7,15 @@ import type { PresenceLayerImplProps, PresenceLayerProps } from "../presence-lay
+ import type { FocusScopeImplProps, FocusScopeProps } from "../focus-scope/types.js";
+ import type { ScrollLockProps } from "../scroll-lock/index.js";
+ import type { Direction } from "../../../shared/index.js";
+-export type PopperLayerProps = EscapeLayerProps & Omit<DismissibleLayerProps, "onInteractOutsideStart"> & FloatingLayerContentProps & PresenceLayerProps & TextSelectionLayerProps & FocusScopeProps & Omit<ScrollLockProps, "restoreScrollDelay">;
++export type PopperLayerProps = EscapeLayerProps & Omit<DismissibleLayerProps, "onInteractOutsideStart"> & FloatingLayerContentProps & PresenceLayerProps & TextSelectionLayerProps & FocusScopeProps & Omit<ScrollLockProps, "restoreScrollDelay"> & {
++    /**
++     * Whether a scroll-locking layer sets `pointer-events: none` on the body while open. Set
++     * `false` when something else, such as an overlay, blocks the page.
++     *
++     * @default true
++     */
++    preventBodyPointerEvents?: boolean;
++};
+ export type PopperLayerStaticProps = EscapeLayerProps & Omit<DismissibleLayerProps, "onInteractOutsideStart"> & PresenceLayerProps & TextSelectionLayerProps & FocusScopeProps & Omit<ScrollLockProps, "restoreScrollDelay"> & {
+     content?: Snippet<[{
+         props: Record<string, unknown>;

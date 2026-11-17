@@ -124,15 +124,15 @@ export async function addGift(
 		await dialog.locator('#gift-price').fill(price);
 	}
 	if (primaryLink !== undefined) {
-		await dialog.getByRole('button', { name: 'Přidat odkaz' }).click();
-		await dialog.getByTestId('gift-link-url').fill(primaryLink);
+		await dialog.getByTestId('gift-link-paste').fill(primaryLink);
+		await dialog.getByTestId('gift-link-paste').press('Enter');
 	}
 	if (priority !== undefined) {
-		await dialog.getByRole('button', { name: 'Bez priority' }).click();
+		await dialog.getByRole('combobox', { name: 'Priorita', exact: true }).click();
 		await page.getByRole('option', { name: priority, exact: true }).click();
 	}
 	if (category !== undefined) {
-		await dialog.getByRole('button', { name: 'Bez kategorie' }).click();
+		await dialog.getByRole('combobox', { name: 'Kategorie', exact: true }).click();
 		await page.getByRole('option', { name: category, exact: true }).click();
 		// The multi-select listbox stays open after a pick and can cover the footer Save.
 		await page.keyboard.press('Escape');
@@ -145,6 +145,41 @@ export async function addGift(
 	await expect(dialog).not.toBeVisible({ timeout: 10_000 });
 	await waitForDialogOverlayRemoval(page);
 	await expect(page.getByRole('heading', { name, level: 3 })).toBeVisible({ timeout: 10_000 });
+}
+
+/**
+ * Adds a photo to the open gift editor through the image strip's file input and waits until the
+ * strip shows it as a finished tile.
+ */
+export async function uploadGiftEditorImage(
+	page: Page,
+	dialog: Locator,
+	filePath: string,
+): Promise<void> {
+	const tiles = dialog.locator('[data-gift-image-tile]');
+	const tileCountBefore = await tiles.count();
+	const uploadCompleted = page.waitForResponse(
+		(response) =>
+			response.request().method() === 'PUT' &&
+			response.url().includes('/api/upload/') &&
+			response.status() === 201,
+		{ timeout: 15_000 },
+	);
+	await dialog.locator('input[type=file]').setInputFiles(filePath);
+	await uploadCompleted;
+	await expect(tiles).toHaveCount(tileCountBefore + 1, { timeout: 10_000 });
+	await expect(dialog.getByTestId('gift-image-strip-uploading')).toHaveCount(0);
+}
+
+/** Opens the gift editor's framing step for the selected image and waits for its photo. */
+export async function openGiftImageFraming(dialog: Locator): Promise<Locator> {
+	await dialog.getByTestId('gift-image-edit-entry').click();
+	const framingStep = dialog.getByTestId('gift-image-framing-step');
+	await expect(framingStep).toBeVisible({ timeout: 5_000 });
+	await expect(framingStep.getByTestId('crop-pan-surface').locator('img').first()).toBeVisible({
+		timeout: 10_000,
+	});
+	return framingStep;
 }
 
 /** A responsive More surface: a bottom sheet below `sm`, a dropdown menu from `sm`. */

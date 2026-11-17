@@ -83,10 +83,10 @@
 }
 
 @container app-content (width < 1360px) {
-	.wishlist-page-shell:is(
+	/* Only photo backgrounds carry a placement. `:where` keeps the phone rule below winning. */
+	.wishlist-page-shell:where(
 		[data-wishlist-background='theme'],
-		[data-wishlist-background='custom'][data-wishlist-placement='gutters'],
-		[data-wishlist-background='library'][data-wishlist-placement='gutters']
+		[data-wishlist-background][data-wishlist-placement='gutters']
 	) {
 		padding-top: calc(var(--wishlist-band-height) - var(--space-6));
 	}
@@ -115,15 +115,38 @@
 	background: var(--card);
 }
 
-/* The sticky toolbar mask hides gifts scrolling beneath it. Over a backdrop it stays inside the
-   content column, so gutter art is never cut, and only blurs what scrolls under it. */
+/* Over a backdrop, gifts scrolling under the toolbar are blurred and feathered into the art
+   rather than hidden. The mask still blocks clicks; its click-through ::after carries the blur.
+   The mask must not become a backdrop root (backdrop-filter, filter, mask, opacity, clip-path,
+   blend mode), or the ::after blurs only its transparent parent. The blur lives only here: over
+   the opaque page colour it would be hidden yet still repaint every frame. */
 .wishlist-page-shell[data-wishlist-backdrop] .wishlist-toolbar-mask {
+	--wishlist-toolbar-feather: clamp(0px, (100cqw - var(--content-max-width)) / 2, 40px);
+
 	inline-size: min(100cqw, var(--content-max-width));
 	background: transparent;
 }
 
 .wishlist-page-shell[data-wishlist-backdrop] .wishlist-toolbar-mask::after {
-	background: transparent;
+	inset-block: 0 calc(-1 * var(--wishlist-toolbar-bottom-fade));
+	inset-inline: calc(-1 * var(--wishlist-toolbar-feather));
+	block-size: auto;
+	background: color-mix(in oklab, var(--app-page-background) 45%, transparent);
+	backdrop-filter: blur(10px);
+	mask-image:
+		linear-gradient(
+			to right,
+			transparent,
+			#000 var(--wishlist-toolbar-feather),
+			#000 calc(100% - var(--wishlist-toolbar-feather)),
+			transparent
+		),
+		linear-gradient(
+			to bottom,
+			#000 calc(100% - var(--wishlist-toolbar-bottom-fade)),
+			transparent
+		);
+	mask-composite: intersect;
 }
 
 /* ── Dark mode: the wishlist carries its own colour ───────────────────

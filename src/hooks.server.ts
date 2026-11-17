@@ -27,6 +27,7 @@ import {
 } from '$lib/config/site.js';
 import { ROBOTS_NOINDEX_CONTENT, shouldNoindexPath } from '$lib/seo/robots.js';
 import { requestTelemetryHandle } from '$lib/server/request_telemetry.js';
+import { measureServerTiming } from '$lib/server/server_timing.js';
 import {
 	CONTENT_SECURITY_POLICY_HEADER,
 	contentSecurityPolicy,
@@ -36,6 +37,7 @@ import {
 	reportOperationalFailure,
 	setOperationalDeployment,
 } from '$lib/observability/operational_failures.js';
+import { APPEARANCE_COOKIE_OPTIONS } from '$lib/theme/appearance_cookie.js';
 import {
 	DEFAULT_PALETTE,
 	PALETTE_COOKIE_NAME,
@@ -44,13 +46,11 @@ import {
 } from '$lib/theme/palettes.js';
 import {
 	DEFAULT_DEPTH_STYLE,
-	DEPTH_STYLE_COOKIE_MAX_AGE_SECONDS,
 	DEPTH_STYLE_COOKIE_NAME,
 	isDepthStyle,
 	type DepthStyle,
 } from '$lib/theme/depth_styles.js';
 import {
-	DARK_WISHLIST_BACKGROUND_COOKIE_MAX_AGE_SECONDS,
 	DARK_WISHLIST_BACKGROUND_COOKIE_NAME,
 	DEFAULT_DARK_WISHLIST_BACKGROUND,
 	isDarkWishlistBackground,
@@ -202,16 +202,29 @@ const botProbeHandle: Handle = ({ event, resolve }) => {
 	return resolve(event);
 };
 
+// Every page renders Czech copy in DynaPuff and Geist, so their latin and latin-ext subsets
+// are critical; the wishlist heading fonts (Fraunces, Caveat) load lazily on first use.
+const CRITICAL_FONT_PATH = /\/(?:dynapuff|geist)-latin(?:-ext)?-wght-normal\.[^/]*woff2$/;
+
+export function shouldPreloadAsset({ type, path }: { type: string; path: string }): boolean {
+	if (type === 'font') {
+		return CRITICAL_FONT_PATH.test(path);
+	}
+	return type === 'js' || type === 'css';
+}
+
 const paraglideHandle: Handle = ({ event, resolve }) =>
 	paraglideMiddleware(event.request, ({ request: localizedRequest, locale }) => {
 		event.request = localizedRequest;
-		return resolve(event, {
-			preload: ({ type }) => type === 'js' || type === 'css' || type === 'font',
-			transformPageChunk: ({ html }) =>
-				html
-					.replace('%paraglide.lang%', locale)
-					.replace('%paraglide.dir%', getTextDirection(locale)),
-		});
+		return measureServerTiming(event, 'app', () =>
+			resolve(event, {
+				preload: shouldPreloadAsset,
+				transformPageChunk: ({ html }) =>
+					html
+						.replace('%paraglide.lang%', locale)
+						.replace('%paraglide.dir%', getTextDirection(locale)),
+			}),
+		);
 	});
 
 function hasExplicitUrlLocale(url: URL) {
@@ -280,17 +293,12 @@ function preferenceFallbacksFor(
 /** The cookie mirror must keep reflecting the visitor's real account, never a demo persona. */
 function mirrorPreferenceCookie(
 	event: Parameters<Handle>[0]['event'],
-	cookie: { name: string; value: string; maxAge: number },
+	cookie: { name: string; value: string },
 ) {
 	if (event.locals.demoSession !== undefined) {
 		return;
 	}
-	event.cookies.set(cookie.name, cookie.value, {
-		path: '/',
-		maxAge: cookie.maxAge,
-		httpOnly: false,
-		sameSite: 'lax',
-	});
+	event.cookies.set(cookie.name, cookie.value, APPEARANCE_COOKIE_OPTIONS);
 }
 
 /**
@@ -366,7 +374,6 @@ const userPreferencesHandle: Handle = async ({ event, resolve }) => {
 					mirrorPreferenceCookie(event, {
 						name: DEPTH_STYLE_COOKIE_NAME,
 						value: depthStyle,
-						maxAge: DEPTH_STYLE_COOKIE_MAX_AGE_SECONDS,
 					});
 				}
 				if (
@@ -377,7 +384,6 @@ const userPreferencesHandle: Handle = async ({ event, resolve }) => {
 					mirrorPreferenceCookie(event, {
 						name: DARK_WISHLIST_BACKGROUND_COOKIE_NAME,
 						value: darkWishlistBackground,
-						maxAge: DARK_WISHLIST_BACKGROUND_COOKIE_MAX_AGE_SECONDS,
 					});
 				}
 			} catch (err) {
@@ -475,7 +481,9 @@ const authHandle: Handle = async ({ event, resolve }) => {
 	const { building } = await import('$app/environment');
 	const auth = createAuth(event);
 
-	const sessionData = await auth.api.getSession({ headers: event.request.headers });
+	const sessionData = await measureServerTiming(event, 'auth', () =>
+		auth.api.getSession({ headers: event.request.headers }),
+	);
 
 	if (sessionData) {
 		if (!isReservedDemoEmail(sessionData.user.email)) {
@@ -568,7 +576,6 @@ export const demoHandle: Handle = async ({ event, resolve }) => {
 		token === '' ||
 		(!event.isRemoteRequest &&
 			(requestedPath.startsWith('/demo/v1/') ||
-				requestedPath.startsWith('/demo/playground/') ||
 				requestedPath.startsWith(AGENT_API_PATH_PREFIX) ||
 				requestedPath === AGENT_MCP_PATH))
 	) {

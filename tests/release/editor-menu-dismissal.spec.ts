@@ -80,17 +80,12 @@ for (const width of [1100, 390]) {
 		await page.keyboard.press('Enter');
 		const editor = page.getByRole('dialog').filter({ has: page.locator('#gift-name') });
 		await expect(editor).toBeVisible();
-		const triggers = [
-			editor.getByTestId('gift-price-currency-row').locator('[data-slot="select-trigger"]'),
-			editor
-				.getByTestId('gift-quantity-priority-row')
-				.locator('[data-slot="select-trigger"]')
-				.first(),
-			editor
-				.getByTestId('gift-quantity-priority-row')
-				.locator('[data-slot="select-trigger"]')
-				.nth(1),
-		];
+		// Currency and priority are the selects in the price row.
+		const rowSelects = editor
+			.getByTestId('gift-price-quantity-row')
+			.locator('[data-slot="select-trigger"]');
+		const triggers = [rowSelects.first(), rowSelects.nth(1)];
+		await expect(rowSelects).toHaveCount(triggers.length);
 		for (const trigger of triggers) {
 			await trigger.click();
 			const content = page.locator('[data-slot="select-content"]');
@@ -152,8 +147,10 @@ test('mobile hero, gift and navigation sheets dismiss without rebound', async ({
 		const sheet = page.locator('[data-slot="sheet-content"]');
 		await expect(sheet).toBeVisible();
 		await expect
-			.poll(() => page.locator('body').evaluate((body) => body.style.pointerEvents))
-			.toBe('none');
+			.poll(() =>
+				page.evaluate(() => document.elementFromPoint(380, 20)?.getAttribute('data-slot')),
+			)
+			.toBe('sheet-overlay');
 		await expectAnimatedDismissal(page, sheet, () => page.keyboard.press('Escape'));
 		await expect(page.locator('[data-slot="sheet-overlay"]')).toHaveCount(0);
 		await expect
@@ -205,8 +202,9 @@ test('dirty gift editor keeps its unsaved-change guard after menu dismissal', as
 	const editor = page.getByRole('dialog', { name: 'Přidat dárek' });
 	await editor.locator('#gift-name').fill('Neuložený dárek');
 	await editor
-		.getByTestId('gift-price-currency-row')
+		.getByTestId('gift-price-quantity-row')
 		.locator('[data-slot="select-trigger"]')
+		.first()
 		.click();
 	await page.keyboard.press('Escape');
 	await expect(page.locator('[data-slot="select-content"]')).toHaveCount(0);
@@ -248,8 +246,9 @@ test('reduced motion removes select and sheet animation without losing dismissal
 	await page.keyboard.press('Enter');
 	const editor = page.getByRole('dialog').filter({ has: page.locator('#gift-name') });
 	const trigger = editor
-		.getByTestId('gift-price-currency-row')
-		.locator('[data-slot="select-trigger"]');
+		.getByTestId('gift-price-quantity-row')
+		.locator('[data-slot="select-trigger"]')
+		.first();
 	await trigger.click();
 	const select = page.locator('[data-slot="select-content"]');
 	await expect(select).toBeVisible();

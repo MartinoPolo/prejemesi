@@ -5,6 +5,15 @@
 	import { resolve } from '$app/paths';
 	import { onMount, tick } from 'svelte';
 	import { SvelteSet } from 'svelte/reactivity';
+	import { runExclusively } from '$lib/utils/run_exclusively.js';
+	import { runSerially } from '$lib/utils/run_serially.js';
+	import { sendWithOverrides } from '$lib/utils/send_with_overrides.js';
+	import {
+		withGiftCategories,
+		withGiftPriority,
+		withoutLedgerReservation,
+		withoutViewerReservation,
+	} from '$lib/modules/gifts/gift_optimistic_updates.js';
 	import * as m from '$lib/paraglide/messages.js';
 	import { localizeInternalHref } from '$lib/i18n/locale.js';
 	import WishlistHeader from '$lib/components/blocks/gift/WishlistHeader.svelte';
@@ -12,15 +21,21 @@
 	import WishlistGiftDisplay from '$lib/components/blocks/wishlist/WishlistGiftDisplay.svelte';
 	import { setWishlistStickyChrome } from '$lib/components/blocks/wishlist/wishlist_sticky_chrome.svelte.js';
 	import WishlistSelectionToolbar from '$lib/components/blocks/wishlist/WishlistSelectionToolbar.svelte';
-	import GiftBulkCopyDialog, {
+	import {
 		NEW_WISHLIST_DESTINATION,
 		type BulkCopyDestination,
-	} from '$lib/components/blocks/wishlist/GiftBulkCopyDialog.svelte';
-	import CreateWishlistModal, {
-		type CreatedWishlist,
-	} from '$lib/components/blocks/wishlist/CreateWishlistModal.svelte';
+	} from '$lib/components/blocks/wishlist/gift_bulk_copy_destination.js';
+	import type { CreatedWishlist } from '$lib/components/blocks/wishlist/CreateWishlistModal.svelte';
 	import GiftContextActions from '$lib/components/blocks/wishlist/GiftContextActions.svelte';
-	import WishlistAssistant from '$lib/components/blocks/chat/WishlistAssistant.svelte';
+	import { LazyDialog } from '$lib/components/derived/lazy-dialog/index.js';
+	import {
+		createWishlistModalLoader,
+		editRecipientDialogLoader,
+		giftBulkCopyDialogLoader,
+		wishlistAssistantLoader,
+		wishlistSettingsModalLoader,
+	} from '$lib/components/blocks/wishlist/lazy_dialog_loaders.js';
+	import ReleaseReservationFlow from '$lib/components/blocks/reservation/ReleaseReservationFlow.svelte';
 	import { setAssistantContext } from '$lib/modules/chat/assistant.context.svelte.js';
 	import {
 		NO_GIFT_LIVE_PREVIEWS,
@@ -30,7 +45,6 @@
 	import { getChatAvailability } from '$lib/modules/chat/chat.remote.js';
 	import { CHAT_AVAILABILITY } from '$lib/modules/chat/types.js';
 	import { cn } from '$lib/utils.js';
-	import ReleaseReservationFlow from '$lib/components/blocks/reservation/ReleaseReservationFlow.svelte';
 	import type {
 		GiftActionPlacementSnapshot,
 		GiftContextFinishPolicy,
@@ -48,8 +62,6 @@
 	import GiftCategoryQuickAddDialog, {
 		type GiftCategoryQuickAddTarget,
 	} from '$lib/components/blocks/gift/GiftCategoryQuickAddDialog.svelte';
-	import WishlistSettingsModal from '$lib/components/blocks/wishlist/WishlistSettingsModal.svelte';
-	import EditRecipientDialog from '$lib/components/blocks/wishlist/EditRecipientDialog.svelte';
 	import { ConfirmDialog } from '$lib/components/derived/confirm-dialog/index.js';
 	import * as Alert from '$lib/components/base/alert/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
@@ -85,7 +97,7 @@
 		recordWishlistVisit,
 	} from '$lib/modules/wishlists/wishlists.remote.js';
 	import { getGiftsByWishlistShortId } from '$lib/modules/gifts/gifts.remote.js';
-	import { PendingChangesBanner } from '$lib/components/blocks/change-proposals/index.js';
+	import PendingChangesBanner from '$lib/components/blocks/change-proposals/PendingChangesBanner.svelte';
 	import {
 		getPendingChangeProposals,
 		type PendingChangeProposalSummary,
@@ -95,7 +107,6 @@
 	import {
 		reserveGift,
 		unreserveGift,
-		setReservationPurchased,
 		getReservationLedgerForWishlist,
 	} from '$lib/modules/reservations/reservations.remote.js';
 	import { setReservationsContext } from '$lib/modules/reservations/reservations.context.svelte.js';
@@ -130,6 +141,11 @@
 	} from '$lib/components/blocks/wishlist/wishlist_theme_scope.js';
 	import { getWishlistEmoji } from '$lib/modules/wishlists/wishlist_theme.js';
 	import {
+		WISHLIST_NOTE_STATES,
+		wishlistNoteText,
+		wishlistNoteVisibility,
+	} from '$lib/modules/wishlists/wishlist_note.js';
+	import {
 		giftEditorModeFromMeta,
 		IMAGE_EDITOR_MODES,
 	} from '$lib/modules/images/editor_modes.js';
@@ -162,7 +178,6 @@
 		resetDuplicateAwareImportState,
 		submitDuplicateAwareImport,
 	} from '$lib/modules/import/duplicate_aware_submission.js';
-	import { buildGiftCsv, giftCsvFilename, downloadGiftCsv } from '$lib/modules/import/index.js';
 	import { labelForGiftCategory } from '$lib/modules/gift-categories/types.js';
 	import {
 		giftCategoryChoices,
@@ -284,10 +299,6 @@
 	// Opens the "log in to like" prompt when an anonymous visitor taps the heart.
 	let authPromptOpen = $state(false);
 
-	// Client-only presentation state. It never enters a remote command or persisted preference.
-	let recipientViewPreview = $state(false);
-	let recipientPreviewWishlistShortId = $state<string | null>(null);
-
 	// ── Context setup (must be synchronous – before any await) ───────────────
 
 	// False until mount, so a saved mobile-only Carousel hydrates as the server-rendered Card.
@@ -407,14 +418,13 @@
 		}
 	});
 
-	$effect(() => {
-		if (recipientPreviewWishlistShortId !== shortId) {
-			recipientPreviewWishlistShortId = shortId;
-			recipientViewPreview = false;
-		}
-		if (role === 'recipient' && recipientViewPreview) {
-			recipientViewPreview = false;
-		}
+	// Client-only presentation state. It never enters a remote command or persisted preference,
+	// and resets when another list opens or the viewer's role changes. Recipients can never turn it
+	// on (handleRecipientViewPreviewChange), so a role change is the only recipient reset needed.
+	let recipientViewPreview = $derived.by(() => {
+		void shortId;
+		void role;
+		return false;
 	});
 
 	// One wishlist-level ledger replaces the former request per reserved gift. Unauthorized
@@ -479,6 +489,15 @@
 			chatAvailability !== CHAT_AVAILABILITY.notAllowed &&
 			!isArchived,
 	);
+	// The assistant loads only for viewers it is offered to; without its chunk it stays hidden.
+	$effect(() => {
+		if (!chatOffered) {
+			return;
+		}
+		wishlistAssistantLoader.load().catch((thrown: unknown) => {
+			console.error('[assistant] lazy chunk failed to load', thrown);
+		});
+	});
 	const categoryOptions = $derived(categoriesQuery?.current ?? []);
 	const categoryActionOptions = $derived(
 		categoryOptions.map((category) => ({
@@ -497,7 +516,7 @@
 		categoryQuickAddTarget = target;
 		categoryQuickAddOpen = true;
 	}
-	let priorityLevels = $state<Awaited<ReturnType<typeof getPriorityLevels>>>([]);
+	let priorityLevels = $state.raw<Awaited<ReturnType<typeof getPriorityLevels>>>([]);
 	let priorityLevelsOwnerWishlistId = $state<string | null>(null);
 	let priorityLevelsWishlistId = $state<string | null>(null);
 	let priorityLevelsRequestedForWishlistId = $state<string | null>(null);
@@ -543,6 +562,12 @@
 	// For-someone-else ⇔ no linked recipient account (management is via správci rows only).
 	const isForSomeoneElse = $derived(wishlist?.recipientUserId == null);
 	const themeEmoji = $derived(getWishlistEmoji(wishlist?.theme));
+	// Shared with the header note, whose dismissal the toolbar More menu can undo.
+	const wishlistNote = $derived(wishlistNoteVisibility(wishlist.id));
+	const wishlistNoteDismissed = $derived(
+		wishlistNoteText(wishlist.description) !== null &&
+			wishlistNote.current === WISHLIST_NOTE_STATES.dismissed,
+	);
 	// OG/Twitter tags. A plain function (evaluated at render), NOT a $derived — reading
 	// post-await state through a memoized $derived inside <svelte:head> collapses to undefined
 	// during async SSR and 500s. The image is the `social` slot crop the owner framed in the
@@ -830,7 +855,9 @@
 	const visibleGiftIds = $derived(displayedGifts.map((giftItem) => giftItem.id));
 	const selectionSnapshot = $derived(giftSelection.snapshot(visibleGiftIds));
 	const selectedGiftRows = $derived(
-		gifts.filter((giftItem) => giftSelection.isSelected(giftItem.id)),
+		giftSelection.active
+			? gifts.filter((giftItem) => giftSelection.isSelected(giftItem.id))
+			: [],
 	);
 	function commonSelectionValue<Value>(values: Value[]): Value | undefined {
 		if (values.length === 0) {
@@ -869,7 +896,7 @@
 	let bulkCopySubmitting = $state(false);
 	let bulkCopyDestinationId = $state('');
 	let bulkCopyReturnToActions = $state<(() => void) | null>(null);
-	let bulkCopyDestinations = $state<BulkCopyDestination[]>([]);
+	let bulkCopyDestinations = $state.raw<BulkCopyDestination[]>([]);
 	let bulkCopyCreateOpen = $state(false);
 	// Set only for a list created by this flow, which a failed copy deletes while still empty (issue #557).
 	let bulkCopyCreatedDestination = $state<CreatedWishlist | null>(null);
@@ -934,7 +961,12 @@
 		selectedPresentationGift !== null && activeContextGiftId === selectedPresentationGift.id,
 	);
 
-	$effect(() => giftSelection.reconcileExisting(gifts.map((giftItem) => giftItem.id)));
+	// Exiting selection clears it, so only an active selection can hold removed gifts.
+	$effect(() => {
+		if (giftSelection.active) {
+			giftSelection.reconcileExisting(gifts.map((giftItem) => giftItem.id));
+		}
+	});
 	$effect(() => {
 		const session = contextSession;
 		if (
@@ -964,7 +996,7 @@
 			canReserve: ownsReservation || !giftItem.isFullyReserved,
 			ownsReservation,
 			canTrackPurchased: canTrackPurchase({ isAuthenticated, isArchived, ownsReservation }),
-			purchased: giftItem.myReservationPurchasedAt !== null,
+			purchased: giftsContext.purchased.isPurchased(giftItem),
 		};
 	}
 
@@ -1027,7 +1059,8 @@
 		invocation: GiftContextInvocation,
 		origin: GiftContextOrigin = 'card',
 	): boolean {
-		if (giftSelection.active || contextActionsFor(giftItem, origin).length === 0) {
+		const availableActions = contextActionsFor(giftItem, origin);
+		if (giftSelection.active || availableActions.length === 0) {
 			return false;
 		}
 		const viewportAtOpen = narrowViewport.current;
@@ -1141,16 +1174,41 @@
 		}
 	}
 
+	// Updates of one gift reach the server in call order; More-menu changes also show at once.
+	const giftUpdateQueueTails = new Map<string, Promise<void>>();
+
 	async function updateContextGift(update: {
 		priorityLevelId?: string | null;
 		categoryIds?: string[];
 	}) {
 		const gift = contextSession?.gift;
-		if (gift === undefined) {
+		if (gift === undefined || giftsQuery === null) {
 			return;
 		}
+		const giftId = gift.id;
+		const { priorityLevelId, categoryIds } = update;
+		// A level missing from the loaded list has no label to show, so only the server applies it.
+		const priorityLevel =
+			priorityLevelId === undefined
+				? undefined
+				: priorityLevelId === null
+					? null
+					: priorityLevels.find((level) => level.id === priorityLevelId);
+		const wishlistCategories = categoryOptions;
+		// Shown at once; only the queued send below releases it, so nothing may run in between.
+		const override = giftsQuery.withOverride((result) => {
+			const withPriority =
+				priorityLevel === undefined
+					? result
+					: withGiftPriority(result, giftId, priorityLevel);
+			return categoryIds === undefined
+				? withPriority
+				: withGiftCategories(withPriority, giftId, categoryIds, wishlistCategories);
+		});
 		try {
-			await updateGiftRemote({ id: gift.id, ...update });
+			await runSerially(giftUpdateQueueTails, giftId, () =>
+				sendWithOverrides([override], () => updateGiftRemote({ id: giftId, ...update })),
+			);
 			toastSuccess(m.toast_gift_updated());
 		} catch (thrown) {
 			toastError(translateServerError(thrown));
@@ -1173,6 +1231,9 @@
 		priorityLevelsLoadPromise = nextState.loadPromise;
 	}
 
+	// Prefetched on intent (pointer or focus on an add-gift trigger), never on page load: a load-time
+	// prefetch adds a Worker request to every manager visit, over the wishlist-view request budget
+	// (#108, `tests/release/request-budgets`); intent still lets the first gift dialog open at once.
 	async function ensurePriorityLevels(targetWishlistId = wishlist.id): Promise<void> {
 		if (!browser || !canManage) {
 			return;
@@ -1216,6 +1277,8 @@
 		clearReorderSession();
 		giftSelection.enter(giftId);
 		void ensurePriorityLevels();
+		// Selection is the intent signal for the bulk copy dialog its toolbar opens.
+		giftBulkCopyDialogLoader.preload();
 	}
 
 	async function applyBulkAction(action: GiftBulkAction, hiddenConfirmed = false) {
@@ -1273,6 +1336,8 @@
 		}
 		bulkCopyReturnToActions = returnToActions ?? null;
 		bulkCopyOpen = true;
+		// The copy dialog offers creating the destination list.
+		createWishlistModalLoader.preload();
 		bulkCopyLoading = true;
 		bulkCopyDestinationId = '';
 		bulkCopyRemovesSources = false;
@@ -1741,6 +1806,10 @@
 		void handleFilterChange(emptyGiftFilters());
 	}
 
+	function prefetchPriorityLevels() {
+		void ensurePriorityLevels();
+	}
+
 	async function openCreateModal() {
 		await ensurePriorityLevels();
 		giftModalMode = 'create';
@@ -1813,7 +1882,7 @@
 	async function handleUpdate(input: UpdateGiftInput): Promise<boolean> {
 		isSubmitting = true;
 		try {
-			await updateGiftRemote(input);
+			await runSerially(giftUpdateQueueTails, input.id, () => updateGiftRemote(input));
 			selectedGift = gifts.find((giftItem) => giftItem.id === input.id) ?? selectedGift;
 			toastSuccess(m.toast_gift_updated());
 			return true;
@@ -1913,31 +1982,27 @@
 	}
 
 	async function handleReceived(giftId: string, received: boolean) {
-		if (receivedPendingGiftIds.has(giftId)) {
-			return;
-		}
-		const root = wishlistPageElement;
-		const source = root === null ? null : findGiftElement(root, giftId);
-		const invokingControl =
-			source?.contains(document.activeElement) === true ? document.activeElement : null;
-		const giftName = gifts.find((giftItem) => giftItem.id === giftId)?.name ?? '';
-		const receivingWishlistId = shortId;
-		receivedPendingGiftIds.add(giftId);
-		try {
-			await markGiftReceived({ giftId, received });
-			await settleReceivedGift(
-				root,
-				giftId,
-				invokingControl,
-				receivingWishlistId,
-				giftName,
-				received,
-			);
-		} catch (thrown) {
-			toastError(translateServerError(thrown));
-		} finally {
-			receivedPendingGiftIds.delete(giftId);
-		}
+		await runExclusively(receivedPendingGiftIds, giftId, async () => {
+			const root = wishlistPageElement;
+			const source = root === null ? null : findGiftElement(root, giftId);
+			const invokingControl =
+				source?.contains(document.activeElement) === true ? document.activeElement : null;
+			const giftName = gifts.find((giftItem) => giftItem.id === giftId)?.name ?? '';
+			const receivingWishlistId = shortId;
+			try {
+				await markGiftReceived({ giftId, received });
+				await settleReceivedGift(
+					root,
+					giftId,
+					invokingControl,
+					receivingWishlistId,
+					giftName,
+					received,
+				);
+			} catch (thrown) {
+				toastError(translateServerError(thrown));
+			}
+		});
 	}
 
 	function handleGiftModalClose() {
@@ -1945,20 +2010,45 @@
 		selectedGift = null;
 	}
 
+	let unfollowPending = $state(false);
+
+	const rowContext = $derived({
+		currentGifts: gifts,
+		categories: categoryOptions,
+		priorityLevels,
+	});
+
+	function showWishlistNote() {
+		wishlistNote.current = WISHLIST_NOTE_STATES.open;
+	}
+
+	let detailToolbar = $state<ReturnType<typeof WishlistDetailToolbar> | null>(null);
+	// The focused Skrýt button is gone, so focus moves to More, which now offers the restore.
+	async function focusWishlistNoteRestore() {
+		await tick();
+		detailToolbar?.focusMoreTrigger();
+	}
+
 	async function handleUnfollow() {
+		if (unfollowPending) {
+			return;
+		}
+		unfollowPending = true;
 		try {
 			await unfollowWishlist(wishlist.id);
 			toastSuccess(m.toast_unfollowed());
 		} catch (thrown) {
 			console.error('Failed to unfollow:', thrown);
 			toastError(m.toast_unfollow_error());
+		} finally {
+			unfollowPending = false;
 		}
 	}
 
 	// ── Import wizard handlers ───────────────────────────────────────────────
 
 	const importExistingGifts = $derived(
-		gifts.map((gift) => ({ name: gift.name, links: gift.links ?? [] })),
+		canManage ? gifts.map((gift) => ({ name: gift.name, links: gift.links ?? [] })) : [],
 	);
 
 	function openImportWizard() {
@@ -1971,20 +2061,28 @@
 	// Exports gift DATA ONLY (name/notes/links/price), mirroring the import columns
 	// for a round-trip. Never emits reservation state – the recipient must not infer
 	// it, and reservations are not gift-catalog data (DECISIONS.md).
-	function handleExport() {
-		const csv = buildGiftCsv(
-			gifts.map((gift) => ({
-				name: gift.name,
-				description: gift.description,
-				links: gift.links ?? [],
-				price: gift.price,
-				currency: gift.currency,
-				categoryLabels: gift.categories.map((category) =>
-					labelForGiftCategory(category, getLocale().startsWith('en') ? 'en' : 'cs'),
-				),
-			})),
-		);
-		downloadGiftCsv(csv, giftCsvFilename(wishlist.title, wishlist.shortId));
+	async function handleExport() {
+		try {
+			// The CSV writer bundles papaparse, which only managers exporting a list need.
+			const { buildGiftCsv, giftCsvFilename, downloadGiftCsv } =
+				await import('$lib/modules/import/gift_csv_export.js');
+			const csv = buildGiftCsv(
+				gifts.map((gift) => ({
+					name: gift.name,
+					description: gift.description,
+					links: gift.links ?? [],
+					price: gift.price,
+					currency: gift.currency,
+					categoryLabels: gift.categories.map((category) =>
+						labelForGiftCategory(category, getLocale().startsWith('en') ? 'en' : 'cs'),
+					),
+				})),
+			);
+			downloadGiftCsv(csv, giftCsvFilename(wishlist.title, wishlist.shortId));
+		} catch (thrown) {
+			console.error('[export] CSV export failed', thrown);
+			toastError(m.error_generic());
+		}
 	}
 
 	// ── Batch add handlers ───────────────────────────────────────────────────
@@ -2253,19 +2351,34 @@
 		}
 	}
 
+	// Every entry point (card, viewer, context menu) shares this guard, so one cancel runs at a time.
+	const unreservePendingGiftIds = new SvelteSet<string>();
+
 	async function handleUnreserve(giftItem: GiftForVisitor) {
-		if (hideReservationState || giftItem.myReservationId === null) {
+		const reservationId = giftItem.myReservationId;
+		if (hideReservationState || reservationId === null) {
 			return;
 		}
-		try {
-			await unreserveGift({ reservationId: giftItem.myReservationId });
-			toastSuccess(m.toast_gift_unreserved());
-		} catch (thrown) {
-			toastError(translateServerError(thrown));
-		}
+		await runExclusively(unreservePendingGiftIds, giftItem.id, async () => {
+			const viewerName = data.user?.name ?? null;
+			const overrides = [
+				giftsQuery?.withOverride((result) =>
+					withoutViewerReservation(result, reservationId, viewerName),
+				),
+				releaseLedgerQuery?.withOverride((ledger) =>
+					withoutLedgerReservation(ledger, reservationId),
+				),
+			].filter((override) => override !== undefined);
+			try {
+				await sendWithOverrides(overrides, () => unreserveGift({ reservationId }));
+				toastSuccess(m.toast_gift_unreserved());
+			} catch (thrown) {
+				toastError(translateServerError(thrown));
+			}
+		});
 	}
 
-	async function handleContextPurchased(giftItem: GiftByRole) {
+	function handleContextPurchased(giftItem: GiftByRole) {
 		if (
 			hideReservationState ||
 			!isAuthenticated ||
@@ -2274,16 +2387,7 @@
 		) {
 			return;
 		}
-		const purchased = giftItem.myReservationPurchasedAt === null;
-		try {
-			await setReservationPurchased({
-				reservationId: giftItem.myReservationId,
-				purchased,
-			});
-			toastSuccess(purchased ? m.toast_marked_bought() : m.toast_unmarked_bought());
-		} catch (thrown) {
-			toastError(translateServerError(thrown));
-		}
+		void giftsContext.purchased.toggle(giftItem);
 	}
 
 	// Outlives the More-menu session, which ends as soon as the menu hands off to this dialog.
@@ -2420,6 +2524,7 @@
 		background={themeScope.background}
 	/>
 	<WishlistHeader
+		wishlistId={wishlist.id}
 		title={wishlist.title}
 		recipientDisplayName={wishlist.recipientDisplayName}
 		recipientImage={wishlist.recipientImage}
@@ -2446,6 +2551,7 @@
 		oneditimage={handleEditImage}
 		oneditrecipient={handleEditRecipientOpened}
 		onsettings={handleSettingsOpened}
+		onnotedismiss={focusWishlistNoteRestore}
 	/>
 
 	{#if pendingProposals.length > 0}
@@ -2498,6 +2604,7 @@
 			/>
 		{/snippet}
 		<WishlistDetailToolbar
+			bind:this={detailToolbar}
 			{canManage}
 			{role}
 			{isArchived}
@@ -2527,7 +2634,10 @@
 			onfilterchange={handleFilterChange}
 			ongroupingchange={handleGroupingChange}
 			onunfollow={handleUnfollow}
+			onshownote={wishlistNoteDismissed ? showWishlistNote : undefined}
+			{unfollowPending}
 			onaddgift={openCreateModal}
+			onaddgiftintent={prefetchPriorityLevels}
 			onbatchadd={openBatchAddDialog}
 			onselectionstart={() => enterSelection()}
 			selectionContent={giftSelection.active ? selectionToolbar : undefined}
@@ -2629,7 +2739,7 @@
 							void handleUnreserve(contextActionGift);
 						}
 					}}
-					onpurchased={() => void handleContextPurchased(contextActionGift)}
+					onpurchased={() => handleContextPurchased(contextActionGift)}
 					onreleasereservation={() => openReleaseFlow(contextActionGift)}
 					oncopysuccess={() => toastSuccess(m.gift_context_copy_success())}
 					oncopyerror={() => toastError(m.gift_context_copy_error())}
@@ -2664,6 +2774,7 @@
 			onreceived={handleReceived}
 			{receivedPendingGiftIds}
 			onaddgift={openCreateModal}
+			onaddgiftintent={prefetchPriorityLevels}
 			onclearfilters={clearFilters}
 			onreorderpreview={handleReorderPreview}
 			onreordercommit={handleReorderCommit}
@@ -2679,12 +2790,13 @@
 		/>
 	{/if}
 	<p class="sr-only" aria-live="polite" aria-atomic="true">{receivedAnnouncement}</p>
-	{#if chatOffered && chatAvailability !== undefined}
+	{#if chatOffered && chatAvailability !== undefined && wishlistAssistantLoader.component !== undefined}
+		{@const WishlistAssistant = wishlistAssistantLoader.component}
 		<WishlistAssistant
 			wishlistShortId={shortId}
 			wishlistTitle={wishlist.title}
 			availability={chatAvailability}
-			rowContext={{ currentGifts: gifts, categories: categoryOptions, priorityLevels }}
+			{rowContext}
 			{decidingProposals}
 		/>
 	{/if}
@@ -2704,27 +2816,41 @@
 	}}
 />
 
-<GiftBulkCopyDialog
-	open={bulkCopyOpen}
-	destinations={bulkCopyDestinations}
-	selectedDestinationId={bulkCopyDestinationId}
-	selectedCount={selectionSnapshot.selectedIds.length}
-	loading={bulkCopyLoading}
-	submitting={bulkCopySubmitting}
-	onopenchange={handleBulkCopyOpenChange}
-	onback={bulkCopyReturnToActions === null ? undefined : returnFromBulkCopy}
-	ondestinationchange={(id) => (bulkCopyDestinationId = id)}
-	offerSourceRemoval={bulkCopyOffersSourceRemoval}
-	removeSources={bulkCopyRemovesSources}
-	onremovesourceschange={(removeSources) => (bulkCopyRemovesSources = removeSources)}
-	onconfirm={confirmBulkCopy}
-/>
+<LazyDialog
+	bind:open={() => bulkCopyOpen, handleBulkCopyOpenChange}
+	loader={giftBulkCopyDialogLoader}
+>
+	{#snippet children(GiftBulkCopyDialog, dialog)}
+		<GiftBulkCopyDialog
+			open={dialog.open}
+			destinations={bulkCopyDestinations}
+			selectedDestinationId={bulkCopyDestinationId}
+			selectedCount={selectionSnapshot.selectedIds.length}
+			loading={bulkCopyLoading}
+			submitting={bulkCopySubmitting}
+			onopenchange={(open) => (dialog.open = open)}
+			onback={bulkCopyReturnToActions === null ? undefined : returnFromBulkCopy}
+			ondestinationchange={(id) => (bulkCopyDestinationId = id)}
+			offerSourceRemoval={bulkCopyOffersSourceRemoval}
+			removeSources={bulkCopyRemovesSources}
+			onremovesourceschange={(removeSources) => (bulkCopyRemovesSources = removeSources)}
+			onconfirm={confirmBulkCopy}
+		/>
+	{/snippet}
+</LazyDialog>
 
-<CreateWishlistModal
+<LazyDialog
 	bind:open={() => bulkCopyCreateOpen, setBulkCopyCreateOpen}
-	demo={page.data.demoExpiresAt !== null}
-	oncreated={copyIntoCreatedWishlist}
-/>
+	loader={createWishlistModalLoader}
+>
+	{#snippet children(CreateWishlistModal, dialog)}
+		<CreateWishlistModal
+			bind:open={dialog.open}
+			demo={page.data.demoExpiresAt !== null}
+			oncreated={copyIntoCreatedWishlist}
+		/>
+	{/snippet}
+</LazyDialog>
 
 <ConfirmDialog
 	bind:open={hiddenConfirmOpen}
@@ -2821,35 +2947,48 @@
      the old /w/<id>/settings deep-link behavior. Navigating between wishlists reuses this page,
      so the key remounts the modal to drop the previous wishlist's settings drafts (#527). -->
 {#key wishlist.id}
-	<WishlistSettingsModal
+	<LazyDialog
 		bind:open={settingsModalOpen}
-		bind:activeTab={settingsModalTab}
-		{wishlist}
-		{canManage}
-		{role}
-		revertCapability={presentationRevertCapability}
-		recipientDisplayName={wishlist.recipientDisplayName}
-		{themeEmoji}
-		onsaved={async () => {}}
-		onpaletteselect={handlePaletteSelect}
-		onappearancepreview={handleAppearancePreview}
-		ondeleted={handleWishlistDeleted}
-		onimport={openImportWizard}
-		onexport={handleExport}
-		oneditrecipient={handleEditRecipientOpened}
-	/>
+		loader={wishlistSettingsModalLoader}
+		preloadWhenIdle={canManage}
+	>
+		{#snippet children(WishlistSettingsModal, dialog)}
+			<WishlistSettingsModal
+				bind:open={dialog.open}
+				bind:activeTab={settingsModalTab}
+				{wishlist}
+				{canManage}
+				{role}
+				revertCapability={presentationRevertCapability}
+				recipientDisplayName={wishlist.recipientDisplayName}
+				managerNames={wishlist.managerNames}
+				{themeEmoji}
+				onsaved={async () => {}}
+				onpaletteselect={handlePaletteSelect}
+				onappearancepreview={handleAppearancePreview}
+				ondeleted={handleWishlistDeleted}
+				onimport={openImportWizard}
+				onexport={() => void handleExport()}
+				oneditrecipient={handleEditRecipientOpened}
+			/>
+		{/snippet}
+	</LazyDialog>
 {/key}
 
 <!-- Shared recipient dialog (issue #150): linked lists get the one-way flip with consequence
      copy (linked recipient only); free-text lists get the plain rename (any správce). -->
-<EditRecipientDialog
-	bind:open={recipientEditDialogOpen}
-	wishlistId={wishlist.id}
-	isLinkedRecipient={!isForSomeoneElse}
-	recipientDisplayName={wishlist.recipientDisplayName}
-	isShared={wishlist.sharedAt !== null}
-	onchanged={handleRecipientChanged}
-/>
+<LazyDialog bind:open={recipientEditDialogOpen} loader={editRecipientDialogLoader}>
+	{#snippet children(EditRecipientDialog, dialog)}
+		<EditRecipientDialog
+			bind:open={dialog.open}
+			wishlistId={wishlist.id}
+			isLinkedRecipient={!isForSomeoneElse}
+			recipientDisplayName={wishlist.recipientDisplayName}
+			isShared={wishlist.sharedAt !== null}
+			onchanged={handleRecipientChanged}
+		/>
+	{/snippet}
+</LazyDialog>
 
 <!-- Archive confirmation dialog: archiving hides the list from the dashboards, so it asks first. -->
 <ConfirmDialog

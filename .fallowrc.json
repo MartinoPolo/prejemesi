@@ -33,6 +33,8 @@
 		"@fontsource-variable/noto-sans",
 		"@fontsource-variable/fraunces",
 		"@fontsource-variable/caveat",
+		"@fontsource-variable/dynapuff",
+		"@fontsource-variable/geist",
 		"shadcn-svelte",
 		"tw-animate-css",
 		"@fallow-cli/win32-x64-msvc",

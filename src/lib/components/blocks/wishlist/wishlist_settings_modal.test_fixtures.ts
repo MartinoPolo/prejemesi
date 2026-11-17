@@ -45,6 +45,7 @@ export function renderSettings(
 		role: WISHLIST_ROLES.recipient,
 		revertCapability: REVERT_CAPABILITY.hidden,
 		recipientDisplayName: 'Test Recipient',
+		managerNames: [],
 		themeEmoji: '🎁',
 		onsaved: async () => {},
 		onimport: () => {},

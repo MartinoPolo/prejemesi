@@ -5,7 +5,6 @@ export type DarkWishlistBackground = (typeof DARK_WISHLIST_BACKGROUNDS)[number];
 
 export const DEFAULT_DARK_WISHLIST_BACKGROUND: DarkWishlistBackground = 'app';
 export const DARK_WISHLIST_BACKGROUND_COOKIE_NAME = 'app-dark-wishlist-background';
-export const DARK_WISHLIST_BACKGROUND_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 365;
 
 export function isDarkWishlistBackground(value: unknown): value is DarkWishlistBackground {
 	return (

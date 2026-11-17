@@ -4,6 +4,7 @@
 	import { setNotificationsContext } from '$lib/modules/notifications/notifications.context.svelte.js';
 	import { setAssistantDockContext } from '$lib/modules/chat/assistant_dock.context.svelte.js';
 	import { resolveUserImageUrl } from '$lib/modules/images/public_url.js';
+	import { scheduleIdle } from '$lib/utils/schedule_idle.js';
 	import * as m from '$lib/paraglide/messages.js';
 	import { preloadCode } from '$app/navigation';
 	import { page } from '$app/state';
@@ -13,6 +14,7 @@
 		shouldIdlePreloadAuthenticatedRoutes,
 		type NetworkConnectionInfo,
 	} from './idle_preload_eligibility.js';
+	import { createContentScrollRestoration } from './content_scroll_restoration.svelte.js';
 
 	import type { Snippet } from 'svelte';
 	import type { LayoutData } from './$types.js';
@@ -47,6 +49,9 @@
 	setNotificationsContext(data.unreadNotificationCount);
 	const assistantDock = setAssistantDockContext();
 
+	let contentScroller = $state<HTMLElement | null>(null);
+	export const snapshot = createContentScrollRestoration(() => contentScroller);
+
 	onMount(() => {
 		const connection = (navigator as Navigator & { connection?: NetworkConnectionInfo })
 			.connection;
@@ -60,15 +65,7 @@
 				),
 			);
 		};
-		if (typeof window.requestIdleCallback === 'function') {
-			const idleHandle = window.requestIdleCallback(preloadPrimaryRouteCode, {
-				timeout: IDLE_PRELOAD_TIMEOUT_MS,
-			});
-			return () => window.cancelIdleCallback(idleHandle);
-		}
-		// Safari has no requestIdleCallback — fall back to a bounded timer.
-		const timeoutHandle = setTimeout(preloadPrimaryRouteCode, IDLE_PRELOAD_TIMEOUT_MS);
-		return () => clearTimeout(timeoutHandle);
+		return scheduleIdle(preloadPrimaryRouteCode, IDLE_PRELOAD_TIMEOUT_MS);
 	});
 </script>
 
@@ -90,7 +87,11 @@
 			onexpired={() => (demoExpired = true)}
 		/>{/if}
 	{#if !demoExpired}<div class="app-body">
-			<main class="app-content" inert={assistantDock.modal.current}>
+			<main
+				bind:this={contentScroller}
+				class="app-content"
+				inert={assistantDock.modal.current}
+			>
 				<div
 					class="app-content-inner"
 					class:wishlist-detail-content={isWishlistDetailRoute}
@@ -133,6 +134,17 @@
 		flex: 1;
 		min-width: 0;
 		overflow: hidden auto;
+	}
+
+	/* The reserved gutter keeps the content column still when filtering shows or hides a classic
+	   scrollbar; the navbar reserves the same one to keep its edges on the column. Below `lg` the
+	   layouts are sized for the full width: the md navbar row has no spare pixel for the gutter,
+	   and phone card columns and carousel cards would shrink in a narrow desktop window, while
+	   phones themselves overlay their scrollbars. */
+	@media (width >= 1024px) {
+		.app-content {
+			scrollbar-gutter: stable;
+		}
 	}
 
 	.app-content-inner {

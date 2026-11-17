@@ -122,6 +122,22 @@ describe('ChatProposalCard bulk decisions', () => {
 		await expect.poll(() => vi.mocked(showRejectedProposalToast).mock.calls.length).toBe(1);
 	});
 
+	it('says it is rejecting, not applying, while Zamítnout vše runs', async () => {
+		const proposal = changeProposal();
+		let finishRejection: (value: never) => void = () => {};
+		vi.mocked(discardChangeProposal).mockReturnValue(
+			new Promise((resolve) => (finishRejection = resolve)) as never,
+		);
+		renderCard(proposal);
+
+		await card().getByTestId('chat-proposal-reject-all').click();
+
+		const apply = card().getByTestId('chat-proposal-apply');
+		await expect.element(apply).toHaveTextContent(m.change_review_rejecting());
+		await expect.element(apply).not.toHaveTextContent(m.change_review_applying());
+		finishRejection(proposal as never);
+	});
+
 	it('offers no undo when the rejection fails', async () => {
 		vi.mocked(discardChangeProposal).mockClear().mockRejectedValue(new Error('offline'));
 		vi.mocked(showRejectedProposalToast).mockClear();

@@ -8,11 +8,15 @@
 	import CheckCheckIcon from '@lucide/svelte/icons/check-check';
 	import BellOffIcon from '@lucide/svelte/icons/bell-off';
 	import NotificationItem from './NotificationItem.svelte';
+	import {
+		DURATION_FAST_MS,
+		DURATION_NORMAL_MS,
+		STANDARD_EASING,
+	} from '$lib/motion/motion_tokens.js';
 
 	const ctx = useNotifications();
 
 	type ContentState = 'loading' | 'empty' | 'list';
-	const STANDARD_EASING = 'cubic-bezier(0.2, 0.7, 0.3, 1)';
 	let contentElement = $state<HTMLElement | null>(null);
 	let displayedContent = $state<ContentState>(untrack(getContentState));
 	let activeAnimation: Animation | null = null;
@@ -49,7 +53,7 @@
 		}
 
 		const exit = contentElement.animate([{ opacity: 1 }, { opacity: 0 }], {
-			duration: 420,
+			duration: DURATION_FAST_MS,
 			easing: STANDARD_EASING,
 			fill: 'both',
 		});
@@ -72,7 +76,7 @@
 				{ opacity: 0, transform: 'translateY(3px)' },
 				{ opacity: 1, transform: 'none' },
 			],
-			{ duration: 460, easing: STANDARD_EASING, fill: 'both' },
+			{ duration: DURATION_NORMAL_MS, easing: STANDARD_EASING, fill: 'both' },
 		);
 		activeAnimation = enter;
 		await enter.finished.catch(() => undefined);

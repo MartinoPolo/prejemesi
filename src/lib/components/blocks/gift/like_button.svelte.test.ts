@@ -5,6 +5,7 @@ import { render } from 'vitest-browser-svelte';
 import { SvelteMap } from 'svelte/reactivity';
 import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
 import * as m from '$lib/paraglide/messages.js';
+import { STANDARD_EASING } from '$lib/motion/motion_tokens.js';
 
 const mocks = vi.hoisted(() => ({
 	useLikes: vi.fn(),
@@ -202,7 +203,7 @@ describe('LikeButton acknowledgement', () => {
 		expect(animate.mock.contexts[0]).toBe(document.querySelector('[data-like-heart]'));
 		expect(animate.mock.calls[0]).toEqual([
 			[{ transform: 'scale(1)' }, { transform: 'scale(1.16)' }, { transform: 'scale(1)' }],
-			{ duration: 160 },
+			{ duration: 160, easing: STANDARD_EASING },
 		]);
 		expect(animate).toHaveBeenCalledOnce();
 	});

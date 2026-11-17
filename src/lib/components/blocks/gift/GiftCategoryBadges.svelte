@@ -8,6 +8,7 @@
 	import type { PublicGiftCategory } from '$lib/modules/gift-categories/types.js';
 	import { labelForGiftCategory } from '$lib/modules/gift-categories/types.js';
 	import { getLocale } from '$lib/paraglide/runtime.js';
+	import { observeResize } from '$lib/utils/shared_resize_observer.js';
 	import GiftCategoryBadge from './GiftCategoryBadge.svelte';
 	import {
 		PRIMARY_CATEGORY_READABLE_WIDTH_REM,
@@ -44,7 +45,7 @@
 		if (measuringRow === null) {
 			return;
 		}
-		const resizeObserver = new ResizeObserver(() => {
+		const measure = () => {
 			const rowItems = Array.from(measuringRow.children, (item) =>
 				item instanceof HTMLElement ? item.getBoundingClientRect().width : 0,
 			);
@@ -58,11 +59,16 @@
 				gap: Number.parseFloat(getComputedStyle(measuringRow).columnGap) || 0,
 				primaryReadableWidth: PRIMARY_CATEGORY_READABLE_WIDTH_REM * rootFontSize,
 			};
-		});
-		// The measuring row resizes when labels change or fonts load; the lane when columns do.
-		resizeObserver.observe(lane);
-		resizeObserver.observe(measuringRow);
-		return () => resizeObserver.disconnect();
+		};
+		// The measuring row resizes when labels change or fonts load; the lane when columns do. One
+		// shared observer reads every lane before Svelte re-renders any of them; an observer per card
+		// re-rendered between callbacks and forced a fresh layout for each card.
+		const stopObservingLane = observeResize(lane, measure);
+		const stopObservingRow = observeResize(measuringRow, measure);
+		return () => {
+			stopObservingLane();
+			stopObservingRow();
+		};
 	}
 </script>
 

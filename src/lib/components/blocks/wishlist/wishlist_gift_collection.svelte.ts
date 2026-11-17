@@ -10,6 +10,7 @@ import {
 	GIFT_GROUPING_OPTIONS,
 	type GiftByRole,
 	type GiftForVisitor,
+	type GiftUnreserveHandler,
 	type GiftGroupingOption,
 } from '$lib/modules/gifts/types.js';
 import type { WishlistRole } from '$lib/modules/wishlists/types.js';
@@ -19,6 +20,9 @@ import {
 	type GiftDisplayGiftRow,
 	type GiftReorderPlacementCommitHandler,
 } from './gift_reorder_view.svelte.js';
+import { GIFT_DISPLAY_ROW_KINDS } from './gift_section_rows.js';
+import { giftImageLoadPriorities } from './gift_image_load_priority.js';
+import { createProgressiveGiftRows } from './progressive_gift_rows.svelte.js';
 
 /** Props shared by the gift collections: the Card grid and the List view. */
 export interface WishlistGiftCollectionProps {
@@ -29,7 +33,7 @@ export interface WishlistGiftCollectionProps {
 	reorderEnabled: boolean;
 	onedit: (gift: GiftByRole) => void;
 	onreserve: (gift: GiftForVisitor) => void;
-	onunreserve: (gift: GiftForVisitor) => void;
+	onunreserve: GiftUnreserveHandler;
 	onreceived: (giftId: string, received: boolean) => void;
 	receivedPendingGiftIds?: ReadonlySet<string>;
 	onreorderpreview: (orderedIds: string[]) => void;
@@ -57,6 +61,7 @@ export interface WishlistGiftCollectionProps {
 export function createWishlistGiftCollectionView(
 	getCollection: () => WishlistGiftCollectionProps,
 	getContainer: () => HTMLElement | null,
+	initialGiftLimit = Number.POSITIVE_INFINITY,
 ) {
 	const collection = $derived(getCollection());
 	const selectionMode = $derived(collection.selectionMode ?? false);
@@ -72,6 +77,20 @@ export function createWishlistGiftCollectionView(
 		onCommitPlacement: (placement) => collection.onreorderplacementcommit?.(placement) ?? false,
 		onCancelPlacement: () => collection.onreorderplacementcancel?.(),
 	});
+
+	const progressiveRows = createProgressiveGiftRows({
+		getRows: () => reorderView.displayRows,
+		initialGiftLimit,
+		needsEveryGift: () => selectionMode || collection.reorderEnabled,
+	});
+
+	const imageLoadPriorities = $derived(
+		giftImageLoadPriorities(
+			reorderView.displayRows.flatMap((row) =>
+				row.kind === GIFT_DISPLAY_ROW_KINDS.gift ? [row.gift] : [],
+			),
+		),
+	);
 
 	function sectionHeaderProps(section: GiftSection) {
 		return {
@@ -106,6 +125,7 @@ export function createWishlistGiftCollectionView(
 		return {
 			gift: previewed.gift,
 			livePreview: previewed.livePreview,
+			imageLoadPriority: imageLoadPriorities.get(gift.id),
 			role: collection.role,
 			isArchived: collection.isArchived,
 			hideReservationState: collection.hideReservationState,
@@ -130,7 +150,11 @@ export function createWishlistGiftCollectionView(
 			return reorderView.announcement;
 		},
 		get displayRows() {
-			return reorderView.displayRows;
+			return progressiveRows.rows;
+		},
+		/** True while later gifts are still mounting after the collection's first paint. */
+		get mounting() {
+			return !progressiveRows.complete;
 		},
 		sectionHeaderProps,
 		giftItemProps,

@@ -66,6 +66,7 @@ const visitorGift: GiftForVisitor = {
 	reserverNames: ['Petr Svoboda'],
 	myReservationId: null,
 	myReservationPurchasedAt: null,
+	myReservationQuantity: 0,
 };
 
 const RESERVATION_AND_LIKE_FIELDS = [
@@ -172,8 +173,8 @@ describe('projectAgentWishlist', () => {
 	}
 
 	it('exposes a prepared demo cover by its site path unchanged', () => {
-		expect(projectRowWithBackground(null, '/demo/wishlists/x.webp').imageUrl).toBe(
-			'/demo/wishlists/x.webp',
+		expect(projectRowWithBackground(null, '/demo/v1/wishlists/x.webp').imageUrl).toBe(
+			'/demo/v1/wishlists/x.webp',
 		);
 	});
 

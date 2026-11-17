@@ -1,6 +1,10 @@
 import '../../../../app.css';
 import { render } from 'vitest-browser-svelte';
 import { describe, expect, it, vi } from 'vitest';
+import {
+	libraryFileUrlPattern,
+	librarySrcsetPattern,
+} from '$lib/theme/wishlist_background_library.test_fixtures.js';
 import type { WishlistThemeArt } from '$lib/theme/wishlist_theme_art/index.js';
 import {
 	DEFAULT_WISHLIST_BACKGROUND,
@@ -18,13 +22,13 @@ vi.mock('$lib/theme/wishlist_background_library.json', () => ({
 			id: 'toys-illustrated',
 			themeId: 'toys',
 			variant: 'illustrated',
-			widthsByMode: { light: [1280, 2560], dark: [1280, 2560] },
+			widthsByMode: { light: [1280, 1672], dark: [1280, 1672] },
 		},
 		{
 			id: 'space-photo',
 			themeId: 'space',
 			variant: 'photo',
-			widthsByMode: { light: [1280, 2560], dark: [1280, 2560] },
+			widthsByMode: { light: [1280, 1672], dark: [1280, 1672] },
 		},
 	],
 }));
@@ -128,14 +132,14 @@ describe('WishlistThemeBackdrop', () => {
 	it('shows the custom photo at its focal point under the chosen dim', async () => {
 		const container = await renderBackdrop({
 			mode: 'custom',
-			imageUrl: '/demo/playground/advent.jpg',
+			imageUrl: '/demo/v1/playground/advent.jpg',
 			background: { placement: 'full', dim: 35, focal: { x: 20, y: 70 } },
 		});
 		const photo = container.querySelector<HTMLImageElement>(
 			'[data-testid="wishlist-backdrop-photo"]',
 		);
 
-		expect(photo?.getAttribute('src')).toBe('/demo/playground/advent.jpg');
+		expect(photo?.getAttribute('src')).toBe('/demo/v1/playground/advent.jpg');
 		expect(photo?.getAttribute('alt')).toBe('');
 		expect(getComputedStyle(photo!).objectPosition).toBe('20% 70%');
 		const backdrop = container.querySelector<HTMLElement>(
@@ -145,7 +149,7 @@ describe('WishlistThemeBackdrop', () => {
 		expect(container.querySelector('[data-testid="wishlist-backdrop-motif"]')).toBeNull();
 	});
 
-	it('shows a library image like a custom photo, from its static files', async () => {
+	it('shows a library image like a custom photo, from its bundled files', async () => {
 		const container = await renderBackdrop({
 			mode: 'library',
 			background: {
@@ -159,11 +163,12 @@ describe('WishlistThemeBackdrop', () => {
 			'[data-testid="wishlist-backdrop-photo"]',
 		);
 
-		expect(photo?.getAttribute('src')).toMatch(
-			/\/wishlist-backgrounds\/space-photo-light-2560\.webp$/,
-		);
+		expect(photo?.getAttribute('src')).toMatch(libraryFileUrlPattern('space-photo-light-1672'));
 		expect(photo?.getAttribute('srcset')).toMatch(
-			/space-photo-light-1280\.webp 1280w, .*space-photo-light-2560\.webp 2560w$/,
+			librarySrcsetPattern([
+				['space-photo-light-1280', 1280],
+				['space-photo-light-1672', 1672],
+			]),
 		);
 		expect(photo?.getAttribute('alt')).toBe('');
 		expect(getComputedStyle(photo!).objectPosition).toBe('20% 70%');
@@ -190,8 +195,8 @@ describe('WishlistThemeBackdrop', () => {
 	});
 
 	it.each([
-		['light', /toys-illustrated-light-2560\.webp$/],
-		['dark', /toys-illustrated-dark-2560\.webp$/],
+		['light', libraryFileUrlPattern('toys-illustrated-light-1672')],
+		['dark', libraryFileUrlPattern('toys-illustrated-dark-1672')],
 	] as const)(
 		'shows the %s file of a library image that has both, without the dark-mode dim',
 		async (viewerMode, expectedSource) => {
@@ -242,7 +247,7 @@ describe('WishlistThemeBackdrop', () => {
 		async (viewerMode, dimmed) => {
 			const container = await renderBackdrop({
 				mode: 'custom',
-				imageUrl: '/demo/playground/advent.jpg',
+				imageUrl: '/demo/v1/playground/advent.jpg',
 				background: { placement: 'full', dim: 20 },
 				viewerMode,
 			});
@@ -259,7 +264,7 @@ describe('WishlistThemeBackdrop', () => {
 	it('keeps the dark-mode dim on the phone strip, where the manager dim is off', async () => {
 		const container = await renderBackdrop({
 			mode: 'custom',
-			imageUrl: '/demo/playground/advent.jpg',
+			imageUrl: '/demo/v1/playground/advent.jpg',
 			background: { placement: 'full', dim: 20 },
 			viewerMode: 'dark',
 			contentWidth: 400,
@@ -289,4 +294,43 @@ describe('WishlistThemeBackdrop', () => {
 
 		expect(motif!.getAnimations().length).toBeGreaterThan(0);
 	});
+});
+
+describe('Wishlist page shell over the backdrop strip', () => {
+	function shellTopPadding(contentWidth: number, attributes: Record<string, string>): string {
+		const scroller = document.createElement('div');
+		scroller.style.cssText = `container: app-content / inline-size; width: ${String(contentWidth)}px`;
+		const shell = document.createElement('div');
+		shell.className = 'wishlist-page-shell';
+		shell.dataset.wishlistBackdrop = '';
+		for (const [name, value] of Object.entries(attributes)) {
+			shell.setAttribute(name, value);
+		}
+		scroller.append(shell);
+		document.body.append(scroller);
+		const paddingTop = getComputedStyle(shell).paddingTop;
+		scroller.remove();
+		return paddingTop;
+	}
+
+	const themeBackground = { 'data-wishlist-background': 'theme' };
+	const gutterPhoto = {
+		'data-wishlist-background': 'library',
+		'data-wishlist-placement': 'gutters',
+	};
+	const fullPhoto = { 'data-wishlist-background': 'library', 'data-wishlist-placement': 'full' };
+
+	it.each([themeBackground, gutterPhoto, fullPhoto])(
+		'lets the header overlap the 68px phone strip by 4px for %o',
+		(attributes) => {
+			expect(shellTopPadding(390, attributes)).toBe('64px');
+		},
+	);
+
+	it.each([themeBackground, gutterPhoto])(
+		'tucks the header into the 84px strip by the layout gap for %o',
+		(attributes) => {
+			expect(shellTopPadding(800, attributes)).toBe('60px');
+		},
+	);
 });

@@ -40,7 +40,7 @@ describe('GiftDraftGrid numeric inputs', () => {
 });
 
 describe('GiftDraftGrid row motion', () => {
-	it('adds a stable-identity row at its final position and expands it in place over 520 ms', async () => {
+	it('adds a stable-identity row at its final position and expands it in place over 280 ms', async () => {
 		const onchange = vi.fn();
 		const animations: Array<{
 			element: HTMLElement;
@@ -85,7 +85,7 @@ describe('GiftDraftGrid row motion', () => {
 				{ height: expect.any(String), opacity: 1, overflow: 'clip' },
 			],
 			options: {
-				duration: 520,
+				duration: 280,
 				easing: 'cubic-bezier(0.2, 0.7, 0.3, 1)',
 			},
 		});
@@ -94,7 +94,7 @@ describe('GiftDraftGrid row motion', () => {
 		animate.mockRestore();
 	});
 
-	it('keeps a removed row local for 440 ms before stable siblings settle over 520 ms', async () => {
+	it('keeps a removed row local for 220 ms before stable siblings settle over 280 ms', async () => {
 		const onchange = vi.fn();
 		let finishRemoval!: () => void;
 		const removalFinished = new Promise<void>((resolve) => (finishRemoval = resolve));
@@ -116,7 +116,7 @@ describe('GiftDraftGrid row motion', () => {
 			});
 			return {
 				cancel: vi.fn(),
-				finished: typedOptions.duration === 440 ? removalFinished : Promise.resolve(),
+				finished: typedOptions.duration === 220 ? removalFinished : Promise.resolve(),
 				addEventListener: vi.fn(),
 			} as unknown as Animation;
 		});
@@ -147,7 +147,7 @@ describe('GiftDraftGrid row motion', () => {
 		await screen.getByRole('button', { name: m.draft_grid_remove_row() }).first().click();
 		await vi.waitFor(() => expect(latestChange(onchange).selectedCount).toBe(1));
 		expect(screen.container.querySelectorAll('[data-gift-item]')).toHaveLength(2);
-		expect(animations.filter(({ options }) => options.duration === 440)).toHaveLength(1);
+		expect(animations.filter(({ options }) => options.duration === 220)).toHaveLength(1);
 
 		finishRemoval();
 		await vi.waitFor(() =>
@@ -157,7 +157,7 @@ describe('GiftDraftGrid row motion', () => {
 			animations.some(
 				({ element, keyframes, options }) =>
 					element === survivor &&
-					options.duration === 520 &&
+					options.duration === 280 &&
 					keyframes.some((frame) => 'transform' in frame),
 			),
 		).toBe(true);
@@ -186,7 +186,7 @@ describe('GiftDraftGrid row motion', () => {
 			});
 			return {
 				cancel: vi.fn(),
-				finished: typedOptions.duration === 440 ? removalFinished : Promise.resolve(),
+				finished: typedOptions.duration === 220 ? removalFinished : Promise.resolve(),
 				addEventListener: vi.fn(),
 			} as unknown as Animation;
 		});
@@ -217,10 +217,10 @@ describe('GiftDraftGrid row motion', () => {
 
 		await screen.getByRole('button', { name: m.draft_grid_remove_row() }).first().click();
 		await vi.waitFor(() =>
-			expect(animations.filter(({ options }) => options.duration === 440)).toHaveLength(1),
+			expect(animations.filter(({ options }) => options.duration === 220)).toHaveLength(1),
 		);
 
-		const exit = animations.find(({ options }) => options.duration === 440);
+		const exit = animations.find(({ options }) => options.duration === 220);
 		expectPixelsNear(survivor.getBoundingClientRect().top, survivorTopBefore);
 		expect(exit?.element).toBe(removed);
 		expect(exit?.keyframes).toEqual([
@@ -247,12 +247,12 @@ describe('GiftDraftGrid row motion', () => {
 		await vi.waitFor(() =>
 			expect(
 				animations.filter(
-					({ element, options }) => element === survivor && options.duration === 520,
+					({ element, options }) => element === survivor && options.duration === 280,
 				),
 			).toHaveLength(1),
 		);
 		const settlement = animations.find(
-			({ element, options }) => element === survivor && options.duration === 520,
+			({ element, options }) => element === survivor && options.duration === 280,
 		);
 		expect(settlement?.keyframes).toEqual([
 			{ transform: 'translate(0px, 100px)' },
@@ -260,7 +260,7 @@ describe('GiftDraftGrid row motion', () => {
 		]);
 		expect(
 			animations.some(
-				({ element, options }) => element === removed && options.duration === 520,
+				({ element, options }) => element === removed && options.duration === 280,
 			),
 		).toBe(false);
 		animate.mockRestore();
@@ -277,13 +277,13 @@ describe('GiftDraftGrid row motion', () => {
 			_keyframes,
 			options,
 		) {
-			if ((options as KeyframeAnimationOptions).duration === 440) {
+			if ((options as KeyframeAnimationOptions).duration === 220) {
 				removedIds.push((this as HTMLElement).dataset.giftId ?? '');
 			}
 			return {
 				cancel: vi.fn(),
 				finished:
-					(options as KeyframeAnimationOptions).duration === 440
+					(options as KeyframeAnimationOptions).duration === 220
 						? finished
 						: Promise.resolve(),
 				addEventListener: vi.fn(),
@@ -342,7 +342,7 @@ describe('GiftDraftGrid row motion', () => {
 		);
 
 		const exits = animate.mock.calls.filter(
-			([, options]) => (options as KeyframeAnimationOptions).duration === 440,
+			([, options]) => (options as KeyframeAnimationOptions).duration === 220,
 		);
 		expect(exits.length).toBeLessThanOrEqual(16);
 		expect(giftQueries).toBeLessThanOrEqual(3);
@@ -361,7 +361,7 @@ describe('GiftDraftGrid row motion', () => {
 		const animate = vi
 			.spyOn(HTMLElement.prototype, 'animate')
 			.mockImplementation((_keyframes, options) =>
-				(options as KeyframeAnimationOptions).duration === 440
+				(options as KeyframeAnimationOptions).duration === 220
 					? removal
 					: ({
 							cancel: vi.fn(),

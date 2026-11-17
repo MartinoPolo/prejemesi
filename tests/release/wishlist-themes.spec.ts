@@ -2,6 +2,7 @@ import { test, expect, type Locator, type Page } from '@playwright/test';
 import { createTestUser } from '../e2e/fixtures/test-data.js';
 import { registerAndGetPage } from '../e2e/fixtures/auth-helpers.js';
 import {
+	addGift,
 	createWishlistAndNavigate,
 	waitForDialogOverlayRemoval,
 } from '../e2e/fixtures/wishlist-helpers.js';
@@ -135,5 +136,115 @@ test('the OS reduced-motion setting stops the backdrop drift', async ({
 
 	await page.emulateMedia({ reducedMotion: 'reduce' });
 	await expect.poll(async () => Math.max(...(await motifAnimationCounts(page)))).toBe(0);
+	await page.context().close();
+});
+
+/**
+ * Over a backdrop the sticky toolbar blurs gifts scrolling under it instead of hiding them: the
+ * mask still blocks clicks, gifts showing through the fade below the toolbar stay clickable, and
+ * the mask carries no property that would make it a backdrop root and silently drop the blur.
+ */
+test('over a backdrop the toolbar mask blocks clicks while gifts below the toolbar stay clickable', async ({
+	browser,
+	request,
+	baseURL,
+}) => {
+	const page = await registerAndGetPage(browser, request, baseURL!, createTestUser('themes'));
+	await page.setViewportSize({ width: 1920, height: 1000 });
+	await createWishlistAndNavigate(page, 'Motivy rozmazání E2E');
+	const dialog = await openAppearanceSettings(page);
+	await dialog.getByRole('radio', { name: 'Vánoce', exact: true }).click();
+	await saveSettings(page, dialog);
+	await expect(page.getByTestId('wishlist-page-shell')).toHaveAttribute(
+		'data-wishlist-backdrop',
+		'',
+	);
+
+	const scroller = page.locator('.app-content');
+	const toolbar = page.getByTestId('wishlist-toolbar');
+	const mask = page.getByTestId('wishlist-toolbar-mask');
+	const gift = page.locator('[data-gift-item]').first();
+	const giftTopBelowScrollport = async () =>
+		(await gift.boundingBox())!.y - (await scroller.boundingBox())!.y;
+	const scrollShortfall = async () =>
+		(await giftTopBelowScrollport()) -
+		(await scroller.evaluate(
+			(element) => element.scrollHeight - element.clientHeight - element.scrollTop,
+		));
+
+	await addGift(page, 'Dárek 1');
+	for (let giftCount = 2; (await scrollShortfall()) > 0; giftCount++) {
+		expect(giftCount, 'enough gifts to scroll one under the toolbar').toBeLessThanOrEqual(16);
+		await addGift(page, `Dárek ${giftCount}`);
+	}
+	await page.evaluate(() => document.fonts.ready.then(() => undefined));
+
+	await scroller.evaluate(
+		(element, top) => element.scrollBy({ top, behavior: 'instant' }),
+		await giftTopBelowScrollport(),
+	);
+	await expect
+		.poll(async () => Math.abs(await giftTopBelowScrollport()), {
+			message: 'the gift top reaches the scrollport top, under the sticky toolbar',
+		})
+		.toBeLessThan(1);
+
+	const scrollportTop = (await scroller.boundingBox())!.y;
+	const toolbarBox = (await toolbar.boundingBox())!;
+	const giftBox = (await gift.boundingBox())!;
+	const giftCenterX = giftBox.x + giftBox.width / 2;
+	expect(toolbarBox.y, 'the toolbar sticks below the scrollport top').toBeGreaterThan(
+		scrollportTop + 2,
+	);
+	expect(giftBox.y + giftBox.height, 'the gift reaches past the toolbar').toBeGreaterThan(
+		toolbarBox.y + toolbarBox.height + 16,
+	);
+
+	const abovePoint = { x: giftCenterX, y: (scrollportTop + toolbarBox.y) / 2 };
+	await expect
+		.poll(
+			() =>
+				mask.evaluate(
+					(element, point) => document.elementFromPoint(point.x, point.y) === element,
+					abovePoint,
+				),
+			{ message: 'the mask blocks clicks above the toolbar' },
+		)
+		.toBe(true);
+
+	const belowPoint = { x: giftCenterX, y: toolbarBox.y + toolbarBox.height + 8 };
+	await expect
+		.poll(
+			() =>
+				gift.evaluate(
+					(element, point) =>
+						element.contains(document.elementFromPoint(point.x, point.y)),
+					belowPoint,
+				),
+			{ message: 'the gift showing through the fade below the toolbar stays clickable' },
+		)
+		.toBe(true);
+
+	expect(
+		await mask.evaluate((element) => {
+			const style = getComputedStyle(element);
+			return {
+				backdropFilter: style.backdropFilter,
+				filter: style.filter,
+				maskImage: style.maskImage,
+				clipPath: style.clipPath,
+				opacity: style.opacity,
+				mixBlendMode: style.mixBlendMode,
+			};
+		}),
+		'a backdrop root on the mask would leave its ::after nothing to blur',
+	).toEqual({
+		backdropFilter: 'none',
+		filter: 'none',
+		maskImage: 'none',
+		clipPath: 'none',
+		opacity: '1',
+		mixBlendMode: 'normal',
+	});
 	await page.context().close();
 });

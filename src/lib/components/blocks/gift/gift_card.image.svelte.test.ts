@@ -4,6 +4,7 @@ import { render } from 'vitest-browser-svelte';
 import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
 import { WISHLIST_ROLES } from '$lib/modules/wishlists/types.js';
 import * as m from '$lib/paraglide/messages.js';
+import { expectPhotoEdgeToEdge } from '$lib/components/derived/image-frame/image_frame.test_fixtures.js';
 import {
 	IMAGE_URL,
 	GiftCardTestHost,
@@ -68,7 +69,7 @@ describe('GiftCard saved composition containment', () => {
 			await expect
 				.poll(() =>
 					collection
-						.querySelector<HTMLElement>('[data-testid="gift-card-surface"]')
+						.querySelector<HTMLElement>('[data-testid="gift-card-image-frame"]')
 						?.style.getPropertyValue('--gift-card-image-track-height'),
 				)
 				.toBeTruthy();
@@ -299,7 +300,7 @@ describe('GiftCard image background fill (issue #252)', () => {
 		expect(cardFrame.querySelector('[data-testid="gift-card-image-pattern"]')).toBeTruthy();
 	});
 
-	it('removes only the mobile Fit mat padding while preserving desktop framing', async () => {
+	it('draws Fit edge to edge, as the editor stage does, on mobile and desktop', async () => {
 		await page.viewport(390, 720);
 		const host = await renderCardInGridColumn(
 			makeVisitorGift({ imageUrl: IMAGE_URL, imageMeta: imageMeta('#ffffff') }),
@@ -328,10 +329,11 @@ describe('GiftCard image background fill (issue #252)', () => {
 			expectPixelsNear(cropRect.top + cropRect.height / 2, contentCenter);
 		};
 
-		expect(getComputedStyle(image).padding).toBe('0px');
+		// The tall photo spans the 4:3 frame's height, with fill only at the sides.
+		await expectPhotoEdgeToEdge(frame, image, 'height');
 		expectStableComposition();
 		await page.viewport(800, 720);
-		expect(getComputedStyle(image).padding).toBe('8px');
+		await expectPhotoEdgeToEdge(frame, image, 'height');
 		expectStableComposition();
 	});
 });

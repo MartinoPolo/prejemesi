@@ -19,7 +19,7 @@
 	data-slot="switch"
 	data-size={size}
 	class={cn(
-		'data-checked:bg-primary data-unchecked:bg-switch-track focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-invalid-ring aria-invalid:border-invalid-border shrink-0 rounded-full border-2 border-edge-control focus-visible:ring-3 aria-invalid:ring-3 data-[size=default]:h-[22px] data-[size=default]:w-9 data-[size=sm]:h-4 data-[size=sm]:w-7 peer group/switch relative inline-flex items-center transition-all outline-none after:absolute after:-inset-x-3 after:-inset-y-2 data-disabled:cursor-not-allowed data-disabled:opacity-50',
+		'data-checked:bg-primary data-unchecked:bg-switch-track focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-invalid-ring aria-invalid:border-invalid-border shrink-0 rounded-full border-2 border-edge-control focus-visible:ring-3 aria-invalid:ring-3 data-[size=default]:h-[22px] data-[size=default]:w-9 data-[size=sm]:h-4 data-[size=sm]:w-7 peer group/switch relative inline-flex items-center transition-[background-color,border-color,box-shadow] outline-none after:absolute after:-inset-x-3 after:-inset-y-2 data-disabled:cursor-not-allowed data-disabled:opacity-50',
 		className,
 	)}
 	{...restProps}

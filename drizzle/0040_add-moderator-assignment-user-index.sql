@@ -1,0 +1,1 @@
+CREATE INDEX "moderator_assignment_user_active_idx" ON "moderator_assignment" USING btree ("user_id") WHERE "moderator_assignment"."deleted_at" IS NULL;

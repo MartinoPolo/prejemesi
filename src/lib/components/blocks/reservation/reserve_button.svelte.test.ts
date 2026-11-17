@@ -3,6 +3,7 @@ import { page } from 'vitest/browser';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { GiftForVisitor } from '$lib/modules/gifts/types.js';
 import * as m from '$lib/paraglide/messages.js';
+import { STANDARD_EASING } from '$lib/motion/motion_tokens.js';
 
 const { default: ReserveButton } = await import('./ReserveButton.svelte');
 
@@ -37,6 +38,7 @@ function makeGift(overrides: Partial<GiftForVisitor> = {}): GiftForVisitor {
 		reserverNames: [],
 		myReservationId: null,
 		myReservationPurchasedAt: null,
+		myReservationQuantity: 0,
 		...overrides,
 	};
 }
@@ -71,7 +73,10 @@ describe('ReserveButton', () => {
 			m.reserve_button_cancel_aria({ name: 'Kolo' }),
 		);
 		expect(animate.mock.instances[0]).toBe(content);
-		expect(animate).toHaveBeenCalledWith([{ opacity: 0 }, { opacity: 1 }], { duration: 160 });
+		expect(animate).toHaveBeenCalledWith([{ opacity: 0 }, { opacity: 1 }], {
+			duration: 160,
+			easing: STANDARD_EASING,
+		});
 
 		finishAnimation();
 		await expect.element(page.getByText(m.reserve_button_cancel())).toBeVisible();
@@ -96,9 +101,25 @@ describe('ReserveButton', () => {
 		expect(animate).toHaveBeenCalledTimes(1);
 		await expect.element(page.getByText(m.reserve_button_reserve())).toBeVisible();
 
-		await screen.rerender({ gift: ownReservation });
+		await screen.rerender({ gift: makeGift({ myReservationId: 'reservation-2' }) });
 		await expect.element(page.getByText(m.reserve_button_reserved())).toBeVisible();
 		expect(animate).toHaveBeenCalledTimes(2);
+	});
+
+	it('does not acknowledge the same reservation returning after a failed cancel', async () => {
+		const animate = vi.spyOn(HTMLElement.prototype, 'animate');
+		const ownReservation = makeGift({ myReservationId: 'reservation-1' });
+		const screen = await render(ReserveButton, { gift: ownReservation });
+
+		await screen.rerender({
+			gift: makeGift({ reservedCount: 0, isFullyReserved: false, myReservationId: null }),
+		});
+		await expect.element(page.getByText(m.reserve_button_reserve())).toBeVisible();
+		await screen.rerender({ gift: ownReservation });
+
+		await expect.element(page.getByText(m.reserve_button_cancel())).toBeVisible();
+		expect(page.getByText(m.reserve_button_reserved()).query()).toBeNull();
+		expect(animate).not.toHaveBeenCalled();
 	});
 
 	it('does not visually confirm when reserving leaves authoritative props unchanged', async () => {
@@ -173,6 +194,31 @@ describe('ReserveButton', () => {
 			.getByRole('button', { name: m.reserve_button_cancel_aria({ name: 'Kolo' }) })
 			.click();
 		expect(onunreserve).toHaveBeenCalledOnce();
+	});
+
+	it('sends one cancel for a double click and re-enables once it settles', async () => {
+		let settle!: () => void;
+		const onunreserve = vi.fn(
+			() =>
+				new Promise<void>((resolve) => {
+					settle = resolve;
+				}),
+		);
+		await render(ReserveButton, {
+			gift: makeGift({ myReservationId: 'reservation-1' }),
+			onunreserve,
+		});
+		const cancel = page.getByRole('button', {
+			name: m.reserve_button_cancel_aria({ name: 'Kolo' }),
+		});
+
+		await cancel.click();
+		await expect.element(cancel).toBeDisabled();
+		await cancel.click({ force: true });
+		expect(onunreserve).toHaveBeenCalledOnce();
+
+		settle();
+		await expect.element(cancel).toBeEnabled();
 	});
 
 	it('preserves reserving an available gift on an active wishlist', async () => {

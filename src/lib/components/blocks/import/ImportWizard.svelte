@@ -31,8 +31,9 @@
 		resetDuplicateAwareImportState,
 		submitDuplicateAwareImport,
 	} from '$lib/modules/import/duplicate_aware_submission.js';
-	import { findDuplicates } from '$lib/modules/gifts/gift_draft.js';
+	import { createDuplicateFinder } from '$lib/modules/gifts/gift_draft.js';
 	import ArrowLeftIcon from '@lucide/svelte/icons/arrow-left';
+	import { STANDARD_EASING } from '$lib/motion/motion_tokens.js';
 	import { onDestroy } from 'svelte';
 
 	/**
@@ -155,7 +156,7 @@
 					{ opacity: 0, transform: `translateX(${to > from ? 10 : -10}px)` },
 					{ opacity: 1, transform: 'translateX(0)' },
 				],
-				{ duration: 180, easing: 'cubic-bezier(0.2, 0.7, 0.3, 1)' },
+				{ duration: 180, easing: STANDARD_EASING },
 			),
 		);
 
@@ -174,7 +175,7 @@
 						{ transform: `scaleX(${wasComplete ? 1 : 0})` },
 						{ transform: `scaleX(${isComplete ? 1 : 0})` },
 					],
-					{ duration: 220, easing: 'cubic-bezier(0.2, 0.7, 0.3, 1)' },
+					{ duration: 220, easing: STANDARD_EASING },
 				),
 			);
 		}
@@ -201,8 +202,9 @@
 			return 0;
 		}
 		let count = 0;
+		const findExistingDuplicates = createDuplicateFinder(existingGifts);
 		for (const draft of selectedDrafts) {
-			if (findDuplicates(draft, existingGifts).length > 0) {
+			if (findExistingDuplicates(draft).length > 0) {
 				count++;
 			}
 		}
@@ -401,7 +403,7 @@
 </script>
 
 <Dialog.Root {open} onOpenChange={handleOpenChange}>
-	<Dialog.Content layout="scroll" class="{dialogWidth} transition-[max-width] duration-200">
+	<Dialog.Content layout="scroll" class={dialogWidth}>
 		<Dialog.Header divided>
 			<Dialog.Title data-testid="import-wizard-title-row"
 				>{m.import_wizard_title()}</Dialog.Title

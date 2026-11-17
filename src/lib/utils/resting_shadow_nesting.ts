@@ -1,3 +1,5 @@
+import { observeResize } from './shared_resize_observer.js';
+
 export function restingShadowNesting(node: HTMLElement, borderSurface: HTMLElement = node) {
 	let observedSurface = borderSurface;
 	const previousInline = node.style.getPropertyValue('--nested-border-inline');
@@ -9,28 +11,29 @@ export function restingShadowNesting(node: HTMLElement, borderSurface: HTMLEleme
 			'--nested-border-inline': style.borderRightWidth,
 			'--nested-border-block': style.borderBottomWidth,
 		};
-		for (const [property, value] of Object.entries(values)) {
-			if (node.style.getPropertyValue(property) !== value) {
-				node.style.setProperty(property, value);
+		return () => {
+			for (const [property, value] of Object.entries(values)) {
+				if (node.style.getPropertyValue(property) !== value) {
+					node.style.setProperty(property, value);
+				}
 			}
-		}
+		};
 	}
 
-	const observer = new ResizeObserver(measureBorder);
-	observer.observe(observedSurface);
-	window.addEventListener('resize', measureBorder);
-	measureBorder();
+	// Under border-box sizing a border change resizes the content box, so the resize observer also
+	// catches breakpoint border changes without a window resize listener per surface. Its initial
+	// delivery measures after layout and before paint; reading the computed style while a list is
+	// still being inserted would force a style recalculation per surface.
+	let unobserve = observeResize(observedSurface, measureBorder);
 
 	return {
 		update(nextSurface: HTMLElement = node) {
-			observer.unobserve(observedSurface);
+			unobserve();
 			observedSurface = nextSurface;
-			observer.observe(observedSurface);
-			measureBorder();
+			unobserve = observeResize(observedSurface, measureBorder);
 		},
 		destroy() {
-			observer.disconnect();
-			window.removeEventListener('resize', measureBorder);
+			unobserve();
 			for (const [property, value] of [
 				['--nested-border-inline', previousInline],
 				['--nested-border-block', previousBlock],

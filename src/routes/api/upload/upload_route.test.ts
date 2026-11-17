@@ -27,6 +27,7 @@ vi.mock('$lib/server/storage/r2.js', () => ({
 		'wishlist-banner': 'wishlists',
 		'avatar-image': 'avatars',
 	},
+	UPLOADED_OBJECT_CACHE_CONTROL: 'public, max-age=31536000, immutable',
 }));
 vi.mock('$lib/server/crypto/upload_token.js', () => ({
 	verifyUploadToken,
@@ -78,6 +79,7 @@ describe('upload GET source precedence', () => {
 		expect(response.status).toBe(200);
 		expect([...new Uint8Array(await response.arrayBuffer())]).toEqual([2]);
 		expect(response.headers.get('etag')).toBe('r2-etag');
+		expect(response.headers.get('cache-control')).toBe('public, max-age=31536000, immutable');
 	});
 
 	it('serves an existing local upload before the filesystem seed cache', async () => {

@@ -40,7 +40,7 @@
 
 	@media (prefers-reduced-motion: no-preference) {
 		:global(.active-filter-count) {
-			animation: active-filter-count-acknowledge 220ms cubic-bezier(0.2, 0.7, 0.3, 1);
+			animation: active-filter-count-acknowledge 220ms var(--ease-standard);
 		}
 	}
 </style>

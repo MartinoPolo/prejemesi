@@ -8,7 +8,7 @@
 	import { SimpleTooltip } from '$lib/components/base/tooltip/index.js';
 	import { cn } from '$lib/utils.js';
 	import {
-		findDuplicates,
+		createDuplicateFinder,
 		validateDraft,
 		type GiftDraft,
 	} from '$lib/modules/gifts/gift_draft.js';
@@ -23,6 +23,7 @@
 	import GiftDraftBulkBar from './GiftDraftBulkBar.svelte';
 	import GiftDraftStatusLegend from './GiftDraftStatusLegend.svelte';
 	import { createIdentityLayoutMotion } from '$lib/motion/layout_motion.js';
+	import { STANDARD_EASING } from '$lib/motion/motion_tokens.js';
 	import {
 		DRAFT_GRID_COLUMNS,
 		DRAFT_GRID_COLUMNS_NO_PRIORITY,
@@ -39,9 +40,8 @@
 		type ExistingGiftRef,
 	} from './gift_draft_grid_model.js';
 
-	const STANDARD_EASING = 'cubic-bezier(0.2, 0.7, 0.3, 1)';
-	const ROW_INSERT_DURATION = 520;
-	const ROW_REMOVE_DURATION = 440;
+	const ROW_INSERT_DURATION = 280;
+	const ROW_REMOVE_DURATION = 220;
 	/** Keep bulk removal work local; remaining selected rows leave in the authoritative update. */
 	const BULK_EXIT_ANIMATION_LIMIT = 12;
 
@@ -109,12 +109,14 @@
 		return [];
 	}
 
+	const findExistingDuplicates = $derived(createDuplicateFinder(existingGifts));
+
 	/** A row has a possible duplicate only in import context. */
 	function rowHasDuplicateWarning(row: DraftGridRow): boolean {
 		if (context !== DRAFT_GRID_CONTEXT.import || existingGifts.length === 0) {
 			return false;
 		}
-		return findDuplicates(rowToDraft(row), existingGifts).length > 0;
+		return findExistingDuplicates(rowToDraft(row)).length > 0;
 	}
 
 	function rowStatus(row: DraftGridRow): RowStatus {

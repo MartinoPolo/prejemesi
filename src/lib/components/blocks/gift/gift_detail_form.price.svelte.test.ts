@@ -17,7 +17,7 @@ import { IMAGE_FIT_MODES } from '$lib/modules/images/index.js';
 // the SvelteKit `/api/upload` endpoint.
 vi.mock('$env/dynamic/public', () => ({ env: { PUBLIC_R2_URL: '/' } }));
 
-const { default: GiftDetailForm } = await import('./GiftDetailForm.svelte');
+const { default: GiftDetailForm } = await import('./GiftDetailFormTestFixture.svelte');
 
 const { expectPixelsNear } = createPixelAssertions(expect);
 
@@ -200,8 +200,8 @@ describe('GiftDetailForm price-range UI (issue #171)', () => {
 		});
 
 		await expect
-			.element(screen.getByRole('switch', { name: m.gift_price_range_toggle_label() }))
-			.not.toBeChecked();
+			.element(screen.getByRole('button', { name: m.gift_price_range_link() }))
+			.toHaveAttribute('aria-pressed', 'false');
 		await expect
 			.element(screen.getByRole('spinbutton', { name: m.gift_price_range_max_aria() }))
 			.not.toBeInTheDocument();
@@ -214,8 +214,8 @@ describe('GiftDetailForm price-range UI (issue #171)', () => {
 		});
 
 		await expect
-			.element(screen.getByRole('switch', { name: m.gift_price_range_toggle_label() }))
-			.toBeChecked();
+			.element(screen.getByRole('button', { name: m.gift_price_range_link() }))
+			.toHaveAttribute('aria-pressed', 'true');
 		await expect
 			.element(screen.getByRole('spinbutton', { name: m.gift_price_range_min_aria() }))
 			.toHaveValue(100);
@@ -260,7 +260,7 @@ describe('GiftDetailForm price-range UI (issue #171)', () => {
 		});
 
 		// Turn range mode on without filling the newly-revealed max bound.
-		await screen.getByRole('switch', { name: m.gift_price_range_toggle_label() }).click();
+		await screen.getByRole('button', { name: m.gift_price_range_link() }).click();
 		await screen.getByRole('button', { name: m.save() }).click();
 
 		await expect.element(screen.getByText(m.gift_price_range_required())).toBeVisible();
@@ -296,7 +296,7 @@ describe('GiftDetailForm price-range UI (issue #171)', () => {
 			onupdate,
 		});
 
-		await screen.getByRole('switch', { name: m.gift_price_range_toggle_label() }).click();
+		await screen.getByRole('button', { name: m.gift_price_range_link() }).click();
 		await expect
 			.element(screen.getByRole('spinbutton', { name: m.gift_price_range_max_aria() }))
 			.not.toBeInTheDocument();
@@ -320,7 +320,7 @@ describe('GiftDetailForm legacy `auto` normalization (issue #183 EXTRA)', () => 
 		'data:image/svg+xml,' +
 		encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="400" height="100"/>');
 
-	it('normalizes an untouched legacy auto row to the Fit toggle without dirtying the mode (REQ-8)', async () => {
+	it('shows an untouched legacy auto row as the Celý it renders and saves it unchanged (REQ-8)', async () => {
 		const onupdate = vi.fn();
 		const screen = await render(GiftDetailForm, {
 			...baseProps,
@@ -337,18 +337,14 @@ describe('GiftDetailForm legacy `auto` normalization (issue #183 EXTRA)', () => 
 			onupdate,
 		});
 
-		// The toggle normalizes to Fit once the natural ratio is measured – purely
-		// a presentation normalization (`presentedEditorMode`); the internal
-		// `editorMode` stays at its `giftEditorModeFromMeta` default (`fill` for
-		// any `auto` row) the whole time.
+		// Once measured, both views report the whole photo the surfaces render.
+		const whole = m.image_crop_whole().toLocaleLowerCase();
 		await expect
-			.element(screen.getByRole('radio', { name: m.image_fit_fit() }))
-			.toHaveAttribute('aria-checked', 'true');
+			.element(screen.getByTestId('gift-image-framing-status'))
+			.toHaveTextContent(m.gift_image_framing_status({ card: whole, list: whole }));
 
-		// Saving untouched must still persist `auto` verbatim (REQ-8). If the
-		// measurement had incorrectly dirtied the mode, `savedFitMode` would
-		// instead derive from the internal `fill` editorMode and persist
-		// `cover-crop` here.
+		// Saving untouched must still persist `auto` verbatim (REQ-8): measuring never
+		// counts as an edit.
 		await screen.getByRole('button', { name: m.save() }).click();
 
 		expect(onupdate).toHaveBeenCalledTimes(1);
@@ -364,10 +360,9 @@ describe('GiftDetailForm legacy `auto` normalization (issue #183 EXTRA)', () => 
 	});
 });
 
-describe('GiftDetailForm dense control alignment (issue #159)', () => {
+describe('GiftDetailForm dense control alignment (issues #159, #706)', () => {
 	const mobileControlHeight = 40;
 	const desktopControlHeight = 32;
-	const singleLineLabelRowHeight = 24;
 
 	const priorityLevels = [
 		{
@@ -379,128 +374,94 @@ describe('GiftDetailForm dense control alignment (issue #159)', () => {
 		},
 	];
 
-	function expectAlignedControlPair(
-		rowTestId: string,
-		firstControlSelector: string,
-		secondControlSelector: string,
-		expectedControlHeight: number,
-	): void {
-		const row = document.querySelector<HTMLElement>(`[data-testid="${rowTestId}"]`);
+	const controlSelectors = [
+		'#gift-price',
+		'[data-slot="select-trigger"]',
+		'#gift-quantity',
+		'[data-slot="select-trigger"]',
+	];
+
+	/** Renders the editor and waits for the dialog's entrance scale, which shrinks every box. */
+	async function renderSettled(props: { priorityLevels?: typeof priorityLevels }) {
+		await render(GiftDetailForm, { ...baseProps, gift: makeGift(), ...props });
+		await Promise.allSettled(document.getAnimations().map((animation) => animation.finished));
+	}
+
+	/** Cena, Měna, Počet kusů and Priorita, in that order. */
+	function rowFields(): HTMLElement[] {
+		const row = document.querySelector<HTMLElement>('[data-testid="gift-price-quantity-row"]');
 		expect(row).not.toBeNull();
-
-		const fields = [...row!.children] as HTMLElement[];
-		expect(fields.length).toBeGreaterThanOrEqual(2);
-		const [firstFieldRect, secondFieldRect] = fields
-			.slice(0, 2)
-			.map((field) => field.getBoundingClientRect());
-		expectPixelsNear(firstFieldRect.top, secondFieldRect.top);
-		expect(firstFieldRect.left).not.toBe(secondFieldRect.left);
-		expectPixelsNear(firstFieldRect.width, secondFieldRect.width);
-		expect(firstFieldRect.left).toBeLessThan(secondFieldRect.left);
-		expect(secondFieldRect.left - firstFieldRect.right).toBeGreaterThan(0);
-
-		const firstControl = fields[0]!.querySelector<HTMLElement>(firstControlSelector);
-		const secondControl = fields[1]!.querySelector<HTMLElement>(secondControlSelector);
-		expect(firstControl).not.toBeNull();
-		expect(secondControl).not.toBeNull();
-		const firstControlRect = firstControl!.getBoundingClientRect();
-		const secondControlRect = secondControl!.getBoundingClientRect();
-		expectPixelsNear(firstControlRect.height, expectedControlHeight);
-		expectPixelsNear(secondControlRect.height, expectedControlHeight);
-		expectPixelsNear(firstControlRect.top, secondControlRect.top);
-		expectPixelsNear(firstControlRect.bottom, secondControlRect.bottom);
-
-		const labelRows = fields.map((field) =>
-			field.querySelector<HTMLElement>('[data-slot="gift-form-label-row"]'),
-		);
-		expect(labelRows.every((labelRow) => labelRow !== null)).toBe(true);
-		const [firstLabelRowRect, secondLabelRowRect] = labelRows.map((labelRow) =>
-			labelRow!.getBoundingClientRect(),
-		);
-		expectPixelsNear(firstLabelRowRect.top, secondLabelRowRect.top);
-		expectPixelsNear(
-			firstControlRect.top - firstLabelRowRect.bottom,
-			Number.parseFloat(getComputedStyle(fields[0]!).rowGap),
-		);
-
-		const [firstLabelRect, secondLabelRect] = labelRows.map((labelRow) =>
-			labelRow!.querySelector('label')!.getBoundingClientRect(),
-		);
-		expectPixelsNear(firstLabelRect.top, secondLabelRect.top);
-		expectPixelsNear(firstLabelRect.bottom, secondLabelRect.bottom);
+		return [...row!.children] as HTMLElement[];
 	}
 
-	function expectWrappedPriorityControl(expectedControlHeight: number): void {
-		const row = document.querySelector<HTMLElement>(
-			'[data-testid="gift-quantity-priority-row"]',
-		);
-		const [quantityField, , priorityField] = [...row!.children] as HTMLElement[];
-		expect(priorityField).toBeDefined();
-		const priorityTrigger = priorityField!.querySelector<HTMLElement>(
-			'[data-slot="select-trigger"]',
-		);
-		expect(priorityTrigger).not.toBeNull();
-		expectPixelsNear(priorityTrigger!.getBoundingClientRect().height, expectedControlHeight);
-		expectPixelsNear(
-			priorityField!.getBoundingClientRect().top -
-				quantityField!.getBoundingClientRect().bottom,
-			Number.parseFloat(getComputedStyle(row!).rowGap),
-		);
+	function control(fields: HTMLElement[], index: number): DOMRect {
+		const element = fields[index]!.querySelector<HTMLElement>(controlSelectors[index]!);
+		expect(element).not.toBeNull();
+		return element!.getBoundingClientRect();
 	}
 
-	it('gives paired mobile controls the same large height and edges', async () => {
-		await page.viewport(390, 720);
-		await render(GiftDetailForm, { ...baseProps, gift: makeGift(), priorityLevels });
+	function labelRow(fields: HTMLElement[], index: number): DOMRect {
+		return fields[index]!.firstElementChild!.getBoundingClientRect();
+	}
 
-		expectAlignedControlPair(
-			'gift-price-currency-row',
-			'#gift-price',
-			'[data-slot="select-trigger"]',
-			mobileControlHeight,
-		);
-		expectAlignedControlPair(
-			'gift-quantity-priority-row',
-			'#gift-quantity',
-			'[data-slot="select-trigger"]',
-			mobileControlHeight,
-		);
-		expectWrappedPriorityControl(mobileControlHeight);
+	function expectLevel(fields: HTMLElement[], indexes: number[], controlHeight: number): void {
+		const [first, ...rest] = indexes;
+		for (const index of rest) {
+			expectPixelsNear(labelRow(fields, index).top, labelRow(fields, first!).top);
+			expectPixelsNear(control(fields, index).top, control(fields, first!).top);
+			expectPixelsNear(control(fields, index).bottom, control(fields, first!).bottom);
+		}
+		for (const index of indexes) {
+			expectPixelsNear(control(fields, index).height, controlHeight);
+			expect(control(fields, index).width).toBeGreaterThan(0);
+		}
+	}
+
+	it('pairs Cena with Měna and Počet kusů with Priorita on phones', async () => {
+		await page.viewport(390, 720);
+		await renderSettled({ priorityLevels });
+
+		const fields = rowFields();
+		expectLevel(fields, [0, 1], mobileControlHeight);
+		expectLevel(fields, [2, 3], mobileControlHeight);
+		expect(control(fields, 2).top).toBeGreaterThan(control(fields, 0).bottom);
+		expectPixelsNear(control(fields, 0).width, control(fields, 1).width);
 	});
 
-	it('keeps quantity and the empty category control aligned when no priorities exist', async () => {
-		await page.viewport(390, 720);
-		await render(GiftDetailForm, { ...baseProps, gift: makeGift() });
+	it('keeps Cena, Měna, Počet kusů and Priorita level in one desktop row', async () => {
+		await page.viewport(1440, 900);
+		await renderSettled({ priorityLevels });
 
-		expectAlignedControlPair(
-			'gift-quantity-priority-row',
-			'#gift-quantity',
-			'[data-slot="select-trigger"]',
-			mobileControlHeight,
-		);
+		const fields = rowFields();
+		expectLevel(fields, [0, 1, 2, 3], desktopControlHeight);
+		for (let index = 1; index < fields.length; index += 1) {
+			expect(control(fields, index).left).toBeGreaterThan(control(fields, index - 1).right);
+		}
 	});
 
-	it('keeps desktop controls level when the price-range label wraps in a narrow editor', async () => {
-		await page.viewport(660, 720);
-		await render(GiftDetailForm, { ...baseProps, gift: makeGift(), priorityLevels });
+	it('keeps the paired controls level when the price-range label wraps', async () => {
+		await page.viewport(700, 900);
+		await renderSettled({ priorityLevels });
+		const fields = rowFields();
+		const singleLineLabelHeight = labelRow(fields, 0).height;
+		// A longer translation of the range link forces Cena's label row onto two lines.
+		const rangeToggle = fields[0]!.querySelector<HTMLElement>(
+			'[data-testid="gift-price-range-toggle"]',
+		)!;
+		rangeToggle.textContent = 'Zadat cenové rozpětí od–do';
+		await new Promise((resolve) => requestAnimationFrame(resolve));
 
-		const priceLabelRow = document.querySelector<HTMLElement>(
-			'[data-testid="gift-price-currency-row"] [data-slot="gift-form-label-row"]',
-		);
-		expect(priceLabelRow!.getBoundingClientRect().height).toBeGreaterThan(
-			singleLineLabelRowHeight + 1,
-		);
-		expectAlignedControlPair(
-			'gift-price-currency-row',
-			'#gift-price',
-			'[data-slot="select-trigger"]',
-			desktopControlHeight,
-		);
-		expectAlignedControlPair(
-			'gift-quantity-priority-row',
-			'#gift-quantity',
-			'[data-slot="select-trigger"]',
-			desktopControlHeight,
-		);
-		expectWrappedPriorityControl(desktopControlHeight);
+		expect(labelRow(fields, 0).height).toBeGreaterThan(singleLineLabelHeight + 1);
+		expectLevel(fields, [0, 1], desktopControlHeight);
+		expectLevel(fields, [2, 3], desktopControlHeight);
+	});
+
+	it('keeps the row level without priorities', async () => {
+		await page.viewport(1440, 900);
+		await renderSettled({});
+
+		const fields = rowFields();
+		expect(fields).toHaveLength(3);
+		expectLevel(fields, [0, 1, 2], desktopControlHeight);
 	});
 });

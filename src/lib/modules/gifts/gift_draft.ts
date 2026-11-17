@@ -197,27 +197,38 @@ function linkKeys(links: readonly GiftLink[] | null | undefined): Set<string> {
 	return keys;
 }
 
-/**
- * Find existing gifts that duplicate `draft` by normalized name or by a shared
- * link host+path. Generic so callers passing `Gift[]` get `Gift[]` back. Output
- * preserves input order and contains no duplicates.
- */
-export function findDuplicates<T extends { name: string; links?: readonly GiftLink[] | null }>(
-	draft: Readonly<GiftDraft>,
-	existingGifts: readonly T[],
-): T[] {
-	const draftName = normalizeName(draft.name);
-	const draftKeys = linkKeys(draft.links);
+interface DuplicateCandidate {
+	name: string;
+	links?: readonly GiftLink[] | null;
+}
 
-	return existingGifts.filter((existing) => {
-		if (draftName !== '' && normalizeName(existing.name) === draftName) {
-			return true;
-		}
-		for (const key of linkKeys(existing.links)) {
-			if (draftKeys.has(key)) {
-				return true;
+/**
+ * Indexes existing gifts once so every draft (one per grid row, re-checked on each keystroke)
+ * compares against precomputed normalized names and link keys. The returned finder matches by
+ * normalized name or a shared link host+path, is generic so `Gift[]` in yields `Gift[]` out,
+ * and preserves input order without duplicates.
+ */
+export function createDuplicateFinder<T extends DuplicateCandidate>(
+	existingGifts: readonly T[],
+): (draft: Readonly<GiftDraft>) => T[] {
+	const indexed = existingGifts.map((existing) => ({
+		existing,
+		name: normalizeName(existing.name),
+		keys: linkKeys(existing.links),
+	}));
+
+	return (draft) => {
+		const draftName = normalizeName(draft.name);
+		const draftKeys = [...linkKeys(draft.links)];
+		const matches: T[] = [];
+		for (const { existing, name, keys } of indexed) {
+			if (
+				(draftName !== '' && name === draftName) ||
+				draftKeys.some((key) => keys.has(key))
+			) {
+				matches.push(existing);
 			}
 		}
-		return false;
-	});
+		return matches;
+	};
 }

@@ -5,6 +5,7 @@ import Close from './dialog-close.svelte';
 import Overlay from './dialog-overlay.svelte';
 import Content from './dialog-content.svelte';
 import Header from './dialog-header.svelte';
+import Back from './dialog-back.svelte';
 import Body from './dialog-body.svelte';
 import Footer from './dialog-footer.svelte';
 import Title from './dialog-title.svelte';
@@ -24,6 +25,7 @@ export {
 	Overlay,
 	Content,
 	Header,
+	Back,
 	Body,
 	Footer,
 	Title,
@@ -36,6 +38,7 @@ export {
 	Overlay as DialogOverlay,
 	Content as DialogContent,
 	Header as DialogHeader,
+	Back as DialogBack,
 	Body as DialogBody,
 	Footer as DialogFooter,
 	Title as DialogTitle,

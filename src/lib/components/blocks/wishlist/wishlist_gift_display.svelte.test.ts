@@ -6,6 +6,7 @@ import {
 	createPixelAssertions,
 	DEFAULT_PIXEL_TOLERANCE,
 } from '../../../../../tests/helpers/pixel-assertions.mjs';
+import { nextFrames } from '../../../../../tests/helpers/selection-slide-assertions.mjs';
 import type { ComponentProps } from 'svelte';
 import { flushSync } from 'svelte';
 import {
@@ -64,6 +65,7 @@ function visitorGift(): GiftForVisitor {
 		reserverNames: [],
 		myReservationId: null,
 		myReservationPurchasedAt: null,
+		myReservationQuantity: 0,
 	};
 }
 
@@ -707,7 +709,9 @@ describe('WishlistGiftDisplay grouped reorder (#454)', () => {
 			const lampBadge = (testId: string) =>
 				lamp().querySelector<HTMLElement>(`[data-testid="${testId}"]`)!;
 
-			// A forced click lands on whatever the badge's position hit-tests to, like a real press.
+			// A forced click lands on whatever the badge's position hit-tests to, like a real press,
+			// which can only follow the first painted frame.
+			await nextFrames();
 			await userEvent.click(lampBadge('gift-category-badge'), { force: true });
 			expect(onselectiontoggle).toHaveBeenLastCalledWith('gift-lamp');
 
@@ -1152,5 +1156,77 @@ describe('WishlistGiftDisplay touch presses on card controls', () => {
 			vi.useRealTimers();
 		}
 		await screen.unmount();
+	});
+});
+
+describe('WishlistGiftDisplay image load priority', () => {
+	const giftNames = ['Bez obrázku', 'První', 'Druhý', 'Třetí', 'Čtvrtý', 'Pátý'];
+	const giftsWithImages: GiftForVisitor[] = giftNames.map((name, index) => ({
+		...visitorGift(),
+		id: `gift-${String(index)}`,
+		name,
+		sortOrder: index,
+		imageUrl: index === 0 ? null : `https://example.test/${String(index)}.jpg`,
+	}));
+	interface ImageRequest {
+		loading: string | null;
+		fetchPriority: string | null;
+	}
+
+	/**
+	 * The test URLs fail fast and a failed frame drops its image, so each image's request
+	 * attributes are recorded when it is inserted rather than read back later.
+	 */
+	function recordImageRequests() {
+		const requests = new Map<string, ImageRequest>();
+		const record = () => {
+			for (const image of document.querySelectorAll<HTMLImageElement>('img[alt]')) {
+				if (!requests.has(image.alt)) {
+					requests.set(image.alt, {
+						loading: image.getAttribute('loading'),
+						fetchPriority: image.getAttribute('fetchpriority'),
+					});
+				}
+			}
+		};
+		const observer = new MutationObserver(record);
+		observer.observe(document.body, { subtree: true, childList: true });
+		return { requests, stop: () => observer.disconnect() };
+	}
+
+	it.each([
+		['card', WISHLIST_ROLES.recipient],
+		['list', WISHLIST_ROLES.recipient],
+		['card', WISHLIST_ROLES.visitor],
+		['list', WISHLIST_ROLES.visitor],
+	] as const)('requests the leading %s images early for the %s', async (viewMode, role) => {
+		const recorder = recordImageRequests();
+		const screen = await render(WishlistGiftDisplayTestHost, {
+			...defaultProps,
+			viewMode,
+			role,
+			sections: [
+				{
+					kind: GIFT_SECTION_KINDS.available,
+					key: 'available',
+					label: null,
+					gifts: giftsWithImages,
+				},
+			],
+		});
+
+		try {
+			await expect.poll(() => recorder.requests.has('Pátý')).toBe(true);
+			expect(Object.fromEntries(recorder.requests)).toEqual({
+				První: { loading: 'eager', fetchPriority: 'high' },
+				Druhý: { loading: 'eager', fetchPriority: null },
+				Třetí: { loading: 'eager', fetchPriority: null },
+				Čtvrtý: { loading: 'lazy', fetchPriority: null },
+				Pátý: { loading: 'lazy', fetchPriority: null },
+			});
+		} finally {
+			recorder.stop();
+			await screen.unmount();
+		}
 	});
 });

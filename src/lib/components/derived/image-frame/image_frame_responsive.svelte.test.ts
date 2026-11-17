@@ -1,6 +1,7 @@
 import '../../../../app.css';
 import { render } from 'vitest-browser-svelte';
 import { describe, expect, it, vi } from 'vitest';
+import { markAppHydrated } from '$lib/utils/app_hydration.js';
 import ImageFrame from './ImageFrame.svelte';
 
 // A closed local port makes every transformation request fail fast.
@@ -48,6 +49,74 @@ describe('ImageFrame responsive transformations', () => {
 		} finally {
 			observer.disconnect();
 		}
+	});
+
+	it('inserts a client-created eager image only once its box sets the requested width', async () => {
+		const firstSizes: (string | null)[] = [];
+		const observer = new MutationObserver(() => {
+			const image = document.querySelector('[data-testid="image-frame"] img');
+			if (image !== null && firstSizes.length === 0) {
+				firstSizes.push(image.getAttribute('sizes'));
+			}
+		});
+		observer.observe(document.body, { subtree: true, childList: true });
+		const unmarkHydrated = markAppHydrated();
+		try {
+			await render(ImageFrame, {
+				props: {
+					class: 'h-24 w-32',
+					src: `${PUBLIC_BASE}/gifts/c.jpg`,
+					alt: 'Gift',
+					variant: 'card',
+					loadPriority: 'high',
+				},
+			});
+
+			await expect.poll(() => firstSizes).toEqual(['128px']);
+		} finally {
+			unmarkHydrated();
+			observer.disconnect();
+		}
+	});
+
+	it('still loads a client-created eager image whose box is never laid out', async () => {
+		// The request fails fast and the frame then drops its image, so record the insertion itself.
+		let imageInserted = false;
+		const observer = new MutationObserver(() => {
+			imageInserted ||= document.querySelector('[data-testid="image-frame"] img') !== null;
+		});
+		observer.observe(document.body, { subtree: true, childList: true });
+		const unmarkHydrated = markAppHydrated();
+		try {
+			await render(ImageFrame, {
+				props: {
+					class: 'hidden',
+					src: `${PUBLIC_BASE}/gifts/d.jpg`,
+					alt: 'Gift',
+					variant: 'card',
+					loadPriority: 'eager',
+				},
+			});
+
+			await expect.poll(() => imageInserted).toBe(true);
+		} finally {
+			unmarkHydrated();
+			observer.disconnect();
+		}
+	});
+
+	it('keeps the image of an eager frame rendered before hydration in its first markup', async () => {
+		const screen = await render(ImageFrame, {
+			props: {
+				class: 'h-24 w-32',
+				src: `${PUBLIC_BASE}/gifts/e.jpg`,
+				alt: 'Gift',
+				variant: 'card',
+				loadPriority: 'high',
+			},
+		});
+
+		expect(screen.container.querySelector('img')).not.toBeNull();
 	});
 
 	it('loads the original without a srcset when no variant is requested', async () => {

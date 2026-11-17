@@ -2,6 +2,7 @@ import '../../../../app.css';
 import { render } from 'vitest-browser-svelte';
 import { describe, expect, it, vi } from 'vitest';
 import * as m from '$lib/paraglide/messages.js';
+import { libraryFileUrlPattern } from '$lib/theme/wishlist_background_library.test_fixtures.js';
 import { wishlistThemeName } from '$lib/theme/wishlist_theme_messages.js';
 import {
 	DEFAULT_WISHLIST_BACKGROUND,
@@ -18,19 +19,19 @@ vi.mock('$lib/theme/wishlist_background_library.json', () => ({
 			id: 'toys-photo',
 			themeId: 'toys',
 			variant: 'photo',
-			widthsByMode: { light: [1280, 2560], dark: [1280, 2560] },
+			widthsByMode: { light: [1280, 1672], dark: [1280, 1672] },
 		},
 		{
 			id: 'space-illustrated',
 			themeId: 'space',
 			variant: 'illustrated',
-			widthsByMode: { light: [1280, 2560], dark: [1280, 2560] },
+			widthsByMode: { light: [1280, 1672], dark: [1280, 1672] },
 		},
 		{
 			id: 'space-photo',
 			themeId: 'space',
 			variant: 'photo',
-			widthsByMode: { light: [1280, 2560], dark: [1280, 2560] },
+			widthsByMode: { light: [1280, 1672], dark: [1280, 1672] },
 		},
 	],
 }));
@@ -106,7 +107,7 @@ describe('WishlistBackgroundEditor library mode', () => {
 			})
 			.click();
 		expect(onchange).toHaveBeenCalledWith({ libraryImageId: 'toys-photo' });
-		// The fixture images are not on disk, so the focal frame exists but has no size.
+		// The focal frame has no size until its image loads, so only its presence is awaited.
 		await expect
 			.element(screen.getByTestId('wishlist-background-focal-frame'))
 			.toBeInTheDocument();
@@ -116,7 +117,7 @@ describe('WishlistBackgroundEditor library mode', () => {
 				.element()
 				.querySelector('img')
 				?.getAttribute('src'),
-		).toMatch(/\/wishlist-backgrounds\/space-photo-light-1280\.webp$/);
+		).toMatch(libraryFileUrlPattern('space-photo-light-1280'));
 		await expect.element(screen.getByRole('slider')).toBeVisible();
 		await expect
 			.element(
@@ -134,8 +135,8 @@ describe('WishlistBackgroundEditor library mode', () => {
 	});
 
 	it.each([
-		['light', /space-photo-light-1280\.webp$/],
-		['dark', /space-photo-dark-1280\.webp$/],
+		['light', libraryFileUrlPattern('space-photo-light-1280')],
+		['dark', libraryFileUrlPattern('space-photo-dark-1280')],
 	] as const)(
 		'previews thumbnails and the focal point in %s mode with that mode file',
 		async (viewerMode, expectedSource) => {
@@ -162,7 +163,7 @@ describe('WishlistBackgroundEditor library mode', () => {
 					thumbnailSources(m.wishlist_appearance_background_library_illustrated()),
 				).toEqual([
 					expect.stringMatching(
-						new RegExp(`space-illustrated-${viewerMode}-1280\\.webp$`),
+						libraryFileUrlPattern(`space-illustrated-${viewerMode}-1280`),
 					),
 				]);
 				expect(

@@ -13,7 +13,7 @@
 	import GiftActionRow from './GiftActionRow.svelte';
 	import LikeButton from './LikeButton.svelte';
 	import { giftViewerVariants } from './gift_viewer_variants.js';
-	import type { GiftForVisitor } from '$lib/modules/gifts/types.js';
+	import type { GiftForVisitor, GiftUnreserveHandler } from '$lib/modules/gifts/types.js';
 	import type { WishlistRole } from '$lib/modules/wishlists/types.js';
 
 	interface GiftViewerActionsProps extends GiftMoreProps {
@@ -21,7 +21,7 @@
 		role: WishlistRole;
 		isArchived: boolean;
 		onreserve?: (gift: GiftForVisitor) => void;
-		onunreserve?: (gift: GiftForVisitor) => void;
+		onunreserve?: GiftUnreserveHandler;
 	}
 
 	let {

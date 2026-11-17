@@ -13,9 +13,9 @@ import { resolvedCssLength } from './gift_action_geometry.test_fixtures.js';
 // `$env/dynamic/public`, which vitest-browser-svelte's bare document doesn't seed.
 vi.mock('$env/dynamic/public', () => ({ env: {} }));
 
-const { expectPixelsAtLeast } = createPixelAssertions(expect);
+const { expectPixelsAtLeast, expectPixelsNear } = createPixelAssertions(expect);
 
-const { default: GiftDetailModal } = await import('./GiftDetailModal.svelte');
+const { default: GiftDetailModal } = await import('./GiftDetailModalTestHost.svelte');
 
 function makeGift(overrides: Partial<GiftByRole> = {}): GiftByRole {
 	return {
@@ -125,21 +125,27 @@ describe('GiftDetailModal editor layout and exit safety', () => {
 				const close = screen.getByRole('button', { name: m.close() }).first();
 				await expect.element(title).toBeVisible();
 				await expect.element(close).toBeVisible();
+				await Promise.allSettled(
+					document.getAnimations().map((animation) => animation.finished),
+				);
 				const titleRect = title.element().getBoundingClientRect();
 				const closeRect = close.element().getBoundingClientRect();
 				expect(titleRect.right).toBeLessThanOrEqual(closeRect.left);
-				const titleCenter = titleRect.top + titleRect.height / 2;
+				// A title that wraps at enlarged text keeps its first line centred on the close.
+				const titleStyle = getComputedStyle(title.element());
+				const firstLineCenter =
+					titleRect.top +
+					Number.parseFloat(titleStyle.paddingTop) +
+					Number.parseFloat(titleStyle.lineHeight) / 2;
 				const closeCenter = closeRect.top + closeRect.height / 2;
-				expect(Math.abs(titleCenter - closeCenter)).toBeLessThan(1);
+				expect(Math.abs(firstLineCenter - closeCenter)).toBeLessThan(1);
 				const dialogRect = screen.getByRole('dialog').element().getBoundingClientRect();
-				for (const groupName of [m.image_fit_label(), m.image_background_label()]) {
-					const groupRect = screen
-						.getByRole('group', { name: groupName })
-						.element()
-						.getBoundingClientRect();
-					expect(groupRect.right).toBeLessThanOrEqual(dialogRect.right);
-				}
-				const footer = screen.getByTestId('gift-mobile-submit-footer');
+				const previewViewRect = screen
+					.getByTestId('gift-editor-preview-view')
+					.element()
+					.getBoundingClientRect();
+				expect(previewViewRect.right).toBeLessThanOrEqual(dialogRect.right);
+				const footer = screen.getByTestId('gift-editor-footer');
 				await expect.element(footer.getByRole('button', { name: m.save() })).toBeVisible();
 				await expect
 					.element(footer.getByRole('button', { name: m.cancel() }))
@@ -152,7 +158,7 @@ describe('GiftDetailModal editor layout and exit safety', () => {
 		}
 	});
 
-	it('keeps mobile fields before one workshop and desktop image left of details', async () => {
+	it('keeps mobile fields before the image section and the desktop image rail left of details', async () => {
 		await page.viewport(390, 844);
 		const screen = await render(GiftDetailModal, {
 			...baseProps,
@@ -163,14 +169,15 @@ describe('GiftDetailModal editor layout and exit safety', () => {
 		const title = screen.getByRole('heading', { name: m.gift_edit_title() });
 		await expect.element(title).toBeVisible();
 		const nameInput = screen.getByRole('textbox', { name: m.gift_name_label() }).element();
-		const imageSource = screen.getByRole('group', { name: m.gift_image_label() }).element();
-		const imageWorkshop = screen.getByTestId('gift-image-column').element();
+		const categoryField = screen.getByTestId('gift-category-field').element();
+		const imageSection = screen.getByTestId('gift-image-column').element();
 		expect(
-			nameInput.compareDocumentPosition(imageSource) & Node.DOCUMENT_POSITION_FOLLOWING,
-		).toBeTruthy();
+			nameInput.getBoundingClientRect().bottom <= imageSection.getBoundingClientRect().top,
+		).toBe(true);
 		expect(
-			imageSource.compareDocumentPosition(imageWorkshop) & Node.DOCUMENT_POSITION_FOLLOWING,
-		).toBeTruthy();
+			categoryField.getBoundingClientRect().bottom <=
+				imageSection.getBoundingClientRect().top,
+		).toBe(true);
 		expect(screen.getByTestId('gift-image-column').all()).toHaveLength(1);
 
 		await page.viewport(1280, 800);
@@ -178,8 +185,8 @@ describe('GiftDetailModal editor layout and exit safety', () => {
 		const detailColumn = screen.getByTestId('gift-detail-column').element();
 		const imageRect = desktopWorkshop.getBoundingClientRect();
 		const detailRect = detailColumn.getBoundingClientRect();
-		expect(imageRect.left).toBeLessThan(detailRect.left);
-		expect(Math.abs(imageRect.right - detailRect.left)).toBeLessThan(1);
+		expect(imageRect.right).toBeLessThanOrEqual(detailRect.left);
+		expectPixelsNear(imageRect.top, detailRect.top);
 	});
 
 	it.each(['soft', 'ink', 'black'] as const)(
@@ -195,7 +202,9 @@ describe('GiftDetailModal editor layout and exit safety', () => {
 				});
 				const nameInput = screen.getByRole('textbox', { name: m.gift_name_label() });
 				await expect.element(nameInput).toBeVisible();
-				await Promise.all(document.getAnimations().map((animation) => animation.finished));
+				await Promise.allSettled(
+					document.getAnimations().map((animation) => animation.finished),
+				);
 				const nameLabel = document.querySelector<HTMLElement>('label[for="gift-name"]')!;
 				const closeRect = document
 					.querySelector('[data-slot="dialog-close"]')!
@@ -377,8 +386,13 @@ describe('GiftDetailModal editor layout and exit safety', () => {
 			mode: 'edit' as const,
 			gift: makeGift({ imageUrl, imageMeta: legacyImageMeta }),
 		});
-		await expect.element(firstScreen.getByTestId('crop-stage-window')).toBeVisible();
-		await firstScreen.getByRole('button', { name: m.cancel() }).first().click();
+		await firstScreen.getByTestId('gift-image-edit-entry').click();
+		await expect
+			.element(
+				firstScreen.getByTestId('gift-framing-view-square').getByTestId('crop-pan-surface'),
+			)
+			.toBeVisible();
+		await firstScreen.getByRole('button', { name: m.close() }).first().click();
 		await expect.element(firstScreen.getByRole('dialog')).not.toBeInTheDocument();
 		await firstScreen.unmount();
 
@@ -397,7 +411,7 @@ describe('GiftDetailModal editor layout and exit safety', () => {
 		);
 	});
 
-	it('allows normal wheel scrolling when a static crop stage is disabled', async () => {
+	it('offers no image editing while the gift saves', async () => {
 		const screen = await render(GiftDetailModal, {
 			...baseProps,
 			mode: 'edit' as const,
@@ -410,15 +424,11 @@ describe('GiftDetailModal editor layout and exit safety', () => {
 			}),
 			isSubmitting: true,
 		});
-		const cropStage = screen.getByTestId('crop-stage').element();
-		const wheelEvent = new WheelEvent('wheel', {
-			bubbles: true,
-			cancelable: true,
-			deltaY: -100,
-		});
+		const entry = screen.getByTestId('gift-image-edit-entry');
 
-		expect(cropStage.dispatchEvent(wheelEvent)).toBe(true);
-		expect(wheelEvent.defaultPrevented).toBe(false);
+		await expect.element(entry).toBeDisabled();
+		await entry.click({ force: true });
+		await expect.element(screen.getByTestId('gift-image-framing-step')).not.toBeInTheDocument();
 	});
 
 	it('guards image presentation edits', async () => {
@@ -441,8 +451,9 @@ describe('GiftDetailModal editor layout and exit safety', () => {
 			}),
 		});
 
+		await screen.getByTestId('gift-image-edit-entry').click();
 		await screen.getByRole('radio', { name: m.image_background_black() }).click();
-		await screen.getByRole('button', { name: m.cancel() }).first().click();
+		await screen.getByRole('button', { name: m.close() }).first().click();
 		await expect
 			.element(screen.getByRole('heading', { name: m.unsaved_changes_title() }))
 			.toBeVisible();
@@ -475,21 +486,25 @@ describe('GiftDetailModal editor layout and exit safety', () => {
 				},
 			}),
 		});
-		const cropStage = screen.getByTestId('crop-stage');
-		await expect.element(screen.getByTestId('crop-stage-window')).toBeVisible();
-		cropStage
+		await page.viewport(1280, 800);
+		await screen.getByTestId('gift-image-edit-entry').click();
+		const cardSurface = screen
+			.getByTestId('gift-framing-view-square')
+			.getByTestId('crop-pan-surface');
+		await expect.element(cardSurface).toBeVisible();
+		cardSurface
 			.element()
 			.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
-		await screen.getByRole('button', { name: m.cancel() }).first().click();
+		await screen.getByRole('button', { name: m.close() }).first().click();
 		await expect
 			.element(screen.getByRole('heading', { name: m.unsaved_changes_title() }))
 			.toBeVisible();
 		await screen.getByRole('button', { name: m.unsaved_changes_continue_editing() }).click();
 
-		cropStage
+		cardSurface
 			.element()
 			.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
-		await screen.getByRole('button', { name: m.cancel() }).first().click();
+		await screen.getByRole('button', { name: m.close() }).first().click();
 		await expect.element(screen.getByRole('dialog')).not.toBeInTheDocument();
 		expect(document.body.textContent?.includes(m.unsaved_changes_title())).toBe(false);
 	});
@@ -644,7 +659,7 @@ describe('GiftDetailModal first-change confirmation (issue #479)', () => {
 	});
 });
 
-describe('GiftDetailModal fixed-window image editor (#533)', () => {
+describe('GiftDetailModal image framing step (#706)', () => {
 	const photoUrl =
 		'data:image/svg+xml,' +
 		encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300"/>');
@@ -656,6 +671,9 @@ describe('GiftDetailModal fixed-window image editor (#533)', () => {
 		bgColor: null,
 	};
 
+	type Screen = Awaited<ReturnType<typeof render>>;
+	type FramingTarget = 'square' | 'thumb';
+
 	async function renderEditor(imageMeta: GiftByRole['imageMeta'] = fillMeta) {
 		await page.viewport(1280, 800);
 		const onupdate = vi.fn();
@@ -665,95 +683,102 @@ describe('GiftDetailModal fixed-window image editor (#533)', () => {
 			gift: makeGift({ imageUrl: photoUrl, imageMeta }),
 			onupdate,
 		});
-		await expect.element(screen.getByTestId('crop-stage-window')).toBeVisible();
+		await screen.getByTestId('gift-image-edit-entry').click();
+		await expect.element(preset(screen, 'square', m.image_fit_fill())).toBeEnabled();
 		return { screen, onupdate };
 	}
 
-	function pressOnStage(screen: Awaited<ReturnType<typeof renderEditor>>['screen'], key: string) {
-		screen
-			.getByTestId('crop-stage')
-			.element()
-			.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true }));
+	function surface(screen: Screen, target: FramingTarget) {
+		return screen.getByTestId(`gift-framing-view-${target}`).getByTestId('crop-pan-surface');
 	}
 
-	it('draws the crop window at the card real size, or labels how much it is reduced', async () => {
+	function pressOn(screen: Screen, target: FramingTarget, key: string, options = {}) {
+		surface(screen, target)
+			.element()
+			.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, ...options }));
+	}
+
+	function preset(screen: Screen, target: FramingTarget, name: string) {
+		return screen.getByTestId(`gift-framing-controls-${target}`).getByRole('radio', { name });
+	}
+
+	const statusOf = (screen: Screen, target: FramingTarget) =>
+		screen.getByTestId(`gift-framing-status-${target}`);
+
+	async function savedImageMeta(screen: Screen, onupdate: ReturnType<typeof vi.fn>) {
+		await screen.getByRole('button', { name: m.save() }).first().click();
+		return onupdate.mock.calls[0]![0].images[0].imageMeta;
+	}
+
+	it('frames Karta in a 4:3 card and Seznam in a 1:1 list image side by side', async () => {
 		const { screen } = await renderEditor();
-		// The modal layout settles after the image loads, so read size and badge together.
-		const readWindow = () => {
-			const window = screen
-				.getByTestId('crop-stage-window')
-				.element()
-				.getBoundingClientRect();
-			const scale = window.width / 356;
-			return {
-				scale,
-				heightMatchesAspect: Math.abs(window.height - 267 * scale) < 1,
-				badgeMatches:
-					screen.getByTestId('crop-stage-size').element().textContent?.trim() ===
-					(scale > 0.995
-						? m.image_crop_true_size({ width: 356, height: 267 })
-						: m.image_crop_scaled_size({
-								width: 356,
-								height: 267,
-								percent: Math.round(scale * 100),
-							})),
-			};
-		};
-		await expect.poll(() => readWindow().badgeMatches).toBe(true);
-		const { scale, heightMatchesAspect } = readWindow();
-		expect(scale).toBeLessThanOrEqual(1);
-		expect(heightMatchesAspect).toBe(true);
+
+		await expect
+			.element(screen.getByRole('heading', { name: /Úprava obrázku 1/ }))
+			.toBeVisible();
+		const card = surface(screen, 'square').element().getBoundingClientRect();
+		const list = surface(screen, 'thumb').element().getBoundingClientRect();
+		expect(Math.abs(card.width / card.height - 4 / 3)).toBeLessThan(0.02);
+		expect(Math.abs(list.width / list.height - 1)).toBeLessThan(0.02);
+		expect(card.right).toBeLessThan(list.left);
+		await expect.element(screen.getByTestId('gift-framing-same-square')).toBeVisible();
 	});
 
-	it('selects a target from its tile without leaving Fill', async () => {
+	it('gives each view its own presets and one-shot copy action', async () => {
 		const { screen } = await renderEditor();
-		await screen.getByTestId('gift-preview-tile-thumb').click();
+
 		await expect
-			.element(screen.getByTestId('crop-stage-editing'))
-			.toHaveTextContent(m.image_crop_editing({ target: m.gift_image_target_thumb() }));
-		await expect
-			.element(screen.getByRole('radio', { name: m.image_fit_fill() }))
+			.element(preset(screen, 'square', m.image_fit_fill()))
 			.toHaveAttribute('aria-checked', 'true');
-	});
-
-	it('promotes an edit in Fill to Manual and lets the thumbnail follow the card', async () => {
-		const { screen, onupdate } = await renderEditor();
-		pressOnStage(screen, '+');
+		await expect
+			.element(preset(screen, 'thumb', m.image_fit_fill()))
+			.toHaveAttribute('aria-checked', 'true');
+		await expect
+			.element(screen.getByRole('button', { name: m.gift_image_copy_framing_to_thumb() }))
+			.toBeVisible();
+		await expect
+			.element(screen.getByRole('button', { name: m.gift_image_copy_framing_to_card() }))
+			.toBeVisible();
 		await expect
 			.element(screen.getByRole('radio', { name: m.image_fit_manual() }))
-			.toHaveAttribute('aria-checked', 'true');
-		await expect
-			.element(screen.getByTestId('gift-preview-status-thumb'))
-			.toHaveTextContent(m.image_crop_status_follows_card());
-
-		await screen.getByRole('button', { name: m.save() }).first().click();
-		const imageMeta = onupdate.mock.calls[0]![0].images[0].imageMeta;
-		expect(imageMeta.fitMode).toBe(IMAGE_FIT_MODES.coverCrop);
-		expect(Object.keys(imageMeta.targets)).toEqual(['square']);
-		expect(imageMeta.targets.square.zoom).toBeGreaterThan(1);
+			.not.toBeInTheDocument();
 	});
 
-	it('keeps Fill when a key cannot move the window or is a browser shortcut', async () => {
+	it('marks only the edited Karta as Vlastní and pins both views when they differ', async () => {
+		const { screen, onupdate } = await renderEditor();
+		pressOn(screen, 'square', '+');
+		await expect
+			.element(statusOf(screen, 'square'))
+			.toHaveTextContent(m.gift_image_framing_custom());
+		await expect.element(statusOf(screen, 'thumb')).toHaveTextContent(m.image_fit_fill());
+		await expect
+			.element(preset(screen, 'square', m.image_fit_fill()))
+			.toHaveAttribute('aria-checked', 'false');
+
+		const imageMeta = await savedImageMeta(screen, onupdate);
+		expect(imageMeta.fitMode).toBe(IMAGE_FIT_MODES.coverCrop);
+		expect(Object.keys(imageMeta.targets).sort()).toEqual(['square', 'thumb']);
+		expect(imageMeta.targets.square.zoom).toBeGreaterThan(1);
+		expect(imageMeta.targets.thumb.zoom).toBeCloseTo(1, 6);
+		expect(imageMeta.targets.thumb.focal).toEqual({ x: 50, y: 50 });
+	});
+
+	it('keeps Vyplnit when a key cannot move the window or is a browser shortcut', async () => {
 		const { screen } = await renderEditor();
 		// The 4:3 photo exactly fills the 4:3 card window, so there is nothing to pan.
-		pressOnStage(screen, 'ArrowRight');
-		screen
-			.getByTestId('crop-stage')
-			.element()
-			.dispatchEvent(
-				new KeyboardEvent('keydown', { key: '+', ctrlKey: true, bubbles: true }),
-			);
+		pressOn(screen, 'square', 'ArrowRight');
+		pressOn(screen, 'square', '+', { ctrlKey: true });
 		await expect
-			.element(screen.getByRole('radio', { name: m.image_fit_fill() }))
+			.element(preset(screen, 'square', m.image_fit_fill()))
 			.toHaveAttribute('aria-checked', 'true');
+		await expect.element(statusOf(screen, 'square')).toHaveTextContent(m.image_fit_fill());
 	});
 
 	it('zooms in on wheel up and pans with the arrow keys in the pressed direction', async () => {
 		const { screen, onupdate } = await renderEditor();
 		// Wheel zoom anchors at the pointer, so aim at the window center.
-		const window = screen.getByTestId('crop-stage-window').element().getBoundingClientRect();
-		screen
-			.getByTestId('crop-stage')
+		const window = surface(screen, 'square').element().getBoundingClientRect();
+		surface(screen, 'square')
 			.element()
 			.dispatchEvent(
 				new WheelEvent('wheel', {
@@ -765,72 +790,132 @@ describe('GiftDetailModal fixed-window image editor (#533)', () => {
 				}),
 			);
 		await expect
-			.element(screen.getByRole('radio', { name: m.image_fit_manual() }))
-			.toHaveAttribute('aria-checked', 'true');
-		pressOnStage(screen, 'ArrowRight');
-		pressOnStage(screen, 'ArrowDown');
+			.element(statusOf(screen, 'square'))
+			.toHaveTextContent(m.gift_image_framing_custom());
+		pressOn(screen, 'square', 'ArrowRight');
+		pressOn(screen, 'square', 'ArrowDown');
 
-		await screen.getByRole('button', { name: m.save() }).first().click();
-		const square = onupdate.mock.calls[0]![0].images[0].imageMeta.targets.square;
+		const square = (await savedImageMeta(screen, onupdate)).targets.square;
 		expect(square.zoom).toBeGreaterThan(1);
 		expect(square.focal.x).toBeGreaterThan(50);
 		expect(square.focal.y).toBeGreaterThan(50);
 	});
 
-	it('pins only the thumbnail when only the thumbnail is edited', async () => {
+	it('leaves Karta on its centered cover when only Seznam is edited', async () => {
 		const { screen, onupdate } = await renderEditor();
-		await screen.getByTestId('gift-preview-tile-thumb').click();
-		pressOnStage(screen, '+');
+		pressOn(screen, 'thumb', '+');
 		await expect
-			.element(screen.getByTestId('gift-preview-status-thumb'))
-			.toHaveTextContent(m.image_crop_status_manual());
-		await expect
-			.element(screen.getByTestId('gift-preview-status-square'))
-			.toHaveTextContent(m.image_crop_status_automatic());
+			.element(statusOf(screen, 'thumb'))
+			.toHaveTextContent(m.gift_image_framing_custom());
+		await expect.element(statusOf(screen, 'square')).toHaveTextContent(m.image_fit_fill());
 
-		await screen.getByRole('button', { name: m.save() }).first().click();
-		expect(Object.keys(onupdate.mock.calls[0]![0].images[0].imageMeta.targets)).toEqual([
-			'thumb',
-		]);
+		const { targets } = await savedImageMeta(screen, onupdate);
+		expect(targets.thumb.zoom).toBeGreaterThan(1);
+		expect(targets.square.zoom).toBeCloseTo(1, 6);
+		expect(targets.square.focal).toEqual({ x: 50, y: 50 });
 	});
 
-	it('starts an edit in Fit from the whole photo it shows', async () => {
+	it('shows Celý for the whole photo and steps in from it', async () => {
 		const { screen, onupdate } = await renderEditor();
-		await screen.getByRole('radio', { name: m.image_fit_fit() }).click();
-		await screen.getByTestId('gift-preview-tile-thumb').click();
-		pressOnStage(screen, '+');
+		await preset(screen, 'thumb', m.image_crop_whole()).click();
+		await expect.element(statusOf(screen, 'thumb')).toHaveTextContent(m.image_crop_whole());
+		await expect.element(statusOf(screen, 'square')).toHaveTextContent(m.image_fit_fill());
+		pressOn(screen, 'thumb', '+');
 		await expect
-			.element(screen.getByRole('radio', { name: m.image_fit_manual() }))
-			.toHaveAttribute('aria-checked', 'true');
+			.element(statusOf(screen, 'thumb'))
+			.toHaveTextContent(m.gift_image_framing_custom());
 
-		await screen.getByRole('button', { name: m.save() }).first().click();
-		// The whole 4:3 photo in the square window is zoom 0.75; Fill would start at 1.
-		const thumb = onupdate.mock.calls[0]![0].images[0].imageMeta.targets.thumb;
+		// The whole 4:3 photo in the square window is zoom 0.75; Vyplnit would start at 1.
+		const thumb = (await savedImageMeta(screen, onupdate)).targets.thumb;
 		expect(thumb.zoom).toBeGreaterThan(0.75);
 		expect(thumb.zoom).toBeLessThan(1);
 	});
 
-	it('drops the thumbnail own crop when it takes the card crop again', async () => {
+	it('copies Karta to Seznam once, so a later Karta edit leaves Seznam alone', async () => {
+		const { screen, onupdate } = await renderEditor();
+		pressOn(screen, 'square', '+');
+		pressOn(screen, 'square', '+');
+		await expect
+			.element(statusOf(screen, 'square'))
+			.toHaveTextContent(m.gift_image_framing_custom());
+		const zoomPercentAtCopy = Number.parseInt(
+			screen
+				.getByTestId('gift-framing-zoom-square')
+				.element()
+				.getAttribute('aria-valuetext') ?? '',
+			10,
+		);
+		await screen.getByRole('button', { name: m.gift_image_copy_framing_to_thumb() }).click();
+		await expect
+			.element(statusOf(screen, 'thumb'))
+			.toHaveTextContent(m.gift_image_framing_custom());
+		pressOn(screen, 'square', '+');
+
+		const { targets } = await savedImageMeta(screen, onupdate);
+		expect(Math.round(targets.thumb.zoom * 100)).toBe(zoomPercentAtCopy);
+		expect(targets.square.zoom * 100).toBeGreaterThan(zoomPercentAtCopy + 1);
+	});
+
+	it('saves both views back on Vyplnit as a plain cover without targets', async () => {
 		const { screen, onupdate } = await renderEditor({
 			...fillMeta,
 			targets: {
-				square: { cropRect: { x: 0, y: 0, w: 1, h: 1 }, focal: { x: 50, y: 50 }, zoom: 1 },
+				square: {
+					cropRect: { x: 0.1, y: 0.2, w: 2 / 3, h: 2 / 3 },
+					focal: { x: 30, y: 60 },
+					zoom: 1.5,
+				},
 				thumb: {
-					cropRect: { x: 0.1, y: 0.1, w: 0.5, h: 0.6667 },
-					focal: { x: 25, y: 30 },
+					cropRect: { x: 0.1, y: 0.1, w: 0.5, h: 2 / 3 },
+					focal: { x: 20, y: 30 },
 					zoom: 1.5,
 				},
 			},
 		});
 		await expect
-			.element(screen.getByTestId('gift-preview-status-thumb'))
-			.toHaveTextContent(m.image_crop_status_manual());
-		await screen.getByTestId('gift-preview-follow-square').click();
-		await expect
-			.element(screen.getByTestId('gift-preview-status-thumb'))
-			.toHaveTextContent(m.image_crop_status_follows_card());
+			.element(statusOf(screen, 'thumb'))
+			.toHaveTextContent(m.gift_image_framing_custom());
+		await preset(screen, 'square', m.image_fit_fill()).click();
+		await preset(screen, 'thumb', m.image_fit_fill()).click();
+		await expect.element(statusOf(screen, 'square')).toHaveTextContent(m.image_fit_fill());
+		await expect.element(statusOf(screen, 'thumb')).toHaveTextContent(m.image_fit_fill());
 
-		await screen.getByRole('button', { name: m.save() }).first().click();
-		expect(onupdate.mock.calls[0]![0].images[0].imageMeta.targets).not.toHaveProperty('thumb');
+		const imageMeta = await savedImageMeta(screen, onupdate);
+		expect(imageMeta.fitMode).toBe(IMAGE_FIT_MODES.coverCrop);
+		expect(imageMeta.targets).toBeUndefined();
+	});
+
+	it('opens a list thumbnail following the card crop without asking about changes', async () => {
+		await page.viewport(1280, 800);
+		const confirmChange = vi.fn(() => Promise.resolve(true));
+		const screen = await render(GiftDetailModal, {
+			...baseProps,
+			mode: 'edit' as const,
+			gift: makeGift({
+				imageUrl: photoUrl,
+				imageMeta: {
+					...fillMeta,
+					targets: {
+						square: {
+							cropRect: { x: 0.1, y: 0.2, w: 2 / 3, h: 2 / 3 },
+							focal: { x: 30, y: 60 },
+							zoom: 1.5,
+						},
+					},
+				},
+			}),
+			confirmChange,
+		});
+		await screen.getByTestId('gift-image-edit-entry').click();
+		await expect
+			.element(screen.getByRole('button', { name: m.gift_image_copy_framing_to_thumb() }))
+			.toBeEnabled();
+		await expect
+			.element(statusOf(screen, 'thumb'))
+			.toHaveTextContent(m.gift_image_framing_custom());
+		expect(confirmChange).not.toHaveBeenCalled();
+
+		pressOn(screen, 'square', '+');
+		await expect.poll(() => confirmChange.mock.calls.length).toBe(1);
 	});
 });

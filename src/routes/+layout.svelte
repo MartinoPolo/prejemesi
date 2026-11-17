@@ -2,9 +2,8 @@
 	import '../app.css';
 	import { ModeWatcher, modeStorageKey, setMode } from 'mode-watcher';
 	import { AppToaster } from '$lib/components/base/toast/index.js';
+	import { TooltipProvider } from '$lib/components/base/tooltip/index.js';
 	import favicon from '$lib/assets/favicon.svg';
-	import dynapuffLatinUrl from '@fontsource-variable/dynapuff/files/dynapuff-latin-wght-normal.woff2?url';
-	import geistLatinUrl from '@fontsource-variable/geist/files/geist-latin-wght-normal.woff2?url';
 	import { afterNavigate } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import { browser, dev } from '$app/environment';
@@ -12,6 +11,7 @@
 	import { getLocaleForUrl, getTextDirection } from '$lib/paraglide/runtime.js';
 	import { SENTRY_REPLAY_NAVIGATION_EVENT } from '$lib/observability/sentry_replay_policy.js';
 	import { keyboardInset } from '$lib/reactivity/keyboard_inset.svelte.js';
+	import { markAppHydrated } from '$lib/utils/app_hydration.js';
 
 	// Dev-only tab title prefix – injected at dev-server start from git branch (vite.config.ts define).
 	// Lets you tell apart multiple worktrees/branches running simultaneously in the browser.
@@ -34,12 +34,7 @@
 
 	onMount(() => keyboardInset.start());
 
-	onMount(() => {
-		document.documentElement.dataset.appHydrated = 'true';
-		return () => {
-			delete document.documentElement.dataset.appHydrated;
-		};
-	});
+	onMount(markAppHydrated);
 
 	const modesSavedBeforeDemo = new Map<string, 'light' | 'dark' | 'system'>([
 		['"light"', 'light'],
@@ -91,18 +86,12 @@
 
 <svelte:head>
 	<link rel="icon" href={favicon} />
-	<link
-		rel="preload"
-		href={dynapuffLatinUrl}
-		as="font"
-		type="font/woff2"
-		crossorigin="anonymous"
-	/>
-	<link rel="preload" href={geistLatinUrl} as="font" type="font/woff2" crossorigin="anonymous" />
 </svelte:head>
 
-{#key currentLocale}
-	{@render children()}
-{/key}
+<TooltipProvider>
+	{#key currentLocale}
+		{@render children()}
+	{/key}
+</TooltipProvider>
 
 <AppToaster />

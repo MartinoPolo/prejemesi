@@ -4,7 +4,8 @@ import { page, userEvent } from 'vitest/browser';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
 import { expectContentClearsOverlayClose } from '$lib/components/base/dialog/overlay_close_geometry.test_fixtures.js';
-import GiftBulkCopyDialog, { NEW_WISHLIST_DESTINATION } from './GiftBulkCopyDialog.svelte';
+import GiftBulkCopyDialog from './GiftBulkCopyDialog.svelte';
+import { NEW_WISHLIST_DESTINATION } from './gift_bulk_copy_destination.js';
 import * as m from '$lib/paraglide/messages.js';
 
 const { expectPixelsNear, expectPixelsAtMost } = createPixelAssertions(expect);

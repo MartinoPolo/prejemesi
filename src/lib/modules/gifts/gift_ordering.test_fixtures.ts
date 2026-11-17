@@ -35,6 +35,7 @@ export function makeGift(overrides: Partial<GiftForVisitor> = {}): GiftForVisito
 		reserverNames: [],
 		myReservationId: null,
 		myReservationPurchasedAt: null,
+		myReservationQuantity: 0,
 		...overrides,
 	};
 }

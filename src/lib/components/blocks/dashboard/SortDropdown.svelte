@@ -17,12 +17,18 @@
 		options = ['lastActivity', 'alphabetical', 'dateCreated', 'eventDate'],
 		class: className,
 	}: SortDropdownProps = $props();
+
+	const triggerLabelId = $props.id();
 </script>
 
 <Select.Root bind:value type="single">
-	<Select.Trigger class={cn('min-w-0 max-w-full gap-1.5', className)}>
+	<!-- A combobox takes no name from its content, so the visible label and value name it. -->
+	<Select.Trigger
+		class={cn('min-w-0 max-w-full gap-1.5', className)}
+		aria-labelledby={triggerLabelId}
+	>
 		<ArrowUpDownIcon class="size-3.5 shrink-0 text-muted-foreground" />
-		<span class="min-w-0 truncate">
+		<span id={triggerLabelId} class="min-w-0 truncate">
 			<span class="text-muted-foreground">{m.dashboard_sort_label()}</span>
 			{SORT_LABELS[value]()}
 		</span>

@@ -1,11 +1,12 @@
 <script lang="ts">
-	import { onDestroy } from 'svelte';
+	import { onDestroy, tick } from 'svelte';
 	import CheckIcon from '@lucide/svelte/icons/check';
 	import { Button } from '$lib/components/base/button/index.js';
 	import type { ControlSize } from '$lib/components/base/control_sizing.js';
 	import * as m from '$lib/paraglide/messages.js';
-	import type { GiftForVisitor } from '$lib/modules/gifts/types.js';
+	import type { GiftForVisitor, GiftUnreserveHandler } from '$lib/modules/gifts/types.js';
 	import { cn } from '$lib/utils.js';
+	import { STANDARD_EASING } from '$lib/motion/motion_tokens.js';
 
 	interface ReserveButtonProps {
 		gift: GiftForVisitor;
@@ -18,7 +19,7 @@
 		class?: string;
 		surfaceClass?: string;
 		onreserve?: (gift: GiftForVisitor) => void;
-		onunreserve?: (gift: GiftForVisitor) => void;
+		onunreserve?: GiftUnreserveHandler;
 	}
 
 	let {
@@ -34,26 +35,30 @@
 
 	const hasMyReservation = $derived(gift.myReservationId !== null);
 	const isFullyReserved = $derived(gift.isFullyReserved);
-	let previousHasMyReservation: boolean | undefined;
+	// A cancel that rolls back restores the same reservation, which must not read as a new one.
+	let lastShownReservationId: string | null | undefined;
 	let showReservationAcknowledgement = $state(false);
 	let acknowledgementRun = $state(0);
 	let buttonElement = $state<HTMLButtonElement | null>(null);
 	let contentElement = $state<HTMLSpanElement | null>(null);
 	let activeAnimation: Animation | null = null;
+	let unreservePending = $state(false);
 
 	$effect.pre(() => {
-		const currentHasMyReservation = gift.myReservationId !== null;
-		if (previousHasMyReservation === undefined) {
-			previousHasMyReservation = currentHasMyReservation;
+		const currentReservationId = gift.myReservationId;
+		if (lastShownReservationId === undefined) {
+			lastShownReservationId = currentReservationId;
 			return;
 		}
-		if (!previousHasMyReservation && currentHasMyReservation) {
+		if (currentReservationId === null) {
+			showReservationAcknowledgement = false;
+			return;
+		}
+		if (currentReservationId !== lastShownReservationId) {
 			showReservationAcknowledgement = true;
 			acknowledgementRun += 1;
-		} else if (!currentHasMyReservation) {
-			showReservationAcknowledgement = false;
 		}
-		previousHasMyReservation = currentHasMyReservation;
+		lastShownReservationId = currentReservationId;
 	});
 
 	$effect(() => {
@@ -71,7 +76,10 @@
 			return;
 		}
 
-		activeAnimation = element.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 160 });
+		activeAnimation = element.animate([{ opacity: 0 }, { opacity: 1 }], {
+			duration: 160,
+			easing: STANDARD_EASING,
+		});
 		void activeAnimation.finished
 			?.then(() => {
 				if (acknowledgementRun === run && gift.myReservationId !== null) {
@@ -90,9 +98,27 @@
 		}
 	}
 
-	function handleUnreserveClick(event: MouseEvent) {
+	async function handleUnreserveClick(event: MouseEvent) {
 		event.stopPropagation();
-		onunreserve?.(gift);
+		if (unreservePending) {
+			return;
+		}
+		const initiatedWithFocus = document.activeElement === buttonElement;
+		const pendingUnreserve = onunreserve?.(gift);
+		if (!(pendingUnreserve instanceof Promise)) {
+			return;
+		}
+		unreservePending = true;
+		try {
+			await pendingUnreserve;
+		} finally {
+			unreservePending = false;
+			await tick();
+			// Disabling the focused button drops focus to the body; hand it back.
+			if (initiatedWithFocus && document.activeElement === document.body) {
+				buttonElement?.focus({ preventScroll: true });
+			}
+		}
 	}
 </script>
 
@@ -107,6 +133,9 @@
 			? m.reserve_button_cancel_aria({ name: gift.name })
 			: m.reserve_button_reserve_aria({ name: gift.name })}
 		onclick={hasMyReservation ? handleUnreserveClick : handleReserveClick}
+		disabled={unreservePending}
+		aria-busy={unreservePending || undefined}
+		data-pending={unreservePending}
 		data-testid="reserve-button"
 		surfaceClass={cn(
 			surfaceClass,

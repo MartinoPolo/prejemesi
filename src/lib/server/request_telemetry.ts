@@ -1,4 +1,11 @@
 import type { Handle } from '@sveltejs/kit';
+import { env } from '$env/dynamic/private';
+import {
+	exposesServerTiming,
+	serverTimingHeader,
+	startServerTiming,
+	stopServerTiming,
+} from './server_timing.js';
 
 type RequestOutcome = 'success' | 'client_error' | 'server_error' | 'unhandled_error';
 
@@ -24,6 +31,7 @@ type RequestTelemetry = RequestStartTelemetry | RequestCompleteTelemetry;
 interface RequestTelemetryDependencies {
 	write?: (telemetry: RequestTelemetry) => void;
 	now?: () => number;
+	exposeServerTiming?: () => boolean;
 }
 
 function classifyOutcome(status: number): Exclude<RequestOutcome, 'unhandled_error'> {
@@ -36,9 +44,19 @@ function classifyOutcome(status: number): Exclude<RequestOutcome, 'unhandled_err
 	return 'success';
 }
 
+/** Timing is diagnostic, so a response whose headers cannot change is returned without it. */
+function setServerTimingHeader(response: Response, value: string): void {
+	try {
+		response.headers.set('Server-Timing', value);
+	} catch {
+		// Immutable headers, such as on Response.redirect() or a proxied fetch response.
+	}
+}
+
 export function createRequestTelemetryHandle({
 	write = (telemetry) => console.info(telemetry),
 	now = () => performance.now(),
+	exposeServerTiming = () => exposesServerTiming(env.ORIGIN),
 }: RequestTelemetryDependencies = {}): Handle {
 	return async ({ event, resolve }) => {
 		const startedAt = now();
@@ -49,16 +67,24 @@ export function createRequestTelemetryHandle({
 		};
 
 		write({ phase: 'start', ...commonTelemetry });
+		if (exposeServerTiming()) {
+			startServerTiming(event);
+		}
 
 		try {
 			const response = await resolve(event);
+			const durationMilliseconds = now() - startedAt;
 			write({
 				phase: 'complete',
 				...commonTelemetry,
 				status: response.status,
 				outcome: classifyOutcome(response.status),
-				durationMilliseconds: Math.round(now() - startedAt),
+				durationMilliseconds: Math.round(durationMilliseconds),
 			});
+			const timingHeader = serverTimingHeader(event, durationMilliseconds);
+			if (timingHeader !== undefined) {
+				setServerTimingHeader(response, timingHeader);
+			}
 			return response;
 		} catch (error) {
 			write({
@@ -69,6 +95,8 @@ export function createRequestTelemetryHandle({
 				durationMilliseconds: Math.round(now() - startedAt),
 			});
 			throw error;
+		} finally {
+			stopServerTiming(event);
 		}
 	};
 }

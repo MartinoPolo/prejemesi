@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
+	import { SvelteSet } from 'svelte/reactivity';
 	import PageHeader from '$lib/components/blocks/page-header/PageHeader.svelte';
 	import DashboardToolbar from '$lib/components/blocks/dashboard/DashboardToolbar.svelte';
 	import WishlistCardGrid from '$lib/components/blocks/dashboard/WishlistCardGrid.svelte';
@@ -15,6 +16,7 @@
 		refollowWishlist,
 	} from '$lib/modules/wishlists/wishlists.remote.js';
 	import { toastSuccess, toastError } from '$lib/components/base/toast/index.js';
+	import { runExclusively } from '$lib/utils/run_exclusively.js';
 	import type { SortOption, ViewMode } from '$lib/modules/wishlists/dashboard_types.js';
 	import type { FollowedWishlist } from '$lib/modules/wishlists/dashboard_types.js';
 
@@ -41,23 +43,41 @@
 		return sortFollowedWishlists(filtered, sortValue);
 	});
 
-	async function handleUnfollow(wishlistId: string) {
-		try {
-			// Single-flight: the updated list rides back on the command response.
-			await unfollowWishlist(wishlistId);
-			toastSuccess(m.toast_unfollowed());
-		} catch {
-			toastError(m.toast_unfollow_error());
-		}
+	const followChangePendingIds = new SvelteSet<string>();
+
+	async function changeFollow(
+		wishlistId: string,
+		command: (wishlistId: string) => Promise<unknown>,
+		successMessage: string,
+		errorMessage: string,
+	) {
+		await runExclusively(followChangePendingIds, wishlistId, async () => {
+			try {
+				// Single-flight: the updated list rides back on the command response.
+				await command(wishlistId);
+				toastSuccess(successMessage);
+			} catch {
+				toastError(errorMessage);
+			}
+		});
 	}
 
-	async function handleRefollow(wishlistId: string) {
-		try {
-			await refollowWishlist(wishlistId);
-			toastSuccess(m.toast_refollowed());
-		} catch {
-			toastError(m.toast_refollow_error());
-		}
+	function handleUnfollow(wishlistId: string) {
+		return changeFollow(
+			wishlistId,
+			unfollowWishlist,
+			m.toast_unfollowed(),
+			m.toast_unfollow_error(),
+		);
+	}
+
+	function handleRefollow(wishlistId: string) {
+		return changeFollow(
+			wishlistId,
+			refollowWishlist,
+			m.toast_refollowed(),
+			m.toast_refollow_error(),
+		);
 	}
 
 	function sortFollowedWishlists(
@@ -125,21 +145,26 @@
 				myReservations={wishlistItem.myReservations}
 			>
 				{#snippet actions()}
+					{@const followChangePending = followChangePendingIds.has(wishlistItem.id)}
 					{#if wishlistItem.unfollowedAt !== null}
 						<Button
 							size="sm"
 							intent="outline"
+							disabled={followChangePending}
+							aria-busy={followChangePending || undefined}
 							onclick={(e) => {
 								e.preventDefault();
 								handleRefollow(wishlistItem.id);
 							}}
 						>
-							Znovu sledovat
+							{m.wishlist_detail_refollow()}
 						</Button>
 					{:else}
 						<Button
 							size="sm"
 							intent="ghost"
+							disabled={followChangePending}
+							aria-busy={followChangePending || undefined}
 							onclick={(e) => {
 								e.preventDefault();
 								handleUnfollow(wishlistItem.id);

@@ -23,6 +23,7 @@
 	import SlidersHorizontalIcon from '@lucide/svelte/icons/sliders-horizontal';
 	import Columns3Icon from '@lucide/svelte/icons/columns-3';
 	import MoreHorizontalIcon from '@lucide/svelte/icons/ellipsis';
+	import MessageSquareQuoteIcon from '@lucide/svelte/icons/message-square-quote';
 	import XIcon from '@lucide/svelte/icons/x';
 	import {
 		GIFT_SORT_KEYS,
@@ -48,6 +49,7 @@
 	import WishlistSheetHeader from './WishlistSheetHeader.svelte';
 	import { isGiftCardColumnOptionAvailable } from './gift_card_grid_columns.js';
 	import { getWishlistStickyChrome } from './wishlist_sticky_chrome.svelte.js';
+	import { giftDraftDialogLoader } from './lazy_dialog_loaders.js';
 	import {
 		GIFT_CARD_COLUMN_OPTIONS,
 		GIFT_GROUPING_OPTIONS,
@@ -98,7 +100,12 @@
 		onfilterchange: (filters: GiftFilters) => void;
 		ongroupingchange: (grouping: GiftGroupingOption) => void;
 		onunfollow: () => void;
+		/** Set only while the wishlist note is dismissed; More offers „Zobrazit vzkaz" first. */
+		onshownote?: () => void;
+		unfollowPending?: boolean;
 		onaddgift: () => void;
+		/** Pointer or focus on an add-gift trigger, so the page can warm what the gift dialog needs. */
+		onaddgiftintent?: () => void;
 		onbatchadd: () => void;
 		onselectionstart: () => void;
 		selectionContent?: Snippet;
@@ -134,7 +141,10 @@
 		onfilterchange,
 		ongroupingchange,
 		onunfollow,
+		onshownote,
+		unfollowPending = false,
 		onaddgift,
+		onaddgiftintent,
 		onbatchadd,
 		onselectionstart,
 		selectionContent,
@@ -179,11 +189,14 @@
 	);
 	const showManagementActions = $derived(canManage && !isArchived);
 	const showUnfollowAction = $derived(!canManage && !isArchived && isAuthenticated);
-	const showActions = $derived(
-		showManagementActions || showUnfollowAction || canPreviewRecipientView || showReset,
-	);
-	const showMobileMore = $derived(
-		showReset || canPreviewRecipientView || showUnfollowAction || showManagementActions,
+	const showNoteAction = $derived(onshownote !== undefined);
+	/** Desktop and mobile More offer the same actions, so either shows whenever one exists. */
+	const showMoreActions = $derived(
+		showNoteAction ||
+			showReset ||
+			canPreviewRecipientView ||
+			showUnfollowAction ||
+			showManagementActions,
 	);
 
 	const GROUPING_LABELS = {
@@ -408,7 +421,15 @@
 		mobileOpenDisplayControl = control;
 	}
 
+	// Opening More is the intent signal for the batch add dialog it offers.
+	function preloadMoreActionDialogs(open: boolean) {
+		if (open && showManagementActions) {
+			giftDraftDialogLoader.preload();
+		}
+	}
+
 	function handleMobileMoreOpenChange(open: boolean) {
+		preloadMoreActionDialogs(open);
 		mobileMoreOpen = open;
 		if (!open) {
 			requestAnimationFrame(() => mobileMoreTrigger?.focus({ preventScroll: true }));
@@ -468,6 +489,12 @@
 		const focusTarget = reorderMode ? desktopReorderDoneButton : desktopMoreTrigger;
 		focusTarget?.focus({ preventScroll: true });
 		window.scrollTo(scrollPosition.x, scrollPosition.y);
+	}
+
+	/** Focuses the More trigger of the current layout, if it shows one. */
+	export function focusMoreTrigger(): void {
+		const trigger = mobileViewportMode === false ? desktopMoreTrigger : mobileMoreTrigger;
+		trigger?.focus();
 	}
 
 	async function changeMobileReorderMode(active: boolean) {
@@ -742,7 +769,7 @@
 			</Button>
 		</SimpleTooltip>
 		<div class="mobile-browse-spacer"></div>
-		{#if showMobileMore}
+		{#if showMoreActions}
 			<SimpleTooltip text={m.wishlist_more_actions()}>
 				<Button
 					bind:ref={mobileMoreTrigger}
@@ -768,6 +795,8 @@
 				aria-label={m.wishlist_detail_add_gift_label()}
 				title={m.wishlist_detail_add_wish()}
 				onclick={onaddgift}
+				onpointerenter={onaddgiftintent}
+				onfocus={onaddgiftintent}
 			>
 				<PlusIcon />
 			</Button>
@@ -799,7 +828,7 @@
 {/snippet}
 
 {#snippet desktopMoreMenu()}
-	<DropdownMenu.Root>
+	<DropdownMenu.Root onOpenChange={preloadMoreActionDialogs}>
 		<DropdownMenu.Trigger>
 			{#snippet child({ props })}
 				<Button
@@ -824,6 +853,11 @@
 				}
 			}}
 		>
+			{#if showNoteAction}
+				<DropdownMenu.Item onclick={onshownote}
+					><MessageSquareQuoteIcon />{m.wishlist_note_show()}</DropdownMenu.Item
+				>
+			{/if}
 			{#if showReset}
 				<DropdownMenu.Item onclick={resetDisplayControls}
 					><RotateCcwIcon />{m.gift_display_reset_tooltip()}</DropdownMenu.Item
@@ -840,7 +874,7 @@
 				</DropdownMenu.Item>
 			{/if}
 			{#if showUnfollowAction}
-				<DropdownMenu.Item onclick={onunfollow}
+				<DropdownMenu.Item onclick={onunfollow} disabled={unfollowPending}
 					><BellOffIcon />{m.wishlist_detail_unfollow()}</DropdownMenu.Item
 				>
 			{/if}
@@ -870,6 +904,15 @@
 					<Sheet.Description>{m.wishlist_more_actions_description()}</Sheet.Description>
 				</WishlistSheetHeader>
 				<WishlistSheetBody class="flex flex-col">
+					{#if showNoteAction}
+						<WishlistSheetAction
+							onclick={() => runMobileMoreAction(() => onshownote?.())}
+						>
+							<MessageSquareQuoteIcon
+								data-icon="inline-start"
+							/>{m.wishlist_note_show()}
+						</WishlistSheetAction>
+					{/if}
 					{#if showReset}
 						<WishlistSheetAction
 							onclick={() => runMobileMoreAction(resetDisplayControls)}
@@ -896,7 +939,11 @@
 						</WishlistSheetAction>
 					{/if}
 					{#if showUnfollowAction}
-						<WishlistSheetAction onclick={() => runMobileMoreAction(onunfollow)}>
+						<WishlistSheetAction
+							onclick={() => runMobileMoreAction(onunfollow)}
+							disabled={unfollowPending}
+							aria-busy={unfollowPending || undefined}
+						>
 							<BellOffIcon data-icon="inline-start" />{m.wishlist_detail_unfollow()}
 						</WishlistSheetAction>
 					{/if}
@@ -1170,7 +1217,7 @@
 					{#if mobileViewportMode === false}
 						{@render activeFilterRegion()}
 
-						{#if reorderMode || showActions || showManagementActions}
+						{#if reorderMode || showMoreActions || showManagementActions}
 							<div
 								class="toolbar-actions min-w-0"
 								data-testid="wishlist-toolbar-actions"
@@ -1197,12 +1244,14 @@
 										</Button>
 									{/if}
 								{:else}
-									{#if showActions}{@render desktopMoreMenu()}{/if}
+									{#if showMoreActions}{@render desktopMoreMenu()}{/if}
 									{#if showManagementActions}
 										<Button
 											aria-label={m.wishlist_detail_add_gift_label()}
 											title={m.wishlist_detail_add_wish()}
 											onclick={onaddgift}
+											onpointerenter={onaddgiftintent}
+											onfocus={onaddgiftintent}
 										>
 											<PlusIcon data-icon="inline-start" />
 											<span>{m.wishlist_detail_add_wish()}</span>
@@ -1248,6 +1297,7 @@
 <style>
 	.wishlist-toolbar-sticky {
 		--wishlist-toolbar-sticky-top: 0.75rem;
+		--wishlist-toolbar-bottom-fade: 1.5rem;
 
 		isolation: isolate;
 		top: var(--wishlist-toolbar-sticky-top);
@@ -1262,7 +1312,6 @@
 		inline-size: 100cqw;
 		transform: translateX(-50%);
 		background: var(--app-page-background);
-		backdrop-filter: blur(10px);
 		pointer-events: auto;
 	}
 
@@ -1270,17 +1319,16 @@
 		position: absolute;
 		inset-block-start: 100%;
 		inset-inline: 0;
-		block-size: 1.5rem;
+		block-size: var(--wishlist-toolbar-bottom-fade);
 		background: var(--app-page-background);
-		backdrop-filter: blur(10px);
 		content: '';
 		mask-image: linear-gradient(to bottom, #000, transparent);
 		pointer-events: none;
 	}
 
 	/* A strip sticking right below the toolbar carries on its surface; the fade would wash it out. */
-	.wishlist-toolbar-sticky-continued .wishlist-toolbar-mask::after {
-		display: none;
+	.wishlist-toolbar-sticky-continued {
+		--wishlist-toolbar-bottom-fade: 0px;
 	}
 
 	.wishlist-toolbar {

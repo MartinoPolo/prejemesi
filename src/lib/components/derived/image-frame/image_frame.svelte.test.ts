@@ -2,6 +2,7 @@ import '../../../../app.css';
 import { render } from 'vitest-browser-svelte';
 import { describe, expect, it, vi } from 'vitest';
 import ImageFrame from './ImageFrame.svelte';
+import { expectPhotoEdgeToEdge } from './image_frame.test_fixtures.js';
 
 vi.mock('$env/dynamic/public', () => ({ env: {} }));
 
@@ -107,6 +108,25 @@ describe('ImageFrame wishlist image mat', () => {
 	});
 });
 
+describe('ImageFrame Fit', () => {
+	it('draws the letterboxed photo edge to edge on its tighter axis', async () => {
+		// A 4:3 photo in a square frame spans the full width, with fill above and below.
+		const screen = await render(ImageFrame, {
+			props: {
+				class: 'size-24',
+				src: IMAGE,
+				alt: 'Gift',
+				fitMode: 'contain-padded',
+				fillColor: '#ffffff',
+			},
+		});
+		const frame = screen.container.querySelector<HTMLElement>('[data-testid="image-frame"]')!;
+		const image = screen.container.querySelector('img')!;
+
+		await expectPhotoEdgeToEdge(frame, image, 'width');
+	});
+});
+
 describe('ImageFrame cover-crop zoomed out past the whole image', () => {
 	const squareImage =
 		'data:image/svg+xml,' +
@@ -170,5 +190,37 @@ describe('ImageFrame cover-crop zoomed out past the whole image', () => {
 
 		expect(image.getAttribute('style')).toBe(settledStyle);
 		expect(onmeasured).toHaveBeenCalledTimes(1);
+	});
+});
+
+describe('ImageFrame loading priority', () => {
+	it('fetches an eager above-the-fold image at high priority', async () => {
+		const screen = await render(ImageFrame, {
+			props: { class: 'h-24 w-32', src: IMAGE, alt: 'Banner', loadPriority: 'high' },
+		});
+		const image = screen.container.querySelector('img')!;
+
+		expect(image.getAttribute('loading')).toBe('eager');
+		expect(image.getAttribute('fetchpriority')).toBe('high');
+	});
+
+	it('fetches other above-the-fold images eagerly without raising their priority', async () => {
+		const screen = await render(ImageFrame, {
+			props: { class: 'h-24 w-32', src: IMAGE, alt: 'Gift', loadPriority: 'eager' },
+		});
+		const image = screen.container.querySelector('img')!;
+
+		expect(image.getAttribute('loading')).toBe('eager');
+		expect(image.hasAttribute('fetchpriority')).toBe(false);
+	});
+
+	it('lazy-loads other images without raising their priority', async () => {
+		const screen = await render(ImageFrame, {
+			props: { class: 'h-24 w-32', src: IMAGE, alt: 'Gift' },
+		});
+		const image = screen.container.querySelector('img')!;
+
+		expect(image.getAttribute('loading')).toBe('lazy');
+		expect(image.hasAttribute('fetchpriority')).toBe(false);
 	});
 });

@@ -21,21 +21,18 @@
 	} from '$lib/components/blocks/settings/index.js';
 	import { pageHeaderVariants } from '$lib/components/blocks/page-header/index.js';
 
-	const profile = await getUserProfile();
-	const notificationPreferences = await getNotificationPreferences();
+	const [profile, notificationPreferences] = await Promise.all([
+		getUserProfile(),
+		getNotificationPreferences(),
+	]);
 
+	// Both commands return the refreshed profile on their own response (single-flight).
 	async function handleProfileSave(params: { name: string; image: string | null }) {
 		await updateProfile(params);
-		// Force-refresh the profile query so every surface reading it reflects the
-		// change without a full page reload.
-		await getUserProfile().refresh();
 	}
 
-	async function handleFetchGoogleAvatar() {
-		const result = await refreshGoogleAvatar();
-		// Refresh so the navbar avatar and any other profile-reading surface update too.
-		await getUserProfile().refresh();
-		return result;
+	function handleFetchGoogleAvatar() {
+		return refreshGoogleAvatar();
 	}
 </script>
 

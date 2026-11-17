@@ -285,3 +285,6 @@ export const UNRESOLVED_DECISION_MESSAGES: PluralMessages = {
 	few: m.change_review_unresolved_message_few,
 	other: m.change_review_unresolved_message_other,
 };
+
+/** A whole-proposal action in flight, which locks the decision controls and labels Použít. */
+export type ProposalAction = 'apply' | 'reject' | 'undo';

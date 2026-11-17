@@ -358,6 +358,121 @@ describe('collection-owned gift identity motion', () => {
 		expect(animations[0]?.frames[0]?.transform).toBe('translate(0px, -90px)');
 	});
 
+	it('measures no gift while scrolling and adds gifts scrolled into view once the scroll ends', async () => {
+		const { host, coordinator, animations } = setup();
+		const visible = gift(host, 'visible', { x: 10, y: 10 });
+		const latePosition = { x: 10, y: window.innerHeight + 500 };
+		const late = gift(host, 'late', latePosition);
+		coordinator.afterUpdate();
+		await settled();
+		await settled();
+		const visibleReads = vi.spyOn(visible, 'getBoundingClientRect');
+		const visibleClones = vi.spyOn(visible, 'cloneNode');
+		latePosition.y = 100;
+		for (let event = 0; event < 3; event++) {
+			document.dispatchEvent(new Event('scroll'));
+		}
+		expect(visibleReads, 'a scroll event measured gifts').not.toHaveBeenCalled();
+
+		document.dispatchEvent(new Event('scrollend'));
+		expect(visibleReads, 'the scroll end did not measure').toHaveBeenCalled();
+		expect(visibleClones, 'the scroll end cloned a known gift again').not.toHaveBeenCalled();
+		coordinator.beforeUpdate();
+		latePosition.y = 300;
+		coordinator.afterUpdate();
+		await vi.waitFor(() =>
+			expect(animations.map((animation) => animation.element)).toContain(late),
+		);
+		expect(
+			animations.find((animation) => animation.element === late)?.frames[0]?.transform,
+		).toBe('translate(0px, -200px)');
+	});
+
+	it('ends a scroll after a quiet period in browsers without scrollend', async () => {
+		let owner: object | null = window;
+		while (owner !== null && !Object.hasOwn(owner, 'onscrollend')) {
+			owner = Object.getPrototypeOf(owner) as object | null;
+		}
+		const descriptor =
+			owner === null ? undefined : Object.getOwnPropertyDescriptor(owner, 'onscrollend');
+		if (owner !== null) {
+			Reflect.deleteProperty(owner, 'onscrollend');
+		}
+		try {
+			const { host, coordinator } = setup();
+			const visible = gift(host, 'visible', { x: 10, y: 10 });
+			coordinator.afterUpdate();
+			await settled();
+			await settled();
+			const visibleReads = vi.spyOn(visible, 'getBoundingClientRect');
+			for (let event = 0; event < 3; event++) {
+				document.dispatchEvent(new Event('scroll'));
+				await new Promise((resolve) => setTimeout(resolve, 20));
+			}
+			expect(visibleReads, 'measured before the scroll went quiet').not.toHaveBeenCalled();
+			await vi.waitFor(() => expect(visibleReads).toHaveBeenCalled(), { timeout: 2000 });
+		} finally {
+			if (owner !== null && descriptor !== undefined) {
+				Object.defineProperty(owner, 'onscrollend', descriptor);
+			}
+		}
+	});
+
+	it('moves every on-screen gift of a long list without hit-testing the page', async () => {
+		const { host, coordinator, animations } = setup();
+		const rowHeight = 100;
+		const positions = Array.from({ length: 120 }, (_, index) => ({
+			x: 10,
+			y: (index - 60) * rowHeight,
+		}));
+		positions.forEach((position, index) => gift(host, `gift-${index}`, position));
+		const hitTests = vi.spyOn(document, 'elementsFromPoint');
+		coordinator.afterUpdate();
+		coordinator.beforeUpdate();
+		for (const position of positions) {
+			position.y += rowHeight / 2;
+		}
+		coordinator.afterUpdate();
+		const onScreen = (top: number) => top + 80 > 0 && top < window.innerHeight;
+		const stayedOnScreen = positions.flatMap((position, index) =>
+			onScreen(position.y) && onScreen(position.y - rowHeight / 2) ? [`gift-${index}`] : [],
+		);
+		await vi.waitFor(() =>
+			expect(animations.length).toBeGreaterThanOrEqual(stayedOnScreen.length),
+		);
+		const travel = new Map(
+			animations.map((animation) => [
+				(animation.element as HTMLElement).dataset.giftId,
+				animation.frames[0]?.transform,
+			]),
+		);
+		expect(
+			stayedOnScreen.filter((id) => travel.get(id) !== `translate(0px, -${rowHeight / 2}px)`),
+		).toEqual([]);
+		expect(hitTests).not.toHaveBeenCalled();
+	});
+
+	it('settles again only when an observed gift really resizes', async () => {
+		const { host, coordinator } = setup();
+		gift(host, 'a', { x: 10, y: 10 });
+		coordinator.afterUpdate();
+		await settled();
+		await settled();
+		coordinator.beforeUpdate();
+		const added = gift(host, 'b', { x: 10, y: 110 });
+		const cloneSpy = vi.spyOn(added, 'cloneNode');
+		coordinator.afterUpdate();
+		await vi.waitFor(() => expect(cloneSpy).toHaveBeenCalledTimes(1));
+		await settled();
+		await settled();
+		expect(cloneSpy, 'the first resize notification settled again').toHaveBeenCalledTimes(1);
+
+		added.style.height = '200px';
+		await vi.waitFor(() =>
+			expect(cloneSpy, 'a real resize did not settle').toHaveBeenCalledTimes(2),
+		);
+	});
+
 	it('continues from the rendered position even when descendants patch before the pre-update hook', async () => {
 		const host = document.createElement('div');
 		host.style.cssText = 'position: fixed; left: 10px; top: 10px; width: 150px; height: 600px';

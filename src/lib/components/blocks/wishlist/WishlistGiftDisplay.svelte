@@ -16,6 +16,7 @@
 		type GiftByRole,
 		type GiftCardColumnOption,
 		type GiftForVisitor,
+		type GiftUnreserveHandler,
 		type GiftGroupingOption,
 		type GiftViewMode,
 	} from '$lib/modules/gifts/types.js';
@@ -25,9 +26,10 @@
 	import { canManageWishlist } from '$lib/modules/wishlists/wishlist_capabilities.js';
 	import {
 		giftCardCollectionLayout,
-		measureGiftCardCollectionLayout,
+		measureGiftCardCollectionLayoutNow,
 	} from './gift_card_collection_layout.js';
 	import { createGiftCollectionMotion } from '$lib/motion/gift_collection_motion.js';
+	import { afterNextPaint } from '$lib/utils/after_next_paint.js';
 	import { cn } from '$lib/utils.js';
 	import {
 		GIFT_CARD_MINIMUM_WIDTH,
@@ -35,6 +37,7 @@
 		widenPageForGiftCardColumns,
 	} from './gift_card_grid_columns.js';
 	import { giftCardGridVariants } from './gift_card_grid_variants.js';
+	import { STANDARD_EASING } from '$lib/motion/motion_tokens.js';
 	import type { GiftLivePreviews } from '$lib/components/blocks/change-proposals/gift_live_preview.js';
 
 	interface WishlistGiftDisplayProps {
@@ -52,9 +55,11 @@
 		reorderInteractionEnabled?: boolean;
 		onedit: (gift: GiftByRole) => void;
 		onreserve: (gift: GiftForVisitor) => void;
-		onunreserve: (gift: GiftForVisitor) => void;
+		onunreserve: GiftUnreserveHandler;
 		onreceived: (giftId: string, received: boolean) => void;
 		onaddgift: () => void;
+		/** Pointer or focus on an add-gift trigger, so the page can warm what the gift dialog needs. */
+		onaddgiftintent?: () => void;
 		onclearfilters: () => void;
 		onreorderpreview: (orderedIds: string[]) => void;
 		onreordercommit: (orderedIds: string[]) => void;
@@ -98,6 +103,7 @@
 		onunreserve,
 		onreceived,
 		onaddgift,
+		onaddgiftintent,
 		onclearfilters,
 		onreorderpreview,
 		onreordercommit,
@@ -135,7 +141,6 @@
 	const showsEmptyState = $derived(
 		isFilteredEmpty || (isEmpty && (livePreviews?.creations.length ?? 0) === 0),
 	);
-	const STANDARD_EASING = 'cubic-bezier(0.2, 0.7, 0.3, 1)';
 	let displayedViewMode = $state(untrack(() => viewMode));
 	const GiftCollectionView = $derived(
 		{
@@ -303,31 +308,38 @@
 			return;
 		}
 		let active = true;
+		let cancelDeferredBaseline: (() => void) | undefined;
+		const motionCanRun = () =>
+			active && !viewTransitioning && viewMode === displayedViewMode && !isLoading;
 		void tick().then(() => {
-			if (
-				!active ||
-				!motion ||
-				viewTransitioning ||
-				viewMode !== displayedViewMode ||
-				isLoading
-			) {
+			if (!motionCanRun() || !motion) {
 				return;
-			}
-			if (collectionElement) {
-				measureGiftCardCollectionLayout(collectionElement);
 			}
 			if (motionSuspended) {
 				if (activeAnimation !== null) {
 					return;
 				}
-				motion.reset(false);
-				motionSuspended = false;
+				// The baseline samples the geometry of every visible gift without changing what is
+				// shown, so it waits until the gifts have painted instead of delaying that paint.
+				cancelDeferredBaseline = afterNextPaint(() => {
+					if (!motionCanRun() || !motion || activeAnimation !== null) {
+						return;
+					}
+					motion.reset(false);
+					motionSuspended = false;
+				});
 			} else {
+				// Motion reads the aligned endpoints now; a fresh baseline waits for the frame, whose
+				// scheduled collection measurement runs before it.
+				if (collectionElement) {
+					measureGiftCardCollectionLayoutNow(collectionElement);
+				}
 				motion.afterUpdate();
 			}
 		});
 		return () => {
 			active = false;
+			cancelDeferredBaseline?.();
 		};
 	});
 
@@ -431,6 +443,7 @@
 				{canManage}
 				{isFilteredEmpty}
 				{onaddgift}
+				{onaddgiftintent}
 				{onclearfilters}
 			/>
 		{:else}

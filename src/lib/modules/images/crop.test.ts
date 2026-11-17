@@ -9,16 +9,23 @@ import {
 	zoomCropRect,
 	containCropRect,
 	centerCropRectOn,
+	recenterCropRect,
 	alignCropRect,
-	reprojectCropRect,
+	classifyGiftFraming,
+	giftFramingPresetRect,
+	renderedGiftTargetRect,
+	transferGiftFramingRect,
+	followedZoomForAspect,
 	fitCropRectToAspect,
 	seedCropRectFromLegacyMeta,
 	zoomOutFloorForAspect,
 	cropRectAroundBox,
 	framedGiftImageMeta,
 	FULL_CROP_RECT,
+	GIFT_FRAMINGS,
 } from './crop.js';
 import * as v from 'valibot';
+import { IMAGE_FIT_MODES } from './fit_modes.js';
 import {
 	GIFT_FRAMING_DEFAULT_GAP_PER_SIDE,
 	IMAGE_ZOOM_MAX,
@@ -26,6 +33,7 @@ import {
 	IMAGE_ZOOM_OUT_MIN,
 	ImageMetadataSchema,
 	type ImageCropRect,
+	type ImageMetadata,
 } from './types.js';
 import { expectRectClose } from './crop.test_fixtures.js';
 
@@ -346,6 +354,27 @@ describe('centerCropRectOn', () => {
 	});
 });
 
+describe('recenterCropRect', () => {
+	it('centers a zoomed-in window on the image and keeps its zoom', () => {
+		const rect: ImageCropRect = { x: 0.6, y: 0.1, w: 0.4, h: 0.3 };
+		const recentered = recenterCropRect(rect);
+		expectRectClose(recentered, { x: 0.3, y: 0.35, w: 0.4, h: 0.3 });
+		expect(cropRectToFocalZoom(recentered).zoom).toBeCloseTo(cropRectToFocalZoom(rect).zoom);
+	});
+
+	it('centers the image inside a zoomed-out window', () => {
+		const normalizedAspect = 4 / 3;
+		const zoomedOut = zoomCropRect(centeredCropRect(normalizedAspect), normalizedAspect, 0.8, {
+			x: 0,
+			y: 0,
+		});
+		expectRectClose(
+			recenterCropRect(zoomedOut),
+			zoomCropRect(centeredCropRect(normalizedAspect), normalizedAspect, 0.8),
+		);
+	});
+});
+
 describe('alignCropRect', () => {
 	it('snaps the window to a corner, an edge or the center at its current size', () => {
 		const rect: ImageCropRect = { x: 0.1, y: 0.2, w: 0.5, h: 0.4 };
@@ -365,30 +394,284 @@ describe('alignCropRect', () => {
 	});
 });
 
-describe('reprojectCropRect', () => {
-	it('keeps focal point and zoom when re-shaping for another target aspect', () => {
-		const card: ImageCropRect = { x: 0.2, y: 0.1, w: 0.5, h: 0.5 };
-		const thumb = reprojectCropRect(card, 0.75);
-		const source = cropRectToFocalZoom(card);
-		const reprojected = cropRectToFocalZoom(thumb);
-		expect(reprojected.zoom).toBeCloseTo(source.zoom, 6);
-		expect(reprojected.focal.x).toBeCloseTo(source.focal.x, 6);
-		expect(reprojected.focal.y).toBeCloseTo(source.focal.y, 6);
-		expect(thumb.w / thumb.h).toBeCloseTo(0.75, 6);
+// The 4:3 card and the 1:1 thumbnail at a photo's natural ratio.
+const cardAspect = (imageRatio: number) => normalizedCropAspect(4 / 3, imageRatio);
+const thumbAspect = (imageRatio: number) => normalizedCropAspect(1, imageRatio);
+
+describe('followedZoomForAspect', () => {
+	const follow = (cardZoom: number, imageRatio: number) =>
+		followedZoomForAspect(cardZoom, cardAspect(imageRatio), thumbAspect(imageRatio));
+
+	it('maps a square photo’s card Fit and the step in from it to the thumbnail’s Fit', () => {
+		// Card contain is 0.75, thumbnail contain equals cover (1).
+		expect(follow(0.75, 1)).toBeCloseTo(1, 10);
+		expect(follow(0.85, 1)).toBeCloseTo(1, 10);
 	});
 
-	it('keeps a crop zoomed out past contain inside its window on the other aspect', () => {
-		// A card crop at its floor (4:3 on a square photo) shown on the 1:1 thumb.
-		const card = zoomCropRect(centeredCropRect(4 / 3), 4 / 3, 0);
-		const thumb = reprojectCropRect(card, 1);
-		expect(cropRectToFocalZoom(thumb).zoom).toBeCloseTo(cropRectToFocalZoom(card).zoom, 6);
-		expectRectClose(thumb, {
-			x: 0.5 - thumb.w / 2,
-			y: 0.5 - thumb.h / 2,
-			w: thumb.w,
-			h: thumb.w,
-		});
+	it('keeps the relative position between contain and cover when both ranges are open', () => {
+		// Wide 2:1 photo: card contain 2/3, thumbnail contain 1/2.
+		expect(follow(2 / 3, 2)).toBeCloseTo(0.5, 10);
+		expect(follow(5 / 6, 2)).toBeCloseTo(0.75, 10);
+		// Tall 1:2 photo: card contain 3/8, thumbnail contain 1/2.
+		expect(follow(0.6875, 0.5)).toBeCloseTo(0.75, 10);
+	});
+
+	it('copies zooms at or beyond cover', () => {
+		expect(follow(1, 1)).toBeCloseTo(1, 10);
+		expect(follow(1.5, 1)).toBeCloseTo(1.5, 10);
+		expect(follow(2, 2)).toBeCloseTo(2, 10);
+		expect(follow(IMAGE_ZOOM_MAX, 0.5)).toBeCloseTo(IMAGE_ZOOM_MAX, 10);
+	});
+
+	it('keeps a card zoomed out past its contain proportionally looser than the thumbnail’s', () => {
+		expect(follow(0.6, 1)).toBeCloseTo(0.8, 10);
+		expect(follow(0.5, 2)).toBeCloseTo(0.375, 10);
+		expect(follow(0.3, 0.5)).toBeCloseTo(0.4, 10);
+	});
+
+	it('clamps a card zoomed out past its contain to the zoom-out minimum', () => {
+		// A 2:1 photo's thumbnail contain (1/2) is tighter than the card's (2/3), so the
+		// card's minimum maps below the minimum.
+		expect(follow(IMAGE_ZOOM_OUT_MIN, 2)).toBe(IMAGE_ZOOM_OUT_MIN);
+	});
+
+	it('lands a card at its zoom-out floor on the thumbnail’s floor', () => {
+		for (const imageRatio of [0.5, 1, 2]) {
+			expect(follow(zoomOutFloorForAspect(cardAspect(imageRatio)), imageRatio)).toBeCloseTo(
+				zoomOutFloorForAspect(thumbAspect(imageRatio)),
+				10,
+			);
+		}
+	});
+
+	it('copies the zoom when the photo already has the card’s aspect', () => {
+		expect(follow(0.8, 4 / 3)).toBeCloseTo(0.8, 10);
+		expect(follow(1.2, 4 / 3)).toBeCloseTo(1.2, 10);
+	});
+});
+
+describe('transferGiftFramingRect (one-shot copy between Karta and Seznam)', () => {
+	it('copies Vyplnit as the destination’s centered cover in both directions', () => {
+		for (const imageRatio of [0.5, 1, 2]) {
+			expectRectClose(
+				transferGiftFramingRect(
+					centeredCropRect(cardAspect(imageRatio)),
+					'square',
+					'thumb',
+					imageRatio,
+				),
+				centeredCropRect(thumbAspect(imageRatio)),
+			);
+			expectRectClose(
+				transferGiftFramingRect(
+					centeredCropRect(thumbAspect(imageRatio)),
+					'thumb',
+					'square',
+					imageRatio,
+				),
+				centeredCropRect(cardAspect(imageRatio)),
+			);
+		}
+	});
+
+	it('copies Celý as the destination’s whole image in both directions', () => {
+		for (const imageRatio of [0.5, 2, 3]) {
+			expectRectClose(
+				transferGiftFramingRect(
+					containCropRect(cardAspect(imageRatio)),
+					'square',
+					'thumb',
+					imageRatio,
+				),
+				containCropRect(thumbAspect(imageRatio)),
+			);
+			expectRectClose(
+				transferGiftFramingRect(
+					containCropRect(thumbAspect(imageRatio)),
+					'thumb',
+					'square',
+					imageRatio,
+				),
+				containCropRect(cardAspect(imageRatio)),
+			);
+		}
+	});
+
+	it('frames a square photo’s card step in from Celý as the whole thumbnail', () => {
+		const cardStepIn = zoomCropRect(containCropRect(cardAspect(1)), cardAspect(1), 0.85);
+		expectRectClose(transferGiftFramingRect(cardStepIn, 'square', 'thumb', 1), FULL_CROP_RECT);
+	});
+
+	it('keeps the source focal point and a zoom beyond cover at the destination aspect', () => {
+		// A 4:3 window on a square photo at zoom 2.
+		const card: ImageCropRect = { x: 0.2, y: 0.1, w: 0.5, h: 0.375 };
+		const thumb = transferGiftFramingRect(card, 'square', 'thumb', 1);
+		const source = cropRectToFocalZoom(card);
+		const copied = cropRectToFocalZoom(thumb);
+		expect(copied.zoom).toBeCloseTo(2, 6);
+		expect(copied.focal.x).toBeCloseTo(source.focal.x, 6);
+		expect(copied.focal.y).toBeCloseTo(source.focal.y, 6);
+		expect(thumb.w / thumb.h).toBeCloseTo(1, 6);
+
+		expectRectClose(transferGiftFramingRect(thumb, 'thumb', 'square', 1), card);
+	});
+
+	it('keeps a framing zoomed out past contain oversized and centered at the destination', () => {
+		// A wide 2:1 photo, its card zoomed out to the floor around the center.
+		const card = zoomCropRect(centeredCropRect(cardAspect(2)), cardAspect(2), 0);
+		const thumb = transferGiftFramingRect(card, 'square', 'thumb', 2);
 		expect(thumb.w).toBeGreaterThan(1);
+		expect(thumb.h).toBeGreaterThan(1);
+		expect(thumb.w / thumb.h).toBeCloseTo(thumbAspect(2), 6);
+		expect(thumb.x + thumb.w / 2).toBeCloseTo(0.5, 6);
+		expect(thumb.y + thumb.h / 2).toBeCloseTo(0.5, 6);
+	});
+});
+
+describe('classifyGiftFraming', () => {
+	it('names the centered cover Vyplnit and the centered contain Celý', () => {
+		for (const imageRatio of [0.5, 2]) {
+			const aspect = thumbAspect(imageRatio);
+			expect(classifyGiftFraming(centeredCropRect(aspect), aspect)).toBe(GIFT_FRAMINGS.fill);
+			expect(classifyGiftFraming(containCropRect(aspect), aspect)).toBe(GIFT_FRAMINGS.whole);
+		}
+	});
+
+	it('names any other framing Vlastní', () => {
+		const aspect = cardAspect(2);
+		expect(classifyGiftFraming(panCropRect(centeredCropRect(aspect), 0.1, 0), aspect)).toBe(
+			GIFT_FRAMINGS.custom,
+		);
+		expect(
+			classifyGiftFraming(zoomCropRect(centeredCropRect(aspect), aspect, 1.5), aspect),
+		).toBe(GIFT_FRAMINGS.custom);
+	});
+
+	it('tolerates float noise below the crop stage’s epsilon', () => {
+		const aspect = cardAspect(1.5);
+		const centered = centeredCropRect(aspect);
+		expect(classifyGiftFraming({ ...centered, x: centered.x + 1e-4 }, aspect)).toBe(
+			GIFT_FRAMINGS.fill,
+		);
+	});
+
+	it('names Vyplnit when the photo has the target’s aspect, where cover is the whole image', () => {
+		expect(classifyGiftFraming(FULL_CROP_RECT, cardAspect(4 / 3))).toBe(GIFT_FRAMINGS.fill);
+	});
+});
+
+describe('giftFramingPresetRect', () => {
+	it('gives the centered cover for Vyplnit and the whole image for Celý', () => {
+		const aspect = thumbAspect(2);
+		expectRectClose(
+			giftFramingPresetRect(GIFT_FRAMINGS.fill, aspect),
+			centeredCropRect(aspect),
+		);
+		expectRectClose(
+			giftFramingPresetRect(GIFT_FRAMINGS.whole, aspect),
+			containCropRect(aspect),
+		);
+	});
+});
+
+describe('renderedGiftTargetRect (the window each surface shows today)', () => {
+	const coverMeta = (extra: Partial<ImageMetadata> = {}): ImageMetadata => ({
+		fitMode: IMAGE_FIT_MODES.coverCrop,
+		cropRect: null,
+		focal: { x: 50, y: 50 },
+		zoom: 1,
+		bgColor: null,
+		...extra,
+	});
+
+	it('shows an image without metadata as a centered cover', () => {
+		expectRectClose(
+			renderedGiftTargetRect(null, 'square', 1.5),
+			centeredCropRect(cardAspect(1.5)),
+		);
+		expectRectClose(
+			renderedGiftTargetRect(null, 'thumb', 1.5),
+			centeredCropRect(thumbAspect(1.5)),
+		);
+	});
+
+	it('shows Fit (contain-padded) whole on both targets, ignoring stale manual crops', () => {
+		const staleCrop = {
+			cropRect: { x: 0.1, y: 0, w: 0.5, h: 0.75 },
+			focal: { x: 20, y: 0 },
+			zoom: 2,
+		};
+		const meta = coverMeta({
+			fitMode: IMAGE_FIT_MODES.containPadded,
+			targets: { square: staleCrop, thumb: staleCrop },
+		});
+		expectRectClose(renderedGiftTargetRect(meta, 'square', 2), containCropRect(cardAspect(2)));
+		expectRectClose(renderedGiftTargetRect(meta, 'thumb', 2), containCropRect(thumbAspect(2)));
+	});
+
+	it('resolves legacy auto per target: a 0.6 portrait is whole on the card but covers the list', () => {
+		const meta = coverMeta({ fitMode: IMAGE_FIT_MODES.auto });
+		expectRectClose(
+			renderedGiftTargetRect(meta, 'square', 0.6),
+			containCropRect(cardAspect(0.6)),
+		);
+		expectRectClose(
+			renderedGiftTargetRect(meta, 'thumb', 0.6),
+			centeredCropRect(thumbAspect(0.6)),
+		);
+	});
+
+	it('honors a legacy base focal point and zoom on both targets', () => {
+		const focal = { x: 30, y: 70 };
+		for (const fitMode of [IMAGE_FIT_MODES.auto, IMAGE_FIT_MODES.coverCrop]) {
+			const meta = coverMeta({ fitMode, focal, zoom: 1.4 });
+			expectRectClose(
+				renderedGiftTargetRect(meta, 'square', 1.5),
+				focalZoomToWindowRect(focal, 1.4, cardAspect(1.5)),
+			);
+			expectRectClose(
+				renderedGiftTargetRect(meta, 'thumb', 1.5),
+				focalZoomToWindowRect(focal, 1.4, thumbAspect(1.5)),
+			);
+		}
+	});
+
+	it('restores each target’s own manual crop exactly, including an oversized one', () => {
+		const squareRect = focalZoomToWindowRect({ x: 20, y: 40 }, 1.3, cardAspect(2));
+		const thumbRect = focalZoomToWindowRect({ x: 80, y: 10 }, 0.6, thumbAspect(2));
+		const meta = coverMeta({
+			targets: {
+				square: { cropRect: squareRect, ...cropRectToFocalZoom(squareRect) },
+				thumb: { cropRect: thumbRect, ...cropRectToFocalZoom(thumbRect) },
+			},
+		});
+		expectRectClose(renderedGiftTargetRect(meta, 'square', 2), squareRect);
+		expectRectClose(renderedGiftTargetRect(meta, 'thumb', 2), thumbRect);
+	});
+
+	it('shows a thumbnail without its own crop at the card’s focal point and followed zoom', () => {
+		// A 2:1 photo: card zoom 5/6 sits halfway between contain and cover, so the following
+		// thumbnail does too, at 3/4.
+		const focal = { x: 30, y: 70 };
+		const squareRect = focalZoomToWindowRect(focal, 5 / 6, cardAspect(2));
+		const meta = coverMeta({
+			targets: { square: { cropRect: squareRect, focal, zoom: 5 / 6 } },
+		});
+		expectRectClose(
+			renderedGiftTargetRect(meta, 'thumb', 2),
+			focalZoomToWindowRect(focal, 0.75, thumbAspect(2)),
+		);
+	});
+
+	it('shows the card from a retired wide-card crop', () => {
+		const focal = { x: 50, y: 31.25 };
+		const meta = coverMeta({
+			targets: { card: { cropRect: { x: 0, y: 0.2, w: 1, h: 0.36 }, focal, zoom: 1 } },
+		});
+		expectRectClose(
+			renderedGiftTargetRect(meta, 'square', 1.5),
+			focalZoomToWindowRect(focal, 1, cardAspect(1.5)),
+		);
 	});
 });
 
@@ -430,12 +713,11 @@ describe('fitCropRectToAspect', () => {
 		expectRectClose(fitCropRectToAspect(belowFloor, 1), belowFloor);
 	});
 
-	it('preserves a thumbnail following a card crop zoomed out deeper than its own floor', () => {
-		// A square photo: the 4:3 card may zoom out further than the 1:1 thumb.
-		const card = zoomCropRect(centeredCropRect(4 / 3), 4 / 3, 0);
-		const followingThumb = reprojectCropRect(card, 1);
-		expect(cropRectToFocalZoom(followingThumb).zoom).toBeLessThan(zoomOutFloorForAspect(1));
-		expectRectClose(fitCropRectToAspect(followingThumb, 1), followingThumb);
+	it('preserves a thumbnail copied from a card crop zoomed out to its floor', () => {
+		const card = zoomCropRect(centeredCropRect(cardAspect(1)), cardAspect(1), 0);
+		const copiedThumb = transferGiftFramingRect(card, 'square', 'thumb', 1);
+		expect(copiedThumb.w).toBeGreaterThan(1);
+		expectRectClose(fitCropRectToAspect(copiedThumb, 1), copiedThumb);
 	});
 
 	it('shrinks a window beyond the renderer zoom-out bound back to it around its center', () => {

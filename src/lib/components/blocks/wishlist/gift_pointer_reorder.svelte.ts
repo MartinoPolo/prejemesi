@@ -707,9 +707,18 @@ export function createGiftPointerReorderController(options: GiftPointerReorderOp
 		finish(false);
 	}
 
+	/** Escape mid-drag cancels the drag before an enclosing dialog would treat it as dismissal. */
+	function cancelOnEscape(event: KeyboardEvent) {
+		if (event.key === 'Escape' && draggedGiftId.current !== null) {
+			event.preventDefault();
+			event.stopPropagation();
+			cancel();
+		}
+	}
+
 	function destroy() {
 		finish(false);
 	}
 
-	return { draggedGiftId, dragOverGiftId, start, move, cancel, destroy };
+	return { draggedGiftId, dragOverGiftId, start, move, cancel, cancelOnEscape, destroy };
 }

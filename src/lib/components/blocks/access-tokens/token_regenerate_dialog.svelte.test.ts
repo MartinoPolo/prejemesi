@@ -21,7 +21,7 @@ describe('TokenRegenerateDialog', () => {
 		await expect.element(dialog).toHaveTextContent(m.access_tokens_regenerate_lead());
 		await expect
 			.element(
-				dialog.getByRole('button', { name: m.access_tokens_regenerate_expiry_label() }),
+				dialog.getByRole('combobox', { name: m.access_tokens_regenerate_expiry_label() }),
 			)
 			.toHaveTextContent(m.access_tokens_expiry_90());
 		await expect
@@ -56,7 +56,7 @@ describe('TokenRegenerateDialog', () => {
 		await expect.element(dialog).toHaveTextContent(m.access_tokens_regenerate_expired_lead());
 		await expect
 			.element(
-				dialog.getByRole('button', { name: m.access_tokens_regenerate_expiry_label() }),
+				dialog.getByRole('combobox', { name: m.access_tokens_regenerate_expiry_label() }),
 			)
 			.toHaveTextContent(m.access_tokens_expiry_30());
 	});

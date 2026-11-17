@@ -61,6 +61,7 @@ function visitorGift(id: string, overrides: Partial<GiftForVisitor> = {}): GiftF
 		reserverNames: [],
 		myReservationId: null,
 		myReservationPurchasedAt: null,
+		myReservationQuantity: 0,
 		...overrides,
 	};
 }
@@ -625,6 +626,7 @@ describe('WishlistGiftCarousel group chip bar (#640)', () => {
 describe('WishlistGiftCarousel row position (#640)', () => {
 	it('shows the visible card range of a row as hidden header text', async () => {
 		const screen = await renderCarousel(375);
+		await expect.poll(() => positionOf(0)).not.toBeNull();
 		const position = positionOf(0)!;
 		expect(position).toHaveTextContent('1–2 z 5');
 		expect(position).toHaveAttribute('aria-hidden', 'true');
@@ -644,8 +646,49 @@ describe('WishlistGiftCarousel row position (#640)', () => {
 		await screen.unmount();
 	});
 
+	it('counts a card overhanging the row by at most 1 px as fully visible', async () => {
+		const screen = await renderCarousel(375);
+		const viewport = rows()[0].querySelector<HTMLElement>('[data-slot="carousel-content"]')!;
+		const viewportBox = viewport.getBoundingClientRect();
+		const thirdCardEnd =
+			viewport
+				.querySelectorAll<HTMLElement>('[data-testid="gift-carousel-slide"]')[2]
+				.getBoundingClientRect().right -
+			viewportBox.left +
+			viewport.scrollLeft;
+		const scrollLeftRevealingThirdCard = Math.ceil(thirdCardEnd - viewport.clientWidth);
+		viewport.scrollLeft = scrollLeftRevealingThirdCard - 1;
+		await expect
+			.poll(() => positionOf(0)?.textContent?.trim())
+			.toBe(m.gift_carousel_position({ first: 2, last: 3, total: 5 }));
+		viewport.scrollLeft = scrollLeftRevealingThirdCard - 2;
+		await expect
+			.poll(() => positionOf(0)?.textContent?.trim())
+			.toBe(m.gift_carousel_position({ first: 2, last: 2, total: 5 }));
+		await screen.unmount();
+	});
+
+	it('follows cards added to and removed from a row', async () => {
+		const screen = await renderCarousel(375);
+		await screen.rerender({
+			sections: [
+				{ ...groupedSections[0], gifts: groupedSections[0].gifts.slice(0, 4) },
+				{ ...groupedSections[1], gifts: ['f', 'g', 'h', 'i'].map((id) => visitorGift(id)) },
+			],
+		});
+		await expect
+			.poll(() => positionOf(0)?.textContent?.trim())
+			.toBe(m.gift_carousel_position({ first: 1, last: 2, total: 4 }));
+		await expect
+			.poll(() => positionOf(1)?.textContent?.trim())
+			.toBe(m.gift_carousel_position({ first: 1, last: 2, total: 4 }));
+		await screen.unmount();
+	});
+
 	it('omits the position when every card of the row fits', async () => {
 		const screen = await renderCarousel(375);
+		// The first row's range shows once visibility is measured, so the second row's is settled.
+		await expect.poll(() => positionOf(0)).not.toBeNull();
 		expect(positionOf(1)).toBeNull();
 		await screen.unmount();
 	});

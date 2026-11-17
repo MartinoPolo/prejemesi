@@ -372,6 +372,16 @@
 	--duration-slow: 300ms;
 	--ease-standard: cubic-bezier(0.2, 0.7, 0.3, 1);
 	--ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+	--ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+	--ease-out-strong: cubic-bezier(0.23, 1, 0.32, 1);
+	--duration-reveal: 600ms;
+	--duration-reveal-stagger: 120ms;
+
+	/* Gentler overshoot than --ease-spring: it eases each pop-in keyframe segment. */
+	--ease-pop: cubic-bezier(0.34, 1.4, 0.64, 1);
+	--duration-pop: 500ms;
+	--duration-pop-stagger: 50ms;
+	--press-scale: 0.98;
 
 	/* ── Layout ────────────────────────────────────────────── */
 	--content-default-max-width: 1200px;
@@ -971,10 +981,10 @@ html.dark {
 	> .elevation-surface {
 	box-shadow: var(--elevation-pressed);
 	translate: 0;
-	scale: 0.98;
+	scale: var(--press-scale);
 }
 
-/* Modal action menus disable body pointer events, so :hover cannot keep the open card lifted. */
+/* Modal action menus block the page beneath them, so :hover cannot keep the open card lifted. */
 @media (hover: hover) and (pointer: fine) {
 	.gift-card-root.elevation-owner-raised:not(
 			:disabled,
@@ -987,14 +997,16 @@ html.dark {
 	}
 }
 
+/* Closing layers stop taking input. Overlays are left out: they keep the page beneath inert until
+   their exit animation ends. */
 [data-slot='dropdown-menu-content'][data-state='closed'],
 [data-slot='dropdown-menu-sub-content'][data-state='closed'],
+[data-slot='context-menu-content'][data-state='closed'],
+[data-slot='context-menu-sub-content'][data-state='closed'],
 [data-slot='dialog-content'][data-state='closed'],
-[data-slot='dialog-overlay'][data-state='closed'],
 [data-slot='popover-content'][data-state='closed'],
 [data-slot='select-content'][data-state='closed'],
 [data-slot='sheet-content'][data-state='closed'] {
-	animation-fill-mode: forwards;
 	pointer-events: none !important;
 }
 
@@ -1073,12 +1085,18 @@ html.dark {
 @media (prefers-reduced-motion: reduce) {
 	[data-slot='dropdown-menu-content'],
 	[data-slot='dropdown-menu-sub-content'],
+	[data-slot='context-menu-content'],
+	[data-slot='context-menu-sub-content'],
 	[data-slot='dialog-content'],
 	[data-slot='dialog-overlay'],
 	[data-slot='popover-content'],
 	[data-slot='select-content'],
-	[data-slot='sheet-content'] {
+	[data-slot='sheet-content'],
+	[data-slot='tooltip-content'],
+	[data-slot='accordion-content'],
+	[data-slot='collapsible-content'] {
 		animation: none;
+		transition: none;
 	}
 
 	.elevation-surface {
@@ -1100,6 +1118,49 @@ html.dark {
 		translate: 0;
 		scale: 1;
 	}
+}
+
+/* gift_card_collection_layout.ts writes each track height on the element that consumes it; not
+   inheriting keeps a changed height from restyling every card descendant. */
+@property --gift-card-image-track-height {
+	syntax: '*';
+	inherits: false;
+}
+
+@property --gift-card-title-track-height {
+	syntax: '*';
+	inherits: false;
+}
+
+@property --gift-card-description-track-height {
+	syntax: '*';
+	inherits: false;
+}
+
+@property --gift-card-links-track-height {
+	syntax: '*';
+	inherits: false;
+}
+
+@property --gift-card-price-track-height {
+	syntax: '*';
+	inherits: false;
+}
+
+@property --gift-card-actions-track-height {
+	syntax: '*';
+	inherits: false;
+}
+
+/* A measurement reads natural track heights by toggling one collection attribute. Style
+   invalidation matches descendants by attribute name only, so these selectors use attributes that
+   exist on track elements alone. */
+[data-gift-card-measuring] [data-gift-card-track] {
+	min-height: auto !important;
+}
+
+[data-gift-card-measuring] [data-gift-card-image-track] {
+	height: auto !important;
 }
 
 @theme inline {
@@ -1213,33 +1274,9 @@ html.dark {
 	--font-sans: var(--font-body);
 	--font-heading: var(--font-head);
 	--default-transition-duration: var(--duration-normal);
-
-	@keyframes accordion-down {
-		from {
-			height: 0;
-		}
-
-		to {
-			height: var(--bits-accordion-content-height, auto);
-		}
-	}
-
-	@keyframes accordion-up {
-		from {
-			height: var(--bits-accordion-content-height, auto);
-		}
-
-		to {
-			height: 0;
-		}
-	}
-
-	--animate-accordion-down: accordion-down 0.2s ease-out;
-	--animate-accordion-up: accordion-up 0.2s ease-out;
-	--animate-fade-up: fade-up 0.6s ease backwards;
-	--animate-pop-in: pop-in 0.5s cubic-bezier(0.34, 1.4, 0.64, 1) backwards;
+	--animate-fade-up: fade-up var(--duration-reveal) var(--ease-standard) backwards;
+	--animate-pop-in: pop-in var(--duration-pop) var(--ease-pop) backwards;
 	--animate-bob: bob 3.6s ease-in-out infinite alternate;
-	--animate-emoji-wiggle: emoji-wiggle 0.45s ease both;
 	--animate-shimmer: shimmer 1.6s linear infinite;
 }
 
@@ -1398,24 +1435,6 @@ main.app-content {
 	}
 }
 
-@keyframes emoji-wiggle {
-	0% {
-		transform: scale(1) rotate(0);
-	}
-
-	30% {
-		transform: scale(1.12) rotate(-6deg);
-	}
-
-	60% {
-		transform: scale(1.05) rotate(4deg);
-	}
-
-	100% {
-		transform: scale(1.08) rotate(0);
-	}
-}
-
 /* ── Notebook background patterns ────────────────────────── */
 .bg-dots {
 	background-image: radial-gradient(var(--pattern-dot) 1.5px, transparent 1.6px);
@@ -1455,58 +1474,61 @@ main.app-content {
 }
 
 /* ── Entrance reveals (staggered fadeUp) ─────────────────── */
+
+/* App surfaces visited repeatedly override the custom properties with a shorter reveal. */
 @media (prefers-reduced-motion: no-preference) {
 	.reveal {
-		animation: fade-up 0.6s ease backwards;
+		animation: fade-up var(--reveal-duration, var(--duration-reveal))
+			var(--reveal-easing, var(--ease-standard)) backwards;
 	}
 
 	.reveal-2 {
-		animation-delay: 0.12s;
+		animation-delay: calc(var(--reveal-step, var(--duration-reveal-stagger)) * 1);
 	}
 
 	.reveal-3 {
-		animation-delay: 0.24s;
+		animation-delay: calc(var(--reveal-step, var(--duration-reveal-stagger)) * 2);
 	}
 
 	.reveal-4 {
-		animation-delay: 0.36s;
+		animation-delay: calc(var(--reveal-step, var(--duration-reveal-stagger)) * 3);
 	}
 
 	.reveal-5 {
-		animation-delay: 0.48s;
+		animation-delay: calc(var(--reveal-step, var(--duration-reveal-stagger)) * 4);
 	}
 
 	.reveal-6 {
-		animation-delay: 0.6s;
+		animation-delay: calc(var(--reveal-step, var(--duration-reveal-stagger)) * 5);
 	}
 
-	/* Staggered pop-in for grid/list children (first 6 delayed, rest immediate) */
+	/* Staggered pop-in for grid/list children (first 6 delayed, rest immediate); each starts a fifth of a step early */
 	.stagger-pop > * {
-		animation: pop-in 0.5s cubic-bezier(0.34, 1.4, 0.64, 1) backwards;
+		animation: var(--animate-pop-in);
 	}
 
 	.stagger-pop > :nth-child(1) {
-		animation-delay: 0.04s;
+		animation-delay: calc(var(--duration-pop-stagger) * 0.8);
 	}
 
 	.stagger-pop > :nth-child(2) {
-		animation-delay: 0.09s;
+		animation-delay: calc(var(--duration-pop-stagger) * 1.8);
 	}
 
 	.stagger-pop > :nth-child(3) {
-		animation-delay: 0.14s;
+		animation-delay: calc(var(--duration-pop-stagger) * 2.8);
 	}
 
 	.stagger-pop > :nth-child(4) {
-		animation-delay: 0.19s;
+		animation-delay: calc(var(--duration-pop-stagger) * 3.8);
 	}
 
 	.stagger-pop > :nth-child(5) {
-		animation-delay: 0.24s;
+		animation-delay: calc(var(--duration-pop-stagger) * 4.8);
 	}
 
 	.stagger-pop > :nth-child(6) {
-		animation-delay: 0.29s;
+		animation-delay: calc(var(--duration-pop-stagger) * 5.8);
 	}
 }
 

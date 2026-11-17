@@ -2,7 +2,10 @@
 	import * as m from '$lib/paraglide/messages.js';
 	import { Button } from '$lib/components/base/button/index.js';
 	import { countCopy } from '$lib/modules/change_proposals/change_review_copy.js';
-	import { UNRESOLVED_DECISION_MESSAGES } from './change_review_presentation.js';
+	import {
+		UNRESOLVED_DECISION_MESSAGES,
+		type ProposalAction,
+	} from './change_review_presentation.js';
 	import ApplyProposalLabel from './ApplyProposalLabel.svelte';
 	import ProposalDecisionButtons from './ProposalDecisionButtons.svelte';
 
@@ -26,7 +29,7 @@
 		unresolvedCount,
 		showUnresolved,
 		announcement,
-		pending,
+		pendingAction,
 		onrejectall,
 		onacceptall,
 		onapply,
@@ -37,7 +40,7 @@
 		showUnresolved: boolean;
 		/** Read out by screen readers when Apply was pressed too early. */
 		announcement: string;
-		pending: boolean;
+		pendingAction: ProposalAction | null;
 		onrejectall: () => void;
 		/** Without it Přijmout vše is not offered, as when every row needs its own confirmation. */
 		onacceptall?: () => void;
@@ -45,6 +48,7 @@
 		onapply: () => void;
 	} = $props();
 
+	const busy = $derived(pendingAction !== null);
 	const blocked = $derived(unresolvedCount > 0);
 	const declines = $derived(!blocked && includedCount === 0);
 	const help = $derived.by(() => {
@@ -78,20 +82,20 @@
 		<div class="apply-actions" data-single-bulk={onacceptall === undefined || undefined}>
 			<ProposalDecisionButtons
 				testIdPrefix="change-review"
-				disabled={pending}
+				disabled={busy}
 				{onrejectall}
 				{onacceptall}
 			/>
 			<Button
-				class={['apply-primary', blocked && !pending && 'is-blocked']}
-				disabled={pending}
-				aria-disabled={blocked && !pending ? 'true' : undefined}
-				aria-busy={pending}
+				class={['apply-primary', blocked && !busy && 'is-blocked']}
+				disabled={busy}
+				aria-disabled={blocked && !busy ? 'true' : undefined}
+				aria-busy={busy}
 				aria-describedby="change-review-apply-help"
 				data-testid="change-review-apply"
 				onclick={onapply}
 			>
-				<ApplyProposalLabel {pending} {declines} {includedCount} />
+				<ApplyProposalLabel {pendingAction} {declines} {includedCount} />
 			</Button>
 		</div>
 	</div>

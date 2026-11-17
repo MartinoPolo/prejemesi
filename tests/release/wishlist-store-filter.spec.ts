@@ -18,6 +18,16 @@ async function visibleGiftNames(page: Page): Promise<string[]> {
 	return names.map((name) => name.trim()).sort();
 }
 
+/**
+ * Gifts load after hydration, and a single-column grid mounts them in batches after that
+ * (`GIFT_COLLECTION_MOUNTING_ATTRIBUTE` in `gift_card_collection_layout.ts`).
+ */
+async function allMountedGiftNames(page: Page): Promise<string[]> {
+	await expect(page.locator('[data-gift-item]').first()).toBeVisible();
+	await expect(page.locator('[data-gift-collection-mounting]')).toHaveCount(0);
+	return visibleGiftNames(page);
+}
+
 async function toggleStore(page: Page, store: string): Promise<void> {
 	const filterMenu = await openDesktopDisplaySubmenu(page, /^Filtrovat/);
 	// The store facet appears once its lazily loaded domain resolver arrives after hydration.
@@ -34,7 +44,7 @@ test('a visitor filters a wishlist to the gifts buyable in the chosen stores @di
 }) => {
 	await page.goto(SEEDED_WISHLIST_PATH);
 	await waitForAppHydration(page);
-	const allGiftNames = await visibleGiftNames(page);
+	const allGiftNames = await allMountedGiftNames(page);
 	expect(allGiftNames.length).toBeGreaterThan(ALZA_OR_DATART_GIFTS.length);
 
 	await toggleStore(page, 'datart.cz');
@@ -56,7 +66,7 @@ test('a mobile visitor filters by stores in the Display sheet and removes them f
 	await page.setViewportSize({ width: 390, height: 844 });
 	await page.goto(SEEDED_WISHLIST_PATH);
 	await waitForAppHydration(page);
-	const allGiftNames = await visibleGiftNames(page);
+	const allGiftNames = await allMountedGiftNames(page);
 
 	await page.getByTestId('mobile-display-trigger').click();
 	const sheet = page.getByRole('dialog', { name: m.gift_display_options() });

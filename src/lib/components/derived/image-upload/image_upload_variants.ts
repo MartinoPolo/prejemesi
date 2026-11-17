@@ -5,7 +5,7 @@ export const imageUploadVariants = tv({
 		root: 'relative flex flex-col items-center gap-3 rounded-lg border-2 border-dashed p-6 transition-colors',
 		label: 'text-sm font-medium text-muted-foreground',
 		preview: 'rounded-md object-cover',
-		progressBar: 'h-2 rounded-full bg-primary transition-all',
+		progressBar: 'h-2 rounded-full bg-primary transition-[width]',
 		progressTrack: 'h-2 w-full rounded-full bg-muted',
 		removeButtonOwner:
 			'absolute top-2 right-2 flex size-6 items-center justify-center rounded-full',

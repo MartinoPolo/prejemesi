@@ -3,6 +3,7 @@
 	import { ContextMenu as ContextMenuPrimitive } from 'bits-ui';
 	import { cn } from '$lib/utils.js';
 	import { floatingDepthClearance } from '../floating_depth_clearance.js';
+	import { slidingFadeScaleOverlayMotionClass } from '../overlay_motion.js';
 
 	let {
 		ref = $bindable(null),
@@ -10,6 +11,8 @@
 		alignOffset = -4,
 		sideOffset = 2,
 		class: className,
+		// The lock toggles user-select on <body> per press, restyling the whole document.
+		preventOverflowTextSelection = false,
 		...restProps
 	}: ContextMenuPrimitive.SubContentProps = $props();
 
@@ -24,9 +27,11 @@
 	{sideOffset}
 	data-slot="context-menu-sub-content"
 	class={cn(
-		'data-open:animate-in data-closed:animate-out data-closed:fade-out-0 data-open:fade-in-0 data-closed:zoom-out-95 data-open:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 bg-popover text-popover-foreground min-w-24 rounded-panel border-[2.5px] border-edge p-1.5 shadow-sticker duration-100 z-(--z-modal) w-auto overflow-x-hidden overflow-y-auto outline-none',
+		slidingFadeScaleOverlayMotionClass,
+		'origin-(--bits-menu-content-transform-origin) bg-popover text-popover-foreground min-w-24 rounded-panel border-[2.5px] border-edge p-1.5 shadow-sticker duration-100 z-(--z-modal) w-auto overflow-x-hidden overflow-y-auto overscroll-contain outline-none',
 		floatingDepthClearance,
 		className,
 	)}
+	{preventOverflowTextSelection}
 	{...restProps}
 />
