@@ -1,3 +1,4 @@
+import type { Snippet } from 'svelte';
 import type { GiftLivePreviewKind } from '$lib/components/blocks/change-proposals/change_row_model.js';
 import type { GiftActionPlacementSnapshot } from '$lib/components/blocks/wishlist/gift_context_invocation.js';
 import type { ImageLoadPriority } from '$lib/components/derived/image-frame/index.js';
@@ -28,4 +29,16 @@ export interface GiftPresentationProps extends GiftBrowseActionHandlers {
 	livePreview?: GiftLivePreviewKind;
 	/** Eager for gifts likely above the fold, high for the likely LCP image. */
 	imageLoadPriority?: ImageLoadPriority;
+	/**
+	 * Gift editor preview: everything but this image content turns inert. `over` lays it above
+	 * the photo and its badges; `instead` replaces the photo and keeps the badges above it.
+	 */
+	editorImage?: GiftEditorImage;
+}
+
+export const GIFT_EDITOR_IMAGE_PLACEMENTS = { over: 'over', instead: 'instead' } as const;
+
+export interface GiftEditorImage {
+	content: Snippet;
+	placement: (typeof GIFT_EDITOR_IMAGE_PLACEMENTS)[keyof typeof GIFT_EDITOR_IMAGE_PLACEMENTS];
 }

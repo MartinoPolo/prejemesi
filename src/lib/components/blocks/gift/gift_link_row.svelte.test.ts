@@ -6,19 +6,23 @@ import GiftLinkRow from './GiftLinkRow.svelte';
 
 const defaultProps: ComponentProps<typeof GiftLinkRow> = {
 	link: { url: '', label: undefined },
-	isPrimary: true,
-	isOnly: true,
-	canMoveUp: false,
-	canMoveDown: false,
+	rowKey: 'gift-link-test',
+	position: 1,
+	isExpanded: true,
+	canReorder: false,
+	ontoggle: () => {},
+	oncollapse: () => {},
 	onurlchange: () => {},
 	onlabelchange: () => {},
 	onremove: () => {},
-	onmoveup: () => {},
-	onmovedown: () => {},
+	ongrippointerdown: () => {},
+	ongripkeydown: () => {},
 };
 
 async function renderRow(overrides: Partial<ComponentProps<typeof GiftLinkRow>> = {}) {
-	return render(GiftLinkRow, { ...defaultProps, ...overrides });
+	const list = document.createElement('ul');
+	document.body.append(list);
+	return render(GiftLinkRow, { props: { ...defaultProps, ...overrides }, target: list });
 }
 
 describe('GiftLinkRow label placeholder previews the auto-derived domain', () => {

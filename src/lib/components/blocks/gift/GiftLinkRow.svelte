@@ -1,151 +1,245 @@
 <script lang="ts">
-	import { HelpText } from '$lib/components/base/help-text/index.js';
 	import * as m from '$lib/paraglide/messages.js';
-	import { Input } from '$lib/components/base/input/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
+	import { HelpText } from '$lib/components/base/help-text/index.js';
+	import { Input } from '$lib/components/base/input/index.js';
 	import { Label } from '$lib/components/base/label/index.js';
-	import ArrowUpIcon from '@lucide/svelte/icons/arrow-up';
-	import ArrowDownIcon from '@lucide/svelte/icons/arrow-down';
+	import GripVerticalIcon from '@lucide/svelte/icons/grip-vertical';
+	import PencilIcon from '@lucide/svelte/icons/pencil';
+	import ChevronUpIcon from '@lucide/svelte/icons/chevron-up';
 	import TrashIcon from '@lucide/svelte/icons/trash-2';
 	import type { GiftLink } from '$lib/modules/gifts/types.js';
 	import { extractGiftUrlDomain } from '$lib/modules/gifts/gift_url.js';
+	import { cn } from '$lib/utils.js';
+	import { giftLinkLine } from './gift_link_line.js';
+	import { giftLinkEditorVariants } from './gift_link_editor_variants.js';
 
 	interface GiftLinkRowProps {
 		link: GiftLink;
-		isPrimary: boolean;
-		isOnly: boolean;
-		canMoveUp: boolean;
-		canMoveDown: boolean;
+		/** Reorder target key; the editor finds the row and its grip through it. */
+		rowKey: string;
+		/** 1-based place in the list; the first link is the primary one. */
+		position: number;
+		isExpanded: boolean;
+		canReorder: boolean;
 		urlError?: string;
 		disabled?: boolean;
+		ontoggle: () => void;
+		oncollapse: () => void;
 		onurlchange: (url: string) => void;
 		onlabelchange: (label: string) => void;
 		onremove: () => void;
-		onmoveup: () => void;
-		onmovedown: () => void;
+		ongrippointerdown: (event: PointerEvent) => void;
+		ongripkeydown: (event: KeyboardEvent) => void;
 	}
 
 	let {
 		link,
-		isPrimary,
-		isOnly,
-		canMoveUp,
-		canMoveDown,
+		rowKey,
+		position,
+		isExpanded,
+		canReorder,
 		urlError,
 		disabled = false,
+		ontoggle,
+		oncollapse,
 		onurlchange,
 		onlabelchange,
 		onremove,
-		onmoveup,
-		onmovedown,
+		ongrippointerdown,
+		ongripkeydown,
 	}: GiftLinkRowProps = $props();
 
+	const styles = giftLinkEditorVariants();
+	const rowId = $props.id();
+	const panelId = `${rowId}-panel`;
+	const urlInputId = `${rowId}-url`;
+	const labelInputId = `${rowId}-label`;
+	const urlErrorId = `${rowId}-url-error`;
+	const primaryHintId = `${rowId}-primary`;
+
+	let rowElement = $state<HTMLLIElement | null>(null);
+	let toggleElement = $state<HTMLButtonElement | null>(null);
+
+	const isPrimary = $derived(position === 1);
+	const line = $derived(giftLinkLine(link));
 	const hasUrlError = $derived(urlError != null && urlError !== '');
-	// `link.id` is always populated by ensureGiftLinkIds in the editor; fall back to the URL
-	// so the describedby target stays stable even for an id-less link.
-	const urlErrorId = $derived(
-		hasUrlError ? `gift-link-${link.id ?? link.url}-url-error` : undefined,
+	const linkDomain = $derived(extractGiftUrlDomain(link.url));
+	// Previews the label an empty field falls back to, so the placeholder shows what renders.
+	const labelPlaceholder = $derived(linkDomain ?? m.gift_link_label_placeholder());
+	// The sr-only primacy hint stays wired to the controls so focus mode announces it too.
+	const describedBy = $derived(
+		[isPrimary ? primaryHintId : undefined, hasUrlError ? urlErrorId : undefined]
+			.filter((id) => id !== undefined)
+			.join(' ') || undefined,
 	);
-	const labelInputId = $derived(`gift-link-${link.id ?? link.url}-label`);
-	// The sr-only primacy hint (badge dropped, #189 refine) is wired to the URL input
-	// so it is announced in focus mode too, not only when browsing the DOM.
-	const primaryHintId = $derived(
-		isPrimary ? `gift-link-${link.id ?? link.url}-primary` : undefined,
-	);
-	const urlDescribedBy = $derived(
-		[primaryHintId, urlErrorId].filter((id) => id !== undefined).join(' ') || undefined,
-	);
-	// Live preview of the auto-derived label (the URL's domain) so the placeholder
-	// always reflects what an empty label will actually render as.
-	const labelPlaceholder = $derived(
-		extractGiftUrlDomain(link.url) ?? m.gift_link_label_placeholder(),
-	);
+
+	// Only the open panel is a layer of its own: Escape on the row line belongs to the dialog.
+	function collapseAndRefocus(event: KeyboardEvent) {
+		if (event.key !== 'Escape') {
+			return;
+		}
+		// Captured so the dialog around the editor never treats this Escape as dismissal.
+		event.preventDefault();
+		event.stopPropagation();
+		oncollapse();
+		toggleElement?.focus();
+	}
+
+	function handleFocusOut(event: FocusEvent) {
+		if (!isExpanded) {
+			return;
+		}
+		if (
+			event.relatedTarget instanceof Node &&
+			rowElement?.contains(event.relatedTarget) === true
+		) {
+			return;
+		}
+		// Settle first: a keyboard reorder re-focuses the moved grip, leaving the window (to copy
+		// a link elsewhere) should find the row still open on return, and a press inside the row
+		// that does not focus (Safari buttons) is the row's own toggle, not a click away.
+		requestAnimationFrame(() => {
+			if (
+				!isExpanded ||
+				!document.hasFocus() ||
+				rowElement === null ||
+				rowElement.contains(document.activeElement) ||
+				rowElement.matches(':active')
+			) {
+				return;
+			}
+			oncollapse();
+		});
+	}
 </script>
 
-<div class="flex flex-col gap-1.5">
-	<!-- URL row: bordered input + reorder + trash to the right (issue #189 REQ-7,
-	     accepted mockup styling — dropped the heavy bordered-card wrapper). -->
-	<div class="flex items-center gap-1.5">
-		{#if isPrimary}
-			<!-- First link is primary by order (issue #189 refine dropped the visible
-			     „Hlavní" badge); an sr-only hint (wired to the input via
-			     aria-describedby) keeps the primacy legible to AT. -->
-			<span id={primaryHintId} class="sr-only">{m.gift_link_primary()}</span>
-		{/if}
-
-		<Input
-			class="flex-1"
-			value={link.url}
-			placeholder="alza.cz/darek"
-			type="text"
-			data-testid="gift-link-url"
-			{disabled}
-			state={hasUrlError ? 'error' : 'default'}
-			aria-invalid={hasUrlError ? true : undefined}
-			aria-describedby={urlDescribedBy}
-			oninput={(e: Event) => onurlchange((e.target as HTMLInputElement).value)}
-		/>
-
-		{#if !isOnly}
-			<div class="flex shrink-0 items-center gap-0.5">
-				<Button
-					intent="ghost"
-					size="sm"
-					format="icon"
-					onclick={onmoveup}
-					aria-label={m.gift_link_move_up()}
-					disabled={!canMoveUp || disabled}
-				>
-					<ArrowUpIcon />
-				</Button>
-				<Button
-					intent="ghost"
-					size="sm"
-					format="icon"
-					onclick={onmovedown}
-					aria-label={m.gift_link_move_down()}
-					disabled={!canMoveDown || disabled}
-				>
-					<ArrowDownIcon />
-				</Button>
-			</div>
-		{/if}
-
-		<Button
-			intent="ghost-danger-quiet"
-			size="sm"
-			format="icon"
-			class="shrink-0"
-			{disabled}
-			onclick={onremove}
-			aria-label={m.gift_link_remove()}
+{#snippet leadingControl()}
+	{#if canReorder}
+		<button
+			type="button"
+			class={cn(styles.leadingColumn(), styles.grip())}
+			aria-label={m.gift_link_move_label({ position })}
+			title={m.gift_link_move_hint()}
+			aria-keyshortcuts="ArrowUp ArrowDown"
+			aria-disabled={disabled}
+			data-gift-link-grip
+			onpointerdown={ongrippointerdown}
+			onkeydown={ongripkeydown}
 		>
-			<TrashIcon />
-		</Button>
+			<GripVerticalIcon aria-hidden="true" />
+		</button>
+	{:else}
+		<span class={styles.leadingColumn()} aria-hidden="true"></span>
+	{/if}
+{/snippet}
+
+{#snippet lineText()}
+	{#if line.kind === 'labelled'}
+		<span class={styles.chip()}>{line.label}</span>
+	{/if}
+	<span class={styles.address()} data-invalid={hasUrlError ? '' : undefined}>
+		{#if line.kind === 'highlighted'}
+			{line.beforeLabel}<mark class={styles.highlight()}>{line.label}</mark>{line.afterLabel}
+		{:else}
+			{line.address}
+		{/if}
+	</span>
+	<span class="sr-only">{m.gift_link_edit()}</span>
+	<span class={styles.editIcon()} aria-hidden="true">
+		{#if isExpanded}
+			<ChevronUpIcon />
+		{:else}
+			<PencilIcon />
+		{/if}
+	</span>
+{/snippet}
+
+{#snippet editPanel()}
+	<div
+		id={panelId}
+		class={styles.panel()}
+		data-testid="gift-link-panel"
+		onkeydowncapture={collapseAndRefocus}
+	>
+		<div class={styles.field()}>
+			<Label for={urlInputId}>{m.gift_link_address()}</Label>
+			<Input
+				id={urlInputId}
+				value={link.url}
+				placeholder="alza.cz/darek"
+				type="text"
+				inputmode="url"
+				autocomplete="off"
+				data-testid="gift-link-url"
+				{disabled}
+				state={hasUrlError ? 'error' : 'default'}
+				aria-invalid={hasUrlError ? true : undefined}
+				aria-describedby={describedBy}
+				oninput={(event: Event & { currentTarget: HTMLInputElement }) =>
+					onurlchange(event.currentTarget.value)}
+			/>
+		</div>
+		<div class={styles.labelAndRemove()}>
+			<div class={styles.field()}>
+				<div class={styles.fieldHeading()}>
+					<Label for={labelInputId}>{m.gift_link_visible_label()}</Label>
+					{#if linkDomain !== null}
+						<span class={styles.fieldAside()} aria-hidden="true">
+							{m.gift_link_label_default_hint({ domain: linkDomain })}
+						</span>
+					{/if}
+				</div>
+				<Input
+					id={labelInputId}
+					value={link.label ?? ''}
+					placeholder={labelPlaceholder}
+					type="text"
+					{disabled}
+					oninput={(event: Event & { currentTarget: HTMLInputElement }) =>
+						onlabelchange(event.currentTarget.value)}
+				/>
+			</div>
+			<Button intent="ghost-danger-quiet" {disabled} onclick={onremove}>
+				<TrashIcon data-icon="inline-start" />
+				{m.gift_link_remove()}
+			</Button>
+		</div>
+	</div>
+{/snippet}
+
+<li
+	bind:this={rowElement}
+	class={styles.row()}
+	data-gift-link-row={rowKey}
+	data-expanded={isExpanded ? '' : undefined}
+	onfocusout={handleFocusOut}
+>
+	{#if isPrimary}
+		<span id={primaryHintId} class="sr-only">{m.gift_link_primary()}</span>
+	{/if}
+	<div class={styles.line()}>
+		{@render leadingControl()}
+		<button
+			bind:this={toggleElement}
+			type="button"
+			class={styles.toggle()}
+			aria-expanded={isExpanded}
+			aria-controls={isExpanded ? panelId : undefined}
+			aria-describedby={describedBy}
+			data-gift-link-toggle
+			{disabled}
+			onclick={ontoggle}
+		>
+			{@render lineText()}
+		</button>
 	</div>
 
-	<!-- Visible label (issue #189 REQ-7): the per-link label is the text gift cards
-	     render (defaults to the URL's domain); a visible „Viditelný popisek" label
-	     disambiguates it from the gift „Popis" (description) field above. The
-	     placeholder previews the auto-derived domain for the row's current URL
-	     (falling back to the generic hint when the URL is empty/invalid), and the
-	     input is capped narrower than the URL field to nudge short labels. -->
-	<div class="flex items-center gap-2 pl-0.5">
-		<Label for={labelInputId} class="shrink-0 text-xs font-medium text-muted-foreground">
-			{m.gift_link_visible_label()}
-		</Label>
-		<Input
-			id={labelInputId}
-			class="max-w-56 flex-1 text-sm"
-			value={link.label ?? ''}
-			placeholder={labelPlaceholder}
-			type="text"
-			{disabled}
-			oninput={(e: Event) => onlabelchange((e.target as HTMLInputElement).value)}
-		/>
-	</div>
+	{#if isExpanded}
+		{@render editPanel()}
+	{/if}
 
 	{#if hasUrlError}
-		<HelpText id={urlErrorId} state="error">{urlError}</HelpText>
+		<HelpText id={urlErrorId} state="error" class={styles.rowError()}>{urlError}</HelpText>
 	{/if}
-</div>
+</li>

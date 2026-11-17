@@ -24,7 +24,10 @@
 	import { restingShadowNesting } from '$lib/utils/resting_shadow_nesting.js';
 	import { clientSize } from '$lib/utils/shared_resize_observer.js';
 	import { observeDepthChange } from '$lib/theme/depth_change.js';
-	import type { GiftPresentationProps } from './gift_presentation_props.js';
+	import {
+		GIFT_EDITOR_IMAGE_PLACEMENTS,
+		type GiftPresentationProps,
+	} from './gift_presentation_props.js';
 
 	let {
 		gift,
@@ -43,7 +46,10 @@
 		showPriority = true,
 		livePreview,
 		imageLoadPriority,
+		editorImage,
 	}: GiftPresentationProps = $props();
+
+	const isEditorPreview = $derived(editorImage !== undefined);
 
 	const previewMarks = $derived(giftLivePreviewMarks(livePreview));
 	const showsTopRow = $derived(gift.categories.length > 0 || previewMarks.proposed);
@@ -223,13 +229,17 @@
 				isDimmed && 'border-(--gift-frame-edge)',
 			)}
 		>
-			<GiftListImage
-				imageUrl={imageSrc}
-				imageMeta={gift.imageMeta}
-				alt={gift.name}
-				loadPriority={imageLoadPriority}
-				class={dimmedContentClass}
-			/>
+			{#if editorImage?.placement === GIFT_EDITOR_IMAGE_PLACEMENTS.instead}
+				{@render editorImage.content()}
+			{:else}
+				<GiftListImage
+					imageUrl={imageSrc}
+					imageMeta={gift.imageMeta}
+					alt={gift.name}
+					loadPriority={imageLoadPriority}
+					class={dimmedContentClass}
+				/>
+			{/if}
 			{#if additionalImageCount > 0}
 				<GiftGalleryCountChip
 					additionalCount={additionalImageCount}
@@ -240,6 +250,7 @@
 				<div
 					class="gift-list-top-row absolute right-2 z-20 flex min-w-0 flex-wrap items-start gap-1"
 					data-clears-count-chip={additionalImageCount > 0 || undefined}
+					inert={isEditorPreview}
 				>
 					{#if previewMarks.proposed && livePreview !== undefined}
 						<GiftLivePreviewBadge kind={livePreview} />
@@ -272,9 +283,13 @@
 				{isDimmed}
 				class="absolute bottom-2 left-2 z-20 max-w-[calc(100%-1rem)]"
 			/>
+			{#if editorImage?.placement === GIFT_EDITOR_IMAGE_PLACEMENTS.over}
+				<div class="absolute inset-0 z-20">{@render editorImage.content()}</div>
+			{/if}
 		</div>
 
 		<div
+			inert={isEditorPreview}
 			data-testid="gift-list-content"
 			class="gift-list-content flex min-w-0 flex-col gap-0.5 self-stretch sm:gap-1"
 		>

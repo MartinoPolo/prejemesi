@@ -3,18 +3,10 @@
 	import { beforeNavigate, goto } from '$app/navigation';
 	import * as m from '$lib/paraglide/messages.js';
 	import * as Dialog from '$lib/components/base/dialog/index.js';
-	import { Button } from '$lib/components/base/button/index.js';
 	import {
 		createUnsavedChangesGuard,
 		UnsavedChangesDialog,
 	} from '$lib/components/derived/unsaved-changes-dialog/index.js';
-	import XIcon from '@lucide/svelte/icons/x';
-	import { cn } from '$lib/utils.js';
-	import { keepFocusOnPress } from '$lib/reactivity/keyboard_inset.svelte.js';
-	import {
-		overlayCloseButtonClass,
-		overlayCloseButtonSurfaceClass,
-	} from '$lib/components/base/dialog/dialog_close_button.js';
 	import {
 		giftDetailModalVariants,
 		type GiftDetailModalMode,
@@ -117,14 +109,9 @@
 	const viewerStyles = giftViewerVariants();
 	const isEdit = $derived(mode === 'edit');
 	const isViewer = $derived(readOnly && gift !== null);
-	const title = $derived(isEdit ? m.gift_edit_title() : m.gift_add_title());
 	// A viewer needs a gift: without one, open nothing rather than the editor's add chrome.
 	const hasDialogContent = $derived(!readOnly || gift !== null);
-	const contentClass = $derived(
-		isViewer
-			? viewerStyles.dialog()
-			: cn(styles.content(), !readOnly && 'max-sm:[&>[data-slot=dialog-close]]:hidden'),
-	);
+	const contentClass = $derived(isViewer ? viewerStyles.dialog() : styles.content());
 	const description = $derived(
 		readOnly
 			? m.gift_viewer_description()
@@ -169,6 +156,14 @@
 		}
 		event.preventDefault();
 		requestGuarded(() => (open = false));
+	}
+
+	function handleEscapeKeydown(event: KeyboardEvent) {
+		if (!readOnly && form?.leaveStepOnEscape() === true) {
+			event.preventDefault();
+			return;
+		}
+		handleDismiss(event);
 	}
 
 	function handleFormDirtyChange(dirty: boolean) {
@@ -241,32 +236,6 @@
 	});
 </script>
 
-{#snippet editorHeader()}
-	<div class={styles.editorHeader()} data-testid="gift-editor-header">
-		<Dialog.Title class={styles.editorTitle()}>{title}</Dialog.Title>
-		<Button
-			class={styles.keyboardSave()}
-			disabled={mutationPending}
-			data-testid="gift-editor-keyboard-save"
-			onpointerdown={keepFocusOnPress}
-			onclick={() => form?.submit()}
-		>
-			{isSubmitting ? m.saving() : m.save()}
-		</Button>
-		<Button
-			intent="ghost"
-			size="sm"
-			format="icon"
-			class={cn(overlayCloseButtonClass, 'static shrink-0 sm:hidden')}
-			surfaceClass={overlayCloseButtonSurfaceClass}
-			onclick={() => handleOpenChange(false)}
-		>
-			<XIcon data-icon="solo" />
-			<span class="sr-only">{m.close()}</span>
-		</Button>
-	</div>
-{/snippet}
-
 {#snippet editorForm()}
 	<!-- The form seeds its field state once at mount (deliberately non-reactive), so a
 	     mode/gift swap while it stays mounted would submit the previous gift's typed
@@ -306,24 +275,21 @@
 <!-- Keep the Root mounted even without a gift: its portal must enter body before later
      dialogs (the reserve form) so those equal-z-index layers stack above the viewer. -->
 <Dialog.Root
-	open={open && hasDialogContent}
-	onOpenChange={handleOpenChange}
+	bind:open={() => open && hasDialogContent, handleOpenChange}
 	onOpenChangeComplete={handleOpenChangeComplete}
 >
 	<Dialog.Content
 		bind:ref={contentRef}
 		class={contentClass}
+		layout={isViewer ? 'default' : 'scroll'}
 		showCloseButton={true}
-		onEscapeKeydown={handleDismiss}
+		onEscapeKeydown={handleEscapeKeydown}
 		onInteractOutside={handleDismiss}
 		onOpenAutoFocus={(event) => {
 			event.preventDefault();
 			contentRef?.focus({ preventScroll: true });
 		}}
 	>
-		{#if !readOnly}
-			{@render editorHeader()}
-		{/if}
 		<Dialog.Description class="sr-only">{description}</Dialog.Description>
 
 		{#if isViewer && gift !== null}

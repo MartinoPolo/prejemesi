@@ -129,3 +129,14 @@ export function giftCategoryChoices(
 		),
 	};
 }
+
+/** The categories behind ordered ids, looked up in the given sources; unknown ids are skipped. */
+export function giftCategoriesForIds<Category extends { id: string }>(
+	categoryIds: readonly string[],
+	sources: readonly Category[],
+): Category[] {
+	return categoryIds.flatMap((id) => {
+		const category = sources.find((option) => option.id === id);
+		return category === undefined ? [] : [category];
+	});
+}

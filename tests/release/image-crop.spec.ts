@@ -2,21 +2,15 @@ import { test, expect, type Locator, type Page } from '@playwright/test';
 import { fileURLToPath } from 'node:url';
 import { createTestUser } from '../e2e/fixtures/test-data.js';
 import { registerAndGetPage } from '../e2e/fixtures/auth-helpers.js';
-import { createWishlistAndNavigate } from '../e2e/fixtures/wishlist-helpers.js';
+import {
+	createWishlistAndNavigate,
+	openGiftImageFraming,
+	uploadGiftEditorImage,
+} from '../e2e/fixtures/wishlist-helpers.js';
 
 const SAMPLE_IMAGE_PATH = fileURLToPath(
 	new URL('../e2e/fixtures/sample-image.jpg', import.meta.url),
 );
-
-function waitForUpload(page: Page) {
-	return page.waitForResponse(
-		(response) =>
-			response.request().method() === 'PUT' &&
-			response.url().includes('/api/upload/') &&
-			response.status() === 201,
-		{ timeout: 15_000 },
-	);
-}
 
 async function dragStage(
 	page: Page,
@@ -55,19 +49,16 @@ test('uploaded manual crop reaches the gift card and restores after reload', asy
 		const giftName = 'Dárek s ořezem';
 		await dialog.locator('#gift-name').fill(giftName);
 
-		await dialog.getByRole('radio', { name: 'Nahrát', exact: true }).click();
-		const uploadCompleted = waitForUpload(page);
-		await dialog.locator('input[type=file]').setInputFiles(SAMPLE_IMAGE_PATH);
-		await uploadCompleted;
-		await expect(dialog.getByTestId('image-upload-preview')).toBeVisible({ timeout: 10_000 });
+		await uploadGiftEditorImage(page, dialog, SAMPLE_IMAGE_PATH);
 
-		// Picking the card tile only selects it; the first crop edit makes the card Vlastní.
-		await dialog.getByTestId('gift-preview-tile-square').click();
-		await expect(dialog.getByRole('radio', { name: /Vyplnit/ })).toHaveAttribute(
+		// Opening the framing step changes nothing; the first card edit makes the card Vlastní.
+		const framingStep = await openGiftImageFraming(dialog);
+		const cardControls = framingStep.getByTestId('gift-framing-controls-square');
+		await expect(cardControls.getByRole('radio', { name: /Vyplnit/ })).toHaveAttribute(
 			'aria-checked',
 			'true',
 		);
-		const zoomSlider = dialog.getByRole('slider');
+		const zoomSlider = cardControls.getByRole('slider');
 		await expect(zoomSlider).toBeEnabled();
 		const initialZoomValue = await zoomSlider.inputValue();
 		await zoomSlider.focus();
@@ -77,11 +68,19 @@ test('uploaded manual crop reaches the gift card and restores after reload', asy
 		}
 		const chosenZoomValue = await zoomSlider.inputValue();
 		expect(chosenZoomValue).not.toBe(initialZoomValue);
-		await expect(dialog.getByTestId('gift-preview-status-square')).toHaveText('Vlastní');
-		await expect(dialog.getByTestId('gift-preview-status-thumb')).toHaveText('Vyplnit');
-		await dragStage(page, dialog.getByTestId('crop-stage'), 40, 24);
+		await expect(framingStep.getByTestId('gift-framing-status-square')).toHaveText('Vlastní');
+		await expect(framingStep.getByTestId('gift-framing-status-thumb')).toHaveText('Vyplnit');
+		await dragStage(
+			page,
+			framingStep.getByTestId('gift-framing-view-square').getByTestId('crop-pan-surface'),
+			40,
+			24,
+		);
 
-		await dialog.getByRole('button', { name: 'Přidat dárek' }).click();
+		await dialog
+			.getByTestId('gift-editor-footer')
+			.getByRole('button', { name: 'Přidat dárek' })
+			.click();
 		await expect(dialog).not.toBeVisible({ timeout: 10_000 });
 		const cardImage = page.getByRole('img', { name: giftName }).first();
 		await expect(cardImage).toBeVisible({ timeout: 10_000 });
@@ -104,11 +103,19 @@ test('uploaded manual crop reaches the gift card and restores after reload', asy
 		await page.getByText(giftName, { exact: true }).first().click();
 		const editDialog = page.getByRole('dialog');
 		await expect(editDialog).toBeVisible({ timeout: 5_000 });
-		await expect(editDialog.getByTestId('gift-preview-status-square')).toHaveText('Vlastní');
-		await expect(editDialog.getByTestId('gift-preview-status-thumb')).toHaveText('Vyplnit');
-		await expect(editDialog.getByRole('slider')).toHaveValue(chosenZoomValue, {
-			timeout: 10_000,
-		});
+		await expect(editDialog.getByTestId('gift-image-framing-status')).toHaveText(
+			'Karta: vlastní · Seznam: vyplnit',
+		);
+		const editFramingStep = await openGiftImageFraming(editDialog);
+		await expect(editFramingStep.getByTestId('gift-framing-status-square')).toHaveText(
+			'Vlastní',
+		);
+		await expect(editFramingStep.getByTestId('gift-framing-status-thumb')).toHaveText(
+			'Vyplnit',
+		);
+		await expect(
+			editFramingStep.getByTestId('gift-framing-controls-square').getByRole('slider'),
+		).toHaveValue(chosenZoomValue, { timeout: 10_000 });
 	} finally {
 		await page.context().close();
 	}

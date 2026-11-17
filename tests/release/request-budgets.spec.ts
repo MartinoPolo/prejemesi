@@ -10,6 +10,7 @@ import {
 	createWishlistAndNavigate,
 	addGift,
 	shareWishlist,
+	uploadGiftEditorImage,
 } from '../e2e/fixtures/wishlist-helpers';
 
 const SAMPLE_IMAGE_PATH = fileURLToPath(
@@ -244,20 +245,10 @@ test.describe('Request budgets (issue #108)', () => {
 			.click();
 		const dialog = page.getByRole('dialog');
 		await expect(dialog).toBeVisible({ timeout: 5_000 });
-		// Exact match: the upload dropzone exposes an aria-label of "Nahrát obrázek",
-		// so a loose /Nahrát/i also matches it — target the upload-mode tab only.
-		await dialog.getByRole('radio', { name: 'Nahrát', exact: true }).click();
-		const fileInput = dialog.locator('input[type=file]');
-		await expect(fileInput).toBeAttached();
+		await expect(dialog.locator('input[type=file]')).toBeAttached();
 
 		const tracker = trackRemoteRequests(page);
-		const uploaded = page.waitForResponse(
-			(response) => response.url().includes('/api/upload/') && response.status() === 201,
-			{ timeout: 15_000 },
-		);
-		await fileInput.setInputFiles(SAMPLE_IMAGE_PATH);
-		await uploaded;
-		await expect(dialog.getByTestId('image-upload-preview')).toBeVisible({ timeout: 10_000 });
+		await uploadGiftEditorImage(page, dialog, SAMPLE_IMAGE_PATH);
 		tracker.stop();
 
 		const names = tracker.names();

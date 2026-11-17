@@ -154,7 +154,6 @@ async function openGiftImageUpload(page: Page): Promise<Locator> {
 		.click();
 	const addDialog = page.getByRole('dialog');
 	await expect(addDialog).toBeVisible({ timeout: 5_000 });
-	await addDialog.getByRole('radio', { name: 'Nahrát', exact: true }).click();
 	await expect(addDialog.locator('input[type=file]')).toBeAttached();
 	return addDialog;
 }
@@ -250,8 +249,8 @@ test.describe('Large camera photo upload (#525)', () => {
 				buffer: Buffer.from('this is not a picture'),
 			});
 			await expect(addDialog.getByText(m.image_upload_error_unreadable())).toBeVisible();
-			await expect(addDialog.getByTestId('image-upload-preview')).toHaveCount(0);
-			await expect(addDialog.getByAltText(m.image_upload_preview_alt())).toHaveCount(0);
+			await expect(addDialog.locator('[data-gift-image-tile]')).toHaveCount(0);
+			await expect(addDialog.getByTestId('gift-image-strip-uploading')).toHaveCount(0);
 			expect(uploadAttempted).toBe(false);
 		} finally {
 			await page.context().close();

@@ -1278,8 +1278,8 @@ const pannable = { fill: 'pans-with-pointer', manual: 'pans-with-pointer' } as c
 const anchoredZoom = { fill: 'zooms-around-point', manual: 'zooms-around-point' } as const;
 
 /**
- * The crop stage in Nastavení seznamu → Obrázek. The gift editor mounts the same stage
- * (`ImageCropStage.svelte`), so only the wishlist editor runs here; nothing is saved.
+ * The crop stage in Nastavení seznamu → Obrázek; nothing is saved. The gift editor frames inside
+ * the real card and row through `CropPanSurface.svelte` instead (`gift-image-framing.spec.ts`).
  */
 export const CROP_STAGE_SURFACE: Surface<typeof CROP_STAGE_DIMENSIONS, CropStageOutcome> = {
 	surfaceTag: '@crop-stage',

@@ -6,7 +6,7 @@
 	import type { WishlistRole } from '$lib/modules/wishlists/types.js';
 	import ReleaseReservationButton from './ReleaseReservationButton.svelte';
 	import ReleaseReservationFlow from './ReleaseReservationFlow.svelte';
-	import GiftDetailForm from '$lib/components/blocks/gift/GiftDetailForm.svelte';
+	import GiftDetailFormTestFixture from '$lib/components/blocks/gift/GiftDetailFormTestFixture.svelte';
 	import GiftDetailModal from '$lib/components/blocks/gift/GiftDetailModal.svelte';
 	import { setLikesContext } from '$lib/modules/likes/likes.context.svelte.js';
 	import { setGiftsContext } from '$lib/modules/gifts/gifts.context.svelte.js';
@@ -63,7 +63,7 @@
 </script>
 
 {#if placement === 'form'}
-	<GiftDetailForm
+	<GiftDetailFormTestFixture
 		mode="edit"
 		{gift}
 		wishlistId={gift.wishlistId}

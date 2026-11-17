@@ -1,88 +1,66 @@
 <script lang="ts">
 	import { tick } from 'svelte';
+	import { SvelteSet } from 'svelte/reactivity';
 	import * as m from '$lib/paraglide/messages.js';
-	import { cn } from '$lib/utils.js';
-	import * as Select from '$lib/components/base/select/index.js';
+	import * as Dialog from '$lib/components/base/dialog/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
-	import { Input } from '$lib/components/base/input/index.js';
-	import { Textarea } from '$lib/components/base/textarea/index.js';
-	import { Label } from '$lib/components/base/label/index.js';
-	import { Switch } from '$lib/components/base/switch/index.js';
-	import { Field, type FieldControlContext } from '$lib/components/derived/field/index.js';
-	import ImageUpload from '$lib/components/derived/image-upload/ImageUpload.svelte';
-	import * as SegmentedToggle from '$lib/components/derived/segmented-toggle/index.js';
 	import { HelpText } from '$lib/components/base/help-text/index.js';
-	import { SimpleTooltip } from '$lib/components/base/tooltip/index.js';
-	import ImageCropStage from '$lib/components/derived/image-crop/ImageCropStage.svelte';
+	import { Input } from '$lib/components/base/input/index.js';
+	import { Label } from '$lib/components/base/label/index.js';
 	import { useNarrowViewportState } from '$lib/components/derived/narrow_viewport_state.svelte.js';
-	import GiftImagePreviewSlots from './GiftImagePreviewSlots.svelte';
-	import GiftImageStrip from './GiftImageStrip.svelte';
-	import { GiftImageDraft, GiftImageGalleryDraft } from './gift_image_gallery_draft.svelte.js';
-	import GiftLinkEditor from './GiftLinkEditor.svelte';
-	import GiftDescription from './GiftDescription.svelte';
 	import GraceCountdown from '$lib/components/derived/grace-countdown/GraceCountdown.svelte';
+	import ReleaseReservationButton from '$lib/components/blocks/reservation/ReleaseReservationButton.svelte';
 	import TrashIcon from '@lucide/svelte/icons/trash-2';
-	import ArrowLeftIcon from '@lucide/svelte/icons/arrow-left';
-	import XIcon from '@lucide/svelte/icons/x';
-	import LinkIcon from '@lucide/svelte/icons/link';
-	import UploadIcon from '@lucide/svelte/icons/upload';
-	import PencilIcon from '@lucide/svelte/icons/pencil';
-	import {
-		getPriorityDisplay,
-		adjustGiftPriceByMagnitude,
-		finalizeGiftPrice,
-		finalizeGiftQuantity,
-		formatAppendDate,
-	} from '$lib/modules/gifts/gift_display.js';
-	import { isWithinGraceWindow } from '$lib/modules/sharing/grace_window.js';
+	import { keepFocusOnPress } from '$lib/reactivity/keyboard_inset.svelte.js';
+	import GiftImageStrip from './GiftImageStrip.svelte';
+	import GiftLinkEditor from './GiftLinkEditor.svelte';
+	import GiftEditorPreview from './GiftEditorPreview.svelte';
+	import GiftImageFramingStep from './GiftImageFramingStep.svelte';
+	import GiftNameField from './GiftNameField.svelte';
+	import GiftDescriptionField from './GiftDescriptionField.svelte';
+	import GiftPriceFields from './GiftPriceFields.svelte';
+	import GiftQuantityPriorityFields from './GiftQuantityPriorityFields.svelte';
+	import GiftCategoryField from './GiftCategoryField.svelte';
+	import { GiftImageDraft, GiftImageGalleryDraft } from './gift_image_gallery_draft.svelte.js';
+	import { giftEditorPreview } from './gift_editor_preview.js';
+	import { giftFramingStatusLine } from './gift_framing_labels.js';
+	import type { GiftImageStripOrientation } from './gift_image_strip_variants.js';
 	import {
 		giftDetailModalVariants,
 		type GiftDetailModalMode,
 	} from './gift_detail_modal_variants.js';
 	import {
-		GIFT_CURRENCIES,
-		GIFT_CURRENCY_LABELS,
-		type GiftCurrency,
-		type GiftByRole,
-		type GiftForVisitor,
-		type GiftLink,
-		type CreateGiftInput,
-		type UpdateGiftInput,
+		finalizeGiftPrice,
+		finalizeGiftQuantity,
+		formatAppendDate,
+	} from '$lib/modules/gifts/gift_display.js';
+	import type {
+		GiftCurrency,
+		GiftByRole,
+		GiftForVisitor,
+		GiftLink,
+		CreateGiftInput,
+		UpdateGiftInput,
+		GiftPriorityLevel,
 	} from '$lib/modules/gifts/types.js';
-	import type { GiftPriorityLevel } from '$lib/modules/gifts/types.js';
 	import type { WishlistRole } from '$lib/modules/wishlists/types.js';
 	import { WISHLIST_ROLES } from '$lib/modules/wishlists/types.js';
 	import { isGiftForVisitor } from '$lib/modules/gifts/gift_display_state.js';
-	import ReleaseReservationButton from '$lib/components/blocks/reservation/ReleaseReservationButton.svelte';
 	import { createPendingUploads } from '$lib/modules/uploads/upload.js';
 	import type { UploadResult } from '$lib/modules/uploads/types.js';
-	import { IMAGE_TOKEN_SCOPES } from '$lib/components/derived/image-frame/index.js';
-	import {
-		cropTargetSurfaceSize,
-		GIFT_CROP_TARGET_SPECS,
-		GIFT_FRAMINGS,
-		type GiftEditorCropTarget,
-		type GiftFraming,
-	} from '$lib/modules/images/index.js';
 	import { ensureGiftLinkIds, normalizeGiftLinks } from '$lib/modules/gifts/gift_url.js';
 	import { galleryImageKeys } from '$lib/modules/gifts/gift_images.js';
+	import type { ManagedGiftCategory } from '$lib/modules/gift-categories/types.js';
 	import {
-		labelForGiftCategory,
-		type ManagedGiftCategory,
-		type PublicGiftCategory,
-	} from '$lib/modules/gift-categories/types.js';
-	import PlusIcon from '@lucide/svelte/icons/plus';
-	import GiftCategoryQuickAddDialog from './GiftCategoryQuickAddDialog.svelte';
-	import GiftCategoryBadge from './GiftCategoryBadge.svelte';
-	import {
-		MAX_GIFT_CATEGORIES,
+		giftCategoriesForIds,
 		sameGiftCategoryIds,
-		withGiftCategoryAdded,
-		withGiftCategoryRemoved,
 	} from '$lib/modules/gift-categories/gift_category_assignment.js';
-	import { getLocale } from '$lib/paraglide/runtime.js';
 
 	type GiftSaveResult = boolean | void | Promise<boolean | void>;
+
+	const QUANTITY_LOCK_HINT_ID = 'gift-quantity-lock-hint';
+	const EDITOR_STEPS = { main: 'main', framing: 'framing' } as const;
+	type EditorStep = (typeof EDITOR_STEPS)[keyof typeof EDITOR_STEPS];
 
 	interface Props {
 		mode: GiftDetailModalMode;
@@ -154,16 +132,14 @@
 	let price = $state<number | null>(gift?.price ?? null);
 	// svelte-ignore state_referenced_locally
 	let priceMax = $state<number | null>(gift?.priceMax ?? null);
-	// Switch state is DERIVED on edit from `priceMax`, not its own persisted flag (issue #155 REQ-1):
+	// Range mode is DERIVED on edit from `priceMax`, not its own persisted flag (issue #155 REQ-1):
 	// a saved range (price_max non-null) opens the form in range mode; everything else is single-price.
 	// svelte-ignore state_referenced_locally
 	let isPriceRange = $state((gift?.priceMax ?? null) !== null);
 	let priceRangeError = $state('');
-	let priceInput = $state<HTMLInputElement | null>(null);
-	let priceMaxInput = $state<HTMLInputElement | null>(null);
 	// svelte-ignore state_referenced_locally
 	let currency = $state<GiftCurrency>((gift?.currency as GiftCurrency) ?? 'CZK');
-	// Ordered images; the selected one drives the crop stage, framing controls and previews (#591).
+	// Ordered images; the selected one drives the preview and the framing step (#591).
 	// svelte-ignore state_referenced_locally
 	const gallery = new GiftImageGalleryDraft(gift);
 	const selectedImage = $derived(gallery.selected);
@@ -173,40 +149,22 @@
 	let priorityLevelId = $state(gift?.priorityLevelId ?? '');
 	// svelte-ignore state_referenced_locally
 	let categoryIds = $state<string[]>([...(gift?.categoryIds ?? [])]);
-	/**
-	 * An uploaded image (imageKey set) opens on the Upload tab so the user sees the current image
-	 * with replace/remove – not its resolved URL in the URL field. A URL image opens on the URL
-	 * tab, as does an image still waiting for its link; no image at all defaults to Upload
-	 * (issue #143).
-	 */
-	function sourceTabFor(image: GiftImageDraft | null): 'url' | 'upload' {
-		return image === null || image.imageKey !== '' ? 'upload' : 'url';
-	}
-	let imageMode = $state<'url' | 'upload'>(sourceTabFor(gallery.selected));
 	let showDeleteConfirm = $state(false);
 	let nameError = $state('');
-	// Component instance ref (issue #131): lets the image-column click-to-edit
-	// affordance open the file picker owned by the Upload-tab ImageUpload.
-	let imageUploadRef: ReturnType<typeof ImageUpload> | undefined = $state();
 	let imageUrlInput = $state<HTMLInputElement | null>(null);
-	// Bumped when the strip changes the selection, remounting the Upload-tab field for that image.
-	let sourceFieldVersion = $state(0);
-	let isSourceUploadPending = $state(false);
-	let isStripUploadPending = $state(false);
-	const isImageUploadPending = $derived(isSourceUploadPending || isStripUploadPending);
+	let backButton = $state<HTMLButtonElement | null>(null);
+	let bodyElement = $state<HTMLElement | null>(null);
+	let isImageUploadPending = $state(false);
 	let isLocalMutationPending = $state(false);
+	let step = $state<EditorStep>(EDITOR_STEPS.main);
 
 	// Uploads made in this form session that are not persisted yet (issue #107,
 	// REQ-6). Successful saves commit the saved gallery's keys; every other unmount discards all.
 	const pendingUploads = createPendingUploads();
-
-	const IMAGE_BACKGROUND_VALUES = ['#ffffff', '#000000', 'transparent'] as const;
-	let activeTarget = $state<GiftEditorCropTarget>('square');
-
+	const compactViewport = useNarrowViewportState();
 	const styles = giftDetailModalVariants();
 
 	let descriptionAppendText = $state('');
-
 	// Per-segment append edit (issue #83): the index currently being edited inline, and its draft.
 	let editingAppendIndex = $state<number | null>(null);
 	let editingAppendText = $state('');
@@ -232,9 +190,7 @@
 	// branch stays self-contained and never re-toggles from a reactive prop change.
 	const descriptionFrozen = $derived(locked && description.trim() !== '');
 	// Edited-after-share transparency (issue #185): the recipient/moderator edit
-	// surface shows the SAME muted text line as the read-only Gift viewer
-	// (`GiftViewer.svelte`) – only the surface changed, not who can see it
-	// (REQ-5).
+	// surface shows the SAME muted text line as the read-only Gift viewer.
 	const editedAfterShareLine = $derived(
 		gift?.editedAfterShareAt != null
 			? m.gift_edited_after_share_line({
@@ -244,8 +200,11 @@
 	);
 	const currentQuantity = $derived(gift?.quantity ?? 1);
 	const submitLabel = $derived(isEdit ? m.save() : m.gift_add_title());
-	const hasImage = $derived(gallery.sourcedImages.length > 0);
 	const mutationPending = $derived(isSubmitting || isDeleting || isLocalMutationPending);
+	const saveDisabled = $derived(mutationPending || isImageUploadPending);
+	const hasDestructiveActions = $derived(
+		isEdit && gift !== null && (canDelete || releaseGift !== null),
+	);
 
 	function valuesEqual(left: unknown, right: unknown): boolean {
 		return JSON.stringify(left) === JSON.stringify(right);
@@ -286,13 +245,16 @@
 		ondirtychange?.(dirty);
 	});
 
-	const previewSrc = $derived(selectedImage?.previewSrc ?? null);
-	/** The selected image's 1-based gallery position, named only once there is more than one. */
 	const selectedImagePosition = $derived(
-		selectedImage === null || gallery.images.length < 2
-			? null
-			: gallery.images.indexOf(selectedImage) + 1,
+		selectedImage === null ? 0 : gallery.images.indexOf(selectedImage) + 1,
 	);
+	const selectedImageHasSource = $derived(selectedImage?.previewSrc != null);
+	/** Images added by link keep their link field, so typing the first character cannot hide it. */
+	const linkImageIds = new SvelteSet<string>();
+	const showsImageUrlField = $derived(
+		selectedImage !== null && (!selectedImageHasSource || linkImageIds.has(selectedImage.id)),
+	);
+	const framingOpen = $derived(step === EDITOR_STEPS.framing && selectedImageHasSource);
 	const stripItems = $derived(
 		gallery.images.map((image) => ({
 			id: image.id,
@@ -300,160 +262,31 @@
 			imageMeta: image.imageMeta,
 		})),
 	);
-	const targetLabels = {
-		square: () => m.gift_image_target_card(),
-		thumb: () => m.gift_image_target_thumb(),
-	} as const satisfies Record<GiftEditorCropTarget, () => string>;
-
-	const framingLabels = {
-		fill: () => m.image_fit_fill(),
-		whole: () => m.image_crop_whole(),
-		custom: () => m.gift_image_framing_custom(),
-	} as const satisfies Record<GiftFraming, () => string>;
-
-	const copyFramingLabels = {
-		square: () => m.gift_image_copy_framing_to_thumb(),
-		thumb: () => m.gift_image_copy_framing_to_card(),
-	} as const satisfies Record<GiftEditorCropTarget, () => string>;
-
-	const otherTarget = $derived<GiftEditorCropTarget>(
-		activeTarget === 'square' ? 'thumb' : 'square',
+	const selectedPriorityLabel = $derived(
+		priorityLevels.find((level) => level.id === priorityLevelId)?.label ?? null,
 	);
-	/** Framing controls wait until the selected photo is measured and both views are open. */
-	const framingReady = $derived(selectedImage !== null && selectedImage.naturalRatio !== null);
-	const activeFraming = $derived(selectedImage?.framings[activeTarget] ?? GIFT_FRAMINGS.fill);
-	const framingStatusLabels = $derived(
-		selectedImage === null
-			? null
-			: {
-					square: framingLabels[selectedImage.framings.square](),
-					thumb: framingLabels[selectedImage.framings.thumb](),
-				},
-	);
-	const selectedImageBackground = $derived(selectedImage?.bgColor ?? null);
-
-	// SegmentedToggle writes the clicked value through the binding before calling
-	// onValueChange. A writable `$derived` local, kept in sync with the active view's
-	// framing, lets a refused change (pending mutation, unmeasured photo) reset it. A custom
-	// framing selects no preset.
-	let selectedFramingPreset = $derived<string>(
-		activeFraming === GIFT_FRAMINGS.custom ? '' : activeFraming,
-	);
-	// The visible Transparent option represents the canonical null fallback. Preserve an
-	// unsupported historical literal untouched rather than falsely selecting a known fill.
-	let selectedBgColor = $derived(
-		selectedImageBackground === null
-			? 'transparent'
-			: (IMAGE_BACKGROUND_VALUES as readonly string[]).includes(selectedImageBackground)
-				? selectedImageBackground
-				: '',
-	);
-
-	// The crop window is drawn at the target's real size on this device class (#533).
-	const compactViewport = useNarrowViewportState();
-	const activeSurfaceSize = $derived(
-		cropTargetSurfaceSize(GIFT_CROP_TARGET_SPECS[activeTarget], compactViewport.current),
-	);
-	// The mobile List row shows only a centered slice of the square thumbnail.
-	const activeVisibleWidthFraction = $derived(
-		compactViewport.current && activeTarget === 'thumb'
-			? GIFT_CROP_TARGET_SPECS.thumb.compactVisibleWidthFraction
-			: null,
-	);
-
-	function applyFramingPreset(value: string) {
-		if (
-			mutationPending ||
-			!framingReady ||
-			selectedImage === null ||
-			(value !== GIFT_FRAMINGS.fill && value !== GIFT_FRAMINGS.whole)
-		) {
-			selectedFramingPreset = activeFraming === GIFT_FRAMINGS.custom ? '' : activeFraming;
-			return;
-		}
-		selectedImage.applyPreset(activeTarget, value);
-	}
-
-	function copyFramingToOtherView() {
-		if (mutationPending) {
-			return;
-		}
-		selectedImage?.copyFraming(activeTarget, otherTarget);
-	}
-
-	function setBgColor(value: string) {
-		if (mutationPending || value === '' || selectedImage === null) {
-			selectedBgColor = selectedImageBackground ?? 'transparent';
-			return;
-		}
-		if (value === 'transparent' || value === '#ffffff' || value === '#000000') {
-			selectedImage.chooseBackground(value);
-		}
-	}
-
-	/** Clicking a preview tile only picks the edited view. */
-	function handleTileSelect(target: GiftEditorCropTarget) {
-		if (mutationPending) {
-			return;
-		}
-		activeTarget = target;
-	}
-
-	function adjustGiftPrice(
-		currentPrice: number | null,
-		direction: 1 | -1,
-		setPrice: (value: number) => void,
-	): void {
-		setPrice(adjustGiftPriceByMagnitude(currentPrice, direction));
-	}
-
-	function handleGiftPriceKeydown(
-		event: KeyboardEvent,
-		currentPrice: number | null,
-		setPrice: (value: number) => void,
-	): void {
-		if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') {
-			return;
-		}
-		event.preventDefault();
-		adjustGiftPrice(currentPrice, event.key === 'ArrowUp' ? 1 : -1, setPrice);
-	}
-
-	interface GiftPriceWheelOptions {
-		getPrice: () => number | null;
-		setPrice: (value: number) => void;
-	}
-
-	// Svelte attaches inline `onwheel` as a passive listener, so `preventDefault()`
-	// would be ignored and the dialog would scroll while changing price. Register non-passive.
-	function giftPriceWheel(node: HTMLInputElement, options: GiftPriceWheelOptions) {
-		const listener = (event: WheelEvent) => {
-			if (node !== document.activeElement || event.deltaY === 0) {
-				return;
-			}
-			event.preventDefault();
-			adjustGiftPrice(options.getPrice(), event.deltaY < 0 ? 1 : -1, options.setPrice);
-		};
-		node.addEventListener('wheel', listener, { passive: false });
-		return () => node.removeEventListener('wheel', listener);
-	}
-
-	$effect(() => {
-		if (priceInput !== null) {
-			return giftPriceWheel(priceInput, {
-				getPrice: () => price,
-				setPrice: (value) => (price = value),
-			});
-		}
-	});
-
-	$effect(() => {
-		if (priceMaxInput !== null) {
-			return giftPriceWheel(priceMaxInput, {
-				getPrice: () => priceMax,
-				setPrice: (value) => (priceMax = value),
-			});
-		}
+	/** The visitors' view of the live values, showing the selected image first. */
+	const previewGift = $derived.by(() => {
+		const shownImages = selectedImage?.hasImage
+			? [selectedImage, ...gallery.sourcedImages.filter((image) => image !== selectedImage)]
+			: gallery.sourcedImages;
+		return giftEditorPreview({
+			wishlistId,
+			name: name.trim() === '' ? m.gift_name_placeholder() : name,
+			description: descriptionFrozen ? (gift?.description ?? null) : description || null,
+			descriptionAppends: gift?.descriptionAppends ?? [],
+			links: normalizeGiftLinks(links),
+			price: finalizeGiftPrice(price),
+			priceMax: isPriceRange ? finalizeGiftPrice(priceMax) : null,
+			currency,
+			quantity: finalizeGiftQuantity(quantity),
+			priorityLabel: selectedPriorityLabel,
+			categories: giftCategoriesForIds(categoryIds, [
+				...categoryOptions,
+				...(gift?.categories ?? []),
+			]),
+			images: shownImages.map((image) => image.toGiftImage()),
+		});
 	});
 
 	function validateForm(): boolean {
@@ -483,69 +316,71 @@
 		return handleSubmit();
 	}
 
+	function buildCreateInput(): CreateGiftInput {
+		return $state.snapshot({
+			wishlistId,
+			name: name.trim(),
+			description: description.trim() || null,
+			links: normalizeGiftLinks(links),
+			price: finalizeGiftPrice(price),
+			// price_max only persists in range mode; toggling back to single mode drops it (REQ-1).
+			priceMax: isPriceRange ? finalizeGiftPrice(priceMax) : null,
+			currency,
+			images: gallery.toGiftImages(),
+			quantity: finalizeGiftQuantity(quantity),
+			priorityLevelId: priorityLevelId || null,
+			categoryIds: [...categoryIds],
+		});
+	}
+
+	function buildUpdateInput(giftId: string, createInput: CreateGiftInput): UpdateGiftInput {
+		const editedDescription = descriptionFrozen ? descriptionAppendText : description;
+		return {
+			id: giftId,
+			name: createInput.name,
+			description: editedDescription.trim() || null,
+			links: createInput.links,
+			price: createInput.price,
+			priceMax: createInput.priceMax,
+			currency: createInput.currency,
+			images: createInput.images,
+			quantity: createInput.quantity,
+			priorityLevelId: createInput.priorityLevelId,
+			categoryIds: createInput.categoryIds,
+		};
+	}
+
+	/** Hands the save to the page; `false` from it means the save was refused. */
+	async function saveThroughPage(createInput: CreateGiftInput): Promise<boolean> {
+		if (mode === 'create') {
+			return (await oncreate?.(createInput)) !== false;
+		}
+		if (mode === 'edit' && gift !== null) {
+			return (await onupdate?.(buildUpdateInput(gift.id, createInput))) !== false;
+		}
+		return false;
+	}
+
 	async function handleSubmit(): Promise<boolean> {
-		if (mutationPending || isImageUploadPending) {
+		if (saveDisabled) {
 			return false;
 		}
 
 		if (!validateForm()) {
+			// Validation messages live on the main screen.
+			step = EDITOR_STEPS.main;
 			return false;
 		}
 
-		const finalPrice = finalizeGiftPrice(price);
-		// price_max only persists in range mode; toggling back to single mode drops it (REQ-1).
-		const finalPriceMax = isPriceRange ? finalizeGiftPrice(priceMax) : null;
-		const finalQuantity = finalizeGiftQuantity(quantity);
-		const normalizedLinks = normalizeGiftLinks(links);
-		const images = gallery.toGiftImages();
-		const descriptionPayload = descriptionFrozen
-			? descriptionAppendText.trim() || null
-			: description.trim() || null;
-		const createInput = $state.snapshot({
-			wishlistId,
-			name: name.trim(),
-			description: description.trim() || null,
-			links: normalizedLinks,
-			price: finalPrice,
-			priceMax: finalPriceMax,
-			currency,
-			images,
-			quantity: finalQuantity,
-			priorityLevelId: priorityLevelId || null,
-			categoryIds: [...categoryIds],
-		}) satisfies CreateGiftInput;
-		const updateInput =
-			gift === null
-				? null
-				: ($state.snapshot({
-						id: gift.id,
-						name: createInput.name,
-						description: descriptionPayload,
-						links: createInput.links,
-						price: createInput.price,
-						priceMax: createInput.priceMax,
-						currency: createInput.currency,
-						images: createInput.images,
-						quantity: createInput.quantity,
-						priorityLevelId: createInput.priorityLevelId,
-						categoryIds: createInput.categoryIds,
-					}) satisfies UpdateGiftInput);
+		const createInput = buildCreateInput();
 		let saveSucceeded = false;
 		isLocalMutationPending = true;
 		onpendingchange?.(true);
 		try {
-			let saveResult: boolean | void;
-			if (mode === 'create') {
-				saveResult = await oncreate?.(createInput);
-			} else if (mode === 'edit' && updateInput !== null) {
-				saveResult = await onupdate?.(updateInput);
-			} else {
+			if (!(await saveThroughPage(createInput))) {
 				return false;
 			}
-			if (saveResult === false) {
-				return false;
-			}
-			await pendingUploads.commit(...galleryImageKeys(images));
+			await pendingUploads.commit(...galleryImageKeys(createInput.images ?? []));
 			saveSucceeded = true;
 		} finally {
 			isLocalMutationPending = false;
@@ -557,16 +392,6 @@
 		return saveSucceeded;
 	}
 
-	function startEditAppend(index: number, text: string) {
-		editingAppendIndex = index;
-		editingAppendText = text;
-	}
-
-	function cancelEditAppend() {
-		editingAppendIndex = null;
-		editingAppendText = '';
-	}
-
 	async function saveEditAppend(index: number) {
 		if (gift === null || editingAppendText.trim() === '') {
 			return;
@@ -576,7 +401,8 @@
 			descriptionAppendEdit: { index, text: editingAppendText.trim() },
 		});
 		if (saveResult !== false) {
-			cancelEditAppend();
+			editingAppendIndex = null;
+			editingAppendText = '';
 		}
 	}
 
@@ -585,77 +411,6 @@
 			return;
 		}
 		onupdate?.({ id: gift.id, descriptionAppendEdit: { index, text: null } });
-	}
-
-	function categoryLabel(category: PublicGiftCategory): string {
-		return labelForGiftCategory(category, getLocale().startsWith('en') ? 'en' : 'cs');
-	}
-
-	const CREATE_CATEGORY_VALUE = '__create-category__';
-	let categoryQuickAddOpen = $state(false);
-	let categorySelectOpen = $state(false);
-	// Shown until the refreshed category list that includes it arrives.
-	let createdCategory = $state<PublicGiftCategory | null>(null);
-	const categorySelectOptions = $derived<readonly PublicGiftCategory[]>(
-		createdCategory === null ||
-			categoryOptions.some((category) => category.id === createdCategory?.id)
-			? categoryOptions
-			: [...categoryOptions, createdCategory],
-	);
-
-	const selectedCategories = $derived(
-		categoryIds.flatMap((id) => {
-			const category = [...categorySelectOptions, ...(gift?.categories ?? [])].find(
-				(option) => option.id === id,
-			);
-			return category === undefined ? [] : [category];
-		}),
-	);
-	const isAtCategoryLimit = $derived(categoryIds.length >= MAX_GIFT_CATEGORIES);
-
-	/** Keeps the chosen order: kept categories stay in place and new ones join at the end. */
-	function chooseCategories(values: string[]) {
-		if (values.includes(CREATE_CATEGORY_VALUE)) {
-			categorySelectOpen = false;
-			categoryQuickAddOpen = true;
-			return;
-		}
-		categoryIds = [
-			...categoryIds.filter((id) => values.includes(id)),
-			...values.filter((id) => !categoryIds.includes(id)),
-		].slice(0, MAX_GIFT_CATEGORIES);
-	}
-
-	let categoryChipList = $state<HTMLElement | null>(null);
-
-	/** The pressed chip button disappears or moves, so keep keyboard focus on the chip list. */
-	async function focusCategoryChipButton(categoryId: string | undefined) {
-		await tick();
-		const chipButtons = categoryChipList?.querySelector<HTMLElement>(
-			`[data-category-chip="${categoryId}"] button`,
-		);
-		(
-			chipButtons ??
-			document.querySelector<HTMLElement>('[data-testid="gift-category-select"]')
-		)?.focus();
-	}
-
-	function removeCategory(id: string) {
-		const index = categoryIds.indexOf(id);
-		categoryIds = withGiftCategoryRemoved(categoryIds, id);
-		void focusCategoryChipButton(categoryIds[index] ?? categoryIds[index - 1]);
-	}
-
-	function moveCategoryEarlier(index: number) {
-		const reordered = [...categoryIds];
-		[reordered[index - 1], reordered[index]] = [reordered[index]!, reordered[index - 1]!];
-		categoryIds = reordered;
-		void focusCategoryChipButton(reordered[index - 1]);
-	}
-
-	function selectCreatedCategory(category: PublicGiftCategory) {
-		createdCategory = category;
-		categoryIds = withGiftCategoryAdded(categoryIds, category.id);
 	}
 
 	async function handleDelete() {
@@ -678,57 +433,16 @@
 		}
 	}
 
-	/** The source field edits the selected image; a gift without images starts its first one. */
-	function handleImageUpload(result: UploadResult) {
-		if (mutationPending) {
-			return;
-		}
-		pendingUploads.track(result);
-		gallery.useUploadForSelected(result);
-	}
-
-	function handleImageRemove() {
-		if (mutationPending || selectedImage === null) {
-			return;
-		}
-		removeGalleryImage(selectedImage.id);
-	}
-
-	function handleImageUrlInput(imageUrl: string) {
-		if (mutationPending) {
-			return;
-		}
-		gallery.setSelectedImageUrl(imageUrl);
-	}
-
-	function handleImageUploadError(uploadError: Error) {
-		console.error('Image upload failed:', uploadError.message);
-	}
-
-	function handleImageUploadPendingChange(pending: boolean) {
-		isSourceUploadPending = pending;
-		onpendingchange?.(isImageUploadPending || isLocalMutationPending);
-	}
-
 	function handleStripUploadPendingChange(pending: boolean) {
-		isStripUploadPending = pending;
+		isImageUploadPending = pending;
 		onpendingchange?.(isImageUploadPending || isLocalMutationPending);
 	}
 
-	/** After the strip changes the selection, the source field shows the newly selected image. */
-	function showSelectedImageSource(tab: 'url' | 'upload' = sourceTabFor(gallery.selected)) {
-		imageMode = tab;
-		sourceFieldVersion += 1;
-	}
-
-	function selectGalleryImage(id: string) {
-		gallery.select(id);
-		showSelectedImageSource();
-	}
-
-	function removeGalleryImage(id: string) {
-		gallery.remove(id);
-		showSelectedImageSource();
+	/** The framing step edits only an image with a source; losing it returns to the main screen. */
+	function leaveFramingWithoutSource() {
+		if (step === EDITOR_STEPS.framing && !selectedImageHasSource) {
+			void closeFraming();
+		}
 	}
 
 	function handleStripUpload(result: UploadResult) {
@@ -736,35 +450,71 @@
 			return;
 		}
 		pendingUploads.track(result);
-		if (gallery.add(GiftImageDraft.fromUpload(result))) {
-			showSelectedImageSource('upload');
-		}
+		gallery.add(GiftImageDraft.fromUpload(result));
 	}
 
 	/** „Vložit odkaz na obrázek“ starts an image without a source and focuses its link field. */
 	async function addImageFromLink() {
-		if (mutationPending || !gallery.add(new GiftImageDraft())) {
+		const image = new GiftImageDraft();
+		if (mutationPending || !gallery.add(image)) {
 			return;
 		}
-		showSelectedImageSource('url');
+		linkImageIds.add(image.id);
+		step = EDITOR_STEPS.main;
 		await tick();
 		imageUrlInput?.focus();
 	}
 
-	/**
-	 * Click-to-edit affordance for the image column (issue #131): switches the
-	 * right-column image field to the Upload tab and opens the native file
-	 * picker. `ImageUpload` only mounts once `imageMode` becomes `'upload'`, so
-	 * the picker trigger waits a tick for it to render.
-	 */
-	async function openImageEditor() {
-		if (demo || mutationPending || isImageUploadPending) {
+	async function openFraming() {
+		if (mutationPending || !selectedImageHasSource) {
 			return;
 		}
-		imageMode = 'upload';
+		step = EDITOR_STEPS.framing;
 		await tick();
-		imageUploadRef?.openFilePicker();
+		backButton?.focus();
 	}
+
+	/**
+	 * Leaves the framing step with its edits kept, returning focus to the image entry, or to the
+	 * link field or the strip when the selected image has no source to frame.
+	 */
+	async function closeFraming() {
+		step = EDITOR_STEPS.main;
+		await tick();
+		bodyElement?.scrollTo({ top: 0 });
+		const focusTarget =
+			bodyElement?.querySelector<HTMLElement>('[data-testid="gift-image-edit-entry"]') ??
+			imageUrlInput ??
+			bodyElement?.querySelector<HTMLElement>(
+				'[data-gift-image-select][aria-pressed="true"], [data-testid="gift-image-strip-add"]',
+			);
+		focusTarget?.focus();
+	}
+
+	/** Escape in the framing step goes back like its Back button; returns whether it did. */
+	export function leaveStepOnEscape(): boolean {
+		if (!framingOpen) {
+			return false;
+		}
+		void closeFraming();
+		return true;
+	}
+
+	// The framing status line resolves legacy `auto` framings from the photo's shape, which the
+	// main screen's preview does not report, so the selected photo is measured off-screen too.
+	$effect(() => {
+		const image = selectedImage;
+		const source = image?.previewSrc ?? null;
+		if (image === null || source === null || image.naturalRatio !== null) {
+			return;
+		}
+		const probe = new Image();
+		probe.onload = () => image.measure(probe.naturalWidth / probe.naturalHeight, source);
+		probe.src = source;
+		return () => {
+			probe.onload = null;
+		};
+	});
 
 	// Storage cleanup (issue #107, REQ-6): a successful save clears the tracker
 	// before closing; cancellation and every other unmount delete all session uploads.
@@ -775,776 +525,250 @@
 	});
 </script>
 
-{#snippet submitActions()}
+{#snippet header()}
+	<Dialog.Header class={styles.header()} data-testid="gift-editor-header">
+		{#if framingOpen}
+			<Dialog.Back
+				bind:ref={backButton}
+				label={m.gift_context_back()}
+				onclick={closeFraming}
+			/>
+			<Dialog.Title class={styles.title({ withBack: true })}>
+				{m.gift_image_framing_title()}
+				{selectedImagePosition}
+				<span class={styles.titleCount()}>
+					{m.gift_image_framing_title_count({ count: gallery.images.length })}
+				</span>
+			</Dialog.Title>
+		{:else}
+			<Dialog.Title class={styles.title({ withBack: false })}>
+				{isEdit ? m.gift_edit_title() : m.gift_add_title()}
+			</Dialog.Title>
+		{/if}
+		<Button
+			class={styles.keyboardSave()}
+			disabled={saveDisabled}
+			data-testid="gift-editor-keyboard-save"
+			onpointerdown={keepFocusOnPress}
+			onclick={() => void handleSubmit()}
+		>
+			{isSubmitting ? m.saving() : m.save()}
+		</Button>
+	</Dialog.Header>
+{/snippet}
+
+{#snippet framingStatus()}
+	{#if selectedImage !== null && selectedImageHasSource}
+		<span data-testid="gift-image-framing-status">
+			{giftFramingStatusLine(selectedImage.framings)}
+		</span>
+	{:else}
+		{m.gift_image_strip_hint()}
+	{/if}
+{/snippet}
+
+<!-- The main screen names the selected image's framings; the framing step shows them per view. -->
+{#snippet strip(orientation: GiftImageStripOrientation)}
+	<GiftImageStrip
+		items={stripItems}
+		selectedId={selectedImage?.id ?? null}
+		disabled={saveDisabled}
+		canAdd={!demo}
+		{orientation}
+		aside={orientation === 'stacked' ? framingStatus : undefined}
+		onselect={(id) => {
+			gallery.select(id);
+			leaveFramingWithoutSource();
+		}}
+		onremove={(id) => {
+			gallery.remove(id);
+			leaveFramingWithoutSource();
+		}}
+		onreorder={(orderedIds) => gallery.reorder(orderedIds)}
+		onupload={handleStripUpload}
+		onuploadpendingchange={handleStripUploadPendingChange}
+		onaddurl={() => void addImageFromLink()}
+	/>
+{/snippet}
+
+{#snippet framingStrip()}
+	{@render strip('inline')}
+{/snippet}
+
+{#snippet fields()}
+	<fieldset class={styles.fields()} disabled={mutationPending} data-testid="gift-detail-column">
+		<!-- Gift grace window (issue #83): communicates temporary full-edit/delete or delete-only access. -->
+		{#if graceActive && graceExpiresAt !== null}
+			<GraceCountdown expiresAt={graceExpiresAt} now={graceNow} message={graceMessage} />
+		{/if}
+		<GiftNameField bind:name frozen={locked} errorMessage={nameError} />
+		<GiftDescriptionField
+			bind:description
+			bind:appendText={descriptionAppendText}
+			bind:editingAppendIndex
+			bind:editingAppendText
+			frozen={descriptionFrozen}
+			savedDescription={gift?.description ?? ''}
+			descriptionAppends={gift?.descriptionAppends ?? []}
+			{graceNow}
+			onsaveappend={saveEditAppend}
+			ondeleteappend={deleteAppend}
+		/>
+		{#if editedAfterShareLine !== null}
+			<p class="-mt-2 text-xs text-muted-foreground">{editedAfterShareLine}</p>
+		{/if}
+		<GiftLinkEditor {links} onlinkschange={(updated) => (links = updated)} />
+		<div class={styles.formField()}>
+			<div class={styles.formRow()} data-testid="gift-price-quantity-row">
+				<GiftPriceFields
+					bind:price
+					bind:priceMax
+					bind:isPriceRange
+					bind:currency
+					bind:rangeError={priceRangeError}
+					fieldClass={styles.formRowField()}
+					labelRowClass={styles.formLabelRow()}
+				/>
+				<GiftQuantityPriorityFields
+					bind:quantity
+					bind:priorityLevelId
+					{priorityLevels}
+					{locked}
+					savedQuantity={currentQuantity}
+					lockHintId={locked ? QUANTITY_LOCK_HINT_ID : undefined}
+					fieldClass={styles.formRowField()}
+					labelRowClass={styles.formLabelRow()}
+				/>
+			</div>
+			<!-- Spans the whole row so the hint stays on one line under the narrow quantity column. -->
+			{#if locked}
+				<HelpText id={QUANTITY_LOCK_HINT_ID}>{m.gift_quantity_frozen_help()}</HelpText>
+			{/if}
+		</div>
+		<GiftCategoryField
+			bind:categoryIds
+			{categoryOptions}
+			giftCategories={gift?.categories ?? []}
+			{canCreateCategory}
+			{wishlistId}
+		/>
+	</fieldset>
+{/snippet}
+
+{#snippet rail()}
+	<div class={styles.rail()} data-testid="gift-image-column">
+		<GiftEditorPreview
+			gift={previewGift}
+			editable={selectedImageHasSource}
+			disabled={mutationPending}
+			onedit={() => void openFraming()}
+		/>
+		{#if showsImageUrlField}
+			<div class={styles.formField()} data-testid="gift-image-source">
+				<Label for="gift-image-url">
+					{m.gift_gallery_position({
+						position: selectedImagePosition,
+						count: gallery.images.length,
+					})} · {m.gift_image_url_label()}
+				</Label>
+				<Input
+					id="gift-image-url"
+					bind:ref={imageUrlInput}
+					bind:value={
+						() => selectedImage?.imageUrl ?? '',
+						(imageUrl) => gallery.setSelectedImageUrl(imageUrl)
+					}
+					placeholder={m.draft_grid_link_url_placeholder()}
+					type="url"
+					disabled={mutationPending}
+				/>
+			</div>
+		{/if}
+		{@render strip('stacked')}
+		{#if demo}
+			<p class="text-sm text-muted-foreground">{m.demo_image_limits()}</p>
+		{/if}
+	</div>
+{/snippet}
+
+{#snippet destructiveActions()}
+	{#if releaseGift !== null}
+		<ReleaseReservationButton gift={releaseGift} disabled={mutationPending} />
+	{/if}
+	{#if canDelete}
+		<Button
+			intent="danger"
+			disabled={saveDisabled}
+			onclick={() => void handleDelete()}
+			data-testid="gift-delete"
+		>
+			<TrashIcon data-icon="inline-start" />
+			{#if showDeleteConfirm}
+				{m.gift_delete_confirm()}
+			{:else if isDeleting}
+				{m.deleting()}
+			{:else}
+				{m.gift_delete()}
+			{/if}
+		</Button>
+	{/if}
+{/snippet}
+
+{#snippet framingFooterLead()}
+	<p class={styles.footerHint()}>{m.gift_image_framing_draft_hint()}</p>
+{/snippet}
+
+{#snippet saveButton()}
 	<Button
-		intent="outline"
-		class={styles.submitButton()}
-		disabled={mutationPending || isImageUploadPending}
-		onclick={oncancel}
-	>
-		{m.cancel()}
-	</Button>
-	<Button
-		class={styles.submitButton()}
-		disabled={mutationPending || isImageUploadPending}
+		class={styles.footerPrimary()}
+		disabled={saveDisabled}
 		onclick={() => void handleSubmit()}
 	>
-		{#if isSubmitting}
-			{m.saving()}
-		{:else}
-			{submitLabel}
-		{/if}
+		{isSubmitting ? m.saving() : submitLabel}
 	</Button>
 {/snippet}
 
-<div class={styles.body()} data-testid="gift-detail-body">
-	<!-- Fields are first in DOM order; desktop places this primary column on the right. -->
-	<div class={styles.detailColumn()} data-testid="gift-detail-column">
-		<div class={styles.detailScroll()} data-testid="gift-form-scroll">
-			<!-- Gift grace window (issue #83): communicates temporary full-edit/delete or delete-only access. -->
-			{#if graceActive && graceExpiresAt !== null}
-				<div class="mb-3">
-					<GraceCountdown
-						expiresAt={graceExpiresAt}
-						now={graceNow}
-						message={graceMessage}
-					/>
+{@render header()}
+
+<Dialog.Body bind:ref={bodyElement} class={styles.body()} data-testid="gift-detail-body">
+	{#if framingOpen && selectedImage !== null}
+		<GiftImageFramingStep
+			image={selectedImage}
+			position={selectedImagePosition}
+			{previewGift}
+			disabled={mutationPending}
+			compact={compactViewport.current}
+			strip={framingStrip}
+		/>
+	{:else}
+		<div class={styles.mainGrid()}>
+			{@render fields()}
+			{@render rail()}
+			{#if hasDestructiveActions && compactViewport.current}
+				<div class={styles.bodyActions()} data-testid="gift-body-actions">
+					{@render destructiveActions()}
 				</div>
 			{/if}
-			<fieldset class="contents" disabled={mutationPending}>
-				<!-- Name -->
-				<Field
-					fieldId="gift-name"
-					label={m.gift_name_label()}
-					errorMessage={nameError}
-					class={styles.formField()}
-				>
-					{#snippet children({ hasError, errorId }: FieldControlContext)}
-						{#if locked}
-							<SimpleTooltip text={m.gift_name_frozen_hint()} side="top">
-								{#snippet asChild(tooltipProps)}
-									<div {...tooltipProps} tabindex="-1" class="w-full">
-										<Input
-											id="gift-name"
-											class="pointer-events-none"
-											bind:value={name}
-											placeholder={m.gift_name_placeholder()}
-											disabled
-											state={hasError ? 'error' : 'default'}
-											aria-invalid={hasError ? true : undefined}
-											aria-describedby={errorId}
-										/>
-									</div>
-								{/snippet}
-							</SimpleTooltip>
-						{:else}
-							<Input
-								id="gift-name"
-								bind:value={name}
-								placeholder={m.gift_name_placeholder()}
-								state={hasError ? 'error' : 'default'}
-								aria-invalid={hasError ? true : undefined}
-								aria-describedby={errorId}
-							/>
-						{/if}
-					{/snippet}
-				</Field>
-
-				<!-- Description -->
-				<div class="mt-3 {styles.formField()}">
-					{#if descriptionFrozen}
-						<Label>{m.gift_description_label()}</Label>
-						<!-- Frozen base the gifter reserved against (read-only). -->
-						{#if (gift?.description ?? '').trim() !== ''}
-							<p class="text-sm whitespace-pre-line text-muted-foreground">
-								{gift?.description}
-							</p>
-						{/if}
-						<GiftDescription
-							description={null}
-							descriptionAppends={gift?.descriptionAppends ?? []}
-							maxVisibleAppends={1}
-						/>
-						<!-- Recent description appends can be corrected only during their own grace window. -->
-						{#each gift?.descriptionAppends ?? [] as append, index (`${append.addedAt}:${index}`)}
-							{#if isWithinGraceWindow(append.addedAt, graceNow)}
-								{#if editingAppendIndex === index}
-									<div
-										class="flex flex-col gap-2 rounded-md border border-border bg-surface-2 p-2"
-									>
-										<Textarea bind:value={editingAppendText} rows={2} />
-										<div class="flex gap-(--nested-control-gap)">
-											<Button
-												size="sm"
-												onclick={() => void saveEditAppend(index)}
-												disabled={editingAppendText.trim() === ''}
-											>
-												{m.save()}
-											</Button>
-											<Button
-												size="sm"
-												intent="ghost"
-												onclick={cancelEditAppend}
-											>
-												{m.cancel()}
-											</Button>
-										</div>
-									</div>
-								{:else}
-									<div
-										class="flex w-fit gap-1 rounded-md border border-border bg-surface-2 p-1"
-									>
-										<Button
-											size="sm"
-											format="icon"
-											intent="ghost"
-											aria-label={m.gift_description_append_edit_aria()}
-											onclick={() => startEditAppend(index, append.text)}
-										>
-											<PencilIcon />
-										</Button>
-										<Button
-											size="sm"
-											format="icon"
-											intent="ghost"
-											aria-label={m.gift_description_append_delete_aria()}
-											onclick={() => void deleteAppend(index)}
-										>
-											<TrashIcon />
-										</Button>
-									</div>
-								{/if}
-							{/if}
-						{/each}
-						<Label class="mt-2">{m.gift_description_add_note_label()}</Label>
-						<Textarea bind:value={descriptionAppendText} rows={2} />
-						<HelpText>{m.gift_description_add_note_help()}</HelpText>
-					{:else}
-						<Label for="gift-description">{m.gift_description_label()}</Label>
-						<Textarea
-							id="gift-description"
-							bind:value={description}
-							placeholder={m.gift_description_placeholder()}
-							rows={3}
-						/>
-					{/if}
-				</div>
-
-				{#if editedAfterShareLine !== null}
-					<p class="mt-2 text-xs text-muted-foreground">{editedAfterShareLine}</p>
-				{/if}
-
-				<!-- Links -->
-				<div class="mt-3 {styles.formField()}">
-					<GiftLinkEditor {links} onlinkschange={(updated) => (links = updated)} />
-				</div>
-
-				<!-- Price + Currency -->
-				<div class="mt-3 {styles.formRow()}" data-testid="gift-price-currency-row">
-					<div class={styles.formRowField()}>
-						<div data-slot="gift-form-label-row" class={styles.formLabelRow()}>
-							<Label for="gift-price">{m.gift_price_label()}</Label>
-							<div class="flex items-center gap-1.5">
-								<Label
-									for="gift-price-range-switch"
-									class="text-xs font-normal text-muted-foreground"
-								>
-									{m.gift_price_range_toggle_label()}
-								</Label>
-								<Switch
-									id="gift-price-range-switch"
-									size="sm"
-									bind:checked={isPriceRange}
-									onCheckedChange={() => (priceRangeError = '')}
-								/>
-							</div>
-						</div>
-						<div class={styles.formControlStack()}>
-							{#if isPriceRange}
-								<div class="flex items-center gap-2">
-									<Input
-										id="gift-price"
-										class="numeric-input min-w-0"
-										bind:value={price}
-										placeholder="0"
-										type="number"
-										min="0"
-										step="0.01"
-										onkeydown={(event) =>
-											handleGiftPriceKeydown(
-												event,
-												price,
-												(value) => (price = value),
-											)}
-										bind:ref={priceInput}
-										aria-label={m.gift_price_range_min_aria()}
-										state={priceRangeError !== '' ? 'error' : 'default'}
-										aria-invalid={priceRangeError !== '' ? true : undefined}
-										aria-describedby={priceRangeError !== ''
-											? 'gift-price-range-error'
-											: undefined}
-									/>
-									<span class="shrink-0 text-muted-foreground" aria-hidden="true"
-										>–</span
-									>
-									<Input
-										id="gift-price-max"
-										class="numeric-input min-w-0"
-										bind:value={priceMax}
-										placeholder="0"
-										type="number"
-										min="0"
-										step="0.01"
-										onkeydown={(event) =>
-											handleGiftPriceKeydown(
-												event,
-												priceMax,
-												(value) => (priceMax = value),
-											)}
-										bind:ref={priceMaxInput}
-										aria-label={m.gift_price_range_max_aria()}
-										state={priceRangeError !== '' ? 'error' : 'default'}
-										aria-invalid={priceRangeError !== '' ? true : undefined}
-										aria-describedby={priceRangeError !== ''
-											? 'gift-price-range-error'
-											: undefined}
-									/>
-								</div>
-							{:else}
-								<Input
-									id="gift-price"
-									class="numeric-input"
-									bind:value={price}
-									placeholder="0"
-									type="number"
-									min="0"
-									step="0.01"
-									onkeydown={(event) =>
-										handleGiftPriceKeydown(
-											event,
-											price,
-											(value) => (price = value),
-										)}
-									bind:ref={priceInput}
-								/>
-							{/if}
-							{#if priceRangeError !== ''}
-								<HelpText id="gift-price-range-error" state="error"
-									>{priceRangeError}</HelpText
-								>
-							{/if}
-						</div>
-					</div>
-					<div class={styles.formRowField()}>
-						<div data-slot="gift-form-label-row" class={styles.formLabelRow()}>
-							<Label for="gift-currency">{m.gift_currency_label()}</Label>
-						</div>
-						<div class={styles.formControlStack()}>
-							<Select.Root type="single" bind:value={currency}>
-								<Select.Trigger id="gift-currency" class="w-full">
-									{GIFT_CURRENCY_LABELS[currency]}
-								</Select.Trigger>
-								<Select.Content>
-									<Select.Group>
-										{#each Object.entries(GIFT_CURRENCIES) as [key, val] (key)}
-											<Select.Item
-												value={val}
-												label={GIFT_CURRENCY_LABELS[val]}
-											>
-												{GIFT_CURRENCY_LABELS[val]}
-											</Select.Item>
-										{/each}
-									</Select.Group>
-								</Select.Content>
-							</Select.Root>
-						</div>
-					</div>
-				</div>
-
-				<!-- Quantity + category + priority -->
-				<div class={cn('mt-3', styles.formRow())} data-testid="gift-quantity-priority-row">
-					<div class={styles.formRowField()}>
-						<div data-slot="gift-form-label-row" class={styles.formLabelRow()}>
-							<Label for="gift-quantity">{m.gift_quantity_label()}</Label>
-						</div>
-						<div class={styles.formControlStack()}>
-							<Input
-								id="gift-quantity"
-								class="numeric-input"
-								bind:value={quantity}
-								type="number"
-								min={locked ? String(currentQuantity) : '1'}
-								placeholder="1"
-							/>
-							{#if locked}
-								<HelpText
-									class="w-fit rounded-md border border-border bg-surface-2 px-2 py-1"
-								>
-									{m.gift_quantity_frozen_help()}
-								</HelpText>
-							{/if}
-						</div>
-					</div>
-
-					<div class={styles.formRowField()}>
-						<div data-slot="gift-form-label-row" class={styles.formLabelRow()}>
-							<Label for="gift-category">{m.gift_category_label()}</Label>
-						</div>
-						<div class={styles.formControlStack()}>
-							{#if categorySelectOptions.length > 0 || canCreateCategory}
-								<Select.Root
-									type="multiple"
-									bind:open={categorySelectOpen}
-									bind:value={() => categoryIds, chooseCategories}
-								>
-									<Select.Trigger
-										id="gift-category"
-										class="w-full"
-										data-testid="gift-category-select"
-									>
-										<span class="truncate">
-											{selectedCategories.length === 0
-												? m.gift_category_none()
-												: selectedCategories.map(categoryLabel).join(', ')}
-										</span>
-									</Select.Trigger>
-									<Select.Content>
-										<Select.Group>
-											{#each categorySelectOptions as category (category.id)}
-												{@const label = categoryLabel(category)}
-												<Select.Item
-													value={category.id}
-													{label}
-													indicator="checkbox"
-													disabled={isAtCategoryLimit &&
-														!categoryIds.includes(category.id)}
-													><span
-														class="size-3 shrink-0 rounded-full border border-edge"
-														style:background-color={category.color}
-														aria-hidden="true"
-													></span>{label}</Select.Item
-												>
-											{/each}
-										</Select.Group>
-										{#if canCreateCategory}
-											<Select.Separator />
-											<Select.Item
-												value={CREATE_CATEGORY_VALUE}
-												label={m.gift_category_create()}
-												disabled={isAtCategoryLimit}
-												data-testid="gift-category-create-option"
-												><PlusIcon />{m.gift_category_create()}</Select.Item
-											>
-										{/if}
-									</Select.Content>
-								</Select.Root>
-								{#if selectedCategories.length > 0}
-									<ul
-										class="flex flex-wrap gap-1.5"
-										aria-label={m.gift_category_label()}
-										bind:this={categoryChipList}
-										data-testid="gift-category-chips"
-									>
-										{#each selectedCategories as category, index (category.id)}
-											{@const label = categoryLabel(category)}
-											<li
-												class="inline-flex min-w-0 items-center gap-0.5"
-												data-category-chip={category.id}
-											>
-												<GiftCategoryBadge {category} />
-												{#if index > 0}
-													<Button
-														intent="ghost"
-														size="sm"
-														format="icon"
-														aria-label={m.gift_category_chip_promote_label(
-															{
-																category: label,
-															},
-														)}
-														onclick={() => moveCategoryEarlier(index)}
-														><ArrowLeftIcon /></Button
-													>
-												{/if}
-												<Button
-													intent="ghost"
-													size="sm"
-													format="icon"
-													aria-label={m.gift_category_chip_remove_label({
-														category: label,
-													})}
-													onclick={() => removeCategory(category.id)}
-													><XIcon /></Button
-												>
-											</li>
-										{/each}
-									</ul>
-									{#if selectedCategories.length > 1}
-										<HelpText>{m.gift_categories_primary_help()}</HelpText>
-									{/if}
-									{#if isAtCategoryLimit}
-										<HelpText
-											>{m.gift_categories_limit_help({
-												count: MAX_GIFT_CATEGORIES,
-											})}</HelpText
-										>
-									{/if}
-								{/if}
-							{:else}
-								<Select.Root type="single" disabled>
-									<Select.Trigger id="gift-category" class="w-full" disabled>
-										{m.gift_category_none_enabled()}
-									</Select.Trigger>
-								</Select.Root>
-								<HelpText>{m.gift_category_none_enabled_help()}</HelpText>
-							{/if}
-						</div>
-					</div>
-
-					{#if priorityLevels.length > 0}
-						<div class={styles.formRowField()}>
-							<div data-slot="gift-form-label-row" class={styles.formLabelRow()}>
-								<Label for="gift-priority">{m.gift_priority_label()}</Label>
-							</div>
-							<div class={styles.formControlStack()}>
-								<Select.Root type="single" bind:value={priorityLevelId}>
-									<Select.Trigger id="gift-priority" class="w-full">
-										{#if priorityLevelId}
-											{@const selectedLabel =
-												priorityLevels.find((p) => p.id === priorityLevelId)
-													?.label ?? ''}
-											{selectedLabel !== ''
-												? (getPriorityDisplay(selectedLabel)?.label() ??
-													selectedLabel)
-												: m.gift_priority_select()}
-										{:else}
-											{m.gift_priority_none()}
-										{/if}
-									</Select.Trigger>
-									<Select.Content>
-										<Select.Group>
-											<Select.Item value="" label={m.gift_priority_none()}
-												>{m.gift_priority_none()}</Select.Item
-											>
-											{#each priorityLevels as level (level.id)}
-												{@const levelLabel =
-													getPriorityDisplay(level.label)?.label() ??
-													level.label}
-												<Select.Item value={level.id} label={levelLabel}>
-													{levelLabel}
-												</Select.Item>
-											{/each}
-										</Select.Group>
-									</Select.Content>
-								</Select.Root>
-							</div>
-						</div>
-					{/if}
-				</div>
-
-				<!-- Image (last field: source input only – the framing controls and
-			     the clickable target tiles live in the image column with the
-			     preview they drive, #116 round 3) -->
-				{#if demo}
-					<p class="mt-3 text-sm text-muted-foreground">{m.demo_image_limits()}</p>
-				{:else}
-					<div class="mt-3 {styles.formField()}" data-testid="gift-image-source">
-						<Label>
-							{selectedImagePosition === null
-								? m.gift_image_label()
-								: m.gift_gallery_position({
-										position: selectedImagePosition,
-										count: gallery.images.length,
-									})}
-						</Label>
-						<SegmentedToggle.Root
-							bind:value={imageMode}
-							disabled={mutationPending || isImageUploadPending}
-							aria-label={m.gift_image_label()}
-						>
-							<SegmentedToggle.Item value="upload">
-								<UploadIcon data-icon="inline-start" />
-								{m.gift_image_upload_tab()}
-							</SegmentedToggle.Item>
-							<SegmentedToggle.Item value="url">
-								<LinkIcon data-icon="inline-start" />
-								{m.gift_image_url_tab()}
-							</SegmentedToggle.Item>
-						</SegmentedToggle.Root>
-						{#if imageMode === 'url'}
-							<Input
-								bind:ref={imageUrlInput}
-								bind:value={
-									() => selectedImage?.imageUrl ?? '', handleImageUrlInput
-								}
-								placeholder="https://example.com/image.jpg"
-								type="url"
-							/>
-						{:else}
-							<!-- Remounts when the strip selects another image, so its preview and replace/remove act on it. -->
-							{#key sourceFieldVersion}
-								<ImageUpload
-									bind:this={imageUploadRef}
-									target="gift-image"
-									disabled={mutationPending}
-									size="small"
-									initialPreviewUrl={previewSrc ?? undefined}
-									onUpload={handleImageUpload}
-									onPendingChange={handleImageUploadPendingChange}
-									onError={handleImageUploadError}
-									onRemove={handleImageRemove}
-								/>
-							{/key}
-						{/if}
-					</div>
-				{/if}
-			</fieldset>
 		</div>
-	</div>
+	{/if}
+</Dialog.Body>
 
-	<!-- Left column: the framing controls on top, then the WYSIWYG stage below
-	     showing the edited view's window. The square live preview tile sits at the column's lower edge –
-	     it doubles as the crop target switcher (round 3) – so it costs no form
-	     space. -->
-	<div
-		class={cn(
-			styles.imageColumn(),
-			// Photo-workshop treatment (issue #189 REQ-6): the inset sticker panel below
-			// supplies the framing, so the shared dashed column seam stays dropped in edit
-			// mode (issue #156); the column is just the dotted mat the panel floats on.
-			// `h-auto` + safe centering: the panel takes its intrinsic (photo-aspect,
-			// capped) height and centers on the mat — replacing the old fixed
-			// `h-[400px]` that clipped tall portraits (issue #189 REQ-5). A taller panel, e.g. a
-			// two-row image strip, scrolls in the column instead of overlapping itself (#591).
-			'flex h-auto flex-col justify-center-safe border-none border-b-0 p-3 sm:overflow-y-auto sm:border-r-0 sm:p-4',
-		)}
-		data-testid="gift-image-column"
+{#if framingOpen}
+	<Dialog.Footer
+		class={styles.footer()}
+		lead={compactViewport.current ? undefined : framingFooterLead}
+		data-testid="gift-editor-footer"
 	>
-		{#if hasImage}
-			<!-- Photo-workshop panel (issue #189 REQ-6): groups the framing controls + adaptive
-			     stage + preview tiles as one designed sticker unit on the dotted mat. -->
-			<div class={styles.modeSectionPanel()}>
-				{#if selectedImage !== null && selectedImage.previewSrc !== null}
-					<!-- Framing presets of the edited view: each view keeps its own framing, so
-					     a preset or copy never moves the other one. A free pan or zoom selects
-					     neither preset (Vlastní). -->
-					<div
-						class="flex flex-none flex-wrap items-center justify-center gap-(--nested-control-gap) pb-2.5"
-					>
-						<SegmentedToggle.Root
-							bind:value={selectedFramingPreset}
-							onValueChange={applyFramingPreset}
-							aria-label={m.gift_image_framing_label({
-								target: targetLabels[activeTarget](),
-							})}
-							class="max-w-full flex-wrap"
-						>
-							<SegmentedToggle.Item
-								value={GIFT_FRAMINGS.fill}
-								disabled={mutationPending || !framingReady}
-							>
-								{m.image_fit_fill()}
-							</SegmentedToggle.Item>
-							<SegmentedToggle.Item
-								value={GIFT_FRAMINGS.whole}
-								disabled={mutationPending || !framingReady}
-							>
-								{m.image_crop_whole()}
-							</SegmentedToggle.Item>
-						</SegmentedToggle.Root>
-						<Button
-							type="button"
-							intent="outline"
-							size="sm"
-							disabled={mutationPending || !framingReady}
-							onclick={copyFramingToOtherView}
-							data-testid="gift-image-copy-framing"
-						>
-							{copyFramingLabels[activeTarget]()}
-						</Button>
-					</div>
-					<div class="flex flex-none justify-center pb-2.5">
-						<SegmentedToggle.Root
-							bind:value={selectedBgColor}
-							onValueChange={setBgColor}
-							aria-label={m.image_background_label()}
-							class="max-w-full flex-wrap"
-						>
-							<SegmentedToggle.Item value="#ffffff" disabled={mutationPending}>
-								{m.image_background_white()}
-							</SegmentedToggle.Item>
-							<SegmentedToggle.Item value="#000000" disabled={mutationPending}>
-								{m.image_background_black()}
-							</SegmentedToggle.Item>
-							<SegmentedToggle.Item value="transparent" disabled={mutationPending}>
-								{m.image_background_transparent()}
-							</SegmentedToggle.Item>
-						</SegmentedToggle.Root>
-					</div>
-					<!-- Fixed-window stage (#533): the window keeps the active target's
-				     real size while the photo pans and zooms behind it, showing the edited
-				     view's own window. Its measurement opens both views on what the surfaces
-				     render. Remounts per selected image so the stage never carries one
-				     image's view to another. -->
-					{#key selectedImage.id}
-						<ImageCropStage
-							src={selectedImage.previewSrc}
-							alt={name || m.gift_image_preview()}
-							targetAspect={GIFT_CROP_TARGET_SPECS[activeTarget].aspect}
-							targetLabel={targetLabels[activeTarget]()}
-							surfaceSize={activeSurfaceSize}
-							fillColor={selectedImage.bgColor}
-							tokenScope={IMAGE_TOKEN_SCOPES.wishlist}
-							disabled={mutationPending || !framingReady}
-							visibleWidthFraction={activeVisibleWidthFraction}
-							stageClass="h-[min(340px,45dvh)] min-h-[220px]"
-							cropRect={selectedImage.targetRects[activeTarget]}
-							onmeasure={(ratio, measuredSrc) =>
-								selectedImage.measure(ratio, measuredSrc)}
-							onchange={(rect) => selectedImage.editCrop(activeTarget, rect)}
-						>
-							{#snippet heading()}
-								<span class="flex flex-wrap items-center gap-2">
-									<span data-testid="crop-stage-editing">
-										{selectedImagePosition === null
-											? m.image_crop_editing({
-													target: targetLabels[activeTarget](),
-												})
-											: m.gift_image_crop_editing_gallery({
-													target: targetLabels[activeTarget](),
-													position: selectedImagePosition,
-													count: gallery.images.length,
-												})}
-									</span>
-									{#if !demo}
-										<!-- Click-to-replace affordance (issue #131 REQ-1). -->
-										<Button
-											type="button"
-											intent="ghost"
-											size="sm"
-											format="icon"
-											onclick={openImageEditor}
-											disabled={mutationPending}
-											aria-label={m.gift_image_replace_cta()}
-										>
-											<PencilIcon data-icon="solo" />
-										</Button>
-									{/if}
-								</span>
-							{/snippet}
-						</ImageCropStage>
-					{/key}
-				{:else}
-					<p class={styles.imagePendingSource()} data-testid="gift-image-pending-source">
-						<LinkIcon aria-hidden="true" />
-						{m.gift_image_strip_pending_hint()}
-					</p>
-				{/if}
-				<GiftImageStrip
-					items={stripItems}
-					selectedId={selectedImage?.id ?? null}
-					disabled={mutationPending || isImageUploadPending}
-					canAdd={!demo}
-					onselect={selectGalleryImage}
-					onremove={removeGalleryImage}
-					onreorder={(orderedIds) => gallery.reorder(orderedIds)}
-					onupload={handleStripUpload}
-					onuploadpendingchange={handleStripUploadPendingChange}
-					onaddurl={() => void addImageFromLink()}
-				/>
-				{#if selectedImage !== null && selectedImage.previewSrc !== null}
-					<!-- The tiles are the crop-target switcher and the in-context check:
-				     each renders what Save persists, with its framing status. -->
-					<GiftImagePreviewSlots
-						class="flex-none pt-2.5"
-						src={selectedImage.previewSrc}
-						alt={name || m.gift_image_preview()}
-						imageMeta={selectedImage.imageMeta}
-						{activeTarget}
-						statusLabels={framingStatusLabels}
-						onTileSelect={handleTileSelect}
-						disabled={mutationPending}
-					/>
-				{/if}
-			</div>
-		{:else}
-			<!-- Empty state (issue #131 REQ-2): the whole column is an explicit
-			     clickable upload placeholder, restyled as a sticker panel (issue #189
-			     REQ-6) so the empty column reads as intentional as the filled one. -->
-			<button
-				type="button"
-				class={styles.imagePlaceholder()}
-				disabled={mutationPending || demo}
-				onclick={openImageEditor}
-				aria-label={demo ? m.demo_image_limits() : m.gift_image_upload_cta()}
-			>
-				<UploadIcon class="size-16 text-ink-faint" />
-				<span class="text-sm font-semibold text-muted-foreground">
-					{demo ? m.demo_image_limits() : m.gift_image_upload_cta()}
-				</span>
-				{#if !demo}<span class="text-xs text-muted-foreground"
-						>{m.gift_image_upload_hint()}</span
-					>{/if}
-			</button>
-		{/if}
-	</div>
-
-	<!-- Manager actions scroll with the form on mobile. Save/Cancel are hidden here on mobile
-	     and rendered by `mobileSubmitFooter` below; desktop keeps them in this block. -->
-	<div class={styles.formActions()}>
-		{#if isEdit && gift !== null}
-			{#if releaseGift !== null}
-				<ReleaseReservationButton
-					gift={releaseGift}
-					size="md"
-					disabled={mutationPending}
-					class={styles.releaseButton()}
-				/>
-			{/if}
-
-			{#if canDelete}
-				<Button
-					intent="danger"
-					class={styles.deleteButton()}
-					disabled={mutationPending || isImageUploadPending}
-					onclick={() => void handleDelete()}
-				>
-					<TrashIcon data-icon="inline-start" />
-					{#if showDeleteConfirm}
-						{m.gift_delete_confirm()}
-					{:else if isDeleting}
-						{m.deleting()}
-					{:else}
-						{m.gift_delete()}
-					{/if}
-				</Button>
-			{/if}
-		{/if}
-
-		<div class={styles.submitWrapper()}>
-			{@render submitActions()}
-		</div>
-	</div>
-</div>
-
-<!-- Mobile-only pinned Save/Cancel footer (see `submitWrapper` in
-     gift_detail_modal_variants.ts for why this is a separate element from the
-     desktop one above): a true DOM sibling OUTSIDE `body`'s scroll, so it
-     stays visible regardless of scroll position – unlike a `position: sticky`
-     copy nested inside the scroll, which only re-enters view once scrolled
-     down to it (mobile edit modal scroll fix, follow-up). Hidden on desktop,
-     where `submitWrapper` above already renders Save inline with the manager
-     actions. -->
-<div class={styles.mobileSubmitFooter()} data-testid="gift-mobile-submit-footer">
-	{@render submitActions()}
-</div>
-
-{#if canCreateCategory}
-	<GiftCategoryQuickAddDialog
-		bind:open={categoryQuickAddOpen}
-		{wishlistId}
-		target={{ kind: 'editor' }}
-		categories={categorySelectOptions}
-		oncreated={selectCreatedCategory}
-	/>
+		<Button intent="outline" onclick={() => void closeFraming()}>{m.done()}</Button>
+		{@render saveButton()}
+	</Dialog.Footer>
+{:else}
+	<Dialog.Footer
+		class={styles.footer()}
+		lead={hasDestructiveActions && !compactViewport.current ? destructiveActions : undefined}
+		data-testid="gift-editor-footer"
+	>
+		<Button intent="outline" disabled={saveDisabled} onclick={oncancel}>{m.cancel()}</Button>
+		{@render saveButton()}
+	</Dialog.Footer>
 {/if}

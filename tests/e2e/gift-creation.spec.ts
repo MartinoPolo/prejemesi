@@ -14,11 +14,9 @@ async function openAddGiftDialog(page: Page): Promise<ReturnType<Page['getByRole
 }
 
 async function fillGiftUrl(dialog: Locator, url: string) {
-	const urlInput = dialog.getByTestId('gift-link-url').first();
-	if (!(await urlInput.isVisible().catch(() => false))) {
-		await dialog.getByRole('button', { name: /Přidat odkaz|Add link/ }).click();
-	}
-	await urlInput.fill(url);
+	const pasteField = dialog.getByTestId('gift-link-paste');
+	await pasteField.fill(url);
+	await pasteField.press('Enter');
 }
 
 test.describe('Gift creation', () => {
@@ -49,7 +47,8 @@ test.describe('Gift creation', () => {
 		await expect(
 			savedGiftDialog.getByRole('textbox', { name: 'Popis', exact: true }),
 		).toHaveValue('Testovací popis');
-		await expect(savedGiftDialog.getByTestId('gift-link-url').first()).toHaveValue(
+		await savedGiftDialog.getByRole('button', { name: /example\.com\/gift/ }).click();
+		await expect(savedGiftDialog.getByTestId('gift-link-url')).toHaveValue(
 			'https://example.com/gift',
 		);
 		await expect(savedGiftDialog.getByLabel(/Cena/)).toHaveValue('1500');

@@ -19,7 +19,7 @@ import type { ManagedGiftCategory } from '$lib/modules/gift-categories/types.js'
 // the SvelteKit `/api/upload` endpoint.
 vi.mock('$env/dynamic/public', () => ({ env: { PUBLIC_R2_URL: '/' } }));
 
-const { default: GiftDetailForm } = await import('./GiftDetailForm.svelte');
+const { default: GiftDetailForm } = await import('./GiftDetailFormTestFixture.svelte');
 
 const { expectPixelsAtLeast, expectPixelsAtMost, expectPixelsNear } = createPixelAssertions(expect);
 
@@ -290,7 +290,7 @@ describe('GiftDetailForm actions (issue #255)', () => {
 	);
 });
 
-describe('GiftDetailForm edit footer depth clearance (#442)', () => {
+describe('GiftDetailForm edit footer (#442, #706)', () => {
 	afterEach(() => {
 		delete document.documentElement.dataset.depth;
 	});
@@ -307,6 +307,8 @@ describe('GiftDetailForm edit footer depth clearance (#442)', () => {
 	async function renderEditFooterAtDepth(depth: 'soft' | 'black'): Promise<number> {
 		document.documentElement.dataset.depth = depth;
 		await render(GiftDetailForm, { ...baseProps, canDelete: true, gift: makeGift() });
+		// The dialog enters with a scale, which would shrink every measured gap until it ends.
+		await Promise.allSettled(document.getAnimations().map((animation) => animation.finished));
 		const shadowOffset = Number.parseFloat(
 			getComputedStyle(document.documentElement).getPropertyValue(
 				'--elevation-ordinary-offset',
@@ -334,44 +336,55 @@ describe('GiftDetailForm edit footer depth clearance (#442)', () => {
 		},
 	);
 
-	it.each(['soft', 'black'] as const)(
-		'separates the desktop Save row and Delete by the nested control gap at %s depth',
-		async (depth) => {
-			await page.viewport(1280, 900);
-			const expectedGap = await renderEditFooterAtDepth(depth);
+	it('leads the desktop footer with Delete on the Save row', async () => {
+		await page.viewport(1280, 900);
+		await renderEditFooterAtDepth('soft');
 
-			const save = visibleButtonNamed(m.save()).getBoundingClientRect();
-			const deleteAction = visibleButtonNamed(m.gift_delete()).getBoundingClientRect();
-			expectPixelsNear(deleteAction.top - save.bottom, expectedGap);
-		},
-	);
+		const footer = document.querySelector<HTMLElement>('[data-testid="gift-editor-footer"]')!;
+		const deleteAction = visibleButtonNamed(m.gift_delete());
+		const save = visibleButtonNamed(m.save()).getBoundingClientRect();
+		const cancel = visibleButtonNamed(m.cancel()).getBoundingClientRect();
+		expect(footer.contains(deleteAction)).toBe(true);
+		const deleteRect = deleteAction.getBoundingClientRect();
+		expectPixelsNear(deleteRect.top, save.top);
+		expect(deleteRect.right).toBeLessThan(cancel.left);
+	});
+
+	it('ends the phone body with Delete and keeps the footer to Cancel and Save', async () => {
+		await page.viewport(390, 844);
+		await renderEditFooterAtDepth('soft');
+
+		const footer = document.querySelector<HTMLElement>('[data-testid="gift-editor-footer"]')!;
+		const body = document.querySelector<HTMLElement>('[data-testid="gift-detail-body"]')!;
+		const deleteAction = visibleButtonNamed(m.gift_delete());
+		expect(footer.contains(deleteAction)).toBe(false);
+		expect(body.contains(deleteAction)).toBe(true);
+		const fields = document.querySelector<HTMLElement>('[data-testid="gift-detail-column"]')!;
+		const images = document.querySelector<HTMLElement>('[data-testid="gift-image-column"]')!;
+		expect(fields.getBoundingClientRect().top).toBeLessThan(images.getBoundingClientRect().top);
+		expect(deleteAction.getBoundingClientRect().top).toBeGreaterThan(
+			images.getBoundingClientRect().bottom - 1,
+		);
+	});
 });
 
-describe('GiftDetailForm image source selection', () => {
-	it('supports keyboard source selection without losing the URL draft', async () => {
+describe('GiftDetailForm image sources', () => {
+	it('adds an image by link from the strip and keeps the link field while typing', async () => {
 		const screen = await render(GiftDetailForm, {
 			...baseProps,
 			mode: 'create' as const,
 			gift: null,
 		});
 
-		const uploadSource = screen.getByRole('radio', {
-			name: m.gift_image_upload_tab(),
-			exact: true,
+		await screen.getByTestId('gift-image-strip-add').click();
+		await screen.getByRole('menuitem', { name: m.gift_image_strip_add_url() }).click();
+		const urlInput = screen.getByRole('textbox', {
+			name: new RegExp(m.gift_image_url_label()),
 		});
-		uploadSource.element().focus();
-		await userEvent.keyboard('{ArrowRight} ');
-		const urlInput = screen.getByPlaceholder('https://example.com/image.jpg');
-		await expect.element(urlInput).toBeVisible();
-		await urlInput.fill('https://example.com/photo.jpg');
-
-		const urlSource = screen.getByRole('radio', {
-			name: m.gift_image_url_tab(),
-			exact: true,
-		});
-		urlSource.element().focus();
-		await userEvent.keyboard('{ArrowLeft} ');
-		await userEvent.keyboard('{ArrowRight} ');
+		await expect.element(urlInput).toHaveFocus();
+		// Typed key by key: the first character already gives the image a source.
+		await userEvent.keyboard('https://example.com/photo.jpg');
+		await screen.getByRole('textbox', { name: 'Název' }).fill('Dárek s obrázkem');
 		await expect.element(urlInput).toHaveValue('https://example.com/photo.jpg');
 	});
 });
@@ -388,10 +401,10 @@ describe('GiftDetailForm stored images', () => {
 			onupdate,
 		});
 
-		const mainPreview = document.querySelector('[data-testid="crop-stage"] img');
-		const uploadPreview = document.querySelector('img[data-testid="image-upload-preview"]');
-		expect(mainPreview?.getAttribute('src')).toBe('/demo/v1/backpack.jpg');
-		expect(uploadPreview?.getAttribute('src')).toBe('/demo/v1/backpack.jpg');
+		await vi.waitFor(() => {
+			const preview = document.querySelector('[data-testid="gift-editor-preview"] img');
+			expect(preview?.getAttribute('src')).toContain('demo/v1/backpack.jpg');
+		});
 
 		await screen.getByRole('button', { name: m.save() }).click();
 
@@ -423,149 +436,80 @@ describe('GiftDetailForm image backgrounds (issue #252)', () => {
 		};
 	}
 
-	it('selects Transparent for null, previews the default pattern, and submits null untouched', async () => {
-		const onupdate = vi.fn();
-		const root = document.documentElement;
-		const previousValue = root.style.getPropertyValue('--secondary');
-		const previousPriority = root.style.getPropertyPriority('--secondary');
-		root.style.setProperty('--secondary', 'rgb(12, 34, 56)');
-
-		try {
-			const screen = await render(GiftDetailForm, {
-				...baseProps,
-				gift: makeGift({ imageUrl, imageMeta: imageMeta(null) }),
-				onupdate,
-			});
-
-			await expect
-				.element(screen.getByRole('group', { name: m.image_background_label() }))
-				.toBeVisible();
-			await expect
-				.element(screen.getByRole('radio', { name: m.image_background_transparent() }))
-				.toHaveAttribute('aria-checked', 'true');
-			expect(
-				screen.container.querySelector('[data-testid="gift-preview-card-pattern"]'),
-			).toBeTruthy();
-			await vi.waitFor(() => {
-				const fill = screen.container.querySelector<HTMLElement>(
-					'[data-testid="crop-stage"] > [style*="background:"]',
-				);
-				expect(fill).not.toBeNull();
-				expect(getComputedStyle(fill!).backgroundColor).toBe('rgb(12, 34, 56)');
-			});
-
-			await screen.getByRole('button', { name: m.save() }).click();
-			expect(onupdate).toHaveBeenCalledWith(
-				expect.objectContaining({
-					images: [
-						expect.objectContaining({
-							imageMeta: expect.objectContaining({ bgColor: null }),
-						}),
-					],
-				}),
-			);
-		} finally {
-			if (previousValue) {
-				root.style.setProperty('--secondary', previousValue, previousPriority);
-			} else {
-				root.style.removeProperty('--secondary');
-			}
-		}
-	});
-
-	it('normalizes legacy transparent metadata to the selected default and null on save', async () => {
+	async function renderFraming(bgColor: string | null) {
+		await page.viewport(1280, 900);
 		const onupdate = vi.fn();
 		const screen = await render(GiftDetailForm, {
 			...baseProps,
-			gift: makeGift({ imageUrl, imageMeta: imageMeta('transparent') }),
+			gift: makeGift({ imageUrl, imageMeta: imageMeta(bgColor) }),
 			onupdate,
 		});
+		await screen.getByTestId('gift-image-edit-entry').click();
+		return { screen, onupdate };
+	}
+
+	function cardFrameBackground(): string {
+		const frame = document.querySelector<HTMLElement>(
+			'[data-testid="gift-framing-view-square"] [data-testid="image-frame"]',
+		);
+		expect(frame).not.toBeNull();
+		return getComputedStyle(frame!).backgroundColor;
+	}
+
+	it('selects Transparent for null and submits null untouched', async () => {
+		const { screen, onupdate } = await renderFraming(null);
+
+		await expect
+			.element(
+				screen.getByRole('group', {
+					name: m.gift_image_background_position({ position: 1 }),
+				}),
+			)
+			.toBeVisible();
+		await expect
+			.element(screen.getByRole('radio', { name: m.image_background_transparent() }))
+			.toHaveAttribute('aria-checked', 'true');
+
+		await screen.getByRole('button', { name: m.save() }).click();
+		expect(onupdate.mock.calls[0]![0].images[0].imageMeta.bgColor).toBeNull();
+	});
+
+	it('normalizes legacy transparent metadata to the selected default and null on save', async () => {
+		const { screen, onupdate } = await renderFraming('transparent');
 
 		await expect
 			.element(screen.getByRole('radio', { name: m.image_background_transparent() }))
 			.toHaveAttribute('aria-checked', 'true');
-		expect(
-			screen.container.querySelector('[data-testid="gift-preview-card-pattern"]'),
-		).toBeTruthy();
 		await screen.getByRole('button', { name: m.save() }).click();
-		expect(onupdate).toHaveBeenCalledWith(
-			expect.objectContaining({
-				images: [
-					expect.objectContaining({
-						imageMeta: expect.objectContaining({ bgColor: null }),
-					}),
-				],
-			}),
-		);
+		expect(onupdate.mock.calls[0]![0].images[0].imageMeta.bgColor).toBeNull();
 	});
 
 	it('clicking Transparent replaces an explicit fill with canonical null', async () => {
-		const onupdate = vi.fn();
-		const screen = await render(GiftDetailForm, {
-			...baseProps,
-			gift: makeGift({ imageUrl, imageMeta: imageMeta('#000000') }),
-			onupdate,
-		});
+		const { screen, onupdate } = await renderFraming('#000000');
 
 		await screen.getByRole('radio', { name: m.image_background_transparent() }).click();
 		await expect
 			.element(screen.getByRole('radio', { name: m.image_background_transparent() }))
 			.toHaveAttribute('aria-checked', 'true');
-		expect(
-			screen.container.querySelector('[data-testid="gift-preview-card-pattern"]'),
-		).toBeTruthy();
 		await screen.getByRole('button', { name: m.save() }).click();
-		expect(onupdate).toHaveBeenCalledWith(
-			expect.objectContaining({
-				images: [
-					expect.objectContaining({
-						imageMeta: expect.objectContaining({ bgColor: null }),
-					}),
-				],
-			}),
-		);
+		expect(onupdate.mock.calls[0]![0].images[0].imageMeta.bgColor).toBeNull();
 	});
 
 	it.each([
 		[m.image_background_white(), '#ffffff', 'rgb(255, 255, 255)'],
 		[m.image_background_black(), '#000000', 'rgb(0, 0, 0)'],
 	])('submits %s as the exact persisted value', async (label, value, expectedBackground) => {
-		const onupdate = vi.fn();
-		const screen = await render(GiftDetailForm, {
-			...baseProps,
-			gift: makeGift({ imageUrl, imageMeta: imageMeta(null) }),
-			onupdate,
-		});
+		const { screen, onupdate } = await renderFraming(null);
 
 		await screen.getByRole('radio', { name: label }).click();
-		await vi.waitFor(() => {
-			const fill = screen.container.querySelector<HTMLElement>(
-				'[data-testid="crop-stage"] > [style*="background:"]',
-			);
-			expect(fill).not.toBeNull();
-			expect(getComputedStyle(fill!).backgroundColor).toBe(expectedBackground);
-		});
-		expect(
-			screen.container.querySelector('[data-testid="gift-preview-card-pattern"]'),
-		).toBeNull();
+		await vi.waitFor(() => expect(cardFrameBackground()).toBe(expectedBackground));
 		await screen.getByRole('button', { name: m.save() }).click();
 
-		expect(onupdate).toHaveBeenCalledWith(
-			expect.objectContaining({
-				images: [
-					expect.objectContaining({
-						imageMeta: expect.objectContaining({ bgColor: value }),
-					}),
-				],
-			}),
-		);
+		expect(onupdate.mock.calls[0]![0].images[0].imageMeta.bgColor).toBe(value);
 	});
 
 	it('highlights the persisted explicit choice when editing a gift', async () => {
-		const screen = await render(GiftDetailForm, {
-			...baseProps,
-			gift: makeGift({ imageUrl, imageMeta: imageMeta('#000000') }),
-		});
+		const { screen } = await renderFraming('#000000');
 
 		await expect
 			.element(screen.getByRole('radio', { name: m.image_background_black() }))
