@@ -5,17 +5,19 @@
 </script>
 
 <footer class="landing-footer" aria-label={m.landing_footer_label()}>
-	<svg
+	<!-- The HTML wrapper carries the bob: Chrome animates SVG elements on the main thread. -->
+	<span
 		class="footer-doodle motion-safe:animate-bob"
 		style:animation-duration="5s"
-		viewBox="0 0 24 24"
 		aria-hidden="true"
 	>
-		<path
-			d="M12 0 C13 7 17 11 24 12 C17 13 13 17 12 24 C11 17 7 13 0 12 C7 11 11 7 12 0 Z"
-			fill="currentColor"
-		/>
-	</svg>
+		<svg viewBox="0 0 24 24">
+			<path
+				d="M12 0 C13 7 17 11 24 12 C17 13 13 17 12 24 C11 17 7 13 0 12 C7 11 11 7 12 0 Z"
+				fill="currentColor"
+			/>
+		</svg>
+	</span>
 	<div
 		class="mx-auto flex max-w-[var(--content-max-width)] flex-wrap items-center gap-6 px-4 py-12 md:px-8"
 	>
@@ -110,5 +112,10 @@
 		opacity: 0.18;
 		color: var(--footer-text);
 		pointer-events: none;
+	}
+
+	.footer-doodle > svg {
+		display: block;
+		width: 100%;
 	}
 </style>
