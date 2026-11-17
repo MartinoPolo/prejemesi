@@ -21,6 +21,8 @@
 	data-header-divided={divided || undefined}
 	class={cn(
 		'gap-2 flex flex-col text-center sm:text-left',
+		// A back button mirrors the close sticker, so the title clears both ends at every width.
+		'has-data-[slot=dialog-back]:*:data-[slot=dialog-title]:px-(--overlay-close-clearance-inside-dialog-padding)',
 		dialogScrollSectionVariants({ divided }).header(),
 		className,
 	)}
