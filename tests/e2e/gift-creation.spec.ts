@@ -37,6 +37,7 @@ test.describe('Gift creation', () => {
 		await fillGiftUrl(dialog, 'https://example.com/gift');
 		await dialog.getByRole('button', { name: 'Přidat dárek' }).click();
 
+		await expect(dialog).toBeHidden({ timeout: 10_000 });
 		await expect(page.getByText('Plný dárek')).toBeVisible({ timeout: 10_000 });
 		await expect(page.getByText(/1\s?500/)).toBeVisible({ timeout: 10_000 });
 
