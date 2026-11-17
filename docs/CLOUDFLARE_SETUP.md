@@ -38,6 +38,7 @@ How to deploy Přejeme si to Cloudflare, develop against it, and maintain it. Th
 8. Production auth hardening: done
 9. Production site hygiene: done
 10. Google OAuth redirect URIs: pending only if Google login is used
+11. R2 image cache rule (§3.D): pending
 
 ---
 
@@ -106,6 +107,18 @@ wrangler secret put R2_SECRET_ACCESS_KEY
 Card/list/thumbnail surfaces load width-bounded `/cdn-cgi/image/…` variants from `images.prejemesi.cz`. Enable once per zone: Dashboard → **Images → Transformations** → enable for the `prejemesi.cz` zone (allow same-zone sources). No wrangler/API equivalent exists for this toggle.
 
 Free tier: 5,000 unique transformations/month. If the quota is exceeded (or the toggle is off), the client falls back to the original image URLs automatically – images never break, they are just unoptimized.
+
+#### R2 image cache rule
+
+R2 serves an object with the `Cache-Control` stored at upload. Server-side puts store `UPLOADED_OBJECT_CACHE_CONTROL` (`src/lib/server/storage/r2.ts`), but presigned browser uploads and objects stored before that constant existed have none, so Cloudflare falls back to short default TTLs. Every object key is unique and never rewritten, so one rule can cache the whole image host for a year: Dashboard → zone `prejemesi.cz` → **Caching → Cache Rules → Create rule**:
+
+- Name: `R2 images immutable`
+- Expression: `(http.host in {"images.prejemesi.cz" "staging-images.prejemesi.cz"})`
+- Cache eligibility: **Eligible for cache**
+- Edge TTL: **Ignore cache-control header and use this TTL** → 1 year
+- Browser TTL: **Override origin and use this TTL** → 1 year
+
+Verify with `curl -sI https://images.prejemesi.cz/<object-key>`: `cache-control` shows `max-age=31536000` and a repeat request shows `cf-cache-status: HIT`. Wrangler cannot manage Cache Rules; only the dashboard, the Rulesets API or Terraform can.
 
 ### E. Secrets & vars
 
