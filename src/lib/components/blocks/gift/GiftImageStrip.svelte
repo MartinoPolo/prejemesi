@@ -31,6 +31,7 @@
 	import PlusIcon from '@lucide/svelte/icons/plus';
 	import UploadIcon from '@lucide/svelte/icons/upload';
 	import LinkIcon from '@lucide/svelte/icons/link';
+	import UndoIcon from '@lucide/svelte/icons/undo-2';
 	import { Spinner } from '$lib/components/base/spinner/index.js';
 
 	interface Props {
@@ -42,6 +43,10 @@
 		canAdd: boolean;
 		onselect: (id: string) => void;
 		onremove: (id: string) => void;
+		/** Whether the latest removal can still be undone; the heading hint then offers it. */
+		canUndoRemoval: boolean;
+		/** Restores the latest removed image at its position and selects it. */
+		onundoremoval: () => void;
 		onreorder: (orderedIds: string[]) => void;
 		/** A new image uploaded through „Nahrát soubor“, prepared and stripped like any upload. */
 		onupload: (result: UploadResult) => void;
@@ -60,6 +65,8 @@
 		canAdd,
 		onselect,
 		onremove,
+		canUndoRemoval,
+		onundoremoval,
 		onreorder,
 		onupload,
 		onuploadpendingchange,
@@ -68,7 +75,9 @@
 		orientation = 'stacked',
 	}: Props = $props();
 
-	const styles = $derived(giftImageStripVariants({ orientation }));
+	const styles = $derived(
+		giftImageStripVariants({ orientation, offersRemovalUndo: canUndoRemoval }),
+	);
 	const headingId = $props.id();
 
 	let listElement = $state<HTMLUListElement | null>(null);
@@ -125,6 +134,10 @@
 		);
 	}
 
+	function tileSelectButton(id: string): HTMLElement | null {
+		return tileElement(id)?.querySelector<HTMLElement>('[data-gift-image-select]') ?? null;
+	}
+
 	function handleGripPointerDown(event: PointerEvent, index: number) {
 		if (disabled) {
 			return;
@@ -153,13 +166,26 @@
 			return;
 		}
 		onremove(id);
+		void announcement.announce(m.gift_image_strip_removed());
 		await tick();
 		const nextTile = items[index] ?? items[index - 1];
-		const nextFocus =
-			nextTile === undefined
-				? addTrigger
-				: tileElement(nextTile.id)?.querySelector<HTMLElement>('[data-gift-image-select]');
+		const nextFocus = nextTile === undefined ? addTrigger : tileSelectButton(nextTile.id);
 		nextFocus?.focus();
+	}
+
+	async function undoRemoval() {
+		if (disabled) {
+			return;
+		}
+		onundoremoval();
+		await tick();
+		const restoredId = selectedId;
+		if (restoredId === null) {
+			return;
+		}
+		tileSelectButton(restoredId)?.focus();
+		const position = items.findIndex((item) => item.id === restoredId) + 1;
+		void announcement.announce(m.gift_image_strip_restored({ position, count: items.length }));
 	}
 
 	function selectLabel(index: number, item: GiftImageStripItem): string {
@@ -256,6 +282,7 @@
 			size="sm"
 			format="icon"
 			class={cn(styles.cornerControl(), styles.remove())}
+			surfaceClass={styles.removeSurface()}
 			aria-label={m.gift_image_strip_remove_label({ position })}
 			aria-disabled={disabled}
 			onclick={() => void removeImage(index, item.id)}
@@ -266,6 +293,24 @@
 			<span class={styles.cover()} aria-hidden="true">{m.gift_image_strip_cover()}</span>
 		{/if}
 	</li>
+{/snippet}
+
+{#snippet removalUndo()}
+	<span class={styles.removalUndo()} data-testid="gift-image-strip-removal-undo">
+		{m.gift_image_strip_removed()}
+		<Button
+			type="button"
+			intent="outline"
+			size="sm"
+			class={styles.removalUndoButton()}
+			aria-label={m.gift_image_strip_undo_remove_label()}
+			aria-disabled={disabled}
+			onclick={() => void undoRemoval()}
+		>
+			<UndoIcon data-icon="inline-start" />
+			{m.gift_image_strip_undo_remove()}
+		</Button>
+	</span>
 {/snippet}
 
 {#snippet addTileMenu()}
@@ -319,7 +364,13 @@
 			{/if}
 		</strong>
 		<span class={styles.headingHint()}>
-			{#if aside}{@render aside()}{:else}{m.gift_image_strip_hint()}{/if}
+			{#if canUndoRemoval}
+				{@render removalUndo()}
+			{:else if aside}
+				{@render aside()}
+			{:else}
+				{m.gift_image_strip_hint()}
+			{/if}
 		</span>
 	</div>
 	<ul class={styles.list()} role="list" aria-labelledby={headingId} bind:this={listElement}>
