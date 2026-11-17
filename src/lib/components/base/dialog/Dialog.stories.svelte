@@ -13,6 +13,18 @@
 		},
 	});
 
+	const playStepBackAndForth = async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+		await userEvent.click(within(canvasElement).getByRole('button', { name: 'Open' }));
+		const dialog = await screen.findByRole('dialog');
+		await waitFor(() =>
+			expect(within(dialog).getByRole('button', { name: 'Delete gift' })).toBeVisible(),
+		);
+		await userEvent.click(within(dialog).getByRole('button', { name: 'Adjust framing' }));
+		await userEvent.click(await within(dialog).findByRole('button', { name: 'Back' }));
+		await expect(within(dialog).getByRole('heading', { name: 'Edit gift' })).toBeVisible();
+		await expect(within(dialog).queryByRole('button', { name: 'Back' })).toBeNull();
+	};
+
 	const playOpenScrollDialog = async ({ canvasElement }: { canvasElement: HTMLElement }) => {
 		await userEvent.click(within(canvasElement).getByRole('button', { name: 'Open' }));
 		const dialog = await screen.findByRole('dialog');
@@ -29,6 +41,9 @@
 	import { Input } from '$lib/components/base/input/index.js';
 	import { Label } from '$lib/components/base/label/index.js';
 	import { Stepper } from '$lib/components/derived/stepper/index.js';
+	import TrashIcon from '@lucide/svelte/icons/trash-2';
+
+	let framingStepOpen = $state(false);
 </script>
 
 <Story name="Confirm">
@@ -114,6 +129,58 @@
 				<Dialog.Footer>
 					<Button intent="outline" size="lg">Back</Button>
 					<Button size="lg">Continue</Button>
+				</Dialog.Footer>
+			</Dialog.Content>
+		</Dialog.Root>
+	{/snippet}
+</Story>
+
+<Story
+	name="Steps With Back And Footer Lead [play: back returns to the first step]"
+	play={playStepBackAndForth}
+>
+	{#snippet template()}
+		<Dialog.Root onOpenChange={() => (framingStepOpen = false)}>
+			<Dialog.Trigger>
+				{#snippet child({ props })}<Button {...props}>Open</Button>{/snippet}
+			</Dialog.Trigger>
+			<Dialog.Content layout="scroll">
+				<Dialog.Header>
+					{#if framingStepOpen}
+						<Dialog.Back label="Back" onclick={() => (framingStepOpen = false)} />
+						<Dialog.Title>Adjust framing</Dialog.Title>
+					{:else}
+						<Dialog.Title>Edit gift</Dialog.Title>
+					{/if}
+				</Dialog.Header>
+				<Dialog.Body class="space-y-3">
+					{#if framingStepOpen}
+						<p>Drag the photo to choose what the card shows.</p>
+					{:else}
+						<p>Name, price and links of the gift.</p>
+						<Button intent="outline" onclick={() => (framingStepOpen = true)}>
+							Adjust framing
+						</Button>
+					{/if}
+				</Dialog.Body>
+				<Dialog.Footer>
+					{#snippet lead()}
+						{#if framingStepOpen}
+							<p class="text-muted-foreground text-xs">
+								Changes apply when you save.
+							</p>
+						{:else}
+							<Button intent="danger" size="lg">
+								<TrashIcon data-icon="inline-start" />Delete gift
+							</Button>
+						{/if}
+					{/snippet}
+					<Dialog.Close>
+						{#snippet child({ props })}
+							<Button intent="outline" size="lg" {...props}>Cancel</Button>
+						{/snippet}
+					</Dialog.Close>
+					<Button size="lg">Save</Button>
 				</Dialog.Footer>
 			</Dialog.Content>
 		</Dialog.Root>

@@ -14,6 +14,8 @@ import { registerAndGetPage } from './fixtures/auth-helpers.js';
 import { localDatabaseUrl } from './fixtures/local-database.js';
 import {
 	createWishlistAndNavigate,
+	openGiftImageFraming,
+	uploadGiftEditorImage,
 	waitForDialogOverlayRemoval,
 } from './fixtures/wishlist-helpers.js';
 
@@ -33,16 +35,6 @@ const WISHLIST_VIEWS = {
 } as const;
 
 type WishlistView = keyof typeof WISHLIST_VIEWS;
-
-function waitForUpload(page: Page) {
-	return page.waitForResponse(
-		(response) =>
-			response.request().method() === 'PUT' &&
-			response.url().includes('/api/upload/') &&
-			response.status() === 201,
-		{ timeout: 15_000 },
-	);
-}
 
 /** A stored card crop off-centre and zoomed in, with the list thumbnail following it. */
 function followingThumbMeta(imageRatio: number): ImageMetadata {
@@ -141,18 +133,21 @@ async function openGiftEditor(page: Page, giftName: string) {
 	await page.getByText(giftName, { exact: true }).first().click();
 	const dialog = page.getByRole('dialog');
 	await expect(dialog).toBeVisible({ timeout: 5_000 });
-	await expect(dialog.getByTestId('crop-stage-window')).toBeVisible({ timeout: 10_000 });
+	await expect(dialog.getByTestId('gift-image-edit-entry')).toBeVisible({ timeout: 10_000 });
 	return dialog;
 }
 
 async function saveGiftEditor(page: Page, dialog: Locator) {
-	await dialog.getByRole('button', { name: 'Uložit', exact: true }).first().click();
+	await dialog
+		.getByTestId('gift-editor-footer')
+		.getByRole('button', { name: 'Uložit', exact: true })
+		.click();
 	await expect(dialog).not.toBeVisible({ timeout: 10_000 });
 	await waitForDialogOverlayRemoval(page);
 }
 
-async function zoomInSelectedView(dialog: Locator, steps: number) {
-	const zoomSlider = dialog.getByRole('slider');
+async function zoomInCard(framingStep: Locator, steps: number) {
+	const zoomSlider = framingStep.getByTestId('gift-framing-controls-square').getByRole('slider');
 	await expect(zoomSlider).toBeEnabled();
 	await zoomSlider.focus();
 	await expect(zoomSlider).toBeFocused();
@@ -161,9 +156,12 @@ async function zoomInSelectedView(dialog: Locator, steps: number) {
 	}
 }
 
-/** The uploaded photo's natural width ÷ height, read from the editor's crop stage. */
-async function stagePhotoRatio(dialog: Locator): Promise<number> {
-	const photo = dialog.getByTestId('crop-stage').locator('img').first();
+/** The uploaded photo's natural width ÷ height, read from the editor's live preview. */
+async function previewPhotoRatio(dialog: Locator): Promise<number> {
+	const photo = dialog
+		.getByTestId('gift-editor-preview')
+		.getByTestId('image-frame')
+		.locator('img');
 	await expect
 		.poll(() => photo.evaluate((image: HTMLImageElement) => image.naturalWidth))
 		.toBeGreaterThan(0);
@@ -190,14 +188,8 @@ test('a stored list thumbnail following the card crop survives saves untouched',
 		const createDialog = page.getByRole('dialog');
 		await expect(createDialog).toBeVisible({ timeout: 5_000 });
 		await createDialog.locator('#gift-name').fill(giftName);
-		await createDialog.getByRole('radio', { name: 'Nahrát', exact: true }).click();
-		const uploadCompleted = waitForUpload(page);
-		await createDialog.locator('input[type=file]').setInputFiles(SAMPLE_IMAGE_PATH);
-		await uploadCompleted;
-		await expect(createDialog.getByTestId('image-upload-preview')).toBeVisible({
-			timeout: 10_000,
-		});
-		const legacyMeta = followingThumbMeta(await stagePhotoRatio(createDialog));
+		await uploadGiftEditorImage(page, createDialog, SAMPLE_IMAGE_PATH);
+		const legacyMeta = followingThumbMeta(await previewPhotoRatio(createDialog));
 		await createDialog.getByRole('button', { name: 'Přidat dárek' }).click();
 		await expect(createDialog).not.toBeVisible({ timeout: 10_000 });
 		await waitForDialogOverlayRemoval(page);
@@ -212,8 +204,10 @@ test('a stored list thumbnail following the card crop survives saves untouched',
 
 		// An edit-free save (only the name changes) keeps the stored image metadata verbatim.
 		let editDialog = await openGiftEditor(page, giftName);
-		await expect(editDialog.getByTestId('gift-preview-status-square')).toHaveText('Vlastní');
-		await expect(editDialog.getByTestId('gift-preview-status-thumb')).toHaveText('Vlastní');
+		let framingStep = await openGiftImageFraming(editDialog);
+		await expect(framingStep.getByTestId('gift-framing-status-square')).toHaveText('Vlastní');
+		await expect(framingStep.getByTestId('gift-framing-status-thumb')).toHaveText('Vlastní');
+		await editDialog.getByRole('button', { name: 'Zpět', exact: true }).click();
 		await editDialog.locator('#gift-name').fill(renamedGiftName);
 		await saveGiftEditor(page, editDialog);
 		expect(await storedCoverMeta(wishlistPath, renamedGiftName)).toEqual(legacyMeta);
@@ -221,9 +215,9 @@ test('a stored list thumbnail following the card crop survives saves untouched',
 
 		// Editing Karta alone changes the card and leaves the list exactly where it was.
 		editDialog = await openGiftEditor(page, renamedGiftName);
-		await editDialog.getByTestId('gift-preview-tile-square').click();
-		await zoomInSelectedView(editDialog, 6);
-		await expect(editDialog.getByTestId('gift-preview-status-thumb')).toHaveText('Vlastní');
+		framingStep = await openGiftImageFraming(editDialog);
+		await zoomInCard(framingStep, 6);
+		await expect(framingStep.getByTestId('gift-framing-status-thumb')).toHaveText('Vlastní');
 		await saveGiftEditor(page, editDialog);
 		const editedFramings = await renderedFramings(page, renamedGiftName);
 		expect(editedFramings.card).not.toEqual(legacyFramings.card);

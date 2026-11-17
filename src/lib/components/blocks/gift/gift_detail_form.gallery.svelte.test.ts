@@ -1,6 +1,6 @@
 import '../../../../app.css';
 import { render } from 'vitest-browser-svelte';
-import { userEvent } from 'vitest/browser';
+import { page, userEvent } from 'vitest/browser';
 import { describe, expect, it, vi } from 'vitest';
 import * as m from '$lib/paraglide/messages.js';
 import type { GiftByRole, UpdateGiftInput } from '$lib/modules/gifts/types.js';
@@ -9,7 +9,7 @@ import { IMAGE_FIT_MODES, type ImageMetadata } from '$lib/modules/images/index.j
 
 vi.mock('$env/dynamic/public', () => ({ env: { PUBLIC_R2_URL: '/' } }));
 
-const { default: GiftDetailForm } = await import('./GiftDetailForm.svelte');
+const { default: GiftDetailForm } = await import('./GiftDetailFormTestFixture.svelte');
 
 function svgUrl(width: number): string {
 	return (
@@ -110,18 +110,30 @@ describe('GiftDetailForm image gallery (#591)', () => {
 		expect(strip.getByText(m.gift_image_strip_cover(), { exact: true }).all()).toHaveLength(1);
 	});
 
-	it('binds the stage, background and save to the selected image only', async () => {
-		const { screen, onupdate, ondirtychange } = await renderGallery();
+	it('selects a thumbnail without opening the framing step, and the preview keeps the one entry', async () => {
+		const { screen } = await renderGallery();
+		const strip = screen.getByTestId('gift-image-strip');
 
 		await tileButton(screen, m.gift_image_strip_select({ position: 2 })).click();
 
-		await expect.element(screen.getByTestId('crop-stage-editing')).toHaveTextContent(
-			m.gift_image_crop_editing_gallery({
-				target: m.gift_image_target_card(),
-				position: 2,
-				count: 3,
-			}),
-		);
+		await expect
+			.element(tileButton(screen, m.gift_image_strip_select({ position: 2 })))
+			.toHaveAttribute('aria-pressed', 'true');
+		await expect.element(screen.getByTestId('gift-image-framing-step')).not.toBeInTheDocument();
+		expect(strip.getByRole('button', { name: m.gift_image_edit() }).all()).toHaveLength(0);
+		expect(strip.getByTestId('gift-image-edit-entry').all()).toHaveLength(0);
+		expect(screen.getByTestId('gift-image-edit-entry').all()).toHaveLength(1);
+	});
+
+	it('binds the framing step, background and save to the selected image only', async () => {
+		const { screen, onupdate, ondirtychange } = await renderGallery();
+
+		await tileButton(screen, m.gift_image_strip_select({ position: 2 })).click();
+		await screen.getByTestId('gift-image-edit-entry').click();
+
+		await expect
+			.element(screen.getByRole('heading', { name: /Úprava obrázku 2/ }))
+			.toHaveTextContent(m.gift_image_framing_title_count({ count: 3 }));
 		await expect
 			.element(screen.getByRole('radio', { name: m.image_background_black() }))
 			.toHaveAttribute('aria-checked', 'true');
@@ -138,6 +150,18 @@ describe('GiftDetailForm image gallery (#591)', () => {
 			null,
 		]);
 		expect(onupdate.mock.calls[0]![0]).not.toHaveProperty('imageUrl');
+	});
+
+	it('keeps framing edits when going back and returns focus to the image entry', async () => {
+		const { screen, ondirtychange } = await renderGallery();
+
+		await screen.getByTestId('gift-image-edit-entry').click();
+		await screen.getByRole('radio', { name: m.image_background_white() }).click();
+		await screen.getByRole('button', { name: m.gift_context_back() }).click();
+
+		await expect.element(screen.getByTestId('gift-image-framing-step')).not.toBeInTheDocument();
+		await expect.element(screen.getByTestId('gift-image-edit-entry')).toHaveFocus();
+		expect(ondirtychange).toHaveBeenLastCalledWith(true);
 	});
 
 	it('reorders with the arrow keys, announces the new cover and saves the new order', async () => {
@@ -200,7 +224,10 @@ describe('GiftDetailForm image gallery (#591)', () => {
 		await addLinkItem.click();
 		// Typing after the menu unmounts is the path that once froze the new image's state.
 		await expect.element(addLinkItem).not.toBeInTheDocument();
-		const linkInput = screen.getByPlaceholder('https://example.com/image.jpg');
+		const linkInput = screen.getByRole('textbox', {
+			name: m.gift_image_url_label(),
+			exact: false,
+		});
 		await expect.element(linkInput).toHaveFocus();
 		await expect
 			.element(tileButton(screen, m.gift_image_strip_select_pending({ position: 4 })))
@@ -218,23 +245,26 @@ describe('GiftDetailForm image gallery (#591)', () => {
 		]);
 	});
 
-	it('disables adding at the limit and says why', async () => {
+	it('drops the add tile at the limit and says why in the strip caption', async () => {
 		const eightImages = Array.from({ length: MAX_GIFT_IMAGES }, (_, index) =>
 			galleryImage(100 + index * 10),
 		);
 		const { screen } = await renderGallery(eightImages);
+		const strip = screen.getByTestId('gift-image-strip');
 
-		const addButton = screen.getByTestId('gift-image-strip-add');
-		const limitNote = screen.getByText(m.gift_image_strip_limit({ max: MAX_GIFT_IMAGES }));
-		await expect.element(limitNote).toBeVisible();
-		await expect.element(addButton).toHaveAttribute('aria-disabled', 'true');
-		await expect.element(addButton).toHaveAttribute('aria-describedby', limitNote.element().id);
+		await expect.element(strip.getByText(m.gift_image_strip_limit_short())).toBeVisible();
+		await expect
+			.element(strip.getByText(m.gift_image_strip_limit({ max: MAX_GIFT_IMAGES })))
+			.toBeInTheDocument();
+		await expect.element(screen.getByTestId('gift-image-strip-add')).not.toBeInTheDocument();
 
-		(addButton.element() as HTMLElement).focus();
-		await expect.element(addButton).toHaveFocus();
-		await userEvent.keyboard('{Enter}');
-		await addButton.click({ force: true });
-		expect(screen.getByRole('menuitem').all()).toHaveLength(0);
+		await screen
+			.getByRole('button', { name: m.gift_image_strip_remove_label({ position: 1 }) })
+			.click();
+		await expect.element(screen.getByTestId('gift-image-strip-add')).toBeVisible();
+		await expect
+			.element(strip.getByText(m.gift_image_strip_limit_short()))
+			.not.toBeInTheDocument();
 	});
 
 	it('keeps the strip controls focusable but inert while the gift saves', async () => {
@@ -291,28 +321,38 @@ describe('GiftDetailForm crop zoom-out', () => {
 	const cardContainZoom = 0.75;
 	const cardZoomOutFloor = 0.525;
 
-	function zoomSlider(screen: Awaited<ReturnType<typeof renderGallery>>['screen']) {
-		return screen.getByRole('slider', { name: m.image_crop_zoom_label() });
+	type Screen = Awaited<ReturnType<typeof renderGallery>>['screen'];
+
+	async function openCardFraming(images: GiftImage[]) {
+		await page.viewport(1280, 900);
+		const rendered = await renderGallery(images);
+		await rendered.screen.getByTestId('gift-image-edit-entry').click();
+		await expect.element(rendered.screen.getByTestId('gift-framing-view-square')).toBeVisible();
+		return rendered;
 	}
 
-	function cardStatus(screen: Awaited<ReturnType<typeof renderGallery>>['screen']) {
-		return screen.getByTestId('gift-preview-status-square');
+	function cardControls(screen: Screen) {
+		return screen.getByTestId('gift-framing-controls-square');
+	}
+
+	function cardStatus(screen: Screen) {
+		return screen.getByTestId('gift-framing-status-square');
+	}
+
+	function cardSurface(screen: Screen) {
+		return screen.getByTestId('gift-framing-view-square').getByTestId('crop-pan-surface');
 	}
 
 	it('turns Vyplnit into Vlastní on zoom-out and continues past the whole-photo zoom', async () => {
 		const fillMeta: ImageMetadata = { ...imageMeta(null), fitMode: IMAGE_FIT_MODES.coverCrop };
-		const { screen, onupdate } = await renderGallery([
+		const { screen, onupdate } = await openCardFraming([
 			{ imageUrl: svgUrl(300), imageKey: null, imageMeta: fillMeta },
 		]);
-		await expect.element(screen.getByTestId('crop-stage-window')).toBeVisible();
 		await expect
-			.element(screen.getByRole('radio', { name: m.image_fit_fill() }))
+			.element(cardControls(screen).getByRole('radio', { name: m.image_fit_fill() }))
 			.toHaveAttribute('aria-checked', 'true');
-		await expect
-			.element(screen.getByRole('button', { name: m.image_crop_zoom_out() }))
-			.toBeEnabled();
 
-		(screen.getByTestId('crop-stage').element() as HTMLElement).focus();
+		(cardSurface(screen).element() as HTMLElement).focus();
 		for (let press = 0; press < 4; press += 1) {
 			await userEvent.keyboard('-');
 		}
@@ -326,16 +366,17 @@ describe('GiftDetailForm crop zoom-out', () => {
 	});
 
 	it('lets the zoom slider reach the zoom-out floor itself', async () => {
-		const { screen, onupdate } = await renderGallery([galleryImage(300)]);
-		const slider = zoomSlider(screen);
-		await expect.element(slider).toBeEnabled();
+		const { screen, onupdate } = await openCardFraming([galleryImage(300)]);
+		const slider = cardControls(screen).getByRole('slider', {
+			name: m.image_crop_zoom_label(),
+		});
 
 		(slider.element() as HTMLElement).focus();
 		await userEvent.keyboard('{Home}');
 		await expect.element(cardStatus(screen)).toHaveTextContent(m.gift_image_framing_custom());
-		await expect.element(screen.getByTestId('crop-stage-zoom')).toHaveTextContent('53 %');
+		await expect.element(slider).toHaveAttribute('aria-valuetext', '53 %');
 		await expect
-			.element(screen.getByRole('button', { name: m.image_crop_zoom_out() }))
+			.element(cardControls(screen).getByRole('button', { name: m.image_crop_zoom_out() }))
 			.toBeDisabled();
 		await screen.getByRole('button', { name: m.save() }).first().click();
 
@@ -344,25 +385,22 @@ describe('GiftDetailForm crop zoom-out', () => {
 	});
 
 	it('zooms Karta out from Celý to a margin around the whole photo and leaves Seznam as it was', async () => {
-		const { screen, onupdate } = await renderGallery([galleryImage(300)]);
-		const zoomOut = screen.getByRole('button', { name: m.image_crop_zoom_out() });
-		await expect.element(screen.getByTestId('crop-stage-window')).toBeVisible();
+		const { screen, onupdate } = await openCardFraming([galleryImage(300)]);
+		const zoomOut = cardControls(screen).getByRole('button', { name: m.image_crop_zoom_out() });
 		await expect.element(zoomOut).toBeEnabled();
 
 		await zoomOut.click();
 		await expect.element(cardStatus(screen)).toHaveTextContent(m.gift_image_framing_custom());
-		(screen.getByTestId('crop-stage').element() as HTMLElement).focus();
+		(cardSurface(screen).element() as HTMLElement).focus();
 		for (let press = 0; press < 10; press += 1) {
 			await userEvent.keyboard('-');
 		}
 		await expect.element(zoomOut).toBeDisabled();
 
-		// The square photo's 1:1 list thumbnail still shows the whole photo at 100 %.
-		await screen.getByTestId('gift-preview-tile-thumb').click();
+		// The square photo's 1:1 list view still shows the whole photo at 100 %.
 		await expect
-			.element(screen.getByTestId('crop-stage-editing'))
-			.toHaveTextContent(m.image_crop_editing({ target: m.gift_image_target_thumb() }));
-		await expect.element(screen.getByTestId('crop-stage-zoom')).toHaveTextContent('100 %');
+			.element(screen.getByTestId('gift-framing-zoom-thumb'))
+			.toHaveAttribute('aria-valuetext', '100 %');
 		await screen.getByRole('button', { name: m.save() }).first().click();
 
 		const savedMeta = onupdate.mock.calls[0]![0].images![0]!.imageMeta!;

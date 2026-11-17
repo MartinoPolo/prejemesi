@@ -14,22 +14,16 @@ export interface FixtureGift {
 	imagePaths?: readonly string[];
 }
 
-const IMAGE_LINK_PLACEHOLDER = 'https://example.com/image.jpg';
+const IMAGE_LINK_LABEL = /Odkaz na obrázek/;
 
-/** Links the cover through the URL source, then adds each later image from the gallery strip. */
+/** Links every image, the cover first, through the gallery strip's add menu. */
 async function addFixtureImages(page: Page, dialog: Locator, imagePaths: readonly string[]) {
 	const strip = dialog.getByTestId('gift-image-strip');
 	for (const [index, imagePath] of imagePaths.entries()) {
-		if (index === 0) {
-			await dialog.getByRole('radio', { name: m.gift_image_url_tab(), exact: true }).click();
-		} else {
-			await strip.getByRole('button', { name: m.gift_image_strip_add_label() }).click();
-			await page.getByRole('menuitem', { name: m.gift_image_strip_add_url() }).click();
-		}
-		const linkInput = dialog.getByPlaceholder(IMAGE_LINK_PLACEHOLDER);
-		if (index > 0) {
-			await expect(linkInput).toBeFocused();
-		}
+		await strip.getByRole('button', { name: m.gift_image_strip_add_label() }).click();
+		await page.getByRole('menuitem', { name: m.gift_image_strip_add_url() }).click();
+		const linkInput = dialog.getByRole('textbox', { name: IMAGE_LINK_LABEL });
+		await expect(linkInput).toBeFocused();
 		await linkInput.fill(new URL(imagePath, page.url()).href);
 		await expect(strip).toContainText(
 			m.gift_image_strip_heading({ count: index + 1, max: MAX_GIFT_IMAGES }),
@@ -47,8 +41,8 @@ export async function addFixtureGift(page: Page, gift: FixtureGift): Promise<voi
 	await expect(dialog).toBeVisible();
 	await dialog.getByRole('textbox', { name: 'Název' }).fill(gift.name);
 	if (gift.link !== undefined) {
-		await dialog.getByRole('button', { name: 'Přidat odkaz' }).click();
-		await dialog.getByTestId('gift-link-url').fill(gift.link);
+		await dialog.getByTestId('gift-link-paste').fill(gift.link);
+		await dialog.getByTestId('gift-link-paste').press('Enter');
 	}
 	if (gift.priority !== undefined) {
 		await dialog.getByRole('combobox', { name: 'Priorita', exact: true }).click();

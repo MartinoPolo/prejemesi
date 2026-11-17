@@ -19,7 +19,7 @@ vi.mock('$lib/modules/gift-categories/gift_categories.remote.js', () => ({
 }));
 
 const { default: GiftCategoryQuickAddDialog } = await import('./GiftCategoryQuickAddDialog.svelte');
-const { default: GiftDetailForm } = await import('./GiftDetailForm.svelte');
+const { default: GiftDetailForm } = await import('./GiftDetailFormTestFixture.svelte');
 
 const existingCategories: ManagedGiftCategory[] = [
 	{

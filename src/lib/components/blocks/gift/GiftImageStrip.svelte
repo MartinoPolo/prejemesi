@@ -10,8 +10,9 @@
 </script>
 
 <script lang="ts">
-	import { onDestroy, tick } from 'svelte';
+	import { onDestroy, tick, type Snippet } from 'svelte';
 	import * as m from '$lib/paraglide/messages.js';
+	import { LiveAnnouncement } from '$lib/reactivity/live_announcement.svelte.js';
 	import { cn } from '$lib/utils.js';
 	import { Button } from '$lib/components/base/button/index.js';
 	import * as DropdownMenu from '$lib/components/base/dropdown-menu/index.js';
@@ -21,7 +22,10 @@
 	import { MAX_GIFT_IMAGES } from '$lib/modules/gifts/gift_images.js';
 	import type { UploadResult } from '$lib/modules/uploads/types.js';
 	import GiftImage from './GiftImage.svelte';
-	import { giftImageStripVariants } from './gift_image_strip_variants.js';
+	import {
+		giftImageStripVariants,
+		type GiftImageStripOrientation,
+	} from './gift_image_strip_variants.js';
 	import GripVerticalIcon from '@lucide/svelte/icons/grip-vertical';
 	import XIcon from '@lucide/svelte/icons/x';
 	import PlusIcon from '@lucide/svelte/icons/plus';
@@ -44,6 +48,9 @@
 		onuploadpendingchange: (pending: boolean) => void;
 		/** „Vložit odkaz na obrázek“: the editor starts a new image and focuses its link field. */
 		onaddurl: () => void;
+		/** Replaces the heading's default hint, such as the selected image's framing status. */
+		aside?: Snippet;
+		orientation?: GiftImageStripOrientation;
 	}
 
 	let {
@@ -57,18 +64,19 @@
 		onupload,
 		onuploadpendingchange,
 		onaddurl,
+		aside,
+		orientation = 'stacked',
 	}: Props = $props();
 
-	const styles = giftImageStripVariants();
+	const styles = $derived(giftImageStripVariants({ orientation }));
 	const headingId = $props.id();
-	const limitNoteId = `${headingId}-limit`;
 
 	let listElement = $state<HTMLUListElement | null>(null);
 	let addTrigger = $state<HTMLButtonElement | null>(null);
 	let addUploader: ReturnType<typeof ImageUpload> | undefined = $state();
 	let isAddUploadPending = $state(false);
 	let uploadErrorMessage = $state<string | null>(null);
-	let announcement = $state('');
+	const announcement = new LiveAnnouncement();
 	let addsLinkOnMenuClose = false;
 	/** The image a pointer drag or arrow key is moving, announced once it lands. */
 	let movingImageId: string | null = null;
@@ -102,10 +110,11 @@
 			return;
 		}
 		const count = orderedIds.length;
-		announcement =
+		void announcement.announce(
 			position === 1
 				? m.gift_image_strip_moved_cover({ count })
-				: m.gift_image_strip_moved({ position, count });
+				: m.gift_image_strip_moved({ position, count }),
+		);
 	}
 
 	function tileElement(id: string): HTMLElement | null {
@@ -137,15 +146,6 @@
 		}
 		await tick();
 		tileElement(id)?.querySelector<HTMLElement>('[data-gift-image-grip]')?.focus();
-	}
-
-	/** Escape mid-drag cancels the drag before the editor dialog would treat it as dismissal. */
-	function cancelDragOnEscape(event: KeyboardEvent) {
-		if (event.key === 'Escape' && reorder.draggedGiftId.current !== null) {
-			event.preventDefault();
-			event.stopPropagation();
-			reorder.cancel();
-		}
 	}
 
 	async function removeImage(index: number, id: string) {
@@ -199,86 +199,132 @@
 	}
 </script>
 
-<svelte:window onkeydowncapture={cancelDragOnEscape} />
+{#snippet imageTile(item: GiftImageStripItem, index: number)}
+	{@const position = index + 1}
+	<li
+		class={styles.tile()}
+		data-gift-image-tile={item.id}
+		data-selected={item.id === selectedId ? '' : undefined}
+	>
+		<button
+			type="button"
+			class={styles.select()}
+			aria-pressed={item.id === selectedId}
+			aria-label={selectLabel(index, item)}
+			data-gift-image-select
+			aria-disabled={disabled}
+			onclick={() => {
+				if (!disabled) {
+					onselect(item.id);
+				}
+			}}
+		>
+			{#if item.src === null}
+				<span class={styles.emptySource()}><LinkIcon aria-hidden="true" /></span>
+			{:else}
+				<GiftImage
+					class="size-full rounded-none"
+					imageUrl={item.src}
+					imageMeta={item.imageMeta}
+					target="thumb"
+					alt=""
+					variant="listThumb"
+				/>
+			{/if}
+		</button>
+		{#if items.length > 1}
+			<Button
+				type="button"
+				intent="secondary"
+				size="sm"
+				format="icon"
+				class={cn(styles.cornerControl(), styles.grip())}
+				aria-label={m.gift_image_strip_move_label({ position })}
+				title={m.gift_image_strip_move_hint()}
+				aria-keyshortcuts="ArrowLeft ArrowRight"
+				data-gift-image-grip
+				aria-disabled={disabled}
+				onpointerdown={(event: PointerEvent) => handleGripPointerDown(event, index)}
+				onkeydown={(event: KeyboardEvent) => void handleGripKeydown(event, index, item.id)}
+			>
+				<GripVerticalIcon data-icon="solo" />
+			</Button>
+		{/if}
+		<Button
+			type="button"
+			intent="danger"
+			size="sm"
+			format="icon"
+			class={cn(styles.cornerControl(), styles.remove())}
+			aria-label={m.gift_image_strip_remove_label({ position })}
+			aria-disabled={disabled}
+			onclick={() => void removeImage(index, item.id)}
+		>
+			<XIcon data-icon="solo" />
+		</Button>
+		{#if index === 0 && item.src !== null}
+			<span class={styles.cover()} aria-hidden="true">{m.gift_image_strip_cover()}</span>
+		{/if}
+	</li>
+{/snippet}
+
+{#snippet addTileMenu()}
+	<li class="shrink-0">
+		<DropdownMenu.Root>
+			<DropdownMenu.Trigger disabled={addDisabled}>
+				{#snippet child({ props })}
+					<!-- Focusable while unavailable, like the other strip controls; the disabled
+						     Trigger already ignores presses. -->
+					<button
+						{...props}
+						disabled={undefined}
+						aria-disabled={addDisabled}
+						bind:this={addTrigger}
+						type="button"
+						class={styles.addTile()}
+						aria-label={m.gift_image_strip_add_label()}
+						data-testid="gift-image-strip-add"
+					>
+						<PlusIcon aria-hidden="true" />
+						<span aria-hidden="true">{m.gift_image_strip_add()}</span>
+					</button>
+				{/snippet}
+			</DropdownMenu.Trigger>
+			<DropdownMenu.Content
+				preventScroll={false}
+				shadowedTrigger={false}
+				onCloseAutoFocus={handleAddMenuCloseFocus}
+			>
+				<DropdownMenu.Item onSelect={startUpload}>
+					<UploadIcon />{m.gift_image_strip_add_upload()}
+				</DropdownMenu.Item>
+				<DropdownMenu.Item onSelect={() => (addsLinkOnMenuClose = true)}>
+					<LinkIcon />{m.gift_image_strip_add_url()}
+				</DropdownMenu.Item>
+			</DropdownMenu.Content>
+		</DropdownMenu.Root>
+	</li>
+{/snippet}
+
+<svelte:window onkeydowncapture={reorder.cancelOnEscape} />
 
 <div class={styles.root()} data-testid="gift-image-strip">
 	<div class={styles.heading()}>
 		<strong id={headingId} class={styles.headingTitle()}>
 			{m.gift_image_strip_heading({ count: items.length, max: MAX_GIFT_IMAGES })}
+			{#if atLimit}
+				<span class={styles.limitNote()} aria-hidden="true">
+					· {m.gift_image_strip_limit_short()}
+				</span>
+			{/if}
 		</strong>
-		<span class={styles.headingHint()}>{m.gift_image_strip_hint()}</span>
+		<span class={styles.headingHint()}>
+			{#if aside}{@render aside()}{:else}{m.gift_image_strip_hint()}{/if}
+		</span>
 	</div>
-	<ul class={styles.list()} aria-labelledby={headingId} bind:this={listElement}>
+	<ul class={styles.list()} role="list" aria-labelledby={headingId} bind:this={listElement}>
 		{#each items as item, index (item.id)}
-			{@const position = index + 1}
-			<li
-				class={styles.tile()}
-				data-gift-image-tile={item.id}
-				data-selected={item.id === selectedId ? '' : undefined}
-			>
-				<button
-					type="button"
-					class={styles.select()}
-					aria-pressed={item.id === selectedId}
-					aria-label={selectLabel(index, item)}
-					data-gift-image-select
-					aria-disabled={disabled}
-					onclick={() => {
-						if (!disabled) {
-							onselect(item.id);
-						}
-					}}
-				>
-					{#if item.src === null}
-						<span class={styles.emptySource()}><LinkIcon aria-hidden="true" /></span>
-					{:else}
-						<GiftImage
-							class="size-full rounded-none"
-							imageUrl={item.src}
-							imageMeta={item.imageMeta}
-							target="thumb"
-							alt=""
-							variant="listThumb"
-						/>
-					{/if}
-				</button>
-				{#if items.length > 1}
-					<Button
-						type="button"
-						intent="secondary"
-						size="sm"
-						format="icon"
-						class={cn(styles.cornerControl(), styles.grip())}
-						aria-label={m.gift_image_strip_move_label({ position })}
-						title={m.gift_image_strip_move_hint()}
-						aria-keyshortcuts="ArrowLeft ArrowRight"
-						data-gift-image-grip
-						aria-disabled={disabled}
-						onpointerdown={(event: PointerEvent) => handleGripPointerDown(event, index)}
-						onkeydown={(event: KeyboardEvent) =>
-							void handleGripKeydown(event, index, item.id)}
-					>
-						<GripVerticalIcon data-icon="solo" />
-					</Button>
-				{/if}
-				<Button
-					type="button"
-					intent="danger"
-					size="sm"
-					format="icon"
-					class={cn(styles.cornerControl(), styles.remove())}
-					aria-label={m.gift_image_strip_remove_label({ position })}
-					aria-disabled={disabled}
-					onclick={() => void removeImage(index, item.id)}
-				>
-					<XIcon data-icon="solo" />
-				</Button>
-				{#if index === 0 && item.src !== null}
-					<span class={styles.cover()} aria-hidden="true"
-						>{m.gift_image_strip_cover()}</span
-					>
-				{/if}
-			</li>
+			{@render imageTile(item, index)}
 		{/each}
 		{#if isAddUploadPending}
 			<li class={styles.pendingTile()} data-testid="gift-image-strip-uploading">
@@ -286,52 +332,19 @@
 				<span class="sr-only">{m.gift_image_strip_uploading()}</span>
 			</li>
 		{/if}
-		<li class="shrink-0">
-			<DropdownMenu.Root>
-				<DropdownMenu.Trigger disabled={addDisabled}>
-					{#snippet child({ props })}
-						<!-- Focusable while unavailable so the limit note stays reachable; the
-						     disabled Trigger already ignores presses. -->
-						<button
-							{...props}
-							disabled={undefined}
-							aria-disabled={addDisabled}
-							bind:this={addTrigger}
-							type="button"
-							class={styles.addTile()}
-							aria-label={m.gift_image_strip_add_label()}
-							aria-describedby={atLimit ? limitNoteId : undefined}
-							data-testid="gift-image-strip-add"
-						>
-							<PlusIcon aria-hidden="true" />
-							<span aria-hidden="true">{m.gift_image_strip_add()}</span>
-						</button>
-					{/snippet}
-				</DropdownMenu.Trigger>
-				<DropdownMenu.Content
-					preventScroll={false}
-					shadowedTrigger={false}
-					onCloseAutoFocus={handleAddMenuCloseFocus}
-				>
-					<DropdownMenu.Item onSelect={startUpload}>
-						<UploadIcon />{m.gift_image_strip_add_upload()}
-					</DropdownMenu.Item>
-					<DropdownMenu.Item onSelect={() => (addsLinkOnMenuClose = true)}>
-						<LinkIcon />{m.gift_image_strip_add_url()}
-					</DropdownMenu.Item>
-				</DropdownMenu.Content>
-			</DropdownMenu.Root>
-		</li>
+		<!-- Adding is impossible at the limit, so the tile gives way to keep the strip compact. -->
+		{#if atLimit}
+			<li class="sr-only" data-testid="gift-image-strip-limit">
+				{m.gift_image_strip_limit({ max: MAX_GIFT_IMAGES })}
+			</li>
+		{:else}
+			{@render addTileMenu()}
+		{/if}
 	</ul>
-	{#if atLimit}
-		<p id={limitNoteId} class={styles.limitNote()}>
-			{m.gift_image_strip_limit({ max: MAX_GIFT_IMAGES })}
-		</p>
-	{/if}
 	{#if uploadErrorMessage !== null}
 		<HelpText state="error" role="alert">{uploadErrorMessage}</HelpText>
 	{/if}
-	<p class="sr-only" aria-live="polite" aria-atomic="true">{announcement}</p>
+	<p class="sr-only" aria-live="polite" aria-atomic="true">{announcement.current}</p>
 	{#if canAdd}
 		<ImageUpload
 			bind:this={addUploader}

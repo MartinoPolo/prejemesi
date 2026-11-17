@@ -744,9 +744,9 @@ const OUTCOME_CHECKS: Record<GiftCardOutcome, OutcomeCheck> = {
 			return;
 		}
 		await expect(
-			detail.getByRole('switch', { name: m.gift_price_range_toggle_label() }),
+			detail.getByRole('button', { name: m.gift_price_range_link() }),
 			'the opened editor stays unchanged',
-		).not.toBeChecked();
+		).toHaveAttribute('aria-pressed', 'false');
 		await closeLayerWithEscape(context, detail, result);
 	},
 	'opens-actions-sheet': async (context, perform) => {
