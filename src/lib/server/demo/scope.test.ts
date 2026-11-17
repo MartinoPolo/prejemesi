@@ -57,21 +57,6 @@ describe('demo wishlist boundary', () => {
 		expect(isPreparedDemoImage('https://example.com/demo/v1/teapot.jpg')).toBe(false);
 	});
 
-	it('still accepts the unversioned paths that demo sessions created before the move store', () => {
-		requestEvent.mockReturnValue({ locals: { demoSession: { id: 'visitor-a' } } } as ReturnType<
-			typeof getRequestEvent
-		>);
-		expect(isPreparedDemoImage('/demo/playground/batoh.jpg')).toBe(true);
-		expect(isPreparedDemoImage('/demo/gallery/teapot-2.jpg')).toBe(true);
-		expect(isPreparedDemoImage('/demo/playground/other.jpg')).toBe(false);
-		expect(() => rejectDemoImageUpload('/demo/wishlists/my-everyday.webp')).not.toThrow();
-		expect(thrownBy(() => rejectDemoImageUpload('/demo/wishlists/unknown.webp'))).toMatchObject(
-			{
-				status: 403,
-			},
-		);
-	});
-
 	it('lets a demo wishlist keep or remove its prepared cover but never take an uploaded key', () => {
 		requestEvent.mockReturnValue({ locals: { demoSession: { id: 'visitor-a' } } } as ReturnType<
 			typeof getRequestEvent

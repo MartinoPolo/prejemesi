@@ -1,6 +1,0 @@
-# Demo sessions created before the prepared demo images moved under /demo/v1/ still store the old
-# paths; remove these rules once those sessions have expired (RELEASE_NEXT.md).
-/demo/gallery/*  /demo/v1/gallery/:splat  301
-/demo/people/*  /demo/v1/people/:splat  301
-/demo/playground/*  /demo/v1/playground/:splat  301
-/demo/wishlists/*  /demo/v1/wishlists/:splat  301
