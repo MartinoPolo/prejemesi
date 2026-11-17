@@ -154,6 +154,117 @@ describe('GiftImageGalleryDraft', () => {
 		expect(gallery.changed).toBe(true);
 	});
 
+	it('restores the removed image, edits included, at its position and selects it', () => {
+		const gallery = galleryOf('a', 'b', 'c');
+		const [first, second] = gallery.images;
+		gallery.select(second!.id);
+		gallery.selected?.chooseBackground('#ffffff');
+		gallery.select(first!.id);
+
+		gallery.remove(second!.id);
+		expect(gallery.lastRemoved).toBe(second);
+
+		expect(gallery.restoreRemoved()).toBe(second);
+		expect(savedUrls(gallery)).toEqual([
+			'https://shop.example/a.jpg',
+			'https://shop.example/b.jpg',
+			'https://shop.example/c.jpg',
+		]);
+		expect(gallery.selected).toBe(second);
+		expect(gallery.toGiftImages()[1]?.imageMeta?.bgColor).toBe('#ffffff');
+		expect(gallery.lastRemoved).toBeNull();
+		expect(gallery.restoreRemoved()).toBeNull();
+	});
+
+	it('restores the removed image at its original position once a draft slot before it is dropped', () => {
+		const gallery = galleryOf('a', 'b', 'c', 'd');
+		const [first, cleared, removed] = gallery.images;
+		gallery.select(cleared!.id);
+		gallery.setSelectedImageUrl('');
+		gallery.remove(removed!.id);
+
+		gallery.select(first!.id);
+		expect(gallery.restoreRemoved()).toBe(removed);
+
+		expect(savedUrls(gallery)).toEqual([
+			'https://shop.example/a.jpg',
+			'https://shop.example/c.jpg',
+			'https://shop.example/d.jpg',
+		]);
+	});
+
+	it('is unchanged again once an untouched removed image is restored', () => {
+		const gallery = galleryOf('a', 'b');
+
+		gallery.remove(gallery.images[0]!.id);
+		expect(gallery.changed).toBe(true);
+		gallery.restoreRemoved();
+
+		expect(gallery.changed).toBe(false);
+		expect(gallery.selected?.imageUrl).toBe('https://shop.example/a.jpg');
+	});
+
+	it('restores only the most recent removal', () => {
+		const gallery = galleryOf('a', 'b', 'c');
+		const [first, second] = gallery.images;
+
+		gallery.remove(first!.id);
+		gallery.remove(second!.id);
+		gallery.restoreRemoved();
+
+		expect(savedUrls(gallery)).toEqual([
+			'https://shop.example/b.jpg',
+			'https://shop.example/c.jpg',
+		]);
+		expect(gallery.lastRemoved).toBeNull();
+	});
+
+	it('forgets the removal once the gallery changes in any other way', () => {
+		const changes: Record<string, (gallery: GiftImageGalleryDraft) => void> = {
+			add: (gallery) => gallery.add(linkedImage('d')),
+			reorder: (gallery) =>
+				gallery.reorder(gallery.images.map((image) => image.id).reverse()),
+			upload: (gallery) =>
+				gallery.useUploadForSelected({
+					objectKey: 'gift-images/new.png',
+					publicUrl: 'https://cdn.example/gift-images/new.png',
+					deleteToken: 'token',
+				}),
+			link: (gallery) => gallery.setSelectedImageUrl('https://shop.example/other.jpg'),
+		};
+		for (const [change, apply] of Object.entries(changes)) {
+			const gallery = galleryOf('a', 'b', 'c');
+			gallery.remove(gallery.images[1]!.id);
+
+			apply(gallery);
+
+			expect(gallery.lastRemoved, change).toBeNull();
+		}
+	});
+
+	it('keeps the removal through selection and an order that changes nothing', () => {
+		const gallery = galleryOf('a', 'b', 'c');
+		const removed = gallery.images[1]!;
+		gallery.remove(removed.id);
+
+		gallery.select(gallery.images[1]!.id);
+		gallery.reorder(gallery.images.map((image) => image.id));
+
+		expect(gallery.lastRemoved).toBe(removed);
+	});
+
+	it('offers nothing to restore after removing an image that never had a source', () => {
+		const gallery = galleryOf('a', 'b');
+		const waiting = new GiftImageDraft();
+		gallery.add(waiting);
+		gallery.remove(gallery.images[0]!.id);
+		expect(gallery.lastRemoved).not.toBeNull();
+
+		gallery.remove(waiting.id);
+
+		expect(gallery.lastRemoved).toBeNull();
+	});
+
 	it('neither saves nor counts an image still waiting for its link, and drops it on selecting another', () => {
 		const gallery = galleryOf('a');
 		const waiting = new GiftImageDraft();
