@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { revealOnView } from '$lib/motion/reveal_on_view.js';
 	import * as m from '$lib/paraglide/messages.js';
 
 	const steps = [
@@ -31,7 +32,7 @@
 	aria-label={m.landing_how_section_label()}
 >
 	<div class="mx-auto max-w-[var(--content-max-width)] px-4 py-16 md:px-8 md:py-24">
-		<div class="mx-auto max-w-[640px] text-center">
+		<div class="reveal mx-auto max-w-[640px] text-center" {@attach revealOnView}>
 			<span class="section-eyebrow">
 				<span aria-hidden="true">📒</span>
 				{m.landing_how_eyebrow()}
@@ -43,6 +44,7 @@
 			{#each steps as step, index (step.title)}
 				<article
 					class="step rounded-panel border-edge bg-card border-[2.5px] p-6 shadow-sticker"
+					{@attach revealOnView}
 				>
 					<div
 						class="step-num font-heading mb-2.5 flex items-center gap-2.5 text-brand-link"
@@ -66,45 +68,42 @@
 		font-weight: 700;
 	}
 
+	/* Playful alternating tilt on `rotate`, so the pop-in and hover lift on `transform` keep it */
 	.step {
 		transition: transform 0.2s ease;
 	}
 
-	/* Playful alternating tilt, kept during the hover lift */
 	.step:nth-child(odd) {
-		transform: rotate(-0.6deg);
+		rotate: -0.6deg;
 	}
 
 	.step:nth-child(even) {
-		transform: rotate(0.5deg);
+		rotate: 0.5deg;
 	}
 
 	@media (hover: hover) and (prefers-reduced-motion: no-preference) {
-		.step:nth-child(odd):hover {
-			transform: rotate(-0.6deg) translateY(-4px);
-		}
-
-		.step:nth-child(even):hover {
-			transform: rotate(0.5deg) translateY(-4px);
+		.step:hover {
+			transform: translateY(-4px);
 		}
 	}
 
-	/* Staggered pop-in on load (mockup .steps-grid reveal) */
+	/* Cards pop in one reveal step apart, after the section heading */
 	@media (prefers-reduced-motion: no-preference) {
 		.steps-grid > * {
-			animation: pop-in 0.55s cubic-bezier(0.34, 1.4, 0.64, 1) backwards;
+			animation: var(--animate-pop-in);
+			animation-delay: var(--duration-reveal-stagger);
 		}
 
 		.steps-grid > :nth-child(2) {
-			animation-delay: 0.1s;
+			animation-delay: calc(var(--duration-reveal-stagger) * 2);
 		}
 
 		.steps-grid > :nth-child(3) {
-			animation-delay: 0.2s;
+			animation-delay: calc(var(--duration-reveal-stagger) * 3);
 		}
 
 		.steps-grid > :nth-child(4) {
-			animation-delay: 0.3s;
+			animation-delay: calc(var(--duration-reveal-stagger) * 4);
 		}
 	}
 </style>

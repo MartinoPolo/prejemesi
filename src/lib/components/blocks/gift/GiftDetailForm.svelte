@@ -584,6 +584,8 @@
 			gallery.remove(id);
 			leaveFramingWithoutSource();
 		}}
+		canUndoRemoval={gallery.lastRemoved !== null}
+		onundoremoval={() => gallery.restoreRemoved()}
 		onreorder={(orderedIds) => gallery.reorder(orderedIds)}
 		onupload={handleStripUpload}
 		onuploadpendingchange={handleStripUploadPendingChange}

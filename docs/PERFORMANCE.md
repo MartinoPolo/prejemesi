@@ -32,7 +32,7 @@ Never mark a URL `immutable` when its content can change in place.
 
 - Vite-bundled assets (`src/lib/assets/`, including the wishlist background library) get content-hashed `/_app/immutable/` URLs, so changing a file changes its URL.
 - Files under `static/demo/v1/` are served immutable by the root `_headers` rule. Changing an image means a new file name or a new version folder; never edit one in place. Other `static/` files keep the default revalidating cache.
-- Server-side R2 puts set `UPLOADED_OBJECT_CACHE_CONTROL` (`src/lib/server/storage/r2.ts`) because every upload gets a fresh key. Presigned browser uploads cannot send `Cache-Control` while the bucket CORS (`scripts/generate-r2-cors.ts`) allows only `Content-Type`.
+- Server-side R2 puts set `UPLOADED_OBJECT_CACHE_CONTROL` (`src/lib/server/storage/r2.ts`) because every upload gets a fresh key. Presigned browser uploads store no `Cache-Control`, because the bucket CORS (`scripts/generate-r2-cors.ts`) allows only `Content-Type`; the image-host cache rule in [CLOUDFLARE_SETUP.md](CLOUDFLARE_SETUP.md#r2-image-cache-rule) covers them and older objects.
 
 ## Production delta report
 

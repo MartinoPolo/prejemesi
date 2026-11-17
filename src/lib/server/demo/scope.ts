@@ -5,16 +5,8 @@ import { wishlist } from '$lib/server/db/wishlist.schema.js';
 import { WISHLIST_NOT_FOUND_MESSAGE } from '$lib/modules/errors/server_error_codes.js';
 import { preparedDemoImageUrls, preparedDemoWishlistCoverUrls } from './catalog.js';
 
-/**
- * Demo sessions created before the prepared images moved under `/demo/v1/` still store their old
- * paths, which `_redirects` serves; remove this together with those redirects (RELEASE_NEXT.md).
- */
-function currentPreparedImagePath(url: string): string {
-	return url.replace(/^\/demo\/(gallery|people|playground|wishlists)\//, '/demo/v1/$1/');
-}
-
 export function isPreparedDemoImage(url: string | null | undefined): boolean {
-	return url == null || preparedDemoImageUrls.has(currentPreparedImagePath(url));
+	return url == null || preparedDemoImageUrls.has(url);
 }
 
 export function demoSessionId(): string | null {
@@ -50,7 +42,7 @@ export function rejectDemoImageUpload(imageKey: string | null | undefined): void
 	if (
 		demoSessionId() !== null &&
 		requestedKey !== '' &&
-		!preparedDemoWishlistCoverUrls.has(currentPreparedImagePath(requestedKey))
+		!preparedDemoWishlistCoverUrls.has(requestedKey)
 	) {
 		error(403, 'Image uploads are unavailable in the demo');
 	}

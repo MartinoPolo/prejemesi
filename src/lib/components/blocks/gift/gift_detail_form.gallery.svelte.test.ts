@@ -1,7 +1,7 @@
 import '../../../../app.css';
 import { render } from 'vitest-browser-svelte';
 import { page, userEvent } from 'vitest/browser';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, onTestFinished, vi } from 'vitest';
 import * as m from '$lib/paraglide/messages.js';
 import type { GiftByRole, UpdateGiftInput } from '$lib/modules/gifts/types.js';
 import { MAX_GIFT_IMAGES, type GiftImage } from '$lib/modules/gifts/gift_images.js';
@@ -214,6 +214,74 @@ describe('GiftDetailForm image gallery (#591)', () => {
 		await screen.getByRole('button', { name: m.save() }).first().click();
 
 		expect(savedImageUrls(onupdate)).toEqual([svgUrl(400), svgUrl(200)]);
+	});
+
+	it('undoes a removal in the strip, restoring the image at its position, selected and focused', async () => {
+		const { screen, onupdate, ondirtychange } = await renderGallery();
+		const strip = screen.getByTestId('gift-image-strip');
+		const undo = strip.getByRole('button', { name: m.gift_image_strip_undo_remove_label() });
+		await expect.element(undo).not.toBeInTheDocument();
+
+		await screen
+			.getByRole('button', { name: m.gift_image_strip_remove_label({ position: 2 }) })
+			.click();
+		const liveRegion = strip.element().querySelector('[aria-live="polite"]');
+		await expect.poll(() => liveRegion?.textContent).toBe(m.gift_image_strip_removed());
+		await expect
+			.element(strip.getByTestId('gift-image-strip-removal-undo'))
+			.toHaveTextContent(m.gift_image_strip_removed());
+		await expect.element(undo).toHaveTextContent(m.gift_image_strip_undo_remove());
+		await expect.element(undo).toBeVisible();
+
+		await undo.click();
+
+		const restoredTile = tileButton(screen, m.gift_image_strip_select({ position: 2 }));
+		await expect.element(restoredTile).toHaveAttribute('aria-pressed', 'true');
+		await expect.element(restoredTile).toHaveFocus();
+		await expect
+			.element(strip.getByText(m.gift_image_strip_restored({ position: 2, count: 3 })))
+			.toBeInTheDocument();
+		await expect.element(undo).not.toBeInTheDocument();
+		// The restored image keeps its own background.
+		await screen.getByTestId('gift-image-edit-entry').click();
+		await expect
+			.element(screen.getByRole('radio', { name: m.image_background_black() }))
+			.toHaveAttribute('aria-checked', 'true');
+		expect(ondirtychange).toHaveBeenLastCalledWith(false);
+
+		await screen.getByRole('button', { name: m.save() }).first().click();
+		expect(savedImageUrls(onupdate)).toEqual(threeImages.map((image) => image.imageUrl));
+	});
+
+	it('shows the removal undo in the framing step on phones and forgets it once the order changes', async () => {
+		const defaultViewport = { width: window.innerWidth, height: window.innerHeight };
+		onTestFinished(() => page.viewport(defaultViewport.width, defaultViewport.height));
+		await page.viewport(390, 844);
+		const { screen } = await renderGallery();
+		await screen.getByTestId('gift-image-edit-entry').click();
+		await expect.element(screen.getByTestId('gift-image-framing-step')).toBeInTheDocument();
+
+		await screen
+			.getByRole('button', { name: m.gift_image_strip_remove_label({ position: 3 }) })
+			.click();
+		const notice = screen.getByTestId('gift-image-strip-removal-undo');
+		const undo = notice.getByRole('button', { name: m.gift_image_strip_undo_remove_label() });
+		await expect.element(undo).toBeVisible();
+		// The phone framing step hides the strip heading from sight, so the undo must not inherit that.
+		const undoBox = (undo.element() as HTMLElement).getBoundingClientRect();
+		const pressedElement = document.elementFromPoint(
+			undoBox.left + undoBox.width / 2,
+			undoBox.top + undoBox.height / 2,
+		);
+		expect(undo.element().contains(pressedElement)).toBe(true);
+
+		const secondGrip = screen.getByRole('button', {
+			name: m.gift_image_strip_move_label({ position: 2 }),
+		});
+		(secondGrip.element() as HTMLElement).focus();
+		await userEvent.keyboard('{ArrowLeft}');
+
+		await expect.element(notice).not.toBeInTheDocument();
 	});
 
 	it('adds an image from a link and saves it last', async () => {
