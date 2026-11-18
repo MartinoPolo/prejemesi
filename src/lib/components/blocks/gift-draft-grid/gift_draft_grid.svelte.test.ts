@@ -1,13 +1,16 @@
 import { render } from 'vitest-browser-svelte';
+import { page } from 'vitest/browser';
 import { describe, expect, it, vi } from 'vitest';
 import * as m from '$lib/paraglide/messages.js';
 import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
+import { nextFrames } from '../../../../../tests/helpers/selection-slide-assertions.mjs';
 import { DRAFT_GRID_CONTEXT, type DraftGridChange } from './gift_draft_grid_model.js';
 
 const { expectPixelsNear } = createPixelAssertions(expect);
 vi.mock('$env/dynamic/public', () => ({ env: {} }));
 
 const { default: GiftDraftGrid } = await import('./GiftDraftGrid.svelte');
+const { default: GiftDraftGridTestFixture } = await import('./GiftDraftGridTestFixture.svelte');
 
 function draft(name: string, quantity = 1) {
 	return {
@@ -416,6 +419,44 @@ describe('GiftDraftGrid row motion', () => {
 		expect(animate).not.toHaveBeenCalled();
 		animate.mockRestore();
 		matchMedia.mockRestore();
+	});
+
+	it('expands an added row once an addition held back by pending async work commits', async () => {
+		const gate = $state({ value: 0 });
+		let openGate: (() => void) | undefined;
+		const screen = render(GiftDraftGridTestFixture, {
+			initialRows: [draft('Kniha')],
+			gate,
+			awaitGate: (value: number) =>
+				value === 0
+					? Promise.resolve(value)
+					: new Promise<number>((resolve) => {
+							openGate = () => resolve(value);
+						}),
+		});
+		const addButton = screen.getByRole('button', { name: m.draft_grid_add_row() });
+		await expect.element(addButton).toBeEnabled();
+		await expect.element(page.getByTestId('draft-grid-gate')).toHaveTextContent('0');
+
+		gate.value = 1;
+		addButton.element().dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await vi.waitFor(() => expect(openGate).toBeDefined());
+		await nextFrames(2);
+		expect(
+			screen.container.querySelectorAll('[data-gift-item]'),
+			'the pending await holds the addition back',
+		).toHaveLength(1);
+		openGate!();
+
+		await vi.waitFor(() =>
+			expect(screen.container.querySelectorAll('[data-gift-item]')).toHaveLength(2),
+		);
+		const addedRow = screen.container.querySelectorAll<HTMLElement>('[data-gift-item]')[1];
+		await vi.waitFor(() =>
+			expect(
+				addedRow.getAnimations().some((animation) => animation.playState === 'running'),
+			).toBe(true),
+		);
 	});
 });
 

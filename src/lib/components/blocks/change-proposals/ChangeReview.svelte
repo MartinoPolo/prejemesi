@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { tick, untrack } from 'svelte';
+	import { settled, untrack } from 'svelte';
 	import { prefersReducedMotion } from 'svelte/motion';
 	import * as m from '$lib/paraglide/messages.js';
 	import { toastError } from '$lib/components/base/toast/index.js';
@@ -142,7 +142,7 @@
 		announcement = '';
 		const message = countCopy(UNRESOLVED_DECISION_MESSAGES, unresolvedCount);
 		requestAnimationFrame(() => (announcement = message));
-		await tick();
+		await settled();
 		const first = root?.querySelector('.needs-decision');
 		first?.closest('tr')?.scrollIntoView({
 			block: 'center',

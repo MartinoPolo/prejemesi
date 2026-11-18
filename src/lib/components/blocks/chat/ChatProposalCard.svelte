@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { tick, untrack } from 'svelte';
+	import { settled, tick, untrack } from 'svelte';
 	import { prefersReducedMotion } from 'svelte/motion';
 	import { resolve } from '$app/paths';
 	import * as m from '$lib/paraglide/messages.js';
@@ -125,7 +125,7 @@
 			return;
 		}
 		inspecting = true;
-		await tick();
+		await settled();
 		const first = card?.querySelector('.needs-decision');
 		first?.scrollIntoView({
 			block: 'center',

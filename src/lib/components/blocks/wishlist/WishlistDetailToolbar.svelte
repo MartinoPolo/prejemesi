@@ -40,7 +40,7 @@
 		type FilterFacetGroup,
 	} from '$lib/components/derived/filter-menu/index.js';
 	import { WISHLIST_ROLES, type WishlistRole } from '$lib/modules/wishlists/types.js';
-	import { flushSync, onMount, tick, type Snippet } from 'svelte';
+	import { flushSync, onMount, settled, tick, type Snippet } from 'svelte';
 	import { emptyGiftFilters } from '$lib/modules/gifts/gifts.context.svelte.js';
 	import WishlistBottomSheet from './WishlistBottomSheet.svelte';
 	import WishlistSheetAction from './WishlistSheetAction.svelte';
@@ -485,7 +485,7 @@
 	async function changeDesktopReorderMode(active: boolean) {
 		const scrollPosition = { x: window.scrollX, y: window.scrollY };
 		await onreordermodechange(active);
-		await tick();
+		await settled();
 		const focusTarget = reorderMode ? desktopReorderDoneButton : desktopMoreTrigger;
 		focusTarget?.focus({ preventScroll: true });
 		window.scrollTo(scrollPosition.x, scrollPosition.y);
@@ -500,7 +500,7 @@
 	async function changeMobileReorderMode(active: boolean) {
 		const scrollPosition = { x: window.scrollX, y: window.scrollY };
 		await onreordermodechange(active);
-		await tick();
+		await settled();
 		const focusTarget = reorderMode ? mobileReorderDoneButton : mobileMoreTrigger;
 		focusTarget?.focus({ preventScroll: true });
 		window.scrollTo(scrollPosition.x, scrollPosition.y);

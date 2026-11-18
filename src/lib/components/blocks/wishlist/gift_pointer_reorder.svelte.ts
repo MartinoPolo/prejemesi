@@ -1,4 +1,4 @@
-import { tick } from 'svelte';
+import { settled } from 'svelte';
 import { SvelteMap, SvelteSet } from 'svelte/reactivity';
 import { StateRaw } from '$lib/reactivity/state.svelte.js';
 import type { GiftReorderPlacement } from '$lib/modules/gifts/gift_grouped_reorder.js';
@@ -352,7 +352,7 @@ export function createGiftPointerReorderController(options: GiftPointerReorderOp
 
 	/** The dragged card re-renders with its live group badge; mirror it into the overlay. */
 	async function refreshOverlayAfterRender() {
-		await tick();
+		await settled();
 		const giftId = draggedGiftId.current;
 		if (activePointerId === null || overlayElement === null || giftId === null) {
 			return;
