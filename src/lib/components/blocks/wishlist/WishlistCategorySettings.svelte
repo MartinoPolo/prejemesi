@@ -22,7 +22,7 @@
 	import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
 	import CircleAlertIcon from '@lucide/svelte/icons/circle-alert';
 	import PlusIcon from '@lucide/svelte/icons/plus';
-	import { onDestroy, onMount, tick } from 'svelte';
+	import { onDestroy, onMount, settled, tick } from 'svelte';
 	import WishlistCategorySettingsRow from './WishlistCategorySettingsRow.svelte';
 	import { createCategorySettingsMotion } from './wishlist_category_settings_motion.svelte.js';
 	import { createGiftPointerReorderController } from './gift_pointer_reorder.svelte.js';
@@ -177,7 +177,8 @@
 		const motionSnapshot = listElement === null ? null : categoryMotion.capture(listElement);
 		const rowsByKey = new Map(rows.map((row) => [row.key, row]));
 		rows = orderedKeys.flatMap((key) => rowsByKey.get(key) ?? []);
-		await tick();
+		// Async-mode `tick()` can resolve before a held-back batch commits; FLIP must measure the committed layout.
+		await settled();
 		if (motionSnapshot !== null && listElement !== null) {
 			void categoryMotion.play(motionSnapshot, listElement);
 		}
@@ -217,7 +218,7 @@
 		const motionSnapshot =
 			listElement === null ? null : categoryMotion.capture(listElement, row.key);
 		rows = rows.filter((candidate) => candidate.key !== row.key);
-		await tick();
+		await settled();
 		const nextRow = rows[index] ?? rows[index - 1];
 		const nextFocus =
 			nextRow === undefined
