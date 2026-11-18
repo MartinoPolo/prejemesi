@@ -3,6 +3,7 @@ import { render } from 'vitest-browser-svelte';
 import { page, userEvent } from 'vitest/browser';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPixelAssertions } from '../../../../../tests/helpers/pixel-assertions.mjs';
+import { nextFrames } from '../../../../../tests/helpers/selection-slide-assertions.mjs';
 import * as m from '$lib/paraglide/messages.js';
 import { GIFT_CATEGORY_PRESETS, keepsPresetLabel } from '$lib/modules/gift-categories/types.js';
 import { overwriteGetLocale } from '$lib/paraglide/runtime.js';
@@ -29,6 +30,8 @@ vi.mock('$lib/modules/gift-categories/gift_categories.remote.js', () => ({
 }));
 
 const { default: WishlistCategorySettings } = await import('./WishlistCategorySettings.svelte');
+const { default: WishlistCategorySettingsTestFixture } =
+	await import('./WishlistCategorySettingsTestFixture.svelte');
 const { expectPixelsNear } = createPixelAssertions(expect);
 const books = GIFT_CATEGORY_PRESETS.find((preset) => preset.key === 'books')!;
 const toys = GIFT_CATEGORY_PRESETS.find((preset) => preset.key === 'toys')!;
@@ -469,6 +472,49 @@ describe('WishlistCategorySettings reorder', () => {
 		expect(
 			remoteMocks.save.mock.calls[0]![0].categories.map(({ id }: { id: string }) => id),
 		).toEqual(['books', 'bikes', 'sport']);
+	});
+
+	it('glides the moved row once a move held back by pending async work commits', async () => {
+		remoteMocks.categories = [
+			category({ id: 'sport', customLabel: 'Sport' }),
+			category({ id: 'bikes', customLabel: 'Kola', sortOrder: 1 }),
+		];
+		const gate = $state({ value: 0 });
+		let openGate: (() => void) | undefined;
+		const screen = render(WishlistCategorySettingsTestFixture, {
+			gate,
+			awaitGate: (value: number) =>
+				value === 0
+					? Promise.resolve(value)
+					: new Promise<number>((resolve) => {
+							openGate = () => resolve(value);
+						}),
+		});
+		const grip = screen.getByRole('button', {
+			name: m.gift_category_move_label({ category: 'Sport' }),
+		});
+		await expect.element(grip).toBeEnabled();
+		await expect.element(page.getByTestId('category-settings-gate')).toHaveTextContent('0');
+
+		grip.element().focus();
+		gate.value = 1;
+		grip.element().dispatchEvent(
+			new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true }),
+		);
+		await vi.waitFor(() => expect(openGate).toBeDefined());
+		await nextFrames(2);
+		expect(rowLabels(), 'the pending await holds the move back').toEqual(['Sport', 'Kola']);
+		openGate!();
+
+		await vi.waitFor(() => expect(rowLabels()).toEqual(['Kola', 'Sport']));
+		const movedRow = document.querySelector<HTMLElement>(
+			'[data-category-row][data-category-label="Sport"]',
+		)!;
+		await vi.waitFor(() =>
+			expect(
+				movedRow.getAnimations().some((animation) => animation.playState === 'running'),
+			).toBe(true),
+		);
 	});
 });
 
