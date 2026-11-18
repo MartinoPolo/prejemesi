@@ -3,7 +3,7 @@
 	import PlusIcon from '@lucide/svelte/icons/plus';
 	import HeartIcon from '@lucide/svelte/icons/heart';
 	import SparklesIcon from '@lucide/svelte/icons/sparkles';
-	import { onDestroy, onMount, tick, untrack } from 'svelte';
+	import { onDestroy, onMount, settled, untrack } from 'svelte';
 	import { Checkbox } from '$lib/components/base/checkbox/index.js';
 	import { SimpleTooltip } from '$lib/components/base/tooltip/index.js';
 	import { cn } from '$lib/utils.js';
@@ -179,7 +179,7 @@
 	async function addRow() {
 		const { run, removedStaleVisuals } = beginMotion();
 		if (removedStaleVisuals) {
-			await tick();
+			await settled();
 		}
 		const row = createDraftGridRow(undefined, { pristine: true });
 		const snapshot =
@@ -190,7 +190,7 @@
 			return;
 		}
 
-		await tick();
+		await settled();
 		if (run !== motionRun) {
 			return;
 		}
@@ -214,7 +214,7 @@
 	async function removeRows(ids: ReadonlySet<string>) {
 		const { run, removedStaleVisuals } = beginMotion();
 		if (removedStaleVisuals) {
-			await tick();
+			await settled();
 		}
 		if (prefersReducedMotion() || rowsElement === null) {
 			displayedRows = displayedRows.filter((row) => !ids.has(row.id));
@@ -239,7 +239,7 @@
 		exitingRows = affectedRows.slice(0, BULK_EXIT_ANIMATION_LIMIT);
 		exitingIds = new Set(ids);
 		emit();
-		await tick();
+		await settled();
 		if (run !== motionRun || rowsElement === null) {
 			return;
 		}
@@ -283,7 +283,7 @@
 		displayedRows = displayedRows.filter((row) => !ids.has(row.id));
 		exitingRows = [];
 		exitingIds = new Set();
-		await tick();
+		await settled();
 		if (run === motionRun && rowsElement !== null) {
 			void layoutMotion.play(snapshot, rowsElement);
 		}

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { setContext, tick, untrack, type Snippet } from 'svelte';
+	import { setContext, settled, tick, untrack, type Snippet } from 'svelte';
 	import * as ContextMenu from '$lib/components/base/context-menu/index.js';
 	import * as m from '$lib/paraglide/messages.js';
 	import WishlistEmptyState from './WishlistEmptyState.svelte';
@@ -183,7 +183,7 @@
 
 		if (collectionElement === null || reducedMotionRequested()) {
 			displayedViewMode = nextViewMode;
-			await tick();
+			await settled();
 			motion?.reset(isLoading);
 			motionSuspended = isLoading;
 			viewTransitioning = false;
@@ -203,7 +203,7 @@
 
 		activeAnimation = null;
 		displayedViewMode = nextViewMode;
-		await tick();
+		await settled();
 		if (run !== transitionRun || collectionElement === null) {
 			return;
 		}

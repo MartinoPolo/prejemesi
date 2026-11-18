@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { tick, untrack } from 'svelte';
+	import { settled, untrack } from 'svelte';
 	import * as m from '$lib/paraglide/messages.js';
 	import { useNotifications } from '$lib/modules/notifications/notifications.context.svelte.js';
 	import { Button } from '$lib/components/base/button/index.js';
@@ -65,7 +65,7 @@
 
 		activeAnimation = null;
 		displayedContent = nextContent;
-		await tick();
+		await settled();
 		if (run !== transitionRun || contentElement === null) {
 			return;
 		}

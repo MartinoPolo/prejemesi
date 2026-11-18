@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onDestroy, tick, untrack } from 'svelte';
+	import { onDestroy, settled, tick, untrack } from 'svelte';
 	import { resolve } from '$app/paths';
 	import * as m from '$lib/paraglide/messages.js';
 	import ClockIcon from '@lucide/svelte/icons/clock';
@@ -275,7 +275,7 @@
 	}
 
 	async function scrollThreadToEnd() {
-		await tick();
+		await settled();
 		thread?.scrollTo({ top: thread.scrollHeight });
 	}
 

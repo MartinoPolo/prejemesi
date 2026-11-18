@@ -263,6 +263,7 @@ Current product, architecture, and design decisions for Přejeme si. Entries are
 - 2026-11-02: BetterAuth (`$lib/server/auth.js`) costs a cold Worker isolate many times the Workers Free 10 ms CPU limit to load (error 1102), so it is imported only on demand by requests that use it. `/api/v1` authenticates only its bearer token and never resolves the cookie session; modules that anonymous pages import, such as the remote functions behind the appearance controls, import it inside the function that needs it. Keep it out of the agent API's and anonymous pages' import graphs.
 - 2026-11-16: Images decode asynchronously and lazy-load by default; the wishlist header image and the leading gifts load eagerly, the header and the first gift image at high fetch priority (`gift_image_load_priority.ts`). Gift rows stay client-rendered, because server-rendering the gift grid would exceed the Workers Free CPU limit and the per-device view, sort and grouping are known only in the browser.
 - 2026-11-16: The single-column wishlist grid mounts the gifts that fit the viewport first and the rest in budgeted frames; multi-column grids, selection and reorder mount everything at once.
+- 2026-11-18: FLIP and other layout measurement after a state change awaits `settled()`, not `tick()`, because async-mode `tick()` can resolve before a held-back batch commits.
 
 ## Import, enrichment & production automation
 
