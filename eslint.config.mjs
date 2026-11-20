@@ -32,6 +32,7 @@ export default [
 			'**/*.config.*',
 			'**/*.d.ts',
 			'scripts/**',
+			'promo-video/**',
 			'.claude/worktrees/**',
 			'.local/**',
 			'.mpx/logs/component-visual-review/**',

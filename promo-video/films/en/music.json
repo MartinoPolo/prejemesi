@@ -1,0 +1,55 @@
+{
+	"config": {
+		"bpm": 96,
+		"temperature": 1.0,
+		"guidance": 4.5,
+		"density": 0.42,
+		"brightness": 0.6,
+		"scale": "F_MAJOR_D_MINOR"
+	},
+	"sections": [
+		{
+			"at": 0,
+			"prompts": [
+				{
+					"text": "gentle music box and glockenspiel with soft pizzicato strings, curious and warm, cosy children's picture-book animation",
+					"weight": 1.0
+				},
+				{ "text": "calm, cheerful, acoustic, sunny morning", "weight": 0.6 }
+			]
+		},
+		{
+			"at": 8,
+			"prompts": [
+				{
+					"text": "warm fingerpicked ukulele and glockenspiel melody, soft upright bass, brushed snare, cheerful and calm whimsical animation score",
+					"weight": 1.0
+				},
+				{
+					"text": "gentle whistling melody, light hand claps, happy and relaxed",
+					"weight": 0.6
+				}
+			]
+		},
+		{
+			"at": 44,
+			"prompts": [
+				{
+					"text": "soft celesta and plucked ukulele, tender and playful, lighter texture, warm upright bass",
+					"weight": 1.0
+				},
+				{ "text": "calm, cheerful, acoustic, heartwarming", "weight": 0.6 }
+			]
+		},
+		{
+			"at": 66,
+			"prompts": [
+				{
+					"text": "warm fingerpicked ukulele and glockenspiel melody, soft upright bass, brushed drums, light hand claps, joyful celebration, gentle strings",
+					"weight": 1.0
+				},
+				{ "text": "happy, uplifting, cosy acoustic animation score", "weight": 0.6 }
+			]
+		}
+	]
+}
