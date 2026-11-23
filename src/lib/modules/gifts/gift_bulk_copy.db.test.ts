@@ -36,6 +36,7 @@ import { parseNewGiftDigestPayload } from '$lib/modules/notifications/new_gift_d
 import type { BulkCopyGiftsInput } from './gift_bulk_copy.js';
 import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
 import { WISHLIST_KIND } from '$lib/modules/wishlists/types.js';
+import { DEFAULT_ENABLED_GIFT_CATEGORY_PRESET_KEYS } from '$lib/modules/gift-categories/presets.js';
 import { executeOperation } from '$lib/server/operations/runner.js';
 import { userInterfaceActor } from '$lib/server/operations/actor.js';
 import { bulkCopyGiftsOperation } from '$lib/server/operations/gift_bulk_operations.js';
@@ -61,6 +62,14 @@ const NEVER_SHARED_PERMANENT_SOURCE_ID = `${PREFIX}never-shared-permanent-source
 const REVERTED_PERMANENT_SOURCE_ID = `${PREFIX}reverted-permanent-source`;
 const SOURCE_GIFT_ONE = `${PREFIX}gift-one`;
 const SOURCE_GIFT_TWO = `${PREFIX}gift-two`;
+const CATEGORY_SOURCE_ID = `${PREFIX}category-source`;
+const CATEGORY_SOURCE_BOARD_GAMES = `${PREFIX}category-source-board-games`;
+const CATEGORY_SOURCE_PS5_GAMES = `${PREFIX}category-source-ps5-games`;
+const CATEGORY_SOURCE_BOOKS = `${PREFIX}category-source-books`;
+const CATEGORY_SOURCE_ELECTRONICS = `${PREFIX}category-source-electronics`;
+const BOARD_GAME_GIFT = `${PREFIX}board-game-gift`;
+const CONSOLE_GAME_GIFT = `${PREFIX}console-game-gift`;
+const categoryDestinationIds: string[] = [];
 const MANAGER_ASSIGNMENTS = [
 	`${PREFIX}source-manager`,
 	`${PREFIX}destination-manager`,
@@ -181,6 +190,63 @@ describe.skipIf(!DATABASE_READY)('bulk gift copy [real DB]', () => {
 				color: '#445566',
 			},
 		]);
+		await database.insert(wishlist).values({
+			id: CATEGORY_SOURCE_ID,
+			shortId: `${PREFIX}category-source-short`,
+			recipientUserId: RECIPIENT_ID,
+			title: 'Category source',
+			status: 'active',
+		});
+		await database.insert(giftCategory).values([
+			{
+				id: CATEGORY_SOURCE_BOARD_GAMES,
+				wishlistId: CATEGORY_SOURCE_ID,
+				customLabel: 'Deskové hry',
+				color: '#A1B2C3',
+				sortOrder: 0,
+			},
+			{
+				id: CATEGORY_SOURCE_PS5_GAMES,
+				wishlistId: CATEGORY_SOURCE_ID,
+				customLabel: 'Hry (Ps5)',
+				color: '#0A0B0C',
+				sortOrder: 1,
+			},
+			{
+				id: CATEGORY_SOURCE_BOOKS,
+				wishlistId: CATEGORY_SOURCE_ID,
+				presetKey: 'books',
+				color: '#2563EB',
+				sortOrder: 2,
+			},
+			{
+				id: CATEGORY_SOURCE_ELECTRONICS,
+				wishlistId: CATEGORY_SOURCE_ID,
+				presetKey: 'electronics',
+				color: '#0F766E',
+				sortOrder: 3,
+			},
+		]);
+		await database.insert(gift).values([
+			{
+				id: BOARD_GAME_GIFT,
+				wishlistId: CATEGORY_SOURCE_ID,
+				name: 'Board game',
+				categoryIds: [
+					CATEGORY_SOURCE_BOARD_GAMES,
+					CATEGORY_SOURCE_BOOKS,
+					CATEGORY_SOURCE_ELECTRONICS,
+				],
+				sortOrder: 0,
+			},
+			{
+				id: CONSOLE_GAME_GIFT,
+				wishlistId: CATEGORY_SOURCE_ID,
+				name: 'Console game',
+				categoryIds: [CATEGORY_SOURCE_PS5_GAMES, CATEGORY_SOURCE_BOARD_GAMES],
+				sortOrder: 1,
+			},
+		]);
 		await database.insert(gift).values([
 			{
 				id: SOURCE_GIFT_ONE,
@@ -249,6 +315,8 @@ describe.skipIf(!DATABASE_READY)('bulk gift copy [real DB]', () => {
 					PERMANENT_SOURCE_ID,
 					NEVER_SHARED_PERMANENT_SOURCE_ID,
 					REVERTED_PERMANENT_SOURCE_ID,
+					CATEGORY_SOURCE_ID,
+					...categoryDestinationIds,
 				]),
 			);
 		await getDb()
@@ -411,6 +479,165 @@ describe.skipIf(!DATABASE_READY)('bulk gift copy [real DB]', () => {
 				.where(like(giftIngestionOrphan.itemId, `${PREFIX}%`)),
 		).toHaveLength(0);
 		await getDb().update(gift).set({ imageKey: null }).where(eq(gift.id, SOURCE_GIFT_ONE));
+	});
+
+	async function createCategoryDestination(name: string): Promise<string> {
+		const destinationId = `${PREFIX}${name}`;
+		categoryDestinationIds.push(destinationId);
+		await getDb()
+			.insert(wishlist)
+			.values({
+				id: destinationId,
+				shortId: `${destinationId}-short`,
+				recipientUserId: RECIPIENT_ID,
+				title: name,
+				status: 'draft',
+			});
+		return destinationId;
+	}
+
+	const activeDestinationCategories = (destinationId: string) =>
+		getDb()
+			.select()
+			.from(giftCategory)
+			.where(and(eq(giftCategory.wishlistId, destinationId), isNull(giftCategory.deletedAt)))
+			.orderBy(giftCategory.sortOrder);
+
+	const destinationCopies = (destinationId: string) =>
+		getDb()
+			.select({ name: gift.name, categoryIds: gift.categoryIds })
+			.from(gift)
+			.where(and(eq(gift.wishlistId, destinationId), isNull(gift.deletedAt)))
+			.orderBy(gift.sortOrder);
+
+	it('carries every category into a destination that never had categories', async () => {
+		const destinationId = await createCategoryDestination('fresh-category-destination');
+		const input = {
+			sourceWishlistId: CATEGORY_SOURCE_ID,
+			destinationWishlistId: destinationId,
+			giftIds: [BOARD_GAME_GIFT, CONSOLE_GAME_GIFT],
+		};
+
+		await executeOperation(copyActor(RECIPIENT_ID), bulkCopyGiftsOperation, input, {
+			dryRun: true,
+		});
+		expect(
+			await getDb()
+				.select()
+				.from(giftCategory)
+				.where(eq(giftCategory.wishlistId, destinationId)),
+		).toHaveLength(0);
+
+		await copyGifts(RECIPIENT_ID, input);
+
+		const categories = await activeDestinationCategories(destinationId);
+		expect(
+			categories.map(({ presetKey, customLabel, color }) => ({
+				presetKey,
+				customLabel,
+				color,
+			})),
+		).toEqual([
+			...DEFAULT_ENABLED_GIFT_CATEGORY_PRESET_KEYS.map((presetKey) => ({
+				presetKey,
+				customLabel: null,
+				color: expect.any(String),
+			})),
+			{ presetKey: null, customLabel: 'Deskové hry', color: '#A1B2C3' },
+			{ presetKey: null, customLabel: 'Hry (Ps5)', color: '#0A0B0C' },
+		]);
+		const categoryId = (presetKey: string | null, customLabel: string | null = null) =>
+			categories.find(
+				(category) =>
+					category.presetKey === presetKey && category.customLabel === customLabel,
+			)?.id;
+		expect(await destinationCopies(destinationId)).toEqual([
+			{
+				name: 'Board game',
+				categoryIds: [
+					categoryId(null, 'Deskové hry'),
+					categoryId('books'),
+					categoryId('electronics'),
+				],
+			},
+			{
+				name: 'Console game',
+				categoryIds: [categoryId(null, 'Hry (Ps5)'), categoryId(null, 'Deskové hry')],
+			},
+		]);
+	});
+
+	it('reuses a destination category with the same label instead of adding a duplicate', async () => {
+		const destinationId = await createCategoryDestination('labelled-category-destination');
+		const existingCategoryId = `${PREFIX}labelled-destination-board-games`;
+		await getDb().insert(giftCategory).values({
+			id: existingCategoryId,
+			wishlistId: destinationId,
+			customLabel: ' deskové HRY ',
+			color: '#445566',
+			sortOrder: 0,
+		});
+
+		await copyGifts(RECIPIENT_ID, {
+			sourceWishlistId: CATEGORY_SOURCE_ID,
+			destinationWishlistId: destinationId,
+			giftIds: [CONSOLE_GAME_GIFT],
+		});
+
+		const categories = await activeDestinationCategories(destinationId);
+		expect(categories.map(({ customLabel, color }) => ({ customLabel, color }))).toEqual([
+			{ customLabel: ' deskové HRY ', color: '#445566' },
+			{ customLabel: 'Hry (Ps5)', color: '#0A0B0C' },
+		]);
+		expect(await destinationCopies(destinationId)).toEqual([
+			{ name: 'Console game', categoryIds: [categories[1]?.id, existingCategoryId] },
+		]);
+	});
+
+	it('restores a preset the destination disabled when a copied gift uses it', async () => {
+		const destinationId = await createCategoryDestination('disabled-preset-destination');
+		const tripsCategoryId = `${PREFIX}disabled-preset-destination-trips`;
+		const disabledBooksId = `${PREFIX}disabled-preset-destination-books`;
+		await getDb()
+			.insert(giftCategory)
+			.values([
+				{
+					id: tripsCategoryId,
+					wishlistId: destinationId,
+					customLabel: 'Výlety',
+					color: '#112233',
+					sortOrder: 0,
+				},
+				{
+					id: disabledBooksId,
+					wishlistId: destinationId,
+					presetKey: 'books',
+					color: '#2563EB',
+					sortOrder: 1,
+					deletedAt: new Date(),
+				},
+			]);
+
+		await copyGifts(RECIPIENT_ID, {
+			sourceWishlistId: CATEGORY_SOURCE_ID,
+			destinationWishlistId: destinationId,
+			giftIds: [BOARD_GAME_GIFT],
+		});
+
+		const categories = await activeDestinationCategories(destinationId);
+		expect(categories.map(({ presetKey, customLabel }) => presetKey ?? customLabel)).toEqual([
+			'Výlety',
+			'Deskové hry',
+			'books',
+			'electronics',
+		]);
+		expect(categories[2]?.id).toBe(disabledBooksId);
+		expect(await destinationCopies(destinationId)).toEqual([
+			{
+				name: 'Board game',
+				categoryIds: [categories[1]?.id, disabledBooksId, categories[3]?.id],
+			},
+		]);
 	});
 
 	it('copies every gallery image in order, duplicating each upload under a new key', async () => {

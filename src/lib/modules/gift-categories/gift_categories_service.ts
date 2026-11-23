@@ -95,7 +95,7 @@ export async function getActiveGiftCategories(
 	return rows.map(publicGiftCategory);
 }
 
-async function insertDefaultGiftCategoriesWhenUnset(
+export async function insertDefaultGiftCategoriesWhenUnset(
 	database: CategoryDatabase,
 	wishlistId: string,
 ): Promise<void> {
@@ -255,7 +255,7 @@ export type ImportGiftCategoryResolution =
 	| { action: 'enable-preset'; sourceLabel: string; presetKey: GiftCategoryPresetKey }
 	| { action: 'create-custom'; sourceLabel: string; label: string };
 
-async function enablePresetGiftCategoryWithDatabase(
+export async function enablePresetGiftCategoryWithDatabase(
 	database: CategoryDatabase,
 	params: { wishlistId: string; presetKey: GiftCategoryPresetKey },
 ): Promise<PublicGiftCategory> {
@@ -319,7 +319,7 @@ async function nextCustomCategoryColor(
 	return giftCategoryColorForIndex(rows.length);
 }
 
-async function createCustomGiftCategoryWithDatabase(
+export async function createCustomGiftCategoryWithDatabase(
 	database: CategoryDatabase,
 	params: { wishlistId: string; label: string; color?: string },
 ): Promise<PublicGiftCategory> {
