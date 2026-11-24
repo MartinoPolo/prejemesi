@@ -106,3 +106,5 @@ After submitting, check every row's status: `ready`; `rejected` with its `error`
 ## Report
 
 For each wishlist: its title, each proposal's id, status and review link, and per row the gift, whether it is created or updated, and its status or error. Report skipped duplicates, omitted metadata, and image provenance and framing. Include a per-gift price table with each reference's price, currency, and availability, and list references that were blocked or had no exact match. Never expose access tokens, cookies, or other credentials.
+
+End the report with a link to each created or updated gift, `https://prejemesi.cz/w/<shortId>?gift=<giftId>` (it opens the gift's detail), or to the wishlist, `https://prejemesi.cz/w/<shortId>`, when the proposal is still pending.
