@@ -93,6 +93,13 @@ Gift fields follow the `createGift` and `updateGift` inputs in the API reference
     - No watermarks, promotional text, borders or placeholder images.
     - Keep the margin and background consistent across a wishlist's covers so the grid looks even.
 
+## Name and description
+
+Get both right in the first proposal: once a wishlist is shared, the recipient can no longer rename a gift or rewrite its description (`CANNOT_EDIT_AFTER_SHARING`), only append to it.
+
+- **Name:** what the thing is, in Czech, then the brand or model only when it matters; aim for **20 characters, at most 25**. The narrowest view (the mobile carousel, two short lines) clips anything longer, and a list row on a small tablet shows one line of about 30. Authors, editions, translations, pack sizes and model numbers go to the description. Proper names (games, books, board games) stay whole and keep the platform, such as `(PC)` or `(PS5)`; put the most important words first so clipping only cuts the tail.
+- **Description:** the first sentence carries what a buyer must get right: size, colour, edition, language, boxed copy or digital key, amount. Cards show only its first line, so put the rest after it. Then say why the user wants it, when they said so. Do not describe what the product is or copy shop blurbs; when neither applies, leave the description empty.
+
 ## Proposing changes
 
 Every change is a proposal: nothing changes until the user applies it on its review page within 7 days, unless their token has fast-forward. Fast-forward applies a proposal at once only when every row is ready; one row that needs confirmation (a deletion, reservation or invitation) or is rejected holds the whole proposal for review, so put deletions in their own proposal when the user wants the rest applied at once. Send each batch with an **`Idempotency-Key`** made from the batch's purpose and content (for example `add-gifts-<shortId>-<date>-<n>`), and resend the identical body with the same key when a call fails or times out; a changed body needs a new key (`AGENT_IDEMPOTENCY_KEY_REUSED`).
