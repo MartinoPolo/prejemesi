@@ -8,6 +8,8 @@ Přejeme si is a shareable wishlist web app where users create gift lists for th
 
 - **Wishlist** — A collection of desired gifts for a recipient, managed by a linked recipient and/or správci. An occasion wishlist may be ongoing (no date) or tied to a specific occasion; a permanent wishlist never has an event date.
 - **Gift** — An item on a wishlist with name, optional description/URL/price/image/priority/quantity.
+- **Shared gift** (Společné přání) — One gift placed on wishlists of different recipients; reserved, received and edited once, shown in its own section with a „Společně s“ badge.
+- **Placement** — A gift's presence on one wishlist, carrying that list's priority and order; the shared mechanism behind shared gifts (#737) and linked copies (#742).
 - **Recipient (obdarovaný)** — The person a wishlist is for: a linked user or a free-text name (e.g. a child); linked recipients manage their lists but cannot reserve, and see reservation state/counts only after disclosed self-promotion, never gifter identities. A linked recipient may change their own list to a free-text recipient, becoming a normal správce.
 - **Správce (manager)** — User with full management rights plus full visibility (reservations, gifter identities); can reserve gifts and manage other správci. Code role: `moderator`.
 - **Admin** — App operator matched via `ADMIN_EMAILS` env var; the only role that can revert a reserved shared list to draft, and the only one that can release a SIGNED-IN gifter's single reservation (issue #213). Not a správce, never surfaces in list UI.
@@ -107,6 +109,7 @@ _Avoid_: "list" for Wishlist (ambiguous), "present" for Gift (confusing with tim
 - Gift metadata enrichment from a link (image, price, title), later by name.
 - AI product suggestions.
 - Comments on gifts.
+- Shared gifts across different recipients' wishlists ([#737](https://github.com/MartinoPolo/prejemesi/issues/737)).
 - Group gifting and cost splitting.
 - Price tracking and price-drop alerts.
 - Mobile app with push notifications.
