@@ -1,0 +1,851 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>#737 Společná přání: Varianta C, kompaktní s postupným odkrýváním</title>
+<link rel="stylesheet" href="../../mobile-filter-reset/assets/app.css" />
+<style>
+/* ── Presentation board ─────────────────────────────── */
+body { margin: 0; }
+.board { min-height: 100vh; padding: var(--space-8) var(--space-8) var(--space-16); background: var(--muted); color: var(--foreground); font-family: var(--font-body); font-size: var(--text-md, 14px); }
+.board-eyebrow { margin: 0 0 var(--space-1); font-family: var(--font-head); font-size: var(--text-sm); font-weight: 700; letter-spacing: var(--tracking-wide); color: var(--muted-foreground); text-transform: uppercase; }
+.board-title { margin: 0 0 var(--space-2); font-family: var(--font-head); font-size: var(--text-2xl); font-weight: 600; }
+.board-lead { margin: 0 0 var(--space-6); max-width: 92ch; line-height: var(--leading-snug); color: var(--muted-foreground); }
+.board-section { margin-top: var(--space-12); }
+.board-section > h2 { margin: 0 0 var(--space-1); font-family: var(--font-head); font-size: var(--text-xl); font-weight: 600; }
+.board-section > .note { margin: 0 0 var(--space-4); max-width: 92ch; color: var(--muted-foreground); line-height: var(--leading-snug); }
+.frames { display: flex; flex-wrap: wrap; gap: var(--space-8); align-items: flex-start; }
+.frame-label { margin: 0 0 var(--space-2); font-size: var(--text-xs); font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted-foreground); }
+.panel-grid { display: grid; gap: var(--space-6); grid-template-columns: repeat(auto-fill, minmax(min(100%, 330px), 1fr)); }
+.state-panel { margin: 0; padding: var(--space-4); background: var(--app-page-background, var(--background)); border: 1px dashed color-mix(in oklab, var(--ink) 30%, transparent); border-radius: 12px; }
+.state-panel figcaption { margin-bottom: var(--space-3); line-height: var(--leading-snug); }
+.state-panel figcaption strong { display: block; font-family: var(--font-head); font-weight: 600; }
+.state-panel figcaption span { font-size: var(--text-sm); color: var(--muted-foreground); }
+
+/* ── Device frames ─────────────────────────────────── */
+.desktop { width: 1440px; max-width: 100%; height: 900px; overflow: auto; background: var(--app-page-background, var(--background)); border: var(--border-w) solid var(--ink); border-radius: 14px; box-shadow: var(--elevation-ordinary); position: relative; }
+.phone { width: 390px; height: 844px; overflow: auto; background: var(--app-page-background, var(--background)); border: var(--border-w) solid var(--ink); border-radius: 28px; box-shadow: var(--elevation-ordinary); position: relative; scrollbar-width: none; }
+.column { max-width: calc(1200px + 2 * var(--page-gutter, 16px)); margin: 0 auto; padding: 0 var(--page-gutter, 16px); }
+.phone .column { padding: 0 12px; }
+
+/* Settled chrome, reduced emphasis and not interactive. */
+.context { opacity: .72; }
+.navbar { height: 64px; background: var(--card); border-bottom: var(--border-w) solid var(--ink); }
+.navbar .column { height: 100%; display: flex; align-items: center; gap: var(--space-3); }
+.brand { display: inline-flex; align-items: center; gap: var(--space-2); font-family: var(--font-head); font-weight: 700; font-size: var(--text-lg); color: var(--foreground); text-decoration: none; }
+.brand-mark { width: 32px; height: 32px; display: inline-grid; place-items: center; background: var(--primary); color: var(--primary-foreground); border: 2px solid var(--ink); border-radius: 9px; box-shadow: var(--elevation-compact); }
+.nav-pills { display: flex; gap: var(--space-1); margin-left: var(--space-6); }
+.nav-pill { height: var(--size-control-md); padding: 0 var(--space-3); display: inline-flex; align-items: center; border-radius: 999px; font-weight: 600; font-size: var(--text-sm); color: var(--muted-foreground); }
+.nav-pill.current { background: color-mix(in oklab, var(--primary) 14%, var(--card)); color: var(--brand-link); border: 2px solid var(--ink); }
+.nav-end { margin-left: auto; display: flex; gap: var(--space-2); align-items: center; }
+.avatar { width: var(--size-control-md); height: var(--size-control-md); border-radius: 50%; border: 2px solid var(--ink); background: var(--accent-loud); color: var(--accent-loud-foreground); display: inline-grid; place-items: center; font-weight: 700; font-size: var(--text-xs); }
+
+.hero { margin-top: var(--space-5); position: relative; display: flex; gap: var(--space-6); align-items: center; padding: var(--space-4) var(--space-16) var(--space-4) var(--space-12); background: var(--card); border: var(--border-w) solid var(--ink); border-radius: var(--radius-panel); box-shadow: var(--elevation-ordinary); }
+.spiral { position: absolute; left: 14px; top: 16px; bottom: 16px; display: flex; flex-direction: column; justify-content: space-between; }
+.spiral i { width: 12px; height: 12px; border-radius: 50%; background: var(--app-page-background, var(--background)); border: 2px solid var(--ink); }
+.hero-text { flex: 1; min-width: 0; }
+.hero-for { margin: 0; font-size: var(--text-sm); color: var(--muted-foreground); }
+.hero-title { margin: var(--space-1) 0 var(--space-2); font-family: var(--font-head); font-size: var(--text-3xl); font-weight: 700; }
+.stamp { display: inline-flex; align-items: center; height: var(--size-control-sm); padding: 0 var(--space-3); border: 2px dashed var(--ink); border-radius: 4px; background: color-mix(in oklab, var(--accent-loud) 35%, var(--card)); font-weight: 700; font-size: var(--text-xs); }
+.polaroid { width: 84px; padding: 6px 6px 16px; background: var(--card); border: 2px solid var(--ink); box-shadow: var(--elevation-compact); transform: rotate(3deg); position: relative; }
+.polaroid::before { content: ''; position: absolute; top: -10px; left: 36px; width: 56px; height: 18px; background: var(--tape-bg, color-mix(in oklab, var(--accent-loud) 50%, transparent)); border: 1px solid var(--tape-border, transparent); transform: rotate(-4deg); }
+.polaroid .pic { aspect-ratio: 1; background: linear-gradient(150deg, hsl(140 45% 60%), hsl(200 55% 50%)); }
+.hero-actions { position: absolute; top: var(--space-3); right: var(--space-3); display: flex; gap: var(--space-2); }
+
+.toolbar-card { position: sticky; top: 0; z-index: 30; margin-top: var(--space-4); display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2); background: var(--card); border: var(--border-w) solid var(--ink); border-radius: var(--radius-panel); box-shadow: var(--elevation-ordinary); }
+.view-switch { display: inline-flex; border: 2px solid var(--ink); border-radius: var(--radius-btn); overflow: hidden; }
+.view-switch span { height: 28px; padding: 0 var(--space-3); display: inline-flex; align-items: center; gap: var(--space-1); font-weight: 600; font-size: var(--text-sm); }
+.view-switch span[aria-current] { background: var(--primary); color: var(--primary-foreground); }
+.toolbar-spacer { flex: 1; }
+
+/* ── Buttons (Button intent/size mirrors) ──────────── */
+.btn { font: inherit; font-weight: 700; font-size: var(--text-sm); height: var(--size-control-md); padding: 0 var(--space-3); border: 2px solid var(--ink); border-radius: var(--radius-btn); background: var(--card); color: var(--foreground); box-shadow: var(--elevation-compact); display: inline-flex; align-items: center; justify-content: center; gap: var(--space-1); white-space: nowrap; cursor: pointer; flex-shrink: 0; transition: transform var(--duration-fast, 150ms) var(--ease-out, ease-out), box-shadow var(--duration-fast, 150ms) var(--ease-out, ease-out); }
+.btn.primary { background: var(--primary); color: var(--primary-foreground); }
+.btn.icon { width: var(--size-control-md); padding: 0; }
+.btn.sm { height: var(--size-control-sm); font-size: var(--text-xs); padding: 0 var(--space-2); }
+.btn.sm.icon { width: var(--size-control-sm); padding: 0; }
+.btn.ghost { border-color: transparent; box-shadow: none; background: transparent; color: var(--muted-foreground); }
+.btn[disabled] { opacity: .55; cursor: not-allowed; }
+.btn:focus-visible, .shared-pill:focus-visible, .link-btn:focus-visible, .summary-row:focus-visible, .option:focus-visible, .section-tool:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+@media (prefers-reduced-motion: no-preference) {
+	.btn:active:not([disabled]) { transform: translate(1px, 1px); box-shadow: var(--elevation-pressed); }
+}
+.phone .btn { height: var(--size-control-lg); font-size: var(--text-base, 15px); }
+.phone .btn.icon { width: var(--size-control-lg); }
+.icon-svg { width: 16px; height: 16px; flex-shrink: 0; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.spinner { animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 2.4s; } }
+
+/* ── Section header (GiftSectionHeader + disclosure) ─ */
+.gift-section { margin-top: var(--space-6); }
+.section-head { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-1) 0 2px; }
+.section-head h2 { margin: 0; font-family: var(--font-head); font-size: var(--text-sm); font-weight: 700; letter-spacing: var(--tracking-wide); text-transform: uppercase; word-spacing: .1em; }
+.section-count { font-size: var(--text-sm); font-weight: 600; color: var(--muted-foreground); white-space: nowrap; }
+.section-rule { flex: 1; height: 1px; background: var(--border); }
+.section-tool { width: var(--size-control-sm); height: var(--size-control-sm); display: inline-grid; place-items: center; border: 0; border-radius: var(--radius-btn); background: transparent; color: var(--muted-foreground); cursor: pointer; padding: 0; }
+.section-tool:hover { color: var(--foreground); background: var(--ghost-hover, color-mix(in oklab, var(--ink) 8%, transparent)); }
+.phone .section-tool { width: var(--size-control-lg); height: var(--size-control-lg); }
+.collapse-tool .icon-svg { transition: transform var(--duration-normal, 200ms) var(--ease-out, ease-out); }
+.collapse-tool[aria-expanded='false'] .icon-svg { transform: rotate(-90deg); }
+@media (prefers-reduced-motion: reduce) { .collapse-tool .icon-svg { transition: none; } }
+.section-explainer { margin: var(--space-2) 0 0; padding: var(--space-2) var(--space-3); max-width: 62ch; display: flex; gap: var(--space-2); align-items: flex-start; font-size: var(--text-sm); line-height: var(--leading-snug); background: var(--card); border: 2px solid var(--ink); border-radius: 12px; }
+.section-explainer[hidden] { display: none; }
+.collapsed-summary { margin-top: var(--space-2); font-size: var(--text-sm); color: var(--muted-foreground); }
+.section-body { margin-top: var(--space-3); }
+.section-body[hidden] { display: none; }
+
+/* ── Card grid & GiftCard ──────────────────────────── */
+.grid { display: grid; gap: var(--gift-card-grid-gap, 20px); grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); align-items: stretch; }
+.phone .grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+.card { position: relative; background: var(--card); border: var(--border-w) solid var(--ink); border-radius: var(--radius-panel); box-shadow: var(--elevation-ordinary); display: grid; grid-template-rows: auto 1fr auto; min-width: 0; }
+.card.dim { border-color: var(--ink-faint, color-mix(in oklab, var(--ink) 45%, transparent)); box-shadow: none; }
+.img { position: relative; aspect-ratio: 4 / 3; overflow: hidden; border-radius: calc(var(--radius-panel) - var(--border-w)) calc(var(--radius-panel) - var(--border-w)) 0 0; border-bottom: var(--border-w) solid var(--ink); background: var(--surface, var(--background)); }
+.dim .img { border-bottom-color: var(--ink-faint, color-mix(in oklab, var(--ink) 45%, transparent)); }
+.mat { position: absolute; inset: 0; background: radial-gradient(var(--pattern-dot) 1.4px, transparent 1.5px); background-size: 18px 18px; opacity: .6; }
+.photo { position: absolute; inset: 14% 22%; border-radius: 10px; background: linear-gradient(140deg, hsl(var(--h) 70% 72%), hsl(calc(var(--h) + 40) 65% 52%)); }
+.photo::after { content: ''; position: absolute; inset: 28% 30%; border-radius: 50%; background: hsl(var(--h) 60% 88% / .7); }
+.dim .photo, .dim .cat, .dim .prio { opacity: .5; }
+.top-lane { position: absolute; top: 8px; left: 8px; right: 8px; z-index: 20; display: flex; align-items: flex-start; gap: var(--space-2); }
+.cat { display: inline-flex; align-items: center; height: 22px; padding: 0 var(--space-2); border: 2px solid var(--ink); border-radius: var(--radius-badge); font-size: var(--text-xs); font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.like { margin-left: auto; margin-top: -4px; margin-right: -4px; display: inline-flex; align-items: center; gap: 4px; height: var(--size-control-md); padding: 0 4px; font-weight: 700; font-size: var(--text-sm); }
+.like svg { width: 18px; height: 18px; fill: var(--card); stroke: var(--heart); stroke-width: 2.4; }
+.prio { position: absolute; left: 12px; bottom: 12px; z-index: 20; display: inline-flex; align-items: center; height: 22px; padding: 0 var(--space-2); border: 2px solid var(--ink); border-radius: var(--radius-badge); font-size: var(--text-xs); font-weight: 700; background: var(--tag-priority-bg, var(--card)); }
+.prio.high { background: oklch(0.92 0.06 25); color: oklch(0.45 0.15 25); }
+.prio.mid { background: oklch(0.93 0.05 75); color: oklch(0.45 0.12 75); }
+.prio.low { background: oklch(0.93 0.06 145); color: oklch(0.38 0.12 145); }
+.states { position: absolute; inset: 0; z-index: 10; display: flex; align-items: center; justify-content: center; pointer-events: none; }
+.state { border: 2px solid var(--ink); border-radius: var(--radius-badge); padding: 4px 12px; font-size: var(--text-xs); font-weight: 700; line-height: 16px; box-shadow: var(--shadow-sticker-sm, 2px 2px 0 var(--ink)); background: var(--gift-overlay-unavailable); color: #fff; }
+.state.own { background: var(--gift-overlay-own-reservation); }
+.state.received { background: var(--primary); color: var(--primary-foreground); }
+.select-box { width: var(--size-control-md); height: var(--size-control-md); flex-shrink: 0; display: inline-grid; place-items: center; background: var(--card); border: 2px solid var(--ink); border-radius: var(--radius-btn); box-shadow: var(--elevation-compact); }
+.select-box.on { background: var(--primary); color: var(--primary-foreground); }
+.card.selected { outline: 3px solid var(--selection-ring, var(--ring)); outline-offset: 2px; }
+.body { padding: 14px 14px 10px; display: flex; flex-direction: column; min-width: 0; }
+.dim .body { opacity: .5; }
+.body h3 { margin: 0; font-family: var(--font-head); font-size: var(--text-xl); font-weight: 600; line-height: 1.3; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.desc { margin: 2px 0 0; font-size: var(--text-sm); color: var(--muted-foreground); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.links { margin-top: var(--space-2); display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: var(--text-xs); }
+.links a { color: var(--brand-link); font-weight: 600; text-underline-offset: 2px; }
+.price { margin-top: var(--space-1); font-size: var(--text-xs); font-weight: 700; }
+.foot { position: relative; display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--space-2); padding: 0 12px 12px; }
+.foot .actions { margin-left: auto; display: flex; gap: var(--space-2); }
+.phone .body { padding: 8px 9px 6px; }
+.phone .body h3 { font-size: var(--text-base, 15px); }
+.phone .foot { padding: 0 9px 9px; }
+.phone .prio { left: 6px; bottom: 6px; }
+
+/* ── Shared pill (GiftSharedBadge, compact) ────────── */
+.shared-wrap { position: relative; min-width: 0; margin-right: auto; display: inline-flex; }
+.shared-pill { font: inherit; display: inline-flex; align-items: center; gap: 4px; height: 22px; max-width: 100%; padding: 0 var(--space-2); border: 2px solid var(--ink); border-radius: var(--radius-badge); background: color-mix(in oklab, var(--status-info) 14%, var(--card)); color: var(--brand-link); font-size: var(--text-xs); font-weight: 700; letter-spacing: .01em; white-space: nowrap; cursor: pointer; position: relative; }
+/* The hit target extends to the control height without growing the visible badge. */
+.shared-pill::after { content: ''; position: absolute; inset: -5px -3px; }
+.phone .shared-pill::after { inset: -9px -4px; }
+.shared-pill .icon-svg { width: 13px; height: 13px; }
+.shared-pill .first { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.shared-pill .more-count { padding-left: 4px; border-left: 1.5px solid color-mix(in oklab, var(--brand-link) 45%, transparent); font-variant-numeric: tabular-nums; }
+.shared-pill.static { cursor: default; }
+
+.popover { position: absolute; z-index: 60; left: 0; bottom: calc(100% + 8px); width: max-content; min-width: 13rem; max-width: 17rem; padding: var(--space-3); background: var(--popover, var(--card)); color: var(--popover-foreground, var(--foreground)); border: 2px solid var(--ink); border-radius: 12px; box-shadow: var(--elevation-ordinary); font-size: var(--text-sm); line-height: var(--leading-snug); text-align: left; transform-origin: 16px 100%; }
+.popover[hidden] { display: none; }
+@media (prefers-reduced-motion: no-preference) {
+	.popover.entering { animation: pop-in var(--duration-normal, 180ms) var(--ease-out, ease-out); }
+}
+@keyframes pop-in { from { opacity: 0; transform: scale(.96); } }
+.popover.below { bottom: auto; top: calc(100% + 8px); transform-origin: 16px 0; }
+.popover h4 { margin: 0 0 var(--space-2); font-size: var(--text-xs); font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted-foreground); }
+.popover .names { margin: 0; font-weight: 700; }
+.popover ul { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-2); }
+.popover li { display: grid; gap: 1px; }
+.popover li .who { font-weight: 700; }
+.popover li a { color: var(--brand-link); font-weight: 600; display: inline-flex; align-items: center; gap: 4px; }
+.popover li .plain { color: var(--muted-foreground); }
+.popover .hint { margin: var(--space-2) 0 0; padding-top: var(--space-2); border-top: 1px solid var(--border); font-size: var(--text-xs); color: var(--muted-foreground); }
+
+/* ── List row (GiftListItem) ───────────────────────── */
+.row { display: grid; grid-template-columns: 176px 1fr; min-height: 176px; background: var(--card); border: var(--border-w) solid var(--ink); border-radius: var(--radius-panel); box-shadow: var(--elevation-ordinary); }
+.row .img { aspect-ratio: auto; border-radius: calc(var(--radius-panel) - var(--border-w)) 0 0 calc(var(--radius-panel) - var(--border-w)); border-bottom: 0; border-right: var(--border-w) solid var(--ink); }
+.row .rbody { padding: 12px 14px 12px 16px; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.row .title { display: flex; align-items: flex-start; gap: 6px; }
+.row h3 { flex: 1; min-width: 0; margin: 0; font-family: var(--font-head); font-size: var(--text-xl); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row .like { margin: -4px -4px 0 0; }
+.row .foot { margin-top: auto; padding: 6px 0 0; }
+.row .prio { left: 8px; bottom: 8px; }
+
+/* ── Carousel row ──────────────────────────────────── */
+.jump-chips { display: flex; gap: var(--space-2); padding: var(--space-2) 0; overflow-x: auto; }
+.jump-chip { height: var(--size-control-sm); padding: 0 var(--space-3); display: inline-flex; align-items: center; border: 2px solid var(--ink); border-radius: 999px; background: var(--card); font-size: var(--text-xs); font-weight: 700; white-space: nowrap; }
+.jump-chip[aria-current] { background: var(--primary); color: var(--primary-foreground); }
+.carousel { display: flex; gap: 8px; overflow: hidden; padding: 2px 6px 8px 2px; }
+.ccard { flex: 0 0 150px; background: var(--card); border: var(--border-w) solid var(--ink); border-radius: var(--radius-panel); box-shadow: var(--elevation-ordinary); display: flex; flex-direction: column; min-width: 0; }
+.ccard .img { aspect-ratio: 1; }
+.ccard .body { padding: 6px 8px 4px; }
+.ccard .body h3 { font-size: var(--text-sm); }
+.ccard .foot { padding: 0 8px 8px; }
+.ccard .cat { padding: 0 6px; }
+.ccard .prio { left: 6px; bottom: 6px; }
+
+/* ── Overlays (editor, dialog) ─────────────────────── */
+.overlay-stage { position: relative; overflow: hidden; border: var(--border-w) solid var(--ink); border-radius: 14px; background: var(--app-page-background, var(--background)); }
+.overlay-stage .ghost-page { padding: var(--space-6); display: grid; gap: var(--space-4); grid-template-columns: repeat(4, 1fr); opacity: .8; }
+.ghost-card { height: 260px; background: var(--card); border: var(--border-w) solid var(--ink); border-radius: var(--radius-panel); }
+.scrim { position: absolute; inset: 0; background: color-mix(in oklab, var(--ink) 55%, transparent); }
+.modal { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); background: var(--card); border: var(--border-w) solid var(--ink); border-radius: var(--radius-panel); box-shadow: var(--elevation-lifted); display: flex; flex-direction: column; max-height: calc(100% - 48px); }
+.modal-head { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-4) var(--space-5) var(--space-3); }
+.modal-head h3 { margin: 0; flex: 1; font-family: var(--font-head); font-size: var(--text-xl); font-weight: 600; }
+.modal-body { padding: 0 var(--space-5) var(--space-4); overflow: auto; }
+.modal-foot { display: flex; justify-content: flex-end; gap: var(--space-2); padding: var(--space-3) var(--space-5) var(--space-4); border-top: 1px solid var(--border); }
+.modal-foot .lead { margin-right: auto; }
+
+.editor { width: 1100px; height: 85%; }
+.editor-grid { display: grid; grid-template-columns: 340px 1fr; gap: var(--space-6); }
+.rail { padding: var(--space-3); background: var(--muted); border-radius: 12px; opacity: .72; }
+.rail .rail-label { margin: 0 0 var(--space-2); font-size: var(--text-xs); font-weight: 700; color: var(--muted-foreground); }
+.fields { display: grid; gap: var(--space-4); align-content: start; }
+.field > label, .field > .label { display: block; margin-bottom: 6px; font-size: var(--text-sm); font-weight: 600; }
+.input { height: var(--size-control-md); display: flex; align-items: center; padding: 0 var(--space-3); border: 2px solid var(--edge-control, var(--ink)); border-radius: var(--radius-btn); background: var(--input-surface, var(--card)); font-size: var(--text-sm); }
+.input.area { height: 64px; align-items: flex-start; padding-top: 6px; }
+.field-row { display: grid; grid-template-columns: 1.4fr .8fr .8fr 1fr; gap: var(--space-3); }
+.muted-fields { opacity: .55; }
+.help { margin: 6px 0 0; font-size: var(--text-xs); line-height: var(--leading-snug); color: var(--muted-foreground); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: var(--space-2); }
+.chip { display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 2px 0 var(--space-2); border: 2px solid var(--ink); border-radius: var(--radius-badge); background: color-mix(in oklab, var(--status-info) 14%, var(--card)); color: var(--brand-link); font-size: var(--text-xs); font-weight: 700; white-space: nowrap; }
+.chip.locked { padding-right: var(--space-2); background: var(--card); color: var(--muted-foreground); }
+.chip .x { width: 18px; height: 18px; display: inline-grid; place-items: center; border: 0; border-radius: 50%; background: transparent; color: inherit; cursor: pointer; padding: 0; }
+.chip .x:hover { background: color-mix(in oklab, var(--ink) 10%, transparent); }
+.chip .icon-svg { width: 12px; height: 12px; }
+
+/* Collapsed summary row → inline picker */
+.shared-field { border: 2px solid var(--edge-control, var(--ink)); border-radius: 12px; background: var(--card); }
+.summary-row { width: 100%; min-height: var(--size-control-lg); display: flex; align-items: center; gap: var(--space-2); padding: 0 var(--space-3); border: 0; border-radius: 10px; background: transparent; font: inherit; font-size: var(--text-sm); color: var(--foreground); cursor: pointer; text-align: left; }
+.summary-row:hover { background: var(--surface-hover, color-mix(in oklab, var(--ink) 5%, transparent)); }
+.summary-row .lead-text { font-weight: 700; }
+.summary-row .value { color: var(--muted-foreground); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.summary-row .add { margin-left: auto; color: var(--brand-link); font-weight: 700; white-space: nowrap; display: inline-flex; align-items: center; gap: 4px; }
+.picker { padding: var(--space-1) var(--space-3) var(--space-3); border-top: 1px solid var(--border); }
+.picker[hidden] { display: none; }
+.search { margin-top: var(--space-2); height: var(--size-control-md); display: flex; align-items: center; gap: var(--space-2); padding: 0 var(--space-3); border: 2px solid var(--edge-control, var(--ink)); border-radius: var(--radius-btn); background: var(--input-surface, var(--card)); }
+.search input { border: 0; outline: 0; background: transparent; font: inherit; font-size: var(--text-sm); flex: 1; min-width: 0; color: var(--foreground); }
+.search:focus-within { outline: 2px solid var(--ring); outline-offset: 2px; }
+.options { margin-top: var(--space-2); display: grid; gap: 2px; }
+.option { display: flex; align-items: center; gap: var(--space-3); min-height: var(--size-control-md); padding: 0 var(--space-2); border-radius: var(--radius-btn); font-size: var(--text-sm); cursor: pointer; border: 0; background: transparent; font: inherit; color: var(--foreground); text-align: left; width: 100%; }
+.option:hover { background: color-mix(in oklab, var(--primary) 10%, var(--card)); }
+.check { width: 18px; height: 18px; flex-shrink: 0; display: inline-grid; place-items: center; border: 2px solid var(--ink); border-radius: 5px; background: var(--card); }
+.check .icon-svg { width: 12px; height: 12px; stroke-width: 3; }
+.check.on { background: var(--primary); color: var(--primary-foreground); }
+.option .recipient { color: var(--muted-foreground); }
+.rule-note { margin-top: var(--space-3); display: flex; gap: var(--space-2); padding: var(--space-2) var(--space-3); border-radius: 10px; background: color-mix(in oklab, var(--status-info) 10%, var(--card)); border: 2px solid color-mix(in oklab, var(--status-info) 45%, var(--card)); font-size: var(--text-xs); line-height: var(--leading-snug); }
+.field-new { position: relative; padding: var(--space-3); margin: calc(var(--space-3) * -1); border-radius: 14px; outline: 2px dashed color-mix(in oklab, var(--primary) 60%, transparent); }
+.field-new::before { content: 'Nové pole'; position: absolute; top: -10px; right: 12px; padding: 0 6px; background: var(--card); color: var(--brand-link); font-size: 11px; font-weight: 700; }
+
+.dialog { width: 480px; }
+.steps { display: flex; gap: var(--space-2); margin: 0 0 var(--space-3); font-size: var(--text-xs); font-weight: 700; color: var(--muted-foreground); }
+.steps span[aria-current] { color: var(--brand-link); }
+.summary-list { margin: var(--space-2) 0 0; padding: 0; list-style: none; display: grid; gap: var(--space-2); font-size: var(--text-sm); }
+.summary-list li { display: flex; gap: var(--space-2); align-items: flex-start; line-height: var(--leading-snug); }
+.summary-group { margin-top: var(--space-3); }
+.summary-group h4 { margin: 0; font-size: var(--text-xs); font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted-foreground); }
+.alert-danger { margin-top: var(--space-3); display: flex; gap: var(--space-2); align-items: flex-start; padding: var(--space-3); border: 2px solid var(--ink); border-radius: 12px; background: color-mix(in oklab, var(--status-danger) 14%, var(--card)); color: var(--status-danger-text); font-size: var(--text-sm); }
+.alert-danger .btn { margin-left: auto; }
+.menu { width: 280px; padding: 6px; background: var(--popover, var(--card)); border: 2px solid var(--ink); border-radius: 12px; box-shadow: var(--elevation-ordinary); }
+.menu .item { display: flex; align-items: center; gap: var(--space-2); min-height: var(--size-control-md); padding: 0 var(--space-2); border-radius: var(--radius-btn); font-size: var(--text-sm); }
+.menu .item.new { background: color-mix(in oklab, var(--primary) 12%, var(--card)); font-weight: 700; }
+.menu .sep { height: 1px; margin: 4px 0; background: var(--border); }
+.selection-bar { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2); background: var(--card); border: var(--border-w) solid var(--ink); border-radius: var(--radius-panel); box-shadow: var(--elevation-ordinary); width: 420px; margin-bottom: var(--space-2); }
+.toast { display: inline-flex; align-items: center; gap: var(--space-3); padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4); background: var(--foreground); color: var(--background); border-radius: 12px; box-shadow: var(--elevation-ordinary); font-size: var(--text-sm); font-weight: 600; }
+
+/* Gift viewer caption */
+.viewer { width: 460px; padding: var(--space-5); background: var(--card); border: var(--border-w) solid var(--ink); border-radius: var(--radius-panel); box-shadow: var(--elevation-ordinary); }
+.viewer h3 { margin: 0 0 var(--space-1); font-family: var(--font-head); font-size: var(--text-2xl); font-weight: 600; }
+.viewer .meta { font-weight: 700; font-size: var(--text-sm); }
+.viewer .cats { display: flex; flex-wrap: wrap; gap: 6px; margin: var(--space-2) 0; }
+.viewer-shared { display: flex; align-items: flex-start; gap: var(--space-2); font-size: var(--text-sm); line-height: var(--leading-snug); }
+.viewer-shared .icon-svg { margin-top: 2px; color: var(--brand-link); }
+.viewer-shared a { color: var(--brand-link); font-weight: 600; }
+
+.empty-demo { padding: var(--space-4); border: 2px dashed var(--border); border-radius: 12px; color: var(--muted-foreground); font-size: var(--text-sm); }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.link-btn { border: 0; background: none; padding: 0; font: inherit; color: var(--brand-link); font-weight: 700; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+	<defs>
+		<symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+		<symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></symbol>
+		<symbol id="i-chevron" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+		<symbol id="i-ellipsis" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></symbol>
+		<symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></symbol>
+		<symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol>
+		<symbol id="i-lock" viewBox="0 0 24 24"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
+		<symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
+		<symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+		<symbol id="i-arrow" viewBox="0 0 24 24"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></symbol>
+		<symbol id="i-gift" viewBox="0 0 24 24"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13"/><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5C11 3 12 8 12 8s1-5 4.5-5a2.5 2.5 0 0 1 0 5"/></symbol>
+		<symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></symbol>
+		<symbol id="i-palette" viewBox="0 0 24 24"><circle cx="13.5" cy="6.5" r="1"/><circle cx="17.5" cy="10.5" r="1"/><circle cx="8.5" cy="7.5" r="1"/><circle cx="6.5" cy="12.5" r="1"/><path d="M12 2a10 10 0 0 0 0 20c.9 0 1.6-.7 1.6-1.7 0-.4-.2-.8-.4-1.1-.3-.3-.4-.7-.4-1.1a1.6 1.6 0 0 1 1.6-1.7h2A5.6 5.6 0 0 0 22 11c0-5-4.5-9-10-9"/></symbol>
+		<symbol id="i-settings" viewBox="0 0 24 24"><path d="M12.2 2h-.4a2 2 0 0 0-2 2v.2a2 2 0 0 1-1 1.7l-.4.3a2 2 0 0 1-2 0l-.2-.1a2 2 0 0 0-2.7.7l-.2.4a2 2 0 0 0 .7 2.7l.2.1a2 2 0 0 1 1 1.7v.5a2 2 0 0 1-1 1.7l-.2.1a2 2 0 0 0-.7 2.7l.2.4a2 2 0 0 0 2.7.7l.2-.1a2 2 0 0 1 2 0l.4.3a2 2 0 0 1 1 1.7v.2a2 2 0 0 0 2 2h.4a2 2 0 0 0 2-2v-.2a2 2 0 0 1 1-1.7l.4-.3a2 2 0 0 1 2 0l.2.1a2 2 0 0 0 2.7-.7l.2-.4a2 2 0 0 0-.7-2.7l-.2-.1a2 2 0 0 1-1-1.7v-.5a2 2 0 0 1 1-1.7l.2-.1a2 2 0 0 0 .7-2.7l-.2-.4a2 2 0 0 0-2.7-.7l-.2.1a2 2 0 0 1-2 0l-.4-.3a2 2 0 0 1-1-1.7V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></symbol>
+		<symbol id="i-grid" viewBox="0 0 24 24"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></symbol>
+		<symbol id="i-list" viewBox="0 0 24 24"><path d="M3 12h.01"/><path d="M3 18h.01"/><path d="M3 6h.01"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M8 6h13"/></symbol>
+		<symbol id="i-sliders" viewBox="0 0 24 24"><path d="M21 4h-7"/><path d="M10 4H3"/><path d="M21 12h-9"/><path d="M8 12H3"/><path d="M21 20h-5"/><path d="M12 20H3"/><path d="M14 2v4"/><path d="M8 10v4"/><path d="M16 18v4"/></symbol>
+		<symbol id="i-loader" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-6.22-8.56"/></symbol>
+		<symbol id="i-alert" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></symbol>
+		<symbol id="i-share" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4"/><path d="m15.4 6.5-6.8 4"/></symbol>
+		<symbol id="i-copy" viewBox="0 0 24 24"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></symbol>
+	</defs>
+</svg>
+
+<main class="board">
+	<p class="board-eyebrow">Variant C — Kompaktní s postupným odkrýváním</p>
+	<h1 class="board-title">Společná přání (#737)</h1>
+	<p class="board-lead">Minimální stopa, dokud se uživatel nezeptá. Na kartě je jen malý štítek v patičce vlevo od akcí (ikona + první jméno, „+1“ při více spoluobdarovaných), který po najetí, fokusu nebo klepnutí odkryje celé „Společně s: …“; správci v něm vidí odkazy na seznamy, které mohou otevřít. Sekce „Společná přání“ má počet, vysvětlení schované za ikonou a dá se sbalit. Pole v editoru je zavřené jako jeden řádek, hromadné sdílení má dva kroky.</p>
+
+	<!-- ═══════════ 1. Desktop + phone wishlist ═══════════ -->
+	<section class="board-section">
+		<h2>Stránka seznamu: Karta (návštěvník Jana)</h2>
+		<p class="note">Desktop 1440 × 900 a telefon 390 × 844. Navigace, hero a lišta jsou hotové okolí (ztlumené, neaktivní). Štítek u „LEGO Technic bagr“ je otevřený, aby byl vidět obsah. Štítek nikdy nezasahuje do obrázku, takže nemůže překrýt kategorii, Like, prioritu, počet fotek ani stav uprostřed.</p>
+		<div class="frames">
+			<div>
+				<p class="frame-label">Desktop 1440 × 900</p>
+				<div class="desktop" id="desktop-frame">
+					<header class="navbar context" inert>
+						<div class="column">
+							<span class="brand"><span class="brand-mark"><svg class="icon-svg"><use href="#i-gift"/></svg></span>Přejeme si</span>
+							<nav class="nav-pills" aria-label="Hlavní navigace"><span class="nav-pill">Moje seznamy</span><span class="nav-pill">Spravované</span><span class="nav-pill current">Sledované</span></nav>
+							<div class="nav-end"><span class="btn icon"><svg class="icon-svg"><use href="#i-palette"/></svg></span><span class="btn icon"><svg class="icon-svg"><use href="#i-bell"/></svg></span><span class="avatar">JD</span></div>
+						</div>
+					</header>
+					<div class="column">
+						<section class="hero context" inert aria-label="Seznam přání">
+							<div class="spiral" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+							<div class="hero-text">
+								<p class="hero-for">Pro: <strong>Tomáš</strong></p>
+								<h1 class="hero-title">Tomášovy Vánoce</h1>
+								<span class="stamp">Vánoce · za 29 dní</span>
+							</div>
+							<div class="polaroid" aria-hidden="true"><div class="pic"></div></div>
+							<div class="hero-actions"><span class="btn icon"><svg class="icon-svg"><use href="#i-ellipsis"/></svg></span></div>
+						</section>
+						<div class="toolbar-card context" inert>
+							<span class="view-switch"><span aria-current="true"><svg class="icon-svg"><use href="#i-grid"/></svg>Karta</span><span><svg class="icon-svg"><use href="#i-list"/></svg>Seznam</span></span>
+							<span class="btn"><svg class="icon-svg"><use href="#i-sliders"/></svg>Zobrazení</span>
+							<span class="toolbar-spacer"></span>
+							<span class="btn icon"><svg class="icon-svg"><use href="#i-ellipsis"/></svg></span>
+						</div>
+
+						<section class="gift-section" aria-label="Přání">
+							<div class="grid" data-render="own-desktop"></div>
+						</section>
+						<section class="gift-section" data-shared-section="desktop" aria-labelledby="shared-h-desktop"></section>
+						<div style="height:48px"></div>
+					</div>
+				</div>
+			</div>
+			<div>
+				<p class="frame-label">Telefon 390 × 844, Karta 2 sloupce (posunuto k sekci)</p>
+				<div class="phone" id="phone-frame">
+					<header class="navbar context" inert style="height:56px">
+						<div class="column"><span class="brand"><span class="brand-mark"><svg class="icon-svg"><use href="#i-gift"/></svg></span>Přejeme si</span><div class="nav-end"><span class="btn icon"><svg class="icon-svg"><use href="#i-bell"/></svg></span><span class="avatar">JD</span></div></div>
+					</header>
+					<div class="column">
+						<section class="hero context" inert style="padding:16px 16px 16px 40px;margin-top:12px">
+							<div class="spiral" aria-hidden="true"><i></i><i></i><i></i></div>
+							<div class="hero-text"><p class="hero-for">Pro: <strong>Tomáš</strong></p><h1 class="hero-title" style="font-size:var(--text-2xl)">Tomášovy Vánoce</h1><span class="stamp">Vánoce · za 29 dní</span></div>
+						</section>
+						<div class="toolbar-card context" inert>
+							<span class="view-switch"><span aria-current="true"><svg class="icon-svg"><use href="#i-grid"/></svg></span><span><svg class="icon-svg"><use href="#i-list"/></svg></span></span>
+							<span class="toolbar-spacer"></span>
+							<span class="btn icon"><svg class="icon-svg"><use href="#i-sliders"/></svg></span><span class="btn icon"><svg class="icon-svg"><use href="#i-ellipsis"/></svg></span>
+						</div>
+						<section class="gift-section"><div class="grid" data-render="own-phone"></div></section>
+						<section class="gift-section" data-shared-section="phone" aria-labelledby="shared-h-phone"></section>
+						<div style="height:32px"></div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</section>
+
+	<!-- ═══════════ 2. List + carousel ═══════════ -->
+	<section class="board-section">
+		<h2>Seznam a Karusel</h2>
+		<p class="note">V režimu Seznam sedí štítek ve stejném pruhu patičky jako na kartě. V Karuselu má sekce vlastní řádek i čip pro skok; karta ~150 px ukáže ikonu a první jméno (zkrácené), „+N“ zůstane vidět. Celá jména jsou v přístupném názvu i v prohlížeči.</p>
+		<div class="frames">
+			<div style="width:880px;max-width:100%">
+				<p class="frame-label">Desktop Seznam, sekce Společná přání</p>
+				<div class="state-panel">
+					<div class="section-head"><h2>Společná přání</h2><span class="section-count">2 dárky</span><span class="section-rule"></span></div>
+					<div style="display:grid;gap:14px;margin-top:12px" data-render="list-desktop"></div>
+				</div>
+			</div>
+			<div style="width:390px">
+				<p class="frame-label">Karusel 390 px, řádek Společná přání</p>
+				<div class="state-panel">
+					<div class="jump-chips" aria-label="Skok na řádek"><span class="jump-chip">Vysoká</span><span class="jump-chip">Střední</span><span class="jump-chip">Nízká</span><span class="jump-chip" aria-current="true">Společná přání</span></div>
+					<div class="section-head"><h2>Společná přání</h2><span class="section-count">3 dárky</span><span class="section-rule"></span><span class="section-count" aria-hidden="true" style="font-size:var(--text-xs)">1–2 z 3</span></div>
+					<div class="carousel" data-render="carousel"></div>
+				</div>
+			</div>
+		</div>
+	</section>
+
+	<!-- ═══════════ 3. States ═══════════ -->
+	<section class="board-section">
+		<h2>Stavy</h2>
+		<p class="note">Každý panel je karta v příslušné roli. Otevřené popovery ukazují rozdíl mezi návštěvníkem (jen jména) a správcem (odkazy jen na seznamy, které může otevřít).</p>
+		<div class="panel-grid" id="states"></div>
+	</section>
+
+	<!-- ═══════════ 4. Editor ═══════════ -->
+	<section class="board-section">
+		<h2>Editor dárku: pole „Společně s“</h2>
+		<p class="note">Poslední pole pravého sloupce, po Kategorii. Zavřené je to jeden řádek se shrnutím; „Přidat seznam“ ho rozbalí na místě do vyhledávání a zaškrtávacího seznamu spravovaných seznamů jiných obdarovaných („{název} · {obdarovaný}“, řazeno podle názvu). Vybrané seznamy jsou čipy pod řádkem. Poznámka upozorní, že sdílená pole se pak upravují pro všechny seznamy najednou.</p>
+		<div class="overlay-stage" style="height:940px;max-width:1360px">
+			<div class="ghost-page" aria-hidden="true"><div class="ghost-card"></div><div class="ghost-card"></div><div class="ghost-card"></div><div class="ghost-card"></div><div class="ghost-card"></div><div class="ghost-card"></div><div class="ghost-card"></div><div class="ghost-card"></div></div>
+			<div class="scrim"></div>
+			<div class="modal editor" role="dialog" aria-modal="true" aria-labelledby="editor-title">
+				<div class="modal-head"><h3 id="editor-title">Upravit dárek</h3><button class="btn ghost icon" type="button" aria-label="Zavřít"><svg class="icon-svg"><use href="#i-x"/></svg></button></div>
+				<div class="modal-body">
+					<div class="editor-grid">
+						<div class="rail" inert>
+							<p class="rail-label">Tak to uvidí ostatní</p>
+							<div data-render="editor-preview"></div>
+						</div>
+						<div class="fields">
+							<div class="muted-fields" inert>
+								<div class="field"><span class="label">Název</span><div class="input">LEGO Technic bagr</div></div>
+								<div class="field" style="margin-top:16px"><span class="label">Popis</span><div class="input area">Ten žlutý s ovladačem v aplikaci. Kluci ho chtějí stavět spolu.</div></div>
+								<div class="field" style="margin-top:16px"><span class="label">Odkazy</span><div class="input">https://www.lego.com/cs-cz/themes/technic</div></div>
+								<div class="field-row" style="margin-top:16px">
+									<div class="field"><span class="label">Cena</span><div class="input">1 899</div></div>
+									<div class="field"><span class="label">Měna</span><div class="input">Kč</div></div>
+									<div class="field"><span class="label">Počet kusů</span><div class="input">1</div></div>
+									<div class="field"><span class="label">Priorita</span><div class="input">Vysoká</div></div>
+								</div>
+								<div class="field" style="margin-top:16px"><span class="label">Kategorie</span><div class="input">Stavebnice</div></div>
+							</div>
+							<div class="field field-new" id="editor-shared-field">
+								<span class="label" id="shared-field-label">Společně s</span>
+								<div class="shared-field">
+									<button class="summary-row" type="button" aria-expanded="true" aria-controls="shared-picker" data-toggle-picker>
+										<svg class="icon-svg" style="color:var(--brand-link)"><use href="#i-users"/></svg>
+										<span class="lead-text">Společně s:</span>
+										<span class="value" data-summary-value>Anička</span>
+										<span class="add"><span data-summary-action>Hotovo</span><svg class="icon-svg"><use href="#i-chevron"/></svg></span>
+									</button>
+									<div class="picker" id="shared-picker" role="group" aria-labelledby="shared-field-label">
+										<label class="search"><svg class="icon-svg" style="color:var(--muted-foreground)"><use href="#i-search"/></svg><span class="sr-only">Hledat seznam</span><input type="search" placeholder="Hledat seznam nebo jméno" data-picker-search /></label>
+										<div class="options" role="listbox" aria-multiselectable="true" aria-label="Seznamy, které spravujete" data-picker-options></div>
+										<div class="rule-note"><svg class="icon-svg" style="color:var(--brand-link)"><use href="#i-info"/></svg><span>Po sdílení se název, popis, odkazy, cena a kategorie mění pro všechny vybrané seznamy najednou. Z každého seznamu půjde dárek odebrat jen podle jeho pravidel.</span></div>
+									</div>
+								</div>
+								<div class="chips" data-picker-chips aria-label="Vybrané seznamy"></div>
+								<p class="help">Dárek se objeví i na vybraných seznamech. Rezervovat ho půjde jen jednou.</p>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="modal-foot"><button class="btn lead" type="button" style="color:var(--status-danger-text)">Smazat dárek</button><button class="btn" type="button">Zrušit</button><button class="btn primary" type="button">Uložit</button></div>
+			</div>
+		</div>
+
+		<div class="panel-grid" style="margin-top:24px">
+			<figure class="state-panel">
+				<figcaption><strong>Výchozí: zavřeno</strong><span>Jeden řádek, dokud správce nechce sdílet.</span></figcaption>
+				<div class="field"><span class="label">Společně s</span>
+					<div class="shared-field"><button class="summary-row" type="button" aria-expanded="false"><svg class="icon-svg" style="color:var(--muted-foreground)"><use href="#i-users"/></svg><span class="lead-text">Společně s:</span><span class="value">nikým</span><span class="add"><svg class="icon-svg"><use href="#i-plus"/></svg>Přidat seznam</span></button></div>
+					<p class="help">Dárek se objeví i na vybraných seznamech. Rezervovat ho půjde jen jednou.</p>
+				</div>
+			</figure>
+			<figure class="state-panel">
+				<figcaption><strong>Zamčené čipy (správce, dárek rezervovaný)</strong><span>Bez křížku, s důvodem. Seznam, který už aktor nespravuje, je jen název.</span></figcaption>
+				<div class="field"><span class="label">Společně s</span>
+					<div class="shared-field"><button class="summary-row" type="button" aria-expanded="false"><svg class="icon-svg" style="color:var(--brand-link)"><use href="#i-users"/></svg><span class="lead-text">Společně s:</span><span class="value">Anička, Petr</span><span class="add"><svg class="icon-svg"><use href="#i-plus"/></svg>Přidat seznam</span></button></div>
+					<div class="chips"><span class="chip locked"><svg class="icon-svg"><use href="#i-lock"/></svg>Aniččiny Vánoce · Anička</span><span class="chip locked">Petrovy narozeniny</span></div>
+					<p class="help">Rezervovaný dárek nelze ze seznamu odebrat.</p>
+				</div>
+			</figure>
+			<figure class="state-panel">
+				<figcaption><strong>Zamčené čipy (propojený obdarovaný)</strong><span>Stejný vzhled, obecné pravidlo po sdílení; rezervace se neprozradí.</span></figcaption>
+				<div class="field"><span class="label">Společně s</span>
+					<div class="shared-field"><button class="summary-row" type="button" aria-expanded="false"><svg class="icon-svg" style="color:var(--brand-link)"><use href="#i-users"/></svg><span class="lead-text">Společně s:</span><span class="value">Anička</span><span class="add"><svg class="icon-svg"><use href="#i-plus"/></svg>Přidat seznam</span></button></div>
+					<div class="chips"><span class="chip locked"><svg class="icon-svg"><use href="#i-lock"/></svg>Aniččiny Vánoce · Anička</span></div>
+					<p class="help">Stávající dárky nelze po sdílení seznamu odebrat.</p>
+				</div>
+			</figure>
+			<figure class="state-panel">
+				<figcaption><strong>Žádný vhodný seznam</strong><span>Pole se nezobrazí; formulář končí Kategorií. Na telefonu následuje pole po Kategorii v pořadí „nejdřív pole“.</span></figcaption>
+				<div class="field muted-fields"><span class="label">Kategorie</span><div class="input">Stavebnice</div></div>
+				<p class="help" style="margin-top:12px">(Pole „Společně s“ chybí.)</p>
+			</figure>
+		</div>
+	</section>
+
+	<!-- ═══════════ 5. Bulk share ═══════════ -->
+	<section class="board-section">
+		<h2>Hromadné sdílení</h2>
+		<p class="note">Nová položka „Sdílet s dalším seznamem“ hned po „Kopírovat do seznamu“. Dialog má dva kroky: výběr seznamů, pak souhrn (přidané kategorie, dárky beze změny). Jediné plné tlačítko vpravo. Pod 640 px se stejný obsah otevře jako Sheet.</p>
+		<div class="frames">
+			<div>
+				<p class="frame-label">Výběr → Akce (desktop)</p>
+				<div class="selection-bar"><span class="select-box on"><svg class="icon-svg"><use href="#i-check"/></svg></span><strong>Vybráno 5</strong><span class="toolbar-spacer"></span><span class="btn">Akce<svg class="icon-svg"><use href="#i-chevron"/></svg></span></div>
+				<div class="menu" role="menu" aria-label="Akce">
+					<div class="item" role="menuitem">Priorita</div>
+					<div class="item" role="menuitem">Kategorie</div>
+					<div class="sep"></div>
+					<div class="item" role="menuitem"><svg class="icon-svg"><use href="#i-copy"/></svg>Kopírovat do seznamu</div>
+					<div class="item new" role="menuitem"><svg class="icon-svg"><use href="#i-users"/></svg>Sdílet s dalším seznamem</div>
+					<div class="sep"></div>
+					<div class="item" role="menuitem" style="color:var(--status-danger-text)">Smazat</div>
+				</div>
+				<div style="margin-top:24px"><p class="frame-label">Úspěch</p><div class="toast" role="status">Sdíleno dárků: 4<button class="btn sm" type="button">Vrátit</button></div></div>
+			</div>
+			<div class="overlay-stage" style="width:620px;height:640px">
+				<div class="ghost-page" aria-hidden="true" style="grid-template-columns:repeat(2,1fr)"><div class="ghost-card"></div><div class="ghost-card"></div><div class="ghost-card"></div><div class="ghost-card"></div></div>
+				<div class="scrim"></div>
+				<div class="modal dialog" role="dialog" aria-modal="true" aria-labelledby="bulk-title" id="bulk-dialog">
+					<div class="modal-head"><h3 id="bulk-title">Sdílet 5 dárků</h3><button class="btn ghost icon" type="button" aria-label="Zavřít"><svg class="icon-svg"><use href="#i-x"/></svg></button></div>
+					<div class="modal-body" data-bulk-body></div>
+					<div class="modal-foot" data-bulk-foot></div>
+				</div>
+			</div>
+			<div class="overlay-stage" style="width:620px;height:640px">
+				<div class="ghost-page" aria-hidden="true" style="grid-template-columns:repeat(2,1fr)"><div class="ghost-card"></div><div class="ghost-card"></div><div class="ghost-card"></div><div class="ghost-card"></div></div>
+				<div class="scrim"></div>
+				<div class="modal dialog" role="dialog" aria-modal="true" aria-labelledby="bulk-title-2">
+					<div class="modal-head"><h3 id="bulk-title-2">Sdílet 5 dárků</h3><button class="btn ghost icon" type="button" aria-label="Zavřít"><svg class="icon-svg"><use href="#i-x"/></svg></button></div>
+					<div class="modal-body" data-bulk-static="summary"></div>
+					<div class="modal-foot" data-bulk-static-foot="summary"></div>
+				</div>
+			</div>
+		</div>
+		<div class="frames" style="margin-top:24px">
+			<figure class="state-panel" style="width:480px">
+				<figcaption><strong>Probíhá</strong><span>Spinner v potvrzení, ostatní ovládání vypnuté.</span></figcaption>
+				<div class="modal-foot" style="border:0;padding:0"><button class="btn" type="button" disabled>Zpět</button><button class="btn primary" type="button" disabled aria-busy="true"><svg class="icon-svg spinner"><use href="#i-loader"/></svg>Sdílet</button></div>
+			</figure>
+			<figure class="state-panel" style="width:480px">
+				<figcaption><strong>Chyba</strong><span>Alert danger s Opakovat, souhrn zůstane.</span></figcaption>
+				<div class="alert-danger" role="alert" style="margin-top:0"><svg class="icon-svg"><use href="#i-alert"/></svg><span>Sdílení se nepodařilo. Zkontrolujte připojení a zkuste to znovu.</span><button class="btn sm" type="button">Opakovat</button></div>
+			</figure>
+		</div>
+	</section>
+
+	<!-- ═══════════ 6. Viewer + change review ═══════════ -->
+	<section class="board-section">
+		<h2>Prohlížeč dárku a revize změn</h2>
+		<p class="note">Řádek po kategoriích, plný výčet jmen. Návštěvník vidí jména, správce s přístupem má název seznamu jako odkaz. Revize změn používá stávající řádek pole.</p>
+		<div class="frames">
+			<div><p class="frame-label">Návštěvník</p>
+				<div class="viewer"><h3>LEGO Technic bagr</h3><div class="meta">1 899 Kč · 1 ks</div><div class="cats"><span class="cat" style="background:#FDE68A">Stavebnice</span></div>
+					<div class="viewer-shared"><svg class="icon-svg"><use href="#i-users"/></svg><span>Společně s: Anička (Aniččiny Vánoce)</span></div>
+					<div class="links" style="margin-top:8px"><a href="#">lego.com</a></div><p class="desc" style="white-space:normal;margin-top:8px">Ten žlutý s ovladačem v aplikaci. Kluci ho chtějí stavět spolu.</p></div></div>
+			<div><p class="frame-label">Správce (Martin spravuje Aniččin seznam, Petrův ne)</p>
+				<div class="viewer"><h3>Rodinná hra Dobble</h3><div class="meta">349 Kč · 1 ks</div><div class="cats"><span class="cat" style="background:#7C3AED;color:#fff">Hry</span></div>
+					<div class="viewer-shared"><svg class="icon-svg"><use href="#i-users"/></svg><span>Společně s: Anička (<a href="#">Aniččiny Vánoce</a>) a Petr (Petrovy narozeniny)</span></div></div></div>
+			<div><p class="frame-label">Revize změn agenta</p>
+				<div class="viewer" style="width:420px"><div style="display:grid;grid-template-columns:110px 1fr;gap:8px;font-size:var(--text-sm)"><strong>Společně s</strong><span><span style="color:var(--status-danger-text);text-decoration:line-through">nikým</span> → <span style="color:var(--status-success-text);font-weight:700">Aniččiny Vánoce</span></span></div></div></div>
+		</div>
+	</section>
+</main>
+
+<script>
+const ICON = (id, extra = '') => `<svg class="icon-svg" ${extra} aria-hidden="true"><use href="#i-${id}"/></svg>`;
+const HEART = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>';
+const CATEGORY = {
+	sport: { label: 'Sport', color: '#EA580C', text: '#fff' },
+	knihy: { label: 'Knihy', color: '#B45309', text: '#fff' },
+	hracky: { label: 'Hračky', color: '#0F766E', text: '#fff' },
+	obleceni: { label: 'Oblečení', color: '#DB2777', text: '#fff' },
+	stavebnice: { label: 'Stavebnice', color: '#FDE68A', text: 'var(--ink)' },
+	hry: { label: 'Hry', color: '#7C3AED', text: '#fff' },
+	zazitky: { label: 'Společné zážitky', color: '#15803D', text: '#fff' },
+};
+const PRIORITY = { high: 'Vysoká', mid: 'Střední', low: 'Nízká' };
+const PARTNERS = {
+	anicka: { name: 'Anička', list: 'Aniččiny Vánoce', managed: true },
+	petr: { name: 'Petr', list: 'Petrovy narozeniny', managed: false },
+	ondrej: { name: 'Ondřej', list: 'Ondrovy Vánoce', managed: true },
+};
+const OWN = [
+	{ name: 'Koloběžka Micro Sprite', cat: 'sport', prio: 'high', h: 200, desc: 'Modrá, s nastavitelnými řídítky.', links: ['decathlon.cz', 'micro-scooter.cz'], price: '2 990 Kč', like: 2 },
+	{ name: 'Deník malého poseroutky 19', cat: 'knihy', prio: 'mid', h: 30, desc: 'Nejnovější díl, česky.', links: ['knihydobrovsky.cz'], price: '299 Kč', state: 'Rezervováno' },
+	{ name: 'RC auto Monster Truck', cat: 'hracky', prio: 'mid', h: 150, desc: 'Na baterky, do terénu.', links: ['alza.cz'], price: '1 490 Kč', like: 1 },
+	{ name: 'Zimní rukavice Reima', cat: 'obleceni', prio: 'low', h: 320, desc: 'Velikost 6, nepromokavé.', links: ['reima.com'], price: '690 Kč' },
+];
+const LEGO = { name: 'LEGO Technic bagr', cat: 'stavebnice', prio: 'high', h: 45, desc: 'Ten žlutý s ovladačem v aplikaci.', links: ['lego.com', 'alza.cz'], price: '1 899 Kč', like: 4, shared: ['anicka'] };
+const DOBBLE = { name: 'Rodinná hra Dobble', cat: 'hry', prio: 'mid', h: 270, desc: 'Na chalupu, pro celou rodinu.', links: ['albi.cz'], price: '349 Kč', shared: ['anicka', 'petr'], state: 'Rezervováno' };
+const ZOO = { name: 'Vstupenky do zoo Praha', cat: 'zazitky', prio: 'low', h: 110, desc: 'Rodinné vstupné.', links: ['zoopraha.cz'], price: '780 Kč', shared: ['anicka', 'petr', 'ondrej'] };
+
+const formatNames = (names) => {
+	if (names.length === 1) return names[0];
+	if (names.length === 2) return `${names[0]} a ${names[1]}`;
+	if (names.length === 3) return `${names[0]}, ${names[1]} a ${names[2]}`;
+	return `${names[0]}, ${names[1]} a ${names.length - 2} další`;
+};
+let popoverSequence = 0;
+
+/** Compact GiftSharedBadge: icon + first name + „+N“, full list in a disclosure popover. */
+function sharedPillHtml(keys, role, options = {}) {
+	const partners = keys.map((key) => PARTNERS[key]);
+	const names = partners.map((partner) => partner.name);
+	const popoverId = `shared-pop-${++popoverSequence}`;
+	const extra = names.length > 1 ? `<span class="more-count">+${names.length - 1}</span>` : '';
+	const showLinks = role === 'manager';
+	const body = showLinks
+		? `<ul>${partners.map((partner) => `<li><span class="who">${partner.name}</span>${partner.managed ? `<a href="#">${partner.list}${ICON('arrow', 'style="width:12px;height:12px"')}</a>` : `<span class="plain">${partner.list}</span>`}</li>`).join('')}</ul>`
+		: `<p class="names">${formatNames(names)}</p>`;
+	const hint = 'Jeden dárek na více seznamech. Rezervuje se jen jednou.';
+	return `<span class="shared-wrap">
+		<button class="shared-pill" type="button" data-prevent-gift-card-open aria-expanded="${options.open ? 'true' : 'false'}" aria-controls="${popoverId}" aria-label="Společně s: ${formatNames(names)}">
+			${ICON('users')}<span class="first">${names[0]}</span>${extra}
+		</button>
+		<div class="popover${options.below ? ' below' : ''}" id="${popoverId}" role="group" aria-label="Společně s" ${options.open ? '' : 'hidden'}>
+			<h4>Společně s:</h4>${body}<p class="hint">${hint}</p>
+		</div>
+	</span>`;
+}
+
+function categoryHtml(gift) {
+	const category = CATEGORY[gift.cat];
+	return `<span class="cat" style="background:${category.color};color:${category.text}">${category.label}</span>`;
+}
+function imageHtml(gift, context) {
+	const stateClass = context.stateKind ?? '';
+	const stateText = context.stateText ?? (context.role === 'recipient' ? null : gift.state);
+	return `<div class="mat"></div><div class="photo" style="--h:${gift.h}"></div>
+		${stateText ? `<div class="states"><span class="state ${stateClass}">${stateText}</span></div>` : ''}
+		<div class="top-lane">${context.selection ? `<span class="select-box ${context.selected ? 'on' : ''}">${context.selected ? ICON('check') : ''}</span>` : ''}${categoryHtml(gift)}${context.hideLike ? '' : `<span class="like">${HEART}${gift.like ?? ''}</span>`}</div>
+		<span class="prio ${gift.prio}">${PRIORITY[gift.prio]}</span>`;
+}
+function actionsHtml(gift, context) {
+	const more = `<button class="btn icon${context.small ? ' sm' : ''}" type="button" aria-label="Další akce">${ICON('ellipsis')}</button>`;
+	if (context.actions === 'none') return more;
+	if (context.actions === 'cancel') return `<button class="btn${context.small ? ' sm' : ''}" type="button">Zrušit</button>${more}`;
+	if (context.role === 'recipient' || context.role === 'manager') return more;
+	const unavailable = (context.stateText ?? gift.state) && context.actions !== 'reserve';
+	return unavailable ? more : `<button class="btn primary${context.small ? ' sm' : ''}" type="button">Rezervovat</button>${more}`;
+}
+function footHtml(gift, context) {
+	const pill = gift.shared ? sharedPillHtml(gift.shared, context.role, context) : '';
+	return `<div class="foot">${pill}<div class="actions">${actionsHtml(gift, context)}</div></div>`;
+}
+function linksHtml(gift, max = 3) {
+	return `<div class="links">${gift.links.slice(0, max).map((link) => `<a href="#">${link}</a>`).join('')}</div>`;
+}
+function cardHtml(gift, context = {}) {
+	const dim = context.dim || ((context.stateText ?? gift.state) && context.role !== 'recipient' && !context.noDim);
+	return `<article class="card${dim ? ' dim' : ''}${context.selected ? ' selected' : ''}" aria-label="${gift.name}">
+		<div class="img">${imageHtml(gift, context)}</div>
+		<div class="body"><h3>${gift.name}</h3>${gift.desc ? `<p class="desc">${gift.desc}</p>` : ''}${linksHtml(gift)}<div class="price">${gift.price}</div></div>
+		${footHtml(gift, context)}
+	</article>`;
+}
+function rowHtml(gift, context = {}) {
+	const dim = (context.stateText ?? gift.state) && context.role !== 'recipient';
+	return `<article class="row${dim ? ' dim' : ''}">
+		<div class="img">${imageHtml(gift, { ...context, hideLike: true })}</div>
+		<div class="rbody"><div class="title"><h3>${gift.name}</h3><span class="like">${HEART}${gift.like ?? ''}</span></div>
+			${gift.desc ? `<p class="desc">${gift.desc}</p>` : ''}${linksHtml(gift)}<div class="price">${gift.price}</div>
+			${footHtml(gift, context)}</div>
+	</article>`;
+}
+function carouselCardHtml(gift, context = {}) {
+	return `<article class="ccard${gift.state ? ' dim' : ''}">
+		<div class="img" style="border-radius:calc(var(--radius-panel) - var(--border-w)) calc(var(--radius-panel) - var(--border-w)) 0 0">${imageHtml(gift, { ...context, hideLike: true })}</div>
+		<div class="body"><h3>${gift.name}</h3>${linksHtml(gift, 1)}<div class="price">${gift.price}</div></div>
+		${footHtml(gift, { ...context, small: true })}
+	</article>`;
+}
+
+/** „Společná přání“ section: header with count, info disclosure and collapse toggle. */
+function sharedSectionHtml(key, gifts, context, options = {}) {
+	const explainerId = `shared-explainer-${key}`;
+	const bodyId = `shared-body-${key}`;
+	return `<div class="section-head">
+			<h2 id="shared-h-${key}">Společná přání</h2><span class="section-count">${gifts.length === 1 ? '1 dárek' : gifts.length < 5 ? `${gifts.length} dárky` : `${gifts.length} dárků`}</span>
+			<button class="section-tool" type="button" aria-expanded="${options.explain ? 'true' : 'false'}" aria-controls="${explainerId}" aria-label="Co jsou společná přání" data-toggle="${explainerId}">${ICON('info')}</button>
+			<span class="section-rule" aria-hidden="true"></span>
+			<button class="section-tool collapse-tool" type="button" aria-expanded="${options.collapsed ? 'false' : 'true'}" aria-controls="${bodyId}" aria-label="Sbalit společná přání" data-collapse="${bodyId}">${ICON('chevron')}</button>
+		</div>
+		<p class="section-explainer" id="${explainerId}" ${options.explain ? '' : 'hidden'}>${ICON('users', 'style="color:var(--brand-link);margin-top:2px"')}<span>Tyto dárky si Tomáš přeje společně s dalšími. Jsou i na jejich seznamech a stačí je rezervovat jednou.</span></p>
+		<p class="collapsed-summary" data-summary-for="${bodyId}" ${options.collapsed ? '' : 'hidden'}>Sbaleno: ${gifts.map((gift) => gift.name).join(', ')}</p>
+		<div class="section-body" id="${bodyId}" ${options.collapsed ? 'hidden' : ''}><div class="grid">${gifts.map((gift, index) => cardHtml(gift, { ...context, ...(options.contexts?.[index] ?? {}) })).join('')}</div></div>`;
+}
+
+const visitor = { role: 'visitor' };
+document.querySelector('[data-render="own-desktop"]').innerHTML = OWN.map((gift) => cardHtml(gift, visitor)).join('');
+document.querySelector('[data-render="own-phone"]').innerHTML = OWN.slice(0, 2).map((gift) => cardHtml(gift, visitor)).join('');
+document.querySelector('[data-shared-section="desktop"]').innerHTML = sharedSectionHtml('desktop', [LEGO, DOBBLE], visitor, { contexts: [{ open: true }] });
+document.querySelector('[data-shared-section="phone"]').innerHTML = sharedSectionHtml('phone', [LEGO, DOBBLE], visitor, { explain: true });
+document.querySelector('[data-render="list-desktop"]').innerHTML = [LEGO, DOBBLE].map((gift) => rowHtml(gift, visitor)).join('');
+document.querySelector('[data-render="carousel"]').innerHTML = [LEGO, ZOO, DOBBLE].map((gift) => carouselCardHtml(gift, visitor)).join('');
+document.querySelector('[data-render="editor-preview"]').innerHTML = cardHtml(LEGO, { role: 'visitor' });
+
+const STATES = [
+	{ title: 'Návštěvník: jen jména', note: 'Popover odkryje celé „Společně s: Anička a Petr“. Žádné odkazy.', html: cardHtml(DOBBLE, { role: 'visitor', open: true, stateText: 'Rezervováno' }) },
+	{ title: 'Správce: odkazy na seznamy', note: 'Martin spravuje Aniččin seznam (odkaz), Petrův ne (jen název). Štítek na kartě sám odkazem není.', html: cardHtml(DOBBLE, { role: 'manager', open: true, stateText: 'Rezervoval(a) Jana', stateKind: '' }) },
+	{ title: 'Obdarovaný: bez stavu rezervace', note: 'Tomáš vidí kartu i štítek stejně, ať je dárek rezervovaný, nebo ne.', html: cardHtml(DOBBLE, { role: 'recipient' }) },
+	{ title: 'Rezervováno (návštěvník)', note: 'Stav uprostřed obrázku, štítek v patičce; karta v pásmu plně rezervovaných na konci sekce.', html: cardHtml(DOBBLE, { role: 'visitor' }) },
+	{ title: 'Vlastní rezervace: „Vaše rezervace“', note: 'Dárek je v sekci Vaše rezervace a štítek si nese s sebou.', head: 'Vaše rezervace', html: cardHtml(LEGO, { role: 'visitor', stateText: 'Vaše rezervace', stateKind: 'own', actions: 'cancel', noDim: true }) },
+	{ title: 'Obdržené', note: 'Přijatý sdílený dárek přejde do Obdržené, štítek zůstává.', head: 'Obdržené', html: cardHtml(LEGO, { role: 'visitor', stateText: 'Přijato', stateKind: 'received', actions: 'none' }) },
+	{ title: 'Archivovaný jiný seznam', note: 'Aniččiny Vánoce jsou archivované. Štítek beze změny, tady lze dál rezervovat.', html: cardHtml(LEGO, { role: 'visitor' }) },
+	{ title: 'Více obdarovaných: „+N“', note: 'Štítek ukáže první jméno a „+2“; popover a přístupný název mají „Anička, Petr a Ondřej“.', html: cardHtml(ZOO, { role: 'visitor', open: true }) },
+	{ title: 'Výběr / řazení', note: 'Zaškrtávátko před kategorií, štítek na stejném místě. Sekce je cílem přetažení jen pro vlastní dárky.', html: `<div class="section-head"><span class="select-box on">${ICON('check')}</span><h2>Společná přání</h2><span class="section-count">2 dárky</span><span class="section-rule"></span></div><div style="margin-top:8px">${cardHtml(LEGO, { role: 'manager', selection: true, selected: true })}</div>` },
+	{ title: 'Sbalená sekce', note: 'Hlavička s počtem zůstane, karty se schovají. Rozbalení šipkou.', html: sharedSectionHtml('collapsed', [LEGO, DOBBLE], visitor, { collapsed: true }) },
+	{ title: 'Prázdné', note: 'Bez sdílených dárků není sekce ani hlavička.', html: '<div class="empty-demo">Po posledním vlastním dárku nenásleduje nic.</div>' },
+];
+document.getElementById('states').innerHTML = STATES.map((state) => `<figure class="state-panel">
+	<figcaption><strong>${state.title}</strong><span>${state.note}</span></figcaption>
+	${state.head ? `<div class="section-head" style="margin-bottom:8px"><h2>${state.head}</h2><span class="section-count">1 dárek</span><span class="section-rule"></span></div>` : ''}
+	<div style="${state.pad ? `padding-top:${state.pad}px` : ''}">${state.html}</div>
+</figure>`).join('');
+
+/* ── Interactions ── */
+let pinnedPill = null;
+const popoverFor = (pill) => document.getElementById(pill.getAttribute('aria-controls'));
+function setPopover(pill, open) {
+	const popover = popoverFor(pill);
+	if (!popover) return;
+	pill.setAttribute('aria-expanded', String(open));
+	if (open && popover.hidden) { popover.hidden = false; popover.classList.remove('entering'); void popover.offsetWidth; popover.classList.add('entering'); }
+	if (!open) popover.hidden = true;
+}
+document.addEventListener('click', (event) => {
+	const pill = event.target.closest('.shared-pill');
+	if (pill) {
+		event.preventDefault();
+		const open = pill.getAttribute('aria-expanded') !== 'true' || pinnedPill !== pill;
+		document.querySelectorAll('.shared-pill[aria-expanded="true"]').forEach((other) => other !== pill && setPopover(other, false));
+		setPopover(pill, open);
+		pinnedPill = open ? pill : null;
+		return;
+	}
+	if (!event.target.closest('.popover') && pinnedPill) { setPopover(pinnedPill, false); pinnedPill = null; }
+	const toggle = event.target.closest('[data-toggle]');
+	if (toggle) {
+		const target = document.getElementById(toggle.dataset.toggle);
+		target.hidden = !target.hidden;
+		toggle.setAttribute('aria-expanded', String(!target.hidden));
+	}
+	const collapse = event.target.closest('[data-collapse]');
+	if (collapse) {
+		const target = document.getElementById(collapse.dataset.collapse);
+		target.hidden = !target.hidden;
+		collapse.setAttribute('aria-expanded', String(!target.hidden));
+		collapse.setAttribute('aria-label', target.hidden ? 'Rozbalit společná přání' : 'Sbalit společná přání');
+		const summary = document.querySelector(`[data-summary-for="${collapse.dataset.collapse}"]`);
+		if (summary) summary.hidden = !target.hidden;
+	}
+});
+const hoverQuery = matchMedia('(hover: hover)');
+document.addEventListener('pointerover', (event) => {
+	const pill = event.target.closest?.('.shared-pill');
+	if (pill && hoverQuery.matches && event.pointerType === 'mouse') setPopover(pill, true);
+});
+document.addEventListener('pointerout', (event) => {
+	const wrap = event.target.closest?.('.shared-wrap');
+	if (!wrap || wrap.contains(event.relatedTarget)) return;
+	const pill = wrap.querySelector('.shared-pill');
+	if (pill !== pinnedPill && event.pointerType === 'mouse') setPopover(pill, false);
+});
+document.addEventListener('focusin', (event) => { if (event.target.matches('.shared-pill')) setPopover(event.target, true); });
+document.addEventListener('focusout', (event) => {
+	const wrap = event.target.closest('.shared-wrap');
+	if (wrap && !wrap.contains(event.relatedTarget) && wrap.querySelector('.shared-pill') !== pinnedPill) setPopover(wrap.querySelector('.shared-pill'), false);
+});
+document.addEventListener('keydown', (event) => {
+	if (event.key !== 'Escape') return;
+	const open = document.querySelector('.shared-pill[aria-expanded="true"]');
+	if (open) { setPopover(open, false); open.focus(); pinnedPill = null; }
+});
+
+/* Editor picker */
+const ELIGIBLE = [
+	{ id: 'a', title: 'Aniččiny Vánoce', recipient: 'Anička' },
+	{ id: 'o', title: 'Ondrovy Vánoce', recipient: 'Ondřej' },
+	{ id: 'm', title: 'Pro babičku Věru', recipient: 'Věra' },
+].sort((first, second) => first.title.localeCompare(second.title, 'cs'));
+const selected = new Set(['a']);
+const optionsElement = document.querySelector('[data-picker-options]');
+const chipsElement = document.querySelector('[data-picker-chips]');
+const searchElement = document.querySelector('[data-picker-search]');
+function renderPicker() {
+	const query = searchElement.value.trim().toLocaleLowerCase('cs');
+	optionsElement.innerHTML = ELIGIBLE.filter((list) => `${list.title} ${list.recipient}`.toLocaleLowerCase('cs').includes(query)).map((list) => {
+		const on = selected.has(list.id);
+		return `<button class="option" type="button" role="option" aria-selected="${on}" data-list="${list.id}"><span class="check${on ? ' on' : ''}">${on ? ICON('check') : ''}</span><span>${list.title} <span class="recipient">· ${list.recipient}</span></span></button>`;
+	}).join('') || '<p class="help">Žádný seznam neodpovídá hledání.</p>';
+	chipsElement.innerHTML = ELIGIBLE.filter((list) => selected.has(list.id)).map((list) => `<span class="chip">${list.title} · ${list.recipient}<button class="x" type="button" aria-label="Odebrat ${list.title}" data-remove="${list.id}">${ICON('x')}</button></span>`).join('');
+	const names = ELIGIBLE.filter((list) => selected.has(list.id)).map((list) => list.recipient);
+	document.querySelector('[data-summary-value]').textContent = names.length ? names.join(', ') : 'nikým';
+}
+document.getElementById('editor-shared-field').addEventListener('click', (event) => {
+	const option = event.target.closest('[data-list]');
+	const remove = event.target.closest('[data-remove]');
+	const toggle = event.target.closest('[data-toggle-picker]');
+	if (option) { selected.has(option.dataset.list) ? selected.delete(option.dataset.list) : selected.add(option.dataset.list); renderPicker(); optionsElement.querySelector(`[data-list="${option.dataset.list}"]`)?.focus(); }
+	if (remove) { selected.delete(remove.dataset.remove); renderPicker(); }
+	if (toggle) {
+		const picker = document.getElementById('shared-picker');
+		picker.hidden = !picker.hidden;
+		toggle.setAttribute('aria-expanded', String(!picker.hidden));
+		document.querySelector('[data-summary-action]').textContent = picker.hidden ? 'Přidat seznam' : 'Hotovo';
+	}
+});
+searchElement.addEventListener('input', renderPicker);
+renderPicker();
+
+/* Bulk dialog, two steps */
+const BULK_LISTS = [
+	{ id: 'a', title: 'Aniččiny Vánoce', recipient: 'Anička' },
+	{ id: 'o', title: 'Ondrovy Vánoce', recipient: 'Ondřej' },
+];
+const bulkSelected = new Set(['a']);
+const bulkBody = document.querySelector('[data-bulk-body]');
+const bulkFoot = document.querySelector('[data-bulk-foot]');
+function chooseStepHtml() {
+	return `<div class="steps"><span aria-current="step">1. Seznamy</span><span>·</span><span>2. Souhrn</span></div>
+		<span class="label" style="display:block;margin-bottom:6px;font-size:var(--text-sm);font-weight:600" id="bulk-dest">Cílové seznamy</span>
+		<div class="shared-field" style="padding:4px 8px"><div class="options" role="listbox" aria-multiselectable="true" aria-labelledby="bulk-dest" style="margin:0">${BULK_LISTS.map((list) => {
+			const on = bulkSelected.has(list.id);
+			return `<button class="option" type="button" role="option" aria-selected="${on}" data-bulk-list="${list.id}"><span class="check${on ? ' on' : ''}">${on ? ICON('check') : ''}</span><span>${list.title} <span class="recipient">· ${list.recipient}</span></span></button>`;
+		}).join('')}</div></div>
+		<p class="help">Dárky se objeví i na vybraných seznamech a rezervovat je půjde jen jednou. Seznamy, se kterými už dárky sdílíte, zůstanou.</p>`;
+}
+function summaryStepHtml(listIds) {
+	const titles = BULK_LISTS.filter((list) => listIds.has(list.id)).map((list) => list.title).join(' a ');
+	return `<div class="steps"><span>1. Seznamy</span><span>·</span><span aria-current="step">2. Souhrn</span></div>
+		<p style="margin:0;font-size:var(--text-sm)">Sdílet s: <strong>${titles}</strong></p>
+		<div class="summary-group"><h4>Sdílí se</h4><ul class="summary-list"><li>${ICON('check', 'style="color:var(--status-success-text);margin-top:2px"')}<span>4 dárky: Koloběžka Micro Sprite, RC auto Monster Truck, Zimní rukavice Reima, Vstupenky do zoo Praha</span></li></ul></div>
+		<div class="summary-group"><h4>Přidají se kategorie</h4><ul class="summary-list"><li>${ICON('plus', 'style="margin-top:2px"')}<span><strong>Sport</strong> a <strong>Hračky</strong> na seznam Aniččiny Vánoce</span></li></ul></div>
+		<div class="summary-group"><h4>Beze změny</h4><ul class="summary-list"><li>${ICON('info', 'style="color:var(--muted-foreground);margin-top:2px"')}<span>LEGO Technic bagr: už je sdílený s Aniččinými Vánocemi</span></li></ul></div>`;
+}
+const bulkFootChoose = () => `<button class="btn" type="button">Zrušit</button><button class="btn primary" type="button" data-bulk-next ${bulkSelected.size ? '' : 'disabled'}>Pokračovat</button>`;
+const bulkFootSummary = () => `<button class="btn" type="button" data-bulk-back>Zpět</button><button class="btn primary" type="button">Sdílet</button>`;
+function renderBulk(step) {
+	bulkBody.innerHTML = step === 'choose' ? chooseStepHtml() : summaryStepHtml(bulkSelected);
+	bulkFoot.innerHTML = step === 'choose' ? bulkFootChoose() : bulkFootSummary();
+}
+document.getElementById('bulk-dialog').addEventListener('click', (event) => {
+	const option = event.target.closest('[data-bulk-list]');
+	if (option) { bulkSelected.has(option.dataset.bulkList) ? bulkSelected.delete(option.dataset.bulkList) : bulkSelected.add(option.dataset.bulkList); renderBulk('choose'); }
+	if (event.target.closest('[data-bulk-next]')) renderBulk('summary');
+	if (event.target.closest('[data-bulk-back]')) renderBulk('choose');
+});
+renderBulk('choose');
+document.querySelector('[data-bulk-static="summary"]').innerHTML = summaryStepHtml(new Set(['a']));
+document.querySelector('[data-bulk-static-foot="summary"]').innerHTML = bulkFootSummary();
+
+/* Phone frame starts at the shared section, desktop keeps the shared header above the fold. */
+requestAnimationFrame(() => {
+	const phone = document.getElementById('phone-frame');
+	const header = phone.querySelector('[data-shared-section]');
+	phone.scrollTop = header.offsetTop - 120;
+	const editorBody = document.querySelector(".editor .modal-body");
+	editorBody.scrollTop = editorBody.scrollHeight;
+});
+</script>
+</body>
+</html>
