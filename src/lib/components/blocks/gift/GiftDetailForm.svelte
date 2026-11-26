@@ -666,7 +666,7 @@
 			{wishlistId}
 		/>
 		{#if isEdit && gift !== null && gift.linkedCopies.length > 0}
-			<GiftLinkedCopiesSection giftId={gift.id} linkedCopies={gift.linkedCopies} {role} />
+			<GiftLinkedCopiesSection giftId={gift.id} linkedCopies={gift.linkedCopies} />
 		{/if}
 	</fieldset>
 {/snippet}

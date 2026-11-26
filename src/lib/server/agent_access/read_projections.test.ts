@@ -272,6 +272,7 @@ describe('projectAgentWishlistGifts', () => {
 			occasion: 'birthday' as const,
 			status: 'active' as const,
 			editsFrozenFrom: null,
+			viewerManages: true,
 		});
 		const linkedGift = {
 			...recipientGift,

@@ -88,6 +88,8 @@ export interface LinkedGiftCopy {
 	 * freeze it. Reservation-caused freezes stay server-side to protect the surprise.
 	 */
 	editsFrozenFrom: Date | null;
+	/** The viewer manages this copy's wishlist (its recipient or a správce), so may unlink it. */
+	viewerManages: boolean;
 }
 
 /** Shared fields present in every gift view regardless of role. */

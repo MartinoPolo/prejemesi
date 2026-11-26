@@ -22,6 +22,7 @@ const linkedCopies: LinkedGiftCopy[] = [
 		occasion: 'birthday',
 		status: 'active',
 		editsFrozenFrom: null,
+		viewerManages: true,
 	},
 	{
 		giftId: 'copy-2',
@@ -31,6 +32,7 @@ const linkedCopies: LinkedGiftCopy[] = [
 		occasion: 'other',
 		status: 'draft',
 		editsFrozenFrom: null,
+		viewerManages: true,
 	},
 ];
 

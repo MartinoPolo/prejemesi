@@ -22,9 +22,9 @@ import type { DescriptionAppend, GiftWithImages } from './types.js';
 import type { GiftImage } from './gift_images.js';
 import { giftImagesColumn } from '$lib/server/operations/gift_gallery.js';
 import type { RecordGiftRevisions } from '$lib/server/operations/gift_revisions.js';
+import type { MutationOperationContext } from '$lib/server/operations/operation.js';
 import { lockWishlistsInIdOrder } from '$lib/server/operations/wishlist_management.js';
 import {
-	OWN_WISHLIST_LOCK,
 	createLinkGroup,
 	lockLinkedCopies,
 	wishlistsShareRecipient,
@@ -450,22 +450,24 @@ async function linkCopiesWithSources(
 
 /** The transactional part of a copy: revalidates access and the selection under locks, then appends. */
 export async function copyPreparedGifts(
-	transaction: Transaction,
+	context: Pick<MutationOperationContext, 'transaction' | 'heldWishlistLocks'> & {
+		recordGiftRevisions: RecordGiftRevisions;
+	},
 	actorId: string,
 	input: BulkCopyGiftsInput,
 	preparedCopy: Pick<PreparedGiftCopy, 'plans'>,
-	recordRevisions: RecordGiftRevisions,
 ): Promise<{
 	created: GiftWithImages[];
 	linkedIds: string[];
 	destinationShortId: string;
 	sourceShortId: string;
 }> {
+	const { transaction, recordGiftRevisions: recordRevisions } = context;
 	const { plans } = preparedCopy;
 	// An already linked source's group is locked first, in the order every linked edit locks in.
 	await lockLinkedCopies(transaction, input.giftIds, {
 		wishlistIds: [input.sourceWishlistId, input.destinationWishlistId],
-		lock: OWN_WISHLIST_LOCK.exclusive,
+		heldWishlistLocks: context.heldWishlistLocks,
 	});
 	// Copies between two wishlists in opposite directions would otherwise deadlock.
 	await lockWishlistsInIdOrder(transaction, [

@@ -361,8 +361,9 @@ describe('reserveGift', () => {
 
 		const txChain = database as unknown as Record<string, ReturnType<typeof vi.fn>>;
 
-		// The capacity check + insert run inside database.transaction(...).
-		expect(txChain['transaction']).toHaveBeenCalledTimes(1);
+		// The capacity check + insert run inside database.transaction(...); the link group lock
+		// pass adds a savepoint inside it.
+		expect(txChain['transaction']).toHaveBeenCalled();
 		// The gift row is locked with FOR UPDATE so concurrent reservations serialize.
 		expect(txChain['for']).toHaveBeenCalledWith('update');
 	});

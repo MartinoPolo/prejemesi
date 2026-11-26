@@ -3,6 +3,7 @@ import type { DatabaseTransaction } from '$lib/server/db/index.js';
 import type { OperationActor } from './actor.js';
 import type { GiftRevisionChange } from './gift_revisions.js';
 import type { ReservedGiftEdit } from './reserved_gift_edit_notifications.js';
+import type { HeldWishlistLocks } from './gift_link_group.js';
 
 export const OPERATION_KIND = {
 	read: 'read',
@@ -34,6 +35,8 @@ export interface MutationOperationContext {
 	readonly now: Date;
 	readonly batchId: string;
 	readonly dryRun: boolean;
+	/** Wishlists the batch locked before its first step, which a step need not lock again. */
+	readonly heldWishlistLocks: HeldWishlistLocks;
 	recordGiftRevisions(changes: readonly GiftRevisionChange[]): void;
 	/** Coalesced into at most one notification per reserver after the batch commits. */
 	noteReservedGiftEdits(edits: readonly ReservedGiftEdit[]): void;

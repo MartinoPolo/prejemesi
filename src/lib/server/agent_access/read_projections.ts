@@ -215,6 +215,7 @@ function projectAgentLinkedCopies(
 			occasion: linkedCopy.occasion,
 			status: linkedCopy.status,
 			editsFrozenFrom: linkedCopy.editsFrozenFrom,
+			viewerManages: linkedCopy.viewerManages,
 		}));
 }
 

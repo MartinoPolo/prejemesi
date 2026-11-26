@@ -21,6 +21,7 @@
 			occasion: 'birthday',
 			status: 'active',
 			editsFrozenFrom: null,
+			viewerManages: true,
 		},
 		{
 			giftId: 'copy-christmas',
@@ -30,6 +31,7 @@
 			occasion: 'christmas',
 			status: 'draft',
 			editsFrozenFrom: null,
+			viewerManages: true,
 		},
 		{
 			giftId: 'copy-archived',
@@ -41,6 +43,7 @@
 			occasion: 'other',
 			status: 'archived',
 			editsFrozenFrom: null,
+			viewerManages: true,
 		},
 	];
 

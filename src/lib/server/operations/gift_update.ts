@@ -22,8 +22,12 @@ import type { MutationOperationContext } from './operation.js';
 import { replaceGiftGalleries } from './gift_gallery.js';
 import { assertWishlistPriorityLevel, type ManagedWishlist } from './wishlist_management.js';
 import { managerEditNotifiesReservers } from './wishlist_kind_rules.js';
-import { lockedLinkedEditRules, type LinkedEditRules } from './gift_link_group.js';
-import { propagateToLinkedCopies } from './gift_link_group_sync.js';
+import {
+	lockedLinkedEditRules,
+	shouldAppendDescription,
+	type LinkedEditRules,
+} from './gift_link_group.js';
+import { linkedGiftEdit, propagateToLinkedCopies } from './gift_link_group_sync.js';
 import {
 	applyPostShareEditTransparency,
 	deferReplacedImageCleanup,
@@ -124,14 +128,13 @@ function usesAppendEngine(
 	// The strictest linked copy decides for every copy (issue #742).
 	if (
 		(role === WISHLIST_ROLES.recipient && linkedRules.frozenByLinkedCopy) ||
-		(request.appendsDescription === true && linkedRules.appendsByLinkedCopy)
+		(request.appendsDescription === true && shouldAppendDescription(wishlistRow, linkedRules))
 	) {
 		return true;
 	}
 	if (!linkedRules.followsStrictRules) {
 		return input.descriptionAppendEdit !== undefined;
 	}
-	const isShared = wishlistRow.sharedAt !== null;
 	const isPreShareGift =
 		wishlistRow.sharedAt !== null && giftRow.createdAt <= wishlistRow.sharedAt;
 	// Within the initial 2-minute share grace window the recipient regains full edit. Later edits
@@ -147,7 +150,7 @@ function usesAppendEngine(
 		role === WISHLIST_ROLES.recipient &&
 		isPreShareGift &&
 		(!shareGraceOpen || input.descriptionAppendEdit !== undefined);
-	return isPreShareRecipientEdit || (request.appendsDescription === true && isShared);
+	return isPreShareRecipientEdit;
 }
 
 interface PlannedGiftEdit {
@@ -358,11 +361,9 @@ export async function applyGiftUpdate(
 	if (managerEditNotifiesReservers(request.managedWishlist) && didChange) {
 		noteReservedGiftEdit(context, request, updated);
 	}
-	await propagateToLinkedCopies(context, {
-		before: giftRow,
-		after: updated,
-		editorRole: request.managedWishlist.role,
-		restoring: restoring !== undefined,
-	});
+	await propagateToLinkedCopies(
+		context,
+		linkedGiftEdit(giftRow, updated, request.managedWishlist.role, restoring !== undefined),
+	);
 	return { updated, didCategoryChange };
 }

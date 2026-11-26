@@ -27,7 +27,9 @@ import {
 	giftImage as giftImageTable,
 	reservation,
 	giftLike,
+	giftLinkGroup,
 } from './gift.schema.js';
+import { GIFT_LINK_GROUP_KIND } from './enums.js';
 import { moderatorAssignment } from './moderator.schema.js';
 import { claimInvite } from './claim.schema.js';
 import { wishlistFollower } from './follower.schema.js';
@@ -202,6 +204,11 @@ const G_SV_SKLENICE = 'seed-g-sv-sklenice';
 const G_ST_SLUCHATKA = 'seed-g-st-sluchatka';
 const G_ST_HRNEK = 'seed-g-st-hrnek';
 const G_ST_KNIHA = 'seed-g-st-kniha';
+// Linked copies (issue #742): the permanent list's Termohrnek copied to Vánoce and Narozeniny,
+// reserved by Petr on the birthday copy, so správkyně Jana sees it reserved on another list.
+const LINK_GROUP_TERMOHRNEK = 'seed-lg-termohrnek';
+const G_XM_TERMOHRNEK = 'seed-g-xm-termohrnek';
+const G_BD_TERMOHRNEK = 'seed-g-bd-termohrnek';
 // Gifts on the for-someone lists (Rosie / Miminko)
 const G_PANENKA = 'seed-g-panenka';
 const G_ODRAZEDLO = 'seed-g-odrazedlo';
@@ -242,6 +249,7 @@ async function cleanup(db: ReturnType<typeof drizzle>) {
 	await db.execute(sql`DELETE FROM gift_like WHERE id LIKE 'seed-%'`);
 	await db.execute(sql`DELETE FROM reservation WHERE id LIKE 'seed-%'`);
 	await db.execute(sql`DELETE FROM gift WHERE id LIKE 'seed-%'`);
+	await db.execute(sql`DELETE FROM gift_link_group WHERE id LIKE 'seed-%'`);
 	await db.execute(sql`DELETE FROM gift_category WHERE id LIKE 'seed-%'`);
 	await db.execute(sql`DELETE FROM priority_level WHERE id LIKE 'seed-%'`);
 	// moderator_invite FKs to user have no ON DELETE action, so invites created
@@ -773,6 +781,11 @@ async function seed() {
 		// Gifts
 		// ---------------------------------------------------------------
 		console.log('Seeding gifts...');
+		await db.insert(giftLinkGroup).values({
+			id: LINK_GROUP_TERMOHRNEK,
+			kind: GIFT_LINK_GROUP_KIND.linkedCopies,
+			createdAt: d('2026-06-20T10:00:00Z'),
+		});
 		await db.insert(gift).values([
 			// --- Vánoce 2026 (8 gifts) ---
 			{
@@ -957,6 +970,19 @@ async function seed() {
 				createdAt: d('2026-06-21T13:00:00Z'),
 				updatedAt: d('2026-06-21T13:00:00Z'),
 			},
+			{
+				id: G_XM_TERMOHRNEK,
+				wishlistId: WL_XMAS26,
+				name: 'Termohrnek',
+				description: 'Ideálně do 0,5 l.',
+				price: 590,
+				currency: 'CZK',
+				priorityLevelId: plId('xmas26', 'm'),
+				sortOrder: 13,
+				linkGroupId: LINK_GROUP_TERMOHRNEK,
+				createdAt: d('2026-06-20T10:00:00Z'),
+				updatedAt: d('2026-06-20T10:00:00Z'),
+			},
 
 			// --- Narozeniny Martina (5 gifts) ---
 			{
@@ -1014,6 +1040,19 @@ async function seed() {
 				currency: 'CZK',
 				quantity: 2,
 				sortOrder: 4,
+			},
+			{
+				id: G_BD_TERMOHRNEK,
+				wishlistId: WL_BDAY,
+				priorityLevelId: plId('bday', 'm'),
+				name: 'Termohrnek',
+				description: 'Ideálně do 0,5 l.',
+				price: 590,
+				currency: 'CZK',
+				sortOrder: 5,
+				linkGroupId: LINK_GROUP_TERMOHRNEK,
+				createdAt: d('2026-06-20T10:00:00Z'),
+				updatedAt: d('2026-06-20T10:00:00Z'),
 			},
 
 			// --- Nový seznam / draft (3 gifts) ---
@@ -1291,6 +1330,7 @@ async function seed() {
 				currency: 'CZK',
 				priorityLevelId: plId('staly', 'm'),
 				sortOrder: 1,
+				linkGroupId: LINK_GROUP_TERMOHRNEK,
 				createdAt: d('2026-03-25T10:10:00Z'),
 			},
 			{
@@ -1743,6 +1783,9 @@ async function seed() {
 
 			// Co se mi vždycky hodí (permanent) – the reserved gift keeps the strict rules.
 			{ id: 'seed-r-staly-petr', giftId: G_ST_SLUCHATKA, userId: PETR, quantity: 1 },
+
+			// Linked Termohrnek – reserved on the birthday copy, so every copy is fully reserved.
+			{ id: 'seed-r-bday-termohrnek', giftId: G_BD_TERMOHRNEK, userId: PETR, quantity: 1 },
 		]);
 
 		// ---------------------------------------------------------------

@@ -42,8 +42,13 @@ import {
 	type GiftRow,
 	type GiftUpdateData,
 } from './gift_presentation_update.js';
-import { propagateToLinkedCopies } from './gift_link_group_sync.js';
-import { OWN_WISHLIST_LOCK, lockLinkedCopies } from './gift_link_group.js';
+import {
+	fieldSyncsLinkedCopies,
+	linkedGiftEdit,
+	propagateToLinkedCopies,
+	type LinkedCopyPolicyField,
+} from './gift_link_group_sync.js';
+import { lockLinkedCopies } from './gift_link_group.js';
 import { jsonChanged } from '$lib/modules/gifts/gift_post_share.js';
 import type { GiftImage } from '$lib/modules/gifts/gift_images.js';
 import type { ManagedWishlist, WishlistRow } from './wishlist_management.js';
@@ -58,6 +63,24 @@ function bulkJsonbValue(value: unknown) {
 function bulkTimestampValue(value: Date | null) {
 	return value === null ? sql`NULL::timestamptz` : sql`${value.toISOString()}::timestamptz`;
 }
+
+/** The gift field each bulk action writes, which decides whether linked copies follow. */
+const BULK_ACTION_FIELD = {
+	priority: 'priorityLevelId',
+	category: 'categoryIds',
+	addCategory: 'categoryIds',
+	removeCategory: 'categoryIds',
+	imageFit: 'images',
+	imageBackground: 'images',
+	received: 'received',
+	restoreReceived: 'received',
+} as const satisfies Record<BulkUpdateGiftsInput['action'], LinkedCopyPolicyField>;
+
+/** The gift field each grouped reorder move writes. */
+const REORDER_GROUP_FIELD = {
+	[GIFT_GROUPING_OPTIONS.priority]: 'priorityLevelId',
+	[GIFT_GROUPING_OPTIONS.category]: 'categoryIds',
+} as const satisfies Record<GiftReorderGroupField, LinkedCopyPolicyField>;
 
 /** Presentation edits to reserved gifts are coalesced into one notice per reserver. */
 function noteManagerEdits(
@@ -88,8 +111,10 @@ export const reorderGiftsOperation = defineOperation({
 		const { transaction, now } = context;
 		await lockLinkedCopies(
 			transaction,
-			groupChanges.map((change) => change.giftId),
-			{ wishlistIds: [wishlistId], lock: OWN_WISHLIST_LOCK.exclusive },
+			groupChanges
+				.filter((change) => fieldSyncsLinkedCopies(REORDER_GROUP_FIELD[change.field]))
+				.map((change) => change.giftId),
+			{ wishlistIds: [wishlistId], heldWishlistLocks: context.heldWishlistLocks },
 		);
 		const managedWishlist = await requireWishlistManagement(
 			transaction,
@@ -184,12 +209,14 @@ export const reorderGiftsOperation = defineOperation({
 			})),
 		);
 		for (const plan of changedPlans) {
-			await propagateToLinkedCopies(context, {
-				before: plan.giftRow,
-				after: { ...plan.giftRow, ...plan.updateData },
-				editorRole: managedWishlist.role,
-				restoring: false,
-			});
+			await propagateToLinkedCopies(
+				context,
+				linkedGiftEdit(
+					plan.giftRow,
+					{ ...plan.giftRow, ...plan.updateData },
+					managedWishlist.role,
+				),
+			);
 		}
 		noteManagerEdits(
 			context,
@@ -391,10 +418,10 @@ export async function applyBulkGiftUpdate(
 ) {
 	const { transaction, now } = context;
 	const uniqueGiftIds = [...new Set(input.giftIds)];
-	// Priority stays per copy; every other action changes a field linked copies share.
-	await lockLinkedCopies(transaction, input.action === 'priority' ? [] : uniqueGiftIds, {
+	const syncsLinkedCopies = fieldSyncsLinkedCopies(BULK_ACTION_FIELD[input.action]);
+	await lockLinkedCopies(transaction, syncsLinkedCopies ? uniqueGiftIds : [], {
 		wishlistIds: [input.wishlistId],
-		lock: OWN_WISHLIST_LOCK.exclusive,
+		heldWishlistLocks: context.heldWishlistLocks,
 	});
 	const managedWishlist = await requireWishlistManagement(
 		transaction,
@@ -445,13 +472,15 @@ export async function applyBulkGiftUpdate(
 			after: giftRowAfterWrite(plan.row, plan.updateData, plan.nextImages),
 		})),
 	);
-	for (const plan of updatePlans) {
-		await propagateToLinkedCopies(context, {
-			before: plan.row,
-			after: giftRowAfterWrite(plan.row, plan.updateData, plan.nextImages),
-			editorRole: managedWishlist.role,
-			restoring: false,
-		});
+	for (const plan of syncsLinkedCopies ? updatePlans : []) {
+		await propagateToLinkedCopies(
+			context,
+			linkedGiftEdit(
+				plan.row,
+				giftRowAfterWrite(plan.row, plan.updateData, plan.nextImages),
+				managedWishlist.role,
+			),
+		);
 	}
 	noteManagerEdits(
 		context,
@@ -537,11 +566,10 @@ export const bulkCopyGiftsOperation = defineOperation({
 	},
 	async run(context, input, preparedCopy) {
 		const { created, linkedIds, destinationShortId, sourceShortId } = await copyPreparedGifts(
-			context.transaction,
+			context,
 			context.actor.userId,
 			input,
 			preparedCopy,
-			context.recordGiftRevisions,
 		);
 		const removedSourceIds =
 			input.removeUnreservedSources === true

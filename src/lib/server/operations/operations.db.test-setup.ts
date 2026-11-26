@@ -1,5 +1,5 @@
 import { expect, vi } from 'vitest';
-import { eq, like, sql } from 'drizzle-orm';
+import { and, eq, inArray, isNotNull, like, or, sql } from 'drizzle-orm';
 
 vi.mock('$app/server', () => ({
 	getRequestEvent: vi.fn(() => {
@@ -22,7 +22,7 @@ import { closeDb, getDb, type DatabaseTransaction } from '$lib/server/db/index.j
 import { user } from '$lib/server/db/auth.schema.js';
 import { wishlist } from '$lib/server/db/wishlist.schema.js';
 import { moderatorAssignment } from '$lib/server/db/moderator.schema.js';
-import { gift, reservation } from '$lib/server/db/gift.schema.js';
+import { gift, giftLinkGroup, reservation } from '$lib/server/db/gift.schema.js';
 import { giftRevision } from '$lib/server/db/gift_revision.schema.js';
 import type { WishlistKind } from '$lib/modules/wishlists/types.js';
 import { occasionAfterKindWrite } from '$lib/modules/wishlists/wishlist_occasion.js';
@@ -118,6 +118,16 @@ export async function removeFixtureRows(): Promise<void> {
 	if (!DB_READY) {
 		return;
 	}
+	const fixtureLinkGroups = getDb()
+		.selectDistinct({ linkGroupId: gift.linkGroupId })
+		.from(gift)
+		.where(and(like(gift.wishlistId, `${PREFIX}%`), isNotNull(gift.linkGroupId)));
+	// Groups the fixtures or this file's operations created; parallel files own the rest.
+	await getDb()
+		.delete(giftLinkGroup)
+		.where(
+			or(like(giftLinkGroup.id, `${PREFIX}%`), inArray(giftLinkGroup.id, fixtureLinkGroups)),
+		);
 	await getDb()
 		.delete(wishlist)
 		.where(like(wishlist.id, `${PREFIX}%`));

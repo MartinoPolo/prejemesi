@@ -3,11 +3,14 @@ import { describe, expect, it } from 'vitest';
 import { page } from 'vitest/browser';
 import { render } from 'vitest-browser-svelte';
 import type { LinkedGiftCopy } from '$lib/modules/gifts/types.js';
-import { WISHLIST_ROLES } from '$lib/modules/wishlists/types.js';
 import * as m from '$lib/paraglide/messages.js';
 import GiftLinkedCopiesSection from './GiftLinkedCopiesSection.svelte';
 
-function copy(title: string, status: LinkedGiftCopy['status']): LinkedGiftCopy {
+function copy(
+	title: string,
+	status: LinkedGiftCopy['status'],
+	viewerManages = true,
+): LinkedGiftCopy {
 	return {
 		giftId: `gift-${title}`,
 		wishlistId: `wishlist-${title}`,
@@ -16,6 +19,7 @@ function copy(title: string, status: LinkedGiftCopy['status']): LinkedGiftCopy {
 		occasion: 'birthday',
 		status,
 		editsFrozenFrom: null,
+		viewerManages,
 	};
 }
 
@@ -28,7 +32,6 @@ describe('GiftLinkedCopiesSection', () => {
 		const screen = await render(GiftLinkedCopiesSection, {
 			giftId: 'gift-edited',
 			linkedCopies: [copy('Narozeniny', 'active')],
-			role: WISHLIST_ROLES.moderator,
 		});
 		const section = screen.getByRole('region', { name: m.gift_linked_copies_title() });
 		await expect.element(section.getByRole('link', { name: 'Narozeniny' })).toBeVisible();
@@ -44,7 +47,6 @@ describe('GiftLinkedCopiesSection', () => {
 		const screen = await render(GiftLinkedCopiesSection, {
 			giftId: 'gift-edited',
 			linkedCopies: [copy('Narozeniny', 'active')],
-			role: WISHLIST_ROLES.moderator,
 		});
 		await unlinkButton('Narozeniny').click();
 		const confirm = page.getByRole('dialog', { name: m.gift_unlink_confirm_title() });
@@ -56,23 +58,27 @@ describe('GiftLinkedCopiesSection', () => {
 		await screen.unmount();
 	});
 
-	it('offers per-list unlinking in a larger group only to the recipient and never for an archived list', async () => {
-		const linkedCopies = [copy('Narozeniny', 'active'), copy('Archiv', 'archived')];
-		const moderatorView = await render(GiftLinkedCopiesSection, {
+	it('lets the editor unlink a pair even when the other list is not theirs', async () => {
+		const screen = await render(GiftLinkedCopiesSection, {
 			giftId: 'gift-edited',
-			linkedCopies,
-			role: WISHLIST_ROLES.moderator,
-		});
-		await expect.element(unlinkButton('Narozeniny')).not.toBeInTheDocument();
-		await moderatorView.unmount();
-
-		const recipientView = await render(GiftLinkedCopiesSection, {
-			giftId: 'gift-edited',
-			linkedCopies,
-			role: WISHLIST_ROLES.recipient,
+			linkedCopies: [copy('Narozeniny', 'active', false)],
 		});
 		await expect.element(unlinkButton('Narozeniny')).toBeVisible();
+		await screen.unmount();
+	});
+
+	it('offers per-list unlinking in a larger group only on non-archived lists the viewer manages', async () => {
+		const screen = await render(GiftLinkedCopiesSection, {
+			giftId: 'gift-edited',
+			linkedCopies: [
+				copy('Narozeniny', 'active'),
+				copy('Cizí', 'active', false),
+				copy('Archiv', 'archived'),
+			],
+		});
+		await expect.element(unlinkButton('Narozeniny')).toBeVisible();
+		await expect.element(unlinkButton('Cizí')).not.toBeInTheDocument();
 		await expect.element(unlinkButton('Archiv')).not.toBeInTheDocument();
-		await recipientView.unmount();
+		await screen.unmount();
 	});
 });

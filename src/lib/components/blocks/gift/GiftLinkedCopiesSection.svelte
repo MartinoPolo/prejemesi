@@ -9,7 +9,6 @@
 	import type { LinkedGiftCopy } from '$lib/modules/gifts/types.js';
 	import { WISHLIST_STATUS_LABELS } from '$lib/modules/wishlists/dashboard_types.js';
 	import { occasionDisplayLabel } from '$lib/modules/wishlists/wishlist_occasion_display.js';
-	import { WISHLIST_ROLES, type WishlistRole } from '$lib/modules/wishlists/types.js';
 	import * as m from '$lib/paraglide/messages.js';
 	import GiftUnlinkConfirmDialog from './GiftUnlinkConfirmDialog.svelte';
 
@@ -17,7 +16,6 @@
 		/** The edited gift. */
 		giftId: string;
 		linkedCopies: readonly LinkedGiftCopy[];
-		role: WishlistRole;
 	}
 
 	interface UnlinkTarget {
@@ -25,22 +23,22 @@
 		wishlistTitle: string;
 	}
 
-	let { giftId, linkedCopies, role }: Props = $props();
+	let { giftId, linkedCopies }: Props = $props();
 
 	const headingId = $props.id();
 	let unlinkTarget = $state<UnlinkTarget | null>(null);
 	let unlinkOpen = $state(false);
 
 	/**
-	 * Unlinking needs management of the copy's own list. Unlinking either member of a pair
-	 * dissolves it, so a pair always unlinks the edited gift; in a larger group only the recipient
-	 * is known to manage every other copy, and an archived list accepts no change.
+	 * Unlinking needs management of the unlinked copy's list. Unlinking either member of a pair
+	 * dissolves it, so a pair unlinks the edited gift; in a larger group each copy on a list the
+	 * viewer manages unlinks itself, except on an archived list, which accepts no change.
 	 */
 	function unlinkTargetFor(copy: LinkedGiftCopy): UnlinkTarget | null {
 		if (linkedCopies.length === 1) {
 			return { giftId, wishlistTitle: copy.wishlistTitle };
 		}
-		if (role === WISHLIST_ROLES.recipient && copy.status !== 'archived') {
+		if (copy.viewerManages && copy.status !== 'archived') {
 			return { giftId: copy.giftId, wishlistTitle: copy.wishlistTitle };
 		}
 		return null;

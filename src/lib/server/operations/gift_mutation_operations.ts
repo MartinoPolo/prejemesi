@@ -1,7 +1,6 @@
 import * as v from 'valibot';
 import { and, eq, isNull } from 'drizzle-orm';
 import { error } from '@sveltejs/kit';
-import type { DatabaseTransaction } from '$lib/server/db/index.js';
 import { gift } from '$lib/server/db/gift.schema.js';
 import { rejectDemoGiftImages } from '$lib/server/demo/scope.js';
 import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
@@ -15,22 +14,28 @@ import {
 import { requestedGiftCategoryIds } from '$lib/modules/gift-categories/gift_category_assignment.js';
 import { appendGiftsUsingTransaction } from '$lib/modules/gifts/gift_creation_service.js';
 import { mapGiftCreationError } from '$lib/modules/gifts/gift_creation_transport.js';
-import { OPERATION_EXPOSURE, OPERATION_KIND, defineOperation } from './operation.js';
+import {
+	OPERATION_EXPOSURE,
+	OPERATION_KIND,
+	defineOperation,
+	type MutationOperationContext,
+} from './operation.js';
 import {
 	KEY_SHARE_WISHLIST_LOCK,
+	WISHLIST_ROW_LOCK,
 	requireWishlistManagement,
 	type ManagedWishlist,
 } from './wishlist_management.js';
 import { applyGiftUpdate } from './gift_update.js';
-import { propagateToLinkedCopies } from './gift_link_group_sync.js';
+import { linkedGiftEdit, propagateToLinkedCopies } from './gift_link_group_sync.js';
 import type { GiftRow } from './gift_presentation_update.js';
 import { softDeleteGift } from './gift_deletion.js';
 import { giftColumnsWithImages } from './gift_gallery.js';
 import {
-	OWN_WISHLIST_LOCK,
 	leaveLinkGroup,
 	lockLinkedCopies,
 	lockedLinkedEditRules,
+	shouldAppendDescription,
 } from './gift_link_group.js';
 
 /**
@@ -40,10 +45,10 @@ import {
  * locked first, in the same order, because the edit writes them too.
  */
 async function lockManagedGift(
-	transaction: DatabaseTransaction,
-	actorUserId: string,
+	context: Pick<MutationOperationContext, 'transaction' | 'actor' | 'heldWishlistLocks'>,
 	giftId: string,
 ): Promise<{ giftRow: GiftRow; managedWishlist: ManagedWishlist }> {
+	const { transaction } = context;
 	const activeGift = and(eq(gift.id, giftId), isNull(gift.deletedAt));
 	const [unlockedGift] = await transaction
 		.select({ wishlistId: gift.wishlistId })
@@ -55,11 +60,12 @@ async function lockManagedGift(
 	}
 	await lockLinkedCopies(transaction, [giftId], {
 		wishlistIds: [unlockedGift.wishlistId],
-		lock: OWN_WISHLIST_LOCK.keyShare,
+		lock: WISHLIST_ROW_LOCK.keyShare,
+		heldWishlistLocks: context.heldWishlistLocks,
 	});
 	const managedWishlist = await requireWishlistManagement(
 		transaction,
-		actorUserId,
+		context.actor.userId,
 		unlockedGift.wishlistId,
 		{ lock: KEY_SHARE_WISHLIST_LOCK },
 	);
@@ -125,11 +131,7 @@ export const updateGiftOperation = defineOperation({
 	isolatedGiftId: (input) => input.id,
 	async run(context, input) {
 		rejectDemoGiftImages([input]);
-		const { giftRow, managedWishlist } = await lockManagedGift(
-			context.transaction,
-			context.actor.userId,
-			input.id,
-		);
+		const { giftRow, managedWishlist } = await lockManagedGift(context, input.id);
 		const { updated, didCategoryChange } = await applyGiftUpdate(context, {
 			giftRow,
 			managedWishlist,
@@ -159,11 +161,7 @@ export const appendGiftDescriptionOperation = defineOperation({
 	}),
 	isolatedGiftId: (input) => input.giftId,
 	async run(context, input) {
-		const { giftRow, managedWishlist } = await lockManagedGift(
-			context.transaction,
-			context.actor.userId,
-			input.giftId,
-		);
+		const { giftRow, managedWishlist } = await lockManagedGift(context, input.giftId);
 		const { wishlistRow } = managedWishlist;
 		const linkedRules = await lockedLinkedEditRules(
 			context.transaction,
@@ -171,9 +169,7 @@ export const appendGiftDescriptionOperation = defineOperation({
 			wishlistRow,
 			context.now,
 		);
-		const appendsSegment =
-			(wishlistRow.sharedAt !== null && linkedRules.followsStrictRules) ||
-			linkedRules.appendsByLinkedCopy;
+		const appendsSegment = shouldAppendDescription(wishlistRow, linkedRules);
 		const currentDescription = giftRow.description?.trim() ?? '';
 		const description =
 			appendsSegment || currentDescription === ''
@@ -195,11 +191,7 @@ export const deleteGiftOperation = defineOperation({
 	exposure: OPERATION_EXPOSURE.agent,
 	input: v.strictObject({ giftId: v.string() }),
 	async run(context, input) {
-		const { giftRow, managedWishlist } = await lockManagedGift(
-			context.transaction,
-			context.actor.userId,
-			input.giftId,
-		);
+		const { giftRow, managedWishlist } = await lockManagedGift(context, input.giftId);
 		await softDeleteGift(context, giftRow, managedWishlist);
 		return {
 			wishlistId: giftRow.wishlistId,
@@ -216,11 +208,7 @@ export const markGiftReceivedOperation = defineOperation({
 	input: MarkGiftReceivedInputSchema,
 	isolatedGiftId: (input) => input.giftId,
 	async run(context, input) {
-		const { giftRow, managedWishlist } = await lockManagedGift(
-			context.transaction,
-			context.actor.userId,
-			input.giftId,
-		);
+		const { giftRow, managedWishlist } = await lockManagedGift(context, input.giftId);
 		const [updatedColumns] = await context.transaction
 			.update(gift)
 			.set({ received: input.received, updatedAt: context.now })
@@ -239,12 +227,10 @@ export const markGiftReceivedOperation = defineOperation({
 					after: updated,
 				},
 			]);
-			await propagateToLinkedCopies(context, {
-				before: giftRow,
-				after: updated,
-				editorRole: managedWishlist.role,
-				restoring: false,
-			});
+			await propagateToLinkedCopies(
+				context,
+				linkedGiftEdit(giftRow, updated, managedWishlist.role),
+			);
 		}
 		return { gift: updated, wishlistShortId: managedWishlist.wishlistRow.shortId };
 	},
@@ -260,11 +246,7 @@ export const unlinkGiftOperation = defineOperation({
 	exposure: OPERATION_EXPOSURE.agent,
 	input: v.strictObject({ giftId: v.string() }),
 	async run(context, input) {
-		const { giftRow, managedWishlist } = await lockManagedGift(
-			context.transaction,
-			context.actor.userId,
-			input.giftId,
-		);
+		const { giftRow, managedWishlist } = await lockManagedGift(context, input.giftId);
 		if (giftRow.linkGroupId === null) {
 			error(400, SERVER_ERROR.GIFT_NOT_LINKED);
 		}

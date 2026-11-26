@@ -25,6 +25,7 @@ import { requireOperationActor, type OperationActor } from './actor.js';
 import {
 	listedLinkedCopies,
 	loadLinkedSiblingsOnWishlist,
+	loadViewerManagedWishlistIds,
 	wishlistsShareRecipient,
 	type LinkGroupMember,
 } from './gift_link_group.js';
@@ -82,8 +83,9 @@ function toRecipientGift(row: GiftReadRow, linkedCopies: LinkedGiftCopy[]): Gift
 function readableLinkedCopies(
 	role: WishlistRole,
 	siblings: readonly LinkGroupMember[],
+	managedWishlistIds: ReadonlySet<string>,
 ): LinkedGiftCopy[] {
-	return role === WISHLIST_ROLES.visitor ? [] : listedLinkedCopies(siblings);
+	return role === WISHLIST_ROLES.visitor ? [] : listedLinkedCopies(siblings, managedWishlistIds);
 }
 
 interface ReservationSummary {
@@ -233,6 +235,8 @@ function linkedCopiesWithVisibleReservations(
 interface VisitorGiftReadings {
 	role: WishlistRole;
 	linkedSiblingsByGiftId: Map<string, LinkGroupMember[]>;
+	/** Wishlists of linked copies the viewer manages. */
+	managedLinkedWishlistIds: ReadonlySet<string>;
 	countedLinkedCopiesByGiftId: Map<string, readonly LinkGroupMember[]>;
 	reservationSummaries: Map<string, ReservationSummary>;
 	likeCounts: Map<string, number>;
@@ -258,7 +262,10 @@ function toVisitorGift(row: GiftReadRow, readings: VisitorGiftReadings): GiftFor
 			.map((member) => readings.viewerReservations.get(member.giftId))
 			.find((linkedReservation) => linkedReservation !== undefined);
 	return {
-		...toRecipientGift(row, readableLinkedCopies(readings.role, siblings)),
+		...toRecipientGift(
+			row,
+			readableLinkedCopies(readings.role, siblings, readings.managedLinkedWishlistIds),
+		),
 		likeCount: readings.likeCounts.get(row.id) ?? 0,
 		reservedCount,
 		isFullyReserved: reservedCount >= (row.quantity ?? 1),
@@ -298,6 +305,14 @@ export const readWishlistGiftsOperation = defineOperation({
 		]);
 		// Link group ids stay server-side; readers get the linked copies their role may see.
 		const linkedSiblingsByGiftId = await loadLinkedSiblingsOnWishlist(database, wishlistRow.id);
+		const managedLinkedWishlistIds =
+			actor === null || role === WISHLIST_ROLES.visitor
+				? new Set<string>()
+				: await loadViewerManagedWishlistIds(
+						database,
+						actor.userId,
+						[...linkedSiblingsByGiftId.values()].flat(),
+					);
 
 		const viewer: ReservationViewer = {
 			role,
@@ -319,7 +334,11 @@ export const readWishlistGiftsOperation = defineOperation({
 			const recipientGifts: GiftForRecipient[] = giftRows.map((row) =>
 				toRecipientGift(
 					row,
-					readableLinkedCopies(role, linkedSiblingsByGiftId.get(row.id) ?? []),
+					readableLinkedCopies(
+						role,
+						linkedSiblingsByGiftId.get(row.id) ?? [],
+						managedLinkedWishlistIds,
+					),
 				),
 			);
 			return { role, gifts: recipientGifts } as const;
@@ -339,6 +358,7 @@ export const readWishlistGiftsOperation = defineOperation({
 		const readings: VisitorGiftReadings = {
 			role,
 			linkedSiblingsByGiftId,
+			managedLinkedWishlistIds,
 			countedLinkedCopiesByGiftId,
 			reservationSummaries,
 			likeCounts,
