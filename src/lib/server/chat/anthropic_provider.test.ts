@@ -93,6 +93,75 @@ const RECORDED_TOOL_TURN = sse([
 	{ type: 'message_stop' },
 ]);
 
+const RECORDED_FETCH_TURN = sse([
+	{
+		type: 'message_start',
+		message: { id: 'msg_02', type: 'message', role: 'assistant', content: [], model: 'claude' },
+	},
+	{
+		type: 'content_block_start',
+		index: 0,
+		content_block: { type: 'server_tool_use', id: 'srvtoolu_02', name: 'web_fetch', input: {} },
+	},
+	{
+		type: 'content_block_delta',
+		index: 0,
+		delta: {
+			type: 'input_json_delta',
+			partial_json: '{"url": "https://www.alza.cz/sony-wh-1000xm5"}',
+		},
+	},
+	{ type: 'content_block_stop', index: 0 },
+	{
+		type: 'content_block_start',
+		index: 1,
+		content_block: {
+			type: 'web_fetch_tool_result',
+			tool_use_id: 'srvtoolu_02',
+			content: {
+				type: 'web_fetch_result',
+				url: 'https://www.alza.cz/sony-wh-1000xm5',
+				content: {
+					type: 'document',
+					source: { type: 'text', media_type: 'text/plain', data: 'Cena 7 990 Kč' },
+					title: 'Sony WH-1000XM5',
+				},
+				retrieved_at: '2026-11-26T10:00:00Z',
+			},
+		},
+	},
+	{ type: 'content_block_stop', index: 1 },
+	{
+		type: 'content_block_start',
+		index: 2,
+		content_block: {
+			type: 'server_tool_use',
+			id: 'srvtoolu_03',
+			name: 'future_tool',
+			input: {},
+		},
+	},
+	{
+		type: 'content_block_delta',
+		index: 2,
+		delta: { type: 'input_json_delta', partial_json: '{"anything": ' },
+	},
+	{ type: 'content_block_stop', index: 2 },
+	{ type: 'content_block_start', index: 3, content_block: { type: 'text', text: '' } },
+	{
+		type: 'content_block_delta',
+		index: 3,
+		delta: { type: 'text_delta', text: 'Stojí 7 990 Kč.' },
+	},
+	{ type: 'content_block_stop', index: 3 },
+	{
+		type: 'message_delta',
+		delta: { stop_reason: 'end_turn', stop_sequence: null },
+		usage: { output_tokens: 42 },
+	},
+	{ type: 'message_stop' },
+]);
+
 const request: ChatModelRequest = {
 	system: 'Jste asistent.',
 	maxOutputTokens: 1024,
@@ -148,7 +217,7 @@ async function collect(events: AsyncIterable<ChatModelEvent>): Promise<ChatModel
 }
 
 describe('Anthropic provider', () => {
-	it('sends the conversation as a streamed Messages request with the provider web search', async () => {
+	it('sends the conversation as a streamed Messages request with the provider web search and page fetch', async () => {
 		const sent: { url: string; init: RequestInit }[] = [];
 		const provider = createAnthropicProvider({
 			apiKey: 'test-key',
@@ -195,7 +264,13 @@ describe('Anthropic provider', () => {
 			],
 			tools: [
 				{ name: 'updateGift', input_schema: { type: 'object' } },
-				{ type: 'web_search_20250305', name: 'web_search' },
+				{ type: 'web_search_20250305', name: 'web_search', max_uses: 5 },
+				{
+					type: 'web_fetch_20250910',
+					name: 'web_fetch',
+					max_uses: 5,
+					max_content_tokens: 20000,
+				},
 			],
 		});
 	});
@@ -210,7 +285,7 @@ describe('Anthropic provider', () => {
 		expect(await collect(provider.stream(request, new AbortController().signal))).toEqual([
 			{ type: CHAT_MODEL_EVENT.textDelta, text: 'Hledám ' },
 			{ type: CHAT_MODEL_EVENT.textDelta, text: 'cenu.' },
-			{ type: CHAT_MODEL_EVENT.webSearch, query: 'Sony WH-1000XM5 cena' },
+			{ type: CHAT_MODEL_EVENT.webTool, name: 'web_search', query: 'Sony WH-1000XM5 cena' },
 			{
 				type: CHAT_MODEL_EVENT.toolCall,
 				id: 'toolu_01',
@@ -218,6 +293,24 @@ describe('Anthropic provider', () => {
 				input: { id: 'gift-1', price: 7990 },
 			},
 			{ type: CHAT_MODEL_EVENT.stop, reason: CHAT_STOP_REASON.toolUse },
+		]);
+	});
+
+	it('streams a page fetch with its URL and skips server tools it does not know', async () => {
+		const provider = createAnthropicProvider({
+			apiKey: 'test-key',
+			model: 'claude-sonnet-5-5',
+			fetch: async () => streamedResponse(RECORDED_FETCH_TURN),
+		});
+
+		expect(await collect(provider.stream(request, new AbortController().signal))).toEqual([
+			{
+				type: CHAT_MODEL_EVENT.webTool,
+				name: 'web_fetch',
+				query: 'https://www.alza.cz/sony-wh-1000xm5',
+			},
+			{ type: CHAT_MODEL_EVENT.textDelta, text: 'Stojí 7 990 Kč.' },
+			{ type: CHAT_MODEL_EVENT.stop, reason: CHAT_STOP_REASON.endTurn },
 		]);
 	});
 

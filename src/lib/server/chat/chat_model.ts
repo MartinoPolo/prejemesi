@@ -1,4 +1,4 @@
-import type { ChatRole } from '$lib/modules/chat/types.js';
+import type { ChatRole, ChatWebToolName } from '$lib/modules/chat/types.js';
 
 export { CHAT_ROLE, type ChatRole } from '$lib/modules/chat/types.js';
 
@@ -52,15 +52,15 @@ export type ChatStopReason = (typeof CHAT_STOP_REASON)[keyof typeof CHAT_STOP_RE
 export const CHAT_MODEL_EVENT = {
 	textDelta: 'textDelta',
 	toolCall: 'toolCall',
-	webSearch: 'webSearch',
+	webTool: 'webTool',
 	stop: 'stop',
 } as const;
 
 export type ChatModelEvent =
 	| { type: typeof CHAT_MODEL_EVENT.textDelta; text: string }
 	| { type: typeof CHAT_MODEL_EVENT.toolCall; id: string; name: string; input: unknown }
-	/** The provider's own web search started; `query` is null until the provider names it. */
-	| { type: typeof CHAT_MODEL_EVENT.webSearch; query: string | null }
+	/** The provider's own web tool started; `query` (search query or page URL) may be unknown. */
+	| { type: typeof CHAT_MODEL_EVENT.webTool; name: ChatWebToolName; query: string | null }
 	| { type: typeof CHAT_MODEL_EVENT.stop; reason: ChatStopReason };
 
 /** A model behind the chat: streams one response to the conversation so far. */

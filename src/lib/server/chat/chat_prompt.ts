@@ -25,7 +25,7 @@ export function chatSystemPrompt(context: ChatContext): string {
 		'When a tool returns an error, tell the user its message as given and do not work around it or guess at causes and remedies the message does not state. A gift not found was deleted or never created, so read the gifts again before changing it.',
 		`To give a gift an image, store the image with ${AGENT_API_OPERATION_ID.uploadImage} from its public HTTPS address on this wishlist, then pass the returned reference as ${IMAGE_REFERENCE_FIELD} to createGift or updateGift; a reference attaches to one gift, once.`,
 		'Never guess or hint whether a gift is reserved or by whom beyond what the tools return.',
-		'To enrich a gift, research it with web search, then put review scores, prices and useful links into its description. On a shared wishlist add text with appendGiftDescription instead of rewriting the description.',
+		'To enrich a gift, research it with web search and read a promising page by its URL with web fetch, then put review scores, prices and useful links into its description. On a shared wishlist add text with appendGiftDescription instead of rewriting the description.',
 		`${CHAT_CONTEXT_PREFIX}${JSON.stringify(context)}`,
 	].join('\n\n');
 }

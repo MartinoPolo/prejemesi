@@ -2,7 +2,7 @@ import { json } from '@sveltejs/kit';
 import * as v from 'valibot';
 import { reportOperationalFailure } from '$lib/observability/operational_failures.js';
 import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
-import { CHAT_STREAM_EVENT, type ChatStreamEvent } from '$lib/modules/chat/types.js';
+import { CHAT_STREAM_EVENT, CHAT_WEB_TOOL, type ChatStreamEvent } from '$lib/modules/chat/types.js';
 import { isDatabaseConnectionClosed } from '$lib/server/db/connection_errors.js';
 import { generateId } from '$lib/server/db/id.js';
 import { sha256Hex } from '$lib/server/crypto/sha256.js';
@@ -52,7 +52,7 @@ export interface ChatRunnerEvent {
 }
 
 /** The web tools Claude Code reports; the chat's own tools are reported by their endpoint. */
-const RUNNER_WEB_TOOL_NAMES = ['web_search', 'web_fetch'] as const;
+const RUNNER_WEB_TOOL_NAMES = [CHAT_WEB_TOOL.search, CHAT_WEB_TOOL.fetch] as const;
 
 const NO_STORE = { 'cache-control': 'no-store' };
 
