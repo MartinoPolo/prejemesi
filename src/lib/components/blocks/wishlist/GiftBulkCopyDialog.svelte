@@ -29,6 +29,9 @@
 		offerSourceRemoval?: boolean;
 		removeSources?: boolean;
 		onremovesourceschange?: (removeSources: boolean) => void;
+		/** Links each copy with its source; a destination of another recipient cannot link. */
+		linkCopies?: boolean;
+		onlinkcopieschange?: (linkCopies: boolean) => void;
 		onconfirm: () => void;
 	}
 
@@ -45,6 +48,8 @@
 		offerSourceRemoval = false,
 		removeSources = false,
 		onremovesourceschange,
+		linkCopies = true,
+		onlinkcopieschange,
 		onconfirm,
 	}: Props = $props();
 	let viewportWidth = $state(1024);
@@ -61,6 +66,10 @@
 	const selectedDestination = $derived(
 		destinations.find((destination) => destination.id === selectedDestinationId),
 	);
+	const linkUnavailable = $derived(
+		!creatingDestination && selectedDestination?.linkable === false,
+	);
+	const linking = $derived(linkCopies && !linkUnavailable);
 	const selectedDestinationLabel = $derived(
 		creatingDestination
 			? m.gift_bulk_copy_new_destination()
@@ -133,6 +142,25 @@
 					</Select.Content>
 				</Select.Root>
 			</div>
+			{#if selectedDestinationId !== ''}
+				<div class="grid gap-1">
+					<div class="flex items-center gap-2">
+						<Checkbox
+							id="bulk-copy-link-copies"
+							checked={linking}
+							disabled={submitting || linkUnavailable}
+							aria-describedby="bulk-copy-link-copies-help"
+							onCheckedChange={(checked) => onlinkcopieschange?.(checked === true)}
+						/>
+						<Label for="bulk-copy-link-copies">{m.gift_bulk_copy_link()}</Label>
+					</div>
+					<HelpText id="bulk-copy-link-copies-help">
+						{linkUnavailable
+							? m.gift_bulk_copy_link_unavailable()
+							: m.gift_bulk_copy_link_help()}
+					</HelpText>
+				</div>
+			{/if}
 			{#if offerSourceRemoval}
 				<div class="grid gap-1">
 					<div class="flex items-center gap-2">
@@ -148,7 +176,9 @@
 						>
 					</div>
 					<HelpText id="bulk-copy-remove-sources-help">
-						{m.gift_bulk_copy_remove_sources_help()}
+						{moving && linking
+							? m.gift_bulk_copy_remove_sources_linked_help()
+							: m.gift_bulk_copy_remove_sources_help()}
 					</HelpText>
 				</div>
 			{/if}

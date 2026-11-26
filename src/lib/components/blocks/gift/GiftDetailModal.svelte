@@ -45,6 +45,8 @@
 		isArchived?: boolean;
 		hideReservationState?: boolean;
 		postShareLocked?: boolean;
+		/** Title of the shared linked copy whose list froze the name, when that copy froze it. */
+		frozenByLinkedCopyTitle?: string | null;
 		canDelete?: boolean;
 		graceExpiresAt?: Date | null;
 		graceMessage?: (inputs: { time: string }) => string;
@@ -76,6 +78,7 @@
 		isArchived = false,
 		hideReservationState = false,
 		postShareLocked = false,
+		frozenByLinkedCopyTitle = null,
 		canDelete = true,
 		graceExpiresAt = null,
 		graceMessage = m.gift_grace_hint,
@@ -254,6 +257,7 @@
 			{role}
 			{hideReservationState}
 			{postShareLocked}
+			{frozenByLinkedCopyTitle}
 			{canDelete}
 			{graceExpiresAt}
 			{graceMessage}

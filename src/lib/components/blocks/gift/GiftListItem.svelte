@@ -17,6 +17,7 @@
 	import GiftPriorityBadge from './GiftPriorityBadge.svelte';
 	import GiftCategoryBadges from './GiftCategoryBadges.svelte';
 	import GiftLinkList from './GiftLinkList.svelte';
+	import GiftLinkChip from './GiftLinkChip.svelte';
 	import GiftLivePreviewBadge from './GiftLivePreviewBadge.svelte';
 	import GiftGalleryCountChip from './GiftGalleryCountChip.svelte';
 	import { GIFT_LIVE_PREVIEW } from '$lib/components/blocks/change-proposals/change_row_model.js';
@@ -40,6 +41,7 @@
 		onreceived,
 		receivedPending = false,
 		onmore,
+		oneditlinkedcopies,
 		persistentMore = onmore !== undefined,
 		moreOpen = false,
 		moreSurface = 'menu',
@@ -52,7 +54,10 @@
 	const isEditorPreview = $derived(editorImage !== undefined);
 
 	const previewMarks = $derived(giftLivePreviewMarks(livePreview));
-	const showsTopRow = $derived(gift.categories.length > 0 || previewMarks.proposed);
+	const showsLinkChip = $derived(role !== 'visitor' && gift.linkedCopies.length > 0);
+	const showsTopRow = $derived(
+		gift.categories.length > 0 || previewMarks.proposed || showsLinkChip,
+	);
 
 	const giftsContext = useGifts();
 
@@ -252,6 +257,13 @@
 					data-clears-count-chip={additionalImageCount > 0 || undefined}
 					inert={isEditorPreview}
 				>
+					{#if showsLinkChip}
+						<GiftLinkChip
+							linkedCopies={gift.linkedCopies}
+							interactive={!contextualMode}
+							{oneditlinkedcopies}
+						/>
+					{/if}
 					{#if previewMarks.proposed && livePreview !== undefined}
 						<GiftLivePreviewBadge kind={livePreview} />
 					{/if}
@@ -260,7 +272,7 @@
 							categories={gift.categories}
 							{isDimmed}
 							interactive={!contextualMode}
-							singleLine={additionalImageCount > 0}
+							singleLine={additionalImageCount > 0 || showsLinkChip}
 						/>
 					{/if}
 				</div>

@@ -6,4 +6,6 @@ export interface BulkCopyDestination {
 	title: string;
 	status: 'draft' | 'active' | 'archived';
 	recipientDisplayName: string;
+	/** Whether copies may link to their sources; `null` for a list just created, decided server-side. */
+	linkable: boolean | null;
 }

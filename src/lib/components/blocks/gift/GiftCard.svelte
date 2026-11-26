@@ -33,6 +33,7 @@
 		type GiftPresentationProps,
 	} from './gift_presentation_props.js';
 	import GiftCardGallery from './GiftCardGallery.svelte';
+	import GiftLinkChip from './GiftLinkChip.svelte';
 	import GiftGalleryCountChip from './GiftGalleryCountChip.svelte';
 	import { GIFT_CARD_DENSITIES, type GiftCardDensity } from './gift_card_variants.js';
 
@@ -54,6 +55,7 @@
 		onreceived,
 		receivedPending = false,
 		onmore,
+		oneditlinkedcopies,
 		persistentMore = onmore !== undefined,
 		moreOpen = false,
 		moreSurface = 'menu',
@@ -71,8 +73,9 @@
 	);
 
 	const previewMarks = $derived(giftLivePreviewMarks(livePreview));
+	const showsLinkChip = $derived(role !== 'visitor' && gift.linkedCopies.length > 0);
 	const showsTopOverlays = $derived(
-		!contextualMode || gift.categories.length > 0 || previewMarks.proposed,
+		!contextualMode || gift.categories.length > 0 || previewMarks.proposed || showsLinkChip,
 	);
 
 	const giftsContext = useGifts();
@@ -183,6 +186,15 @@
 		{/if}
 		{#if previewMarks.proposed && livePreview !== undefined}
 			<GiftLivePreviewBadge kind={livePreview} class="ml-auto" />
+		{/if}
+		{#if showsLinkChip}
+			<div class="ml-auto flex shrink-0">
+				<GiftLinkChip
+					linkedCopies={gift.linkedCopies}
+					interactive={!contextualMode}
+					{oneditlinkedcopies}
+				/>
+			</div>
 		{/if}
 	</div>
 {/snippet}

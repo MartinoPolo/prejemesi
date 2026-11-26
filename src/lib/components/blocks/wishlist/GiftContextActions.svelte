@@ -112,6 +112,7 @@
 		onreceived,
 		onselect,
 		onreorder,
+		onunlink,
 		onreserve,
 		oncancelreservation,
 		onpurchased,
@@ -133,6 +134,7 @@
 			canEdit: true,
 			canEnrich: onenrich !== undefined,
 			canReorder: onreorder !== undefined,
+			isLinked: onunlink !== undefined,
 			canReserve,
 			ownsReservation,
 			canTrackPurchased,
@@ -216,6 +218,7 @@
 		multiselect: () =>
 			finishingEntry('multiselect', m.gift_context_select_multiple(), 'handoff', onselect),
 		reorder: () => finishingEntry('reorder', m.gift_context_reorder(), 'handoff', onreorder),
+		unlink: () => finishingEntry('unlink', m.gift_context_unlink(), 'handoff', onunlink),
 		reserve: () => finishingEntry('reserve', m.reserve_button_reserve(), 'handoff', onreserve),
 		'cancel-reservation': () =>
 			finishingEntry(

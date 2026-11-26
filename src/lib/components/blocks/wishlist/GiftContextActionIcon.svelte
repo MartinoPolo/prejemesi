@@ -8,6 +8,7 @@
 	import Undo2Icon from '@lucide/svelte/icons/undo-2';
 	import ListChecksIcon from '@lucide/svelte/icons/list-checks';
 	import HandIcon from '@lucide/svelte/icons/hand';
+	import UnlinkIcon from '@lucide/svelte/icons/unlink';
 	import BookmarkIcon from '@lucide/svelte/icons/bookmark';
 	import BookmarkXIcon from '@lucide/svelte/icons/bookmark-x';
 	import ShoppingBagIcon from '@lucide/svelte/icons/shopping-bag';
@@ -24,6 +25,7 @@
 		received: CheckIcon,
 		multiselect: ListChecksIcon,
 		reorder: HandIcon,
+		unlink: UnlinkIcon,
 		reserve: BookmarkIcon,
 		'cancel-reservation': BookmarkXIcon,
 		purchased: ShoppingBagIcon,
