@@ -123,10 +123,15 @@ export interface ChatSessionView extends ChatSessionSummary {
 	activeTurnUrl: string | null;
 }
 
+/** Web tools the model runs itself; a tool event's query is the search query or the page URL. */
+export const CHAT_WEB_TOOL = { search: 'web_search', fetch: 'web_fetch' } as const;
+
+export type ChatWebToolName = (typeof CHAT_WEB_TOOL)[keyof typeof CHAT_WEB_TOOL];
+
 /** The server-sent events of one streamed turn. */
 export const CHAT_STREAM_EVENT = {
 	text: 'text',
-	/** A tool started: an operation name, or `web_search` with its query. */
+	/** A tool started: an operation name, or a web tool with its query. */
 	tool: 'tool',
 	/** The turn proposed changes; the client loads the proposal by id. */
 	proposal: 'proposal',

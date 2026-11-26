@@ -1,5 +1,6 @@
 import * as v from 'valibot';
 import { serverSentEventData } from '$lib/modules/chat/server_sent_events.js';
+import { CHAT_WEB_TOOL, type ChatWebToolName } from '$lib/modules/chat/types.js';
 import {
 	CHAT_BLOCK,
 	CHAT_MODEL_EVENT,
@@ -14,9 +15,25 @@ import {
 
 export const ANTHROPIC_MESSAGES_URL = 'https://api.anthropic.com/v1/messages';
 const ANTHROPIC_VERSION = '2023-06-01';
-const WEB_SEARCH_TOOL = { type: 'web_search_20250305', name: 'web_search' } as const;
-/** Bounds what one response may spend on searches. */
-const WEB_SEARCH_MAX_USES = 5;
+/** Bounds what one response may spend on each web tool. */
+const WEB_TOOL_MAX_USES = 5;
+/** Bounds how much of one fetched page enters the context. */
+const WEB_FETCH_MAX_CONTENT_TOKENS = 20_000;
+/** Basic versions: newer ones filter results through code execution, which the chat does not use. */
+const WEB_TOOLS = [
+	{ type: 'web_search_20250305', name: CHAT_WEB_TOOL.search, max_uses: WEB_TOOL_MAX_USES },
+	{
+		type: 'web_fetch_20250910',
+		name: CHAT_WEB_TOOL.fetch,
+		max_uses: WEB_TOOL_MAX_USES,
+		max_content_tokens: WEB_FETCH_MAX_CONTENT_TOKENS,
+	},
+] as const;
+/** The input field holding what a web tool started on: the search query or the page URL. */
+const WEB_TOOL_QUERY_FIELDS: Readonly<Record<ChatWebToolName, string>> = {
+	[CHAT_WEB_TOOL.search]: 'query',
+	[CHAT_WEB_TOOL.fetch]: 'url',
+};
 
 /** Rate limits, server errors and 529 (overloaded) pass; other failures are the request's own fault. */
 const RETRYABLE_STATUSES = new Set([429, 500, 502, 503, 504, 529]);
@@ -69,7 +86,7 @@ export function anthropicRequestBody(model: string, request: ChatModelRequest) {
 				description: tool.description,
 				input_schema: tool.inputSchema,
 			})),
-			{ ...WEB_SEARCH_TOOL, max_uses: WEB_SEARCH_MAX_USES },
+			...WEB_TOOLS,
 		],
 	};
 }
@@ -121,15 +138,10 @@ function parseStreamEvent(data: string): StreamEvent | null {
 	return parsed.success ? parsed.output : null;
 }
 
-const OPEN_BLOCK_KIND = { tool: 'tool', webSearch: 'webSearch' } as const;
-
 /** A content block still streaming: a tool call's input arrives as JSON fragments. */
-interface OpenToolBlock {
-	kind: (typeof OPEN_BLOCK_KIND)[keyof typeof OPEN_BLOCK_KIND];
-	id: string;
-	name: string;
-	inputJson: string;
-}
+type OpenToolBlock =
+	| { kind: 'tool'; id: string; name: string; inputJson: string }
+	| { kind: 'webTool'; name: ChatWebToolName; inputJson: string };
 
 function parseToolInput(inputJson: string): unknown {
 	if (inputJson.trim() === '') {
@@ -142,13 +154,16 @@ function parseToolInput(inputJson: string): unknown {
 	}
 }
 
-function webSearchQuery(input: unknown): string | null {
-	return typeof input === 'object' &&
-		input !== null &&
-		'query' in input &&
-		typeof input.query === 'string'
-		? input.query
-		: null;
+function isWebToolName(name: string): name is ChatWebToolName {
+	return Object.hasOwn(WEB_TOOL_QUERY_FIELDS, name);
+}
+
+function webToolQuery(name: ChatWebToolName, input: unknown): string | null {
+	if (typeof input !== 'object' || input === null) {
+		return null;
+	}
+	const query: unknown = Reflect.get(input, WEB_TOOL_QUERY_FIELDS[name]);
+	return typeof query === 'string' ? query : null;
 }
 
 async function failureFor(response: Response): Promise<ChatProviderError> {
@@ -159,7 +174,7 @@ async function failureFor(response: Response): Promise<ChatProviderError> {
 	);
 }
 
-/** The Anthropic Messages API with the provider's own web search. */
+/** The Anthropic Messages API with the provider's own web search and page fetch. */
 export function createAnthropicProvider(options: AnthropicProviderOptions): ChatModelProvider {
 	const fetchModel = options.fetch ?? fetch;
 	return {
@@ -184,17 +199,17 @@ export function createAnthropicProvider(options: AnthropicProviderOptions): Chat
 
 type StreamEventOf<Type extends StreamEvent['type']> = Extract<StreamEvent, { type: Type }>;
 
-const OPEN_BLOCK_KINDS: Readonly<Record<string, OpenToolBlock['kind']>> = {
-	tool_use: OPEN_BLOCK_KIND.tool,
-	server_tool_use: OPEN_BLOCK_KIND.webSearch,
-};
-
+/** Server tools the adapter does not know (a future addition) stay closed and are skipped. */
 function openedBlock(event: StreamEventOf<'content_block_start'>): OpenToolBlock | null {
 	const { content_block: block } = event;
-	const kind = OPEN_BLOCK_KINDS[block.type];
-	return kind === undefined
-		? null
-		: { kind, id: block.id ?? '', name: block.name ?? '', inputJson: '' };
+	const name = block.name ?? '';
+	if (block.type === 'tool_use') {
+		return { kind: 'tool', id: block.id ?? '', name, inputJson: '' };
+	}
+	if (block.type === 'server_tool_use' && isWebToolName(name)) {
+		return { kind: 'webTool', name, inputJson: '' };
+	}
+	return null;
 }
 
 /** A text delta becomes an event; a tool input fragment extends its open block. */
@@ -220,9 +235,13 @@ function closedBlockEvent(open: OpenToolBlock | undefined): ChatModelEvent | nul
 		return null;
 	}
 	const input = parseToolInput(open.inputJson);
-	return open.kind === OPEN_BLOCK_KIND.tool
+	return open.kind === 'tool'
 		? { type: CHAT_MODEL_EVENT.toolCall, id: open.id, name: open.name, input }
-		: { type: CHAT_MODEL_EVENT.webSearch, query: webSearchQuery(input) };
+		: {
+				type: CHAT_MODEL_EVENT.webTool,
+				name: open.name,
+				query: webToolQuery(open.name, input),
+			};
 }
 
 function streamFailure(event: StreamEventOf<'error'>): ChatProviderError {

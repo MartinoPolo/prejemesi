@@ -131,8 +131,8 @@ async function streamModelResponse(
 				streamed.text += event.text;
 				turn.emit({ type: CHAT_STREAM_EVENT.text, text: event.text });
 				break;
-			case CHAT_MODEL_EVENT.webSearch:
-				turn.emit({ type: CHAT_STREAM_EVENT.tool, name: 'web_search', query: event.query });
+			case CHAT_MODEL_EVENT.webTool:
+				turn.emit({ type: CHAT_STREAM_EVENT.tool, name: event.name, query: event.query });
 				break;
 			case CHAT_MODEL_EVENT.toolCall:
 				calls.push({ id: event.id, name: event.name, input: event.input });
