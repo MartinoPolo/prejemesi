@@ -58,15 +58,16 @@ describe('deleteWishlist', () => {
 				{ images: [] },
 			]);
 			mockDbInstance.pushResult([]);
+			// A linked copy on another live wishlist still shows the cover upload (issue #742).
+			mockDbInstance.pushResult([{ imageKey: 'gifts/a.jpg' }]);
 
 			await callDeleteWishlist(makeRecipientAuthContext(), WISHLIST_ID);
 
 			expect(mockDeleteObjects).toHaveBeenCalledWith([
 				'wishlists/banners/w.jpg',
 				'wishlists/backgrounds/w.jpg',
-				'gifts/a.jpg',
-				'gifts/a-detail.jpg',
 			]);
+			expect(mockDeleteObjects).toHaveBeenCalledWith(['gifts/a-detail.jpg']);
 		});
 	});
 

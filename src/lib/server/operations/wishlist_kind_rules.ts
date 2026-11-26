@@ -13,7 +13,6 @@ import {
 	occasionAfterKindWrite,
 	wishlistKindForOccasion,
 } from '$lib/modules/wishlists/wishlist_occasion.js';
-import { giftFollowsStrictPostShareRules } from '$lib/modules/gifts/gift_strict_post_share_rules.js';
 import { hasUpcomingEventDate } from '$lib/modules/wishlists/event_date.js';
 import type { ManagedWishlist, WishlistRow } from './wishlist_management.js';
 
@@ -42,25 +41,6 @@ export async function loadReservedGiftIds(
 		.from(reservation)
 		.where(and(inArray(reservation.giftId, [...giftIds]), isNull(reservation.deletedAt)));
 	return new Set(reservedRows.map((row) => row.giftId));
-}
-
-/**
- * {@link giftFollowsStrictPostShareRules} for a gift the caller already holds FOR UPDATE: a
- * reservation locks the gift before inserting, so none can appear between this read and the write.
- * Occasion wishlists never consult reservations.
- */
-export async function lockedGiftFollowsStrictPostShareRules(
-	transaction: DatabaseTransaction,
-	wishlistRow: Pick<WishlistRow, 'kind'>,
-	giftId: string,
-): Promise<boolean> {
-	if (wishlistRow.kind !== WISHLIST_KIND.permanent) {
-		return true;
-	}
-	return giftFollowsStrictPostShareRules(
-		wishlistRow.kind,
-		await giftHasActiveReservation(transaction, giftId),
-	);
 }
 
 /**

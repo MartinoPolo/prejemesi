@@ -46,6 +46,9 @@ export const BASE_STORY_GIFT: GiftForVisitor = {
 	myReservationId: null,
 	myReservationPurchasedAt: null,
 	myReservationQuantity: 0,
+	myReservationOnLinkedCopy: false,
+	reservedOnLinkedCopiesCount: 0,
+	linkedCopies: [],
 };
 
 // Matched unavailable-treatment pair: identical gift, only reservation state differs.

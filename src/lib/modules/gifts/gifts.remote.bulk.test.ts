@@ -38,6 +38,7 @@ describe('gift category settings refresh dependencies', () => {
 	it('refreshes destination category counts after copying gifts', async () => {
 		mockCopyGifts.mockResolvedValueOnce({
 			created: [{ id: 'copied-gift' }],
+			linkedIds: [],
 			destinationShortId: 'destination-short-id',
 		} as never);
 

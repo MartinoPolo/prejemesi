@@ -366,6 +366,7 @@ describe.skipIf(!DB_READY)('gift operation core [real DB]', () => {
 					'prioritySortOrder',
 					'categoryIds',
 					'categories',
+					'linkedCopies',
 				].sort(),
 			);
 		});

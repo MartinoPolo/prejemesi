@@ -2,6 +2,7 @@ import * as v from 'valibot';
 import { and, eq, inArray, isNull } from 'drizzle-orm';
 import { error } from '@sveltejs/kit';
 import { generateId } from '$lib/server/db/id.js';
+import { GIFT_LINK_GROUP_KIND } from '$lib/server/db/enums.js';
 import { getDb } from '$lib/server/db/index.js';
 import { wishlistScope } from '$lib/server/demo/scope.js';
 import { gift } from '$lib/server/db/gift.schema.js';
@@ -9,18 +10,7 @@ import { giftIngestionOrphan } from '$lib/server/db/ingestion.schema.js';
 import { moderatorAssignment } from '$lib/server/db/moderator.schema.js';
 import { priorityLevel, wishlist } from '$lib/server/db/wishlist.schema.js';
 import { getObject, putObject, deleteObject } from '$lib/server/storage/r2.js';
-import {
-	occupiedGiftCategoryLabels,
-	type GiftCategoryPresetKey,
-	type PublicGiftCategory,
-} from '$lib/modules/gift-categories/types.js';
-import {
-	activeGiftCategoriesColumn,
-	createCustomGiftCategoryWithDatabase,
-	enablePresetGiftCategoryWithDatabase,
-	getActiveGiftCategories,
-	insertDefaultGiftCategoriesWhenUnset,
-} from '$lib/modules/gift-categories/gift_categories_service.js';
+import { activeGiftCategoriesColumn } from '$lib/modules/gift-categories/gift_categories_service.js';
 import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
 import { WISHLIST_KIND } from '$lib/modules/wishlists/types.js';
 import { recipientMayMoveGifts } from '$lib/modules/wishlists/wishlist_capabilities.js';
@@ -33,6 +23,19 @@ import type { GiftImage } from './gift_images.js';
 import { giftImagesColumn } from '$lib/server/operations/gift_gallery.js';
 import type { RecordGiftRevisions } from '$lib/server/operations/gift_revisions.js';
 import { lockWishlistsInIdOrder } from '$lib/server/operations/wishlist_management.js';
+import {
+	OWN_WISHLIST_LOCK,
+	createLinkGroup,
+	lockLinkedCopies,
+	wishlistsShareRecipient,
+} from '$lib/server/operations/gift_link_group.js';
+import { loadReservedGiftIds } from '$lib/server/operations/wishlist_kind_rules.js';
+import {
+	addMissingCopiedCategories,
+	matchedCategoryIds,
+	type DestinationCategory,
+	type SourceCategory,
+} from '$lib/server/operations/gift_category_mapping.js';
 
 export const MAX_BULK_COPY_GIFTS = 50;
 
@@ -42,13 +45,17 @@ export const BulkCopyGiftsInputSchema = v.strictObject({
 	giftIds: v.pipe(v.array(v.string()), v.minLength(1), v.maxLength(MAX_BULK_COPY_GIFTS)),
 	/** Removes each copied unreserved source gift; allowed only from a permanent wishlist. */
 	removeUnreservedSources: v.optional(v.boolean()),
+	/**
+	 * Keeps each copy linked with its source so their shared fields stay in sync. Omitted, copies
+	 * link exactly when both wishlists have the same recipient; true for other wishlists is rejected.
+	 */
+	linkCopies: v.optional(v.boolean()),
 });
 
 export type BulkCopyGiftsInput = v.InferOutput<typeof BulkCopyGiftsInputSchema>;
 
 type Database = ReturnType<typeof getDb>;
 type Transaction = GiftCreationTransaction;
-type SourceCategory = Pick<PublicGiftCategory, 'presetKey' | 'customLabel' | 'color'>;
 type SourceGift = typeof gift.$inferSelect & {
 	categories: readonly SourceCategory[];
 	images: GiftImage[];
@@ -66,21 +73,22 @@ export function flattenGiftDescription(
 
 /**
  * The copy's gallery and portable fields. `destinationImageKeys` follows the source gallery: each
- * uploaded image gets the key of its own copied object, a linked image stays a link (null).
+ * uploaded image gets the key of its own copied object, a linked image stays a link (null). A
+ * linked copy keeps the source's description as is, because later appends sync segment by segment.
  */
 export function portableGiftCopy(input: {
 	source: SourceGift;
 	destinationGiftId: string;
 	destinationImageKeys: readonly (string | null)[];
 	taxonomy: { priorityLevelId: string | null; categoryIds: string[] };
+	linked: boolean;
 }) {
 	return {
 		id: input.destinationGiftId,
 		name: input.source.name,
-		description: flattenGiftDescription(
-			input.source.description,
-			input.source.descriptionAppends,
-		),
+		description: input.linked
+			? input.source.description
+			: flattenGiftDescription(input.source.description, input.source.descriptionAppends),
 		links: input.source.links,
 		price: input.source.price,
 		priceMax: input.source.priceMax,
@@ -102,33 +110,6 @@ function galleryKeysMatch(first: SourceGift, second: SourceGift): boolean {
 	);
 }
 
-interface DestinationCategory {
-	id: string;
-	presetKey: GiftCategoryPresetKey | null;
-	customLabel: string | null;
-}
-
-/**
- * A preset matches the same preset; otherwise any category claiming the same label matches,
- * because a preset may be renamed into a custom category or recreated as one.
- */
-function matchingDestinationCategoryId(
-	sourceCategory: SourceCategory,
-	destinationCategories: readonly DestinationCategory[],
-): string | undefined {
-	const sourceLabels = occupiedGiftCategoryLabels(sourceCategory);
-	return (
-		(sourceCategory.presetKey === null
-			? undefined
-			: destinationCategories.find(
-					(category) => category.presetKey === sourceCategory.presetKey,
-				)?.id) ??
-		destinationCategories.find((category) =>
-			occupiedGiftCategoryLabels(category).some((label) => sourceLabels.includes(label)),
-		)?.id
-	);
-}
-
 export function mapCopiedTaxonomy(input: {
 	source: SourceGift;
 	sourcePriorityIdsByOrdinal: readonly string[];
@@ -139,62 +120,24 @@ export function mapCopiedTaxonomy(input: {
 		input.source.priorityLevelId === null
 			? -1
 			: input.sourcePriorityIdsByOrdinal.indexOf(input.source.priorityLevelId);
-	// The copy first adds every category without a match to the destination, so all categories
-	// carry over in their order and the primary stays first.
-	const categoryIds = new Set<string>();
-	for (const sourceCategory of input.source.categories) {
-		const destinationCategoryId = matchingDestinationCategoryId(
-			sourceCategory,
-			input.destinationCategories,
-		);
-		if (destinationCategoryId !== undefined) {
-			categoryIds.add(destinationCategoryId);
-		}
-	}
 	return {
 		priorityLevelId:
 			priorityOrdinal < 0 ? null : (input.destinationPriorities[priorityOrdinal]?.id ?? null),
-		categoryIds: [...categoryIds],
+		categoryIds: matchedCategoryIds(input.source.categories, input.destinationCategories),
 	};
 }
 
-/**
- * Seeds the destination's default categories when it never had any, then appends each category of
- * the copied gifts that matches none of the destination's: a preset is enabled or restored, a
- * custom category is created with the source label and color. Returns the active categories.
- */
-async function addMissingCopiedCategories(
-	transaction: Transaction,
-	destinationWishlistId: string,
-	sourceGifts: readonly SourceGift[],
-): Promise<DestinationCategory[]> {
-	await insertDefaultGiftCategoriesWhenUnset(transaction, destinationWishlistId);
-	const destinationCategories: DestinationCategory[] = await getActiveGiftCategories(
-		destinationWishlistId,
-		transaction,
-	);
-	for (const sourceCategory of sourceGifts.flatMap((source) => source.categories)) {
-		if (matchingDestinationCategoryId(sourceCategory, destinationCategories) !== undefined) {
-			continue;
-		}
-		if (sourceCategory.presetKey !== null) {
-			destinationCategories.push(
-				await enablePresetGiftCategoryWithDatabase(transaction, {
-					wishlistId: destinationWishlistId,
-					presetKey: sourceCategory.presetKey,
-				}),
-			);
-		} else if (sourceCategory.customLabel !== null) {
-			destinationCategories.push(
-				await createCustomGiftCategoryWithDatabase(transaction, {
-					wishlistId: destinationWishlistId,
-					label: sourceCategory.customLabel,
-					color: sourceCategory.color,
-				}),
-			);
-		}
+/** Whether the copies link with their sources; an explicit link between other recipients fails. */
+function copiesLink(
+	input: BulkCopyGiftsInput,
+	source: typeof wishlist.$inferSelect,
+	destination: typeof wishlist.$inferSelect,
+): boolean {
+	const sameRecipient = wishlistsShareRecipient(source, destination);
+	if (input.linkCopies === true && !sameRecipient) {
+		error(400, SERVER_ERROR.BULK_COPY_LINK_NOT_ALLOWED);
 	}
-	return destinationCategories;
+	return (input.linkCopies ?? true) && sameRecipient;
 }
 
 async function assertManagedWishlist(
@@ -374,7 +317,13 @@ export async function prepareGiftCopy(
 	const database = options.database ?? getDb();
 	const source = await assertManagedWishlist(database, actorId, input.sourceWishlistId, false);
 	assertSourceRemovalAllowed(actorId, source, input);
-	await assertManagedWishlist(database, actorId, input.destinationWishlistId, false);
+	const destination = await assertManagedWishlist(
+		database,
+		actorId,
+		input.destinationWishlistId,
+		false,
+	);
+	copiesLink(input, source, destination);
 	const preflightGifts = await loadSourceGifts(database, input, false);
 	const operationId = generateId();
 	const plans: GiftCopyPlan[] = preflightGifts.map((source) => {
@@ -467,6 +416,38 @@ export async function prepareGiftCopy(
 	return preparedCopy;
 }
 
+/**
+ * Puts each linked copy into its source's link group, which a source joins with a new id when it
+ * had none. A copy carries the source's appended segments and received state as its own.
+ */
+async function linkCopiesWithSources(
+	transaction: Transaction,
+	links: readonly { source: SourceGift; copy: GiftWithImages }[],
+	recordRevisions: RecordGiftRevisions,
+): Promise<GiftWithImages[]> {
+	const linkedCopies: GiftWithImages[] = [];
+	for (const { source, copy } of links) {
+		const linkGroupId =
+			source.linkGroupId ??
+			(await createLinkGroup(transaction, GIFT_LINK_GROUP_KIND.linkedCopies));
+		if (source.linkGroupId === null) {
+			await transaction.update(gift).set({ linkGroupId }).where(eq(gift.id, source.id));
+		}
+		const linkedState = {
+			linkGroupId,
+			descriptionAppends: source.descriptionAppends,
+			received: source.received,
+		};
+		await transaction.update(gift).set(linkedState).where(eq(gift.id, copy.id));
+		const linkedCopy = { ...copy, ...linkedState };
+		linkedCopies.push(linkedCopy);
+		await recordRevisions([
+			{ giftId: copy.id, wishlistId: copy.wishlistId, before: copy, after: linkedCopy },
+		]);
+	}
+	return linkedCopies;
+}
+
 /** The transactional part of a copy: revalidates access and the selection under locks, then appends. */
 export async function copyPreparedGifts(
 	transaction: Transaction,
@@ -476,10 +457,16 @@ export async function copyPreparedGifts(
 	recordRevisions: RecordGiftRevisions,
 ): Promise<{
 	created: GiftWithImages[];
+	linkedIds: string[];
 	destinationShortId: string;
 	sourceShortId: string;
 }> {
 	const { plans } = preparedCopy;
+	// An already linked source's group is locked first, in the order every linked edit locks in.
+	await lockLinkedCopies(transaction, input.giftIds, {
+		wishlistIds: [input.sourceWishlistId, input.destinationWishlistId],
+		lock: OWN_WISHLIST_LOCK.exclusive,
+	});
 	// Copies between two wishlists in opposite directions would otherwise deadlock.
 	await lockWishlistsInIdOrder(transaction, [
 		input.sourceWishlistId,
@@ -493,10 +480,23 @@ export async function copyPreparedGifts(
 		input.destinationWishlistId,
 		true,
 	);
+	const linksCopies = copiesLink(input, source, destination);
 	const sourceRows = await loadSourceGifts(transaction, input, true);
 	if (sourceRows.some((source, index) => !galleryKeysMatch(source, plans[index]!.source))) {
 		error(400, SERVER_ERROR.BULK_COPY_INVALID_SELECTION);
 	}
+	// A move removes the unreserved sources afterwards, so only the reserved ones stay to link with.
+	const reservedSourceIds =
+		linksCopies && input.removeUnreservedSources === true
+			? await loadReservedGiftIds(transaction, input.giftIds)
+			: undefined;
+	const linkedSourceIds = new Set(
+		linksCopies
+			? sourceRows
+					.filter((row) => reservedSourceIds?.has(row.id) ?? true)
+					.map((row) => row.id)
+			: [],
+	);
 	const sourcePriorities = await transaction
 		.select({ id: priorityLevel.id })
 		.from(priorityLevel)
@@ -510,7 +510,7 @@ export async function copyPreparedGifts(
 	const destinationCategories = await addMissingCopiedCategories(
 		transaction,
 		input.destinationWishlistId,
-		sourceRows,
+		sourceRows.flatMap((source) => source.categories),
 	);
 	const sourcePriorityIds = sourcePriorities.map((level) => level.id);
 	const copied = sourceRows.map((source, index) => {
@@ -525,6 +525,7 @@ export async function copyPreparedGifts(
 			destinationGiftId: plans[index]!.destinationGiftId,
 			destinationImageKeys: plans[index]!.destinationImageKeys,
 			taxonomy,
+			linked: linkedSourceIds.has(source.id),
 		});
 	});
 	const created = await appendGiftsUsingTransaction(transaction, {
@@ -534,5 +535,18 @@ export async function copyPreparedGifts(
 		notifyFollowers: destination.status === 'active',
 		recordRevisions,
 	});
-	return { created, destinationShortId: destination.shortId, sourceShortId: source.shortId };
+	const linkedCopies = await linkCopiesWithSources(
+		transaction,
+		sourceRows.flatMap((sourceRow, index) =>
+			linkedSourceIds.has(sourceRow.id) ? [{ source: sourceRow, copy: created[index]! }] : [],
+		),
+		recordRevisions,
+	);
+	const linkedCopyById = new Map(linkedCopies.map((row) => [row.id, row]));
+	return {
+		created: created.map((row) => linkedCopyById.get(row.id) ?? row),
+		linkedIds: linkedCopies.map((row) => row.id),
+		destinationShortId: destination.shortId,
+		sourceShortId: source.shortId,
+	};
 }

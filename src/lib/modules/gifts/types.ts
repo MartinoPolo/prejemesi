@@ -3,6 +3,8 @@ import type { gift, reservation, giftLike } from '$lib/server/db/gift.schema.js'
 import type { priorityLevel } from '$lib/server/db/wishlist.schema.js';
 import { ImageMetadataSchema, type ImageMetadata } from '$lib/modules/images/types.js';
 import type { PublicGiftCategory } from '$lib/modules/gift-categories/types.js';
+import type { WishlistOccasion } from '$lib/modules/wishlists/types.js';
+import type { WishlistStatus } from '$lib/modules/wishlists/wishlist_capabilities.js';
 import { GiftImagesSchema, type GiftImage } from './gift_images.js';
 import {
 	MAX_GIFT_CATEGORIES,
@@ -69,6 +71,25 @@ export function isPriceRangeValid<T extends { price?: number | null; priceMax?: 
 	);
 }
 
+/**
+ * Another wishlist's copy linked to a gift (issue #742), shown to its managers and recipient only;
+ * visitors never learn about other lists.
+ */
+export interface LinkedGiftCopy {
+	giftId: string;
+	wishlistId: string;
+	wishlistShortId: string;
+	wishlistTitle: string;
+	occasion: WishlistOccasion;
+	status: WishlistStatus;
+	/**
+	 * When this copy starts freezing the recipient's name, description and quantity edits on every
+	 * copy: the end of its share grace on a shared occasion wishlist, or null when sharing does not
+	 * freeze it. Reservation-caused freezes stay server-side to protect the surprise.
+	 */
+	editsFrozenFrom: Date | null;
+}
+
 /** Shared fields present in every gift view regardless of role. */
 export interface GiftBase {
 	id: string;
@@ -98,6 +119,8 @@ export interface GiftBase {
 	categoryIds: string[];
 	/** The categories of {@link categoryIds}, in the same order. */
 	categories: PublicGiftCategory[];
+	/** The other live copies linked to this gift; always empty for visitors. */
+	linkedCopies: LinkedGiftCopy[];
 }
 
 /** Gift with computed fields for visitor/moderator view */
@@ -118,6 +141,13 @@ export interface GiftForVisitor extends GiftBase {
 	myReservationPurchasedAt: Date | null;
 	/** Units held by the `myReservationId` reservation, or 0 without one. */
 	myReservationQuantity: number;
+	/** The `myReservationId` reservation was made on a linked copy on another wishlist. */
+	myReservationOnLinkedCopy: boolean;
+	/**
+	 * Units included in {@link reservedCount} that were reserved on linked copies; 0 for visitors,
+	 * who never learn about other lists.
+	 */
+	reservedOnLinkedCopiesCount: number;
 }
 
 /**

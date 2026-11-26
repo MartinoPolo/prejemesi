@@ -56,6 +56,7 @@ function giftWithPriority(id: string, levelId: string | null, sortOrder: number)
 		prioritySortOrder: level?.sortOrder ?? null,
 		categoryIds: [],
 		categories: [],
+		linkedCopies: [],
 	};
 }
 

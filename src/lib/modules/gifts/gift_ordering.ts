@@ -64,6 +64,7 @@ export function projectGiftForRecipient(gift: GiftByRole): GiftForRecipient {
 		prioritySortOrder: gift.prioritySortOrder,
 		categoryIds: gift.categoryIds,
 		categories: gift.categories,
+		linkedCopies: gift.linkedCopies,
 	};
 }
 

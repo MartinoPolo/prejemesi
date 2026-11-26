@@ -41,7 +41,9 @@ import {
 	updateDataChangesGift,
 	type GiftRow,
 	type GiftUpdateData,
-} from './gift_update.js';
+} from './gift_presentation_update.js';
+import { propagateToLinkedCopies } from './gift_link_group_sync.js';
+import { OWN_WISHLIST_LOCK, lockLinkedCopies } from './gift_link_group.js';
 import { jsonChanged } from '$lib/modules/gifts/gift_post_share.js';
 import type { GiftImage } from '$lib/modules/gifts/gift_images.js';
 import type { ManagedWishlist, WishlistRow } from './wishlist_management.js';
@@ -84,6 +86,11 @@ export const reorderGiftsOperation = defineOperation({
 	input: ReorderGiftsInputSchema,
 	async run(context, { wishlistId, orderedGiftIds, groupChanges = [] }) {
 		const { transaction, now } = context;
+		await lockLinkedCopies(
+			transaction,
+			groupChanges.map((change) => change.giftId),
+			{ wishlistIds: [wishlistId], lock: OWN_WISHLIST_LOCK.exclusive },
+		);
 		const managedWishlist = await requireWishlistManagement(
 			transaction,
 			context.actor.userId,
@@ -176,6 +183,14 @@ export const reorderGiftsOperation = defineOperation({
 				after: { ...plan.giftRow, ...plan.updateData },
 			})),
 		);
+		for (const plan of changedPlans) {
+			await propagateToLinkedCopies(context, {
+				before: plan.giftRow,
+				after: { ...plan.giftRow, ...plan.updateData },
+				editorRole: managedWishlist.role,
+				restoring: false,
+			});
+		}
 		noteManagerEdits(
 			context,
 			managedWishlist,
@@ -376,6 +391,11 @@ export async function applyBulkGiftUpdate(
 ) {
 	const { transaction, now } = context;
 	const uniqueGiftIds = [...new Set(input.giftIds)];
+	// Priority stays per copy; every other action changes a field linked copies share.
+	await lockLinkedCopies(transaction, input.action === 'priority' ? [] : uniqueGiftIds, {
+		wishlistIds: [input.wishlistId],
+		lock: OWN_WISHLIST_LOCK.exclusive,
+	});
 	const managedWishlist = await requireWishlistManagement(
 		transaction,
 		context.actor.userId,
@@ -425,6 +445,14 @@ export async function applyBulkGiftUpdate(
 			after: giftRowAfterWrite(plan.row, plan.updateData, plan.nextImages),
 		})),
 	);
+	for (const plan of updatePlans) {
+		await propagateToLinkedCopies(context, {
+			before: plan.row,
+			after: giftRowAfterWrite(plan.row, plan.updateData, plan.nextImages),
+			editorRole: managedWishlist.role,
+			restoring: false,
+		});
+	}
 	noteManagerEdits(
 		context,
 		managedWishlist,
@@ -488,8 +516,9 @@ async function removeUnreservedSourceGifts(
 
 /**
  * Copies portable gift data into another managed wishlist, optionally removing the unreserved
- * sources from a permanent wishlist. Image objects are staged before the transaction and either
- * kept (commit) or removed (failure, dry run never stages).
+ * sources from a permanent wishlist. Copies between wishlists of the same recipient stay linked
+ * with their sources unless `linkCopies` is false; removed sources link nothing. Image objects are
+ * staged before the transaction and either kept (commit) or removed (failure, dry run never stages).
  */
 export const bulkCopyGiftsOperation = defineOperation({
 	name: 'bulkCopyGifts',
@@ -507,7 +536,7 @@ export const bulkCopyGiftsOperation = defineOperation({
 		};
 	},
 	async run(context, input, preparedCopy) {
-		const { created, destinationShortId, sourceShortId } = await copyPreparedGifts(
+		const { created, linkedIds, destinationShortId, sourceShortId } = await copyPreparedGifts(
 			context.transaction,
 			context.actor.userId,
 			input,
@@ -520,6 +549,7 @@ export const bulkCopyGiftsOperation = defineOperation({
 				: [];
 		return {
 			createdIds: created.map((row) => row.id),
+			linkedIds,
 			removedSourceIds,
 			destinationShortId,
 			sourceShortId,

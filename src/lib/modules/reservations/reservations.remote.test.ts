@@ -84,6 +84,7 @@ vi.mock('drizzle-orm', () => ({
 	eq: vi.fn(),
 	and: vi.fn(),
 	isNull: vi.fn(),
+	inArray: vi.fn(),
 	sql: Object.assign(vi.fn(), { join: vi.fn() }),
 }));
 
@@ -188,6 +189,7 @@ function makeActiveWishlistRow() {
 			wishlistId: WISHLIST_ID,
 			name: GIFT_NAME,
 			quantity: 5,
+			linkGroupId: null,
 			deletedAt: null,
 		},
 		wishlist: {
@@ -228,7 +230,7 @@ describe('reserveGift', () => {
 		// The operation core reads the gift's wishlist first, inside the one transaction.
 		const database = createMultiQueryChain(
 			[makeActiveWishlistRow()],
-			[{ quantity: 5 }],
+			[{ quantity: 5, linkGroupId: null }],
 			[{ totalQuantity: 0 }],
 			[{ id: RESERVATION_ID }],
 		);
@@ -251,7 +253,7 @@ describe('reserveGift', () => {
 		// The operation core reads the gift's wishlist first, inside the one transaction.
 		const database = createMultiQueryChain(
 			[makeActiveWishlistRow()],
-			[{ quantity: 5 }],
+			[{ quantity: 5, linkGroupId: null }],
 			[{ totalQuantity: 0 }],
 			[{ id: RESERVATION_ID }],
 		);
@@ -316,7 +318,7 @@ describe('reserveGift', () => {
 			// The operation core reads the gift's wishlist first, inside the one transaction.
 			const database = createMultiQueryChain(
 				[makeActiveWishlistRow()],
-				[{ quantity: 5 }],
+				[{ quantity: 5, linkGroupId: null }],
 				[{ totalQuantity: 0 }],
 				[{ id: RESERVATION_ID }],
 			);
@@ -344,7 +346,7 @@ describe('reserveGift', () => {
 		// The operation core reads the gift's wishlist first, inside the one transaction.
 		const database = createMultiQueryChain(
 			[makeActiveWishlistRow()],
-			[{ quantity: 5 }],
+			[{ quantity: 5, linkGroupId: null }],
 			[{ totalQuantity: 0 }],
 			[{ id: RESERVATION_ID }],
 		);

@@ -56,6 +56,7 @@ const recipientGift: GiftForRecipient = {
 	prioritySortOrder: null,
 	categoryIds: [],
 	categories: [],
+	linkedCopies: [],
 };
 
 const visitorGift: GiftForVisitor = {
@@ -67,6 +68,9 @@ const visitorGift: GiftForVisitor = {
 	myReservationId: null,
 	myReservationPurchasedAt: null,
 	myReservationQuantity: 0,
+	myReservationOnLinkedCopy: false,
+	reservedOnLinkedCopiesCount: 0,
+	linkedCopies: [],
 };
 
 const RESERVATION_AND_LIKE_FIELDS = [
@@ -76,6 +80,8 @@ const RESERVATION_AND_LIKE_FIELDS = [
 	'reserverNames',
 	'myReservationId',
 	'myReservationPurchasedAt',
+	'reservedOnLinkedCopiesCount',
+	'myReservationOnLinkedCopy',
 ];
 
 describe('projectAgentWishlist', () => {
@@ -230,7 +236,7 @@ describe('projectAgentWishlistGifts', () => {
 	it('keeps reservation state and counts but drops reserver names without the identities scope', () => {
 		const projected = projectAgentWishlistGifts(
 			{ role: WISHLIST_ROLES.moderator, gifts: [visitorGift] },
-			{ includeReserverNames: false },
+			{ includeReserverNames: false, allowedWishlistIds: null },
 		);
 		expect(projected.gifts[0]).toMatchObject({
 			reservedCount: 1,
@@ -243,7 +249,7 @@ describe('projectAgentWishlistGifts', () => {
 	it('includes reserver names with the identities scope', () => {
 		const projected = projectAgentWishlistGifts(
 			{ role: WISHLIST_ROLES.moderator, gifts: [visitorGift] },
-			{ includeReserverNames: true },
+			{ includeReserverNames: true, allowedWishlistIds: null },
 		);
 		expect(projected.gifts[0]).toMatchObject({ reserverNames: ['Petr Svoboda'] });
 	});
@@ -252,15 +258,62 @@ describe('projectAgentWishlistGifts', () => {
 		const giftWithEmail = { ...visitorGift, anonymousEmail: 'gifter@example.com' };
 		const projected = projectAgentWishlistGifts(
 			{ role: WISHLIST_ROLES.moderator, gifts: [giftWithEmail] },
-			{ includeReserverNames: true },
+			{ includeReserverNames: true, allowedWishlistIds: null },
 		);
 		expect(JSON.stringify(projected)).not.toContain('gifter@example.com');
+	});
+
+	it('shows a wishlist-restricted token only the linked copies on its wishlists', () => {
+		const linkedCopy = (wishlistId: string) => ({
+			giftId: `gift-on-${wishlistId}`,
+			wishlistId,
+			wishlistShortId: `short-${wishlistId}`,
+			wishlistTitle: `List ${wishlistId}`,
+			occasion: 'birthday' as const,
+			status: 'active' as const,
+			editsFrozenFrom: null,
+		});
+		const linkedGift = {
+			...recipientGift,
+			linkedCopies: [linkedCopy('allowed'), linkedCopy('hidden')],
+		};
+		const restricted = projectAgentWishlistGifts(
+			{ role: WISHLIST_ROLES.recipient, gifts: [linkedGift] },
+			{ includeReserverNames: false, allowedWishlistIds: ['allowed'] },
+		);
+		expect(restricted.gifts[0]?.linkedCopies).toEqual([linkedCopy('allowed')]);
+		const unrestricted = projectAgentWishlistGifts(
+			{ role: WISHLIST_ROLES.recipient, gifts: [linkedGift] },
+			{ includeReserverNames: false, allowedWishlistIds: null },
+		);
+		expect(unrestricted.gifts[0]?.linkedCopies).toEqual([
+			linkedCopy('allowed'),
+			linkedCopy('hidden'),
+		]);
+	});
+
+	it('tells a gifter about units and their own reservation on linked copies', () => {
+		const reservedElsewhere: GiftForVisitor = {
+			...visitorGift,
+			reservedOnLinkedCopiesCount: 1,
+			myReservationId: 'reservation-elsewhere',
+			myReservationOnLinkedCopy: true,
+		};
+		const projected = projectAgentWishlistGifts(
+			{ role: WISHLIST_ROLES.visitor, gifts: [reservedElsewhere] },
+			{ includeReserverNames: false, allowedWishlistIds: null },
+		);
+		expect(projected.gifts[0]).toMatchObject({
+			reservedOnLinkedCopiesCount: 1,
+			myReservationId: 'reservation-elsewhere',
+			myReservationOnLinkedCopy: true,
+		});
 	});
 
 	it('returns the recipient shape without reservation or like data', () => {
 		const projected = projectAgentWishlistGifts(
 			{ role: WISHLIST_ROLES.recipient, gifts: [recipientGift] },
-			{ includeReserverNames: true },
+			{ includeReserverNames: true, allowedWishlistIds: null },
 		);
 		for (const field of RESERVATION_AND_LIKE_FIELDS) {
 			expect(projected.gifts[0]).not.toHaveProperty(field);
@@ -296,7 +349,7 @@ describe('agent gift categories', () => {
 					},
 				],
 			},
-			{ includeReserverNames: false },
+			{ includeReserverNames: false, allowedWishlistIds: null },
 		);
 
 		expect(projected.gifts[0]).toMatchObject({
@@ -354,7 +407,7 @@ describe('agent gift projection', () => {
 				role: WISHLIST_ROLES.recipient,
 				gifts: [{ ...recipientGift, imageKey: 'gifts/kolo.webp' }],
 			},
-			{ includeReserverNames: false },
+			{ includeReserverNames: false, allowedWishlistIds: null },
 		);
 		expect(projected.gifts[0]).not.toHaveProperty('imageKey');
 		expect(projected.gifts[0]?.imageUrl).toContain('gifts/kolo.webp');
@@ -369,6 +422,7 @@ describe('projectAgentBulkCopyDestinations', () => {
 			status: 'draft' as const,
 			kind: 'occasion' as const,
 			recipientDisplayName: 'Martin',
+			linkable: true,
 		},
 		{
 			id: 'other',
@@ -376,6 +430,7 @@ describe('projectAgentBulkCopyDestinations', () => {
 			status: 'active' as const,
 			kind: 'permanent' as const,
 			recipientDisplayName: 'Jana',
+			linkable: false,
 		},
 	];
 

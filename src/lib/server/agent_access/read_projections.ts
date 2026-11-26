@@ -1,6 +1,11 @@
 import { resolveGiftImageUrl } from '$lib/modules/images/public_url.js';
 import { wishlistImageUrl } from '$lib/modules/images/wishlist_slots.js';
-import type { GiftBase, GiftByRole, GiftForRecipient } from '$lib/modules/gifts/types.js';
+import type {
+	GiftBase,
+	GiftByRole,
+	GiftForRecipient,
+	LinkedGiftCopy,
+} from '$lib/modules/gifts/types.js';
 import type { GiftImage, PublicGiftImage } from '$lib/modules/gifts/gift_images.js';
 import type { wishlist } from '$lib/server/db/wishlist.schema.js';
 import type {
@@ -186,7 +191,34 @@ export function projectAgentGiftSnapshot(storedSnapshot: GiftRevisionSnapshot): 
 	};
 }
 
-function projectAgentGiftBase(gift: GiftForRecipient) {
+interface AgentGiftProjectionOptions {
+	includeReserverNames: boolean;
+	/** A wishlist-restricted token's wishlists, or null for a token reaching every wishlist. */
+	allowedWishlistIds: readonly string[] | null;
+}
+
+/** A wishlist-restricted token learns only of linked copies on the wishlists it may reach. */
+function projectAgentLinkedCopies(
+	linkedCopies: readonly LinkedGiftCopy[],
+	allowedWishlistIds: readonly string[] | null,
+) {
+	return linkedCopies
+		.filter(
+			(linkedCopy) =>
+				allowedWishlistIds === null || allowedWishlistIds.includes(linkedCopy.wishlistId),
+		)
+		.map((linkedCopy) => ({
+			giftId: linkedCopy.giftId,
+			wishlistId: linkedCopy.wishlistId,
+			wishlistShortId: linkedCopy.wishlistShortId,
+			wishlistTitle: linkedCopy.wishlistTitle,
+			occasion: linkedCopy.occasion,
+			status: linkedCopy.status,
+			editsFrozenFrom: linkedCopy.editsFrozenFrom,
+		}));
+}
+
+function projectAgentGiftBase(gift: GiftForRecipient, options: AgentGiftProjectionOptions) {
 	return {
 		...projectAgentGiftRow(gift),
 		priorityLabel: gift.priorityLabel,
@@ -194,6 +226,7 @@ function projectAgentGiftBase(gift: GiftForRecipient) {
 		categories: gift.categories,
 		// Superseded by `categories`: the primary category only.
 		category: gift.categories[0] ?? null,
+		linkedCopies: projectAgentLinkedCopies(gift.linkedCopies, options.allowedWishlistIds),
 	};
 }
 
@@ -202,8 +235,8 @@ function projectAgentGiftBase(gift: GiftForRecipient) {
  * `reservations:identities` scope. A recipient's gifts arrive from the core without any
  * reservation or like data and stay that way. No reserver email is ever part of a gift.
  */
-function projectAgentGift(gift: GiftByRole, options: { includeReserverNames: boolean }) {
-	const giftBase = projectAgentGiftBase(gift);
+function projectAgentGift(gift: GiftByRole, options: AgentGiftProjectionOptions) {
+	const giftBase = projectAgentGiftBase(gift, options);
 	if (!('reservedCount' in gift)) {
 		return giftBase;
 	}
@@ -212,15 +245,17 @@ function projectAgentGift(gift: GiftByRole, options: { includeReserverNames: boo
 		likeCount: gift.likeCount,
 		reservedCount: gift.reservedCount,
 		isFullyReserved: gift.isFullyReserved,
+		reservedOnLinkedCopiesCount: gift.reservedOnLinkedCopiesCount,
 		myReservationId: gift.myReservationId,
 		myReservationPurchasedAt: gift.myReservationPurchasedAt,
+		myReservationOnLinkedCopy: gift.myReservationOnLinkedCopy,
 		...(options.includeReserverNames ? { reserverNames: gift.reserverNames } : {}),
 	};
 }
 
 export function projectAgentWishlistGifts(
 	giftsOutput: ReadWishlistGiftsOutput,
-	options: { includeReserverNames: boolean },
+	options: AgentGiftProjectionOptions,
 ) {
 	return {
 		role: giftsOutput.role,
@@ -243,6 +278,7 @@ export function projectAgentBulkCopyDestinations(
 		status: destination.status,
 		kind: destination.kind,
 		recipientDisplayName: destination.recipientDisplayName,
+		linkable: destination.linkable,
 	}));
 }
 

@@ -84,6 +84,7 @@ vi.mock('drizzle-orm', () => ({
 	eq: vi.fn(),
 	and: vi.fn(),
 	isNull: vi.fn(),
+	inArray: vi.fn(),
 	sql: Object.assign(vi.fn(), { join: vi.fn() }),
 }));
 
@@ -193,6 +194,7 @@ function makeActiveWishlistRow() {
 			wishlistId: WISHLIST_ID,
 			name: GIFT_NAME,
 			quantity: 5,
+			linkGroupId: null,
 			deletedAt: null,
 		},
 		wishlist: {
@@ -359,7 +361,7 @@ describe('statement budgets (issue #108, REQ-7)', () => {
 		// after commit, likers + followers are read through getDb() again and pop empty defaults.
 		const database = createMultiQueryChain(
 			[makeActiveWishlistRow()],
-			[{ quantity: 5 }],
+			[{ quantity: 5, linkGroupId: null }],
 			[{ totalQuantity: 0 }],
 			[{ id: RESERVATION_ID }],
 		);

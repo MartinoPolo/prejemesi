@@ -59,6 +59,7 @@ function makeGift(images: GiftImage[]): GiftByRole {
 		prioritySortOrder: null,
 		categoryIds: [],
 		categories: [],
+		linkedCopies: [],
 	};
 }
 

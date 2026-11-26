@@ -1,6 +1,8 @@
-import { getTableColumns, inArray, sql } from 'drizzle-orm';
-import type { DatabaseTransaction } from '$lib/server/db/index.js';
+import { and, eq, getTableColumns, inArray, isNull, sql } from 'drizzle-orm';
+import { getDb, type DatabaseTransaction } from '$lib/server/db/index.js';
 import { gift, giftImage } from '$lib/server/db/gift.schema.js';
+import { wishlist } from '$lib/server/db/wishlist.schema.js';
+import { deleteObjectsBestEffort } from '$lib/server/storage/r2.js';
 import type { GiftImage } from '$lib/modules/gifts/gift_images.js';
 
 /**
@@ -53,4 +55,30 @@ export async function replaceGiftGalleries(
 	if (imageRows.length > 0) {
 		await transaction.insert(giftImage).values(imageRows);
 	}
+}
+
+/**
+ * Deletes the uploads a committed change released, except those a live gift on a live wishlist
+ * still shows: linked copies share the uploads an edit synced to them (issue #742).
+ */
+export async function deleteUnreferencedGiftImagesBestEffort(
+	releasedKeys: readonly string[],
+): Promise<void> {
+	if (releasedKeys.length === 0) {
+		return;
+	}
+	const referencedRows = await getDb()
+		.selectDistinct({ imageKey: giftImage.imageKey })
+		.from(giftImage)
+		.innerJoin(gift, eq(gift.id, giftImage.giftId))
+		.innerJoin(wishlist, eq(wishlist.id, gift.wishlistId))
+		.where(
+			and(
+				inArray(giftImage.imageKey, [...releasedKeys]),
+				isNull(gift.deletedAt),
+				isNull(wishlist.deletedAt),
+			),
+		);
+	const referencedKeys = new Set(referencedRows.map((row) => row.imageKey));
+	await deleteObjectsBestEffort(releasedKeys.filter((key) => !referencedKeys.has(key)));
 }

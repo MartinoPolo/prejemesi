@@ -126,9 +126,18 @@ export function formatOtherReservationLabel(otherReservers?: OtherReserverIdenti
 	if (otherReservers === undefined) {
 		return m.gift_reserved_by_other_overlay();
 	}
-	return otherReservers.kind === 'single'
-		? m.gift_reserved_by_overlay({ name: otherReservers.name })
-		: m.gift_reserved_by_many();
+	switch (otherReservers.kind) {
+		case 'single':
+			return m.gift_reserved_by_overlay({ name: otherReservers.name });
+		case 'multiple':
+			return m.gift_reserved_by_many();
+		case 'elsewhere':
+			return m.gift_reserved_on_other_list();
+		default: {
+			const unhandled: never = otherReservers;
+			return unhandled;
+		}
+	}
 }
 
 export function formatGiftStateLabel(entry: GiftOverlayEntry): string {

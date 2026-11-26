@@ -74,6 +74,9 @@ vi.mock('drizzle-orm', () => ({
 	eq: vi.fn((...args: unknown[]) => args),
 	and: vi.fn((...args: unknown[]) => args),
 	isNull: vi.fn((arg: unknown) => arg),
+	isNotNull: vi.fn((arg: unknown) => arg),
+	ne: vi.fn((...args: unknown[]) => args),
+	asc: vi.fn((arg: unknown) => arg),
 	inArray: vi.fn((...args: unknown[]) => args),
 	sql: Object.assign(vi.fn(mockSql), {
 		join: vi.fn((parts: unknown[], separator: unknown) => ({
@@ -249,6 +252,12 @@ vi.mock('$lib/modules/notifications/notification_dispatcher.js', () => ({
 vi.mock('$lib/modules/gift-categories/gift_category_queries.remote.js', () => ({
 	getGiftCategories: vi.fn(),
 }));
+// These gifts are never linked; linked copies have their own real-database tests.
+vi.mock('$lib/server/operations/gift_link_group.js', async (importOriginal) => ({
+	...(await importOriginal<Record<string, unknown>>()),
+	lockLinkedCopies: vi.fn(async () => {}),
+	loadLinkedSiblingsOnWishlist: vi.fn(async () => new Map()),
+}));
 vi.mock('./gift_creation_service.js', () => ({
 	appendGiftsUsingTransaction: vi.fn(),
 }));
@@ -351,6 +360,7 @@ function makeGiftRow(
 		received: false,
 		createdAt: AFTER_SHARING,
 		deletedAt: null,
+		linkGroupId: null,
 		priorityLevelId: null,
 		priorityLabel: null,
 		prioritySortOrder: null,

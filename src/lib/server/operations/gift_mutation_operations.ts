@@ -21,15 +21,23 @@ import {
 	requireWishlistManagement,
 	type ManagedWishlist,
 } from './wishlist_management.js';
-import { applyGiftUpdate, type GiftRow } from './gift_update.js';
+import { applyGiftUpdate } from './gift_update.js';
+import { propagateToLinkedCopies } from './gift_link_group_sync.js';
+import type { GiftRow } from './gift_presentation_update.js';
 import { softDeleteGift } from './gift_deletion.js';
 import { giftColumnsWithImages } from './gift_gallery.js';
-import { lockedGiftFollowsStrictPostShareRules } from './wishlist_kind_rules.js';
+import {
+	OWN_WISHLIST_LOCK,
+	leaveLinkGroup,
+	lockLinkedCopies,
+	lockedLinkedEditRules,
+} from './gift_link_group.js';
 
 /**
  * Resolves the actor's management of an active gift's wishlist, then locks the gift: wishlist
  * before gift, the order every mutation locks in, so a gift edit cannot deadlock against a
- * reorder or priority and category restructuring of the same wishlist.
+ * reorder or priority and category restructuring of the same wishlist. A linked gift's copies are
+ * locked first, in the same order, because the edit writes them too.
  */
 async function lockManagedGift(
 	transaction: DatabaseTransaction,
@@ -45,6 +53,10 @@ async function lockManagedGift(
 	if (unlockedGift === undefined) {
 		error(404, SERVER_ERROR.GIFT_NOT_FOUND);
 	}
+	await lockLinkedCopies(transaction, [giftId], {
+		wishlistIds: [unlockedGift.wishlistId],
+		lock: OWN_WISHLIST_LOCK.keyShare,
+	});
 	const managedWishlist = await requireWishlistManagement(
 		transaction,
 		actorUserId,
@@ -153,13 +165,15 @@ export const appendGiftDescriptionOperation = defineOperation({
 			input.giftId,
 		);
 		const { wishlistRow } = managedWishlist;
+		const linkedRules = await lockedLinkedEditRules(
+			context.transaction,
+			giftRow,
+			wishlistRow,
+			context.now,
+		);
 		const appendsSegment =
-			wishlistRow.sharedAt !== null &&
-			(await lockedGiftFollowsStrictPostShareRules(
-				context.transaction,
-				wishlistRow,
-				giftRow.id,
-			));
+			(wishlistRow.sharedAt !== null && linkedRules.followsStrictRules) ||
+			linkedRules.appendsByLinkedCopy;
 		const currentDescription = giftRow.description?.trim() ?? '';
 		const description =
 			appendsSegment || currentDescription === ''
@@ -225,7 +239,39 @@ export const markGiftReceivedOperation = defineOperation({
 					after: updated,
 				},
 			]);
+			await propagateToLinkedCopies(context, {
+				before: giftRow,
+				after: updated,
+				editorRole: managedWishlist.role,
+				restoring: false,
+			});
 		}
 		return { gift: updated, wishlistShortId: managedWishlist.wishlistRow.shortId };
+	},
+});
+
+/**
+ * Stops a gift syncing with its linked copies on other wishlists (issue #742): the recipient or any
+ * správce of its wishlist may, like editing it. It keeps its own reservations and received state.
+ */
+export const unlinkGiftOperation = defineOperation({
+	name: 'unlinkGift',
+	kind: OPERATION_KIND.mutation,
+	exposure: OPERATION_EXPOSURE.agent,
+	input: v.strictObject({ giftId: v.string() }),
+	async run(context, input) {
+		const { giftRow, managedWishlist } = await lockManagedGift(
+			context.transaction,
+			context.actor.userId,
+			input.giftId,
+		);
+		if (giftRow.linkGroupId === null) {
+			error(400, SERVER_ERROR.GIFT_NOT_LINKED);
+		}
+		await leaveLinkGroup(context.transaction, giftRow);
+		return {
+			wishlistId: giftRow.wishlistId,
+			wishlistShortId: managedWishlist.wishlistRow.shortId,
+		};
 	},
 });

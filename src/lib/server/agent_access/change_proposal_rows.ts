@@ -34,6 +34,7 @@ import {
 	setReservationPurchasedOperation,
 } from '$lib/server/operations/reservation_operations.js';
 import { createWishlistFromImportOperation } from '$lib/server/operations/import_operations.js';
+import { unlinkGiftOperation } from '$lib/server/operations/gift_mutation_operations.js';
 import type { OperationName } from './operation_policies.js';
 import type { StoredChangeRow } from './change_proposal_records.js';
 import { TARGET_KIND, type LookupDatabase, type TargetReference } from './policy_lookups.js';
@@ -51,6 +52,7 @@ const CHANGE_KIND_BY_OPERATION = {
 	appendGiftDescription: CHANGE_KIND.descriptionAppend,
 	deleteGift: CHANGE_KIND.giftDeletion,
 	markGiftReceived: CHANGE_KIND.received,
+	unlinkGift: CHANGE_KIND.giftEdit,
 	reorderGifts: CHANGE_KIND.reorder,
 	saveGiftCategorySettings: CHANGE_KIND.category,
 	savePriorityLevels: CHANGE_KIND.priorityLevel,
@@ -92,7 +94,9 @@ export function countChangeKinds(rows: readonly Pick<StoredChangeRow, 'operation
  * priority levels and wishlist details, and a reservation's cancellation or purchase mark has no
  * inverse operation. Undo refuses a batch with any of them rather than undo part of it.
  */
+// A link is not part of a gift revision, so undo cannot put an unlinked gift back.
 const UNDO_UNSUPPORTED_OPERATIONS = new Set<string>([
+	unlinkGiftOperation.name,
 	saveGiftCategorySettingsOperation.name,
 	savePriorityLevelsOperation.name,
 	updateWishlistOperation.name,

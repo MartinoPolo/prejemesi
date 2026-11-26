@@ -15,6 +15,7 @@ import { sql } from 'drizzle-orm';
 import { user } from './auth.schema.js';
 import { wishlist, priorityLevel } from './wishlist.schema.js';
 import { generateId } from './id.js';
+import { giftLinkGroupKindEnum } from './enums.js';
 import { cascadingReferenceColumn, softDeletableTimestampColumns } from './columns.js';
 import type { ImageMetadata } from '$lib/modules/images/types.js';
 import type { GiftLink, DescriptionAppend } from '$lib/modules/gifts/types.js';
@@ -79,6 +80,18 @@ export const giftCategory = pgTable(
 	}),
 );
 
+/**
+ * Gifts sharing a group keep their synced fields and reservation capacity together. Members are
+ * the live gift rows pointing at it; a dissolved group's row stays without members.
+ */
+export const giftLinkGroup = pgTable('gift_link_group', {
+	id: text('id')
+		.primaryKey()
+		.$defaultFn(() => generateId()),
+	kind: giftLinkGroupKindEnum('kind').notNull(),
+	createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const gift = pgTable(
 	'gift',
 	{
@@ -135,9 +148,15 @@ export const gift = pgTable(
 		quantity: integer('quantity').default(1),
 		sortOrder: integer('sort_order').notNull().default(0),
 		received: boolean('received').notNull().default(false),
+		linkGroupId: text('link_group_id').references(() => giftLinkGroup.id, {
+			onDelete: 'set null',
+		}),
 		...softDeletableTimestampColumns(),
 	},
 	(table) => ({
+		linkGroupIdx: index('gift_link_group_idx')
+			.on(table.linkGroupId)
+			.where(sql`${table.linkGroupId} IS NOT NULL AND ${table.deletedAt} IS NULL`),
 		wishlistSortIdx: index('gift_wishlist_sort_idx')
 			.on(table.wishlistId, table.sortOrder)
 			.where(sql`${table.deletedAt} IS NULL`),

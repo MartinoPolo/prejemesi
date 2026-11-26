@@ -1,11 +1,17 @@
 import * as v from 'valibot';
-import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { error } from '@sveltejs/kit';
 import type { DatabaseTransaction } from '$lib/server/db/index.js';
 import { gift } from '$lib/server/db/gift.schema.js';
 import { giftRevision } from '$lib/server/db/gift_revision.schema.js';
+import { wishlist } from '$lib/server/db/wishlist.schema.js';
+import { wishlistScope } from '$lib/server/demo/scope.js';
 import { SERVER_ERROR, encodeServerError } from '$lib/modules/errors/server_error_codes.js';
-import { assertWishlistMutable } from '$lib/modules/wishlists/wishlist_access.js';
+import {
+	assertWishlistMutable,
+	resolveRoleOnWishlistRow,
+} from '$lib/modules/wishlists/wishlist_access.js';
+import { WISHLIST_ROLES } from '$lib/modules/wishlists/types.js';
 import {
 	GIFT_CURRENCIES,
 	type GiftCurrency,
@@ -25,8 +31,10 @@ import {
 	requireWishlistManagement,
 	type ManagedWishlist,
 } from './wishlist_management.js';
-import { applyGiftUpdate, type GiftRow, type RestoredGiftState } from './gift_update.js';
+import { applyGiftUpdate, type RestoredGiftState } from './gift_update.js';
+import type { GiftRow } from './gift_presentation_update.js';
 import { softDeleteGift } from './gift_deletion.js';
+import { OWN_WISHLIST_LOCK, lockLinkedCopies } from './gift_link_group.js';
 import {
 	currentGiftRevisionSnapshot,
 	giftRevisionSnapshotsDiffer,
@@ -113,10 +121,63 @@ async function findLatestRevisionIds(
 	return new Map(latestRevisions.map((revision) => [revision.giftId, revision.id]));
 }
 
+/** The actor's management of each live wishlist, without failing for one they do not manage. */
+async function resolveManagedWishlists(
+	transaction: DatabaseTransaction,
+	actorUserId: string,
+	wishlistIds: readonly string[],
+): Promise<Map<string, ManagedWishlist>> {
+	const wishlistRows = await transaction
+		.select()
+		.from(wishlist)
+		.where(
+			and(
+				inArray(wishlist.id, [...wishlistIds]),
+				isNull(wishlist.deletedAt),
+				wishlistScope(),
+			),
+		)
+		.orderBy(asc(wishlist.id))
+		.for('update');
+	const managedWishlists = new Map<string, ManagedWishlist>();
+	for (const wishlistRow of wishlistRows) {
+		const role = await resolveRoleOnWishlistRow(actorUserId, wishlistRow, {
+			database: transaction,
+			lock: true,
+		});
+		if (role !== WISHLIST_ROLES.visitor) {
+			managedWishlists.set(wishlistRow.id, { role, wishlistRow });
+		}
+	}
+	return managedWishlists;
+}
+
+/**
+ * The actor's mutable management of a wishlist, failing exactly as a manual edit there would:
+ * 404 for a missing wishlist, 403 for one the actor does not manage.
+ */
+async function requireUndoManagement(
+	context: MutationOperationContext,
+	managedWishlists: ReadonlyMap<string, ManagedWishlist>,
+	wishlistId: string,
+): Promise<ManagedWishlist> {
+	const managedWishlist =
+		managedWishlists.get(wishlistId) ??
+		(await requireWishlistManagement(context.transaction, context.actor.userId, wishlistId, {
+			lock: true,
+		}));
+	assertWishlistMutable(managedWishlist.wishlistRow);
+	return managedWishlist;
+}
+
 /**
  * Restores the gifts touched by `revisions` to their `before` state as one ordinary mutation by
  * the undoing actor, so manager access and post-share rules apply exactly as to a manual edit.
  * Refuses with 409 (listing the gift ids) when any gift changed after its revision.
+ *
+ * A linked edit revised every copy it synced. Restoring one copy syncs the others back, so a copy
+ * left with nothing to restore needs neither a write nor the actor's management of its wishlist:
+ * a správce of one list can undo their edit although it reached the recipient's other lists.
  */
 async function undoRevisions(
 	context: MutationOperationContext,
@@ -132,18 +193,16 @@ async function undoRevisions(
 	}
 
 	const wishlistIds = [...new Set(revisions.map((revision) => revision.wishlistId))];
+	await lockLinkedCopies(transaction, giftIds, {
+		wishlistIds,
+		lock: OWN_WISHLIST_LOCK.exclusive,
+	});
 	await lockWishlistsInIdOrder(transaction, wishlistIds);
-	const managedWishlists = new Map<string, ManagedWishlist>();
-	for (const wishlistId of wishlistIds) {
-		const managedWishlist = await requireWishlistManagement(
-			transaction,
-			context.actor.userId,
-			wishlistId,
-			{ lock: true },
-		);
-		assertWishlistMutable(managedWishlist.wishlistRow);
-		managedWishlists.set(wishlistId, managedWishlist);
-	}
+	const managedWishlists = await resolveManagedWishlists(
+		transaction,
+		context.actor.userId,
+		wishlistIds,
+	);
 
 	const giftRows = await transaction
 		.select(giftColumnsWithImages())
@@ -152,6 +211,12 @@ async function undoRevisions(
 		.orderBy(asc(gift.id))
 		.for('update');
 	const giftRowsById = new Map(giftRows.map((row) => [row.id, row]));
+	// Only a linked copy's revision may turn out to need nothing; every other one needs management.
+	for (const revision of revisions) {
+		if (giftRowsById.get(revision.giftId)?.linkGroupId == null) {
+			await requireUndoManagement(context, managedWishlists, revision.wishlistId);
+		}
+	}
 	const latestRevisionIds = await findLatestRevisionIds(transaction, giftIds);
 
 	const conflictingGiftIds = revisions
@@ -174,31 +239,66 @@ async function undoRevisions(
 		);
 	}
 
-	for (const revision of revisions) {
-		const giftRow: GiftRow | undefined = giftRowsById.get(revision.giftId);
-		const managedWishlist = managedWishlists.get(revision.wishlistId);
-		if (giftRow === undefined || managedWishlist === undefined) {
+	// Copies on wishlists the actor manages go first, so their restores sync the others back.
+	const orderedRevisions = [
+		...revisions.filter((revision) => managedWishlists.has(revision.wishlistId)),
+		...revisions.filter((revision) => !managedWishlists.has(revision.wishlistId)),
+	];
+	const restoredWishlistShortIds = new Set<string>();
+	for (const revision of orderedRevisions) {
+		const lockedGiftRow: GiftRow | undefined = giftRowsById.get(revision.giftId);
+		if (lockedGiftRow === undefined) {
 			throw new Error(`Undo lost the locked state of gift ${revision.giftId}`);
 		}
 		if (revision.before === null) {
 			// Undoing a creation deletes the gift under the ordinary deletion rules, upload included.
-			await softDeleteGift(context, giftRow, managedWishlist);
+			const managedWishlist = await requireUndoManagement(
+				context,
+				managedWishlists,
+				revision.wishlistId,
+			);
+			await softDeleteGift(context, lockedGiftRow, managedWishlist);
+			restoredWishlistShortIds.add(managedWishlist.wishlistRow.shortId);
 			continue;
 		}
+		// A restore of an earlier linked copy may already have synced this one back.
+		const giftRow =
+			lockedGiftRow.linkGroupId === null
+				? lockedGiftRow
+				: await currentGiftRow(transaction, lockedGiftRow.id);
 		const { input, restoring } = planRestore(
 			giftRow.id,
 			currentGiftRevisionSnapshot(revision.before),
-			currentGiftRevisionSnapshot(revision.after),
+			toGiftRevisionSnapshot(giftRow),
+		);
+		if (lockedGiftRow.linkGroupId !== null && restoresNothing(input, restoring)) {
+			continue;
+		}
+		const managedWishlist = await requireUndoManagement(
+			context,
+			managedWishlists,
+			revision.wishlistId,
 		);
 		await applyGiftUpdate(context, { giftRow, managedWishlist, input, restoring });
+		restoredWishlistShortIds.add(managedWishlist.wishlistRow.shortId);
 	}
 
-	return {
-		restoredGiftIds: giftIds,
-		wishlistShortIds: [...managedWishlists.values()].map(
-			(managedWishlist) => managedWishlist.wishlistRow.shortId,
-		),
-	};
+	return { restoredGiftIds: giftIds, wishlistShortIds: [...restoredWishlistShortIds] };
+}
+
+async function currentGiftRow(transaction: DatabaseTransaction, giftId: string): Promise<GiftRow> {
+	const [giftRow] = await transaction
+		.select(giftColumnsWithImages())
+		.from(gift)
+		.where(eq(gift.id, giftId));
+	if (giftRow === undefined) {
+		throw new Error(`Undo lost the locked state of gift ${giftId}`);
+	}
+	return giftRow;
+}
+
+function restoresNothing(input: UpdateGiftInput, restoring: RestoredGiftState): boolean {
+	return Object.keys(input).every((key) => key === 'id') && Object.keys(restoring).length === 0;
 }
 
 /** Undoes every gift change of one batch atomically. */

@@ -335,6 +335,7 @@ describe.skipIf(!DATABASE_READY)('bulk gift copy [real DB]', () => {
 				sourceWishlistId: SOURCE_ID,
 				destinationWishlistId: DESTINATION_ID,
 				giftIds: [SOURCE_GIFT_ONE, SOURCE_GIFT_TWO],
+				linkCopies: false,
 			});
 			const copies = await getDb()
 				.select()

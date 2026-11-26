@@ -39,6 +39,9 @@ function makeGift(overrides: Partial<GiftForVisitor> = {}): GiftForVisitor {
 		myReservationId: null,
 		myReservationPurchasedAt: null,
 		myReservationQuantity: 0,
+		myReservationOnLinkedCopy: false,
+		reservedOnLinkedCopiesCount: 0,
+		linkedCopies: [],
 		...overrides,
 	};
 }

@@ -167,6 +167,9 @@ function buildDemoGift(
 		myReservationId: null,
 		myReservationPurchasedAt: null,
 		myReservationQuantity: 0,
+		myReservationOnLinkedCopy: false,
+		reservedOnLinkedCopiesCount: 0,
+		linkedCopies: [],
 	};
 }
 
@@ -280,5 +283,6 @@ export function toRecipientView(gift: GiftForVisitor): GiftForRecipient {
 		prioritySortOrder: gift.prioritySortOrder,
 		categoryIds: gift.categoryIds,
 		categories: gift.categories,
+		linkedCopies: gift.linkedCopies,
 	};
 }

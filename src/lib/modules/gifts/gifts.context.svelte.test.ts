@@ -56,6 +56,9 @@ function makeGift(options: { priority?: boolean; category?: boolean } = {}): Gif
 		myReservationId: null,
 		myReservationPurchasedAt: null,
 		myReservationQuantity: 0,
+		myReservationOnLinkedCopy: false,
+		reservedOnLinkedCopiesCount: 0,
+		linkedCopies: [],
 	};
 }
 

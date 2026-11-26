@@ -59,6 +59,10 @@ export const SERVER_ERROR = {
 	// Once a list was shared its recipient may only copy: reserved gifts left behind by a move
 	// would reveal reservations.
 	BULK_COPY_RECIPIENT_CANNOT_MOVE: 'BULK_COPY_RECIPIENT_CANNOT_MOVE',
+	// Copies link only between wishlists of the same recipient (issue #742).
+	BULK_COPY_LINK_NOT_ALLOWED: 'BULK_COPY_LINK_NOT_ALLOWED',
+	// Unlinking a gift that has no linked copies (issue #742).
+	GIFT_NOT_LINKED: 'GIFT_NOT_LINKED',
 	GIFT_PRIORITY_WISHLIST_MISMATCH: 'GIFT_PRIORITY_WISHLIST_MISMATCH',
 	INVALID_PRICE_RANGE: 'INVALID_PRICE_RANGE',
 	GIFT_CATEGORY_NOT_FOUND: 'GIFT_CATEGORY_NOT_FOUND',

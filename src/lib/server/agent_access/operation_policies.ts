@@ -208,6 +208,7 @@ export const AGENT_OPERATION_POLICIES: AgentOperationPolicies = {
 		projectOutput: (output, grant) =>
 			projectAgentWishlistGifts(output, {
 				includeReserverNames: hasAgentScope(grant, AGENT_SCOPE.reservationsIdentities),
+				allowedWishlistIds: grant.wishlistIds,
 			}),
 	}),
 	readBulkCopyDestinations: agentOperation({
@@ -293,6 +294,13 @@ export const AGENT_OPERATION_POLICIES: AgentOperationPolicies = {
 		targets: byGiftId((input) => input.giftId),
 		projectOutput: projectGiftChange,
 	}),
+	unlinkGift: agentOperation({
+		summary:
+			'Unlinks a gift from its linked copies on the recipient’s other wishlists, which then stop syncing.',
+		scope: AGENT_SCOPE.giftsWrite,
+		targets: byGiftId((input) => input.giftId),
+		projectOutput: projectWishlistShortId,
+	}),
 	reorderGifts: agentOperation({
 		summary: 'Sets the manual order of the gifts of a wishlist.',
 		scope: AGENT_SCOPE.giftsWrite,
@@ -313,7 +321,7 @@ export const AGENT_OPERATION_POLICIES: AgentOperationPolicies = {
 	// copied sources deletes gifts, which needs the user's confirmation like `deleteGift`.
 	bulkCopyGifts: agentOperation({
 		summary:
-			'Copies gifts to another wishlist, optionally removing the unreserved sources, which needs confirmation.',
+			'Copies gifts to another wishlist, optionally removing the unreserved sources, which needs confirmation. Copies to a wishlist of the same recipient stay linked with their sources unless linkCopies is false.',
 		scope: AGENT_SCOPE.giftsWrite,
 		targets: (input) => [
 			{ kind: TARGET_KIND.wishlistId, id: input.sourceWishlistId },
@@ -322,6 +330,7 @@ export const AGENT_OPERATION_POLICIES: AgentOperationPolicies = {
 		confirmation: confirmedDependingOnInput((input) => input.removeUnreservedSources === true),
 		projectOutput: (output) => ({
 			createdIds: output.createdIds,
+			linkedIds: output.linkedIds,
 			destinationShortId: output.destinationShortId,
 		}),
 	}),

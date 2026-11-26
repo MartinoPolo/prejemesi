@@ -76,6 +76,7 @@ export interface MutationOperation<
 	 * step on another gift changes: a batch runs consecutive such steps on distinct gifts
 	 * concurrently, so their statements share round trips instead of queueing row by row. Such an
 	 * operation must not open a savepoint, which would interleave with the other steps' statements.
+	 * A step that still revises another gift, such as a linked copy, makes its group rerun in order.
 	 */
 	isolatedGiftId?(input: v.InferOutput<TSchema>): string;
 	run(context: MutationOperationContext, input: v.InferOutput<TSchema>): Promise<TOutput>;

@@ -217,8 +217,13 @@ interface BatchStepScope {
 function stepContext(
 	step: PreparedStep,
 	scope: BatchStepScope,
-): { context: MutationOperationContext; reportToScope: () => void } {
+): {
+	context: MutationOperationContext;
+	reportToScope: () => void;
+	revisedGiftIds: Set<string>;
+} {
 	const reports: (() => void)[] = [];
+	const revisedGiftIds = new Set<string>();
 	return {
 		context: {
 			actor: scope.actor,
@@ -226,8 +231,10 @@ function stepContext(
 			now: scope.now,
 			batchId: scope.batchId,
 			dryRun: scope.dryRun,
-			recordGiftRevisions: (changes) =>
-				reports.push(() => scope.revisionCollector.record(step.operationName, changes)),
+			recordGiftRevisions: (changes) => {
+				changes.forEach((change) => revisedGiftIds.add(change.giftId));
+				reports.push(() => scope.revisionCollector.record(step.operationName, changes));
+			},
 			noteReservedGiftEdits: (edits) =>
 				reports.push(() => scope.noteReservedGiftEdits(edits)),
 			deferEffect: (effect) =>
@@ -236,6 +243,7 @@ function stepContext(
 				),
 		},
 		reportToScope: () => reports.forEach((report) => report()),
+		revisedGiftIds,
 	};
 }
 
@@ -304,6 +312,14 @@ async function runStepGroup(
 			return { failed: true, thrown: settled?.reason };
 		}
 		results.push(settled.value);
+	}
+	// An edit of a linked gift also writes its copies (issue #742), so its order among the group's
+	// steps matters; the group then reruns step by step.
+	const changedOtherGifts = runs.some((run) =>
+		[...run.revisedGiftIds].some((giftId) => giftId !== run.step.isolatedGiftId),
+	);
+	if (runs.length > 1 && changedOtherGifts) {
+		return { failed: true, thrown: new StepGroupRollback() };
 	}
 	runs.forEach((run) => run.reportToScope());
 	return { failed: false, results };
