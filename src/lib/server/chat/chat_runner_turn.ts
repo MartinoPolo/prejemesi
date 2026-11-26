@@ -13,6 +13,7 @@ import type { AgentCaller } from '$lib/server/agent_access/agent_caller.js';
 import { AgentApiFailure } from '$lib/server/agent_access/api.js';
 import { readChangeProposalForAgent } from '$lib/server/agent_access/change_proposal_api.js';
 import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
+import { browsePageConfig } from './chat_config.js';
 import { chatFailure } from './chat_failure.js';
 import {
 	CHAT_RUNNER_JOB_STATUS,
@@ -218,13 +219,16 @@ export async function startChatRunnerTurn(turn: {
 		sessionId: session.id,
 		model: request.model ?? DEFAULT_CHAT_RUNNER_MODEL,
 		effort: request.effort ?? DEFAULT_CHAT_RUNNER_EFFORT,
-		systemPrompt: chatRunnerSystemPrompt({
-			wishlistId: session.wishlistId,
-			wishlistShortId: session.wishlistShortId,
-			wishlistTitle: session.wishlistTitle,
-			userName: turn.user.name,
-			locale: turn.locale,
-		}),
+		systemPrompt: chatRunnerSystemPrompt(
+			{
+				wishlistId: session.wishlistId,
+				wishlistShortId: session.wishlistShortId,
+				wishlistTitle: session.wishlistTitle,
+				userName: turn.user.name,
+				locale: turn.locale,
+			},
+			{ canBrowsePages: browsePageConfig() !== null },
+		),
 		prompt: chatRunnerPrompt(history, proposalOutcomes),
 	});
 	if (job === null) {

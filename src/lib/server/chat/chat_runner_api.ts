@@ -20,7 +20,7 @@ import {
 } from '$lib/server/agent_access/mcp_protocol.js';
 import { scheduleAgentAccessPurge } from '$lib/server/agent_access/agent_access_purge.js';
 import { chatCaller } from './chat_agent.js';
-import { chatRunnerSecret } from './chat_config.js';
+import { browsePageConfig, chatRunnerSecret } from './chat_config.js';
 import { chatFailure } from './chat_failure.js';
 import { CHAT_BLOCK } from './chat_model.js';
 import {
@@ -34,7 +34,7 @@ import {
 	type ChatRunnerJob,
 } from './chat_runner_jobs.js';
 import { storeAssistantMessage } from './chat_store.js';
-import { chatTools, runChatToolCalls } from './chat_tools.js';
+import { chatToolQuery, chatTools, runChatToolCalls } from './chat_tools.js';
 import { CHAT_RUNNER_LIMITS, type ChatRunnerLimits } from './limits.js';
 import { waitUnlessAborted } from './wait.js';
 
@@ -229,13 +229,14 @@ export async function handleChatRunnerEvents(event: ChatRunnerEvent): Promise<Re
 async function chatRunnerToolset(
 	job: ChatRunnerJob,
 	imageBucket: AgentImageBucket | undefined,
+	signal: AbortSignal,
 ): Promise<McpToolset> {
 	const chat = await readChatRunnerJobChat(job.sessionId);
 	if (chat === null) {
 		throw new AgentApiFailure(404, SERVER_ERROR.NOT_FOUND);
 	}
 	const caller = chatCaller(chat.session, chat.user);
-	const tools = chatTools(caller);
+	const tools = chatTools(caller, browsePageConfig());
 	const toolNames = new Set(tools.map((tool) => tool.name));
 	return {
 		instructions: RUNNER_MCP_INSTRUCTIONS,
@@ -245,15 +246,17 @@ async function chatRunnerToolset(
 		callTool: async (name, toolArguments) => {
 			const appendEvents = (events: ChatStreamEvent[]) =>
 				appendChatRunnerJobEvents(job.id, events);
-			await appendEvents([{ type: CHAT_STREAM_EVENT.tool, name, query: null }]);
 			const call = { id: `runner_${generateId()}`, name, input: toolArguments };
-			const round = await runChatToolCalls(
-				caller,
-				tools,
-				chat.session.wishlistId,
-				[call],
+			await appendEvents([
+				{ type: CHAT_STREAM_EVENT.tool, name, query: chatToolQuery(call) },
+			]);
+			const round = await runChatToolCalls(caller, tools, chat.session.wishlistId, [call], {
 				imageBucket,
-			);
+				signal,
+				// Owner-only, and the runner's own WebFetch opens any address, so a restriction
+				// here would not close the channel the API chat's restriction closes.
+				conversationUrls: null,
+			});
 			await storeAssistantMessage(
 				job.sessionId,
 				[{ type: CHAT_BLOCK.toolCall, ...call }, ...round.results],
@@ -294,7 +297,7 @@ export async function handleChatRunnerMcp(event: ChatRunnerEvent): Promise<Respo
 			if (job.status !== CHAT_RUNNER_JOB_STATUS.running) {
 				throw new AgentApiFailure(409, SERVER_ERROR.CONFLICT);
 			}
-			return chatRunnerToolset(job, event.platform?.env.R2);
+			return chatRunnerToolset(job, event.platform?.env.R2, event.request.signal);
 		},
 		failureResponse: (thrown) => agentFailureResponse(null, thrown),
 	});

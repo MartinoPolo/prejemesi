@@ -9,6 +9,15 @@ import { OPERATION_KIND } from '$lib/server/operations/operation.js';
 import type { AgentImageBucket } from '$lib/server/storage/r2.js';
 import { CHANGE_PROPOSAL_STATUS } from '$lib/modules/change_proposals/types.js';
 import { translateServerErrorCode } from '$lib/modules/errors/translate_server_error.js';
+import { CHAT_BROWSE_TOOL } from '$lib/modules/chat/types.js';
+import {
+	allowedBrowseUrlFromInput,
+	browsePage,
+	browsePageTool,
+	type BrowsePageConfig,
+	type BrowsePageContext,
+	type BrowsePageResult,
+} from './browse_page.js';
 import { CHAT_BLOCK, type ChatContentBlock, type ChatModelTool } from './chat_model.js';
 
 /**
@@ -35,31 +44,65 @@ const EXCLUDED_TOOL_NAMES: ReadonlySet<string> = new Set([
 const CHANGE_TOOL_NOTE =
 	'The change joins the proposal of this response, which the user reviews in the chat.';
 
-const CHAT_TOOL_KIND = { read: 'read', change: 'change' } as const;
+const CHAT_TOOL_KIND = { read: 'read', change: 'change', browse: 'browse' } as const;
 
-export interface ChatTool extends ChatModelTool {
-	kind: (typeof CHAT_TOOL_KIND)[keyof typeof CHAT_TOOL_KIND];
+/**
+ * An agent operation the chat reads or changes through, or its own page browser, which binds its
+ * configuration in `openPage` so the secret never sits in data a tool list is serialised from.
+ */
+export type ChatTool = ChatModelTool &
+	(
+		| { kind: typeof CHAT_TOOL_KIND.read | typeof CHAT_TOOL_KIND.change }
+		| {
+				kind: typeof CHAT_TOOL_KIND.browse;
+				openPage: (input: unknown, context: BrowsePageContext) => Promise<BrowsePageResult>;
+		  }
+	);
+
+/**
+ * The agent tools the caller's grant allows, as the chat offers them to the model, and the page
+ * browser when it is configured.
+ */
+export function chatTools(
+	caller: AgentCaller,
+	browsePageConfig: BrowsePageConfig | null,
+): ChatTool[] {
+	const agentTools = describeAgentMcpTools(caller)
+		.filter(({ tool }) => !EXCLUDED_TOOL_NAMES.has(tool.name))
+		.map(
+			({ tool, summary, operationKind }): ChatTool =>
+				operationKind === OPERATION_KIND.mutation
+					? {
+							name: tool.name,
+							description: `${summary} ${CHANGE_TOOL_NOTE}`,
+							inputSchema: tool.inputSchema,
+							kind: CHAT_TOOL_KIND.change,
+						}
+					: {
+							name: tool.name,
+							description: tool.description,
+							inputSchema: tool.inputSchema,
+							kind: CHAT_TOOL_KIND.read,
+						},
+		);
+	if (browsePageConfig === null) {
+		return agentTools;
+	}
+	return [
+		...agentTools,
+		{
+			...browsePageTool,
+			kind: CHAT_TOOL_KIND.browse,
+			openPage: (input, context) => browsePage(browsePageConfig, input, context),
+		},
+	];
 }
 
-/** The agent tools the caller's grant allows, as the chat offers them to the model. */
-export function chatTools(caller: AgentCaller): ChatTool[] {
-	return describeAgentMcpTools(caller)
-		.filter(({ tool }) => !EXCLUDED_TOOL_NAMES.has(tool.name))
-		.map(({ tool, summary, operationKind }) =>
-			operationKind === OPERATION_KIND.mutation
-				? {
-						name: tool.name,
-						description: `${summary} ${CHANGE_TOOL_NOTE}`,
-						inputSchema: tool.inputSchema,
-						kind: CHAT_TOOL_KIND.change,
-					}
-				: {
-						name: tool.name,
-						description: tool.description,
-						inputSchema: tool.inputSchema,
-						kind: CHAT_TOOL_KIND.read,
-					},
-		);
+/** What a tool event shows beside the tool: the page a `browse_page` call opens. */
+export function chatToolQuery(call: Pick<ChatToolCall, 'name' | 'input'>): string | null {
+	return call.name === CHAT_BROWSE_TOOL
+		? (allowedBrowseUrlFromInput(call.input)?.href ?? null)
+		: null;
 }
 
 export interface ChatToolCall {
@@ -114,6 +157,12 @@ async function runReadCall(
 	} catch (thrown) {
 		return failureResult(call.id, thrown);
 	}
+}
+
+function browseResult(toolCallId: string, result: BrowsePageResult): ChatContentBlock {
+	return result.ok
+		? toolResult(toolCallId, result.page, false)
+		: toolResult(toolCallId, { error: result.error }, true);
 }
 
 /** Reorders are low risk, so they apply without review even when fast-forward is off. */
@@ -177,25 +226,39 @@ async function submitChanges(
 }
 
 /**
- * Runs one response's tool calls as the chat's caller: reads at once, changes collected into one
- * proposal on the chat's wishlist, which applies at once only under fast-forward.
+ * What the tools of one round run with: the image store, the turn's abort signal and the pages
+ * `browse_page` may open.
+ */
+export interface ChatToolEnvironment extends BrowsePageContext {
+	imageBucket: AgentImageBucket | undefined;
+}
+
+/**
+ * Runs one response's tool calls as the chat's caller: reads and page loads at once, changes
+ * collected into one proposal on the chat's wishlist, which applies at once only under
+ * fast-forward.
  */
 export async function runChatToolCalls(
 	caller: AgentCaller,
 	tools: readonly ChatTool[],
 	wishlistId: string,
 	calls: readonly ChatToolCall[],
-	imageBucket: AgentImageBucket | undefined,
+	environment: ChatToolEnvironment,
 ): Promise<ChatToolRound> {
-	const toolKinds = new Map(tools.map((tool) => [tool.name, tool.kind]));
+	const toolsByName = new Map(tools.map((tool) => [tool.name, tool]));
 	const results = new Map<string, ChatContentBlock>();
 	const changes: ChatToolCall[] = [];
 	for (const call of calls) {
-		const kind = toolKinds.get(call.name);
-		if (kind === CHAT_TOOL_KIND.change) {
+		const tool = toolsByName.get(call.name);
+		if (tool?.kind === CHAT_TOOL_KIND.change) {
 			changes.push(call);
-		} else if (kind === CHAT_TOOL_KIND.read) {
-			results.set(call.id, await runReadCall(caller, call, imageBucket));
+		} else if (tool?.kind === CHAT_TOOL_KIND.read) {
+			results.set(call.id, await runReadCall(caller, call, environment.imageBucket));
+		} else if (tool?.kind === CHAT_TOOL_KIND.browse) {
+			results.set(
+				call.id,
+				browseResult(call.id, await tool.openPage(call.input, environment)),
+			);
 		} else {
 			results.set(call.id, toolResult(call.id, { error: { code: 'UNKNOWN_TOOL' } }, true));
 		}

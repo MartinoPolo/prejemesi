@@ -11,13 +11,16 @@ import { chatSystemPrompt } from './chat_prompt.js';
 import { FAKE_ENRICHMENT_TEXT, createFakeProvider } from './fake_provider.js';
 
 function systemPrompt(locale: string) {
-	return chatSystemPrompt({
-		wishlistId: 'wishlist-1',
-		wishlistShortId: 'short-1',
-		wishlistTitle: 'Vánoce',
-		userName: 'Martin',
-		locale,
-	});
+	return chatSystemPrompt(
+		{
+			wishlistId: 'wishlist-1',
+			wishlistShortId: 'short-1',
+			wishlistTitle: 'Vánoce',
+			userName: 'Martin',
+			locale,
+		},
+		{ canBrowsePages: false },
+	);
 }
 
 const GIFTS_RESULT = JSON.stringify({

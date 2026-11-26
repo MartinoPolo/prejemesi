@@ -1,4 +1,5 @@
 import {
+	CHAT_BROWSE_TOOL,
 	CHAT_ROLE,
 	CHAT_STREAM_EVENT,
 	CHAT_WEB_TOOL,
@@ -23,7 +24,7 @@ export function chatToolKind(name: string): ChatToolKind {
 	if (name === CHAT_WEB_TOOL.search) {
 		return CHAT_TOOL_KIND.search;
 	}
-	if (name === CHAT_WEB_TOOL.fetch) {
+	if (name === CHAT_WEB_TOOL.fetch || name === CHAT_BROWSE_TOOL) {
 		return CHAT_TOOL_KIND.fetch;
 	}
 	return READ_TOOL_NAME.test(name) ? CHAT_TOOL_KIND.read : CHAT_TOOL_KIND.change;

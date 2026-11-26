@@ -270,8 +270,34 @@ describe('Anthropic provider', () => {
 					name: 'web_fetch',
 					max_uses: 5,
 					max_content_tokens: 20000,
+					url_sources: { client_tool_results: { type: 'none' } },
 				},
 			],
+		});
+	});
+
+	it('lets web fetch take addresses from browse_page results only, and from no tool results without it', () => {
+		const tool = (name: string) => ({
+			name,
+			description: name,
+			inputSchema: { type: 'object' },
+		});
+		const webFetchOf = (toolNames: string[]) =>
+			anthropicRequestBody('claude-sonnet-5-5', {
+				...request,
+				tools: toolNames.map(tool),
+			}).tools.find((sent) => sent.name === 'web_fetch');
+
+		expect(webFetchOf(['readWishlistGifts', 'createGift', 'browse_page'])).toMatchObject({
+			url_sources: {
+				client_tool_results: {
+					type: 'only',
+					tools: [{ type: 'tool_reference', name: 'browse_page' }],
+				},
+			},
+		});
+		expect(webFetchOf(['readWishlistGifts', 'createGift'])).toMatchObject({
+			url_sources: { client_tool_results: { type: 'none' } },
 		});
 	});
 
@@ -286,6 +312,7 @@ describe('Anthropic provider', () => {
 			{ type: CHAT_MODEL_EVENT.textDelta, text: 'Hledám ' },
 			{ type: CHAT_MODEL_EVENT.textDelta, text: 'cenu.' },
 			{ type: CHAT_MODEL_EVENT.webTool, name: 'web_search', query: 'Sony WH-1000XM5 cena' },
+			{ type: CHAT_MODEL_EVENT.webSources, urls: ['https://www.heureka.cz/'] },
 			{
 				type: CHAT_MODEL_EVENT.toolCall,
 				id: 'toolu_01',
@@ -296,7 +323,7 @@ describe('Anthropic provider', () => {
 		]);
 	});
 
-	it('streams a page fetch with its URL and skips server tools it does not know', async () => {
+	it('streams a page fetch with its URL, reports the page it read and skips server tools it does not know', async () => {
 		const provider = createAnthropicProvider({
 			apiKey: 'test-key',
 			model: 'claude-sonnet-5-5',
@@ -309,7 +336,43 @@ describe('Anthropic provider', () => {
 				name: 'web_fetch',
 				query: 'https://www.alza.cz/sony-wh-1000xm5',
 			},
+			{ type: CHAT_MODEL_EVENT.webSources, urls: ['https://www.alza.cz/sony-wh-1000xm5'] },
 			{ type: CHAT_MODEL_EVENT.textDelta, text: 'Stojí 7 990 Kč.' },
+			{ type: CHAT_MODEL_EVENT.stop, reason: CHAT_STOP_REASON.endTurn },
+		]);
+	});
+
+	it('reports no pages for failed web searches and fetches', async () => {
+		const failedWebTools = sse([
+			{
+				type: 'content_block_start',
+				index: 0,
+				content_block: {
+					type: 'web_search_tool_result',
+					tool_use_id: 'srvtoolu_04',
+					content: { type: 'web_search_tool_result_error', error_code: 'unavailable' },
+				},
+			},
+			{ type: 'content_block_stop', index: 0 },
+			{
+				type: 'content_block_start',
+				index: 1,
+				content_block: {
+					type: 'web_fetch_tool_result',
+					tool_use_id: 'srvtoolu_05',
+					content: { type: 'web_fetch_tool_error', error_code: 'url_not_accessible' },
+				},
+			},
+			{ type: 'content_block_stop', index: 1 },
+			{ type: 'message_delta', delta: { stop_reason: 'end_turn' } },
+		]);
+		const provider = createAnthropicProvider({
+			apiKey: 'test-key',
+			model: 'claude-sonnet-5-5',
+			fetch: async () => streamedResponse(failedWebTools),
+		});
+
+		expect(await collect(provider.stream(request, new AbortController().signal))).toEqual([
 			{ type: CHAT_MODEL_EVENT.stop, reason: CHAT_STOP_REASON.endTurn },
 		]);
 	});
