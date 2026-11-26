@@ -47,11 +47,19 @@
 		},
 	];
 
+	// The mobile sheet names the gift it was opened from.
+	const GIFT_NAME = 'LEGO Technic 42151 Bugatti Bolide';
+
 	const { Story } = defineMeta({
 		title: 'Blocks/Gift/GiftLinkChip',
 		component: GiftLinkChip,
 		tags: ['autodocs'],
-		args: { linkedCopies: LINKED_COPIES, interactive: true, oneditlinkedcopies: () => {} },
+		args: {
+			linkedCopies: LINKED_COPIES,
+			giftName: GIFT_NAME,
+			interactive: true,
+			oneditlinkedcopies: () => {},
+		},
 	});
 
 	async function playOpensLinkedLists({ canvasElement }: PlayContext) {
@@ -72,7 +80,12 @@
 					<span class="text-xs text-muted-foreground">
 						{interactive ? 'interactive' : 'static'}
 					</span>
-					<GiftLinkChip {...args} linkedCopies={LINKED_COPIES} {interactive} />
+					<GiftLinkChip
+						{...args}
+						linkedCopies={LINKED_COPIES}
+						giftName={GIFT_NAME}
+						{interactive}
+					/>
 				</div>
 			{/each}
 		</div>
@@ -81,12 +94,12 @@
 
 <Story name="Popover [play: opens linked lists]" play={playOpensLinkedLists}>
 	{#snippet template(args: GiftLinkChipArgs)}
-		<GiftLinkChip linkedCopies={LINKED_COPIES} {...args} />
+		<GiftLinkChip linkedCopies={LINKED_COPIES} giftName={GIFT_NAME} {...args} />
 	{/snippet}
 </Story>
 
 <Story name="Without Edit Action" args={{ oneditlinkedcopies: undefined }}>
 	{#snippet template(args: GiftLinkChipArgs)}
-		<GiftLinkChip linkedCopies={LINKED_COPIES} {...args} />
+		<GiftLinkChip linkedCopies={LINKED_COPIES} giftName={GIFT_NAME} {...args} />
 	{/snippet}
 </Story>

@@ -243,24 +243,42 @@ interface VisitorGiftReadings {
 	viewerReservations: Map<string, ViewerReservation>;
 }
 
-function toVisitorGift(row: GiftReadRow, readings: VisitorGiftReadings): GiftForVisitor {
-	const siblings = readings.linkedSiblingsByGiftId.get(row.id) ?? [];
-	const reservationSummary = readings.reservationSummaries.get(row.id);
-	const reservedOnLinkedCopiesCount = (
-		readings.countedLinkedCopiesByGiftId.get(row.id) ?? []
-	).reduce(
+/** Units reserved on the linked copies whose reservations this viewer sees counted here. */
+function countReservedOnLinkedCopies(giftId: string, readings: VisitorGiftReadings): number {
+	const countedCopies = readings.countedLinkedCopiesByGiftId.get(giftId) ?? [];
+	return countedCopies.reduce(
 		(total, member) =>
 			total + (readings.reservationSummaries.get(member.giftId)?.reservedCount ?? 0),
 		0,
 	);
-	const reservedCount = (reservationSummary?.reservedCount ?? 0) + reservedOnLinkedCopiesCount;
-	// A gifter may cancel or mark bought from any copy the reservation they made on another one.
-	const ownViewerReservation = readings.viewerReservations.get(row.id);
+}
+
+/** A gifter may cancel or mark bought from any copy the reservation they made on another one. */
+function viewerReservationFields(
+	giftId: string,
+	siblings: readonly LinkGroupMember[],
+	readings: VisitorGiftReadings,
+) {
+	const ownViewerReservation = readings.viewerReservations.get(giftId);
 	const viewerReservation =
 		ownViewerReservation ??
 		siblings
 			.map((member) => readings.viewerReservations.get(member.giftId))
 			.find((linkedReservation) => linkedReservation !== undefined);
+	return {
+		myReservationId: viewerReservation?.id ?? null,
+		myReservationPurchasedAt: viewerReservation?.purchasedAt ?? null,
+		myReservationQuantity: viewerReservation?.quantity ?? 0,
+		myReservationOnLinkedCopy:
+			viewerReservation !== undefined && ownViewerReservation === undefined,
+	};
+}
+
+function toVisitorGift(row: GiftReadRow, readings: VisitorGiftReadings): GiftForVisitor {
+	const siblings = readings.linkedSiblingsByGiftId.get(row.id) ?? [];
+	const reservationSummary = readings.reservationSummaries.get(row.id);
+	const reservedOnLinkedCopiesCount = countReservedOnLinkedCopies(row.id, readings);
+	const reservedCount = (reservationSummary?.reservedCount ?? 0) + reservedOnLinkedCopiesCount;
 	return {
 		...toRecipientGift(
 			row,
@@ -275,11 +293,7 @@ function toVisitorGift(row: GiftReadRow, readings: VisitorGiftReadings): GiftFor
 			: [],
 		reservedOnLinkedCopiesCount:
 			readings.role === WISHLIST_ROLES.visitor ? 0 : reservedOnLinkedCopiesCount,
-		myReservationId: viewerReservation?.id ?? null,
-		myReservationPurchasedAt: viewerReservation?.purchasedAt ?? null,
-		myReservationQuantity: viewerReservation?.quantity ?? 0,
-		myReservationOnLinkedCopy:
-			viewerReservation !== undefined && ownViewerReservation === undefined,
+		...viewerReservationFields(row.id, siblings, readings),
 	};
 }
 

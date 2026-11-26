@@ -50,7 +50,7 @@
 	}
 </script>
 
-<section class="grid gap-1.5" aria-labelledby={headingId} data-testid="gift-linked-copies">
+<section class="grid min-w-0 gap-1.5" aria-labelledby={headingId} data-testid="gift-linked-copies">
 	<div class="flex items-center gap-1.5">
 		<h3 id={headingId} class="text-sm font-semibold text-foreground">
 			{m.gift_linked_copies_title()}
@@ -63,40 +63,47 @@
 			{linkedCopies.length}
 		</Badge>
 	</div>
-	<ul class="m-0 list-none rounded-badge border-2 border-edge p-0">
+	<ul class="linked-copies-list m-0 min-w-0 list-none rounded-badge border-2 border-edge p-0">
 		{#each linkedCopies as copy (copy.giftId)}
 			{@const target = unlinkTargetFor(copy)}
 			{@const occasion = occasionDisplayLabel(copy.occasion)}
+			<!-- The details wrap below the title when the row cannot hold both. -->
 			<li
-				class="flex min-h-9 items-center gap-2 py-1 pr-1 pl-2.5 not-first:border-t not-first:border-border max-sm:min-h-11"
+				class="flex min-h-9 flex-wrap items-center gap-x-2 gap-y-1 py-1 pr-1 pl-2.5 not-first:border-t not-first:border-border max-sm:min-h-11"
 			>
-				<Link2Icon class="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
-				<a
-					class="min-w-0 flex-1 truncate text-(length:--text-md) font-semibold text-foreground underline-offset-3 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-					href={localizeInternalHref(
-						resolve('/(app)/w/[id]', { id: copy.wishlistShortId }),
-					)}
-					title={copy.wishlistTitle}
-				>
-					{copy.wishlistTitle}
-				</a>
-				{#if occasion !== null}
-					<span class="text-xs whitespace-nowrap text-muted-foreground">{occasion}</span>
-				{/if}
-				<WishlistBadge presentation="list-status" status={copy.status} class="shrink-0">
-					{WISHLIST_STATUS_LABELS[copy.status]()}
-				</WishlistBadge>
-				{#if target !== null}
-					<Button
-						intent="outline"
-						size="sm"
-						class="shrink-0 rounded-[calc(var(--radius-badge)-2px-0.25rem)]"
-						aria-label={m.gift_unlink_copy_label({ title: copy.wishlistTitle })}
-						onclick={() => confirmUnlink(target)}
+				<span class="flex min-w-0 flex-1 basis-40 items-center gap-2">
+					<Link2Icon class="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+					<a
+						class="min-w-0 flex-1 truncate text-(length:--text-md) font-semibold text-foreground underline-offset-3 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+						href={localizeInternalHref(
+							resolve('/(app)/w/[id]', { id: copy.wishlistShortId }),
+						)}
+						title={copy.wishlistTitle}
 					>
-						{m.gift_unlink_button()}
-					</Button>
-				{/if}
+						{copy.wishlistTitle}
+					</a>
+				</span>
+				<span class="ml-auto flex shrink-0 items-center gap-2">
+					{#if occasion !== null}
+						<span class="text-xs whitespace-nowrap text-muted-foreground"
+							>{occasion}</span
+						>
+					{/if}
+					<WishlistBadge presentation="list-status" status={copy.status} class="shrink-0">
+						{WISHLIST_STATUS_LABELS[copy.status]()}
+					</WishlistBadge>
+					{#if target !== null}
+						<Button
+							intent="outline"
+							size="sm"
+							class="shrink-0 rounded-(--linked-copy-unlink-radius)"
+							aria-label={m.gift_unlink_copy_label({ title: copy.wishlistTitle })}
+							onclick={() => confirmUnlink(target)}
+						>
+							{m.gift_unlink_button()}
+						</Button>
+					{/if}
+				</span>
 			</li>
 		{/each}
 	</ul>
@@ -110,3 +117,10 @@
 		wishlistTitle={unlinkTarget.wishlistTitle}
 	/>
 {/if}
+
+<style>
+	/* Nested corner geometry: the list's radius less its border and the row's end inset. */
+	.linked-copies-list {
+		--linked-copy-unlink-radius: calc(var(--radius-badge) - 2px - 0.25rem);
+	}
+</style>

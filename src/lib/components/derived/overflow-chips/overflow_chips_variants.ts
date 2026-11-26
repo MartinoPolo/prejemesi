@@ -12,14 +12,15 @@ export const overflowMoreChipClass = [
 	'inline-flex shrink-0 items-center border-edge bg-card px-2 py-0.5 text-xs leading-4 font-extrabold whitespace-nowrap text-foreground tabular-nums',
 ];
 
+/** A chip that opens more detail: it takes the brand tint on hover and the focus ring. */
+export const interactiveChipClass =
+	'cursor-pointer hover:bg-[color-mix(in_oklab,var(--brand)_12%,var(--card))] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring';
+
 export const overflowChipsVariants = tv({
 	slots: {
 		root: 'flex min-w-0 gap-1',
 		moreChip: overflowMoreChipClass,
-		moreTrigger: [
-			overflowMoreChipClass,
-			'cursor-pointer hover:bg-[color-mix(in_oklab,var(--brand)_12%,var(--card))] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
-		],
+		moreTrigger: [overflowMoreChipClass, interactiveChipClass],
 		popover: 'w-max max-w-[min(18rem,calc(100vw-1rem))] min-w-0',
 		popoverList: 'm-0 flex list-none flex-wrap gap-1.5 px-2 pt-0.5 pb-1.5',
 	},

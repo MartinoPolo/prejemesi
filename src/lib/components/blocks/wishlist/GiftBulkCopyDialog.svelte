@@ -35,6 +35,15 @@
 		onconfirm: () => void;
 	}
 
+	interface CheckboxOption {
+		id: string;
+		checked: boolean;
+		disabled: boolean;
+		onchange: (checked: boolean) => void;
+		label: string;
+		help: string;
+	}
+
 	let {
 		open,
 		destinations,
@@ -70,6 +79,14 @@
 		!creatingDestination && selectedDestination?.linkable === false,
 	);
 	const linking = $derived(linkCopies && !linkUnavailable);
+	const linkHelp = $derived(
+		linkUnavailable ? m.gift_bulk_copy_link_unavailable() : m.gift_bulk_copy_link_help(),
+	);
+	const removeSourcesHelp = $derived(
+		moving && linking
+			? m.gift_bulk_copy_remove_sources_linked_help()
+			: m.gift_bulk_copy_remove_sources_help(),
+	);
 	const selectedDestinationLabel = $derived(
 		creatingDestination
 			? m.gift_bulk_copy_new_destination()
@@ -103,6 +120,22 @@
 </script>
 
 <svelte:window bind:innerWidth={viewportWidth} />
+
+{#snippet checkboxOption(option: CheckboxOption)}
+	<div class="grid gap-1">
+		<div class="flex items-center gap-2">
+			<Checkbox
+				id={option.id}
+				checked={option.checked}
+				disabled={option.disabled}
+				aria-describedby="{option.id}-help"
+				onCheckedChange={(checked) => option.onchange(checked === true)}
+			/>
+			<Label for={option.id}>{option.label}</Label>
+		</div>
+		<HelpText id="{option.id}-help">{option.help}</HelpText>
+	</div>
+{/snippet}
 
 {#snippet destinationPicker()}
 	<div class="space-y-4 px-4 py-3 sm:px-0 sm:py-4">
@@ -143,44 +176,24 @@
 				</Select.Root>
 			</div>
 			{#if selectedDestinationId !== ''}
-				<div class="grid gap-1">
-					<div class="flex items-center gap-2">
-						<Checkbox
-							id="bulk-copy-link-copies"
-							checked={linking}
-							disabled={submitting || linkUnavailable}
-							aria-describedby="bulk-copy-link-copies-help"
-							onCheckedChange={(checked) => onlinkcopieschange?.(checked === true)}
-						/>
-						<Label for="bulk-copy-link-copies">{m.gift_bulk_copy_link()}</Label>
-					</div>
-					<HelpText id="bulk-copy-link-copies-help">
-						{linkUnavailable
-							? m.gift_bulk_copy_link_unavailable()
-							: m.gift_bulk_copy_link_help()}
-					</HelpText>
-				</div>
+				{@render checkboxOption({
+					id: 'bulk-copy-link-copies',
+					checked: linking,
+					disabled: submitting || linkUnavailable,
+					onchange: (checked) => onlinkcopieschange?.(checked),
+					label: m.gift_bulk_copy_link(),
+					help: linkHelp,
+				})}
 			{/if}
 			{#if offerSourceRemoval}
-				<div class="grid gap-1">
-					<div class="flex items-center gap-2">
-						<Checkbox
-							id="bulk-copy-remove-sources"
-							checked={removeSources}
-							disabled={submitting}
-							aria-describedby="bulk-copy-remove-sources-help"
-							onCheckedChange={(checked) => onremovesourceschange?.(checked === true)}
-						/>
-						<Label for="bulk-copy-remove-sources"
-							>{m.gift_bulk_copy_remove_sources()}</Label
-						>
-					</div>
-					<HelpText id="bulk-copy-remove-sources-help">
-						{moving && linking
-							? m.gift_bulk_copy_remove_sources_linked_help()
-							: m.gift_bulk_copy_remove_sources_help()}
-					</HelpText>
-				</div>
+				{@render checkboxOption({
+					id: 'bulk-copy-remove-sources',
+					checked: removeSources,
+					disabled: submitting,
+					onchange: (checked) => onremovesourceschange?.(checked),
+					label: m.gift_bulk_copy_remove_sources(),
+					help: removeSourcesHelp,
+				})}
 			{/if}
 		{/if}
 	</div>

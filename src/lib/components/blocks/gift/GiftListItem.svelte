@@ -260,6 +260,7 @@
 					{#if showsLinkChip}
 						<GiftLinkChip
 							linkedCopies={gift.linkedCopies}
+							giftName={gift.name}
 							interactive={!contextualMode}
 							{oneditlinkedcopies}
 						/>

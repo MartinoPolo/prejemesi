@@ -70,8 +70,8 @@ function planImageRestore(
 	return jsonChanged(restoredImages, after.images) ? { images: restoredImages } : {};
 }
 
-/** Fields an undo restores, through the edit rules or verbatim as state. */
-const RESTORED_FIELDS = [
+/** Fields an undo restores through the edit rules. */
+const RESTORED_EDIT_FIELDS = [
 	'name',
 	'description',
 	'links',
@@ -81,6 +81,10 @@ const RESTORED_FIELDS = [
 	'quantity',
 	'priorityLevelId',
 	'categoryIds',
+] as const satisfies readonly (keyof GiftRevisionSnapshot)[];
+
+/** Fields an undo restores verbatim as state. */
+const RESTORED_STATE_FIELDS = [
 	'descriptionAppends',
 	'received',
 ] as const satisfies readonly (keyof GiftRevisionSnapshot)[];
@@ -92,35 +96,46 @@ interface RestorePlan {
 	nothingToRestore: boolean;
 }
 
+/** The `before` values of the given fields that differ from `after`. */
+function changedFields<Field extends keyof GiftRevisionSnapshot>(
+	before: GiftRevisionSnapshot,
+	after: GiftRevisionSnapshot,
+	fields: readonly Field[],
+): Partial<Pick<GiftRevisionSnapshot, Field>> {
+	const restored: Partial<Pick<GiftRevisionSnapshot, Field>> = {};
+	for (const field of fields) {
+		if (jsonChanged(before[field], after[field])) {
+			restored[field] = before[field];
+		}
+	}
+	return restored;
+}
+
 /** Builds the edit and restored state that bring a gift from `after` back to `before`. */
 function planRestore(
 	giftId: string,
 	before: GiftRevisionSnapshot,
 	after: GiftRevisionSnapshot,
 ): RestorePlan {
-	const changed = (key: keyof GiftRevisionSnapshot) => jsonChanged(before[key], after[key]);
 	const undoesDeletion = before.deletedAt === null && after.deletedAt !== null;
 	const imageInput = planImageRestore(before, after, undoesDeletion);
+	const { currency, ...editedFields } = changedFields(before, after, RESTORED_EDIT_FIELDS);
+	const stateFields = changedFields(before, after, RESTORED_STATE_FIELDS);
 	const input: UpdateGiftInput = {
 		id: giftId,
-		...(changed('name') ? { name: before.name } : {}),
-		...(changed('description') ? { description: before.description } : {}),
-		...(changed('links') ? { links: before.links } : {}),
-		...(changed('price') ? { price: before.price } : {}),
-		...(changed('priceMax') ? { priceMax: before.priceMax } : {}),
-		...(changed('currency') ? { currency: supportedCurrency(before.currency) } : {}),
+		...editedFields,
+		...(currency === undefined ? {} : { currency: supportedCurrency(currency) }),
 		...imageInput,
-		...(changed('quantity') ? { quantity: before.quantity } : {}),
-		...(changed('priorityLevelId') ? { priorityLevelId: before.priorityLevelId } : {}),
-		...(changed('categoryIds') ? { categoryIds: before.categoryIds } : {}),
 	};
 	const restoring: RestoredGiftState = {
-		...(changed('descriptionAppends') ? { descriptionAppends: before.descriptionAppends } : {}),
-		...(changed('received') ? { received: before.received } : {}),
+		...stateFields,
 		...(undoesDeletion ? { deletedAt: null } : {}),
 	};
 	const nothingToRestore =
-		!undoesDeletion && imageInput.images === undefined && !RESTORED_FIELDS.some(changed);
+		!undoesDeletion &&
+		imageInput.images === undefined &&
+		currency === undefined &&
+		Object.keys({ ...editedFields, ...stateFields }).length === 0;
 	return { input, restoring, nothingToRestore };
 }
 

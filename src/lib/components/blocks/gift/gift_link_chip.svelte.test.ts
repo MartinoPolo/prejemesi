@@ -36,6 +36,8 @@ const linkedCopies: LinkedGiftCopy[] = [
 	},
 ];
 
+const giftName = 'LEGO Technic 42151 Bugatti Bolide';
+
 const chipLabel = m.gift_linked_copies_chip_label({
 	titles: 'Narozeniny 2027, Stálé přání',
 });
@@ -91,6 +93,42 @@ describe('GiftLinkChip on gift presentations', () => {
 		},
 	);
 
+	it('ends the card overlay row beside Like, centred on it, after the categories', async () => {
+		const host = await renderCardInGridColumn(
+			makeVisitorGift({
+				linkedCopies,
+				categoryIds: ['category-sport'],
+				categories: [
+					{
+						id: 'category-sport',
+						presetKey: null,
+						customLabel: 'Sport',
+						color: '#0369A1',
+						sortOrder: 0,
+					},
+				],
+			}),
+			WISHLIST_ROLES.moderator,
+		);
+		const chip = host.querySelector('[data-slot="gift-link-chip"]')!.getBoundingClientRect();
+		const like = host
+			.querySelector('[data-like-heart]')!
+			.closest('button')!
+			.getBoundingClientRect();
+		const category = host
+			.querySelector('[data-testid="gift-category-badge"]')!
+			.getBoundingClientRect();
+		const image = host
+			.querySelector('[data-testid="gift-card-image-frame"]')!
+			.getBoundingClientRect();
+
+		expect(chip.left).toBeGreaterThanOrEqual(like.right);
+		expect(chip.left - like.right).toBeLessThanOrEqual(8);
+		expect(image.right - chip.right).toBeLessThanOrEqual(16);
+		expect(Math.abs(chip.top + chip.height / 2 - (like.top + like.height / 2))).toBeLessThan(1);
+		expect(category.right).toBeLessThanOrEqual(like.left);
+	});
+
 	it('shows no chip for a gift without linked copies', async () => {
 		const host = await renderCardInGridColumn(makeVisitorGift(), WISHLIST_ROLES.moderator);
 		expect(host.querySelector('[data-slot="gift-link-chip"]')).toBeNull();
@@ -101,7 +139,7 @@ describe('GiftLinkChip', () => {
 	it('lists the other lists with their status and opens the editor from the popover', async () => {
 		await page.viewport(1280, 760);
 		const oneditlinkedcopies = vi.fn();
-		const screen = await render(GiftLinkChip, { linkedCopies, oneditlinkedcopies });
+		const screen = await render(GiftLinkChip, { linkedCopies, giftName, oneditlinkedcopies });
 		await screen.getByRole('button', { name: chipLabel }).click();
 
 		const popover = page.getByRole('dialog', { name: m.gift_linked_copies_popover_title() });
@@ -120,7 +158,7 @@ describe('GiftLinkChip', () => {
 
 	it('offers no edit action when the viewer cannot edit the gift', async () => {
 		await page.viewport(1280, 760);
-		const screen = await render(GiftLinkChip, { linkedCopies });
+		const screen = await render(GiftLinkChip, { linkedCopies, giftName });
 		await screen.getByRole('button', { name: chipLabel }).click();
 		const popover = page.getByRole('dialog', { name: m.gift_linked_copies_popover_title() });
 		await expect.element(popover).toBeVisible();
@@ -132,11 +170,18 @@ describe('GiftLinkChip', () => {
 
 	it('opens the lists in a bottom sheet on a narrow screen', async () => {
 		await page.viewport(390, 760);
-		const screen = await render(GiftLinkChip, { linkedCopies, oneditlinkedcopies: vi.fn() });
+		const screen = await render(GiftLinkChip, {
+			linkedCopies,
+			giftName,
+			oneditlinkedcopies: vi.fn(),
+		});
 		await screen.getByRole('button', { name: chipLabel }).click();
 		const sheet = page.getByRole('dialog', { name: m.gift_linked_copies_popover_title() });
 		await expect.element(sheet).toBeVisible();
-		await expect.element(sheet.getByRole('link', { name: 'Stálé přání' })).toBeVisible();
+		await expect.element(sheet).toHaveAccessibleDescription(giftName);
+		const row = sheet.getByRole('link', { name: 'Stálé přání' });
+		await expect.element(row).toBeVisible();
+		expect(row.element().getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
 		await expect
 			.element(sheet.getByRole('button', { name: m.gift_linked_copies_edit() }))
 			.toBeVisible();
@@ -144,7 +189,7 @@ describe('GiftLinkChip', () => {
 	});
 
 	it('stays a static label while selection or reorder owns the press', async () => {
-		const screen = await render(GiftLinkChip, { linkedCopies, interactive: false });
+		const screen = await render(GiftLinkChip, { linkedCopies, giftName, interactive: false });
 		await expect.element(screen.getByRole('img', { name: chipLabel })).toBeVisible();
 		await expect.element(screen.getByRole('button')).not.toBeInTheDocument();
 		await screen.unmount();
