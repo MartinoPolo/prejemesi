@@ -1,5 +1,8 @@
 # Shared gifts — Design Brief
 
+> **Status**: Refined (Variant B) **Refined mockup**: `designs/shared-gifts/refined.html`
+> **Summary**: `designs/shared-gifts/SUMMARY.md` **Refinements**: recipient avatars, explaining popover on the shared badge, explicit shared quantity, „Jak to funguje?“ section help
+
 A shared gift is one gift that sits on the wishlists of two or more different recipients, such as one LEGO set two siblings will build together. Gifters reserve it once from any of those lists, and every list shows it as shared and with whom. The design must make "this one is shared, with Anička" obvious at a glance without crowding the gift card, and give managers a calm way to share a gift from the editor or in bulk.
 
 **Source**: [#737](https://github.com/MartinoPolo/prejemesi/issues/737) (Decisions section is authoritative). Related: [#742](https://github.com/MartinoPolo/prejemesi/issues/742) reuses the same placement model for one recipient's lists; keep the visual language reusable for it.
@@ -60,36 +63,44 @@ Top to bottom, all FINAL (reproduce faithfully, reduced emphasis):
 - Holds every shared gift of this wishlist that is not pinned in „Vaše rezervace“ and not received (received shared gifts go to „Obdržené“, keeping the badge).
 - Appears after all of the recipient's own gifts and groups in every grouping (none / priority / category) and in Card, List and Carousel (its own row and jump chip in Carousel).
 - Inside it, the active sort and the reservation bands (available before fully reserved for visitors) apply; no priority/category sub-grouping.
-- Header: `GiftSectionHeader` with label „Společná přání“ and gift count, same as other groups. Hidden when the section is empty.
+- Header: `GiftSectionHeader` with label „Společná přání“, gift count and a „Jak to funguje?“ text button that opens the same explanation as the badge popover (one gift, one reservation for everyone, quantity is a shared total). The section sits in a subtle tinted band with the line „Tyto dárky si přeje Tomáš společně s dalšími.“ Hidden when the section is empty.
 - Category and priority badges still show on shared cards at their usual positions (priority is this list's own placement value; categories are shared).
 
 ### 3.2 „Společně s“ badge
 
 - Every shared gift card, list row, carousel card, and its Gift viewer caption names the other participating recipients: „Společně s Aničkou“ is NOT allowed (names are never declined, decision 2026-11-16); use „Společně s: Anička“, „Společně s: Anička a Petr“, „Společně s: Anička, Petr a 1 další“.
-- Visitors see names only. A manager who can open the other list also gets a link (in the viewer/editor; on cards the badge is not a link, so it never competes with the card press).
+- Every badge shows the participating recipients' avatars (photo, else initials).
+- The card badge is a small button that opens an explanation Popover (hover on desktop, tap on touch, focus + Enter/Space; below 640 px a bottom sheet) without opening the gift, like the category „+X“ popover (`data-prevent-gift-card-open`). Contents:
+  - Title „Společné přání“ and an avatar row of all participating recipients, this list's recipient first.
+  - Visitor and správce: „Tento dárek si přejí Tomáš a Anička společně. Když ho zarezervujete, darujete ho oběma najednou, ne každému zvlášť.“ (3+ recipients: „… darujete ho všem najednou …“).
+  - Quantity, always explicit: „Počet: 1 ks pro oba dohromady“; above 1 „Počet: 3 ks celkem pro oba dohromady, ne 3 ks pro každého“; visitors also see progress „Zarezervováno 1 z 3 ks“.
+  - Linked recipient of any participating list: „Tento dárek si přejete společně s: Anička. Dárci ho rezervují jednou pro vás oba.“ plus the quantity line, never reservation state.
+- Visitors see names only. A manager who can open the other list also gets a link with that list's title, in the popover, viewer and editor.
 - Must fit next to existing badges: category top-left, Like top-right, priority bottom-left, gallery count bottom-right, state badges centered. It must never overlap the centered state badges.
 - Shown also in „Vaše rezervace“ and „Obdržené“, since the gift there is outside its section.
 - Narrow cards (carousel ~150 px, mobile two-column Card): the badge truncates to „Společně s: Anička +1“ or an icon + first name; full names remain in the accessible name and the Gift viewer.
+- Quantity above 1 is shown on the shared card itself as „3 ks dohromady“, because the quantity is one shared total, not per recipient.
 
 ### 3.3 Gift editor: „Společně s“ field
 
 - Last field of the right column, after Kategorie. Label „Společně s“, help text: „Dárek se objeví i na vybraných seznamech. Rezervovat ho půjde jen jednou.“
-- Multi-select (`Select type="multiple"`, `indicator="checkbox"`) listing wishlists the actor manages whose recipient differs from this one, item text „{title} · {recipient}“, ordered by title. Lists with the same linked recipient never appear (that is #742).
-- Selected lists show as removable chips below the trigger, like the category chips.
-- Removing a chip follows that list's ordinary delete rules: a reserved gift's chips are locked (no X) with help „Rezervovaný dárek nelze ze seznamu odebrat.“ Never reveal reservation state to a linked recipient: for them the lock reads as a generic post-share rule, matching the existing delete-block wording.
-- A chip for a list the actor no longer manages is shown read-only with its title only.
+- Second help line: „Počet kusů je společný: 3 ks znamená 3 ks pro všechny dohromady.“
+- Checkbox rows, one per wishlist the actor manages whose recipient differs from this one, each with the recipient's avatar, list title and recipient name, ordered by title. The current list is shown checked and locked. Lists with the same linked recipient never appear (that is #742).
+- Unchecking a row follows that list's ordinary delete rules: a reserved gift's rows are locked (lock icon instead of the checkbox) with help „Rezervovaný dárek nelze ze seznamu odebrat.“ Never reveal reservation state to a linked recipient: for them the lock reads as a generic post-share rule, matching the existing delete-block wording.
+- A row for a list the actor no longer manages is shown read-only with its title only.
 - Field is hidden when the actor has no eligible list; in create mode it works the same before the first save.
 - On phones it follows Kategorie in the fields-first column.
 
 ### 3.4 Bulk share action
 
 - New Actions item „Sdílet s dalším seznamem“ after „Kopírovat do seznamu“, desktop dropdown and mobile sheet.
-- Opens a dialog: title „Sdílet N dárků“, the same multi-select of eligible lists („Cílové seznamy“), explanation line, outline „Zrušit“ + solid primary „Sdílet“ (one solid button, rightmost). Spinner while running; failure as Alert `danger` with Retry; success toast with „Vrátit“.
+- Opens a dialog: title „Sdílet N dárků“, the same avatar checkbox rows of eligible lists („Cílové seznamy“), a summary naming the categories that will be added and stating that quantities stay shared totals, outline „Zrušit“ + solid primary „Sdílet“ (one solid button, rightmost). Spinner while running; failure as Alert `danger` with Retry; success toast with „Vrátit“.
 - Already-shared gifts in the selection keep their existing lists; the dialog adds lists only.
 
 ### 3.5 Gift viewer
 
-- Caption line after the categories row: icon + „Společně s: Anička (Aniččin seznam)“; for managers with access the list title is a link.
+- Caption line after the categories row: avatars + „Společně s: Anička (Vánoce 2026)“; for managers with access the list title is a link. Below it the popover's explanation sentence and quantity line for the viewer's role.
+- Reserve dialog stepper help for shared gifts: „z {count} dostupných · společně pro oba“ ({count} is the units still free, e.g. „z 2 dostupných“ when 1 of 3 is reserved).
 
 ### 3.6 Agent surfaces
 
@@ -112,9 +123,10 @@ Top to bottom, all FINAL (reproduce faithfully, reduced emphasis):
 | Narrow card                   | Compact badge (icon + first name / +N)                                            | Carousel, mobile Card                             |
 | Selection / reorder mode      | Badge stays at the same position; section is a drop zone only for its own gifts  | Selection or reorder active                       |
 | Editor: none eligible         | Field hidden                                                                      | Actor manages no other-recipient list             |
-| Editor: locked chip           | Chip without X, help line                                                         | Gift reserved, or list not managed by actor       |
+| Editor: locked row            | Lock icon instead of checkbox, help line                                          | Gift reserved, or list not managed by actor       |
 | Bulk dialog: loading/error    | Spinner in confirm; Alert `danger` with Retry                                     | Request running / failed                          |
-| Hover/Focus                   | Card behaviour unchanged; badge has no own hover (not interactive on cards)       | —                                                 |
+| Hover/Focus/Tap on badge      | Explanation popover (bottom sheet below 640 px); card does not open               | Pointer, keyboard or touch on the shared badge    |
+| Quantity above 1              | „3 ks dohromady“ on the card; popover states total, not per recipient             | Gift quantity > 1                                 |
 | Dark mode                     | Tokens only; no separate design                                                   | Viewer in dark mode                               |
 
 ---
@@ -131,8 +143,10 @@ Top to bottom, all FINAL (reproduce faithfully, reduced emphasis):
 | `Badge` (`base/badge`)                                    | `tone` neutral/info/primary/accent, `badgeStyle` outlined/subtle/overlay, `size="default"` | Base for the shared badge |
 | `GiftCategoryBadges`, `GiftPriorityBadge`, `GiftStateOverlay` | unchanged                                          | Existing badges on shared cards              |
 | `Select` (`base/select`)                                  | `type="multiple"`, `Select.Item indicator="checkbox"`  | Editor field and bulk dialog picker          |
-| `GiftCategoryField` chips pattern                         | `GiftCategoryBadge` chip + ghost icon `Button`         | Pattern for selected-list chips              |
 | `HelpText`                                                | —                                                      | Field help and lock reason                   |
+| `Avatar` (`derived/avatar`)                               | photo or initials                                      | Recipients in badge, popover, rows, viewer   |
+| `Popover` (`base/popover`) / `Sheet` below 640 px         | —                                                      | Shared badge explanation                     |
+| `Checkbox` (`base/checkbox`)                              | —                                                      | Editor and bulk dialog list rows             |
 | `Dialog` / `Sheet`, `ConfirmDialog` footer rules          | `layout="scroll"` when needed                          | Bulk share dialog                            |
 | `DropdownMenu` / `WishlistSheetAction`                    | —                                                      | New bulk action entry                        |
 | `Alert`                                                   | `tone="danger"`                                        | Bulk share failure                           |
@@ -146,8 +160,8 @@ None.
 
 | Component                         | Description                                                    | Why new                                                  |
 | --------------------------------- | -------------------------------------------------------------- | -------------------------------------------------------- |
-| `GiftSharedBadge` (`blocks/gift`) | Icon (lucide `users` or similar) + „Společně s: {names}“, compact form for narrow cards | No badge names other recipients; must reuse `Badge` |
-| `GiftSharedField` (`blocks/gift`) | Editor multi-select + chips with lock states                   | Category field is category-specific                      |
+| `GiftSharedBadge` (`blocks/gift`) | Avatars + „Společně s: {names}“ button opening the explanation popover, compact form for narrow cards | No badge names other recipients; must reuse `Badge` |
+| `GiftSharedField` (`blocks/gift`) | Editor checkbox rows with avatars and lock states              | Category field is category-specific                      |
 | `GiftBulkShareDialog` (`blocks/wishlist`) | Multi-destination dialog                               | Copy dialog is single-select with move option            |
 
 ---
@@ -189,9 +203,8 @@ From `src/app.css` (never `designs/tokens.css`; style mockups with compiled app 
 
 - Badge placement: image overlay (e.g. below the category lane or above the priority), body line under the title, or footer-adjacent; and its tone/icon.
 - Section emphasis: plain header like other groups vs. a header with a short explanation line („Tyto dárky si přeje Tomáš společně s dalšími.“) or a subtle tinted band.
-- Editor field: plain multi-select vs. list of checkbox rows with recipient avatars.
 - Bulk dialog layout within the Dialog rules.
-- Motion: none needed beyond existing gift movement; follow `mpx-ui-motion`.
+- Motion: popover fade/scale from the trigger, none under reduced motion; otherwise no motion beyond existing gift movement; follow `mpx-ui-motion`.
 
 ---
 
