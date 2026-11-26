@@ -50,6 +50,7 @@ Current product, architecture, and design decisions for Přejeme si. Entries are
 - 2026-10-17: The user rejected letting the recipient edit or delete a reserved gift on a permanent wishlist; reserved gifts keep full protection.
 - 2026-11-25: A shared gift (#737) is one gift row with a placement per wishlist; placements carry only priority and order, while every other field, categories, received state, reservations and likes are shared. Any manager of any participating list edits shared fields under the strictest post-share rule among those lists. Linked copies of one recipient's gift (#742) reuse the same model.
 - 2026-11-25: Only a user who manages every participating wishlist may share a gift, and the lists must have different recipients. Every linked recipient of any participating list is treated as a recipient of the shared gift on all of them, including lists they manage: no reservation state and no reserving. Removing a shared gift from one list follows that list's ordinary delete rules.
+- 2026-11-26: Shared gifts show the recipients' avatars, and the „Společně s“ badge opens an explanation that reserving gives the gift to all recipients at once and that the quantity is one shared total, never per recipient.
 
 ## Authentication, notifications & localization
 
