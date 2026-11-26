@@ -133,11 +133,14 @@ wrangler secret put R2_ACCESS_KEY_ID      # presigned uploads (issue #107)
 wrangler secret put R2_SECRET_ACCESS_KEY  # presigned uploads (issue #107)
 wrangler secret put ADMIN_EMAILS          # app admin(s), issues #150 + #213
 wrangler secret put ANTHROPIC_API_KEY     # AI assistant model provider, issue #478
+wrangler secret put BROWSER_RENDERING_API_TOKEN  # AI assistant's browse_page tool
 ```
 
 `ADMIN_EMAILS` is a comma-separated email list, matched case-insensitively against the session user's email (`src/lib/server/admin.ts`). It is a secret rather than a `wrangler.jsonc` var to keep a personal address out of git — the repo is slated to go public (§7). Consequence: a fresh Worker created from the config alone will NOT have it, and `isAppAdmin()` then silently returns `false` everywhere, disabling the reserved-list revert-to-draft and the admin reservation release with no error. Re-run the line above after any re-provision. Unset it to remove all admins; changing admins does not need a redeploy.
 
 The AI assistant's family allowlist `CHAT_ALLOWED_EMAILS` (comma-separated emails) and its kill switch `CHAT_DISABLED=true` are plain-text Worker variables the owner edits in the Cloudflare dashboard (Workers → `prejemesi` → Settings → Variables and Secrets): saving applies them without a release, `keep_vars: true` preserves them across deploys, and the addresses stay out of git. Without `CHAT_ALLOWED_EMAILS` nobody sees the assistant; without `ANTHROPIC_API_KEY` its turns fail with 503. `CHAT_MODEL` optionally overrides the model ID. See [API.md](API.md#in-app-ai-assistant).
+
+`BROWSER_RENDERING_API_TOKEN` lets the assistant open pages that web fetch cannot read in Cloudflare Browser Run (formerly Browser Rendering), through its REST `/markdown` action on the `R2_ACCOUNT_ID` account; the API chat opens only addresses from the user, a web search or fetch result, or a page it already opened ([API.md](API.md#in-app-ai-assistant)). Create it in the dashboard under My Profile → API Tokens → Create Token → Custom token, with the account permission Browser Rendering (Browser Run) Edit for this account only. Without it the assistant simply does not offer the tool. Usage counts against the account's Browser Run limits ([Cloudflare limits](https://developers.cloudflare.com/browser-rendering/limits/)); a reached limit comes back to the assistant as a tool error.
 
 **Plain vars** (non-sensitive – add a `"vars"` block to `wrangler.jsonc`):
 

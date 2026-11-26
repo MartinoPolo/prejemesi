@@ -2,6 +2,10 @@
 
 Steps the next release needs on top of the standard runbook in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md#production-release-checklist). Reset this file after the release.
 
+## Secrets
+
+- Set the production Worker secret `BROWSER_RENDERING_API_TOKEN` (`docs/CLOUDFLARE_SETUP.md` §E), before or after the deploy: the assistant's `browse_page` tool stays hidden until it is set.
+
 ## Contract migrations
 
 Ship once no older app version serves traffic:

@@ -128,6 +128,9 @@ export const CHAT_WEB_TOOL = { search: 'web_search', fetch: 'web_fetch' } as con
 
 export type ChatWebToolName = (typeof CHAT_WEB_TOOL)[keyof typeof CHAT_WEB_TOOL];
 
+/** The chat's own tool that opens a page in a headless browser; its tool event's query is the URL. */
+export const CHAT_BROWSE_TOOL = 'browse_page';
+
 /** The server-sent events of one streamed turn. */
 export const CHAT_STREAM_EVENT = {
 	text: 'text',

@@ -6,7 +6,7 @@ import {
 	type ChangeRowStatus,
 } from '$lib/modules/change_proposals/types.js';
 import { CHAT_BLOCK, type ChatContentBlock } from './chat_model.js';
-import { chatSystemPrompt, type ChatContext } from './chat_prompt.js';
+import { chatSystemPrompt, type ChatContext, type ChatPromptTools } from './chat_prompt.js';
 import type { StoredChatMessage } from './chat_store.js';
 
 /** Tool inputs and results beyond this length are cut, so old reads do not crowd the prompt. */
@@ -37,8 +37,8 @@ const RUNNER_PROMPT_LINES = [
 	`In the conversation, each proposal is followed by its state now: ${proposalStateList}. Only applied changes are on the wishlist. A gift a proposal creates exists only once that proposal is applied, under the id in its applied result; the ids in the results of unapplied proposals name no gift. Propose a discarded or expired change again if the user still wants it; to change a gift a pending proposal creates, propose its creation again with the change.`,
 ];
 
-export function chatRunnerSystemPrompt(context: ChatContext): string {
-	return [chatSystemPrompt(context), ...RUNNER_PROMPT_LINES].join('\n\n');
+export function chatRunnerSystemPrompt(context: ChatContext, tools: ChatPromptTools): string {
+	return [chatSystemPrompt(context, tools), ...RUNNER_PROMPT_LINES].join('\n\n');
 }
 
 /** What became of a proposal the chat made, as its agent view reports it. */

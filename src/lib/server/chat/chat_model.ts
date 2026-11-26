@@ -4,8 +4,8 @@ export { CHAT_ROLE, type ChatRole } from '$lib/modules/chat/types.js';
 
 /**
  * The provider-neutral conversation the chat sends to a model. Provider-specific blocks (web
- * search results, citations) stay inside the adapter; history keeps only text and tool calls, so
- * switching providers is configuration.
+ * search results, citations) stay inside the adapter, which reports only the page addresses they
+ * name; history keeps only text and tool calls, so switching providers is configuration.
  */
 
 export const CHAT_BLOCK = {
@@ -53,6 +53,7 @@ export const CHAT_MODEL_EVENT = {
 	textDelta: 'textDelta',
 	toolCall: 'toolCall',
 	webTool: 'webTool',
+	webSources: 'webSources',
 	stop: 'stop',
 } as const;
 
@@ -61,6 +62,8 @@ export type ChatModelEvent =
 	| { type: typeof CHAT_MODEL_EVENT.toolCall; id: string; name: string; input: unknown }
 	/** The provider's own web tool started; `query` (search query or page URL) may be unknown. */
 	| { type: typeof CHAT_MODEL_EVENT.webTool; name: ChatWebToolName; query: string | null }
+	/** Page addresses the provider's web search found or its web fetch read. */
+	| { type: typeof CHAT_MODEL_EVENT.webSources; urls: string[] }
 	| { type: typeof CHAT_MODEL_EVENT.stop; reason: ChatStopReason };
 
 /** A model behind the chat: streams one response to the conversation so far. */

@@ -1,5 +1,6 @@
 import * as v from 'valibot';
 import { IMAGE_REFERENCE_FIELD } from '$lib/server/agent_access/image_references.js';
+import { CHAT_BROWSE_TOOL } from '$lib/modules/chat/types.js';
 import { AGENT_API_OPERATION_ID } from '$lib/server/agent_access/openapi.js';
 
 /** What the assistant knows about its chat before calling any tool. */
@@ -16,7 +17,15 @@ export type ChatContext = v.InferOutput<typeof ChatContextSchema>;
 /** The system prompt's last line: the context as JSON, so a scripted provider can read it too. */
 const CHAT_CONTEXT_PREFIX = 'Chat context: ';
 
-export function chatSystemPrompt(context: ChatContext): string {
+/** Optional tools the prompt mentions only when the chat offers them. */
+export interface ChatPromptTools {
+	canBrowsePages: boolean;
+}
+
+export function chatSystemPrompt(context: ChatContext, tools: ChatPromptTools): string {
+	const pageBrowsing = tools.canBrowsePages
+		? ` When web fetch returns little or no content or fails, open the page with ${CHAT_BROWSE_TOOL}.`
+		: '';
 	return [
 		`You are the AI assistant of Přejeme si, a wishlist app for families, helping ${context.userName} with the wishlist “${context.wishlistTitle}”. Your tools act as this user with exactly their rights.`,
 		`Answer in the language of the user's messages, by default the app language (${context.locale}). In Czech always address the user formally (vykání). Keep answers short.`,
@@ -25,7 +34,7 @@ export function chatSystemPrompt(context: ChatContext): string {
 		'When a tool returns an error, tell the user its message as given and do not work around it or guess at causes and remedies the message does not state. A gift not found was deleted or never created, so read the gifts again before changing it.',
 		`To give a gift an image, store the image with ${AGENT_API_OPERATION_ID.uploadImage} from its public HTTPS address on this wishlist, then pass the returned reference as ${IMAGE_REFERENCE_FIELD} to createGift or updateGift; a reference attaches to one gift, once.`,
 		'Never guess or hint whether a gift is reserved or by whom beyond what the tools return.',
-		'To enrich a gift, research it with web search and read a promising page by its URL with web fetch, then put review scores, prices and useful links into its description. On a shared wishlist add text with appendGiftDescription instead of rewriting the description.',
+		`To enrich a gift, research it with web search and read a promising page by its URL with web fetch, then put review scores, prices and useful links into its description.${pageBrowsing} On a shared wishlist add text with appendGiftDescription instead of rewriting the description.`,
 		`${CHAT_CONTEXT_PREFIX}${JSON.stringify(context)}`,
 	].join('\n\n');
 }

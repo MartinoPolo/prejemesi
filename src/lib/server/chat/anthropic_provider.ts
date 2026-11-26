@@ -1,6 +1,6 @@
 import * as v from 'valibot';
 import { serverSentEventData } from '$lib/modules/chat/server_sent_events.js';
-import { CHAT_WEB_TOOL, type ChatWebToolName } from '$lib/modules/chat/types.js';
+import { CHAT_BROWSE_TOOL, CHAT_WEB_TOOL, type ChatWebToolName } from '$lib/modules/chat/types.js';
 import {
 	CHAT_BLOCK,
 	CHAT_MODEL_EVENT,
@@ -10,6 +10,7 @@ import {
 	type ChatModelEvent,
 	type ChatModelProvider,
 	type ChatModelRequest,
+	type ChatModelTool,
 	type ChatStopReason,
 } from './chat_model.js';
 
@@ -19,16 +20,30 @@ const ANTHROPIC_VERSION = '2023-06-01';
 const WEB_TOOL_MAX_USES = 5;
 /** Bounds how much of one fetched page enters the context. */
 const WEB_FETCH_MAX_CONTENT_TOKENS = 20_000;
-/** Basic versions: newer ones filter results through code execution, which the chat does not use. */
-const WEB_TOOLS = [
-	{ type: 'web_search_20250305', name: CHAT_WEB_TOOL.search, max_uses: WEB_TOOL_MAX_USES },
-	{
-		type: 'web_fetch_20250910',
-		name: CHAT_WEB_TOOL.fetch,
-		max_uses: WEB_TOOL_MAX_USES,
-		max_content_tokens: WEB_FETCH_MAX_CONTENT_TOKENS,
-	},
-] as const;
+/**
+ * The provider's web tools, in basic versions: newer ones filter results through code execution,
+ * which the chat does not use. Web fetch counts addresses in client tool results as in the
+ * conversation, but the model writes gift data, which persists, so only `browse_page` results (page
+ * text third-party sites wrote) count.
+ */
+function webTools(tools: readonly ChatModelTool[]) {
+	const offersBrowsePage = tools.some((tool) => tool.name === CHAT_BROWSE_TOOL);
+	return [
+		{ type: 'web_search_20250305', name: CHAT_WEB_TOOL.search, max_uses: WEB_TOOL_MAX_USES },
+		{
+			type: 'web_fetch_20250910',
+			name: CHAT_WEB_TOOL.fetch,
+			max_uses: WEB_TOOL_MAX_USES,
+			max_content_tokens: WEB_FETCH_MAX_CONTENT_TOKENS,
+			url_sources: {
+				client_tool_results: offersBrowsePage
+					? { type: 'only', tools: [{ type: 'tool_reference', name: CHAT_BROWSE_TOOL }] }
+					: { type: 'none' },
+			},
+		},
+	];
+}
+
 /** The input field holding what a web tool started on: the search query or the page URL. */
 const WEB_TOOL_QUERY_FIELDS: Readonly<Record<ChatWebToolName, string>> = {
 	[CHAT_WEB_TOOL.search]: 'query',
@@ -86,7 +101,7 @@ export function anthropicRequestBody(model: string, request: ChatModelRequest) {
 				description: tool.description,
 				input_schema: tool.inputSchema,
 			})),
-			...WEB_TOOLS,
+			...webTools(request.tools),
 		],
 	};
 }
@@ -99,6 +114,7 @@ const StreamEventSchema = v.variant('type', [
 			type: v.string(),
 			id: v.optional(v.string()),
 			name: v.optional(v.string()),
+			content: v.optional(v.unknown()),
 		}),
 	}),
 	v.object({
@@ -125,6 +141,13 @@ const StreamEventSchema = v.variant('type', [
 ]);
 
 type StreamEvent = v.InferOutput<typeof StreamEventSchema>;
+
+/** A web search or fetch result names its page; an error result has no `url` and is skipped. */
+const WebResultSchema = v.looseObject({ type: v.string(), url: v.optional(v.string()) });
+const WEB_RESULT_BLOCK_ITEM_TYPES: Readonly<Record<string, string>> = {
+	web_search_tool_result: 'web_search_result',
+	web_fetch_tool_result: 'web_fetch_result',
+};
 
 function parseStreamEvent(data: string): StreamEvent | null {
 	let json: unknown;
@@ -212,6 +235,26 @@ function openedBlock(event: StreamEventOf<'content_block_start'>): OpenToolBlock
 	return null;
 }
 
+/**
+ * The page addresses of a web search or fetch result block, which arrives whole at its start: a
+ * search result holds a list of pages, a fetch result the one page it read.
+ */
+function webSourcesEvent(event: StreamEventOf<'content_block_start'>): ChatModelEvent | null {
+	const { content_block: block } = event;
+	const itemType = WEB_RESULT_BLOCK_ITEM_TYPES[block.type];
+	if (itemType === undefined) {
+		return null;
+	}
+	const items = Array.isArray(block.content) ? block.content : [block.content];
+	const urls = items.flatMap((item) => {
+		const parsed = v.safeParse(WebResultSchema, item);
+		return parsed.success && parsed.output.type === itemType && parsed.output.url !== undefined
+			? [parsed.output.url]
+			: [];
+	});
+	return urls.length === 0 ? null : { type: CHAT_MODEL_EVENT.webSources, urls };
+}
+
 /** A text delta becomes an event; a tool input fragment extends its open block. */
 function deltaEvent(
 	event: StreamEventOf<'content_block_delta'>,
@@ -264,6 +307,7 @@ async function* modelEvents(body: ReadableStream<Uint8Array>): AsyncGenerator<Ch
 				if (opened !== null) {
 					openBlocks.set(event.index, opened);
 				}
+				modelEvent = webSourcesEvent(event);
 				break;
 			}
 			case 'content_block_delta':

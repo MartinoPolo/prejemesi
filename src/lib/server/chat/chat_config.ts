@@ -2,6 +2,7 @@ import { dev } from '$app/environment';
 import { env } from '$env/dynamic/private';
 import { emailMatchesAdminList } from '$lib/server/admin.js';
 import { createAnthropicProvider } from './anthropic_provider.js';
+import type { BrowsePageConfig } from './browse_page.js';
 import { ChatProviderError, type ChatModelProvider } from './chat_model.js';
 import { createFakeProvider } from './fake_provider.js';
 
@@ -35,6 +36,16 @@ export function isChatRunnerUser(email: string | null | undefined): boolean {
 export function chatRunnerSecret(): string | null {
 	const secret = env.CHAT_RUNNER_SECRET?.trim() ?? '';
 	return secret === '' ? null : secret;
+}
+
+/**
+ * The page browser's Cloudflare account (the R2 account, `R2_ACCOUNT_ID`) and its
+ * `BROWSER_RENDERING_API_TOKEN` secret; without both the chat does not offer `browse_page`.
+ */
+export function browsePageConfig(): BrowsePageConfig | null {
+	const accountId = env.R2_ACCOUNT_ID?.trim() ?? '';
+	const apiToken = env.BROWSER_RENDERING_API_TOKEN?.trim() ?? '';
+	return accountId === '' || apiToken === '' ? null : { accountId, apiToken };
 }
 
 /** `CHAT_DISABLED=true` stops every new turn at once, without a deploy. */

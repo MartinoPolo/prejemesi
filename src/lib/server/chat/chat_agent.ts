@@ -22,6 +22,8 @@ import {
 	type ChatModelProvider,
 	type ChatStopReason,
 } from './chat_model.js';
+import { conversationUrls } from './browse_page.js';
+import { browsePageConfig } from './chat_config.js';
 import { chatSystemPrompt } from './chat_prompt.js';
 import {
 	readRecentChatMessages,
@@ -30,7 +32,7 @@ import {
 	type StoredChatMessage,
 	type StoredChatSession,
 } from './chat_store.js';
-import { chatTools, runChatToolCalls, type ChatToolCall } from './chat_tools.js';
+import { chatToolQuery, chatTools, runChatToolCalls, type ChatToolCall } from './chat_tools.js';
 import { CHAT_LIMITS } from './limits.js';
 
 /** Recorded on the chat's proposals; the UI labels them by the chatbot channel. */
@@ -100,6 +102,8 @@ interface ModelResponse {
 	content: ChatContentBlock[];
 	calls: ChatToolCall[];
 	stopReason: ChatStopReason;
+	/** The pages its `browse_page` calls may open: see `conversationUrls`. */
+	conversationUrls: ReadonlySet<string>;
 }
 
 /** The text of the response being streamed, which the user already reads before it is stored. */
@@ -107,19 +111,25 @@ interface StreamedText {
 	text: string;
 }
 
+/**
+ * Streams one model response. `webSourceUrls` collects the pages the provider's web tools found
+ * across the turn's responses, as their results are not kept in the history.
+ */
 async function streamModelResponse(
 	turn: ChatTurn,
 	system: string,
 	tools: ReturnType<typeof chatTools>,
 	streamed: StreamedText,
+	webSourceUrls: Set<string>,
 ): Promise<ModelResponse> {
 	const history = await readRecentChatMessages(turn.session.id, CHAT_LIMITS.contextMessages);
+	const messages = chatModelMessages(history);
 	const calls: ChatToolCall[] = [];
 	let stopReason: ChatStopReason | null = null;
 	const events = turn.provider.stream(
 		{
 			system,
-			messages: chatModelMessages(history),
+			messages,
 			tools,
 			maxOutputTokens: CHAT_LIMITS.maxOutputTokens,
 		},
@@ -134,9 +144,18 @@ async function streamModelResponse(
 			case CHAT_MODEL_EVENT.webTool:
 				turn.emit({ type: CHAT_STREAM_EVENT.tool, name: event.name, query: event.query });
 				break;
+			case CHAT_MODEL_EVENT.webSources:
+				for (const url of event.urls) {
+					webSourceUrls.add(url);
+				}
+				break;
 			case CHAT_MODEL_EVENT.toolCall:
 				calls.push({ id: event.id, name: event.name, input: event.input });
-				turn.emit({ type: CHAT_STREAM_EVENT.tool, name: event.name, query: null });
+				turn.emit({
+					type: CHAT_STREAM_EVENT.tool,
+					name: event.name,
+					query: chatToolQuery(event),
+				});
 				break;
 			case CHAT_MODEL_EVENT.stop:
 				stopReason = event.reason;
@@ -151,7 +170,12 @@ async function streamModelResponse(
 	for (const call of calls) {
 		content.push({ type: CHAT_BLOCK.toolCall, ...call });
 	}
-	return { content, calls, stopReason };
+	return {
+		content,
+		calls,
+		stopReason,
+		conversationUrls: conversationUrls(messages, webSourceUrls),
+	};
 }
 
 /**
@@ -163,22 +187,33 @@ async function streamModelResponse(
 export async function runChatTurn(turn: ChatTurn): Promise<void> {
 	const { session } = turn;
 	const caller = chatCaller(session, turn.user);
-	const tools = chatTools(caller);
-	const system = chatSystemPrompt({
-		wishlistId: session.wishlistId,
-		wishlistShortId: session.wishlistShortId,
-		wishlistTitle: session.wishlistTitle,
-		userName: turn.user.name,
-		locale: turn.locale,
-	});
+	const pageBrowser = browsePageConfig();
+	const tools = chatTools(caller, pageBrowser);
+	const system = chatSystemPrompt(
+		{
+			wishlistId: session.wishlistId,
+			wishlistShortId: session.wishlistShortId,
+			wishlistTitle: session.wishlistTitle,
+			userName: turn.user.name,
+			locale: turn.locale,
+		},
+		{ canBrowsePages: pageBrowser !== null },
+	);
 	const streamed: StreamedText = { text: '' };
+	const webSourceUrls = new Set<string>();
 	try {
 		if (turn.request.kind === CHAT_TURN_KIND.message) {
 			await storeUserMessage(session, turn.request.text);
 		}
 		for (let call = 0; call < CHAT_LIMITS.modelCallsPerTurn; call += 1) {
 			streamed.text = '';
-			const response = await streamModelResponse(turn, system, tools, streamed);
+			const response = await streamModelResponse(
+				turn,
+				system,
+				tools,
+				streamed,
+				webSourceUrls,
+			);
 			if (response.stopReason !== CHAT_STOP_REASON.toolUse || response.calls.length === 0) {
 				if (response.content.length > 0) {
 					await storeAssistantMessage(session.id, response.content, null);
@@ -191,7 +226,11 @@ export async function runChatTurn(turn: ChatTurn): Promise<void> {
 				tools,
 				session.wishlistId,
 				response.calls,
-				turn.imageBucket,
+				{
+					imageBucket: turn.imageBucket,
+					signal: turn.signal,
+					conversationUrls: response.conversationUrls,
+				},
 			);
 			await storeAssistantMessage(
 				session.id,
