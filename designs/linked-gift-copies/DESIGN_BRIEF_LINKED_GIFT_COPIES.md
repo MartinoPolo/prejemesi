@@ -1,5 +1,8 @@
 # Linked Gift Copies — Design Brief
 
+> **Status**: Refined (Variant A) **Refined mockup**: `designs/linked-gift-copies/refined.html`
+> **Summary**: `designs/linked-gift-copies/SUMMARY.md` **Refinements**: none, Variant A adopted as is
+
 Copies of one recipient's gift on several wishlists (typically a permanent list and its Vánoce or birthday list) stay linked: reservations, received state and shared fields sync, so nobody buys the same wish twice. This brief covers every surface that creates, shows or breaks that link.
 
 **Source**: [#742](https://github.com/MartinoPolo/prejemesi/issues/742) (decisions in the Issue body and `.mpx/DECISIONS.md`, entries dated 2026-11-25). Related: #737 (shared gifts across recipients, out of scope).
@@ -77,7 +80,7 @@ The mockup shows four scenes, each at full viewport (~1440×900 desktop, plus 39
 
 - New `Checkbox` „Propojit kopie“ with `HelpText` „Rezervace, přijetí a úpravy dárku se budou sdílet mezi seznamy.“ below the destination select, above the existing move checkbox.
 - Default on when the destination has the same linked recipient or an identical free-text recipient name; off and disabled for other recipients, with help text „Propojit lze jen seznamy stejného obdarovaného.“ Hidden until a destination is chosen; „Nový seznam…“ (created for the same recipient) defaults on.
-- With move on: help text of the move checkbox gains „Rezervované dárky zůstanou a propojí se s kopiemi.“ when linking is on.
+- With move and linking both on, the move checkbox help reads „Rezervované dárky zůstanou a propojí se s kopiemi.“ in place of „Rezervované dárky zůstanou.“
 - Success toast appends „Propojeno: {count}“.
 
 ### 3.5 Editor section „Propojené kopie“
