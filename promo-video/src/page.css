@@ -1,0 +1,83 @@
+:root {
+	color-scheme: light;
+	--page: #eaf5fd;
+	--ink: #16385c;
+	--brand: #1e9be9;
+}
+
+* {
+	box-sizing: border-box;
+}
+
+html,
+body {
+	margin: 0;
+	height: 100%;
+	background: var(--page);
+}
+
+.stage {
+	position: relative;
+	display: grid;
+	place-items: center;
+	min-height: 100%;
+	padding: 16px;
+}
+
+#film {
+	display: block;
+	width: min(100%, calc((100vh - 32px) * 16 / 9));
+	height: auto;
+	aspect-ratio: 16 / 9;
+	border: 3px solid var(--ink);
+	border-radius: 18px;
+	box-shadow: 8px 8px 0 var(--ink);
+	background: #fffdf7;
+}
+
+.play {
+	position: absolute;
+	inset: 0;
+	margin: auto;
+	width: 128px;
+	height: 128px;
+	border: 4px solid var(--ink);
+	border-radius: 36px;
+	background: linear-gradient(180deg, var(--brand), #1265a8);
+	box-shadow: 6px 6px 0 var(--ink);
+	cursor: pointer;
+	transform: rotate(-4deg);
+	transition: transform 160ms ease;
+}
+
+.play:hover,
+.play:focus-visible {
+	transform: rotate(-4deg) scale(1.06);
+	outline: none;
+}
+
+.play svg {
+	width: 56px;
+	height: 56px;
+	fill: #fff;
+	stroke: var(--ink);
+	stroke-width: 1.5;
+	stroke-linejoin: round;
+}
+
+.play[hidden] {
+	display: none;
+}
+
+@media (width < 640px) {
+	.play {
+		width: 84px;
+		height: 84px;
+		border-radius: 24px;
+	}
+
+	.play svg {
+		width: 36px;
+		height: 36px;
+	}
+}

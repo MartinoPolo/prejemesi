@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>Přejeme si – promo</title>
+		<link rel="stylesheet" href="../../src/page.css" />
+	</head>
+	<body>
+		<main class="stage">
+			<canvas
+				id="film"
+				width="1920"
+				height="1080"
+				aria-label="Animated promo for Přejeme si"
+			></canvas>
+			<button
+				id="play"
+				class="play"
+				type="button"
+				aria-label="Play"
+				data-replay-label="Play again"
+			>
+				<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l11-6.5z" /></svg>
+			</button>
+		</main>
+		<script>
+			window.P = {
+				assets: {
+					fonts: {
+						'DynaPuff latin': '../../fonts/dynapuff-latin-wght-normal.woff2',
+						'DynaPuff latin-ext': '../../fonts/dynapuff-latin-ext-wght-normal.woff2',
+						'Geist latin': '../../fonts/geist-latin-wght-normal.woff2',
+						'Geist latin-ext': '../../fonts/geist-latin-ext-wght-normal.woff2',
+						'Caveat latin 500': '../../fonts/caveat-latin-500.woff2',
+						'Caveat latin 700': '../../fonts/caveat-latin-700.woff2',
+						'Caveat latin-ext 500': '../../fonts/caveat-latin-ext-500.woff2',
+						'Caveat latin-ext 700': '../../fonts/caveat-latin-ext-700.woff2',
+					},
+					audio: '../../audio/mix/en.mp3',
+					cues: 'cues.json',
+				},
+			};
+		</script>
+		<script src="../../src/engine.js"></script>
+		<script src="../../src/art.js"></script>
+		<script src="../../src/puppets.js"></script>
+		<script src="../../src/stage.js"></script>
+		<script src="scenes.js"></script>
+		<script src="../../src/main.js"></script>
+	</body>
+</html>

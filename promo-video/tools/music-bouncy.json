@@ -1,0 +1,26 @@
+{
+	"config": {
+		"bpm": 104,
+		"temperature": 1.0,
+		"guidance": 5.0,
+		"density": 0.62,
+		"brightness": 0.7,
+		"scale": "C_MAJOR_A_MINOR"
+	},
+	"sections": [
+		{
+			"at": 0,
+			"prompts": [
+				{
+					"text": "upbeat whimsical ukulele strumming with bright glockenspiel melody",
+					"weight": 1.0
+				},
+				{
+					"text": "bouncy pizzicato strings, hand claps, brushed drums, happy children's animation",
+					"weight": 0.8
+				},
+				{ "text": "cheerful feel-good indie advertisement music", "weight": 0.6 }
+			]
+		}
+	]
+}
