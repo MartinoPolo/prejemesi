@@ -1,10 +1,12 @@
 import { and, eq, isNull, ne, or, sql, type SQL } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
 import type { getDb } from '$lib/server/db/index.js';
 import { wishlist } from '$lib/server/db/wishlist.schema.js';
 import { moderatorAssignment } from '$lib/server/db/moderator.schema.js';
 import { wishlistFollower } from '$lib/server/db/follower.schema.js';
 import { gift, reservation } from '$lib/server/db/gift.schema.js';
 import { user } from '$lib/server/db/auth.schema.js';
+import { sharedGiftReceivedBySql } from '$lib/server/operations/gift_link_group.js';
 import type { Wishlist } from './types.js';
 import { sanitizeWishlistAppearance } from './wishlist_appearance.js';
 import type { FollowedWishlist, ModeratedWishlist, MyWishlist } from './dashboard_types.js';
@@ -45,9 +47,17 @@ function mapWishlist(row: WishlistRow): Wishlist {
 	};
 }
 
-/** Correlated to the gift row of `liveGiftCountSql`, so it is only valid as its filter. */
-function activeReservationExistsSql() {
-	return sql`exists (select 1 from ${reservation} where ${reservation.giftId} = ${gift.id} and ${reservation.deletedAt} is null)`;
+/**
+ * Whether the gift row of `liveGiftCountSql` is reserved as `currentUserId` may know it, so it is
+ * only valid as that filter. Linked copies and shared gifts share their units, so a reservation on
+ * any live row of the gift's link group counts. A shared gift (issue #737) stays a surprise to
+ * every linked recipient of its lists, so it never counts as reserved for them.
+ */
+function activeReservationExistsSql(currentUserId: string) {
+	const reservedGroupMember = alias(gift, 'reserved_group_member');
+	const reservedRow = sql`exists (select 1 from ${reservation} where ${reservation.giftId} = ${gift.id} and ${reservation.deletedAt} is null)`;
+	const reservedGroupMemberRow = sql`exists (select 1 from ${gift} as ${reservedGroupMember} inner join ${reservation} on ${reservation.giftId} = ${reservedGroupMember.id} where ${reservedGroupMember.linkGroupId} = ${gift.linkGroupId} and ${reservedGroupMember.deletedAt} is null and ${reservation.deletedAt} is null)`;
+	return sql`((${reservedRow} or ${reservedGroupMemberRow}) and not ${sharedGiftReceivedBySql(gift.id, currentUserId)})`;
 }
 
 /**
@@ -89,7 +99,7 @@ export function createModeratedRolePrimitives(currentUserId: string) {
 			wishlist,
 			recipientDisplayName: recipientDisplayNameSql(),
 			totalGifts: liveGiftCountSql(),
-			reservedGifts: liveGiftCountSql(activeReservationExistsSql()),
+			reservedGifts: liveGiftCountSql(activeReservationExistsSql(currentUserId)),
 		},
 		predicate: and(
 			eq(moderatorAssignment.userId, currentUserId),
@@ -140,7 +150,7 @@ export function createFollowedRolePrimitives(database: Database, currentUserId: 
 		projection: {
 			wishlist,
 			recipientDisplayName: recipientDisplayNameSql(),
-			availableGifts: liveGiftCountSql(sql`not ${activeReservationExistsSql()}`),
+			availableGifts: liveGiftCountSql(sql`not ${activeReservationExistsSql(currentUserId)}`),
 			myReservations: sql<number>`coalesce(${myReservations.count}, 0)`,
 			myPurchased: sql<number>`coalesce(${myReservations.purchasedCount}, 0)`,
 			unfollowedAt: wishlistFollower.unfollowedAt,

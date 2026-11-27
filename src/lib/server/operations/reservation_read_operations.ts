@@ -1,5 +1,5 @@
 import * as v from 'valibot';
-import { and, eq, isNull } from 'drizzle-orm';
+import { and, eq, isNull, sql } from 'drizzle-orm';
 import { getDb } from '$lib/server/db/index.js';
 import { gift, reservation } from '$lib/server/db/gift.schema.js';
 import { user } from '$lib/server/db/auth.schema.js';
@@ -12,11 +12,13 @@ import {
 import type { ReservationForModerator } from '$lib/modules/reservations/types.js';
 import { OPERATION_EXPOSURE, OPERATION_KIND, defineOperation } from './operation.js';
 import { requireLiveWishlistRowByShortId } from './wishlist_management.js';
+import { sharedGiftReceivedBySql } from './gift_link_group.js';
 
 /**
  * The issue #213 release ledger: every reservation on the wishlist except the viewer's own, with
  * gifter names, for a správce (guest rows releasable) or an administrator (all releasable). The
- * recipient, even an administrator, and visitors get an empty ledger.
+ * recipient, even an administrator, and visitors get an empty ledger. A shared gift the actor
+ * receives through another of its lists stays out of it (issue #737).
  */
 export const readReservationLedgerOperation = defineOperation({
 	name: 'readReservationLedger',
@@ -58,6 +60,9 @@ export const readReservationLedgerOperation = defineOperation({
 					eq(gift.wishlistId, wishlistRow.id),
 					isNull(gift.deletedAt),
 					isNull(reservation.deletedAt),
+					actor === null
+						? undefined
+						: sql`not ${sharedGiftReceivedBySql(gift.id, actor.userId)}`,
 				),
 			)
 			.orderBy(reservation.createdAt);

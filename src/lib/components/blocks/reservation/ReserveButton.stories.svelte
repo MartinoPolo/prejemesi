@@ -45,6 +45,8 @@
 		myReservationOnLinkedCopy: false,
 		reservedOnLinkedCopiesCount: 0,
 		linkedCopies: [],
+		linkGroupKind: null,
+		sharedWith: [],
 	};
 
 	const NOT_RESERVED: GiftForVisitor = baseGift;

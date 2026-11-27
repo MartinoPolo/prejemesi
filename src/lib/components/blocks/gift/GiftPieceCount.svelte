@@ -3,6 +3,7 @@
 	import type { WishlistRole } from '$lib/modules/wishlists/types.js';
 	import { formatPieceCount } from '$lib/modules/gifts/gift_display.js';
 	import { STANDARD_EASING } from '$lib/motion/motion_tokens.js';
+	import * as m from '$lib/paraglide/messages.js';
 
 	interface GiftPieceCountProps {
 		quantity: number | null;
@@ -10,6 +11,8 @@
 		reservedCount?: number;
 		hideWhenOne?: boolean;
 		reservationAcknowledgementKey?: string | boolean | null;
+		/** A shared gift's quantity is one total for all its recipients (issue #737). */
+		shared?: boolean;
 	}
 
 	// Rendered as an expression because Svelte trims the leading space of literal block text.
@@ -21,10 +24,12 @@
 		reservedCount,
 		hideWhenOne = false,
 		reservationAcknowledgementKey = null,
+		shared = false,
 	}: GiftPieceCountProps = $props();
 
 	const result = $derived(formatPieceCount(quantity, role, reservedCount));
 	const shouldHide = $derived(result === null || (hideWhenOne && quantity === 1));
+	const sharedTotal = $derived(shared && quantity !== null && quantity > 1 ? quantity : null);
 	let acknowledgementMounted = false;
 	let previousAcknowledgementPresent = false;
 	let shouldAnimateAcknowledgement = $state(false);
@@ -77,8 +82,15 @@
 		bind:this={countElement}
 		data-testid="gift-piece-count"
 		class="text-sm text-muted-foreground"
-		>{result.pieceText}{#if result.reservedText}{RESERVED_TEXT_SEPARATOR}<span
-				class="text-reserved">{result.reservedText}</span
+		title={sharedTotal === null
+			? undefined
+			: m.gift_shared_card_quantity_title({ count: sharedTotal })}
+		>{sharedTotal === null
+			? result.pieceText
+			: m.gift_shared_card_quantity({
+					count: sharedTotal,
+				})}{#if result.reservedText}{RESERVED_TEXT_SEPARATOR}<span class="text-reserved"
+				>{result.reservedText}</span
 			>{/if}</span
 	>
 {/if}

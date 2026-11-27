@@ -13,6 +13,8 @@
 	import GiftStateList from './GiftStateList.svelte';
 	import GiftViewerActions from './GiftViewerActions.svelte';
 	import GiftViewerGallery from './GiftViewerGallery.svelte';
+	import GiftSharedExplanation from './GiftSharedExplanation.svelte';
+	import { showsAsSharedGift } from '$lib/modules/gifts/shared_gift.js';
 	import { giftViewerVariants } from './gift_viewer_variants.js';
 	import { useGiftGalleryPositions } from '$lib/modules/gifts/gift_gallery_positions.js';
 	import type { GiftMoreProps } from '$lib/components/blocks/wishlist/gift_context_invocation.js';
@@ -82,6 +84,8 @@
 	);
 	const priceDisplay = $derived(formatPrice(gift.price, gift.currency, gift.priceMax));
 	const showsPieceCount = $derived(gift.quantity !== null && gift.quantity !== 1);
+	const isShared = $derived(showsAsSharedGift(gift));
+	const sharedTitleId = $props.id();
 	const actionGift = $derived(isVisitorOrModerator ? visitorGift : null);
 
 	function rememberPhotoAspectRatio(aspectRatio: number) {
@@ -168,6 +172,7 @@
 							{reservedCount}
 							reservationAcknowledgementKey={visitorGift?.myReservationId ?? null}
 							hideWhenOne
+							shared={isShared}
 						/>
 					</p>
 
@@ -183,6 +188,19 @@
 								</li>
 							{/each}
 						</ul>
+					{/if}
+
+					{#if isShared}
+						<section
+							class="grid gap-2 rounded-panel border-2 border-edge bg-muted/40 p-3"
+							aria-labelledby={sharedTitleId}
+							data-testid="gift-viewer-shared"
+						>
+							<h3 id={sharedTitleId} class="text-sm font-bold text-foreground">
+								{m.gift_shared_explanation_title()}
+							</h3>
+							<GiftSharedExplanation {gift} {role} />
+						</section>
 					{/if}
 
 					<GiftLinkList links={gift.links} maxVisible={gift.links.length} display="row" />

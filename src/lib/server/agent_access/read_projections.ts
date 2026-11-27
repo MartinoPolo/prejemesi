@@ -5,6 +5,7 @@ import type {
 	GiftByRole,
 	GiftForRecipient,
 	LinkedGiftCopy,
+	SharedGiftMember,
 } from '$lib/modules/gifts/types.js';
 import type { GiftImage, PublicGiftImage } from '$lib/modules/gifts/gift_images.js';
 import type { wishlist } from '$lib/server/db/wishlist.schema.js';
@@ -12,6 +13,7 @@ import type {
 	readBulkCopyDestinationsOperation,
 	readWishlistGiftsOperation,
 } from '$lib/server/operations/gift_read_operations.js';
+import type { readGiftShareDestinationsOperation } from '$lib/server/operations/gift_share_operations.js';
 import type { readWishlistOperation } from '$lib/server/operations/wishlist_read_operations.js';
 import type { AccessibleWishlist } from '$lib/modules/wishlists/accessible_wishlists.js';
 import type { ChangeProposalGift } from '$lib/modules/change_proposals/types.js';
@@ -27,6 +29,10 @@ type ReadWishlistOutput = Awaited<ReturnType<typeof readWishlistOperation.run>>;
 type ReadWishlistGiftsOutput = Awaited<ReturnType<typeof readWishlistGiftsOperation.run>>;
 type ReadBulkCopyDestinationsOutput = Awaited<
 	ReturnType<typeof readBulkCopyDestinationsOperation.run>
+>;
+
+type ReadGiftShareDestinationsOutput = Awaited<
+	ReturnType<typeof readGiftShareDestinationsOperation.run>
 >;
 
 type AgentWishlistSource = Pick<
@@ -219,6 +225,25 @@ function projectAgentLinkedCopies(
 		}));
 }
 
+/** Every shared gift's other recipients; a list itself only where the token may reach it. */
+function projectAgentSharedGiftMembers(
+	sharedWith: readonly SharedGiftMember[],
+	allowedWishlistIds: readonly string[] | null,
+) {
+	return sharedWith.map((member) => {
+		const reachable =
+			member.wishlistId !== null &&
+			(allowedWishlistIds === null || allowedWishlistIds.includes(member.wishlistId));
+		return {
+			recipientDisplayName: member.recipientDisplayName,
+			recipientImage: member.recipientImage,
+			wishlistId: reachable ? member.wishlistId : null,
+			wishlistShortId: reachable ? member.wishlistShortId : null,
+			wishlistTitle: reachable ? member.wishlistTitle : null,
+		};
+	});
+}
+
 function projectAgentGiftBase(gift: GiftForRecipient, options: AgentGiftProjectionOptions) {
 	return {
 		...projectAgentGiftRow(gift),
@@ -228,6 +253,8 @@ function projectAgentGiftBase(gift: GiftForRecipient, options: AgentGiftProjecti
 		// Superseded by `categories`: the primary category only.
 		category: gift.categories[0] ?? null,
 		linkedCopies: projectAgentLinkedCopies(gift.linkedCopies, options.allowedWishlistIds),
+		linkGroupKind: gift.linkGroupKind,
+		sharedWith: projectAgentSharedGiftMembers(gift.sharedWith, options.allowedWishlistIds),
 	};
 }
 
@@ -281,6 +308,27 @@ export function projectAgentBulkCopyDestinations(
 		recipientDisplayName: destination.recipientDisplayName,
 		linkable: destination.linkable,
 	}));
+}
+
+/** A wishlist-restricted token sees only the share destinations it may reach. */
+export function projectAgentShareDestinations(
+	destinations: ReadGiftShareDestinationsOutput,
+	allowedWishlistIds: readonly string[] | null,
+) {
+	return destinations
+		.filter(
+			(destination) =>
+				allowedWishlistIds === null || allowedWishlistIds.includes(destination.id),
+		)
+		.map((destination) => ({
+			id: destination.id,
+			shortId: destination.shortId,
+			title: destination.title,
+			status: destination.status,
+			kind: destination.kind,
+			recipientDisplayName: destination.recipientDisplayName,
+			recipientImage: destination.recipientImage,
+		}));
 }
 
 /** A wishlist-restricted token sees only its wishlists in the list of the user's wishlists. */

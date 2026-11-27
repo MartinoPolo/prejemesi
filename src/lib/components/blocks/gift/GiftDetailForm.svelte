@@ -22,6 +22,8 @@
 	import GiftQuantityPriorityFields from './GiftQuantityPriorityFields.svelte';
 	import GiftCategoryField from './GiftCategoryField.svelte';
 	import GiftLinkedCopiesSection from './GiftLinkedCopiesSection.svelte';
+	import GiftSharedField from './GiftSharedField.svelte';
+	import { canManageWishlist } from '$lib/modules/wishlists/wishlist_capabilities.js';
 	import { GiftImageDraft, GiftImageGalleryDraft } from './gift_image_gallery_draft.svelte.js';
 	import { giftEditorPreview } from './gift_editor_preview.js';
 	import { giftFramingStatusLine } from './gift_framing_labels.js';
@@ -667,6 +669,9 @@
 		/>
 		{#if isEdit && gift !== null && gift.linkedCopies.length > 0}
 			<GiftLinkedCopiesSection giftId={gift.id} linkedCopies={gift.linkedCopies} />
+		{/if}
+		{#if isEdit && gift !== null && !demo && canManageWishlist(role)}
+			<GiftSharedField {gift} />
 		{/if}
 	</fieldset>
 {/snippet}

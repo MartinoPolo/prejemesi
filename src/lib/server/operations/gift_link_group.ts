@@ -1,18 +1,34 @@
-import { and, asc, eq, inArray, isNotNull, isNull, ne, sql } from 'drizzle-orm';
+import {
+	and,
+	asc,
+	eq,
+	inArray,
+	isNotNull,
+	isNull,
+	ne,
+	sql,
+	type SQL,
+	type SQLWrapper,
+} from 'drizzle-orm';
 import { error } from '@sveltejs/kit';
+import { alias } from 'drizzle-orm/pg-core';
 import type { DatabaseTransaction, getDb } from '$lib/server/db/index.js';
 import { gift, giftLinkGroup, reservation } from '$lib/server/db/gift.schema.js';
-import type { GIFT_LINK_GROUP_KIND } from '$lib/server/db/enums.js';
+import { user } from '$lib/server/db/auth.schema.js';
 import { wishlist } from '$lib/server/db/wishlist.schema.js';
 import { moderatorAssignment } from '$lib/server/db/moderator.schema.js';
 import { WISHLIST_KIND } from '$lib/modules/wishlists/types.js';
-import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
+import { SERVER_ERROR, type ServerErrorCode } from '$lib/modules/errors/server_error_codes.js';
 import { giftFollowsStrictPostShareRules } from '$lib/modules/gifts/gift_strict_post_share_rules.js';
 import {
 	isPreShareOwnerFullEditGraceOpen,
 	preShareOwnerFullEditGraceExpiresAt,
 } from '$lib/modules/gifts/gift_deletion_rules.js';
-import type { LinkedGiftCopy } from '$lib/modules/gifts/types.js';
+import type { LinkedGiftCopy, SharedGiftMember } from '$lib/modules/gifts/types.js';
+import {
+	GIFT_LINK_GROUP_KIND,
+	type GiftLinkGroupKind,
+} from '$lib/modules/gifts/gift_link_group_kind.js';
 import { loadReservedGiftIds } from './wishlist_kind_rules.js';
 import {
 	WISHLIST_ROW_LOCK,
@@ -22,7 +38,6 @@ import {
 } from './wishlist_management.js';
 
 type Database = DatabaseTransaction | ReturnType<typeof getDb>;
-type GiftLinkGroupKind = (typeof GIFT_LINK_GROUP_KIND)[keyof typeof GIFT_LINK_GROUP_KIND];
 
 /** Wishlists a transaction already holds, with the lock mode it holds each in. */
 export type HeldWishlistLocks = ReadonlyMap<string, WishlistRowLock>;
@@ -31,7 +46,15 @@ export type HeldWishlistLocks = ReadonlyMap<string, WishlistRowLock>;
 export interface LinkGroupMember {
 	giftId: string;
 	linkGroupId: string;
+	linkGroupKind: GiftLinkGroupKind;
 	createdAt: Date;
+	/**
+	 * The wishlist's free-text recipient name, else its linked recipient's account name, else its
+	 * title, so a member is never shown nameless.
+	 */
+	recipientDisplayName: string;
+	/** The linked recipient's account image; null for a free-text recipient. */
+	recipientImage: string | null;
 	wishlist: Pick<
 		WishlistRow,
 		| 'id'
@@ -44,26 +67,33 @@ export interface LinkGroupMember {
 		| 'deletedAt'
 		| 'recipientIsModerator'
 		| 'recipientUserId'
+		| 'recipientName'
 	>;
 }
 
-const linkGroupMemberColumns = {
-	giftId: gift.id,
-	linkGroupId: gift.linkGroupId,
-	createdAt: gift.createdAt,
-	wishlist: {
-		id: wishlist.id,
-		shortId: wishlist.shortId,
-		title: wishlist.title,
-		occasion: wishlist.occasion,
-		status: wishlist.status,
-		kind: wishlist.kind,
-		sharedAt: wishlist.sharedAt,
-		deletedAt: wishlist.deletedAt,
-		recipientIsModerator: wishlist.recipientIsModerator,
-		recipientUserId: wishlist.recipientUserId,
-	},
-};
+function linkGroupMemberColumns() {
+	return {
+		giftId: gift.id,
+		linkGroupId: gift.linkGroupId,
+		linkGroupKind: giftLinkGroup.kind,
+		createdAt: gift.createdAt,
+		recipientDisplayName: sql<string>`coalesce(${wishlist.recipientName}, ${user.name}, ${wishlist.title})`,
+		recipientImage: user.image,
+		wishlist: {
+			id: wishlist.id,
+			shortId: wishlist.shortId,
+			title: wishlist.title,
+			occasion: wishlist.occasion,
+			status: wishlist.status,
+			kind: wishlist.kind,
+			sharedAt: wishlist.sharedAt,
+			deletedAt: wishlist.deletedAt,
+			recipientIsModerator: wishlist.recipientIsModerator,
+			recipientUserId: wishlist.recipientUserId,
+			recipientName: wishlist.recipientName,
+		},
+	};
+}
 
 /** Every live copy of the given link groups, including copies on deleted or archived wishlists. */
 async function loadLinkGroupMembers(
@@ -74,9 +104,11 @@ async function loadLinkGroupMembers(
 		return [];
 	}
 	const rows = await database
-		.select(linkGroupMemberColumns)
+		.select(linkGroupMemberColumns())
 		.from(gift)
 		.innerJoin(wishlist, eq(wishlist.id, gift.wishlistId))
+		.innerJoin(giftLinkGroup, eq(giftLinkGroup.id, gift.linkGroupId))
+		.leftJoin(user, eq(user.id, wishlist.recipientUserId))
 		.where(and(inArray(gift.linkGroupId, [...new Set(linkGroupIds)]), isNull(gift.deletedAt)))
 		.orderBy(asc(gift.id));
 	return rows.flatMap((row) =>
@@ -121,7 +153,7 @@ export async function loadLinkedSiblingsOnWishlist(
 }
 
 /** The other live copies linked to a gift; empty for an unlinked gift. */
-async function loadLinkedSiblings(
+export async function loadLinkedSiblings(
 	database: Database,
 	linkedGift: { id: string; linkGroupId: string | null },
 ): Promise<LinkGroupMember[]> {
@@ -135,7 +167,7 @@ async function loadLinkedSiblings(
 const MAX_LINK_GROUP_LOCK_ATTEMPTS = 3;
 
 /** A lock pass found link group members it had not locked: a copy joined before its locks held. */
-class LinkGroupMembershipChanged extends Error {
+export class LinkGroupMembershipChanged extends Error {
 	constructor() {
 		super('Link group membership changed during the lock pass');
 	}
@@ -147,7 +179,7 @@ class LinkGroupMembershipChanged extends Error {
  * takes every lock in order again instead of adding the new one out of order. 409 once the
  * attempts run out.
  */
-async function lockWithStableLinkGroups<TLocked>(
+export async function lockWithStableLinkGroups<TLocked>(
 	transaction: DatabaseTransaction,
 	lockPass: (savepoint: DatabaseTransaction) => Promise<TLocked>,
 ): Promise<TLocked> {
@@ -599,4 +631,137 @@ export function wishlistsShareRecipient(
 	}
 	const firstName = first.recipientName?.trim() ?? '';
 	return firstName !== '' && firstName === (second.recipientName?.trim() ?? '');
+}
+
+/** Whether a gift's other live members make it a gift shared across recipients (issue #737). */
+export function isSharedAcrossRecipients(siblings: readonly LinkGroupMember[]): boolean {
+	return siblings.some(
+		(member) => member.linkGroupKind === GIFT_LINK_GROUP_KIND.sharedAcrossRecipients,
+	);
+}
+
+/**
+ * The recipients of a shared gift: every linked recipient account of any of its wishlists. Each of
+ * them receives the gift, so it stays a surprise to them on every list, including lists they
+ * manage.
+ */
+export function sharedGiftRecipientUserIds(
+	wishlists: readonly Pick<WishlistRow, 'recipientUserId'>[],
+): Set<string> {
+	return new Set(
+		wishlists.flatMap((memberWishlist) =>
+			memberWishlist.recipientUserId === null ? [] : [memberWishlist.recipientUserId],
+		),
+	);
+}
+
+/** A gift's other live rows when it is a shared gift (issue #737); empty for other gifts. */
+export async function loadSharedGiftSiblings(
+	database: Database,
+	giftRow: { id: string; linkGroupId: string | null },
+): Promise<LinkGroupMember[]> {
+	const siblings = await loadLinkedSiblings(database, giftRow);
+	return isSharedAcrossRecipients(siblings) ? siblings : [];
+}
+
+/**
+ * The rows that count as one gift: every row of a shared gift, whose likes and reservations are
+ * the gift's; only the gift itself for ordinary gifts and linked copies.
+ */
+export function sharedGiftRowIds(giftId: string, siblings: readonly LinkGroupMember[]): string[] {
+	return isSharedAcrossRecipients(siblings)
+		? [giftId, ...siblings.map((member) => member.giftId)]
+		: [giftId];
+}
+
+/**
+ * Rejects a recipient of a shared gift reserving or liking it on any of its wishlists, with the
+ * code the own-list rejection uses. Does nothing for ordinary and linked gifts.
+ */
+export function assertNotSharedGiftRecipient(
+	siblings: readonly LinkGroupMember[],
+	actorUserId: string,
+	rejectionCode: ServerErrorCode,
+): void {
+	if (
+		isSharedAcrossRecipients(siblings) &&
+		sharedGiftRecipientUserIds(siblings.map((member) => member.wishlist)).has(actorUserId)
+	) {
+		error(403, rejectionCode);
+	}
+}
+
+/**
+ * A shared gift's other wishlists as a viewer sees them: whose gift it also is for everyone, the
+ * list itself only on wishlists the viewer manages.
+ */
+export function listedSharedGiftMembers(
+	siblings: readonly LinkGroupMember[],
+	managedWishlistIds: ReadonlySet<string>,
+): SharedGiftMember[] {
+	if (!isSharedAcrossRecipients(siblings)) {
+		return [];
+	}
+	return siblings
+		.filter((member) => member.wishlist.deletedAt === null)
+		.map((member) => {
+			const viewerManages = managedWishlistIds.has(member.wishlist.id);
+			return {
+				recipientDisplayName: member.recipientDisplayName,
+				recipientImage: member.recipientImage,
+				giftId: viewerManages ? member.giftId : null,
+				wishlistId: viewerManages ? member.wishlist.id : null,
+				wishlistShortId: viewerManages ? member.wishlist.shortId : null,
+				wishlistTitle: viewerManages ? member.wishlist.title : null,
+			};
+		});
+}
+
+/** The kind of each given link group. */
+export async function loadLinkGroupKinds(
+	database: Database,
+	linkGroupIds: readonly (string | null)[],
+): Promise<Map<string, GiftLinkGroupKind>> {
+	const groupIds = [
+		...new Set(linkGroupIds.filter((groupId): groupId is string => groupId !== null)),
+	];
+	if (groupIds.length === 0) {
+		return new Map();
+	}
+	const rows = await database
+		.select({ id: giftLinkGroup.id, kind: giftLinkGroup.kind })
+		.from(giftLinkGroup)
+		.where(inArray(giftLinkGroup.id, groupIds));
+	return new Map(rows.map((row) => [row.id, row.kind]));
+}
+
+/** The live rows of shared gifts (issue #737) on one wishlist, in id order. */
+export function loadSharedGiftRowsOnWishlist(
+	database: Database,
+	wishlistId: string,
+): Promise<{ id: string; linkGroupId: string | null }[]> {
+	return database
+		.select({ id: gift.id, linkGroupId: gift.linkGroupId })
+		.from(gift)
+		.innerJoin(giftLinkGroup, eq(giftLinkGroup.id, gift.linkGroupId))
+		.where(
+			and(
+				eq(gift.wishlistId, wishlistId),
+				isNull(gift.deletedAt),
+				eq(giftLinkGroup.kind, GIFT_LINK_GROUP_KIND.sharedAcrossRecipients),
+			),
+		)
+		.orderBy(asc(gift.id));
+}
+
+/**
+ * SQL: whether the gift with the given id is a shared gift (issue #737) the user receives as the
+ * linked recipient of any of its wishlists, so its reservations stay a surprise to them on every
+ * list. Its own aliases keep it correlatable to an outer query over gifts and wishlists.
+ */
+export function sharedGiftReceivedBySql(giftId: SQLWrapper, userId: string): SQL {
+	const receivedGift = alias(gift, 'received_gift');
+	const receivedGroupMember = alias(gift, 'received_group_member');
+	const receivedMemberWishlist = alias(wishlist, 'received_member_wishlist');
+	return sql`exists (select 1 from ${gift} as ${receivedGift} inner join ${giftLinkGroup} on ${giftLinkGroup.id} = ${receivedGift.linkGroupId} inner join ${gift} as ${receivedGroupMember} on ${receivedGroupMember.linkGroupId} = ${receivedGift.linkGroupId} inner join ${wishlist} as ${receivedMemberWishlist} on ${receivedMemberWishlist.id} = ${receivedGroupMember.wishlistId} where ${receivedGift.id} = ${giftId} and ${giftLinkGroup.kind} = ${GIFT_LINK_GROUP_KIND.sharedAcrossRecipients} and ${receivedGroupMember.deletedAt} is null and ${receivedMemberWishlist.recipientUserId} = ${userId})`;
 }

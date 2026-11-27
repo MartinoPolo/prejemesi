@@ -18,6 +18,8 @@
 	import GiftCategoryBadges from './GiftCategoryBadges.svelte';
 	import GiftLinkList from './GiftLinkList.svelte';
 	import GiftLinkChip from './GiftLinkChip.svelte';
+	import GiftSharedBadge from './GiftSharedBadge.svelte';
+	import { showsAsSharedGift } from '$lib/modules/gifts/shared_gift.js';
 	import GiftLivePreviewBadge from './GiftLivePreviewBadge.svelte';
 	import GiftGalleryCountChip from './GiftGalleryCountChip.svelte';
 	import { GIFT_LIVE_PREVIEW } from '$lib/components/blocks/change-proposals/change_row_model.js';
@@ -55,6 +57,7 @@
 
 	const previewMarks = $derived(giftLivePreviewMarks(livePreview));
 	const showsLinkChip = $derived(role !== 'visitor' && gift.linkedCopies.length > 0);
+	const isShared = $derived(showsAsSharedGift(gift));
 	const showsTopRow = $derived(
 		gift.categories.length > 0 || previewMarks.proposed || showsLinkChip,
 	);
@@ -322,7 +325,12 @@
 				<span
 					class={cn('hidden h-[1lh] shrink-0 items-center sm:flex', dimmedContentClass)}
 				>
-					<GiftPieceCount quantity={gift.quantity} role="recipient" hideWhenOne />
+					<GiftPieceCount
+						quantity={gift.quantity}
+						role="recipient"
+						hideWhenOne
+						shared={isShared}
+					/>
 				</span>
 				{#if !contextualMode && presentation.showLike && isVisitorOrModerator && visitorGift}
 					<span
@@ -336,6 +344,12 @@
 					</span>
 				{/if}
 			</div>
+
+			{#if isShared}
+				<div class="flex min-w-0 py-0.5">
+					<GiftSharedBadge {gift} {role} interactive={!contextualMode} />
+				</div>
+			{/if}
 
 			<GiftDescription
 				description={gift.description}
@@ -360,7 +374,12 @@
 				<span
 					class="flex items-baseline gap-x-1.5 text-sm text-muted-foreground before:content-['·'] empty:hidden sm:hidden"
 				>
-					<GiftPieceCount quantity={gift.quantity} role="recipient" hideWhenOne />
+					<GiftPieceCount
+						quantity={gift.quantity}
+						role="recipient"
+						hideWhenOne
+						shared={isShared}
+					/>
 				</span>
 			</div>
 

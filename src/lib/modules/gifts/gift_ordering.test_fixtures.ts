@@ -1,5 +1,5 @@
-import type { GiftForVisitor } from './types.js';
-import type { GiftSection } from './gift_ordering.js';
+import type { GiftForRecipient, GiftForVisitor } from './types.js';
+import { projectGiftForRecipient, type GiftSection } from './gift_ordering.js';
 
 let idCounter = 0;
 
@@ -39,8 +39,15 @@ export function makeGift(overrides: Partial<GiftForVisitor> = {}): GiftForVisito
 		myReservationOnLinkedCopy: false,
 		reservedOnLinkedCopiesCount: 0,
 		linkedCopies: [],
+		linkGroupKind: null,
+		sharedWith: [],
 		...overrides,
 	};
+}
+
+/** The recipient projection of a gift: the server sends it without reservation or like data. */
+export function recipientShapedGift(gift: GiftForVisitor = makeGift()): GiftForRecipient {
+	return projectGiftForRecipient(gift);
 }
 
 /** All gift ids across every section, in flattened render order. */

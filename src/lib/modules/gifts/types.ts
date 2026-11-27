@@ -6,6 +6,7 @@ import type { PublicGiftCategory } from '$lib/modules/gift-categories/types.js';
 import type { WishlistOccasion } from '$lib/modules/wishlists/types.js';
 import type { WishlistStatus } from '$lib/modules/wishlists/wishlist_capabilities.js';
 import { GiftImagesSchema, type GiftImage } from './gift_images.js';
+import type { GiftLinkGroupKind } from './gift_link_group_kind.js';
 import {
 	MAX_GIFT_CATEGORIES,
 	isValidGiftCategoryIdList,
@@ -92,6 +93,21 @@ export interface LinkedGiftCopy {
 	viewerManages: boolean;
 }
 
+/**
+ * Another wishlist of a shared gift (issue #737). Every viewer learns whose gift it also is; only
+ * a viewer who manages that wishlist, and so may open it, learns which list it is.
+ */
+export interface SharedGiftMember {
+	recipientDisplayName: string;
+	/** The linked recipient's account image; null for a recipient without an account. */
+	recipientImage: string | null;
+	/** The gift's row on that list; like the list fields, only for a list the viewer manages. */
+	giftId: string | null;
+	wishlistId: string | null;
+	wishlistShortId: string | null;
+	wishlistTitle: string | null;
+}
+
 /** Shared fields present in every gift view regardless of role. */
 export interface GiftBase {
 	id: string;
@@ -121,8 +137,12 @@ export interface GiftBase {
 	categoryIds: string[];
 	/** The categories of {@link categoryIds}, in the same order. */
 	categories: PublicGiftCategory[];
-	/** The other live copies linked to this gift; always empty for visitors. */
+	/** The other live copies linked to this gift; always empty for visitors and shared gifts. */
 	linkedCopies: LinkedGiftCopy[];
+	/** The gift's link group kind as the viewer may learn it; null for visitors of linked copies. */
+	linkGroupKind: GiftLinkGroupKind | null;
+	/** The other wishlists of a shared gift; empty unless the gift is shared. */
+	sharedWith: SharedGiftMember[];
 }
 
 /** Gift with computed fields for visitor/moderator view */

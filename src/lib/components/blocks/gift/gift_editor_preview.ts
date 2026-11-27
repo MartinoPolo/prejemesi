@@ -61,5 +61,7 @@ export function giftEditorPreview(values: GiftEditorPreviewValues): GiftForVisit
 		myReservationOnLinkedCopy: false,
 		reservedOnLinkedCopiesCount: 0,
 		linkedCopies: [],
+		linkGroupKind: null,
+		sharedWith: [],
 	};
 }

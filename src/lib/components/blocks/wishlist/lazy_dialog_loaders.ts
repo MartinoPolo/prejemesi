@@ -8,6 +8,9 @@ export const createWishlistModalLoader = lazyComponent(
 	() => import('./CreateWishlistModal.svelte'),
 );
 export const giftBulkCopyDialogLoader = lazyComponent(() => import('./GiftBulkCopyDialog.svelte'));
+export const giftBulkShareDialogLoader = lazyComponent(
+	() => import('./GiftBulkShareDialog.svelte'),
+);
 export const wishlistSettingsModalLoader = lazyComponent(
 	() => import('./WishlistSettingsModal.svelte'),
 );

@@ -78,12 +78,17 @@ import {
 	unfollowWishlistOperation,
 } from './wishlist_follow_operations.js';
 import { toggleGiftLikeOperation } from './gift_like_operations.js';
+import {
+	readGiftShareDestinationsOperation,
+	shareGiftsOperation,
+} from './gift_share_operations.js';
 import type { AnyOperation } from './operation.js';
 
 /** Every operation the core exposes, keyed by its name; agent surfaces are generated from this. */
 export const OPERATION_REGISTRY = {
 	[readWishlistGiftsOperation.name]: readWishlistGiftsOperation,
 	[readBulkCopyDestinationsOperation.name]: readBulkCopyDestinationsOperation,
+	[readGiftShareDestinationsOperation.name]: readGiftShareDestinationsOperation,
 	[readPriorityLevelsOperation.name]: readPriorityLevelsOperation,
 	[readWishlistOperation.name]: readWishlistOperation,
 	[readAccessibleWishlistsOperation.name]: readAccessibleWishlistsOperation,
@@ -98,6 +103,7 @@ export const OPERATION_REGISTRY = {
 	[reorderGiftsOperation.name]: reorderGiftsOperation,
 	[bulkUpdateGiftsOperation.name]: bulkUpdateGiftsOperation,
 	[bulkCopyGiftsOperation.name]: bulkCopyGiftsOperation,
+	[shareGiftsOperation.name]: shareGiftsOperation,
 	[undoGiftRevisionBatchOperation.name]: undoGiftRevisionBatchOperation,
 	[undoGiftRevisionOperation.name]: undoGiftRevisionOperation,
 	[restoreGiftOrderOperation.name]: restoreGiftOrderOperation,

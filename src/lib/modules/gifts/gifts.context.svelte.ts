@@ -19,7 +19,6 @@ import {
 	type GiftCategoryFilterValue,
 	type GiftFilterOption,
 	type GiftFilters,
-	type GiftForVisitor,
 	type GiftGroupingOption,
 	type GiftPriorityFilterValue,
 	type GiftSortOption,
@@ -27,6 +26,7 @@ import {
 	type GiftViewMode,
 } from './types.js';
 import { computeGiftSections } from './gift_ordering.js';
+import { giftCarriesReservationState } from './shared_gift.js';
 import { extractGiftStoreDomain, type RegistrableDomainResolver } from './gift_url.js';
 import { carouselGrouping } from './gift_view_mode.js';
 import { getPriorityDisplayLabel } from './gift_display.js';
@@ -534,10 +534,9 @@ function createGiftsContext(
 			result = result.filter((giftItem) => !giftItem.received);
 		}
 		if (currentFilters.availableOnly && viewerRole.current !== 'recipient') {
-			result = result.filter((giftItem) => {
-				const visitorGift = giftItem as GiftForVisitor;
-				return !visitorGift.isFullyReserved;
-			});
+			result = result.filter(
+				(giftItem) => !giftCarriesReservationState(giftItem) || !giftItem.isFullyReserved,
+			);
 		}
 		if (currentFilters.withLinkOnly) {
 			result = result.filter((giftItem) => giftItem.links.length > 0);

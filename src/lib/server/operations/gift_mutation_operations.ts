@@ -33,6 +33,7 @@ import { softDeleteGift } from './gift_deletion.js';
 import { giftColumnsWithImages } from './gift_gallery.js';
 import {
 	leaveLinkGroup,
+	loadSharedGiftSiblings,
 	lockLinkedCopies,
 	lockedLinkedEditRules,
 	shouldAppendDescription,
@@ -249,6 +250,10 @@ export const unlinkGiftOperation = defineOperation({
 		const { giftRow, managedWishlist } = await lockManagedGift(context, input.giftId);
 		if (giftRow.linkGroupId === null) {
 			error(400, SERVER_ERROR.GIFT_NOT_LINKED);
+		}
+		// A shared gift's row stays one gift with the others until it is removed from its list.
+		if ((await loadSharedGiftSiblings(context.transaction, giftRow)).length > 0) {
+			error(400, SERVER_ERROR.SHARED_GIFT_CANNOT_UNLINK);
 		}
 		await leaveLinkGroup(context.transaction, giftRow);
 		return {

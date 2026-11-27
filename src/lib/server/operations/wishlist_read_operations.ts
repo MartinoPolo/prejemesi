@@ -95,6 +95,7 @@ export const readWishlistOperation = defineOperation({
 			role,
 			wishlistRow: row.wishlist,
 			isAppAdministrator,
+			userId: actor?.userId ?? null,
 		});
 		return {
 			...row.wishlist,

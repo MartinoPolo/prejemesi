@@ -12,22 +12,39 @@ import {
 import type { MutationOperationContext } from './operation.js';
 import type { WishlistRow } from './wishlist_management.js';
 import { giftColumnsWithImages } from './gift_gallery.js';
+import { sharedGiftReceivedBySql } from './gift_link_group.js';
 
 interface RevertAccess {
 	capability: RevertCapability;
 	hasReservations: boolean;
 }
 
+/** An active reservation on a live gift of the wishlist that the user may know of. */
+function knownActiveReservation(wishlistId: string, userId: string | null) {
+	return and(
+		eq(gift.wishlistId, wishlistId),
+		isNull(reservation.deletedAt),
+		isNull(gift.deletedAt),
+		userId === null ? undefined : sql`not ${sharedGiftReceivedBySql(gift.id, userId)}`,
+	);
+}
+
 /**
  * The actor's revert-to-draft capability. Reservation existence is consulted only for someone who
  * could actually revert (a správce or an administrator) on an active list, never for the recipient,
- * so the answer cannot leak reservation state.
+ * so the answer cannot leak reservation state. Reservations of a shared gift the actor receives
+ * count as absent for the same reason.
  */
 export async function resolveRevertAccess(
 	database: DatabaseTransaction | ReturnType<typeof getDb>,
-	params: { role: WishlistRole; wishlistRow: WishlistRow; isAppAdministrator: boolean },
+	params: {
+		role: WishlistRole;
+		wishlistRow: WishlistRow;
+		isAppAdministrator: boolean;
+		userId: string | null;
+	},
 ): Promise<RevertAccess> {
-	const { role, wishlistRow, isAppAdministrator } = params;
+	const { role, wishlistRow, isAppAdministrator, userId } = params;
 	const needsReservationCheck =
 		wishlistRow.status === 'active' &&
 		role !== WISHLIST_ROLES.recipient &&
@@ -38,13 +55,7 @@ export async function resolveRevertAccess(
 			.select({ value: count() })
 			.from(reservation)
 			.innerJoin(gift, eq(reservation.giftId, gift.id))
-			.where(
-				and(
-					eq(gift.wishlistId, wishlistRow.id),
-					isNull(reservation.deletedAt),
-					isNull(gift.deletedAt),
-				),
-			);
+			.where(knownActiveReservation(wishlistRow.id, userId));
 		hasReservations = (reservationCount?.value ?? 0) > 0;
 	}
 	const capability = resolveRevertCapability({
@@ -83,7 +94,10 @@ export interface CancelledReserver {
 	anonymousEmail: string | null;
 }
 
-/** Cancels every active reservation on the wishlist, attributed to the reverting actor. */
+/**
+ * Cancels every active reservation on the wishlist the reverting actor may know of, attributed to
+ * them. A shared gift they receive keeps its reservations: it stays reserved for every list.
+ */
 export async function cancelActiveReservations(
 	context: MutationOperationContext,
 	wishlistId: string,
@@ -96,13 +110,7 @@ export async function cancelActiveReservations(
 		})
 		.from(reservation)
 		.innerJoin(gift, eq(reservation.giftId, gift.id))
-		.where(
-			and(
-				eq(gift.wishlistId, wishlistId),
-				isNull(reservation.deletedAt),
-				isNull(gift.deletedAt),
-			),
-		);
+		.where(knownActiveReservation(wishlistId, context.actor.userId));
 	const reservationIds = activeReservations.map((row) => row.id);
 	if (reservationIds.length > 0) {
 		await context.transaction

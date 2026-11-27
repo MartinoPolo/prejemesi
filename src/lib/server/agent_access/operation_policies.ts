@@ -9,6 +9,7 @@ import {
 	projectAgentAccessibleWishlists,
 	projectAgentBulkCopyDestinations,
 	projectAgentGiftRow,
+	projectAgentShareDestinations,
 	projectAgentWishlist,
 	projectAgentWishlistGifts,
 	projectAgentWishlistRow,
@@ -218,6 +219,14 @@ export const AGENT_OPERATION_POLICIES: AgentOperationPolicies = {
 		projectOutput: (output, grant) =>
 			projectAgentBulkCopyDestinations(output, grant.wishlistIds),
 	}),
+	readGiftShareDestinations: agentOperation({
+		summary:
+			'Lists the wishlists of other recipients the given gifts can be shared with, with each recipient’s name and image.',
+		scope: AGENT_SCOPE.read,
+		targets: (input) =>
+			input.giftIds.map((giftId) => ({ kind: TARGET_KIND.linkGroupOfGiftId, id: giftId })),
+		projectOutput: (output, grant) => projectAgentShareDestinations(output, grant.wishlistIds),
+	}),
 	readPriorityLevels: agentOperation({
 		summary: 'Lists the priority levels of a wishlist.',
 		scope: AGENT_SCOPE.read,
@@ -332,6 +341,26 @@ export const AGENT_OPERATION_POLICIES: AgentOperationPolicies = {
 			createdIds: output.createdIds,
 			linkedIds: output.linkedIds,
 			destinationShortId: output.destinationShortId,
+		}),
+	}),
+	// Every list taking part, those a gift is already shared with included, must be within reach.
+	shareGifts: agentOperation({
+		summary:
+			'Shares gifts with wishlists of other recipients, or adds wishlists to gifts shared already: each wishlist gets its own row of the gift, reserved, received and edited once for all. Needs management of every participating wishlist.',
+		scope: AGENT_SCOPE.giftsWrite,
+		targets: (input) => [
+			...input.giftIds.flatMap((giftId) => [
+				{ kind: TARGET_KIND.giftId, id: giftId },
+				{ kind: TARGET_KIND.linkGroupOfGiftId, id: giftId },
+			]),
+			...input.wishlistIds.map((wishlistId) => ({
+				kind: TARGET_KIND.wishlistId,
+				id: wishlistId,
+			})),
+		],
+		projectOutput: (output) => ({
+			createdIds: output.createdIds,
+			wishlistShortIds: output.affectedWishlistShortIds,
 		}),
 	}),
 	undoGiftRevisionBatch: agentOperation({

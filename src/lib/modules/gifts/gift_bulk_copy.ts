@@ -2,7 +2,7 @@ import * as v from 'valibot';
 import { and, eq, inArray, isNull } from 'drizzle-orm';
 import { error } from '@sveltejs/kit';
 import { generateId } from '$lib/server/db/id.js';
-import { GIFT_LINK_GROUP_KIND } from '$lib/server/db/enums.js';
+import { GIFT_LINK_GROUP_KIND } from '$lib/modules/gifts/gift_link_group_kind.js';
 import { getDb } from '$lib/server/db/index.js';
 import { wishlistScope } from '$lib/server/demo/scope.js';
 import { gift } from '$lib/server/db/gift.schema.js';
@@ -26,6 +26,7 @@ import type { MutationOperationContext } from '$lib/server/operations/operation.
 import { lockWishlistsInIdOrder } from '$lib/server/operations/wishlist_management.js';
 import {
 	createLinkGroup,
+	loadLinkGroupKinds,
 	lockLinkedCopies,
 	wishlistsShareRecipient,
 } from '$lib/server/operations/gift_link_group.js';
@@ -487,6 +488,24 @@ export async function copyPreparedGifts(
 	if (sourceRows.some((source, index) => !galleryKeysMatch(source, plans[index]!.source))) {
 		error(400, SERVER_ERROR.BULK_COPY_INVALID_SELECTION);
 	}
+	// A shared gift (issue #737) never takes in a second list of one recipient: it copies unlinked.
+	const linkGroupKinds = await loadLinkGroupKinds(
+		transaction,
+		sourceRows.map((row) => row.linkGroupId),
+	);
+	const sharedSourceIds = new Set(
+		sourceRows
+			.filter(
+				(row) =>
+					row.linkGroupId !== null &&
+					linkGroupKinds.get(row.linkGroupId) ===
+						GIFT_LINK_GROUP_KIND.sharedAcrossRecipients,
+			)
+			.map((row) => row.id),
+	);
+	if (linksCopies && input.linkCopies === true && sharedSourceIds.size > 0) {
+		error(400, SERVER_ERROR.BULK_COPY_LINK_NOT_ALLOWED);
+	}
 	// A move removes the unreserved sources afterwards, so only the reserved ones stay to link with.
 	const reservedSourceIds =
 		linksCopies && input.removeUnreservedSources === true
@@ -495,6 +514,7 @@ export async function copyPreparedGifts(
 	const linkedSourceIds = new Set(
 		linksCopies
 			? sourceRows
+					.filter((row) => !sharedSourceIds.has(row.id))
 					.filter((row) => reservedSourceIds?.has(row.id) ?? true)
 					.map((row) => row.id)
 			: [],

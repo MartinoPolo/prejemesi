@@ -5,18 +5,10 @@ import {
 	WISHLIST_OCCASIONS,
 	WISHLIST_THEMES,
 } from '$lib/modules/wishlists/types.js';
+import { GIFT_LINK_GROUP_KIND } from '$lib/modules/gifts/gift_link_group_kind.js';
 import { PALETTES } from '$lib/theme/palettes.js';
 import { DEPTH_STYLES } from '$lib/theme/depth_styles.js';
 import { DARK_WISHLIST_BACKGROUNDS } from '$lib/theme/dark_wishlist_background.js';
-
-/**
- * Linked copies are one recipient's copies of a gift; groups shared across recipients are
- * reserved for issue #737.
- */
-export const GIFT_LINK_GROUP_KIND = {
-	linkedCopies: 'linked_copies',
-	sharedAcrossRecipients: 'shared_across_recipients',
-} as const;
 
 export const giftLinkGroupKindEnum = pgEnum('gift_link_group_kind', [
 	GIFT_LINK_GROUP_KIND.linkedCopies,

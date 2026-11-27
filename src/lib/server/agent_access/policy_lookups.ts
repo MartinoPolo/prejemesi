@@ -13,6 +13,8 @@ export const TARGET_KIND = {
 	wishlistShortId: 'wishlistShortId',
 	/** Soft-deleted gifts count too: undo restores them on their own wishlist. */
 	giftId: 'giftId',
+	/** A gift's own wishlist and those of every live gift in its link group. */
+	linkGroupOfGiftId: 'linkGroupOfGiftId',
 	reservationId: 'reservationId',
 	/** Every wishlist the batch's gift revisions belong to. */
 	revisionBatchId: 'revisionBatchId',
@@ -25,6 +27,7 @@ export const TARGET_NOT_FOUND_ERROR = {
 	[TARGET_KIND.wishlistId]: SERVER_ERROR.WISHLIST_NOT_FOUND,
 	[TARGET_KIND.wishlistShortId]: SERVER_ERROR.WISHLIST_NOT_FOUND,
 	[TARGET_KIND.giftId]: SERVER_ERROR.GIFT_NOT_FOUND,
+	[TARGET_KIND.linkGroupOfGiftId]: SERVER_ERROR.GIFT_NOT_FOUND,
 	[TARGET_KIND.reservationId]: SERVER_ERROR.RESERVATION_NOT_FOUND,
 	[TARGET_KIND.revisionBatchId]: SERVER_ERROR.GIFT_REVISION_NOT_FOUND,
 } satisfies Record<TargetKind, ServerErrorCode>;
@@ -70,6 +73,39 @@ const WISHLISTS_OF_REFERENCES = {
 			.select({ referenceId: gift.id, wishlistId: gift.wishlistId })
 			.from(gift)
 			.where(inArray(gift.id, referenceIds)),
+	[TARGET_KIND.linkGroupOfGiftId]: async (database, referenceIds) => {
+		const namedGifts = await database
+			.select({ id: gift.id, wishlistId: gift.wishlistId, linkGroupId: gift.linkGroupId })
+			.from(gift)
+			.where(inArray(gift.id, referenceIds));
+		const linkGroupIds = [
+			...new Set(
+				namedGifts.flatMap((row) => (row.linkGroupId === null ? [] : [row.linkGroupId])),
+			),
+		];
+		const groupMembers =
+			linkGroupIds.length === 0
+				? []
+				: await database
+						.selectDistinct({
+							linkGroupId: gift.linkGroupId,
+							wishlistId: gift.wishlistId,
+						})
+						.from(gift)
+						.where(
+							and(inArray(gift.linkGroupId, linkGroupIds), isNull(gift.deletedAt)),
+						);
+		return namedGifts.flatMap((namedGift) => [
+			{ referenceId: namedGift.id, wishlistId: namedGift.wishlistId },
+			...groupMembers
+				.filter(
+					(member) =>
+						namedGift.linkGroupId !== null &&
+						member.linkGroupId === namedGift.linkGroupId,
+				)
+				.map((member) => ({ referenceId: namedGift.id, wishlistId: member.wishlistId })),
+		]);
+	},
 	[TARGET_KIND.reservationId]: (database, referenceIds) =>
 		database
 			.select({ referenceId: reservation.id, wishlistId: gift.wishlistId })

@@ -262,6 +262,8 @@ function previewGift(
 			return category === null ? [] : [category];
 		}),
 		linkedCopies: [],
+		linkGroupKind: null,
+		sharedWith: [],
 	};
 }
 

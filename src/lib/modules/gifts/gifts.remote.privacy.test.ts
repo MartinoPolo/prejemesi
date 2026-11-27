@@ -13,6 +13,14 @@ import {
 	type GiftForVisitor,
 } from './gifts.remote.test-fixtures.js';
 
+/** Active likes of the gift by distinct users. */
+function likerRows(likerCount: number) {
+	return Array.from({ length: likerCount }, (_, index) => ({
+		giftId: GIFT_ID,
+		userId: `liker-${index}`,
+	}));
+}
+
 describe('getGiftsByWishlistShortId', () => {
 	describe('recipient (not self-promoted) gets GiftForRecipient without reservation/like data', () => {
 		it('returns role=recipient and gifts without reservedCount/likeCount/isFullyReserved', async () => {
@@ -76,8 +84,8 @@ describe('getGiftsByWishlistShortId', () => {
 			mockDbInstance.pushResult([
 				{ giftId: GIFT_ID, quantity: 2, reserverName: 'Petr Svoboda' },
 			]);
-			// DB call 4: like counts
-			mockDbInstance.pushResult([{ giftId: GIFT_ID, count: 5 }]);
+			// DB call 4: likers
+			mockDbInstance.pushResult(likerRows(5));
 			// DB call 5: my reservations (recipient has none)
 			mockDbInstance.pushResult([]);
 
@@ -109,8 +117,8 @@ describe('getGiftsByWishlistShortId', () => {
 			mockDbInstance.pushResult([
 				{ giftId: GIFT_ID, quantity: 2, reserverName: 'Petr Svoboda' },
 			]);
-			// DB call 5: like counts
-			mockDbInstance.pushResult([{ giftId: GIFT_ID, count: 3 }]);
+			// DB call 5: likers
+			mockDbInstance.pushResult(likerRows(3));
 
 			const result = await callGetGifts(makeVisitorAuthContext(), WISHLIST_SHORT_ID);
 
@@ -129,7 +137,7 @@ describe('getGiftsByWishlistShortId', () => {
 			mockDbInstance.pushResult([makeGiftRow({ id: GIFT_ID, quantity: 1 })]);
 			// No reservation counts returned
 			mockDbInstance.pushResult([]);
-			// No like counts returned
+			// No likers returned
 			mockDbInstance.pushResult([]);
 
 			const result = await callGetGifts(makeVisitorAuthContext(), WISHLIST_SHORT_ID);
@@ -146,7 +154,7 @@ describe('getGiftsByWishlistShortId', () => {
 			mockDbInstance.pushResult([makeGiftRow({ id: GIFT_ID, quantity: 1 })]);
 			// reservation rows
 			mockDbInstance.pushResult([{ giftId: GIFT_ID, quantity: 1, reserverName: 'Já' }]);
-			mockDbInstance.pushResult([]); // like counts
+			mockDbInstance.pushResult([]); // likers
 			// my active reservations for these gifts
 			mockDbInstance.pushResult([{ id: 'res-mine', giftId: GIFT_ID }]);
 
@@ -161,7 +169,7 @@ describe('getGiftsByWishlistShortId', () => {
 			mockDbInstance.pushResult([]); // not a moderator
 			mockDbInstance.pushResult([makeGiftRow({ id: GIFT_ID, quantity: 1 })]);
 			mockDbInstance.pushResult([]); // reservation counts
-			mockDbInstance.pushResult([]); // like counts
+			mockDbInstance.pushResult([]); // likers
 			mockDbInstance.pushResult([]); // my reservations: none
 
 			const result = await callGetGifts(makeVisitorAuthContext(), WISHLIST_SHORT_ID);
@@ -183,8 +191,8 @@ describe('getGiftsByWishlistShortId', () => {
 			mockDbInstance.pushResult([
 				{ giftId: GIFT_ID, quantity: 1, reserverName: 'Babička Marie' },
 			]);
-			// DB call 5: like counts
-			mockDbInstance.pushResult([{ giftId: GIFT_ID, count: 10 }]);
+			// DB call 5: likers
+			mockDbInstance.pushResult(likerRows(10));
 
 			const result = await callGetGifts(makeModeratorAuthContext(), WISHLIST_SHORT_ID);
 
@@ -208,7 +216,7 @@ describe('getGiftsByWishlistShortId', () => {
 			mockDbInstance.pushResult([
 				{ giftId: GIFT_ID, quantity: 1, reserverName: 'Babička Marie' },
 			]);
-			mockDbInstance.pushResult([]); // like counts
+			mockDbInstance.pushResult([]); // likers
 			mockDbInstance.pushResult([]); // my reservations
 
 			const result = await callGetGifts(makeVisitorAuthContext(), WISHLIST_SHORT_ID);
@@ -225,7 +233,7 @@ describe('getGiftsByWishlistShortId', () => {
 			mockDbInstance.pushResult([
 				{ giftId: GIFT_ID, quantity: 1, reserverName: 'Petr Svoboda' },
 			]);
-			mockDbInstance.pushResult([]); // like counts
+			mockDbInstance.pushResult([]); // likers
 
 			const result = await callGetGifts(null, WISHLIST_SHORT_ID);
 
@@ -245,7 +253,7 @@ describe('getGiftsByWishlistShortId', () => {
 				{ giftId: GIFT_ID, quantity: 2, reserverName: 'Petr Svoboda' },
 				{ giftId: GIFT_ID, quantity: 1, reserverName: 'Babička Marie' },
 			]);
-			mockDbInstance.pushResult([]); // like counts
+			mockDbInstance.pushResult([]); // likers
 			mockDbInstance.pushResult([]); // my reservations
 
 			const result = await callGetGifts(makeModeratorAuthContext(), WISHLIST_SHORT_ID);
@@ -265,7 +273,7 @@ describe('getGiftsByWishlistShortId', () => {
 				{ giftId: GIFT_ID, quantity: 1, reserverName: null },
 				{ giftId: GIFT_ID, quantity: 1, reserverName: 'Teta Klára' },
 			]);
-			mockDbInstance.pushResult([]); // like counts
+			mockDbInstance.pushResult([]); // likers
 			mockDbInstance.pushResult([]); // my reservations
 
 			const result = await callGetGifts(makeModeratorAuthContext(), WISHLIST_SHORT_ID);
@@ -322,7 +330,7 @@ describe('getGiftsByWishlistShortId', () => {
 			mockDbInstance.pushResult([makeGiftRow()]);
 			// DB call 3: reservation counts
 			mockDbInstance.pushResult([]);
-			// DB call 4: like counts
+			// DB call 4: likers
 			mockDbInstance.pushResult([]);
 
 			const result = await callGetGifts(null, WISHLIST_SHORT_ID);
@@ -360,7 +368,7 @@ describe('getGiftsByWishlistShortId', () => {
 			mockDbInstance.pushResult([]); // not a moderator
 			mockDbInstance.pushResult([makeGiftRow({ imageKey: 'gifts/cam.jpg', imageMeta })]);
 			mockDbInstance.pushResult([]); // reservation counts
-			mockDbInstance.pushResult([]); // like counts
+			mockDbInstance.pushResult([]); // likers
 
 			const result = await callGetGifts(makeVisitorAuthContext(), WISHLIST_SHORT_ID);
 
@@ -392,7 +400,7 @@ describe('getGiftsByWishlistShortId', () => {
 			mockDbInstance.pushResult([]); // not a moderator
 			mockDbInstance.pushResult([makeGiftRow({ links })]);
 			mockDbInstance.pushResult([]); // reservation counts
-			mockDbInstance.pushResult([]); // like counts
+			mockDbInstance.pushResult([]); // likers
 
 			const result = await callGetGifts(makeVisitorAuthContext(), WISHLIST_SHORT_ID);
 

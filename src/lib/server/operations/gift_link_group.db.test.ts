@@ -25,9 +25,11 @@ import { and, asc, eq, inArray, isNull } from 'drizzle-orm';
 import { getDb, type DatabaseTransaction } from '$lib/server/db/index.js';
 import { deleteObjectsBestEffort } from '$lib/server/storage/r2.js';
 import { gift, giftLike, giftLinkGroup, reservation } from '$lib/server/db/gift.schema.js';
-import { GIFT_LINK_GROUP_KIND } from '$lib/server/db/enums.js';
+import { GIFT_LINK_GROUP_KIND } from '$lib/modules/gifts/gift_link_group_kind.js';
 import { priorityLevel, wishlist } from '$lib/server/db/wishlist.schema.js';
 import { moderatorAssignment } from '$lib/server/db/moderator.schema.js';
+import { wishlistFollower } from '$lib/server/db/follower.schema.js';
+import { getHomeOverview } from '$lib/modules/wishlists/home_overview_service.js';
 import { dispatchNotification } from '$lib/modules/notifications/notification_dispatcher.js';
 import { NOTIFICATION_TYPE } from '$lib/modules/notifications/types.js';
 import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
@@ -299,6 +301,25 @@ describe.skipIf(!DB_READY)('linked copies share their units (issue #742)', () =>
 			await readListGift(outsiderActor, destinationWishlist.shortId, copyGiftId),
 		);
 		expect(fullOnCopy).toMatchObject({ reservedCount: 2, isFullyReserved: true });
+	});
+
+	it('counts a reservation on another copy in správce progress and follower availability', async () => {
+		const { sourceGiftId, destinationWishlist } = await linkedPair({
+			source: { sharedAt: new Date() },
+			destination: { sharedAt: new Date() },
+		});
+		await getDb()
+			.insert(wishlistFollower)
+			.values({ wishlistId: destinationWishlist.id, userId: SECOND_RESERVER_ID });
+		await reserve(reserverActor, sourceGiftId);
+		const managerOverview = await getHomeOverview(MANAGER_ID);
+		expect(
+			managerOverview.moderated.items.find((item) => item.id === destinationWishlist.id),
+		).toMatchObject({ totalGifts: 1, reservedGifts: 1 });
+		const followerOverview = await getHomeOverview(SECOND_RESERVER_ID);
+		expect(
+			followerOverview.followed.items.find((item) => item.id === destinationWishlist.id),
+		).toMatchObject({ availableGifts: 0 });
 	});
 
 	it('tells the likers of every copy about a reservation', async () => {

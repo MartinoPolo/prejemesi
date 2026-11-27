@@ -170,6 +170,8 @@ function buildDemoGift(
 		myReservationOnLinkedCopy: false,
 		reservedOnLinkedCopiesCount: 0,
 		linkedCopies: [],
+		linkGroupKind: null,
+		sharedWith: [],
 	};
 }
 
@@ -284,5 +286,7 @@ export function toRecipientView(gift: GiftForVisitor): GiftForRecipient {
 		categoryIds: gift.categoryIds,
 		categories: gift.categories,
 		linkedCopies: gift.linkedCopies,
+		linkGroupKind: gift.linkGroupKind,
+		sharedWith: gift.sharedWith,
 	};
 }

@@ -6,6 +6,7 @@
 	import ChevronRightIcon from '@lucide/svelte/icons/chevron-right';
 	import ArrowLeftIcon from '@lucide/svelte/icons/arrow-left';
 	import CopyIcon from '@lucide/svelte/icons/copy';
+	import UsersIcon from '@lucide/svelte/icons/users';
 	import CheckIcon from '@lucide/svelte/icons/check';
 	import PaintBucketIcon from '@lucide/svelte/icons/paint-bucket';
 	import PlusIcon from '@lucide/svelte/icons/plus';
@@ -63,6 +64,8 @@
 		oncreatecategory?: () => void;
 		onaction: (action: GiftBulkAction) => void;
 		oncopy?: (returnToActions?: () => void) => void;
+		/** Present only when the selection may be shared with other recipients' lists. */
+		onshare?: (returnToActions?: () => void) => void;
 		ondone: () => void;
 	}
 	let {
@@ -85,6 +88,7 @@
 		oncreatecategory,
 		onaction,
 		oncopy = () => undefined,
+		onshare,
 		ondone,
 	}: Props = $props();
 	const disabled = $derived(pending !== null || selectedCount === 0);
@@ -158,7 +162,10 @@
 		| 'imageFit'
 		| 'imageBackground'
 		| 'copy'
+		| 'share'
 		| 'received';
+	/** Actions that leave the mobile sheet for their own dialog. */
+	type DialogBulkAction = 'copy' | 'share';
 
 	const MIXED_RADIO_VALUE = '__mixed__';
 	let desktopActionsOpen = $state(false);
@@ -166,14 +173,14 @@
 	let mobileBulkTrigger = $state<HTMLButtonElement | null>(null);
 	let mobileBackButton = $state<HTMLButtonElement | null>(null);
 	let mobileOptionsContainer = $state<HTMLElement | null>(null);
-	let mobileActiveAction = $state<Exclude<MobileBulkAction, 'copy'> | null>(null);
+	let mobileActiveAction = $state<Exclude<MobileBulkAction, DialogBulkAction> | null>(null);
 	let mobileInvokingAction = $state<MobileBulkAction | null>(null);
 	type PendingFocusDestination =
 		| { kind: 'radio'; choiceId: string }
 		| { kind: 'action'; action: MobileBulkAction }
 		| { kind: 'trigger'; target: HTMLButtonElement };
 
-	let pendingFocusAction = $state<Exclude<MobileBulkAction, 'copy'> | null>(null);
+	let pendingFocusAction = $state<Exclude<MobileBulkAction, DialogBulkAction> | null>(null);
 	let pendingFocusDestination = $state<PendingFocusDestination | null>(null);
 	let pendingFocusCycleObserved = $state(false);
 
@@ -250,7 +257,7 @@
 		}
 	}
 
-	async function openMobileAction(action: Exclude<MobileBulkAction, 'copy'>) {
+	async function openMobileAction(action: Exclude<MobileBulkAction, DialogBulkAction>) {
 		mobileInvokingAction = action;
 		mobileActiveAction = action;
 		await tick();
@@ -320,19 +327,20 @@
 		oncreatecategory();
 	}
 
-	function handleCopy() {
+	function openDialogAction(action: DialogBulkAction) {
+		const openDialog = action === 'copy' ? oncopy : (onshare ?? (() => undefined));
 		if (mobileBulkSheetOpen) {
-			mobileInvokingAction = 'copy';
+			mobileInvokingAction = action;
 			mobileBulkSheetOpen = false;
 			requestAnimationFrame(() =>
-				oncopy(() => {
+				openDialog(() => {
 					mobileBulkSheetOpen = true;
-					focusMobileAction('copy');
+					focusMobileAction(action);
 				}),
 			);
 			return;
 		}
-		oncopy();
+		openDialog();
 	}
 </script>
 
@@ -453,7 +461,8 @@
 			action="category"
 		/>{:else if action === 'imageFit'}<ScalingIcon
 		/>{:else if action === 'imageBackground'}<PaintBucketIcon
-		/>{:else if action === 'copy'}<CopyIcon />{:else if action === 'received'}<CheckIcon />{/if}
+		/>{:else if action === 'copy'}<CopyIcon />{:else if action === 'share'}<UsersIcon
+		/>{:else if action === 'received'}<CheckIcon />{/if}
 {/snippet}
 
 {#snippet mobileActionRow(
@@ -466,7 +475,10 @@
 		data-mobile-bulk-action={action}
 		disabled={actionDisabled}
 		surfaceClass="gap-2"
-		onclick={() => (action === 'copy' ? handleCopy() : openMobileAction(action))}
+		onclick={() =>
+			action === 'copy' || action === 'share'
+				? openDialogAction(action)
+				: openMobileAction(action)}
 	>
 		{@render bulkActionIcon(action)}
 		<span class="flex min-w-0 flex-1 items-baseline gap-2">
@@ -696,6 +708,14 @@
 								disabled,
 							)}
 							{@render mobileActionRow('copy', m.gift_bulk_copy(), '', disabled)}
+							{#if onshare !== undefined}
+								{@render mobileActionRow(
+									'share',
+									m.gift_bulk_share(),
+									'',
+									disabled,
+								)}
+							{/if}
 							{@render mobileActionRow(
 								'received',
 								m.gift_selection_received_state(),
@@ -768,11 +788,20 @@
 					{@render bulkActionIcon('copy')}{m.gift_bulk_copy()}
 				</DropdownMenu.SubTrigger>
 				<DropdownMenu.SubContent>
-					<DropdownMenu.Item {disabled} onclick={handleCopy}
+					<DropdownMenu.Item {disabled} onclick={() => openDialogAction('copy')}
 						>{m.gift_bulk_copy_choose()}</DropdownMenu.Item
 					>
 				</DropdownMenu.SubContent>
 			</DropdownMenu.Sub>
+			{#if onshare !== undefined}
+				<DropdownMenu.Item
+					{disabled}
+					onclick={() => openDialogAction('share')}
+					data-testid="selection-share-action"
+				>
+					{@render bulkActionIcon('share')}{m.gift_bulk_share()}
+				</DropdownMenu.Item>
+			{/if}
 			<DropdownMenu.Sub>
 				<DropdownMenu.SubTrigger {disabled}>
 					{@render bulkActionIcon('received')}
