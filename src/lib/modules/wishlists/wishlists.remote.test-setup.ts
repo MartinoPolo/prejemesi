@@ -73,6 +73,7 @@ vi.mock('drizzle-orm', () => ({
 	ne: vi.fn((...args: unknown[]) => ({ op: 'ne', args })),
 	isNull: vi.fn((arg: unknown) => ({ op: 'isNull', args: [arg] })),
 	inArray: vi.fn((...args: unknown[]) => ({ op: 'inArray', args })),
+	asc: vi.fn((arg: unknown) => ({ op: 'asc', args: [arg] })),
 	// Tagged template used as `sql<T>` in subquery projections; the result is aliased via
 	// `.as(...)`, so return a chainable stub instead of a bare undefined.
 	sql: vi.fn(() => ({ as: vi.fn(() => 'sql_alias') })),
@@ -149,8 +150,10 @@ vi.mock('$lib/server/db/gift.schema.js', () => ({
 	gift: {
 		id: 'gift.id',
 		wishlistId: 'gift.wishlistId',
+		linkGroupId: 'gift.linkGroupId',
 		deletedAt: 'gift.deletedAt',
 	},
+	giftLinkGroup: { id: 'giftLinkGroup.id', kind: 'giftLinkGroup.kind' },
 	reservation: {
 		giftId: 'reservation.giftId',
 		deletedAt: 'reservation.deletedAt',

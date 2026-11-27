@@ -47,6 +47,7 @@ const CHANGE_KIND_BY_OPERATION = {
 	createGift: CHANGE_KIND.giftCreation,
 	importGifts: CHANGE_KIND.giftCreation,
 	bulkCopyGifts: CHANGE_KIND.giftCreation,
+	shareGifts: CHANGE_KIND.giftCreation,
 	updateGift: CHANGE_KIND.giftEdit,
 	bulkUpdateGifts: CHANGE_KIND.giftEdit,
 	appendGiftDescription: CHANGE_KIND.descriptionAppend,

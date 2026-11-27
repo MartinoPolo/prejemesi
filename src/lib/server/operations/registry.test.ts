@@ -5,6 +5,7 @@ import * as giftGroupingOperations from './gift_grouping_operations.js';
 import * as giftLikeOperations from './gift_like_operations.js';
 import * as giftMutationOperations from './gift_mutation_operations.js';
 import * as giftReadOperations from './gift_read_operations.js';
+import * as giftShareOperations from './gift_share_operations.js';
 import * as giftUndoOperations from './gift_undo_operations.js';
 import * as importOperations from './import_operations.js';
 import * as managerInvitationOperations from './manager_invitation_operations.js';
@@ -33,6 +34,7 @@ const operationModules = [
 	wishlistReadOperations,
 	wishlistFollowOperations,
 	giftLikeOperations,
+	giftShareOperations,
 ];
 
 describe('operation registry', () => {

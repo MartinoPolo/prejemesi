@@ -48,6 +48,8 @@ function makeGift(overrides: Partial<GiftByRole> = {}): GiftByRole {
 		categoryIds: [],
 		categories: [],
 		linkedCopies: [],
+		linkGroupKind: null,
+		sharedWith: [],
 		...overrides,
 	};
 }

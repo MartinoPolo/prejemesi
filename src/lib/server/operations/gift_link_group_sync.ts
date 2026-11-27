@@ -29,9 +29,10 @@ const LINKED_COPY_FIELD = {
 type LinkedCopyField = (typeof LINKED_COPY_FIELD)[keyof typeof LINKED_COPY_FIELD];
 
 /**
- * How each gift field behaves across linked copies (issue #742). Likes live outside the gift row
- * and stay per copy too. The gallery syncs as shared uploads and categories map into each copy's
- * wishlist; the other synced fields copy verbatim.
+ * How each gift field behaves across the rows of a link group (issues #742, #737). Likes live
+ * outside the gift row: linked copies keep them per copy, a shared gift counts them across its
+ * rows. The gallery syncs as shared uploads and categories map into each row's wishlist; the other
+ * synced fields copy verbatim.
  */
 const LINKED_COPY_FIELD_POLICY = {
 	name: LINKED_COPY_FIELD.synced,

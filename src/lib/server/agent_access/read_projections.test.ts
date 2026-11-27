@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { GiftForRecipient, GiftForVisitor } from '$lib/modules/gifts/types.js';
+import { GIFT_LINK_GROUP_KIND } from '$lib/modules/gifts/gift_link_group_kind.js';
 import { WISHLIST_ROLES } from '$lib/modules/wishlists/types.js';
 import {
 	REVERT_CAPABILITY,
@@ -57,6 +58,8 @@ const recipientGift: GiftForRecipient = {
 	categoryIds: [],
 	categories: [],
 	linkedCopies: [],
+	linkGroupKind: null,
+	sharedWith: [],
 };
 
 const visitorGift: GiftForVisitor = {
@@ -71,6 +74,8 @@ const visitorGift: GiftForVisitor = {
 	myReservationOnLinkedCopy: false,
 	reservedOnLinkedCopiesCount: 0,
 	linkedCopies: [],
+	linkGroupKind: null,
+	sharedWith: [],
 };
 
 const RESERVATION_AND_LIKE_FIELDS = [
@@ -291,6 +296,42 @@ describe('projectAgentWishlistGifts', () => {
 			linkedCopy('allowed'),
 			linkedCopy('hidden'),
 		]);
+	});
+
+	it('names a shared gift’s other lists to a restricted token only where it may reach them', () => {
+		const sharedMember = (wishlistId: string) => ({
+			recipientDisplayName: `Recipient of ${wishlistId}`,
+			recipientImage: null,
+			giftId: `gift-on-${wishlistId}`,
+			wishlistId,
+			wishlistShortId: `short-${wishlistId}`,
+			wishlistTitle: `List ${wishlistId}`,
+		});
+		const sharedGift: GiftForRecipient = {
+			...recipientGift,
+			linkGroupKind: GIFT_LINK_GROUP_KIND.sharedAcrossRecipients,
+			sharedWith: [sharedMember('allowed'), sharedMember('hidden')],
+		};
+		const restricted = projectAgentWishlistGifts(
+			{ role: WISHLIST_ROLES.recipient, gifts: [sharedGift] },
+			{ includeReserverNames: false, allowedWishlistIds: ['allowed'] },
+		);
+		const [allowedMember, hiddenMember] = restricted.gifts[0]!.sharedWith;
+		expect(allowedMember).toEqual({
+			recipientDisplayName: 'Recipient of allowed',
+			recipientImage: null,
+			wishlistId: 'allowed',
+			wishlistShortId: 'short-allowed',
+			wishlistTitle: 'List allowed',
+		});
+		expect(hiddenMember).toEqual({
+			recipientDisplayName: 'Recipient of hidden',
+			recipientImage: null,
+			wishlistId: null,
+			wishlistShortId: null,
+			wishlistTitle: null,
+		});
+		expect(JSON.stringify(restricted)).not.toContain('gift-on-');
 	});
 
 	it('tells a gifter about units and their own reservation on linked copies', () => {

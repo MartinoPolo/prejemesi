@@ -172,6 +172,8 @@ export function makeVisitorGift(overrides: Partial<GiftForVisitor> = {}): GiftFo
 		myReservationOnLinkedCopy: false,
 		reservedOnLinkedCopiesCount: 0,
 		linkedCopies: [],
+		linkGroupKind: null,
+		sharedWith: [],
 		...overrides,
 	};
 }

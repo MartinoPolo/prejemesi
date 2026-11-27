@@ -28,9 +28,13 @@ beforeEach(() => {
 describe('deleteWishlist', () => {
 	describe('recipient can delete an unshared wishlist', () => {
 		it('resolves without throwing when the linked recipient deletes a draft wishlist', async () => {
+			// Shared gifts the list would detach, read before the locks (issue #737)
+			mockDbInstance.pushResult([]);
 			// DB call 1: wishlist lookup (recipientUserId matches caller → manager, no mod query)
 			mockDbInstance.pushResult([makeWishlistRow({ sharedAt: null })]);
 			// DB call 2: gift image-key collection (issue #107 cleanup)
+			mockDbInstance.pushResult([]);
+			// Shared gifts read again under the locks
 			mockDbInstance.pushResult([]);
 			// DB call 3: soft-delete update
 			mockDbInstance.pushResult([]);
@@ -41,6 +45,8 @@ describe('deleteWishlist', () => {
 		});
 
 		it('deletes the wishlist image and its gifts’ images from storage (issue #107 REQ-6)', async () => {
+			// Shared gifts the list would detach, read before the locks (issue #737)
+			mockDbInstance.pushResult([]);
 			mockDbInstance.pushResult([
 				makeWishlistRow({
 					sharedAt: null,
@@ -58,6 +64,7 @@ describe('deleteWishlist', () => {
 				{ images: [] },
 			]);
 			mockDbInstance.pushResult([]);
+			mockDbInstance.pushResult([]);
 			// A linked copy on another live wishlist still shows the cover upload (issue #742).
 			mockDbInstance.pushResult([{ imageKey: 'gifts/a.jpg' }]);
 
@@ -73,6 +80,8 @@ describe('deleteWishlist', () => {
 
 	describe('non-manager cannot delete', () => {
 		it('throws 403 ACCESS_DENIED when caller is neither recipient nor správce', async () => {
+			// Shared gifts the list would detach, read before the locks (issue #737)
+			mockDbInstance.pushResult([]);
 			// DB call 1: wishlist lookup (recipient is RECIPIENT_ID, caller is OTHER_USER_ID)
 			mockDbInstance.pushResult([makeWishlistRow()]);
 			// DB call 2: správce assignment lookup → none found
@@ -89,6 +98,8 @@ describe('deleteWishlist', () => {
 
 	describe('shared wishlist cannot be deleted', () => {
 		it('throws 400 when sharedAt is not null', async () => {
+			// Shared gifts the list would detach, read before the locks (issue #737)
+			mockDbInstance.pushResult([]);
 			// DB call 1: wishlist lookup with sharedAt set
 			mockDbInstance.pushResult([
 				makeWishlistRow({ sharedAt: new Date('2024-01-10T00:00:00Z'), status: 'active' }),
@@ -105,6 +116,8 @@ describe('deleteWishlist', () => {
 
 	describe('non-existent wishlist', () => {
 		it('throws 404 when wishlist does not exist', async () => {
+			// Shared gifts the list would detach, read before the locks (issue #737)
+			mockDbInstance.pushResult([]);
 			// DB call 1: empty lookup result
 			mockDbInstance.pushResult([]);
 
@@ -121,7 +134,10 @@ describe('deleteWishlist', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 describe('deleteWishlistIfEmpty', () => {
 	it('soft-deletes a draft list without gifts and reports it', async () => {
+		// Shared gifts the list would detach, read before the locks (issue #737)
+		mockDbInstance.pushResult([]);
 		mockDbInstance.pushResult([makeWishlistRow({ sharedAt: null })]);
+		mockDbInstance.pushResult([]);
 		mockDbInstance.pushResult([]);
 		mockDbInstance.pushResult([]);
 
@@ -132,6 +148,8 @@ describe('deleteWishlistIfEmpty', () => {
 	});
 
 	it('keeps a list that already has gifts and removes no images', async () => {
+		// Shared gifts the list would detach, read before the locks (issue #737)
+		mockDbInstance.pushResult([]);
 		mockDbInstance.pushResult([makeWishlistRow({ sharedAt: null })]);
 		mockDbInstance.pushResult([{ imageKey: 'gifts/a.jpg' }]);
 
@@ -143,6 +161,8 @@ describe('deleteWishlistIfEmpty', () => {
 	});
 
 	it('throws 403 ACCESS_DENIED for a non-manager', async () => {
+		// Shared gifts the list would detach, read before the locks (issue #737)
+		mockDbInstance.pushResult([]);
 		mockDbInstance.pushResult([makeWishlistRow()]);
 		mockDbInstance.pushResult([]);
 

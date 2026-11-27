@@ -1,7 +1,9 @@
 import * as v from 'valibot';
 import { eq, and, isNull } from 'drizzle-orm';
 import { getDb } from '$lib/server/db/index.js';
-import { gift, giftLike } from '$lib/server/db/gift.schema.js';
+import { alias } from 'drizzle-orm/pg-core';
+import { gift, giftLike, giftLinkGroup } from '$lib/server/db/gift.schema.js';
+import { GIFT_LINK_GROUP_KIND } from '$lib/modules/gifts/gift_link_group_kind.js';
 import { guardedCommand, guardedQuery, guardedQueryWithArgs } from '$lib/server/remote.js';
 import { userInterfaceActor } from '$lib/server/operations/actor.js';
 import { executeOperation } from '$lib/server/operations/runner.js';
@@ -47,6 +49,32 @@ export const getUserLikesForWishlistScoped = guardedQueryWithArgs(
 				),
 			);
 
-		return likes.map((row) => row.giftId);
+		// A like of any row of a shared gift likes it on every list (issue #737).
+		const likedGift = alias(gift, 'liked_gift');
+		const sharedLikes = await database
+			.select({ giftId: gift.id })
+			.from(gift)
+			.innerJoin(
+				giftLinkGroup,
+				and(
+					eq(giftLinkGroup.id, gift.linkGroupId),
+					eq(giftLinkGroup.kind, GIFT_LINK_GROUP_KIND.sharedAcrossRecipients),
+				),
+			)
+			.innerJoin(
+				likedGift,
+				and(eq(likedGift.linkGroupId, gift.linkGroupId), isNull(likedGift.deletedAt)),
+			)
+			.innerJoin(
+				giftLike,
+				and(
+					eq(giftLike.giftId, likedGift.id),
+					eq(giftLike.userId, user.id),
+					isNull(giftLike.deletedAt),
+				),
+			)
+			.where(and(eq(gift.wishlistId, wishlistId), isNull(gift.deletedAt)));
+
+		return [...new Set([...likes, ...sharedLikes].map((row) => row.giftId))];
 	},
 );

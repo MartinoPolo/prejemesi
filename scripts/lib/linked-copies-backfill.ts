@@ -4,7 +4,7 @@ import { user } from '../../src/lib/server/db/auth.schema.js';
 import { gift, reservation } from '../../src/lib/server/db/gift.schema.js';
 import { wishlist } from '../../src/lib/server/db/wishlist.schema.js';
 import { moderatorAssignment } from '../../src/lib/server/db/moderator.schema.js';
-import { GIFT_LINK_GROUP_KIND } from '../../src/lib/server/db/enums.js';
+import { GIFT_LINK_GROUP_KIND } from '../../src/lib/modules/gifts/gift_link_group_kind.js';
 import { generateId } from '../../src/lib/server/db/id.js';
 import type { DatabaseTransaction } from '../../src/lib/server/db/index.js';
 import { activeGiftCategoriesColumn } from '../../src/lib/modules/gift-categories/gift_categories_service.js';

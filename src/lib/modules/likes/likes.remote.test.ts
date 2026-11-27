@@ -1,3 +1,4 @@
+import type * as PgCore from 'drizzle-orm/pg-core';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 
 vi.mock('$app/server', () => ({
@@ -46,7 +47,9 @@ vi.mock('drizzle-orm', () => ({
 	eq: vi.fn((...args: unknown[]) => args),
 	and: vi.fn((...args: unknown[]) => args),
 	isNull: vi.fn((arg: unknown) => arg),
+	inArray: vi.fn((...args: unknown[]) => args),
 	count: vi.fn(() => 'count'),
+	countDistinct: vi.fn(() => 'countDistinct'),
 	// Schema modules loaded through the operation runner build column defaults with `sql`.
 	sql: Object.assign(
 		vi.fn(() => 'sql'),
@@ -54,12 +57,19 @@ vi.mock('drizzle-orm', () => ({
 	),
 }));
 
+vi.mock('drizzle-orm/pg-core', async (importOriginal) => ({
+	...(await importOriginal<typeof PgCore>()),
+	alias: vi.fn((table: unknown) => table),
+}));
+
 vi.mock('$lib/server/db/gift.schema.js', () => ({
 	gift: {
 		id: 'gift.id',
 		wishlistId: 'gift.wishlistId',
+		linkGroupId: 'gift.linkGroupId',
 		deletedAt: 'gift.deletedAt',
 	},
+	giftLinkGroup: { id: 'giftLinkGroup.id', kind: 'giftLinkGroup.kind' },
 	giftLike: {
 		id: 'giftLike.id',
 		giftId: 'giftLike.giftId',
@@ -167,7 +177,9 @@ describe('toggleLike', () => {
 
 	it('throws 404 when the wishlist is not found', async () => {
 		// Query 1: gift found, Query 2: wishlist → empty
-		mockGetDb.mockReturnValue(createMockDb([[{ id: 'gift-abc', wishlistId: 'wl-1' }], []]));
+		mockGetDb.mockReturnValue(
+			createMockDb([[{ id: 'gift-abc', wishlistId: 'wl-1', linkGroupId: null }], []]),
+		);
 
 		await expect(callToggleLike(testAuthContext, testInput)).rejects.toMatchObject({
 			status: 404,
@@ -179,7 +191,7 @@ describe('toggleLike', () => {
 		// Query 1: gift found, Query 2: wishlist with status archived
 		mockGetDb.mockReturnValue(
 			createMockDb([
-				[{ id: 'gift-abc', wishlistId: 'wl-1' }],
+				[{ id: 'gift-abc', wishlistId: 'wl-1', linkGroupId: null }],
 				[{ recipientUserId: 'recipient-other', status: 'archived' }],
 			]),
 		);
@@ -194,7 +206,7 @@ describe('toggleLike', () => {
 		// Query 1: gift found, Query 2: wishlist whose recipientUserId is the caller
 		mockGetDb.mockReturnValue(
 			createMockDb([
-				[{ id: 'gift-abc', wishlistId: 'wl-1' }],
+				[{ id: 'gift-abc', wishlistId: 'wl-1', linkGroupId: null }],
 				[{ recipientUserId: testUser.id }],
 			]),
 		);
@@ -210,7 +222,7 @@ describe('toggleLike', () => {
 		// Query 4: insert (mutation – ignored), Query 5: count result
 		mockGetDb.mockReturnValue(
 			createMockDb([
-				[{ id: 'gift-abc', wishlistId: 'wl-1' }],
+				[{ id: 'gift-abc', wishlistId: 'wl-1', linkGroupId: null }],
 				[{ recipientUserId: 'recipient-other' }],
 				[], // no existing like
 				[], // insert mutation result (ignored)
@@ -228,7 +240,7 @@ describe('toggleLike', () => {
 		// Query 4: update mutation, Query 5: count
 		mockGetDb.mockReturnValue(
 			createMockDb([
-				[{ id: 'gift-abc', wishlistId: 'wl-1' }],
+				[{ id: 'gift-abc', wishlistId: 'wl-1', linkGroupId: null }],
 				[{ recipientUserId: 'recipient-other' }],
 				[{ id: 'like-1', giftId: 'gift-abc', userId: testUser.id, deletedAt: null }],
 				[], // update mutation result
@@ -246,7 +258,7 @@ describe('toggleLike', () => {
 		// Query 4: update mutation, Query 5: count
 		mockGetDb.mockReturnValue(
 			createMockDb([
-				[{ id: 'gift-abc', wishlistId: 'wl-1' }],
+				[{ id: 'gift-abc', wishlistId: 'wl-1', linkGroupId: null }],
 				[{ recipientUserId: 'recipient-other' }],
 				[
 					{

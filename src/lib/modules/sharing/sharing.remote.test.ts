@@ -63,7 +63,13 @@ vi.mock('$lib/server/db/gift.schema.js', () => ({
 		imageKey: 'giftImage.imageKey',
 		imageMeta: 'giftImage.imageMeta',
 	},
-	gift: { id: 'gift.id', wishlistId: 'gift.wishlistId', deletedAt: 'gift.deletedAt' },
+	gift: {
+		id: 'gift.id',
+		wishlistId: 'gift.wishlistId',
+		linkGroupId: 'gift.linkGroupId',
+		deletedAt: 'gift.deletedAt',
+	},
+	giftLinkGroup: { id: 'giftLinkGroup.id', kind: 'giftLinkGroup.kind' },
 	reservation: {
 		id: 'reservation.id',
 		giftId: 'reservation.giftId',

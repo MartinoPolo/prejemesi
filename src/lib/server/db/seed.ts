@@ -29,7 +29,7 @@ import {
 	giftLike,
 	giftLinkGroup,
 } from './gift.schema.js';
-import { GIFT_LINK_GROUP_KIND } from './enums.js';
+import { GIFT_LINK_GROUP_KIND } from '$lib/modules/gifts/gift_link_group_kind.js';
 import { moderatorAssignment } from './moderator.schema.js';
 import { claimInvite } from './claim.schema.js';
 import { wishlistFollower } from './follower.schema.js';
@@ -209,6 +209,17 @@ const G_ST_KNIHA = 'seed-g-st-kniha';
 const LINK_GROUP_TERMOHRNEK = 'seed-lg-termohrnek';
 const G_XM_TERMOHRNEK = 'seed-g-xm-termohrnek';
 const G_BD_TERMOHRNEK = 'seed-g-bd-termohrnek';
+// Shared gift (issue #737): one gift for Rosie and Miminko together, three units in total, one
+// reserved by Petr on Rosie's list, so both lists show it reserved for both recipients.
+const LINK_GROUP_LEPORELA = 'seed-lg-leporela';
+const G_RO_LEPORELA = 'seed-g-ro-leporela';
+const G_MI_LEPORELA = 'seed-g-mi-leporela';
+// Shared gift with a linked recipient (issue #737): Jana's name-day list and Miminko, which she
+// manages, wish for one photo book together. Eva reserved it on Jana's list, so Jana sees no
+// reservation state on either list while Martin (Miminko's správce) and visitors see it reserved.
+const LINK_GROUP_FOTOKNIHA = 'seed-lg-fotokniha';
+const G_SV_FOTOKNIHA = 'seed-g-sv-fotokniha';
+const G_MI_FOTOKNIHA = 'seed-g-mi-fotokniha';
 // Gifts on the for-someone lists (Rosie / Miminko)
 const G_PANENKA = 'seed-g-panenka';
 const G_ODRAZEDLO = 'seed-g-odrazedlo';
@@ -781,11 +792,23 @@ async function seed() {
 		// Gifts
 		// ---------------------------------------------------------------
 		console.log('Seeding gifts...');
-		await db.insert(giftLinkGroup).values({
-			id: LINK_GROUP_TERMOHRNEK,
-			kind: GIFT_LINK_GROUP_KIND.linkedCopies,
-			createdAt: d('2026-06-20T10:00:00Z'),
-		});
+		await db.insert(giftLinkGroup).values([
+			{
+				id: LINK_GROUP_TERMOHRNEK,
+				kind: GIFT_LINK_GROUP_KIND.linkedCopies,
+				createdAt: d('2026-06-20T10:00:00Z'),
+			},
+			{
+				id: LINK_GROUP_LEPORELA,
+				kind: GIFT_LINK_GROUP_KIND.sharedAcrossRecipients,
+				createdAt: d('2026-06-21T10:00:00Z'),
+			},
+			{
+				id: LINK_GROUP_FOTOKNIHA,
+				kind: GIFT_LINK_GROUP_KIND.sharedAcrossRecipients,
+				createdAt: d('2026-06-22T10:00:00Z'),
+			},
+		]);
 		await db.insert(gift).values([
 			// --- Vánoce 2026 (8 gifts) ---
 			{
@@ -1258,6 +1281,19 @@ async function seed() {
 				...giftImage('seed/g-sklenice.jpg'),
 				sortOrder: 9,
 			},
+			{
+				id: G_SV_FOTOKNIHA,
+				wishlistId: WL_SVATEK,
+				priorityLevelId: plId('svatek', 'm'),
+				name: 'Fotokniha z prvního roku',
+				description: 'Pro maminku a miminko společně',
+				price: 890,
+				currency: 'CZK',
+				quantity: 1,
+				linkGroupId: LINK_GROUP_FOTOKNIHA,
+				createdAt: d('2026-06-22T10:00:00Z'),
+				sortOrder: 10,
+			},
 
 			// --- Dětský pokoj / Jana draft (3 gifts) ---
 			{
@@ -1596,7 +1632,7 @@ async function seed() {
 				sortOrder: 1,
 			},
 
-			// --- Rosčiny narozeniny / for-someone (Rosie), 3 gifts ---
+			// --- Rosčiny narozeniny / for-someone (Rosie), 3 gifts and the shared one ---
 			{
 				id: G_PANENKA,
 				wishlistId: WL_ROSIE,
@@ -1625,8 +1661,21 @@ async function seed() {
 				currency: 'CZK',
 				sortOrder: 2,
 			},
+			{
+				id: G_RO_LEPORELA,
+				wishlistId: WL_ROSIE,
+				priorityLevelId: plId('rosie', 'm'),
+				name: 'Sada leporel',
+				description: 'Tři pevná leporela s říkankami, pro obě děti dohromady',
+				price: 450,
+				currency: 'CZK',
+				quantity: 3,
+				linkGroupId: LINK_GROUP_LEPORELA,
+				createdAt: d('2026-06-21T10:00:00Z'),
+				sortOrder: 3,
+			},
 
-			// --- Výbavička pro miminko / for-someone (Miminko), 3 gifts ---
+			// --- Výbavička pro miminko / for-someone (Miminko), 3 gifts and the shared ones ---
 			{
 				id: G_KOCAREK,
 				wishlistId: WL_MIMINKO,
@@ -1656,6 +1705,32 @@ async function seed() {
 				price: 250,
 				currency: 'CZK',
 				sortOrder: 2,
+			},
+			{
+				id: G_MI_LEPORELA,
+				wishlistId: WL_MIMINKO,
+				priorityLevelId: plId('miminko', 'l'),
+				name: 'Sada leporel',
+				description: 'Tři pevná leporela s říkankami, pro obě děti dohromady',
+				price: 450,
+				currency: 'CZK',
+				quantity: 3,
+				linkGroupId: LINK_GROUP_LEPORELA,
+				createdAt: d('2026-06-21T10:00:00Z'),
+				sortOrder: 3,
+			},
+			{
+				id: G_MI_FOTOKNIHA,
+				wishlistId: WL_MIMINKO,
+				priorityLevelId: plId('miminko', 'm'),
+				name: 'Fotokniha z prvního roku',
+				description: 'Pro maminku a miminko společně',
+				price: 890,
+				currency: 'CZK',
+				quantity: 1,
+				linkGroupId: LINK_GROUP_FOTOKNIHA,
+				createdAt: d('2026-06-22T10:00:00Z'),
+				sortOrder: 4,
 			},
 		]);
 
@@ -1757,6 +1832,10 @@ async function seed() {
 				quantity: 2,
 			},
 			{ id: 'seed-r-27', giftId: G_KOCAREK, userId: PETR, quantity: 1 },
+			// The shared gift (issue #737): Petr's unit counts on both lists.
+			{ id: 'seed-r-leporela-petr', giftId: G_RO_LEPORELA, userId: PETR, quantity: 1 },
+			// Eva's reservation on Jana's list stays hidden from Jana on Miminko's list too.
+			{ id: 'seed-r-fotokniha-eva', giftId: G_SV_FOTOKNIHA, userId: EVA, quantity: 1 },
 
 			// Knihy 2026 (issue #224) – Martin is správce, so he sees every band.
 			// Own reservations (beyond the existing DUNE):

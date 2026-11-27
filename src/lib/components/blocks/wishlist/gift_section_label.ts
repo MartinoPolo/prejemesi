@@ -15,6 +15,8 @@ export function giftSectionLabel(section: Pick<GiftSection, 'kind' | 'label' | '
 			return getPriorityDisplay(section.priorityKey ?? null)?.label() ?? section.label ?? '';
 		case GIFT_SECTION_KINDS.uncategorized:
 			return m.gift_category_uncategorized();
+		case GIFT_SECTION_KINDS.shared:
+			return m.gift_band_shared();
 		case GIFT_SECTION_KINDS.received:
 			return m.gift_band_received();
 		default:

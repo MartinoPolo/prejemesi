@@ -34,6 +34,8 @@ const EXCLUDED_TOOL_NAMES: ReadonlySet<string> = new Set([
 		'readAccessibleWishlists',
 		'readBulkCopyDestinations',
 		'bulkCopyGifts',
+		'readGiftShareDestinations',
+		'shareGifts',
 		'createWishlist',
 		'createWishlistFromImport',
 		'undoGiftRevisionBatch',

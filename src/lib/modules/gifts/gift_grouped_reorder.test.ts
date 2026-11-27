@@ -57,6 +57,8 @@ function giftWithPriority(id: string, levelId: string | null, sortOrder: number)
 		categoryIds: [],
 		categories: [],
 		linkedCopies: [],
+		linkGroupKind: null,
+		sharedWith: [],
 	};
 }
 

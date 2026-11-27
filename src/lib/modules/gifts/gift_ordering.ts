@@ -9,6 +9,7 @@ import {
 import { labelForGiftCategory } from '$lib/modules/gift-categories/types.js';
 import { getPriorityKey, type PriorityKey } from './gift_display.js';
 import { WISHLIST_ROLES, type WishlistRole } from '$lib/modules/wishlists/types.js';
+import { isSharedGift } from './shared_gift.js';
 
 export const GIFT_SECTION_KINDS = {
 	ownReservation: 'ownReservation',
@@ -19,6 +20,7 @@ export const GIFT_SECTION_KINDS = {
 	noPriority: 'noPriority',
 	categoryGroup: 'categoryGroup',
 	uncategorized: 'uncategorized',
+	shared: 'shared',
 	received: 'received',
 } as const;
 
@@ -65,6 +67,8 @@ export function projectGiftForRecipient(gift: GiftByRole): GiftForRecipient {
 		categoryIds: gift.categoryIds,
 		categories: gift.categories,
 		linkedCopies: gift.linkedCopies,
+		linkGroupKind: gift.linkGroupKind,
+		sharedWith: gift.sharedWith,
 	};
 }
 
@@ -322,7 +326,10 @@ export function computeGiftSections(
 
 	const own = pinOwnReservations ? sorted.filter(isOwnReservation) : [];
 	const ownIds = new Set(own.map((gift) => gift.id));
-	const rest = sorted.filter((gift) => !ownIds.has(gift.id));
+	const unpinned = sorted.filter((gift) => !ownIds.has(gift.id));
+	// Shared gifts follow all of the recipient's own gifts, in every grouping (issue #737).
+	const rest = unpinned.filter((gift) => !isSharedGift(gift));
+	const shared = unpinned.filter(isSharedGift);
 
 	const sections: GiftSection[] = [];
 	if (own.length > 0) {
@@ -349,6 +356,16 @@ export function computeGiftSections(
 		} else if (rest.length > 0) {
 			sections.push(section(availableKind, availableKind, rest));
 		}
+	}
+
+	if (shared.length > 0) {
+		sections.push(
+			section(
+				GIFT_SECTION_KINDS.shared,
+				'shared',
+				sinkReserved ? sinkReservedWithin(shared) : shared,
+			),
+		);
 	}
 
 	if (receivedGifts.length > 0) {

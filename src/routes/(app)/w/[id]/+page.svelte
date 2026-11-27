@@ -33,6 +33,7 @@
 		createWishlistModalLoader,
 		editRecipientDialogLoader,
 		giftBulkCopyDialogLoader,
+		giftBulkShareDialogLoader,
 		wishlistAssistantLoader,
 		wishlistSettingsModalLoader,
 	} from '$lib/components/blocks/wishlist/lazy_dialog_loaders.js';
@@ -81,6 +82,7 @@
 	import { LazyImportWizard } from '$lib/components/blocks/import/index.js';
 	import { WIZARD_MODE } from '$lib/components/blocks/import/import_wizard_types.js';
 	import { emptyGiftFilters, setGiftsContext } from '$lib/modules/gifts/gifts.context.svelte.js';
+	import { provideSharedGiftListRecipient } from '$lib/modules/gifts/shared_gift_list_recipient.js';
 	import { presentedGiftViewMode } from '$lib/modules/gifts/gift_view_mode.js';
 	import { createLatestAsyncQueue } from '$lib/modules/gifts/latest_async_queue.js';
 	import { setLikesContext } from '$lib/modules/likes/likes.context.svelte.js';
@@ -320,6 +322,10 @@
 	const assistant = setAssistantContext();
 	const decidingProposals: DecidingProposalRegistry = new SvelteSet();
 	provideGiftGalleryPositions();
+	provideSharedGiftListRecipient(() => ({
+		name: wishlist.recipientDisplayName,
+		image: wishlist.recipientImage,
+	}));
 	setWishlistStickyChrome();
 	// Menus and dialogs opened here take the wishlist palette in dark mode.
 	setLayerPalette(() => activePalette);
@@ -899,6 +905,8 @@
 	let bulkCopyReturnToActions = $state<(() => void) | null>(null);
 	let bulkCopyDestinations = $state.raw<BulkCopyDestination[]>([]);
 	let bulkCopyCreateOpen = $state(false);
+	let bulkShareOpen = $state(false);
+	let bulkShareReturnToActions = $state<(() => void) | null>(null);
 	// Set only for a list created by this flow, which a failed copy deletes while still empty (issue #557).
 	let bulkCopyCreatedDestination = $state<CreatedWishlist | null>(null);
 	// Moving gifts out (copy, then remove the unreserved sources) is a permanent wishlist's workflow;
@@ -1357,6 +1365,28 @@
 		} finally {
 			bulkCopyLoading = false;
 		}
+	}
+
+	function openBulkShare(returnToActions?: () => void) {
+		if (selectionSnapshot.selectedIds.length === 0) {
+			return;
+		}
+		bulkShareReturnToActions = returnToActions ?? null;
+		bulkShareOpen = true;
+	}
+
+	function handleBulkShareOpenChange(open: boolean) {
+		bulkShareOpen = open;
+		if (!open) {
+			bulkShareReturnToActions = null;
+		}
+	}
+
+	function returnFromBulkShare() {
+		const returnToActions = bulkShareReturnToActions;
+		bulkShareOpen = false;
+		bulkShareReturnToActions = null;
+		returnToActions?.();
 	}
 
 	function handleBulkCopyOpenChange(open: boolean) {
@@ -2652,6 +2682,7 @@
 					: undefined}
 				onaction={(action) => void applyBulkAction(action)}
 				oncopy={(returnToActions) => void openBulkCopy(returnToActions)}
+				onshare={canManage && !isArchived ? openBulkShare : undefined}
 				ondone={() => giftSelection.exit()}
 			/>
 		{/snippet}
@@ -2900,6 +2931,20 @@
 			linkCopies={bulkCopyLinksCopies}
 			onlinkcopieschange={(linkCopies) => (bulkCopyLinksCopies = linkCopies)}
 			onconfirm={confirmBulkCopy}
+		/>
+	{/snippet}
+</LazyDialog>
+
+<LazyDialog
+	bind:open={() => bulkShareOpen, handleBulkShareOpenChange}
+	loader={giftBulkShareDialogLoader}
+>
+	{#snippet children(GiftBulkShareDialog, dialog)}
+		<GiftBulkShareDialog
+			open={dialog.open}
+			gifts={selectedGiftRows}
+			onopenchange={(open) => (dialog.open = open)}
+			onback={bulkShareReturnToActions === null ? undefined : returnFromBulkShare}
 		/>
 	{/snippet}
 </LazyDialog>

@@ -46,6 +46,8 @@
 		myReservationOnLinkedCopy: false,
 		reservedOnLinkedCopiesCount: 0,
 		linkedCopies: [],
+		linkGroupKind: null,
+		sharedWith: [],
 	};
 
 	const gifts: GiftForVisitor[] = [

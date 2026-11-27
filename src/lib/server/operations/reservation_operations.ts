@@ -1,5 +1,5 @@
 import * as v from 'valibot';
-import { and, eq, inArray, isNull } from 'drizzle-orm';
+import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { error } from '@sveltejs/kit';
 import { getDb, type DatabaseTransaction } from '$lib/server/db/index.js';
 import { gift, giftLike, reservation } from '$lib/server/db/gift.schema.js';
@@ -22,8 +22,18 @@ import type { OperationActor } from './actor.js';
 import { OPERATION_EXPOSURE, OPERATION_KIND, defineOperation } from './operation.js';
 import { optionalEmail } from './optional_email.js';
 import { executeAnonymousVisitorMutation, type AnonymousVisitorMutationContext } from './runner.js';
-import { activeFollowerUserIds, type WishlistRow } from './wishlist_management.js';
-import { lockLinkGroupAvailability } from './gift_link_group.js';
+import {
+	activeFollowerUserIds,
+	activeModeratorUserIds,
+	type WishlistRow,
+} from './wishlist_management.js';
+import {
+	assertNotSharedGiftRecipient,
+	loadSharedGiftSiblings,
+	sharedGiftReceivedBySql,
+	lockLinkGroupAvailability,
+	sharedGiftRecipientUserIds,
+} from './gift_link_group.js';
 
 type ReservationRow = typeof reservation.$inferSelect;
 interface ReservationTarget {
@@ -129,11 +139,59 @@ async function lockAvailableGift(
 	return { giftName: availability.giftName, capacityGiftIds: availability.memberGiftIds };
 }
 
+/** Where a reservation notice points: one list's row of the reserved gift. */
+interface ReservedGiftRow {
+	giftId: string;
+	wishlist: Pick<WishlistRow, 'id' | 'title' | 'shortId'>;
+}
+
 /**
- * Likers and followers learn the gift was reserved, never the recipient or the reserver. Reserver
- * identity is personal data (issue #198): only the server-side actor id travels, never a name.
- * The audience is read after commit so the gift lock is not held while it is gathered. Likers of
- * every linked copy hear about it, since the reservation takes the units they all share.
+ * Who hears that a gift was reserved, per list the notice points to. Followers of the reserving
+ * list always do. A shared gift (issue #737) is reserved for every recipient at once, so the
+ * správci of each of its lists hear about it too, each about their own list's row, and none of its
+ * recipients does.
+ */
+async function loadReservationAudience(
+	database: ReturnType<typeof getDb>,
+	target: ReservationTarget,
+): Promise<{
+	excludedUserIds: Set<string>;
+	noticesByRow: { row: ReservedGiftRow; userIds: string[] }[];
+}> {
+	const reservingRow: ReservedGiftRow = { giftId: target.gift.id, wishlist: target.wishlist };
+	const followerUserIds = await activeFollowerUserIds(database, target.wishlist.id);
+	const siblings = await loadSharedGiftSiblings(database, target.gift);
+	if (siblings.length === 0) {
+		return {
+			excludedUserIds: sharedGiftRecipientUserIds([target.wishlist]),
+			noticesByRow: [{ row: reservingRow, userIds: followerUserIds }],
+		};
+	}
+	const liveSiblingRows: ReservedGiftRow[] = siblings
+		.filter((member) => member.wishlist.deletedAt === null)
+		.map((member) => ({ giftId: member.giftId, wishlist: member.wishlist }));
+	const memberRows = [reservingRow, ...liveSiblingRows];
+	const moderatorUserIdsByRow = await Promise.all(
+		memberRows.map((row) => activeModeratorUserIds(database, row.wishlist.id)),
+	);
+	return {
+		excludedUserIds: sharedGiftRecipientUserIds([
+			target.wishlist,
+			...siblings.map((member) => member.wishlist),
+		]),
+		noticesByRow: memberRows.map((row, index) => ({
+			row,
+			userIds: [...(index === 0 ? followerUserIds : []), ...moderatorUserIdsByRow[index]],
+		})),
+	};
+}
+
+/**
+ * Likers, followers and, for a shared gift, správci learn the gift was reserved, never a recipient
+ * or the reserver, and each of them once. Reserver identity is personal data (issue #198): only
+ * the server-side actor id travels, never a name. The audience is read after commit so the gift
+ * lock is not held while it is gathered. Likers of every linked copy hear about it, since the
+ * reservation takes the units they all share.
  */
 function notifyReservationAfterCommit(
 	context: AnonymousVisitorMutationContext,
@@ -145,35 +203,42 @@ function notifyReservationAfterCommit(
 	},
 ): void {
 	const { target, giftName, reserverUserId, likedGiftIds } = params;
-	const giftId = target.gift.id;
-	const wishlistId = target.wishlist.id;
-	const recipientUserId = target.wishlist.recipientUserId;
-	const reservedGift = {
-		wishlistId,
-		giftId,
+	const reservedGift = (row: ReservedGiftRow) => ({
+		wishlistId: row.wishlist.id,
+		giftId: row.giftId,
 		giftName,
 		actorId: reserverUserId ?? undefined,
-		wishlist: { title: target.wishlist.title, shortId: target.wishlist.shortId },
-	};
-	const notifiedUserIds = (userIds: readonly string[]) =>
-		userIds.filter((userId) => userId !== reserverUserId && userId !== recipientUserId);
+		wishlist: { title: row.wishlist.title, shortId: row.wishlist.shortId },
+	});
 	context.deferEffect(async () => {
 		const database = getDb();
 		const likedRows = await database
 			.select({ userId: giftLike.userId })
 			.from(giftLike)
 			.where(and(inArray(giftLike.giftId, [...likedGiftIds]), isNull(giftLike.deletedAt)));
-		const followerUserIds = await activeFollowerUserIds(database, wishlistId);
+		const { excludedUserIds, noticesByRow } = await loadReservationAudience(database, target);
+		const handledUserIds = new Set(excludedUserIds);
+		if (reserverUserId !== null) {
+			handledUserIds.add(reserverUserId);
+		}
+		const notifiedUserIds = (userIds: readonly string[]) =>
+			[...new Set(userIds)].filter((userId) => !handledUserIds.has(userId));
 		await dispatchNotification({
 			type: NOTIFICATION_TYPE.LIKED_GIFT_RESERVED,
-			targetUserIds: notifiedUserIds([...new Set(likedRows.map((row) => row.userId))]),
-			...reservedGift,
+			targetUserIds: notifiedUserIds(likedRows.map((row) => row.userId)),
+			...reservedGift(noticesByRow[0].row),
 		});
-		await dispatchNotification({
-			type: NOTIFICATION_TYPE.GIFT_RESERVED,
-			targetUserIds: notifiedUserIds(followerUserIds),
-			...reservedGift,
-		});
+		for (const { row, userIds } of noticesByRow) {
+			const targetUserIds = notifiedUserIds(userIds);
+			for (const userId of targetUserIds) {
+				handledUserIds.add(userId);
+			}
+			await dispatchNotification({
+				type: NOTIFICATION_TYPE.GIFT_RESERVED,
+				targetUserIds,
+				...reservedGift(row),
+			});
+		}
 	});
 }
 
@@ -192,6 +257,13 @@ async function reserveGiftForParticipant(
 		error(400, SERVER_ERROR.CANNOT_RESERVE_ON_ARCHIVED);
 	}
 	const reserver = reserverColumns(participant, target.wishlist);
+	if (participant.kind === 'user') {
+		assertNotSharedGiftRecipient(
+			await loadSharedGiftSiblings(context.transaction, target.gift),
+			participant.actor.userId,
+			SERVER_ERROR.RECIPIENT_CANNOT_RESERVE_OWN_GIFTS,
+		);
+	}
 	const { giftName, capacityGiftIds } = await lockAvailableGift(
 		context.transaction,
 		target.gift,
@@ -353,11 +425,16 @@ async function cancelReservationForParticipant(
 	options: { allowRelease: boolean },
 ): Promise<{ wishlistShortId: string }> {
 	const activeReservation = and(eq(reservation.id, reservationId), isNull(reservation.deletedAt));
+	// A recipient of a shared gift does not learn that someone else's reservation of it exists.
+	const knownToParticipant =
+		participant.kind === 'user'
+			? sql`(${reservation.userId} = ${participant.actor.userId} or not ${sharedGiftReceivedBySql(reservation.giftId, participant.actor.userId)})`
+			: undefined;
 	// Locked so a concurrent cancel or release of the same reservation waits, then finds it gone.
 	const [reservationRow] = await context.transaction
 		.select()
 		.from(reservation)
-		.where(activeReservation)
+		.where(and(activeReservation, knownToParticipant))
 		.for('update')
 		.limit(1);
 	if (reservationRow === undefined) {

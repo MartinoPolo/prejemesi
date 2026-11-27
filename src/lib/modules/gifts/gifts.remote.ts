@@ -27,6 +27,10 @@ import {
 	reorderGiftsOperation,
 } from '$lib/server/operations/gift_bulk_operations.js';
 import {
+	readGiftShareDestinationsOperation,
+	shareGiftsOperation,
+} from '$lib/server/operations/gift_share_operations.js';
+import {
 	CreateGiftInputSchema,
 	UpdateGiftInputSchema,
 	ReorderGiftsInputSchema,
@@ -179,6 +183,29 @@ export const bulkCopyGifts = guardedCommand(BulkCopyGiftsInputSchema, async ({ u
 		console.error('[Bulk gift copy] failed', thrown);
 		error(500, SERVER_ERROR.BULK_COPY_FAILED);
 	}
+});
+
+/** Lists the current actor may share the given gifts to (issue #737). */
+export const getGiftShareDestinations = guardedQueryWithArgs(
+	readGiftShareDestinationsOperation.input,
+	({ user }, input) =>
+		executeOperation(userInterfaceActor(user), readGiftShareDestinationsOperation, input),
+);
+
+/** Shares gifts with other recipients' lists; every list of each gift then lists the others. */
+export const shareGifts = guardedCommand(shareGiftsOperation.input, async ({ user }, input) => {
+	const { createdIds, affectedWishlistShortIds } = await executeOperation(
+		userInterfaceActor(user),
+		shareGiftsOperation,
+		input,
+	);
+	for (const wishlistShortId of affectedWishlistShortIds) {
+		singleFlightRefresh(getGiftsByWishlistShortId, wishlistShortId);
+	}
+	for (const wishlistId of input.wishlistIds) {
+		singleFlightRefresh(getGiftCategories, wishlistId);
+	}
+	return { createdIds };
 });
 
 /** Fetch priority levels for a wishlist */

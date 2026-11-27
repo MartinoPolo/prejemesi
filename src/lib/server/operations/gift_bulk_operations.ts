@@ -48,12 +48,16 @@ import {
 	propagateToLinkedCopies,
 	type LinkedCopyPolicyField,
 } from './gift_link_group_sync.js';
-import { lockLinkedCopies } from './gift_link_group.js';
+import {
+	loadSharedGiftSiblings,
+	lockLinkedCopies,
+	sharedGiftReceivedBySql,
+} from './gift_link_group.js';
 import { jsonChanged } from '$lib/modules/gifts/gift_post_share.js';
 import type { GiftImage } from '$lib/modules/gifts/gift_images.js';
 import type { ManagedWishlist, WishlistRow } from './wishlist_management.js';
 import { loadReservedGiftIds, managerEditNotifiesReservers } from './wishlist_kind_rules.js';
-import { softDeleteGift } from './gift_deletion.js';
+import { sharedGiftIsReserved, softDeleteGift } from './gift_deletion.js';
 import { giftColumnsWithImages, replaceGiftGalleries } from './gift_gallery.js';
 
 function bulkJsonbValue(value: unknown) {
@@ -502,9 +506,27 @@ export const bulkUpdateGiftsOperation = defineOperation({
 	run: applyBulkGiftUpdate,
 });
 
+/** The given gifts that are shared gifts (issue #737) the user receives as one of their recipients. */
+async function loadSharedGiftIdsReceivedBy(
+	transaction: DatabaseTransaction,
+	giftIds: readonly string[],
+	userId: string,
+): Promise<Set<string>> {
+	if (giftIds.length === 0) {
+		return new Set();
+	}
+	const rows = await transaction
+		.select({ id: gift.id })
+		.from(gift)
+		.where(and(inArray(gift.id, [...giftIds]), sharedGiftReceivedBySql(gift.id, userId)));
+	return new Set(rows.map((row) => row.id));
+}
+
 /**
  * Removes the copied source gifts nobody reserved through the ordinary deletion rules; reserved
- * sources stay untouched with their reservations and likes. Each copy owns its own staged image
+ * sources, and shared gifts reserved on another list, stay untouched with their reservations and
+ * likes. A shared gift the actor receives always stays, so the move neither fails on its grace nor
+ * reveals whether it is reserved. Each copy owns its own staged image
  * object, so deleting a source's image never affects the copy.
  */
 async function removeUnreservedSourceGifts(
@@ -534,7 +556,24 @@ async function removeUnreservedSourceGifts(
 		transaction,
 		sourceGiftRows.map((row) => row.id),
 	);
-	const unreservedSourceGiftRows = sourceGiftRows.filter((row) => !reservedGiftIds.has(row.id));
+	const receivedSharedGiftIds = await loadSharedGiftIdsReceivedBy(
+		transaction,
+		sourceGiftRows.map((row) => row.id),
+		context.actor.userId,
+	);
+	const unreservedSourceGiftRows: typeof sourceGiftRows = [];
+	for (const sourceGiftRow of sourceGiftRows) {
+		if (
+			!receivedSharedGiftIds.has(sourceGiftRow.id) &&
+			!reservedGiftIds.has(sourceGiftRow.id) &&
+			!(await sharedGiftIsReserved(
+				transaction,
+				await loadSharedGiftSiblings(transaction, sourceGiftRow),
+			))
+		) {
+			unreservedSourceGiftRows.push(sourceGiftRow);
+		}
+	}
 	for (const sourceGiftRow of unreservedSourceGiftRows) {
 		await softDeleteGift(context, sourceGiftRow, managedSource, {
 			hasActiveReservation: false,

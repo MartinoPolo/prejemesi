@@ -63,6 +63,15 @@ export const SERVER_ERROR = {
 	BULK_COPY_LINK_NOT_ALLOWED: 'BULK_COPY_LINK_NOT_ALLOWED',
 	// Unlinking a gift that has no linked copies (issue #742).
 	GIFT_NOT_LINKED: 'GIFT_NOT_LINKED',
+	// Sharing a gift across recipients (issue #737) needs management of every participating list.
+	GIFT_SHARE_NOT_MANAGER: 'GIFT_SHARE_NOT_MANAGER',
+	// A shared gift's wishlists must all have different recipients.
+	GIFT_SHARE_SAME_RECIPIENT: 'GIFT_SHARE_SAME_RECIPIENT',
+	GIFT_SHARE_DESTINATION_UNAVAILABLE: 'GIFT_SHARE_DESTINATION_UNAVAILABLE',
+	// A linked copy of one recipient's gift (issue #742) cannot also be shared.
+	GIFT_SHARE_LINKED_COPY: 'GIFT_SHARE_LINKED_COPY',
+	// A shared gift leaves a list by being deleted there, never by unlinking.
+	SHARED_GIFT_CANNOT_UNLINK: 'SHARED_GIFT_CANNOT_UNLINK',
 	GIFT_PRIORITY_WISHLIST_MISMATCH: 'GIFT_PRIORITY_WISHLIST_MISMATCH',
 	INVALID_PRICE_RANGE: 'INVALID_PRICE_RANGE',
 	GIFT_CATEGORY_NOT_FOUND: 'GIFT_CATEGORY_NOT_FOUND',

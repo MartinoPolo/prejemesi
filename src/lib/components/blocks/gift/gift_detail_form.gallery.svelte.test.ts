@@ -60,6 +60,8 @@ function makeGift(images: GiftImage[]): GiftByRole {
 		categoryIds: [],
 		categories: [],
 		linkedCopies: [],
+		linkGroupKind: null,
+		sharedWith: [],
 	};
 }
 

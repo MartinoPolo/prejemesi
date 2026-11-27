@@ -65,6 +65,8 @@ function visitorGift(id: string, overrides: Partial<GiftForVisitor> = {}): GiftF
 		myReservationOnLinkedCopy: false,
 		reservedOnLinkedCopiesCount: 0,
 		linkedCopies: [],
+		linkGroupKind: null,
+		sharedWith: [],
 		...overrides,
 	};
 }

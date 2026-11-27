@@ -34,6 +34,8 @@
 	} from './gift_presentation_props.js';
 	import GiftCardGallery from './GiftCardGallery.svelte';
 	import GiftLinkChip from './GiftLinkChip.svelte';
+	import GiftSharedBadge from './GiftSharedBadge.svelte';
+	import { showsAsSharedGift } from '$lib/modules/gifts/shared_gift.js';
 	import GiftGalleryCountChip from './GiftGalleryCountChip.svelte';
 	import { GIFT_CARD_DENSITIES, type GiftCardDensity } from './gift_card_variants.js';
 
@@ -74,8 +76,13 @@
 
 	const previewMarks = $derived(giftLivePreviewMarks(livePreview));
 	const showsLinkChip = $derived(role !== 'visitor' && gift.linkedCopies.length > 0);
+	const isShared = $derived(showsAsSharedGift(gift));
 	const showsTopOverlays = $derived(
-		!contextualMode || gift.categories.length > 0 || previewMarks.proposed || showsLinkChip,
+		!contextualMode ||
+			gift.categories.length > 0 ||
+			previewMarks.proposed ||
+			showsLinkChip ||
+			isShared,
 	);
 
 	const giftsContext = useGifts();
@@ -169,13 +176,28 @@
 		data-gift-card-top-overlays
 		inert={isEditorPreview}
 	>
-		{#if gift.categories.length > 0}
-			<div class="min-w-0 flex-1" data-gift-card-category-zone>
-				<GiftCategoryBadges
-					categories={gift.categories}
-					{isDimmed}
-					interactive={!contextualMode}
-				/>
+		{#if gift.categories.length > 0 || isShared}
+			<div
+				class="flex min-w-0 flex-1 flex-col items-start gap-1.5"
+				data-gift-card-category-zone
+			>
+				{#if gift.categories.length > 0}
+					<div class="w-full min-w-0">
+						<GiftCategoryBadges
+							categories={gift.categories}
+							{isDimmed}
+							interactive={!contextualMode}
+						/>
+					</div>
+				{/if}
+				{#if isShared}
+					<GiftSharedBadge
+						{gift}
+						{role}
+						compact={isCarouselCard}
+						interactive={!contextualMode}
+					/>
+				{/if}
 			</div>
 		{/if}
 		<!-- One trailing group keeps Like and the link sticker together at the top-right and
@@ -336,7 +358,12 @@
 					{gift.name}
 				</h3>
 				<span class="flex h-[1.3rem] shrink-0 items-center sm:h-[1.95rem]">
-					<GiftPieceCount quantity={gift.quantity} role="recipient" hideWhenOne />
+					<GiftPieceCount
+						quantity={gift.quantity}
+						role="recipient"
+						hideWhenOne
+						shared={isShared}
+					/>
 				</span>
 			</div>
 

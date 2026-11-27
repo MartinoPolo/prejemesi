@@ -20,6 +20,7 @@
 	import { WISHLIST_STATUS_LABELS } from '$lib/modules/wishlists/dashboard_types.js';
 	import * as m from '$lib/paraglide/messages.js';
 	import { cn } from '$lib/utils.js';
+	import { closeOnOutsidePress } from '$lib/utils/outside_press.js';
 
 	interface Props {
 		/** The gift's other copies; the chip renders nothing without them. */
@@ -65,26 +66,14 @@
 		oneditlinkedcopies?.();
 	}
 
-	function isInsidePopover(target: EventTarget | null) {
-		return (
-			target instanceof Node &&
-			(popoverElement?.contains(target) === true || triggerElement?.contains(target) === true)
-		);
-	}
-
 	$effect(() => {
 		if (!open || narrowViewport.current) {
 			return;
 		}
-		// Capture phase: gift cards stop pointerdown propagation for their own gestures, which hides
-		// the press from the popover's bubble-phase outside detection.
-		function closeOnOutsidePress(event: PointerEvent) {
-			if (!isInsidePopover(event.target)) {
-				open = false;
-			}
-		}
-		document.addEventListener('pointerdown', closeOnOutsidePress, true);
-		return () => document.removeEventListener('pointerdown', closeOnOutsidePress, true);
+		return closeOnOutsidePress(
+			() => [popoverElement, triggerElement],
+			() => (open = false),
+		);
 	});
 </script>
 

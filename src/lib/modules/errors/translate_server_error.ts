@@ -68,6 +68,12 @@ const TRANSLATIONS: Record<string, TranslatorFunction> = {
 		m.server_error_bulk_copy_recipient_cannot_move(),
 	[SERVER_ERROR.BULK_COPY_LINK_NOT_ALLOWED]: () => m.server_error_bulk_copy_link_not_allowed(),
 	[SERVER_ERROR.GIFT_NOT_LINKED]: () => m.server_error_gift_not_linked(),
+	[SERVER_ERROR.GIFT_SHARE_NOT_MANAGER]: () => m.server_error_gift_share_not_manager(),
+	[SERVER_ERROR.GIFT_SHARE_SAME_RECIPIENT]: () => m.server_error_gift_share_same_recipient(),
+	[SERVER_ERROR.GIFT_SHARE_DESTINATION_UNAVAILABLE]: () =>
+		m.server_error_gift_share_destination_unavailable(),
+	[SERVER_ERROR.GIFT_SHARE_LINKED_COPY]: () => m.server_error_gift_share_linked_copy(),
+	[SERVER_ERROR.SHARED_GIFT_CANNOT_UNLINK]: () => m.server_error_shared_gift_cannot_unlink(),
 	[SERVER_ERROR.PERMANENT_WISHLIST_EVENT_DATE]: () =>
 		m.server_error_permanent_wishlist_event_date(),
 	[SERVER_ERROR.CANNOT_MAKE_WISHLIST_WITH_UPCOMING_EVENT_PERMANENT]: () =>

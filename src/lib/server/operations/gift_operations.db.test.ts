@@ -367,6 +367,8 @@ describe.skipIf(!DB_READY)('gift operation core [real DB]', () => {
 					'categoryIds',
 					'categories',
 					'linkedCopies',
+					'linkGroupKind',
+					'sharedWith',
 				].sort(),
 			);
 		});

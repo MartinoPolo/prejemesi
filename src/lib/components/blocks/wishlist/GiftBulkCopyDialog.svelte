@@ -1,14 +1,9 @@
 <script lang="ts">
-	import * as Dialog from '$lib/components/base/dialog/index.js';
-	import * as Sheet from '$lib/components/base/sheet/index.js';
-	import { Button } from '$lib/components/base/button/index.js';
 	import { Label } from '$lib/components/base/label/index.js';
 	import { Checkbox } from '$lib/components/base/checkbox/index.js';
 	import { HelpText } from '$lib/components/base/help-text/index.js';
 	import * as Select from '$lib/components/base/select/index.js';
-	import WishlistBottomSheet from './WishlistBottomSheet.svelte';
-	import WishlistSheetBody from './WishlistSheetBody.svelte';
-	import WishlistSheetHeader from './WishlistSheetHeader.svelte';
+	import GiftBulkDialogFrame from './GiftBulkDialogFrame.svelte';
 	import * as m from '$lib/paraglide/messages.js';
 	import {
 		NEW_WISHLIST_DESTINATION,
@@ -61,10 +56,8 @@
 		onlinkcopieschange,
 		onconfirm,
 	}: Props = $props();
-	let viewportWidth = $state(1024);
 	let confirmButton = $state<HTMLButtonElement | null>(null);
 	let submittingCycleObserved = $state(false);
-	const mobile = $derived(viewportWidth < 640);
 	const unavailable = $derived(loading || submitting || selectedDestinationId === '');
 	const moving = $derived(offerSourceRemoval && removeSources);
 	const creatingDestination = $derived(selectedDestinationId === NEW_WISHLIST_DESTINATION);
@@ -118,8 +111,6 @@
 		}
 	});
 </script>
-
-<svelte:window bind:innerWidth={viewportWidth} />
 
 {#snippet checkboxOption(option: CheckboxOption)}
 	<div class="grid gap-1">
@@ -199,58 +190,23 @@
 	</div>
 {/snippet}
 
-{#snippet actions()}
-	<div
-		class="flex shrink-0 flex-col-reverse gap-(--nested-control-gap) px-6 pb-3 sm:flex-row sm:justify-end sm:px-0 sm:pb-0"
-	>
-		<Button
-			intent="outline"
-			class="w-full sm:w-auto"
-			disabled={submitting}
-			onclick={() => (mobile && onback !== undefined ? onback() : onopenchange(false))}
-		>
-			{mobile && onback !== undefined ? m.gift_context_back() : m.cancel()}
-		</Button>
-		<Button
-			bind:ref={confirmButton}
-			intent="primary"
-			class="w-full sm:w-auto"
-			disabled={unavailable}
-			onclick={onconfirm}
-		>
-			{submitting
-				? m.gift_bulk_pending({ count: selectedCount })
-				: creatingDestination
-					? m.gift_bulk_copy_new_destination_confirm()
-					: moving
-						? m.gift_bulk_copy_move_confirm()
-						: m.gift_bulk_copy_confirm()}
-		</Button>
-	</div>
-{/snippet}
-
-{#if mobile}
-	<Sheet.Root {open} onOpenChange={onopenchange}>
-		{#if open}
-			<WishlistBottomSheet>
-				<WishlistSheetHeader>
-					<Sheet.Title>{title}</Sheet.Title>
-					<Sheet.Description>{description}</Sheet.Description>
-				</WishlistSheetHeader>
-				<WishlistSheetBody>{@render destinationPicker()}</WishlistSheetBody>
-				{@render actions()}
-			</WishlistBottomSheet>
-		{/if}
-	</Sheet.Root>
-{:else}
-	<Dialog.Root {open} onOpenChange={onopenchange}>
-		<Dialog.Content size="sm">
-			<Dialog.Header>
-				<Dialog.Title>{title}</Dialog.Title>
-				<Dialog.Description>{description}</Dialog.Description>
-			</Dialog.Header>
-			{@render destinationPicker()}
-			{@render actions()}
-		</Dialog.Content>
-	</Dialog.Root>
-{/if}
+<GiftBulkDialogFrame
+	{open}
+	{onopenchange}
+	{title}
+	{description}
+	{onback}
+	{submitting}
+	bind:confirmButton
+	confirmDisabled={unavailable}
+	confirmLabel={submitting
+		? m.gift_bulk_pending({ count: selectedCount })
+		: creatingDestination
+			? m.gift_bulk_copy_new_destination_confirm()
+			: moving
+				? m.gift_bulk_copy_move_confirm()
+				: m.gift_bulk_copy_confirm()}
+	{onconfirm}
+>
+	{@render destinationPicker()}
+</GiftBulkDialogFrame>

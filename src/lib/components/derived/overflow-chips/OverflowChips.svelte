@@ -1,5 +1,6 @@
 <script lang="ts" generics="Item">
 	import * as Popover from '$lib/components/base/popover/index.js';
+	import { closeOnOutsidePress } from '$lib/utils/outside_press.js';
 	import { overflowChipsVariants, type OverflowChipsProps } from './overflow_chips_variants.js';
 
 	let {
@@ -82,24 +83,21 @@
 		if (!popoverOpen) {
 			return;
 		}
-		// Capture phase: a host that stops pointerdown propagation for its own gestures (gift cards)
-		// would otherwise hide the press from the popover's bubble-phase outside detection.
-		function closeOnOutsidePress(event: PointerEvent) {
-			if (isInsidePopover(event.target)) {
-				return;
-			}
-			popoverOpen = false;
-			swallowClickOfCurrentPress();
-		}
+		const stopClosingOnOutsidePress = closeOnOutsidePress(
+			() => [popoverElement, triggerElement],
+			() => {
+				popoverOpen = false;
+				swallowClickOfCurrentPress();
+			},
+		);
 		function closeOnScroll(event: Event) {
 			if (scrollMovesTrigger(event.target)) {
 				popoverOpen = false;
 			}
 		}
-		document.addEventListener('pointerdown', closeOnOutsidePress, true);
 		document.addEventListener('scroll', closeOnScroll, true);
 		return () => {
-			document.removeEventListener('pointerdown', closeOnOutsidePress, true);
+			stopClosingOnOutsidePress();
 			document.removeEventListener('scroll', closeOnScroll, true);
 		};
 	});

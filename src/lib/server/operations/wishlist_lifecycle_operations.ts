@@ -33,6 +33,11 @@ import {
 	type CancelledReserver,
 } from './wishlist_revert.js';
 import { deleteUnreferencedGiftImagesBestEffort, giftImagesColumn } from './gift_gallery.js';
+import {
+	leaveLinkGroup,
+	loadSharedGiftRowsOnWishlist,
+	lockLinkedCopies,
+} from './gift_link_group.js';
 import { galleryImageKeys } from '$lib/modules/gifts/gift_images.js';
 
 const WishlistLifecycleInputSchema = v.strictObject({ wishlistId: v.string() });
@@ -127,10 +132,10 @@ export const revertWishlistToDraftOperation = defineOperation({
 			{ lock: true },
 		);
 		const access = { role, wishlistRow, isAppAdministrator: context.actor.isAppAdministrator };
-		const { capability, hasReservations } = await resolveRevertAccess(
-			context.transaction,
-			access,
-		);
+		const { capability, hasReservations } = await resolveRevertAccess(context.transaction, {
+			...access,
+			userId: context.actor.userId,
+		});
 		assertRevertAllowed(capability, access);
 		if (hasReservations) {
 			const cancelledReservers = await cancelActiveReservations(context, input.wishlistId);
@@ -195,6 +200,14 @@ export const deleteWishlistOperation = defineOperation({
 	exposure: OPERATION_EXPOSURE.humanOnly,
 	input: DeleteWishlistInputSchema,
 	async run(context, input) {
+		// Shared gifts leave their groups with the list, so their other rows are locked first.
+		const sharedGiftIdsBeforeLock = (
+			await loadSharedGiftRowsOnWishlist(context.transaction, input.wishlistId)
+		).map((sharedGift) => sharedGift.id);
+		await lockLinkedCopies(context.transaction, sharedGiftIdsBeforeLock, {
+			wishlistIds: [input.wishlistId],
+			heldWishlistLocks: context.heldWishlistLocks,
+		});
 		const { wishlistRow } = await requireWishlistManagement(
 			context.transaction,
 			context.actor.userId,
@@ -210,6 +223,17 @@ export const deleteWishlistOperation = defineOperation({
 			.where(and(eq(gift.wishlistId, input.wishlistId), isNull(gift.deletedAt)));
 		if (input.onlyIfEmpty === true && giftImageRows.length > 0) {
 			return { wishlistShortId: wishlistRow.shortId, deleted: false };
+		}
+		const sharedGiftRows = await loadSharedGiftRowsOnWishlist(
+			context.transaction,
+			input.wishlistId,
+		);
+		if (sharedGiftRows.some((sharedGift) => !sharedGiftIdsBeforeLock.includes(sharedGift.id))) {
+			error(409, SERVER_ERROR.CONFLICT);
+		}
+		// Unlike linked copies, a shared gift stays with the recipients of its remaining lists.
+		for (const sharedGift of sharedGiftRows) {
+			await leaveLinkGroup(context.transaction, sharedGift);
 		}
 		await context.transaction
 			.update(wishlist)

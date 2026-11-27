@@ -1,10 +1,11 @@
-import { and, asc, eq, inArray, isNull } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNull, ne, or, sql } from 'drizzle-orm';
 import { error } from '@sveltejs/kit';
 import type { DatabaseTransaction, getDb } from '$lib/server/db/index.js';
 import { wishlist, priorityLevel } from '$lib/server/db/wishlist.schema.js';
 import { moderatorAssignment } from '$lib/server/db/moderator.schema.js';
 import { wishlistFollower } from '$lib/server/db/follower.schema.js';
 import { wishlistScope } from '$lib/server/demo/scope.js';
+import { user } from '$lib/server/db/auth.schema.js';
 import {
 	SERVER_ERROR,
 	WISHLIST_NOT_FOUND_MESSAGE,
@@ -294,4 +295,45 @@ export async function activeModeratorUserIds(
 			),
 		);
 	return moderatorRows.map((row) => row.userId);
+}
+
+/**
+ * The live, unarchived wishlists the user manages as their linked recipient or an active správce,
+ * by title: the lists gifts may be copied or shared to.
+ */
+export function loadManagedOpenWishlists(
+	database: DatabaseTransaction | ReturnType<typeof getDb>,
+	userId: string,
+) {
+	return database
+		.selectDistinct({
+			id: wishlist.id,
+			shortId: wishlist.shortId,
+			title: wishlist.title,
+			status: wishlist.status,
+			kind: wishlist.kind,
+			recipientUserId: wishlist.recipientUserId,
+			recipientName: wishlist.recipientName,
+			recipientDisplayName: sql<string>`coalesce(${wishlist.recipientName}, ${user.name})`,
+			recipientImage: user.image,
+		})
+		.from(wishlist)
+		.leftJoin(user, eq(user.id, wishlist.recipientUserId))
+		.leftJoin(
+			moderatorAssignment,
+			and(
+				eq(moderatorAssignment.wishlistId, wishlist.id),
+				eq(moderatorAssignment.userId, userId),
+				isNull(moderatorAssignment.deletedAt),
+			),
+		)
+		.where(
+			and(
+				ne(wishlist.status, 'archived'),
+				isNull(wishlist.deletedAt),
+				wishlistScope(),
+				or(eq(wishlist.recipientUserId, userId), eq(moderatorAssignment.userId, userId)),
+			),
+		)
+		.orderBy(wishlist.title);
 }
