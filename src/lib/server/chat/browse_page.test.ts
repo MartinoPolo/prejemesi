@@ -142,18 +142,155 @@ describe('browsePage', () => {
 		expect(result.ok).toBe(true);
 	});
 
-	it('reports a reached Browser Run limit without logging', async () => {
-		fetchStub.mockResolvedValue(
-			jsonResponse(
-				{ success: false, errors: [{ code: 2001, message: 'Rate limit exceeded' }] },
-				429,
-			),
-		);
+	describe('at a Browser Run limit', () => {
+		const PAGE = { url: 'https://shop.example.cz/kolo' };
 
-		await expect(
-			browsePage(CONFIG, { url: 'https://shop.example.cz/kolo' }, UNRESTRICTED),
-		).resolves.toEqual({ ok: false, error: BROWSE_PAGE_ERROR.limitReached });
-		expect(console.warn).not.toHaveBeenCalled();
+		function rateLimited(retryAfter?: number | string): Response {
+			return new Response(
+				JSON.stringify({
+					success: false,
+					errors: [{ code: 2001, message: 'Rate limit exceeded' }],
+				}),
+				{
+					status: 429,
+					headers: {
+						'content-type': 'application/json',
+						...(retryAfter === undefined ? {} : { 'retry-after': String(retryAfter) }),
+					},
+				},
+			);
+		}
+
+		function dailyLimited(): Response {
+			return jsonResponse(
+				{
+					success: false,
+					errors: [{ code: 2001, message: 'Browser time limit exceeded for today' }],
+				},
+				429,
+			);
+		}
+
+		beforeEach(() => {
+			vi.useFakeTimers();
+		});
+
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		it('waits as Cloudflare asks, then retries once and returns the page', async () => {
+			fetchStub
+				.mockResolvedValueOnce(rateLimited(3))
+				.mockResolvedValueOnce(jsonResponse({ success: true, result: '# Kolo' }));
+
+			const result = browsePage(CONFIG, PAGE, UNRESTRICTED);
+			await vi.advanceTimersByTimeAsync(2_900);
+			expect(fetchStub).toHaveBeenCalledOnce();
+			await vi.advanceTimersByTimeAsync(100);
+
+			await expect(result).resolves.toEqual({
+				ok: true,
+				page: { url: PAGE.url, markdown: '# Kolo', truncated: false },
+			});
+			expect(fetchStub).toHaveBeenCalledTimes(2);
+			expect(console.warn).toHaveBeenCalledWith(
+				'[chat] browse_page failed',
+				429,
+				expect.stringContaining('Rate limit exceeded'),
+			);
+			expect(JSON.stringify(vi.mocked(console.warn).mock.calls)).not.toContain(
+				CONFIG.apiToken,
+			);
+		});
+
+		it.each([
+			{ case: 'without a Retry-After', response: () => rateLimited() },
+			{ case: 'with an unparsable Retry-After', response: () => rateLimited('soon') },
+		])('waits the default interval $case before its retry', async ({ response }) => {
+			fetchStub
+				.mockResolvedValueOnce(response())
+				.mockResolvedValueOnce(jsonResponse({ success: true, result: '# Kolo' }));
+
+			const result = browsePage(CONFIG, PAGE, UNRESTRICTED);
+			await vi.advanceTimersByTimeAsync(BROWSE_PAGE_LIMITS.rateLimitDefaultWaitMs - 100);
+			expect(fetchStub).toHaveBeenCalledOnce();
+			await vi.advanceTimersByTimeAsync(100);
+
+			await expect(result).resolves.toMatchObject({ ok: true });
+			expect(fetchStub).toHaveBeenCalledTimes(2);
+		});
+
+		it('reports the rate limit at once when the wait leaves too little time to load a page', async () => {
+			fetchStub.mockImplementation(async () => {
+				vi.advanceTimersByTime(30_000);
+				return rateLimited(10);
+			});
+
+			const result = await browsePage(CONFIG, PAGE, UNRESTRICTED);
+
+			expect(result).toEqual({ ok: false, error: BROWSE_PAGE_ERROR.limitReached });
+			expect(fetchStub).toHaveBeenCalledOnce();
+		});
+
+		it('reports the rate limit after exactly two rate-limited requests', async () => {
+			fetchStub.mockImplementation(async () => rateLimited());
+
+			const result = browsePage(CONFIG, PAGE, UNRESTRICTED);
+			await vi.advanceTimersByTimeAsync(BROWSE_PAGE_LIMITS.rateLimitMaxWaitMs);
+
+			await expect(result).resolves.toEqual({
+				ok: false,
+				error: BROWSE_PAGE_ERROR.limitReached,
+			});
+			expect(fetchStub).toHaveBeenCalledTimes(2);
+			expect(console.warn).toHaveBeenCalledTimes(2);
+		});
+
+		it('never waits longer than its cap, whatever Cloudflare asks', async () => {
+			fetchStub
+				.mockResolvedValueOnce(rateLimited(3_600))
+				.mockResolvedValueOnce(jsonResponse({ success: true, result: '# Kolo' }));
+
+			const result = browsePage(CONFIG, PAGE, UNRESTRICTED);
+			await vi.advanceTimersByTimeAsync(BROWSE_PAGE_LIMITS.rateLimitMaxWaitMs);
+
+			await expect(result).resolves.toMatchObject({ ok: true });
+			expect(fetchStub).toHaveBeenCalledTimes(2);
+		});
+
+		it('reports the spent daily browser time at once, without retrying', async () => {
+			fetchStub.mockImplementation(async () => dailyLimited());
+
+			const result = await browsePage(CONFIG, PAGE, UNRESTRICTED);
+
+			expect(result).toEqual({ ok: false, error: BROWSE_PAGE_ERROR.dailyLimitReached });
+			expect(fetchStub).toHaveBeenCalledOnce();
+			expect(console.warn).toHaveBeenCalledWith(
+				'[chat] browse_page failed',
+				429,
+				expect.stringContaining('Browser time limit exceeded for today'),
+			);
+		});
+
+		it('stops waiting without a second request when the turn is stopped', async () => {
+			fetchStub.mockImplementation(async () => rateLimited(10));
+			const turn = new AbortController();
+
+			const result = browsePage(CONFIG, PAGE, {
+				signal: turn.signal,
+				conversationUrls: null,
+			});
+			await vi.advanceTimersByTimeAsync(1_000);
+			turn.abort();
+
+			await expect(result).resolves.toEqual({
+				ok: false,
+				error: BROWSE_PAGE_ERROR.pageNotLoaded,
+			});
+			await vi.advanceTimersByTimeAsync(BROWSE_PAGE_LIMITS.rateLimitMaxWaitMs);
+			expect(fetchStub).toHaveBeenCalledOnce();
+		});
 	});
 
 	it('logs a refused request without the token', async () => {

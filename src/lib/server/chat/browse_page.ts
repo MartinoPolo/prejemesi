@@ -27,6 +27,9 @@ export const BROWSE_PAGE_LIMITS = {
 	pageLoadTimeoutMs: 30_000,
 	requestTimeoutMs: 45_000,
 	markdownMaxLength: 30_000,
+	/** Wait before the one retry of a rate-limited request when Cloudflare names no `Retry-After`. */
+	rateLimitDefaultWaitMs: 10_000,
+	rateLimitMaxWaitMs: 15_000,
 } as const;
 
 /** Images, media, fonts and styles do not change the text, so the browser skips loading them. */
@@ -47,7 +50,12 @@ export const BROWSE_PAGE_ERROR = {
 	urlNotInConversation: URL_NOT_IN_CONVERSATION_ERROR,
 	limitReached: {
 		code: 'BROWSER_LIMIT_REACHED',
-		message: 'The browser has reached its rate or daily limit. Try again later.',
+		message:
+			'The browser allows about one page every 10 seconds. Open one page at a time and try again shortly.',
+	},
+	dailyLimitReached: {
+		code: 'BROWSER_DAILY_LIMIT_REACHED',
+		message: "The browser's daily time is used up; it resets at midnight UTC.",
 	},
 	timedOut: { code: 'PAGE_TIMED_OUT', message: 'The page took too long to load.' },
 	pageNotLoaded: { code: 'PAGE_NOT_LOADED', message: 'The page could not be loaded.' },
@@ -62,7 +70,7 @@ export type BrowsePageResult =
 export const browsePageTool: ChatModelTool = {
 	name: CHAT_BROWSE_TOOL,
 	description:
-		'Opens a page in a real browser and returns its rendered text as markdown. Use it when web fetch returns little or no content (pages rendered by JavaScript) or fails. It is slow and rate-limited, so open one page at a time and only pages worth reading.',
+		'Opens a page in a real browser and returns its rendered text as markdown. Use it when web fetch returns little or no content (pages rendered by JavaScript) or fails. It is slow and allows about one page every 10 seconds, so open pages one at a time, never in parallel calls, and only pages worth reading.',
 	inputSchema: {
 		type: 'object',
 		properties: {
@@ -82,6 +90,9 @@ const MarkdownResponseSchema = v.object({ success: v.literal(true), result: v.st
 const FailureResponseSchema = v.object({
 	errors: v.array(v.object({ code: v.optional(v.number()), message: v.optional(v.string()) })),
 });
+
+/** Cloudflare's answer once the account's daily browser time is spent: "Browser time limit exceeded for today". */
+const DAILY_LIMIT_MESSAGE = /time limit exceeded/iu;
 
 const IPV4_ADDRESS = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/u;
 
@@ -259,8 +270,76 @@ async function cloudflareErrorSummary(response: Response): Promise<string> {
 	}
 }
 
+/** Logs a refused request and names its error: a 429 is the daily or the per-interval limit. */
+async function refusalError(response: Response): Promise<BrowsePageError> {
+	const summary = await cloudflareErrorSummary(response);
+	console.warn('[chat] browse_page failed', response.status, summary);
+	if (response.status !== 429) {
+		return BROWSE_PAGE_ERROR.pageNotLoaded;
+	}
+	return DAILY_LIMIT_MESSAGE.test(summary)
+		? BROWSE_PAGE_ERROR.dailyLimitReached
+		: BROWSE_PAGE_ERROR.limitReached;
+}
+
+/** How long Cloudflare asks a rate-limited request to wait, capped so a turn never stalls long. */
+function rateLimitWaitMs(retryAfter: string | null): number {
+	const seconds = retryAfter === null || retryAfter.trim() === '' ? NaN : Number(retryAfter);
+	const requestedMs =
+		Number.isFinite(seconds) && seconds >= 0
+			? seconds * 1000
+			: BROWSE_PAGE_LIMITS.rateLimitDefaultWaitMs;
+	return Math.min(requestedMs, BROWSE_PAGE_LIMITS.rateLimitMaxWaitMs);
+}
+
+/** Resolves after the wait, or rejects with the signal's reason once it aborts. */
+function waitUnlessAborted(waitMs: number, signal: AbortSignal): Promise<void> {
+	return new Promise((resolve, reject) => {
+		if (signal.aborted) {
+			reject(signal.reason);
+			return;
+		}
+		const abort = () => {
+			clearTimeout(timer);
+			reject(signal.reason);
+		};
+		const timer = setTimeout(() => {
+			signal.removeEventListener('abort', abort);
+			resolve();
+		}, waitMs);
+		signal.addEventListener('abort', abort, { once: true });
+	});
+}
+
+function requestMarkdown(
+	config: BrowsePageConfig,
+	url: URL,
+	signal: AbortSignal,
+): Promise<Response> {
+	return fetch(
+		`https://api.cloudflare.com/client/v4/accounts/${encodeURIComponent(config.accountId)}/browser-rendering/markdown`,
+		{
+			method: 'POST',
+			headers: {
+				authorization: `Bearer ${config.apiToken}`,
+				'content-type': 'application/json',
+			},
+			body: JSON.stringify({
+				url: url.href,
+				gotoOptions: {
+					waitUntil: 'networkidle2',
+					timeout: BROWSE_PAGE_LIMITS.pageLoadTimeoutMs,
+				},
+				rejectResourceTypes: REJECTED_RESOURCE_TYPES,
+			}),
+			signal,
+		},
+	);
+}
+
 /**
- * Opens the page of the tool call's input and returns its markdown, cut at the length cap. Never
+ * Opens the page of the tool call's input and returns its markdown, cut at the length cap. A
+ * rate-limited request is retried once after Cloudflare's wait, within the request timeout. Never
  * throws: every failure becomes an error the model can relay.
  */
 export async function browsePage(
@@ -275,37 +354,23 @@ export async function browsePage(
 	if (!isUrlInConversation(url, allowedUrls)) {
 		return failed(BROWSE_PAGE_ERROR.urlNotInConversation);
 	}
+	const deadline = Date.now() + BROWSE_PAGE_LIMITS.requestTimeoutMs;
 	const timeout = AbortSignal.timeout(BROWSE_PAGE_LIMITS.requestTimeoutMs);
+	const requestSignal = signal === undefined ? timeout : AbortSignal.any([timeout, signal]);
 	try {
-		const response = await fetch(
-			`https://api.cloudflare.com/client/v4/accounts/${encodeURIComponent(config.accountId)}/browser-rendering/markdown`,
-			{
-				method: 'POST',
-				headers: {
-					authorization: `Bearer ${config.apiToken}`,
-					'content-type': 'application/json',
-				},
-				body: JSON.stringify({
-					url: url.href,
-					gotoOptions: {
-						waitUntil: 'networkidle2',
-						timeout: BROWSE_PAGE_LIMITS.pageLoadTimeoutMs,
-					},
-					rejectResourceTypes: REJECTED_RESOURCE_TYPES,
-				}),
-				signal: signal === undefined ? timeout : AbortSignal.any([timeout, signal]),
-			},
-		);
-		if (response.status === 429) {
-			return failed(BROWSE_PAGE_ERROR.limitReached);
+		let response = await requestMarkdown(config, url, requestSignal);
+		let error = response.ok ? null : await refusalError(response);
+		if (error?.code === BROWSE_PAGE_ERROR.limitReached.code) {
+			const waitMs = rateLimitWaitMs(response.headers.get('retry-after'));
+			if (deadline - Date.now() - waitMs < BROWSE_PAGE_LIMITS.pageLoadTimeoutMs) {
+				return failed(error);
+			}
+			await waitUnlessAborted(waitMs, requestSignal);
+			response = await requestMarkdown(config, url, requestSignal);
+			error = response.ok ? null : await refusalError(response);
 		}
-		if (!response.ok) {
-			console.warn(
-				'[chat] browse_page failed',
-				response.status,
-				await cloudflareErrorSummary(response),
-			);
-			return failed(BROWSE_PAGE_ERROR.pageNotLoaded);
+		if (error !== null) {
+			return failed(error);
 		}
 		const parsed = v.safeParse(MarkdownResponseSchema, await response.json());
 		if (!parsed.success) {
