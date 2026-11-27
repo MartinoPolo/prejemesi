@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { CHAT_TOOL_SUMMARY } from '$lib/modules/chat/types.js';
 import {
 	ANTHROPIC_MESSAGES_URL,
 	anthropicRequestBody,
@@ -311,8 +312,21 @@ describe('Anthropic provider', () => {
 		expect(await collect(provider.stream(request, new AbortController().signal))).toEqual([
 			{ type: CHAT_MODEL_EVENT.textDelta, text: 'Hledám ' },
 			{ type: CHAT_MODEL_EVENT.textDelta, text: 'cenu.' },
-			{ type: CHAT_MODEL_EVENT.webTool, name: 'web_search', query: 'Sony WH-1000XM5 cena' },
+			{
+				type: CHAT_MODEL_EVENT.webTool,
+				id: 'srvtoolu_01',
+				name: 'web_search',
+				query: 'Sony WH-1000XM5 cena',
+				debugInput: JSON.stringify({ query: 'Sony WH-1000XM5 cena' }, null, 2),
+			},
 			{ type: CHAT_MODEL_EVENT.webSources, urls: ['https://www.heureka.cz/'] },
+			{
+				type: CHAT_MODEL_EVENT.webToolResult,
+				id: 'srvtoolu_01',
+				error: null,
+				summary: { kind: CHAT_TOOL_SUMMARY.searchResults, count: 1 },
+				debugResult: expect.stringContaining('https://www.heureka.cz/'),
+			},
 			{
 				type: CHAT_MODEL_EVENT.toolCall,
 				id: 'toolu_01',
@@ -333,10 +347,23 @@ describe('Anthropic provider', () => {
 		expect(await collect(provider.stream(request, new AbortController().signal))).toEqual([
 			{
 				type: CHAT_MODEL_EVENT.webTool,
+				id: 'srvtoolu_02',
 				name: 'web_fetch',
 				query: 'https://www.alza.cz/sony-wh-1000xm5',
+				debugInput: JSON.stringify({ url: 'https://www.alza.cz/sony-wh-1000xm5' }, null, 2),
 			},
 			{ type: CHAT_MODEL_EVENT.webSources, urls: ['https://www.alza.cz/sony-wh-1000xm5'] },
+			{
+				type: CHAT_MODEL_EVENT.webToolResult,
+				id: 'srvtoolu_02',
+				error: null,
+				summary: {
+					kind: CHAT_TOOL_SUMMARY.page,
+					characters: 'Cena 7 990 Kč'.length,
+					truncated: false,
+				},
+				debugResult: expect.stringContaining('Cena 7 990 Kč'),
+			},
 			{ type: CHAT_MODEL_EVENT.textDelta, text: 'Stojí 7 990 Kč.' },
 			{ type: CHAT_MODEL_EVENT.stop, reason: CHAT_STOP_REASON.endTurn },
 		]);
@@ -422,7 +449,7 @@ describe('Anthropic provider', () => {
 		});
 	});
 
-	it('reports no pages for failed web searches and fetches', async () => {
+	it('reports failed web searches and fetches with their error code and no pages', async () => {
 		const failedWebTools = sse([
 			{
 				type: 'content_block_start',
@@ -453,6 +480,20 @@ describe('Anthropic provider', () => {
 		});
 
 		expect(await collect(provider.stream(request, new AbortController().signal))).toEqual([
+			{
+				type: CHAT_MODEL_EVENT.webToolResult,
+				id: 'srvtoolu_04',
+				error: { code: 'unavailable', message: null },
+				summary: null,
+				debugResult: expect.stringContaining('web_search_tool_result_error'),
+			},
+			{
+				type: CHAT_MODEL_EVENT.webToolResult,
+				id: 'srvtoolu_05',
+				error: { code: 'url_not_accessible', message: null },
+				summary: null,
+				debugResult: expect.stringContaining('web_fetch_tool_error'),
+			},
 			{ type: CHAT_MODEL_EVENT.stop, reason: CHAT_STOP_REASON.endTurn },
 		]);
 	});

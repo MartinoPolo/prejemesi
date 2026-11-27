@@ -9,18 +9,27 @@ import { extname, join } from 'node:path';
 import { createInterface } from 'node:readline';
 import { pathToFileURL } from 'node:url';
 
-export const RUNNER_EVENT = { text: 'text', tool: 'tool' };
+export const RUNNER_EVENT = { text: 'text', tool: 'tool', toolResult: 'toolResult' };
 export const RUNNER_FINAL_STATUS = { done: 'done', failed: 'failed' };
+/** Mirror the app's tool outcome values in src/lib/modules/chat/types.ts; limits.test.ts checks. */
+export const RUNNER_TOOL_STATUS = { ok: 'ok', error: 'error' };
+export const RUNNER_TOOL_SUMMARY = { page: 'page', searchResults: 'searchResults' };
 
 /** The app's MCP server name; its tool calls reach the chat through MCP, not the event stream. */
 const APP_MCP_SERVER = 'prejemesi';
-const WEB_TOOL_EVENT_NAMES = { WebSearch: 'web_search', WebFetch: 'web_fetch' };
+const APP_MCP_TOOL_PREFIX = `mcp__${APP_MCP_SERVER}__`;
+const WEB_TOOLS = {
+	WebSearch: { eventName: 'web_search', queryField: 'query' },
+	WebFetch: { eventName: 'web_fetch', queryField: 'url' },
+};
 
 /** Mirrors the app's report limits in src/lib/server/chat/limits.ts; limits.test.ts compares them. */
 export const REPORT_LIMITS = {
 	eventsPerReport: 100,
 	textEventMaxLength: 20_000,
 	queryMaxLength: 2_000,
+	toolErrorMaxLength: 500,
+	debugTextMaxLength: 2_000,
 	/** The app fails a job it has not heard from for this long. */
 	heartbeatTimeoutMs: 90_000,
 };
@@ -63,57 +72,179 @@ function toolQuery(value) {
 		: null;
 }
 
-function assistantBlockEvents(block) {
-	if (block?.type === 'text' && typeof block.text === 'string') {
-		return textChunks(block.text).map((text) => ({ type: RUNNER_EVENT.text, text }));
-	}
-	if (block?.type !== 'tool_use' || typeof block.name !== 'string') {
-		return [];
-	}
-	if (block.name === 'WebSearch') {
-		return [
-			{
-				type: RUNNER_EVENT.tool,
-				name: WEB_TOOL_EVENT_NAMES.WebSearch,
-				query: toolQuery(block.input?.query),
-			},
-		];
-	}
-	if (block.name === 'WebFetch') {
-		return [
-			{
-				type: RUNNER_EVENT.tool,
-				name: WEB_TOOL_EVENT_NAMES.WebFetch,
-				query: toolQuery(block.input?.url),
-			},
-		];
-	}
-	return [];
+function truncated(text, maxLength) {
+	return text.length > maxLength ? `${text.slice(0, maxLength - 1)}…` : text;
 }
 
-/**
- * Turns one line of `claude -p --output-format stream-json` output into the chat events it adds
- * and, for the final result line, the job's final status. App tool calls are skipped because the
- * app records them itself when Claude Code calls its MCP server.
- */
-export function readClaudeStreamLine(line) {
-	let message;
-	try {
-		message = JSON.parse(line);
-	} catch {
-		return { events: [], finalStatus: null };
+function oneLine(text, maxLength = 100) {
+	return truncated(text.replace(/\s+/g, ' ').trim(), maxLength);
+}
+
+/** A tool result's text: a string, or the text items of a content list. */
+function toolResultText(content) {
+	if (typeof content === 'string') {
+		return content;
 	}
-	if (message?.type === 'result') {
+	return Array.isArray(content)
+		? content
+				.filter((item) => item?.type === 'text' && typeof item.text === 'string')
+				.map((item) => item.text)
+				.join('\n')
+		: '';
+}
+
+/** The links a WebSearch result lists, or null when its format names none. */
+function searchResultCount(text) {
+	const count = text.match(/"url":/g)?.length ?? 0;
+	return count === 0 ? null : count;
+}
+
+function webToolSummary(eventName, text) {
+	if (eventName === WEB_TOOLS.WebFetch.eventName) {
+		return { kind: RUNNER_TOOL_SUMMARY.page, characters: text.length, truncated: false };
+	}
+	const count = searchResultCount(text);
+	return count === null ? null : { kind: RUNNER_TOOL_SUMMARY.searchResults, count };
+}
+
+function toolLabel(name) {
+	return name.startsWith(APP_MCP_TOOL_PREFIX) ? name.slice(APP_MCP_TOOL_PREFIX.length) : name;
+}
+
+const NO_UPDATE = { events: [], logLines: [] };
+
+/**
+ * Reads `claude -p --output-format stream-json` output line by line into the chat events each
+ * line adds, the lines it logs and, for the final result line, the job's final status. Web
+ * searches and page reads are reported with their outcome when the app accepts outcomes
+ * (`reportsToolOutcomes` from the claim); app tool calls are only logged, because the app records
+ * them, with their outcome, itself when Claude Code calls its MCP server.
+ */
+export function createClaudeStreamReader({ reportsToolOutcomes = false, now = Date.now } = {}) {
+	/** Tool calls awaiting their result, by `tool_use` id. */
+	const startedTools = new Map();
+
+	function toolUse(block) {
+		const webTool = WEB_TOOLS[block.name];
+		const input = block.input ?? {};
+		const query = webTool === undefined ? null : toolQuery(input[webTool.queryField]);
+		if (typeof block.id === 'string') {
+			startedTools.set(block.id, { block, webTool, query, startedAt: now() });
+		}
+		if (webTool === undefined) {
+			return {
+				events: [],
+				logLines: [`${toolLabel(block.name)}: ${oneLine(JSON.stringify(input))}`],
+			};
+		}
+		const event = { type: RUNNER_EVENT.tool, name: webTool.eventName, query };
 		return {
-			events: [],
-			finalStatus:
-				message.is_error === true ? RUNNER_FINAL_STATUS.failed : RUNNER_FINAL_STATUS.done,
+			events: [
+				reportsToolOutcomes && typeof block.id === 'string'
+					? { ...event, id: block.id }
+					: event,
+			],
+			logLines: [`${webTool.eventName}: ${query ?? ''}`],
 		};
 	}
-	if (message?.type === 'assistant' && Array.isArray(message.message?.content)) {
-		return { events: message.message.content.flatMap(assistantBlockEvents), finalStatus: null };
+
+	function toolResult(block) {
+		const started = startedTools.get(block.tool_use_id);
+		if (started === undefined) {
+			return NO_UPDATE;
+		}
+		startedTools.delete(block.tool_use_id);
+		const isError = block.is_error === true;
+		const text = toolResultText(block.content);
+		const durationMs = Math.max(0, now() - started.startedAt);
+		const label = started.webTool?.eventName ?? toolLabel(started.block.name);
+		const logLine = isError
+			? `${label} failed: ${oneLine(text, 300)}`
+			: `${label} done in ${(durationMs / 1000).toFixed(1)} s`;
+		if (started.webTool === undefined || !reportsToolOutcomes) {
+			return { events: [], logLines: [logLine] };
+		}
+		const event = {
+			type: RUNNER_EVENT.toolResult,
+			id: block.tool_use_id,
+			name: started.webTool.eventName,
+			query: started.query,
+			status: isError ? RUNNER_TOOL_STATUS.error : RUNNER_TOOL_STATUS.ok,
+			error: isError
+				? { code: null, message: oneLine(text, REPORT_LIMITS.toolErrorMaxLength) }
+				: null,
+			durationMs,
+			summary: isError ? null : webToolSummary(started.webTool.eventName, text),
+			debug: {
+				input: truncated(
+					JSON.stringify(started.block.input ?? {}, null, 2),
+					REPORT_LIMITS.debugTextMaxLength,
+				),
+				result: truncated(text, REPORT_LIMITS.debugTextMaxLength),
+			},
+		};
+		return { events: [event], logLines: [logLine] };
 	}
-	return { events: [], finalStatus: null };
+
+	function assistantBlock(block) {
+		if (block?.type === 'text' && typeof block.text === 'string') {
+			return {
+				events: textChunks(block.text).map((text) => ({ type: RUNNER_EVENT.text, text })),
+				logLines: [`text: ${oneLine(block.text)}`],
+			};
+		}
+		return block?.type === 'tool_use' && typeof block.name === 'string'
+			? toolUse(block)
+			: NO_UPDATE;
+	}
+
+	function userBlock(block) {
+		return block?.type === 'tool_result' && typeof block.tool_use_id === 'string'
+			? toolResult(block)
+			: NO_UPDATE;
+	}
+
+	function contentUpdate(content, readBlock) {
+		const updates = content.map(readBlock);
+		return {
+			events: updates.flatMap((update) => update.events),
+			logLines: updates.flatMap((update) => update.logLines),
+			finalStatus: null,
+		};
+	}
+
+	return {
+		read(line) {
+			let message;
+			try {
+				message = JSON.parse(line);
+			} catch {
+				return { ...NO_UPDATE, finalStatus: null };
+			}
+			if (message?.type === 'result') {
+				return {
+					...NO_UPDATE,
+					finalStatus:
+						message.is_error === true
+							? RUNNER_FINAL_STATUS.failed
+							: RUNNER_FINAL_STATUS.done,
+				};
+			}
+			const content = message?.message?.content;
+			if (message?.type === 'assistant' && Array.isArray(content)) {
+				return contentUpdate(content, assistantBlock);
+			}
+			if (message?.type === 'user' && Array.isArray(content)) {
+				return contentUpdate(content, userBlock);
+			}
+			return { ...NO_UPDATE, finalStatus: null };
+		},
+	};
+}
+
+/** A reader for a claimed job: an app that sends no `reportsToolOutcomes` takes no outcomes. */
+export function claudeStreamReaderFor(job) {
+	return createClaudeStreamReader({ reportsToolOutcomes: job.reportsToolOutcomes === true });
 }
 
 /** Claude Code ranks `CLAUDE_CODE_EFFORT_LEVEL` above `--effort`, so it would mask the chat's choice. */
@@ -157,17 +288,6 @@ export function claudeArguments({ model, effort, mcpConfigPath, systemPromptPath
 
 function log(message) {
 	console.log(`${new Date().toISOString().slice(11, 19)} ${message}`);
-}
-
-function oneLine(text, maxLength = 100) {
-	const flattened = text.replace(/\s+/g, ' ').trim();
-	return flattened.length > maxLength ? `${flattened.slice(0, maxLength)}…` : flattened;
-}
-
-function eventLogLine(event) {
-	return event.type === RUNNER_EVENT.text
-		? `text: ${oneLine(event.text)}`
-		: `${event.name}: ${event.query ?? ''}`;
 }
 
 function delay(milliseconds) {
@@ -430,10 +550,11 @@ async function runJob(config, job, runState) {
 		timeout = setTimeout(() => stop('timeout'), RUNNER_TIMING.turnTimeoutMs);
 
 		let finalStatus = null;
+		const streamReader = claudeStreamReaderFor(job);
 		for await (const line of createInterface({ input: child.stdout, crlfDelay: Infinity })) {
-			const update = readClaudeStreamLine(line);
-			for (const event of update.events) {
-				log(`[${job.id}] ${eventLogLine(event)}`);
+			const update = streamReader.read(line);
+			for (const logLine of update.logLines) {
+				log(`[${job.id}] ${logLine}`);
 			}
 			if (update.events.length > 0) {
 				void reporter.report(update.events);

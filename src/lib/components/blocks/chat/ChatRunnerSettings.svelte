@@ -4,6 +4,7 @@
 	import { Button } from '$lib/components/base/button/index.js';
 	import { HelpText } from '$lib/components/base/help-text/index.js';
 	import { Label } from '$lib/components/base/label/index.js';
+	import { Switch } from '$lib/components/base/switch/index.js';
 	import * as Popover from '$lib/components/base/popover/index.js';
 	import * as Select from '$lib/components/base/select/index.js';
 	import {
@@ -37,13 +38,18 @@
 	let {
 		model,
 		effort,
+		debug,
 		onmodel,
 		oneffort,
+		ondebug,
 	}: {
 		model: ChatRunnerModel;
 		effort: ChatRunnerEffort;
+		/** Ladění: tool details also show raw input and result. */
+		debug: boolean;
 		onmodel: (model: ChatRunnerModel) => void;
 		oneffort: (effort: ChatRunnerEffort) => void;
+		ondebug: (debug: boolean) => void;
 	} = $props();
 
 	const idPrefix = $props.id();
@@ -124,7 +130,16 @@
 					{/each}
 				</Select.Content>
 			</Select.Root>
+			<Label for="{idPrefix}-debug">{m.chat_debug_label()}</Label>
+			<Switch
+				id="{idPrefix}-debug"
+				checked={debug}
+				onCheckedChange={ondebug}
+				aria-describedby="{idPrefix}-debug-hint"
+				data-testid="assistant-tool-debug-switch"
+			/>
 		</div>
+		<HelpText id="{idPrefix}-debug-hint" class="px-2">{m.chat_debug_hint()}</HelpText>
 		<HelpText class="px-2">{m.chat_advanced_hint()}</HelpText>
 	</Popover.Content>
 </Popover.Root>

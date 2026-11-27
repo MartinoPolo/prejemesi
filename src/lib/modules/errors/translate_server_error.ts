@@ -122,6 +122,16 @@ const TRANSLATIONS: Record<string, TranslatorFunction> = {
 		m.server_error_agent_proposal_selection_invalid(),
 	[SERVER_ERROR.AGENT_PROPOSAL_UNDO_UNSUPPORTED]: () =>
 		m.server_error_agent_proposal_undo_unsupported(),
+	// Restrictions of an agent grant, which the chat's tools meet as well as API clients.
+	[SERVER_ERROR.AGENT_WISHLIST_NOT_ALLOWED]: () => m.server_error_agent_wishlist_not_allowed(),
+	[SERVER_ERROR.AGENT_PROPOSAL_WISHLIST_MISMATCH]: () =>
+		m.server_error_agent_proposal_wishlist_mismatch(),
+	[SERVER_ERROR.AGENT_SCOPE_MISSING]: () => m.server_error_agent_scope_missing(),
+	[SERVER_ERROR.AGENT_OPERATION_NOT_FOUND]: () => m.server_error_agent_operation_not_found(),
+	[SERVER_ERROR.AGENT_DAILY_CHANGE_BUDGET_EXCEEDED]: () =>
+		m.server_error_agent_daily_change_budget_exceeded(),
+	[SERVER_ERROR.AGENT_DAILY_IMAGE_BUDGET_EXCEEDED]: () =>
+		m.server_error_agent_daily_image_budget_exceeded(),
 };
 
 /**

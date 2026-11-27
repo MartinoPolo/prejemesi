@@ -105,13 +105,87 @@ export interface ChatSessionSummary {
 	lastTurnAt: Date;
 }
 
-/** What the client renders of a stored message: tool results and calls stay server-side. */
+export const CHAT_TOOL_STATUS = { running: 'running', ok: 'ok', error: 'error' } as const;
+
+export type ChatToolStatus = (typeof CHAT_TOOL_STATUS)[keyof typeof CHAT_TOOL_STATUS];
+
+/** Why a tool failed: the tool's or the provider's error code and its own short message. */
+export const ChatToolErrorSchema = v.object({
+	code: v.nullable(v.string()),
+	message: v.nullable(v.string()),
+});
+
+export type ChatToolError = v.InferOutput<typeof ChatToolErrorSchema>;
+
+export const CHAT_TOOL_SUMMARY = {
+	page: 'page',
+	searchResults: 'searchResults',
+	proposal: 'proposal',
+} as const;
+
+const ChatToolCountSchema = v.pipe(v.number(), v.safeInteger(), v.minValue(0));
+
+/** What a finished tool produced, in a few facts; never the content itself. */
+export const ChatToolSummarySchema = v.variant('kind', [
+	v.object({
+		kind: v.literal(CHAT_TOOL_SUMMARY.page),
+		characters: ChatToolCountSchema,
+		truncated: v.boolean(),
+	}),
+	v.object({ kind: v.literal(CHAT_TOOL_SUMMARY.searchResults), count: ChatToolCountSchema }),
+	v.object({ kind: v.literal(CHAT_TOOL_SUMMARY.proposal), applied: v.boolean() }),
+]);
+
+export type ChatToolSummary = v.InferOutput<typeof ChatToolSummarySchema>;
+
+/**
+ * The raw tool input and a truncated result, sent only to chat runner users (the owner) for
+ * debugging and shown as plain text: the result may hold text a third-party page wrote.
+ */
+export interface ChatToolDebug {
+	input: string;
+	result: string | null;
+}
+
+/** How a finished tool call went. */
+export interface ChatToolOutcome {
+	status: typeof CHAT_TOOL_STATUS.ok | typeof CHAT_TOOL_STATUS.error;
+	error: ChatToolError | null;
+	durationMs: number | null;
+	summary: ChatToolSummary | null;
+	debug?: ChatToolDebug;
+}
+
+/** The outcome fields alone, of an event or a view that carries them. */
+export function chatToolOutcome(source: ChatToolOutcome): ChatToolOutcome {
+	return {
+		status: source.status,
+		error: source.error,
+		durationMs: source.durationMs,
+		summary: source.summary,
+		...(source.debug === undefined ? {} : { debug: source.debug }),
+	};
+}
+
+/**
+ * One tool call the assistant made, as the panel's tool line and its details show it; a call
+ * whose turn stopped before its result is still `running`.
+ */
+export interface ChatToolView extends Omit<ChatToolOutcome, 'status'> {
+	id: string;
+	name: string;
+	/** The search query or page address. */
+	query: string | null;
+	status: ChatToolStatus;
+}
+
+/** What the client renders of a stored message: tool inputs and results stay server-side. */
 export interface ChatMessageView {
 	id: string;
 	role: ChatRole;
 	text: string;
-	/** The tools the assistant used, as short status lines. */
-	toolNames: string[];
+	/** The tools the assistant used, in call order. */
+	tools: ChatToolView[];
 	proposalId: string | null;
 	createdAt: Date;
 }
@@ -128,6 +202,10 @@ export const CHAT_WEB_TOOL = { search: 'web_search', fetch: 'web_fetch' } as con
 
 export type ChatWebToolName = (typeof CHAT_WEB_TOOL)[keyof typeof CHAT_WEB_TOOL];
 
+export function isChatWebToolName(name: string): name is ChatWebToolName {
+	return name === CHAT_WEB_TOOL.search || name === CHAT_WEB_TOOL.fetch;
+}
+
 /** The chat's own tool that opens a page in a headless browser; its tool event's query is the URL. */
 export const CHAT_BROWSE_TOOL = 'browse_page';
 
@@ -136,6 +214,8 @@ export const CHAT_STREAM_EVENT = {
 	text: 'text',
 	/** A tool started: an operation name, or a web tool with its query. */
 	tool: 'tool',
+	/** A tool named by its `tool` event's id finished. */
+	toolResult: 'toolResult',
 	/** The turn proposed changes; the client loads the proposal by id. */
 	proposal: 'proposal',
 	error: 'error',
@@ -157,7 +237,9 @@ export type ChatTurnError = (typeof CHAT_TURN_ERROR)[keyof typeof CHAT_TURN_ERRO
 
 export type ChatStreamEvent =
 	| { type: typeof CHAT_STREAM_EVENT.text; text: string }
-	| { type: typeof CHAT_STREAM_EVENT.tool; name: string; query: string | null }
+	/** `id` pairs it with its `toolResult`; a tool without one never reports an outcome. */
+	| { type: typeof CHAT_STREAM_EVENT.tool; id?: string; name: string; query: string | null }
+	| ({ type: typeof CHAT_STREAM_EVENT.toolResult; id: string } & ChatToolOutcome)
 	| { type: typeof CHAT_STREAM_EVENT.proposal; proposalId: string; applied: boolean }
 	| { type: typeof CHAT_STREAM_EVENT.error; error: ChatTurnError }
 	| { type: typeof CHAT_STREAM_EVENT.done };

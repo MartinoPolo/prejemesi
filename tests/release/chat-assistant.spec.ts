@@ -9,6 +9,11 @@ import { addGift, createWishlistAndNavigate } from '../e2e/fixtures/wishlist-hel
 // Playwright runs the fake chat provider with martin@test.cz on the family allowlist.
 const GIFT_NAME = 'Kniha Duna';
 const ENRICHMENT_TEXT = 'Hodnocení zákazníků: 4,6 z 5 (ukázka).';
+// The fake reads a gift that does not exist, then the chat's own wishlist, then replies.
+const TRY_TOOLS_REQUEST = 'Vyzkoušejte nástroje';
+const TRY_TOOLS_REPLY = 'Nástroje jsem vyzkoušel: první čtení selhalo, druhé uspělo.';
+const MISSING_GIFT_REASON = 'Dárek nebyl nalezen';
+const TOOL_DURATION = /Trvání\s*(?:\d+ ms|\d+,\d s)/u;
 
 async function loginAsMartin(
 	page: Page,
@@ -215,5 +220,67 @@ test.describe('AI assistant on a wishlist (issue #478)', () => {
 		// Pressing the active choice again clears it, so the deletion is possible again.
 		await keep.click();
 		await expect(warning).toBeVisible();
+	});
+
+	test('each tool line shows its outcome, and its details open by click or Enter', async ({
+		page,
+		request,
+		baseURL,
+	}) => {
+		await loginAsMartin(page, request, baseURL!);
+		await createWishlistAndNavigate(page, `Asistent nástroje ${Date.now()}`);
+		await addGift(page, GIFT_NAME);
+
+		const panel = page.getByTestId('assistant-panel');
+		await page.getByTestId('assistant-fab').click();
+		await page.getByTestId('assistant-composer').fill(TRY_TOOLS_REQUEST);
+		await page.getByTestId('assistant-send').click();
+		await expect(panel.getByText(TRY_TOOLS_REPLY)).toBeVisible({ timeout: 15_000 });
+
+		const steps = panel.getByTestId('assistant-tool-step');
+		await expect(steps).toHaveCount(2);
+		const failedStep = steps.first();
+		const succeededStep = steps.last();
+		const failedDetails = failedStep.getByRole('group', { name: 'Podrobnosti kroku' });
+		const succeededDetails = succeededStep.getByRole('group', { name: 'Podrobnosti kroku' });
+
+		// The failure and its reason show on the collapsed line.
+		await expect(failedStep).toHaveAttribute('data-status', 'error');
+		await expect(failedStep.getByRole('button')).toHaveAccessibleName(
+			`Selhalo: Čtu seznam – ${MISSING_GIFT_REASON}`,
+		);
+		await expect(failedStep.getByRole('button').getByText(MISSING_GIFT_REASON)).toBeVisible();
+		await expect(failedDetails).toBeHidden();
+		await expect(succeededStep).toHaveAttribute('data-status', 'ok');
+		await expect(succeededStep.getByRole('button')).toHaveAccessibleName('Hotovo: Čtu seznam');
+		await expect(succeededDetails).toBeHidden();
+
+		await failedStep.getByRole('button').click();
+		await expect(failedStep.getByRole('button')).toHaveAttribute('aria-expanded', 'true');
+		await expect(failedDetails).toBeVisible();
+		await expect(failedDetails).toContainText('Nástroj');
+		await expect(failedDetails).toContainText('readMyGiftReservations');
+		await expect(failedDetails).toContainText(/Stav\s*Selhalo/u);
+		await expect(failedDetails).toContainText(
+			new RegExp(String.raw`Chyba\s*${MISSING_GIFT_REASON} · GIFT_NOT_FOUND\s*Trvání`, 'u'),
+		);
+		await expect(failedDetails).toContainText(TOOL_DURATION);
+
+		await succeededStep.getByRole('button').focus();
+		await page.keyboard.press('Enter');
+		await expect(succeededStep.getByRole('button')).toHaveAttribute('aria-expanded', 'true');
+		await expect(succeededDetails).toContainText(/Stav\s*Hotovo/u);
+		await expect(succeededDetails).toContainText(TOOL_DURATION);
+		await expect(succeededDetails).not.toContainText('Chyba');
+
+		// Without the owner's debug view, details hold neither raw input nor the read gifts.
+		for (const details of [failedDetails, succeededDetails]) {
+			await expect(details).not.toContainText('wishlistShortId');
+			await expect(details).not.toContainText('giftId');
+			await expect(details).not.toContainText(GIFT_NAME);
+		}
+		await expect(panel.getByTestId('assistant-tool-debug')).toHaveCount(0);
+		await expect(panel.getByTestId('assistant-runner-settings')).toHaveCount(0);
+		await expect(page.getByTestId('assistant-tool-debug-switch')).toHaveCount(0);
 	});
 });

@@ -147,6 +147,8 @@
 	const demo = $derived(availability === CHAT_AVAILABILITY.demo);
 	const takesMessages = $derived(available || demo);
 	const runnerEnabled = $derived(getChatRunnerEnabled().current === true);
+	/** Only runner users get debug fields, and only they see the switch that shows them. */
+	const toolDebug = $derived(runnerEnabled && assistant.toolDebug.current);
 	const sessionsQuery = $derived(getChatSessions({ wishlistShortId }));
 	const sessionId = $derived.by(() => {
 		const selection = assistant.selection.current;
@@ -672,6 +674,8 @@
 		effort={assistant.runnerEffort.current}
 		onmodel={(model) => (assistant.runnerModel.current = model)}
 		oneffort={(effort) => (assistant.runnerEffort.current = effort)}
+		debug={assistant.toolDebug.current}
+		ondebug={(debug) => (assistant.toolDebug.current = debug)}
 	/>
 {/snippet}
 
@@ -688,16 +692,21 @@
 		{#if item.type === CHAT_ITEM.user}
 			<p class="bubble">{item.text}</p>
 		{:else if item.id === continuedAnswer?.id}
-			<ChatParts parts={continuedAnswer.parts} live={streaming} {proposal} />
+			<ChatParts
+				parts={continuedAnswer.parts}
+				live={streaming}
+				debug={toolDebug}
+				{proposal}
+			/>
 		{:else}
-			<ChatParts parts={item.parts} {proposal} />
+			<ChatParts parts={item.parts} debug={toolDebug} {proposal} />
 		{/if}
 	{/each}
 	{#if liveTurn !== null && continuedAnswer === null}
 		{#if liveTurn.userText !== null}
 			<p class="bubble">{liveTurn.userText}</p>
 		{/if}
-		<ChatParts parts={liveTurn.parts} live={streaming} {proposal} />
+		<ChatParts parts={liveTurn.parts} live={streaming} debug={toolDebug} {proposal} />
 	{/if}
 	{#if unfinished || liveTurn?.error != null || shownTurnFailure !== null}
 		<ChatTurnError

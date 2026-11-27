@@ -13,15 +13,13 @@ import {
 	usesChatRunner,
 } from '$lib/server/chat/chat_availability.js';
 import {
-	chatMessageView,
 	createChatSession,
 	listChatSessions,
-	readChatMessages,
 	requireOwnChatSession,
 	setChatFastForward,
 } from '$lib/server/chat/chat_store.js';
+import { readChatSessionView } from '$lib/server/chat/chat_session_view.js';
 import { stopChatRunnerTurn } from '$lib/server/chat/chat_runner_jobs.js';
-import { activeChatTurnUrl } from '$lib/server/chat/chat_runner_turn.js';
 import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
 import {
 	ChatFastForwardInputSchema,
@@ -58,18 +56,7 @@ export const getChatSession = guardedQueryWithArgs(
 	ChatSessionInputSchema,
 	async ({ user }, { sessionId }): Promise<ChatSessionView> => {
 		requireChatUser(user);
-		const session = await requireOwnChatSession(user.id, sessionId);
-		const messages = await readChatMessages(session.id);
-		return {
-			id: session.id,
-			title: session.title,
-			fastForward: session.fastForward,
-			createdAt: session.createdAt,
-			lastTurnAt: session.lastTurnAt,
-			wishlistShortId: session.wishlistShortId,
-			messages: messages.map(chatMessageView),
-			activeTurnUrl: await activeChatTurnUrl(session.id),
-		};
+		return readChatSessionView(user, sessionId);
 	},
 );
 

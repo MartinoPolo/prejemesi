@@ -1,4 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { error } from '@sveltejs/kit';
+import * as m from '$lib/paraglide/messages.js';
+import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
+import { AgentApiFailure } from '$lib/server/agent_access/api.js';
 import { AGENT_SCOPE } from '$lib/modules/access_tokens/scopes.js';
 import { AGENT_CREDENTIAL_KIND, type AgentCaller } from '$lib/server/agent_access/agent_caller.js';
 import { callAgentMcpTool } from '$lib/server/agent_access/mcp_tools.js';
@@ -111,6 +115,7 @@ describe('runChatToolCalls', () => {
 					truncated: false,
 				}),
 				isError: false,
+				durationMs: expect.any(Number),
 			},
 		]);
 	});
@@ -200,6 +205,79 @@ describe('runChatToolCalls', () => {
 	});
 });
 
+describe('runChatToolCalls failures', () => {
+	it.each([
+		[
+			'a wishlist outside the chat',
+			() => error(403, SERVER_ERROR.AGENT_WISHLIST_NOT_ALLOWED),
+			SERVER_ERROR.AGENT_WISHLIST_NOT_ALLOWED,
+			m.server_error_agent_wishlist_not_allowed(),
+		],
+		[
+			'a change of another wishlist',
+			() => {
+				throw new AgentApiFailure(400, SERVER_ERROR.AGENT_PROPOSAL_WISHLIST_MISMATCH);
+			},
+			SERVER_ERROR.AGENT_PROPOSAL_WISHLIST_MISMATCH,
+			m.server_error_agent_proposal_wishlist_mismatch(),
+		],
+		[
+			'a missing scope',
+			() =>
+				error(
+					403,
+					JSON.stringify({
+						code: SERVER_ERROR.AGENT_SCOPE_MISSING,
+						scope: AGENT_SCOPE.reservationsIdentities,
+					}),
+				),
+			SERVER_ERROR.AGENT_SCOPE_MISSING,
+			m.server_error_agent_scope_missing(),
+		],
+		[
+			'an operation agents cannot use',
+			() => error(404, SERVER_ERROR.AGENT_OPERATION_NOT_FOUND),
+			SERVER_ERROR.AGENT_OPERATION_NOT_FOUND,
+			m.server_error_agent_operation_not_found(),
+		],
+		[
+			'a used-up change budget',
+			() => {
+				throw new AgentApiFailure(429, SERVER_ERROR.AGENT_DAILY_CHANGE_BUDGET_EXCEEDED);
+			},
+			SERVER_ERROR.AGENT_DAILY_CHANGE_BUDGET_EXCEEDED,
+			m.server_error_agent_daily_change_budget_exceeded(),
+		],
+		[
+			'a used-up image budget',
+			() => {
+				throw new AgentApiFailure(429, SERVER_ERROR.AGENT_DAILY_IMAGE_BUDGET_EXCEEDED);
+			},
+			SERVER_ERROR.AGENT_DAILY_IMAGE_BUDGET_EXCEEDED,
+			m.server_error_agent_daily_image_budget_exceeded(),
+		],
+	])(
+		'gives the UI’s own message for %s, for the model and the tool line alike',
+		async (_label, fail, code, message) => {
+			vi.mocked(callAgentMcpTool).mockImplementation(async () => fail());
+
+			const round = await runChatToolCalls(
+				CALLER,
+				chatTools(CALLER, null),
+				'wishlist-1',
+				[{ id: 'call-1', name: 'readWishlistGifts', input: { wishlistShortId: 'other' } }],
+				ENVIRONMENT,
+			);
+
+			const [result] = round.results;
+			expect(result).toMatchObject({ isError: true });
+			expect(result?.type === CHAT_BLOCK.toolResult && JSON.parse(result.content)).toEqual({
+				error: { code, message },
+			});
+		},
+	);
+});
+
 describe('runChatToolCalls uploadImage', () => {
 	async function uploadImage(
 		input: unknown,
@@ -250,6 +328,7 @@ describe('runChatToolCalls uploadImage', () => {
 				toolCallId: 'call-1',
 				content: JSON.stringify(STORED_IMAGE),
 				isError: false,
+				durationMs: expect.any(Number),
 			},
 		]);
 	});

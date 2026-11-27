@@ -1,22 +1,22 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import * as m from '$lib/paraglide/messages.js';
-	import CheckIcon from '@lucide/svelte/icons/check';
-	import { Spinner } from '$lib/components/base/spinner/index.js';
 	import SparklesIcon from '@lucide/svelte/icons/sparkles';
 	import { CHAT_PART, type ChatPart, type ChatToolLine } from '$lib/modules/chat/chat_thread.js';
-	import { chatToolLabel } from './chat_presentation.js';
-	import ChatNote from './ChatNote.svelte';
+	import ChatToolStep from './ChatToolStep.svelte';
 
 	/** One assistant answer: tool lines, text and proposals, in the order they came. */
 	let {
 		parts,
 		live = false,
+		debug = false,
 		proposal,
 	}: {
 		parts: readonly ChatPart[];
-		/** Still streaming: the last tool line spins and a caret follows the text. */
+		/** Still streaming: running tools spin and a caret follows the text. */
 		live?: boolean;
+		/** The owner's debug view: tool details also show raw input and result. */
+		debug?: boolean;
 		proposal: Snippet<[string]>;
 	} = $props();
 
@@ -30,17 +30,10 @@
 	<span class="caret" aria-hidden="true"></span>
 {/snippet}
 
-{#snippet toolLines(tools: readonly ChatToolLine[], streaming: boolean)}
+{#snippet toolLines(tools: readonly ChatToolLine[])}
 	<ul class="tools" aria-label={m.chat_steps_label()}>
-		{#each tools as tool, toolIndex (toolIndex)}
-			<ChatNote as="li">
-				{#if streaming && toolIndex === tools.length - 1}
-					<Spinner />
-				{:else}
-					<CheckIcon aria-hidden="true" />
-				{/if}
-				<span>{chatToolLabel(tool)}</span>
-			</ChatNote>
+		{#each tools as line, lineIndex (lineIndex)}
+			<ChatToolStep {line} {live} {debug} />
 		{/each}
 	</ul>
 {/snippet}
@@ -51,7 +44,7 @@
 		<span class="sr-only">{m.chat_assistant_says()}</span>
 		{#each parts as part, partIndex (partIndex)}
 			{#if part.type === CHAT_PART.tools}
-				{@render toolLines(part.tools, isStreaming(partIndex))}
+				{@render toolLines(part.tools)}
 			{:else if part.type === CHAT_PART.text}
 				<p class="text">
 					{part.text}{#if isStreaming(partIndex)}{@render caret()}{/if}
@@ -114,10 +107,6 @@
 		margin: 0;
 		padding: 0;
 		list-style: none;
-	}
-
-	.tools > :global(li) {
-		min-height: var(--answer-line-height);
 	}
 
 	.caret {

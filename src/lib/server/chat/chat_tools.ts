@@ -20,7 +20,12 @@ import {
 	type BrowsePageContext,
 	type BrowsePageResult,
 } from './browse_page.js';
-import { CHAT_BLOCK, type ChatContentBlock, type ChatModelTool } from './chat_model.js';
+import { CHAT_BLOCK, type ChatModelContentBlock, type ChatModelTool } from './chat_model.js';
+
+export type ChatToolResultBlock = Extract<
+	ChatModelContentBlock,
+	{ type: typeof CHAT_BLOCK.toolResult }
+>;
 
 /**
  * Tools a chat about one wishlist has no use for: the chat submits and applies proposals itself,
@@ -117,11 +122,11 @@ export interface ChatToolCall {
 
 /** One response's tool calls run: a result per call, in call order, and the proposal they made. */
 export interface ChatToolRound {
-	results: ChatContentBlock[];
+	results: ChatToolResultBlock[];
 	proposal: { id: string; applied: boolean } | null;
 }
 
-function toolResult(toolCallId: string, body: unknown, isError: boolean): ChatContentBlock {
+function toolResult(toolCallId: string, body: unknown, isError: boolean): ChatToolResultBlock {
 	return {
 		type: CHAT_BLOCK.toolResult,
 		toolCallId,
@@ -131,7 +136,7 @@ function toolResult(toolCallId: string, body: unknown, isError: boolean): ChatCo
 }
 
 /** The UI's own message for a failure, so the assistant relays exactly what the app would say. */
-function failureResult(toolCallId: string, thrown: unknown): ChatContentBlock {
+function failureResult(toolCallId: string, thrown: unknown): ChatToolResultBlock {
 	const { body } = describeAgentApiFailure(thrown);
 	const { code, message, ...details } = body.error;
 	return toolResult(
@@ -163,7 +168,7 @@ async function runReadCall(
 	caller: AgentCaller,
 	call: ChatToolCall,
 	{ imageBucket, conversationUrls }: ChatToolEnvironment,
-): Promise<ChatContentBlock> {
+): Promise<ChatToolResultBlock> {
 	if (downloadsOutsideConversation(call, conversationUrls)) {
 		return toolResult(call.id, { error: URL_NOT_IN_CONVERSATION_ERROR }, true);
 	}
@@ -180,7 +185,7 @@ async function runReadCall(
 	}
 }
 
-function browseResult(toolCallId: string, result: BrowsePageResult): ChatContentBlock {
+function browseResult(toolCallId: string, result: BrowsePageResult): ChatToolResultBlock {
 	return result.ok
 		? toolResult(toolCallId, result.page, false)
 		: toolResult(toolCallId, { error: result.error }, true);
@@ -198,8 +203,8 @@ async function submitChanges(
 	caller: AgentCaller,
 	wishlistId: string,
 	changes: readonly ChatToolCall[],
-): Promise<{ results: Map<string, ChatContentBlock>; proposal: ChatToolRound['proposal'] }> {
-	const results = new Map<string, ChatContentBlock>();
+): Promise<{ results: Map<string, ChatToolResultBlock>; proposal: ChatToolRound['proposal'] }> {
+	const results = new Map<string, ChatToolResultBlock>();
 	try {
 		const proposal = await submitChangeProposal(
 			{ ...caller, fastForward: appliesWithoutReview(caller, changes) },
@@ -267,27 +272,34 @@ export async function runChatToolCalls(
 	environment: ChatToolEnvironment,
 ): Promise<ChatToolRound> {
 	const toolsByName = new Map(tools.map((tool) => [tool.name, tool]));
-	const results = new Map<string, ChatContentBlock>();
+	const results = new Map<string, ChatToolResultBlock>();
 	const changes: ChatToolCall[] = [];
 	for (const call of calls) {
 		const tool = toolsByName.get(call.name);
+		const startedAt = Date.now();
 		if (tool?.kind === CHAT_TOOL_KIND.change) {
 			changes.push(call);
-		} else if (tool?.kind === CHAT_TOOL_KIND.read) {
-			results.set(call.id, await runReadCall(caller, call, environment));
-		} else if (tool?.kind === CHAT_TOOL_KIND.browse) {
-			results.set(
-				call.id,
-				browseResult(call.id, await tool.openPage(call.input, environment)),
-			);
-		} else {
-			results.set(call.id, toolResult(call.id, { error: { code: 'UNKNOWN_TOOL' } }, true));
+			continue;
 		}
+		let result: ChatToolResultBlock;
+		if (tool?.kind === CHAT_TOOL_KIND.read) {
+			result = await runReadCall(caller, call, environment);
+		} else if (tool?.kind === CHAT_TOOL_KIND.browse) {
+			result = browseResult(call.id, await tool.openPage(call.input, environment));
+		} else {
+			result = toolResult(call.id, { error: { code: 'UNKNOWN_TOOL' } }, true);
+		}
+		results.set(call.id, { ...result, durationMs: Date.now() - startedAt });
 	}
 	let proposal: ChatToolRound['proposal'] = null;
 	if (changes.length > 0) {
+		const startedAt = Date.now();
 		const submitted = await submitChanges(caller, wishlistId, changes);
-		submitted.results.forEach((result, callId) => results.set(callId, result));
+		// The changes form one proposal, so each reports the time the whole submission took.
+		const durationMs = Date.now() - startedAt;
+		submitted.results.forEach((result, callId) =>
+			results.set(callId, { ...result, durationMs }),
+		);
 		proposal = submitted.proposal;
 	}
 	return {
