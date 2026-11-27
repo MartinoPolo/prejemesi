@@ -19,7 +19,7 @@ function systemPrompt(locale: string) {
 			userName: 'Martin',
 			locale,
 		},
-		{ canBrowsePages: false },
+		{ canBrowsePages: false, requiresConversationAddresses: true },
 	);
 }
 

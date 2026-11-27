@@ -1,9 +1,16 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AGENT_SCOPE } from '$lib/modules/access_tokens/scopes.js';
 import { AGENT_CREDENTIAL_KIND, type AgentCaller } from '$lib/server/agent_access/agent_caller.js';
+import { callAgentMcpTool } from '$lib/server/agent_access/mcp_tools.js';
+import type * as McpToolsModule from '$lib/server/agent_access/mcp_tools.js';
 import { OPERATION_CHANNEL } from '$lib/server/operations/actor.js';
 import { CHAT_BLOCK } from './chat_model.js';
 import { chatToolQuery, chatTools, runChatToolCalls } from './chat_tools.js';
+
+vi.mock('$lib/server/agent_access/mcp_tools.js', async (importOriginal) => ({
+	...(await importOriginal<typeof McpToolsModule>()),
+	callAgentMcpTool: vi.fn(),
+}));
 
 const BROWSE_PAGE_CONFIG = { accountId: 'account-123', apiToken: 'secret-browser-token' };
 
@@ -34,10 +41,19 @@ function errorCodeOf(round: Awaited<ReturnType<typeof runChatToolCalls>>): unkno
 	return (JSON.parse(result.content) as { error: { code: unknown } }).error.code;
 }
 
+function uploadImageCall(input: unknown) {
+	return { id: 'call-1', name: 'uploadImage', input };
+}
+
+const STORED_IMAGE = { image: { reference: 'image-1' } };
+const IMAGE_URL = 'https://cdn.shop.example.cz/kolo.jpg';
+const RESTRICTED = { ...ENVIRONMENT, conversationUrls: new Set([IMAGE_URL]) };
+
 const fetchStub = vi.fn<typeof fetch>();
 
 beforeEach(() => {
 	fetchStub.mockReset();
+	vi.mocked(callAgentMcpTool).mockReset().mockResolvedValue({ body: STORED_IMAGE, status: 201 });
 	vi.stubGlobal('fetch', fetchStub);
 });
 
@@ -181,6 +197,88 @@ describe('runChatToolCalls', () => {
 
 		expect(fetchStub).not.toHaveBeenCalled();
 		expect(errorCodeOf(round)).toBe('URL_NOT_IN_CONVERSATION');
+	});
+});
+
+describe('runChatToolCalls uploadImage', () => {
+	async function uploadImage(
+		input: unknown,
+		environment: typeof RESTRICTED | typeof ENVIRONMENT,
+	) {
+		return runChatToolCalls(
+			CALLER,
+			chatTools(CALLER, null),
+			'wishlist-1',
+			[uploadImageCall(input)],
+			environment,
+		);
+	}
+
+	it('refuses an image address that is not in the chat without downloading it', async () => {
+		const round = await uploadImage(
+			{ url: 'https://attacker.example/x.png?d=tajne', wishlistId: 'wishlist-1' },
+			RESTRICTED,
+		);
+
+		expect(callAgentMcpTool).not.toHaveBeenCalled();
+		expect(round.proposal).toBeNull();
+		expect(errorCodeOf(round)).toBe('URL_NOT_IN_CONVERSATION');
+	});
+
+	it('refuses a missing or malformed image address when addresses are restricted', async () => {
+		for (const input of [
+			{ wishlistId: 'wishlist-1' },
+			{ url: 42 },
+			{ url: 'not an address' },
+		]) {
+			expect(errorCodeOf(await uploadImage(input, RESTRICTED))).toBe(
+				'URL_NOT_IN_CONVERSATION',
+			);
+		}
+		expect(callAgentMcpTool).not.toHaveBeenCalled();
+	});
+
+	it('stores an image whose address is in the chat', async () => {
+		const input = { url: IMAGE_URL, wishlistId: 'wishlist-1' };
+
+		const round = await uploadImage(input, RESTRICTED);
+
+		expect(callAgentMcpTool).toHaveBeenCalledWith(CALLER, 'uploadImage', input, undefined);
+		expect(round.results).toEqual([
+			{
+				type: CHAT_BLOCK.toolResult,
+				toolCallId: 'call-1',
+				content: JSON.stringify(STORED_IMAGE),
+				isError: false,
+			},
+		]);
+	});
+
+	it.each([
+		['the chat has it without a trailing slash', IMAGE_URL, `${IMAGE_URL}/`],
+		['the chat has it with a trailing slash', `${IMAGE_URL}/`, IMAGE_URL],
+	])(
+		'stores an image whose address differs only by a trailing slash when %s',
+		async (_label, chatUrl, requestedUrl) => {
+			const input = { url: requestedUrl, wishlistId: 'wishlist-1' };
+
+			const round = await uploadImage(input, {
+				...ENVIRONMENT,
+				conversationUrls: new Set([chatUrl]),
+			});
+
+			expect(callAgentMcpTool).toHaveBeenCalledWith(CALLER, 'uploadImage', input, undefined);
+			expect(round.results[0]).toMatchObject({ isError: false });
+		},
+	);
+
+	it('stores an image from any address when addresses are not restricted', async () => {
+		const input = { url: 'https://images.example.org/kolo.png', wishlistId: 'wishlist-1' };
+
+		const round = await uploadImage(input, ENVIRONMENT);
+
+		expect(callAgentMcpTool).toHaveBeenCalledWith(CALLER, 'uploadImage', input, undefined);
+		expect(round.results[0]).toMatchObject({ isError: false });
 	});
 });
 

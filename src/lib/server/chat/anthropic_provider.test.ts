@@ -342,6 +342,86 @@ describe('Anthropic provider', () => {
 		]);
 	});
 
+	it('reports the addresses in the text of a fetched page along with the page', async () => {
+		const fetchWithLinks = sse([
+			{
+				type: 'content_block_start',
+				index: 0,
+				content_block: {
+					type: 'web_fetch_tool_result',
+					tool_use_id: 'srvtoolu_06',
+					content: {
+						type: 'web_fetch_result',
+						url: 'https://www.alza.cz/kolo',
+						content: {
+							type: 'document',
+							source: {
+								type: 'text',
+								media_type: 'text/plain',
+								data: 'Kolo ![foto](https://cdn.alza.cz/kolo.jpg). Recenze: https://www.alza.cz/kolo/recenze',
+							},
+						},
+					},
+				},
+			},
+			{ type: 'content_block_stop', index: 0 },
+			{ type: 'message_delta', delta: { stop_reason: 'end_turn' } },
+		]);
+		const provider = createAnthropicProvider({
+			apiKey: 'test-key',
+			model: 'claude-sonnet-5-5',
+			fetch: async () => streamedResponse(fetchWithLinks),
+		});
+
+		const events = await collect(provider.stream(request, new AbortController().signal));
+
+		expect(events[0]).toMatchObject({ type: CHAT_MODEL_EVENT.webSources });
+		const [sources] = events;
+		const urls = sources?.type === CHAT_MODEL_EVENT.webSources ? sources.urls : [];
+		expect(urls[0]).toBe('https://www.alza.cz/kolo');
+		expect(urls).toContain('https://cdn.alza.cz/kolo.jpg');
+		expect(urls).toContain('https://www.alza.cz/kolo/recenze');
+	});
+
+	it('reports only the page of a fetched PDF, whose encoded text names no address', async () => {
+		const fetchedPdf = sse([
+			{
+				type: 'content_block_start',
+				index: 0,
+				content_block: {
+					type: 'web_fetch_tool_result',
+					tool_use_id: 'srvtoolu_07',
+					content: {
+						type: 'web_fetch_result',
+						url: 'https://www.alza.cz/kolo-navod.pdf',
+						content: {
+							type: 'document',
+							source: {
+								type: 'base64',
+								media_type: 'application/pdf',
+								data: btoa('https://attacker.example/x.png'),
+							},
+						},
+					},
+				},
+			},
+			{ type: 'content_block_stop', index: 0 },
+			{ type: 'message_delta', delta: { stop_reason: 'end_turn' } },
+		]);
+		const provider = createAnthropicProvider({
+			apiKey: 'test-key',
+			model: 'claude-sonnet-5-5',
+			fetch: async () => streamedResponse(fetchedPdf),
+		});
+
+		const events = await collect(provider.stream(request, new AbortController().signal));
+
+		expect(events[0]).toEqual({
+			type: CHAT_MODEL_EVENT.webSources,
+			urls: ['https://www.alza.cz/kolo-navod.pdf'],
+		});
+	});
+
 	it('reports no pages for failed web searches and fetches', async () => {
 		const failedWebTools = sse([
 			{

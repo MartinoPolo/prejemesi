@@ -32,16 +32,19 @@ export const BROWSE_PAGE_LIMITS = {
 /** Images, media, fonts and styles do not change the text, so the browser skips loading them. */
 const REJECTED_RESOURCE_TYPES = ['image', 'media', 'font', 'stylesheet'];
 
+/** Refuses an address outside `conversationUrls`, for every tool that fetches one the model names. */
+export const URL_NOT_IN_CONVERSATION_ERROR = {
+	code: 'URL_NOT_IN_CONVERSATION',
+	message:
+		'Only addresses that came from the user, a web search or fetch result, or a page already opened in this chat can be used.',
+} as const;
+
 export const BROWSE_PAGE_ERROR = {
 	urlNotAllowed: {
 		code: 'URL_NOT_ALLOWED',
 		message: `Only public http and https pages up to ${BROWSE_PAGE_LIMITS.urlMaxLength} characters can be opened.`,
 	},
-	urlNotInConversation: {
-		code: 'URL_NOT_IN_CONVERSATION',
-		message:
-			'Only pages whose address came from the user, a web search or fetch result, or a page already opened in this chat can be opened.',
-	},
+	urlNotInConversation: URL_NOT_IN_CONVERSATION_ERROR,
 	limitReached: {
 		code: 'BROWSER_LIMIT_REACHED',
 		message: 'The browser has reached its rate or daily limit. Try again later.',
@@ -124,11 +127,14 @@ function allowedBrowseUrl(candidate: unknown): URL | null {
 	return isWebProtocol && !hasCredentials && isAllowedHostname(url.hostname) ? url : null;
 }
 
+/** The `url` a tool call's input names, unchecked. */
+function inputUrl(input: unknown): unknown {
+	return typeof input === 'object' && input !== null ? Reflect.get(input, 'url') : undefined;
+}
+
 /** The page address of a `browse_page` call's input, if the tool may open it. */
 export function allowedBrowseUrlFromInput(input: unknown): URL | null {
-	return allowedBrowseUrl(
-		typeof input === 'object' && input !== null ? Reflect.get(input, 'url') : undefined,
-	);
+	return allowedBrowseUrl(inputUrl(input));
 }
 
 /** Stops at quotes and backslashes too, so addresses inside JSON tool results end where they do. */
@@ -143,10 +149,19 @@ function addNormalisedUrl(urls: Set<string>, candidate: string): void {
 	}
 }
 
-function addUrlsInText(urls: Set<string>, text: string): void {
+/** The normalised addresses written in a text, each also without its trailing punctuation. */
+export function urlsInText(text: string): Set<string> {
+	const urls = new Set<string>();
 	for (const [match] of text.matchAll(URL_IN_TEXT)) {
 		addNormalisedUrl(urls, match);
 		addNormalisedUrl(urls, match.replace(TRAILING_PUNCTUATION, ''));
+	}
+	return urls;
+}
+
+function addUrlsInText(urls: Set<string>, text: string): void {
+	for (const url of urlsInText(text)) {
+		urls.add(url);
 	}
 }
 
@@ -158,12 +173,14 @@ function slashToggledHref(href: string): string {
 }
 
 /**
- * The page addresses the chat may open, as web fetch rules them (an address must already be in the
- * conversation), from sources the model cannot write: the user's text, the pages the provider's web
- * tools found this turn, and the pages earlier `browse_page` calls opened. Other tool results never
- * count: the model writes gift data, which persists across sessions and is normalised on save, so a
- * prompt injection could plant an address that carries private data to another site and read it
- * back later.
+ * The addresses the chat may open with `browse_page` or download an image from with `uploadImage`,
+ * as web fetch rules them (an address must already be in the conversation), from sources the model
+ * cannot write: the user's text, the pages the provider's web tools found this turn and the
+ * addresses in the text of pages web fetch read, and the pages earlier `browse_page` calls opened
+ * and the addresses in their text. A fetched or opened page's own address already passed this rule,
+ * so its text cannot carry wishlist data. Other tool results never count: the model writes gift
+ * data, which persists across sessions and is normalised on save, so a prompt injection could plant
+ * an address that carries private data to another site and read it back later.
  */
 export function conversationUrls(
 	messages: readonly ChatModelMessage[],
@@ -197,6 +214,28 @@ export function conversationUrls(
 /** Whether the address, or the same address with or without a trailing slash, is in the chat. */
 function isUrlInConversation(url: URL, urls: ReadonlySet<string> | null): boolean {
 	return urls === null || urls.has(url.href) || urls.has(slashToggledHref(url.href));
+}
+
+/**
+ * Whether the `url` a tool call's input names is in the chat; with restrictions, a missing or
+ * malformed address never is.
+ */
+export function isInputAddressInConversation(
+	input: unknown,
+	urls: ReadonlySet<string> | null,
+): boolean {
+	if (urls === null) {
+		return true;
+	}
+	const candidate = inputUrl(input);
+	if (typeof candidate !== 'string') {
+		return false;
+	}
+	try {
+		return isUrlInConversation(new URL(candidate), urls);
+	} catch {
+		return false;
+	}
 }
 
 function failed(error: BrowsePageError): BrowsePageResult {
