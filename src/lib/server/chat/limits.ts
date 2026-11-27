@@ -12,7 +12,7 @@ export const CHAT_LIMITS = {
 	/** Model responses within one turn: each tool round trip is one. */
 	modelCallsPerTurn: 8,
 	maxOutputTokens: 4096,
-	/** The most recent stored messages the model sees again on each turn. */
+	/** The most recent stored messages a model reads again on each turn; web tool records add none. */
 	contextMessages: 40,
 	turnTimeoutMs: 120_000,
 } as const;
@@ -37,6 +37,10 @@ export const CHAT_RUNNER_LIMITS = {
 	textEventMaxLength: 20_000,
 	/** A reported web search's query or page address. */
 	queryMaxLength: 2_000,
+	/** A reported tool error's message. */
+	toolErrorMaxLength: 500,
+	/** Each of a reported tool's raw input and result, for the owner's debug view. */
+	debugTextMaxLength: 2_000,
 } as const;
 
 export type ChatRunnerLimits = { [Limit in keyof typeof CHAT_RUNNER_LIMITS]: number };

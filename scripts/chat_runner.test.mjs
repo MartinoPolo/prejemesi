@@ -3,20 +3,28 @@ import assert from 'node:assert/strict';
 import {
 	claudeArguments,
 	claudeEnvironment,
+	claudeStreamReaderFor,
+	createClaudeStreamReader,
 	createJobReporter,
-	readClaudeStreamLine,
+	REPORT_LIMITS,
 	REPORT_STOP_REASON,
 	windowsBatchScriptFor,
 } from './chat_runner.mjs';
 
 const assistantLine = (...content) =>
 	JSON.stringify({ type: 'assistant', message: { role: 'assistant', content } });
+const toolResultLine = (...content) =>
+	JSON.stringify({ type: 'user', message: { role: 'user', content } });
+
+/** Reads one line with a fresh reader, as an app that accepts no tool outcomes would. */
+const readClaudeStreamLine = (line) => createClaudeStreamReader().read(line);
 
 test('assistant text becomes a text event', () => {
 	assert.deepEqual(
 		readClaudeStreamLine(assistantLine({ type: 'text', text: 'Našel jsem kolo.' })),
 		{
 			events: [{ type: 'text', text: 'Našel jsem kolo.' }],
+			logLines: ['text: Našel jsem kolo.'],
 			finalStatus: null,
 		},
 	);
@@ -38,21 +46,179 @@ test('web searches and page reads become tool events with their query', () => {
 	]);
 });
 
-test('app tool calls and other output add no events, since the app records its own tools', () => {
+test('an app that accepts tool outcomes gets each web tool with its id and its outcome', () => {
+	let clock = 1_000;
+	const reader = createClaudeStreamReader({ reportsToolOutcomes: true, now: () => clock });
+
+	assert.deepEqual(
+		reader.read(
+			assistantLine(
+				{ type: 'tool_use', id: 't1', name: 'WebFetch', input: { url: 'https://a.cz/' } },
+				{ type: 'tool_use', id: 't2', name: 'WebSearch', input: { query: 'kolo' } },
+			),
+		).events,
+		[
+			{ type: 'tool', id: 't1', name: 'web_fetch', query: 'https://a.cz/' },
+			{ type: 'tool', id: 't2', name: 'web_search', query: 'kolo' },
+		],
+	);
+	clock = 2_500;
+	const { events, logLines } = reader.read(
+		toolResultLine(
+			{
+				type: 'tool_result',
+				tool_use_id: 't1',
+				is_error: true,
+				content: [{ type: 'text', text: 'Request failed with status code 403' }],
+			},
+			{
+				type: 'tool_result',
+				tool_use_id: 't2',
+				content:
+					'Links: [{"title":"A","url":"https://a.cz"},{"title":"B","url":"https://b.cz"}]',
+			},
+		),
+	);
+
+	assert.deepEqual(
+		events.map(({ debug: _debug, ...event }) => event),
+		[
+			{
+				type: 'toolResult',
+				id: 't1',
+				name: 'web_fetch',
+				query: 'https://a.cz/',
+				status: 'error',
+				error: { code: null, message: 'Request failed with status code 403' },
+				durationMs: 1_500,
+				summary: null,
+			},
+			{
+				type: 'toolResult',
+				id: 't2',
+				name: 'web_search',
+				query: 'kolo',
+				status: 'ok',
+				error: null,
+				durationMs: 1_500,
+				summary: { kind: 'searchResults', count: 2 },
+			},
+		],
+	);
+	assert.deepEqual(events[0].debug, {
+		input: JSON.stringify({ url: 'https://a.cz/' }, null, 2),
+		result: 'Request failed with status code 403',
+	});
+	assert.deepEqual(logLines, [
+		'web_fetch failed: Request failed with status code 403',
+		'web_search done in 1.5 s',
+	]);
+});
+
+test('a reported raw result stays within the limit the app accepts', () => {
+	const reader = createClaudeStreamReader({ reportsToolOutcomes: true });
+	reader.read(
+		assistantLine({
+			type: 'tool_use',
+			id: 't1',
+			name: 'WebFetch',
+			input: { url: 'https://a.cz/' },
+		}),
+	);
+
+	const [event] = reader.read(
+		toolResultLine({ type: 'tool_result', tool_use_id: 't1', content: 'x'.repeat(50_000) }),
+	).events;
+
+	assert.equal(event.debug.result.length, REPORT_LIMITS.debugTextMaxLength);
+	assert.ok(event.debug.result.endsWith('…'));
+	assert.deepEqual(event.summary, { kind: 'page', characters: 50_000, truncated: false });
+});
+
+test('a reported error message stays within the limit the app accepts', () => {
+	const reader = createClaudeStreamReader({ reportsToolOutcomes: true });
+	reader.read(
+		assistantLine({ type: 'tool_use', id: 't1', name: 'WebSearch', input: { query: 'kolo' } }),
+	);
+
+	const [event] = reader.read(
+		toolResultLine({
+			type: 'tool_result',
+			tool_use_id: 't1',
+			is_error: true,
+			content: 'Search failed '.repeat(1_000),
+		}),
+	).events;
+
+	assert.equal(event.error.message.length, REPORT_LIMITS.toolErrorMaxLength);
+	assert.ok(event.error.message.endsWith('…'));
+});
+
+const webFetchUse = assistantLine({
+	type: 'tool_use',
+	id: 't1',
+	name: 'WebFetch',
+	input: { url: 'https://a.cz/' },
+});
+const webFetchResult = toolResultLine({ type: 'tool_result', tool_use_id: 't1', content: 'Kolo' });
+
+test('an app that accepts no tool outcomes gets web tools without ids or outcomes, only logged', () => {
+	const reader = createClaudeStreamReader({ reportsToolOutcomes: false, now: () => 0 });
+
+	assert.deepEqual(reader.read(webFetchUse).events, [
+		{ type: 'tool', name: 'web_fetch', query: 'https://a.cz/' },
+	]);
+	assert.deepEqual(reader.read(webFetchResult), {
+		events: [],
+		logLines: ['web_fetch done in 0.0 s'],
+		finalStatus: null,
+	});
+});
+
+test('the runner reports tool outcomes only when the claimed job says the app accepts them', () => {
+	const toolEventOf = (job) => claudeStreamReaderFor(job).read(webFetchUse).events[0];
+
+	assert.equal(toolEventOf({ reportsToolOutcomes: true }).id, 't1');
+	assert.equal(toolEventOf({}).id, undefined);
+});
+
+test('app tool calls add no events, since the app records its own tools, but are logged with their errors', () => {
+	const reader = createClaudeStreamReader({ reportsToolOutcomes: true, now: () => 0 });
 	const appTool = assistantLine({
 		type: 'tool_use',
 		id: 't1',
-		name: 'mcp__prejemesi__createGift',
-		input: { name: 'Kolo' },
+		name: 'mcp__prejemesi__browse_page',
+		input: { url: 'https://mycky.heureka.cz/' },
 	});
-	const toolResult = JSON.stringify({
-		type: 'user',
-		message: { content: [{ type: 'tool_result', tool_use_id: 't1', content: 'ok' }] },
+	const failed = toolResultLine({
+		type: 'tool_result',
+		tool_use_id: 't1',
+		is_error: true,
+		content: '{"error":{"code":"BROWSER_LIMIT_REACHED"}}',
 	});
-	const init = JSON.stringify({ type: 'system', subtype: 'init', model: 'claude-opus' });
 
-	for (const line of [appTool, toolResult, init, 'not json', '']) {
-		assert.deepEqual(readClaudeStreamLine(line), { events: [], finalStatus: null });
+	assert.deepEqual(reader.read(appTool), {
+		events: [],
+		logLines: ['browse_page: {"url":"https://mycky.heureka.cz/"}'],
+		finalStatus: null,
+	});
+	assert.deepEqual(reader.read(failed), {
+		events: [],
+		logLines: ['browse_page failed: {"error":{"code":"BROWSER_LIMIT_REACHED"}}'],
+		finalStatus: null,
+	});
+});
+
+test('other output adds no events', () => {
+	const init = JSON.stringify({ type: 'system', subtype: 'init', model: 'claude-opus' });
+	const unknownResult = toolResultLine({ type: 'tool_result', tool_use_id: 'x', content: 'ok' });
+
+	for (const line of [unknownResult, init, 'not json', '']) {
+		assert.deepEqual(readClaudeStreamLine(line), {
+			events: [],
+			logLines: [],
+			finalStatus: null,
+		});
 	}
 });
 

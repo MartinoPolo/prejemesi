@@ -3,7 +3,10 @@ import { serverSentEventData } from './server_sent_events.js';
 import {
 	CHAT_AVAILABILITY,
 	CHAT_STREAM_EVENT,
+	CHAT_TOOL_STATUS,
 	CHAT_TURN_ERROR,
+	ChatToolErrorSchema,
+	ChatToolSummarySchema,
 	type ChatAvailability,
 	type ChatStreamEvent,
 	type ChatTurnRequest,
@@ -13,8 +16,19 @@ const ChatStreamEventSchema = v.variant('type', [
 	v.object({ type: v.literal(CHAT_STREAM_EVENT.text), text: v.string() }),
 	v.object({
 		type: v.literal(CHAT_STREAM_EVENT.tool),
+		id: v.optional(v.string()),
 		name: v.string(),
 		query: v.nullable(v.string()),
+	}),
+	v.object({
+		type: v.literal(CHAT_STREAM_EVENT.toolResult),
+		id: v.string(),
+		status: v.picklist([CHAT_TOOL_STATUS.ok, CHAT_TOOL_STATUS.error]),
+		error: v.nullable(ChatToolErrorSchema),
+		durationMs: v.nullable(v.number()),
+		// An outcome kind this client does not know yet shows without its summary.
+		summary: v.fallback(v.nullable(ChatToolSummarySchema), null),
+		debug: v.optional(v.object({ input: v.string(), result: v.nullable(v.string()) })),
 	}),
 	v.object({
 		type: v.literal(CHAT_STREAM_EVENT.proposal),

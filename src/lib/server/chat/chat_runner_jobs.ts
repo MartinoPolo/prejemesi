@@ -10,7 +10,7 @@ import {
 	CHAT_TURN_ERROR,
 	type ChatStreamEvent,
 } from '$lib/modules/chat/types.js';
-import { CHAT_BLOCK } from './chat_model.js';
+import { CHAT_BLOCK, type ChatContentBlock, type ChatWebToolRecord } from './chat_model.js';
 import { storeAssistantMessage } from './chat_store.js';
 import type { ChatRunnerLimits } from './limits.js';
 
@@ -269,18 +269,30 @@ export async function appendChatRunnerJobEvents(
 		);
 }
 
+function storedReportBlock(
+	event: ChatStreamEvent,
+	webTools: ChatRunnerReport['webTools'],
+): ChatContentBlock | undefined {
+	if (event.type === CHAT_STREAM_EVENT.text) {
+		return { type: CHAT_BLOCK.text, text: event.text };
+	}
+	return event.type === CHAT_STREAM_EVENT.toolResult ? webTools?.get(event.id) : undefined;
+}
+
 export interface ChatRunnerReport {
 	/** Numbers the runner's reports of one job in order; a retry repeats its number. */
 	sequence: number;
 	events: readonly ChatStreamEvent[];
+	/** The web tools Claude Code finished, by the id of their `toolResult` event. */
+	webTools?: ReadonlyMap<string, ChatWebToolRecord>;
 	finalStatus: ChatRunnerFinalStatus | null;
 }
 
 /**
- * Applies a runner's report to its running job at once: appends its events, keeps its text as
- * the assistant's messages and counts as the heartbeat; a final status ends the job and retires
- * its token. A retried report already applied changes nothing. Answers whether the job was
- * still running, so the runner learns when to stop.
+ * Applies a runner's report to its running job at once: appends its events, keeps its text and
+ * finished web tools as the assistant's messages and counts as the heartbeat; a final status
+ * ends the job and retires its token. A retried report already applied changes nothing. Answers
+ * whether the job was still running, so the runner learns when to stop.
  */
 export async function applyChatRunnerReport(
 	job: Pick<ChatRunnerJob, 'id' | 'sessionId'>,
@@ -325,14 +337,9 @@ export async function applyChatRunnerReport(
 			return current?.status === CHAT_RUNNER_JOB_STATUS.running;
 		}
 		for (const event of report.events) {
-			if (event.type === CHAT_STREAM_EVENT.text) {
-				await storeAssistantMessage(
-					job.sessionId,
-					[{ type: CHAT_BLOCK.text, text: event.text }],
-					null,
-					now,
-					transaction,
-				);
+			const block = storedReportBlock(event, report.webTools);
+			if (block !== undefined) {
+				await storeAssistantMessage(job.sessionId, [block], null, now, transaction);
 			}
 		}
 		return true;

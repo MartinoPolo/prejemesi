@@ -2,9 +2,14 @@ import {
 	CHAT_BROWSE_TOOL,
 	CHAT_ROLE,
 	CHAT_STREAM_EVENT,
+	CHAT_TOOL_STATUS,
 	CHAT_WEB_TOOL,
+	chatToolOutcome,
+	isChatWebToolName,
 	type ChatMessageView,
 	type ChatStreamEvent,
+	type ChatToolStatus,
+	type ChatToolView,
 	type ChatTurnError,
 } from './types.js';
 
@@ -30,9 +35,31 @@ export function chatToolKind(name: string): ChatToolKind {
 	return READ_TOOL_NAME.test(name) ? CHAT_TOOL_KIND.read : CHAT_TOOL_KIND.change;
 }
 
+/** A tool call as the panel knows it: a streamed one runs until its outcome arrives. */
+export type ChatToolCallState = Omit<ChatToolView, 'id'> & {
+	/** Null for a streamed tool that never reports an outcome. */
+	id: string | null;
+};
+
 export interface ChatToolLine {
 	kind: ChatToolKind;
 	query: string | null;
+	/** The calls the line stands for, in call order. */
+	calls: ChatToolCallState[];
+}
+
+/** A line failed when any of its calls did and runs while any still does. */
+export function chatToolLineStatus(line: ChatToolLine): ChatToolStatus {
+	if (line.calls.some((call) => call.status === CHAT_TOOL_STATUS.error)) {
+		return CHAT_TOOL_STATUS.error;
+	}
+	return line.calls.some((call) => call.status === CHAT_TOOL_STATUS.running)
+		? CHAT_TOOL_STATUS.running
+		: CHAT_TOOL_STATUS.ok;
+}
+
+function chatToolLine(call: ChatToolCallState): ChatToolLine {
+	return { kind: chatToolKind(call.name), query: call.query, calls: [call] };
 }
 
 export const CHAT_PART = {
@@ -52,17 +79,20 @@ export type ChatItem =
 	| { type: typeof CHAT_ITEM.user; id: string; text: string }
 	| { type: typeof CHAT_ITEM.assistant; id: string; parts: ChatPart[] };
 
-/** Consecutive tool lines of one kind read as one line, the way a person would report them. */
+/**
+ * Consecutive tool calls of one kind and query read as one line, the way a person would report
+ * them; the line's details list each call.
+ */
 function withToolLine(tools: readonly ChatToolLine[], line: ChatToolLine): ChatToolLine[] {
 	const last = tools.at(-1);
 	return last !== undefined && last.kind === line.kind && last.query === line.query
-		? [...tools]
+		? [...tools.slice(0, -1), { ...last, calls: [...last.calls, ...line.calls] }]
 		: [...tools, line];
 }
 
 function messageParts(message: ChatMessageView): ChatPart[] {
-	const tools = message.toolNames.reduce<ChatToolLine[]>(
-		(lines, name) => withToolLine(lines, { kind: chatToolKind(name), query: null }),
+	const tools = message.tools.reduce<ChatToolLine[]>(
+		(lines, tool) => withToolLine(lines, chatToolLine(tool)),
 		[],
 	);
 	return [
@@ -96,11 +126,15 @@ export function chatThreadItems(messages: readonly ChatMessageView[]): ChatItem[
 
 /**
  * The last answer did not finish: the chat ends with the user's message or a step that called
- * tools, the same rule the server uses to allow a retry.
+ * the app's tools, the same rule the server uses to allow a retry. Web tools the provider ran
+ * itself need no answer.
  */
 export function isChatTurnUnfinished(messages: readonly ChatMessageView[]): boolean {
 	const last = messages.at(-1);
-	return last !== undefined && (last.role === CHAT_ROLE.user || last.toolNames.length > 0);
+	return (
+		last !== undefined &&
+		(last.role === CHAT_ROLE.user || last.tools.some((tool) => !isChatWebToolName(tool.name)))
+	);
 }
 
 /** `unavailable` covers proposals already decided and proposals whose state failed to load. */
@@ -208,9 +242,41 @@ export function withStreamEvent(turn: LiveChatTurn, event: ChatStreamEvent): Liv
 				...turn,
 				parts: withPart(turn.parts, {
 					type: CHAT_PART.tools,
-					tools: [{ kind: chatToolKind(event.name), query: event.query }],
+					tools: [
+						chatToolLine({
+							id: event.id ?? null,
+							name: event.name,
+							query: event.query,
+							status:
+								event.id === undefined
+									? CHAT_TOOL_STATUS.ok
+									: CHAT_TOOL_STATUS.running,
+							error: null,
+							durationMs: null,
+							summary: null,
+						}),
+					],
 				}),
 			};
+		case CHAT_STREAM_EVENT.toolResult: {
+			const outcome = chatToolOutcome(event);
+			return {
+				...turn,
+				parts: turn.parts.map((part) =>
+					part.type === CHAT_PART.tools
+						? {
+								...part,
+								tools: part.tools.map((line) => ({
+									...line,
+									calls: line.calls.map((call) =>
+										call.id === event.id ? { ...call, ...outcome } : call,
+									),
+								})),
+							}
+						: part,
+				),
+			};
+		}
 		case CHAT_STREAM_EVENT.proposal:
 			return {
 				...turn,

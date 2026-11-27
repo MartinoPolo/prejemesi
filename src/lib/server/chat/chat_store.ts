@@ -1,5 +1,5 @@
 import { error } from '@sveltejs/kit';
-import { and, asc, count, desc, eq, gt, gte, isNull, ne } from 'drizzle-orm';
+import { and, asc, count, desc, eq, gt, gte, isNull, ne, sql } from 'drizzle-orm';
 import { getDb, type DatabaseTransaction } from '$lib/server/db/index.js';
 import { chatMessage, chatSession } from '$lib/server/db/chat.schema.js';
 import { user } from '$lib/server/db/auth.schema.js';
@@ -12,6 +12,7 @@ import {
 	type ChatSessionSummary,
 } from '$lib/modules/chat/types.js';
 import { CHAT_BLOCK, type ChatContentBlock } from './chat_model.js';
+import { appToolView, webToolView } from './chat_tool_outcome.js';
 import { CHAT_RETENTION_MS } from './limits.js';
 
 /** A chat's title: the start of its first message, on one line. */
@@ -139,12 +140,25 @@ export async function readChatMessages(sessionId: string): Promise<StoredChatMes
 		.orderBy(asc(chatMessage.sequence));
 }
 
-/** The latest messages, oldest first, starting with the user's so the model sees whole turns. */
+/** A message a model reads: any block besides the records of web tools the provider ran. */
+const readByModel = sql`exists (select 1 from jsonb_array_elements(${chatMessage.content}) as block where block->>'type' <> ${CHAT_BLOCK.webTool})`;
+
+/**
+ * The latest `limit` messages a model reads with the web tool records between them, oldest
+ * first, starting with the user's so the model sees whole turns.
+ */
 export async function readRecentChatMessages(
 	sessionId: string,
 	limit: number,
 ): Promise<StoredChatMessage[]> {
-	const newestFirst = await getDb()
+	const oldestInWindow = getDb()
+		.select({ sequence: chatMessage.sequence })
+		.from(chatMessage)
+		.where(and(eq(chatMessage.sessionId, sessionId), readByModel))
+		.orderBy(desc(chatMessage.sequence))
+		.limit(1)
+		.offset(limit - 1);
+	const oldestFirst = await getDb()
 		.select({
 			id: chatMessage.id,
 			role: chatMessage.role,
@@ -153,10 +167,13 @@ export async function readRecentChatMessages(
 			createdAt: chatMessage.createdAt,
 		})
 		.from(chatMessage)
-		.where(eq(chatMessage.sessionId, sessionId))
-		.orderBy(desc(chatMessage.sequence))
-		.limit(limit);
-	const oldestFirst = newestFirst.reverse();
+		.where(
+			and(
+				eq(chatMessage.sessionId, sessionId),
+				gte(chatMessage.sequence, sql`coalesce((${oldestInWindow}), 0)`),
+			),
+		)
+		.orderBy(asc(chatMessage.sequence));
 	const firstUserIndex = oldestFirst.findIndex((message) => message.role === CHAT_ROLE.user);
 	return firstUserIndex === -1 ? [] : oldestFirst.slice(firstUserIndex);
 }
@@ -225,17 +242,31 @@ export async function countUserMessagesSince(since: Date, userId: string | null)
 	return row?.total ?? 0;
 }
 
-/** What the client shows of a message: text and tool names, never tool inputs or results. */
-export function chatMessageView(message: StoredChatMessage): ChatMessageView {
+/**
+ * What the client shows of a message: its text and each tool call with its outcome, never raw
+ * tool inputs or results unless `includeDebug` (chat runner users only) asks for them.
+ */
+export function chatMessageView(
+	message: StoredChatMessage,
+	{ includeDebug }: { includeDebug: boolean },
+): ChatMessageView {
+	const results = new Map(
+		message.content.flatMap((block) =>
+			block.type === CHAT_BLOCK.toolResult ? [[block.toolCallId, block] as const] : [],
+		),
+	);
 	return {
 		id: message.id,
 		role: message.role,
 		text: message.content
 			.flatMap((block) => (block.type === CHAT_BLOCK.text ? [block.text] : []))
 			.join(''),
-		toolNames: message.content.flatMap((block) =>
-			block.type === CHAT_BLOCK.toolCall ? [block.name] : [],
-		),
+		tools: message.content.flatMap((block) => {
+			if (block.type === CHAT_BLOCK.toolCall) {
+				return [appToolView(block, results.get(block.id), includeDebug)];
+			}
+			return block.type === CHAT_BLOCK.webTool ? [webToolView(block, includeDebug)] : [];
+		}),
 		proposalId: message.proposalId,
 		createdAt: message.createdAt,
 	};

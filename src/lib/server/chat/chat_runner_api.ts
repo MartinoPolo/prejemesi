@@ -2,7 +2,15 @@ import { json } from '@sveltejs/kit';
 import * as v from 'valibot';
 import { reportOperationalFailure } from '$lib/observability/operational_failures.js';
 import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
-import { CHAT_STREAM_EVENT, CHAT_WEB_TOOL, type ChatStreamEvent } from '$lib/modules/chat/types.js';
+import {
+	CHAT_STREAM_EVENT,
+	CHAT_TOOL_STATUS,
+	CHAT_WEB_TOOL,
+	ChatToolErrorSchema,
+	ChatToolSummarySchema,
+	chatToolOutcome,
+	type ChatStreamEvent,
+} from '$lib/modules/chat/types.js';
 import { isDatabaseConnectionClosed } from '$lib/server/db/connection_errors.js';
 import { generateId } from '$lib/server/db/id.js';
 import { sha256Hex } from '$lib/server/crypto/sha256.js';
@@ -22,7 +30,8 @@ import { scheduleAgentAccessPurge } from '$lib/server/agent_access/agent_access_
 import { chatCaller } from './chat_agent.js';
 import { browsePageConfig, chatRunnerSecret } from './chat_config.js';
 import { chatFailure } from './chat_failure.js';
-import { CHAT_BLOCK } from './chat_model.js';
+import { CHAT_BLOCK, type ChatWebToolRecord } from './chat_model.js';
+import { appToolOutcome, toolResultEvent } from './chat_tool_outcome.js';
 import {
 	CHAT_RUNNER_FINAL_STATUSES,
 	CHAT_RUNNER_JOB_STATUS,
@@ -59,6 +68,49 @@ const NO_STORE = { 'cache-control': 'no-store' };
 /** The largest report number the job's integer column holds. */
 const REPORT_SEQUENCE_MAX = 2 ** 31 - 1;
 
+const RunnerToolIdSchema = v.pipe(v.string(), v.minLength(1), v.maxLength(200));
+const RunnerQuerySchema = v.nullable(
+	v.pipe(v.string(), v.maxLength(CHAT_RUNNER_LIMITS.queryMaxLength)),
+);
+const RunnerDebugTextSchema = v.pipe(
+	v.string(),
+	v.maxLength(CHAT_RUNNER_LIMITS.debugTextMaxLength),
+);
+const RUNNER_TOOL_ERROR_CODE_MAX_LENGTH = 100;
+const [PageSummarySchema, SearchResultsSummarySchema] = ChatToolSummarySchema.options;
+
+/** A web tool's outcome, with its name and query so the app can keep it in the chat. */
+const RunnerToolResultSchema = v.strictObject({
+	type: v.literal(CHAT_STREAM_EVENT.toolResult),
+	id: RunnerToolIdSchema,
+	name: v.picklist(RUNNER_WEB_TOOL_NAMES),
+	query: RunnerQuerySchema,
+	status: v.picklist([CHAT_TOOL_STATUS.ok, CHAT_TOOL_STATUS.error]),
+	error: v.nullable(
+		v.pipe(
+			v.strictObject(ChatToolErrorSchema.entries),
+			v.check(
+				({ code, message }) =>
+					(code?.length ?? 0) <= RUNNER_TOOL_ERROR_CODE_MAX_LENGTH &&
+					(message?.length ?? 0) <= CHAT_RUNNER_LIMITS.toolErrorMaxLength,
+			),
+		),
+	),
+	durationMs: v.nullable(v.pipe(v.number(), v.safeInteger(), v.minValue(0))),
+	// The runner reports only web tools, which never propose changes.
+	summary: v.nullable(
+		v.variant('kind', [
+			v.strictObject(PageSummarySchema.entries),
+			v.strictObject(SearchResultsSummarySchema.entries),
+		]),
+	),
+	debug: v.optional(
+		v.strictObject({ input: RunnerDebugTextSchema, result: v.nullable(RunnerDebugTextSchema) }),
+	),
+});
+
+type RunnerToolResult = v.InferOutput<typeof RunnerToolResultSchema>;
+
 const RunnerReportSchema = v.strictObject({
 	sequence: v.pipe(v.number(), v.safeInteger(), v.minValue(1), v.maxValue(REPORT_SEQUENCE_MAX)),
 	events: v.optional(
@@ -75,11 +127,11 @@ const RunnerReportSchema = v.strictObject({
 					}),
 					v.strictObject({
 						type: v.literal(CHAT_STREAM_EVENT.tool),
+						id: v.optional(RunnerToolIdSchema),
 						name: v.picklist(RUNNER_WEB_TOOL_NAMES),
-						query: v.nullable(
-							v.pipe(v.string(), v.maxLength(CHAT_RUNNER_LIMITS.queryMaxLength)),
-						),
+						query: RunnerQuerySchema,
 					}),
+					RunnerToolResultSchema,
 				]),
 			),
 			v.maxLength(CHAT_RUNNER_LIMITS.eventsPerReport),
@@ -170,6 +222,8 @@ export async function handleChatRunnerClaim(
 					effort: job.effort,
 					systemPrompt: job.systemPrompt,
 					prompt: job.prompt,
+					// Tells the runner this app accepts tool ids and outcomes in its reports.
+					reportsToolOutcomes: true,
 					mcpUrl: new URL(
 						`/chat-runner/jobs/${encodeURIComponent(job.id)}/mcp`,
 						event.url.origin,
@@ -184,6 +238,31 @@ export async function handleChatRunnerClaim(
 		await waitUnlessAborted(limits.claimPollIntervalMs, hungUp);
 	}
 	return new Response(null, { status: 204 });
+}
+
+type RunnerReportEvent = v.InferOutput<typeof RunnerReportSchema>['events'][number];
+
+/** A reported web tool outcome kept in the chat, so its tool line survives a reload. */
+function runnerWebToolRecord(event: RunnerToolResult): ChatWebToolRecord {
+	return {
+		type: CHAT_BLOCK.webTool,
+		id: event.id,
+		name: event.name,
+		query: event.query,
+		isError: event.status === CHAT_TOOL_STATUS.error,
+		error: event.error,
+		summary: event.summary,
+		durationMs: event.durationMs,
+		debug: event.debug ?? null,
+	};
+}
+
+/** What the browser gets of a reported event: a tool outcome without the name its line has. */
+function runnerStreamEvent(event: RunnerReportEvent): ChatStreamEvent {
+	if (event.type !== CHAT_STREAM_EVENT.toolResult) {
+		return event;
+	}
+	return { type: event.type, id: event.id, ...chatToolOutcome(event) };
 }
 
 /** The job the request's token was issued for, or the response refusing the request. */
@@ -220,7 +299,14 @@ export async function handleChatRunnerEvents(event: ChatRunnerEvent): Promise<Re
 	}
 	const running = await applyChatRunnerReport(job, {
 		sequence: report.sequence,
-		events: report.events,
+		events: report.events.map(runnerStreamEvent),
+		webTools: new Map(
+			report.events.flatMap((reported) =>
+				reported.type === CHAT_STREAM_EVENT.toolResult
+					? [[reported.id, runnerWebToolRecord(reported)] as const]
+					: [],
+			),
+		),
 		finalStatus: report.status ?? null,
 	});
 	return json({ cancelled: !running }, { headers: NO_STORE });
@@ -248,7 +334,7 @@ async function chatRunnerToolset(
 				appendChatRunnerJobEvents(job.id, events);
 			const call = { id: `runner_${generateId()}`, name, input: toolArguments };
 			await appendEvents([
-				{ type: CHAT_STREAM_EVENT.tool, name, query: chatToolQuery(call) },
+				{ type: CHAT_STREAM_EVENT.tool, id: call.id, name, query: chatToolQuery(call) },
 			]);
 			const round = await runChatToolCalls(caller, tools, chat.session.wishlistId, [call], {
 				imageBucket,
@@ -262,9 +348,18 @@ async function chatRunnerToolset(
 				[{ type: CHAT_BLOCK.toolCall, ...call }, ...round.results],
 				round.proposal?.id ?? null,
 			);
-			if (round.proposal !== null) {
+			const [result] = round.results;
+			// Only chat runner users reach this endpoint, so the outcome carries its debug view.
+			const outcomes =
+				result === undefined
+					? []
+					: [toolResultEvent(call.id, appToolOutcome(call, result, true))];
+			if (round.proposal === null) {
+				await appendEvents(outcomes);
+			} else {
 				scheduleAgentAccessPurge();
 				await appendEvents([
+					...outcomes,
 					{
 						type: CHAT_STREAM_EVENT.proposal,
 						proposalId: round.proposal.id,
@@ -272,8 +367,7 @@ async function chatRunnerToolset(
 					},
 				]);
 			}
-			const [result] = round.results;
-			return result?.type === CHAT_BLOCK.toolResult
+			return result !== undefined
 				? { content: [{ type: 'text', text: result.content }], isError: result.isError }
 				: {
 						content: [{ type: 'text', text: 'The tool returned no result.' }],

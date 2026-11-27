@@ -5,7 +5,7 @@ import {
 	type ChangeProposalState,
 	type ChangeRowStatus,
 } from '$lib/modules/change_proposals/types.js';
-import { CHAT_BLOCK, type ChatContentBlock } from './chat_model.js';
+import { CHAT_BLOCK, type ChatContentBlock, type ChatWebToolRecord } from './chat_model.js';
 import { chatSystemPrompt, type ChatContext, type ChatPromptTools } from './chat_prompt.js';
 import type { StoredChatMessage } from './chat_store.js';
 
@@ -61,7 +61,18 @@ function renderBlock(block: ChatContentBlock): string {
 			return `[Tool call ${block.name}] ${truncated(JSON.stringify(block.input))}`;
 		case CHAT_BLOCK.toolResult:
 			return `[Tool ${block.isError ? 'error' : 'result'}] ${truncated(block.content)}`;
+		case CHAT_BLOCK.webTool:
+			return renderWebTool(block);
 	}
+}
+
+function renderWebTool(record: ChatWebToolRecord): string {
+	const call = `[Tool call ${record.name}] ${record.query ?? ''}`.trimEnd();
+	if (!record.isError) {
+		return call;
+	}
+	const code = record.error?.code;
+	return code == null ? `${call} (error)` : `${call} (error ${code})`;
 }
 
 /** The proposal's state; once applied, each row's outcome with the result of the applied ones. */

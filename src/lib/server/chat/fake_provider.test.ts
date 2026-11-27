@@ -176,6 +176,86 @@ describe('the fake chat provider', () => {
 		});
 	});
 
+	it('tries the tools on request: a read that fails, one that succeeds, then a reply', async () => {
+		const request = 'Vyzkoušejte nástroje';
+		const failingRead = toolCallOf(await respond([userText(request)]));
+		expect(failingRead).toMatchObject({
+			name: 'readMyGiftReservations',
+			input: { giftId: expect.any(String) },
+		});
+		if (failingRead?.type !== CHAT_MODEL_EVENT.toolCall) {
+			throw new Error('The fake did not call a tool');
+		}
+
+		const afterFailure: ChatModelMessage[] = [
+			userText(request),
+			{
+				role: CHAT_ROLE.assistant,
+				content: [
+					{
+						type: CHAT_BLOCK.toolCall,
+						id: failingRead.id,
+						name: failingRead.name,
+						input: failingRead.input,
+					},
+				],
+			},
+			{
+				role: CHAT_ROLE.user,
+				content: [
+					{
+						type: CHAT_BLOCK.toolResult,
+						toolCallId: failingRead.id,
+						content: JSON.stringify({
+							error: { code: 'GIFT_NOT_FOUND', message: 'Dárek nebyl nalezen' },
+						}),
+						isError: true,
+					},
+				],
+			},
+		];
+		const succeedingRead = toolCallOf(await respond(afterFailure));
+		expect(succeedingRead).toMatchObject({
+			name: 'readWishlistGifts',
+			input: { wishlistShortId: 'short-1' },
+		});
+		if (succeedingRead?.type !== CHAT_MODEL_EVENT.toolCall) {
+			throw new Error('The fake did not call a tool');
+		}
+
+		const reply = await respond([
+			...afterFailure,
+			{
+				role: CHAT_ROLE.assistant,
+				content: [
+					{
+						type: CHAT_BLOCK.toolCall,
+						id: succeedingRead.id,
+						name: succeedingRead.name,
+						input: succeedingRead.input,
+					},
+				],
+			},
+			{
+				role: CHAT_ROLE.user,
+				content: [
+					{
+						type: CHAT_BLOCK.toolResult,
+						toolCallId: succeedingRead.id,
+						content: GIFTS_RESULT,
+						isError: false,
+					},
+				],
+			},
+		]);
+		expect(toolCallOf(reply)).toBeUndefined();
+		expect(textOf(reply)).toBe('Nástroje jsem vyzkoušel: první čtení selhalo, druhé uspělo.');
+		expect(reply.at(-1)).toEqual({
+			type: CHAT_MODEL_EVENT.stop,
+			reason: CHAT_STOP_REASON.endTurn,
+		});
+	});
+
 	it('relays a change’s error message as the tool gave it', async () => {
 		const events = await respond([
 			userText('Přidejte kolo'),

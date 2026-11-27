@@ -83,6 +83,12 @@ function createAssistantContext() {
 		serde: jsonSerde(isBoolean),
 		defaultValue: false,
 	});
+	/** Ladění in Pokročilé: tool details also show raw input and result, for runner users. */
+	const toolDebug = new Persisted<boolean>({
+		key: 'prejemesi-assistant-tool-debug',
+		serde: jsonSerde(isBoolean),
+		defaultValue: false,
+	});
 	/** The model a chat runner turn asks Claude Code for. */
 	const runnerModel = new Persisted<ChatRunnerModel>({
 		key: 'prejemesi-assistant-model',
@@ -168,6 +174,7 @@ function createAssistantContext() {
 		hintDismissed,
 		runnerModel,
 		runnerEffort,
+		toolDebug,
 		show,
 		restore,
 		takeFocusRequest,

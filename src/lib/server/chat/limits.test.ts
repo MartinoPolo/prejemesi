@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { CHAT_TOOL_STATUS, CHAT_TOOL_SUMMARY } from '$lib/modules/chat/types.js';
 import { CHAT_RUNNER_LIMITS, chatDayStart } from './limits.js';
 
 // Imported by URL, so the type check leaves the plain-JavaScript runner script alone.
@@ -13,7 +14,24 @@ describe('the chat runner script', () => {
 			eventsPerReport: CHAT_RUNNER_LIMITS.eventsPerReport,
 			textEventMaxLength: CHAT_RUNNER_LIMITS.textEventMaxLength,
 			queryMaxLength: CHAT_RUNNER_LIMITS.queryMaxLength,
+			toolErrorMaxLength: CHAT_RUNNER_LIMITS.toolErrorMaxLength,
+			debugTextMaxLength: CHAT_RUNNER_LIMITS.debugTextMaxLength,
 			heartbeatTimeoutMs: CHAT_RUNNER_LIMITS.heartbeatTimeoutMs,
+		});
+	});
+
+	it('reports web tool outcomes with the statuses and summary kinds the app reads', async () => {
+		const runnerScript = (await import(/* @vite-ignore */ chatRunnerScriptUrl)) as {
+			RUNNER_TOOL_STATUS: unknown;
+			RUNNER_TOOL_SUMMARY: unknown;
+		};
+		expect(runnerScript.RUNNER_TOOL_STATUS).toEqual({
+			ok: CHAT_TOOL_STATUS.ok,
+			error: CHAT_TOOL_STATUS.error,
+		});
+		expect(runnerScript.RUNNER_TOOL_SUMMARY).toEqual({
+			page: CHAT_TOOL_SUMMARY.page,
+			searchResults: CHAT_TOOL_SUMMARY.searchResults,
 		});
 	});
 });

@@ -16,13 +16,15 @@ import { readChatContext, type ChatContext } from './chat_prompt.js';
  * A scripted assistant for tests, the demo and development without a model key. It answers a
  * few intents by keyword, through the same tools and proposals as the real model: a first
  * response reads the gifts when the intent needs them, the next one requests the change, and the
- * last one reports the result.
+ * last one reports the result. "Vyzkoušejte nástroje" shows how tool lines report outcomes: a read
+ * naming a gift that does not exist fails, a read of the chat's own wishlist succeeds.
  */
 const FAKE_CHAT_INTENT = {
 	add: 'add',
 	enrich: 'enrich',
 	remove: 'remove',
 	reorder: 'reorder',
+	tryTools: 'tryTools',
 	chat: 'chat',
 } as const;
 
@@ -33,6 +35,7 @@ const INTENT_KEYWORDS: readonly [FakeChatIntent, RegExp][] = [
 	[FAKE_CHAT_INTENT.enrich, /^(?:vylepšete|vylepši|vylepšit|enrich)(?:\s+|$)/iu],
 	[FAKE_CHAT_INTENT.remove, /^(?:smažte|smaž|delete)(?:\s+|$)/iu],
 	[FAKE_CHAT_INTENT.reorder, /^(?:seřaďte|seřaď|seřadit|reorder|sort)(?:\s+|$)/iu],
+	[FAKE_CHAT_INTENT.tryTools, /^(?:vyzkoušejte|vyzkoušej|try)\s+(?:nástroje|tools)$/iu],
 ];
 
 /** "Přidejte 3 dárky" asks for that many sample gifts rather than one named "3 dárky". */
@@ -41,6 +44,8 @@ const BY_PRICE = /cen|price/iu;
 
 export const FAKE_ENRICHMENT_TEXT = 'Hodnocení zákazníků: 4,6 z 5 (ukázka).';
 const READ_GIFTS_TOOL = 'readWishlistGifts';
+const READ_GIFT_RESERVATIONS_TOOL = 'readMyGiftReservations';
+const MISSING_GIFT_ID = 'missing-gift';
 
 const FAKE_REPLIES = {
 	cs: {
@@ -56,6 +61,9 @@ const FAKE_REPLIES = {
 		refused: (message: string) => `Tuto změnu nelze provést: ${message}`,
 		applied: 'Hotovo, změna je použitá.',
 		proposed: 'Změnu jsem navrhl, zkontrolujte ji prosím.',
+		tryingTools: 'Zkouším nástroje. ',
+		retryingTool: 'První pokus selhal, zkouším to znovu. ',
+		triedTools: 'Nástroje jsem vyzkoušel: první čtení selhalo, druhé uspělo.',
 		newGiftName: 'Nový dárek',
 		samples: [
 			{ name: 'Sklenice na červené víno, 4 ks', price: 790 },
@@ -76,6 +84,9 @@ const FAKE_REPLIES = {
 		refused: (message: string) => `This change is not possible: ${message}`,
 		applied: 'Done, the change is applied.',
 		proposed: 'I proposed the change, please review it.',
+		tryingTools: 'Trying the tools. ',
+		retryingTool: 'The first attempt failed, trying again. ',
+		triedTools: 'I tried the tools: the first read failed, the second succeeded.',
 		newGiftName: 'New gift',
 		samples: [
 			{ name: 'Red wine glasses, set of 4', price: 790 },
@@ -237,6 +248,26 @@ function* changeFromGifts(
 	}
 }
 
+/** The failing read first, then the chat's own wishlist, then the reply. */
+function* tryTools(
+	previousCall: ChatContentBlock | undefined,
+	context: ChatContext,
+	replies: FakeReplies,
+): Generator<ChatModelEvent> {
+	if (previousCall === undefined) {
+		yield* say(replies.tryingTools);
+		yield* callTool(READ_GIFT_RESERVATIONS_TOOL, { giftId: MISSING_GIFT_ID });
+	} else if (
+		previousCall.type === CHAT_BLOCK.toolCall &&
+		previousCall.name === READ_GIFT_RESERVATIONS_TOOL
+	) {
+		yield* say(replies.retryingTool);
+		yield* callTool(READ_GIFTS_TOOL, { wishlistShortId: context.wishlistShortId });
+	} else {
+		yield* finish(replies.triedTools);
+	}
+}
+
 function changeOutcome(content: string, replies: FakeReplies): string {
 	const parsed = v.safeParse(ChangeResultSchema, parseJson(content));
 	if (!parsed.success) {
@@ -258,6 +289,14 @@ function* respond(request: ChatModelRequest): Generator<ChatModelEvent> {
 		return;
 	}
 	const replies = context.locale === 'en' ? FAKE_REPLIES.en : FAKE_REPLIES.cs;
+	if (intent === FAKE_CHAT_INTENT.tryTools) {
+		yield* tryTools(
+			result === undefined ? undefined : callOf(messages, result),
+			context,
+			replies,
+		);
+		return;
+	}
 	if (result === undefined) {
 		if (intent === FAKE_CHAT_INTENT.chat) {
 			yield* finish(replies.introduction);

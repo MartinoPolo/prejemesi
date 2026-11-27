@@ -1,12 +1,19 @@
 import * as v from 'valibot';
 import { serverSentEventData } from '$lib/modules/chat/server_sent_events.js';
-import { CHAT_BROWSE_TOOL, CHAT_WEB_TOOL, type ChatWebToolName } from '$lib/modules/chat/types.js';
+import {
+	CHAT_BROWSE_TOOL,
+	CHAT_TOOL_SUMMARY,
+	CHAT_WEB_TOOL,
+	type ChatToolError,
+	type ChatToolSummary,
+	type ChatWebToolName,
+} from '$lib/modules/chat/types.js';
 import {
 	CHAT_BLOCK,
 	CHAT_MODEL_EVENT,
 	CHAT_STOP_REASON,
 	ChatProviderError,
-	type ChatContentBlock,
+	type ChatModelContentBlock,
 	type ChatModelEvent,
 	type ChatModelProvider,
 	type ChatModelRequest,
@@ -14,6 +21,7 @@ import {
 	type ChatStopReason,
 } from './chat_model.js';
 import { urlsInText } from './browse_page.js';
+import { debugInputText, truncatedDebugText } from './chat_tool_outcome.js';
 
 export const ANTHROPIC_MESSAGES_URL = 'https://api.anthropic.com/v1/messages';
 const ANTHROPIC_VERSION = '2023-06-01';
@@ -69,7 +77,7 @@ export interface AnthropicProviderOptions {
 	fetch?: typeof fetch;
 }
 
-function anthropicContent(block: ChatContentBlock): Record<string, unknown> {
+function anthropicContent(block: ChatModelContentBlock): Record<string, unknown> {
 	switch (block.type) {
 		case CHAT_BLOCK.text:
 			return { type: 'text', text: block.text };
@@ -149,6 +157,8 @@ const WebResultSchema = v.looseObject({ type: v.string(), url: v.optional(v.stri
 const FetchedTextDocumentSchema = v.looseObject({
 	source: v.looseObject({ type: v.literal('text'), data: v.string() }),
 });
+/** A fetch result that read a text page; an encoded PDF has no character count to report. */
+const FetchResultSchema = v.looseObject({ content: FetchedTextDocumentSchema });
 const WEB_RESULT_BLOCK_ITEM_TYPES: Readonly<Record<string, string>> = {
 	web_search_tool_result: 'web_search_result',
 	web_fetch_tool_result: 'web_fetch_result',
@@ -169,7 +179,7 @@ function parseStreamEvent(data: string): StreamEvent | null {
 /** A content block still streaming: a tool call's input arrives as JSON fragments. */
 type OpenToolBlock =
 	| { kind: 'tool'; id: string; name: string; inputJson: string }
-	| { kind: 'webTool'; name: ChatWebToolName; inputJson: string };
+	| { kind: 'webTool'; id: string; name: ChatWebToolName; inputJson: string };
 
 function parseToolInput(inputJson: string): unknown {
 	if (inputJson.trim() === '') {
@@ -235,7 +245,7 @@ function openedBlock(event: StreamEventOf<'content_block_start'>): OpenToolBlock
 		return { kind: 'tool', id: block.id ?? '', name, inputJson: '' };
 	}
 	if (block.type === 'server_tool_use' && isWebToolName(name)) {
-		return { kind: 'webTool', name, inputJson: '' };
+		return { kind: 'webTool', id: block.id ?? '', name, inputJson: '' };
 	}
 	return null;
 }
@@ -267,6 +277,50 @@ function webSourcesEvent(event: StreamEventOf<'content_block_start'>): ChatModel
 	return urls.length === 0 ? null : { type: CHAT_MODEL_EVENT.webSources, urls };
 }
 
+/** A failed web tool's result is one error object naming its code, such as `url_not_accessible`. */
+const WebToolErrorSchema = v.looseObject({
+	type: v.pipe(v.string(), v.endsWith('_error')),
+	error_code: v.string(),
+});
+
+function webResultSummary(
+	block: StreamEventOf<'content_block_start'>['content_block'],
+): ChatToolSummary | null {
+	if (block.type === 'web_search_tool_result') {
+		return Array.isArray(block.content)
+			? { kind: CHAT_TOOL_SUMMARY.searchResults, count: block.content.length }
+			: null;
+	}
+	const fetched = v.safeParse(FetchResultSchema, block.content);
+	return fetched.success
+		? {
+				kind: CHAT_TOOL_SUMMARY.page,
+				characters: fetched.output.content.source.data.length,
+				truncated: false,
+			}
+		: null;
+}
+
+/** How a web search or fetch went: its result block names the call it answers. */
+function webToolResultEvent(event: StreamEventOf<'content_block_start'>): ChatModelEvent | null {
+	const { content_block: block } = event;
+	const toolUseId = block['tool_use_id'];
+	if (WEB_RESULT_BLOCK_ITEM_TYPES[block.type] === undefined || typeof toolUseId !== 'string') {
+		return null;
+	}
+	const failure = v.safeParse(WebToolErrorSchema, block.content);
+	const error: ChatToolError | null = failure.success
+		? { code: failure.output.error_code, message: null }
+		: null;
+	return {
+		type: CHAT_MODEL_EVENT.webToolResult,
+		id: toolUseId,
+		error,
+		summary: error === null ? webResultSummary(block) : null,
+		debugResult: truncatedDebugText(JSON.stringify(block.content ?? null)),
+	};
+}
+
 /** A text delta becomes an event; a tool input fragment extends its open block. */
 function deltaEvent(
 	event: StreamEventOf<'content_block_delta'>,
@@ -294,8 +348,10 @@ function closedBlockEvent(open: OpenToolBlock | undefined): ChatModelEvent | nul
 		? { type: CHAT_MODEL_EVENT.toolCall, id: open.id, name: open.name, input }
 		: {
 				type: CHAT_MODEL_EVENT.webTool,
+				id: open.id,
 				name: open.name,
 				query: webToolQuery(open.name, input),
+				debugInput: debugInputText(input),
 			};
 }
 
@@ -312,21 +368,21 @@ async function* modelEvents(body: ReadableStream<Uint8Array>): AsyncGenerator<Ch
 	let stopReason: ChatStopReason | null = null;
 	for await (const data of serverSentEventData(body)) {
 		const event = parseStreamEvent(data);
-		let modelEvent: ChatModelEvent | null = null;
+		let blockEvents: (ChatModelEvent | null)[] = [];
 		switch (event?.type) {
 			case 'content_block_start': {
 				const opened = openedBlock(event);
 				if (opened !== null) {
 					openBlocks.set(event.index, opened);
 				}
-				modelEvent = webSourcesEvent(event);
+				blockEvents = [webSourcesEvent(event), webToolResultEvent(event)];
 				break;
 			}
 			case 'content_block_delta':
-				modelEvent = deltaEvent(event, openBlocks);
+				blockEvents = [deltaEvent(event, openBlocks)];
 				break;
 			case 'content_block_stop':
-				modelEvent = closedBlockEvent(openBlocks.get(event.index));
+				blockEvents = [closedBlockEvent(openBlocks.get(event.index))];
 				openBlocks.delete(event.index);
 				break;
 			case 'message_delta':
@@ -337,8 +393,10 @@ async function* modelEvents(body: ReadableStream<Uint8Array>): AsyncGenerator<Ch
 			default:
 				break;
 		}
-		if (modelEvent !== null) {
-			yield modelEvent;
+		for (const modelEvent of blockEvents) {
+			if (modelEvent !== null) {
+				yield modelEvent;
+			}
 		}
 	}
 	if (stopReason === null) {

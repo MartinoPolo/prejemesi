@@ -64,9 +64,12 @@ import { OPERATION_CHANNEL } from '$lib/server/operations/actor.js';
 import { CHANGE_PROPOSAL_STATE } from '$lib/modules/change_proposals/types.js';
 import {
 	CHAT_STREAM_EVENT,
+	CHAT_TOOL_STATUS,
+	CHAT_TOOL_SUMMARY,
 	CHAT_TURN_ERROR,
 	CHAT_TURN_KIND,
 	type ChatRelayEvent,
+	type ChatSessionView,
 	type ChatTurnRequest,
 } from '$lib/modules/chat/types.js';
 import { handleChatTurnContinuation, handleChatTurnRequest } from './chat_endpoint.js';
@@ -84,6 +87,7 @@ import {
 import { activeChatTurnUrl } from './chat_runner_turn.js';
 import { CHAT_BLOCK, CHAT_ROLE } from './chat_model.js';
 import { readChatContext } from './chat_prompt.js';
+import { readChatSessionView } from './chat_session_view.js';
 import { createChatSession, setChatFastForward } from './chat_store.js';
 import { createFakeProvider } from './fake_provider.js';
 import { CHAT_RUNNER_LIMITS, chatDayStart, type ChatRunnerLimits } from './limits.js';
@@ -181,6 +185,7 @@ interface ClaimedJob {
 	effort: string;
 	systemPrompt: string;
 	prompt: string;
+	reportsToolOutcomes: boolean;
 	mcpUrl: string;
 }
 
@@ -441,6 +446,7 @@ describe.skipIf(!DB_READY)('chat runner turns', () => {
 			effort: 'medium',
 			systemPrompt: queued?.systemPrompt,
 			prompt: queued?.prompt,
+			reportsToolOutcomes: true,
 			mcpUrl: `${ORIGIN}/chat-runner/jobs/${queued?.id ?? ''}/mcp`,
 		});
 		expect(claimed.token).toEqual(expect.any(String));
@@ -587,6 +593,98 @@ describe.skipIf(!DB_READY)('chat runner turns', () => {
 		expect((await reportEvents(job.id, job.token, { events: [] })).status).toBe(401);
 	});
 
+	it('relays a web tool outcome and keeps it in the chat for a reload', async () => {
+		const { session, job } = await startClaimedTurn('Najděte myčku');
+		const outcome = {
+			type: CHAT_STREAM_EVENT.toolResult,
+			id: 'toolu_1',
+			status: CHAT_TOOL_STATUS.error,
+			error: { code: null, message: 'Request failed with status code 403' },
+			durationMs: 1200,
+			summary: null,
+			debug: { input: '{"url":"https://mycky.heureka.cz/"}', result: 'Request failed' },
+		};
+
+		const reported = await reportEvents(job.id, job.token, {
+			events: [
+				{
+					type: CHAT_STREAM_EVENT.tool,
+					id: 'toolu_1',
+					name: 'web_fetch',
+					query: 'https://mycky.heureka.cz/',
+				},
+				{ ...outcome, name: 'web_fetch', query: 'https://mycky.heureka.cz/' },
+			],
+		});
+		await reportEvents(job.id, job.token, { status: 'done' });
+
+		expect(reported.status).toBe(200);
+		expect(
+			await streamedEvents(
+				await continueTurn(`/chat/${session.id}/turns/${job.id}?cursor=0`),
+			),
+		).toEqual([
+			{
+				type: CHAT_STREAM_EVENT.tool,
+				id: 'toolu_1',
+				name: 'web_fetch',
+				query: 'https://mycky.heureka.cz/',
+			},
+			outcome,
+			{ type: CHAT_STREAM_EVENT.done },
+		]);
+		const answer = (await storedMessages(session.id)).find(
+			(message) => message.role === CHAT_ROLE.assistant,
+		);
+		expect(answer?.content).toEqual([
+			{
+				type: CHAT_BLOCK.webTool,
+				id: 'toolu_1',
+				name: 'web_fetch',
+				query: 'https://mycky.heureka.cz/',
+				isError: true,
+				error: { code: null, message: 'Request failed with status code 403' },
+				summary: null,
+				durationMs: 1200,
+				debug: outcome.debug,
+			},
+		]);
+	});
+
+	it('gives the raw tool input and result on reload only to a chat runner user', async () => {
+		const { session, job } = await startClaimedTurn('Najděte myčku');
+		const debug = {
+			input: JSON.stringify({ url: 'https://mycky.heureka.cz/' }, null, 2),
+			result: 'Page text',
+		};
+		await reportEvents(job.id, job.token, {
+			events: [
+				{
+					type: CHAT_STREAM_EVENT.toolResult,
+					id: 'toolu_1',
+					name: 'web_fetch',
+					query: 'https://mycky.heureka.cz/',
+					status: CHAT_TOOL_STATUS.ok,
+					error: null,
+					durationMs: 1200,
+					summary: null,
+					debug,
+				},
+			],
+			status: 'done',
+		});
+
+		const ownerView = await readChatSessionView(MANAGER, session.id);
+		chatSwitches.runner = false;
+		const userView = await readChatSessionView(MANAGER, session.id);
+
+		const toolsOf = (view: ChatSessionView) =>
+			view.messages.flatMap((message) => message.tools);
+		expect(toolsOf(ownerView)).toEqual([expect.objectContaining({ id: 'toolu_1', debug })]);
+		expect(toolsOf(userView)).toEqual([expect.objectContaining({ id: 'toolu_1' })]);
+		expect(toolsOf(userView)[0]).not.toHaveProperty('debug');
+	});
+
 	it('ignores a retried report the app already applied', async () => {
 		const { session, job } = await startClaimedTurn();
 		const report = {
@@ -656,6 +754,31 @@ describe.skipIf(!DB_READY)('chat runner turns', () => {
 			params: { jobId: job.id },
 		});
 		expect(unnumbered.status).toBe(400);
+		expect((await readJob(job.id)).events).toEqual([]);
+	});
+
+	it('refuses a web tool outcome that is still running, too large or carries unknown fields', async () => {
+		const { job } = await startClaimedTurn();
+		const outcome = {
+			type: CHAT_STREAM_EVENT.toolResult,
+			id: 'toolu_1',
+			name: 'web_fetch',
+			query: 'https://mycky.heureka.cz/',
+			status: CHAT_TOOL_STATUS.ok,
+			error: null,
+			durationMs: 1200,
+			summary: null,
+			debug: { input: '{}', result: 'page' },
+		};
+		const oversizedDebug = 'x'.repeat(CHAT_RUNNER_LIMITS.debugTextMaxLength + 1);
+
+		for (const event of [
+			{ ...outcome, status: CHAT_TOOL_STATUS.running },
+			{ ...outcome, debug: { input: '{}', result: oversizedDebug } },
+			{ ...outcome, page: 'The whole page' },
+		]) {
+			expect((await reportEvents(job.id, job.token, { events: [event] })).status).toBe(400);
+		}
 		expect((await readJob(job.id)).events).toEqual([]);
 	});
 
@@ -862,8 +985,21 @@ describe.skipIf(!DB_READY)('chat runner turns', () => {
 			CHAT_BLOCK.toolCall,
 			CHAT_BLOCK.toolResult,
 		]);
+		const toolCallId =
+			assistantMessages[0]?.content[0]?.type === CHAT_BLOCK.toolCall
+				? assistantMessages[0].content[0].id
+				: '';
 		expect((await readJob(job.id)).events).toEqual([
-			{ type: CHAT_STREAM_EVENT.tool, name: 'createGift', query: null },
+			{ type: CHAT_STREAM_EVENT.tool, id: toolCallId, name: 'createGift', query: null },
+			{
+				type: CHAT_STREAM_EVENT.toolResult,
+				id: toolCallId,
+				status: CHAT_TOOL_STATUS.ok,
+				error: null,
+				durationMs: expect.any(Number),
+				summary: { kind: CHAT_TOOL_SUMMARY.proposal, applied: false },
+				debug: { input: expect.any(String), result: expect.any(String) },
+			},
 			{ type: CHAT_STREAM_EVENT.proposal, proposalId: toolOutput.proposalId, applied: false },
 		]);
 	});
@@ -951,6 +1087,44 @@ describe.skipIf(!DB_READY)('chat runner turns', () => {
 		expect(JSON.parse(called.result.content[0]?.text ?? '{}')).toMatchObject({
 			error: { code: SERVER_ERROR.GIFT_NOT_FOUND },
 		});
+	});
+
+	it('reports a failing MCP tool as an error with its code, message and debug view', async () => {
+		const { session, job } = await startClaimedTurn();
+
+		await callMcp(job.id, job.token, 'tools/call', {
+			name: 'updateGift',
+			arguments: { id: 'gift-of-a-rejected-proposal', name: 'Sagrada' },
+		});
+
+		const events = (await readJob(job.id)).events;
+		const toolCallId = events[0]?.type === CHAT_STREAM_EVENT.tool ? events[0].id : undefined;
+		expect(events).toEqual([
+			{ type: CHAT_STREAM_EVENT.tool, id: toolCallId, name: 'updateGift', query: null },
+			{
+				type: CHAT_STREAM_EVENT.toolResult,
+				id: toolCallId,
+				status: CHAT_TOOL_STATUS.error,
+				error: { code: SERVER_ERROR.GIFT_NOT_FOUND, message: expect.any(String) },
+				durationMs: expect.any(Number),
+				summary: null,
+				debug: {
+					input: expect.stringContaining('gift-of-a-rejected-proposal'),
+					result: expect.stringContaining(SERVER_ERROR.GIFT_NOT_FOUND),
+				},
+			},
+		]);
+		const [answer] = (await storedMessages(session.id)).filter(
+			(message) => message.role === CHAT_ROLE.assistant,
+		);
+		expect(answer?.proposalId).toBeNull();
+		expect(answer?.content).toContainEqual(
+			expect.objectContaining({
+				type: CHAT_BLOCK.toolResult,
+				toolCallId,
+				isError: true,
+			}),
+		);
 	});
 
 	it('refuses MCP calls for a job that no longer runs', async () => {

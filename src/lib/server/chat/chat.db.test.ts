@@ -41,6 +41,8 @@ import * as m from '$lib/paraglide/messages.js';
 import {
 	CHAT_AVAILABILITY,
 	CHAT_STREAM_EVENT,
+	CHAT_TOOL_STATUS,
+	CHAT_TOOL_SUMMARY,
 	CHAT_TURN_ERROR,
 	CHAT_TURN_KIND,
 	type ChatStreamEvent,
@@ -57,12 +59,16 @@ import {
 	ChatProviderError,
 	type ChatModelEvent,
 	type ChatModelProvider,
+	type ChatModelRequest,
+	type ChatWebToolRecord,
 } from './chat_model.js';
 import {
 	countUserMessagesSince,
 	createChatSession,
 	requireOwnChatSession,
 	setChatFastForward,
+	storeAssistantMessage,
+	storeUserMessage,
 } from './chat_store.js';
 import { createFakeProvider } from './fake_provider.js';
 import { CHAT_LIMITS, CHAT_RETENTION_MS, chatDayStart } from './limits.js';
@@ -72,11 +78,15 @@ const RECIPIENT = { id: RECIPIENT_ID, name: 'Recipient', email: 'recipient@examp
 
 type ChatUser = typeof MANAGER;
 
-/** A provider answering each model call with the next scripted response. */
-function scriptedProvider(responses: ChatModelEvent[][]): ChatModelProvider {
+/** A provider answering each model call with the next scripted response, keeping its requests. */
+function scriptedProvider(
+	responses: ChatModelEvent[][],
+	requests: ChatModelRequest[] = [],
+): ChatModelProvider {
 	let call = 0;
 	return {
-		async *stream() {
+		async *stream(request) {
+			requests.push(request);
 			const response = responses[call];
 			call += 1;
 			if (response === undefined) {
@@ -197,11 +207,25 @@ describe.skipIf(!DB_READY)('chat turns', () => {
 		const events = await sendMessage(MANAGER, session.id, 'Přidejte Lego Technic');
 
 		expect(events.map((event) => event.type)).toContain(CHAT_STREAM_EVENT.text);
-		expect(events).toContainEqual({
-			type: CHAT_STREAM_EVENT.tool,
+		const toolStart = events.find(
+			(event) => event.type === CHAT_STREAM_EVENT.tool && event.name === 'createGift',
+		);
+		expect(toolStart).toMatchObject({
 			name: 'createGift',
 			query: null,
+			id: expect.any(String),
 		});
+		expect(events).toContainEqual(
+			expect.objectContaining({
+				type: CHAT_STREAM_EVENT.toolResult,
+				id: toolStart?.type === CHAT_STREAM_EVENT.tool ? toolStart.id : undefined,
+				status: CHAT_TOOL_STATUS.ok,
+				error: null,
+				summary: { kind: CHAT_TOOL_SUMMARY.proposal, applied: false },
+			}),
+		);
+		// The API chat's users are not runner users, so its outcomes carry no debug view.
+		expect(events.some((event) => 'debug' in event)).toBe(false);
 		expect(events.at(-1)).toEqual({ type: CHAT_STREAM_EVENT.done });
 		const { proposalId, applied } = proposalEvent(events);
 		expect(applied).toBe(false);
@@ -272,6 +296,132 @@ describe.skipIf(!DB_READY)('chat turns', () => {
 			.where(eq(gift.wishlistId, wishlist.id))
 			.orderBy(asc(gift.sortOrder));
 		expect(order.map((row) => row.id)).toEqual([second, first]);
+	});
+
+	it('shows a failed web search as an error and keeps its record out of the model history', async () => {
+		const { session } = await newChat();
+		const requests: ChatModelRequest[] = [];
+		const failedFetch = (id: string): ChatModelEvent[] => [
+			{
+				type: CHAT_MODEL_EVENT.webTool,
+				id,
+				name: 'web_fetch',
+				query: 'https://mycky.heureka.cz/',
+				debugInput: '{ "url": "https://mycky.heureka.cz/" }',
+			},
+			{
+				type: CHAT_MODEL_EVENT.webToolResult,
+				id,
+				error: { code: 'url_not_accessible', message: null },
+				summary: null,
+				debugResult: '{"type":"web_fetch_tool_error"}',
+			},
+		];
+		const provider = scriptedProvider(
+			[
+				[
+					...failedFetch('srvtoolu_1'),
+					{ type: CHAT_MODEL_EVENT.textDelta, text: 'Stránka nejde načíst.' },
+					{ type: CHAT_MODEL_EVENT.stop, reason: CHAT_STOP_REASON.endTurn },
+				],
+				[
+					...failedFetch('srvtoolu_2'),
+					{ type: CHAT_MODEL_EVENT.stop, reason: CHAT_STOP_REASON.endTurn },
+				],
+				[
+					{ type: CHAT_MODEL_EVENT.textDelta, text: 'Dobře.' },
+					{ type: CHAT_MODEL_EVENT.stop, reason: CHAT_STOP_REASON.endTurn },
+				],
+			],
+			requests,
+		);
+
+		const events = await sendMessage(MANAGER, session.id, 'Kolik stojí myčka?', provider);
+
+		expect(events.slice(0, 2)).toEqual([
+			{
+				type: CHAT_STREAM_EVENT.tool,
+				id: 'srvtoolu_1',
+				name: 'web_fetch',
+				query: 'https://mycky.heureka.cz/',
+			},
+			{
+				type: CHAT_STREAM_EVENT.toolResult,
+				id: 'srvtoolu_1',
+				status: CHAT_TOOL_STATUS.error,
+				error: { code: 'url_not_accessible', message: null },
+				durationMs: expect.any(Number),
+				summary: null,
+			},
+		]);
+		const [, answer] = await storedMessages(session.id);
+		expect(answer?.content).toContainEqual(
+			expect.objectContaining({
+				type: CHAT_BLOCK.webTool,
+				id: 'srvtoolu_1',
+				isError: true,
+				error: { code: 'url_not_accessible', message: null },
+			} satisfies Partial<ChatWebToolRecord>),
+		);
+
+		await sendMessage(MANAGER, session.id, 'Zkuste to znovu', provider);
+		await sendMessage(MANAGER, session.id, 'Nevadí', provider);
+
+		const followUp = requests.at(-1);
+		expect(JSON.stringify(followUp?.messages)).not.toContain(CHAT_BLOCK.webTool);
+		expect(followUp?.messages).toEqual([
+			{
+				role: CHAT_ROLE.user,
+				content: [{ type: CHAT_BLOCK.text, text: 'Kolik stojí myčka?' }],
+			},
+			{
+				role: CHAT_ROLE.assistant,
+				content: [{ type: CHAT_BLOCK.text, text: 'Stránka nejde načíst.' }],
+			},
+			{ role: CHAT_ROLE.user, content: [{ type: CHAT_BLOCK.text, text: 'Zkuste to znovu' }] },
+			{ role: CHAT_ROLE.user, content: [{ type: CHAT_BLOCK.text, text: 'Nevadí' }] },
+		]);
+	});
+
+	it('counts only the messages a model reads toward its context window', async () => {
+		const { session } = await newChat();
+		await storeUserMessage(session, 'První zpráva');
+		for (let index = 0; index < CHAT_LIMITS.contextMessages; index += 1) {
+			await storeAssistantMessage(
+				session.id,
+				[
+					{
+						type: CHAT_BLOCK.webTool,
+						id: `srvtoolu_${index}`,
+						name: 'web_search',
+						query: 'myčka',
+						isError: false,
+						error: null,
+						summary: null,
+						durationMs: 100,
+						debug: null,
+					},
+				],
+				null,
+			);
+		}
+		const requests: ChatModelRequest[] = [];
+		const provider = scriptedProvider(
+			[
+				[
+					{ type: CHAT_MODEL_EVENT.textDelta, text: 'Dobře.' },
+					{ type: CHAT_MODEL_EVENT.stop, reason: CHAT_STOP_REASON.endTurn },
+				],
+			],
+			requests,
+		);
+
+		await sendMessage(MANAGER, session.id, 'Druhá zpráva', provider);
+
+		expect(requests[0]?.messages.map((message) => message.content)).toEqual([
+			[{ type: CHAT_BLOCK.text, text: 'První zpráva' }],
+			[{ type: CHAT_BLOCK.text, text: 'Druhá zpráva' }],
+		]);
 	});
 
 	it('gives a recipient the UI’s own refusal and no reservation data', async () => {

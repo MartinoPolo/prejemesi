@@ -17,10 +17,12 @@ import {
 	CHAT_ROLE,
 	CHAT_STOP_REASON,
 	ChatProviderError,
+	isChatModelContentBlock,
 	type ChatContentBlock,
 	type ChatModelMessage,
 	type ChatModelProvider,
 	type ChatStopReason,
+	type ChatWebToolRecord,
 } from './chat_model.js';
 import { conversationUrls } from './browse_page.js';
 import { browsePageConfig } from './chat_config.js';
@@ -32,7 +34,14 @@ import {
 	type StoredChatMessage,
 	type StoredChatSession,
 } from './chat_store.js';
-import { chatToolQuery, chatTools, runChatToolCalls, type ChatToolCall } from './chat_tools.js';
+import { appToolOutcome, toolResultEvent, webToolOutcome } from './chat_tool_outcome.js';
+import {
+	chatToolQuery,
+	chatTools,
+	runChatToolCalls,
+	type ChatToolCall,
+	type ChatToolRound,
+} from './chat_tools.js';
 import { CHAT_LIMITS } from './limits.js';
 
 /** Recorded on the chat's proposals; the UI labels them by the chatbot channel. */
@@ -62,14 +71,21 @@ export function chatCaller(
 	};
 }
 
-/** Stored messages as the model reads them: tool results follow their calls as the user's turn. */
+/**
+ * Stored messages as the model reads them: tool results follow their calls as the user's turn,
+ * and records of web tools the provider ran itself are left out, so a message of only those is.
+ */
 function chatModelMessages(messages: readonly StoredChatMessage[]): ChatModelMessage[] {
 	return messages.flatMap((message): ChatModelMessage[] => {
-		if (message.role === CHAT_ROLE.user) {
-			return [{ role: CHAT_ROLE.user, content: message.content }];
+		const content = message.content.filter(isChatModelContentBlock);
+		if (content.length === 0) {
+			return [];
 		}
-		const response = message.content.filter((block) => block.type !== CHAT_BLOCK.toolResult);
-		const results = message.content.filter((block) => block.type === CHAT_BLOCK.toolResult);
+		if (message.role === CHAT_ROLE.user) {
+			return [{ role: CHAT_ROLE.user, content }];
+		}
+		const response = content.filter((block) => block.type !== CHAT_BLOCK.toolResult);
+		const results = content.filter((block) => block.type === CHAT_BLOCK.toolResult);
 		return [
 			{ role: CHAT_ROLE.assistant, content: response },
 			...(results.length === 0 ? [] : [{ role: CHAT_ROLE.user, content: results }]),
@@ -126,6 +142,11 @@ async function streamModelResponse(
 	const history = await readRecentChatMessages(turn.session.id, CHAT_LIMITS.contextMessages);
 	const messages = chatModelMessages(history);
 	const calls: ChatToolCall[] = [];
+	const webTools: ChatWebToolRecord[] = [];
+	const startedWebTools = new Map<
+		string,
+		Pick<ChatWebToolRecord, 'name' | 'query'> & { debugInput: string; startedAt: number }
+	>();
 	let stopReason: ChatStopReason | null = null;
 	const events = turn.provider.stream(
 		{
@@ -143,8 +164,39 @@ async function streamModelResponse(
 				turn.emit({ type: CHAT_STREAM_EVENT.text, text: event.text });
 				break;
 			case CHAT_MODEL_EVENT.webTool:
-				turn.emit({ type: CHAT_STREAM_EVENT.tool, name: event.name, query: event.query });
+				startedWebTools.set(event.id, {
+					name: event.name,
+					query: event.query,
+					debugInput: event.debugInput,
+					startedAt: Date.now(),
+				});
+				turn.emit({
+					type: CHAT_STREAM_EVENT.tool,
+					id: event.id,
+					name: event.name,
+					query: event.query,
+				});
 				break;
+			case CHAT_MODEL_EVENT.webToolResult: {
+				const started = startedWebTools.get(event.id);
+				if (started === undefined) {
+					break;
+				}
+				const record: ChatWebToolRecord = {
+					type: CHAT_BLOCK.webTool,
+					id: event.id,
+					name: started.name,
+					query: started.query,
+					isError: event.error !== null,
+					error: event.error,
+					summary: event.summary,
+					durationMs: Date.now() - started.startedAt,
+					debug: { input: started.debugInput, result: event.debugResult },
+				};
+				webTools.push(record);
+				turn.emit(toolResultEvent(record.id, webToolOutcome(record, false)));
+				break;
+			}
 			case CHAT_MODEL_EVENT.webSources:
 				for (const url of event.urls) {
 					webSourceUrls.add(url);
@@ -154,6 +206,7 @@ async function streamModelResponse(
 				calls.push({ id: event.id, name: event.name, input: event.input });
 				turn.emit({
 					type: CHAT_STREAM_EVENT.tool,
+					id: event.id,
 					name: event.name,
 					query: chatToolQuery(event),
 				});
@@ -168,6 +221,7 @@ async function streamModelResponse(
 	}
 	const { text } = streamed;
 	const content: ChatContentBlock[] = text === '' ? [] : [{ type: CHAT_BLOCK.text, text }];
+	content.push(...webTools);
 	for (const call of calls) {
 		content.push({ type: CHAT_BLOCK.toolCall, ...call });
 	}
@@ -239,13 +293,7 @@ export async function runChatTurn(turn: ChatTurn): Promise<void> {
 				round.proposal?.id ?? null,
 			);
 			streamed.text = '';
-			if (round.proposal !== null) {
-				turn.emit({
-					type: CHAT_STREAM_EVENT.proposal,
-					proposalId: round.proposal.id,
-					applied: round.proposal.applied,
-				});
-			}
+			emitToolRound(turn, response.calls, round);
 		}
 		emitTurnError(turn, CHAT_TURN_ERROR.incomplete);
 	} catch (thrown) {
@@ -258,6 +306,23 @@ export async function runChatTurn(turn: ChatTurn): Promise<void> {
 		}
 	} finally {
 		scheduleAgentAccessPurge();
+	}
+}
+
+/** Each call's outcome, then the proposal the round's changes made, if any. */
+function emitToolRound(turn: ChatTurn, calls: readonly ChatToolCall[], round: ChatToolRound) {
+	for (const call of calls) {
+		const result = round.results.find((block) => block.toolCallId === call.id);
+		if (result !== undefined) {
+			turn.emit(toolResultEvent(call.id, appToolOutcome(call, result, false)));
+		}
+	}
+	if (round.proposal !== null) {
+		turn.emit({
+			type: CHAT_STREAM_EVENT.proposal,
+			proposalId: round.proposal.id,
+			applied: round.proposal.applied,
+		});
 	}
 }
 
