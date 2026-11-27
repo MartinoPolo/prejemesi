@@ -61,6 +61,9 @@ export function makeVisitorGift(overrides: Partial<GiftForVisitor> = {}): GiftFo
 		myReservationId: 'reservation-1',
 		myReservationPurchasedAt: null,
 		myReservationQuantity: 1,
+		myReservationOnLinkedCopy: false,
+		reservedOnLinkedCopiesCount: 0,
+		linkedCopies: [],
 		...overrides,
 	};
 }

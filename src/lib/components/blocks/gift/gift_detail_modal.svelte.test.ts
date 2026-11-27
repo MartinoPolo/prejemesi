@@ -42,6 +42,7 @@ function makeGift(overrides: Partial<GiftByRole> = {}): GiftByRole {
 		prioritySortOrder: null,
 		categoryIds: [],
 		categories: [],
+		linkedCopies: [],
 		...overrides,
 	};
 }

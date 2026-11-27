@@ -16,6 +16,7 @@ const GIFT_CONTEXT_ACTION_GROUPS = [
 			'received',
 			'multiselect',
 			'reorder',
+			'unlink',
 			'reserve',
 			'cancel-reservation',
 			'purchased',
@@ -61,6 +62,8 @@ export interface GiftContextActionContext {
 	canEnrich?: boolean;
 	/** Reorder mode can start now: its view, role, list state and loaded data allow it. */
 	canReorder?: boolean;
+	/** The gift has linked copies on the recipient's other lists. */
+	isLinked?: boolean;
 	canReserve?: boolean;
 	ownsReservation?: boolean;
 	canTrackPurchased?: boolean;
@@ -103,6 +106,7 @@ function managementActions(context: GiftContextActionContext): GiftContextAction
 		'received',
 		'multiselect',
 		...(context.canReorder === true ? (['reorder'] as const) : []),
+		...(context.isLinked === true ? (['unlink'] as const) : []),
 	];
 }
 

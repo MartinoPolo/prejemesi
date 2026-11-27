@@ -41,7 +41,14 @@ import {
 	updateDataChangesGift,
 	type GiftRow,
 	type GiftUpdateData,
-} from './gift_update.js';
+} from './gift_presentation_update.js';
+import {
+	fieldSyncsLinkedCopies,
+	linkedGiftEdit,
+	propagateToLinkedCopies,
+	type LinkedCopyPolicyField,
+} from './gift_link_group_sync.js';
+import { lockLinkedCopies } from './gift_link_group.js';
 import { jsonChanged } from '$lib/modules/gifts/gift_post_share.js';
 import type { GiftImage } from '$lib/modules/gifts/gift_images.js';
 import type { ManagedWishlist, WishlistRow } from './wishlist_management.js';
@@ -56,6 +63,24 @@ function bulkJsonbValue(value: unknown) {
 function bulkTimestampValue(value: Date | null) {
 	return value === null ? sql`NULL::timestamptz` : sql`${value.toISOString()}::timestamptz`;
 }
+
+/** The gift field each bulk action writes, which decides whether linked copies follow. */
+const BULK_ACTION_FIELD = {
+	priority: 'priorityLevelId',
+	category: 'categoryIds',
+	addCategory: 'categoryIds',
+	removeCategory: 'categoryIds',
+	imageFit: 'images',
+	imageBackground: 'images',
+	received: 'received',
+	restoreReceived: 'received',
+} as const satisfies Record<BulkUpdateGiftsInput['action'], LinkedCopyPolicyField>;
+
+/** The gift field each grouped reorder move writes. */
+const REORDER_GROUP_FIELD = {
+	[GIFT_GROUPING_OPTIONS.priority]: 'priorityLevelId',
+	[GIFT_GROUPING_OPTIONS.category]: 'categoryIds',
+} as const satisfies Record<GiftReorderGroupField, LinkedCopyPolicyField>;
 
 /** Presentation edits to reserved gifts are coalesced into one notice per reserver. */
 function noteManagerEdits(
@@ -84,6 +109,13 @@ export const reorderGiftsOperation = defineOperation({
 	input: ReorderGiftsInputSchema,
 	async run(context, { wishlistId, orderedGiftIds, groupChanges = [] }) {
 		const { transaction, now } = context;
+		await lockLinkedCopies(
+			transaction,
+			groupChanges
+				.filter((change) => fieldSyncsLinkedCopies(REORDER_GROUP_FIELD[change.field]))
+				.map((change) => change.giftId),
+			{ wishlistIds: [wishlistId], heldWishlistLocks: context.heldWishlistLocks },
+		);
 		const managedWishlist = await requireWishlistManagement(
 			transaction,
 			context.actor.userId,
@@ -176,6 +208,16 @@ export const reorderGiftsOperation = defineOperation({
 				after: { ...plan.giftRow, ...plan.updateData },
 			})),
 		);
+		for (const plan of changedPlans) {
+			await propagateToLinkedCopies(
+				context,
+				linkedGiftEdit(
+					plan.giftRow,
+					{ ...plan.giftRow, ...plan.updateData },
+					managedWishlist.role,
+				),
+			);
+		}
 		noteManagerEdits(
 			context,
 			managedWishlist,
@@ -376,6 +418,11 @@ export async function applyBulkGiftUpdate(
 ) {
 	const { transaction, now } = context;
 	const uniqueGiftIds = [...new Set(input.giftIds)];
+	const syncsLinkedCopies = fieldSyncsLinkedCopies(BULK_ACTION_FIELD[input.action]);
+	await lockLinkedCopies(transaction, syncsLinkedCopies ? uniqueGiftIds : [], {
+		wishlistIds: [input.wishlistId],
+		heldWishlistLocks: context.heldWishlistLocks,
+	});
 	const managedWishlist = await requireWishlistManagement(
 		transaction,
 		context.actor.userId,
@@ -425,6 +472,16 @@ export async function applyBulkGiftUpdate(
 			after: giftRowAfterWrite(plan.row, plan.updateData, plan.nextImages),
 		})),
 	);
+	for (const plan of syncsLinkedCopies ? updatePlans : []) {
+		await propagateToLinkedCopies(
+			context,
+			linkedGiftEdit(
+				plan.row,
+				giftRowAfterWrite(plan.row, plan.updateData, plan.nextImages),
+				managedWishlist.role,
+			),
+		);
+	}
 	noteManagerEdits(
 		context,
 		managedWishlist,
@@ -488,8 +545,9 @@ async function removeUnreservedSourceGifts(
 
 /**
  * Copies portable gift data into another managed wishlist, optionally removing the unreserved
- * sources from a permanent wishlist. Image objects are staged before the transaction and either
- * kept (commit) or removed (failure, dry run never stages).
+ * sources from a permanent wishlist. Copies between wishlists of the same recipient stay linked
+ * with their sources unless `linkCopies` is false; removed sources link nothing. Image objects are
+ * staged before the transaction and either kept (commit) or removed (failure, dry run never stages).
  */
 export const bulkCopyGiftsOperation = defineOperation({
 	name: 'bulkCopyGifts',
@@ -507,12 +565,11 @@ export const bulkCopyGiftsOperation = defineOperation({
 		};
 	},
 	async run(context, input, preparedCopy) {
-		const { created, destinationShortId, sourceShortId } = await copyPreparedGifts(
-			context.transaction,
+		const { created, linkedIds, destinationShortId, sourceShortId } = await copyPreparedGifts(
+			context,
 			context.actor.userId,
 			input,
 			preparedCopy,
-			context.recordGiftRevisions,
 		);
 		const removedSourceIds =
 			input.removeUnreservedSources === true
@@ -520,6 +577,7 @@ export const bulkCopyGiftsOperation = defineOperation({
 				: [];
 		return {
 			createdIds: created.map((row) => row.id),
+			linkedIds,
 			removedSourceIds,
 			destinationShortId,
 			sourceShortId,

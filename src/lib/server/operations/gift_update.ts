@@ -1,131 +1,39 @@
 import { eq } from 'drizzle-orm';
 import { error } from '@sveltejs/kit';
 import { gift } from '$lib/server/db/gift.schema.js';
-import { deleteObjectsBestEffort } from '$lib/server/storage/r2.js';
 import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
 import { WISHLIST_ROLES } from '$lib/modules/wishlists/types.js';
 import {
 	isPriceRangeValid,
 	type DescriptionAppend,
-	type GiftWithImages,
 	type UpdateGiftInput,
 } from '$lib/modules/gifts/types.js';
 import { normalizeGiftLinks } from '$lib/modules/gifts/gift_url.js';
-import {
-	computePostShareEditTransparency,
-	computePreShareOwnerEdit,
-	jsonChanged,
-	toPreShareGiftSnapshot,
-} from '$lib/modules/gifts/gift_post_share.js';
-import {
-	isOwnerSharedGiftDeleteGraceOpen,
-	isPreShareOwnerFullEditGraceOpen,
-} from '$lib/modules/gifts/gift_deletion_rules.js';
+import { computePreShareOwnerEdit, jsonChanged } from '$lib/modules/gifts/gift_post_share.js';
+import { isPreShareOwnerFullEditGraceOpen } from '$lib/modules/gifts/gift_deletion_rules.js';
 import { isWithinGraceWindow } from '$lib/modules/sharing/grace_window.js';
 import { assertActiveGiftCategoryAssignments } from '$lib/modules/gift-categories/gift_categories_service.js';
 import {
 	requestedGiftCategoryIds,
 	sameGiftCategoryIds,
 } from '$lib/modules/gift-categories/gift_category_assignment.js';
-import {
-	galleryWithCover,
-	giftCover,
-	releasedImageKeys,
-	type GiftImage,
-} from '$lib/modules/gifts/gift_images.js';
+import { galleryWithCover, giftCover, type GiftImage } from '$lib/modules/gifts/gift_images.js';
 import type { MutationOperationContext } from './operation.js';
 import { replaceGiftGalleries } from './gift_gallery.js';
+import { assertWishlistPriorityLevel, type ManagedWishlist } from './wishlist_management.js';
+import { managerEditNotifiesReservers } from './wishlist_kind_rules.js';
 import {
-	assertWishlistPriorityLevel,
-	type ManagedWishlist,
-	type WishlistRow,
-} from './wishlist_management.js';
+	lockedLinkedEditRules,
+	shouldAppendDescription,
+	type LinkedEditRules,
+} from './gift_link_group.js';
+import { linkedGiftEdit, propagateToLinkedCopies } from './gift_link_group_sync.js';
 import {
-	lockedGiftFollowsStrictPostShareRules,
-	managerEditNotifiesReservers,
-} from './wishlist_kind_rules.js';
-
-/** A locked gift with its ordered gallery; read it with `giftColumnsWithImages()`. */
-export type GiftRow = GiftWithImages;
-export type GiftUpdateData = Partial<typeof gift.$inferInsert>;
-
-/**
- * Root of the "Upraveno po sdílení" transparency tracking (issue #124): given a changed gift edit,
- * decides the next `editedAfterShareAt` / `preEditShareSnapshot` values and writes them onto
- * `updateData`, so a net-zero revert inside grace behaves identically on every write path.
- */
-function applyPostShareEditTransparency(params: {
-	giftRow: GiftRow;
-	updateData: GiftUpdateData;
-	nextImages?: GiftImage[];
-	now: Date;
-	wishlistRow: WishlistRow;
-}): void {
-	const { giftRow, updateData, nextImages, now, wishlistRow } = params;
-	const graceOpen = isOwnerSharedGiftDeleteGraceOpen(
-		{ wishlistSharedAt: wishlistRow.sharedAt, giftCreatedAt: giftRow.createdAt },
-		now,
-	);
-	const outcome = computePostShareEditTransparency({
-		existingSnapshot: giftRow.preEditShareSnapshot,
-		graceOpen,
-		beforeEdit: toPreShareGiftSnapshot(giftRow),
-		afterEdit: toPreShareGiftSnapshot(giftRowAfterWrite(giftRow, updateData, nextImages)),
-		now,
-	});
-	updateData.editedAfterShareAt = outcome.editedAfterShareAt;
-	updateData.preEditShareSnapshot = outcome.preEditShareSnapshot;
-}
-
-/**
- * The gift row as an edit leaves it, gallery included, for revisions and transparency.
- * `nextImages` is the complete next gallery, or undefined when the edit keeps the images.
- */
-export function giftRowAfterWrite(
-	giftRow: GiftRow,
-	updateData: GiftUpdateData,
-	nextImages: GiftImage[] | undefined,
-): GiftRow {
-	return { ...giftRow, ...updateData, images: nextImages ?? giftRow.images } as GiftRow;
-}
-
-export function updateDataChangesGift(
-	giftRow: GiftRow,
-	updateData: GiftUpdateData,
-	nextImages?: GiftImage[],
-): boolean {
-	return (
-		Object.entries(updateData).some(([key, value]) =>
-			jsonChanged(value, giftRow[key as keyof GiftRow]),
-		) ||
-		(nextImages !== undefined && jsonChanged(nextImages, giftRow.images))
-	);
-}
-
-/**
- * Plans a presentation edit (priority, category, image) shared by bulk and grouped-reorder
- * writes: only a value that actually changes counts, and on shared wishlists it follows the same
- * "Upraveno po sdílení" transparency rule as the gift editor.
- */
-export function planPresentationUpdate(params: {
-	giftRow: GiftRow;
-	updateData: GiftUpdateData;
-	nextImages?: GiftImage[];
-	now: Date;
-	wishlistRow: WishlistRow;
-}): {
-	giftRow: GiftRow;
-	updateData: GiftUpdateData;
-	nextImages?: GiftImage[];
-	didChange: boolean;
-} {
-	const { giftRow, updateData, nextImages, now, wishlistRow } = params;
-	const didChange = updateDataChangesGift(giftRow, updateData, nextImages);
-	if (didChange && wishlistRow.sharedAt !== null) {
-		applyPostShareEditTransparency({ giftRow, updateData, nextImages, now, wishlistRow });
-	}
-	return { giftRow, updateData, nextImages, didChange };
-}
+	applyPostShareEditTransparency,
+	deferReplacedImageCleanup,
+	type GiftRow,
+	type GiftUpdateData,
+} from './gift_presentation_update.js';
 
 /** State an undo restores beyond the editable fields; never counts as a post-share edit itself. */
 export interface RestoredGiftState {
@@ -212,15 +120,21 @@ function assertMergedPriceRangeValid(giftRow: GiftRow, input: UpdateGiftInput): 
  */
 function usesAppendEngine(
 	request: GiftUpdateRequest,
-	followsStrictRules: boolean,
+	linkedRules: LinkedEditRules,
 	now: Date,
 ): boolean {
 	const { giftRow, input } = request;
-	if (!followsStrictRules) {
+	const { role, wishlistRow } = request.managedWishlist;
+	// The strictest linked copy decides for every copy (issue #742).
+	if (
+		(role === WISHLIST_ROLES.recipient && linkedRules.frozenByLinkedCopy) ||
+		(request.appendsDescription === true && shouldAppendDescription(wishlistRow, linkedRules))
+	) {
+		return true;
+	}
+	if (!linkedRules.followsStrictRules) {
 		return input.descriptionAppendEdit !== undefined;
 	}
-	const { role, wishlistRow } = request.managedWishlist;
-	const isShared = wishlistRow.sharedAt !== null;
 	const isPreShareGift =
 		wishlistRow.sharedAt !== null && giftRow.createdAt <= wishlistRow.sharedAt;
 	// Within the initial 2-minute share grace window the recipient regains full edit. Later edits
@@ -236,7 +150,7 @@ function usesAppendEngine(
 		role === WISHLIST_ROLES.recipient &&
 		isPreShareGift &&
 		(!shareGraceOpen || input.descriptionAppendEdit !== undefined);
-	return isPreShareRecipientEdit || (request.appendsDescription === true && isShared);
+	return isPreShareRecipientEdit;
 }
 
 interface PlannedGiftEdit {
@@ -296,21 +210,6 @@ function restoredStateUpdateData(restoring: RestoredGiftState | undefined): Gift
 		...(received === undefined ? {} : { received }),
 		...(deletedAt === undefined ? {} : { deletedAt }),
 	};
-}
-
-/**
- * Storage cleanup (issue #107): replacing, removing or dropping an uploaded image from the gallery
- * leaves no unreferenced R2 object behind. A key that only moved to another position stays.
- */
-function deferReplacedImageCleanup(
-	context: MutationOperationContext,
-	previousImages: readonly GiftImage[],
-	nextImages: readonly GiftImage[],
-): void {
-	const releasedKeys = releasedImageKeys(previousImages, nextImages);
-	if (releasedKeys.length > 0) {
-		context.deferEffect(() => deleteObjectsBestEffort(releasedKeys));
-	}
 }
 
 /**
@@ -405,12 +304,8 @@ export async function applyGiftUpdate(
 		!sameGiftCategoryIds(input.categoryIds, giftRow.categoryIds);
 
 	assertMergedPriceRangeValid(giftRow, input);
-	const followsStrictRules = await lockedGiftFollowsStrictPostShareRules(
-		transaction,
-		wishlistRow,
-		giftRow.id,
-	);
-	const appendEngine = usesAppendEngine(request, followsStrictRules, now);
+	const linkedRules = await lockedLinkedEditRules(transaction, giftRow, wishlistRow, now);
+	const appendEngine = usesAppendEngine(request, linkedRules, now);
 	const plannedEdit = planGiftEdit(request, appendEngine, now);
 	const { updateData } = plannedEdit;
 	const nextImages =
@@ -466,5 +361,9 @@ export async function applyGiftUpdate(
 	if (managerEditNotifiesReservers(request.managedWishlist) && didChange) {
 		noteReservedGiftEdit(context, request, updated);
 	}
+	await propagateToLinkedCopies(
+		context,
+		linkedGiftEdit(giftRow, updated, request.managedWishlist.role, restoring !== undefined),
+	);
 	return { updated, didCategoryChange };
 }

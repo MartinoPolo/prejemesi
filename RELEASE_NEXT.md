@@ -6,6 +6,10 @@ Steps the next release needs on top of the standard runbook in [docs/DEPLOYMENT.
 
 - Set the production Worker secret `BROWSER_RENDERING_API_TOKEN` (`docs/CLOUDFLARE_SETUP.md` §E), before or after the deploy: the assistant's `browse_page` tool stays hidden until it is set.
 
+## After deploy
+
+1. Link the owner's existing family-list gift copies once with `scripts/link-existing-gift-copies.ts` (usage in its header), after the #742 migration is in production: run `propose --prod --owner <owner email> --out <plan outside the repository>`, have the agent review the plan and confirm each pair's matches, run `apply --prod --plan <plan>` as the dry run, then `apply --prod --plan <plan> --execute`, and record the outcome (linked, skipped, reported double reservations) on #742.
+
 ## Contract migrations
 
 Ship once no older app version serves traffic:

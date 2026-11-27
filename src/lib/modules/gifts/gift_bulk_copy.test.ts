@@ -85,6 +85,7 @@ describe('bulk gift copy requirements', () => {
 				priorityLevelId: 'destination-priority',
 				categoryIds: ['destination-primary', 'destination-secondary'],
 			},
+			linked: false,
 		});
 		expect(copied).toMatchObject({
 			id: 'destination-id',

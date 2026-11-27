@@ -261,6 +261,7 @@ function previewGift(
 			const category = categoryById(context, categoryId);
 			return category === null ? [] : [category];
 		}),
+		linkedCopies: [],
 	};
 }
 

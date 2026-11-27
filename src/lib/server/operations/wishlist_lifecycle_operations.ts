@@ -32,7 +32,7 @@ import {
 	resolveRevertAccess,
 	type CancelledReserver,
 } from './wishlist_revert.js';
-import { giftImagesColumn } from './gift_gallery.js';
+import { deleteUnreferencedGiftImagesBestEffort, giftImagesColumn } from './gift_gallery.js';
 import { galleryImageKeys } from '$lib/modules/gifts/gift_images.js';
 
 const WishlistLifecycleInputSchema = v.strictObject({ wishlistId: v.string() });
@@ -215,13 +215,17 @@ export const deleteWishlistOperation = defineOperation({
 			.update(wishlist)
 			.set({ deletedAt: context.now, updatedAt: context.now })
 			.where(eq(wishlist.id, input.wishlistId));
-		// The list's own and its gifts' uploaded images become unreachable with it.
+		// The list's own and its gifts' uploaded images become unreachable with it, except the
+		// uploads its gifts share with linked copies on other lists.
 		const unreachableImageKeys = [
 			wishlistRow.imageKey,
 			wishlistBackgroundImageKey(wishlistRow.background),
-			...giftImageRows.flatMap((row) => galleryImageKeys(row.images)),
 		];
-		context.deferEffect(() => deleteObjectsBestEffort(unreachableImageKeys));
+		const releasedGiftImageKeys = giftImageRows.flatMap((row) => galleryImageKeys(row.images));
+		context.deferEffect(async () => {
+			await deleteObjectsBestEffort(unreachableImageKeys);
+			await deleteUnreferencedGiftImagesBestEffort(releasedGiftImageKeys);
+		});
 		return { wishlistShortId: wishlistRow.shortId, deleted: true };
 	},
 });

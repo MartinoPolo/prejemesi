@@ -58,6 +58,9 @@ function makeReservedGift(overrides: Partial<GiftForVisitor> = {}): GiftForVisit
 		myReservationId: 'reservation-mine',
 		myReservationPurchasedAt: new Date('2026-01-02T00:00:00Z'),
 		myReservationQuantity: 1,
+		myReservationOnLinkedCopy: false,
+		reservedOnLinkedCopiesCount: 0,
+		linkedCopies: [],
 		...overrides,
 	};
 }

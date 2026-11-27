@@ -61,23 +61,50 @@ function withWishlistLock(
 }
 
 /**
- * Locks several wishlist rows FOR UPDATE in id order, so transactions locking overlapping sets
- * cannot deadlock on each other. Missing rows are skipped; the steps that need them reject.
+ * Row lock modes of a wishlist: a mutation takes its own wishlists exclusively; the wishlists of
+ * linked copies it also writes take key share, so only exclusive wishlist changes wait.
+ */
+export const WISHLIST_ROW_LOCK = { exclusive: 'update', keyShare: 'key share' } as const;
+export type WishlistRowLock = (typeof WISHLIST_ROW_LOCK)[keyof typeof WISHLIST_ROW_LOCK];
+
+/**
+ * Locks several wishlist rows in id order, each in the mode `lockModeFor` gives it (exclusive by
+ * default), so transactions locking overlapping sets cannot deadlock on each other. Missing rows
+ * are skipped; the steps that need them reject.
  */
 export async function lockWishlistsInIdOrder(
 	transaction: DatabaseTransaction,
 	wishlistIds: readonly string[],
+	lockModeFor: (wishlistId: string) => WishlistRowLock = () => WISHLIST_ROW_LOCK.exclusive,
 ): Promise<void> {
 	if (wishlistIds.length === 0) {
 		return;
 	}
-	// Postgres locks the rows as the sort returns them.
-	await transaction
+	const uniqueWishlistIds = [...new Set(wishlistIds)];
+	const lockModes = new Set(uniqueWishlistIds.map(lockModeFor));
+	const [onlyLockMode] = lockModes;
+	// Postgres locks the rows as the sort returns them; its collation, not JavaScript's, sets the order.
+	if (lockModes.size === 1 && onlyLockMode !== undefined) {
+		await transaction
+			.select({ id: wishlist.id })
+			.from(wishlist)
+			.where(inArray(wishlist.id, uniqueWishlistIds))
+			.orderBy(asc(wishlist.id))
+			.for(onlyLockMode);
+		return;
+	}
+	const orderedWishlists = await transaction
 		.select({ id: wishlist.id })
 		.from(wishlist)
-		.where(inArray(wishlist.id, [...wishlistIds]))
-		.orderBy(asc(wishlist.id))
-		.for('update');
+		.where(inArray(wishlist.id, uniqueWishlistIds))
+		.orderBy(asc(wishlist.id));
+	for (const { id } of orderedWishlists) {
+		await transaction
+			.select({ id: wishlist.id })
+			.from(wishlist)
+			.where(eq(wishlist.id, id))
+			.for(lockModeFor(id));
+	}
 }
 
 /** The live (not deleted, in-scope) wishlist row; 404 when missing. */
@@ -131,6 +158,27 @@ export async function requireLiveWishlistRowByShortId(
 	return wishlistRow;
 }
 
+/** {@link resolveWishlistAccess}, null for a missing wishlist. */
+async function findWishlistAccess(
+	transaction: DatabaseTransaction | ReturnType<typeof getDb>,
+	actorUserId: string,
+	wishlistId: string,
+	options: WishlistLockOptions,
+): Promise<WishlistAccess | null> {
+	const [wishlistRow] = await withWishlistLock(
+		selectLiveWishlistRow(transaction, wishlistId),
+		options.lock,
+	);
+	if (wishlistRow === undefined) {
+		return null;
+	}
+	const role = await resolveRoleOnWishlistRow(actorUserId, wishlistRow, {
+		database: transaction,
+		lock: options.lock === true,
+	});
+	return { role, wishlistRow };
+}
+
 /**
  * Resolves the actor's role on a wishlist: the linked recipient, an active správce, or a visitor.
  * 404 for a missing wishlist. `lock` holds the wishlist and the assignment until the batch commits
@@ -143,12 +191,25 @@ export async function resolveWishlistAccess(
 	wishlistId: string,
 	options: WishlistLockOptions,
 ): Promise<WishlistAccess> {
-	const wishlistRow = await requireLiveWishlistRow(transaction, wishlistId, options);
-	const role = await resolveRoleOnWishlistRow(actorUserId, wishlistRow, {
-		database: transaction,
-		lock: options.lock === true,
-	});
-	return { role, wishlistRow };
+	const access = await findWishlistAccess(transaction, actorUserId, wishlistId, options);
+	if (access === null) {
+		error(404, SERVER_ERROR.WISHLIST_NOT_FOUND);
+	}
+	return access;
+}
+
+/** The actor's management of a wishlist; null when it is missing or the actor only visits it. */
+export async function findWishlistManagement(
+	transaction: DatabaseTransaction | ReturnType<typeof getDb>,
+	actorUserId: string,
+	wishlistId: string,
+	options: WishlistLockOptions,
+): Promise<ManagedWishlist | null> {
+	const access = await findWishlistAccess(transaction, actorUserId, wishlistId, options);
+	if (access === null || access.role === WISHLIST_ROLES.visitor) {
+		return null;
+	}
+	return { role: access.role, wishlistRow: access.wishlistRow };
 }
 
 /** {@link resolveWishlistAccess} for management: 403 unless the actor is the recipient or a správce. */

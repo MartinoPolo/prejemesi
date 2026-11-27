@@ -16,6 +16,7 @@ const capabilityFlags = [
 	'canEdit',
 	'canEnrich',
 	'canReorder',
+	'isLinked',
 	'canReserve',
 	'ownsReservation',
 	'canTrackPurchased',
@@ -106,6 +107,33 @@ describe('gift contextual actions', () => {
 				canReorder: true,
 			}),
 		).not.toContain('reorder');
+	});
+
+	it('offers „Odpojit kopie“ after reorder to managers of a linked gift (#742)', () => {
+		for (const role of [WISHLIST_ROLES.recipient, WISHLIST_ROLES.moderator]) {
+			const manager: GiftContextActionContext = {
+				role,
+				primaryUrl: null,
+				readOnly: false,
+				canEdit: true,
+				canReorder: true,
+				isLinked: true,
+			};
+			expect(groupGiftContextActions(giftContextActions(manager))).toContainEqual({
+				name: 'gift',
+				actions: ['edit', 'received', 'multiselect', 'reorder', 'unlink'],
+			});
+			expect(giftContextActions({ ...manager, isLinked: false })).not.toContain('unlink');
+			expect(giftContextActions({ ...manager, readOnly: true })).not.toContain('unlink');
+		}
+		expect(
+			giftContextActions({
+				role: WISHLIST_ROLES.visitor,
+				primaryUrl: null,
+				readOnly: false,
+				isLinked: true,
+			}),
+		).not.toContain('unlink');
 	});
 
 	it('offers reservation ownership and purchased actions from explicit capabilities', () => {

@@ -60,14 +60,22 @@ export function withoutViewerReservation<Result extends GiftsQueryResult>(
 ): Result {
 	return withUpdatedGift(result, holdsReservation(reservationId), (gift) => {
 		const reservedCount = Math.max(0, gift.reservedCount - gift.myReservationQuantity);
+		// A reservation made on a linked copy counts toward that copy's units and names.
+		const reservedOnLinkedCopy = gift.myReservationOnLinkedCopy;
 		return {
 			...gift,
 			reservedCount,
 			isFullyReserved: reservedCount >= (gift.quantity ?? 1),
-			reserverNames: withoutFirstName(gift.reserverNames, viewerName),
+			reserverNames: reservedOnLinkedCopy
+				? gift.reserverNames
+				: withoutFirstName(gift.reserverNames, viewerName),
+			reservedOnLinkedCopiesCount: reservedOnLinkedCopy
+				? Math.max(0, gift.reservedOnLinkedCopiesCount - gift.myReservationQuantity)
+				: gift.reservedOnLinkedCopiesCount,
 			myReservationId: null,
 			myReservationPurchasedAt: null,
 			myReservationQuantity: 0,
+			myReservationOnLinkedCopy: false,
 		};
 	});
 }

@@ -16,6 +16,14 @@ const destinations = [
 		title: 'Narozeniny',
 		status: 'active' as const,
 		recipientDisplayName: 'Jana',
+		linkable: true,
+	},
+	{
+		id: 'other-recipient',
+		title: 'Vánoce',
+		status: 'draft' as const,
+		recipientDisplayName: 'Petr',
+		linkable: false,
 	},
 ];
 
@@ -70,8 +78,9 @@ describe('GiftBulkCopyDialog', () => {
 		await screen.getByTestId('bulk-copy-destination').click();
 		const options = screen.getByRole('option');
 		await expect.element(options.nth(0)).toHaveTextContent('Narozeniny · Jana');
-		await expect.element(options.nth(1)).toHaveTextContent(m.gift_bulk_copy_new_destination());
-		await options.nth(1).click();
+		await expect.element(options.nth(1)).toHaveTextContent('Vánoce · Petr');
+		await expect.element(options.nth(2)).toHaveTextContent(m.gift_bulk_copy_new_destination());
+		await options.nth(2).click();
 		expect(handlers.ondestinationchange).toHaveBeenCalledWith(NEW_WISHLIST_DESTINATION);
 		await screen.unmount();
 	});
@@ -126,7 +135,7 @@ describe('GiftBulkCopyDialog', () => {
 
 	it('supports keyboard selection and Escape without dismissing the parent dialog', async () => {
 		await page.viewport(1280, 760);
-		const handlers = props();
+		const handlers = { ...props(), destinations: destinations.slice(0, 1) };
 		const screen = await render(GiftBulkCopyDialog, handlers);
 		const trigger = screen.getByTestId('bulk-copy-destination');
 		await trigger.click();
@@ -343,4 +352,82 @@ describe('GiftBulkCopyDialog', () => {
 			await screen.unmount();
 		},
 	);
+
+	describe('linking copies', () => {
+		it('hides the link choice until a destination is chosen', async () => {
+			await page.viewport(1280, 760);
+			const screen = await render(GiftBulkCopyDialog, props());
+			const dialog = screen.getByRole('dialog', { name: m.gift_bulk_copy_title() });
+			await expect.element(dialog).toBeVisible();
+			await expect
+				.element(dialog.getByRole('checkbox', { name: m.gift_bulk_copy_link() }))
+				.not.toBeInTheDocument();
+			await screen.unmount();
+		});
+
+		it.each([
+			['an existing list of the same recipient', 'destination'],
+			['a new list', NEW_WISHLIST_DESTINATION],
+		])('links by default for %s', async (_destination, selectedDestinationId) => {
+			await page.viewport(1280, 760);
+			const onlinkcopieschange = vi.fn();
+			const screen = await render(GiftBulkCopyDialog, {
+				...props(),
+				selectedDestinationId,
+				onlinkcopieschange,
+			});
+			const link = screen.getByRole('checkbox', { name: m.gift_bulk_copy_link() });
+			await expect.element(link).toBeChecked();
+			await expect.element(link).toBeEnabled();
+			await expect.element(link).toHaveAccessibleDescription(m.gift_bulk_copy_link_help());
+			await link.click();
+			expect(onlinkcopieschange).toHaveBeenCalledWith(false);
+			await screen.unmount();
+		});
+
+		it.each([
+			['desktop dialog', 1280],
+			['mobile sheet', 390],
+		])(
+			'explains why a list of another recipient cannot link (%s)',
+			async (_surface, viewportWidth) => {
+				await page.viewport(viewportWidth, 760);
+				const screen = await render(GiftBulkCopyDialog, {
+					...props(),
+					selectedDestinationId: 'other-recipient',
+					linkCopies: true,
+				});
+				const link = screen.getByRole('checkbox', { name: m.gift_bulk_copy_link() });
+				await expect.element(link).not.toBeChecked();
+				await expect.element(link).toBeDisabled();
+				await expect
+					.element(link)
+					.toHaveAccessibleDescription(m.gift_bulk_copy_link_unavailable());
+				await screen.unmount();
+			},
+		);
+
+		it('says reserved gifts stay linked when moving with links on', async () => {
+			await page.viewport(1280, 760);
+			const handlers = {
+				...props(),
+				selectedDestinationId: 'destination',
+				offerSourceRemoval: true,
+				removeSources: true,
+				onremovesourceschange: vi.fn(),
+			};
+			const screen = await render(GiftBulkCopyDialog, handlers);
+			const removal = screen.getByRole('checkbox', {
+				name: m.gift_bulk_copy_remove_sources(),
+			});
+			await expect
+				.element(removal)
+				.toHaveAccessibleDescription(m.gift_bulk_copy_remove_sources_linked_help());
+			await screen.rerender({ ...handlers, linkCopies: false });
+			await expect
+				.element(removal)
+				.toHaveAccessibleDescription(m.gift_bulk_copy_remove_sources_help());
+			await screen.unmount();
+		});
+	});
 });

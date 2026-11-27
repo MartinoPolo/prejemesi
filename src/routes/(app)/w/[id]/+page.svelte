@@ -17,6 +17,7 @@
 	import * as m from '$lib/paraglide/messages.js';
 	import { localizeInternalHref } from '$lib/i18n/locale.js';
 	import WishlistHeader from '$lib/components/blocks/gift/WishlistHeader.svelte';
+	import GiftUnlinkConfirmDialog from '$lib/components/blocks/gift/GiftUnlinkConfirmDialog.svelte';
 	import WishlistDetailToolbar from '$lib/components/blocks/wishlist/WishlistDetailToolbar.svelte';
 	import WishlistGiftDisplay from '$lib/components/blocks/wishlist/WishlistGiftDisplay.svelte';
 	import { setWishlistStickyChrome } from '$lib/components/blocks/wishlist/wishlist_sticky_chrome.svelte.js';
@@ -903,6 +904,9 @@
 	// Moving gifts out (copy, then remove the unreserved sources) is a permanent wishlist's workflow;
 	// once the list was shared, its recipient may only copy (issue #479).
 	let bulkCopyRemovesSources = $state(false);
+	let bulkCopyLinksCopies = $state(true);
+	// The gift whose own copy „Odpojit kopie“ removes from its link group.
+	let contextUnlinkGift = $state<GiftByRole | null>(null);
 	const bulkCopyOffersSourceRemoval = $derived(
 		wishlist.kind === WISHLIST_KIND.permanent &&
 			(!isRecipient || recipientMayMoveGifts(wishlist)),
@@ -1016,6 +1020,7 @@
 			readOnly: isArchived,
 			canEdit: true,
 			canReorder: canStartReorderFromGift,
+			isLinked: giftItem.linkedCopies.length > 0,
 			...reservationContext,
 			...releaseContextFor(giftItem),
 			origin,
@@ -1341,6 +1346,7 @@
 		bulkCopyLoading = true;
 		bulkCopyDestinationId = '';
 		bulkCopyRemovesSources = false;
+		bulkCopyLinksCopies = true;
 		bulkCopyCreatedDestination = null;
 		try {
 			bulkCopyDestinations = await getBulkCopyDestinations(wishlist.id);
@@ -1367,10 +1373,35 @@
 		returnToActions?.();
 	}
 
-	function bulkCopySuccessMessage(copiedCount: number, removedCount: number) {
+	function bulkCopySuccessMessage(
+		copiedCount: number,
+		removedCount: number,
+		linkedCount: number,
+	) {
+		if (linkedCount > 0) {
+			return removedCount > 0
+				? m.gift_bulk_copy_moved_linked_success({
+						count: copiedCount,
+						removed: removedCount,
+						linked: linkedCount,
+					})
+				: m.gift_bulk_copy_linked_success({ count: copiedCount, linked: linkedCount });
+		}
 		return removedCount > 0
 			? m.gift_bulk_copy_moved_success({ count: copiedCount, removed: removedCount })
 			: m.gift_bulk_copy_success({ count: copiedCount });
+	}
+
+	/**
+	 * A list created by this flow has a recipient the dialog never saw, so the server links its
+	 * copies only when the recipient matches; an explicit `true` would fail the copy otherwise.
+	 */
+	function bulkCopyLinkRequest(destinationWishlistId: string): { linkCopies?: boolean } {
+		const destination = bulkCopyDestinations.find(({ id }) => id === destinationWishlistId);
+		if (!bulkCopyLinksCopies || destination?.linkable === false) {
+			return { linkCopies: false };
+		}
+		return destination?.linkable === true ? { linkCopies: true } : {};
 	}
 
 	function bulkCopySuccessToast(message: string, destinationId: string) {
@@ -1386,6 +1417,12 @@
 			onAction: () =>
 				void goto(localizeInternalHref(resolve('/(app)/w/[id]', { id: created.shortId }))),
 		});
+	}
+
+	function closeContextUnlink(open: boolean) {
+		if (!open) {
+			contextUnlinkGift = null;
+		}
 	}
 
 	function confirmBulkCopy() {
@@ -1414,6 +1451,7 @@
 				title: created.title,
 				status: created.status,
 				recipientDisplayName: created.recipientName ?? data.user?.name ?? '',
+				linkable: null,
 			},
 			...bulkCopyDestinations,
 		];
@@ -1434,14 +1472,19 @@
 		const removeUnreservedSources = bulkCopyOffersSourceRemoval && bulkCopyRemovesSources;
 		bulkCopySubmitting = true;
 		try {
-			const { removedSourceIds } = await bulkCopyGifts({
+			const { removedSourceIds, linkedIds } = await bulkCopyGifts({
 				sourceWishlistId: wishlist.id,
 				destinationWishlistId,
 				giftIds: selectedIds,
 				...(removeUnreservedSources ? { removeUnreservedSources } : {}),
+				...bulkCopyLinkRequest(destinationWishlistId),
 			});
 			bulkCopySuccessToast(
-				bulkCopySuccessMessage(selectedIds.length, removedSourceIds.length),
+				bulkCopySuccessMessage(
+					selectedIds.length,
+					removedSourceIds.length,
+					linkedIds.length,
+				),
 				destinationWishlistId,
 			);
 			returnFromBulkCopy();
@@ -1633,6 +1676,15 @@
 	// Post-share-locked means a pre-share gift's initial full-edit grace has closed.
 	const postShareLockSelectedGift = $derived(
 		selectedFullEditGraceExpiresAt !== null && !isSelectedGiftWithinFullEditGrace,
+	);
+
+	// A shared linked copy freezes the name of every copy; the server enforces the other frozen fields.
+	const selectedGiftFreezingLinkedCopy = $derived(
+		selectedGift?.linkedCopies.find(
+			(copy) =>
+				copy.editsFrozenFrom !== null &&
+				copy.editsFrozenFrom.getTime() <= graceClockNow.getTime(),
+		) ?? null,
 	);
 
 	const canDeleteSelectedGift = $derived.by(() => {
@@ -2729,6 +2781,9 @@
 					onreorder={canStartReorderFromGift
 						? () => void enterReorderModeFromGift(contextActionGift.id)
 						: undefined}
+					onunlink={contextActionGift.linkedCopies.length > 0
+						? () => (contextUnlinkGift = contextActionGift)
+						: undefined}
 					onreserve={() => {
 						if ('myReservationId' in contextActionGift) {
 							handleOpenReserveModal(contextActionGift);
@@ -2816,6 +2871,14 @@
 	}}
 />
 
+{#if contextUnlinkGift !== null}
+	<GiftUnlinkConfirmDialog
+		bind:open={() => contextUnlinkGift !== null, closeContextUnlink}
+		giftId={contextUnlinkGift.id}
+		wishlistTitle={wishlist.title}
+	/>
+{/if}
+
 <LazyDialog
 	bind:open={() => bulkCopyOpen, handleBulkCopyOpenChange}
 	loader={giftBulkCopyDialogLoader}
@@ -2834,6 +2897,8 @@
 			offerSourceRemoval={bulkCopyOffersSourceRemoval}
 			removeSources={bulkCopyRemovesSources}
 			onremovesourceschange={(removeSources) => (bulkCopyRemovesSources = removeSources)}
+			linkCopies={bulkCopyLinksCopies}
+			onlinkcopieschange={(linkCopies) => (bulkCopyLinksCopies = linkCopies)}
 			onconfirm={confirmBulkCopy}
 		/>
 	{/snippet}
@@ -2880,7 +2945,10 @@
 	selectedGift={selectedPresentationGift}
 	{priorityLevels}
 	{categoryOptions}
-	postShareLocked={postShareLockSelectedGift}
+	postShareLocked={postShareLockSelectedGift || selectedGiftFreezingLinkedCopy !== null}
+	frozenByLinkedCopyTitle={postShareLockSelectedGift
+		? null
+		: (selectedGiftFreezingLinkedCopy?.wishlistTitle ?? null)}
 	{canDeleteSelectedGift}
 	graceExpiresAt={selectedActiveGraceExpiresAt}
 	graceMessage={selectedGraceMessage}

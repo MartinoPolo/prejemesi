@@ -50,6 +50,9 @@ function visitorGift(index: number): GiftForVisitor {
 		myReservationId: null,
 		myReservationPurchasedAt: null,
 		myReservationQuantity: 0,
+		myReservationOnLinkedCopy: false,
+		reservedOnLinkedCopiesCount: 0,
+		linkedCopies: [],
 	};
 }
 

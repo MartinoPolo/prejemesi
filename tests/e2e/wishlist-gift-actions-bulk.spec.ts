@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 import * as m from '../../src/lib/paraglide/messages.js';
 import { createTestUser } from './fixtures/test-data.js';
 import { registerAndGetPage } from './fixtures/auth-helpers.js';
@@ -14,6 +14,15 @@ import {
 	waitForReceivedState,
 	createAdditionalWishlist,
 } from './wishlist-gift-actions.helpers.js';
+
+async function showReceivedGifts(page: Page) {
+	const displaySheet = page.getByRole('dialog', { name: m.gift_display_options() });
+	await openDialogFromTrigger(page.getByTestId('mobile-display-trigger'), displaySheet);
+	await displaySheet.getByTestId('mobile-sheet-filter-switch').click();
+	await displaySheet.getByRole('checkbox', { name: m.gift_filter_show_received() }).check();
+	await page.keyboard.press('Escape');
+	await expect(displaySheet).toBeHidden();
+}
 
 test('multi-select mutation and copy persist after source and destination reloads', async ({
 	browser,
@@ -62,12 +71,7 @@ test('multi-select mutation and copy persist after source and destination reload
 		await expect(sheet).toBeHidden();
 		await toolbar.getByRole('button', { name: m.cancel() }).click();
 		await page.reload({ waitUntil: 'load' });
-		const displaySheet = page.getByRole('dialog', { name: m.gift_display_options() });
-		await openDialogFromTrigger(page.getByTestId('mobile-display-trigger'), displaySheet);
-		await displaySheet.getByTestId('mobile-sheet-filter-switch').click();
-		await displaySheet.getByRole('checkbox', { name: m.gift_filter_show_received() }).check();
-		await page.keyboard.press('Escape');
-		await expect(displaySheet).toBeHidden();
+		await showReceivedGifts(page);
 		firstGift = gift(page, 'Kolo pro výlety');
 		secondGift = gift(page, 'Stan pro dva');
 		await waitForReceivedState(firstGift, true);
@@ -75,9 +79,11 @@ test('multi-select mutation and copy persist after source and destination reload
 
 		await page.goto(destinationPath, { waitUntil: 'load' });
 		await page.reload({ waitUntil: 'load' });
+		// Copies to a list of the same recipient are linked, so they share the received state.
+		await showReceivedGifts(page);
 		await expect(page.locator('[data-gift-item]')).toHaveCount(2);
-		await expect(gift(page, 'Kolo pro výlety')).toHaveCount(1);
-		await expect(gift(page, 'Stan pro dva')).toHaveCount(1);
+		await waitForReceivedState(gift(page, 'Kolo pro výlety'), true);
+		await waitForReceivedState(gift(page, 'Stan pro dva'), true);
 	} finally {
 		await page.context().close();
 	}

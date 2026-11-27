@@ -18,6 +18,7 @@ import {
 	createGiftOperation,
 	deleteGiftOperation,
 	markGiftReceivedOperation,
+	unlinkGiftOperation,
 	updateGiftOperation,
 } from '$lib/server/operations/gift_mutation_operations.js';
 import {
@@ -138,6 +139,16 @@ export const markGiftReceived = guardedCommand(
 	},
 );
 
+/** Stops a gift syncing with its linked copies on the recipient's other wishlists. */
+export const unlinkGift = guardedCommand(unlinkGiftOperation.input, async ({ user }, input) => {
+	const { wishlistShortId } = await executeOperation(
+		userInterfaceActor(user),
+		unlinkGiftOperation,
+		input,
+	);
+	await singleFlightRefresh(getGiftsByWishlistShortId, wishlistShortId);
+});
+
 /** Eligible non-archived destinations managed by the current actor. */
 export const getBulkCopyDestinations = guardedQueryWithArgs(
 	v.string(),
@@ -149,15 +160,18 @@ export const getBulkCopyDestinations = guardedQueryWithArgs(
 
 export const bulkCopyGifts = guardedCommand(BulkCopyGiftsInputSchema, async ({ user }, input) => {
 	try {
-		const { createdIds, removedSourceIds, destinationShortId, sourceShortId } =
+		const { createdIds, linkedIds, removedSourceIds, destinationShortId, sourceShortId } =
 			await executeOperation(userInterfaceActor(user), bulkCopyGiftsOperation, input);
 		singleFlightRefresh(getGiftsByWishlistShortId, destinationShortId);
 		singleFlightRefresh(getGiftCategories, input.destinationWishlistId);
-		if (removedSourceIds.length > 0) {
+		// Linked sources now list their new copies.
+		if (removedSourceIds.length > 0 || linkedIds.length > 0) {
 			singleFlightRefresh(getGiftsByWishlistShortId, sourceShortId);
+		}
+		if (removedSourceIds.length > 0) {
 			singleFlightRefresh(getGiftCategories, input.sourceWishlistId);
 		}
-		return { createdIds, removedSourceIds };
+		return { createdIds, linkedIds, removedSourceIds };
 	} catch (thrown) {
 		if (isHttpError(thrown)) {
 			throw thrown;

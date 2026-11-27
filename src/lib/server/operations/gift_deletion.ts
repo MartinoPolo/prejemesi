@@ -1,16 +1,17 @@
 import { eq } from 'drizzle-orm';
 import { error } from '@sveltejs/kit';
 import { gift } from '$lib/server/db/gift.schema.js';
-import { deleteObjectsBestEffort } from '$lib/server/storage/r2.js';
 import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
 import { WISHLIST_ROLES } from '$lib/modules/wishlists/types.js';
 import { isOwnerSharedGiftDeleteGraceOpen } from '$lib/modules/gifts/gift_deletion_rules.js';
 import { giftFollowsStrictPostShareRules } from '$lib/modules/gifts/gift_strict_post_share_rules.js';
 import { galleryImageKeys } from '$lib/modules/gifts/gift_images.js';
 import type { MutationOperationContext } from './operation.js';
-import type { GiftRow } from './gift_update.js';
+import type { GiftRow } from './gift_presentation_update.js';
 import type { ManagedWishlist } from './wishlist_management.js';
 import { giftHasActiveReservation } from './wishlist_kind_rules.js';
+import { deleteUnreferencedGiftImagesBestEffort } from './gift_gallery.js';
+import { leaveLinkGroup } from './gift_link_group.js';
 
 /**
  * Soft-deletes a gift under the deletion rules: on a shared wishlist the recipient may delete only
@@ -18,6 +19,8 @@ import { giftHasActiveReservation } from './wishlist_kind_rules.js';
  * reserved gift. Správci see reservation state, so they are exempt from the grace limits, and so
  * is an unreserved gift on a permanent wishlist. The caller holds the gift row FOR UPDATE, so a
  * reservation state it already read under that lock may be passed in instead of re-queried.
+ * Only reservations made on this copy count; a linked copy then leaves its group, and the other
+ * copies keep theirs. The caller holds the group locked (`lockLinkedCopies`).
  */
 export async function softDeleteGift(
 	context: MutationOperationContext,
@@ -52,6 +55,7 @@ export async function softDeleteGift(
 		.update(gift)
 		.set({ deletedAt: now, updatedAt: now })
 		.where(eq(gift.id, giftRow.id));
+	await leaveLinkGroup(transaction, giftRow);
 	context.recordGiftRevisions([
 		{
 			giftId: giftRow.id,
@@ -63,5 +67,5 @@ export async function softDeleteGift(
 
 	// Storage cleanup (issue #107): the uploaded images are unreachable once the gift is deleted.
 	const deletedImageKeys = galleryImageKeys(giftRow.images);
-	context.deferEffect(() => deleteObjectsBestEffort(deletedImageKeys));
+	context.deferEffect(() => deleteUnreferencedGiftImagesBestEffort(deletedImageKeys));
 }

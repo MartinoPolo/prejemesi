@@ -137,6 +137,10 @@ export function createWishlistGiftCollectionView(
 			moreOpen: collection.activeContextGiftId === gift.id,
 			moreSurface: collection.contextSurface ?? 'menu',
 			persistentMore: collection.hascontextactions?.(gift) ?? false,
+			oneditlinkedcopies:
+				collection.role === 'visitor' || collection.isArchived
+					? undefined
+					: () => collection.onedit(gift),
 			onmore:
 				openContextActions === undefined
 					? undefined

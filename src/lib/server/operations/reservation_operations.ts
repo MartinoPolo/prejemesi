@@ -1,5 +1,5 @@
 import * as v from 'valibot';
-import { and, eq, isNull, sql } from 'drizzle-orm';
+import { and, eq, inArray, isNull } from 'drizzle-orm';
 import { error } from '@sveltejs/kit';
 import { getDb, type DatabaseTransaction } from '$lib/server/db/index.js';
 import { gift, giftLike, reservation } from '$lib/server/db/gift.schema.js';
@@ -23,6 +23,7 @@ import { OPERATION_EXPOSURE, OPERATION_KIND, defineOperation } from './operation
 import { optionalEmail } from './optional_email.js';
 import { executeAnonymousVisitorMutation, type AnonymousVisitorMutationContext } from './runner.js';
 import { activeFollowerUserIds, type WishlistRow } from './wishlist_management.js';
+import { lockLinkGroupAvailability } from './gift_link_group.js';
 
 type ReservationRow = typeof reservation.$inferSelect;
 interface ReservationTarget {
@@ -108,43 +109,42 @@ function reserverColumns(participant: ReservingParticipant, wishlistRow: Wishlis
 
 /**
  * Locks the gift row so concurrent reservations of one gift serialize, then recounts the active
- * reservations under the lock: capacity enforcement must be atomic to prevent overbooking.
+ * reservations under the lock: capacity enforcement must be atomic to prevent overbooking. A linked
+ * gift's copies share one capacity (issue #742), so its whole group is locked, in id order, and
+ * counted. Returns the gift's name and the ids of the copies it shares capacity with.
  */
 async function lockAvailableGift(
 	transaction: DatabaseTransaction,
-	giftId: string,
+	target: Pick<typeof gift.$inferSelect, 'id' | 'linkGroupId'>,
 	requestedQuantity: number,
-): Promise<string> {
-	const [lockedGift] = await transaction
-		.select({ quantity: gift.quantity, name: gift.name })
-		.from(gift)
-		.where(and(eq(gift.id, giftId), isNull(gift.deletedAt)))
-		.for('update')
-		.limit(1);
-	if (lockedGift === undefined) {
+): Promise<{ giftName: string; capacityGiftIds: string[] }> {
+	const availability = await lockLinkGroupAvailability(transaction, target);
+	if (availability === undefined) {
 		error(404, SERVER_ERROR.GIFT_NOT_FOUND);
 	}
-	const [reserved] = await transaction
-		.select({ totalQuantity: sql<number>`COALESCE(SUM(${reservation.quantity}), 0)` })
-		.from(reservation)
-		.where(and(eq(reservation.giftId, giftId), isNull(reservation.deletedAt)));
-	const available = (lockedGift.quantity ?? 1) - Number(reserved?.totalQuantity ?? 0);
+	const available = availability.availableQuantity;
 	if (requestedQuantity > available) {
 		error(400, encodeServerError(SERVER_ERROR.NOT_ENOUGH_AVAILABLE, { available }));
 	}
-	return lockedGift.name;
+	return { giftName: availability.giftName, capacityGiftIds: availability.memberGiftIds };
 }
 
 /**
  * Likers and followers learn the gift was reserved, never the recipient or the reserver. Reserver
  * identity is personal data (issue #198): only the server-side actor id travels, never a name.
- * The audience is read after commit so the gift lock is not held while it is gathered.
+ * The audience is read after commit so the gift lock is not held while it is gathered. Likers of
+ * every linked copy hear about it, since the reservation takes the units they all share.
  */
 function notifyReservationAfterCommit(
 	context: AnonymousVisitorMutationContext,
-	params: { target: ReservationTarget; giftName: string; reserverUserId: string | null },
+	params: {
+		target: ReservationTarget;
+		giftName: string;
+		reserverUserId: string | null;
+		likedGiftIds: readonly string[];
+	},
 ): void {
-	const { target, giftName, reserverUserId } = params;
+	const { target, giftName, reserverUserId, likedGiftIds } = params;
 	const giftId = target.gift.id;
 	const wishlistId = target.wishlist.id;
 	const recipientUserId = target.wishlist.recipientUserId;
@@ -162,11 +162,11 @@ function notifyReservationAfterCommit(
 		const likedRows = await database
 			.select({ userId: giftLike.userId })
 			.from(giftLike)
-			.where(and(eq(giftLike.giftId, giftId), isNull(giftLike.deletedAt)));
+			.where(and(inArray(giftLike.giftId, [...likedGiftIds]), isNull(giftLike.deletedAt)));
 		const followerUserIds = await activeFollowerUserIds(database, wishlistId);
 		await dispatchNotification({
 			type: NOTIFICATION_TYPE.LIKED_GIFT_RESERVED,
-			targetUserIds: notifiedUserIds(likedRows.map((row) => row.userId)),
+			targetUserIds: notifiedUserIds([...new Set(likedRows.map((row) => row.userId))]),
 			...reservedGift,
 		});
 		await dispatchNotification({
@@ -192,7 +192,11 @@ async function reserveGiftForParticipant(
 		error(400, SERVER_ERROR.CANNOT_RESERVE_ON_ARCHIVED);
 	}
 	const reserver = reserverColumns(participant, target.wishlist);
-	const giftName = await lockAvailableGift(context.transaction, input.giftId, input.quantity);
+	const { giftName, capacityGiftIds } = await lockAvailableGift(
+		context.transaction,
+		target.gift,
+		input.quantity,
+	);
 	const anonymousVisitorId =
 		participant.kind === 'anonymousVisitor' ? participant.claimVisitorId() : null;
 	const [created] = await context.transaction
@@ -206,6 +210,7 @@ async function reserveGiftForParticipant(
 		target,
 		giftName,
 		reserverUserId: reserver.userId,
+		likedGiftIds: capacityGiftIds,
 	});
 	return { reservationId: created.id, wishlistShortId: target.wishlist.shortId };
 }

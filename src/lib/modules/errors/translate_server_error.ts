@@ -66,6 +66,8 @@ const TRANSLATIONS: Record<string, TranslatorFunction> = {
 		m.server_error_bulk_copy_source_not_permanent(),
 	[SERVER_ERROR.BULK_COPY_RECIPIENT_CANNOT_MOVE]: () =>
 		m.server_error_bulk_copy_recipient_cannot_move(),
+	[SERVER_ERROR.BULK_COPY_LINK_NOT_ALLOWED]: () => m.server_error_bulk_copy_link_not_allowed(),
+	[SERVER_ERROR.GIFT_NOT_LINKED]: () => m.server_error_gift_not_linked(),
 	[SERVER_ERROR.PERMANENT_WISHLIST_EVENT_DATE]: () =>
 		m.server_error_permanent_wishlist_event_date(),
 	[SERVER_ERROR.CANNOT_MAKE_WISHLIST_WITH_UPCOMING_EVENT_PERMANENT]: () =>

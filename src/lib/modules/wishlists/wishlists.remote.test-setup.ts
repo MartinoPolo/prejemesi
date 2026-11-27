@@ -72,6 +72,7 @@ vi.mock('drizzle-orm', () => ({
 	or: vi.fn((...args: unknown[]) => ({ op: 'or', args })),
 	ne: vi.fn((...args: unknown[]) => ({ op: 'ne', args })),
 	isNull: vi.fn((arg: unknown) => ({ op: 'isNull', args: [arg] })),
+	inArray: vi.fn((...args: unknown[]) => ({ op: 'inArray', args })),
 	// Tagged template used as `sql<T>` in subquery projections; the result is aliased via
 	// `.as(...)`, so return a chainable stub instead of a bare undefined.
 	sql: vi.fn(() => ({ as: vi.fn(() => 'sql_alias') })),

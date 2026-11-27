@@ -29,6 +29,8 @@ export interface GiftPresentationProps extends GiftBrowseActionHandlers {
 	livePreview?: GiftLivePreviewKind;
 	/** Eager for gifts likely above the fold, high for the likely LCP image. */
 	imageLoadPriority?: ImageLoadPriority;
+	/** Opens the gift editor at its linked copies; omitted when the viewer cannot edit the gift. */
+	oneditlinkedcopies?: () => void;
 	/**
 	 * Gift editor preview: everything but this image content turns inert. `over` lays it above
 	 * the photo and its badges; `instead` replaces the photo and keeps the badges above it.

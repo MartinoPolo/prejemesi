@@ -69,6 +69,34 @@ describe('withoutViewerReservation', () => {
 		expect(gift).toMatchObject({ reservedCount: 2, isFullyReserved: false });
 	});
 
+	it('frees units held on a linked copy without touching the names reserved on this copy', () => {
+		const reservedElsewhere = makeGift({
+			quantity: 2,
+			reservedCount: 2,
+			isFullyReserved: true,
+			reserverNames: ['Jana'],
+			reservedOnLinkedCopiesCount: 1,
+			myReservationId: 'reservation-1',
+			myReservationQuantity: 1,
+			myReservationOnLinkedCopy: true,
+		});
+
+		const [gift] = withoutViewerReservation(
+			giftsResult(reservedElsewhere),
+			'reservation-1',
+			'Jana',
+		).gifts;
+
+		expect(gift).toMatchObject({
+			reservedCount: 1,
+			isFullyReserved: false,
+			reserverNames: ['Jana'],
+			reservedOnLinkedCopiesCount: 0,
+			myReservationId: null,
+			myReservationOnLinkedCopy: false,
+		});
+	});
+
 	it('keeps a gift fully reserved when others still hold every unit of a lowered quantity', () => {
 		const overReserved = makeGift({
 			quantity: 2,

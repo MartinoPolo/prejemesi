@@ -40,6 +40,9 @@ function gift(overrides: Partial<GiftForVisitor> = {}): GiftForVisitor {
 		myReservationId: null,
 		myReservationPurchasedAt: null,
 		myReservationQuantity: 0,
+		myReservationOnLinkedCopy: false,
+		reservedOnLinkedCopiesCount: 0,
+		linkedCopies: [],
 		...overrides,
 	};
 }
@@ -324,6 +327,44 @@ describe('deriveGiftDisplayState reserver identity', () => {
 				otherReservers: { kind: 'multiple' },
 				role: 'other-reservation',
 			},
+		]);
+	});
+
+	it('tells správci a gift is reserved on another list without naming the reserver', () => {
+		const reservedOnLinkedCopy = gift({
+			reservedCount: 1,
+			isFullyReserved: true,
+			reservedOnLinkedCopiesCount: 1,
+		});
+
+		expect(
+			deriveGiftDisplayState(reservedOnLinkedCopy, 'moderator', false, visitorCapabilities)
+				.presentation.overlay,
+		).toEqual([
+			{
+				kind: 'unavailable',
+				otherReservers: { kind: 'elsewhere' },
+				role: 'primary',
+			},
+		]);
+	});
+
+	it('summarises reservations split between this list and a linked copy', () => {
+		const overlay = deriveGiftDisplayState(
+			gift({
+				quantity: 2,
+				reservedCount: 2,
+				isFullyReserved: true,
+				reserverNames: ['Jana'],
+				reservedOnLinkedCopiesCount: 1,
+			}),
+			'moderator',
+			false,
+			visitorCapabilities,
+		).presentation.overlay;
+
+		expect(overlay).toEqual([
+			{ kind: 'unavailable', otherReservers: { kind: 'multiple' }, role: 'primary' },
 		]);
 	});
 

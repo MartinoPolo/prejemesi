@@ -8,6 +8,7 @@ import {
 	createGiftOperation,
 	deleteGiftOperation,
 	markGiftReceivedOperation,
+	unlinkGiftOperation,
 	updateGiftOperation,
 } from './gift_mutation_operations.js';
 import {
@@ -93,6 +94,7 @@ export const OPERATION_REGISTRY = {
 	[appendGiftDescriptionOperation.name]: appendGiftDescriptionOperation,
 	[deleteGiftOperation.name]: deleteGiftOperation,
 	[markGiftReceivedOperation.name]: markGiftReceivedOperation,
+	[unlinkGiftOperation.name]: unlinkGiftOperation,
 	[reorderGiftsOperation.name]: reorderGiftsOperation,
 	[bulkUpdateGiftsOperation.name]: bulkUpdateGiftsOperation,
 	[bulkCopyGiftsOperation.name]: bulkCopyGiftsOperation,

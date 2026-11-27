@@ -63,6 +63,8 @@ export interface GiftContextCommandCallbacks {
 	onselect: () => void;
 	/** Present only while reorder mode can start. */
 	onreorder?: () => void;
+	/** Present only while the gift has linked copies. */
+	onunlink?: () => void;
 	onreserve?: () => void;
 	oncancelreservation?: () => void;
 	onpurchased?: () => void;

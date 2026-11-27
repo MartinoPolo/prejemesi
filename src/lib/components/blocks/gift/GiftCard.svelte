@@ -33,6 +33,7 @@
 		type GiftPresentationProps,
 	} from './gift_presentation_props.js';
 	import GiftCardGallery from './GiftCardGallery.svelte';
+	import GiftLinkChip from './GiftLinkChip.svelte';
 	import GiftGalleryCountChip from './GiftGalleryCountChip.svelte';
 	import { GIFT_CARD_DENSITIES, type GiftCardDensity } from './gift_card_variants.js';
 
@@ -54,6 +55,7 @@
 		onreceived,
 		receivedPending = false,
 		onmore,
+		oneditlinkedcopies,
 		persistentMore = onmore !== undefined,
 		moreOpen = false,
 		moreSurface = 'menu',
@@ -71,8 +73,9 @@
 	);
 
 	const previewMarks = $derived(giftLivePreviewMarks(livePreview));
+	const showsLinkChip = $derived(role !== 'visitor' && gift.linkedCopies.length > 0);
 	const showsTopOverlays = $derived(
-		!contextualMode || gift.categories.length > 0 || previewMarks.proposed,
+		!contextualMode || gift.categories.length > 0 || previewMarks.proposed || showsLinkChip,
 	);
 
 	const giftsContext = useGifts();
@@ -95,6 +98,8 @@
 	);
 	const { visitorGift, isFullyReserved } = $derived(displayState);
 	const presentation = $derived(displayState.presentation);
+	const likedGift = $derived(presentation.showLike ? (visitorGift ?? null) : null);
+	const showsPreviewBadge = $derived(previewMarks.proposed && livePreview !== undefined);
 	const browseActions = $derived(
 		deriveGiftBrowseActions({
 			role,
@@ -173,16 +178,29 @@
 				/>
 			</div>
 		{/if}
-		{#if presentation.showLike && visitorGift}
-			<LikeButton
-				giftId={gift.id}
-				giftName={gift.name}
-				likeCount={visitorGift.likeCount}
-				class="ml-auto"
-			/>
-		{/if}
-		{#if previewMarks.proposed && livePreview !== undefined}
-			<GiftLivePreviewBadge kind={livePreview} class="ml-auto" />
+		<!-- One trailing group keeps Like and the link sticker together at the top-right and
+		     centred on each other, whichever of them the viewer gets. -->
+		{#if likedGift !== null || showsPreviewBadge || showsLinkChip}
+			<div class="ml-auto flex shrink-0 items-center gap-1.5">
+				{#if likedGift !== null}
+					<LikeButton
+						giftId={gift.id}
+						giftName={gift.name}
+						likeCount={likedGift.likeCount}
+					/>
+				{/if}
+				{#if showsPreviewBadge && livePreview !== undefined}
+					<GiftLivePreviewBadge kind={livePreview} />
+				{/if}
+				{#if showsLinkChip}
+					<GiftLinkChip
+						linkedCopies={gift.linkedCopies}
+						giftName={gift.name}
+						interactive={!contextualMode}
+						{oneditlinkedcopies}
+					/>
+				{/if}
+			</div>
 		{/if}
 	</div>
 {/snippet}

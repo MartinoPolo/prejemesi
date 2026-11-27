@@ -25,7 +25,7 @@ import {
 	planReservedGiftEditNotifications,
 	type ReservedGiftEdit,
 } from './reserved_gift_edit_notifications.js';
-import { lockWishlistsInIdOrder } from './wishlist_management.js';
+import { lockWishlistsWithLinkedCopies, type HeldWishlistLocks } from './gift_link_group.js';
 
 export interface OperationBatchStep {
 	operation: AnyMutationOperation;
@@ -42,6 +42,8 @@ export interface OperationBatchOptions extends OperationOptions {
 	 * Every wishlist the batch touches, locked FOR UPDATE in id order before the first step. A step
 	 * taking a weaker wishlist lock (a reservation's share lock, a gift edit's key share lock) would
 	 * otherwise deadlock against a concurrent batch once a later step needs the row exclusively.
+	 * The wishlists of copies linked to their gifts join the same pass key share, because a linked
+	 * edit writes those copies too.
 	 */
 	exclusiveWishlistIds?: readonly string[];
 	/**
@@ -205,6 +207,7 @@ interface BatchStepScope {
 	now: Date;
 	batchId: string;
 	dryRun: boolean;
+	heldWishlistLocks: HeldWishlistLocks;
 	revisionCollector: GiftRevisionCollector;
 	noteReservedGiftEdits: (edits: readonly ReservedGiftEdit[]) => void;
 	deferEffect: (deferredEffect: DeferredEffect) => void;
@@ -217,8 +220,13 @@ interface BatchStepScope {
 function stepContext(
 	step: PreparedStep,
 	scope: BatchStepScope,
-): { context: MutationOperationContext; reportToScope: () => void } {
+): {
+	context: MutationOperationContext;
+	reportToScope: () => void;
+	revisedGiftIds: Set<string>;
+} {
 	const reports: (() => void)[] = [];
+	const revisedGiftIds = new Set<string>();
 	return {
 		context: {
 			actor: scope.actor,
@@ -226,8 +234,11 @@ function stepContext(
 			now: scope.now,
 			batchId: scope.batchId,
 			dryRun: scope.dryRun,
-			recordGiftRevisions: (changes) =>
-				reports.push(() => scope.revisionCollector.record(step.operationName, changes)),
+			heldWishlistLocks: scope.heldWishlistLocks,
+			recordGiftRevisions: (changes) => {
+				changes.forEach((change) => revisedGiftIds.add(change.giftId));
+				reports.push(() => scope.revisionCollector.record(step.operationName, changes));
+			},
 			noteReservedGiftEdits: (edits) =>
 				reports.push(() => scope.noteReservedGiftEdits(edits)),
 			deferEffect: (effect) =>
@@ -236,6 +247,7 @@ function stepContext(
 				),
 		},
 		reportToScope: () => reports.forEach((report) => report()),
+		revisedGiftIds,
 	};
 }
 
@@ -305,6 +317,14 @@ async function runStepGroup(
 		}
 		results.push(settled.value);
 	}
+	// An edit of a linked gift also writes its copies (issue #742), so its order among the group's
+	// steps matters; the group then reruns step by step.
+	const changedOtherGifts = runs.some((run) =>
+		[...run.revisedGiftIds].some((giftId) => giftId !== run.step.isolatedGiftId),
+	);
+	if (runs.length > 1 && changedOtherGifts) {
+		return { failed: true, thrown: new StepGroupRollback() };
+	}
 	runs.forEach((run) => run.reportToScope());
 	return { failed: false, results };
 }
@@ -362,7 +382,10 @@ async function runBoundSteps(
 		}
 		try {
 			outcome = await getDb().transaction(async (transaction) => {
-				await lockWishlistsInIdOrder(transaction, options.exclusiveWishlistIds);
+				const heldWishlistLocks = await lockWishlistsWithLinkedCopies(
+					transaction,
+					options.exclusiveWishlistIds,
+				);
 				await options.verifyLocked?.(transaction);
 				const revisionCollector = new GiftRevisionCollector({
 					batchId,
@@ -376,6 +399,7 @@ async function runBoundSteps(
 					now,
 					batchId,
 					dryRun,
+					heldWishlistLocks,
 					revisionCollector,
 					noteReservedGiftEdits: (edits) => reservedGiftEdits.push(...edits),
 					deferEffect: (deferredEffect) => deferredEffects.push(deferredEffect),
@@ -547,12 +571,14 @@ export async function previewOperationBatch(
 	const now = new Date();
 	const entries: PreviewEntry[] = [];
 	const previews: OperationStepPreview[] = [];
+	let heldWishlistLocks: HeldWishlistLocks = new Map();
 	const previewScope = (transaction: DatabaseTransaction): BatchStepScope => ({
 		actor,
 		transaction,
 		now,
 		batchId,
 		dryRun: true,
+		heldWishlistLocks,
 		revisionCollector: new GiftRevisionCollector({
 			batchId,
 			actorUserId: actor.userId,
@@ -618,7 +644,10 @@ export async function previewOperationBatch(
 			}
 		});
 		await getDb().transaction(async (transaction) => {
-			await lockWishlistsInIdOrder(transaction, options.exclusiveWishlistIds ?? []);
+			heldWishlistLocks = await lockWishlistsWithLinkedCopies(
+				transaction,
+				options.exclusiveWishlistIds ?? [],
+			);
 			await options.verifyLocked?.(transaction);
 			for (const group of concurrentStepGroups(preparedSteps)) {
 				const together =

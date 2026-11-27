@@ -23,8 +23,14 @@ export interface GiftDisplayCapabilities {
 	isArchived?: boolean;
 }
 
-/** Who else holds a reservation; several reservers are summarised rather than listed. */
-export type OtherReserverIdentity = { kind: 'single'; name: string } | { kind: 'multiple' };
+/**
+ * Who else holds a reservation; several reservers are summarised rather than listed. `elsewhere`
+ * means only reservations made on a linked copy of the gift on another list.
+ */
+export type OtherReserverIdentity =
+	| { kind: 'single'; name: string }
+	| { kind: 'multiple' }
+	| { kind: 'elsewhere' };
 
 type GiftOverlayState =
 	| { kind: 'received' | 'own-reservation' | 'own-purchased' }
@@ -59,12 +65,18 @@ export interface GiftDisplayState {
 /**
  * Reserver names include the viewer's own reservation without marking which one it is, so a
  * viewer holding a reservation is only told that several people reserved when others did too.
+ * Names cover only reservations made on this copy; others' reservations on linked copies are
+ * named by where they are.
  */
 function otherReserverIdentity(
 	reserverNames: readonly string[],
-	ownsReservation: boolean,
+	ownsReservationHere: boolean,
+	othersReservedElsewhere: boolean,
 ): OtherReserverIdentity | undefined {
-	const otherReserverCount = reserverNames.length - (ownsReservation ? 1 : 0);
+	const otherReserverCount = reserverNames.length - (ownsReservationHere ? 1 : 0);
+	if (othersReservedElsewhere) {
+		return otherReserverCount > 0 ? { kind: 'multiple' } : { kind: 'elsewhere' };
+	}
 	if (otherReserverCount <= 0) {
 		return undefined;
 	}
@@ -103,10 +115,17 @@ export function deriveGiftDisplayState(
 	const quantity = reservationAwareGift?.quantity;
 	const remaining = quantity == null ? undefined : Math.max(0, quantity - reservedCount);
 	const ownsReservation = reservationAwareGift?.myReservationId != null;
-	const otherReservers = otherReserverIdentity(
-		canSeeReserverNames(role) ? (reservationAwareGift?.reserverNames ?? []) : [],
-		ownsReservation,
-	);
+	const ownsReservationElsewhere = reservationAwareGift?.myReservationOnLinkedCopy === true;
+	const othersReservedElsewhereCount =
+		(reservationAwareGift?.reservedOnLinkedCopiesCount ?? 0) -
+		(ownsReservationElsewhere ? (reservationAwareGift?.myReservationQuantity ?? 0) : 0);
+	const otherReservers = canSeeReserverNames(role)
+		? otherReserverIdentity(
+				reservationAwareGift?.reserverNames ?? [],
+				ownsReservation && !ownsReservationElsewhere,
+				othersReservedElsewhereCount > 0,
+			)
+		: undefined;
 	const reservationState: GiftOverlayState | null = ownsReservation
 		? {
 				kind:

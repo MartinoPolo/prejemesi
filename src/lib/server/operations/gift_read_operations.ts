@@ -13,7 +13,8 @@ import {
 	hidesReservationState,
 } from '$lib/modules/wishlists/wishlist_capabilities.js';
 import { activeGiftCategoriesColumn } from '$lib/modules/gift-categories/gift_categories_service.js';
-import type { GiftForRecipient, GiftForVisitor } from '$lib/modules/gifts/types.js';
+import type { GiftForRecipient, GiftForVisitor, LinkedGiftCopy } from '$lib/modules/gifts/types.js';
+import { WISHLIST_ROLES, type WishlistRole } from '$lib/modules/wishlists/types.js';
 import { OPERATION_EXPOSURE, OPERATION_KIND, defineOperation } from './operation.js';
 import { giftImagesColumn } from './gift_gallery.js';
 import {
@@ -21,6 +22,13 @@ import {
 	requireWishlistManagement,
 } from './wishlist_management.js';
 import { requireOperationActor, type OperationActor } from './actor.js';
+import {
+	listedLinkedCopies,
+	loadLinkedSiblingsOnWishlist,
+	loadViewerManagedWishlistIds,
+	wishlistsShareRecipient,
+	type LinkGroupMember,
+} from './gift_link_group.js';
 
 type ReadDatabase = ReturnType<typeof getDb>;
 
@@ -67,8 +75,17 @@ function loadGiftRows(database: ReadDatabase, wishlistId: string) {
 
 type GiftReadRow = Awaited<ReturnType<typeof loadGiftRows>>[number];
 
-function toRecipientGift(row: GiftReadRow): GiftForRecipient {
-	return { ...row, categoryIds: row.categories.map((category) => category.id) };
+function toRecipientGift(row: GiftReadRow, linkedCopies: LinkedGiftCopy[]): GiftForRecipient {
+	return { ...row, categoryIds: row.categories.map((category) => category.id), linkedCopies };
+}
+
+/** Only the recipient and správci learn where else a gift is listed; visitors never do. */
+function readableLinkedCopies(
+	role: WishlistRole,
+	siblings: readonly LinkGroupMember[],
+	managedWishlistIds: ReadonlySet<string>,
+): LinkedGiftCopy[] {
+	return role === WISHLIST_ROLES.visitor ? [] : listedLinkedCopies(siblings, managedWishlistIds);
 }
 
 interface ReservationSummary {
@@ -190,34 +207,100 @@ async function loadViewerReservations(
 	return reservationsByGiftId;
 }
 
+/** The viewer of one wishlist, as the reservation privacy rules see them. */
+interface ReservationViewer {
+	role: WishlistRole;
+	recipientIsModerator: boolean;
+}
+
+/**
+ * Whose reservations a viewer of one gift sees: undefined when its reservation state must stay a
+ * surprise to them, otherwise the gift's linked copies whose reservations count here besides its
+ * own. Linked copies share their units, so reservations on any of them count. A recipient who
+ * promoted themselves sees only what they would see on each copy: reservations on copies whose
+ * list they promoted themselves on too.
+ */
+function linkedCopiesWithVisibleReservations(
+	viewer: ReservationViewer,
+	siblings: readonly LinkGroupMember[],
+): readonly LinkGroupMember[] | undefined {
+	if (hidesReservationState(viewer.role, viewer.recipientIsModerator)) {
+		return undefined;
+	}
+	return viewer.role === WISHLIST_ROLES.recipient
+		? siblings.filter((member) => member.wishlist.recipientIsModerator)
+		: siblings;
+}
+
 interface VisitorGiftReadings {
+	role: WishlistRole;
+	linkedSiblingsByGiftId: Map<string, LinkGroupMember[]>;
+	/** Wishlists of linked copies the viewer manages. */
+	managedLinkedWishlistIds: ReadonlySet<string>;
+	countedLinkedCopiesByGiftId: Map<string, readonly LinkGroupMember[]>;
 	reservationSummaries: Map<string, ReservationSummary>;
 	likeCounts: Map<string, number>;
 	viewerReservations: Map<string, ViewerReservation>;
-	includeReserverNames: boolean;
 }
 
-function toVisitorGift(row: GiftReadRow, readings: VisitorGiftReadings): GiftForVisitor {
-	const reservationSummary = readings.reservationSummaries.get(row.id);
-	const reservedCount = reservationSummary?.reservedCount ?? 0;
-	const viewerReservation = readings.viewerReservations.get(row.id);
+/** Units reserved on the linked copies whose reservations this viewer sees counted here. */
+function countReservedOnLinkedCopies(giftId: string, readings: VisitorGiftReadings): number {
+	const countedCopies = readings.countedLinkedCopiesByGiftId.get(giftId) ?? [];
+	return countedCopies.reduce(
+		(total, member) =>
+			total + (readings.reservationSummaries.get(member.giftId)?.reservedCount ?? 0),
+		0,
+	);
+}
+
+/** A gifter may cancel or mark bought from any copy the reservation they made on another one. */
+function viewerReservationFields(
+	giftId: string,
+	siblings: readonly LinkGroupMember[],
+	readings: VisitorGiftReadings,
+) {
+	const ownViewerReservation = readings.viewerReservations.get(giftId);
+	const viewerReservation =
+		ownViewerReservation ??
+		siblings
+			.map((member) => readings.viewerReservations.get(member.giftId))
+			.find((linkedReservation) => linkedReservation !== undefined);
 	return {
-		...toRecipientGift(row),
-		likeCount: readings.likeCounts.get(row.id) ?? 0,
-		reservedCount,
-		isFullyReserved: reservedCount >= (row.quantity ?? 1),
-		reserverNames: readings.includeReserverNames
-			? (reservationSummary?.reserverNames ?? [])
-			: [],
 		myReservationId: viewerReservation?.id ?? null,
 		myReservationPurchasedAt: viewerReservation?.purchasedAt ?? null,
 		myReservationQuantity: viewerReservation?.quantity ?? 0,
+		myReservationOnLinkedCopy:
+			viewerReservation !== undefined && ownViewerReservation === undefined,
+	};
+}
+
+function toVisitorGift(row: GiftReadRow, readings: VisitorGiftReadings): GiftForVisitor {
+	const siblings = readings.linkedSiblingsByGiftId.get(row.id) ?? [];
+	const reservationSummary = readings.reservationSummaries.get(row.id);
+	const reservedOnLinkedCopiesCount = countReservedOnLinkedCopies(row.id, readings);
+	const reservedCount = (reservationSummary?.reservedCount ?? 0) + reservedOnLinkedCopiesCount;
+	return {
+		...toRecipientGift(
+			row,
+			readableLinkedCopies(readings.role, siblings, readings.managedLinkedWishlistIds),
+		),
+		likeCount: readings.likeCounts.get(row.id) ?? 0,
+		reservedCount,
+		isFullyReserved: reservedCount >= (row.quantity ?? 1),
+		// Names stay on the list the reservation was made on.
+		reserverNames: canSeeReserverNames(readings.role)
+			? (reservationSummary?.reserverNames ?? [])
+			: [],
+		reservedOnLinkedCopiesCount:
+			readings.role === WISHLIST_ROLES.visitor ? 0 : reservedOnLinkedCopiesCount,
+		...viewerReservationFields(row.id, siblings, readings),
 	};
 }
 
 /**
  * Role-filtered gifts of a wishlist. Surprise protection is enforced here: an ordinary recipient
- * gets no reservation data or like counts, and reserver names reach správci only.
+ * gets no reservation data or like counts, and reserver names reach správci only. A linked gift
+ * counts the reservations of its copies (issue #742); only its managers learn where they are.
  */
 export const readWishlistGiftsOperation = defineOperation({
 	name: 'readWishlistGifts',
@@ -234,31 +317,76 @@ export const readWishlistGiftsOperation = defineOperation({
 			),
 			loadGiftRows(database, wishlistRow.id),
 		]);
+		// Link group ids stay server-side; readers get the linked copies their role may see.
+		const linkedSiblingsByGiftId = await loadLinkedSiblingsOnWishlist(database, wishlistRow.id);
+		const managedLinkedWishlistIds =
+			actor === null || role === WISHLIST_ROLES.visitor
+				? new Set<string>()
+				: await loadViewerManagedWishlistIds(
+						database,
+						actor.userId,
+						[...linkedSiblingsByGiftId.values()].flat(),
+					);
 
-		if (hidesReservationState(role, wishlistRow.recipientIsModerator)) {
-			// Recipient without self-promote: no reservation data, no like counts (protects the surprise)
-			const recipientGifts: GiftForRecipient[] = giftRows.map((row) => toRecipientGift(row));
+		const viewer: ReservationViewer = {
+			role,
+			recipientIsModerator: wishlistRow.recipientIsModerator,
+		};
+		const countedLinkedCopiesByGiftId = new Map<string, readonly LinkGroupMember[]>();
+		for (const row of giftRows) {
+			const counted = linkedCopiesWithVisibleReservations(
+				viewer,
+				linkedSiblingsByGiftId.get(row.id) ?? [],
+			);
+			if (counted !== undefined) {
+				countedLinkedCopiesByGiftId.set(row.id, counted);
+			}
+		}
+
+		if (countedLinkedCopiesByGiftId.size < giftRows.length) {
+			// Any gift hidden from the viewer hides the whole list's reservation data and like counts.
+			const recipientGifts: GiftForRecipient[] = giftRows.map((row) =>
+				toRecipientGift(
+					row,
+					readableLinkedCopies(
+						role,
+						linkedSiblingsByGiftId.get(row.id) ?? [],
+						managedLinkedWishlistIds,
+					),
+				),
+			);
 			return { role, gifts: recipientGifts } as const;
 		}
 
 		const giftIds = giftRows.map((row) => row.id);
+		// Every sibling, not only counted ones: a viewer's own reservation shows on any copy.
+		const reservableGiftIds = [
+			...giftIds,
+			...[...linkedSiblingsByGiftId.values()].flat().map((member) => member.giftId),
+		];
 		const [reservationSummaries, likeCounts, viewerReservations] = await Promise.all([
-			loadReservationSummaries(database, giftIds),
+			loadReservationSummaries(database, reservableGiftIds),
 			loadLikeCounts(database, giftIds),
-			loadViewerReservations(database, giftIds, actor),
+			loadViewerReservations(database, reservableGiftIds, actor),
 		]);
 		const readings: VisitorGiftReadings = {
+			role,
+			linkedSiblingsByGiftId,
+			managedLinkedWishlistIds,
+			countedLinkedCopiesByGiftId,
 			reservationSummaries,
 			likeCounts,
 			viewerReservations,
-			includeReserverNames: canSeeReserverNames(role),
 		};
 		const visitorGifts: GiftForVisitor[] = giftRows.map((row) => toVisitorGift(row, readings));
 		return { role, gifts: visitorGifts } as const;
 	},
 });
 
-/** Eligible non-archived copy destinations managed by the actor. */
+/**
+ * Eligible non-archived copy destinations managed by the actor; `linkable` marks the ones of the
+ * source's recipient, whose copies stay linked with their sources.
+ */
 export const readBulkCopyDestinationsOperation = defineOperation({
 	name: 'readBulkCopyDestinations',
 	kind: OPERATION_KIND.read,
@@ -267,14 +395,21 @@ export const readBulkCopyDestinationsOperation = defineOperation({
 	async run(context, { sourceWishlistId }) {
 		const actor = requireOperationActor(context.actor);
 		const database = getDb();
-		await requireWishlistManagement(database, actor.userId, sourceWishlistId, { lock: false });
-		return database
+		const { wishlistRow: sourceWishlistRow } = await requireWishlistManagement(
+			database,
+			actor.userId,
+			sourceWishlistId,
+			{ lock: false },
+		);
+		const destinations = await database
 			.selectDistinct({
 				id: wishlist.id,
 				title: wishlist.title,
 				status: wishlist.status,
 				kind: wishlist.kind,
 				recipientDisplayName: sql<string>`coalesce(${wishlist.recipientName}, ${user.name})`,
+				recipientUserId: wishlist.recipientUserId,
+				recipientName: wishlist.recipientName,
 			})
 			.from(wishlist)
 			.leftJoin(user, eq(user.id, wishlist.recipientUserId))
@@ -299,6 +434,13 @@ export const readBulkCopyDestinationsOperation = defineOperation({
 				),
 			)
 			.orderBy(wishlist.title);
+		return destinations.map(({ recipientUserId, recipientName, ...destination }) => ({
+			...destination,
+			linkable: wishlistsShareRecipient(sourceWishlistRow, {
+				recipientUserId,
+				recipientName,
+			}),
+		}));
 	},
 });
 

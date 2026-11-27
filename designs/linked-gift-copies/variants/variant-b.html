@@ -1,0 +1,697 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>#742 · Propojené kopie dárků · Varianta B</title>
+<link rel="stylesheet" href="../../mobile-filter-reset/assets/app.css" />
+<style>
+/* Bridge for tokens that src/app.css defines but the linked compiled snapshot predates. */
+:root { --edge: var(--ink); --edge-control: var(--edge); --ink-fill: var(--foreground); --ink-fill-foreground: var(--background); --ease-out-strong: cubic-bezier(0.23, 1, 0.32, 1); --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1); --press-scale: 0.98; }
+.dark { --edge: oklch(15% calc(var(--dark-tone-chroma, 0.03) * 1.25) var(--dark-tone-hue, 245)); --edge-control: oklch(76% 0.03 var(--p-brand-hue, 245)); --ink-fill: oklch(18% 0.03 var(--p-brand-hue, 245)); --ink-fill-foreground: var(--ink); }
+
+/* Presentation board */
+*, *::before, *::after { box-sizing: border-box; }
+body { margin: 0; background: var(--background); color: var(--foreground); font-family: var(--font-body); font-size: var(--text-base); line-height: 1.45; }
+.board { padding: 32px 24px 80px; display: flex; flex-direction: column; gap: 56px; }
+.board-intro { max-width: 900px; }
+.eyebrow { margin: 0 0 6px; font-size: var(--text-sm); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted-foreground); }
+.board-intro h1 { margin: 0 0 8px; font-family: var(--font-head); font-size: var(--text-3xl); font-weight: 600; }
+.board-intro p { margin: 0; max-width: 72ch; }
+.scene > h2 { margin: 0 0 4px; font-family: var(--font-head); font-size: var(--text-2xl); font-weight: 600; }
+.scene > .scene-note { margin: 0 0 16px; max-width: 80ch; color: var(--muted-foreground); }
+.frames { display: flex; flex-wrap: wrap; gap: 32px; align-items: flex-start; }
+.frame-wrap { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.frame-label { margin: 0; font-size: var(--text-sm); font-weight: 700; color: var(--muted-foreground); }
+.frame { position: relative; border: 1px dashed var(--border); border-radius: var(--radius-panel); background: var(--background); overflow: hidden; }
+.frame.desktop { width: min(1440px, calc(100vw - 48px)); }
+.frame.mobile { width: 390px; height: 844px; }
+.frame.mobile .screen { height: 100%; overflow-y: auto; overflow-x: hidden; }
+.frame.dark { background: var(--background); color: var(--foreground); }
+.scroll-x { overflow-x: auto; }
+
+/* Settled context (muted, non-editable) */
+.app-bar { height: 56px; display: flex; align-items: center; gap: 16px; padding: 0 var(--page-gutter); border-bottom: 1px solid var(--border); background: var(--card); }
+.app-bar .brand { font-family: var(--font-head); font-weight: 600; font-size: var(--text-xl); color: var(--foreground); }
+.app-bar nav { display: flex; gap: 14px; font-size: var(--text-md); color: var(--muted-foreground); }
+.app-bar .avatar { margin-left: auto; width: 32px; height: 32px; border-radius: 50%; border: 2px solid var(--edge); display: grid; place-items: center; font-weight: 700; font-size: var(--text-sm); background: var(--primary-soft); }
+.page { max-width: 1200px; margin: 0 auto; padding: 20px var(--page-gutter) 40px; }
+.hero { border: var(--border-w) solid var(--edge); border-radius: var(--radius-panel); background: var(--primary-soft); box-shadow: var(--elevation-ordinary); padding: 22px 24px; display: flex; flex-direction: column; gap: 8px; }
+.hero h1 { margin: 0; font-family: var(--font-head); font-size: var(--text-3xl); font-weight: 600; line-height: 1.2; }
+.hero-meta { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: var(--text-md); color: var(--muted-foreground); }
+.toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 16px 0 20px; }
+.toolbar .spacer { flex: 1; }
+.segmented { display: inline-flex; border: 2px solid var(--edge); border-radius: var(--radius-btn); overflow: hidden; background: var(--card); }
+.segmented span { padding: 0 12px; height: 28px; display: grid; place-items: center; font-size: var(--text-md); font-weight: 600; }
+.segmented .on { background: var(--ink-fill); color: var(--ink-fill-foreground); }
+.context { opacity: .72; }
+
+/* Shared primitives (Button / Badge look) */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: var(--size-control-md); padding: 0 12px; border: var(--border-w) solid var(--edge); border-radius: var(--radius-btn); background: var(--card); color: var(--foreground); font: 600 var(--text-md)/1 var(--font-body); box-shadow: var(--elevation-compact); cursor: pointer; white-space: nowrap; }
+.btn svg { width: 15px; height: 15px; }
+.btn-sm { height: var(--size-control-sm); padding: 0 9px; font-size: var(--text-sm); border-width: 2px; }
+.btn-primary { background: var(--primary); color: var(--primary-foreground); }
+.btn-danger { background: var(--status-danger-fill); color: #fff; }
+.btn-ink { background: var(--ink-fill); color: var(--ink-fill-foreground); }
+.btn-quiet { background: transparent; box-shadow: none; }
+.btn:disabled { opacity: .55; cursor: not-allowed; }
+.badge { display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 8px; border: 2px solid var(--edge); border-radius: var(--radius-badge); font-size: var(--text-xs); font-weight: 700; letter-spacing: .01em; white-space: nowrap; background: var(--card); color: var(--muted-foreground); }
+.badge.subtle { border-color: transparent; background: var(--muted); color: var(--foreground); }
+.badge.info { background: color-mix(in oklab, var(--status-info) 14%, var(--card)); color: var(--brand-link); }
+.badge.archived { border-style: dashed; color: var(--muted-foreground); }
+.badge.overlay { color: var(--ink); box-shadow: var(--elevation-compact); }
+:is(button, a, select, input, textarea, summary):focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+
+/* Gift card (context, faithful to GiftCard) */
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
+.gift { position: relative; display: grid; grid-template-rows: auto 1fr auto; border: var(--border-w) solid var(--edge); border-radius: var(--radius-panel); background: var(--card); box-shadow: var(--elevation-ordinary); min-width: 0; }
+.gift-image { position: relative; aspect-ratio: 4 / 3; border-radius: calc(var(--radius-panel) - var(--border-w)) calc(var(--radius-panel) - var(--border-w)) 0 0; overflow: hidden; background: radial-gradient(var(--border) 1.4px, transparent 1.5px) 0 0 / 18px 18px, var(--surface); border-bottom: var(--border-w) solid var(--edge); isolation: isolate; }
+.gift-image img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: -1; }
+.gift-image .placeholder { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted-foreground); }
+.gift-image .placeholder svg { width: 44px; height: 44px; opacity: .45; }
+.gift.dim .gift-image img, .gift.dim .gift-image .placeholder { opacity: .5; }
+.overlay-top { position: absolute; top: 8px; left: 8px; right: 8px; display: flex; align-items: flex-start; gap: 6px; z-index: 2; }
+.overlay-top .cats { display: flex; flex-wrap: wrap; gap: 4px; min-width: 0; flex: 1; }
+.like { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; height: 26px; padding: 0 8px; border: 2px solid var(--edge); border-radius: var(--radius-badge); background: var(--card); color: var(--ink); font-size: var(--text-xs); font-weight: 700; box-shadow: var(--elevation-compact); }
+.like svg { width: 14px; height: 14px; fill: var(--liked); stroke: var(--liked); }
+.priority { position: absolute; left: 12px; bottom: 12px; z-index: 2; }
+.state-overlay { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; z-index: 1; padding: 0 8px; }
+.state-pill { max-width: calc(100% - .5rem); padding: 6px 12px; border: 2px solid var(--edge); border-radius: var(--radius-badge); font-size: var(--text-xs); line-height: 16px; font-weight: 700; text-align: center; box-shadow: var(--elevation-ordinary); overflow-wrap: anywhere; }
+.state-pill.unavailable { background: var(--gift-overlay-unavailable); color: #fff; }
+.state-pill.own { background: var(--gift-overlay-own-reservation); color: #fff; }
+.state-pill.partial { background: var(--card); color: var(--foreground); }
+.gift-body { padding: 14px 14px 10px; display: flex; flex-direction: column; min-width: 0; }
+.gift-title { margin: 0; font-family: var(--font-head); font-weight: 600; font-size: 1.5rem; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.gift-desc { margin: 4px 0 0; color: var(--muted-foreground); font-size: var(--text-md); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.gift-source { margin-top: 8px; font-size: var(--text-md); color: var(--brand-link); text-decoration: underline; text-underline-offset: 3px; }
+.gift.dim .dimmable { opacity: .5; }
+.gift-footer { display: flex; justify-content: flex-end; gap: 8px; padding: 6px 14px 14px; flex-wrap: wrap; }
+
+/* NEW: meta line holding price and the link badge */
+.meta-line { margin-top: 8px; display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; min-width: 0; }
+.price { font-size: var(--text-sm); font-weight: 700; color: var(--secondary-foreground); }
+.meta-sep { color: var(--muted-foreground); font-size: var(--text-sm); }
+
+/* NEW: GiftLinkChip, an explicit text badge */
+.link-anchor { position: relative; display: inline-flex; min-width: 0; }
+.link-chip { position: relative; display: inline-flex; align-items: center; gap: 5px; height: 24px; padding: 0 9px 0 7px; border: 2px solid var(--edge); border-radius: var(--radius-badge); background: var(--muted); color: var(--foreground); font: 700 var(--text-sm)/1 var(--font-body); letter-spacing: .01em; white-space: nowrap; cursor: pointer; transition: background-color var(--duration-fast) var(--ease-out-strong), scale var(--duration-fast) var(--ease-out-strong); }
+.link-chip::before { content: ''; position: absolute; inset: -10px -4px; }
+.link-chip svg { width: 14px; height: 14px; flex-shrink: 0; }
+.link-chip .count { font-variant-numeric: tabular-nums; }
+.link-chip .dot { color: var(--muted-foreground); }
+.link-chip[aria-expanded='true'] { background: var(--primary-soft); }
+@media (hover: hover) { .link-chip:hover { background: var(--accent); } }
+.link-chip:active { scale: var(--press-scale); }
+
+/* NEW: popover „Také na seznamech" */
+.link-popover { --enter-scale: .95; position: absolute; top: calc(100% + 8px); left: 0; z-index: 40; width: 344px; max-width: calc(100vw - 32px); border: var(--border-w) solid var(--edge); border-radius: var(--radius-panel); background: var(--popover); color: var(--popover-foreground); box-shadow: var(--elevation-lifted); transform-origin: top left; visibility: hidden; opacity: 0; scale: var(--enter-scale); }
+.link-popover[data-align='end'] { left: auto; right: 0; transform-origin: top right; }
+.link-popover[data-open='true'] { visibility: visible; opacity: 1; scale: 1; }
+@media (prefers-reduced-motion: no-preference) {
+  .link-popover { transition: opacity calc(var(--duration-normal) * .8) var(--ease-out-strong), scale calc(var(--duration-normal) * .8) var(--ease-out-strong), visibility 0s linear calc(var(--duration-normal) * .8); }
+  .link-popover[data-open='true'] { transition: opacity var(--duration-normal) var(--ease-out-strong), scale var(--duration-normal) var(--ease-out-strong), visibility 0s; }
+}
+@media (prefers-reduced-motion: reduce) { .link-popover { scale: 1; } .link-chip:active { scale: 1; } }
+.popover-head { padding: 14px 16px 10px; border-bottom: 1px solid var(--border); }
+.popover-head h3 { margin: 0; font-family: var(--font-head); font-size: var(--text-lg); font-weight: 600; }
+.popover-head p { margin: 2px 0 0; font-size: var(--text-sm); color: var(--muted-foreground); }
+.link-rows { list-style: none; margin: 0; padding: 6px; max-height: calc(5 * 66px + 12px); overflow-y: auto; }
+.link-row { padding: 9px 10px; border-radius: calc(var(--radius-panel) - var(--border-w) - 6px); display: grid; gap: 5px; }
+.link-row + .link-row { border-top: 1px solid var(--border); border-top-left-radius: 0; border-top-right-radius: 0; }
+.link-row-head { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.link-title { flex: 1; min-width: 0; font-weight: 700; color: var(--foreground); text-decoration: underline; text-decoration-color: var(--border); text-underline-offset: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (hover: hover) { .link-title:hover { text-decoration-color: currentColor; } }
+.link-row-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 8px; font-size: var(--text-sm); color: var(--muted-foreground); }
+.res-summary { display: inline-flex; align-items: center; gap: 5px; }
+.res-summary svg { width: 13px; height: 13px; }
+.popover-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 16px 14px; border-top: 1px solid var(--border); font-size: var(--text-sm); color: var(--muted-foreground); }
+
+/* List view rows (faithful to GiftListItem) */
+.list { display: flex; flex-direction: column; gap: 14px; }
+.row { display: grid; grid-template-columns: 9.5rem minmax(0, 1fr); border: var(--border-w) solid var(--edge); border-radius: var(--radius-panel); background: var(--card); box-shadow: var(--elevation-ordinary); min-height: 9.5rem; }
+.row .gift-image { aspect-ratio: auto; height: 100%; border-bottom: 0; border-right: var(--border-w) solid var(--edge); border-radius: calc(var(--radius-panel) - var(--border-w)) 0 0 calc(var(--radius-panel) - var(--border-w)); }
+.row .overlay-top { right: auto; }
+.row .like { display: none; }
+.row .priority { left: 8px; bottom: 8px; }
+.row-body { padding: 10px 14px 10px; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.row .gift-title { -webkit-line-clamp: 1; }
+.row .gift-desc { -webkit-line-clamp: 1; margin: 0; }
+.row .meta-line { margin-top: 2px; }
+.row-actions { margin-top: auto; padding-top: 6px; display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+.row.dim .gift-image img, .row.dim .gift-image .placeholder { opacity: .5; }
+.row.dim .dimmable { opacity: .5; }
+
+/* Mobile adjustments */
+.mobile .page { padding: 12px 12px 32px; }
+.mobile .hero { padding: 14px 16px; }
+.mobile .hero h1 { font-size: var(--text-2xl); }
+.mobile .grid { grid-template-columns: 1fr; gap: 16px; }
+.mobile .gift-title { font-size: 1rem; }
+.mobile .btn:not(.btn-sm) { height: var(--size-control-lg); }
+.mobile .row { grid-template-columns: 9rem minmax(0, 1fr); min-height: 9rem; }
+.mobile .row .gift-title { -webkit-line-clamp: 2; }
+.mobile .row .gift-desc { -webkit-line-clamp: 2; }
+.mobile .row .btn { height: var(--size-control-md); }
+.mobile .row-body { padding: 8px 10px; }
+.mobile .row .state-pill { font-size: var(--text-2xs); padding: 3px 6px; line-height: 14px; }
+.mobile .link-chip::before { inset: -10px -6px; }
+.mobile .app-bar nav { display: none; }
+
+/* NEW: mobile bottom sheet for the chip */
+.sheet-scrim { position: absolute; inset: 0; background: color-mix(in oklab, var(--p-ink) 45%, transparent); opacity: 0; visibility: hidden; z-index: 50; }
+.sheet { position: absolute; left: 0; right: 0; bottom: 0; max-height: 80%; z-index: 51; display: flex; flex-direction: column; border: var(--border-w) solid var(--edge); border-bottom: 0; border-radius: var(--radius-panel) var(--radius-panel) 0 0; background: var(--popover); color: var(--popover-foreground); translate: 0 100%; visibility: hidden; }
+.sheet[data-open='true'] { translate: 0 0; visibility: visible; }
+.sheet[data-open='true'] + .sheet-scrim, .sheet-scrim[data-open='true'] { opacity: 1; visibility: visible; }
+@media (prefers-reduced-motion: no-preference) {
+  .sheet { transition: translate 400ms var(--ease-drawer), visibility 0s linear 400ms; }
+  .sheet[data-open='true'] { transition: translate 400ms var(--ease-drawer), visibility 0s; }
+  .sheet-scrim { transition: opacity var(--duration-slow) var(--ease-out-strong), visibility 0s linear var(--duration-slow); }
+  .sheet-scrim[data-open='true'] { transition: opacity var(--duration-slow) var(--ease-out-strong), visibility 0s; }
+}
+@media (prefers-reduced-motion: reduce) { .sheet { translate: 0 0; opacity: 0; transition: opacity var(--duration-normal) linear; } .sheet[data-open='true'] { opacity: 1; } }
+.sheet .grabber { width: 40px; height: 4px; border-radius: 2px; background: var(--border); margin: 8px auto 2px; }
+.sheet .popover-head { display: flex; align-items: flex-start; gap: 8px; }
+.sheet .popover-head > div { flex: 1; }
+.sheet .link-rows { overflow-y: auto; }
+.sheet .link-row { padding: 12px 10px; }
+.sheet .link-title { min-height: 24px; display: inline-flex; align-items: center; }
+.sheet .popover-foot { padding-bottom: 20px; }
+.sheet .popover-foot .btn { height: var(--size-control-lg); }
+.icon-btn { width: 40px; height: 40px; display: grid; place-items: center; border: 0; background: transparent; color: var(--foreground); border-radius: var(--radius-btn); cursor: pointer; }
+.icon-btn svg { width: 20px; height: 20px; }
+
+/* Dialog chrome (Scene B / D) */
+.scrim { position: absolute; inset: 0; background: color-mix(in oklab, var(--p-ink) 45%, transparent); z-index: 20; display: grid; place-items: center; padding: 24px; }
+.dialog { width: 100%; max-width: 24rem; border: var(--border-w) solid var(--edge); border-radius: var(--radius-panel); background: var(--card); box-shadow: var(--elevation-lifted); padding: 24px; display: flex; flex-direction: column; gap: 16px; }
+.dialog.md { max-width: 28rem; }
+.dialog h2 { margin: 0; font-family: var(--font-head); font-size: var(--text-xl); font-weight: 600; }
+.dialog .desc { margin: 4px 0 0; color: var(--muted-foreground); }
+.dialog-actions { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field > label, .field-label { font-weight: 600; font-size: var(--text-md); }
+.select, .input, .textarea { width: 100%; height: var(--size-control-lg); border: 2px solid var(--edge-control); border-radius: var(--radius-btn); background: var(--card); color: var(--foreground); padding: 0 10px; font: var(--text-base) var(--font-body); }
+.textarea { height: 84px; padding: 8px 10px; resize: none; }
+.input:disabled { background: var(--muted); color: var(--muted-foreground); }
+.help { margin: 0; font-size: var(--text-sm); color: var(--muted-foreground); }
+
+/* NEW: „Propojit kopie" checkbox matches the move control geometry */
+.check-row { display: grid; grid-template-columns: 20px minmax(0, 1fr); column-gap: 10px; row-gap: 2px; align-items: start; }
+.check-row input { appearance: none; margin: 1px 0 0; width: 20px; height: 20px; border: 2px solid var(--edge); border-radius: 5px; background: var(--card); display: grid; place-items: center; cursor: pointer; transition: background-color var(--duration-fast) var(--ease-out-strong); }
+.check-row input:checked { background: var(--primary); }
+.check-row input:checked::after { content: ''; width: 10px; height: 6px; border-left: 2.5px solid var(--primary-foreground); border-bottom: 2.5px solid var(--primary-foreground); rotate: -45deg; translate: 0 -1px; }
+.check-row input:disabled { background: var(--muted); border-color: var(--border); cursor: not-allowed; }
+.check-row label { font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+.check-row label svg { width: 15px; height: 15px; }
+.check-row input:disabled + label { color: var(--muted-foreground); cursor: not-allowed; }
+.check-row .help { grid-column: 2; }
+.check-row[hidden] { display: none; }
+.toast { display: inline-flex; align-items: center; gap: 10px; padding: 10px 14px; border: var(--border-w) solid var(--edge); border-radius: var(--radius-badge); background: var(--card); box-shadow: var(--elevation-ordinary); font-weight: 600; }
+.toast.error { background: color-mix(in oklab, var(--status-danger) 14%, var(--card)); color: var(--status-danger-text); }
+.selection-bar { display: flex; align-items: center; gap: 10px; margin: 16px 0 20px; padding: 8px 12px; border: var(--border-w) solid var(--edge); border-radius: var(--radius-panel); background: var(--card); font-weight: 600; }
+.sel-box { position: absolute; top: 8px; left: 8px; z-index: 3; width: 26px; height: 26px; border: 2px solid var(--edge); border-radius: 6px; background: var(--card); display: grid; place-items: center; }
+.sel-box.on { background: var(--primary); color: var(--primary-foreground); }
+.sel-box svg { width: 15px; height: 15px; }
+.sel-box ~ .overlay-top { left: 42px; }
+.bottom-sheet-static { position: absolute; left: 0; right: 0; bottom: 0; z-index: 30; border: var(--border-w) solid var(--edge); border-bottom: 0; border-radius: var(--radius-panel) var(--radius-panel) 0 0; background: var(--card); padding: 4px 16px 20px; display: flex; flex-direction: column; gap: 14px; max-height: 80%; }
+.bottom-sheet-static h2 { margin: 0; font-family: var(--font-head); font-size: var(--text-xl); font-weight: 600; }
+.bottom-sheet-static .dialog-actions .btn { height: var(--size-control-lg); flex: 1; }
+
+/* Editor (Scene C) */
+.editor { width: 100%; max-width: 1100px; height: 765px; border: var(--border-w) solid var(--edge); border-radius: var(--radius-panel); background: var(--card); box-shadow: var(--elevation-lifted); display: grid; grid-template-rows: auto minmax(0, 1fr) auto; overflow: hidden; }
+.editor-head { display: flex; align-items: center; gap: 12px; padding: 16px 20px; border-bottom: 1px solid var(--border); }
+.editor-head h2 { margin: 0; flex: 1; font-family: var(--font-head); font-size: var(--text-xl); font-weight: 600; }
+.editor-main { display: grid; grid-template-columns: minmax(15rem, 18.75rem) minmax(0, 1fr); min-height: 0; }
+.editor-rail { padding: 20px; border-right: 1px solid var(--border); display: flex; flex-direction: column; gap: 14px; background: var(--muted); }
+.rail-preview { aspect-ratio: 4 / 3; border: var(--border-w) solid var(--edge); border-radius: var(--radius-panel); background: radial-gradient(var(--border) 1.4px, transparent 1.5px) 0 0 / 18px 18px, var(--surface); display: grid; place-items: center; color: var(--muted-foreground); }
+.rail-preview svg { width: 48px; height: 48px; opacity: .45; }
+.strip { display: flex; gap: 8px; }
+.strip span { width: 56px; height: 56px; border: 2px dashed var(--border); border-radius: var(--radius-btn); }
+.editor-fields { padding: 20px 24px 24px; overflow-y: auto; display: flex; flex-direction: column; gap: 18px; }
+.editor-foot { display: flex; align-items: center; gap: 8px; padding: 12px 20px; border-top: 1px solid var(--border); }
+.editor-foot .spacer { flex: 1; }
+.row-2 { display: grid; grid-template-columns: 1fr 120px 1fr; gap: 12px; }
+
+/* NEW: GiftLinkedCopiesSection as a top banner */
+.linked-banner { border: 2px solid var(--edge); border-radius: var(--radius-badge); background: color-mix(in oklab, var(--status-info) 9%, var(--card)); padding: 14px 16px 12px; display: flex; flex-direction: column; gap: 10px; }
+.linked-banner-head { display: grid; grid-template-columns: 32px minmax(0, 1fr); gap: 10px; align-items: start; }
+.linked-icon { width: 32px; height: 32px; border-radius: 50%; border: 2px solid var(--edge); background: var(--card); display: grid; place-items: center; }
+.linked-icon svg { width: 16px; height: 16px; }
+.linked-banner h3 { margin: 0; font-size: var(--text-lg); font-weight: 700; }
+.linked-banner .lead { margin: 2px 0 0; font-size: var(--text-md); color: var(--muted-foreground); }
+.copies { list-style: none; margin: 0; padding: 0; border: 2px solid var(--edge); border-radius: calc(var(--radius-badge) - 2px - 6px + 6px); background: var(--card); overflow: hidden; }
+.copy { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 8px 8px 8px 12px; }
+.copy + .copy { border-top: 1px solid var(--border); }
+.copy-info { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 8px; min-width: 0; }
+.copy-info .link-title { flex: 0 1 auto; max-width: 100%; }
+.copy .btn svg { width: 14px; height: 14px; }
+.shared-note { margin: 0; font-size: var(--text-sm); color: var(--muted-foreground); }
+.shared-note strong { color: var(--foreground); font-weight: 600; }
+.lock-wrap { position: relative; }
+.lock-wrap svg { position: absolute; right: 10px; top: 50%; translate: 0 -50%; width: 15px; height: 15px; color: var(--muted-foreground); }
+.lock-note { display: flex; gap: 6px; align-items: flex-start; }
+.lock-note svg { width: 13px; height: 13px; margin-top: 2px; flex-shrink: 0; }
+.cat-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+
+/* Context menu (Scene D) */
+.menu { width: 240px; border: var(--border-w) solid var(--edge); border-radius: var(--radius-panel); background: var(--popover); box-shadow: var(--elevation-lifted); padding: 6px; }
+.menu button { width: 100%; display: flex; align-items: center; gap: 10px; height: var(--size-control-md); padding: 0 10px; border: 0; border-radius: var(--radius-btn); background: transparent; color: var(--foreground); font: 500 var(--text-base) var(--font-body); text-align: left; cursor: pointer; }
+.menu button svg { width: 16px; height: 16px; }
+.menu button.new { background: var(--muted); font-weight: 600; }
+.menu hr { border: 0; border-top: 1px solid var(--border); margin: 4px 0; }
+.spinner { width: 14px; height: 14px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; }
+@media (prefers-reduced-motion: no-preference) { .spinner { animation: spin 700ms linear infinite; } }
+@keyframes spin { to { rotate: 360deg; } }
+
+dialog.confirm { padding: 0; border: 0; background: transparent; max-width: calc(100vw - 32px); }
+dialog.confirm::backdrop { background: color-mix(in oklab, var(--p-ink) 45%, transparent); }
+@media (prefers-reduced-motion: no-preference) {
+  dialog.confirm[open] .dialog { animation: dialog-in var(--duration-slow) var(--ease-out-strong); }
+}
+@keyframes dialog-in { from { opacity: 0; scale: .95; } }
+.spec-notes { margin: 12px 0 0; padding-left: 18px; max-width: 80ch; font-size: var(--text-md); color: var(--muted-foreground); }
+.spec-notes li + li { margin-top: 4px; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+</style>
+</head>
+<body>
+<main class="board">
+
+<header class="board-intro">
+  <p class="eyebrow">Varianta B · Textový štítek v obsahu, vysvětlující</p>
+  <h1>Propojené kopie dárků</h1>
+  <p>Varianta B ukazuje propojení čitelným textovým štítkem „Propojeno · 2“ na řádku s cenou, nikdy na obrázku; bohatší vyskakovací okno vysvětluje každý propojený seznam včetně rezervací pro správce a editor začíná výrazným informačním pruhem s odpojením.</p>
+  <ul class="spec-notes">
+    <li>Štítek sedí v obsahu karty, takže obrázek s kategoriemi, srdcem, prioritou a stavem zůstává beze změny při jakékoli šířce karty.</li>
+    <li>Ztlumení rezervovaného dárku se týká obrázku, názvu a popisu; štítek a akce zůstávají plně čitelné.</li>
+    <li>Barva štítku je neutrální tlumená plocha s obrysem, aby se nepletla s kategorií ani se stavem rezervace či přijetí.</li>
+    <li>Klikněte na štítek „Propojeno“ (desktop otevře okno, mobil spodní panel), na zaškrtávátka v dialogu a na „Odpojit“ v editoru.</li>
+  </ul>
+</header>
+
+<!-- ============ SCENE A ============ -->
+<section class="scene" aria-labelledby="scene-a">
+  <h2 id="scene-a">A · Seznam s propojenými dárky (správce)</h2>
+  <p class="scene-note">Jana spravuje Martinovy seznamy. Na stránce „Vánoce 2026“ vidí, které dárky jsou propojené, kde ještě jsou a proč je kniha rezervovaná, i když ji zde nikdo nerezervoval.</p>
+  <div class="frames">
+    <div class="frame-wrap">
+      <p class="frame-label">A1 · Desktop 1440 · Karty · okno „Také na seznamech“ otevřené</p>
+      <div class="frame desktop" id="frame-a1" style="overflow: visible; min-height: 900px;"></div>
+    </div>
+    <div class="frame-wrap">
+      <p class="frame-label">A2 · Desktop 1440 · Seznam</p>
+      <div class="frame desktop" id="frame-a2" style="overflow: visible;"></div>
+    </div>
+    <div class="frame-wrap">
+      <p class="frame-label">A3 · Mobil 390 · Karty</p>
+      <div class="frame mobile" id="frame-a3"></div>
+    </div>
+    <div class="frame-wrap">
+      <p class="frame-label">A4 · Mobil 390 · Seznam</p>
+      <div class="frame mobile" id="frame-a4"></div>
+    </div>
+    <div class="frame-wrap">
+      <p class="frame-label">A5 · Mobil 390 · spodní panel otevřený</p>
+      <div class="frame mobile" id="frame-a5"></div>
+    </div>
+    <div class="frame-wrap">
+      <p class="frame-label">A6 · Tmavý režim · Karty · částečná rezervace napříč kopiemi</p>
+      <div class="frame desktop dark" id="frame-a6" style="overflow: visible;"></div>
+    </div>
+    <div class="frame-wrap">
+      <p class="frame-label">A7 · Pohled návštěvníka · bez štítku a bez názvů seznamů</p>
+      <div class="frame" id="frame-a7" style="width: 640px; padding: 20px;"></div>
+    </div>
+    <div class="frame-wrap">
+      <p class="frame-label">A8 · Obdarovaný Martin · okno bez rezervací</p>
+      <div class="frame" style="width: 400px; padding: 20px 20px 24px; overflow: visible;">
+        <div id="frame-a8" style="position: relative;"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ SCENE B ============ -->
+<section class="scene" aria-labelledby="scene-b">
+  <h2 id="scene-b">B · Hromadné kopírování s propojením</h2>
+  <p class="scene-note">Na stránce „Stálý seznam“ jsou vybrané 3 dárky. Nová volba „Propojit kopie“ se objeví po výběru cíle, pod cílovým seznamem a nad volbou odebrání. Zkuste změnit cílový seznam na Janin seznam nebo zapnout odebrání.</p>
+  <div class="frames">
+    <div class="frame-wrap">
+      <p class="frame-label">B1 · Desktop · cíl se stejným obdarovaným, propojení zapnuto (interaktivní)</p>
+      <div class="frame desktop" id="frame-b1" style="height: 900px;"></div>
+    </div>
+    <div class="frame-wrap">
+      <p class="frame-label">B2 · Desktop · jiný obdarovaný, propojení nedostupné · režim přesunu</p>
+      <div class="frame" style="width: 460px; height: 560px;" id="frame-b2"></div>
+    </div>
+    <div class="frame-wrap">
+      <p class="frame-label">B3 · Desktop · odesílání a potvrzení</p>
+      <div class="frame" style="width: 460px; height: 560px;" id="frame-b3"></div>
+    </div>
+    <div class="frame-wrap">
+      <p class="frame-label">B4 · Mobil 390 · spodní panel</p>
+      <div class="frame mobile" id="frame-b4"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ SCENE C ============ -->
+<section class="scene" aria-labelledby="scene-c">
+  <h2 id="scene-c">C · Editor dárku s propojenými kopiemi</h2>
+  <p class="scene-note">Informační pruh stojí na začátku sloupce polí, nad názvem, takže správce ví o propojení dřív, než cokoli upraví. Každá kopie má vlastní „Odpojit“. Pod pruhem je vysvětleno, proč je název uzamčen.</p>
+  <div class="frames">
+    <div class="frame-wrap">
+      <p class="frame-label">C1 · Desktop · GiftDetailModal 1100 × 85 dvh</p>
+      <div class="frame desktop" id="frame-c1" style="padding: 40px 24px; display: grid; place-items: center; background: color-mix(in oklab, var(--p-ink) 30%, var(--background));"></div>
+    </div>
+    <div class="frame-wrap">
+      <p class="frame-label">C2 · Mobil 390 · jeden sloupec</p>
+      <div class="frame mobile" id="frame-c2"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ SCENE D ============ -->
+<section class="scene" aria-labelledby="scene-d">
+  <h2 id="scene-d">D · Potvrzení odpojení</h2>
+  <p class="scene-note">ConfirmDialog střední šířky nad editorem. Jediné plné tlačítko je vpravo a nese destruktivní záměr. Stejné potvrzení otevírá položka „Odpojit kopie“ v nabídce Další možnosti dárku.</p>
+  <div class="frames">
+    <div class="frame-wrap">
+      <p class="frame-label">D1 · Výchozí stav</p>
+      <div class="frame" style="width: 560px; height: 420px;" id="frame-d1"></div>
+    </div>
+    <div class="frame-wrap">
+      <p class="frame-label">D2 · Odpojování a chyba</p>
+      <div class="frame" style="width: 560px; height: 420px;" id="frame-d2"></div>
+    </div>
+    <div class="frame-wrap">
+      <p class="frame-label">D3 · Nabídka dárku s novou položkou</p>
+      <div class="frame" style="width: 320px; height: 420px; padding: 24px;" id="frame-d3"></div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<dialog class="confirm" id="confirm-dialog" aria-labelledby="confirm-title" aria-describedby="confirm-desc">
+  <form class="dialog md" method="dialog">
+    <div>
+      <h2 id="confirm-title">Odpojit kopii?</h2>
+      <p class="desc" id="confirm-desc"></p>
+    </div>
+    <div class="dialog-actions">
+      <button class="btn" value="cancel" type="submit">Zrušit</button>
+      <button class="btn btn-danger" type="button" id="confirm-go">Odpojit</button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+const icon = {
+  link: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" data-icon><path d="M9 17H7A5 5 0 0 1 7 7h2"/><path d="M15 7h2a5 5 0 1 1 0 10h-2"/><line x1="8" x2="16" y1="12" y2="12"/></svg>',
+  unlink: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 7h2a5 5 0 0 1 0 10h-2m-6 0H7A5 5 0 0 1 7 7h2"/></svg>',
+  lock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>',
+  heart: '<svg viewBox="0 0 24 24" stroke-width="2" aria-hidden="true"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8Z"/></svg>',
+  gift: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13"/><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5C11 3 12 8 12 8s1-5 4.5-5a2.5 2.5 0 0 1 0 5"/></svg>',
+  more: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>',
+  close: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>',
+  check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>',
+  dotFull: '<svg viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="4.5" fill="var(--gift-overlay-unavailable)"/></svg>',
+  dotEmpty: '<svg viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="4" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>',
+  edit: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>',
+  trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>',
+  copy: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>',
+};
+
+const LISTS = {
+  stalý: { title: 'Stálý seznam', occasion: 'Stálý seznam', status: 'Sdíleno', id: 'seed-wl-martin-staly' },
+  narozeniny27: { title: 'Narozeniny 2027', occasion: 'Narozeniny', status: 'Koncept', id: 'seed-wl-martin-narozeniny-2027' },
+  narozeniny25: { title: 'Narozeniny 2025 u babičky v Třeboni', occasion: 'Narozeniny', status: 'Archivováno', id: 'seed-wl-martin-narozeniny-2025' },
+};
+
+const GIFTS = [
+  { id: 'lego', title: 'LEGO Technic 42171 Mercedes-AMG F1 W14 E Performance', desc: 'Sběratelský model 1 : 8, 1 642 dílků. Martin ho chce postavit přes svátky.', price: '4 999 Kč', source: 'lego.com', cats: ['Stavebnice'], priority: 'Vysoká priorita', likes: 4,
+    links: [ { list: 'stalý', res: 'free', text: 'Zatím nikdo nerezervoval' }, { list: 'narozeniny27', res: 'free', text: 'Zatím nikdo nerezervoval' }, { list: 'narozeniny25', res: 'none', text: 'Archivovaný seznam' } ] },
+  { id: 'sony', title: 'Sluchátka Sony WH-1000XM5, černá', desc: 'Bezdrátová s potlačením hluku, na cesty vlakem do Brna.', price: '8 490 Kč', source: 'alza.cz',
+    links: [ { list: 'stalý', res: 'free', text: 'Zatím nikdo nerezervoval' } ] },
+  { id: 'duna', title: 'Duna, ilustrované vydání v pevné vazbě', desc: 'Frank Herbert, nové české vydání s ilustracemi.', price: '899 Kč', source: 'knihydobrovsky.cz', image: 'g-dune.jpg', cats: ['Knihy'],
+    state: { kind: 'unavailable', label: 'Rezervováno na jiném seznamu' }, dim: true,
+    links: [ { list: 'stalý', res: 'full', text: 'Rezervováno 1/1 na tomto seznamu' }, { list: 'narozeniny27', res: 'free', text: 'Bez vlastní rezervace' } ] },
+  { id: 'catan', title: 'Catan, základní hra a rozšíření pro 5 až 6 hráčů', desc: 'Na společné večery s Janou a sousedy.', price: '1 290 Kč', source: 'svet-her.cz', image: 'g-catan.jpg', cats: ['Deskové hry'],
+    state: { kind: 'own', label: 'Rezervováno vámi' }, own: true,
+    links: [ { list: 'stalý', res: 'full', text: 'Rezervováno 1/1 na tomto seznamu' } ] },
+  { id: 'kytara', title: 'Akustická kytara Yamaha F310', desc: 'Pro začátečníka, s obalem a ladičkou.', price: '3 990 Kč', source: 'muzikant.cz', image: 'g-kytara.jpg',
+    state: { kind: 'unavailable', label: 'Rezervoval(a) Petr' }, dim: true },
+  { id: 'poukaz', title: 'Dárkový poukaz na degustační večeři pro dva', desc: 'Sedmichodové menu s párováním vín, platnost 12 měsíců.', price: '5 600 Kč', source: 'slevomat.cz', image: 'g-poukaz.jpg', cats: ['Zážitky', 'Jídlo a pití'], priority: 'Vysoká priorita', likes: 7 },
+];
+
+const KINDLE = { id: 'kindle', title: 'Čtečka Kindle Paperwhite 16 GB, 2 kusy', desc: 'Jedna pro Martina, druhá pro jeho tátu.', price: '3 990 Kč / ks', source: 'amazon.de', image: 'g-kindle.jpg',
+  state: { kind: 'partial', label: 'Volné 1/2' },
+  links: [ { list: 'stalý', res: 'full', text: 'Rezervováno 1/2 na tomto seznamu' } ] };
+
+let uid = 0;
+const escapeAttr = (text) => text.replace(/"/g, '&quot;');
+const titlesOf = (gift) => gift.links.map((link) => LISTS[link.list].title).join(', ');
+const statusBadge = (status) => status === 'Sdíleno' ? `<span class="badge info">${status}</span>` : status === 'Archivováno' ? `<span class="badge archived">${status}</span>` : `<span class="badge">${status}</span>`;
+
+function linkRows(gift, { manager = true } = {}) {
+  return gift.links.map((link) => {
+    const list = LISTS[link.list];
+    const summary = manager ? `<span class="res-summary">${link.res === 'full' ? icon.dotFull : icon.dotEmpty}${link.text}</span>` : '';
+    return `<li class="link-row"><div class="link-row-head"><a class="link-title" href="/w/${list.id}" title="${escapeAttr(list.title)}">${list.title}</a>${statusBadge(list.status)}</div><div class="link-row-meta"><span class="badge subtle" aria-label="Příležitost: ${list.occasion}">${list.occasion}</span>${summary}</div></li>`;
+  }).join('');
+}
+
+function popoverInner(gift, opts = {}) {
+  const others = gift.links.length;
+  const lead = opts.manager === false ? 'Přijetí a úpravy se sdílí se seznamy níže.' : 'Rezervace, přijetí a úpravy se sdílí se seznamy níže.';
+  return `<div class="popover-head"><h3>Také na seznamech</h3><p>${lead}</p></div><ul class="link-rows" aria-label="Propojené seznamy (${others})">${linkRows(gift, opts)}</ul>${opts.manager === false ? '' : `<div class="popover-foot"><span>Upravit nebo odpojit kopie</span><button class="btn btn-sm" type="button" data-edit-link>${icon.edit}Upravit propojení</button></div>`}`;
+}
+
+function chip(gift, { mobile = false, sheet = null, openByDefault = false, manager = true } = {}) {
+  if (!gift.links) return '';
+  const id = `pop-${++uid}`;
+  const count = gift.links.length;
+  const label = `Propojeno se seznamy: ${titlesOf(gift)}`;
+  const content = `${icon.link}<span>Propojeno</span><span class="dot" aria-hidden="true">·</span><span class="count">${count}</span>`;
+  if (mobile) return `<span class="link-anchor"><button type="button" class="link-chip" aria-haspopup="dialog" aria-expanded="false" aria-label="${escapeAttr(label)}" data-sheet="${sheet}" data-gift="${gift.id}">${content}</button></span>`;
+  return `<span class="link-anchor"><button type="button" class="link-chip" aria-haspopup="dialog" aria-expanded="${openByDefault}" aria-controls="${id}" aria-label="${escapeAttr(label)}">${content}</button><div class="link-popover" id="${id}" role="dialog" aria-label="Také na seznamech" data-open="${openByDefault}">${popoverInner(gift, { manager })}</div></span>`;
+}
+
+function imageArea(gift, { list = false, visitor = false } = {}) {
+  const media = gift.image ? `<img src="../../open-issue-review/assets/photos/${gift.image}" alt="" />` : `<span class="placeholder">${icon.gift}</span>`;
+  const cats = gift.cats ? `<span class="cats">${gift.cats.map((cat) => `<span class="badge overlay">${cat}</span>`).join('')}</span>` : '<span class="cats"></span>';
+  const like = gift.likes ? `<span class="like" aria-label="Líbí se: ${gift.likes}">${icon.heart}${gift.likes}</span>` : '';
+  let state = gift.state;
+  if (visitor && state) state = state.kind === 'partial' ? state : { kind: 'unavailable', label: 'Rezervováno' };
+  const overlay = state ? `<div class="state-overlay"><span class="state-pill ${state.kind}">${state.label}</span></div>` : '';
+  const priority = gift.priority ? `<span class="badge overlay priority">${gift.priority}</span>` : '';
+  return `<div class="gift-image">${media}<div class="overlay-top">${cats}${list ? '' : like}</div>${overlay}${priority}</div>`;
+}
+
+function actions(gift, { visitor = false } = {}) {
+  if (visitor) {
+    if (gift.state && gift.state.kind !== 'partial') return `<button class="btn btn-quiet" type="button" aria-label="Další možnosti dárku">${icon.more}</button>`;
+    return `<button class="btn btn-primary" type="button">Rezervovat</button><button class="btn btn-quiet" type="button" aria-label="Další možnosti dárku">${icon.more}</button>`;
+  }
+  const cancel = gift.own ? '<button class="btn" type="button">Zrušit rezervaci</button>' : '';
+  return `${cancel}<button class="btn" type="button">Přijato</button><button class="btn btn-quiet" type="button" aria-label="Další možnosti dárku">${icon.more}</button>`;
+}
+
+function card(gift, opts = {}) {
+  const { mobile = false, sheet = null, openId = null, visitor = false } = opts;
+  const linkChip = visitor ? '' : chip(gift, { mobile, sheet, openByDefault: openId === gift.id });
+  return `<article class="gift ${gift.dim ? 'dim' : ''}" aria-label="${escapeAttr(gift.title)}">${imageArea(gift, { visitor })}<div class="gift-body"><h3 class="gift-title dimmable" title="${escapeAttr(gift.title)}">${gift.title}</h3><p class="gift-desc dimmable">${gift.desc}</p><a class="gift-source dimmable" href="https://${gift.source}/" target="_blank" rel="noreferrer">${gift.source} ↗</a><div class="meta-line"><span class="price dimmable">${gift.price}</span>${linkChip}</div></div><div class="gift-footer">${actions(gift, { visitor })}</div></article>`;
+}
+
+function row(gift, opts = {}) {
+  const { mobile = false, sheet = null } = opts;
+  const linkChip = chip(gift, { mobile, sheet });
+  return `<article class="row ${gift.dim ? 'dim' : ''}" aria-label="${escapeAttr(gift.title)}">${imageArea(gift, { list: true })}<div class="row-body"><h3 class="gift-title dimmable" title="${escapeAttr(gift.title)}">${gift.title}</h3><p class="gift-desc dimmable">${gift.desc}</p><div class="meta-line"><span class="price dimmable">${gift.price}</span>${linkChip ? '<span class="meta-sep" aria-hidden="true">·</span>' + linkChip : ''}</div><div class="row-actions">${actions(gift)}</div></div></article>`;
+}
+
+function shell({ mobile = false, title = 'Vánoce 2026', occasion = 'Vánoce', view = 'Karty', body = '', selection = '' } = {}) {
+  return `<div class="app-bar context" inert><span class="brand">přeješ si</span><nav><span>Moje seznamy</span><span>Sledované</span><span>Spravované</span></nav><span class="avatar">JN</span></div>
+  <div class="page"><div class="hero context" inert><h1>${title}</h1><div class="hero-meta"><span class="badge subtle">${occasion}</span><span>pro Martina Nováka</span><span>·</span><span class="badge info">Sdíleno</span>${mobile ? '' : '<span>·</span><span>24. 12. 2026</span>'}</div></div>
+  ${selection || `<div class="toolbar context" inert><span class="segmented"><span class="${view === 'Karty' ? 'on' : ''}">Karty</span><span class="${view === 'Seznam' ? 'on' : ''}">Seznam</span></span><span class="btn btn-sm">Filtry</span><span class="btn btn-sm">Řazení</span><span class="spacer"></span><span class="btn btn-sm btn-quiet">${icon.more}</span></div>`}
+  ${body}</div>`;
+}
+
+function sheetMarkup(id) {
+  return `<div class="sheet" id="${id}" role="dialog" aria-modal="true" aria-labelledby="${id}-title" data-open="false"><div class="grabber" aria-hidden="true"></div><div class="sheet-content"></div></div><div class="sheet-scrim" data-close-sheet="${id}"></div>`;
+}
+
+function fillSheet(sheetId, giftId) {
+  const gift = [...GIFTS, KINDLE].find((item) => item.id === giftId);
+  const sheet = document.getElementById(sheetId);
+  sheet.querySelector('.sheet-content').innerHTML = popoverInner(gift).replace('<div class="popover-head"><h3>', `<div class="popover-head"><div><h3 id="${sheetId}-title">`).replace('</p></div><ul', `</p></div><button class="icon-btn" type="button" aria-label="Zavřít" data-close-sheet="${sheetId}">${icon.close}</button></div><ul`);
+}
+
+/* Scene A */
+document.getElementById('frame-a1').innerHTML = shell({ body: `<div class="grid">${GIFTS.map((gift) => card(gift, { openId: 'lego' })).join('')}</div>` });
+document.getElementById('frame-a2').innerHTML = shell({ view: 'Seznam', body: `<div class="list">${GIFTS.map((gift) => row(gift)).join('')}</div>` });
+document.getElementById('frame-a3').innerHTML = `<div class="screen">${shell({ mobile: true, body: `<div class="grid">${GIFTS.map((gift) => card(gift, { mobile: true, sheet: 'sheet-a3' })).join('')}</div>` })}</div>${sheetMarkup('sheet-a3')}`;
+document.getElementById('frame-a4').innerHTML = `<div class="screen">${shell({ mobile: true, view: 'Seznam', body: `<div class="list">${GIFTS.map((gift) => row(gift, { mobile: true, sheet: 'sheet-a4' })).join('')}</div>` })}</div>${sheetMarkup('sheet-a4')}`;
+document.getElementById('frame-a5').innerHTML = `<div class="screen">${shell({ mobile: true, body: `<div class="grid">${GIFTS.slice(0, 3).map((gift) => card(gift, { mobile: true, sheet: 'sheet-a5' })).join('')}</div>` })}</div>${sheetMarkup('sheet-a5')}`;
+document.getElementById('frame-a6').innerHTML = shell({ body: `<div class="grid">${[GIFTS[0], KINDLE, GIFTS[2]].map((gift) => card(gift)).join('')}</div>` });
+document.getElementById('frame-a7').innerHTML = `<div class="grid" style="grid-template-columns: repeat(2, minmax(0, 1fr));">${card(GIFTS[0], { visitor: true })}${card(GIFTS[2], { visitor: true })}</div><p class="help" style="margin-top: 14px;">Návštěvník vidí u knihy jen běžné „Rezervováno“. Žádný štítek, žádné jiné seznamy, žádná jména.</p>`;
+document.getElementById('frame-a8').innerHTML = `<div class="meta-line" style="margin: 0;"><span class="price">4 999 Kč</span>${chip(GIFTS[0], { openByDefault: true, manager: false })}</div><div style="height: 300px;"></div>`;
+fillSheet('sheet-a5', 'lego');
+document.getElementById('sheet-a5').dataset.open = 'true';
+document.querySelector('#frame-a5 .sheet-scrim').dataset.open = 'true';
+document.querySelector('#frame-a5 [data-gift="lego"]').setAttribute('aria-expanded', 'true');
+
+/* Scene B */
+const selectionBar = `<div class="selection-bar context" inert><span>Vybráno: 3</span><span class="spacer" style="flex:1"></span><span class="btn btn-sm">Kopírovat do seznamu</span><span class="btn btn-sm">Přesunout</span><span class="btn btn-sm btn-quiet">Zrušit výběr</span></div>`;
+const staly = GIFTS.slice(0, 3).map((gift) => ({ ...gift, links: undefined, state: undefined, dim: false }));
+const selectedGrid = `<div class="grid context" inert>${staly.map((gift) => card(gift).replace('<div class="gift-image">', `<div class="gift-image"><span class="sel-box on">${icon.check}</span>`)).join('')}</div>`;
+
+function copyForm({ prefix, destination = 'vanoce', interactive = false, move = false, sheet = false }) {
+  const options = [
+    ['', 'Vyberte seznam'], ['vanoce', 'Vánoce 2026 · Martin Novák'], ['narozeniny27', 'Narozeniny 2027 · Martin Novák'], ['jana', 'Narozeniny Jany 2027 · Jana Nováková'], ['new', 'Nový seznam…'],
+  ].map(([value, text]) => `<option value="${value}" ${value === destination ? 'selected' : ''}>${text}</option>`).join('');
+  const other = destination === 'jana';
+  const linkOn = !other && destination !== '';
+  return `<div class="field"><label for="${prefix}-dest">Cílový seznam</label><select class="select" id="${prefix}-dest" ${interactive ? 'data-copy-dest' : ''}>${options}</select></div>
+  <div class="check-row" data-link-row ${destination === '' ? 'hidden' : ''}><input type="checkbox" id="${prefix}-link" ${linkOn ? 'checked' : ''} ${other ? 'disabled' : ''} aria-describedby="${prefix}-link-help" ${interactive ? 'data-copy-link' : ''} /><label for="${prefix}-link">${icon.link}Propojit kopie</label><p class="help" id="${prefix}-link-help" data-link-help>${other ? 'Propojit lze jen seznamy stejného obdarovaného.' : 'Rezervace, přijetí a úpravy dárku se budou sdílet mezi seznamy.'}</p></div>
+  <div class="check-row"><input type="checkbox" id="${prefix}-move" ${move ? 'checked' : ''} aria-describedby="${prefix}-move-help" ${interactive ? 'data-copy-move' : ''} /><label for="${prefix}-move">Odebrat zkopírované dárky z tohoto seznamu</label><p class="help" id="${prefix}-move-help" data-move-help>${move && linkOn ? 'Rezervované dárky zůstanou a propojí se s kopiemi.' : 'Rezervované dárky zůstanou.'}</p></div>`;
+}
+
+document.getElementById('frame-b1').innerHTML = shell({ title: 'Stálý seznam', occasion: 'Stálý seznam', selection: selectionBar, body: selectedGrid }) +
+  `<div class="scrim"><div class="dialog" role="dialog" aria-modal="true" aria-labelledby="b1-title"><div><h2 id="b1-title">Kopírovat vybrané dárky</h2><p class="desc">Vyberte seznam, který spravujete. Původní dárky zůstanou beze změny.</p></div>${copyForm({ prefix: 'b1', interactive: true })}<div class="dialog-actions"><button class="btn" type="button">Zrušit</button><button class="btn btn-primary" type="button" data-copy-submit>Kopírovat dárky</button></div><div data-copy-toast></div></div></div>`;
+document.getElementById('frame-b2').innerHTML = `<div class="scrim" style="position:absolute"><div class="dialog" role="dialog" aria-labelledby="b2-title"><div><h2 id="b2-title">Přesunout dárky</h2><p class="desc">Vyberte seznam, který spravujete. Zkopírované nerezervované dárky se z tohoto seznamu odeberou.</p></div>${copyForm({ prefix: 'b2', destination: 'jana', move: true })}<div class="dialog-actions"><button class="btn" type="button">Zrušit</button><button class="btn btn-primary" type="button">Přesunout dárky</button></div></div></div>`;
+document.getElementById('frame-b3').innerHTML = `<div class="scrim" style="position:absolute; align-content: center; gap: 16px;"><div class="dialog" role="dialog" aria-labelledby="b3-title"><div><h2 id="b3-title">Kopírovat vybrané dárky</h2><p class="desc">Vyberte seznam, který spravujete. Původní dárky zůstanou beze změny.</p></div>${copyForm({ prefix: 'b3', move: true })}<div class="dialog-actions"><button class="btn" type="button" disabled>Zrušit</button><button class="btn btn-primary" type="button" disabled><span class="spinner" aria-hidden="true"></span>Upravuji 3 dárků…</button></div></div><div class="toast" role="status">${icon.check.replace('<svg', '<svg width="16" height="16"')}Zkopírováno dárků: 3. Propojeno: 3</div></div>`;
+document.getElementById('frame-b4').innerHTML = `<div class="screen">${shell({ mobile: true, title: 'Stálý seznam', occasion: 'Stálý seznam', selection: selectionBar.replace('<span class="btn btn-sm">Přesunout</span>', ''), body: `<div class="grid context" inert>${card(staly[0], { mobile: true })}</div>` })}</div><div class="sheet-scrim" data-open="true" style="z-index:29"></div><div class="bottom-sheet-static" role="dialog" aria-labelledby="b4-title"><div class="grabber" aria-hidden="true" style="width:40px;height:4px;border-radius:2px;background:var(--border);margin:6px auto 4px"></div><div><h2 id="b4-title">Kopírovat vybrané dárky</h2><p class="desc help" style="font-size:var(--text-md)">Vyberte seznam, který spravujete. Původní dárky zůstanou beze změny.</p></div>${copyForm({ prefix: 'b4', destination: 'narozeniny27' })}<div class="dialog-actions"><button class="btn" type="button">Zrušit</button><button class="btn btn-primary" type="button">Kopírovat dárky</button></div></div>`;
+
+/* Scene C */
+const editorCopies = [ { list: 'stalý' }, { list: 'narozeniny27' } ];
+function linkedBanner(prefix, compact = false) {
+  const rows = editorCopies.map(({ list }) => {
+    const item = LISTS[list];
+    return `<li class="copy"><div class="copy-info"><a class="link-title" href="/w/${item.id}" title="${escapeAttr(item.title)}">${item.title}</a><span class="badge subtle">${item.occasion}</span>${statusBadge(item.status)}</div><button class="btn btn-sm" type="button" data-unlink="${escapeAttr(item.title)}" aria-label="Odpojit kopii na seznamu ${escapeAttr(item.title)}">${icon.unlink}Odpojit</button></li>`;
+  }).join('');
+  return `<section class="linked-banner" aria-labelledby="${prefix}-linked-title"><div class="linked-banner-head"><span class="linked-icon">${icon.link}</span><div><p class="eyebrow" style="margin:0 0 2px">Propojené kopie</p><h3 id="${prefix}-linked-title">Tento dárek je propojený se 2 seznamy</h3>${compact ? '' : '<p class="lead">Úpravy, rezervace a přijetí se projeví i tam, takže nikdo nekoupí stejné přání dvakrát.</p>'}</div></div><ul class="copies">${rows}</ul><p class="shared-note">Název, popis, odkazy, cena, počet, obrázky, kategorie a přijetí se sdílí. Priorita a pořadí jsou pro každý seznam vlastní.</p></section>`;
+}
+function editorFields(prefix, compact = false) {
+  return `${linkedBanner(prefix, compact)}
+  <div class="field"><label for="${prefix}-name">Název</label><div class="lock-wrap"><input class="input" id="${prefix}-name" value="LEGO Technic 42171 Mercedes-AMG F1 W14 E Performance" disabled aria-describedby="${prefix}-name-lock" />${icon.lock}</div><p class="help lock-note" id="${prefix}-name-lock">${icon.lock}<span>Název je uzamčen, protože kopie na seznamu Stálý seznam je sdílená.</span></p></div>
+  <div class="field context" inert><span class="field-label">Popis</span><textarea class="textarea" tabindex="-1">Sběratelský model 1 : 8, 1 642 dílků. Martin ho chce postavit přes svátky.</textarea></div>
+  <div class="field context" inert><span class="field-label">Odkazy</span><input class="input" tabindex="-1" value="https://www.lego.com/cs-cz/product/42171" /></div>
+  <div class="${compact ? '' : 'row-2'} context" inert style="${compact ? 'display:grid;gap:12px' : ''}"><div class="field"><span class="field-label">Cena</span><input class="input" tabindex="-1" value="4 999 Kč" /></div><div class="field"><span class="field-label">Počet</span><input class="input" tabindex="-1" value="1" /></div><div class="field"><span class="field-label">Priorita na tomto seznamu</span><input class="input" tabindex="-1" value="Vysoká priorita" /></div></div>
+  <div class="field context" inert><span class="field-label">Kategorie</span><div class="cat-chips"><span class="badge">Stavebnice</span><span class="badge subtle">+ Přidat kategorii</span></div></div>`;
+}
+document.getElementById('frame-c1').innerHTML = `<div class="editor" role="dialog" aria-labelledby="c1-title"><div class="editor-head"><h2 id="c1-title">Upravit dárek</h2><button class="icon-btn" type="button" aria-label="Zavřít">${icon.close}</button></div><div class="editor-main"><div class="editor-rail context" inert><div class="rail-preview">${icon.gift}</div><div class="field"><span class="field-label">Adresa obrázku</span><input class="input" tabindex="-1" placeholder="https://" /></div><div class="strip"><span></span><span></span><span></span></div></div><div class="editor-fields">${editorFields('c1')}</div></div><div class="editor-foot"><button class="btn btn-quiet context" type="button" inert>${icon.trash}Smazat dárek</button><span class="spacer"></span><button class="btn" type="button">Zrušit</button><button class="btn btn-primary" type="button">Uložit změny</button></div></div>`;
+document.getElementById('frame-c2').innerHTML = `<div class="screen" style="background: color-mix(in oklab, var(--p-ink) 30%, var(--background)); padding-top: 24px;"><div class="editor" role="dialog" aria-labelledby="c2-title" style="height: calc(844px - 24px); border-bottom-left-radius: 0; border-bottom-right-radius: 0; border-bottom: 0;"><div class="editor-head"><h2 id="c2-title">Upravit dárek</h2><button class="icon-btn" type="button" aria-label="Zavřít">${icon.close}</button></div><div class="editor-fields" style="padding: 16px;">${editorFields('c2', true)}</div><div class="editor-foot"><span class="spacer"></span><button class="btn" type="button" style="height:var(--size-control-lg)">Zrušit</button><button class="btn btn-primary" type="button" style="height:var(--size-control-lg)">Uložit změny</button></div></div></div>`;
+
+/* Scene D */
+const editorGhost = `<div class="context" inert style="position:absolute; inset:16px; border: var(--border-w) solid var(--edge); border-radius: var(--radius-panel); background: var(--card); padding: 16px; display:flex; flex-direction:column; gap:12px; overflow:hidden">${linkedBanner('ghost' + Math.random().toString(36).slice(2), true)}</div>`;
+const confirmBody = (pending) => `<div class="dialog md" role="dialog" aria-labelledby="d-title-${pending}"><div><h2 id="d-title-${pending}">Odpojit kopii?</h2><p class="desc">Dárek na seznamu Stálý seznam se přestane synchronizovat. Rezervace a stav přijetí zůstanou, jak jsou.</p></div><div class="dialog-actions"><button class="btn" type="button" ${pending ? 'disabled' : ''}>Zrušit</button><button class="btn btn-danger" type="button" ${pending ? 'aria-disabled="true" aria-busy="true"' : ''}>${pending ? '<span class="spinner" aria-hidden="true"></span>Odpojuji…' : 'Odpojit'}</button></div></div>`;
+document.getElementById('frame-d1').innerHTML = `${editorGhost}<div class="scrim">${confirmBody(false)}</div>`;
+document.getElementById('frame-d2').innerHTML = `${editorGhost}<div class="scrim" style="align-content:center; gap:14px">${confirmBody(true)}<div class="toast error" role="alert">Odpojení se nezdařilo. Zkuste to prosím znovu.</div></div>`;
+document.getElementById('frame-d3').innerHTML = `<div class="menu" role="menu" aria-label="Další možnosti dárku"><button role="menuitem" type="button">${icon.edit}Upravit dárek</button><button role="menuitem" type="button">${icon.copy}Kopírovat do seznamu</button><button role="menuitem" type="button" class="new" data-unlink="Stálý seznam a Narozeniny 2027">${icon.unlink}Odpojit kopie</button><hr /><button role="menuitem" type="button" style="color: var(--status-danger-text)">${icon.trash}Smazat dárek</button></div><p class="help" style="margin-top:12px">„Odpojit kopie“ odpojí tuto kopii od celé skupiny. Položka se zobrazí jen u propojeného dárku.</p>`;
+
+/* Behaviour */
+function closePopovers(except) {
+  document.querySelectorAll('.link-popover[data-open="true"]').forEach((popover) => {
+    if (popover === except) return;
+    popover.dataset.open = 'false';
+    document.querySelector(`[aria-controls="${popover.id}"]`)?.setAttribute('aria-expanded', 'false');
+  });
+}
+function openSheet(sheetId, giftId, trigger) {
+  fillSheet(sheetId, giftId);
+  const sheet = document.getElementById(sheetId);
+  sheet.dataset.open = 'true';
+  sheet.nextElementSibling.dataset.open = 'true';
+  sheet._trigger = trigger;
+  trigger.setAttribute('aria-expanded', 'true');
+  sheet.querySelector('[data-close-sheet]').focus();
+}
+function closeSheet(sheetId) {
+  const sheet = document.getElementById(sheetId);
+  sheet.dataset.open = 'false';
+  sheet.nextElementSibling.dataset.open = 'false';
+  document.querySelectorAll(`[data-sheet="${sheetId}"]`).forEach((button) => button.setAttribute('aria-expanded', 'false'));
+  sheet._trigger?.focus();
+}
+document.addEventListener('click', (event) => {
+  const chipButton = event.target.closest('.link-chip');
+  if (chipButton) {
+    if (chipButton.dataset.sheet) { openSheet(chipButton.dataset.sheet, chipButton.dataset.gift, chipButton); return; }
+    const popover = document.getElementById(chipButton.getAttribute('aria-controls'));
+    const willOpen = popover.dataset.open !== 'true';
+    closePopovers(popover);
+    if (willOpen) {
+      popover.dataset.align = 'start';
+      const rect = chipButton.getBoundingClientRect();
+      if (rect.left + popover.offsetWidth > document.documentElement.clientWidth - 16) popover.dataset.align = 'end';
+    }
+    popover.dataset.open = String(willOpen);
+    chipButton.setAttribute('aria-expanded', String(willOpen));
+    return;
+  }
+  const closer = event.target.closest('[data-close-sheet]');
+  if (closer) { closeSheet(closer.dataset.closeSheet); return; }
+  if (event.target.closest('[data-edit-link]')) { document.getElementById('scene-c').scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }); return; }
+  const unlink = event.target.closest('[data-unlink]');
+  if (unlink) { openConfirm(unlink.dataset.unlink, unlink); return; }
+  if (!event.target.closest('.link-popover')) closePopovers();
+});
+document.addEventListener('keydown', (event) => {
+  if (event.key !== 'Escape') return;
+  const open = document.querySelector('.link-popover[data-open="true"]');
+  if (open) { closePopovers(); document.querySelector(`[aria-controls="${open.id}"]`)?.focus(); }
+  document.querySelectorAll('.sheet[data-open="true"]').forEach((sheet) => closeSheet(sheet.id));
+});
+
+const confirmDialog = document.getElementById('confirm-dialog');
+const confirmGo = document.getElementById('confirm-go');
+let confirmAttempt = 0;
+function openConfirm(title, trigger) {
+  document.getElementById('confirm-desc').textContent = `Dárek na seznamu ${title} se přestane synchronizovat. Rezervace a stav přijetí zůstanou, jak jsou.`;
+  confirmGo.disabled = false;
+  confirmGo.innerHTML = 'Odpojit';
+  confirmDialog._trigger = trigger;
+  confirmDialog.showModal();
+}
+confirmGo.addEventListener('click', () => {
+  confirmGo.disabled = true;
+  confirmGo.innerHTML = '<span class="spinner" aria-hidden="true"></span>Odpojuji…';
+  setTimeout(() => {
+    const row = confirmDialog._trigger?.closest('.copy');
+    confirmDialog.close();
+    if (row) { row.querySelector('.copy-info').insertAdjacentHTML('beforeend', '<span class="help">Odpojeno v ukázce</span>'); confirmDialog._trigger.disabled = true; }
+    confirmAttempt += 1;
+  }, 900);
+});
+
+/* Bulk copy dialog behaviour */
+const destination = document.querySelector('[data-copy-dest]');
+const linkBox = document.querySelector('[data-copy-link]');
+const moveBox = document.querySelector('[data-copy-move]');
+function syncCopy() {
+  const value = destination.value;
+  const linkRow = linkBox.closest('[data-link-row]');
+  linkRow.hidden = value === '';
+  const other = value === 'jana';
+  linkBox.disabled = other;
+  if (other) linkBox.checked = false;
+  linkRow.querySelector('[data-link-help]').textContent = other ? 'Propojit lze jen seznamy stejného obdarovaného.' : 'Rezervace, přijetí a úpravy dárku se budou sdílet mezi seznamy.';
+  document.querySelector('#frame-b1 [data-move-help]').textContent = moveBox.checked && linkBox.checked && !linkRow.hidden ? 'Rezervované dárky zůstanou a propojí se s kopiemi.' : 'Rezervované dárky zůstanou.';
+}
+destination.addEventListener('change', () => { if (destination.value !== 'jana' && destination.value !== '') linkBox.checked = true; syncCopy(); });
+linkBox.addEventListener('change', syncCopy);
+moveBox.addEventListener('change', syncCopy);
+document.querySelector('[data-copy-submit]').addEventListener('click', (event) => {
+  const button = event.currentTarget;
+  button.disabled = true;
+  button.innerHTML = '<span class="spinner" aria-hidden="true"></span>Upravuji 3 dárků…';
+  setTimeout(() => {
+    button.disabled = false;
+    button.textContent = 'Kopírovat dárky';
+    const linked = linkBox.checked && !linkBox.disabled;
+    document.querySelector('[data-copy-toast]').innerHTML = `<div class="toast" role="status">Zkopírováno dárků: 3${linked ? '. Propojeno: 3' : ''}</div>`;
+  }, 900);
+});
+</script>
+</body>
+</html>

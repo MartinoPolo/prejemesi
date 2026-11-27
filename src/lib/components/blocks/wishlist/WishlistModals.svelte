@@ -49,6 +49,7 @@
 		priorityLevels: GiftPriorityLevel[];
 		categoryOptions?: ManagedGiftCategory[];
 		postShareLocked: boolean;
+		frozenByLinkedCopyTitle?: string | null;
 		canDeleteSelectedGift: boolean;
 		/** When the selected gift's share grace window closes (issue #83), or null when none. */
 		graceExpiresAt: Date | null;
@@ -109,6 +110,7 @@
 		priorityLevels,
 		categoryOptions = [],
 		postShareLocked,
+		frozenByLinkedCopyTitle = null,
 		canDeleteSelectedGift,
 		graceExpiresAt,
 		graceMessage,
@@ -163,6 +165,7 @@
 	{isArchived}
 	{hideReservationState}
 	{postShareLocked}
+	{frozenByLinkedCopyTitle}
 	canDelete={canDeleteSelectedGift}
 	{graceExpiresAt}
 	{graceMessage}

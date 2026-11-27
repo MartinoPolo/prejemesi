@@ -21,6 +21,7 @@
 	import GiftPriceFields from './GiftPriceFields.svelte';
 	import GiftQuantityPriorityFields from './GiftQuantityPriorityFields.svelte';
 	import GiftCategoryField from './GiftCategoryField.svelte';
+	import GiftLinkedCopiesSection from './GiftLinkedCopiesSection.svelte';
 	import { GiftImageDraft, GiftImageGalleryDraft } from './gift_image_gallery_draft.svelte.js';
 	import { giftEditorPreview } from './gift_editor_preview.js';
 	import { giftFramingStatusLine } from './gift_framing_labels.js';
@@ -74,6 +75,8 @@
 		role: WishlistRole;
 		hideReservationState?: boolean;
 		postShareLocked: boolean;
+		/** Title of the shared linked copy whose list froze the name, when that copy froze it. */
+		frozenByLinkedCopyTitle?: string | null;
 		canDelete: boolean;
 		/** When the active gift grace window closes (issue #83), or null when none is active. */
 		graceExpiresAt?: Date | null;
@@ -104,6 +107,7 @@
 		role,
 		hideReservationState = false,
 		postShareLocked,
+		frozenByLinkedCopyTitle = null,
 		canDelete,
 		graceExpiresAt = null,
 		graceMessage = m.gift_grace_hint,
@@ -603,7 +607,14 @@
 		{#if graceActive && graceExpiresAt !== null}
 			<GraceCountdown expiresAt={graceExpiresAt} now={graceNow} message={graceMessage} />
 		{/if}
-		<GiftNameField bind:name frozen={locked} errorMessage={nameError} />
+		<GiftNameField
+			bind:name
+			frozen={locked}
+			frozenReason={frozenByLinkedCopyTitle === null
+				? undefined
+				: m.gift_name_frozen_by_linked_copy({ title: frozenByLinkedCopyTitle })}
+			errorMessage={nameError}
+		/>
 		<GiftDescriptionField
 			bind:description
 			bind:appendText={descriptionAppendText}
@@ -654,6 +665,9 @@
 			{canCreateCategory}
 			{wishlistId}
 		/>
+		{#if isEdit && gift !== null && gift.linkedCopies.length > 0}
+			<GiftLinkedCopiesSection giftId={gift.id} linkedCopies={gift.linkedCopies} />
+		{/if}
 	</fieldset>
 {/snippet}
 

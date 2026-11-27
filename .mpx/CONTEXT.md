@@ -102,6 +102,7 @@ _Avoid_: "list" for Wishlist (ambiguous), "present" for Gift (confusing with tim
 
 - Agent access: OAuth for MCP clients ([#480](https://github.com/MartinoPolo/prejemesi/issues/480)).
 - Hosted AI chatbot, premium ([#478](https://github.com/MartinoPolo/prejemesi/issues/478)).
+- Linked gift copies across one recipient's wishlists ([#742](https://github.com/MartinoPolo/prejemesi/issues/742)).
 - Linking anonymous reservations to an account at sign-up.
 - Gift metadata enrichment from a link (image, price, title), later by name.
 - AI product suggestions.
