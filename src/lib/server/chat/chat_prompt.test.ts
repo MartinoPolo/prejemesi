@@ -15,7 +15,21 @@ describe.each([
 	['chat runner', chatRunnerSystemPrompt],
 ])('the %s system prompt', (_label, systemPrompt) => {
 	it('mentions browse_page only when the chat offers it', () => {
-		expect(systemPrompt(CONTEXT, { canBrowsePages: true })).toContain('browse_page');
-		expect(systemPrompt(CONTEXT, { canBrowsePages: false })).not.toContain('browse_page');
+		expect(
+			systemPrompt(CONTEXT, { canBrowsePages: true, requiresConversationAddresses: false }),
+		).toContain('browse_page');
+		expect(
+			systemPrompt(CONTEXT, { canBrowsePages: false, requiresConversationAddresses: false }),
+		).not.toContain('browse_page');
+	});
+
+	it('names where image addresses must come from only when the chat restricts them', () => {
+		const imageAddressSource = "taken from the user's messages";
+		expect(
+			systemPrompt(CONTEXT, { canBrowsePages: false, requiresConversationAddresses: true }),
+		).toContain(imageAddressSource);
+		expect(
+			systemPrompt(CONTEXT, { canBrowsePages: false, requiresConversationAddresses: false }),
+		).not.toContain(imageAddressSource);
 	});
 });

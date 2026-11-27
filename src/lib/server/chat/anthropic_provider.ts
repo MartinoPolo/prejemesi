@@ -13,6 +13,7 @@ import {
 	type ChatModelTool,
 	type ChatStopReason,
 } from './chat_model.js';
+import { urlsInText } from './browse_page.js';
 
 export const ANTHROPIC_MESSAGES_URL = 'https://api.anthropic.com/v1/messages';
 const ANTHROPIC_VERSION = '2023-06-01';
@@ -24,7 +25,7 @@ const WEB_FETCH_MAX_CONTENT_TOKENS = 20_000;
  * The provider's web tools, in basic versions: newer ones filter results through code execution,
  * which the chat does not use. Web fetch counts addresses in client tool results as in the
  * conversation, but the model writes gift data, which persists, so only `browse_page` results (page
- * text third-party sites wrote) count.
+ * text third-party sites wrote) count, as in `conversationUrls`.
  */
 function webTools(tools: readonly ChatModelTool[]) {
 	const offersBrowsePage = tools.some((tool) => tool.name === CHAT_BROWSE_TOOL);
@@ -144,6 +145,10 @@ type StreamEvent = v.InferOutput<typeof StreamEventSchema>;
 
 /** A web search or fetch result names its page; an error result has no `url` and is skipped. */
 const WebResultSchema = v.looseObject({ type: v.string(), url: v.optional(v.string()) });
+/** The page a fetch result read, as a document: plain text, or an encoded PDF naming no address. */
+const FetchedTextDocumentSchema = v.looseObject({
+	source: v.looseObject({ type: v.literal('text'), data: v.string() }),
+});
 const WEB_RESULT_BLOCK_ITEM_TYPES: Readonly<Record<string, string>> = {
 	web_search_tool_result: 'web_search_result',
 	web_fetch_tool_result: 'web_fetch_result',
@@ -235,9 +240,16 @@ function openedBlock(event: StreamEventOf<'content_block_start'>): OpenToolBlock
 	return null;
 }
 
+/** The addresses written in the text of the page a fetch result read. */
+function urlsInFetchedText(result: v.InferOutput<typeof WebResultSchema>): string[] {
+	const document = v.safeParse(FetchedTextDocumentSchema, result['content']);
+	return document.success ? [...urlsInText(document.output.source.data)] : [];
+}
+
 /**
  * The page addresses of a web search or fetch result block, which arrives whole at its start: a
- * search result holds a list of pages, a fetch result the one page it read.
+ * search result holds a list of pages, a fetch result the one page it read and the addresses in its
+ * text.
  */
 function webSourcesEvent(event: StreamEventOf<'content_block_start'>): ChatModelEvent | null {
 	const { content_block: block } = event;
@@ -249,7 +261,7 @@ function webSourcesEvent(event: StreamEventOf<'content_block_start'>): ChatModel
 	const urls = items.flatMap((item) => {
 		const parsed = v.safeParse(WebResultSchema, item);
 		return parsed.success && parsed.output.type === itemType && parsed.output.url !== undefined
-			? [parsed.output.url]
+			? [parsed.output.url, ...urlsInFetchedText(parsed.output)]
 			: [];
 	});
 	return urls.length === 0 ? null : { type: CHAT_MODEL_EVENT.webSources, urls };

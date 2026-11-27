@@ -14,6 +14,8 @@ import {
 	allowedBrowseUrlFromInput,
 	browsePage,
 	browsePageTool,
+	isInputAddressInConversation,
+	URL_NOT_IN_CONVERSATION_ERROR,
 	type BrowsePageConfig,
 	type BrowsePageContext,
 	type BrowsePageResult,
@@ -143,11 +145,28 @@ function isArgumentObject(input: unknown): input is Record<string, unknown> {
 	return typeof input === 'object' && input !== null && !Array.isArray(input);
 }
 
+/**
+ * `uploadImage` downloads the address the model names, so like `browse_page` it may only use one
+ * from `conversationUrls`; otherwise a prompt injection could send wishlist data out in that address.
+ */
+function downloadsOutsideConversation(
+	call: ChatToolCall,
+	urls: ReadonlySet<string> | null,
+): boolean {
+	return (
+		call.name === AGENT_API_OPERATION_ID.uploadImage &&
+		!isInputAddressInConversation(call.input, urls)
+	);
+}
+
 async function runReadCall(
 	caller: AgentCaller,
 	call: ChatToolCall,
-	imageBucket: AgentImageBucket | undefined,
+	{ imageBucket, conversationUrls }: ChatToolEnvironment,
 ): Promise<ChatContentBlock> {
+	if (downloadsOutsideConversation(call, conversationUrls)) {
+		return toolResult(call.id, { error: URL_NOT_IN_CONVERSATION_ERROR }, true);
+	}
 	try {
 		const response = await callAgentMcpTool(
 			caller,
@@ -228,8 +247,8 @@ async function submitChanges(
 }
 
 /**
- * What the tools of one round run with: the image store, the turn's abort signal and the pages
- * `browse_page` may open.
+ * What the tools of one round run with: the image store, the turn's abort signal and the addresses
+ * `browse_page` may open and `uploadImage` may download.
  */
 export interface ChatToolEnvironment extends BrowsePageContext {
 	imageBucket: AgentImageBucket | undefined;
@@ -255,7 +274,7 @@ export async function runChatToolCalls(
 		if (tool?.kind === CHAT_TOOL_KIND.change) {
 			changes.push(call);
 		} else if (tool?.kind === CHAT_TOOL_KIND.read) {
-			results.set(call.id, await runReadCall(caller, call, environment.imageBucket));
+			results.set(call.id, await runReadCall(caller, call, environment));
 		} else if (tool?.kind === CHAT_TOOL_KIND.browse) {
 			results.set(
 				call.id,

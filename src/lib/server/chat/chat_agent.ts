@@ -102,7 +102,7 @@ interface ModelResponse {
 	content: ChatContentBlock[];
 	calls: ChatToolCall[];
 	stopReason: ChatStopReason;
-	/** The pages its `browse_page` calls may open: see `conversationUrls`. */
+	/** The addresses its `browse_page` and `uploadImage` calls may use: see `conversationUrls`. */
 	conversationUrls: ReadonlySet<string>;
 }
 
@@ -113,7 +113,8 @@ interface StreamedText {
 
 /**
  * Streams one model response. `webSourceUrls` collects the pages the provider's web tools found
- * across the turn's responses, as their results are not kept in the history.
+ * and the addresses in fetched pages' text across the turn's responses, as their results are not
+ * kept in the history.
  */
 async function streamModelResponse(
 	turn: ChatTurn,
@@ -197,7 +198,7 @@ export async function runChatTurn(turn: ChatTurn): Promise<void> {
 			userName: turn.user.name,
 			locale: turn.locale,
 		},
-		{ canBrowsePages: pageBrowser !== null },
+		{ canBrowsePages: pageBrowser !== null, requiresConversationAddresses: true },
 	);
 	const streamed: StreamedText = { text: '' };
 	const webSourceUrls = new Set<string>();

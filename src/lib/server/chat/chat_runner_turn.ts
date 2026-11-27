@@ -227,7 +227,7 @@ export async function startChatRunnerTurn(turn: {
 				userName: turn.user.name,
 				locale: turn.locale,
 			},
-			{ canBrowsePages: browsePageConfig() !== null },
+			{ canBrowsePages: browsePageConfig() !== null, requiresConversationAddresses: false },
 		),
 		prompt: chatRunnerPrompt(history, proposalOutcomes),
 	});
